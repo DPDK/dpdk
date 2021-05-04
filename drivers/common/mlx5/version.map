@@ -16,6 +16,7 @@ INTERNAL {
 
 	mlx5_devx_cmd_alloc_pd;
 	mlx5_devx_cmd_create_cq;
+	mlx5_devx_cmd_create_credential_obj;
 	mlx5_devx_cmd_create_crypto_login_obj;
 	mlx5_devx_cmd_create_dek_obj;
 	mlx5_devx_cmd_create_flex_parser;

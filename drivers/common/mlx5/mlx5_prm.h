@@ -1187,6 +1187,8 @@ enum {
 			(1ULL << MLX5_GENERAL_OBJ_TYPE_DEK)
 #define MLX5_GENERAL_OBJ_TYPES_CAP_IMPORT_KEK \
 			(1ULL << MLX5_GENERAL_OBJ_TYPE_IMPORT_KEK)
+#define MLX5_GENERAL_OBJ_TYPES_CAP_CREDENTIAL \
+			(1ULL << MLX5_GENERAL_OBJ_TYPE_CREDENTIAL)
 #define MLX5_GENERAL_OBJ_TYPES_CAP_CRYPTO_LOGIN \
 			(1ULL << MLX5_GENERAL_OBJ_TYPE_CRYPTO_LOGIN)
 
@@ -2483,6 +2485,7 @@ enum {
 	MLX5_GENERAL_OBJ_TYPE_VIRTQ = 0x000d,
 	MLX5_GENERAL_OBJ_TYPE_VIRTIO_Q_COUNTERS = 0x001c,
 	MLX5_GENERAL_OBJ_TYPE_IMPORT_KEK = 0x001d,
+	MLX5_GENERAL_OBJ_TYPE_CREDENTIAL = 0x001e,
 	MLX5_GENERAL_OBJ_TYPE_CRYPTO_LOGIN = 0x001f,
 	MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH = 0x0022,
 	MLX5_GENERAL_OBJ_TYPE_FLOW_METER_ASO = 0x0024,
@@ -2594,6 +2597,26 @@ struct mlx5_ifc_import_kek_bits {
 struct mlx5_ifc_create_import_kek_in_bits {
 	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
 	struct mlx5_ifc_import_kek_bits import_kek;
+};
+
+enum {
+	MLX5_CREDENTIAL_ROLE_OFFICER = 0x0,
+	MLX5_CREDENTIAL_ROLE_USER = 0x1,
+};
+
+struct mlx5_ifc_credential_bits {
+	u8 modify_field_select[0x40];
+	u8 state[0x8];
+	u8 reserved_at_48[0x10];
+	u8 credential_role[0x8];
+	u8 reserved_at_60[0x1a0];
+	u8 credential[0x180];
+	u8 reserved_at_380[0x480];
+};
+
+struct mlx5_ifc_create_credential_in_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_credential_bits credential;
 };
 
 struct mlx5_ifc_crypto_login_bits {

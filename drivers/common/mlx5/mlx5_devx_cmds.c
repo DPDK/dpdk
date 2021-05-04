@@ -754,6 +754,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		       MLX5_GENERAL_OBJ_TYPES_CAP_DEK);
 	attr->import_kek = !!(general_obj_types_supported &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_IMPORT_KEK);
+	attr->credential = !!(general_obj_types_supported &
+			      MLX5_GENERAL_OBJ_TYPES_CAP_CREDENTIAL);
 	attr->crypto_login = !!(general_obj_types_supported &
 				MLX5_GENERAL_OBJ_TYPES_CAP_CRYPTO_LOGIN);
 	/* Add reading of other GENERAL_OBJ_TYPES_CAP bits above this line. */
@@ -2511,6 +2513,55 @@ mlx5_devx_cmd_create_import_kek_obj(void *ctx,
 }
 
 /**
+ * Create general object of type CREDENTIAL using DevX API.
+ *
+ * @param[in] ctx
+ *   Context returned from mlx5 open_device() glue function.
+ * @param [in] attr
+ *   Pointer to CREDENTIAL attributes structure.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_credential_obj(void *ctx,
+				    struct mlx5_devx_credential_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_credential_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
+	struct mlx5_devx_obj *credential_obj = NULL;
+	void *ptr = NULL, *credential_addr = NULL;
+
+	credential_obj = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*credential_obj),
+				     0, SOCKET_ID_ANY);
+	if (credential_obj == NULL) {
+		DRV_LOG(ERR, "Failed to allocate CREDENTIAL object data");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	ptr = MLX5_ADDR_OF(create_credential_in, in, hdr);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, opcode,
+		 MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_CREDENTIAL);
+	ptr = MLX5_ADDR_OF(create_credential_in, in, credential);
+	MLX5_SET(credential, ptr, credential_role, attr->credential_role);
+	credential_addr = MLX5_ADDR_OF(credential, ptr, credential);
+	memcpy(credential_addr, (void *)(attr->credential),
+	       MLX5_CRYPTO_CREDENTIAL_SIZE);
+	credential_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+							 out, sizeof(out));
+	if (credential_obj->obj == NULL) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to create CREDENTIAL object using DevX.");
+		mlx5_free(credential_obj);
+		return NULL;
+	}
+	credential_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
+	return credential_obj;
+}
+
+/**
  * Create general object of type CRYPTO_LOGIN using DevX API.
  *
  * @param[in] ctx
@@ -2549,7 +2600,7 @@ mlx5_devx_cmd_create_crypto_login_obj(void *ctx,
 		 attr->session_import_kek_ptr);
 	credential_addr = MLX5_ADDR_OF(crypto_login, ptr, credential);
 	memcpy(credential_addr, (void *)(attr->credential),
-	       MLX5_CRYPTO_LOGIN_CREDENTIAL_SIZE);
+	       MLX5_CRYPTO_CREDENTIAL_SIZE);
 	crypto_login_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 							   out, sizeof(out));
 	if (crypto_login_obj->obj == NULL) {

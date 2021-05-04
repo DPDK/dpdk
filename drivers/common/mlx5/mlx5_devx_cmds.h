@@ -142,6 +142,7 @@ struct mlx5_hca_attr {
 	uint32_t aes_xts:1; /* AES-XTS crypto is supported. */
 	uint32_t dek:1; /* General obj type DEK is supported. */
 	uint32_t import_kek:1; /* General obj type IMPORT_KEK supported. */
+	uint32_t credential:1; /* General obj type CREDENTIAL supported. */
 	uint32_t crypto_login:1; /* General obj type CRYPTO_LOGIN supported. */
 	uint32_t regexp_num_of_engines;
 	uint32_t log_max_ft_sampler_num:8;
@@ -458,13 +459,20 @@ struct mlx5_devx_import_kek_attr {
 	uint8_t key[MLX5_CRYPTO_KEY_MAX_SIZE];
 };
 
-#define MLX5_CRYPTO_LOGIN_CREDENTIAL_SIZE	48
+#define MLX5_CRYPTO_CREDENTIAL_SIZE	48
+
+struct mlx5_devx_credential_attr {
+	uint64_t modify_field_select;
+	uint32_t state:8;
+	uint32_t credential_role:8;
+	uint8_t credential[MLX5_CRYPTO_CREDENTIAL_SIZE];
+};
 
 struct mlx5_devx_crypto_login_attr {
 	uint64_t modify_field_select;
 	uint32_t credential_pointer:24;
 	uint32_t session_import_kek_ptr:24;
-	uint8_t credential[MLX5_CRYPTO_LOGIN_CREDENTIAL_SIZE];
+	uint8_t credential[MLX5_CRYPTO_CREDENTIAL_SIZE];
 };
 
 /* mlx5_devx_cmds.c */
@@ -627,6 +635,11 @@ __rte_internal
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_import_kek_obj(void *ctx,
 				    struct mlx5_devx_import_kek_attr *attr);
+
+__rte_internal
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_credential_obj(void *ctx,
+				    struct mlx5_devx_credential_attr *attr);
 
 __rte_internal
 struct mlx5_devx_obj *
