@@ -214,6 +214,21 @@ int cnxk_sso_close(struct rte_eventdev *event_dev, cnxk_sso_unlink_t unlink_fn);
 int cnxk_sso_selftest(const char *dev_name);
 void cnxk_sso_dump(struct rte_eventdev *event_dev, FILE *f);
 
+/* Stats API. */
+int cnxk_sso_xstats_get_names(const struct rte_eventdev *event_dev,
+			      enum rte_event_dev_xstats_mode mode,
+			      uint8_t queue_port_id,
+			      struct rte_event_dev_xstats_name *xstats_names,
+			      unsigned int *ids, unsigned int size);
+int cnxk_sso_xstats_get(const struct rte_eventdev *event_dev,
+			enum rte_event_dev_xstats_mode mode,
+			uint8_t queue_port_id, const unsigned int ids[],
+			uint64_t values[], unsigned int n);
+int cnxk_sso_xstats_reset(struct rte_eventdev *event_dev,
+			  enum rte_event_dev_xstats_mode mode,
+			  int16_t queue_port_id, const uint32_t ids[],
+			  uint32_t n);
+
 /* CN9K */
 void cn9k_sso_set_rsrc(void *arg);
 

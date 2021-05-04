@@ -183,8 +183,10 @@ INTERNAL {
 	roc_sso_hwgrp_qos_config;
 	roc_sso_hwgrp_release_xaq;
 	roc_sso_hwgrp_set_priority;
+	roc_sso_hwgrp_stats_get;
 	roc_sso_hws_base_get;
 	roc_sso_hws_link;
+	roc_sso_hws_stats_get;
 	roc_sso_hws_unlink;
 	roc_sso_ns_to_gw;
 	roc_sso_rsrc_fini;

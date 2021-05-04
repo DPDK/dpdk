@@ -12,6 +12,21 @@ struct roc_sso_hwgrp_qos {
 	uint8_t taq_prcnt;
 };
 
+struct roc_sso_hws_stats {
+	uint64_t arbitration;
+};
+
+struct roc_sso_hwgrp_stats {
+	uint64_t ws_pc;
+	uint64_t ext_pc;
+	uint64_t wa_pc;
+	uint64_t ts_pc;
+	uint64_t ds_pc;
+	uint64_t dq_pc;
+	uint64_t aw_status;
+	uint64_t page_cnt;
+};
+
 struct roc_sso {
 	struct plt_pci_device *pci_dev;
 	/* Public data. */
@@ -61,5 +76,9 @@ uintptr_t __roc_api roc_sso_hwgrp_base_get(struct roc_sso *roc_sso,
 /* Debug */
 void __roc_api roc_sso_dump(struct roc_sso *roc_sso, uint8_t nb_hws,
 			    uint16_t hwgrp, FILE *f);
+int __roc_api roc_sso_hwgrp_stats_get(struct roc_sso *roc_sso, uint8_t hwgrp,
+				      struct roc_sso_hwgrp_stats *stats);
+int __roc_api roc_sso_hws_stats_get(struct roc_sso *roc_sso, uint8_t hws,
+				    struct roc_sso_hws_stats *stats);
 
 #endif /* _ROC_SSOW_H_ */

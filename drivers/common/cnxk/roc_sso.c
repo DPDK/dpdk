@@ -280,6 +280,69 @@ roc_sso_hws_unlink(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[],
 }
 
 int
+roc_sso_hws_stats_get(struct roc_sso *roc_sso, uint8_t hws,
+		      struct roc_sso_hws_stats *stats)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+	struct sso_hws_stats *req_rsp;
+	int rc;
+
+	req_rsp = (struct sso_hws_stats *)mbox_alloc_msg_sso_hws_get_stats(
+		dev->mbox);
+	if (req_rsp == NULL) {
+		rc = mbox_process(dev->mbox);
+		if (rc < 0)
+			return rc;
+		req_rsp = (struct sso_hws_stats *)
+			mbox_alloc_msg_sso_hws_get_stats(dev->mbox);
+		if (req_rsp == NULL)
+			return -ENOSPC;
+	}
+	req_rsp->hws = hws;
+	rc = mbox_process_msg(dev->mbox, (void **)&req_rsp);
+	if (rc)
+		return rc;
+
+	stats->arbitration = req_rsp->arbitration;
+	return 0;
+}
+
+int
+roc_sso_hwgrp_stats_get(struct roc_sso *roc_sso, uint8_t hwgrp,
+			struct roc_sso_hwgrp_stats *stats)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+	struct sso_grp_stats *req_rsp;
+	int rc;
+
+	req_rsp = (struct sso_grp_stats *)mbox_alloc_msg_sso_grp_get_stats(
+		dev->mbox);
+	if (req_rsp == NULL) {
+		rc = mbox_process(dev->mbox);
+		if (rc < 0)
+			return rc;
+		req_rsp = (struct sso_grp_stats *)
+			mbox_alloc_msg_sso_grp_get_stats(dev->mbox);
+		if (req_rsp == NULL)
+			return -ENOSPC;
+	}
+	req_rsp->grp = hwgrp;
+	rc = mbox_process_msg(dev->mbox, (void **)&req_rsp);
+	if (rc)
+		return rc;
+
+	stats->aw_status = req_rsp->aw_status;
+	stats->dq_pc = req_rsp->dq_pc;
+	stats->ds_pc = req_rsp->ds_pc;
+	stats->ext_pc = req_rsp->ext_pc;
+	stats->page_cnt = req_rsp->page_cnt;
+	stats->ts_pc = req_rsp->ts_pc;
+	stats->wa_pc = req_rsp->wa_pc;
+	stats->ws_pc = req_rsp->ws_pc;
+	return 0;
+}
+
+int
 roc_sso_hwgrp_hws_link_status(struct roc_sso *roc_sso, uint8_t hws,
 			      uint16_t hwgrp)
 {
