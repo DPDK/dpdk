@@ -111,6 +111,19 @@ struct rte_ioat_rawdev {
 #define RTE_IOAT_CHANSTS_HALTED			0x3
 #define RTE_IOAT_CHANSTS_ARMED			0x4
 
+static __rte_always_inline uint16_t
+__ioat_burst_capacity(int dev_id)
+{
+	struct rte_ioat_rawdev *ioat =
+			(struct rte_ioat_rawdev *)rte_rawdevs[dev_id].dev_private;
+	unsigned short size = ioat->ring_size - 1;
+	unsigned short read = ioat->next_read;
+	unsigned short write = ioat->next_write;
+	unsigned short space = size - (write - read);
+
+	return space;
+}
+
 static __rte_always_inline int
 __ioat_write_desc(int dev_id, uint32_t op, uint64_t src, phys_addr_t dst,
 		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl)
@@ -269,6 +282,17 @@ end:
 	ioat->next_read = read;
 	ioat->xstats.completed += count;
 	return count;
+}
+
+static inline uint16_t
+rte_ioat_burst_capacity(int dev_id)
+{
+	enum rte_ioat_dev_type *type =
+		(enum rte_ioat_dev_type *)rte_rawdevs[dev_id].dev_private;
+	if (*type == RTE_IDXD_DEV)
+		return __idxd_burst_capacity(dev_id);
+	else
+		return __ioat_burst_capacity(dev_id);
 }
 
 static inline int

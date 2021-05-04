@@ -277,6 +277,70 @@ test_enqueue_fill(int dev_id)
 	return 0;
 }
 
+static int
+test_burst_capacity(int dev_id)
+{
+#define BURST_SIZE			64
+	const unsigned int ring_space = rte_ioat_burst_capacity(dev_id);
+	struct rte_mbuf *src, *dst;
+	unsigned int length = 1024;
+	unsigned int i, j, iter;
+	unsigned int old_cap, cap;
+	uintptr_t completions[BURST_SIZE];
+
+	src = rte_pktmbuf_alloc(pool);
+	dst = rte_pktmbuf_alloc(pool);
+
+	old_cap = ring_space;
+	/* to test capacity, we enqueue elements and check capacity is reduced
+	 * by one each time - rebaselining the expected value after each burst
+	 * as the capacity is only for a burst. We enqueue multiple bursts to
+	 * fill up half the ring, before emptying it again. We do this twice to
+	 * ensure that we get to test scenarios where we get ring wrap-around
+	 */
+	for (iter = 0; iter < 2; iter++) {
+		for (i = 0; i < ring_space / (2 * BURST_SIZE); i++) {
+			cap = rte_ioat_burst_capacity(dev_id);
+			if (cap > old_cap) {
+				PRINT_ERR("Error, avail ring capacity has gone up, not down\n");
+				return -1;
+			}
+			old_cap = cap;
+
+			for (j = 0; j < BURST_SIZE; j++) {
+				if (rte_ioat_enqueue_copy(dev_id, rte_pktmbuf_iova(src),
+						rte_pktmbuf_iova(dst), length, 0, 0) != 1) {
+					PRINT_ERR("Error with rte_ioat_enqueue_copy\n");
+					return -1;
+				}
+				if (cap - rte_ioat_burst_capacity(dev_id) != j + 1) {
+					PRINT_ERR("Error, ring capacity did not change as expected\n");
+					return -1;
+				}
+			}
+			rte_ioat_perform_ops(dev_id);
+		}
+		usleep(100);
+		for (i = 0; i < ring_space / (2 * BURST_SIZE); i++) {
+			if (rte_ioat_completed_ops(dev_id, BURST_SIZE,
+					completions, completions) != BURST_SIZE) {
+				PRINT_ERR("Error with completions\n");
+				return -1;
+			}
+		}
+		if (rte_ioat_burst_capacity(dev_id) != ring_space) {
+			PRINT_ERR("Error, ring capacity has not reset to original value\n");
+			return -1;
+		}
+		old_cap = ring_space;
+	}
+
+	rte_pktmbuf_free(src);
+	rte_pktmbuf_free(dst);
+
+	return 0;
+}
+
 int
 ioat_rawdev_test(uint16_t dev_id)
 {
@@ -321,7 +385,7 @@ ioat_rawdev_test(uint16_t dev_id)
 	}
 
 	pool = rte_pktmbuf_pool_create("TEST_IOAT_POOL",
-			256, /* n == num elements */
+			p.ring_size * 2, /* n == num elements */
 			32,  /* cache size */
 			0,   /* priv size */
 			2048, /* data room size */
@@ -384,6 +448,10 @@ ioat_rawdev_test(uint16_t dev_id)
 		printf("\r");
 	}
 	printf("\n");
+
+	printf("Running Burst Capacity Test\n");
+	if (test_burst_capacity(dev_id) != 0)
+		goto err;
 
 	rte_rawdev_stop(dev_id);
 	if (rte_rawdev_xstats_reset(dev_id, NULL, 0) != 0) {
