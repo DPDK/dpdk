@@ -390,6 +390,54 @@ cnxk_sso_start(struct rte_eventdev *event_dev, cnxk_sso_hws_reset_t reset_fn,
 	return 0;
 }
 
+void
+cnxk_sso_stop(struct rte_eventdev *event_dev, cnxk_sso_hws_reset_t reset_fn,
+	      cnxk_sso_hws_flush_t flush_fn)
+{
+	plt_sso_dbg();
+	cnxk_sso_cleanup(event_dev, reset_fn, flush_fn, false);
+	rte_mb();
+}
+
+int
+cnxk_sso_close(struct rte_eventdev *event_dev, cnxk_sso_unlink_t unlink_fn)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint16_t all_queues[CNXK_SSO_MAX_HWGRP];
+	uint16_t i;
+	void *ws;
+
+	if (!dev->configured)
+		return 0;
+
+	for (i = 0; i < dev->nb_event_queues; i++)
+		all_queues[i] = i;
+
+	for (i = 0; i < dev->nb_event_ports; i++) {
+		ws = event_dev->data->ports[i];
+		unlink_fn(dev, ws, all_queues, dev->nb_event_queues);
+		rte_free(cnxk_sso_hws_get_cookie(ws));
+		event_dev->data->ports[i] = NULL;
+	}
+
+	roc_sso_rsrc_fini(&dev->sso);
+	rte_mempool_free(dev->xaq_pool);
+	rte_memzone_free(rte_memzone_lookup(CNXK_SSO_FC_NAME));
+
+	dev->fc_iova = 0;
+	dev->fc_mem = NULL;
+	dev->xaq_pool = NULL;
+	dev->configured = false;
+	dev->is_timeout_deq = 0;
+	dev->nb_event_ports = 0;
+	dev->max_num_events = -1;
+	dev->nb_event_queues = 0;
+	dev->min_dequeue_timeout_ns = USEC2NSEC(1);
+	dev->max_dequeue_timeout_ns = USEC2NSEC(0x3FF);
+
+	return 0;
+}
+
 static void
 parse_queue_param(char *value, void *opaque)
 {

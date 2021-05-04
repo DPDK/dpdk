@@ -48,6 +48,8 @@ typedef void (*cnxk_sso_hws_setup_t)(void *dev, void *ws, uintptr_t *grp_base);
 typedef void (*cnxk_sso_hws_release_t)(void *dev, void *ws);
 typedef int (*cnxk_sso_link_t)(void *dev, void *ws, uint16_t *map,
 			       uint16_t nb_link);
+typedef int (*cnxk_sso_unlink_t)(void *dev, void *ws, uint16_t *map,
+				 uint16_t nb_link);
 typedef void (*cnxk_handle_event_t)(void *arg, struct rte_event ev);
 typedef void (*cnxk_sso_hws_reset_t)(void *arg, void *ws);
 typedef void (*cnxk_sso_hws_flush_t)(void *ws, uint8_t queue_id, uintptr_t base,
@@ -205,5 +207,9 @@ int cnxk_sso_timeout_ticks(struct rte_eventdev *event_dev, uint64_t ns,
 int cnxk_sso_start(struct rte_eventdev *event_dev,
 		   cnxk_sso_hws_reset_t reset_fn,
 		   cnxk_sso_hws_flush_t flush_fn);
+void cnxk_sso_stop(struct rte_eventdev *event_dev,
+		   cnxk_sso_hws_reset_t reset_fn,
+		   cnxk_sso_hws_flush_t flush_fn);
+int cnxk_sso_close(struct rte_eventdev *event_dev, cnxk_sso_unlink_t unlink_fn);
 
 #endif /* __CNXK_EVENTDEV_H__ */
