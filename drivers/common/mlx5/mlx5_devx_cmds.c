@@ -2263,7 +2263,7 @@ mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
 	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
 			MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
 	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
-			MLX5_OBJ_TYPE_GENEVE_TLV_OPT);
+		 MLX5_GENERAL_OBJ_TYPE_GENEVE_TLV_OPT);
 	MLX5_SET(geneve_tlv_option, opt, option_class,
 			rte_be_to_cpu_16(class));
 	MLX5_SET(geneve_tlv_option, opt, option_type, type);
