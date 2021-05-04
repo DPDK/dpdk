@@ -8,6 +8,10 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
     subdir_done()
 endif
 
-sources = files('cnxk_eventdev.c')
+sources = files(
+        'cn9k_eventdev.c',
+        'cn10k_eventdev.c',
+        'cnxk_eventdev.c',
+)
 
 deps += ['bus_pci', 'common_cnxk']

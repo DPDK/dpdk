@@ -25,6 +25,8 @@ struct cnxk_sso_evdev {
 	uint32_t min_dequeue_timeout_ns;
 	uint32_t max_dequeue_timeout_ns;
 	int32_t max_num_events;
+	/* CN9K */
+	uint8_t dual_ws;
 } __rte_cache_aligned;
 
 static inline struct cnxk_sso_evdev *
