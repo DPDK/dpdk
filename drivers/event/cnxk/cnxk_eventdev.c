@@ -327,6 +327,70 @@ cnxk_sso_timeout_ticks(struct rte_eventdev *event_dev, uint64_t ns,
 }
 
 static void
+cnxk_handle_event(void *arg, struct rte_event event)
+{
+	struct rte_eventdev *event_dev = arg;
+
+	if (event_dev->dev_ops->dev_stop_flush != NULL)
+		event_dev->dev_ops->dev_stop_flush(
+			event_dev->data->dev_id, event,
+			event_dev->data->dev_stop_flush_arg);
+}
+
+static void
+cnxk_sso_cleanup(struct rte_eventdev *event_dev, cnxk_sso_hws_reset_t reset_fn,
+		 cnxk_sso_hws_flush_t flush_fn, uint8_t enable)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uintptr_t hwgrp_base;
+	uint16_t i;
+	void *ws;
+
+	for (i = 0; i < dev->nb_event_ports; i++) {
+		ws = event_dev->data->ports[i];
+		reset_fn(dev, ws);
+	}
+
+	rte_mb();
+	ws = event_dev->data->ports[0];
+
+	for (i = 0; i < dev->nb_event_queues; i++) {
+		/* Consume all the events through HWS0 */
+		hwgrp_base = roc_sso_hwgrp_base_get(&dev->sso, i);
+		flush_fn(ws, i, hwgrp_base, cnxk_handle_event, event_dev);
+		/* Enable/Disable SSO GGRP */
+		plt_write64(enable, hwgrp_base + SSO_LF_GGRP_QCTL);
+	}
+}
+
+int
+cnxk_sso_start(struct rte_eventdev *event_dev, cnxk_sso_hws_reset_t reset_fn,
+	       cnxk_sso_hws_flush_t flush_fn)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	struct roc_sso_hwgrp_qos qos[dev->qos_queue_cnt];
+	int i, rc;
+
+	plt_sso_dbg();
+	for (i = 0; i < dev->qos_queue_cnt; i++) {
+		qos->hwgrp = dev->qos_parse_data[i].queue;
+		qos->iaq_prcnt = dev->qos_parse_data[i].iaq_prcnt;
+		qos->taq_prcnt = dev->qos_parse_data[i].taq_prcnt;
+		qos->xaq_prcnt = dev->qos_parse_data[i].xaq_prcnt;
+	}
+	rc = roc_sso_hwgrp_qos_config(&dev->sso, qos, dev->qos_queue_cnt,
+				      dev->xae_cnt);
+	if (rc < 0) {
+		plt_sso_dbg("failed to configure HWGRP QoS rc = %d", rc);
+		return -EINVAL;
+	}
+	cnxk_sso_cleanup(event_dev, reset_fn, flush_fn, true);
+	rte_mb();
+
+	return 0;
+}
+
+static void
 parse_queue_param(char *value, void *opaque)
 {
 	struct cnxk_sso_qos queue_qos = {0};

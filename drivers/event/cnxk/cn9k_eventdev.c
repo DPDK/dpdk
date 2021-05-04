@@ -127,6 +127,102 @@ cn9k_sso_hws_release(void *arg, void *hws)
 }
 
 static void
+cn9k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
+			  cnxk_handle_event_t fn, void *arg)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(arg);
+	struct cn9k_sso_hws_dual *dws;
+	struct cn9k_sso_hws_state *st;
+	struct cn9k_sso_hws *ws;
+	uint64_t cq_ds_cnt = 1;
+	uint64_t aq_cnt = 1;
+	uint64_t ds_cnt = 1;
+	struct rte_event ev;
+	uintptr_t ws_base;
+	uint64_t val, req;
+
+	plt_write64(0, base + SSO_LF_GGRP_QCTL);
+
+	req = queue_id;	    /* GGRP ID */
+	req |= BIT_ULL(18); /* Grouped */
+	req |= BIT_ULL(16); /* WAIT */
+
+	aq_cnt = plt_read64(base + SSO_LF_GGRP_AQ_CNT);
+	ds_cnt = plt_read64(base + SSO_LF_GGRP_MISC_CNT);
+	cq_ds_cnt = plt_read64(base + SSO_LF_GGRP_INT_CNT);
+	cq_ds_cnt &= 0x3FFF3FFF0000;
+
+	if (dev->dual_ws) {
+		dws = hws;
+		st = &dws->ws_state[0];
+		ws_base = dws->base[0];
+	} else {
+		ws = hws;
+		st = (struct cn9k_sso_hws_state *)ws;
+		ws_base = ws->base;
+	}
+
+	while (aq_cnt || cq_ds_cnt || ds_cnt) {
+		plt_write64(req, st->getwrk_op);
+		cn9k_sso_hws_get_work_empty(st, &ev);
+		if (fn != NULL && ev.u64 != 0)
+			fn(arg, ev);
+		if (ev.sched_type != SSO_TT_EMPTY)
+			cnxk_sso_hws_swtag_flush(st->tag_op,
+						 st->swtag_flush_op);
+		do {
+			val = plt_read64(ws_base + SSOW_LF_GWS_PENDSTATE);
+		} while (val & BIT_ULL(56));
+		aq_cnt = plt_read64(base + SSO_LF_GGRP_AQ_CNT);
+		ds_cnt = plt_read64(base + SSO_LF_GGRP_MISC_CNT);
+		cq_ds_cnt = plt_read64(base + SSO_LF_GGRP_INT_CNT);
+		/* Extract cq and ds count */
+		cq_ds_cnt &= 0x3FFF3FFF0000;
+	}
+
+	plt_write64(0, ws_base + SSOW_LF_GWS_OP_GWC_INVAL);
+}
+
+static void
+cn9k_sso_hws_reset(void *arg, void *hws)
+{
+	struct cnxk_sso_evdev *dev = arg;
+	struct cn9k_sso_hws_dual *dws;
+	struct cn9k_sso_hws *ws;
+	uint64_t pend_state;
+	uint8_t pend_tt;
+	uintptr_t base;
+	uint64_t tag;
+	uint8_t i;
+
+	dws = hws;
+	ws = hws;
+	for (i = 0; i < (dev->dual_ws ? CN9K_DUAL_WS_NB_WS : 1); i++) {
+		base = dev->dual_ws ? dws->base[i] : ws->base;
+		/* Wait till getwork/swtp/waitw/desched completes. */
+		do {
+			pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
+		} while (pend_state & (BIT_ULL(63) | BIT_ULL(62) | BIT_ULL(58) |
+				       BIT_ULL(56)));
+
+		tag = plt_read64(base + SSOW_LF_GWS_TAG);
+		pend_tt = (tag >> 32) & 0x3;
+		if (pend_tt != SSO_TT_EMPTY) { /* Work was pending */
+			if (pend_tt == SSO_TT_ATOMIC ||
+			    pend_tt == SSO_TT_ORDERED)
+				cnxk_sso_hws_swtag_untag(
+					base + SSOW_LF_GWS_OP_SWTAG_UNTAG);
+			plt_write64(0, base + SSOW_LF_GWS_OP_DESCHED);
+		}
+
+		/* Wait for desched to complete. */
+		do {
+			pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
+		} while (pend_state & BIT_ULL(58));
+	}
+}
+
+static void
 cn9k_sso_set_rsrc(void *arg)
 {
 	struct cnxk_sso_evdev *dev = arg;
@@ -352,6 +448,21 @@ cn9k_sso_port_unlink(struct rte_eventdev *event_dev, void *port,
 	return (int)nb_unlinks;
 }
 
+static int
+cn9k_sso_start(struct rte_eventdev *event_dev)
+{
+	int rc;
+
+	rc = cnxk_sso_start(event_dev, cn9k_sso_hws_reset,
+			    cn9k_sso_hws_flush_events);
+	if (rc < 0)
+		return rc;
+
+	cn9k_sso_fp_fns_set(event_dev);
+
+	return rc;
+}
+
 static struct rte_eventdev_ops cn9k_sso_dev_ops = {
 	.dev_infos_get = cn9k_sso_info_get,
 	.dev_configure = cn9k_sso_dev_configure,
@@ -364,6 +475,8 @@ static struct rte_eventdev_ops cn9k_sso_dev_ops = {
 	.port_link = cn9k_sso_port_link,
 	.port_unlink = cn9k_sso_port_unlink,
 	.timeout_ticks = cnxk_sso_timeout_ticks,
+
+	.dev_start = cn9k_sso_start,
 };
 
 static int

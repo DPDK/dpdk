@@ -113,6 +113,117 @@ cn10k_sso_hws_release(void *arg, void *hws)
 }
 
 static void
+cn10k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
+			   cnxk_handle_event_t fn, void *arg)
+{
+	struct cn10k_sso_hws *ws = hws;
+	uint64_t cq_ds_cnt = 1;
+	uint64_t aq_cnt = 1;
+	uint64_t ds_cnt = 1;
+	struct rte_event ev;
+	uint64_t val, req;
+
+	plt_write64(0, base + SSO_LF_GGRP_QCTL);
+
+	req = queue_id;	    /* GGRP ID */
+	req |= BIT_ULL(18); /* Grouped */
+	req |= BIT_ULL(16); /* WAIT */
+
+	aq_cnt = plt_read64(base + SSO_LF_GGRP_AQ_CNT);
+	ds_cnt = plt_read64(base + SSO_LF_GGRP_MISC_CNT);
+	cq_ds_cnt = plt_read64(base + SSO_LF_GGRP_INT_CNT);
+	cq_ds_cnt &= 0x3FFF3FFF0000;
+
+	while (aq_cnt || cq_ds_cnt || ds_cnt) {
+		plt_write64(req, ws->getwrk_op);
+		cn10k_sso_hws_get_work_empty(ws, &ev);
+		if (fn != NULL && ev.u64 != 0)
+			fn(arg, ev);
+		if (ev.sched_type != SSO_TT_EMPTY)
+			cnxk_sso_hws_swtag_flush(ws->tag_wqe_op,
+						 ws->swtag_flush_op);
+		do {
+			val = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
+		} while (val & BIT_ULL(56));
+		aq_cnt = plt_read64(base + SSO_LF_GGRP_AQ_CNT);
+		ds_cnt = plt_read64(base + SSO_LF_GGRP_MISC_CNT);
+		cq_ds_cnt = plt_read64(base + SSO_LF_GGRP_INT_CNT);
+		/* Extract cq and ds count */
+		cq_ds_cnt &= 0x3FFF3FFF0000;
+	}
+
+	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
+	rte_mb();
+}
+
+static void
+cn10k_sso_hws_reset(void *arg, void *hws)
+{
+	struct cnxk_sso_evdev *dev = arg;
+	struct cn10k_sso_hws *ws = hws;
+	uintptr_t base = ws->base;
+	uint64_t pend_state;
+	union {
+		__uint128_t wdata;
+		uint64_t u64[2];
+	} gw;
+	uint8_t pend_tt;
+
+	/* Wait till getwork/swtp/waitw/desched completes. */
+	do {
+		pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
+	} while (pend_state & (BIT_ULL(63) | BIT_ULL(62) | BIT_ULL(58) |
+			       BIT_ULL(56) | BIT_ULL(54)));
+	pend_tt = CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_WQE0));
+	if (pend_tt != SSO_TT_EMPTY) { /* Work was pending */
+		if (pend_tt == SSO_TT_ATOMIC || pend_tt == SSO_TT_ORDERED)
+			cnxk_sso_hws_swtag_untag(base +
+						 SSOW_LF_GWS_OP_SWTAG_UNTAG);
+		plt_write64(0, base + SSOW_LF_GWS_OP_DESCHED);
+	}
+
+	/* Wait for desched to complete. */
+	do {
+		pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
+	} while (pend_state & BIT_ULL(58));
+
+	switch (dev->gw_mode) {
+	case CN10K_GW_MODE_PREF:
+		while (plt_read64(base + SSOW_LF_GWS_PRF_WQE0) & BIT_ULL(63))
+			;
+		break;
+	case CN10K_GW_MODE_PREF_WFE:
+		while (plt_read64(base + SSOW_LF_GWS_PRF_WQE0) &
+		       SSOW_LF_GWS_TAG_PEND_GET_WORK_BIT)
+			continue;
+		plt_write64(0, base + SSOW_LF_GWS_OP_GWC_INVAL);
+		break;
+	case CN10K_GW_MODE_NONE:
+	default:
+		break;
+	}
+
+	if (CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_PRF_WQE0)) !=
+	    SSO_TT_EMPTY) {
+		plt_write64(BIT_ULL(16) | 1, ws->getwrk_op);
+		do {
+			roc_load_pair(gw.u64[0], gw.u64[1], ws->tag_wqe_op);
+		} while (gw.u64[0] & BIT_ULL(63));
+		pend_tt = CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_WQE0));
+		if (pend_tt != SSO_TT_EMPTY) { /* Work was pending */
+			if (pend_tt == SSO_TT_ATOMIC ||
+			    pend_tt == SSO_TT_ORDERED)
+				cnxk_sso_hws_swtag_untag(
+					base + SSOW_LF_GWS_OP_SWTAG_UNTAG);
+			plt_write64(0, base + SSOW_LF_GWS_OP_DESCHED);
+		}
+	}
+
+	plt_write64(0, base + SSOW_LF_GWS_OP_GWC_INVAL);
+	rte_mb();
+}
+
+static void
 cn10k_sso_set_rsrc(void *arg)
 {
 	struct cnxk_sso_evdev *dev = arg;
@@ -263,6 +374,20 @@ cn10k_sso_port_unlink(struct rte_eventdev *event_dev, void *port,
 	return (int)nb_unlinks;
 }
 
+static int
+cn10k_sso_start(struct rte_eventdev *event_dev)
+{
+	int rc;
+
+	rc = cnxk_sso_start(event_dev, cn10k_sso_hws_reset,
+			    cn10k_sso_hws_flush_events);
+	if (rc < 0)
+		return rc;
+	cn10k_sso_fp_fns_set(event_dev);
+
+	return rc;
+}
+
 static struct rte_eventdev_ops cn10k_sso_dev_ops = {
 	.dev_infos_get = cn10k_sso_info_get,
 	.dev_configure = cn10k_sso_dev_configure,
@@ -275,6 +400,8 @@ static struct rte_eventdev_ops cn10k_sso_dev_ops = {
 	.port_link = cn10k_sso_port_link,
 	.port_unlink = cn10k_sso_port_unlink,
 	.timeout_ticks = cnxk_sso_timeout_ticks,
+
+	.dev_start = cn10k_sso_start,
 };
 
 static int
