@@ -406,6 +406,7 @@ static void
 cnxk_sso_parse_devargs(struct cnxk_sso_evdev *dev, struct rte_devargs *devargs)
 {
 	struct rte_kvargs *kvlist;
+	uint8_t single_ws = 0;
 
 	if (devargs == NULL)
 		return;
@@ -417,6 +418,11 @@ cnxk_sso_parse_devargs(struct cnxk_sso_evdev *dev, struct rte_devargs *devargs)
 			   &dev->xae_cnt);
 	rte_kvargs_process(kvlist, CNXK_SSO_GGRP_QOS, &parse_sso_kvargs_dict,
 			   dev);
+	rte_kvargs_process(kvlist, CN9K_SSO_SINGLE_WS, &parse_kvargs_value,
+			   &single_ws);
+	rte_kvargs_process(kvlist, CN10K_SSO_GW_MODE, &parse_kvargs_value,
+			   &dev->gw_mode);
+	dev->dual_ws = !single_ws;
 	rte_kvargs_free(kvlist);
 }
 

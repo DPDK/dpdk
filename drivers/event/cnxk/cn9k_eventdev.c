@@ -395,4 +395,5 @@ RTE_PMD_REGISTER_PCI(event_cn9k, cn9k_pci_sso);
 RTE_PMD_REGISTER_PCI_TABLE(event_cn9k, cn9k_pci_sso_map);
 RTE_PMD_REGISTER_KMOD_DEP(event_cn9k, "vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(event_cn9k, CNXK_SSO_XAE_CNT "=<int>"
-			      CNXK_SSO_GGRP_QOS "=<string>");
+			      CNXK_SSO_GGRP_QOS "=<string>"
+			      CN9K_SSO_SINGLE_WS "=1");

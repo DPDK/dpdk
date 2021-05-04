@@ -14,8 +14,10 @@
 
 #include "roc_api.h"
 
-#define CNXK_SSO_XAE_CNT  "xae_cnt"
-#define CNXK_SSO_GGRP_QOS "qos"
+#define CNXK_SSO_XAE_CNT   "xae_cnt"
+#define CNXK_SSO_GGRP_QOS  "qos"
+#define CN9K_SSO_SINGLE_WS "single_ws"
+#define CN10K_SSO_GW_MODE  "gw_mode"
 
 #define NSEC2USEC(__ns)		((__ns) / 1E3)
 #define USEC2NSEC(__us)		((__us)*1E3)

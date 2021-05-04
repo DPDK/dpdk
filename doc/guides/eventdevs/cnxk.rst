@@ -55,6 +55,24 @@ Runtime Config Options
 
     -a 0002:0e:00.0,xae_cnt=16384
 
+- ``CN9K Getwork mode``
+
+  CN9K ``single_ws`` devargs parameter is introduced to select single workslot
+  mode in SSO and disable the default dual workslot mode.
+
+  For example::
+
+    -a 0002:0e:00.0,single_ws=1
+
+- ``CN10K Getwork mode``
+
+  CN10K supports multiple getwork prefetch modes, by default the prefetch
+  mode is set to none.
+
+  For example::
+
+    -a 0002:0e:00.0,gw_mode=1
+
 - ``Event Group QoS support``
 
   SSO GGRPs i.e. queue uses DRAM & SRAM buffers to hold in-flight
