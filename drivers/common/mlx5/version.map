@@ -53,6 +53,7 @@ INTERNAL {
 	mlx5_devx_cmd_queue_counter_alloc; # WINDOWS_NO_EXPORT
 	mlx5_devx_cmd_queue_counter_query; # WINDOWS_NO_EXPORT
 	mlx5_devx_cmd_register_read;
+	mlx5_devx_cmd_register_write;
 	mlx5_devx_cmd_wq_query; # WINDOWS_NO_EXPORT
 
 	mlx5_devx_cq_create;

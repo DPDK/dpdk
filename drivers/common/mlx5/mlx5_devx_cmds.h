@@ -566,6 +566,10 @@ int mlx5_devx_cmd_register_read(void *ctx, uint16_t reg_id,
 				uint32_t arg, uint32_t *data, uint32_t dw_cnt);
 
 __rte_internal
+int mlx5_devx_cmd_register_write(void *ctx, uint16_t reg_id,
+				 uint32_t arg, uint32_t *data, uint32_t dw_cnt);
+
+__rte_internal
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
 		uint16_t class, uint8_t type, uint8_t len);
