@@ -11,6 +11,7 @@
 #include <rte_regexdev_driver.h>
 
 #include <mlx5_common_pci.h>
+#include <mlx5_common.h>
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
@@ -52,33 +53,6 @@ mlx5_regex_close(struct rte_regexdev *dev __rte_unused)
 	return 0;
 }
 
-static struct ibv_device *
-mlx5_regex_get_ib_device_match(struct rte_pci_addr *addr)
-{
-	int n;
-	struct ibv_device **ibv_list = mlx5_glue->get_device_list(&n);
-	struct ibv_device *ibv_match = NULL;
-
-	if (!ibv_list) {
-		rte_errno = ENOSYS;
-		return NULL;
-	}
-	while (n-- > 0) {
-		struct rte_pci_addr pci_addr;
-
-		DRV_LOG(DEBUG, "Checking device \"%s\"..", ibv_list[n]->name);
-		if (mlx5_dev_to_pci_addr(ibv_list[n]->ibdev_path, &pci_addr))
-			continue;
-		if (rte_pci_addr_cmp(addr, &pci_addr))
-			continue;
-		ibv_match = ibv_list[n];
-		break;
-	}
-	if (!ibv_match)
-		rte_errno = ENOENT;
-	mlx5_glue->free_device_list(ibv_list);
-	return ibv_match;
-}
 static int
 mlx5_regex_engines_status(struct ibv_context *ctx, int num_engines)
 {
@@ -121,7 +95,7 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	int ret;
 	uint32_t val;
 
-	ibv = mlx5_regex_get_ib_device_match(&pci_dev->addr);
+	ibv = mlx5_os_get_ibv_device(&pci_dev->addr);
 	if (!ibv) {
 		DRV_LOG(ERR, "No matching IB device for PCI slot "
 			PCI_PRI_FMT ".", pci_dev->addr.domain,

@@ -16,6 +16,7 @@
 
 #include "mlx5_common.h"
 #include "mlx5_common_log.h"
+#include "mlx5_common_os.h"
 #include "mlx5_glue.h"
 
 #ifdef MLX5_GLUE
@@ -423,3 +424,30 @@ glue_error:
 	mlx5_glue = NULL;
 }
 
+struct ibv_device *
+mlx5_os_get_ibv_device(struct rte_pci_addr *addr)
+{
+	int n;
+	struct ibv_device **ibv_list = mlx5_glue->get_device_list(&n);
+	struct ibv_device *ibv_match = NULL;
+
+	if (ibv_list == NULL) {
+		rte_errno = ENOSYS;
+		return NULL;
+	}
+	while (n-- > 0) {
+		struct rte_pci_addr paddr;
+
+		DRV_LOG(DEBUG, "Checking device \"%s\"..", ibv_list[n]->name);
+		if (mlx5_dev_to_pci_addr(ibv_list[n]->ibdev_path, &paddr) != 0)
+			continue;
+		if (rte_pci_addr_cmp(addr, &paddr) != 0)
+			continue;
+		ibv_match = ibv_list[n];
+		break;
+	}
+	if (ibv_match == NULL)
+		rte_errno = ENOENT;
+	mlx5_glue->free_device_list(ibv_list);
+	return ibv_match;
+}
