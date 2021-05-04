@@ -14,6 +14,7 @@
 #include <rte_event_timer_adapter.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
+#include <rte_reciprocal.h>
 
 #include "roc_api.h"
 
@@ -36,6 +37,11 @@
 #define CNXK_TIM_DISABLE_NPA "tim_disable_npa"
 #define CNXK_TIM_CHNK_SLOTS  "tim_chnk_slots"
 #define CNXK_TIM_RINGS_LMT   "tim_rings_lmt"
+
+#define CNXK_TIM_SP	 0x1
+#define CNXK_TIM_MP	 0x2
+#define CNXK_TIM_ENA_FB	 0x10
+#define CNXK_TIM_ENA_DFB 0x20
 
 #define TIM_BUCKET_W1_S_CHUNK_REMAINDER (48)
 #define TIM_BUCKET_W1_M_CHUNK_REMAINDER                                        \
@@ -107,10 +113,14 @@ struct cnxk_tim_ring {
 	uintptr_t base;
 	uint16_t nb_chunk_slots;
 	uint32_t nb_bkts;
+	uint64_t last_updt_cyc;
+	uint64_t ring_start_cyc;
 	uint64_t tck_int;
 	uint64_t tot_int;
 	struct cnxk_tim_bkt *bkt;
 	struct rte_mempool *chunk_pool;
+	struct rte_reciprocal_u64 fast_div;
+	struct rte_reciprocal_u64 fast_bkt;
 	uint64_t arm_cnt;
 	uint8_t prod_type_sp;
 	uint8_t disable_npa;
@@ -200,6 +210,19 @@ cnxk_tim_cntfrq(void)
 	return 0;
 }
 #endif
+
+#define TIM_ARM_FASTPATH_MODES                                                 \
+	FP(sp, 0, 0, CNXK_TIM_ENA_DFB | CNXK_TIM_SP)                           \
+	FP(mp, 0, 1, CNXK_TIM_ENA_DFB | CNXK_TIM_MP)                           \
+	FP(fb_sp, 1, 0, CNXK_TIM_ENA_FB | CNXK_TIM_SP)                         \
+	FP(fb_mp, 1, 1, CNXK_TIM_ENA_FB | CNXK_TIM_MP)
+
+#define FP(_name, _f2, _f1, flags)                                             \
+	uint16_t cnxk_tim_arm_burst_##_name(                                   \
+		const struct rte_event_timer_adapter *adptr,                   \
+		struct rte_event_timer **tim, const uint16_t nb_timers);
+TIM_ARM_FASTPATH_MODES
+#undef FP
 
 int cnxk_tim_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 		      uint32_t *caps,

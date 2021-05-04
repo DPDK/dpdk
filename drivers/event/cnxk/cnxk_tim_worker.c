@@ -4,3 +4,98 @@
 
 #include "cnxk_tim_evdev.h"
 #include "cnxk_tim_worker.h"
+
+static inline int
+cnxk_tim_arm_checks(const struct cnxk_tim_ring *const tim_ring,
+		    struct rte_event_timer *const tim)
+{
+	if (unlikely(tim->state)) {
+		tim->state = RTE_EVENT_TIMER_ERROR;
+		rte_errno = EALREADY;
+		goto fail;
+	}
+
+	if (unlikely(!tim->timeout_ticks ||
+		     tim->timeout_ticks > tim_ring->nb_bkts)) {
+		tim->state = tim->timeout_ticks ?
+					   RTE_EVENT_TIMER_ERROR_TOOLATE :
+					   RTE_EVENT_TIMER_ERROR_TOOEARLY;
+		rte_errno = EINVAL;
+		goto fail;
+	}
+
+	return 0;
+
+fail:
+	return -EINVAL;
+}
+
+static inline void
+cnxk_tim_format_event(const struct rte_event_timer *const tim,
+		      struct cnxk_tim_ent *const entry)
+{
+	entry->w0 = (tim->ev.event & 0xFFC000000000) >> 6 |
+		    (tim->ev.event & 0xFFFFFFFFF);
+	entry->wqe = tim->ev.u64;
+}
+
+static inline void
+cnxk_tim_sync_start_cyc(struct cnxk_tim_ring *tim_ring)
+{
+	uint64_t cur_cyc = cnxk_tim_cntvct();
+	uint32_t real_bkt;
+
+	if (cur_cyc - tim_ring->last_updt_cyc > tim_ring->tot_int) {
+		real_bkt = plt_read64(tim_ring->base + TIM_LF_RING_REL) >> 44;
+		cur_cyc = cnxk_tim_cntvct();
+
+		tim_ring->ring_start_cyc =
+			cur_cyc - (real_bkt * tim_ring->tck_int);
+		tim_ring->last_updt_cyc = cur_cyc;
+	}
+}
+
+static __rte_always_inline uint16_t
+cnxk_tim_timer_arm_burst(const struct rte_event_timer_adapter *adptr,
+			 struct rte_event_timer **tim, const uint16_t nb_timers,
+			 const uint8_t flags)
+{
+	struct cnxk_tim_ring *tim_ring = adptr->data->adapter_priv;
+	struct cnxk_tim_ent entry;
+	uint16_t index;
+	int ret;
+
+	cnxk_tim_sync_start_cyc(tim_ring);
+	for (index = 0; index < nb_timers; index++) {
+		if (cnxk_tim_arm_checks(tim_ring, tim[index]))
+			break;
+
+		cnxk_tim_format_event(tim[index], &entry);
+		if (flags & CNXK_TIM_SP)
+			ret = cnxk_tim_add_entry_sp(tim_ring,
+						    tim[index]->timeout_ticks,
+						    tim[index], &entry, flags);
+		if (flags & CNXK_TIM_MP)
+			ret = cnxk_tim_add_entry_mp(tim_ring,
+						    tim[index]->timeout_ticks,
+						    tim[index], &entry, flags);
+
+		if (unlikely(ret)) {
+			rte_errno = -ret;
+			break;
+		}
+	}
+
+	return index;
+}
+
+#define FP(_name, _f2, _f1, _flags)                                            \
+	uint16_t __rte_noinline cnxk_tim_arm_burst_##_name(                    \
+		const struct rte_event_timer_adapter *adptr,                   \
+		struct rte_event_timer **tim, const uint16_t nb_timers)        \
+	{                                                                      \
+		return cnxk_tim_timer_arm_burst(adptr, tim, nb_timers,         \
+						_flags);                       \
+	}
+TIM_ARM_FASTPATH_MODES
+#undef FP

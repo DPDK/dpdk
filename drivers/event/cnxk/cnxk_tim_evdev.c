@@ -77,6 +77,21 @@ free:
 }
 
 static void
+cnxk_tim_set_fp_ops(struct cnxk_tim_ring *tim_ring)
+{
+	uint8_t prod_flag = !tim_ring->prod_type_sp;
+
+	/* [DFB/FB] [SP][MP]*/
+	const rte_event_timer_arm_burst_t arm_burst[2][2] = {
+#define FP(_name, _f2, _f1, flags) [_f2][_f1] = cnxk_tim_arm_burst_##_name,
+		TIM_ARM_FASTPATH_MODES
+#undef FP
+	};
+
+	cnxk_tim_ops.arm_burst = arm_burst[tim_ring->ena_dfb][prod_flag];
+}
+
+static void
 cnxk_tim_ring_info_get(const struct rte_event_timer_adapter *adptr,
 		       struct rte_event_timer_adapter_info *adptr_info)
 {
@@ -172,6 +187,9 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	tim_ring->base = roc_tim_lf_base_get(&dev->tim, tim_ring->ring_id);
 	plt_write64((uint64_t)tim_ring->bkt, tim_ring->base + TIM_LF_RING_BASE);
 	plt_write64(tim_ring->aura, tim_ring->base + TIM_LF_RING_AURA);
+
+	/* Set fastpath ops. */
+	cnxk_tim_set_fp_ops(tim_ring);
 
 	/* Update SSO xae count. */
 	cnxk_sso_updt_xae_cnt(cnxk_sso_pmd_priv(dev->event_dev), tim_ring,
