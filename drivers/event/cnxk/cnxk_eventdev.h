@@ -14,6 +14,8 @@
 
 #include "roc_api.h"
 
+#include "cnxk_tim_evdev.h"
+
 #define CNXK_SSO_XAE_CNT   "xae_cnt"
 #define CNXK_SSO_GGRP_QOS  "qos"
 #define CN9K_SSO_SINGLE_WS "single_ws"

@@ -582,6 +582,8 @@ cnxk_sso_init(struct rte_eventdev *event_dev)
 	dev->nb_event_queues = 0;
 	dev->nb_event_ports = 0;
 
+	cnxk_tim_init(&dev->sso);
+
 	return 0;
 
 error:
@@ -598,6 +600,7 @@ cnxk_sso_fini(struct rte_eventdev *event_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	cnxk_tim_fini();
 	roc_sso_rsrc_fini(&dev->sso);
 	roc_sso_dev_fini(&dev->sso);
 

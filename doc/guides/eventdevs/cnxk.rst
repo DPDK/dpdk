@@ -35,6 +35,10 @@ Features of the OCTEON cnxk SSO PMD are:
 - Open system with configurable amount of outstanding events limited only by
   DRAM
 - HW accelerated dequeue timeout support to enable power management
+- HW managed event timers support through TIM, with high precision and
+  time granularity of 2.5us on CN9K and 1us on CN10K.
+- Up to 256 TIM rings a.k.a event timer adapters.
+- Up to 8 rings traversed in parallel.
 
 Prerequisites and Compilation procedure
 ---------------------------------------
@@ -100,4 +104,6 @@ Debugging Options
    | # | Component  | EAL log command                                       |
    +===+============+=======================================================+
    | 1 | SSO        | --log-level='pmd\.event\.cnxk,8'                      |
+   +---+------------+-------------------------------------------------------+
+   | 2 | TIM        | --log-level='pmd\.event\.cnxk\.timer,8'               |
    +---+------------+-------------------------------------------------------+
