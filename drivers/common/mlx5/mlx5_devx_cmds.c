@@ -754,6 +754,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		       MLX5_GENERAL_OBJ_TYPES_CAP_DEK);
 	attr->import_kek = !!(general_obj_types_supported &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_IMPORT_KEK);
+	attr->crypto_login = !!(general_obj_types_supported &
+				MLX5_GENERAL_OBJ_TYPES_CAP_CRYPTO_LOGIN);
 	/* Add reading of other GENERAL_OBJ_TYPES_CAP bits above this line. */
 	attr->log_max_cq = MLX5_GET(cmd_hca_cap, hcattr, log_max_cq);
 	attr->log_max_qp = MLX5_GET(cmd_hca_cap, hcattr, log_max_qp);
@@ -2506,4 +2508,56 @@ mlx5_devx_cmd_create_import_kek_obj(void *ctx,
 	}
 	import_kek_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
 	return import_kek_obj;
+}
+
+/**
+ * Create general object of type CRYPTO_LOGIN using DevX API.
+ *
+ * @param[in] ctx
+ *   Context returned from mlx5 open_device() glue function.
+ * @param [in] attr
+ *   Pointer to CRYPTO_LOGIN attributes structure.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_crypto_login_obj(void *ctx,
+				      struct mlx5_devx_crypto_login_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_crypto_login_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
+	struct mlx5_devx_obj *crypto_login_obj = NULL;
+	void *ptr = NULL, *credential_addr = NULL;
+
+	crypto_login_obj = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*crypto_login_obj),
+				       0, SOCKET_ID_ANY);
+	if (crypto_login_obj == NULL) {
+		DRV_LOG(ERR, "Failed to allocate CRYPTO_LOGIN object data");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	ptr = MLX5_ADDR_OF(create_crypto_login_in, in, hdr);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, opcode,
+		 MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_CRYPTO_LOGIN);
+	ptr = MLX5_ADDR_OF(create_crypto_login_in, in, crypto_login);
+	MLX5_SET(crypto_login, ptr, credential_pointer,
+		 attr->credential_pointer);
+	MLX5_SET(crypto_login, ptr, session_import_kek_ptr,
+		 attr->session_import_kek_ptr);
+	credential_addr = MLX5_ADDR_OF(crypto_login, ptr, credential);
+	memcpy(credential_addr, (void *)(attr->credential),
+	       MLX5_CRYPTO_LOGIN_CREDENTIAL_SIZE);
+	crypto_login_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+							   out, sizeof(out));
+	if (crypto_login_obj->obj == NULL) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to create CRYPTO_LOGIN obj using DevX.");
+		mlx5_free(crypto_login_obj);
+		return NULL;
+	}
+	crypto_login_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
+	return crypto_login_obj;
 }
