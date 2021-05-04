@@ -34,6 +34,8 @@
 #define CN9K_TIM_MIN_TMO_TKS (256)
 
 #define CNXK_TIM_DISABLE_NPA "tim_disable_npa"
+#define CNXK_TIM_CHNK_SLOTS  "tim_chnk_slots"
+#define CNXK_TIM_RINGS_LMT   "tim_rings_lmt"
 
 struct cnxk_tim_evdev {
 	struct roc_tim tim;
@@ -42,6 +44,8 @@ struct cnxk_tim_evdev {
 	uint32_t chunk_sz;
 	/* Dev args */
 	uint8_t disable_npa;
+	uint16_t chunk_slots;
+	uint16_t min_ring_cnt;
 };
 
 enum cnxk_tim_clk_src {

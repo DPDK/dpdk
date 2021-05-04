@@ -103,6 +103,29 @@ Runtime Config Options
 
     -a 0002:0e:00.0,tim_disable_npa=1
 
+- ``TIM modify chunk slots``
+
+  The ``tim_chnk_slots`` devargs can be used to modify number of chunk slots.
+  Chunks are used to store event timers, a chunk can be visualised as an array
+  where the last element points to the next chunk and rest of them are used to
+  store events. TIM traverses the list of chunks and enqueues the event timers
+  to SSO. The default value is 255 and the max value is 4095.
+
+  For example::
+
+    -a 0002:0e:00.0,tim_chnk_slots=1023
+
+- ``TIM limit max rings reserved``
+
+  The ``tim_rings_lmt`` devargs can be used to limit the max number of TIM
+  rings i.e. event timer adapter reserved on probe. Since, TIM rings are HW
+  resources we can avoid starving other applications by not grabbing all the
+  rings.
+
+  For example::
+
+    -a 0002:0e:00.0,tim_rings_lmt=5
+
 Debugging Options
 -----------------
 

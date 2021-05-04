@@ -253,6 +253,10 @@ cnxk_tim_parse_devargs(struct rte_devargs *devargs, struct cnxk_tim_evdev *dev)
 
 	rte_kvargs_process(kvlist, CNXK_TIM_DISABLE_NPA, &parse_kvargs_flag,
 			   &dev->disable_npa);
+	rte_kvargs_process(kvlist, CNXK_TIM_CHNK_SLOTS, &parse_kvargs_value,
+			   &dev->chunk_slots);
+	rte_kvargs_process(kvlist, CNXK_TIM_RINGS_LMT, &parse_kvargs_value,
+			   &dev->min_ring_cnt);
 
 	rte_kvargs_free(kvlist);
 }
@@ -278,6 +282,7 @@ cnxk_tim_init(struct roc_sso *sso)
 	cnxk_tim_parse_devargs(sso->pci_dev->device.devargs, dev);
 
 	dev->tim.roc_sso = sso;
+	dev->tim.nb_lfs = dev->min_ring_cnt;
 	rc = roc_tim_init(&dev->tim);
 	if (rc < 0) {
 		plt_err("Failed to initialize roc tim resources");
@@ -285,7 +290,14 @@ cnxk_tim_init(struct roc_sso *sso)
 		return;
 	}
 	dev->nb_rings = rc;
-	dev->chunk_sz = CNXK_TIM_RING_DEF_CHUNK_SZ;
+
+	if (dev->chunk_slots && dev->chunk_slots <= CNXK_TIM_MAX_CHUNK_SLOTS &&
+	    dev->chunk_slots >= CNXK_TIM_MIN_CHUNK_SLOTS) {
+		dev->chunk_sz =
+			(dev->chunk_slots + 1) * CNXK_TIM_CHUNK_ALIGNMENT;
+	} else {
+		dev->chunk_sz = CNXK_TIM_RING_DEF_CHUNK_SZ;
+	}
 }
 
 void
