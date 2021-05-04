@@ -741,6 +741,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 				MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_HIT_ASO);
 	attr->geneve_tlv_opt = !!(general_obj_types_supported &
 				  MLX5_GENERAL_OBJ_TYPES_CAP_GENEVE_TLV_OPT);
+	attr->dek = !!(general_obj_types_supported &
+		       MLX5_GENERAL_OBJ_TYPES_CAP_DEK);
 	/* Add reading of other GENERAL_OBJ_TYPES_CAP bits above this line. */
 	attr->log_max_cq = MLX5_GET(cmd_hca_cap, hcattr, log_max_cq);
 	attr->log_max_qp = MLX5_GET(cmd_hca_cap, hcattr, log_max_qp);
@@ -2394,4 +2396,55 @@ mlx5_devx_cmd_queue_counter_query(struct mlx5_devx_obj *dcs, int clear,
 	}
 	*out_of_buffers = MLX5_GET(query_q_counter_out, out, out_of_buffer);
 	return 0;
+}
+
+/**
+ * Create general object of type DEK using DevX API.
+ *
+ * @param[in] ctx
+ *   Context returned from mlx5 open_device() glue function.
+ * @param [in] attr
+ *   Pointer to DEK attributes structure.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_dek_obj(void *ctx, struct mlx5_devx_dek_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_dek_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
+	struct mlx5_devx_obj *dek_obj = NULL;
+	void *ptr = NULL, *key_addr = NULL;
+
+	dek_obj = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*dek_obj),
+			      0, SOCKET_ID_ANY);
+	if (dek_obj == NULL) {
+		DRV_LOG(ERR, "Failed to allocate DEK object data");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	ptr = MLX5_ADDR_OF(create_dek_in, in, hdr);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, opcode,
+		 MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_DEK);
+	ptr = MLX5_ADDR_OF(create_dek_in, in, dek);
+	MLX5_SET(dek, ptr, key_size, attr->key_size);
+	MLX5_SET(dek, ptr, has_keytag, attr->has_keytag);
+	MLX5_SET(dek, ptr, key_purpose, attr->key_purpose);
+	MLX5_SET(dek, ptr, pd, attr->pd);
+	MLX5_SET64(dek, ptr, opaque, attr->opaque);
+	key_addr = MLX5_ADDR_OF(dek, ptr, key);
+	memcpy(key_addr, (void *)(attr->key), MLX5_CRYPTO_KEY_MAX_SIZE);
+	dek_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+						  out, sizeof(out));
+	if (dek_obj->obj == NULL) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to create DEK obj using DevX.");
+		mlx5_free(dek_obj);
+		return NULL;
+	}
+	dek_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
+	return dek_obj;
 }

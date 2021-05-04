@@ -1109,6 +1109,8 @@ enum {
 			(1ULL << MLX5_GENERAL_OBJ_TYPE_FLOW_METER_ASO)
 #define MLX5_GENERAL_OBJ_TYPES_CAP_GENEVE_TLV_OPT \
 			(1ULL << MLX5_GENERAL_OBJ_TYPE_GENEVE_TLV_OPT)
+#define MLX5_GENERAL_OBJ_TYPES_CAP_DEK \
+			(1ULL << MLX5_GENERAL_OBJ_TYPE_DEK)
 
 enum {
 	MLX5_HCA_CAP_OPMOD_GET_MAX   = 0,
@@ -2399,6 +2401,7 @@ struct mlx5_ifc_create_cq_in_bits {
 
 enum {
 	MLX5_GENERAL_OBJ_TYPE_GENEVE_TLV_OPT = 0x000b,
+	MLX5_GENERAL_OBJ_TYPE_DEK = 0x000c,
 	MLX5_GENERAL_OBJ_TYPE_VIRTQ = 0x000d,
 	MLX5_GENERAL_OBJ_TYPE_VIRTIO_Q_COUNTERS = 0x001c,
 	MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH = 0x0022,
@@ -2460,6 +2463,42 @@ struct mlx5_ifc_query_virtio_q_counters_out_bits {
 struct mlx5_ifc_create_geneve_tlv_option_in_bits {
 	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
 	struct mlx5_ifc_geneve_tlv_option_bits geneve_tlv_opt;
+};
+
+enum {
+	MLX5_CRYPTO_KEY_SIZE_128b = 0x0,
+	MLX5_CRYPTO_KEY_SIZE_256b = 0x1,
+};
+
+enum {
+	MLX5_CRYPTO_KEY_PURPOSE_TLS	= 0x1,
+	MLX5_CRYPTO_KEY_PURPOSE_IPSEC	= 0x2,
+	MLX5_CRYPTO_KEY_PURPOSE_AES_XTS	= 0x3,
+	MLX5_CRYPTO_KEY_PURPOSE_MACSEC	= 0x4,
+	MLX5_CRYPTO_KEY_PURPOSE_GCM	= 0x5,
+	MLX5_CRYPTO_KEY_PURPOSE_PSP	= 0x6,
+};
+
+struct mlx5_ifc_dek_bits {
+	u8 modify_field_select[0x40];
+	u8 state[0x8];
+	u8 reserved_at_48[0xc];
+	u8 key_size[0x4];
+	u8 has_keytag[0x1];
+	u8 reserved_at_59[0x3];
+	u8 key_purpose[0x4];
+	u8 reserved_at_60[0x8];
+	u8 pd[0x18];
+	u8 reserved_at_80[0x100];
+	u8 opaque[0x40];
+	u8 reserved_at_1c0[0x40];
+	u8 key[0x400];
+	u8 reserved_at_600[0x200];
+};
+
+struct mlx5_ifc_create_dek_in_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_dek_bits dek;
 };
 
 enum {

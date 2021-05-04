@@ -12,21 +12,24 @@ INTERNAL {
 
 	mlx5_dev_to_pci_addr; # WINDOWS_NO_EXPORT
 
+	mlx5_devx_alloc_uar; # WINDOWS_NO_EXPORT
+
 	mlx5_devx_cmd_alloc_pd;
 	mlx5_devx_cmd_create_cq;
+	mlx5_devx_cmd_create_dek_obj;
 	mlx5_devx_cmd_create_flex_parser;
+	mlx5_devx_cmd_create_flow_hit_aso_obj;
+	mlx5_devx_cmd_create_flow_meter_aso_obj;
+	mlx5_devx_cmd_create_geneve_tlv_option;
 	mlx5_devx_cmd_create_qp;
 	mlx5_devx_cmd_create_rq;
 	mlx5_devx_cmd_create_rqt;
 	mlx5_devx_cmd_create_sq;
-	mlx5_devx_cmd_create_tir;
 	mlx5_devx_cmd_create_td;
+	mlx5_devx_cmd_create_tir;
 	mlx5_devx_cmd_create_tis;
 	mlx5_devx_cmd_create_virtio_q_counters; # WINDOWS_NO_EXPORT
 	mlx5_devx_cmd_create_virtq;
-	mlx5_devx_cmd_create_flow_hit_aso_obj;
-	mlx5_devx_cmd_create_flow_meter_aso_obj;
-	mlx5_devx_cmd_create_geneve_tlv_option;
 	mlx5_devx_cmd_destroy;
 	mlx5_devx_cmd_flow_counter_alloc;
 	mlx5_devx_cmd_flow_counter_query;
@@ -48,41 +51,49 @@ INTERNAL {
 	mlx5_devx_cmd_queue_counter_query; # WINDOWS_NO_EXPORT
 	mlx5_devx_cmd_register_read;
 	mlx5_devx_cmd_wq_query; # WINDOWS_NO_EXPORT
-	mlx5_devx_get_out_command_status;
-	mlx5_devx_alloc_uar; # WINDOWS_NO_EXPORT
 
 	mlx5_devx_cq_create;
 	mlx5_devx_cq_destroy;
+
+	mlx5_devx_get_out_command_status;
+
 	mlx5_devx_rq_create;
 	mlx5_devx_rq_destroy;
 	mlx5_devx_sq_create;
 	mlx5_devx_sq_destroy;
 
+	mlx5_free;
+
 	mlx5_get_ifname_sysfs; # WINDOWS_NO_EXPORT
 
 	mlx5_glue;
 
+	mlx5_malloc;
+	mlx5_malloc_mem_select;
+
+	mlx5_memory_stat_dump; # WINDOWS_NO_EXPORT
+
 	mlx5_mp_init_primary; # WINDOWS_NO_EXPORT
-	mlx5_mp_uninit_primary; # WINDOWS_NO_EXPORT
 	mlx5_mp_init_secondary; # WINDOWS_NO_EXPORT
-	mlx5_mp_uninit_secondary; # WINDOWS_NO_EXPORT
 	mlx5_mp_req_mr_create; # WINDOWS_NO_EXPORT
 	mlx5_mp_req_queue_state_modify;
 	mlx5_mp_req_verbs_cmd_fd; # WINDOWS_NO_EXPORT
+	mlx5_mp_uninit_primary; # WINDOWS_NO_EXPORT
+	mlx5_mp_uninit_secondary; # WINDOWS_NO_EXPORT
 
-	mlx5_mr_btree_init;
-	mlx5_mr_btree_free;
-	mlx5_mr_btree_dump;
 	mlx5_mr_addr2mr_bh;
-	mlx5_mr_release_cache;
+	mlx5_mr_btree_dump;
+	mlx5_mr_btree_free;
+	mlx5_mr_btree_init;
+	mlx5_mr_create_primary;
 	mlx5_mr_dump_cache;
-	mlx5_mr_rebuild_cache;
+	mlx5_mr_flush_local_cache;
+	mlx5_mr_free;
 	mlx5_mr_insert_cache;
 	mlx5_mr_lookup_cache;
 	mlx5_mr_lookup_list;
-	mlx5_mr_create_primary;
-	mlx5_mr_flush_local_cache;
-	mlx5_mr_free;
+	mlx5_mr_rebuild_cache;
+	mlx5_mr_release_cache;
 
 	mlx5_nl_allmulti; # WINDOWS_NO_EXPORT
 	mlx5_nl_devlink_family_id_get; # WINDOWS_NO_EXPORT
@@ -102,20 +113,16 @@ INTERNAL {
 	mlx5_nl_vlan_vmwa_create; # WINDOWS_NO_EXPORT
 	mlx5_nl_vlan_vmwa_delete; # WINDOWS_NO_EXPORT
 
+	mlx5_pci_driver_register;
+
 	mlx5_os_alloc_pd;
 	mlx5_os_dealloc_pd;
 	mlx5_os_dereg_mr;
 	mlx5_os_reg_mr;
-	mlx5_os_umem_reg;
 	mlx5_os_umem_dereg;
+	mlx5_os_umem_reg;
+
+	mlx5_realloc;
 
 	mlx5_translate_port_name; # WINDOWS_NO_EXPORT
-
-	mlx5_malloc_mem_select;
-	mlx5_memory_stat_dump; # WINDOWS_NO_EXPORT
-	mlx5_malloc;
-	mlx5_realloc;
-	mlx5_free;
-
-	mlx5_pci_driver_register;
 };
