@@ -93,6 +93,16 @@ Runtime Config Options
 
     -a 0002:0e:00.0,qos=[1-50-50-50]
 
+- ``TIM disable NPA``
+
+  By default chunks are allocated from NPA then TIM can automatically free
+  them when traversing the list of chunks. The ``tim_disable_npa`` devargs
+  parameter disables NPA and uses software mempool to manage chunks
+
+  For example::
+
+    -a 0002:0e:00.0,tim_disable_npa=1
+
 Debugging Options
 -----------------
 

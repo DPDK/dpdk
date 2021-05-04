@@ -31,30 +31,43 @@ cnxk_tim_chnk_pool_create(struct cnxk_tim_ring *tim_ring,
 		cache_sz = RTE_MEMPOOL_CACHE_MAX_SIZE;
 	cache_sz = cache_sz != 0 ? cache_sz : 2;
 	tim_ring->nb_chunks += (cache_sz * rte_lcore_count());
-	tim_ring->chunk_pool = rte_mempool_create_empty(
-		pool_name, tim_ring->nb_chunks, tim_ring->chunk_sz, cache_sz, 0,
-		rte_socket_id(), mp_flags);
+	if (!tim_ring->disable_npa) {
+		tim_ring->chunk_pool = rte_mempool_create_empty(
+			pool_name, tim_ring->nb_chunks, tim_ring->chunk_sz,
+			cache_sz, 0, rte_socket_id(), mp_flags);
 
-	if (tim_ring->chunk_pool == NULL) {
-		plt_err("Unable to create chunkpool.");
-		return -ENOMEM;
-	}
+		if (tim_ring->chunk_pool == NULL) {
+			plt_err("Unable to create chunkpool.");
+			return -ENOMEM;
+		}
 
-	rc = rte_mempool_set_ops_byname(tim_ring->chunk_pool,
-					rte_mbuf_platform_mempool_ops(), NULL);
-	if (rc < 0) {
-		plt_err("Unable to set chunkpool ops");
-		goto free;
-	}
+		rc = rte_mempool_set_ops_byname(tim_ring->chunk_pool,
+						rte_mbuf_platform_mempool_ops(),
+						NULL);
+		if (rc < 0) {
+			plt_err("Unable to set chunkpool ops");
+			goto free;
+		}
 
-	rc = rte_mempool_populate_default(tim_ring->chunk_pool);
-	if (rc < 0) {
-		plt_err("Unable to set populate chunkpool.");
-		goto free;
+		rc = rte_mempool_populate_default(tim_ring->chunk_pool);
+		if (rc < 0) {
+			plt_err("Unable to set populate chunkpool.");
+			goto free;
+		}
+		tim_ring->aura = roc_npa_aura_handle_to_aura(
+			tim_ring->chunk_pool->pool_id);
+		tim_ring->ena_dfb = 0;
+	} else {
+		tim_ring->chunk_pool = rte_mempool_create(
+			pool_name, tim_ring->nb_chunks, tim_ring->chunk_sz,
+			cache_sz, 0, NULL, NULL, NULL, NULL, rte_socket_id(),
+			mp_flags);
+		if (tim_ring->chunk_pool == NULL) {
+			plt_err("Unable to create chunkpool.");
+			return -ENOMEM;
+		}
+		tim_ring->ena_dfb = 1;
 	}
-	tim_ring->aura =
-		roc_npa_aura_handle_to_aura(tim_ring->chunk_pool->pool_id);
-	tim_ring->ena_dfb = 0;
 
 	return 0;
 
@@ -110,8 +123,17 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	tim_ring->nb_bkts = (tim_ring->max_tout / tim_ring->tck_nsec);
 	tim_ring->nb_timers = rcfg->nb_timers;
 	tim_ring->chunk_sz = dev->chunk_sz;
+	tim_ring->disable_npa = dev->disable_npa;
 
-	tim_ring->nb_chunks = tim_ring->nb_timers;
+	if (tim_ring->disable_npa) {
+		tim_ring->nb_chunks =
+			tim_ring->nb_timers /
+			CNXK_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz);
+		tim_ring->nb_chunks = tim_ring->nb_chunks * tim_ring->nb_bkts;
+	} else {
+		tim_ring->nb_chunks = tim_ring->nb_timers;
+	}
+
 	tim_ring->nb_chunk_slots = CNXK_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz);
 	/* Create buckets. */
 	tim_ring->bkt =
@@ -199,6 +221,24 @@ cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 	return 0;
 }
 
+static void
+cnxk_tim_parse_devargs(struct rte_devargs *devargs, struct cnxk_tim_evdev *dev)
+{
+	struct rte_kvargs *kvlist;
+
+	if (devargs == NULL)
+		return;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return;
+
+	rte_kvargs_process(kvlist, CNXK_TIM_DISABLE_NPA, &parse_kvargs_flag,
+			   &dev->disable_npa);
+
+	rte_kvargs_free(kvlist);
+}
+
 void
 cnxk_tim_init(struct roc_sso *sso)
 {
@@ -216,6 +256,8 @@ cnxk_tim_init(struct roc_sso *sso)
 		return;
 	}
 	dev = mz->addr;
+
+	cnxk_tim_parse_devargs(sso->pci_dev->device.devargs, dev);
 
 	dev->tim.roc_sso = sso;
 	rc = roc_tim_init(&dev->tim);

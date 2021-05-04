@@ -33,11 +33,15 @@
 
 #define CN9K_TIM_MIN_TMO_TKS (256)
 
+#define CNXK_TIM_DISABLE_NPA "tim_disable_npa"
+
 struct cnxk_tim_evdev {
 	struct roc_tim tim;
 	struct rte_eventdev *event_dev;
 	uint16_t nb_rings;
 	uint32_t chunk_sz;
+	/* Dev args */
+	uint8_t disable_npa;
 };
 
 enum cnxk_tim_clk_src {
@@ -75,6 +79,7 @@ struct cnxk_tim_ring {
 	struct rte_mempool *chunk_pool;
 	uint64_t arm_cnt;
 	uint8_t prod_type_sp;
+	uint8_t disable_npa;
 	uint8_t ena_dfb;
 	uint16_t ring_id;
 	uint32_t aura;

@@ -160,6 +160,15 @@ struct cnxk_sso_hws_cookie {
 } __rte_cache_aligned;
 
 static inline int
+parse_kvargs_flag(const char *key, const char *value, void *opaque)
+{
+	RTE_SET_USED(key);
+
+	*(uint8_t *)opaque = !!atoi(value);
+	return 0;
+}
+
+static inline int
 parse_kvargs_value(const char *key, const char *value, void *opaque)
 {
 	RTE_SET_USED(key);
