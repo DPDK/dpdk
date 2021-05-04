@@ -2,7 +2,9 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include "cn9k_worker.h"
 #include "cnxk_eventdev.h"
+#include "cnxk_worker.h"
 
 #define CN9K_DUAL_WS_NB_WS	    2
 #define CN9K_DUAL_WS_PAIR_ID(x, id) (((x)*CN9K_DUAL_WS_NB_WS) + id)
@@ -148,6 +150,25 @@ cn9k_sso_rsrc_init(void *arg, uint8_t hws, uint8_t hwgrp)
 		hws = hws * CN9K_DUAL_WS_NB_WS;
 
 	return roc_sso_rsrc_init(&dev->sso, hws, hwgrp);
+}
+
+static void
+cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
+	event_dev->enqueue = cn9k_sso_hws_enq;
+	event_dev->enqueue_burst = cn9k_sso_hws_enq_burst;
+	event_dev->enqueue_new_burst = cn9k_sso_hws_enq_new_burst;
+	event_dev->enqueue_forward_burst = cn9k_sso_hws_enq_fwd_burst;
+
+	if (dev->dual_ws) {
+		event_dev->enqueue = cn9k_sso_hws_dual_enq;
+		event_dev->enqueue_burst = cn9k_sso_hws_dual_enq_burst;
+		event_dev->enqueue_new_burst = cn9k_sso_hws_dual_enq_new_burst;
+		event_dev->enqueue_forward_burst =
+			cn9k_sso_hws_dual_enq_fwd_burst;
+	}
 }
 
 static void *
@@ -349,8 +370,10 @@ cn9k_sso_init(struct rte_eventdev *event_dev)
 
 	event_dev->dev_ops = &cn9k_sso_dev_ops;
 	/* For secondary processes, the primary has done all the work */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		cn9k_sso_fp_fns_set(event_dev);
 		return 0;
+	}
 
 	rc = cnxk_sso_init(event_dev);
 	if (rc < 0)

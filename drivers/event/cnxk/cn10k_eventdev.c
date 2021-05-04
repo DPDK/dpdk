@@ -2,7 +2,9 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include "cn10k_worker.h"
 #include "cnxk_eventdev.h"
+#include "cnxk_worker.h"
 
 static void
 cn10k_init_hws_ops(struct cn10k_sso_hws *ws, uintptr_t base)
@@ -128,6 +130,16 @@ cn10k_sso_rsrc_init(void *arg, uint8_t hws, uint8_t hwgrp)
 	struct cnxk_sso_evdev *dev = arg;
 
 	return roc_sso_rsrc_init(&dev->sso, hws, hwgrp);
+}
+
+static void
+cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
+{
+	PLT_SET_USED(event_dev);
+	event_dev->enqueue = cn10k_sso_hws_enq;
+	event_dev->enqueue_burst = cn10k_sso_hws_enq_burst;
+	event_dev->enqueue_new_burst = cn10k_sso_hws_enq_new_burst;
+	event_dev->enqueue_forward_burst = cn10k_sso_hws_enq_fwd_burst;
 }
 
 static void
@@ -276,8 +288,10 @@ cn10k_sso_init(struct rte_eventdev *event_dev)
 
 	event_dev->dev_ops = &cn10k_sso_dev_ops;
 	/* For secondary processes, the primary has done all the work */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		cn10k_sso_fp_fns_set(event_dev);
 		return 0;
+	}
 
 	rc = cnxk_sso_init(event_dev);
 	if (rc < 0)
