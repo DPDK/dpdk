@@ -226,6 +226,82 @@ cnxk_sso_port_def_conf(struct rte_eventdev *event_dev, uint8_t port_id,
 }
 
 static void
+parse_queue_param(char *value, void *opaque)
+{
+	struct cnxk_sso_qos queue_qos = {0};
+	uint8_t *val = (uint8_t *)&queue_qos;
+	struct cnxk_sso_evdev *dev = opaque;
+	char *tok = strtok(value, "-");
+	struct cnxk_sso_qos *old_ptr;
+
+	if (!strlen(value))
+		return;
+
+	while (tok != NULL) {
+		*val = atoi(tok);
+		tok = strtok(NULL, "-");
+		val++;
+	}
+
+	if (val != (&queue_qos.iaq_prcnt + 1)) {
+		plt_err("Invalid QoS parameter expected [Qx-XAQ-TAQ-IAQ]");
+		return;
+	}
+
+	dev->qos_queue_cnt++;
+	old_ptr = dev->qos_parse_data;
+	dev->qos_parse_data = rte_realloc(
+		dev->qos_parse_data,
+		sizeof(struct cnxk_sso_qos) * dev->qos_queue_cnt, 0);
+	if (dev->qos_parse_data == NULL) {
+		dev->qos_parse_data = old_ptr;
+		dev->qos_queue_cnt--;
+		return;
+	}
+	dev->qos_parse_data[dev->qos_queue_cnt - 1] = queue_qos;
+}
+
+static void
+parse_qos_list(const char *value, void *opaque)
+{
+	char *s = strdup(value);
+	char *start = NULL;
+	char *end = NULL;
+	char *f = s;
+
+	while (*s) {
+		if (*s == '[')
+			start = s;
+		else if (*s == ']')
+			end = s;
+
+		if (start && start < end) {
+			*end = 0;
+			parse_queue_param(start + 1, opaque);
+			s = end;
+			start = end;
+		}
+		s++;
+	}
+
+	free(f);
+}
+
+static int
+parse_sso_kvargs_dict(const char *key, const char *value, void *opaque)
+{
+	RTE_SET_USED(key);
+
+	/* Dict format [Qx-XAQ-TAQ-IAQ][Qz-XAQ-TAQ-IAQ] use '-' cause ','
+	 * isn't allowed. Everything is expressed in percentages, 0 represents
+	 * default.
+	 */
+	parse_qos_list(value, opaque);
+
+	return 0;
+}
+
+static void
 cnxk_sso_parse_devargs(struct cnxk_sso_evdev *dev, struct rte_devargs *devargs)
 {
 	struct rte_kvargs *kvlist;
@@ -238,6 +314,8 @@ cnxk_sso_parse_devargs(struct cnxk_sso_evdev *dev, struct rte_devargs *devargs)
 
 	rte_kvargs_process(kvlist, CNXK_SSO_XAE_CNT, &parse_kvargs_value,
 			   &dev->xae_cnt);
+	rte_kvargs_process(kvlist, CNXK_SSO_GGRP_QOS, &parse_sso_kvargs_dict,
+			   dev);
 	rte_kvargs_free(kvlist);
 }
 

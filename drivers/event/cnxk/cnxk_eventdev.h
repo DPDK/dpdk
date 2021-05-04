@@ -14,7 +14,8 @@
 
 #include "roc_api.h"
 
-#define CNXK_SSO_XAE_CNT "xae_cnt"
+#define CNXK_SSO_XAE_CNT  "xae_cnt"
+#define CNXK_SSO_GGRP_QOS "qos"
 
 #define USEC2NSEC(__us) ((__us)*1E3)
 
@@ -22,6 +23,13 @@
 #define CNXK_SSO_MZ_NAME       "cnxk_evdev_mz"
 #define CNXK_SSO_XAQ_CACHE_CNT (0x7)
 #define CNXK_SSO_XAQ_SLACK     (8)
+
+struct cnxk_sso_qos {
+	uint16_t queue;
+	uint8_t xaq_prcnt;
+	uint8_t taq_prcnt;
+	uint8_t iaq_prcnt;
+};
 
 struct cnxk_sso_evdev {
 	struct roc_sso sso;
@@ -41,6 +49,8 @@ struct cnxk_sso_evdev {
 	struct rte_mempool *xaq_pool;
 	/* Dev args */
 	uint32_t xae_cnt;
+	uint8_t qos_queue_cnt;
+	struct cnxk_sso_qos *qos_parse_data;
 	/* CN9K */
 	uint8_t dual_ws;
 } __rte_cache_aligned;
