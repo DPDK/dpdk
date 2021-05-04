@@ -152,3 +152,33 @@ cnxk_tim_timer_arm_tmo_brst(const struct rte_event_timer_adapter *adptr,
 	}
 TIM_ARM_TMO_FASTPATH_MODES
 #undef FP
+
+uint16_t
+cnxk_tim_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
+			    struct rte_event_timer **tim,
+			    const uint16_t nb_timers)
+{
+	uint16_t index;
+	int ret;
+
+	RTE_SET_USED(adptr);
+	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+	for (index = 0; index < nb_timers; index++) {
+		if (tim[index]->state == RTE_EVENT_TIMER_CANCELED) {
+			rte_errno = EALREADY;
+			break;
+		}
+
+		if (tim[index]->state != RTE_EVENT_TIMER_ARMED) {
+			rte_errno = EINVAL;
+			break;
+		}
+		ret = cnxk_tim_rm_entry(tim[index]);
+		if (ret) {
+			rte_errno = -ret;
+			break;
+		}
+	}
+
+	return index;
+}

@@ -236,6 +236,11 @@ TIM_ARM_FASTPATH_MODES
 TIM_ARM_TMO_FASTPATH_MODES
 #undef FP
 
+uint16_t
+cnxk_tim_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
+			    struct rte_event_timer **tim,
+			    const uint16_t nb_timers);
+
 int cnxk_tim_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 		      uint32_t *caps,
 		      const struct rte_event_timer_adapter_ops **ops);

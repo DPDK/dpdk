@@ -561,4 +561,41 @@ __retry:
 	return nb_timers;
 }
 
+static int
+cnxk_tim_rm_entry(struct rte_event_timer *tim)
+{
+	struct cnxk_tim_ent *entry;
+	struct cnxk_tim_bkt *bkt;
+	uint64_t lock_sema;
+
+	if (tim->impl_opaque[1] == 0 || tim->impl_opaque[0] == 0)
+		return -ENOENT;
+
+	entry = (struct cnxk_tim_ent *)(uintptr_t)tim->impl_opaque[0];
+	if (entry->wqe != tim->ev.u64) {
+		tim->impl_opaque[0] = 0;
+		tim->impl_opaque[1] = 0;
+		return -ENOENT;
+	}
+
+	bkt = (struct cnxk_tim_bkt *)(uintptr_t)tim->impl_opaque[1];
+	lock_sema = cnxk_tim_bkt_inc_lock(bkt);
+	if (cnxk_tim_bkt_get_hbt(lock_sema) ||
+	    !cnxk_tim_bkt_get_nent(lock_sema)) {
+		tim->impl_opaque[0] = 0;
+		tim->impl_opaque[1] = 0;
+		cnxk_tim_bkt_dec_lock(bkt);
+		return -ENOENT;
+	}
+
+	entry->w0 = 0;
+	entry->wqe = 0;
+	tim->state = RTE_EVENT_TIMER_CANCELED;
+	tim->impl_opaque[0] = 0;
+	tim->impl_opaque[1] = 0;
+	cnxk_tim_bkt_dec_lock(bkt);
+
+	return 0;
+}
+
 #endif /* __CNXK_TIM_WORKER_H__ */

@@ -96,6 +96,7 @@ cnxk_tim_set_fp_ops(struct cnxk_tim_ring *tim_ring)
 
 	cnxk_tim_ops.arm_burst = arm_burst[tim_ring->ena_dfb][prod_flag];
 	cnxk_tim_ops.arm_tmo_tick_burst = arm_tmo_burst[tim_ring->ena_dfb];
+	cnxk_tim_ops.cancel_burst = cnxk_tim_timer_cancel_burst;
 }
 
 static void
