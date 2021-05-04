@@ -162,6 +162,15 @@ idxd_dev_configure(const struct rte_rawdev *dev,
 		rte_idxd->desc_ring = NULL;
 		return -ENOMEM;
 	}
+	rte_idxd->hdl_ring_flags = rte_zmalloc(NULL,
+			sizeof(*rte_idxd->hdl_ring_flags) * max_desc, 0);
+	if (rte_idxd->hdl_ring_flags == NULL) {
+		rte_free(rte_idxd->desc_ring);
+		rte_free(rte_idxd->hdl_ring);
+		rte_idxd->desc_ring = NULL;
+		rte_idxd->hdl_ring = NULL;
+		return -ENOMEM;
+	}
 	rte_idxd->hdls_read = rte_idxd->batch_start = 0;
 	rte_idxd->batch_size = 0;
 

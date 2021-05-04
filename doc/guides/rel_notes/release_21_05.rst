@@ -333,6 +333,11 @@ API Changes
   it's not supported on the current platform. Instead ``rte_stack_create()``
   fails and ``rte_errno`` is set to ``ENOTSUP``.
 
+* raw/ioat: The experimental function ``rte_ioat_completed_ops()`` now
+  supports two additional parameters, ``status`` and ``num_unsuccessful``,
+  to allow the reporting of errors from hardware when performing copy
+  operations.
+
 
 ABI Changes
 -----------

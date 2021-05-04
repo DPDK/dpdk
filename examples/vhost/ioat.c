@@ -183,7 +183,7 @@ ioat_check_completed_copies_cb(int vid, uint16_t queue_id,
 
 		uint16_t dev_id = dma_bind[vid].dmas[queue_id * 2
 				+ VIRTIO_RXQ].dev_id;
-		n_seg = rte_ioat_completed_ops(dev_id, 255, dump, dump);
+		n_seg = rte_ioat_completed_ops(dev_id, 255, NULL, NULL, dump, dump);
 		if (n_seg < 0) {
 			RTE_LOG(ERR,
 				VHOST_DATA,

@@ -447,12 +447,15 @@ ioat_tx_port(struct rxtx_port_config *tx_config)
 
 	for (i = 0; i < tx_config->nb_queues; i++) {
 		if (copy_mode == COPY_MODE_IOAT_NUM) {
-			/* Deque the mbufs from IOAT device. */
+			/* Dequeue the mbufs from IOAT device. Since all memory
+			 * is DPDK pinned memory and therefore all addresses should
+			 * be valid, we don't check for copy errors
+			 */
 			nb_dq = rte_ioat_completed_ops(
-				tx_config->ioat_ids[i], MAX_PKT_BURST,
+				tx_config->ioat_ids[i], MAX_PKT_BURST, NULL, NULL,
 				(void *)mbufs_src, (void *)mbufs_dst);
 		} else {
-			/* Deque the mbufs from rx_to_tx_ring. */
+			/* Dequeue the mbufs from rx_to_tx_ring. */
 			nb_dq = rte_ring_dequeue_burst(
 				tx_config->rx_to_tx_ring, (void *)mbufs_dst,
 				MAX_PKT_BURST, NULL);
@@ -725,7 +728,10 @@ check_link_status(uint32_t port_mask)
 static void
 configure_rawdev_queue(uint32_t dev_id)
 {
-	struct rte_ioat_rawdev_config dev_config = { .ring_size = ring_size };
+	struct rte_ioat_rawdev_config dev_config = {
+			.ring_size = ring_size,
+			.no_prefetch_completions = (cfg.nb_lcores > 1),
+	};
 	struct rte_rawdev_info info = { .dev_private = &dev_config };
 
 	if (rte_rawdev_configure(dev_id, &info, sizeof(dev_config)) != 0) {

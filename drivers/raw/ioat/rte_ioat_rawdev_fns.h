@@ -345,16 +345,22 @@ rte_ioat_perform_ops(int dev_id)
 
 static inline int
 rte_ioat_completed_ops(int dev_id, uint8_t max_copies,
+		uint32_t *status, uint8_t *num_unsuccessful,
 		uintptr_t *src_hdls, uintptr_t *dst_hdls)
 {
 	enum rte_ioat_dev_type *type =
 			(enum rte_ioat_dev_type *)rte_rawdevs[dev_id].dev_private;
+	uint8_t tmp; /* used so functions don't need to check for null parameter */
+
+	if (num_unsuccessful == NULL)
+		num_unsuccessful = &tmp;
+
+	*num_unsuccessful = 0;
 	if (*type == RTE_IDXD_DEV)
-		return __idxd_completed_ops(dev_id, max_copies,
+		return __idxd_completed_ops(dev_id, max_copies, status, num_unsuccessful,
 				src_hdls, dst_hdls);
 	else
-		return __ioat_completed_ops(dev_id,  max_copies,
-				src_hdls, dst_hdls);
+		return __ioat_completed_ops(dev_id, max_copies, src_hdls, dst_hdls);
 }
 
 static inline void
@@ -366,7 +372,8 @@ __rte_deprecated_msg("use rte_ioat_completed_ops() instead")
 rte_ioat_completed_copies(int dev_id, uint8_t max_copies,
 		uintptr_t *src_hdls, uintptr_t *dst_hdls)
 {
-	return rte_ioat_completed_ops(dev_id, max_copies, src_hdls, dst_hdls);
+	return rte_ioat_completed_ops(dev_id, max_copies, NULL, NULL,
+			src_hdls, dst_hdls);
 }
 
 #endif /* _RTE_IOAT_RAWDEV_FNS_H_ */

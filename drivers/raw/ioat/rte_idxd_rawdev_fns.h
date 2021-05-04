@@ -115,7 +115,16 @@ struct rte_idxd_rawdev {
 
 	struct rte_idxd_hw_desc *desc_ring;
 	struct rte_idxd_user_hdl *hdl_ring;
+	/* flags to indicate handle validity. Kept separate from ring, to avoid
+	 * using 8 bytes per flag. Upper 8 bits holds error code if any.
+	 */
+	uint16_t *hdl_ring_flags;
 };
+
+#define RTE_IDXD_HDL_NORMAL     0
+#define RTE_IDXD_HDL_INVALID    (1 << 0) /* no handle stored for this element */
+#define RTE_IDXD_HDL_OP_FAILED  (1 << 1) /* return failure for this one */
+#define RTE_IDXD_HDL_OP_SKIPPED (1 << 2) /* this op was skipped */
 
 static __rte_always_inline uint16_t
 __idxd_burst_capacity(int dev_id)
@@ -135,8 +144,10 @@ __idxd_burst_capacity(int dev_id)
 		write_idx += idxd->desc_ring_mask + 1;
 	used_space = write_idx - idxd->hdls_read;
 
-	/* Return amount of free space in the descriptor ring */
-	return idxd->desc_ring_mask - used_space;
+	/* Return amount of free space in the descriptor ring
+	 * subtract 1 for space for batch descriptor and 1 for possible null desc
+	 */
+	return idxd->desc_ring_mask - used_space - 2;
 }
 
 static __rte_always_inline rte_iova_t
@@ -156,23 +167,28 @@ __idxd_write_desc(int dev_id,
 	struct rte_idxd_rawdev *idxd =
 			(struct rte_idxd_rawdev *)rte_rawdevs[dev_id].dev_private;
 	uint16_t write_idx = idxd->batch_start + idxd->batch_size;
+	uint16_t mask = idxd->desc_ring_mask;
 
 	/* first check batch ring space then desc ring space */
 	if ((idxd->batch_idx_read == 0 && idxd->batch_idx_write == idxd->max_batches) ||
 			idxd->batch_idx_write + 1 == idxd->batch_idx_read)
 		goto failed;
-	if (((write_idx + 1) & idxd->desc_ring_mask) == idxd->hdls_read)
+	/* for descriptor ring, we always need a slot for batch completion */
+	if (((write_idx + 2) & mask) == idxd->hdls_read)
 		goto failed;
 
 	/* write desc and handle. Note, descriptors don't wrap */
 	idxd->desc_ring[write_idx].pasid = 0;
 	idxd->desc_ring[write_idx].op_flags = op_flags | IDXD_FLAG_COMPLETION_ADDR_VALID;
-	idxd->desc_ring[write_idx].completion = __desc_idx_to_iova(idxd, write_idx);
+	idxd->desc_ring[write_idx].completion = __desc_idx_to_iova(idxd, write_idx & mask);
 	idxd->desc_ring[write_idx].src = src;
 	idxd->desc_ring[write_idx].dst = dst;
 	idxd->desc_ring[write_idx].size = size;
 
-	idxd->hdl_ring[write_idx & idxd->desc_ring_mask] = *hdl;
+	if (hdl == NULL)
+		idxd->hdl_ring_flags[write_idx & mask] = RTE_IDXD_HDL_INVALID;
+	else
+		idxd->hdl_ring[write_idx & mask] = *hdl;
 	idxd->batch_size++;
 
 	idxd->xstats.enqueued++;
@@ -214,9 +230,8 @@ __idxd_enqueue_copy(int dev_id, rte_iova_t src, rte_iova_t dst,
 static __rte_always_inline int
 __idxd_fence(int dev_id)
 {
-	static const struct rte_idxd_user_hdl null_hdl;
 	/* only op field needs filling - zero src, dst and length */
-	return __idxd_write_desc(dev_id, IDXD_FLAG_FENCE, 0, 0, 0, &null_hdl);
+	return __idxd_write_desc(dev_id, IDXD_FLAG_FENCE, 0, 0, 0, NULL);
 }
 
 static __rte_always_inline void
@@ -233,42 +248,37 @@ __idxd_perform_ops(int dev_id)
 {
 	struct rte_idxd_rawdev *idxd =
 			(struct rte_idxd_rawdev *)rte_rawdevs[dev_id].dev_private;
-	/* write completion to last desc in the batch */
-	uint16_t comp_idx = idxd->batch_start + idxd->batch_size - 1;
-	if (comp_idx > idxd->desc_ring_mask) {
-		comp_idx &= idxd->desc_ring_mask;
-		*((uint64_t *)&idxd->desc_ring[comp_idx]) = 0; /* zero start of desc */
-	}
+
+	if (!idxd->cfg.no_prefetch_completions)
+		rte_prefetch1(&idxd->desc_ring[idxd->batch_idx_ring[idxd->batch_idx_read]]);
 
 	if (idxd->batch_size == 0)
 		return 0;
 
+	if (idxd->batch_size == 1)
+		/* use a fence as a null descriptor, so batch_size >= 2 */
+		if (__idxd_fence(dev_id) != 1)
+			return -1;
+
+	/* write completion beyond last desc in the batch */
+	uint16_t comp_idx = (idxd->batch_start + idxd->batch_size) & idxd->desc_ring_mask;
+	*((uint64_t *)&idxd->desc_ring[comp_idx]) = 0; /* zero start of desc */
+	idxd->hdl_ring_flags[comp_idx] = RTE_IDXD_HDL_INVALID;
+
+	const struct rte_idxd_hw_desc batch_desc = {
+			.op_flags = (idxd_op_batch << IDXD_CMD_OP_SHIFT) |
+				IDXD_FLAG_COMPLETION_ADDR_VALID |
+				IDXD_FLAG_REQUEST_COMPLETION,
+			.desc_addr = __desc_idx_to_iova(idxd, idxd->batch_start),
+			.completion = __desc_idx_to_iova(idxd, comp_idx),
+			.size = idxd->batch_size,
+	};
+
 	_mm_sfence(); /* fence before writing desc to device */
-	if (idxd->batch_size > 1) {
-		struct rte_idxd_hw_desc batch_desc = {
-				.op_flags = (idxd_op_batch << IDXD_CMD_OP_SHIFT) |
-					IDXD_FLAG_COMPLETION_ADDR_VALID |
-					IDXD_FLAG_REQUEST_COMPLETION,
-				.desc_addr = __desc_idx_to_iova(idxd, idxd->batch_start),
-				.completion = __desc_idx_to_iova(idxd, comp_idx),
-				.size = idxd->batch_size,
-		};
-
-		__idxd_movdir64b(idxd->portal, &batch_desc);
-	} else {
-		/* special case batch size of 1, as not allowed by HW */
-		/* comp_idx == batch_start */
-		struct rte_idxd_hw_desc *desc = &idxd->desc_ring[comp_idx];
-		desc->op_flags |= IDXD_FLAG_COMPLETION_ADDR_VALID |
-				IDXD_FLAG_REQUEST_COMPLETION;
-		desc->completion = __desc_idx_to_iova(idxd, comp_idx);
-
-		__idxd_movdir64b(idxd->portal, desc);
-	}
-
+	__idxd_movdir64b(idxd->portal, &batch_desc);
 	idxd->xstats.started += idxd->batch_size;
 
-	idxd->batch_start += idxd->batch_size;
+	idxd->batch_start += idxd->batch_size + 1;
 	idxd->batch_start &= idxd->desc_ring_mask;
 	idxd->batch_size = 0;
 
@@ -280,7 +290,7 @@ __idxd_perform_ops(int dev_id)
 }
 
 static __rte_always_inline int
-__idxd_completed_ops(int dev_id, uint8_t max_ops,
+__idxd_completed_ops(int dev_id, uint8_t max_ops, uint32_t *status, uint8_t *num_unsuccessful,
 		uintptr_t *src_hdls, uintptr_t *dst_hdls)
 {
 	struct rte_idxd_rawdev *idxd =
@@ -291,8 +301,37 @@ __idxd_completed_ops(int dev_id, uint8_t max_ops,
 		uint16_t idx_to_chk = idxd->batch_idx_ring[idxd->batch_idx_read];
 		volatile struct rte_idxd_completion *comp_to_chk =
 				(struct rte_idxd_completion *)&idxd->desc_ring[idx_to_chk];
-		if (comp_to_chk->status == 0)
+		uint8_t status = comp_to_chk->status;
+		if (status == 0)
 			break;
+		comp_to_chk->status = 0;
+		if (unlikely(status > 1)) {
+			/* error occurred somewhere in batch, start where last checked */
+			uint16_t desc_count = comp_to_chk->completed_size;
+			uint16_t batch_start = idxd->hdls_avail;
+			uint16_t batch_end = idx_to_chk;
+
+			if (batch_start > batch_end)
+				batch_end += idxd->desc_ring_mask + 1;
+			/* go through each batch entry and see status */
+			for (n = 0; n < desc_count; n++) {
+				uint16_t idx = (batch_start + n) & idxd->desc_ring_mask;
+				volatile struct rte_idxd_completion *comp =
+					(struct rte_idxd_completion *)&idxd->desc_ring[idx];
+				if (comp->status != 0 &&
+						idxd->hdl_ring_flags[idx] == RTE_IDXD_HDL_NORMAL) {
+					idxd->hdl_ring_flags[idx] = RTE_IDXD_HDL_OP_FAILED;
+					idxd->hdl_ring_flags[idx] |= (comp->status << 8);
+					comp->status = 0; /* clear error for next time */
+				}
+			}
+			/* if batch is incomplete, mark rest as skipped */
+			for ( ; n < batch_end - batch_start; n++) {
+				uint16_t idx = (batch_start + n) & idxd->desc_ring_mask;
+				if (idxd->hdl_ring_flags[idx] == RTE_IDXD_HDL_NORMAL)
+					idxd->hdl_ring_flags[idx] = RTE_IDXD_HDL_OP_SKIPPED;
+			}
+		}
 		/* avail points to one after the last one written */
 		idxd->hdls_avail = (idx_to_chk + 1) & idxd->desc_ring_mask;
 		idxd->batch_idx_read++;
@@ -300,7 +339,7 @@ __idxd_completed_ops(int dev_id, uint8_t max_ops,
 			idxd->batch_idx_read = 0;
 	}
 
-	if (idxd->cfg.hdls_disable) {
+	if (idxd->cfg.hdls_disable && status == NULL) {
 		n = (idxd->hdls_avail < idxd->hdls_read) ?
 				(idxd->hdls_avail + idxd->desc_ring_mask + 1 - idxd->hdls_read) :
 				(idxd->hdls_avail - idxd->hdls_read);
@@ -308,10 +347,36 @@ __idxd_completed_ops(int dev_id, uint8_t max_ops,
 		goto out;
 	}
 
-	for (n = 0, h_idx = idxd->hdls_read;
-			n < max_ops && h_idx != idxd->hdls_avail; n++) {
-		src_hdls[n] = idxd->hdl_ring[h_idx].src;
-		dst_hdls[n] = idxd->hdl_ring[h_idx].dst;
+	n = 0;
+	h_idx = idxd->hdls_read;
+	while (h_idx != idxd->hdls_avail) {
+		uint16_t flag = idxd->hdl_ring_flags[h_idx];
+		if (flag != RTE_IDXD_HDL_INVALID) {
+			if (!idxd->cfg.hdls_disable) {
+				src_hdls[n] = idxd->hdl_ring[h_idx].src;
+				dst_hdls[n] = idxd->hdl_ring[h_idx].dst;
+			}
+			if (unlikely(flag != RTE_IDXD_HDL_NORMAL)) {
+				if (status != NULL)
+					status[n] = flag == RTE_IDXD_HDL_OP_SKIPPED ?
+							RTE_IOAT_OP_SKIPPED :
+							/* failure case, return err code */
+							idxd->hdl_ring_flags[h_idx] >> 8;
+				if (num_unsuccessful != NULL)
+					*num_unsuccessful += 1;
+			}
+			n++;
+		}
+		idxd->hdl_ring_flags[h_idx] = RTE_IDXD_HDL_NORMAL;
+		if (++h_idx > idxd->desc_ring_mask)
+			h_idx = 0;
+		if (n >= max_ops)
+			break;
+	}
+
+	/* skip over any remaining blank elements, e.g. batch completion */
+	while (idxd->hdl_ring_flags[h_idx] == RTE_IDXD_HDL_INVALID && h_idx != idxd->hdls_avail) {
+		idxd->hdl_ring_flags[h_idx] = RTE_IDXD_HDL_NORMAL;
 		if (++h_idx > idxd->desc_ring_mask)
 			h_idx = 0;
 	}
