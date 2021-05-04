@@ -39,14 +39,14 @@ def configure_dsa(dsa_id, queues):
     max_queues = dsa_dir.read_int("max_work_queues")
     max_tokens = dsa_dir.read_int("max_tokens")
 
-    # we want one engine per group
-    nb_groups = min(max_engines, max_groups)
-    for grp in range(nb_groups):
-        dsa_dir.write_values({f"engine{dsa_id}.{grp}/group_id": grp})
-
     nb_queues = min(queues, max_queues)
     if queues > nb_queues:
         print(f"Setting number of queues to max supported value: {max_queues}")
+
+    # we want one engine per group, and no more engines than queues
+    nb_groups = min(max_engines, max_groups, nb_queues)
+    for grp in range(nb_groups):
+        dsa_dir.write_values({f"engine{dsa_id}.{grp}/group_id": grp})
 
     # configure each queue
     for q in range(nb_queues):
