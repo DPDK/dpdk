@@ -78,7 +78,7 @@ Example configuration for a work queue::
 
         $ accel-config config-wq dsa0/wq0.0 --group-id=0 \
            --mode=dedicated --priority=10 --wq-size=8 \
-           --type=user --name=app1
+           --type=user --name=dpdk_app1
 
 Once the devices have been configured, they need to be enabled::
 
@@ -114,15 +114,18 @@ the device driver on the EAL commandline, via the ``allowlist`` or ``-a`` flag e
 
 	$ dpdk-test -a <b:d:f>,max_queues=4
 
-If the device is bound to the IDXD kernel driver (and previously configured with sysfs),
-then a specific work queue needs to be passed to the application via a vdev parameter.
-This vdev parameter take the driver name and work queue name as parameters.
-For example, to use work queue 0 on Intel\ |reg| DSA instance 0::
+For devices bound to the IDXD kernel driver,
+the DPDK ioat driver will automatically perform a scan for available workqueues to use.
+Any workqueues found listed in ``/dev/dsa`` on the system will be checked in ``/sys``,
+and any which have ``dpdk_`` prefix in their name will be automatically probed by the
+driver to make them available to the application.
+Alternatively, to support use by multiple DPDK processes simultaneously,
+the value used as the DPDK ``--file-prefix`` parameter may be used as a workqueue name prefix,
+instead of ``dpdk_``,
+allowing each DPDK application instance to only use a subset of configured queues.
 
-        $ dpdk-test --no-pci --vdev=rawdev_idxd,wq=0.0
-
-Once probed successfully, the device will appear as a ``rawdev``, that is a
-"raw device type" inside DPDK, and can be accessed using APIs from the
+Once probed successfully, irrespective of kernel driver, the device will appear as a ``rawdev``,
+that is a "raw device type" inside DPDK, and can be accessed using APIs from the
 ``rte_rawdev`` library.
 
 Using IOAT Rawdev Devices
