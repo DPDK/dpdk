@@ -5,6 +5,7 @@
 #ifndef __CNXK_EVENTDEV_H__
 #define __CNXK_EVENTDEV_H__
 
+#include <rte_mbuf_pool_ops.h>
 #include <rte_pci.h>
 
 #include <eventdev_pmd_pci.h>
@@ -13,7 +14,10 @@
 
 #define USEC2NSEC(__us) ((__us)*1E3)
 
-#define CNXK_SSO_MZ_NAME "cnxk_evdev_mz"
+#define CNXK_SSO_FC_NAME       "cnxk_evdev_xaq_fc"
+#define CNXK_SSO_MZ_NAME       "cnxk_evdev_mz"
+#define CNXK_SSO_XAQ_CACHE_CNT (0x7)
+#define CNXK_SSO_XAQ_SLACK     (8)
 
 struct cnxk_sso_evdev {
 	struct roc_sso sso;
@@ -26,6 +30,11 @@ struct cnxk_sso_evdev {
 	uint32_t min_dequeue_timeout_ns;
 	uint32_t max_dequeue_timeout_ns;
 	int32_t max_num_events;
+	uint64_t *fc_mem;
+	uint64_t xaq_lmt;
+	uint64_t nb_xaq_cfg;
+	rte_iova_t fc_iova;
+	struct rte_mempool *xaq_pool;
 	/* CN9K */
 	uint8_t dual_ws;
 } __rte_cache_aligned;
@@ -35,6 +44,9 @@ cnxk_sso_pmd_priv(const struct rte_eventdev *event_dev)
 {
 	return event_dev->data->dev_private;
 }
+
+/* Configuration functions */
+int cnxk_sso_xaq_allocate(struct cnxk_sso_evdev *dev);
 
 /* Common ops API. */
 int cnxk_sso_init(struct rte_eventdev *event_dev);

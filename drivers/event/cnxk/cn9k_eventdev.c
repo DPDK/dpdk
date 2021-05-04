@@ -63,6 +63,13 @@ cn9k_sso_dev_configure(const struct rte_eventdev *event_dev)
 		return -ENODEV;
 	}
 
+	rc = cnxk_sso_xaq_allocate(dev);
+	if (rc < 0)
+		goto cnxk_rsrc_fini;
+
+	return 0;
+cnxk_rsrc_fini:
+	roc_sso_rsrc_fini(&dev->sso);
 	return rc;
 }
 
