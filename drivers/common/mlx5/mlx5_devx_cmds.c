@@ -647,6 +647,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	uint32_t out[MLX5_ST_SZ_DW(query_hca_cap_out)] = {0};
 	void *hcattr;
 	int status, syndrome, rc, i;
+	uint64_t general_obj_types_supported = 0;
 
 	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
 	MLX5_SET(query_hca_cap_in, in, op_mod,
@@ -725,12 +726,22 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->regex = MLX5_GET(cmd_hca_cap, hcattr, regexp);
 	attr->regexp_num_of_engines = MLX5_GET(cmd_hca_cap, hcattr,
 					       regexp_num_of_engines);
-	attr->flow_hit_aso = !!(MLX5_GET64(cmd_hca_cap, hcattr,
-					   general_obj_types) &
+	/* Read the general_obj_types bitmap and extract the relevant bits. */
+	general_obj_types_supported = MLX5_GET64(cmd_hca_cap, hcattr,
+						 general_obj_types);
+	attr->vdpa.valid = !!(general_obj_types_supported &
+			      MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q);
+	attr->vdpa.queue_counters_valid =
+			!!(general_obj_types_supported &
+			   MLX5_GENERAL_OBJ_TYPES_CAP_VIRTIO_Q_COUNTERS);
+	attr->parse_graph_flex_node =
+			!!(general_obj_types_supported &
+			   MLX5_GENERAL_OBJ_TYPES_CAP_PARSE_GRAPH_FLEX_NODE);
+	attr->flow_hit_aso = !!(general_obj_types_supported &
 				MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_HIT_ASO);
-	attr->geneve_tlv_opt = !!(MLX5_GET64(cmd_hca_cap, hcattr,
-					   general_obj_types) &
-				MLX5_GENERAL_OBJ_TYPES_CAP_GENEVE_TLV_OPT);
+	attr->geneve_tlv_opt = !!(general_obj_types_supported &
+				  MLX5_GENERAL_OBJ_TYPES_CAP_GENEVE_TLV_OPT);
+	/* Add reading of other GENERAL_OBJ_TYPES_CAP bits above this line. */
 	attr->log_max_cq = MLX5_GET(cmd_hca_cap, hcattr, log_max_cq);
 	attr->log_max_qp = MLX5_GET(cmd_hca_cap, hcattr, log_max_qp);
 	attr->log_max_cq_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_cq_sz);
