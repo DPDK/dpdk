@@ -5,12 +5,16 @@
 #ifndef __CNXK_EVENTDEV_H__
 #define __CNXK_EVENTDEV_H__
 
+#include <rte_devargs.h>
+#include <rte_kvargs.h>
 #include <rte_mbuf_pool_ops.h>
 #include <rte_pci.h>
 
 #include <eventdev_pmd_pci.h>
 
 #include "roc_api.h"
+
+#define CNXK_SSO_XAE_CNT "xae_cnt"
 
 #define USEC2NSEC(__us) ((__us)*1E3)
 
@@ -35,9 +39,20 @@ struct cnxk_sso_evdev {
 	uint64_t nb_xaq_cfg;
 	rte_iova_t fc_iova;
 	struct rte_mempool *xaq_pool;
+	/* Dev args */
+	uint32_t xae_cnt;
 	/* CN9K */
 	uint8_t dual_ws;
 } __rte_cache_aligned;
+
+static inline int
+parse_kvargs_value(const char *key, const char *value, void *opaque)
+{
+	RTE_SET_USED(key);
+
+	*(uint32_t *)opaque = (uint32_t)atoi(value);
+	return 0;
+}
 
 static inline struct cnxk_sso_evdev *
 cnxk_sso_pmd_priv(const struct rte_eventdev *event_dev)

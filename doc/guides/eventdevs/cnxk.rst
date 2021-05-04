@@ -41,6 +41,20 @@ Prerequisites and Compilation procedure
 
    See :doc:`../platform/cnxk` for setup information.
 
+
+Runtime Config Options
+----------------------
+
+- ``Maximum number of in-flight events`` (default ``8192``)
+
+  In **Marvell OCTEON cnxk** the max number of in-flight events are only limited
+  by DRAM size, the ``xae_cnt`` devargs parameter is introduced to provide
+  upper limit for in-flight events.
+
+  For example::
+
+    -a 0002:0e:00.0,xae_cnt=16384
+
 Debugging Options
 -----------------
 

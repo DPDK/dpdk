@@ -75,8 +75,11 @@ cnxk_sso_xaq_allocate(struct cnxk_sso_evdev *dev)
 
 	/* Taken from HRM 14.3.3(4) */
 	xaq_cnt = dev->nb_event_queues * CNXK_SSO_XAQ_CACHE_CNT;
-	xaq_cnt += (dev->sso.iue / dev->sso.xae_waes) +
-		   (CNXK_SSO_XAQ_SLACK * dev->nb_event_queues);
+	if (dev->xae_cnt)
+		xaq_cnt += dev->xae_cnt / dev->sso.xae_waes;
+	else
+		xaq_cnt += (dev->sso.iue / dev->sso.xae_waes) +
+			   (CNXK_SSO_XAQ_SLACK * dev->nb_event_queues);
 
 	plt_sso_dbg("Configuring %d xaq buffers", xaq_cnt);
 	/* Setup XAQ based on number of nb queues. */
@@ -222,6 +225,22 @@ cnxk_sso_port_def_conf(struct rte_eventdev *event_dev, uint8_t port_id,
 	port_conf->enqueue_depth = 1;
 }
 
+static void
+cnxk_sso_parse_devargs(struct cnxk_sso_evdev *dev, struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+
+	if (devargs == NULL)
+		return;
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return;
+
+	rte_kvargs_process(kvlist, CNXK_SSO_XAE_CNT, &parse_kvargs_value,
+			   &dev->xae_cnt);
+	rte_kvargs_free(kvlist);
+}
+
 int
 cnxk_sso_init(struct rte_eventdev *event_dev)
 {
@@ -242,6 +261,7 @@ cnxk_sso_init(struct rte_eventdev *event_dev)
 	dev->sso.pci_dev = pci_dev;
 
 	*(uint64_t *)mz->addr = (uint64_t)dev;
+	cnxk_sso_parse_devargs(dev, pci_dev->device.devargs);
 
 	/* Initialize the base cnxk_dev object */
 	rc = roc_sso_dev_init(&dev->sso);

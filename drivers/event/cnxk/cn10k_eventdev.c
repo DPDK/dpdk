@@ -143,3 +143,4 @@ static struct rte_pci_driver cn10k_pci_sso = {
 RTE_PMD_REGISTER_PCI(event_cn10k, cn10k_pci_sso);
 RTE_PMD_REGISTER_PCI_TABLE(event_cn10k, cn10k_pci_sso_map);
 RTE_PMD_REGISTER_KMOD_DEP(event_cn10k, "vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(event_cn10k, CNXK_SSO_XAE_CNT "=<int>");
