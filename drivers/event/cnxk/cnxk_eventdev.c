@@ -4,6 +4,30 @@
 
 #include "cnxk_eventdev.h"
 
+void
+cnxk_sso_info_get(struct cnxk_sso_evdev *dev,
+		  struct rte_event_dev_info *dev_info)
+{
+
+	dev_info->min_dequeue_timeout_ns = dev->min_dequeue_timeout_ns;
+	dev_info->max_dequeue_timeout_ns = dev->max_dequeue_timeout_ns;
+	dev_info->max_event_queues = dev->max_event_queues;
+	dev_info->max_event_queue_flows = (1ULL << 20);
+	dev_info->max_event_queue_priority_levels = 8;
+	dev_info->max_event_priority_levels = 1;
+	dev_info->max_event_ports = dev->max_event_ports;
+	dev_info->max_event_port_dequeue_depth = 1;
+	dev_info->max_event_port_enqueue_depth = 1;
+	dev_info->max_num_events = dev->max_num_events;
+	dev_info->event_dev_cap = RTE_EVENT_DEV_CAP_QUEUE_QOS |
+				  RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED |
+				  RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES |
+				  RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK |
+				  RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT |
+				  RTE_EVENT_DEV_CAP_NONSEQ_MODE |
+				  RTE_EVENT_DEV_CAP_CARRY_FLOW_ID;
+}
+
 int
 cnxk_sso_init(struct rte_eventdev *event_dev)
 {

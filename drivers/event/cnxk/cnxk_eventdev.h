@@ -17,6 +17,8 @@
 
 struct cnxk_sso_evdev {
 	struct roc_sso sso;
+	uint8_t max_event_queues;
+	uint8_t max_event_ports;
 	uint8_t is_timeout_deq;
 	uint8_t nb_event_queues;
 	uint8_t nb_event_ports;
@@ -35,5 +37,7 @@ cnxk_sso_pmd_priv(const struct rte_eventdev *event_dev)
 int cnxk_sso_init(struct rte_eventdev *event_dev);
 int cnxk_sso_fini(struct rte_eventdev *event_dev);
 int cnxk_sso_remove(struct rte_pci_device *pci_dev);
+void cnxk_sso_info_get(struct cnxk_sso_evdev *dev,
+		       struct rte_event_dev_info *dev_info);
 
 #endif /* __CNXK_EVENTDEV_H__ */
