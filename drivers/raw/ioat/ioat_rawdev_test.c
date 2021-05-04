@@ -11,6 +11,7 @@
 
 #define MAX_SUPPORTED_RAWDEVS 64
 #define TEST_SKIPPED 77
+#define COPY_LEN 1024
 
 int ioat_rawdev_test(uint16_t dev_id); /* pre-define to keep compiler happy */
 
@@ -35,31 +36,113 @@ print_err(const char *func, int lineno, const char *format, ...)
 }
 
 static int
+do_multi_copies(int dev_id, int split_batches, int split_completions)
+{
+	struct rte_mbuf *srcs[32], *dsts[32];
+	struct rte_mbuf *completed_src[64];
+	struct rte_mbuf *completed_dst[64];
+	unsigned int i, j;
+
+	for (i = 0; i < RTE_DIM(srcs); i++) {
+		char *src_data;
+
+		if (split_batches && i == RTE_DIM(srcs) / 2)
+			rte_ioat_perform_ops(dev_id);
+
+		srcs[i] = rte_pktmbuf_alloc(pool);
+		dsts[i] = rte_pktmbuf_alloc(pool);
+		src_data = rte_pktmbuf_mtod(srcs[i], char *);
+
+		for (j = 0; j < COPY_LEN; j++)
+			src_data[j] = rand() & 0xFF;
+
+		if (rte_ioat_enqueue_copy(dev_id,
+				srcs[i]->buf_iova + srcs[i]->data_off,
+				dsts[i]->buf_iova + dsts[i]->data_off,
+				COPY_LEN,
+				(uintptr_t)srcs[i],
+				(uintptr_t)dsts[i]) != 1) {
+			PRINT_ERR("Error with rte_ioat_enqueue_copy for buffer %u\n",
+					i);
+			return -1;
+		}
+	}
+	rte_ioat_perform_ops(dev_id);
+	usleep(100);
+
+	if (split_completions) {
+		/* gather completions in two halves */
+		uint16_t half_len = RTE_DIM(srcs) / 2;
+		if (rte_ioat_completed_ops(dev_id, half_len, (void *)completed_src,
+				(void *)completed_dst) != half_len) {
+			PRINT_ERR("Error with rte_ioat_completed_ops - first half request\n");
+			rte_rawdev_dump(dev_id, stdout);
+			return -1;
+		}
+		if (rte_ioat_completed_ops(dev_id, half_len, (void *)&completed_src[half_len],
+				(void *)&completed_dst[half_len]) != half_len) {
+			PRINT_ERR("Error with rte_ioat_completed_ops - second half request\n");
+			rte_rawdev_dump(dev_id, stdout);
+			return -1;
+		}
+	} else {
+		/* gather all completions in one go */
+		if (rte_ioat_completed_ops(dev_id, 64, (void *)completed_src,
+				(void *)completed_dst) != RTE_DIM(srcs)) {
+			PRINT_ERR("Error with rte_ioat_completed_ops\n");
+			rte_rawdev_dump(dev_id, stdout);
+			return -1;
+		}
+	}
+	for (i = 0; i < RTE_DIM(srcs); i++) {
+		char *src_data, *dst_data;
+
+		if (completed_src[i] != srcs[i]) {
+			PRINT_ERR("Error with source pointer %u\n", i);
+			return -1;
+		}
+		if (completed_dst[i] != dsts[i]) {
+			PRINT_ERR("Error with dest pointer %u\n", i);
+			return -1;
+		}
+
+		src_data = rte_pktmbuf_mtod(srcs[i], char *);
+		dst_data = rte_pktmbuf_mtod(dsts[i], char *);
+		for (j = 0; j < COPY_LEN; j++)
+			if (src_data[j] != dst_data[j]) {
+				PRINT_ERR("Error with copy of packet %u, byte %u\n",
+						i, j);
+				return -1;
+			}
+		rte_pktmbuf_free(srcs[i]);
+		rte_pktmbuf_free(dsts[i]);
+	}
+	return 0;
+}
+
+static int
 test_enqueue_copies(int dev_id)
 {
-	const unsigned int length = 1024;
 	unsigned int i;
 
+	/* test doing a single copy */
 	do {
 		struct rte_mbuf *src, *dst;
 		char *src_data, *dst_data;
 		struct rte_mbuf *completed[2] = {0};
 
-		/* test doing a single copy */
 		src = rte_pktmbuf_alloc(pool);
 		dst = rte_pktmbuf_alloc(pool);
-		src->data_len = src->pkt_len = length;
-		dst->data_len = dst->pkt_len = length;
 		src_data = rte_pktmbuf_mtod(src, char *);
 		dst_data = rte_pktmbuf_mtod(dst, char *);
 
-		for (i = 0; i < length; i++)
+		for (i = 0; i < COPY_LEN; i++)
 			src_data[i] = rand() & 0xFF;
 
 		if (rte_ioat_enqueue_copy(dev_id,
 				src->buf_iova + src->data_off,
 				dst->buf_iova + dst->data_off,
-				length,
+				COPY_LEN,
 				(uintptr_t)src,
 				(uintptr_t)dst) != 1) {
 			PRINT_ERR("Error with rte_ioat_enqueue_copy\n");
@@ -79,7 +162,59 @@ test_enqueue_copies(int dev_id)
 			return -1;
 		}
 
-		for (i = 0; i < length; i++)
+		for (i = 0; i < COPY_LEN; i++)
+			if (dst_data[i] != src_data[i]) {
+				PRINT_ERR("Data mismatch at char %u [Got %02x not %02x]\n",
+						i, dst_data[i], src_data[i]);
+				return -1;
+			}
+		rte_pktmbuf_free(src);
+		rte_pktmbuf_free(dst);
+	} while (0);
+
+	/* test doing a multiple single copies */
+	do {
+		const uint16_t max_ops = 4;
+		struct rte_mbuf *src, *dst;
+		char *src_data, *dst_data;
+		struct rte_mbuf *completed[32] = {0};
+		const uint16_t max_completions = RTE_DIM(completed) / 2;
+
+		src = rte_pktmbuf_alloc(pool);
+		dst = rte_pktmbuf_alloc(pool);
+		src_data = rte_pktmbuf_mtod(src, char *);
+		dst_data = rte_pktmbuf_mtod(dst, char *);
+
+		for (i = 0; i < COPY_LEN; i++)
+			src_data[i] = rand() & 0xFF;
+
+		/* perform the same copy <max_ops> times */
+		for (i = 0; i < max_ops; i++) {
+			if (rte_ioat_enqueue_copy(dev_id,
+					src->buf_iova + src->data_off,
+					dst->buf_iova + dst->data_off,
+					COPY_LEN,
+					(uintptr_t)src,
+					(uintptr_t)dst) != 1) {
+				PRINT_ERR("Error with rte_ioat_enqueue_copy\n");
+				return -1;
+			}
+			rte_ioat_perform_ops(dev_id);
+		}
+		usleep(10);
+
+		if (rte_ioat_completed_ops(dev_id, max_completions, (void *)&completed[0],
+				(void *)&completed[max_completions]) != max_ops) {
+			PRINT_ERR("Error with rte_ioat_completed_ops\n");
+			return -1;
+		}
+		if (completed[0] != src || completed[max_completions] != dst) {
+			PRINT_ERR("Error with completions: got (%p, %p), not (%p,%p)\n",
+					completed[0], completed[max_completions], src, dst);
+			return -1;
+		}
+
+		for (i = 0; i < COPY_LEN; i++)
 			if (dst_data[i] != src_data[i]) {
 				PRINT_ERR("Data mismatch at char %u\n", i);
 				return -1;
@@ -89,89 +224,29 @@ test_enqueue_copies(int dev_id)
 	} while (0);
 
 	/* test doing multiple copies */
-	do {
-		struct rte_mbuf *srcs[32], *dsts[32];
-		struct rte_mbuf *completed_src[64];
-		struct rte_mbuf *completed_dst[64];
-		unsigned int j;
-
-		for (i = 0; i < RTE_DIM(srcs); i++) {
-			char *src_data;
-
-			srcs[i] = rte_pktmbuf_alloc(pool);
-			dsts[i] = rte_pktmbuf_alloc(pool);
-			srcs[i]->data_len = srcs[i]->pkt_len = length;
-			dsts[i]->data_len = dsts[i]->pkt_len = length;
-			src_data = rte_pktmbuf_mtod(srcs[i], char *);
-
-			for (j = 0; j < length; j++)
-				src_data[j] = rand() & 0xFF;
-
-			if (rte_ioat_enqueue_copy(dev_id,
-					srcs[i]->buf_iova + srcs[i]->data_off,
-					dsts[i]->buf_iova + dsts[i]->data_off,
-					length,
-					(uintptr_t)srcs[i],
-					(uintptr_t)dsts[i]) != 1) {
-				PRINT_ERR("Error with rte_ioat_enqueue_copy for buffer %u\n",
-						i);
-				return -1;
-			}
-		}
-		rte_ioat_perform_ops(dev_id);
-		usleep(100);
-
-		if (rte_ioat_completed_ops(dev_id, 64, (void *)completed_src,
-				(void *)completed_dst) != RTE_DIM(srcs)) {
-			PRINT_ERR("Error with rte_ioat_completed_ops\n");
-			return -1;
-		}
-		for (i = 0; i < RTE_DIM(srcs); i++) {
-			char *src_data, *dst_data;
-
-			if (completed_src[i] != srcs[i]) {
-				PRINT_ERR("Error with source pointer %u\n", i);
-				return -1;
-			}
-			if (completed_dst[i] != dsts[i]) {
-				PRINT_ERR("Error with dest pointer %u\n", i);
-				return -1;
-			}
-
-			src_data = rte_pktmbuf_mtod(srcs[i], char *);
-			dst_data = rte_pktmbuf_mtod(dsts[i], char *);
-			for (j = 0; j < length; j++)
-				if (src_data[j] != dst_data[j]) {
-					PRINT_ERR("Error with copy of packet %u, byte %u\n",
-							i, j);
-					return -1;
-				}
-			rte_pktmbuf_free(srcs[i]);
-			rte_pktmbuf_free(dsts[i]);
-		}
-
-	} while (0);
-
+	do_multi_copies(dev_id, 0, 0); /* enqueue and complete one batch at a time */
+	do_multi_copies(dev_id, 1, 0); /* enqueue 2 batches and then complete both */
+	do_multi_copies(dev_id, 0, 1); /* enqueue 1 batch, then complete in two halves */
 	return 0;
 }
 
 static int
 test_enqueue_fill(int dev_id)
 {
-	const unsigned int length[] = {8, 64, 1024, 50, 100, 89};
+	const unsigned int lengths[] = {8, 64, 1024, 50, 100, 89};
 	struct rte_mbuf *dst = rte_pktmbuf_alloc(pool);
 	char *dst_data = rte_pktmbuf_mtod(dst, char *);
 	struct rte_mbuf *completed[2] = {0};
 	uint64_t pattern = 0xfedcba9876543210;
 	unsigned int i, j;
 
-	for (i = 0; i < RTE_DIM(length); i++) {
+	for (i = 0; i < RTE_DIM(lengths); i++) {
 		/* reset dst_data */
-		memset(dst_data, 0, length[i]);
+		memset(dst_data, 0, lengths[i]);
 
 		/* perform the fill operation */
 		if (rte_ioat_enqueue_fill(dev_id, pattern,
-				dst->buf_iova + dst->data_off, length[i],
+				dst->buf_iova + dst->data_off, lengths[i],
 				(uintptr_t)dst) != 1) {
 			PRINT_ERR("Error with rte_ioat_enqueue_fill\n");
 			return -1;
@@ -186,11 +261,11 @@ test_enqueue_fill(int dev_id)
 			return -1;
 		}
 		/* check the result */
-		for (j = 0; j < length[i]; j++) {
+		for (j = 0; j < lengths[i]; j++) {
 			char pat_byte = ((char *)&pattern)[j % 8];
 			if (dst_data[j] != pat_byte) {
-				PRINT_ERR("Error with fill operation (length = %u): got (%x), not (%x)\n",
-						length[i], dst_data[j],
+				PRINT_ERR("Error with fill operation (lengths = %u): got (%x), not (%x)\n",
+						lengths[i], dst_data[j],
 						pat_byte);
 				return -1;
 			}
