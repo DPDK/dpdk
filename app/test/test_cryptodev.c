@@ -4671,16 +4671,20 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata,
 
 	/* Validate obuf */
 	if (verify) {
-		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT_OFFSET(
 			plaintext,
 			tdata->plaintext.data,
-			tdata->plaintext.len >> 3,
+			(tdata->plaintext.len - tdata->cipher.offset_bits -
+			 (tdata->digest.len << 3)),
+			tdata->cipher.offset_bits,
 			"SNOW 3G Plaintext data not as expected");
 	} else {
-		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT_OFFSET(
 			ciphertext,
 			tdata->ciphertext.data,
-			tdata->validDataLenInBits.len,
+			(tdata->validDataLenInBits.len -
+			 tdata->cipher.offset_bits),
+			tdata->cipher.offset_bits,
 			"SNOW 3G Ciphertext data not as expected");
 
 		TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -4882,16 +4886,20 @@ test_snow3g_auth_cipher_sgl(const struct snow3g_test_data *tdata,
 
 	/* Validate obuf */
 	if (verify) {
-		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT_OFFSET(
 			plaintext,
 			tdata->plaintext.data,
-			tdata->plaintext.len >> 3,
+			(tdata->plaintext.len - tdata->cipher.offset_bits -
+			 (tdata->digest.len << 3)),
+			tdata->cipher.offset_bits,
 			"SNOW 3G Plaintext data not as expected");
 	} else {
-		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT_OFFSET(
 			ciphertext,
 			tdata->ciphertext.data,
-			tdata->validDataLenInBits.len,
+			(tdata->validDataLenInBits.len -
+			 tdata->cipher.offset_bits),
+			tdata->cipher.offset_bits,
 			"SNOW 3G Ciphertext data not as expected");
 
 		TEST_ASSERT_BUFFERS_ARE_EQUAL(
