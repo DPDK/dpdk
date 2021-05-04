@@ -29,6 +29,76 @@ cnxk_sso_info_get(struct cnxk_sso_evdev *dev,
 }
 
 int
+cnxk_sso_dev_validate(const struct rte_eventdev *event_dev)
+{
+	struct rte_event_dev_config *conf = &event_dev->data->dev_conf;
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint32_t deq_tmo_ns;
+
+	deq_tmo_ns = conf->dequeue_timeout_ns;
+
+	if (deq_tmo_ns == 0)
+		deq_tmo_ns = dev->min_dequeue_timeout_ns;
+	if (deq_tmo_ns < dev->min_dequeue_timeout_ns ||
+	    deq_tmo_ns > dev->max_dequeue_timeout_ns) {
+		plt_err("Unsupported dequeue timeout requested");
+		return -EINVAL;
+	}
+
+	if (conf->event_dev_cfg & RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT)
+		dev->is_timeout_deq = 1;
+
+	dev->deq_tmo_ns = deq_tmo_ns;
+
+	if (!conf->nb_event_queues || !conf->nb_event_ports ||
+	    conf->nb_event_ports > dev->max_event_ports ||
+	    conf->nb_event_queues > dev->max_event_queues) {
+		plt_err("Unsupported event queues/ports requested");
+		return -EINVAL;
+	}
+
+	if (conf->nb_event_port_dequeue_depth > 1) {
+		plt_err("Unsupported event port deq depth requested");
+		return -EINVAL;
+	}
+
+	if (conf->nb_event_port_enqueue_depth > 1) {
+		plt_err("Unsupported event port enq depth requested");
+		return -EINVAL;
+	}
+
+	dev->nb_event_queues = conf->nb_event_queues;
+	dev->nb_event_ports = conf->nb_event_ports;
+
+	return 0;
+}
+
+void
+cnxk_sso_queue_def_conf(struct rte_eventdev *event_dev, uint8_t queue_id,
+			struct rte_event_queue_conf *queue_conf)
+{
+	RTE_SET_USED(event_dev);
+	RTE_SET_USED(queue_id);
+
+	queue_conf->nb_atomic_flows = (1ULL << 20);
+	queue_conf->nb_atomic_order_sequences = (1ULL << 20);
+	queue_conf->event_queue_cfg = RTE_EVENT_QUEUE_CFG_ALL_TYPES;
+	queue_conf->priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+}
+
+void
+cnxk_sso_port_def_conf(struct rte_eventdev *event_dev, uint8_t port_id,
+		       struct rte_event_port_conf *port_conf)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
+	RTE_SET_USED(port_id);
+	port_conf->new_event_threshold = dev->max_num_events;
+	port_conf->dequeue_depth = 1;
+	port_conf->enqueue_depth = 1;
+}
+
+int
 cnxk_sso_init(struct rte_eventdev *event_dev)
 {
 	const struct rte_memzone *mz = NULL;
