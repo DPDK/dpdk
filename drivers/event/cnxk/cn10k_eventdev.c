@@ -16,6 +16,14 @@ cn10k_sso_set_rsrc(void *arg)
 			      dev->sso.max_hwgrp;
 }
 
+static int
+cn10k_sso_rsrc_init(void *arg, uint8_t hws, uint8_t hwgrp)
+{
+	struct cnxk_sso_evdev *dev = arg;
+
+	return roc_sso_rsrc_init(&dev->sso, hws, hwgrp);
+}
+
 static void
 cn10k_sso_info_get(struct rte_eventdev *event_dev,
 		   struct rte_event_dev_info *dev_info)
@@ -26,8 +34,35 @@ cn10k_sso_info_get(struct rte_eventdev *event_dev,
 	cnxk_sso_info_get(dev, dev_info);
 }
 
+static int
+cn10k_sso_dev_configure(const struct rte_eventdev *event_dev)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	int rc;
+
+	rc = cnxk_sso_dev_validate(event_dev);
+	if (rc < 0) {
+		plt_err("Invalid event device configuration");
+		return -EINVAL;
+	}
+
+	roc_sso_rsrc_fini(&dev->sso);
+
+	rc = cn10k_sso_rsrc_init(dev, dev->nb_event_ports,
+				 dev->nb_event_queues);
+	if (rc < 0) {
+		plt_err("Failed to initialize SSO resources");
+		return -ENODEV;
+	}
+
+	return rc;
+}
+
 static struct rte_eventdev_ops cn10k_sso_dev_ops = {
 	.dev_infos_get = cn10k_sso_info_get,
+	.dev_configure = cn10k_sso_dev_configure,
+	.queue_def_conf = cnxk_sso_queue_def_conf,
+	.port_def_conf = cnxk_sso_port_def_conf,
 };
 
 static int
