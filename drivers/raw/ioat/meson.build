@@ -13,5 +13,6 @@ sources = files(
 deps += ['bus_pci', 'mbuf', 'rawdev']
 headers = files(
         'rte_ioat_rawdev.h',
+        'rte_idxd_rawdev_fns.h',
         'rte_ioat_rawdev_fns.h',
 )
