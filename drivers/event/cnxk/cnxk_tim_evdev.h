@@ -36,12 +36,14 @@
 
 #define CNXK_TIM_DISABLE_NPA "tim_disable_npa"
 #define CNXK_TIM_CHNK_SLOTS  "tim_chnk_slots"
+#define CNXK_TIM_STATS_ENA   "tim_stats_ena"
 #define CNXK_TIM_RINGS_LMT   "tim_rings_lmt"
 
-#define CNXK_TIM_SP	 0x1
-#define CNXK_TIM_MP	 0x2
-#define CNXK_TIM_ENA_FB	 0x10
-#define CNXK_TIM_ENA_DFB 0x20
+#define CNXK_TIM_SP	   0x1
+#define CNXK_TIM_MP	   0x2
+#define CNXK_TIM_ENA_FB	   0x10
+#define CNXK_TIM_ENA_DFB   0x20
+#define CNXK_TIM_ENA_STATS 0x40
 
 #define TIM_BUCKET_W1_S_CHUNK_REMAINDER (48)
 #define TIM_BUCKET_W1_M_CHUNK_REMAINDER                                        \
@@ -82,6 +84,7 @@ struct cnxk_tim_evdev {
 	uint8_t disable_npa;
 	uint16_t chunk_slots;
 	uint16_t min_ring_cnt;
+	uint8_t enable_stats;
 };
 
 enum cnxk_tim_clk_src {
@@ -123,6 +126,7 @@ struct cnxk_tim_ring {
 	struct rte_reciprocal_u64 fast_bkt;
 	uint64_t arm_cnt;
 	uint8_t prod_type_sp;
+	uint8_t enable_stats;
 	uint8_t disable_npa;
 	uint8_t ena_dfb;
 	uint16_t ring_id;
@@ -212,23 +216,33 @@ cnxk_tim_cntfrq(void)
 #endif
 
 #define TIM_ARM_FASTPATH_MODES                                                 \
-	FP(sp, 0, 0, CNXK_TIM_ENA_DFB | CNXK_TIM_SP)                           \
-	FP(mp, 0, 1, CNXK_TIM_ENA_DFB | CNXK_TIM_MP)                           \
-	FP(fb_sp, 1, 0, CNXK_TIM_ENA_FB | CNXK_TIM_SP)                         \
-	FP(fb_mp, 1, 1, CNXK_TIM_ENA_FB | CNXK_TIM_MP)
+	FP(sp, 0, 0, 0, CNXK_TIM_ENA_DFB | CNXK_TIM_SP)                        \
+	FP(mp, 0, 0, 1, CNXK_TIM_ENA_DFB | CNXK_TIM_MP)                        \
+	FP(fb_sp, 0, 1, 0, CNXK_TIM_ENA_FB | CNXK_TIM_SP)                      \
+	FP(fb_mp, 0, 1, 1, CNXK_TIM_ENA_FB | CNXK_TIM_MP)                      \
+	FP(stats_sp, 1, 0, 0,                                                  \
+	   CNXK_TIM_ENA_STATS | CNXK_TIM_ENA_DFB | CNXK_TIM_SP)                \
+	FP(stats_mp, 1, 0, 1,                                                  \
+	   CNXK_TIM_ENA_STATS | CNXK_TIM_ENA_DFB | CNXK_TIM_MP)                \
+	FP(stats_fb_sp, 1, 1, 0,                                               \
+	   CNXK_TIM_ENA_STATS | CNXK_TIM_ENA_FB | CNXK_TIM_SP)                 \
+	FP(stats_fb_mp, 1, 1, 1,                                               \
+	   CNXK_TIM_ENA_STATS | CNXK_TIM_ENA_FB | CNXK_TIM_MP)
 
 #define TIM_ARM_TMO_FASTPATH_MODES                                             \
-	FP(dfb, 0, CNXK_TIM_ENA_DFB)                                           \
-	FP(fb, 1, CNXK_TIM_ENA_FB)
+	FP(dfb, 0, 0, CNXK_TIM_ENA_DFB)                                        \
+	FP(fb, 0, 1, CNXK_TIM_ENA_FB)                                          \
+	FP(stats_dfb, 1, 0, CNXK_TIM_ENA_STATS | CNXK_TIM_ENA_DFB)             \
+	FP(stats_fb, 1, 1, CNXK_TIM_ENA_STATS | CNXK_TIM_ENA_FB)
 
-#define FP(_name, _f2, _f1, flags)                                             \
+#define FP(_name, _f3, _f2, _f1, flags)                                        \
 	uint16_t cnxk_tim_arm_burst_##_name(                                   \
 		const struct rte_event_timer_adapter *adptr,                   \
 		struct rte_event_timer **tim, const uint16_t nb_timers);
 TIM_ARM_FASTPATH_MODES
 #undef FP
 
-#define FP(_name, _f1, flags)                                                  \
+#define FP(_name, _f2, _f1, flags)                                             \
 	uint16_t cnxk_tim_arm_tmo_tick_burst_##_name(                          \
 		const struct rte_event_timer_adapter *adptr,                   \
 		struct rte_event_timer **tim, const uint64_t timeout_tick,     \

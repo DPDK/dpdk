@@ -115,6 +115,15 @@ Runtime Config Options
 
     -a 0002:0e:00.0,tim_chnk_slots=1023
 
+- ``TIM enable arm/cancel statistics``
+
+  The ``tim_stats_ena`` devargs can be used to enable arm and cancel stats of
+  event timer adapter.
+
+  For example::
+
+    -a 0002:0e:00.0,tim_stats_ena=1
+
 - ``TIM limit max rings reserved``
 
   The ``tim_rings_lmt`` devargs can be used to limit the max number of TIM

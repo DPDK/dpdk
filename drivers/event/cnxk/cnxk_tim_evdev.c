@@ -81,21 +81,25 @@ cnxk_tim_set_fp_ops(struct cnxk_tim_ring *tim_ring)
 {
 	uint8_t prod_flag = !tim_ring->prod_type_sp;
 
-	/* [DFB/FB] [SP][MP]*/
-	const rte_event_timer_arm_burst_t arm_burst[2][2] = {
-#define FP(_name, _f2, _f1, flags) [_f2][_f1] = cnxk_tim_arm_burst_##_name,
+	/* [STATS] [DFB/FB] [SP][MP]*/
+	const rte_event_timer_arm_burst_t arm_burst[2][2][2] = {
+#define FP(_name, _f3, _f2, _f1, flags)                                        \
+	[_f3][_f2][_f1] = cnxk_tim_arm_burst_##_name,
 		TIM_ARM_FASTPATH_MODES
 #undef FP
 	};
 
-	const rte_event_timer_arm_tmo_tick_burst_t arm_tmo_burst[2] = {
-#define FP(_name, _f1, flags) [_f1] = cnxk_tim_arm_tmo_tick_burst_##_name,
+	const rte_event_timer_arm_tmo_tick_burst_t arm_tmo_burst[2][2] = {
+#define FP(_name, _f2, _f1, flags)                                             \
+	[_f2][_f1] = cnxk_tim_arm_tmo_tick_burst_##_name,
 		TIM_ARM_TMO_FASTPATH_MODES
 #undef FP
 	};
 
-	cnxk_tim_ops.arm_burst = arm_burst[tim_ring->ena_dfb][prod_flag];
-	cnxk_tim_ops.arm_tmo_tick_burst = arm_tmo_burst[tim_ring->ena_dfb];
+	cnxk_tim_ops.arm_burst =
+		arm_burst[tim_ring->enable_stats][tim_ring->ena_dfb][prod_flag];
+	cnxk_tim_ops.arm_tmo_tick_burst =
+		arm_tmo_burst[tim_ring->enable_stats][tim_ring->ena_dfb];
 	cnxk_tim_ops.cancel_burst = cnxk_tim_timer_cancel_burst;
 }
 
@@ -159,6 +163,7 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	tim_ring->nb_timers = rcfg->nb_timers;
 	tim_ring->chunk_sz = dev->chunk_sz;
 	tim_ring->disable_npa = dev->disable_npa;
+	tim_ring->enable_stats = dev->enable_stats;
 
 	if (tim_ring->disable_npa) {
 		tim_ring->nb_chunks =
@@ -241,6 +246,30 @@ cnxk_tim_ring_free(struct rte_event_timer_adapter *adptr)
 	return 0;
 }
 
+static int
+cnxk_tim_stats_get(const struct rte_event_timer_adapter *adapter,
+		   struct rte_event_timer_adapter_stats *stats)
+{
+	struct cnxk_tim_ring *tim_ring = adapter->data->adapter_priv;
+	uint64_t bkt_cyc = cnxk_tim_cntvct() - tim_ring->ring_start_cyc;
+
+	stats->evtim_exp_count =
+		__atomic_load_n(&tim_ring->arm_cnt, __ATOMIC_RELAXED);
+	stats->ev_enq_count = stats->evtim_exp_count;
+	stats->adapter_tick_count =
+		rte_reciprocal_divide_u64(bkt_cyc, &tim_ring->fast_div);
+	return 0;
+}
+
+static int
+cnxk_tim_stats_reset(const struct rte_event_timer_adapter *adapter)
+{
+	struct cnxk_tim_ring *tim_ring = adapter->data->adapter_priv;
+
+	__atomic_store_n(&tim_ring->arm_cnt, 0, __ATOMIC_RELAXED);
+	return 0;
+}
+
 int
 cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 		  uint32_t *caps,
@@ -257,6 +286,11 @@ cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 	cnxk_tim_ops.init = cnxk_tim_ring_create;
 	cnxk_tim_ops.uninit = cnxk_tim_ring_free;
 	cnxk_tim_ops.get_info = cnxk_tim_ring_info_get;
+
+	if (dev->enable_stats) {
+		cnxk_tim_ops.stats_get = cnxk_tim_stats_get;
+		cnxk_tim_ops.stats_reset = cnxk_tim_stats_reset;
+	}
 
 	/* Store evdev pointer for later use. */
 	dev->event_dev = (struct rte_eventdev *)(uintptr_t)evdev;
@@ -281,6 +315,8 @@ cnxk_tim_parse_devargs(struct rte_devargs *devargs, struct cnxk_tim_evdev *dev)
 			   &dev->disable_npa);
 	rte_kvargs_process(kvlist, CNXK_TIM_CHNK_SLOTS, &parse_kvargs_value,
 			   &dev->chunk_slots);
+	rte_kvargs_process(kvlist, CNXK_TIM_STATS_ENA, &parse_kvargs_flag,
+			   &dev->enable_stats);
 	rte_kvargs_process(kvlist, CNXK_TIM_RINGS_LMT, &parse_kvargs_value,
 			   &dev->min_ring_cnt);
 

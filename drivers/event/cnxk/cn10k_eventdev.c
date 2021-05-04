@@ -505,4 +505,5 @@ RTE_PMD_REGISTER_PARAM_STRING(event_cn10k, CNXK_SSO_XAE_CNT "=<int>"
 			      CN10K_SSO_GW_MODE "=<int>"
 			      CNXK_TIM_DISABLE_NPA "=1"
 			      CNXK_TIM_CHNK_SLOTS "=<int>"
-			      CNXK_TIM_RINGS_LMT "=<int>");
+			      CNXK_TIM_RINGS_LMT "=<int>"
+			      CNXK_TIM_STATS_ENA "=1");
