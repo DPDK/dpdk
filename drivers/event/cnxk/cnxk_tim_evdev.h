@@ -27,7 +27,7 @@ struct cnxk_tim_evdev {
 };
 
 static inline struct cnxk_tim_evdev *
-tim_priv_get(void)
+cnxk_tim_priv_get(void)
 {
 	const struct rte_memzone *mz;
 
@@ -37,6 +37,10 @@ tim_priv_get(void)
 
 	return mz->addr;
 }
+
+int cnxk_tim_caps_get(const struct rte_eventdev *dev, uint64_t flags,
+		      uint32_t *caps,
+		      const struct rte_event_timer_adapter_ops **ops);
 
 void cnxk_tim_init(struct roc_sso *sso);
 void cnxk_tim_fini(void);

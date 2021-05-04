@@ -420,6 +420,8 @@ static struct rte_eventdev_ops cn10k_sso_dev_ops = {
 	.port_unlink = cn10k_sso_port_unlink,
 	.timeout_ticks = cnxk_sso_timeout_ticks,
 
+	.timer_adapter_caps_get = cnxk_tim_caps_get,
+
 	.dump = cnxk_sso_dump,
 	.dev_start = cn10k_sso_start,
 	.dev_stop = cn10k_sso_stop,
