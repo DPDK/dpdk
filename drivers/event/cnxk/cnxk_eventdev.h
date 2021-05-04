@@ -45,6 +45,9 @@ void cnxk_sso_info_get(struct cnxk_sso_evdev *dev,
 int cnxk_sso_dev_validate(const struct rte_eventdev *event_dev);
 void cnxk_sso_queue_def_conf(struct rte_eventdev *event_dev, uint8_t queue_id,
 			     struct rte_event_queue_conf *queue_conf);
+int cnxk_sso_queue_setup(struct rte_eventdev *event_dev, uint8_t queue_id,
+			 const struct rte_event_queue_conf *queue_conf);
+void cnxk_sso_queue_release(struct rte_eventdev *event_dev, uint8_t queue_id);
 void cnxk_sso_port_def_conf(struct rte_eventdev *event_dev, uint8_t port_id,
 			    struct rte_event_port_conf *port_conf);
 

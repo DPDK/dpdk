@@ -62,6 +62,8 @@ static struct rte_eventdev_ops cn10k_sso_dev_ops = {
 	.dev_infos_get = cn10k_sso_info_get,
 	.dev_configure = cn10k_sso_dev_configure,
 	.queue_def_conf = cnxk_sso_queue_def_conf,
+	.queue_setup = cnxk_sso_queue_setup,
+	.queue_release = cnxk_sso_queue_release,
 	.port_def_conf = cnxk_sso_port_def_conf,
 };
 

@@ -86,6 +86,25 @@ cnxk_sso_queue_def_conf(struct rte_eventdev *event_dev, uint8_t queue_id,
 	queue_conf->priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
 }
 
+int
+cnxk_sso_queue_setup(struct rte_eventdev *event_dev, uint8_t queue_id,
+		     const struct rte_event_queue_conf *queue_conf)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
+	plt_sso_dbg("Queue=%d prio=%d", queue_id, queue_conf->priority);
+	/* Normalize <0-255> to <0-7> */
+	return roc_sso_hwgrp_set_priority(&dev->sso, queue_id, 0xFF, 0xFF,
+					  queue_conf->priority / 32);
+}
+
+void
+cnxk_sso_queue_release(struct rte_eventdev *event_dev, uint8_t queue_id)
+{
+	RTE_SET_USED(event_dev);
+	RTE_SET_USED(queue_id);
+}
+
 void
 cnxk_sso_port_def_conf(struct rte_eventdev *event_dev, uint8_t port_id,
 		       struct rte_event_port_conf *port_conf)
