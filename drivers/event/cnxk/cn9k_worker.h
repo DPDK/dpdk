@@ -270,4 +270,28 @@ uint16_t __rte_hot cn9k_sso_hws_dual_enq_fwd_burst(void *port,
 						   const struct rte_event ev[],
 						   uint16_t nb_events);
 
+uint16_t __rte_hot cn9k_sso_hws_deq(void *port, struct rte_event *ev,
+				    uint64_t timeout_ticks);
+uint16_t __rte_hot cn9k_sso_hws_deq_burst(void *port, struct rte_event ev[],
+					  uint16_t nb_events,
+					  uint64_t timeout_ticks);
+uint16_t __rte_hot cn9k_sso_hws_tmo_deq(void *port, struct rte_event *ev,
+					uint64_t timeout_ticks);
+uint16_t __rte_hot cn9k_sso_hws_tmo_deq_burst(void *port, struct rte_event ev[],
+					      uint16_t nb_events,
+					      uint64_t timeout_ticks);
+
+uint16_t __rte_hot cn9k_sso_hws_dual_deq(void *port, struct rte_event *ev,
+					 uint64_t timeout_ticks);
+uint16_t __rte_hot cn9k_sso_hws_dual_deq_burst(void *port,
+					       struct rte_event ev[],
+					       uint16_t nb_events,
+					       uint64_t timeout_ticks);
+uint16_t __rte_hot cn9k_sso_hws_dual_tmo_deq(void *port, struct rte_event *ev,
+					     uint64_t timeout_ticks);
+uint16_t __rte_hot cn9k_sso_hws_dual_tmo_deq_burst(void *port,
+						   struct rte_event ev[],
+						   uint16_t nb_events,
+						   uint64_t timeout_ticks);
+
 #endif

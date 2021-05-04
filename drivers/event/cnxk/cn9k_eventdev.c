@@ -162,12 +162,27 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 	event_dev->enqueue_new_burst = cn9k_sso_hws_enq_new_burst;
 	event_dev->enqueue_forward_burst = cn9k_sso_hws_enq_fwd_burst;
 
+	event_dev->dequeue = cn9k_sso_hws_deq;
+	event_dev->dequeue_burst = cn9k_sso_hws_deq_burst;
+	if (dev->deq_tmo_ns) {
+		event_dev->dequeue = cn9k_sso_hws_tmo_deq;
+		event_dev->dequeue_burst = cn9k_sso_hws_tmo_deq_burst;
+	}
+
 	if (dev->dual_ws) {
 		event_dev->enqueue = cn9k_sso_hws_dual_enq;
 		event_dev->enqueue_burst = cn9k_sso_hws_dual_enq_burst;
 		event_dev->enqueue_new_burst = cn9k_sso_hws_dual_enq_new_burst;
 		event_dev->enqueue_forward_burst =
 			cn9k_sso_hws_dual_enq_fwd_burst;
+
+		event_dev->dequeue = cn9k_sso_hws_dual_deq;
+		event_dev->dequeue_burst = cn9k_sso_hws_dual_deq_burst;
+		if (dev->deq_tmo_ns) {
+			event_dev->dequeue = cn9k_sso_hws_dual_tmo_deq;
+			event_dev->dequeue_burst =
+				cn9k_sso_hws_dual_tmo_deq_burst;
+		}
 	}
 }
 

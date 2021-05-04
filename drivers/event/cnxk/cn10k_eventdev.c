@@ -135,11 +135,19 @@ cn10k_sso_rsrc_init(void *arg, uint8_t hws, uint8_t hwgrp)
 static void
 cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 {
-	PLT_SET_USED(event_dev);
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
 	event_dev->enqueue = cn10k_sso_hws_enq;
 	event_dev->enqueue_burst = cn10k_sso_hws_enq_burst;
 	event_dev->enqueue_new_burst = cn10k_sso_hws_enq_new_burst;
 	event_dev->enqueue_forward_burst = cn10k_sso_hws_enq_fwd_burst;
+
+	event_dev->dequeue = cn10k_sso_hws_deq;
+	event_dev->dequeue_burst = cn10k_sso_hws_deq_burst;
+	if (dev->is_timeout_deq) {
+		event_dev->dequeue = cn10k_sso_hws_tmo_deq;
+		event_dev->dequeue_burst = cn10k_sso_hws_tmo_deq_burst;
+	}
 }
 
 static void
