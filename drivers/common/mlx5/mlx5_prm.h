@@ -1119,6 +1119,8 @@ enum {
 			(1ULL << MLX5_GENERAL_OBJ_TYPE_GENEVE_TLV_OPT)
 #define MLX5_GENERAL_OBJ_TYPES_CAP_DEK \
 			(1ULL << MLX5_GENERAL_OBJ_TYPE_DEK)
+#define MLX5_GENERAL_OBJ_TYPES_CAP_IMPORT_KEK \
+			(1ULL << MLX5_GENERAL_OBJ_TYPE_IMPORT_KEK)
 
 enum {
 	MLX5_HCA_CAP_OPMOD_GET_MAX   = 0,
@@ -2412,6 +2414,7 @@ enum {
 	MLX5_GENERAL_OBJ_TYPE_DEK = 0x000c,
 	MLX5_GENERAL_OBJ_TYPE_VIRTQ = 0x000d,
 	MLX5_GENERAL_OBJ_TYPE_VIRTIO_Q_COUNTERS = 0x001c,
+	MLX5_GENERAL_OBJ_TYPE_IMPORT_KEK = 0x001d,
 	MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH = 0x0022,
 	MLX5_GENERAL_OBJ_TYPE_FLOW_METER_ASO = 0x0024,
 	MLX5_GENERAL_OBJ_TYPE_FLOW_HIT_ASO = 0x0025,
@@ -2507,6 +2510,21 @@ struct mlx5_ifc_dek_bits {
 struct mlx5_ifc_create_dek_in_bits {
 	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
 	struct mlx5_ifc_dek_bits dek;
+};
+
+struct mlx5_ifc_import_kek_bits {
+	u8 modify_field_select[0x40];
+	u8 state[0x8];
+	u8 reserved_at_48[0xc];
+	u8 key_size[0x4];
+	u8 reserved_at_58[0x1a8];
+	u8 key[0x400];
+	u8 reserved_at_600[0x200];
+};
+
+struct mlx5_ifc_create_import_kek_in_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_import_kek_bits import_kek;
 };
 
 enum {

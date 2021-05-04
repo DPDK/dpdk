@@ -141,6 +141,7 @@ struct mlx5_hca_attr {
 	uint32_t crypto:1; /* Crypto engine is supported. */
 	uint32_t aes_xts:1; /* AES-XTS crypto is supported. */
 	uint32_t dek:1; /* General obj type DEK is supported. */
+	uint32_t import_kek:1; /* General obj type IMPORT_KEK supported. */
 	uint32_t regexp_num_of_engines;
 	uint32_t log_max_ft_sampler_num:8;
 	uint32_t geneve_tlv_opt;
@@ -449,6 +450,13 @@ struct mlx5_devx_dek_attr {
 	uint8_t key[MLX5_CRYPTO_KEY_MAX_SIZE];
 };
 
+struct mlx5_devx_import_kek_attr {
+	uint64_t modify_field_select;
+	uint32_t state:8;
+	uint32_t key_size:4;
+	uint8_t key[MLX5_CRYPTO_KEY_MAX_SIZE];
+};
+
 /* mlx5_devx_cmds.c */
 
 __rte_internal
@@ -604,5 +612,10 @@ struct mlx5_devx_obj *mlx5_devx_cmd_create_flow_meter_aso_obj(void *ctx,
 __rte_internal
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_dek_obj(void *ctx, struct mlx5_devx_dek_attr *attr);
+
+__rte_internal
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_import_kek_obj(void *ctx,
+				    struct mlx5_devx_import_kek_attr *attr);
 
 #endif /* RTE_PMD_MLX5_DEVX_CMDS_H_ */

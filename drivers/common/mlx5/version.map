@@ -21,6 +21,7 @@ INTERNAL {
 	mlx5_devx_cmd_create_flow_hit_aso_obj;
 	mlx5_devx_cmd_create_flow_meter_aso_obj;
 	mlx5_devx_cmd_create_geneve_tlv_option;
+	mlx5_devx_cmd_create_import_kek_obj;
 	mlx5_devx_cmd_create_qp;
 	mlx5_devx_cmd_create_rq;
 	mlx5_devx_cmd_create_rqt;

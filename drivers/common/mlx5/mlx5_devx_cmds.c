@@ -752,6 +752,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 				  MLX5_GENERAL_OBJ_TYPES_CAP_GENEVE_TLV_OPT);
 	attr->dek = !!(general_obj_types_supported &
 		       MLX5_GENERAL_OBJ_TYPES_CAP_DEK);
+	attr->import_kek = !!(general_obj_types_supported &
+			      MLX5_GENERAL_OBJ_TYPES_CAP_IMPORT_KEK);
 	/* Add reading of other GENERAL_OBJ_TYPES_CAP bits above this line. */
 	attr->log_max_cq = MLX5_GET(cmd_hca_cap, hcattr, log_max_cq);
 	attr->log_max_qp = MLX5_GET(cmd_hca_cap, hcattr, log_max_qp);
@@ -2456,4 +2458,52 @@ mlx5_devx_cmd_create_dek_obj(void *ctx, struct mlx5_devx_dek_attr *attr)
 	}
 	dek_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
 	return dek_obj;
+}
+
+/**
+ * Create general object of type IMPORT_KEK using DevX API.
+ *
+ * @param[in] ctx
+ *   Context returned from mlx5 open_device() glue function.
+ * @param [in] attr
+ *   Pointer to IMPORT_KEK attributes structure.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_import_kek_obj(void *ctx,
+				    struct mlx5_devx_import_kek_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_import_kek_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
+	struct mlx5_devx_obj *import_kek_obj = NULL;
+	void *ptr = NULL, *key_addr = NULL;
+
+	import_kek_obj = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*import_kek_obj),
+				     0, SOCKET_ID_ANY);
+	if (import_kek_obj == NULL) {
+		DRV_LOG(ERR, "Failed to allocate IMPORT_KEK object data");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	ptr = MLX5_ADDR_OF(create_import_kek_in, in, hdr);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, opcode,
+		 MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_IMPORT_KEK);
+	ptr = MLX5_ADDR_OF(create_import_kek_in, in, import_kek);
+	MLX5_SET(import_kek, ptr, key_size, attr->key_size);
+	key_addr = MLX5_ADDR_OF(import_kek, ptr, key);
+	memcpy(key_addr, (void *)(attr->key), MLX5_CRYPTO_KEY_MAX_SIZE);
+	import_kek_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+							 out, sizeof(out));
+	if (import_kek_obj->obj == NULL) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to create IMPORT_KEK object using DevX.");
+		mlx5_free(import_kek_obj);
+		return NULL;
+	}
+	import_kek_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
+	return import_kek_obj;
 }
