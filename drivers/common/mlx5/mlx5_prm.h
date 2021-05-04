@@ -412,6 +412,37 @@ struct mlx5_cqe_ts {
 	uint8_t op_own;
 };
 
+struct mlx5_wqe_rseg {
+	uint64_t raddr;
+	uint32_t rkey;
+	uint32_t reserved;
+} __rte_packed;
+
+#define MLX5_UMRC_IF_OFFSET 31u
+#define MLX5_UMRC_KO_OFFSET 16u
+#define MLX5_UMRC_TO_BS_OFFSET 0u
+
+struct mlx5_wqe_umr_cseg {
+	uint32_t if_cf_toe_cq_res;
+	uint32_t ko_to_bs;
+	uint64_t mkey_mask;
+	uint32_t rsvd1[8];
+} __rte_packed;
+
+struct mlx5_wqe_mkey_cseg {
+	uint32_t fr_res_af_sf;
+	uint32_t qpn_mkey;
+	uint32_t reserved2;
+	uint32_t flags_pd;
+	uint64_t start_addr;
+	uint64_t len;
+	uint32_t bsf_octword_size;
+	uint32_t reserved3[4];
+	uint32_t translations_octword_size;
+	uint32_t res4_lps;
+	uint32_t reserved;
+} __rte_packed;
+
 enum {
 	MLX5_BSF_SIZE_16B = 0x0,
 	MLX5_BSF_SIZE_32B = 0x1,
@@ -477,6 +508,30 @@ struct mlx5_wqe_umr_bsf_seg {
 	uint64_t keytag;
 	uint32_t reserved2[4];
 } __rte_packed;
+
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
+struct mlx5_umr_wqe {
+	struct mlx5_wqe_cseg ctr;
+	struct mlx5_wqe_umr_cseg ucseg;
+	struct mlx5_wqe_mkey_cseg mkc;
+	union {
+		struct mlx5_wqe_dseg kseg[0];
+		struct mlx5_wqe_umr_bsf_seg bsf[0];
+	};
+} __rte_packed;
+
+struct mlx5_rdma_write_wqe {
+	struct mlx5_wqe_cseg ctr;
+	struct mlx5_wqe_rseg rseg;
+	struct mlx5_wqe_dseg dseg[0];
+} __rte_packed;
+
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-Wpedantic"
+#endif
 
 /* GGA */
 /* MMO metadata segment */
