@@ -5,6 +5,91 @@
 #include "cnxk_eventdev.h"
 
 static void
+cn10k_init_hws_ops(struct cn10k_sso_hws *ws, uintptr_t base)
+{
+	ws->tag_wqe_op = base + SSOW_LF_GWS_WQE0;
+	ws->getwrk_op = base + SSOW_LF_GWS_OP_GET_WORK0;
+	ws->updt_wqe_op = base + SSOW_LF_GWS_OP_UPD_WQP_GRP1;
+	ws->swtag_norm_op = base + SSOW_LF_GWS_OP_SWTAG_NORM;
+	ws->swtag_untag_op = base + SSOW_LF_GWS_OP_SWTAG_UNTAG;
+	ws->swtag_flush_op = base + SSOW_LF_GWS_OP_SWTAG_FLUSH;
+	ws->swtag_desched_op = base + SSOW_LF_GWS_OP_SWTAG_DESCHED;
+}
+
+static uint32_t
+cn10k_sso_gw_mode_wdata(struct cnxk_sso_evdev *dev)
+{
+	uint32_t wdata = BIT(16) | 1;
+
+	switch (dev->gw_mode) {
+	case CN10K_GW_MODE_NONE:
+	default:
+		break;
+	case CN10K_GW_MODE_PREF:
+		wdata |= BIT(19);
+		break;
+	case CN10K_GW_MODE_PREF_WFE:
+		wdata |= BIT(20) | BIT(19);
+		break;
+	}
+
+	return wdata;
+}
+
+static void *
+cn10k_sso_init_hws_mem(void *arg, uint8_t port_id)
+{
+	struct cnxk_sso_evdev *dev = arg;
+	struct cn10k_sso_hws *ws;
+
+	/* Allocate event port memory */
+	ws = rte_zmalloc("cn10k_ws",
+			 sizeof(struct cn10k_sso_hws) + RTE_CACHE_LINE_SIZE,
+			 RTE_CACHE_LINE_SIZE);
+	if (ws == NULL) {
+		plt_err("Failed to alloc memory for port=%d", port_id);
+		return NULL;
+	}
+
+	/* First cache line is reserved for cookie */
+	ws = (struct cn10k_sso_hws *)((uint8_t *)ws + RTE_CACHE_LINE_SIZE);
+	ws->base = roc_sso_hws_base_get(&dev->sso, port_id);
+	cn10k_init_hws_ops(ws, ws->base);
+	ws->hws_id = port_id;
+	ws->swtag_req = 0;
+	ws->gw_wdata = cn10k_sso_gw_mode_wdata(dev);
+	ws->lmt_base = dev->sso.lmt_base;
+
+	return ws;
+}
+
+static void
+cn10k_sso_hws_setup(void *arg, void *hws, uintptr_t *grps_base)
+{
+	struct cnxk_sso_evdev *dev = arg;
+	struct cn10k_sso_hws *ws = hws;
+	uint64_t val;
+
+	rte_memcpy(ws->grps_base, grps_base,
+		   sizeof(uintptr_t) * CNXK_SSO_MAX_HWGRP);
+	ws->fc_mem = dev->fc_mem;
+	ws->xaq_lmt = dev->xaq_lmt;
+
+	/* Set get_work timeout for HWS */
+	val = NSEC2USEC(dev->deq_tmo_ns) - 1;
+	plt_write64(val, ws->base + SSOW_LF_GWS_NW_TIM);
+}
+
+static void
+cn10k_sso_hws_release(void *arg, void *hws)
+{
+	struct cn10k_sso_hws *ws = hws;
+
+	RTE_SET_USED(arg);
+	memset(ws, 0, sizeof(*ws));
+}
+
+static void
 cn10k_sso_set_rsrc(void *arg)
 {
 	struct cnxk_sso_evdev *dev = arg;
@@ -59,10 +144,44 @@ cn10k_sso_dev_configure(const struct rte_eventdev *event_dev)
 	if (rc < 0)
 		goto cnxk_rsrc_fini;
 
+	rc = cnxk_setup_event_ports(event_dev, cn10k_sso_init_hws_mem,
+				    cn10k_sso_hws_setup);
+	if (rc < 0)
+		goto cnxk_rsrc_fini;
+
 	return 0;
 cnxk_rsrc_fini:
 	roc_sso_rsrc_fini(&dev->sso);
+	dev->nb_event_ports = 0;
 	return rc;
+}
+
+static int
+cn10k_sso_port_setup(struct rte_eventdev *event_dev, uint8_t port_id,
+		     const struct rte_event_port_conf *port_conf)
+{
+
+	RTE_SET_USED(port_conf);
+	return cnxk_sso_port_setup(event_dev, port_id, cn10k_sso_hws_setup);
+}
+
+static void
+cn10k_sso_port_release(void *port)
+{
+	struct cnxk_sso_hws_cookie *gws_cookie = cnxk_sso_hws_get_cookie(port);
+	struct cnxk_sso_evdev *dev;
+
+	if (port == NULL)
+		return;
+
+	dev = cnxk_sso_pmd_priv(gws_cookie->event_dev);
+	if (!gws_cookie->configured)
+		goto free;
+
+	cn10k_sso_hws_release(dev, port);
+	memset(gws_cookie, 0, sizeof(*gws_cookie));
+free:
+	rte_free(gws_cookie);
 }
 
 static struct rte_eventdev_ops cn10k_sso_dev_ops = {
@@ -72,6 +191,8 @@ static struct rte_eventdev_ops cn10k_sso_dev_ops = {
 	.queue_setup = cnxk_sso_queue_setup,
 	.queue_release = cnxk_sso_queue_release,
 	.port_def_conf = cnxk_sso_port_def_conf,
+	.port_setup = cn10k_sso_port_setup,
+	.port_release = cn10k_sso_port_release,
 };
 
 static int

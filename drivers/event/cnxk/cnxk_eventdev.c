@@ -126,6 +126,42 @@ alloc_fail:
 }
 
 int
+cnxk_setup_event_ports(const struct rte_eventdev *event_dev,
+		       cnxk_sso_init_hws_mem_t init_hws_fn,
+		       cnxk_sso_hws_setup_t setup_hws_fn)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	int i;
+
+	for (i = 0; i < dev->nb_event_ports; i++) {
+		struct cnxk_sso_hws_cookie *ws_cookie;
+		void *ws;
+
+		/* Free memory prior to re-allocation if needed */
+		if (event_dev->data->ports[i] != NULL)
+			ws = event_dev->data->ports[i];
+		else
+			ws = init_hws_fn(dev, i);
+		if (ws == NULL)
+			goto hws_fini;
+		ws_cookie = cnxk_sso_hws_get_cookie(ws);
+		ws_cookie->event_dev = event_dev;
+		ws_cookie->configured = 1;
+		event_dev->data->ports[i] = ws;
+		cnxk_sso_port_setup((struct rte_eventdev *)(uintptr_t)event_dev,
+				    i, setup_hws_fn);
+	}
+
+	return 0;
+hws_fini:
+	for (i = i - 1; i >= 0; i--) {
+		event_dev->data->ports[i] = NULL;
+		rte_free(cnxk_sso_hws_get_cookie(event_dev->data->ports[i]));
+	}
+	return -ENOMEM;
+}
+
+int
 cnxk_sso_dev_validate(const struct rte_eventdev *event_dev)
 {
 	struct rte_event_dev_config *conf = &event_dev->data->dev_conf;
@@ -223,6 +259,35 @@ cnxk_sso_port_def_conf(struct rte_eventdev *event_dev, uint8_t port_id,
 	port_conf->new_event_threshold = dev->max_num_events;
 	port_conf->dequeue_depth = 1;
 	port_conf->enqueue_depth = 1;
+}
+
+int
+cnxk_sso_port_setup(struct rte_eventdev *event_dev, uint8_t port_id,
+		    cnxk_sso_hws_setup_t hws_setup_fn)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uintptr_t grps_base[CNXK_SSO_MAX_HWGRP] = {0};
+	uint16_t q;
+
+	plt_sso_dbg("Port=%d", port_id);
+	if (event_dev->data->ports[port_id] == NULL) {
+		plt_err("Invalid port Id %d", port_id);
+		return -EINVAL;
+	}
+
+	for (q = 0; q < dev->nb_event_queues; q++) {
+		grps_base[q] = roc_sso_hwgrp_base_get(&dev->sso, q);
+		if (grps_base[q] == 0) {
+			plt_err("Failed to get grp[%d] base addr", q);
+			return -EINVAL;
+		}
+	}
+
+	hws_setup_fn(dev, event_dev->data->ports[port_id], grps_base);
+	plt_sso_dbg("Port=%d ws=%p", port_id, event_dev->data->ports[port_id]);
+	rte_mb();
+
+	return 0;
 }
 
 static void

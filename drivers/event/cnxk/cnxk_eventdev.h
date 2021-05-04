@@ -17,12 +17,22 @@
 #define CNXK_SSO_XAE_CNT  "xae_cnt"
 #define CNXK_SSO_GGRP_QOS "qos"
 
+#define NSEC2USEC(__ns) ((__ns) / 1E3)
 #define USEC2NSEC(__us) ((__us)*1E3)
 
+#define CNXK_SSO_MAX_HWGRP     (RTE_EVENT_MAX_QUEUES_PER_DEV + 1)
 #define CNXK_SSO_FC_NAME       "cnxk_evdev_xaq_fc"
 #define CNXK_SSO_MZ_NAME       "cnxk_evdev_mz"
 #define CNXK_SSO_XAQ_CACHE_CNT (0x7)
 #define CNXK_SSO_XAQ_SLACK     (8)
+
+#define CN10K_GW_MODE_NONE     0
+#define CN10K_GW_MODE_PREF     1
+#define CN10K_GW_MODE_PREF_WFE 2
+
+typedef void *(*cnxk_sso_init_hws_mem_t)(void *dev, uint8_t port_id);
+typedef void (*cnxk_sso_hws_setup_t)(void *dev, void *ws, uintptr_t *grp_base);
+typedef void (*cnxk_sso_hws_release_t)(void *dev, void *ws);
 
 struct cnxk_sso_qos {
 	uint16_t queue;
@@ -53,6 +63,76 @@ struct cnxk_sso_evdev {
 	struct cnxk_sso_qos *qos_parse_data;
 	/* CN9K */
 	uint8_t dual_ws;
+	/* CN10K */
+	uint8_t gw_mode;
+} __rte_cache_aligned;
+
+/* CN10K HWS ops */
+#define CN10K_SSO_HWS_OPS                                                      \
+	uintptr_t swtag_desched_op;                                            \
+	uintptr_t swtag_flush_op;                                              \
+	uintptr_t swtag_untag_op;                                              \
+	uintptr_t swtag_norm_op;                                               \
+	uintptr_t updt_wqe_op;                                                 \
+	uintptr_t tag_wqe_op;                                                  \
+	uintptr_t getwrk_op
+
+struct cn10k_sso_hws {
+	/* Get Work Fastpath data */
+	CN10K_SSO_HWS_OPS;
+	uint32_t gw_wdata;
+	uint8_t swtag_req;
+	uint8_t hws_id;
+	/* Add Work Fastpath data */
+	uint64_t xaq_lmt __rte_cache_aligned;
+	uint64_t *fc_mem;
+	uintptr_t grps_base[CNXK_SSO_MAX_HWGRP];
+	uint64_t base;
+	uintptr_t lmt_base;
+} __rte_cache_aligned;
+
+/* CN9K HWS ops */
+#define CN9K_SSO_HWS_OPS                                                       \
+	uintptr_t swtag_desched_op;                                            \
+	uintptr_t swtag_flush_op;                                              \
+	uintptr_t swtag_norm_op;                                               \
+	uintptr_t getwrk_op;                                                   \
+	uintptr_t tag_op;                                                      \
+	uintptr_t wqp_op
+
+/* Event port a.k.a GWS */
+struct cn9k_sso_hws {
+	/* Get Work Fastpath data */
+	CN9K_SSO_HWS_OPS;
+	uint8_t swtag_req;
+	uint8_t hws_id;
+	/* Add Work Fastpath data */
+	uint64_t xaq_lmt __rte_cache_aligned;
+	uint64_t *fc_mem;
+	uintptr_t grps_base[CNXK_SSO_MAX_HWGRP];
+	uint64_t base;
+} __rte_cache_aligned;
+
+struct cn9k_sso_hws_state {
+	CN9K_SSO_HWS_OPS;
+};
+
+struct cn9k_sso_hws_dual {
+	/* Get Work Fastpath data */
+	struct cn9k_sso_hws_state ws_state[2]; /* Ping and Pong */
+	uint8_t swtag_req;
+	uint8_t vws; /* Ping pong bit */
+	uint8_t hws_id;
+	/* Add Work Fastpath data */
+	uint64_t xaq_lmt __rte_cache_aligned;
+	uint64_t *fc_mem;
+	uintptr_t grps_base[CNXK_SSO_MAX_HWGRP];
+	uint64_t base[2];
+} __rte_cache_aligned;
+
+struct cnxk_sso_hws_cookie {
+	const struct rte_eventdev *event_dev;
+	bool configured;
 } __rte_cache_aligned;
 
 static inline int
@@ -70,6 +150,12 @@ cnxk_sso_pmd_priv(const struct rte_eventdev *event_dev)
 	return event_dev->data->dev_private;
 }
 
+static inline struct cnxk_sso_hws_cookie *
+cnxk_sso_hws_get_cookie(void *ws)
+{
+	return RTE_PTR_SUB(ws, sizeof(struct cnxk_sso_hws_cookie));
+}
+
 /* Configuration functions */
 int cnxk_sso_xaq_allocate(struct cnxk_sso_evdev *dev);
 
@@ -80,6 +166,9 @@ int cnxk_sso_remove(struct rte_pci_device *pci_dev);
 void cnxk_sso_info_get(struct cnxk_sso_evdev *dev,
 		       struct rte_event_dev_info *dev_info);
 int cnxk_sso_dev_validate(const struct rte_eventdev *event_dev);
+int cnxk_setup_event_ports(const struct rte_eventdev *event_dev,
+			   cnxk_sso_init_hws_mem_t init_hws_mem,
+			   cnxk_sso_hws_setup_t hws_setup);
 void cnxk_sso_queue_def_conf(struct rte_eventdev *event_dev, uint8_t queue_id,
 			     struct rte_event_queue_conf *queue_conf);
 int cnxk_sso_queue_setup(struct rte_eventdev *event_dev, uint8_t queue_id,
@@ -87,5 +176,7 @@ int cnxk_sso_queue_setup(struct rte_eventdev *event_dev, uint8_t queue_id,
 void cnxk_sso_queue_release(struct rte_eventdev *event_dev, uint8_t queue_id);
 void cnxk_sso_port_def_conf(struct rte_eventdev *event_dev, uint8_t port_id,
 			    struct rte_event_port_conf *port_conf);
+int cnxk_sso_port_setup(struct rte_eventdev *event_dev, uint8_t port_id,
+			cnxk_sso_hws_setup_t hws_setup_fn);
 
 #endif /* __CNXK_EVENTDEV_H__ */
