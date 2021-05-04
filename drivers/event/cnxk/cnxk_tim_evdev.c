@@ -76,6 +76,18 @@ free:
 	return rc;
 }
 
+static void
+cnxk_tim_ring_info_get(const struct rte_event_timer_adapter *adptr,
+		       struct rte_event_timer_adapter_info *adptr_info)
+{
+	struct cnxk_tim_ring *tim_ring = adptr->data->adapter_priv;
+
+	adptr_info->max_tmo_ns = tim_ring->max_tout;
+	adptr_info->min_resolution_ns = tim_ring->tck_nsec;
+	rte_memcpy(&adptr_info->conf, &adptr->data->conf,
+		   sizeof(struct rte_event_timer_adapter_conf));
+}
+
 static int
 cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 {
@@ -218,6 +230,7 @@ cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 
 	cnxk_tim_ops.init = cnxk_tim_ring_create;
 	cnxk_tim_ops.uninit = cnxk_tim_ring_free;
+	cnxk_tim_ops.get_info = cnxk_tim_ring_info_get;
 
 	/* Store evdev pointer for later use. */
 	dev->event_dev = (struct rte_eventdev *)(uintptr_t)evdev;
