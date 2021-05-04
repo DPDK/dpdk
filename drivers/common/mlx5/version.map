@@ -70,6 +70,12 @@ INTERNAL {
 
 	mlx5_glue;
 
+	mlx5_hlist_create;
+	mlx5_hlist_lookup;
+	mlx5_hlist_register;
+	mlx5_hlist_unregister;
+	mlx5_hlist_destroy;
+
 	mlx5_malloc;
 	mlx5_malloc_mem_select;
 

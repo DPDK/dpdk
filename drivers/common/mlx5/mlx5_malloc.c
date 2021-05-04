@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "mlx5_common_utils.h"
+#include "mlx5_common_log.h"
 #include "mlx5_common_os.h"
 #include "mlx5_malloc.h"
 

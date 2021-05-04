@@ -4,7 +4,9 @@
 
 #include <stdlib.h>
 #include <rte_malloc.h>
-#include "mlx5_common_utils.h"
+#include <rte_class.h>
+
+#include "mlx5_common_log.h"
 #include "mlx5_common_pci.h"
 
 struct mlx5_pci_device {

@@ -10,7 +10,7 @@
 #include <rte_errno.h>
 
 #include "mlx5_common_mp.h"
-#include "mlx5_common_utils.h"
+#include "mlx5_common_log.h"
 #include "mlx5_malloc.h"
 
 /**

@@ -12,7 +12,7 @@
 
 #include "mlx5_prm.h"
 #include "mlx5_devx_cmds.h"
-#include "mlx5_common_utils.h"
+#include "mlx5_common_log.h"
 #include "mlx5_malloc.h"
 #include "mlx5_common.h"
 #include "mlx5_common_devx.h"

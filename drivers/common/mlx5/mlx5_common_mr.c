@@ -11,7 +11,7 @@
 #include "mlx5_glue.h"
 #include "mlx5_common_mp.h"
 #include "mlx5_common_mr.h"
-#include "mlx5_common_utils.h"
+#include "mlx5_common_log.h"
 #include "mlx5_malloc.h"
 
 struct mr_find_contig_memsegs_data {
