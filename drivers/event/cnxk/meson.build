@@ -18,6 +18,7 @@ sources = files(
         'cnxk_eventdev_selftest.c',
         'cnxk_eventdev_stats.c',
         'cnxk_tim_evdev.c',
+        'cnxk_tim_worker.c',
 )
 
 deps += ['bus_pci', 'common_cnxk']

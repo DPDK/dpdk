@@ -37,6 +37,36 @@
 #define CNXK_TIM_CHNK_SLOTS  "tim_chnk_slots"
 #define CNXK_TIM_RINGS_LMT   "tim_rings_lmt"
 
+#define TIM_BUCKET_W1_S_CHUNK_REMAINDER (48)
+#define TIM_BUCKET_W1_M_CHUNK_REMAINDER                                        \
+	((1ULL << (64 - TIM_BUCKET_W1_S_CHUNK_REMAINDER)) - 1)
+#define TIM_BUCKET_W1_S_LOCK (40)
+#define TIM_BUCKET_W1_M_LOCK                                                   \
+	((1ULL << (TIM_BUCKET_W1_S_CHUNK_REMAINDER - TIM_BUCKET_W1_S_LOCK)) - 1)
+#define TIM_BUCKET_W1_S_RSVD (35)
+#define TIM_BUCKET_W1_S_BSK  (34)
+#define TIM_BUCKET_W1_M_BSK                                                    \
+	((1ULL << (TIM_BUCKET_W1_S_RSVD - TIM_BUCKET_W1_S_BSK)) - 1)
+#define TIM_BUCKET_W1_S_HBT (33)
+#define TIM_BUCKET_W1_M_HBT                                                    \
+	((1ULL << (TIM_BUCKET_W1_S_BSK - TIM_BUCKET_W1_S_HBT)) - 1)
+#define TIM_BUCKET_W1_S_SBT (32)
+#define TIM_BUCKET_W1_M_SBT                                                    \
+	((1ULL << (TIM_BUCKET_W1_S_HBT - TIM_BUCKET_W1_S_SBT)) - 1)
+#define TIM_BUCKET_W1_S_NUM_ENTRIES (0)
+#define TIM_BUCKET_W1_M_NUM_ENTRIES                                            \
+	((1ULL << (TIM_BUCKET_W1_S_SBT - TIM_BUCKET_W1_S_NUM_ENTRIES)) - 1)
+
+#define TIM_BUCKET_SEMA (TIM_BUCKET_CHUNK_REMAIN)
+
+#define TIM_BUCKET_CHUNK_REMAIN                                                \
+	(TIM_BUCKET_W1_M_CHUNK_REMAINDER << TIM_BUCKET_W1_S_CHUNK_REMAINDER)
+
+#define TIM_BUCKET_LOCK (TIM_BUCKET_W1_M_LOCK << TIM_BUCKET_W1_S_LOCK)
+
+#define TIM_BUCKET_SEMA_WLOCK                                                  \
+	(TIM_BUCKET_CHUNK_REMAIN | (1ull << TIM_BUCKET_W1_S_LOCK))
+
 struct cnxk_tim_evdev {
 	struct roc_tim tim;
 	struct rte_eventdev *event_dev;
