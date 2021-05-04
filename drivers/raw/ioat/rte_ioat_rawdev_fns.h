@@ -140,7 +140,10 @@ struct rte_idxd_hw_desc {
 
 	uint32_t size;    /* length of data for op, or batch size */
 
-	/* 28 bytes of padding here */
+	uint16_t intr_handle; /* completion interrupt handle */
+
+	/* remaining 26 bytes are reserved */
+	uint16_t __reserved[13];
 } __rte_aligned(64);
 
 /**
