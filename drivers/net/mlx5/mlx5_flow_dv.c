@@ -14800,6 +14800,8 @@ flow_dv_action_query(struct rte_eth_dev *dev,
 	uint32_t act_idx = (uint32_t)(uintptr_t)handle;
 	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
 	uint32_t idx = act_idx & ((1u << MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1);
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_ct_action *ct;
 
 	switch (type) {
 	case MLX5_INDIRECT_ACTION_TYPE_AGE:
@@ -14815,6 +14817,23 @@ flow_dv_action_query(struct rte_eth_dev *dev,
 		return 0;
 	case MLX5_INDIRECT_ACTION_TYPE_COUNT:
 		return flow_dv_query_count(dev, idx, data, error);
+	case MLX5_INDIRECT_ACTION_TYPE_CT:
+		ct = flow_aso_ct_get_by_idx(dev, idx);
+		if (!ct->refcnt)
+			return rte_flow_error_set(error, EFAULT,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"CT object is inactive");
+		((struct rte_flow_action_conntrack *)data)->peer_port =
+							ct->peer;
+		((struct rte_flow_action_conntrack *)data)->is_original_dir =
+							ct->is_original;
+		if (mlx5_aso_ct_query_by_wqe(priv->sh, ct, data))
+			return rte_flow_error_set(error, EIO,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"Failed to query CT context");
+		return 0;
 	default:
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
