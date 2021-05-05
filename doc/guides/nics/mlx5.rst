@@ -108,6 +108,7 @@ Features
   flow group.
 - Flow metering, including meter policy API.
 - Flow integrity offload API.
+- Connection tracking.
 
 Limitations
 -----------
@@ -1694,6 +1695,11 @@ Supported hardware offloads
    |                       | | OFED 5.2      | | OFED 5.2      |
    |                       | | rdma-core 35  | | rdma-core 35  |
    |                       | | ConnectX-5    | | ConnectX-5    |
+   +-----------------------+-----------------+-----------------+
+   | Connection tracking   | |               | | DPDK 21.05    |
+   |                       | |     N/A       | | OFED 5.3      |
+   |                       | |               | | rdma-core 35  |
+   |                       | |               | | ConnectX-6 Dx |
    +-----------------------+-----------------+-----------------+
 
 .. table:: Minimal SW/HW versions for shared action offload

@@ -169,6 +169,7 @@ New Features
   * Added support for ASO (Advanced Steering Operation) meter.
   * Added support for ASO metering by PPS (packet per second).
   * Added support for the monitor policy of Power Management API.
+  * Added support for connection tracking.
 
 * **Updated NXP DPAA driver.**
 

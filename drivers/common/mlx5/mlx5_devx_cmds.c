@@ -878,6 +878,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->crypto = MLX5_GET(cmd_hca_cap, hcattr, crypto);
 	if (attr->crypto)
 		attr->aes_xts = MLX5_GET(cmd_hca_cap, hcattr, aes_xts);
+	attr->ct_offload = !!(MLX5_GET64(cmd_hca_cap, hcattr,
+					 general_obj_types) &
+			      MLX5_GENERAL_OBJ_TYPES_CAP_CONN_TRACK_OFFLOAD);
 	if (attr->qos.sup) {
 		MLX5_SET(query_hca_cap_in, in, op_mod,
 			 MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |

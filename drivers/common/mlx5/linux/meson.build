@@ -189,6 +189,8 @@ has_sym_args = [
             'MLX5_WQE_UMR_CTRL_FLAG_INLINE' ],
         [ 'HAVE_MLX5_DR_FLOW_DUMP_RULE', 'infiniband/mlx5dv.h',
             'mlx5dv_dump_dr_rule' ],
+        [ 'HAVE_MLX5_DR_ACTION_ASO_CT', 'infiniband/mlx5dv.h',
+            'MLX5DV_DR_ACTION_FLAGS_ASO_CT_DIRECTION_INITIATOR' ],
 ]
 config = configuration_data()
 foreach arg:has_sym_args
