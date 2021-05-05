@@ -170,9 +170,7 @@ handle_sync(const struct rte_mp_msg *msg, const void *peer)
 	resp->id = req->id;
 	resp->result = ret == 0 ? REQ_RESULT_SUCCESS : REQ_RESULT_FAIL;
 
-	rte_mp_reply(&reply, peer);
-
-	return 0;
+	return rte_mp_reply(&reply, peer);
 }
 
 static int
