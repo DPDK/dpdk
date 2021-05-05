@@ -1388,3 +1388,44 @@ data_handle:
 		mlx5_aso_ct_obj_analyze(profile, out_data);
 	return ret;
 }
+
+/*
+ * Make sure the conntrack context is synchronized with hardware before
+ * creating a flow rule that uses it.
+ *
+ * @param[in] sh
+ *   Pointer to shared device context.
+ * @param[in] ct
+ *   Pointer to connection tracking offload object.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_aso_ct_available(struct mlx5_dev_ctx_shared *sh,
+		      struct mlx5_aso_ct_action *ct)
+{
+	struct mlx5_aso_ct_pools_mng *mng = sh->ct_mng;
+	uint32_t poll_cqe_times = MLX5_CT_POLL_WQE_CQE_TIMES;
+	enum mlx5_aso_ct_state state =
+				__atomic_load_n(&ct->state, __ATOMIC_RELAXED);
+
+	if (state == ASO_CONNTRACK_FREE) {
+		rte_errno = ENXIO;
+		return -rte_errno;
+	} else if (state == ASO_CONNTRACK_READY ||
+		   state == ASO_CONNTRACK_QUERY) {
+		return 0;
+	}
+	do {
+		mlx5_aso_ct_completion_handle(mng);
+		state = __atomic_load_n(&ct->state, __ATOMIC_RELAXED);
+		if (state == ASO_CONNTRACK_READY ||
+		    state == ASO_CONNTRACK_QUERY)
+			return 0;
+		/* Waiting for CQE ready, consider should block or sleep. */
+		rte_delay_us_sleep(MLX5_ASO_WQE_CQE_RESPONSE_DELAY);
+	} while (--poll_cqe_times);
+	rte_errno = EBUSY;
+	return -rte_errno;
+}

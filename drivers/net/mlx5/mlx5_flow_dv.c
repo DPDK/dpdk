@@ -11775,6 +11775,7 @@ flow_dv_translate_create_conntrack(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EBUSY,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "Failed to update CT");
+	ct->is_original = !!pro->is_original_dir;
 	return idx;
 }
 
@@ -11933,6 +11934,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		int action_type = actions->type;
 		const struct rte_flow_action *found_action = NULL;
 		uint32_t jump_group = 0;
+		uint32_t ct_idx;
+		struct mlx5_aso_ct_action *ct;
 
 		if (!mlx5_flow_os_action_supported(action_type))
 			return rte_flow_error_set(error, ENOTSUP,
@@ -12385,6 +12388,26 @@ flow_dv_translate(struct rte_eth_dev *dev,
 					(dev, mhdr_res, actions, attr, error))
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_MODIFY_FIELD;
+			break;
+		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
+			ct_idx = (uint32_t)(uintptr_t)action->conf;
+			ct = flow_aso_ct_get_by_idx(dev, ct_idx);
+			if (mlx5_aso_ct_available(priv->sh, ct))
+				return rte_flow_error_set(error, rte_errno,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"CT is unavailable.");
+			if (ct->is_original)
+				dev_flow->dv.actions[actions_n] =
+							ct->dr_action_orig;
+			else
+				dev_flow->dv.actions[actions_n] =
+							ct->dr_action_rply;
+			flow->indirect_type = MLX5_INDIRECT_ACTION_TYPE_CT;
+			flow->ct = ct_idx;
+			__atomic_fetch_add(&ct->refcnt, 1, __ATOMIC_RELAXED);
+			actions_n++;
+			action_flags |= MLX5_FLOW_ACTION_CT;
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
@@ -13556,7 +13579,10 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 			mlx5_flow_meter_detach(priv, fm);
 		flow->meter = 0;
 	}
-	if (flow->age)
+	/* Keep the current age handling by default. */
+	if (flow->indirect_type == MLX5_INDIRECT_ACTION_TYPE_CT && flow->ct)
+		flow_dv_aso_ct_release(dev, flow->ct);
+	else if (flow->age)
 		flow_dv_aso_age_release(dev, flow->age);
 	if (flow->geneve_tlv_option) {
 		flow_dv_geneve_tlv_option_resource_release(dev);
