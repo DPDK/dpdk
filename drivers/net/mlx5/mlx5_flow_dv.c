@@ -11530,9 +11530,15 @@ flow_dv_aso_ct_release(struct rte_eth_dev *dev, uint32_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_ct_pools_mng *mng = priv->sh->ct_mng;
+	uint32_t ret;
 	struct mlx5_aso_ct_action *ct = flow_aso_ct_get_by_idx(dev, idx);
-	uint32_t ret = __atomic_sub_fetch(&ct->refcnt, 1, __ATOMIC_RELAXED);
+	enum mlx5_aso_ct_state state =
+			__atomic_load_n(&ct->state, __ATOMIC_RELAXED);
 
+	/* Cannot release when CT is in the ASO SQ. */
+	if (state == ASO_CONNTRACK_WAIT || state == ASO_CONNTRACK_QUERY)
+		return -1;
+	ret = __atomic_sub_fetch(&ct->refcnt, 1, __ATOMIC_RELAXED);
 	if (!ret) {
 		if (ct->dr_action_orig) {
 #ifdef HAVE_MLX5_DR_ACTION_ASO_CT
@@ -11548,6 +11554,8 @@ flow_dv_aso_ct_release(struct rte_eth_dev *dev, uint32_t idx)
 #endif
 			ct->dr_action_rply = NULL;
 		}
+		/* Clear the state to free, no need in 1st allocation. */
+		MLX5_ASO_CT_UPDATE_STATE(ct, ASO_CONNTRACK_FREE);
 		rte_spinlock_lock(&mng->ct_sl);
 		LIST_INSERT_HEAD(&mng->free_cts, ct, next);
 		rte_spinlock_unlock(&mng->ct_sl);
@@ -14069,6 +14077,12 @@ flow_dv_action_destroy(struct rte_eth_dev *dev,
 			 */
 			DRV_LOG(DEBUG, "Indirect age action %" PRIu32 " was"
 				" released with references %d.", idx, ret);
+		return 0;
+	case MLX5_INDIRECT_ACTION_TYPE_CT:
+		ret = flow_dv_aso_ct_release(dev, idx);
+		if (ret)
+			DRV_LOG(DEBUG, "Connection tracking object %u still "
+				"has references %d.", idx, ret);
 		return 0;
 	default:
 		return rte_flow_error_set(error, ENOTSUP,
