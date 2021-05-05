@@ -1616,6 +1616,10 @@ int mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow,
 void mlx5_flow_rxq_dynf_metadata_set(struct rte_eth_dev *dev);
 int mlx5_flow_get_aged_flows(struct rte_eth_dev *dev, void **contexts,
 			uint32_t nb_contexts, struct rte_flow_error *error);
+int mlx5_validate_action_ct(struct rte_eth_dev *dev,
+			    const struct rte_flow_action_conntrack *conntrack,
+			    struct rte_flow_error *error);
+
 
 /* mlx5_mp_os.c */
 

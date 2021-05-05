@@ -1687,6 +1687,37 @@ mlx5_flow_validate_action_count(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
+/*
+ * Validate the ASO CT action.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] conntrack
+ *   Pointer to the CT action profile.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_validate_action_ct(struct rte_eth_dev *dev,
+			const struct rte_flow_action_conntrack *conntrack,
+			struct rte_flow_error *error)
+{
+	RTE_SET_USED(dev);
+
+	if (conntrack->state > RTE_FLOW_CONNTRACK_STATE_TIME_WAIT)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "Invalid CT state");
+	if (conntrack->last_index > RTE_FLOW_CONNTRACK_FLAG_RST)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "Invalid last TCP packet flag");
+	return 0;
+}
+
 /**
  * Verify the @p attributes will be correctly understood by the NIC and store
  * them in the @p flow if everything is correct.
