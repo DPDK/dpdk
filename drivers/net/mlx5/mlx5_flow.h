@@ -46,6 +46,7 @@ enum {
 	MLX5_INDIRECT_ACTION_TYPE_RSS,
 	MLX5_INDIRECT_ACTION_TYPE_AGE,
 	MLX5_INDIRECT_ACTION_TYPE_COUNT,
+	MLX5_INDIRECT_ACTION_TYPE_CT,
 };
 
 /* Matches on selected register. */
@@ -1313,6 +1314,33 @@ mlx5_validate_integrity_item(const struct rte_flow_item_integrity *item)
 	test.ipv4_csum_ok = 0;
 	test.l4_csum_ok = 0;
 	return (test.value == 0);
+}
+
+/*
+ * Get ASO CT action by index.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] idx
+ *   Index to the ASO CT action.
+ *
+ * @return
+ *   The specified ASO CT action pointer.
+ */
+static inline struct mlx5_aso_ct_action *
+flow_aso_ct_get_by_idx(struct rte_eth_dev *dev, uint32_t idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_ct_pools_mng *mng = priv->sh->ct_mng;
+	struct mlx5_aso_ct_pool *pool;
+
+	idx--;
+	MLX5_ASSERT((idx / MLX5_ASO_CT_ACTIONS_PER_POOL) < mng->n);
+	/* Bit operation AND could be used. */
+	rte_rwlock_read_lock(&mng->resize_rwl);
+	pool = mng->pools[idx / MLX5_ASO_CT_ACTIONS_PER_POOL];
+	rte_rwlock_read_unlock(&mng->resize_rwl);
+	return &pool->actions[idx % MLX5_ASO_CT_ACTIONS_PER_POOL];
 }
 
 int mlx5_flow_group_to_table(struct rte_eth_dev *dev,

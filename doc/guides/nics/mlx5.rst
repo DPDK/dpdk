@@ -437,6 +437,7 @@ Limitations
 - Connection tracking:
 
   - Cannot co-exist with ASO meter, ASO age action in a single flow rule.
+  - Flow rules insertion rate and memory consumption need more optimization.
 
 Statistics
 ----------

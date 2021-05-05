@@ -11514,6 +11514,262 @@ flow_dv_prepare_counter(struct rte_eth_dev *dev,
 	return flow_dv_counter_get_by_idx(dev, flow->counter, NULL);
 }
 
+/*
+ * Release an ASO CT action.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] idx
+ *   Index of ASO CT action to release.
+ *
+ * @return
+ *   0 when CT action was removed, otherwise the number of references.
+ */
+static inline int
+flow_dv_aso_ct_release(struct rte_eth_dev *dev, uint32_t idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_ct_pools_mng *mng = priv->sh->ct_mng;
+	struct mlx5_aso_ct_action *ct = flow_aso_ct_get_by_idx(dev, idx);
+	uint32_t ret = __atomic_sub_fetch(&ct->refcnt, 1, __ATOMIC_RELAXED);
+
+	if (!ret) {
+		if (ct->dr_action_orig) {
+#ifdef HAVE_MLX5_DR_ACTION_ASO_CT
+			claim_zero(mlx5_glue->destroy_flow_action
+					(ct->dr_action_orig));
+#endif
+			ct->dr_action_orig = NULL;
+		}
+		if (ct->dr_action_rply) {
+#ifdef HAVE_MLX5_DR_ACTION_ASO_CT
+			claim_zero(mlx5_glue->destroy_flow_action
+					(ct->dr_action_rply));
+#endif
+			ct->dr_action_rply = NULL;
+		}
+		rte_spinlock_lock(&mng->ct_sl);
+		LIST_INSERT_HEAD(&mng->free_cts, ct, next);
+		rte_spinlock_unlock(&mng->ct_sl);
+	}
+	return ret;
+}
+
+/*
+ * Resize the ASO CT pools array by 64 pools.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value and rte_errno is set.
+ */
+static int
+flow_dv_aso_ct_pools_resize(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_ct_pools_mng *mng = priv->sh->ct_mng;
+	void *old_pools = mng->pools;
+	/* Magic number now, need a macro. */
+	uint32_t resize = mng->n + 64;
+	uint32_t mem_size = sizeof(struct mlx5_aso_ct_pool *) * resize;
+	void *pools = mlx5_malloc(MLX5_MEM_ZERO, mem_size, 0, SOCKET_ID_ANY);
+
+	if (!pools) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	rte_rwlock_write_lock(&mng->resize_rwl);
+	/* ASO SQ/QP was already initialized in the startup. */
+	if (old_pools) {
+		/* Realloc could be an alternative choice. */
+		rte_memcpy(pools, old_pools,
+			   mng->n * sizeof(struct mlx5_aso_ct_pool *));
+		mlx5_free(old_pools);
+	}
+	mng->n = resize;
+	mng->pools = pools;
+	rte_rwlock_write_unlock(&mng->resize_rwl);
+	return 0;
+}
+
+/*
+ * Create and initialize a new ASO CT pool.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[out] ct_free
+ *   Where to put the pointer of a new CT action.
+ *
+ * @return
+ *   The CT actions pool pointer and @p ct_free is set on success,
+ *   NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_aso_ct_pool *
+flow_dv_ct_pool_create(struct rte_eth_dev *dev,
+		       struct mlx5_aso_ct_action **ct_free)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_ct_pools_mng *mng = priv->sh->ct_mng;
+	struct mlx5_aso_ct_pool *pool = NULL;
+	struct mlx5_devx_obj *obj = NULL;
+	uint32_t i;
+	uint32_t log_obj_size = rte_log2_u32(MLX5_ASO_CT_ACTIONS_PER_POOL);
+
+	obj = mlx5_devx_cmd_create_conn_track_offload_obj(priv->sh->ctx,
+						priv->sh->pdn, log_obj_size);
+	if (!obj) {
+		rte_errno = ENODATA;
+		DRV_LOG(ERR, "Failed to create conn_track_offload_obj using DevX.");
+		return NULL;
+	}
+	pool = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*pool), 0, SOCKET_ID_ANY);
+	if (!pool) {
+		rte_errno = ENOMEM;
+		claim_zero(mlx5_devx_cmd_destroy(obj));
+		return NULL;
+	}
+	pool->devx_obj = obj;
+	pool->index = mng->next;
+	/* Resize pools array if there is no room for the new pool in it. */
+	if (pool->index == mng->n && flow_dv_aso_ct_pools_resize(dev)) {
+		claim_zero(mlx5_devx_cmd_destroy(obj));
+		mlx5_free(pool);
+		return NULL;
+	}
+	mng->pools[pool->index] = pool;
+	mng->next++;
+	/* Assign the first action in the new pool, the rest go to free list. */
+	*ct_free = &pool->actions[0];
+	/* Lock outside, the list operation is safe here. */
+	for (i = 1; i < MLX5_ASO_CT_ACTIONS_PER_POOL; i++) {
+		/* refcnt is 0 when allocating the memory. */
+		pool->actions[i].offset = i;
+		LIST_INSERT_HEAD(&mng->free_cts, &pool->actions[i], next);
+	}
+	return pool;
+}
+
+/*
+ * Allocate a ASO CT action from free list.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   Index to ASO CT action on success, 0 otherwise and rte_errno is set.
+ */
+static uint32_t
+flow_dv_aso_ct_alloc(struct rte_eth_dev *dev, struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_ct_pools_mng *mng = priv->sh->ct_mng;
+	struct mlx5_aso_ct_action *ct = NULL;
+	struct mlx5_aso_ct_pool *pool;
+	uint8_t reg_c;
+	uint32_t ct_idx;
+
+	MLX5_ASSERT(mng);
+	if (!priv->config.devx) {
+		rte_errno = ENOTSUP;
+		return 0;
+	}
+	/* Get a free CT action, if no, a new pool will be created. */
+	rte_spinlock_lock(&mng->ct_sl);
+	ct = LIST_FIRST(&mng->free_cts);
+	if (ct) {
+		LIST_REMOVE(ct, next);
+	} else if (!flow_dv_ct_pool_create(dev, &ct)) {
+		rte_spinlock_unlock(&mng->ct_sl);
+		rte_flow_error_set(error, rte_errno, RTE_FLOW_ERROR_TYPE_ACTION,
+				   NULL, "failed to create ASO CT pool");
+		return 0;
+	}
+	rte_spinlock_unlock(&mng->ct_sl);
+	pool = container_of(ct, struct mlx5_aso_ct_pool, actions[ct->offset]);
+	ct_idx = MLX5_MAKE_CT_IDX(pool->index, ct->offset);
+	/* 0: inactive, 1: created, 2+: used by flows. */
+	__atomic_store_n(&ct->refcnt, 1, __ATOMIC_RELAXED);
+	reg_c = mlx5_flow_get_reg_id(dev, MLX5_ASO_CONNTRACK, 0, error);
+	if (!ct->dr_action_orig) {
+#ifdef HAVE_MLX5_DR_ACTION_ASO_CT
+		ct->dr_action_orig = mlx5_glue->dv_create_flow_action_aso
+			(priv->sh->rx_domain, pool->devx_obj->obj,
+			 ct->offset,
+			 MLX5DV_DR_ACTION_FLAGS_ASO_CT_DIRECTION_INITIATOR,
+			 reg_c - REG_C_0);
+#else
+		RTE_SET_USED(reg_c);
+#endif
+		if (!ct->dr_action_orig) {
+			flow_dv_aso_ct_release(dev, ct_idx);
+			rte_flow_error_set(error, rte_errno,
+					   RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					   "failed to create ASO CT action");
+			return 0;
+		}
+	}
+	if (!ct->dr_action_rply) {
+#ifdef HAVE_MLX5_DR_ACTION_ASO_CT
+		ct->dr_action_rply = mlx5_glue->dv_create_flow_action_aso
+			(priv->sh->rx_domain, pool->devx_obj->obj,
+			 ct->offset,
+			 MLX5DV_DR_ACTION_FLAGS_ASO_CT_DIRECTION_RESPONDER,
+			 reg_c - REG_C_0);
+#endif
+		if (!ct->dr_action_rply) {
+			flow_dv_aso_ct_release(dev, ct_idx);
+			rte_flow_error_set(error, rte_errno,
+					   RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					   "failed to create ASO CT action");
+			return 0;
+		}
+	}
+	return ct_idx;
+}
+
+/*
+ * Create a conntrack object with context and actions by using ASO mechanism.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] pro
+ *   Pointer to conntrack information profile.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   Index to conntrack object on success, 0 otherwise.
+ */
+static uint32_t
+flow_dv_translate_create_conntrack(struct rte_eth_dev *dev,
+				   const struct rte_flow_action_conntrack *pro,
+				   struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_aso_ct_action *ct;
+	uint32_t idx;
+
+	if (!sh->ct_aso_en)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "Connection is not supported");
+	idx = flow_dv_aso_ct_alloc(dev, error);
+	if (!idx)
+		return rte_flow_error_set(error, rte_errno,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "Failed to allocate CT object");
+	ct = flow_aso_ct_get_by_idx(dev, idx);
+	if (mlx5_aso_ct_update_by_wqe(sh, ct, pro))
+		return rte_flow_error_set(error, EBUSY,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "Failed to update CT");
+	return idx;
+}
+
 /**
  * Fill the flow with DV spec, lock free
  * (mutex should be acquired by caller).
@@ -13744,6 +14000,12 @@ flow_dv_action_create(struct rte_eth_dev *dev,
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		ret = flow_dv_translate_create_counter(dev, NULL, NULL, NULL);
 		idx = (MLX5_INDIRECT_ACTION_TYPE_COUNT <<
+		       MLX5_INDIRECT_ACTION_TYPE_OFFSET) | ret;
+		break;
+	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
+		ret = flow_dv_translate_create_conntrack(dev, action->conf,
+							 err);
+		idx = (MLX5_INDIRECT_ACTION_TYPE_CT <<
 		       MLX5_INDIRECT_ACTION_TYPE_OFFSET) | ret;
 		break;
 	default:

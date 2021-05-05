@@ -992,6 +992,10 @@ struct mlx5_bond_info {
 /* Number of connection tracking objects per pool: must be a power of 2. */
 #define MLX5_ASO_CT_ACTIONS_PER_POOL 64
 
+/* Generate incremental and unique CT index from pool and offset. */
+#define MLX5_MAKE_CT_IDX(pool, offset) \
+	((pool) * MLX5_ASO_CT_ACTIONS_PER_POOL + (offset) + 1)
+
 /* ASO Conntrack state. */
 enum mlx5_aso_ct_state {
 	ASO_CONNTRACK_FREE, /* Inactive, in the free list. */
