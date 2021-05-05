@@ -329,7 +329,7 @@ main(int argc, char *argv[])
 	/* initialize all ports */
 	RTE_ETH_FOREACH_DEV(portid)
 		if (port_init(portid, mbuf_pool) != 0)
-			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu8"\n",
+			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n",
 					portid);
 
 	if (rte_lcore_count() > 1)
