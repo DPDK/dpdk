@@ -2350,6 +2350,56 @@ mlx5_devx_cmd_create_flow_meter_aso_obj(void *ctx, uint32_t pd,
 	return flow_meter_aso_obj;
 }
 
+/*
+ * Create general object of type CONN_TRACK_OFFLOAD using DevX API.
+ *
+ * @param[in] ctx
+ *   Context returned from mlx5 open_device() glue function.
+ * @param [in] pd
+ *   PD value to associate the CONN_TRACK_OFFLOAD ASO object with.
+ * @param [in] log_obj_size
+ *   log_obj_size to allocate its power of 2 * objects
+ *   in one CONN_TRACK_OFFLOAD bulk allocation.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_conn_track_offload_obj(void *ctx, uint32_t pd,
+					    uint32_t log_obj_size)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_conn_track_aso_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)];
+	struct mlx5_devx_obj *ct_aso_obj;
+	void *ptr;
+
+	ct_aso_obj = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*ct_aso_obj),
+				 0, SOCKET_ID_ANY);
+	if (!ct_aso_obj) {
+		DRV_LOG(ERR, "Failed to allocate CONN_TRACK_OFFLOAD object.");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	ptr = MLX5_ADDR_OF(create_conn_track_aso_in, in, hdr);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, opcode,
+		 MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_CONN_TRACK_OFFLOAD);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, log_obj_range, log_obj_size);
+	ptr = MLX5_ADDR_OF(create_conn_track_aso_in, in, conn_track_offload);
+	MLX5_SET(conn_track_offload, ptr, conn_track_aso_access_pd, pd);
+	ct_aso_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+						     out, sizeof(out));
+	if (!ct_aso_obj->obj) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to create CONN_TRACK_OFFLOAD obj by using DevX.");
+		mlx5_free(ct_aso_obj);
+		return NULL;
+	}
+	ct_aso_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
+	return ct_aso_obj;
+}
+
 /**
  * Create general object of type GENEVE TLV option using DevX API.
  *

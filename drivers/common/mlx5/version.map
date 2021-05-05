@@ -15,6 +15,7 @@ INTERNAL {
 	mlx5_devx_alloc_uar; # WINDOWS_NO_EXPORT
 
 	mlx5_devx_cmd_alloc_pd;
+	mlx5_devx_cmd_create_conn_track_offload_obj;
 	mlx5_devx_cmd_create_cq;
 	mlx5_devx_cmd_create_credential_obj;
 	mlx5_devx_cmd_create_crypto_login_obj;
