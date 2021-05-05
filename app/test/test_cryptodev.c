@@ -2630,6 +2630,21 @@ create_wireless_algo_auth_cipher_operation(
 	iv_ptr += cipher_iv_len;
 	rte_memcpy(iv_ptr, auth_iv, auth_iv_len);
 
+	/* Only copy over the offset data needed from src to dst in OOP,
+	 * if the auth and cipher offsets are not aligned
+	 */
+	if (op_mode == OUT_OF_PLACE) {
+		if (cipher_offset > auth_offset)
+			rte_memcpy(
+				rte_pktmbuf_mtod_offset(
+					sym_op->m_dst,
+					uint8_t *, auth_offset >> 3),
+				rte_pktmbuf_mtod_offset(
+					sym_op->m_src,
+					uint8_t *, auth_offset >> 3),
+				((cipher_offset >> 3) - (auth_offset >> 3)));
+	}
+
 	if (cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
 		cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8 ||
 		cipher_algo == RTE_CRYPTO_CIPHER_ZUC_EEA3) {
