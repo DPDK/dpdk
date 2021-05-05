@@ -9615,6 +9615,64 @@ flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *matcher,
 	}
 }
 
+/*
+ * Add connection tracking status item to matcher
+ *
+ * @param[in] dev
+ *   The devich to configure through.
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ */
+static void
+flow_dv_translate_item_aso_ct(struct rte_eth_dev *dev,
+			      void *matcher, void *key,
+			      const struct rte_flow_item *item)
+{
+	uint32_t reg_value = 0;
+	int reg_id;
+	/* 8LSB 0b 11/0000/11, middle 4 bits are reserved. */
+	uint32_t reg_mask = 0;
+	const struct rte_flow_item_conntrack *spec = item->spec;
+	const struct rte_flow_item_conntrack *mask = item->mask;
+	uint32_t flags;
+	struct rte_flow_error error;
+
+	if (!mask)
+		mask = &rte_flow_item_conntrack_mask;
+	if (!spec || !mask->flags)
+		return;
+	flags = spec->flags & mask->flags;
+	/* The conflict should be checked in the validation. */
+	if (flags & RTE_FLOW_CONNTRACK_PKT_STATE_VALID)
+		reg_value |= MLX5_CT_SYNDROME_VALID;
+	if (flags & RTE_FLOW_CONNTRACK_PKT_STATE_CHANGED)
+		reg_value |= MLX5_CT_SYNDROME_STATE_CHANGE;
+	if (flags & RTE_FLOW_CONNTRACK_PKT_STATE_INVALID)
+		reg_value |= MLX5_CT_SYNDROME_INVALID;
+	if (flags & RTE_FLOW_CONNTRACK_PKT_STATE_DISABLED)
+		reg_value |= MLX5_CT_SYNDROME_TRAP;
+	if (flags & RTE_FLOW_CONNTRACK_PKT_STATE_BAD)
+		reg_value |= MLX5_CT_SYNDROME_BAD_PACKET;
+	if (mask->flags & (RTE_FLOW_CONNTRACK_PKT_STATE_VALID |
+			   RTE_FLOW_CONNTRACK_PKT_STATE_INVALID |
+			   RTE_FLOW_CONNTRACK_PKT_STATE_DISABLED))
+		reg_mask |= 0xc0;
+	if (mask->flags & RTE_FLOW_CONNTRACK_PKT_STATE_CHANGED)
+		reg_mask |= MLX5_CT_SYNDROME_STATE_CHANGE;
+	if (mask->flags & RTE_FLOW_CONNTRACK_PKT_STATE_BAD)
+		reg_mask |= MLX5_CT_SYNDROME_BAD_PACKET;
+	/* The REG_C_x value could be saved during startup. */
+	reg_id = mlx5_flow_get_reg_id(dev, MLX5_ASO_CONNTRACK, 0, &error);
+	if (reg_id == REG_NON)
+		return;
+	flow_dv_match_meta_reg(matcher, key, (enum modify_reg)reg_id,
+			       reg_value, reg_mask);
+}
+
 static uint32_t matcher_zero[MLX5_ST_SZ_DW(fte_match_param)] = { 0 };
 
 #define HEADER_IS_ZERO(match_criteria, headers)				     \
@@ -12725,6 +12783,10 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			flow_dv_translate_item_integrity(match_mask,
 							 match_value,
 							 head_item, items);
+			break;
+		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
+			flow_dv_translate_item_aso_ct(dev, match_mask,
+						      match_value, items);
 			break;
 		default:
 			break;

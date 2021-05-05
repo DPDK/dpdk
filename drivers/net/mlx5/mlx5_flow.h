@@ -409,6 +409,13 @@ enum mlx5_feature_name {
 /* Maximum number of fields to modify in MODIFY_FIELD */
 #define MLX5_ACT_MAX_MOD_FIELDS 5
 
+/* Syndrome bits definition for connection tracking. */
+#define MLX5_CT_SYNDROME_VALID		(0x0 << 6)
+#define MLX5_CT_SYNDROME_INVALID	(0x1 << 6)
+#define MLX5_CT_SYNDROME_TRAP		(0x2 << 6)
+#define MLX5_CT_SYNDROME_STATE_CHANGE	(0x1 << 1)
+#define MLX5_CT_SYNDROME_BAD_PACKET	(0x1 << 0)
+
 enum mlx5_flow_drv_type {
 	MLX5_FLOW_TYPE_MIN,
 	MLX5_FLOW_TYPE_DV,
