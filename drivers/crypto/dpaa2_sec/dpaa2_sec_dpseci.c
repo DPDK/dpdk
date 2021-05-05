@@ -3564,31 +3564,9 @@ dpaa2_sec_dev_stop(struct rte_cryptodev *dev)
 }
 
 static int
-dpaa2_sec_dev_close(struct rte_cryptodev *dev)
+dpaa2_sec_dev_close(struct rte_cryptodev *dev __rte_unused)
 {
-	struct dpaa2_sec_dev_private *priv = dev->data->dev_private;
-	struct fsl_mc_io *dpseci = (struct fsl_mc_io *)priv->hw;
-	int ret;
-
 	PMD_INIT_FUNC_TRACE();
-
-	/* Function is reverse of dpaa2_sec_dev_init.
-	 * It does the following:
-	 * 1. Detach a DPSECI from attached resources i.e. buffer pools, dpbp_id
-	 * 2. Close the DPSECI device
-	 * 3. Free the allocated resources.
-	 */
-
-	/*Close the device at underlying layer*/
-	ret = dpseci_close(dpseci, CMD_PRI_LOW, priv->token);
-	if (ret) {
-		DPAA2_SEC_ERR("Failure closing dpseci device: err(%d)", ret);
-		return -1;
-	}
-
-	/*Free the allocated memory for ethernet private data and dpseci*/
-	priv->hw = NULL;
-	rte_free(dpseci);
 
 	return 0;
 }
@@ -3849,11 +3827,31 @@ static const struct rte_security_ops dpaa2_sec_security_ops = {
 static int
 dpaa2_sec_uninit(const struct rte_cryptodev *dev)
 {
-	struct dpaa2_sec_dev_private *internals = dev->data->dev_private;
+	struct dpaa2_sec_dev_private *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpseci = (struct fsl_mc_io *)priv->hw;
+	int ret;
 
+	PMD_INIT_FUNC_TRACE();
+
+	/* Function is reverse of dpaa2_sec_dev_init.
+	 * It does the following:
+	 * 1. Detach a DPSECI from attached resources i.e. buffer pools, dpbp_id
+	 * 2. Close the DPSECI device
+	 * 3. Free the allocated resources.
+	 */
+
+	/*Close the device at underlying layer*/
+	ret = dpseci_close(dpseci, CMD_PRI_LOW, priv->token);
+	if (ret) {
+		DPAA2_SEC_ERR("Failure closing dpseci device: err(%d)", ret);
+		return -1;
+	}
+
+	/*Free the allocated memory for ethernet private data and dpseci*/
+	priv->hw = NULL;
+	rte_free(dpseci);
 	rte_free(dev->security_ctx);
-
-	rte_mempool_free(internals->fle_pool);
+	rte_mempool_free(priv->fle_pool);
 
 	DPAA2_SEC_INFO("Closing DPAA2_SEC device %s on numa socket %u",
 		       dev->data->name, rte_socket_id());
