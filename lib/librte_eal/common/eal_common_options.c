@@ -757,10 +757,10 @@ static int
 eal_parse_service_corelist(const char *corelist)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
-	int i, idx = 0;
+	int i;
 	unsigned count = 0;
 	char *end = NULL;
-	int min, max;
+	uint32_t min, max, idx;
 	uint32_t taken_lcore_count = 0;
 
 	if (corelist == NULL)
@@ -783,6 +783,8 @@ eal_parse_service_corelist(const char *corelist)
 		errno = 0;
 		idx = strtoul(corelist, &end, 10);
 		if (errno || end == NULL)
+			return -1;
+		if (idx >= RTE_MAX_LCORE)
 			return -1;
 		while (isblank(*end))
 			end++;
