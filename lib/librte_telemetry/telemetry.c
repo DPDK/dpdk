@@ -95,8 +95,10 @@ list_commands(const char *cmd __rte_unused, const char *params __rte_unused,
 	int i;
 
 	rte_tel_data_start_array(d, RTE_TEL_STRING_VAL);
+	rte_spinlock_lock(&callback_sl);
 	for (i = 0; i < num_callbacks; i++)
 		rte_tel_data_add_array_string(d, callbacks[i].cmd);
+	rte_spinlock_unlock(&callback_sl);
 	return 0;
 }
 
