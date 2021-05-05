@@ -10411,8 +10411,8 @@ test_multi_session(void)
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
 	sessions = rte_malloc(NULL,
-			(sizeof(struct rte_cryptodev_sym_session *) *
-			MAX_NB_SESSIONS) + 1, 0);
+			sizeof(struct rte_cryptodev_sym_session *) *
+			(MAX_NB_SESSIONS + 1), 0);
 
 	/* Create multiple crypto sessions*/
 	for (i = 0; i < MAX_NB_SESSIONS; i++) {
@@ -10457,6 +10457,7 @@ test_multi_session(void)
 		}
 	}
 
+	sessions[i] = NULL;
 	/* Next session create should fail */
 	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			sessions[i], &ut_params->auth_xform,
