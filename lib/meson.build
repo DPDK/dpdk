@@ -170,7 +170,7 @@ foreach l:libraries
     libname = 'rte_' + name
     includes += include_directories(l)
 
-    if is_windows and use_function_versioning
+    if developer_mode and is_windows and use_function_versioning
         message('@0@: Function versioning is not supported by Windows.'.format(name))
     endif
 
@@ -227,7 +227,7 @@ foreach l:libraries
     endif
 
     lk_deps = [version_map, def_file, mingw_map]
-    if not is_windows
+    if developer_mode and not is_windows
         # on unix systems check the output of the
         # check-symbols.sh script, using it as a
         # dependency of the .so build
