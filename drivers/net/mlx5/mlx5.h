@@ -493,6 +493,7 @@ struct mlx5_aso_sq_elem {
 			uint16_t burst_size;
 		};
 		struct mlx5_aso_mtr *mtr;
+		struct mlx5_aso_ct_action *ct;
 	};
 };
 
@@ -1011,6 +1012,10 @@ struct mlx5_aso_ct_action {
 	enum mlx5_aso_ct_state state; /* ASO CT state. */
 	bool is_original; /* The direction of the DR action to be used. */
 };
+
+/* CT action object state update. */
+#define MLX5_ASO_CT_UPDATE_STATE(c, s) \
+	__atomic_store_n(&((c)->state), (s), __ATOMIC_RELAXED)
 
 /* ASO connection tracking software pool definition. */
 struct mlx5_aso_ct_pool {
@@ -1695,5 +1700,8 @@ int mlx5_aso_meter_update_by_wqe(struct mlx5_dev_ctx_shared *sh,
 		struct mlx5_aso_mtr *mtr);
 int mlx5_aso_mtr_wait(struct mlx5_dev_ctx_shared *sh,
 		struct mlx5_aso_mtr *mtr);
+int mlx5_aso_ct_update_by_wqe(struct mlx5_dev_ctx_shared *sh,
+			      struct mlx5_aso_ct_action *ct,
+			      const struct rte_flow_action_conntrack *profile);
 
 #endif /* RTE_PMD_MLX5_H_ */
