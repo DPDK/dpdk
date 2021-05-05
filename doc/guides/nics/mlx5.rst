@@ -438,6 +438,8 @@ Limitations
 
   - Cannot co-exist with ASO meter, ASO age action in a single flow rule.
   - Flow rules insertion rate and memory consumption need more optimization.
+  - 256 ports maximum.
+  - 4M connections maximum.
 
 Statistics
 ----------

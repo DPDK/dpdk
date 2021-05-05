@@ -11683,7 +11683,7 @@ flow_dv_prepare_counter(struct rte_eth_dev *dev,
 }
 
 /*
- * Release an ASO CT action.
+ * Release an ASO CT action by its own device.
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
@@ -11694,12 +11694,12 @@ flow_dv_prepare_counter(struct rte_eth_dev *dev,
  *   0 when CT action was removed, otherwise the number of references.
  */
 static inline int
-flow_dv_aso_ct_release(struct rte_eth_dev *dev, uint32_t idx)
+flow_dv_aso_ct_dev_release(struct rte_eth_dev *dev, uint32_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_ct_pools_mng *mng = priv->sh->ct_mng;
 	uint32_t ret;
-	struct mlx5_aso_ct_action *ct = flow_aso_ct_get_by_idx(dev, idx);
+	struct mlx5_aso_ct_action *ct = flow_aso_ct_get_by_dev_idx(dev, idx);
 	enum mlx5_aso_ct_state state =
 			__atomic_load_n(&ct->state, __ATOMIC_RELAXED);
 
@@ -11728,7 +11728,21 @@ flow_dv_aso_ct_release(struct rte_eth_dev *dev, uint32_t idx)
 		LIST_INSERT_HEAD(&mng->free_cts, ct, next);
 		rte_spinlock_unlock(&mng->ct_sl);
 	}
-	return ret;
+	return (int)ret;
+}
+
+static inline int
+flow_dv_aso_ct_release(struct rte_eth_dev *dev, uint32_t own_idx)
+{
+	uint16_t owner = (uint16_t)MLX5_INDIRECT_ACT_CT_GET_OWNER(own_idx);
+	uint32_t idx = MLX5_INDIRECT_ACT_CT_GET_IDX(own_idx);
+	struct rte_eth_dev *owndev = &rte_eth_devices[owner];
+	RTE_SET_USED(dev);
+
+	MLX5_ASSERT(owner < RTE_MAX_ETHPORTS);
+	if (dev->data->dev_started != 1)
+		return -1;
+	return flow_dv_aso_ct_dev_release(owndev, idx);
 }
 
 /*
@@ -11880,7 +11894,7 @@ flow_dv_aso_ct_alloc(struct rte_eth_dev *dev, struct rte_flow_error *error)
 		RTE_SET_USED(reg_c);
 #endif
 		if (!ct->dr_action_orig) {
-			flow_dv_aso_ct_release(dev, ct_idx);
+			flow_dv_aso_ct_dev_release(dev, ct_idx);
 			rte_flow_error_set(error, rte_errno,
 					   RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					   "failed to create ASO CT action");
@@ -11896,7 +11910,7 @@ flow_dv_aso_ct_alloc(struct rte_eth_dev *dev, struct rte_flow_error *error)
 			 reg_c - REG_C_0);
 #endif
 		if (!ct->dr_action_rply) {
-			flow_dv_aso_ct_release(dev, ct_idx);
+			flow_dv_aso_ct_dev_release(dev, ct_idx);
 			rte_flow_error_set(error, rte_errno,
 					   RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					   "failed to create ASO CT action");
@@ -11938,12 +11952,13 @@ flow_dv_translate_create_conntrack(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "Failed to allocate CT object");
-	ct = flow_aso_ct_get_by_idx(dev, idx);
+	ct = flow_aso_ct_get_by_dev_idx(dev, idx);
 	if (mlx5_aso_ct_update_by_wqe(sh, ct, pro))
 		return rte_flow_error_set(error, EBUSY,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "Failed to update CT");
 	ct->is_original = !!pro->is_original_dir;
+	ct->peer = pro->peer_port;
 	return idx;
 }
 
@@ -12102,7 +12117,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		int action_type = actions->type;
 		const struct rte_flow_action *found_action = NULL;
 		uint32_t jump_group = 0;
-		uint32_t ct_idx;
+		uint32_t owner_idx;
 		struct mlx5_aso_ct_action *ct;
 
 		if (!mlx5_flow_os_action_supported(action_type))
@@ -12558,8 +12573,13 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_MODIFY_FIELD;
 			break;
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
-			ct_idx = (uint32_t)(uintptr_t)action->conf;
-			ct = flow_aso_ct_get_by_idx(dev, ct_idx);
+			owner_idx = (uint32_t)(uintptr_t)action->conf;
+			ct = flow_aso_ct_get_by_idx(dev, owner_idx);
+			if (!ct)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"Failed to get CT object.");
 			if (mlx5_aso_ct_available(priv->sh, ct))
 				return rte_flow_error_set(error, rte_errno,
 						RTE_FLOW_ERROR_TYPE_ACTION,
@@ -12572,7 +12592,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				dev_flow->dv.actions[actions_n] =
 							ct->dr_action_rply;
 			flow->indirect_type = MLX5_INDIRECT_ACTION_TYPE_CT;
-			flow->ct = ct_idx;
+			flow->ct = owner_idx;
 			__atomic_fetch_add(&ct->refcnt, 1, __ATOMIC_RELAXED);
 			actions_n++;
 			action_flags |= MLX5_FLOW_ACTION_CT;
@@ -14183,6 +14203,7 @@ flow_dv_action_create(struct rte_eth_dev *dev,
 {
 	uint32_t idx = 0;
 	uint32_t ret = 0;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_RSS:
@@ -14211,8 +14232,7 @@ flow_dv_action_create(struct rte_eth_dev *dev,
 	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 		ret = flow_dv_translate_create_conntrack(dev, action->conf,
 							 err);
-		idx = (MLX5_INDIRECT_ACTION_TYPE_CT <<
-		       MLX5_INDIRECT_ACTION_TYPE_OFFSET) | ret;
+		idx = MLX5_INDIRECT_ACT_CT_GEN_IDX(PORT_ID(priv), ret);
 		break;
 	default:
 		rte_flow_error_set(err, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
@@ -14278,7 +14298,9 @@ flow_dv_action_destroy(struct rte_eth_dev *dev,
 		return 0;
 	case MLX5_INDIRECT_ACTION_TYPE_CT:
 		ret = flow_dv_aso_ct_release(dev, idx);
-		if (ret)
+		if (ret < 0)
+			return ret;
+		if (ret > 0)
 			DRV_LOG(DEBUG, "Connection tracking object %u still "
 				"has references %d.", idx, ret);
 		return 0;
@@ -14382,8 +14404,16 @@ __flow_dv_action_ct_update(struct rte_eth_dev *dev, uint32_t idx,
 	struct mlx5_aso_ct_action *ct;
 	const struct rte_flow_action_conntrack *new_prf;
 	int ret = 0;
+	uint16_t owner = (uint16_t)MLX5_INDIRECT_ACT_CT_GET_OWNER(idx);
+	uint32_t dev_idx;
 
-	ct = flow_aso_ct_get_by_idx(dev, idx);
+	if (PORT_ID(priv) != owner)
+		return rte_flow_error_set(error, EACCES,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "CT object owned by another port");
+	dev_idx = MLX5_INDIRECT_ACT_CT_GET_IDX(idx);
+	ct = flow_aso_ct_get_by_dev_idx(dev, dev_idx);
 	if (!ct->refcnt)
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -15074,6 +15104,8 @@ flow_dv_action_query(struct rte_eth_dev *dev,
 	uint32_t idx = act_idx & ((1u << MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1);
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_ct_action *ct;
+	uint16_t owner;
+	uint32_t dev_idx;
 
 	switch (type) {
 	case MLX5_INDIRECT_ACTION_TYPE_AGE:
@@ -15090,7 +15122,15 @@ flow_dv_action_query(struct rte_eth_dev *dev,
 	case MLX5_INDIRECT_ACTION_TYPE_COUNT:
 		return flow_dv_query_count(dev, idx, data, error);
 	case MLX5_INDIRECT_ACTION_TYPE_CT:
-		ct = flow_aso_ct_get_by_idx(dev, idx);
+		owner = (uint16_t)MLX5_INDIRECT_ACT_CT_GET_OWNER(idx);
+		if (owner != PORT_ID(priv))
+			return rte_flow_error_set(error, EACCES,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"CT object owned by another port");
+		dev_idx = MLX5_INDIRECT_ACT_CT_GET_IDX(idx);
+		ct = flow_aso_ct_get_by_dev_idx(dev, dev_idx);
+		MLX5_ASSERT(ct);
 		if (!ct->refcnt)
 			return rte_flow_error_set(error, EFAULT,
 					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,

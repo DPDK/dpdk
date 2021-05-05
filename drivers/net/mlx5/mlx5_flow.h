@@ -49,6 +49,25 @@ enum {
 	MLX5_INDIRECT_ACTION_TYPE_CT,
 };
 
+/* Now, the maximal ports will be supported is 256, action number is 4M. */
+#define MLX5_INDIRECT_ACT_CT_MAX_PORT 0x100
+
+#define MLX5_INDIRECT_ACT_CT_OWNER_SHIFT 22
+#define MLX5_INDIRECT_ACT_CT_OWNER_MASK (MLX5_INDIRECT_ACT_CT_MAX_PORT - 1)
+
+/* 30-31: type, 22-29: owner port, 0-21: index. */
+#define MLX5_INDIRECT_ACT_CT_GEN_IDX(owner, index) \
+	((MLX5_INDIRECT_ACTION_TYPE_CT << MLX5_INDIRECT_ACTION_TYPE_OFFSET) | \
+	 (((owner) & MLX5_INDIRECT_ACT_CT_OWNER_MASK) << \
+	  MLX5_INDIRECT_ACT_CT_OWNER_SHIFT) | (index))
+
+#define MLX5_INDIRECT_ACT_CT_GET_OWNER(index) \
+	(((index) >> MLX5_INDIRECT_ACT_CT_OWNER_SHIFT) & \
+	 MLX5_INDIRECT_ACT_CT_OWNER_MASK)
+
+#define MLX5_INDIRECT_ACT_CT_GET_IDX(index) \
+	((index) & ((1 << MLX5_INDIRECT_ACT_CT_OWNER_SHIFT) - 1))
+
 /* Matches on selected register. */
 struct mlx5_rte_flow_item_tag {
 	enum modify_reg id;
@@ -1332,7 +1351,7 @@ mlx5_validate_integrity_item(const struct rte_flow_item_integrity *item)
 }
 
 /*
- * Get ASO CT action by index.
+ * Get ASO CT action by device and index.
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
@@ -1343,7 +1362,7 @@ mlx5_validate_integrity_item(const struct rte_flow_item_integrity *item)
  *   The specified ASO CT action pointer.
  */
 static inline struct mlx5_aso_ct_action *
-flow_aso_ct_get_by_idx(struct rte_eth_dev *dev, uint32_t idx)
+flow_aso_ct_get_by_dev_idx(struct rte_eth_dev *dev, uint32_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_ct_pools_mng *mng = priv->sh->ct_mng;
@@ -1356,6 +1375,40 @@ flow_aso_ct_get_by_idx(struct rte_eth_dev *dev, uint32_t idx)
 	pool = mng->pools[idx / MLX5_ASO_CT_ACTIONS_PER_POOL];
 	rte_rwlock_read_unlock(&mng->resize_rwl);
 	return &pool->actions[idx % MLX5_ASO_CT_ACTIONS_PER_POOL];
+}
+
+/*
+ * Get ASO CT action by owner & index.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] idx
+ *   Index to the ASO CT action and owner port combination.
+ *
+ * @return
+ *   The specified ASO CT action pointer.
+ */
+static inline struct mlx5_aso_ct_action *
+flow_aso_ct_get_by_idx(struct rte_eth_dev *dev, uint32_t own_idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_ct_action *ct;
+	uint16_t owner = (uint16_t)MLX5_INDIRECT_ACT_CT_GET_OWNER(own_idx);
+	uint32_t idx = MLX5_INDIRECT_ACT_CT_GET_IDX(own_idx);
+
+	if (owner == PORT_ID(priv)) {
+		ct = flow_aso_ct_get_by_dev_idx(dev, idx);
+	} else {
+		struct rte_eth_dev *owndev = &rte_eth_devices[owner];
+
+		MLX5_ASSERT(owner < RTE_MAX_ETHPORTS);
+		if (dev->data->dev_started != 1)
+			return NULL;
+		ct = flow_aso_ct_get_by_dev_idx(owndev, idx);
+		if (ct->peer != PORT_ID(priv))
+			return NULL;
+	}
+	return ct;
 }
 
 int mlx5_flow_group_to_table(struct rte_eth_dev *dev,
