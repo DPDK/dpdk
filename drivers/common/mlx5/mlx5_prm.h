@@ -1229,6 +1229,7 @@ enum {
 	MLX5_GET_HCA_CAP_OP_MOD_ROCE = 0x4 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE = 0x7 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION = 0x13 << 1,
+	MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 = 0x20 << 1,
 };
 
 #define MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q \
@@ -1806,6 +1807,29 @@ struct mlx5_ifc_flow_table_nic_cap_bits {
 	u8 header_modify_nic_receive[0x400];
 	struct mlx5_ifc_ft_fields_support_2_bits
 	       ft_field_support_2_nic_receive;
+};
+
+struct mlx5_ifc_cmd_hca_cap_2_bits {
+	u8 reserved_at_0[0x80]; /* End of DW4. */
+	u8 reserved_at_80[0xb];
+	u8 log_max_num_reserved_qpn[0x5];
+	u8 reserved_at_90[0x3];
+	u8 log_reserved_qpn_granularity[0x5];
+	u8 reserved_at_98[0x3];
+	u8 log_reserved_qpn_max_alloc[0x5]; /* End of DW5. */
+	u8 max_reformat_insert_size[0x8];
+	u8 max_reformat_insert_offset[0x8];
+	u8 max_reformat_remove_size[0x8];
+	u8 max_reformat_remove_offset[0x8]; /* End of DW6. */
+	u8 aso_conntrack_reg_id[0x8];
+	u8 reserved_at_c8[0x3];
+	u8 log_conn_track_granularity[0x5];
+	u8 reserved_at_d0[0x3];
+	u8 log_conn_track_max_alloc[0x5];
+	u8 reserved_at_d8[0x3];
+	u8 log_max_conn_track_offload[0x5];
+	u8 reserved_at_e0[0x20]; /* End of DW7. */
+	u8 reserved_at_100[0x700];
 };
 
 union mlx5_ifc_hca_cap_union_bits {
@@ -2837,6 +2861,67 @@ struct mlx5_ifc_create_flow_meter_aso_in_bits {
 	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
 	struct mlx5_ifc_flow_meter_aso_bits flow_meter_aso;
 };
+
+struct mlx5_ifc_tcp_window_params_bits {
+	u8 max_ack[0x20];
+	u8 max_win[0x20];
+	u8 reply_end[0x20];
+	u8 sent_end[0x20];
+};
+
+struct mlx5_ifc_conn_track_aso_bits {
+	struct mlx5_ifc_tcp_window_params_bits reply_dir; /* End of DW3. */
+	struct mlx5_ifc_tcp_window_params_bits original_dir; /* End of DW7. */
+	u8 last_end[0x20]; /* End of DW8. */
+	u8 last_ack[0x20]; /* End of DW9. */
+	u8 last_seq[0x20]; /* End of DW10. */
+	u8 last_win[0x10];
+	u8 reserved_at_170[0xa];
+	u8 last_dir[0x1];
+	u8 last_index[0x5]; /* End of DW11. */
+	u8 reserved_at_180[0x40]; /* End of DW13. */
+	u8 reply_direction_tcp_scale[0x4];
+	u8 reply_direction_tcp_close_initiated[0x1];
+	u8 reply_direction_tcp_liberal_enabled[0x1];
+	u8 reply_direction_tcp_data_unacked[0x1];
+	u8 reply_direction_tcp_max_ack[0x1];
+	u8 reserved_at_1c8[0x8];
+	u8 original_direction_tcp_scale[0x4];
+	u8 original_direction_tcp_close_initiated[0x1];
+	u8 original_direction_tcp_liberal_enabled[0x1];
+	u8 original_direction_tcp_data_unacked[0x1];
+	u8 original_direction_tcp_max_ack[0x1];
+	u8 reserved_at_1d8[0x8]; /* End of DW14. */
+	u8 valid[0x1];
+	u8 state[0x3];
+	u8 freeze_track[0x1];
+	u8 reserved_at_1e5[0xb];
+	u8 reserved_at_1f0[0x1];
+	u8 connection_assured[0x1];
+	u8 sack_permitted[0x1];
+	u8 challenged_acked[0x1];
+	u8 heartbeat[0x1];
+	u8 max_ack_window[0x3];
+	u8 reserved_at_1f8[0x1];
+	u8 retransmission_counter[0x3];
+	u8 retranmission_limit_exceeded[0x1];
+	u8 retranmission_limit[0x3]; /* End of DW15. */
+};
+
+struct mlx5_ifc_conn_track_offload_bits {
+	u8 modify_field_select[0x40];
+	u8 reserved_at_40[0x40];
+	u8 reserved_at_80[0x8];
+	u8 conn_track_aso_access_pd[0x18];
+	u8 reserved_at_a0[0x160];
+	struct mlx5_ifc_conn_track_aso_bits conn_track_aso;
+};
+
+struct mlx5_ifc_create_conn_track_aso_in_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_conn_track_offload_bits conn_track_offload;
+};
+
 enum mlx5_access_aso_opc_mod {
 	ASO_OPC_MOD_IPSEC = 0x0,
 	ASO_OPC_MOD_CONNECTION_TRACKING = 0x1,
