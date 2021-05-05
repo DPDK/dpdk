@@ -434,6 +434,10 @@ Limitations
       or
       flow create 0 ingress pattern integrity level is 0 value mask l4_ok value spec 0 / eth / ipv4 proto is udp / end …
 
+- Connection tracking:
+
+  - Cannot co-exist with ASO meter, ASO age action in a single flow rule.
+
 Statistics
 ----------
 

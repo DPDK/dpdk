@@ -85,6 +85,7 @@ enum mlx5_feature_name {
 	MLX5_MTR_COLOR,
 	MLX5_MTR_ID,
 	MLX5_ASO_FLOW_HIT,
+	MLX5_ASO_CONNTRACK,
 };
 
 /* Default queue number. */
