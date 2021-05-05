@@ -2,14 +2,14 @@
 # Copyright(c) 2015-2020 Intel Corporation
 
 
-ifneq ($(shell pkg-config --exists libdpdk && echo 0),0)
+PKGCONF ?= pkg-config
+
+ifneq ($(shell $(PKGCONF) --exists libdpdk && echo 0),0)
 $(error "no installation of DPDK found")
 endif
 ifneq ($(shell uname),Linux)
 $(error This application can only operate in a linux environment)
 endif
-
-PKGCONF ?= pkg-config
 
 # library name
 LIB = librte_ethtool.so

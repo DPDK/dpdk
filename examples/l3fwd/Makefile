@@ -8,8 +8,10 @@ APP = l3fwd
 SRCS-y := main.c l3fwd_lpm.c l3fwd_fib.c l3fwd_em.c l3fwd_event.c
 SRCS-y += l3fwd_event_generic.c l3fwd_event_internal_port.c
 
+PKGCONF ?= pkg-config
+
 # Build using pkg-config variables if possible
-ifneq ($(shell pkg-config --exists libdpdk && echo 0),0)
+ifneq ($(shell $(PKGCONF) --exists libdpdk && echo 0),0)
 $(error "no installation of DPDK found")
 endif
 
@@ -19,8 +21,6 @@ shared: build/$(APP)-shared
 	ln -sf $(APP)-shared build/$(APP)
 static: build/$(APP)-static
 	ln -sf $(APP)-static build/$(APP)
-
-PKGCONF ?= pkg-config
 
 PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
 CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)

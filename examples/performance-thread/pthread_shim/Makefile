@@ -21,8 +21,10 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -D_GNU_SOURCE
 LDFLAGS += "-Wl,--copy-dt-needed-entries"
 
+PKGCONF ?= pkg-config
+
 # Build using pkg-config variables if possible
-ifneq ($(shell pkg-config --exists libdpdk && echo 0),0)
+ifneq ($(shell $(PKGCONF) --exists libdpdk && echo 0),0)
 $(error "no installation of DPDK found")
 endif
 
@@ -34,8 +36,6 @@ static: build/$(APP)-static
 	ln -sf $(APP)-static build/$(APP)
 
 LDFLAGS += -lpthread
-
-PKGCONF ?= pkg-config
 
 PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
 CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
