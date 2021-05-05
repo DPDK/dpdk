@@ -186,6 +186,43 @@ mlx5_aso_mtr_init_sq(struct mlx5_aso_sq *sq)
 	}
 }
 
+/*
+ * Initialize Send Queue used for ASO connection tracking.
+ *
+ * @param[in] sq
+ *   ASO SQ to initialize.
+ */
+static void
+mlx5_aso_ct_init_sq(struct mlx5_aso_sq *sq)
+{
+	volatile struct mlx5_aso_wqe *restrict wqe;
+	int i;
+	int size = 1 << sq->log_desc_n;
+	uint64_t addr;
+
+	/* All the next fields state should stay constant. */
+	for (i = 0, wqe = &sq->sq_obj.aso_wqes[0]; i < size; ++i, ++wqe) {
+		wqe->general_cseg.sq_ds = rte_cpu_to_be_32((sq->sqn << 8) |
+							  (sizeof(*wqe) >> 4));
+		/* One unique MR for the query data. */
+		wqe->aso_cseg.lkey = rte_cpu_to_be_32(sq->mr.lkey);
+		/* Magic number 64 represents the length of a ASO CT obj. */
+		addr = (uint64_t)((uintptr_t)sq->mr.addr + i * 64);
+		wqe->aso_cseg.va_h = rte_cpu_to_be_32((uint32_t)(addr >> 32));
+		wqe->aso_cseg.va_l_r = rte_cpu_to_be_32((uint32_t)addr | 1u);
+		/*
+		 * The values of operand_masks are different for modify
+		 * and query.
+		 * And data_mask may be different for each modification. In
+		 * query, it could be zero and ignored.
+		 * CQE generation is always needed, in order to decide when
+		 * it is available to create the flow or read the data.
+		 */
+		wqe->general_cseg.flags = RTE_BE32(MLX5_COMP_ALWAYS <<
+						   MLX5_COMP_MODE_OFFSET);
+	}
+}
+
 /**
  * Create Send Queue used for ASO access.
  *
@@ -292,6 +329,19 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 				  sh->sq_ts_format))
 			return -1;
 		mlx5_aso_mtr_init_sq(&sh->mtrmng->pools_mng.sq);
+		break;
+	case ASO_OPC_MOD_CONNECTION_TRACKING:
+		/* 64B per object for query. */
+		if (mlx5_aso_reg_mr(sh, 64 * sq_desc_n,
+				    &sh->ct_mng->aso_sq.mr, 0))
+			return -1;
+		if (mlx5_aso_sq_create(sh->ctx, &sh->ct_mng->aso_sq, 0,
+				sh->tx_uar, sh->pdn, MLX5_ASO_QUEUE_LOG_DESC,
+				sh->sq_ts_format)) {
+			mlx5_aso_dereg_mr(sh, &sh->ct_mng->aso_sq.mr);
+			return -1;
+		}
+		mlx5_aso_ct_init_sq(&sh->ct_mng->aso_sq);
 		break;
 	default:
 		DRV_LOG(ERR, "Unknown ASO operation mode");

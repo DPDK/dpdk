@@ -672,6 +672,42 @@ mlx5_age_event_prepare(struct mlx5_dev_ctx_shared *sh)
 	}
 }
 
+/*
+ * Initialize the ASO connection tracking structure.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_dev_ctx_shared object.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_aso_ct_mng_init(struct mlx5_dev_ctx_shared *sh)
+{
+	int err;
+
+	if (sh->ct_mng)
+		return 0;
+	sh->ct_mng = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*sh->ct_mng),
+				 RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (!sh->ct_mng) {
+		DRV_LOG(ERR, "ASO CT management allocation failed.");
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	err = mlx5_aso_queue_init(sh, ASO_OPC_MOD_CONNECTION_TRACKING);
+	if (err) {
+		mlx5_free(sh->ct_mng);
+		/* rte_errno should be extracted from the failure. */
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	rte_spinlock_init(&sh->ct_mng->ct_sl);
+	rte_rwlock_init(&sh->ct_mng->resize_rwl);
+	LIST_INIT(&sh->ct_mng->free_cts);
+	return 0;
+}
+
 /**
  * Initialize the flow resources' indexed mempool.
  *

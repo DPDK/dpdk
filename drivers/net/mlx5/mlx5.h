@@ -988,6 +988,52 @@ struct mlx5_bond_info {
 	} ports[MLX5_BOND_MAX_PORTS];
 };
 
+/* Number of connection tracking objects per pool: must be a power of 2. */
+#define MLX5_ASO_CT_ACTIONS_PER_POOL 64
+
+/* ASO Conntrack state. */
+enum mlx5_aso_ct_state {
+	ASO_CONNTRACK_FREE, /* Inactive, in the free list. */
+	ASO_CONNTRACK_WAIT, /* WQE sent in the SQ. */
+	ASO_CONNTRACK_READY, /* CQE received w/o error. */
+	ASO_CONNTRACK_QUERY, /* WQE for query sent. */
+	ASO_CONNTRACK_MAX, /* Guard. */
+};
+
+/* Generic ASO connection tracking structure. */
+struct mlx5_aso_ct_action {
+	LIST_ENTRY(mlx5_aso_ct_action) next; /* Pointer to the next ASO CT. */
+	void *dr_action_orig; /* General action object for original dir. */
+	void *dr_action_rply; /* General action object for reply dir. */
+	uint32_t refcnt; /* Action used count in device flows. */
+	uint16_t offset; /* Offset of ASO CT in DevX objects bulk. */
+	uint16_t peer; /* The only peer port index could also use this CT. */
+	enum mlx5_aso_ct_state state; /* ASO CT state. */
+	bool is_original; /* The direction of the DR action to be used. */
+};
+
+/* ASO connection tracking software pool definition. */
+struct mlx5_aso_ct_pool {
+	uint16_t index; /* Pool index in pools array. */
+	struct mlx5_devx_obj *devx_obj;
+	/* The first devx object in the bulk, used for freeing (not yet). */
+	struct mlx5_aso_ct_action actions[MLX5_ASO_CT_ACTIONS_PER_POOL];
+	/* CT action structures bulk. */
+};
+
+LIST_HEAD(aso_ct_list, mlx5_aso_ct_action);
+
+/* Pools management structure for ASO connection tracking pools. */
+struct mlx5_aso_ct_pools_mng {
+	struct mlx5_aso_ct_pool **pools;
+	uint16_t n; /* Total number of pools. */
+	uint16_t next; /* Number of pools in use, index of next free pool. */
+	rte_spinlock_t ct_sl; /* The ASO CT free list lock. */
+	rte_rwlock_t resize_rwl; /* The ASO CT pool resize lock. */
+	struct aso_ct_list free_cts; /* Free ASO CT objects list. */
+	struct mlx5_aso_sq aso_sq; /* ASO queue objects. */
+};
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
@@ -1001,6 +1047,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t sq_ts_format:2; /* SQ timestamp formats supported. */
 	uint32_t qp_ts_format:2; /* QP timestamp formats supported. */
 	uint32_t meter_aso_en:1; /* Flow Meter ASO is supported. */
+	uint32_t ct_aso_en:1; /* Connection Tracking ASO is supported. */
 	uint32_t max_port; /* Maximal IB device port index. */
 	struct mlx5_bond_info bond; /* Bonding information. */
 	void *ctx; /* Verbs/DV/DevX context. */
@@ -1063,6 +1110,8 @@ struct mlx5_dev_ctx_shared {
 	rte_spinlock_t geneve_tlv_opt_sl; /* Lock for geneve tlv resource */
 	struct mlx5_flow_mtr_mng *mtrmng;
 	/* Meter management structure. */
+	struct mlx5_aso_ct_pools_mng *ct_mng;
+	/* Management data for ASO connection tracking. */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
@@ -1360,6 +1409,7 @@ bool mlx5_flex_parser_ecpri_exist(struct rte_eth_dev *dev);
 int mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev);
 int mlx5_flow_aso_age_mng_init(struct mlx5_dev_ctx_shared *sh);
 int mlx5_aso_flow_mtrs_mng_init(struct mlx5_dev_ctx_shared *sh);
+int mlx5_flow_aso_ct_mng_init(struct mlx5_dev_ctx_shared *sh);
 
 /* mlx5_ethdev.c */
 

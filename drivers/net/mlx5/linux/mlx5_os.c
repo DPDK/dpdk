@@ -1323,6 +1323,19 @@ err_secondary:
 			DRV_LOG(DEBUG, "Flow Hit ASO is supported.");
 		}
 #endif /* HAVE_MLX5_DR_CREATE_ACTION_ASO */
+#if defined(HAVE_MLX5_DR_CREATE_ACTION_ASO) && \
+	defined(HAVE_MLX5_DR_ACTION_ASO_CT)
+		if (config->hca_attr.ct_offload &&
+		    priv->mtr_color_reg == REG_C_3) {
+			err = mlx5_flow_aso_ct_mng_init(sh);
+			if (err) {
+				err = -err;
+				goto error;
+			}
+			DRV_LOG(DEBUG, "CT ASO is supported.");
+			sh->ct_aso_en = 1;
+		}
+#endif /* HAVE_MLX5_DR_CREATE_ACTION_ASO && HAVE_MLX5_DR_ACTION_ASO_CT */
 #if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_SAMPLE)
 		if (config->hca_attr.log_max_ft_sampler_num > 0  &&
 		    config->dv_flow_en) {
