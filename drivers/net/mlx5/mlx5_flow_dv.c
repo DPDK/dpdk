@@ -14246,6 +14246,60 @@ __flow_dv_action_rss_update(struct rte_eth_dev *dev, uint32_t idx,
 	return ret;
 }
 
+/*
+ * Updates in place conntrack context or direction.
+ * Context update should be synchronized.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] idx
+ *   The conntrack object ID to be updated.
+ * @param[in] update
+ *   Pointer to the structure of information to update.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ */
+static int
+__flow_dv_action_ct_update(struct rte_eth_dev *dev, uint32_t idx,
+			   const struct rte_flow_modify_conntrack *update,
+			   struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_ct_action *ct;
+	const struct rte_flow_action_conntrack *new_prf;
+	int ret = 0;
+
+	ct = flow_aso_ct_get_by_idx(dev, idx);
+	if (!ct->refcnt)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "CT object is inactive");
+	new_prf = &update->new_ct;
+	if (update->direction)
+		ct->is_original = !!new_prf->is_original_dir;
+	if (update->state) {
+		ret = mlx5_aso_ct_update_by_wqe(priv->sh, ct, new_prf);
+		if (ret)
+			return rte_flow_error_set(error, EIO,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"Failed to send CT context update WQE");
+		/* Block until ready or a failure. */
+		ret = mlx5_aso_ct_available(priv->sh, ct);
+		if (ret)
+			rte_flow_error_set(error, rte_errno,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL,
+					   "Timeout to get the CT update");
+	}
+	return ret;
+}
+
 /**
  * Updates in place shared action configuration, lock free,
  * (mutex should be acquired by caller).
@@ -14281,6 +14335,8 @@ flow_dv_action_update(struct rte_eth_dev *dev,
 	case MLX5_INDIRECT_ACTION_TYPE_RSS:
 		action_conf = ((const struct rte_flow_action *)update)->conf;
 		return __flow_dv_action_rss_update(dev, idx, action_conf, err);
+	case MLX5_INDIRECT_ACTION_TYPE_CT:
+		return __flow_dv_action_ct_update(dev, idx, update, err);
 	default:
 		return rte_flow_error_set(err, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
