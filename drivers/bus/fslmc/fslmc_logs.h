@@ -18,8 +18,6 @@ extern int dpaa2_logtype_bus;
 	rte_log(RTE_LOG_DEBUG, dpaa2_logtype_bus, "fslmc: %s(): " fmt "\n", \
 		__func__, ##args)
 
-#define BUS_INIT_FUNC_TRACE() DPAA2_BUS_DEBUG(" >>")
-
 #define DPAA2_BUS_INFO(fmt, args...) \
 	DPAA2_BUS_LOG(INFO, fmt, ## args)
 #define DPAA2_BUS_ERR(fmt, args...) \
