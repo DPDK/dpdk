@@ -610,16 +610,91 @@ rte_thash_get_key(struct rte_thash_ctx *ctx)
 	return ctx->hash_key;
 }
 
-static inline void
-xor_bit(uint8_t *ptr, uint32_t bit, uint32_t pos)
+static inline uint8_t
+read_unaligned_byte(uint8_t *ptr, unsigned int len, unsigned int offset)
 {
-	uint32_t byte_idx = pos >> 3;
-	uint32_t bit_idx = (CHAR_BIT - 1) - (pos & (CHAR_BIT - 1));
+	uint8_t ret = 0;
+
+	ret = ptr[offset / CHAR_BIT];
+	if (offset % CHAR_BIT) {
+		ret <<= (offset % CHAR_BIT);
+		ret |= ptr[(offset / CHAR_BIT) + 1] >>
+			(CHAR_BIT - (offset % CHAR_BIT));
+	}
+
+	return ret >> (CHAR_BIT - len);
+}
+
+static inline uint32_t
+read_unaligned_bits(uint8_t *ptr, int len, int offset)
+{
+	uint32_t ret = 0;
+
+	len = RTE_MAX(len, 0);
+	len = RTE_MIN(len, (int)(sizeof(uint32_t) * CHAR_BIT));
+
+	while (len > 0) {
+		ret <<= CHAR_BIT;
+
+		ret |= read_unaligned_byte(ptr, RTE_MIN(len, CHAR_BIT),
+			offset);
+		offset += CHAR_BIT;
+		len -= CHAR_BIT;
+	}
+
+	return ret;
+}
+
+/* returns mask for len bits with given offset inside byte */
+static inline uint8_t
+get_bits_mask(unsigned int len, unsigned int offset)
+{
+	unsigned int last_bit;
+
+	offset %= CHAR_BIT;
+	/* last bit within byte */
+	last_bit = RTE_MIN((unsigned int)CHAR_BIT, offset + len);
+
+	return ((1 << (CHAR_BIT - offset)) - 1) ^
+		((1 << (CHAR_BIT - last_bit)) - 1);
+}
+
+static inline void
+write_unaligned_byte(uint8_t *ptr, unsigned int len,
+	unsigned int offset, uint8_t val)
+{
 	uint8_t tmp;
 
-	tmp = ptr[byte_idx];
-	tmp ^= bit << bit_idx;
-	ptr[byte_idx] = tmp;
+	tmp = ptr[offset / CHAR_BIT];
+	tmp &= ~get_bits_mask(len, offset);
+	tmp |= ((val << (CHAR_BIT - len)) >> (offset % CHAR_BIT));
+	ptr[offset / CHAR_BIT] = tmp;
+	if (((offset + len) / CHAR_BIT) != (offset / CHAR_BIT)) {
+		int rest_len = (offset + len) % CHAR_BIT;
+		tmp = ptr[(offset + len) / CHAR_BIT];
+		tmp &= ~get_bits_mask(rest_len, 0);
+		tmp |= val << (CHAR_BIT - rest_len);
+		ptr[(offset + len) / CHAR_BIT] = tmp;
+	}
+}
+
+static inline void
+write_unaligned_bits(uint8_t *ptr, int len, int offset, uint32_t val)
+{
+	uint8_t tmp;
+	unsigned int part_len;
+
+	len = RTE_MAX(len, 0);
+	len = RTE_MIN(len, (int)(sizeof(uint32_t) * CHAR_BIT));
+
+	while (len > 0) {
+		part_len = RTE_MIN(CHAR_BIT, len);
+		tmp = (uint8_t)val & ((1 << part_len) - 1);
+		write_unaligned_byte(ptr, part_len,
+			offset + len - part_len, tmp);
+		len -= CHAR_BIT;
+		val >>= CHAR_BIT;
+	}
 }
 
 int
@@ -632,14 +707,18 @@ rte_thash_adjust_tuple(struct rte_thash_ctx *ctx,
 	uint32_t tmp_tuple[tuple_len / sizeof(uint32_t)];
 	unsigned int i, j, ret = 0;
 	uint32_t hash, adj_bits;
-	uint8_t bit;
 	const uint8_t *hash_key;
+	uint32_t tmp;
+	int offset;
+	int tmp_len;
 
 	if ((ctx == NULL) || (h == NULL) || (tuple == NULL) ||
 			(tuple_len % sizeof(uint32_t) != 0) || (attempts <= 0))
 		return -EINVAL;
 
 	hash_key = rte_thash_get_key(ctx);
+
+	attempts = RTE_MIN(attempts, 1U << (h->tuple_len - ctx->reta_sz_log));
 
 	for (i = 0; i < attempts; i++) {
 		for (j = 0; j < (tuple_len / 4); j++)
@@ -651,28 +730,28 @@ rte_thash_adjust_tuple(struct rte_thash_ctx *ctx,
 
 		/*
 		 * Hint: LSB of adj_bits corresponds to
-		 * offset + len bit of tuple
+		 * offset + len bit of the subtuple
 		 */
-		for (j = 0; j < sizeof(uint32_t) * CHAR_BIT; j++) {
-			bit = (adj_bits >> j) & 0x1;
-			if (bit)
-				xor_bit(tuple, bit, h->tuple_offset +
-					h->tuple_len - 1 - j);
-		}
+		offset =  h->tuple_offset + h->tuple_len - ctx->reta_sz_log;
+		tmp = read_unaligned_bits(tuple, ctx->reta_sz_log, offset);
+		tmp ^= adj_bits;
+		write_unaligned_bits(tuple, ctx->reta_sz_log, offset, tmp);
 
 		if (fn != NULL) {
 			ret = (fn(userdata, tuple)) ? 0 : -EEXIST;
 			if (ret == 0)
 				return 0;
 			else if (i < (attempts - 1)) {
-				/* Update tuple with random bits */
-				for (j = 0; j < h->tuple_len; j++) {
-					bit = rte_rand() & 0x1;
-					if (bit)
-						xor_bit(tuple, bit,
-							h->tuple_offset +
-							h->tuple_len - 1 - j);
-				}
+				/* increment subtuple part by 1 */
+				tmp_len = RTE_MIN(sizeof(uint32_t) * CHAR_BIT,
+					h->tuple_len - ctx->reta_sz_log);
+				offset -= tmp_len;
+				tmp = read_unaligned_bits(tuple, tmp_len,
+					offset);
+				tmp++;
+				tmp &= (1 << tmp_len) - 1;
+				write_unaligned_bits(tuple, tmp_len, offset,
+					tmp);
 			}
 		} else
 			return 0;
