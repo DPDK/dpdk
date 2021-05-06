@@ -276,7 +276,7 @@ struct rte_ether_hdr {
 			struct rte_ether_addr S_addr;
 		} S_un; /**< Do not use directly; use s_addr instead.*/
 	};
-	uint16_t ether_type; /**< Frame type. */
+	rte_be16_t ether_type; /**< Frame type. */
 } __rte_aligned(2);
 
 #pragma pop_macro("s_addr")
@@ -287,8 +287,8 @@ struct rte_ether_hdr {
  * of the encapsulated frame.
  */
 struct rte_vlan_hdr {
-	uint16_t vlan_tci; /**< Priority (3) + CFI (1) + Identifier Code (12) */
-	uint16_t eth_proto;/**< Ethernet type of encapsulated frame. */
+	rte_be16_t vlan_tci;  /**< Priority (3) + CFI (1) + Identifier Code (12) */
+	rte_be16_t eth_proto; /**< Ethernet type of encapsulated frame. */
 } __rte_packed;
 
 
