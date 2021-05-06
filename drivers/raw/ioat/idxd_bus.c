@@ -312,6 +312,7 @@ dsa_scan(void)
 		dev->device.numa_node = numa_node;
 	}
 
+	closedir(dev_dir);
 	return 0;
 }
 
