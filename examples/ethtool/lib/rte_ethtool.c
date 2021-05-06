@@ -465,12 +465,12 @@ rte_ethtool_set_ringparam(uint16_t port_id,
 		return stat;
 
 	stat = rte_eth_tx_queue_setup(port_id, 0, ring_param->tx_pending,
-		rte_socket_id(), NULL);
+		rte_eth_dev_socket_id(port_id), NULL);
 	if (stat != 0)
 		return stat;
 
 	stat = rte_eth_rx_queue_setup(port_id, 0, ring_param->rx_pending,
-		rte_socket_id(), NULL, rx_qinfo.mp);
+		rte_eth_dev_socket_id(port_id), NULL, rx_qinfo.mp);
 	if (stat != 0)
 		return stat;
 
