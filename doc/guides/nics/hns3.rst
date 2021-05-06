@@ -121,12 +121,148 @@ Driver compilation and testing
 Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
 for details.
 
+Sample Application Notes
+------------------------
+
+VLAN filter
+~~~~~~~~~~~
+
+VLAN filter only works when Promiscuous mode is off.
+
+To start ``testpmd``, and add VLAN 10 to port 0:
+
+.. code-block:: console
+
+    ./<build_dir>/app/dpdk-testpmd -l 0-15 -n 4 -- -i --forward-mode=mac
+    ...
+
+    testpmd> set promisc 0 off
+    testpmd> vlan set filter on 0
+    testpmd> rx_vlan add 10 0
+
+
+Flow Director
+~~~~~~~~~~~~~
+
+The Flow Director works in receive mode to identify specific flows or sets of
+flows and route them to specific queues.
+The Flow Director filters can match the different fields for different type of
+packet: flow type, specific input set per flow type.
+
+
+Start ``testpmd``:
+
+.. code-block:: console
+
+   ./<build_dir>/app/dpdk-testpmd -l 0-15 -n 4 -- -i --rxq=8 --txq=8 \
+				  --nb-cores=8 --nb-ports=1
+
+Add a rule to direct ``ipv4-udp`` packet whose ``dst_ip=2.2.2.5, src_ip=2.2.2.3,
+src_port=32, dst_port=32`` to queue 1:
+
+.. code-block:: console
+
+   testpmd> flow create 0 ingress pattern eth / ipv4 src is 2.2.2.3 \
+            dst is 2.2.2.5 / udp src is 32 dst is 32 / end \
+            actions mark id 1 / queue index 1 / end
+
+Generic flow API
+~~~~~~~~~~~~~~~~
+
+- ``RSS Flow``
+
+  RSS Flow supports to set hash input set, hash function, enable hash
+  and configure queues.
+  For example:
+  Configure queues as queue 0, 1, 2, 3.
+
+  .. code-block:: console
+
+    testpmd> flow create 0 ingress pattern end actions rss types end \
+      queues 0 1 2 3 end / end
+
+  Enable hash and set input set for IPv4-TCP.
+
+  .. code-block:: console
+
+    testpmd> flow create 0 ingress pattern eth / ipv4 / tcp / end \
+      actions rss types ipv4-tcp l3-src-only end queues end / end
+
+  Set symmetric hash enable for flow type IPv4-TCP.
+
+  .. code-block:: console
+
+    testpmd> flow create 0 ingress pattern eth / ipv4 / tcp / end \
+      actions rss types ipv4-tcp end queues end func symmetric_toeplitz / end
+
+  Set hash function as simple xor.
+
+  .. code-block:: console
+
+    testpmd> flow create 0 ingress pattern end actions rss types end \
+      queues end func simple_xor / end
+
+Statistics
+----------
+
+HNS3 supports various methods to report statistics:
+
+Port statistics can be queried using ``rte_eth_stats_get()``. The number
+of packets received or sent successfully by the PMD. While the received and
+sent packet bytes are through SW only. The imissed counter is the amount of
+packets that could not be delivered to SW because a queue was full. The oerror
+counter is the amount of packets that are dropped by HW in Tx.
+
+Extended statistics can be queried using ``rte_eth_xstats_get()``. The extended
+statistics expose a wider set of counters counted by the device. The extended
+port statistics contains packets statistics per queue, Mac statistics, HW reset
+count and IO error count.
+
+Finally per-flow statistics can by queried using ``rte_flow_query`` when attaching
+a count action for specific flow. The flow counter counts the number of packets
+received successfully by the port and match the specific flow.
+
+Performance tuning
+------------------
+
+Hardware configuration
+~~~~~~~~~~~~~~~~~~~~~~
+32 GB DIMMs is used to ensure that each channel is fully configured.
+Dynamic CPU Tuning is disabled.
+
+Queue depth configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~
+According to the actual test, the performance is best when the queue depth
+ranges from 1024 to 2048.
+
+IO burst configuration
+~~~~~~~~~~~~~~~~~~~~~~
+According to the actual test, the performance is best when IO burst is set to 64.
+IO burst is the number of packets per burst.
+
+Queue number configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+When the number of port queues corresponds to the number of CPU cores, the
+performance will be better.
+
+Hugepage configuration
+~~~~~~~~~~~~~~~~~~~~~~
+For 4K systems, 1 GB hugepages are recommended. For 64 KB systems, 512 MB
+hugepages are recommended.
+
+CPU core isolation
+~~~~~~~~~~~~~~~~~~
+To reduce the possibility of context switching, kernel isolation parameter should
+be provided to avoid scheduling the CPU core used by DPDK application threads for
+other tasks. Before starting the Linux OS, add the kernel isolation boot parameter.
+For example, "isolcpus=1-18 nohz_full=1-18 rcu_nocbs=1-18".
+
+
 Limitations or Known issues
 ---------------------------
-Currently, we only support VF device is bound to vfio_pci or
-igb_uio and then driven by DPDK driver when PF is driven by
-kernel mode hns3 ethdev driver, VF is not supported when PF
-is driven by DPDK driver.
+Currently, we only support VF device driven by DPDK driver when PF is driven
+by kernel mode hns3 ethdev driver. VF is not supported when PF is driven by
+DPDK driver.
 
 Build with ICC is not supported yet.
 X86-32, Power8, ARMv7 and BSD are not supported yet.
