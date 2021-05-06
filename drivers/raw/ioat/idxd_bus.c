@@ -19,6 +19,8 @@
 #define DSA_DEV_PATH "/dev/dsa"
 #define DSA_SYSFS_PATH "/sys/bus/dsa/devices"
 
+static unsigned int devcount;
+
 /** unique identifier for a DSA device/WQ instance */
 struct dsa_wq_addr {
 	uint16_t device_id;
@@ -307,6 +309,7 @@ dsa_scan(void)
 		dev->device.bus = &dsa_bus.bus;
 		strlcpy(dev->wq_name, wq->d_name, sizeof(dev->wq_name));
 		TAILQ_INSERT_TAIL(&dsa_bus.device_list, dev, next);
+		devcount++;
 
 		read_device_int(dev, "numa_node", &numa_node);
 		dev->device.numa_node = numa_node;
@@ -338,7 +341,8 @@ dsa_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 static enum rte_iova_mode
 dsa_get_iommu_class(void)
 {
-	return RTE_IOVA_VA;
+	/* if there are no devices, report don't care, otherwise VA mode */
+	return devcount > 0 ? RTE_IOVA_VA : RTE_IOVA_DC;
 }
 
 static int
