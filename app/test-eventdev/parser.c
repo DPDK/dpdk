@@ -345,7 +345,7 @@ parse_lcores_list(bool lcores[], int lcores_num, const char *corelist)
 			max = idx;
 			if (min == RTE_MAX_LCORE)
 				min = idx;
-			for (idx = min; idx < max; idx++) {
+			for (idx = min; idx <= max; idx++) {
 				if (lcores[idx] == 1)
 					return -E2BIG;
 				lcores[idx] = 1;
