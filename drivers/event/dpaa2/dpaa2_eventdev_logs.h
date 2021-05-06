@@ -38,7 +38,5 @@ extern int dpaa2_logtype_event;
 #define dpaa2_evdev_info(fmt, ...) DPAA2_EVENTDEV_LOG(INFO, fmt, ##__VA_ARGS__)
 #define dpaa2_evdev_dbg(fmt, ...) DPAA2_EVENTDEV_LOG(DEBUG, fmt, ##__VA_ARGS__)
 #define dpaa2_evdev_err(fmt, ...) DPAA2_EVENTDEV_LOG(ERR, fmt, ##__VA_ARGS__)
-#define dpaa2_evdev__func_trace dpaa2_evdev_dbg
-#define dpaa2_evdev_selftest dpaa2_evdev_info
 
 #endif /* _DPAA2_EVENTDEV_LOGS_H_ */
