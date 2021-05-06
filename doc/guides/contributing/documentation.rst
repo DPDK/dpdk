@@ -381,6 +381,62 @@ Code and Literal block sections
          return 0;
       }
 
+* Code snippets can also be included directly from the code using the ``literalinclude`` block.
+  Using this block instead of a code block will ensure that the code snippets
+  shown in the documentation are always up to date with the code.
+
+  The following will include a snippet from the skeleton sample app::
+
+      .. literalinclude:: ../../../examples/skeleton/basicfwd.c
+         :language: c
+         :start-after: Display the port MAC address.
+         :end-before: Enable RX in promiscuous mode for the Ethernet device.
+         :dedent: 1
+
+  This would be rendered as:
+
+  .. literalinclude:: ../../../examples/skeleton/basicfwd.c
+     :language: c
+     :start-after: Display the port MAC address.
+     :end-before: Enable RX in promiscuous mode for the Ethernet device.
+     :dedent: 1
+
+  Specifying ``:language:`` will enable syntax highlighting for the specified language.
+  ``:dedent:`` is used in this example to remove 1 leading tab from each line of the snippet.
+
+* ``start-after`` and ``end-before`` can use any text within a given file,
+  however it may be difficult to find unique text within your code to mark the
+  start and end of your snippets. In these cases, it is recommended to include
+  explicit tags in your code to denote these locations for documentation purposes.
+  The accepted format for these comments is:
+
+     * Before the code snippet, create a new comment which is a sentence explaining
+       what the code snippet contains. The comment is terminated with a scissors ``8<``.
+     * After the code snippet, create another new comment which starts with a
+       scissors ``>8``, then ``End of`` and the first comment repeated.
+     * The scissors should be orientated as shown to make it clear what code is being snipped.
+
+  This can be done as follows:
+
+  .. code-block:: c
+
+    /* Example feature being documented. 8< */
+    foo(bar);
+    /* >8 End of example feature being documented. */
+
+  ``foo(bar);`` could then be included in the docs using::
+
+      .. literalinclude:: ../../../examples/sample_app/main.c
+         :language: c
+         :start-after: Example feature being documented. 8<
+         :end-before: >8 End of example feature being documented.
+
+  If a multiline comment is needed before the snippet,
+  then the last line of the multiline comment should be in the same format as
+  the first comment shown in the example.
+
+* More information about the ``literalinclude`` block can be found within the
+  `Sphinx Documentation <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html?highlight=literalinclude#directive-literalinclude>`_.
 
 * The default encoding for a literal block using the simplified ``::``
   directive is ``none``.
