@@ -283,7 +283,7 @@ typedef void * (*handler)(void *sock_id);
  * @return
  *  -EINVAL for invalid parameters failure.
  *  @return
- *  -ENOENT if max callbacks limit has been reached.
+ *  -ENOMEM for mem allocation failure.
  */
 __rte_experimental
 int
