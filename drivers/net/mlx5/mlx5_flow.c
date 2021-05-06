@@ -50,6 +50,7 @@ flow_tunnel_add_default_miss(struct rte_eth_dev *dev,
 			     const struct rte_flow_attr *attr,
 			     const struct rte_flow_action *app_actions,
 			     uint32_t flow_idx,
+			     const struct mlx5_flow_tunnel *tunnel,
 			     struct tunnel_default_miss_ctx *ctx,
 			     struct rte_flow_error *error);
 static struct mlx5_flow_tunnel *
@@ -5183,22 +5184,14 @@ flow_create_split_outer(struct rte_eth_dev *dev,
 	return ret;
 }
 
-static struct mlx5_flow_tunnel *
-flow_tunnel_from_rule(struct rte_eth_dev *dev,
-		      const struct rte_flow_attr *attr,
-		      const struct rte_flow_item items[],
-		      const struct rte_flow_action actions[])
+static inline struct mlx5_flow_tunnel *
+flow_tunnel_from_rule(const struct mlx5_flow *flow)
 {
 	struct mlx5_flow_tunnel *tunnel;
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-qual"
-	if (is_flow_tunnel_match_rule(dev, attr, items, actions))
-		tunnel = (struct mlx5_flow_tunnel *)items[0].spec;
-	else if (is_flow_tunnel_steer_rule(dev, attr, items, actions))
-		tunnel = (struct mlx5_flow_tunnel *)actions[0].conf;
-	else
-		tunnel = NULL;
+	tunnel = (typeof(tunnel))flow->tunnel;
 #pragma GCC diagnostic pop
 
 	return tunnel;
@@ -5392,12 +5385,11 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 					      error);
 		if (ret < 0)
 			goto error;
-		if (is_flow_tunnel_steer_rule(dev, attr,
-					      buf->entry[i].pattern,
-					      p_actions_rx)) {
+		if (is_flow_tunnel_steer_rule(wks->flows[0].tof_type)) {
 			ret = flow_tunnel_add_default_miss(dev, flow, attr,
 							   p_actions_rx,
 							   idx,
+							   wks->flows[0].tunnel,
 							   &default_miss_ctx,
 							   error);
 			if (ret < 0) {
@@ -5461,7 +5453,7 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	}
 	flow_rxq_flags_set(dev, flow);
 	rte_free(translated_actions);
-	tunnel = flow_tunnel_from_rule(dev, attr, items, actions);
+	tunnel = flow_tunnel_from_rule(wks->flows);
 	if (tunnel) {
 		flow->tunnel = 1;
 		flow->tunnel_id = tunnel->tunnel_id;
@@ -7210,6 +7202,28 @@ int rte_pmd_mlx5_sync_flow(uint16_t port_id, uint32_t domains)
 	return ret;
 }
 
+const struct mlx5_flow_tunnel *
+mlx5_get_tof(const struct rte_flow_item *item,
+	     const struct rte_flow_action *action,
+	     enum mlx5_tof_rule_type *rule_type)
+{
+	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+		if (item->type == (typeof(item->type))
+				  MLX5_RTE_FLOW_ITEM_TYPE_TUNNEL) {
+			*rule_type = MLX5_TUNNEL_OFFLOAD_MATCH_RULE;
+			return flow_items_to_tunnel(item);
+		}
+	}
+	for (; action->conf != RTE_FLOW_ACTION_TYPE_END; action++) {
+		if (action->type == (typeof(action->type))
+				    MLX5_RTE_FLOW_ACTION_TYPE_TUNNEL_SET) {
+			*rule_type = MLX5_TUNNEL_OFFLOAD_SET_RULE;
+			return flow_actions_to_tunnel(action);
+		}
+	}
+	return NULL;
+}
+
 /**
  * tunnel offload functionalilty is defined for DV environment only
  */
@@ -7240,13 +7254,13 @@ flow_tunnel_add_default_miss(struct rte_eth_dev *dev,
 			     const struct rte_flow_attr *attr,
 			     const struct rte_flow_action *app_actions,
 			     uint32_t flow_idx,
+			     const struct mlx5_flow_tunnel *tunnel,
 			     struct tunnel_default_miss_ctx *ctx,
 			     struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow *dev_flow;
 	struct rte_flow_attr miss_attr = *attr;
-	const struct mlx5_flow_tunnel *tunnel = app_actions[0].conf;
 	const struct rte_flow_item miss_items[2] = {
 		{
 			.type = RTE_FLOW_ITEM_TYPE_ETH,
@@ -7332,6 +7346,7 @@ flow_tunnel_add_default_miss(struct rte_eth_dev *dev,
 	dev_flow->flow = flow;
 	dev_flow->external = true;
 	dev_flow->tunnel = tunnel;
+	dev_flow->tof_type = MLX5_TUNNEL_OFFLOAD_MISS_RULE;
 	/* Subflow object was created, we must include one in the list. */
 	SILIST_INSERT(&flow->dev_handles, dev_flow->handle_idx,
 		      dev_flow->handle, next);
@@ -7926,6 +7941,7 @@ flow_tunnel_add_default_miss(__rte_unused struct rte_eth_dev *dev,
 			     __rte_unused const struct rte_flow_attr *attr,
 			     __rte_unused const struct rte_flow_action *actions,
 			     __rte_unused uint32_t flow_idx,
+			     __rte_unused const struct mlx5_flow_tunnel *tunnel,
 			     __rte_unused struct tunnel_default_miss_ctx *ctx,
 			     __rte_unused struct rte_flow_error *error)
 {

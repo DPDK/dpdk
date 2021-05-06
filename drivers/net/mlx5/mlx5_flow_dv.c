@@ -5323,32 +5323,33 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	int16_t rw_act_num = 0;
 	uint64_t is_root;
 	const struct mlx5_flow_tunnel *tunnel;
+	enum mlx5_tof_rule_type tof_rule_type;
 	struct flow_grp_info grp_info = {
 		.external = !!external,
 		.transfer = !!attr->transfer,
 		.fdb_def_rule = !!priv->fdb_def_rule,
+		.std_tbl_fix = true,
 	};
 	const struct rte_eth_hairpin_conf *conf;
 
 	if (items == NULL)
 		return -1;
-	if (is_flow_tunnel_match_rule(dev, attr, items, actions)) {
-		tunnel = flow_items_to_tunnel(items);
-		action_flags |= MLX5_FLOW_ACTION_TUNNEL_MATCH |
-				MLX5_FLOW_ACTION_DECAP;
-	} else if (is_flow_tunnel_steer_rule(dev, attr, items, actions)) {
-		tunnel = flow_actions_to_tunnel(actions);
-		action_flags |= MLX5_FLOW_ACTION_TUNNEL_SET;
-	} else {
-		tunnel = NULL;
+	tunnel = is_tunnel_offload_active(dev) ?
+		 mlx5_get_tof(items, actions, &tof_rule_type) : NULL;
+	if (tunnel) {
+		if (priv->representor)
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				 NULL, "decap not supported for VF representor");
+		if (tof_rule_type == MLX5_TUNNEL_OFFLOAD_SET_RULE)
+			action_flags |= MLX5_FLOW_ACTION_TUNNEL_SET;
+		else if (tof_rule_type == MLX5_TUNNEL_OFFLOAD_MATCH_RULE)
+			action_flags |= MLX5_FLOW_ACTION_TUNNEL_MATCH |
+					MLX5_FLOW_ACTION_DECAP;
+		grp_info.std_tbl_fix = tunnel_use_standard_attr_group_translate
+					(dev, attr, tunnel, tof_rule_type);
 	}
-	if (tunnel && priv->representor)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "decap not supported "
-					  "for VF representor");
-	grp_info.std_tbl_fix = tunnel_use_standard_attr_group_translate
-				(dev, tunnel, attr, items, actions);
 	ret = flow_dv_validate_attributes(dev, tunnel, attr, &grp_info, error);
 	if (ret < 0)
 		return ret;
@@ -5362,15 +5363,6 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  NULL, "item not supported");
 		switch (type) {
-		case MLX5_RTE_FLOW_ITEM_TYPE_TUNNEL:
-			if (items[0].type != (typeof(items[0].type))
-						MLX5_RTE_FLOW_ITEM_TYPE_TUNNEL)
-				return rte_flow_error_set
-						(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ITEM,
-						NULL, "MLX5 private items "
-						"must be the first");
-			break;
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
@@ -5630,6 +5622,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_LAYER_ECPRI;
+			break;
+		case MLX5_RTE_FLOW_ITEM_TYPE_TUNNEL:
+			/* tunnel offload item was processed before
+			 * list it here as a supported type
+			 */
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -6099,15 +6096,9 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			++actions_n;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_TUNNEL_SET:
-			if (actions[0].type != (typeof(actions[0].type))
-				MLX5_RTE_FLOW_ACTION_TYPE_TUNNEL_SET)
-				return rte_flow_error_set
-						(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ACTION,
-						NULL, "MLX5 private action "
-						"must be the first");
-
-			action_flags |= MLX5_FLOW_ACTION_TUNNEL_SET;
+			/* tunnel offload action was processed before
+			 * list it here as a supported type
+			 */
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -9730,12 +9721,13 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	int tmp_actions_n = 0;
 	uint32_t table;
 	int ret = 0;
-	const struct mlx5_flow_tunnel *tunnel;
+	const struct mlx5_flow_tunnel *tunnel = NULL;
 	struct flow_grp_info grp_info = {
 		.external = !!dev_flow->external,
 		.transfer = !!attr->transfer,
 		.fdb_def_rule = !!priv->fdb_def_rule,
 		.skip_scale = !!dev_flow->skip_scale,
+		.std_tbl_fix = true,
 	};
 
 	if (!wks)
@@ -9750,15 +9742,21 @@ flow_dv_translate(struct rte_eth_dev *dev,
 					   MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
 	/* update normal path action resource into last index of array */
 	sample_act = &mdest_res.sample_act[MLX5_MAX_DEST_NUM - 1];
-	tunnel = is_flow_tunnel_match_rule(dev, attr, items, actions) ?
-		 flow_items_to_tunnel(items) :
-		 is_flow_tunnel_steer_rule(dev, attr, items, actions) ?
-		 flow_actions_to_tunnel(actions) :
-		 dev_flow->tunnel ? dev_flow->tunnel : NULL;
+	if (is_tunnel_offload_active(dev)) {
+		if (dev_flow->tunnel) {
+			RTE_VERIFY(dev_flow->tof_type ==
+				   MLX5_TUNNEL_OFFLOAD_MISS_RULE);
+			tunnel = dev_flow->tunnel;
+		} else {
+			tunnel = mlx5_get_tof(items, actions,
+					      &dev_flow->tof_type);
+			dev_flow->tunnel = tunnel;
+		}
+		grp_info.std_tbl_fix = tunnel_use_standard_attr_group_translate
+					(dev, attr, tunnel, dev_flow->tof_type);
+	}
 	mhdr_res->ft_type = attr->egress ? MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
 					   MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
-	grp_info.std_tbl_fix = tunnel_use_standard_attr_group_translate
-				(dev, tunnel, attr, items, actions);
 	ret = mlx5_flow_group_to_table(dev, tunnel, attr->group, &table,
 				       &grp_info, error);
 	if (ret)
@@ -9770,7 +9768,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		priority = dev_conf->flow_prio - 1;
 	/* number of actions must be set to 0 in case of dirty stack. */
 	mhdr_res->actions_num = 0;
-	if (is_flow_tunnel_match_rule(dev, attr, items, actions)) {
+	if (is_flow_tunnel_match_rule(dev_flow->tof_type)) {
 		/*
 		 * do not add decap action if match rule drops packet
 		 * HW rejects rules with decap & drop
