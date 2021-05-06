@@ -207,7 +207,7 @@ struct ice_virt_mem {
 } __rte_packed;
 
 #define ice_malloc(h, s)    rte_zmalloc(NULL, s, 0)
-#define ice_calloc(h, c, s) rte_zmalloc(NULL, (c) * (s), 0)
+#define ice_calloc(h, c, s) rte_calloc(NULL, c, s, 0)
 #define ice_free(h, m)         rte_free(m)
 
 #define ice_memset(a, b, c, d) memset((a), (b), (c))
