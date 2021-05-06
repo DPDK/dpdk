@@ -508,10 +508,14 @@ is_shared_build(void)
 	}
 
 	while (len >= minlen) {
+		void *handle;
+
 		/* check if we have this .so loaded, if so - shared build */
 		RTE_LOG(DEBUG, EAL, "Checking presence of .so '%s'\n", soname);
-		if (dlopen(soname, RTLD_LAZY | RTLD_NOLOAD) != NULL) {
+		handle = dlopen(soname, RTLD_LAZY | RTLD_NOLOAD);
+		if (handle != NULL) {
 			RTE_LOG(INFO, EAL, "Detected shared linkage of DPDK\n");
+			dlclose(handle);
 			return 1;
 		}
 
