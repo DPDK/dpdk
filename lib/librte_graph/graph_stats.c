@@ -119,8 +119,8 @@ stats_mem_init(struct cluster *cluster,
 	cluster_node_size = RTE_ALIGN(cluster_node_size, RTE_CACHE_LINE_SIZE);
 
 	stats = realloc(NULL, sz);
-	memset(stats, 0, sz);
 	if (stats) {
+		memset(stats, 0, sz);
 		stats->fn = fn;
 		stats->cluster_node_size = cluster_node_size;
 		stats->max_nodes = 0;
