@@ -223,6 +223,8 @@ hns3_counter_query(struct rte_eth_dev *dev, struct rte_flow *flow,
 	}
 	qc->hits_set = 1;
 	qc->hits = value;
+	qc->bytes_set = 0;
+	qc->bytes = 0;
 
 	return 0;
 }
