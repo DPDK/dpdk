@@ -1013,6 +1013,8 @@ int hns3_clear_all_fdir_filter(struct hns3_adapter *hns)
 	struct hns3_fdir_info *fdir_info = &pf->fdir;
 	struct hns3_fdir_rule_ele *fdir_filter;
 	struct hns3_hw *hw = &hns->hw;
+	int succ_cnt = 0;
+	int fail_cnt = 0;
 	int ret = 0;
 
 	/* flush flow director */
@@ -1021,17 +1023,23 @@ int hns3_clear_all_fdir_filter(struct hns3_adapter *hns)
 	fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list);
 	while (fdir_filter) {
 		TAILQ_REMOVE(&fdir_info->fdir_list, fdir_filter, entries);
-		ret += hns3_fd_tcam_config(hw, true,
-					   fdir_filter->fdir_conf.location,
-					   NULL, false);
+		ret = hns3_fd_tcam_config(hw, true,
+					  fdir_filter->fdir_conf.location,
+					  NULL, false);
+		if (ret == 0)
+			succ_cnt++;
+		else
+			fail_cnt++;
 		rte_free(fdir_filter);
 		fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list);
 	}
 
-	if (ret) {
-		hns3_err(hw, "Fail to delete FDIR filter, ret = %d", ret);
+	if (fail_cnt > 0) {
+		hns3_err(hw, "fail to delete all FDIR filter, success num = %d "
+			 "fail num = %d", succ_cnt, fail_cnt);
 		ret = -EIO;
 	}
+
 	return ret;
 }
 
