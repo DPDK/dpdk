@@ -1891,12 +1891,6 @@ hns3vf_init_hardware(struct hns3_adapter *hns)
 		goto err_init_hardware;
 	}
 
-	ret = hns3vf_set_alive(hw, true);
-	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to VF send alive to PF: %d", ret);
-		goto err_init_hardware;
-	}
-
 	return 0;
 
 err_init_hardware:
@@ -1994,6 +1988,12 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 		goto err_set_tc_queue;
 
 	hns3_rss_set_default_args(hw);
+
+	ret = hns3vf_set_alive(hw, true);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to VF send alive to PF: %d", ret);
+		goto err_set_tc_queue;
+	}
 
 	return 0;
 
@@ -2706,6 +2706,13 @@ hns3vf_restore_conf(struct hns3_adapter *hns)
 		hns3_info(hw, "hns3vf dev restart successful!");
 	} else if (hw->adapter_state == HNS3_NIC_STOPPING)
 		hw->adapter_state = HNS3_NIC_CONFIGURED;
+
+	ret = hns3vf_set_alive(hw, true);
+	if (ret) {
+		hns3_err(hw, "failed to VF send alive to PF: %d", ret);
+		goto err_vlan_table;
+	}
+
 	return 0;
 
 err_vlan_table:
