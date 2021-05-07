@@ -223,6 +223,13 @@ soc_bluefield = {
     'numa': false
 }
 
+soc_centriq2400 = {
+    'description': 'Qualcomm Centriq 2400',
+    'implementer': '0x51',
+    'part_number': '0xc00',
+    'numa': false
+}
+
 soc_cn10k = {
     'description' : 'Marvell OCTEON 10',
     'implementer' : '0x41',
@@ -326,6 +333,7 @@ Start of SoCs list
 generic:     Generic un-optimized build for all aarch64 machines.
 armada:      Marvell ARMADA
 bluefield:   NVIDIA BlueField
+centriq2400: Qualcomm Centriq 2400
 cn10k:       Marvell OCTEON 10
 dpaa:        NXP DPAA
 emag:        Ampere eMAG
@@ -346,6 +354,7 @@ socs = {
     'generic': soc_generic,
     'armada': soc_armada,
     'bluefield': soc_bluefield,
+    'centriq2400': soc_centriq2400,
     'cn10k' : soc_cn10k,
     'dpaa': soc_dpaa,
     'emag': soc_emag,
