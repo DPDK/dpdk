@@ -7378,14 +7378,11 @@ mlx5_flow_create_counter_stat_mem_mng(struct mlx5_dev_ctx_shared *sh)
 		mlx5_free(mem);
 		return -rte_errno;
 	}
+	memset(&mkey_attr, 0, sizeof(mkey_attr));
 	mkey_attr.addr = (uintptr_t)mem;
 	mkey_attr.size = size;
 	mkey_attr.umem_id = mlx5_os_get_umem_id(mem_mng->umem);
 	mkey_attr.pd = sh->pdn;
-	mkey_attr.log_entity_size = 0;
-	mkey_attr.pg_access = 0;
-	mkey_attr.klm_array = NULL;
-	mkey_attr.klm_num = 0;
 	mkey_attr.relaxed_ordering_write = sh->cmng.relaxed_ordering_write;
 	mkey_attr.relaxed_ordering_read = sh->cmng.relaxed_ordering_read;
 	mem_mng->dm = mlx5_devx_cmd_mkey_create(sh->ctx, &mkey_attr);

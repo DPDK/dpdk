@@ -168,16 +168,11 @@ mlx5_os_reg_mr(void *pd,
 			       IBV_ACCESS_LOCAL_WRITE);
 	if (!obj)
 		return -1;
+	memset(&mkey_attr, 0, sizeof(mkey_attr));
 	mkey_attr.addr = (uintptr_t)addr;
 	mkey_attr.size = length;
 	mkey_attr.umem_id = ((struct mlx5_devx_umem *)(obj))->umem_id;
 	mkey_attr.pd = mlx5_pd->pdn;
-	mkey_attr.log_entity_size = 0;
-	mkey_attr.pg_access = 0;
-	mkey_attr.klm_array = NULL;
-	mkey_attr.klm_num = 0;
-	mkey_attr.relaxed_ordering_read = 0;
-	mkey_attr.relaxed_ordering_write = 0;
 	if (!haswell_broadwell_cpu) {
 		mkey_attr.relaxed_ordering_write = attr.relaxed_ordering_write;
 		mkey_attr.relaxed_ordering_read = attr.relaxed_ordering_read;

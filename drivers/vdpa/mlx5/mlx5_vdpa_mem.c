@@ -200,6 +200,7 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 		goto error;
 	}
 	DRV_LOG(DEBUG, "Dump fill Mkey = %u.", priv->null_mr->lkey);
+	memset(&mkey_attr, 0, sizeof(mkey_attr));
 	for (i = 0; i < mem->nregions; i++) {
 		reg = &mem->regions[i];
 		entry = rte_zmalloc(__func__, sizeof(*entry), 0);
@@ -221,10 +222,6 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 		mkey_attr.umem_id = entry->umem->umem_id;
 		mkey_attr.pd = priv->pdn;
 		mkey_attr.pg_access = 1;
-		mkey_attr.klm_array = NULL;
-		mkey_attr.klm_num = 0;
-		mkey_attr.relaxed_ordering_read = 0;
-		mkey_attr.relaxed_ordering_write = 0;
 		entry->mkey = mlx5_devx_cmd_mkey_create(priv->ctx, &mkey_attr);
 		if (!entry->mkey) {
 			DRV_LOG(ERR, "Failed to create direct Mkey.");

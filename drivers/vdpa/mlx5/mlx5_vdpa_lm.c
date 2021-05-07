@@ -41,10 +41,6 @@ mlx5_vdpa_dirty_bitmap_set(struct mlx5_vdpa_priv *priv, uint64_t log_base,
 			.size = log_size,
 			.pd = priv->pdn,
 			.pg_access = 1,
-			.klm_array = NULL,
-			.klm_num = 0,
-			.relaxed_ordering_read = 0,
-			.relaxed_ordering_write = 0,
 	};
 	struct mlx5_devx_virtq_attr attr = {
 		.type = MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_PARAMS,
