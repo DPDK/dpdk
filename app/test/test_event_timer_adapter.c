@@ -303,10 +303,8 @@ _timdev_setup(uint64_t max_tmo_ns, uint64_t bkt_tck_ns, uint64_t flags)
 				"failed to get adapter capabilities");
 
 	if (flags & RTE_EVENT_TIMER_ADAPTER_F_PERIODIC &&
-	    !(caps & RTE_EVENT_TIMER_ADAPTER_CAP_PERIODIC)) {
-		printf("Adapter does not support periodic timers\n");
-		return TEST_SKIPPED;
-	}
+	    !(caps & RTE_EVENT_TIMER_ADAPTER_CAP_PERIODIC))
+		return -ENOTSUP;
 
 	if (!(caps & RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT)) {
 		timdev = rte_event_timer_adapter_create_ext(&config,
