@@ -4213,6 +4213,7 @@ static bool
 hns3_get_tx_prep_needed(struct rte_eth_dev *dev)
 {
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_SET_USED(dev);
 	/* always perform tx_prepare when debug */
 	return true;
 #else
