@@ -153,9 +153,12 @@ hns3vf_enable_msix(const struct rte_pci_device *device, bool op)
 		if (ret < 0) {
 			PMD_INIT_LOG(ERR, "failed to write PCI offset 0x%x",
 				    (pos + PCI_MSIX_FLAGS));
+			return -ENXIO;
 		}
+
 		return 0;
 	}
+
 	return -ENXIO;
 }
 
