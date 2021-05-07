@@ -27,13 +27,13 @@ endif
 
 # add cmdline disabled drivers and meson disabled drivers together
 disable_drivers += ',' + get_option('disable_drivers')
-disable_drivers = run_command(list_dir_globs, disable_drivers).stdout().split()
+disable_drivers = run_command(list_dir_globs, disable_drivers, check: true).stdout().split()
 
 # add cmdline enabled drivers and meson enabled drivers together
 enable_drivers = ',' + get_option('enable_drivers')
-enable_drivers = run_command(list_dir_globs, enable_drivers).stdout().split()
+enable_drivers = run_command(list_dir_globs, enable_drivers, check: true).stdout().split()
 if enable_drivers.length() == 0
-    enable_drivers = run_command(list_dir_globs, '*/*').stdout().split()
+    enable_drivers = run_command(list_dir_globs, '*/*', check: true).stdout().split()
 endif
 
 # these drivers must always be enabled, otherwise the build breaks
