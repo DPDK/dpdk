@@ -3303,13 +3303,6 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 		if (tx_check_ret >= 0 &&
 		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 			ad->tx_vec_allowed = true;
-			for (i = 0; i < dev->data->nb_tx_queues; i++) {
-				txq = dev->data->tx_queues[i];
-				if (txq && ice_txq_vec_setup(txq)) {
-					ad->tx_vec_allowed = false;
-					break;
-				}
-			}
 
 			if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512 &&
 			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
@@ -3329,6 +3322,15 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 			if (!use_avx512 && tx_check_ret == ICE_VECTOR_OFFLOAD_PATH)
 				ad->tx_vec_allowed = false;
 
+			if (ad->tx_vec_allowed) {
+				for (i = 0; i < dev->data->nb_tx_queues; i++) {
+					txq = dev->data->tx_queues[i];
+					if (txq && ice_txq_vec_setup(txq)) {
+						ad->tx_vec_allowed = false;
+						break;
+					}
+				}
+			}
 		} else {
 			ad->tx_vec_allowed = false;
 		}
