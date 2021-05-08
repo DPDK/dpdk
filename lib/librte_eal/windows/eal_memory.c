@@ -508,7 +508,7 @@ eal_mem_set_dump(void *virt, size_t size, bool dump)
 
 void *
 rte_mem_map(void *requested_addr, size_t size, int prot, int flags,
-	int fd, size_t offset)
+	int fd, uint64_t offset)
 {
 	HANDLE file_handle = INVALID_HANDLE_VALUE;
 	HANDLE mapping_handle = INVALID_HANDLE_VALUE;
