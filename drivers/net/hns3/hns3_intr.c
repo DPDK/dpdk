@@ -1346,8 +1346,11 @@ enable_tm_err_intr(struct hns3_adapter *hns, bool en)
 
 	/* configure TM QCN hw errors */
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_TM_QCN_MEM_INT_CFG, false);
-	if (en)
+	desc.data[0] = rte_cpu_to_le_32(HNS3_TM_QCN_ERR_INT_TYPE);
+	if (en) {
+		desc.data[0] |= rte_cpu_to_le_32(HNS3_TM_QCN_FIFO_INT_EN);
 		desc.data[1] = rte_cpu_to_le_32(HNS3_TM_QCN_MEM_ERR_INT_EN);
+	}
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
