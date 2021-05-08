@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <rte_eal_paging.h>
 #include <rte_errno.h>
@@ -24,14 +25,14 @@
 
 static void *
 mem_map(void *requested_addr, size_t size, int prot, int flags,
-	int fd, size_t offset)
+	int fd, uint64_t offset)
 {
 	void *virt = mmap(requested_addr, size, prot, flags, fd, offset);
 	if (virt == MAP_FAILED) {
 		RTE_LOG(DEBUG, EAL,
-			"Cannot mmap(%p, 0x%zx, 0x%x, 0x%x, %d, 0x%zx): %s\n",
-			requested_addr, size, prot, flags, fd, offset,
-			strerror(errno));
+		    "Cannot mmap(%p, 0x%zx, 0x%x, 0x%x, %d, 0x%"PRIx64"): %s\n",
+		    requested_addr, size, prot, flags, fd, offset,
+		    strerror(errno));
 		rte_errno = errno;
 		return NULL;
 	}
@@ -106,7 +107,7 @@ mem_rte_to_sys_prot(int prot)
 
 void *
 rte_mem_map(void *requested_addr, size_t size, int prot, int flags,
-	int fd, size_t offset)
+	int fd, uint64_t offset)
 {
 	int sys_flags = 0;
 	int sys_prot;
