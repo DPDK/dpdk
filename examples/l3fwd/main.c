@@ -1041,6 +1041,10 @@ l3fwd_poll_resource_setup(void)
 
 		local_port_conf.rx_adv_conf.rss_conf.rss_hf &=
 			dev_info.flow_type_rss_offloads;
+
+		if (dev_info.max_rx_queues == 1)
+			local_port_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
+
 		if (local_port_conf.rx_adv_conf.rss_conf.rss_hf !=
 				port_conf.rx_adv_conf.rss_conf.rss_hf) {
 			printf("Port %u modified RSS hash function based on hardware support,"
