@@ -1879,11 +1879,14 @@ mlx5_device_bond_pci_match(const struct ibv_device *ibv_dev,
 				tmp_str);
 			break;
 		}
-		/* Match PCI address. */
+		/* Match PCI address, allows BDF0+pfx or BDFx+pfx. */
 		if (pci_dev->domain == pci_addr.domain &&
 		    pci_dev->bus == pci_addr.bus &&
 		    pci_dev->devid == pci_addr.devid &&
-		    pci_dev->function + owner == pci_addr.function)
+		    ((pci_dev->function == 0 &&
+		      pci_dev->function + owner == pci_addr.function) ||
+		     (pci_dev->function == owner &&
+		      pci_addr.function == owner)))
 			pf = info.port_name;
 		/* Get ifindex. */
 		snprintf(tmp_str, sizeof(tmp_str),
