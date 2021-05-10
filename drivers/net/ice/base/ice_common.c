@@ -2009,9 +2009,6 @@ ice_parse_common_caps(struct ice_hw *hw, struct ice_hw_common_caps *caps,
 	{
 		u8 index = cap - ICE_AQC_CAPS_EXT_TOPO_DEV_IMG0;
 
-		if (index >= ICE_EXT_TOPO_DEV_IMG_COUNT)
-			break;
-
 		caps->ext_topo_dev_img_ver_high[index] = number;
 		caps->ext_topo_dev_img_ver_low[index] = logical_id;
 		caps->ext_topo_dev_img_part_num[index] =
