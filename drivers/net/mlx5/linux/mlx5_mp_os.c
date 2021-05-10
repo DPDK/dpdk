@@ -132,7 +132,6 @@ struct rte_mp_msg mp_res;
 	switch (param->type) {
 	case MLX5_MP_REQ_START_RXTX:
 		DRV_LOG(INFO, "port %u starting datapath", dev->data->port_id);
-		rte_mb();
 		dev->rx_pkt_burst = mlx5_select_rx_function(dev);
 		dev->tx_pkt_burst = mlx5_select_tx_function(dev);
 		ppriv = (struct mlx5_proc_priv *)dev->process_private;
@@ -149,6 +148,7 @@ struct rte_mp_msg mp_res;
 				return -rte_errno;
 			}
 		}
+		rte_mb();
 		mp_init_msg(&priv->mp_id, &mp_res, param->type);
 		res->result = 0;
 		ret = rte_mp_reply(&mp_res, peer);
