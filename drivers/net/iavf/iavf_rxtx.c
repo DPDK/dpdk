@@ -2393,7 +2393,6 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	struct iavf_rx_queue *rxq;
 	int i;
 	int check_ret;
-	bool use_sse = false;
 	bool use_avx2 = false;
 	bool use_avx512 = false;
 	bool use_flex = false;
@@ -2401,7 +2400,6 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	check_ret = iavf_rx_vec_dev_check(dev);
 	if (check_ret >= 0 &&
 	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-		use_sse = true;
 		if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
 		     rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
 		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
@@ -2413,9 +2411,6 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512)
 			use_avx512 = true;
 #endif
-
-		if (!use_sse && !use_avx2 && !use_avx512)
-			goto normal;
 
 		if (vf->vf_res->vf_cap_flags &
 			VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC)
@@ -2520,7 +2515,6 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 		return;
 	}
 
-normal:
 #endif
 	if (dev->data->scattered_rx) {
 		PMD_DRV_LOG(DEBUG, "Using a Scattered Rx callback (port=%d).",
