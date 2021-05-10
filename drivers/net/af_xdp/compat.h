@@ -42,37 +42,12 @@ create_shared_socket(struct xsk_socket **xsk_ptr __rte_unused,
 #endif
 
 #ifdef XDP_USE_NEED_WAKEUP
-static void
-rx_syscall_handler(struct xsk_ring_prod *q, uint32_t busy_budget,
-		   struct pollfd *fds, struct xsk_socket *xsk)
-{
-	/* we can assume a kernel >= 5.11 is in use if busy polling is enabled
-	 * and thus we can safely use the recvfrom() syscall which is only
-	 * supported for AF_XDP sockets in kernels >= 5.11.
-	 */
-	if (busy_budget) {
-		(void)recvfrom(xsk_socket__fd(xsk), NULL, 0,
-			MSG_DONTWAIT, NULL, NULL);
-		return;
-	}
-
-	if (xsk_ring_prod__needs_wakeup(q))
-		(void)poll(fds, 1, 1000);
-}
 static int
 tx_syscall_needed(struct xsk_ring_prod *q)
 {
 	return xsk_ring_prod__needs_wakeup(q);
 }
 #else
-static void
-rx_syscall_handler(struct xsk_ring_prod *q __rte_unused, uint32_t busy_budget,
-		   struct pollfd *fds __rte_unused, struct xsk_socket *xsk)
-{
-	if (busy_budget)
-		(void)recvfrom(xsk_socket__fd(xsk), NULL, 0,
-			MSG_DONTWAIT, NULL, NULL);
-}
 static int
 tx_syscall_needed(struct xsk_ring_prod *q __rte_unused)
 {

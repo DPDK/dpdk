@@ -272,8 +272,18 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	nb_pkts = xsk_ring_cons__peek(rx, nb_pkts, &idx_rx);
 
 	if (nb_pkts == 0) {
-		rx_syscall_handler(&rxq->fq, rxq->busy_budget, &rxq->fds[0],
-				   rxq->xsk);
+		/* we can assume a kernel >= 5.11 is in use if busy polling is
+		 * enabled and thus we can safely use the recvfrom() syscall
+		 * which is only supported for AF_XDP sockets in kernels >=
+		 * 5.11.
+		 */
+		if (rxq->busy_budget) {
+			(void)recvfrom(xsk_socket__fd(rxq->xsk), NULL, 0,
+				       MSG_DONTWAIT, NULL, NULL);
+		} else if (xsk_ring_prod__needs_wakeup(fq)) {
+			(void)poll(&rxq->fds[0], 1, 1000);
+		}
+
 		return 0;
 	}
 
