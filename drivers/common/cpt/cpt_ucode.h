@@ -1001,6 +1001,16 @@ cpt_enc_hmac_prep(uint32_t flags,
 		req->ist.ei2 = rptr_dma;
 	}
 
+	if (unlikely((encr_offset >> 16) ||
+		     (iv_offset >> 8) ||
+		     (auth_offset >> 8))) {
+		CPT_LOG_DP_ERR("Offset not supported");
+		CPT_LOG_DP_ERR("enc_offset: %d", encr_offset);
+		CPT_LOG_DP_ERR("iv_offset : %d", iv_offset);
+		CPT_LOG_DP_ERR("auth_offset: %d", auth_offset);
+		return;
+	}
+
 	/* 16 byte aligned cpt res address */
 	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
 	*req->completion_addr = COMPLETION_CODE_INIT;
@@ -1184,6 +1194,16 @@ cpt_dec_hmac_prep(uint32_t flags,
 			dest[1] = src[1];
 		}
 
+		if (unlikely((encr_offset >> 16) ||
+			     (iv_offset >> 8) ||
+			     (auth_offset >> 8))) {
+			CPT_LOG_DP_ERR("Offset not supported");
+			CPT_LOG_DP_ERR("enc_offset: %d", encr_offset);
+			CPT_LOG_DP_ERR("iv_offset : %d", iv_offset);
+			CPT_LOG_DP_ERR("auth_offset: %d", auth_offset);
+			return;
+		}
+
 		*(uint64_t *)offset_vaddr =
 			rte_cpu_to_be_64(((uint64_t)encr_offset << 16) |
 				((uint64_t)iv_offset << 8) |
@@ -1213,6 +1233,16 @@ cpt_dec_hmac_prep(uint32_t flags,
 			uint64_t *src = fc_params->iv_buf;
 			dest[0] = src[0];
 			dest[1] = src[1];
+		}
+
+		if (unlikely((encr_offset >> 16) ||
+			     (iv_offset >> 8) ||
+			     (auth_offset >> 8))) {
+			CPT_LOG_DP_ERR("Offset not supported");
+			CPT_LOG_DP_ERR("enc_offset: %d", encr_offset);
+			CPT_LOG_DP_ERR("iv_offset : %d", iv_offset);
+			CPT_LOG_DP_ERR("auth_offset: %d", auth_offset);
+			return;
 		}
 
 		*(uint64_t *)offset_vaddr =
@@ -1490,6 +1520,14 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 
 		/* iv offset is 0 */
 		offset_ctrl = rte_cpu_to_be_64((uint64_t)encr_offset << 16);
+	}
+
+	if (unlikely((encr_offset >> 16) ||
+		     (auth_offset >> 8))) {
+		CPT_LOG_DP_ERR("Offset not supported");
+		CPT_LOG_DP_ERR("enc_offset: %d", encr_offset);
+		CPT_LOG_DP_ERR("auth_offset: %d", auth_offset);
+		return;
 	}
 
 	/* IV */
@@ -1934,6 +1972,12 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 		req->ist.ei2 = rptr_dma;
 	}
 
+	if (unlikely((encr_offset >> 16))) {
+		CPT_LOG_DP_ERR("Offset not supported");
+		CPT_LOG_DP_ERR("enc_offset: %d", encr_offset);
+		return;
+	}
+
 	/* 16 byte aligned cpt res address */
 	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
 	*req->completion_addr = COMPLETION_CODE_INIT;
@@ -2068,11 +2112,21 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 		outputlen = inputlen;
 		/* iv offset is 0 */
 		*offset_vaddr = rte_cpu_to_be_64((uint64_t)encr_offset << 16);
+		if (unlikely((encr_offset >> 16))) {
+			CPT_LOG_DP_ERR("Offset not supported");
+			CPT_LOG_DP_ERR("enc_offset: %d", encr_offset);
+			return;
+		}
 	} else {
 		inputlen = auth_offset + (RTE_ALIGN(auth_data_len, 8) / 8);
 		outputlen = mac_len;
 		/* iv offset is 0 */
 		*offset_vaddr = rte_cpu_to_be_64((uint64_t)auth_offset);
+		if (unlikely((auth_offset >> 8))) {
+			CPT_LOG_DP_ERR("Offset not supported");
+			CPT_LOG_DP_ERR("auth_offset: %d", auth_offset);
+			return;
+		}
 	}
 
 	i = fill_sg_comp(gather_comp, i, offset_dma, OFF_CTRL_LEN + iv_len);
@@ -2285,6 +2339,11 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 
 	/* Offset control word followed by iv */
 	*offset_vaddr = rte_cpu_to_be_64((uint64_t)encr_offset << 16);
+	if (unlikely((encr_offset >> 16))) {
+		CPT_LOG_DP_ERR("Offset not supported");
+		CPT_LOG_DP_ERR("enc_offset: %d", encr_offset);
+		return;
+	}
 
 	i = fill_sg_comp(gather_comp, i, offset_dma, OFF_CTRL_LEN + iv_len);
 
