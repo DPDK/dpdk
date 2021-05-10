@@ -86,8 +86,8 @@ mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	case HNS3_MP_REQ_START_RXTX:
 		PMD_INIT_LOG(INFO, "port %u starting datapath",
 			     dev->data->port_id);
-		rte_mb();
 		hns3_set_rxtx_function(dev);
+		rte_mb();
 		mp_init_msg(dev, &mp_res, param->type);
 		res->result = 0;
 		ret = rte_mp_reply(&mp_res, peer);
