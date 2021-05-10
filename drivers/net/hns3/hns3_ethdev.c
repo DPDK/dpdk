@@ -6121,9 +6121,11 @@ hns3_fec_set(struct rte_eth_dev *dev, uint32_t mode)
 		return ret;
 
 	/* HNS3 PMD driver only support one bit set mode, e.g. 0x1, 0x4 */
-	if (!is_fec_mode_one_bit_set(mode))
-		hns3_err(hw, "FEC mode(0x%x) not supported in HNS3 PMD,"
+	if (!is_fec_mode_one_bit_set(mode)) {
+		hns3_err(hw, "FEC mode(0x%x) not supported in HNS3 PMD, "
 			     "FEC mode should be only one bit set", mode);
+		return -EINVAL;
+	}
 
 	/*
 	 * Check whether the configured mode is within the FEC capability.
