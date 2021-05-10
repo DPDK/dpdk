@@ -551,7 +551,7 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 			break;
 		default:
 			hns3_err(hw, "received unsupported(%u) mbx msg",
-				 req->msg[0]);
+				 opcode);
 			break;
 		}
 
