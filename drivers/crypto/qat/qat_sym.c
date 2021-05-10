@@ -399,8 +399,10 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		}
 		min_ofs = auth_ofs;
 
-		auth_param->auth_res_addr =
-			op->sym->auth.digest.phys_addr;
+		if (ctx->qat_hash_alg != ICP_QAT_HW_AUTH_ALGO_NULL ||
+				ctx->auth_op == ICP_QAT_HW_AUTH_VERIFY)
+			auth_param->auth_res_addr =
+					op->sym->auth.digest.phys_addr;
 
 	}
 
