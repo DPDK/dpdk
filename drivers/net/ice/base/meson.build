@@ -23,6 +23,11 @@ error_cflags = [
         '-Wno-unused-parameter',
 ]
 
+# Bugzilla ID: 678
+if (toolchain == 'gcc' and cc.version().version_compare('>=11.0.0'))
+    error_cflags += ['-Wno-array-bounds']
+endif
+
 if is_windows and cc.get_id() != 'clang'
     cflags += ['-fno-asynchronous-unwind-tables']
 endif
