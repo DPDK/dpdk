@@ -111,6 +111,13 @@ New Features
 
   * Added conntrack item and action for stateful connection offload.
 
+* **Updated Amazon ENA PMD.**
+
+  The new driver version (v2.3.0) introduced bug fixes and improvements,
+  including:
+
+  * Changed memcpy mapping to the dpdk-optimized version.
+
 * **Updated Arkville PMD driver.**
 
   Updated Arkville net driver with new features and improvements, including:
