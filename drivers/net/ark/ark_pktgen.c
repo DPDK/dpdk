@@ -3,6 +3,7 @@
  */
 
 #include <unistd.h>
+#include <pthread.h>
 
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
@@ -474,6 +475,7 @@ ark_pktgen_delay_start(void *arg)
 	 * perform a blind sleep here to ensure that the external test
 	 * application has time to setup the test before we generate packets
 	 */
+	pthread_detach(pthread_self());
 	usleep(100000);
 	ark_pktgen_run(inst);
 	return NULL;
