@@ -6,18 +6,6 @@
 #ifndef __ENA_PLATFORM_H__
 #define __ENA_PLATFORM_H__
 
-#define swap16_to_le(x)		(x)
-
-#define swap32_to_le(x)		(x)
-
-#define swap64_to_le(x)		(x)
-
-#define swap16_from_le(x)       (x)
-
-#define swap32_from_le(x)	(x)
-
-#define swap64_from_le(x)	(x)
-
 #define ena_assert_msg(cond, msg)		\
 	do {					\
 		if (unlikely(!(cond))) {	\
