@@ -1318,5 +1318,5 @@ int vnic_dev_capable_geneve(struct vnic_dev *vdev)
 	int ret;
 
 	ret = vnic_dev_cmd(vdev, CMD_GET_SUPP_FEATURE_VER, &a0, &a1, wait);
-	return ret == 0 && (a1 & FEATURE_GENEVE_OPTIONS);
+	return ret == 0 && !!(a1 & FEATURE_GENEVE_OPTIONS);
 }

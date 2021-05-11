@@ -55,6 +55,7 @@ struct vnic_enet_config {
 #define VENETF_NICSWITCH        0x80000 /* NICSWITCH enabled */
 #define VENETF_RSSHASH_UDPIPV4  0x100000 /* Hash on UDP + IPv4 fields */
 #define VENETF_RSSHASH_UDPIPV6  0x200000 /* Hash on UDP + IPv6 fields */
+#define VENETF_GENEVE		0x400000 /* GENEVE offload */
 
 #define VENET_INTR_TYPE_MIN	0	/* Timer specs min interrupt spacing */
 #define VENET_INTR_TYPE_IDLE	1	/* Timer specs idle time before irq */
