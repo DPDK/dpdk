@@ -1902,18 +1902,19 @@ bnx2x_hc_ack_sb(struct bnx2x_softc *sc, uint8_t sb_id, uint8_t storm,
 {
 	uint32_t hc_addr = (HC_REG_COMMAND_REG + SC_PORT(sc) * 32 +
 			COMMAND_REG_INT_ACK);
-	struct igu_ack_register igu_ack;
-	uint32_t *val = NULL;
+	union {
+		struct igu_ack_register igu_ack;
+		uint32_t val;
+	} val;
 
-	igu_ack.status_block_index = index;
-	igu_ack.sb_id_and_flags =
+	val.igu_ack.status_block_index = index;
+	val.igu_ack.sb_id_and_flags =
 		((sb_id << IGU_ACK_REGISTER_STATUS_BLOCK_ID_SHIFT) |
 		 (storm << IGU_ACK_REGISTER_STORM_ID_SHIFT) |
 		 (update << IGU_ACK_REGISTER_UPDATE_INDEX_SHIFT) |
 		 (op << IGU_ACK_REGISTER_INTERRUPT_MODE_SHIFT));
 
-	val = (uint32_t *)&igu_ack;
-	REG_WR(sc, hc_addr, *val);
+	REG_WR(sc, hc_addr, val.val);
 
 	/* Make sure that ACK is written */
 	mb();
