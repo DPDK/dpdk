@@ -25,6 +25,7 @@
 #include <rte_spinlock.h>
 
 #include <sys/time.h>
+#include <rte_memcpy.h>
 
 typedef uint64_t u64;
 typedef uint32_t u32;
@@ -62,7 +63,11 @@ typedef uint64_t dma_addr_t;
 #define ENA_UDELAY(x) rte_delay_us_block(x)
 
 #define ENA_TOUCH(x) ((void)(x))
-#define memcpy_toio memcpy
+/* Avoid nested declaration on arm64, as it may define rte_memcpy as memcpy. */
+#if defined(RTE_ARCH_X86)
+#undef memcpy
+#define memcpy rte_memcpy
+#endif
 #define wmb rte_wmb
 #define rmb rte_rmb
 #define mb rte_mb
