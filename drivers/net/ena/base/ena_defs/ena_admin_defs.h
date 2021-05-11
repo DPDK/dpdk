@@ -866,7 +866,7 @@ struct ena_admin_host_info {
 
 	uint16_t reserved;
 
-	/* 0 : mutable_rss_table_size
+	/* 0 : reserved
 	 * 1 : rx_offset
 	 * 2 : interrupt_moderation
 	 * 3 : rx_buf_mirroring
@@ -1189,7 +1189,6 @@ struct ena_admin_ena_mmio_req_read_less_resp {
 #define ENA_ADMIN_HOST_INFO_DEVICE_MASK                     GENMASK(7, 3)
 #define ENA_ADMIN_HOST_INFO_BUS_SHIFT                       8
 #define ENA_ADMIN_HOST_INFO_BUS_MASK                        GENMASK(15, 8)
-#define ENA_ADMIN_HOST_INFO_MUTABLE_RSS_TABLE_SIZE_MASK     BIT(0)
 #define ENA_ADMIN_HOST_INFO_RX_OFFSET_SHIFT                 1
 #define ENA_ADMIN_HOST_INFO_RX_OFFSET_MASK                  BIT(1)
 #define ENA_ADMIN_HOST_INFO_INTERRUPT_MODERATION_SHIFT      2
@@ -1617,16 +1616,6 @@ static inline uint16_t get_ena_admin_host_info_bus(const struct ena_admin_host_i
 static inline void set_ena_admin_host_info_bus(struct ena_admin_host_info *p, uint16_t val)
 {
 	p->bdf |= (val << ENA_ADMIN_HOST_INFO_BUS_SHIFT) & ENA_ADMIN_HOST_INFO_BUS_MASK;
-}
-
-static inline uint32_t get_ena_admin_host_info_mutable_rss_table_size(const struct ena_admin_host_info *p)
-{
-	return p->driver_supported_features & ENA_ADMIN_HOST_INFO_MUTABLE_RSS_TABLE_SIZE_MASK;
-}
-
-static inline void set_ena_admin_host_info_mutable_rss_table_size(struct ena_admin_host_info *p, uint32_t val)
-{
-	p->driver_supported_features |= val & ENA_ADMIN_HOST_INFO_MUTABLE_RSS_TABLE_SIZE_MASK;
 }
 
 static inline uint32_t get_ena_admin_host_info_rx_offset(const struct ena_admin_host_info *p)
