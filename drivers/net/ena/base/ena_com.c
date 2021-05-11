@@ -80,12 +80,12 @@ static int ena_com_mem_addr_set(struct ena_com_dev *ena_dev,
 	return 0;
 }
 
-static int ena_com_admin_init_sq(struct ena_com_admin_queue *queue)
+static int ena_com_admin_init_sq(struct ena_com_admin_queue *admin_queue)
 {
-	struct ena_com_admin_sq *sq = &queue->sq;
-	u16 size = ADMIN_SQ_SIZE(queue->q_depth);
+	struct ena_com_admin_sq *sq = &admin_queue->sq;
+	u16 size = ADMIN_SQ_SIZE(admin_queue->q_depth);
 
-	ENA_MEM_ALLOC_COHERENT(queue->q_dmadev, size, sq->entries, sq->dma_addr,
+	ENA_MEM_ALLOC_COHERENT(admin_queue->q_dmadev, size, sq->entries, sq->dma_addr,
 			       sq->mem_handle);
 
 	if (!sq->entries) {
@@ -102,12 +102,12 @@ static int ena_com_admin_init_sq(struct ena_com_admin_queue *queue)
 	return 0;
 }
 
-static int ena_com_admin_init_cq(struct ena_com_admin_queue *queue)
+static int ena_com_admin_init_cq(struct ena_com_admin_queue *admin_queue)
 {
-	struct ena_com_admin_cq *cq = &queue->cq;
-	u16 size = ADMIN_CQ_SIZE(queue->q_depth);
+	struct ena_com_admin_cq *cq = &admin_queue->cq;
+	u16 size = ADMIN_CQ_SIZE(admin_queue->q_depth);
 
-	ENA_MEM_ALLOC_COHERENT(queue->q_dmadev, size, cq->entries, cq->dma_addr,
+	ENA_MEM_ALLOC_COHERENT(admin_queue->q_dmadev, size, cq->entries, cq->dma_addr,
 			       cq->mem_handle);
 
 	if (!cq->entries)  {
@@ -121,16 +121,16 @@ static int ena_com_admin_init_cq(struct ena_com_admin_queue *queue)
 	return 0;
 }
 
-static int ena_com_admin_init_aenq(struct ena_com_dev *dev,
+static int ena_com_admin_init_aenq(struct ena_com_dev *ena_dev,
 				   struct ena_aenq_handlers *aenq_handlers)
 {
-	struct ena_com_aenq *aenq = &dev->aenq;
+	struct ena_com_aenq *aenq = &ena_dev->aenq;
 	u32 addr_low, addr_high, aenq_caps;
 	u16 size;
 
-	dev->aenq.q_depth = ENA_ASYNC_QUEUE_DEPTH;
+	ena_dev->aenq.q_depth = ENA_ASYNC_QUEUE_DEPTH;
 	size = ADMIN_AENQ_SIZE(ENA_ASYNC_QUEUE_DEPTH);
-	ENA_MEM_ALLOC_COHERENT(dev->dmadev, size,
+	ENA_MEM_ALLOC_COHERENT(ena_dev->dmadev, size,
 			aenq->entries,
 			aenq->dma_addr,
 			aenq->mem_handle);
@@ -146,15 +146,15 @@ static int ena_com_admin_init_aenq(struct ena_com_dev *dev,
 	addr_low = ENA_DMA_ADDR_TO_UINT32_LOW(aenq->dma_addr);
 	addr_high = ENA_DMA_ADDR_TO_UINT32_HIGH(aenq->dma_addr);
 
-	ENA_REG_WRITE32(dev->bus, addr_low, dev->reg_bar + ENA_REGS_AENQ_BASE_LO_OFF);
-	ENA_REG_WRITE32(dev->bus, addr_high, dev->reg_bar + ENA_REGS_AENQ_BASE_HI_OFF);
+	ENA_REG_WRITE32(ena_dev->bus, addr_low, ena_dev->reg_bar + ENA_REGS_AENQ_BASE_LO_OFF);
+	ENA_REG_WRITE32(ena_dev->bus, addr_high, ena_dev->reg_bar + ENA_REGS_AENQ_BASE_HI_OFF);
 
 	aenq_caps = 0;
-	aenq_caps |= dev->aenq.q_depth & ENA_REGS_AENQ_CAPS_AENQ_DEPTH_MASK;
+	aenq_caps |= ena_dev->aenq.q_depth & ENA_REGS_AENQ_CAPS_AENQ_DEPTH_MASK;
 	aenq_caps |= (sizeof(struct ena_admin_aenq_entry) <<
 		ENA_REGS_AENQ_CAPS_AENQ_ENTRY_SIZE_SHIFT) &
 		ENA_REGS_AENQ_CAPS_AENQ_ENTRY_SIZE_MASK;
-	ENA_REG_WRITE32(dev->bus, aenq_caps, dev->reg_bar + ENA_REGS_AENQ_CAPS_OFF);
+	ENA_REG_WRITE32(ena_dev->bus, aenq_caps, ena_dev->reg_bar + ENA_REGS_AENQ_CAPS_OFF);
 
 	if (unlikely(!aenq_handlers)) {
 		ena_trc_err("aenq handlers pointer is NULL\n");
@@ -173,31 +173,31 @@ static void comp_ctxt_release(struct ena_com_admin_queue *queue,
 	ATOMIC32_DEC(&queue->outstanding_cmds);
 }
 
-static struct ena_comp_ctx *get_comp_ctxt(struct ena_com_admin_queue *queue,
+static struct ena_comp_ctx *get_comp_ctxt(struct ena_com_admin_queue *admin_queue,
 					  u16 command_id, bool capture)
 {
-	if (unlikely(command_id >= queue->q_depth)) {
+	if (unlikely(command_id >= admin_queue->q_depth)) {
 		ena_trc_err("command id is larger than the queue size. cmd_id: %u queue size %d\n",
-			    command_id, queue->q_depth);
+			    command_id, admin_queue->q_depth);
 		return NULL;
 	}
 
-	if (unlikely(!queue->comp_ctx)) {
+	if (unlikely(!admin_queue->comp_ctx)) {
 		ena_trc_err("Completion context is NULL\n");
 		return NULL;
 	}
 
-	if (unlikely(queue->comp_ctx[command_id].occupied && capture)) {
+	if (unlikely(admin_queue->comp_ctx[command_id].occupied && capture)) {
 		ena_trc_err("Completion context is occupied\n");
 		return NULL;
 	}
 
 	if (capture) {
-		ATOMIC32_INC(&queue->outstanding_cmds);
-		queue->comp_ctx[command_id].occupied = true;
+		ATOMIC32_INC(&admin_queue->outstanding_cmds);
+		admin_queue->comp_ctx[command_id].occupied = true;
 	}
 
-	return &queue->comp_ctx[command_id];
+	return &admin_queue->comp_ctx[command_id];
 }
 
 static struct ena_comp_ctx *__ena_com_submit_admin_cmd(struct ena_com_admin_queue *admin_queue,
@@ -260,20 +260,20 @@ static struct ena_comp_ctx *__ena_com_submit_admin_cmd(struct ena_com_admin_queu
 	return comp_ctx;
 }
 
-static int ena_com_init_comp_ctxt(struct ena_com_admin_queue *queue)
+static int ena_com_init_comp_ctxt(struct ena_com_admin_queue *admin_queue)
 {
-	size_t size = queue->q_depth * sizeof(struct ena_comp_ctx);
+	size_t size = admin_queue->q_depth * sizeof(struct ena_comp_ctx);
 	struct ena_comp_ctx *comp_ctx;
 	u16 i;
 
-	queue->comp_ctx = ENA_MEM_ALLOC(queue->q_dmadev, size);
-	if (unlikely(!queue->comp_ctx)) {
+	admin_queue->comp_ctx = ENA_MEM_ALLOC(admin_queue->q_dmadev, size);
+	if (unlikely(!admin_queue->comp_ctx)) {
 		ena_trc_err("memory allocation failed\n");
 		return ENA_COM_NO_MEM;
 	}
 
-	for (i = 0; i < queue->q_depth; i++) {
-		comp_ctx = get_comp_ctxt(queue, i, false);
+	for (i = 0; i < admin_queue->q_depth; i++) {
+		comp_ctx = get_comp_ctxt(admin_queue, i, false);
 		if (comp_ctx)
 			ENA_WAIT_EVENT_INIT(comp_ctx->wait_event);
 	}
@@ -2049,10 +2049,10 @@ void ena_com_admin_q_comp_intr_handler(struct ena_com_dev *ena_dev)
 /* ena_handle_specific_aenq_event:
  * return the handler that is relevant to the specific event group
  */
-static ena_aenq_handler ena_com_get_specific_aenq_cb(struct ena_com_dev *dev,
+static ena_aenq_handler ena_com_get_specific_aenq_cb(struct ena_com_dev *ena_dev,
 						     u16 group)
 {
-	struct ena_aenq_handlers *aenq_handlers = dev->aenq.aenq_handlers;
+	struct ena_aenq_handlers *aenq_handlers = ena_dev->aenq.aenq_handlers;
 
 	if ((group < ENA_MAX_HANDLERS) && aenq_handlers->handlers[group])
 		return aenq_handlers->handlers[group];
@@ -2064,11 +2064,11 @@ static ena_aenq_handler ena_com_get_specific_aenq_cb(struct ena_com_dev *dev,
  * handles the aenq incoming events.
  * pop events from the queue and apply the specific handler
  */
-void ena_com_aenq_intr_handler(struct ena_com_dev *dev, void *data)
+void ena_com_aenq_intr_handler(struct ena_com_dev *ena_dev, void *data)
 {
 	struct ena_admin_aenq_entry *aenq_e;
 	struct ena_admin_aenq_common_desc *aenq_common;
-	struct ena_com_aenq *aenq  = &dev->aenq;
+	struct ena_com_aenq *aenq  = &ena_dev->aenq;
 	u64 timestamp;
 	ena_aenq_handler handler_cb;
 	u16 masked_head, processed = 0;
@@ -2096,7 +2096,7 @@ void ena_com_aenq_intr_handler(struct ena_com_dev *dev, void *data)
 			    timestamp);
 
 		/* Handle specific event*/
-		handler_cb = ena_com_get_specific_aenq_cb(dev,
+		handler_cb = ena_com_get_specific_aenq_cb(ena_dev,
 							  aenq_common->group);
 		handler_cb(data, aenq_e); /* call the actual event handler*/
 
@@ -2121,8 +2121,8 @@ void ena_com_aenq_intr_handler(struct ena_com_dev *dev, void *data)
 
 	/* write the aenq doorbell after all AENQ descriptors were read */
 	mb();
-	ENA_REG_WRITE32_RELAXED(dev->bus, (u32)aenq->head,
-				dev->reg_bar + ENA_REGS_AENQ_HEAD_DB_OFF);
+	ENA_REG_WRITE32_RELAXED(ena_dev->bus, (u32)aenq->head,
+				ena_dev->reg_bar + ENA_REGS_AENQ_HEAD_DB_OFF);
 	mmiowb();
 }
 

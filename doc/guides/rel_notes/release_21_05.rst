@@ -117,6 +117,7 @@ New Features
   including:
 
   * Changed memcpy mapping to the dpdk-optimized version.
+  * Updated ena_com (HAL) to the latest version.
 
 * **Updated Arkville PMD driver.**
 
