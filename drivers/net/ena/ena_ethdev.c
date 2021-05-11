@@ -2865,7 +2865,7 @@ static int ena_process_bool_devarg(const char *key,
 	}
 
 	/* Now, assign it to the proper adapter field. */
-	if (strcmp(key, ENA_DEVARG_LARGE_LLQ_HDR))
+	if (strcmp(key, ENA_DEVARG_LARGE_LLQ_HDR) == 0)
 		adapter->use_large_llq_hdr = bool_value;
 
 	return 0;
