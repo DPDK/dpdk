@@ -294,7 +294,7 @@ extern rte_atomic32_t ena_alloc_cnt;
 #define ENA_TIME_EXPIRE(timeout)  (timeout < rte_get_timer_cycles())
 #define ENA_GET_SYSTEM_TIMEOUT(timeout_us)				\
     (timeout_us * rte_get_timer_hz() / 1000000 + rte_get_timer_cycles())
-#define ENA_WAIT_EVENT_DESTROY(waitqueue) ((void)(waitqueue))
+#define ENA_WAIT_EVENTS_DESTROY(admin_queue) ((void)(admin_queue))
 
 #ifndef READ_ONCE
 #define READ_ONCE(var) (*((volatile typeof(var) *)(&(var))))

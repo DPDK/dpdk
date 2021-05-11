@@ -1655,6 +1655,22 @@ int ena_com_validate_version(struct ena_com_dev *ena_dev)
 	return 0;
 }
 
+static void
+ena_com_free_ena_admin_queue_comp_ctx(struct ena_com_dev *ena_dev,
+				      struct ena_com_admin_queue *admin_queue)
+
+{
+	if (!admin_queue->comp_ctx)
+		return;
+
+	ENA_WAIT_EVENTS_DESTROY(admin_queue);
+	ENA_MEM_FREE(ena_dev->dmadev,
+		     admin_queue->comp_ctx,
+		     (admin_queue->q_depth * sizeof(struct ena_comp_ctx)));
+
+	admin_queue->comp_ctx = NULL;
+}
+
 void ena_com_admin_destroy(struct ena_com_dev *ena_dev)
 {
 	struct ena_com_admin_queue *admin_queue = &ena_dev->admin_queue;
@@ -1663,14 +1679,8 @@ void ena_com_admin_destroy(struct ena_com_dev *ena_dev)
 	struct ena_com_aenq *aenq = &ena_dev->aenq;
 	u16 size;
 
-	if (admin_queue->comp_ctx) {
-		ENA_WAIT_EVENT_DESTROY(admin_queue->comp_ctx->wait_event);
-		ENA_MEM_FREE(ena_dev->dmadev,
-			     admin_queue->comp_ctx,
-			     (admin_queue->q_depth * sizeof(struct ena_comp_ctx)));
-	}
+	ena_com_free_ena_admin_queue_comp_ctx(ena_dev, admin_queue);
 
-	admin_queue->comp_ctx = NULL;
 	size = ADMIN_SQ_SIZE(admin_queue->q_depth);
 	if (sq->entries)
 		ENA_MEM_FREE_COHERENT(ena_dev->dmadev, size, sq->entries,
