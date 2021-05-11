@@ -1300,10 +1300,16 @@ tap_flow_validate(struct rte_eth_dev *dev,
 static void
 tap_flow_set_handle(struct rte_flow *flow)
 {
+	union {
+		struct rte_flow *flow;
+		const void *key;
+	} tmp;
 	uint32_t handle = 0;
 
+	tmp.flow = flow;
+
 	if (sizeof(flow) > 4)
-		handle = rte_jhash(&flow, sizeof(flow), 1);
+		handle = rte_jhash(tmp.key, sizeof(flow), 1);
 	else
 		handle = (uintptr_t)flow;
 	/* must be at least 1 to avoid letting the kernel choose one for us */
