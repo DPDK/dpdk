@@ -32,6 +32,7 @@ typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
 
+typedef struct rte_eth_dev ena_netdev;
 typedef uint64_t dma_addr_t;
 #ifndef ETIME
 #define ETIME ETIMEDOUT
@@ -98,29 +99,33 @@ extern int ena_logtype_com;
 			  (~0ULL >> (BITS_PER_LONG_LONG - 1 - (h))))
 
 #ifdef RTE_LIBRTE_ENA_COM_DEBUG
-#define ena_trc_log(level, fmt, arg...) \
-	rte_log(RTE_LOG_ ## level, ena_logtype_com, \
-		"[ENA_COM: %s]" fmt, __func__, ##arg)
+#define ena_trc_log(dev, level, fmt, arg...)				\
+	(								\
+		ENA_TOUCH(dev),						\
+		rte_log(RTE_LOG_ ## level, ena_logtype_com,		\
+			"[ENA_COM: %s]" fmt, __func__, ##arg)		\
+	)
 
-#define ena_trc_dbg(format, arg...)	ena_trc_log(DEBUG, format, ##arg)
-#define ena_trc_info(format, arg...)	ena_trc_log(INFO, format, ##arg)
-#define ena_trc_warn(format, arg...)	ena_trc_log(WARNING, format, ##arg)
-#define ena_trc_err(format, arg...)	ena_trc_log(ERR, format, ##arg)
+#define ena_trc_dbg(dev, format, arg...) ena_trc_log(dev, DEBUG, format, ##arg)
+#define ena_trc_info(dev, format, arg...) ena_trc_log(dev, INFO, format, ##arg)
+#define ena_trc_warn(dev, format, arg...)				\
+	ena_trc_log(dev, WARNING, format, ##arg)
+#define ena_trc_err(dev, format, arg...) ena_trc_log(dev, ERR, format, ##arg)
 #else
-#define ena_trc_dbg(format, arg...) do { } while (0)
-#define ena_trc_info(format, arg...) do { } while (0)
-#define ena_trc_warn(format, arg...) do { } while (0)
-#define ena_trc_err(format, arg...) do { } while (0)
+#define ena_trc_dbg(dev, format, arg...) ENA_TOUCH(dev)
+#define ena_trc_info(dev, format, arg...) ENA_TOUCH(dev)
+#define ena_trc_warn(dev, format, arg...) ENA_TOUCH(dev)
+#define ena_trc_err(dev, format, arg...) ENA_TOUCH(dev)
 #endif /* RTE_LIBRTE_ENA_COM_DEBUG */
 
-#define ENA_WARN(cond, format, arg...)                                 \
-do {                                                                   \
-       if (unlikely(cond)) {                                           \
-               ena_trc_err(                                            \
-                       "Warn failed on %s:%s:%d:" format,              \
-                       __FILE__, __func__, __LINE__, ##arg);           \
-       }                                                               \
-} while (0)
+#define ENA_WARN(cond, dev, format, arg...)				\
+	do {								\
+		if (unlikely(cond)) {					\
+			ena_trc_err(dev,				\
+				"Warn failed on %s:%s:%d:" format,	\
+				__FILE__, __func__, __LINE__, ##arg);	\
+		}							\
+	} while (0)
 
 /* Spinlock related methods */
 #define ena_spinlock_t rte_spinlock_t
