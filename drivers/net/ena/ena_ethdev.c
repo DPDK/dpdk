@@ -1275,9 +1275,6 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	if (nb_desc == RTE_ETH_DEV_FALLBACK_TX_RINGSIZE)
-		nb_desc = adapter->max_tx_ring_size;
-
 	txq->port_id = dev->data->port_id;
 	txq->next_to_clean = 0;
 	txq->next_to_use = 0;
@@ -1348,9 +1345,6 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 			queue_idx);
 		return ENA_COM_FAULT;
 	}
-
-	if (nb_desc == RTE_ETH_DEV_FALLBACK_RX_RINGSIZE)
-		nb_desc = adapter->max_rx_ring_size;
 
 	if (!rte_is_power_of_2(nb_desc)) {
 		PMD_DRV_LOG(ERR,
@@ -2067,6 +2061,9 @@ static int ena_infos_get(struct rte_eth_dev *dev,
 					adapter->max_tx_sgl_size);
 	dev_info->tx_desc_lim.nb_mtu_seg_max = RTE_MIN(ENA_PKT_MAX_BUFS,
 					adapter->max_tx_sgl_size);
+
+	dev_info->default_rxportconf.ring_size = ENA_DEFAULT_RING_SIZE;
+	dev_info->default_txportconf.ring_size = ENA_DEFAULT_RING_SIZE;
 
 	return 0;
 }
