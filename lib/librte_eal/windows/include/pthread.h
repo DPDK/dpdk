@@ -144,6 +144,12 @@ pthread_create(void *threadid, const void *threadattr, void *threadfunc,
 }
 
 static inline int
+pthread_detach(__rte_unused pthread_t thread)
+{
+	return 0;
+}
+
+static inline int
 pthread_join(__rte_unused pthread_t thread,
 	__rte_unused void **value_ptr)
 {

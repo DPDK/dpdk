@@ -112,7 +112,9 @@ ice_dcf_vsi_update_service_handler(void *param)
 {
 	struct ice_dcf_hw *hw = param;
 
+	pthread_detach(pthread_self());
 	usleep(ICE_DCF_VSI_UPDATE_SERVICE_INTERVAL);
+
 
 	rte_spinlock_lock(&vsi_update_lock);
 
