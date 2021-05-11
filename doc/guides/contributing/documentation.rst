@@ -8,7 +8,7 @@ DPDK Documentation Guidelines
 
 This document outlines the guidelines for writing the DPDK Guides and API documentation in RST and Doxygen format.
 
-It also explains the structure of the DPDK documentation and shows how to build the Html and PDF versions of the documents.
+It also explains the structure of the DPDK documentation and how to build it.
 
 
 Structure of the Documentation
@@ -136,16 +136,10 @@ Building the Documentation
 Dependencies
 ~~~~~~~~~~~~
 
-
 The following dependencies must be installed to build the documentation:
 
 * Doxygen.
-
 * Sphinx (also called python-sphinx).
-
-* TexLive (at least TexLive-core and the extra Latex support).
-
-* Inkscape.
 
 `Doxygen`_ generates documentation from commented source code.
 It can be installed as follows:
@@ -158,7 +152,7 @@ It can be installed as follows:
    # Red Hat/Fedora.
    sudo dnf     -y install doxygen
 
-`Sphinx`_ is a Python documentation tool for converting RST files to Html or to PDF (via LaTeX).
+`Sphinx`_ is a Python documentation tool for converting RST files to HTML.
 For full support with figure and table captioning the latest version of Sphinx can be installed as follows:
 
 .. code-block:: console
@@ -177,43 +171,6 @@ For further information on getting started with Sphinx see the
    To get full support for Figure and Table numbering it is best to install Sphinx 1.3.1 or later.
 
 
-`Inkscape`_ is a vector based graphics program which is used to create SVG images and also to convert SVG images to PDF images.
-It can be installed as follows:
-
-.. code-block:: console
-
-   # Ubuntu/Debian.
-   sudo apt-get -y install inkscape
-
-   # Red Hat/Fedora.
-   sudo dnf     -y install inkscape
-
-`TexLive <http://www.tug.org/texlive/>`_ is an installation package for Tex/LaTeX.
-It is used to generate the PDF versions of the documentation.
-The main required packages can be installed as follows:
-
-.. code-block:: console
-
-   # Ubuntu/Debian.
-   sudo apt-get -y install texlive-latex-extra texlive-lang-greek
-
-   # Red Hat/Fedora, selective install.
-   sudo dnf     -y install texlive-collection-latexextra texlive-greek-fontenc
-
-`Latexmk <http://personal.psu.edu/jcc8/software/latexmk-jcc/>`_ is a perl script
-for running LaTeX for resolving cross references,
-and it also runs auxiliary programs like bibtex, makeindex if necessary, and dvips.
-It has also a number of other useful capabilities (see man 1 latexmk).
-
-.. code-block:: console
-
-   # Ubuntu/Debian.
-   sudo apt-get -y install latexmk
-
-   # Red Hat/Fedora.
-   sudo dnf     -y install latexmk
-
-
 Build commands
 ~~~~~~~~~~~~~~
 
@@ -225,16 +182,7 @@ To build the documentation::
 
 See :doc:`../linux_gsg/build_dpdk` for more detail on compiling DPDK with meson.
 
-The output is generated in the ``build`` directory::
-
-   build/doc
-         |-- html
-         |   |-- api
-         |   +-- guides
-         |
-         +-- pdf
-             +-- guides
-
+The output is generated in the directories ``build/doc/html/{api,guides}``.
 
 .. Note::
 
@@ -259,7 +207,8 @@ Here are some guidelines in relation to the style of the documentation:
 RST Guidelines
 --------------
 
-The RST (reStructuredText) format is a plain text markup format that can be converted to Html, PDF or other formats.
+The RST (reStructuredText) format is a plain text markup format
+that can be converted to HTML or other formats.
 It is most closely associated with Python but it can be used to document any language.
 It is used in DPDK to document everything apart from the API.
 
@@ -282,9 +231,8 @@ Line Length
   words. Multiple sentences which are not separated by a blank line are joined
   automatically into paragraphs.
 
-* Lines in literal blocks **must** be less than 80 characters since
-  they are not wrapped by the document formatters and can exceed the page width
-  in PDF documents.
+* Lines in literal blocks should be less than 80 characters
+  since they are not wrapped by the document formatters.
 
   Long literal command lines can be shown wrapped with backslashes. For
   example::
@@ -437,8 +385,8 @@ Code and Literal block sections
 * The default encoding for a literal block using the simplified ``::``
   directive is ``none``.
 
-* Lines in literal blocks must be less than 80 characters since they can exceed the page width when converted to PDF documentation.
-  For long literal lines that exceed that limit try to wrap the text at sensible locations.
+* Lines in literal blocks should be less than 80 characters.
+  For long literal lines, try to wrap the text at sensible locations.
   For example a long command line could be documented like this and still work if copied directly from the docs::
 
      ./<build_dir>/app/dpdk-testpmd -l 0-2 -n3 --vdev=net_pcap0,iface=eth0    \
@@ -503,7 +451,7 @@ Tables
 ~~~~~~
 
 * RST tables should be used sparingly.
-  They are hard to format and to edit, they are often rendered incorrectly in PDF format, and the same information
+  They are hard to format and to edit, and the same information
   can usually be shown just as clearly with a definition or bullet list.
 
 * Tables in the documentation should be formatted as follows:
@@ -532,8 +480,6 @@ Tables
   For example::
 
      The QOS configuration is shown in :numref:`table_qos_pipes`.
-
-* Tables should not include merged cells since they are not supported by the PDF renderer.
 
 
 .. _links:
