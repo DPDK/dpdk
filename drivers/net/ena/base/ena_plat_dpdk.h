@@ -291,7 +291,7 @@ extern rte_atomic32_t ena_alloc_cnt;
 #define might_sleep()
 
 #define prefetch(x) rte_prefetch0(x)
-#define prefetchw(x) prefetch(x)
+#define prefetchw(x) rte_prefetch0_write(x)
 
 #define lower_32_bits(x) ((uint32_t)(x))
 #define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
