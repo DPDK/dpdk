@@ -2973,7 +2973,7 @@ static void ena_notification(void *data,
 			aenq_e->aenq_common_desc.group,
 			ENA_ADMIN_NOTIFICATION);
 
-	switch (aenq_e->aenq_common_desc.syndrom) {
+	switch (aenq_e->aenq_common_desc.syndrome) {
 	case ENA_ADMIN_UPDATE_HINTS:
 		hints = (struct ena_admin_ena_hw_hints *)
 			(&aenq_e->inline_data_w4);
@@ -2981,7 +2981,7 @@ static void ena_notification(void *data,
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid aenq notification link state %d\n",
-			aenq_e->aenq_common_desc.syndrom);
+			aenq_e->aenq_common_desc.syndrome);
 	}
 }
 

@@ -598,7 +598,7 @@ err:
 	return ret;
 }
 
-/**
+/*
  * Set the LLQ configurations of the firmware
  *
  * The driver provides only the enabled feature values to the device,
@@ -1092,7 +1092,7 @@ static void ena_com_hash_key_fill_default_key(struct ena_com_dev *ena_dev)
 	/* The key buffer is stored in the device in an array of
 	 * uint32 elements.
 	 */
-	hash_key->keys_num = ENA_ADMIN_RSS_KEY_PARTS;
+	hash_key->key_parts = ENA_ADMIN_RSS_KEY_PARTS;
 }
 
 static int ena_com_hash_key_allocate(struct ena_com_dev *ena_dev)
@@ -1165,7 +1165,7 @@ static int ena_com_indirect_table_allocate(struct ena_com_dev *ena_dev,
 	int ret;
 
 	ret = ena_com_get_feature(ena_dev, &get_resp,
-				  ENA_ADMIN_RSS_REDIRECTION_TABLE_CONFIG, 0);
+				  ENA_ADMIN_RSS_INDIRECTION_TABLE_CONFIG, 0);
 	if (unlikely(ret))
 		return ret;
 
@@ -1977,6 +1977,7 @@ int ena_com_get_dev_attr_feat(struct ena_com_dev *ena_dev,
 
 	memcpy(&get_feat_ctx->dev_attr, &get_resp.u.dev_attr,
 	       sizeof(get_resp.u.dev_attr));
+
 	ena_dev->supported_features = get_resp.u.dev_attr.supported_features;
 
 	if (ena_dev->supported_features & BIT(ENA_ADMIN_MAX_QUEUES_EXT)) {
@@ -2044,7 +2045,7 @@ int ena_com_get_dev_attr_feat(struct ena_com_dev *ena_dev,
 		return rc;
 
 	rc = ena_com_get_feature(ena_dev, &get_resp,
-				 ENA_ADMIN_RSS_REDIRECTION_TABLE_CONFIG, 0);
+				 ENA_ADMIN_RSS_INDIRECTION_TABLE_CONFIG, 0);
 	if (!rc)
 		memcpy(&get_feat_ctx->ind_table, &get_resp.u.ind_table,
 		       sizeof(get_resp.u.ind_table));
@@ -2106,9 +2107,9 @@ void ena_com_aenq_intr_handler(struct ena_com_dev *ena_dev, void *data)
 		timestamp = (u64)aenq_common->timestamp_low |
 			((u64)aenq_common->timestamp_high << 32);
 		ENA_TOUCH(timestamp); /* In case debug is disabled */
-		ena_trc_dbg(ena_dev, "AENQ! Group[%x] Syndrom[%x] timestamp: [%" ENA_PRIu64 "s]\n",
+		ena_trc_dbg(ena_dev, "AENQ! Group[%x] Syndrome[%x] timestamp: [%" ENA_PRIu64 "s]\n",
 			    aenq_common->group,
-			    aenq_common->syndrom,
+			    aenq_common->syndrome,
 			    timestamp);
 
 		/* Handle specific event*/
@@ -2410,7 +2411,7 @@ int ena_com_fill_hash_function(struct ena_com_dev *ena_dev,
 			}
 			memcpy(hash_key->key, key, key_len);
 			rss->hash_init_val = init_val;
-			hash_key->keys_num = key_len / sizeof(u32);
+			hash_key->key_parts = key_len / sizeof(hash_key->key[0]);
 		}
 		break;
 	case ENA_ADMIN_CRC32:
@@ -2465,7 +2466,8 @@ int ena_com_get_hash_key(struct ena_com_dev *ena_dev, u8 *key)
 		ena_dev->rss.hash_key;
 
 	if (key)
-		memcpy(key, hash_key->key, (size_t)(hash_key->keys_num) << 2);
+		memcpy(key, hash_key->key,
+		       (size_t)(hash_key->key_parts) * sizeof(hash_key->key[0]));
 
 	return 0;
 }
@@ -2660,9 +2662,9 @@ int ena_com_indirect_table_set(struct ena_com_dev *ena_dev)
 	int ret;
 
 	if (!ena_com_check_supported_feature_id(ena_dev,
-						ENA_ADMIN_RSS_REDIRECTION_TABLE_CONFIG)) {
+						ENA_ADMIN_RSS_INDIRECTION_TABLE_CONFIG)) {
 		ena_trc_dbg(ena_dev, "Feature %d isn't supported\n",
-			    ENA_ADMIN_RSS_REDIRECTION_TABLE_CONFIG);
+			    ENA_ADMIN_RSS_INDIRECTION_TABLE_CONFIG);
 		return ENA_COM_UNSUPPORTED;
 	}
 
@@ -2677,7 +2679,7 @@ int ena_com_indirect_table_set(struct ena_com_dev *ena_dev)
 	cmd.aq_common_descriptor.opcode = ENA_ADMIN_SET_FEATURE;
 	cmd.aq_common_descriptor.flags =
 		ENA_ADMIN_AQ_COMMON_DESC_CTRL_DATA_INDIRECT_MASK;
-	cmd.feat_common.feature_id = ENA_ADMIN_RSS_REDIRECTION_TABLE_CONFIG;
+	cmd.feat_common.feature_id = ENA_ADMIN_RSS_INDIRECTION_TABLE_CONFIG;
 	cmd.u.ind_table.size = rss->tbl_log_size;
 	cmd.u.ind_table.inline_index = 0xFFFFFFFF;
 
@@ -2715,7 +2717,7 @@ int ena_com_indirect_table_get(struct ena_com_dev *ena_dev, u32 *ind_tbl)
 		sizeof(struct ena_admin_rss_ind_table_entry);
 
 	rc = ena_com_get_feature_ex(ena_dev, &get_resp,
-				    ENA_ADMIN_RSS_REDIRECTION_TABLE_CONFIG,
+				    ENA_ADMIN_RSS_INDIRECTION_TABLE_CONFIG,
 				    rss->rss_ind_tbl_dma_addr,
 				    tbl_size, 0);
 	if (unlikely(rc))

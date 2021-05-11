@@ -2,12 +2,8 @@
  * Copyright (c) 2015-2020 Amazon.com, Inc. or its affiliates.
  * All rights reserved.
  */
-
 #ifndef _ENA_ADMIN_H_
 #define _ENA_ADMIN_H_
-
-#define ENA_ADMIN_EXTRA_PROPERTIES_STRING_LEN 32
-#define ENA_ADMIN_EXTRA_PROPERTIES_COUNT     32
 
 #define ENA_ADMIN_RSS_KEY_PARTS              10
 
@@ -33,6 +29,7 @@ enum ena_admin_aq_completion_status {
 	ENA_ADMIN_RESOURCE_BUSY                     = 7,
 };
 
+/* subcommands for the set/get feature admin commands */
 enum ena_admin_aq_feature_id {
 	ENA_ADMIN_DEVICE_ATTRIBUTES                 = 1,
 	ENA_ADMIN_MAX_QUEUES_NUM                    = 2,
@@ -43,7 +40,7 @@ enum ena_admin_aq_feature_id {
 	ENA_ADMIN_MAX_QUEUES_EXT                    = 7,
 	ENA_ADMIN_RSS_HASH_FUNCTION                 = 10,
 	ENA_ADMIN_STATELESS_OFFLOAD_CONFIG          = 11,
-	ENA_ADMIN_RSS_REDIRECTION_TABLE_CONFIG      = 12,
+	ENA_ADMIN_RSS_INDIRECTION_TABLE_CONFIG      = 12,
 	ENA_ADMIN_MTU                               = 14,
 	ENA_ADMIN_RSS_HASH_INPUT                    = 18,
 	ENA_ADMIN_INTERRUPT_MODERATION              = 20,
@@ -175,7 +172,7 @@ struct ena_admin_acq_common_desc {
 	uint16_t extended_status;
 
 	/* indicates to the driver which AQ entry has been consumed by the
-	 *    device and could be reused
+	 * device and could be reused
 	 */
 	uint16_t sq_head_indx;
 };
@@ -220,8 +217,8 @@ struct ena_admin_aq_create_sq_cmd {
 	 */
 	uint8_t sq_caps_3;
 
-	/* associated completion queue id. This CQ must be created prior to
-	 *    SQ creation
+	/* associated completion queue id. This CQ must be created prior to SQ
+	 * creation
 	 */
 	uint16_t cq_idx;
 
@@ -360,7 +357,7 @@ struct ena_admin_aq_get_stats_cmd {
 	uint16_t queue_idx;
 
 	/* device id, value 0xFFFF means mine. only privileged device can get
-	 *    stats of other device
+	 * stats of other device
 	 */
 	uint16_t device_id;
 };
@@ -442,8 +439,8 @@ struct ena_admin_get_set_feature_common_desc {
 	uint8_t feature_id;
 
 	/* The driver specifies the max feature version it supports and the
-	 *    device responds with the currently supported feature version. The
-	 *    field is zero based
+	 * device responds with the currently supported feature version. The
+	 * field is zero based
 	 */
 	uint8_t feature_version;
 
@@ -455,7 +452,9 @@ struct ena_admin_device_attr_feature_desc {
 
 	uint32_t device_version;
 
-	/* bitmap of ena_admin_aq_feature_id */
+	/* bitmap of ena_admin_aq_feature_id, which represents supported
+	 * subcommands for the set/get feature admin commands.
+	 */
 	uint32_t supported_features;
 
 	uint32_t reserved3;
@@ -541,32 +540,30 @@ struct ena_admin_feature_llq_desc {
 
 	uint32_t max_llq_depth;
 
-	/*  specify the header locations the device supports. bitfield of
-	 *    enum ena_admin_llq_header_location.
+	/* specify the header locations the device supports. bitfield of enum
+	 * ena_admin_llq_header_location.
 	 */
 	uint16_t header_location_ctrl_supported;
 
 	/* the header location the driver selected to use. */
 	uint16_t header_location_ctrl_enabled;
 
-	/* if inline header is specified - this is the size of descriptor
-	 *    list entry. If header in a separate ring is specified - this is
-	 *    the size of header ring entry. bitfield of enum
-	 *    ena_admin_llq_ring_entry_size. specify the entry sizes the device
-	 *    supports
+	/* if inline header is specified - this is the size of descriptor list
+	 * entry. If header in a separate ring is specified - this is the size
+	 * of header ring entry. bitfield of enum ena_admin_llq_ring_entry_size.
+	 * specify the entry sizes the device supports
 	 */
 	uint16_t entry_size_ctrl_supported;
 
 	/* the entry size the driver selected to use. */
 	uint16_t entry_size_ctrl_enabled;
 
-	/* valid only if inline header is specified. First entry associated
-	 *    with the packet includes descriptors and header. Rest of the
-	 *    entries occupied by descriptors. This parameter defines the max
-	 *    number of descriptors precedding the header in the first entry.
-	 *    The field is bitfield of enum
-	 *    ena_admin_llq_num_descs_before_header and specify the values the
-	 *    device supports
+	/* valid only if inline header is specified. First entry associated with
+	 * the packet includes descriptors and header. Rest of the entries
+	 * occupied by descriptors. This parameter defines the max number of
+	 * descriptors precedding the header in the first entry. The field is
+	 * bitfield of enum ena_admin_llq_num_descs_before_header and specify
+	 * the values the device supports
 	 */
 	uint16_t desc_num_before_header_supported;
 
@@ -574,7 +571,7 @@ struct ena_admin_feature_llq_desc {
 	uint16_t desc_num_before_header_enabled;
 
 	/* valid only if inline was chosen. bitfield of enum
-	 *    ena_admin_llq_stride_ctrl
+	 * ena_admin_llq_stride_ctrl
 	 */
 	uint16_t descriptors_stride_ctrl_supported;
 
@@ -584,8 +581,8 @@ struct ena_admin_feature_llq_desc {
 	/* reserved */
 	uint32_t reserved1;
 
-	/* accelerated low latency queues requirement. Driver needs to
-	 * support those requirements in order to use accelerated LLQ
+	/* accelerated low latency queues requirement. driver needs to
+	 * support those requirements in order to use accelerated llq
 	 */
 	struct ena_admin_accel_mode_req accel_mode;
 };
@@ -609,8 +606,8 @@ struct ena_admin_queue_ext_feature_fields {
 
 	uint32_t max_tx_header_size;
 
-	/* Maximum Descriptors number, including meta descriptor, allowed for
-	 *    a single Tx packet
+	/* Maximum Descriptors number, including meta descriptor, allowed for a
+	 * single Tx packet
 	 */
 	uint16_t max_per_packet_tx_descs;
 
@@ -633,8 +630,8 @@ struct ena_admin_queue_feature_desc {
 
 	uint32_t max_header_size;
 
-	/* Maximum Descriptors number, including meta descriptor, allowed for
-	 *    a single Tx packet
+	/* Maximum Descriptors number, including meta descriptor, allowed for a
+	 * single Tx packet
 	 */
 	uint16_t max_packet_tx_descs;
 
@@ -730,7 +727,7 @@ enum ena_admin_hash_functions {
 };
 
 struct ena_admin_feature_rss_flow_hash_control {
-	uint32_t keys_num;
+	uint32_t key_parts;
 
 	uint32_t reserved;
 
@@ -872,7 +869,7 @@ struct ena_admin_host_info {
 	/* 0 : mutable_rss_table_size
 	 * 1 : rx_offset
 	 * 2 : interrupt_moderation
-	 * 3 : map_rx_buf_bidirectional
+	 * 3 : rx_buf_mirroring
 	 * 4 : rss_configurable_function_key
 	 * 31:5 : reserved
 	 */
@@ -956,7 +953,7 @@ struct ena_admin_queue_ext_feature_desc {
 		struct ena_admin_queue_ext_feature_fields max_queue_ext;
 
 		uint32_t raw[10];
-	} ;
+	};
 };
 
 struct ena_admin_get_feat_resp {
@@ -1039,7 +1036,7 @@ struct ena_admin_set_feat_resp {
 struct ena_admin_aenq_common_desc {
 	uint16_t group;
 
-	uint16_t syndrom;
+	uint16_t syndrome;
 
 	/* 0 : phase
 	 * 7:1 : reserved - MBZ
@@ -1063,7 +1060,7 @@ enum ena_admin_aenq_group {
 	ENA_ADMIN_AENQ_GROUPS_NUM                   = 5,
 };
 
-enum ena_admin_aenq_notification_syndrom {
+enum ena_admin_aenq_notification_syndrome {
 	ENA_ADMIN_SUSPEND                           = 0,
 	ENA_ADMIN_RESUME                            = 1,
 	ENA_ADMIN_UPDATE_HINTS                      = 2,
@@ -1197,8 +1194,8 @@ struct ena_admin_ena_mmio_req_read_less_resp {
 #define ENA_ADMIN_HOST_INFO_RX_OFFSET_MASK                  BIT(1)
 #define ENA_ADMIN_HOST_INFO_INTERRUPT_MODERATION_SHIFT      2
 #define ENA_ADMIN_HOST_INFO_INTERRUPT_MODERATION_MASK       BIT(2)
-#define ENA_ADMIN_HOST_INFO_MAP_RX_BUF_BIDIRECTIONAL_SHIFT  3
-#define ENA_ADMIN_HOST_INFO_MAP_RX_BUF_BIDIRECTIONAL_MASK   BIT(3)
+#define ENA_ADMIN_HOST_INFO_RX_BUF_MIRRORING_SHIFT          3
+#define ENA_ADMIN_HOST_INFO_RX_BUF_MIRRORING_MASK           BIT(3)
 #define ENA_ADMIN_HOST_INFO_RSS_CONFIGURABLE_FUNCTION_KEY_SHIFT 4
 #define ENA_ADMIN_HOST_INFO_RSS_CONFIGURABLE_FUNCTION_KEY_MASK BIT(4)
 
@@ -1652,14 +1649,14 @@ static inline void set_ena_admin_host_info_interrupt_moderation(struct ena_admin
 	p->driver_supported_features |= (val << ENA_ADMIN_HOST_INFO_INTERRUPT_MODERATION_SHIFT) & ENA_ADMIN_HOST_INFO_INTERRUPT_MODERATION_MASK;
 }
 
-static inline uint32_t get_ena_admin_host_info_map_rx_buf_bidirectional(const struct ena_admin_host_info *p)
+static inline uint32_t get_ena_admin_host_info_rx_buf_mirroring(const struct ena_admin_host_info *p)
 {
-	return (p->driver_supported_features & ENA_ADMIN_HOST_INFO_MAP_RX_BUF_BIDIRECTIONAL_MASK) >> ENA_ADMIN_HOST_INFO_MAP_RX_BUF_BIDIRECTIONAL_SHIFT;
+	return (p->driver_supported_features & ENA_ADMIN_HOST_INFO_RX_BUF_MIRRORING_MASK) >> ENA_ADMIN_HOST_INFO_RX_BUF_MIRRORING_SHIFT;
 }
 
-static inline void set_ena_admin_host_info_map_rx_buf_bidirectional(struct ena_admin_host_info *p, uint32_t val)
+static inline void set_ena_admin_host_info_rx_buf_mirroring(struct ena_admin_host_info *p, uint32_t val)
 {
-	p->driver_supported_features |= (val << ENA_ADMIN_HOST_INFO_MAP_RX_BUF_BIDIRECTIONAL_SHIFT) & ENA_ADMIN_HOST_INFO_MAP_RX_BUF_BIDIRECTIONAL_MASK;
+	p->driver_supported_features |= (val << ENA_ADMIN_HOST_INFO_RX_BUF_MIRRORING_SHIFT) & ENA_ADMIN_HOST_INFO_RX_BUF_MIRRORING_MASK;
 }
 
 static inline uint32_t get_ena_admin_host_info_rss_configurable_function_key(const struct ena_admin_host_info *p)
