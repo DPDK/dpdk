@@ -121,6 +121,8 @@ ice_dcf_vsi_update_service_handler(void *param)
 	struct ice_dcf_hw *hw = reset_param->dcf_hw;
 	struct ice_dcf_adapter *adapter;
 
+	pthread_detach(pthread_self());
+
 	rte_delay_us(ICE_DCF_VSI_UPDATE_SERVICE_INTERVAL);
 
 	rte_spinlock_lock(&vsi_update_lock);
