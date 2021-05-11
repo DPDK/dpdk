@@ -323,16 +323,18 @@ static int ena_com_create_and_store_tx_meta_desc(struct ena_com_io_sq *io_sq,
 
 		*have_meta = true;
 		return ena_com_create_meta(io_sq, ena_meta);
-	} else if (ena_com_meta_desc_changed(io_sq, ena_tx_ctx)) {
+	}
+
+	if (ena_com_meta_desc_changed(io_sq, ena_tx_ctx)) {
 		*have_meta = true;
 		/* Cache the meta desc */
 		memcpy(&io_sq->cached_tx_meta, ena_meta,
 		       sizeof(struct ena_com_tx_meta));
 		return ena_com_create_meta(io_sq, ena_meta);
-	} else {
-		*have_meta = false;
-		return ENA_COM_OK;
 	}
+
+	*have_meta = false;
+	return ENA_COM_OK;
 }
 
 static void ena_com_rx_set_flags(struct ena_com_rx_ctx *ena_rx_ctx,
@@ -604,9 +606,9 @@ int ena_com_add_single_rx_desc(struct ena_com_io_sq *io_sq,
 	desc->length = ena_buf->len;
 
 	desc->ctrl = ENA_ETH_IO_RX_DESC_FIRST_MASK |
-		ENA_ETH_IO_RX_DESC_LAST_MASK |
-		(io_sq->phase & ENA_ETH_IO_RX_DESC_PHASE_MASK) |
-		ENA_ETH_IO_RX_DESC_COMP_REQ_MASK;
+		     ENA_ETH_IO_RX_DESC_LAST_MASK |
+		     ENA_ETH_IO_RX_DESC_COMP_REQ_MASK |
+		     (io_sq->phase & ENA_ETH_IO_RX_DESC_PHASE_MASK);
 
 	desc->req_id = req_id;
 
