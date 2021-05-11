@@ -77,6 +77,14 @@ typedef uint64_t dma_addr_t;
 #define mmiowb rte_io_wmb
 #define __iomem
 
+#ifndef READ_ONCE
+#define READ_ONCE(var) (*((volatile typeof(var) *)(&(var))))
+#endif
+
+#define READ_ONCE8(var) READ_ONCE(var)
+#define READ_ONCE16(var) READ_ONCE(var)
+#define READ_ONCE32(var) READ_ONCE(var)
+
 #define US_PER_S 1000000
 #define ENA_GET_SYSTEM_USECS()						       \
 	(rte_get_timer_cycles() * US_PER_S / rte_get_timer_hz())
@@ -138,40 +146,59 @@ extern int ena_logtype_com;
 	({(void)flags; rte_spinlock_unlock(&(spinlock)); })
 #define ENA_SPINLOCK_DESTROY(spinlock) ((void)(spinlock))
 
-#define q_waitqueue_t							       \
-	struct {							       \
-		pthread_cond_t cond;					       \
-		pthread_mutex_t mutex;					       \
-	}
+typedef struct {
+	pthread_cond_t cond;
+	pthread_mutex_t mutex;
+	uint8_t flag;
+} ena_wait_event_t;
 
-#define ena_wait_queue_t q_waitqueue_t
-
-#define ENA_WAIT_EVENT_INIT(waitqueue)					       \
+#define ENA_WAIT_EVENT_INIT(waitevent)					       \
 	do {								       \
-		pthread_mutex_init(&(waitqueue).mutex, NULL);		       \
-		pthread_cond_init(&(waitqueue).cond, NULL);		       \
+		ena_wait_event_t *_we = &(waitevent);			       \
+		pthread_mutex_init(&_we->mutex, NULL);			       \
+		pthread_cond_init(&_we->cond, NULL);			       \
+		_we->flag = 0;						       \
 	} while (0)
 
 #define ENA_WAIT_EVENT_WAIT(waitevent, timeout)				       \
 	do {								       \
+		ena_wait_event_t *_we = &(waitevent);			       \
+		typeof(timeout) _tmo = (timeout);			       \
+		int ret = 0;						       \
 		struct timespec wait;					       \
 		struct timeval now;					       \
 		unsigned long timeout_us;				       \
 		gettimeofday(&now, NULL);				       \
-		wait.tv_sec = now.tv_sec + (timeout) / 1000000UL;	       \
-		timeout_us = (timeout) % 1000000UL;			       \
+		wait.tv_sec = now.tv_sec + _tmo / 1000000UL;		       \
+		timeout_us = _tmo % 1000000UL;				       \
 		wait.tv_nsec = (now.tv_usec + timeout_us) * 1000UL;	       \
-		pthread_mutex_lock(&(waitevent).mutex);			       \
-		pthread_cond_timedwait(&(waitevent).cond,		       \
-				&(waitevent).mutex, &wait);		       \
-		pthread_mutex_unlock(&(waitevent).mutex);		       \
+		pthread_mutex_lock(&_we->mutex);			       \
+		while (ret == 0 && !_we->flag) {			       \
+			ret = pthread_cond_timedwait(&_we->cond,	       \
+				&_we->mutex, &wait);			       \
+		}							       \
+		/* Asserts only if not working on ena_wait_event_t */	       \
+		if (unlikely(ret != 0 && ret != ETIMEDOUT))		       \
+			ena_trc_err(NULL,				       \
+				"Invalid wait event. pthread ret: %d\n", ret); \
+		else if (unlikely(ret == ETIMEDOUT))			       \
+			ena_trc_err(NULL,				       \
+				"Timeout waiting for " #waitevent "\n");       \
+		_we->flag = 0;						       \
+		pthread_mutex_unlock(&_we->mutex);			       \
 	} while (0)
-#define ENA_WAIT_EVENT_SIGNAL(waitevent) pthread_cond_signal(&waitevent.cond)
+#define ENA_WAIT_EVENT_SIGNAL(waitevent)				       \
+	do {								       \
+		ena_wait_event_t *_we = &(waitevent);			       \
+		pthread_mutex_lock(&_we->mutex);			       \
+		_we->flag = 1;						       \
+		pthread_cond_signal(&_we->cond);			       \
+		pthread_mutex_unlock(&_we->mutex);			       \
+	} while (0)
 /* pthread condition doesn't need to be rearmed after usage */
 #define ENA_WAIT_EVENT_CLEAR(...)
-#define ENA_WAIT_EVENT_DESTROY(waitqueue) ((void)(waitqueue))
+#define ENA_WAIT_EVENT_DESTROY(waitevent) ((void)(waitevent))
 
-#define ena_wait_event_t ena_wait_queue_t
 #define ENA_MIGHT_SLEEP()
 
 #define ena_time_t uint64_t
@@ -288,14 +315,6 @@ extern rte_atomic64_t ena_alloc_cnt;
 #define ENA_GET_SYSTEM_TIMEOUT(timeout_us)				       \
 	((timeout_us) * rte_get_timer_hz() / 1000000 + rte_get_timer_cycles())
 #define ENA_WAIT_EVENTS_DESTROY(admin_queue) ((void)(admin_queue))
-
-#ifndef READ_ONCE
-#define READ_ONCE(var) (*((volatile typeof(var) *)(&(var))))
-#endif
-
-#define READ_ONCE8(var) READ_ONCE(var)
-#define READ_ONCE16(var) READ_ONCE(var)
-#define READ_ONCE32(var) READ_ONCE(var)
 
 /* The size must be 8 byte align */
 #define ENA_MEMCPY_TO_DEVICE_64(dst, src, size)				       \
