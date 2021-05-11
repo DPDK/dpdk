@@ -11,6 +11,7 @@
 #include <rte_bus_pci.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
+#include <rte_geneve.h>
 #include <rte_kvargs.h>
 #include <rte_string_fns.h>
 
@@ -67,7 +68,6 @@ static const struct vic_speed_capa {
 #define ENIC_DEVARG_CQ64 "cq64"
 #define ENIC_DEVARG_DISABLE_OVERLAY "disable-overlay"
 #define ENIC_DEVARG_ENABLE_AVX2_RX "enable-avx2-rx"
-#define ENIC_DEVARG_GENEVE_OPT "geneve-opt"
 #define ENIC_DEVARG_IG_VLAN_REWRITE "ig-vlan-rewrite"
 #define ENIC_DEVARG_REPRESENTOR "representor"
 
@@ -80,13 +80,6 @@ enicpmd_dev_flow_ops_get(struct rte_eth_dev *dev,
 	struct enic *enic = pmd_priv(dev);
 
 	ENICPMD_FUNC_TRACE();
-
-	/*
-	 * Currently, when Geneve with options offload is enabled, host
-	 * cannot insert match-action rules.
-	 */
-	if (enic->geneve_opt_enabled)
-		return -ENOTSUP;
 
 	if (enic->flow_filter_mode == FILTER_FLOWMAN)
 		*ops = &enic_fm_flow_ops;
@@ -972,26 +965,32 @@ static int enicpmd_dev_rx_queue_intr_disable(struct rte_eth_dev *eth_dev,
 static int udp_tunnel_common_check(struct enic *enic,
 				   struct rte_eth_udp_tunnel *tnl)
 {
-	if (tnl->prot_type != RTE_TUNNEL_TYPE_VXLAN)
+	if (tnl->prot_type != RTE_TUNNEL_TYPE_VXLAN &&
+	    tnl->prot_type != RTE_TUNNEL_TYPE_GENEVE)
 		return -ENOTSUP;
 	if (!enic->overlay_offload) {
-		ENICPMD_LOG(DEBUG, " vxlan (overlay offload) is not "
-			     "supported\n");
+		ENICPMD_LOG(DEBUG, " overlay offload is not supported\n");
 		return -ENOTSUP;
 	}
 	return 0;
 }
 
-static int update_vxlan_port(struct enic *enic, uint16_t port)
+static int update_tunnel_port(struct enic *enic, uint16_t port, bool vxlan)
 {
-	if (vnic_dev_overlay_offload_cfg(enic->vdev,
-					 OVERLAY_CFG_VXLAN_PORT_UPDATE,
-					 port)) {
-		ENICPMD_LOG(DEBUG, " failed to update vxlan port\n");
+	uint8_t cfg;
+
+	cfg = vxlan ? OVERLAY_CFG_VXLAN_PORT_UPDATE :
+		OVERLAY_CFG_GENEVE_PORT_UPDATE;
+	if (vnic_dev_overlay_offload_cfg(enic->vdev, cfg, port)) {
+		ENICPMD_LOG(DEBUG, " failed to update tunnel port\n");
 		return -EINVAL;
 	}
-	ENICPMD_LOG(DEBUG, " updated vxlan port to %u\n", port);
-	enic->vxlan_port = port;
+	ENICPMD_LOG(DEBUG, " updated %s port to %u\n",
+		    vxlan ? "vxlan" : "geneve", port);
+	if (vxlan)
+		enic->vxlan_port = port;
+	else
+		enic->geneve_port = port;
 	return 0;
 }
 
@@ -999,34 +998,48 @@ static int enicpmd_dev_udp_tunnel_port_add(struct rte_eth_dev *eth_dev,
 					   struct rte_eth_udp_tunnel *tnl)
 {
 	struct enic *enic = pmd_priv(eth_dev);
+	uint16_t port;
+	bool vxlan;
 	int ret;
 
 	ENICPMD_FUNC_TRACE();
 	ret = udp_tunnel_common_check(enic, tnl);
 	if (ret)
 		return ret;
+	vxlan = (tnl->prot_type == RTE_TUNNEL_TYPE_VXLAN);
+	if (vxlan)
+		port = enic->vxlan_port;
+	else
+		port = enic->geneve_port;
 	/*
-	 * The NIC has 1 configurable VXLAN port number. "Adding" a new port
-	 * number replaces it.
+	 * The NIC has 1 configurable port number per tunnel type.
+	 * "Adding" a new port number replaces it.
 	 */
-	if (tnl->udp_port == enic->vxlan_port || tnl->udp_port == 0) {
+	if (tnl->udp_port == port || tnl->udp_port == 0) {
 		ENICPMD_LOG(DEBUG, " %u is already configured or invalid\n",
 			     tnl->udp_port);
 		return -EINVAL;
 	}
-	return update_vxlan_port(enic, tnl->udp_port);
+	return update_tunnel_port(enic, tnl->udp_port, vxlan);
 }
 
 static int enicpmd_dev_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 					   struct rte_eth_udp_tunnel *tnl)
 {
 	struct enic *enic = pmd_priv(eth_dev);
+	uint16_t port;
+	bool vxlan;
 	int ret;
 
 	ENICPMD_FUNC_TRACE();
 	ret = udp_tunnel_common_check(enic, tnl);
 	if (ret)
 		return ret;
+	vxlan = (tnl->prot_type == RTE_TUNNEL_TYPE_VXLAN);
+	if (vxlan)
+		port = enic->vxlan_port;
+	else
+		port = enic->geneve_port;
 	/*
 	 * Clear the previously set port number and restore the
 	 * hardware default port number. Some drivers disable VXLAN
@@ -1034,12 +1047,13 @@ static int enicpmd_dev_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 	 * enic does not do that as VXLAN is part of overlay offload,
 	 * which is tied to inner RSS and TSO.
 	 */
-	if (tnl->udp_port != enic->vxlan_port) {
-		ENICPMD_LOG(DEBUG, " %u is not a configured vxlan port\n",
+	if (tnl->udp_port != port) {
+		ENICPMD_LOG(DEBUG, " %u is not a configured tunnel port\n",
 			     tnl->udp_port);
 		return -EINVAL;
 	}
-	return update_vxlan_port(enic, RTE_VXLAN_DEFAULT_PORT);
+	port = vxlan ? RTE_VXLAN_DEFAULT_PORT : RTE_GENEVE_DEFAULT_PORT;
+	return update_tunnel_port(enic, port, vxlan);
 }
 
 static int enicpmd_dev_fw_version_get(struct rte_eth_dev *eth_dev,
@@ -1145,8 +1159,6 @@ static int enic_parse_zero_one(const char *key,
 		enic->disable_overlay = b;
 	if (strcmp(key, ENIC_DEVARG_ENABLE_AVX2_RX) == 0)
 		enic->enable_avx2_rx = b;
-	if (strcmp(key, ENIC_DEVARG_GENEVE_OPT) == 0)
-		enic->geneve_opt_request = b;
 	return 0;
 }
 
@@ -1189,7 +1201,6 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 		ENIC_DEVARG_CQ64,
 		ENIC_DEVARG_DISABLE_OVERLAY,
 		ENIC_DEVARG_ENABLE_AVX2_RX,
-		ENIC_DEVARG_GENEVE_OPT,
 		ENIC_DEVARG_IG_VLAN_REWRITE,
 		ENIC_DEVARG_REPRESENTOR,
 		NULL};
@@ -1201,7 +1212,6 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 	enic->cq64_request = true; /* Use 64B entry if available */
 	enic->disable_overlay = false;
 	enic->enable_avx2_rx = false;
-	enic->geneve_opt_request = false;
 	enic->ig_vlan_rewrite_mode = IG_VLAN_REWRITE_MODE_PASS_THRU;
 	if (!dev->device->devargs)
 		return 0;
@@ -1213,8 +1223,6 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 	    rte_kvargs_process(kvlist, ENIC_DEVARG_DISABLE_OVERLAY,
 			       enic_parse_zero_one, enic) < 0 ||
 	    rte_kvargs_process(kvlist, ENIC_DEVARG_ENABLE_AVX2_RX,
-			       enic_parse_zero_one, enic) < 0 ||
-	    rte_kvargs_process(kvlist, ENIC_DEVARG_GENEVE_OPT,
 			       enic_parse_zero_one, enic) < 0 ||
 	    rte_kvargs_process(kvlist, ENIC_DEVARG_IG_VLAN_REWRITE,
 			       enic_parse_ig_vlan_rewrite, enic) < 0) {
@@ -1391,5 +1399,4 @@ RTE_PMD_REGISTER_PARAM_STRING(net_enic,
 	ENIC_DEVARG_CQ64 "=0|1"
 	ENIC_DEVARG_DISABLE_OVERLAY "=0|1 "
 	ENIC_DEVARG_ENABLE_AVX2_RX "=0|1 "
-	ENIC_DEVARG_GENEVE_OPT "=0|1 "
 	ENIC_DEVARG_IG_VLAN_REWRITE "=trunk|untag|priority|pass");

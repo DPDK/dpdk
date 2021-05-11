@@ -16,6 +16,7 @@
 #include <rte_mbuf.h>
 #include <rte_string_fns.h>
 #include <ethdev_driver.h>
+#include <rte_geneve.h>
 
 #include "enic_compat.h"
 #include "enic.h"
@@ -1719,6 +1720,85 @@ set_mtu_done:
 	return rc;
 }
 
+static void
+enic_disable_overlay_offload(struct enic *enic)
+{
+	/*
+	 * Disabling fails if the feature is provisioned but
+	 * not enabled. So ignore result and do not log error.
+	 */
+	if (enic->vxlan) {
+		vnic_dev_overlay_offload_ctrl(enic->vdev,
+			OVERLAY_FEATURE_VXLAN, OVERLAY_OFFLOAD_DISABLE);
+	}
+	if (enic->geneve) {
+		vnic_dev_overlay_offload_ctrl(enic->vdev,
+			OVERLAY_FEATURE_GENEVE, OVERLAY_OFFLOAD_DISABLE);
+	}
+}
+
+static int
+enic_enable_overlay_offload(struct enic *enic)
+{
+	if (enic->vxlan && vnic_dev_overlay_offload_ctrl(enic->vdev,
+			OVERLAY_FEATURE_VXLAN, OVERLAY_OFFLOAD_ENABLE) != 0) {
+		dev_err(NULL, "failed to enable VXLAN offload\n");
+		return -EINVAL;
+	}
+	if (enic->geneve && vnic_dev_overlay_offload_ctrl(enic->vdev,
+			OVERLAY_FEATURE_GENEVE, OVERLAY_OFFLOAD_ENABLE) != 0) {
+		dev_err(NULL, "failed to enable Geneve offload\n");
+		return -EINVAL;
+	}
+	enic->tx_offload_capa |=
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		(enic->geneve ? DEV_TX_OFFLOAD_GENEVE_TNL_TSO : 0) |
+		(enic->vxlan ? DEV_TX_OFFLOAD_VXLAN_TNL_TSO : 0);
+	enic->tx_offload_mask |=
+		PKT_TX_OUTER_IPV6 |
+		PKT_TX_OUTER_IPV4 |
+		PKT_TX_OUTER_IP_CKSUM |
+		PKT_TX_TUNNEL_MASK;
+	enic->overlay_offload = true;
+
+	if (enic->vxlan && enic->geneve)
+		dev_info(NULL, "Overlay offload is enabled (VxLAN, Geneve)\n");
+	else if (enic->vxlan)
+		dev_info(NULL, "Overlay offload is enabled (VxLAN)\n");
+	else
+		dev_info(NULL, "Overlay offload is enabled (Geneve)\n");
+
+	return 0;
+}
+
+static int
+enic_reset_overlay_port(struct enic *enic)
+{
+	if (enic->vxlan) {
+		enic->vxlan_port = RTE_VXLAN_DEFAULT_PORT;
+		/*
+		 * Reset the vxlan port to the default, as the NIC firmware
+		 * does not reset it automatically and keeps the old setting.
+		 */
+		if (vnic_dev_overlay_offload_cfg(enic->vdev,
+						 OVERLAY_CFG_VXLAN_PORT_UPDATE,
+						 RTE_VXLAN_DEFAULT_PORT)) {
+			dev_err(enic, "failed to update vxlan port\n");
+			return -EINVAL;
+		}
+	}
+	if (enic->geneve) {
+		enic->geneve_port = RTE_GENEVE_DEFAULT_PORT;
+		if (vnic_dev_overlay_offload_cfg(enic->vdev,
+						 OVERLAY_CFG_GENEVE_PORT_UPDATE,
+						 RTE_GENEVE_DEFAULT_PORT)) {
+			dev_err(enic, "failed to update vxlan port\n");
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
 static int enic_dev_init(struct enic *enic)
 {
 	int err;
@@ -1785,85 +1865,32 @@ static int enic_dev_init(struct enic *enic)
 	/* set up link status checking */
 	vnic_dev_notify_set(enic->vdev, -1); /* No Intr for notify */
 
-	/*
-	 * When Geneve with options offload is available, always disable it
-	 * first as it can interfere with user flow rules.
-	 */
-	if (enic->geneve_opt_avail) {
-		/*
-		 * Disabling fails if the feature is provisioned but
-		 * not enabled. So ignore result and do not log error.
-		 */
-		vnic_dev_overlay_offload_ctrl(enic->vdev,
-			OVERLAY_FEATURE_GENEVE,
-			OVERLAY_OFFLOAD_DISABLE);
-	}
 	enic->overlay_offload = false;
-	if (enic->disable_overlay && enic->vxlan) {
-		/*
-		 * Explicitly disable overlay offload as the setting is
-		 * sticky, and resetting vNIC does not disable it.
-		 */
-		if (vnic_dev_overlay_offload_ctrl(enic->vdev,
-						  OVERLAY_FEATURE_VXLAN,
-						  OVERLAY_OFFLOAD_DISABLE)) {
-			dev_err(enic, "failed to disable overlay offload\n");
-		} else {
-			dev_info(enic, "Overlay offload is disabled\n");
-		}
-	}
-	if (!enic->disable_overlay && enic->vxlan &&
-	    /* 'VXLAN feature' enables VXLAN, NVGRE, and GENEVE. */
-	    vnic_dev_overlay_offload_ctrl(enic->vdev,
-					  OVERLAY_FEATURE_VXLAN,
-					  OVERLAY_OFFLOAD_ENABLE) == 0) {
-		enic->tx_offload_capa |=
-			DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-			DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-			DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
-		enic->tx_offload_mask |=
-			PKT_TX_OUTER_IPV6 |
-			PKT_TX_OUTER_IPV4 |
-			PKT_TX_OUTER_IP_CKSUM |
-			PKT_TX_TUNNEL_MASK;
-		enic->overlay_offload = true;
-		dev_info(enic, "Overlay offload is enabled\n");
-	}
-	/* Geneve with options offload requires overlay offload */
-	if (enic->overlay_offload && enic->geneve_opt_avail &&
-	    enic->geneve_opt_request) {
-		if (vnic_dev_overlay_offload_ctrl(enic->vdev,
-				OVERLAY_FEATURE_GENEVE,
-				OVERLAY_OFFLOAD_ENABLE)) {
-			dev_err(enic, "failed to enable geneve+option\n");
-		} else {
-			enic->geneve_opt_enabled = 1;
-			dev_info(enic, "Geneve with options is enabled\n");
+	/*
+	 * First, explicitly disable overlay offload as the setting is
+	 * sticky, and resetting vNIC may not disable it.
+	 */
+	enic_disable_overlay_offload(enic);
+	/* Then, enable overlay offload according to vNIC flags */
+	if (!enic->disable_overlay && (enic->vxlan || enic->geneve)) {
+		err = enic_enable_overlay_offload(enic);
+		if (err) {
+			dev_info(NULL, "failed to enable overlay offload\n");
+			return err;
 		}
 	}
 	/*
-	 * Reset the vxlan port if HW vxlan parsing is available. It
+	 * Reset the vxlan/geneve port if HW parsing is available. It
 	 * is always enabled regardless of overlay offload
 	 * enable/disable.
 	 */
-	if (enic->vxlan) {
-		enic->vxlan_port = RTE_VXLAN_DEFAULT_PORT;
-		/*
-		 * Reset the vxlan port to the default, as the NIC firmware
-		 * does not reset it automatically and keeps the old setting.
-		 */
-		if (vnic_dev_overlay_offload_cfg(enic->vdev,
-						 OVERLAY_CFG_VXLAN_PORT_UPDATE,
-						 RTE_VXLAN_DEFAULT_PORT)) {
-			dev_err(enic, "failed to update vxlan port\n");
-			return -EINVAL;
-		}
-	}
+	err = enic_reset_overlay_port(enic);
+	if (err)
+		return err;
 
 	if (enic_fm_init(enic))
 		dev_warning(enic, "Init of flowman failed.\n");
 	return 0;
-
 }
 
 static void lock_devcmd(void *priv)

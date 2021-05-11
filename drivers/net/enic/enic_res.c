@@ -179,10 +179,9 @@ int enic_get_vnic_config(struct enic *enic)
 
 	enic->vxlan = ENIC_SETTING(enic, VXLAN) &&
 		vnic_dev_capable_vxlan(enic->vdev);
-	if (vnic_dev_capable_geneve(enic->vdev)) {
-		dev_info(NULL, "Geneve with options offload available\n");
-		enic->geneve_opt_avail = 1;
-	}
+	enic->geneve = ENIC_SETTING(enic, GENEVE) &&
+		vnic_dev_capable_geneve(enic->vdev);
+
 	/* Supported CQ entry sizes */
 	enic->cq_entry_sizes = vnic_dev_capable_cq_entry_size(enic->vdev);
 	sizes = enic->cq_entry_sizes;

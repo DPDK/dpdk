@@ -294,35 +294,31 @@ inner and outer packets can be IPv4 or IPv6.
 
   RSS hash calculation, therefore queue selection, is done on inner packets.
 
-In order to enable overlay offload, the 'Enable VXLAN' box should be checked
+In order to enable overlay offload, enable VXLAN and/or Geneve on vNIC
 via CIMC or UCSM followed by a reboot of the server. When PMD successfully
-enables overlay offload, it prints the following message on the console.
+enables overlay offload, it prints one of the following messages on the console.
 
 .. code-block:: console
 
-    Overlay offload is enabled
+    Overlay offload is enabled (VxLAN)
+    Overlay offload is enabled (Geneve)
+    Overlay offload is enabled (VxLAN, Geneve)
 
 By default, PMD enables overlay offload if hardware supports it. To disable
 it, set ``devargs`` parameter ``disable-overlay=1``. For example::
 
     -a 12:00.0,disable-overlay=1
 
-By default, the NIC uses 4789 as the VXLAN port. The user may change
-it through ``rte_eth_dev_udp_tunnel_port_{add,delete}``. However, as
-the current NIC has a single VXLAN port number, the user cannot
-configure multiple port numbers.
+By default, the NIC uses 4789 and 6081 as the VXLAN and Geneve ports,
+respectively. The user may change them through
+``rte_eth_dev_udp_tunnel_port_{add,delete}``. However, as the current
+NIC has a single VXLAN port number and a single Geneve port number,
+the user cannot configure multiple port numbers for each tunnel type.
 
-Geneve headers with non-zero options are not supported by default. To
-use Geneve with options, update the VIC firmware to the latest version
-and then set ``devargs`` parameter ``geneve-opt=1``. When Geneve with
-options is enabled, flow API cannot be used as the features are
-currently mutually exclusive. When this feature is successfully
-enabled, PMD prints the following message.
-
-.. code-block:: console
-
-    Geneve with options is enabled
-
+Geneve offload support has evolved over VIC models. On older models,
+Geneve offload and advanced filters are mutually exclusive.  This is
+enforced by UCSM and CIMC, which only allow one of the two features
+to be selected at one time. Newer VIC models do not have this restriction.
 
 Ingress VLAN Rewrite
 --------------------

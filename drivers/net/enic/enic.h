@@ -118,17 +118,17 @@ struct enic {
 	uint32_t flow_filter_mode;
 	uint8_t filter_actions; /* HW supported actions */
 	uint64_t cq_entry_sizes; /* supported CQ entry sizes */
+	bool geneve;
 	bool vxlan;
 	bool cq64;            /* actually using 64B CQ entry */
 	bool cq64_request;    /* devargs cq64=1 */
 	bool disable_overlay; /* devargs disable_overlay=1 */
 	uint8_t enable_avx2_rx;  /* devargs enable-avx2-rx=1 */
-	uint8_t geneve_opt_avail;    /* Geneve with options offload available */
-	uint8_t geneve_opt_enabled;  /* Geneve with options offload enabled */
 	uint8_t geneve_opt_request;  /* devargs geneve-opt=1 */
 	bool nic_cfg_chk;     /* NIC_CFG_CHK available */
 	bool udp_rss_weak;    /* Bodega style UDP RSS */
 	uint8_t ig_vlan_rewrite_mode; /* devargs ig-vlan-rewrite */
+	uint16_t geneve_port; /* current geneve port pushed to NIC */
 	uint16_t vxlan_port;  /* current vxlan port pushed to NIC */
 	int use_simple_tx_handler;
 	int use_noscatter_vec_rx_handler;

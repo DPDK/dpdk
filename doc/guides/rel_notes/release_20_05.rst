@@ -121,6 +121,13 @@ New Features
   * Added flow counters to extended stats.
   * Added PCI function stats to extended stats.
 
+* **Updated Cisco enic driver.**
+
+  Updated Cisco enic driver GENEVE tunneling support:
+
+  * Added support to control GENEVE tunneling via UCSM/CIMC and removed devarg.
+  * Added GENEVE port number configuration.
+
 * **Updated Hisilicon hns3 driver.**
 
   Updated Hisilicon hns3 driver with new features and improvements, including:
