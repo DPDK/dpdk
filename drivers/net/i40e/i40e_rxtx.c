@@ -72,6 +72,15 @@
 #define I40E_TX_OFFLOAD_NOTSUP_MASK \
 		(PKT_TX_OFFLOAD_MASK ^ I40E_TX_OFFLOAD_MASK)
 
+#define I40E_TX_OFFLOAD_SIMPLE_SUP_MASK ( \
+		PKT_TX_IPV4 | \
+		PKT_TX_IPV6 | \
+		PKT_TX_OUTER_IPV4 | \
+		PKT_TX_OUTER_IPV6)
+
+#define I40E_TX_OFFLOAD_SIMPLE_NOTSUP_MASK \
+		(PKT_TX_OFFLOAD_MASK ^ I40E_TX_OFFLOAD_SIMPLE_SUP_MASK)
+
 int
 i40e_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 {
@@ -1501,7 +1510,7 @@ i40e_simple_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 
-		if (ol_flags & PKT_TX_OFFLOAD_MASK) {
+		if (ol_flags & I40E_TX_OFFLOAD_SIMPLE_NOTSUP_MASK) {
 			rte_errno = ENOTSUP;
 			return i;
 		}
