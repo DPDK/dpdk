@@ -1940,6 +1940,9 @@ port_flow_create(portid_t port_id,
 	memset(&error, 0x22, sizeof(error));
 	flow = rte_flow_create(port_id, attr, pattern, actions, &error);
 	if (!flow) {
+		if (tunnel_ops->enabled)
+			port_flow_tunnel_offload_cmd_release(port_id,
+							     tunnel_ops, pft);
 		free(pf);
 		return port_flow_complain(&error);
 	}
