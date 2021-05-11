@@ -2876,6 +2876,7 @@ static int ena_parse_devargs(struct ena_adapter *adapter,
 {
 	static const char * const allowed_args[] = {
 		ENA_DEVARG_LARGE_LLQ_HDR,
+		NULL,
 	};
 	struct rte_kvargs *kvlist;
 	int rc;
