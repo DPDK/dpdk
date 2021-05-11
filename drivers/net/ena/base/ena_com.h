@@ -338,7 +338,6 @@ struct ena_com_dev_get_features_ctx {
 	struct ena_admin_feature_offload_desc offload;
 	struct ena_admin_ena_hw_hints hw_hints;
 	struct ena_admin_feature_llq_desc llq;
-	struct ena_admin_feature_rss_ind_table ind_table;
 };
 
 struct ena_com_create_io_ctx {

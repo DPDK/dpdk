@@ -2054,17 +2054,6 @@ int ena_com_get_dev_attr_feat(struct ena_com_dev *ena_dev,
 	else
 		return rc;
 
-	rc = ena_com_get_feature(ena_dev, &get_resp,
-				 ENA_ADMIN_RSS_INDIRECTION_TABLE_CONFIG, 0);
-	if (!rc)
-		memcpy(&get_feat_ctx->ind_table, &get_resp.u.ind_table,
-		       sizeof(get_resp.u.ind_table));
-	else if (rc == ENA_COM_UNSUPPORTED)
-		memset(&get_feat_ctx->ind_table, 0x0,
-		       sizeof(get_feat_ctx->ind_table));
-	else
-		return rc;
-
 	return 0;
 }
 
