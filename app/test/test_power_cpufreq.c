@@ -39,8 +39,10 @@ test_power_caps(void)
 #define TEST_FREQ_ROUNDING_DELTA 50000
 #define TEST_ROUND_FREQ_TO_N_100000 100000
 
-#define TEST_POWER_SYSFILE_CUR_FREQ \
+#define TEST_POWER_SYSFILE_CPUINFO_FREQ \
 	"/sys/devices/system/cpu/cpu%u/cpufreq/cpuinfo_cur_freq"
+#define TEST_POWER_SYSFILE_SCALING_FREQ \
+	"/sys/devices/system/cpu/cpu%u/cpufreq/scaling_cur_freq"
 
 static uint32_t total_freq_num;
 static uint32_t freqs[TEST_POWER_FREQS_NUM_MAX];
@@ -58,12 +60,19 @@ check_cur_freq(unsigned lcore_id, uint32_t idx)
 	int i;
 
 	if (snprintf(fullpath, sizeof(fullpath),
-		TEST_POWER_SYSFILE_CUR_FREQ, lcore_id) < 0) {
+		TEST_POWER_SYSFILE_SCALING_FREQ, lcore_id) < 0) {
 		return 0;
 	}
 	f = fopen(fullpath, "r");
 	if (f == NULL) {
-		return 0;
+		if (snprintf(fullpath, sizeof(fullpath),
+			TEST_POWER_SYSFILE_CPUINFO_FREQ, lcore_id) < 0) {
+			return 0;
+		}
+		f = fopen(fullpath, "r");
+		if (f == NULL) {
+			return 0;
+		}
 	}
 	for (i = 0; i < MAX_LOOP; i++) {
 		fflush(f);
