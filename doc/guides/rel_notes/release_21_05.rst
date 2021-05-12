@@ -118,6 +118,7 @@ New Features
 
   * Changed memcpy mapping to the dpdk-optimized version.
   * Updated ena_com (HAL) to the latest version.
+  * Added indication of the RSS hash presence in the mbuf.
 
 * **Updated Arkville PMD driver.**
 
