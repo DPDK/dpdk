@@ -5136,6 +5136,7 @@ flow_check_match_action(const struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
+		case RTE_FLOW_ACTION_TYPE_METER:
 			if (fdb_mirror)
 				*modify_after_mirror = 1;
 			break;
