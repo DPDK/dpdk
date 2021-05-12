@@ -249,6 +249,8 @@ check_power_freq_down(void)
 {
 	int ret;
 
+	rte_power_freq_enable_turbo(TEST_POWER_LCORE_ID);
+
 	/* test with an invalid lcore id */
 	ret = rte_power_freq_down(TEST_POWER_LCORE_INVALID);
 	if (ret >= 0) {
