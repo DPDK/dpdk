@@ -72,19 +72,6 @@ static enum rte_security_session_action_type gbl_action_type =
 
 enum cryptodev_api_test_type global_api_test_type = CRYPTODEV_API_TEST;
 
-struct crypto_testsuite_params {
-	struct rte_mempool *mbuf_pool;
-	struct rte_mempool *large_mbuf_pool;
-	struct rte_mempool *op_mpool;
-	struct rte_mempool *session_mpool;
-	struct rte_mempool *session_priv_mpool;
-	struct rte_cryptodev_config conf;
-	struct rte_cryptodev_qp_conf qp_conf;
-
-	uint8_t valid_devs[RTE_CRYPTO_MAX_DEVS];
-	uint8_t valid_dev_count;
-};
-
 struct crypto_unittest_params {
 	struct rte_crypto_sym_xform cipher_xform;
 	struct rte_crypto_sym_xform auth_xform;
@@ -486,6 +473,7 @@ process_crypto_request(uint8_t dev_id, struct rte_crypto_op *op)
 }
 
 static struct crypto_testsuite_params testsuite_params = { NULL };
+struct crypto_testsuite_params *p_testsuite_params = &testsuite_params;
 static struct crypto_unittest_params unittest_params;
 
 static int
@@ -1313,7 +1301,7 @@ dev_configure_and_start(uint64_t ff_disable)
 	return TEST_SUCCESS;
 }
 
-static int
+int
 ut_setup(void)
 {
 	/* Configure and start the device with security feature disabled */
@@ -1327,7 +1315,7 @@ ut_setup_security(void)
 	return dev_configure_and_start(0);
 }
 
-static void
+void
 ut_teardown(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;

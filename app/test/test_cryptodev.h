@@ -79,6 +79,20 @@ enum cryptodev_api_test_type {
 
 extern enum cryptodev_api_test_type global_api_test_type;
 
+extern struct crypto_testsuite_params *p_testsuite_params;
+struct crypto_testsuite_params {
+	struct rte_mempool *mbuf_pool;
+	struct rte_mempool *large_mbuf_pool;
+	struct rte_mempool *op_mpool;
+	struct rte_mempool *session_mpool;
+	struct rte_mempool *session_priv_mpool;
+	struct rte_cryptodev_config conf;
+	struct rte_cryptodev_qp_conf qp_conf;
+
+	uint8_t valid_devs[RTE_CRYPTO_MAX_DEVS];
+	uint8_t valid_dev_count;
+};
+
 /**
  * Write (spread) data from buffer to mbuf data
  *
@@ -233,5 +247,11 @@ check_auth_capabilities_supported(const enum rte_crypto_auth_algorithm *auths,
 int
 check_aead_capabilities_supported(const enum rte_crypto_aead_algorithm *aeads,
 		uint16_t num_aeads);
+
+int
+ut_setup(void);
+
+void
+ut_teardown(void);
 
 #endif /* TEST_CRYPTODEV_H_ */

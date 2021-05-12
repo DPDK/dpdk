@@ -424,7 +424,7 @@ testsuite_teardown(void)
 }
 
 static int
-ut_setup(void)
+ut_setup_ipsec(void)
 {
 	struct ipsec_testsuite_params *ts_params = &testsuite_params;
 	struct ipsec_unitest_params *ut_params = &unittest_params;
@@ -444,7 +444,7 @@ ut_setup(void)
 }
 
 static void
-ut_teardown(void)
+ut_teardown_ipsec(void)
 {
 	struct ipsec_testsuite_params *ts_params = &testsuite_params;
 	struct ipsec_unitest_params *ut_params = &unittest_params;
@@ -2499,33 +2499,33 @@ static struct unit_test_suite ipsec_testsuite  = {
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_crypto_inb_burst_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_crypto_outb_burst_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_inline_crypto_inb_burst_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_inline_crypto_outb_burst_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_inline_proto_inb_burst_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_inline_proto_outb_burst_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_lksd_proto_inb_burst_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_lksd_proto_outb_burst_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_replay_inb_inside_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_replay_inb_outside_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_replay_inb_repeat_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_replay_inb_inside_burst_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_crypto_inb_burst_2sa_null_null_wrapper),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_crypto_inb_burst_2sa_4grp_null_null_wrapper),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
