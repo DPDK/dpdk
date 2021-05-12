@@ -132,7 +132,7 @@ __idxd_burst_capacity(int dev_id)
 	struct rte_idxd_rawdev *idxd =
 			(struct rte_idxd_rawdev *)rte_rawdevs[dev_id].dev_private;
 	uint16_t write_idx = idxd->batch_start + idxd->batch_size;
-	uint16_t used_space;
+	uint16_t used_space, free_space;
 
 	/* Check for space in the batch ring */
 	if ((idxd->batch_idx_read == 0 && idxd->batch_idx_write == idxd->max_batches) ||
@@ -147,7 +147,10 @@ __idxd_burst_capacity(int dev_id)
 	/* Return amount of free space in the descriptor ring
 	 * subtract 1 for space for batch descriptor and 1 for possible null desc
 	 */
-	return idxd->desc_ring_mask - used_space - 2;
+	free_space = idxd->desc_ring_mask - used_space;
+	if (free_space < 2)
+		return 0;
+	return free_space - 2;
 }
 
 static __rte_always_inline rte_iova_t
@@ -174,7 +177,8 @@ __idxd_write_desc(int dev_id,
 			idxd->batch_idx_write + 1 == idxd->batch_idx_read)
 		goto failed;
 	/* for descriptor ring, we always need a slot for batch completion */
-	if (((write_idx + 2) & mask) == idxd->hdls_read)
+	if (((write_idx + 2) & mask) == idxd->hdls_read ||
+			((write_idx + 1) & mask) == idxd->hdls_read)
 		goto failed;
 
 	/* write desc and handle. Note, descriptors don't wrap */
