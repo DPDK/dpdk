@@ -813,82 +813,401 @@ error_exit:
 	return status;
 }
 
-int
-test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
-	struct rte_mempool *op_mpool,
-	struct rte_mempool *sess_mpool,
-	struct rte_mempool *sess_priv_mpool,
-	uint8_t dev_id,
-	enum blockcipher_test_type test_type)
+static int
+blockcipher_test_case_run(const void *data)
 {
-	int status, overall_status = TEST_SUCCESS;
-	uint32_t i, test_index = 0;
+	const struct blockcipher_test_case *tc_data = data;
+	int status;
 	char test_msg[BLOCKCIPHER_TEST_MSG_LEN + 1];
-	uint32_t n_test_cases = 0;
-	const struct blockcipher_test_case *tcs = NULL;
+
+	status = test_blockcipher_one_case(tc_data,
+			p_testsuite_params->mbuf_pool,
+			p_testsuite_params->op_mpool,
+			p_testsuite_params->session_mpool,
+			p_testsuite_params->session_priv_mpool,
+			p_testsuite_params->valid_devs[0],
+			test_msg);
+	return status;
+}
+
+static int
+aes_chain_setup(void)
+{
+	uint8_t dev_id = p_testsuite_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	uint64_t feat_flags;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_NULL,
+		RTE_CRYPTO_CIPHER_AES_CTR,
+		RTE_CRYPTO_CIPHER_AES_CBC
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_NULL,
+		RTE_CRYPTO_AUTH_SHA1_HMAC,
+		RTE_CRYPTO_AUTH_AES_XCBC_MAC,
+		RTE_CRYPTO_AUTH_SHA256_HMAC,
+		RTE_CRYPTO_AUTH_SHA512_HMAC,
+		RTE_CRYPTO_AUTH_SHA224_HMAC,
+		RTE_CRYPTO_AUTH_SHA384_HMAC
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for AES Chain "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
+			&& check_auth_capabilities_supported(auths,
+			RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for AES Chain "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+aes_cipheronly_setup(void)
+{
+	uint8_t dev_id = p_testsuite_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	uint64_t feat_flags;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_NULL,
+		RTE_CRYPTO_CIPHER_AES_CTR,
+		RTE_CRYPTO_CIPHER_AES_CBC,
+		RTE_CRYPTO_CIPHER_AES_ECB,
+		RTE_CRYPTO_CIPHER_AES_XTS
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_NULL,
+		RTE_CRYPTO_AUTH_SHA1_HMAC,
+		RTE_CRYPTO_AUTH_AES_XCBC_MAC
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for AES Cipheronly "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
+			&& check_auth_capabilities_supported(auths,
+			RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for AES Cipheronly "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+aes_docsis_setup(void)
+{
+	uint8_t dev_id = p_testsuite_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	uint64_t feat_flags;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_AES_DOCSISBPI
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	feat_flags = dev_info.feature_flags;
+
+	/* Data-path service does not support DOCSIS yet */
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			(global_api_test_type == CRYPTODEV_RAW_API_TEST)) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for AES Docsis "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for AES Docsis "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+triple_des_chain_setup(void)
+{
+	uint8_t dev_id = p_testsuite_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	uint64_t feat_flags;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_3DES_CTR,
+		RTE_CRYPTO_CIPHER_3DES_CBC
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_SHA1_HMAC,
+		RTE_CRYPTO_AUTH_SHA1
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for 3DES Chain "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
+			&& check_auth_capabilities_supported(auths,
+			RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for 3DES Chain "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+triple_des_cipheronly_setup(void)
+{
+	uint8_t dev_id = p_testsuite_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	uint64_t feat_flags;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_3DES_CTR,
+		RTE_CRYPTO_CIPHER_3DES_CBC
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for 3DES "
+				"Cipheronly testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for 3DES "
+				"Cipheronly testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+des_cipheronly_setup(void)
+{
+	uint8_t dev_id = p_testsuite_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	uint64_t feat_flags;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_DES_CBC
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for DES "
+				"Cipheronly testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for DES "
+				"Cipheronly testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+des_docsis_setup(void)
+{
+	uint8_t dev_id = p_testsuite_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	uint64_t feat_flags;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_DES_DOCSISBPI
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	feat_flags = dev_info.feature_flags;
+
+	/* Data-path service does not support DOCSIS yet */
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			(global_api_test_type == CRYPTODEV_RAW_API_TEST)) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for DES Docsis "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for DES Docsis "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+authonly_setup(void)
+{
+	uint8_t dev_id = p_testsuite_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	uint64_t feat_flags;
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_MD5,
+		RTE_CRYPTO_AUTH_MD5_HMAC,
+		RTE_CRYPTO_AUTH_SHA1,
+		RTE_CRYPTO_AUTH_SHA1_HMAC,
+		RTE_CRYPTO_AUTH_SHA224,
+		RTE_CRYPTO_AUTH_SHA224_HMAC,
+		RTE_CRYPTO_AUTH_SHA256,
+		RTE_CRYPTO_AUTH_SHA256_HMAC,
+		RTE_CRYPTO_AUTH_SHA384,
+		RTE_CRYPTO_AUTH_SHA384_HMAC,
+		RTE_CRYPTO_AUTH_SHA512,
+		RTE_CRYPTO_AUTH_SHA512_HMAC,
+		RTE_CRYPTO_AUTH_AES_CMAC,
+		RTE_CRYPTO_AUTH_NULL,
+		RTE_CRYPTO_AUTH_AES_XCBC_MAC
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for Auth Only "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_auth_capabilities_supported(auths, RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for Auth Only "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+struct unit_test_suite *
+build_blockcipher_test_suite(enum blockcipher_test_type test_type)
+{
+	int i, n_test_cases = 0;
+	struct unit_test_suite *ts;
+	const char *ts_name = NULL;
+	const struct blockcipher_test_case *blk_tcs;
+	struct unit_test_case *tc;
+	int (*ts_setup)(void) = NULL;
 
 	switch (test_type) {
 	case BLKCIPHER_AES_CHAIN_TYPE:
-		n_test_cases = sizeof(aes_chain_test_cases) /
-		sizeof(aes_chain_test_cases[0]);
-		tcs = aes_chain_test_cases;
+		n_test_cases = RTE_DIM(aes_chain_test_cases);
+		blk_tcs = aes_chain_test_cases;
+		ts_name = "AES Chain";
+		ts_setup = aes_chain_setup;
 		break;
 	case BLKCIPHER_AES_CIPHERONLY_TYPE:
-		n_test_cases = sizeof(aes_cipheronly_test_cases) /
-		sizeof(aes_cipheronly_test_cases[0]);
-		tcs = aes_cipheronly_test_cases;
+		n_test_cases = RTE_DIM(aes_cipheronly_test_cases);
+		blk_tcs = aes_cipheronly_test_cases;
+		ts_name = "AES Cipher Only";
+		ts_setup = aes_cipheronly_setup;
 		break;
 	case BLKCIPHER_AES_DOCSIS_TYPE:
-		n_test_cases = sizeof(aes_docsis_test_cases) /
-		sizeof(aes_docsis_test_cases[0]);
-		tcs = aes_docsis_test_cases;
+		n_test_cases = RTE_DIM(aes_docsis_test_cases);
+		blk_tcs = aes_docsis_test_cases;
+		ts_name = "AES Docsis";
+		ts_setup = aes_docsis_setup;
 		break;
 	case BLKCIPHER_3DES_CHAIN_TYPE:
-		n_test_cases = sizeof(triple_des_chain_test_cases) /
-		sizeof(triple_des_chain_test_cases[0]);
-		tcs = triple_des_chain_test_cases;
+		n_test_cases = RTE_DIM(triple_des_chain_test_cases);
+		blk_tcs = triple_des_chain_test_cases;
+		ts_name = "3DES Chain";
+		ts_setup = triple_des_chain_setup;
 		break;
 	case BLKCIPHER_3DES_CIPHERONLY_TYPE:
-		n_test_cases = sizeof(triple_des_cipheronly_test_cases) /
-		sizeof(triple_des_cipheronly_test_cases[0]);
-		tcs = triple_des_cipheronly_test_cases;
+		n_test_cases = RTE_DIM(triple_des_cipheronly_test_cases);
+		blk_tcs = triple_des_cipheronly_test_cases;
+		ts_name = "3DES Cipher Only";
+		ts_setup = triple_des_cipheronly_setup;
 		break;
 	case BLKCIPHER_DES_CIPHERONLY_TYPE:
-		n_test_cases = sizeof(des_cipheronly_test_cases) /
-		sizeof(des_cipheronly_test_cases[0]);
-		tcs = des_cipheronly_test_cases;
+		n_test_cases = RTE_DIM(des_cipheronly_test_cases);
+		blk_tcs = des_cipheronly_test_cases;
+		ts_name = "DES Cipher Only";
+		ts_setup = des_cipheronly_setup;
 		break;
 	case BLKCIPHER_DES_DOCSIS_TYPE:
-		n_test_cases = sizeof(des_docsis_test_cases) /
-		sizeof(des_docsis_test_cases[0]);
-		tcs = des_docsis_test_cases;
+		n_test_cases = RTE_DIM(des_docsis_test_cases);
+		blk_tcs = des_docsis_test_cases;
+		ts_name = "DES Docsis";
+		ts_setup = des_docsis_setup;
 		break;
 	case BLKCIPHER_AUTHONLY_TYPE:
-		n_test_cases = sizeof(hash_test_cases) /
-		sizeof(hash_test_cases[0]);
-		tcs = hash_test_cases;
+		n_test_cases = RTE_DIM(hash_test_cases);
+		blk_tcs = hash_test_cases;
+		ts_name = "Auth Only";
+		ts_setup = authonly_setup;
 		break;
 	default:
 		break;
 	}
 
+	ts = calloc(1, sizeof(struct unit_test_suite) +
+			(sizeof(struct unit_test_case) * (n_test_cases + 1)));
+	ts->suite_name = ts_name;
+	ts->setup = ts_setup;
+
 	for (i = 0; i < n_test_cases; i++) {
-		const struct blockcipher_test_case *tc = &tcs[i];
-
-		status = test_blockcipher_one_case(tc, mbuf_pool, op_mpool,
-			sess_mpool, sess_priv_mpool, dev_id,
-			test_msg);
-
-		printf("  %u) TestCase %s %s\n", test_index ++,
-			tc->test_descr, test_msg);
-
-		if (status == TEST_FAILED) {
-			overall_status = status;
-
-			if (tc->feature_mask & BLOCKCIPHER_TEST_FEATURE_STOPPER)
-				break;
-		}
+		tc = &ts->unit_test_cases[i];
+		tc->name = blk_tcs[i].test_descr;
+		tc->enabled = 1;
+		tc->setup = ut_setup;
+		tc->teardown = ut_teardown;
+		tc->testcase = NULL;
+		tc->testcase_with_data = blockcipher_test_case_run;
+		tc->data = &blk_tcs[i];
 	}
+	tc = &ts->unit_test_cases[i];
+	tc->name = NULL;
+	tc->enabled = 0;
+	tc->setup = NULL;
+	tc->teardown = NULL;
+	tc->testcase = NULL;
+	tc->testcase_with_data = NULL;
+	tc->data = NULL;
 
-	return overall_status;
+	return ts;
+}
+
+void
+free_blockcipher_test_suite(struct unit_test_suite *ts)
+{
+	free(ts);
 }

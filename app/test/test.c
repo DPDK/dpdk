@@ -38,7 +38,8 @@ extern cmdline_parse_ctx_t main_ctx[];
 
 #define FOR_EACH_SUITE_TESTCASE(iter, suite, case)			\
 	for (iter = 0, case = suite->unit_test_cases[0];		\
-		suite->unit_test_cases[iter].testcase;			\
+		suite->unit_test_cases[iter].testcase ||		\
+		suite->unit_test_cases[iter].testcase_with_data;	\
 		iter++, case = suite->unit_test_cases[iter])
 
 #define FOR_EACH_SUITE_TESTSUITE(iter, suite, sub_ts)			\
@@ -341,7 +342,13 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 
 		if (test_success == TEST_SUCCESS) {
 			/* run the test case */
-			test_success = tc.testcase();
+			if (tc.testcase)
+				test_success = tc.testcase();
+			else if (tc.testcase_with_data)
+				test_success = tc.testcase_with_data(tc.data);
+			else
+				test_success = -ENOTSUP;
+
 			if (test_success == TEST_SUCCESS)
 				suite->succeeded++;
 			else if (test_success == TEST_SKIPPED)

@@ -299,6 +299,11 @@ New Features
   * Added support for crypto adapter forward mode in octeontx2 event and crypto
     device driver.
 
+* **Added sub-testsuite support.**
+
+  * The unit test suite struct now supports having both a nested
+    list of sub-testsuites, and a list of testcases as before.
+
 
 Removed Items
 -------------

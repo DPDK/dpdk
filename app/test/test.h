@@ -108,24 +108,28 @@ struct unit_test_case {
 	int (*setup)(void);
 	void (*teardown)(void);
 	int (*testcase)(void);
+	int (*testcase_with_data)(const void *data);
 	const char *name;
 	unsigned enabled;
+	const void *data;
 };
 
-#define TEST_CASE(fn) { NULL, NULL, fn, #fn, 1 }
+#define TEST_CASE(fn) { NULL, NULL, fn, NULL, #fn, 1, NULL }
 
-#define TEST_CASE_NAMED(name, fn) { NULL, NULL, fn, name, 1 }
+#define TEST_CASE_NAMED(name, fn) { NULL, NULL, fn, NULL, name, 1, NULL }
 
 #define TEST_CASE_ST(setup, teardown, testcase) \
-		{ setup, teardown, testcase, #testcase, 1 }
+		{ setup, teardown, testcase, NULL, #testcase, 1, NULL }
 
+#define TEST_CASE_WITH_DATA(setup, teardown, testcase, data) \
+		{ setup, teardown, NULL, testcase, #testcase, 1, data }
 
-#define TEST_CASE_DISABLED(fn) { NULL, NULL, fn, #fn, 0 }
+#define TEST_CASE_DISABLED(fn) { NULL, NULL, fn, NULL, #fn, 0, NULL }
 
 #define TEST_CASE_ST_DISABLED(setup, teardown, testcase) \
-		{ setup, teardown, testcase, #testcase, 0 }
+		{ setup, teardown, testcase, NULL, #testcase, 0, NULL }
 
-#define TEST_CASES_END() { NULL, NULL, NULL, NULL, 0 }
+#define TEST_CASES_END() { NULL, NULL, NULL, NULL, NULL, 0, NULL }
 
 static inline void
 debug_hexdump(FILE *file, const char *title, const void *buf, size_t len)

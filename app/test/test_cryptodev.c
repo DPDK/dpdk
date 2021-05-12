@@ -103,6 +103,15 @@ struct crypto_unittest_params {
 	for (j = 0; j < num_child_ts; index++, j++)			\
 		parent_ts.unit_test_suites[index] = child_ts[j]
 
+#define ADD_BLOCKCIPHER_TESTSUITE(index, parent_ts, blk_types, num_blk_types)	\
+	for (j = 0; j < num_blk_types; index++, j++)				\
+		parent_ts.unit_test_suites[index] =				\
+				build_blockcipher_test_suite(blk_types[j])
+
+#define FREE_BLOCKCIPHER_TESTSUITE(index, parent_ts, num_blk_types)		\
+	for (j = index; j < index + num_blk_types; j++)				\
+		free_blockcipher_test_suite(parent_ts.unit_test_suites[j])
+
 /*
  * Forward declarations.
  */
@@ -2310,80 +2319,6 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 			"Digest verification failed");
 
 	return TEST_SUCCESS;
-}
-
-static int
-test_blockcipher(enum blockcipher_test_type test_type)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		test_type);
-
-	if (status == -ENOTSUP)
-		return status;
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_cipheronly_all(void)
-{
-	return test_blockcipher(BLKCIPHER_AES_CIPHERONLY_TYPE);
-}
-
-static int
-test_AES_docsis_all(void)
-{
-	/* Data-path service does not support DOCSIS yet */
-	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return TEST_SKIPPED;
-	return test_blockcipher(BLKCIPHER_AES_DOCSIS_TYPE);
-}
-
-static int
-test_DES_docsis_all(void)
-{
-	/* Data-path service does not support DOCSIS yet */
-	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return TEST_SKIPPED;
-	return test_blockcipher(BLKCIPHER_DES_DOCSIS_TYPE);
-}
-
-static int
-test_DES_cipheronly_all(void)
-{
-	return test_blockcipher(BLKCIPHER_DES_CIPHERONLY_TYPE);
-}
-
-static int
-test_authonly_all(void)
-{
-	return test_blockcipher(BLKCIPHER_AUTHONLY_TYPE);
-}
-
-static int
-test_AES_chain_all(void)
-{
-	return test_blockcipher(BLKCIPHER_AES_CHAIN_TYPE);
-}
-
-static int
-test_3DES_chain_all(void)
-{
-	return test_blockcipher(BLKCIPHER_3DES_CHAIN_TYPE);
-}
-
-static int
-test_3DES_cipheronly_all(void)
-{
-	return test_blockcipher(BLKCIPHER_3DES_CIPHERONLY_TYPE);
 }
 
 /* ***** SNOW 3G Tests ***** */
@@ -13798,14 +13733,6 @@ static struct unit_test_suite cryptodev_gen_testsuite  = {
 				test_queue_pair_descriptor_setup),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_device_configure_invalid_queue_pair_ids),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_DES_cipheronly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_docsis_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_DES_docsis_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_stats),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_enq_callback_setup),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_deq_callback_setup),
@@ -14533,7 +14460,16 @@ static struct unit_test_suite cryptodev_mixed_cipher_hash_testsuite  = {
 static int
 run_cryptodev_testsuite(const char *pmd_name)
 {
-	uint8_t ret, j, i = 0;
+	uint8_t ret, j, i = 0, blk_start_idx = 0;
+	const enum blockcipher_test_type blk_suites[] = {
+		BLKCIPHER_AES_CHAIN_TYPE,
+		BLKCIPHER_AES_CIPHERONLY_TYPE,
+		BLKCIPHER_AES_DOCSIS_TYPE,
+		BLKCIPHER_3DES_CHAIN_TYPE,
+		BLKCIPHER_3DES_CIPHERONLY_TYPE,
+		BLKCIPHER_DES_CIPHERONLY_TYPE,
+		BLKCIPHER_DES_DOCSIS_TYPE,
+		BLKCIPHER_AUTHONLY_TYPE};
 	struct unit_test_suite *static_suites[] = {
 		&cryptodev_multi_session_testsuite,
 		&cryptodev_null_testsuite,
@@ -14572,11 +14508,13 @@ run_cryptodev_testsuite(const char *pmd_name)
 	}
 
 	ts.unit_test_suites = malloc(sizeof(struct unit_test_suite *) *
-			RTE_DIM(static_suites));
+			(RTE_DIM(blk_suites) + RTE_DIM(static_suites)));
 
+	ADD_BLOCKCIPHER_TESTSUITE(i, ts, blk_suites, RTE_DIM(blk_suites));
 	ADD_STATIC_TESTSUITE(i, ts, static_suites, RTE_DIM(static_suites));
 	ret = unit_test_suite_runner(&ts);
 
+	FREE_BLOCKCIPHER_TESTSUITE(blk_start_idx, ts, RTE_DIM(blk_suites));
 	free(ts.unit_test_suites);
 	return ret;
 }
@@ -14674,54 +14612,35 @@ test_cryptodev_mrvl(void)
 static int
 test_cryptodev_scheduler(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	uint8_t ret, j, i = 0;
+	uint8_t ret, sched_i, j, i = 0, blk_start_idx = 0;
+	const enum blockcipher_test_type blk_suites[] = {
+		BLKCIPHER_AES_CHAIN_TYPE,
+		BLKCIPHER_AES_CIPHERONLY_TYPE,
+		BLKCIPHER_AUTHONLY_TYPE
+	};
 	static struct unit_test_suite scheduler_multicore = {
 		.suite_name = "Scheduler Multicore Unit Test Suite",
 		.setup = scheduler_multicore_testsuite_setup,
 		.teardown = scheduler_mode_testsuite_teardown,
-		.unit_test_cases = {
-			TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-			TEST_CASE_ST(ut_setup, ut_teardown,
-					test_AES_cipheronly_all),
-			TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
-			TEST_CASES_END()
-		}
+		.unit_test_cases = {TEST_CASES_END()}
 	};
 	static struct unit_test_suite scheduler_round_robin = {
 		.suite_name = "Scheduler Round Robin Unit Test Suite",
 		.setup = scheduler_roundrobin_testsuite_setup,
 		.teardown = scheduler_mode_testsuite_teardown,
-		.unit_test_cases = {
-			TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-			TEST_CASE_ST(ut_setup, ut_teardown,
-					test_AES_cipheronly_all),
-			TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
-			TEST_CASES_END()
-		}
+		.unit_test_cases = {TEST_CASES_END()}
 	};
 	static struct unit_test_suite scheduler_failover = {
 		.suite_name = "Scheduler Failover Unit Test Suite",
 		.setup = scheduler_failover_testsuite_setup,
 		.teardown = scheduler_mode_testsuite_teardown,
-		.unit_test_cases = {
-			TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-			TEST_CASE_ST(ut_setup, ut_teardown,
-					test_AES_cipheronly_all),
-			TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
-			TEST_CASES_END()
-		}
+		.unit_test_cases = {TEST_CASES_END()}
 	};
 	static struct unit_test_suite scheduler_pkt_size_distr = {
 		.suite_name = "Scheduler Pkt Size Distr Unit Test Suite",
 		.setup = scheduler_pkt_size_distr_testsuite_setup,
 		.teardown = scheduler_mode_testsuite_teardown,
-		.unit_test_cases = {
-			TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-			TEST_CASE_ST(ut_setup, ut_teardown,
-					test_AES_cipheronly_all),
-			TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
-			TEST_CASES_END()
-		}
+		.unit_test_cases = {TEST_CASES_END()}
 	};
 	struct unit_test_suite *sched_mode_suites[] = {
 		&scheduler_multicore,
@@ -14767,6 +14686,16 @@ test_cryptodev_scheduler(void /*argv __rte_unused, int argc __rte_unused*/)
 		return TEST_SKIPPED;
 	}
 
+	for (sched_i = 0; sched_i < RTE_DIM(sched_mode_suites); sched_i++) {
+		uint8_t blk_i = 0;
+		sched_mode_suites[sched_i]->unit_test_suites = malloc(sizeof
+				(struct unit_test_suite *) *
+				(RTE_DIM(blk_suites) + 1));
+		ADD_BLOCKCIPHER_TESTSUITE(blk_i, (*sched_mode_suites[sched_i]),
+				blk_suites, RTE_DIM(blk_suites));
+		sched_mode_suites[sched_i]->unit_test_suites[blk_i] = &end_testsuite;
+	}
+
 	ts.unit_test_suites = malloc(sizeof(struct unit_test_suite *) *
 			(RTE_DIM(static_suites) + RTE_DIM(sched_mode_suites)));
 	ADD_STATIC_TESTSUITE(i, ts, sched_mode_suites,
@@ -14774,6 +14703,12 @@ test_cryptodev_scheduler(void /*argv __rte_unused, int argc __rte_unused*/)
 	ADD_STATIC_TESTSUITE(i, ts, static_suites, RTE_DIM(static_suites));
 	ret = unit_test_suite_runner(&ts);
 
+	for (sched_i = 0; sched_i < RTE_DIM(sched_mode_suites); sched_i++) {
+		FREE_BLOCKCIPHER_TESTSUITE(blk_start_idx,
+				(*sched_mode_suites[sched_i]),
+				RTE_DIM(blk_suites));
+		free(sched_mode_suites[sched_i]->unit_test_suites);
+	}
 	free(ts.unit_test_suites);
 	return ret;
 }

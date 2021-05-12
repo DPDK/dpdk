@@ -99,12 +99,10 @@ struct blockcipher_test_data {
 	unsigned int auth_offset;
 };
 
-int
-test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
-	struct rte_mempool *op_mpool,
-	struct rte_mempool *sess_mpool,
-	struct rte_mempool *sess_priv_mpool,
-	uint8_t dev_id,
-	enum blockcipher_test_type test_type);
+struct unit_test_suite *
+build_blockcipher_test_suite(enum blockcipher_test_type test_type);
+
+void
+free_blockcipher_test_suite(struct unit_test_suite *ts);
 
 #endif /* TEST_CRYPTODEV_BLOCKCIPHER_H_ */
