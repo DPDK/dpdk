@@ -166,6 +166,17 @@ int power_guest_channel_read_msg(void *pkt,
 	if (pkt_len == 0 || pkt == NULL)
 		return -1;
 
+	if (lcore_id >= RTE_MAX_LCORE) {
+		RTE_LOG(ERR, GUEST_CHANNEL, "Channel(%u) is out of range 0...%d\n",
+				lcore_id, RTE_MAX_LCORE-1);
+		return -1;
+	}
+
+	if (global_fds[lcore_id] < 0) {
+		RTE_LOG(ERR, GUEST_CHANNEL, "Channel is not connected\n");
+		return -1;
+	}
+
 	fds.fd = global_fds[lcore_id];
 	fds.events = POLLIN;
 
@@ -176,17 +187,6 @@ int power_guest_channel_read_msg(void *pkt,
 	} else if (ret < 0) {
 		RTE_LOG(ERR, GUEST_CHANNEL, "Error occurred during poll function: %s\n",
 				strerror(errno));
-		return -1;
-	}
-
-	if (lcore_id >= RTE_MAX_LCORE) {
-		RTE_LOG(ERR, GUEST_CHANNEL, "Channel(%u) is out of range 0...%d\n",
-				lcore_id, RTE_MAX_LCORE-1);
-		return -1;
-	}
-
-	if (global_fds[lcore_id] < 0) {
-		RTE_LOG(ERR, GUEST_CHANNEL, "Channel is not connected\n");
 		return -1;
 	}
 
