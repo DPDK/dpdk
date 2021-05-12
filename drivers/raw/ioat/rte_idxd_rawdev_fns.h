@@ -301,11 +301,11 @@ __idxd_completed_ops(int dev_id, uint8_t max_ops, uint32_t *status, uint8_t *num
 		uint16_t idx_to_chk = idxd->batch_idx_ring[idxd->batch_idx_read];
 		volatile struct rte_idxd_completion *comp_to_chk =
 				(struct rte_idxd_completion *)&idxd->desc_ring[idx_to_chk];
-		uint8_t status = comp_to_chk->status;
-		if (status == 0)
+		uint8_t batch_status = comp_to_chk->status;
+		if (batch_status == 0)
 			break;
 		comp_to_chk->status = 0;
-		if (unlikely(status > 1)) {
+		if (unlikely(batch_status > 1)) {
 			/* error occurred somewhere in batch, start where last checked */
 			uint16_t desc_count = comp_to_chk->completed_size;
 			uint16_t batch_start = idxd->hdls_avail;
