@@ -9,6 +9,7 @@
 #include <rte_malloc.h>
 
 #include "bnxt.h"
+#include "bnxt_hwrm.h"
 #include "bnxt_ring.h"
 #include "bnxt_txq.h"
 #include "bnxt_txr.h"
@@ -544,6 +545,11 @@ int bnxt_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	int rc = 0;
 
 	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return rc;
+
+	bnxt_free_hwrm_tx_ring(bp, tx_queue_id);
+	rc = bnxt_alloc_hwrm_tx_ring(bp, tx_queue_id);
 	if (rc)
 		return rc;
 

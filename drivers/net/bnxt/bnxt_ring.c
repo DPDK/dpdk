@@ -599,6 +599,10 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	if (rc)
 		goto err_out;
 
+	rc = bnxt_hwrm_stat_ctx_alloc(bp, cpr);
+	if (rc)
+		goto err_out;
+
 	if (BNXT_HAS_RING_GRPS(bp)) {
 		bp->grp_info[queue_index].fw_stats_ctx = cpr->hw_stats_ctx_id;
 		bp->grp_info[queue_index].cp_fw_ring_id = cp_ring->fw_ring_id;
@@ -836,4 +840,51 @@ int bnxt_alloc_async_ring_struct(struct bnxt *bp)
 
 	return bnxt_alloc_rings(bp, bp->eth_dev->device->numa_node, 0, NULL,
 				NULL, bp->async_cp_ring, NULL, "def_cp");
+}
+
+int bnxt_alloc_hwrm_tx_ring(struct bnxt *bp, int queue_index)
+{
+	struct bnxt_tx_queue *txq = bp->tx_queues[queue_index];
+	struct bnxt_cp_ring_info *cpr = txq->cp_ring;
+	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
+	struct bnxt_tx_ring_info *txr = txq->tx_ring;
+	struct bnxt_ring *ring = txr->tx_ring_struct;
+	unsigned int idx = queue_index + bp->rx_cp_nr_rings;
+	uint16_t tx_cosq_id = 0;
+	struct bnxt_coal coal;
+	int rc = 0;
+
+	rc = bnxt_alloc_cmpl_ring(bp, idx, cpr);
+	if (rc)
+		goto err_out;
+
+	bnxt_init_dflt_coal(&coal);
+	bnxt_hwrm_set_ring_coal(bp, &coal, cp_ring->fw_ring_id);
+
+	rc = bnxt_hwrm_stat_ctx_alloc(bp, cpr);
+	if (rc)
+		goto err_out;
+
+	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY)
+		tx_cosq_id = bp->tx_cosq_id[queue_index < bp->max_lltc ? queue_index : 0];
+	else
+		tx_cosq_id = bp->tx_cosq_id[0];
+
+	rc = bnxt_hwrm_ring_alloc(bp, ring,
+				  HWRM_RING_ALLOC_INPUT_RING_TYPE_TX,
+				  queue_index, cpr->hw_stats_ctx_id,
+				  cp_ring->fw_ring_id,
+				  tx_cosq_id);
+	if (rc)
+		goto err_out;
+
+	bnxt_set_db(bp, &txr->tx_db, HWRM_RING_ALLOC_INPUT_RING_TYPE_TX,
+		    queue_index, ring->fw_ring_id,
+		    ring->ring_mask);
+	txq->index = idx;
+
+	return rc;
+err_out:
+	bnxt_free_hwrm_tx_ring(bp, queue_index);
+	return rc;
 }

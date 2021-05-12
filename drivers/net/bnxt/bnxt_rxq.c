@@ -248,6 +248,7 @@ void bnxt_rx_queue_release_op(void *rx_queue)
 		if (is_bnxt_in_error(rxq->bp))
 			return;
 
+		bnxt_free_hwrm_rx_ring(rxq->bp, rxq->queue_id);
 		bnxt_rx_queue_release_mbufs(rxq);
 
 		/* Free RX ring hardware descriptors */
@@ -286,7 +287,6 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
 	struct bnxt_rx_queue *rxq;
 	int rc = 0;
-	uint8_t queue_state;
 
 	rc = is_bnxt_in_error(bp);
 	if (rc)
@@ -360,14 +360,8 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	else
 		rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 
-	if (rxq->rx_deferred_start) {
-		queue_state = RTE_ETH_QUEUE_STATE_STOPPED;
-		rxq->rx_started = false;
-	} else {
-		queue_state = RTE_ETH_QUEUE_STATE_STARTED;
-		rxq->rx_started = true;
-	}
-	eth_dev->data->rx_queue_state[queue_idx] = queue_state;
+	rxq->rx_started = rxq->rx_deferred_start ? false : true;
+	rxq->vnic = BNXT_GET_DEFAULT_VNIC(bp);
 
 	/* Configure mtu if it is different from what was configured before */
 	if (!queue_idx)
