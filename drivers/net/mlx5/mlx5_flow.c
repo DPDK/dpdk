@@ -408,6 +408,7 @@ enum mlx5_expansion {
 	MLX5_EXPANSION_VXLAN,
 	MLX5_EXPANSION_VXLAN_GPE,
 	MLX5_EXPANSION_GRE,
+	MLX5_EXPANSION_NVGRE,
 	MLX5_EXPANSION_GRE_KEY,
 	MLX5_EXPANSION_MPLS,
 	MLX5_EXPANSION_ETH,
@@ -466,6 +467,7 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 			(MLX5_EXPANSION_OUTER_IPV4_UDP,
 			 MLX5_EXPANSION_OUTER_IPV4_TCP,
 			 MLX5_EXPANSION_GRE,
+			 MLX5_EXPANSION_NVGRE,
 			 MLX5_EXPANSION_IPV4,
 			 MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_IPV4,
@@ -488,7 +490,8 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 			 MLX5_EXPANSION_OUTER_IPV6_TCP,
 			 MLX5_EXPANSION_IPV4,
 			 MLX5_EXPANSION_IPV6,
-			 MLX5_EXPANSION_GRE),
+			 MLX5_EXPANSION_GRE,
+			 MLX5_EXPANSION_NVGRE),
 		.type = RTE_FLOW_ITEM_TYPE_IPV6,
 		.rss_types = ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
 			ETH_RSS_NONFRAG_IPV6_OTHER,
@@ -526,6 +529,10 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 						  MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_GRE_KEY,
 		.optional = 1,
+	},
+	[MLX5_EXPANSION_NVGRE] = {
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH),
+		.type = RTE_FLOW_ITEM_TYPE_NVGRE,
 	},
 	[MLX5_EXPANSION_MPLS] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
