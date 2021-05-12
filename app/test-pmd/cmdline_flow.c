@@ -348,6 +348,11 @@ enum index {
 	ACTION_PORT_ID_ORIGINAL,
 	ACTION_PORT_ID_ID,
 	ACTION_METER,
+	ACTION_METER_COLOR,
+	ACTION_METER_COLOR_TYPE,
+	ACTION_METER_COLOR_GREEN,
+	ACTION_METER_COLOR_YELLOW,
+	ACTION_METER_COLOR_RED,
 	ACTION_METER_ID,
 	ACTION_OF_SET_MPLS_TTL,
 	ACTION_OF_SET_MPLS_TTL_MPLS_TTL,
@@ -1377,6 +1382,7 @@ static const enum index next_action[] = {
 	ACTION_PHY_PORT,
 	ACTION_PORT_ID,
 	ACTION_METER,
+	ACTION_METER_COLOR,
 	ACTION_OF_SET_MPLS_TTL,
 	ACTION_OF_DEC_MPLS_TTL,
 	ACTION_OF_SET_NW_TTL,
@@ -1482,6 +1488,12 @@ static const enum index action_port_id[] = {
 
 static const enum index action_meter[] = {
 	ACTION_METER_ID,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_meter_color[] = {
+	ACTION_METER_COLOR_TYPE,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -1723,6 +1735,10 @@ static int parse_vc_conf(struct context *, const struct token *,
 static int parse_vc_item_ecpri_type(struct context *, const struct token *,
 				    const char *, unsigned int,
 				    void *, unsigned int);
+static int parse_vc_action_meter_color_type(struct context *,
+					const struct token *,
+					const char *, unsigned int, void *,
+					unsigned int);
 static int parse_vc_action_rss(struct context *, const struct token *,
 			       const char *, unsigned int, void *,
 			       unsigned int);
@@ -3801,6 +3817,37 @@ static const struct token token_list[] = {
 		.next = NEXT(action_meter),
 		.call = parse_vc,
 	},
+	[ACTION_METER_COLOR] = {
+		.name = "color",
+		.help = "meter color for the packets",
+		.priv = PRIV_ACTION(METER_COLOR,
+				sizeof(struct rte_flow_action_meter_color)),
+		.next = NEXT(action_meter_color),
+		.call = parse_vc,
+	},
+	[ACTION_METER_COLOR_TYPE] = {
+		.name = "type",
+		.help = "specific meter color",
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT),
+				NEXT_ENTRY(ACTION_METER_COLOR_GREEN,
+					ACTION_METER_COLOR_YELLOW,
+					ACTION_METER_COLOR_RED)),
+	},
+	[ACTION_METER_COLOR_GREEN] = {
+		.name = "green",
+		.help = "meter color green",
+		.call = parse_vc_action_meter_color_type,
+	},
+	[ACTION_METER_COLOR_YELLOW] = {
+		.name = "yellow",
+		.help = "meter color yellow",
+		.call = parse_vc_action_meter_color_type,
+	},
+	[ACTION_METER_COLOR_RED] = {
+		.name = "red",
+		.help = "meter color red",
+		.call = parse_vc_action_meter_color_type,
+	},
 	[ACTION_METER_ID] = {
 		.name = "mtr_id",
 		.help = "meter id to use",
@@ -5315,6 +5362,44 @@ parse_vc_item_ecpri_type(struct context *ctx, const struct token *token,
 	item = &out->args.vc.pattern[out->args.vc.pattern_n - 1];
 	item->spec = ecpri;
 	item->mask = ecpri_mask;
+	return len;
+}
+
+/** Parse meter color action type. */
+static int
+parse_vc_action_meter_color_type(struct context *ctx, const struct token *token,
+				const char *str, unsigned int len,
+				void *buf, unsigned int size)
+{
+	struct rte_flow_action *action_data;
+	struct rte_flow_action_meter_color *conf;
+	enum rte_color color;
+
+	(void)buf;
+	(void)size;
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	switch (ctx->curr) {
+	case ACTION_METER_COLOR_GREEN:
+		color = RTE_COLOR_GREEN;
+	break;
+	case ACTION_METER_COLOR_YELLOW:
+		color = RTE_COLOR_YELLOW;
+	break;
+	case ACTION_METER_COLOR_RED:
+		color = RTE_COLOR_RED;
+	break;
+	default:
+		return -1;
+	}
+
+	if (!ctx->object)
+		return len;
+	action_data = ctx->object;
+	conf = (struct rte_flow_action_meter_color *)
+					(uintptr_t)(action_data->conf);
+	conf->color = color;
 	return len;
 }
 

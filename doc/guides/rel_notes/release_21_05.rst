@@ -277,6 +277,9 @@ New Features
   * Added commands to construct conntrack context and relevant indirect
     action handle creation, update for conntrack action as well as conntrack
     item matching.
+  * Added commands for action meter color to color the packet to reflect
+    the meter color result.
+    ``color type (green|yellow|red)``
 
 * **Added support for the FIB lookup method in the l3fwd example app.**
 
