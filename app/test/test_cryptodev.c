@@ -112,6 +112,10 @@ struct crypto_unittest_params {
 #define ALIGN_POW2_ROUNDUP(num, align) \
 	(((num) + (align) - 1) & ~((align) - 1))
 
+#define ADD_STATIC_TESTSUITE(index, parent_ts, child_ts, num_child_ts)	\
+	for (j = 0; j < num_child_ts; index++, j++)			\
+		parent_ts.unit_test_suites[index] = child_ts[j]
+
 /*
  * Forward declarations.
  */
@@ -490,7 +494,6 @@ testsuite_setup(void)
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_cryptodev_info info;
 	uint32_t i = 0, nb_devs, dev_id;
-	int ret;
 	uint16_t qp_id;
 
 	memset(ts_params, 0, sizeof(*ts_params));
@@ -536,220 +539,15 @@ testsuite_setup(void)
 		return TEST_FAILED;
 	}
 
-	/* Create an AESNI MB device if required */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD))) {
-		nb_devs = rte_cryptodev_device_count_by_driver(
-				rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)));
-		if (nb_devs < 1) {
-			ret = rte_vdev_init(
-				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), NULL);
-
-			TEST_ASSERT(ret == 0,
-				"Failed to create instance of"
-				" pmd : %s",
-				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
-		}
-	}
-
-	/* Create an AESNI GCM device if required */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD))) {
-		nb_devs = rte_cryptodev_device_count_by_driver(
-				rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD)));
-		if (nb_devs < 1) {
-			TEST_ASSERT_SUCCESS(rte_vdev_init(
-				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), NULL),
-				"Failed to create instance of"
-				" pmd : %s",
-				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
-		}
-	}
-
-	/* Create a SNOW 3G device if required */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD))) {
-		nb_devs = rte_cryptodev_device_count_by_driver(
-				rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD)));
-		if (nb_devs < 1) {
-			TEST_ASSERT_SUCCESS(rte_vdev_init(
-				RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), NULL),
-				"Failed to create instance of"
-				" pmd : %s",
-				RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
-		}
-	}
-
-	/* Create a KASUMI device if required */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_KASUMI_PMD))) {
-		nb_devs = rte_cryptodev_device_count_by_driver(
-				rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_KASUMI_PMD)));
-		if (nb_devs < 1) {
-			TEST_ASSERT_SUCCESS(rte_vdev_init(
-				RTE_STR(CRYPTODEV_NAME_KASUMI_PMD), NULL),
-				"Failed to create instance of"
-				" pmd : %s",
-				RTE_STR(CRYPTODEV_NAME_KASUMI_PMD));
-		}
-	}
-
-	/* Create a ZUC device if required */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_ZUC_PMD))) {
-		nb_devs = rte_cryptodev_device_count_by_driver(
-				rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_ZUC_PMD)));
-		if (nb_devs < 1) {
-			TEST_ASSERT_SUCCESS(rte_vdev_init(
-				RTE_STR(CRYPTODEV_NAME_ZUC_PMD), NULL),
-				"Failed to create instance of"
-				" pmd : %s",
-				RTE_STR(CRYPTODEV_NAME_ZUC_PMD));
-		}
-	}
-
-	/* Create a NULL device if required */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_NULL_PMD))) {
-		nb_devs = rte_cryptodev_device_count_by_driver(
-				rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_NULL_PMD)));
-		if (nb_devs < 1) {
-			ret = rte_vdev_init(
-				RTE_STR(CRYPTODEV_NAME_NULL_PMD), NULL);
-
-			TEST_ASSERT(ret == 0,
-				"Failed to create instance of"
-				" pmd : %s",
-				RTE_STR(CRYPTODEV_NAME_NULL_PMD));
-		}
-	}
-
-	/* Create an OPENSSL device if required */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD))) {
-		nb_devs = rte_cryptodev_device_count_by_driver(
-				rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)));
-		if (nb_devs < 1) {
-			ret = rte_vdev_init(
-				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD),
-				NULL);
-
-			TEST_ASSERT(ret == 0, "Failed to create "
-				"instance of pmd : %s",
-				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
-		}
-	}
-
-	/* Create a ARMv8 device if required */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD))) {
-		nb_devs = rte_cryptodev_device_count_by_driver(
-				rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_ARMV8_PMD)));
-		if (nb_devs < 1) {
-			ret = rte_vdev_init(
-				RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),
-				NULL);
-
-			TEST_ASSERT(ret == 0, "Failed to create "
-				"instance of pmd : %s",
-				RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
-		}
-	}
-
-	/* Create a MVSAM device if required */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_MVSAM_PMD))) {
-		nb_devs = rte_cryptodev_device_count_by_driver(
-				rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_MVSAM_PMD)));
-		if (nb_devs < 1) {
-			ret = rte_vdev_init(
-				RTE_STR(CRYPTODEV_NAME_MVSAM_PMD),
-				NULL);
-
-			TEST_ASSERT(ret == 0, "Failed to create "
-				"instance of pmd : %s",
-				RTE_STR(CRYPTODEV_NAME_MVSAM_PMD));
-		}
-	}
-
-	/* Create an CCP device if required */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_CCP_PMD))) {
-		nb_devs = rte_cryptodev_device_count_by_driver(
-				rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_CCP_PMD)));
-		if (nb_devs < 1) {
-			ret = rte_vdev_init(
-				RTE_STR(CRYPTODEV_NAME_CCP_PMD),
-				NULL);
-
-			TEST_ASSERT(ret == 0, "Failed to create "
-				"instance of pmd : %s",
-				RTE_STR(CRYPTODEV_NAME_CCP_PMD));
-		}
-	}
-
-#ifdef RTE_CRYPTO_SCHEDULER
-	char vdev_args[VDEV_ARGS_SIZE] = {""};
-	char temp_str[VDEV_ARGS_SIZE] = {"mode=multi-core,"
-		"ordering=enable,name=cryptodev_test_scheduler,corelist="};
-	uint16_t worker_core_count = 0;
-	uint16_t socket_id = 0;
-
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD))) {
-
-		/* Identify the Worker Cores
-		 * Use 2 worker cores for the device args
-		 */
-		RTE_LCORE_FOREACH_WORKER(i) {
-			if (worker_core_count > 1)
-				break;
-			snprintf(vdev_args, sizeof(vdev_args),
-					"%s%d", temp_str, i);
-			strcpy(temp_str, vdev_args);
-			strlcat(temp_str, ";", sizeof(temp_str));
-			worker_core_count++;
-			socket_id = rte_lcore_to_socket_id(i);
-		}
-		if (worker_core_count != 2) {
-			RTE_LOG(ERR, USER1,
-				"Cryptodev scheduler test require at least "
-				"two worker cores to run. "
-				"Please use the correct coremask.\n");
-			return TEST_FAILED;
-		}
-		strcpy(temp_str, vdev_args);
-		snprintf(vdev_args, sizeof(vdev_args), "%s,socket_id=%d",
-				temp_str, socket_id);
-		RTE_LOG(DEBUG, USER1, "vdev_args: %s\n", vdev_args);
-		nb_devs = rte_cryptodev_device_count_by_driver(
-				rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)));
-		if (nb_devs < 1) {
-			ret = rte_vdev_init(
-				RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD),
-					vdev_args);
-			TEST_ASSERT(ret == 0,
-				"Failed to create instance %u of"
-				" pmd : %s",
-				i, RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
-		}
-	}
-#endif /* RTE_CRYPTO_SCHEDULER */
-
 	nb_devs = rte_cryptodev_count();
 	if (nb_devs < 1) {
 		RTE_LOG(WARNING, USER1, "No crypto devices found?\n");
+		return TEST_SKIPPED;
+	}
+
+	if (rte_cryptodev_device_count_by_driver(gbl_driver_id) < 1) {
+		RTE_LOG(WARNING, USER1, "No %s devices found?\n",
+				rte_cryptodev_driver_name_get(gbl_driver_id));
 		return TEST_SKIPPED;
 	}
 
@@ -862,6 +660,614 @@ testsuite_teardown(void)
 	res = rte_cryptodev_close(ts_params->valid_devs[0]);
 	if (res)
 		RTE_LOG(ERR, USER1, "Crypto device close error %d\n", res);
+}
+
+static int
+check_capabilities_supported(enum rte_crypto_sym_xform_type type,
+		const int *algs, uint16_t num_algs)
+{
+	uint8_t dev_id = testsuite_params.valid_devs[0];
+	bool some_alg_supported = FALSE;
+	uint16_t i;
+
+	for (i = 0; i < num_algs && !some_alg_supported; i++) {
+		struct rte_cryptodev_sym_capability_idx alg = {
+			type, {algs[i]}
+		};
+		if (rte_cryptodev_sym_capability_get(dev_id,
+				&alg) != NULL)
+			some_alg_supported = TRUE;
+	}
+	if (!some_alg_supported)
+		return TEST_SKIPPED;
+
+	return 0;
+}
+
+int
+check_cipher_capabilities_supported(const enum rte_crypto_cipher_algorithm *ciphers,
+		uint16_t num_ciphers)
+{
+	return check_capabilities_supported(RTE_CRYPTO_SYM_XFORM_CIPHER,
+			(const int *) ciphers, num_ciphers);
+}
+
+int
+check_auth_capabilities_supported(const enum rte_crypto_auth_algorithm *auths,
+		uint16_t num_auths)
+{
+	return check_capabilities_supported(RTE_CRYPTO_SYM_XFORM_AUTH,
+			(const int *) auths, num_auths);
+}
+
+int
+check_aead_capabilities_supported(const enum rte_crypto_aead_algorithm *aeads,
+		uint16_t num_aeads)
+{
+	return check_capabilities_supported(RTE_CRYPTO_SYM_XFORM_AEAD,
+			(const int *) aeads, num_aeads);
+}
+
+static int
+null_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_NULL
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_NULL
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO)) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for NULL "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
+			&& check_auth_capabilities_supported(auths,
+			RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for NULL "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+crypto_gen_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO)) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for Crypto Gen "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+#ifdef RTE_LIB_SECURITY
+static int
+pdcp_proto_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_NULL,
+		RTE_CRYPTO_CIPHER_AES_CTR,
+		RTE_CRYPTO_CIPHER_ZUC_EEA3,
+		RTE_CRYPTO_CIPHER_SNOW3G_UEA2
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_NULL,
+		RTE_CRYPTO_AUTH_SNOW3G_UIA2,
+		RTE_CRYPTO_AUTH_AES_CMAC,
+		RTE_CRYPTO_AUTH_ZUC_EIA3
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			!(dev_info.feature_flags &
+			RTE_CRYPTODEV_FF_SECURITY)) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for PDCP Proto "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
+			&& check_auth_capabilities_supported(auths,
+			RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for PDCP Proto "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+docsis_proto_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_AES_DOCSISBPI
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			!(dev_info.feature_flags &
+			RTE_CRYPTODEV_FF_SECURITY)) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for Docsis "
+				"Proto testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for Docsis Proto "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+#endif
+
+static int
+aes_ccm_auth_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_aead_algorithm aeads[] = {
+		RTE_CRYPTO_AEAD_AES_CCM
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for AES CCM "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_aead_capabilities_supported(aeads, RTE_DIM(aeads)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for AES CCM "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+aes_gcm_auth_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_aead_algorithm aeads[] = {
+		RTE_CRYPTO_AEAD_AES_GCM
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO)) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for AES GCM "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_aead_capabilities_supported(aeads, RTE_DIM(aeads)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for AES GCM "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+aes_gmac_auth_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_AES_GMAC
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for AES GMAC "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_auth_capabilities_supported(auths, RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for AES GMAC "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+chacha20_poly1305_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_aead_algorithm aeads[] = {
+		RTE_CRYPTO_AEAD_CHACHA20_POLY1305
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for "
+				"Chacha20-Poly1305 testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_aead_capabilities_supported(aeads, RTE_DIM(aeads)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for "
+				"Chacha20-Poly1305 testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+snow3g_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_SNOW3G_UEA2
+
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_SNOW3G_UIA2
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO)) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for Snow3G "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
+			&& check_auth_capabilities_supported(auths,
+			RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for Snow3G "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+zuc_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_ZUC_EEA3
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_ZUC_EIA3
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO)) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for ZUC "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
+			&& check_auth_capabilities_supported(auths,
+			RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for ZUC "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+hmac_md5_auth_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_MD5_HMAC
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for HMAC MD5 "
+				"Auth testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_auth_capabilities_supported(auths, RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for HMAC MD5 "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+kasumi_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_KASUMI_F8
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_KASUMI_F9
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for Kasumi "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
+			&& check_auth_capabilities_supported(auths,
+			RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for Kasumi "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+negative_aes_gcm_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_aead_algorithm aeads[] = {
+		RTE_CRYPTO_AEAD_AES_GCM
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for Negative "
+				"AES GCM testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_aead_capabilities_supported(aeads, RTE_DIM(aeads)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for Negative "
+				"AES GCM testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+negative_aes_gmac_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_AES_GMAC
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for Negative "
+				"AES GMAC testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_auth_capabilities_supported(auths, RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for Negative "
+				"AES GMAC testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+mixed_cipher_hash_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	uint64_t feat_flags;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_NULL,
+		RTE_CRYPTO_CIPHER_AES_CTR,
+		RTE_CRYPTO_CIPHER_ZUC_EEA3,
+		RTE_CRYPTO_CIPHER_SNOW3G_UEA2
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_NULL,
+		RTE_CRYPTO_AUTH_SNOW3G_UIA2,
+		RTE_CRYPTO_AUTH_AES_CMAC,
+		RTE_CRYPTO_AUTH_ZUC_EIA3
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			(global_api_test_type == CRYPTODEV_RAW_API_TEST)) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for Mixed "
+				"Cipher Hash testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
+			&& check_auth_capabilities_supported(auths,
+			RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for Mixed "
+				"Cipher Hash testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+esn_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_AES_CBC
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_SHA1_HMAC
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for ESN "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
+			&& check_auth_capabilities_supported(auths,
+			RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for ESN "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+multi_session_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_AES_CBC
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_SHA512_HMAC
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO)) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for Multi "
+				"Session testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
+			&& check_auth_capabilities_supported(auths,
+			RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for Multi "
+				"Session testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+negative_hmac_sha1_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_AES_CBC
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_SHA1_HMAC
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for Negative "
+				"HMAC SHA1 testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
+			&& check_auth_capabilities_supported(auths,
+			RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for Negative "
+				"HMAC SHA1 testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
 }
 
 static int
@@ -13092,6 +13498,59 @@ test_chacha20_poly1305_decrypt_test_case_rfc8439(void)
 uint8_t aesni_ids[2];
 
 static int
+scheduler_testsuite_setup(void)
+{
+	uint32_t i = 0;
+	int32_t nb_devs, ret;
+	char vdev_args[VDEV_ARGS_SIZE] = {""};
+	char temp_str[VDEV_ARGS_SIZE] = {"mode=multi-core,"
+		"ordering=enable,name=cryptodev_test_scheduler,corelist="};
+	uint16_t worker_core_count = 0;
+	uint16_t socket_id = 0;
+
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD))) {
+
+		/* Identify the Worker Cores
+		 * Use 2 worker cores for the device args
+		 */
+		RTE_LCORE_FOREACH_WORKER(i) {
+			if (worker_core_count > 1)
+				break;
+			snprintf(vdev_args, sizeof(vdev_args),
+					"%s%d", temp_str, i);
+			strcpy(temp_str, vdev_args);
+			strlcat(temp_str, ";", sizeof(temp_str));
+			worker_core_count++;
+			socket_id = rte_lcore_to_socket_id(i);
+		}
+		if (worker_core_count != 2) {
+			RTE_LOG(ERR, USER1,
+				"Cryptodev scheduler test require at least "
+				"two worker cores to run. "
+				"Please use the correct coremask.\n");
+			return TEST_FAILED;
+		}
+		strcpy(temp_str, vdev_args);
+		snprintf(vdev_args, sizeof(vdev_args), "%s,socket_id=%d",
+				temp_str, socket_id);
+		RTE_LOG(DEBUG, USER1, "vdev_args: %s\n", vdev_args);
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)));
+		if (nb_devs < 1) {
+			ret = rte_vdev_init(
+				RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD),
+					vdev_args);
+			TEST_ASSERT(ret == 0,
+				"Failed to create instance %u of pmd : %s",
+				i, RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
+		}
+	}
+	return testsuite_setup();
+}
+
+static int
 test_scheduler_attach_slave_op(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -13265,53 +13724,86 @@ test_scheduler_mode_pkt_size_distr_op(void)
 	return 0;
 }
 
-static struct unit_test_suite cryptodev_scheduler_testsuite  = {
-	.suite_name = "Crypto Device Scheduler Unit Test Suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
+static int
+scheduler_multicore_testsuite_setup(void)
+{
+	if (test_scheduler_attach_slave_op() < 0)
+		return TEST_SKIPPED;
+	if (test_scheduler_mode_op(CDEV_SCHED_MODE_MULTICORE) < 0)
+		return TEST_SKIPPED;
+	return 0;
+}
+
+static int
+scheduler_roundrobin_testsuite_setup(void)
+{
+	if (test_scheduler_attach_slave_op() < 0)
+		return TEST_SKIPPED;
+	if (test_scheduler_mode_op(CDEV_SCHED_MODE_ROUNDROBIN) < 0)
+		return TEST_SKIPPED;
+	return 0;
+}
+
+static int
+scheduler_failover_testsuite_setup(void)
+{
+	if (test_scheduler_attach_slave_op() < 0)
+		return TEST_SKIPPED;
+	if (test_scheduler_mode_op(CDEV_SCHED_MODE_FAILOVER) < 0)
+		return TEST_SKIPPED;
+	return 0;
+}
+
+static int
+scheduler_pkt_size_distr_testsuite_setup(void)
+{
+	if (test_scheduler_attach_slave_op() < 0)
+		return TEST_SKIPPED;
+	if (test_scheduler_mode_op(CDEV_SCHED_MODE_PKT_SIZE_DISTR) < 0)
+		return TEST_SKIPPED;
+	return 0;
+}
+
+static void
+scheduler_mode_testsuite_teardown(void)
+{
+	test_scheduler_detach_slave_op();
+}
+
+#endif /* RTE_CRYPTO_SCHEDULER */
+
+static struct unit_test_suite end_testsuite = {
+	.suite_name = NULL,
+	.setup = NULL,
+	.teardown = NULL,
+	.unit_test_suites = NULL
+};
+
+#ifdef RTE_LIB_SECURITY
+static struct unit_test_suite pdcp_proto_testsuite  = {
+	.suite_name = "PDCP Proto Unit Test Suite",
+	.setup = pdcp_proto_testsuite_setup,
 	.unit_test_cases = {
-		/* Multi Core */
-		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
-		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_multicore_op),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
-		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
-
-		/* Round Robin */
-		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
-		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_roundrobin_op),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
-		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
-
-		/* Fail over */
-		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
-		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_failover_op),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
-		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
-
-		/* PKT SIZE */
-		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
-		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_pkt_size_distr_op),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
-		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
-
+		TEST_CASE_ST(ut_setup_security, ut_teardown,
+			test_PDCP_PROTO_all),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
 
-#endif /* RTE_CRYPTO_SCHEDULER */
+static struct unit_test_suite docsis_proto_testsuite  = {
+	.suite_name = "Docsis Proto Unit Test Suite",
+	.setup = docsis_proto_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup_security, ut_teardown,
+			test_DOCSIS_PROTO_all),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+#endif
 
-static struct unit_test_suite cryptodev_testsuite  = {
-	.suite_name = "Crypto Unit Test Suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
+static struct unit_test_suite cryptodev_gen_testsuite  = {
+	.suite_name = "Crypto General Unit Test Suite",
+	.setup = crypto_gen_testsuite_setup,
 	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_device_configure_invalid_dev_id),
@@ -13319,14 +13811,6 @@ static struct unit_test_suite cryptodev_testsuite  = {
 				test_queue_pair_descriptor_setup),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_device_configure_invalid_queue_pair_ids),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_multi_session),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_multi_session_random_usage),
-
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_null_invalid_operation),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_null_burst_operation),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
@@ -13336,8 +13820,58 @@ static struct unit_test_suite cryptodev_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown, test_DES_docsis_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_stats),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_enq_callback_setup),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_deq_callback_setup),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
 
-		/** AES CCM Authenticated Encryption 128 bits key */
+static struct unit_test_suite cryptodev_negative_hmac_sha1_testsuite = {
+	.suite_name = "Negative HMAC SHA1 Unit Test Suite",
+	.setup = negative_hmac_sha1_testsuite_setup,
+	.unit_test_cases = {
+		/** Negative tests */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			authentication_verify_HMAC_SHA1_fail_data_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			authentication_verify_HMAC_SHA1_fail_tag_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			auth_decryption_AES128CBC_HMAC_SHA1_fail_data_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			auth_decryption_AES128CBC_HMAC_SHA1_fail_tag_corrupt),
+
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
+static struct unit_test_suite cryptodev_multi_session_testsuite = {
+	.suite_name = "Multi Session Unit Test Suite",
+	.setup = multi_session_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup, ut_teardown, test_multi_session),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_multi_session_random_usage),
+
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
+static struct unit_test_suite cryptodev_null_testsuite  = {
+	.suite_name = "NULL Test Suite",
+	.setup = null_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_null_invalid_operation),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_null_burst_operation),
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_aes_ccm_auth_testsuite  = {
+	.suite_name = "AES CCM Authenticated Test Suite",
+	.setup = aes_ccm_auth_testsuite_setup,
+	.unit_test_cases = {
+		/** AES CCM Authenticated Encryption 128 bits key*/
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_CCM_authenticated_encryption_test_case_128_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -13384,7 +13918,14 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_AES_CCM_authenticated_decryption_test_case_256_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_CCM_authenticated_decryption_test_case_256_3),
+		TEST_CASES_END()
+	}
+};
 
+static struct unit_test_suite cryptodev_aes_gcm_auth_testsuite  = {
+	.suite_name = "AES GCM Authenticated Test Suite",
+	.setup = aes_gcm_auth_testsuite_setup,
+	.unit_test_cases = {
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_auth_encrypt_SGL_in_place_1500B),
@@ -13521,7 +14062,14 @@ static struct unit_test_suite cryptodev_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_authenticated_decryption_sessionless_test_case_1),
 
-		/** AES GMAC Authentication */
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_aes_gmac_auth_testsuite  = {
+	.suite_name = "AES GMAC Authentication Test Suite",
+	.setup = aes_gmac_auth_testsuite_setup,
+	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GMAC_authentication_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -13547,11 +14095,26 @@ static struct unit_test_suite cryptodev_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GMAC_authentication_SGL_2047B),
 
-		/** Chacha20-Poly1305 */
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_chacha20_poly1305_testsuite  = {
+	.suite_name = "Chacha20-Poly1305 Test Suite",
+	.setup = chacha20_poly1305_testsuite_setup,
+	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_chacha20_poly1305_encrypt_test_case_rfc8439),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_chacha20_poly1305_decrypt_test_case_rfc8439),
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_snow3g_testsuite  = {
+	.suite_name = "SNOW 3G Test Suite",
+	.setup = snow3g_testsuite_setup,
+	.unit_test_cases = {
 		/** SNOW 3G encrypt only (UEA2) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_encryption_test_case_1),
@@ -13632,6 +14195,7 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_snow3g_hash_generate_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_generate_test_case_3),
+
 		/* Tests with buffers which length is not byte-aligned */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_generate_test_case_4),
@@ -13645,6 +14209,7 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_snow3g_hash_verify_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_verify_test_case_3),
+
 		/* Tests with buffers which length is not byte-aligned */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_verify_test_case_4),
@@ -13656,7 +14221,14 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_snow3g_cipher_auth_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_auth_cipher_with_digest_test_case_1),
+		TEST_CASES_END()
+	}
+};
 
+static struct unit_test_suite cryptodev_zuc_testsuite  = {
+	.suite_name = "ZUC Test Suite",
+	.setup = zuc_testsuite_setup,
+	.unit_test_cases = {
 		/** ZUC encrypt only (EEA3) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc_encryption_test_case_1),
@@ -13714,8 +14286,14 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_zuc_auth_cipher_verify_test_case_1_sgl),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc_auth_cipher_verify_test_case_1_oop_sgl),
+		TEST_CASES_END()
+	}
+};
 
-		/** HMAC_MD5 Authentication */
+static struct unit_test_suite cryptodev_hmac_md5_auth_testsuite  = {
+	.suite_name = "HMAC_MD5 Authentication Test Suite",
+	.setup = hmac_md5_auth_testsuite_setup,
+	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_MD5_HMAC_generate_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -13724,7 +14302,14 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_MD5_HMAC_generate_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_MD5_HMAC_verify_case_2),
+		TEST_CASES_END()
+	}
+};
 
+static struct unit_test_suite cryptodev_kasumi_testsuite  = {
+	.suite_name = "Kasumi Test Suite",
+	.setup = kasumi_testsuite_setup,
+	.unit_test_cases = {
 		/** KASUMI hash only (UIA1) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_hash_generate_test_case_1),
@@ -13809,17 +14394,26 @@ static struct unit_test_suite cryptodev_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_auth_cipher_verify_test_case_2_oop_sgl),
 
-		/** ESN Testcase */
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_esn_testsuite  = {
+	.suite_name = "ESN Test Suite",
+	.setup = esn_testsuite_setup,
+	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			auth_encrypt_AES128CBC_HMAC_SHA1_esn_check),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			auth_decrypt_AES128CBC_HMAC_SHA1_esn_check),
+		TEST_CASES_END()
+	}
+};
 
-		/** Negative tests */
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			authentication_verify_HMAC_SHA1_fail_data_corrupt),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			authentication_verify_HMAC_SHA1_fail_tag_corrupt),
+static struct unit_test_suite cryptodev_negative_aes_gcm_testsuite  = {
+	.suite_name = "Negative AES GCM Test Suite",
+	.setup = negative_aes_gcm_testsuite_setup,
+	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_auth_encryption_fail_iv_corrupt),
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -13844,16 +14438,28 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_AES_GCM_auth_decryption_fail_aad_corrupt),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_auth_decryption_fail_tag_corrupt),
+
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_negative_aes_gmac_testsuite  = {
+	.suite_name = "Negative AES GMAC Test Suite",
+	.setup = negative_aes_gmac_testsuite_setup,
+	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			authentication_verify_AES128_GMAC_fail_data_corrupt),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			authentication_verify_AES128_GMAC_fail_tag_corrupt),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			auth_decryption_AES128CBC_HMAC_SHA1_fail_data_corrupt),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			auth_decryption_AES128CBC_HMAC_SHA1_fail_tag_corrupt),
 
-		/** Mixed CIPHER + HASH algorithms */
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_mixed_cipher_hash_testsuite  = {
+	.suite_name = "Mixed CIPHER + HASH algorithms Test Suite",
+	.setup = mixed_cipher_hash_testsuite_setup,
+	.unit_test_cases = {
 		/** AUTH AES CMAC + CIPHER AES CTR */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_aes_cmac_aes_ctr_digest_enc_test_case_1),
@@ -13866,11 +14472,11 @@ static struct unit_test_suite cryptodev_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_verify_aes_cmac_aes_ctr_digest_enc_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-		       test_verify_aes_cmac_aes_ctr_digest_enc_test_case_1_oop),
+			test_verify_aes_cmac_aes_ctr_digest_enc_test_case_1_oop),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-		       test_verify_aes_cmac_aes_ctr_digest_enc_test_case_1_sgl),
+			test_verify_aes_cmac_aes_ctr_digest_enc_test_case_1_sgl),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-		   test_verify_aes_cmac_aes_ctr_digest_enc_test_case_1_oop_sgl),
+			test_verify_aes_cmac_aes_ctr_digest_enc_test_case_1_oop_sgl),
 
 		/** AUTH ZUC + CIPHER SNOW3G */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -13933,165 +14539,86 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_auth_aes_cmac_cipher_null_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_verify_auth_aes_cmac_cipher_null_test_case_1),
-
-#ifdef RTE_LIB_SECURITY
-		TEST_CASE_ST(ut_setup_security, ut_teardown,
-			test_PDCP_PROTO_all),
-		TEST_CASE_ST(ut_setup_security, ut_teardown,
-			test_DOCSIS_PROTO_all),
-#endif
-		TEST_CASE_ST(ut_setup, ut_teardown, test_enq_callback_setup),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_deq_callback_setup),
-		TEST_CASES_END() /**< NULL terminate unit test array */
-	}
-};
-
-static struct unit_test_suite cryptodev_virtio_testsuite = {
-	.suite_name = "Crypto VIRTIO Unit Test Suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
-	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
-
-		TEST_CASES_END() /**< NULL terminate unit test array */
-	}
-};
-
-static struct unit_test_suite cryptodev_caam_jr_testsuite  = {
-	.suite_name = "Crypto CAAM JR Unit Test Suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
-	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_device_configure_invalid_dev_id),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_multi_session),
-
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
-
-		TEST_CASES_END() /**< NULL terminate unit test array */
-	}
-};
-
-static struct unit_test_suite cryptodev_mrvl_testsuite  = {
-	.suite_name = "Crypto Device Marvell Component Test Suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
-	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup, ut_teardown, test_multi_session),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_multi_session_random_usage),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
-
-		/** Negative tests */
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			authentication_verify_HMAC_SHA1_fail_data_corrupt),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			authentication_verify_HMAC_SHA1_fail_tag_corrupt),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			auth_decryption_AES128CBC_HMAC_SHA1_fail_data_corrupt),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			auth_decryption_AES128CBC_HMAC_SHA1_fail_tag_corrupt),
-
-		TEST_CASES_END() /**< NULL terminate unit test array */
-	}
-};
-
-static struct unit_test_suite cryptodev_ccp_testsuite  = {
-	.suite_name = "Crypto Device CCP Unit Test Suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
-	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup, ut_teardown, test_multi_session),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_multi_session_random_usage),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
-
-		/** Negative tests */
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			authentication_verify_HMAC_SHA1_fail_data_corrupt),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			authentication_verify_HMAC_SHA1_fail_tag_corrupt),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			auth_decryption_AES128CBC_HMAC_SHA1_fail_data_corrupt),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			auth_decryption_AES128CBC_HMAC_SHA1_fail_tag_corrupt),
-
-		TEST_CASES_END() /**< NULL terminate unit test array */
+		TEST_CASES_END()
 	}
 };
 
 static int
-test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
+run_cryptodev_testsuite(const char *pmd_name)
 {
-	gbl_driver_id =	rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
+	uint8_t ret, j, i = 0;
+	struct unit_test_suite *static_suites[] = {
+		&cryptodev_multi_session_testsuite,
+		&cryptodev_null_testsuite,
+		&cryptodev_aes_ccm_auth_testsuite,
+		&cryptodev_aes_gcm_auth_testsuite,
+		&cryptodev_aes_gmac_auth_testsuite,
+		&cryptodev_snow3g_testsuite,
+		&cryptodev_chacha20_poly1305_testsuite,
+		&cryptodev_zuc_testsuite,
+		&cryptodev_hmac_md5_auth_testsuite,
+		&cryptodev_kasumi_testsuite,
+		&cryptodev_esn_testsuite,
+		&cryptodev_negative_aes_gcm_testsuite,
+		&cryptodev_negative_aes_gmac_testsuite,
+		&cryptodev_mixed_cipher_hash_testsuite,
+		&cryptodev_negative_hmac_sha1_testsuite,
+		&cryptodev_gen_testsuite,
+#ifdef RTE_LIB_SECURITY
+		&pdcp_proto_testsuite,
+		&docsis_proto_testsuite,
+#endif
+		&end_testsuite
+	};
+	static struct unit_test_suite ts = {
+		.suite_name = "Cryptodev Unit Test Suite",
+		.setup = testsuite_setup,
+		.teardown = testsuite_teardown,
+		.unit_test_cases = {TEST_CASES_END()}
+	};
+
+	gbl_driver_id = rte_cryptodev_driver_id_get(pmd_name);
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "QAT PMD must be loaded.\n");
-		return TEST_SKIPPED;
+		RTE_LOG(ERR, USER1, "%s PMD must be loaded.\n", pmd_name);
+		return TEST_FAILED;
 	}
 
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	ts.unit_test_suites = malloc(sizeof(struct unit_test_suite *) *
+			RTE_DIM(static_suites));
+
+	ADD_STATIC_TESTSUITE(i, ts, static_suites, RTE_DIM(static_suites));
+	ret = unit_test_suite_runner(&ts);
+
+	free(ts.unit_test_suites);
+	return ret;
+}
+
+static int
+test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
+{
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
 }
 
 static int
 test_cryptodev_virtio(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_driver_id =	rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "VIRTIO PMD must be loaded.\n");
-		return TEST_FAILED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_virtio_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
 }
 
 static int
 test_cryptodev_aesni_mb(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_driver_id =	rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
 }
 
 static int
 test_cryptodev_cpu_aesni_mb(void)
 {
 	int32_t rc;
-	enum rte_security_session_action_type at;
-
-	gbl_driver_id =	rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	at = gbl_action_type;
+	enum rte_security_session_action_type at = gbl_action_type;
 	gbl_action_type = RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO;
-	rc = unit_test_suite_runner(&cryptodev_testsuite);
+	rc = run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
 	gbl_action_type = at;
 	return rc;
 }
@@ -14099,48 +14626,22 @@ test_cryptodev_cpu_aesni_mb(void)
 static int
 test_cryptodev_openssl(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "OPENSSL PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
 }
 
 static int
 test_cryptodev_aesni_gcm(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "AESNI GCM PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
 }
 
 static int
 test_cryptodev_cpu_aesni_gcm(void)
 {
 	int32_t rc;
-	enum rte_security_session_action_type at;
-
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "AESNI GCM PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	at = gbl_action_type;
+	enum rte_security_session_action_type at = gbl_action_type;
 	gbl_action_type = RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO;
-	rc = unit_test_suite_runner(&cryptodev_testsuite);
+	rc  = run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
 	gbl_action_type = at;
 	return rc;
 }
@@ -14148,85 +14649,37 @@ test_cryptodev_cpu_aesni_gcm(void)
 static int
 test_cryptodev_null(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_NULL_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "NULL PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_NULL_PMD));
 }
 
 static int
 test_cryptodev_sw_snow3g(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "SNOW3G PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
 }
 
 static int
 test_cryptodev_sw_kasumi(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_KASUMI_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "ZUC PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_KASUMI_PMD));
 }
 
 static int
 test_cryptodev_sw_zuc(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_ZUC_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "ZUC PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_ZUC_PMD));
 }
 
 static int
 test_cryptodev_armv8(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "ARMV8 PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
 }
 
 static int
 test_cryptodev_mrvl(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_MVSAM_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "MVSAM PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_mrvl_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_MVSAM_PMD));
 }
 
 #ifdef RTE_CRYPTO_SCHEDULER
@@ -14234,6 +14687,85 @@ test_cryptodev_mrvl(void)
 static int
 test_cryptodev_scheduler(void /*argv __rte_unused, int argc __rte_unused*/)
 {
+	uint8_t ret, j, i = 0;
+	static struct unit_test_suite scheduler_multicore = {
+		.suite_name = "Scheduler Multicore Unit Test Suite",
+		.setup = scheduler_multicore_testsuite_setup,
+		.teardown = scheduler_mode_testsuite_teardown,
+		.unit_test_cases = {
+			TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+			TEST_CASE_ST(ut_setup, ut_teardown,
+					test_AES_cipheronly_all),
+			TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
+			TEST_CASES_END()
+		}
+	};
+	static struct unit_test_suite scheduler_round_robin = {
+		.suite_name = "Scheduler Round Robin Unit Test Suite",
+		.setup = scheduler_roundrobin_testsuite_setup,
+		.teardown = scheduler_mode_testsuite_teardown,
+		.unit_test_cases = {
+			TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+			TEST_CASE_ST(ut_setup, ut_teardown,
+					test_AES_cipheronly_all),
+			TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
+			TEST_CASES_END()
+		}
+	};
+	static struct unit_test_suite scheduler_failover = {
+		.suite_name = "Scheduler Failover Unit Test Suite",
+		.setup = scheduler_failover_testsuite_setup,
+		.teardown = scheduler_mode_testsuite_teardown,
+		.unit_test_cases = {
+			TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+			TEST_CASE_ST(ut_setup, ut_teardown,
+					test_AES_cipheronly_all),
+			TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
+			TEST_CASES_END()
+		}
+	};
+	static struct unit_test_suite scheduler_pkt_size_distr = {
+		.suite_name = "Scheduler Pkt Size Distr Unit Test Suite",
+		.setup = scheduler_pkt_size_distr_testsuite_setup,
+		.teardown = scheduler_mode_testsuite_teardown,
+		.unit_test_cases = {
+			TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+			TEST_CASE_ST(ut_setup, ut_teardown,
+					test_AES_cipheronly_all),
+			TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
+			TEST_CASES_END()
+		}
+	};
+	struct unit_test_suite *sched_mode_suites[] = {
+		&scheduler_multicore,
+		&scheduler_round_robin,
+		&scheduler_failover,
+		&scheduler_pkt_size_distr
+	};
+	static struct unit_test_suite scheduler_config = {
+		.suite_name = "Crypto Device Scheduler Config Unit Test Suite",
+		.unit_test_cases = {
+			TEST_CASE(test_scheduler_attach_slave_op),
+			TEST_CASE(test_scheduler_mode_multicore_op),
+			TEST_CASE(test_scheduler_mode_roundrobin_op),
+			TEST_CASE(test_scheduler_mode_failover_op),
+			TEST_CASE(test_scheduler_mode_pkt_size_distr_op),
+			TEST_CASE(test_scheduler_detach_slave_op),
+
+			TEST_CASES_END() /**< NULL terminate array */
+		}
+	};
+	struct unit_test_suite *static_suites[] = {
+		&scheduler_config,
+		&end_testsuite
+	};
+	static struct unit_test_suite ts = {
+		.suite_name = "Scheduler Unit Test Suite",
+		.setup = scheduler_testsuite_setup,
+		.teardown = testsuite_teardown,
+		.unit_test_cases = {TEST_CASES_END()}
+	};
+
 	gbl_driver_id =	rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
 
@@ -14246,8 +14778,17 @@ test_cryptodev_scheduler(void /*argv __rte_unused, int argc __rte_unused*/)
 				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)) == -1) {
 		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded.\n");
 		return TEST_SKIPPED;
-}
-	return unit_test_suite_runner(&cryptodev_scheduler_testsuite);
+	}
+
+	ts.unit_test_suites = malloc(sizeof(struct unit_test_suite *) *
+			(RTE_DIM(static_suites) + RTE_DIM(sched_mode_suites)));
+	ADD_STATIC_TESTSUITE(i, ts, sched_mode_suites,
+			RTE_DIM(sched_mode_suites));
+	ADD_STATIC_TESTSUITE(i, ts, static_suites, RTE_DIM(static_suites));
+	ret = unit_test_suite_runner(&ts);
+
+	free(ts.unit_test_suites);
+	return ret;
 }
 
 REGISTER_TEST_COMMAND(cryptodev_scheduler_autotest, test_cryptodev_scheduler);
@@ -14257,109 +14798,49 @@ REGISTER_TEST_COMMAND(cryptodev_scheduler_autotest, test_cryptodev_scheduler);
 static int
 test_cryptodev_dpaa2_sec(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_driver_id =	rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "DPAA2 SEC PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
 }
 
 static int
 test_cryptodev_dpaa_sec(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_driver_id =	rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "DPAA SEC PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD));
 }
 
 static int
 test_cryptodev_ccp(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_CCP_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "CCP PMD must be loaded.\n");
-		return TEST_FAILED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_ccp_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_CCP_PMD));
 }
 
 static int
 test_cryptodev_octeontx(void)
 {
-	gbl_driver_id =	rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "OCTEONTX PMD must be loaded.\n");
-		return TEST_FAILED;
-	}
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
 }
 
 static int
 test_cryptodev_octeontx2(void)
 {
-	gbl_driver_id =	rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD));
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "OCTEON TX2 PMD must be loaded.\n");
-		return TEST_FAILED;
-	}
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD));
 }
 
 static int
 test_cryptodev_caam_jr(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_driver_id =	rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "CAAM_JR PMD must be loaded.\n");
-		return TEST_FAILED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_caam_jr_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD));
 }
 
 static int
 test_cryptodev_nitrox(void)
 {
-	gbl_driver_id =	rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_NITROX_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "NITROX PMD must be loaded.\n");
-		return TEST_FAILED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_NITROX_PMD));
 }
 
 static int
 test_cryptodev_bcmfs(void)
 {
-	gbl_driver_id =	rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_BCMFS_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "BCMFS PMD must be loaded.\n");
-		return TEST_FAILED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_testsuite);
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_BCMFS_PMD));
 }
 
 static int
@@ -14367,16 +14848,8 @@ test_cryptodev_qat_raw_api(void /*argv __rte_unused, int argc __rte_unused*/)
 {
 	int ret;
 
-	gbl_driver_id =	rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "QAT PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
 	global_api_test_type = CRYPTODEV_RAW_API_TEST;
-	ret = unit_test_suite_runner(&cryptodev_testsuite);
+	ret = run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
 	global_api_test_type = CRYPTODEV_API_TEST;
 
 	return ret;

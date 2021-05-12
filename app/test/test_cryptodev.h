@@ -222,4 +222,16 @@ process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 		struct rte_crypto_op *op, uint8_t is_cipher, uint8_t is_auth,
 		uint8_t len_in_bits, uint8_t cipher_iv_len);
 
+int
+check_cipher_capabilities_supported(const enum rte_crypto_cipher_algorithm *ciphers,
+		uint16_t num_ciphers);
+
+int
+check_auth_capabilities_supported(const enum rte_crypto_auth_algorithm *auths,
+		uint16_t num_auths);
+
+int
+check_aead_capabilities_supported(const enum rte_crypto_aead_algorithm *aeads,
+		uint16_t num_aeads);
+
 #endif /* TEST_CRYPTODEV_H_ */
