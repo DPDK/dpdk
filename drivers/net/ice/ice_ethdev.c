@@ -3227,7 +3227,7 @@ static int ice_init_rss(struct ice_pf *pf)
 	/* configure RSS key */
 	if (!rss_conf->rss_key) {
 		/* Calculate the default hash key */
-		for (i = 0; i <= vsi->rss_key_size; i++)
+		for (i = 0; i < vsi->rss_key_size; i++)
 			vsi->rss_key[i] = (uint8_t)rte_rand();
 	} else {
 		rte_memcpy(vsi->rss_key, rss_conf->rss_key,
