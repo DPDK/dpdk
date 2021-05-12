@@ -436,6 +436,12 @@ check_power_turbo(void)
 				TEST_POWER_LCORE_ID);
 		return -1;
 	}
+	ret = rte_power_freq_max(TEST_POWER_LCORE_ID);
+	if (ret < 0) {
+		printf("Fail to scale up the freq to max on lcore %u\n",
+						TEST_POWER_LCORE_ID);
+		return -1;
+	}
 
 	/* Check the current frequency */
 	ret = check_cur_freq(TEST_POWER_LCORE_ID, 0, true);
@@ -453,6 +459,12 @@ check_power_turbo(void)
 	if (ret < 0) {
 		printf("Fail to disable turbo on lcore %u\n",
 				TEST_POWER_LCORE_ID);
+		return -1;
+	}
+	ret = rte_power_freq_max(TEST_POWER_LCORE_ID);
+	if (ret < 0) {
+		printf("Fail to scale up the freq to max on lcore %u\n",
+						TEST_POWER_LCORE_ID);
 		return -1;
 	}
 
