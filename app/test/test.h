@@ -138,6 +138,12 @@ struct unit_test_suite {
 	const char *suite_name;
 	int (*setup)(void);
 	void (*teardown)(void);
+	unsigned int total;
+	unsigned int executed;
+	unsigned int succeeded;
+	unsigned int skipped;
+	unsigned int failed;
+	unsigned int unsupported;
 	struct unit_test_case unit_test_cases[];
 };
 
