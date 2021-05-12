@@ -170,7 +170,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			printf("Raw Data Path APIs do not support OOP, "
 				"Test Skipped.\n");
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "SKIPPED");
-			status = TEST_SUCCESS;
+			status = TEST_SKIPPED;
 			goto error_exit;
 		}
 	}
