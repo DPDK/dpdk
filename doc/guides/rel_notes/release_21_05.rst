@@ -43,7 +43,7 @@ New Features
 
      Suggested order in release notes items:
      * Core libs (EAL, mempool, ring, mbuf, buses)
-     * Device abstraction libs and PMDs
+     * Device abstraction libs and PMDs (ordered alphabetically by vendor name)
        - ethdev (lib, PMDs)
        - cryptodev (lib, PMDs)
        - eventdev (lib, PMDs)
