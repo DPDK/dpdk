@@ -327,7 +327,7 @@ test_cryptodev_asym_op(struct crypto_testsuite_params *ts_params,
 	if (capability == NULL) {
 		RTE_LOG(INFO, USER1,
 			"Device doesn't support MODEX. Test Skipped\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Generate crypto op data structure */
@@ -665,7 +665,7 @@ test_rsa_sign_verify(void)
 				RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_EXP)) {
 		RTE_LOG(INFO, USER1, "Device doesn't support sign op with "
 			"exponent key type. Test Skipped\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	sess = rte_cryptodev_asym_session_create(sess_mpool);
@@ -714,7 +714,7 @@ test_rsa_enc_dec(void)
 				RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_EXP)) {
 		RTE_LOG(INFO, USER1, "Device doesn't support decrypt op with "
 			"exponent key type. Test skipped\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	sess = rte_cryptodev_asym_session_create(sess_mpool);
@@ -761,7 +761,7 @@ test_rsa_sign_verify_crt(void)
 	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT)) {
 		RTE_LOG(INFO, USER1, "Device doesn't support sign op with "
 			"quintuple key type. Test skipped\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	sess = rte_cryptodev_asym_session_create(sess_mpool);
@@ -809,7 +809,7 @@ test_rsa_enc_dec_crt(void)
 	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT)) {
 		RTE_LOG(INFO, USER1, "Device doesn't support decrypt op with "
 			"quintuple key type. Test skipped\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	sess = rte_cryptodev_asym_session_create(sess_mpool);
@@ -1501,7 +1501,7 @@ test_mod_inv(void)
 	if (capability == NULL) {
 		RTE_LOG(INFO, USER1,
 			"Device doesn't support MOD INV. Test Skipped\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (rte_cryptodev_asym_xform_capability_check_modlen(
@@ -1509,7 +1509,7 @@ test_mod_inv(void)
 		modinv_xform.modinv.modulus.length)) {
 		RTE_LOG(ERR, USER1,
 				 "Invalid MODULUS length specified\n");
-				return -ENOTSUP;
+				return TEST_SKIPPED;
 		}
 
 	sess = rte_cryptodev_asym_session_create(sess_mpool);
@@ -1626,14 +1626,14 @@ test_mod_exp(void)
 	if (capability == NULL) {
 		RTE_LOG(INFO, USER1,
 			"Device doesn't support MOD EXP. Test Skipped\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (rte_cryptodev_asym_xform_capability_check_modlen(
 			capability, modex_xform.modex.modulus.length)) {
 		RTE_LOG(ERR, USER1,
 				"Invalid MODULUS length specified\n");
-				return -ENOTSUP;
+				return TEST_SKIPPED;
 		}
 
 	/* generate crypto op data structure */

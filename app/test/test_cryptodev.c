@@ -2060,12 +2060,12 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_SHA1_HMAC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_AES_CBC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Generate test mbuf data and space for digest */
 	ut_params->ibuf = setup_test_string(ts_params->mbuf_pool,
@@ -2355,7 +2355,7 @@ test_AES_docsis_all(void)
 {
 	/* Data-path service does not support DOCSIS yet */
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	return test_blockcipher(BLKCIPHER_AES_DOCSIS_TYPE);
 }
 
@@ -2364,7 +2364,7 @@ test_DES_docsis_all(void)
 {
 	/* Data-path service does not support DOCSIS yet */
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	return test_blockcipher(BLKCIPHER_DES_DOCSIS_TYPE);
 }
 
@@ -2593,7 +2593,7 @@ create_wireless_algo_cipher_auth_session(uint8_t dev_id,
 			&ut_params->cipher_xform,
 			ts_params->session_priv_mpool);
 	if (status == -ENOTSUP)
-		return status;
+		return TEST_SKIPPED;
 
 	TEST_ASSERT_EQUAL(status, 0, "session init failed");
 	return 0;
@@ -2656,7 +2656,7 @@ create_wireless_cipher_auth_session(uint8_t dev_id,
 			&ut_params->cipher_xform,
 			ts_params->session_priv_mpool);
 	if (status == -ENOTSUP)
-		return status;
+		return TEST_SKIPPED;
 
 	TEST_ASSERT_EQUAL(status, 0, "session init failed");
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
@@ -2732,7 +2732,7 @@ create_wireless_algo_auth_cipher_session(uint8_t dev_id,
 				ts_params->session_priv_mpool);
 
 	if (status == -ENOTSUP)
-		return status;
+		return TEST_SKIPPED;
 
 	TEST_ASSERT_EQUAL(status, 0, "session init failed");
 
@@ -3091,17 +3091,17 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 	if (!(feat_flags & RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA) &&
 			((tdata->validAuthLenInBits.len % 8) != 0)) {
 		printf("Device doesn't support NON-Byte Aligned Data.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -3109,7 +3109,7 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_SNOW3G_UIA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
@@ -3182,17 +3182,17 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 	if (!(feat_flags & RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA) &&
 			((tdata->validAuthLenInBits.len % 8) != 0)) {
 		printf("Device doesn't support NON-Byte Aligned Data.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -3200,7 +3200,7 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_SNOW3G_UIA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
@@ -3273,11 +3273,11 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -3285,7 +3285,7 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_KASUMI_F9;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create KASUMI session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
@@ -3362,11 +3362,11 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -3374,7 +3374,7 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_KASUMI_F9;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create KASUMI session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
@@ -3586,11 +3586,11 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -3598,7 +3598,7 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_KASUMI_F8;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create KASUMI session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
@@ -3682,7 +3682,7 @@ test_kasumi_encryption_sgl(const struct kasumi_test_data *tdata)
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_KASUMI_F8;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -3691,17 +3691,17 @@ test_kasumi_encryption_sgl(const struct kasumi_test_data *tdata)
 	if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
 		printf("Device doesn't support in-place scatter-gather. "
 				"Test Skipped.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create KASUMI session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
@@ -3782,13 +3782,13 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 	/* Data-path service does not support OOP */
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create KASUMI session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
@@ -3869,13 +3869,13 @@ test_kasumi_encryption_oop_sgl(const struct kasumi_test_data *tdata)
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_KASUMI_F8;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -3884,7 +3884,7 @@ test_kasumi_encryption_oop_sgl(const struct kasumi_test_data *tdata)
 		printf("Device doesn't support out-of-place scatter-gather "
 				"in both input and output mbufs. "
 				"Test Skipped.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Create KASUMI session */
@@ -3960,13 +3960,13 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_KASUMI_F8;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create KASUMI session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
@@ -4044,11 +4044,11 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -4056,7 +4056,7 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_KASUMI_F8;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create KASUMI session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
@@ -4136,11 +4136,11 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -4148,7 +4148,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
@@ -4226,13 +4226,13 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
@@ -4315,13 +4315,13 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -4331,7 +4331,7 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 		printf("Device doesn't support out-of-place scatter-gather "
 				"in both input and output mbufs. "
 				"Test Skipped.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Create SNOW 3G session */
@@ -4431,7 +4431,7 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	if (!(feat_flags & RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA) &&
 			((tdata->validDataLenInBits.len % 8) != 0)) {
 		printf("Device doesn't support NON-Byte Aligned Data.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Verify the capabilities */
@@ -4440,13 +4440,13 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
@@ -4546,11 +4546,11 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -4558,7 +4558,7 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
@@ -4633,13 +4633,13 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
@@ -4725,17 +4725,17 @@ test_zuc_cipher_auth(const struct wireless_test_data *tdata)
 			((tdata->validAuthLenInBits.len % 8 != 0) ||
 			(tdata->validDataLenInBits.len % 8 != 0))) {
 		printf("Device doesn't support NON-Byte Aligned Data.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Check if device supports ZUC EEA3 */
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -4743,7 +4743,7 @@ test_zuc_cipher_auth(const struct wireless_test_data *tdata)
 
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Check if device supports ZUC EIA3 */
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -4751,13 +4751,13 @@ test_zuc_cipher_auth(const struct wireless_test_data *tdata)
 
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create ZUC session */
 	retval = create_zuc_cipher_auth_encrypt_generate_session(
 			ts_params->valid_devs[0],
 			tdata);
-	if (retval < 0)
+	if (retval != 0)
 		return retval;
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 
@@ -4832,11 +4832,11 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -4844,12 +4844,12 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_SNOW3G_UIA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_cipher_auth_session(ts_params->valid_devs[0],
@@ -4860,7 +4860,7 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 			tdata->key.data, tdata->key.len,
 			tdata->auth_iv.len, tdata->digest.len,
 			tdata->cipher_iv.len);
-	if (retval < 0)
+	if (retval != 0)
 		return retval;
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 
@@ -4948,15 +4948,15 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata,
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_SNOW3G_UIA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -4965,16 +4965,16 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata,
 	if (op_mode == OUT_OF_PLACE) {
 		if (!(feat_flags & RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED)) {
 			printf("Device doesn't support digest encrypted.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 		if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 	}
 
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Create SNOW 3G session */
@@ -4989,8 +4989,7 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata,
 			tdata->key.data, tdata->key.len,
 			tdata->auth_iv.len, tdata->digest.len,
 			tdata->cipher_iv.len);
-
-	if (retval < 0)
+	if (retval != 0)
 		return retval;
 
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -5144,15 +5143,15 @@ test_snow3g_auth_cipher_sgl(const struct snow3g_test_data *tdata,
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_SNOW3G_UIA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -5162,24 +5161,24 @@ test_snow3g_auth_cipher_sgl(const struct snow3g_test_data *tdata,
 		if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
 			printf("Device doesn't support in-place scatter-gather "
 					"in both input and output mbufs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 		if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 			printf("Device doesn't support RAW data-path APIs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 	} else {
 		if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		if (!(feat_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)) {
 			printf("Device doesn't support out-of-place scatter-gather "
 					"in both input and output mbufs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 		if (!(feat_flags & RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED)) {
 			printf("Device doesn't support digest encrypted.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 	}
 
@@ -5196,7 +5195,7 @@ test_snow3g_auth_cipher_sgl(const struct snow3g_test_data *tdata,
 			tdata->auth_iv.len, tdata->digest.len,
 			tdata->cipher_iv.len);
 
-	if (retval < 0)
+	if (retval != 0)
 		return retval;
 
 	ciphertext_len = ceil_byte_length(tdata->ciphertext.len);
@@ -5355,12 +5354,12 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata,
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_KASUMI_F9;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_KASUMI_F8;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -5369,18 +5368,18 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata,
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (op_mode == OUT_OF_PLACE) {
 		if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		if (!(feat_flags & RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED)) {
 			printf("Device doesn't support digest encrypted.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 	}
 
@@ -5397,7 +5396,7 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata,
 			0, tdata->digest.len,
 			tdata->cipher_iv.len);
 
-	if (retval < 0)
+	if (retval != 0)
 		return retval;
 
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -5549,15 +5548,15 @@ test_kasumi_auth_cipher_sgl(const struct kasumi_test_data *tdata,
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_KASUMI_F9;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_KASUMI_F8;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -5567,24 +5566,24 @@ test_kasumi_auth_cipher_sgl(const struct kasumi_test_data *tdata,
 		if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
 			printf("Device doesn't support in-place scatter-gather "
 					"in both input and output mbufs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 		if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 			printf("Device doesn't support RAW data-path APIs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 	} else {
 		if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		if (!(feat_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)) {
 			printf("Device doesn't support out-of-place scatter-gather "
 					"in both input and output mbufs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 		if (!(feat_flags & RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED)) {
 			printf("Device doesn't support digest encrypted.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 	}
 
@@ -5601,7 +5600,7 @@ test_kasumi_auth_cipher_sgl(const struct kasumi_test_data *tdata,
 			0, tdata->digest.len,
 			tdata->cipher_iv.len);
 
-	if (retval < 0)
+	if (retval != 0)
 		return retval;
 
 	ciphertext_len = ceil_byte_length(tdata->ciphertext.len);
@@ -5752,11 +5751,11 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -5764,12 +5763,12 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_KASUMI_F9;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_KASUMI_F8;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create KASUMI session */
 	retval = create_wireless_algo_cipher_auth_session(
@@ -5781,7 +5780,7 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 			tdata->key.data, tdata->key.len,
 			0, tdata->digest.len,
 			tdata->cipher_iv.len);
-	if (retval < 0)
+	if (retval != 0)
 		return retval;
 
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -5868,11 +5867,11 @@ test_zuc_encryption(const struct wireless_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	struct rte_cryptodev_sym_capability_idx cap_idx;
 
@@ -5882,7 +5881,7 @@ test_zuc_encryption(const struct wireless_test_data *tdata)
 
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create ZUC session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
@@ -5964,10 +5963,10 @@ test_zuc_encryption_sgl(const struct wireless_test_data *tdata)
 
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -5976,13 +5975,13 @@ test_zuc_encryption_sgl(const struct wireless_test_data *tdata)
 	if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
 		printf("Device doesn't support in-place scatter-gather. "
 				"Test Skipped.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	plaintext_len = ceil_byte_length(tdata->plaintext.len);
@@ -6066,17 +6065,17 @@ test_zuc_authentication(const struct wireless_test_data *tdata)
 	if (!(feat_flags & RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA) &&
 			(tdata->validAuthLenInBits.len % 8 != 0)) {
 		printf("Device doesn't support NON-Byte Aligned Data.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Check if device supports ZUC EIA3 */
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -6084,7 +6083,7 @@ test_zuc_authentication(const struct wireless_test_data *tdata)
 
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create ZUC session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
@@ -6163,7 +6162,7 @@ test_zuc_auth_cipher(const struct wireless_test_data *tdata,
 
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -6171,27 +6170,27 @@ test_zuc_auth_cipher(const struct wireless_test_data *tdata,
 
 	if (!(feat_flags & RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED)) {
 		printf("Device doesn't support digest encrypted.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 	if (op_mode == IN_PLACE) {
 		if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
 			printf("Device doesn't support in-place scatter-gather "
 					"in both input and output mbufs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 
 		if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 			printf("Device doesn't support RAW data-path APIs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 	} else {
 		if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		if (!(feat_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)) {
 			printf("Device doesn't support out-of-place scatter-gather "
 					"in both input and output mbufs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 	}
 
@@ -6208,7 +6207,7 @@ test_zuc_auth_cipher(const struct wireless_test_data *tdata,
 			tdata->auth_iv.len, tdata->digest.len,
 			tdata->cipher_iv.len);
 
-	if (retval < 0)
+	if (retval != 0)
 		return retval;
 
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -6361,7 +6360,7 @@ test_zuc_auth_cipher_sgl(const struct wireless_test_data *tdata,
 
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -6371,25 +6370,25 @@ test_zuc_auth_cipher_sgl(const struct wireless_test_data *tdata,
 		if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
 			printf("Device doesn't support in-place scatter-gather "
 					"in both input and output mbufs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 
 		if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 			printf("Device doesn't support RAW data-path APIs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 	} else {
 		if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		if (!(feat_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)) {
 			printf("Device doesn't support out-of-place scatter-gather "
 					"in both input and output mbufs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 		if (!(feat_flags & RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED)) {
 			printf("Device doesn't support digest encrypted.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 	}
 
@@ -6406,7 +6405,7 @@ test_zuc_auth_cipher_sgl(const struct wireless_test_data *tdata,
 			tdata->auth_iv.len, tdata->digest.len,
 			tdata->cipher_iv.len);
 
-	if (retval < 0)
+	if (retval != 0)
 		return retval;
 
 	ciphertext_len = ceil_byte_length(tdata->ciphertext.len);
@@ -6609,7 +6608,7 @@ test_kasumi_decryption_test_case_3(void)
 {
 	/* rte_crypto_mbuf_to_vec does not support incomplete mbuf build */
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	return test_kasumi_decryption(&kasumi_test_case_3);
 }
 
@@ -6760,7 +6759,7 @@ test_snow3g_decryption_with_digest_test_case_1(void)
 
 	if (!(feat_flags & RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED)) {
 		printf("Device doesn't support encrypted digest operations.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/*
@@ -6821,7 +6820,7 @@ test_snow3g_auth_cipher_test_case_3_sgl(void)
 {
 	/* rte_crypto_mbuf_to_vec does not support incomplete mbuf build */
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	return test_snow3g_auth_cipher_sgl(
 		&snow3g_auth_cipher_test_case_3, IN_PLACE, 0);
 }
@@ -6838,7 +6837,7 @@ test_snow3g_auth_cipher_part_digest_enc_sgl(void)
 {
 	/* rte_crypto_mbuf_to_vec does not support incomplete mbuf build */
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	return test_snow3g_auth_cipher_sgl(
 		&snow3g_auth_cipher_partial_digest_encryption,
 			IN_PLACE, 0);
@@ -7165,13 +7164,13 @@ test_mixed_check_if_unsupported(const struct mixed_cipher_auth_test_data *tdata)
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = tdata->cipher_algo;
 	if (rte_cryptodev_sym_capability_get(dev_id, &cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Check if device supports particular hash algorithm */
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	cap_idx.algo.auth = tdata->auth_algo;
 	if (rte_cryptodev_sym_capability_get(dev_id, &cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	return 0;
 }
@@ -7196,9 +7195,9 @@ test_mixed_auth_cipher(const struct mixed_cipher_auth_test_data *tdata,
 
 	/* Check if device supports particular algorithms separately */
 	if (test_mixed_check_if_unsupported(tdata))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -7206,7 +7205,7 @@ test_mixed_auth_cipher(const struct mixed_cipher_auth_test_data *tdata,
 
 	if (!(feat_flags & RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED)) {
 		printf("Device doesn't support digest encrypted.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Create the session */
@@ -7230,7 +7229,7 @@ test_mixed_auth_cipher(const struct mixed_cipher_auth_test_data *tdata,
 				tdata->auth_key.data, tdata->auth_key.len,
 				tdata->auth_iv.len, tdata->digest_enc.len,
 				tdata->cipher_iv.len);
-	if (retval < 0)
+	if (retval != 0)
 		return retval;
 
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -7293,7 +7292,7 @@ test_mixed_auth_cipher(const struct mixed_cipher_auth_test_data *tdata,
 			RTE_CRYPTO_OP_STATUS_INVALID_SESSION) {
 		printf("Device doesn't support this mixed combination. "
 				"Test Skipped.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 	ut_params->op = op;
 
@@ -7390,9 +7389,9 @@ test_mixed_auth_cipher_sgl(const struct mixed_cipher_auth_test_data *tdata,
 
 	/* Check if device supports particular algorithms */
 	if (test_mixed_check_if_unsupported(tdata))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -7402,17 +7401,17 @@ test_mixed_auth_cipher_sgl(const struct mixed_cipher_auth_test_data *tdata,
 		if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
 			printf("Device doesn't support in-place scatter-gather "
 					"in both input and output mbufs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 	} else {
 		if (!(feat_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)) {
 			printf("Device doesn't support out-of-place scatter-gather "
 					"in both input and output mbufs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 		if (!(feat_flags & RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED)) {
 			printf("Device doesn't support digest encrypted.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 	}
 
@@ -7437,7 +7436,7 @@ test_mixed_auth_cipher_sgl(const struct mixed_cipher_auth_test_data *tdata,
 				tdata->auth_key.data, tdata->auth_key.len,
 				tdata->auth_iv.len, tdata->digest_enc.len,
 				tdata->cipher_iv.len);
-	if (retval < 0)
+	if (retval != 0)
 		return retval;
 
 	ciphertext_len = ceil_byte_length(tdata->ciphertext.len_bits);
@@ -7499,7 +7498,7 @@ test_mixed_auth_cipher_sgl(const struct mixed_cipher_auth_test_data *tdata,
 			RTE_CRYPTO_OP_STATUS_INVALID_SESSION) {
 		printf("Device doesn't support this mixed combination. "
 				"Test Skipped.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 	ut_params->op = op;
 
@@ -8051,7 +8050,7 @@ test_authenticated_encryption(const struct aead_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Verify the capabilities */
@@ -8062,11 +8061,11 @@ test_authenticated_encryption(const struct aead_test_data *tdata)
 	capability = rte_cryptodev_sym_capability_get(
 			ts_params->valid_devs[0], &cap_idx);
 	if (capability == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	if (rte_cryptodev_sym_capability_check_aead(
 			capability, tdata->key.len, tdata->auth_tag.len,
 			tdata->aad.len, tdata->iv.len))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create AEAD session */
 	retval = create_aead_session(ts_params->valid_devs[0],
@@ -8211,7 +8210,7 @@ static int test_pdcp_proto(int i, int oop, enum rte_crypto_cipher_operation opc,
 	sec_cap_idx.protocol = RTE_SECURITY_PROTOCOL_PDCP;
 	sec_cap_idx.pdcp.domain = domain;
 	if (rte_security_capability_get(ctx, &sec_cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Generate test mbuf data */
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -8397,7 +8396,7 @@ test_pdcp_proto_SGL(int i, int oop,
 	sec_cap_idx.protocol = RTE_SECURITY_PROTOCOL_PDCP;
 	sec_cap_idx.pdcp.domain = pdcp_test_params[i].domain;
 	if (rte_security_capability_get(ctx, &sec_cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (fragsz > input_vec_len)
 		fragsz = input_vec_len;
@@ -8903,7 +8902,7 @@ test_PDCP_PROTO_all(void)
 	uint64_t feat_flags = dev_info.feature_flags;
 
 	if (!(feat_flags & RTE_CRYPTODEV_FF_SECURITY))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Set action type */
 	ut_params->type = gbl_action_type == RTE_SECURITY_ACTION_TYPE_NONE ?
@@ -8912,7 +8911,7 @@ test_PDCP_PROTO_all(void)
 
 	if (security_proto_supported(ut_params->type,
 			RTE_SECURITY_PROTOCOL_PDCP) < 0)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	status = test_PDCP_PROTO_cplane_encap_all();
 	status += test_PDCP_PROTO_cplane_decap_all();
@@ -8959,7 +8958,7 @@ test_docsis_proto_uplink(int i, struct docsis_test_data *d_td)
 
 	sec_cap = rte_security_capability_get(ctx, &sec_cap_idx);
 	if (sec_cap == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	while ((crypto_cap = &sec_cap->crypto_capabilities[j++])->op !=
 			RTE_CRYPTO_OP_TYPE_UNDEFINED) {
@@ -8977,7 +8976,7 @@ test_docsis_proto_uplink(int i, struct docsis_test_data *d_td)
 	}
 
 	if (crypto_cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Setup source mbuf payload */
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -9135,7 +9134,7 @@ test_docsis_proto_downlink(int i, struct docsis_test_data *d_td)
 
 	sec_cap = rte_security_capability_get(ctx, &sec_cap_idx);
 	if (sec_cap == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	while ((crypto_cap = &sec_cap->crypto_capabilities[j++])->op !=
 			RTE_CRYPTO_OP_TYPE_UNDEFINED) {
@@ -9153,7 +9152,7 @@ test_docsis_proto_downlink(int i, struct docsis_test_data *d_td)
 	}
 
 	if (crypto_cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Setup source mbuf payload */
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -9288,10 +9287,10 @@ on_err:
 		printf("\t%2d)", n++);			\
 		printf("+++++ PASSED:" #func"\n");	\
 		p++;					\
-	} else if (ret == -ENOTSUP) {			\
+	} else if (ret == TEST_SKIPPED) {		\
 		printf("\t%2d)", n++);			\
-		printf("~~~~~ UNSUPP:" #func"\n");	\
-		u++;					\
+		printf("~~~~~ SKIPPED:" #func"\n");	\
+		s++;					\
 	} else {					\
 		printf("\t%2d)", n++);			\
 		printf("----- FAILED:" #func"\n");	\
@@ -9302,7 +9301,7 @@ on_err:
 static int
 test_DOCSIS_PROTO_uplink_all(void)
 {
-	int p = 0, u = 0, f = 0, n = 0;
+	int p = 0, s = 0, f = 0, n = 0;
 
 	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(1, &docsis_test_case_1));
 	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(2, &docsis_test_case_2));
@@ -9332,8 +9331,8 @@ test_DOCSIS_PROTO_uplink_all(void)
 	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(26, &docsis_test_case_26));
 
 	if (f)
-		printf("## %s: %d passed out of %d (%d unsupported)\n",
-			__func__, p, n, u);
+		printf("## %s: %d passed out of %d (%d skipped)\n",
+			__func__, p, n, s);
 
 	return f;
 };
@@ -9341,7 +9340,7 @@ test_DOCSIS_PROTO_uplink_all(void)
 static int
 test_DOCSIS_PROTO_downlink_all(void)
 {
-	int p = 0, u = 0, f = 0, n = 0;
+	int p = 0, s = 0, f = 0, n = 0;
 
 	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(1, &docsis_test_case_1));
 	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(2, &docsis_test_case_2));
@@ -9371,8 +9370,8 @@ test_DOCSIS_PROTO_downlink_all(void)
 	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(26, &docsis_test_case_26));
 
 	if (f)
-		printf("## %s: %d passed out of %d (%d unsupported)\n",
-			__func__, p, n, u);
+		printf("## %s: %d passed out of %d (%d skipped)\n",
+			__func__, p, n, s);
 
 	return f;
 };
@@ -9389,7 +9388,7 @@ test_DOCSIS_PROTO_all(void)
 	uint64_t feat_flags = dev_info.feature_flags;
 
 	if (!(feat_flags & RTE_CRYPTODEV_FF_SECURITY))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Set action type */
 	ut_params->type = gbl_action_type == RTE_SECURITY_ACTION_TYPE_NONE ?
@@ -9398,7 +9397,7 @@ test_DOCSIS_PROTO_all(void)
 
 	if (security_proto_supported(ut_params->type,
 			RTE_SECURITY_PROTOCOL_DOCSIS) < 0)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	status = test_DOCSIS_PROTO_uplink_all();
 	status += test_DOCSIS_PROTO_downlink_all();
@@ -9570,7 +9569,7 @@ test_AES_GCM_auth_encryption_fail_iv_corrupt(void)
 	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
 	tdata.iv.data[0] += 1;
 	res = test_authenticated_encryption(&tdata);
-	if (res == -ENOTSUP)
+	if (res == TEST_SKIPPED)
 		return res;
 	TEST_ASSERT_EQUAL(res, TEST_FAILED, "encryption not failed");
 	return TEST_SUCCESS;
@@ -9586,7 +9585,7 @@ test_AES_GCM_auth_encryption_fail_in_data_corrupt(void)
 	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
 	tdata.plaintext.data[0] += 1;
 	res = test_authenticated_encryption(&tdata);
-	if (res == -ENOTSUP)
+	if (res == TEST_SKIPPED)
 		return res;
 	TEST_ASSERT_EQUAL(res, TEST_FAILED, "encryption not failed");
 	return TEST_SUCCESS;
@@ -9602,7 +9601,7 @@ test_AES_GCM_auth_encryption_fail_out_data_corrupt(void)
 	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
 	tdata.ciphertext.data[0] += 1;
 	res = test_authenticated_encryption(&tdata);
-	if (res == -ENOTSUP)
+	if (res == TEST_SKIPPED)
 		return res;
 	TEST_ASSERT_EQUAL(res, TEST_FAILED, "encryption not failed");
 	return TEST_SUCCESS;
@@ -9618,7 +9617,7 @@ test_AES_GCM_auth_encryption_fail_aad_len_corrupt(void)
 	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
 	tdata.aad.len += 1;
 	res = test_authenticated_encryption(&tdata);
-	if (res == -ENOTSUP)
+	if (res == TEST_SKIPPED)
 		return res;
 	TEST_ASSERT_EQUAL(res, TEST_FAILED, "encryption not failed");
 	return TEST_SUCCESS;
@@ -9637,7 +9636,7 @@ test_AES_GCM_auth_encryption_fail_aad_corrupt(void)
 	aad[0] += 1;
 	tdata.aad.data = aad;
 	res = test_authenticated_encryption(&tdata);
-	if (res == -ENOTSUP)
+	if (res == TEST_SKIPPED)
 		return res;
 	TEST_ASSERT_EQUAL(res, TEST_FAILED, "encryption not failed");
 	return TEST_SUCCESS;
@@ -9653,7 +9652,7 @@ test_AES_GCM_auth_encryption_fail_tag_corrupt(void)
 	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
 	tdata.auth_tag.data[0] += 1;
 	res = test_authenticated_encryption(&tdata);
-	if (res == -ENOTSUP)
+	if (res == TEST_SKIPPED)
 		return res;
 	TEST_ASSERT_EQUAL(res, TEST_FAILED, "encryption not failed");
 	return TEST_SUCCESS;
@@ -9676,7 +9675,7 @@ test_authenticated_decryption(const struct aead_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Verify the capabilities */
@@ -9687,11 +9686,11 @@ test_authenticated_decryption(const struct aead_test_data *tdata)
 	capability = rte_cryptodev_sym_capability_get(
 			ts_params->valid_devs[0], &cap_idx);
 	if (capability == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	if (rte_cryptodev_sym_capability_check_aead(
 			capability, tdata->key.len, tdata->auth_tag.len,
 			tdata->aad.len, tdata->iv.len))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create AEAD session */
 	retval = create_aead_session(ts_params->valid_devs[0],
@@ -9921,7 +9920,7 @@ test_AES_GCM_auth_decryption_fail_iv_corrupt(void)
 	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
 	tdata.iv.data[0] += 1;
 	res = test_authenticated_decryption(&tdata);
-	if (res == -ENOTSUP)
+	if (res == TEST_SKIPPED)
 		return res;
 	TEST_ASSERT_EQUAL(res, TEST_FAILED, "decryption not failed");
 	return TEST_SUCCESS;
@@ -9937,7 +9936,7 @@ test_AES_GCM_auth_decryption_fail_in_data_corrupt(void)
 	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
 	tdata.plaintext.data[0] += 1;
 	res = test_authenticated_decryption(&tdata);
-	if (res == -ENOTSUP)
+	if (res == TEST_SKIPPED)
 		return res;
 	TEST_ASSERT_EQUAL(res, TEST_FAILED, "decryption not failed");
 	return TEST_SUCCESS;
@@ -9952,7 +9951,7 @@ test_AES_GCM_auth_decryption_fail_out_data_corrupt(void)
 	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
 	tdata.ciphertext.data[0] += 1;
 	res = test_authenticated_decryption(&tdata);
-	if (res == -ENOTSUP)
+	if (res == TEST_SKIPPED)
 		return res;
 	TEST_ASSERT_EQUAL(res, TEST_FAILED, "decryption not failed");
 	return TEST_SUCCESS;
@@ -9967,7 +9966,7 @@ test_AES_GCM_auth_decryption_fail_aad_len_corrupt(void)
 	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
 	tdata.aad.len += 1;
 	res = test_authenticated_decryption(&tdata);
-	if (res == -ENOTSUP)
+	if (res == TEST_SKIPPED)
 		return res;
 	TEST_ASSERT_EQUAL(res, TEST_FAILED, "decryption not failed");
 	return TEST_SUCCESS;
@@ -9985,7 +9984,7 @@ test_AES_GCM_auth_decryption_fail_aad_corrupt(void)
 	aad[0] += 1;
 	tdata.aad.data = aad;
 	res = test_authenticated_decryption(&tdata);
-	if (res == -ENOTSUP)
+	if (res == TEST_SKIPPED)
 		return res;
 	TEST_ASSERT_EQUAL(res, TEST_FAILED, "decryption not failed");
 	return TEST_SUCCESS;
@@ -10000,7 +9999,7 @@ test_AES_GCM_auth_decryption_fail_tag_corrupt(void)
 	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
 	tdata.auth_tag.data[0] += 1;
 	res = test_authenticated_decryption(&tdata);
-	if (res == -ENOTSUP)
+	if (res == TEST_SKIPPED)
 		return res;
 	TEST_ASSERT_EQUAL(res, TEST_FAILED, "authentication not failed");
 	return TEST_SUCCESS;
@@ -10022,14 +10021,14 @@ test_authenticated_encryption_oop(const struct aead_test_data *tdata)
 	cap_idx.algo.aead = tdata->algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* not supported with CPU crypto */
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create AEAD session */
 	retval = create_aead_session(ts_params->valid_devs[0],
@@ -10114,12 +10113,12 @@ test_authenticated_decryption_oop(const struct aead_test_data *tdata)
 	cap_idx.algo.aead = tdata->algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* not supported with CPU crypto and raw data-path APIs*/
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO ||
 			global_api_test_type == CRYPTODEV_RAW_API_TEST)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create AEAD session */
 	retval = create_aead_session(ts_params->valid_devs[0],
@@ -10199,12 +10198,12 @@ test_authenticated_encryption_sessionless(
 
 	if (!(feat_flags & RTE_CRYPTODEV_FF_SYM_SESSIONLESS)) {
 		printf("Device doesn't support Sessionless ops.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* not supported with CPU crypto */
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -10212,7 +10211,7 @@ test_authenticated_encryption_sessionless(
 	cap_idx.algo.aead = tdata->algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 
@@ -10301,18 +10300,18 @@ test_authenticated_decryption_sessionless(
 
 	if (!(feat_flags & RTE_CRYPTODEV_FF_SYM_SESSIONLESS)) {
 		printf("Device doesn't support Sessionless ops.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* not supported with CPU crypto */
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -10320,7 +10319,7 @@ test_authenticated_decryption_sessionless(
 	cap_idx.algo.aead = tdata->algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* alloc mbuf and set payload */
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -10504,7 +10503,7 @@ test_stats(void)
 	struct rte_cryptodev_stats stats;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -10512,16 +10511,16 @@ test_stats(void)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_SHA1_HMAC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_AES_CBC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (rte_cryptodev_stats_get(ts_params->valid_devs[0], &stats)
 			== -ENOTSUP)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_stats_reset(ts_params->valid_devs[0]);
 	TEST_ASSERT((rte_cryptodev_stats_get(ts_params->valid_devs[0] + 600,
@@ -10655,7 +10654,7 @@ test_MD5_HMAC_generate(const struct HMAC_MD5_vector *test_case)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Verify the capabilities */
@@ -10664,7 +10663,7 @@ test_MD5_HMAC_generate(const struct HMAC_MD5_vector *test_case)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_MD5_HMAC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (MD5_HMAC_create_session(ts_params, ut_params,
 			RTE_CRYPTO_AUTH_OP_GENERATE, test_case))
@@ -10728,7 +10727,7 @@ test_MD5_HMAC_verify(const struct HMAC_MD5_vector *test_case)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Verify the capabilities */
@@ -10737,7 +10736,7 @@ test_MD5_HMAC_verify(const struct HMAC_MD5_vector *test_case)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_MD5_HMAC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (MD5_HMAC_create_session(ts_params, ut_params,
 			RTE_CRYPTO_AUTH_OP_VERIFY, test_case)) {
@@ -10812,12 +10811,12 @@ test_multi_session(void)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_SHA512_HMAC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_AES_CBC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(ut_params,
 			aes_cbc_key, hmac_sha512_key);
@@ -10940,12 +10939,12 @@ test_multi_session_random_usage(void)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_SHA512_HMAC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_AES_CBC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -11038,7 +11037,7 @@ test_null_invalid_operation(void)
 	/* This test is for NULL PMD only */
 	if (gbl_driver_id != rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_NULL_PMD)))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Setup Cipher Parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -11095,7 +11094,7 @@ test_null_burst_operation(void)
 	/* This test is for NULL PMD only */
 	if (gbl_driver_id != rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_NULL_PMD)))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Setup Cipher Parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -11559,7 +11558,7 @@ test_AES_GMAC_authentication(const struct gmac_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	int retval;
@@ -11576,7 +11575,7 @@ test_AES_GMAC_authentication(const struct gmac_test_data *tdata)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_AES_GMAC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	retval = create_gmac_session(ts_params->valid_devs[0],
 			tdata, RTE_CRYPTO_AUTH_OP_GENERATE);
@@ -11693,7 +11692,7 @@ test_AES_GMAC_authentication_verify(const struct gmac_test_data *tdata)
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	TEST_ASSERT_NOT_EQUAL(tdata->gmac_tag.len, 0,
@@ -11705,7 +11704,7 @@ test_AES_GMAC_authentication_verify(const struct gmac_test_data *tdata)
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_AES_GMAC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	retval = create_gmac_session(ts_params->valid_devs[0],
 			tdata, RTE_CRYPTO_AUTH_OP_VERIFY);
@@ -11818,7 +11817,7 @@ test_AES_GMAC_authentication_SGL(const struct gmac_test_data *tdata,
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_AES_GMAC;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Check for any input SGL support */
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -11827,7 +11826,7 @@ test_AES_GMAC_authentication_SGL(const struct gmac_test_data *tdata,
 	if ((!(feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) ||
 			(!(feature_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT)) ||
 			(!(feature_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (fragsz > tdata->plaintext.len)
 		fragsz = tdata->plaintext.len;
@@ -11907,7 +11906,7 @@ test_AES_GMAC_authentication_SGL(const struct gmac_test_data *tdata,
 	ut_params->op->sym->m_src = ut_params->ibuf;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	TEST_ASSERT_NOT_NULL(
 		process_crypto_request(ts_params->valid_devs[0],
@@ -12440,7 +12439,7 @@ test_authentication_verify_fail_when_data_corruption(
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Verify the capabilities */
@@ -12449,7 +12448,7 @@ test_authentication_verify_fail_when_data_corruption(
 	cap_idx.algo.auth = reference->auth_algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 
 	/* Create session */
@@ -12522,7 +12521,7 @@ test_authentication_verify_GMAC_fail_when_corruption(
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Verify the capabilities */
@@ -12531,7 +12530,7 @@ test_authentication_verify_GMAC_fail_when_corruption(
 	cap_idx.algo.auth = reference->auth_algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create session */
 	retval = create_auth_cipher_session(ut_params,
@@ -12607,7 +12606,7 @@ test_authenticated_decryption_fail_when_corruption(
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Verify the capabilities */
@@ -12616,12 +12615,12 @@ test_authenticated_decryption_fail_when_corruption(
 	cap_idx.algo.auth = reference->auth_algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = reference->crypto_algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create session */
 	retval = create_auth_cipher_session(ut_params,
@@ -12697,7 +12696,7 @@ test_authenticated_encryt_with_esn(
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Verify the capabilities */
@@ -12706,12 +12705,12 @@ test_authenticated_encryt_with_esn(
 	cap_idx.algo.auth = reference->auth_algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = reference->crypto_algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create session */
 	memcpy(cipher_key, reference->cipher_key.data,
@@ -12830,7 +12829,7 @@ test_authenticated_decrypt_with_esn(
 	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		printf("Device doesn't support RAW data-path APIs.\n");
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	}
 
 	/* Verify the capabilities */
@@ -12839,12 +12838,12 @@ test_authenticated_decrypt_with_esn(
 	cap_idx.algo.auth = reference->auth_algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cap_idx.algo.cipher = reference->crypto_algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Create session */
 	memcpy(cipher_key, reference->cipher_key.data,
@@ -13036,11 +13035,11 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 	cap_idx.algo.aead = tdata->algo;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* OOP not supported with CPU crypto */
 	if (oop && gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	/* Detailed check for the particular SGL support flag */
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -13048,14 +13047,14 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 		unsigned int sgl_in = fragsz < tdata->plaintext.len;
 		if (sgl_in && (!(dev_info.feature_flags &
 				RTE_CRYPTODEV_FF_IN_PLACE_SGL)))
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 
 		uint64_t feat_flags = dev_info.feature_flags;
 
 		if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 			printf("Device doesn't support RAW data-path APIs.\n");
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		}
 	} else {
 		unsigned int sgl_in = fragsz < tdata->plaintext.len;
@@ -13063,19 +13062,19 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 				tdata->plaintext.len;
 		/* Raw data path API does not support OOP */
 		if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
-			return -ENOTSUP;
+			return TEST_SKIPPED;
 		if (sgl_in && !sgl_out) {
 			if (!(dev_info.feature_flags &
 					RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT))
-				return -ENOTSUP;
+				return TEST_SKIPPED;
 		} else if (!sgl_in && sgl_out) {
 			if (!(dev_info.feature_flags &
 					RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT))
-				return -ENOTSUP;
+				return TEST_SKIPPED;
 		} else if (sgl_in && sgl_out) {
 			if (!(dev_info.feature_flags &
 					RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT))
-				return -ENOTSUP;
+				return TEST_SKIPPED;
 		}
 	}
 
@@ -13346,7 +13345,7 @@ test_AES_GCM_auth_encrypt_SGL_in_place_1500B(void)
 	/* This test is not for OPENSSL PMD */
 	if (gbl_driver_id == rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	return test_authenticated_encryption_SGL(
 			&gcm_test_case_SGL_1, IN_PLACE, 1500, 0);
