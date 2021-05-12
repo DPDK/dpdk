@@ -144,6 +144,7 @@ struct unit_test_suite {
 	unsigned int skipped;
 	unsigned int failed;
 	unsigned int unsupported;
+	struct unit_test_suite **unit_test_suites;
 	struct unit_test_case unit_test_cases[];
 };
 
