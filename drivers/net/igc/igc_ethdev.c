@@ -989,15 +989,20 @@ eth_igc_start(struct rte_eth_dev *dev)
 		hw->mac.autoneg = 1;
 	} else {
 		int num_speeds = 0;
-		bool autoneg = (*speeds & ETH_LINK_SPEED_FIXED) == 0;
 
-		/* Reset */
+		if (*speeds & ETH_LINK_SPEED_FIXED) {
+			PMD_DRV_LOG(ERR,
+				    "Force speed mode currently not supported");
+			igc_dev_clear_queues(dev);
+			return -EINVAL;
+		}
+
 		hw->phy.autoneg_advertised = 0;
+		hw->mac.autoneg = 1;
 
 		if (*speeds & ~(ETH_LINK_SPEED_10M_HD | ETH_LINK_SPEED_10M |
 				ETH_LINK_SPEED_100M_HD | ETH_LINK_SPEED_100M |
-				ETH_LINK_SPEED_1G | ETH_LINK_SPEED_2_5G |
-				ETH_LINK_SPEED_FIXED)) {
+				ETH_LINK_SPEED_1G | ETH_LINK_SPEED_2_5G)) {
 			num_speeds = -1;
 			goto error_invalid_config;
 		}
@@ -1025,19 +1030,8 @@ eth_igc_start(struct rte_eth_dev *dev)
 			hw->phy.autoneg_advertised |= ADVERTISE_2500_FULL;
 			num_speeds++;
 		}
-		if (num_speeds == 0 || (!autoneg && num_speeds > 1))
+		if (num_speeds == 0)
 			goto error_invalid_config;
-
-		/* Set/reset the mac.autoneg based on the link speed,
-		 * fixed or not
-		 */
-		if (!autoneg) {
-			hw->mac.autoneg = 0;
-			hw->mac.forced_speed_duplex =
-					hw->phy.autoneg_advertised;
-		} else {
-			hw->mac.autoneg = 1;
-		}
 	}
 
 	igc_setup_link(hw);
