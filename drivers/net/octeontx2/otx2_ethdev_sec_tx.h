@@ -59,8 +59,7 @@ otx2_sec_event_tx(uint64_t base, struct rte_event *ev, struct rte_mbuf *m,
 	sa = &sess->out_sa;
 
 	RTE_ASSERT(sess->cpt_lmtline != NULL);
-	RTE_ASSERT(!(offload_flags & (NIX_TX_OFFLOAD_MBUF_NOFF_F |
-				      NIX_TX_OFFLOAD_VLAN_QINQ_F)));
+	RTE_ASSERT(!(offload_flags & NIX_TX_OFFLOAD_VLAN_QINQ_F));
 
 	dlen = rte_pktmbuf_pkt_len(m) + sizeof(*hdr) - RTE_ETHER_HDR_LEN;
 	rlen = otx2_ipsec_fp_out_rlen_get(sess, dlen - sizeof(*hdr));
@@ -135,6 +134,8 @@ otx2_sec_event_tx(uint64_t base, struct rte_event *ev, struct rte_mbuf *m,
 	sd->nix_hdr.w0.sizem1 = 1;
 	sd->nix_hdr.w0.total = rte_pktmbuf_data_len(m);
 	sd->nix_hdr.w0.aura = npa_lf_aura_handle_to_aura(m->pool->pool_id);
+	if (offload_flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
+		sd->nix_hdr.w0.df = otx2_nix_prefree_seg(m);
 
 	sd->nix_sg.u = 0;
 	sd->nix_sg.subdc = NIX_SUBDC_SG;
