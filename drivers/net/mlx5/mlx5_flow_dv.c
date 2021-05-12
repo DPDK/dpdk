@@ -12613,7 +12613,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				if ((non_shared_age &&
 				     count && !count->shared) ||
 				    !(priv->sh->flow_hit_aso_en &&
-				      attr->group)) {
+				      (attr->group || attr->transfer))) {
 					/* Creates age by counters. */
 					cnt_act = flow_dv_prepare_counter
 								(dev, dev_flow,
