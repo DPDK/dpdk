@@ -156,7 +156,7 @@ iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 			   (rxq->nb_rx_desc - 1) : (rxq->rxrearm_start - 1));
 
 	/* Update the tail pointer on the NIC */
-	IAVF_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+	IAVF_PCI_REG_WC_WRITE(rxq->qrx_tail, rx_id);
 }
 
 #define IAVF_RX_LEN_MASK 0x80808080
@@ -1958,7 +1958,7 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	txq->tx_tail = tx_id;
 
-	IAVF_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
+	IAVF_PCI_REG_WC_WRITE(txq->qtx_tail, txq->tx_tail);
 
 	return nb_pkts;
 }

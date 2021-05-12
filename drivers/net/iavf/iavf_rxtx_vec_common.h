@@ -570,7 +570,7 @@ iavf_rxq_rearm_common(struct iavf_rx_queue *rxq, __rte_unused bool avx512)
 			     (rxq->nb_rx_desc - 1) : (rxq->rxrearm_start - 1));
 
 	/* Update the tail pointer on the NIC */
-	IAVF_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+	IAVF_PCI_REG_WC_WRITE(rxq->qrx_tail, rx_id);
 }
 #endif
 

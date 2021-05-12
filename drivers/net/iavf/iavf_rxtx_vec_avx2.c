@@ -1500,7 +1500,7 @@ iavf_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	txq->tx_tail = tx_id;
 
-	IAVF_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
+	IAVF_PCI_REG_WC_WRITE(txq->qtx_tail, txq->tx_tail);
 
 	return nb_pkts;
 }

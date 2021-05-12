@@ -132,6 +132,11 @@ writeq(uint64_t value, volatile void *addr)
 #define IAVF_PCI_REG_WRITE(reg, value)         writel(value, reg)
 #define IAVF_PCI_REG_WRITE_RELAXED(reg, value) writel_relaxed(value, reg)
 
+#define IAVF_PCI_REG_WC_WRITE(reg, value) \
+	rte_write32_wc((rte_cpu_to_le_32(value)), reg)
+#define IAVF_PCI_REG_WC_WRITE_RELAXED(reg, value) \
+	rte_write32_wc_relaxed((rte_cpu_to_le_32(value)), reg)
+
 #define IAVF_READ_REG(hw, reg)                 rd32(hw, reg)
 #define IAVF_WRITE_REG(hw, reg, value)         wr32(hw, reg, value)
 

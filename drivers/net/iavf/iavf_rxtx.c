@@ -1161,7 +1161,7 @@ iavf_update_rx_tail(struct iavf_rx_queue *rxq, uint16_t nb_hold, uint16_t rx_id)
 			   rxq->port_id, rxq->queue_id, rx_id, nb_hold);
 		rx_id = (uint16_t)((rx_id == 0) ?
 			(rxq->nb_rx_desc - 1) : (rx_id - 1));
-		IAVF_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+		IAVF_PCI_REG_WC_WRITE(rxq->qrx_tail, rx_id);
 		nb_hold = 0;
 	}
 	rxq->nb_rx_hold = nb_hold;
@@ -1906,7 +1906,7 @@ iavf_rx_alloc_bufs(struct iavf_rx_queue *rxq)
 
 	/* Update rx tail register */
 	rte_wmb();
-	IAVF_PCI_REG_WRITE_RELAXED(rxq->qrx_tail, rxq->rx_free_trigger);
+	IAVF_PCI_REG_WC_WRITE_RELAXED(rxq->qrx_tail, rxq->rx_free_trigger);
 
 	rxq->rx_free_trigger =
 		(uint16_t)(rxq->rx_free_trigger + rxq->rx_free_thresh);
@@ -2332,7 +2332,7 @@ end_of_tx:
 	PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u tx_tail=%u nb_tx=%u",
 		   txq->port_id, txq->queue_id, tx_id, nb_tx);
 
-	IAVF_PCI_REG_WRITE_RELAXED(txq->qtx_tail, tx_id);
+	IAVF_PCI_REG_WC_WRITE_RELAXED(txq->qtx_tail, tx_id);
 	txq->tx_tail = tx_id;
 
 	return nb_tx;

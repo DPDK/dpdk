@@ -88,7 +88,7 @@ iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 		   rx_id, rxq->rxrearm_start, rxq->rxrearm_nb);
 
 	/* Update the tail pointer on the NIC */
-	IAVF_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+	IAVF_PCI_REG_WC_WRITE(rxq->qrx_tail, rx_id);
 }
 
 static inline void
@@ -1171,7 +1171,7 @@ iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u tx_tail=%u nb_pkts=%u",
 		   txq->port_id, txq->queue_id, tx_id, nb_pkts);
 
-	IAVF_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
+	IAVF_PCI_REG_WC_WRITE(txq->qtx_tail, txq->tx_tail);
 
 	return nb_pkts;
 }
