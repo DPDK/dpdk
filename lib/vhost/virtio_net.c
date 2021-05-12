@@ -1491,7 +1491,7 @@ store_dma_desc_info_packed(struct vring_used_elem_packed *s_ring,
 		struct vring_used_elem_packed *d_ring,
 		uint16_t ring_size, uint16_t s_idx, uint16_t d_idx, uint16_t count)
 {
-	uint16_t elem_size = sizeof(struct vring_used_elem_packed);
+	size_t elem_size = sizeof(struct vring_used_elem_packed);
 
 	if (d_idx + count <= ring_size) {
 		rte_memcpy(d_ring + d_idx, s_ring + s_idx, count * elem_size);
