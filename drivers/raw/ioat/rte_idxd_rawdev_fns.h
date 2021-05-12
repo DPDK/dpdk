@@ -343,14 +343,6 @@ __idxd_completed_ops(int dev_id, uint8_t max_ops, uint32_t *status, uint8_t *num
 			idxd->batch_idx_read = 0;
 	}
 
-	if (idxd->cfg.hdls_disable && status == NULL) {
-		n = (idxd->hdls_avail < idxd->hdls_read) ?
-				(idxd->hdls_avail + idxd->desc_ring_mask + 1 - idxd->hdls_read) :
-				(idxd->hdls_avail - idxd->hdls_read);
-		idxd->hdls_read = idxd->hdls_avail;
-		goto out;
-	}
-
 	n = 0;
 	h_idx = idxd->hdls_read;
 	while (h_idx != idxd->hdls_avail) {
@@ -386,7 +378,6 @@ __idxd_completed_ops(int dev_id, uint8_t max_ops, uint32_t *status, uint8_t *num
 	}
 	idxd->hdls_read = h_idx;
 
-out:
 	idxd->xstats.completed += n;
 	return n;
 }
