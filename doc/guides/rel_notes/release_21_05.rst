@@ -236,6 +236,11 @@ New Features
   * Added support in lookaside protocol offload mode for IPsec with
     IPv4 transport mode.
 
+* **Updated Intel QuickAssist compression PMD.**
+
+  * The compression is now available on all QAT GEN3 devices
+    that support it in hardware.
+
 * **Updated Mellanox RegEx PMD.**
 
   * Added support for multi-segments mbuf.
