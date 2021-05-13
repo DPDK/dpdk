@@ -1243,6 +1243,7 @@ mlx5_proc_priv_init(struct rte_eth_dev *dev)
 	struct mlx5_proc_priv *ppriv;
 	size_t ppriv_size;
 
+	mlx5_proc_priv_uninit(dev);
 	/*
 	 * UAR register table follows the process private structure. BlueFlame
 	 * registers for Tx queues are stored in the table.
