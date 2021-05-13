@@ -34,4 +34,19 @@ if [ -n "$orphan_symbols" ] ; then
     ret=1
 fi
 
+find_duplicate_symbols ()
+{
+    for map in $(find lib drivers -name '*.map') ; do
+        buildtools/map-list-symbol.sh $map | \
+            sort | uniq -c | grep -v " 1 $map" || true
+    done
+}
+
+duplicate_symbols=$(find_duplicate_symbols)
+if [ -n "$duplicate_symbols" ] ; then
+    echo "Found duplicates in symbol map file:"
+    echo "$duplicate_symbols"
+    ret=1
+fi
+
 exit $ret
