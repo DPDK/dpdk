@@ -20,8 +20,7 @@ find_orphan_symbols ()
             else
                 symsrc=$sym
             fi
-            if ! grep -q -r --exclude=$(basename $map) \
-                    -w $symsrc $(dirname $map) ; then
+            if [ -z "$(grep -rlw $symsrc $(dirname $map) | grep -v $map)" ] ; then
                 echo "$map: $sym"
             fi
         done
