@@ -4567,7 +4567,9 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 				   "Failed to find Meter Policy.");
 		goto exit;
 	}
-	if (policy->is_rss) {
+	if (policy->is_rss ||
+		(policy->is_queue &&
+	!policy->sub_policys[MLX5_MTR_DOMAIN_INGRESS][0]->rix_hrxq[0])) {
 		struct mlx5_flow_workspace *wks =
 				mlx5_flow_get_thread_workspace();
 		struct mlx5_flow_rss_desc rss_desc_v[MLX5_MTR_RTE_COLORS];
@@ -4583,34 +4585,49 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 		for (i = 0; i < MLX5_MTR_RTE_COLORS; i++) {
 			struct mlx5_flow dev_flow = {0};
 			struct mlx5_flow_handle dev_handle = { {0} };
-			const void *rss_act = policy->act_cnt[i].rss->conf;
-			struct rte_flow_action rss_actions[2] = {
-				[0] = {
+
+			rss_desc_v[i] = wks->rss_desc;
+			if (policy->is_rss) {
+				const void *rss_act =
+					policy->act_cnt[i].rss->conf;
+				struct rte_flow_action rss_actions[2] = {
+					[0] = {
 					.type = RTE_FLOW_ACTION_TYPE_RSS,
 					.conf = rss_act
-				},
-				[1] = {
+					},
+					[1] = {
 					.type = RTE_FLOW_ACTION_TYPE_END,
 					.conf = NULL
-				}
-			};
+					}
+				};
 
-			dev_flow.handle = &dev_handle;
-			dev_flow.ingress = attr->ingress;
-			dev_flow.flow = flow;
-			dev_flow.external = 0;
+				dev_flow.handle = &dev_handle;
+				dev_flow.ingress = attr->ingress;
+				dev_flow.flow = flow;
+				dev_flow.external = 0;
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-			dev_flow.dv.transfer = attr->transfer;
+				dev_flow.dv.transfer = attr->transfer;
 #endif
-			/* Translate RSS action to get rss hash fields. */
-			if (flow_drv_translate(dev, &dev_flow, attr,
+				/**
+				 * Translate RSS action to get rss hash fields.
+				 */
+				if (flow_drv_translate(dev, &dev_flow, attr,
 						items, rss_actions, error))
-				goto exit;
-			rss_desc_v[i] = wks->rss_desc;
-			rss_desc_v[i].key_len = MLX5_RSS_HASH_KEY_LEN;
-			rss_desc_v[i].hash_fields = dev_flow.hash_fields;
-			rss_desc_v[i].queue_num = rss_desc_v[i].hash_fields ?
-						  rss_desc_v[i].queue_num : 1;
+					goto exit;
+				rss_desc_v[i].key_len = MLX5_RSS_HASH_KEY_LEN;
+				rss_desc_v[i].hash_fields =
+						dev_flow.hash_fields;
+				rss_desc_v[i].queue_num =
+						rss_desc_v[i].hash_fields ?
+						rss_desc_v[i].queue_num : 1;
+			} else {
+				/* This is queue action. */
+				rss_desc_v[i].key_len = 0;
+				rss_desc_v[i].hash_fields = 0;
+				rss_desc_v[i].queue =
+					&policy->act_cnt[i].queue;
+				rss_desc_v[i].queue_num = 1;
+			}
 			rss_desc[i] = &rss_desc_v[i];
 		}
 		sub_policy = flow_drv_meter_sub_policy_rss_prepare(dev,
@@ -7221,6 +7238,24 @@ mlx5_flow_destroy_mtr_drop_tbls(struct rte_eth_dev *dev)
 
 	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
 	fops->destroy_mtr_drop_tbls(dev);
+}
+
+/**
+ * Destroy the sub policy table with RX queue.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_policy
+ *   Pointer to meter policy table.
+ */
+void
+mlx5_flow_destroy_sub_policy_with_rxq(struct rte_eth_dev *dev,
+		struct mlx5_flow_meter_policy *mtr_policy)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	fops->destroy_sub_policy_with_rxq(dev, mtr_policy);
 }
 
 /**

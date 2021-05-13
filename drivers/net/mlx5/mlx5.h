@@ -668,6 +668,8 @@ struct mlx5_meter_policy_action_container {
 		/* Index to port ID action resource. */
 		void *dr_jump_action[MLX5_MTR_DOMAIN_MAX];
 		/* Jump/drop action per color. */
+		uint16_t queue;
+		/* Queue action configuration. */
 	};
 };
 
@@ -681,6 +683,8 @@ struct mlx5_flow_meter_policy {
 	/* Rule applies to egress domain. */
 	uint32_t transfer:1;
 	/* Rule applies to transfer domain. */
+	uint32_t is_queue:1;
+	/* Is queue action in policy table. */
 	rte_spinlock_t sl;
 	uint32_t ref_cnt;
 	/* Use count. */
@@ -1655,6 +1659,7 @@ struct mlx5_flow_meter_policy *mlx5_flow_meter_policy_find
 		uint32_t *policy_idx);
 int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
 			  struct rte_mtr_error *error);
+void mlx5_flow_meter_rxq_flush(struct rte_eth_dev *dev);
 
 /* mlx5_os.c */
 struct rte_pci_driver;

@@ -14707,12 +14707,6 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 				MLX5_ASSERT(dev_flow.dv.tag_resource);
 				act_cnt->rix_mark =
 					dev_flow.handle->dvh.rix_tag;
-				if (action_flags & MLX5_FLOW_ACTION_QUEUE) {
-					dev_flow.handle->rix_hrxq =
-			mtr_policy->sub_policys[domain][0]->rix_hrxq[i];
-					flow_drv_rxq_flags_set(dev,
-						dev_flow.handle);
-				}
 				action_flags |= MLX5_FLOW_ACTION_MARK;
 				break;
 			}
@@ -14760,12 +14754,6 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 					"set tag action");
 				act_cnt->modify_hdr =
 				dev_flow.handle->dvh.modify_hdr;
-				if (action_flags & MLX5_FLOW_ACTION_QUEUE) {
-					dev_flow.handle->rix_hrxq =
-				mtr_policy->sub_policys[domain][0]->rix_hrxq[i];
-					flow_drv_rxq_flags_set(dev,
-						dev_flow.handle);
-				}
 				action_flags |= MLX5_FLOW_ACTION_SET_TAG;
 				break;
 			}
@@ -14809,41 +14797,20 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 			}
 			case RTE_FLOW_ACTION_TYPE_QUEUE:
 			{
-				struct mlx5_hrxq *hrxq;
-				uint32_t hrxq_idx;
-				struct mlx5_flow_rss_desc rss_desc;
-				struct mlx5_flow_meter_sub_policy *sub_policy =
-				mtr_policy->sub_policys[domain][0];
-
 				if (i >= MLX5_MTR_RTE_COLORS)
 					return -rte_mtr_error_set(error,
 					ENOTSUP,
 					RTE_MTR_ERROR_TYPE_METER_POLICY,
 					NULL, "cannot create policy "
 					"fate queue for this color");
-				memset(&rss_desc, 0,
-					sizeof(struct mlx5_flow_rss_desc));
-				rss_desc.queue_num = 1;
-				rss_desc.const_q = act->conf;
-				hrxq = flow_dv_hrxq_prepare(dev, &dev_flow,
-						    &rss_desc, &hrxq_idx);
-				if (!hrxq)
-					return -rte_mtr_error_set(error,
-					ENOTSUP,
-					RTE_MTR_ERROR_TYPE_METER_POLICY,
-					NULL,
-					"cannot create policy fate queue");
-				sub_policy->rix_hrxq[i] = hrxq_idx;
+				act_cnt->queue =
+				((const struct rte_flow_action_queue *)
+					(act->conf))->index;
 				act_cnt->fate_action =
 					MLX5_FLOW_FATE_QUEUE;
 				dev_flow.handle->fate_action =
 					MLX5_FLOW_FATE_QUEUE;
-				if (action_flags & MLX5_FLOW_ACTION_MARK ||
-				    action_flags & MLX5_FLOW_ACTION_SET_TAG) {
-					dev_flow.handle->rix_hrxq = hrxq_idx;
-					flow_drv_rxq_flags_set(dev,
-						dev_flow.handle);
-				}
+				mtr_policy->is_queue = 1;
 				action_flags |= MLX5_FLOW_ACTION_QUEUE;
 				break;
 			}
@@ -16057,6 +16024,73 @@ rss_sub_policy_error:
 	return NULL;
 }
 
+
+/**
+ * Destroy the sub policy table with RX queue.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_policy
+ *   Pointer to meter policy table.
+ */
+static void
+flow_dv_destroy_sub_policy_with_rxq(struct rte_eth_dev *dev,
+		struct mlx5_flow_meter_policy *mtr_policy)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter_sub_policy *sub_policy = NULL;
+	uint32_t domain = MLX5_MTR_DOMAIN_INGRESS;
+	uint32_t i, j;
+	uint16_t sub_policy_num, new_policy_num;
+
+	rte_spinlock_lock(&mtr_policy->sl);
+	for (i = 0; i < MLX5_MTR_RTE_COLORS; i++) {
+		switch (mtr_policy->act_cnt[i].fate_action) {
+		case MLX5_FLOW_FATE_SHARED_RSS:
+			sub_policy_num = (mtr_policy->sub_policy_num >>
+			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain)) &
+			MLX5_MTR_SUB_POLICY_NUM_MASK;
+			new_policy_num = sub_policy_num;
+			for (j = 0; j < sub_policy_num; j++) {
+				sub_policy =
+					mtr_policy->sub_policys[domain][j];
+				if (sub_policy) {
+					__flow_dv_destroy_sub_policy_rules(dev,
+						sub_policy);
+				if (sub_policy !=
+					mtr_policy->sub_policys[domain][0]) {
+					mtr_policy->sub_policys[domain][j] =
+								NULL;
+					mlx5_ipool_free
+				(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
+						sub_policy->idx);
+						new_policy_num--;
+					}
+				}
+			}
+			if (new_policy_num != sub_policy_num) {
+				mtr_policy->sub_policy_num &=
+				~(MLX5_MTR_SUB_POLICY_NUM_MASK <<
+				(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain));
+				mtr_policy->sub_policy_num |=
+				(new_policy_num &
+					MLX5_MTR_SUB_POLICY_NUM_MASK) <<
+				(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain);
+			}
+			break;
+		case MLX5_FLOW_FATE_QUEUE:
+			sub_policy = mtr_policy->sub_policys[domain][0];
+			__flow_dv_destroy_sub_policy_rules(dev,
+						sub_policy);
+			break;
+		default:
+			/*Other actions without queue and do nothing*/
+			break;
+		}
+	}
+	rte_spinlock_unlock(&mtr_policy->sl);
+}
+
 /**
  * Validate the batch counter support in root table.
  *
@@ -16666,6 +16700,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.create_def_policy = flow_dv_create_def_policy,
 	.destroy_def_policy = flow_dv_destroy_def_policy,
 	.meter_sub_policy_rss_prepare = flow_dv_meter_sub_policy_rss_prepare,
+	.destroy_sub_policy_with_rxq = flow_dv_destroy_sub_policy_with_rxq,
 	.counter_alloc = flow_dv_counter_allocate,
 	.counter_free = flow_dv_counter_free,
 	.counter_query = flow_dv_counter_query,

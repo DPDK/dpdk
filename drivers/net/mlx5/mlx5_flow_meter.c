@@ -748,7 +748,7 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 					policy->actions, error);
 	if (ret)
 		goto policy_add_err;
-	if (!is_rss) {
+	if (!is_rss && !mtr_policy->is_queue) {
 		/* Create policy rules in HW. */
 		ret = mlx5_flow_create_policy_rules(dev, mtr_policy);
 		if (ret)
@@ -1806,6 +1806,40 @@ mlx5_flow_meter_detach(struct mlx5_priv *priv,
 	(void)priv;
 	(void)fm;
 #endif
+}
+
+/**
+ * Flush meter with Rx queue configuration.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ */
+void
+mlx5_flow_meter_rxq_flush(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter_sub_policy *sub_policy;
+	struct mlx5_flow_meter_policy *mtr_policy;
+	void *entry;
+	uint32_t i, policy_idx;
+
+	if (!priv->mtr_en)
+		return;
+	if (priv->sh->mtrmng->policy_idx_tbl && priv->sh->refcnt == 1) {
+		MLX5_L3T_FOREACH(priv->sh->mtrmng->policy_idx_tbl,
+					i, entry) {
+			policy_idx = *(uint32_t *)entry;
+			sub_policy = mlx5_ipool_get
+				(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
+				policy_idx);
+			if (!sub_policy || !sub_policy->main_policy)
+				continue;
+			mtr_policy = sub_policy->main_policy;
+			if (mtr_policy->is_queue || mtr_policy->is_rss)
+				mlx5_flow_destroy_sub_policy_with_rxq(dev,
+					mtr_policy);
+		}
+	}
 }
 
 /**

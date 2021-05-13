@@ -1156,6 +1156,9 @@ typedef struct mlx5_flow_meter_sub_policy *
 		(struct rte_eth_dev *dev,
 		struct mlx5_flow_meter_policy *mtr_policy,
 		struct mlx5_flow_rss_desc *rss_desc[MLX5_MTR_RTE_COLORS]);
+typedef void (*mlx5_flow_destroy_sub_policy_with_rxq_t)
+	(struct rte_eth_dev *dev,
+	struct mlx5_flow_meter_policy *mtr_policy);
 typedef uint32_t (*mlx5_flow_mtr_alloc_t)
 					    (struct rte_eth_dev *dev);
 typedef void (*mlx5_flow_mtr_free_t)(struct rte_eth_dev *dev,
@@ -1249,6 +1252,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_create_def_policy_t create_def_policy;
 	mlx5_flow_destroy_def_policy_t destroy_def_policy;
 	mlx5_flow_meter_sub_policy_rss_prepare_t meter_sub_policy_rss_prepare;
+	mlx5_flow_destroy_sub_policy_with_rxq_t destroy_sub_policy_with_rxq;
 	mlx5_flow_counter_alloc_t counter_alloc;
 	mlx5_flow_counter_free_t counter_free;
 	mlx5_flow_counter_query_t counter_query;
@@ -1562,6 +1566,8 @@ struct mlx5_flow_meter_sub_policy *mlx5_flow_meter_sub_policy_rss_prepare
 		(struct rte_eth_dev *dev,
 		struct mlx5_flow_meter_policy *mtr_policy,
 		struct mlx5_flow_rss_desc *rss_desc[MLX5_MTR_RTE_COLORS]);
+void mlx5_flow_destroy_sub_policy_with_rxq(struct rte_eth_dev *dev,
+		struct mlx5_flow_meter_policy *mtr_policy);
 int mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev);
 int mlx5_action_handle_flush(struct rte_eth_dev *dev);
 void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id);
