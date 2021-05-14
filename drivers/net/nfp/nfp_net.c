@@ -769,10 +769,10 @@ nfp_net_start(struct rte_eth_dev *dev)
 	if (hw->is_phyport) {
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 			/* Configure the physical port up */
-			nfp_eth_set_configured(hw->cpp, hw->idx, 1);
+			nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 1);
 		else
 			nfp_eth_set_configured(dev->process_private,
-					       hw->idx, 1);
+					       hw->nfp_idx, 1);
 	}
 
 	hw->ctrl = new_ctrl;
@@ -825,10 +825,10 @@ nfp_net_stop(struct rte_eth_dev *dev)
 	if (hw->is_phyport) {
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 			/* Configure the physical port down */
-			nfp_eth_set_configured(hw->cpp, hw->idx, 0);
+			nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 0);
 		else
 			nfp_eth_set_configured(dev->process_private,
-					       hw->idx, 0);
+					       hw->nfp_idx, 0);
 	}
 
 	return 0;
@@ -849,10 +849,10 @@ nfp_net_set_link_up(struct rte_eth_dev *dev)
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port down */
-		return nfp_eth_set_configured(hw->cpp, hw->idx, 1);
+		return nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 1);
 	else
 		return nfp_eth_set_configured(dev->process_private,
-					      hw->idx, 1);
+					      hw->nfp_idx, 1);
 }
 
 /* Set the link down. */
@@ -870,10 +870,10 @@ nfp_net_set_link_down(struct rte_eth_dev *dev)
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port down */
-		return nfp_eth_set_configured(hw->cpp, hw->idx, 0);
+		return nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 0);
 	else
 		return nfp_eth_set_configured(dev->process_private,
-					      hw->idx, 0);
+					      hw->nfp_idx, 0);
 }
 
 /* Reset and stop device. The device can not be restarted. */
@@ -2810,14 +2810,14 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 			return -ENODEV;
 		}
 
-		/* This points to the specific port private data */
-		PMD_INIT_LOG(DEBUG, "Working with physical port number %d",
-				    port);
-
 		/* Use PF array of physical ports to get pointer to
 		 * this specific port
 		 */
 		hw = pf_dev->ports[port];
+
+		PMD_INIT_LOG(DEBUG, "Working with physical port number: %d, "
+				    "NFP internal port number: %d",
+				    port, hw->nfp_idx);
 
 	} else {
 		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
@@ -3497,8 +3497,16 @@ static int nfp_init_phyports(struct nfp_pf_dev *pf_dev)
 {
 	struct nfp_net_hw *hw;
 	struct rte_eth_dev *eth_dev;
+	struct nfp_eth_table *nfp_eth_table = NULL;
 	int ret = 0;
 	int i;
+
+	nfp_eth_table = nfp_eth_read_ports(pf_dev->cpp);
+	if (!nfp_eth_table) {
+		PMD_INIT_LOG(ERR, "Error reading NFP ethernet table");
+		ret = -EIO;
+		goto error;
+	}
 
 	/* Loop through all physical ports on PF */
 	for (i = 0; i < pf_dev->total_phyports; i++) {
@@ -3555,6 +3563,7 @@ skip_dev_alloc:
 		hw->cpp = pf_dev->cpp;
 		hw->eth_dev = eth_dev;
 		hw->idx = i;
+		hw->nfp_idx = nfp_eth_table->ports[i].index;
 		hw->is_phyport = true;
 
 nfp_net_init:
@@ -3573,7 +3582,8 @@ nfp_net_init:
 		rte_eth_dev_probing_finish(eth_dev);
 
 	} /* End loop, all ports on this PF */
-	return 0;
+	ret = 0;
+	goto eth_table_cleanup;
 
 port_cleanup:
 	for (i = 0; i < pf_dev->total_phyports; i++) {
@@ -3584,6 +3594,8 @@ port_cleanup:
 			pf_dev->ports[i] = NULL;
 		}
 	}
+eth_table_cleanup:
+	free(nfp_eth_table);
 error:
 	return ret;
 }

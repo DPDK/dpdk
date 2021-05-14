@@ -483,7 +483,10 @@ struct nfp_net_hw {
 	struct nfp_cpp_area *msix_area;
 
 	uint8_t *hw_queues;
+	/* Sequential physical port number */
 	uint8_t idx;
+	/* Internal port number as seen from NFP */
+	uint8_t nfp_idx;
 	bool	is_phyport;
 
 	union eth_table_entry *eth_table;
