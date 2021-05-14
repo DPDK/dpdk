@@ -1223,57 +1223,75 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 
 	rxq->rx_buf_size = BNXT_MAX_PKT_LEN + sizeof(struct rte_mbuf);
 
-	rxr = rte_zmalloc_socket("bnxt_rx_ring",
-				 sizeof(struct bnxt_rx_ring_info),
-				 RTE_CACHE_LINE_SIZE, socket_id);
-	if (rxr == NULL)
-		return -ENOMEM;
-	rxq->rx_ring = rxr;
+	if (rxq->rx_ring != NULL) {
+		rxr = rxq->rx_ring;
+	} else {
 
-	ring = rte_zmalloc_socket("bnxt_rx_ring_struct",
-				   sizeof(struct bnxt_ring),
-				   RTE_CACHE_LINE_SIZE, socket_id);
-	if (ring == NULL)
-		return -ENOMEM;
-	rxr->rx_ring_struct = ring;
-	ring->ring_size = rte_align32pow2(rxq->nb_rx_desc);
-	ring->ring_mask = ring->ring_size - 1;
-	ring->bd = (void *)rxr->rx_desc_ring;
-	ring->bd_dma = rxr->rx_desc_mapping;
+		rxr = rte_zmalloc_socket("bnxt_rx_ring",
+					 sizeof(struct bnxt_rx_ring_info),
+					 RTE_CACHE_LINE_SIZE, socket_id);
+		if (rxr == NULL)
+			return -ENOMEM;
+		rxq->rx_ring = rxr;
+	}
 
-	/* Allocate extra rx ring entries for vector rx. */
-	ring->vmem_size = sizeof(struct rte_mbuf *) *
-			  (ring->ring_size + BNXT_RX_EXTRA_MBUF_ENTRIES);
+	if (rxr->rx_ring_struct == NULL) {
+		ring = rte_zmalloc_socket("bnxt_rx_ring_struct",
+					   sizeof(struct bnxt_ring),
+					   RTE_CACHE_LINE_SIZE, socket_id);
+		if (ring == NULL)
+			return -ENOMEM;
+		rxr->rx_ring_struct = ring;
+		ring->ring_size = rte_align32pow2(rxq->nb_rx_desc);
+		ring->ring_mask = ring->ring_size - 1;
+		ring->bd = (void *)rxr->rx_desc_ring;
+		ring->bd_dma = rxr->rx_desc_mapping;
 
-	ring->vmem = (void **)&rxr->rx_buf_ring;
-	ring->fw_ring_id = INVALID_HW_RING_ID;
+		/* Allocate extra rx ring entries for vector rx. */
+		ring->vmem_size = sizeof(struct rte_mbuf *) *
+				  (ring->ring_size + BNXT_RX_EXTRA_MBUF_ENTRIES);
 
-	cpr = rte_zmalloc_socket("bnxt_rx_ring",
-				 sizeof(struct bnxt_cp_ring_info),
-				 RTE_CACHE_LINE_SIZE, socket_id);
-	if (cpr == NULL)
-		return -ENOMEM;
-	rxq->cp_ring = cpr;
+		ring->vmem = (void **)&rxr->rx_buf_ring;
+		ring->fw_ring_id = INVALID_HW_RING_ID;
+	}
 
-	ring = rte_zmalloc_socket("bnxt_rx_ring_struct",
-				   sizeof(struct bnxt_ring),
-				   RTE_CACHE_LINE_SIZE, socket_id);
-	if (ring == NULL)
-		return -ENOMEM;
-	cpr->cp_ring_struct = ring;
+	if (rxq->cp_ring != NULL) {
+		cpr = rxq->cp_ring;
+	} else {
+		cpr = rte_zmalloc_socket("bnxt_rx_ring",
+					 sizeof(struct bnxt_cp_ring_info),
+					 RTE_CACHE_LINE_SIZE, socket_id);
+		if (cpr == NULL)
+			return -ENOMEM;
+		rxq->cp_ring = cpr;
+	}
 
-	/* Allocate two completion slots per entry in desc ring. */
-	ring->ring_size = rxr->rx_ring_struct->ring_size * 2;
-	ring->ring_size *= AGG_RING_SIZE_FACTOR;
+	if (cpr->cp_ring_struct == NULL) {
+		ring = rte_zmalloc_socket("bnxt_rx_ring_struct",
+					   sizeof(struct bnxt_ring),
+					   RTE_CACHE_LINE_SIZE, socket_id);
+		if (ring == NULL)
+			return -ENOMEM;
+		cpr->cp_ring_struct = ring;
 
-	ring->ring_size = rte_align32pow2(ring->ring_size);
-	ring->ring_mask = ring->ring_size - 1;
-	ring->bd = (void *)cpr->cp_desc_ring;
-	ring->bd_dma = cpr->cp_desc_mapping;
-	ring->vmem_size = 0;
-	ring->vmem = NULL;
-	ring->fw_ring_id = INVALID_HW_RING_ID;
+		/* Allocate two completion slots per entry in desc ring. */
+		ring->ring_size = rxr->rx_ring_struct->ring_size * 2;
+		if (bnxt_need_agg_ring(rxq->bp->eth_dev))
+			ring->ring_size *= AGG_RING_SIZE_FACTOR;
 
+		ring->ring_size = rte_align32pow2(ring->ring_size);
+		ring->ring_mask = ring->ring_size - 1;
+		ring->bd = (void *)cpr->cp_desc_ring;
+		ring->bd_dma = cpr->cp_desc_mapping;
+		ring->vmem_size = 0;
+		ring->vmem = NULL;
+		ring->fw_ring_id = INVALID_HW_RING_ID;
+	}
+
+	if (!bnxt_need_agg_ring(rxq->bp->eth_dev))
+		return 0;
+
+	rxr = rxq->rx_ring;
 	/* Allocate Aggregator rings */
 	ring = rte_zmalloc_socket("bnxt_rx_ring_struct",
 				   sizeof(struct bnxt_ring),
@@ -1350,6 +1368,9 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	     i < ring->ring_size + BNXT_RX_EXTRA_MBUF_ENTRIES; i++) {
 		rxr->rx_buf_ring[i] = &rxq->fake_mbuf;
 	}
+
+	if (!bnxt_need_agg_ring(rxq->bp->eth_dev))
+		return 0;
 
 	ring = rxr->ag_ring_struct;
 	type = RX_PROD_AGG_BD_TYPE_RX_PROD_AGG;

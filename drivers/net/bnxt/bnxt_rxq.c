@@ -20,6 +20,17 @@
  * RX Queues
  */
 
+/* Determine whether the current configuration needs aggregation ring in HW. */
+int bnxt_need_agg_ring(struct rte_eth_dev *eth_dev)
+{
+	/* scattered_rx will be true if OFFLOAD_SCATTER is enabled,
+	 * if LRO is enabled, or if the max packet len is greater than the
+	 * mbuf data size. So AGG ring will be needed whenever scattered_rx
+	 * is set.
+	 */
+	return eth_dev->data->scattered_rx ? 1 : 0;
+}
+
 void bnxt_free_rxq_stats(struct bnxt_rx_queue *rxq)
 {
 	if (rxq && rxq->cp_ring && rxq->cp_ring->hw_stats)
@@ -203,6 +214,9 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 		}
 	}
 	/* Free up mbufs in Agg ring */
+	if (!bnxt_need_agg_ring(rxq->bp->eth_dev))
+		return;
+
 	sw_ring = rxq->rx_ring->ag_buf_ring;
 	if (sw_ring) {
 		for (i = 0;
@@ -240,40 +254,48 @@ void bnxt_free_rx_mbufs(struct bnxt *bp)
 	}
 }
 
+void bnxt_free_rxq_mem(struct bnxt_rx_queue *rxq)
+{
+	bnxt_rx_queue_release_mbufs(rxq);
+
+	/* Free RX, AGG ring hardware descriptors */
+	if (rxq->rx_ring) {
+		bnxt_free_ring(rxq->rx_ring->rx_ring_struct);
+		rte_free(rxq->rx_ring->rx_ring_struct);
+		rxq->rx_ring->rx_ring_struct = NULL;
+		/* Free RX Agg ring hardware descriptors */
+		bnxt_free_ring(rxq->rx_ring->ag_ring_struct);
+		rte_free(rxq->rx_ring->ag_ring_struct);
+		rxq->rx_ring->ag_ring_struct = NULL;
+
+		rte_free(rxq->rx_ring);
+		rxq->rx_ring = NULL;
+	}
+	/* Free RX completion ring hardware descriptors */
+	if (rxq->cp_ring) {
+		bnxt_free_ring(rxq->cp_ring->cp_ring_struct);
+		rte_free(rxq->cp_ring->cp_ring_struct);
+		rxq->cp_ring->cp_ring_struct = NULL;
+		rte_free(rxq->cp_ring);
+		rxq->cp_ring = NULL;
+	}
+
+	bnxt_free_rxq_stats(rxq);
+	rte_memzone_free(rxq->mz);
+	rxq->mz = NULL;
+}
+
 void bnxt_rx_queue_release_op(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
 	struct bnxt_rx_queue *rxq = dev->data->rx_queues[queue_idx];
 
-	if (rxq) {
+	if (rxq != NULL) {
 		if (is_bnxt_in_error(rxq->bp))
 			return;
 
 		bnxt_free_hwrm_rx_ring(rxq->bp, rxq->queue_id);
-		bnxt_rx_queue_release_mbufs(rxq);
-
-		/* Free RX ring hardware descriptors */
-		if (rxq->rx_ring) {
-			bnxt_free_ring(rxq->rx_ring->rx_ring_struct);
-			rte_free(rxq->rx_ring->rx_ring_struct);
-			/* Free RX Agg ring hardware descriptors */
-			bnxt_free_ring(rxq->rx_ring->ag_ring_struct);
-			rte_free(rxq->rx_ring->ag_ring_struct);
-
-			rte_free(rxq->rx_ring);
-		}
-		/* Free RX completion ring hardware descriptors */
-		if (rxq->cp_ring) {
-			bnxt_free_ring(rxq->cp_ring->cp_ring_struct);
-			rte_free(rxq->cp_ring->cp_ring_struct);
-			rte_free(rxq->cp_ring);
-		}
-
-		bnxt_free_rxq_stats(rxq);
-		rte_memzone_free(rxq->mz);
-		rxq->mz = NULL;
-
+		bnxt_free_rxq_mem(rxq);
 		rte_free(rxq);
-		dev->data->rx_queues[queue_idx] = NULL;
 	}
 }
 

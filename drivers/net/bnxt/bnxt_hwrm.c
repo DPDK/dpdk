@@ -2741,6 +2741,14 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	if (BNXT_HAS_RING_GRPS(bp))
 		bp->grp_info[queue_index].rx_fw_ring_id = INVALID_HW_RING_ID;
 
+	/* Check agg ring struct explicitly.
+	 * bnxt_need_agg_ring() returns the current state of offload flags,
+	 * but we may have to deal with agg ring struct before the offload
+	 * flags are updated.
+	 */
+	if (!bnxt_need_agg_ring(bp->eth_dev) || rxr->ag_ring_struct == NULL)
+		goto no_agg;
+
 	ring = rxr->ag_ring_struct;
 	bnxt_hwrm_ring_free(bp, ring,
 			    BNXT_CHIP_P5(bp) ?
@@ -2750,6 +2758,7 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	if (BNXT_HAS_RING_GRPS(bp))
 		bp->grp_info[queue_index].ag_fw_ring_id = INVALID_HW_RING_ID;
 
+no_agg:
 	bnxt_hwrm_stat_ctx_free(bp, cpr);
 
 	bnxt_free_cp_ring(bp, cpr);
