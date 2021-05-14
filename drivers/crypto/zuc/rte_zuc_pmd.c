@@ -238,11 +238,11 @@ process_zuc_hash_op(struct zuc_qp *qp, struct rte_crypto_op **ops,
 {
 	unsigned int i;
 	uint8_t processed_ops = 0;
-	uint8_t *src[ZUC_MAX_BURST];
+	uint8_t *src[ZUC_MAX_BURST] = { 0 };
 	uint32_t *dst[ZUC_MAX_BURST];
-	uint32_t length_in_bits[ZUC_MAX_BURST];
-	uint8_t *iv[ZUC_MAX_BURST];
-	const void *hash_keys[ZUC_MAX_BURST];
+	uint32_t length_in_bits[ZUC_MAX_BURST] = { 0 };
+	uint8_t *iv[ZUC_MAX_BURST] = { 0 };
+	const void *hash_keys[ZUC_MAX_BURST] = { 0 };
 	struct zuc_session *sess;
 
 	for (i = 0; i < num_ops; i++) {
