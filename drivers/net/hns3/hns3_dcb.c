@@ -1717,6 +1717,30 @@ hns3_dcb_cfg_update(struct hns3_adapter *hns)
 	return ret;
 }
 
+static void
+hns3_get_fc_mode(struct hns3_hw *hw, enum rte_eth_fc_mode mode)
+{
+	switch (mode) {
+	case RTE_FC_NONE:
+		hw->requested_fc_mode = HNS3_FC_NONE;
+		break;
+	case RTE_FC_RX_PAUSE:
+		hw->requested_fc_mode = HNS3_FC_RX_PAUSE;
+		break;
+	case RTE_FC_TX_PAUSE:
+		hw->requested_fc_mode = HNS3_FC_TX_PAUSE;
+		break;
+	case RTE_FC_FULL:
+		hw->requested_fc_mode = HNS3_FC_FULL;
+		break;
+	default:
+		hw->requested_fc_mode = HNS3_FC_NONE;
+		hns3_warn(hw, "fc_mode(%u) exceeds member scope and is "
+			  "configured to RTE_FC_NONE", mode);
+		break;
+	}
+}
+
 /*
  * hns3_dcb_pfc_enable - Enable priority flow control
  * @dev: pointer to ethernet device
@@ -1729,6 +1753,7 @@ hns3_dcb_pfc_enable(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc_conf)
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	enum hns3_fc_status fc_status = hw->current_fc_status;
+	enum hns3_fc_mode old_fc_mode = hw->requested_fc_mode;
 	uint8_t hw_pfc_map = hw->dcb_info.hw_pfc_map;
 	uint8_t pfc_en = hw->dcb_info.pfc_en;
 	uint8_t priority = pfc_conf->priority;
@@ -1736,6 +1761,7 @@ hns3_dcb_pfc_enable(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc_conf)
 	int ret, status;
 
 	pf->pause_time = pfc_conf->fc.pause_time;
+	hns3_get_fc_mode(hw, pfc_conf->fc.mode);
 	hw->current_fc_status = HNS3_FC_STATUS_PFC;
 	hw->dcb_info.pfc_en |= BIT(priority);
 	hw->dcb_info.hw_pfc_map =
@@ -1757,6 +1783,7 @@ hns3_dcb_pfc_enable(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc_conf)
 	return 0;
 
 pfc_setup_fail:
+	hw->requested_fc_mode = old_fc_mode;
 	hw->current_fc_status = fc_status;
 	pf->pause_time = pause_time;
 	hw->dcb_info.pfc_en = pfc_en;
@@ -1779,11 +1806,13 @@ hns3_fc_enable(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	enum hns3_fc_mode old_fc_mode = hw->requested_fc_mode;
 	enum hns3_fc_status fc_status = hw->current_fc_status;
 	uint16_t pause_time = pf->pause_time;
 	int ret;
 
 	pf->pause_time = fc_conf->pause_time;
+	hns3_get_fc_mode(hw, fc_conf->mode);
 
 	/*
 	 * In fact, current_fc_status is HNS3_FC_STATUS_NONE when mode
@@ -1803,6 +1832,7 @@ hns3_fc_enable(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	return 0;
 
 setup_fc_fail:
+	hw->requested_fc_mode = old_fc_mode;
 	hw->current_fc_status = fc_status;
 	pf->pause_time = pause_time;
 
