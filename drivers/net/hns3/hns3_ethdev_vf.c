@@ -1909,6 +1909,17 @@ hns3vf_do_stop(struct hns3_adapter *hns)
 
 	hw->mac.link_status = ETH_LINK_DOWN;
 
+	/*
+	 * The "hns3vf_do_stop" function will also be called by .stop_service to
+	 * prepare reset. At the time of global or IMP reset, the command cannot
+	 * be sent to stop the tx/rx queues. The mbuf in Tx/Rx queues may be
+	 * accessed during the reset process. So the mbuf can not be released
+	 * during reset and is required to be released after the reset is
+	 * completed.
+	 */
+	if (rte_atomic16_read(&hw->reset.resetting) == 0)
+		hns3_dev_release_mbufs(hns);
+
 	if (rte_atomic16_read(&hw->reset.disable_cmd) == 0) {
 		hns3vf_configure_mac_addr(hns, true);
 		ret = hns3_reset_all_tqps(hns);
@@ -1978,7 +1989,6 @@ hns3vf_dev_stop(struct rte_eth_dev *dev)
 		hns3_stop_tqps(hw);
 		hns3vf_do_stop(hns);
 		hns3vf_unmap_rx_interrupt(dev);
-		hns3_dev_release_mbufs(hns);
 		hw->adapter_state = HNS3_NIC_CONFIGURED;
 	}
 	hns3_rx_scattered_reset(dev);
@@ -2223,11 +2233,8 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 		return ret;
 	}
 	ret = hns3vf_map_rx_interrupt(dev);
-	if (ret) {
-		hw->adapter_state = HNS3_NIC_CONFIGURED;
-		rte_spinlock_unlock(&hw->lock);
-		return ret;
-	}
+	if (ret)
+		goto map_rx_inter_err;
 
 	/*
 	 * There are three register used to control the status of a TQP
@@ -2241,19 +2248,12 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 	 * status of queue in the dpdk framework.
 	 */
 	ret = hns3_start_all_txqs(dev);
-	if (ret) {
-		hw->adapter_state = HNS3_NIC_CONFIGURED;
-		rte_spinlock_unlock(&hw->lock);
-		return ret;
-	}
+	if (ret)
+		goto map_rx_inter_err;
 
 	ret = hns3_start_all_rxqs(dev);
-	if (ret) {
-		hns3_stop_all_txqs(dev);
-		hw->adapter_state = HNS3_NIC_CONFIGURED;
-		rte_spinlock_unlock(&hw->lock);
-		return ret;
-	}
+	if (ret)
+		goto start_all_rxqs_fail;
 
 	hw->adapter_state = HNS3_NIC_STARTED;
 	rte_spinlock_unlock(&hw->lock);
@@ -2273,6 +2273,15 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 	 * packets and refresh all queue status.
 	 */
 	hns3_start_tqps(hw);
+
+	return ret;
+
+start_all_rxqs_fail:
+	hns3_stop_all_txqs(dev);
+map_rx_inter_err:
+	(void)hns3vf_do_stop(hns);
+	hw->adapter_state = HNS3_NIC_CONFIGURED;
+	rte_spinlock_unlock(&hw->lock);
 
 	return ret;
 }
