@@ -1111,9 +1111,6 @@ hns3vf_interrupt_handler(void *param)
 	enum hns3vf_evt_cause event_cause;
 	uint32_t clearval;
 
-	if (hw->irq_thread_id == 0)
-		hw->irq_thread_id = pthread_self();
-
 	/* Disable interrupt */
 	hns3vf_disable_irq0(hw);
 

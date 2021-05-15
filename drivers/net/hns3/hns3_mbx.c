@@ -40,36 +40,14 @@ hns3_resp_to_errno(uint16_t resp_code)
 	return -EIO;
 }
 
-static void
-hns3_poll_all_sync_msg(void)
-{
-	struct rte_eth_dev *eth_dev;
-	struct hns3_adapter *adapter;
-	const char *name;
-	uint16_t port_id;
-
-	RTE_ETH_FOREACH_DEV(port_id) {
-		eth_dev = &rte_eth_devices[port_id];
-		name = eth_dev->device->driver->name;
-		if (strcmp(name, "net_hns3") && strcmp(name, "net_hns3_vf"))
-			continue;
-		adapter = eth_dev->data->dev_private;
-		if (!adapter || adapter->hw.adapter_state == HNS3_NIC_CLOSED)
-			continue;
-		/* Synchronous msg, the mbx_resp.req_msg_data is non-zero */
-		if (adapter->hw.mbx_resp.req_msg_data)
-			hns3_dev_handle_mbx_msg(&adapter->hw);
-	}
-}
-
 static int
 hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code0, uint16_t code1,
 		  uint8_t *resp_data, uint16_t resp_len)
 {
 #define HNS3_MAX_RETRY_MS	500
+#define HNS3_WAIT_RESP_US	100
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_mbx_resp_status *mbx_resp;
-	bool in_irq = false;
 	uint64_t now;
 	uint64_t end;
 
@@ -96,26 +74,19 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code0, uint16_t code1,
 			return -EIO;
 		}
 
-		/*
-		 * The mbox response is running on the interrupt thread.
-		 * Sending mbox in the interrupt thread cannot wait for the
-		 * response, so polling the mbox response on the irq thread.
-		 */
-		if (pthread_equal(hw->irq_thread_id, pthread_self())) {
-			in_irq = true;
-			hns3_poll_all_sync_msg();
-		} else {
-			rte_delay_ms(HNS3_POLL_RESPONE_MS);
-		}
+		hns3_dev_handle_mbx_msg(hw);
+		rte_delay_us(HNS3_WAIT_RESP_US);
+
 		now = get_timeofday_ms();
 	}
 	hw->mbx_resp.req_msg_data = 0;
 	if (now >= end) {
 		hw->mbx_resp.lost++;
 		hns3_err(hw,
-			 "VF could not get mbx(%u,%u) head(%u) tail(%u) lost(%u) from PF in_irq:%d",
+			 "VF could not get mbx(%u,%u) head(%u) tail(%u) "
+			 "lost(%u) from PF",
 			 code0, code1, hw->mbx_resp.head, hw->mbx_resp.tail,
-			 hw->mbx_resp.lost, in_irq);
+			 hw->mbx_resp.lost);
 		return -ETIME;
 	}
 	rte_io_rmb();
@@ -366,10 +337,13 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 	uint16_t flag;
 	uint8_t *temp;
 	int i;
+	rte_spinlock_lock(&hw->cmq.crq.lock);
 
 	while (!hns3_cmd_crq_empty(hw)) {
-		if (rte_atomic16_read(&hw->reset.disable_cmd))
+		if (rte_atomic16_read(&hw->reset.disable_cmd)) {
+			rte_spinlock_unlock(&hw->cmq.crq.lock);
 			return;
+		}
 
 		desc = &crq->desc[crq->next_to_use];
 		req = (struct hns3_mbx_pf_to_vf_cmd *)desc->data;
@@ -440,4 +414,6 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 
 	/* Write back CMDQ_RQ header pointer, IMP need this pointer */
 	hns3_write_dev(hw, HNS3_CMDQ_RX_HEAD_REG, crq->next_to_use);
+
+	rte_spinlock_unlock(&hw->cmq.crq.lock);
 }
