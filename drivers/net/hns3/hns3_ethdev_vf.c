@@ -1435,18 +1435,6 @@ hns3vf_set_tc_queue_mapping(struct hns3_adapter *hns, uint16_t nb_rx_q,
 {
 	struct hns3_hw *hw = &hns->hw;
 
-	if (nb_rx_q < hw->num_tc) {
-		hns3_err(hw, "number of Rx queues(%u) is less than tcs(%u).",
-			 nb_rx_q, hw->num_tc);
-		return -EINVAL;
-	}
-
-	if (nb_tx_q < hw->num_tc) {
-		hns3_err(hw, "number of Tx queues(%u) is less than tcs(%u).",
-			 nb_tx_q, hw->num_tc);
-		return -EINVAL;
-	}
-
 	return hns3_queue_to_tc_mapping(hw, nb_rx_q, nb_tx_q);
 }
 

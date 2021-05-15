@@ -685,6 +685,18 @@ hns3_queue_to_tc_mapping(struct hns3_hw *hw, uint16_t nb_rx_q, uint16_t nb_tx_q)
 {
 	int ret;
 
+	if (nb_rx_q < hw->num_tc) {
+		hns3_err(hw, "number of Rx queues(%u) is less than number of TC(%u).",
+			 nb_rx_q, hw->num_tc);
+		return -EINVAL;
+	}
+
+	if (nb_tx_q < hw->num_tc) {
+		hns3_err(hw, "number of Tx queues(%u) is less than number of TC(%u).",
+			 nb_tx_q, hw->num_tc);
+		return -EINVAL;
+	}
+
 	ret = hns3_set_rss_size(hw, nb_rx_q);
 	if (ret)
 		return ret;
