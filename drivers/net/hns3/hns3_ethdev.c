@@ -2192,24 +2192,6 @@ hns3_check_mq_mode(struct rte_eth_dev *dev)
 }
 
 static int
-hns3_check_dcb_cfg(struct rte_eth_dev *dev)
-{
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	if (!hns3_dev_dcb_supported(hw)) {
-		hns3_err(hw, "this port does not support dcb configurations.");
-		return -EOPNOTSUPP;
-	}
-
-	if (hw->current_fc_status == HNS3_FC_STATUS_MAC_PAUSE) {
-		hns3_err(hw, "MAC pause enabled, cannot config dcb info.");
-		return -EOPNOTSUPP;
-	}
-
-	return 0;
-}
-
-static int
 hns3_bind_ring_with_vector(struct hns3_hw *hw, uint16_t vector_id, bool en,
 			   enum hns3_ring_type queue_type, uint16_t queue_id)
 {
@@ -2345,6 +2327,30 @@ hns3_refresh_mtu(struct rte_eth_dev *dev, struct rte_eth_conf *conf)
 }
 
 static int
+hns3_setup_dcb(struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	if (!hns3_dev_dcb_supported(hw)) {
+		hns3_err(hw, "this port does not support dcb configurations.");
+		return -EOPNOTSUPP;
+	}
+
+	if (hw->current_fc_status == HNS3_FC_STATUS_MAC_PAUSE) {
+		hns3_err(hw, "MAC pause enabled, cannot config dcb info.");
+		return -EOPNOTSUPP;
+	}
+
+	ret = hns3_dcb_configure(hns);
+	if (ret)
+		hns3_err(hw, "failed to config dcb: %d", ret);
+
+	return ret;
+}
+
+static int
 hns3_dev_configure(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
@@ -2390,7 +2396,7 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 		goto cfg_err;
 
 	if ((uint32_t)mq_mode & ETH_MQ_RX_DCB_FLAG) {
-		ret = hns3_check_dcb_cfg(dev);
+		ret = hns3_setup_dcb(dev);
 		if (ret)
 			goto cfg_err;
 	}
@@ -4870,9 +4876,12 @@ hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
-	ret = hns3_dcb_cfg_update(hns);
-	if (ret)
+	ret = hns3_update_queue_map_configure(hns);
+	if (ret) {
+		hns3_err(hw, "failed to update queue mapping configuration, ret = %d",
+			 ret);
 		return ret;
+	}
 
 	ret = hns3_init_queues(hns, reset_queue);
 	if (ret) {

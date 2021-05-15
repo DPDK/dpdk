@@ -1573,7 +1573,7 @@ hns3_dcb_configure(struct hns3_adapter *hns)
 	int ret;
 
 	hns3_dcb_cfg_validate(hns, &num_tc, &map_changed);
-	if (map_changed || rte_atomic16_read(&hw->reset.resetting)) {
+	if (map_changed) {
 		ret = hns3_dcb_info_update(hns, num_tc);
 		if (ret) {
 			hns3_err(hw, "dcb info update failed: %d", ret);
@@ -1669,13 +1669,17 @@ hns3_dcb_init(struct hns3_hw *hw)
 	return 0;
 }
 
-static int
+int
 hns3_update_queue_map_configure(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
+	enum rte_eth_rx_mq_mode mq_mode = hw->data->dev_conf.rxmode.mq_mode;
 	uint16_t nb_rx_q = hw->data->nb_rx_queues;
 	uint16_t nb_tx_q = hw->data->nb_tx_queues;
 	int ret;
+
+	if ((uint32_t)mq_mode & ETH_MQ_RX_DCB_FLAG)
+		return 0;
 
 	ret = hns3_dcb_update_tc_queue_mapping(hw, nb_rx_q, nb_tx_q);
 	if (ret) {
@@ -1686,32 +1690,6 @@ hns3_update_queue_map_configure(struct hns3_adapter *hns)
 	ret = hns3_q_to_qs_map(hw);
 	if (ret)
 		hns3_err(hw, "failed to map nq to qs, ret = %d.", ret);
-
-	return ret;
-}
-
-int
-hns3_dcb_cfg_update(struct hns3_adapter *hns)
-{
-	struct hns3_hw *hw = &hns->hw;
-	enum rte_eth_rx_mq_mode mq_mode = hw->data->dev_conf.rxmode.mq_mode;
-	int ret;
-
-	if ((uint32_t)mq_mode & ETH_MQ_RX_DCB_FLAG) {
-		ret = hns3_dcb_configure(hns);
-		if (ret)
-			hns3_err(hw, "Failed to config dcb: %d", ret);
-	} else {
-		/*
-		 * Update queue map without PFC configuration,
-		 * due to queues reconfigured by user.
-		 */
-		ret = hns3_update_queue_map_configure(hns);
-		if (ret)
-			hns3_err(hw,
-				 "Failed to update queue mapping configure: %d",
-				 ret);
-	}
 
 	return ret;
 }
