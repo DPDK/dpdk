@@ -2065,15 +2065,17 @@ hns3vf_dev_link_update(struct rte_eth_dev *eth_dev,
 	case ETH_SPEED_NUM_50G:
 	case ETH_SPEED_NUM_100G:
 	case ETH_SPEED_NUM_200G:
-		new_link.link_speed = mac->link_speed;
+		if (mac->link_status)
+			new_link.link_speed = mac->link_speed;
 		break;
 	default:
 		if (mac->link_status)
 			new_link.link_speed = ETH_SPEED_NUM_UNKNOWN;
-		else
-			new_link.link_speed = ETH_SPEED_NUM_NONE;
 		break;
 	}
+
+	if (!mac->link_status)
+		new_link.link_speed = ETH_SPEED_NUM_NONE;
 
 	new_link.link_duplex = mac->link_duplex;
 	new_link.link_status = mac->link_status ? ETH_LINK_UP : ETH_LINK_DOWN;
