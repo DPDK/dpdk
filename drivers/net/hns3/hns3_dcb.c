@@ -1501,6 +1501,7 @@ hns3_dcb_hw_configure(struct hns3_adapter *hns)
 	enum hns3_fc_status fc_status = hw->current_fc_status;
 	enum hns3_fc_mode requested_fc_mode = hw->requested_fc_mode;
 	uint8_t hw_pfc_map = hw->dcb_info.hw_pfc_map;
+	uint8_t pfc_en = hw->dcb_info.pfc_en;
 	int ret;
 
 	if (pf->tx_sch_mode != HNS3_FLAG_TC_BASE_SCH_MODE &&
@@ -1554,6 +1555,7 @@ pfc_setup_fail:
 	hw->current_fc_status = fc_status;
 
 buffer_alloc_fail:
+	hw->dcb_info.pfc_en = pfc_en;
 	hw->dcb_info.hw_pfc_map = hw_pfc_map;
 
 	return ret;
