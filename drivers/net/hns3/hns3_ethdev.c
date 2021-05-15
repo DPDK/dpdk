@@ -6059,30 +6059,6 @@ hns3_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	return 0;
 }
 
-static void
-hns3_get_fc_mode(struct hns3_hw *hw, enum rte_eth_fc_mode mode)
-{
-	switch (mode) {
-	case RTE_FC_NONE:
-		hw->requested_fc_mode = HNS3_FC_NONE;
-		break;
-	case RTE_FC_RX_PAUSE:
-		hw->requested_fc_mode = HNS3_FC_RX_PAUSE;
-		break;
-	case RTE_FC_TX_PAUSE:
-		hw->requested_fc_mode = HNS3_FC_TX_PAUSE;
-		break;
-	case RTE_FC_FULL:
-		hw->requested_fc_mode = HNS3_FC_FULL;
-		break;
-	default:
-		hw->requested_fc_mode = HNS3_FC_NONE;
-		hns3_warn(hw, "fc_mode(%u) exceeds member scope and is "
-			  "configured to RTE_FC_NONE", mode);
-		break;
-	}
-}
-
 static int
 hns3_check_fc_autoneg_valid(struct hns3_hw *hw, uint8_t autoneg)
 {
@@ -6156,8 +6132,6 @@ hns3_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		return -EOPNOTSUPP;
 	}
 
-	hns3_get_fc_mode(hw, fc_conf->mode);
-
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_fc_enable(dev, fc_conf);
 	rte_spinlock_unlock(&hw->lock);
@@ -6203,8 +6177,6 @@ hns3_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 			     "current_fc_status = %d", hw->current_fc_status);
 		return -EOPNOTSUPP;
 	}
-
-	hns3_get_fc_mode(hw, pfc_conf->fc.mode);
 
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_dcb_pfc_enable(dev, pfc_conf);
