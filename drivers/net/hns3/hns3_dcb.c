@@ -1501,7 +1501,7 @@ hns3_dcb_hw_configure(struct hns3_adapter *hns)
 	enum hns3_fc_status fc_status = hw->current_fc_status;
 	enum hns3_fc_mode requested_fc_mode = hw->requested_fc_mode;
 	uint8_t hw_pfc_map = hw->dcb_info.hw_pfc_map;
-	int ret, status;
+	int ret;
 
 	if (pf->tx_sch_mode != HNS3_FLAG_TC_BASE_SCH_MODE &&
 	    pf->tx_sch_mode != HNS3_FLAG_VNET_BASE_SCH_MODE)
@@ -1526,7 +1526,7 @@ hns3_dcb_hw_configure(struct hns3_adapter *hns)
 
 		ret = hns3_buffer_alloc(hw);
 		if (ret)
-			return ret;
+			goto buffer_alloc_fail;
 
 		hw->current_fc_status = HNS3_FC_STATUS_PFC;
 		hw->requested_fc_mode = HNS3_FC_FULL;
@@ -1552,10 +1552,9 @@ hns3_dcb_hw_configure(struct hns3_adapter *hns)
 pfc_setup_fail:
 	hw->requested_fc_mode = requested_fc_mode;
 	hw->current_fc_status = fc_status;
+
+buffer_alloc_fail:
 	hw->dcb_info.hw_pfc_map = hw_pfc_map;
-	status = hns3_buffer_alloc(hw);
-	if (status)
-		hns3_err(hw, "recover packet buffer fail! status = %d", status);
 
 	return ret;
 }
@@ -1758,7 +1757,7 @@ hns3_dcb_pfc_enable(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc_conf)
 	uint8_t pfc_en = hw->dcb_info.pfc_en;
 	uint8_t priority = pfc_conf->priority;
 	uint16_t pause_time = pf->pause_time;
-	int ret, status;
+	int ret;
 
 	pf->pause_time = pfc_conf->fc.pause_time;
 	hns3_get_fc_mode(hw, pfc_conf->fc.mode);
@@ -1788,9 +1787,6 @@ pfc_setup_fail:
 	pf->pause_time = pause_time;
 	hw->dcb_info.pfc_en = pfc_en;
 	hw->dcb_info.hw_pfc_map = hw_pfc_map;
-	status = hns3_buffer_alloc(hw);
-	if (status)
-		hns3_err(hw, "recover packet buffer fail: %d", status);
 
 	return ret;
 }
