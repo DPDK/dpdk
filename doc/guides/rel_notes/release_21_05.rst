@@ -171,6 +171,7 @@ New Features
 
   Updated the Mellanox mlx5 driver with new features and improvements, including:
 
+  * Added support for matching on packet integrity status.
   * Added support for VXLAN and NVGRE encap as sample actions.
   * Added support for flow COUNT action handle.
   * Support push VLAN on ingress traffic and pop VLAN on egress traffic in E-Switch mode.
@@ -179,6 +180,7 @@ New Features
   * Added support for ASO metering by PPS (packet per second).
   * Added support for the monitor policy of Power Management API.
   * Added support for connection tracking.
+  * Added support for Sub-Function representors.
 
 * **Updated NXP DPAA driver.**
 

@@ -109,6 +109,7 @@ Features
 - Flow metering, including meter policy API.
 - Flow integrity offload API.
 - Connection tracking.
+- Sub-Function representors.
 
 Limitations
 -----------
@@ -1437,9 +1438,10 @@ the DPDK application.
 
         echo switchdev > /sys/class/net/<net device>/compat/devlink/mode
 
-SubFunction representor support
--------------------------------
-SubFunction is a portion of the PCI device, a SF netdev has its own
+Sub-Function representor
+------------------------
+
+Sub-Function is a portion of the PCI device, a SF netdev has its own
 dedicated queues(txq, rxq). A SF netdev supports E-Switch representation
 offload similar to existing PF and VF representors. A SF shares PCI
 level resources with other SFs and/or with its parent PCI function.

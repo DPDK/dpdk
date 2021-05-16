@@ -138,7 +138,6 @@ New Features
     egress flow groups greater than 0 and for any transfer flow group.
   * Added support for the Tx mbuf fast free offload.
   * Added support for flow modify field action.
-  * Added support for flow integrity item.
 
 * **Updated the Pensando ionic driver.**
 
