@@ -469,10 +469,6 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
 		return RTE_VHOST_MSG_RESULT_ERR;
 	}
 
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)) {
-		if (vhost_user_iotlb_init(dev, msg->payload.state.index))
-			return RTE_VHOST_MSG_RESULT_ERR;
-	}
 	return RTE_VHOST_MSG_RESULT_OK;
 }
 
@@ -578,7 +574,7 @@ out:
 	dev->virtqueue[index] = vq;
 	vhost_devices[dev->vid] = dev;
 
-	if (old_vq != vq && (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)))
+	if (old_vq != vq)
 		vhost_user_iotlb_init(dev, index);
 
 	return dev;
