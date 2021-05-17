@@ -408,6 +408,44 @@ hns3_handle_promisc_info(struct hns3_hw *hw, uint16_t promisc_en)
 	}
 }
 
+static void
+hns3_handle_mbx_msg_out_intr(struct hns3_hw *hw)
+{
+	struct hns3_cmq_ring *crq = &hw->cmq.crq;
+	struct hns3_mbx_pf_to_vf_cmd *req;
+	struct hns3_cmd_desc *desc;
+	uint32_t tail, next_to_use;
+	uint8_t opcode;
+	uint16_t flag;
+
+	tail = hns3_read_dev(hw, HNS3_CMDQ_RX_TAIL_REG);
+	next_to_use = crq->next_to_use;
+	while (next_to_use != tail) {
+		desc = &crq->desc[next_to_use];
+		req = (struct hns3_mbx_pf_to_vf_cmd *)desc->data;
+		opcode = req->msg[0] & 0xff;
+
+		flag = rte_le_to_cpu_16(crq->desc[next_to_use].flag);
+		if (!hns3_get_bit(flag, HNS3_CMDQ_RX_OUTVLD_B))
+			goto scan_next;
+
+		if (crq->desc[next_to_use].opcode == 0)
+			goto scan_next;
+
+		if (opcode == HNS3_MBX_PF_VF_RESP) {
+			hns3_handle_mbx_response(hw, req);
+			/*
+			 * Clear opcode to inform intr thread don't process
+			 * again.
+			 */
+			crq->desc[crq->next_to_use].opcode = 0;
+		}
+
+scan_next:
+		next_to_use = (next_to_use + 1) % hw->cmq.crq.desc_num;
+	}
+}
+
 void
 hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 {
@@ -418,6 +456,29 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 	uint8_t opcode;
 	uint16_t flag;
 	rte_spinlock_lock(&hw->cmq.crq.lock);
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY ||
+	    !rte_thread_is_intr()) {
+		/*
+		 * Currently, any threads in the primary and secondary processes
+		 * could send mailbox sync request, so it will need to process
+		 * the crq message (which is the HNS3_MBX_PF_VF_RESP) in there
+		 * own thread context. It may also process other messages
+		 * because it uses the policy of processing all pending messages
+		 * at once.
+		 * But some messages such as HNS3_MBX_PUSH_LINK_STATUS could
+		 * only process within the intr thread in primary process,
+		 * otherwise it may lead to report lsc event in secondary
+		 * process.
+		 * So the threads other than intr thread in primary process
+		 * could only process HNS3_MBX_PF_VF_RESP message, if the
+		 * message processed, its opcode will rewrite with zero, then
+		 * the intr thread in primary process will not process again.
+		 */
+		hns3_handle_mbx_msg_out_intr(hw);
+		rte_spinlock_unlock(&hw->cmq.crq.lock);
+		return;
+	}
 
 	while (!hns3_cmd_crq_empty(hw)) {
 		if (rte_atomic16_read(&hw->reset.disable_cmd)) {
@@ -436,6 +497,13 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 				  opcode);
 
 			/* dropping/not processing this invalid message */
+			crq->desc[crq->next_to_use].flag = 0;
+			hns3_mbx_ring_ptr_move_crq(crq);
+			continue;
+		}
+
+		if (desc->opcode == 0) {
+			/* Message already processed by other thread */
 			crq->desc[crq->next_to_use].flag = 0;
 			hns3_mbx_ring_ptr_move_crq(crq);
 			continue;
