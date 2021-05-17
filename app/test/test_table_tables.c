@@ -28,7 +28,8 @@ table_test table_tests[] = {
 			APP_METADATA_OFFSET(0));			\
 	key = RTE_MBUF_METADATA_UINT8_PTR(mbuf,			\
 			APP_METADATA_OFFSET(32));			\
-	memset(key, 0, 32);						\
+	if (mbuf->priv_size + mbuf->buf_len >= 64)			\
+		memset(key, 0, 32);					\
 	k32 = (uint32_t *) key;						\
 	k32[0] = (value);						\
 	*signature = pipeline_test_hash(key, NULL, 0, 0);			\
