@@ -37,6 +37,10 @@ static inline uint16_t bnxt_tpa_start_agg_id(struct bnxt *bp,
 #define BNXT_TPA_END_AGG_ID_TH(cmp) \
 	rte_le_to_cpu_16((cmp)->agg_id)
 
+#define BNXT_RX_L2_AGG_BUFS(cmp) \
+	(((cmp)->agg_bufs_v1 & RX_PKT_CMPL_AGG_BUFS_MASK) >> \
+		RX_PKT_CMPL_AGG_BUFS_SFT)
+
 /* Number of descriptors to process per inner loop in vector mode. */
 #define RTE_BNXT_DESCS_PER_LOOP		4U
 
