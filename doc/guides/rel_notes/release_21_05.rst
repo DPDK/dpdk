@@ -434,3 +434,122 @@ Tested Platforms
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
+
+* Intel\ |reg| platforms with Mellanox\ |reg| NICs combinations
+
+  * CPU:
+
+    * Intel\ |reg| Xeon\ |reg| Gold 6154 CPU @ 3.00GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2697A v4 @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2697 v3 @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2680 v2 @ 2.80GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2670 0 @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2650 v4 @ 2.20GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2650 v3 @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2640 @ 2.50GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2650 0 @ 2.00GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2620 v4 @ 2.10GHz
+
+  * OS:
+
+    * Red Hat Enterprise Linux release 8.2 (Ootpa)
+    * Red Hat Enterprise Linux Server release 7.8 (Maipo)
+    * Red Hat Enterprise Linux Server release 7.6 (Maipo)
+    * Red Hat Enterprise Linux Server release 7.5 (Maipo)
+    * Red Hat Enterprise Linux Server release 7.4 (Maipo)
+    * Red Hat Enterprise Linux Server release 7.3 (Maipo)
+    * Red Hat Enterprise Linux Server release 7.2 (Maipo)
+    * Ubuntu 20.04
+    * Ubuntu 18.04
+    * Ubuntu 16.04
+    * SUSE Enterprise Linux 15 SP2
+    * SUSE Enterprise Linux 12 SP4
+
+  * OFED:
+
+    * MLNX_OFED 5.3-1.0.0.1 and above
+    * MLNX_OFED 5.2-2.2.0.0
+
+  * upstream kernel:
+
+    * Linux 5.13.0-rc1 and above
+
+  * rdma-core:
+
+    * rdma-core-35.0-1 and above
+
+  * NICs:
+
+    * Mellanox\ |reg| ConnectX\ |reg|-3 Pro 40G MCX354A-FCC_Ax (2x40G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1007
+      * Firmware version: 2.42.5000
+
+    * Mellanox\ |reg| ConnectX\ |reg|-3 Pro 40G MCX354A-FCCT (2x40G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1007
+      * Firmware version: 2.42.5000
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 Lx 25G MCX4121A-ACAT (2x25G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1015
+      * Firmware version: 14.30.1004 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 Lx 50G MCX4131A-GCAT (1x50G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1015
+      * Firmware version: 14.30.1004 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-5 100G MCX516A-CCAT (2x100G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Device ID: 15b3:1017
+      * Firmware version: 16.30.1004 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-5 100G MCX556A-ECAT (2x100G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Device ID: 15b3:1017
+      * Firmware version: 16.30.1004 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-5 100G MCX556A-EDAT (2x100G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Device ID: 15b3:1017
+      * Firmware version: 16.30.1004 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-5 Ex EN 100G MCX516A-CDAT (2x100G)
+
+      * Host interface: PCI Express 4.0 x16
+      * Device ID: 15b3:1019
+      * Firmware version: 16.30.1004 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-6 Dx EN 100G MCX623106AN-CDAT (2x100G)
+
+      * Host interface: PCI Express 4.0 x16
+      * Device ID: 15b3:101d
+      * Firmware version: 22.30.1004 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-6 Lx EN 25G MCX631102AN-ADAT (2x25G)
+
+      * Host interface: PCI Express 4.0 x8
+      * Device ID: 15b3:101f
+      * Firmware version: 26.30.1004 and above
+
+* Mellanox\ |reg| BlueField\ |reg| SmartNIC
+
+  * Mellanox\ |reg| BlueField\ |reg| 2 SmartNIC MT41686 - MBF2H332A-AEEOT_A1 (2x25G)
+
+    * Host interface: PCI Express 3.0 x16
+    * Device ID: 15b3:a2d2
+    * Firmware version: 24.30.1004 and above
+
+  * Embedded software:
+
+    * CentOS Linux release 8.2.2004 (Core)
+    * MLNX_OFED 5.3-1.0.0 and above
+    * DPDK application running on Arm cores
