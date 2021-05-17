@@ -1567,4 +1567,6 @@ struct mlx5_obj_ops devx_obj_ops = {
 	.txq_obj_new = mlx5_txq_devx_obj_new,
 	.txq_obj_modify = mlx5_devx_modify_sq,
 	.txq_obj_release = mlx5_txq_devx_obj_release,
+	.lb_dummy_queue_create = NULL,
+	.lb_dummy_queue_release = NULL,
 };

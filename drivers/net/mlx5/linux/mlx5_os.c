@@ -1508,7 +1508,10 @@ err_secondary:
 		/* Use specific wrappers for Tx object. */
 		priv->obj_ops.txq_obj_new = mlx5_os_txq_obj_new;
 		priv->obj_ops.txq_obj_release = mlx5_os_txq_obj_release;
-
+		priv->obj_ops.lb_dummy_queue_create =
+					mlx5_rxq_ibv_obj_dummy_lb_create;
+		priv->obj_ops.lb_dummy_queue_release =
+					mlx5_rxq_ibv_obj_dummy_lb_release;
 	} else {
 		priv->obj_ops = ibv_obj_ops;
 	}

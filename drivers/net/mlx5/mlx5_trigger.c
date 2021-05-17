@@ -1066,6 +1066,12 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
+	if ((priv->config.devx && priv->config.dv_flow_en &&
+	    priv->config.dest_tir) && priv->obj_ops.lb_dummy_queue_create) {
+		ret = priv->obj_ops.lb_dummy_queue_create(dev);
+		if (ret)
+			goto error;
+	}
 	ret = mlx5_txq_start(dev);
 	if (ret) {
 		DRV_LOG(ERR, "port %u Tx queue allocation failed: %s",
@@ -1146,6 +1152,8 @@ error:
 	mlx5_traffic_disable(dev);
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
+	if (priv->obj_ops.lb_dummy_queue_release)
+		priv->obj_ops.lb_dummy_queue_release(dev);
 	mlx5_txpp_stop(dev); /* Stop last. */
 	rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
@@ -1183,6 +1191,8 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	priv->sh->port[priv->dev_port - 1].devx_ih_port_id = RTE_MAX_ETHPORTS;
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
+	if (priv->obj_ops.lb_dummy_queue_release)
+		priv->obj_ops.lb_dummy_queue_release(dev);
 	mlx5_txpp_stop(dev);
 
 	return 0;
