@@ -61,13 +61,12 @@ static int
 hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 		  uint8_t *resp_data, uint16_t resp_len)
 {
-#define HNS3_MAX_RETRY_MS	500
+#define HNS3_MAX_RETRY_US	500000
 #define HNS3_WAIT_RESP_US	100
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_mbx_resp_status *mbx_resp;
+	uint32_t wait_time = 0;
 	bool received;
-	uint64_t now;
-	uint64_t end;
 
 	if (resp_len > HNS3_MBX_MAX_RESP_DATA_SIZE) {
 		hns3_err(hw, "VF mbx response len(=%u) exceeds maximum(=%d)",
@@ -75,9 +74,7 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 		return -EINVAL;
 	}
 
-	now = get_timeofday_ms();
-	end = now + HNS3_MAX_RETRY_MS;
-	while (now < end) {
+	while (wait_time < HNS3_MAX_RETRY_US) {
 		if (rte_atomic16_read(&hw->reset.disable_cmd)) {
 			hns3_err(hw, "Don't wait for mbx respone because of "
 				 "disable_cmd");
@@ -103,10 +100,10 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 		if (received)
 			break;
 
-		now = get_timeofday_ms();
+		wait_time += HNS3_WAIT_RESP_US;
 	}
 	hw->mbx_resp.req_msg_data = 0;
-	if (now >= end) {
+	if (wait_time >= HNS3_MAX_RETRY_US) {
 		hns3_mbx_proc_timeout(hw, code, subcode);
 		return -ETIME;
 	}
