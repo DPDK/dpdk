@@ -221,6 +221,7 @@ sfc_mae_outer_rule_enable(struct sfc_adapter *sa,
 		if (fw_rsrc->refcnt == 0) {
 			(void)efx_mae_outer_rule_remove(sa->nic,
 							&fw_rsrc->rule_id);
+			fw_rsrc->rule_id.id = EFX_MAE_RSRC_ID_INVALID;
 		}
 		return rc;
 	}
