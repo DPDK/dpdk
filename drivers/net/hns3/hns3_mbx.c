@@ -40,14 +40,32 @@ hns3_resp_to_errno(uint16_t resp_code)
 	return -EIO;
 }
 
+static void
+hns3_mbx_proc_timeout(struct hns3_hw *hw, uint16_t code, uint16_t subcode)
+{
+	if (hw->mbx_resp.matching_scheme ==
+	    HNS3_MBX_RESP_MATCHING_SCHEME_OF_ORIGINAL) {
+		hw->mbx_resp.lost++;
+		hns3_err(hw,
+			 "VF could not get mbx(%u,%u) head(%u) tail(%u) "
+			 "lost(%u) from PF",
+			 code, subcode, hw->mbx_resp.head, hw->mbx_resp.tail,
+			 hw->mbx_resp.lost);
+		return;
+	}
+
+	hns3_err(hw, "VF could not get mbx(%u,%u) from PF", code, subcode);
+}
+
 static int
-hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code0, uint16_t code1,
+hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 		  uint8_t *resp_data, uint16_t resp_len)
 {
 #define HNS3_MAX_RETRY_MS	500
 #define HNS3_WAIT_RESP_US	100
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_mbx_resp_status *mbx_resp;
+	bool received;
 	uint64_t now;
 	uint64_t end;
 
@@ -59,8 +77,7 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code0, uint16_t code1,
 
 	now = get_timeofday_ms();
 	end = now + HNS3_MAX_RETRY_MS;
-	while ((hw->mbx_resp.head != hw->mbx_resp.tail + hw->mbx_resp.lost) &&
-	       (now < end)) {
+	while (now < end) {
 		if (rte_atomic16_read(&hw->reset.disable_cmd)) {
 			hns3_err(hw, "Don't wait for mbx respone because of "
 				 "disable_cmd");
@@ -77,16 +94,20 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code0, uint16_t code1,
 		hns3_dev_handle_mbx_msg(hw);
 		rte_delay_us(HNS3_WAIT_RESP_US);
 
+		if (hw->mbx_resp.matching_scheme ==
+		    HNS3_MBX_RESP_MATCHING_SCHEME_OF_ORIGINAL)
+			received = (hw->mbx_resp.head ==
+				    hw->mbx_resp.tail + hw->mbx_resp.lost);
+		else
+			received = hw->mbx_resp.received_match_resp;
+		if (received)
+			break;
+
 		now = get_timeofday_ms();
 	}
 	hw->mbx_resp.req_msg_data = 0;
 	if (now >= end) {
-		hw->mbx_resp.lost++;
-		hns3_err(hw,
-			 "VF could not get mbx(%u,%u) head(%u) tail(%u) "
-			 "lost(%u) from PF",
-			 code0, code1, hw->mbx_resp.head, hw->mbx_resp.tail,
-			 hw->mbx_resp.lost);
+		hns3_mbx_proc_timeout(hw, code, subcode);
 		return -ETIME;
 	}
 	rte_io_rmb();
@@ -99,6 +120,29 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code0, uint16_t code1,
 		memcpy(resp_data, &mbx_resp->additional_info[0], resp_len);
 
 	return 0;
+}
+
+static void
+hns3_mbx_prepare_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode)
+{
+	/*
+	 * Init both matching scheme fields because we may not know the exact
+	 * scheme will be used when in the initial phase.
+	 *
+	 * Also, there are OK to init both matching scheme fields even though
+	 * we get the exact scheme which is used.
+	 */
+	hw->mbx_resp.req_msg_data = (uint32_t)code << 16 | subcode;
+	hw->mbx_resp.head++;
+
+	/* Update match_id and ensure the value of match_id is not zero */
+	hw->mbx_resp.match_id++;
+	if (hw->mbx_resp.match_id == 0)
+		hw->mbx_resp.match_id = 1;
+	hw->mbx_resp.received_match_resp = false;
+
+	hw->mbx_resp.resp_status = 0;
+	memset(hw->mbx_resp.additional_info, 0, HNS3_MBX_MAX_RESP_DATA_SIZE);
 }
 
 int
@@ -138,8 +182,8 @@ hns3_send_mbx_msg(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 	if (need_resp) {
 		req->mbx_need_resp |= HNS3_MBX_NEED_RESP_BIT;
 		rte_spinlock_lock(&hw->mbx_resp.lock);
-		hw->mbx_resp.req_msg_data = (uint32_t)code << 16 | subcode;
-		hw->mbx_resp.head++;
+		hns3_mbx_prepare_resp(hw, code, subcode);
+		req->match_id = hw->mbx_resp.match_id;
 		ret = hns3_cmd_send(hw, &desc, 1);
 		if (ret) {
 			hw->mbx_resp.head--;
@@ -252,6 +296,46 @@ hns3_update_resp_position(struct hns3_hw *hw, uint32_t resp_msg)
 }
 
 static void
+hns3_handle_mbx_response(struct hns3_hw *hw, struct hns3_mbx_pf_to_vf_cmd *req)
+{
+	struct hns3_mbx_resp_status *resp = &hw->mbx_resp;
+	uint32_t msg_data;
+
+	if (req->match_id != 0) {
+		/*
+		 * If match_id is not zero, it means PF support copy request's
+		 * match_id to its response. So VF could use the match_id
+		 * to match the request.
+		 */
+		if (resp->matching_scheme !=
+		    HNS3_MBX_RESP_MATCHING_SCHEME_OF_MATCH_ID) {
+			resp->matching_scheme =
+				HNS3_MBX_RESP_MATCHING_SCHEME_OF_MATCH_ID;
+			hns3_info(hw, "detect mailbox support match id!");
+		}
+		if (req->match_id == resp->match_id) {
+			resp->resp_status = hns3_resp_to_errno(req->msg[3]);
+			memcpy(resp->additional_info, &req->msg[4],
+			       HNS3_MBX_MAX_RESP_DATA_SIZE);
+			rte_io_wmb();
+			resp->received_match_resp = true;
+		}
+		return;
+	}
+
+	/*
+	 * If the below instructions can be executed, it means PF does not
+	 * support copy request's match_id to its response. So VF follows the
+	 * original scheme to process.
+	 */
+	resp->resp_status = hns3_resp_to_errno(req->msg[3]);
+	memcpy(resp->additional_info, &req->msg[4],
+	       HNS3_MBX_MAX_RESP_DATA_SIZE);
+	msg_data = (uint32_t)req->msg[1] << 16 | req->msg[2];
+	hns3_update_resp_position(hw, msg_data);
+}
+
+static void
 hns3_link_fail_parse(struct hns3_hw *hw, uint8_t link_fail_code)
 {
 	switch (link_fail_code) {
@@ -327,16 +411,12 @@ hns3_handle_promisc_info(struct hns3_hw *hw, uint16_t promisc_en)
 void
 hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 {
-	struct hns3_mbx_resp_status *resp = &hw->mbx_resp;
 	struct hns3_cmq_ring *crq = &hw->cmq.crq;
 	struct hns3_mbx_pf_to_vf_cmd *req;
 	struct hns3_cmd_desc *desc;
-	uint32_t msg_data;
 	uint16_t *msg_q;
 	uint8_t opcode;
 	uint16_t flag;
-	uint8_t *temp;
-	int i;
 	rte_spinlock_lock(&hw->cmq.crq.lock);
 
 	while (!hns3_cmd_crq_empty(hw)) {
@@ -363,15 +443,7 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 
 		switch (opcode) {
 		case HNS3_MBX_PF_VF_RESP:
-			resp->resp_status = hns3_resp_to_errno(req->msg[3]);
-
-			temp = (uint8_t *)&req->msg[4];
-			for (i = 0; i < HNS3_MBX_MAX_RESP_DATA_SIZE; i++) {
-				resp->additional_info[i] = *temp;
-				temp++;
-			}
-			msg_data = (uint32_t)req->msg[1] << 16 | req->msg[2];
-			hns3_update_resp_position(hw, msg_data);
+			hns3_handle_mbx_response(hw, req);
 			break;
 		case HNS3_MBX_LINK_STAT_CHANGE:
 		case HNS3_MBX_ASSERTING_RESET:
