@@ -1055,6 +1055,125 @@ error:
 	return -rte_errno;
 }
 
+/*
+ * Create the dummy QP with minimal resources for loopback.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_rxq_ibv_obj_dummy_lb_create(struct rte_eth_dev *dev)
+{
+#if defined(HAVE_IBV_DEVICE_TUNNEL_SUPPORT) && defined(HAVE_IBV_FLOW_DV_SUPPORT)
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct ibv_context *ctx = sh->ctx;
+	struct mlx5dv_qp_init_attr qp_init_attr = {0};
+	struct {
+		struct ibv_cq_init_attr_ex ibv;
+		struct mlx5dv_cq_init_attr mlx5;
+	} cq_attr = {{0}};
+
+	if (dev->data->dev_conf.lpbk_mode) {
+		/* Allow packet sent from NIC loop back w/o source MAC check. */
+		qp_init_attr.comp_mask |=
+				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
+		qp_init_attr.create_flags |=
+				MLX5DV_QP_CREATE_TIR_ALLOW_SELF_LOOPBACK_UC;
+	} else {
+		return 0;
+	}
+	/* Only need to check refcnt, 0 after "sh" is allocated. */
+	if (!!(__atomic_fetch_add(&sh->self_lb.refcnt, 1, __ATOMIC_RELAXED))) {
+		MLX5_ASSERT(sh->self_lb.ibv_cq && sh->self_lb.qp);
+		priv->lb_used = 1;
+		return 0;
+	}
+	cq_attr.ibv = (struct ibv_cq_init_attr_ex){
+		.cqe = 1,
+		.channel = NULL,
+		.comp_mask = 0,
+	};
+	cq_attr.mlx5 = (struct mlx5dv_cq_init_attr){
+		.comp_mask = 0,
+	};
+	/* Only CQ is needed, no WQ(RQ) is required in this case. */
+	sh->self_lb.ibv_cq = mlx5_glue->cq_ex_to_cq(mlx5_glue->dv_create_cq(ctx,
+							&cq_attr.ibv,
+							&cq_attr.mlx5));
+	if (!sh->self_lb.ibv_cq) {
+		DRV_LOG(ERR, "Port %u cannot allocate CQ for loopback.",
+			dev->data->port_id);
+		rte_errno = errno;
+		goto error;
+	}
+	sh->self_lb.qp = mlx5_glue->dv_create_qp(ctx,
+				&(struct ibv_qp_init_attr_ex){
+					.qp_type = IBV_QPT_RAW_PACKET,
+					.comp_mask = IBV_QP_INIT_ATTR_PD,
+					.pd = sh->pd,
+					.send_cq = sh->self_lb.ibv_cq,
+					.recv_cq = sh->self_lb.ibv_cq,
+					.cap.max_recv_wr = 1,
+				},
+				&qp_init_attr);
+	if (!sh->self_lb.qp) {
+		DRV_LOG(DEBUG, "Port %u cannot allocate QP for loopback.",
+			dev->data->port_id);
+		rte_errno = errno;
+		goto error;
+	}
+	priv->lb_used = 1;
+	return 0;
+error:
+	if (sh->self_lb.ibv_cq) {
+		claim_zero(mlx5_glue->destroy_cq(sh->self_lb.ibv_cq));
+		sh->self_lb.ibv_cq = NULL;
+	}
+	(void)__atomic_sub_fetch(&sh->self_lb.refcnt, 1, __ATOMIC_RELAXED);
+	return -rte_errno;
+#else
+	RTE_SET_USED(dev);
+	return 0;
+#endif
+}
+
+/*
+ * Release the dummy queue resources for loopback.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+void
+mlx5_rxq_ibv_obj_dummy_lb_release(struct rte_eth_dev *dev)
+{
+#if defined(HAVE_IBV_DEVICE_TUNNEL_SUPPORT) && defined(HAVE_IBV_FLOW_DV_SUPPORT)
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+
+	if (!priv->lb_used)
+		return;
+	MLX5_ASSERT(__atomic_load_n(&sh->self_lb.refcnt, __ATOMIC_RELAXED));
+	if (!(__atomic_sub_fetch(&sh->self_lb.refcnt, 1, __ATOMIC_RELAXED))) {
+		if (sh->self_lb.qp) {
+			claim_zero(mlx5_glue->destroy_qp(sh->self_lb.qp));
+			sh->self_lb.qp = NULL;
+		}
+		if (sh->self_lb.ibv_cq) {
+			claim_zero(mlx5_glue->destroy_cq(sh->self_lb.ibv_cq));
+			sh->self_lb.ibv_cq = NULL;
+		}
+	}
+	priv->lb_used = 0;
+#else
+	RTE_SET_USED(dev);
+	return;
+#endif
+}
+
 /**
  * Release an Tx verbs queue object.
  *
@@ -1084,4 +1203,6 @@ struct mlx5_obj_ops ibv_obj_ops = {
 	.txq_obj_new = mlx5_txq_ibv_obj_new,
 	.txq_obj_modify = mlx5_ibv_modify_qp,
 	.txq_obj_release = mlx5_txq_ibv_obj_release,
+	.lb_dummy_queue_create = NULL,
+	.lb_dummy_queue_release = NULL,
 };

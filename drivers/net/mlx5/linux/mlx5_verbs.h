@@ -9,6 +9,8 @@
 
 int mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx);
 void mlx5_txq_ibv_obj_release(struct mlx5_txq_obj *txq_obj);
+int mlx5_rxq_ibv_obj_dummy_lb_create(struct rte_eth_dev *dev);
+void mlx5_rxq_ibv_obj_dummy_lb_release(struct rte_eth_dev *dev);
 
 /* Verbs ops struct */
 extern const struct mlx5_mr_ops mlx5_mr_verbs_ops;
