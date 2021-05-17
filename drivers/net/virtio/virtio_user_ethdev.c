@@ -63,6 +63,32 @@ virtio_user_reset_queues_packed(struct rte_eth_dev *dev)
 	rte_spinlock_unlock(&hw->state_lock);
 }
 
+static void
+virtio_user_delayed_intr_reconfig_handler(void *param)
+{
+	struct virtio_hw *hw = (struct virtio_hw *)param;
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[hw->port_id];
+	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
+
+	PMD_DRV_LOG(DEBUG, "Unregistering intr fd: %d",
+		    eth_dev->intr_handle->fd);
+
+	if (rte_intr_callback_unregister(eth_dev->intr_handle,
+					 virtio_interrupt_handler,
+					 eth_dev) != 1)
+		PMD_DRV_LOG(ERR, "interrupt unregister failed");
+
+	eth_dev->intr_handle->fd = dev->vhostfd;
+
+	PMD_DRV_LOG(DEBUG, "Registering intr fd: %d", eth_dev->intr_handle->fd);
+
+	if (rte_intr_callback_register(eth_dev->intr_handle,
+				       virtio_interrupt_handler, eth_dev))
+		PMD_DRV_LOG(ERR, "interrupt register failed");
+
+	if (rte_intr_enable(eth_dev->intr_handle) < 0)
+		PMD_DRV_LOG(ERR, "interrupt enable failed");
+}
 
 static int
 virtio_user_server_reconnect(struct virtio_user_dev *dev)
@@ -148,24 +174,21 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 			PMD_DRV_LOG(ERR, "interrupt disable failed");
 			return -1;
 		}
-		rte_intr_callback_unregister(eth_dev->intr_handle,
-					     virtio_interrupt_handler,
-					     eth_dev);
-		eth_dev->intr_handle->fd = connectfd;
-		rte_intr_callback_register(eth_dev->intr_handle,
-					   virtio_interrupt_handler, eth_dev);
-
-		if (rte_intr_enable(eth_dev->intr_handle) < 0) {
-			PMD_DRV_LOG(ERR, "interrupt enable failed");
-			return -1;
-		}
+		/*
+		 * This function can be called from the interrupt handler, so
+		 * we can't unregister interrupt handler here.  Setting
+		 * alarm to do that later.
+		 */
+		rte_eal_alarm_set(1,
+			virtio_user_delayed_intr_reconfig_handler,
+			(void *)hw);
 	}
 	PMD_INIT_LOG(NOTICE, "server mode virtio-user reconnection succeeds!");
 	return 0;
 }
 
 static void
-virtio_user_delayed_handler(void *param)
+virtio_user_delayed_disconnect_handler(void *param)
 {
 	struct virtio_hw *hw = (struct virtio_hw *)param;
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[hw->port_id];
@@ -175,8 +198,14 @@ virtio_user_delayed_handler(void *param)
 		PMD_DRV_LOG(ERR, "interrupt disable failed");
 		return;
 	}
-	rte_intr_callback_unregister(eth_dev->intr_handle,
-				     virtio_interrupt_handler, eth_dev);
+
+	PMD_DRV_LOG(DEBUG, "Unregistering intr fd: %d",
+		    eth_dev->intr_handle->fd);
+	if (rte_intr_callback_unregister(eth_dev->intr_handle,
+					 virtio_interrupt_handler,
+					 eth_dev) != 1)
+		PMD_DRV_LOG(ERR, "interrupt unregister failed");
+
 	if (dev->is_server) {
 		if (dev->vhostfd >= 0) {
 			close(dev->vhostfd);
@@ -188,8 +217,15 @@ virtio_user_delayed_handler(void *param)
 				~(1ULL << VHOST_USER_PROTOCOL_F_STATUS);
 		}
 		eth_dev->intr_handle->fd = dev->listenfd;
-		rte_intr_callback_register(eth_dev->intr_handle,
-					   virtio_interrupt_handler, eth_dev);
+
+		PMD_DRV_LOG(DEBUG, "Registering intr fd: %d",
+			    eth_dev->intr_handle->fd);
+
+		if (rte_intr_callback_register(eth_dev->intr_handle,
+					       virtio_interrupt_handler,
+					       eth_dev))
+			PMD_DRV_LOG(ERR, "interrupt register failed");
+
 		if (rte_intr_enable(eth_dev->intr_handle) < 0) {
 			PMD_DRV_LOG(ERR, "interrupt enable failed");
 			return;
@@ -235,8 +271,8 @@ virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
 				 * unregistered here, set an alarm to do it.
 				 */
 				rte_eal_alarm_set(1,
-						  virtio_user_delayed_handler,
-						  (void *)hw);
+					virtio_user_delayed_disconnect_handler,
+					(void *)hw);
 			} else {
 				dev->net_status |= VIRTIO_NET_S_LINK_UP;
 			}
