@@ -14504,7 +14504,7 @@ run_cryptodev_testsuite(const char *pmd_name)
 
 	if (gbl_driver_id == -1) {
 		RTE_LOG(ERR, USER1, "%s PMD must be loaded.\n", pmd_name);
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	ts.unit_test_suites = malloc(sizeof(struct unit_test_suite *) *
