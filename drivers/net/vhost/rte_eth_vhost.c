@@ -1505,7 +1505,7 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 	int ret = 0;
 	char *iface_name;
 	uint16_t queues;
-	uint64_t flags = RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS;
+	uint64_t flags = 0;
 	uint64_t disable_flags = 0;
 	int client_mode = 0;
 	int iommu_support = 0;
