@@ -516,6 +516,9 @@ efx_mcdi_finish_response(
 	bytes = MIN(emrp->emr_out_length_used, emrp->emr_out_length);
 	efx_mcdi_read_response(enp, emrp->emr_out_buf, resp_off, bytes);
 
+	/* Report bytes copied to caller (response message may be larger) */
+	emrp->emr_out_length_used = bytes;
+
 #if EFSYS_OPT_MCDI_LOGGING
 	if (emtp->emt_logger != NULL) {
 		emtp->emt_logger(emtp->emt_context,
