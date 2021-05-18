@@ -491,9 +491,15 @@ efx_mcdi_get_rxdp_config(
 	req.emr_out_length = MC_CMD_GET_RXDP_CONFIG_OUT_LEN;
 
 	efx_mcdi_execute(enp, &req);
+
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
 		goto fail1;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_GET_RXDP_CONFIG_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail2;
 	}
 
 	if (MCDI_OUT_DWORD_FIELD(req, GET_RXDP_CONFIG_OUT_DATA,
@@ -514,7 +520,7 @@ efx_mcdi_get_rxdp_config(
 			break;
 		default:
 			rc = ENOTSUP;
-			goto fail2;
+			goto fail3;
 		}
 	}
 
@@ -522,6 +528,8 @@ efx_mcdi_get_rxdp_config(
 
 	return (0);
 
+fail3:
+	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:
