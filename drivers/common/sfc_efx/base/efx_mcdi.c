@@ -2294,6 +2294,11 @@ efx_mcdi_get_workarounds(
 		goto fail1;
 	}
 
+	if (req.emr_out_length_used < MC_CMD_GET_WORKAROUNDS_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail2;
+	}
+
 	if (implementedp != NULL) {
 		*implementedp =
 		    MCDI_OUT_DWORD(req, GET_WORKAROUNDS_OUT_IMPLEMENTED);
@@ -2305,6 +2310,8 @@ efx_mcdi_get_workarounds(
 
 	return (0);
 
+fail2:
+	EFSYS_PROBE(fail2);
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 

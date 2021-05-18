@@ -109,17 +109,22 @@ efx_mae_get_outer_rule_caps(
 		goto fail2;
 	}
 
+	if (req.emr_out_length_used < MC_CMD_MAE_GET_OR_CAPS_OUT_LENMIN) {
+		rc = EMSGSIZE;
+		goto fail3;
+	}
+
 	mcdi_field_ncaps = MCDI_OUT_DWORD(req, MAE_GET_OR_CAPS_OUT_COUNT);
 
 	if (req.emr_out_length_used <
 	    MC_CMD_MAE_GET_OR_CAPS_OUT_LEN(mcdi_field_ncaps)) {
 		rc = EMSGSIZE;
-		goto fail3;
+		goto fail4;
 	}
 
 	if (mcdi_field_ncaps > field_ncaps) {
 		rc = EMSGSIZE;
-		goto fail4;
+		goto fail5;
 	}
 
 	for (i = 0; i < mcdi_field_ncaps; ++i) {
@@ -147,6 +152,8 @@ efx_mae_get_outer_rule_caps(
 
 	return (0);
 
+fail5:
+	EFSYS_PROBE(fail5);
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
@@ -191,17 +198,22 @@ efx_mae_get_action_rule_caps(
 		goto fail2;
 	}
 
-	mcdi_field_ncaps = MCDI_OUT_DWORD(req, MAE_GET_OR_CAPS_OUT_COUNT);
-
-	if (req.emr_out_length_used <
-	    MC_CMD_MAE_GET_AR_CAPS_OUT_LEN(mcdi_field_ncaps)) {
+	if (req.emr_out_length_used < MC_CMD_MAE_GET_AR_CAPS_OUT_LENMIN) {
 		rc = EMSGSIZE;
 		goto fail3;
 	}
 
-	if (mcdi_field_ncaps > field_ncaps) {
+	mcdi_field_ncaps = MCDI_OUT_DWORD(req, MAE_GET_AR_CAPS_OUT_COUNT);
+
+	if (req.emr_out_length_used <
+	    MC_CMD_MAE_GET_AR_CAPS_OUT_LEN(mcdi_field_ncaps)) {
 		rc = EMSGSIZE;
 		goto fail4;
+	}
+
+	if (mcdi_field_ncaps > field_ncaps) {
+		rc = EMSGSIZE;
+		goto fail5;
 	}
 
 	for (i = 0; i < mcdi_field_ncaps; ++i) {
@@ -229,6 +241,8 @@ efx_mae_get_action_rule_caps(
 
 	return (0);
 
+fail5:
+	EFSYS_PROBE(fail5);
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
@@ -1773,15 +1787,22 @@ efx_mae_outer_rule_remove(
 		goto fail2;
 	}
 
+	if (req.emr_out_length_used < MC_CMD_MAE_OUTER_RULE_REMOVE_OUT_LENMIN) {
+		rc = EMSGSIZE;
+		goto fail3;
+	}
+
 	if (MCDI_OUT_DWORD(req, MAE_OUTER_RULE_REMOVE_OUT_REMOVED_OR_ID) !=
 	    or_idp->id) {
 		/* Firmware failed to remove the outer rule. */
 		rc = EAGAIN;
-		goto fail3;
+		goto fail4;
 	}
 
 	return (0);
 
+fail4:
+	EFSYS_PROBE(fail4);
 fail3:
 	EFSYS_PROBE(fail3);
 fail2:
@@ -2176,15 +2197,22 @@ efx_mae_action_set_free(
 		goto fail2;
 	}
 
+	if (req.emr_out_length_used < MC_CMD_MAE_ACTION_SET_FREE_OUT_LENMIN) {
+		rc = EMSGSIZE;
+		goto fail3;
+	}
+
 	if (MCDI_OUT_DWORD(req, MAE_ACTION_SET_FREE_OUT_FREED_AS_ID) !=
 	    aset_idp->id) {
 		/* Firmware failed to free the action set. */
 		rc = EAGAIN;
-		goto fail3;
+		goto fail4;
 	}
 
 	return (0);
 
+fail4:
+	EFSYS_PROBE(fail4);
 fail3:
 	EFSYS_PROBE(fail3);
 fail2:
@@ -2326,15 +2354,23 @@ efx_mae_action_rule_remove(
 		goto fail2;
 	}
 
+	if (req.emr_out_length_used <
+	    MC_CMD_MAE_ACTION_RULE_DELETE_OUT_LENMIN) {
+		rc = EMSGSIZE;
+		goto fail3;
+	}
+
 	if (MCDI_OUT_DWORD(req, MAE_ACTION_RULE_DELETE_OUT_DELETED_AR_ID) !=
 	    ar_idp->id) {
 		/* Firmware failed to delete the action rule. */
 		rc = EAGAIN;
-		goto fail3;
+		goto fail4;
 	}
 
 	return (0);
 
+fail4:
+	EFSYS_PROBE(fail4);
 fail3:
 	EFSYS_PROBE(fail3);
 fail2:
