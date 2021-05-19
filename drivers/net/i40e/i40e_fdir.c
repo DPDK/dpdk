@@ -1767,7 +1767,8 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 
 	if (add) {
 		/* configure the input set for common PCTYPEs*/
-		if (!filter->input.flow_ext.customized_pctype) {
+		if (!filter->input.flow_ext.customized_pctype &&
+		    !filter->input.flow_ext.pkt_template) {
 			ret = i40e_flow_set_fdir_inset(pf, pctype,
 					filter->input.flow_ext.input_set);
 			if (ret < 0)
