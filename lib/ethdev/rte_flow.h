@@ -1707,8 +1707,16 @@ rte_flow_item_geneve_opt_mask = {
 };
 #endif
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ITEM_TYPE_INTEGRITY
+ *
+ * Match on packet integrity check result.
+ */
 struct rte_flow_item_integrity {
-	/**< Tunnel encapsulation level the item should apply to.
+	/** Tunnel encapsulation level the item should apply to.
 	 * @see rte_flow_action_rss
 	 */
 	uint32_t level;
@@ -1716,21 +1724,21 @@ struct rte_flow_item_integrity {
 	union {
 		__extension__
 		struct {
-			/**< The packet is valid after passing all HW checks. */
+			/** The packet is valid after passing all HW checks. */
 			uint64_t packet_ok:1;
-			/**< L2 layer is valid after passing all HW checks. */
+			/** L2 layer is valid after passing all HW checks. */
 			uint64_t l2_ok:1;
-			/**< L3 layer is valid after passing all HW checks. */
+			/** L3 layer is valid after passing all HW checks. */
 			uint64_t l3_ok:1;
-			/**< L4 layer is valid after passing all HW checks. */
+			/** L4 layer is valid after passing all HW checks. */
 			uint64_t l4_ok:1;
-			/**< L2 layer CRC is valid. */
+			/** L2 layer CRC is valid. */
 			uint64_t l2_crc_ok:1;
-			/**< IPv4 layer checksum is valid. */
+			/** IPv4 layer checksum is valid. */
 			uint64_t ipv4_csum_ok:1;
-			/**< L4 layer checksum is valid. */
+			/** L4 layer checksum is valid. */
 			uint64_t l4_csum_ok:1;
-			/**< The l3 length is smaller than the frame length. */
+			/** L3 length is smaller than frame length. */
 			uint64_t l3_len_ok:1;
 			uint64_t reserved:56;
 		};
