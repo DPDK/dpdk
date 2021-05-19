@@ -233,6 +233,7 @@ regex_ctrl_create_sq(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 	attr.tis_num = 0;
 	attr.user_index = q_ind;
 	attr.cqn = qp->cq.obj->id;
+	attr.ts_format = mlx5_ts_format_conv(priv->sq_ts_format);
 	wq_attr->uar_page = priv->uar->page_id;
 	regex_get_pdn(priv->pd, &pd_num);
 	wq_attr->pd = pd_num;
