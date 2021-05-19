@@ -328,6 +328,7 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 	sq_attr.tis_num = sh->tis->id;
 	sq_attr.cqn = wq->cq->id;
 	sq_attr.cd_master = 1;
+	sq_attr.ts_format = mlx5_ts_format_conv(sh->sq_ts_format);
 	sq_attr.wq_attr.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar);
 	sq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;
 	sq_attr.wq_attr.pd = sh->pdn;
@@ -577,6 +578,7 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	sq_attr.state = MLX5_SQC_STATE_RST;
 	sq_attr.cqn = wq->cq->id;
 	sq_attr.packet_pacing_rate_limit_index = sh->txpp.pp_id;
+	sq_attr.ts_format = mlx5_ts_format_conv(sh->sq_ts_format);
 	sq_attr.wq_attr.cd_slave = 1;
 	sq_attr.wq_attr.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar);
 	sq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;

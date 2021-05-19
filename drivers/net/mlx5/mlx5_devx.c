@@ -1369,6 +1369,7 @@ mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx,
 	sq_attr.allow_multi_pkt_send_wqe = !!priv->config.mps;
 	sq_attr.allow_swp = !!priv->config.swp;
 	sq_attr.min_wqe_inline_mode = priv->config.hca_attr.vport_inline_mode;
+	sq_attr.ts_format = mlx5_ts_format_conv(priv->sh->sq_ts_format);
 	sq_attr.wq_attr.uar_page =
 				mlx5_os_get_devx_uar_page_id(priv->sh->tx_uar);
 	sq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;

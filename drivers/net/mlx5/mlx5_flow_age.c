@@ -257,7 +257,7 @@ mlx5_aso_init_sq(struct mlx5_aso_sq *sq)
 static int
 mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 		   struct mlx5dv_devx_uar *uar, uint32_t pdn,
-		   uint32_t eqn,  uint16_t log_desc_n)
+		   uint32_t eqn,  uint16_t log_desc_n, uint32_t ts_format)
 {
 	struct mlx5_devx_create_sq_attr attr = { 0 };
 	struct mlx5_devx_modify_sq_attr modify_attr = { 0 };
@@ -296,6 +296,7 @@ mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 	attr.tis_num = 0;
 	attr.user_index = 0xFFFF;
 	attr.cqn = sq->cq.cq->id;
+	attr.ts_format = mlx5_ts_format_conv(ts_format);
 	wq_attr->uar_page = mlx5_os_get_devx_uar_page_id(uar);
 	wq_attr->pd = pdn;
 	wq_attr->wq_type = MLX5_WQ_TYPE_CYCLIC;
@@ -348,7 +349,7 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh)
 {
 	return mlx5_aso_sq_create(sh->ctx, &sh->aso_age_mng->aso_sq, 0,
 				  sh->tx_uar, sh->pdn, sh->eqn,
-				  MLX5_ASO_QUEUE_LOG_DESC);
+				  MLX5_ASO_QUEUE_LOG_DESC, sh->sq_ts_format);
 }
 
 /**

@@ -1119,6 +1119,9 @@ err_secondary:
 			sh->cmng.relaxed_ordering_read = 0;
 			sh->cmng.relaxed_ordering_write = 0;
 		}
+		sh->rq_ts_format = config->hca_attr.rq_ts_format;
+		sh->sq_ts_format = config->hca_attr.sq_ts_format;
+		sh->qp_ts_format = config->hca_attr.qp_ts_format;
 		/* Check for LRO support. */
 		if (config->dest_tir && config->hca_attr.lro_cap &&
 		    config->dv_flow_en) {
