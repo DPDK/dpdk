@@ -69,6 +69,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# check %l or %ll format specifier
+	awk -v FOLDERS='lib drivers app examples' \
+		-v EXPRESSIONS='%ll*[xud]' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using %l format, prefer %PRI*64 if type is [u]int64_t' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# forbid variable declaration inside "for" loop
 	awk -v FOLDERS='.' \
 		-v EXPRESSIONS='for[[:space:]]*\\((char|u?int|unsigned|s?size_t)' \
