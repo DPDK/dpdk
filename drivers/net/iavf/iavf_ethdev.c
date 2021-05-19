@@ -274,7 +274,7 @@ iavf_init_rss(struct iavf_adapter *adapter)
 	/* configure RSS key */
 	if (!rss_conf->rss_key) {
 		/* Calculate the default hash key */
-		for (i = 0; i <= vf->vf_res->rss_key_size; i++)
+		for (i = 0; i < vf->vf_res->rss_key_size; i++)
 			vf->rss_key[i] = (uint8_t)rte_rand();
 	} else
 		rte_memcpy(vf->rss_key, rss_conf->rss_key,
