@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added support for GCC 11 and clang 12.**
+
+  Added support for building with GCC 11.1.1 and clang 12.0.0.
+
 * **Added Alpine Linux with musl libc support**
 
   The distribution Alpine Linux, using musl libc and busybox,
