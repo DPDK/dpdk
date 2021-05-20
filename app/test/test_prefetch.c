@@ -20,7 +20,7 @@
 static int
 test_prefetch(void)
 {
-	int a;
+	int a = 0;
 
 	rte_prefetch0(&a);
 	rte_prefetch1(&a);
