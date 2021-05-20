@@ -198,6 +198,15 @@ check_internal_tags() { # <patch>
 	return $res
 }
 
+check_release_notes() { # <patch>
+	rel_notes_prefix=doc/guides/rel_notes/release_
+	IFS=. read year month release < VERSION
+	current_rel_notes=${rel_notes_prefix}${year}_${month}.rst
+
+	! grep -e '^--- a/'$rel_notes_prefix -e '^+++ b/'$rel_notes_prefix "$1" |
+		grep -v $current_rel_notes
+}
+
 number=0
 range='origin/main..'
 quiet=false
@@ -283,6 +292,14 @@ check () { # <patch> <commit> <title>
 
 	! $verbose || printf '\nChecking __rte_internal tags:\n'
 	report=$(check_internal_tags "$tmpinput")
+	if [ $? -ne 0 ] ; then
+		$headline_printed || print_headline "$3"
+		printf '%s\n' "$report"
+		ret=1
+	fi
+
+	! $verbose || printf '\nChecking release notes updates:\n'
+	report=$(check_release_notes "$tmpinput")
 	if [ $? -ne 0 ] ; then
 		$headline_printed || print_headline "$3"
 		printf '%s\n' "$report"
