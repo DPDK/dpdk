@@ -179,19 +179,19 @@ pools' sizes are controlled by the nb_events_limit field in struct
 rte_event_dev_config. The load-balanced pool is sized to contain
 nb_events_limit credits, and the directed pool is sized to contain
 nb_events_limit/4 credits. The directed pool size can be overridden with the
-num_dir_credits vdev argument, like so:
+num_dir_credits devargs argument, like so:
 
     .. code-block:: console
 
-       --vdev=dlb1_event,num_dir_credits=<value>
+       --allow ea:00.0,num_dir_credits=<value>
 
 This can be used if the default allocation is too low or too high for the
-specific application needs. The PMD also supports a vdev arg that limits the
+specific application needs. The PMD also supports a devarg that limits the
 max_num_events reported by rte_event_dev_info_get():
 
     .. code-block:: console
 
-       --vdev=dlb1_event,max_num_events=<value>
+       --allow ea:00.0,max_num_events=<value>
 
 By default, max_num_events is reported as the total available load-balanced
 credits. If multiple DLB2-based applications are being used, it may be desirable
@@ -336,11 +336,11 @@ buffer space (e.g. if not all queues are used, or aren't used for atomic
 scheduling).
 
 The PMD provides a dev arg to override the default per-queue allocation. To
-increase a vdev's per-queue atomic-inflight allocation to (for example) 64:
+increase per-queue atomic-inflight allocation to (for example) 64:
 
     .. code-block:: console
 
-       --vdev=dlb1_event,atm_inflights=64
+       --allow ea:00.0,atm_inflights=64
 
 QID Depth Threshold
 ~~~~~~~~~~~~~~~~~~~
@@ -363,9 +363,9 @@ shown below.
 
     .. code-block:: console
 
-       --vdev=dlb2_event,qid_depth_thresh=all:<threshold_value>
-       --vdev=dlb2_event,qid_depth_thresh=qidA-qidB:<threshold_value>
-       --vdev=dlb2_event,qid_depth_thresh=qid:<threshold_value>
+       --allow ea:00.0,qid_depth_thresh=all:<threshold_value>
+       --allow ea:00.0,qid_depth_thresh=qidA-qidB:<threshold_value>
+       --allow ea:00.0,qid_depth_thresh=qid:<threshold_value>
 
 Class of service
 ~~~~~~~~~~~~~~~~
@@ -387,4 +387,4 @@ Class of service can be specified in the devargs, as follows
 
     .. code-block:: console
 
-       --vdev=dlb2_event,cos=<0..4>
+       --allow ea:00.0,cos=<0..4>
