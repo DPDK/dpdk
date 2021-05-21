@@ -27,7 +27,6 @@
 #define DLB2_MAX_NUM_EVENTS "max_num_events"
 #define DLB2_NUM_DIR_CREDITS "num_dir_credits"
 #define DEV_ID_ARG "dev_id"
-#define DLB2_DEFER_SCHED_ARG "defer_sched"
 #define DLB2_QID_DEPTH_THRESH_ARG "qid_depth_thresh"
 #define DLB2_COS_ARG "cos"
 
@@ -498,7 +497,6 @@ struct dlb2_eventdev {
 	uint16_t num_dir_ports; /* total num of dir ports requested */
 	bool umwait_allowed;
 	bool global_dequeue_wait; /* Not using per dequeue wait if true */
-	bool defer_sched;
 	enum dlb2_cq_poll_modes poll_mode;
 	uint8_t revision;
 	bool configured;
@@ -523,7 +521,6 @@ struct dlb2_devargs {
 	int max_num_events;
 	int num_dir_credits_override;
 	int dev_id;
-	int defer_sched;
 	struct dlb2_qid_depth_thresholds qid_depth_thresholds;
 	enum dlb2_cos cos_id;
 };

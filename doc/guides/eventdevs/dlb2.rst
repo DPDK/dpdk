@@ -314,27 +314,6 @@ The PMD does not support the following configuration sequences:
 This sequence is not supported because the event device must be reconfigured
 before its ports or queues can be.
 
-Deferred Scheduling
-~~~~~~~~~~~~~~~~~~~
-
-The DLB2 PMD's default behavior for managing a CQ is to "pop" the CQ once per
-dequeued event before returning from rte_event_dequeue_burst(). This frees the
-corresponding entries in the CQ, which enables the DLB2 to schedule more events
-to it.
-
-To support applications seeking finer-grained scheduling control -- for example
-deferring scheduling to get the best possible priority scheduling and
-load-balancing -- the PMD supports a deferred scheduling mode. In this mode,
-the CQ entry is not popped until the *subsequent* rte_event_dequeue_burst()
-call. This mode only applies to load-balanced event ports with dequeue depth of
-1.
-
-To enable deferred scheduling, use the defer_sched vdev argument like so:
-
-    .. code-block:: console
-
-       --vdev=dlb1_event,defer_sched=on
-
 Atomic Inflights Allocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
