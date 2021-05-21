@@ -1190,6 +1190,9 @@ static int partial_hash_compute(enum icp_qat_hw_auth_algo hash_alg,
 	uint64_t *hash_state_out_be64;
 	int i;
 
+	/* Initialize to avoid gcc warning */
+	memset(digest, 0, sizeof(digest));
+
 	digest_size = qat_hash_get_digest_size(hash_alg);
 	if (digest_size <= 0)
 		return -EFAULT;
