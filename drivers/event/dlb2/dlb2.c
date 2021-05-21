@@ -3561,6 +3561,11 @@ _process_deq_qes_vec_impl(struct dlb2_port *qm_port,
 	int ev_qid2 = qm_port->qid_mappings[hw_qid2];
 	int ev_qid3 = qm_port->qid_mappings[hw_qid3];
 
+	int hw_sched0 = _mm_extract_epi8(v_qe_meta, 3) & 3ul;
+	int hw_sched1 = _mm_extract_epi8(v_qe_meta, 7) & 3ul;
+	int hw_sched2 = _mm_extract_epi8(v_qe_meta, 11) & 3ul;
+	int hw_sched3 = _mm_extract_epi8(v_qe_meta, 15) & 3ul;
+
 	v_qid_done = _mm_insert_epi8(v_qid_done, ev_qid0, 2);
 	v_qid_done = _mm_insert_epi8(v_qid_done, ev_qid1, 6);
 	v_qid_done = _mm_insert_epi8(v_qid_done, ev_qid2, 10);
@@ -3682,19 +3687,27 @@ _process_deq_qes_vec_impl(struct dlb2_port *qm_port,
 		v_ev_3 = _mm_blend_epi16(v_unpk_ev_23, v_qe_3, 0x0F);
 		v_ev_3 = _mm_alignr_epi8(v_ev_3, v_ev_3, 8);
 		_mm_storeu_si128((__m128i *)&events[3], v_ev_3);
+		DLB2_INC_STAT(qm_port->ev_port->stats.rx_sched_cnt[hw_sched3],
+			      1);
 		/* fallthrough */
 	case 3:
 		v_ev_2 = _mm_unpacklo_epi64(v_unpk_ev_23, v_qe_2);
 		_mm_storeu_si128((__m128i *)&events[2], v_ev_2);
+		DLB2_INC_STAT(qm_port->ev_port->stats.rx_sched_cnt[hw_sched2],
+			      1);
 		/* fallthrough */
 	case 2:
 		v_ev_1 = _mm_blend_epi16(v_unpk_ev_01, v_qe_1, 0x0F);
 		v_ev_1 = _mm_alignr_epi8(v_ev_1, v_ev_1, 8);
 		_mm_storeu_si128((__m128i *)&events[1], v_ev_1);
+		DLB2_INC_STAT(qm_port->ev_port->stats.rx_sched_cnt[hw_sched1],
+			      1);
 		/* fallthrough */
 	case 1:
 		v_ev_0 = _mm_unpacklo_epi64(v_unpk_ev_01, v_qe_0);
 		_mm_storeu_si128((__m128i *)&events[0], v_ev_0);
+		DLB2_INC_STAT(qm_port->ev_port->stats.rx_sched_cnt[hw_sched0],
+			      1);
 	}
 }
 
