@@ -252,8 +252,6 @@ resolve_mcgt8_avx512x1(uint32_t result[],
 	__mmask16 cm, sm;
 	__m512i cp, cr, np, nr;
 
-	const uint32_t match_log = 5;
-
 	res = pr->results;
 	pri = pr->priority;
 
@@ -261,7 +259,7 @@ resolve_mcgt8_avx512x1(uint32_t result[],
 
 	for (k = 0; k != nb_pkt; k++, result += nb_cat) {
 
-		mi = match[k] << match_log;
+		mi = match[k] << ACL_MATCH_LOG;
 
 		cr = _mm512_maskz_loadu_epi32(cm, res + mi);
 		cp = _mm512_maskz_loadu_epi32(cm, pri + mi);
@@ -269,7 +267,7 @@ resolve_mcgt8_avx512x1(uint32_t result[],
 		for (i = 1, pm = match + nb_pkt; i != nb_trie;
 				i++, pm += nb_pkt) {
 
-			mi = pm[k] << match_log;
+			mi = pm[k] << ACL_MATCH_LOG;
 
 			nr = _mm512_maskz_loadu_epi32(cm, res + mi);
 			np = _mm512_maskz_loadu_epi32(cm, pri + mi);

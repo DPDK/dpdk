@@ -4,8 +4,8 @@
 
 #include "acl_run_sse.h"
 
-/*sizeof(uint32_t) << match_log == sizeof(struct rte_acl_match_results)*/
-static const uint32_t match_log = 5;
+/*sizeof(uint32_t) << ACL_MATCH_LOG == sizeof(struct rte_acl_match_results)*/
+#define ACL_MATCH_LOG	5
 
 struct acl_flow_avx512 {
 	uint32_t num_packets;       /* number of packets processed */
@@ -82,7 +82,7 @@ resolve_mcle8_avx512x1(uint32_t result[],
 
 	for (k = 0; k != nb_pkt; k++, result += nb_cat) {
 
-		mi = match[k] << match_log;
+		mi = match[k] << ACL_MATCH_LOG;
 
 		for (j = 0; j != nb_cat; j += RTE_ACL_RESULTS_MULTIPLIER) {
 
@@ -92,7 +92,7 @@ resolve_mcle8_avx512x1(uint32_t result[],
 			for (i = 1, pm = match + nb_pkt; i != nb_trie;
 				i++, pm += nb_pkt) {
 
-				mn = j + (pm[k] << match_log);
+				mn = j + (pm[k] << ACL_MATCH_LOG);
 
 				nr = _mm_loadu_si128((const xmm_t *)(res + mn));
 				np = _mm_loadu_si128((const xmm_t *)(pri + mn));

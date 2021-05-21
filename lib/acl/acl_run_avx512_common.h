@@ -393,8 +393,8 @@ static inline _T_simd
 _F_(resolve_match_idx)(_T_simd mi)
 {
 	RTE_BUILD_BUG_ON(sizeof(struct rte_acl_match_results) !=
-		1 << (match_log + 2));
-	return _M_I_(slli_epi32)(mi, match_log);
+		1 << (ACL_MATCH_LOG + 2));
+	return _M_I_(slli_epi32)(mi, ACL_MATCH_LOG);
 }
 
 /*
