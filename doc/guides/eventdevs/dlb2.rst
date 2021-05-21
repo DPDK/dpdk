@@ -367,3 +367,16 @@ Class of service can be specified in the devargs, as follows
     .. code-block:: console
 
        --allow ea:00.0,cos=<0..4>
+
+Use X86 Vector Instructions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+DLB supports using x86 vector instructions to optimize the data path.
+
+The default mode of operation is to use scalar instructions, but
+the use of vector instructions can be enabled in the devargs, as
+follows
+
+    .. code-block:: console
+
+       --allow ea:00.0,vector_opts_enabled=<y/Y>

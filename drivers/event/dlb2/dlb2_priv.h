@@ -37,7 +37,7 @@
 #define DLB2_POLL_INTERVAL_ARG "poll_interval"
 #define DLB2_SW_CREDIT_QUANTA_ARG "sw_credit_quanta"
 #define DLB2_DEPTH_THRESH_ARG "default_depth_thresh"
-#define DLB2_VECTOR_OPTS_DISAB_ARG "vector_opts_disable"
+#define DLB2_VECTOR_OPTS_ENAB_ARG "vector_opts_enable"
 
 /* Begin HW related defines and structs */
 
@@ -565,7 +565,7 @@ struct dlb2_eventdev {
 	uint32_t new_event_limit;
 	int max_num_events_override;
 	int num_dir_credits_override;
-	bool vector_opts_disabled;
+	bool vector_opts_enabled;
 	volatile enum dlb2_run_state run_state;
 	uint16_t num_dir_queues; /* total num of evdev dir queues requested */
 	union {
@@ -623,7 +623,7 @@ struct dlb2_devargs {
 	int poll_interval;
 	int sw_credit_quanta;
 	int default_depth_thresh;
-	bool vector_opts_disabled;
+	bool vector_opts_enabled;
 };
 
 /* End Eventdev related defines and structs */
