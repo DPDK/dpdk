@@ -42,7 +42,12 @@ static inline uint16_t bnxt_tpa_start_agg_id(struct bnxt *bp,
 		RX_PKT_CMPL_AGG_BUFS_SFT)
 
 /* Number of descriptors to process per inner loop in vector mode. */
-#define RTE_BNXT_DESCS_PER_LOOP		4U
+#define BNXT_RX_DESCS_PER_LOOP_VEC128	4U /* SSE, Neon */
+#define BNXT_RX_DESCS_PER_LOOP_VEC256	8U /* AVX2 */
+
+/* Number of extra Rx mbuf ring entries to allocate for vector mode. */
+#define BNXT_RX_EXTRA_MBUF_ENTRIES \
+	RTE_MAX(BNXT_RX_DESCS_PER_LOOP_VEC128, BNXT_RX_DESCS_PER_LOOP_VEC256)
 
 #define BNXT_OL_FLAGS_TBL_DIM	64
 #define BNXT_OL_FLAGS_ERR_TBL_DIM 32
@@ -106,6 +111,10 @@ uint16_t bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 int bnxt_rxq_vec_setup(struct bnxt_rx_queue *rxq);
 #endif
 
+#if defined(RTE_ARCH_X86) && defined(CC_AVX2_SUPPORT)
+uint16_t bnxt_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
+				 uint16_t nb_pkts);
+#endif
 void bnxt_set_mark_in_mbuf(struct bnxt *bp,
 			   struct rx_pkt_cmpl_hi *rxcmp1,
 			   struct rte_mbuf *mbuf);

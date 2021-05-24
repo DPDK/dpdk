@@ -11,6 +11,9 @@
 #define BNXT_MAX_TSO_SEGS	32
 #define BNXT_MIN_PKT_SIZE	52
 
+/* Number of transmit descriptors processed per inner loop in vector mode. */
+#define BNXT_TX_DESCS_PER_LOOP	4U
+
 struct bnxt_tx_ring_info {
 	uint16_t		tx_raw_prod;
 	uint16_t		tx_raw_cons;
@@ -47,6 +50,10 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 uint16_t bnxt_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 			    uint16_t nb_pkts);
+#endif
+#if defined(RTE_ARCH_X86) && defined(CC_AVX2_SUPPORT)
+uint16_t bnxt_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
+				 uint16_t nb_pkts);
 #endif
 
 int bnxt_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);

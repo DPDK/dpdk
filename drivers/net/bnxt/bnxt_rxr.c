@@ -1147,7 +1147,7 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 
 	/* Allocate extra rx ring entries for vector rx. */
 	ring->vmem_size = sizeof(struct rte_mbuf *) *
-				(ring->ring_size + RTE_BNXT_DESCS_PER_LOOP);
+			  (ring->ring_size + BNXT_RX_EXTRA_MBUF_ENTRIES);
 
 	ring->vmem = (void **)&rxr->rx_buf_ring;
 	ring->fw_ring_id = INVALID_HW_RING_ID;
@@ -1251,7 +1251,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 
 	/* Initialize dummy mbuf pointers for vector mode rx. */
 	for (i = ring->ring_size;
-	     i < ring->ring_size + RTE_BNXT_DESCS_PER_LOOP; i++) {
+	     i < ring->ring_size + BNXT_RX_EXTRA_MBUF_ENTRIES; i++) {
 		rxr->rx_buf_ring[i] = &rxq->fake_mbuf;
 	}
 

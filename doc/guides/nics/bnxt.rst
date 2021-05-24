@@ -853,23 +853,36 @@ DPDK implements a light-weight library to allow PMDs to be bonded together and p
 Vector Processing
 -----------------
 
+The BNXT PMD provides vectorized burst transmit/receive function implementations
+on x86-based platforms using SSE (Streaming SIMD Extensions) and AVX2 (Advanced
+Vector Extensions 2) instructions, and on Arm-based platforms using Arm Neon
+Advanced SIMD instructions. Vector processing support is currently implemented
+only for Intel/AMD and Arm CPU architectures.
+
 Vector processing provides significantly improved performance over scalar
-processing (see Vector Processor, here).
+processing. This improved performance is derived from a number of optimizations:
 
-The BNXT PMD supports the vector processing using SSE (Streaming SIMD
-Extensions) instructions on x86 platforms. It also supports NEON intrinsics for
-vector processing on ARM CPUs. The BNXT vPMD (vector mode PMD) is available for
-Intel/AMD and ARM CPU architectures.
-
-This improved performance comes from several optimizations:
-
+* Using SIMD instructions to operate on multiple packets in parallel.
+* Using SIMD instructions to do more work per instruction than is possible
+  with scalar instructions, for example by leveraging 128-bit and 256-bi
+  load/store instructions or by using SIMD shuffle and permute operations.
 * Batching
-    * TX: processing completions in bulk
-    * RX: allocating mbufs in bulk
-* Chained mbufs are *not* supported, i.e. a packet should fit a single mbuf
-* Some stateless offloads are *not* supported with vector processing
-    * TX: no offloads will be supported
-    * RX: reduced RX offloads (listed below) will be supported::
+
+    * TX: transmit completions are processed in bulk.
+    * RX: bulk allocation of mbufs is used when allocating rxq buffers.
+
+* Simplifications enabled by not supporting chained mbufs in vector mode.
+* Simplifications enabled by not supporting some stateless offloads in vector
+  mode:
+
+    * TX: only the following reduced set of transmit offloads is supported in
+      vector mode::
+
+       DEV_TX_OFFLOAD_MBUF_FAST_FREE
+
+    * RX: only the following reduced set of receive offloads is supported in
+      vector mode (note that jumbo MTU is allowed only when the MTU setting
+      does not require `DEV_RX_OFFLOAD_SCATTER` to be enabled)::
 
        DEV_RX_OFFLOAD_VLAN_STRIP
        DEV_RX_OFFLOAD_KEEP_CRC
@@ -878,22 +891,20 @@ This improved performance comes from several optimizations:
        DEV_RX_OFFLOAD_UDP_CKSUM
        DEV_RX_OFFLOAD_TCP_CKSUM
        DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM
+       DEV_RX_OFFLOAD_OUTER_UDP_CKSUM
        DEV_RX_OFFLOAD_RSS_HASH
        DEV_RX_OFFLOAD_VLAN_FILTER
 
-The BNXT Vector PMD is enabled in DPDK builds by default.
-
-However, a decision to enable vector mode will be made when the port transitions
-from stopped to started. Any TX offloads or some RX offloads (other than listed
-above) will disable the vector mode.
-Offload configuration changes that impact vector mode must be made when the port
-is stopped.
+The BNXT Vector PMD is enabled in DPDK builds by default. The decision to enable
+vector processing is made at run-time when the port is started; if no transmit
+offloads outside the set supported for vector mode are enabled then vector mode
+transmit will be enabled, and if no receive offloads outside the set supported
+for vector mode are enabled then vector mode receive will be enabled.  Offload
+configuration changes that impact the decision to enable vector mode are allowed
+only when the port is stopped.
 
 Note that TX (or RX) vector mode can be enabled independently from RX (or TX)
 vector mode.
-
-Also vector mode is allowed when jumbo is enabled
-as long as the MTU setting does not require scattered Rx.
 
 Appendix
 --------

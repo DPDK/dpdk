@@ -191,17 +191,20 @@ recv_burst_vec_sse(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	 * maximum number of packets to receive to be a multiple of the per-
 	 * loop count.
 	 */
-	if (nb_pkts < RTE_BNXT_DESCS_PER_LOOP)
-		desc_valid_mask >>= 16 * (RTE_BNXT_DESCS_PER_LOOP - nb_pkts);
-	else
-		nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, RTE_BNXT_DESCS_PER_LOOP);
+	if (nb_pkts < BNXT_RX_DESCS_PER_LOOP_VEC128) {
+		desc_valid_mask >>=
+			16 * (BNXT_RX_DESCS_PER_LOOP_VEC128 - nb_pkts);
+	} else {
+		nb_pkts =
+			RTE_ALIGN_FLOOR(nb_pkts, BNXT_RX_DESCS_PER_LOOP_VEC128);
+	}
 
 	/* Handle RX burst request */
-	for (i = 0; i < nb_pkts; i += RTE_BNXT_DESCS_PER_LOOP,
-				  cons += RTE_BNXT_DESCS_PER_LOOP * 2,
-				  mbcons += RTE_BNXT_DESCS_PER_LOOP) {
-		__m128i rxcmp1[RTE_BNXT_DESCS_PER_LOOP];
-		__m128i rxcmp[RTE_BNXT_DESCS_PER_LOOP];
+	for (i = 0; i < nb_pkts; i += BNXT_RX_DESCS_PER_LOOP_VEC128,
+				  cons += BNXT_RX_DESCS_PER_LOOP_VEC128 * 2,
+				  mbcons += BNXT_RX_DESCS_PER_LOOP_VEC128) {
+		__m128i rxcmp1[BNXT_RX_DESCS_PER_LOOP_VEC128];
+		__m128i rxcmp[BNXT_RX_DESCS_PER_LOOP_VEC128];
 		__m128i tmp0, tmp1, info3_v;
 		uint32_t num_valid;
 
@@ -216,7 +219,7 @@ recv_burst_vec_sse(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 #endif
 
 		/* Prefetch four descriptor pairs for next iteration. */
-		if (i + RTE_BNXT_DESCS_PER_LOOP < nb_pkts) {
+		if (i + BNXT_RX_DESCS_PER_LOOP_VEC128 < nb_pkts) {
 			rte_prefetch0(&cp_desc_ring[cons + 8]);
 			rte_prefetch0(&cp_desc_ring[cons + 12]);
 		}
@@ -265,7 +268,7 @@ recv_burst_vec_sse(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			       rxr);
 		nb_rx_pkts += num_valid;
 
-		if (num_valid < RTE_BNXT_DESCS_PER_LOOP)
+		if (num_valid < BNXT_RX_DESCS_PER_LOOP_VEC128)
 			break;
 	}
 
@@ -383,7 +386,7 @@ bnxt_xmit_fixed_burst_vec(struct bnxt_tx_queue *txq, struct rte_mbuf **tx_pkts,
 
 	/* Handle TX burst request */
 	to_send = nb_pkts;
-	while (to_send >= RTE_BNXT_DESCS_PER_LOOP) {
+	while (to_send >= BNXT_TX_DESCS_PER_LOOP) {
 		/* Prefetch next transmit buffer descriptors. */
 		rte_prefetch0(txbd + 4);
 		rte_prefetch0(txbd + 7);
@@ -393,8 +396,8 @@ bnxt_xmit_fixed_burst_vec(struct bnxt_tx_queue *txq, struct rte_mbuf **tx_pkts,
 		bnxt_xmit_one(tx_pkts[2], txbd++, tx_buf++);
 		bnxt_xmit_one(tx_pkts[3], txbd++, tx_buf++);
 
-		to_send -= RTE_BNXT_DESCS_PER_LOOP;
-		tx_pkts += RTE_BNXT_DESCS_PER_LOOP;
+		to_send -= BNXT_TX_DESCS_PER_LOOP;
+		tx_pkts += BNXT_TX_DESCS_PER_LOOP;
 	}
 
 	while (to_send) {
