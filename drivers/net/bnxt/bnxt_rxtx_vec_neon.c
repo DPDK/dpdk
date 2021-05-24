@@ -71,8 +71,7 @@ descs_to_mbufs(uint32x4_t mm_rxcmp[4], uint32x4_t mm_rxcmp1[4],
 	const uint32x4_t flags_type_mask =
 		vdupq_n_u32(RX_PKT_CMPL_FLAGS_ITYPE_MASK);
 	const uint32x4_t flags2_mask1 =
-		vdupq_n_u32(RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
-			    RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC);
+		vdupq_n_u32(CMPL_FLAGS2_VLAN_TUN_MSK);
 	const uint32x4_t flags2_mask2 =
 		vdupq_n_u32(RX_PKT_CMPL_FLAGS2_IP_TYPE);
 	const uint32x4_t rss_mask =
@@ -84,14 +83,18 @@ descs_to_mbufs(uint32x4_t mm_rxcmp[4], uint32x4_t mm_rxcmp1[4],
 	uint64x2_t t0, t1;
 	uint32_t ol_flags;
 
+	/* Validate ptype table indexing at build time. */
+	bnxt_check_ptype_constants();
+
 	/* Compute packet type table indexes for four packets */
 	t0 = vreinterpretq_u64_u32(vzip1q_u32(mm_rxcmp[0], mm_rxcmp[1]));
 	t1 = vreinterpretq_u64_u32(vzip1q_u32(mm_rxcmp[2], mm_rxcmp[3]));
 
 	flags_type = vreinterpretq_u32_u64(vcombine_u64(vget_low_u64(t0),
 							vget_low_u64(t1)));
-	ptype_idx =
-		vshrq_n_u32(vandq_u32(flags_type, flags_type_mask), 9);
+	ptype_idx = vshrq_n_u32(vandq_u32(flags_type, flags_type_mask),
+				RX_PKT_CMPL_FLAGS_ITYPE_SFT -
+				BNXT_PTYPE_TBL_TYPE_SFT);
 
 	t0 = vreinterpretq_u64_u32(vzip1q_u32(mm_rxcmp1[0], mm_rxcmp1[1]));
 	t1 = vreinterpretq_u64_u32(vzip1q_u32(mm_rxcmp1[2], mm_rxcmp1[3]));
@@ -100,9 +103,13 @@ descs_to_mbufs(uint32x4_t mm_rxcmp[4], uint32x4_t mm_rxcmp1[4],
 						    vget_low_u64(t1)));
 
 	ptype_idx = vorrq_u32(ptype_idx,
-			vshrq_n_u32(vandq_u32(flags2, flags2_mask1), 2));
+			vshrq_n_u32(vandq_u32(flags2, flags2_mask1),
+				    RX_PKT_CMPL_FLAGS2_META_FORMAT_SFT -
+				    BNXT_PTYPE_TBL_VLAN_SFT));
 	ptype_idx = vorrq_u32(ptype_idx,
-			vshrq_n_u32(vandq_u32(flags2, flags2_mask2), 7));
+			vshrq_n_u32(vandq_u32(flags2, flags2_mask2),
+				    RX_PKT_CMPL_FLAGS2_IP_TYPE_SFT -
+				    BNXT_PTYPE_TBL_IP_VER_SFT));
 
 	/* Extract RSS valid flags for four packets. */
 	rss_flags = vshrq_n_u32(vandq_u32(flags_type, rss_mask), 9);

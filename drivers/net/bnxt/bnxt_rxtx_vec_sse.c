@@ -66,8 +66,7 @@ descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
 	const __m128i flags_type_mask =
 		_mm_set1_epi32(RX_PKT_CMPL_FLAGS_ITYPE_MASK);
 	const __m128i flags2_mask1 =
-		_mm_set1_epi32(RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
-			       RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC);
+		_mm_set1_epi32(CMPL_FLAGS2_VLAN_TUN_MSK);
 	const __m128i flags2_mask2 =
 		_mm_set1_epi32(RX_PKT_CMPL_FLAGS2_IP_TYPE);
 	const __m128i rss_mask =
@@ -76,21 +75,28 @@ descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
 	__m128i ptype_idx, is_tunnel;
 	uint32_t ol_flags;
 
+	/* Validate ptype table indexing at build time. */
+	bnxt_check_ptype_constants();
+
 	/* Compute packet type table indexes for four packets */
 	t0 = _mm_unpacklo_epi32(mm_rxcmp[0], mm_rxcmp[1]);
 	t1 = _mm_unpacklo_epi32(mm_rxcmp[2], mm_rxcmp[3]);
 	flags_type = _mm_unpacklo_epi64(t0, t1);
-	ptype_idx =
-		_mm_srli_epi32(_mm_and_si128(flags_type, flags_type_mask), 9);
+	ptype_idx = _mm_srli_epi32(_mm_and_si128(flags_type, flags_type_mask),
+			RX_PKT_CMPL_FLAGS_ITYPE_SFT - BNXT_PTYPE_TBL_TYPE_SFT);
 
 	t0 = _mm_unpacklo_epi32(mm_rxcmp1[0], mm_rxcmp1[1]);
 	t1 = _mm_unpacklo_epi32(mm_rxcmp1[2], mm_rxcmp1[3]);
 	flags2 = _mm_unpacklo_epi64(t0, t1);
 
 	ptype_idx = _mm_or_si128(ptype_idx,
-			_mm_srli_epi32(_mm_and_si128(flags2, flags2_mask1), 2));
+			_mm_srli_epi32(_mm_and_si128(flags2, flags2_mask1),
+				       RX_PKT_CMPL_FLAGS2_META_FORMAT_SFT -
+				       BNXT_PTYPE_TBL_VLAN_SFT));
 	ptype_idx = _mm_or_si128(ptype_idx,
-			_mm_srli_epi32(_mm_and_si128(flags2, flags2_mask2), 7));
+			_mm_srli_epi32(_mm_and_si128(flags2, flags2_mask2),
+				       RX_PKT_CMPL_FLAGS2_IP_TYPE_SFT -
+				       BNXT_PTYPE_TBL_IP_VER_SFT));
 
 	/* Extract RSS valid flags for four packets. */
 	rss_flags = _mm_srli_epi32(_mm_and_si128(flags_type, rss_mask), 9);

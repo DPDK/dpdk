@@ -396,14 +396,14 @@ bnxt_init_ptype_table(void)
 		return;
 
 	for (i = 0; i < BNXT_PTYPE_TBL_DIM; i++) {
-		if (i & (RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN >> 2))
+		if (i & BNXT_PTYPE_TBL_VLAN_MSK)
 			pt[i] = RTE_PTYPE_L2_ETHER_VLAN;
 		else
 			pt[i] = RTE_PTYPE_L2_ETHER;
 
-		ip6 = i & (RX_PKT_CMPL_FLAGS2_IP_TYPE >> 7);
-		tun = i & (RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC >> 2);
-		type = (i & 0x78) << 9;
+		ip6 = !!(i & BNXT_PTYPE_TBL_IP_VER_MSK);
+		tun = !!(i & BNXT_PTYPE_TBL_TUN_MSK);
+		type = (i & BNXT_PTYPE_TBL_TYPE_MSK) >> BNXT_PTYPE_TBL_TYPE_SFT;
 
 		if (!tun && !ip6)
 			l3 = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
@@ -415,25 +415,25 @@ bnxt_init_ptype_table(void)
 			l3 = RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN;
 
 		switch (type) {
-		case RX_PKT_CMPL_FLAGS_ITYPE_ICMP:
+		case BNXT_PTYPE_TBL_TYPE_ICMP:
 			if (tun)
 				pt[i] |= l3 | RTE_PTYPE_INNER_L4_ICMP;
 			else
 				pt[i] |= l3 | RTE_PTYPE_L4_ICMP;
 			break;
-		case RX_PKT_CMPL_FLAGS_ITYPE_TCP:
+		case BNXT_PTYPE_TBL_TYPE_TCP:
 			if (tun)
 				pt[i] |= l3 | RTE_PTYPE_INNER_L4_TCP;
 			else
 				pt[i] |= l3 | RTE_PTYPE_L4_TCP;
 			break;
-		case RX_PKT_CMPL_FLAGS_ITYPE_UDP:
+		case BNXT_PTYPE_TBL_TYPE_UDP:
 			if (tun)
 				pt[i] |= l3 | RTE_PTYPE_INNER_L4_UDP;
 			else
 				pt[i] |= l3 | RTE_PTYPE_L4_UDP;
 			break;
-		case RX_PKT_CMPL_FLAGS_ITYPE_IP:
+		case BNXT_PTYPE_TBL_TYPE_IP:
 			pt[i] |= l3;
 			break;
 		}
@@ -450,17 +450,19 @@ bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
 	flags_type = rte_le_to_cpu_16(rxcmp->flags_type);
 	flags2 = rte_le_to_cpu_32(rxcmp1->flags2);
 
+	/* Validate ptype table indexing at build time. */
+	bnxt_check_ptype_constants();
+
 	/*
 	 * Index format:
-	 *     bit 0: RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC
-	 *     bit 1: RX_CMPL_FLAGS2_IP_TYPE
-	 *     bit 2: RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN
-	 *     bits 3-6: RX_PKT_CMPL_FLAGS_ITYPE
+	 *     bit 0: Set if IP tunnel encapsulated packet.
+	 *     bit 1: Set if IPv6 packet, clear if IPv4.
+	 *     bit 2: Set if VLAN tag present.
+	 *     bits 3-6: Four-bit hardware packet type field.
 	 */
-	index = ((flags_type & RX_PKT_CMPL_FLAGS_ITYPE_MASK) >> 9) |
-		((flags2 & (RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
-			   RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC)) >> 2) |
-		((flags2 & RX_PKT_CMPL_FLAGS2_IP_TYPE) >> 7);
+	index = BNXT_CMPL_ITYPE_TO_IDX(flags_type) |
+		BNXT_CMPL_VLAN_TUN_TO_IDX(flags2) |
+		BNXT_CMPL_IP_VER_TO_IDX(flags2);
 
 	return bnxt_ptype_table[index];
 }

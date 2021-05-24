@@ -131,7 +131,48 @@ bnxt_cfa_code_dynfield(struct rte_mbuf *mbuf)
 #define BNXT_CFA_META_EEM_TCAM_SHIFT		31
 #define BNXT_CFA_META_EM_TEST(x) ((x) >> BNXT_CFA_META_EEM_TCAM_SHIFT)
 
-#define BNXT_PTYPE_TBL_DIM	128
+/* Definitions for translation of hardware packet type to mbuf ptype. */
+#define BNXT_PTYPE_TBL_DIM		128
+#define BNXT_PTYPE_TBL_TUN_SFT		0 /* Set if tunneled packet. */
+#define BNXT_PTYPE_TBL_TUN_MSK		BIT(BNXT_PTYPE_TBL_TUN_SFT)
+#define BNXT_PTYPE_TBL_IP_VER_SFT	1 /* Set if IPv6, clear if IPv4. */
+#define BNXT_PTYPE_TBL_IP_VER_MSK	BIT(BNXT_PTYPE_TBL_IP_VER_SFT)
+#define BNXT_PTYPE_TBL_VLAN_SFT		2 /* Set if VLAN encapsulated. */
+#define BNXT_PTYPE_TBL_VLAN_MSK		BIT(BNXT_PTYPE_TBL_VLAN_SFT)
+#define BNXT_PTYPE_TBL_TYPE_SFT		3 /* Hardware packet type field. */
+#define BNXT_PTYPE_TBL_TYPE_MSK		0x78 /* Hardware itype field mask. */
+#define BNXT_PTYPE_TBL_TYPE_IP		1
+#define BNXT_PTYPE_TBL_TYPE_TCP		2
+#define BNXT_PTYPE_TBL_TYPE_UDP		3
+#define BNXT_PTYPE_TBL_TYPE_ICMP	7
+
+#define RX_PKT_CMPL_FLAGS2_IP_TYPE_SFT	8
+#define CMPL_FLAGS2_VLAN_TUN_MSK \
+	(RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN | RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC)
+
+#define BNXT_CMPL_ITYPE_TO_IDX(ft) \
+	(((ft) & RX_PKT_CMPL_FLAGS_ITYPE_MASK) >> \
+	  (RX_PKT_CMPL_FLAGS_ITYPE_SFT - BNXT_PTYPE_TBL_TYPE_SFT))
+
+#define BNXT_CMPL_VLAN_TUN_TO_IDX(f2) \
+	(((f2) & CMPL_FLAGS2_VLAN_TUN_MSK) >> \
+	 (RX_PKT_CMPL_FLAGS2_META_FORMAT_SFT - BNXT_PTYPE_TBL_VLAN_SFT))
+
+#define BNXT_CMPL_IP_VER_TO_IDX(f2) \
+	(((f2) & RX_PKT_CMPL_FLAGS2_IP_TYPE) >> \
+	 (RX_PKT_CMPL_FLAGS2_IP_TYPE_SFT - BNXT_PTYPE_TBL_IP_VER_SFT))
+
+static inline void
+bnxt_check_ptype_constants(void)
+{
+	RTE_BUILD_BUG_ON(BNXT_CMPL_ITYPE_TO_IDX(RX_PKT_CMPL_FLAGS_ITYPE_MASK) !=
+			 BNXT_PTYPE_TBL_TYPE_MSK);
+	RTE_BUILD_BUG_ON(BNXT_CMPL_VLAN_TUN_TO_IDX(CMPL_FLAGS2_VLAN_TUN_MSK) !=
+			 (BNXT_PTYPE_TBL_VLAN_MSK | BNXT_PTYPE_TBL_TUN_MSK));
+	RTE_BUILD_BUG_ON(BNXT_CMPL_IP_VER_TO_IDX(RX_PKT_CMPL_FLAGS2_IP_TYPE) !=
+			 BNXT_PTYPE_TBL_IP_VER_MSK);
+}
+
 extern uint32_t bnxt_ptype_table[BNXT_PTYPE_TBL_DIM];
 
 /* Stingray2 specific code for RX completion parsing */
