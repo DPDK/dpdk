@@ -211,7 +211,7 @@ sfc_ef100_rx_tun_outer_l4_csum(const efx_word_t class)
 	return EFX_WORD_FIELD(class,
 			      ESF_GZ_RX_PREFIX_HCLASS_TUN_OUTER_L4_CSUM) ==
 		ESE_GZ_RH_HCLASS_L4_CSUM_GOOD ?
-		PKT_RX_OUTER_L4_CKSUM_GOOD : PKT_RX_OUTER_L4_CKSUM_GOOD;
+		PKT_RX_OUTER_L4_CKSUM_GOOD : PKT_RX_OUTER_L4_CKSUM_BAD;
 }
 
 static uint32_t
