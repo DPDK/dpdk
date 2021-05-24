@@ -130,12 +130,14 @@ struct sfc_mae_pattern_data {
 	 *
 	 * - If an item ETH is followed by a single item VLAN,
 	 *   the former must have "type" set to one of supported
-	 *   TPID values (0x8100, 0x88a8, 0x9100, 0x9200, 0x9300).
+	 *   TPID values (0x8100, 0x88a8, 0x9100, 0x9200, 0x9300),
+	 *   or 0x0000/0x0000.
 	 *
 	 * - If an item ETH is followed by two items VLAN, the
 	 *   item ETH must have "type" set to one of supported TPID
-	 *   values (0x88a8, 0x9100, 0x9200, 0x9300), and the outermost
-	 *   VLAN item must have "inner_type" set to TPID value 0x8100.
+	 *   values (0x88a8, 0x9100, 0x9200, 0x9300), or 0x0000/0x0000,
+	 *   and the outermost VLAN item must have "inner_type" set
+	 *   to TPID value 0x8100, or 0x0000/0x0000
 	 *
 	 * - If a L2 item is followed by a L3 one, the former must
 	 *   indicate "type" ("inner_type") which corresponds to
@@ -156,6 +158,9 @@ struct sfc_mae_pattern_data {
 	 * VLAN	(L3 EtherType)	--> ETHER_TYPE_BE
 	 */
 	struct sfc_mae_ethertype	ethertypes[SFC_MAE_L2_MAX_NITEMS];
+
+	rte_be16_t			tci_masks[SFC_MAE_MATCH_VLAN_MAX_NTAGS];
+
 	unsigned int			nb_vlan_tags;
 
 	/**
@@ -191,6 +196,14 @@ struct sfc_mae_pattern_data {
 	 */
 	uint8_t				l3_next_proto_restriction_value;
 	uint8_t				l3_next_proto_restriction_mask;
+
+	/* Projected state of EFX_MAE_FIELD_HAS_OVLAN match bit */
+	bool				has_ovlan_value;
+	bool				has_ovlan_mask;
+
+	/* Projected state of EFX_MAE_FIELD_HAS_IVLAN match bit */
+	bool				has_ivlan_value;
+	bool				has_ivlan_mask;
 };
 
 struct sfc_mae_parse_ctx {
