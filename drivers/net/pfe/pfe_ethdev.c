@@ -582,11 +582,6 @@ pfe_eth_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 	struct rte_eth_link link, old;
 	unsigned int lstatus = 1;
 
-	if (dev == NULL) {
-		PFE_PMD_ERR("Invalid device in link_update.\n");
-		return 0;
-	}
-
 	memset(&old, 0, sizeof(old));
 	memset(&link, 0, sizeof(struct rte_eth_link));
 
