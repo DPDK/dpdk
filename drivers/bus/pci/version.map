@@ -21,4 +21,7 @@ EXPERIMENTAL {
 	global:
 
 	rte_pci_find_ext_capability;
+
+	# added in 21.08
+	rte_pci_set_bus_master;
 };

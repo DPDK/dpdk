@@ -746,6 +746,34 @@ rte_pci_find_ext_capability(struct rte_pci_device *dev, uint32_t cap)
 	return 0;
 }
 
+int
+rte_pci_set_bus_master(struct rte_pci_device *dev, bool enable)
+{
+	uint16_t old_cmd, cmd;
+
+	if (rte_pci_read_config(dev, &old_cmd, sizeof(old_cmd),
+				RTE_PCI_COMMAND) < 0) {
+		RTE_LOG(ERR, EAL, "error in reading PCI command register\n");
+		return -1;
+	}
+
+	if (enable)
+		cmd = old_cmd | RTE_PCI_COMMAND_MASTER;
+	else
+		cmd = old_cmd & ~RTE_PCI_COMMAND_MASTER;
+
+	if (cmd == old_cmd)
+		return 0;
+
+	if (rte_pci_write_config(dev, &cmd, sizeof(cmd),
+				 RTE_PCI_COMMAND) < 0) {
+		RTE_LOG(ERR, EAL, "error in writing PCI command register\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 struct rte_pci_bus rte_pci_bus = {
 	.bus = {
 		.scan = rte_pci_scan,

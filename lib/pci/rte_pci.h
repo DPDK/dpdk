@@ -32,6 +32,10 @@ extern "C" {
 
 #define RTE_PCI_VENDOR_ID	0x00	/* 16 bits */
 #define RTE_PCI_DEVICE_ID	0x02	/* 16 bits */
+#define RTE_PCI_COMMAND		0x04	/* 16 bits */
+
+/* PCI Command Register */
+#define RTE_PCI_COMMAND_MASTER	0x4	/* Bus Master Enable */
 
 /* PCI Express capability registers */
 #define RTE_PCI_EXP_DEVCTL	8	/* Device Control */
