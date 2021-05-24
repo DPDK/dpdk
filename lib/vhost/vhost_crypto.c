@@ -1337,13 +1337,15 @@ vhost_crypto_finalize_one_request(struct rte_crypto_op *op,
 	struct rte_mbuf *m_src = op->sym->m_src;
 	struct rte_mbuf *m_dst = op->sym->m_dst;
 	struct vhost_crypto_data_req *vc_req = rte_mbuf_to_priv(m_src);
-	struct vhost_virtqueue *vq = vc_req->vq;
-	uint16_t used_idx = vc_req->desc_idx, desc_idx;
+	struct vhost_virtqueue *vq;
+	uint16_t used_idx, desc_idx;
 
 	if (unlikely(!vc_req)) {
 		VC_LOG_ERR("Failed to retrieve vc_req");
 		return NULL;
 	}
+	vq = vc_req->vq;
+	used_idx = vc_req->desc_idx;
 
 	if (old_vq && (vq != old_vq))
 		return vq;
