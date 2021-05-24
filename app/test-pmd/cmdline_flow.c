@@ -6631,10 +6631,10 @@ parse_vc_action_conntrack_update(struct context *ctx, const struct token *token,
 	/* Token name must match. */
 	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
 		return -1;
-	ct_modify = (struct rte_flow_modify_conntrack *)out->args.vc.data;
 	/* Nothing else to do if there is no buffer. */
 	if (!out)
 		return len;
+	ct_modify = (struct rte_flow_modify_conntrack *)out->args.vc.data;
 	if (ctx->curr == ACTION_CONNTRACK_UPDATE_DIR) {
 		ct_modify->new_ct.is_original_dir =
 				conntrack_context.is_original_dir;
