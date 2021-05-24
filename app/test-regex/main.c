@@ -732,6 +732,8 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Number of QPs must be greater than 0\n");
 	if (nb_lcores == 0)
 		rte_exit(EXIT_FAILURE, "Number of lcores must be greater than 0\n");
+	if (nb_jobs == 0)
+		rte_exit(EXIT_FAILURE, "Number of jobs must be greater than 0\n");
 	if (distribute_qps_to_lcores(nb_lcores, nb_qps, &qps_per_lcore) < 0)
 		rte_exit(EXIT_FAILURE, "Failed to distribute queues to lcores!\n");
 	ret = init_port(&nb_max_payload, rules_file,
