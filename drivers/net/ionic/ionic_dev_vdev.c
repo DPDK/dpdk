@@ -359,6 +359,12 @@ ionic_vdev_setup(struct ionic_adapter *adapter)
 }
 
 static void
+ionic_vdev_poll(struct ionic_adapter *adapter)
+{
+	ionic_dev_interrupt_handler(adapter);
+}
+
+static void
 ionic_vdev_unmap_bars(struct ionic_adapter *adapter)
 {
 	struct ionic_bars *bars = &adapter->bars;
@@ -372,6 +378,7 @@ ionic_vdev_unmap_bars(struct ionic_adapter *adapter)
 
 static const struct ionic_dev_intf ionic_vdev_intf = {
 	.setup = ionic_vdev_setup,
+	.poll = ionic_vdev_poll,
 	.unmap_bars = ionic_vdev_unmap_bars,
 };
 

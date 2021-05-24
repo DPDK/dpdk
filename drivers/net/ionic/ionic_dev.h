@@ -186,6 +186,7 @@ struct ionic_dev_intf {
 			struct rte_eth_dev *eth_dev);
 	int  (*configure_intr)(struct ionic_adapter *adapter);
 	void (*unconfigure_intr)(struct ionic_adapter *adapter);
+	void (*poll)(struct ionic_adapter *adapter);
 	void (*unmap_bars)(struct ionic_adapter *adapter);
 };
 
