@@ -21,11 +21,14 @@ void bnxt_int_handler(void *param)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
 	struct bnxt *bp = eth_dev->data->dev_private;
-	struct bnxt_cp_ring_info *cpr = bp->async_cp_ring;
+	struct bnxt_cp_ring_info *cpr;
 	struct cmpl_base *cmp;
 	uint32_t raw_cons;
 	uint32_t cons;
 
+	if (bp == NULL)
+		return;
+	cpr = bp->async_cp_ring;
 	if (cpr == NULL)
 		return;
 
