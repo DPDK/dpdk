@@ -2356,7 +2356,15 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	rte_free(vf->aq_resp);
 	vf->aq_resp = NULL;
 
-	vf->vf_reset = false;
+	/*
+	 * If the VF is reset via VFLR, the device will be knocked out of bus
+	 * master mode, and the driver will fail to recover from the reset. Fix
+	 * this by enabling bus mastering after every reset. In a non-VFLR case,
+	 * the bus master bit will not be disabled, and this call will have no
+	 * effect.
+	 */
+	if (vf->vf_reset && !rte_pci_set_bus_master(pci_dev, true))
+		vf->vf_reset = false;
 
 	return ret;
 }
