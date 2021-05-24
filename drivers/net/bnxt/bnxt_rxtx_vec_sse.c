@@ -143,9 +143,8 @@ descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
 	_mm_store_si128((void *)&mbuf[3]->rx_descriptor_fields1, t0);
 }
 
-uint16_t
-bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
-		   uint16_t nb_pkts)
+static uint16_t
+recv_burst_vec_sse(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	struct bnxt_rx_queue *rxq = rx_queue;
 	const __m128i mbuf_init = _mm_set_epi64x(0, rxq->mbuf_initializer);
@@ -169,9 +168,6 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	if (rxq->rxrearm_nb >= rxq->rx_free_thresh)
 		bnxt_rxq_rearm(rxq, rxr);
-
-	/* Return no more than RTE_BNXT_MAX_RX_BURST per call. */
-	nb_pkts = RTE_MIN(nb_pkts, RTE_BNXT_MAX_RX_BURST);
 
 	cons = raw_cons & (cp_ring_size - 1);
 	mbcons = (raw_cons / 2) & (rx_ring_size - 1);
@@ -294,6 +290,27 @@ out:
 	}
 
 	return nb_rx_pkts;
+}
+
+uint16_t
+bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	uint16_t cnt = 0;
+
+	while (nb_pkts > RTE_BNXT_MAX_RX_BURST) {
+		uint16_t burst;
+
+		burst = recv_burst_vec_sse(rx_queue, rx_pkts + cnt,
+					   RTE_BNXT_MAX_RX_BURST);
+
+		cnt += burst;
+		nb_pkts -= burst;
+
+		if (burst < RTE_BNXT_MAX_RX_BURST)
+			return cnt;
+	}
+
+	return cnt + recv_burst_vec_sse(rx_queue, rx_pkts + cnt, nb_pkts);
 }
 
 static void
