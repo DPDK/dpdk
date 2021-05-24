@@ -135,10 +135,11 @@ setup_test_string(struct rte_mempool *mpool,
 	struct rte_mbuf *m = rte_pktmbuf_alloc(mpool);
 	size_t t_len = len - (blocksize ? (len % blocksize) : 0);
 
-	memset(m->buf_addr, 0, m->buf_len);
 	if (m) {
-		char *dst = rte_pktmbuf_append(m, t_len);
+		char *dst;
 
+		memset(m->buf_addr, 0, m->buf_len);
+		dst = rte_pktmbuf_append(m, t_len);
 		if (!dst) {
 			rte_pktmbuf_free(m);
 			return NULL;
