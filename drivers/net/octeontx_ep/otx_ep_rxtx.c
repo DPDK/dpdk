@@ -27,7 +27,7 @@ otx_ep_dmazone_free(const struct rte_memzone *mz)
 	int ret = 0;
 
 	if (mz == NULL) {
-		otx_ep_err("Memzone %s : NULL\n", mz->name);
+		otx_ep_err("Memzone: NULL\n");
 		return;
 	}
 
