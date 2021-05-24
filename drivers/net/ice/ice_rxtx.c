@@ -3025,10 +3025,10 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 #ifdef RTE_ARCH_X86
 	struct ice_rx_queue *rxq;
 	int i;
-	bool use_avx512 = false;
-	bool use_avx2 = false;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		ad->rx_use_avx512 = false;
+		ad->rx_use_avx2 = false;
 		if (!ice_rx_vec_dev_check(dev) && ad->rx_bulk_alloc_allowed &&
 				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 			ad->rx_vec_allowed = true;
@@ -3044,16 +3044,16 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
 			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)
 #ifdef CC_AVX512_SUPPORT
-				use_avx512 = true;
+				ad->rx_use_avx512 = true;
 #else
 			PMD_DRV_LOG(NOTICE,
 				"AVX512 is not supported in build env");
 #endif
-			if (!use_avx512 &&
+			if (!ad->rx_use_avx512 &&
 			(rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
 			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
 			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
-				use_avx2 = true;
+				ad->rx_use_avx2 = true;
 
 		} else {
 			ad->rx_vec_allowed = false;
@@ -3062,7 +3062,7 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 
 	if (ad->rx_vec_allowed) {
 		if (dev->data->scattered_rx) {
-			if (use_avx512) {
+			if (ad->rx_use_avx512) {
 #ifdef CC_AVX512_SUPPORT
 				PMD_DRV_LOG(NOTICE,
 					"Using AVX512 Vector Scattered Rx (port %d).",
@@ -3073,14 +3073,14 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 			} else {
 				PMD_DRV_LOG(DEBUG,
 					"Using %sVector Scattered Rx (port %d).",
-					use_avx2 ? "avx2 " : "",
+					ad->rx_use_avx2 ? "avx2 " : "",
 					dev->data->port_id);
-				dev->rx_pkt_burst = use_avx2 ?
+				dev->rx_pkt_burst = ad->rx_use_avx2 ?
 					ice_recv_scattered_pkts_vec_avx2 :
 					ice_recv_scattered_pkts_vec;
 			}
 		} else {
-			if (use_avx512) {
+			if (ad->rx_use_avx512) {
 #ifdef CC_AVX512_SUPPORT
 				PMD_DRV_LOG(NOTICE,
 					"Using AVX512 Vector Rx (port %d).",
@@ -3091,9 +3091,9 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 			} else {
 				PMD_DRV_LOG(DEBUG,
 					"Using %sVector Rx (port %d).",
-					use_avx2 ? "avx2 " : "",
+					ad->rx_use_avx2 ? "avx2 " : "",
 					dev->data->port_id);
-				dev->rx_pkt_burst = use_avx2 ?
+				dev->rx_pkt_burst = ad->rx_use_avx2 ?
 					ice_recv_pkts_vec_avx2 :
 					ice_recv_pkts_vec;
 			}
@@ -3241,10 +3241,10 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 #ifdef RTE_ARCH_X86
 	struct ice_tx_queue *txq;
 	int i;
-	bool use_avx512 = false;
-	bool use_avx2 = false;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		ad->tx_use_avx2 = false;
+		ad->tx_use_avx512 = false;
 		if (!ice_tx_vec_dev_check(dev) &&
 				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 			ad->tx_vec_allowed = true;
@@ -3260,16 +3260,16 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
 			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)
 #ifdef CC_AVX512_SUPPORT
-				use_avx512 = true;
+				ad->tx_use_avx512 = true;
 #else
 			PMD_DRV_LOG(NOTICE,
 				"AVX512 is not supported in build env");
 #endif
-			if (!use_avx512 &&
+			if (!ad->tx_use_avx512 &&
 			(rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
 			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
 			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
-				use_avx2 = true;
+				ad->tx_use_avx2 = true;
 
 		} else {
 			ad->tx_vec_allowed = false;
@@ -3277,7 +3277,7 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 	}
 
 	if (ad->tx_vec_allowed) {
-		if (use_avx512) {
+		if (ad->tx_use_avx512) {
 #ifdef CC_AVX512_SUPPORT
 			PMD_DRV_LOG(NOTICE, "Using AVX512 Vector Tx (port %d).",
 				    dev->data->port_id);
@@ -3285,9 +3285,9 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 #endif
 		} else {
 			PMD_DRV_LOG(DEBUG, "Using %sVector Tx (port %d).",
-				    use_avx2 ? "avx2 " : "",
+				    ad->tx_use_avx2 ? "avx2 " : "",
 				    dev->data->port_id);
-			dev->tx_pkt_burst = use_avx2 ?
+			dev->tx_pkt_burst = ad->tx_use_avx2 ?
 					    ice_xmit_pkts_vec_avx2 :
 					    ice_xmit_pkts_vec;
 		}
