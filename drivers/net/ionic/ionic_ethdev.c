@@ -276,6 +276,13 @@ ionic_dev_link_update(struct rte_eth_dev *eth_dev,
 
 	IONIC_PRINT_CALL();
 
+	/*
+	 * There is no way to hook up the device interrupts in the vdev
+	 * framework. Instead, poll for updates on the adapter.
+	 */
+	if (adapter->intf && adapter->intf->poll)
+		(*adapter->intf->poll)(adapter);
+
 	/* Initialize */
 	memset(&link, 0, sizeof(link));
 

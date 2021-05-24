@@ -176,6 +176,18 @@ struct ionic_cq {
 struct ionic_lif;
 struct ionic_adapter;
 struct ionic_qcq;
+struct rte_mempool;
+struct rte_eth_dev;
+
+struct ionic_dev_intf {
+	int  (*setup)(struct ionic_adapter *adapter);
+	void (*copy_bus_info)(struct ionic_adapter *adapter,
+			struct rte_eth_dev *eth_dev);
+	int  (*configure_intr)(struct ionic_adapter *adapter);
+	void (*unconfigure_intr)(struct ionic_adapter *adapter);
+	void (*poll)(struct ionic_adapter *adapter);
+	void (*unmap_bars)(struct ionic_adapter *adapter);
+};
 
 void ionic_intr_init(struct ionic_dev *idev, struct ionic_intr_info *intr,
 	unsigned long index);
