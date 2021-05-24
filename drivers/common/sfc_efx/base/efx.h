@@ -4103,6 +4103,10 @@ efx_mae_match_spec_fini(
 	__in				efx_mae_match_spec_t *spec);
 
 typedef enum efx_mae_field_id_e {
+	/*
+	 * Fields which can be set by efx_mae_match_spec_field_set()
+	 * or by using dedicated field-specific helper APIs.
+	 */
 	EFX_MAE_FIELD_INGRESS_MPORT_SELECTOR = 0,
 	EFX_MAE_FIELD_ETHER_TYPE_BE,
 	EFX_MAE_FIELD_ETH_SADDR_BE,
@@ -4139,6 +4143,12 @@ typedef enum efx_mae_field_id_e {
 	EFX_MAE_FIELD_ENC_L4_DPORT_BE,
 	EFX_MAE_FIELD_ENC_VNET_ID_BE,
 	EFX_MAE_FIELD_OUTER_RULE_ID,
+
+	/* Single bits which can be set by efx_mae_match_spec_bit_set(). */
+	EFX_MAE_FIELD_HAS_OVLAN,
+	EFX_MAE_FIELD_HAS_IVLAN,
+	EFX_MAE_FIELD_ENC_HAS_OVLAN,
+	EFX_MAE_FIELD_ENC_HAS_IVLAN,
 
 	EFX_MAE_FIELD_NIDS
 } efx_mae_field_id_t;
@@ -4197,6 +4207,14 @@ efx_mae_match_spec_field_set(
 	__in_bcount(value_size)		const uint8_t *value,
 	__in				size_t mask_size,
 	__in_bcount(mask_size)		const uint8_t *mask);
+
+/* The corresponding mask will be set to B_TRUE. */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_match_spec_bit_set(
+	__in				efx_mae_match_spec_t *spec,
+	__in				efx_mae_field_id_t field_id,
+	__in				boolean_t value);
 
 /* If the mask argument is NULL, the API will use full mask by default. */
 LIBEFX_API

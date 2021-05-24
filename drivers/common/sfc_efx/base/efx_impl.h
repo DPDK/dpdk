@@ -1720,7 +1720,8 @@ struct efx_mae_match_spec_s {
 	efx_mae_rule_type_t		emms_type;
 	uint32_t			emms_prio;
 	union emms_mask_value_pairs {
-		uint8_t			action[MAE_FIELD_MASK_VALUE_PAIRS_LEN];
+		uint8_t			action[
+					    MAE_FIELD_MASK_VALUE_PAIRS_V2_LEN];
 		uint8_t			outer[MAE_ENC_FIELD_PAIRS_LEN];
 	} emms_mask_value_pairs;
 };
