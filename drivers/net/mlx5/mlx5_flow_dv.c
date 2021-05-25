@@ -4788,8 +4788,10 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 					"inner header fields modification"
 					" is not supported");
 	}
-	if (action_modify_field->dst.field ==
-	    action_modify_field->src.field)
+	if ((action_modify_field->dst.field ==
+	     action_modify_field->src.field) &&
+	    (action_modify_field->dst.level ==
+	     action_modify_field->src.level))
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"source and destination fields"
