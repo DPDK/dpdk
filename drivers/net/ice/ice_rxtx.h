@@ -266,8 +266,8 @@ int ice_tx_done_cleanup(void *txq, uint32_t free_cnt);
 
 #define FDIR_PARSING_ENABLE_PER_QUEUE(ad, on) do { \
 	int i; \
-	for (i = 0; i < (ad)->eth_dev->data->nb_rx_queues; i++) { \
-		struct ice_rx_queue *rxq = (ad)->eth_dev->data->rx_queues[i]; \
+	for (i = 0; i < (ad)->pf.dev_data->nb_rx_queues; i++) { \
+		struct ice_rx_queue *rxq = (ad)->pf.dev_data->rx_queues[i]; \
 		if (!rxq) \
 			continue; \
 		rxq->fdir_enabled = on; \

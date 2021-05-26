@@ -363,7 +363,6 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 	const struct rte_ether_addr *mac;
 	int err;
 
-	parent_adapter->eth_dev = eth_dev;
 	parent_adapter->pf.adapter = parent_adapter;
 	parent_adapter->pf.dev_data = eth_dev->data;
 	/* create a dummy main_vsi */

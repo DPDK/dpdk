@@ -382,7 +382,7 @@ ice_fdir_counter_free(__rte_unused struct ice_pf *pf,
 static int
 ice_fdir_init_filter_list(struct ice_pf *pf)
 {
-	struct rte_eth_dev *dev = pf->adapter->eth_dev;
+	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
 	struct ice_fdir_info *fdir_info = &pf->fdir;
 	char fdir_hash_name[RTE_HASH_NAMESIZE];
 	int ret;
@@ -444,7 +444,7 @@ ice_fdir_release_filter_list(struct ice_pf *pf)
 static int
 ice_fdir_setup(struct ice_pf *pf)
 {
-	struct rte_eth_dev *eth_dev = pf->adapter->eth_dev;
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[pf->dev_data->port_id];
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	const struct rte_memzone *mz = NULL;
 	char z_name[RTE_MEMZONE_NAMESIZE];
@@ -632,7 +632,7 @@ ice_fdir_prof_rm_all(struct ice_pf *pf)
 static void
 ice_fdir_teardown(struct ice_pf *pf)
 {
-	struct rte_eth_dev *eth_dev = pf->adapter->eth_dev;
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[pf->dev_data->port_id];
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	struct ice_vsi *vsi;
 	int err;
