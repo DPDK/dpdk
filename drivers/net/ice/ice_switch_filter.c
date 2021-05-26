@@ -1585,7 +1585,7 @@ ice_switch_parse_action(struct ice_pf *pf,
 		struct ice_adv_rule_info *rule_info)
 {
 	struct ice_vsi *vsi = pf->main_vsi;
-	struct rte_eth_dev *dev = pf->adapter->eth_dev;
+	struct rte_eth_dev_data *dev_data = pf->adapter->pf.dev_data;
 	const struct rte_flow_action_queue *act_q;
 	const struct rte_flow_action_rss *act_qgrop;
 	uint16_t base_queue, i;
@@ -1616,7 +1616,7 @@ ice_switch_parse_action(struct ice_pf *pf,
 				goto error;
 			if ((act_qgrop->queue[0] +
 				act_qgrop->queue_num) >
-				dev->data->nb_rx_queues)
+				dev_data->nb_rx_queues)
 				goto error1;
 			for (i = 0; i < act_qgrop->queue_num - 1; i++)
 				if (act_qgrop->queue[i + 1] !=
@@ -1627,7 +1627,7 @@ ice_switch_parse_action(struct ice_pf *pf,
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			act_q = action->conf;
-			if (act_q->index >= dev->data->nb_rx_queues)
+			if (act_q->index >= dev_data->nb_rx_queues)
 				goto error;
 			rule_info->sw_act.fltr_act =
 				ICE_FWD_TO_Q;

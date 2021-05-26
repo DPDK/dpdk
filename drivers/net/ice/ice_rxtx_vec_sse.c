@@ -478,7 +478,7 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		 * needs to load 2nd 16B of each desc for RSS hash parsing,
 		 * will cause performance drop to get into this context.
 		 */
-		if (rxq->vsi->adapter->eth_dev->data->dev_conf.rxmode.offloads &
+		if (rxq->vsi->adapter->pf.dev_data->dev_conf.rxmode.offloads &
 				DEV_RX_OFFLOAD_RSS_HASH) {
 			/* load bottom half of every 32B desc */
 			const __m128i raw_desc_bh3 =

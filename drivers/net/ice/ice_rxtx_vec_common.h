@@ -195,7 +195,7 @@ _ice_tx_queue_release_mbufs_vec(struct ice_tx_queue *txq)
 	i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
 
 #ifdef CC_AVX512_SUPPORT
-	struct rte_eth_dev *dev = txq->vsi->adapter->eth_dev;
+	struct rte_eth_dev *dev = &rte_eth_devices[txq->vsi->adapter->pf.dev_data->port_id];
 
 	if (dev->tx_pkt_burst == ice_xmit_pkts_vec_avx512 ||
 	    dev->tx_pkt_burst == ice_xmit_pkts_vec_avx512_offload) {

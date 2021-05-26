@@ -277,8 +277,8 @@ int ice_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc);
 
 #define FDIR_PARSING_ENABLE_PER_QUEUE(ad, on) do { \
 	int i; \
-	for (i = 0; i < (ad)->eth_dev->data->nb_rx_queues; i++) { \
-		struct ice_rx_queue *rxq = (ad)->eth_dev->data->rx_queues[i]; \
+	for (i = 0; i < (ad)->pf.dev_data->nb_rx_queues; i++) { \
+		struct ice_rx_queue *rxq = (ad)->pf.dev_data->rx_queues[i]; \
 		if (!rxq) \
 			continue; \
 		rxq->fdir_enabled = on; \
