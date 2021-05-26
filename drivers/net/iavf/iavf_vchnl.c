@@ -1257,8 +1257,8 @@ iavf_config_promisc(struct iavf_adapter *adapter,
 		PMD_DRV_LOG(ERR,
 			    "fail to execute command CONFIG_PROMISCUOUS_MODE");
 
-		if (err == IAVF_NOT_SUPPORTED)
-			return -ENOTSUP;
+		if (err == -ENOTSUP)
+			return err;
 
 		return -EAGAIN;
 	}
