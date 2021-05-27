@@ -28,7 +28,7 @@ class ELFSymbol:
     def string_value(self):
         size = self._symbol["st_size"]
         value = self.get_value(0, size)
-        return value[:-1].decode() if value else ""
+        return coff.decode_asciiz(value)  # not COFF-specific
 
     def get_value(self, offset, size):
         section = self._symbol["st_shndx"]
