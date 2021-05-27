@@ -301,4 +301,5 @@ int bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(struct bnxt *bp);
 int bnxt_hwrm_fw_echo_reply(struct bnxt *bp, uint32_t echo_req_data1,
 			    uint32_t echo_req_data2);
 int bnxt_hwrm_poll_ver_get(struct bnxt *bp);
+int bnxt_hwrm_rx_ring_reset(struct bnxt *bp, int queue_index);
 #endif
