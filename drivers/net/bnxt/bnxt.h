@@ -837,6 +837,12 @@ inline uint16_t bnxt_max_rings(struct bnxt *bp)
 				       bp->max_stat_ctx / 2U);
 	}
 
+	/* RSS table size in Thor is 512.
+	 * Cap max Rx rings to the same value for RSS.
+	 */
+	if (BNXT_CHIP_THOR(bp))
+		max_rx_rings = RTE_MIN(max_rx_rings, BNXT_RSS_TBL_SIZE_THOR);
+
 	max_tx_rings = RTE_MIN(max_tx_rings, max_rx_rings);
 	if (max_cp_rings > BNXT_NUM_ASYNC_CPR(bp))
 		max_cp_rings -= BNXT_NUM_ASYNC_CPR(bp);

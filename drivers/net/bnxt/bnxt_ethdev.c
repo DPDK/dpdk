@@ -432,12 +432,13 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS) {
 		int j, nr_ctxs = bnxt_rss_ctxts(bp);
 
+		/* RSS table size in Thor is 512.
+		 * Cap max Rx rings to same value
+		 */
 		if (bp->rx_nr_rings > BNXT_RSS_TBL_SIZE_THOR) {
 			PMD_DRV_LOG(ERR, "RxQ cnt %d > reta_size %d\n",
 				    bp->rx_nr_rings, BNXT_RSS_TBL_SIZE_THOR);
-			PMD_DRV_LOG(ERR,
-				    "Only queues 0-%d will be in RSS table\n",
-				    BNXT_RSS_TBL_SIZE_THOR - 1);
+			goto err_out;
 		}
 
 		rc = 0;
