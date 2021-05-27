@@ -114,6 +114,30 @@ struct mlx5_flow_expand_rss {
 	} entry[];
 };
 
+static void
+mlx5_dbg__print_pattern(const struct rte_flow_item *item);
+
+static bool
+mlx5_flow_is_rss_expandable_item(const struct rte_flow_item *item)
+{
+	switch (item->type) {
+	case RTE_FLOW_ITEM_TYPE_ETH:
+	case RTE_FLOW_ITEM_TYPE_VLAN:
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+	case RTE_FLOW_ITEM_TYPE_IPV6:
+	case RTE_FLOW_ITEM_TYPE_UDP:
+	case RTE_FLOW_ITEM_TYPE_TCP:
+	case RTE_FLOW_ITEM_TYPE_VXLAN:
+	case RTE_FLOW_ITEM_TYPE_NVGRE:
+	case RTE_FLOW_ITEM_TYPE_GRE:
+	case RTE_FLOW_ITEM_TYPE_GENEVE:
+		return true;
+	default:
+		break;
+	}
+	return false;
+}
+
 static enum rte_flow_item_type
 mlx5_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 {
@@ -273,8 +297,11 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 		addr = buf->entry[0].pattern;
 	}
 	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
-		if (item->type != RTE_FLOW_ITEM_TYPE_VOID)
-			last_item = item;
+		if (!mlx5_flow_is_rss_expandable_item(item)) {
+			user_pattern_size += sizeof(*item);
+			continue;
+		}
+		last_item = item;
 		for (i = 0; node->next && node->next[i]; ++i) {
 			next = &graph[node->next[i]];
 			if (next->type == item->type)
@@ -5370,6 +5397,10 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 					   mlx5_support_expansion, graph_root);
 		MLX5_ASSERT(ret > 0 &&
 		       (unsigned int)ret < sizeof(expand_buffer.buffer));
+		if (rte_log_can_log(mlx5_logtype, RTE_LOG_DEBUG)) {
+			for (i = 0; i < buf->entries; ++i)
+				mlx5_dbg__print_pattern(buf->entry[i].pattern);
+		}
 	} else {
 		buf->entries = 1;
 		buf->entry[0].pattern = (void *)(uintptr_t)items;
@@ -7987,3 +8018,21 @@ mlx5_release_tunnel_hub(__rte_unused struct mlx5_dev_ctx_shared *sh,
 }
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
 
+static void
+mlx5_dbg__print_pattern(const struct rte_flow_item *item)
+{
+	int ret;
+	struct rte_flow_error error;
+
+	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+		char *item_name;
+		ret = rte_flow_conv(RTE_FLOW_CONV_OP_ITEM_NAME_PTR, &item_name,
+				    sizeof(item_name),
+				    (void *)(uintptr_t)item->type, &error);
+		if (ret > 0)
+			printf("%s ", item_name);
+		else
+			printf("%d\n", (int)item->type);
+	}
+	printf("END\n");
+}
