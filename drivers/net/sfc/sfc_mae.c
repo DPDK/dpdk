@@ -2000,6 +2000,9 @@ sfc_mae_rule_parse_action_port_id(struct sfc_adapter *sa,
 	uint16_t port_id;
 	int rc;
 
+	if (conf->id > UINT16_MAX)
+		return EOVERFLOW;
+
 	port_id = (conf->original != 0) ? sas->port_id : conf->id;
 
 	rc = sfc_mae_switch_port_by_ethdev(mae->switch_domain_id,
