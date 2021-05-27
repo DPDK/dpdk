@@ -3177,6 +3177,31 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	pf->rss_hf = rss_hf & ICE_RSS_HF_ALL;
 }
 
+static void
+ice_get_default_rss_key(uint8_t *rss_key, uint32_t rss_key_size)
+{
+	static struct ice_aqc_get_set_rss_keys default_key;
+	static bool default_key_done;
+	uint8_t *key = (uint8_t *)&default_key;
+	size_t i;
+
+	if (rss_key_size > sizeof(default_key)) {
+		PMD_DRV_LOG(WARNING,
+			    "requested size %u is larger than default %zu, "
+			    "only %zu bytes are gotten for key\n",
+			    rss_key_size, sizeof(default_key),
+			    sizeof(default_key));
+	}
+
+	if (!default_key_done) {
+		/* Calculate the default hash key */
+		for (i = 0; i < sizeof(default_key); i++)
+			key[i] = (uint8_t)rte_rand();
+		default_key_done = true;
+	}
+	rte_memcpy(rss_key, key, RTE_MIN(rss_key_size, sizeof(default_key)));
+}
+
 static int ice_init_rss(struct ice_pf *pf)
 {
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
@@ -3225,15 +3250,13 @@ static int ice_init_rss(struct ice_pf *pf)
 		}
 	}
 	/* configure RSS key */
-	if (!rss_conf->rss_key) {
-		/* Calculate the default hash key */
-		for (i = 0; i < vsi->rss_key_size; i++)
-			vsi->rss_key[i] = (uint8_t)rte_rand();
-	} else {
+	if (!rss_conf->rss_key)
+		ice_get_default_rss_key(vsi->rss_key, vsi->rss_key_size);
+	else
 		rte_memcpy(vsi->rss_key, rss_conf->rss_key,
 			   RTE_MIN(rss_conf->rss_key_len,
 				   vsi->rss_key_size));
-	}
+
 	rte_memcpy(key.standard_rss_key, vsi->rss_key, vsi->rss_key_size);
 	ret = ice_aq_set_rss_key(hw, vsi->idx, &key);
 	if (ret)
