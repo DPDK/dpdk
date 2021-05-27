@@ -313,6 +313,7 @@ dsa_scan(void)
 
 		read_device_int(dev, "numa_node", &numa_node);
 		dev->device.numa_node = numa_node;
+		dev->device.name = dev->wq_name;
 	}
 
 	closedir(dev_dir);
