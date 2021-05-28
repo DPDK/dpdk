@@ -158,6 +158,8 @@ static int
 vhost_kernel_set_features(struct virtio_user_dev *dev, uint64_t features)
 {
 	struct vhost_kernel_data *data = dev->backend_data;
+	uint32_t i;
+	int ret;
 
 	/* We don't need memory protection here */
 	features &= ~(1ULL << VIRTIO_F_IOMMU_PLATFORM);
@@ -166,7 +168,16 @@ vhost_kernel_set_features(struct virtio_user_dev *dev, uint64_t features)
 	features &= ~VHOST_KERNEL_HOST_OFFLOADS_MASK;
 	features &= ~(1ULL << VIRTIO_NET_F_MQ);
 
-	return vhost_kernel_ioctl(data->vhostfds[0], VHOST_SET_FEATURES, &features);
+	for (i = 0; i < dev->max_queue_pairs; ++i) {
+		if (data->vhostfds[i] < 0)
+			continue;
+
+		ret = vhost_kernel_ioctl(data->vhostfds[i], VHOST_SET_FEATURES, &features);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
 }
 
 static int
