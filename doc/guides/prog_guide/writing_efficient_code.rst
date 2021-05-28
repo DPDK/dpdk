@@ -143,20 +143,21 @@ In order to achieve higher throughput,
 the DPDK attempts to aggregate the cost of processing each packet individually by processing packets in bursts.
 
 Using the testpmd application as an example,
-the burst size can be set on the command line to a value of 16 (also the default value).
-This allows the application to request 16 packets at a time from the PMD.
+the burst size can be set on the command line to a value of 32 (also the default value).
+This allows the application to request 32 packets at a time from the PMD.
 The testpmd application then immediately attempts to transmit all the packets that were received,
-in this case, all 16 packets.
+in this case, all 32 packets.
 
 The packets are not transmitted until the tail pointer is updated on the corresponding TX queue of the network port.
 This behavior is desirable when tuning for high throughput because
-the cost of tail pointer updates to both the RX and TX queues can be spread across 16 packets,
+the cost of tail pointer updates to both the RX and TX queues can be spread
+across 32 packets,
 effectively hiding the relatively slow MMIO cost of writing to the PCIe* device.
 However, this is not very desirable when tuning for low latency because
-the first packet that was received must also wait for another 15 packets to be received.
-It cannot be transmitted until the other 15 packets have also been processed because
+the first packet that was received must also wait for another 31 packets to be received.
+It cannot be transmitted until the other 31 packets have also been processed because
 the NIC will not know to transmit the packets until the TX tail pointer has been updated,
-which is not done until all 16 packets have been processed for transmission.
+which is not done until all 32 packets have been processed for transmission.
 
 To consistently achieve low latency, even under heavy system load,
 the application developer should avoid processing packets in bunches.
