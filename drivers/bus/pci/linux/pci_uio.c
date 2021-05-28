@@ -535,21 +535,33 @@ pci_uio_ioport_write(struct rte_pci_ioport *p,
 		if (len >= 4) {
 			size = 4;
 #if defined(RTE_ARCH_X86)
+#ifdef __GLIBC__
 			outl_p(*(const uint32_t *)s, reg);
+#else
+			outl(*(const uint32_t *)s, reg);
+#endif
 #else
 			*(volatile uint32_t *)reg = *(const uint32_t *)s;
 #endif
 		} else if (len >= 2) {
 			size = 2;
 #if defined(RTE_ARCH_X86)
+#ifdef __GLIBC__
 			outw_p(*(const uint16_t *)s, reg);
+#else
+			outw(*(const uint16_t *)s, reg);
+#endif
 #else
 			*(volatile uint16_t *)reg = *(const uint16_t *)s;
 #endif
 		} else {
 			size = 1;
 #if defined(RTE_ARCH_X86)
+#ifdef __GLIBC__
 			outb_p(*s, reg);
+#else
+			outb(*s, reg);
+#endif
 #else
 			*(volatile uint8_t *)reg = *s;
 #endif
