@@ -606,7 +606,7 @@ args_parse(int argc, char **argv)
 		case 0:
 			if (strcmp(lgopts[opt_idx].name, "help") == 0) {
 				usage(argv[0]);
-				rte_exit(EXIT_SUCCESS, "Displayed help\n");
+				exit(EXIT_SUCCESS);
 			}
 
 			if (strcmp(lgopts[opt_idx].name, "group") == 0) {
@@ -614,7 +614,7 @@ args_parse(int argc, char **argv)
 				if (n >= 0)
 					flow_group = n;
 				else
-					rte_exit(EXIT_SUCCESS,
+					rte_exit(EXIT_FAILURE,
 						"flow group should be >= 0\n");
 				printf("group %d / ", flow_group);
 			}
@@ -634,7 +634,7 @@ args_parse(int argc, char **argv)
 				if (n > 0)
 					hairpin_queues_num = n;
 				else
-					rte_exit(EXIT_SUCCESS,
+					rte_exit(EXIT_FAILURE,
 						"Hairpin queues should be > 0\n");
 
 				flow_actions[actions_idx++] =
@@ -647,7 +647,7 @@ args_parse(int argc, char **argv)
 				if (n > 0)
 					hairpin_queues_num = n;
 				else
-					rte_exit(EXIT_SUCCESS,
+					rte_exit(EXIT_FAILURE,
 						"Hairpin queues should be > 0\n");
 
 				flow_actions[actions_idx++] =
@@ -671,11 +671,9 @@ args_parse(int argc, char **argv)
 							break;
 						}
 						/* Reached last item with no match */
-						if (i == (RTE_DIM(flow_options) - 1)) {
-							fprintf(stderr, "Invalid encap item: %s\n", token);
-							usage(argv[0]);
-							rte_exit(EXIT_SUCCESS, "Invalid encap item\n");
-						}
+						if (i == (RTE_DIM(flow_options) - 1))
+							rte_exit(EXIT_FAILURE,
+								"Invalid encap item: %s\n", token);
 					}
 					token = strtok(NULL, ",");
 				}
@@ -697,11 +695,9 @@ args_parse(int argc, char **argv)
 							break;
 						}
 						/* Reached last item with no match */
-						if (i == (RTE_DIM(flow_options) - 1)) {
-							fprintf(stderr, "Invalid decap item: %s\n", token);
-							usage(argv[0]);
-							rte_exit(EXIT_SUCCESS, "Invalid decap item\n");
-						}
+						if (i == (RTE_DIM(flow_options) - 1))
+							rte_exit(EXIT_FAILURE,
+								"Invalid decap item %s\n", token);
 					}
 					token = strtok(NULL, ",");
 				}
@@ -714,9 +710,9 @@ args_parse(int argc, char **argv)
 				if (n >= DEFAULT_RULES_BATCH)
 					rules_batch = n;
 				else {
-					printf("\n\nrules_batch should be >= %d\n",
+					rte_exit(EXIT_FAILURE,
+						"rules_batch should be >= %d\n",
 						DEFAULT_RULES_BATCH);
-					rte_exit(EXIT_SUCCESS, " ");
 				}
 			}
 			if (strcmp(lgopts[opt_idx].name,
@@ -725,7 +721,8 @@ args_parse(int argc, char **argv)
 				if (n >= (int) rules_batch)
 					rules_count = n;
 				else {
-					printf("\n\nrules_count should be >= %d\n",
+					rte_exit(EXIT_FAILURE,
+						"rules_count should be >= %d\n",
 						rules_batch);
 				}
 			}
@@ -752,9 +749,9 @@ args_parse(int argc, char **argv)
 			}
 			break;
 		default:
-			fprintf(stderr, "Invalid option: %s\n", argv[optind]);
 			usage(argv[0]);
-			rte_exit(EXIT_SUCCESS, "Invalid option\n");
+			rte_exit(EXIT_FAILURE, "Invalid option: %s\n",
+					argv[optind]);
 			break;
 		}
 	}
@@ -853,7 +850,7 @@ destroy_flows(int port_id, struct rte_flow **flow_list)
 		memset(&error, 0x33, sizeof(error));
 		if (rte_flow_destroy(port_id, flow_list[i], &error)) {
 			print_flow_error(error);
-			rte_exit(EXIT_FAILURE, "Error in deleting flow");
+			rte_exit(EXIT_FAILURE, "Error in deleting flow\n");
 		}
 
 		if (i && !((i + 1) % rules_batch)) {
@@ -924,7 +921,7 @@ flows_handler(void)
 	flow_list = rte_zmalloc("flow_list",
 		(sizeof(struct rte_flow *) * rules_count) + 1, 0);
 	if (flow_list == NULL)
-		rte_exit(EXIT_FAILURE, "No Memory available!");
+		rte_exit(EXIT_FAILURE, "No Memory available!\n");
 
 	for (port_id = 0; port_id < nr_ports; port_id++) {
 		/* If port outside portmask */
@@ -947,7 +944,7 @@ flows_handler(void)
 
 			if (flow == NULL) {
 				print_flow_error(error);
-				rte_exit(EXIT_FAILURE, "error in creating flow");
+				rte_exit(EXIT_FAILURE, "Error in creating flow\n");
 			}
 			flow_list[flow_index++] = flow;
 		}
@@ -968,7 +965,7 @@ flows_handler(void)
 
 			if (!flow) {
 				print_flow_error(error);
-				rte_exit(EXIT_FAILURE, "error in creating flow");
+				rte_exit(EXIT_FAILURE, "Error in creating flow\n");
 			}
 
 			flow_list[flow_index++] = flow;
@@ -1087,7 +1084,7 @@ packet_per_second_stats(void)
 	old = rte_zmalloc("old",
 		sizeof(struct lcore_info) * MAX_LCORES, 0);
 	if (old == NULL)
-		rte_exit(EXIT_FAILURE, "No Memory available!");
+		rte_exit(EXIT_FAILURE, "No Memory available!\n");
 
 	memcpy(old, lcore_infos,
 		sizeof(struct lcore_info) * MAX_LCORES);
