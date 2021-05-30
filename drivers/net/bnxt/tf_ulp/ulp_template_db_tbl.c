@@ -3,6 +3,8 @@
  * All rights reserved.
  */
 
+/* date: Thu Oct 15 17:28:37 2020 */
+
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
 #include "ulp_template_struct.h"
@@ -96,6 +98,11 @@ uint32_t ulp_act_prop_map_table[] = {
 		BNXT_ULP_ACT_PROP_SZ_LAST
 };
 
+/*
+ * This structure has to be indexed based on the rte_flow_action_type that is
+ * part of DPDK. The below array is list of parsing functions for each of the
+ * flow actions that are supported.
+ */
 struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 	[RTE_FLOW_ACTION_TYPE_END] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_END,
@@ -295,25 +302,36 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 	}
 };
 
-struct bnxt_ulp_cache_tbl_params ulp_cache_tbl_params[] = {
+/* Specifies parameters for the generic tables */
+struct bnxt_ulp_generic_tbl_params ulp_generic_tbl_params[] = {
 	[BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM << 1 |
 		TF_DIR_RX] = {
-	.num_entries             = 16384
+	.result_num_entries	= 16384,
+	.result_byte_size	= 6,
+	.result_byte_order	= BNXT_ULP_BYTE_ORDER_LE
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM << 1 |
 		TF_DIR_TX] = {
-	.num_entries             = 16384
+	.result_num_entries	= 16384,
+	.result_byte_size	= 6,
+	.result_byte_order	= BNXT_ULP_BYTE_ORDER_LE
+
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM << 1 |
 		TF_DIR_RX] = {
-	.num_entries             = 16384
+	.result_num_entries	= 16384,
+	.result_byte_size	= 6,
+	.result_byte_order	= BNXT_ULP_BYTE_ORDER_LE
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM << 1 |
 		TF_DIR_TX] = {
-	.num_entries             = 16384
+	.result_num_entries	= 16384,
+	.result_byte_size	= 6,
+	.result_byte_order	= BNXT_ULP_BYTE_ORDER_LE
 	}
 };
 
+/* device tables */
 const struct ulp_template_device_tbls ulp_template_stingray_tbls[] = {
 	[BNXT_ULP_TEMPLATE_TYPE_CLASS] = {
 	.tmpl_list               = ulp_stingray_class_tmpl_list,
@@ -329,6 +347,7 @@ const struct ulp_template_device_tbls ulp_template_stingray_tbls[] = {
 	}
 };
 
+/* device tables */
 const struct ulp_template_device_tbls ulp_template_wh_plus_tbls[] = {
 	[BNXT_ULP_TEMPLATE_TYPE_CLASS] = {
 	.tmpl_list               = ulp_wh_plus_class_tmpl_list,
@@ -344,8 +363,10 @@ const struct ulp_template_device_tbls ulp_template_wh_plus_tbls[] = {
 	}
 };
 
+/* List of device specific parameters */
 struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	[BNXT_ULP_DEVICE_ID_WH_PLUS] = {
+	.description             = "Whitney_Plus",
 	.byte_order              = BNXT_ULP_BYTE_ORDER_LE,
 	.encap_byte_swap         = 1,
 	.int_flow_db_num_entries = 16384,
@@ -364,6 +385,7 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	.dev_tbls                = ulp_template_wh_plus_tbls
 	},
 	[BNXT_ULP_DEVICE_ID_STINGRAY] = {
+	.description             = "Stingray",
 	.byte_order              = BNXT_ULP_BYTE_ORDER_LE,
 	.encap_byte_swap         = 1,
 	.int_flow_db_num_entries = 16384,
@@ -383,6 +405,7 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	}
 };
 
+/* List of device specific parameters */
 struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[] = {
 	[0] = {
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -434,6 +457,11 @@ struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[] = {
 	}
 };
 
+/*
+ * This table has to be indexed based on the rte_flow_item_type that is part of
+ * DPDK. The below array is list of parsing functions for each of the flow items
+ * that are supported.
+ */
 struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_END,
@@ -629,12 +657,17 @@ struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
 	}
 };
 
+/*
+ * The parser uses this table to map vtags_num to CFA encapsulation VTAG
+ * encoding. It then takes the result and stores it in act_prop[encap_vtag_type]
+ */
 uint32_t bnxt_ulp_encap_vtag_map[] = {
 	BNXT_ULP_SYM_ECV_VTAG_TYPE_NOP,
 	BNXT_ULP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI,
 	BNXT_ULP_SYM_ECV_VTAG_TYPE_ADD_2_ENCAP_PRI
 };
 
+/* Lists global action records */
 uint32_t ulp_glb_template_tbl[] = {
 	BNXT_ULP_DF_TPL_LOOPBACK_ACTION_REC
 };

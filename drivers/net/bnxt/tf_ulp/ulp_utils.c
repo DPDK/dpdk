@@ -146,8 +146,20 @@ ulp_bs_put_lsb(uint8_t *bs, uint16_t bitpos, uint8_t bitlen, uint8_t val)
 	}
 }
 
-/* Assuming that val is in Big-Endian Format */
-static uint32_t
+/*
+ * Add data to the byte array in Little endian format.
+ *
+ * bs [in] The byte array where data is pushed
+ *
+ * pos [in] The offset where data is pushed
+ *
+ * len [in] The number of bits to be added to the data array.
+ *
+ * val [in] The data to be added to the data array.
+ *
+ * returns the number of bits pushed.
+ */
+uint32_t
 ulp_bs_push_lsb(uint8_t *bs, uint16_t pos, uint8_t len, uint8_t *val)
 {
 	int i;
@@ -169,8 +181,20 @@ ulp_bs_push_lsb(uint8_t *bs, uint16_t pos, uint8_t len, uint8_t *val)
 	return len;
 }
 
-/* Assuming that val is in Big-Endian Format */
-static uint32_t
+/*
+ * Add data to the byte array in Big endian format.
+ *
+ * bs [in] The byte array where data is pushed
+ *
+ * pos [in] The offset where data is pushed
+ *
+ * len [in] The number of bits to be added to the data array.
+ *
+ * val [in] The data to be added to the data array.
+ *
+ * returns the number of bits pushed.
+ */
+uint32_t
 ulp_bs_push_msb(uint8_t *bs, uint16_t pos, uint8_t len, uint8_t *val)
 {
 	int i;
@@ -474,7 +498,7 @@ ulp_blob_pad_push(struct ulp_blob *blob,
 {
 	if (datalen > (uint32_t)(blob->bitlen - blob->write_idx)) {
 		BNXT_TF_DBG(ERR, "Pad too large for blob\n");
-		return 0;
+		return -1;
 	}
 
 	blob->write_idx += datalen;
@@ -504,8 +528,22 @@ ulp_bs_get_lsb(uint8_t *src, uint16_t bitpos, uint8_t bitlen, uint8_t *dst)
 	}
 }
 
-/* Assuming that src is in little-Endian Format */
-static void
+/*
+ * Get data from the byte array in Little endian format.
+ *
+ * src [in] The byte array where data is extracted from
+ *
+ * dst [out] The byte array where data is pulled into
+ *
+ * size [in] The size of dst array in bytes
+ *
+ * offset [in] The offset where data is pulled
+ *
+ * len [in] The number of bits to be extracted from the data array
+ *
+ * returns None.
+ */
+void
 ulp_bs_pull_lsb(uint8_t *src, uint8_t *dst, uint32_t size,
 		uint32_t offset, uint32_t len)
 {
@@ -523,6 +561,57 @@ ulp_bs_pull_lsb(uint8_t *src, uint8_t *dst, uint32_t size,
 	/* Extract the last reminder data that is not 8 byte boundary */
 	if (len)
 		ulp_bs_get_lsb(src, offset, len, &dst[size - 1 - idx]);
+}
+
+/* Get data from src and put into dst using big-endian format */
+static void
+ulp_bs_get_msb(uint8_t *src, uint16_t bitpos, uint8_t bitlen, uint8_t *dst)
+{
+	uint8_t bitoffs = bitpos % ULP_BLOB_BYTE;
+	uint16_t index  = ULP_BITS_2_BYTE_NR(bitpos);
+	uint8_t mask;
+	int32_t shift;
+
+	shift = ULP_BLOB_BYTE - bitoffs - bitlen;
+	if (shift >= 0) {
+		mask = 0xFF >> -bitlen;
+		*dst = (src[index] >> shift) & mask;
+	} else {
+		*dst = (src[index] & (0xFF >> bitoffs)) << -shift;
+		*dst |= src[index + 1] >> -shift;
+	}
+}
+
+/*
+ * Get data from the byte array in Big endian format.
+ *
+ * src [in] The byte array where data is extracted from
+ *
+ * dst [out] The byte array where data is pulled into
+ *
+ * offset [in] The offset where data is pulled
+ *
+ * len [in] The number of bits to be extracted from the data array
+ *
+ * returns None.
+ */
+void
+ulp_bs_pull_msb(uint8_t *src, uint8_t *dst,
+		uint32_t offset, uint32_t len)
+{
+	uint32_t idx;
+	uint32_t cnt = ULP_BITS_2_BYTE_NR(len);
+
+	/* iterate bytewise to get data */
+	for (idx = 0; idx < cnt; idx++) {
+		ulp_bs_get_msb(src, offset, ULP_BLOB_BYTE, &dst[idx]);
+		offset += ULP_BLOB_BYTE;
+		len -= ULP_BLOB_BYTE;
+	}
+
+	/* Extract the last reminder data that is not 8 byte boundary */
+	if (len)
+		ulp_bs_get_msb(src, offset, len, &dst[idx]);
 }
 
 /*
@@ -549,11 +638,10 @@ ulp_blob_pull(struct ulp_blob *blob, uint8_t *data, uint32_t data_size,
 		return -1; /* failure */
 	}
 
-	if (blob->byte_order == BNXT_ULP_BYTE_ORDER_BE) {
-		BNXT_TF_DBG(ERR, "Big endian pull not implemented\n");
-		return -1; /* failure */
-	}
-	ulp_bs_pull_lsb(blob->data, data, data_size, offset, len);
+	if (blob->byte_order == BNXT_ULP_BYTE_ORDER_BE)
+		ulp_bs_pull_msb(blob->data, data, offset, len);
+	else
+		ulp_bs_pull_lsb(blob->data, data, data_size, offset, len);
 	return 0;
 }
 

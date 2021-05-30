@@ -136,6 +136,38 @@ ulp_regfile_write(struct ulp_regfile *regfile,
 		  uint64_t data);
 
 /*
+ * Add data to the byte array in Little endian format.
+ *
+ * bs [in] The byte array where data is pushed
+ *
+ * pos [in] The offset where data is pushed
+ *
+ * len [in] The number of bits to be added to the data array.
+ *
+ * val [in] The data to be added to the data array.
+ *
+ * returns the number of bits pushed.
+ */
+uint32_t
+ulp_bs_push_lsb(uint8_t *bs, uint16_t pos, uint8_t len, uint8_t *val);
+
+/*
+ * Add data to the byte array in Big endian format.
+ *
+ * bs [in] The byte array where data is pushed
+ *
+ * pos [in] The offset where data is pushed
+ *
+ * len [in] The number of bits to be added to the data array.
+ *
+ * val [in] The data to be added to the data array.
+ *
+ * returns the number of bits pushed.
+ */
+uint32_t
+ulp_bs_push_msb(uint8_t *bs, uint16_t pos, uint8_t len, uint8_t *val);
+
+/*
  * Initializes the blob structure for creating binary blob
  *
  * blob [in] The blob to be initialized
@@ -256,6 +288,42 @@ ulp_blob_push_encap(struct ulp_blob *blob,
 uint8_t *
 ulp_blob_data_get(struct ulp_blob *blob,
 		  uint16_t *datalen);
+
+/*
+ * Get data from the byte array in Little endian format.
+ *
+ * src [in] The byte array where data is extracted from
+ *
+ * dst [out] The byte array where data is pulled into
+ *
+ * size [in] The size of dst array in bytes
+ *
+ * offset [in] The offset where data is pulled
+ *
+ * len [in] The number of bits to be extracted from the data array
+ *
+ * returns None.
+ */
+void
+ulp_bs_pull_lsb(uint8_t *src, uint8_t *dst, uint32_t size,
+		uint32_t offset, uint32_t len);
+
+/*
+ * Get data from the byte array in Big endian format.
+ *
+ * src [in] The byte array where data is extracted from
+ *
+ * dst [out] The byte array where data is pulled into
+ *
+ * offset [in] The offset where data is pulled
+ *
+ * len [in] The number of bits to be extracted from the data array
+ *
+ * returns None.
+ */
+void
+ulp_bs_pull_msb(uint8_t *src, uint8_t *dst,
+		uint32_t offset, uint32_t len);
 
 /*
  * Extract data from the binary blob using given offset.

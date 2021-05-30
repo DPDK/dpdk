@@ -14,6 +14,7 @@
 #include "ulp_template_struct.h"
 #include "bnxt_ulp.h"
 #include "ulp_utils.h"
+#include "ulp_gen_tbl.h"
 
 #define ULP_IDENTS_INVALID ((uint16_t)0xffff)
 
@@ -31,13 +32,6 @@ enum bnxt_ulp_cache_table_opc {
 	BNXT_ULP_MAPPER_TCAM_TBL_OPC_CACHE_ALLOC
 };
 
-struct bnxt_ulp_mapper_cache_entry {
-	uint32_t ref_count;
-	uint16_t tcam_idx;
-	uint16_t idents[BNXT_ULP_CACHE_TBL_IDENT_MAX_NUM];
-	uint8_t ident_types[BNXT_ULP_CACHE_TBL_IDENT_MAX_NUM];
-};
-
 struct bnxt_ulp_mapper_glb_resource_entry {
 	enum bnxt_ulp_resource_func	resource_func;
 	uint32_t			resource_type; /* TF_ enum type */
@@ -47,8 +41,7 @@ struct bnxt_ulp_mapper_glb_resource_entry {
 struct bnxt_ulp_mapper_data {
 	struct bnxt_ulp_mapper_glb_resource_entry
 		glb_res_tbl[TF_DIR_MAX][BNXT_ULP_GLB_RESOURCE_TBL_MAX_SZ];
-	struct bnxt_ulp_mapper_cache_entry
-		*cache_tbl[BNXT_ULP_CACHE_TBL_MAX_SZ];
+	struct ulp_mapper_gen_tbl_list gen_tbl_list[BNXT_ULP_GEN_TBL_MAX_SZ];
 };
 
 /* Internal Structure for passing the arguments around */
@@ -69,13 +62,11 @@ struct bnxt_ulp_mapper_parms {
 	struct ulp_regfile			*regfile;
 	struct tf				*tfp;
 	struct bnxt_ulp_context			*ulp_ctx;
-	uint8_t					encap_byte_swap;
 	uint32_t				fid;
 	enum bnxt_ulp_fdb_type			flow_type;
 	struct bnxt_ulp_mapper_data		*mapper_data;
 	enum bnxt_ulp_cache_table_opc		tcam_tbl_opc;
-	struct bnxt_ulp_mapper_cache_entry	*cache_ptr;
-	struct bnxt_ulp_device_params           *device_params;
+	struct bnxt_ulp_device_params		*device_params;
 	uint32_t				parent_fid;
 	uint32_t				parent_flow;
 	uint8_t					tun_idx;

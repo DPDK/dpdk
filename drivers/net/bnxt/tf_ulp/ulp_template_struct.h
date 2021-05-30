@@ -217,6 +217,9 @@ struct bnxt_ulp_mapper_tbl_info {
 	enum bnxt_ulp_mark_db_opcode	mark_db_opcode;
 	enum bnxt_ulp_index_opcode	index_opcode;
 	uint32_t			index_operand;
+
+	/* Table opcode for table operations */
+	uint32_t			tbl_opcode;
 };
 
 struct bnxt_ulp_mapper_key_field_info {
@@ -258,6 +261,12 @@ struct bnxt_ulp_cache_tbl_params {
 	uint16_t num_entries;
 };
 
+struct bnxt_ulp_generic_tbl_params {
+	uint16_t			result_num_entries;
+	uint16_t			result_byte_size;
+	enum bnxt_ulp_byte_order	result_byte_order;
+};
+
 /*
  * Flow Mapper Static Data Externs:
  * Access to the below static data should be done through access functions and
@@ -288,6 +297,11 @@ extern struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[];
  */
 extern struct bnxt_ulp_cache_tbl_params ulp_cache_tbl_params[];
 
+/*
+ * The ulp_generic_tbl_parms table provides the sizes of the generic tables the
+ * mapper must dynamically allocate during initialization.
+ */
+extern struct bnxt_ulp_generic_tbl_params ulp_generic_tbl_params[];
 /*
  * The ulp_global template table is used to initialize default entries
  * that could be reused by other templates.
