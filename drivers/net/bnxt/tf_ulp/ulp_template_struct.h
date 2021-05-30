@@ -62,6 +62,7 @@ struct ulp_rte_act_prop {
 
 /* Structure to be used for passing all the parser functions */
 struct ulp_rte_parser_params {
+	STAILQ_ENTRY(ulp_rte_parser_params)  next;
 	struct ulp_rte_hdr_bitmap	hdr_bitmap;
 	struct ulp_rte_hdr_bitmap	hdr_fp_bit;
 	struct ulp_rte_field_bitmap	fld_bitmap;

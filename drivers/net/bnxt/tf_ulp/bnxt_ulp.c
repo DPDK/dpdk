@@ -22,6 +22,7 @@
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
 #include "ulp_port_db.h"
+#include "ulp_tun.h"
 
 /* Linked list of all TF sessions. */
 STAILQ_HEAD(, bnxt_ulp_session_state) bnxt_ulp_session_list =
@@ -532,6 +533,8 @@ ulp_ctx_init(struct bnxt *bp,
 	rc = ulp_ctx_session_open(bp, session);
 	if (rc)
 		goto error_deinit;
+
+	ulp_tun_tbl_init(ulp_data->tun_tbl);
 
 	bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, &bp->tfp);
 	return rc;
