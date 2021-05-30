@@ -81,6 +81,8 @@ struct ulp_rte_parser_params {
 	struct bnxt_ulp_context		*ulp_ctx;
 	uint32_t			hdr_sig_id;
 	uint32_t			flow_sig_id;
+	uint32_t			flow_pattern_id;
+	uint32_t			act_pattern_id;
 };
 
 /* Flow Parser Header Information Structure */
@@ -128,6 +130,7 @@ struct bnxt_ulp_class_match_info {
 	uint8_t			wc_pri;
 	uint32_t		hdr_sig_id;
 	uint32_t		flow_sig_id;
+	uint32_t		flow_pattern_id;
 };
 
 /* Flow Matcher templates Structure for class entries */
@@ -144,6 +147,7 @@ struct bnxt_ulp_act_match_info {
 	struct ulp_rte_bitmap	act_sig;
 	uint32_t		act_hid;
 	uint32_t		act_tid;
+	uint32_t		act_pattern_id;
 };
 
 /* Flow Matcher templates Structure for action entries */
@@ -160,7 +164,8 @@ struct bnxt_ulp_mapper_cond_list_info {
 	enum bnxt_ulp_cond_list_opc cond_list_opcode;
 	uint32_t cond_start_idx;
 	uint32_t cond_nums;
-	uint32_t cond_goto;
+	int32_t cond_true_goto;
+	int32_t cond_false_goto;
 };
 
 struct bnxt_ulp_template_device_tbls {

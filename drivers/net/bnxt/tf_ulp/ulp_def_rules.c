@@ -360,6 +360,9 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 		goto err1;
 	}
 
+	BNXT_TF_DBG(DEBUG, "Creating default flow with template id: %u\n",
+		    ulp_class_tid);
+
 	/* Protect flow creation */
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
 		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");

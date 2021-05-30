@@ -79,21 +79,23 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 			    struct ulp_rte_parser_params *params,
 			    enum bnxt_ulp_fdb_type flow_type)
 {
-	mapper_cparms->flow_type	= flow_type;
-	mapper_cparms->app_priority	= params->priority;
-	mapper_cparms->dir_attr		= params->dir_attr;
-	mapper_cparms->class_tid	= params->class_id;
-	mapper_cparms->act_tid		= params->act_tmpl;
-	mapper_cparms->func_id		= params->func_id;
-	mapper_cparms->hdr_bitmap	= &params->hdr_bitmap;
-	mapper_cparms->hdr_field	= params->hdr_field;
-	mapper_cparms->comp_fld		= params->comp_fld;
-	mapper_cparms->act		= &params->act_bitmap;
-	mapper_cparms->act_prop		= &params->act_prop;
-	mapper_cparms->flow_id		= params->fid;
-	mapper_cparms->parent_flow	= params->parent_flow;
-	mapper_cparms->parent_fid	= params->parent_fid;
-	mapper_cparms->fld_bitmap	= &params->fld_bitmap;
+	mapper_cparms->flow_type = flow_type;
+	mapper_cparms->app_priority = params->priority;
+	mapper_cparms->dir_attr = params->dir_attr;
+	mapper_cparms->class_tid = params->class_id;
+	mapper_cparms->act_tid = params->act_tmpl;
+	mapper_cparms->func_id = params->func_id;
+	mapper_cparms->hdr_bitmap = &params->hdr_bitmap;
+	mapper_cparms->hdr_field = params->hdr_field;
+	mapper_cparms->comp_fld = params->comp_fld;
+	mapper_cparms->act = &params->act_bitmap;
+	mapper_cparms->act_prop = &params->act_prop;
+	mapper_cparms->flow_id = params->fid;
+	mapper_cparms->parent_flow = params->parent_flow;
+	mapper_cparms->parent_fid = params->parent_fid;
+	mapper_cparms->fld_bitmap = &params->fld_bitmap;
+	mapper_cparms->flow_pattern_id = params->flow_pattern_id;
+	mapper_cparms->act_pattern_id = params->act_pattern_id;
 
 	/* update the signature fields into the computed field list */
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_HDR_SIG_ID,

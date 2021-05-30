@@ -36,6 +36,10 @@ bnxt_ulp_mapper_cond_info ulp_wh_plus_class_cond_list[];
 extern struct
 bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[];
 
+extern struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[];
+
+extern struct bnxt_ulp_mapper_ident_info ulp_wh_plus_act_ident_list[];
+
 /* STINGRAY template table declarations */
 extern struct bnxt_ulp_mapper_tmpl_info ulp_stingray_class_tmpl_list[];
 

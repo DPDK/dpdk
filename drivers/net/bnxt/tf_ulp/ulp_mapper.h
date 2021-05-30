@@ -58,6 +58,8 @@ struct bnxt_ulp_mapper_parms {
 	uint8_t					tun_idx;
 	uint32_t				app_priority;
 	uint64_t				shared_hndl;
+	uint32_t				flow_pattern_id;
+	uint32_t				act_pattern_id;
 };
 
 struct bnxt_ulp_mapper_create_parms {
@@ -80,6 +82,11 @@ struct bnxt_ulp_mapper_create_parms {
 	/* if set then create a parent flow */
 	uint32_t			parent_flow;
 	uint8_t				tun_idx;
+
+	/* support pattern based rejection */
+	uint32_t			flow_pattern_id;
+	uint32_t			act_pattern_id;
+
 };
 
 /* Function to initialize any dynamic mapper data. */

@@ -79,6 +79,7 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 	*class_id = class_match->class_tid;
 	params->hdr_sig_id = class_match->hdr_sig_id;
 	params->flow_sig_id = class_match->flow_sig_id;
+	params->flow_pattern_id = class_match->flow_pattern_id;
 	return BNXT_TF_RC_SUCCESS;
 
 error:
@@ -115,6 +116,7 @@ ulp_matcher_action_match(struct ulp_rte_parser_params *params,
 		goto error;
 	}
 	*act_id = act_match->act_tid;
+	params->act_pattern_id = act_match->act_pattern_id;
 	BNXT_TF_DBG(DEBUG, "Found matching action template %u\n", *act_id);
 	return BNXT_TF_RC_SUCCESS;
 

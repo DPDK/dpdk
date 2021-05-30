@@ -48,21 +48,17 @@ ulp_flow_db_active_flows_bit_set(struct bnxt_ulp_flow_db *flow_db,
 	uint32_t a_idx = idx / ULP_INDEX_BITMAP_SIZE;
 
 	if (flag) {
-		if (flow_type == BNXT_ULP_FDB_TYPE_REGULAR || flow_type ==
-		    BNXT_ULP_FDB_TYPE_RID)
+		if (flow_type == BNXT_ULP_FDB_TYPE_REGULAR)
 			ULP_INDEX_BITMAP_SET(f_tbl->active_reg_flows[a_idx],
 					     idx);
-		if (flow_type == BNXT_ULP_FDB_TYPE_DEFAULT || flow_type ==
-		    BNXT_ULP_FDB_TYPE_RID)
+		else
 			ULP_INDEX_BITMAP_SET(f_tbl->active_dflt_flows[a_idx],
 					     idx);
 	} else {
-		if (flow_type == BNXT_ULP_FDB_TYPE_REGULAR || flow_type ==
-		    BNXT_ULP_FDB_TYPE_RID)
+		if (flow_type == BNXT_ULP_FDB_TYPE_REGULAR)
 			ULP_INDEX_BITMAP_RESET(f_tbl->active_reg_flows[a_idx],
 					       idx);
-		if (flow_type == BNXT_ULP_FDB_TYPE_DEFAULT || flow_type ==
-		    BNXT_ULP_FDB_TYPE_RID)
+		else
 			ULP_INDEX_BITMAP_RESET(f_tbl->active_dflt_flows[a_idx],
 					       idx);
 	}
@@ -89,15 +85,9 @@ ulp_flow_db_active_flows_bit_is_set(struct bnxt_ulp_flow_db *flow_db,
 	if (flow_type == BNXT_ULP_FDB_TYPE_REGULAR)
 		return ULP_INDEX_BITMAP_GET(f_tbl->active_reg_flows[a_idx],
 					    idx);
-	else if (flow_type == BNXT_ULP_FDB_TYPE_DEFAULT)
+	else
 		return ULP_INDEX_BITMAP_GET(f_tbl->active_dflt_flows[a_idx],
 					    idx);
-	else if (flow_type == BNXT_ULP_FDB_TYPE_RID)
-		return (ULP_INDEX_BITMAP_GET(f_tbl->active_reg_flows[a_idx],
-					     idx) &&
-			ULP_INDEX_BITMAP_GET(f_tbl->active_reg_flows[a_idx],
-					     idx));
-	return 0;
 }
 
 static inline enum tf_dir
@@ -223,7 +213,7 @@ ulp_flow_db_alloc_resource(struct bnxt_ulp_flow_db *flow_db)
 		return -ENOMEM;
 	}
 	size = (flow_tbl->num_flows / sizeof(uint64_t)) + 1;
-	size = ULP_BYTE_ROUND_OFF_8(size);
+	size =  ULP_BYTE_ROUND_OFF_8(size);
 	flow_tbl->active_reg_flows = rte_zmalloc("active reg flows", size,
 						 ULP_BUFFER_ALIGN_64_BYTE);
 	if (!flow_tbl->active_reg_flows) {
@@ -627,7 +617,7 @@ ulp_flow_db_fid_alloc(struct bnxt_ulp_context *ulp_ctxt,
 		return -EINVAL;
 	}
 
-	if (flow_type >= BNXT_ULP_FDB_TYPE_LAST) {
+	if (flow_type > BNXT_ULP_FDB_TYPE_DEFAULT) {
 		BNXT_TF_DBG(ERR, "Invalid flow type\n");
 		return -EINVAL;
 	}
@@ -684,7 +674,7 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
 		return -EINVAL;
 	}
 
-	if (flow_type >= BNXT_ULP_FDB_TYPE_LAST) {
+	if (flow_type > BNXT_ULP_FDB_TYPE_DEFAULT) {
 		BNXT_TF_DBG(ERR, "Invalid flow type\n");
 		return -EINVAL;
 	}
@@ -698,7 +688,7 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
 
 	/* check if the flow is active or not */
 	if (!ulp_flow_db_active_flows_bit_is_set(flow_db, flow_type, fid)) {
-		BNXT_TF_DBG(ERR, "flow does not exist %x:%x\n", flow_type, fid);
+		BNXT_TF_DBG(ERR, "flow does not exist\n");
 		return -EINVAL;
 	}
 
@@ -779,7 +769,7 @@ ulp_flow_db_resource_del(struct bnxt_ulp_context *ulp_ctxt,
 		return -EINVAL;
 	}
 
-	if (flow_type >= BNXT_ULP_FDB_TYPE_LAST) {
+	if (flow_type > BNXT_ULP_FDB_TYPE_DEFAULT) {
 		BNXT_TF_DBG(ERR, "Invalid flow type\n");
 		return -EINVAL;
 	}
@@ -793,7 +783,7 @@ ulp_flow_db_resource_del(struct bnxt_ulp_context *ulp_ctxt,
 
 	/* check if the flow is active or not */
 	if (!ulp_flow_db_active_flows_bit_is_set(flow_db, flow_type, fid)) {
-		BNXT_TF_DBG(ERR, "flow does not exist %x:%x\n", flow_type, fid);
+		BNXT_TF_DBG(ERR, "flow does not exist\n");
 		return -EINVAL;
 	}
 
@@ -887,7 +877,7 @@ ulp_flow_db_fid_free(struct bnxt_ulp_context *ulp_ctxt,
 		return -EINVAL;
 	}
 
-	if (flow_type >= BNXT_ULP_FDB_TYPE_LAST) {
+	if (flow_type > BNXT_ULP_FDB_TYPE_DEFAULT) {
 		BNXT_TF_DBG(ERR, "Invalid flow type\n");
 		return -EINVAL;
 	}
@@ -902,7 +892,7 @@ ulp_flow_db_fid_free(struct bnxt_ulp_context *ulp_ctxt,
 
 	/* check if the flow is active or not */
 	if (!ulp_flow_db_active_flows_bit_is_set(flow_db, flow_type, fid)) {
-		BNXT_TF_DBG(ERR, "flow does not exist %x:%x\n", flow_type, fid);
+		BNXT_TF_DBG(ERR, "flow does not exist\n");
 		return -EINVAL;
 	}
 	flow_tbl->head_index--;
@@ -910,7 +900,6 @@ ulp_flow_db_fid_free(struct bnxt_ulp_context *ulp_ctxt,
 		BNXT_TF_DBG(ERR, "FlowDB: Head Ptr is zero\n");
 		return -ENOENT;
 	}
-
 	flow_tbl->flow_tbl_stack[flow_tbl->head_index] = fid;
 
 	/* Clear the flows bitmap */
@@ -924,7 +913,7 @@ ulp_flow_db_fid_free(struct bnxt_ulp_context *ulp_ctxt,
 }
 
 /*
- *Get the flow database entry details
+ * Get the flow database entry details
  *
  * ulp_ctxt [in] Ptr to ulp_context
  * flow_type [in] - specify default or regular
@@ -951,7 +940,7 @@ ulp_flow_db_resource_get(struct bnxt_ulp_context *ulp_ctxt,
 		return -EINVAL;
 	}
 
-	if (flow_type >= BNXT_ULP_FDB_TYPE_LAST) {
+	if (flow_type > BNXT_ULP_FDB_TYPE_DEFAULT) {
 		BNXT_TF_DBG(ERR, "Invalid flow type\n");
 		return -EINVAL;
 	}
@@ -1007,14 +996,10 @@ ulp_flow_db_next_entry_get(struct bnxt_ulp_flow_db *flow_db,
 	uint64_t *active_flows;
 	struct bnxt_ulp_flow_tbl *flowtbl = &flow_db->flow_tbl;
 
-	if (flow_type == BNXT_ULP_FDB_TYPE_REGULAR) {
+	if (flow_type == BNXT_ULP_FDB_TYPE_REGULAR)
 		active_flows = flowtbl->active_reg_flows;
-	} else if (flow_type == BNXT_ULP_FDB_TYPE_DEFAULT) {
+	else
 		active_flows = flowtbl->active_dflt_flows;
-	} else {
-		BNXT_TF_DBG(ERR, "Invalid flow type %x\n", flow_type);
-			return -EINVAL;
-	}
 
 	do {
 		/* increment the flow id to find the next valid flow id */
@@ -1207,7 +1192,7 @@ ulp_flow_db_resource_params_get(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 	}
 
-	if (flow_type >= BNXT_ULP_FDB_TYPE_LAST) {
+	if (flow_type > BNXT_ULP_FDB_TYPE_DEFAULT) {
 		BNXT_TF_DBG(ERR, "Invalid flow type\n");
 		return -EINVAL;
 	}
@@ -1609,7 +1594,7 @@ ulp_flow_db_child_flow_reset(struct bnxt_ulp_context *ulp_ctxt,
 		return -EINVAL;
 	}
 
-	if (flow_type >= BNXT_ULP_FDB_TYPE_LAST) {
+	if (flow_type > BNXT_ULP_FDB_TYPE_DEFAULT) {
 		BNXT_TF_DBG(ERR, "Invalid flow type\n");
 		return -EINVAL;
 	}
