@@ -24,6 +24,7 @@ sources += files(
         'ulp_tun.c',
         'ulp_gen_tbl.c',
         'ulp_gen_hash.c',
+        'ulp_ha_mgr.c',
         'ulp_rte_handler_tbl.c',
         'ulp_template_db_wh_plus_act.c',
         'ulp_template_db_wh_plus_class.c',

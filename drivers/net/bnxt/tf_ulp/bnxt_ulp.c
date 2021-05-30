@@ -23,6 +23,7 @@
 #include "ulp_mapper.h"
 #include "ulp_port_db.h"
 #include "ulp_tun.h"
+#include "ulp_ha_mgr.h"
 
 /* Linked list of all TF sessions. */
 STAILQ_HEAD(, bnxt_ulp_session_state) bnxt_ulp_session_list =
@@ -315,6 +316,9 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt_ulp_context *ulp_ctx,
 		if (info[i].flags & BNXT_ULP_APP_CAP_SHARED_EN)
 			ulp_ctx->cfg_data->ulp_flags |=
 				BNXT_ULP_SHARED_SESSION_ENABLED;
+		if (info[i].flags & BNXT_ULP_APP_CAP_HOT_UPGRADE_EN)
+			ulp_ctx->cfg_data->ulp_flags |=
+				BNXT_ULP_HIGH_AVAIL_ENABLED;
 	}
 	if (!found) {
 		BNXT_TF_DBG(ERR, "APP ID %d, Device ID: 0x%x not supported.\n",
@@ -1137,8 +1141,17 @@ static void
 bnxt_ulp_deinit(struct bnxt *bp,
 		struct bnxt_ulp_session_state *session)
 {
+	bool ha_enabled;
+
 	if (!bp->ulp_ctx || !bp->ulp_ctx->cfg_data)
 		return;
+
+	ha_enabled = bnxt_ulp_cntxt_ha_enabled(bp->ulp_ctx);
+	if (ha_enabled && session->session_opened) {
+		int32_t rc = ulp_ha_mgr_close(bp->ulp_ctx);
+		if (rc)
+			BNXT_TF_DBG(ERR, "Failed to close HA (%d)\n", rc);
+	}
 
 	/* clean up default flows */
 	bnxt_ulp_destroy_df_rules(bp, true);
@@ -1178,6 +1191,9 @@ bnxt_ulp_deinit(struct bnxt *bp,
 
 	/* free the flow db lock */
 	pthread_mutex_destroy(&bp->ulp_ctx->cfg_data->flow_db_lock);
+
+	if (ha_enabled)
+		ulp_ha_mgr_deinit(bp->ulp_ctx);
 
 	/* Delete the ulp context and tf session and free the ulp context */
 	ulp_ctx_deinit(bp, session);
@@ -1274,6 +1290,19 @@ bnxt_ulp_init(struct bnxt *bp,
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to set tx global configuration\n");
 		goto jump_to_error;
+	}
+
+	if (bnxt_ulp_cntxt_ha_enabled(bp->ulp_ctx)) {
+		rc = ulp_ha_mgr_init(bp->ulp_ctx);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "Failed to initialize HA %d\n", rc);
+			goto jump_to_error;
+		}
+		rc = ulp_ha_mgr_open(bp->ulp_ctx);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "Failed to Process HA Open %d\n", rc);
+			goto jump_to_error;
+		}
 	}
 	BNXT_TF_DBG(DEBUG, "ulp ctx has been initialized\n");
 	return rc;
@@ -1827,4 +1856,34 @@ bnxt_ulp_cntxt_release_fdb_lock(struct bnxt_ulp_context	*ulp_ctx)
 		return;
 
 	pthread_mutex_unlock(&ulp_ctx->cfg_data->flow_db_lock);
+}
+
+/* Function to set the ha info into the context */
+int32_t
+bnxt_ulp_cntxt_ptr2_ha_info_set(struct bnxt_ulp_context *ulp_ctx,
+				struct bnxt_ulp_ha_mgr_info *ulp_ha_info)
+{
+	if (ulp_ctx == NULL || ulp_ctx->cfg_data == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid ulp context data\n");
+		return -EINVAL;
+	}
+	ulp_ctx->cfg_data->ha_info = ulp_ha_info;
+	return 0;
+}
+
+/* Function to retrieve the ha info from the context. */
+struct bnxt_ulp_ha_mgr_info *
+bnxt_ulp_cntxt_ptr2_ha_info_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (ulp_ctx == NULL || ulp_ctx->cfg_data == NULL)
+		return NULL;
+	return ulp_ctx->cfg_data->ha_info;
+}
+
+bool
+bnxt_ulp_cntxt_ha_enabled(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (ulp_ctx == NULL || ulp_ctx->cfg_data == NULL)
+		return false;
+	return !!ULP_HIGH_AVAIL_IS_ENABLED(ulp_ctx->cfg_data->ulp_flags);
 }

@@ -67,6 +67,7 @@ struct bnxt_ulp_data {
 	void				*mapper_data;
 	struct bnxt_ulp_port_db		*port_db;
 	struct bnxt_ulp_fc_info		*fc_info;
+	struct bnxt_ulp_ha_mgr_info	*ha_info;
 	uint32_t			ulp_flags;
 	struct bnxt_ulp_df_rule_info	df_rule_info[RTE_MAX_ETHPORTS];
 	struct bnxt_ulp_vfr_rule_info	vfr_rule_info[RTE_MAX_ETHPORTS];
@@ -275,4 +276,13 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt_ulp_context *ulp_ctx,
 struct bnxt_ulp_resource_resv_info *
 bnxt_ulp_resource_resv_list_get(uint32_t *num_entries);
 
+int32_t
+bnxt_ulp_cntxt_ptr2_ha_info_set(struct bnxt_ulp_context *ulp_ctx,
+				struct bnxt_ulp_ha_mgr_info *ulp_ha_info);
+
+struct bnxt_ulp_ha_mgr_info *
+bnxt_ulp_cntxt_ptr2_ha_info_get(struct bnxt_ulp_context *ulp_ctx);
+
+bool
+bnxt_ulp_cntxt_ha_enabled(struct bnxt_ulp_context *ulp_ctx);
 #endif /* _BNXT_ULP_H_ */

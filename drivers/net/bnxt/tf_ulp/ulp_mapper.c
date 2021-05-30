@@ -19,6 +19,7 @@
 #include "tf_util.h"
 #include "ulp_template_db_tbl.h"
 #include "ulp_port_db.h"
+#include "ulp_ha_mgr.h"
 
 static uint8_t mapper_fld_zeros[16] = { 0 };
 
@@ -419,7 +420,7 @@ ulp_mapper_ident_fields_get(struct bnxt_ulp_mapper_parms *mparms,
 }
 
 static inline int32_t
-ulp_mapper_tcam_entry_free(struct bnxt_ulp_context *ulp  __rte_unused,
+ulp_mapper_tcam_entry_free(struct bnxt_ulp_context *ulp,
 			   struct tf *tfp,
 			   struct ulp_flow_db_res_params *res)
 {
@@ -429,6 +430,30 @@ ulp_mapper_tcam_entry_free(struct bnxt_ulp_context *ulp  __rte_unused,
 		.idx		= (uint16_t)res->resource_hndl
 	};
 
+	/* If HA is enabled, we may have to remap the TF Type */
+	if (bnxt_ulp_cntxt_ha_enabled(ulp)) {
+		enum ulp_ha_mgr_region region;
+		int32_t rc;
+
+		switch (res->resource_type) {
+		case TF_TCAM_TBL_TYPE_WC_TCAM_HIGH:
+		case TF_TCAM_TBL_TYPE_WC_TCAM_LOW:
+			rc = ulp_ha_mgr_region_get(ulp, &region);
+			if (rc)
+				/* Log this, but assume region is correct */
+				BNXT_TF_DBG(ERR,
+					    "Unable to get HA region (%d)\n",
+					    rc);
+			else
+				fparms.tcam_tbl_type =
+					(region == ULP_HA_REGION_LOW) ?
+					TF_TCAM_TBL_TYPE_WC_TCAM_LOW :
+					TF_TCAM_TBL_TYPE_WC_TCAM_HIGH;
+			break;
+		default:
+			break;
+		}
+	}
 	return tf_free_tcam_entry(tfp, &fparms);
 }
 
@@ -2904,10 +2929,12 @@ static int32_t
 ulp_mapper_app_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 				      struct bnxt_ulp_mapper_data *mapper_data)
 {
+	struct tf_get_shared_tbl_increment_parms iparms;
 	struct bnxt_ulp_glb_resource_info *glb_res;
 	struct tf_get_session_info_parms sparms;
 	uint32_t num_entries, i, dev_id, res;
 	struct tf_resource_info *res_info;
+	uint32_t addend;
 	uint64_t regval;
 	enum tf_dir dir;
 	int32_t rc = 0;
@@ -2915,13 +2942,11 @@ ulp_mapper_app_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 	uint8_t app_id;
 
 	memset(&sparms, 0, sizeof(sparms));
-
 	glb_res = bnxt_ulp_app_glb_resource_info_list_get(&num_entries);
 	if (!glb_res || !num_entries) {
 		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
 		return -EINVAL;
 	}
-
 	tfp = bnxt_ulp_cntxt_shared_tfp_get(ulp_ctx);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get tfp for app global init");
@@ -2958,12 +2983,29 @@ ulp_mapper_app_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 			continue;
 		dir = glb_res[i].direction;
 		res = glb_res[i].resource_type;
+		addend = 1;
 
 		switch (glb_res[i].resource_func) {
 		case BNXT_ULP_RESOURCE_FUNC_IDENTIFIER:
 			res_info = &sparms.session_info.ident[dir].info[res];
 			break;
 		case BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE:
+			/*
+			 * Tables may have various strides for the allocations.
+			 * Need to account.
+			 */
+			memset(&iparms, 0, sizeof(iparms));
+			iparms.dir = dir;
+			iparms.type = res;
+			rc = tf_get_shared_tbl_increment(tfp, &iparms);
+			if (rc) {
+				BNXT_TF_DBG(ERR,
+					    "Failed to get addend for %s[%s] rc=(%d)\n",
+					    tf_tbl_type_2_str(res),
+					    tf_dir_2_str(dir), rc);
+				return rc;
+			}
+			addend = iparms.increment_cnt;
 			res_info = &sparms.session_info.tbl[dir].info[res];
 			break;
 		case BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE:
@@ -2977,10 +3019,8 @@ ulp_mapper_app_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 				    glb_res[i].resource_func);
 			continue;
 		}
-
 		regval = tfp_cpu_to_be_64((uint64_t)res_info->start);
-		res_info->start++;
-
+		res_info->start += addend;
 		/*
 		 * All resources written to the global regfile are shared for
 		 * this function.
