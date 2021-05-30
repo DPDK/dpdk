@@ -38,7 +38,6 @@ ulp_mapper_tmpl_name_str(enum bnxt_ulp_template_type tmpl_type)
 	}
 }
 
-
 static struct bnxt_ulp_glb_resource_info *
 ulp_mapper_glb_resource_info_list_get(uint32_t *num_entries)
 {
@@ -2486,15 +2485,17 @@ static int32_t
 ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			   struct bnxt_ulp_mapper_tbl_info *tbl)
 {
+	struct ulp_mapper_gen_tbl_list *gen_tbl_list;
 	struct bnxt_ulp_mapper_key_info *kflds;
 	struct ulp_flow_db_res_params fid_parms;
 	struct ulp_mapper_gen_tbl_entry gen_tbl_ent, *g;
+	struct ulp_gen_hash_entry_params hash_entry;
 	uint16_t tmplen;
 	struct ulp_blob key, data;
 	uint8_t *cache_key;
 	int32_t tbl_idx;
-	uint32_t i, ckey, num_kflds = 0;
-	uint32_t gen_tbl_hit = 0, fdb_write = 0;
+	uint32_t i, num_kflds = 0, key_index = 0;
+	uint32_t gen_tbl_miss = 1, fdb_write = 0;
 	uint8_t *byte_data;
 	int32_t rc = 0;
 
@@ -2504,6 +2505,7 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		BNXT_TF_DBG(ERR, "Failed to get key fields\n");
 		return -EINVAL;
 	}
+
 	if (!ulp_blob_init(&key, tbl->key_bit_size,
 			   parms->device_params->byte_order)) {
 		BNXT_TF_DBG(ERR, "Failed to alloc blob\n");
@@ -2533,17 +2535,51 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* The_key is a byte array convert it to a search index */
 	cache_key = ulp_blob_data_get(&key, &tmplen);
-	memcpy(&ckey, cache_key, sizeof(ckey));
-	/* Get the generic table entry */
-	rc = ulp_mapper_gen_tbl_entry_get(parms->ulp_ctx,
-					  tbl_idx, ckey, &gen_tbl_ent);
-	if (rc) {
-		BNXT_TF_DBG(ERR,
-			    "Failed to create key for Gen tbl rc=%d\n", rc);
-		return -EINVAL;
+	/* get the generic table  */
+	gen_tbl_list = &parms->mapper_data->gen_tbl_list[tbl_idx];
+
+	/* Check if generic hash table */
+	if (gen_tbl_list->hash_tbl) {
+		if (tbl->gen_tbl_lkup_type !=
+		    BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH) {
+			BNXT_TF_DBG(ERR, "%s: Invalid template lkup type\n",
+				    gen_tbl_list->gen_tbl_name);
+			return -EINVAL;
+		}
+		hash_entry.key_data = cache_key;
+		hash_entry.key_length = ULP_BITS_2_BYTE(tmplen);
+		rc = ulp_gen_hash_tbl_list_key_search(gen_tbl_list->hash_tbl,
+						      &hash_entry);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "%s: hash tbl search failed\n",
+				    gen_tbl_list->gen_tbl_name);
+			return rc;
+		}
+		if (hash_entry.search_flag == ULP_GEN_HASH_SEARCH_FOUND) {
+			key_index = hash_entry.key_idx;
+			/* Get the generic table entry */
+			if (ulp_mapper_gen_tbl_entry_get(gen_tbl_list,
+							 key_index,
+							 &gen_tbl_ent))
+				return -EINVAL;
+			/* store the hash index in the fdb */
+			key_index = hash_entry.hash_index;
+		}
+	} else {
+		/* convert key to index directly */
+		memcpy(&key_index, cache_key, ULP_BITS_2_BYTE(tmplen));
+		/* Get the generic table entry */
+		if (ulp_mapper_gen_tbl_entry_get(gen_tbl_list, key_index,
+						 &gen_tbl_ent))
+			return -EINVAL;
 	}
 	switch (tbl->tbl_opcode) {
 	case BNXT_ULP_GENERIC_TBL_OPC_READ:
+		if (gen_tbl_list->hash_tbl) {
+			if (hash_entry.search_flag != ULP_GEN_HASH_SEARCH_FOUND)
+				break; /* nothing to be done , no entry */
+		}
+
 		/* check the reference count */
 		if (ULP_GEN_TBL_REF_CNT(&gen_tbl_ent)) {
 			g = &gen_tbl_ent;
@@ -2563,16 +2599,24 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			}
 
 			/* it is a hit */
-			gen_tbl_hit = 1;
+			gen_tbl_miss = 0;
 			fdb_write = 1;
 		}
 		break;
 	case BNXT_ULP_GENERIC_TBL_OPC_WRITE:
+		if (gen_tbl_list->hash_tbl) {
+			rc = ulp_mapper_gen_tbl_hash_entry_add(gen_tbl_list,
+							       &hash_entry,
+							       &gen_tbl_ent);
+			if (rc)
+				return rc;
+			/* store the hash index in the fdb */
+			key_index = hash_entry.hash_index;
+		}
 		/* check the reference count */
 		if (ULP_GEN_TBL_REF_CNT(&gen_tbl_ent)) {
 			/* a hit then error */
-			BNXT_TF_DBG(ERR, "generic entry already present %x\n",
-				    ckey);
+			BNXT_TF_DBG(ERR, "generic entry already present\n");
 			return -EINVAL; /* success */
 		}
 
@@ -2602,7 +2646,7 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		/* increment the reference count */
 		ULP_GEN_TBL_REF_CNT_INC(&gen_tbl_ent);
 		fdb_write = 1;
-		parms->shared_hndl = (uint64_t)tbl_idx << 32 | ckey;
+		parms->shared_hndl = (uint64_t)tbl_idx << 32 | key_index;
 		break;
 	default:
 		BNXT_TF_DBG(ERR, "Invalid table opcode %x\n", tbl->tbl_opcode);
@@ -2611,11 +2655,11 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* Set the generic entry hit */
 	rc = ulp_regfile_write(parms->regfile,
-			       BNXT_ULP_RF_IDX_GENERIC_TBL_HIT,
-			       tfp_cpu_to_be_64(gen_tbl_hit));
+			       BNXT_ULP_RF_IDX_GENERIC_TBL_MISS,
+			       tfp_cpu_to_be_64(gen_tbl_miss));
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Write regfile[%d] failed\n",
-			    BNXT_ULP_RF_IDX_GENERIC_TBL_HIT);
+			    BNXT_ULP_RF_IDX_GENERIC_TBL_MISS);
 		return -EIO;
 	}
 
@@ -2625,7 +2669,7 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		fid_parms.direction = tbl->direction;
 		fid_parms.resource_func	= tbl->resource_func;
 		fid_parms.resource_sub_type = tbl->resource_sub_type;
-		fid_parms.resource_hndl	= ckey;
+		fid_parms.resource_hndl	= key_index;
 		fid_parms.critical_resource = tbl->critical_resource;
 		rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 		if (rc)
@@ -2947,13 +2991,13 @@ ulp_mapper_conflict_resolution_process(struct bnxt_ulp_mapper_parms *parms,
 		    BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE) {
 			/* Perform the check that generic table is hit or not */
 			if (!ulp_regfile_read(parms->regfile,
-					      BNXT_ULP_RF_IDX_GENERIC_TBL_HIT,
+					      BNXT_ULP_RF_IDX_GENERIC_TBL_MISS,
 					      &regval)) {
 				BNXT_TF_DBG(ERR, "regfile[%d] read oob\n",
-					    BNXT_ULP_RF_IDX_GENERIC_TBL_HIT);
+					    BNXT_ULP_RF_IDX_GENERIC_TBL_MISS);
 				return -EINVAL;
 			}
-			if (!regval) {
+			if (regval) {
 				/* not a hit so no need to check flow sign*/
 				*res = 1;
 				return rc;
@@ -3204,7 +3248,7 @@ ulp_mapper_resources_free(struct bnxt_ulp_context *ulp_ctx,
 			 * remaining resources.  Don't return
 			 */
 			BNXT_TF_DBG(ERR,
-				    "Flow[%d][0x%x] Res[%d][0x%016" PRIx64
+				    "Flow[%d][0x%x] Res[%d][0x%016" PRIX64
 				    "] failed rc=%d.\n",
 				    flow_type, fid, res_parms.resource_func,
 				    res_parms.resource_hndl, trc);

@@ -461,4 +461,7 @@ uint32_t ulp_bitmap_is_ones(uint8_t *bitmap, int32_t size);
 /* Function to check if bitmap is not zero. Return 1 on success */
 uint32_t ulp_bitmap_notzero(uint8_t *bitmap, int32_t size);
 
+/* returns 0 if input is power of 2 */
+int32_t ulp_util_is_power_of_2(uint64_t x);
+
 #endif /* _ULP_UTILS_H_ */

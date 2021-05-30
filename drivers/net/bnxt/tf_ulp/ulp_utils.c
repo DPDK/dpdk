@@ -923,3 +923,11 @@ uint32_t ulp_bitmap_notzero(uint8_t *bitmap, int32_t size)
 	}
 	return 0;
 }
+
+/* returns 0 if input is power of 2 */
+int32_t ulp_util_is_power_of_2(uint64_t x)
+{
+	if (((x - 1) & x))
+		return -1;
+	return 0;
+}

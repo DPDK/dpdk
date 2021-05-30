@@ -6,6 +6,8 @@
 #ifndef _ULP_GEN_TBL_H_
 #define _ULP_GEN_TBL_H_
 
+#include "ulp_gen_hash.h"
+
 /* Macros for reference count manipulation */
 #define ULP_GEN_TBL_REF_CNT_INC(entry) {*(entry)->ref_count += 1; }
 #define ULP_GEN_TBL_REF_CNT_DEC(entry) {*(entry)->ref_count -= 1; }
@@ -16,9 +18,9 @@
 
 /* Structure to pass the generic table values across APIs */
 struct ulp_mapper_gen_tbl_entry {
-	uint32_t		*ref_count;
-	uint32_t		byte_data_size;
-	uint8_t			*byte_data;
+	uint32_t			*ref_count;
+	uint32_t			byte_data_size;
+	uint8_t				*byte_data;
 	enum bnxt_ulp_byte_order	byte_order;
 };
 
@@ -39,9 +41,11 @@ struct ulp_mapper_gen_tbl_cont {
 
 /* Structure to store the generic tbl container */
 struct ulp_mapper_gen_tbl_list {
+	const char			*gen_tbl_name;
 	struct ulp_mapper_gen_tbl_cont	container;
 	uint32_t			mem_data_size;
 	uint8_t				*mem_data;
+	struct ulp_gen_hash_tbl		*hash_tbl;
 };
 
 /* Forward declaration */
@@ -73,16 +77,14 @@ ulp_mapper_generic_tbl_list_deinit(struct bnxt_ulp_mapper_data *mapper_data);
 /*
  * Get the generic table list entry
  *
- * ulp_ctxt [in] - Ptr to ulp_context
- * tbl_idx [in] -  Table index to the generic table list
+ * tbl_list [in] - Ptr to generic table
  * key [in] - Key index to the table
  * entry [out] - output will include the entry if found
  *
  * returns 0 on success.
  */
 int32_t
-ulp_mapper_gen_tbl_entry_get(struct bnxt_ulp_context *ulp,
-			     uint32_t tbl_idx,
+ulp_mapper_gen_tbl_entry_get(struct ulp_mapper_gen_tbl_list *tbl_list,
 			     uint32_t key,
 			     struct ulp_mapper_gen_tbl_entry *entry);
 
@@ -139,5 +141,19 @@ ulp_mapper_gen_tbl_entry_data_get(struct ulp_mapper_gen_tbl_entry *entry,
 int32_t
 ulp_mapper_gen_tbl_res_free(struct bnxt_ulp_context *ulp_ctx,
 			    struct ulp_flow_db_res_params *res);
+
+/*
+ * Write the generic table list hash entry
+ *
+ * tbl_list [in] - pointer to the generic table list
+ * hash_entry [in] -  Hash table entry
+ * gen_tbl_ent [out] - generic table entry
+ *
+ * returns 0 on success.
+ */
+int32_t
+ulp_mapper_gen_tbl_hash_entry_add(struct ulp_mapper_gen_tbl_list *tbl_list,
+				  struct ulp_gen_hash_entry_params *hash_entry,
+				  struct ulp_mapper_gen_tbl_entry *gen_tbl_ent);
 
 #endif /* _ULP_EN_TBL_H_ */

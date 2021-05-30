@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Wed Dec 16 16:03:45 2020 */
+/* date: Fri Jan 29 11:27:48 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -14,38 +14,82 @@
 struct bnxt_ulp_generic_tbl_params ulp_generic_tbl_params[] = {
 	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM << 1 |
 		BNXT_ULP_DIRECTION_INGRESS] = {
-	.result_num_entries      = 16384,
-	.result_num_bytes        = 16,
+	.name                    = "INGRESS GENERIC_TABLE_L2_CNTXT_TCAM",
+	.result_num_entries      = 256,
+	.result_num_bytes        = 8,
+	.key_num_bytes           = 0,
+	.num_buckets             = 0,
+	.hash_tbl_entries        = 0,
 	.result_byte_order       = BNXT_ULP_BYTE_ORDER_LE
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM << 1 |
 		BNXT_ULP_DIRECTION_EGRESS] = {
-	.result_num_entries      = 16384,
-	.result_num_bytes        = 16,
+	.name                    = "EGRESS GENERIC_TABLE_L2_CNTXT_TCAM",
+	.result_num_entries      = 256,
+	.result_num_bytes        = 8,
+	.key_num_bytes           = 0,
+	.num_buckets             = 0,
+	.hash_tbl_entries        = 0,
 	.result_byte_order       = BNXT_ULP_BYTE_ORDER_LE
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_PROFILE_TCAM << 1 |
 		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name                    = "INGRESS GENERIC_TABLE_PROFILE_TCAM",
 	.result_num_entries      = 16384,
 	.result_num_bytes        = 16,
+	.key_num_bytes           = 0,
+	.num_buckets             = 0,
+	.hash_tbl_entries        = 0,
 	.result_byte_order       = BNXT_ULP_BYTE_ORDER_LE
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_PROFILE_TCAM << 1 |
 		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name                    = "EGRESS GENERIC_TABLE_PROFILE_TCAM",
 	.result_num_entries      = 16384,
 	.result_num_bytes        = 16,
+	.key_num_bytes           = 0,
+	.num_buckets             = 0,
+	.hash_tbl_entries        = 0,
 	.result_byte_order       = BNXT_ULP_BYTE_ORDER_LE
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_MIRROR << 1 |
 		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name                    = "INGRESS GENERIC_TABLE_SHARED_MIRROR",
 	.result_num_entries      = 16,
 	.result_num_bytes        = 16,
+	.key_num_bytes           = 0,
+	.num_buckets             = 0,
+	.hash_tbl_entries        = 0,
 	.result_byte_order       = BNXT_ULP_BYTE_ORDER_LE
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_MIRROR << 1 |
 		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name                    = "EGRESS GENERIC_TABLE_SHARED_MIRROR",
 	.result_num_entries      = 16,
 	.result_num_bytes        = 16,
+	.key_num_bytes           = 0,
+	.num_buckets             = 0,
+	.hash_tbl_entries        = 0,
+	.result_byte_order       = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_MAC_ADDR_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name                    = "INGRESS GENERIC_TABLE_MAC_ADDR_CACHE",
+	.result_num_entries      = 256,
+	.result_num_bytes        = 8,
+	.key_num_bytes           = 7,
+	.num_buckets             = 8,
+	.hash_tbl_entries        = 1024,
+	.result_byte_order       = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_MAC_ADDR_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name                    = "EGRESS GENERIC_TABLE_MAC_ADDR_CACHE",
+	.result_num_entries      = 256,
+	.result_num_bytes        = 8,
+	.key_num_bytes           = 7,
+	.num_buckets             = 8,
+	.hash_tbl_entries        = 1024,
 	.result_byte_order       = BNXT_ULP_BYTE_ORDER_LE
 	}
 };

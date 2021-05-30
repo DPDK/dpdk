@@ -254,6 +254,7 @@ struct bnxt_ulp_mapper_tbl_info {
 	/* Table opcode for table operations */
 	uint32_t			tbl_opcode;
 	uint32_t			tbl_operand;
+	enum bnxt_ulp_generic_tbl_lkup_type gen_tbl_lkup_type;
 
 	/* FDB table opcode */
 	enum bnxt_ulp_fdb_opc		fdb_opcode;
@@ -300,9 +301,13 @@ struct bnxt_ulp_cache_tbl_params {
 };
 
 struct bnxt_ulp_generic_tbl_params {
+	const char			*name;
 	uint16_t			result_num_entries;
 	uint16_t			result_num_bytes;
 	enum bnxt_ulp_byte_order	result_byte_order;
+	uint32_t			hash_tbl_entries;
+	uint16_t			num_buckets;
+	uint16_t			key_num_bytes;
 };
 
 struct bnxt_ulp_shared_act_info {

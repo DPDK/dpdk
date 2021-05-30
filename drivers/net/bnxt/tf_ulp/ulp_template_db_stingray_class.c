@@ -916,7 +916,7 @@ struct bnxt_ulp_mapper_cond_info ulp_stingray_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_HIT
+	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
@@ -940,7 +940,7 @@ struct bnxt_ulp_mapper_cond_info ulp_stingray_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_HIT
+	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_NOT_SET,
@@ -948,7 +948,7 @@ struct bnxt_ulp_mapper_cond_info ulp_stingray_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_HIT
+	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	}
 };
 
