@@ -56,14 +56,19 @@ tf_session_create(struct tf *tfp,
 	uint8_t fw_session_id;
 	uint8_t fw_session_client_id;
 	union tf_session_id *session_id;
+	struct tf_dev_info dev;
 
 	TF_CHECK_PARMS2(tfp, parms);
+
+	tf_dev_bind_ops(parms->open_cfg->device_type,
+			&dev);
 
 	/* Open FW session and get a new session_id */
 	rc = tf_msg_session_open(tfp,
 				 parms->open_cfg->ctrl_chan_name,
 				 &fw_session_id,
-				 &fw_session_client_id);
+				 &fw_session_client_id,
+				 &dev);
 	if (rc) {
 		/* Log error */
 		if (rc == -EEXIST)
@@ -177,6 +182,13 @@ tf_session_create(struct tf *tfp,
 	if (rc)
 		return rc;
 
+	if (session->dev.ops->tf_dev_get_mailbox == NULL) {
+		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "No tf_dev_get_mailbox() defined for device\n");
+		goto cleanup;
+	}
+
 	session->dev_init = true;
 
 	return 0;
@@ -234,8 +246,9 @@ tf_session_client_create(struct tf *tfp,
 
 	rc = tf_msg_session_client_register
 		    (tfp,
-		    parms->ctrl_chan_name,
-		    &session_client_id.internal.fw_session_client_id);
+		     session,
+		     parms->ctrl_chan_name,
+		     &session_client_id.internal.fw_session_client_id);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "Failed to create client on session, rc:%s\n",
@@ -346,6 +359,7 @@ tf_session_client_destroy(struct tf *tfp,
 
 	rc = tf_msg_session_client_unregister
 			(tfp,
+			tfs,
 			parms->session_client_id.internal.fw_session_client_id);
 
 	/* Log error, but continue. If FW fails we do not really have
@@ -534,7 +548,7 @@ tf_session_close_session(struct tf *tfp,
 			    strerror(-rc));
 	}
 
-	rc = tf_msg_session_close(tfp);
+	rc = tf_msg_session_close(tfp, tfs);
 	if (rc) {
 		/* Log error */
 		TFP_DRV_LOG(ERR,

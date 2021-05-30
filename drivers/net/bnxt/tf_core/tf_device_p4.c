@@ -13,6 +13,7 @@
 #include "tf_em.h"
 #include "tf_if_tbl.h"
 #include "tfp.h"
+#include "tf_msg_common.h"
 
 #define TF_DEV_P4_PARIF_MAX 16
 #define TF_DEV_P4_PF_MASK 0xfUL
@@ -241,6 +242,11 @@ tf_dev_p4_map_parif(struct tf *tfp __rte_unused,
 	return 0;
 }
 
+static int tf_dev_p4_get_mailbox(void)
+{
+	return TF_KONG_MB;
+}
+
 
 /**
  * Truflow P4 device specific functions
@@ -278,6 +284,7 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_get_if_tbl = NULL,
 	.tf_dev_set_global_cfg = NULL,
 	.tf_dev_get_global_cfg = NULL,
+	.tf_dev_get_mailbox = tf_dev_p4_get_mailbox,
 };
 
 /**
@@ -316,4 +323,5 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_if_tbl = tf_if_tbl_get,
 	.tf_dev_set_global_cfg = tf_global_cfg_set,
 	.tf_dev_get_global_cfg = tf_global_cfg_get,
+	.tf_dev_get_mailbox = tf_dev_p4_get_mailbox,
 };

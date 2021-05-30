@@ -36,7 +36,8 @@ struct tf;
 int tf_msg_session_open(struct tf *tfp,
 			char *ctrl_chan_name,
 			uint8_t *fw_session_id,
-			uint8_t *fw_session_client_id);
+			uint8_t *fw_session_client_id,
+			struct tf_dev_info *dev);
 
 /**
  * Sends session close request to Firmware
@@ -75,6 +76,7 @@ int tf_msg_session_attach(struct tf *tfp,
  *   0 on Success else internal Truflow error
  */
 int tf_msg_session_client_register(struct tf *tfp,
+				   struct tf_session *tfs,
 				   char *ctrl_channel_name,
 				   uint8_t *fw_session_client_id);
 
@@ -92,6 +94,7 @@ int tf_msg_session_client_register(struct tf *tfp,
  *   0 on Success else internal Truflow error
  */
 int tf_msg_session_client_unregister(struct tf *tfp,
+				     struct tf_session *tfs,
 				     uint8_t fw_session_client_id);
 
 /**
@@ -103,7 +106,8 @@ int tf_msg_session_client_unregister(struct tf *tfp,
  * Returns:
  *   0 on Success else internal Truflow error
  */
-int tf_msg_session_close(struct tf *tfp);
+int tf_msg_session_close(struct tf *tfp,
+			 struct tf_session *tfs);
 
 /**
  * Sends session query config request to TF Firmware
@@ -139,6 +143,7 @@ int tf_msg_session_qcfg(struct tf *tfp);
  *   0 on Success else internal Truflow error
  */
 int tf_msg_session_resc_qcaps(struct tf *tfp,
+			      struct tf_dev_info *dev,
 			      enum tf_dir dir,
 			      uint16_t size,
 			      struct tf_rm_resc_req_entry *query,
@@ -166,6 +171,7 @@ int tf_msg_session_resc_qcaps(struct tf *tfp,
  *   0 on Success else internal Truflow error
  */
 int tf_msg_session_resc_alloc(struct tf *tfp,
+			      struct tf_dev_info *dev,
 			      enum tf_dir dir,
 			      uint16_t size,
 			      struct tf_rm_resc_req_entry *request,
@@ -368,6 +374,7 @@ int tf_msg_em_op(struct tf *tfp,
  *  0 on Success else internal Truflow error
  */
 int tf_msg_tcam_entry_set(struct tf *tfp,
+			  struct tf_dev_info *dev,
 			  struct tf_tcam_set_parms *parms);
 
 /**
@@ -383,6 +390,7 @@ int tf_msg_tcam_entry_set(struct tf *tfp,
  *  0 on Success else internal Truflow error
  */
 int tf_msg_tcam_entry_free(struct tf *tfp,
+			   struct tf_dev_info *dev,
 			   struct tf_tcam_free_parms *parms);
 
 /**

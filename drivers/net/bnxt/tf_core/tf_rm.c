@@ -415,6 +415,7 @@ tf_rm_create_db(struct tf *tfp,
 
 	/* Get Firmware Capabilities */
 	rc = tf_msg_session_resc_qcaps(tfp,
+				       dev,
 				       parms->dir,
 				       max_types,
 				       query,
@@ -499,6 +500,7 @@ tf_rm_create_db(struct tf *tfp,
 	}
 
 	rc = tf_msg_session_resc_alloc(tfp,
+				       dev,
 				       parms->dir,
 				       hcapi_items,
 				       req,

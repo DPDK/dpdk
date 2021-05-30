@@ -108,6 +108,10 @@ int tf_dev_bind(struct tf *tfp,
 int tf_dev_unbind(struct tf *tfp,
 		  struct tf_dev_info *dev_handle);
 
+int
+tf_dev_bind_ops(enum tf_device_type type,
+		struct tf_dev_info *dev_handle);
+
 /**
  * Truflow device specific function hooks structure
  *
@@ -724,6 +728,14 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_get_global_cfg)(struct tf *tfp,
 				     struct tf_global_cfg_parms *parms);
+
+	/**
+	 * Get mailbox
+	 *
+	 *    returns:
+	 *      mailbox
+	 */
+	int (*tf_dev_get_mailbox)(void);
 };
 
 /**

@@ -428,7 +428,7 @@ tf_tcam_free(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	rc = tf_msg_tcam_entry_free(tfp, parms);
+	rc = tf_msg_tcam_entry_free(tfp, dev, parms);
 	if (rc) {
 		/* Log error */
 		TFP_DRV_LOG(ERR,
@@ -652,7 +652,7 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	if (rc)
 		return rc;
 
-	rc = tf_msg_tcam_entry_set(tfp, parms);
+	rc = tf_msg_tcam_entry_set(tfp, dev, parms);
 	if (rc) {
 		/* Log error */
 		TFP_DRV_LOG(ERR,

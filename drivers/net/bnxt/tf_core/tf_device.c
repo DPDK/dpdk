@@ -462,6 +462,27 @@ tf_dev_bind(struct tf *tfp __rte_unused,
 }
 
 int
+tf_dev_bind_ops(enum tf_device_type type,
+		struct tf_dev_info *dev_handle)
+{
+	switch (type) {
+	case TF_DEVICE_TYPE_WH:
+	case TF_DEVICE_TYPE_SR:
+		dev_handle->ops = &tf_dev_ops_p4;
+		break;
+	case TF_DEVICE_TYPE_THOR:
+		dev_handle->ops = &tf_dev_ops_p58;
+		break;
+	default:
+		TFP_DRV_LOG(ERR,
+			    "No such device\n");
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+int
 tf_dev_unbind(struct tf *tfp,
 	      struct tf_dev_info *dev_handle)
 {
