@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Tue Jan 26 15:51:49 2021 */
+/* date: Wed Mar 17 11:31:19 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -107,6 +107,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[1] = {
 	.act_hid = BNXT_ULP_ACT_HID_0000,
 	.act_pattern_id = 0,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 1
@@ -114,6 +115,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[2] = {
 	.act_hid = BNXT_ULP_ACT_HID_0001,
 	.act_pattern_id = 1,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DROP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
@@ -122,6 +124,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[3] = {
 	.act_hid = BNXT_ULP_ACT_HID_0400,
 	.act_pattern_id = 2,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_POP_VLAN |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
@@ -130,6 +133,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[4] = {
 	.act_hid = BNXT_ULP_ACT_HID_01ab,
 	.act_pattern_id = 3,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
@@ -138,6 +142,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[5] = {
 	.act_hid = BNXT_ULP_ACT_HID_0010,
 	.act_pattern_id = 4,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_VXLAN_DECAP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
@@ -146,6 +151,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[6] = {
 	.act_hid = BNXT_ULP_ACT_HID_05ab,
 	.act_pattern_id = 5,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_POP_VLAN |
@@ -155,6 +161,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[7] = {
 	.act_hid = BNXT_ULP_ACT_HID_01bb,
 	.act_pattern_id = 6,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_VXLAN_DECAP |
 		BNXT_ULP_ACT_BIT_DEC_TTL |
@@ -164,6 +171,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[8] = {
 	.act_hid = BNXT_ULP_ACT_HID_0002,
 	.act_pattern_id = 7,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
@@ -172,6 +180,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[9] = {
 	.act_hid = BNXT_ULP_ACT_HID_0003,
 	.act_pattern_id = 8,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_DROP |
@@ -181,6 +190,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[10] = {
 	.act_hid = BNXT_ULP_ACT_HID_0402,
 	.act_pattern_id = 9,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_POP_VLAN |
@@ -190,6 +200,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[11] = {
 	.act_hid = BNXT_ULP_ACT_HID_01ad,
 	.act_pattern_id = 10,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_DEC_TTL |
@@ -199,6 +210,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[12] = {
 	.act_hid = BNXT_ULP_ACT_HID_0012,
 	.act_pattern_id = 11,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_VXLAN_DECAP |
@@ -208,6 +220,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[13] = {
 	.act_hid = BNXT_ULP_ACT_HID_05ad,
 	.act_pattern_id = 12,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_DEC_TTL |
@@ -218,6 +231,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[14] = {
 	.act_hid = BNXT_ULP_ACT_HID_01bd,
 	.act_pattern_id = 13,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_VXLAN_DECAP |
@@ -228,6 +242,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[15] = {
 	.act_hid = BNXT_ULP_ACT_HID_0613,
 	.act_pattern_id = 14,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_DROP |
@@ -237,6 +252,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[16] = {
 	.act_hid = BNXT_ULP_ACT_HID_02a9,
 	.act_pattern_id = 15,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_POP_VLAN |
@@ -246,6 +262,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[17] = {
 	.act_hid = BNXT_ULP_ACT_HID_0054,
 	.act_pattern_id = 16,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_DEC_TTL |
@@ -255,6 +272,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[18] = {
 	.act_hid = BNXT_ULP_ACT_HID_0622,
 	.act_pattern_id = 17,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_VXLAN_DECAP |
@@ -264,6 +282,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[19] = {
 	.act_hid = BNXT_ULP_ACT_HID_0454,
 	.act_pattern_id = 18,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_DEC_TTL |
@@ -274,6 +293,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[20] = {
 	.act_hid = BNXT_ULP_ACT_HID_0064,
 	.act_pattern_id = 19,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_VXLAN_DECAP |
@@ -284,6 +304,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[21] = {
 	.act_hid = BNXT_ULP_ACT_HID_0614,
 	.act_pattern_id = 20,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -293,6 +314,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[22] = {
 	.act_hid = BNXT_ULP_ACT_HID_0615,
 	.act_pattern_id = 21,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -303,6 +325,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[23] = {
 	.act_hid = BNXT_ULP_ACT_HID_02ab,
 	.act_pattern_id = 22,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -313,6 +336,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[24] = {
 	.act_hid = BNXT_ULP_ACT_HID_0056,
 	.act_pattern_id = 23,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -323,6 +347,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[25] = {
 	.act_hid = BNXT_ULP_ACT_HID_0624,
 	.act_pattern_id = 24,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -333,6 +358,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[26] = {
 	.act_hid = BNXT_ULP_ACT_HID_0456,
 	.act_pattern_id = 25,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -344,6 +370,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[27] = {
 	.act_hid = BNXT_ULP_ACT_HID_0066,
 	.act_pattern_id = 26,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -355,6 +382,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[28] = {
 	.act_hid = BNXT_ULP_ACT_HID_048d,
 	.act_pattern_id = 0,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED |
 		BNXT_ULP_ACT_BIT_SAMPLE |
@@ -364,6 +392,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[29] = {
 	.act_hid = BNXT_ULP_ACT_HID_048f,
 	.act_pattern_id = 1,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED |
 		BNXT_ULP_ACT_BIT_SAMPLE |
@@ -374,6 +403,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[30] = {
 	.act_hid = BNXT_ULP_ACT_HID_04bc,
 	.act_pattern_id = 0,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
@@ -382,6 +412,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[31] = {
 	.act_hid = BNXT_ULP_ACT_HID_00a9,
 	.act_pattern_id = 1,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
@@ -391,6 +422,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[32] = {
 	.act_hid = BNXT_ULP_ACT_HID_020f,
 	.act_pattern_id = 2,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
@@ -399,6 +431,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[33] = {
 	.act_hid = BNXT_ULP_ACT_HID_04a9,
 	.act_pattern_id = 3,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
@@ -409,6 +442,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[34] = {
 	.act_hid = BNXT_ULP_ACT_HID_01fc,
 	.act_pattern_id = 4,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
@@ -420,6 +454,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[35] = {
 	.act_hid = BNXT_ULP_ACT_HID_04be,
 	.act_pattern_id = 5,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
@@ -429,6 +464,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[36] = {
 	.act_hid = BNXT_ULP_ACT_HID_00ab,
 	.act_pattern_id = 6,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
@@ -439,6 +475,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[37] = {
 	.act_hid = BNXT_ULP_ACT_HID_0211,
 	.act_pattern_id = 7,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
@@ -448,6 +485,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[38] = {
 	.act_hid = BNXT_ULP_ACT_HID_04ab,
 	.act_pattern_id = 8,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
@@ -459,6 +497,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[39] = {
 	.act_hid = BNXT_ULP_ACT_HID_01fe,
 	.act_pattern_id = 9,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
@@ -471,6 +510,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[40] = {
 	.act_hid = BNXT_ULP_ACT_HID_0667,
 	.act_pattern_id = 10,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
@@ -480,6 +520,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[41] = {
 	.act_hid = BNXT_ULP_ACT_HID_0254,
 	.act_pattern_id = 11,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
@@ -490,6 +531,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[42] = {
 	.act_hid = BNXT_ULP_ACT_HID_03ba,
 	.act_pattern_id = 12,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
@@ -499,6 +541,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[43] = {
 	.act_hid = BNXT_ULP_ACT_HID_0654,
 	.act_pattern_id = 13,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
@@ -510,6 +553,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[44] = {
 	.act_hid = BNXT_ULP_ACT_HID_03a7,
 	.act_pattern_id = 14,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
@@ -522,6 +566,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[45] = {
 	.act_hid = BNXT_ULP_ACT_HID_0669,
 	.act_pattern_id = 15,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -532,6 +577,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[46] = {
 	.act_hid = BNXT_ULP_ACT_HID_0256,
 	.act_pattern_id = 16,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -543,6 +589,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[47] = {
 	.act_hid = BNXT_ULP_ACT_HID_03bc,
 	.act_pattern_id = 17,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -553,6 +600,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[48] = {
 	.act_hid = BNXT_ULP_ACT_HID_0656,
 	.act_pattern_id = 18,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -565,6 +613,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[49] = {
 	.act_hid = BNXT_ULP_ACT_HID_03a9,
 	.act_pattern_id = 19,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -578,6 +627,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[50] = {
 	.act_hid = BNXT_ULP_ACT_HID_021b,
 	.act_pattern_id = 0,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
@@ -585,6 +635,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[51] = {
 	.act_hid = BNXT_ULP_ACT_HID_021c,
 	.act_pattern_id = 1,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DROP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
@@ -593,6 +644,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[52] = {
 	.act_hid = BNXT_ULP_ACT_HID_021e,
 	.act_pattern_id = 2,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DROP |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -602,6 +654,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[53] = {
 	.act_hid = BNXT_ULP_ACT_HID_063f,
 	.act_pattern_id = 3,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_VLAN_PCP |
 		BNXT_ULP_ACT_BIT_SET_VLAN_VID |
@@ -612,6 +665,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[54] = {
 	.act_hid = BNXT_ULP_ACT_HID_0510,
 	.act_pattern_id = 4,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_VLAN_VID |
 		BNXT_ULP_ACT_BIT_PUSH_VLAN |
@@ -621,6 +675,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[55] = {
 	.act_hid = BNXT_ULP_ACT_HID_03c6,
 	.act_pattern_id = 5,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
@@ -629,6 +684,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[56] = {
 	.act_hid = BNXT_ULP_ACT_HID_0082,
 	.act_pattern_id = 6,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_SET_VLAN_PCP |
@@ -640,6 +696,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[57] = {
 	.act_hid = BNXT_ULP_ACT_HID_06bb,
 	.act_pattern_id = 7,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_SET_VLAN_VID |
@@ -650,6 +707,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[58] = {
 	.act_hid = BNXT_ULP_ACT_HID_021d,
 	.act_pattern_id = 8,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
@@ -658,6 +716,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[59] = {
 	.act_hid = BNXT_ULP_ACT_HID_0641,
 	.act_pattern_id = 9,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_VLAN_PCP |
@@ -669,6 +728,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[60] = {
 	.act_hid = BNXT_ULP_ACT_HID_0512,
 	.act_pattern_id = 10,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_VLAN_VID |
@@ -679,6 +739,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[61] = {
 	.act_hid = BNXT_ULP_ACT_HID_03c8,
 	.act_pattern_id = 11,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_DEC_TTL |
@@ -688,6 +749,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[62] = {
 	.act_hid = BNXT_ULP_ACT_HID_0084,
 	.act_pattern_id = 12,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_DEC_TTL |
@@ -700,6 +762,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[63] = {
 	.act_hid = BNXT_ULP_ACT_HID_06bd,
 	.act_pattern_id = 13,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_DEC_TTL |
@@ -711,6 +774,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[64] = {
 	.act_hid = BNXT_ULP_ACT_HID_06d7,
 	.act_pattern_id = 0,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
@@ -719,6 +783,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[65] = {
 	.act_hid = BNXT_ULP_ACT_HID_02c4,
 	.act_pattern_id = 1,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
@@ -728,6 +793,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[66] = {
 	.act_hid = BNXT_ULP_ACT_HID_042a,
 	.act_pattern_id = 2,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
@@ -736,6 +802,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[67] = {
 	.act_hid = BNXT_ULP_ACT_HID_06c4,
 	.act_pattern_id = 3,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
@@ -746,6 +813,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[68] = {
 	.act_hid = BNXT_ULP_ACT_HID_0417,
 	.act_pattern_id = 4,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
@@ -757,6 +825,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[69] = {
 	.act_hid = BNXT_ULP_ACT_HID_06d9,
 	.act_pattern_id = 5,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
@@ -766,6 +835,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[70] = {
 	.act_hid = BNXT_ULP_ACT_HID_02c6,
 	.act_pattern_id = 6,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
@@ -776,6 +846,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[71] = {
 	.act_hid = BNXT_ULP_ACT_HID_042c,
 	.act_pattern_id = 7,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
@@ -785,6 +856,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[72] = {
 	.act_hid = BNXT_ULP_ACT_HID_06c6,
 	.act_pattern_id = 8,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
@@ -796,6 +868,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[73] = {
 	.act_hid = BNXT_ULP_ACT_HID_0419,
 	.act_pattern_id = 9,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
@@ -808,6 +881,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[74] = {
 	.act_hid = BNXT_ULP_ACT_HID_0119,
 	.act_pattern_id = 10,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
@@ -817,6 +891,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[75] = {
 	.act_hid = BNXT_ULP_ACT_HID_046f,
 	.act_pattern_id = 11,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
@@ -827,6 +902,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[76] = {
 	.act_hid = BNXT_ULP_ACT_HID_05d5,
 	.act_pattern_id = 12,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
@@ -836,6 +912,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[77] = {
 	.act_hid = BNXT_ULP_ACT_HID_0106,
 	.act_pattern_id = 13,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
@@ -847,6 +924,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[78] = {
 	.act_hid = BNXT_ULP_ACT_HID_05c2,
 	.act_pattern_id = 14,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
@@ -859,6 +937,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[79] = {
 	.act_hid = BNXT_ULP_ACT_HID_011b,
 	.act_pattern_id = 15,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -869,6 +948,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[80] = {
 	.act_hid = BNXT_ULP_ACT_HID_0471,
 	.act_pattern_id = 16,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -880,6 +960,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[81] = {
 	.act_hid = BNXT_ULP_ACT_HID_05d7,
 	.act_pattern_id = 17,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -890,6 +971,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[82] = {
 	.act_hid = BNXT_ULP_ACT_HID_0108,
 	.act_pattern_id = 18,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -902,6 +984,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[83] = {
 	.act_hid = BNXT_ULP_ACT_HID_05c4,
 	.act_pattern_id = 19,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
@@ -915,6 +998,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[84] = {
 	.act_hid = BNXT_ULP_ACT_HID_00a2,
 	.act_pattern_id = 0,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_VXLAN_ENCAP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
@@ -923,6 +1007,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	[85] = {
 	.act_hid = BNXT_ULP_ACT_HID_00a4,
 	.act_pattern_id = 1,
+	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_VXLAN_ENCAP |
 		BNXT_ULP_ACT_BIT_COUNT |

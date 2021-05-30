@@ -88,6 +88,7 @@ struct ulp_rte_parser_params {
 	uint32_t			flow_sig_id;
 	uint32_t			flow_pattern_id;
 	uint32_t			act_pattern_id;
+	uint8_t				app_id;
 };
 
 /* Flow Parser Header Information Structure */
@@ -133,6 +134,7 @@ struct bnxt_ulp_class_match_info {
 	uint32_t		class_tid;
 	uint8_t			act_vnic;
 	uint8_t			wc_pri;
+	uint8_t			app_sig;
 	uint32_t		hdr_sig_id;
 	uint32_t		flow_sig_id;
 	uint32_t		flow_pattern_id;
@@ -153,6 +155,7 @@ struct bnxt_ulp_act_match_info {
 	uint32_t		act_hid;
 	uint32_t		act_tid;
 	uint32_t		act_pattern_id;
+	uint8_t			app_sig;
 };
 
 /* Flow Matcher templates Structure for action entries */

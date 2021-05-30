@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Fri Jan 29 09:44:41 2021 */
+/* date: Wed Mar 17 11:31:19 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -712,13 +712,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 4096,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_0_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_0_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_0_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_0_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[2] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1df1,
@@ -726,14 +727,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 4104,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_0_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_0_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_0_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_0_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_0_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_0_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[3] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3e55,
@@ -741,14 +743,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 6144,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_0_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_0_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_0_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_0_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_0_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_0_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[4] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0649,
@@ -756,15 +759,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 6152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_0_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_0_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_0_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_0_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_0_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_0_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_0_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_0_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[5] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1011,
@@ -772,13 +776,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_1_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_1_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_1_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_1_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[6] = {
 	.class_hid = BNXT_ULP_CLASS_HID_40e9,
@@ -786,14 +791,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 16392,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_1_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_1_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_1_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_1_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_1_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_1_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[7] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3e99,
@@ -801,14 +807,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 24576,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_1_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_1_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_1_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_1_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_1_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_1_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[8] = {
 	.class_hid = BNXT_ULP_CLASS_HID_06ad,
@@ -816,15 +823,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 24584,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_1_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_1_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_1_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_1_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_1_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_1_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_1_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_1_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[9] = {
 	.class_hid = BNXT_ULP_CLASS_HID_38c7,
@@ -832,14 +840,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 32768,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[10] = {
 	.class_hid = BNXT_ULP_CLASS_HID_00fb,
@@ -847,15 +856,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 32776,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[11] = {
 	.class_hid = BNXT_ULP_CLASS_HID_24d3,
@@ -863,15 +873,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 32832,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_2_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[12] = {
 	.class_hid = BNXT_ULP_CLASS_HID_559b,
@@ -879,16 +890,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 32840,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_2_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[13] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5003,
@@ -896,15 +908,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[14] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1837,
@@ -912,16 +925,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 49160,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[15] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3bef,
@@ -929,16 +943,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 49216,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_2_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[16] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0403,
@@ -946,17 +961,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 49224,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_2_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[17] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3d3f,
@@ -964,14 +980,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 131072,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[18] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0543,
@@ -979,15 +996,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 131080,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[19] = {
 	.class_hid = BNXT_ULP_CLASS_HID_292b,
@@ -995,15 +1013,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 131136,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_3_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[20] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59e3,
@@ -1011,16 +1030,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 131144,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_3_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[21] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5d3b,
@@ -1028,15 +1048,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 196608,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[22] = {
 	.class_hid = BNXT_ULP_CLASS_HID_254f,
@@ -1044,16 +1065,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 196616,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[23] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4917,
@@ -1061,16 +1083,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 196672,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_3_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[24] = {
 	.class_hid = BNXT_ULP_CLASS_HID_113b,
@@ -1078,17 +1101,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 196680,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_3_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[25] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55fd,
@@ -1096,14 +1120,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 4096,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[26] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1dd1,
@@ -1111,15 +1136,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 4104,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[27] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3e75,
@@ -1127,15 +1153,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 6144,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[28] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0669,
@@ -1143,16 +1170,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 6152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[29] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1ba1,
@@ -1160,15 +1188,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 12288,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_SRC_PORT }
 	},
 	[30] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4c69,
@@ -1176,16 +1205,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 12296,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_SRC_PORT }
 	},
 	[31] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0439,
@@ -1193,16 +1223,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 14336,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_SRC_PORT }
 	},
 	[32] = {
 	.class_hid = BNXT_ULP_CLASS_HID_34e1,
@@ -1210,17 +1241,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 14344,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_SRC_PORT }
 	},
 	[33] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0465,
@@ -1228,15 +1260,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 20480,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[34] = {
 	.class_hid = BNXT_ULP_CLASS_HID_352d,
@@ -1244,16 +1277,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 20488,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[35] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55b1,
@@ -1261,16 +1295,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 22528,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[36] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1da5,
@@ -1278,17 +1313,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 22536,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[37] = {
 	.class_hid = BNXT_ULP_CLASS_HID_32fd,
@@ -1296,16 +1332,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 28672,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[38] = {
 	.class_hid = BNXT_ULP_CLASS_HID_63a5,
@@ -1313,17 +1350,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 28680,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[39] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1b75,
@@ -1331,17 +1369,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 30720,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[40] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4c3d,
@@ -1349,18 +1388,19 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 30728,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[41] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1031,
@@ -1368,14 +1408,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[42] = {
 	.class_hid = BNXT_ULP_CLASS_HID_40c9,
@@ -1383,15 +1424,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 16392,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[43] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3eb9,
@@ -1399,15 +1441,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 24576,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[44] = {
 	.class_hid = BNXT_ULP_CLASS_HID_068d,
@@ -1415,16 +1458,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 24584,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[45] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5039,
@@ -1432,15 +1476,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_SRC_PORT }
 	},
 	[46] = {
 	.class_hid = BNXT_ULP_CLASS_HID_180d,
@@ -1448,16 +1493,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 49160,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_SRC_PORT }
 	},
 	[47] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15fd,
@@ -1465,16 +1511,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 57344,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_SRC_PORT }
 	},
 	[48] = {
 	.class_hid = BNXT_ULP_CLASS_HID_46b5,
@@ -1482,17 +1529,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 57352,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_SRC_PORT }
 	},
 	[49] = {
 	.class_hid = BNXT_ULP_CLASS_HID_303d,
@@ -1500,15 +1548,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 81920,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[50] = {
 	.class_hid = BNXT_ULP_CLASS_HID_60f5,
@@ -1516,16 +1565,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 81928,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[51] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5ea5,
@@ -1533,16 +1583,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 90112,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[52] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2689,
@@ -1550,17 +1601,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 90120,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[53] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0771,
@@ -1568,16 +1620,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[54] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3809,
@@ -1585,17 +1638,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 114696,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[55] = {
 	.class_hid = BNXT_ULP_CLASS_HID_35f9,
@@ -1603,17 +1657,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 122880,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[56] = {
 	.class_hid = BNXT_ULP_CLASS_HID_66b1,
@@ -1621,18 +1676,19 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 122888,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[57] = {
 	.class_hid = BNXT_ULP_CLASS_HID_559d,
@@ -1640,14 +1696,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 4096,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[58] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1db1,
@@ -1655,15 +1712,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 4104,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[59] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3e15,
@@ -1671,15 +1729,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 6144,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[60] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0609,
@@ -1687,16 +1746,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 6152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[61] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1bc1,
@@ -1704,15 +1764,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 12288,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_SRC_PORT }
 	},
 	[62] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4c09,
@@ -1720,16 +1781,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 12296,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_SRC_PORT }
 	},
 	[63] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0459,
@@ -1737,16 +1799,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 14336,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_SRC_PORT }
 	},
 	[64] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3481,
@@ -1754,17 +1817,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 14344,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_SRC_PORT }
 	},
 	[65] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0405,
@@ -1772,15 +1836,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 20480,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[66] = {
 	.class_hid = BNXT_ULP_CLASS_HID_354d,
@@ -1788,16 +1853,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 20488,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[67] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55d1,
@@ -1805,16 +1871,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 22528,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[68] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1dc5,
@@ -1822,17 +1889,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 22536,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[69] = {
 	.class_hid = BNXT_ULP_CLASS_HID_329d,
@@ -1840,16 +1908,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 28672,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[70] = {
 	.class_hid = BNXT_ULP_CLASS_HID_63c5,
@@ -1857,17 +1926,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 28680,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[71] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1b15,
@@ -1875,17 +1945,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 30720,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[72] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4c5d,
@@ -1893,18 +1964,19 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 30728,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[73] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1051,
@@ -1912,14 +1984,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[74] = {
 	.class_hid = BNXT_ULP_CLASS_HID_40a9,
@@ -1927,15 +2000,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 16392,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[75] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ed9,
@@ -1943,15 +2017,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 24576,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[76] = {
 	.class_hid = BNXT_ULP_CLASS_HID_06ed,
@@ -1959,16 +2034,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 24584,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[77] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5059,
@@ -1976,15 +2052,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_SRC_PORT }
 	},
 	[78] = {
 	.class_hid = BNXT_ULP_CLASS_HID_186d,
@@ -1992,16 +2069,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 49160,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_SRC_PORT }
 	},
 	[79] = {
 	.class_hid = BNXT_ULP_CLASS_HID_159d,
@@ -2009,16 +2087,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 57344,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_SRC_PORT }
 	},
 	[80] = {
 	.class_hid = BNXT_ULP_CLASS_HID_46d5,
@@ -2026,17 +2105,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 57352,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_SRC_PORT }
 	},
 	[81] = {
 	.class_hid = BNXT_ULP_CLASS_HID_305d,
@@ -2044,15 +2124,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 81920,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[82] = {
 	.class_hid = BNXT_ULP_CLASS_HID_6095,
@@ -2060,16 +2141,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 81928,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[83] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5ec5,
@@ -2077,16 +2159,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 90112,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[84] = {
 	.class_hid = BNXT_ULP_CLASS_HID_26e9,
@@ -2094,17 +2177,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 90120,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[85] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0711,
@@ -2112,16 +2196,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[86] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3869,
@@ -2129,17 +2214,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 114696,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[87] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3599,
@@ -2147,17 +2233,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 122880,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[88] = {
 	.class_hid = BNXT_ULP_CLASS_HID_66d1,
@@ -2165,18 +2252,19 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 122888,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[89] = {
 	.class_hid = BNXT_ULP_CLASS_HID_38e7,
@@ -2184,6 +2272,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 32768,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2191,8 +2280,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[90] = {
 	.class_hid = BNXT_ULP_CLASS_HID_00db,
@@ -2200,6 +2289,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 32776,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2207,9 +2297,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[91] = {
 	.class_hid = BNXT_ULP_CLASS_HID_24f3,
@@ -2217,6 +2307,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 32832,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2224,9 +2315,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[92] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55bb,
@@ -2234,6 +2325,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 32840,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2241,10 +2333,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[93] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5023,
@@ -2252,6 +2344,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2259,9 +2352,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[94] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1817,
@@ -2269,6 +2362,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 49160,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2276,10 +2370,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[95] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3bcf,
@@ -2287,6 +2381,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 49216,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2294,10 +2389,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[96] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0423,
@@ -2305,6 +2400,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 49224,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2312,11 +2408,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[97] = {
 	.class_hid = BNXT_ULP_CLASS_HID_58e3,
@@ -2324,6 +2420,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 98304,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2331,9 +2428,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[98] = {
 	.class_hid = BNXT_ULP_CLASS_HID_20d7,
@@ -2341,6 +2438,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 98312,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2348,10 +2446,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[99] = {
 	.class_hid = BNXT_ULP_CLASS_HID_448f,
@@ -2359,6 +2457,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 98368,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2366,10 +2465,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[100] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0ce3,
@@ -2377,6 +2476,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 98376,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2384,11 +2484,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[101] = {
 	.class_hid = BNXT_ULP_CLASS_HID_076b,
@@ -2396,6 +2496,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2403,10 +2504,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[102] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3813,
@@ -2414,6 +2515,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 114696,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2421,11 +2523,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[103] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5bcb,
@@ -2433,6 +2535,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 114752,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2440,11 +2543,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[104] = {
 	.class_hid = BNXT_ULP_CLASS_HID_243f,
@@ -2452,6 +2555,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 114760,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2459,12 +2563,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[105] = {
 	.class_hid = BNXT_ULP_CLASS_HID_144b,
@@ -2472,6 +2576,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 163840,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2479,9 +2584,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[106] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4573,
@@ -2489,6 +2594,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 163848,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2496,10 +2602,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[107] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0057,
@@ -2507,6 +2613,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 163904,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2514,10 +2621,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[108] = {
 	.class_hid = BNXT_ULP_CLASS_HID_311f,
@@ -2525,6 +2632,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 163912,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2532,11 +2640,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[109] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2b87,
@@ -2544,6 +2652,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 180224,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2551,10 +2660,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[110] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c4f,
@@ -2562,6 +2671,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 180232,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2569,11 +2679,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[111] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1793,
@@ -2581,6 +2691,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 180288,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2588,11 +2699,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[112] = {
 	.class_hid = BNXT_ULP_CLASS_HID_485b,
@@ -2600,6 +2711,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 180296,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2607,12 +2719,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[113] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3447,
@@ -2620,6 +2732,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 229376,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2627,10 +2740,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[114] = {
 	.class_hid = BNXT_ULP_CLASS_HID_650f,
@@ -2638,6 +2751,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 229384,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2645,11 +2759,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[115] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2053,
@@ -2657,6 +2771,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 229440,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2664,11 +2779,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[116] = {
 	.class_hid = BNXT_ULP_CLASS_HID_511b,
@@ -2676,6 +2791,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 229448,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2683,12 +2799,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[117] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4b83,
@@ -2696,6 +2812,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 245760,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2703,11 +2820,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[118] = {
 	.class_hid = BNXT_ULP_CLASS_HID_13f7,
@@ -2715,6 +2832,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 245768,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2722,12 +2840,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[119] = {
 	.class_hid = BNXT_ULP_CLASS_HID_37af,
@@ -2735,6 +2853,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 245824,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2742,12 +2861,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[120] = {
 	.class_hid = BNXT_ULP_CLASS_HID_6857,
@@ -2755,6 +2874,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 245832,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2762,13 +2882,13 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[121] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3d1f,
@@ -2776,6 +2896,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 131072,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2783,8 +2904,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[122] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0563,
@@ -2792,6 +2913,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 131080,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2799,9 +2921,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[123] = {
 	.class_hid = BNXT_ULP_CLASS_HID_290b,
@@ -2809,6 +2931,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 131136,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2816,9 +2939,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[124] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59c3,
@@ -2826,6 +2949,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 131144,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2833,10 +2957,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[125] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5d1b,
@@ -2844,6 +2968,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 196608,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2851,9 +2976,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[126] = {
 	.class_hid = BNXT_ULP_CLASS_HID_256f,
@@ -2861,6 +2986,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 196616,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2868,10 +2994,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[127] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4937,
@@ -2879,6 +3005,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 196672,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2886,10 +3013,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[128] = {
 	.class_hid = BNXT_ULP_CLASS_HID_111b,
@@ -2897,6 +3024,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 196680,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2904,11 +3032,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[129] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5f4b,
@@ -2916,6 +3044,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 393216,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2923,9 +3052,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[130] = {
 	.class_hid = BNXT_ULP_CLASS_HID_275f,
@@ -2933,6 +3062,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 393224,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2940,10 +3070,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[131] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4b67,
@@ -2951,6 +3081,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 393280,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2958,10 +3089,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[132] = {
 	.class_hid = BNXT_ULP_CLASS_HID_134b,
@@ -2969,6 +3100,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 393288,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2976,11 +3108,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[133] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1683,
@@ -2988,6 +3120,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 458752,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -2995,10 +3128,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[134] = {
 	.class_hid = BNXT_ULP_CLASS_HID_475b,
@@ -3006,6 +3139,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 458760,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3013,11 +3147,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[135] = {
 	.class_hid = BNXT_ULP_CLASS_HID_02bf,
@@ -3025,6 +3159,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 458816,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3032,11 +3167,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[136] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3377,
@@ -3044,6 +3179,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 458824,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3051,12 +3187,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[137] = {
 	.class_hid = BNXT_ULP_CLASS_HID_19db,
@@ -3064,6 +3200,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 655360,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3071,9 +3208,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[138] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4a93,
@@ -3081,6 +3218,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 655368,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3088,10 +3226,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[139] = {
 	.class_hid = BNXT_ULP_CLASS_HID_05f7,
@@ -3099,6 +3237,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 655424,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3106,10 +3245,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[140] = {
 	.class_hid = BNXT_ULP_CLASS_HID_368f,
@@ -3117,6 +3256,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 655432,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3124,11 +3264,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[141] = {
 	.class_hid = BNXT_ULP_CLASS_HID_39c7,
@@ -3136,6 +3276,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 720896,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3143,10 +3284,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[142] = {
 	.class_hid = BNXT_ULP_CLASS_HID_022b,
@@ -3154,6 +3295,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 720904,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3161,11 +3303,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[143] = {
 	.class_hid = BNXT_ULP_CLASS_HID_25f3,
@@ -3173,6 +3315,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 720960,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3180,11 +3323,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[144] = {
 	.class_hid = BNXT_ULP_CLASS_HID_568b,
@@ -3192,6 +3335,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 720968,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3199,12 +3343,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[145] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3c37,
@@ -3212,6 +3356,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 917504,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3219,10 +3364,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[146] = {
 	.class_hid = BNXT_ULP_CLASS_HID_041b,
@@ -3230,6 +3375,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 917512,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3237,11 +3383,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[147] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2823,
@@ -3249,6 +3395,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 917568,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3256,11 +3403,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[148] = {
 	.class_hid = BNXT_ULP_CLASS_HID_58fb,
@@ -3268,6 +3415,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 917576,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3275,12 +3423,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[149] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c33,
@@ -3288,6 +3436,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 983040,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3295,11 +3444,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[150] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2407,
@@ -3307,6 +3456,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 983048,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3314,12 +3464,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[151] = {
 	.class_hid = BNXT_ULP_CLASS_HID_482f,
@@ -3327,6 +3477,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 983104,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3334,12 +3485,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[152] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1033,
@@ -3347,6 +3498,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 983112,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3354,13 +3506,13 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[153] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3887,
@@ -3368,6 +3520,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 32768,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3375,8 +3528,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[154] = {
 	.class_hid = BNXT_ULP_CLASS_HID_00bb,
@@ -3384,6 +3537,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 32776,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3391,9 +3545,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[155] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2493,
@@ -3401,6 +3555,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 32832,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3408,9 +3563,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[156] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55db,
@@ -3418,6 +3573,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 32840,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3425,10 +3581,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[157] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5043,
@@ -3436,6 +3592,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3443,9 +3600,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[158] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1877,
@@ -3453,6 +3610,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 49160,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3460,10 +3618,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[159] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3baf,
@@ -3471,6 +3629,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 49216,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3478,10 +3637,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[160] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0443,
@@ -3489,6 +3648,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 49224,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3496,11 +3656,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[161] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5883,
@@ -3508,6 +3668,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 98304,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3515,9 +3676,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[162] = {
 	.class_hid = BNXT_ULP_CLASS_HID_20b7,
@@ -3525,6 +3686,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 98312,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3532,10 +3694,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[163] = {
 	.class_hid = BNXT_ULP_CLASS_HID_44ef,
@@ -3543,6 +3705,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 98368,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3550,10 +3713,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[164] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0c83,
@@ -3561,6 +3724,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 98376,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3568,11 +3732,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[165] = {
 	.class_hid = BNXT_ULP_CLASS_HID_070b,
@@ -3580,6 +3744,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3587,10 +3752,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[166] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3873,
@@ -3598,6 +3763,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 114696,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3605,11 +3771,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[167] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5bab,
@@ -3617,6 +3783,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 114752,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3624,11 +3791,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[168] = {
 	.class_hid = BNXT_ULP_CLASS_HID_245f,
@@ -3636,6 +3803,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 114760,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3643,12 +3811,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[169] = {
 	.class_hid = BNXT_ULP_CLASS_HID_142b,
@@ -3656,6 +3824,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 163840,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3663,9 +3832,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[170] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4513,
@@ -3673,6 +3842,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 163848,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3680,10 +3850,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[171] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0037,
@@ -3691,6 +3861,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 163904,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3698,10 +3869,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[172] = {
 	.class_hid = BNXT_ULP_CLASS_HID_317f,
@@ -3709,6 +3880,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 163912,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3716,11 +3888,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[173] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2be7,
@@ -3728,6 +3900,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 180224,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3735,10 +3908,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[174] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c2f,
@@ -3746,6 +3919,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 180232,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3753,11 +3927,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[175] = {
 	.class_hid = BNXT_ULP_CLASS_HID_17f3,
@@ -3765,6 +3939,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 180288,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3772,11 +3947,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[176] = {
 	.class_hid = BNXT_ULP_CLASS_HID_483b,
@@ -3784,6 +3959,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 180296,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3791,12 +3967,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[177] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3427,
@@ -3804,6 +3980,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 229376,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3811,10 +3988,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[178] = {
 	.class_hid = BNXT_ULP_CLASS_HID_656f,
@@ -3822,6 +3999,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 229384,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3829,11 +4007,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[179] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2033,
@@ -3841,6 +4019,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 229440,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3848,11 +4027,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[180] = {
 	.class_hid = BNXT_ULP_CLASS_HID_517b,
@@ -3860,6 +4039,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 229448,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3867,12 +4047,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[181] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4be3,
@@ -3880,6 +4060,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 245760,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3887,11 +4068,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[182] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1397,
@@ -3899,6 +4080,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 245768,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3906,12 +4088,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[183] = {
 	.class_hid = BNXT_ULP_CLASS_HID_37cf,
@@ -3919,6 +4101,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 245824,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3926,12 +4109,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[184] = {
 	.class_hid = BNXT_ULP_CLASS_HID_6837,
@@ -3939,6 +4122,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 245832,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3946,13 +4130,13 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[185] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3d7f,
@@ -3960,6 +4144,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 131072,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3967,8 +4152,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[186] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0503,
@@ -3976,6 +4161,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 131080,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -3983,9 +4169,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[187] = {
 	.class_hid = BNXT_ULP_CLASS_HID_296b,
@@ -3993,6 +4179,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 131136,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4000,9 +4187,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[188] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59a3,
@@ -4010,6 +4197,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 131144,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4017,10 +4205,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[189] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5d7b,
@@ -4028,6 +4216,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 196608,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4035,9 +4224,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[190] = {
 	.class_hid = BNXT_ULP_CLASS_HID_250f,
@@ -4045,6 +4234,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 196616,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4052,10 +4242,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[191] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4957,
@@ -4063,6 +4253,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 196672,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4070,10 +4261,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[192] = {
 	.class_hid = BNXT_ULP_CLASS_HID_117b,
@@ -4081,6 +4272,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 196680,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4088,11 +4280,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[193] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5f2b,
@@ -4100,6 +4292,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 393216,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4107,9 +4300,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[194] = {
 	.class_hid = BNXT_ULP_CLASS_HID_273f,
@@ -4117,6 +4310,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 393224,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4124,10 +4318,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[195] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4b07,
@@ -4135,6 +4329,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 393280,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4142,10 +4337,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[196] = {
 	.class_hid = BNXT_ULP_CLASS_HID_132b,
@@ -4153,6 +4348,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 393288,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4160,11 +4356,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[197] = {
 	.class_hid = BNXT_ULP_CLASS_HID_16e3,
@@ -4172,6 +4368,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 458752,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4179,10 +4376,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[198] = {
 	.class_hid = BNXT_ULP_CLASS_HID_473b,
@@ -4190,6 +4387,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 458760,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4197,11 +4395,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[199] = {
 	.class_hid = BNXT_ULP_CLASS_HID_02df,
@@ -4209,6 +4407,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 458816,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4216,11 +4415,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[200] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3317,
@@ -4228,6 +4427,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 458824,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4235,12 +4435,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[201] = {
 	.class_hid = BNXT_ULP_CLASS_HID_19bb,
@@ -4248,6 +4448,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 655360,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4255,9 +4456,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[202] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4af3,
@@ -4265,6 +4466,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 655368,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4272,10 +4474,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[203] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0597,
@@ -4283,6 +4485,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 655424,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4290,10 +4493,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[204] = {
 	.class_hid = BNXT_ULP_CLASS_HID_36ef,
@@ -4301,6 +4504,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 655432,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4308,11 +4512,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[205] = {
 	.class_hid = BNXT_ULP_CLASS_HID_39a7,
@@ -4320,6 +4524,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 720896,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4327,10 +4532,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[206] = {
 	.class_hid = BNXT_ULP_CLASS_HID_024b,
@@ -4338,6 +4543,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 720904,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4345,11 +4551,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[207] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2593,
@@ -4357,6 +4563,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 720960,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4364,11 +4571,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[208] = {
 	.class_hid = BNXT_ULP_CLASS_HID_56eb,
@@ -4376,6 +4583,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 720968,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4383,12 +4591,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[209] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3c57,
@@ -4396,6 +4604,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 917504,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4403,10 +4612,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[210] = {
 	.class_hid = BNXT_ULP_CLASS_HID_047b,
@@ -4414,6 +4623,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 917512,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4421,11 +4631,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[211] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2843,
@@ -4433,6 +4643,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 917568,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4440,11 +4651,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[212] = {
 	.class_hid = BNXT_ULP_CLASS_HID_589b,
@@ -4452,6 +4663,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 917576,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4459,12 +4671,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[213] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c53,
@@ -4472,6 +4684,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 983040,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4479,11 +4692,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[214] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2467,
@@ -4491,6 +4704,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 983048,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4498,12 +4712,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[215] = {
 	.class_hid = BNXT_ULP_CLASS_HID_484f,
@@ -4511,6 +4725,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 983104,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4518,12 +4733,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[216] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1053,
@@ -4531,6 +4746,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 983112,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -4538,13 +4754,13 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[217] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5ce1,
@@ -4552,12 +4768,13 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 4096,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_0_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_0_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[218] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4579,
@@ -4565,13 +4782,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 6144,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_0_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_0_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_0_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_0_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[219] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1735,
@@ -4579,12 +4797,13 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_1_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_1_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[220] = {
 	.class_hid = BNXT_ULP_CLASS_HID_45bd,
@@ -4592,13 +4811,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 24576,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_1_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_1_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_1_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_1_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[221] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3feb,
@@ -4606,13 +4826,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 32768,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[222] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2bf7,
@@ -4620,14 +4841,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 32832,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_2_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[223] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5727,
@@ -4635,14 +4857,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[224] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4333,
@@ -4650,15 +4873,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 49216,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_2_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[225] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4453,
@@ -4666,13 +4890,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 131072,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[226] = {
 	.class_hid = BNXT_ULP_CLASS_HID_304f,
@@ -4680,14 +4905,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 131136,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_3_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[227] = {
 	.class_hid = BNXT_ULP_CLASS_HID_645f,
@@ -4695,14 +4921,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 196608,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[228] = {
 	.class_hid = BNXT_ULP_CLASS_HID_504b,
@@ -4710,15 +4937,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 196672,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_3_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[229] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5cc1,
@@ -4726,13 +4954,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 4096,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[230] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4559,
@@ -4740,14 +4969,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 6144,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[231] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2285,
@@ -4755,14 +4985,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 12288,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_SRC_PORT }
 	},
 	[232] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b1d,
@@ -4770,15 +5001,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 14336,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_SRC_PORT }
 	},
 	[233] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b49,
@@ -4786,14 +5018,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 20480,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[234] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c95,
@@ -4801,15 +5034,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 22528,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[235] = {
 	.class_hid = BNXT_ULP_CLASS_HID_39c1,
@@ -4817,15 +5051,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 28672,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[236] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2259,
@@ -4833,16 +5068,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 30720,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[237] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1715,
@@ -4850,13 +5086,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[238] = {
 	.class_hid = BNXT_ULP_CLASS_HID_459d,
@@ -4864,14 +5101,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 24576,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[239] = {
 	.class_hid = BNXT_ULP_CLASS_HID_571d,
@@ -4879,14 +5117,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_SRC_PORT }
 	},
 	[240] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1cd1,
@@ -4894,15 +5133,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 57344,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_SRC_PORT }
 	},
 	[241] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3711,
@@ -4910,14 +5150,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 81920,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[242] = {
 	.class_hid = BNXT_ULP_CLASS_HID_6599,
@@ -4925,15 +5166,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 90112,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[243] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0e55,
@@ -4941,15 +5183,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[244] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3cdd,
@@ -4957,16 +5200,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 122880,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[245] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5ca1,
@@ -4974,13 +5218,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 4096,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[246] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4539,
@@ -4988,14 +5233,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 6144,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[247] = {
 	.class_hid = BNXT_ULP_CLASS_HID_22e5,
@@ -5003,14 +5249,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 12288,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_SRC_PORT }
 	},
 	[248] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b7d,
@@ -5018,15 +5265,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 14336,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_SRC_PORT }
 	},
 	[249] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b29,
@@ -5034,14 +5282,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 20480,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[250] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5cf5,
@@ -5049,15 +5298,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 22528,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[251] = {
 	.class_hid = BNXT_ULP_CLASS_HID_39a1,
@@ -5065,15 +5315,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 28672,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[252] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2239,
@@ -5081,16 +5332,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 30720,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[253] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1775,
@@ -5098,13 +5350,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[254] = {
 	.class_hid = BNXT_ULP_CLASS_HID_45fd,
@@ -5112,14 +5365,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 24576,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[255] = {
 	.class_hid = BNXT_ULP_CLASS_HID_577d,
@@ -5127,14 +5381,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_SRC_PORT }
 	},
 	[256] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1cb1,
@@ -5142,15 +5397,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 57344,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_SRC_PORT }
 	},
 	[257] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3771,
@@ -5158,14 +5414,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 81920,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[258] = {
 	.class_hid = BNXT_ULP_CLASS_HID_65f9,
@@ -5173,15 +5430,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 90112,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[259] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0e35,
@@ -5189,15 +5447,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[260] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3cbd,
@@ -5205,16 +5464,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 122880,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[261] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3fcb,
@@ -5222,6 +5482,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 32768,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5229,7 +5490,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[262] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2bd7,
@@ -5237,6 +5498,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 32832,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5244,8 +5506,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[263] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5707,
@@ -5253,6 +5515,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5260,8 +5523,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[264] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4313,
@@ -5269,6 +5532,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 49216,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5276,9 +5540,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[265] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5fc7,
@@ -5286,6 +5550,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 98304,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5293,8 +5558,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[266] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4bd3,
@@ -5302,6 +5567,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 98368,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5309,9 +5575,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[267] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0e4f,
@@ -5319,6 +5585,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5326,9 +5593,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[268] = {
 	.class_hid = BNXT_ULP_CLASS_HID_632f,
@@ -5336,6 +5603,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 114752,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5343,10 +5611,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[269] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1baf,
@@ -5354,6 +5622,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 163840,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5361,8 +5630,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[270] = {
 	.class_hid = BNXT_ULP_CLASS_HID_07bb,
@@ -5370,6 +5639,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 163904,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5377,9 +5647,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[271] = {
 	.class_hid = BNXT_ULP_CLASS_HID_32eb,
@@ -5387,6 +5657,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 180224,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5394,9 +5665,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[272] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1ef7,
@@ -5404,6 +5675,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 180288,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5411,10 +5683,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[273] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3bab,
@@ -5422,6 +5694,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 229376,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5429,9 +5702,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[274] = {
 	.class_hid = BNXT_ULP_CLASS_HID_27b7,
@@ -5439,6 +5712,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 229440,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5446,10 +5720,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[275] = {
 	.class_hid = BNXT_ULP_CLASS_HID_52e7,
@@ -5457,6 +5731,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 245760,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5464,10 +5739,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[276] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ef3,
@@ -5475,6 +5750,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 245824,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5482,11 +5758,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[277] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4473,
@@ -5494,6 +5770,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 131072,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5501,7 +5778,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[278] = {
 	.class_hid = BNXT_ULP_CLASS_HID_306f,
@@ -5509,6 +5786,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 131136,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5516,8 +5794,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[279] = {
 	.class_hid = BNXT_ULP_CLASS_HID_647f,
@@ -5525,6 +5803,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 196608,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5532,8 +5811,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[280] = {
 	.class_hid = BNXT_ULP_CLASS_HID_506b,
@@ -5541,6 +5820,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 196672,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5548,9 +5828,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[281] = {
 	.class_hid = BNXT_ULP_CLASS_HID_66af,
@@ -5558,6 +5838,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 393216,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5565,8 +5846,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[282] = {
 	.class_hid = BNXT_ULP_CLASS_HID_525b,
@@ -5574,6 +5855,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 393280,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5581,9 +5863,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[283] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1de7,
@@ -5591,6 +5873,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 458752,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5598,9 +5881,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[284] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0993,
@@ -5608,6 +5891,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 458816,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5615,10 +5899,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[285] = {
 	.class_hid = BNXT_ULP_CLASS_HID_213f,
@@ -5626,6 +5910,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 655360,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5633,8 +5918,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[286] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0d2b,
@@ -5642,6 +5927,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 655424,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5649,9 +5935,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[287] = {
 	.class_hid = BNXT_ULP_CLASS_HID_413b,
@@ -5659,6 +5945,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 720896,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5666,9 +5953,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[288] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2cd7,
@@ -5676,6 +5963,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 720960,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5683,10 +5971,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[289] = {
 	.class_hid = BNXT_ULP_CLASS_HID_436b,
@@ -5694,6 +5982,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 917504,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5701,9 +5990,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[290] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2f07,
@@ -5711,6 +6000,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 917568,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5718,10 +6008,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[291] = {
 	.class_hid = BNXT_ULP_CLASS_HID_6317,
@@ -5729,6 +6019,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 983040,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5736,10 +6027,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[292] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4f03,
@@ -5747,6 +6038,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 983104,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5754,11 +6046,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF1_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[293] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3fab,
@@ -5766,6 +6058,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 32768,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5773,7 +6066,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[294] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2bb7,
@@ -5781,6 +6074,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 32832,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5788,8 +6082,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[295] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5767,
@@ -5797,6 +6091,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5804,8 +6099,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[296] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4373,
@@ -5813,6 +6108,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 49216,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5820,9 +6116,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[297] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5fa7,
@@ -5830,6 +6126,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 98304,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5837,8 +6134,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[298] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4bb3,
@@ -5846,6 +6143,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 98368,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5853,9 +6151,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[299] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0e2f,
@@ -5863,6 +6161,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5870,9 +6169,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[300] = {
 	.class_hid = BNXT_ULP_CLASS_HID_634f,
@@ -5880,6 +6179,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 114752,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5887,10 +6187,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[301] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1bcf,
@@ -5898,6 +6198,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 163840,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5905,8 +6206,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[302] = {
 	.class_hid = BNXT_ULP_CLASS_HID_07db,
@@ -5914,6 +6215,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 163904,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5921,9 +6223,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[303] = {
 	.class_hid = BNXT_ULP_CLASS_HID_328b,
@@ -5931,6 +6233,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 180224,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5938,9 +6241,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[304] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1e97,
@@ -5948,6 +6251,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 180288,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5955,10 +6259,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[305] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3bcb,
@@ -5966,6 +6270,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 229376,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5973,9 +6278,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[306] = {
 	.class_hid = BNXT_ULP_CLASS_HID_27d7,
@@ -5983,6 +6288,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 229440,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -5990,10 +6296,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[307] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5287,
@@ -6001,6 +6307,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 245760,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6008,10 +6315,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[308] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3e93,
@@ -6019,6 +6326,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 245824,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6026,11 +6334,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[309] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4413,
@@ -6038,6 +6346,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 131072,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6045,7 +6354,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[310] = {
 	.class_hid = BNXT_ULP_CLASS_HID_300f,
@@ -6053,6 +6362,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 131136,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6060,8 +6370,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[311] = {
 	.class_hid = BNXT_ULP_CLASS_HID_641f,
@@ -6069,6 +6379,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 196608,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6076,8 +6387,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[312] = {
 	.class_hid = BNXT_ULP_CLASS_HID_500b,
@@ -6085,6 +6396,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 196672,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6092,9 +6404,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[313] = {
 	.class_hid = BNXT_ULP_CLASS_HID_66cf,
@@ -6102,6 +6414,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 393216,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6109,8 +6422,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[314] = {
 	.class_hid = BNXT_ULP_CLASS_HID_523b,
@@ -6118,6 +6431,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 393280,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6125,9 +6439,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[315] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1d87,
@@ -6135,6 +6449,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 458752,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6142,9 +6457,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[316] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09f3,
@@ -6152,6 +6467,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 458816,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6159,10 +6475,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[317] = {
 	.class_hid = BNXT_ULP_CLASS_HID_215f,
@@ -6170,6 +6486,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 655360,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6177,8 +6494,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[318] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0d4b,
@@ -6186,6 +6503,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 655424,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6193,9 +6511,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[319] = {
 	.class_hid = BNXT_ULP_CLASS_HID_415b,
@@ -6203,6 +6521,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 720896,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6210,9 +6529,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[320] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2cb7,
@@ -6220,6 +6539,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 720960,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6227,10 +6547,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[321] = {
 	.class_hid = BNXT_ULP_CLASS_HID_430b,
@@ -6238,6 +6558,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 917504,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6245,9 +6566,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[322] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2f67,
@@ -6255,6 +6576,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 917568,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6262,10 +6584,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[323] = {
 	.class_hid = BNXT_ULP_CLASS_HID_6377,
@@ -6273,6 +6595,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 983040,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6280,10 +6603,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[324] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4f63,
@@ -6291,6 +6614,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 983104,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6298,11 +6622,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF1_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[325] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29b5,
@@ -6310,13 +6634,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 8,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_0_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_0_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_1_0_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_0_BITMASK_O_ETH_SMAC }
 	},
 	[326] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29ad,
@@ -6324,13 +6649,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 8,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_1_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_1_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_1_1_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_1_BITMASK_O_ETH_SMAC }
 	},
 	[327] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29b7,
@@ -6338,14 +6664,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 8,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_SMAC }
 	},
 	[328] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1583,
@@ -6353,15 +6680,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 72,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_2_BITMASK_OO_VLAN_VID }
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_2_BITMASK_OO_VLAN_VID }
 	},
 	[329] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29af,
@@ -6369,14 +6697,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 8,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_SMAC }
 	},
 	[330] = {
 	.class_hid = BNXT_ULP_CLASS_HID_159b,
@@ -6384,15 +6713,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 72,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_3_BITMASK_OO_VLAN_VID }
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_3_BITMASK_OO_VLAN_VID }
 	},
 	[331] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2995,
@@ -6400,14 +6730,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 8,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_4_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_4_BITMASK_O_ETH_SMAC }
 	},
 	[332] = {
 	.class_hid = BNXT_ULP_CLASS_HID_298d,
@@ -6415,14 +6746,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 8,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_5_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_5_BITMASK_O_ETH_SMAC }
 	},
 	[333] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29f5,
@@ -6430,14 +6762,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 8,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_6_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_6_BITMASK_O_ETH_SMAC }
 	},
 	[334] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29ed,
@@ -6445,14 +6778,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 8,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_7_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_7_BITMASK_O_ETH_SMAC }
 	},
 	[335] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2997,
@@ -6460,6 +6794,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 8,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6467,8 +6802,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC }
 	},
 	[336] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15a3,
@@ -6476,6 +6811,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 72,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6483,9 +6819,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_8_BITMASK_OO_VLAN_VID }
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_8_BITMASK_OO_VLAN_VID }
 	},
 	[337] = {
 	.class_hid = BNXT_ULP_CLASS_HID_298f,
@@ -6493,6 +6829,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 8,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6500,8 +6837,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC }
 	},
 	[338] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15bb,
@@ -6509,6 +6846,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 72,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6516,9 +6854,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_9_BITMASK_OO_VLAN_VID }
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_9_BITMASK_OO_VLAN_VID }
 	},
 	[339] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29f7,
@@ -6526,6 +6864,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 8,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6533,8 +6872,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC }
 	},
 	[340] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15c3,
@@ -6542,6 +6881,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 72,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6549,9 +6889,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_10_BITMASK_OO_VLAN_VID }
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_10_BITMASK_OO_VLAN_VID }
 	},
 	[341] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29ef,
@@ -6559,6 +6899,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 8,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6566,8 +6907,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC }
 	},
 	[342] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15db,
@@ -6575,6 +6916,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 72,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -6582,9 +6924,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF1_11_BITMASK_OO_VLAN_VID }
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_1_11_BITMASK_OO_VLAN_VID }
 	},
 	[343] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1151,
@@ -6592,6 +6934,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 12,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 3,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
@@ -6599,8 +6942,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_T_VXLAN |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_12_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_12_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_1_12_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_12_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[344] = {
 	.class_hid = BNXT_ULP_CLASS_HID_315d,
@@ -6608,6 +6951,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 12,
 	.flow_sig_id = 81920,
 	.flow_pattern_id = 3,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
@@ -6615,9 +6959,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_T_VXLAN |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.field_sig = { .bits =
-		BNXT_ULP_HF1_12_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF1_12_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF1_12_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_1_12_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_1_12_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_1_12_BITMASK_O_UDP_DST_PORT }
 	},
 	[345] = {
 	.class_hid = BNXT_ULP_CLASS_HID_34c6,
@@ -6625,13 +6969,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 4096,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_0_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_0_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_0_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_0_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[346] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0c22,
@@ -6639,14 +6984,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 4100,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_0_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_0_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_0_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_0_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_0_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_0_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[347] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1cbe,
@@ -6654,14 +7000,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 6144,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_0_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_0_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_0_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_0_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_0_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_0_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[348] = {
 	.class_hid = BNXT_ULP_CLASS_HID_179a,
@@ -6669,15 +7016,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 6148,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_0_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_0_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_0_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_0_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_0_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_0_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_0_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_0_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[349] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59be,
@@ -6685,13 +7033,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_1_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_1_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_1_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_1_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[350] = {
 	.class_hid = BNXT_ULP_CLASS_HID_515a,
@@ -6699,14 +7048,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 16388,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_1_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_1_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_1_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_1_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_1_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_1_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[351] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1c72,
@@ -6714,14 +7064,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 24576,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_1_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_1_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_1_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_1_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_1_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_1_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[352] = {
 	.class_hid = BNXT_ULP_CLASS_HID_171e,
@@ -6729,15 +7080,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 24580,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_1_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_1_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_1_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_1_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_1_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_1_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_1_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_1_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[353] = {
 	.class_hid = BNXT_ULP_CLASS_HID_19c8,
@@ -6745,14 +7097,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 32768,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[354] = {
 	.class_hid = BNXT_ULP_CLASS_HID_112c,
@@ -6760,15 +7113,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 32772,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[355] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4d68,
@@ -6776,15 +7130,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 32832,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_2_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[356] = {
 	.class_hid = BNXT_ULP_CLASS_HID_444c,
@@ -6792,16 +7147,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 32836,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_2_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[357] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0e8c,
@@ -6809,15 +7165,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[358] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09e0,
@@ -6825,16 +7182,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 49156,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[359] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1af0,
@@ -6842,16 +7200,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 49216,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_2_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[360] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15d4,
@@ -6859,17 +7218,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 49220,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_2_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[361] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1dd0,
@@ -6877,14 +7237,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 131072,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[362] = {
 	.class_hid = BNXT_ULP_CLASS_HID_14f4,
@@ -6892,15 +7253,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 131076,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[363] = {
 	.class_hid = BNXT_ULP_CLASS_HID_70b0,
@@ -6908,15 +7270,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 131136,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_3_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[364] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4854,
@@ -6924,16 +7287,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 131140,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_3_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[365] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3dd4,
@@ -6941,15 +7305,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 196608,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[366] = {
 	.class_hid = BNXT_ULP_CLASS_HID_34f8,
@@ -6957,16 +7322,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 196612,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[367] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09e8,
@@ -6974,16 +7340,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 196672,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_3_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[368] = {
 	.class_hid = BNXT_ULP_CLASS_HID_008c,
@@ -6991,17 +7358,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 196676,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_3_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[369] = {
 	.class_hid = BNXT_ULP_CLASS_HID_34e6,
@@ -7009,14 +7377,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 4096,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[370] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0c02,
@@ -7024,15 +7393,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 4100,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[371] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1c9e,
@@ -7040,15 +7410,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 6144,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[372] = {
 	.class_hid = BNXT_ULP_CLASS_HID_17ba,
@@ -7056,16 +7427,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 6148,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[373] = {
 	.class_hid = BNXT_ULP_CLASS_HID_429e,
@@ -7073,15 +7445,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 12288,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_SRC_PORT }
 	},
 	[374] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5dba,
@@ -7089,16 +7462,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 12292,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_SRC_PORT }
 	},
 	[375] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2a16,
@@ -7106,16 +7480,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 14336,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_SRC_PORT }
 	},
 	[376] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2532,
@@ -7123,17 +7498,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 14340,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_SRC_PORT }
 	},
 	[377] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2da2,
@@ -7141,15 +7517,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 20480,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[378] = {
 	.class_hid = BNXT_ULP_CLASS_HID_24fe,
@@ -7157,16 +7534,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 20484,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[379] = {
 	.class_hid = BNXT_ULP_CLASS_HID_355a,
@@ -7174,16 +7552,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 22528,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[380] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0c76,
@@ -7191,17 +7570,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 22532,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[381] = {
 	.class_hid = BNXT_ULP_CLASS_HID_13e6,
@@ -7209,16 +7589,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 28672,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[382] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7276,
@@ -7226,17 +7607,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 28676,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[383] = {
 	.class_hid = BNXT_ULP_CLASS_HID_42d2,
@@ -7244,17 +7626,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 30720,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[384] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5dee,
@@ -7262,18 +7645,19 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 30724,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[385] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59de,
@@ -7281,14 +7665,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[386] = {
 	.class_hid = BNXT_ULP_CLASS_HID_513a,
@@ -7296,15 +7681,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 16388,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[387] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1c12,
@@ -7312,15 +7698,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 24576,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[388] = {
 	.class_hid = BNXT_ULP_CLASS_HID_177e,
@@ -7328,16 +7715,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 24580,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[389] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0e92,
@@ -7345,15 +7733,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_SRC_PORT }
 	},
 	[390] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09fe,
@@ -7361,16 +7750,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 49156,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_SRC_PORT }
 	},
 	[391] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c1a,
@@ -7378,16 +7768,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 57344,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_SRC_PORT }
 	},
 	[392] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5746,
@@ -7395,17 +7786,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 57348,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_SRC_PORT }
 	},
 	[393] = {
 	.class_hid = BNXT_ULP_CLASS_HID_79da,
@@ -7413,15 +7805,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 81920,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[394] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7106,
@@ -7429,16 +7822,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 81924,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[395] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3c1e,
@@ -7446,16 +7840,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 90112,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[396] = {
 	.class_hid = BNXT_ULP_CLASS_HID_377a,
@@ -7463,17 +7858,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 90116,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[397] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2e9e,
@@ -7481,16 +7877,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[398] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29fa,
@@ -7498,17 +7895,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 114692,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[399] = {
 	.class_hid = BNXT_ULP_CLASS_HID_14d2,
@@ -7516,17 +7914,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 122880,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[400] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7742,
@@ -7534,18 +7933,19 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 122884,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[401] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3706,
@@ -7553,14 +7953,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 4096,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[402] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0fe2,
@@ -7568,15 +7969,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 4100,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[403] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1f7e,
@@ -7584,15 +7986,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 6144,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[404] = {
 	.class_hid = BNXT_ULP_CLASS_HID_145a,
@@ -7600,16 +8003,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 6148,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[405] = {
 	.class_hid = BNXT_ULP_CLASS_HID_417e,
@@ -7617,15 +8021,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 12288,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_SRC_PORT }
 	},
 	[406] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5e5a,
@@ -7633,16 +8038,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 12292,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_SRC_PORT }
 	},
 	[407] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29f6,
@@ -7650,16 +8056,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 14336,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_SRC_PORT }
 	},
 	[408] = {
 	.class_hid = BNXT_ULP_CLASS_HID_26d2,
@@ -7667,17 +8074,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 14340,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_SRC_PORT }
 	},
 	[409] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2e42,
@@ -7685,15 +8093,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 20480,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[410] = {
 	.class_hid = BNXT_ULP_CLASS_HID_271e,
@@ -7701,16 +8110,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 20484,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[411] = {
 	.class_hid = BNXT_ULP_CLASS_HID_36ba,
@@ -7718,16 +8128,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 22528,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[412] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0f96,
@@ -7735,17 +8146,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 22532,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[413] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1006,
@@ -7753,16 +8165,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 28672,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[414] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7196,
@@ -7770,17 +8183,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 28676,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[415] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4132,
@@ -7788,17 +8202,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 30720,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[416] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5e0e,
@@ -7806,18 +8221,19 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 30724,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[417] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59fe,
@@ -7825,14 +8241,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[418] = {
 	.class_hid = BNXT_ULP_CLASS_HID_511a,
@@ -7840,15 +8257,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 16388,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[419] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1c32,
@@ -7856,15 +8274,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 24576,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[420] = {
 	.class_hid = BNXT_ULP_CLASS_HID_175e,
@@ -7872,16 +8291,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 24580,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[421] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0eb2,
@@ -7889,15 +8309,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_SRC_PORT }
 	},
 	[422] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09de,
@@ -7905,16 +8326,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 49156,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_SRC_PORT }
 	},
 	[423] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c3a,
@@ -7922,16 +8344,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 57344,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_SRC_PORT }
 	},
 	[424] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5766,
@@ -7939,17 +8362,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 57348,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_SRC_PORT }
 	},
 	[425] = {
 	.class_hid = BNXT_ULP_CLASS_HID_79fa,
@@ -7957,15 +8381,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 81920,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[426] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7126,
@@ -7973,16 +8398,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 81924,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[427] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3c3e,
@@ -7990,16 +8416,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 90112,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[428] = {
 	.class_hid = BNXT_ULP_CLASS_HID_375a,
@@ -8007,17 +8434,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 90116,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[429] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2ebe,
@@ -8025,16 +8453,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[430] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29da,
@@ -8042,17 +8471,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 114692,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[431] = {
 	.class_hid = BNXT_ULP_CLASS_HID_14f2,
@@ -8060,17 +8490,18 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 122880,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[432] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7762,
@@ -8078,18 +8509,19 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 122884,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[433] = {
 	.class_hid = BNXT_ULP_CLASS_HID_19e8,
@@ -8097,6 +8529,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 32768,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8104,8 +8537,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[434] = {
 	.class_hid = BNXT_ULP_CLASS_HID_110c,
@@ -8113,6 +8546,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 32772,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8120,9 +8554,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[435] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4d48,
@@ -8130,6 +8564,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 32832,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8137,9 +8572,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[436] = {
 	.class_hid = BNXT_ULP_CLASS_HID_446c,
@@ -8147,6 +8582,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 32836,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8154,10 +8590,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[437] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0eac,
@@ -8165,6 +8601,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8172,9 +8609,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[438] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09c0,
@@ -8182,6 +8619,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 49156,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8189,10 +8627,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[439] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1ad0,
@@ -8200,6 +8638,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 49216,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8207,10 +8646,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[440] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15f4,
@@ -8218,6 +8657,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 49220,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8225,11 +8665,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[441] = {
 	.class_hid = BNXT_ULP_CLASS_HID_39ec,
@@ -8237,6 +8677,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 98304,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8244,9 +8685,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[442] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3100,
@@ -8254,6 +8695,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 98308,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8261,10 +8703,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[443] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0210,
@@ -8272,6 +8714,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 98368,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8279,10 +8722,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[444] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1d34,
@@ -8290,6 +8733,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 98372,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8297,11 +8741,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[445] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2ea0,
@@ -8309,6 +8753,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8316,10 +8761,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[446] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29c4,
@@ -8327,6 +8772,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 114692,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8334,11 +8780,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[447] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ad4,
@@ -8346,6 +8792,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 114752,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8353,11 +8800,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[448] = {
 	.class_hid = BNXT_ULP_CLASS_HID_35e8,
@@ -8365,6 +8812,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 114756,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8372,12 +8820,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[449] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5d80,
@@ -8385,6 +8833,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 163840,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8392,9 +8841,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[450] = {
 	.class_hid = BNXT_ULP_CLASS_HID_54a4,
@@ -8402,6 +8851,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 163844,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8409,10 +8859,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[451] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29b4,
@@ -8420,6 +8870,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 163904,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8427,10 +8878,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[452] = {
 	.class_hid = BNXT_ULP_CLASS_HID_20c8,
@@ -8438,6 +8889,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 163908,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8445,11 +8897,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[453] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7244,
@@ -8457,6 +8909,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 180224,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8464,10 +8917,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[454] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4d98,
@@ -8475,6 +8928,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 180228,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8482,11 +8936,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[455] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5e68,
@@ -8494,6 +8948,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 180288,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8501,11 +8956,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[456] = {
 	.class_hid = BNXT_ULP_CLASS_HID_598c,
@@ -8513,6 +8968,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 180292,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8520,12 +8976,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[457] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1248,
@@ -8533,6 +8989,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 229376,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8540,10 +8997,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[458] = {
 	.class_hid = BNXT_ULP_CLASS_HID_74d8,
@@ -8551,6 +9008,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 229380,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8558,11 +9016,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[459] = {
 	.class_hid = BNXT_ULP_CLASS_HID_49a8,
@@ -8570,6 +9028,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 229440,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8577,11 +9036,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[460] = {
 	.class_hid = BNXT_ULP_CLASS_HID_40cc,
@@ -8589,6 +9048,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 229444,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8596,12 +9056,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[461] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b0c,
@@ -8609,6 +9069,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 245760,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8616,11 +9077,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[462] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0220,
@@ -8628,6 +9089,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 245764,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8635,12 +9097,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[463] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1730,
@@ -8648,6 +9110,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 245824,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8655,12 +9118,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[464] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7980,
@@ -8668,6 +9131,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 245828,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8675,13 +9139,13 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[465] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1db0,
@@ -8689,6 +9153,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 131072,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8696,8 +9161,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[466] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1494,
@@ -8705,6 +9170,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 131076,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8712,9 +9178,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[467] = {
 	.class_hid = BNXT_ULP_CLASS_HID_70d0,
@@ -8722,6 +9188,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 131136,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8729,9 +9196,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[468] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4834,
@@ -8739,6 +9206,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 131140,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8746,10 +9214,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[469] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3db4,
@@ -8757,6 +9225,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 196608,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8764,9 +9233,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[470] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3498,
@@ -8774,6 +9243,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 196612,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8781,10 +9251,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[471] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0988,
@@ -8792,6 +9262,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 196672,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8799,10 +9270,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[472] = {
 	.class_hid = BNXT_ULP_CLASS_HID_00ec,
@@ -8810,6 +9281,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 196676,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8817,11 +9289,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[473] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3f44,
@@ -8829,6 +9301,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 393216,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8836,9 +9309,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[474] = {
 	.class_hid = BNXT_ULP_CLASS_HID_36a8,
@@ -8846,6 +9319,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 393220,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8853,10 +9327,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[475] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b58,
@@ -8864,6 +9338,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 393280,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8871,10 +9346,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[476] = {
 	.class_hid = BNXT_ULP_CLASS_HID_02bc,
@@ -8882,6 +9357,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 393284,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8889,11 +9365,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[477] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5f48,
@@ -8901,6 +9377,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 458752,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8908,10 +9385,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[478] = {
 	.class_hid = BNXT_ULP_CLASS_HID_56ac,
@@ -8919,6 +9396,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 458756,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8926,11 +9404,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[479] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2b5c,
@@ -8938,6 +9416,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 458816,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8945,11 +9424,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[480] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2280,
@@ -8957,6 +9436,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 458820,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8964,12 +9444,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[481] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4000,
@@ -8977,6 +9457,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 655360,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -8984,9 +9465,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[482] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5b64,
@@ -8994,6 +9475,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 655364,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9001,10 +9483,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[483] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2c14,
@@ -9012,6 +9494,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 655424,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9019,10 +9502,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[484] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2778,
@@ -9030,6 +9513,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 655428,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9037,11 +9521,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[485] = {
 	.class_hid = BNXT_ULP_CLASS_HID_18f8,
@@ -9049,6 +9533,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 720896,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9056,10 +9541,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[486] = {
 	.class_hid = BNXT_ULP_CLASS_HID_13dc,
@@ -9067,6 +9552,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 720900,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9074,11 +9560,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[487] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4c18,
@@ -9086,6 +9572,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 720960,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9093,11 +9580,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[488] = {
 	.class_hid = BNXT_ULP_CLASS_HID_477c,
@@ -9105,6 +9592,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 720964,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9112,12 +9600,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[489] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1a88,
@@ -9125,6 +9613,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 917504,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9132,10 +9621,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[490] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15ec,
@@ -9143,6 +9632,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 917508,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9150,11 +9640,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[491] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4e28,
@@ -9162,6 +9652,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 917568,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9169,11 +9660,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[492] = {
 	.class_hid = BNXT_ULP_CLASS_HID_490c,
@@ -9181,6 +9672,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 917572,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9188,12 +9680,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[493] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3a8c,
@@ -9201,6 +9693,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 983040,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9208,11 +9701,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[494] = {
 	.class_hid = BNXT_ULP_CLASS_HID_35f0,
@@ -9220,6 +9713,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 983044,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9227,12 +9721,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[495] = {
 	.class_hid = BNXT_ULP_CLASS_HID_06e0,
@@ -9240,6 +9734,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 983104,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9247,12 +9742,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[496] = {
 	.class_hid = BNXT_ULP_CLASS_HID_01c4,
@@ -9260,6 +9755,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 983108,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9267,13 +9763,13 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[497] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1a08,
@@ -9281,6 +9777,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 32768,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9288,8 +9785,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[498] = {
 	.class_hid = BNXT_ULP_CLASS_HID_12ec,
@@ -9297,6 +9794,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 32772,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9304,9 +9802,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[499] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4ea8,
@@ -9314,6 +9812,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 32832,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9321,9 +9820,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[500] = {
 	.class_hid = BNXT_ULP_CLASS_HID_478c,
@@ -9331,6 +9830,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 32836,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9338,10 +9838,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[501] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0d4c,
@@ -9349,6 +9849,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9356,9 +9857,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[502] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0a20,
@@ -9366,6 +9867,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 49156,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9373,10 +9875,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[503] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1930,
@@ -9384,6 +9886,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 49216,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9391,10 +9894,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[504] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1614,
@@ -9402,6 +9905,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 49220,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9409,11 +9913,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[505] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3a0c,
@@ -9421,6 +9925,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 98304,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9428,9 +9933,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[506] = {
 	.class_hid = BNXT_ULP_CLASS_HID_32e0,
@@ -9438,6 +9943,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 98308,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9445,10 +9951,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[507] = {
 	.class_hid = BNXT_ULP_CLASS_HID_01f0,
@@ -9456,6 +9962,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 98368,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9463,10 +9970,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[508] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1ed4,
@@ -9474,6 +9981,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 98372,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9481,11 +9989,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[509] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2d40,
@@ -9493,6 +10001,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9500,10 +10009,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[510] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2a24,
@@ -9511,6 +10020,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 114692,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9518,11 +10028,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[511] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3934,
@@ -9530,6 +10040,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 114752,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9537,11 +10048,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[512] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3608,
@@ -9549,6 +10060,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 114756,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9556,12 +10068,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[513] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5e60,
@@ -9569,6 +10081,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 163840,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9576,9 +10089,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[514] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5744,
@@ -9586,6 +10099,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 163844,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9593,10 +10107,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[515] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2a54,
@@ -9604,6 +10118,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 163904,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9611,10 +10126,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[516] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2328,
@@ -9622,6 +10137,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 163908,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9629,11 +10145,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[517] = {
 	.class_hid = BNXT_ULP_CLASS_HID_71a4,
@@ -9641,6 +10157,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 180224,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9648,10 +10165,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[518] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4e78,
@@ -9659,6 +10176,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 180228,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9666,11 +10184,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[519] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5d88,
@@ -9678,6 +10196,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 180288,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9685,11 +10204,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[520] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5a6c,
@@ -9697,6 +10216,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 180292,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9704,12 +10224,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[521] = {
 	.class_hid = BNXT_ULP_CLASS_HID_11a8,
@@ -9717,6 +10237,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 229376,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9724,10 +10245,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[522] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7738,
@@ -9735,6 +10256,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 229380,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9742,11 +10264,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[523] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4a48,
@@ -9754,6 +10276,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 229440,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9761,11 +10284,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[524] = {
 	.class_hid = BNXT_ULP_CLASS_HID_432c,
@@ -9773,6 +10296,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 229444,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9780,12 +10304,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[525] = {
 	.class_hid = BNXT_ULP_CLASS_HID_08ec,
@@ -9793,6 +10317,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 245760,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9800,11 +10325,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[526] = {
 	.class_hid = BNXT_ULP_CLASS_HID_01c0,
@@ -9812,6 +10337,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 245764,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9819,12 +10345,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[527] = {
 	.class_hid = BNXT_ULP_CLASS_HID_14d0,
@@ -9832,6 +10358,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 245824,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9839,12 +10366,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[528] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7a60,
@@ -9852,6 +10379,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 245828,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9859,13 +10387,13 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[529] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1d90,
@@ -9873,6 +10401,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 131072,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9880,8 +10409,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[530] = {
 	.class_hid = BNXT_ULP_CLASS_HID_14b4,
@@ -9889,6 +10418,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 131076,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9896,9 +10426,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[531] = {
 	.class_hid = BNXT_ULP_CLASS_HID_70f0,
@@ -9906,6 +10436,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 131136,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9913,9 +10444,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[532] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4814,
@@ -9923,6 +10454,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 131140,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9930,10 +10462,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[533] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3d94,
@@ -9941,6 +10473,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 196608,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9948,9 +10481,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[534] = {
 	.class_hid = BNXT_ULP_CLASS_HID_34b8,
@@ -9958,6 +10491,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 196612,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9965,10 +10499,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[535] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09a8,
@@ -9976,6 +10510,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 196672,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -9983,10 +10518,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[536] = {
 	.class_hid = BNXT_ULP_CLASS_HID_00cc,
@@ -9994,6 +10529,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 196676,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10001,11 +10537,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[537] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3f64,
@@ -10013,6 +10549,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 393216,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10020,9 +10557,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[538] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3688,
@@ -10030,6 +10567,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 393220,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10037,10 +10575,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[539] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b78,
@@ -10048,6 +10586,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 393280,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10055,10 +10594,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[540] = {
 	.class_hid = BNXT_ULP_CLASS_HID_029c,
@@ -10066,6 +10605,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 393284,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10073,11 +10613,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[541] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5f68,
@@ -10085,6 +10625,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 458752,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10092,10 +10633,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[542] = {
 	.class_hid = BNXT_ULP_CLASS_HID_568c,
@@ -10103,6 +10644,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 458756,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10110,11 +10652,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[543] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2b7c,
@@ -10122,6 +10664,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 458816,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10129,11 +10672,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[544] = {
 	.class_hid = BNXT_ULP_CLASS_HID_22a0,
@@ -10141,6 +10684,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 458820,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10148,12 +10692,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[545] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4020,
@@ -10161,6 +10705,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 655360,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10168,9 +10713,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[546] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5b44,
@@ -10178,6 +10723,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 655364,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10185,10 +10731,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[547] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2c34,
@@ -10196,6 +10742,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 655424,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10203,10 +10750,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[548] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2758,
@@ -10214,6 +10761,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 655428,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10221,11 +10769,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[549] = {
 	.class_hid = BNXT_ULP_CLASS_HID_18d8,
@@ -10233,6 +10781,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 720896,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10240,10 +10789,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[550] = {
 	.class_hid = BNXT_ULP_CLASS_HID_13fc,
@@ -10251,6 +10800,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 720900,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10258,11 +10808,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[551] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4c38,
@@ -10270,6 +10820,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 720960,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10277,11 +10828,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[552] = {
 	.class_hid = BNXT_ULP_CLASS_HID_475c,
@@ -10289,6 +10840,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 720964,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10296,12 +10848,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[553] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1aa8,
@@ -10309,6 +10861,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 917504,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10316,10 +10869,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[554] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15cc,
@@ -10327,6 +10880,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 917508,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10334,11 +10888,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[555] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4e08,
@@ -10346,6 +10900,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 917568,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10353,11 +10908,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[556] = {
 	.class_hid = BNXT_ULP_CLASS_HID_492c,
@@ -10365,6 +10920,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 917572,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10372,12 +10928,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[557] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3aac,
@@ -10385,6 +10941,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 983040,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10392,11 +10949,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[558] = {
 	.class_hid = BNXT_ULP_CLASS_HID_35d0,
@@ -10404,6 +10961,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 983044,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10411,12 +10969,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[559] = {
 	.class_hid = BNXT_ULP_CLASS_HID_06c0,
@@ -10424,6 +10982,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 983104,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10431,12 +10990,12 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[560] = {
 	.class_hid = BNXT_ULP_CLASS_HID_01e4,
@@ -10444,6 +11003,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 983108,
 	.flow_pattern_id = 0,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -10451,13 +11011,13 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[561] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4d32,
@@ -10465,12 +11025,13 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 4096,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_0_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_0_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[562] = {
 	.class_hid = BNXT_ULP_CLASS_HID_54aa,
@@ -10478,13 +11039,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 6144,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_0_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_0_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_0_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_0_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[563] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0686,
@@ -10492,12 +11054,13 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_1_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_1_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[564] = {
 	.class_hid = BNXT_ULP_CLASS_HID_540e,
@@ -10505,13 +11068,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 24576,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_1_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_1_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_1_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_1_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[565] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2e3c,
@@ -10519,13 +11083,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 32768,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[566] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3a20,
@@ -10533,14 +11098,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 32832,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_2_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[567] = {
 	.class_hid = BNXT_ULP_CLASS_HID_46f0,
@@ -10548,14 +11114,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[568] = {
 	.class_hid = BNXT_ULP_CLASS_HID_52e4,
@@ -10563,15 +11130,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 49216,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_2_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_2_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[569] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55e4,
@@ -10579,13 +11147,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 131072,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[570] = {
 	.class_hid = BNXT_ULP_CLASS_HID_21f8,
@@ -10593,14 +11162,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 131136,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_3_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[571] = {
 	.class_hid = BNXT_ULP_CLASS_HID_75e8,
@@ -10608,14 +11178,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 196608,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[572] = {
 	.class_hid = BNXT_ULP_CLASS_HID_41fc,
@@ -10623,15 +11194,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 196672,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_3_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_3_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[573] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4d12,
@@ -10639,13 +11211,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 4096,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[574] = {
 	.class_hid = BNXT_ULP_CLASS_HID_548a,
@@ -10653,14 +11226,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 6144,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[575] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3356,
@@ -10668,14 +11242,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 12288,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_SRC_PORT }
 	},
 	[576] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1ace,
@@ -10683,15 +11258,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 14336,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_SRC_PORT }
 	},
 	[577] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1a9a,
@@ -10699,14 +11275,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 20480,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[578] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4d46,
@@ -10714,15 +11291,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 22528,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[579] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2812,
@@ -10730,15 +11308,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 28672,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[580] = {
 	.class_hid = BNXT_ULP_CLASS_HID_338a,
@@ -10746,16 +11325,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 30720,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_4_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_TCP_DST_PORT }
 	},
 	[581] = {
 	.class_hid = BNXT_ULP_CLASS_HID_06e6,
@@ -10763,13 +11343,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[582] = {
 	.class_hid = BNXT_ULP_CLASS_HID_546e,
@@ -10777,14 +11358,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 24576,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[583] = {
 	.class_hid = BNXT_ULP_CLASS_HID_46ee,
@@ -10792,14 +11374,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_SRC_PORT }
 	},
 	[584] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0d22,
@@ -10807,15 +11390,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 57344,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_SRC_PORT }
 	},
 	[585] = {
 	.class_hid = BNXT_ULP_CLASS_HID_26e2,
@@ -10823,14 +11407,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 81920,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[586] = {
 	.class_hid = BNXT_ULP_CLASS_HID_746a,
@@ -10838,15 +11423,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 90112,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[587] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1fa6,
@@ -10854,15 +11440,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[588] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2d2e,
@@ -10870,16 +11457,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 122880,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_5_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_TCP_DST_PORT }
 	},
 	[589] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4ef2,
@@ -10887,13 +11475,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 4096,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[590] = {
 	.class_hid = BNXT_ULP_CLASS_HID_576a,
@@ -10901,14 +11490,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 6144,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[591] = {
 	.class_hid = BNXT_ULP_CLASS_HID_30b6,
@@ -10916,14 +11506,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 12288,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_SRC_PORT }
 	},
 	[592] = {
 	.class_hid = BNXT_ULP_CLASS_HID_192e,
@@ -10931,15 +11522,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 14336,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_SRC_PORT }
 	},
 	[593] = {
 	.class_hid = BNXT_ULP_CLASS_HID_197a,
@@ -10947,14 +11539,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 20480,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[594] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4ea6,
@@ -10962,15 +11555,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 22528,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[595] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2bf2,
@@ -10978,15 +11572,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 28672,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[596] = {
 	.class_hid = BNXT_ULP_CLASS_HID_306a,
@@ -10994,16 +11589,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 30720,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_6_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_UDP_DST_PORT }
 	},
 	[597] = {
 	.class_hid = BNXT_ULP_CLASS_HID_06c6,
@@ -11011,13 +11607,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 16384,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[598] = {
 	.class_hid = BNXT_ULP_CLASS_HID_544e,
@@ -11025,14 +11622,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 24576,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[599] = {
 	.class_hid = BNXT_ULP_CLASS_HID_46ce,
@@ -11040,14 +11638,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_SRC_PORT }
 	},
 	[600] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0d02,
@@ -11055,15 +11654,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 57344,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_SRC_PORT }
 	},
 	[601] = {
 	.class_hid = BNXT_ULP_CLASS_HID_26c2,
@@ -11071,14 +11671,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 81920,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[602] = {
 	.class_hid = BNXT_ULP_CLASS_HID_744a,
@@ -11086,15 +11687,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 90112,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[603] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1f86,
@@ -11102,15 +11704,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[604] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2d0e,
@@ -11118,16 +11721,17 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 122880,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_7_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_UDP_DST_PORT }
 	},
 	[605] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2e1c,
@@ -11135,6 +11739,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 32768,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11142,7 +11747,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[606] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3a00,
@@ -11150,6 +11755,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 32832,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11157,8 +11763,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[607] = {
 	.class_hid = BNXT_ULP_CLASS_HID_46d0,
@@ -11166,6 +11772,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11173,8 +11780,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[608] = {
 	.class_hid = BNXT_ULP_CLASS_HID_52c4,
@@ -11182,6 +11789,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 49216,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11189,9 +11797,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[609] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4e10,
@@ -11199,6 +11807,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 98304,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11206,8 +11815,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[610] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5a04,
@@ -11215,6 +11824,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 98368,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11222,9 +11832,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[611] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1f98,
@@ -11232,6 +11842,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11239,9 +11850,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[612] = {
 	.class_hid = BNXT_ULP_CLASS_HID_72f8,
@@ -11249,6 +11860,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 114752,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11256,10 +11868,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT }
 	},
 	[613] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0a78,
@@ -11267,6 +11879,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 163840,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11274,8 +11887,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[614] = {
 	.class_hid = BNXT_ULP_CLASS_HID_166c,
@@ -11283,6 +11896,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 163904,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11290,9 +11904,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[615] = {
 	.class_hid = BNXT_ULP_CLASS_HID_233c,
@@ -11300,6 +11914,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 180224,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11307,9 +11922,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[616] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0f20,
@@ -11317,6 +11932,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 180288,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11324,10 +11940,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[617] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2a7c,
@@ -11335,6 +11951,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 229376,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11342,9 +11959,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[618] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3660,
@@ -11352,6 +11969,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 229440,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11359,10 +11977,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[619] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4330,
@@ -11370,6 +11988,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 245760,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11377,10 +11996,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[620] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2f24,
@@ -11388,6 +12007,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 245824,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11395,11 +12015,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_8_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_TCP_DST_PORT }
 	},
 	[621] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5584,
@@ -11407,6 +12027,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 131072,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11414,7 +12035,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[622] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2198,
@@ -11422,6 +12043,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 131136,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11429,8 +12051,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[623] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7588,
@@ -11438,6 +12060,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 196608,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11445,8 +12068,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[624] = {
 	.class_hid = BNXT_ULP_CLASS_HID_419c,
@@ -11454,6 +12077,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 196672,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11461,9 +12085,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[625] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7758,
@@ -11471,6 +12095,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 393216,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11478,8 +12103,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[626] = {
 	.class_hid = BNXT_ULP_CLASS_HID_43ac,
@@ -11487,6 +12112,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 393280,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11494,9 +12120,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[627] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0c10,
@@ -11504,6 +12130,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 458752,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11511,9 +12138,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[628] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1864,
@@ -11521,6 +12148,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 458816,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11528,10 +12156,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT }
 	},
 	[629] = {
 	.class_hid = BNXT_ULP_CLASS_HID_30c8,
@@ -11539,6 +12167,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 655360,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11546,8 +12175,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[630] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1cdc,
@@ -11555,6 +12184,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 655424,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11562,9 +12192,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[631] = {
 	.class_hid = BNXT_ULP_CLASS_HID_50cc,
@@ -11572,6 +12202,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 720896,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11579,9 +12210,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[632] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3d20,
@@ -11589,6 +12220,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 720960,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11596,10 +12228,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[633] = {
 	.class_hid = BNXT_ULP_CLASS_HID_529c,
@@ -11607,6 +12239,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 917504,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11614,9 +12247,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[634] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ef0,
@@ -11624,6 +12257,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 917568,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11631,10 +12265,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[635] = {
 	.class_hid = BNXT_ULP_CLASS_HID_72e0,
@@ -11642,6 +12276,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 983040,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11649,10 +12284,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[636] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5ef4,
@@ -11660,6 +12295,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 983104,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11667,11 +12303,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_SRC_PORT |
-		BNXT_ULP_HF2_9_BITMASK_O_TCP_DST_PORT }
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_SRC_PORT |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_TCP_DST_PORT }
 	},
 	[637] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2dfc,
@@ -11679,6 +12315,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 32768,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11686,7 +12323,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[638] = {
 	.class_hid = BNXT_ULP_CLASS_HID_39e0,
@@ -11694,6 +12331,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 32832,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11701,8 +12339,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[639] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4530,
@@ -11710,6 +12348,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 49152,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11717,8 +12356,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[640] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5124,
@@ -11726,6 +12365,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 49216,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11733,9 +12373,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR }
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR }
 	},
 	[641] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4df0,
@@ -11743,6 +12383,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 98304,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11750,8 +12391,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[642] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59e4,
@@ -11759,6 +12400,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 98368,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11766,9 +12408,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[643] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1c78,
@@ -11776,6 +12418,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 114688,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11783,9 +12426,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[644] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7118,
@@ -11793,6 +12436,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 114752,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11800,10 +12444,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT }
 	},
 	[645] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0998,
@@ -11811,6 +12455,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 163840,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11818,8 +12463,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[646] = {
 	.class_hid = BNXT_ULP_CLASS_HID_158c,
@@ -11827,6 +12472,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 163904,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11834,9 +12480,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[647] = {
 	.class_hid = BNXT_ULP_CLASS_HID_20dc,
@@ -11844,6 +12490,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 180224,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11851,9 +12498,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[648] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0cc0,
@@ -11861,6 +12508,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 180288,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11868,10 +12516,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[649] = {
 	.class_hid = BNXT_ULP_CLASS_HID_299c,
@@ -11879,6 +12527,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 229376,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11886,9 +12535,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[650] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3580,
@@ -11896,6 +12545,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 229440,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11903,10 +12553,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[651] = {
 	.class_hid = BNXT_ULP_CLASS_HID_40d0,
@@ -11914,6 +12564,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 245760,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11921,10 +12572,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[652] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2cc4,
@@ -11932,6 +12583,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 245824,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11939,11 +12591,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_SRC_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_IPV6_DST_ADDR |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_10_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_SRC_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_IPV6_DST_ADDR |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_UDP_DST_PORT }
 	},
 	[653] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55a4,
@@ -11951,6 +12603,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 131072,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11958,7 +12611,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[654] = {
 	.class_hid = BNXT_ULP_CLASS_HID_21b8,
@@ -11966,6 +12619,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 131136,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11973,8 +12627,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[655] = {
 	.class_hid = BNXT_ULP_CLASS_HID_75a8,
@@ -11982,6 +12636,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 196608,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -11989,8 +12644,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[656] = {
 	.class_hid = BNXT_ULP_CLASS_HID_41bc,
@@ -11998,6 +12653,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 196672,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12005,9 +12661,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR }
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR }
 	},
 	[657] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7778,
@@ -12015,6 +12671,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 393216,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12022,8 +12679,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[658] = {
 	.class_hid = BNXT_ULP_CLASS_HID_438c,
@@ -12031,6 +12688,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 393280,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12038,9 +12696,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[659] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0c30,
@@ -12048,6 +12706,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 458752,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12055,9 +12714,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[660] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1844,
@@ -12065,6 +12724,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 458816,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12072,10 +12732,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT }
 	},
 	[661] = {
 	.class_hid = BNXT_ULP_CLASS_HID_30e8,
@@ -12083,6 +12743,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 655360,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12090,8 +12751,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[662] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1cfc,
@@ -12099,6 +12760,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 655424,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12106,9 +12768,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[663] = {
 	.class_hid = BNXT_ULP_CLASS_HID_50ec,
@@ -12116,6 +12778,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 720896,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12123,9 +12786,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[664] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3d00,
@@ -12133,6 +12796,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 720960,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12140,10 +12804,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[665] = {
 	.class_hid = BNXT_ULP_CLASS_HID_52bc,
@@ -12151,6 +12815,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 917504,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12158,9 +12823,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[666] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ed0,
@@ -12168,6 +12833,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 917568,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12175,10 +12841,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[667] = {
 	.class_hid = BNXT_ULP_CLASS_HID_72c0,
@@ -12186,6 +12852,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 983040,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12193,10 +12860,10 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[668] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5ed4,
@@ -12204,6 +12871,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 983104,
 	.flow_pattern_id = 1,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12211,11 +12879,11 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_SRC_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_IPV4_DST_ADDR |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_SRC_PORT |
-		BNXT_ULP_HF2_11_BITMASK_O_UDP_DST_PORT }
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_SRC_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_IPV4_DST_ADDR |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_SRC_PORT |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_UDP_DST_PORT }
 	},
 	[669] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3866,
@@ -12223,13 +12891,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 0,
 	.flow_sig_id = 4,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_0_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_0_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_2_0_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_0_BITMASK_O_ETH_SMAC }
 	},
 	[670] = {
 	.class_hid = BNXT_ULP_CLASS_HID_381e,
@@ -12237,13 +12906,14 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 1,
 	.flow_sig_id = 4,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_1_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_1_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_2_1_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_1_BITMASK_O_ETH_SMAC }
 	},
 	[671] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3860,
@@ -12251,14 +12921,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 4,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_SMAC }
 	},
 	[672] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0454,
@@ -12266,15 +12937,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 2,
 	.flow_sig_id = 68,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_2_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_2_BITMASK_OO_VLAN_VID }
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_2_BITMASK_OO_VLAN_VID }
 	},
 	[673] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3818,
@@ -12282,14 +12954,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 4,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_SMAC }
 	},
 	[674] = {
 	.class_hid = BNXT_ULP_CLASS_HID_042c,
@@ -12297,15 +12970,16 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 3,
 	.flow_sig_id = 68,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_3_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_3_BITMASK_OO_VLAN_VID }
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_3_BITMASK_OO_VLAN_VID }
 	},
 	[675] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3846,
@@ -12313,14 +12987,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 4,
 	.flow_sig_id = 4,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_4_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_4_BITMASK_O_ETH_SMAC }
 	},
 	[676] = {
 	.class_hid = BNXT_ULP_CLASS_HID_387e,
@@ -12328,14 +13003,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 5,
 	.flow_sig_id = 4,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_5_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_5_BITMASK_O_ETH_SMAC }
 	},
 	[677] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ba6,
@@ -12343,14 +13019,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 6,
 	.flow_sig_id = 4,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_6_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_6_BITMASK_O_ETH_SMAC }
 	},
 	[678] = {
 	.class_hid = BNXT_ULP_CLASS_HID_385e,
@@ -12358,14 +13035,15 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 7,
 	.flow_sig_id = 4,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_7_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_7_BITMASK_O_ETH_SMAC }
 	},
 	[679] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3840,
@@ -12373,6 +13051,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 4,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12380,8 +13059,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC }
 	},
 	[680] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0474,
@@ -12389,6 +13068,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 8,
 	.flow_sig_id = 68,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12396,9 +13076,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_8_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_8_BITMASK_OO_VLAN_VID }
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_8_BITMASK_OO_VLAN_VID }
 	},
 	[681] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3878,
@@ -12406,6 +13086,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 4,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12413,8 +13094,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC }
 	},
 	[682] = {
 	.class_hid = BNXT_ULP_CLASS_HID_044c,
@@ -12422,6 +13103,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 9,
 	.flow_sig_id = 68,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12429,9 +13111,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_9_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_9_BITMASK_OO_VLAN_VID }
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_9_BITMASK_OO_VLAN_VID }
 	},
 	[683] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ba0,
@@ -12439,6 +13121,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 4,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12446,8 +13129,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC }
 	},
 	[684] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0794,
@@ -12455,6 +13138,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 10,
 	.flow_sig_id = 68,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12462,9 +13146,9 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_10_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_10_BITMASK_OO_VLAN_VID }
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_10_BITMASK_OO_VLAN_VID }
 	},
 	[685] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3858,
@@ -12472,6 +13156,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 4,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12479,8 +13164,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC }
 	},
 	[686] = {
 	.class_hid = BNXT_ULP_CLASS_HID_046c,
@@ -12488,6 +13173,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.hdr_sig_id = 11,
 	.flow_sig_id = 68,
 	.flow_pattern_id = 2,
+	.app_sig = 0,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_OO_VLAN |
@@ -12495,8 +13181,8 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_sig = { .bits =
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_DMAC |
-		BNXT_ULP_HF2_11_BITMASK_O_ETH_SMAC |
-		BNXT_ULP_HF2_11_BITMASK_OO_VLAN_VID }
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_DMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_O_ETH_SMAC |
+		BNXT_ULP_HF_0_2_11_BITMASK_OO_VLAN_VID }
 	}
 };

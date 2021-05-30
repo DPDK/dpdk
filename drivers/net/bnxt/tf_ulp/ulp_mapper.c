@@ -225,8 +225,11 @@ ulp_mapper_glb_field_tbl_get(struct bnxt_ulp_mapper_parms *parms,
 {
 	uint32_t t_idx;
 
-	t_idx = parms->class_tid << (BNXT_ULP_HDR_SIG_ID_SHIFT +
-				     BNXT_ULP_GLB_FIELD_TBL_SHIFT);
+	t_idx = parms->app_id << (BNXT_ULP_APP_ID_SHIFT +
+				  BNXT_ULP_HDR_SIG_ID_SHIFT +
+				  BNXT_ULP_GLB_FIELD_TBL_SHIFT);
+	t_idx += parms->class_tid << (BNXT_ULP_HDR_SIG_ID_SHIFT +
+				      BNXT_ULP_GLB_FIELD_TBL_SHIFT);
 	t_idx += ULP_COMP_FLD_IDX_RD(parms, BNXT_ULP_CF_IDX_HDR_SIG_ID) <<
 		BNXT_ULP_GLB_FIELD_TBL_SHIFT;
 	t_idx += operand;
@@ -1350,21 +1353,18 @@ ulp_mapper_field_opc_process(struct bnxt_ulp_mapper_parms *parms,
 	/* process the field opcodes */
 	switch (fld->field_opc) {
 	case BNXT_ULP_FIELD_OPC_SRC1:
-		if (ulp_mapper_field_blob_write(fld->field_src1,
-						blob, val1, val1_len, &val))
-			goto error;
+		rc = ulp_mapper_field_blob_write(fld->field_src1,
+						 blob, val1, val1_len, &val);
 		val_len = val1_len;
 		break;
 	case BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3:
 		if (value1) {
-			if (ulp_mapper_field_blob_write(fld->field_src2, blob,
-							val2, val2_len, &val))
-				goto error;
+			rc = ulp_mapper_field_blob_write(fld->field_src2, blob,
+							 val2, val2_len, &val);
 			val_len = val2_len;
 		} else {
-			if (ulp_mapper_field_blob_write(fld->field_src3, blob,
-							val3, val3_len, &val))
-				goto error;
+			rc = ulp_mapper_field_blob_write(fld->field_src3, blob,
+							 val3, val3_len, &val);
 			val_len = val3_len;
 		}
 		break;
@@ -1373,60 +1373,50 @@ ulp_mapper_field_opc_process(struct bnxt_ulp_mapper_parms *parms,
 		val_int = val1_int + val2_int;
 		val_int = tfp_cpu_to_be_64(val_int);
 		val = ulp_blob_push_64(blob, &val_int, fld->field_bit_size);
-		if (!val) {
-			BNXT_TF_DBG(ERR, "push to blob failed\n");
-			goto error;
-		}
+		if (!val)
+			rc = -EINVAL;
 		break;
 	case BNXT_ULP_FIELD_OPC_SRC1_MINUS_SRC2:
 	case BNXT_ULP_FIELD_OPC_SRC1_MINUS_SRC2_POST:
 		val_int = val1_int - val2_int;
 		val_int = tfp_cpu_to_be_64(val_int);
 		val = ulp_blob_push_64(blob, &val_int, fld->field_bit_size);
-		if (!val) {
-			BNXT_TF_DBG(ERR, "push to blob failed\n");
-			goto error;
-		}
+		if (!val)
+			rc = -EINVAL;
 		break;
 	case BNXT_ULP_FIELD_OPC_SRC1_OR_SRC2:
 		val_int = val1_int | val2_int;
 		val_int = tfp_cpu_to_be_64(val_int);
 		val = ulp_blob_push_64(blob, &val_int, fld->field_bit_size);
-		if (!val) {
-			BNXT_TF_DBG(ERR, "push to blob failed\n");
-			goto error;
-		}
+		if (!val)
+			rc = -EINVAL;
 		break;
 	case BNXT_ULP_FIELD_OPC_SRC1_OR_SRC2_OR_SRC3:
 		val_int = val1_int | val2_int | val3_int;
 		val_int = tfp_cpu_to_be_64(val_int);
 		val = ulp_blob_push_64(blob, &val_int, fld->field_bit_size);
-		if (!val) {
-			BNXT_TF_DBG(ERR, "push to blob failed\n");
-			goto error;
-		}
+		if (!val)
+			rc = -EINVAL;
 		break;
 	case BNXT_ULP_FIELD_OPC_SRC1_AND_SRC2:
 		val_int = val1_int & val2_int;
 		val_int = tfp_cpu_to_be_64(val_int);
 		val = ulp_blob_push_64(blob, &val_int, fld->field_bit_size);
-		if (!val) {
-			BNXT_TF_DBG(ERR, "push to blob failed\n");
-			goto error;
-		}
+		if (!val)
+			rc = -EINVAL;
 		break;
 	case BNXT_ULP_FIELD_OPC_SRC1_AND_SRC2_OR_SRC3:
 		val_int = val1_int & (val2_int | val3_int);
 		val_int = tfp_cpu_to_be_64(val_int);
 		val = ulp_blob_push_64(blob, &val_int, fld->field_bit_size);
-		if (!val) {
-			BNXT_TF_DBG(ERR, "push to blob failed\n");
-			goto error;
-		}
+		if (!val)
+			rc = -EINVAL;
 		break;
 	case BNXT_ULP_FIELD_OPC_SKIP:
 		break;
 	default:
+		BNXT_TF_DBG(ERR, "Invalid fld opcode %u\n", fld->field_opc);
+		rc = -EINVAL;
 		break;
 	}
 
@@ -3703,6 +3693,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	parms.app_priority = cparms->app_priority;
 	parms.flow_pattern_id = cparms->flow_pattern_id;
 	parms.act_pattern_id = cparms->act_pattern_id;
+	parms.app_id = cparms->app_id;
 
 	/* Get the device id from the ulp context */
 	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &parms.dev_id)) {

@@ -99,6 +99,7 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 	mapper_cparms->fld_bitmap = &params->fld_bitmap;
 	mapper_cparms->flow_pattern_id = params->flow_pattern_id;
 	mapper_cparms->act_pattern_id = params->act_pattern_id;
+	mapper_cparms->app_id = params->app_id;
 
 	/* update the signature fields into the computed field list */
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_HDR_SIG_ID,
@@ -139,6 +140,11 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	/* Initialize the parser params */
 	memset(&params, 0, sizeof(struct ulp_rte_parser_params));
 	params.ulp_ctx = ulp_ctx;
+
+	if (bnxt_ulp_cntxt_app_id_get(params.ulp_ctx, &params.app_id)) {
+		BNXT_TF_DBG(ERR, "failed to get the app id\n");
+		goto flow_error;
+	}
 
 	/* Set the flow attributes */
 	bnxt_ulp_set_dir_attributes(&params, attr);
@@ -257,6 +263,11 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev,
 	/* Initialize the parser params */
 	memset(&params, 0, sizeof(struct ulp_rte_parser_params));
 	params.ulp_ctx = ulp_ctx;
+
+	if (bnxt_ulp_cntxt_app_id_get(params.ulp_ctx, &params.app_id)) {
+		BNXT_TF_DBG(ERR, "failed to get the app id\n");
+		goto parse_error;
+	}
 
 	/* Set the flow attributes */
 	bnxt_ulp_set_dir_attributes(&params, attr);
