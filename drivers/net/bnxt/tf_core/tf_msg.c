@@ -1004,6 +1004,75 @@ tf_msg_delete_em_entry(struct tf *tfp,
 	return 0;
 }
 
+int
+tf_msg_move_em_entry(struct tf *tfp,
+		     struct tf_move_em_entry_parms *em_parms)
+{
+	int rc;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct hwrm_tf_em_move_input req = { 0 };
+	struct hwrm_tf_em_move_output resp = { 0 };
+	uint16_t flags;
+	uint8_t fw_session_id;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(em_parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(em_parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(em_parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+
+	flags = (em_parms->dir == TF_DIR_TX ?
+		 HWRM_TF_EM_DELETE_INPUT_FLAGS_DIR_TX :
+		 HWRM_TF_EM_DELETE_INPUT_FLAGS_DIR_RX);
+	req.flags = tfp_cpu_to_le_16(flags);
+	req.flow_handle = tfp_cpu_to_le_64(em_parms->flow_handle);
+	req.new_index = tfp_cpu_to_le_32(em_parms->new_index);
+
+	parms.tf_type = HWRM_TF_EM_MOVE;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = dev->ops->tf_dev_get_mailbox();
+
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+				 &parms);
+	if (rc)
+		return rc;
+
+	em_parms->index = tfp_le_to_cpu_16(resp.em_index);
+
+	return 0;
+}
+
 int tf_msg_ext_em_ctxt_mem_alloc(struct tf *tfp,
 				struct hcapi_cfa_em_table *tbl,
 				uint64_t *dma_addr,

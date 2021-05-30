@@ -316,6 +316,21 @@ int tf_msg_delete_em_entry(struct tf *tfp,
 			   struct tf_delete_em_entry_parms *em_parms);
 
 /**
+ * Sends EM internal move request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] em_parms
+ *   Pointer to em move parameters
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
+ */
+int tf_msg_move_em_entry(struct tf *tfp,
+			 struct tf_move_em_entry_parms *em_parms);
+
+/**
  * Sends Ext EM mem allocation request to Firmware
  *
  * [in] tfp

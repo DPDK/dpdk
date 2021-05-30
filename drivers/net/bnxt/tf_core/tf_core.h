@@ -1954,6 +1954,48 @@ struct tf_delete_em_entry_parms {
 	uint64_t flow_handle;
 };
 /**
+ * tf_move_em_entry parameter definition
+ */
+struct tf_move_em_entry_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] internal or external
+	 */
+	enum tf_mem mem;
+	/**
+	 * [in] ID of table scope to use (external only)
+	 */
+	uint32_t tbl_scope_id;
+	/**
+	 * [in] ID of table interface to use (SR2 only)
+	 */
+	uint32_t tbl_if_id;
+	/**
+	 * [in] epoch group IDs of entry to delete
+	 * 2 element array with 2 ids. (SR2 only)
+	 */
+	uint16_t *epochs;
+	/**
+	 * [out] The index of the entry
+	 */
+	uint16_t index;
+	/**
+	 * [in] External memory channel type to use
+	 */
+	enum tf_ext_mem_chan_type chan_type;
+	/**
+	 * [in] The index of the new EM record
+	 */
+	uint32_t new_index;
+	/**
+	 * [in] structure containing flow delete handle information
+	 */
+	uint64_t flow_handle;
+};
+/**
  * tf_search_em_entry parameter definition
  */
 struct tf_search_em_entry_parms {

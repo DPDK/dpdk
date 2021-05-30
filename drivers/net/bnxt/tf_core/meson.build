@@ -10,6 +10,7 @@ sources += files(
         'tf_core.c',
         'bitalloc.c',
         'tf_msg.c',
+	'dpool.c',
         'rand.c',
         'stack.c',
         'tf_em_common.c',

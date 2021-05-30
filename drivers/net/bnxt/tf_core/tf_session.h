@@ -159,6 +159,11 @@ struct tf_session {
 	 * the pointer to the parent bp struct
 	 */
 	void *bp;
+
+	/**
+	 * EM allocator for session
+	 */
+	void *em_pool[TF_DIR_MAX];
 };
 
 /**

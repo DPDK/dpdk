@@ -612,6 +612,22 @@ struct tf_dev_ops {
 					  struct tf_delete_em_entry_parms *parms);
 
 	/**
+	 * Move EM hash entry API
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to E/EM move parameters
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_move_int_em_entry)(struct tf *tfp,
+					struct tf_move_em_entry_parms *parms);
+
+	/**
 	 * Insert EEM hash entry API
 	 *
 	 * [in] tfp
@@ -660,6 +676,24 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_get_em_resc_info)(struct tf *tfp,
 				       struct tf_em_resource_info *parms);
+
+	/**
+	 * Move EEM hash entry API
+	 *
+	 *   Pointer to E/EM move parameters
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to em info
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_move_ext_em_entry)(struct tf *tfp,
+					struct tf_move_em_entry_parms *parms);
 
 	/**
 	 * Allocate EEM table scope

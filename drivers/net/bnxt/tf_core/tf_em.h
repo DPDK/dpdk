@@ -13,6 +13,16 @@
 
 #include "hcapi_cfa_defs.h"
 
+/**
+ * TF_EM_ALLOC
+ *
+ * 0: Use stack allocator with fixed sized entries
+ *    (default).
+ * 1: Use dpool allocator with variable size
+ *    entries.
+ */
+#define TF_EM_ALLOC 0
+
 #define TF_EM_MIN_ENTRIES     (1 << 15) /* 32K */
 #define TF_EM_MAX_ENTRIES     (1 << 27) /* 128M */
 
@@ -242,6 +252,22 @@ int tf_em_hash_insert_int_entry(struct tf *tfp,
  */
 int tf_em_hash_delete_int_entry(struct tf *tfp,
 				struct tf_delete_em_entry_parms *parms);
+
+/**
+ * Move record from internal EM table
+ *
+ * [in] tfp
+ *   Pointer to TruFlow handle
+ *
+ * [in] parms
+ *   Pointer to input parameters
+ *
+ * Returns:
+ *   0       - Success
+ *   -EINVAL - Parameter error
+ */
+int tf_em_move_int_entry(struct tf *tfp,
+			 struct tf_move_em_entry_parms *parms);
 
 /**
  * Insert record in to external EEM table
