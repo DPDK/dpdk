@@ -251,7 +251,8 @@ ulp_bulk_get_flow_stats(struct tf *tfp,
 	 */
 	parms.entry_sz_in_bytes = sizeof(uint64_t);
 	stats = (uint64_t *)fc_info->shadow_hw_tbl[dir].mem_va;
-	parms.physical_mem_addr = (uintptr_t)fc_info->shadow_hw_tbl[dir].mem_pa;
+	parms.physical_mem_addr = (uint64_t)
+		((uintptr_t)(fc_info->shadow_hw_tbl[dir].mem_pa));
 
 	if (!stats) {
 		PMD_DRV_LOG(ERR,
@@ -588,11 +589,11 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 		if (params.resource_func ==
 		     BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE &&
 		     (params.resource_sub_type ==
-		      BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT ||
+		      BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT ||
 		      params.resource_sub_type ==
-		      BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_EXT_COUNT ||
+		      BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_EXT_COUNT ||
 		      params.resource_sub_type ==
-		      BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT_ACC)) {
+		      BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT_ACC)) {
 			found_cntr_resource = true;
 			break;
 		}
@@ -606,7 +607,10 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 	dir = params.direction;
 	hw_cntr_id = params.resource_hndl;
 	if (params.resource_sub_type ==
-			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT) {
+			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT) {
+		/* TODO:
+		 * Think about optimizing with try_lock later
+		 */
 		pthread_mutex_lock(&ulp_fc_info->fc_lock);
 		sw_cntr_idx = hw_cntr_id -
 			ulp_fc_info->shadow_hw_tbl[dir].start_idx;
@@ -623,11 +627,12 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 		}
 		pthread_mutex_unlock(&ulp_fc_info->fc_lock);
 	} else if (params.resource_sub_type ==
-			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT_ACC) {
-		/* Get stats from the parent child table */
-		ulp_flow_db_parent_flow_count_get(ctxt, flow_id,
-						  &count->hits, &count->bytes,
-						  count->reset);
+			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT_ACC) {
+		/* Get the stats from the parent child table */
+		ulp_flow_db_parent_flow_count_get(ctxt,
+						  flow_id,
+						  &count->hits,
+						  &count->bytes);
 		count->hits_set = 1;
 		count->bytes_set = 1;
 	} else {

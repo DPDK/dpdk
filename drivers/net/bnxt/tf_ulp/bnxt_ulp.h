@@ -30,6 +30,13 @@
 #define BNXT_ULP_VF_REP_ENABLED		0x1
 #define ULP_VF_REP_IS_ENABLED(flag)	((flag) & BNXT_ULP_VF_REP_ENABLED)
 
+enum bnxt_ulp_flow_mem_type {
+	BNXT_ULP_FLOW_MEM_TYPE_INT = 0,
+	BNXT_ULP_FLOW_MEM_TYPE_EXT = 1,
+	BNXT_ULP_FLOW_MEM_TYPE_BOTH = 2,
+	BNXT_ULP_FLOW_MEM_TYPE_LAST = 3
+};
+
 struct bnxt_ulp_df_rule_info {
 	uint32_t			port_to_app_flow_id;
 	uint32_t			app_to_port_flow_id;

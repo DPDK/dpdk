@@ -161,8 +161,8 @@ struct bnxt_ulp_mapper_cond_list_info {
 	uint32_t cond_nums;
 };
 
-struct ulp_template_device_tbls {
-	struct bnxt_ulp_mapper_tbl_list_info *tmpl_list;
+struct bnxt_ulp_template_device_tbls {
+	struct bnxt_ulp_mapper_tmpl_info *tmpl_list;
 	struct bnxt_ulp_mapper_tbl_info *tbl_list;
 	struct bnxt_ulp_mapper_key_field_info *key_field_list;
 	struct bnxt_ulp_mapper_result_field_info *result_field_list;
@@ -188,11 +188,11 @@ struct bnxt_ulp_device_params {
 	uint64_t			packet_count_mask;
 	uint32_t			byte_count_shift;
 	uint32_t			packet_count_shift;
-	const struct ulp_template_device_tbls *dev_tbls;
+	const struct bnxt_ulp_template_device_tbls *dev_tbls;
 };
 
 /* Flow Mapper */
-struct bnxt_ulp_mapper_tbl_list_info {
+struct bnxt_ulp_mapper_tmpl_info {
 	uint32_t		device_name;
 	uint32_t		start_tbl_idx;
 	uint32_t		num_tbls;
@@ -206,10 +206,10 @@ struct bnxt_ulp_mapper_tbl_info {
 	struct bnxt_ulp_mapper_cond_list_info execute_info;
 	enum bnxt_ulp_cond_opc cond_opcode;
 	uint32_t cond_operand;
-	enum bnxt_ulp_mem_type_opcode	mem_type_opcode;
+	enum bnxt_ulp_mem_type_opc	mem_type_opcode;
 	uint8_t				direction;
-	uint32_t			priority;
-	enum bnxt_ulp_search_before_alloc	srch_b4_alloc;
+	enum bnxt_ulp_pri_opc		pri_opcode;
+	uint32_t			pri_operand;
 	enum bnxt_ulp_critical_resource		critical_resource;
 
 	/* Information for accessing the ulp_key_field_list */
@@ -229,9 +229,7 @@ struct bnxt_ulp_mapper_tbl_info {
 	uint32_t	ident_start_idx;
 	uint16_t	ident_nums;
 
-	enum bnxt_ulp_mark_db_opcode	mark_db_opcode;
-	enum bnxt_ulp_index_opcode	index_opcode;
-	uint32_t			index_operand;
+	enum bnxt_ulp_mark_db_opc	mark_db_opcode;
 
 	/* Table opcode for table operations */
 	uint32_t			tbl_opcode;

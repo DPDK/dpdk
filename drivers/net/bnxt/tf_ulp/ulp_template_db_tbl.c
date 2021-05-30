@@ -547,26 +547,26 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 
 /* Specifies parameters for the generic tables */
 struct bnxt_ulp_generic_tbl_params ulp_generic_tbl_params[] = {
-	[BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM << 1 |
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM << 1 |
 		TF_DIR_RX] = {
 	.result_num_entries	= 16384,
 	.result_byte_size	= 6,
 	.result_byte_order	= BNXT_ULP_BYTE_ORDER_LE
 	},
-	[BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM << 1 |
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM << 1 |
 		TF_DIR_TX] = {
 	.result_num_entries	= 16384,
 	.result_byte_size	= 6,
 	.result_byte_order	= BNXT_ULP_BYTE_ORDER_LE
 
 	},
-	[BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM << 1 |
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_PROFILE_TCAM << 1 |
 		TF_DIR_RX] = {
 	.result_num_entries	= 16384,
 	.result_byte_size	= 6,
 	.result_byte_order	= BNXT_ULP_BYTE_ORDER_LE
 	},
-	[BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM << 1 |
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_PROFILE_TCAM << 1 |
 		TF_DIR_TX] = {
 	.result_num_entries	= 16384,
 	.result_byte_size	= 6,
@@ -575,7 +575,7 @@ struct bnxt_ulp_generic_tbl_params ulp_generic_tbl_params[] = {
 };
 
 /* device tables */
-const struct ulp_template_device_tbls ulp_template_stingray_tbls[] = {
+const struct bnxt_ulp_template_device_tbls ulp_template_stingray_tbls[] = {
 	[BNXT_ULP_TEMPLATE_TYPE_CLASS] = {
 	.tmpl_list               = ulp_stingray_class_tmpl_list,
 	.tbl_list                = ulp_stingray_class_tbl_list,
@@ -591,7 +591,7 @@ const struct ulp_template_device_tbls ulp_template_stingray_tbls[] = {
 };
 
 /* device tables */
-const struct ulp_template_device_tbls ulp_template_wh_plus_tbls[] = {
+const struct bnxt_ulp_template_device_tbls ulp_template_wh_plus_tbls[] = {
 	[BNXT_ULP_TEMPLATE_TYPE_CLASS] = {
 	.tmpl_list               = ulp_wh_plus_class_tmpl_list,
 	.tbl_list                = ulp_wh_plus_class_tbl_list,

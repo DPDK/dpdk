@@ -154,7 +154,7 @@ ulp_mapper_resource_index_tbl_alloc(struct bnxt_ulp_context *ulp_ctx,
 
 	aparms.type = glb_res->resource_type;
 	aparms.dir = glb_res->direction;
-	aparms.search_enable = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO;
+	aparms.search_enable = 0;
 	aparms.tbl_scope_id = tbl_scope_id;
 
 	/* Allocate the index tbl using tf api */
@@ -219,7 +219,7 @@ ulp_mapper_tmpl_reject_list_get(struct bnxt_ulp_mapper_parms *mparms,
 				enum bnxt_ulp_cond_list_opc *opc)
 {
 	uint32_t idx;
-	const struct ulp_template_device_tbls *dev_tbls;
+	const struct bnxt_ulp_template_device_tbls *dev_tbls;
 
 	dev_tbls = &mparms->device_params->dev_tbls[mparms->tmpl_type];
 	*num_tbls = dev_tbls->tmpl_list[tid].reject_info.cond_nums;
@@ -236,7 +236,7 @@ ulp_mapper_tbl_execute_list_get(struct bnxt_ulp_mapper_parms *mparms,
 				enum bnxt_ulp_cond_list_opc *opc)
 {
 	uint32_t idx;
-	const struct ulp_template_device_tbls *dev_tbls;
+	const struct bnxt_ulp_template_device_tbls *dev_tbls;
 
 	dev_tbls = &mparms->device_params->dev_tbls[mparms->tmpl_type];
 	*num_tbls = tbl->execute_info.cond_nums;
@@ -265,7 +265,7 @@ ulp_mapper_tbl_list_get(struct bnxt_ulp_mapper_parms *mparms,
 			uint32_t *num_tbls)
 {
 	uint32_t idx;
-	const struct ulp_template_device_tbls *dev_tbls;
+	const struct bnxt_ulp_template_device_tbls *dev_tbls;
 
 	dev_tbls = &mparms->device_params->dev_tbls[mparms->tmpl_type];
 
@@ -292,7 +292,7 @@ ulp_mapper_key_fields_get(struct bnxt_ulp_mapper_parms *mparms,
 			  uint32_t *num_flds)
 {
 	uint32_t idx;
-	const struct ulp_template_device_tbls *dev_tbls;
+	const struct bnxt_ulp_template_device_tbls *dev_tbls;
 
 	dev_tbls = &mparms->device_params->dev_tbls[mparms->tmpl_type];
 	if (!dev_tbls->key_field_list) {
@@ -326,7 +326,7 @@ ulp_mapper_result_fields_get(struct bnxt_ulp_mapper_parms *mparms,
 			     uint32_t *num_encap_flds)
 {
 	uint32_t idx;
-	const struct ulp_template_device_tbls *dev_tbls;
+	const struct bnxt_ulp_template_device_tbls *dev_tbls;
 
 	dev_tbls = &mparms->device_params->dev_tbls[mparms->tmpl_type];
 	if (!dev_tbls->result_field_list) {
@@ -357,7 +357,7 @@ ulp_mapper_ident_fields_get(struct bnxt_ulp_mapper_parms *mparms,
 			    uint32_t *num_flds)
 {
 	uint32_t idx;
-	const struct ulp_template_device_tbls *dev_tbls;
+	const struct bnxt_ulp_template_device_tbls *dev_tbls;
 
 	dev_tbls = &mparms->device_params->dev_tbls[mparms->tmpl_type];
 	if (!dev_tbls->ident_list) {
@@ -581,6 +581,36 @@ error:
 	if (fid)
 		ulp_flow_db_fid_free(parms->ulp_ctx,
 				     BNXT_ULP_FDB_TYPE_REGULAR, fid);
+	return rc;
+}
+
+/*
+ * Process the flow database opcode action.
+ * returns 0 on success.
+ */
+static int32_t
+ulp_mapper_priority_opc_process(struct bnxt_ulp_mapper_parms *parms,
+				struct bnxt_ulp_mapper_tbl_info *tbl,
+				uint32_t *priority)
+{
+	int32_t rc = 0;
+
+	switch (tbl->pri_opcode) {
+	case BNXT_ULP_PRI_OPC_NOT_USED:
+		*priority = 0;
+		break;
+	case BNXT_ULP_PRI_OPC_CONST:
+		*priority = tbl->pri_operand;
+		break;
+	case BNXT_ULP_PRI_OPC_APP_PRI:
+		*priority = parms->app_priority;
+		break;
+	default:
+		BNXT_TF_DBG(ERR, "Priority opcode not supported %d\n",
+			    tbl->pri_opcode);
+		rc = -EINVAL;
+		break;
+	}
 	return rc;
 }
 
@@ -1294,11 +1324,11 @@ ulp_mapper_mark_gfid_process(struct bnxt_ulp_mapper_parms *parms,
 {
 	struct ulp_flow_db_res_params fid_parms;
 	uint32_t mark, gfid, mark_flag;
-	enum bnxt_ulp_mark_db_opcode mark_op = tbl->mark_db_opcode;
+	enum bnxt_ulp_mark_db_opc mark_op = tbl->mark_db_opcode;
 	int32_t rc = 0;
 
-	if (mark_op == BNXT_ULP_MARK_DB_OPCODE_NOP ||
-	    !(mark_op == BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION &&
+	if (mark_op == BNXT_ULP_MARK_DB_OPC_NOP ||
+	    !(mark_op == BNXT_ULP_MARK_DB_OPC_PUSH_IF_MARK_ACTION &&
 	     ULP_BITMAP_ISSET(parms->act_bitmap->bits,
 			      BNXT_ULP_ACTION_BIT_MARK)))
 		return rc; /* no need to perform gfid process */
@@ -1335,11 +1365,11 @@ ulp_mapper_mark_act_ptr_process(struct bnxt_ulp_mapper_parms *parms,
 	struct ulp_flow_db_res_params fid_parms;
 	uint32_t act_idx, mark, mark_flag;
 	uint64_t val64;
-	enum bnxt_ulp_mark_db_opcode mark_op = tbl->mark_db_opcode;
+	enum bnxt_ulp_mark_db_opc mark_op = tbl->mark_db_opcode;
 	int32_t rc = 0;
 
-	if (mark_op == BNXT_ULP_MARK_DB_OPCODE_NOP ||
-	    !(mark_op == BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION &&
+	if (mark_op == BNXT_ULP_MARK_DB_OPC_NOP ||
+	    !(mark_op == BNXT_ULP_MARK_DB_OPC_PUSH_IF_MARK_ACTION &&
 	     ULP_BITMAP_ISSET(parms->act_bitmap->bits,
 			      BNXT_ULP_ACTION_BIT_MARK)))
 		return rc; /* no need to perform mark action process */
@@ -1381,11 +1411,11 @@ ulp_mapper_mark_vfr_idx_process(struct bnxt_ulp_mapper_parms *parms,
 	struct ulp_flow_db_res_params fid_parms;
 	uint32_t act_idx, mark, mark_flag;
 	uint64_t val64;
-	enum bnxt_ulp_mark_db_opcode mark_op = tbl->mark_db_opcode;
+	enum bnxt_ulp_mark_db_opc mark_op = tbl->mark_db_opcode;
 	int32_t rc = 0;
 
-	if (mark_op == BNXT_ULP_MARK_DB_OPCODE_NOP ||
-	    mark_op == BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION)
+	if (mark_op == BNXT_ULP_MARK_DB_OPC_NOP ||
+	    mark_op == BNXT_ULP_MARK_DB_OPC_PUSH_IF_MARK_ACTION)
 		return rc; /* no need to perform mark action process */
 
 	/* Get the mark id details from the computed field of dev port id */
@@ -1644,7 +1674,15 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 				    tmplen, tbl->blob_key_bit_size);
 			return -EINVAL;
 		}
-		aparms.priority = tbl->priority;
+
+		/* calculate the entry priority */
+		rc = ulp_mapper_priority_opc_process(parms, tbl,
+						     &aparms.priority);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "entry priority process failed\n");
+			return rc;
+		}
+
 		rc = tf_alloc_tcam_entry(tfp, &aparms);
 		if (rc) {
 			BNXT_TF_DBG(ERR, "tcam alloc failed rc=%d.\n", rc);
@@ -1662,10 +1700,17 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		searchparms.key = ulp_blob_data_get(&key, &tmplen);
 		searchparms.key_sz_in_bits = tbl->key_bit_size;
 		searchparms.mask = ulp_blob_data_get(&mask, &tmplen);
-		searchparms.priority = tbl->priority;
 		searchparms.alloc = 1;
 		searchparms.result = ulp_blob_data_get(&data, &tmplen);
 		searchparms.result_sz_in_bits = tbl->result_bit_size;
+
+		/* calculate the entry priority */
+		rc = ulp_mapper_priority_opc_process(parms, tbl,
+						     &searchparms.priority);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "entry priority process failed\n");
+			return rc;
+		}
 
 		rc = tf_search_tcam_entry(tfp, &searchparms);
 		if (rc) {
@@ -1969,7 +2014,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			BNXT_TF_DBG(ERR,
 				    "Failed to get tbl idx from Global "
 				    "regfile[%d].\n",
-				    tbl->index_operand);
+				    tbl->tbl_operand);
 			return -EINVAL;
 		}
 		index = tfp_be_to_cpu_64(regval);
@@ -2407,7 +2452,7 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			       tfp_cpu_to_be_64(gen_tbl_hit));
 	if (!rc) {
 		BNXT_TF_DBG(ERR, "Write regfile[%d] failed\n",
-			    tbl->index_operand);
+			    BNXT_ULP_REGFILE_INDEX_GENERIC_TBL_HIT);
 		return -EIO;
 	}
 
@@ -2482,15 +2527,15 @@ ulp_mapper_tbl_memtype_opcode_process(struct bnxt_ulp_mapper_parms *parms,
 	bnxt_ulp_cntxt_mem_type_get(parms->ulp_ctx, &mtype);
 
 	switch (tbl->mem_type_opcode) {
-	case BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT:
+	case BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_INT:
 		if (mtype == BNXT_ULP_FLOW_MEM_TYPE_INT)
 			rc = 0;
 		break;
-	case BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT:
+	case BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_EXT:
 		if (mtype == BNXT_ULP_FLOW_MEM_TYPE_EXT)
 			rc = 0;
 		break;
-	case BNXT_ULP_MEM_TYPE_OPCODE_NOP:
+	case BNXT_ULP_MEM_TYPE_OPC_NOP:
 		rc = 0;
 		break;
 	default:
@@ -3031,6 +3076,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	parms.parent_fid = cparms->parent_fid;
 	parms.fid = cparms->flow_id;
 	parms.tun_idx = cparms->tun_idx;
+	parms.app_priority = cparms->app_priority;
 
 	/* Get the device id from the ulp context */
 	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &parms.dev_id)) {

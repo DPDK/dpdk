@@ -720,7 +720,7 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
 
 	if (params->resource_type == TF_TBL_TYPE_ACT_STATS_64 &&
 	    params->resource_sub_type ==
-	    BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT) {
+	    BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT) {
 		/* Store the first HW counter ID for this table */
 		if (!ulp_fc_mgr_start_idx_isset(ulp_ctxt, params->direction))
 			ulp_fc_mgr_start_idx_set(ulp_ctxt, params->direction,
@@ -833,7 +833,7 @@ ulp_flow_db_resource_del(struct bnxt_ulp_context *ulp_ctxt,
 	 */
 	if (params->resource_type == TF_TBL_TYPE_ACT_STATS_64 &&
 	    params->resource_sub_type ==
-	    BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT) {
+	    BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT) {
 		ulp_fc_mgr_cntr_reset(ulp_ctxt, params->direction,
 				      params->resource_hndl);
 	}
@@ -1259,7 +1259,7 @@ ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 				   uint32_t flow_id,
 				   uint16_t *cfa_action)
 {
-	uint8_t sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_VFR_CFA_ACTION;
+	uint8_t sub_typ = BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_VFR_CFA_ACTION;
 	struct ulp_flow_db_res_params params;
 	int32_t rc;
 
@@ -1267,7 +1267,7 @@ ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 					     BNXT_ULP_FDB_TYPE_DEFAULT,
 					     flow_id,
 					     BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
-					     sub_type, &params);
+					     sub_typ, &params);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "CFA Action ptr not found for flow id %u\n",
 			    flow_id);
@@ -1647,7 +1647,7 @@ int32_t
 ulp_flow_db_parent_flow_create(struct bnxt_ulp_mapper_parms *parms)
 {
 	struct ulp_flow_db_res_params fid_parms;
-	uint32_t sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT_ACC;
+	uint32_t sub_typ = BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT_ACC;
 	struct ulp_flow_db_res_params res_params;
 	int32_t fid_idx, rc;
 
@@ -1676,7 +1676,7 @@ ulp_flow_db_parent_flow_create(struct bnxt_ulp_mapper_parms *parms)
 					     BNXT_ULP_FDB_TYPE_REGULAR,
 					     parms->fid,
 					     BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
-					     sub_type,
+					     sub_typ,
 					     &res_params)) {
 		/* Enable the counter accumulation in parent entry */
 		if (ulp_flow_db_parent_flow_count_accum_set(parms->ulp_ctx,
@@ -1708,7 +1708,7 @@ int32_t
 ulp_flow_db_child_flow_create(struct bnxt_ulp_mapper_parms *parms)
 {
 	struct ulp_flow_db_res_params fid_parms;
-	uint32_t sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT;
+	uint32_t sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT;
 	enum bnxt_ulp_resource_func res_fun;
 	struct ulp_flow_db_res_params res_p;
 	uint32_t parent_fid = parms->parent_fid;
@@ -1819,8 +1819,9 @@ ulp_flow_db_parent_flow_count_update(struct bnxt_ulp_context *ulp_ctxt,
  */
 int32_t
 ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
-				  uint32_t parent_fid, uint64_t *packet_count,
-				  uint64_t *byte_count, uint8_t count_reset)
+				  uint32_t parent_fid,
+				  uint64_t *packet_count,
+				  uint64_t *byte_count)
 {
 	struct bnxt_ulp_flow_db *flow_db;
 	struct ulp_fdb_parent_child_db *p_pdb;
@@ -1841,10 +1842,6 @@ ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
 					p_pdb->parent_flow_tbl[idx].pkt_count;
 				*byte_count =
 					p_pdb->parent_flow_tbl[idx].byte_count;
-				if (count_reset) {
-					p_pdb->parent_flow_tbl[idx].pkt_count = 0;
-					p_pdb->parent_flow_tbl[idx].byte_count = 0;
-				}
 			}
 			return 0;
 		}
