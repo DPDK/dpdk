@@ -52,7 +52,7 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 
 	/* calculate the hash of the given flow */
 	class_hid = ulp_matcher_class_hash_calculate(params->hdr_bitmap.bits,
-						     params->fld_bitmap.bits);
+						     params->fld_s_bitmap.bits);
 
 	/* validate the calculate hash values */
 	if (class_hid >= BNXT_ULP_CLASS_SIG_TBL_MAX_SZ)
@@ -66,7 +66,7 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 		BNXT_TF_DBG(DEBUG, "Proto Header does not match\n");
 		goto error;
 	}
-	if (ULP_BITMAP_CMP(&params->fld_bitmap, &class_match->field_sig)) {
+	if (ULP_BITMAP_CMP(&params->fld_s_bitmap, &class_match->field_sig)) {
 		BNXT_TF_DBG(DEBUG, "Field signature does not match\n");
 		goto error;
 	}

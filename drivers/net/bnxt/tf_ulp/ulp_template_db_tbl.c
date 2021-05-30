@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Thu Mar  4 10:12:06 2021 */
+/* date: Mon Mar  8 17:37:39 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -227,51 +227,80 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 /* List of device specific parameters */
 struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[] = {
 	[0] = {
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_GLB_PROF_FUNC_ID,
 	.direction               = TF_DIR_RX
 	},
 	[1] = {
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_GLB_PROF_FUNC_ID,
 	.direction               = TF_DIR_TX
 	},
 	[2] = {
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR,
 	.direction               = TF_DIR_TX
 	},
 	[3] = {
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_L2_PROF_FUNC_ID,
 	.direction               = TF_DIR_RX
 	},
 	[4] = {
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_L2_PROF_FUNC_ID,
 	.direction               = TF_DIR_TX
 	},
 	[5] = {
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_VXLAN_PROF_FUNC_ID,
 	.direction               = TF_DIR_RX
 	},
 	[6] = {
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_ACT_ENCAP_16B,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR,
 	.direction               = TF_DIR_RX
 	},
 	[7] = {
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_ACT_ENCAP_16B,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR,
+	.direction               = TF_DIR_TX
+	},
+	[8] = {
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_GLB_PROF_FUNC_ID,
+	.direction               = TF_DIR_RX
+	},
+	[9] = {
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_GLB_PROF_FUNC_ID,
+	.direction               = TF_DIR_TX
+	},
+	[10] = {
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
+	.resource_type           = TF_TBL_TYPE_FULL_ACT_RECORD,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR,
 	.direction               = TF_DIR_TX
 	}
 };

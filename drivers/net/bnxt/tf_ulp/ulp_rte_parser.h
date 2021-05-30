@@ -36,6 +36,13 @@
 #define	BNXT_ULP_PARSER_IPV6_TC			0x0ff00000
 #define	BNXT_ULP_PARSER_IPV6_FLOW_LABEL		0x000fffff
 
+enum bnxt_ulp_prsr_action {
+	ULP_PRSR_ACT_DEFAULT = 0,
+	ULP_PRSR_ACT_MATCH_IGNORE = 1,
+	ULP_PRSR_ACT_MASK_IGNORE = 2,
+	ULP_PRSR_ACT_SPEC_IGNORE = 4
+};
+
 void
 bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 			    struct ulp_rte_parser_params *params,

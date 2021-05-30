@@ -1085,7 +1085,7 @@ uint32_t ulp_bitmap_is_ones(uint8_t *bitmap, int32_t size)
 }
 
 /* Function to check if bitmap is not zero. Return 1 on success */
-uint32_t ulp_bitmap_notzero(uint8_t *bitmap, int32_t size)
+uint32_t ulp_bitmap_notzero(const uint8_t *bitmap, int32_t size)
 {
 	while (size-- > 0) {
 		if (*bitmap != 0)

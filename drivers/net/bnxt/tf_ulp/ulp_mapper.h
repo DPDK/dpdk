@@ -26,7 +26,7 @@ struct bnxt_ulp_mapper_glb_resource_entry {
 
 struct bnxt_ulp_mapper_data {
 	struct bnxt_ulp_mapper_glb_resource_entry
-		glb_res_tbl[TF_DIR_MAX][BNXT_ULP_GLB_RESOURCE_TBL_MAX_SZ];
+		glb_res_tbl[TF_DIR_MAX][BNXT_ULP_GLB_RF_IDX_LAST];
 	struct ulp_mapper_gen_tbl_list gen_tbl_list[BNXT_ULP_GEN_TBL_MAX_SZ];
 };
 

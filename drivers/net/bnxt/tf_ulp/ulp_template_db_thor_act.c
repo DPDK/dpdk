@@ -53,7 +53,6 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_NORMAL,
 	.direction = TF_DIR_RX,
-	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_INT,
 	.execute_info = {
 		.cond_true_goto  = 0,
 		.cond_false_goto = 0,

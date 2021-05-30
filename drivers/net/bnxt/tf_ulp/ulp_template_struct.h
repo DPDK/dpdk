@@ -68,6 +68,7 @@ struct ulp_rte_parser_params {
 	struct ulp_rte_hdr_bitmap	hdr_bitmap;
 	struct ulp_rte_hdr_bitmap	hdr_fp_bit;
 	struct ulp_rte_field_bitmap	fld_bitmap;
+	struct ulp_rte_field_bitmap	fld_s_bitmap;
 	struct ulp_rte_hdr_field	hdr_field[BNXT_ULP_PROTO_HDR_MAX];
 	uint32_t			comp_fld[BNXT_ULP_CF_IDX_LAST];
 	uint32_t			field_idx;
@@ -172,6 +173,15 @@ struct bnxt_ulp_mapper_cond_list_info {
 	int32_t cond_false_goto;
 };
 
+struct bnxt_ulp_mapper_cc_upd_info {
+	enum bnxt_ulp_cc_upd_opc	cc_opc;
+	enum bnxt_ulp_cc_upd_src	cc_src1;
+	enum bnxt_ulp_cc_upd_src	cc_src2;
+	uint16_t			cc_opr1;
+	uint16_t			cc_opr2;
+	uint16_t			cc_dst_opr;
+};
+
 struct bnxt_ulp_template_device_tbls {
 	struct bnxt_ulp_mapper_tmpl_info *tmpl_list;
 	uint32_t tmpl_list_size;
@@ -231,9 +241,9 @@ struct bnxt_ulp_mapper_tbl_info {
 	uint32_t			resource_type; /* TF_ enum type */
 	enum bnxt_ulp_resource_sub_type	resource_sub_type;
 	struct bnxt_ulp_mapper_cond_list_info execute_info;
+	struct bnxt_ulp_mapper_cc_upd_info cc_upd_info;
 	enum bnxt_ulp_cond_opc cond_opcode;
 	uint32_t cond_operand;
-	enum bnxt_ulp_mem_type_opc	mem_type_opcode;
 	uint8_t				direction;
 	enum bnxt_ulp_pri_opc		pri_opcode;
 	uint32_t			pri_operand;
@@ -302,6 +312,7 @@ struct bnxt_ulp_mapper_ident_info {
 };
 
 struct bnxt_ulp_glb_resource_info {
+	enum bnxt_ulp_device_id		device_id;
 	enum bnxt_ulp_resource_func	resource_func;
 	uint32_t			resource_type; /* TF_ enum type */
 	enum bnxt_ulp_glb_rf_idx	glb_regfile_index;

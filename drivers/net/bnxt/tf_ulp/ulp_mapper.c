@@ -2845,45 +2845,6 @@ ulp_mapper_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 }
 
 /*
- * Function to process the memtype opcode of the mapper table.
- * returns 1 to skip the table.
- * return 0 to continue processing the table.
- *
- * defaults to skip
- */
-static int32_t
-ulp_mapper_tbl_memtype_opcode_process(struct bnxt_ulp_mapper_parms *parms,
-				      struct bnxt_ulp_mapper_tbl_info *tbl)
-{
-	enum bnxt_ulp_flow_mem_type mtype = BNXT_ULP_FLOW_MEM_TYPE_INT;
-	int32_t rc = 1;
-
-	if (bnxt_ulp_cntxt_mem_type_get(parms->ulp_ctx, &mtype)) {
-		BNXT_TF_DBG(ERR, "Failed to get the mem type\n");
-		return rc;
-	}
-
-	switch (tbl->mem_type_opcode) {
-	case BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_INT:
-		if (mtype == BNXT_ULP_FLOW_MEM_TYPE_INT)
-			rc = 0;
-		break;
-	case BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_EXT:
-		if (mtype == BNXT_ULP_FLOW_MEM_TYPE_EXT)
-			rc = 0;
-		break;
-	case BNXT_ULP_MEM_TYPE_OPC_NOP:
-		rc = 0;
-		break;
-	default:
-		BNXT_TF_DBG(ERR,
-			    "Invalid arg in mapper in memtype opcode\n");
-		break;
-	}
-	return rc;
-}
-
-/*
  * Common conditional opcode process routine that is used for both the template
  * rejection and table conditional execution.
  */
@@ -2893,6 +2854,7 @@ ulp_mapper_cond_opc_process(struct bnxt_ulp_mapper_parms *parms,
 			    uint32_t operand,
 			    int32_t *res)
 {
+	enum bnxt_ulp_flow_mem_type mtype = BNXT_ULP_FLOW_MEM_TYPE_INT;
 	int32_t rc = 0;
 	uint8_t bit;
 	uint64_t regval;
@@ -3002,6 +2964,20 @@ ulp_mapper_cond_opc_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
+	case BNXT_ULP_COND_OPC_EXT_MEM_IS_SET:
+		if (bnxt_ulp_cntxt_mem_type_get(parms->ulp_ctx, &mtype)) {
+			BNXT_TF_DBG(ERR, "Failed to get the mem type\n");
+			return -EINVAL;
+		}
+		*res = (mtype == BNXT_ULP_FLOW_MEM_TYPE_INT) ? 0 : 1;
+		break;
+	case BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET:
+		if (bnxt_ulp_cntxt_mem_type_get(parms->ulp_ctx, &mtype)) {
+			BNXT_TF_DBG(ERR, "Failed to get the mem type\n");
+			return -EINVAL;
+		}
+		*res = (mtype == BNXT_ULP_FLOW_MEM_TYPE_INT) ? 1 : 0;
+		break;
 	default:
 		BNXT_TF_DBG(ERR, "Invalid conditional opcode %d\n", opc);
 		rc = -EINVAL;
@@ -3009,6 +2985,113 @@ ulp_mapper_cond_opc_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 	return (rc);
 }
+
+static int32_t
+ulp_mapper_cc_upd_opr_compute(struct bnxt_ulp_mapper_parms *parms,
+			      enum tf_dir dir,
+			      enum bnxt_ulp_cc_upd_src cc_src,
+			      uint16_t cc_opr,
+			      uint64_t *result)
+{
+	uint64_t regval;
+
+	*result =  false;
+	switch (cc_src) {
+	case BNXT_ULP_CC_UPD_SRC_COMP_FIELD:
+		if (cc_opr >= BNXT_ULP_CF_IDX_LAST) {
+			BNXT_TF_DBG(ERR, "invalid index %u\n", cc_opr);
+			return -EINVAL;
+		}
+		*result = (uint64_t)ULP_COMP_FLD_IDX_RD(parms, cc_opr);
+		break;
+	case BNXT_ULP_CC_UPD_SRC_REGFILE:
+		if (!ulp_regfile_read(parms->regfile, cc_opr, &regval)) {
+			BNXT_TF_DBG(ERR, "regfile[%d] read oob\n", cc_opr);
+			return -EINVAL;
+		}
+		*result = tfp_be_to_cpu_64(regval);
+		break;
+	case BNXT_ULP_CC_UPD_SRC_GLB_REGFILE:
+		if (ulp_mapper_glb_resource_read(parms->mapper_data, dir,
+						 cc_opr, &regval)) {
+			BNXT_TF_DBG(ERR, "global regfile[%d] read failed.\n",
+				    cc_opr);
+			return -EINVAL;
+		}
+		*result = tfp_be_to_cpu_64(regval);
+		break;
+	default:
+		BNXT_TF_DBG(ERR, "invalid src code %u\n", cc_src);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int32_t
+ulp_mapper_cc_upd_info_process(struct bnxt_ulp_mapper_parms *parms,
+			       struct bnxt_ulp_mapper_tbl_info *tbl)
+{
+	struct bnxt_ulp_mapper_cc_upd_info *cc_upd = &tbl->cc_upd_info;
+	uint64_t res = 0, res1, res2;
+	int32_t rc = 0;
+
+	if (cc_upd->cc_opc == BNXT_ULP_CC_UPD_OPC_NOP)
+		return rc;
+
+	rc = ulp_mapper_cc_upd_opr_compute(parms, tbl->direction,
+					   cc_upd->cc_src1,
+					   cc_upd->cc_opr1, &res1);
+	if (rc)
+		return rc;
+
+	rc = ulp_mapper_cc_upd_opr_compute(parms, tbl->direction,
+					   cc_upd->cc_src2,
+					   cc_upd->cc_opr2, &res2);
+	if (rc)
+		return rc;
+
+	switch (cc_upd->cc_opc) {
+	case BNXT_ULP_CC_UPD_OPC_NOP:
+		res = 1;
+		break;
+	case BNXT_ULP_CC_UPD_OPC_EQ:
+		if (res1 == res2)
+			res = 1;
+		break;
+	case BNXT_ULP_CC_UPD_OPC_NE:
+		if (res1 != res2)
+			res = 1;
+		break;
+	case BNXT_ULP_CC_UPD_OPC_GE:
+		if (res1 >= res2)
+			res = 1;
+		break;
+	case BNXT_ULP_CC_UPD_OPC_GT:
+		if (res1 > res2)
+			res = 1;
+		break;
+	case BNXT_ULP_CC_UPD_OPC_LE:
+		if (res1 <= res2)
+			res = 1;
+		break;
+	case BNXT_ULP_CC_UPD_OPC_LT:
+		if (res1 < res2)
+			res = 1;
+		break;
+	case BNXT_ULP_CC_UPD_OPC_LAST:
+		BNXT_TF_DBG(ERR, "invalid code %u\n", cc_upd->cc_opc);
+		return -EINVAL;
+	}
+	if (ulp_regfile_write(parms->regfile, cc_upd->cc_dst_opr,
+			      tfp_cpu_to_be_64(res))) {
+		BNXT_TF_DBG(ERR, "Failed write the cc_opc %u\n",
+			    cc_upd->cc_dst_opr);
+		return -EINVAL;
+	}
+
+	return rc;
+}
+
 
 /*
  * Processes a list of conditions and returns both a status and result of the
@@ -3045,6 +3128,7 @@ ulp_mapper_cond_opc_list_process(struct bnxt_ulp_mapper_parms *parms,
 	default:
 		BNXT_TF_DBG(ERR, "Invalid conditional list opcode %d\n",
 			    list_opc);
+		*res = 0;
 		return -EINVAL;
 	}
 
@@ -3184,10 +3268,11 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, uint32_t tid)
 
 	for (tbl_idx = 0; tbl_idx < num_tbls && cond_goto;) {
 		tbl = &tbls[tbl_idx];
-		/* Handle the table level opcodes to determine if required. */
-		if (ulp_mapper_tbl_memtype_opcode_process(parms, tbl)) {
-			cond_goto = tbl->execute_info.cond_false_goto;
-			goto next_iteration;
+		/* Process the conditional code update opcodes */
+		if (ulp_mapper_cc_upd_info_process(parms, tbl)) {
+			BNXT_TF_DBG(ERR, "Failed to process cond update\n");
+			rc = -EINVAL;
+			goto error;
 		}
 
 		cond_tbls = ulp_mapper_tbl_execute_list_get(parms, tbl,
@@ -3199,7 +3284,7 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, uint32_t tid)
 		if (rc) {
 			BNXT_TF_DBG(ERR, "Failed to process cond opc list "
 				   "(%d)\n", rc);
-			return rc;
+			goto error;
 		}
 		/* Skip the table if False */
 		if (!cond_rc) {
@@ -3251,6 +3336,26 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, uint32_t tid)
 			goto error;
 		}
 next_iteration:
+		if (cond_goto == BNXT_ULP_COND_GOTO_REJECT) {
+			BNXT_TF_DBG(ERR, "reject the flow\n");
+			rc = -EINVAL;
+			goto error;
+		} else if (cond_goto & BNXT_ULP_COND_GOTO_RF) {
+			uint32_t rf_idx;
+			uint64_t regval;
+
+			/* least significant 16 bits from reg_file index */
+			rf_idx = (uint32_t)(cond_goto & 0xFFFF);
+			if (!ulp_regfile_read(parms->regfile, rf_idx,
+					      &regval)) {
+				BNXT_TF_DBG(ERR, "regfile[%d] read oob\n",
+					    rf_idx);
+				rc = -EINVAL;
+				goto error;
+			}
+			cond_goto = (int32_t)regval;
+		}
+
 		if (cond_goto < 0 && ((int32_t)tbl_idx + cond_goto) < 0) {
 			BNXT_TF_DBG(ERR, "invalid conditional goto %d\n",
 				    cond_goto);

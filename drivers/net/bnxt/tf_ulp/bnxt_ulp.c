@@ -94,7 +94,7 @@ bnxt_ulp_tf_session_resources_get(struct bnxt *bp,
 
 		/* Table Types */
 		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_FULL_ACT_RECORD] = 8192;
-		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 16384;
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 8192;
 		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_MODIFY_IPV4] = 1023;
 
 		/* ENCAP */
@@ -130,7 +130,7 @@ bnxt_ulp_tf_session_resources_get(struct bnxt *bp,
 
 		/* Table Types */
 		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_FULL_ACT_RECORD] = 8192;
-		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 16384;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 8192;
 		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_MODIFY_IPV4] = 1023;
 
 		/* ENCAP */
