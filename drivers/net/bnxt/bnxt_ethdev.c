@@ -97,6 +97,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 #define BNXT_DEVARG_REP_Q_F2R  "rep-q-f2r"
 #define BNXT_DEVARG_REP_FC_R2F  "rep-fc-r2f"
 #define BNXT_DEVARG_REP_FC_F2R  "rep-fc-f2r"
+#define BNXT_DEVARG_APP_ID	"app-id"
 
 static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_REPRESENTOR,
@@ -109,6 +110,7 @@ static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_REP_Q_F2R,
 	BNXT_DEVARG_REP_FC_R2F,
 	BNXT_DEVARG_REP_FC_F2R,
+	BNXT_DEVARG_APP_ID,
 	NULL
 };
 
@@ -117,6 +119,11 @@ static const char *const bnxt_dev_args[] = {
  * accum-stats == true to enable flow counter accumulation
  */
 #define	BNXT_DEVARG_ACCUM_STATS_INVALID(accum_stats)	((accum_stats) > 1)
+
+/*
+ * app-id = an non-negative 8-bit number
+ */
+#define BNXT_DEVARG_APP_ID_INVALID(val)			((val) > 255)
 
 /*
  * flow_xstat == false to disable the feature
@@ -5431,6 +5438,42 @@ bnxt_parse_devarg_max_num_kflows(__rte_unused const char *key,
 }
 
 static int
+bnxt_parse_devarg_app_id(__rte_unused const char *key,
+				 const char *value, void *opaque_arg)
+{
+	struct bnxt *bp = opaque_arg;
+	unsigned long app_id;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to app-id "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	app_id = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (app_id == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to app_id "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_APP_ID_INVALID(app_id)) {
+		PMD_DRV_LOG(ERR, "Invalid app-id(%d) devargs.\n",
+			    (uint16_t)app_id);
+		return -EINVAL;
+	}
+
+	bp->app_id = app_id;
+	PMD_DRV_LOG(INFO, "app-id=%d feature enabled.\n", (uint16_t)app_id);
+
+	return 0;
+}
+
+static int
 bnxt_parse_devarg_rep_is_pf(__rte_unused const char *key,
 			    const char *value, void *opaque_arg)
 {
@@ -5691,6 +5734,13 @@ bnxt_parse_dev_args(struct bnxt *bp, struct rte_devargs *devargs)
 		goto err;
 
 err:
+	/*
+	 * Handler for "app-id" devarg.
+	 * Invoked as for ex: "-a 000:00:0d.0,app-id=1"
+	 */
+	rte_kvargs_process(kvlist, BNXT_DEVARG_APP_ID,
+			   bnxt_parse_devarg_app_id, bp);
+
 	rte_kvargs_free(kvlist);
 	return ret;
 }

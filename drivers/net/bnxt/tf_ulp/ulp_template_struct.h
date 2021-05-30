@@ -312,11 +312,27 @@ struct bnxt_ulp_mapper_ident_info {
 };
 
 struct bnxt_ulp_glb_resource_info {
+	uint8_t				app_id;
 	enum bnxt_ulp_device_id		device_id;
+	enum tf_dir			direction;
 	enum bnxt_ulp_resource_func	resource_func;
 	uint32_t			resource_type; /* TF_ enum type */
 	enum bnxt_ulp_glb_rf_idx	glb_regfile_index;
+};
+
+struct bnxt_ulp_resource_resv_info {
+	uint8_t				app_id;
+	enum bnxt_ulp_device_id		device_id;
 	enum tf_dir			direction;
+	enum bnxt_ulp_resource_func	resource_func;
+	uint32_t			resource_type; /* TF_ enum type */
+	uint32_t			count;
+};
+
+struct bnxt_ulp_app_capabilities_info {
+	uint8_t				app_id;
+	enum bnxt_ulp_device_id		device_id;
+	uint32_t			flags;
 };
 
 struct bnxt_ulp_cache_tbl_params {
@@ -360,6 +376,23 @@ extern uint32_t ulp_act_prop_map_table[];
  * be initialized and where to store them.
  */
 extern struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[];
+
+/*
+ * The ulp_app_glb_resource_tbl provides the list of shared resources required
+ * in the event that shared session is enabled.
+ */
+extern struct bnxt_ulp_glb_resource_info ulp_app_glb_resource_tbl[];
+
+/*
+ * The ulp_resource_resv_list provides the list of tf resources required when
+ * calling tf_open.
+ */
+extern struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[];
+
+/*
+ * The_app_cap_info_list provides the list of ULP capabilities per app/device.
+ */
+extern struct bnxt_ulp_app_capabilities_info ulp_app_cap_info_list[];
 
 /*
  * The ulp_cache_tbl_parms table provides the sizes of the cache tables the

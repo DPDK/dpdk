@@ -22,6 +22,7 @@ struct bnxt_ulp_mapper_glb_resource_entry {
 	enum bnxt_ulp_resource_func	resource_func;
 	uint32_t			resource_type; /* TF_ enum type */
 	uint64_t			resource_hndl;
+	bool				shared;
 };
 
 struct bnxt_ulp_mapper_data {

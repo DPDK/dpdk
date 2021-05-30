@@ -29,7 +29,13 @@
 
 /* defines for the ulp_flags */
 #define BNXT_ULP_VF_REP_ENABLED		0x1
+#define BNXT_ULP_SHARED_SESSION_ENABLED	0x2
+#define BNXT_ULP_APP_DEV_UNSUPPORTED	0x4
 #define ULP_VF_REP_IS_ENABLED(flag)	((flag) & BNXT_ULP_VF_REP_ENABLED)
+#define ULP_SHARED_SESSION_IS_ENABLED(flag) ((flag) &\
+					     BNXT_ULP_SHARED_SESSION_ENABLED)
+#define ULP_APP_DEV_UNSUPPORTED_ENABLED(flag)	((flag) &\
+						 BNXT_ULP_APP_DEV_UNSUPPORTED)
 
 enum bnxt_ulp_flow_mem_type {
 	BNXT_ULP_FLOW_MEM_TYPE_INT = 0,
@@ -67,11 +73,13 @@ struct bnxt_ulp_data {
 #define	BNXT_ULP_MAX_TUN_CACHE_ENTRIES	16
 	struct bnxt_tun_cache_entry	tun_tbl[BNXT_ULP_MAX_TUN_CACHE_ENTRIES];
 	bool				accum_stats;
+	uint8_t				app_id;
 };
 
 struct bnxt_ulp_context {
 	struct bnxt_ulp_data	*cfg_data;
 	struct tf		*g_tfp;
+	struct tf		*g_shared_tfp;
 };
 
 struct bnxt_ulp_pci_info {
@@ -86,6 +94,7 @@ struct bnxt_ulp_session_state {
 	struct bnxt_ulp_pci_info		pci_info;
 	struct bnxt_ulp_data			*cfg_data;
 	struct tf				*g_tfp;
+	struct tf				g_shared_tfp;
 	uint32_t				session_opened;
 };
 
@@ -134,6 +143,14 @@ bnxt_ulp_cntxt_tbl_scope_id_set(struct bnxt_ulp_context *ulp_ctx,
 int32_t
 bnxt_ulp_cntxt_tbl_scope_id_get(struct bnxt_ulp_context *ulp_ctx,
 				uint32_t *tbl_scope_id);
+
+/* Function to set the tfp session details in the ulp context. */
+int32_t
+bnxt_ulp_cntxt_shared_tfp_set(struct bnxt_ulp_context *ulp, struct tf *tfp);
+
+/* Function to get the tfp session details from ulp context. */
+struct tf *
+bnxt_ulp_cntxt_shared_tfp_get(struct bnxt_ulp_context *ulp);
 
 /* Function to set the tfp session details in the ulp context. */
 int32_t
@@ -232,5 +249,27 @@ bnxt_ulp_cntxt_release_fdb_lock(struct bnxt_ulp_context	*ulp_ctx);
 
 int32_t
 ulp_post_process_tun_flow(struct ulp_rte_parser_params *params);
+
+struct bnxt_ulp_glb_resource_info *
+bnxt_ulp_app_glb_resource_info_list_get(uint32_t *num_entries);
+
+int32_t
+bnxt_ulp_cntxt_app_id_set(struct bnxt_ulp_context *ulp_ctx, uint8_t app_id);
+
+int32_t
+bnxt_ulp_cntxt_app_id_get(struct bnxt_ulp_context *ulp_ctx, uint8_t *app_id);
+
+bool
+bnxt_ulp_cntxt_shared_session_enabled(struct bnxt_ulp_context *ulp_ctx);
+
+struct bnxt_ulp_app_capabilities_info *
+bnxt_ulp_app_cap_list_get(uint32_t *num_entries);
+
+int32_t
+bnxt_ulp_cntxt_app_caps_init(struct bnxt_ulp_context *ulp_ctx,
+			     uint8_t app_id, uint32_t dev_id);
+
+struct bnxt_ulp_resource_resv_info *
+bnxt_ulp_resource_resv_list_get(uint32_t *num_entries);
 
 #endif /* _BNXT_ULP_H_ */

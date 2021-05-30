@@ -58,13 +58,15 @@ static int32_t
 ulp_mapper_glb_resource_read(struct bnxt_ulp_mapper_data *mapper_data,
 			     enum tf_dir dir,
 			     uint16_t idx,
-			     uint64_t *regval)
+			     uint64_t *regval,
+			     bool *shared)
 {
-	if (!mapper_data || !regval ||
+	if (!mapper_data || !regval || !shared ||
 	    dir >= TF_DIR_MAX || idx >= BNXT_ULP_GLB_RF_IDX_LAST)
 		return -EINVAL;
 
 	*regval = mapper_data->glb_res_tbl[dir][idx].resource_hndl;
+	*shared = mapper_data->glb_res_tbl[dir][idx].shared;
 	return 0;
 }
 
@@ -78,7 +80,7 @@ ulp_mapper_glb_resource_read(struct bnxt_ulp_mapper_data *mapper_data,
 static int32_t
 ulp_mapper_glb_resource_write(struct bnxt_ulp_mapper_data *data,
 			      struct bnxt_ulp_glb_resource_info *res,
-			      uint64_t regval)
+			      uint64_t regval, bool shared)
 {
 	struct bnxt_ulp_mapper_glb_resource_entry *ent;
 
@@ -92,6 +94,7 @@ ulp_mapper_glb_resource_write(struct bnxt_ulp_mapper_data *data,
 	ent->resource_func = res->resource_func;
 	ent->resource_type = res->resource_type;
 	ent->resource_hndl = regval;
+	ent->shared = shared;
 	return 0;
 }
 
@@ -129,8 +132,12 @@ ulp_mapper_resource_ident_allocate(struct bnxt_ulp_context *ulp_ctx,
 
 	/* entries are stored as big-endian format */
 	regval = tfp_cpu_to_be_64((uint64_t)iparms.id);
-	/* write to the mapper global resource */
-	rc = ulp_mapper_glb_resource_write(mapper_data, glb_res, regval);
+	/*
+	 * write to the mapper global resource
+	 * Shared resources are never allocated through this method, so the
+	 * shared flag is always false.
+	 */
+	rc = ulp_mapper_glb_resource_write(mapper_data, glb_res, regval, false);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to write to global resource id\n");
 		/* Free the identifier when update failed */
@@ -186,8 +193,12 @@ ulp_mapper_resource_index_tbl_alloc(struct bnxt_ulp_context *ulp_ctx,
 
 	/* entries are stored as big-endian format */
 	regval = tfp_cpu_to_be_64((uint64_t)aparms.idx);
-	/* write to the mapper global resource */
-	rc = ulp_mapper_glb_resource_write(mapper_data, glb_res, regval);
+	/*
+	 * write to the mapper global resource
+	 * Shared resources are never allocated through this method, so the
+	 * shared flag is always false.
+	 */
+	rc = ulp_mapper_glb_resource_write(mapper_data, glb_res, regval, false);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to write to global resource id\n");
 		/* Free the identifier when update failed */
@@ -963,6 +974,7 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 	uint32_t update_flag = 0;
 	uint64_t src1_val64;
 	uint32_t port_id;
+	bool shared;
 
 	/* process the field opcode */
 	if (fld->field_opc != BNXT_ULP_FIELD_OPC_COND_OP) {
@@ -1244,9 +1256,8 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
-		if (ulp_mapper_glb_resource_read(parms->mapper_data,
-						 dir,
-						 idx, &regval)) {
+		if (ulp_mapper_glb_resource_read(parms->mapper_data, dir,
+						 idx, &regval, &shared)) {
 			BNXT_TF_DBG(ERR, "%s global regfile[%d] read failed.\n",
 				    name, idx);
 			return -EINVAL;
@@ -2215,6 +2226,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	bool write = false;
 	bool global = false;
 	uint64_t act_rec_size;
+	bool shared = false;
 
 	/* use the max size if encap is enabled */
 	if (tbl->encap_num_fields)
@@ -2293,7 +2305,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		if (ulp_mapper_glb_resource_read(parms->mapper_data,
 						 tbl->direction,
 						 tbl->tbl_operand,
-						 &regval)) {
+						 &regval, &shared)) {
 			BNXT_TF_DBG(ERR,
 				    "Failed to get tbl idx from Global "
 				    "regfile[%d].\n",
@@ -2400,8 +2412,13 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		regval = tfp_cpu_to_be_64(regval);
 
 		if (global) {
+			/*
+			 * Shared resources are never allocated through this
+			 * method, so the shared flag is always false.
+			 */
 			rc = ulp_mapper_glb_resource_write(parms->mapper_data,
-							   &glb_res, regval);
+							   &glb_res, regval,
+							   false);
 		} else {
 			rc = ulp_regfile_write(parms->regfile,
 					       tbl->tbl_operand, regval);
@@ -2422,6 +2439,8 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		sparms.data_sz_in_bytes = ULP_BITS_2_BYTE(tmplen);
 		sparms.idx = index;
 		sparms.tbl_scope_id = tbl_scope_id;
+		if (shared)
+			tfp = bnxt_ulp_cntxt_shared_tfp_get(parms->ulp_ctx);
 		rc = tf_set_tbl_entry(tfp, &sparms);
 		if (rc) {
 			BNXT_TF_DBG(ERR,
@@ -2469,6 +2488,9 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 	return rc;
 error:
+	/* Shared resources are not freed */
+	if (shared)
+		return rc;
 	/*
 	 * Free the allocated resource since we failed to either
 	 * write to the entry or link the flow
@@ -2810,7 +2832,8 @@ ulp_mapper_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 				  struct bnxt_ulp_mapper_data *mapper_data)
 {
 	struct bnxt_ulp_glb_resource_info *glb_res;
-	uint32_t num_glb_res_ids, idx;
+	uint32_t num_glb_res_ids, idx, dev_id;
+	uint8_t app_id;
 	int32_t rc = 0;
 
 	glb_res = ulp_mapper_glb_resource_info_list_get(&num_glb_res_ids);
@@ -2819,8 +2842,25 @@ ulp_mapper_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 	}
 
+	rc = bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to get device id for "
+			    "global init (%d)\n", rc);
+		return rc;
+	}
+
+	rc = bnxt_ulp_cntxt_app_id_get(ulp_ctx, &app_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to get app id for "
+			    "global init (%d)\n", rc);
+		return rc;
+	}
+
 	/* Iterate the global resources and process each one */
 	for (idx = 0; idx < num_glb_res_ids; idx++) {
+		if (dev_id != glb_res[idx].device_id ||
+		    glb_res[idx].app_id != app_id)
+			continue;
 		switch (glb_res[idx].resource_func) {
 		case BNXT_ULP_RESOURCE_FUNC_IDENTIFIER:
 			rc = ulp_mapper_resource_ident_allocate(ulp_ctx,
@@ -2841,6 +2881,104 @@ ulp_mapper_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 		if (rc)
 			return rc;
 	}
+	return rc;
+}
+
+/*
+ * Iterate over the shared resources assigned during tf_open_session and store
+ * them in the global regfile with the shared flag.
+ */
+static int32_t
+ulp_mapper_app_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
+				      struct bnxt_ulp_mapper_data *mapper_data)
+{
+	struct bnxt_ulp_glb_resource_info *glb_res;
+	struct tf_get_session_info_parms sparms;
+	uint32_t num_entries, i, dev_id, res;
+	struct tf_resource_info *res_info;
+	uint64_t regval;
+	enum tf_dir dir;
+	int32_t rc = 0;
+	struct tf *tfp;
+	uint8_t app_id;
+
+	memset(&sparms, 0, sizeof(sparms));
+
+	glb_res = bnxt_ulp_app_glb_resource_info_list_get(&num_entries);
+	if (!glb_res || !num_entries) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	tfp = bnxt_ulp_cntxt_shared_tfp_get(ulp_ctx);
+	if (!tfp) {
+		BNXT_TF_DBG(ERR, "Failed to get tfp for app global init");
+		return -EINVAL;
+	}
+	/*
+	 * Retrieve the resources that were assigned during the shared session
+	 * creation.
+	 */
+	rc = tf_get_session_info(tfp, &sparms);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to get session info (%d)\n", rc);
+		return rc;
+	}
+
+	rc = bnxt_ulp_cntxt_app_id_get(ulp_ctx, &app_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to get the app id in global init "
+			    "(%d).\n", rc);
+		return rc;
+	}
+
+	rc = bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to get device id for app "
+			    "global init (%d)\n", rc);
+		return rc;
+	}
+
+	/* Store all the app global resources */
+	for (i = 0; i < num_entries; i++) {
+		if (dev_id != glb_res[i].device_id ||
+		    app_id != glb_res[i].app_id)
+			continue;
+		dir = glb_res[i].direction;
+		res = glb_res[i].resource_type;
+
+		switch (glb_res[i].resource_func) {
+		case BNXT_ULP_RESOURCE_FUNC_IDENTIFIER:
+			res_info = &sparms.session_info.ident[dir].info[res];
+			break;
+		case BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE:
+			res_info = &sparms.session_info.tbl[dir].info[res];
+			break;
+		case BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE:
+			res_info = &sparms.session_info.tcam[dir].info[res];
+			break;
+		case BNXT_ULP_RESOURCE_FUNC_EM_TABLE:
+			res_info = &sparms.session_info.em[dir].info[res];
+			break;
+		default:
+			BNXT_TF_DBG(ERR, "Unknown resource func (0x%x)\n",
+				    glb_res[i].resource_func);
+			continue;
+		}
+
+		regval = tfp_cpu_to_be_64((uint64_t)res_info->start);
+		res_info->start++;
+
+		/*
+		 * All resources written to the global regfile are shared for
+		 * this function.
+		 */
+		rc = ulp_mapper_glb_resource_write(mapper_data, &glb_res[i],
+						   regval, true);
+		if (rc)
+			return rc;
+	}
+
 	return rc;
 }
 
@@ -2994,6 +3132,7 @@ ulp_mapper_cc_upd_opr_compute(struct bnxt_ulp_mapper_parms *parms,
 			      uint64_t *result)
 {
 	uint64_t regval;
+	bool shared;
 
 	*result =  false;
 	switch (cc_src) {
@@ -3013,7 +3152,7 @@ ulp_mapper_cc_upd_opr_compute(struct bnxt_ulp_mapper_parms *parms,
 		break;
 	case BNXT_ULP_CC_UPD_SRC_GLB_REGFILE:
 		if (ulp_mapper_glb_resource_read(parms->mapper_data, dir,
-						 cc_opr, &regval)) {
+						 cc_opr, &regval, &shared)) {
 			BNXT_TF_DBG(ERR, "global regfile[%d] read failed.\n",
 				    cc_opr);
 			return -EINVAL;
@@ -3493,11 +3632,11 @@ ulp_mapper_glb_resource_info_deinit(struct bnxt_ulp_context *ulp_ctx,
 
 	/* Iterate the global resources and process each one */
 	for (dir = TF_DIR_RX; dir < TF_DIR_MAX; dir++) {
-		for (idx = 0; idx < BNXT_ULP_GLB_RESOURCE_TBL_MAX_SZ;
-		      idx++) {
+		for (idx = 0; idx < BNXT_ULP_GLB_RF_IDX_LAST; idx++) {
 			ent = &mapper_data->glb_res_tbl[dir][idx];
 			if (ent->resource_func ==
-			    BNXT_ULP_RESOURCE_FUNC_INVALID)
+			    BNXT_ULP_RESOURCE_FUNC_INVALID ||
+			    ent->shared)
 				continue;
 			memset(&res, 0, sizeof(struct ulp_flow_db_res_params));
 			res.resource_func = ent->resource_func;
@@ -3671,6 +3810,19 @@ ulp_mapper_init(struct bnxt_ulp_context *ulp_ctx)
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to initialize global resource ids\n");
 		goto error;
+	}
+
+	/*
+	 * Only initialize the app global resources if a shared session was
+	 * created.
+	 */
+	if (bnxt_ulp_cntxt_shared_session_enabled(ulp_ctx)) {
+		rc = ulp_mapper_app_glb_resource_info_init(ulp_ctx, data);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "Failed to initialize app "
+				    "global resources\n");
+			goto error;
+		}
 	}
 
 	/* Allocate the generic table list */

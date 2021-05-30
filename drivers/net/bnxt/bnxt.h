@@ -874,9 +874,11 @@ struct bnxt {
 	uint16_t		port_svif;
 
 	struct tf		tfp;
+	struct tf		tfp_shared;
 	struct bnxt_ulp_context	*ulp_ctx;
 	struct bnxt_flow_stat_info *flow_stat;
 	uint16_t		max_num_kflows;
+	uint8_t			app_id;
 	uint16_t		tx_cfa_action;
 	struct bnxt_ring_stats	*prev_rx_ring_stats;
 	struct bnxt_ring_stats	*prev_tx_ring_stats;
