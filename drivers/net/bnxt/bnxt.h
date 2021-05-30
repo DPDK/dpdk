@@ -1027,6 +1027,7 @@ bnxt_ulp_create_vfr_default_rules(struct rte_eth_dev *vfr_ethdev);
 int32_t
 bnxt_ulp_delete_vfr_default_rules(struct bnxt_representor *vfr);
 uint16_t bnxt_get_vnic_id(uint16_t port, enum bnxt_ulp_intf_type type);
+struct bnxt *bnxt_get_bp(uint16_t port);
 uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif,
 		       enum bnxt_ulp_intf_type type);
 uint16_t bnxt_get_fw_func_id(uint16_t port, enum bnxt_ulp_intf_type type);

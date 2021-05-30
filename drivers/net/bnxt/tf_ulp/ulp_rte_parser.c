@@ -1008,6 +1008,9 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3, 1);
 	}
 
+	if (proto == IPPROTO_GRE)
+		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_T_GRE);
+
 	/* Update the field protocol hdr bitmap */
 	ulp_rte_l3_proto_type_update(params, proto, inner_flag);
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_HDR_CNT, ++cnt);
@@ -1145,6 +1148,9 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV6);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3, 1);
 	}
+
+	if (proto == IPPROTO_GRE)
+		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_T_GRE);
 
 	/* Update the field protocol hdr bitmap */
 	ulp_rte_l3_proto_type_update(params, proto, inner_flag);
@@ -1417,6 +1423,57 @@ ulp_rte_vxlan_hdr_handler(const struct rte_flow_item *item,
 
 	/* Update the hdr_bitmap with vxlan */
 	ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_T_VXLAN);
+	return BNXT_TF_RC_SUCCESS;
+}
+
+/* Function to handle the parsing of RTE Flow item GRE Header. */
+int32_t
+ulp_rte_gre_hdr_handler(const struct rte_flow_item *item,
+			  struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_item_gre *gre_spec = item->spec;
+	const struct rte_flow_item_gre *gre_mask = item->mask;
+	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
+	uint32_t idx = params->field_idx;
+	uint32_t size;
+	struct ulp_rte_hdr_field *field;
+
+	if (!gre_spec && !gre_mask) {
+		BNXT_TF_DBG(ERR, "Parse Error: GRE item is invalid\n");
+		return BNXT_TF_RC_ERROR;
+	}
+
+	if (gre_spec) {
+		size = sizeof(gre_spec->c_rsvd0_ver);
+		field = ulp_rte_parser_fld_copy(&params->hdr_field[idx],
+						&gre_spec->c_rsvd0_ver,
+						size);
+		size = sizeof(gre_spec->protocol);
+		field = ulp_rte_parser_fld_copy(field,
+						&gre_spec->protocol,
+						size);
+	}
+	if (gre_mask) {
+		ulp_rte_prsr_mask_copy(params, &idx,
+				       &gre_mask->c_rsvd0_ver,
+				       sizeof(gre_mask->c_rsvd0_ver));
+		ulp_rte_prsr_mask_copy(params, &idx,
+				       &gre_mask->protocol,
+				       sizeof(gre_mask->protocol));
+	}
+	/* Add number of GRE header elements */
+	params->field_idx += BNXT_ULP_PROTO_HDR_GRE_NUM;
+
+	/* Update the hdr_bitmap with GRE */
+	ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_T_GRE);
+	return BNXT_TF_RC_SUCCESS;
+}
+
+/* Function to handle the parsing of RTE Flow item ANY. */
+int32_t
+ulp_rte_item_any_handler(const struct rte_flow_item *item __rte_unused,
+			 struct ulp_rte_parser_params *params __rte_unused)
+{
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -1879,8 +1936,9 @@ ulp_rte_vf_act_handler(const struct rte_flow_action *action_item,
 		       struct ulp_rte_parser_params *params)
 {
 	const struct rte_flow_action_vf *vf_action;
-	uint32_t ifindex;
 	enum bnxt_ulp_intf_type intf_type;
+	uint32_t ifindex;
+	struct bnxt *bp;
 
 	vf_action = action_item->conf;
 	if (!vf_action) {
@@ -1893,12 +1951,23 @@ ulp_rte_vf_act_handler(const struct rte_flow_action *action_item,
 		return BNXT_TF_RC_PARSE_ERR;
 	}
 
-	/* Check the port is VF port */
-	if (ulp_port_db_dev_func_id_to_ulp_index(params->ulp_ctx, vf_action->id,
+	bp = bnxt_get_bp(params->port_id);
+	if (bp == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid bp\n");
+		return BNXT_TF_RC_ERROR;
+	}
+
+	/* vf_action->id is a logical number which in this case is an
+	 * offset from the first VF. So, to get the absolute VF id, the
+	 * offset must be added to the absolute first vf id of that port.
+	 */
+	if (ulp_port_db_dev_func_id_to_ulp_index(params->ulp_ctx,
+						 bp->first_vf_id + vf_action->id,
 						 &ifindex)) {
 		BNXT_TF_DBG(ERR, "VF is not valid interface\n");
 		return BNXT_TF_RC_ERROR;
 	}
+	/* Check the port is VF port */
 	intf_type = ulp_port_db_port_type_get(params->ulp_ctx, ifindex);
 	if (intf_type != BNXT_ULP_INTF_TYPE_VF &&
 	    intf_type != BNXT_ULP_INTF_TYPE_TRUSTED_VF) {

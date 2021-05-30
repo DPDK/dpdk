@@ -4866,6 +4866,32 @@ static void bnxt_config_vf_req_fwd(struct bnxt *bp)
 	BNXT_HWRM_CMD_TO_FORWARD(HWRM_OEM_CMD);
 }
 
+struct bnxt *
+bnxt_get_bp(uint16_t port)
+{
+	struct bnxt *bp;
+	struct rte_eth_dev *dev;
+
+	if (!rte_eth_dev_is_valid_port(port)) {
+		PMD_DRV_LOG(ERR, "Invalid port %d\n", port);
+		return NULL;
+	}
+
+	dev = &rte_eth_devices[port];
+	if (!is_bnxt_supported(dev)) {
+		PMD_DRV_LOG(ERR, "Device %d not supported\n", port);
+		return NULL;
+	}
+
+	bp = (struct bnxt *)dev->data->dev_private;
+	if (!BNXT_TRUFLOW_EN(bp)) {
+		PMD_DRV_LOG(ERR, "TRUFLOW not enabled\n");
+		return NULL;
+	}
+
+	return bp;
+}
+
 uint16_t
 bnxt_get_svif(uint16_t port_id, bool func_svif,
 	      enum bnxt_ulp_intf_type type)
