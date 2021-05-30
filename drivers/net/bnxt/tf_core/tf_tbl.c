@@ -83,17 +83,15 @@ tf_tbl_bind(struct tf *tfp,
 			db_rc[d] = tf_rm_create_db_no_reservation(tfp, &db_cfg);
 		else
 			db_rc[d] = tf_rm_create_db(tfp, &db_cfg);
-		if (db_rc[d]) {
-			TFP_DRV_LOG(ERR,
-				    "%s: No Table DB creation required\n",
-				    tf_dir_2_str(d));
-
-		}
 	}
 
 	/* No db created */
-	if (db_rc[TF_DIR_RX] && db_rc[TF_DIR_TX])
+	if (db_rc[TF_DIR_RX] && db_rc[TF_DIR_TX]) {
+		TFP_DRV_LOG(ERR,
+			    "%s: No Table DB created\n",
+			    tf_dir_2_str(d));
 		return db_rc[TF_DIR_RX];
+	}
 
 	TFP_DRV_LOG(INFO,
 		    "Table Type - initialized\n");
@@ -112,12 +110,8 @@ tf_tbl_unbind(struct tf *tfp)
 	TF_CHECK_PARMS1(tfp);
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TABLE, &tbl_db_ptr);
-	if (rc) {
-		TFP_DRV_LOG(INFO,
-			    "Tbl_db is not initialized, rc:%s\n",
-			    strerror(-rc));
+	if (rc)
 		return 0;
-	}
 	tbl_db = (struct tbl_rm_db *)tbl_db_ptr;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {

@@ -74,11 +74,6 @@ tf_ident_bind(struct tf *tfp,
 			db_rc[i] = tf_rm_create_db_no_reservation(tfp, &db_cfg);
 		else
 			db_rc[i] = tf_rm_create_db(tfp, &db_cfg);
-		if (db_rc[i]) {
-			TFP_DRV_LOG(INFO,
-				    "%s: No Identifier DB required\n",
-				    tf_dir_2_str(i));
-		}
 
 		if (parms->shadow_copy) {
 			shadow_cfg.alloc_cnt =
@@ -99,8 +94,10 @@ tf_ident_bind(struct tf *tfp,
 	}
 
 	/* No db created */
-	if (db_rc[TF_DIR_RX] && db_rc[TF_DIR_TX])
+	if (db_rc[TF_DIR_RX] && db_rc[TF_DIR_TX]) {
+		TFP_DRV_LOG(ERR, "No Identifier DB created\n");
 		return db_rc[TF_DIR_RX];
+	}
 
 	TFP_DRV_LOG(INFO,
 		    "Identifier - initialized\n");
@@ -121,12 +118,8 @@ tf_ident_unbind(struct tf *tfp)
 	TF_CHECK_PARMS1(tfp);
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
-	if (rc) {
-		TFP_DRV_LOG(INFO,
-			    "Ident_db is not initialized, rc:%s\n",
-			    strerror(-rc));
+	if (rc)
 		return 0;
-	}
 	ident_db = (struct ident_rm_db *)ident_db_ptr;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {

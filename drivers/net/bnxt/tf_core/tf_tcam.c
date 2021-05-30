@@ -113,16 +113,13 @@ tf_tcam_bind(struct tf *tfp,
 			db_rc[d] = tf_rm_create_db_no_reservation(tfp, &db_cfg);
 		else
 			db_rc[d] = tf_rm_create_db(tfp, &db_cfg);
-		if (db_rc[d]) {
-			TFP_DRV_LOG(INFO,
-				    "%s: no TCAM DB required\n",
-				    tf_dir_2_str(d));
-		}
 	}
 
 	/* No db created */
-	if (db_rc[TF_DIR_RX] && db_rc[TF_DIR_TX])
+	if (db_rc[TF_DIR_RX] && db_rc[TF_DIR_TX]) {
+		TFP_DRV_LOG(ERR, "No TCAM DB created\n");
 		return db_rc[TF_DIR_RX];
+	}
 
 	/* check if reserved resource for WC is multiple of num_slices */
 	for (d = 0; d < TF_DIR_MAX; d++) {
@@ -227,9 +224,6 @@ tf_tcam_unbind(struct tf *tfp)
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
 	if (rc) {
-		TFP_DRV_LOG(INFO,
-			    "Tcam_db is not initialized, rc:%s\n",
-			    strerror(-rc));
 		return 0;
 	}
 	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;

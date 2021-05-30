@@ -216,20 +216,20 @@ tf_dev_bind_p4(struct tf *tfp,
 		return -ENOMEM;
 	}
 
-	if (!tf_session_is_shared_session(tfs)) {
-		/*
-		 * IF_TBL
-		 */
-		if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
-		if_tbl_cfg.cfg = tf_if_tbl_p4;
-		if_tbl_cfg.shadow_copy = shadow_copy;
-		rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
-		if (rc) {
-			TFP_DRV_LOG(ERR,
-				    "IF Table initialization failure\n");
-			goto fail;
-		}
+	/*
+	 * IF_TBL
+	 */
+	if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
+	if_tbl_cfg.cfg = tf_if_tbl_p4;
+	if_tbl_cfg.shadow_copy = shadow_copy;
+	rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "IF Table initialization failure\n");
+		goto fail;
+	}
 
+	if (!tf_session_is_shared_session(tfs)) {
 		/*
 		 * GLOBAL_CFG
 		 */
@@ -271,6 +271,12 @@ tf_dev_unbind_p4(struct tf *tfp)
 {
 	int rc = 0;
 	bool fail = false;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
 
 	/* Unbind all the support modules. As this is only done on
 	 * close we only report errors as everything has to be cleaned
@@ -318,18 +324,20 @@ tf_dev_unbind_p4(struct tf *tfp)
 		fail = true;
 	}
 
-	rc = tf_if_tbl_unbind(tfp);
-	if (rc) {
-		TFP_DRV_LOG(INFO,
-			    "Device unbind failed, IF Table Type\n");
-		fail = true;
-	}
+	if (!tf_session_is_shared_session(tfs)) {
+		rc = tf_if_tbl_unbind(tfp);
+		if (rc) {
+			TFP_DRV_LOG(INFO,
+				    "Device unbind failed, IF Table Type\n");
+			fail = true;
+		}
 
-	rc = tf_global_cfg_unbind(tfp);
-	if (rc) {
-		TFP_DRV_LOG(INFO,
-			    "Device unbind failed, Global Cfg Type\n");
-		fail = true;
+		rc = tf_global_cfg_unbind(tfp);
+		if (rc) {
+			TFP_DRV_LOG(INFO,
+				    "Device unbind failed, Global Cfg Type\n");
+			fail = true;
+		}
 	}
 
 	if (fail)
@@ -472,17 +480,17 @@ tf_dev_bind_p58(struct tf *tfp,
 	/*
 	 * IF_TBL
 	 */
-	if (!tf_session_is_shared_session(tfs)) {
-		if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
-		if_tbl_cfg.cfg = tf_if_tbl_p58;
-		if_tbl_cfg.shadow_copy = shadow_copy;
-		rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
-		if (rc) {
-			TFP_DRV_LOG(ERR,
-				    "IF Table initialization failure\n");
-			goto fail;
-		}
+	if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
+	if_tbl_cfg.cfg = tf_if_tbl_p58;
+	if_tbl_cfg.shadow_copy = shadow_copy;
+	rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "IF Table initialization failure\n");
+		goto fail;
+	}
 
+	if (!tf_session_is_shared_session(tfs)) {
 		/*
 		 * GLOBAL_CFG
 		 */
@@ -571,14 +579,14 @@ tf_dev_unbind_p58(struct tf *tfp)
 		fail = true;
 	}
 
-	if (!tf_session_is_shared_session(tfs)) {
-		rc = tf_if_tbl_unbind(tfp);
-		if (rc) {
-			TFP_DRV_LOG(ERR,
-				    "Device unbind failed, IF Table Type\n");
-			fail = true;
-		}
+	rc = tf_if_tbl_unbind(tfp);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Device unbind failed, IF Table Type\n");
+		fail = true;
+	}
 
+	if (!tf_session_is_shared_session(tfs)) {
 		rc = tf_global_cfg_unbind(tfp);
 		if (rc) {
 			TFP_DRV_LOG(ERR,

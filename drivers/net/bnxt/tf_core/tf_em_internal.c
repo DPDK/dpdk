@@ -412,17 +412,13 @@ tf_em_int_bind(struct tf *tfp,
 			db_rc[i] = tf_rm_create_db_no_reservation(tfp, &db_cfg);
 		else
 			db_rc[i] = tf_rm_create_db(tfp, &db_cfg);
-		if (db_rc[i]) {
-			TFP_DRV_LOG(ERR,
-				    "%s: EM Int DB creation failed\n",
-				    tf_dir_2_str(i));
-
-		}
 	}
 
 	/* No db created */
-	if (db_rc[TF_DIR_RX] && db_rc[TF_DIR_TX])
+	if (db_rc[TF_DIR_RX] && db_rc[TF_DIR_TX]) {
+		TFP_DRV_LOG(ERR, "EM Int DB creation failed\n");
 		return db_rc[TF_DIR_RX];
+	}
 
 
 	if (!tf_session_is_shared_session(tfs)) {
@@ -514,9 +510,6 @@ tf_em_int_unbind(struct tf *tfp)
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_EM, &em_db_ptr);
 	if (rc) {
-		TFP_DRV_LOG(INFO,
-			    "Em_db is not initialized, rc:%s\n",
-			    strerror(-rc));
 		return 0;
 	}
 	em_db = (struct em_rm_db *)em_db_ptr;

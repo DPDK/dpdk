@@ -16,23 +16,15 @@ struct tf;
 
 /**
  * IF Table DBs.
+ * TODO: Store this data in session db
  */
 static void *if_tbl_db[TF_DIR_MAX];
 
 /**
- * IF Table Shadow DBs
- */
-/* static void *shadow_if_tbl_db[TF_DIR_MAX]; */
-
-/**
  * Init flag, set on bind and cleared on unbind
+ * TODO: Store this data in session db
  */
 static uint8_t init;
-
-/**
- * Shadow init flag, set on bind and cleared on unbind
- */
-/* static uint8_t shadow_init; */
 
 /**
  * Convert if_tbl_type to hwrm type.
@@ -69,12 +61,6 @@ tf_if_tbl_bind(struct tf *tfp __rte_unused,
 	       struct tf_if_tbl_cfg_parms *parms)
 {
 	TF_CHECK_PARMS2(tfp, parms);
-
-	if (init) {
-		TFP_DRV_LOG(ERR,
-			    "IF TBL DB already initialized\n");
-		return -EINVAL;
-	}
 
 	if_tbl_db[TF_DIR_RX] = parms->cfg;
 	if_tbl_db[TF_DIR_TX] = parms->cfg;

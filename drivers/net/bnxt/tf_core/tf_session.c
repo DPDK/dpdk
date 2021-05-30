@@ -425,9 +425,11 @@ tf_session_open_session(struct tf *tfp,
 		}
 
 		TFP_DRV_LOG(INFO,
-		       "Session created, session_client_id:%d, session_id:%d\n",
+		       "Session created, session_client_id:%d,"
+		       "session_id:0x%08x, fw_session_id:%d\n",
 		       parms->open_cfg->session_client_id.id,
-		       parms->open_cfg->session_id.id);
+		       parms->open_cfg->session_id.id,
+		       parms->open_cfg->session_id.internal.fw_session_id);
 	} else {
 		scparms.ctrl_chan_name = parms->open_cfg->ctrl_chan_name;
 		scparms.session_client_id = &parms->open_cfg->session_client_id;
@@ -438,16 +440,16 @@ tf_session_open_session(struct tf *tfp,
 		rc = tf_session_client_create(tfp, &scparms);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
-			      "Failed to create client on session %d, rc:%s\n",
+			      "Failed to create client on session 0x%x, rc:%s\n",
 			      parms->open_cfg->session_id.id,
 			      strerror(-rc));
 			return rc;
 		}
 
 		TFP_DRV_LOG(INFO,
-			    "Session Client:%d created on session:%d\n",
-			    parms->open_cfg->session_client_id.id,
-			    parms->open_cfg->session_id.id);
+			"Session Client:%d registered on session:0x%8x\n",
+			scparms.session_client_id->internal.fw_session_client_id,
+			tfp->session->session_id.id);
 	}
 
 	return 0;
@@ -541,7 +543,7 @@ tf_session_close_session(struct tf *tfp,
 			    client->session_client_id.id);
 
 		TFP_DRV_LOG(INFO,
-			    "session_id:%d, ref_count:%d\n",
+			    "session_id:0x%08x, ref_count:%d\n",
 			    tfs->session_id.id,
 			    tfs->ref_count);
 
@@ -587,7 +589,7 @@ tf_session_close_session(struct tf *tfp,
 	tfs->ref_count--;
 
 	TFP_DRV_LOG(INFO,
-		    "Closed session, session_id:%d, ref_count:%d\n",
+		    "Closed session, session_id:0x%08x, ref_count:%d\n",
 		    tfs->session_id.id,
 		    tfs->ref_count);
 
