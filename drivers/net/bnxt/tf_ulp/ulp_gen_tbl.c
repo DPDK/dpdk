@@ -5,6 +5,8 @@
 
 #include <rte_log.h>
 #include <rte_malloc.h>
+#include "tf_core.h"
+#include "tfp.h"
 #include "ulp_mapper.h"
 #include "ulp_flow_db.h"
 
@@ -163,18 +165,20 @@ ulp_mapper_gen_tbl_idx_calculate(uint32_t res_sub_type, uint32_t dir)
 }
 
 /*
- * Set the data in the generic table entry
+ * Set the data in the generic table entry, Data is in Big endian format
  *
  * entry [in] - generic table entry
  * offset [in] - The offset in bits where the data has to be set
  * len [in] - The length of the data in bits to be set
  * data [in] - pointer to the data to be used for setting the value.
+ * data_size [in] - length of the data pointer in bytes.
  *
  * returns 0 on success
  */
 int32_t
 ulp_mapper_gen_tbl_entry_data_set(struct ulp_mapper_gen_tbl_entry *entry,
-				  uint32_t offset, uint32_t len, uint8_t *data)
+				  uint32_t offset, uint32_t len, uint8_t *data,
+				  uint32_t data_size)
 {
 	/* validate the null arguments */
 	if (!entry || !data) {
@@ -183,12 +187,17 @@ ulp_mapper_gen_tbl_entry_data_set(struct ulp_mapper_gen_tbl_entry *entry,
 	}
 
 	/* check the size of the buffer for validation */
-	if ((offset + len) > ULP_BYTE_2_BITS(entry->byte_data_size)) {
+	if ((offset + len) > ULP_BYTE_2_BITS(entry->byte_data_size) ||
+	    data_size < ULP_BITS_2_BYTE(len)) {
 		BNXT_TF_DBG(ERR, "invalid offset or length %x:%x:%x\n",
 			    offset, len, entry->byte_data_size);
 		return -EINVAL;
 	}
 
+	/* adjust the data pointer */
+	data = data + (data_size - ULP_BITS_2_BYTE(len));
+
+	/* Push the data into the byte data array */
 	if (entry->byte_order == BNXT_ULP_BYTE_ORDER_LE) {
 		if (ulp_bs_push_lsb(entry->byte_data, offset, len, data) !=
 		    len) {
@@ -208,7 +217,7 @@ ulp_mapper_gen_tbl_entry_data_set(struct ulp_mapper_gen_tbl_entry *entry,
 }
 
 /*
- * Get the data in the generic table entry
+ * Get the data in the generic table entry, Data is in Big endian format
  *
  * entry [in] - generic table entry
  * offset [in] - The offset in bits where the data has to get
@@ -298,6 +307,7 @@ ulp_mapper_gen_tbl_res_free(struct bnxt_ulp_context *ulp_ctx,
 			    tbl_idx, res->resource_hndl);
 		return -EINVAL;
 	}
+	fid = tfp_be_to_cpu_32(fid);
 
 	/* Destroy the flow associated with the shared flow id */
 	if (ulp_mapper_flow_destroy(ulp_ctx, BNXT_ULP_FDB_TYPE_REGULAR,
