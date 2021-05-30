@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Wed Apr 14 09:56:27 2021 */
+/* date: Thu May 13 18:15:56 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -36,7 +36,7 @@ struct bnxt_ulp_generic_tbl_params ulp_generic_tbl_params[] = {
 		BNXT_ULP_DIRECTION_INGRESS] = {
 	.name                    = "INGRESS GENERIC_TABLE_PROFILE_TCAM",
 	.result_num_entries      = 16384,
-	.result_num_bytes        = 16,
+	.result_num_bytes        = 18,
 	.key_num_bytes           = 0,
 	.num_buckets             = 0,
 	.hash_tbl_entries        = 0,
@@ -46,7 +46,7 @@ struct bnxt_ulp_generic_tbl_params ulp_generic_tbl_params[] = {
 		BNXT_ULP_DIRECTION_EGRESS] = {
 	.name                    = "EGRESS GENERIC_TABLE_PROFILE_TCAM",
 	.result_num_entries      = 16384,
-	.result_num_bytes        = 16,
+	.result_num_bytes        = 18,
 	.key_num_bytes           = 0,
 	.num_buckets             = 0,
 	.hash_tbl_entries        = 0,
@@ -167,6 +167,8 @@ const struct bnxt_ulp_template_device_tbls ulp_template_thor_tbls[] = {
 	.tmpl_list_size          = ULP_THOR_ACT_TMPL_LIST_SIZE,
 	.tbl_list                = ulp_thor_act_tbl_list,
 	.tbl_list_size           = ULP_THOR_ACT_TBL_LIST_SIZE,
+	.cond_list               = ulp_thor_act_cond_list,
+	.cond_list_size          = ULP_THOR_ACT_COND_LIST_SIZE,
 	.result_field_list       = ulp_thor_act_result_field_list,
 	.result_field_list_size  = ULP_THOR_ACT_RESULT_FIELD_LIST_SIZE
 	}
@@ -188,7 +190,7 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	.num_phy_ports           = 2,
 	.ext_cntr_table_type     = 0,
 	.byte_count_mask         = 0x0000000fffffffff,
-	.packet_count_mask       = 0xffffffff00000000,
+	.packet_count_mask       = 0xfffffff000000000,
 	.byte_count_shift        = 0,
 	.packet_count_shift      = 36,
 	.dynamic_pad_en          = 0,
@@ -207,17 +209,17 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	.num_resources_per_flow  = 8,
 	.num_phy_ports           = 2,
 	.ext_cntr_table_type     = 0,
-	.byte_count_mask         = 0x0000000fffffffff,
-	.packet_count_mask       = 0xffffffff00000000,
+	.byte_count_mask         = 0x00000007ffffffff,
+	.packet_count_mask       = 0xfffffff800000000,
 	.byte_count_shift        = 0,
-	.packet_count_shift      = 36,
+	.packet_count_shift      = 35,
 	.dynamic_pad_en          = 1,
 	.em_blk_size_bits        = 100,
 	.em_blk_align_bits       = 128,
 	.em_key_align_bytes      = 80,
 	.wc_slice_width          = 160,
 	.wc_max_slices           = 4,
-	.wc_mode_list       = {0x0000000c, 0x0000000e, 0x0000000f, 0x0000000f},
+	.wc_mode_list            = {0x0000000c, 0x0000000e, 0x0000000f, 0x0000000f},
 	.wc_mod_list_max_size    = 4,
 	.wc_ctl_size_bits        = 32,
 	.dev_tbls                = ulp_template_thor_tbls
@@ -252,23 +254,27 @@ struct bnxt_ulp_app_capabilities_info ulp_app_cap_info_list[] = {
 	.app_id                  = 1,
 	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.flags                   = BNXT_ULP_APP_CAP_SHARED_EN |
-				BNXT_ULP_APP_CAP_HOT_UPGRADE_EN
+				   BNXT_ULP_APP_CAP_HOT_UPGRADE_EN |
+				   BNXT_ULP_APP_CAP_UNICAST_ONLY
 	},
 	{
 	.app_id                  = 1,
 	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
 	.flags                   = BNXT_ULP_APP_CAP_SHARED_EN |
-				BNXT_ULP_APP_CAP_HOT_UPGRADE_EN
+				   BNXT_ULP_APP_CAP_HOT_UPGRADE_EN |
+				   BNXT_ULP_APP_CAP_UNICAST_ONLY
 	},
 	{
 	.app_id                  = 2,
 	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
-	.flags                   = BNXT_ULP_APP_CAP_SHARED_EN
+	.flags                   = BNXT_ULP_APP_CAP_SHARED_EN |
+				   BNXT_ULP_APP_CAP_UNICAST_ONLY
 	},
 	{
 	.app_id                  = 2,
 	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
-	.flags                   = BNXT_ULP_APP_CAP_SHARED_EN
+	.flags                   = BNXT_ULP_APP_CAP_SHARED_EN |
+				   BNXT_ULP_APP_CAP_UNICAST_ONLY
 	}
 };
 
@@ -279,6 +285,14 @@ struct bnxt_ulp_resource_resv_info ulp_app_resource_resv_list[] = {
 	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type           = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
+	.count                   = 2
+	},
+	{
+	.app_id                  = 1,
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.direction               = TF_DIR_RX,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type           = TF_TCAM_TBL_TYPE_WC_TCAM,
 	.count                   = 128
 	},
@@ -287,8 +301,24 @@ struct bnxt_ulp_resource_resv_info ulp_app_resource_resv_list[] = {
 	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type           = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
+	.count                   = 2
+	},
+	{
+	.app_id                  = 1,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.direction               = TF_DIR_RX,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type           = TF_TCAM_TBL_TYPE_WC_TCAM,
-	.count                   = 512
+	.count                   = 1024
+	},
+	{
+	.app_id                  = 2,
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.direction               = TF_DIR_RX,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type           = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
+	.count                   = 2
 	},
 	{
 	.app_id                  = 2,
@@ -303,8 +333,16 @@ struct bnxt_ulp_resource_resv_info ulp_app_resource_resv_list[] = {
 	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type           = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
+	.count                   = 2
+	},
+	{
+	.app_id                  = 2,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.direction               = TF_DIR_RX,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type           = TF_TCAM_TBL_TYPE_WC_TCAM,
-	.count                   = 512
+	.count                   = 1024
 	}
 };
 
@@ -316,6 +354,22 @@ struct bnxt_ulp_glb_resource_info ulp_app_glb_resource_tbl[] = {
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_PROF_FUNC_ID_0,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 1,
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_PROF_FUNC_ID_1,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 1,
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_PROF_FUNC_ID_2,
 	.direction               = TF_DIR_RX
 	},
 	{
@@ -356,6 +410,14 @@ struct bnxt_ulp_glb_resource_info ulp_app_glb_resource_tbl[] = {
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_WC_PROF,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_WC_PROFILE_ID_1,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 1,
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_WC_PROF,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_WC_PROFILE_ID_2,
 	.direction               = TF_DIR_RX
 	},
 	{
@@ -386,6 +448,22 @@ struct bnxt_ulp_glb_resource_info ulp_app_glb_resource_tbl[] = {
 	.app_id                  = 1,
 	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_PROF_FUNC_ID_1,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 1,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_PROF_FUNC_ID_2,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 1,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_L2_CTXT_HIGH,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_L2_CNTXT_ID_0,
 	.direction               = TF_DIR_RX
@@ -420,6 +498,14 @@ struct bnxt_ulp_glb_resource_info ulp_app_glb_resource_tbl[] = {
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_WC_PROF,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_WC_PROFILE_ID_1,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 1,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_WC_PROF,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_WC_PROFILE_ID_2,
 	.direction               = TF_DIR_RX
 	},
 	{
@@ -474,6 +560,22 @@ struct bnxt_ulp_glb_resource_info ulp_app_glb_resource_tbl[] = {
 	.app_id                  = 2,
 	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_PROF_FUNC_ID_1,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 2,
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_PROF_FUNC_ID_2,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 2,
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_L2_CTXT_HIGH,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_L2_CNTXT_ID_0,
 	.direction               = TF_DIR_RX
@@ -508,6 +610,14 @@ struct bnxt_ulp_glb_resource_info ulp_app_glb_resource_tbl[] = {
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_WC_PROF,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_WC_PROFILE_ID_1,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 2,
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_WC_PROF,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_WC_PROFILE_ID_2,
 	.direction               = TF_DIR_RX
 	},
 	{
@@ -538,6 +648,22 @@ struct bnxt_ulp_glb_resource_info ulp_app_glb_resource_tbl[] = {
 	.app_id                  = 2,
 	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_PROF_FUNC_ID_1,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 2,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_PROF_FUNC_ID_2,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 2,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_L2_CTXT_HIGH,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_L2_CNTXT_ID_0,
 	.direction               = TF_DIR_RX
@@ -572,6 +698,14 @@ struct bnxt_ulp_glb_resource_info ulp_app_glb_resource_tbl[] = {
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_WC_PROF,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_WC_PROFILE_ID_1,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 2,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_WC_PROF,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_APP_GLB_WC_PROFILE_ID_2,
 	.direction               = TF_DIR_RX
 	},
 	{
@@ -684,6 +818,22 @@ struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[] = {
 	},
 	{
 	.app_id                  = 0,
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_EM_PROF,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_GLB_EM_PROFILE_ID_0,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 0,
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_WC_PROF,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_GLB_WC_PROFILE_ID_0,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 0,
 	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
@@ -705,6 +855,70 @@ struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[] = {
 	.resource_type           = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR,
 	.direction               = TF_DIR_TX
+	},
+	{
+	.app_id                  = 0,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_L2_PROF_FUNC_ID,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 0,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_L2_PROF_FUNC_ID,
+	.direction               = TF_DIR_TX
+	},
+	{
+	.app_id                  = 0,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_VXLAN_PROF_FUNC_ID,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 0,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
+	.resource_type           = TF_TBL_TYPE_ACT_ENCAP_16B,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 0,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
+	.resource_type           = TF_TBL_TYPE_ACT_ENCAP_16B,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR,
+	.direction               = TF_DIR_TX
+	},
+	{
+	.app_id                  = 0,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_EM_PROF,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_GLB_EM_PROFILE_ID_0,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 0,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type           = TF_IDENT_TYPE_WC_PROF,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_GLB_WC_PROFILE_ID_0,
+	.direction               = TF_DIR_RX
+	},
+	{
+	.app_id                  = 0,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
+	.resource_type           = TF_TBL_TYPE_WC_FKB,
+	.glb_regfile_index       = BNXT_ULP_GLB_RF_IDX_GLB_WC_KEY_ID_0,
+	.direction               = TF_DIR_RX
 	},
 	{
 	.app_id                  = 1,
@@ -1196,7 +1410,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_L2_CTXT_HIGH,
-	.count                   = 26
+	.count                   = 422
 	},
 	{
 	.app_id                  = 0,
@@ -1252,7 +1466,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_MIRROR_CONFIG,
-	.count                   = 14
+	.count                   = 5
 	},
 	{
 	.app_id                  = 0,
@@ -1268,7 +1482,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_WC_FKB,
-	.count                   = 32
+	.count                   = 31
 	},
 	{
 	.app_id                  = 0,
@@ -1316,7 +1530,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type           = TF_TCAM_TBL_TYPE_WC_TCAM,
-	.count                   = 112
+	.count                   = 2048
 	},
 	{
 	.app_id                  = 0,
@@ -1372,7 +1586,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_TX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_FULL_ACT_RECORD,
-	.count                   = 1024
+	.count                   = 1023
 	},
 	{
 	.app_id                  = 0,
@@ -1388,7 +1602,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_TX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_MIRROR_CONFIG,
-	.count                   = 14
+	.count                   = 5
 	},
 	{
 	.app_id                  = 0,
@@ -1426,14 +1640,6 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.app_id                  = 0,
 	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
 	.direction               = TF_DIR_TX,
-	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
-	.resource_type           = TF_TBL_TYPE_MIRROR_CONFIG,
-	.count                   = 1
-	},
-	{
-	.app_id                  = 0,
-	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
-	.direction               = TF_DIR_TX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type           = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.count                   = 200
@@ -1460,7 +1666,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_TX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type           = TF_TCAM_TBL_TYPE_WC_TCAM,
-	.count                   = 128
+	.count                   = 2048
 	},
 	{
 	.app_id                  = 0,
@@ -1772,7 +1978,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
-	.count                   = 32
+	.count                   = 16
 	},
 	{
 	.app_id                  = 1,
@@ -1788,7 +1994,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_FULL_ACT_RECORD,
-	.count                   = 512
+	.count                   = 528
 	},
 	{
 	.app_id                  = 1,
@@ -1876,7 +2082,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_TX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_L2_CTXT_HIGH,
-	.count                   = 26
+	.count                   = 32
 	},
 	{
 	.app_id                  = 1,
@@ -2300,7 +2506,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
-	.count                   = 32
+	.count                   = 16
 	},
 	{
 	.app_id                  = 2,
@@ -2316,7 +2522,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_FULL_ACT_RECORD,
-	.count                   = 512
+	.count                   = 528
 	},
 	{
 	.app_id                  = 2,
@@ -2388,7 +2594,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type           = TF_TCAM_TBL_TYPE_WC_TCAM,
-	.count                   = 256
+	.count                   = 512
 	},
 	{
 	.app_id                  = 2,
@@ -2404,7 +2610,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_TX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_L2_CTXT_HIGH,
-	.count                   = 26
+	.count                   = 32
 	},
 	{
 	.app_id                  = 2,

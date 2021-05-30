@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Wed Apr 14 09:56:27 2021 */
+/* date: Fri May 14 10:26:31 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -12,7 +12,7 @@
 
 /* Mapper templates for header class list */
 struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_class_tmpl_list[] = {
-	/* class_tid: 1, wh_plus, ingress */
+	/* class_tid: 1, ingress */
 	[1] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 18,
@@ -22,7 +22,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_class_tmpl_list[] = {
 		.cond_start_idx = 0,
 		.cond_nums = 1 }
 	},
-	/* class_tid: 2, wh_plus, egress */
+	/* class_tid: 2, egress */
 	[2] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 15,
@@ -32,7 +32,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_class_tmpl_list[] = {
 		.cond_start_idx = 24,
 		.cond_nums = 1 }
 	},
-	/* class_tid: 3, wh_plus, ingress */
+	/* class_tid: 3, ingress */
 	[3] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 22,
@@ -42,7 +42,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_class_tmpl_list[] = {
 		.cond_start_idx = 35,
 		.cond_nums = 0 }
 	},
-	/* class_tid: 4, wh_plus, egress */
+	/* class_tid: 4, egress */
 	[4] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 19,
@@ -55,7 +55,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_class_tmpl_list[] = {
 };
 
 struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
-	{ /* class_tid: 1, wh_plus, table: l2_cntxt_tcam_cache.rd */
+	{ /* class_tid: 1, , table: l2_cntxt_tcam_cache.rd */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
 	.resource_sub_type =
@@ -78,7 +78,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 0,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 1, wh_plus, table: mac_addr_cache.rd */
+	{ /* class_tid: 1, , table: mac_addr_cache.rd */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_MAC_ADDR_CACHE,
@@ -100,7 +100,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 1,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 1, wh_plus, table: control.0 */
+	{ /* class_tid: 1, , table: control.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -113,7 +113,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* class_tid: 1, wh_plus, table: l2_cntxt_tcam.0 */
+	{ /* class_tid: 1, , table: l2_cntxt_tcam.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_RX,
@@ -140,7 +140,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 2,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 1, wh_plus, table: mac_addr_cache.wr */
+	{ /* class_tid: 1, , table: mac_addr_cache.wr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_MAC_ADDR_CACHE,
@@ -163,7 +163,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 62,
 	.result_num_fields = 4
 	},
-	{ /* class_tid: 1, wh_plus, table: profile_tcam_cache.rd */
+	{ /* class_tid: 1, , table: profile_tcam_cache.rd */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
 	.resource_sub_type =
@@ -186,7 +186,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 3,
 	.ident_nums = 3
 	},
-	{ /* class_tid: 1, wh_plus, table: control.1 */
+	{ /* class_tid: 1, , table: control.1 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -199,7 +199,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* class_tid: 1, wh_plus, table: control.2 */
+	{ /* class_tid: 1, , table: control.2 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -218,7 +218,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 		.func_dst_opr = BNXT_ULP_RF_IDX_CC },
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* class_tid: 1, wh_plus, table: profile_tcam.ipv4 */
+	{ /* class_tid: 1, , table: profile_tcam.ipv4 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
 	.direction = TF_DIR_RX,
@@ -245,7 +245,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 6,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 1, wh_plus, table: profile_tcam.ipv6 */
+	{ /* class_tid: 1, , table: profile_tcam.ipv6 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
 	.direction = TF_DIR_RX,
@@ -272,7 +272,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 7,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 1, wh_plus, table: profile_tcam.ipv4_vxlan */
+	{ /* class_tid: 1, , table: profile_tcam.ipv4_vxlan */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
 	.direction = TF_DIR_RX,
@@ -299,7 +299,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 8,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 1, wh_plus, table: profile_tcam_cache.wr */
+	{ /* class_tid: 1, , table: profile_tcam_cache.wr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
 	.resource_sub_type =
@@ -320,10 +320,10 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.key_bit_size = 14,
 	.key_num_fields = 3,
 	.result_start_idx = 68,
-	.result_bit_size = 90,
+	.result_bit_size = 122,
 	.result_num_fields = 5
 	},
-	{ /* class_tid: 1, wh_plus, table: em.ipv4 */
+	{ /* class_tid: 1, , table: em.ipv4 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_RX,
@@ -345,7 +345,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 9
 	},
-	{ /* class_tid: 1, wh_plus, table: eem.ipv4 */
+	{ /* class_tid: 1, , table: eem.ipv4 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.direction = TF_DIR_RX,
@@ -367,7 +367,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 9
 	},
-	{ /* class_tid: 1, wh_plus, table: em.ipv6 */
+	{ /* class_tid: 1, , table: em.ipv6 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_RX,
@@ -389,7 +389,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 9
 	},
-	{ /* class_tid: 1, wh_plus, table: eem.ipv6 */
+	{ /* class_tid: 1, , table: eem.ipv6 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.direction = TF_DIR_RX,
@@ -411,7 +411,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 9
 	},
-	{ /* class_tid: 1, wh_plus, table: em.vxlan */
+	{ /* class_tid: 1, , table: em.vxlan */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_RX,
@@ -433,7 +433,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 9
 	},
-	{ /* class_tid: 1, wh_plus, table: eem.vxlan */
+	{ /* class_tid: 1, , table: eem.vxlan */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.direction = TF_DIR_RX,
@@ -455,7 +455,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 9
 	},
-	{ /* class_tid: 2, wh_plus, table: l2_cntxt_tcam_cache.rd */
+	{ /* class_tid: 2, , table: l2_cntxt_tcam_cache.rd */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM,
@@ -477,7 +477,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 9,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 2, wh_plus, table: mac_addr_cache.rd */
+	{ /* class_tid: 2, , table: mac_addr_cache.rd */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_MAC_ADDR_CACHE,
@@ -499,7 +499,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 10,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 2, wh_plus, table: control.0 */
+	{ /* class_tid: 2, , table: control.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -512,7 +512,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* class_tid: 2, wh_plus, table: l2_cntxt_tcam.0 */
+	{ /* class_tid: 2, , table: l2_cntxt_tcam.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_TX,
@@ -539,7 +539,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 11,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 2, wh_plus, table: mac_addr_cache.wr */
+	{ /* class_tid: 2, , table: mac_addr_cache.wr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_MAC_ADDR_CACHE,
@@ -562,7 +562,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 62,
 	.result_num_fields = 4
 	},
-	{ /* class_tid: 2, wh_plus, table: profile_tcam_cache.rd */
+	{ /* class_tid: 2, , table: profile_tcam_cache.rd */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_PROFILE_TCAM,
@@ -584,7 +584,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 12,
 	.ident_nums = 3
 	},
-	{ /* class_tid: 2, wh_plus, table: control.gen_tbl_miss */
+	{ /* class_tid: 2, , table: control.gen_tbl_miss */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -597,7 +597,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* class_tid: 2, wh_plus, table: control.conflict_check */
+	{ /* class_tid: 2, , table: control.conflict_check */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -616,7 +616,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 		.func_dst_opr = BNXT_ULP_RF_IDX_CC },
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* class_tid: 2, wh_plus, table: profile_tcam.ipv4 */
+	{ /* class_tid: 2, , table: profile_tcam.ipv4 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
 	.direction = TF_DIR_TX,
@@ -643,7 +643,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 15,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 2, wh_plus, table: profile_tcam.ipv6 */
+	{ /* class_tid: 2, , table: profile_tcam.ipv6 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
 	.direction = TF_DIR_TX,
@@ -670,7 +670,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 16,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 2, wh_plus, table: profile_tcam_cache.wr */
+	{ /* class_tid: 2, , table: profile_tcam_cache.wr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_PROFILE_TCAM,
@@ -690,10 +690,10 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.key_bit_size = 14,
 	.key_num_fields = 3,
 	.result_start_idx = 178,
-	.result_bit_size = 90,
+	.result_bit_size = 122,
 	.result_num_fields = 5
 	},
-	{ /* class_tid: 2, wh_plus, table: em.ipv4 */
+	{ /* class_tid: 2, , table: em.ipv4 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_TX,
@@ -715,7 +715,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 9
 	},
-	{ /* class_tid: 2, wh_plus, table: eem.ipv4 */
+	{ /* class_tid: 2, , table: eem.ipv4 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.direction = TF_DIR_TX,
@@ -737,7 +737,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 9
 	},
-	{ /* class_tid: 2, wh_plus, table: em.ipv6 */
+	{ /* class_tid: 2, , table: em.ipv6 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_TX,
@@ -759,7 +759,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 9
 	},
-	{ /* class_tid: 2, wh_plus, table: eem.ipv6 */
+	{ /* class_tid: 2, , table: eem.ipv6 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.direction = TF_DIR_TX,
@@ -781,7 +781,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 9
 	},
-	{ /* class_tid: 3, wh_plus, table: int_full_act_record.ing_0 */
+	{ /* class_tid: 3, , table: int_full_act_record.ing_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -802,7 +802,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26
 	},
-	{ /* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.ing_rd */
+	{ /* class_tid: 3, , table: l2_cntxt_tcam_cache.ing_rd */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM,
@@ -824,7 +824,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 17,
 	.ident_nums = 0
 	},
-	{ /* class_tid: 3, wh_plus, table: control.ing_0 */
+	{ /* class_tid: 3, , table: control.ing_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -837,7 +837,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* class_tid: 3, wh_plus, table: l2_cntxt_tcam.ing_0 */
+	{ /* class_tid: 3, , table: l2_cntxt_tcam.ing_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
 	.direction = TF_DIR_RX,
@@ -866,7 +866,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 17,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.ing_wr */
+	{ /* class_tid: 3, , table: l2_cntxt_tcam_cache.ing_wr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM,
@@ -889,7 +889,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 62,
 	.result_num_fields = 4
 	},
-	{ /* class_tid: 3, wh_plus, table: parif_def_lkup_arec_ptr.ing_0 */
+	{ /* class_tid: 3, , table: parif_def_lkup_arec_ptr.ing_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IF_TABLE,
 	.resource_type = TF_IF_TBL_TYPE_LKUP_PARIF_DFLT_ACT_REC_PTR,
 	.direction = TF_DIR_RX,
@@ -907,7 +907,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* class_tid: 3, wh_plus, table: parif_def_arec_ptr.ing_0 */
+	{ /* class_tid: 3, , table: parif_def_arec_ptr.ing_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IF_TABLE,
 	.resource_type = TF_IF_TBL_TYPE_PROF_PARIF_DFLT_ACT_REC_PTR,
 	.direction = TF_DIR_RX,
@@ -925,7 +925,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* class_tid: 3, wh_plus, table: parif_def_err_arec_ptr.ing_0 */
+	{ /* class_tid: 3, , table: parif_def_err_arec_ptr.ing_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IF_TABLE,
 	.resource_type = TF_IF_TBL_TYPE_PROF_PARIF_ERR_ACT_REC_PTR,
 	.direction = TF_DIR_RX,
@@ -943,7 +943,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* class_tid: 3, wh_plus, table: control.egr_0 */
+	{ /* class_tid: 3, , table: control.egr_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -955,7 +955,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* class_tid: 3, wh_plus, table: int_full_act_record.egr_vfr */
+	{ /* class_tid: 3, , table: int_full_act_record.egr_vfr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -977,7 +977,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 26,
 	.encap_num_fields = 0
 	},
-	{ /* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.egr_rd_vfr */
+	{ /* class_tid: 3, , table: l2_cntxt_tcam_cache.egr_rd_vfr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM,
@@ -999,7 +999,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 18,
 	.ident_nums = 0
 	},
-	{ /* class_tid: 3, wh_plus, table: control.egr_1 */
+	{ /* class_tid: 3, , table: control.egr_1 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -1012,7 +1012,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* class_tid: 3, wh_plus, table: l2_cntxt_tcam_bypass.egr_vfr */
+	{ /* class_tid: 3, , table: l2_cntxt_tcam_bypass.egr_vfr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
 	.direction = TF_DIR_TX,
@@ -1039,7 +1039,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 18,
 	.ident_nums = 0
 	},
-	{ /* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.egr_wr_vfr */
+	{ /* class_tid: 3, , table: l2_cntxt_tcam_cache.egr_wr_vfr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM,
@@ -1062,7 +1062,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 62,
 	.result_num_fields = 4
 	},
-	{ /* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.rd */
+	{ /* class_tid: 3, , table: l2_cntxt_tcam_cache.rd */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM,
@@ -1084,7 +1084,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 18,
 	.ident_nums = 0
 	},
-	{ /* class_tid: 3, wh_plus, table: control.egr_2 */
+	{ /* class_tid: 3, , table: control.egr_2 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -1097,7 +1097,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* class_tid: 3, wh_plus, table: l2_cntxt_tcam.egr_0 */
+	{ /* class_tid: 3, , table: l2_cntxt_tcam.egr_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
 	.direction = TF_DIR_TX,
@@ -1124,7 +1124,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 18,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.egr_wr */
+	{ /* class_tid: 3, , table: l2_cntxt_tcam_cache.egr_wr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM,
@@ -1147,7 +1147,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 62,
 	.result_num_fields = 4
 	},
-	{ /* class_tid: 3, wh_plus, table: int_full_act_record.egr_0 */
+	{ /* class_tid: 3, , table: int_full_act_record.egr_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -1169,7 +1169,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 26,
 	.encap_num_fields = 0
 	},
-	{ /* class_tid: 3, wh_plus, table: parif_def_lkup_arec_ptr.egr_0 */
+	{ /* class_tid: 3, , table: parif_def_lkup_arec_ptr.egr_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IF_TABLE,
 	.resource_type = TF_IF_TBL_TYPE_LKUP_PARIF_DFLT_ACT_REC_PTR,
 	.direction = TF_DIR_TX,
@@ -1187,7 +1187,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* class_tid: 3, wh_plus, table: parif_def_arec_ptr.egr_0 */
+	{ /* class_tid: 3, , table: parif_def_arec_ptr.egr_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IF_TABLE,
 	.resource_type = TF_IF_TBL_TYPE_PROF_PARIF_DFLT_ACT_REC_PTR,
 	.direction = TF_DIR_TX,
@@ -1205,7 +1205,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* class_tid: 3, wh_plus, table: parif_def_err_arec_ptr.egr_0 */
+	{ /* class_tid: 3, , table: parif_def_err_arec_ptr.egr_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IF_TABLE,
 	.resource_type = TF_IF_TBL_TYPE_PROF_PARIF_ERR_ACT_REC_PTR,
 	.direction = TF_DIR_TX,
@@ -1223,7 +1223,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* class_tid: 4, wh_plus, table: int_full_act_record.loopback */
+	{ /* class_tid: 4, , table: int_full_act_record.loopback */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -1245,7 +1245,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 26,
 	.encap_num_fields = 0
 	},
-	{ /* class_tid: 4, wh_plus, table: l2_cntxt_tcam_cache.vf_rd_egr */
+	{ /* class_tid: 4, , table: l2_cntxt_tcam_cache.vf_rd_egr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM,
@@ -1267,7 +1267,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 19,
 	.ident_nums = 0
 	},
-	{ /* class_tid: 4, wh_plus, table: control.vf_0 */
+	{ /* class_tid: 4, , table: control.vf_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -1280,7 +1280,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* class_tid: 4, wh_plus, table: l2_cntxt_tcam.vf_egr */
+	{ /* class_tid: 4, , table: l2_cntxt_tcam.vf_egr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
 	.direction = TF_DIR_TX,
@@ -1307,7 +1307,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 19,
 	.ident_nums = 1
 	},
-	{ /* class_tid: 4, wh_plus, table: l2_cntxt_tcam_cache.vf_egr_wr */
+	{ /* class_tid: 4, , table: l2_cntxt_tcam_cache.vf_egr_wr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM,
@@ -1330,7 +1330,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 62,
 	.result_num_fields = 4
 	},
-	{ /* class_tid: 4, wh_plus, table: parif_def_lkup_arec_ptr.vf_egr */
+	{ /* class_tid: 4, , table: parif_def_lkup_arec_ptr.vf_egr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IF_TABLE,
 	.resource_type = TF_IF_TBL_TYPE_LKUP_PARIF_DFLT_ACT_REC_PTR,
 	.direction = TF_DIR_TX,
@@ -1348,7 +1348,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* class_tid: 4, wh_plus, table: parif_def_arec_ptr.vf_egr */
+	{ /* class_tid: 4, , table: parif_def_arec_ptr.vf_egr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IF_TABLE,
 	.resource_type = TF_IF_TBL_TYPE_PROF_PARIF_DFLT_ACT_REC_PTR,
 	.direction = TF_DIR_TX,
@@ -1366,7 +1366,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* class_tid: 4, wh_plus, table: parif_def_err_arec_ptr.vf_egr */
+	{ /* class_tid: 4, , table: parif_def_err_arec_ptr.vf_egr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IF_TABLE,
 	.resource_type = TF_IF_TBL_TYPE_PROF_PARIF_ERR_ACT_REC_PTR,
 	.direction = TF_DIR_TX,
@@ -1384,7 +1384,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* class_tid: 4, wh_plus, table: int_full_act_record.vf_ing */
+	{ /* class_tid: 4, , table: int_full_act_record.vf_ing */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -1406,7 +1406,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 26,
 	.encap_num_fields = 0
 	},
-	{ /* class_tid: 4, wh_plus, table: l2_cntxt_tcam_bypass.vf_ing */
+	{ /* class_tid: 4, , table: l2_cntxt_tcam_bypass.vf_ing */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_RX,
@@ -1434,7 +1434,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 20,
 	.ident_nums = 0
 	},
-	{ /* class_tid: 4, wh_plus, table: l2_cntxt_tcam_cache.vfr_rd_egr0 */
+	{ /* class_tid: 4, , table: l2_cntxt_tcam_cache.vfr_rd_egr0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM,
@@ -1456,7 +1456,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 20,
 	.ident_nums = 0
 	},
-	{ /* class_tid: 4, wh_plus, table: control.vfr_0 */
+	{ /* class_tid: 4, , table: control.vfr_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -1469,7 +1469,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* class_tid: 4, wh_plus, table: l2_cntxt_tcam_bypass.vfr_egr0 */
+	{ /* class_tid: 4, , table: l2_cntxt_tcam_bypass.vfr_egr0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
 	.direction = TF_DIR_TX,
@@ -1496,7 +1496,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 20,
 	.ident_nums = 0
 	},
-	{ /* class_tid: 4, wh_plus, table: l2_cntxt_tcam_cache.vfr_wr_egr0 */
+	{ /* class_tid: 4, , table: l2_cntxt_tcam_cache.vfr_wr_egr0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_L2_CNTXT_TCAM,
@@ -1519,7 +1519,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 62,
 	.result_num_fields = 4
 	},
-	{ /* class_tid: 4, wh_plus, table: int_vtag_encap_record.vfr_egr0 */
+	{ /* class_tid: 4, , table: int_vtag_encap_record.vfr_egr0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_ENCAP_8B,
 	.resource_sub_type =
@@ -1541,7 +1541,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 0,
 	.encap_num_fields = 12
 	},
-	{ /* class_tid: 4, wh_plus, table: int_full_act_record.vfr_egr0 */
+	{ /* class_tid: 4, , table: int_full_act_record.vfr_egr0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -1562,7 +1562,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26
 	},
-	{ /* class_tid: 4, wh_plus, table: int_full_act_record.vfr_ing0 */
+	{ /* class_tid: 4, , table: int_full_act_record.vfr_ing0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -1583,7 +1583,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26
 	},
-	{ /* class_tid: 4, table: l2_cntxt_tcam_bypass.vfr_dtagged_ing0 */
+	{ /* class_tid: 4, , table: l2_cntxt_tcam_bypass.vfr_dtagged_ing0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_RX,
@@ -1611,7 +1611,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.ident_start_idx = 20,
 	.ident_nums = 0
 	},
-	{ /* class_tid: 4, table: l2_cntxt_tcam_bypass.vfr_stagged_ing0 */
+	{ /* class_tid: 4, , table: l2_cntxt_tcam_bypass.vfr_stagged_ing0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_RX,
@@ -1838,7 +1838,7 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_class_cond_list[] = {
 };
 
 struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
-	/* class_tid: 1, wh_plus, table: l2_cntxt_tcam_cache.rd */
+	/* class_tid: 1, , table: l2_cntxt_tcam_cache.rd */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -1859,7 +1859,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_GLB_HF_ID_SVIF_INDEX & 0xff}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: mac_addr_cache.rd */
+	/* class_tid: 1, , table: mac_addr_cache.rd */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -1979,7 +1979,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_GLB_HF_ID_O_ETH_DMAC & 0xff}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: l2_cntxt_tcam.0 */
+	/* class_tid: 1, , table: l2_cntxt_tcam.0 */
 	{
 	.field_info_mask = {
 		.description = "l2_ivlan_vid",
@@ -2215,7 +2215,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: mac_addr_cache.wr */
+	/* class_tid: 1, , table: mac_addr_cache.wr */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -2335,7 +2335,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_GLB_HF_ID_O_ETH_DMAC & 0xff}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam_cache.rd */
+	/* class_tid: 1, , table: profile_tcam_cache.rd */
 	{
 	.field_info_mask = {
 		.description = "recycle_cnt",
@@ -2398,7 +2398,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_HDR_SIG_ID & 0xff}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam.ipv4 */
+	/* class_tid: 1, , table: profile_tcam.ipv4 */
 	{
 	.field_info_mask = {
 		.description = "l4_hdr_is_udp_tcp",
@@ -3080,7 +3080,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam.ipv6 */
+	/* class_tid: 1, , table: profile_tcam.ipv6 */
 	{
 	.field_info_mask = {
 		.description = "l4_hdr_is_udp_tcp",
@@ -3764,7 +3764,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam.ipv4_vxlan */
+	/* class_tid: 1, , table: profile_tcam.ipv4_vxlan */
 	{
 	.field_info_mask = {
 		.description = "l4_hdr_is_udp_tcp",
@@ -4406,7 +4406,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam_cache.wr */
+	/* class_tid: 1, , table: profile_tcam_cache.wr */
 	{
 	.field_info_mask = {
 		.description = "recycle_cnt",
@@ -4469,7 +4469,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_HDR_SIG_ID & 0xff}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: em.ipv4 */
+	/* class_tid: 1, , table: em.ipv4 */
 	{
 	.field_info_mask = {
 		.description = "spare",
@@ -4671,7 +4671,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_RF_IDX_EM_PROFILE_ID_0 & 0xff}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: eem.ipv4 */
+	/* class_tid: 1, , table: eem.ipv4 */
 	{
 	.field_info_mask = {
 		.description = "spare",
@@ -4873,7 +4873,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_RF_IDX_EM_PROFILE_ID_0 & 0xff}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: em.ipv6 */
+	/* class_tid: 1, , table: em.ipv6 */
 	{
 	.field_info_mask = {
 		.description = "spare",
@@ -5089,7 +5089,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_RF_IDX_EM_PROFILE_ID_0 & 0xff}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: eem.ipv6 */
+	/* class_tid: 1, , table: eem.ipv6 */
 	{
 	.field_info_mask = {
 		.description = "spare",
@@ -5305,7 +5305,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_RF_IDX_EM_PROFILE_ID_0 & 0xff}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: em.vxlan */
+	/* class_tid: 1, , table: em.vxlan */
 	{
 	.field_info_mask = {
 		.description = "spare",
@@ -5487,7 +5487,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_RF_IDX_EM_PROFILE_ID_0 & 0xff}
 		}
 	},
-	/* class_tid: 1, wh_plus, table: eem.vxlan */
+	/* class_tid: 1, , table: eem.vxlan */
 	{
 	.field_info_mask = {
 		.description = "spare",
@@ -5669,7 +5669,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_RF_IDX_EM_PROFILE_ID_0 & 0xff}
 		}
 	},
-	/* class_tid: 2, wh_plus, table: l2_cntxt_tcam_cache.rd */
+	/* class_tid: 2, , table: l2_cntxt_tcam_cache.rd */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -5690,7 +5690,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_GLB_HF_ID_SVIF_INDEX & 0xff}
 		}
 	},
-	/* class_tid: 2, wh_plus, table: mac_addr_cache.rd */
+	/* class_tid: 2, , table: mac_addr_cache.rd */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -5810,7 +5810,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_GLB_HF_ID_O_ETH_SMAC & 0xff}
 		}
 	},
-	/* class_tid: 2, wh_plus, table: l2_cntxt_tcam.0 */
+	/* class_tid: 2, , table: l2_cntxt_tcam.0 */
 	{
 	.field_info_mask = {
 		.description = "l2_ivlan_vid",
@@ -6046,7 +6046,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 2, wh_plus, table: mac_addr_cache.wr */
+	/* class_tid: 2, , table: mac_addr_cache.wr */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -6166,7 +6166,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_GLB_HF_ID_O_ETH_SMAC & 0xff}
 		}
 	},
-	/* class_tid: 2, wh_plus, table: profile_tcam_cache.rd */
+	/* class_tid: 2, , table: profile_tcam_cache.rd */
 	{
 	.field_info_mask = {
 		.description = "recycle_cnt",
@@ -6229,7 +6229,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_HDR_SIG_ID & 0xff}
 		}
 	},
-	/* class_tid: 2, wh_plus, table: profile_tcam.ipv4 */
+	/* class_tid: 2, , table: profile_tcam.ipv4 */
 	{
 	.field_info_mask = {
 		.description = "l4_hdr_is_udp_tcp",
@@ -6911,7 +6911,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 2, wh_plus, table: profile_tcam.ipv6 */
+	/* class_tid: 2, , table: profile_tcam.ipv6 */
 	{
 	.field_info_mask = {
 		.description = "l4_hdr_is_udp_tcp",
@@ -7595,7 +7595,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 2, wh_plus, table: profile_tcam_cache.wr */
+	/* class_tid: 2, , table: profile_tcam_cache.wr */
 	{
 	.field_info_mask = {
 		.description = "recycle_cnt",
@@ -7658,7 +7658,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_HDR_SIG_ID & 0xff}
 		}
 	},
-	/* class_tid: 2, wh_plus, table: em.ipv4 */
+	/* class_tid: 2, , table: em.ipv4 */
 	{
 	.field_info_mask = {
 		.description = "spare",
@@ -7860,7 +7860,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_RF_IDX_EM_PROFILE_ID_0 & 0xff}
 		}
 	},
-	/* class_tid: 2, wh_plus, table: eem.ipv4 */
+	/* class_tid: 2, , table: eem.ipv4 */
 	{
 	.field_info_mask = {
 		.description = "spare",
@@ -8062,7 +8062,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_RF_IDX_EM_PROFILE_ID_0 & 0xff}
 		}
 	},
-	/* class_tid: 2, wh_plus, table: em.ipv6 */
+	/* class_tid: 2, , table: em.ipv6 */
 	{
 	.field_info_mask = {
 		.description = "spare",
@@ -8278,7 +8278,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_RF_IDX_EM_PROFILE_ID_0 & 0xff}
 		}
 	},
-	/* class_tid: 2, wh_plus, table: eem.ipv6 */
+	/* class_tid: 2, , table: eem.ipv6 */
 	{
 	.field_info_mask = {
 		.description = "spare",
@@ -8494,7 +8494,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_RF_IDX_EM_PROFILE_ID_0 & 0xff}
 		}
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.ing_rd */
+	/* class_tid: 3, , table: l2_cntxt_tcam_cache.ing_rd */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -8514,7 +8514,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_PHY_PORT_SVIF & 0xff}
 		}
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam.ing_0 */
+	/* class_tid: 3, , table: l2_cntxt_tcam.ing_0 */
 	{
 	.field_info_mask = {
 		.description = "l2_ivlan_vid",
@@ -8665,17 +8665,13 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	.field_info_spec = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
@@ -8710,7 +8706,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.ing_wr */
+	/* class_tid: 3, , table: l2_cntxt_tcam_cache.ing_wr */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -8730,7 +8726,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_PHY_PORT_SVIF & 0xff}
 		}
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.egr_rd_vfr */
+	/* class_tid: 3, , table: l2_cntxt_tcam_cache.egr_rd_vfr */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -8750,7 +8746,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_DRV_FUNC_SVIF & 0xff}
 		}
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam_bypass.egr_vfr */
+	/* class_tid: 3, , table: l2_cntxt_tcam_bypass.egr_vfr */
 	{
 	.field_info_mask = {
 		.description = "l2_ivlan_vid",
@@ -8901,17 +8897,13 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	.field_info_spec = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
@@ -8946,7 +8938,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.egr_wr_vfr */
+	/* class_tid: 3, , table: l2_cntxt_tcam_cache.egr_wr_vfr */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -8966,7 +8958,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_DRV_FUNC_SVIF & 0xff}
 		}
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.rd */
+	/* class_tid: 3, , table: l2_cntxt_tcam_cache.rd */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -8986,7 +8978,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_DRV_FUNC_SVIF & 0xff}
 		}
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam.egr_0 */
+	/* class_tid: 3, , table: l2_cntxt_tcam.egr_0 */
 	{
 	.field_info_mask = {
 		.description = "l2_ivlan_vid",
@@ -9137,17 +9129,13 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	.field_info_spec = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
@@ -9182,7 +9170,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.egr_wr */
+	/* class_tid: 3, , table: l2_cntxt_tcam_cache.egr_wr */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -9202,7 +9190,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_DRV_FUNC_SVIF & 0xff}
 		}
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam_cache.vf_rd_egr */
+	/* class_tid: 4, , table: l2_cntxt_tcam_cache.vf_rd_egr */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -9222,7 +9210,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_VF_FUNC_SVIF & 0xff}
 		}
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam.vf_egr */
+	/* class_tid: 4, , table: l2_cntxt_tcam.vf_egr */
 	{
 	.field_info_mask = {
 		.description = "l2_ivlan_vid",
@@ -9373,17 +9361,13 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	.field_info_spec = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
@@ -9418,7 +9402,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam_cache.vf_egr_wr */
+	/* class_tid: 4, , table: l2_cntxt_tcam_cache.vf_egr_wr */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -9438,7 +9422,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_VF_FUNC_SVIF & 0xff}
 		}
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam_bypass.vf_ing */
+	/* class_tid: 4, , table: l2_cntxt_tcam_bypass.vf_ing */
 	{
 	.field_info_mask = {
 		.description = "l2_ivlan_vid",
@@ -9589,17 +9573,13 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	.field_info_spec = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
@@ -9634,7 +9614,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam_cache.vfr_rd_egr0 */
+	/* class_tid: 4, , table: l2_cntxt_tcam_cache.vfr_rd_egr0 */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -9654,7 +9634,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_DRV_FUNC_SVIF & 0xff}
 		}
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam_bypass.vfr_egr0 */
+	/* class_tid: 4, , table: l2_cntxt_tcam_bypass.vfr_egr0 */
 	{
 	.field_info_mask = {
 		.description = "l2_ivlan_vid",
@@ -9805,17 +9785,13 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	.field_info_spec = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
@@ -9850,7 +9826,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam_cache.vfr_wr_egr0 */
+	/* class_tid: 4, , table: l2_cntxt_tcam_cache.vfr_wr_egr0 */
 	{
 	.field_info_mask = {
 		.description = "svif",
@@ -9870,7 +9846,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		BNXT_ULP_CF_IDX_DRV_FUNC_SVIF & 0xff}
 		}
 	},
-	/* class_tid: 4, table: l2_cntxt_tcam_bypass.vfr_dtagged_ing0 */
+	/* class_tid: 4, , table: l2_cntxt_tcam_bypass.vfr_dtagged_ing0 */
 	{
 	.field_info_mask = {
 		.description = "l2_ivlan_vid",
@@ -10031,17 +10007,13 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_opr1 = {
-			0xff}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	.field_info_spec = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
@@ -10076,7 +10048,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 4,  table: l2_cntxt_tcam_bypass.vfr_stagged_ing0 */
+	/* class_tid: 4, , table: l2_cntxt_tcam_bypass.vfr_stagged_ing0 */
 	{
 	.field_info_mask = {
 		.description = "l2_ivlan_vid",
@@ -10237,17 +10209,13 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_opr1 = {
-			0xff}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	.field_info_spec = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_WP_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
@@ -10285,7 +10253,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 };
 
 struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
-	/* class_tid: 1, wh_plus, table: l2_cntxt_tcam.0 */
+	/* class_tid: 1, , table: l2_cntxt_tcam.0 */
 	{
 	.description = "l2_cntxt_id",
 	.field_bit_size = 10,
@@ -10375,7 +10343,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 1, wh_plus, table: mac_addr_cache.wr */
+	/* class_tid: 1, , table: mac_addr_cache.wr */
 	{
 	.description = "rid",
 	.field_bit_size = 32,
@@ -10406,7 +10374,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam.ipv4 */
+	/* class_tid: 1, , table: profile_tcam.ipv4 */
 	{
 	.description = "wc_key_id",
 	.field_bit_size = 4,
@@ -10552,7 +10520,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam.ipv6 */
+	/* class_tid: 1, , table: profile_tcam.ipv6 */
 	{
 	.description = "wc_key_id",
 	.field_bit_size = 4,
@@ -10698,7 +10666,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam.ipv4_vxlan */
+	/* class_tid: 1, , table: profile_tcam.ipv4_vxlan */
 	{
 	.description = "wc_key_id",
 	.field_bit_size = 4,
@@ -10816,7 +10784,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam_cache.wr */
+	/* class_tid: 1, , table: profile_tcam_cache.wr */
 	{
 	.description = "rid",
 	.field_bit_size = 32,
@@ -10852,14 +10820,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	},
 	{
 	.description = "flow_sig_id",
-	.field_bit_size = 32,
+	.field_bit_size = 64,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 	(BNXT_ULP_CF_IDX_FLOW_SIG_ID >> 8) & 0xff,
 	BNXT_ULP_CF_IDX_FLOW_SIG_ID & 0xff}
 	},
-	/* class_tid: 1, wh_plus, table: em.ipv4 */
+	/* class_tid: 1, , table: em.ipv4 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 33,
@@ -10921,7 +10889,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opr1 = {
 	1}
 	},
-	/* class_tid: 1, wh_plus, table: eem.ipv4 */
+	/* class_tid: 1, , table: eem.ipv4 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 33,
@@ -10989,7 +10957,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opr1 = {
 	1}
 	},
-	/* class_tid: 1, wh_plus, table: em.ipv6 */
+	/* class_tid: 1, , table: em.ipv6 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 33,
@@ -11051,7 +11019,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opr1 = {
 	1}
 	},
-	/* class_tid: 1, wh_plus, table: eem.ipv6 */
+	/* class_tid: 1, , table: eem.ipv6 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 33,
@@ -11119,7 +11087,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opr1 = {
 	1}
 	},
-	/* class_tid: 1, wh_plus, table: em.vxlan */
+	/* class_tid: 1, , table: em.vxlan */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 33,
@@ -11181,7 +11149,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opr1 = {
 	1}
 	},
-	/* class_tid: 1, wh_plus, table: eem.vxlan */
+	/* class_tid: 1, , table: eem.vxlan */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 33,
@@ -11249,7 +11217,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opr1 = {
 	1}
 	},
-	/* class_tid: 2, wh_plus, table: l2_cntxt_tcam.0 */
+	/* class_tid: 2, , table: l2_cntxt_tcam.0 */
 	{
 	.description = "l2_cntxt_id",
 	.field_bit_size = 10,
@@ -11349,7 +11317,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 2, wh_plus, table: mac_addr_cache.wr */
+	/* class_tid: 2, , table: mac_addr_cache.wr */
 	{
 	.description = "rid",
 	.field_bit_size = 32,
@@ -11383,7 +11351,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 2, wh_plus, table: profile_tcam.ipv4 */
+	/* class_tid: 2, , table: profile_tcam.ipv4 */
 	{
 	.description = "wc_key_id",
 	.field_bit_size = 4,
@@ -11529,7 +11497,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 2, wh_plus, table: profile_tcam.ipv6 */
+	/* class_tid: 2, , table: profile_tcam.ipv6 */
 	{
 	.description = "wc_key_id",
 	.field_bit_size = 4,
@@ -11675,7 +11643,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 2, wh_plus, table: profile_tcam_cache.wr */
+	/* class_tid: 2, , table: profile_tcam_cache.wr */
 	{
 	.description = "rid",
 	.field_bit_size = 32,
@@ -11711,14 +11679,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	},
 	{
 	.description = "flow_sig_id",
-	.field_bit_size = 32,
+	.field_bit_size = 64,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 	(BNXT_ULP_CF_IDX_FLOW_SIG_ID >> 8) & 0xff,
 	BNXT_ULP_CF_IDX_FLOW_SIG_ID & 0xff}
 	},
-	/* class_tid: 2, wh_plus, table: em.ipv4 */
+	/* class_tid: 2, , table: em.ipv4 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 33,
@@ -11780,7 +11748,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opr1 = {
 	1}
 	},
-	/* class_tid: 2, wh_plus, table: eem.ipv4 */
+	/* class_tid: 2, , table: eem.ipv4 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 33,
@@ -11848,7 +11816,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opr1 = {
 	1}
 	},
-	/* class_tid: 2, wh_plus, table: em.ipv6 */
+	/* class_tid: 2, , table: em.ipv6 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 33,
@@ -11910,7 +11878,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opr1 = {
 	1}
 	},
-	/* class_tid: 2, wh_plus, table: eem.ipv6 */
+	/* class_tid: 2, , table: eem.ipv6 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 33,
@@ -11978,7 +11946,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opr1 = {
 	1}
 	},
-	/* class_tid: 3, wh_plus, table: int_full_act_record.ing_0 */
+	/* class_tid: 3, , table: int_full_act_record.ing_0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -12138,7 +12106,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam.ing_0 */
+	/* class_tid: 3, , table: l2_cntxt_tcam.ing_0 */
 	{
 	.description = "l2_cntxt_id",
 	.field_bit_size = 10,
@@ -12228,7 +12196,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.ing_wr */
+	/* class_tid: 3, , table: l2_cntxt_tcam_cache.ing_wr */
 	{
 	.description = "rid",
 	.field_bit_size = 32,
@@ -12262,7 +12230,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 3, wh_plus, table: parif_def_lkup_arec_ptr.ing_0 */
+	/* class_tid: 3, , table: parif_def_lkup_arec_ptr.ing_0 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 32,
@@ -12272,7 +12240,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
 	BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
 	},
-	/* class_tid: 3, wh_plus, table: parif_def_arec_ptr.ing_0 */
+	/* class_tid: 3, , table: parif_def_arec_ptr.ing_0 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 32,
@@ -12282,7 +12250,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
 	BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
 	},
-	/* class_tid: 3, wh_plus, table: parif_def_err_arec_ptr.ing_0 */
+	/* class_tid: 3, , table: parif_def_err_arec_ptr.ing_0 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 32,
@@ -12292,7 +12260,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
 	BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
 	},
-	/* class_tid: 3, wh_plus, table: int_full_act_record.egr_vfr */
+	/* class_tid: 3, , table: int_full_act_record.egr_vfr */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -12452,7 +12420,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam_bypass.egr_vfr */
+	/* class_tid: 3, , table: l2_cntxt_tcam_bypass.egr_vfr */
 	{
 	.description = "act_record_ptr",
 	.field_bit_size = 16,
@@ -12540,7 +12508,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.egr_wr_vfr */
+	/* class_tid: 3, , table: l2_cntxt_tcam_cache.egr_wr_vfr */
 	{
 	.description = "rid",
 	.field_bit_size = 32,
@@ -12571,7 +12539,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam.egr_0 */
+	/* class_tid: 3, , table: l2_cntxt_tcam.egr_0 */
 	{
 	.description = "l2_cntxt_id",
 	.field_bit_size = 10,
@@ -12661,7 +12629,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam_cache.egr_wr */
+	/* class_tid: 3, , table: l2_cntxt_tcam_cache.egr_wr */
 	{
 	.description = "rid",
 	.field_bit_size = 32,
@@ -12695,7 +12663,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 3, wh_plus, table: int_full_act_record.egr_0 */
+	/* class_tid: 3, , table: int_full_act_record.egr_0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -12855,7 +12823,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 3, wh_plus, table: parif_def_lkup_arec_ptr.egr_0 */
+	/* class_tid: 3, , table: parif_def_lkup_arec_ptr.egr_0 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 32,
@@ -12865,7 +12833,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
 	BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
 	},
-	/* class_tid: 3, wh_plus, table: parif_def_arec_ptr.egr_0 */
+	/* class_tid: 3, , table: parif_def_arec_ptr.egr_0 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 32,
@@ -12875,7 +12843,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
 	BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
 	},
-	/* class_tid: 3, wh_plus, table: parif_def_err_arec_ptr.egr_0 */
+	/* class_tid: 3, , table: parif_def_err_arec_ptr.egr_0 */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 32,
@@ -12885,7 +12853,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
 	BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
 	},
-	/* class_tid: 4, wh_plus, table: int_full_act_record.loopback */
+	/* class_tid: 4, , table: int_full_act_record.loopback */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -13045,7 +13013,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam.vf_egr */
+	/* class_tid: 4, , table: l2_cntxt_tcam.vf_egr */
 	{
 	.description = "l2_cntxt_id",
 	.field_bit_size = 10,
@@ -13134,7 +13102,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam_cache.vf_egr_wr */
+	/* class_tid: 4, , table: l2_cntxt_tcam_cache.vf_egr_wr */
 	{
 	.description = "rid",
 	.field_bit_size = 32,
@@ -13168,7 +13136,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 4, wh_plus, table: parif_def_lkup_arec_ptr.vf_egr */
+	/* class_tid: 4, , table: parif_def_lkup_arec_ptr.vf_egr */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 32,
@@ -13178,7 +13146,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	(BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR >> 8) & 0xff,
 	BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR & 0xff}
 	},
-	/* class_tid: 4, wh_plus, table: parif_def_arec_ptr.vf_egr */
+	/* class_tid: 4, , table: parif_def_arec_ptr.vf_egr */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 32,
@@ -13188,7 +13156,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	(BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR >> 8) & 0xff,
 	BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR & 0xff}
 	},
-	/* class_tid: 4, wh_plus, table: parif_def_err_arec_ptr.vf_egr */
+	/* class_tid: 4, , table: parif_def_err_arec_ptr.vf_egr */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 32,
@@ -13198,7 +13166,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	(BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR >> 8) & 0xff,
 	BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR & 0xff}
 	},
-	/* class_tid: 4, wh_plus, table: int_full_act_record.vf_ing */
+	/* class_tid: 4, , table: int_full_act_record.vf_ing */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -13358,7 +13326,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam_bypass.vf_ing */
+	/* class_tid: 4, , table: l2_cntxt_tcam_bypass.vf_ing */
 	{
 	.description = "act_record_ptr",
 	.field_bit_size = 16,
@@ -13444,7 +13412,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam_bypass.vfr_egr0 */
+	/* class_tid: 4, , table: l2_cntxt_tcam_bypass.vfr_egr0 */
 	{
 	.description = "act_record_ptr",
 	.field_bit_size = 16,
@@ -13529,7 +13497,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam_cache.vfr_wr_egr0 */
+	/* class_tid: 4, , table: l2_cntxt_tcam_cache.vfr_wr_egr0 */
 	{
 	.description = "rid",
 	.field_bit_size = 32,
@@ -13560,7 +13528,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 4, wh_plus, table: int_vtag_encap_record.vfr_egr0 */
+	/* class_tid: 4, , table: int_vtag_encap_record.vfr_egr0 */
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
@@ -13643,7 +13611,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 4, wh_plus, table: int_full_act_record.vfr_egr0 */
+	/* class_tid: 4, , table: int_full_act_record.vfr_egr0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -13806,7 +13774,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 4, wh_plus, table: int_full_act_record.vfr_ing0 */
+	/* class_tid: 4, , table: int_full_act_record.vfr_ing0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -13968,7 +13936,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 4, table: l2_cntxt_tcam_bypass.vfr_dtagged_ing0 */
+	/* class_tid: 4, , table: l2_cntxt_tcam_bypass.vfr_dtagged_ing0 */
 	{
 	.description = "act_record_ptr",
 	.field_bit_size = 16,
@@ -14054,7 +14022,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* class_tid: 4, table: l2_cntxt_tcam_bypass.vfr_stagged_ing0 */
+	/* class_tid: 4, , table: l2_cntxt_tcam_bypass.vfr_stagged_ing0 */
 	{
 	.description = "act_record_ptr",
 	.field_bit_size = 16,
@@ -14143,21 +14111,21 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 };
 
 struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
-	/* class_tid: 1, wh_plus, table: l2_cntxt_tcam_cache.rd */
+	/* class_tid: 1, , table: l2_cntxt_tcam_cache.rd */
 	{
 	.description = "l2_cntxt_id",
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
 	.ident_bit_pos = 42
 	},
-	/* class_tid: 1, wh_plus, table: mac_addr_cache.rd */
+	/* class_tid: 1, , table: mac_addr_cache.rd */
 	{
 	.description = "l2_cntxt_id",
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
 	.ident_bit_pos = 42
 	},
-	/* class_tid: 1, wh_plus, table: l2_cntxt_tcam.0 */
+	/* class_tid: 1, , table: l2_cntxt_tcam.0 */
 	{
 	.description = "l2_cntxt_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -14166,7 +14134,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	.ident_bit_size = 10,
 	.ident_bit_pos = 0
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam_cache.rd */
+	/* class_tid: 1, , table: profile_tcam_cache.rd */
 	{
 	.description = "em_profile_id",
 	.regfile_idx = BNXT_ULP_RF_IDX_EM_PROFILE_ID_0,
@@ -14176,7 +14144,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	{
 	.description = "flow_sig_id",
 	.regfile_idx = BNXT_ULP_RF_IDX_FLOW_SIG_ID,
-	.ident_bit_size = 32,
+	.ident_bit_size = 64,
 	.ident_bit_pos = 58
 	},
 	{
@@ -14185,7 +14153,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	.ident_bit_size = 10,
 	.ident_bit_pos = 32
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam.ipv4 */
+	/* class_tid: 1, , table: profile_tcam.ipv4 */
 	{
 	.description = "em_profile_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -14194,7 +14162,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	.ident_bit_size = 8,
 	.ident_bit_pos = 28
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam.ipv6 */
+	/* class_tid: 1, , table: profile_tcam.ipv6 */
 	{
 	.description = "em_profile_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -14203,7 +14171,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	.ident_bit_size = 8,
 	.ident_bit_pos = 28
 	},
-	/* class_tid: 1, wh_plus, table: profile_tcam.ipv4_vxlan */
+	/* class_tid: 1, , table: profile_tcam.ipv4_vxlan */
 	{
 	.description = "em_profile_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -14212,21 +14180,21 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	.ident_bit_size = 8,
 	.ident_bit_pos = 28
 	},
-	/* class_tid: 2, wh_plus, table: l2_cntxt_tcam_cache.rd */
+	/* class_tid: 2, , table: l2_cntxt_tcam_cache.rd */
 	{
 	.description = "l2_cntxt_id",
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
 	.ident_bit_pos = 42
 	},
-	/* class_tid: 2, wh_plus, table: mac_addr_cache.rd */
+	/* class_tid: 2, , table: mac_addr_cache.rd */
 	{
 	.description = "l2_cntxt_id",
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
 	.ident_bit_pos = 42
 	},
-	/* class_tid: 2, wh_plus, table: l2_cntxt_tcam.0 */
+	/* class_tid: 2, , table: l2_cntxt_tcam.0 */
 	{
 	.description = "l2_cntxt_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -14235,7 +14203,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	.ident_bit_size = 10,
 	.ident_bit_pos = 0
 	},
-	/* class_tid: 2, wh_plus, table: profile_tcam_cache.rd */
+	/* class_tid: 2, , table: profile_tcam_cache.rd */
 	{
 	.description = "em_profile_id",
 	.regfile_idx = BNXT_ULP_RF_IDX_EM_PROFILE_ID_0,
@@ -14245,7 +14213,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	{
 	.description = "flow_sig_id",
 	.regfile_idx = BNXT_ULP_RF_IDX_FLOW_SIG_ID,
-	.ident_bit_size = 32,
+	.ident_bit_size = 64,
 	.ident_bit_pos = 58
 	},
 	{
@@ -14254,7 +14222,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	.ident_bit_size = 10,
 	.ident_bit_pos = 32
 	},
-	/* class_tid: 2, wh_plus, table: profile_tcam.ipv4 */
+	/* class_tid: 2, , table: profile_tcam.ipv4 */
 	{
 	.description = "em_profile_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -14263,7 +14231,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	.ident_bit_size = 8,
 	.ident_bit_pos = 28
 	},
-	/* class_tid: 2, wh_plus, table: profile_tcam.ipv6 */
+	/* class_tid: 2, , table: profile_tcam.ipv6 */
 	{
 	.description = "em_profile_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -14272,7 +14240,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	.ident_bit_size = 8,
 	.ident_bit_pos = 28
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam.ing_0 */
+	/* class_tid: 3, , table: l2_cntxt_tcam.ing_0 */
 	{
 	.description = "l2_cntxt_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -14281,7 +14249,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	.ident_bit_size = 10,
 	.ident_bit_pos = 0
 	},
-	/* class_tid: 3, wh_plus, table: l2_cntxt_tcam.egr_0 */
+	/* class_tid: 3, , table: l2_cntxt_tcam.egr_0 */
 	{
 	.description = "l2_cntxt_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -14290,7 +14258,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	.ident_bit_size = 10,
 	.ident_bit_pos = 0
 	},
-	/* class_tid: 4, wh_plus, table: l2_cntxt_tcam.vf_egr */
+	/* class_tid: 4, , table: l2_cntxt_tcam.vf_egr */
 	{
 	.description = "l2_cntxt_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,

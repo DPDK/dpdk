@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Sun Mar 21 13:04:51 2021 */
+/* date: Thu May 13 18:15:56 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -12,7 +12,7 @@
 
 /* Mapper templates for header act list */
 struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
-	/* act_tid: 1, wh_plus, ingress */
+	/* act_tid: 1, ingress */
 	[1] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
@@ -22,7 +22,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 		.cond_start_idx = 0,
 		.cond_nums = 9 }
 	},
-	/* act_tid: 2, wh_plus, ingress */
+	/* act_tid: 2, ingress */
 	[2] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 7,
@@ -32,7 +32,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 		.cond_start_idx = 14,
 		.cond_nums = 0 }
 	},
-	/* act_tid: 3, wh_plus, ingress */
+	/* act_tid: 3, ingress */
 	[3] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
@@ -42,7 +42,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 		.cond_start_idx = 15,
 		.cond_nums = 0 }
 	},
-	/* act_tid: 4, wh_plus, egress */
+	/* act_tid: 4, egress */
 	[4] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
@@ -52,7 +52,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 		.cond_start_idx = 20,
 		.cond_nums = 0 }
 	},
-	/* act_tid: 5, wh_plus, egress */
+	/* act_tid: 5, egress */
 	[5] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
@@ -62,7 +62,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 		.cond_start_idx = 28,
 		.cond_nums = 0 }
 	},
-	/* act_tid: 6, wh_plus, egress */
+	/* act_tid: 6, egress */
 	[6] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
@@ -75,7 +75,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 };
 
 struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
-	{ /* act_tid: 1, wh_plus, table: shared_mirror_record.rd */
+	{ /* act_tid: 1, , table: shared_mirror_record.rd */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -98,7 +98,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.ident_start_idx = 0,
 	.ident_nums = 1
 	},
-	{ /* act_tid: 1, wh_plus, table: int_flow_counter_tbl.0 */
+	{ /* act_tid: 1, , table: int_flow_counter_tbl.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -119,7 +119,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 1
 	},
-	{ /* act_tid: 1, wh_plus, table: int_vtag_encap_record.0 */
+	{ /* act_tid: 1, , table: int_vtag_encap_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_ENCAP_16B,
 	.resource_sub_type =
@@ -141,7 +141,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 0,
 	.encap_num_fields = 12
 	},
-	{ /* act_tid: 1, wh_plus, table: int_full_act_record.0 */
+	{ /* act_tid: 1, , table: int_full_act_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -163,7 +163,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 26,
 	.encap_num_fields = 0
 	},
-	{ /* act_tid: 1, wh_plus, table: ext_full_act_record.0 */
+	{ /* act_tid: 1, , table: ext_full_act_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_EXT,
 	.resource_sub_type =
@@ -185,7 +185,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 26,
 	.encap_num_fields = 12
 	},
-	{ /* act_tid: 2, wh_plus, table: control.0 */
+	{ /* act_tid: 2, , table: control.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -198,7 +198,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
-	{ /* act_tid: 2, wh_plus, table: mirror_tbl.alloc */
+	{ /* act_tid: 2, , table: mirror_tbl.alloc */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -220,7 +220,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 6
 	},
-	{ /* act_tid: 2, wh_plus, table: int_flow_counter_tbl.0 */
+	{ /* act_tid: 2, , table: int_flow_counter_tbl.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -242,7 +242,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 1
 	},
-	{ /* act_tid: 2, wh_plus, table: int_full_act_record.0 */
+	{ /* act_tid: 2, , table: int_full_act_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -265,7 +265,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 26,
 	.encap_num_fields = 0
 	},
-	{ /* act_tid: 2, wh_plus, table: ext_full_act_record.0 */
+	{ /* act_tid: 2, , table: ext_full_act_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_EXT,
 	.resource_sub_type =
@@ -288,7 +288,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 26,
 	.encap_num_fields = 12
 	},
-	{ /* act_tid: 2, wh_plus, table: mirror_tbl.wr */
+	{ /* act_tid: 2, , table: mirror_tbl.wr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -309,7 +309,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 6
 	},
-	{ /* act_tid: 2, wh_plus, table: shared_mirror_record.wr */
+	{ /* act_tid: 2, , table: shared_mirror_record.wr */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -333,7 +333,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 34,
 	.result_num_fields = 2
 	},
-	{ /* act_tid: 3, wh_plus, table: int_flow_counter_tbl.0 */
+	{ /* act_tid: 3, , table: int_flow_counter_tbl.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -353,7 +353,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 1
 	},
-	{ /* act_tid: 3, wh_plus, table: act_modify_ipv4_src.0 */
+	{ /* act_tid: 3, , table: act_modify_ipv4_src.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_IPV4,
 	.resource_sub_type =
@@ -373,7 +373,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* act_tid: 3, wh_plus, table: act_modify_ipv4_dst.0 */
+	{ /* act_tid: 3, , table: act_modify_ipv4_dst.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_IPV4,
 	.resource_sub_type =
@@ -393,7 +393,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* act_tid: 3, wh_plus, table: int_encap_mac_record.0 */
+	{ /* act_tid: 3, , table: int_encap_mac_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_ENCAP_16B,
 	.resource_sub_type =
@@ -414,7 +414,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 0,
 	.encap_num_fields = 12
 	},
-	{ /* act_tid: 3, wh_plus, table: int_full_act_record.0 */
+	{ /* act_tid: 3, , table: int_full_act_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -434,7 +434,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26
 	},
-	{ /* act_tid: 3, wh_plus, table: ext_full_act_record.0 */
+	{ /* act_tid: 3, , table: ext_full_act_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_EXT,
 	.resource_sub_type =
@@ -455,7 +455,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 26,
 	.encap_num_fields = 12
 	},
-	{ /* act_tid: 4, wh_plus, table: int_flow_counter_tbl.0 */
+	{ /* act_tid: 4, , table: int_flow_counter_tbl.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -475,7 +475,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 1
 	},
-	{ /* act_tid: 4, wh_plus, table: int_vtag_encap_record.0 */
+	{ /* act_tid: 4, , table: int_vtag_encap_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_ENCAP_16B,
 	.resource_sub_type =
@@ -496,7 +496,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 0,
 	.encap_num_fields = 12
 	},
-	{ /* act_tid: 4, wh_plus, table: int_full_act_record.0 */
+	{ /* act_tid: 4, , table: int_full_act_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -516,7 +516,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26
 	},
-	{ /* act_tid: 4, wh_plus, table: ext_full_act_record.no_tag */
+	{ /* act_tid: 4, , table: ext_full_act_record.no_tag */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_EXT,
 	.resource_sub_type =
@@ -537,7 +537,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 26,
 	.encap_num_fields = 12
 	},
-	{ /* act_tid: 4, wh_plus, table: ext_full_act_record.one_tag */
+	{ /* act_tid: 4, , table: ext_full_act_record.one_tag */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_EXT,
 	.resource_sub_type =
@@ -558,7 +558,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 26,
 	.encap_num_fields = 12
 	},
-	{ /* act_tid: 5, wh_plus, table: int_flow_counter_tbl.0 */
+	{ /* act_tid: 5, , table: int_flow_counter_tbl.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -578,7 +578,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 1
 	},
-	{ /* act_tid: 5, wh_plus, table: act_modify_ipv4_src.0 */
+	{ /* act_tid: 5, , table: act_modify_ipv4_src.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_IPV4,
 	.resource_sub_type =
@@ -598,7 +598,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* act_tid: 5, wh_plus, table: act_modify_ipv4_dst.0 */
+	{ /* act_tid: 5, , table: act_modify_ipv4_dst.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_IPV4,
 	.resource_sub_type =
@@ -618,7 +618,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1
 	},
-	{ /* act_tid: 5, wh_plus, table: int_encap_mac_record.dummy */
+	{ /* act_tid: 5, , table: int_encap_mac_record.dummy */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_ENCAP_16B,
 	.resource_sub_type =
@@ -639,7 +639,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 0,
 	.encap_num_fields = 12
 	},
-	{ /* act_tid: 5, wh_plus, table: int_full_act_record.0 */
+	{ /* act_tid: 5, , table: int_full_act_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -659,7 +659,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26
 	},
-	{ /* act_tid: 5, wh_plus, table: ext_full_act_record.0 */
+	{ /* act_tid: 5, , table: ext_full_act_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_EXT,
 	.resource_sub_type =
@@ -680,7 +680,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 26,
 	.encap_num_fields = 12
 	},
-	{ /* act_tid: 6, wh_plus, table: int_flow_counter_tbl.0 */
+	{ /* act_tid: 6, , table: int_flow_counter_tbl.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -700,7 +700,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 1
 	},
-	{ /* act_tid: 6, wh_plus, table: sp_smac_ipv4.0 */
+	{ /* act_tid: 6, , table: sp_smac_ipv4.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_SP_SMAC_IPV4,
 	.resource_sub_type =
@@ -721,7 +721,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 0,
 	.encap_num_fields = 3
 	},
-	{ /* act_tid: 6, wh_plus, table: sp_smac_ipv6.0 */
+	{ /* act_tid: 6, , table: sp_smac_ipv6.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_SP_SMAC_IPV6,
 	.resource_sub_type =
@@ -742,7 +742,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 0,
 	.encap_num_fields = 3
 	},
-	{ /* act_tid: 6, wh_plus, table: int_tun_encap_record.0 */
+	{ /* act_tid: 6, , table: int_tun_encap_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_ENCAP_64B,
 	.resource_sub_type =
@@ -763,7 +763,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_num_fields = 0,
 	.encap_num_fields = 12
 	},
-	{ /* act_tid: 6, wh_plus, table: int_full_act_record.0 */
+	{ /* act_tid: 6, , table: int_full_act_record.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -783,7 +783,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26
 	},
-	{ /* act_tid: 6, wh_plus, table: ext_full_act_record_vxlan.0 */
+	{ /* act_tid: 6, , table: ext_full_act_record_vxlan.0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_EXT,
 	.resource_sub_type =
@@ -981,7 +981,7 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 };
 
 struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[] = {
-	/* act_tid: 1, wh_plus, table: shared_mirror_record.rd */
+	/* act_tid: 1, , table: shared_mirror_record.rd */
 	{
 	.field_info_mask = {
 		.description = "shared_index",
@@ -1001,7 +1001,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[] = {
 		BNXT_ULP_ACT_PROP_IDX_SHARED_HANDLE & 0xff}
 		}
 	},
-	/* act_tid: 2, wh_plus, table: shared_mirror_record.wr */
+	/* act_tid: 2, , table: shared_mirror_record.wr */
 	{
 	.field_info_mask = {
 		.description = "shared_index",
@@ -1024,14 +1024,14 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[] = {
 };
 
 struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
-	/* act_tid: 1, wh_plus, table: int_flow_counter_tbl.0 */
+	/* act_tid: 1, , table: int_flow_counter_tbl.0 */
 	{
 	.description = "count",
 	.field_bit_size = 64,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 1, wh_plus, table: int_vtag_encap_record.0 */
+	/* act_tid: 1, , table: int_vtag_encap_record.0 */
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
@@ -1117,7 +1117,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 1, wh_plus, table: int_full_act_record.0 */
+	/* act_tid: 1, , table: int_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -1379,7 +1379,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 1, wh_plus, table: ext_full_act_record.0 */
+	/* act_tid: 1, , table: ext_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -1701,7 +1701,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 2, wh_plus, table: mirror_tbl.alloc */
+	/* act_tid: 2, , table: mirror_tbl.alloc */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 16,
@@ -1740,14 +1740,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 2, wh_plus, table: int_flow_counter_tbl.0 */
+	/* act_tid: 2, , table: int_flow_counter_tbl.0 */
 	{
 	.description = "count",
 	.field_bit_size = 64,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 2, wh_plus, table: int_full_act_record.0 */
+	/* act_tid: 2, , table: int_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -1921,7 +1921,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 2, wh_plus, table: ext_full_act_record.0 */
+	/* act_tid: 2, , table: ext_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -2178,7 +2178,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 2, wh_plus, table: mirror_tbl.wr */
+	/* act_tid: 2, , table: mirror_tbl.wr */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 16,
@@ -2220,7 +2220,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 2, wh_plus, table: shared_mirror_record.wr */
+	/* act_tid: 2, , table: shared_mirror_record.wr */
 	{
 	.description = "rid",
 	.field_bit_size = 32,
@@ -2239,14 +2239,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		(1 >> 8) & 0xff,
 		1 & 0xff}
 	},
-	/* act_tid: 3, wh_plus, table: int_flow_counter_tbl.0 */
+	/* act_tid: 3, , table: int_flow_counter_tbl.0 */
 	{
 	.description = "count",
 	.field_bit_size = 64,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 3, wh_plus, table: act_modify_ipv4_src.0 */
+	/* act_tid: 3, , table: act_modify_ipv4_src.0 */
 	{
 	.description = "ipv4_addr",
 	.field_bit_size = 32,
@@ -2256,7 +2256,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC >> 8) & 0xff,
 	BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC & 0xff}
 	},
-	/* act_tid: 3, wh_plus, table: act_modify_ipv4_dst.0 */
+	/* act_tid: 3, , table: act_modify_ipv4_dst.0 */
 	{
 	.description = "ipv4_addr",
 	.field_bit_size = 32,
@@ -2266,7 +2266,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST >> 8) & 0xff,
 	BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST & 0xff}
 	},
-	/* act_tid: 3, wh_plus, table: int_encap_mac_record.0 */
+	/* act_tid: 3, , table: int_encap_mac_record.0 */
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
@@ -2343,7 +2343,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 3, wh_plus, table: int_full_act_record.0 */
+	/* act_tid: 3, , table: int_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -2573,7 +2573,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 3, wh_plus, table: ext_full_act_record.0 */
+	/* act_tid: 3, , table: ext_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -2879,14 +2879,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 4, wh_plus, table: int_flow_counter_tbl.0 */
+	/* act_tid: 4, , table: int_flow_counter_tbl.0 */
 	{
 	.description = "count",
 	.field_bit_size = 64,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 4, wh_plus, table: int_vtag_encap_record.0 */
+	/* act_tid: 4, , table: int_vtag_encap_record.0 */
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
@@ -2972,7 +2972,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 4, wh_plus, table: int_full_act_record.0 */
+	/* act_tid: 4, , table: int_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -3162,7 +3162,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 4, wh_plus, table: ext_full_act_record.no_tag */
+	/* act_tid: 4, , table: ext_full_act_record.no_tag */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -3423,7 +3423,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 4, wh_plus, table: ext_full_act_record.one_tag */
+	/* act_tid: 4, , table: ext_full_act_record.one_tag */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -3704,14 +3704,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 5, wh_plus, table: int_flow_counter_tbl.0 */
+	/* act_tid: 5, , table: int_flow_counter_tbl.0 */
 	{
 	.description = "count",
 	.field_bit_size = 64,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 5, wh_plus, table: act_modify_ipv4_src.0 */
+	/* act_tid: 5, , table: act_modify_ipv4_src.0 */
 	{
 	.description = "ipv4_addr",
 	.field_bit_size = 32,
@@ -3721,7 +3721,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC >> 8) & 0xff,
 	BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC & 0xff}
 	},
-	/* act_tid: 5, wh_plus, table: act_modify_ipv4_dst.0 */
+	/* act_tid: 5, , table: act_modify_ipv4_dst.0 */
 	{
 	.description = "ipv4_addr",
 	.field_bit_size = 32,
@@ -3731,7 +3731,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST >> 8) & 0xff,
 	BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST & 0xff}
 	},
-	/* act_tid: 5, wh_plus, table: int_encap_mac_record.dummy */
+	/* act_tid: 5, , table: int_encap_mac_record.dummy */
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
@@ -3808,7 +3808,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 5, wh_plus, table: int_full_act_record.0 */
+	/* act_tid: 5, , table: int_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -4038,7 +4038,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 5, wh_plus, table: ext_full_act_record.0 */
+	/* act_tid: 5, , table: ext_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -4344,14 +4344,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 6, wh_plus, table: int_flow_counter_tbl.0 */
+	/* act_tid: 6, , table: int_flow_counter_tbl.0 */
 	{
 	.description = "count",
 	.field_bit_size = 64,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 6, wh_plus, table: sp_smac_ipv4.0 */
+	/* act_tid: 6, , table: sp_smac_ipv4.0 */
 	{
 	.description = "smac",
 	.field_bit_size = 48,
@@ -4376,7 +4376,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 6, wh_plus, table: sp_smac_ipv6.0 */
+	/* act_tid: 6, , table: sp_smac_ipv6.0 */
 	{
 	.description = "smac",
 	.field_bit_size = 48,
@@ -4401,7 +4401,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 6, wh_plus, table: int_tun_encap_record.0 */
+	/* act_tid: 6, , table: int_tun_encap_record.0 */
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
@@ -4509,7 +4509,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN_SZ >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN_SZ & 0xff}
 	},
-	/* act_tid: 6, wh_plus, table: int_full_act_record.0 */
+	/* act_tid: 6, , table: int_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -4684,7 +4684,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
-	/* act_tid: 6, wh_plus, table: ext_full_act_record_vxlan.0 */
+	/* act_tid: 6, , table: ext_full_act_record_vxlan.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
@@ -4964,7 +4964,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 };
 
 struct bnxt_ulp_mapper_ident_info ulp_wh_plus_act_ident_list[] = {
-	/* act_tid: 1, wh_plus, table: shared_mirror_record.rd */
+	/* act_tid: 1, , table: shared_mirror_record.rd */
 	{
 	.description = "mirror_id",
 	.regfile_idx = BNXT_ULP_RF_IDX_MIRROR_ID_0,
