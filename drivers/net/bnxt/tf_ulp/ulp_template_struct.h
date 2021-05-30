@@ -287,13 +287,12 @@ struct bnxt_ulp_mapper_field_info {
 	uint8_t				description[64];
 	uint16_t			field_bit_size;
 	enum bnxt_ulp_field_opc		field_opc;
-	enum bnxt_ulp_field_cond_src	field_cond_src;
-	uint8_t				field_cond_opr[16];
 	enum bnxt_ulp_field_src		field_src1;
 	uint8_t				field_opr1[16];
 	enum bnxt_ulp_field_src		field_src2;
 	uint8_t				field_opr2[16];
-
+	enum bnxt_ulp_field_src		field_src3;
+	uint8_t				field_opr3[16];
 };
 
 struct bnxt_ulp_mapper_key_info {

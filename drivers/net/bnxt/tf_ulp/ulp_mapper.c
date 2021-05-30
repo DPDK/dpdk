@@ -20,9 +20,16 @@
 #include "ulp_template_db_tbl.h"
 #include "ulp_port_db.h"
 
+static uint8_t mapper_fld_zeros[16] = { 0 };
+
 static uint8_t mapper_fld_ones[16] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+};
+
+static uint8_t mapper_fld_one[16] = {
+	0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+	0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01
 };
 
 static const char *
@@ -882,7 +889,6 @@ error:
 
 static int32_t
 ulp_mapper_field_port_db_process(struct bnxt_ulp_mapper_parms *parms,
-				 struct bnxt_ulp_mapper_field_info *fld,
 				 uint32_t port_id,
 				 uint16_t val16,
 				 uint8_t **val)
@@ -912,332 +918,122 @@ ulp_mapper_field_port_db_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		break;
 	default:
-		BNXT_TF_DBG(ERR, "Invalid port_data %s\n", fld->description);
+		BNXT_TF_DBG(ERR, "Invalid port_data %d\n", port_data);
 		return -EINVAL;
 	}
 	return 0;
 }
 
 static int32_t
-ulp_mapper_field_process_inc_dec(struct bnxt_ulp_mapper_field_info *fld,
-				 struct ulp_blob *blob,
-				 uint64_t *val64,
-				 uint16_t const_val16,
-				 uint32_t bitlen,
-				 uint32_t *update_flag)
+ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
+			     enum bnxt_ulp_field_src field_src,
+			     uint8_t *field_opr,
+			     enum tf_dir dir,
+			     uint8_t is_key,
+			     uint32_t bitlen,
+			     uint8_t **val,
+			     uint32_t *val_len,
+			     uint64_t *value)
 {
-	uint64_t l_val64 = *val64;
-
-	if (fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_PLUS_CONST ||
-	    fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_PLUS_CONST_POST) {
-		l_val64 += const_val16;
-		l_val64 = tfp_be_to_cpu_64(l_val64);
-		ulp_blob_push_64(blob, &l_val64, bitlen);
-	} else if (fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_MINUS_CONST ||
-		   fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_MINUS_CONST_POST) {
-		l_val64 -= const_val16;
-		l_val64 = tfp_be_to_cpu_64(l_val64);
-		ulp_blob_push_64(blob, &l_val64, bitlen);
-	} else {
-		BNXT_TF_DBG(ERR, "Invalid field opcode %u\n", fld->field_opc);
-		return -EINVAL;
-	}
-
-	if (fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_MINUS_CONST_POST ||
-	    fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_PLUS_CONST_POST) {
-		*val64 = l_val64;
-		*update_flag = 1;
-	}
-	return 0;
-}
-
-static int32_t
-ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
-			 enum tf_dir dir,
-			 struct bnxt_ulp_mapper_field_info *fld,
-			 struct ulp_blob *blob,
-			 uint8_t is_key,
-			 const char *name)
-{
-	uint32_t val_size = 0, field_size = 0;
-	uint64_t hdr_bit, act_bit, regval;
-	uint16_t write_idx = blob->write_idx;
-	uint16_t idx, size_idx, bitlen, offset;
-	uint8_t	*val = NULL;
-	uint8_t tmpval[16];
+	struct bnxt_ulp_mapper_data *m;
 	uint8_t bit;
-	uint32_t src1_sel = 0;
-	enum bnxt_ulp_field_src fld_src;
-	uint8_t *fld_src_oper;
-	enum bnxt_ulp_field_cond_src field_cond_src;
-	uint16_t const_val = 0;
-	uint32_t update_flag = 0;
-	uint64_t src1_val64;
-	uint32_t port_id;
+	uint32_t port_id, val_size, field_size;
+	uint16_t idx, size_idx, offset;
+	uint32_t bytelen = ULP_BITS_2_BYTE(bitlen);
+	uint8_t *buffer;
+	uint64_t lregval;
 	bool shared;
 
-	/* process the field opcode */
-	if (fld->field_opc != BNXT_ULP_FIELD_OPC_COND_OP) {
-		field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE;
-		/* Read the constant from the second operand */
-		memcpy(&const_val, fld->field_opr2, sizeof(uint16_t));
-		const_val = tfp_be_to_cpu_16(const_val);
-	} else {
-		field_cond_src = fld->field_cond_src;
-	}
-
-	bitlen = fld->field_bit_size;
-	/* Evaluate the condition */
-	switch (field_cond_src) {
-	case BNXT_ULP_FIELD_COND_SRC_TRUE:
-		src1_sel = 1;
-		break;
-	case BNXT_ULP_FIELD_COND_SRC_CF:
-		if (!ulp_operand_read(fld->field_cond_opr,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed.\n", name);
-			return -EINVAL;
-		}
-		idx = tfp_be_to_cpu_16(idx);
-		if (idx >= BNXT_ULP_CF_IDX_LAST) {
-			BNXT_TF_DBG(ERR, "%s invalid index %u\n", name, idx);
-			return -EINVAL;
-		}
-		/* check if the computed field is set */
-		if (ULP_COMP_FLD_IDX_RD(parms, idx))
-			src1_sel = 1;
-		break;
-	case BNXT_ULP_FIELD_COND_SRC_RF:
-		if (!ulp_operand_read(fld->field_cond_opr,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
-			return -EINVAL;
-		}
-
-		idx = tfp_be_to_cpu_16(idx);
-		/* Uninitialized regfile entries return 0 */
-		if (!ulp_regfile_read(parms->regfile, idx, &regval)) {
-			BNXT_TF_DBG(ERR, "%s regfile[%d] read oob\n",
-				    name, idx);
-			return -EINVAL;
-		}
-		if (regval)
-			src1_sel = 1;
-		break;
-	case BNXT_ULP_FIELD_COND_SRC_ACT_BIT:
-		if (!ulp_operand_read(fld->field_cond_opr,
-				      (uint8_t *)&act_bit, sizeof(uint64_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
-			return -EINVAL;
-		}
-		act_bit = tfp_be_to_cpu_64(act_bit);
-		if (ULP_BITMAP_ISSET(parms->act_bitmap->bits, act_bit))
-			src1_sel = 1;
-		break;
-	case BNXT_ULP_FIELD_COND_SRC_HDR_BIT:
-		if (!ulp_operand_read(fld->field_cond_opr,
-				      (uint8_t *)&hdr_bit, sizeof(uint64_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
-			return -EINVAL;
-		}
-		hdr_bit = tfp_be_to_cpu_64(hdr_bit);
-		if (ULP_BITMAP_ISSET(parms->hdr_bitmap->bits, hdr_bit))
-			src1_sel = 1;
-		break;
-	case BNXT_ULP_FIELD_COND_SRC_FIELD_BIT:
-		if (!ulp_operand_read(fld->field_cond_opr, (uint8_t *)&idx,
-				      sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed.\n", name);
-			return -EINVAL;
-		}
-		idx = tfp_be_to_cpu_16(idx);
-		/* get the index from the global field list */
-		if (ulp_mapper_glb_field_tbl_get(parms, idx, &bit)) {
-			BNXT_TF_DBG(ERR, "invalid ulp_glb_field_tbl idx %d\n",
-				    idx);
-			return -EINVAL;
-		}
-		if (bit && (ULP_INDEX_BITMAP_GET(parms->fld_bitmap->bits, bit)))
-			src1_sel = 1;
-		break;
-	default:
-		BNXT_TF_DBG(ERR, "%s invalid field opcode 0x%x at %d\n",
-			    name, fld->field_cond_src, write_idx);
-		return -EINVAL;
-	}
-
-	/* pick the selected source */
-	if (src1_sel) {
-		fld_src = fld->field_src1;
-		fld_src_oper = fld->field_opr1;
-	} else {
-		fld_src = fld->field_src2;
-		fld_src_oper = fld->field_opr2;
-	}
-
+	*val_len = bitlen;
+	*value = 0;
 	/* Perform the action */
-	switch (fld_src) {
+	switch (field_src) {
 	case BNXT_ULP_FIELD_SRC_ZERO:
-		if (ulp_blob_pad_push(blob, bitlen) < 0) {
-			BNXT_TF_DBG(ERR, "%s too large for blob\n", name);
-			return -EINVAL;
-		}
+		*val = mapper_fld_zeros;
 		break;
 	case BNXT_ULP_FIELD_SRC_CONST:
-		val = fld_src_oper;
-		if (!ulp_blob_push(blob, val, bitlen)) {
-			BNXT_TF_DBG(ERR, "%s push to blob failed\n", name);
-			return -EINVAL;
-		}
+		*val = field_opr;
 		break;
 	case BNXT_ULP_FIELD_SRC_ONES:
-		val = mapper_fld_ones;
-		if (!ulp_blob_push(blob, val, bitlen)) {
-			BNXT_TF_DBG(ERR, "%s too large for blob\n", name);
-			return -EINVAL;
-		}
+		*val = mapper_fld_ones;
+		*value = 1;
 		break;
 	case BNXT_ULP_FIELD_SRC_CF:
-		if (!ulp_operand_read(fld_src_oper,
+		if (!ulp_operand_read(field_opr,
 				      (uint8_t *)&idx, sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed.\n",
-				    name);
+			BNXT_TF_DBG(ERR, "CF operand read failed\n");
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
-		if (idx >= BNXT_ULP_CF_IDX_LAST) {
-			BNXT_TF_DBG(ERR, "%s comp field [%d] read oob\n",
-				    name, idx);
+		if (idx >= BNXT_ULP_CF_IDX_LAST || bytelen > sizeof(uint32_t)) {
+			BNXT_TF_DBG(ERR, "comp field [%d] read oob %d\n", idx,
+				    bytelen);
 			return -EINVAL;
 		}
-		if (fld->field_opc == BNXT_ULP_FIELD_OPC_COND_OP) {
-			val = ulp_blob_push_32(blob, &parms->comp_fld[idx],
-					       bitlen);
-			if (!val) {
-				BNXT_TF_DBG(ERR, "%s push to blob failed\n",
-					    name);
-				return -EINVAL;
-			}
-		} else if (fld->field_opc == BNXT_ULP_FIELD_OPC_PORT_TABLE) {
-			port_id = ULP_COMP_FLD_IDX_RD(parms, idx);
-			if (ulp_mapper_field_port_db_process(parms, fld,
-							     port_id, const_val,
-							     &val)) {
-				BNXT_TF_DBG(ERR, "%s field port table failed\n",
-					    name);
-				return -EINVAL;
-			}
-			if (!ulp_blob_push(blob, val, bitlen)) {
-				BNXT_TF_DBG(ERR, "%s push to blob failed\n",
-					    name);
-				return -EINVAL;
-			}
-		} else {
-			src1_val64 = ULP_COMP_FLD_IDX_RD(parms, idx);
-			if (ulp_mapper_field_process_inc_dec(fld, blob,
-							     &src1_val64,
-							     const_val,
-							     bitlen,
-							     &update_flag)) {
-				BNXT_TF_DBG(ERR, "%s field cond opc failed\n",
-					    name);
-				return -EINVAL;
-			}
-			if (update_flag) {
-				BNXT_TF_DBG(ERR, "%s invalid field cond opc\n",
-					    name);
-				return -EINVAL;
-			}
-		}
+		buffer = (uint8_t *)&parms->comp_fld[idx];
+		*val = &buffer[sizeof(uint32_t) - bytelen];
+		*value = ULP_COMP_FLD_IDX_RD(parms, idx);
 		break;
 	case BNXT_ULP_FIELD_SRC_RF:
-		if (!ulp_operand_read(fld_src_oper,
+		if (!ulp_operand_read(field_opr,
 				      (uint8_t *)&idx, sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
+			BNXT_TF_DBG(ERR, "RF operand read failed\n");
 			return -EINVAL;
 		}
 
 		idx = tfp_be_to_cpu_16(idx);
 		/* Uninitialized regfile entries return 0 */
-		if (!ulp_regfile_read(parms->regfile, idx, &regval)) {
-			BNXT_TF_DBG(ERR, "%s regfile[%d] read oob\n",
-				    name, idx);
+		if (!ulp_regfile_read(parms->regfile, idx, &lregval) ||
+		    sizeof(uint64_t) < bytelen) {
+			BNXT_TF_DBG(ERR, "regfile[%d] read oob %u\n", idx,
+				    bytelen);
 			return -EINVAL;
 		}
-		if (fld->field_opc == BNXT_ULP_FIELD_OPC_COND_OP) {
-			val = ulp_blob_push_64(blob, &regval, bitlen);
-			if (!val) {
-				BNXT_TF_DBG(ERR, "%s push to blob failed\n",
-					    name);
-				return -EINVAL;
-			}
-		} else {
-			if (ulp_mapper_field_process_inc_dec(fld, blob,
-							     &regval,
-							     const_val,
-							     bitlen,
-							     &update_flag)) {
-				BNXT_TF_DBG(ERR, "%s field cond opc failed\n",
-					    name);
-				return -EINVAL;
-			}
-			if (update_flag) {
-				regval = tfp_cpu_to_be_64(regval);
-				if (ulp_regfile_write(parms->regfile, idx,
-						      regval)) {
-					BNXT_TF_DBG(ERR,
-						    "Write regfile[%d] fail\n",
-						    idx);
-					return -EINVAL;
-				}
-			}
-		}
+		buffer = (uint8_t *)&parms->regfile->entry[idx].data;
+		*val = &buffer[sizeof(uint64_t) - bytelen];
+		*value = tfp_be_to_cpu_64(lregval);
 		break;
 	case BNXT_ULP_FIELD_SRC_ACT_PROP:
-		if (!ulp_operand_read(fld_src_oper,
+		if (!ulp_operand_read(field_opr,
 				      (uint8_t *)&idx, sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
+			BNXT_TF_DBG(ERR, "Action operand read failed\n");
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
-
 		if (idx >= BNXT_ULP_ACT_PROP_IDX_LAST) {
-			BNXT_TF_DBG(ERR, "%s act_prop[%d] oob\n", name, idx);
+			BNXT_TF_DBG(ERR, "act_prop[%d] oob\n", idx);
 			return -EINVAL;
 		}
-		val = &parms->act_prop->act_details[idx];
+		buffer = &parms->act_prop->act_details[idx];
 		field_size = ulp_mapper_act_prop_size_get(idx);
-		if (bitlen < ULP_BYTE_2_BITS(field_size)) {
-			field_size  = field_size - ((bitlen + 7) / 8);
-			val += field_size;
-		}
-		if (!ulp_blob_push(blob, val, bitlen)) {
-			BNXT_TF_DBG(ERR, "%s push to blob failed\n", name);
+		if (bytelen > field_size) {
+			BNXT_TF_DBG(ERR, "act_prop[%d] field size small %u\n",
+				    idx, field_size);
 			return -EINVAL;
 		}
+		*val = &buffer[field_size - bytelen];
 		break;
 	case BNXT_ULP_FIELD_SRC_ACT_PROP_SZ:
-		if (!ulp_operand_read(fld_src_oper,
+		if (!ulp_operand_read(field_opr,
 				      (uint8_t *)&idx, sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
+			BNXT_TF_DBG(ERR, "Action sz operand read failed\n");
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
 
 		if (idx >= BNXT_ULP_ACT_PROP_IDX_LAST) {
-			BNXT_TF_DBG(ERR, "%s act_prop[%d] oob\n", name, idx);
+			BNXT_TF_DBG(ERR, "act_prop_sz[%d] oob\n", idx);
 			return -EINVAL;
 		}
-		val = &parms->act_prop->act_details[idx];
+		*val = &parms->act_prop->act_details[idx];
 
 		/* get the size index next */
-		if (!ulp_operand_read(&fld_src_oper[sizeof(uint16_t)],
+		if (!ulp_operand_read(&field_opr[sizeof(uint16_t)],
 				      (uint8_t *)&size_idx, sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
+			BNXT_TF_DBG(ERR, "Action sz operand read failed\n");
 			return -EINVAL;
 		}
 		size_idx = tfp_be_to_cpu_16(size_idx);
-
 		if (size_idx >= BNXT_ULP_ACT_PROP_IDX_LAST) {
 			BNXT_TF_DBG(ERR, "act_prop[%d] oob\n", size_idx);
 			return -EINVAL;
@@ -1245,51 +1041,32 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 		memcpy(&val_size, &parms->act_prop->act_details[size_idx],
 		       sizeof(uint32_t));
 		val_size = tfp_be_to_cpu_32(val_size);
-		val_size = ULP_BYTE_2_BITS(val_size);
-		ulp_blob_push_encap(blob, val, val_size);
+		*val_len = ULP_BYTE_2_BITS(val_size);
 		break;
 	case BNXT_ULP_FIELD_SRC_GLB_RF:
-		if (!ulp_operand_read(fld_src_oper,
-				      (uint8_t *)&idx,
-				      sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed.\n", name);
+		if (!ulp_operand_read(field_opr,
+				      (uint8_t *)&idx, sizeof(uint16_t))) {
+			BNXT_TF_DBG(ERR, "Global regfile read failed\n");
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
-		if (ulp_mapper_glb_resource_read(parms->mapper_data, dir,
-						 idx, &regval, &shared)) {
-			BNXT_TF_DBG(ERR, "%s global regfile[%d] read failed.\n",
-				    name, idx);
+		if (ulp_mapper_glb_resource_read(parms->mapper_data,
+						 dir, idx, &lregval, &shared) ||
+		    sizeof(uint64_t) < bytelen) {
+			BNXT_TF_DBG(ERR, "Global regfile[%d] read failed %u\n",
+				    idx, bytelen);
 			return -EINVAL;
 		}
-		if (fld->field_opc == BNXT_ULP_FIELD_OPC_COND_OP) {
-			val = ulp_blob_push_64(blob, &regval, bitlen);
-			if (!val) {
-				BNXT_TF_DBG(ERR, "%s push to blob failed\n",
-					    name);
-				return -EINVAL;
-			}
-		} else {
-			if (ulp_mapper_field_process_inc_dec(fld, blob,
-							     &regval,
-							     const_val,
-							     bitlen,
-							     &update_flag)) {
-				BNXT_TF_DBG(ERR, "%s field cond opc failed\n",
-					    name);
-				return -EINVAL;
-			}
-			if (update_flag) {
-				BNXT_TF_DBG(ERR, "%s invalid field cond opc\n",
-					    name);
-				return -EINVAL;
-			}
-		}
+		m = parms->mapper_data;
+		buffer = (uint8_t *)&m->glb_res_tbl[dir][idx].resource_hndl;
+		*val = &buffer[sizeof(uint64_t) - bytelen];
+		*value = tfp_be_to_cpu_64(lregval);
 		break;
 	case BNXT_ULP_FIELD_SRC_HF:
-		if (!ulp_operand_read(fld_src_oper, (uint8_t *)&idx,
-				      sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed.\n", name);
+	case BNXT_ULP_FIELD_SRC_SUB_HF:
+		if (!ulp_operand_read(field_opr,
+				      (uint8_t *)&idx, sizeof(uint16_t))) {
+			BNXT_TF_DBG(ERR, "Header field read failed\n");
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
@@ -1300,69 +1077,67 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		if (is_key)
-			val = parms->hdr_field[bit].spec;
+			buffer = parms->hdr_field[bit].spec;
 		else
-			val = parms->hdr_field[bit].mask;
+			buffer = parms->hdr_field[bit].mask;
 
-		/*
-		 * Need to account for how much data was pushed to the header
-		 * field vs how much is to be inserted in the key/mask.
-		 */
 		field_size = parms->hdr_field[bit].size;
-		if (bitlen < ULP_BYTE_2_BITS(field_size)) {
-			field_size  = field_size - ((bitlen + 7) / 8);
-			val += field_size;
-		}
-
-		if (!ulp_blob_push(blob, val, bitlen)) {
-			BNXT_TF_DBG(ERR, "%s push to blob failed\n", name);
+		if (bytelen > field_size) {
+			BNXT_TF_DBG(ERR, "Hdr field[%d] size small %u\n",
+				    bit, field_size);
 			return -EINVAL;
+		}
+		if (field_src == BNXT_ULP_FIELD_SRC_HF) {
+			*val = &buffer[field_size - bytelen];
+		} else {
+			/* get the offset next */
+			if (!ulp_operand_read(&field_opr[sizeof(uint16_t)],
+					      (uint8_t *)&offset,
+					      sizeof(uint16_t))) {
+				BNXT_TF_DBG(ERR, "Hdr fld size read failed\n");
+				return -EINVAL;
+			}
+			offset = tfp_be_to_cpu_16(offset);
+			offset = ULP_BITS_2_BYTE_NR(offset);
+			if ((offset + bytelen) > field_size) {
+				BNXT_TF_DBG(ERR, "Hdr field[%d] oob\n", bit);
+				return -EINVAL;
+			}
+			*val = &buffer[offset];
 		}
 		break;
 	case BNXT_ULP_FIELD_SRC_HDR_BIT:
-		if (!ulp_operand_read(fld_src_oper,
-				      (uint8_t *)&hdr_bit, sizeof(uint64_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
+		if (!ulp_operand_read(field_opr,
+				      (uint8_t *)&lregval, sizeof(uint64_t))) {
+			BNXT_TF_DBG(ERR, "Header bit read failed\n");
 			return -EINVAL;
 		}
-		hdr_bit = tfp_be_to_cpu_64(hdr_bit);
-		memset(tmpval, 0, sizeof(tmpval));
-		if (ULP_BITMAP_ISSET(parms->hdr_bitmap->bits, hdr_bit))
-			tmpval[0] = 1;
-		if (bitlen > ULP_BYTE_2_BITS(sizeof(tmpval))) {
-			BNXT_TF_DBG(ERR, "%s field size is incorrect\n", name);
-			return -EINVAL;
+		lregval = tfp_be_to_cpu_64(lregval);
+		if (ULP_BITMAP_ISSET(parms->hdr_bitmap->bits, lregval)) {
+			*val = mapper_fld_one;
+			*value = 1;
+		} else {
+			*val = mapper_fld_zeros;
 		}
-		if (!ulp_blob_push(blob, tmpval, bitlen)) {
-			BNXT_TF_DBG(ERR, "%s push to blob failed\n", name);
-			return -EINVAL;
-		}
-		val = tmpval;
 		break;
 	case BNXT_ULP_FIELD_SRC_ACT_BIT:
-		if (!ulp_operand_read(fld_src_oper,
-				      (uint8_t *)&act_bit, sizeof(uint64_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
+		if (!ulp_operand_read(field_opr,
+				      (uint8_t *)&lregval, sizeof(uint64_t))) {
+			BNXT_TF_DBG(ERR, "Action bit read failed\n");
 			return -EINVAL;
 		}
-		act_bit = tfp_be_to_cpu_64(act_bit);
-		memset(tmpval, 0, sizeof(tmpval));
-		if (ULP_BITMAP_ISSET(parms->act_bitmap->bits, act_bit))
-			tmpval[0] = 1;
-		if (bitlen > ULP_BYTE_2_BITS(sizeof(tmpval))) {
-			BNXT_TF_DBG(ERR, "%s field size is incorrect\n", name);
-			return -EINVAL;
+		lregval = tfp_be_to_cpu_64(lregval);
+		if (ULP_BITMAP_ISSET(parms->act_bitmap->bits, lregval)) {
+			*val = mapper_fld_one;
+			*value = 1;
+		} else {
+			*val = mapper_fld_zeros;
 		}
-		if (!ulp_blob_push(blob, tmpval, bitlen)) {
-			BNXT_TF_DBG(ERR, "%s push to blob failed\n", name);
-			return -EINVAL;
-		}
-		val = tmpval;
 		break;
 	case BNXT_ULP_FIELD_SRC_FIELD_BIT:
-		if (!ulp_operand_read(fld_src_oper, (uint8_t *)&idx,
-				      sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed.\n", name);
+		if (!ulp_operand_read(field_opr,
+				      (uint8_t *)&idx, sizeof(uint16_t))) {
+			BNXT_TF_DBG(ERR, "Field bit read failed\n");
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
@@ -1372,70 +1147,294 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 				    idx);
 			return -EINVAL;
 		}
-		memset(tmpval, 0, sizeof(tmpval));
-		if (ULP_INDEX_BITMAP_GET(parms->fld_bitmap->bits, bit))
-			tmpval[0] = 1;
-		if (bitlen > ULP_BYTE_2_BITS(sizeof(tmpval))) {
-			BNXT_TF_DBG(ERR, "%s field size is incorrect\n", name);
-			return -EINVAL;
+		if (ULP_INDEX_BITMAP_GET(parms->fld_bitmap->bits, bit)) {
+			*val = mapper_fld_one;
+			*value = 1;
+		} else {
+			*val = mapper_fld_zeros;
 		}
-		if (!ulp_blob_push(blob, tmpval, bitlen)) {
-			BNXT_TF_DBG(ERR, "%s push to blob failed\n", name);
-			return -EINVAL;
-		}
-		val = tmpval;
 		break;
+	case BNXT_ULP_FIELD_SRC_PORT_TABLE:
+		/* The port id is present in the comp field list */
+		port_id = ULP_COMP_FLD_IDX_RD(parms,
+					      BNXT_ULP_CF_IDX_DEV_PORT_ID);
+		/* get the port table enum  */
+		if (!ulp_operand_read(field_opr,
+				      (uint8_t *)&idx, sizeof(uint16_t))) {
+			BNXT_TF_DBG(ERR, "Port table enum read failed\n");
+			return -EINVAL;
+		}
+		idx = tfp_be_to_cpu_16(idx);
+		if (ulp_mapper_field_port_db_process(parms, port_id, idx,
+						     val)) {
+			BNXT_TF_DBG(ERR, "field port table failed\n");
+			return -EINVAL;
+		}
 	case BNXT_ULP_FIELD_SRC_SKIP:
 		/* do nothing */
 		break;
 	case BNXT_ULP_FIELD_SRC_REJECT:
 		return -EINVAL;
-	case BNXT_ULP_FIELD_SRC_SUB_HF:
-		if (!ulp_operand_read(fld_src_oper,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
-			return -EINVAL;
-		}
-		idx = tfp_be_to_cpu_16(idx);
-		/* get the index from the global field list */
-		if (ulp_mapper_glb_field_tbl_get(parms, idx, &bit)) {
-			BNXT_TF_DBG(ERR, "invalid ulp_glb_field_tbl idx %d\n",
-				    idx);
-			return -EINVAL;
-		}
-
-		/* get the offset next */
-		if (!ulp_operand_read(&fld_src_oper[sizeof(uint16_t)],
-				      (uint8_t *)&offset, sizeof(uint16_t))) {
-			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
-			return -EINVAL;
-		}
-		offset = tfp_be_to_cpu_16(offset);
-		if ((offset + bitlen) >
-		    ULP_BYTE_2_BITS(parms->hdr_field[bit].size) ||
-		    ULP_BITS_IS_BYTE_NOT_ALIGNED(offset)) {
-			BNXT_TF_DBG(ERR, "Hdr field[%s] oob\n", name);
-			return -EINVAL;
-		}
-		offset = ULP_BITS_2_BYTE_NR(offset);
-
-		/* write the value into blob */
-		if (is_key)
-			val = &parms->hdr_field[bit].spec[offset];
-		else
-			val = &parms->hdr_field[bit].mask[offset];
-
-		if (!ulp_blob_push(blob, val, bitlen)) {
-			BNXT_TF_DBG(ERR, "%s push to blob failed\n", name);
-			return -EINVAL;
-		}
-		break;
 	default:
-		BNXT_TF_DBG(ERR, "%s invalid field opcode 0x%x at %d\n",
-			    name, fld_src, write_idx);
+		BNXT_TF_DBG(ERR, "invalid field opcode 0x%x\n", field_src);
 		return -EINVAL;
 	}
 	return 0;
+}
+
+static int32_t ulp_mapper_field_buffer_eval(uint8_t *buffer, uint32_t bitlen,
+					    uint64_t *output)
+{
+	uint16_t val_16;
+	uint32_t val_32;
+	uint64_t val_64;
+	uint32_t bytelen;
+
+	bytelen = ULP_BITS_2_BYTE(bitlen);
+	if (bytelen == sizeof(uint8_t)) {
+		*output = *((uint8_t *)buffer);
+	} else if (bytelen == sizeof(uint16_t)) {
+		val_16 = *((uint16_t *)buffer);
+		*output =  tfp_be_to_cpu_16(val_16);
+	} else if (bytelen == sizeof(uint32_t)) {
+		val_32 = *((uint32_t *)buffer);
+		*output =  tfp_be_to_cpu_32(val_32);
+	} else if (bytelen == sizeof(val_64)) {
+		val_64 = *((uint64_t *)buffer);
+		*output =  tfp_be_to_cpu_64(val_64);
+	} else {
+		*output = 0;
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int32_t ulp_mapper_field_blob_write(enum bnxt_ulp_field_src fld_src,
+					   struct ulp_blob *blob,
+					   uint8_t *val,
+					   uint32_t val_len,
+					   uint8_t **out_val)
+{
+	if (fld_src == BNXT_ULP_FIELD_SRC_ZERO) {
+		if (ulp_blob_pad_push(blob, val_len) < 0) {
+			BNXT_TF_DBG(ERR, "too large for blob\n");
+			return -EINVAL;
+		}
+	} else if (fld_src == BNXT_ULP_FIELD_SRC_ACT_PROP_SZ) {
+		if (ulp_blob_push_encap(blob, val, val_len) < 0) {
+			BNXT_TF_DBG(ERR, "encap blob push failed\n");
+			return -EINVAL;
+		}
+	} else {
+		if (!ulp_blob_push(blob, val, val_len)) {
+			BNXT_TF_DBG(ERR, "push of val1 failed\n");
+			return -EINVAL;
+		}
+	}
+	*out_val = val;
+	return 0;
+}
+
+static int32_t
+ulp_mapper_field_opc_process(struct bnxt_ulp_mapper_parms *parms,
+			     enum tf_dir dir,
+			     struct bnxt_ulp_mapper_field_info *fld,
+			     struct ulp_blob *blob,
+			     uint8_t is_key,
+			     const char *name)
+{
+	uint16_t write_idx = blob->write_idx;
+	uint8_t *val = NULL, *val1, *val2, *val3;
+	uint32_t val_len = 0, val1_len = 0, val2_len = 0, val3_len = 0;
+	uint8_t process_src1 = 0, process_src2 = 0, process_src3 = 0;
+	uint8_t eval_src1 = 0, eval_src2 = 0, eval_src3 = 0;
+	uint64_t val_int = 0, val1_int = 0, val2_int = 0, val3_int = 0;
+	uint64_t value1 = 0, value2 = 0, value3 = 0;
+	int32_t rc = 0;
+
+	/* prepare the field source and values */
+	switch (fld->field_opc) {
+	case BNXT_ULP_FIELD_OPC_SRC1:
+		process_src1 = 1;
+		break;
+	case BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3:
+		process_src1 = 1;
+		break;
+	case BNXT_ULP_FIELD_OPC_SRC1_OR_SRC2_OR_SRC3:
+	case BNXT_ULP_FIELD_OPC_SRC1_AND_SRC2_OR_SRC3:
+		process_src3 = 1;
+		eval_src3 = 1;
+		process_src1 = 1;
+		process_src2 = 1;
+		eval_src1 = 1;
+		eval_src2 = 1;
+		break;
+	case BNXT_ULP_FIELD_OPC_SRC1_PLUS_SRC2:
+	case BNXT_ULP_FIELD_OPC_SRC1_MINUS_SRC2:
+	case BNXT_ULP_FIELD_OPC_SRC1_PLUS_SRC2_POST:
+	case BNXT_ULP_FIELD_OPC_SRC1_MINUS_SRC2_POST:
+	case BNXT_ULP_FIELD_OPC_SRC1_OR_SRC2:
+	case BNXT_ULP_FIELD_OPC_SRC1_AND_SRC2:
+		process_src1 = 1;
+		process_src2 = 1;
+		eval_src1 = 1;
+		eval_src2 = 1;
+		break;
+	default:
+		break;
+	}
+
+	/* process the src1 opcode  */
+	if (process_src1) {
+		if (ulp_mapper_field_src_process(parms, fld->field_src1,
+						 fld->field_opr1, dir, is_key,
+						 fld->field_bit_size, &val1,
+						 &val1_len, &value1)) {
+			BNXT_TF_DBG(ERR, "fld src1 process failed\n");
+			goto error;
+		}
+		if (eval_src1) {
+			if (ulp_mapper_field_buffer_eval(val1, val1_len,
+							 &val1_int)) {
+				BNXT_TF_DBG(ERR, "fld src1 eval failed\n");
+				goto error;
+			}
+		}
+	}
+
+	/* for "if then clause" set the correct process  */
+	if (fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3) {
+		if (value1)
+			process_src2 = 1;
+		else
+			process_src3 = 1;
+	}
+
+	/* process src2 opcode */
+	if (process_src2) {
+		if (ulp_mapper_field_src_process(parms, fld->field_src2,
+						 fld->field_opr2, dir, is_key,
+						 fld->field_bit_size, &val2,
+						 &val2_len, &value2)) {
+			BNXT_TF_DBG(ERR, "fld src2 process failed\n");
+			goto error;
+		}
+		if (eval_src2) {
+			if (ulp_mapper_field_buffer_eval(val2, val2_len,
+							 &val2_int)) {
+				BNXT_TF_DBG(ERR, "fld src2 eval failed\n");
+				goto error;
+			}
+		}
+	}
+
+	/* process src3 opcode */
+	if (process_src3) {
+		if (ulp_mapper_field_src_process(parms, fld->field_src3,
+						 fld->field_opr3, dir, is_key,
+						 fld->field_bit_size, &val3,
+						 &val3_len, &value3)) {
+			BNXT_TF_DBG(ERR, "fld src3 process failed\n");
+			goto error;
+		}
+		if (eval_src3) {
+			if (ulp_mapper_field_buffer_eval(val3, val3_len,
+							 &val3_int)) {
+				BNXT_TF_DBG(ERR, "fld src3 eval failed\n");
+				goto error;
+			}
+		}
+	}
+
+	val_len = fld->field_bit_size;
+	/* process the field opcodes */
+	switch (fld->field_opc) {
+	case BNXT_ULP_FIELD_OPC_SRC1:
+		if (ulp_mapper_field_blob_write(fld->field_src1,
+						blob, val1, val1_len, &val))
+			goto error;
+		val_len = val1_len;
+		break;
+	case BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3:
+		if (value1) {
+			if (ulp_mapper_field_blob_write(fld->field_src2, blob,
+							val2, val2_len, &val))
+				goto error;
+			val_len = val2_len;
+		} else {
+			if (ulp_mapper_field_blob_write(fld->field_src3, blob,
+							val3, val3_len, &val))
+				goto error;
+			val_len = val3_len;
+		}
+		break;
+	case BNXT_ULP_FIELD_OPC_SRC1_PLUS_SRC2:
+	case BNXT_ULP_FIELD_OPC_SRC1_PLUS_SRC2_POST:
+		val_int = val1_int + val2_int;
+		val_int = tfp_cpu_to_be_64(val_int);
+		val = ulp_blob_push_64(blob, &val_int, fld->field_bit_size);
+		if (!val) {
+			BNXT_TF_DBG(ERR, "push to blob failed\n");
+			goto error;
+		}
+		break;
+	case BNXT_ULP_FIELD_OPC_SRC1_MINUS_SRC2:
+	case BNXT_ULP_FIELD_OPC_SRC1_MINUS_SRC2_POST:
+		val_int = val1_int - val2_int;
+		val_int = tfp_cpu_to_be_64(val_int);
+		val = ulp_blob_push_64(blob, &val_int, fld->field_bit_size);
+		if (!val) {
+			BNXT_TF_DBG(ERR, "push to blob failed\n");
+			goto error;
+		}
+		break;
+	case BNXT_ULP_FIELD_OPC_SRC1_OR_SRC2:
+		val_int = val1_int | val2_int;
+		val_int = tfp_cpu_to_be_64(val_int);
+		val = ulp_blob_push_64(blob, &val_int, fld->field_bit_size);
+		if (!val) {
+			BNXT_TF_DBG(ERR, "push to blob failed\n");
+			goto error;
+		}
+		break;
+	case BNXT_ULP_FIELD_OPC_SRC1_OR_SRC2_OR_SRC3:
+		val_int = val1_int | val2_int | val3_int;
+		val_int = tfp_cpu_to_be_64(val_int);
+		val = ulp_blob_push_64(blob, &val_int, fld->field_bit_size);
+		if (!val) {
+			BNXT_TF_DBG(ERR, "push to blob failed\n");
+			goto error;
+		}
+		break;
+	case BNXT_ULP_FIELD_OPC_SRC1_AND_SRC2:
+		val_int = val1_int & val2_int;
+		val_int = tfp_cpu_to_be_64(val_int);
+		val = ulp_blob_push_64(blob, &val_int, fld->field_bit_size);
+		if (!val) {
+			BNXT_TF_DBG(ERR, "push to blob failed\n");
+			goto error;
+		}
+		break;
+	case BNXT_ULP_FIELD_OPC_SRC1_AND_SRC2_OR_SRC3:
+		val_int = val1_int & (val2_int | val3_int);
+		val_int = tfp_cpu_to_be_64(val_int);
+		val = ulp_blob_push_64(blob, &val_int, fld->field_bit_size);
+		if (!val) {
+			BNXT_TF_DBG(ERR, "push to blob failed\n");
+			goto error;
+		}
+		break;
+	case BNXT_ULP_FIELD_OPC_SKIP:
+		break;
+	default:
+		break;
+	}
+
+	return rc;
+error:
+	BNXT_TF_DBG(ERR, "Error in %s:%s process %u:%u\n", name,
+		    fld->description, (val) ? write_idx : 0, val_len);
+	return -EINVAL;
 }
 
 /*
@@ -1474,8 +1473,8 @@ ulp_mapper_tbl_result_build(struct bnxt_ulp_mapper_parms *parms,
 			ulp_blob_encap_swap_idx_set(data);
 
 		/* Process the result fields */
-		rc = ulp_mapper_field_process(parms, tbl->direction,
-					      &dflds[i], data, 0, name);
+		rc = ulp_mapper_field_opc_process(parms, tbl->direction,
+						  &dflds[i], data, 0, name);
 		if (rc) {
 			BNXT_TF_DBG(ERR, "data field failed\n");
 			return rc;
@@ -1877,9 +1876,9 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	 */
 	for (i = 0; i < num_kflds; i++) {
 		/* Setup the key */
-		rc = ulp_mapper_field_process(parms, tbl->direction,
-					      &kflds[i].field_info_spec,
-					      key, 1, "TCAM Key");
+		rc = ulp_mapper_field_opc_process(parms, tbl->direction,
+						  &kflds[i].field_info_spec,
+						  key, 1, "TCAM Key");
 		if (rc) {
 			BNXT_TF_DBG(ERR, "Key field set failed %s\n",
 				    kflds[i].field_info_spec.description);
@@ -1887,9 +1886,9 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 
 		/* Setup the mask */
-		rc = ulp_mapper_field_process(parms, tbl->direction,
-					      &kflds[i].field_info_mask,
-					      mask, 0, "TCAM Mask");
+		rc = ulp_mapper_field_opc_process(parms, tbl->direction,
+						  &kflds[i].field_info_mask,
+						  mask, 0, "TCAM Mask");
 		if (rc) {
 			BNXT_TF_DBG(ERR, "Mask field set failed %s\n",
 				    kflds[i].field_info_mask.description);
@@ -2077,9 +2076,9 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	/* create the key */
 	for (i = 0; i < num_kflds; i++) {
 		/* Setup the key */
-		rc = ulp_mapper_field_process(parms, tbl->direction,
-					      &kflds[i].field_info_spec,
-					      &key, 1, "EM Key");
+		rc = ulp_mapper_field_opc_process(parms, tbl->direction,
+						  &kflds[i].field_info_spec,
+						  &key, 1, "EM Key");
 		if (rc) {
 			BNXT_TF_DBG(ERR, "Key field set failed.\n");
 			return rc;
@@ -2645,9 +2644,9 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 	for (i = 0; i < num_kflds; i++) {
 		/* Setup the key */
-		rc = ulp_mapper_field_process(parms, tbl->direction,
-					      &kflds[i].field_info_spec,
-					      &key, 1, "Gen Tbl Key");
+		rc = ulp_mapper_field_opc_process(parms, tbl->direction,
+						  &kflds[i].field_info_spec,
+						  &key, 1, "Gen Tbl Key");
 		if (rc) {
 			BNXT_TF_DBG(ERR,
 				    "Failed to create key for Gen tbl rc=%d\n",
@@ -3158,6 +3157,9 @@ ulp_mapper_cc_upd_opr_compute(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		*result = tfp_be_to_cpu_64(regval);
+		break;
+	case BNXT_ULP_CC_UPD_SRC_CONST:
+		*result = cc_opr;
 		break;
 	default:
 		BNXT_TF_DBG(ERR, "invalid src code %u\n", cc_src);

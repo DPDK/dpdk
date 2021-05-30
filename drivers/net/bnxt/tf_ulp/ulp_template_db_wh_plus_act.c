@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Tue Jan 26 15:51:49 2021 */
+/* date: Sun Mar 14 12:41:59 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -986,17 +986,15 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[] = {
 	.field_info_mask = {
 		.description = "shared_index",
 		.field_bit_size = 1,
-		.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-		.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
+		.field_src1 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_opr1 = {
 			0xff}
 		},
 	.field_info_spec = {
 		.description = "shared_index",
 		.field_bit_size = 1,
-		.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-		.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 		.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 		.field_opr1 = {
 			(BNXT_ULP_ACT_PROP_IDX_SHARED_HANDLE >> 8) & 0xff,
@@ -1008,17 +1006,15 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[] = {
 	.field_info_mask = {
 		.description = "shared_index",
 		.field_bit_size = 1,
-		.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-		.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
+		.field_src1 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_opr1 = {
 			0xff}
 		},
 	.field_info_spec = {
 		.description = "shared_index",
 		.field_bit_size = 1,
-		.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-		.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 		.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr1 = {
 			(BNXT_ULP_RF_IDX_MIRROR_PTR_0 >> 8) & 0xff,
@@ -1032,44 +1028,38 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "count",
 	.field_bit_size = 64,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 1, wh_plus, table: int_vtag_encap_record.0 */
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l4_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l3_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l2_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_vtag_type",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI}
@@ -1077,15 +1067,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_custom_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_valid",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -1093,8 +1081,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "vtag_tpid",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN >> 8) & 0xff,
@@ -1103,8 +1090,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "vtag_vid",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID >> 8) & 0xff,
@@ -1113,15 +1099,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "vtag_de",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_pcp",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP >> 8) & 0xff,
@@ -1130,16 +1114,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "spare",
 	.field_bit_size = 80,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 1, wh_plus, table: int_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -1148,29 +1130,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -1185,29 +1163,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_ENCAP_PTR_0 >> 8) & 0xff,
@@ -1216,8 +1190,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
@@ -1226,9 +1199,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
@@ -1237,17 +1210,16 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
+	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_DST >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_SET_TP_DST & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
@@ -1256,9 +1228,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
@@ -1267,38 +1239,34 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
+	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
@@ -1307,8 +1275,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
@@ -1317,9 +1284,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 40) & 0xff,
@@ -1328,18 +1295,17 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-	.field_opr1 = {
-		ULP_WP_SYM_DECAP_FUNC_THRU_TUN},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
+		ULP_WP_SYM_DECAP_FUNC_THRU_TUN},
+	.field_src3 = BNXT_ULP_FIELD_SRC_CONST,
+	.field_opr3 = {
 		ULP_WP_SYM_DECAP_FUNC_NONE}
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
@@ -1348,8 +1314,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 56) & 0xff,
@@ -1364,16 +1329,15 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 40) & 0xff,
@@ -1382,17 +1346,16 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_RF,
+	.field_opr2 = {
 		(BNXT_ULP_RF_IDX_MIRROR_ID_0 >> 8) & 0xff,
 		BNXT_ULP_RF_IDX_MIRROR_ID_0 & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
@@ -1407,23 +1370,20 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "hit",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "type",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 1, wh_plus, table: ext_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -1432,29 +1392,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -1469,50 +1425,43 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "flow_cntr_ext",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_rec_int",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
@@ -1521,9 +1470,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
@@ -1532,17 +1481,16 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
+	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_DST >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_SET_TP_DST & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
@@ -1551,9 +1499,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
@@ -1562,38 +1510,34 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
+	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
@@ -1602,8 +1546,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
@@ -1612,9 +1555,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 40) & 0xff,
@@ -1623,18 +1566,17 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-	.field_opr1 = {
-		ULP_WP_SYM_DECAP_FUNC_THRU_TUN},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
+		ULP_WP_SYM_DECAP_FUNC_THRU_TUN},
+	.field_src3 = BNXT_ULP_FIELD_SRC_CONST,
+	.field_opr3 = {
 		ULP_WP_SYM_DECAP_FUNC_NONE}
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
@@ -1643,8 +1585,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 56) & 0xff,
@@ -1659,15 +1600,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MIRROR_ID_0 >> 8) & 0xff,
@@ -1676,8 +1615,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
@@ -1692,29 +1630,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l4_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l3_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l2_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_L2_EN_YES}
@@ -1722,72 +1656,62 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_vtag_type",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_custom_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_valid",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_tpid",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_vid",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_de",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_pcp",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "spare",
 	.field_bit_size = 0,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 2, wh_plus, table: mirror_tbl.alloc */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -1795,45 +1719,39 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "copy",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ign_drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "reserved",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "sp_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 2, wh_plus, table: int_flow_counter_tbl.0 */
 	{
 	.description = "count",
 	.field_bit_size = 64,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 2, wh_plus, table: int_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -1842,29 +1760,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -1879,106 +1793,91 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
@@ -1987,25 +1886,19 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_PLUS_CONST,
-	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
-	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MIRROR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MIRROR_PTR_0 & 0xff},
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_PLUS_SRC2,
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 		1}
@@ -2013,30 +1906,26 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "hit",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "type",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 2, wh_plus, table: ext_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -2045,29 +1934,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -2082,120 +1967,103 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "flow_cntr_ext",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_rec_int",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
@@ -2204,8 +2072,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 56) & 0xff,
@@ -2220,18 +2087,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_PLUS_CONST,
-	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
-	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MIRROR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MIRROR_PTR_0 & 0xff},
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_PLUS_SRC2,
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 		1}
@@ -2239,36 +2101,31 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l4_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l3_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l2_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_L2_EN_YES}
@@ -2276,65 +2133,56 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_vtag_type",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_custom_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_valid",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_tpid",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_vid",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_de",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_pcp",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "spare",
 	.field_bit_size = 0,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 2, wh_plus, table: mirror_tbl.wr */
 	{
 	.description = "act_rec_ptr",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
@@ -2343,8 +2191,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -2352,37 +2199,32 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "copy",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ign_drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "reserved",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "sp_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 2, wh_plus, table: shared_mirror_record.wr */
 	{
 	.description = "rid",
 	.field_bit_size = 32,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_RID >> 8) & 0xff,
@@ -2391,11 +2233,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "mirror_id",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_PLUS_CONST_POST,
-	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
-	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MIRROR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MIRROR_PTR_0 & 0xff},
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_PLUS_SRC2_POST,
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 		(1 >> 8) & 0xff,
@@ -2405,16 +2243,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "count",
 	.field_bit_size = 64,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 3, wh_plus, table: act_modify_ipv4_src.0 */
 	{
 	.description = "ipv4_addr",
 	.field_bit_size = 32,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC >> 8) & 0xff,
@@ -2424,8 +2260,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ipv4_addr",
 	.field_bit_size = 32,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST >> 8) & 0xff,
@@ -2435,29 +2270,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l4_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l3_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l2_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_L2_EN_YES}
@@ -2465,22 +2296,19 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_vtag_type",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_custom_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_valid",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -2488,44 +2316,38 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "vtag_tpid",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_vid",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_de",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_pcp",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "spare",
 	.field_bit_size = 80,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 3, wh_plus, table: int_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -2534,29 +2356,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -2571,29 +2389,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_GLB_RF,
 	.field_opr1 = {
 		(BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR >> 8) & 0xff,
@@ -2602,8 +2416,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
@@ -2612,9 +2425,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
@@ -2623,17 +2436,16 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
+	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_DST >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_SET_TP_DST & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
@@ -2642,9 +2454,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
@@ -2653,38 +2465,34 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
+	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
@@ -2693,8 +2501,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
@@ -2703,9 +2510,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_HDR_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_HDR_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
@@ -2714,18 +2521,17 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-	.field_opr1 = {
-		ULP_WP_SYM_DECAP_FUNC_THRU_TL2},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
+		ULP_WP_SYM_DECAP_FUNC_THRU_TL2},
+	.field_src3 = BNXT_ULP_FIELD_SRC_CONST,
+	.field_opr3 = {
 		ULP_WP_SYM_DECAP_FUNC_THRU_L2}
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
@@ -2734,51 +2540,44 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "hit",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "type",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 3, wh_plus, table: ext_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -2787,29 +2586,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -2824,36 +2619,31 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "flow_cntr_ext",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_GLB_RF,
 	.field_opr1 = {
 		(BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR >> 8) & 0xff,
@@ -2862,8 +2652,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "encap_rec_int",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -2871,8 +2660,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
@@ -2881,9 +2669,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
@@ -2892,17 +2680,16 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
+	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_DST >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_SET_TP_DST & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
@@ -2911,9 +2698,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
@@ -2922,38 +2709,34 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
+	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
@@ -2962,8 +2745,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
@@ -2972,9 +2754,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_HDR_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_HDR_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
@@ -2983,18 +2765,17 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-	.field_opr1 = {
-		ULP_WP_SYM_DECAP_FUNC_THRU_TL2},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
+		ULP_WP_SYM_DECAP_FUNC_THRU_TL2},
+	.field_src3 = BNXT_ULP_FIELD_SRC_CONST,
+	.field_opr3 = {
 		ULP_WP_SYM_DECAP_FUNC_THRU_L2}
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
@@ -3003,57 +2784,49 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l4_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l3_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l2_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_L2_EN_YES}
@@ -3061,101 +2834,87 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_vtag_type",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_custom_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_valid",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_tpid",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_vid",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_de",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_pcp",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "spare",
 	.field_bit_size = 0,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 4, wh_plus, table: int_flow_counter_tbl.0 */
 	{
 	.description = "count",
 	.field_bit_size = 64,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 4, wh_plus, table: int_vtag_encap_record.0 */
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l4_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l3_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l2_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_vtag_type",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI}
@@ -3163,15 +2922,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_custom_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_valid",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -3179,8 +2936,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "vtag_tpid",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN >> 8) & 0xff,
@@ -3189,8 +2945,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "vtag_vid",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID >> 8) & 0xff,
@@ -3199,15 +2954,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "vtag_de",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_pcp",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP >> 8) & 0xff,
@@ -3216,16 +2969,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "spare",
 	.field_bit_size = 80,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 4, wh_plus, table: int_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -3234,29 +2985,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -3271,29 +3018,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_ENCAP_PTR_0 >> 8) & 0xff,
@@ -3302,57 +3045,49 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
@@ -3361,8 +3096,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
@@ -3371,15 +3105,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
@@ -3388,29 +3120,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
@@ -3425,23 +3153,20 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "hit",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "type",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 4, wh_plus, table: ext_full_act_record.no_tag */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -3450,29 +3175,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -3487,99 +3208,85 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "flow_cntr_ext",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_rec_int",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
@@ -3588,8 +3295,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
@@ -3598,15 +3304,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
@@ -3615,29 +3319,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
@@ -3652,29 +3352,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l4_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l3_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l2_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_L2_EN_YES}
@@ -3682,65 +3378,56 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_vtag_type",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_custom_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_valid",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_tpid",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_vid",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_de",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_pcp",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "spare",
 	.field_bit_size = 0,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 4, wh_plus, table: ext_full_act_record.one_tag */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -3749,29 +3436,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -3786,99 +3469,85 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "flow_cntr_ext",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_rec_int",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
@@ -3887,8 +3556,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
@@ -3897,15 +3565,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
@@ -3914,8 +3580,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 56) & 0xff,
@@ -3930,22 +3595,19 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
@@ -3960,36 +3622,31 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l4_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l3_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l2_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_vtag_type",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI}
@@ -3997,15 +3654,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_custom_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_valid",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -4013,8 +3668,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "vtag_tpid",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN >> 8) & 0xff,
@@ -4023,8 +3677,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "vtag_vid",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID >> 8) & 0xff,
@@ -4033,15 +3686,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "vtag_de",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_pcp",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP >> 8) & 0xff,
@@ -4050,24 +3701,21 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "spare",
 	.field_bit_size = 0,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 5, wh_plus, table: int_flow_counter_tbl.0 */
 	{
 	.description = "count",
 	.field_bit_size = 64,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 5, wh_plus, table: act_modify_ipv4_src.0 */
 	{
 	.description = "ipv4_addr",
 	.field_bit_size = 32,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC >> 8) & 0xff,
@@ -4077,8 +3725,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ipv4_addr",
 	.field_bit_size = 32,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST >> 8) & 0xff,
@@ -4088,29 +3735,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l4_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l3_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l2_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_L2_EN_YES}
@@ -4118,22 +3761,19 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_vtag_type",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_custom_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_valid",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -4141,44 +3781,38 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "vtag_tpid",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_vid",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_de",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_pcp",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "spare",
 	.field_bit_size = 80,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 5, wh_plus, table: int_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -4187,29 +3821,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -4224,29 +3854,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_GLB_RF,
 	.field_opr1 = {
 		(BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR >> 8) & 0xff,
@@ -4255,8 +3881,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
@@ -4265,9 +3890,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
@@ -4276,17 +3901,16 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
+	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_DST >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_SET_TP_DST & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
@@ -4295,9 +3919,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
@@ -4306,38 +3930,34 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
+	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
@@ -4346,8 +3966,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
@@ -4356,9 +3975,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_HDR_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_HDR_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
@@ -4367,18 +3986,17 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-	.field_opr1 = {
-		ULP_WP_SYM_DECAP_FUNC_THRU_TL2},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
+		ULP_WP_SYM_DECAP_FUNC_THRU_TL2},
+	.field_src3 = BNXT_ULP_FIELD_SRC_CONST,
+	.field_opr3 = {
 		ULP_WP_SYM_DECAP_FUNC_THRU_L2}
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
@@ -4387,51 +4005,44 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "hit",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "type",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 5, wh_plus, table: ext_full_act_record.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -4440,29 +4051,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -4477,36 +4084,31 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "flow_cntr_ext",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_GLB_RF,
 	.field_opr1 = {
 		(BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR >> 8) & 0xff,
@@ -4515,8 +4117,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "encap_rec_int",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -4524,8 +4125,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
@@ -4534,9 +4134,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
@@ -4545,17 +4145,16 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
+	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_DST >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_SET_TP_DST & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
@@ -4564,9 +4163,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
@@ -4575,38 +4174,34 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
-	.field_opr1 = {
+	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
+	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC >> 8) & 0xff,
 		BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
@@ -4615,8 +4210,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
 		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
@@ -4625,9 +4219,9 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_HDR_BIT,
-	.field_cond_opr = {
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+	.field_src1 = BNXT_ULP_FIELD_SRC_HDR_BIT,
+	.field_opr1 = {
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
@@ -4636,18 +4230,17 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
 		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
 		(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff},
-	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-	.field_opr1 = {
-		ULP_WP_SYM_DECAP_FUNC_THRU_TL2},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
+		ULP_WP_SYM_DECAP_FUNC_THRU_TL2},
+	.field_src3 = BNXT_ULP_FIELD_SRC_CONST,
+	.field_opr3 = {
 		ULP_WP_SYM_DECAP_FUNC_THRU_L2}
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
@@ -4656,57 +4249,49 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l4_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l3_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_l2_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_L2_EN_YES}
@@ -4714,73 +4299,63 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_vtag_type",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_custom_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_valid",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_tpid",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_vid",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_de",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vtag_pcp",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "spare",
 	.field_bit_size = 0,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 6, wh_plus, table: int_flow_counter_tbl.0 */
 	{
 	.description = "count",
 	.field_bit_size = 64,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 6, wh_plus, table: sp_smac_ipv4.0 */
 	{
 	.description = "smac",
 	.field_bit_size = 48,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC >> 8) & 0xff,
@@ -4789,8 +4364,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ipv4_src_addr",
 	.field_bit_size = 32,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC >> 8) & 0xff,
@@ -4799,16 +4373,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "reserved",
 	.field_bit_size = 48,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 6, wh_plus, table: sp_smac_ipv6.0 */
 	{
 	.description = "smac",
 	.field_bit_size = 48,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC >> 8) & 0xff,
@@ -4817,8 +4389,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ipv6_src_addr",
 	.field_bit_size = 128,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC >> 8) & 0xff,
@@ -4827,16 +4398,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "reserved",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 6, wh_plus, table: int_tun_encap_record.0 */
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_TUN_TYPE_VXLAN}
@@ -4844,8 +4413,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_l4_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_L4_TYPE_UDP_CSUM}
@@ -4853,8 +4421,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_l3_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_L3_TYPE >> 8) & 0xff,
@@ -4863,8 +4430,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_l2_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -4872,8 +4438,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_vtag_type",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG_TYPE >> 8) & 0xff,
@@ -4882,15 +4447,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_custom_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_valid",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -4898,8 +4461,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "encap_l2_dmac",
 	.field_bit_size = 48,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_DMAC >> 8) & 0xff,
@@ -4908,8 +4470,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "encap_vtag",
 	.field_bit_size = 0,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP_SZ,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG >> 8) & 0xff,
@@ -4920,8 +4481,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "encap_ip",
 	.field_bit_size = 0,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP_SZ,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_IP >> 8) & 0xff,
@@ -4932,8 +4492,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "encap_udp",
 	.field_bit_size = 32,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_UDP >> 8) & 0xff,
@@ -4942,8 +4501,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "encap_tun",
 	.field_bit_size = 0,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP_SZ,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN >> 8) & 0xff,
@@ -4955,8 +4513,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -4965,29 +4522,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -5002,29 +4555,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_ENCAP_PTR_0 >> 8) & 0xff,
@@ -5033,78 +4582,67 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
@@ -5113,51 +4651,44 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "hit",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "type",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	/* act_tid: 6, wh_plus, table: ext_full_act_record_vxlan.0 */
 	{
 	.description = "flow_cntr_ptr",
 	.field_bit_size = 14,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
 		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
@@ -5166,29 +4697,25 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "age_enable",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "agg_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "rate_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "flow_cntr_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
 		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
@@ -5203,120 +4730,103 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "flow_cntr_ext",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_key",
 	.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_mir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcpflags_match",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_ptr",
 	.field_bit_size = 11,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "encap_rec_int",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "dst_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_dst_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "src_ip_ptr",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tcp_src_port",
 	.field_bit_size = 16,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter_id",
 	.field_bit_size = 10,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_rdir",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "l3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "tl3_ttl_dec",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "decap_func",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "vnic_or_vport",
 	.field_bit_size = 12,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
@@ -5325,36 +4835,31 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "pop_vlan",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "meter",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "drop",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_tun_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_TUN_TYPE_VXLAN}
@@ -5362,8 +4867,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_l4_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		ULP_WP_SYM_ECV_L4_TYPE_UDP_CSUM}
@@ -5371,8 +4875,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_l3_type",
 	.field_bit_size = 3,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_L3_TYPE >> 8) & 0xff,
@@ -5381,8 +4884,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_l2_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -5390,8 +4892,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_vtag_type",
 	.field_bit_size = 4,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG_TYPE >> 8) & 0xff,
@@ -5400,15 +4901,13 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "ecv_custom_en",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "ecv_valid",
 	.field_bit_size = 1,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
 		1}
@@ -5416,8 +4915,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "encap_l2_dmac",
 	.field_bit_size = 48,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_DMAC >> 8) & 0xff,
@@ -5426,8 +4924,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "encap_vtag",
 	.field_bit_size = 0,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP_SZ,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG >> 8) & 0xff,
@@ -5438,8 +4935,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "encap_ip",
 	.field_bit_size = 0,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP_SZ,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_IP >> 8) & 0xff,
@@ -5450,8 +4946,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "encap_udp",
 	.field_bit_size = 32,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_UDP >> 8) & 0xff,
@@ -5460,8 +4955,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "encap_tun",
 	.field_bit_size = 80,
-	.field_opc = BNXT_ULP_FIELD_OPC_COND_OP,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
+	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
 		(BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN >> 8) & 0xff,

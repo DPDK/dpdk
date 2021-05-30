@@ -448,7 +448,7 @@ ulp_blob_push_32(struct ulp_blob *blob,
  * The offset of the data is updated after each push of data.
  * NULL returned on error, pointer pushed value otherwise.
  */
-uint32_t
+int32_t
 ulp_blob_push_encap(struct ulp_blob *blob,
 		    uint8_t *data,
 		    uint32_t datalen)
@@ -460,7 +460,7 @@ ulp_blob_push_encap(struct ulp_blob *blob,
 	if (!blob || !data ||
 	    datalen > (uint32_t)(blob->bitlen - blob->write_idx)) {
 		BNXT_TF_DBG(ERR, "invalid argument\n");
-		return 0;
+		return -1;
 	}
 
 	initial_size = ULP_BYTE_2_BITS(sizeof(uint64_t)) -
@@ -479,7 +479,7 @@ ulp_blob_push_encap(struct ulp_blob *blob,
 		}
 		if (!ulp_blob_push(blob, val, size)) {
 			BNXT_TF_DBG(ERR, "push field failed\n");
-			return 0;
+			return -1;
 		}
 		val += ULP_BITS_2_BYTE(size);
 		write_size -= size;

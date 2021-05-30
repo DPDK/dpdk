@@ -272,7 +272,7 @@ ulp_blob_push_32(struct ulp_blob *blob,
  * The offset of the data is updated after each push of data.
  * NULL returned on error, pointer pushed value otherwise.
  */
-uint32_t
+int32_t
 ulp_blob_push_encap(struct ulp_blob *blob,
 		    uint8_t *data,
 		    uint32_t datalen);
