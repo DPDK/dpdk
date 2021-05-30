@@ -112,6 +112,11 @@ struct ulp_tlv_param {
 	uint8_t value[16];
 };
 
+struct ulp_context_list_entry {
+	TAILQ_ENTRY(ulp_context_list_entry)	next;
+	struct bnxt_ulp_context			*ulp_ctx;
+};
+
 /*
  * Allow the deletion of context only for the bnxt device that
  * created the session
@@ -285,4 +290,11 @@ bnxt_ulp_cntxt_ptr2_ha_info_get(struct bnxt_ulp_context *ulp_ctx);
 
 bool
 bnxt_ulp_cntxt_ha_enabled(struct bnxt_ulp_context *ulp_ctx);
+
+struct bnxt_ulp_context *
+bnxt_ulp_cntxt_entry_acquire(void);
+
+void
+bnxt_ulp_cntxt_entry_release(void);
+
 #endif /* _BNXT_ULP_H_ */

@@ -8,6 +8,7 @@
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include <rte_tailq.h>
+#include <rte_spinlock.h>
 
 #include "bnxt.h"
 #include "bnxt_ulp.h"
@@ -31,6 +32,17 @@ STAILQ_HEAD(, bnxt_ulp_session_state) bnxt_ulp_session_list =
 
 /* Mutex to synchronize bnxt_ulp_session_list operations. */
 static pthread_mutex_t bnxt_ulp_global_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* Spin lock to protect context global list */
+rte_spinlock_t bnxt_ulp_ctxt_lock;
+TAILQ_HEAD(cntx_list_entry_list, ulp_context_list_entry);
+static struct cntx_list_entry_list ulp_cntx_list =
+	TAILQ_HEAD_INITIALIZER(ulp_cntx_list);
+
+/* Static function declarations */
+static int32_t bnxt_ulp_cntxt_list_init(void);
+static int32_t bnxt_ulp_cntxt_list_add(struct bnxt_ulp_context *ulp_ctx);
+static void bnxt_ulp_cntxt_list_del(struct bnxt_ulp_context *ulp_ctx);
 
 /*
  * Allow the deletion of context only for the bnxt device that
@@ -743,6 +755,16 @@ ulp_ctx_init(struct bnxt *bp,
 	int32_t			rc = 0;
 	enum bnxt_ulp_device_id devid;
 
+	/* Initialize the context entries list */
+	bnxt_ulp_cntxt_list_init();
+
+	/* Add the context to the context entries list */
+	rc = bnxt_ulp_cntxt_list_add(bp->ulp_ctx);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to add the context list entry\n");
+		return -ENOMEM;
+	}
+
 	/* Allocate memory to hold ulp context data. */
 	ulp_data = rte_zmalloc("bnxt_ulp_data",
 			       sizeof(struct bnxt_ulp_data), 0);
@@ -877,6 +899,13 @@ ulp_ctx_attach(struct bnxt *bp,
 
 	/* update the session details in bnxt tfp */
 	bp->tfp.session = session->g_tfp->session;
+
+	/* Add the context to the context entries list */
+	rc = bnxt_ulp_cntxt_list_add(bp->ulp_ctx);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to add the context list entry\n");
+		return -EINVAL;
+	}
 
 	/*
 	 * The supported flag will be set during the init. Use it now to
@@ -1448,6 +1477,9 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 	BNXT_TF_DBG(DEBUG, "BNXT Port:%d ULP port deinit\n",
 		    bp->eth_dev->data->port_id);
 
+	/* Free the ulp context in the context entry list */
+	bnxt_ulp_cntxt_list_del(bp->ulp_ctx);
+
 	/* Get the session details  */
 	pci_dev = RTE_DEV_TO_PCI(bp->eth_dev->device);
 	pci_addr = &pci_dev->addr;
@@ -1886,4 +1918,67 @@ bnxt_ulp_cntxt_ha_enabled(struct bnxt_ulp_context *ulp_ctx)
 	if (ulp_ctx == NULL || ulp_ctx->cfg_data == NULL)
 		return false;
 	return !!ULP_HIGH_AVAIL_IS_ENABLED(ulp_ctx->cfg_data->ulp_flags);
+}
+
+static int32_t
+bnxt_ulp_cntxt_list_init(void)
+{
+	/* Create the cntxt spin lock */
+	rte_spinlock_init(&bnxt_ulp_ctxt_lock);
+
+	return 0;
+}
+
+static int32_t
+bnxt_ulp_cntxt_list_add(struct bnxt_ulp_context *ulp_ctx)
+{
+	struct ulp_context_list_entry	*entry;
+
+	entry = rte_zmalloc(NULL, sizeof(struct ulp_context_list_entry), 0);
+	if (entry == NULL) {
+		BNXT_TF_DBG(ERR, "unable to allocate memory\n");
+		return -ENOMEM;
+	}
+
+	rte_spinlock_lock(&bnxt_ulp_ctxt_lock);
+	entry->ulp_ctx = ulp_ctx;
+	TAILQ_INSERT_TAIL(&ulp_cntx_list, entry, next);
+	rte_spinlock_unlock(&bnxt_ulp_ctxt_lock);
+	return 0;
+}
+
+static void
+bnxt_ulp_cntxt_list_del(struct bnxt_ulp_context *ulp_ctx)
+{
+	struct ulp_context_list_entry	*entry, *temp;
+
+	rte_spinlock_lock(&bnxt_ulp_ctxt_lock);
+	TAILQ_FOREACH_SAFE(entry, &ulp_cntx_list, next, temp) {
+		if (entry->ulp_ctx == ulp_ctx) {
+			TAILQ_REMOVE(&ulp_cntx_list, entry, next);
+			rte_free(entry);
+			break;
+		}
+	}
+	rte_spinlock_unlock(&bnxt_ulp_ctxt_lock);
+}
+
+struct bnxt_ulp_context *
+bnxt_ulp_cntxt_entry_acquire(void)
+{
+	struct ulp_context_list_entry	*entry;
+
+	/* take a lock and get the first ulp context available */
+	if (rte_spinlock_trylock(&bnxt_ulp_ctxt_lock)) {
+		TAILQ_FOREACH(entry, &ulp_cntx_list, next)
+			if (entry->ulp_ctx)
+				return entry->ulp_ctx;
+	}
+	return NULL;
+}
+
+void
+bnxt_ulp_cntxt_entry_release(void)
+{
+	rte_spinlock_unlock(&bnxt_ulp_ctxt_lock);
 }

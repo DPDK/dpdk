@@ -26,7 +26,7 @@
 #define ULP_HA_IF_TBL_IDX 10
 
 static void ulp_ha_mgr_timer_cancel(struct bnxt_ulp_context *ulp_ctx);
-static int32_t ulp_ha_mgr_timer_start(struct bnxt_ulp_context *ulp_ctx);
+static int32_t ulp_ha_mgr_timer_start(void);
 static void ulp_ha_mgr_timer_cb(void *arg);
 static int32_t ulp_ha_mgr_app_type_set(struct bnxt_ulp_context *ulp_ctx,
 				enum ulp_ha_mgr_app_type app_type);
@@ -126,7 +126,7 @@ ulp_ha_mgr_app_type_set(struct bnxt_ulp_context *ulp_ctx,
  * - Release the flow db lock for flows to continue
  */
 static void
-ulp_ha_mgr_timer_cb(void *arg)
+ulp_ha_mgr_timer_cb(void *arg __rte_unused)
 {
 	struct tf_move_tcam_shared_entries_parms mparms = { 0 };
 	struct bnxt_ulp_context *ulp_ctx;
@@ -134,7 +134,13 @@ ulp_ha_mgr_timer_cb(void *arg)
 	struct tf *tfp;
 	int32_t rc;
 
-	ulp_ctx = (struct bnxt_ulp_context *)arg;
+	ulp_ctx = bnxt_ulp_cntxt_entry_acquire();
+	if (ulp_ctx == NULL) {
+		BNXT_TF_DBG(INFO, "could not get the ulp context lock\n");
+		ulp_ha_mgr_timer_start();
+		return;
+	}
+
 	rc = ulp_ha_mgr_state_get(ulp_ctx, &curr_state);
 	if (rc) {
 		/*
@@ -180,31 +186,18 @@ ulp_ha_mgr_timer_cb(void *arg)
 	BNXT_TF_DBG(INFO, "On HA CB: SEC[SEC_TIMER_COPY] => PRIM[PRIM_RUN]\n");
 unlock:
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
+	bnxt_ulp_cntxt_entry_release();
 	return;
 cb_restart:
-	ulp_ha_mgr_timer_start(ulp_ctx);
+	bnxt_ulp_cntxt_entry_release();
+	ulp_ha_mgr_timer_start();
 }
 
 static int32_t
-ulp_ha_mgr_timer_start(struct bnxt_ulp_context *ulp_ctx)
+ulp_ha_mgr_timer_start(void)
 {
-	struct bnxt_ulp_ha_mgr_info *ha_info;
-
-	if (ulp_ctx == NULL) {
-		BNXT_TF_DBG(ERR, "Invalid parmsi for ha timer start.\n");
-		return -EINVAL;
-	}
-
-	ha_info = bnxt_ulp_cntxt_ptr2_ha_info_get(ulp_ctx);
-
-	if (ha_info == NULL) {
-		BNXT_TF_DBG(ERR, "Unable to get HA Info in timer start.\n");
-		return -EINVAL;
-	}
-	ha_info->flags |= ULP_HA_TIMER_THREAD;
 	rte_eal_alarm_set(US_PER_S * ULP_HA_TIMER_SEC,
-			  ulp_ha_mgr_timer_cb,
-			  (void *)ulp_ctx);
+			  ulp_ha_mgr_timer_cb, NULL);
 	return 0;
 }
 
@@ -374,7 +367,7 @@ ulp_ha_mgr_open(struct bnxt_ulp_context *ulp_ctx)
 		 * Clear the high region so the secondary can begin overriding
 		 * the current entries.
 		 */
-		rc = ulp_ha_mgr_timer_start(ulp_ctx);
+		rc = ulp_ha_mgr_timer_start();
 		if (rc) {
 			BNXT_TF_DBG(ERR, "Unable to start timer on HA Open.\n");
 			return -EINVAL;

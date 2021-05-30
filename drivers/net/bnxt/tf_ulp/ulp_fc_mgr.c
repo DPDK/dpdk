@@ -197,8 +197,7 @@ ulp_fc_mgr_thread_start(struct bnxt_ulp_context *ctxt)
 
 	if (ulp_fc_info && !(ulp_fc_info->flags & ULP_FLAG_FC_THREAD)) {
 		rte_eal_alarm_set(US_PER_S * ULP_FC_TIMER,
-				  ulp_fc_mgr_alarm_cb,
-				  (void *)ctxt);
+				  ulp_fc_mgr_alarm_cb, NULL);
 		ulp_fc_info->flags |= ULP_FLAG_FC_THREAD;
 	}
 
@@ -220,7 +219,7 @@ void ulp_fc_mgr_thread_cancel(struct bnxt_ulp_context *ctxt)
 		return;
 
 	ulp_fc_info->flags &= ~ULP_FLAG_FC_THREAD;
-	rte_eal_alarm_cancel(ulp_fc_mgr_alarm_cb, (void *)ctxt);
+	rte_eal_alarm_cancel(ulp_fc_mgr_alarm_cb, NULL);
 }
 
 /*
@@ -363,35 +362,48 @@ static int ulp_get_single_flow_stat(struct bnxt_ulp_context *ctxt,
  */
 
 void
-ulp_fc_mgr_alarm_cb(void *arg)
+ulp_fc_mgr_alarm_cb(void *arg __rte_unused)
 {
 	int rc = 0;
 	unsigned int j;
 	enum tf_dir i;
-	struct bnxt_ulp_context *ctxt = arg;
+	struct bnxt_ulp_context *ctxt;
 	struct bnxt_ulp_fc_info *ulp_fc_info;
 	struct bnxt_ulp_device_params *dparms;
 	struct tf *tfp;
 	uint32_t dev_id, hw_cntr_id = 0, num_entries = 0;
 
-	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
-	if (!ulp_fc_info)
+	ctxt = bnxt_ulp_cntxt_entry_acquire();
+	if (ctxt == NULL) {
+		BNXT_TF_DBG(INFO, "could not get the ulp context lock\n");
+		rte_eal_alarm_set(US_PER_S * ULP_FC_TIMER,
+				  ulp_fc_mgr_alarm_cb, NULL);
 		return;
+	}
+
+	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
+	if (!ulp_fc_info) {
+		bnxt_ulp_cntxt_entry_release();
+		return;
+	}
 
 	if (bnxt_ulp_cntxt_dev_id_get(ctxt, &dev_id)) {
 		BNXT_TF_DBG(DEBUG, "Failed to get device id\n");
+		bnxt_ulp_cntxt_entry_release();
 		return;
 	}
 
 	dparms = bnxt_ulp_device_params_get(dev_id);
 	if (!dparms) {
 		BNXT_TF_DBG(DEBUG, "Failed to device parms\n");
+		bnxt_ulp_cntxt_entry_release();
 		return;
 	}
 
 	tfp = bnxt_ulp_cntxt_tfp_get(ctxt, BNXT_ULP_SHARED_SESSION_NO);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get the truflow pointer\n");
+		bnxt_ulp_cntxt_entry_release();
 		return;
 	}
 
@@ -405,6 +417,7 @@ ulp_fc_mgr_alarm_cb(void *arg)
 	if (!ulp_fc_info->num_entries) {
 		pthread_mutex_unlock(&ulp_fc_info->fc_lock);
 		ulp_fc_mgr_thread_cancel(ctxt);
+		bnxt_ulp_cntxt_entry_release();
 		return;
 	}
 	/*
@@ -443,12 +456,13 @@ ulp_fc_mgr_alarm_cb(void *arg)
 
 	if (rc) {
 		ulp_fc_mgr_thread_cancel(ctxt);
+		bnxt_ulp_cntxt_entry_release();
 		return;
 	}
 out:
+	bnxt_ulp_cntxt_entry_release();
 	rte_eal_alarm_set(US_PER_S * ULP_FC_TIMER,
-			  ulp_fc_mgr_alarm_cb,
-			  (void *)ctxt);
+			  ulp_fc_mgr_alarm_cb, NULL);
 }
 
 /*
