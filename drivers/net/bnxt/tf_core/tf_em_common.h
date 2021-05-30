@@ -8,7 +8,7 @@
 
 #include "tf_core.h"
 #include "tf_session.h"
-
+#include "ll.h"
 
 /**
  * Function to search for table scope control block structure
@@ -22,6 +22,53 @@
  *   table scope control block struct not found
  */
 struct tf_tbl_scope_cb *tbl_scope_cb_find(uint32_t tbl_scope_id);
+
+/**
+ * Table scope control block content
+ */
+struct tf_em_caps {
+	uint32_t flags;
+	uint32_t supported;
+	uint32_t max_entries_supported;
+	uint16_t key_entry_size;
+	uint16_t record_entry_size;
+	uint16_t efc_entry_size;
+};
+
+/**
+ *  EEM data
+ *
+ *  Link list of ext em data allocated and managed by EEM module
+ *  for a TruFlow session.
+ */
+struct em_ext_db {
+	struct ll tbl_scope_ll;
+	struct rm_db *eem_db[TF_DIR_MAX];
+};
+
+/**
+ * Table Scope Control Block
+ *
+ * Holds private data for a table scope.
+ */
+struct tf_tbl_scope_cb {
+	/**
+	 * Linked list of tbl_scope
+	 */
+	struct ll_entry ll_entry; /* For inserting in link list, must be
+				   * first field of struct.
+				   */
+
+	uint32_t tbl_scope_id;
+
+       /** The pf or parent pf of the vf used for table scope creation
+	*/
+	uint16_t pf;
+	struct hcapi_cfa_em_ctx_mem_info em_ctx_info[TF_DIR_MAX];
+	struct tf_em_caps em_caps[TF_DIR_MAX];
+	struct stack ext_act_pool[TF_DIR_MAX];
+	uint32_t *ext_act_pool_mem[TF_DIR_MAX];
+};
 
 /**
  * Create and initialize a stack to use for action entries
@@ -130,5 +177,24 @@ int tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
  */
 int tf_em_size_table(struct hcapi_cfa_em_table *tbl,
 		     uint32_t page_size);
+
+
+/**
+ * Look up table scope control block using tbl_scope_id from
+ * tf_session
+ *
+ * [in] tbl_scope_cb
+ *   Pointer to Truflow Handle
+ *
+ * [in] tbl_scope_id
+ *   table scope id
+ *
+ * Returns:
+ *   - Pointer to the tf_tbl_scope_cb, if found.
+ *   - (NULL) on failure, not found.
+ */
+struct tf_tbl_scope_cb *
+tf_em_ext_common_tbl_scope_find(struct tf *tfp,
+				uint32_t tbl_scope_id);
 
 #endif /* _TF_EM_COMMON_H_ */

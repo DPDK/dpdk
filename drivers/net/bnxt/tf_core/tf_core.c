@@ -18,7 +18,6 @@
 #include "bnxt.h"
 #include "rand.h"
 #include "tf_common.h"
-#include "hwrm_tf.h"
 #include "tf_ext_flow_handle.h"
 
 int

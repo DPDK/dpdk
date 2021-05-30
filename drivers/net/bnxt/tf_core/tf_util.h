@@ -9,6 +9,10 @@
 #include "tf_core.h"
 #include "tf_device.h"
 
+#define TF_BITS2BYTES(x) (((x) + 7) >> 3)
+#define TF_BITS2BYTES_WORD_ALIGN(x) ((((x) + 31) >> 5) * 4)
+#define TF_BITS2BYTES_64B_WORD_ALIGN(x) ((((x) + 63) >> 6) * 8)
+
 /**
  * Helper function converting direction to text string
  *

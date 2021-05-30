@@ -98,20 +98,8 @@ tf_tbl_type_2_str(enum tf_tbl_type tbl_type)
 		return "Mirror";
 	case TF_TBL_TYPE_UPAR:
 		return "UPAR";
-	case TF_TBL_TYPE_EPOCH0:
-		return "EPOCH0";
-	case TF_TBL_TYPE_EPOCH1:
-		return "EPOCH1";
 	case TF_TBL_TYPE_METADATA:
 		return "Metadata";
-	case TF_TBL_TYPE_CT_STATE:
-		return "Connection State";
-	case TF_TBL_TYPE_RANGE_PROF:
-		return "Range Profile";
-	case TF_TBL_TYPE_RANGE_ENTRY:
-		return "Range";
-	case TF_TBL_TYPE_LAG:
-		return "Link Aggregation";
 	case TF_TBL_TYPE_EM_FKB:
 		return "EM Flexible Key Builder";
 	case TF_TBL_TYPE_WC_FKB:

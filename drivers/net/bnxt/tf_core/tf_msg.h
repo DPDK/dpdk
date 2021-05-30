@@ -9,6 +9,7 @@
 #include <rte_common.h>
 #include <hsi_struct_def_dpdk.h>
 
+#include "tf_em_common.h"
 #include "tf_tbl.h"
 #include "tf_rm.h"
 #include "tf_tcam.h"
@@ -276,6 +277,60 @@ int tf_msg_delete_em_entry(struct tf *tfp,
 			   struct tf_delete_em_entry_parms *em_parms);
 
 /**
+ * Sends Ext EM mem allocation request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] tbl
+ *   memory allocation details
+ *
+ * [out] dma_addr
+ *   memory address
+ *
+ * [out] page_lvl
+ *   page level
+ *
+ * [out] page_size
+ *   page size
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
+ */
+int tf_msg_ext_em_ctxt_mem_alloc(struct tf *tfp,
+			struct hcapi_cfa_em_table *tbl,
+			uint64_t *dma_addr,
+			uint32_t *page_lvl,
+			uint32_t *page_size);
+
+/**
+ * Sends Ext EM mem allocation request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] mem_size_k
+ *   memory size in KB
+ *
+ * [in] page_dir
+ *   Pointer to the PBL or PDL depending on number of levels
+ *
+ * [in] page_level
+ *   PBL indirect levels
+ *
+ * [in] page_size
+ *   page size
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
+ */
+int tf_msg_ext_em_ctxt_mem_free(struct tf *tfp,
+				uint32_t mem_size_k,
+				uint64_t dma_addr,
+				uint8_t page_level,
+				uint8_t page_size);
+
+/**
  * Sends EM mem register request to Firmware
  *
  * [in] tfp
@@ -376,6 +431,38 @@ int tf_msg_em_cfg(struct tf *tfp,
 		  uint16_t efc_ctx_id,
 		  uint8_t flush_interval,
 		  int dir);
+
+/**
+ * Sends Ext EM config request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] fw_se_id
+ *   FW session id
+ *
+ * [in] tbl_scope_cb
+ *   Table scope parameters
+ *
+ * [in] st_buckets
+ *   static bucket size
+ *
+ * [in] flush_interval
+ *   Flush pending HW cached flows every 1/10th of value set in
+ *   seconds, both idle and active flows are flushed from the HW
+ *   cache. If set to 0, this feature will be disabled.
+ *
+ * [in] dir
+ *   Receive or Transmit direction
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
+ */
+int tf_msg_ext_em_cfg(struct tf *tfp,
+		      struct tf_tbl_scope_cb *tbl_scope_cb,
+		      uint32_t st_buckets,
+		      uint8_t flush_interval,
+		      enum tf_dir dir);
 
 /**
  * Sends EM operation request to Firmware

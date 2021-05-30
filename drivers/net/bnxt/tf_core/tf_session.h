@@ -112,6 +112,31 @@ struct tf_session {
 	 * Linked list of clients registered for this session
 	 */
 	struct ll client_ll;
+
+	/**
+	 * em ext db reference for the session
+	 */
+	void *em_ext_db_handle;
+
+	/**
+	 * tcam db reference for the session
+	 */
+	void *tcam_db_handle;
+
+	/**
+	 * table db reference for the session
+	 */
+	void *tbl_db_handle;
+
+	/**
+	 * identifier db reference for the session
+	 */
+	void *id_db_handle;
+
+	/**
+	 * em db reference for the session
+	 */
+	void *em_db_handle;
 };
 
 /**
@@ -410,4 +435,69 @@ int tf_session_get_fw_session_id(struct tf *tfp,
 int tf_session_get_session_id(struct tf *tfp,
 			      union tf_session_id *session_id);
 
+/**
+ * API to get the em_ext_db from tf_session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [out] em_ext_db_handle, pointer to eem handle
+ *
+ * Returns:
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int
+tf_session_get_em_ext_db(struct tf *tfp,
+			void **em_ext_db_handle);
+
+/**
+ * API to set the em_ext_db in tf_session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] em_ext_db_handle, pointer to eem handle
+ *
+ * Returns:
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int
+tf_session_set_em_ext_db(struct tf *tfp,
+			void *em_ext_db_handle);
+
+/**
+ * API to get the db from tf_session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [out] db_handle, pointer to db handle
+ *
+ * Returns:
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int
+tf_session_get_db(struct tf *tfp,
+		   enum tf_module_type type,
+		  void **db_handle);
+
+/**
+ * API to set the db in tf_session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] db_handle, pointer to db handle
+ *
+ * Returns:
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int
+tf_session_set_db(struct tf *tfp,
+		   enum tf_module_type type,
+		  void *db_handle);
 #endif /* _TF_SESSION_H_ */

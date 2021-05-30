@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "hcapi/cfa/hcapi_cfa_defs.h"
+#include "hcapi_cfa_defs.h"
 #include "tf_project.h"
 
 /**
@@ -41,6 +41,29 @@ enum tf_mem {
 	TF_MEM_INTERNAL, /**< Internal */
 	TF_MEM_EXTERNAL, /**< External */
 	TF_MEM_MAX
+};
+
+/**
+ * External memory control channel type
+ */
+enum tf_ext_mem_chan_type {
+	/**
+	 * Direct memory write(Wh+/SR)
+	 */
+	TF_EXT_MEM_CHAN_TYPE_DIRECT = 0,
+	/**
+	 * Ring interface MPC
+	 */
+	TF_EXT_MEM_CHAN_TYPE_RING_IF,
+	/**
+	 * Use HWRM message to firmware
+	 */
+	TF_EXT_MEM_CHAN_TYPE_FW,
+	/**
+	 * Use ring_if message to firmware
+	 */
+	TF_EXT_MEM_CHAN_TYPE_RING_IF_FW,
+	TF_EXT_MEM_CHAN_TYPE_MAX
 };
 
 /**
@@ -149,7 +172,6 @@ enum tf_device_type {
 	TF_DEVICE_TYPE_WH = 0, /**< Whitney+  */
 	TF_DEVICE_TYPE_SR,     /**< Stingray  */
 	TF_DEVICE_TYPE_THOR,   /**< Thor      */
-	TF_DEVICE_TYPE_SR2,    /**< Stingray2 */
 	TF_DEVICE_TYPE_MAX     /**< Maximum   */
 };
 
@@ -182,40 +204,39 @@ enum tf_module_type {
  */
 enum tf_identifier_type {
 	/**
-	 *  WH/SR/TH/SR2
+	 *  WH/SR/TH
 	 *  The L2 Context is returned from the L2 Ctxt TCAM lookup
 	 *  and can be used in WC TCAM or EM keys to virtualize further
 	 *  lookups.
 	 */
 	TF_IDENT_TYPE_L2_CTXT_HIGH,
 	/**
-	 *  WH/SR/TH/SR2
+	 *  WH/SR/TH
 	 *  The L2 Context is returned from the L2 Ctxt TCAM lookup
 	 *  and can be used in WC TCAM or EM keys to virtualize further
 	 *  lookups.
 	 */
 	TF_IDENT_TYPE_L2_CTXT_LOW,
 	/**
-	 *  WH/SR/TH/SR2
+	 *  WH/SR/TH
 	 *  The WC profile func is returned from the L2 Ctxt TCAM lookup
 	 *  to enable virtualization of the profile TCAM.
 	 */
 	TF_IDENT_TYPE_PROF_FUNC,
 	/**
-	 *  WH/SR/TH/SR2
+	 *  WH/SR/TH
 	 *  The WC profile ID is included in the WC lookup key
 	 *  to enable virtualization of the WC TCAM hardware.
 	 */
 	TF_IDENT_TYPE_WC_PROF,
 	/**
-	 *  WH/SR/TH/SR2
+	 *  WH/SR/TH
 	 *  The EM profile ID is included in the EM lookup key
-	 *  to enable virtualization of the EM hardware. (not required for SR2
-	 *  as it has table scope)
+	 *  to enable virtualization of the EM hardware.
 	 */
 	TF_IDENT_TYPE_EM_PROF,
 	/**
-	 *  TH/SR2
+	 *  TH
 	 *  The L2 func is included in the ILT result and from recycling to
 	 *  enable virtualization of further lookups.
 	 */
@@ -273,23 +294,15 @@ enum tf_tbl_type {
 	TF_TBL_TYPE_MIRROR_CONFIG,
 	/** (Future) UPAR */
 	TF_TBL_TYPE_UPAR,
-	/** (Future) SR2 Epoch 0 table */
-	TF_TBL_TYPE_EPOCH0,
-	/** (Future) SR2 Epoch 1 table  */
-	TF_TBL_TYPE_EPOCH1,
-	/** (Future) TH/SR2 Metadata  */
+	/** (Future) TH Metadata  */
 	TF_TBL_TYPE_METADATA,
-	/** (Future) TH/SR2 CT State  */
+	/** (Future) TH CT State  */
 	TF_TBL_TYPE_CT_STATE,
-	/** (Future) TH/SR2 Range Profile  */
+	/** (Future) TH Range Profile  */
 	TF_TBL_TYPE_RANGE_PROF,
-	/** (Future) SR2 Range Entry  */
-	TF_TBL_TYPE_RANGE_ENTRY,
-	/** (Future) SR2 LAG Entry  */
-	TF_TBL_TYPE_LAG,
-	/** TH/SR2 EM Flexible Key builder */
+	/** TH EM Flexible Key builder */
 	TF_TBL_TYPE_EM_FKB,
-	/** TH/SR2 WC Flexible Key builder */
+	/** TH WC Flexible Key builder */
 	TF_TBL_TYPE_WC_FKB,
 
 	/* External */
@@ -301,14 +314,6 @@ enum tf_tbl_type {
 	 * a pool of 64B entries.
 	 */
 	TF_TBL_TYPE_EXT,
-	/* (Future) SR2 32B External EM Action 32B Pool */
-	TF_TBL_TYPE_EXT_32B,
-	/* (Future) SR2 64B External EM Action 64B Pool */
-	TF_TBL_TYPE_EXT_64B,
-	/* (Future) SR2 96B External EM Action 96B Pool */
-	TF_TBL_TYPE_EXT_96B,
-	/* (Future) SR2 128B External EM Action 128B Pool */
-	TF_TBL_TYPE_EXT_128B,
 	TF_TBL_TYPE_MAX
 };
 
@@ -969,19 +974,12 @@ struct tf_map_tbl_scope_parms {
 /**
  * allocate a table scope
  *
- * On SR2 Firmware will allocate a scope ID.  On other devices, the scope
- * is a software construct to identify an EEM table.  This function will
+ * The scope is a software construct to identify an EEM table.  This function will
  * divide the hash memory/buckets and records according to the device
  * device constraints based upon calculations using either the number of flows
  * requested or the size of memory indicated.  Other parameters passed in
  * determine the configuration (maximum key size, maximum external action record
  * size).
- *
- * This API will allocate the table region in DRAM, program the PTU page table
- * entries, and program the number of static buckets (if SR2) in the RX and TX
- * CFAs.  Buckets are assumed to start at 0 in the EM memory for the scope.
- * Upon successful completion of this API, hash tables are fully initialized and
- * ready for entries to be inserted.
  *
  * A single API is used to allocate a common table scope identifier in both
  * receive and transmit CFA. The scope identifier is common due to nature of
@@ -1028,7 +1026,7 @@ int tf_map_tbl_scope(struct tf *tfp,
  *
  * Firmware checks that the table scope ID is owned by the TruFlow
  * session, verifies that no references to this table scope remains
- * (SR2 ILT) or Profile TCAM entries for either CFA (RX/TX) direction,
+ * or Profile TCAM entries for either CFA (RX/TX) direction,
  * then frees the table scope ID.
  *
  * Returns success or failure code.
@@ -1590,6 +1588,10 @@ struct tf_set_tbl_entry_parms {
 	 */
 	uint16_t data_sz_in_bytes;
 	/**
+	 * [in] External memory channel type to use
+	 */
+	enum tf_ext_mem_chan_type chan_type;
+	/**
 	 * [in] Entry index to write to
 	 */
 	uint32_t idx;
@@ -1627,6 +1629,10 @@ struct tf_get_tbl_entry_parms {
 	 * [in] Entry size
 	 */
 	uint16_t data_sz_in_bytes;
+	/**
+	 * [in] External memory channel type to use
+	 */
+	enum tf_ext_mem_chan_type chan_type;
 	/**
 	 * [in] Entry index to read
 	 */
@@ -1679,6 +1685,10 @@ struct tf_bulk_get_tbl_entry_parms {
 	 * structure for the physical address.
 	 */
 	uint64_t physical_mem_addr;
+	/**
+	 * [in] External memory channel type to use
+	 */
+	enum tf_ext_mem_chan_type chan_type;
 };
 
 /**
@@ -1724,10 +1734,6 @@ struct tf_insert_em_entry_parms {
 	 */
 	uint32_t tbl_scope_id;
 	/**
-	 * [in] ID of table interface to use (SR2 only)
-	 */
-	uint32_t tbl_if_id;
-	/**
 	 * [in] ptr to structure containing key fields
 	 */
 	uint8_t *key;
@@ -1747,6 +1753,10 @@ struct tf_insert_em_entry_parms {
 	 * [in] duplicate check flag
 	 */
 	uint8_t	dup_check;
+	/**
+	 * [in] External memory channel type to use
+	 */
+	enum tf_ext_mem_chan_type chan_type;
 	/**
 	 * [out] Flow handle value for the inserted entry.  This is encoded
 	 * as the entries[4]:bucket[2]:hashId[1]:hash[14]
@@ -1776,18 +1786,13 @@ struct tf_delete_em_entry_parms {
 	 */
 	uint32_t tbl_scope_id;
 	/**
-	 * [in] ID of table interface to use (SR2 only)
-	 */
-	uint32_t tbl_if_id;
-	/**
-	 * [in] epoch group IDs of entry to delete
-	 * 2 element array with 2 ids. (SR2 only)
-	 */
-	uint16_t *epochs;
-	/**
 	 * [out] The index of the entry
 	 */
 	uint16_t index;
+	/**
+	 * [in] External memory channel type to use
+	 */
+	enum tf_ext_mem_chan_type chan_type;
 	/**
 	 * [in] structure containing flow delete handle information
 	 */
@@ -1810,10 +1815,6 @@ struct tf_search_em_entry_parms {
 	 */
 	uint32_t tbl_scope_id;
 	/**
-	 * [in] ID of table interface to use (SR2 only)
-	 */
-	uint32_t tbl_if_id;
-	/**
 	 * [in] ptr to structure containing key fields
 	 */
 	uint8_t *key;
@@ -1830,10 +1831,9 @@ struct tf_search_em_entry_parms {
 	 */
 	uint16_t em_record_sz_in_bits;
 	/**
-	 * [in] epoch group IDs of entry to lookup
-	 * 2 element array with 2 ids. (SR2 only)
+	 * [in] External memory channel type to use
 	 */
-	uint16_t *epochs;
+	enum tf_ext_mem_chan_type chan_type;
 	/**
 	 * [in] ptr to structure containing flow delete handle
 	 */
@@ -1857,9 +1857,6 @@ struct tf_search_em_entry_parms {
  * External:
  * This API inserts an exact match entry into DRAM EM table memory of the
  * specified direction and table scope.
- *
- * When inserting an entry into an exact match table, the TruFlow library may
- * need to allocate a dynamic bucket for the entry (SR2 only).
  *
  * The insertion of duplicate entries in an EM table is not permitted.	If a
  * TruFlow application can guarantee that it will never insert duplicates, it
@@ -2040,9 +2037,9 @@ enum tf_if_tbl_type {
 	TF_IF_TBL_TYPE_PROF_PARIF_ERR_ACT_REC_PTR,
 	/** Default Error Profile TCAM Miss Action Record Pointer Table */
 	TF_IF_TBL_TYPE_LKUP_PARIF_DFLT_ACT_REC_PTR,
-	/** SR2 Ingress lookup table */
+	/** Ingress lookup table */
 	TF_IF_TBL_TYPE_ILT,
-	/** SR2 VNIC/SVIF Properties Table */
+	/** VNIC/SVIF Properties Table */
 	TF_IF_TBL_TYPE_VSPT,
 	TF_IF_TBL_TYPE_MAX
 };

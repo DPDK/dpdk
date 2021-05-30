@@ -173,6 +173,9 @@ tf_session_create(struct tf *tfp,
 	ll_insert(&session->client_ll, &client->ll_entry);
 	session->ref_count++;
 
+	/* Init session em_ext_db */
+	session->em_ext_db_handle = NULL;
+
 	rc = tf_dev_bind(tfp,
 			 parms->open_cfg->device_type,
 			 session->shadow_copy,
@@ -795,4 +798,116 @@ tf_session_get_session_id(struct tf *tfp,
 	*session_id = tfs->session_id;
 
 	return 0;
+}
+
+int
+tf_session_get_em_ext_db(struct tf *tfp,
+			 void **em_ext_db_handle)
+{
+	struct tf_session *tfs = NULL;
+	int rc = 0;
+
+	*em_ext_db_handle = NULL;
+
+	if (tfp == NULL)
+		return (-EINVAL);
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	*em_ext_db_handle = tfs->em_ext_db_handle;
+	return rc;
+}
+
+int
+tf_session_set_em_ext_db(struct tf *tfp,
+			 void *em_ext_db_handle)
+{
+	struct tf_session *tfs = NULL;
+	int rc = 0;
+
+	if (tfp == NULL)
+		return (-EINVAL);
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	tfs->em_ext_db_handle = em_ext_db_handle;
+	return rc;
+}
+
+int
+tf_session_get_db(struct tf *tfp,
+		  enum tf_module_type type,
+		  void **db_handle)
+{
+	struct tf_session *tfs = NULL;
+	int rc = 0;
+
+	*db_handle = NULL;
+
+	if (tfp == NULL)
+		return (-EINVAL);
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	switch (type) {
+	case TF_MODULE_TYPE_IDENTIFIER:
+		*db_handle = tfs->id_db_handle;
+		break;
+	case TF_MODULE_TYPE_TABLE:
+		*db_handle = tfs->tbl_db_handle;
+		break;
+	case TF_MODULE_TYPE_TCAM:
+		*db_handle = tfs->tcam_db_handle;
+		break;
+	case TF_MODULE_TYPE_EM:
+		*db_handle = tfs->em_db_handle;
+		break;
+	default:
+		rc = -EINVAL;
+		break;
+	}
+
+	return rc;
+}
+
+int
+tf_session_set_db(struct tf *tfp,
+		  enum tf_module_type type,
+		  void *db_handle)
+{
+	struct tf_session *tfs = NULL;
+	int rc = 0;
+
+	if (tfp == NULL)
+		return (-EINVAL);
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	switch (type) {
+	case TF_MODULE_TYPE_IDENTIFIER:
+		tfs->id_db_handle = db_handle;
+		break;
+	case TF_MODULE_TYPE_TABLE:
+		tfs->tbl_db_handle = db_handle;
+		break;
+	case TF_MODULE_TYPE_TCAM:
+		tfs->tcam_db_handle = db_handle;
+		break;
+	case TF_MODULE_TYPE_EM:
+		tfs->em_db_handle = db_handle;
+		break;
+	default:
+		rc = -EINVAL;
+		break;
+	}
+
+	return rc;
 }

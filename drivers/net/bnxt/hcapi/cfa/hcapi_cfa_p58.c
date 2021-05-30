@@ -86,7 +86,7 @@ static uint32_t hcapi_cfa_lookup3_hash(uint8_t *in_key)
 {
 	uint32_t val1;
 
-	val1 = hashword(((uint32_t *)in_key) + 1,
+	val1 = hashword(((uint32_t *)in_key),
 			 CFA_P58_EEM_KEY_MAX_SIZE / (sizeof(uint32_t)),
 			 hcapi_cfa_lkup_lkup3_init_cfg);
 

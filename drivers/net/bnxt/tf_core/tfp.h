@@ -57,11 +57,6 @@ struct tfp_send_msg_parms {
 	 */
 	uint16_t  tf_subtype;
 	/**
-	 * [out] tf_resp_code, response code from the internal tlv
-	 *       message. Only supported on tunneled messages.
-	 */
-	uint32_t tf_resp_code;
-	/**
 	 * [out] size, number specifying the request size of the data in bytes
 	 */
 	uint32_t req_size;
@@ -111,7 +106,6 @@ struct tfp_calloc_parms {
  * @page Portability
  *
  * @ref tfp_send_direct
- * @ref tfp_send_msg_tunneled
  *
  * @ref tfp_calloc
  * @ref tfp_memcpy
@@ -138,37 +132,6 @@ struct tfp_calloc_parms {
  */
 int tfp_send_msg_direct(struct tf *tfp,
 			struct tfp_send_msg_parms *parms);
-
-/**
- * Provides communication capability from the TrueFlow API layer to
- * the TrueFlow firmware. The portability layer internally provides
- * the transport to the firmware.
- *
- * [in] session, pointer to session handle
- * [in] parms, parameter structure
- *
- * Returns:
- *   0              - Success
- *   -1             - Global error like not supported
- *   -EINVAL        - Parameter Error
- */
-int tfp_send_msg_tunneled(struct tf *tfp,
-			  struct tfp_send_msg_parms *parms);
-
-/**
- * Sends OEM command message to Chimp
- *
- * [in] session, pointer to session handle
- * [in] max_flows, max number of flows requested
- *
- * Returns:
- *   0              - Success
- *   -1             - Global error like not supported
- *   -EINVAL        - Parameter Error
- */
-int
-tfp_msg_hwrm_oem_cmd(struct tf *tfp,
-		     uint32_t max_flows);
 
 /**
  * Sends OEM command message to Chimp
@@ -252,21 +215,6 @@ int tfp_get_fid(struct tf *tfp, uint16_t *fw_fid);
 #define tfp_bswap_16(val) rte_bswap16(val)
 #define tfp_bswap_32(val) rte_bswap32(val)
 #define tfp_bswap_64(val) rte_bswap64(val)
-
-/**
- * Lookup of the FID in the platform specific structure.
- *
- * [in] session
- *   Pointer to session handle
- *
- * [out] fw_fid
- *   Pointer to the fw_fid
- *
- * Returns:
- *   0       - Success
- *   -EINVAL - Parameter error
- */
-int tfp_get_fid(struct tf *tfp, uint16_t *fw_fid);
 
 /**
  * Get the PF associated with the fw communications channel.

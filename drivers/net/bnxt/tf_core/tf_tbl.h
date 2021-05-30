@@ -15,38 +15,8 @@ struct tf;
  * The Table module provides processing of Internal TF table types.
  */
 
-/**
- * Table scope control block content
- */
-struct tf_em_caps {
-	uint32_t flags;
-	uint32_t supported;
-	uint32_t max_entries_supported;
-	uint16_t key_entry_size;
-	uint16_t record_entry_size;
-	uint16_t efc_entry_size;
-};
-
 /** Invalid table scope id */
 #define TF_TBL_SCOPE_INVALID 0xffffffff
-
-/**
- * Table Scope Control Block
- *
- * Holds private data for a table scope. Only one instance of a table
- * scope with Internal EM is supported.
- */
-struct tf_tbl_scope_cb {
-	uint32_t tbl_scope_id;
-       /** The pf or parent pf of the vf used for table scope creation
-	*/
-	uint16_t pf;
-	int index;
-	struct hcapi_cfa_em_ctx_mem_info em_ctx_info[TF_DIR_MAX];
-	struct tf_em_caps em_caps[TF_DIR_MAX];
-	struct stack ext_act_pool[TF_DIR_MAX];
-	uint32_t *ext_act_pool_mem[TF_DIR_MAX];
-};
 
 /**
  * Table configuration parameters

@@ -58,74 +58,10 @@ struct hcapi_cfa_devops {
 	 */
 	uint64_t (*hcapi_cfa_key_hash)(uint64_t *key_data, uint16_t bitlen);
 
-int hcapi_cfa_action_hw_op(struct hcapi_cfa_hwop *op,
-			   uint8_t *act_tbl,
-			   struct hcapi_cfa_data *act_obj);
-int hcapi_cfa_dev_hw_op(struct hcapi_cfa_hwop *op, uint16_t tbl_id,
-			struct hcapi_cfa_data *obj_data);
-int hcapi_cfa_rm_register_client(hcapi_cfa_rm_data_t *data,
-				 const char *client_name,
-				 int *client_id);
-int hcapi_cfa_rm_unregister_client(hcapi_cfa_rm_data_t *data,
-				   int client_id);
-int hcapi_cfa_rm_query_resources(hcapi_cfa_rm_data_t *data,
-				 int client_id,
-				 uint16_t chnl_id,
-				 struct hcapi_cfa_resc_req_db *req_db);
-int hcapi_cfa_rm_query_resources_one(hcapi_cfa_rm_data_t *data,
-				     int clien_id,
-				     struct hcapi_cfa_resc_db *resc_db);
-int hcapi_cfa_rm_reserve_resources(hcapi_cfa_rm_data_t *data,
-				   int client_id,
-				   struct hcapi_cfa_resc_req_db *resc_req,
-				   struct hcapi_cfa_resc_db *resc_db);
-int hcapi_cfa_rm_release_resources(hcapi_cfa_rm_data_t *data,
-				   int client_id,
-				   struct hcapi_cfa_resc_req_db *resc_req,
-				   struct hcapi_cfa_resc_db *resc_db);
-int hcapi_cfa_rm_initialize(hcapi_cfa_rm_data_t *data);
-
-#if SUPPORT_CFA_HW_P4
-
-int hcapi_cfa_p4_dev_hw_op(struct hcapi_cfa_hwop *op, uint16_t tbl_id,
-			    struct hcapi_cfa_data *obj_data);
-int hcapi_cfa_p4_prof_l2ctxt_hwop(struct hcapi_cfa_hwop *op,
-				   struct hcapi_cfa_data *obj_data);
-int hcapi_cfa_p4_prof_l2ctxtrmp_hwop(struct hcapi_cfa_hwop *op,
-				      struct hcapi_cfa_data *obj_data);
-int hcapi_cfa_p4_prof_tcam_hwop(struct hcapi_cfa_hwop *op,
-				 struct hcapi_cfa_data *obj_data);
-int hcapi_cfa_p4_prof_tcamrmp_hwop(struct hcapi_cfa_hwop *op,
-				    struct hcapi_cfa_data *obj_data);
-int hcapi_cfa_p4_wc_tcam_hwop(struct hcapi_cfa_hwop *op,
-			       struct hcapi_cfa_data *obj_data);
-int hcapi_cfa_p4_wc_tcam_rec_hwop(struct hcapi_cfa_hwop *op,
-				   struct hcapi_cfa_data *obj_data);
-int hcapi_cfa_p4_mirror_hwop(struct hcapi_cfa_hwop *op,
-			     struct hcapi_cfa_data *mirror);
-int hcapi_cfa_p4_global_cfg_hwop(struct hcapi_cfa_hwop *op,
-				 uint32_t type,
-				 struct hcapi_cfa_data *config);
-/* SUPPORT_CFA_HW_P4 */
-#elif SUPPORT_CFA_HW_P45
-int hcapi_cfa_p45_mirror_hwop(struct hcapi_cfa_hwop *op,
-			      struct hcapi_cfa_data *mirror);
-int hcapi_cfa_p45_global_cfg_hwop(struct hcapi_cfa_hwop *op,
-				  uint32_t type,
-				  struct hcapi_cfa_data *config);
-/* SUPPORT_CFA_HW_P45 */
-#endif
-
-/**
- *  HCAPI CFA device HW operation function callback definition
- *  This is standardized function callback hook to install different
- *  CFA HW table programming function callback.
- */
-
-struct hcapi_cfa_tbl_cb {
-	/**
-	 * This function callback provides the functionality to read/write
-	 * HW table entry from a HW table.
+	/** hardware operation on the CFA EM key
+	 *
+	 * This API provides the functionality to program the exact match and
+	 * key data to exact match record memory.
 	 *
 	 * @param[in] op
 	 *   A pointer to the Hardware operation parameter

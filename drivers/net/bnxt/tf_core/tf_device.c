@@ -487,7 +487,7 @@ tf_dev_bind_p58(struct tf *tfp,
  *   - (-EINVAL) on failure.
  */
 static int
-	tf_dev_unbind_p58(struct tf *tfp)
+tf_dev_unbind_p58(struct tf *tfp)
 {
 	int rc = 0;
 	bool fail = false;

@@ -2,7 +2,7 @@
  * Copyright(c) 2019-2021 Broadcom
  * All rights reserved.
  */
-#include <inttypes.h>
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -10,6 +10,7 @@
 #include "lookup3.h"
 #include "rand.h"
 
+#include "hcapi_cfa.h"
 #include "hcapi_cfa_defs.h"
 
 static uint32_t hcapi_cfa_lkup_lkup3_init_cfg;
@@ -18,8 +19,7 @@ static bool hcapi_cfa_lkup_init;
 
 static inline uint32_t SWAP_WORDS32(uint32_t val32)
 {
-	return (((val32 & 0x0000ffff) << 16) |
-		((val32 & 0xffff0000) >> 16));
+	return (((val32 & 0x0000ffff) << 16) | ((val32 & 0xffff0000) >> 16));
 }
 
 static void hcapi_cfa_seeds_init(void)
@@ -77,9 +77,8 @@ static uint32_t hcapi_cfa_crc32_hash(uint8_t *key)
 	if (!(val2 & 0x1))
 		val1 = hcapi_cfa_crc32i(~val1, temp, 4);
 
-	val1 = hcapi_cfa_crc32i(~val1,
-		      (key - (CFA_P4_EEM_KEY_MAX_SIZE - 1)),
-		      CFA_P4_EEM_KEY_MAX_SIZE);
+	val1 = hcapi_cfa_crc32i(~val1, (key - (CFA_P4_EEM_KEY_MAX_SIZE - 1)),
+				CFA_P4_EEM_KEY_MAX_SIZE);
 
 	/* End with seed */
 	if (val2 & 0x1)
@@ -92,16 +91,14 @@ static uint32_t hcapi_cfa_lookup3_hash(uint8_t *in_key)
 {
 	uint32_t val1;
 
-	val1 = hashword(((const uint32_t *)(uintptr_t *)in_key) + 1,
-			 CFA_P4_EEM_KEY_MAX_SIZE / (sizeof(uint32_t)),
-			 hcapi_cfa_lkup_lkup3_init_cfg);
+	val1 = hashword(((uint32_t *)in_key) + 1,
+			CFA_P4_EEM_KEY_MAX_SIZE / (sizeof(uint32_t)),
+			hcapi_cfa_lkup_lkup3_init_cfg);
 
 	return val1;
 }
 
-
-uint64_t hcapi_get_table_page(struct hcapi_cfa_em_table *mem,
-			      uint32_t page)
+uint64_t hcapi_get_table_page(struct hcapi_cfa_em_table *mem, uint32_t page)
 {
 	int level = 0;
 	uint64_t addr;
@@ -114,7 +111,7 @@ uint64_t hcapi_get_table_page(struct hcapi_cfa_em_table *mem,
 	 */
 	level = mem->num_lvl - 1;
 
-	addr = (uintptr_t)mem->pg_tbl[level].pg_va_tbl[page];
+	addr = (uint64_t)mem->pg_tbl[level].pg_va_tbl[page];
 
 	return addr;
 }
@@ -136,42 +133,39 @@ uint64_t hcapi_cfa_p4_key_hash(uint64_t *key_data,
 	if (!hcapi_cfa_lkup_init)
 		hcapi_cfa_seeds_init();
 
-	key0_hash = hcapi_cfa_crc32_hash(((uint8_t *)key_data) +
-					      (bitlen / 8) - 1);
+	key0_hash =
+		hcapi_cfa_crc32_hash(((uint8_t *)key_data) + (bitlen / 8) - 1);
 
 	key1_hash = hcapi_cfa_lookup3_hash((uint8_t *)key_data);
 
 	return ((uint64_t)key0_hash) << 32 | (uint64_t)key1_hash;
 }
 
-static int hcapi_cfa_key_hw_op_put(struct hcapi_cfa_hwop *op,
-				   struct hcapi_cfa_key_data *key_obj)
+static int hcapi_cfa_p4_key_hw_op_put(struct hcapi_cfa_hwop *op,
+				      struct hcapi_cfa_key_data *key_obj)
 {
 	int rc = 0;
 
-	memcpy((uint8_t *)(uintptr_t)op->hw.base_addr +
-	       key_obj->offset,
-	       key_obj->data,
-	       key_obj->size);
+	memcpy((uint8_t *)(uintptr_t)op->hw.base_addr + key_obj->offset,
+	       key_obj->data, key_obj->size);
 
 	return rc;
 }
 
-static int hcapi_cfa_key_hw_op_get(struct hcapi_cfa_hwop *op,
-				   struct hcapi_cfa_key_data *key_obj)
+static int hcapi_cfa_p4_key_hw_op_get(struct hcapi_cfa_hwop *op,
+				      struct hcapi_cfa_key_data *key_obj)
 {
 	int rc = 0;
 
 	memcpy(key_obj->data,
-	       (uint8_t *)(uintptr_t)op->hw.base_addr +
-	       key_obj->offset,
+	       (uint8_t *)(uintptr_t)op->hw.base_addr + key_obj->offset,
 	       key_obj->size);
 
 	return rc;
 }
 
-static int hcapi_cfa_key_hw_op_add(struct hcapi_cfa_hwop *op,
-				   struct hcapi_cfa_key_data *key_obj)
+static int hcapi_cfa_p4_key_hw_op_add(struct hcapi_cfa_hwop *op,
+				      struct hcapi_cfa_key_data *key_obj)
 {
 	int rc = 0;
 	struct cfa_p4_eem_64b_entry table_entry;
@@ -180,8 +174,7 @@ static int hcapi_cfa_key_hw_op_add(struct hcapi_cfa_hwop *op,
 	 * Is entry free?
 	 */
 	memcpy(&table_entry,
-	       (uint8_t *)(uintptr_t)op->hw.base_addr +
-	       key_obj->offset,
+	       (uint8_t *)(uintptr_t)op->hw.base_addr + key_obj->offset,
 	       key_obj->size);
 
 	/*
@@ -190,16 +183,14 @@ static int hcapi_cfa_key_hw_op_add(struct hcapi_cfa_hwop *op,
 	if (table_entry.hdr.word1 & (1 << CFA_P4_EEM_ENTRY_VALID_SHIFT))
 		return -1;
 
-	memcpy((uint8_t *)(uintptr_t)op->hw.base_addr +
-	       key_obj->offset,
-	       key_obj->data,
-	       key_obj->size);
+	memcpy((uint8_t *)(uintptr_t)op->hw.base_addr + key_obj->offset,
+	       key_obj->data, key_obj->size);
 
 	return rc;
 }
 
-static int hcapi_cfa_key_hw_op_del(struct hcapi_cfa_hwop *op,
-				   struct hcapi_cfa_key_data *key_obj)
+static int hcapi_cfa_p4_key_hw_op_del(struct hcapi_cfa_hwop *op,
+				      struct hcapi_cfa_key_data *key_obj)
 {
 	int rc = 0;
 	struct cfa_p4_eem_64b_entry table_entry;
@@ -208,8 +199,7 @@ static int hcapi_cfa_key_hw_op_del(struct hcapi_cfa_hwop *op,
 	 * Read entry
 	 */
 	memcpy(&table_entry,
-	       (uint8_t *)(uintptr_t)op->hw.base_addr +
-	       key_obj->offset,
+	       (uint8_t *)(uintptr_t)op->hw.base_addr + key_obj->offset,
 	       key_obj->size);
 
 	/*
@@ -221,8 +211,7 @@ static int hcapi_cfa_key_hw_op_del(struct hcapi_cfa_hwop *op,
 		 * before deleting the entry.
 		 */
 		if (key_obj->data != NULL) {
-			if (memcmp(&table_entry,
-				   key_obj->data,
+			if (memcmp(&table_entry, key_obj->data,
 				   key_obj->size) != 0)
 				return -1;
 		}
@@ -230,40 +219,33 @@ static int hcapi_cfa_key_hw_op_del(struct hcapi_cfa_hwop *op,
 		return -1;
 	}
 
-
 	/*
 	 * Delete entry
 	 */
-	memset((uint8_t *)(uintptr_t)op->hw.base_addr +
-	       key_obj->offset,
-	       0,
-	       key_obj->size);
+	memset((uint8_t *)(uintptr_t)op->hw.base_addr + key_obj->offset, 0, key_obj->size);
 
 	return rc;
 }
-
 
 /** Apporiximation of hcapi_cfa_key_hw_op()
  *
  *
  */
-int hcapi_cfa_key_hw_op(struct hcapi_cfa_hwop *op,
-			struct hcapi_cfa_key_tbl *key_tbl,
-			struct hcapi_cfa_key_data *key_obj,
-			struct hcapi_cfa_key_loc *key_loc)
+static int hcapi_cfa_p4_key_hw_op(struct hcapi_cfa_hwop *op,
+				  struct hcapi_cfa_key_tbl *key_tbl,
+				  struct hcapi_cfa_key_data *key_obj,
+				  struct hcapi_cfa_key_loc *key_loc)
 {
 	int rc = 0;
+	struct hcapi_cfa_em_table *em_tbl;
+	uint32_t page;
 
-	if (op == NULL ||
-	    key_tbl == NULL ||
-	    key_obj == NULL ||
-	    key_loc == NULL)
+	if (op == NULL || key_tbl == NULL || key_obj == NULL || key_loc == NULL)
 		return -1;
 
-	op->hw.base_addr =
-		hcapi_get_table_page((struct hcapi_cfa_em_table *)
-				     key_tbl->base0,
-				     key_obj->offset / key_tbl->page_size);
+	page = key_obj->offset / key_tbl->page_size;
+	em_tbl = (struct hcapi_cfa_em_table *)key_tbl->base0;
+	op->hw.base_addr = hcapi_get_table_page(em_tbl, page);
 	/* Offset is adjusted to be the offset into the page */
 	key_obj->offset = key_obj->offset % key_tbl->page_size;
 
@@ -272,14 +254,14 @@ int hcapi_cfa_key_hw_op(struct hcapi_cfa_hwop *op,
 
 	switch (op->opcode) {
 	case HCAPI_CFA_HWOPS_PUT: /**< Write to HW operation */
-		rc = hcapi_cfa_key_hw_op_put(op, key_obj);
+		rc = hcapi_cfa_p4_key_hw_op_put(op, key_obj);
 		break;
 	case HCAPI_CFA_HWOPS_GET: /**< Read from HW operation */
-		rc = hcapi_cfa_key_hw_op_get(op, key_obj);
+		rc = hcapi_cfa_p4_key_hw_op_get(op, key_obj);
 		break;
 	case HCAPI_CFA_HWOPS_ADD:
-		/**< For operations which require more than
-		 * simple writes to HW, this operation is used. The
+		/**< For operations which require more then simple
+		 * writes to HW, this operation is used.  The
 		 * distinction with this operation when compared
 		 * to the PUT ops is that this operation is used
 		 * in conjunction with the HCAPI_CFA_HWOPS_DEL
@@ -287,11 +269,11 @@ int hcapi_cfa_key_hw_op(struct hcapi_cfa_hwop *op,
 		 * ADD OP.
 		 */
 
-		rc = hcapi_cfa_key_hw_op_add(op, key_obj);
+		rc = hcapi_cfa_p4_key_hw_op_add(op, key_obj);
 
 		break;
 	case HCAPI_CFA_HWOPS_DEL:
-		rc = hcapi_cfa_key_hw_op_del(op, key_obj);
+		rc = hcapi_cfa_p4_key_hw_op_del(op, key_obj);
 		break;
 	default:
 		rc = -1;
@@ -300,3 +282,8 @@ int hcapi_cfa_key_hw_op(struct hcapi_cfa_hwop *op,
 
 	return rc;
 }
+
+const struct hcapi_cfa_devops cfa_p4_devops = {
+	.hcapi_cfa_key_hash = hcapi_cfa_p4_key_hash,
+	.hcapi_cfa_key_hw_op = hcapi_cfa_p4_key_hw_op,
+};

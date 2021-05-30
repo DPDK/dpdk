@@ -3,9 +3,7 @@
  * All rights reserved.
  */
 
-#include "hcapi_cfa_defs.h"
-#include <errno.h>
-#include "assert.h"
+#include "hcapi_cfa.h"
 
 const uint32_t crc32tbl[] = {	/* CRC polynomial 0xedb88320 */
 0x00000000, 0x77073096, 0xee0e612c, 0x990951ba,
