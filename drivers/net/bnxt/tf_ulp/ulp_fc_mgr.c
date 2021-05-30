@@ -80,6 +80,12 @@ ulp_fc_mgr_init(struct bnxt_ulp_context *ctxt)
 		return -EINVAL;
 	}
 
+	if (!dparms->flow_count_db_entries) {
+		BNXT_TF_DBG(DEBUG, "flow counter support is not enabled\n");
+		bnxt_ulp_cntxt_ptr2_fc_info_set(ctxt, NULL);
+		return 0;
+	}
+
 	ulp_fc_info = rte_zmalloc("ulp_fc_info", sizeof(*ulp_fc_info), 0);
 	if (!ulp_fc_info)
 		goto error;
@@ -169,7 +175,10 @@ bool ulp_fc_mgr_thread_isstarted(struct bnxt_ulp_context *ctxt)
 
 	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
 
-	return !!(ulp_fc_info->flags & ULP_FLAG_FC_THREAD);
+	if (ulp_fc_info)
+		return !!(ulp_fc_info->flags & ULP_FLAG_FC_THREAD);
+
+	return false;
 }
 
 /*
@@ -186,7 +195,7 @@ ulp_fc_mgr_thread_start(struct bnxt_ulp_context *ctxt)
 
 	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
 
-	if (!(ulp_fc_info->flags & ULP_FLAG_FC_THREAD)) {
+	if (ulp_fc_info && !(ulp_fc_info->flags & ULP_FLAG_FC_THREAD)) {
 		rte_eal_alarm_set(US_PER_S * ULP_FC_TIMER,
 				  ulp_fc_mgr_alarm_cb,
 				  (void *)ctxt);
@@ -459,7 +468,10 @@ bool ulp_fc_mgr_start_idx_isset(struct bnxt_ulp_context *ctxt, enum tf_dir dir)
 
 	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
 
-	return ulp_fc_info->shadow_hw_tbl[dir].start_idx_is_set;
+	if (ulp_fc_info)
+		return ulp_fc_info->shadow_hw_tbl[dir].start_idx_is_set;
+
+	return false;
 }
 
 /*

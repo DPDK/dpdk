@@ -246,8 +246,28 @@ ulp_mapper_gen_tbl_entry_data_get(struct ulp_mapper_gen_tbl_entry *entry,
 	return 0;
 }
 
-/*
- * Free the generic table list entry
+/* Free the generic table list entry
+ *
+ * ulp_ctx [in] - Pointer to the ulp context
+ * tbl_idx [in] - Index of the generic table
+ * ckey [in] - Key for the entry in the table
+ *
+ * returns 0 on success
+ */
+int32_t
+ulp_mapper_gen_tbl_entry_free(struct bnxt_ulp_context *ulp_ctx,
+			      uint32_t tbl_idx, uint32_t ckey)
+{
+	struct ulp_flow_db_res_params res;
+
+	res.direction = tbl_idx & 0x1;
+	res.resource_sub_type = tbl_idx >> 1;
+	res.resource_hndl = ckey;
+
+	return ulp_mapper_gen_tbl_res_free(ulp_ctx, &res);
+}
+
+/* Free the generic table list resource
  *
  * ulp_ctx [in] - Pointer to the ulp context
  * res [in] - Pointer to flow db resource entry

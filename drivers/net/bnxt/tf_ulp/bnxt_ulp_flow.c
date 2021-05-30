@@ -70,8 +70,10 @@ bnxt_ulp_set_dir_attributes(struct ulp_rte_parser_params *params,
 		params->dir_attr |= BNXT_ULP_FLOW_ATTR_EGRESS;
 	if (attr->ingress)
 		params->dir_attr |= BNXT_ULP_FLOW_ATTR_INGRESS;
+#if RTE_VERSION_NUM(17, 11, 10, 16) < RTE_VERSION
 	if (attr->transfer)
 		params->dir_attr |= BNXT_ULP_FLOW_ATTR_TRANSFER;
+#endif
 }
 
 void
@@ -79,6 +81,7 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 			    struct ulp_rte_parser_params *params,
 			    enum bnxt_ulp_fdb_type flow_type)
 {
+	memset(mapper_cparms, 0, sizeof(*mapper_cparms));
 	mapper_cparms->flow_type = flow_type;
 	mapper_cparms->app_priority = params->priority;
 	mapper_cparms->dir_attr = params->dir_attr;
@@ -186,6 +189,7 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	params.fid = fid;
 	params.func_id = func_id;
 	params.priority = attr->priority;
+	params.port_id = dev->data->port_id;
 	/* Perform the rte flow post process */
 	ret = bnxt_ulp_rte_parser_post_process(&params);
 	if (ret == BNXT_TF_RC_ERROR)

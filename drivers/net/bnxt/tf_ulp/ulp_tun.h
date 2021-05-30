@@ -16,10 +16,6 @@
 #include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
 
-#if RTE_VERSION_NUM(17, 11, 10, 16) == RTE_VERSION
-#define	RTE_ETHER_ADDR_LEN	ETHER_ADDR_LEN
-#endif
-
 #define	BNXT_OUTER_TUN_FLOW(l3_tun, params)		\
 	((l3_tun) &&					\
 	 ULP_BITMAP_ISSET((params)->act_bitmap.bits,	\

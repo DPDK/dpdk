@@ -82,6 +82,7 @@ struct bnxt_ulp_mapper_create_parms {
 	/* if set then create a parent flow */
 	uint32_t			parent_flow;
 	uint8_t				tun_idx;
+	uint64_t			shared_hndl;
 
 	/* support pattern based rejection */
 	uint32_t			flow_pattern_id;
@@ -119,5 +120,11 @@ int32_t
 ulp_mapper_resources_free(struct bnxt_ulp_context *ulp_ctx,
 			  enum bnxt_ulp_fdb_type flow_type,
 			  uint32_t fid);
+
+int32_t
+ulp_mapper_get_shared_fid(struct bnxt_ulp_context *ulp,
+			  uint32_t id,
+			  uint16_t key,
+			  uint32_t *fid);
 
 #endif /* _ULP_MAPPER_H_ */

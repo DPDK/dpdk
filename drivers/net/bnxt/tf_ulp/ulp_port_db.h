@@ -279,7 +279,7 @@ ulp_port_db_port_func_id_get(struct bnxt_ulp_context *ulp_ctxt,
  * Api to get the parent mac address for a given port id.
  *
  * ulp_ctxt [in] Ptr to ulp context
- * port_id [in].device port id
+ * port_id [in] device port id
  * mac_addr [out] mac address
  *
  * Returns 0 on success or negative number on failure.
@@ -287,4 +287,31 @@ ulp_port_db_port_func_id_get(struct bnxt_ulp_context *ulp_ctxt,
 int32_t
 ulp_port_db_parent_mac_addr_get(struct bnxt_ulp_context *ulp_ctxt,
 				uint32_t port_id, uint8_t **mac_addr);
+
+/*
+ * Api to get the mac address for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] device port id
+ * mac_addr [out] mac address
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_drv_mac_addr_get(struct bnxt_ulp_context *ulp_ctxt,
+			     uint32_t port_id, uint8_t **mac_addr);
+
+/*
+ * Api to get the parent vnic for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] device port id
+ * vnic [out] parent vnic
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_parent_vnic_get(struct bnxt_ulp_context *ulp_ctxt,
+			    uint32_t port_id, uint8_t **vnic);
+
 #endif /* _ULP_PORT_DB_H_ */

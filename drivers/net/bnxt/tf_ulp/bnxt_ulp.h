@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <sys/queue.h>
 
+#include "rte_version.h"
 #include "rte_ethdev.h"
 
 #include "ulp_template_db_enum.h"
@@ -38,14 +39,12 @@ enum bnxt_ulp_flow_mem_type {
 };
 
 struct bnxt_ulp_df_rule_info {
-	uint32_t			port_to_app_flow_id;
-	uint32_t			app_to_port_flow_id;
+	uint32_t			def_port_flow_id;
 	uint8_t				valid;
 };
 
 struct bnxt_ulp_vfr_rule_info {
-	uint32_t			rep2vf_flow_id;
-	uint32_t			vf2rep_flow_id;
+	uint32_t			vfr_flow_id;
 	uint16_t			parent_port_id;
 	uint8_t				valid;
 };

@@ -22,6 +22,7 @@
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
 #include "ulp_port_db.h"
+#include "ulp_tun.h"
 
 /* Linked list of all TF sessions. */
 STAILQ_HEAD(, bnxt_ulp_session_state) bnxt_ulp_session_list =
@@ -52,8 +53,11 @@ static int32_t
 bnxt_ulp_devid_get(struct bnxt *bp,
 		   enum bnxt_ulp_device_id  *ulp_dev_id)
 {
-	if (BNXT_CHIP_P5(bp))
-		return -EINVAL;
+	if (BNXT_CHIP_P5(bp)) {
+		/* TBD: needs to accommodate even SR2 */
+		*ulp_dev_id = BNXT_ULP_DEVICE_ID_THOR;
+		return 0;
+	}
 
 	if (BNXT_STINGRAY(bp))
 		*ulp_dev_id = BNXT_ULP_DEVICE_ID_STINGRAY;
@@ -70,6 +74,7 @@ bnxt_ulp_tf_session_resources_get(struct bnxt *bp,
 {
 	uint32_t dev_id;
 	int32_t rc;
+	uint16_t *tmp_cnt;
 
 	rc = bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &dev_id);
 	if (rc) {
@@ -113,6 +118,8 @@ bnxt_ulp_tf_session_resources_get(struct bnxt *bp,
 		/* SP */
 		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_SP_SMAC] = 255;
 
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_MIRROR_CONFIG] = 1;
+
 		/** TX **/
 		/* Identifiers */
 		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 292;
@@ -148,6 +155,9 @@ bnxt_ulp_tf_session_resources_get(struct bnxt *bp,
 		/* SP */
 		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = 488;
 		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV6] = 511;
+
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_MIRROR_CONFIG] = 1;
+
 		break;
 	case BNXT_ULP_DEVICE_ID_STINGRAY:
 		/** RX **/
@@ -220,6 +230,73 @@ bnxt_ulp_tf_session_resources_get(struct bnxt *bp,
 		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = 488;
 		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV6] = 512;
 		break;
+	case BNXT_ULP_DEVICE_ID_THOR:
+		/** RX **/
+		/* Identifiers */
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 26;
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_L2_CTXT_LOW] = 6;
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_WC_PROF] = 32;
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 32;
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_EM_PROF] = 32;
+
+		/* Table Types */
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_FULL_ACT_RECORD] = 1024;
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 512;
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_MIRROR_CONFIG] = 14;
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_EM_FKB] = 32;
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_WC_FKB] = 32;
+
+		/* ENCAP */
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_64B] = 64;
+
+		/* TCAMs */
+		tmp_cnt = &res->tcam_cnt[TF_DIR_RX].cnt[0];
+		tmp_cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH] = 300;
+		tmp_cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW] = 6;
+		res->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 128;
+		res->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 112;
+
+		/* EM */
+		res->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 13200;
+
+		/* SP */
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = 64;
+
+		/** TX **/
+		/* Identifiers */
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 26;
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_LOW] = 26;
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_WC_PROF] = 32;
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 63;
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_EM_PROF] = 32;
+
+		/* Table Types */
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_FULL_ACT_RECORD] = 1024;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 512;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_MIRROR_CONFIG] = 14;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_EM_FKB] = 32;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_WC_FKB] = 32;
+
+		/* ENCAP */
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_64B] = 64;
+
+		/* TCAMs */
+		tmp_cnt = &res->tcam_cnt[TF_DIR_TX].cnt[0];
+
+		tmp_cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH] = 200;
+		tmp_cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW] = 110;
+		res->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 128;
+		res->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 128;
+
+		/* EM */
+		res->em_cnt[TF_DIR_TX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 15232;
+
+		/* SP */
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = 100;
+
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_MIRROR_CONFIG] = 1;
+
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -272,6 +349,9 @@ ulp_ctx_session_open(struct bnxt *bp,
 		break;
 	case BNXT_ULP_DEVICE_ID_STINGRAY:
 		params.device_type = TF_DEVICE_TYPE_SR;
+		break;
+	case BNXT_ULP_DEVICE_ID_THOR:
+		params.device_type = TF_DEVICE_TYPE_THOR;
 		break;
 	default:
 		BNXT_TF_DBG(ERR, "Unable to determine device for "
@@ -346,14 +426,12 @@ bnxt_init_tbl_scope_parms(struct bnxt *bp,
 			BNXT_ULP_DFLT_RX_MAX_ACTN_ENTRY;
 		params->rx_mem_size_in_mb = BNXT_ULP_DFLT_RX_MEM;
 		params->rx_num_flows_in_k = BNXT_ULP_RX_NUM_FLOWS;
-		params->rx_tbl_if_id = BNXT_ULP_RX_TBL_IF_ID;
 
 		params->tx_max_key_sz_in_bits = BNXT_ULP_DFLT_TX_MAX_KEY;
 		params->tx_max_action_entry_sz_in_bits =
 			BNXT_ULP_DFLT_TX_MAX_ACTN_ENTRY;
 		params->tx_mem_size_in_mb = BNXT_ULP_DFLT_TX_MEM;
 		params->tx_num_flows_in_k = BNXT_ULP_TX_NUM_FLOWS;
-		params->tx_tbl_if_id = BNXT_ULP_TX_TBL_IF_ID;
 	} else {
 		params->rx_max_key_sz_in_bits = BNXT_ULP_DFLT_RX_MAX_KEY;
 		params->rx_max_action_entry_sz_in_bits =
@@ -361,7 +439,6 @@ bnxt_init_tbl_scope_parms(struct bnxt *bp,
 		params->rx_mem_size_in_mb = BNXT_ULP_DFLT_RX_MEM;
 		params->rx_num_flows_in_k =
 			dparms->ext_flow_db_num_entries / 1024;
-		params->rx_tbl_if_id = BNXT_ULP_RX_TBL_IF_ID;
 
 		params->tx_max_key_sz_in_bits = BNXT_ULP_DFLT_TX_MAX_KEY;
 		params->tx_max_action_entry_sz_in_bits =
@@ -369,7 +446,6 @@ bnxt_init_tbl_scope_parms(struct bnxt *bp,
 		params->tx_mem_size_in_mb = BNXT_ULP_DFLT_TX_MEM;
 		params->tx_num_flows_in_k =
 			dparms->ext_flow_db_num_entries / 1024;
-		params->tx_tbl_if_id = BNXT_ULP_TX_TBL_IF_ID;
 	}
 	BNXT_TF_DBG(INFO, "Table Scope initialized with %uK flows.\n",
 		    params->rx_num_flows_in_k);
@@ -529,6 +605,8 @@ ulp_ctx_init(struct bnxt *bp,
 	rc = ulp_ctx_session_open(bp, session);
 	if (rc)
 		goto error_deinit;
+
+	ulp_tun_tbl_init(ulp_data->tun_tbl);
 
 	bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, &bp->tfp);
 	return rc;
@@ -827,8 +905,7 @@ bnxt_ulp_destroy_vfr_default_rules(struct bnxt *bp, bool global)
 			continue;
 
 		/* Destroy the flows */
-		ulp_default_flow_destroy(bp->eth_dev, info->rep2vf_flow_id);
-		ulp_default_flow_destroy(bp->eth_dev, info->vf2rep_flow_id);
+		ulp_default_flow_destroy(bp->eth_dev, info->vfr_flow_id);
 		/* Clean up the tx action pointer */
 		vfr_eth_dev = &rte_eth_devices[port_id];
 		if (vfr_eth_dev) {
@@ -1071,7 +1148,11 @@ bnxt_ulp_port_init(struct bnxt *bp)
 		goto jump_to_error;
 	}
 	/* create the default rules */
-	bnxt_ulp_create_df_rules(bp);
+	rc = bnxt_ulp_create_df_rules(bp);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to create default flow\n");
+		goto jump_to_error;
+	}
 
 	if (BNXT_ACCUM_STATS_EN(bp))
 		bp->ulp_ctx->cfg_data->accum_stats = true;

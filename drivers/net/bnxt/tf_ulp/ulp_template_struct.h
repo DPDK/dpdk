@@ -28,6 +28,7 @@
 #define BNXT_ULP_PROTO_HDR_TCP_NUM	9
 #define BNXT_ULP_PROTO_HDR_VXLAN_NUM	4
 #define BNXT_ULP_PROTO_HDR_GRE_NUM	6
+#define BNXT_ULP_PROTO_HDR_ICMP_NUM	5
 #define BNXT_ULP_PROTO_HDR_MAX		128
 #define BNXT_ULP_PROTO_HDR_FIELD_SVIF_IDX	1
 
@@ -204,6 +205,16 @@ struct bnxt_ulp_device_params {
 	uint64_t			packet_count_mask;
 	uint32_t			byte_count_shift;
 	uint32_t			packet_count_shift;
+	uint32_t			dynamic_pad_en;
+	uint16_t			em_blk_size_bits;
+	uint16_t			em_blk_align_bits;
+	uint16_t			em_key_align_bytes;
+	uint16_t			em_result_size_bits;
+	uint16_t			wc_slice_width;
+	uint16_t			wc_max_slices;
+	uint32_t			wc_mode_list[4];
+	uint32_t			wc_mod_list_max_size;
+	uint32_t			wc_ctl_size_bits;
 	const struct bnxt_ulp_template_device_tbls *dev_tbls;
 };
 
@@ -226,6 +237,7 @@ struct bnxt_ulp_mapper_tbl_info {
 	uint8_t				direction;
 	enum bnxt_ulp_pri_opc		pri_opcode;
 	uint32_t			pri_operand;
+	enum bnxt_ulp_byte_order	byte_order;
 
 	/* conflict resolution opcode */
 	enum bnxt_ulp_accept_opc	accept_opcode;

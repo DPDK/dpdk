@@ -522,7 +522,9 @@ ulp_flow_db_init(struct bnxt_ulp_context *ulp_ctxt)
 	bnxt_ulp_cntxt_ptr2_flow_db_set(ulp_ctxt, flow_db);
 
 	/* Determine the number of flows based on EM type */
-	bnxt_ulp_cntxt_mem_type_get(ulp_ctxt, &mtype);
+	if (bnxt_ulp_cntxt_mem_type_get(ulp_ctxt, &mtype))
+		goto error_free;
+
 	if (mtype == BNXT_ULP_FLOW_MEM_TYPE_INT)
 		num_flows = dparms->int_flow_db_num_entries;
 	else
@@ -676,6 +678,7 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
 	struct bnxt_ulp_flow_db *flow_db;
 	struct bnxt_ulp_flow_tbl *flow_tbl;
 	struct ulp_fdb_resource_info *resource, *fid_resource;
+	struct bnxt_ulp_fc_info *ulp_fc_info;
 	uint32_t idx;
 
 	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
@@ -728,9 +731,11 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
 		ulp_flow_db_res_params_to_info(fid_resource, params);
 	}
 
+	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ulp_ctxt);
 	if (params->resource_type == TF_TBL_TYPE_ACT_STATS_64 &&
 	    params->resource_sub_type ==
-	    BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT) {
+	    BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT &&
+	    ulp_fc_info) {
 		/* Store the first HW counter ID for this table */
 		if (!ulp_fc_mgr_start_idx_isset(ulp_ctxt, params->direction))
 			ulp_fc_mgr_start_idx_set(ulp_ctxt, params->direction,

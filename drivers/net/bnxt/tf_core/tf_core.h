@@ -1105,10 +1105,6 @@ struct tf_alloc_tbl_scope_parms {
 	 */
 	uint32_t rx_num_flows_in_k;
 	/**
-	 * [in] SR2 only receive table access interface id
-	 */
-	uint32_t rx_tbl_if_id;
-	/**
 	 * [in] All Maximum key size required.
 	 */
 	uint16_t tx_max_key_sz_in_bits;
@@ -1126,10 +1122,6 @@ struct tf_alloc_tbl_scope_parms {
 	 * [in] Number of flows * 1000
 	 */
 	uint32_t tx_num_flows_in_k;
-	/**
-	 * [in] SR2 only receive table access interface id
-	 */
-	uint32_t tx_tbl_if_id;
 	/**
 	 * [in] Flush pending HW cached flows every 1/10th of value
 	 * set in seconds, both idle and active flows are flushed

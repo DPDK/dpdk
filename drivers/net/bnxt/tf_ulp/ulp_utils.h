@@ -9,10 +9,12 @@
 #include "bnxt.h"
 #include "ulp_template_db_enum.h"
 
+#define ULP_BUFFER_ALIGN_8_BITS		8
 #define ULP_BUFFER_ALIGN_8_BYTE		8
 #define ULP_BUFFER_ALIGN_16_BYTE	16
 #define ULP_BUFFER_ALIGN_64_BYTE	64
 #define ULP_64B_IN_BYTES		8
+
 /*
  * Macros for bitmap sets and gets
  * These macros can be used if the val are power of 2.
@@ -290,6 +292,16 @@ ulp_blob_data_get(struct ulp_blob *blob,
 		  uint16_t *datalen);
 
 /*
+ * Get the data length of the binary blob.
+ *
+ * blob [in] The blob's data len to be retrieved.
+ *
+ * returns length of the binary blob
+ */
+uint16_t
+ulp_blob_data_len_get(struct ulp_blob *blob);
+
+/*
  * Get data from the byte array in Little endian format.
  *
  * src [in] The byte array where data is extracted from
@@ -357,6 +369,20 @@ ulp_blob_pad_push(struct ulp_blob *blob,
 		  uint32_t datalen);
 
 /*
+ * Adds pad to an initialized blob at the current offset based on
+ * the alignment.
+ *
+ * blob [in] The blob that needs to be aligned
+ *
+ * align [in] Alignment in bits.
+ *
+ * returns the number of pad bits added, -1 on failure
+ */
+int32_t
+ulp_blob_pad_align(struct ulp_blob *blob,
+		   uint32_t align);
+
+/*
  * Set the 64 bit swap start index of the binary blob.
  *
  * blob [in] The blob's data to be retrieved. The blob must be
@@ -383,11 +409,13 @@ ulp_blob_perform_encap_swap(struct ulp_blob *blob);
  * vice-versa.
  *
  * blob [in] The blob's data to be used for swap.
+ * chunk_size[in] the swap is done within the chunk in bytes
  *
  * returns void.
  */
 void
-ulp_blob_perform_byte_reverse(struct ulp_blob *blob);
+ulp_blob_perform_byte_reverse(struct ulp_blob *blob,
+			      uint32_t chunk_size);
 
 /*
  * Perform the blob buffer 64 bit word swap.
@@ -412,6 +440,40 @@ ulp_blob_perform_64B_word_swap(struct ulp_blob *blob);
  */
 void
 ulp_blob_perform_64B_byte_swap(struct ulp_blob *blob);
+
+/*
+ * Perform the blob buffer merge.
+ * This api makes the src blob merged to the dst blob.
+ * The block size and pad size help in padding the dst blob
+ *
+ * dst [in] The destination blob, the blob to be merged.
+ * src [in] The src blob.
+ * block_size [in] The size of the block after which padding gets applied.
+ * pad [in] The size of the pad to be applied.
+ *
+ * returns 0 on success.
+ */
+int32_t
+ulp_blob_block_merge(struct ulp_blob *dst, struct ulp_blob *src,
+		     uint32_t block_size, uint32_t pad);
+
+/*
+ * Append bits from src blob to dst blob.
+ * Only works on BE blobs
+ *
+ * dst [in/out] The destination blob to append to
+ *
+ * src [in] The src blob to append from
+ *
+ * src_offset [in] The bit offset from src to start at
+ *
+ * src_len [in] The number of bits to append to dst
+ *
+ * returns 0 on success, non-zero on error
+ */
+int32_t
+ulp_blob_append(struct ulp_blob *dst, struct ulp_blob *src,
+		uint16_t src_offset, uint16_t src_len);
 
 /*
  * Read data from the operand

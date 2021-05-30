@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 
+#include <rte_common.h>
 #include "ulp_utils.h"
 #include "bnxt_tf_common.h"
 
@@ -232,6 +233,7 @@ ulp_bs_push_msb(uint8_t *bs, uint16_t pos, uint8_t len, uint8_t *val)
  * big endian.  All fields are packed with this order.
  *
  * returns 0 on error or 1 on success
+ * Notes - If bitlen is zero then set it to max.
  */
 uint32_t
 ulp_blob_init(struct ulp_blob *blob,
@@ -243,7 +245,10 @@ ulp_blob_init(struct ulp_blob *blob,
 		BNXT_TF_DBG(ERR, "invalid argument\n");
 		return 0; /* failure */
 	}
-	blob->bitlen = bitlen;
+	if (bitlen)
+		blob->bitlen = bitlen;
+	else
+		blob->bitlen = BNXT_ULP_FLMP_BLOB_SIZE_IN_BITS;
 	blob->byte_order = order;
 	blob->write_idx = 0;
 	memset(blob->data, 0, sizeof(blob->data));
@@ -505,6 +510,31 @@ ulp_blob_pad_push(struct ulp_blob *blob,
 	return datalen;
 }
 
+/*
+ * Adds pad to an initialized blob at the current offset based on
+ * the alignment.
+ *
+ * blob [in] The blob that needs to be aligned
+ *
+ * align [in] Alignment in bits.
+ *
+ * returns the number of pad bits added, -1 on failure
+ */
+int32_t
+ulp_blob_pad_align(struct ulp_blob *blob,
+		   uint32_t align)
+{
+	int32_t pad = 0;
+
+	pad = RTE_ALIGN(blob->write_idx, align) - blob->write_idx;
+	if (pad > (int32_t)(blob->bitlen - blob->write_idx)) {
+		BNXT_TF_DBG(ERR, "Pad too large for blob\n");
+		return -1;
+	}
+	blob->write_idx += pad;
+	return pad;
+}
+
 /* Get data from src and put into dst using little-endian format */
 static void
 ulp_bs_get_lsb(uint8_t *src, uint16_t bitpos, uint8_t bitlen, uint8_t *dst)
@@ -669,6 +699,24 @@ ulp_blob_data_get(struct ulp_blob *blob,
 }
 
 /*
+ * Get the data length of the binary blob.
+ *
+ * blob [in] The blob's data len to be retrieved.
+ *
+ * returns length of the binary blob
+ */
+uint16_t
+ulp_blob_data_len_get(struct ulp_blob *blob)
+{
+	/* validate the arguments */
+	if (!blob) {
+		BNXT_TF_DBG(ERR, "invalid argument\n");
+		return 0; /* failure */
+	}
+	return blob->write_idx;
+}
+
+/*
  * Set the encap swap start index of the binary blob.
  *
  * blob [in] The blob's data to be retrieved. The blob must be
@@ -731,14 +779,17 @@ ulp_blob_perform_encap_swap(struct ulp_blob *blob)
  * vice-versa.
  *
  * blob [in] The blob's data to be used for swap.
+ * chunk_size[in] the swap is done within the chunk in bytes
  *
  * returns void.
  */
 void
-ulp_blob_perform_byte_reverse(struct ulp_blob *blob)
+ulp_blob_perform_byte_reverse(struct ulp_blob *blob,
+			      uint32_t chunk_size)
 {
-	uint32_t idx = 0, num = 0;
+	uint32_t idx = 0, jdx = 0, num = 0;
 	uint8_t xchar;
+	uint8_t *buff;
 
 	/* validate the arguments */
 	if (!blob) {
@@ -746,11 +797,15 @@ ulp_blob_perform_byte_reverse(struct ulp_blob *blob)
 		return; /* failure */
 	}
 
-	num = ULP_BITS_2_BYTE_NR(blob->write_idx);
-	for (idx = 0; idx < (num / 2); idx++) {
-		xchar = blob->data[idx];
-		blob->data[idx] = blob->data[(num - 1) - idx];
-		blob->data[(num - 1) - idx] = xchar;
+	buff = blob->data;
+	num = ULP_BITS_2_BYTE(blob->write_idx) / chunk_size;
+	for (idx = 0; idx < num; idx++) {
+		for (jdx = 0; jdx < chunk_size / 2; jdx++) {
+			xchar = buff[jdx];
+			buff[jdx] = buff[(chunk_size - 1) - jdx];
+			buff[(chunk_size - 1) - jdx] = xchar;
+		}
+		buff += chunk_size;
 	}
 }
 
@@ -814,6 +869,122 @@ ulp_blob_perform_64B_byte_swap(struct ulp_blob *blob)
 			blob->data[i + offset - j] = xchar;
 		}
 	}
+}
+
+static int32_t
+ulp_blob_msb_block_merge(struct ulp_blob *dst, struct ulp_blob *src,
+			 uint32_t block_size, uint32_t pad)
+{
+	uint32_t i, k, write_bytes, remaining;
+	uint16_t num;
+	uint8_t *src_buf = ulp_blob_data_get(src, &num);
+	uint8_t bluff;
+
+	for (i = 0; i < num;) {
+		if (((dst->write_idx % block_size)  + (num - i)) > block_size)
+			write_bytes = block_size - dst->write_idx;
+		else
+			write_bytes = num - i;
+		for (k = 0; k < ULP_BITS_2_BYTE_NR(write_bytes); k++) {
+			ulp_bs_put_msb(dst->data, dst->write_idx, ULP_BLOB_BYTE,
+				       *src_buf);
+			dst->write_idx += ULP_BLOB_BYTE;
+			src_buf++;
+		}
+		remaining = write_bytes % ULP_BLOB_BYTE;
+		if (remaining) {
+			bluff = (*src_buf) & ((uint8_t)-1 <<
+					      (ULP_BLOB_BYTE - remaining));
+			ulp_bs_put_msb(dst->data, dst->write_idx,
+				       ULP_BLOB_BYTE, bluff);
+			dst->write_idx += remaining;
+		}
+		if (write_bytes != (num - i)) {
+			/* add the padding */
+			ulp_blob_pad_push(dst, pad);
+			if (remaining) {
+				ulp_bs_put_msb(dst->data, dst->write_idx,
+					       ULP_BLOB_BYTE - remaining,
+					       *src_buf);
+				dst->write_idx += ULP_BLOB_BYTE - remaining;
+				src_buf++;
+			}
+		}
+		i += write_bytes;
+	}
+	return 0;
+}
+
+/*
+ * Perform the blob buffer merge.
+ * This api makes the src blob merged to the dst blob.
+ * The block size and pad size help in padding the dst blob
+ *
+ * dst [in] The destination blob, the blob to be merged.
+ * src [in] The src blob.
+ * block_size [in] The size of the block after which padding gets applied.
+ * pad [in] The size of the pad to be applied.
+ *
+ * returns 0 on success.
+ */
+int32_t
+ulp_blob_block_merge(struct ulp_blob *dst, struct ulp_blob *src,
+		     uint32_t block_size, uint32_t pad)
+{
+	if (dst->byte_order == BNXT_ULP_BYTE_ORDER_BE &&
+	    src->byte_order == BNXT_ULP_BYTE_ORDER_BE)
+		return ulp_blob_msb_block_merge(dst, src, block_size, pad);
+
+	BNXT_TF_DBG(ERR, "block merge not implemented yet\n");
+	return -EINVAL;
+}
+
+int32_t
+ulp_blob_append(struct ulp_blob *dst, struct ulp_blob *src,
+		uint16_t src_offset, uint16_t src_len)
+{
+	uint32_t k, remaining;
+	uint16_t num;
+	uint8_t bluff;
+	uint8_t *src_buf = ulp_blob_data_get(src, &num);
+
+	if ((src_offset + src_len) > num)
+		return -EINVAL;
+
+	/* Only supporting BE for now */
+	if (src->byte_order != BNXT_ULP_BYTE_ORDER_BE ||
+	    dst->byte_order != BNXT_ULP_BYTE_ORDER_BE)
+		return -EINVAL;
+
+	/* Handle if the source offset is not on a byte boundary */
+	remaining = src_offset % ULP_BLOB_BYTE;
+	if (remaining) {
+		bluff = src_buf[src_offset / ULP_BLOB_BYTE] & ((uint8_t)-1 >>
+				      (ULP_BLOB_BYTE - remaining));
+		ulp_bs_put_msb(dst->data, dst->write_idx,
+			       ULP_BLOB_BYTE, bluff);
+		dst->write_idx += remaining;
+	}
+
+	/* Push the byte aligned pieces */
+	for (k = 0; k < ULP_BITS_2_BYTE_NR(src_len); k++) {
+		ulp_bs_put_msb(dst->data, dst->write_idx, ULP_BLOB_BYTE,
+			       *src_buf);
+		dst->write_idx += ULP_BLOB_BYTE;
+		src_buf++;
+	}
+
+	/* Handle the remaining if length is not a byte boundary */
+	remaining = src_len % ULP_BLOB_BYTE;
+	if (remaining) {
+		bluff = (*src_buf) & ((uint8_t)-1 <<
+				      (ULP_BLOB_BYTE - remaining));
+		ulp_bs_put_msb(dst->data, dst->write_idx,
+			       ULP_BLOB_BYTE, bluff);
+		dst->write_idx += remaining;
+	}
+
+	return 0;
 }
 
 /*
