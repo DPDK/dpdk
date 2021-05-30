@@ -276,4 +276,5 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_global_cfg = tf_global_cfg_get,
 	.tf_dev_get_mailbox = tf_dev_p4_get_mailbox,
 	.tf_dev_word_align = tf_dev_p4_word_align,
+	.tf_dev_cfa_key_hash = hcapi_cfa_p4_key_hash
 };

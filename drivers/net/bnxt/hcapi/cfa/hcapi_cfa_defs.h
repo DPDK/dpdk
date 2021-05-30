@@ -54,6 +54,16 @@ enum hcapi_cfa_dir {
 	HCAPI_CFA_DIR_MAX = 2
 };
 
+/*
+ * Hashing defines
+ */
+#define HCAPI_CFA_LKUP_SEED_MEM_SIZE 512
+
+/* CRC32i support for Key0 hash */
+#define ucrc32(ch, crc) (crc32tbl[((crc) ^ (ch)) & 0xff] ^ ((crc) >> 8))
+#define crc32(x, y) crc32i(~0, x, y)
+
+
 /**
  * CFA HW OPCODE definition
  */
@@ -282,4 +292,9 @@ int hcapi_cfa_key_hw_op(struct hcapi_cfa_hwop *op,
 
 uint64_t hcapi_get_table_page(struct hcapi_cfa_em_table *mem,
 			      uint32_t page);
+uint32_t hcapi_cfa_crc32i(uint32_t crc, const uint8_t *buf, size_t len);
+uint64_t hcapi_cfa_p4_key_hash(uint64_t *key_data,
+			       uint16_t bitlen);
+uint64_t hcapi_cfa_p58_key_hash(uint64_t *key_data,
+				uint16_t bitlen);
 #endif /* HCAPI_CFA_DEFS_H_ */

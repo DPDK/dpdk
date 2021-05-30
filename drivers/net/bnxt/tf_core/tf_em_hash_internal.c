@@ -15,6 +15,7 @@
 #include "tf_msg.h"
 #include "tfp.h"
 #include "tf_ext_flow_handle.h"
+#include "tf_device.h"
 
 #include "bnxt.h"
 
@@ -43,6 +44,18 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 	uint32_t key0_hash;
 	uint32_t key1_hash;
 	uint64_t big_hash;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
 
 	rc = stack_pop(pool, &index);
 	if (rc) {
@@ -52,8 +65,11 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 		return rc;
 	}
 
-	big_hash = hcapi_cfa_key_hash((uint64_t *)parms->key,
-				      (TF_HW_EM_KEY_MAX_SIZE + 4) * 8);
+	if (dev->ops->tf_dev_cfa_key_hash == NULL)
+		return -EINVAL;
+
+	big_hash = dev->ops->tf_dev_cfa_key_hash((uint64_t *)parms->key,
+					TF_P58_HW_EM_KEY_MAX_SIZE * 8);
 	key0_hash = (uint32_t)(big_hash >> 32);
 	key1_hash = (uint32_t)(big_hash & 0xFFFFFFFF);
 
@@ -93,7 +109,7 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 	TF_SET_FIELDS_IN_FLOW_HANDLE(parms->flow_handle,
 				     (uint32_t)num_of_entries,
 				     0,
-				     0,
+				     TF_FLAGS_FLOW_HANDLE_INTERNAL,
 				     rptr_index,
 				     rptr_entry,
 				     0);

@@ -284,7 +284,7 @@ tf_em_create_key_entry(struct cfa_p4_eem_entry_hdr *result,
 {
 	key_entry->hdr.word1 = result->word1;
 	key_entry->hdr.pointer = result->pointer;
-	memcpy(key_entry->key, in_key, TF_HW_EM_KEY_MAX_SIZE + 4);
+	memcpy(key_entry->key, in_key, TF_P4_HW_EM_KEY_MAX_SIZE + 4);
 }
 
 
@@ -680,7 +680,8 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
  *   TF_ERR_EM_DUP  - key is already in table
  */
 static int
-tf_insert_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb,
+tf_insert_eem_entry(struct tf_dev_info *dev,
+		    struct tf_tbl_scope_cb *tbl_scope_cb,
 		    struct tf_insert_em_entry_parms *parms)
 {
 	uint32_t mask;
@@ -706,11 +707,14 @@ tf_insert_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb,
 		return -EINVAL;
 
 #ifdef TF_EEM_DEBUG
-	dump_raw((uint8_t *)parms->key, TF_HW_EM_KEY_MAX_SIZE + 4, "In Key");
+	dump_raw((uint8_t *)parms->key, TF_P4_HW_EM_KEY_MAX_SIZE + 4, "In Key");
 #endif
 
-	big_hash = hcapi_cfa_key_hash((uint64_t *)parms->key,
-				      (TF_HW_EM_KEY_MAX_SIZE + 4) * 8);
+	if (dev->ops->tf_dev_cfa_key_hash == NULL)
+		return -EINVAL;
+
+	big_hash = dev->ops->tf_dev_cfa_key_hash((uint64_t *)parms->key,
+					 (TF_P4_HW_EM_KEY_MAX_SIZE + 4) * 8);
 	key0_hash = (uint32_t)(big_hash >> 32);
 	key1_hash = (uint32_t)(big_hash & 0xFFFFFFFF);
 
@@ -739,9 +743,9 @@ tf_insert_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb,
 	key_tbl.base0 =
 		(uint8_t *)&tbl_scope_cb->em_ctx_info[parms->dir].em_tables[TF_KEY0_TABLE];
 	key_tbl.page_size = TF_EM_PAGE_SIZE;
-	key_obj.offset = index * TF_EM_KEY_RECORD_SIZE;
+	key_obj.offset = index * TF_P4_EM_KEY_RECORD_SIZE;
 	key_obj.data = (uint8_t *)&key_entry;
-	key_obj.size = TF_EM_KEY_RECORD_SIZE;
+	key_obj.size = TF_P4_EM_KEY_RECORD_SIZE;
 
 	rc = hcapi_cfa_key_hw_op(&op,
 				 &key_tbl,
@@ -755,7 +759,7 @@ tf_insert_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb,
 
 		key_tbl.base0 =
 			(uint8_t *)&tbl_scope_cb->em_ctx_info[parms->dir].em_tables[TF_KEY1_TABLE];
-		key_obj.offset = index * TF_EM_KEY_RECORD_SIZE;
+		key_obj.offset = index * TF_P4_EM_KEY_RECORD_SIZE;
 
 		rc = hcapi_cfa_key_hw_op(&op,
 					 &key_tbl,
@@ -818,9 +822,9 @@ tf_delete_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb,
 		(uint8_t *)&tbl_scope_cb->em_ctx_info[parms->dir].em_tables
 			[(hash_type == 0 ? TF_KEY0_TABLE : TF_KEY1_TABLE)];
 	key_tbl.page_size = TF_EM_PAGE_SIZE;
-	key_obj.offset = index * TF_EM_KEY_RECORD_SIZE;
+	key_obj.offset = index * TF_P4_EM_KEY_RECORD_SIZE;
 	key_obj.data = NULL;
-	key_obj.size = TF_EM_KEY_RECORD_SIZE;
+	key_obj.size = TF_P4_EM_KEY_RECORD_SIZE;
 
 	rc = hcapi_cfa_key_hw_op(&op,
 				 &key_tbl,
@@ -843,7 +847,10 @@ int
 tf_em_insert_ext_entry(struct tf *tfp __rte_unused,
 		       struct tf_insert_em_entry_parms *parms)
 {
+	int rc;
 	struct tf_tbl_scope_cb *tbl_scope_cb;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
 
 	tbl_scope_cb = tbl_scope_cb_find(parms->tbl_scope_id);
 	if (tbl_scope_cb == NULL) {
@@ -851,9 +858,20 @@ tf_em_insert_ext_entry(struct tf *tfp __rte_unused,
 		return -EINVAL;
 	}
 
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
 	return tf_insert_eem_entry
-		(tbl_scope_cb,
-		parms);
+		(dev,
+		 tbl_scope_cb,
+		 parms);
 }
 
 /** Delete EM hash entry API

@@ -6,6 +6,12 @@
 #ifndef _HCAPI_CFA_P58_H_
 #define _HCAPI_CFA_P58_H_
 
+/**
+ * EEM Key entry sizes
+ */
+#define CFA_P58_EEM_KEY_MAX_SIZE 80
+#define CFA_P58_EEM_KEY_RECORD_SIZE 80
+
 /** CFA phase 5.8 fix formatted table(layout) ID definition
  *
  */

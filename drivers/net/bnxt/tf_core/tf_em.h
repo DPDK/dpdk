@@ -14,8 +14,10 @@
 #define TF_EM_MIN_ENTRIES     (1 << 15) /* 32K */
 #define TF_EM_MAX_ENTRIES     (1 << 27) /* 128M */
 
-#define TF_HW_EM_KEY_MAX_SIZE 52
-#define TF_EM_KEY_RECORD_SIZE 64
+#define TF_P4_HW_EM_KEY_MAX_SIZE 52
+#define TF_P4_EM_KEY_RECORD_SIZE 64
+
+#define TF_P58_HW_EM_KEY_MAX_SIZE 80
 
 #define TF_EM_MAX_MASK 0x7FFF
 #define TF_EM_MAX_ENTRY (128 * 1024 * 1024)
@@ -95,7 +97,7 @@ struct tf_em_64b_entry {
 	/** Header is 8 bytes long */
 	struct cfa_p4_eem_entry_hdr hdr;
 	/** Key is 448 bits - 56 bytes */
-	uint8_t key[TF_EM_KEY_RECORD_SIZE - sizeof(struct cfa_p4_eem_entry_hdr)];
+	uint8_t key[TF_P4_EM_KEY_RECORD_SIZE - sizeof(struct cfa_p4_eem_entry_hdr)];
 };
 
 /** EEM Memory Type

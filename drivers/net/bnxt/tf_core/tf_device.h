@@ -752,6 +752,21 @@ struct tf_dev_ops {
 	 *   Size in byte
 	 */
 	int (*tf_dev_word_align)(uint16_t size);
+
+	/**
+	 * Hash key using crc32 and lookup3
+	 *
+	 * [in] key_data
+	 *   Pointer to key
+	 *
+	 * [in] bitlen
+	 *   Number of key bits
+	 *
+	 * Returns
+	 *   Hashes
+	 */
+	uint64_t (*tf_dev_cfa_key_hash)(uint64_t *key_data,
+					  uint16_t bitlen);
 };
 
 /**

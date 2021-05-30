@@ -7,4 +7,6 @@ includes += include_directories('.')
 
 #Add the source files
 sources += files(
-        'hcapi_cfa_p4.c')
+        'hcapi_cfa_p4.c',
+        'hcapi_cfa_p58.c',
+        'hcapi_cfa_common.c')
