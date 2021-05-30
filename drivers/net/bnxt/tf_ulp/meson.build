@@ -10,9 +10,6 @@ sources += files(
         'bnxt_ulp.c',
         'ulp_mark_mgr.c',
         'ulp_flow_db.c',
-        'ulp_template_db_tbl.c',
-        'ulp_template_db_class.c',
-        'ulp_template_db_act.c',
         'ulp_utils.c',
         'ulp_mapper.c',
         'ulp_matcher.c',
@@ -26,8 +23,6 @@ sources += files(
         'ulp_gen_tbl.c',
         'ulp_gen_hash.c',
         'ulp_ha_mgr.c',
-        'ulp_rte_handler_tbl.c',
-        'ulp_template_db_wh_plus_act.c',
-        'ulp_template_db_wh_plus_class.c',
-	'ulp_template_db_thor_act.c',
-	'ulp_template_db_thor_class.c')
+        'ulp_rte_handler_tbl.c')
+
+subdir('generic_templates')
