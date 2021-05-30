@@ -16,6 +16,7 @@
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
 #include "ulp_tun.h"
+#include "ulp_template_db_tbl.h"
 
 /* Local defines for the parsing functions */
 #define ULP_VLAN_PRIORITY_SHIFT		13 /* First 3 bits */
@@ -239,6 +240,11 @@ bnxt_ulp_comp_fld_intf_update(struct ulp_rte_parser_params *params)
 			ULP_COMP_FLD_IDX_WR(params,
 					    BNXT_ULP_CF_IDX_DRV_FUNC_PARIF,
 					    parif);
+		}
+		if (mtype == BNXT_ULP_INTF_TYPE_PF) {
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_MATCH_PORT_IS_PF,
+					    1);
 		}
 	}
 }
@@ -740,6 +746,7 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		field = ulp_rte_parser_fld_copy(field,
 						&vlan_tag,
 						sizeof(vlan_tag));
+
 		field = ulp_rte_parser_fld_copy(field,
 						&vlan_spec->inner_type,
 						sizeof(vlan_spec->inner_type));
@@ -1008,6 +1015,13 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3, 1);
 	}
 
+	/* Some of the PMD applications may set the protocol field
+	 * in the IPv4 spec but don't set the mask. So, consider
+	 * the mask in the proto value calculation.
+	 */
+	if (ipv4_mask)
+		proto &= ipv4_mask->hdr.next_proto_id;
+
 	if (proto == IPPROTO_GRE)
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_T_GRE);
 
@@ -1149,6 +1163,13 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3, 1);
 	}
 
+	/* Some of the PMD applications may set the protocol field
+	 * in the IPv6 spec but don't set the mask. So, consider
+	 * the mask in proto value calculation.
+	 */
+	if (ipv6_mask)
+		proto &= ipv6_mask->hdr.proto;
+
 	if (proto == IPPROTO_GRE)
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_T_GRE);
 
@@ -1182,7 +1203,7 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
 	uint32_t idx = params->field_idx;
 	uint32_t size;
-	uint16_t dport = 0, sport = 0;
+	uint16_t dport = 0;
 	uint32_t cnt;
 
 	cnt = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L4_HDR_CNT);
@@ -1200,7 +1221,6 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 		field = ulp_rte_parser_fld_copy(&params->hdr_field[idx],
 						&udp_spec->hdr.src_port,
 						size);
-		sport = udp_spec->hdr.src_port;
 		size = sizeof(udp_spec->hdr.dst_port);
 		field = ulp_rte_parser_fld_copy(field,
 						&udp_spec->hdr.dst_port,
@@ -1238,14 +1258,26 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP)) {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_UDP);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4, 1);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_SPORT, sport);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_DPORT, dport);
+		if (udp_mask && udp_mask->hdr.src_port)
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_I_L4_FB_SRC_PORT,
+					    1);
+		if (udp_mask && udp_mask->hdr.dst_port)
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_I_L4_FB_DST_PORT,
+					    1);
 
 	} else {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_UDP);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4, 1);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_SPORT, sport);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DPORT, dport);
+		if (udp_mask && udp_mask->hdr.src_port)
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT,
+					    1);
+		if (udp_mask && udp_mask->hdr.dst_port)
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT,
+					    1);
 
 		/* Update the field protocol hdr bitmap */
 		ulp_rte_l4_proto_type_update(params, dport);
@@ -1264,7 +1296,6 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 	struct ulp_rte_hdr_field *field;
 	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
 	uint32_t idx = params->field_idx;
-	uint16_t dport = 0, sport = 0;
 	uint32_t size;
 	uint32_t cnt;
 
@@ -1279,12 +1310,10 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 	 * header fields
 	 */
 	if (tcp_spec) {
-		sport = tcp_spec->hdr.src_port;
 		size = sizeof(tcp_spec->hdr.src_port);
 		field = ulp_rte_parser_fld_copy(&params->hdr_field[idx],
 						&tcp_spec->hdr.src_port,
 						size);
-		dport = tcp_spec->hdr.dst_port;
 		size = sizeof(tcp_spec->hdr.dst_port);
 		field = ulp_rte_parser_fld_copy(field,
 						&tcp_spec->hdr.dst_port,
@@ -1358,13 +1387,25 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP)) {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_TCP);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4, 1);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_SPORT, sport);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_DPORT, dport);
+		if (tcp_mask && tcp_mask->hdr.src_port)
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_I_L4_FB_SRC_PORT,
+					    1);
+		if (tcp_mask && tcp_mask->hdr.dst_port)
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_I_L4_FB_DST_PORT,
+					    1);
 	} else {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4, 1);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_SPORT, sport);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DPORT, dport);
+		if (tcp_mask && tcp_mask->hdr.src_port)
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT,
+					    1);
+		if (tcp_mask && tcp_mask->hdr.dst_port)
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT,
+					    1);
 	}
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L4_HDR_CNT, ++cnt);
 	return BNXT_TF_RC_SUCCESS;
@@ -2256,4 +2297,41 @@ ulp_rte_jump_act_handler(const struct rte_flow_action *action_item __rte_unused,
 	/* Update the act_bitmap with dec ttl */
 	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_JUMP);
 	return BNXT_TF_RC_SUCCESS;
+}
+
+int32_t
+ulp_rte_sample_act_handler(const struct rte_flow_action *action_item,
+			   struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_action_sample *sample;
+	int ret;
+
+	sample = action_item->conf;
+
+	/* if SAMPLE bit is set it means this sample action is nested within the
+	 * actions of another sample action; this is not allowed
+	 */
+	if (ULP_BITMAP_ISSET(params->act_bitmap.bits,
+			     BNXT_ULP_ACT_BIT_SAMPLE))
+		return BNXT_TF_RC_ERROR;
+
+	/* a sample action is only allowed as a shared action */
+	if (!ULP_BITMAP_ISSET(params->act_bitmap.bits,
+			      BNXT_ULP_ACT_BIT_SHARED))
+		return BNXT_TF_RC_ERROR;
+
+	/* only a ratio of 1 i.e. 100% is supported */
+	if (sample->ratio != 1)
+		return BNXT_TF_RC_ERROR;
+
+	if (!sample->actions)
+		return BNXT_TF_RC_ERROR;
+
+	/* parse the nested actions for a sample action */
+	ret = bnxt_ulp_rte_parser_act_parse(sample->actions, params);
+	if (ret == BNXT_TF_RC_SUCCESS)
+		/* Update the act_bitmap with sample */
+		ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_SAMPLE);
+
+	return ret;
 }

@@ -317,8 +317,18 @@ static int ulp_get_single_flow_stat(struct bnxt_ulp_context *ctxt,
 	/* TBD - Get PKT/BYTE COUNT SHIFT/MASK from Template */
 	sw_cntr_indx = hw_cntr_id - fc_info->shadow_hw_tbl[dir].start_idx;
 	sw_acc_tbl_entry = &fc_info->sw_acc_tbl[dir][sw_cntr_indx];
-	sw_acc_tbl_entry->pkt_count = FLOW_CNTR_PKTS(stats, dparms);
-	sw_acc_tbl_entry->byte_count = FLOW_CNTR_BYTES(stats, dparms);
+	/* Some dpdk applications may accumulate the flow counters while some
+	 * may not. In cases where the application is accumulating the counters
+	 * the PMD need not do the accumulation itself and viceversa to report
+	 * the correct flow counters.
+	 */
+	if (ctxt->cfg_data->accum_stats) {
+		sw_acc_tbl_entry->pkt_count += FLOW_CNTR_PKTS(stats, dparms);
+		sw_acc_tbl_entry->byte_count += FLOW_CNTR_BYTES(stats, dparms);
+	} else {
+		sw_acc_tbl_entry->pkt_count = FLOW_CNTR_PKTS(stats, dparms);
+		sw_acc_tbl_entry->byte_count = FLOW_CNTR_BYTES(stats, dparms);
+	}
 
 	/* Update the parent counters if it is child flow */
 	if (sw_acc_tbl_entry->parent_flow_id) {
@@ -628,11 +638,10 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 		pthread_mutex_unlock(&ulp_fc_info->fc_lock);
 	} else if (params.resource_sub_type ==
 			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT_ACC) {
-		/* Get the stats from the parent child table */
-		ulp_flow_db_parent_flow_count_get(ctxt,
-						  flow_id,
-						  &count->hits,
-						  &count->bytes);
+		/* Get stats from the parent child table */
+		ulp_flow_db_parent_flow_count_get(ctxt, flow_id,
+						  &count->hits, &count->bytes,
+						  count->reset);
 		count->hits_set = 1;
 		count->bytes_set = 1;
 	} else {

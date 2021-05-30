@@ -245,4 +245,12 @@ int32_t
 ulp_rte_jump_act_handler(const struct rte_flow_action *action_item,
 			 struct ulp_rte_parser_params *params);
 
+int32_t
+ulp_rte_sample_act_handler(const struct rte_flow_action *action_item,
+			   struct ulp_rte_parser_params *params);
+
+int32_t
+ulp_rte_shared_act_handler(const struct rte_flow_action *action_item,
+			   struct ulp_rte_parser_params *params);
+
 #endif /* _ULP_RTE_PARSER_H_ */

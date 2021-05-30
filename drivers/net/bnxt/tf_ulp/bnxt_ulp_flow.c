@@ -143,6 +143,8 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	/* copy the device port id and direction for further processing */
 	ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_INCOMING_IF,
 			    dev->data->port_id);
+	ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_DEV_PORT_ID,
+			    dev->data->port_id);
 	ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_SVIF_FLAG,
 			    BNXT_ULP_INVALID_SVIF_VAL);
 

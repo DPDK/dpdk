@@ -246,7 +246,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 5
 	},
 	{ /* class_tid: 1, wh_plus, table: em.ipv4 */
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_RX,
 	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_INT,
@@ -269,7 +269,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 9
 	},
 	{ /* class_tid: 1, wh_plus, table: eem.ipv4 */
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.direction = TF_DIR_RX,
 	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_EXT,
@@ -292,7 +292,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 9
 	},
 	{ /* class_tid: 1, wh_plus, table: em.ipv6 */
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_RX,
 	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_INT,
@@ -315,7 +315,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 9
 	},
 	{ /* class_tid: 1, wh_plus, table: eem.ipv6 */
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -497,7 +497,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 5
 	},
 	{ /* class_tid: 2, wh_plus, table: em.ipv4 */
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_TX,
 	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_INT,
@@ -520,7 +520,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 9
 	},
 	{ /* class_tid: 2, wh_plus, table: eem.ipv4 */
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.direction = TF_DIR_TX,
 	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_EXT,
@@ -543,7 +543,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 9
 	},
 	{ /* class_tid: 2, wh_plus, table: em.ipv6 */
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_TX,
 	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_INT,
@@ -566,7 +566,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_num_fields = 9
 	},
 	{ /* class_tid: 2, wh_plus, table: eem.ipv6 */
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -9699,8 +9699,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_O_L4_SPORT >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_O_L4_SPORT & 0xff}
+		(BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT & 0xff}
 	},
 	{
 	.description = "em_key_mask.6",
@@ -9709,8 +9709,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_O_L4_DPORT >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_O_L4_DPORT & 0xff}
+		(BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT & 0xff}
 	},
 	{
 	.description = "em_key_mask.7",
@@ -9850,8 +9850,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_O_L4_SPORT >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_O_L4_SPORT & 0xff}
+		(BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT & 0xff}
 	},
 	{
 	.description = "em_key_mask.7",
@@ -9860,8 +9860,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_O_L4_DPORT >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_O_L4_DPORT & 0xff}
+		(BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT & 0xff}
 	},
 	{
 	.description = "em_key_mask.8",
@@ -10443,8 +10443,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_O_L4_SPORT >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_O_L4_SPORT & 0xff}
+		(BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT & 0xff}
 	},
 	{
 	.description = "em_key_mask.6",
@@ -10453,8 +10453,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_O_L4_DPORT >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_O_L4_DPORT & 0xff}
+		(BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT & 0xff}
 	},
 	{
 	.description = "em_key_mask.7",
@@ -10594,8 +10594,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_O_L4_SPORT >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_O_L4_SPORT & 0xff}
+		(BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT & 0xff}
 	},
 	{
 	.description = "em_key_mask.7",
@@ -10604,8 +10604,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_O_L4_DPORT >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_O_L4_DPORT & 0xff}
+		(BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT & 0xff}
 	},
 	{
 	.description = "em_key_mask.8",

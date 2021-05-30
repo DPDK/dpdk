@@ -205,7 +205,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_stingray_class_tbl_list[] = {
 	.encap_num_fields = 0
 	},
 	{ /* class_tid: 1, stingray, table: em.int_0 */
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_RX,
 	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_INT,
@@ -228,7 +228,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_stingray_class_tbl_list[] = {
 	.encap_num_fields = 0
 	},
 	{ /* class_tid: 1, stingray, table: eem.ext_0 */
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.direction = TF_DIR_RX,
 	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPC_EXECUTE_IF_EXT,

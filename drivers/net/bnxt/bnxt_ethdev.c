@@ -87,6 +87,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+#define	BNXT_DEVARG_ACCUM_STATS	"accum-stats"
 #define BNXT_DEVARG_FLOW_XSTAT	"flow-xstat"
 #define BNXT_DEVARG_MAX_NUM_KFLOWS  "max-num-kflows"
 #define BNXT_DEVARG_REPRESENTOR	"representor"
@@ -99,6 +100,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 
 static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_REPRESENTOR,
+	BNXT_DEVARG_ACCUM_STATS,
 	BNXT_DEVARG_FLOW_XSTAT,
 	BNXT_DEVARG_MAX_NUM_KFLOWS,
 	BNXT_DEVARG_REP_BASED_PF,
@@ -109,6 +111,12 @@ static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_REP_FC_F2R,
 	NULL
 };
+
+/*
+ * accum-stats == false to disable flow counter accumulation
+ * accum-stats == true to enable flow counter accumulation
+ */
+#define	BNXT_DEVARG_ACCUM_STATS_INVALID(accum_stats)	((accum_stats) > 1)
 
 /*
  * flow_xstat == false to disable the feature
@@ -4916,6 +4924,39 @@ bnxt_get_svif(uint16_t port_id, bool func_svif,
 	return func_svif ? bp->func_svif : bp->port_svif;
 }
 
+void
+bnxt_get_iface_mac(uint16_t port, enum bnxt_ulp_intf_type type,
+		   uint8_t *mac, uint8_t *parent_mac)
+{
+	struct rte_eth_dev *eth_dev;
+	struct bnxt *bp;
+
+	if (type != BNXT_ULP_INTF_TYPE_TRUSTED_VF &&
+	    type != BNXT_ULP_INTF_TYPE_PF)
+		return;
+
+	eth_dev = &rte_eth_devices[port];
+	bp = eth_dev->data->dev_private;
+	memcpy(mac, bp->mac_addr, RTE_ETHER_ADDR_LEN);
+
+	if (type == BNXT_ULP_INTF_TYPE_TRUSTED_VF)
+		memcpy(parent_mac, bp->parent->mac_addr, RTE_ETHER_ADDR_LEN);
+}
+
+uint16_t
+bnxt_get_parent_vnic_id(uint16_t port, enum bnxt_ulp_intf_type type)
+{
+	struct rte_eth_dev *eth_dev;
+	struct bnxt *bp;
+
+	if (type != BNXT_ULP_INTF_TYPE_TRUSTED_VF)
+		return 0;
+
+	eth_dev = &rte_eth_devices[port];
+	bp = eth_dev->data->dev_private;
+
+	return bp->parent->vnic;
+}
 uint16_t
 bnxt_get_vnic_id(uint16_t port, enum bnxt_ulp_intf_type type)
 {
@@ -5280,6 +5321,45 @@ static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 }
 
 static int
+bnxt_parse_devarg_accum_stats(__rte_unused const char *key,
+			      const char *value, void *opaque_arg)
+{
+	struct bnxt *bp = opaque_arg;
+	unsigned long accum_stats;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to accum-stats devargs.\n");
+		return -EINVAL;
+	}
+
+	accum_stats = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (accum_stats == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to accum-stats devargs.\n");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_ACCUM_STATS_INVALID(accum_stats)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid value passed to accum-stats devargs.\n");
+		return -EINVAL;
+	}
+
+	if (accum_stats) {
+		bp->flags2 |= BNXT_FLAGS2_ACCUM_STATS_EN;
+		PMD_DRV_LOG(INFO, "Host-based accum-stats feature enabled.\n");
+	} else {
+		bp->flags2 &= ~BNXT_FLAGS2_ACCUM_STATS_EN;
+		PMD_DRV_LOG(INFO, "Host-based accum-stats feature disabled.\n");
+	}
+
+	return 0;
+}
+
+static int
 bnxt_parse_devarg_flow_xstat(__rte_unused const char *key,
 			     const char *value, void *opaque_arg)
 {
@@ -5595,6 +5675,12 @@ bnxt_parse_dev_args(struct bnxt *bp, struct rte_devargs *devargs)
 	if (ret)
 		goto err;
 
+	/*
+	 * Handler for "accum-stats" devarg.
+	 * Invoked as for ex: "-a 0000:00:0d.0,accum-stats=1"
+	 */
+	rte_kvargs_process(kvlist, BNXT_DEVARG_ACCUM_STATS,
+			   bnxt_parse_devarg_accum_stats, bp);
 	/*
 	 * Handler for "max_num_kflows" devarg.
 	 * Invoked as for ex: "-a 000:00:0d.0,max_num_kflows=32"

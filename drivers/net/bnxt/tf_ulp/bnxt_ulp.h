@@ -67,6 +67,7 @@ struct bnxt_ulp_data {
 #define	BNXT_ULP_TUN_ENTRY_INVALID	-1
 #define	BNXT_ULP_MAX_TUN_CACHE_ENTRIES	16
 	struct bnxt_tun_cache_entry	tun_tbl[BNXT_ULP_MAX_TUN_CACHE_ENTRIES];
+	bool				accum_stats;
 };
 
 struct bnxt_ulp_context {

@@ -18,6 +18,7 @@
 #include "ulp_flow_db.h"
 #include "tf_util.h"
 #include "ulp_template_db_tbl.h"
+#include "ulp_port_db.h"
 
 static uint8_t mapper_fld_ones[16] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -450,10 +451,6 @@ ulp_mapper_em_entry_free(struct bnxt_ulp_context *ulp,
 	int32_t rc;
 
 	fparms.dir		= res->direction;
-	if (res->resource_func == BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE)
-		fparms.mem = TF_MEM_EXTERNAL;
-	else
-		fparms.mem = TF_MEM_INTERNAL;
 	fparms.flow_handle	= res->resource_hndl;
 
 	rc = bnxt_ulp_cntxt_tbl_scope_id_get(ulp, &fparms.tbl_scope_id);
@@ -884,6 +881,30 @@ error:
 }
 
 static int32_t
+ulp_mapper_field_port_db_process(struct bnxt_ulp_mapper_parms *parms,
+				 struct bnxt_ulp_mapper_field_info *fld,
+				 uint32_t port_id,
+				 uint16_t val16,
+				 uint8_t **val)
+{
+	enum bnxt_ulp_port_table port_data = val16;
+
+	switch (port_data) {
+	case BNXT_ULP_PORT_TABLE_DRV_FUNC_PARENT_MAC:
+		if (ulp_port_db_parent_mac_addr_get(parms->ulp_ctx, port_id,
+						    val)) {
+			BNXT_TF_DBG(ERR, "Invalid port id %u\n", port_id);
+			return -EINVAL;
+		}
+		break;
+	default:
+		BNXT_TF_DBG(ERR, "Invalid port_data %s\n", fld->description);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int32_t
 ulp_mapper_field_process_inc_dec(struct bnxt_ulp_mapper_field_info *fld,
 				 struct ulp_blob *blob,
 				 uint64_t *val64,
@@ -938,6 +959,7 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 	uint16_t const_val = 0;
 	uint32_t update_flag = 0;
 	uint64_t src1_val64;
+	uint32_t port_id;
 
 	/* process the field opcode */
 	if (fld->field_opc != BNXT_ULP_FIELD_OPC_COND_OP) {
@@ -1077,6 +1099,20 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 			val = ulp_blob_push_32(blob, &parms->comp_fld[idx],
 					       bitlen);
 			if (!val) {
+				BNXT_TF_DBG(ERR, "%s push to blob failed\n",
+					    name);
+				return -EINVAL;
+			}
+		} else if (fld->field_opc == BNXT_ULP_FIELD_OPC_PORT_TABLE) {
+			port_id = ULP_COMP_FLD_IDX_RD(parms, idx);
+			if (ulp_mapper_field_port_db_process(parms, fld,
+							     port_id, const_val,
+							     &val)) {
+				BNXT_TF_DBG(ERR, "%s field port table failed\n",
+					    name);
+				return -EINVAL;
+			}
+			if (!ulp_blob_push(blob, val, bitlen)) {
 				BNXT_TF_DBG(ERR, "%s push to blob failed\n",
 					    name);
 				return -EINVAL;
@@ -1951,7 +1987,7 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return rc;
 	}
 	/* do the transpose for the internal EM keys */
-	if (tbl->resource_func == BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE)
+	if (tbl->resource_type == TF_MEM_INTERNAL)
 		ulp_blob_perform_byte_reverse(&key);
 
 	rc = bnxt_ulp_cntxt_tbl_scope_id_get(parms->ulp_ctx,
@@ -3021,8 +3057,7 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, uint32_t tid)
 		case BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE:
 			rc = ulp_mapper_tcam_tbl_process(parms, tbl);
 			break;
-		case BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE:
-		case BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE:
+		case BNXT_ULP_RESOURCE_FUNC_EM_TABLE:
 			rc = ulp_mapper_em_tbl_process(parms, tbl);
 			break;
 		case BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE:
@@ -3101,8 +3136,7 @@ ulp_mapper_resource_free(struct bnxt_ulp_context *ulp,
 	case BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE:
 		rc = ulp_mapper_tcam_entry_free(ulp, tfp, res);
 		break;
-	case BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE:
-	case BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE:
+	case BNXT_ULP_RESOURCE_FUNC_EM_TABLE:
 		rc = ulp_mapper_em_entry_free(ulp, tfp, res);
 		break;
 	case BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE:

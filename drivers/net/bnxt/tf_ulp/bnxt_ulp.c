@@ -287,6 +287,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 		return rc;
 	}
 
+	params.bp = bp;
 	rc = tf_open_session(&bp->tfp, &params);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to open TF session - %s, rc = %d\n",
@@ -1071,6 +1072,10 @@ bnxt_ulp_port_init(struct bnxt *bp)
 	}
 	/* create the default rules */
 	bnxt_ulp_create_df_rules(bp);
+
+	if (BNXT_ACCUM_STATS_EN(bp))
+		bp->ulp_ctx->cfg_data->accum_stats = true;
+
 	BNXT_TF_DBG(DEBUG, "BNXT Port:%d ULP port init\n",
 		    bp->eth_dev->data->port_id);
 	return rc;

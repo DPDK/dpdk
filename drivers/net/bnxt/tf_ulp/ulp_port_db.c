@@ -182,6 +182,13 @@ int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
 		func->ifindex = ifindex;
 	}
 
+	/* When there is no match, the default action is to send the packet to
+	 * the kernel. And to send it to the kernel, we need the PF's vnic id.
+	 */
+	func->func_parent_vnic = bnxt_get_parent_vnic_id(port_id, intf->type);
+	bnxt_get_iface_mac(port_id, intf->type, func->func_mac,
+			   func->func_parent_mac);
+
 	port_data = &port_db->phy_port_list[func->phy_port_id];
 	if (!port_data->port_valid) {
 		port_data->port_svif =
@@ -577,5 +584,35 @@ ulp_port_db_port_func_id_get(struct bnxt_ulp_context *ulp_ctxt,
 		*func_id = 0;
 		break;
 	}
+	return 0;
+}
+
+/*
+ * Api to get the parent mac address for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in].device port id
+ * mac_addr [out] mac address
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_parent_mac_addr_get(struct bnxt_ulp_context *ulp_ctxt,
+				uint32_t port_id, uint8_t **mac_addr)
+{
+	struct bnxt_ulp_port_db *port_db;
+	uint16_t func_id;
+
+	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
+	if (ulp_port_db_port_func_id_get(ulp_ctxt, port_id, &func_id)) {
+		BNXT_TF_DBG(ERR, "Invalid port_id %x\n", port_id);
+		return -EINVAL;
+	}
+
+	if (!port_db->ulp_func_id_tbl[func_id].func_valid) {
+		BNXT_TF_DBG(ERR, "Invalid func_id %x\n", func_id);
+		return -ENOENT;
+	}
+	*mac_addr = port_db->ulp_func_id_tbl[func_id].func_parent_mac;
 	return 0;
 }

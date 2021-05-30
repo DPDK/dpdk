@@ -46,6 +46,9 @@ struct ulp_func_if_info {
 	uint16_t		func_spif;
 	uint16_t		func_parif;
 	uint16_t		func_vnic;
+	uint8_t			func_mac[RTE_ETHER_ADDR_LEN];
+	uint16_t		func_parent_vnic;
+	uint8_t			func_parent_mac[RTE_ETHER_ADDR_LEN];
 	uint16_t		phy_port_id;
 	uint16_t		ifindex;
 };
@@ -272,4 +275,16 @@ int32_t
 ulp_port_db_port_func_id_get(struct bnxt_ulp_context *ulp_ctxt,
 			     uint16_t port_id, uint16_t *func_id);
 
+/*
+ * Api to get the parent mac address for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in].device port id
+ * mac_addr [out] mac address
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_parent_mac_addr_get(struct bnxt_ulp_context *ulp_ctxt,
+				uint32_t port_id, uint8_t **mac_addr);
 #endif /* _ULP_PORT_DB_H_ */
