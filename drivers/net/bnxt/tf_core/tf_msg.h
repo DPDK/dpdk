@@ -226,6 +226,41 @@ int tf_msg_insert_em_internal_entry(struct tf *tfp,
 				    uint8_t *rptr_entry,
 				    uint8_t *num_of_entries);
 /**
+ * Sends EM hash internal insert request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] params
+ *   Pointer to em insert parameter list
+ *
+ * [in] key0_hash
+ *      CRC32 hash of key
+ *
+ * [in] key1_hash
+ *      Lookup3 hash of key
+ *
+ * [in] rptr_index
+ *   Record ptr index
+ *
+ * [in] rptr_entry
+ *   Record ptr entry
+ *
+ * [in] num_of_entries
+ *   Number of entries to insert
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
+ */
+int
+tf_msg_hash_insert_em_internal_entry(struct tf *tfp,
+				struct tf_insert_em_entry_parms *em_parms,
+				uint32_t key0_hash,
+				uint32_t key1_hash,
+				uint16_t *rptr_index,
+				uint8_t *rptr_entry,
+				uint8_t *num_of_entries);
+/**
  * Sends EM internal delete request to Firmware
  *
  * [in] tfp

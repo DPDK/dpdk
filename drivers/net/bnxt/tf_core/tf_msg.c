@@ -25,6 +25,7 @@
  */
 #define TF_MSG_SET_GLOBAL_CFG_DATA_SIZE  16
 #define TF_MSG_EM_INSERT_KEY_SIZE        64
+#define TF_MSG_EM_INSERT_RECORD_SIZE     80
 #define TF_MSG_TBL_TYPE_SET_DATA_SIZE    88
 
 /* Compile check - Catch any msg changes that we depend on, like the
@@ -688,6 +689,101 @@ tf_msg_insert_em_internal_entry(struct tf *tfp,
 	req.em_record_idx = *rptr_index;
 
 	parms.tf_type = HWRM_TF_EM_INSERT;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = dev->ops->tf_dev_get_mailbox();
+
+	rc = tfp_send_msg_direct(tfp,
+				 &parms);
+	if (rc)
+		return rc;
+
+	*rptr_entry = resp.rptr_entry;
+	*rptr_index = resp.rptr_index;
+	*num_of_entries = resp.num_of_entries;
+
+	return 0;
+}
+
+int
+tf_msg_hash_insert_em_internal_entry(struct tf *tfp,
+				     struct tf_insert_em_entry_parms *em_parms,
+				     uint32_t key0_hash,
+				     uint32_t key1_hash,
+				     uint16_t *rptr_index,
+				     uint8_t *rptr_entry,
+				     uint8_t *num_of_entries)
+{
+	int rc;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct hwrm_tf_em_hash_insert_input req = { 0 };
+	struct hwrm_tf_em_hash_insert_output resp = { 0 };
+	uint16_t flags;
+	uint8_t fw_session_id;
+	uint8_t msg_record_size;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(em_parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(em_parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(em_parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+
+	/* Check for key size conformity */
+	msg_record_size = (em_parms->em_record_sz_in_bits + 7) / 8;
+
+	if (msg_record_size > TF_MSG_EM_INSERT_RECORD_SIZE) {
+		rc = -EINVAL;
+		TFP_DRV_LOG(ERR,
+			    "%s: Record size to large, rc:%s\n",
+			    tf_dir_2_str(em_parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	tfp_memcpy((char *)req.em_record,
+		   em_parms->em_record,
+		   msg_record_size);
+
+	flags = (em_parms->dir == TF_DIR_TX ?
+		 HWRM_TF_EM_INSERT_INPUT_FLAGS_DIR_TX :
+		 HWRM_TF_EM_INSERT_INPUT_FLAGS_DIR_RX);
+	req.flags = tfp_cpu_to_le_16(flags);
+	req.em_record_size_bits = em_parms->em_record_sz_in_bits;
+	req.em_record_idx = *rptr_index;
+	req.key0_hash = key0_hash;
+	req.key1_hash = key1_hash;
+
+	parms.tf_type = HWRM_TF_EM_HASH_INSERT;
 	parms.req_data = (uint32_t *)&req;
 	parms.req_size = sizeof(req);
 	parms.resp_data = (uint32_t *)&resp;

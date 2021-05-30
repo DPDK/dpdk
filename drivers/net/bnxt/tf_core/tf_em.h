@@ -198,6 +198,38 @@ int tf_em_delete_int_entry(struct tf *tfp,
 			   struct tf_delete_em_entry_parms *parms);
 
 /**
+ * Insert record in to internal EM table
+ *
+ * [in] tfp
+ *   Pointer to TruFlow handle
+ *
+ * [in] parms
+ *   Pointer to input parameters
+ *
+ * Returns:
+ *   0       - Success
+ *   -EINVAL - Parameter error
+ */
+int tf_em_hash_insert_int_entry(struct tf *tfp,
+				struct tf_insert_em_entry_parms *parms);
+
+/**
+ * Delete record from internal EM table
+ *
+ * [in] tfp
+ *   Pointer to TruFlow handle
+ *
+ * [in] parms
+ *   Pointer to input parameters
+ *
+ * Returns:
+ *   0       - Success
+ *   -EINVAL - Parameter error
+ */
+int tf_em_hash_delete_int_entry(struct tf *tfp,
+				struct tf_delete_em_entry_parms *parms);
+
+/**
  * Insert record in to external EEM table
  *
  * [in] tfp

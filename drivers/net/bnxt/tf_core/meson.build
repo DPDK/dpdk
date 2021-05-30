@@ -30,5 +30,6 @@ sources += files(
         'll.c',
         'tf_global_cfg.c',
         'tf_em_host.c',
+        'tf_em_hash_internal.c',
         'tf_shadow_identifier.c',
         'tf_hash.c')

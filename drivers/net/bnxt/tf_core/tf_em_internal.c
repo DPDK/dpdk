@@ -30,11 +30,10 @@ static void *em_db[TF_DIR_MAX];
  */
 static uint8_t init;
 
-
 /**
  * EM Pool
  */
-static struct stack em_pool[TF_DIR_MAX];
+struct stack em_pool[TF_DIR_MAX];
 
 /**
  * Create EM Tbl pool of memory indexes.
