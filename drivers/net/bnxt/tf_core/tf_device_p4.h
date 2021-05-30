@@ -6,8 +6,7 @@
 #ifndef _TF_DEVICE_P4_H_
 #define _TF_DEVICE_P4_H_
 
-#include <cfa_resource_types.h>
-
+#include "cfa_resource_types.h"
 #include "tf_core.h"
 #include "tf_rm.h"
 #include "tf_if_tbl.h"

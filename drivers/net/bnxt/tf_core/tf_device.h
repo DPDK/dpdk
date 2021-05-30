@@ -135,6 +135,28 @@ struct tf_dev_ops {
 				    uint16_t *max_types);
 
 	/**
+	 * Retrieves the string description for the CFA resource
+	 * type
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] resource_id
+	 *   HCAPI cfa resource type id
+	 *
+	 * [out] resource_str
+	 *   Pointer to a string
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_resource_str)(struct tf *tfp,
+				       uint16_t resource_id,
+				       const char **resource_str);
+
+
+	/**
 	 * Retrieves the WC TCAM slice information that the device
 	 * supports.
 	 *
@@ -709,5 +731,7 @@ struct tf_dev_ops {
  */
 extern const struct tf_dev_ops tf_dev_ops_p4_init;
 extern const struct tf_dev_ops tf_dev_ops_p4;
+extern const struct tf_dev_ops tf_dev_ops_p58_init;
+extern const struct tf_dev_ops tf_dev_ops_p58;
 
 #endif /* _TF_DEVICE_H_ */

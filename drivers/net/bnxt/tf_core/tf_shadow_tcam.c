@@ -6,6 +6,7 @@
 #include "tf_common.h"
 #include "tf_util.h"
 #include "tfp.h"
+#include "tf_tcam.h"
 #include "tf_shadow_tcam.h"
 #include "tf_hash.h"
 
@@ -634,8 +635,7 @@ tf_shadow_tcam_search(struct tf_shadow_tcam_search_parms *parms)
 			 * requested allocation and return the info
 			 */
 			if (sparms->alloc)
-				ctxt->shadow_ctxt.sh_res_tbl[shtbl_key].refcnt =
-			ctxt->shadow_ctxt.sh_res_tbl[shtbl_key].refcnt + 1;
+				ctxt->shadow_ctxt.sh_res_tbl[shtbl_key].refcnt++;
 
 			sparms->hit = 1;
 			sparms->search_status = HIT;

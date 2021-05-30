@@ -14,80 +14,50 @@
 #include "tf_if_tbl.h"
 #include "tfp.h"
 
-#define TF_DEV_P4_PARIF_MAX 16
-#define TF_DEV_P4_PF_MASK 0xfUL
+#define TF_DEV_P58_PARIF_MAX 16
+#define TF_DEV_P58_PF_MASK 0xfUL
 
-const char *tf_resource_str_p4[CFA_RESOURCE_TYPE_P4_LAST + 1] = {
-	/* CFA_RESOURCE_TYPE_P4_MCG */
-	"mc_group",
-	/* CFA_RESOURCE_TYPE_P4_ENCAP_8B */
-	"encap_8 ",
-	/* CFA_RESOURCE_TYPE_P4_ENCAP_16B */
-	"encap_16",
-	/* CFA_RESOURCE_TYPE_P4_ENCAP_64B */
-	"encap_64",
-	/* CFA_RESOURCE_TYPE_P4_SP_MAC */
-	"sp_mac  ",
-	/* CFA_RESOURCE_TYPE_P4_SP_MAC_IPV4 */
-	"sp_macv4",
-	/* CFA_RESOURCE_TYPE_P4_SP_MAC_IPV6 */
-	"sp_macv6",
-	/* CFA_RESOURCE_TYPE_P4_COUNTER_64B */
-	"ctr_64b ",
-	/* CFA_RESOURCE_TYPE_P4_NAT_PORT */
-	"nat_port",
-	/* CFA_RESOURCE_TYPE_P4_NAT_IPV4 */
-	"nat_ipv4",
-	/* CFA_RESOURCE_TYPE_P4_METER */
+const char *tf_resource_str_p58[CFA_RESOURCE_TYPE_P58_LAST + 1] = {
+	/* CFA_RESOURCE_TYPE_P58_METER */
 	"meter   ",
-	/* CFA_RESOURCE_TYPE_P4_FLOW_STATE */
-	"flow_st ",
-	/* CFA_RESOURCE_TYPE_P4_FULL_ACTION */
-	"full_act",
-	/* CFA_RESOURCE_TYPE_P4_FORMAT_0_ACTION */
-	"fmt0_act",
-	/* CFA_RESOURCE_TYPE_P4_EXT_FORMAT_0_ACTION */
-	"ext0_act",
-	/* CFA_RESOURCE_TYPE_P4_FORMAT_1_ACTION */
-	"fmt1_act",
-	/* CFA_RESOURCE_TYPE_P4_FORMAT_2_ACTION */
-	"fmt2_act",
-	/* CFA_RESOURCE_TYPE_P4_FORMAT_3_ACTION */
-	"fmt3_act",
-	/* CFA_RESOURCE_TYPE_P4_FORMAT_4_ACTION */
-	"fmt4_act",
-	/* CFA_RESOURCE_TYPE_P4_FORMAT_5_ACTION */
-	"fmt5_act",
-	/* CFA_RESOURCE_TYPE_P4_FORMAT_6_ACTION */
-	"fmt6_act",
-	/* CFA_RESOURCE_TYPE_P4_L2_CTXT_TCAM_HIGH */
+	/* CFA_RESOURCE_TYPE_P58_SRAM_BANK_0 */
+	"sram_bk0",
+	/* CFA_RESOURCE_TYPE_P58_SRAM_BANK_1 */
+	"sram_bk1",
+	/* CFA_RESOURCE_TYPE_P58_SRAM_BANK_2 */
+	"sram_bk2",
+	/* CFA_RESOURCE_TYPE_P58_SRAM_BANK_3 */
+	"sram_bk3",
+	/* CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_HIGH */
 	"l2ctx_hi",
-	/* CFA_RESOURCE_TYPE_P4_L2_CTXT_TCAM_LOW */
+	/* CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_LOW */
 	"l2ctx_lo",
-	/* CFA_RESOURCE_TYPE_P4_L2_CTXT_REMAP_HIGH */
+	/* CFA_RESOURCE_TYPE_P58_L2_CTXT_REMAP_HIGH */
 	"l2ctr_hi",
-	/* CFA_RESOURCE_TYPE_P4_L2_CTXT_REMAP_LOW */
+	/* CFA_RESOURCE_TYPE_P58_L2_CTXT_REMAP_LOW */
 	"l2ctr_lo",
-	/* CFA_RESOURCE_TYPE_P4_PROF_FUNC */
+	/* CFA_RESOURCE_TYPE_P58_PROF_FUNC */
 	"prf_func",
-	/* CFA_RESOURCE_TYPE_P4_PROF_TCAM */
+	/* CFA_RESOURCE_TYPE_P58_PROF_TCAM */
 	"prf_tcam",
-	/* CFA_RESOURCE_TYPE_P4_EM_PROF_ID */
+	/* CFA_RESOURCE_TYPE_P58_EM_PROF_ID */
 	"em_prof ",
-	/* CFA_RESOURCE_TYPE_P4_EM_REC */
-	"em_rec  ",
-	/* CFA_RESOURCE_TYPE_P4_WC_TCAM_PROF_ID */
+	/* CFA_RESOURCE_TYPE_P58_WC_TCAM_PROF_ID */
 	"wc_prof ",
-	/* CFA_RESOURCE_TYPE_P4_WC_TCAM */
+	/* CFA_RESOURCE_TYPE_P58_EM_REC */
+	"em_rec  ",
+	/* CFA_RESOURCE_TYPE_P58_WC_TCAM */
 	"wc_tcam ",
-	/* CFA_RESOURCE_TYPE_P4_METER_PROF */
+	/* CFA_RESOURCE_TYPE_P58_METER_PROF */
 	"mtr_prof",
-	/* CFA_RESOURCE_TYPE_P4_MIRROR */
+	/* CFA_RESOURCE_TYPE_P58_MIRROR */
 	"mirror  ",
-	/* CFA_RESOURCE_TYPE_P4_SP_TCAM */
-	"sp_tcam ",
-	/* CFA_RESOURCE_TYPE_P4_TBL_SCOPE */
-	"tb_scope",
+	/* CFA_RESOURCE_TYPE_P58_EM_FKB */
+	"em_fkb  ",
+	/* CFA_RESOURCE_TYPE_P58_WC_FKB */
+	"wc_fkb  ",
+	/* CFA_RESOURCE_TYPE_P58_VEB_TCAM */
+	"veb     ",
 };
 
 /**
@@ -98,14 +68,14 @@ const char *tf_resource_str_p4[CFA_RESOURCE_TYPE_P4_LAST + 1] = {
  *   Pointer to TF handle
  *
  * [out] max_types
- *   Pointer to the MAX number of CFA resource types supported
+ *   Pointer to the MAX number of HCAPI types supported
  *
  * Returns
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
 static int
-tf_dev_p4_get_max_types(struct tf *tfp,
+tf_dev_p58_get_max_types(struct tf *tfp,
 			uint16_t *max_types)
 {
 	struct tf_session *tfs;
@@ -125,12 +95,7 @@ tf_dev_p4_get_max_types(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	if (dev->type == TF_DEVICE_TYPE_WH)
-		*max_types = CFA_RESOURCE_TYPE_P4_LAST + 1;
-	else if (dev->type == TF_DEVICE_TYPE_SR)
-		*max_types = CFA_RESOURCE_TYPE_P45_LAST + 1;
-	else
-		return -ENODEV;
+	*max_types = CFA_RESOURCE_TYPE_P58_LAST + 1;
 
 	return 0;
 }
@@ -152,17 +117,17 @@ tf_dev_p4_get_max_types(struct tf *tfp,
  *   - (-EINVAL) on failure.
  */
 static int
-tf_dev_p4_get_resource_str(struct tf *tfp __rte_unused,
-			   uint16_t resource_id,
-			   const char **resource_str)
+tf_dev_p58_get_resource_str(struct tf *tfp __rte_unused,
+			    uint16_t resource_id,
+			    const char **resource_str)
 {
 	if (resource_str == NULL)
 		return -EINVAL;
 
-	if (resource_id > CFA_RESOURCE_TYPE_P4_LAST)
+	if (resource_id > CFA_RESOURCE_TYPE_P58_LAST)
 		return -EINVAL;
 
-	*resource_str = tf_resource_str_p4[resource_id];
+	*resource_str = tf_resource_str_p58[resource_id];
 
 	return 0;
 }
@@ -185,17 +150,17 @@ tf_dev_p4_get_resource_str(struct tf *tfp __rte_unused,
  *   - (-EINVAL) on failure.
  */
 static int
-tf_dev_p4_get_tcam_slice_info(struct tf *tfp __rte_unused,
+tf_dev_p58_get_tcam_slice_info(struct tf *tfp __rte_unused,
 			      enum tf_tcam_tbl_type type,
 			      uint16_t key_sz,
 			      uint16_t *num_slices_per_row)
 {
-#define CFA_P4_WC_TCAM_SLICES_PER_ROW 2
-#define CFA_P4_WC_TCAM_SLICE_SIZE     12
+#define CFA_P58_WC_TCAM_SLICES_PER_ROW 2
+#define CFA_P58_WC_TCAM_SLICE_SIZE     12
 
 	if (type == TF_TCAM_TBL_TYPE_WC_TCAM) {
-		*num_slices_per_row = CFA_P4_WC_TCAM_SLICES_PER_ROW;
-		if (key_sz > *num_slices_per_row * CFA_P4_WC_TCAM_SLICE_SIZE)
+		*num_slices_per_row = CFA_P58_WC_TCAM_SLICES_PER_ROW;
+		if (key_sz > *num_slices_per_row * CFA_P58_WC_TCAM_SLICE_SIZE)
 			return -ENOTSUP;
 
 		*num_slices_per_row = 1;
@@ -207,7 +172,7 @@ tf_dev_p4_get_tcam_slice_info(struct tf *tfp __rte_unused,
 }
 
 static int
-tf_dev_p4_map_parif(struct tf *tfp __rte_unused,
+tf_dev_p58_map_parif(struct tf *tfp __rte_unused,
 		    uint16_t parif_bitmask,
 		    uint16_t pf,
 		    uint8_t *data,
@@ -222,15 +187,15 @@ tf_dev_p4_map_parif(struct tf *tfp __rte_unused,
 	if (sz_in_bytes != sizeof(uint64_t))
 		return -ENOTSUP;
 
-	for (parif = 0; parif < TF_DEV_P4_PARIF_MAX; parif++) {
+	for (parif = 0; parif < TF_DEV_P58_PARIF_MAX; parif++) {
 		if (parif_bitmask & (1UL << parif)) {
 			if (parif < 8) {
 				shift = 4 * parif;
-				parif_pf_mask[0] |= TF_DEV_P4_PF_MASK << shift;
+				parif_pf_mask[0] |= TF_DEV_P58_PF_MASK << shift;
 				parif_pf[0] |= pf << shift;
 			} else {
 				shift = 4 * (parif - 8);
-				parif_pf_mask[1] |= TF_DEV_P4_PF_MASK << shift;
+				parif_pf_mask[1] |= TF_DEV_P58_PF_MASK << shift;
 				parif_pf[1] |= pf << shift;
 			}
 		}
@@ -243,12 +208,12 @@ tf_dev_p4_map_parif(struct tf *tfp __rte_unused,
 
 
 /**
- * Truflow P4 device specific functions
+ * Truflow P58 device specific functions
  */
-const struct tf_dev_ops tf_dev_ops_p4_init = {
-	.tf_dev_get_max_types = tf_dev_p4_get_max_types,
-	.tf_dev_get_resource_str = tf_dev_p4_get_resource_str,
-	.tf_dev_get_tcam_slice_info = tf_dev_p4_get_tcam_slice_info,
+const struct tf_dev_ops tf_dev_ops_p58_init = {
+	.tf_dev_get_max_types = tf_dev_p58_get_max_types,
+	.tf_dev_get_resource_str = tf_dev_p58_get_resource_str,
+	.tf_dev_get_tcam_slice_info = tf_dev_p58_get_tcam_slice_info,
 	.tf_dev_alloc_ident = NULL,
 	.tf_dev_free_ident = NULL,
 	.tf_dev_search_ident = NULL,
@@ -281,12 +246,12 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 };
 
 /**
- * Truflow P4 device specific functions
+ * Truflow P58 device specific functions
  */
-const struct tf_dev_ops tf_dev_ops_p4 = {
-	.tf_dev_get_max_types = tf_dev_p4_get_max_types,
-	.tf_dev_get_resource_str = tf_dev_p4_get_resource_str,
-	.tf_dev_get_tcam_slice_info = tf_dev_p4_get_tcam_slice_info,
+const struct tf_dev_ops tf_dev_ops_p58 = {
+	.tf_dev_get_max_types = tf_dev_p58_get_max_types,
+	.tf_dev_get_resource_str = tf_dev_p58_get_resource_str,
+	.tf_dev_get_tcam_slice_info = tf_dev_p58_get_tcam_slice_info,
 	.tf_dev_alloc_ident = tf_ident_alloc,
 	.tf_dev_free_ident = tf_ident_free,
 	.tf_dev_search_ident = tf_ident_search,
@@ -310,7 +275,7 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_delete_ext_em_entry = tf_em_delete_ext_entry,
 	.tf_dev_alloc_tbl_scope = tf_em_ext_common_alloc,
 	.tf_dev_map_tbl_scope = tf_em_ext_map_tbl_scope,
-	.tf_dev_map_parif = tf_dev_p4_map_parif,
+	.tf_dev_map_parif = tf_dev_p58_map_parif,
 	.tf_dev_free_tbl_scope = tf_em_ext_common_free,
 	.tf_dev_set_if_tbl = tf_if_tbl_set,
 	.tf_dev_get_if_tbl = tf_if_tbl_get,

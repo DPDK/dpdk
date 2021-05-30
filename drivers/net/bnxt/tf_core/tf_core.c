@@ -35,6 +35,7 @@ tf_open_session(struct tf *tfp,
 	 * firmware open session succeeds.
 	 */
 	if (parms->device_type != TF_DEVICE_TYPE_WH &&
+	    parms->device_type != TF_DEVICE_TYPE_THOR &&
 	    parms->device_type != TF_DEVICE_TYPE_SR) {
 		TFP_DRV_LOG(ERR,
 			    "Unsupported device type %d\n",

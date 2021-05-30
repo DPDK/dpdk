@@ -20,6 +20,7 @@ sources += files(
         'tf_session.c',
         'tf_device.c',
         'tf_device_p4.c',
+        'tf_device_p58.c',
         'tf_identifier.c',
         'tf_shadow_tbl.c',
         'tf_shadow_tcam.c',

@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <rte_common.h>
+#include <rte_debug.h>
 
 #include <cfa_resource_types.h>
 
@@ -595,13 +596,6 @@ tf_rm_create_db(struct tf *tfp,
 	rm_db->dir = parms->dir;
 	rm_db->type = parms->type;
 	*parms->rm_db = (void *)rm_db;
-
-#if (TF_RM_DEBUG == 1)
-	printf("%s: type:%d num_entries:%d\n",
-	       tf_dir_2_str(parms->dir),
-	       parms->type,
-	       i);
-#endif /* (TF_RM_DEBUG == 1) */
 
 	tfp_free((void *)req);
 	tfp_free((void *)resv);

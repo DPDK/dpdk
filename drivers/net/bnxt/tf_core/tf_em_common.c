@@ -1115,8 +1115,8 @@ int tf_em_ext_map_tbl_scope(struct tf *tfp,
 		goto cleaner;
 	}
 
-	gcfg_parms.type =
-		(enum tf_global_config_type)TF_GLOBAL_CFG_INTERNAL_PARIF_2_PF;
+	/* Note that TF_GLOBAL_CFG_INTERNAL_PARIF_2_PF is same as below enum */
+	gcfg_parms.type = TF_GLOBAL_CFG_TYPE_MAX;
 	gcfg_parms.offset = 0;
 	gcfg_parms.config = (uint8_t *)data;
 	gcfg_parms.config_mask = (uint8_t *)mask;

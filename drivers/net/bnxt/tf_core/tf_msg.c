@@ -19,9 +19,6 @@
 #include "hwrm_tf.h"
 #include "tf_em.h"
 
-/* Logging defines */
-#define TF_RM_MSG_DEBUG  0
-
 /* Specific msg size defines as we cannot use defines in tf.yaml. This
  * means we have to manually sync hwrm with these defines if the
  * tf.yaml changes.
@@ -361,29 +358,13 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 		goto cleanup;
 	}
 
-#if (TF_RM_MSG_DEBUG == 1)
-	printf("size: %d\n", tfp_le_to_cpu_32(resp.size));
-#endif /* (TF_RM_MSG_DEBUG == 1) */
-
 	/* Post process the response */
 	data = (struct tf_rm_resc_req_entry *)qcaps_buf.va_addr;
 
-#if (TF_RM_MSG_DEBUG == 1)
-	printf("\nQCAPS\n");
-#endif /* (TF_RM_MSG_DEBUG == 1) */
 	for (i = 0; i < size; i++) {
 		query[i].type = tfp_le_to_cpu_32(data[i].type);
 		query[i].min = tfp_le_to_cpu_16(data[i].min);
 		query[i].max = tfp_le_to_cpu_16(data[i].max);
-
-#if (TF_RM_MSG_DEBUG == 1)
-		printf("type: %d(0x%x) %d %d\n",
-		       query[i].type,
-		       query[i].type,
-		       query[i].min,
-		       query[i].max);
-#endif /* (TF_RM_MSG_DEBUG == 1) */
-
 	}
 
 	*resv_strategy = resp.flags &
@@ -476,26 +457,12 @@ tf_msg_session_resc_alloc(struct tf *tfp,
 		goto cleanup;
 	}
 
-#if (TF_RM_MSG_DEBUG == 1)
-	printf("\nRESV\n");
-	printf("size: %d\n", tfp_le_to_cpu_32(resp.size));
-#endif /* (TF_RM_MSG_DEBUG == 1) */
-
 	/* Post process the response */
 	resv_data = (struct tf_rm_resc_entry *)resv_buf.va_addr;
 	for (i = 0; i < size; i++) {
 		resv[i].type = tfp_le_to_cpu_32(resv_data[i].type);
 		resv[i].start = tfp_le_to_cpu_16(resv_data[i].start);
 		resv[i].stride = tfp_le_to_cpu_16(resv_data[i].stride);
-
-#if (TF_RM_MSG_DEBUG == 1)
-		printf("%d type: %d(0x%x) %d %d\n",
-		       i,
-		       resv[i].type,
-		       resv[i].type,
-		       resv[i].start,
-		       resv[i].stride);
-#endif /* (TF_RM_MSG_DEBUG == 1) */
 	}
 
 cleanup:
