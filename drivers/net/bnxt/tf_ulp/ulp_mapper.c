@@ -2296,8 +2296,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 						 tbl->tbl_operand,
 						 &regval, &shared)) {
 			BNXT_TF_DBG(ERR,
-				    "Failed to get tbl idx from Global "
-				    "regfile[%d].\n",
+				    "Failed to get tbl idx from Glb RF[%d].\n",
 				    tbl->tbl_operand);
 			return -EINVAL;
 		}
@@ -2347,8 +2346,9 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 						   gparms.data_sz_in_bytes,
 						   data.byte_order);
 		if (rc) {
-			BNXT_TF_DBG(ERR, "Failed to read fields on tbl read "
-				    "rc=%d\n", rc);
+			BNXT_TF_DBG(ERR,
+				    "Failed to get flds on tbl read rc=%d\n",
+				    rc);
 			return rc;
 		}
 		return 0;
@@ -2433,8 +2433,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		rc = tf_set_tbl_entry(tfp, &sparms);
 		if (rc) {
 			BNXT_TF_DBG(ERR,
-				    "Index table[%s][%s][%x] write failed "
-				    "rc=%d\n",
+				    "Index table[%s][%s][%x] write fail rc=%d\n",
 				    tf_tbl_type_2_str(sparms.type),
 				    tf_dir_2_str(sparms.dir),
 				    sparms.idx, rc);
@@ -2833,15 +2832,15 @@ ulp_mapper_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 
 	rc = bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to get device id for "
-			    "global init (%d)\n", rc);
+		BNXT_TF_DBG(ERR, "Failed to get device id for glb init (%d)\n",
+			    rc);
 		return rc;
 	}
 
 	rc = bnxt_ulp_cntxt_app_id_get(ulp_ctx, &app_id);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to get app id for "
-			    "global init (%d)\n", rc);
+		BNXT_TF_DBG(ERR, "Failed to get app id for glb init (%d)\n",
+			    rc);
 		return rc;
 	}
 
@@ -2916,15 +2915,15 @@ ulp_mapper_app_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 
 	rc = bnxt_ulp_cntxt_app_id_get(ulp_ctx, &app_id);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to get the app id in global init "
-			    "(%d).\n", rc);
+		BNXT_TF_DBG(ERR, "Failed to get the app id in glb init (%d).\n",
+			    rc);
 		return rc;
 	}
 
 	rc = bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to get device id for app "
-			    "global init (%d)\n", rc);
+		BNXT_TF_DBG(ERR, "Failed to get dev id for app glb init (%d)\n",
+			    rc);
 		return rc;
 	}
 
@@ -3413,8 +3412,8 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, uint32_t tid)
 						      cond_tbls, num_cond_tbls,
 						      &cond_rc);
 		if (rc) {
-			BNXT_TF_DBG(ERR, "Failed to process cond opc list "
-				   "(%d)\n", rc);
+			BNXT_TF_DBG(ERR, "Failed to proc cond opc list (%d)\n",
+				    rc);
 			goto error;
 		}
 		/* Skip the table if False */
@@ -3812,8 +3811,7 @@ ulp_mapper_init(struct bnxt_ulp_context *ulp_ctx)
 	if (bnxt_ulp_cntxt_shared_session_enabled(ulp_ctx)) {
 		rc = ulp_mapper_app_glb_resource_info_init(ulp_ctx, data);
 		if (rc) {
-			BNXT_TF_DBG(ERR, "Failed to initialize app "
-				    "global resources\n");
+			BNXT_TF_DBG(ERR, "Failed to init app glb resources\n");
 			goto error;
 		}
 	}
@@ -3840,8 +3838,7 @@ ulp_mapper_deinit(struct bnxt_ulp_context *ulp_ctx)
 
 	if (!ulp_ctx) {
 		BNXT_TF_DBG(ERR,
-			    "Failed to acquire ulp context, so data may "
-			    "not be released.\n");
+			    "Failed to acquire ulp context, so data may not be released.\n");
 		return;
 	}
 

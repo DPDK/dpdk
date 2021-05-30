@@ -77,6 +77,15 @@ bnxt_ulp_app_cap_list_get(uint32_t *num_entries)
 	return ulp_app_cap_info_list;
 }
 
+static struct bnxt_ulp_resource_resv_info *
+bnxt_ulp_app_resource_resv_list_get(uint32_t *num_entries)
+{
+	if (num_entries == NULL)
+		return NULL;
+	*num_entries = BNXT_ULP_APP_RESOURCE_RESV_LIST_MAX_SZ;
+	return ulp_app_resource_resv_list;
+}
+
 struct bnxt_ulp_resource_resv_info *
 bnxt_ulp_resource_resv_list_get(uint32_t *num_entries)
 {
@@ -96,23 +105,18 @@ bnxt_ulp_app_glb_resource_info_list_get(uint32_t *num_entries)
 }
 
 static int32_t
-bnxt_ulp_tf_resources_get(struct bnxt_ulp_context *ulp_ctx,
-			  struct tf_session_resources *res)
+bnxt_ulp_named_resources_calc(struct bnxt_ulp_context *ulp_ctx,
+			      struct bnxt_ulp_glb_resource_info *info,
+			      uint32_t num,
+			      struct tf_session_resources *res)
 {
-	struct bnxt_ulp_resource_resv_info *info = NULL;
-	uint32_t dev_id, res_type, i, num;
+	uint32_t dev_id, res_type, i;
 	enum tf_dir dir;
 	uint8_t app_id;
 	int32_t rc = 0;
 
-	if (!ulp_ctx || !res) {
-		BNXT_TF_DBG(ERR, "Invalid arguments to get resources.\n");
-		return -EINVAL;
-	}
-
-	info = bnxt_ulp_resource_resv_list_get(&num);
-	if (!info) {
-		BNXT_TF_DBG(ERR, "Unable to get resource reservation list.\n");
+	if (ulp_ctx == NULL || info == NULL || res == NULL || num == 0) {
+		BNXT_TF_DBG(ERR, "Invalid parms to named resources calc.\n");
 		return -EINVAL;
 	}
 
@@ -124,68 +128,10 @@ bnxt_ulp_tf_resources_get(struct bnxt_ulp_context *ulp_ctx,
 
 	rc = bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Unable to get the device id from ulp.\n");
+		BNXT_TF_DBG(ERR, "Unable to get the dev id from ulp.\n");
 		return -EINVAL;
 	}
 
-	for (i = 0; i < num; i++) {
-		if (app_id != info[i].app_id || dev_id != info[i].device_id)
-			continue;
-		dir = info[i].direction;
-		res_type = info[i].resource_type;
-
-		switch (info[i].resource_func) {
-		case BNXT_ULP_RESOURCE_FUNC_IDENTIFIER:
-			res->ident_cnt[dir].cnt[res_type] = info[i].count;
-			break;
-		case BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE:
-			res->tbl_cnt[dir].cnt[res_type] = info[i].count;
-			break;
-		case BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE:
-			res->tcam_cnt[dir].cnt[res_type] = info[i].count;
-			break;
-		case BNXT_ULP_RESOURCE_FUNC_EM_TABLE:
-			res->em_cnt[dir].cnt[res_type] = info[i].count;
-			break;
-		default:
-			break;
-		}
-	}
-
-	return 0;
-}
-
-static int32_t
-bnxt_ulp_tf_shared_session_resources_get(struct bnxt_ulp_context *ulp_ctx,
-					 struct tf_session_resources *res)
-{
-	struct bnxt_ulp_glb_resource_info *info;
-	uint32_t dev_id, res_type, i, num;
-	enum tf_dir dir;
-	uint8_t app_id;
-	int32_t rc;
-
-	rc = bnxt_ulp_cntxt_app_id_get(ulp_ctx, &app_id);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Unable to get the app id from ulp.\n");
-		return -EINVAL;
-	}
-
-	rc = bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Unable to get device id from ulp.\n");
-		return -EINVAL;
-	}
-
-	/* Make sure the resources are zero before accumulating. */
-	memset(res, 0, sizeof(struct tf_session_resources));
-
-	/* Get the list and tally the resources. */
-	info = bnxt_ulp_app_glb_resource_info_list_get(&num);
-	if (!info) {
-		BNXT_TF_DBG(ERR, "Unable to get app global resource list\n");
-		return -EINVAL;
-	}
 	for (i = 0; i < num; i++) {
 		if (dev_id != info[i].device_id || app_id != info[i].app_id)
 			continue;
@@ -213,6 +159,132 @@ bnxt_ulp_tf_shared_session_resources_get(struct bnxt_ulp_context *ulp_ctx,
 	}
 
 	return 0;
+}
+
+static int32_t
+bnxt_ulp_unnamed_resources_calc(struct bnxt_ulp_context *ulp_ctx,
+				struct bnxt_ulp_resource_resv_info *info,
+				uint32_t num,
+				struct tf_session_resources *res)
+{
+	uint32_t dev_id, res_type, i;
+	enum tf_dir dir;
+	uint8_t app_id;
+	int32_t rc = 0;
+
+	if (ulp_ctx == NULL || res == NULL || info == NULL || num == 0) {
+		BNXT_TF_DBG(ERR, "Invalid arguments to get resources.\n");
+		return -EINVAL;
+	}
+
+	rc = bnxt_ulp_cntxt_app_id_get(ulp_ctx, &app_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to get the app id from ulp.\n");
+		return -EINVAL;
+	}
+
+	rc = bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to get the dev id from ulp.\n");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < num; i++) {
+		if (app_id != info[i].app_id || dev_id != info[i].device_id)
+			continue;
+		dir = info[i].direction;
+		res_type = info[i].resource_type;
+
+		switch (info[i].resource_func) {
+		case BNXT_ULP_RESOURCE_FUNC_IDENTIFIER:
+			res->ident_cnt[dir].cnt[res_type] = info[i].count;
+			break;
+		case BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE:
+			res->tbl_cnt[dir].cnt[res_type] = info[i].count;
+			break;
+		case BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE:
+			res->tcam_cnt[dir].cnt[res_type] = info[i].count;
+			break;
+		case BNXT_ULP_RESOURCE_FUNC_EM_TABLE:
+			res->em_cnt[dir].cnt[res_type] = info[i].count;
+			break;
+		default:
+			break;
+		}
+	}
+	return 0;
+}
+
+static int32_t
+bnxt_ulp_tf_resources_get(struct bnxt_ulp_context *ulp_ctx,
+			  struct tf_session_resources *res)
+{
+	struct bnxt_ulp_resource_resv_info *unnamed = NULL;
+	uint32_t unum;
+	int32_t rc = 0;
+
+	if (ulp_ctx == NULL || res == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid arguments to get resources.\n");
+		return -EINVAL;
+	}
+
+	unnamed = bnxt_ulp_resource_resv_list_get(&unum);
+	if (unnamed == NULL) {
+		BNXT_TF_DBG(ERR, "Unable to get resource resv list.\n");
+		return -EINVAL;
+	}
+
+	rc = bnxt_ulp_unnamed_resources_calc(ulp_ctx, unnamed, unum, res);
+	if (rc)
+		BNXT_TF_DBG(ERR, "Unable to calc resources for session.\n");
+
+	return rc;
+}
+
+static int32_t
+bnxt_ulp_tf_shared_session_resources_get(struct bnxt_ulp_context *ulp_ctx,
+					 struct tf_session_resources *res)
+{
+	struct bnxt_ulp_resource_resv_info *unnamed;
+	struct bnxt_ulp_glb_resource_info *named;
+	uint32_t unum, nnum;
+	int32_t rc;
+
+	if (ulp_ctx == NULL || res == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid arguments to get resources.\n");
+		return -EINVAL;
+	}
+
+	/* Make sure the resources are zero before accumulating. */
+	memset(res, 0, sizeof(struct tf_session_resources));
+
+	/*
+	 * Shared resources are comprised of both named and unnamed resources.
+	 * First get the unnamed counts, and then add the named to the result.
+	 */
+	/* Get the baseline counts */
+	unnamed = bnxt_ulp_app_resource_resv_list_get(&unum);
+	if (unnamed == NULL) {
+		BNXT_TF_DBG(ERR, "Unable to get shared resource resv list.\n");
+		return -EINVAL;
+	}
+	rc = bnxt_ulp_unnamed_resources_calc(ulp_ctx, unnamed, unum, res);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to calc resources for shared session.\n");
+		return -EINVAL;
+	}
+
+	/* Get the named list and add the totals */
+	named = bnxt_ulp_app_glb_resource_info_list_get(&nnum);
+	if (named == NULL) {
+		BNXT_TF_DBG(ERR, "Unable to get app global resource list\n");
+		return -EINVAL;
+	}
+	rc = bnxt_ulp_named_resources_calc(ulp_ctx, named, nnum, res);
+	if (rc)
+		BNXT_TF_DBG(ERR, "Unable to calc named resources\n");
+
+	return rc;
 }
 
 int32_t
@@ -320,10 +392,8 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 	strncat(parms.ctrl_chan_name, "-tf_shared", copy_num_bytes);
 
 	rc = bnxt_ulp_tf_shared_session_resources_get(bp->ulp_ctx, resources);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Unable to get shared resource count.\n");
+	if (rc)
 		return rc;
-	}
 
 	rc = bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &ulp_dev_id);
 	if (rc) {
@@ -342,8 +412,7 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 		parms.device_type = TF_DEVICE_TYPE_THOR;
 		break;
 	default:
-		BNXT_TF_DBG(ERR, "Unable to determine device for "
-			    "opening session.\n");
+		BNXT_TF_DBG(ERR, "Unable to determine dev for opening session.\n");
 		return rc;
 	}
 
@@ -450,18 +519,14 @@ ulp_ctx_session_open(struct bnxt *bp,
 		params.device_type = TF_DEVICE_TYPE_THOR;
 		break;
 	default:
-		BNXT_TF_DBG(ERR, "Unable to determine device for "
-			    "opening session.\n");
+		BNXT_TF_DBG(ERR, "Unable to determine device for opening session.\n");
 		return rc;
 	}
 
 	resources = &params.resources;
 	rc = bnxt_ulp_tf_resources_get(bp->ulp_ctx, resources);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Unable to determine tf resources for "
-			    "session open.\n");
+	if (rc)
 		return rc;
-	}
 
 	params.bp = bp;
 	rc = tf_open_session(&bp->tfp, &params);
@@ -708,8 +773,8 @@ ulp_ctx_init(struct bnxt *bp,
 
 	rc = bnxt_ulp_cntxt_app_caps_init(bp->ulp_ctx, bp->app_id, devid);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Unable to set capabilities for "
-			    " app(%x)/dev(%x)\n", bp->app_id, devid);
+		BNXT_TF_DBG(ERR, "Unable to set caps for app(%x)/dev(%x)\n",
+			    bp->app_id, devid);
 		goto error_deinit;
 	}
 

@@ -392,6 +392,12 @@ extern struct bnxt_ulp_glb_resource_info ulp_app_glb_resource_tbl[];
 extern struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[];
 
 /*
+ * The ulp_app_resource_resv_list provides the list of tf resources required
+ * when calling tf_open.
+ */
+extern struct bnxt_ulp_resource_resv_info ulp_app_resource_resv_list[];
+
+/*
  * The_app_cap_info_list provides the list of ULP capabilities per app/device.
  */
 extern struct bnxt_ulp_app_capabilities_info ulp_app_cap_info_list[];

@@ -270,6 +270,42 @@ struct bnxt_ulp_app_capabilities_info ulp_app_cap_info_list[] = {
 	}
 };
 
+/* List of unnamed app tf resources required to be reserved per app/device */
+struct bnxt_ulp_resource_resv_info ulp_app_resource_resv_list[] = {
+	{
+	.app_id                  = 1,
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.direction               = TF_DIR_RX,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type           = TF_TCAM_TBL_TYPE_WC_TCAM,
+	.count                   = 256
+	},
+	{
+	.app_id                  = 1,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.direction               = TF_DIR_RX,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type           = TF_TCAM_TBL_TYPE_WC_TCAM,
+	.count                   = 256
+	},
+	{
+	.app_id                  = 2,
+	.device_id               = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.direction               = TF_DIR_RX,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type           = TF_TCAM_TBL_TYPE_WC_TCAM,
+	.count                   = 256
+	},
+	{
+	.app_id                  = 2,
+	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
+	.direction               = TF_DIR_RX,
+	.resource_func           = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type           = TF_TCAM_TBL_TYPE_WC_TCAM,
+	.count                   = 256
+	}
+};
+
 /* List of device specific parameters */
 struct bnxt_ulp_glb_resource_info ulp_app_glb_resource_tbl[]  = {
 	{
