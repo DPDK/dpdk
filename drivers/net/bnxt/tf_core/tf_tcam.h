@@ -386,4 +386,20 @@ int tf_tcam_set(struct tf *tfp,
 int tf_tcam_get(struct tf *tfp,
 		struct tf_tcam_get_parms *parms);
 
+/**
+ * Retrieves the allocated resource info
+ *
+ * [in] tfp
+ *   Pointer to TF handle, used for HCAPI communication
+ *
+ * [in] parms
+ *   Pointer to parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_tcam_get_resc_info(struct tf *tfp,
+			  struct tf_tcam_resource_info *parms);
+
 #endif /* _TF_TCAM_H */

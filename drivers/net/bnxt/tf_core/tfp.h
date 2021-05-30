@@ -15,6 +15,7 @@
 #include <rte_spinlock.h>
 #include <rte_log.h>
 #include <rte_byteorder.h>
+#include <bnxt.h>
 
 /**
  * DPDK/Driver specific log level for the BNXT Eth driver.
@@ -130,7 +131,7 @@ struct tfp_calloc_parms {
  *   -1             - Global error like not supported
  *   -EINVAL        - Parameter Error
  */
-int tfp_send_msg_direct(struct tf *tfp,
+int tfp_send_msg_direct(struct bnxt *bp,
 			struct tfp_send_msg_parms *parms);
 
 /**

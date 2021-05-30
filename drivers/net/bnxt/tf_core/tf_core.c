@@ -27,6 +27,8 @@ tf_open_session(struct tf *tfp,
 	int rc;
 	unsigned int domain, bus, slot, device;
 	struct tf_session_open_session_parms oparms;
+	int name_len;
+	char *name;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -67,6 +69,13 @@ tf_open_session(struct tf *tfp,
 			    "Failed to scan device ctrl_chan_name\n");
 			return -EINVAL;
 		}
+	}
+
+	name_len = strlen(parms->ctrl_chan_name);
+	name = &parms->ctrl_chan_name[name_len - strlen("tf_shared")];
+	if (!strncmp(name, "tf_shared", strlen("tf_shared"))) {
+		memset(parms->ctrl_chan_name, 0, strlen(parms->ctrl_chan_name));
+		strcpy(parms->ctrl_chan_name, "tf_share");
 	}
 
 	parms->session_id.internal.domain = domain;
@@ -1587,6 +1596,102 @@ tf_get_if_tbl_entry(struct tf *tfp,
 		TFP_DRV_LOG(ERR,
 			    "%s: If_tbl get failed, rc:%s\n",
 			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return 0;
+}
+
+int tf_get_session_info(struct tf *tfp,
+			struct tf_get_session_info_parms *parms)
+{
+	int rc;
+	struct tf_session      *tfs;
+	struct tf_dev_info     *dev;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to lookup session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to lookup device, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	if (dev->ops->tf_dev_get_ident_resc_info == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "Operation not supported, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = dev->ops->tf_dev_get_ident_resc_info(tfp, parms->session_info.ident);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Ident get resc info failed, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_get_tbl_resc_info == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "Operation not supported, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = dev->ops->tf_dev_get_tbl_resc_info(tfp, parms->session_info.tbl);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Tbl get resc info failed, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_get_tcam_resc_info == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "Operation not supported, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = dev->ops->tf_dev_get_tcam_resc_info(tfp, parms->session_info.tcam);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "TCAM get resc info failed, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_get_em_resc_info == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "Operation not supported, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = dev->ops->tf_dev_get_em_resc_info(tfp, parms->session_info.em);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "EM get resc info failed, rc:%s\n",
 			    strerror(-rc));
 		return rc;
 	}

@@ -24,11 +24,6 @@ struct tf;
 static void *shadow_tcam_db[TF_DIR_MAX];
 
 /**
- * Init flag, set on bind and cleared on unbind
- */
-static uint8_t init;
-
-/**
  * Shadow init flag, set on bind and cleared on unbind
  */
 static uint8_t shadow_init;
@@ -54,12 +49,6 @@ tf_tcam_bind(struct tf *tfp,
 	struct tfp_calloc_parms cparms;
 
 	TF_CHECK_PARMS2(tfp, parms);
-
-	if (init) {
-		TFP_DRV_LOG(ERR,
-			    "TCAM DB already initialized\n");
-		return -EINVAL;
-	}
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);
@@ -118,7 +107,11 @@ tf_tcam_bind(struct tf *tfp,
 		db_cfg.dir = d;
 		db_cfg.alloc_cnt = parms->resources->tcam_cnt[d].cnt;
 		db_cfg.rm_db = (void *)&tcam_db->tcam_db[d];
-		rc = tf_rm_create_db(tfp, &db_cfg);
+		if (tf_session_is_shared_session(tfs) &&
+			(!tf_session_is_shared_session_creator(tfs)))
+			rc = tf_rm_create_db_no_reservation(tfp, &db_cfg);
+		else
+			rc = tf_rm_create_db(tfp, &db_cfg);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "%s: TCAM DB creation failed\n",
@@ -143,7 +136,8 @@ tf_tcam_bind(struct tf *tfp,
 				    "%s: TCAM reserved resource is not multiple of %d\n",
 				    tf_dir_2_str(d),
 				    num_slices);
-			return -EINVAL;
+			rc = -EINVAL;
+			goto error;
 		}
 	}
 
@@ -186,8 +180,6 @@ tf_tcam_bind(struct tf *tfp,
 		shadow_init = 1;
 	}
 
-	init = 1;
-
 	TFP_DRV_LOG(INFO,
 		    "TCAM - initialized\n");
 
@@ -211,7 +203,6 @@ error:
 	}
 
 	shadow_init = 0;
-	init = 0;
 
 	return rc;
 }
@@ -226,13 +217,6 @@ tf_tcam_unbind(struct tf *tfp)
 	void *tcam_db_ptr = NULL;
 	struct tf_shadow_tcam_free_db_parms fshadow;
 	TF_CHECK_PARMS1(tfp);
-
-	/* Bail if nothing has been initialized */
-	if (!init) {
-		TFP_DRV_LOG(INFO,
-			    "No TCAM DBs created\n");
-		return 0;
-	}
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
 	if (rc) {
@@ -263,7 +247,6 @@ tf_tcam_unbind(struct tf *tfp)
 	}
 
 	shadow_init = 0;
-	init = 0;
 
 	return 0;
 }
@@ -282,13 +265,6 @@ tf_tcam_alloc(struct tf *tfp,
 	void *tcam_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
-
-	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "%s: No TCAM DBs created\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);
@@ -371,13 +347,6 @@ tf_tcam_free(struct tf *tfp,
 	void *tcam_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
-
-	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "%s: No TCAM DBs created\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);
@@ -529,13 +498,6 @@ tf_tcam_alloc_search(struct tf *tfp,
 
 	TF_CHECK_PARMS2(tfp, parms);
 
-	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "%s: No TCAM DBs created\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
-
 	if (!shadow_init || !shadow_tcam_db[parms->dir]) {
 		TFP_DRV_LOG(ERR, "%s: TCAM Shadow not initialized for %s\n",
 			    tf_dir_2_str(parms->dir),
@@ -660,13 +622,6 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 
 	TF_CHECK_PARMS2(tfp, parms);
 
-	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "%s: No TCAM DBs created\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
-
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc)
@@ -781,13 +736,6 @@ tf_tcam_get(struct tf *tfp __rte_unused,
 
 	TF_CHECK_PARMS2(tfp, parms);
 
-	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "%s: No TCAM DBs created\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
-
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc)
@@ -848,6 +796,43 @@ tf_tcam_get(struct tf *tfp __rte_unused,
 			    parms->idx,
 			    strerror(-rc));
 		return rc;
+	}
+
+	return 0;
+}
+
+int
+tf_tcam_get_resc_info(struct tf *tfp,
+		      struct tf_tcam_resource_info *tcam)
+{
+	int rc;
+	int d;
+	struct tf_resource_info *dinfo;
+	struct tf_rm_get_alloc_info_parms ainfo;
+	void *tcam_db_ptr = NULL;
+	struct tcam_rm_db *tcam_db;
+
+	TF_CHECK_PARMS2(tfp, tcam);
+
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
+
+	/* check if reserved resource for WC is multiple of num_slices */
+	for (d = 0; d < TF_DIR_MAX; d++) {
+		ainfo.rm_db = tcam_db->tcam_db[d];
+		dinfo = tcam[d].info;
+
+		ainfo.info = (struct tf_rm_alloc_info *)dinfo;
+		ainfo.subtype = 0;
+		rc = tf_rm_get_all_info(&ainfo, TF_TCAM_TBL_TYPE_MAX);
+		if (rc && rc != -ENOTSUP)
+			return rc;
 	}
 
 	return 0;

@@ -27,11 +27,6 @@
 #define MAX_PAGE_PTRS(page_size)  ((page_size) / sizeof(void *))
 
 /**
- * Init flag, set on bind and cleared on unbind
- */
-static uint8_t init;
-
-/**
  * Host or system
  */
 static enum tf_mem_type mem_type;
@@ -924,17 +919,10 @@ tf_em_ext_common_bind(struct tf *tfp,
 	int rc;
 	int i;
 	struct tf_rm_create_db_parms db_cfg = { 0 };
-	uint8_t db_exists = 0;
 	struct em_ext_db *ext_db;
 	struct tfp_calloc_parms cparms;
 
 	TF_CHECK_PARMS2(tfp, parms);
-
-	if (init) {
-		TFP_DRV_LOG(ERR,
-			    "EM Ext DB already initialized\n");
-		return -EINVAL;
-	}
 
 	cparms.nitems = 1;
 	cparms.size = sizeof(struct em_ext_db);
@@ -974,11 +962,7 @@ tf_em_ext_common_bind(struct tf *tfp,
 
 			return rc;
 		}
-		db_exists = 1;
 	}
-
-	if (db_exists)
-		init = 1;
 
 	mem_type = parms->mem_type;
 
@@ -1000,13 +984,6 @@ tf_em_ext_common_unbind(struct tf *tfp)
 	struct tf_free_tbl_scope_parms tparms = { 0 };
 
 	TF_CHECK_PARMS1(tfp);
-
-	/* Bail if nothing has been initialized */
-	if (!init) {
-		TFP_DRV_LOG(INFO,
-			    "No EM Ext DBs created\n");
-		return 0;
-	}
 
 	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc) {
@@ -1063,8 +1040,6 @@ tf_em_ext_common_unbind(struct tf *tfp)
 
 	tfp_free(ext_db);
 	tf_session_set_em_ext_db(tfp, NULL);
-
-	init = 0;
 
 	return 0;
 }

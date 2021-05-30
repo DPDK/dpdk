@@ -7,6 +7,7 @@
 #define _BITALLOC_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /* Bitalloc works on uint32_t as its word size */
 typedef uint32_t bitalloc_word_t;
@@ -64,7 +65,7 @@ struct bitalloc {
  * Returns 0 on success, -1 on failure.  Size is arbitrary up to
  * BITALLOC_MAX_SIZE
  */
-int ba_init(struct bitalloc *pool, int size);
+int ba_init(struct bitalloc *pool, int size, bool free);
 
 /**
  * Returns -1 on failure, or index of allocated entry

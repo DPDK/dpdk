@@ -65,7 +65,7 @@ ba_ffs(bitalloc_word_t v)
 }
 
 int
-ba_init(struct bitalloc *pool, int size)
+ba_init(struct bitalloc *pool, int size, bool free)
 {
 	bitalloc_word_t *mem = (bitalloc_word_t *)pool;
 	int       i;
@@ -101,9 +101,11 @@ ba_init(struct bitalloc *pool, int size)
 		pool->storage[offset++] = words[--lev];
 	}
 
-	/* Free the entire pool */
-	for (i = 0; i < size; i++)
-		ba_free(pool, i);
+	/* Free the entire pool if it is required*/
+	if (free) {
+		for (i = 0; i < size; i++)
+			ba_free(pool, i);
+	}
 
 	return 0;
 }

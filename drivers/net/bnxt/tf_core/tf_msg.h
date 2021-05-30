@@ -14,6 +14,7 @@
 #include "tf_rm.h"
 #include "tf_tcam.h"
 #include "tf_global_cfg.h"
+#include "bnxt.h"
 
 struct tf;
 
@@ -22,8 +23,8 @@ struct tf;
 /**
  * Sends session open request to Firmware
  *
- * [in] session
- *   Pointer to session handle
+ * [in] bp
+ *   Pointer to bnxt handle
  *
  * [in] ctrl_chan_name
  *   PCI name of the control channel
@@ -31,14 +32,24 @@ struct tf;
  * [in/out] fw_session_id
  *   Pointer to the fw_session_id that is allocated on firmware side
  *
+ * [in/out] fw_session_client_id
+ *   Pointer to the fw_session_client_id that is allocated on firmware side
+ *
+ * [in/out] dev
+ *   Pointer to the associated device
+ *
+ * [out] shared_session_creator
+ *   Pointer to the shared_session_creator
+ *
  * Returns:
  *   0 on Success else internal Truflow error
  */
-int tf_msg_session_open(struct tf *tfp,
+int tf_msg_session_open(struct bnxt *bp,
 			char *ctrl_chan_name,
 			uint8_t *fw_session_id,
 			uint8_t *fw_session_client_id,
-			struct tf_dev_info *dev);
+			struct tf_dev_info *dev,
+			bool *shared_session_creator);
 
 /**
  * Sends session close request to Firmware
@@ -172,6 +183,34 @@ int tf_msg_session_resc_qcaps(struct tf *tfp,
  *   0 on Success else internal Truflow error
  */
 int tf_msg_session_resc_alloc(struct tf *tfp,
+			      struct tf_dev_info *dev,
+			      enum tf_dir dir,
+			      uint16_t size,
+			      struct tf_rm_resc_req_entry *request,
+			      struct tf_rm_resc_entry *resv);
+
+/**
+ * Sends session HW resource allocation request to TF Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] dir
+ *   Receive or Transmit direction
+ *
+ * [in] size
+ *   Number of elements in the req and resv arrays
+ *
+ * [in] req
+ *   Pointer to an array of request elements
+ *
+ * [in] resv
+ *   Pointer to an array of reserved elements
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
+ */
+int tf_msg_session_resc_info(struct tf *tfp,
 			      struct tf_dev_info *dev,
 			      enum tf_dir dir,
 			      uint16_t size,

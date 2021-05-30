@@ -426,6 +426,24 @@ int tf_rm_create_db(struct tf *tfp,
 		    struct tf_rm_create_db_parms *parms);
 
 /**
+ * Creates and fills a Resource Manager (RM) DB with requested
+ * elements. The DB is indexed per the parms structure. It only retrieve
+ * allocated resource information for a exist session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle, used for HCAPI communication
+ *
+ * [in] parms
+ *   Pointer to create parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_rm_create_db_no_reservation(struct tf *tfp,
+		    struct tf_rm_create_db_parms *parms);
+
+/**
  * Closes the Resource Manager (RM) DB and frees all allocated
  * resources per the associated database.
  *
@@ -497,6 +515,22 @@ int tf_rm_is_allocated(struct tf_rm_is_allocated_parms *parms);
  *   - (-EINVAL) on failure.
  */
 int tf_rm_get_info(struct tf_rm_get_alloc_info_parms *parms);
+
+/**
+ * Retrieves all elements allocation information from the Resource
+ * Manager (RM) DB.
+ *
+ * [in] parms
+ *   Pointer to get info parameters
+ *
+ * [in] size
+ *   number of the elements for the specific module
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_rm_get_all_info(struct tf_rm_get_alloc_info_parms *parms, int size);
 
 /**
  * Performs a lookup in the Resource Manager DB and retrieves the

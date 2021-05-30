@@ -28,7 +28,7 @@
  * Returns success or failure code.
  */
 int
-tfp_send_msg_direct(struct tf *tfp,
+tfp_send_msg_direct(struct bnxt *bp,
 		    struct tfp_send_msg_parms *parms)
 {
 	int      rc = 0;
@@ -40,9 +40,7 @@ tfp_send_msg_direct(struct tf *tfp,
 	if (parms->mailbox == TF_CHIMP_MB)
 		use_kong_mb = 0;
 
-	rc = bnxt_hwrm_tf_message_direct(container_of(tfp,
-					       struct bnxt,
-					       tfp),
+	rc = bnxt_hwrm_tf_message_direct(bp,
 					 use_kong_mb,
 					 parms->tf_type,
 					 parms->req_data,

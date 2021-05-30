@@ -702,7 +702,9 @@ tf_rm_create_db(struct tf *tfp,
 				}
 				db[i].pool = (struct bitalloc *)cparms.mem_va;
 
-				rc = ba_init(db[i].pool, resv[j].stride);
+				rc = ba_init(db[i].pool,
+					     resv[j].stride,
+					     !tf_session_is_shared_session(tfs));
 				if (rc) {
 					TFP_DRV_LOG(ERR,
 					  "%s: Pool init failed, type:%d:%s\n",
@@ -746,6 +748,249 @@ tf_rm_create_db(struct tf *tfp,
 	return -EINVAL;
 }
 
+int
+tf_rm_create_db_no_reservation(struct tf *tfp,
+			       struct tf_rm_create_db_parms *parms)
+{
+	int rc;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	int i, j;
+	uint16_t hcapi_items, *req_cnt;
+	struct tfp_calloc_parms cparms;
+	struct tf_rm_resc_req_entry *req;
+	struct tf_rm_resc_entry *resv;
+	struct tf_rm_new_db *rm_db;
+	struct tf_rm_element *db;
+	uint32_t pool_size;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
+	/* Copy requested counts (alloc_cnt) from tf_open_session() to local
+	 * copy (req_cnt) so that it can be updated if required.
+	 */
+
+	cparms.nitems = parms->num_elements;
+	cparms.size = sizeof(uint16_t);
+	cparms.alignment = 0;
+	rc = tfp_calloc(&cparms);
+	if (rc)
+		return rc;
+
+	req_cnt = (uint16_t *)cparms.mem_va;
+
+	tfp_memcpy(req_cnt, parms->alloc_cnt,
+		   parms->num_elements * sizeof(uint16_t));
+
+	/* Process capabilities against DB requirements. However, as a
+	 * DB can hold elements that are not HCAPI we can reduce the
+	 * req msg content by removing those out of the request yet
+	 * the DB holds them all as to give a fast lookup. We can also
+	 * remove entries where there are no request for elements.
+	 */
+	tf_rm_count_hcapi_reservations(parms->dir,
+				       parms->module,
+				       parms->cfg,
+				       req_cnt,
+				       parms->num_elements,
+				       &hcapi_items);
+
+	if (hcapi_items == 0) {
+		TFP_DRV_LOG(ERR,
+			"%s: module:%s Empty RM DB create request\n",
+			tf_dir_2_str(parms->dir),
+			tf_module_2_str(parms->module));
+
+		parms->rm_db = NULL;
+		return -ENOMEM;
+	}
+
+	/* Alloc request, alignment already set */
+	cparms.nitems = (size_t)hcapi_items;
+	cparms.size = sizeof(struct tf_rm_resc_req_entry);
+	rc = tfp_calloc(&cparms);
+	if (rc)
+		return rc;
+	req = (struct tf_rm_resc_req_entry *)cparms.mem_va;
+
+	/* Alloc reservation, alignment and nitems already set */
+	cparms.size = sizeof(struct tf_rm_resc_entry);
+	rc = tfp_calloc(&cparms);
+	if (rc)
+		return rc;
+	resv = (struct tf_rm_resc_entry *)cparms.mem_va;
+
+	/* Build the request */
+	for (i = 0, j = 0; i < parms->num_elements; i++) {
+		struct tf_rm_element_cfg *cfg = &parms->cfg[i];
+		uint16_t hcapi_type = cfg->hcapi_type;
+
+		/* Only perform reservation for requested entries
+		 */
+		if (req_cnt[i] == 0)
+			continue;
+
+		/* Skip any children in the request */
+		if (cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI ||
+		    cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA ||
+		    cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_PARENT) {
+			req[j].type = hcapi_type;
+			req[j].min = req_cnt[i];
+			req[j].max = req_cnt[i];
+			j++;
+		}
+	}
+
+	/* Get all resources info for the module type
+	 */
+	rc = tf_msg_session_resc_info(tfp,
+				      dev,
+				      parms->dir,
+				      hcapi_items,
+				      req,
+				      resv);
+	if (rc)
+		return rc;
+
+	/* Build the RM DB per the request */
+	cparms.nitems = 1;
+	cparms.size = sizeof(struct tf_rm_new_db);
+	rc = tfp_calloc(&cparms);
+	if (rc)
+		return rc;
+	rm_db = (void *)cparms.mem_va;
+
+	/* Build the DB within RM DB */
+	cparms.nitems = parms->num_elements;
+	cparms.size = sizeof(struct tf_rm_element);
+	rc = tfp_calloc(&cparms);
+	if (rc)
+		return rc;
+	rm_db->db = (struct tf_rm_element *)cparms.mem_va;
+
+	db = rm_db->db;
+	for (i = 0, j = 0; i < parms->num_elements; i++) {
+		struct tf_rm_element_cfg *cfg = &parms->cfg[i];
+		const char *type_str;
+
+		dev->ops->tf_dev_get_resource_str(tfp,
+						  cfg->hcapi_type,
+						  &type_str);
+
+		db[i].cfg_type = cfg->cfg_type;
+		db[i].hcapi_type = cfg->hcapi_type;
+
+		/* Save the parent subtype for later use to find the pool
+		 */
+		if (cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_CHILD)
+			db[i].parent_subtype = cfg->parent_subtype;
+
+		/* If the element didn't request an allocation no need
+		 * to create a pool nor verify if we got a reservation.
+		 */
+		if (req_cnt[i] == 0)
+			continue;
+
+		/* Skip any children or invalid
+		 */
+		if (cfg->cfg_type != TF_RM_ELEM_CFG_HCAPI &&
+		    cfg->cfg_type != TF_RM_ELEM_CFG_HCAPI_BA &&
+		    cfg->cfg_type != TF_RM_ELEM_CFG_HCAPI_BA_PARENT)
+			continue;
+
+		/* If the element had requested an allocation and that
+		 * allocation was a success (full amount) then
+		 * allocate the pool.
+		 */
+		if (req_cnt[i] == resv[j].stride) {
+			db[i].alloc.entry.start = resv[j].start;
+			db[i].alloc.entry.stride = resv[j].stride;
+
+			/* Only allocate BA pool if a BA type not a child */
+			if (cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA ||
+			    cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_PARENT) {
+				if (cfg->divider) {
+					resv[j].stride =
+						resv[j].stride / cfg->divider;
+					if (resv[j].stride <= 0) {
+						TFP_DRV_LOG(ERR,
+						     "%s:Divide fails:%d:%s\n",
+						     tf_dir_2_str(parms->dir),
+						     cfg->hcapi_type, type_str);
+						goto fail;
+					}
+				}
+				/* Create pool */
+				pool_size = (BITALLOC_SIZEOF(resv[j].stride) /
+					     sizeof(struct bitalloc));
+				/* Alloc request, alignment already set */
+				cparms.nitems = pool_size;
+				cparms.size = sizeof(struct bitalloc);
+				rc = tfp_calloc(&cparms);
+				if (rc) {
+					TFP_DRV_LOG(ERR,
+					 "%s: Pool alloc failed, type:%d:%s\n",
+					 tf_dir_2_str(parms->dir),
+					 cfg->hcapi_type, type_str);
+					goto fail;
+				}
+				db[i].pool = (struct bitalloc *)cparms.mem_va;
+
+				rc = ba_init(db[i].pool,
+					     resv[j].stride,
+					     !tf_session_is_shared_session(tfs));
+				if (rc) {
+					TFP_DRV_LOG(ERR,
+					  "%s: Pool init failed, type:%d:%s\n",
+					  tf_dir_2_str(parms->dir),
+					  cfg->hcapi_type, type_str);
+					goto fail;
+				}
+			}
+			j++;
+		} else {
+			/* Bail out as we want what we requested for
+			 * all elements, not any less.
+			 */
+			TFP_DRV_LOG(ERR,
+				    "%s: Alloc failed %d:%s req:%d, alloc:%d\n",
+				    tf_dir_2_str(parms->dir), cfg->hcapi_type,
+				    type_str, req_cnt[i], resv[j].stride);
+			goto fail;
+		}
+	}
+
+	rm_db->num_entries = parms->num_elements;
+	rm_db->dir = parms->dir;
+	rm_db->module = parms->module;
+	*parms->rm_db = (void *)rm_db;
+
+	tfp_free((void *)req);
+	tfp_free((void *)resv);
+	tfp_free((void *)req_cnt);
+	return 0;
+
+ fail:
+	tfp_free((void *)req);
+	tfp_free((void *)resv);
+	tfp_free((void *)db->pool);
+	tfp_free((void *)db);
+	tfp_free((void *)rm_db);
+	tfp_free((void *)req_cnt);
+	parms->rm_db = NULL;
+
+	return -EINVAL;
+}
 int
 tf_rm_free_db(struct tf *tfp,
 	      struct tf_rm_free_db_parms *parms)
@@ -1039,6 +1284,36 @@ tf_rm_get_info(struct tf_rm_get_alloc_info_parms *parms)
 	memcpy(parms->info,
 	       &rm_db->db[parms->subtype].alloc,
 	       sizeof(struct tf_rm_alloc_info));
+
+	return 0;
+}
+
+int
+tf_rm_get_all_info(struct tf_rm_get_alloc_info_parms *parms, int size)
+{
+	struct tf_rm_new_db *rm_db;
+	enum tf_rm_elem_cfg_type cfg_type;
+	struct tf_rm_alloc_info *info = parms->info;
+	int i;
+
+	TF_CHECK_PARMS2(parms, parms->rm_db);
+	rm_db = (struct tf_rm_new_db *)parms->rm_db;
+	TF_CHECK_PARMS1(rm_db->db);
+
+	for (i = 0; i < size; i++) {
+		cfg_type = rm_db->db[i].cfg_type;
+
+		/* Bail out if not controlled by HCAPI */
+		if (cfg_type == TF_RM_ELEM_CFG_NULL) {
+			info++;
+			continue;
+		}
+
+		memcpy(info,
+		       &rm_db->db[i].alloc,
+		       sizeof(struct tf_rm_alloc_info));
+		info++;
+	}
 
 	return 0;
 }

@@ -351,9 +351,15 @@ tf_dev_bind_p58(struct tf *tfp,
 	struct tf_em_cfg_parms em_cfg;
 	struct tf_if_tbl_cfg_parms if_tbl_cfg;
 	struct tf_global_cfg_cfg_parms global_cfg;
+	struct tf_session *tfs;
 
 	/* Initial function initialization */
 	dev_handle->ops = &tf_dev_ops_p58_init;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
 
 	rsv_cnt = tf_dev_reservation_check(TF_IDENT_TYPE_MAX,
 					   tf_ident_p58,
@@ -440,26 +446,28 @@ tf_dev_bind_p58(struct tf *tfp,
 	/*
 	 * IF_TBL
 	 */
-	if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
-	if_tbl_cfg.cfg = tf_if_tbl_p58;
-	if_tbl_cfg.shadow_copy = shadow_copy;
-	rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "IF Table initialization failure\n");
-		goto fail;
-	}
+	if (!tf_session_is_shared_session(tfs)) {
+		if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
+		if_tbl_cfg.cfg = tf_if_tbl_p58;
+		if_tbl_cfg.shadow_copy = shadow_copy;
+		rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "IF Table initialization failure\n");
+			goto fail;
+		}
 
-	/*
-	 * GLOBAL_CFG
-	 */
-	global_cfg.num_elements = TF_GLOBAL_CFG_TYPE_MAX;
-	global_cfg.cfg = tf_global_cfg_p58;
-	rc = tf_global_cfg_bind(tfp, &global_cfg);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Global Cfg initialization failure\n");
-		goto fail;
+		/*
+		 * GLOBAL_CFG
+		 */
+		global_cfg.num_elements = TF_GLOBAL_CFG_TYPE_MAX;
+		global_cfg.cfg = tf_global_cfg_p58;
+		rc = tf_global_cfg_bind(tfp, &global_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "Global Cfg initialization failure\n");
+			goto fail;
+		}
 	}
 
 	/* Final function initialization */
@@ -491,6 +499,12 @@ tf_dev_unbind_p58(struct tf *tfp)
 {
 	int rc = 0;
 	bool fail = false;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
 
 	/* Unbind all the support modules. As this is only done on
 	 * close we only report errors as everything has to be cleaned
@@ -527,18 +541,20 @@ tf_dev_unbind_p58(struct tf *tfp)
 		fail = true;
 	}
 
-	rc = tf_if_tbl_unbind(tfp);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Device unbind failed, IF Table Type\n");
-		fail = true;
-	}
+	if (!tf_session_is_shared_session(tfs)) {
+		rc = tf_if_tbl_unbind(tfp);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "Device unbind failed, IF Table Type\n");
+			fail = true;
+		}
 
-	rc = tf_global_cfg_unbind(tfp);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Device unbind failed, Global Cfg Type\n");
-		fail = true;
+		rc = tf_global_cfg_unbind(tfp);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "Device unbind failed, Global Cfg Type\n");
+			fail = true;
+		}
 	}
 
 	if (fail)

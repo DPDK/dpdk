@@ -396,4 +396,21 @@ int tf_tbl_get(struct tf *tfp,
 int tf_tbl_bulk_get(struct tf *tfp,
 		    struct tf_tbl_get_bulk_parms *parms);
 
+/**
+ * Retrieves the allocated resource info
+ *
+ * [in] tfp
+ *   Pointer to TF handle, used for HCAPI communication
+ *
+ * [in] parms
+ *   Pointer to Table resource info parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int
+tf_tbl_get_resc_info(struct tf *tfp,
+		     struct tf_tbl_resource_info *tbl);
+
 #endif /* TF_TBL_TYPE_H */

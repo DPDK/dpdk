@@ -21,11 +21,6 @@
 #define TF_EM_DB_EM_REC 0
 
 /**
- * Init flag, set on bind and cleared on unbind
- */
-static uint8_t init;
-
-/**
  * EM Pool
  */
 struct stack em_pool[TF_DIR_MAX];
@@ -234,19 +229,18 @@ tf_em_int_bind(struct tf *tfp,
 	int rc;
 	int i;
 	struct tf_rm_create_db_parms db_cfg = { 0 };
-	uint8_t db_exists = 0;
 	struct tf_rm_get_alloc_info_parms iparms;
 	struct tf_rm_alloc_info info;
 	struct em_rm_db *em_db;
 	struct tfp_calloc_parms cparms;
+	struct tf_session *tfs;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
-	if (init) {
-		TFP_DRV_LOG(ERR,
-			    "EM Int DB already initialized\n");
-		return -EINVAL;
-	}
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
 
 	memset(&db_cfg, 0, sizeof(db_cfg));
 	cparms.nitems = 1;
@@ -290,8 +284,11 @@ tf_em_int_bind(struct tf *tfp,
 		}
 
 		db_cfg.rm_db = (void *)&em_db->em_db[i];
-
-		rc = tf_rm_create_db(tfp, &db_cfg);
+		if (tf_session_is_shared_session(tfs) &&
+			(!tf_session_is_shared_session_creator(tfs)))
+			rc = tf_rm_create_db_no_reservation(tfp, &db_cfg);
+		else
+			rc = tf_rm_create_db(tfp, &db_cfg);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "%s: EM Int DB creation failed\n",
@@ -299,33 +296,30 @@ tf_em_int_bind(struct tf *tfp,
 
 			return rc;
 		}
-		db_exists = 1;
 	}
 
-	if (db_exists)
-		init = 1;
+	if (!tf_session_is_shared_session(tfs)) {
+		for (i = 0; i < TF_DIR_MAX; i++) {
+			iparms.rm_db = em_db->em_db[i];
+			iparms.subtype = TF_EM_DB_EM_REC;
+			iparms.info = &info;
 
-	for (i = 0; i < TF_DIR_MAX; i++) {
-		iparms.rm_db = em_db->em_db[i];
-		iparms.subtype = TF_EM_DB_EM_REC;
-		iparms.info = &info;
+			rc = tf_rm_get_info(&iparms);
+			if (rc) {
+				TFP_DRV_LOG(ERR,
+					    "%s: EM DB get info failed\n",
+					    tf_dir_2_str(i));
+				return rc;
+			}
 
-		rc = tf_rm_get_info(&iparms);
-		if (rc) {
-			TFP_DRV_LOG(ERR,
-				    "%s: EM DB get info failed\n",
-				    tf_dir_2_str(i));
-			return rc;
+			rc = tf_create_em_pool(i,
+					       iparms.info->entry.stride,
+					       iparms.info->entry.start);
+			/* Logging handled in tf_create_em_pool */
+			if (rc)
+				return rc;
 		}
-
-		rc = tf_create_em_pool(i,
-				       iparms.info->entry.stride,
-				       iparms.info->entry.start);
-		/* Logging handled in tf_create_em_pool */
-		if (rc)
-			return rc;
 	}
-
 
 	return 0;
 }
@@ -338,18 +332,19 @@ tf_em_int_unbind(struct tf *tfp)
 	struct tf_rm_free_db_parms fparms = { 0 };
 	struct em_rm_db *em_db;
 	void *em_db_ptr = NULL;
+	struct tf_session *tfs;
 
 	TF_CHECK_PARMS1(tfp);
 
-	/* Bail if nothing has been initialized */
-	if (!init) {
-		TFP_DRV_LOG(INFO,
-			    "No EM Int DBs created\n");
-		return 0;
-	}
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
 
-	for (i = 0; i < TF_DIR_MAX; i++)
-		tf_free_em_pool(i);
+	if (!tf_session_is_shared_session(tfs)) {
+		for (i = 0; i < TF_DIR_MAX; i++)
+			tf_free_em_pool(i);
+	}
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_EM, &em_db_ptr);
 	if (rc) {
@@ -372,7 +367,42 @@ tf_em_int_unbind(struct tf *tfp)
 		em_db->em_db[i] = NULL;
 	}
 
-	init = 0;
+	return 0;
+}
+
+int
+tf_em_get_resc_info(struct tf *tfp,
+		    struct tf_em_resource_info *em)
+{
+	int rc;
+	int d;
+	struct tf_resource_info *dinfo;
+	struct tf_rm_get_alloc_info_parms ainfo;
+	void *em_db_ptr = NULL;
+	struct em_rm_db *em_db;
+
+	TF_CHECK_PARMS2(tfp, em);
+
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_EM, &em_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	em_db = (struct em_rm_db *)em_db_ptr;
+
+	/* check if reserved resource for WC is multiple of num_slices */
+	for (d = 0; d < TF_DIR_MAX; d++) {
+		ainfo.rm_db = em_db->em_db[d];
+		dinfo = em[d].info;
+
+		ainfo.info = (struct tf_rm_alloc_info *)dinfo;
+		ainfo.subtype = 0;
+		rc = tf_rm_get_all_info(&ainfo, TF_EM_TBL_TYPE_MAX);
+		if (rc && rc != -ENOTSUP)
+			return rc;
+	}
 
 	return 0;
 }

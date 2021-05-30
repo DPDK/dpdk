@@ -11,6 +11,7 @@
 #include "tf_common.h"
 #include "tf_msg.h"
 #include "tfp.h"
+#include "bnxt.h"
 
 struct tf_session_client_create_parms {
 	/**
@@ -57,6 +58,7 @@ tf_session_create(struct tf *tfp,
 	uint8_t fw_session_client_id;
 	union tf_session_id *session_id;
 	struct tf_dev_info dev;
+	bool shared_session_creator;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -64,11 +66,12 @@ tf_session_create(struct tf *tfp,
 			&dev);
 
 	/* Open FW session and get a new session_id */
-	rc = tf_msg_session_open(tfp,
+	rc = tf_msg_session_open(parms->open_cfg->bp,
 				 parms->open_cfg->ctrl_chan_name,
 				 &fw_session_id,
 				 &fw_session_client_id,
-				 &dev);
+				 &dev,
+				 &shared_session_creator);
 	if (rc) {
 		/* Log error */
 		if (rc == -EEXIST)
@@ -137,6 +140,7 @@ tf_session_create(struct tf *tfp,
 	session_id->id = session->session_id.id;
 
 	session->shadow_copy = parms->open_cfg->shadow_copy;
+	session->bp = parms->open_cfg->bp;
 
 	/* Init session client list */
 	ll_init(&session->client_ll);
@@ -175,12 +179,20 @@ tf_session_create(struct tf *tfp,
 
 	/* Init session em_ext_db */
 	session->em_ext_db_handle = NULL;
+	if (!strcmp(parms->open_cfg->ctrl_chan_name, "tf_share"))
+		session->shared_session = true;
+
+	if (session->shared_session && shared_session_creator) {
+		session->shared_session_creator = true;
+		parms->open_cfg->shared_session_creator = true;
+	}
 
 	rc = tf_dev_bind(tfp,
 			 parms->open_cfg->device_type,
 			 session->shadow_copy,
 			 &parms->open_cfg->resources,
 			 &session->dev);
+
 	/* Logging handled by dev_bind */
 	if (rc)
 		goto cleanup;
@@ -857,16 +869,29 @@ tf_session_get_db(struct tf *tfp,
 
 	switch (type) {
 	case TF_MODULE_TYPE_IDENTIFIER:
-		*db_handle = tfs->id_db_handle;
+		if (tfs->id_db_handle)
+			*db_handle = tfs->id_db_handle;
+		else
+			rc = -EINVAL;
 		break;
 	case TF_MODULE_TYPE_TABLE:
-		*db_handle = tfs->tbl_db_handle;
+		if (tfs->tbl_db_handle)
+			*db_handle = tfs->tbl_db_handle;
+		else
+			rc = -EINVAL;
+
 		break;
 	case TF_MODULE_TYPE_TCAM:
-		*db_handle = tfs->tcam_db_handle;
+		if (tfs->tcam_db_handle)
+			*db_handle = tfs->tcam_db_handle;
+		else
+			rc = -EINVAL;
 		break;
 	case TF_MODULE_TYPE_EM:
-		*db_handle = tfs->em_db_handle;
+		if (tfs->em_db_handle)
+			*db_handle = tfs->em_db_handle;
+		else
+			rc = -EINVAL;
 		break;
 	default:
 		rc = -EINVAL;

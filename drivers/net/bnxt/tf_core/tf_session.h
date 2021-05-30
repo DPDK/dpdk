@@ -71,6 +71,23 @@ struct tf_session {
 	union tf_session_id session_id;
 
 	/**
+	 * Boolean controlling the use and availability of shared session.
+	 * Shared session will allow the application to share resources
+	 * on the firmware side without having to allocate them on firmware.
+	 * Additional private session core_data will be allocated if this
+	 * boolean is set to 'true', default 'false'.
+	 *
+	 */
+	bool shared_session;
+
+	/**
+	 * This flag indicates the shared session on firmware side is created
+	 * by this session. Some privileges may be assigned to this session.
+	 *
+	 */
+	bool shared_session_creator;
+
+	/**
 	 * Boolean controlling the use and availability of shadow
 	 * copy. Shadow copy will allow the TruFlow Core to keep track
 	 * of resource content on the firmware side without having to
@@ -137,6 +154,11 @@ struct tf_session {
 	 * em db reference for the session
 	 */
 	void *em_db_handle;
+
+	/**
+	 * the pointer to the parent bp struct
+	 */
+	void *bp;
 };
 
 /**
@@ -500,4 +522,48 @@ int
 tf_session_set_db(struct tf *tfp,
 		   enum tf_module_type type,
 		  void *db_handle);
+
+/**
+ * Check if the session is shared session.
+ *
+ * [in] session, pointer to the session
+ *
+ * Returns:
+ *   - true if it is shared session
+ *   - false if it is not shared session
+ */
+static inline bool
+tf_session_is_shared_session(struct tf_session *tfs)
+{
+	return tfs->shared_session;
+}
+
+/**
+ * Check if the session is the shared session creator
+ *
+ * [in] session, pointer to the session
+ *
+ * Returns:
+ *   - true if it is the shared session creator
+ *   - false if it is not the shared session creator
+ */
+static inline bool
+tf_session_is_shared_session_creator(struct tf_session *tfs)
+{
+	return tfs->shared_session_creator;
+}
+
+/**
+ * Get the pointer to the parent bnxt struct
+ *
+ * [in] session, pointer to the session
+ *
+ * Returns:
+ *   - the pointer to the parent bnxt struct
+ */
+static inline struct bnxt*
+tf_session_get_bp(struct tf_session *tfs)
+{
+	return tfs->bp;
+}
 #endif /* _TF_SESSION_H_ */

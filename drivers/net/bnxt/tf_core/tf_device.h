@@ -220,6 +220,25 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_search_ident)(struct tf *tfp,
 				   struct tf_ident_search_parms *parms);
+
+	/**
+	 * Retrieves the identifier resource info.
+	 *
+	 * This API retrieves the identifier resource info from the rm db.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to identifier info
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_ident_resc_info)(struct tf *tfp,
+					  struct tf_identifier_resource_info *parms);
+
 	/**
 	 * Get SRAM table information.
 	 *
@@ -426,6 +445,24 @@ struct tf_dev_ops {
 				   struct tf_tbl_get_bulk_parms *parms);
 
 	/**
+	 * Retrieves the table resource info.
+	 *
+	 * This API retrieves the table resource info from the rm db.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to tbl info
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_tbl_resc_info)(struct tf *tfp,
+					 struct tf_tbl_resource_info *parms);
+
+	/**
 	 * Allocation of a tcam element.
 	 *
 	 * This API allocates the specified tcam element from a device
@@ -525,6 +562,24 @@ struct tf_dev_ops {
 			       struct tf_tcam_get_parms *parms);
 
 	/**
+	 * Retrieves the tcam resource info.
+	 *
+	 * This API retrieves the tcam resource info from the rm db.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to tcam info
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_tcam_resc_info)(struct tf *tfp,
+					 struct tf_tcam_resource_info *parms);
+
+	/**
 	 * Insert EM hash entry API
 	 *
 	 * [in] tfp
@@ -587,6 +642,24 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_delete_ext_em_entry)(struct tf *tfp,
 					  struct tf_delete_em_entry_parms *parms);
+
+	/**
+	 * Retrieves the em resource info.
+	 *
+	 * This API retrieves the em resource info from the rm db.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to em info
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_em_resc_info)(struct tf *tfp,
+				       struct tf_em_resource_info *parms);
 
 	/**
 	 * Allocate EEM table scope

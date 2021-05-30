@@ -16,11 +16,6 @@
 struct tf;
 
 /**
- * Init flag, set on bind and cleared on unbind
- */
-static uint8_t init;
-
-/**
  * Identifier shadow DBs.
  */
 static void *ident_shadow_db[TF_DIR_MAX];
@@ -41,14 +36,14 @@ tf_ident_bind(struct tf *tfp,
 	struct tf_shadow_ident_create_db_parms shadow_cdb = { 0 };
 	struct ident_rm_db *ident_db;
 	struct tfp_calloc_parms cparms;
+	struct tf_session *tfs;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
-	if (init) {
-		TFP_DRV_LOG(ERR,
-			    "Identifier DB already initialized\n");
-		return -EINVAL;
-	}
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
 
 	memset(&db_cfg, 0, sizeof(db_cfg));
 	cparms.nitems = 1;
@@ -73,7 +68,11 @@ tf_ident_bind(struct tf *tfp,
 		db_cfg.rm_db = (void *)&ident_db->ident_db[i];
 		db_cfg.dir = i;
 		db_cfg.alloc_cnt = parms->resources->ident_cnt[i].cnt;
-		rc = tf_rm_create_db(tfp, &db_cfg);
+		if (tf_session_is_shared_session(tfs) &&
+			(!tf_session_is_shared_session_creator(tfs)))
+			rc = tf_rm_create_db_no_reservation(tfp, &db_cfg);
+		else
+			rc = tf_rm_create_db(tfp, &db_cfg);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "%s: Identifier DB creation failed\n",
@@ -100,8 +99,6 @@ tf_ident_bind(struct tf *tfp,
 		}
 	}
 
-	init = 1;
-
 	TFP_DRV_LOG(INFO,
 		    "Identifier - initialized\n");
 
@@ -119,13 +116,6 @@ tf_ident_unbind(struct tf *tfp)
 	void *ident_db_ptr = NULL;
 
 	TF_CHECK_PARMS1(tfp);
-
-	/* Bail if nothing has been initialized */
-	if (!init) {
-		TFP_DRV_LOG(INFO,
-			    "No Identifier DBs created\n");
-		return 0;
-	}
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
 	if (rc) {
@@ -158,7 +148,6 @@ tf_ident_unbind(struct tf *tfp)
 		ident_db->ident_db[i] = NULL;
 	}
 
-	init = 0;
 	shadow_init = 0;
 
 	return 0;
@@ -177,13 +166,6 @@ tf_ident_alloc(struct tf *tfp __rte_unused,
 	void *ident_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
-
-	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "%s: No Identifier DBs created\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
 	if (rc) {
@@ -241,13 +223,6 @@ tf_ident_free(struct tf *tfp __rte_unused,
 	void *ident_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
-
-	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "%s: No Identifier DBs created\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
 	if (rc) {
@@ -329,13 +304,6 @@ tf_ident_search(struct tf *tfp __rte_unused,
 
 	TF_CHECK_PARMS2(tfp, parms);
 
-	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "%s: No Identifier DBs created\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
-
 	if (!shadow_init) {
 		TFP_DRV_LOG(ERR,
 			    "%s: Identifier Shadow copy is not enabled\n",
@@ -384,6 +352,43 @@ tf_ident_search(struct tf *tfp __rte_unused,
 			    tf_dir_2_str(parms->dir),
 			    parms->type);
 		return rc;
+	}
+
+	return 0;
+}
+
+int
+tf_ident_get_resc_info(struct tf *tfp,
+		       struct tf_identifier_resource_info *ident)
+{
+	int rc;
+	int d;
+	struct tf_resource_info *dinfo;
+	struct tf_rm_get_alloc_info_parms ainfo;
+	void *ident_db_ptr = NULL;
+	struct ident_rm_db *ident_db;
+
+	TF_CHECK_PARMS2(tfp, ident);
+
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get ident_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	ident_db = (struct ident_rm_db *)ident_db_ptr;
+
+	/* check if reserved resource for WC is multiple of num_slices */
+	for (d = 0; d < TF_DIR_MAX; d++) {
+		ainfo.rm_db = ident_db->ident_db[d];
+		dinfo = ident[d].info;
+
+		ainfo.info = (struct tf_rm_alloc_info *)dinfo;
+		ainfo.subtype = 0;
+		rc = tf_rm_get_all_info(&ainfo, TF_IDENT_TYPE_MAX);
+		if (rc)
+			return rc;
 	}
 
 	return 0;

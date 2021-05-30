@@ -557,7 +557,8 @@ struct tf_open_session_parms {
 	 * rte_eth_dev_get_name_by_port() within the ULP.
 	 *
 	 * ctrl_chan_name will be used as part of a name for any
-	 * shared memory allocation.
+	 * shared memory allocation. The ctrl_chan_name is usually in format
+	 * 0000:02:00.0. The name for shared session is 0000:02:00.0-tf_shared.
 	 */
 	char ctrl_chan_name[TF_SESSION_NAME_MAX];
 	/**
@@ -616,28 +617,62 @@ struct tf_open_session_parms {
 	 * Resource allocation for the session.
 	 */
 	struct tf_session_resources resources;
+
+	/**
+	 * [in] bp
+	 * The pointer to the parent bp struct. This is only used for HWRM
+	 * message passing within the portability layer. The type is struct
+	 * bnxt.
+	 */
+	void *bp;
+
+	/**
+	 * [out] shared_session_creator
+	 *
+	 * Indicates whether the application created the session if set.
+	 * Otherwise the shared session already existed.  Just for information
+	 * purposes.
+	 */
+	int shared_session_creator;
 };
 
 /**
  * Opens a new TruFlow Session or session client.
  *
- * What gets created depends on the passed in tfp content. If the tfp
- * does not have prior session data a new session with associated
- * session client. If tfp has a session already a session client will
- * be created. In both cases the session client is created using the
- * provided ctrl_chan_name.
+ * What gets created depends on the passed in tfp content. If the tfp does not
+ * have prior session data a new session with associated session client. If tfp
+ * has a session already a session client will be created. In both cases the
+ * session client is created using the provided ctrl_chan_name.
  *
- * In case of session creation TruFlow will allocate session specific
- * memory, shared memory, to hold its session data. This data is
- * private to TruFlow.
+ * In case of session creation TruFlow will allocate session specific memory to
+ * hold its session data. This data is private to TruFlow.
  *
  * No other TruFlow APIs will succeed unless this API is first called
  * and succeeds.
  *
- * tf_open_session() returns a session id and session client id that
- * is used on all other TF APIs.
+ * tf_open_session() returns a session id and session client id.  These are
+ * also stored within the tfp structure passed in to all other APIs.
  *
  * A Session or session client can be closed using tf_close_session().
+ *
+ * There are 2 types of sessions - shared and not.  For non-shared all
+ * the allocated resources are owned and managed by a single session instance.
+ * No other applications have access to the resources owned by the non-shared
+ * session.  For a shared session, resources are shared between 2 applications.
+ *
+ * When the caller of tf_open_session() sets the ctrl_chan_name[] to a name
+ * like "0000:02:00.0-tf_shared", it is a request to create a new "shared"
+ * session in the firmware or access the existing shared session. There is
+ * only 1 shared session that can be created. If the shared session has
+ * already been created in the firmware, this API will return this indication
+ * by clearing the shared_session_creator flag. Only the first shared session
+ * create will have the shared_session_creator flag set.
+ *
+ * The shared session should always be the first session to be created by
+ * application and the last session closed due to RM management preference.
+ *
+ * Sessions remain open in the firmware until the last client of the session
+ * closes the session (tf_close_session()).
  *
  * [in] tfp
  *   Pointer to TF handle
@@ -651,6 +686,126 @@ struct tf_open_session_parms {
  */
 int tf_open_session(struct tf *tfp,
 		    struct tf_open_session_parms *parms);
+
+/**
+ * General internal resource info
+ *
+ * TODO: remove tf_rm_new_entry structure and use this structure
+ * internally.
+ */
+struct tf_resource_info {
+	uint16_t start;
+	uint16_t stride;
+};
+
+/**
+ * Identifier resource definition
+ */
+struct tf_identifier_resource_info {
+	/**
+	 * Array of TF Identifiers. The index used is tf_identifier_type.
+	 */
+	struct tf_resource_info info[TF_IDENT_TYPE_MAX];
+};
+
+/**
+ * Table type resource info definition
+ */
+struct tf_tbl_resource_info {
+	/**
+	 * Array of TF Table types. The index used is tf_tbl_type.
+	 */
+	struct tf_resource_info info[TF_TBL_TYPE_MAX];
+};
+
+/**
+ * TCAM type resource definition
+ */
+struct tf_tcam_resource_info {
+	/**
+	 * Array of TF TCAM types. The index used is tf_tcam_tbl_type.
+	 */
+	struct tf_resource_info info[TF_TCAM_TBL_TYPE_MAX];
+};
+
+/**
+ * EM type resource definition
+ */
+struct tf_em_resource_info {
+	/**
+	 * Array of TF EM table types. The index used is tf_em_tbl_type.
+	 */
+	struct tf_resource_info info[TF_EM_TBL_TYPE_MAX];
+};
+
+/**
+ * tf_session_resources parameter definition.
+ */
+struct tf_session_resource_info {
+	/**
+	 * [in] Requested Identifier Resources
+	 *
+	 * Number of identifier resources requested for the
+	 * session.
+	 */
+	struct tf_identifier_resource_info ident[TF_DIR_MAX];
+	/**
+	 * [in] Requested Index Table resource counts
+	 *
+	 * The number of index table resources requested for the
+	 * session.
+	 */
+	struct tf_tbl_resource_info tbl[TF_DIR_MAX];
+	/**
+	 * [in] Requested TCAM Table resource counts
+	 *
+	 * The number of TCAM table resources requested for the
+	 * session.
+	 */
+
+	struct tf_tcam_resource_info tcam[TF_DIR_MAX];
+	/**
+	 * [in] Requested EM resource counts
+	 *
+	 * The number of internal EM table resources requested for the
+	 * session.
+	 */
+	struct tf_em_resource_info em[TF_DIR_MAX];
+};
+
+/**
+ * tf_get_session_resources parameter definition.
+ */
+struct tf_get_session_info_parms {
+	/**
+	 * [out] the structure is used to return the information of
+	 * allocated resources.
+	 *
+	 */
+	struct tf_session_resource_info session_info;
+};
+
+/** (experimental)
+ * Gets info about a TruFlow Session
+ *
+ * Get info about the session which has been created.  Whether it exists and
+ * what resource start and stride offsets are in use.  This API is primarily
+ * intended to be used by an application which has created a shared session
+ * This application needs to obtain the resources which have already been
+ * allocated for the shared session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] parms
+ *   Pointer to get parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_get_session_info(struct tf *tfp,
+			struct tf_get_session_info_parms *parms);
 
 /**
  * Experimental

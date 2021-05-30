@@ -530,4 +530,21 @@ tf_em_ext_system_bind(struct tf *tfp,
 		      struct tf_em_cfg_parms *parms);
 
 int offload_system_mmap(struct tf_tbl_scope_cb *tbl_scope_cb);
+
+/**
+ * Retrieves the allocated resource info
+ *
+ * [in] tfp
+ *   Pointer to TF handle, used for HCAPI communication
+ *
+ * [in] parms
+ *   Pointer to parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int
+tf_em_get_resc_info(struct tf *tfp,
+		    struct tf_em_resource_info *em);
 #endif /* _TF_EM_H_ */

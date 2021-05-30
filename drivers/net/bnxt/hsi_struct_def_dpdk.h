@@ -699,6 +699,8 @@ struct cmd_nums {
 	/* Experimental */
 	#define HWRM_TF_SESSION_RESC_FLUSH                UINT32_C(0x2cf)
 	/* Experimental */
+	#define HWRM_TF_SESSION_RESC_INFO                 UINT32_C(0x2d0)
+	/* Experimental */
 	#define HWRM_TF_TBL_TYPE_GET                      UINT32_C(0x2da)
 	/* Experimental */
 	#define HWRM_TF_TBL_TYPE_SET                      UINT32_C(0x2db)
@@ -726,6 +728,8 @@ struct cmd_nums {
 	#define HWRM_TF_EM_DELETE                         UINT32_C(0x2eb)
 	/* Experimental */
 	#define HWRM_TF_EM_HASH_INSERT                    UINT32_C(0x2ec)
+	/* Experimental */
+	#define HWRM_TF_EM_MOVE                           UINT32_C(0x2ed)
 	/* Experimental */
 	#define HWRM_TF_TCAM_SET                          UINT32_C(0x2f8)
 	/* Experimental */
@@ -986,8 +990,8 @@ struct hwrm_err_output {
 #define HWRM_VERSION_MINOR 10
 #define HWRM_VERSION_UPDATE 2
 /* non-zero means beta version */
-#define HWRM_VERSION_RSVD 15
-#define HWRM_VERSION_STR "1.10.2.15"
+#define HWRM_VERSION_RSVD 22
+#define HWRM_VERSION_STR "1.10.2.22"
 
 /****************
  * hwrm_ver_get *
@@ -30177,7 +30181,7 @@ struct hwrm_vnic_qcaps_output {
 		UINT32_C(0x20)
 	/*
 	 * When this bit is '1', the capability to
-	 * mirror the the RoCE traffic is supported.
+	 * mirror the RoCE traffic is supported.
 	 * If set to '0', then the capability to mirror the
 	 * RoCE traffic is not supported.
 	 */
@@ -30930,7 +30934,7 @@ struct hwrm_vnic_plcmodes_cfg_input {
 	uint16_t	hds_threshold;
 	/*
 	 * When virtio placement algorithm is enabled, this
-	 * value is used to determine the the maximum number of BDs
+	 * value is used to determine the maximum number of BDs
 	 * that can be used to place an Rx Packet.
 	 * If an incoming packet does not fit in the buffers described
 	 * by the max BDs, the packet will be dropped and an error
@@ -31094,7 +31098,7 @@ struct hwrm_vnic_plcmodes_qcfg_output {
 	uint16_t	hds_threshold;
 	/*
 	 * When virtio placement algorithm is enabled, this
-	 * value is used to determine the the maximum number of BDs
+	 * value is used to determine the maximum number of BDs
 	 * that can be used to place an Rx Packet.
 	 * If an incoming packet does not fit in the buffers described
 	 * by the max BDs, the packet will be dropped and an error
@@ -42143,8 +42147,24 @@ struct hwrm_tf_session_open_output {
 	 * the newly created session.
 	 */
 	uint32_t	fw_session_client_id;
-	/* unused. */
-	uint32_t	unused0;
+	uint32_t	flags;
+	/* Indicates if the shared session has been created. */
+	#define HWRM_TF_SESSION_OPEN_OUTPUT_FLAGS_SHARED_SESSION \
+		UINT32_C(0x1)
+	/*
+	 * If this bit set to 0, then it indicates the shared session
+	 * has been created by another session.
+	 */
+	#define HWRM_TF_SESSION_OPEN_OUTPUT_FLAGS_SHARED_SESSION_NOT_CREATOR \
+		UINT32_C(0x0)
+	/*
+	 * If this bit is set to 1, then it indicates the shared session
+	 * is created by this session.
+	 */
+	#define HWRM_TF_SESSION_OPEN_OUTPUT_FLAGS_SHARED_SESSION_CREATOR \
+		UINT32_C(0x1)
+	#define HWRM_TF_SESSION_OPEN_OUTPUT_FLAGS_SHARED_SESSION_LAST \
+		HWRM_TF_SESSION_OPEN_OUTPUT_FLAGS_SHARED_SESSION_CREATOR
 	/* unused. */
 	uint8_t	unused1[3];
 	/*
@@ -42937,6 +42957,105 @@ struct hwrm_tf_session_resc_flush_output {
 	uint16_t	resp_len;
 	/* unused. */
 	uint8_t	unused0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM. This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal
+	 * processor, the order of writes has to be such that this field is
+	 * written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/*****************************
+ * hwrm_tf_session_resc_info *
+ *****************************/
+
+
+/* hwrm_tf_session_resc_info_input (size:320b/40B) */
+struct hwrm_tf_session_resc_info_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Firmware session id returned when HWRM_TF_SESSION_OPEN is sent. */
+	uint32_t	fw_session_id;
+	/* Control flags. */
+	uint16_t	flags;
+	/* Indicates the flow direction. */
+	#define HWRM_TF_SESSION_RESC_INFO_INPUT_FLAGS_DIR     UINT32_C(0x1)
+	/* If this bit set to 0, then it indicates rx flow. */
+	#define HWRM_TF_SESSION_RESC_INFO_INPUT_FLAGS_DIR_RX    UINT32_C(0x0)
+	/* If this bit is set to 1, then it indicates tx flow. */
+	#define HWRM_TF_SESSION_RESC_INFO_INPUT_FLAGS_DIR_TX    UINT32_C(0x1)
+	#define HWRM_TF_SESSION_RESC_INFO_INPUT_FLAGS_DIR_LAST \
+		HWRM_TF_SESSION_RESC_INFO_INPUT_FLAGS_DIR_TX
+	/*
+	 * Defines the array size of the provided req_addr and
+	 * resv_addr array buffers. Should be set to the number of
+	 * request entries.
+	 */
+	uint16_t	req_size;
+	/*
+	 * This is the DMA address for the request input data array
+	 * buffer. Array is of tf_rm_resc_req_entry type. Size of the
+	 * array buffer is provided by the 'req_size' field in this
+	 * message.
+	 */
+	uint64_t	req_addr;
+	/*
+	 * This is the DMA address for the resc output data array
+	 * buffer. Array is of tf_rm_resc_entry type. Size of the array
+	 * buffer is provided by the 'req_size' field in this
+	 * message.
+	 */
+	uint64_t	resc_addr;
+} __rte_packed;
+
+/* hwrm_tf_session_resc_info_output (size:128b/16B) */
+struct hwrm_tf_session_resc_info_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/*
+	 * Size of the returned tf_rm_resc_entry data array. The value
+	 * cannot exceed the req_size defined by the input msg. The data
+	 * array is returned using the resv_addr specified DMA
+	 * address also provided by the input msg.
+	 */
+	uint16_t	size;
+	/* unused. */
+	uint8_t	unused0[5];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM. This field should be read as '1'
@@ -44429,6 +44548,79 @@ struct hwrm_tf_em_delete_output {
 	/* The length of the response data in number of bytes. */
 	uint16_t	resp_len;
 	/* Original stack allocation index. */
+	uint16_t	em_index;
+	/* unused. */
+	uint16_t	unused0[3];
+} __rte_packed;
+
+/*******************
+ * hwrm_tf_em_move *
+ *******************/
+
+
+/* hwrm_tf_em_move_input (size:320b/40B) */
+struct hwrm_tf_em_move_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Session Id. */
+	uint32_t	fw_session_id;
+	/* Control flags. */
+	uint16_t	flags;
+	/* Indicates the flow direction. */
+	#define HWRM_TF_EM_MOVE_INPUT_FLAGS_DIR     UINT32_C(0x1)
+	/* If this bit set to 0, then it indicates rx flow. */
+	#define HWRM_TF_EM_MOVE_INPUT_FLAGS_DIR_RX    UINT32_C(0x0)
+	/* If this bit is set to 1, then it indicates tx flow. */
+	#define HWRM_TF_EM_MOVE_INPUT_FLAGS_DIR_TX    UINT32_C(0x1)
+	#define HWRM_TF_EM_MOVE_INPUT_FLAGS_DIR_LAST \
+		HWRM_TF_EM_MOVE_INPUT_FLAGS_DIR_TX
+	/* Number of EM entry blocks */
+	uint16_t	num_blocks;
+	/* New index for entry */
+	uint32_t	new_index;
+	/* Unused */
+	uint32_t	unused0;
+	/* EM internal flow handle. */
+	uint64_t	flow_handle;
+} __rte_packed;
+
+/* hwrm_tf_em_move_output (size:128b/16B) */
+struct hwrm_tf_em_move_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Index of old entry. */
 	uint16_t	em_index;
 	/* unused. */
 	uint16_t	unused0[3];
@@ -46989,8 +47181,8 @@ struct hwrm_nvm_write_input {
 	 */
 	uint64_t	host_src_addr;
 	/*
-	 * The Directory Entry Type (valid values are defined in the bnxnvm
-	 * directory_type enum defined in the file bnxnvm_defs.h).
+	 * The Directory Entry Type (valid values are defined in the
+	 * bnxnvm_directory_type enum defined in the file bnxnvm_defs.h).
 	 */
 	uint16_t	dir_type;
 	/*
@@ -47003,10 +47195,10 @@ struct hwrm_nvm_write_input {
 	/* Directory Entry Attribute flags (see BNX_DIR_ATTR_* in the file bnxnvm_defs.h). */
 	uint16_t	dir_attr;
 	/*
-	 * Length of data to write, in bytes. May be less than or equal to the allocated
-	 * size for the directory entry.
-	 * The data length stored in the directory entry will be updated to reflect
-	 * this value once the write is complete.
+	 * Length of data to write, in bytes.May be
+	 * less than or equal to the allocated size for the directory entry.
+	 * The data length stored in the directory entry will be updated to
+	 * reflect this value once the write is complete.
 	 */
 	uint32_t	dir_data_length;
 	/* Option. */
@@ -47019,15 +47211,15 @@ struct hwrm_nvm_write_input {
 	#define HWRM_NVM_WRITE_INPUT_FLAGS_KEEP_ORIG_ACTIVE_IMG \
 		UINT32_C(0x1)
 	/*
-	 * The requested length of the allocated NVM for the item, in bytes. This
-	 * value may be greater than or equal to the specified data length (dir_data_length).
+	 * The requested length of the allocated NVM for the item, in bytes.
+	 * This value may be greater than or equal to the specified data length (dir_data_length).
 	 * If this value is less than the specified data length, it will be ignored.
-	 * The response will contain the actual allocated item length, which may be
-	 * greater than the requested item length.
+	 * The response will contain the actual allocated item length, which may
+	 * be greater than the requested item length.
 	 * The purpose for allocating more than the required number of bytes for
 	 * an item's data is to pre-allocate extra storage (padding) to accommodate
-	 * the potential future growth of an item (e.g. upgraded firmware with a
-	 * size increase, log growth, expanded configuration data).
+	 * the potential future growth of an item (e.g. upgraded firmware with
+	 * a size increase, log growth, expanded configuration data).
 	 */
 	uint32_t	dir_item_length;
 	uint32_t	unused_0;
@@ -47045,10 +47237,9 @@ struct hwrm_nvm_write_output {
 	uint16_t	resp_len;
 	/*
 	 * Length of the allocated NVM for the item, in bytes. The value may be
-	 * greater than or equal to the specified data length or the requested
-	 * item length.
-	 * The actual item length used when creating a new directory entry will be
-	 * a multiple of an NVM block size.
+	 * greater than or equal to the specified data length or the requested item length.
+	 * The actual item length used when creating a new directory entry will
+	 * be a multiple of an NVM block size.
 	 */
 	uint32_t	dir_item_length;
 	/* The directory index of the created or modified item. */
@@ -47538,14 +47729,11 @@ struct hwrm_nvm_mod_dir_entry_input {
 	 */
 	uint16_t	dir_ordinal;
 	/*
-	 * The Directory Entry Extension flags (see BNX_DIR_EXT_* for extension
-	 * flag definitions).
+	 * The Directory Entry Extension flags (see BNX_DIR_EXT_* for
+	 * extension flag definitions).
 	 */
 	uint16_t	dir_ext;
-	/*
-	 * Directory Entry Attribute flags (see BNX_DIR_ATTR_* for attribute flag
-	 * definitions).
-	 */
+	/* Directory Entry Attribute flags (see BNX_DIR_ATTR_* for attribute flag definitions). */
 	uint16_t	dir_attr;
 	/*
 	 * If valid, then this field updates the checksum
@@ -48406,8 +48594,8 @@ struct hwrm_fw_reset_input {
 	#define HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_HOST \
 		UINT32_C(0x4)
 	/*
-	 * AP processor complex (in multi-host environment). Use host_idx to
-	 * control which core is reset
+	 * AP processor complex (in multi-host environment).
+	 * Use host_idx to control which core is reset
 	 */
 	#define HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_AP \
 		UINT32_C(0x5)
