@@ -188,6 +188,11 @@ tf_session_create(struct tf *tfp,
 	if (!strncmp(name, "tf_shared", strlen("tf_shared")))
 		session->shared_session = true;
 
+	name = &parms->open_cfg->ctrl_chan_name[name_len -
+		strlen("tf_shared-wc_tcam")];
+	if (!strncmp(name, "tf_shared-wc_tcam", strlen("tf_shared-wc_tcam")))
+		session->shared_session = true;
+
 	if (session->shared_session && shared_session_creator) {
 		session->shared_session_creator = true;
 		parms->open_cfg->shared_session_creator = true;

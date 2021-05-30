@@ -59,6 +59,16 @@ static_assert(sizeof(struct hwrm_tf_tbl_type_set_input) ==
 #define TF_PCI_BUF_SIZE_MAX 88
 
 /**
+ * This is the length of shared session name "tf_share"
+ */
+#define TF_SHARED_SESSION_NAME_LEN 8
+
+/**
+ * This is the length of tcam shared session name "tf_shared-wc_tcam"
+ */
+#define TF_TCAM_SHARED_SESSION_NAME_LEN 17
+
+/**
  * If data bigger than TF_PCI_BUF_SIZE_MAX then use DMA method
  */
 struct tf_msg_dma_buf {
@@ -126,13 +136,17 @@ tf_msg_session_open(struct bnxt *bp,
 	struct hwrm_tf_session_open_output resp = { 0 };
 	struct tfp_send_msg_parms parms = { 0 };
 	int name_len;
-	char *name;
+	char *session_name;
+	char *tcam_session_name;
 
 	/* Populate the request */
 	name_len = strnlen(ctrl_chan_name, TF_SESSION_NAME_MAX);
-	name = &ctrl_chan_name[name_len - strlen("tf_shared")];
-	if (!strncmp(name, "tf_shared", strlen("tf_shared")))
-		tfp_memcpy(&req.session_name, name, strlen("tf_share"));
+	session_name = &ctrl_chan_name[name_len - strlen("tf_shared")];
+	tcam_session_name = &ctrl_chan_name[name_len - strlen("tf_shared-wc_tcam")];
+	if (!strncmp(tcam_session_name, "tf_shared-wc_tcam", strlen("tf_shared-wc_tcam")))
+		tfp_memcpy(&req.session_name, tcam_session_name, TF_TCAM_SHARED_SESSION_NAME_LEN);
+	else if (!strncmp(session_name, "tf_shared", strlen("tf_shared")))
+		tfp_memcpy(&req.session_name, session_name, TF_SHARED_SESSION_NAME_LEN);
 	else
 		tfp_memcpy(&req.session_name, ctrl_chan_name, TF_SESSION_NAME_MAX);
 
@@ -177,6 +191,9 @@ tf_msg_session_client_register(struct tf *tfp,
 	struct tfp_send_msg_parms parms = { 0 };
 	uint8_t fw_session_id;
 	struct tf_dev_info *dev;
+	int name_len;
+	char *session_name;
+	char *tcam_session_name;
 
 	/* Retrieve the device information */
 	rc = tf_session_get_device(tfs, &dev);
@@ -197,9 +214,24 @@ tf_msg_session_client_register(struct tf *tfp,
 
 	/* Populate the request */
 	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
-	tfp_memcpy(&req.session_client_name,
-		   ctrl_channel_name,
-		   TF_SESSION_NAME_MAX);
+	name_len = strnlen(ctrl_channel_name, TF_SESSION_NAME_MAX);
+	session_name = &ctrl_channel_name[name_len - strlen("tf_shared")];
+	tcam_session_name = &ctrl_channel_name[name_len -
+		strlen("tf_shared-wc_tcam")];
+	if (!strncmp(tcam_session_name,
+				"tf_shared-wc_tcam",
+				strlen("tf_shared-wc_tcam")))
+		tfp_memcpy(&req.session_client_name,
+				tcam_session_name,
+				TF_TCAM_SHARED_SESSION_NAME_LEN);
+	else if (!strncmp(session_name, "tf_shared", strlen("tf_shared")))
+		tfp_memcpy(&req.session_client_name,
+				session_name,
+				TF_SHARED_SESSION_NAME_LEN);
+	else
+		tfp_memcpy(&req.session_client_name,
+				ctrl_channel_name,
+				TF_SESSION_NAME_MAX);
 
 	parms.tf_type = HWRM_TF_SESSION_REGISTER;
 	parms.req_data = (uint32_t *)&req;
