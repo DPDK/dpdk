@@ -151,6 +151,48 @@ static int tf_dev_p58_word_align(uint16_t size)
 	return ((((size) + 63) >> 6) * 8);
 }
 
+/**
+ * Device specific function that retrieves the increment
+ * required for certain table types in a shared session
+ *
+ * [in] tfp
+ * tf handle
+ *
+ * [in/out] parms
+ *   pointer to parms structure
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+static int tf_dev_p58_get_shared_tbl_increment(struct tf *tfp __rte_unused,
+				struct tf_get_shared_tbl_increment_parms *parms)
+{
+	switch (parms->type) {
+	case TF_TBL_TYPE_FULL_ACT_RECORD:
+	case TF_TBL_TYPE_COMPACT_ACT_RECORD:
+	case TF_TBL_TYPE_ACT_ENCAP_8B:
+	case TF_TBL_TYPE_ACT_ENCAP_16B:
+	case TF_TBL_TYPE_ACT_ENCAP_32B:
+	case TF_TBL_TYPE_ACT_ENCAP_64B:
+	case TF_TBL_TYPE_ACT_SP_SMAC:
+	case TF_TBL_TYPE_ACT_SP_SMAC_IPV4:
+	case TF_TBL_TYPE_ACT_SP_SMAC_IPV6:
+	case TF_TBL_TYPE_ACT_STATS_64:
+	case TF_TBL_TYPE_ACT_MODIFY_IPV4:
+	case TF_TBL_TYPE_ACT_MODIFY_8B:
+	case TF_TBL_TYPE_ACT_MODIFY_16B:
+	case TF_TBL_TYPE_ACT_MODIFY_32B:
+	case TF_TBL_TYPE_ACT_MODIFY_64B:
+		parms->increment_cnt = 8;
+		break;
+	default:
+		parms->increment_cnt = 1;
+		break;
+	}
+	return 0;
+}
+
 #define TF_DEV_P58_BANK_SZ_64B 2048
 /**
  * Get SRAM table information.
@@ -243,6 +285,7 @@ const struct tf_dev_ops tf_dev_ops_p58_init = {
 	.tf_dev_set_ext_tbl = NULL,
 	.tf_dev_get_tbl = NULL,
 	.tf_dev_get_bulk_tbl = NULL,
+	.tf_dev_get_shared_tbl_increment = tf_dev_p58_get_shared_tbl_increment,
 	.tf_dev_get_tbl_resc_info = NULL,
 	.tf_dev_alloc_tcam = NULL,
 	.tf_dev_free_tcam = NULL,
@@ -288,6 +331,7 @@ const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_set_ext_tbl = tf_tbl_ext_common_set,
 	.tf_dev_get_tbl = tf_tbl_get,
 	.tf_dev_get_bulk_tbl = tf_tbl_bulk_get,
+	.tf_dev_get_shared_tbl_increment = tf_dev_p58_get_shared_tbl_increment,
 	.tf_dev_get_tbl_resc_info = tf_tbl_get_resc_info,
 #ifdef TF_TCAM_SHARED
 	.tf_dev_alloc_tcam = tf_tcam_shared_alloc,

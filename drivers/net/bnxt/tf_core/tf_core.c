@@ -1415,6 +1415,58 @@ tf_bulk_get_tbl_entry(struct tf *tfp,
 	return rc;
 }
 
+int tf_get_shared_tbl_increment(struct tf *tfp,
+				struct tf_get_shared_tbl_increment_parms *parms)
+{
+	int rc = 0;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Internal table type processing */
+
+	if (dev->ops->tf_dev_get_shared_tbl_increment == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return -EOPNOTSUPP;
+	}
+
+	rc = dev->ops->tf_dev_get_shared_tbl_increment(tfp, parms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Get table increment not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return rc;
+}
+
 int
 tf_alloc_tbl_scope(struct tf *tfp,
 		   struct tf_alloc_tbl_scope_parms *parms)

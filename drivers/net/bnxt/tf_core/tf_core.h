@@ -848,7 +848,6 @@ struct tf_get_session_info_parms {
  */
 int tf_get_session_info(struct tf *tfp,
 			struct tf_get_session_info_parms *parms);
-
 /**
  * Experimental
  *
@@ -1594,6 +1593,8 @@ int tf_move_tcam_shared_entries(struct tf *tfp,
  * @ref tf_get_tbl_entry
  *
  * @ref tf_bulk_get_tbl_entry
+ *
+ * @ref tf_get_shared_tbl_increment
  */
 
 /**
@@ -1843,6 +1844,37 @@ struct tf_set_tbl_entry_parms {
  */
 int tf_set_tbl_entry(struct tf *tfp,
 		     struct tf_set_tbl_entry_parms *parms);
+
+/**
+ * tf_get_shared_tbl_increment parameter definition
+ */
+struct tf_get_shared_tbl_increment_parms {
+	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Type of object to set
+	 */
+	enum tf_tbl_type type;
+	/**
+	 * [out] Value to increment by for resource type
+	 */
+	uint32_t increment_cnt;
+};
+
+/**
+ * tf_get_shared_tbl_increment
+ *
+ * This API is currently only required for use in the shared
+ * session for Thor (p58) actions.  An increment count is returned per
+ * type to indicate how much to increment the start by for each
+ * entry (see tf_resource_info)
+ *
+ * Returns success or failure code.
+ */
+int tf_get_shared_tbl_increment(struct tf *tfp,
+				struct tf_get_shared_tbl_increment_parms *parms);
 
 /**
  * tf_get_tbl_entry parameter definition

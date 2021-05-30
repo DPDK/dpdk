@@ -190,6 +190,26 @@ tf_dev_p4_map_parif(struct tf *tfp __rte_unused,
 	return 0;
 }
 
+/**
+ * Device specific function that retrieves the increment
+ * required for certain table types in a shared session
+ *
+ * [in] tfp
+ *  tf handle
+ *
+ * [in/out] parms
+ *   pointer to parms structure
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+static int tf_dev_p4_get_shared_tbl_increment(struct tf *tfp __rte_unused,
+				struct tf_get_shared_tbl_increment_parms *parms)
+{
+	parms->increment_cnt = 1;
+	return 0;
+}
 static int tf_dev_p4_get_mailbox(void)
 {
 	return TF_KONG_MB;
@@ -221,12 +241,16 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_set_ext_tbl = NULL,
 	.tf_dev_get_tbl = NULL,
 	.tf_dev_get_bulk_tbl = NULL,
+	.tf_dev_get_shared_tbl_increment = tf_dev_p4_get_shared_tbl_increment,
 	.tf_dev_get_tbl_resc_info = NULL,
 	.tf_dev_alloc_tcam = NULL,
 	.tf_dev_free_tcam = NULL,
 	.tf_dev_alloc_search_tcam = NULL,
 	.tf_dev_set_tcam = NULL,
 	.tf_dev_get_tcam = NULL,
+#ifdef TF_TCAM_SHARED
+	.tf_dev_move_tcam = NULL,
+#endif /* TF_TCAM_SHARED */
 	.tf_dev_get_tcam_resc_info = NULL,
 	.tf_dev_insert_int_em_entry = NULL,
 	.tf_dev_delete_int_em_entry = NULL,
@@ -266,6 +290,7 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_set_ext_tbl = tf_tbl_ext_common_set,
 	.tf_dev_get_tbl = tf_tbl_get,
 	.tf_dev_get_bulk_tbl = tf_tbl_bulk_get,
+	.tf_dev_get_shared_tbl_increment = tf_dev_p4_get_shared_tbl_increment,
 	.tf_dev_get_tbl_resc_info = tf_tbl_get_resc_info,
 #ifdef TF_TCAM_SHARED
 	.tf_dev_alloc_tcam = tf_tcam_shared_alloc,

@@ -857,6 +857,10 @@ union tf_tmp_key {
 	uint8_t bytes[(TF_TMP_MAX_KEY_BITLEN + 7) / 8];
 };
 
+/** p58 has an enable bit, p4 does not
+ */
+#define TF_TCAM_SHARED_ENTRY_ENABLE 0x8
+
 /** Move a WC TCAM entry from the high offset to the same low offset
  */
 static int
@@ -868,7 +872,8 @@ tf_tcam_shared_move_entry(struct tf *tfp,
 			  int dphy_idx,
 			  int key_sz_bytes,
 			  int remap_sz_bytes,
-			  uint16_t num_slices)
+			  uint16_t num_slices,
+			  bool set_enable_bit)
 {
 	int rc = 0;
 	struct tf_tcam_get_parms gparms;
@@ -909,6 +914,9 @@ tf_tcam_shared_move_entry(struct tf *tfp,
 			    strerror(-rc));
 		return rc;
 	}
+
+	if (set_enable_bit)
+		tcam_key_obj.bytes[0] |= TF_TCAM_SHARED_ENTRY_ENABLE;
 
 	/* Override HI/LO type with parent WC TCAM type */
 	sparms.hcapi_type = hcapi_type;
@@ -959,7 +967,8 @@ static
 int tf_tcam_shared_move(struct tf *tfp,
 			struct tf_move_tcam_shared_entries_parms *parms,
 			int key_sz_bytes,
-			int remap_sz_bytes)
+			int remap_sz_bytes,
+			bool set_enable_bit)
 {
 	int rc;
 	struct tf_session *tfs;
@@ -1083,7 +1092,8 @@ int tf_tcam_shared_move(struct tf *tfp,
 							       lo_start + log_idx,
 							       key_sz_bytes,
 							       remap_sz_bytes,
-							       num_slices);
+							       num_slices,
+							       set_enable_bit);
 				if (rc) {
 					TFP_DRV_LOG(ERR,
 						    "Cannot allocate %s index %d\n",
@@ -1124,7 +1134,8 @@ int tf_tcam_shared_move_p4(struct tf *tfp,
 	rc = tf_tcam_shared_move(tfp,
 				 parms,
 				 TF_TCAM_SHARED_KEY_SLICE_SZ_BYTES_P4,
-				 TF_TCAM_SHARED_REMAP_SZ_BYTES_P4);
+				 TF_TCAM_SHARED_REMAP_SZ_BYTES_P4,
+				 false); /* no enable bit */
 	return rc;
 }
 
@@ -1138,6 +1149,7 @@ int tf_tcam_shared_move_p58(struct tf *tfp,
 	rc = tf_tcam_shared_move(tfp,
 				 parms,
 				 TF_TCAM_SHARED_KEY_SLICE_SZ_BYTES_P58,
-				 TF_TCAM_SHARED_REMAP_SZ_BYTES_P58);
+				 TF_TCAM_SHARED_REMAP_SZ_BYTES_P58,
+				 true); /* set enable bit */
 	return rc;
 }

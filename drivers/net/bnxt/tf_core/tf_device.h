@@ -447,6 +447,23 @@ struct tf_dev_ops {
 				   struct tf_tbl_get_bulk_parms *parms);
 
 	/**
+	 * Gets the increment value to add to the shared session resource
+	 * start offset by for each count in the "stride"
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to get shared tbl increment parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_shared_tbl_increment)(struct tf *tfp,
+				struct tf_get_shared_tbl_increment_parms *parms);
+
+	/**
 	 * Retrieves the table resource info.
 	 *
 	 * This API retrieves the table resource info from the rm db.
