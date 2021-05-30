@@ -255,6 +255,7 @@ struct bnxt_ulp_mapper_tbl_info {
 struct bnxt_ulp_mapper_field_info {
 	uint8_t				description[64];
 	uint16_t			field_bit_size;
+	enum bnxt_ulp_field_opc		field_opc;
 	enum bnxt_ulp_field_cond_src	field_cond_src;
 	uint8_t				field_cond_opr[16];
 	enum bnxt_ulp_field_src		field_src1;

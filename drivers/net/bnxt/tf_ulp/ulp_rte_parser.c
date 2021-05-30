@@ -1176,7 +1176,7 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
 	uint32_t idx = params->field_idx;
 	uint32_t size;
-	uint16_t dst_port = 0;
+	uint16_t dport = 0, sport = 0;
 	uint32_t cnt;
 
 	cnt = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L4_HDR_CNT);
@@ -1194,12 +1194,12 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 		field = ulp_rte_parser_fld_copy(&params->hdr_field[idx],
 						&udp_spec->hdr.src_port,
 						size);
-
+		sport = udp_spec->hdr.src_port;
 		size = sizeof(udp_spec->hdr.dst_port);
 		field = ulp_rte_parser_fld_copy(field,
 						&udp_spec->hdr.dst_port,
 						size);
-		dst_port = udp_spec->hdr.dst_port;
+		dport = udp_spec->hdr.dst_port;
 		size = sizeof(udp_spec->hdr.dgram_len);
 		field = ulp_rte_parser_fld_copy(field,
 						&udp_spec->hdr.dgram_len,
@@ -1232,11 +1232,17 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP)) {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_UDP);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4, 1);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_SPORT, sport);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_DPORT, dport);
+
 	} else {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_UDP);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4, 1);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_SPORT, sport);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DPORT, dport);
+
 		/* Update the field protocol hdr bitmap */
-		ulp_rte_l4_proto_type_update(params, dst_port);
+		ulp_rte_l4_proto_type_update(params, dport);
 	}
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L4_HDR_CNT, ++cnt);
 	return BNXT_TF_RC_SUCCESS;
@@ -1252,6 +1258,7 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 	struct ulp_rte_hdr_field *field;
 	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
 	uint32_t idx = params->field_idx;
+	uint16_t dport = 0, sport = 0;
 	uint32_t size;
 	uint32_t cnt;
 
@@ -1266,10 +1273,12 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 	 * header fields
 	 */
 	if (tcp_spec) {
+		sport = tcp_spec->hdr.src_port;
 		size = sizeof(tcp_spec->hdr.src_port);
 		field = ulp_rte_parser_fld_copy(&params->hdr_field[idx],
 						&tcp_spec->hdr.src_port,
 						size);
+		dport = tcp_spec->hdr.dst_port;
 		size = sizeof(tcp_spec->hdr.dst_port);
 		field = ulp_rte_parser_fld_copy(field,
 						&tcp_spec->hdr.dst_port,
@@ -1343,9 +1352,13 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP)) {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_TCP);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4, 1);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_SPORT, sport);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_DPORT, dport);
 	} else {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4, 1);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_SPORT, sport);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DPORT, dport);
 	}
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L4_HDR_CNT, ++cnt);
 	return BNXT_TF_RC_SUCCESS;

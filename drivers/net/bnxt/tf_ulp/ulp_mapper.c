@@ -880,6 +880,39 @@ error:
 }
 
 static int32_t
+ulp_mapper_field_process_inc_dec(struct bnxt_ulp_mapper_field_info *fld,
+				 struct ulp_blob *blob,
+				 uint64_t *val64,
+				 uint16_t const_val16,
+				 uint32_t bitlen,
+				 uint32_t *update_flag)
+{
+	uint64_t l_val64 = *val64;
+
+	if (fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_PLUS_CONST ||
+	    fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_PLUS_CONST_POST) {
+		l_val64 += const_val16;
+		l_val64 = tfp_be_to_cpu_64(l_val64);
+		ulp_blob_push_64(blob, &l_val64, bitlen);
+	} else if (fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_MINUS_CONST ||
+		   fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_MINUS_CONST_POST) {
+		l_val64 -= const_val16;
+		l_val64 = tfp_be_to_cpu_64(l_val64);
+		ulp_blob_push_64(blob, &l_val64, bitlen);
+	} else {
+		BNXT_TF_DBG(ERR, "Invalid field opcode %u\n", fld->field_opc);
+		return -EINVAL;
+	}
+
+	if (fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_MINUS_CONST_POST ||
+	    fld->field_opc == BNXT_ULP_FIELD_OPC_SRC1_PLUS_CONST_POST) {
+		*val64 = l_val64;
+		*update_flag = 1;
+	}
+	return 0;
+}
+
+static int32_t
 ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 			 enum tf_dir dir,
 			 struct bnxt_ulp_mapper_field_info *fld,
@@ -897,10 +930,24 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 	uint32_t src1_sel = 0;
 	enum bnxt_ulp_field_src fld_src;
 	uint8_t *fld_src_oper;
+	enum bnxt_ulp_field_cond_src field_cond_src;
+	uint16_t const_val = 0;
+	uint32_t update_flag = 0;
+	uint64_t src1_val64;
+
+	/* process the field opcode */
+	if (fld->field_opc != BNXT_ULP_FIELD_OPC_COND_OP) {
+		field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE;
+		/* Read the constant from the second operand */
+		memcpy(&const_val, fld->field_opr2, sizeof(uint16_t));
+		const_val = tfp_be_to_cpu_16(const_val);
+	} else {
+		field_cond_src = fld->field_cond_src;
+	}
 
 	bitlen = fld->field_bit_size;
 	/* Evaluate the condition */
-	switch (fld->field_cond_src) {
+	switch (field_cond_src) {
 	case BNXT_ULP_FIELD_COND_SRC_TRUE:
 		src1_sel = 1;
 		break;
@@ -1010,12 +1057,35 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
-		if (idx < BNXT_ULP_CF_IDX_LAST)
+		if (idx >= BNXT_ULP_CF_IDX_LAST) {
+			BNXT_TF_DBG(ERR, "%s comp field [%d] read oob\n",
+				    name, idx);
+			return -EINVAL;
+		}
+		if (fld->field_opc == BNXT_ULP_FIELD_OPC_COND_OP) {
 			val = ulp_blob_push_32(blob, &parms->comp_fld[idx],
 					       bitlen);
-		if (!val) {
-			BNXT_TF_DBG(ERR, "%s push to blob failed\n", name);
-			return -EINVAL;
+			if (!val) {
+				BNXT_TF_DBG(ERR, "%s push to blob failed\n",
+					    name);
+				return -EINVAL;
+			}
+		} else {
+			src1_val64 = ULP_COMP_FLD_IDX_RD(parms, idx);
+			if (ulp_mapper_field_process_inc_dec(fld, blob,
+							     &src1_val64,
+							     const_val,
+							     bitlen,
+							     &update_flag)) {
+				BNXT_TF_DBG(ERR, "%s field cond opc failed\n",
+					    name);
+				return -EINVAL;
+			}
+			if (update_flag) {
+				BNXT_TF_DBG(ERR, "%s invalid field cond opc\n",
+					    name);
+				return -EINVAL;
+			}
 		}
 		break;
 	case BNXT_ULP_FIELD_SRC_RF:
@@ -1032,11 +1102,33 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 				    name, idx);
 			return -EINVAL;
 		}
-
-		val = ulp_blob_push_64(blob, &regval, bitlen);
-		if (!val) {
-			BNXT_TF_DBG(ERR, "%s push to blob failed\n", name);
-			return -EINVAL;
+		if (fld->field_opc == BNXT_ULP_FIELD_OPC_COND_OP) {
+			val = ulp_blob_push_64(blob, &regval, bitlen);
+			if (!val) {
+				BNXT_TF_DBG(ERR, "%s push to blob failed\n",
+					    name);
+				return -EINVAL;
+			}
+		} else {
+			if (ulp_mapper_field_process_inc_dec(fld, blob,
+							     &regval,
+							     const_val,
+							     bitlen,
+							     &update_flag)) {
+				BNXT_TF_DBG(ERR, "%s field cond opc failed\n",
+					    name);
+				return -EINVAL;
+			}
+			if (update_flag) {
+				regval = tfp_cpu_to_be_64(regval);
+				if (ulp_regfile_write(parms->regfile, idx,
+						      regval)) {
+					BNXT_TF_DBG(ERR,
+						    "Write regfile[%d] fail\n",
+						    idx);
+					return -EINVAL;
+				}
+			}
 		}
 		break;
 	case BNXT_ULP_FIELD_SRC_ACT_PROP:
@@ -1109,10 +1201,28 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 				    name, idx);
 			return -EINVAL;
 		}
-		val = ulp_blob_push_64(blob, &regval, bitlen);
-		if (!val) {
-			BNXT_TF_DBG(ERR, "%s push to blob failed\n", name);
-			return -EINVAL;
+		if (fld->field_opc == BNXT_ULP_FIELD_OPC_COND_OP) {
+			val = ulp_blob_push_64(blob, &regval, bitlen);
+			if (!val) {
+				BNXT_TF_DBG(ERR, "%s push to blob failed\n",
+					    name);
+				return -EINVAL;
+			}
+		} else {
+			if (ulp_mapper_field_process_inc_dec(fld, blob,
+							     &regval,
+							     const_val,
+							     bitlen,
+							     &update_flag)) {
+				BNXT_TF_DBG(ERR, "%s field cond opc failed\n",
+					    name);
+				return -EINVAL;
+			}
+			if (update_flag) {
+				BNXT_TF_DBG(ERR, "%s invalid field cond opc\n",
+					    name);
+				return -EINVAL;
+			}
 		}
 		break;
 	case BNXT_ULP_FIELD_SRC_HF:
