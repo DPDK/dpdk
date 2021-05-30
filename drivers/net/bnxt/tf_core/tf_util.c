@@ -59,6 +59,12 @@ tf_tcam_tbl_2_str(enum tf_tcam_tbl_type tcam_type)
 		return "sp_tcam";
 	case TF_TCAM_TBL_TYPE_CT_RULE_TCAM:
 		return "ct_rule_tcam";
+#ifdef TF_TCAM_SHARED
+	case TF_TCAM_TBL_TYPE_WC_TCAM_HIGH:
+		return "wc_tcam_hi";
+	case TF_TCAM_TBL_TYPE_WC_TCAM_LOW:
+		return "wc_tcam_lo";
+#endif
 	default:
 		return "Invalid tcam table type";
 	}

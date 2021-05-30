@@ -85,7 +85,7 @@ tf_tbl_bind(struct tf *tfp,
 			db_rc[d] = tf_rm_create_db(tfp, &db_cfg);
 		if (db_rc[d]) {
 			TFP_DRV_LOG(ERR,
-				    "%s: Table DB creation failed\n",
+				    "%s: No Table DB creation required\n",
 				    tf_dir_2_str(d));
 
 		}
@@ -656,7 +656,6 @@ tf_tbl_get_resc_info(struct tf *tfp,
 	}
 	tbl_db = (struct tbl_rm_db *)tbl_db_ptr;
 
-
 	/* check if reserved resource for WC is multiple of num_slices */
 	for (d = 0; d < TF_DIR_MAX; d++) {
 		ainfo.rm_db = tbl_db->tbl_db[d];
@@ -692,8 +691,6 @@ tf_tbl_get_resc_info(struct tf *tfp,
 			}
 		}
 	}
-
-
 
 	return 0;
 }

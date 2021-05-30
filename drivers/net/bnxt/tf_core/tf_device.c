@@ -9,6 +9,9 @@
 #include "tfp.h"
 #include "tf_em.h"
 #include "tf_rm.h"
+#ifdef TF_TCAM_SHARED
+#include "tf_tcam_shared.h"
+#endif /* TF_TCAM_SHARED */
 
 struct tf;
 
@@ -92,6 +95,12 @@ tf_dev_bind_p4(struct tf *tfp,
 	struct tf_em_cfg_parms em_cfg;
 	struct tf_if_tbl_cfg_parms if_tbl_cfg;
 	struct tf_global_cfg_cfg_parms global_cfg;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
 
 	/* Initial function initialization */
 	dev_handle->ops = &tf_dev_ops_p4_init;
@@ -142,7 +151,11 @@ tf_dev_bind_p4(struct tf *tfp,
 		tcam_cfg.cfg = tf_tcam_p4;
 		tcam_cfg.shadow_copy = shadow_copy;
 		tcam_cfg.resources = resources;
+#ifdef TF_TCAM_SHARED
+		rc = tf_tcam_shared_bind(tfp, &tcam_cfg);
+#else /* !TF_TCAM_SHARED */
 		rc = tf_tcam_bind(tfp, &tcam_cfg);
+#endif
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "TCAM initialization failure\n");
@@ -203,31 +216,32 @@ tf_dev_bind_p4(struct tf *tfp,
 		return -ENOMEM;
 	}
 
-	/*
-	 * IF_TBL
-	 */
-	if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
-	if_tbl_cfg.cfg = tf_if_tbl_p4;
-	if_tbl_cfg.shadow_copy = shadow_copy;
-	rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "IF Table initialization failure\n");
-		goto fail;
-	}
+	if (!tf_session_is_shared_session(tfs)) {
+		/*
+		 * IF_TBL
+		 */
+		if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
+		if_tbl_cfg.cfg = tf_if_tbl_p4;
+		if_tbl_cfg.shadow_copy = shadow_copy;
+		rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "IF Table initialization failure\n");
+			goto fail;
+		}
 
-	/*
-	 * GLOBAL_CFG
-	 */
-	global_cfg.num_elements = TF_GLOBAL_CFG_TYPE_MAX;
-	global_cfg.cfg = tf_global_cfg_p4;
-	rc = tf_global_cfg_bind(tfp, &global_cfg);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Global Cfg initialization failure\n");
-		goto fail;
+		/*
+		 * GLOBAL_CFG
+		 */
+		global_cfg.num_elements = TF_GLOBAL_CFG_TYPE_MAX;
+		global_cfg.cfg = tf_global_cfg_p4;
+		rc = tf_global_cfg_bind(tfp, &global_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "Global Cfg initialization failure\n");
+			goto fail;
+		}
 	}
-
 	/* Final function initialization */
 	dev_handle->ops = &tf_dev_ops_p4;
 
@@ -265,7 +279,11 @@ tf_dev_unbind_p4(struct tf *tfp)
 	 * In case of residuals TCAMs are cleaned up first as to
 	 * invalidate the pipeline in a clean manner.
 	 */
+#ifdef TF_TCAM_SHARED
+	rc = tf_tcam_shared_unbind(tfp);
+#else /* !TF_TCAM_SHARED */
 	rc = tf_tcam_unbind(tfp);
+#endif /* TF_TCAM_SHARED */
 	if (rc) {
 		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, TCAM\n");
@@ -407,7 +425,11 @@ tf_dev_bind_p58(struct tf *tfp,
 		tcam_cfg.cfg = tf_tcam_p58;
 		tcam_cfg.shadow_copy = shadow_copy;
 		tcam_cfg.resources = resources;
+#ifdef TF_TCAM_SHARED
+		rc = tf_tcam_shared_bind(tfp, &tcam_cfg);
+#else /* !TF_TCAM_SHARED */
 		rc = tf_tcam_bind(tfp, &tcam_cfg);
+#endif
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "TCAM initialization failure\n");
@@ -517,7 +539,11 @@ tf_dev_unbind_p58(struct tf *tfp)
 	 * In case of residuals TCAMs are cleaned up first as to
 	 * invalidate the pipeline in a clean manner.
 	 */
+#ifdef TF_TCAM_SHARED
+	rc = tf_tcam_shared_unbind(tfp);
+#else /* !TF_TCAM_SHARED */
 	rc = tf_tcam_unbind(tfp);
+#endif /* TF_TCAM_SHARED */
 	if (rc) {
 		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, TCAM\n");

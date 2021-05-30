@@ -76,7 +76,7 @@ tf_ident_bind(struct tf *tfp,
 			db_rc[i] = tf_rm_create_db(tfp, &db_cfg);
 		if (db_rc[i]) {
 			TFP_DRV_LOG(INFO,
-				    "%s: Identifier DB creation failed\n",
+				    "%s: No Identifier DB required\n",
 				    tf_dir_2_str(i));
 		}
 

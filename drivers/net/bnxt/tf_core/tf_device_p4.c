@@ -10,6 +10,9 @@
 #include "tf_identifier.h"
 #include "tf_tbl.h"
 #include "tf_tcam.h"
+#ifdef TF_TCAM_SHARED
+#include "tf_tcam_shared.h"
+#endif /* TF_TCAM_SHARED */
 #include "tf_em.h"
 #include "tf_if_tbl.h"
 #include "tfp.h"
@@ -137,7 +140,8 @@ tf_dev_p4_get_tcam_slice_info(struct tf *tfp __rte_unused,
 			      uint16_t key_sz,
 			      uint16_t *num_slices_per_row)
 {
-#define CFA_P4_WC_TCAM_SLICES_PER_ROW 2
+/* Single slice support */
+#define CFA_P4_WC_TCAM_SLICES_PER_ROW 1
 #define CFA_P4_WC_TCAM_SLICE_SIZE     12
 
 	if (type == TF_TCAM_TBL_TYPE_WC_TCAM) {
@@ -263,11 +267,18 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_tbl = tf_tbl_get,
 	.tf_dev_get_bulk_tbl = tf_tbl_bulk_get,
 	.tf_dev_get_tbl_resc_info = tf_tbl_get_resc_info,
+#ifdef TF_TCAM_SHARED
+	.tf_dev_alloc_tcam = tf_tcam_shared_alloc,
+	.tf_dev_free_tcam = tf_tcam_shared_free,
+	.tf_dev_set_tcam = tf_tcam_shared_set,
+	.tf_dev_get_tcam = tf_tcam_shared_get,
+#else /* !TF_TCAM_SHARED */
 	.tf_dev_alloc_tcam = tf_tcam_alloc,
 	.tf_dev_free_tcam = tf_tcam_free,
-	.tf_dev_alloc_search_tcam = tf_tcam_alloc_search,
 	.tf_dev_set_tcam = tf_tcam_set,
-	.tf_dev_get_tcam = NULL,
+	.tf_dev_get_tcam = tf_tcam_get,
+#endif
+	.tf_dev_alloc_search_tcam = tf_tcam_alloc_search,
 	.tf_dev_get_tcam_resc_info = tf_tcam_get_resc_info,
 	.tf_dev_insert_int_em_entry = tf_em_insert_int_entry,
 	.tf_dev_delete_int_em_entry = tf_em_delete_int_entry,

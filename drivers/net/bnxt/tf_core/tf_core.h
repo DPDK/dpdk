@@ -21,7 +21,6 @@
 
 /********** BEGIN Truflow Core DEFINITIONS **********/
 
-
 #define TF_KILOBYTE  1024
 #define TF_MEGABYTE  (1024 * 1024)
 
@@ -76,7 +75,6 @@ enum tf_ext_mem_chan_type {
  */
 #define TF_ACT_REC_OFFSET_2_PTR(offset) ((offset) >> 4)
 #define TF_ACT_REC_PTR_2_OFFSET(offset) ((offset) << 4)
-
 
 /*
  * Helper Macros
@@ -198,7 +196,6 @@ enum tf_module_type {
 	TF_MODULE_TYPE_MAX
 };
 
-
 /**
  * Identifier resource types
  */
@@ -317,6 +314,41 @@ enum tf_tbl_type {
 	TF_TBL_TYPE_MAX
 };
 
+/** Enable Shared TCAM Management
+ *
+ *  This feature allows for management of high and low pools within
+ *  the WC TCAM.  These pools are only valid when this feature is enabled.
+ *
+ *  For normal OVS-DPDK operation, this feature is not required and can
+ *  be disabled by commenting out TF_TCAM_SHARED in this header file.
+ *
+ *  Operation:
+ *
+ *  When a shared session is created with WC TCAM entries allocated during
+ *  tf_open_session(), the TF_TCAM_TBL_TYPE_WC_TCAM pool entries will be divided
+ *  into 2 equal pools - TF_TCAM_TBL_TYPE_WC_TCAM_HIGH and
+ *  TF_TCAM_TBL_TYPE_WC_TCAM_LOW.
+ *
+ *  The user will allocate and free entries from either of these pools to obtain
+ *  WC_TCAM entry offsets.  For the WC_TCAM_HI/LO management, alloc/free is done
+ *  using the tf_alloc_tcam_entry()/tf_free_tcam_entry() APIs for the shared
+ *  session.
+ *
+ *  The use case for this feature is so that applications can have a shared
+ *  session and use the TF core to allocate/set/free entries within a given
+ *  region of the WC_TCAM within the shared session.  Application A only writes
+ *  to the LOW region for example and Application B only writes to the HIGH
+ *  region during normal operation.  After Application A goes down, Application
+ *  B may decide to overwrite the LOW region with the HIGH region's entries
+ *  and switch to the low region.
+ *
+ *  For other TCAM types in the  shared session, no alloc/free operations are
+ *  permitted. Only set should be used for other TCAM table types after getting
+ *  the range as provided by the tf_get_resource_info() API.
+ *
+ */
+#define TF_TCAM_SHARED 1
+
 /**
  * TCAM table type
  */
@@ -335,6 +367,12 @@ enum tf_tcam_tbl_type {
 	TF_TCAM_TBL_TYPE_CT_RULE_TCAM,
 	/** Virtual Edge Bridge TCAM */
 	TF_TCAM_TBL_TYPE_VEB_TCAM,
+#ifdef TF_TCAM_SHARED
+	/** Wildcard TCAM HI Priority */
+	TF_TCAM_TBL_TYPE_WC_TCAM_HIGH,
+	/** Wildcard TCAM Low Priority */
+	TF_TCAM_TBL_TYPE_WC_TCAM_LOW,
+#endif /* TF_TCAM_SHARED */
 	TF_TCAM_TBL_TYPE_MAX
 };
 
@@ -1043,7 +1081,6 @@ int tf_search_identifier(struct tf *tfp,
  *
  * Current thought is that memory is allocated within core.
  */
-
 
 /**
  * tf_alloc_tbl_scope_parms definition

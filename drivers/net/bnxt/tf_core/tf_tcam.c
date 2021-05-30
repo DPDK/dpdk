@@ -115,7 +115,7 @@ tf_tcam_bind(struct tf *tfp,
 			db_rc[d] = tf_rm_create_db(tfp, &db_cfg);
 		if (db_rc[d]) {
 			TFP_DRV_LOG(INFO,
-				    "%s: TCAM DB creation failed\n",
+				    "%s: no TCAM DB required\n",
 				    tf_dir_2_str(d));
 		}
 	}
@@ -126,6 +126,9 @@ tf_tcam_bind(struct tf *tfp,
 
 	/* check if reserved resource for WC is multiple of num_slices */
 	for (d = 0; d < TF_DIR_MAX; d++) {
+		if (!tcam_db->tcam_db[d])
+			continue;
+
 		memset(&info, 0, sizeof(info));
 		ainfo.rm_db = tcam_db->tcam_db[d];
 		ainfo.subtype = TF_TCAM_TBL_TYPE_WC_TCAM;

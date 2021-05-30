@@ -10,6 +10,9 @@
 #include "tf_identifier.h"
 #include "tf_tbl.h"
 #include "tf_tcam.h"
+#ifdef TF_TCAM_SHARED
+#include "tf_tcam_shared.h"
+#endif
 #include "tf_if_tbl.h"
 #include "tf_global_cfg.h"
 
@@ -135,7 +138,6 @@ struct tf_dev_ops {
 	int (*tf_dev_get_resource_str)(struct tf *tfp,
 				       uint16_t resource_id,
 				       const char **resource_str);
-
 
 	/**
 	 * Retrieves the WC TCAM slice information that the device
