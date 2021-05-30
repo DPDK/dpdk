@@ -917,6 +917,59 @@ tf_free_tcam_entry(struct tf *tfp,
 	return 0;
 }
 
+#ifdef TF_TCAM_SHARED
+int
+tf_move_tcam_shared_entries(struct tf *tfp,
+			    struct tf_move_tcam_shared_entries_parms *parms)
+{
+	int rc;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_move_tcam == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = dev->ops->tf_dev_move_tcam(tfp, parms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: TCAM shared entries move failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return 0;
+}
+#endif /* TF_TCAM_SHARED */
+
 int
 tf_alloc_tbl_entry(struct tf *tfp,
 		   struct tf_alloc_tbl_entry_parms *parms)

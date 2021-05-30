@@ -563,6 +563,24 @@ struct tf_dev_ops {
 	int (*tf_dev_get_tcam)(struct tf *tfp,
 			       struct tf_tcam_get_parms *parms);
 
+#ifdef TF_TCAM_SHARED
+	/**
+	 * Move TCAM shared entries
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to parameters
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_move_tcam)(struct tf *tfp,
+				struct tf_move_tcam_shared_entries_parms *parms);
+#endif /* TF_TCAM_SHARED */
+
 	/**
 	 * Retrieves the tcam resource info.
 	 *

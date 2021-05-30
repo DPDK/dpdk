@@ -945,3 +945,44 @@ tf_session_set_db(struct tf *tfp,
 
 	return rc;
 }
+
+#ifdef TF_TCAM_SHARED
+
+int
+tf_session_get_tcam_shared_db(struct tf *tfp,
+			      void **tcam_shared_db_handle)
+{
+	struct tf_session *tfs = NULL;
+	int rc = 0;
+
+	*tcam_shared_db_handle = NULL;
+
+	if (tfp == NULL)
+		return (-EINVAL);
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	*tcam_shared_db_handle = tfs->tcam_shared_db_handle;
+	return rc;
+}
+
+int
+tf_session_set_tcam_shared_db(struct tf *tfp,
+			 void *tcam_shared_db_handle)
+{
+	struct tf_session *tfs = NULL;
+	int rc = 0;
+
+	if (tfp == NULL)
+		return (-EINVAL);
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	tfs->tcam_shared_db_handle = tcam_shared_db_handle;
+	return rc;
+}
+#endif /* TF_TCAM_SHARED */

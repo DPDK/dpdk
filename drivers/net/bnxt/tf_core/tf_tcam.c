@@ -299,7 +299,7 @@ tf_tcam_alloc(struct tf *tfp,
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
-			    "Failed to get em_ext_db from session, rc:%s\n",
+			    "Failed to get tcam_db from session, rc:%s\n",
 			    strerror(-rc));
 		return rc;
 	}

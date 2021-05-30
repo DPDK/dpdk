@@ -124,4 +124,39 @@ int tf_tcam_shared_set(struct tf *tfp,
 int tf_tcam_shared_get(struct tf *tfp,
 		       struct tf_tcam_get_parms *parms);
 
+
+/**
+ * Moves entries from the WC_TCAM_HI to the WC_TCAM_LO shared pools
+ * for the P4 device.
+ *
+ * [in] tfp
+ *   Pointer to the truflow handle
+ *
+ * [in] parms
+ *   Pointer to parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_tcam_shared_move_p4(struct tf *tfp,
+			   struct tf_move_tcam_shared_entries_parms *parms);
+
+/**
+ * Moves entries from the WC_TCAM_HI to the WC_TCAM_LO shared pools
+ * for the P58 device.
+ *
+ * [in] tfp
+ *   Pointer to the truflow handle
+ *
+ * [in] parms
+ *   Pointer to parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_tcam_shared_move_p58(struct tf *tfp,
+			    struct tf_move_tcam_shared_entries_parms *parms);
+
 #endif /* _TF_TCAM_SHARED_H */

@@ -159,6 +159,13 @@ struct tf_session {
 	 * EM allocator for session
 	 */
 	void *em_pool[TF_DIR_MAX];
+
+#ifdef TF_TCAM_SHARED
+	/**
+	 * tcam db reference for the session
+	 */
+	void *tcam_shared_db_handle;
+#endif /* TF_TCAM_SHARED */
 };
 
 /**
@@ -255,6 +262,22 @@ struct tf_session_close_session_parms {
  * @ref tf_session_get_fw_session_id
  *
  * @ref tf_session_get_session_id
+ *
+ * @ref tf_session_is_shared_session_creator
+ *
+ * @ref tf_session_get_db
+ *
+ * @ref tf_session_set_db
+ *
+ * @ref tf_session_get_bp
+ *
+ * @ref tf_session_is_shared_session
+ *
+ * #define TF_SHARED
+ * @ref tf_session_get_tcam_shared_db
+ *
+ * @ref tf_session_set_tcam_shared_db
+ * #endif
  */
 
 /**
@@ -566,4 +589,29 @@ tf_session_get_bp(struct tf *tfp)
 {
 	return tfp->bp;
 }
+
+/**
+ * Set the pointer to the tcam shared database
+ *
+ * [in] session, pointer to the session
+ *
+ * Returns:
+ *   - the pointer to the parent bnxt struct
+ */
+int
+tf_session_set_tcam_shared_db(struct tf *tfp,
+			      void *tcam_shared_db_handle);
+
+/**
+ * Get the pointer to the tcam shared database
+ *
+ * [in] session, pointer to the session
+ *
+ * Returns:
+ *   - the pointer to the parent bnxt struct
+ */
+int
+tf_session_get_tcam_shared_db(struct tf *tfp,
+			      void **tcam_shared_db_handle);
+
 #endif /* _TF_SESSION_H_ */

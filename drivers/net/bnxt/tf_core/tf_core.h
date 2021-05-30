@@ -1242,6 +1242,10 @@ int tf_free_tbl_scope(struct tf *tfp,
  * @ref tf_get_tcam_entry
  *
  * @ref tf_free_tcam_entry
+ *
+#ifdef TF_TCAM_SHARED
+ * @ref tf_move_tcam_shared_entries
+#endif
  */
 
 /**
@@ -1543,6 +1547,41 @@ struct tf_free_tcam_entry_parms {
 int tf_free_tcam_entry(struct tf *tfp,
 		       struct tf_free_tcam_entry_parms *parms);
 
+#ifdef TF_TCAM_SHARED
+/**
+ * tf_move_tcam_shared_entries parameter definition
+ */
+struct tf_move_tcam_shared_entries_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] TCAM table type
+	 */
+	enum tf_tcam_tbl_type tcam_tbl_type;
+};
+
+/**
+ * Move TCAM entries
+ *
+ * This API only affects the following TCAM pools within a shared session:
+ *
+ * TF_TCAM_TBL_TYPE_WC_TCAM_HIGH
+ * TF_TCAM_TBL_TYPE_WC_TCAM_LOW
+ *
+ * When called, all allocated entries from the high pool will be moved to
+ * the low pool.  Then the allocated entries in the high pool will be
+ * cleared and freed.
+ *
+ * This API is not supported on a non-shared session.
+ *
+ * Returns success or failure code.
+ */
+int tf_move_tcam_shared_entries(struct tf *tfp,
+				struct tf_move_tcam_shared_entries_parms *parms);
+
+#endif /* TF_TCAM_SHARED */
 /**
  * @page table Table Access
  *
