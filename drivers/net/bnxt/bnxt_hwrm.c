@@ -1349,6 +1349,12 @@ int bnxt_hwrm_ver_get(struct bnxt *bp, uint32_t timeout)
 		bp->fw_cap |= BNXT_FW_CAP_ADV_FLOW_COUNTERS;
 	}
 
+	if (dev_caps_cfg &
+	    HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_CFA_TRUFLOW_SUPPORTED) {
+		PMD_DRV_LOG(DEBUG, "Host-based truflow feature enabled.\n");
+		bp->fw_cap |= BNXT_FW_CAP_TRUFLOW_EN;
+	}
+
 error:
 	HWRM_UNLOCK();
 	return rc;
@@ -4659,7 +4665,6 @@ int bnxt_hwrm_erase_nvram_directory(struct bnxt *bp, uint8_t index)
 
 	return rc;
 }
-
 
 int bnxt_hwrm_flash_nvram(struct bnxt *bp, uint16_t dir_type,
 			  uint16_t dir_ordinal, uint16_t dir_ext,

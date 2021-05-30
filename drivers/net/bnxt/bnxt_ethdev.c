@@ -87,7 +87,6 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
-#define BNXT_DEVARG_TRUFLOW	"host-based-truflow"
 #define BNXT_DEVARG_FLOW_XSTAT	"flow-xstat"
 #define BNXT_DEVARG_MAX_NUM_KFLOWS  "max-num-kflows"
 #define BNXT_DEVARG_REPRESENTOR	"representor"
@@ -100,7 +99,6 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 
 static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_REPRESENTOR,
-	BNXT_DEVARG_TRUFLOW,
 	BNXT_DEVARG_FLOW_XSTAT,
 	BNXT_DEVARG_MAX_NUM_KFLOWS,
 	BNXT_DEVARG_REP_BASED_PF,
@@ -111,12 +109,6 @@ static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_REP_FC_F2R,
 	NULL
 };
-
-/*
- * truflow == false to disable the feature
- * truflow == true to enable the feature
- */
-#define	BNXT_DEVARG_TRUFLOW_INVALID(truflow)	((truflow) > 1)
 
 /*
  * flow_xstat == false to disable the feature
@@ -5262,45 +5254,6 @@ static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 }
 
 static int
-bnxt_parse_devarg_truflow(__rte_unused const char *key,
-			  const char *value, void *opaque_arg)
-{
-	struct bnxt *bp = opaque_arg;
-	unsigned long truflow;
-	char *end = NULL;
-
-	if (!value || !opaque_arg) {
-		PMD_DRV_LOG(ERR,
-			    "Invalid parameter passed to truflow devargs.\n");
-		return -EINVAL;
-	}
-
-	truflow = strtoul(value, &end, 10);
-	if (end == NULL || *end != '\0' ||
-	    (truflow == ULONG_MAX && errno == ERANGE)) {
-		PMD_DRV_LOG(ERR,
-			    "Invalid parameter passed to truflow devargs.\n");
-		return -EINVAL;
-	}
-
-	if (BNXT_DEVARG_TRUFLOW_INVALID(truflow)) {
-		PMD_DRV_LOG(ERR,
-			    "Invalid value passed to truflow devargs.\n");
-		return -EINVAL;
-	}
-
-	if (truflow) {
-		bp->flags |= BNXT_FLAG_TRUFLOW_EN;
-		PMD_DRV_LOG(INFO, "Host-based truflow feature enabled.\n");
-	} else {
-		bp->flags &= ~BNXT_FLAG_TRUFLOW_EN;
-		PMD_DRV_LOG(INFO, "Host-based truflow feature disabled.\n");
-	}
-
-	return 0;
-}
-
-static int
 bnxt_parse_devarg_flow_xstat(__rte_unused const char *key,
 			     const char *value, void *opaque_arg)
 {
@@ -5606,15 +5559,6 @@ bnxt_parse_dev_args(struct bnxt *bp, struct rte_devargs *devargs)
 	kvlist = rte_kvargs_parse(devargs->args, bnxt_dev_args);
 	if (kvlist == NULL)
 		return -EINVAL;
-
-	/*
-	 * Handler for "truflow" devarg.
-	 * Invoked as for ex: "-a 0000:00:0d.0,host-based-truflow=1"
-	 */
-	ret = rte_kvargs_process(kvlist, BNXT_DEVARG_TRUFLOW,
-				 bnxt_parse_devarg_truflow, bp);
-	if (ret)
-		goto err;
 
 	/*
 	 * Handler for "flow_xstat" devarg.
