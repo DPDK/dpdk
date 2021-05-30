@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Tue Dec  1 17:07:12 2020 */
+/* date: Mon Dec  7 09:51:03 2020 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -18,9 +18,9 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 	.num_tbls = 4,
 	.start_tbl_idx = 0,
 	.reject_info = {
-		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_OR,
 		.cond_start_idx = 0,
-		.cond_nums = 0 }
+		.cond_nums = 9 }
 	}
 };
 
@@ -34,7 +34,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.execute_info = {
 		.cond_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_OR,
-		.cond_start_idx = 0,
+		.cond_start_idx = 9,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0,
@@ -56,7 +56,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.execute_info = {
 		.cond_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_OR,
-		.cond_start_idx = 1,
+		.cond_start_idx = 10,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_ENCAP_PTR_0,
@@ -78,7 +78,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.execute_info = {
 		.cond_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2,
+		.cond_start_idx = 11,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
@@ -100,7 +100,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.execute_info = {
 		.cond_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2,
+		.cond_start_idx = 11,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
@@ -115,6 +115,42 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 };
 
 struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV4_SRC
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV6_SRC
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_TP_SRC
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV4_DST
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV6_DST
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_TP_DST
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_PUSH_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_VLAN_VID
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_VLAN_PCP
+	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
@@ -432,8 +468,21 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	{
 	.description = "mirror",
 	.field_bit_size = 2,
-	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
-	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_ACT_BIT,
+	.field_cond_opr = {
+		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 56) & 0xff,
+		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 48) & 0xff,
+		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 40) & 0xff,
+		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 32) & 0xff,
+		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 24) & 0xff,
+		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 16) & 0xff,
+		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 8) & 0xff,
+		(uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE & 0xff},
+	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
+	.field_opr1 = {
+		(BNXT_ULP_RF_IDX_MIRROR_ID_0 >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_MIRROR_ID_0 & 0xff},
+	.field_src2 = BNXT_ULP_FIELD_SRC_CONST
 	},
 	{
 	.description = "drop",
@@ -687,7 +736,10 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.description = "mirror",
 	.field_bit_size = 2,
 	.field_cond_src = BNXT_ULP_FIELD_COND_SRC_TRUE,
-	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
+	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
+	.field_opr1 = {
+		(BNXT_ULP_RF_IDX_MIRROR_ID_0 >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_MIRROR_ID_0 & 0xff}
 	},
 	{
 	.description = "drop",
