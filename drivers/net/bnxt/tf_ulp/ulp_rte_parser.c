@@ -1599,6 +1599,54 @@ ulp_rte_icmp_hdr_handler(const struct rte_flow_item *item,
 	return BNXT_TF_RC_SUCCESS;
 }
 
+/* Function to handle the parsing of RTE Flow item ICMP6 Header. */
+int32_t
+ulp_rte_icmp6_hdr_handler(const struct rte_flow_item *item,
+			  struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_item_icmp6 *icmp_spec = item->spec;
+	const struct rte_flow_item_icmp6 *icmp_mask = item->mask;
+	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
+	uint32_t idx = 0;
+	uint32_t size;
+
+	if (ulp_rte_prsr_fld_size_validate(params, &idx,
+					   BNXT_ULP_PROTO_HDR_ICMP_NUM)) {
+		BNXT_TF_DBG(ERR, "Error parsing protocol header\n");
+		return BNXT_TF_RC_ERROR;
+	}
+
+	size = sizeof(((struct rte_flow_item_icmp6 *)NULL)->type);
+	ulp_rte_prsr_fld_mask(params, &idx, size,
+			      ulp_deference_struct(icmp_spec, type),
+			      ulp_deference_struct(icmp_mask, type),
+			      ULP_PRSR_ACT_DEFAULT);
+
+	size = sizeof(((struct rte_flow_item_icmp6 *)NULL)->code);
+	ulp_rte_prsr_fld_mask(params, &idx, size,
+			      ulp_deference_struct(icmp_spec, code),
+			      ulp_deference_struct(icmp_mask, code),
+			      ULP_PRSR_ACT_DEFAULT);
+
+	size = sizeof(((struct rte_flow_item_icmp6 *)NULL)->checksum);
+	ulp_rte_prsr_fld_mask(params, &idx, size,
+			      ulp_deference_struct(icmp_spec, checksum),
+			      ulp_deference_struct(icmp_mask, checksum),
+			      ULP_PRSR_ACT_DEFAULT);
+
+	if (ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV4)) {
+		BNXT_TF_DBG(ERR, "Error: incorrect icmp version\n");
+		return BNXT_TF_RC_ERROR;
+	}
+
+	/* Update the hdr_bitmap with ICMP */
+	if (ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L3_TUN))
+		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_ICMP);
+	else
+		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_ICMP);
+	return BNXT_TF_RC_SUCCESS;
+}
+
 /* Function to handle the parsing of RTE Flow item void Header */
 int32_t
 ulp_rte_void_hdr_handler(const struct rte_flow_item *item __rte_unused,
