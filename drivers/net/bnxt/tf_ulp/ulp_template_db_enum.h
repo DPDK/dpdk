@@ -180,7 +180,8 @@ enum bnxt_ulp_cf_idx {
 	BNXT_ULP_CF_IDX_FID = 49,
 	BNXT_ULP_CF_IDX_HDR_SIG_ID = 50,
 	BNXT_ULP_CF_IDX_FLOW_SIG_ID = 51,
-	BNXT_ULP_CF_IDX_LAST = 52
+	BNXT_ULP_CF_IDX_WC_MATCH = 52,
+	BNXT_ULP_CF_IDX_LAST = 53
 };
 
 enum bnxt_ulp_cond_list_opc {

@@ -50,8 +50,8 @@ ulp_rte_parser_field_bitmap_update(struct ulp_rte_parser_params *params,
 		ULP_INDEX_BITMAP_SET(params->fld_bitmap.bits, idx);
 		/* Not exact match */
 		if (!ulp_bitmap_is_ones(field->mask, field->size))
-			ULP_BITMAP_SET(params->fld_bitmap.bits,
-				       BNXT_ULP_MATCH_TYPE_BITMASK_WM);
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_WC_MATCH, 1);
 	} else {
 		ULP_INDEX_BITMAP_RESET(params->fld_bitmap.bits, idx);
 	}
