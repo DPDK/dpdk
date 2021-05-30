@@ -149,12 +149,24 @@ extern	uint16_t ulp_act_sig_tbl[];
 extern struct bnxt_ulp_act_match_info ulp_act_match_list[];
 
 /* Device Specific Tables for mapper */
+struct bnxt_ulp_mapper_cond_info {
+	enum bnxt_ulp_cond_opc cond_opcode;
+	uint32_t cond_operand;
+};
+
+struct bnxt_ulp_mapper_cond_list_info {
+	enum bnxt_ulp_cond_list_opc cond_list_opcode;
+	uint32_t cond_start_idx;
+	uint32_t cond_nums;
+};
+
 struct ulp_template_device_tbls {
 	struct bnxt_ulp_mapper_tbl_list_info *tmpl_list;
 	struct bnxt_ulp_mapper_tbl_info *tbl_list;
 	struct bnxt_ulp_mapper_key_field_info *key_field_list;
 	struct bnxt_ulp_mapper_result_field_info *result_field_list;
 	struct bnxt_ulp_mapper_ident_info *ident_list;
+	struct bnxt_ulp_mapper_cond_info *cond_list;
 };
 
 /* Device specific parameters */
@@ -183,14 +195,16 @@ struct bnxt_ulp_mapper_tbl_list_info {
 	uint32_t		device_name;
 	uint32_t		start_tbl_idx;
 	uint32_t		num_tbls;
+	struct bnxt_ulp_mapper_cond_list_info reject_info;
 };
 
 struct bnxt_ulp_mapper_tbl_info {
 	enum bnxt_ulp_resource_func	resource_func;
 	uint32_t			resource_type; /* TF_ enum type */
 	enum bnxt_ulp_resource_sub_type	resource_sub_type;
-	enum bnxt_ulp_cond_opcode	cond_opcode;
-	uint32_t			cond_operand;
+	struct bnxt_ulp_mapper_cond_list_info execute_info;
+	enum bnxt_ulp_cond_opc cond_opcode;
+	uint32_t cond_operand;
 	enum bnxt_ulp_mem_type_opcode	mem_type_opcode;
 	uint8_t				direction;
 	uint32_t			priority;

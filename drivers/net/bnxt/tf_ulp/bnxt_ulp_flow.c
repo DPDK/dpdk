@@ -93,6 +93,7 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 	mapper_cparms->flow_id		= params->fid;
 	mapper_cparms->parent_flow	= params->parent_flow;
 	mapper_cparms->parent_fid	= params->parent_fid;
+	mapper_cparms->fld_bitmap	= &params->fld_bitmap;
 }
 
 /* Function to create the rte flow. */

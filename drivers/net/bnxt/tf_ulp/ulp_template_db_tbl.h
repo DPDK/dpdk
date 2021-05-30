@@ -45,4 +45,6 @@ extern struct bnxt_ulp_mapper_tbl_info ulp_stingray_act_tbl_list[];
 
 extern struct
 bnxt_ulp_mapper_result_field_info ulp_stingray_act_result_field_list[];
+
+extern uint8_t ulp_glb_field_tbl[];
 #endif

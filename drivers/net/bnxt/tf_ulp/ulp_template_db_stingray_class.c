@@ -292,7 +292,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_stingray_class_tbl_list[] = {
 	{ /* class_tid: 2, stingray, table: l2_cntxt_tcam_vfr_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
-	.cond_opcode = BNXT_ULP_COND_OPCODE_COMP_FIELD_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_COMP_FIELD_IS_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_VFR_MODE,
 	.direction = TF_DIR_TX,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -315,7 +315,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_stingray_class_tbl_list[] = {
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
-	.cond_opcode = BNXT_ULP_COND_OPCODE_COMP_FIELD_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_COMP_FIELD_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_VFR_MODE,
 	.direction = TF_DIR_TX,
 	.key_start_idx = 27,
@@ -332,7 +332,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_stingray_class_tbl_list[] = {
 	{ /* class_tid: 2, stingray, table: l2_cntxt_tcam_0 */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
 	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
-	.cond_opcode = BNXT_ULP_COND_OPCODE_COMP_FIELD_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_COMP_FIELD_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_VFR_MODE,
 	.direction = TF_DIR_TX,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -1785,7 +1785,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_stingray_class_tbl_list[] = {
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT_ACC,
-	.cond_opcode = BNXT_ULP_COND_OPCODE_ACTION_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_ACTION_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACTION_BIT_COUNT,
 	.direction = TF_DIR_RX,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,

@@ -17,6 +17,7 @@
 #include "ulp_mapper.h"
 #include "ulp_flow_db.h"
 #include "tf_util.h"
+#include "ulp_template_db_tbl.h"
 
 static struct bnxt_ulp_glb_resource_info *
 ulp_mapper_glb_resource_info_list_get(uint32_t *num_entries)
@@ -190,6 +191,12 @@ ulp_mapper_glb_template_table_get(uint32_t *num_entries)
 	return ulp_glb_template_tbl;
 }
 
+static uint8_t *
+ulp_mapper_glb_field_tbl_get(uint32_t idx)
+{
+	return &ulp_glb_field_tbl[idx];
+}
+
 /*
  * Get the size of the action property for a given index.
  *
@@ -203,6 +210,40 @@ ulp_mapper_act_prop_size_get(uint32_t idx)
 	if (idx >= BNXT_ULP_ACT_PROP_IDX_LAST)
 		return 0;
 	return ulp_act_prop_map_table[idx];
+}
+
+static struct bnxt_ulp_mapper_cond_info *
+ulp_mapper_tmpl_reject_list_get(struct bnxt_ulp_mapper_parms *mparms,
+				uint32_t tid,
+				uint32_t *num_tbls,
+				enum bnxt_ulp_cond_list_opc *opc)
+{
+	uint32_t idx;
+	const struct ulp_template_device_tbls *dev_tbls;
+
+	dev_tbls = &mparms->device_params->dev_tbls[mparms->tmpl_type];
+	*num_tbls = dev_tbls->tmpl_list[tid].reject_info.cond_nums;
+	*opc = dev_tbls->tmpl_list[tid].reject_info.cond_list_opcode;
+	idx = dev_tbls->tmpl_list[tid].reject_info.cond_start_idx;
+
+	return &dev_tbls->cond_list[idx];
+}
+
+static struct bnxt_ulp_mapper_cond_info *
+ulp_mapper_tbl_execute_list_get(struct bnxt_ulp_mapper_parms *mparms,
+				struct bnxt_ulp_mapper_tbl_info *tbl,
+				uint32_t *num_tbls,
+				enum bnxt_ulp_cond_list_opc *opc)
+{
+	uint32_t idx;
+	const struct ulp_template_device_tbls *dev_tbls;
+
+	dev_tbls = &mparms->device_params->dev_tbls[mparms->tmpl_type];
+	*num_tbls = tbl->execute_info.cond_nums;
+	*opc = tbl->execute_info.cond_list_opcode;
+	idx = tbl->execute_info.cond_start_idx;
+
+	return &dev_tbls->cond_list[idx];
 }
 
 /*
@@ -2377,61 +2418,6 @@ ulp_mapper_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 }
 
 /*
- * Function to process the conditional opcode of the mapper table.
- * returns 1 to skip the table.
- * return 0 to continue processing the table.
- *
- * defaults to skip
- */
-static int32_t
-ulp_mapper_tbl_cond_opcode_process(struct bnxt_ulp_mapper_parms *parms,
-				   struct bnxt_ulp_mapper_tbl_info *tbl)
-{
-	int32_t rc = 1;
-
-	switch (tbl->cond_opcode) {
-	case BNXT_ULP_COND_OPCODE_NOP:
-		rc = 0;
-		break;
-	case BNXT_ULP_COND_OPCODE_COMP_FIELD_IS_SET:
-		if (tbl->cond_operand < BNXT_ULP_CF_IDX_LAST &&
-		    ULP_COMP_FLD_IDX_RD(parms, tbl->cond_operand))
-			rc = 0;
-		break;
-	case BNXT_ULP_COND_OPCODE_ACTION_BIT_IS_SET:
-		if (ULP_BITMAP_ISSET(parms->act_bitmap->bits,
-				     tbl->cond_operand))
-			rc = 0;
-		break;
-	case BNXT_ULP_COND_OPCODE_HDR_BIT_IS_SET:
-		if (ULP_BITMAP_ISSET(parms->hdr_bitmap->bits,
-				     tbl->cond_operand))
-			rc = 0;
-		break;
-	case BNXT_ULP_COND_OPCODE_COMP_FIELD_NOT_SET:
-		if (tbl->cond_operand < BNXT_ULP_CF_IDX_LAST &&
-		    !ULP_COMP_FLD_IDX_RD(parms, tbl->cond_operand))
-			rc = 0;
-		break;
-	case BNXT_ULP_COND_OPCODE_ACTION_BIT_NOT_SET:
-		if (!ULP_BITMAP_ISSET(parms->act_bitmap->bits,
-				      tbl->cond_operand))
-			rc = 0;
-		break;
-	case BNXT_ULP_COND_OPCODE_HDR_BIT_NOT_SET:
-		if (!ULP_BITMAP_ISSET(parms->hdr_bitmap->bits,
-				      tbl->cond_operand))
-			rc = 0;
-		break;
-	default:
-		BNXT_TF_DBG(ERR,
-			    "Invalid arg in mapper tbl for cond opcode\n");
-		break;
-	}
-	return rc;
-}
-
-/*
  * Function to process the memtype opcode of the mapper table.
  * returns 1 to skip the table.
  * return 0 to continue processing the table.
@@ -2467,27 +2453,251 @@ ulp_mapper_tbl_memtype_opcode_process(struct bnxt_ulp_mapper_parms *parms,
 	return rc;
 }
 
+/*
+ * Common conditional opcode process routine that is used for both the template
+ * rejection and table conditional execution.
+ */
+static int32_t
+ulp_mapper_cond_opc_process(struct bnxt_ulp_mapper_parms *parms,
+			    enum bnxt_ulp_cond_opc opc,
+			    uint32_t operand,
+			    int32_t *res)
+{
+	int32_t rc = 0;
+	uint8_t *bit;
+	uint32_t idx;
+	uint64_t regval;
+
+	switch (opc) {
+	case BNXT_ULP_COND_OPC_COMP_FIELD_IS_SET:
+		if (operand < BNXT_ULP_CF_IDX_LAST) {
+			*res = ULP_COMP_FLD_IDX_RD(parms, operand);
+		} else {
+			BNXT_TF_DBG(ERR, "comp field out of bounds %d\n",
+				    operand);
+			rc = -EINVAL;
+		}
+		break;
+	case BNXT_ULP_COND_OPC_COMP_FIELD_NOT_SET:
+		if (operand < BNXT_ULP_CF_IDX_LAST) {
+			*res = !ULP_COMP_FLD_IDX_RD(parms, operand);
+		} else {
+			BNXT_TF_DBG(ERR, "comp field out of bounds %d\n",
+				    operand);
+			rc = -EINVAL;
+		}
+		break;
+	case BNXT_ULP_COND_OPC_ACTION_BIT_IS_SET:
+		if (operand < BNXT_ULP_ACTION_BIT_LAST) {
+			*res = ULP_BITMAP_ISSET(parms->act_bitmap->bits,
+						operand);
+		} else {
+			BNXT_TF_DBG(ERR, "action bit out of bounds %d\n",
+				    operand);
+			rc = -EINVAL;
+		}
+		break;
+	case BNXT_ULP_COND_OPC_ACTION_BIT_NOT_SET:
+		if (operand < BNXT_ULP_ACTION_BIT_LAST) {
+			*res = !ULP_BITMAP_ISSET(parms->act_bitmap->bits,
+					       operand);
+		} else {
+			BNXT_TF_DBG(ERR, "action bit out of bounds %d\n",
+				    operand);
+			rc = -EINVAL;
+		}
+		break;
+	case BNXT_ULP_COND_OPC_HDR_BIT_IS_SET:
+		if (operand < BNXT_ULP_HDR_BIT_LAST) {
+			*res = ULP_BITMAP_ISSET(parms->hdr_bitmap->bits,
+						operand);
+		} else {
+			BNXT_TF_DBG(ERR, "header bit out of bounds %d\n",
+				    operand);
+			rc = -EINVAL;
+		}
+		break;
+	case BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET:
+		if (operand < BNXT_ULP_HDR_BIT_LAST) {
+			*res = !ULP_BITMAP_ISSET(parms->hdr_bitmap->bits,
+					       operand);
+		} else {
+			BNXT_TF_DBG(ERR, "header bit out of bounds %d\n",
+				    operand);
+			rc = -EINVAL;
+		}
+		break;
+	case BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET:
+		idx = (parms->class_tid << BNXT_ULP_GLB_FIELD_TBL_SHIFT) |
+			operand;
+		bit = ulp_mapper_glb_field_tbl_get(idx);
+		if (!bit) {
+			BNXT_TF_DBG(ERR, "invalid ulp_glb_field_tbl idx %d\n",
+				    idx);
+			return -EINVAL;
+		}
+		*res = ULP_BITMAP_ISSET(parms->fld_bitmap->bits, (1 << *bit));
+		break;
+	case BNXT_ULP_COND_OPC_FIELD_BIT_NOT_SET:
+		idx = (parms->class_tid << BNXT_ULP_GLB_FIELD_TBL_SHIFT) |
+			operand;
+		bit = ulp_mapper_glb_field_tbl_get(idx);
+		if (!bit) {
+			BNXT_TF_DBG(ERR, "invalid ulp_glb_field_tbl idx %d\n",
+				    idx);
+			return -EINVAL;
+		}
+		*res = !ULP_BITMAP_ISSET(parms->fld_bitmap->bits, (1 << *bit));
+		break;
+	case BNXT_ULP_COND_OPC_REGFILE_IS_SET:
+		if (!ulp_regfile_read(parms->regfile, operand, &regval)) {
+			BNXT_TF_DBG(ERR, "regfile[%d] read oob\n", operand);
+			return -EINVAL;
+		}
+		*res = regval != 0;
+		break;
+	case BNXT_ULP_COND_OPC_REGFILE_NOT_SET:
+		if (!ulp_regfile_read(parms->regfile, operand, &regval)) {
+			BNXT_TF_DBG(ERR, "regfile[%d] read oob\n", operand);
+			return -EINVAL;
+		}
+		*res = regval == 0;
+		break;
+	default:
+		BNXT_TF_DBG(ERR, "Invalid conditional opcode %d\n", opc);
+		rc = -EINVAL;
+		break;
+	}
+	return (rc);
+}
+
+/*
+ * Processes a list of conditions and returns both a status and result of the
+ * list.  The status must be checked prior to verifying the result.
+ *
+ * returns 0 for success, negative on failure
+ * returns res = 1 for true, res = 0 for false.
+ */
+static int32_t
+ulp_mapper_cond_opc_list_process(struct bnxt_ulp_mapper_parms *parms,
+				 enum bnxt_ulp_cond_list_opc list_opc,
+				 struct bnxt_ulp_mapper_cond_info *list,
+				 uint32_t num,
+				 int32_t *res)
+{
+	uint32_t i;
+	int32_t rc = 0, trc;
+
+	switch (list_opc) {
+	case BNXT_ULP_COND_LIST_OPC_AND:
+		/* AND Defaults to true. */
+		*res = 1;
+		break;
+	case BNXT_ULP_COND_LIST_OPC_OR:
+		/* OR Defaults to false. */
+		*res = 0;
+		break;
+	case BNXT_ULP_COND_LIST_OPC_TRUE:
+		*res = 1;
+		return rc;
+	case BNXT_ULP_COND_LIST_OPC_FALSE:
+		*res = 0;
+		return rc;
+	default:
+		BNXT_TF_DBG(ERR, "Invalid conditional list opcode %d\n",
+			    list_opc);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < num; i++) {
+		rc = ulp_mapper_cond_opc_process(parms,
+						 list[i].cond_opcode,
+						 list[i].cond_operand,
+						 &trc);
+		if (rc)
+			return rc;
+
+		if (list_opc == BNXT_ULP_COND_LIST_OPC_AND) {
+			/* early return if result is ever zero */
+			if (!trc) {
+				*res = trc;
+				return rc;
+			}
+		} else {
+			/* early return if result is ever non-zero */
+			if (trc) {
+				*res = trc;
+				return rc;
+			}
+		}
+	}
+
+	return rc;
+}
+
 static int32_t
 ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, uint32_t tid)
 {
+	struct bnxt_ulp_mapper_cond_info *cond_tbls = NULL;
+	enum bnxt_ulp_cond_list_opc cond_opc;
 	struct bnxt_ulp_mapper_tbl_info *tbls;
-	uint32_t num_tbls, i;
-	int32_t rc = -EINVAL;
+	struct bnxt_ulp_mapper_tbl_info *tbl;
+	uint32_t num_tbls, i, num_cond_tbls;
+	int32_t rc = -EINVAL, cond_rc = 0;
+
+	cond_tbls = ulp_mapper_tmpl_reject_list_get(parms, tid,
+						    &num_cond_tbls,
+						    &cond_opc);
+	/*
+	 * Process the reject list if exists, otherwise assume that the
+	 * template is allowed.
+	 */
+	if (cond_tbls && num_cond_tbls) {
+		rc = ulp_mapper_cond_opc_list_process(parms,
+						      cond_opc,
+						      cond_tbls,
+						      num_cond_tbls,
+						      &cond_rc);
+		if (rc)
+			return rc;
+
+		/* Reject the template if True */
+		if (cond_rc) {
+			BNXT_TF_DBG(ERR, "%s Template %d rejected.\n",
+				    (parms->tmpl_type ==
+				     BNXT_ULP_TEMPLATE_TYPE_CLASS) ?
+				    "class" : "action", tid);
+			return -EINVAL;
+		}
+	}
 
 	tbls = ulp_mapper_tbl_list_get(parms, tid, &num_tbls);
 	if (!tbls || !num_tbls) {
 		BNXT_TF_DBG(ERR, "No %s tables for %d:%d\n",
-			    (parms->tmpl_type = BNXT_ULP_TEMPLATE_TYPE_CLASS) ?
+			    (parms->tmpl_type == BNXT_ULP_TEMPLATE_TYPE_CLASS) ?
 			    "class" : "action", parms->dev_id, tid);
 		return -EINVAL;
 	}
 
 	for (i = 0; i < num_tbls; i++) {
-		struct bnxt_ulp_mapper_tbl_info *tbl = &tbls[i];
+		tbl = &tbls[i];
 
+		/* Handle the table level opcodes to determine if required. */
 		if (ulp_mapper_tbl_memtype_opcode_process(parms, tbl))
 			continue;
-		if (ulp_mapper_tbl_cond_opcode_process(parms, tbl))
+		cond_tbls = ulp_mapper_tbl_execute_list_get(parms, tbl,
+							    &num_cond_tbls,
+							    &cond_opc);
+		rc = ulp_mapper_cond_opc_list_process(parms, cond_opc,
+						      cond_tbls, num_cond_tbls,
+						      &cond_rc);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "Failed to process cond opc list "
+				   "(%d)\n", rc);
+			return rc;
+		}
+		/* Skip the table if False */
+		if (!cond_rc)
 			continue;
 
 		switch (tbl->resource_func) {
