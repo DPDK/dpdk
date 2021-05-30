@@ -9,7 +9,7 @@
 #include "tf_core.h"
 #include "tf_session.h"
 
-#include "hcapi/hcapi_cfa_defs.h"
+#include "hcapi/cfa/hcapi_cfa_defs.h"
 
 #define TF_EM_MIN_ENTRIES     (1 << 15) /* 32K */
 #define TF_EM_MAX_ENTRIES     (1 << 27) /* 128M */

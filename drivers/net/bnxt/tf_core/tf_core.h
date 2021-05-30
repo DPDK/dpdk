@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "hcapi/hcapi_cfa_defs.h"
+#include "hcapi/cfa/hcapi_cfa_defs.h"
 #include "tf_project.h"
 
 /**

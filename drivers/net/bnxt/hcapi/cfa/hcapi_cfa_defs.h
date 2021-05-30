@@ -17,11 +17,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define SUPPORT_CFA_HW_ALL 0
-#define SUPPORT_CFA_HW_P4  1
-#define SUPPORT_CFA_HW_P58 0
-#define SUPPORT_CFA_HW_P59 0
-
 #define CFA_BITS_PER_BYTE (8)
 #define __CFA_ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
 #define CFA_ALIGN(x, a) __CFA_ALIGN_MASK(x, (a) - 1)
@@ -49,8 +44,7 @@ enum hcapi_cfa_ver {
 	HCAPI_CFA_P40 = 0, /**< CFA phase 4.0 */
 	HCAPI_CFA_P45 = 1, /**< CFA phase 4.5 */
 	HCAPI_CFA_P58 = 2, /**< CFA phase 5.8 */
-	HCAPI_CFA_P59 = 3, /**< CFA phase 5.9 */
-	HCAPI_CFA_PMAX = 4
+	HCAPI_CFA_PMAX = 3
 };
 
 /**

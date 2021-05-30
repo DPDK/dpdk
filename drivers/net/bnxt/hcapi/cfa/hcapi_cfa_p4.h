@@ -6,8 +6,6 @@
 #ifndef _HCAPI_CFA_P4_H_
 #define _HCAPI_CFA_P4_H_
 
-#include "cfa_p40_hw.h"
-
 /** CFA phase 4 fix formatted table(layout) ID definition
  *
  */

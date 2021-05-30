@@ -14,20 +14,6 @@
 
 #include "hcapi_cfa_defs.h"
 
-#if CHIP_CFG == SR_A
-#define SUPPORT_CFA_HW_P45  1
-#undef SUPPORT_CFA_HW_P4
-#define SUPPORT_CFA_HW_P4   0
-#elif CHIP_CFG == CMB_A
-#define SUPPORT_CFA_HW_P4  1
-#else
-#error "Chip not supported"
-#endif
-
-#if SUPPORT_CFA_HW_P4 && SUPPORT_CFA_HW_P58 && SUPPORT_CFA_HW_P59
-#define SUPPORT_CFA_HW_ALL  1
-#endif
-
 /**
  * Index used for the sram_entries field
  */
