@@ -2042,6 +2042,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	bool alloc = false;
 	bool write = false;
 	bool search = false;
+	uint64_t act_rec_size;
 
 	/* use the max size if encap is enabled */
 	if (tbl->encap_num_fields)
@@ -2285,6 +2286,17 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 				    tf_dir_2_str(sparms.dir),
 				    sparms.idx, rc);
 			goto error;
+		}
+
+		/* Calculate action record size */
+		if (tbl->resource_type == TF_TBL_TYPE_EXT) {
+			act_rec_size = (ULP_BITS_2_BYTE_NR(tmplen) + 15) / 16;
+			act_rec_size--;
+			if (ulp_regfile_write(parms->regfile,
+					      BNXT_ULP_RF_IDX_ACTION_REC_SIZE,
+					      tfp_cpu_to_be_64(act_rec_size)))
+				BNXT_TF_DBG(ERR,
+					    "Failed write the act rec size\n");
 		}
 	}
 
