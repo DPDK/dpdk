@@ -179,6 +179,14 @@ enum bnxt_ulp_direction {
 	BNXT_ULP_DIRECTION_LAST = 2
 };
 
+enum bnxt_ulp_fdb_opc {
+	BNXT_ULP_FDB_OPC_PUSH = 0,
+	BNXT_ULP_FDB_OPC_ALLOC_PUSH_REGFILE = 1,
+	BNXT_ULP_FDB_OPC_PUSH_REGFILE = 2,
+	BNXT_ULP_FDB_OPC_NOP = 3,
+	BNXT_ULP_FDB_OPC_LAST = 4
+};
+
 enum bnxt_ulp_flow_mem_type {
 	BNXT_ULP_FLOW_MEM_TYPE_INT = 0,
 	BNXT_ULP_FLOW_MEM_TYPE_EXT = 1,

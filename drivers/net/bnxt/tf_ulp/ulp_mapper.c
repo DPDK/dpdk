@@ -470,6 +470,80 @@ ulp_mapper_child_flow_free(struct bnxt_ulp_context *ulp,
 }
 
 /*
+ * Process the flow database opcode action.
+ * returns 0 on success.
+ */
+static int32_t
+ulp_mapper_fdb_opc_process(struct bnxt_ulp_mapper_parms *parms,
+			   struct bnxt_ulp_mapper_tbl_info *tbl,
+			   struct ulp_flow_db_res_params *fid_parms)
+{
+	uint32_t push_fid, fid = 0;
+	uint64_t val64;
+	int32_t rc = 0;
+
+	switch (tbl->fdb_opcode) {
+	case BNXT_ULP_FDB_OPC_PUSH:
+		push_fid = parms->fid;
+		break;
+	case BNXT_ULP_FDB_OPC_ALLOC_PUSH_REGFILE:
+		/* allocate a new fid */
+		rc = ulp_flow_db_fid_alloc(parms->ulp_ctx,
+					   BNXT_ULP_FDB_TYPE_REGULAR,
+					   tbl->resource_func, &fid);
+		if (rc) {
+			BNXT_TF_DBG(ERR,
+				    "Unable to allocate flow table entry\n");
+			return rc;
+		}
+		/* Store the allocated fid in regfile*/
+		val64 = fid;
+		rc = ulp_regfile_write(parms->regfile, tbl->flow_db_operand,
+				       val64);
+		if (!rc) {
+			BNXT_TF_DBG(ERR, "Write regfile[%d] failed\n",
+				    tbl->flow_db_operand);
+			rc = -EINVAL;
+			goto error;
+		}
+		/* Use the allocated fid to update the flow resource */
+		push_fid = fid;
+		break;
+	case BNXT_ULP_FDB_OPC_PUSH_REGFILE:
+		/* get the fid from the regfile */
+		rc = ulp_regfile_read(parms->regfile, tbl->flow_db_operand,
+				      &val64);
+		if (!rc) {
+			BNXT_TF_DBG(ERR, "regfile[%d] read oob\n",
+				    tbl->flow_db_operand);
+			return -EINVAL;
+		}
+		/* Use the extracted fid to update the flow resource */
+		push_fid = (uint32_t)val64;
+		break;
+	default:
+		return rc; /* Nothing to be done */
+	}
+
+	/* Add the resource to the flow database */
+	rc = ulp_flow_db_resource_add(parms->ulp_ctx, parms->flow_type,
+				      push_fid, fid_parms);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to add res to flow %x rc = %d\n",
+			    push_fid, rc);
+		goto error;
+	}
+	return rc;
+
+error:
+	/* free the allocated fid */
+	if (fid)
+		ulp_flow_db_fid_free(parms->ulp_ctx,
+				     BNXT_ULP_FDB_TYPE_REGULAR, fid);
+	return rc;
+}
+
+/*
  * Process the identifier instruction and either store it in the flow database
  * or return it in the val (if not NULL) on success.  If val is NULL, the
  * identifier is to be stored in the flow database.
@@ -524,10 +598,7 @@ ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 		fid_parms.resource_hndl	= iparms.id;
 		fid_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
 
-		rc = ulp_flow_db_resource_add(parms->ulp_ctx,
-					      parms->flow_type,
-					      parms->fid,
-					      &fid_parms);
+		rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 		if (rc) {
 			BNXT_TF_DBG(ERR, "Failed to link res to flow rc = %d\n",
 				    rc);
@@ -618,10 +689,7 @@ ulp_mapper_ident_extract(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.resource_type = ident->ident_type;
 	fid_parms.resource_hndl = sparms.search_id;
 	fid_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
-	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
-				      parms->flow_type,
-				      parms->fid,
-				      &fid_parms);
+	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to link res to flow rc = %d\n",
 			    rc);
@@ -1103,10 +1171,7 @@ ulp_mapper_mark_gfid_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
 	fid_parms.resource_type	= mark_flag;
 	fid_parms.resource_hndl	= gfid;
-	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
-				      parms->flow_type,
-				      parms->fid,
-				      &fid_parms);
+	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 	if (rc)
 		BNXT_TF_DBG(ERR, "Fail to link res to flow rc = %d\n", rc);
 	return rc;
@@ -1152,10 +1217,7 @@ ulp_mapper_mark_act_ptr_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
 	fid_parms.resource_type	= mark_flag;
 	fid_parms.resource_hndl	= act_idx;
-	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
-				      parms->flow_type,
-				      parms->fid,
-				      &fid_parms);
+	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 	if (rc)
 		BNXT_TF_DBG(ERR, "Fail to link res to flow rc = %d\n", rc);
 	return rc;
@@ -1201,10 +1263,7 @@ ulp_mapper_mark_vfr_idx_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
 	fid_parms.resource_type	= mark_flag;
 	fid_parms.resource_hndl	= act_idx;
-	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
-				      parms->flow_type,
-				      parms->fid,
-				      &fid_parms);
+	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 	if (rc)
 		BNXT_TF_DBG(ERR, "Fail to link res to flow rc = %d\n", rc);
 	return rc;
@@ -1580,10 +1639,7 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		fid_parms.resource_type	= tbl->resource_type;
 		fid_parms.critical_resource = tbl->critical_resource;
 		fid_parms.resource_hndl	= idx;
-		rc = ulp_flow_db_resource_add(parms->ulp_ctx,
-					      parms->flow_type,
-					      parms->fid,
-					      &fid_parms);
+		rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 		if (rc) {
 			BNXT_TF_DBG(ERR,
 				    "Failed to link resource to flow rc = %d\n",
@@ -1741,10 +1797,7 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.critical_resource	= tbl->critical_resource;
 	fid_parms.resource_hndl		= iparms.flow_handle;
 
-	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
-				      parms->flow_type,
-				      parms->fid,
-				      &fid_parms);
+	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Fail to link res to flow rc = %d\n",
 			    rc);
@@ -1968,10 +2021,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.resource_hndl	= index;
 	fid_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
 
-	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
-				      parms->flow_type,
-				      parms->fid,
-				      &fid_parms);
+	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to link resource to flow rc = %d\n",
 			    rc);
@@ -2280,10 +2330,7 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		fid_parms.resource_sub_type = tbl->resource_sub_type;
 		fid_parms.resource_hndl	= ckey;
 		fid_parms.critical_resource = tbl->critical_resource;
-		rc = ulp_flow_db_resource_add(parms->ulp_ctx,
-					      parms->flow_type,
-					      parms->fid,
-					      &fid_parms);
+		rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 		if (rc)
 			BNXT_TF_DBG(ERR, "Fail to add gen ent flowdb %d\n", rc);
 	}

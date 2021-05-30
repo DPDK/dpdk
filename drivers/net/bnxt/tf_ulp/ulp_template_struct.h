@@ -220,6 +220,10 @@ struct bnxt_ulp_mapper_tbl_info {
 
 	/* Table opcode for table operations */
 	uint32_t			tbl_opcode;
+
+	/* FDB table opcode */
+	enum bnxt_ulp_fdb_opc		fdb_opcode;
+	uint32_t			flow_db_operand;
 };
 
 struct bnxt_ulp_mapper_key_field_info {
