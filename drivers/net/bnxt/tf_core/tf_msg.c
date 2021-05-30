@@ -125,9 +125,16 @@ tf_msg_session_open(struct bnxt *bp,
 	struct hwrm_tf_session_open_input req = { 0 };
 	struct hwrm_tf_session_open_output resp = { 0 };
 	struct tfp_send_msg_parms parms = { 0 };
+	int name_len;
+	char *name;
 
 	/* Populate the request */
-	tfp_memcpy(&req.session_name, ctrl_chan_name, TF_SESSION_NAME_MAX);
+	name_len = strnlen(ctrl_chan_name, TF_SESSION_NAME_MAX);
+	name = &ctrl_chan_name[name_len - strlen("tf_shared")];
+	if (!strncmp(name, "tf_shared", strlen("tf_shared")))
+		tfp_memcpy(&req.session_name, name, strlen("tf_share"));
+	else
+		tfp_memcpy(&req.session_name, ctrl_chan_name, TF_SESSION_NAME_MAX);
 
 	parms.tf_type = HWRM_TF_SESSION_OPEN;
 	parms.req_data = (uint32_t *)&req;
@@ -201,7 +208,7 @@ tf_msg_session_client_register(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	if (rc)
 		return rc;
@@ -252,7 +259,7 @@ tf_msg_session_client_unregister(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 
 	return rc;
@@ -296,7 +303,7 @@ tf_msg_session_close(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	return rc;
 }
@@ -348,7 +355,7 @@ tf_msg_session_qcfg(struct tf *tfp)
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	return rc;
 }
@@ -411,7 +418,7 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs), &parms);
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp), &parms);
 	if (rc)
 		goto cleanup;
 
@@ -521,7 +528,7 @@ tf_msg_session_resc_alloc(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs), &parms);
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp), &parms);
 	if (rc)
 		goto cleanup;
 
@@ -628,7 +635,7 @@ tf_msg_session_resc_info(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs), &parms);
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp), &parms);
 	if (rc)
 		goto cleanup;
 
@@ -735,7 +742,7 @@ tf_msg_session_resc_flush(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs), &parms);
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp), &parms);
 
 	tf_msg_free_dma_buf(&resv_buf);
 
@@ -829,7 +836,7 @@ tf_msg_insert_em_internal_entry(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	if (rc)
 		return rc;
@@ -924,7 +931,7 @@ tf_msg_hash_insert_em_internal_entry(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	if (rc)
 		return rc;
@@ -994,7 +1001,7 @@ tf_msg_delete_em_entry(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	if (rc)
 		return rc;
@@ -1063,7 +1070,7 @@ tf_msg_move_em_entry(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	if (rc)
 		return rc;
@@ -1119,7 +1126,7 @@ int tf_msg_ext_em_ctxt_mem_alloc(struct tf *tfp,
 		parms.resp_data = (uint32_t *)&resp;
 		parms.resp_size = sizeof(resp);
 		parms.mailbox = dev->ops->tf_dev_get_mailbox();
-		rc = tfp_send_msg_direct(tf_session_get_bp(tfs), &parms);
+		rc = tfp_send_msg_direct(tf_session_get_bp(tfp), &parms);
 		if (rc) {
 			TFP_DRV_LOG(ERR, "Failed ext_em_alloc error rc:%s\n",
 				strerror(-rc));
@@ -1179,7 +1186,7 @@ int tf_msg_ext_em_ctxt_mem_free(struct tf *tfp,
 	parms.resp_data = (uint32_t *)&resp;
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs), &parms);
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp), &parms);
 
 	return rc;
 }
@@ -1230,7 +1237,7 @@ tf_msg_em_mem_rgtr(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	if (rc)
 		return rc;
@@ -1282,7 +1289,7 @@ tf_msg_em_mem_unrgtr(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	return rc;
 }
@@ -1334,7 +1341,7 @@ tf_msg_em_qcaps(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	if (rc)
 		return rc;
@@ -1409,7 +1416,7 @@ tf_msg_em_cfg(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	return rc;
 }
@@ -1483,7 +1490,7 @@ tf_msg_ext_em_cfg(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	return rc;
 }
@@ -1533,7 +1540,7 @@ tf_msg_em_op(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	return rc;
 }
@@ -1611,7 +1618,7 @@ tf_msg_tcam_entry_set(struct tf *tfp,
 	mparms.resp_size = sizeof(resp);
 	mparms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &mparms);
 
 cleanup:
@@ -1664,7 +1671,7 @@ tf_msg_tcam_entry_get(struct tf *tfp,
 	mparms.resp_size = sizeof(resp);
 	mparms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &mparms);
 
 	if (rc != 0)
@@ -1735,7 +1742,7 @@ tf_msg_tcam_entry_free(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	return rc;
 }
@@ -1816,7 +1823,7 @@ tf_msg_set_tbl_entry(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	if (rc)
 		return rc;
@@ -1882,7 +1889,7 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	if (rc)
 		return rc;
@@ -1968,7 +1975,7 @@ tf_msg_get_global_cfg(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs), &parms);
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp), &parms);
 	if (rc != 0)
 		return rc;
 
@@ -2069,7 +2076,7 @@ tf_msg_set_global_cfg(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs), &parms);
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp), &parms);
 
 	if (rc != 0)
 		return rc;
@@ -2142,7 +2149,7 @@ tf_msg_bulk_get_tbl_entry(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs),
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
 	if (rc)
 		return rc;
@@ -2205,7 +2212,7 @@ tf_msg_get_if_tbl_entry(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs), &parms);
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp), &parms);
 
 	if (rc != 0)
 		return rc;
@@ -2262,7 +2269,7 @@ tf_msg_set_if_tbl_entry(struct tf *tfp,
 	parms.resp_size = sizeof(resp);
 	parms.mailbox = dev->ops->tf_dev_get_mailbox();
 
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfs), &parms);
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp), &parms);
 
 	if (rc != 0)
 		return rc;

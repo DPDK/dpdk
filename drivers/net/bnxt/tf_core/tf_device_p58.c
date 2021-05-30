@@ -190,8 +190,11 @@ static int tf_dev_p58_get_sram_tbl_info(struct tf *tfp __rte_unused,
 	parms.hcapi_type = &hcapi_type;
 
 	rc = tf_rm_get_hcapi_type(&parms);
-	if (rc)
-		return rc;
+	if (rc) {
+		*base = 0;
+		*shift = 0;
+		return 0;
+	}
 
 	switch (hcapi_type) {
 	case CFA_RESOURCE_TYPE_P58_SRAM_BANK_0:

@@ -59,6 +59,8 @@ tf_session_create(struct tf *tfp,
 	union tf_session_id *session_id;
 	struct tf_dev_info dev;
 	bool shared_session_creator;
+	int name_len;
+	char *name;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -140,7 +142,6 @@ tf_session_create(struct tf *tfp,
 	session_id->id = session->session_id.id;
 
 	session->shadow_copy = parms->open_cfg->shadow_copy;
-	session->bp = parms->open_cfg->bp;
 
 	/* Init session client list */
 	ll_init(&session->client_ll);
@@ -179,7 +180,12 @@ tf_session_create(struct tf *tfp,
 
 	/* Init session em_ext_db */
 	session->em_ext_db_handle = NULL;
-	if (!strcmp(parms->open_cfg->ctrl_chan_name, "tf_share"))
+
+	/* Populate the request */
+	name_len = strnlen(parms->open_cfg->ctrl_chan_name,
+			   TF_SESSION_NAME_MAX);
+	name = &parms->open_cfg->ctrl_chan_name[name_len - strlen("tf_shared")];
+	if (!strncmp(name, "tf_shared", strlen("tf_shared")))
 		session->shared_session = true;
 
 	if (session->shared_session && shared_session_creator) {
@@ -404,8 +410,9 @@ tf_session_open_session(struct tf *tfp,
 	int rc;
 	struct tf_session_client_create_parms scparms;
 
-	TF_CHECK_PARMS2(tfp, parms);
+	TF_CHECK_PARMS3(tfp, parms, parms->open_cfg->bp);
 
+	tfp->bp = parms->open_cfg->bp;
 	/* Decide if we're creating a new session or session client */
 	if (tfp->session == NULL) {
 		rc = tf_session_create(tfp, parms);

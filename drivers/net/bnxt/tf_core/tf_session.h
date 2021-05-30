@@ -156,11 +156,6 @@ struct tf_session {
 	void *em_db_handle;
 
 	/**
-	 * the pointer to the parent bp struct
-	 */
-	void *bp;
-
-	/**
 	 * EM allocator for session
 	 */
 	void *em_pool[TF_DIR_MAX];
@@ -567,8 +562,8 @@ tf_session_is_shared_session_creator(struct tf_session *tfs)
  *   - the pointer to the parent bnxt struct
  */
 static inline struct bnxt*
-tf_session_get_bp(struct tf_session *tfs)
+tf_session_get_bp(struct tf *tfp)
 {
-	return tfs->bp;
+	return tfp->bp;
 }
 #endif /* _TF_SESSION_H_ */

@@ -458,6 +458,10 @@ struct tf_session_info {
  */
 struct tf {
 	struct tf_session_info *session;
+	/**
+	 * the pointer to the parent bp struct
+	 */
+	void *bp;
 };
 
 /**

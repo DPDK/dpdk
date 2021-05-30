@@ -119,14 +119,16 @@ tf_ident_unbind(struct tf *tfp)
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to get ident_db from session, rc:%s\n",
+		TFP_DRV_LOG(INFO,
+			    "Ident_db is not initialized, rc:%s\n",
 			    strerror(-rc));
-		return rc;
+		return 0;
 	}
 	ident_db = (struct ident_rm_db *)ident_db_ptr;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
+		if (ident_db->ident_db[i] == NULL)
+			continue;
 		fparms.rm_db = ident_db->ident_db[i];
 		fparms.dir = i;
 		rc = tf_rm_free_db(tfp, &fparms);
@@ -372,10 +374,9 @@ tf_ident_get_resc_info(struct tf *tfp,
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to get ident_db from session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
+		TFP_DRV_LOG(INFO,
+			    "No resource allocated for ident from session\n");
+		return 0;
 	}
 	ident_db = (struct ident_rm_db *)ident_db_ptr;
 

@@ -509,21 +509,21 @@ tf_em_int_unbind(struct tf *tfp)
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_EM, &em_db_ptr);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to get em_ext_db from session, rc:%s\n",
+		TFP_DRV_LOG(INFO,
+			    "Em_db is not initialized, rc:%s\n",
 			    strerror(-rc));
-		return rc;
+		return 0;
 	}
 	em_db = (struct em_rm_db *)em_db_ptr;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
+		if (em_db->em_db[i] == NULL)
+			continue;
 		fparms.dir = i;
 		fparms.rm_db = em_db->em_db[i];
-		if (em_db->em_db[i] != NULL) {
-			rc = tf_rm_free_db(tfp, &fparms);
-			if (rc)
-				return rc;
-		}
+		rc = tf_rm_free_db(tfp, &fparms);
+		if (rc)
+			return rc;
 
 		em_db->em_db[i] = NULL;
 	}
@@ -546,10 +546,9 @@ tf_em_get_resc_info(struct tf *tfp,
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_EM, &em_db_ptr);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to get em_ext_db from session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
+		TFP_DRV_LOG(INFO,
+			    "No resource allocated for em from session\n");
+		return 0;
 	}
 	em_db = (struct em_rm_db *)em_db_ptr;
 

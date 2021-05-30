@@ -109,14 +109,16 @@ tf_tbl_unbind(struct tf *tfp)
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TABLE, &tbl_db_ptr);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to get em_ext_db from session, rc:%s\n",
+		TFP_DRV_LOG(INFO,
+			    "Tbl_db is not initialized, rc:%s\n",
 			    strerror(-rc));
-		return rc;
+		return 0;
 	}
 	tbl_db = (struct tbl_rm_db *)tbl_db_ptr;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
+		if (tbl_db->tbl_db[i] == NULL)
+			continue;
 		fparms.dir = i;
 		fparms.rm_db = tbl_db->tbl_db[i];
 		rc = tf_rm_free_db(tfp, &fparms);
@@ -621,22 +623,35 @@ tf_tbl_get_resc_info(struct tf *tfp,
 		     struct tf_tbl_resource_info *tbl)
 {
 	int rc;
-	int d;
+	int d, i;
 	struct tf_resource_info *dinfo;
 	struct tf_rm_get_alloc_info_parms ainfo;
 	void *tbl_db_ptr = NULL;
 	struct tbl_rm_db *tbl_db;
+	uint16_t base = 0, shift = 0;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
 
 	TF_CHECK_PARMS2(tfp, tbl);
 
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TABLE, &tbl_db_ptr);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to get em_ext_db from session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
+		TFP_DRV_LOG(INFO,
+			    "No resource allocated for table from session\n");
+		return 0;
 	}
 	tbl_db = (struct tbl_rm_db *)tbl_db_ptr;
+
 
 	/* check if reserved resource for WC is multiple of num_slices */
 	for (d = 0; d < TF_DIR_MAX; d++) {
@@ -648,7 +663,33 @@ tf_tbl_get_resc_info(struct tf *tfp,
 		rc = tf_rm_get_all_info(&ainfo, TF_TBL_TYPE_MAX);
 		if (rc)
 			return rc;
+
+		if (dev->ops->tf_dev_get_tbl_info) {
+			/* Adjust all */
+			for (i = 0; i < TF_TBL_TYPE_MAX; i++) {
+				/* Only get table info if required for the device */
+				rc = dev->ops->tf_dev_get_tbl_info(tfp,
+								   tbl_db->tbl_db[d],
+								   i,
+								   &base,
+								   &shift);
+				if (rc) {
+					TFP_DRV_LOG(ERR,
+						    "%s: Failed to get table info:%d\n",
+						    tf_dir_2_str(d),
+						    i);
+					return rc;
+				}
+				if (dinfo[i].stride)
+					TF_TBL_RM_TO_PTR(&dinfo[i].start,
+							 dinfo[i].start,
+							 base,
+							 shift);
+			}
+		}
 	}
+
+
 
 	return 0;
 }

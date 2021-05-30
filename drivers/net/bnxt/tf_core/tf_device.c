@@ -44,7 +44,11 @@ tf_dev_reservation_check(uint16_t count,
 		rm_num = (uint16_t *)reservations + i * count;
 		for (j = 0; j < count; j++) {
 			if ((cfg[j].cfg_type == TF_RM_ELEM_CFG_HCAPI ||
-			     cfg[j].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA) &&
+			     cfg[j].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA ||
+			     cfg[j].cfg_type ==
+				TF_RM_ELEM_CFG_HCAPI_BA_PARENT ||
+			     cfg[j].cfg_type ==
+				TF_RM_ELEM_CFG_HCAPI_BA_CHILD) &&
 			     rm_num[j] > 0)
 				cnt++;
 		}
@@ -263,49 +267,49 @@ tf_dev_unbind_p4(struct tf *tfp)
 	 */
 	rc = tf_tcam_unbind(tfp);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
+		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, TCAM\n");
 		fail = true;
 	}
 
 	rc = tf_ident_unbind(tfp);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
+		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, Identifier\n");
 		fail = true;
 	}
 
 	rc = tf_tbl_unbind(tfp);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
+		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, Table Type\n");
 		fail = true;
 	}
 
 	rc = tf_em_ext_common_unbind(tfp);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
+		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, EEM\n");
 		fail = true;
 	}
 
 	rc = tf_em_int_unbind(tfp);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
+		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, EM\n");
 		fail = true;
 	}
 
 	rc = tf_if_tbl_unbind(tfp);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
+		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, IF Table Type\n");
 		fail = true;
 	}
 
 	rc = tf_global_cfg_unbind(tfp);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
+		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, Global Cfg Type\n");
 		fail = true;
 	}
@@ -515,28 +519,28 @@ tf_dev_unbind_p58(struct tf *tfp)
 	 */
 	rc = tf_tcam_unbind(tfp);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
+		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, TCAM\n");
 		fail = true;
 	}
 
 	rc = tf_ident_unbind(tfp);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
+		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, Identifier\n");
 		fail = true;
 	}
 
 	rc = tf_tbl_unbind(tfp);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
+		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, Table Type\n");
 		fail = true;
 	}
 
 	rc = tf_em_int_unbind(tfp);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
+		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, EM\n");
 		fail = true;
 	}

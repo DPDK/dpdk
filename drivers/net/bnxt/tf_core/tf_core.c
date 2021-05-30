@@ -27,8 +27,6 @@ tf_open_session(struct tf *tfp,
 	int rc;
 	unsigned int domain, bus, slot, device;
 	struct tf_session_open_session_parms oparms;
-	int name_len;
-	char *name;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -69,13 +67,6 @@ tf_open_session(struct tf *tfp,
 			    "Failed to scan device ctrl_chan_name\n");
 			return -EINVAL;
 		}
-	}
-
-	name_len = strlen(parms->ctrl_chan_name);
-	name = &parms->ctrl_chan_name[name_len - strlen("tf_shared")];
-	if (!strncmp(name, "tf_shared", strlen("tf_shared"))) {
-		memset(parms->ctrl_chan_name, 0, strlen(parms->ctrl_chan_name));
-		strcpy(parms->ctrl_chan_name, "tf_share");
 	}
 
 	parms->session_id.internal.domain = domain;

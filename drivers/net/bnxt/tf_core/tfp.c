@@ -134,7 +134,7 @@ tfp_get_fid(struct tf *tfp, uint16_t *fw_fid)
 	if (tfp == NULL || fw_fid == NULL)
 		return -EINVAL;
 
-	bp = container_of(tfp, struct bnxt, tfp);
+	bp = (struct bnxt *)tfp->bp;
 	if (bp == NULL)
 		return -EINVAL;
 
@@ -151,7 +151,7 @@ tfp_get_pf(struct tf *tfp, uint16_t *pf)
 	if (tfp == NULL || pf == NULL)
 		return -EINVAL;
 
-	bp = container_of(tfp, struct bnxt, tfp);
+	bp = (struct bnxt *)tfp->bp;
 	if (BNXT_VF(bp) && bp->parent) {
 		*pf = bp->parent->fid - 1;
 		return 0;

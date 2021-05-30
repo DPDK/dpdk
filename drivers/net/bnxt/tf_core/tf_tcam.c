@@ -220,14 +220,16 @@ tf_tcam_unbind(struct tf *tfp)
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to get em_ext_db from session, rc:%s\n",
+		TFP_DRV_LOG(INFO,
+			    "Tcam_db is not initialized, rc:%s\n",
 			    strerror(-rc));
-		return rc;
+		return 0;
 	}
 	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
+		if (tcam_db->tcam_db[i] == NULL)
+			continue;
 		memset(&fparms, 0, sizeof(fparms));
 		fparms.dir = i;
 		fparms.rm_db = tcam_db->tcam_db[i];
@@ -816,10 +818,9 @@ tf_tcam_get_resc_info(struct tf *tfp,
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
 	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to get em_ext_db from session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
+		TFP_DRV_LOG(INFO,
+			    "No resource allocated for tcam from session\n");
+		return 0;
 	}
 	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
 
