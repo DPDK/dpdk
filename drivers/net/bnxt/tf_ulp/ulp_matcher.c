@@ -77,6 +77,8 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 	BNXT_TF_DBG(DEBUG, "Found matching pattern template %d\n",
 		    class_match->class_tid);
 	*class_id = class_match->class_tid;
+	params->hdr_sig_id = class_match->hdr_sig_id;
+	params->flow_sig_id = class_match->flow_sig_id;
 	return BNXT_TF_RC_SUCCESS;
 
 error:

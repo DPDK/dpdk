@@ -91,7 +91,7 @@ struct ulp_regfile_entry {
 };
 
 struct ulp_regfile {
-	struct ulp_regfile_entry entry[BNXT_ULP_REGFILE_INDEX_LAST];
+	struct ulp_regfile_entry entry[BNXT_ULP_RF_IDX_LAST];
 };
 
 /*
@@ -115,7 +115,7 @@ ulp_regfile_init(struct ulp_regfile *regfile);
  */
 uint32_t
 ulp_regfile_read(struct ulp_regfile *regfile,
-		 enum bnxt_ulp_regfile_index field,
+		 enum bnxt_ulp_rf_idx field,
 		 uint64_t *data);
 
 /*
@@ -128,11 +128,11 @@ ulp_regfile_read(struct ulp_regfile *regfile,
  * data [in] The value is written into this variable.  It is going to be in the
  * same byte order as it was written.
  *
- * returns zero on error
+ * returns zero on success
  */
-uint32_t
+int32_t
 ulp_regfile_write(struct ulp_regfile *regfile,
-		  enum bnxt_ulp_regfile_index field,
+		  enum bnxt_ulp_rf_idx field,
 		  uint64_t data);
 
 /*

@@ -23,6 +23,7 @@ sources += files(
         'ulp_fc_mgr.c',
         'ulp_tun.c',
         'ulp_gen_tbl.c',
+        'ulp_rte_handler_tbl.c',
         'ulp_template_db_wh_plus_act.c',
         'ulp_template_db_wh_plus_class.c',
         'ulp_template_db_stingray_act.c',

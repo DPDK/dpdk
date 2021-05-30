@@ -185,15 +185,13 @@ int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
 	port_data = &port_db->phy_port_list[func->phy_port_id];
 	if (!port_data->port_valid) {
 		port_data->port_svif =
-			bnxt_get_svif(port_id, false,
-				      BNXT_ULP_INTF_TYPE_INVALID);
+			bnxt_get_svif(port_id, false, BNXT_ULP_INTF_TYPE_INVALID);
 		port_data->port_spif = bnxt_get_phy_port_id(port_id);
 		port_data->port_parif =
 			bnxt_get_parif(port_id, BNXT_ULP_INTF_TYPE_INVALID);
 		port_data->port_vport = bnxt_get_vport(port_id);
 		port_data->port_valid = true;
 	}
-
 	return 0;
 }
 

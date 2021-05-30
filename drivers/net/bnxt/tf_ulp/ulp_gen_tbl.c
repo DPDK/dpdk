@@ -47,7 +47,7 @@ ulp_mapper_generic_tbl_list_init(struct bnxt_ulp_mapper_data *mapper_data)
 		if (tbl->result_num_entries != 0) {
 			/* add 4 bytes for reference count */
 			entry->mem_data_size = (tbl->result_num_entries + 1) *
-				(tbl->result_byte_size + sizeof(uint32_t));
+				(tbl->result_num_bytes + sizeof(uint32_t));
 
 			/* allocate the big chunk of memory */
 			entry->mem_data = rte_zmalloc("ulp mapper gen tbl",
@@ -60,7 +60,7 @@ ulp_mapper_generic_tbl_list_init(struct bnxt_ulp_mapper_data *mapper_data)
 			}
 			/* Populate the generic table container */
 			entry->container.num_elem = tbl->result_num_entries;
-			entry->container.byte_data_size = tbl->result_byte_size;
+			entry->container.byte_data_size = tbl->result_num_bytes;
 			entry->container.ref_count =
 				(uint32_t *)entry->mem_data;
 			size = sizeof(uint32_t) * (tbl->result_num_entries + 1);
@@ -168,7 +168,6 @@ ulp_mapper_gen_tbl_idx_calculate(uint32_t res_sub_type, uint32_t dir)
  * Set the data in the generic table entry, Data is in Big endian format
  *
  * entry [in] - generic table entry
- * offset [in] - The offset in bits where the data has to be set
  * len [in] - The length of the data in bits to be set
  * data [in] - pointer to the data to be used for setting the value.
  * data_size [in] - length of the data pointer in bytes.
@@ -177,7 +176,7 @@ ulp_mapper_gen_tbl_idx_calculate(uint32_t res_sub_type, uint32_t dir)
  */
 int32_t
 ulp_mapper_gen_tbl_entry_data_set(struct ulp_mapper_gen_tbl_entry *entry,
-				  uint32_t offset, uint32_t len, uint8_t *data,
+				  uint32_t len, uint8_t *data,
 				  uint32_t data_size)
 {
 	/* validate the null arguments */
@@ -187,32 +186,13 @@ ulp_mapper_gen_tbl_entry_data_set(struct ulp_mapper_gen_tbl_entry *entry,
 	}
 
 	/* check the size of the buffer for validation */
-	if ((offset + len) > ULP_BYTE_2_BITS(entry->byte_data_size) ||
+	if (len > ULP_BYTE_2_BITS(entry->byte_data_size) ||
 	    data_size < ULP_BITS_2_BYTE(len)) {
-		BNXT_TF_DBG(ERR, "invalid offset or length %x:%x:%x\n",
-			    offset, len, entry->byte_data_size);
+		BNXT_TF_DBG(ERR, "invalid offset or length %x:%x\n",
+			    len, entry->byte_data_size);
 		return -EINVAL;
 	}
-
-	/* adjust the data pointer */
-	data = data + (data_size - ULP_BITS_2_BYTE(len));
-
-	/* Push the data into the byte data array */
-	if (entry->byte_order == BNXT_ULP_BYTE_ORDER_LE) {
-		if (ulp_bs_push_lsb(entry->byte_data, offset, len, data) !=
-		    len) {
-			BNXT_TF_DBG(ERR, "write failed offset = %x, len =%x\n",
-				    offset, len);
-			return -EIO;
-		}
-	} else {
-		if (ulp_bs_push_msb(entry->byte_data, offset, len, data) !=
-		    len) {
-			BNXT_TF_DBG(ERR, "write failed offset = %x, len =%x\n",
-				    offset, len);
-			return -EIO;
-		}
-	}
+	memcpy(entry->byte_data, data, ULP_BITS_2_BYTE(len));
 	return 0;
 }
 
@@ -267,7 +247,7 @@ ulp_mapper_gen_tbl_res_free(struct bnxt_ulp_context *ulp_ctx,
 {
 	struct ulp_mapper_gen_tbl_entry entry;
 	int32_t tbl_idx;
-	uint32_t fid;
+	uint32_t fid = 0;
 
 	/* Extract the resource sub type and direction */
 	tbl_idx = ulp_mapper_gen_tbl_idx_calculate(res->resource_sub_type,
@@ -310,7 +290,7 @@ ulp_mapper_gen_tbl_res_free(struct bnxt_ulp_context *ulp_ctx,
 	fid = tfp_be_to_cpu_32(fid);
 
 	/* Destroy the flow associated with the shared flow id */
-	if (ulp_mapper_flow_destroy(ulp_ctx, BNXT_ULP_FDB_TYPE_REGULAR,
+	if (ulp_mapper_flow_destroy(ulp_ctx, BNXT_ULP_FDB_TYPE_RID,
 				    fid))
 		BNXT_TF_DBG(ERR, "Error in deleting shared flow id %x\n", fid);
 

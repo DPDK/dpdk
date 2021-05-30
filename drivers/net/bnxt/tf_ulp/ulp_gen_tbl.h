@@ -101,7 +101,6 @@ ulp_mapper_gen_tbl_idx_calculate(uint32_t res_sub_type, uint32_t dir);
  * Set the data in the generic table entry
  *
  * entry [in] - generic table entry
- * offset [in] - The offset in bits where the data has to be set
  * len [in] - The length of the data in bits to be set
  * data [in] - pointer to the data to be used for setting the value.
  * data_size [in] - length of the data pointer in bytes.
@@ -110,7 +109,7 @@ ulp_mapper_gen_tbl_idx_calculate(uint32_t res_sub_type, uint32_t dir);
  */
 int32_t
 ulp_mapper_gen_tbl_entry_data_set(struct ulp_mapper_gen_tbl_entry *entry,
-				  uint32_t offset, uint32_t len, uint8_t *data,
+				  uint32_t len, uint8_t *data,
 				  uint32_t data_size);
 
 /*

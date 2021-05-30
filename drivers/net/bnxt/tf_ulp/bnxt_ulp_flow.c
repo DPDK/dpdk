@@ -79,7 +79,6 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 			    struct ulp_rte_parser_params *params,
 			    enum bnxt_ulp_fdb_type flow_type)
 {
-	memset(mapper_cparms, 0, sizeof(*mapper_cparms));
 	mapper_cparms->flow_type	= flow_type;
 	mapper_cparms->app_priority	= params->priority;
 	mapper_cparms->dir_attr		= params->dir_attr;
@@ -95,6 +94,12 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 	mapper_cparms->parent_flow	= params->parent_flow;
 	mapper_cparms->parent_fid	= params->parent_fid;
 	mapper_cparms->fld_bitmap	= &params->fld_bitmap;
+
+	/* update the signature fields into the computed field list */
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_HDR_SIG_ID,
+			    params->hdr_sig_id);
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_FLOW_SIG_ID,
+			    params->flow_sig_id);
 }
 
 /* Function to create the rte flow. */
@@ -177,7 +182,6 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	params.fid = fid;
 	params.func_id = func_id;
 	params.priority = attr->priority;
-	params.port_id = dev->data->port_id;
 	/* Perform the rte flow post process */
 	ret = bnxt_ulp_rte_parser_post_process(&params);
 	if (ret == BNXT_TF_RC_ERROR)

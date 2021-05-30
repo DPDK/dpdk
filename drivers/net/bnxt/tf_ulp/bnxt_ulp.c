@@ -22,7 +22,6 @@
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
 #include "ulp_port_db.h"
-#include "ulp_tun.h"
 
 /* Linked list of all TF sessions. */
 STAILQ_HEAD(, bnxt_ulp_session_state) bnxt_ulp_session_list =
@@ -55,14 +54,13 @@ bnxt_ulp_devid_get(struct bnxt *bp,
 {
 	if (BNXT_CHIP_P5(bp))
 		return -EINVAL;
-	/* Assuming Whitney */
-	*ulp_dev_id = BNXT_ULP_DEVICE_ID_WH_PLUS;
 
 	if (BNXT_STINGRAY(bp))
 		*ulp_dev_id = BNXT_ULP_DEVICE_ID_STINGRAY;
 	else
 		/* Assuming Whitney */
 		*ulp_dev_id = BNXT_ULP_DEVICE_ID_WH_PLUS;
+
 	return 0;
 }
 
@@ -400,21 +398,18 @@ ulp_eem_tbl_scope_init(struct bnxt *bp)
 
 	if (bnxt_ulp_cntxt_mem_type_get(bp->ulp_ctx, &mtype))
 		return -EINVAL;
-
 	if (mtype != BNXT_ULP_FLOW_MEM_TYPE_EXT) {
 		BNXT_TF_DBG(INFO, "Table Scope alloc is not required\n");
 		return 0;
 	}
 
 	bnxt_init_tbl_scope_parms(bp, &params);
-
 	rc = tf_alloc_tbl_scope(&bp->tfp, &params);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to allocate eem table scope rc = %d\n",
 			    rc);
 		return rc;
 	}
-
 	rc = bnxt_ulp_cntxt_tbl_scope_id_set(bp->ulp_ctx, params.tbl_scope_id);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to set table scope id\n");
@@ -534,8 +529,6 @@ ulp_ctx_init(struct bnxt *bp,
 	if (rc)
 		goto error_deinit;
 
-	ulp_tun_tbl_init(ulp_data->tun_tbl);
-
 	bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, &bp->tfp);
 	return rc;
 
@@ -547,8 +540,7 @@ error_deinit:
 
 /* The function to initialize ulp dparms with devargs */
 static int32_t
-ulp_dparms_init(struct bnxt *bp,
-		struct bnxt_ulp_context *ulp_ctx)
+ulp_dparms_init(struct bnxt *bp, struct bnxt_ulp_context *ulp_ctx)
 {
 	struct bnxt_ulp_device_params *dparms;
 	uint32_t dev_id;

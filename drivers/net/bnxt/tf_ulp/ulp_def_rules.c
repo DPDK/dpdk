@@ -366,7 +366,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 		goto err1;
 	}
 
-	rc = ulp_flow_db_fid_alloc(ulp_ctx, BNXT_ULP_FDB_TYPE_DEFAULT,
+	rc = ulp_flow_db_fid_alloc(ulp_ctx, mapper_params.flow_type,
 				   mapper_params.func_id, &fid);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to allocate flow table entry\n");
@@ -383,7 +383,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	return 0;
 
 err3:
-	ulp_flow_db_fid_free(ulp_ctx, BNXT_ULP_FDB_TYPE_DEFAULT, fid);
+	ulp_flow_db_fid_free(ulp_ctx, mapper_params.flow_type, fid);
 err2:
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 err1:
@@ -437,7 +437,7 @@ void
 bnxt_ulp_destroy_df_rules(struct bnxt *bp, bool global)
 {
 	struct bnxt_ulp_df_rule_info *info;
-	uint16_t port_id;
+	uint8_t port_id;
 
 	if (!BNXT_TRUFLOW_EN(bp) ||
 	    BNXT_ETH_DEV_IS_REPRESENTOR(bp->eth_dev))
@@ -501,7 +501,7 @@ int32_t
 bnxt_ulp_create_df_rules(struct bnxt *bp)
 {
 	struct bnxt_ulp_df_rule_info *info;
-	uint16_t port_id;
+	uint8_t port_id;
 	int rc;
 
 	if (!BNXT_TRUFLOW_EN(bp) ||
@@ -575,7 +575,7 @@ bnxt_ulp_create_vfr_default_rules(struct rte_eth_dev *vfr_ethdev)
 	struct rte_eth_dev *parent_dev = vfr->parent_dev;
 	struct bnxt *bp = parent_dev->data->dev_private;
 	uint16_t vfr_port_id = vfr_ethdev->data->port_id;
-	uint16_t port_id;
+	uint8_t port_id;
 	int rc;
 
 	if (!bp || !BNXT_TRUFLOW_EN(bp))

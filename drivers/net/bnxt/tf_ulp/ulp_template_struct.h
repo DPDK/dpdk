@@ -18,7 +18,7 @@
 #include "tf_core.h"
 
 /* Number of fields for each protocol */
-#define BNXT_ULP_PROTO_HDR_SVIF_NUM	1
+#define BNXT_ULP_PROTO_HDR_SVIF_NUM	2
 #define BNXT_ULP_PROTO_HDR_ETH_NUM	3
 #define BNXT_ULP_PROTO_HDR_S_VLAN_NUM	3
 #define BNXT_ULP_PROTO_HDR_VLAN_NUM	6
@@ -28,7 +28,7 @@
 #define BNXT_ULP_PROTO_HDR_TCP_NUM	9
 #define BNXT_ULP_PROTO_HDR_VXLAN_NUM	4
 #define BNXT_ULP_PROTO_HDR_MAX		128
-#define BNXT_ULP_PROTO_HDR_FIELD_SVIF_IDX	0
+#define BNXT_ULP_PROTO_HDR_FIELD_SVIF_IDX	1
 
 /* Direction attributes */
 #define BNXT_ULP_FLOW_ATTR_TRANSFER	0x1
@@ -62,14 +62,12 @@ struct ulp_rte_act_prop {
 
 /* Structure to be used for passing all the parser functions */
 struct ulp_rte_parser_params {
-	STAILQ_ENTRY(ulp_rte_parser_params)  next;
 	struct ulp_rte_hdr_bitmap	hdr_bitmap;
 	struct ulp_rte_hdr_bitmap	hdr_fp_bit;
 	struct ulp_rte_field_bitmap	fld_bitmap;
 	struct ulp_rte_hdr_field	hdr_field[BNXT_ULP_PROTO_HDR_MAX];
 	uint32_t			comp_fld[BNXT_ULP_CF_IDX_LAST];
 	uint32_t			field_idx;
-	uint32_t			vlan_idx;
 	struct ulp_rte_act_bitmap	act_bitmap;
 	struct ulp_rte_act_prop		act_prop;
 	uint32_t			dir_attr;
@@ -78,10 +76,11 @@ struct ulp_rte_parser_params {
 	uint32_t			parent_flow;
 	uint32_t			parent_fid;
 	uint16_t			func_id;
-	uint16_t			port_id;
 	uint32_t			class_id;
 	uint32_t			act_tmpl;
 	struct bnxt_ulp_context		*ulp_ctx;
+	uint32_t			hdr_sig_id;
+	uint32_t			flow_sig_id;
 };
 
 /* Flow Parser Header Information Structure */
@@ -127,6 +126,8 @@ struct bnxt_ulp_class_match_info {
 	uint32_t		class_tid;
 	uint8_t			act_vnic;
 	uint8_t			wc_pri;
+	uint32_t		hdr_sig_id;
+	uint32_t		flow_sig_id;
 };
 
 /* Flow Matcher templates Structure for class entries */
@@ -163,11 +164,17 @@ struct bnxt_ulp_mapper_cond_list_info {
 
 struct bnxt_ulp_template_device_tbls {
 	struct bnxt_ulp_mapper_tmpl_info *tmpl_list;
+	uint32_t tmpl_list_size;
 	struct bnxt_ulp_mapper_tbl_info *tbl_list;
-	struct bnxt_ulp_mapper_key_field_info *key_field_list;
-	struct bnxt_ulp_mapper_result_field_info *result_field_list;
+	uint32_t tbl_list_size;
+	struct bnxt_ulp_mapper_key_info *key_info_list;
+	uint32_t key_info_list_size;
+	struct bnxt_ulp_mapper_field_info *result_field_list;
+	uint32_t result_field_list_size;
 	struct bnxt_ulp_mapper_ident_info *ident_list;
+	uint32_t ident_list_size;
 	struct bnxt_ulp_mapper_cond_info *cond_list;
+	uint32_t cond_list_size;
 };
 
 /* Device specific parameters */
@@ -210,6 +217,10 @@ struct bnxt_ulp_mapper_tbl_info {
 	uint8_t				direction;
 	enum bnxt_ulp_pri_opc		pri_opcode;
 	uint32_t			pri_operand;
+
+	/* conflict resolution opcode */
+	enum bnxt_ulp_accept_opc	accept_opcode;
+
 	enum bnxt_ulp_critical_resource		critical_resource;
 
 	/* Information for accessing the ulp_key_field_list */
@@ -237,25 +248,21 @@ struct bnxt_ulp_mapper_tbl_info {
 
 	/* FDB table opcode */
 	enum bnxt_ulp_fdb_opc		fdb_opcode;
-	uint32_t			flow_db_operand;
+	uint32_t			fdb_operand;
 };
 
-struct bnxt_ulp_mapper_key_field_info {
-	uint8_t				description[64];
-	enum bnxt_ulp_mapper_opc	mask_opcode;
-	enum bnxt_ulp_mapper_opc	spec_opcode;
-	uint16_t			field_bit_size;
-	uint8_t				mask_operand[16];
-	uint8_t				spec_operand[16];
+struct bnxt_ulp_mapper_field_info {
+	uint8_t			description[64];
+	enum bnxt_ulp_field_opc	field_opcode;
+	uint16_t		field_bit_size;
+	uint8_t			field_operand[16];
+	uint8_t			field_operand_true[16];
+	uint8_t			field_operand_false[16];
 };
 
-struct bnxt_ulp_mapper_result_field_info {
-	uint8_t				description[64];
-	enum bnxt_ulp_mapper_opc	result_opcode;
-	uint16_t			field_bit_size;
-	uint8_t				result_operand[16];
-	uint8_t				result_operand_true[16];
-	uint8_t				result_operand_false[16];
+struct bnxt_ulp_mapper_key_info {
+	struct bnxt_ulp_mapper_field_info	field_info_spec;
+	struct bnxt_ulp_mapper_field_info	field_info_mask;
 };
 
 struct bnxt_ulp_mapper_ident_info {
@@ -265,13 +272,13 @@ struct bnxt_ulp_mapper_ident_info {
 	uint16_t	ident_type;
 	uint16_t	ident_bit_size;
 	uint16_t	ident_bit_pos;
-	enum bnxt_ulp_regfile_index	regfile_idx;
+	enum bnxt_ulp_rf_idx	regfile_idx;
 };
 
 struct bnxt_ulp_glb_resource_info {
 	enum bnxt_ulp_resource_func	resource_func;
 	uint32_t			resource_type; /* TF_ enum type */
-	enum bnxt_ulp_glb_regfile_index	glb_regfile_index;
+	enum bnxt_ulp_glb_rf_idx	glb_regfile_index;
 	enum tf_dir			direction;
 };
 
@@ -281,8 +288,12 @@ struct bnxt_ulp_cache_tbl_params {
 
 struct bnxt_ulp_generic_tbl_params {
 	uint16_t			result_num_entries;
-	uint16_t			result_byte_size;
+	uint16_t			result_num_bytes;
 	enum bnxt_ulp_byte_order	result_byte_order;
+};
+
+struct bnxt_ulp_shared_act_info {
+	uint64_t act_bitmask;
 };
 
 /*

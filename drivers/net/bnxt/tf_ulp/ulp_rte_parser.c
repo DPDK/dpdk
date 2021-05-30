@@ -3,7 +3,6 @@
  * All rights reserved.
  */
 
-#include <rte_vxlan.h>
 #include "bnxt.h"
 #include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
@@ -228,11 +227,6 @@ bnxt_ulp_comp_fld_intf_update(struct ulp_rte_parser_params *params)
 					    BNXT_ULP_CF_IDX_VF_FUNC_PARIF,
 					    parif);
 
-			/* populate the loopback parif */
-			ULP_COMP_FLD_IDX_WR(params,
-					    BNXT_ULP_CF_IDX_LOOPBACK_PARIF,
-					    BNXT_ULP_SYM_VF_FUNC_PARIF);
-
 		} else {
 			/* Set DRV func PARIF */
 			if (ulp_port_db_parif_get(params->ulp_ctx, ifindex,
@@ -300,6 +294,9 @@ ulp_post_process_normal_flow(struct ulp_rte_parser_params *params)
 
 	/* Merge the hdr_fp_bit into the proto header bit */
 	params->hdr_bitmap.bits |= params->hdr_fp_bit.bits;
+
+	/* Update the comp fld fid */
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_FID, params->fid);
 
 	/* Update the computed interface parameters */
 	bnxt_ulp_comp_fld_intf_update(params);
@@ -686,10 +683,8 @@ ulp_rte_eth_hdr_handler(const struct rte_flow_item *item,
 		ulp_rte_prsr_mask_copy(params, &idx, &eth_mask->type,
 				       sizeof(eth_mask->type));
 	}
-	/* Add number of vlan header elements */
+	/* Add number of Eth header elements */
 	params->field_idx += BNXT_ULP_PROTO_HDR_ETH_NUM;
-	params->vlan_idx = params->field_idx;
-	params->field_idx += BNXT_ULP_PROTO_HDR_VLAN_NUM;
 
 	/* Update the protocol hdr bitmap */
 	if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
@@ -722,7 +717,7 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 	const struct rte_flow_item_vlan *vlan_mask = item->mask;
 	struct ulp_rte_hdr_field *field;
 	struct ulp_rte_hdr_bitmap	*hdr_bit;
-	uint32_t idx = params->vlan_idx;
+	uint32_t idx = params->field_idx;
 	uint16_t vlan_tag, priority;
 	uint32_t outer_vtag_num;
 	uint32_t inner_vtag_num;
@@ -781,8 +776,8 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		ulp_rte_prsr_mask_copy(params, &idx, &vlan_mask->inner_type,
 				       sizeof(vlan_mask->inner_type));
 	}
-	/* Set the vlan index to new incremented value */
-	params->vlan_idx += BNXT_ULP_PROTO_HDR_S_VLAN_NUM;
+	/* Set the field index to new incremented value */
+	params->field_idx += BNXT_ULP_PROTO_HDR_S_VLAN_NUM;
 
 	/* Get the outer tag and inner tag counts */
 	outer_vtag_num = ULP_COMP_FLD_IDX_RD(params,
@@ -1013,13 +1008,6 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3, 1);
 	}
 
-	/* Some of the PMD applications may set the protocol field
-	 * in the IPv4 spec but don't set the mask. So, consider
-	 * the mask in the proto value calculation.
-	 */
-	if (ipv4_mask)
-		proto &= ipv4_mask->hdr.next_proto_id;
-
 	/* Update the field protocol hdr bitmap */
 	ulp_rte_l3_proto_type_update(params, proto, inner_flag);
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_HDR_CNT, ++cnt);
@@ -1117,8 +1105,8 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 				       &vtcf_mask,
 				       size);
 		/*
-		 * The TC and flow label field are ignored since OVS is
-		 * setting it for match and it is not supported.
+		 * The TC and flow label field are ignored since OVS is setting
+		 * it for match and it is not supported.
 		 * This is a work around and
 		 * shall be addressed in the future.
 		 */
@@ -1157,13 +1145,6 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV6);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3, 1);
 	}
-
-	/* Some of the PMD applications may set the protocol field
-	 * in the IPv6 spec but don't set the mask. So, consider
-	 * the mask in proto value calculation.
-	 */
-	if (ipv6_mask)
-		proto &= ipv6_mask->hdr.proto;
 
 	/* Update the field protocol hdr bitmap */
 	ulp_rte_l3_proto_type_update(params, proto, inner_flag);
@@ -1549,7 +1530,7 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG];
 		ulp_encap_buffer_copy(buff,
 				      item->spec,
-				      sizeof(struct rte_vlan_hdr),
+				      sizeof(struct rte_flow_item_vlan),
 				      ULP_BUFFER_ALIGN_8_BYTE);
 
 		if (!ulp_rte_item_skip_void(&item, 1))
@@ -1560,15 +1541,15 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 	if (item->type == RTE_FLOW_ITEM_TYPE_VLAN) {
 		vlan_num++;
 		memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG +
-		       sizeof(struct rte_vlan_hdr)],
+		       sizeof(struct rte_flow_item_vlan)],
 		       item->spec,
-		       sizeof(struct rte_vlan_hdr));
+		       sizeof(struct rte_flow_item_vlan));
 		if (!ulp_rte_item_skip_void(&item, 1))
 			return BNXT_TF_RC_ERROR;
 	}
 	/* Update the vlan count and size of more than one */
 	if (vlan_num) {
-		vlan_size = vlan_num * sizeof(struct rte_vlan_hdr);
+		vlan_size = vlan_num * sizeof(struct rte_flow_item_vlan);
 		vlan_num = tfp_cpu_to_be_32(vlan_num);
 		memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG_NUM],
 		       &vlan_num,
@@ -1727,7 +1708,7 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		BNXT_TF_DBG(ERR, "vxlan encap does not have vni\n");
 		return BNXT_TF_RC_ERROR;
 	}
-	vxlan_size = sizeof(struct rte_vxlan_hdr);
+	vxlan_size = sizeof(struct rte_flow_item_vxlan);
 	/* copy the vxlan details */
 	memcpy(&vxlan_spec, item->spec, vxlan_size);
 	vxlan_spec.flags = 0x08;

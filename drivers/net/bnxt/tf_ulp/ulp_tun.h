@@ -15,7 +15,7 @@
 #include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
 
-#define	BNXT_OUTER_TUN_FLOW(l3_tun, params)		\
+#define	BNXT_OUTER_TUN_SIGNATURE(l3_tun, params)		\
 	((l3_tun) &&					\
 	 ULP_BITMAP_ISSET((params)->act_bitmap.bits,	\
 			  BNXT_ULP_ACTION_BIT_JUMP))
@@ -24,16 +24,22 @@
 	 !ULP_BITMAP_ISSET((params)->hdr_bitmap.bits,			\
 			   BNXT_ULP_HDR_BIT_O_ETH))
 
-#define	BNXT_CACHE_INNER_TUN_FLOW(state, inner_tun_sig)	\
+#define	BNXT_FIRST_INNER_TUN_FLOW(state, inner_tun_sig)	\
 	((state) == BNXT_ULP_FLOW_STATE_NORMAL && (inner_tun_sig))
 #define	BNXT_INNER_TUN_FLOW(state, inner_tun_sig)		\
 	((state) == BNXT_ULP_FLOW_STATE_TUN_O_OFFLD && (inner_tun_sig))
+#define	BNXT_OUTER_TUN_FLOW(outer_tun_sig)		((outer_tun_sig))
 
 /* It is invalid to get another outer flow offload request
  * for the same tunnel, while the outer flow is already offloaded.
  */
 #define	BNXT_REJECT_OUTER_TUN_FLOW(state, outer_tun_sig)	\
 	((state) == BNXT_ULP_FLOW_STATE_TUN_O_OFFLD && (outer_tun_sig))
+/* It is invalid to get another inner flow offload request
+ * for the same tunnel, while the outer flow is not yet offloaded.
+ */
+#define	BNXT_REJECT_INNER_TUN_FLOW(state, inner_tun_sig)	\
+	((state) == BNXT_ULP_FLOW_STATE_TUN_I_CACHED && (inner_tun_sig))
 
 #define	ULP_TUN_O_DMAC_HDR_FIELD_INDEX	1
 #define	ULP_TUN_O_IPV4_DIP_INDEX	19
@@ -44,10 +50,10 @@
  * requests arrive.
  *
  * If inner tunnel flow offload request arrives first then the flow
- * state will remain in BNXT_ULP_FLOW_STATE_NORMAL state.
- * The following outer tunnel flow offload request will change the
- * state of the flow to BNXT_ULP_FLOW_STATE_TUN_O_OFFLD from
- * BNXT_ULP_FLOW_STATE_NORMAL.
+ * state will change from BNXT_ULP_FLOW_STATE_NORMAL to
+ * BNXT_ULP_FLOW_STATE_TUN_I_CACHED and the following outer tunnel
+ * flow offload request will change the state of the flow to
+ * BNXT_ULP_FLOW_STATE_TUN_O_OFFLD from BNXT_ULP_FLOW_STATE_TUN_I_CACHED.
  *
  * If outer tunnel flow offload request arrives first then the flow state
  * will change from BNXT_ULP_FLOW_STATE_NORMAL to
@@ -61,15 +67,12 @@
 enum bnxt_ulp_tun_flow_state {
 	BNXT_ULP_FLOW_STATE_NORMAL = 0,
 	BNXT_ULP_FLOW_STATE_TUN_O_OFFLD,
-};
-
-struct ulp_per_port_flow_info {
-	enum bnxt_ulp_tun_flow_state		state;
-	uint32_t				tun_i_cnt;
-	STAILQ_HEAD(, ulp_rte_parser_params)	tun_i_prms_list;
+	BNXT_ULP_FLOW_STATE_TUN_I_CACHED
 };
 
 struct bnxt_tun_cache_entry {
+	enum bnxt_ulp_tun_flow_state	state;
+	bool				valid;
 	bool				t_dst_ip_valid;
 	uint8_t				t_dmac[RTE_ETHER_ADDR_LEN];
 	union {
@@ -77,17 +80,13 @@ struct bnxt_tun_cache_entry {
 		uint8_t			t_dst_ip6[16];
 	};
 	uint32_t			outer_tun_flow_id;
+	uint32_t			first_inner_tun_flow_id;
 	uint16_t			outer_tun_rej_cnt;
-	struct ulp_per_port_flow_info	tun_flow_info[RTE_MAX_ETHPORTS];
+	uint16_t			inner_tun_rej_cnt;
+	struct ulp_rte_parser_params	first_inner_tun_params;
 };
 
 void
-ulp_tun_tbl_init(struct bnxt_tun_cache_entry *tun_tbl);
-
-void
 ulp_clear_tun_entry(struct bnxt_tun_cache_entry *tun_tbl, uint8_t tun_idx);
-
-void
-ulp_clear_tun_inner_entry(struct bnxt_tun_cache_entry *tun_tbl, uint32_t fid);
 
 #endif

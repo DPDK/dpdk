@@ -38,11 +38,11 @@ ulp_regfile_init(struct ulp_regfile *regfile)
  */
 uint32_t
 ulp_regfile_read(struct ulp_regfile *regfile,
-		 enum bnxt_ulp_regfile_index field,
+		 enum bnxt_ulp_rf_idx field,
 		 uint64_t *data)
 {
 	/* validate the arguments */
-	if (!regfile || field >= BNXT_ULP_REGFILE_INDEX_LAST) {
+	if (!regfile || field >= BNXT_ULP_RF_IDX_LAST) {
 		BNXT_TF_DBG(ERR, "invalid argument\n");
 		return 0; /* failure */
 	}
@@ -64,21 +64,21 @@ ulp_regfile_read(struct ulp_regfile *regfile,
  * size [in] The size in bytes of the value beingritten into this
  * variable.
  *
- * returns 0 on fail
+ * returns 0 on success
  */
-uint32_t
+int32_t
 ulp_regfile_write(struct ulp_regfile *regfile,
-		  enum bnxt_ulp_regfile_index field,
+		  enum bnxt_ulp_rf_idx field,
 		  uint64_t data)
 {
 	/* validate the arguments */
-	if (!regfile || field >= BNXT_ULP_REGFILE_INDEX_LAST) {
+	if (!regfile || field >= BNXT_ULP_RF_IDX_LAST) {
 		BNXT_TF_DBG(ERR, "invalid argument\n");
-		return 0; /* failure */
+		return -EINVAL; /* failure */
 	}
 
 	regfile->entry[field].data = data;
-	return sizeof(data); /* Success */
+	return 0; /* Success */
 }
 
 static void
