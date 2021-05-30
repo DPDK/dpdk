@@ -16,6 +16,44 @@ static int tf_dev_unbind_p4(struct tf *tfp);
 static int tf_dev_unbind_p58(struct tf *tfp);
 
 /**
+ * Resource Reservation Check function
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] cfg
+ *   Pointer to rm element config
+ *
+ * [in] reservations
+ *   Pointer to resource reservation array
+ *
+ * Returns
+ *   - (n) number of tables that have non-zero reservation count.
+ */
+static int
+tf_dev_reservation_check(struct tf *tfp __rte_unused,
+			 uint16_t count,
+			 struct tf_rm_element_cfg *cfg,
+			 uint16_t *reservations)
+{
+	uint16_t cnt = 0;
+	uint16_t *rm_num;
+	int i, j;
+
+	for (i = 0; i < TF_DIR_MAX; i++) {
+		rm_num = (uint16_t *)reservations + i * count;
+		for (j = 0; j < count; j++) {
+			if ((cfg[j].cfg_type == TF_RM_ELEM_CFG_HCAPI ||
+			     cfg[j].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA) &&
+			     rm_num[j] > 0)
+				cnt++;
+		}
+	}
+
+	return cnt;
+}
+
+/**
  * Device specific bind function, WH+
  *
  * [in] tfp
@@ -42,6 +80,8 @@ tf_dev_bind_p4(struct tf *tfp,
 {
 	int rc;
 	int frc;
+	int rsv_cnt;
+	bool no_rsv_flag = true;
 	struct tf_ident_cfg_parms ident_cfg;
 	struct tf_tbl_cfg_parms tbl_cfg;
 	struct tf_tcam_cfg_parms tcam_cfg;
@@ -54,69 +94,117 @@ tf_dev_bind_p4(struct tf *tfp,
 
 	/* Initialize the modules */
 
-	ident_cfg.num_elements = TF_IDENT_TYPE_MAX;
-	ident_cfg.cfg = tf_ident_p4;
-	ident_cfg.shadow_copy = shadow_copy;
-	ident_cfg.resources = resources;
-	rc = tf_ident_bind(tfp, &ident_cfg);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Identifier initialization failure\n");
-		goto fail;
+	rsv_cnt = tf_dev_reservation_check(tfp,
+					   TF_IDENT_TYPE_MAX,
+					   tf_ident_p4,
+					   (uint16_t *)resources->ident_cnt);
+	if (rsv_cnt) {
+		ident_cfg.num_elements = TF_IDENT_TYPE_MAX;
+		ident_cfg.cfg = tf_ident_p4;
+		ident_cfg.shadow_copy = shadow_copy;
+		ident_cfg.resources = resources;
+		rc = tf_ident_bind(tfp, &ident_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "Identifier initialization failure\n");
+			goto fail;
+		}
+
+		no_rsv_flag = false;
 	}
 
-	tbl_cfg.num_elements = TF_TBL_TYPE_MAX;
-	tbl_cfg.cfg = tf_tbl_p4;
-	tbl_cfg.shadow_copy = shadow_copy;
-	tbl_cfg.resources = resources;
-	rc = tf_tbl_bind(tfp, &tbl_cfg);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Table initialization failure\n");
-		goto fail;
+	rsv_cnt = tf_dev_reservation_check(tfp,
+					   TF_TBL_TYPE_MAX,
+					   tf_tbl_p4,
+					   (uint16_t *)resources->tbl_cnt);
+	if (rsv_cnt) {
+		tbl_cfg.num_elements = TF_TBL_TYPE_MAX;
+		tbl_cfg.cfg = tf_tbl_p4;
+		tbl_cfg.shadow_copy = shadow_copy;
+		tbl_cfg.resources = resources;
+		rc = tf_tbl_bind(tfp, &tbl_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "Table initialization failure\n");
+			goto fail;
+		}
+
+		no_rsv_flag = false;
 	}
 
-	tcam_cfg.num_elements = TF_TCAM_TBL_TYPE_MAX;
-	tcam_cfg.cfg = tf_tcam_p4;
-	tcam_cfg.shadow_copy = shadow_copy;
-	tcam_cfg.resources = resources;
-	rc = tf_tcam_bind(tfp, &tcam_cfg);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "TCAM initialization failure\n");
-		goto fail;
+	rsv_cnt = tf_dev_reservation_check(tfp,
+					   TF_TCAM_TBL_TYPE_MAX,
+					   tf_tcam_p4,
+					   (uint16_t *)resources->tcam_cnt);
+	if (rsv_cnt) {
+		tcam_cfg.num_elements = TF_TCAM_TBL_TYPE_MAX;
+		tcam_cfg.cfg = tf_tcam_p4;
+		tcam_cfg.shadow_copy = shadow_copy;
+		tcam_cfg.resources = resources;
+		rc = tf_tcam_bind(tfp, &tcam_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "TCAM initialization failure\n");
+			goto fail;
+		}
+		no_rsv_flag = false;
 	}
 
 	/*
 	 * EEM
 	 */
-	em_cfg.num_elements = TF_EM_TBL_TYPE_MAX;
 	if (dev_handle->type == TF_DEVICE_TYPE_WH)
 		em_cfg.cfg = tf_em_ext_p4;
 	else
 		em_cfg.cfg = tf_em_ext_p45;
-	em_cfg.resources = resources;
-	em_cfg.mem_type = TF_EEM_MEM_TYPE_HOST;
-	rc = tf_em_ext_common_bind(tfp, &em_cfg);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "EEM initialization failure\n");
-		goto fail;
+
+	rsv_cnt = tf_dev_reservation_check(tfp,
+					   TF_EM_TBL_TYPE_MAX,
+					   em_cfg.cfg,
+					   (uint16_t *)resources->em_cnt);
+	if (rsv_cnt) {
+		em_cfg.num_elements = TF_EM_TBL_TYPE_MAX;
+		em_cfg.resources = resources;
+		em_cfg.mem_type = TF_EEM_MEM_TYPE_HOST;
+		rc = tf_em_ext_common_bind(tfp, &em_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "EEM initialization failure\n");
+			goto fail;
+		}
+		no_rsv_flag = false;
 	}
 
 	/*
 	 * EM
 	 */
-	em_cfg.num_elements = TF_EM_TBL_TYPE_MAX;
-	em_cfg.cfg = tf_em_int_p4;
-	em_cfg.resources = resources;
-	em_cfg.mem_type = 0; /* Not used by EM */
+	rsv_cnt = tf_dev_reservation_check(tfp,
+					   TF_EM_TBL_TYPE_MAX,
+					   tf_em_int_p4,
+					   (uint16_t *)resources->em_cnt);
+	if (rsv_cnt) {
+		em_cfg.num_elements = TF_EM_TBL_TYPE_MAX;
+		em_cfg.cfg = tf_em_int_p4;
+		em_cfg.resources = resources;
+		em_cfg.mem_type = 0; /* Not used by EM */
 
-	rc = tf_em_int_bind(tfp, &em_cfg);
-	if (rc) {
+		rc = tf_em_int_bind(tfp, &em_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "EM initialization failure\n");
+			goto fail;
+		}
+		no_rsv_flag = false;
+	}
+
+	/*
+	 * There is no rm reserved for any tables
+	 *
+	 */
+	if (no_rsv_flag) {
 		TFP_DRV_LOG(ERR,
-			    "EM initialization failure\n");
-		goto fail;
+			    "No rm reserved for any tables\n");
+		return -ENOMEM;
 	}
 
 	/*
@@ -263,6 +351,8 @@ tf_dev_bind_p58(struct tf *tfp,
 {
 	int rc;
 	int frc;
+	int rsv_cnt;
+	bool no_rsv_flag = true;
 	struct tf_ident_cfg_parms ident_cfg;
 	struct tf_tbl_cfg_parms tbl_cfg;
 	struct tf_tcam_cfg_parms tcam_cfg;
@@ -275,52 +365,90 @@ tf_dev_bind_p58(struct tf *tfp,
 
 	/* Initialize the modules */
 
-	ident_cfg.num_elements = TF_IDENT_TYPE_MAX;
-	ident_cfg.cfg = tf_ident_p58;
-	ident_cfg.shadow_copy = shadow_copy;
-	ident_cfg.resources = resources;
-	rc = tf_ident_bind(tfp, &ident_cfg);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Identifier initialization failure\n");
-		goto fail;
+	rsv_cnt = tf_dev_reservation_check(tfp,
+					   TF_IDENT_TYPE_MAX,
+					   tf_ident_p58,
+					   (uint16_t *)resources->ident_cnt);
+	if (rsv_cnt) {
+		ident_cfg.num_elements = TF_IDENT_TYPE_MAX;
+		ident_cfg.cfg = tf_ident_p58;
+		ident_cfg.shadow_copy = shadow_copy;
+		ident_cfg.resources = resources;
+		rc = tf_ident_bind(tfp, &ident_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "Identifier initialization failure\n");
+			goto fail;
+		}
+		no_rsv_flag = false;
 	}
 
-	tbl_cfg.num_elements = TF_TBL_TYPE_MAX;
-	tbl_cfg.cfg = tf_tbl_p58;
-	tbl_cfg.shadow_copy = shadow_copy;
-	tbl_cfg.resources = resources;
-	rc = tf_tbl_bind(tfp, &tbl_cfg);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Table initialization failure\n");
-		goto fail;
+	rsv_cnt = tf_dev_reservation_check(tfp,
+					   TF_TBL_TYPE_MAX,
+					   tf_tbl_p58,
+					   (uint16_t *)resources->tbl_cnt);
+	if (rsv_cnt) {
+		tbl_cfg.num_elements = TF_TBL_TYPE_MAX;
+		tbl_cfg.cfg = tf_tbl_p58;
+		tbl_cfg.shadow_copy = shadow_copy;
+		tbl_cfg.resources = resources;
+		rc = tf_tbl_bind(tfp, &tbl_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "Table initialization failure\n");
+			goto fail;
+		}
+		no_rsv_flag = false;
 	}
 
-	tcam_cfg.num_elements = TF_TCAM_TBL_TYPE_MAX;
-	tcam_cfg.cfg = tf_tcam_p58;
-	tcam_cfg.shadow_copy = shadow_copy;
-	tcam_cfg.resources = resources;
-	rc = tf_tcam_bind(tfp, &tcam_cfg);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "TCAM initialization failure\n");
-		goto fail;
+	rsv_cnt = tf_dev_reservation_check(tfp,
+					   TF_TCAM_TBL_TYPE_MAX,
+					   tf_tcam_p58,
+					   (uint16_t *)resources->tcam_cnt);
+	if (rsv_cnt) {
+		tcam_cfg.num_elements = TF_TCAM_TBL_TYPE_MAX;
+		tcam_cfg.cfg = tf_tcam_p58;
+		tcam_cfg.shadow_copy = shadow_copy;
+		tcam_cfg.resources = resources;
+		rc = tf_tcam_bind(tfp, &tcam_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "TCAM initialization failure\n");
+			goto fail;
+		}
+		no_rsv_flag = false;
 	}
 
 	/*
 	 * EM
 	 */
-	em_cfg.num_elements = TF_EM_TBL_TYPE_MAX;
-	em_cfg.cfg = tf_em_int_p58;
-	em_cfg.resources = resources;
-	em_cfg.mem_type = 0; /* Not used by EM */
+	rsv_cnt = tf_dev_reservation_check(tfp,
+					   TF_EM_TBL_TYPE_MAX,
+					   tf_em_int_p58,
+					   (uint16_t *)resources->em_cnt);
+	if (rsv_cnt) {
+		em_cfg.num_elements = TF_EM_TBL_TYPE_MAX;
+		em_cfg.cfg = tf_em_int_p58;
+		em_cfg.resources = resources;
+		em_cfg.mem_type = 0; /* Not used by EM */
 
-	rc = tf_em_int_bind(tfp, &em_cfg);
-	if (rc) {
+		rc = tf_em_int_bind(tfp, &em_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "EM initialization failure\n");
+			goto fail;
+		}
+		no_rsv_flag = false;
+	}
+
+	/*
+	 * There is no rm reserved for any tables
+	 *
+	 */
+	if (no_rsv_flag) {
 		TFP_DRV_LOG(ERR,
-			    "EM initialization failure\n");
-		goto fail;
+			    "No rm reserved for any tables\n");
+		return -ENOMEM;
 	}
 
 	/*

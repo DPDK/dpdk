@@ -180,7 +180,7 @@ tf_session_create(struct tf *tfp,
 			 &session->dev);
 	/* Logging handled by dev_bind */
 	if (rc)
-		return rc;
+		goto cleanup;
 
 	if (session->dev.ops->tf_dev_get_mailbox == NULL) {
 		/* Log error */
