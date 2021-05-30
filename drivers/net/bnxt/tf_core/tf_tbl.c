@@ -270,6 +270,44 @@ tf_tbl_free(struct tf *tfp __rte_unused,
 			    parms->idx);
 		return -EINVAL;
 	}
+
+	/* If this is counter table, clear the entry on free */
+	if (parms->type == TF_TBL_TYPE_ACT_STATS_64) {
+		uint8_t data[8] = { 0 };
+		uint16_t hcapi_type = 0;
+		struct tf_rm_get_hcapi_parms hparms = { 0 };
+
+		/* Get the hcapi type */
+		hparms.rm_db = tbl_db->tbl_db[parms->dir];
+		hparms.subtype = parms->type;
+		hparms.hcapi_type = &hcapi_type;
+		rc = tf_rm_get_hcapi_type(&hparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s, Failed type lookup, type:%d, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    parms->type,
+				    strerror(-rc));
+			return rc;
+		}
+		/* Clear the counter
+		 */
+		rc = tf_msg_set_tbl_entry(tfp,
+					  parms->dir,
+					  hcapi_type,
+					  sizeof(data),
+					  data,
+					  parms->idx);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s, Set failed, type:%d, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    parms->type,
+				    strerror(-rc));
+			return rc;
+		}
+	}
+
 	/* Free requested element */
 	fparms.rm_db = tbl_db->tbl_db[parms->dir];
 	fparms.subtype = parms->type;
@@ -643,17 +681,20 @@ tf_tbl_get_resc_info(struct tf *tfp,
 		return rc;
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TABLE, &tbl_db_ptr);
-	if (rc) {
-		TFP_DRV_LOG(INFO,
-			    "No resource allocated for table from session\n");
-		return 0;
-	}
+	if (rc == -ENOMEM)
+		return 0; /* db doesn't exist */
+	else if (rc)
+		return rc; /* error getting db */
+
 	tbl_db = (struct tbl_rm_db *)tbl_db_ptr;
 
 	/* check if reserved resource for WC is multiple of num_slices */
 	for (d = 0; d < TF_DIR_MAX; d++) {
 		ainfo.rm_db = tbl_db->tbl_db[d];
 		dinfo = tbl[d].info;
+
+		if (!ainfo.rm_db)
+			continue;
 
 		ainfo.info = (struct tf_rm_alloc_info *)dinfo;
 		ainfo.subtype = 0;

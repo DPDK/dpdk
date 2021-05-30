@@ -18,9 +18,6 @@
 #include "tfp.h"
 #include "tf_msg.h"
 
-/* Logging defines */
-#define TF_RM_DEBUG  0
-
 /**
  * Generic RM Element data type that an RM DB is build upon.
  */
@@ -205,44 +202,6 @@ tf_rm_adjust_index(struct tf_rm_element *db,
 }
 
 /**
- * Logs an array of found residual entries to the console.
- *
- * [in] dir
- *   Receive or transmit direction
- *
- * [in] module
- *   Type of Device Module
- *
- * [in] count
- *   Number of entries in the residual array
- *
- * [in] residuals
- *   Pointer to an array of residual entries. Array is index same as
- *   the DB in which this function is used. Each entry holds residual
- *   value for that entry.
- */
-static void
-tf_rm_log_residuals(enum tf_dir dir,
-		    enum tf_module_type module,
-		    uint16_t count,
-		    uint16_t *residuals)
-{
-	int i;
-
-	/* Walk the residual array and log the types that wasn't
-	 * cleaned up to the console.
-	 */
-	for (i = 0; i < count; i++) {
-		if (residuals[i] != 0)
-			TFP_DRV_LOG(ERR,
-				"%s, %s was not cleaned up, %d outstanding\n",
-				tf_dir_2_str(dir),
-				tf_module_subtype_2_str(module, i),
-				residuals[i]);
-	}
-}
-
-/**
  * Performs a check of the passed in DB for any lingering elements. If
  * a resource type was found to not have been cleaned up by the caller
  * then its residual values are recorded, logged and passed back in an
@@ -356,11 +315,6 @@ tf_rm_check_residuals(struct tf_rm_new_db *rm_db,
 		}
 		*resv_size = found;
 	}
-
-	tf_rm_log_residuals(rm_db->dir,
-			    rm_db->module,
-			    rm_db->num_entries,
-			    residuals);
 
 	tfp_free((void *)residuals);
 	*resv = local_resv;
@@ -544,11 +498,6 @@ tf_rm_create_db(struct tf *tfp,
 				       &hcapi_items);
 
 	if (hcapi_items == 0) {
-		TFP_DRV_LOG(ERR,
-			    "%s: module:%s Empty RM DB create request\n",
-			    tf_dir_2_str(parms->dir),
-			    tf_module_2_str(parms->module));
-
 		parms->rm_db = NULL;
 		return -ENOMEM;
 	}
@@ -1296,7 +1245,13 @@ tf_rm_get_all_info(struct tf_rm_get_alloc_info_parms *parms, int size)
 	struct tf_rm_alloc_info *info = parms->info;
 	int i;
 
-	TF_CHECK_PARMS2(parms, parms->rm_db);
+	TF_CHECK_PARMS1(parms);
+
+	/* No rm info available for this module type
+	 */
+	if (!parms->rm_db)
+		return -ENOMEM;
+
 	rm_db = (struct tf_rm_new_db *)parms->rm_db;
 	TF_CHECK_PARMS1(rm_db->db);
 

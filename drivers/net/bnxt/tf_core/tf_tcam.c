@@ -818,16 +818,20 @@ tf_tcam_get_resc_info(struct tf *tfp,
 	TF_CHECK_PARMS2(tfp, tcam);
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
-	if (rc) {
-		TFP_DRV_LOG(INFO,
-			    "No resource allocated for tcam from session\n");
-		return 0;
-	}
+	if (rc == -ENOMEM)
+		return 0;  /* db doesn't exist */
+	else if (rc)
+		return rc; /* error getting db */
+
 	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
 
 	/* check if reserved resource for WC is multiple of num_slices */
 	for (d = 0; d < TF_DIR_MAX; d++) {
 		ainfo.rm_db = tcam_db->tcam_db[d];
+
+		if (!ainfo.rm_db)
+			continue;
+
 		dinfo = tcam[d].info;
 
 		ainfo.info = (struct tf_rm_alloc_info *)dinfo;

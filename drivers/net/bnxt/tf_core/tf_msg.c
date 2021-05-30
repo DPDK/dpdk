@@ -267,31 +267,13 @@ tf_msg_session_client_unregister(struct tf *tfp,
 
 int
 tf_msg_session_close(struct tf *tfp,
-		     struct tf_session *tfs)
+		     uint8_t fw_session_id,
+		     int mailbox)
 {
 	int rc;
 	struct hwrm_tf_session_close_input req = { 0 };
 	struct hwrm_tf_session_close_output resp = { 0 };
 	struct tfp_send_msg_parms parms = { 0 };
-	uint8_t fw_session_id;
-	struct tf_dev_info *dev;
-
-	/* Retrieve the device information */
-	rc = tf_session_get_device(tfs, &dev);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to lookup device, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-
-	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Unable to lookup FW id, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
 
 	/* Populate the request */
 	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
@@ -301,7 +283,7 @@ tf_msg_session_close(struct tf *tfp,
 	parms.req_size = sizeof(req);
 	parms.resp_data = (uint32_t *)&resp;
 	parms.resp_size = sizeof(resp);
-	parms.mailbox = dev->ops->tf_dev_get_mailbox();
+	parms.mailbox = mailbox;
 
 	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);

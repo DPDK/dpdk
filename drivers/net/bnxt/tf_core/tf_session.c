@@ -215,6 +215,16 @@ tf_session_create(struct tf *tfp,
 	return 0;
 
  cleanup:
+	rc = tf_msg_session_close(tfp,
+			fw_session_id,
+			dev.ops->tf_dev_get_mailbox());
+	if (rc) {
+		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "FW Session close failed, rc:%s\n",
+			    strerror(-rc));
+	}
+
 	tfp_free(tfp->session->core_data);
 	tfp_free(tfp->session);
 	tfp->session = NULL;
@@ -479,6 +489,8 @@ tf_session_close_session(struct tf *tfp,
 	struct tf_dev_info *tfd = NULL;
 	struct tf_session_client_destroy_parms scdparms;
 	uint16_t fid;
+	uint8_t fw_session_id = 1;
+	int mailbox = 0;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -563,6 +575,16 @@ tf_session_close_session(struct tf *tfp,
 		return rc;
 	}
 
+	mailbox = tfd->ops->tf_dev_get_mailbox();
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Unable to lookup FW id, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
 	/* Unbind the device */
 	rc = tf_dev_unbind(tfp, tfd);
 	if (rc) {
@@ -572,7 +594,7 @@ tf_session_close_session(struct tf *tfp,
 			    strerror(-rc));
 	}
 
-	rc = tf_msg_session_close(tfp, tfs);
+	rc = tf_msg_session_close(tfp, fw_session_id, mailbox);
 	if (rc) {
 		/* Log error */
 		TFP_DRV_LOG(ERR,
@@ -881,26 +903,26 @@ tf_session_get_db(struct tf *tfp,
 		if (tfs->id_db_handle)
 			*db_handle = tfs->id_db_handle;
 		else
-			rc = -EINVAL;
+			rc = -ENOMEM;
 		break;
 	case TF_MODULE_TYPE_TABLE:
 		if (tfs->tbl_db_handle)
 			*db_handle = tfs->tbl_db_handle;
 		else
-			rc = -EINVAL;
+			rc = -ENOMEM;
 
 		break;
 	case TF_MODULE_TYPE_TCAM:
 		if (tfs->tcam_db_handle)
 			*db_handle = tfs->tcam_db_handle;
 		else
-			rc = -EINVAL;
+			rc = -ENOMEM;
 		break;
 	case TF_MODULE_TYPE_EM:
 		if (tfs->em_db_handle)
 			*db_handle = tfs->em_db_handle;
 		else
-			rc = -EINVAL;
+			rc = -ENOMEM;
 		break;
 	default:
 		rc = -EINVAL;

@@ -369,16 +369,20 @@ tf_ident_get_resc_info(struct tf *tfp,
 	TF_CHECK_PARMS2(tfp, ident);
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
-	if (rc) {
-		TFP_DRV_LOG(INFO,
-			    "No resource allocated for ident from session\n");
-		return 0;
-	}
+	if (rc == -ENOMEM)
+		return 0; /* db doesn't exist */
+	else if (rc)
+		return rc; /* error getting db */
+
 	ident_db = (struct ident_rm_db *)ident_db_ptr;
 
 	/* check if reserved resource for WC is multiple of num_slices */
 	for (d = 0; d < TF_DIR_MAX; d++) {
 		ainfo.rm_db = ident_db->ident_db[d];
+
+		if (!ainfo.rm_db)
+			continue;
+
 		dinfo = ident[d].info;
 
 		ainfo.info = (struct tf_rm_alloc_info *)dinfo;

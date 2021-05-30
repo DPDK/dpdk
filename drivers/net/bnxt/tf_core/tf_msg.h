@@ -115,11 +115,18 @@ int tf_msg_session_client_unregister(struct tf *tfp,
  * [in] session
  *   Pointer to session handle
  *
+ * [in] fw_session_id
+ *   fw session id
+ *
+ * [in] mailbox
+ *   mailbox
+ *
  * Returns:
  *   0 on Success else internal Truflow error
  */
 int tf_msg_session_close(struct tf *tfp,
-			 struct tf_session *tfs);
+			 uint8_t fw_session_id,
+			 int mailbox);
 
 /**
  * Sends session query config request to TF Firmware

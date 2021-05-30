@@ -841,20 +841,28 @@ tf_tcam_shared_get(struct tf *tfp __rte_unused,
 	return 0;
 }
 
-/* Temporary builder defines pulled in here and renamed
+/* Normally, device specific code wouldn't reside here, it belongs
+ * in a separate device specific function in tf_device_pxx.c.
+ * But this code is placed here as it is not a long term solution
+ * and we would like to have this code centrally located for easy
+ * removal
  */
-#define TF_TMP_MAX_FIELD_BITLEN 512
+#define TF_TCAM_SHARED_KEY_SLICE_SZ_BYTES_P4 12
+#define TF_TCAM_SHARED_REMAP_SZ_BYTES_P4 4
+#define TF_TCAM_SHARED_KEY_SLICE_SZ_BYTES_P58 24
+#define TF_TCAM_SHARED_REMAP_SZ_BYTES_P58 8
 
+/* Temporary builder defines pulled in here and adjusted
+ * for max WC TCAM values
+ */
 union tf_tmp_field_obj {
-	uint8_t bytes[(TF_TMP_MAX_FIELD_BITLEN + 7) / 8];
+	uint32_t words[(TF_TCAM_SHARED_REMAP_SZ_BYTES_P58 + 3) / 4];
+	uint8_t bytes[TF_TCAM_SHARED_REMAP_SZ_BYTES_P58];
 };
 
-#define TF_TMP_MAX_KEY_BITLEN 768
-#define TF_TMP_MAX_KEY_WORDLEN ((TF_TMP_MAX_KEY_BITLEN + 63) / 64)
-
 union tf_tmp_key {
-	uint32_t words[(TF_TMP_MAX_KEY_BITLEN + 31) / 32];
-	uint8_t bytes[(TF_TMP_MAX_KEY_BITLEN + 7) / 8];
+	uint32_t words[(TF_TCAM_SHARED_KEY_SLICE_SZ_BYTES_P58 + 3) / 4];
+	uint8_t bytes[TF_TCAM_SHARED_KEY_SLICE_SZ_BYTES_P58];
 };
 
 /** p58 has an enable bit, p4 does not
@@ -933,8 +941,9 @@ tf_tcam_shared_move_entry(struct tf *tfp,
 	if (rc) {
 		/* Log error */
 		TFP_DRV_LOG(ERR,
-			    "%s: WC_TCAM_LOW phyid(%d) set failed, rc:%s",
+			    "%s: WC_TCAM_LOW phyid(%d/0x%x) set failed, rc:%s",
 			    tf_dir_2_str(dir),
+			    sparms.idx,
 			    sparms.idx,
 			    strerror(-rc));
 		return rc;
@@ -950,9 +959,10 @@ tf_tcam_shared_move_entry(struct tf *tfp,
 	if (rc) {
 		/* Log error */
 		TFP_DRV_LOG(ERR,
-			    "%s: %s: phyid(%d) free failed, rc:%s\n",
+			    "%s: %s: phyid(%d/0x%x) free failed, rc:%s\n",
 			    tf_dir_2_str(dir),
 			    tf_tcam_tbl_2_str(fparms.type),
+			    sphy_idx,
 			    sphy_idx,
 			    strerror(-rc));
 		return rc;
@@ -1118,15 +1128,6 @@ done:
 	return rc;
 }
 
-/* Normally, device specific code wouldn't reside here, it belongs
- * in a separate device specific function in tf_device_pxx.c.
- * But this code is placed here as it is not a long term solution
- * and we would like to have this code centrally located for easy
- * removal
- */
-#define TF_TCAM_SHARED_KEY_SLICE_SZ_BYTES_P4 12
-#define TF_TCAM_SHARED_REMAP_SZ_BYTES_P4 4
-
 int tf_tcam_shared_move_p4(struct tf *tfp,
 			   struct tf_move_tcam_shared_entries_parms *parms)
 {
@@ -1139,8 +1140,6 @@ int tf_tcam_shared_move_p4(struct tf *tfp,
 	return rc;
 }
 
-#define TF_TCAM_SHARED_KEY_SLICE_SZ_BYTES_P58 24
-#define TF_TCAM_SHARED_REMAP_SZ_BYTES_P58 8
 
 int tf_tcam_shared_move_p58(struct tf *tfp,
 			    struct tf_move_tcam_shared_entries_parms *parms)

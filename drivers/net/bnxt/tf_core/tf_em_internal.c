@@ -543,17 +543,20 @@ tf_em_get_resc_info(struct tf *tfp,
 	TF_CHECK_PARMS2(tfp, em);
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_EM, &em_db_ptr);
-	if (rc) {
-		TFP_DRV_LOG(INFO,
-			    "No resource allocated for em from session\n");
-		return 0;
-	}
+	if (rc == -ENOMEM)
+		return 0;  /* db does not exist */
+	else if (rc)
+		return rc; /* db error */
+
 	em_db = (struct em_rm_db *)em_db_ptr;
 
-	/* check if reserved resource for WC is multiple of num_slices */
+	/* check if reserved resource for EM is multiple of num_slices */
 	for (d = 0; d < TF_DIR_MAX; d++) {
 		ainfo.rm_db = em_db->em_db[d];
 		dinfo = em[d].info;
+
+		if (!ainfo.rm_db)
+			continue;
 
 		ainfo.info = (struct tf_rm_alloc_info *)dinfo;
 		ainfo.subtype = 0;
