@@ -18,8 +18,6 @@
 #include "bitalloc.h"
 #include "tf_core.h"
 
-struct tf;
-
 /** Shared WC TCAM pool identifiers
  */
 enum tf_tcam_shared_wc_pool_id {
@@ -287,6 +285,12 @@ tf_tcam_shared_bind(struct tf *tfp,
 		if (rc)
 			return rc;
 
+		if (num_slices > 1) {
+			TFP_DRV_LOG(ERR,
+				    "Only single slice supported\n");
+			return -EOPNOTSUPP;
+		}
+
 		tf_tcam_shared_create_db(&tcam_shared_wc);
 
 
@@ -337,49 +341,135 @@ int
 tf_tcam_shared_unbind(struct tf *tfp)
 {
 	int rc, dir;
+	struct tf_dev_info *dev;
 	struct tf_session *tfs;
 	void *tcam_shared_db_ptr = NULL;
 	struct tf_tcam_shared_wc_pools *tcam_shared_wc;
+	enum tf_tcam_shared_wc_pool_id pool_id;
+	struct tf_tcam_free_parms parms;
+	struct bitalloc *pool;
+	uint16_t start;
+	int log_idx, phy_idx;
+	uint16_t hcapi_type;
+	struct tf_rm_alloc_info info;
+	int i, pool_cnt;
 
 	TF_CHECK_PARMS1(tfp);
-
-	/* Perform normal unbind, this will write all the
-	 * allocated TCAM entries in the shared session.
-	 */
-	rc = tf_tcam_unbind(tfp);
-	if (rc)
-		return rc;
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc)
 		return rc;
 
-	rc = tf_session_get_tcam_shared_db(tfp, (void *)&tcam_shared_db_ptr);
+	/* If not the shared session, call the normal
+	 * tcam unbind and exit
+	 */
+	if (!tf_session_is_shared_session(tfs)) {
+		rc = tf_tcam_unbind(tfp);
+		return rc;
+	}
+
+	/* We must be a shared session, get the database
+	 */
+	rc = tf_session_get_tcam_shared_db(tfp,
+					   (void *)&tcam_shared_db_ptr);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
-			    "Failed to get tcam_shared_db from session, rc:%s\n",
+			    "Failed to get tcam_shared_db, rc:%s\n",
 			    strerror(-rc));
 		return rc;
 	}
-	tcam_shared_wc = (struct tf_tcam_shared_wc_pools *)tcam_shared_db_ptr;
 
-	/* If we are the shared session
+	tcam_shared_wc =
+		(struct tf_tcam_shared_wc_pools *)tcam_shared_db_ptr;
+
+
+	/* Get the device
 	 */
-	if (tf_session_is_shared_session(tfs)) {
-		/* If there are WC TCAM entries allocated, free them
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
+
+	/* If there are WC TCAM entries allocated, free them
+	 */
+	for (dir = 0; dir < TF_DIR_MAX; dir++) {
+		/* If the database is invalid, skip
 		 */
-		for (dir = 0; dir < TF_DIR_MAX; dir++) {
+		if (!tf_tcam_db_valid(tfp, dir))
+			continue;
+
+		rc = tf_tcam_shared_get_rm_info(tfp,
+						dir,
+						&hcapi_type,
+						&info);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: TCAM shared rm info get failed\n",
+				    tf_dir_2_str(dir));
+			return rc;
+		}
+
+		for (pool_id = TF_TCAM_SHARED_WC_POOL_HI;
+		     pool_id < TF_TCAM_SHARED_WC_POOL_MAX;
+		     pool_id++) {
+			pool = tcam_shared_wc->db[dir][pool_id].pool;
+			start = tcam_shared_wc->db[dir][pool_id].info.start;
+			pool_cnt = ba_inuse_count(pool);
+
+			if (pool_cnt) {
+				TFP_DRV_LOG(INFO,
+					    "%s: %s: %d residuals found, freeing\n",
+					    tf_dir_2_str(dir),
+					    tf_pool_2_str(pool_id),
+					    pool_cnt);
+			}
+
+			log_idx = 0;
+
+			for (i = 0; i < pool_cnt; i++) {
+				log_idx = ba_find_next_inuse(pool, log_idx);
+
+				if (log_idx < 0) {
+					TFP_DRV_LOG(ERR,
+						    "Expected a found %s entry %d\n",
+						    tf_pool_2_str(pool_id),
+						    i);
+					/* attempt normal unbind
+					 */
+					goto done;
+				}
+				phy_idx = start + log_idx;
+
+				parms.type = TF_TCAM_TBL_TYPE_WC_TCAM;
+				parms.hcapi_type = hcapi_type;
+				parms.idx = phy_idx;
+				parms.dir = dir;
+				rc = tf_msg_tcam_entry_free(tfp, dev, &parms);
+				if (rc) {
+					/* Log error */
+					TFP_DRV_LOG(ERR,
+						    "%s: %s: %d free failed, rc:%s\n",
+						    tf_dir_2_str(parms.dir),
+						    tf_tcam_tbl_2_str(parms.type),
+						    phy_idx,
+						    strerror(-rc));
+					return rc;
+				}
+			}
+			/* Free the pool once all the entries
+			 * have been cleared
+			 */
 			tf_tcam_shared_free_wc_pool(dir,
-						    TF_TCAM_SHARED_WC_POOL_HI,
-						    tcam_shared_wc);
-			tf_tcam_shared_free_wc_pool(dir,
-						    TF_TCAM_SHARED_WC_POOL_LO,
+						    pool_id,
 						    tcam_shared_wc);
 		}
 	}
-	return 0;
+done:
+	rc = tf_tcam_unbind(tfp);
+	return rc;
 }
+
 /**
  * tf_tcam_shared_alloc
  */
@@ -387,13 +477,12 @@ int
 tf_tcam_shared_alloc(struct tf *tfp,
 		     struct tf_tcam_alloc_parms *parms)
 {
-	int rc, i;
+	int rc;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	int log_idx;
 	struct bitalloc *pool;
 	enum tf_tcam_shared_wc_pool_id id;
-	uint16_t num_slices;
 	struct tf_tcam_shared_wc_pools *tcam_shared_wc;
 	void *tcam_shared_db_ptr = NULL;
 
@@ -443,32 +532,24 @@ tf_tcam_shared_alloc(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	rc = tf_tcam_shared_get_slices(tfp, dev, &num_slices);
-	if (rc)
-		return rc;
-
 	pool = tcam_shared_wc->db[parms->dir][id].pool;
 
-	for (i = 0; i < num_slices; i++) {
-		/*
-		 * priority  0: allocate from top of the tcam i.e. high
-		 * priority !0: allocate index from bottom i.e lowest
-		 */
-		if (parms->priority)
-			log_idx = ba_alloc_reverse(pool);
-		else
-			log_idx = ba_alloc(pool);
-		if (log_idx == BA_FAIL) {
-			TFP_DRV_LOG(ERR,
-				    "%s: Allocation failed, rc:%s\n",
-				    tf_dir_2_str(parms->dir),
-				    strerror(ENOMEM));
-			return -ENOMEM;
-		}
-		/* return the index without the start of each row */
-		if (i == 0)
-			parms->idx = log_idx;
+	/*
+	 * priority  0: allocate from top of the tcam i.e. high
+	 * priority !0: allocate index from bottom i.e lowest
+	 */
+	if (parms->priority)
+		log_idx = ba_alloc_reverse(pool);
+	else
+		log_idx = ba_alloc(pool);
+	if (log_idx == BA_FAIL) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Allocation failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(ENOMEM));
+		return -ENOMEM;
 	}
+	parms->idx = log_idx;
 	return 0;
 }
 
@@ -480,13 +561,11 @@ tf_tcam_shared_free(struct tf *tfp,
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	int allocated = 0;
-	int i;
 	uint16_t start;
 	int phy_idx;
 	struct bitalloc *pool;
 	enum tf_tcam_shared_wc_pool_id id;
 	struct tf_tcam_free_parms nparms;
-	uint16_t num_slices;
 	uint16_t hcapi_type;
 	struct tf_rm_alloc_info info;
 	void *tcam_shared_db_ptr = NULL;
@@ -539,10 +618,6 @@ tf_tcam_shared_free(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	rc = tf_tcam_shared_get_slices(tfp, dev, &num_slices);
-	if (rc)
-		return rc;
-
 	rc = tf_tcam_shared_get_rm_info(tfp,
 					parms->dir,
 					&hcapi_type,
@@ -557,13 +632,6 @@ tf_tcam_shared_free(struct tf *tfp,
 	pool = tcam_shared_wc->db[parms->dir][id].pool;
 	start = tcam_shared_wc->db[parms->dir][id].info.start;
 
-	if (parms->idx % num_slices) {
-		TFP_DRV_LOG(ERR,
-			    "%s: TCAM reserved resource is not multiple of %d\n",
-			    tf_dir_2_str(parms->dir), num_slices);
-		return -EINVAL;
-	}
-
 	phy_idx = parms->idx + start;
 	allocated = ba_inuse(pool, parms->idx);
 
@@ -574,16 +642,14 @@ tf_tcam_shared_free(struct tf *tfp,
 		return -EINVAL;
 	}
 
-	for (i = 0; i < num_slices; i++) {
-		rc = ba_free(pool, parms->idx + i);
-		if (rc) {
-			TFP_DRV_LOG(ERR,
-				    "%s: Free failed, type:%s, idx:%d\n",
-				    tf_dir_2_str(parms->dir),
-				    tf_tcam_tbl_2_str(parms->type),
-				    parms->idx);
-			return rc;
-		}
+	rc = ba_free(pool, parms->idx);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Free failed, type:%s, idx:%d\n",
+			    tf_dir_2_str(parms->dir),
+			    tf_tcam_tbl_2_str(parms->type),
+			    parms->idx);
+		return rc;
 	}
 
 	/* Override HI/LO type with parent WC TCAM type */
@@ -615,7 +681,6 @@ tf_tcam_shared_set(struct tf *tfp __rte_unused,
 	struct tf_dev_info *dev;
 	int allocated = 0;
 	int phy_idx, log_idx;
-	uint16_t num_slices;
 	struct tf_tcam_set_parms nparms;
 	struct bitalloc *pool;
 	uint16_t start;
@@ -684,16 +749,7 @@ tf_tcam_shared_set(struct tf *tfp __rte_unused,
 			    tf_dir_2_str(parms->dir), parms->type, log_idx);
 		return -EINVAL;
 	}
-	rc = tf_tcam_shared_get_slices(tfp, dev, &num_slices);
-	if (rc)
-		return rc;
 
-	if (parms->idx % num_slices) {
-		TFP_DRV_LOG(ERR,
-			    "%s: TCAM reserved resource is not multiple of %d\n",
-			    tf_dir_2_str(parms->dir), num_slices);
-		return -EINVAL;
-	}
 	rc = tf_tcam_shared_get_rm_info(tfp,
 					parms->dir,
 					&hcapi_type,
@@ -735,7 +791,6 @@ tf_tcam_shared_get(struct tf *tfp __rte_unused,
 	struct tf_dev_info *dev;
 	int allocated = 0;
 	int phy_idx, log_idx;
-	uint16_t num_slices;
 	struct tf_tcam_get_parms nparms;
 	struct bitalloc *pool;
 	uint16_t start;
@@ -793,16 +848,6 @@ tf_tcam_shared_get(struct tf *tfp __rte_unused,
 	pool = tcam_shared_wc->db[parms->dir][id].pool;
 	start = tcam_shared_wc->db[parms->dir][id].info.start;
 
-	rc = tf_tcam_shared_get_slices(tfp, dev, &num_slices);
-	if (rc)
-		return rc;
-
-	if (parms->idx % num_slices) {
-		TFP_DRV_LOG(ERR,
-			    "%s: TCAM reserved resource is not multiple of %d\n",
-			    tf_dir_2_str(parms->dir), num_slices);
-		return -EINVAL;
-	}
 	log_idx = parms->idx;
 	phy_idx = parms->idx + start;
 	allocated = ba_inuse(pool, parms->idx);
@@ -880,7 +925,6 @@ tf_tcam_shared_move_entry(struct tf *tfp,
 			  int dphy_idx,
 			  int key_sz_bytes,
 			  int remap_sz_bytes,
-			  uint16_t num_slices,
 			  bool set_enable_bit)
 {
 	int rc = 0;
@@ -896,12 +940,6 @@ tf_tcam_shared_move_entry(struct tf *tfp,
 	memset(&tcam_remap_obj, 0, sizeof(tcam_remap_obj));
 	memset(&gparms, 0, sizeof(gparms));
 
-	if (num_slices > 1) {
-		TFP_DRV_LOG(ERR,
-			    "Only single slice supported");
-		return -EOPNOTSUPP;
-	}
-
 	gparms.hcapi_type = hcapi_type;
 	gparms.dir = dir;
 	gparms.type = TF_TCAM_TBL_TYPE_WC_TCAM;
@@ -916,7 +954,8 @@ tf_tcam_shared_move_entry(struct tf *tfp,
 	if (rc) {
 		/* Log error */
 		TFP_DRV_LOG(ERR,
-			    "%s: WC_TCAM_HIGH: phyid(%d) get failed, rc:%s",
+			    "%s: %s: phyid(%d) get failed, rc:%s\n",
+			    tf_tcam_tbl_2_str(gparms.type),
 			    tf_dir_2_str(dir),
 			    gparms.idx,
 			    strerror(-rc));
@@ -941,7 +980,8 @@ tf_tcam_shared_move_entry(struct tf *tfp,
 	if (rc) {
 		/* Log error */
 		TFP_DRV_LOG(ERR,
-			    "%s: WC_TCAM_LOW phyid(%d/0x%x) set failed, rc:%s",
+			    "%s: %s phyid(%d/0x%x) set failed, rc:%s\n",
+			    tf_tcam_tbl_2_str(sparms.type),
 			    tf_dir_2_str(dir),
 			    sparms.idx,
 			    sparms.idx,
@@ -984,13 +1024,12 @@ int tf_tcam_shared_move(struct tf *tfp,
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	int log_idx;
-	uint16_t num_slices;
 	struct bitalloc *hi_pool, *lo_pool;
 	uint16_t hi_start, lo_start;
 	enum tf_tcam_shared_wc_pool_id hi_id, lo_id;
 	uint16_t hcapi_type;
 	struct tf_rm_alloc_info info;
-	int hi_cnt, i, j;
+	int hi_cnt, i;
 	struct tf_tcam_shared_wc_pools *tcam_shared_wc;
 	void *tcam_shared_db_ptr = NULL;
 
@@ -1026,9 +1065,6 @@ int tf_tcam_shared_move(struct tf *tfp,
 		/* TODO print amazing error */
 		return rc;
 	}
-	rc = tf_tcam_shared_get_slices(tfp, dev, &num_slices);
-	if (rc)
-		return rc;
 
 	rc = tf_tcam_shared_get_rm_info(tfp,
 					parms->dir,
@@ -1067,62 +1103,51 @@ int tf_tcam_shared_move(struct tf *tfp,
 
 	/* Copy each valid entry to the same low pool logical offset
 	 */
+	log_idx = 0;
+
 	for (i = 0; i < hi_cnt; i++) {
-		/* Go through all the slices
+		/* Find next free index starting from where we left off
 		 */
-		for (j = 0; j < num_slices; j++) {
-			/* Find next free starting from where we left off
-			 */
-			log_idx = ba_find_next_inuse(hi_pool, i);
-
-			if (log_idx < 0) {
-				TFP_DRV_LOG(ERR,
-					    "Expected a found %s entry %d\n",
-					    tf_pool_2_str(hi_id),
-					    i);
-				goto done;
-			}
-			/* The user should have never allocated from the low
-			 * pool because the move only happens when switching
-			 * from the high to the low pool
-			 */
-			if (ba_alloc_index(lo_pool, log_idx) < 0) {
-				TFP_DRV_LOG(ERR,
-					    "Cannot allocate %s index %d\n",
-					    tf_pool_2_str(lo_id),
-					    i);
-				goto done;
-			}
-
-			if (j == 0) {
-				rc = tf_tcam_shared_move_entry(tfp, dev,
-							       hcapi_type,
-							       parms->dir,
-							       hi_start + log_idx,
-							       lo_start + log_idx,
-							       key_sz_bytes,
-							       remap_sz_bytes,
-							       num_slices,
-							       set_enable_bit);
-				if (rc) {
-					TFP_DRV_LOG(ERR,
-						    "Cannot allocate %s index %d\n",
-						    tf_pool_2_str(hi_id),
-						    i);
-					goto done;
-				}
-				ba_free(hi_pool, log_idx);
-				TFP_DRV_LOG(DEBUG,
-					    "%s: TCAM shared move pool(%s) phyid(%d)\n",
-					    tf_dir_2_str(parms->dir),
-					    tf_pool_2_str(hi_id),
-					    hi_start + log_idx);
-				TFP_DRV_LOG(DEBUG,
-					    "to pool(%s) phyid(%d)\n",
-					    tf_pool_2_str(lo_id),
-					    lo_start + log_idx);
-			}
+		log_idx = ba_find_next_inuse(hi_pool, log_idx);
+		if (log_idx < 0) {
+			TFP_DRV_LOG(ERR,
+				    "Expected a found %s entry %d\n",
+				    tf_pool_2_str(hi_id),
+				    i);
+			goto done;
 		}
+		/* The user should have never allocated from the low
+		 * pool because the move only happens when switching
+		 * from the high to the low pool
+		 */
+		if (ba_alloc_index(lo_pool, log_idx) < 0) {
+			TFP_DRV_LOG(ERR,
+				    "Warning %s index %d already allocated\n",
+				    tf_pool_2_str(lo_id),
+				    i);
+
+			/* Since already allocated, continue with move
+			 */
+		}
+
+		rc = tf_tcam_shared_move_entry(tfp, dev,
+					       hcapi_type,
+					       parms->dir,
+					       hi_start + log_idx,
+					       lo_start + log_idx,
+					       key_sz_bytes,
+					       remap_sz_bytes,
+					       set_enable_bit);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Move error %s to %s index %d\n",
+				    tf_dir_2_str(parms->dir),
+				    tf_pool_2_str(hi_id),
+				    tf_pool_2_str(lo_id),
+				    i);
+			goto done;
+		}
+		ba_free(hi_pool, log_idx);
 	}
 done:
 	return rc;
