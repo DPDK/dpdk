@@ -233,7 +233,7 @@ enum tf_identifier_type {
 	 */
 	TF_IDENT_TYPE_EM_PROF,
 	/**
-	 *  TH
+	 *  (Future)
 	 *  The L2 func is included in the ILT result and from recycling to
 	 *  enable virtualization of further lookups.
 	 */
@@ -1244,6 +1244,8 @@ int tf_free_tbl_scope(struct tf *tfp,
  *
 #ifdef TF_TCAM_SHARED
  * @ref tf_move_tcam_shared_entries
+ *
+ * @ref tf_clear_tcam_shared_entries
 #endif
  */
 
@@ -1579,6 +1581,37 @@ struct tf_move_tcam_shared_entries_parms {
  */
 int tf_move_tcam_shared_entries(struct tf *tfp,
 				struct tf_move_tcam_shared_entries_parms *parms);
+
+/**
+ * tf_clear_tcam_shared_entries parameter definition
+ */
+struct tf_clear_tcam_shared_entries_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] TCAM table type
+	 */
+	enum tf_tcam_tbl_type tcam_tbl_type;
+};
+
+/**
+ * Clear TCAM shared entries pool
+ *
+ * This API only affects the following TCAM pools within a shared session:
+ *
+ * TF_TCAM_TBL_TYPE_WC_TCAM_HIGH
+ * TF_TCAM_TBL_TYPE_WC_TCAM_LOW
+ *
+ * When called, the indicated WC TCAM high or low pool will be cleared.
+ *
+ * This API is not supported on a non-shared session.
+ *
+ * Returns success or failure code.
+ */
+int tf_clear_tcam_shared_entries(struct tf *tfp,
+			      struct tf_clear_tcam_shared_entries_parms *parms);
 
 #endif /* TF_TCAM_SHARED */
 /**
@@ -2108,7 +2141,7 @@ struct tf_move_em_entry_parms {
 	uint64_t flow_handle;
 };
 /**
- * tf_search_em_entry parameter definition
+ * tf_search_em_entry parameter definition (Future)
  */
 struct tf_search_em_entry_parms {
 	/**
@@ -2211,7 +2244,7 @@ int tf_delete_em_entry(struct tf *tfp,
 		       struct tf_delete_em_entry_parms *parms);
 
 /**
- * search em hash entry table memory
+ * search em hash entry table memory (Future)
  *
  * Internal:
 

@@ -248,9 +248,6 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_alloc_search_tcam = NULL,
 	.tf_dev_set_tcam = NULL,
 	.tf_dev_get_tcam = NULL,
-#ifdef TF_TCAM_SHARED
-	.tf_dev_move_tcam = NULL,
-#endif /* TF_TCAM_SHARED */
 	.tf_dev_get_tcam_resc_info = NULL,
 	.tf_dev_insert_int_em_entry = NULL,
 	.tf_dev_delete_int_em_entry = NULL,
@@ -298,6 +295,7 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_set_tcam = tf_tcam_shared_set,
 	.tf_dev_get_tcam = tf_tcam_shared_get,
 	.tf_dev_move_tcam = tf_tcam_shared_move_p4,
+	.tf_dev_clear_tcam = tf_tcam_shared_clear,
 #else /* !TF_TCAM_SHARED */
 	.tf_dev_alloc_tcam = tf_tcam_alloc,
 	.tf_dev_free_tcam = tf_tcam_free,

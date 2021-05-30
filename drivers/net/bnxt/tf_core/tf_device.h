@@ -595,7 +595,24 @@ struct tf_dev_ops {
 	 *    -EINVAL - Error
 	 */
 	int (*tf_dev_move_tcam)(struct tf *tfp,
-				struct tf_move_tcam_shared_entries_parms *parms);
+			       struct tf_move_tcam_shared_entries_parms *parms);
+
+	/**
+	 * Move TCAM shared entries
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to parameters
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_clear_tcam)(struct tf *tfp,
+			      struct tf_clear_tcam_shared_entries_parms *parms);
+
 #endif /* TF_TCAM_SHARED */
 
 	/**

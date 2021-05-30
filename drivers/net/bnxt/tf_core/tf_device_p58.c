@@ -339,6 +339,7 @@ const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_set_tcam = tf_tcam_shared_set,
 	.tf_dev_get_tcam = tf_tcam_shared_get,
 	.tf_dev_move_tcam = tf_tcam_shared_move_p58,
+	.tf_dev_clear_tcam = tf_tcam_shared_clear,
 #else /* !TF_TCAM_SHARED */
 	.tf_dev_alloc_tcam = tf_tcam_alloc,
 	.tf_dev_free_tcam = tf_tcam_free,

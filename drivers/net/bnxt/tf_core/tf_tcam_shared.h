@@ -24,6 +24,11 @@
  *
  * @ref tf_tcam_shared_get
  *
+ * @ref tf_tcam_shared_move_p4
+ *
+ * @ref tf_tcam_shared_move_p58
+ *
+ * @ref tf_tcam_shared_clear
  */
 
 /**
@@ -158,5 +163,21 @@ int tf_tcam_shared_move_p4(struct tf *tfp,
  */
 int tf_tcam_shared_move_p58(struct tf *tfp,
 			    struct tf_move_tcam_shared_entries_parms *parms);
+
+/**
+ * Allocates and clears the entire WC_TCAM_HI or WC_TCAM_LO shared pools
+ *
+ * [in] tfp
+ *   Pointer to the truflow handle
+ *
+ * [in] parms
+ *   Pointer to parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_tcam_shared_clear(struct tf *tfp,
+			 struct tf_clear_tcam_shared_entries_parms *parms);
 
 #endif /* _TF_TCAM_SHARED_H */
