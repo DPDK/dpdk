@@ -927,7 +927,7 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 	uint32_t val_size = 0, field_size = 0;
 	uint64_t hdr_bit, act_bit, regval;
 	uint16_t write_idx = blob->write_idx;
-	uint16_t idx, size_idx, bitlen;
+	uint16_t idx, size_idx, bitlen, offset;
 	uint8_t	*val = NULL;
 	uint8_t tmpval[16];
 	uint8_t bit;
@@ -1340,6 +1340,46 @@ ulp_mapper_field_process(struct bnxt_ulp_mapper_parms *parms,
 		break;
 	case BNXT_ULP_FIELD_SRC_REJECT:
 		return -EINVAL;
+	case BNXT_ULP_FIELD_SRC_SUB_HF:
+		if (!ulp_operand_read(fld_src_oper,
+				      (uint8_t *)&idx, sizeof(uint16_t))) {
+			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
+			return -EINVAL;
+		}
+		idx = tfp_be_to_cpu_16(idx);
+		/* get the index from the global field list */
+		if (ulp_mapper_glb_field_tbl_get(parms, idx, &bit)) {
+			BNXT_TF_DBG(ERR, "invalid ulp_glb_field_tbl idx %d\n",
+				    idx);
+			return -EINVAL;
+		}
+
+		/* get the offset next */
+		if (!ulp_operand_read(&fld_src_oper[sizeof(uint16_t)],
+				      (uint8_t *)&offset, sizeof(uint16_t))) {
+			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
+			return -EINVAL;
+		}
+		offset = tfp_be_to_cpu_16(offset);
+		if ((offset + bitlen) >
+		    ULP_BYTE_2_BITS(parms->hdr_field[bit].size) ||
+		    ULP_BITS_IS_BYTE_NOT_ALIGNED(offset)) {
+			BNXT_TF_DBG(ERR, "Hdr field[%s] oob\n", name);
+			return -EINVAL;
+		}
+		offset = ULP_BITS_2_BYTE_NR(offset);
+
+		/* write the value into blob */
+		if (is_key)
+			val = &parms->hdr_field[bit].spec[offset];
+		else
+			val = &parms->hdr_field[bit].mask[offset];
+
+		if (!ulp_blob_push(blob, val, bitlen)) {
+			BNXT_TF_DBG(ERR, "%s push to blob failed\n", name);
+			return -EINVAL;
+		}
+		break;
 	default:
 		BNXT_TF_DBG(ERR, "%s invalid field opcode 0x%x at %d\n",
 			    name, fld_src, write_idx);
@@ -1630,25 +1670,9 @@ ulp_mapper_tcam_tbl_entry_write(struct bnxt_ulp_mapper_parms *parms,
 	return rc;
 }
 
-#define BNXT_ULP_WC_TCAM_SLICE_SIZE 80
 /* internal function to post process the key/mask blobs for wildcard tcam tbl */
-static void ulp_mapper_wc_tcam_tbl_post_process(struct ulp_blob *blob,
-						uint32_t len)
+static void ulp_mapper_wc_tcam_tbl_post_process(struct ulp_blob *blob)
 {
-	uint8_t mode[2] = {0x0, 0x0};
-	uint32_t mode_len = len / BNXT_ULP_WC_TCAM_SLICE_SIZE;
-	uint32_t size, idx;
-
-	/* Add the mode bits to the key and mask*/
-	if (mode_len == 2)
-		mode[1] = 2;
-	else if (mode_len > 2)
-		mode[1] = 3;
-
-	size = BNXT_ULP_WC_TCAM_SLICE_SIZE + ULP_BYTE_2_BITS(sizeof(mode));
-	for (idx = 0; idx < mode_len; idx++)
-		ulp_blob_insert(blob, (size * idx), mode,
-				ULP_BYTE_2_BITS(sizeof(mode)));
 	ulp_blob_perform_64B_word_swap(blob);
 	ulp_blob_perform_64B_byte_swap(blob);
 }
@@ -1736,8 +1760,8 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* For wild card tcam perform the post process to swap the blob */
 	if (tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM) {
-		ulp_mapper_wc_tcam_tbl_post_process(&key, tbl->key_bit_size);
-		ulp_mapper_wc_tcam_tbl_post_process(&mask, tbl->key_bit_size);
+		ulp_mapper_wc_tcam_tbl_post_process(&key);
+		ulp_mapper_wc_tcam_tbl_post_process(&mask);
 	}
 
 	if (tbl->tbl_opcode == BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE) {
