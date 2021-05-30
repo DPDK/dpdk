@@ -736,6 +736,18 @@ struct tf_dev_ops {
 	 *      mailbox
 	 */
 	int (*tf_dev_get_mailbox)(void);
+
+	/**
+	 * Convert length in bit to length in byte and align to word.
+	 * The word length depends on device type.
+	 *
+	 * [in] size
+	 *   Size in bit
+	 *
+	 * Returns
+	 *   Size in byte
+	 */
+	int (*tf_dev_word_align)(uint16_t size);
 };
 
 /**

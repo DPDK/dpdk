@@ -208,6 +208,10 @@ struct tf_tcam_get_parms {
 	 */
 	enum tf_tcam_tbl_type type;
 	/**
+	 * [in] Type of HCAPI
+	 */
+	uint16_t hcapi_type;
+	/**
 	 * [in] Entry index to read
 	 */
 	uint32_t idx;

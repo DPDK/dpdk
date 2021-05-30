@@ -764,7 +764,8 @@ tf_set_tcam_entry(struct tf *tfp,
 		return rc;
 	}
 
-	if (dev->ops->tf_dev_set_tcam == NULL) {
+	if (dev->ops->tf_dev_set_tcam == NULL ||
+	    dev->ops->tf_dev_word_align == NULL) {
 		rc = -EOPNOTSUPP;
 		TFP_DRV_LOG(ERR,
 			    "%s: Operation not supported, rc:%s\n",
@@ -778,7 +779,7 @@ tf_set_tcam_entry(struct tf *tfp,
 	sparms.idx = parms->idx;
 	sparms.key = parms->key;
 	sparms.mask = parms->mask;
-	sparms.key_size = TF_BITS2BYTES_WORD_ALIGN(parms->key_sz_in_bits);
+	sparms.key_size = dev->ops->tf_dev_word_align(parms->key_sz_in_bits);
 	sparms.result = parms->result;
 	sparms.result_size = TF_BITS2BYTES_WORD_ALIGN(parms->result_sz_in_bits);
 
@@ -796,10 +797,66 @@ tf_set_tcam_entry(struct tf *tfp,
 
 int
 tf_get_tcam_entry(struct tf *tfp __rte_unused,
-		  struct tf_get_tcam_entry_parms *parms __rte_unused)
+		  struct tf_get_tcam_entry_parms *parms)
 {
+	int rc;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	struct tf_tcam_get_parms gparms;
+
 	TF_CHECK_PARMS2(tfp, parms);
-	return -EOPNOTSUPP;
+
+	memset(&gparms, 0, sizeof(struct tf_tcam_get_parms));
+
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_get_tcam == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	gparms.dir = parms->dir;
+	gparms.type = parms->tcam_tbl_type;
+	gparms.idx = parms->idx;
+	gparms.key = parms->key;
+	gparms.mask = parms->mask;
+	gparms.result = parms->result;
+
+	rc = dev->ops->tf_dev_get_tcam(tfp, &gparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: TCAM get failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+	parms->key_sz_in_bits = gparms.key_size * 8;
+	parms->result_sz_in_bits = gparms.result_size * 8;
+
+	return 0;
 }
 
 int

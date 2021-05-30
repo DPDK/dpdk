@@ -65,6 +65,7 @@ typedef enum tf_subtype {
 
 #define TF_BITS2BYTES(x) (((x) + 7) >> 3)
 #define TF_BITS2BYTES_WORD_ALIGN(x) ((((x) + 31) >> 5) * 4)
+#define TF_BITS2BYTES_64B_WORD_ALIGN(x) ((((x) + 63) >> 6) * 8)
 
 struct tf_set_global_cfg_input;
 struct tf_get_global_cfg_input;

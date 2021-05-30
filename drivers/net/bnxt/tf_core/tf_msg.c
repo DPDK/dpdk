@@ -1213,6 +1213,58 @@ cleanup:
 }
 
 int
+tf_msg_tcam_entry_get(struct tf *tfp,
+		      struct tf_dev_info *dev,
+		      struct tf_tcam_get_parms *parms)
+{
+	int rc;
+	struct tfp_send_msg_parms mparms = { 0 };
+	struct hwrm_tf_tcam_get_input req = { 0 };
+	struct hwrm_tf_tcam_get_output resp = { 0 };
+	uint8_t fw_session_id;
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.type = parms->hcapi_type;
+	req.idx = tfp_cpu_to_le_16(parms->idx);
+	if (parms->dir == TF_DIR_TX)
+		req.flags |= HWRM_TF_TCAM_GET_INPUT_FLAGS_DIR_TX;
+
+	mparms.tf_type = HWRM_TF_TCAM_GET;
+	mparms.req_data = (uint32_t *)&req;
+	mparms.req_size = sizeof(req);
+	mparms.resp_data = (uint32_t *)&resp;
+	mparms.resp_size = sizeof(resp);
+	mparms.mailbox = dev->ops->tf_dev_get_mailbox();
+
+	rc = tfp_send_msg_direct(tfp,
+				 &mparms);
+
+	if (rc != 0)
+		return rc;
+
+	if (mparms.tf_resp_code != 0)
+		return tfp_le_to_cpu_32(mparms.tf_resp_code);
+
+	parms->key_size = resp.key_size;
+	parms->result_size = resp.result_size;
+	tfp_memcpy(parms->key, resp.dev_data, resp.key_size);
+	tfp_memcpy(parms->mask, &resp.dev_data[resp.key_size], resp.key_size);
+	tfp_memcpy(parms->result, &resp.dev_data[resp.result_offset], resp.result_size);
+
+	return tfp_le_to_cpu_32(mparms.tf_resp_code);
+}
+
+int
 tf_msg_tcam_entry_free(struct tf *tfp,
 		       struct tf_dev_info *dev,
 		       struct tf_tcam_free_parms *in_parms)

@@ -686,7 +686,94 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 
 int
 tf_tcam_get(struct tf *tfp __rte_unused,
-	    struct tf_tcam_get_parms *parms __rte_unused)
+	    struct tf_tcam_get_parms *parms)
 {
+	int rc;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	struct tf_rm_is_allocated_parms aparms;
+	struct tf_rm_get_hcapi_parms hparms;
+	uint16_t num_slice_per_row = 1;
+	int allocated = 0;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	if (!init) {
+		TFP_DRV_LOG(ERR,
+			    "%s: No TCAM DBs created\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
+	if (dev->ops->tf_dev_get_tcam_slice_info == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Need to retrieve row size etc */
+	rc = dev->ops->tf_dev_get_tcam_slice_info(tfp,
+						  parms->type,
+						  parms->key_size,
+						  &num_slice_per_row);
+	if (rc)
+		return rc;
+
+	/* Check if element is in use */
+	memset(&aparms, 0, sizeof(aparms));
+
+	aparms.rm_db = tcam_db[parms->dir];
+	aparms.db_index = parms->type;
+	aparms.index = parms->idx / num_slice_per_row;
+	aparms.allocated = &allocated;
+	rc = tf_rm_is_allocated(&aparms);
+	if (rc)
+		return rc;
+
+	if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Entry is not allocated, type:%d, index:%d\n",
+			    tf_dir_2_str(parms->dir),
+			    parms->type,
+			    parms->idx);
+		return -EINVAL;
+	}
+
+	/* Convert TF type to HCAPI RM type */
+	memset(&hparms, 0, sizeof(hparms));
+
+	hparms.rm_db = tcam_db[parms->dir];
+	hparms.db_index = parms->type;
+	hparms.hcapi_type = &parms->hcapi_type;
+
+	rc = tf_rm_get_hcapi_type(&hparms);
+	if (rc)
+		return rc;
+
+	rc = tf_msg_tcam_entry_get(tfp, dev, parms);
+	if (rc) {
+		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "%s: %s: Entry %d set failed, rc:%s",
+			    tf_dir_2_str(parms->dir),
+			    tf_tcam_tbl_2_str(parms->type),
+			    parms->idx,
+			    strerror(-rc));
+		return rc;
+	}
+
 	return 0;
 }

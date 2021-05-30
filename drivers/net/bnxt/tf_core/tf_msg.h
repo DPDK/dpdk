@@ -413,6 +413,22 @@ int tf_msg_tcam_entry_set(struct tf *tfp,
 			  struct tf_tcam_set_parms *parms);
 
 /**
+ * Sends tcam entry 'get' to the Firmware.
+ *
+ * [in] tfp
+ *   Pointer to session handle
+ *
+ * [in] parms
+ *   Pointer to get parameters
+ *
+ * Returns:
+ *  0 on Success else internal Truflow error
+ */
+int tf_msg_tcam_entry_get(struct tf *tfp,
+			  struct tf_dev_info *dev,
+			  struct tf_tcam_get_parms *parms);
+
+/**
  * Sends tcam entry 'free' to the Firmware.
  *
  * [in] tfp

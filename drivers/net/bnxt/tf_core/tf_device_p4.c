@@ -212,6 +212,10 @@ static int tf_dev_p4_get_mailbox(void)
 	return TF_KONG_MB;
 }
 
+static int tf_dev_p4_word_align(uint16_t size)
+{
+	return ((((size) + 31) >> 5) * 4);
+}
 
 /**
  * Truflow P4 device specific functions
@@ -250,6 +254,7 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_set_global_cfg = NULL,
 	.tf_dev_get_global_cfg = NULL,
 	.tf_dev_get_mailbox = tf_dev_p4_get_mailbox,
+	.tf_dev_word_align = NULL,
 };
 
 /**
@@ -289,4 +294,5 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_set_global_cfg = tf_global_cfg_set,
 	.tf_dev_get_global_cfg = tf_global_cfg_get,
 	.tf_dev_get_mailbox = tf_dev_p4_get_mailbox,
+	.tf_dev_word_align = tf_dev_p4_word_align,
 };

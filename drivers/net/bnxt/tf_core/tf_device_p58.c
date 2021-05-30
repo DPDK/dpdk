@@ -193,6 +193,11 @@ static int tf_dev_p58_get_mailbox(void)
 	return TF_CHIMP_MB;
 }
 
+static int tf_dev_p58_word_align(uint16_t size)
+{
+	return ((((size) + 63) >> 6) * 8);
+}
+
 /**
  * Truflow P58 device specific functions
  */
@@ -230,6 +235,7 @@ const struct tf_dev_ops tf_dev_ops_p58_init = {
 	.tf_dev_set_global_cfg = NULL,
 	.tf_dev_get_global_cfg = NULL,
 	.tf_dev_get_mailbox = tf_dev_p58_get_mailbox,
+	.tf_dev_word_align = NULL,
 };
 
 /**
@@ -255,7 +261,7 @@ const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_free_tcam = tf_tcam_free,
 	.tf_dev_alloc_search_tcam = tf_tcam_alloc_search,
 	.tf_dev_set_tcam = tf_tcam_set,
-	.tf_dev_get_tcam = NULL,
+	.tf_dev_get_tcam = tf_tcam_get,
 	.tf_dev_insert_int_em_entry = tf_em_hash_insert_int_entry,
 	.tf_dev_delete_int_em_entry = tf_em_hash_delete_int_entry,
 	.tf_dev_insert_ext_em_entry = NULL,
@@ -269,4 +275,5 @@ const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_set_global_cfg = tf_global_cfg_set,
 	.tf_dev_get_global_cfg = tf_global_cfg_get,
 	.tf_dev_get_mailbox = tf_dev_p58_get_mailbox,
+	.tf_dev_word_align = tf_dev_p58_word_align,
 };
