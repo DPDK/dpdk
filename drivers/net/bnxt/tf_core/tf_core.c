@@ -842,8 +842,10 @@ tf_get_tcam_entry(struct tf *tfp __rte_unused,
 	gparms.type = parms->tcam_tbl_type;
 	gparms.idx = parms->idx;
 	gparms.key = parms->key;
+	gparms.key_size = dev->ops->tf_dev_word_align(parms->key_sz_in_bits);
 	gparms.mask = parms->mask;
 	gparms.result = parms->result;
+	gparms.result_size = TF_BITS2BYTES_WORD_ALIGN(parms->result_sz_in_bits);
 
 	rc = dev->ops->tf_dev_get_tcam(tfp, &gparms);
 	if (rc) {

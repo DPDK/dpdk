@@ -123,15 +123,14 @@ tf_dev_p58_get_tcam_slice_info(struct tf *tfp __rte_unused,
 			      uint16_t key_sz,
 			      uint16_t *num_slices_per_row)
 {
-#define CFA_P58_WC_TCAM_SLICES_PER_ROW 2
-#define CFA_P58_WC_TCAM_SLICE_SIZE     12
+#define CFA_P58_WC_TCAM_SLICES_PER_ROW 1
+#define CFA_P58_WC_TCAM_SLICE_SIZE     24
 
 	if (type == TF_TCAM_TBL_TYPE_WC_TCAM) {
+		/* only support single slice key size now */
 		*num_slices_per_row = CFA_P58_WC_TCAM_SLICES_PER_ROW;
 		if (key_sz > *num_slices_per_row * CFA_P58_WC_TCAM_SLICE_SIZE)
 			return -ENOTSUP;
-
-		*num_slices_per_row = 1;
 	} else { /* for other type of tcam */
 		*num_slices_per_row = 1;
 	}

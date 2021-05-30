@@ -1286,7 +1286,7 @@ struct tf_get_tcam_entry_parms {
 	 */
 	uint8_t *mask;
 	/**
-	 * [out] key size in bits
+	 * [in/out] key size in bits
 	 */
 	uint16_t key_sz_in_bits;
 	/**
@@ -1294,7 +1294,7 @@ struct tf_get_tcam_entry_parms {
 	 */
 	uint8_t *result;
 	/**
-	 * [out] struct containing result size in bits
+	 * [in/out] struct containing result size in bits
 	 */
 	uint16_t result_sz_in_bits;
 };
@@ -1961,6 +1961,7 @@ enum tf_tunnel_encap_offsets {
 enum tf_global_config_type {
 	TF_TUNNEL_ENCAP,  /**< Tunnel Encap Config(TECT) */
 	TF_ACTION_BLOCK,  /**< Action Block Config(ABCR) */
+	TF_COUNTER_CFG,   /**< Counter Configuration (CNTRS_CTRL) */
 	TF_GLOBAL_CFG_TYPE_MAX
 };
 

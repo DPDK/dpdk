@@ -48,10 +48,13 @@ tf_tcam_bind(struct tf *tfp,
 	struct tf_rm_free_db_parms fparms;
 	struct tf_rm_create_db_parms db_cfg;
 	struct tf_tcam_resources *tcam_cnt;
-	struct tf_shadow_tcam_free_db_parms fshadow;
 	struct tf_rm_get_alloc_info_parms ainfo;
+	struct tf_shadow_tcam_free_db_parms fshadow;
 	struct tf_shadow_tcam_cfg_parms shadow_cfg;
 	struct tf_shadow_tcam_create_db_parms shadow_cdb;
+	uint16_t num_slices = 1;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -61,11 +64,37 @@ tf_tcam_bind(struct tf *tfp,
 		return -EINVAL;
 	}
 
-	tcam_cnt = parms->resources->tcam_cnt;
-	if ((tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] % 2) ||
-	    (tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] % 2)) {
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
+	if (dev->ops->tf_dev_get_tcam_slice_info == NULL) {
+		rc = -EOPNOTSUPP;
 		TFP_DRV_LOG(ERR,
-			    "Number of WC TCAM entries cannot be odd num\n");
+			    "Operation not supported, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = dev->ops->tf_dev_get_tcam_slice_info(tfp,
+						  TF_TCAM_TBL_TYPE_WC_TCAM,
+						  0,
+						  &num_slices);
+	if (rc)
+		return rc;
+
+	tcam_cnt = parms->resources->tcam_cnt;
+	if ((tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] % num_slices) ||
+	    (tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] % num_slices)) {
+		TFP_DRV_LOG(ERR,
+			    "Requested num of WC TCAM entries has to be multiple %d\n",
+			    num_slices);
 		return -EINVAL;
 	}
 
@@ -85,6 +114,26 @@ tf_tcam_bind(struct tf *tfp,
 				    "%s: TCAM DB creation failed\n",
 				    tf_dir_2_str(d));
 			return rc;
+		}
+	}
+
+	/* check if reserved resource for WC is multiple of num_slices */
+	for (d = 0; d < TF_DIR_MAX; d++) {
+		memset(&info, 0, sizeof(info));
+		ainfo.rm_db = tcam_db[d];
+		ainfo.subtype = TF_TCAM_TBL_TYPE_WC_TCAM;
+		ainfo.info = &info;
+		rc = tf_rm_get_info(&ainfo);
+		if (rc)
+			goto error;
+
+		if (info.entry.start % num_slices != 0 ||
+		    info.entry.stride % num_slices != 0) {
+			TFP_DRV_LOG(ERR,
+				    "%s: TCAM reserved resource is not multiple of %d\n",
+				    tf_dir_2_str(d),
+				    num_slices);
+			return -EINVAL;
 		}
 	}
 
@@ -163,7 +212,6 @@ tf_tcam_unbind(struct tf *tfp)
 	int i;
 	struct tf_rm_free_db_parms fparms;
 	struct tf_shadow_tcam_free_db_parms fshadow;
-
 	TF_CHECK_PARMS1(tfp);
 
 	/* Bail if nothing has been initialized */
@@ -202,11 +250,12 @@ int
 tf_tcam_alloc(struct tf *tfp,
 	      struct tf_tcam_alloc_parms *parms)
 {
-	int rc;
+	int rc, i;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	struct tf_rm_allocate_parms aparms;
-	uint16_t num_slice_per_row = 1;
+	uint16_t num_slices = 1;
+	uint32_t index;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -236,32 +285,24 @@ tf_tcam_alloc(struct tf *tfp,
 		return rc;
 	}
 
-	/* Need to retrieve row size etc */
+	/* Need to retrieve number of slices based on the key_size */
 	rc = dev->ops->tf_dev_get_tcam_slice_info(tfp,
 						  parms->type,
 						  parms->key_size,
-						  &num_slice_per_row);
+						  &num_slices);
 	if (rc)
 		return rc;
 
-	/* Allocate requested element */
-	memset(&aparms, 0, sizeof(aparms));
-
-	aparms.rm_db = tcam_db[parms->dir];
-	aparms.subtype = parms->type;
-	aparms.priority = parms->priority;
-	aparms.index = (uint32_t *)&parms->idx;
-	rc = tf_rm_allocate(&aparms);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Failed tcam, type:%d\n",
-			    tf_dir_2_str(parms->dir),
-			    parms->type);
-		return rc;
-	}
-
-	if (parms->type == TF_TCAM_TBL_TYPE_WC_TCAM &&
-	    (parms->idx % 2) != 0) {
+	/*
+	 * For WC TCAM, number of slices could be 4, 2, 1 based on
+	 * the key_size. For other TCAM, it is always 1
+	 */
+	for (i = 0; i < num_slices; i++) {
+		memset(&aparms, 0, sizeof(aparms));
+		aparms.rm_db = tcam_db[parms->dir];
+		aparms.subtype = parms->type;
+		aparms.priority = parms->priority;
+		aparms.index = &index;
 		rc = tf_rm_allocate(&aparms);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
@@ -270,9 +311,11 @@ tf_tcam_alloc(struct tf *tfp,
 				    parms->type);
 			return rc;
 		}
-	}
 
-	parms->idx *= num_slice_per_row;
+		/* return the start index of each row */
+		if (i == 0)
+			parms->idx = index;
+	}
 
 	return 0;
 }
@@ -287,9 +330,10 @@ tf_tcam_free(struct tf *tfp,
 	struct tf_rm_is_allocated_parms aparms;
 	struct tf_rm_free_parms fparms;
 	struct tf_rm_get_hcapi_parms hparms;
-	uint16_t num_slice_per_row = 1;
+	uint16_t num_slices = 1;
 	int allocated = 0;
 	struct tf_shadow_tcam_remove_parms shparms;
+	int i;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -323,16 +367,24 @@ tf_tcam_free(struct tf *tfp,
 	rc = dev->ops->tf_dev_get_tcam_slice_info(tfp,
 						  parms->type,
 						  0,
-						  &num_slice_per_row);
+						  &num_slices);
 	if (rc)
 		return rc;
+
+	if (parms->idx % num_slices) {
+		TFP_DRV_LOG(ERR,
+			    "%s: TCAM reserved resource is not multiple of %d\n",
+			    tf_dir_2_str(parms->dir),
+			    num_slices);
+		return -EINVAL;
+	}
 
 	/* Check if element is in use */
 	memset(&aparms, 0, sizeof(aparms));
 
 	aparms.rm_db = tcam_db[parms->dir];
 	aparms.subtype = parms->type;
-	aparms.index = parms->idx / num_slice_per_row;
+	aparms.index = parms->idx;
 	aparms.allocated = &allocated;
 	rc = tf_rm_is_allocated(&aparms);
 	if (rc)
@@ -376,44 +428,20 @@ tf_tcam_free(struct tf *tfp,
 		}
 	}
 
-	/* Free requested element */
-	memset(&fparms, 0, sizeof(fparms));
-	fparms.rm_db = tcam_db[parms->dir];
-	fparms.subtype = parms->type;
-	fparms.index = parms->idx / num_slice_per_row;
-	rc = tf_rm_free(&fparms);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Free failed, type:%d, index:%d\n",
-			    tf_dir_2_str(parms->dir),
-			    parms->type,
-			    parms->idx);
-		return rc;
-	}
-
-	if (parms->type == TF_TCAM_TBL_TYPE_WC_TCAM) {
-		int i;
-
-		for (i = -1; i < 3; i += 3) {
-			aparms.index += i;
-			rc = tf_rm_is_allocated(&aparms);
-			if (rc)
-				return rc;
-
-			if (allocated == TF_RM_ALLOCATED_ENTRY_IN_USE) {
-				/* Free requested element */
-				fparms.index = aparms.index;
-				rc = tf_rm_free(&fparms);
-				if (rc) {
-					TFP_DRV_LOG(ERR,
-						    "%s: Free failed, type:%d, "
-						    "index:%d\n",
-						    tf_dir_2_str(parms->dir),
-						    parms->type,
-						    fparms.index);
-					return rc;
-				}
-			}
+	for (i = 0; i < num_slices; i++) {
+		/* Free requested element */
+		memset(&fparms, 0, sizeof(fparms));
+		fparms.rm_db = tcam_db[parms->dir];
+		fparms.subtype = parms->type;
+		fparms.index = parms->idx + i;
+		rc = tf_rm_free(&fparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Free failed, type:%d, index:%d\n",
+				    tf_dir_2_str(parms->dir),
+				    parms->type,
+				    parms->idx);
+			return rc;
 		}
 	}
 
@@ -449,8 +477,8 @@ tf_tcam_alloc_search(struct tf *tfp,
 {
 	struct tf_shadow_tcam_search_parms sparms;
 	struct tf_shadow_tcam_bind_index_parms bparms;
-	struct tf_tcam_alloc_parms aparms;
 	struct tf_tcam_free_parms fparms;
+	struct tf_tcam_alloc_parms aparms;
 	uint16_t num_slice_per_row = 1;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
@@ -626,7 +654,7 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 
 	aparms.rm_db = tcam_db[parms->dir];
 	aparms.subtype = parms->type;
-	aparms.index = parms->idx / num_slice_per_row;
+	aparms.index = parms->idx;
 	aparms.allocated = &allocated;
 	rc = tf_rm_is_allocated(&aparms);
 	if (rc)
@@ -693,7 +721,6 @@ tf_tcam_get(struct tf *tfp __rte_unused,
 	struct tf_dev_info *dev;
 	struct tf_rm_is_allocated_parms aparms;
 	struct tf_rm_get_hcapi_parms hparms;
-	uint16_t num_slice_per_row = 1;
 	int allocated = 0;
 
 	TF_CHECK_PARMS2(tfp, parms);
@@ -715,29 +742,12 @@ tf_tcam_get(struct tf *tfp __rte_unused,
 	if (rc)
 		return rc;
 
-	if (dev->ops->tf_dev_get_tcam_slice_info == NULL) {
-		rc = -EOPNOTSUPP;
-		TFP_DRV_LOG(ERR,
-			    "%s: Operation not supported, rc:%s\n",
-			    tf_dir_2_str(parms->dir),
-			    strerror(-rc));
-		return rc;
-	}
-
-	/* Need to retrieve row size etc */
-	rc = dev->ops->tf_dev_get_tcam_slice_info(tfp,
-						  parms->type,
-						  parms->key_size,
-						  &num_slice_per_row);
-	if (rc)
-		return rc;
-
 	/* Check if element is in use */
 	memset(&aparms, 0, sizeof(aparms));
 
 	aparms.rm_db = tcam_db[parms->dir];
 	aparms.subtype = parms->type;
-	aparms.index = parms->idx / num_slice_per_row;
+	aparms.index = parms->idx;
 	aparms.allocated = &allocated;
 	rc = tf_rm_is_allocated(&aparms);
 	if (rc)

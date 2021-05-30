@@ -39,19 +39,8 @@
  * array size (define above) should be checked and compared.
  */
 #define TF_MSG_SIZE_HWRM_TF_GLOBAL_CFG_SET 56
-static_assert(sizeof(struct hwrm_tf_global_cfg_set_input) ==
-	      TF_MSG_SIZE_HWRM_TF_GLOBAL_CFG_SET,
-	      "HWRM message size changed: hwrm_tf_global_cfg_set_input");
-
 #define TF_MSG_SIZE_HWRM_TF_EM_INSERT      104
-static_assert(sizeof(struct hwrm_tf_em_insert_input) ==
-	      TF_MSG_SIZE_HWRM_TF_EM_INSERT,
-	      "HWRM message size changed: hwrm_tf_em_insert_input");
-
 #define TF_MSG_SIZE_HWRM_TF_TBL_TYPE_SET   128
-static_assert(sizeof(struct hwrm_tf_tbl_type_set_input) ==
-	      TF_MSG_SIZE_HWRM_TF_TBL_TYPE_SET,
-	      "HWRM message size changed: hwrm_tf_tbl_type_set_input");
 
 /**
  * This is the MAX data we can transport across regular HWRM
@@ -629,6 +618,9 @@ tf_msg_insert_em_internal_entry(struct tf *tfp,
 	uint8_t msg_key_size;
 	struct tf_dev_info *dev;
 	struct tf_session *tfs;
+
+	RTE_BUILD_BUG_ON(sizeof(struct hwrm_tf_em_insert_input) !=
+			 TF_MSG_SIZE_HWRM_TF_EM_INSERT);
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);
@@ -1255,6 +1247,17 @@ tf_msg_tcam_entry_get(struct tf *tfp,
 	if (mparms.tf_resp_code != 0)
 		return tfp_le_to_cpu_32(mparms.tf_resp_code);
 
+	if (parms->key_size < resp.key_size ||
+	    parms->result_size < resp.result_size) {
+		rc = -EINVAL;
+		TFP_DRV_LOG(ERR,
+			    "%s: Key buffer(%d) is smaller than the key(%d), rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    parms->key_size,
+			    resp.key_size,
+			    strerror(-rc));
+		return rc;
+	}
 	parms->key_size = resp.key_size;
 	parms->result_size = resp.result_size;
 	tfp_memcpy(parms->key, resp.dev_data, resp.key_size);
@@ -1319,6 +1322,9 @@ tf_msg_set_tbl_entry(struct tf *tfp,
 	uint8_t fw_session_id;
 	struct tf_dev_info *dev;
 	struct tf_session *tfs;
+
+	RTE_BUILD_BUG_ON(sizeof(struct hwrm_tf_tbl_type_set_input) !=
+			 TF_MSG_SIZE_HWRM_TF_TBL_TYPE_SET);
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);
@@ -1553,6 +1559,9 @@ tf_msg_set_global_cfg(struct tf *tfp,
 	uint8_t fw_session_id;
 	struct tf_dev_info *dev;
 	struct tf_session *tfs;
+
+	RTE_BUILD_BUG_ON(sizeof(struct hwrm_tf_global_cfg_set_input) !=
+			 TF_MSG_SIZE_HWRM_TF_GLOBAL_CFG_SET);
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);

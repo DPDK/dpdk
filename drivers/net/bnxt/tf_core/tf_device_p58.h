@@ -189,5 +189,8 @@ struct tf_global_cfg_cfg tf_global_cfg_p58[TF_GLOBAL_CFG_TYPE_MAX] = {
 	[TF_ACTION_BLOCK] = {
 		TF_GLOBAL_CFG_CFG_HCAPI, TF_ACTION_BLOCK
 	},
+	[TF_COUNTER_CFG] = {
+		TF_GLOBAL_CFG_CFG_HCAPI, TF_COUNTER_CFG
+	},
 };
 #endif /* _TF_DEVICE_P58_H_ */
