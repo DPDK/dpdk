@@ -389,7 +389,7 @@ ulp_fc_mgr_alarm_cb(void *arg)
 		return;
 	}
 
-	tfp = bnxt_ulp_cntxt_tfp_get(ctxt);
+	tfp = bnxt_ulp_cntxt_tfp_get(ctxt, BNXT_ULP_SHARED_SESSION_NO);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get the truflow pointer\n");
 		return;

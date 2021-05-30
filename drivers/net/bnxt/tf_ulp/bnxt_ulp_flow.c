@@ -81,6 +81,8 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 			    struct ulp_rte_parser_params *params,
 			    enum bnxt_ulp_fdb_type flow_type)
 {
+	uint32_t ulp_flags = 0;
+
 	memset(mapper_cparms, 0, sizeof(*mapper_cparms));
 	mapper_cparms->flow_type = flow_type;
 	mapper_cparms->app_priority = params->priority;
@@ -106,6 +108,15 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 			    params->hdr_sig_id);
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_FLOW_SIG_ID,
 			    params->flow_sig_id);
+
+	/* update the WC Priority flag */
+	if (!bnxt_ulp_cntxt_ptr2_ulp_flags_get(params->ulp_ctx, &ulp_flags) &&
+	    ULP_HIGH_AVAIL_IS_ENABLED(ulp_flags)) {
+		/* TBD: read the state and Set the WC priority */
+		ULP_COMP_FLD_IDX_WR(params,
+				    BNXT_ULP_CF_IDX_WC_IS_HA_HIGH_REG, 1);
+	}
+
 }
 
 /* Function to create the rte flow. */

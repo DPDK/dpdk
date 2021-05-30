@@ -48,7 +48,6 @@ struct bnxt_ulp_mapper_parms {
 	struct ulp_rte_field_bitmap		*fld_bitmap;
 	uint32_t				*comp_fld;
 	struct ulp_regfile			*regfile;
-	struct tf				*tfp;
 	struct bnxt_ulp_context			*ulp_ctx;
 	uint32_t				fid;
 	enum bnxt_ulp_fdb_type			flow_type;

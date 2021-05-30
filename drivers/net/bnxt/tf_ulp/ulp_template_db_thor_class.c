@@ -357,8 +357,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_DRV_FUNC_VNIC >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_DRV_FUNC_VNIC & 0xff}
+	(BNXT_ULP_CF_IDX_DRV_FUNC_VNIC >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_DRV_FUNC_VNIC & 0xff}
 	},
 	{
 	.description = "use_default",
@@ -402,7 +402,7 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	/* class_tid: 3, thor, table: parif_def_arec_ptr.ing_0 */
 	{
@@ -411,8 +411,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
+	(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
 	},
 	/* class_tid: 3, thor, table: parif_def_err_arec_ptr.ing_0 */
 	{
@@ -421,8 +421,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
+	(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
 	},
 	/* class_tid: 3, thor, table: int_full_act_record.egr_vfr */
 	{
@@ -485,8 +485,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_PHY_PORT_VPORT >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_PHY_PORT_VPORT & 0xff}
+	(BNXT_ULP_CF_IDX_PHY_PORT_VPORT >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_PHY_PORT_VPORT & 0xff}
 	},
 	{
 	.description = "use_default",
@@ -530,7 +530,7 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	/* class_tid: 3, thor, table: parif_def_arec_ptr.egr_0 */
 	{
@@ -539,8 +539,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
+	(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
 	},
 	/* class_tid: 3, thor, table: parif_def_err_arec_ptr.egr_0 */
 	{
@@ -549,8 +549,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
+	(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
 	},
 	/* class_tid: 4, thor, table: int_full_act_record.loopback */
 	{
@@ -613,8 +613,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		(ULP_THOR_SYM_LOOPBACK_PORT >> 8) & 0xff,
-		ULP_THOR_SYM_LOOPBACK_PORT & 0xff}
+	(ULP_THOR_SYM_LOOPBACK_PORT >> 8) & 0xff,
+	ULP_THOR_SYM_LOOPBACK_PORT & 0xff}
 	},
 	{
 	.description = "use_default",
@@ -658,7 +658,7 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	/* class_tid: 4, thor, table: parif_def_arec_ptr.vf_egr */
 	{
@@ -667,8 +667,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_GLB_RF,
 	.field_opr1 = {
-		(BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR >> 8) & 0xff,
-		BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR & 0xff}
+	(BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR >> 8) & 0xff,
+	BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR & 0xff}
 	},
 	/* class_tid: 4, thor, table: parif_def_err_arec_ptr.vf_egr */
 	{
@@ -677,8 +677,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_GLB_RF,
 	.field_opr1 = {
-		(BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR >> 8) & 0xff,
-		BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR & 0xff}
+	(BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR >> 8) & 0xff,
+	BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR & 0xff}
 	},
 	/* class_tid: 4, thor, table: int_full_act_record.vf_ing */
 	{
@@ -741,8 +741,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_DRV_FUNC_VNIC >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_DRV_FUNC_VNIC & 0xff}
+	(BNXT_ULP_CF_IDX_DRV_FUNC_VNIC >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_DRV_FUNC_VNIC & 0xff}
 	},
 	{
 	.description = "use_default",
@@ -786,7 +786,7 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	/* class_tid: 4, thor, table: vtag_encap_record.vfr_egr0 */
 	{
@@ -819,7 +819,7 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_THOR_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI}
+	ULP_THOR_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI}
 	},
 	{
 	.description = "rsrvd",
@@ -833,7 +833,7 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "vtag_tpid",
@@ -850,8 +850,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_DEV_PORT_ID >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_DEV_PORT_ID & 0xff}
+	(BNXT_ULP_CF_IDX_DEV_PORT_ID >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_DEV_PORT_ID & 0xff}
 	},
 	{
 	.description = "vtag_de",
@@ -865,8 +865,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP & 0xff}
 	},
 	/* class_tid: 4, thor, table: int_full_act_record.vfr_egr0 */
 	{
@@ -881,8 +881,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_ENCAP_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_ENCAP_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_ENCAP_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_ENCAP_PTR_0 & 0xff}
 	},
 	{
 	.description = "mod_rec_ptr",
@@ -932,8 +932,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		(ULP_THOR_SYM_LOOPBACK_PORT >> 8) & 0xff,
-		ULP_THOR_SYM_LOOPBACK_PORT & 0xff}
+	(ULP_THOR_SYM_LOOPBACK_PORT >> 8) & 0xff,
+	ULP_THOR_SYM_LOOPBACK_PORT & 0xff}
 	},
 	{
 	.description = "use_default",

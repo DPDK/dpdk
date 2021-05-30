@@ -31,11 +31,13 @@
 #define BNXT_ULP_VF_REP_ENABLED		0x1
 #define BNXT_ULP_SHARED_SESSION_ENABLED	0x2
 #define BNXT_ULP_APP_DEV_UNSUPPORTED	0x4
+#define BNXT_ULP_HIGH_AVAIL_ENABLED	0x8
 #define ULP_VF_REP_IS_ENABLED(flag)	((flag) & BNXT_ULP_VF_REP_ENABLED)
 #define ULP_SHARED_SESSION_IS_ENABLED(flag) ((flag) &\
 					     BNXT_ULP_SHARED_SESSION_ENABLED)
 #define ULP_APP_DEV_UNSUPPORTED_ENABLED(flag)	((flag) &\
 						 BNXT_ULP_APP_DEV_UNSUPPORTED)
+#define ULP_HIGH_AVAIL_IS_ENABLED(flag)	((flag) & BNXT_ULP_HIGH_AVAIL_ENABLED)
 
 enum bnxt_ulp_flow_mem_type {
 	BNXT_ULP_FLOW_MEM_TYPE_INT = 0,
@@ -158,7 +160,8 @@ bnxt_ulp_cntxt_tfp_set(struct bnxt_ulp_context *ulp, struct tf *tfp);
 
 /* Function to get the tfp session details from ulp context. */
 struct tf *
-bnxt_ulp_cntxt_tfp_get(struct bnxt_ulp_context *ulp);
+bnxt_ulp_cntxt_tfp_get(struct bnxt_ulp_context *ulp,
+		       enum bnxt_ulp_shared_session shared);
 
 /* Get the device table entry based on the device id. */
 struct bnxt_ulp_device_params *

@@ -284,6 +284,9 @@ struct bnxt_ulp_mapper_tbl_info {
 	/* FDB table opcode */
 	enum bnxt_ulp_fdb_opc		fdb_opcode;
 	uint32_t			fdb_operand;
+
+	/* Shared session */
+	enum bnxt_ulp_shared_session	shared_session;
 };
 
 struct bnxt_ulp_mapper_field_info {

@@ -121,7 +121,7 @@ ulp_mapper_resource_ident_allocate(struct bnxt_ulp_context *ulp_ctx,
 	struct tf *tfp;
 	int32_t rc = 0;
 
-	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_NO);
 	if (!tfp)
 		return -EINVAL;
 
@@ -174,7 +174,7 @@ ulp_mapper_resource_index_tbl_alloc(struct bnxt_ulp_context *ulp_ctx,
 	uint32_t tbl_scope_id;
 	int32_t rc = 0;
 
-	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_NO);
 	if (!tfp)
 		return -EINVAL;
 
@@ -741,7 +741,7 @@ ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 	struct tf *tfp;
 	int rc;
 
-	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx);
+	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx, tbl->shared_session);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get tf pointer\n");
 		return -EINVAL;
@@ -776,6 +776,7 @@ ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 		fid_parms.resource_type	= ident->ident_type;
 		fid_parms.resource_hndl	= iparms.id;
 		fid_parms.critical_resource = tbl->critical_resource;
+		ulp_flow_db_shared_session_set(&fid_parms, tbl->shared_session);
 
 		rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 		if (rc) {
@@ -822,7 +823,7 @@ ulp_mapper_ident_extract(struct bnxt_ulp_mapper_parms *parms,
 	int rc;
 
 	/* Get the tfp from ulp context */
-	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx);
+	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx, tbl->shared_session);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get tf pointer\n");
 		return -EINVAL;
@@ -868,6 +869,8 @@ ulp_mapper_ident_extract(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.resource_type = ident->ident_type;
 	fid_parms.resource_hndl = sparms.search_id;
 	fid_parms.critical_resource = tbl->critical_resource;
+	ulp_flow_db_shared_session_set(&fid_parms, tbl->shared_session);
+
 	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to link res to flow rc = %d\n",
@@ -1513,6 +1516,8 @@ ulp_mapper_mark_gfid_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.critical_resource = tbl->critical_resource;
 	fid_parms.resource_type	= mark_flag;
 	fid_parms.resource_hndl	= gfid;
+	ulp_flow_db_shared_session_set(&fid_parms, tbl->shared_session);
+
 	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 	if (rc)
 		BNXT_TF_DBG(ERR, "Fail to link res to flow rc = %d\n", rc);
@@ -1559,6 +1564,8 @@ ulp_mapper_mark_act_ptr_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.critical_resource = tbl->critical_resource;
 	fid_parms.resource_type	= mark_flag;
 	fid_parms.resource_hndl	= act_idx;
+	ulp_flow_db_shared_session_set(&fid_parms, tbl->shared_session);
+
 	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 	if (rc)
 		BNXT_TF_DBG(ERR, "Fail to link res to flow rc = %d\n", rc);
@@ -1605,6 +1612,8 @@ ulp_mapper_mark_vfr_idx_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.critical_resource = tbl->critical_resource;
 	fid_parms.resource_type	= mark_flag;
 	fid_parms.resource_hndl	= act_idx;
+	ulp_flow_db_shared_session_set(&fid_parms, tbl->shared_session);
+
 	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 	if (rc)
 		BNXT_TF_DBG(ERR, "Fail to link res to flow rc = %d\n", rc);
@@ -1671,7 +1680,7 @@ ulp_mapper_tcam_tbl_entry_write(struct bnxt_ulp_mapper_parms *parms,
 	uint16_t tmplen;
 	int32_t rc;
 
-	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx);
+	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx, tbl->shared_session);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get truflow pointer\n");
 		return -EINVAL;
@@ -1838,7 +1847,7 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return 0;
 	}
 
-	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx);
+	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx, tbl->shared_session);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get truflow pointer\n");
 		return -EINVAL;
@@ -1887,7 +1896,9 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	/* For wild card tcam perform the post process to swap the blob */
-	if (tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM) {
+	if (tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM ||
+	    tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM_HIGH ||
+	    tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM_LOW) {
 		if (dparms->dynamic_pad_en) {
 			/* Sets up the slices for writing to the WC TCAM */
 			rc = ulp_mapper_wc_tcam_tbl_dyn_post_process(dparms,
@@ -2004,6 +2015,8 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.resource_type	= tbl->resource_type;
 	fid_parms.critical_resource = tbl->critical_resource;
 	fid_parms.resource_hndl	= idx;
+	ulp_flow_db_shared_session_set(&fid_parms, tbl->shared_session);
+
 	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to link resource to flow rc = %d\n",
@@ -2032,7 +2045,7 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	struct ulp_blob key, data;
 	uint32_t i, num_kflds;
 	uint16_t tmplen;
-	struct tf *tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx);
+	struct tf *tfp;
 	struct ulp_flow_db_res_params	fid_parms = { 0 };
 	struct tf_insert_em_entry_parms iparms = { 0 };
 	struct tf_delete_em_entry_parms free_parms = { 0 };
@@ -2042,6 +2055,7 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	int32_t rc = 0;
 	int32_t pad = 0;
 
+	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx, tbl->shared_session);
 	rc = bnxt_ulp_cntxt_mem_type_get(parms->ulp_ctx, &mtype);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to get the mem type for EM\n");
@@ -2208,7 +2222,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	struct tf_get_tbl_entry_parms gparms = { 0 };
 	struct tf_free_tbl_entry_parms free_parms = { 0 };
 	uint32_t tbl_scope_id;
-	struct tf *tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx);
+	struct tf *tfp;
 	struct bnxt_ulp_glb_resource_info glb_res;
 	uint16_t bit_size;
 	bool alloc = false;
@@ -2217,6 +2231,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	uint64_t act_rec_size;
 	bool shared = false;
 
+	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx, tbl->shared_session);
 	/* use the max size if encap is enabled */
 	if (tbl->encap_num_fields)
 		bit_size = BNXT_ULP_FLMP_BLOB_SIZE_IN_BITS;
@@ -2460,6 +2475,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.resource_sub_type = tbl->resource_sub_type;
 	fid_parms.resource_hndl	= index;
 	fid_parms.critical_resource = tbl->critical_resource;
+	ulp_flow_db_shared_session_set(&fid_parms, tbl->shared_session);
 
 	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 	if (rc) {
@@ -2505,10 +2521,11 @@ ulp_mapper_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	int32_t rc = 0;
 	struct tf_set_if_tbl_entry_parms iftbl_params = { 0 };
 	struct tf_get_if_tbl_entry_parms get_parms = { 0 };
-	struct tf *tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx);
+	struct tf *tfp;
 	enum bnxt_ulp_if_tbl_opc if_opc = tbl->tbl_opcode;
 	uint32_t res_size;
 
+	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx, tbl->shared_session);
 	/* Initialize the blob data */
 	if (!ulp_blob_init(&data, tbl->result_bit_size,
 			   parms->device_params->byte_order)) {
@@ -2610,7 +2627,7 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	struct ulp_flow_db_res_params fid_parms;
 	struct ulp_mapper_gen_tbl_entry gen_tbl_ent, *g;
 	struct ulp_gen_hash_entry_params hash_entry;
-	uint16_t tmplen;
+	uint16_t tmplen = 0;
 	struct ulp_blob key, data;
 	uint8_t *cache_key;
 	int32_t tbl_idx;
@@ -2687,6 +2704,11 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 	} else {
 		/* convert key to index directly */
+		if (ULP_BITS_2_BYTE(tmplen) > (int32_t)sizeof(key_index)) {
+			BNXT_TF_DBG(ERR, "%s: keysize is bigger then 4 bytes\n",
+				    gen_tbl_list->gen_tbl_name);
+			return -EINVAL;
+		}
 		memcpy(&key_index, cache_key, ULP_BITS_2_BYTE(tmplen));
 		/* Get the generic table entry */
 		if (ulp_mapper_gen_tbl_entry_get(gen_tbl_list, key_index,
@@ -2791,6 +2813,8 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		fid_parms.resource_sub_type = tbl->resource_sub_type;
 		fid_parms.resource_hndl	= key_index;
 		fid_parms.critical_resource = tbl->critical_resource;
+		ulp_flow_db_shared_session_set(&fid_parms, tbl->shared_session);
+
 		rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
 		if (rc)
 			BNXT_TF_DBG(ERR, "Fail to add gen ent flowdb %d\n", rc);
@@ -3514,8 +3538,10 @@ ulp_mapper_resource_free(struct bnxt_ulp_context *ulp,
 		BNXT_TF_DBG(ERR, "Unable to free resource\n ");
 		return -EINVAL;
 	}
-
-	tfp = bnxt_ulp_cntxt_tfp_get(ulp);
+	if (res->fdb_flags & ULP_FDB_FLAG_SHARED_SESSION)
+		tfp = bnxt_ulp_cntxt_tfp_get(ulp, BNXT_ULP_SHARED_SESSION_YES);
+	else
+		tfp = bnxt_ulp_cntxt_tfp_get(ulp, BNXT_ULP_SHARED_SESSION_NO);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Unable to free resource failed to get tfp\n");
 		return -EINVAL;
@@ -3680,7 +3706,6 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	parms.hdr_field = cparms->hdr_field;
 	parms.fld_bitmap = cparms->fld_bitmap;
 	parms.comp_fld = cparms->comp_fld;
-	parms.tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
 	parms.ulp_ctx = ulp_ctx;
 	parms.act_tid = cparms->act_tid;
 	parms.class_tid = cparms->class_tid;
@@ -3779,7 +3804,7 @@ ulp_mapper_init(struct bnxt_ulp_context *ulp_ctx)
 	if (!ulp_ctx)
 		return -EINVAL;
 
-	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_NO);
 	if (!tfp)
 		return -EINVAL;
 
@@ -3850,7 +3875,7 @@ ulp_mapper_deinit(struct bnxt_ulp_context *ulp_ctx)
 		return;
 	}
 
-	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_NO);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to acquire tfp.\n");
 		/* Free the mapper data regardless of errors. */

@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Sun Mar 14 12:41:59 2021 */
+/* date: Sun Mar 21 13:04:51 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -997,8 +997,8 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 		.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 		.field_opr1 = {
-			(BNXT_ULP_ACT_PROP_IDX_SHARED_HANDLE >> 8) & 0xff,
-			BNXT_ULP_ACT_PROP_IDX_SHARED_HANDLE & 0xff}
+		(BNXT_ULP_ACT_PROP_IDX_SHARED_HANDLE >> 8) & 0xff,
+		BNXT_ULP_ACT_PROP_IDX_SHARED_HANDLE & 0xff}
 		}
 	},
 	/* act_tid: 2, wh_plus, table: shared_mirror_record.wr */
@@ -1017,8 +1017,8 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 		.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr1 = {
-			(BNXT_ULP_RF_IDX_MIRROR_PTR_0 >> 8) & 0xff,
-			BNXT_ULP_RF_IDX_MIRROR_PTR_0 & 0xff}
+		(BNXT_ULP_RF_IDX_MIRROR_PTR_0 >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_MIRROR_PTR_0 & 0xff}
 		}
 	}
 };
@@ -1062,7 +1062,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI}
+	ULP_WP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI}
 	},
 	{
 	.description = "ecv_custom_en",
@@ -1076,7 +1076,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "vtag_tpid",
@@ -1084,8 +1084,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN & 0xff}
 	},
 	{
 	.description = "vtag_vid",
@@ -1093,8 +1093,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID & 0xff}
 	},
 	{
 	.description = "vtag_de",
@@ -1108,8 +1108,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP & 0xff}
 	},
 	{
 	.description = "spare",
@@ -1124,8 +1124,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -1151,14 +1151,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "tcpflags_key",
@@ -1184,8 +1184,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_ENCAP_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_ENCAP_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_ENCAP_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_ENCAP_PTR_0 & 0xff}
 	},
 	{
 	.description = "dst_ip_ptr",
@@ -1193,8 +1193,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 & 0xff}
 	},
 	{
 	.description = "tcp_dst_port",
@@ -1202,14 +1202,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_DST >> 8) & 0xff,
@@ -1222,8 +1222,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 & 0xff}
 	},
 	{
 	.description = "tcp_src_port",
@@ -1231,14 +1231,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC >> 8) & 0xff,
@@ -1269,8 +1269,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
 	},
 	{
 	.description = "tl3_ttl_dec",
@@ -1278,8 +1278,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
 	},
 	{
 	.description = "decap_func",
@@ -1287,20 +1287,20 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 		ULP_WP_SYM_DECAP_FUNC_THRU_TUN},
 	.field_src3 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr3 = {
-		ULP_WP_SYM_DECAP_FUNC_NONE}
+	ULP_WP_SYM_DECAP_FUNC_NONE}
 	},
 	{
 	.description = "vnic_or_vport",
@@ -1308,8 +1308,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -1317,14 +1317,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN & 0xff}
 	},
 	{
 	.description = "meter",
@@ -1338,14 +1338,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SHARED_SAMPLE & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr2 = {
 		(BNXT_ULP_RF_IDX_MIRROR_ID_0 >> 8) & 0xff,
@@ -1358,14 +1358,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_DROP & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_DROP & 0xff}
 	},
 	{
 	.description = "hit",
@@ -1386,8 +1386,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -1413,14 +1413,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "flow_cntr_ext",
@@ -1464,8 +1464,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 & 0xff}
 	},
 	{
 	.description = "tcp_dst_port",
@@ -1473,14 +1473,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_DST >> 8) & 0xff,
@@ -1493,8 +1493,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 & 0xff}
 	},
 	{
 	.description = "tcp_src_port",
@@ -1502,14 +1502,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC >> 8) & 0xff,
@@ -1540,8 +1540,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
 	},
 	{
 	.description = "tl3_ttl_dec",
@@ -1549,8 +1549,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
 	},
 	{
 	.description = "decap_func",
@@ -1558,20 +1558,20 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_VXLAN_DECAP & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 		ULP_WP_SYM_DECAP_FUNC_THRU_TUN},
 	.field_src3 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr3 = {
-		ULP_WP_SYM_DECAP_FUNC_NONE}
+	ULP_WP_SYM_DECAP_FUNC_NONE}
 	},
 	{
 	.description = "vnic_or_vport",
@@ -1579,8 +1579,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -1588,14 +1588,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN & 0xff}
 	},
 	{
 	.description = "meter",
@@ -1609,8 +1609,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MIRROR_ID_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MIRROR_ID_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MIRROR_ID_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MIRROR_ID_0 & 0xff}
 	},
 	{
 	.description = "drop",
@@ -1618,14 +1618,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_DROP & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_DROP & 0xff}
 	},
 	{
 	.description = "ecv_tun_type",
@@ -1651,7 +1651,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_L2_EN_YES}
+	ULP_WP_SYM_ECV_L2_EN_YES}
 	},
 	{
 	.description = "ecv_vtag_type",
@@ -1714,7 +1714,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "copy",
@@ -1754,8 +1754,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -1781,14 +1781,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "tcpflags_key",
@@ -1880,8 +1880,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -1928,8 +1928,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -1955,14 +1955,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "flow_cntr_ext",
@@ -2066,8 +2066,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -2075,14 +2075,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN & 0xff}
 	},
 	{
 	.description = "meter",
@@ -2128,7 +2128,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_L2_EN_YES}
+	ULP_WP_SYM_ECV_L2_EN_YES}
 	},
 	{
 	.description = "ecv_vtag_type",
@@ -2185,8 +2185,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
+	(BNXT_ULP_RF_IDX_MAIN_ACTION_PTR >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MAIN_ACTION_PTR & 0xff}
 	},
 	{
 	.description = "enable",
@@ -2194,7 +2194,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "copy",
@@ -2227,8 +2227,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_RID >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_RID & 0xff}
+	(BNXT_ULP_RF_IDX_RID >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_RID & 0xff}
 	},
 	{
 	.description = "mirror_id",
@@ -2253,8 +2253,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC & 0xff}
 	},
 	/* act_tid: 3, wh_plus, table: act_modify_ipv4_dst.0 */
 	{
@@ -2263,8 +2263,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST & 0xff}
 	},
 	/* act_tid: 3, wh_plus, table: int_encap_mac_record.0 */
 	{
@@ -2291,7 +2291,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_L2_EN_YES}
+	ULP_WP_SYM_ECV_L2_EN_YES}
 	},
 	{
 	.description = "ecv_vtag_type",
@@ -2311,7 +2311,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "vtag_tpid",
@@ -2350,8 +2350,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -2377,14 +2377,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "tcpflags_key",
@@ -2410,8 +2410,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_GLB_RF,
 	.field_opr1 = {
-		(BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR >> 8) & 0xff,
-		BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR & 0xff}
+	(BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR >> 8) & 0xff,
+	BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR & 0xff}
 	},
 	{
 	.description = "dst_ip_ptr",
@@ -2419,8 +2419,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 & 0xff}
 	},
 	{
 	.description = "tcp_dst_port",
@@ -2428,14 +2428,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_DST >> 8) & 0xff,
@@ -2448,8 +2448,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 & 0xff}
 	},
 	{
 	.description = "tcp_src_port",
@@ -2457,14 +2457,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC >> 8) & 0xff,
@@ -2495,8 +2495,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
 	},
 	{
 	.description = "tl3_ttl_dec",
@@ -2504,8 +2504,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
 	},
 	{
 	.description = "decap_func",
@@ -2513,20 +2513,20 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_HDR_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff},
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 		ULP_WP_SYM_DECAP_FUNC_THRU_TL2},
 	.field_src3 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr3 = {
-		ULP_WP_SYM_DECAP_FUNC_THRU_L2}
+	ULP_WP_SYM_DECAP_FUNC_THRU_L2}
 	},
 	{
 	.description = "vnic_or_vport",
@@ -2534,8 +2534,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -2580,8 +2580,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -2607,14 +2607,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "flow_cntr_ext",
@@ -2646,8 +2646,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_GLB_RF,
 	.field_opr1 = {
-		(BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR >> 8) & 0xff,
-		BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR & 0xff}
+	(BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR >> 8) & 0xff,
+	BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR & 0xff}
 	},
 	{
 	.description = "encap_rec_int",
@@ -2655,7 +2655,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "dst_ip_ptr",
@@ -2663,8 +2663,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 & 0xff}
 	},
 	{
 	.description = "tcp_dst_port",
@@ -2672,14 +2672,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_DST >> 8) & 0xff,
@@ -2692,8 +2692,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 & 0xff}
 	},
 	{
 	.description = "tcp_src_port",
@@ -2701,14 +2701,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC >> 8) & 0xff,
@@ -2739,8 +2739,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
 	},
 	{
 	.description = "tl3_ttl_dec",
@@ -2748,8 +2748,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
 	},
 	{
 	.description = "decap_func",
@@ -2757,20 +2757,20 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_HDR_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff},
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 		ULP_WP_SYM_DECAP_FUNC_THRU_TL2},
 	.field_src3 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr3 = {
-		ULP_WP_SYM_DECAP_FUNC_THRU_L2}
+	ULP_WP_SYM_DECAP_FUNC_THRU_L2}
 	},
 	{
 	.description = "vnic_or_vport",
@@ -2778,8 +2778,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -2829,7 +2829,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_L2_EN_YES}
+	ULP_WP_SYM_ECV_L2_EN_YES}
 	},
 	{
 	.description = "ecv_vtag_type",
@@ -2917,7 +2917,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI}
+	ULP_WP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI}
 	},
 	{
 	.description = "ecv_custom_en",
@@ -2931,7 +2931,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "vtag_tpid",
@@ -2939,8 +2939,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN & 0xff}
 	},
 	{
 	.description = "vtag_vid",
@@ -2948,8 +2948,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID & 0xff}
 	},
 	{
 	.description = "vtag_de",
@@ -2963,8 +2963,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP & 0xff}
 	},
 	{
 	.description = "spare",
@@ -2979,8 +2979,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -3006,14 +3006,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "tcpflags_key",
@@ -3039,8 +3039,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_ENCAP_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_ENCAP_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_ENCAP_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_ENCAP_PTR_0 & 0xff}
 	},
 	{
 	.description = "dst_ip_ptr",
@@ -3090,8 +3090,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
 	},
 	{
 	.description = "tl3_ttl_dec",
@@ -3099,8 +3099,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
 	},
 	{
 	.description = "decap_func",
@@ -3114,8 +3114,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -3141,14 +3141,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_DROP & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_DROP & 0xff}
 	},
 	{
 	.description = "hit",
@@ -3169,8 +3169,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -3196,14 +3196,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "flow_cntr_ext",
@@ -3289,8 +3289,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
 	},
 	{
 	.description = "tl3_ttl_dec",
@@ -3298,8 +3298,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
 	},
 	{
 	.description = "decap_func",
@@ -3313,8 +3313,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -3340,14 +3340,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_DROP & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_DROP & 0xff}
 	},
 	{
 	.description = "ecv_tun_type",
@@ -3373,7 +3373,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_L2_EN_YES}
+	ULP_WP_SYM_ECV_L2_EN_YES}
 	},
 	{
 	.description = "ecv_vtag_type",
@@ -3430,8 +3430,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -3457,14 +3457,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "flow_cntr_ext",
@@ -3550,8 +3550,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
 	},
 	{
 	.description = "tl3_ttl_dec",
@@ -3559,8 +3559,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
 	},
 	{
 	.description = "decap_func",
@@ -3574,8 +3574,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -3583,14 +3583,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_POP_VLAN & 0xff}
 	},
 	{
 	.description = "meter",
@@ -3610,14 +3610,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_DROP & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_DROP >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_DROP & 0xff}
 	},
 	{
 	.description = "ecv_tun_type",
@@ -3649,7 +3649,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI}
+	ULP_WP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI}
 	},
 	{
 	.description = "ecv_custom_en",
@@ -3663,7 +3663,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "vtag_tpid",
@@ -3671,8 +3671,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN & 0xff}
 	},
 	{
 	.description = "vtag_vid",
@@ -3680,8 +3680,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID & 0xff}
 	},
 	{
 	.description = "vtag_de",
@@ -3695,8 +3695,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP & 0xff}
 	},
 	{
 	.description = "spare",
@@ -3718,8 +3718,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC & 0xff}
 	},
 	/* act_tid: 5, wh_plus, table: act_modify_ipv4_dst.0 */
 	{
@@ -3728,8 +3728,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST & 0xff}
 	},
 	/* act_tid: 5, wh_plus, table: int_encap_mac_record.dummy */
 	{
@@ -3756,7 +3756,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_L2_EN_YES}
+	ULP_WP_SYM_ECV_L2_EN_YES}
 	},
 	{
 	.description = "ecv_vtag_type",
@@ -3776,7 +3776,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "vtag_tpid",
@@ -3815,8 +3815,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -3842,14 +3842,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "tcpflags_key",
@@ -3875,8 +3875,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_GLB_RF,
 	.field_opr1 = {
-		(BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR >> 8) & 0xff,
-		BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR & 0xff}
+	(BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR >> 8) & 0xff,
+	BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR & 0xff}
 	},
 	{
 	.description = "dst_ip_ptr",
@@ -3884,8 +3884,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 & 0xff}
 	},
 	{
 	.description = "tcp_dst_port",
@@ -3893,14 +3893,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_DST >> 8) & 0xff,
@@ -3913,8 +3913,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 & 0xff}
 	},
 	{
 	.description = "tcp_src_port",
@@ -3922,14 +3922,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC >> 8) & 0xff,
@@ -3960,8 +3960,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
 	},
 	{
 	.description = "tl3_ttl_dec",
@@ -3969,8 +3969,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
 	},
 	{
 	.description = "decap_func",
@@ -3978,20 +3978,20 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_HDR_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff},
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 		ULP_WP_SYM_DECAP_FUNC_THRU_TL2},
 	.field_src3 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr3 = {
-		ULP_WP_SYM_DECAP_FUNC_THRU_L2}
+	ULP_WP_SYM_DECAP_FUNC_THRU_L2}
 	},
 	{
 	.description = "vnic_or_vport",
@@ -3999,8 +3999,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -4045,8 +4045,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -4072,14 +4072,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "flow_cntr_ext",
@@ -4111,8 +4111,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_GLB_RF,
 	.field_opr1 = {
-		(BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR >> 8) & 0xff,
-		BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR & 0xff}
+	(BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR >> 8) & 0xff,
+	BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR & 0xff}
 	},
 	{
 	.description = "encap_rec_int",
@@ -4120,7 +4120,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "dst_ip_ptr",
@@ -4128,8 +4128,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0 & 0xff}
 	},
 	{
 	.description = "tcp_dst_port",
@@ -4137,14 +4137,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_DST & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_DST >> 8) & 0xff,
@@ -4157,8 +4157,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0 & 0xff}
 	},
 	{
 	.description = "tcp_src_port",
@@ -4166,14 +4166,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_SET_TP_SRC & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr2 = {
 		(BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC >> 8) & 0xff,
@@ -4204,8 +4204,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_DEC_TTL & 0xff}
 	},
 	{
 	.description = "tl3_ttl_dec",
@@ -4213,8 +4213,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
-		(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
-		BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
+	(BNXT_ULP_CF_IDX_ACT_T_DEC_TTL >> 8) & 0xff,
+	BNXT_ULP_CF_IDX_ACT_T_DEC_TTL & 0xff}
 	},
 	{
 	.description = "decap_func",
@@ -4222,20 +4222,20 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
 	.field_src1 = BNXT_ULP_FIELD_SRC_HDR_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff},
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 		ULP_WP_SYM_DECAP_FUNC_THRU_TL2},
 	.field_src3 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr3 = {
-		ULP_WP_SYM_DECAP_FUNC_THRU_L2}
+	ULP_WP_SYM_DECAP_FUNC_THRU_L2}
 	},
 	{
 	.description = "vnic_or_vport",
@@ -4243,8 +4243,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -4294,7 +4294,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_L2_EN_YES}
+	ULP_WP_SYM_ECV_L2_EN_YES}
 	},
 	{
 	.description = "ecv_vtag_type",
@@ -4358,8 +4358,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC & 0xff}
 	},
 	{
 	.description = "ipv4_src_addr",
@@ -4367,8 +4367,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC & 0xff}
 	},
 	{
 	.description = "reserved",
@@ -4383,8 +4383,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC & 0xff}
 	},
 	{
 	.description = "ipv6_src_addr",
@@ -4392,8 +4392,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC & 0xff}
 	},
 	{
 	.description = "reserved",
@@ -4408,7 +4408,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_TUN_TYPE_VXLAN}
+	ULP_WP_SYM_ECV_TUN_TYPE_VXLAN}
 	},
 	{
 	.description = "ecv_l4_type",
@@ -4416,7 +4416,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_L4_TYPE_UDP_CSUM}
+	ULP_WP_SYM_ECV_L4_TYPE_UDP_CSUM}
 	},
 	{
 	.description = "ecv_l3_type",
@@ -4424,8 +4424,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_L3_TYPE >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_L3_TYPE & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_L3_TYPE >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_L3_TYPE & 0xff}
 	},
 	{
 	.description = "ecv_l2_en",
@@ -4433,7 +4433,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "ecv_vtag_type",
@@ -4441,8 +4441,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG_TYPE >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG_TYPE & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG_TYPE >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG_TYPE & 0xff}
 	},
 	{
 	.description = "ecv_custom_en",
@@ -4456,7 +4456,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "encap_l2_dmac",
@@ -4464,8 +4464,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_DMAC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_DMAC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_DMAC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_DMAC & 0xff}
 	},
 	{
 	.description = "encap_vtag",
@@ -4495,8 +4495,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_UDP >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_UDP & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_UDP >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_UDP & 0xff}
 	},
 	{
 	.description = "encap_tun",
@@ -4516,8 +4516,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -4543,14 +4543,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "tcpflags_key",
@@ -4576,8 +4576,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_ENCAP_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_ENCAP_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_ENCAP_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_ENCAP_PTR_0 & 0xff}
 	},
 	{
 	.description = "dst_ip_ptr",
@@ -4645,8 +4645,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -4691,8 +4691,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-		(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
-		BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
+	(BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0 & 0xff}
 	},
 	{
 	.description = "age_enable",
@@ -4718,14 +4718,14 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_BIT,
 	.field_opr1 = {
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 56) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 48) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 40) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 32) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 24) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 16) & 0xff,
+	((uint64_t)BNXT_ULP_ACT_BIT_COUNT >> 8) & 0xff,
+	(uint64_t)BNXT_ULP_ACT_BIT_COUNT & 0xff}
 	},
 	{
 	.description = "flow_cntr_ext",
@@ -4829,8 +4829,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_VPORT >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_VPORT & 0xff}
 	},
 	{
 	.description = "pop_vlan",
@@ -4862,7 +4862,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_TUN_TYPE_VXLAN}
+	ULP_WP_SYM_ECV_TUN_TYPE_VXLAN}
 	},
 	{
 	.description = "ecv_l4_type",
@@ -4870,7 +4870,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		ULP_WP_SYM_ECV_L4_TYPE_UDP_CSUM}
+	ULP_WP_SYM_ECV_L4_TYPE_UDP_CSUM}
 	},
 	{
 	.description = "ecv_l3_type",
@@ -4878,8 +4878,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_L3_TYPE >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_L3_TYPE & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_L3_TYPE >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_L3_TYPE & 0xff}
 	},
 	{
 	.description = "ecv_l2_en",
@@ -4887,7 +4887,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "ecv_vtag_type",
@@ -4895,8 +4895,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG_TYPE >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG_TYPE & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG_TYPE >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG_TYPE & 0xff}
 	},
 	{
 	.description = "ecv_custom_en",
@@ -4910,7 +4910,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr1 = {
-		1}
+	1}
 	},
 	{
 	.description = "encap_l2_dmac",
@@ -4918,8 +4918,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_DMAC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_DMAC & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_DMAC >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_DMAC & 0xff}
 	},
 	{
 	.description = "encap_vtag",
@@ -4949,8 +4949,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_UDP >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_UDP & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_UDP >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_UDP & 0xff}
 	},
 	{
 	.description = "encap_tun",
@@ -4958,8 +4958,8 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ACT_PROP,
 	.field_opr1 = {
-		(BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN & 0xff}
+	(BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN >> 8) & 0xff,
+	BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN & 0xff}
 	}
 };
 

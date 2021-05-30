@@ -13,6 +13,9 @@
 #define BNXT_FLOW_DB_DEFAULT_NUM_FLOWS		512
 #define BNXT_FLOW_DB_DEFAULT_NUM_RESOURCES	8
 
+/* Defines for the fdb flag */
+#define ULP_FDB_FLAG_SHARED_SESSION	0x1
+
 /*
  * Structure for the flow database resource information
  * The below structure is based on the below paritions
@@ -30,7 +33,7 @@ struct ulp_fdb_resource_info {
 			uint8_t		resource_func_lower;
 			uint8_t		resource_type;
 			uint8_t		resource_sub_type;
-			uint8_t		reserved;
+			uint8_t		fdb_flags;
 			uint32_t	resource_hndl;
 		};
 	};
@@ -86,7 +89,7 @@ struct ulp_flow_db_res_params {
 	enum bnxt_ulp_resource_func	resource_func;
 	uint8_t				resource_type;
 	uint8_t				resource_sub_type;
-	uint8_t				reserved;
+	uint8_t				fdb_flags;
 	uint8_t				critical_resource;
 	uint64_t			resource_hndl;
 };
@@ -402,5 +405,16 @@ ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
  */
 void
 ulp_flow_db_parent_flow_count_reset(struct bnxt_ulp_context *ulp_ctxt);
+
+/*
+ * Set the shared bit for the flow db entry
+ *
+ * res [in] Ptr to fdb entry
+ * shared [in] shared flag
+ *
+ * returns none
+ */
+void ulp_flow_db_shared_session_set(struct ulp_flow_db_res_params *res,
+				    enum bnxt_ulp_shared_session shared);
 
 #endif /* _ULP_FLOW_DB_H_ */

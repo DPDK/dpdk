@@ -156,7 +156,7 @@ ulp_flow_db_res_params_to_info(struct ulp_fdb_resource_info *resource_info,
 		resource_info->resource_hndl = (uint32_t)params->resource_hndl;
 		resource_info->resource_type = params->resource_type;
 		resource_info->resource_sub_type = params->resource_sub_type;
-		resource_info->reserved = params->reserved;
+		resource_info->fdb_flags = params->fdb_flags;
 	} else {
 		resource_info->resource_em_handle = params->resource_hndl;
 	}
@@ -187,7 +187,7 @@ ulp_flow_db_res_info_to_params(struct ulp_fdb_resource_info *resource_info,
 		params->resource_hndl = resource_info->resource_hndl;
 		params->resource_type = resource_info->resource_type;
 		params->resource_sub_type = resource_info->resource_sub_type;
-		params->reserved = resource_info->reserved;
+		params->fdb_flags = resource_info->fdb_flags;
 	}
 }
 
@@ -1899,4 +1899,19 @@ ulp_flow_db_parent_flow_count_reset(struct bnxt_ulp_context *ulp_ctxt)
 			p_pdb->parent_flow_tbl[idx].byte_count = 0;
 		}
 	}
+}
+
+/*
+ * Set the shared bit for the flow db entry
+ *
+ * res [in] Ptr to fdb entry
+ * shared [in] shared flag
+ *
+ * returns none
+ */
+void ulp_flow_db_shared_session_set(struct ulp_flow_db_res_params *res,
+				    enum bnxt_ulp_shared_session shared)
+{
+	if (res && (shared & BNXT_ULP_SHARED_SESSION_YES))
+		res->fdb_flags |= ULP_FDB_FLAG_SHARED_SESSION;
 }

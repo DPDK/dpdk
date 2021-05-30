@@ -671,7 +671,7 @@ ulp_eem_tbl_scope_deinit(struct bnxt *bp, struct bnxt_ulp_context *ulp_ctx)
 	if (!ulp_ctx || !ulp_ctx->cfg_data)
 		return -EINVAL;
 
-	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_NO);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get the truflow pointer\n");
 		return -EINVAL;
@@ -1632,13 +1632,17 @@ bnxt_ulp_cntxt_tfp_set(struct bnxt_ulp_context *ulp, struct tf *tfp)
 
 /* Function to get the tfp session details from the ulp context. */
 struct tf *
-bnxt_ulp_cntxt_tfp_get(struct bnxt_ulp_context *ulp)
+bnxt_ulp_cntxt_tfp_get(struct bnxt_ulp_context *ulp,
+		       enum bnxt_ulp_shared_session shared)
 {
 	if (!ulp) {
 		BNXT_TF_DBG(ERR, "Invalid arguments\n");
 		return NULL;
 	}
-	return ulp->g_tfp;
+	if (shared)
+		return ulp->g_shared_tfp;
+	else
+		return ulp->g_tfp;
 }
 
 /*
