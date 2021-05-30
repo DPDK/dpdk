@@ -138,6 +138,7 @@ struct tf_rm_element_cfg {
 	 * resource pool chunk size.
 	 */
 	uint8_t slices;
+
 	/**
 	 * Pool element divider count
 	 * If 0 or 1, there is 1:1 correspondence between the RM
@@ -146,7 +147,6 @@ struct tf_rm_element_cfg {
 	 * correspondence to the HCAPI RM firmware resource.
 	 */
 	uint8_t divider;
-
 };
 
 /**

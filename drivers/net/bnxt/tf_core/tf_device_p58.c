@@ -148,6 +148,75 @@ static int tf_dev_p58_word_align(uint16_t size)
 	return ((((size) + 63) >> 6) * 8);
 }
 
+
+#define TF_DEV_P58_BANK_SZ_64B 2048
+/**
+ * Get SRAM table information.
+ *
+ * Converts an internal RM allocated element offset to
+ * a user address and vice versa.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] type
+ *   Truflow index table type, e.g. TF_TYPE_FULL_ACT_RECORD
+ *
+ * [in/out] base
+ *   Pointer to the Base address of the associated SRAM bank used for
+ *   the type of record allocated.
+ *
+ * [in/out] shift
+ *   Pointer to the factor to be used as a multiplier to translate
+ *   between the RM units to the user address.  SRAM manages 64B entries
+ *   Addresses must be shifted to an 8B address.
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+static int tf_dev_p58_get_sram_tbl_info(struct tf *tfp __rte_unused,
+					void *db,
+					enum tf_tbl_type type,
+					uint16_t *base,
+					uint16_t *shift)
+{
+	uint16_t hcapi_type;
+	struct tf_rm_get_hcapi_parms parms;
+	int rc;
+
+	parms.rm_db = db;
+	parms.subtype = type;
+	parms.hcapi_type = &hcapi_type;
+
+	rc = tf_rm_get_hcapi_type(&parms);
+	if (rc)
+		return rc;
+
+	switch (hcapi_type) {
+	case CFA_RESOURCE_TYPE_P58_SRAM_BANK_0:
+		*base = 0;
+		*shift = 3;
+		break;
+	case CFA_RESOURCE_TYPE_P58_SRAM_BANK_1:
+		*base = TF_DEV_P58_BANK_SZ_64B;
+		*shift = 3;
+		break;
+	case CFA_RESOURCE_TYPE_P58_SRAM_BANK_2:
+		*base = TF_DEV_P58_BANK_SZ_64B * 2;
+		*shift = 3;
+		break;
+	case CFA_RESOURCE_TYPE_P58_SRAM_BANK_3:
+		*base = TF_DEV_P58_BANK_SZ_64B * 3;
+		*shift = 3;
+		break;
+	default:
+		*base = 0;
+		*shift = 0;
+		break;
+	}
+	return 0;
+}
 /**
  * Truflow P58 device specific functions
  */
@@ -158,6 +227,7 @@ const struct tf_dev_ops tf_dev_ops_p58_init = {
 	.tf_dev_alloc_ident = NULL,
 	.tf_dev_free_ident = NULL,
 	.tf_dev_search_ident = NULL,
+	.tf_dev_get_tbl_info = NULL,
 	.tf_dev_alloc_ext_tbl = NULL,
 	.tf_dev_alloc_tbl = NULL,
 	.tf_dev_free_ext_tbl = NULL,
@@ -198,6 +268,7 @@ const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_alloc_ident = tf_ident_alloc,
 	.tf_dev_free_ident = tf_ident_free,
 	.tf_dev_search_ident = tf_ident_search,
+	.tf_dev_get_tbl_info = tf_dev_p58_get_sram_tbl_info,
 	.tf_dev_alloc_tbl = tf_tbl_alloc,
 	.tf_dev_alloc_ext_tbl = tf_tbl_ext_alloc,
 	.tf_dev_free_tbl = tf_tbl_free,

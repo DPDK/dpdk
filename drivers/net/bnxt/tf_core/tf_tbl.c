@@ -16,6 +16,14 @@
 #include "tf_session.h"
 #include "tf_device.h"
 
+#define TF_TBL_RM_TO_PTR(new_idx, idx, base, shift) {		\
+		*(new_idx) = (((idx) + (base)) << (shift));	\
+}
+
+#define TF_TBL_PTR_TO_RM(new_idx, idx, base, shift) {		\
+		*(new_idx) = (((idx) >> (shift)) - (base));	\
+}
+
 struct tf;
 
 /**
@@ -118,6 +126,9 @@ tf_tbl_alloc(struct tf *tfp __rte_unused,
 	int rc;
 	uint32_t idx;
 	struct tf_rm_allocate_parms aparms = { 0 };
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	uint16_t base = 0, shift = 0;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -126,6 +137,29 @@ tf_tbl_alloc(struct tf *tfp __rte_unused,
 			    "%s: No Table DBs created\n",
 			    tf_dir_2_str(parms->dir));
 		return -EINVAL;
+	}
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
+	/* Only get table info if required for the device */
+	if (dev->ops->tf_dev_get_tbl_info) {
+		rc = dev->ops->tf_dev_get_tbl_info(tfp, tbl_db[parms->dir],
+						   parms->type, &base, &shift);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Failed to get table info:%d\n",
+				    tf_dir_2_str(parms->dir),
+				    parms->type);
+			return rc;
+		}
 	}
 
 	/* Allocate requested element */
@@ -141,6 +175,7 @@ tf_tbl_alloc(struct tf *tfp __rte_unused,
 		return rc;
 	}
 
+	TF_TBL_RM_TO_PTR(&idx, idx, base, shift);
 	*parms->idx = idx;
 
 	return 0;
@@ -154,6 +189,9 @@ tf_tbl_free(struct tf *tfp __rte_unused,
 	struct tf_rm_is_allocated_parms aparms = { 0 };
 	struct tf_rm_free_parms fparms = { 0 };
 	int allocated = 0;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	uint16_t base = 0, shift = 0;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -163,11 +201,35 @@ tf_tbl_free(struct tf *tfp __rte_unused,
 			    tf_dir_2_str(parms->dir));
 		return -EINVAL;
 	}
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
+	/* Only get table info if required for the device */
+	if (dev->ops->tf_dev_get_tbl_info) {
+		rc = dev->ops->tf_dev_get_tbl_info(tfp, tbl_db[parms->dir],
+						   parms->type, &base, &shift);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Failed to get table info:%d\n",
+				    tf_dir_2_str(parms->dir),
+				    parms->type);
+			return rc;
+		}
+	}
 
 	/* Check if element is in use */
 	aparms.rm_db = tbl_db[parms->dir];
 	aparms.subtype = parms->type;
-	aparms.index = parms->idx;
+
+	TF_TBL_PTR_TO_RM(&aparms.index, parms->idx, base, shift);
+
 	aparms.allocated = &allocated;
 	rc = tf_rm_is_allocated(&aparms);
 	if (rc)
@@ -184,7 +246,9 @@ tf_tbl_free(struct tf *tfp __rte_unused,
 	/* Free requested element */
 	fparms.rm_db = tbl_db[parms->dir];
 	fparms.subtype = parms->type;
-	fparms.index = parms->idx;
+
+	TF_TBL_PTR_TO_RM(&fparms.index, parms->idx, base, shift);
+
 	rc = tf_rm_free(&fparms);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
@@ -223,6 +287,9 @@ tf_tbl_set(struct tf *tfp,
 	uint16_t hcapi_type;
 	struct tf_rm_is_allocated_parms aparms = { 0 };
 	struct tf_rm_get_hcapi_parms hparms = { 0 };
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	uint16_t base = 0, shift = 0;
 
 	TF_CHECK_PARMS3(tfp, parms, parms->data);
 
@@ -233,10 +300,34 @@ tf_tbl_set(struct tf *tfp,
 		return -EINVAL;
 	}
 
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
+	/* Only get table info if required for the device */
+	if (dev->ops->tf_dev_get_tbl_info) {
+		rc = dev->ops->tf_dev_get_tbl_info(tfp, tbl_db[parms->dir],
+						   parms->type, &base, &shift);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Failed to get table info:%d\n",
+				    tf_dir_2_str(parms->dir),
+				    parms->type);
+			return rc;
+		}
+	}
+
 	/* Verify that the entry has been previously allocated */
 	aparms.rm_db = tbl_db[parms->dir];
 	aparms.subtype = parms->type;
-	aparms.index = parms->idx;
+	TF_TBL_PTR_TO_RM(&aparms.index, parms->idx, base, shift);
+
 	aparms.allocated = &allocated;
 	rc = tf_rm_is_allocated(&aparms);
 	if (rc)
@@ -292,6 +383,9 @@ tf_tbl_get(struct tf *tfp,
 	int allocated = 0;
 	struct tf_rm_is_allocated_parms aparms = { 0 };
 	struct tf_rm_get_hcapi_parms hparms = { 0 };
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	uint16_t base = 0, shift = 0;
 
 	TF_CHECK_PARMS3(tfp, parms, parms->data);
 
@@ -302,10 +396,35 @@ tf_tbl_get(struct tf *tfp,
 		return -EINVAL;
 	}
 
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
+	/* Only get table info if required for the device */
+	if (dev->ops->tf_dev_get_tbl_info) {
+		rc = dev->ops->tf_dev_get_tbl_info(tfp, tbl_db[parms->dir],
+						   parms->type, &base, &shift);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Failed to get table info:%d\n",
+				    tf_dir_2_str(parms->dir),
+				    parms->type);
+			return rc;
+		}
+	}
+
 	/* Verify that the entry has been previously allocated */
 	aparms.rm_db = tbl_db[parms->dir];
 	aparms.subtype = parms->type;
-	aparms.index = parms->idx;
+	TF_TBL_PTR_TO_RM(&aparms.index, parms->idx, base, shift);
+
 	aparms.allocated = &allocated;
 	rc = tf_rm_is_allocated(&aparms);
 	if (rc)
@@ -361,6 +480,9 @@ tf_tbl_bulk_get(struct tf *tfp,
 	uint16_t hcapi_type;
 	struct tf_rm_get_hcapi_parms hparms = { 0 };
 	struct tf_rm_check_indexes_in_range_parms cparms = { 0 };
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	uint16_t base = 0, shift = 0;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -372,10 +494,36 @@ tf_tbl_bulk_get(struct tf *tfp,
 		return -EINVAL;
 	}
 
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
+	/* Only get table info if required for the device */
+	if (dev->ops->tf_dev_get_tbl_info) {
+		rc = dev->ops->tf_dev_get_tbl_info(tfp, tbl_db[parms->dir],
+						   parms->type, &base, &shift);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Failed to get table info:%d\n",
+				    tf_dir_2_str(parms->dir),
+				    parms->type);
+			return rc;
+		}
+	}
+
 	/* Verify that the entries are in the range of reserved resources. */
 	cparms.rm_db = tbl_db[parms->dir];
 	cparms.subtype = parms->type;
-	cparms.starting_index = parms->starting_idx;
+
+	TF_TBL_PTR_TO_RM(&cparms.starting_index, parms->starting_idx,
+			 base, shift);
+
 	cparms.num_entries = parms->num_entries;
 
 	rc = tf_rm_check_indexes_in_range(&cparms);

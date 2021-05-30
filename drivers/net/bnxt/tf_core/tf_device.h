@@ -220,9 +220,36 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_search_ident)(struct tf *tfp,
 				   struct tf_ident_search_parms *parms);
+	/**
+	 * Get SRAM table information.
+	 *
+	 * Converts an internal RM allocated element offset to
+	 * a user address and vice versa.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] type
+	 *   Truflow index table type, e.g. TF_TYPE_FULL_ACT_RECORD
+	 *
+	 * [in/out] base
+	 *   Pointer to the base address of the associated table type.
+	 *
+	 * [in/out] shift
+	 *   Pointer to any shift required for the associated table type.
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_tbl_info)(struct tf *tfp,
+				   void *tbl_db,
+				   enum tf_tbl_type type,
+				   uint16_t *base,
+				   uint16_t *shift);
 
 	/**
-	 * Allocation of a table type element.
+	 * Allocation of an index table type element.
 	 *
 	 * This API allocates the specified table type element from a
 	 * device specific table type DB. The allocated element is
