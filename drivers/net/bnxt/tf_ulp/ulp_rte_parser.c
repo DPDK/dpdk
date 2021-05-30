@@ -274,7 +274,7 @@ ulp_post_process_normal_flow(struct ulp_rte_parser_params *params)
 
 	/* Update the decrement ttl computational fields */
 	if (ULP_BITMAP_ISSET(params->act_bitmap.bits,
-			     BNXT_ULP_ACTION_BIT_DEC_TTL)) {
+			     BNXT_ULP_ACT_BIT_DEC_TTL)) {
 		/*
 		 * Check that vxlan proto is included and vxlan decap
 		 * action is not set then decrement tunnel ttl.
@@ -283,7 +283,7 @@ ulp_post_process_normal_flow(struct ulp_rte_parser_params *params)
 		if ((ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
 				      BNXT_ULP_HDR_BIT_T_VXLAN) &&
 		    !ULP_BITMAP_ISSET(params->act_bitmap.bits,
-				      BNXT_ULP_ACTION_BIT_VXLAN_DECAP))) {
+				      BNXT_ULP_ACT_BIT_VXLAN_DECAP))) {
 			ULP_COMP_FLD_IDX_WR(params,
 					    BNXT_ULP_CF_IDX_ACT_T_DEC_TTL, 1);
 		} else {
@@ -1439,7 +1439,7 @@ ulp_rte_mark_act_handler(const struct rte_flow_action *action_item,
 		       &mark_id, BNXT_ULP_ACT_PROP_SZ_MARK);
 
 		/* Update the hdr_bitmap with vxlan */
-		ULP_BITMAP_SET(act->bits, BNXT_ULP_ACTION_BIT_MARK);
+		ULP_BITMAP_SET(act->bits, BNXT_ULP_ACT_BIT_MARK);
 		return BNXT_TF_RC_SUCCESS;
 	}
 	BNXT_TF_DBG(ERR, "Parse Error: Mark arg is invalid\n");
@@ -1455,7 +1455,7 @@ ulp_rte_rss_act_handler(const struct rte_flow_action *action_item,
 
 	if (rss) {
 		/* Update the hdr_bitmap with vxlan */
-		ULP_BITMAP_SET(param->act_bitmap.bits, BNXT_ULP_ACTION_BIT_RSS);
+		ULP_BITMAP_SET(param->act_bitmap.bits, BNXT_ULP_ACT_BIT_RSS);
 		return BNXT_TF_RC_SUCCESS;
 	}
 	BNXT_TF_DBG(ERR, "Parse Error: RSS arg is invalid\n");
@@ -1728,7 +1728,7 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 	       &vxlan_size, sizeof(uint32_t));
 
 	/* update the hdr_bitmap with vxlan */
-	ULP_BITMAP_SET(act->bits, BNXT_ULP_ACTION_BIT_VXLAN_ENCAP);
+	ULP_BITMAP_SET(act->bits, BNXT_ULP_ACT_BIT_VXLAN_ENCAP);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -1740,7 +1740,7 @@ ulp_rte_vxlan_decap_act_handler(const struct rte_flow_action *action_item
 {
 	/* update the hdr_bitmap with vxlan */
 	ULP_BITMAP_SET(params->act_bitmap.bits,
-		       BNXT_ULP_ACTION_BIT_VXLAN_DECAP);
+		       BNXT_ULP_ACT_BIT_VXLAN_DECAP);
 	/* Update computational field with tunnel decap info */
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN_DECAP, 1);
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
@@ -1753,7 +1753,7 @@ ulp_rte_drop_act_handler(const struct rte_flow_action *action_item __rte_unused,
 			 struct ulp_rte_parser_params *params)
 {
 	/* Update the hdr_bitmap with drop */
-	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_DROP);
+	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_DROP);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -1779,7 +1779,7 @@ ulp_rte_count_act_handler(const struct rte_flow_action *action_item,
 	}
 
 	/* Update the hdr_bitmap with count */
-	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_COUNT);
+	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_COUNT);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -1992,7 +1992,7 @@ ulp_rte_of_pop_vlan_act_handler(const struct rte_flow_action *a __rte_unused,
 				struct ulp_rte_parser_params *params)
 {
 	/* Update the act_bitmap with pop */
-	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_POP_VLAN);
+	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_POP_VLAN);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -2017,7 +2017,7 @@ ulp_rte_of_push_vlan_act_handler(const struct rte_flow_action *action_item,
 		       &ethertype, BNXT_ULP_ACT_PROP_SZ_PUSH_VLAN);
 		/* Update the hdr_bitmap with push vlan */
 		ULP_BITMAP_SET(params->act_bitmap.bits,
-			       BNXT_ULP_ACTION_BIT_PUSH_VLAN);
+			       BNXT_ULP_ACT_BIT_PUSH_VLAN);
 		return BNXT_TF_RC_SUCCESS;
 	}
 	BNXT_TF_DBG(ERR, "Parse Error: Push vlan arg is invalid\n");
@@ -2040,7 +2040,7 @@ ulp_rte_of_set_vlan_vid_act_handler(const struct rte_flow_action *action_item,
 		       &vid, BNXT_ULP_ACT_PROP_SZ_SET_VLAN_VID);
 		/* Update the hdr_bitmap with vlan vid */
 		ULP_BITMAP_SET(params->act_bitmap.bits,
-			       BNXT_ULP_ACTION_BIT_SET_VLAN_VID);
+			       BNXT_ULP_ACT_BIT_SET_VLAN_VID);
 		return BNXT_TF_RC_SUCCESS;
 	}
 	BNXT_TF_DBG(ERR, "Parse Error: Vlan vid arg is invalid\n");
@@ -2063,7 +2063,7 @@ ulp_rte_of_set_vlan_pcp_act_handler(const struct rte_flow_action *action_item,
 		       &pcp, BNXT_ULP_ACT_PROP_SZ_SET_VLAN_PCP);
 		/* Update the hdr_bitmap with vlan vid */
 		ULP_BITMAP_SET(params->act_bitmap.bits,
-			       BNXT_ULP_ACTION_BIT_SET_VLAN_PCP);
+			       BNXT_ULP_ACT_BIT_SET_VLAN_PCP);
 		return BNXT_TF_RC_SUCCESS;
 	}
 	BNXT_TF_DBG(ERR, "Parse Error: Vlan pcp arg is invalid\n");
@@ -2084,7 +2084,7 @@ ulp_rte_set_ipv4_src_act_handler(const struct rte_flow_action *action_item,
 		       &set_ipv4->ipv4_addr, BNXT_ULP_ACT_PROP_SZ_SET_IPV4_SRC);
 		/* Update the hdr_bitmap with set ipv4 src */
 		ULP_BITMAP_SET(params->act_bitmap.bits,
-			       BNXT_ULP_ACTION_BIT_SET_IPV4_SRC);
+			       BNXT_ULP_ACT_BIT_SET_IPV4_SRC);
 		return BNXT_TF_RC_SUCCESS;
 	}
 	BNXT_TF_DBG(ERR, "Parse Error: set ipv4 src arg is invalid\n");
@@ -2105,7 +2105,7 @@ ulp_rte_set_ipv4_dst_act_handler(const struct rte_flow_action *action_item,
 		       &set_ipv4->ipv4_addr, BNXT_ULP_ACT_PROP_SZ_SET_IPV4_DST);
 		/* Update the hdr_bitmap with set ipv4 dst */
 		ULP_BITMAP_SET(params->act_bitmap.bits,
-			       BNXT_ULP_ACTION_BIT_SET_IPV4_DST);
+			       BNXT_ULP_ACT_BIT_SET_IPV4_DST);
 		return BNXT_TF_RC_SUCCESS;
 	}
 	BNXT_TF_DBG(ERR, "Parse Error: set ipv4 dst arg is invalid\n");
@@ -2126,7 +2126,7 @@ ulp_rte_set_tp_src_act_handler(const struct rte_flow_action *action_item,
 		       &set_tp->port, BNXT_ULP_ACT_PROP_SZ_SET_TP_SRC);
 		/* Update the hdr_bitmap with set tp src */
 		ULP_BITMAP_SET(params->act_bitmap.bits,
-			       BNXT_ULP_ACTION_BIT_SET_TP_SRC);
+			       BNXT_ULP_ACT_BIT_SET_TP_SRC);
 		return BNXT_TF_RC_SUCCESS;
 	}
 
@@ -2148,7 +2148,7 @@ ulp_rte_set_tp_dst_act_handler(const struct rte_flow_action *action_item,
 		       &set_tp->port, BNXT_ULP_ACT_PROP_SZ_SET_TP_DST);
 		/* Update the hdr_bitmap with set tp dst */
 		ULP_BITMAP_SET(params->act_bitmap.bits,
-			       BNXT_ULP_ACTION_BIT_SET_TP_DST);
+			       BNXT_ULP_ACT_BIT_SET_TP_DST);
 		return BNXT_TF_RC_SUCCESS;
 	}
 
@@ -2162,7 +2162,7 @@ ulp_rte_dec_ttl_act_handler(const struct rte_flow_action *act __rte_unused,
 			    struct ulp_rte_parser_params *params)
 {
 	/* Update the act_bitmap with dec ttl */
-	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_DEC_TTL);
+	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_DEC_TTL);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -2172,6 +2172,6 @@ ulp_rte_jump_act_handler(const struct rte_flow_action *action_item __rte_unused,
 			    struct ulp_rte_parser_params *params)
 {
 	/* Update the act_bitmap with dec ttl */
-	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_JUMP);
+	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_JUMP);
 	return BNXT_TF_RC_SUCCESS;
 }

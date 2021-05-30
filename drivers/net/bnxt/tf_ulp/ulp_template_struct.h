@@ -160,6 +160,7 @@ struct bnxt_ulp_mapper_cond_list_info {
 	enum bnxt_ulp_cond_list_opc cond_list_opcode;
 	uint32_t cond_start_idx;
 	uint32_t cond_nums;
+	uint32_t cond_goto;
 };
 
 struct bnxt_ulp_template_device_tbls {
@@ -252,12 +253,15 @@ struct bnxt_ulp_mapper_tbl_info {
 };
 
 struct bnxt_ulp_mapper_field_info {
-	uint8_t			description[64];
-	enum bnxt_ulp_field_opc	field_opcode;
-	uint16_t		field_bit_size;
-	uint8_t			field_operand[16];
-	uint8_t			field_operand_true[16];
-	uint8_t			field_operand_false[16];
+	uint8_t				description[64];
+	uint16_t			field_bit_size;
+	enum bnxt_ulp_field_cond_src	field_cond_src;
+	uint8_t				field_cond_opr[16];
+	enum bnxt_ulp_field_src		field_src1;
+	uint8_t				field_opr1[16];
+	enum bnxt_ulp_field_src		field_src2;
+	uint8_t				field_opr2[16];
+
 };
 
 struct bnxt_ulp_mapper_key_info {

@@ -139,7 +139,7 @@ ulp_set_vlan_in_act_prop(uint16_t port_id,
 	struct ulp_rte_act_prop *act_prop = mapper_params->act_prop;
 
 	if (ULP_BITMAP_ISSET(mapper_params->act->bits,
-			     BNXT_ULP_ACTION_BIT_SET_VLAN_VID)) {
+			     BNXT_ULP_ACT_BIT_SET_VLAN_VID)) {
 		BNXT_TF_DBG(ERR,
 			    "VLAN already set, multiple VLANs unsupported\n");
 		return BNXT_TF_RC_ERROR;
@@ -148,7 +148,7 @@ ulp_set_vlan_in_act_prop(uint16_t port_id,
 	port_id = rte_cpu_to_be_16(port_id);
 
 	ULP_BITMAP_SET(mapper_params->act->bits,
-		       BNXT_ULP_ACTION_BIT_SET_VLAN_VID);
+		       BNXT_ULP_ACT_BIT_SET_VLAN_VID);
 
 	memcpy(&act_prop->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG],
 	       &port_id, sizeof(port_id));
@@ -161,7 +161,7 @@ ulp_set_mark_in_act_prop(uint16_t port_id,
 			 struct bnxt_ulp_mapper_create_parms *mapper_params)
 {
 	if (ULP_BITMAP_ISSET(mapper_params->act->bits,
-			     BNXT_ULP_ACTION_BIT_MARK)) {
+			     BNXT_ULP_ACT_BIT_MARK)) {
 		BNXT_TF_DBG(ERR,
 			    "MARK already set, multiple MARKs unsupported\n");
 		return BNXT_TF_RC_ERROR;

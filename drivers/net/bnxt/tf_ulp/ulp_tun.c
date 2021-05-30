@@ -25,7 +25,7 @@ ulp_install_outer_tun_flow(struct ulp_rte_parser_params *params,
 	/* Reset the JUMP action bit in the action bitmap as we don't
 	 * offload this action.
 	 */
-	ULP_BITMAP_RESET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_JUMP);
+	ULP_BITMAP_RESET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_JUMP);
 
 	ULP_BITMAP_SET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_F1);
 

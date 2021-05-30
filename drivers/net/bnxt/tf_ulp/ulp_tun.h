@@ -18,7 +18,7 @@
 #define	BNXT_OUTER_TUN_SIGNATURE(l3_tun, params)		\
 	((l3_tun) &&					\
 	 ULP_BITMAP_ISSET((params)->act_bitmap.bits,	\
-			  BNXT_ULP_ACTION_BIT_JUMP))
+			  BNXT_ULP_ACT_BIT_JUMP))
 #define	BNXT_INNER_TUN_SIGNATURE(l3_tun, l3_tun_decap, params)		\
 	((l3_tun) && (l3_tun_decap) &&					\
 	 !ULP_BITMAP_ISSET((params)->hdr_bitmap.bits,			\
