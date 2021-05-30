@@ -415,7 +415,6 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 
 	/* Post process the response */
 	data = (struct tf_rm_resc_req_entry *)qcaps_buf.va_addr;
-
 	for (i = 0; i < size; i++) {
 		query[i].type = tfp_le_to_cpu_32(data[i].type);
 		query[i].min = tfp_le_to_cpu_16(data[i].min);
@@ -1462,7 +1461,7 @@ tf_msg_set_global_cfg(struct tf *tfp,
 	/* Only set mask if pointer is provided
 	 */
 	if (params->config_mask) {
-		tfp_memcpy(req.data + params->config_sz_in_bytes,
+		tfp_memcpy(req.mask,
 			   params->config_mask,
 			   params->config_sz_in_bytes);
 	}

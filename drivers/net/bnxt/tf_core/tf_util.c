@@ -88,12 +88,8 @@ tf_tbl_type_2_str(enum tf_tbl_type tbl_type)
 		return "Source Properties SMAC IPv6";
 	case TF_TBL_TYPE_ACT_STATS_64:
 		return "Stats 64B";
-	case TF_TBL_TYPE_ACT_MODIFY_SPORT:
-		return "NAT Source Port";
-	case TF_TBL_TYPE_ACT_MODIFY_DPORT:
-		return "NAT Destination Port";
 	case TF_TBL_TYPE_ACT_MODIFY_IPV4:
-		return "NAT IPv4";
+		return "Modify IPv4";
 	case TF_TBL_TYPE_METER_PROF:
 		return "Meter Profile";
 	case TF_TBL_TYPE_METER_INST:
@@ -116,8 +112,6 @@ tf_tbl_type_2_str(enum tf_tbl_type tbl_type)
 		return "Range";
 	case TF_TBL_TYPE_LAG:
 		return "Link Aggregation";
-	case TF_TBL_TYPE_VNIC_SVIF:
-		return "VNIC SVIF";
 	case TF_TBL_TYPE_EM_FKB:
 		return "EM Flexible Key Builder";
 	case TF_TBL_TYPE_WC_FKB:

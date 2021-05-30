@@ -153,11 +153,8 @@ tf_dev_bind_p4(struct tf *tfp,
 	/*
 	 * EEM
 	 */
-	if (dev_handle->type == TF_DEVICE_TYPE_WH)
-		em_cfg.cfg = tf_em_ext_p4;
-	else
-		em_cfg.cfg = tf_em_ext_p45;
 
+	em_cfg.cfg = tf_em_ext_p4;
 	rsv_cnt = tf_dev_reservation_check(tfp,
 					   TF_EM_TBL_TYPE_MAX,
 					   em_cfg.cfg,

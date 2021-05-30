@@ -18,47 +18,28 @@
 #define TF_DEV_P58_PARIF_MAX 16
 #define TF_DEV_P58_PF_MASK 0xfUL
 
+/* For print alignment, make all entries 8 chars in this table */
 const char *tf_resource_str_p58[CFA_RESOURCE_TYPE_P58_LAST + 1] = {
-	/* CFA_RESOURCE_TYPE_P58_METER */
-	"meter   ",
-	/* CFA_RESOURCE_TYPE_P58_SRAM_BANK_0 */
-	"sram_bk0",
-	/* CFA_RESOURCE_TYPE_P58_SRAM_BANK_1 */
-	"sram_bk1",
-	/* CFA_RESOURCE_TYPE_P58_SRAM_BANK_2 */
-	"sram_bk2",
-	/* CFA_RESOURCE_TYPE_P58_SRAM_BANK_3 */
-	"sram_bk3",
-	/* CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_HIGH */
-	"l2ctx_hi",
-	/* CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_LOW */
-	"l2ctx_lo",
-	/* CFA_RESOURCE_TYPE_P58_L2_CTXT_REMAP_HIGH */
-	"l2ctr_hi",
-	/* CFA_RESOURCE_TYPE_P58_L2_CTXT_REMAP_LOW */
-	"l2ctr_lo",
-	/* CFA_RESOURCE_TYPE_P58_PROF_FUNC */
-	"prf_func",
-	/* CFA_RESOURCE_TYPE_P58_PROF_TCAM */
-	"prf_tcam",
-	/* CFA_RESOURCE_TYPE_P58_EM_PROF_ID */
-	"em_prof ",
-	/* CFA_RESOURCE_TYPE_P58_WC_TCAM_PROF_ID */
-	"wc_prof ",
-	/* CFA_RESOURCE_TYPE_P58_EM_REC */
-	"em_rec  ",
-	/* CFA_RESOURCE_TYPE_P58_WC_TCAM */
-	"wc_tcam ",
-	/* CFA_RESOURCE_TYPE_P58_METER_PROF */
-	"mtr_prof",
-	/* CFA_RESOURCE_TYPE_P58_MIRROR */
-	"mirror  ",
-	/* CFA_RESOURCE_TYPE_P58_EM_FKB */
-	"em_fkb  ",
-	/* CFA_RESOURCE_TYPE_P58_WC_FKB */
-	"wc_fkb  ",
-	/* CFA_RESOURCE_TYPE_P58_VEB_TCAM */
-	"veb     ",
+	[CFA_RESOURCE_TYPE_P58_METER]              = "meter   ",
+	[CFA_RESOURCE_TYPE_P58_SRAM_BANK_0]        = "sram_bk0",
+	[CFA_RESOURCE_TYPE_P58_SRAM_BANK_1]        = "sram_bk1",
+	[CFA_RESOURCE_TYPE_P58_SRAM_BANK_2]        = "sram_bk2",
+	[CFA_RESOURCE_TYPE_P58_SRAM_BANK_3]        = "sram_bk3",
+	[CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_HIGH]  = "l2ctx_hi",
+	[CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_LOW]   = "l2ctx_lo",
+	[CFA_RESOURCE_TYPE_P58_L2_CTXT_REMAP_HIGH] = "l2ctr_hi",
+	[CFA_RESOURCE_TYPE_P58_L2_CTXT_REMAP_LOW]  = "l2ctr_lo",
+	[CFA_RESOURCE_TYPE_P58_PROF_FUNC]          = "prf_func",
+	[CFA_RESOURCE_TYPE_P58_PROF_TCAM]          = "prf_tcam",
+	[CFA_RESOURCE_TYPE_P58_EM_PROF_ID]         = "em_prof ",
+	[CFA_RESOURCE_TYPE_P58_WC_TCAM_PROF_ID]    = "wc_prof ",
+	[CFA_RESOURCE_TYPE_P58_EM_REC]             = "em_rec  ",
+	[CFA_RESOURCE_TYPE_P58_WC_TCAM]            = "wc_tcam ",
+	[CFA_RESOURCE_TYPE_P58_METER_PROF]         = "mtr_prof",
+	[CFA_RESOURCE_TYPE_P58_MIRROR]             = "mirror  ",
+	[CFA_RESOURCE_TYPE_P58_EM_FKB]             = "em_fkb  ",
+	[CFA_RESOURCE_TYPE_P58_WC_FKB]             = "wc_fkb  ",
+	[CFA_RESOURCE_TYPE_P58_VEB_TCAM]           = "veb     ",
 };
 
 /**

@@ -203,7 +203,7 @@ tf_em_insert_int_entry(struct tf *tfp,
 	TF_SET_FIELDS_IN_FLOW_HANDLE(parms->flow_handle,
 				     (uint32_t)num_of_entries,
 				     0,
-				     0,
+				     TF_FLAGS_FLOW_HANDLE_INTERNAL,
 				     rptr_index,
 				     rptr_entry,
 				     0);

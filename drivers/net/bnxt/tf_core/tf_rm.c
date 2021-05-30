@@ -486,14 +486,20 @@ tf_rm_create_db(struct tf *tfp,
 				req[j].max = parms->alloc_cnt[i];
 				j++;
 			} else {
+				const char *type_str;
+				uint16_t hcapi_type = parms->cfg[i].hcapi_type;
+
+				dev->ops->tf_dev_get_resource_str(tfp,
+								  hcapi_type,
+								  &type_str);
 				TFP_DRV_LOG(ERR,
-					    "%s: Resource failure, type:%d\n",
-					    tf_dir_2_str(parms->dir),
-					    parms->cfg[i].hcapi_type);
+					"%s: Resource failure, type:%d:%s\n",
+					tf_dir_2_str(parms->dir),
+					hcapi_type, type_str);
 				TFP_DRV_LOG(ERR,
 					"req:%d, avail:%d\n",
 					parms->alloc_cnt[i],
-					query[parms->cfg[i].hcapi_type].max);
+					query[hcapi_type].max);
 				return -EINVAL;
 			}
 		}

@@ -19,6 +19,7 @@
 #include "rand.h"
 #include "tf_common.h"
 #include "hwrm_tf.h"
+#include "tf_ext_flow_handle.h"
 
 int
 tf_open_session(struct tf *tfp,
@@ -251,6 +252,7 @@ int tf_delete_em_entry(struct tf *tfp,
 	struct tf_session      *tfs;
 	struct tf_dev_info     *dev;
 	int rc;
+	unsigned int flag = 0;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -274,12 +276,11 @@ int tf_delete_em_entry(struct tf *tfp,
 		return rc;
 	}
 
-	if (parms->mem == TF_MEM_EXTERNAL)
-		rc = dev->ops->tf_dev_delete_ext_em_entry(tfp, parms);
-	else if (parms->mem == TF_MEM_INTERNAL)
+	TF_GET_FLAG_FROM_FLOW_HANDLE(parms->flow_handle, flag);
+	if ((flag & TF_FLAGS_FLOW_HANDLE_INTERNAL))
 		rc = dev->ops->tf_dev_delete_int_em_entry(tfp, parms);
 	else
-		return -EINVAL;
+		rc = dev->ops->tf_dev_delete_ext_em_entry(tfp, parms);
 
 	if (rc) {
 		TFP_DRV_LOG(ERR,

@@ -777,7 +777,7 @@ tf_insert_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb,
 	TF_SET_FIELDS_IN_FLOW_HANDLE(parms->flow_handle,
 				     0,
 				     0,
-				     0,
+				     TF_FLAGS_FLOW_HANDLE_EXTERNAL,
 				     index,
 				     0,
 				     table_type);

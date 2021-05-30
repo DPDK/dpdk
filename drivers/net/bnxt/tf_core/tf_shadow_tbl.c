@@ -177,8 +177,6 @@ static int tf_shadow_tbl_is_searchable(enum tf_tbl_type type)
 	case TF_TBL_TYPE_ACT_SP_SMAC_IPV4:
 	case TF_TBL_TYPE_ACT_SP_SMAC_IPV6:
 	case TF_TBL_TYPE_ACT_MODIFY_IPV4:
-	case TF_TBL_TYPE_ACT_MODIFY_SPORT:
-	case TF_TBL_TYPE_ACT_MODIFY_DPORT:
 		rc = 1;
 		break;
 	default:

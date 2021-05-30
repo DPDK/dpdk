@@ -158,34 +158,40 @@ enum tf_device_type {
  */
 enum tf_identifier_type {
 	/**
+	 *  WH/SR/TH/SR2
 	 *  The L2 Context is returned from the L2 Ctxt TCAM lookup
 	 *  and can be used in WC TCAM or EM keys to virtualize further
 	 *  lookups.
 	 */
 	TF_IDENT_TYPE_L2_CTXT_HIGH,
 	/**
+	 *  WH/SR/TH/SR2
 	 *  The L2 Context is returned from the L2 Ctxt TCAM lookup
 	 *  and can be used in WC TCAM or EM keys to virtualize further
 	 *  lookups.
 	 */
 	TF_IDENT_TYPE_L2_CTXT_LOW,
 	/**
+	 *  WH/SR/TH/SR2
 	 *  The WC profile func is returned from the L2 Ctxt TCAM lookup
 	 *  to enable virtualization of the profile TCAM.
 	 */
 	TF_IDENT_TYPE_PROF_FUNC,
 	/**
+	 *  WH/SR/TH/SR2
 	 *  The WC profile ID is included in the WC lookup key
 	 *  to enable virtualization of the WC TCAM hardware.
 	 */
 	TF_IDENT_TYPE_WC_PROF,
 	/**
+	 *  WH/SR/TH/SR2
 	 *  The EM profile ID is included in the EM lookup key
 	 *  to enable virtualization of the EM hardware. (not required for SR2
 	 *  as it has table scope)
 	 */
 	TF_IDENT_TYPE_EM_PROF,
 	/**
+	 *  TH/SR2
 	 *  The L2 func is included in the ILT result and from recycling to
 	 *  enable virtualization of further lookups.
 	 */
@@ -203,59 +209,63 @@ enum tf_identifier_type {
 enum tf_tbl_type {
 	/* Internal */
 
-	/** Wh+/SR Action Record */
+	/** Wh+/SR/TH Action Record */
 	TF_TBL_TYPE_FULL_ACT_RECORD,
-	/** Wh+/SR/Th Multicast Groups */
+	/** TH Compact Action Record */
+	TF_TBL_TYPE_COMPACT_ACT_RECORD,
+	/** (Future) Multicast Groups */
 	TF_TBL_TYPE_MCAST_GROUPS,
-	/** Wh+/SR Action Encap 8 Bytes */
+	/** Wh+/SR/TH Action Encap 8 Bytes */
 	TF_TBL_TYPE_ACT_ENCAP_8B,
-	/** Wh+/SR Action Encap 16 Bytes */
+	/** Wh+/SR/TH Action Encap 16 Bytes */
 	TF_TBL_TYPE_ACT_ENCAP_16B,
-	/** Action Encap 32 Bytes */
+	/** WH+/SR/TH Action Encap 32 Bytes */
 	TF_TBL_TYPE_ACT_ENCAP_32B,
-	/** Wh+/SR Action Encap 64 Bytes */
+	/** Wh+/SR/TH Action Encap 64 Bytes */
 	TF_TBL_TYPE_ACT_ENCAP_64B,
-	/** Action Source Properties SMAC */
+	/** WH+/SR/TH Action Source Properties SMAC */
 	TF_TBL_TYPE_ACT_SP_SMAC,
-	/** Wh+/SR Action Source Properties SMAC IPv4 */
+	/** Wh+/SR/TH Action Source Properties SMAC IPv4 */
 	TF_TBL_TYPE_ACT_SP_SMAC_IPV4,
-	/** Action Source Properties SMAC IPv6 */
+	/** WH+/SR/TH Action Source Properties SMAC IPv6 */
 	TF_TBL_TYPE_ACT_SP_SMAC_IPV6,
-	/** Wh+/SR Action Statistics 64 Bits */
+	/** Wh+/SR/TH Action Statistics 64 Bits */
 	TF_TBL_TYPE_ACT_STATS_64,
-	/** Wh+/SR Action Modify L4 Src Port */
-	TF_TBL_TYPE_ACT_MODIFY_SPORT,
-	/** Wh+/SR Action Modify L4 Dest Port */
-	TF_TBL_TYPE_ACT_MODIFY_DPORT,
 	/** Wh+/SR Action Modify IPv4 Source */
 	TF_TBL_TYPE_ACT_MODIFY_IPV4,
-	/** Meter Profiles */
+	/** TH 8B Modify Record */
+	TF_TBL_TYPE_ACT_MODIFY_8B,
+	/** TH 16B Modify Record */
+	TF_TBL_TYPE_ACT_MODIFY_16B,
+	/** TH 32B Modify Record */
+	TF_TBL_TYPE_ACT_MODIFY_32B,
+	/** TH 64B Modify Record */
+	TF_TBL_TYPE_ACT_MODIFY_64B,
+	/** (Future) Meter Profiles */
 	TF_TBL_TYPE_METER_PROF,
-	/** Meter Instance */
+	/** (Future) Meter Instance */
 	TF_TBL_TYPE_METER_INST,
-	/** Mirror Config */
+	/** Wh+/SR/Th Mirror Config */
 	TF_TBL_TYPE_MIRROR_CONFIG,
-	/** UPAR */
+	/** (Future) UPAR */
 	TF_TBL_TYPE_UPAR,
-	/** SR2 Epoch 0 table */
+	/** (Future) SR2 Epoch 0 table */
 	TF_TBL_TYPE_EPOCH0,
-	/** SR2 Epoch 1 table  */
+	/** (Future) SR2 Epoch 1 table  */
 	TF_TBL_TYPE_EPOCH1,
-	/** SR2 Metadata  */
+	/** (Future) TH/SR2 Metadata  */
 	TF_TBL_TYPE_METADATA,
-	/** SR2 CT State  */
+	/** (Future) TH/SR2 CT State  */
 	TF_TBL_TYPE_CT_STATE,
-	/** SR2 Range Profile  */
+	/** (Future) TH/SR2 Range Profile  */
 	TF_TBL_TYPE_RANGE_PROF,
-	/** SR2 Range Entry  */
+	/** (Future) SR2 Range Entry  */
 	TF_TBL_TYPE_RANGE_ENTRY,
-	/** SR2 LAG Entry  */
+	/** (Future) SR2 LAG Entry  */
 	TF_TBL_TYPE_LAG,
-	/** SR2 VNIC/SVIF Table */
-	TF_TBL_TYPE_VNIC_SVIF,
-	/** Th/SR2 EM Flexible Key builder */
+	/** TH/SR2 EM Flexible Key builder */
 	TF_TBL_TYPE_EM_FKB,
-	/** Th/SR2 WC Flexible Key builder */
+	/** TH/SR2 WC Flexible Key builder */
 	TF_TBL_TYPE_WC_FKB,
 
 	/* External */
@@ -263,9 +273,18 @@ enum tf_tbl_type {
 	/**
 	 * External table type - initially 1 poolsize entries.
 	 * All External table types are associated with a table
-	 * scope. Internal types are not.
+	 * scope. Internal types are not.  Currently this is
+	 * a pool of 64B entries.
 	 */
 	TF_TBL_TYPE_EXT,
+	/* (Future) SR2 32B External EM Action 32B Pool */
+	TF_TBL_TYPE_EXT_32B,
+	/* (Future) SR2 64B External EM Action 64B Pool */
+	TF_TBL_TYPE_EXT_64B,
+	/* (Future) SR2 96B External EM Action 96B Pool */
+	TF_TBL_TYPE_EXT_96B,
+	/* (Future) SR2 128B External EM Action 128B Pool */
+	TF_TBL_TYPE_EXT_128B,
 	TF_TBL_TYPE_MAX
 };
 
@@ -1998,8 +2017,8 @@ enum tf_if_tbl_type {
 	TF_IF_TBL_TYPE_LKUP_PARIF_DFLT_ACT_REC_PTR,
 	/** SR2 Ingress lookup table */
 	TF_IF_TBL_TYPE_ILT,
-	/** SR2 VNIC/SVIF Table */
-	TF_IF_TBL_TYPE_VNIC_SVIF,
+	/** SR2 VNIC/SVIF Properties Table */
+	TF_IF_TBL_TYPE_VSPT,
 	TF_IF_TBL_TYPE_MAX
 };
 
