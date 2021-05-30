@@ -27,11 +27,6 @@
 struct tf;
 
 /**
- * Table DBs.
- */
-static void *tbl_db[TF_DIR_MAX];
-
-/**
  * Table Shadow DBs
  */
 static void *shadow_tbl_db[TF_DIR_MAX];
@@ -50,8 +45,10 @@ int
 tf_tbl_bind(struct tf *tfp,
 	    struct tf_tbl_cfg_parms *parms)
 {
-	int rc, d;
+	int rc, d, i;
 	struct tf_rm_create_db_parms db_cfg = { 0 };
+	struct tbl_rm_db *tbl_db;
+	struct tfp_calloc_parms cparms;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -61,6 +58,21 @@ tf_tbl_bind(struct tf *tfp,
 		return -EINVAL;
 	}
 
+	memset(&db_cfg, 0, sizeof(db_cfg));
+	cparms.nitems = 1;
+	cparms.size = sizeof(struct tbl_rm_db);
+	cparms.alignment = 0;
+	if (tfp_calloc(&cparms) != 0) {
+		TFP_DRV_LOG(ERR, "tbl_rm_db alloc error %s\n",
+			    strerror(ENOMEM));
+		return -ENOMEM;
+	}
+
+	tbl_db = cparms.mem_va;
+	for (i = 0; i < TF_DIR_MAX; i++)
+		tbl_db->tbl_db[i] = NULL;
+	tf_session_set_db(tfp, TF_MODULE_TYPE_TABLE, tbl_db);
+
 	db_cfg.num_elements = parms->num_elements;
 	db_cfg.module = TF_MODULE_TYPE_TABLE;
 	db_cfg.num_elements = parms->num_elements;
@@ -69,7 +81,8 @@ tf_tbl_bind(struct tf *tfp,
 	for (d = 0; d < TF_DIR_MAX; d++) {
 		db_cfg.dir = d;
 		db_cfg.alloc_cnt = parms->resources->tbl_cnt[d].cnt;
-		db_cfg.rm_db = &tbl_db[d];
+		db_cfg.rm_db = (void *)&tbl_db->tbl_db[d];
+
 		rc = tf_rm_create_db(tfp, &db_cfg);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
@@ -79,7 +92,6 @@ tf_tbl_bind(struct tf *tfp,
 			return rc;
 		}
 	}
-
 	init = 1;
 
 	TFP_DRV_LOG(INFO,
@@ -94,6 +106,8 @@ tf_tbl_unbind(struct tf *tfp)
 	int rc;
 	int i;
 	struct tf_rm_free_db_parms fparms = { 0 };
+	struct tbl_rm_db *tbl_db;
+	void *tbl_db_ptr = NULL;
 	TF_CHECK_PARMS1(tfp);
 
 	/* Bail if nothing has been initialized */
@@ -103,14 +117,23 @@ tf_tbl_unbind(struct tf *tfp)
 		return 0;
 	}
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TABLE, &tbl_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tbl_db = (struct tbl_rm_db *)tbl_db_ptr;
+
 	for (i = 0; i < TF_DIR_MAX; i++) {
 		fparms.dir = i;
-		fparms.rm_db = tbl_db[i];
+		fparms.rm_db = tbl_db->tbl_db[i];
 		rc = tf_rm_free_db(tfp, &fparms);
 		if (rc)
 			return rc;
 
-		tbl_db[i] = NULL;
+		tbl_db->tbl_db[i] = NULL;
 	}
 
 	init = 0;
@@ -129,6 +152,8 @@ tf_tbl_alloc(struct tf *tfp __rte_unused,
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	uint16_t base = 0, shift = 0;
+	struct tbl_rm_db *tbl_db;
+	void *tbl_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -149,10 +174,22 @@ tf_tbl_alloc(struct tf *tfp __rte_unused,
 	if (rc)
 		return rc;
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TABLE, &tbl_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tbl_db = (struct tbl_rm_db *)tbl_db_ptr;
+
 	/* Only get table info if required for the device */
 	if (dev->ops->tf_dev_get_tbl_info) {
-		rc = dev->ops->tf_dev_get_tbl_info(tfp, tbl_db[parms->dir],
-						   parms->type, &base, &shift);
+		rc = dev->ops->tf_dev_get_tbl_info(tfp,
+						   tbl_db->tbl_db[parms->dir],
+						   parms->type,
+						   &base,
+						   &shift);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "%s: Failed to get table info:%d\n",
@@ -163,7 +200,7 @@ tf_tbl_alloc(struct tf *tfp __rte_unused,
 	}
 
 	/* Allocate requested element */
-	aparms.rm_db = tbl_db[parms->dir];
+	aparms.rm_db = tbl_db->tbl_db[parms->dir];
 	aparms.subtype = parms->type;
 	aparms.index = &idx;
 	rc = tf_rm_allocate(&aparms);
@@ -192,6 +229,8 @@ tf_tbl_free(struct tf *tfp __rte_unused,
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	uint16_t base = 0, shift = 0;
+	struct tbl_rm_db *tbl_db;
+	void *tbl_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -211,10 +250,22 @@ tf_tbl_free(struct tf *tfp __rte_unused,
 	if (rc)
 		return rc;
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TABLE, &tbl_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tbl_db = (struct tbl_rm_db *)tbl_db_ptr;
+
 	/* Only get table info if required for the device */
 	if (dev->ops->tf_dev_get_tbl_info) {
-		rc = dev->ops->tf_dev_get_tbl_info(tfp, tbl_db[parms->dir],
-						   parms->type, &base, &shift);
+		rc = dev->ops->tf_dev_get_tbl_info(tfp,
+						   tbl_db->tbl_db[parms->dir],
+						   parms->type,
+						   &base,
+						   &shift);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "%s: Failed to get table info:%d\n",
@@ -225,7 +276,7 @@ tf_tbl_free(struct tf *tfp __rte_unused,
 	}
 
 	/* Check if element is in use */
-	aparms.rm_db = tbl_db[parms->dir];
+	aparms.rm_db = tbl_db->tbl_db[parms->dir];
 	aparms.subtype = parms->type;
 
 	TF_TBL_PTR_TO_RM(&aparms.index, parms->idx, base, shift);
@@ -244,7 +295,7 @@ tf_tbl_free(struct tf *tfp __rte_unused,
 		return -EINVAL;
 	}
 	/* Free requested element */
-	fparms.rm_db = tbl_db[parms->dir];
+	fparms.rm_db = tbl_db->tbl_db[parms->dir];
 	fparms.subtype = parms->type;
 
 	TF_TBL_PTR_TO_RM(&fparms.index, parms->idx, base, shift);
@@ -290,6 +341,8 @@ tf_tbl_set(struct tf *tfp,
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	uint16_t base = 0, shift = 0;
+	struct tbl_rm_db *tbl_db;
+	void *tbl_db_ptr = NULL;
 
 	TF_CHECK_PARMS3(tfp, parms, parms->data);
 
@@ -310,10 +363,22 @@ tf_tbl_set(struct tf *tfp,
 	if (rc)
 		return rc;
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TABLE, &tbl_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tbl_db = (struct tbl_rm_db *)tbl_db_ptr;
+
 	/* Only get table info if required for the device */
 	if (dev->ops->tf_dev_get_tbl_info) {
-		rc = dev->ops->tf_dev_get_tbl_info(tfp, tbl_db[parms->dir],
-						   parms->type, &base, &shift);
+		rc = dev->ops->tf_dev_get_tbl_info(tfp,
+						   tbl_db->tbl_db[parms->dir],
+						   parms->type,
+						   &base,
+						   &shift);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "%s: Failed to get table info:%d\n",
@@ -324,7 +389,7 @@ tf_tbl_set(struct tf *tfp,
 	}
 
 	/* Verify that the entry has been previously allocated */
-	aparms.rm_db = tbl_db[parms->dir];
+	aparms.rm_db = tbl_db->tbl_db[parms->dir];
 	aparms.subtype = parms->type;
 	TF_TBL_PTR_TO_RM(&aparms.index, parms->idx, base, shift);
 
@@ -343,7 +408,7 @@ tf_tbl_set(struct tf *tfp,
 	}
 
 	/* Set the entry */
-	hparms.rm_db = tbl_db[parms->dir];
+	hparms.rm_db = tbl_db->tbl_db[parms->dir];
 	hparms.subtype = parms->type;
 	hparms.hcapi_type = &hcapi_type;
 	rc = tf_rm_get_hcapi_type(&hparms);
@@ -386,6 +451,8 @@ tf_tbl_get(struct tf *tfp,
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	uint16_t base = 0, shift = 0;
+	struct tbl_rm_db *tbl_db;
+	void *tbl_db_ptr = NULL;
 
 	TF_CHECK_PARMS3(tfp, parms, parms->data);
 
@@ -407,10 +474,22 @@ tf_tbl_get(struct tf *tfp,
 	if (rc)
 		return rc;
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TABLE, &tbl_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tbl_db = (struct tbl_rm_db *)tbl_db_ptr;
+
 	/* Only get table info if required for the device */
 	if (dev->ops->tf_dev_get_tbl_info) {
-		rc = dev->ops->tf_dev_get_tbl_info(tfp, tbl_db[parms->dir],
-						   parms->type, &base, &shift);
+		rc = dev->ops->tf_dev_get_tbl_info(tfp,
+						   tbl_db->tbl_db[parms->dir],
+						   parms->type,
+						   &base,
+						   &shift);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "%s: Failed to get table info:%d\n",
@@ -421,7 +500,7 @@ tf_tbl_get(struct tf *tfp,
 	}
 
 	/* Verify that the entry has been previously allocated */
-	aparms.rm_db = tbl_db[parms->dir];
+	aparms.rm_db = tbl_db->tbl_db[parms->dir];
 	aparms.subtype = parms->type;
 	TF_TBL_PTR_TO_RM(&aparms.index, parms->idx, base, shift);
 
@@ -440,7 +519,7 @@ tf_tbl_get(struct tf *tfp,
 	}
 
 	/* Set the entry */
-	hparms.rm_db = tbl_db[parms->dir];
+	hparms.rm_db = tbl_db->tbl_db[parms->dir];
 	hparms.subtype = parms->type;
 	hparms.hcapi_type = &hcapi_type;
 	rc = tf_rm_get_hcapi_type(&hparms);
@@ -483,6 +562,8 @@ tf_tbl_bulk_get(struct tf *tfp,
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	uint16_t base = 0, shift = 0;
+	struct tbl_rm_db *tbl_db;
+	void *tbl_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -504,10 +585,22 @@ tf_tbl_bulk_get(struct tf *tfp,
 	if (rc)
 		return rc;
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TABLE, &tbl_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tbl_db = (struct tbl_rm_db *)tbl_db_ptr;
+
 	/* Only get table info if required for the device */
 	if (dev->ops->tf_dev_get_tbl_info) {
-		rc = dev->ops->tf_dev_get_tbl_info(tfp, tbl_db[parms->dir],
-						   parms->type, &base, &shift);
+		rc = dev->ops->tf_dev_get_tbl_info(tfp,
+						   tbl_db->tbl_db[parms->dir],
+						   parms->type,
+						   &base,
+						   &shift);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "%s: Failed to get table info:%d\n",
@@ -518,7 +611,7 @@ tf_tbl_bulk_get(struct tf *tfp,
 	}
 
 	/* Verify that the entries are in the range of reserved resources. */
-	cparms.rm_db = tbl_db[parms->dir];
+	cparms.rm_db = tbl_db->tbl_db[parms->dir];
 	cparms.subtype = parms->type;
 
 	TF_TBL_PTR_TO_RM(&cparms.starting_index, parms->starting_idx,
@@ -538,7 +631,7 @@ tf_tbl_bulk_get(struct tf *tfp,
 		return rc;
 	}
 
-	hparms.rm_db = tbl_db[parms->dir];
+	hparms.rm_db = tbl_db->tbl_db[parms->dir];
 	hparms.subtype = parms->type;
 	hparms.hcapi_type = &hcapi_type;
 	rc = tf_rm_get_hcapi_type(&hparms);

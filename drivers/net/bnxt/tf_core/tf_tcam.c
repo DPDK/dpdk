@@ -19,11 +19,6 @@
 struct tf;
 
 /**
- * TCAM DBs.
- */
-static void *tcam_db[TF_DIR_MAX];
-
-/**
  * TCAM Shadow DBs
  */
 static void *shadow_tcam_db[TF_DIR_MAX];
@@ -55,6 +50,8 @@ tf_tcam_bind(struct tf *tfp,
 	uint16_t num_slices = 1;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
+	struct tcam_rm_db *tcam_db;
+	struct tfp_calloc_parms cparms;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -99,6 +96,19 @@ tf_tcam_bind(struct tf *tfp,
 	}
 
 	memset(&db_cfg, 0, sizeof(db_cfg));
+	cparms.nitems = 1;
+	cparms.size = sizeof(struct tcam_rm_db);
+	cparms.alignment = 0;
+	if (tfp_calloc(&cparms) != 0) {
+		TFP_DRV_LOG(ERR, "tcam_rm_db alloc error %s\n",
+			    strerror(ENOMEM));
+		return -ENOMEM;
+	}
+
+	tcam_db = cparms.mem_va;
+	for (i = 0; i < TF_DIR_MAX; i++)
+		tcam_db->tcam_db[i] = NULL;
+	tf_session_set_db(tfp, TF_MODULE_TYPE_TCAM, tcam_db);
 
 	db_cfg.module = TF_MODULE_TYPE_TCAM;
 	db_cfg.num_elements = parms->num_elements;
@@ -107,7 +117,7 @@ tf_tcam_bind(struct tf *tfp,
 	for (d = 0; d < TF_DIR_MAX; d++) {
 		db_cfg.dir = d;
 		db_cfg.alloc_cnt = parms->resources->tcam_cnt[d].cnt;
-		db_cfg.rm_db = &tcam_db[d];
+		db_cfg.rm_db = (void *)&tcam_db->tcam_db[d];
 		rc = tf_rm_create_db(tfp, &db_cfg);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
@@ -120,7 +130,7 @@ tf_tcam_bind(struct tf *tfp,
 	/* check if reserved resource for WC is multiple of num_slices */
 	for (d = 0; d < TF_DIR_MAX; d++) {
 		memset(&info, 0, sizeof(info));
-		ainfo.rm_db = tcam_db[d];
+		ainfo.rm_db = tcam_db->tcam_db[d];
 		ainfo.subtype = TF_TCAM_TBL_TYPE_WC_TCAM;
 		ainfo.info = &info;
 		rc = tf_rm_get_info(&ainfo);
@@ -148,7 +158,7 @@ tf_tcam_bind(struct tf *tfp,
 
 				if (!parms->resources->tcam_cnt[d].cnt[i])
 					continue;
-				ainfo.rm_db = tcam_db[d];
+				ainfo.rm_db = tcam_db->tcam_db[d];
 				ainfo.subtype = i;
 				ainfo.info = &info;
 				rc = tf_rm_get_info(&ainfo);
@@ -186,7 +196,7 @@ error:
 	for (i = 0; i < TF_DIR_MAX; i++) {
 		memset(&fparms, 0, sizeof(fparms));
 		fparms.dir = i;
-		fparms.rm_db = tcam_db[i];
+		fparms.rm_db = tcam_db->tcam_db[i];
 		/* Ignoring return here since we are in the error case */
 		(void)tf_rm_free_db(tfp, &fparms);
 
@@ -196,7 +206,8 @@ error:
 			shadow_tcam_db[i] = NULL;
 		}
 
-		tcam_db[i] = NULL;
+		tcam_db->tcam_db[i] = NULL;
+		tf_session_set_db(tfp, TF_MODULE_TYPE_TCAM, NULL);
 	}
 
 	shadow_init = 0;
@@ -211,6 +222,8 @@ tf_tcam_unbind(struct tf *tfp)
 	int rc;
 	int i;
 	struct tf_rm_free_db_parms fparms;
+	struct tcam_rm_db *tcam_db;
+	void *tcam_db_ptr = NULL;
 	struct tf_shadow_tcam_free_db_parms fshadow;
 	TF_CHECK_PARMS1(tfp);
 
@@ -221,15 +234,24 @@ tf_tcam_unbind(struct tf *tfp)
 		return 0;
 	}
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
+
 	for (i = 0; i < TF_DIR_MAX; i++) {
 		memset(&fparms, 0, sizeof(fparms));
 		fparms.dir = i;
-		fparms.rm_db = tcam_db[i];
+		fparms.rm_db = tcam_db->tcam_db[i];
 		rc = tf_rm_free_db(tfp, &fparms);
 		if (rc)
 			return rc;
 
-		tcam_db[i] = NULL;
+		tcam_db->tcam_db[i] = NULL;
 
 		if (shadow_init) {
 			memset(&fshadow, 0, sizeof(fshadow));
@@ -256,6 +278,8 @@ tf_tcam_alloc(struct tf *tfp,
 	struct tf_rm_allocate_parms aparms;
 	uint16_t num_slices = 1;
 	uint32_t index;
+	struct tcam_rm_db *tcam_db;
+	void *tcam_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -293,13 +317,22 @@ tf_tcam_alloc(struct tf *tfp,
 	if (rc)
 		return rc;
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
+
 	/*
 	 * For WC TCAM, number of slices could be 4, 2, 1 based on
 	 * the key_size. For other TCAM, it is always 1
 	 */
 	for (i = 0; i < num_slices; i++) {
 		memset(&aparms, 0, sizeof(aparms));
-		aparms.rm_db = tcam_db[parms->dir];
+		aparms.rm_db = tcam_db->tcam_db[parms->dir];
 		aparms.subtype = parms->type;
 		aparms.priority = parms->priority;
 		aparms.index = &index;
@@ -334,6 +367,8 @@ tf_tcam_free(struct tf *tfp,
 	int allocated = 0;
 	struct tf_shadow_tcam_remove_parms shparms;
 	int i;
+	struct tcam_rm_db *tcam_db;
+	void *tcam_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -379,10 +414,18 @@ tf_tcam_free(struct tf *tfp,
 		return -EINVAL;
 	}
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
+
 	/* Check if element is in use */
 	memset(&aparms, 0, sizeof(aparms));
-
-	aparms.rm_db = tcam_db[parms->dir];
+	aparms.rm_db = tcam_db->tcam_db[parms->dir];
 	aparms.subtype = parms->type;
 	aparms.index = parms->idx;
 	aparms.allocated = &allocated;
@@ -431,7 +474,7 @@ tf_tcam_free(struct tf *tfp,
 	for (i = 0; i < num_slices; i++) {
 		/* Free requested element */
 		memset(&fparms, 0, sizeof(fparms));
-		fparms.rm_db = tcam_db[parms->dir];
+		fparms.rm_db = tcam_db->tcam_db[parms->dir];
 		fparms.subtype = parms->type;
 		fparms.index = parms->idx + i;
 		rc = tf_rm_free(&fparms);
@@ -448,7 +491,7 @@ tf_tcam_free(struct tf *tfp,
 	/* Convert TF type to HCAPI RM type */
 	memset(&hparms, 0, sizeof(hparms));
 
-	hparms.rm_db = tcam_db[parms->dir];
+	hparms.rm_db = tcam_db->tcam_db[parms->dir];
 	hparms.subtype = parms->type;
 	hparms.hcapi_type = &parms->hcapi_type;
 
@@ -612,6 +655,8 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	struct tf_shadow_tcam_insert_parms iparms;
 	uint16_t num_slice_per_row = 1;
 	int allocated = 0;
+	struct tcam_rm_db *tcam_db;
+	void *tcam_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -649,10 +694,19 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	if (rc)
 		return rc;
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
+
 	/* Check if element is in use */
 	memset(&aparms, 0, sizeof(aparms));
 
-	aparms.rm_db = tcam_db[parms->dir];
+	aparms.rm_db = tcam_db->tcam_db[parms->dir];
 	aparms.subtype = parms->type;
 	aparms.index = parms->idx;
 	aparms.allocated = &allocated;
@@ -672,7 +726,7 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	/* Convert TF type to HCAPI RM type */
 	memset(&hparms, 0, sizeof(hparms));
 
-	hparms.rm_db = tcam_db[parms->dir];
+	hparms.rm_db = tcam_db->tcam_db[parms->dir];
 	hparms.subtype = parms->type;
 	hparms.hcapi_type = &parms->hcapi_type;
 
@@ -722,6 +776,8 @@ tf_tcam_get(struct tf *tfp __rte_unused,
 	struct tf_rm_is_allocated_parms aparms;
 	struct tf_rm_get_hcapi_parms hparms;
 	int allocated = 0;
+	struct tcam_rm_db *tcam_db;
+	void *tcam_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -742,10 +798,19 @@ tf_tcam_get(struct tf *tfp __rte_unused,
 	if (rc)
 		return rc;
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
+
 	/* Check if element is in use */
 	memset(&aparms, 0, sizeof(aparms));
 
-	aparms.rm_db = tcam_db[parms->dir];
+	aparms.rm_db = tcam_db->tcam_db[parms->dir];
 	aparms.subtype = parms->type;
 	aparms.index = parms->idx;
 	aparms.allocated = &allocated;
@@ -765,7 +830,7 @@ tf_tcam_get(struct tf *tfp __rte_unused,
 	/* Convert TF type to HCAPI RM type */
 	memset(&hparms, 0, sizeof(hparms));
 
-	hparms.rm_db = tcam_db[parms->dir];
+	hparms.rm_db = tcam_db->tcam_db[parms->dir];
 	hparms.subtype = parms->type;
 	hparms.hcapi_type = &parms->hcapi_type;
 

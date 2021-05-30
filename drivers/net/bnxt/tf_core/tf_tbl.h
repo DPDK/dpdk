@@ -230,6 +230,16 @@ struct tf_tbl_get_bulk_parms {
 };
 
 /**
+ * Table RM database
+ *
+ * Table rm database
+ *
+ */
+struct tbl_rm_db {
+	struct rm_db *tbl_db[TF_DIR_MAX];
+};
+
+/**
  * @page tbl Table
  *
  * @ref tf_tbl_bind

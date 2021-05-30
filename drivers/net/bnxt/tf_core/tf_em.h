@@ -134,6 +134,16 @@ struct tf_em_cfg_parms {
 };
 
 /**
+ * EM database
+ *
+ * EM rm database
+ *
+ */
+struct em_rm_db {
+	struct rm_db *em_db[TF_DIR_MAX];
+};
+
+/**
  * @page em EM
  *
  * @ref tf_alloc_eem_tbl_scope

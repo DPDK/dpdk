@@ -238,6 +238,16 @@ struct tf_tcam_get_parms {
 };
 
 /**
+ * TCAM database
+ *
+ * Tcam rm database
+ *
+ */
+struct tcam_rm_db {
+	struct rm_db *tcam_db[TF_DIR_MAX];
+};
+
+/**
  * @page tcam TCAM
  *
  * @ref tf_tcam_bind

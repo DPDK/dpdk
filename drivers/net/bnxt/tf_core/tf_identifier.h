@@ -100,6 +100,16 @@ struct tf_ident_search_parms {
 };
 
 /**
+ * Identifier database
+ *
+ * Identifier rm database
+ *
+ */
+struct ident_rm_db {
+	struct rm_db *ident_db[TF_DIR_MAX];
+};
+
+/**
  * @page ident Identity Management
  *
  * @ref tf_ident_bind

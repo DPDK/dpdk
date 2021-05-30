@@ -11,13 +11,9 @@
 #include "tf_rm.h"
 #include "tf_util.h"
 #include "tfp.h"
+#include "tf_session.h"
 
 struct tf;
-
-/**
- * Identifier DBs.
- */
-static void *ident_db[TF_DIR_MAX];
 
 /**
  * Init flag, set on bind and cleared on unbind
@@ -43,6 +39,8 @@ tf_ident_bind(struct tf *tfp,
 	struct tf_rm_create_db_parms db_cfg = { 0 };
 	struct tf_shadow_ident_cfg_parms shadow_cfg = { 0 };
 	struct tf_shadow_ident_create_db_parms shadow_cdb = { 0 };
+	struct ident_rm_db *ident_db;
+	struct tfp_calloc_parms cparms;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -52,14 +50,29 @@ tf_ident_bind(struct tf *tfp,
 		return -EINVAL;
 	}
 
+	memset(&db_cfg, 0, sizeof(db_cfg));
+	cparms.nitems = 1;
+	cparms.size = sizeof(struct ident_rm_db);
+	cparms.alignment = 0;
+	if (tfp_calloc(&cparms) != 0) {
+		TFP_DRV_LOG(ERR, "ident_rm_db alloc error %s\n",
+			    strerror(ENOMEM));
+		return -ENOMEM;
+	}
+
+	ident_db = cparms.mem_va;
+	for (i = 0; i < TF_DIR_MAX; i++)
+		ident_db->ident_db[i] = NULL;
+	tf_session_set_db(tfp, TF_MODULE_TYPE_IDENTIFIER, ident_db);
+
 	db_cfg.module = TF_MODULE_TYPE_IDENTIFIER;
 	db_cfg.num_elements = parms->num_elements;
 	db_cfg.cfg = parms->cfg;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
+		db_cfg.rm_db = (void *)&ident_db->ident_db[i];
 		db_cfg.dir = i;
 		db_cfg.alloc_cnt = parms->resources->ident_cnt[i].cnt;
-		db_cfg.rm_db = &ident_db[i];
 		rc = tf_rm_create_db(tfp, &db_cfg);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
@@ -102,6 +115,8 @@ tf_ident_unbind(struct tf *tfp)
 	int i;
 	struct tf_rm_free_db_parms fparms = { 0 };
 	struct tf_shadow_ident_free_db_parms sparms = { 0 };
+	struct ident_rm_db *ident_db;
+	void *ident_db_ptr = NULL;
 
 	TF_CHECK_PARMS1(tfp);
 
@@ -112,9 +127,18 @@ tf_ident_unbind(struct tf *tfp)
 		return 0;
 	}
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get ident_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	ident_db = (struct ident_rm_db *)ident_db_ptr;
+
 	for (i = 0; i < TF_DIR_MAX; i++) {
+		fparms.rm_db = ident_db->ident_db[i];
 		fparms.dir = i;
-		fparms.rm_db = ident_db[i];
 		rc = tf_rm_free_db(tfp, &fparms);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
@@ -131,7 +155,7 @@ tf_ident_unbind(struct tf *tfp)
 			}
 			ident_shadow_db[i] = NULL;
 		}
-		ident_db[i] = NULL;
+		ident_db->ident_db[i] = NULL;
 	}
 
 	init = 0;
@@ -149,6 +173,8 @@ tf_ident_alloc(struct tf *tfp __rte_unused,
 	uint32_t base_id;
 	struct tf_rm_allocate_parms aparms = { 0 };
 	struct tf_shadow_ident_insert_parms iparms = { 0 };
+	struct ident_rm_db *ident_db;
+	void *ident_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -159,8 +185,16 @@ tf_ident_alloc(struct tf *tfp __rte_unused,
 		return -EINVAL;
 	}
 
-	/* Allocate requested element */
-	aparms.rm_db = ident_db[parms->dir];
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get ident_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	ident_db = (struct ident_rm_db *)ident_db_ptr;
+
+	aparms.rm_db = ident_db->ident_db[parms->dir];
 	aparms.subtype = parms->type;
 	aparms.index = &id;
 	aparms.base_index = &base_id;
@@ -203,6 +237,8 @@ tf_ident_free(struct tf *tfp __rte_unused,
 	struct tf_shadow_ident_remove_parms rparms = { 0 };
 	int allocated = 0;
 	uint32_t base_id;
+	struct ident_rm_db *ident_db;
+	void *ident_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -213,8 +249,17 @@ tf_ident_free(struct tf *tfp __rte_unused,
 		return -EINVAL;
 	}
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get ident_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	ident_db = (struct ident_rm_db *)ident_db_ptr;
+
 	/* Check if element is in use */
-	aparms.rm_db = ident_db[parms->dir];
+	aparms.rm_db = ident_db->ident_db[parms->dir];
 	aparms.subtype = parms->type;
 	aparms.index = parms->id;
 	aparms.base_index = &base_id;
@@ -254,7 +299,7 @@ tf_ident_free(struct tf *tfp __rte_unused,
 	}
 
 	/* Free requested element */
-	fparms.rm_db = ident_db[parms->dir];
+	fparms.rm_db = ident_db->ident_db[parms->dir];
 	fparms.subtype = parms->type;
 	fparms.index = parms->id;
 	rc = tf_rm_free(&fparms);
@@ -279,6 +324,8 @@ tf_ident_search(struct tf *tfp __rte_unused,
 	struct tf_shadow_ident_search_parms sparms = { 0 };
 	int allocated = 0;
 	uint32_t base_id;
+	struct ident_rm_db *ident_db;
+	void *ident_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -296,8 +343,17 @@ tf_ident_search(struct tf *tfp __rte_unused,
 		return -EINVAL;
 	}
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get ident_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	ident_db = (struct ident_rm_db *)ident_db_ptr;
+
 	/* Check if element is in use */
-	aparms.rm_db = ident_db[parms->dir];
+	aparms.rm_db = ident_db->ident_db[parms->dir];
 	aparms.subtype = parms->type;
 	aparms.index = parms->search_id;
 	aparms.base_index = &base_id;

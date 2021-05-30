@@ -18,11 +18,6 @@
 
 #include "bnxt.h"
 
-/**
- * EM DBs.
- */
-static void *em_db[TF_DIR_MAX];
-
 #define TF_EM_DB_EM_REC 0
 
 /**
@@ -242,6 +237,8 @@ tf_em_int_bind(struct tf *tfp,
 	uint8_t db_exists = 0;
 	struct tf_rm_get_alloc_info_parms iparms;
 	struct tf_rm_alloc_info info;
+	struct em_rm_db *em_db;
+	struct tfp_calloc_parms cparms;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -250,6 +247,21 @@ tf_em_int_bind(struct tf *tfp,
 			    "EM Int DB already initialized\n");
 		return -EINVAL;
 	}
+
+	memset(&db_cfg, 0, sizeof(db_cfg));
+	cparms.nitems = 1;
+	cparms.size = sizeof(struct em_rm_db);
+	cparms.alignment = 0;
+	if (tfp_calloc(&cparms) != 0) {
+		TFP_DRV_LOG(ERR, "em_rm_db alloc error %s\n",
+			    strerror(ENOMEM));
+		return -ENOMEM;
+	}
+
+	em_db = cparms.mem_va;
+	for (i = 0; i < TF_DIR_MAX; i++)
+		em_db->em_db[i] = NULL;
+	tf_session_set_db(tfp, TF_MODULE_TYPE_EM, em_db);
 
 	db_cfg.module = TF_MODULE_TYPE_EM;
 	db_cfg.num_elements = parms->num_elements;
@@ -277,7 +289,8 @@ tf_em_int_bind(struct tf *tfp,
 			return rc;
 		}
 
-		db_cfg.rm_db = &em_db[i];
+		db_cfg.rm_db = (void *)&em_db->em_db[i];
+
 		rc = tf_rm_create_db(tfp, &db_cfg);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
@@ -293,7 +306,7 @@ tf_em_int_bind(struct tf *tfp,
 		init = 1;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
-		iparms.rm_db = em_db[i];
+		iparms.rm_db = em_db->em_db[i];
 		iparms.subtype = TF_EM_DB_EM_REC;
 		iparms.info = &info;
 
@@ -323,6 +336,8 @@ tf_em_int_unbind(struct tf *tfp)
 	int rc;
 	int i;
 	struct tf_rm_free_db_parms fparms = { 0 };
+	struct em_rm_db *em_db;
+	void *em_db_ptr = NULL;
 
 	TF_CHECK_PARMS1(tfp);
 
@@ -336,16 +351,25 @@ tf_em_int_unbind(struct tf *tfp)
 	for (i = 0; i < TF_DIR_MAX; i++)
 		tf_free_em_pool(i);
 
+	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_EM, &em_db_ptr);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to get em_ext_db from session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	em_db = (struct em_rm_db *)em_db_ptr;
+
 	for (i = 0; i < TF_DIR_MAX; i++) {
 		fparms.dir = i;
-		fparms.rm_db = em_db[i];
-		if (em_db[i] != NULL) {
+		fparms.rm_db = em_db->em_db[i];
+		if (em_db->em_db[i] != NULL) {
 			rc = tf_rm_free_db(tfp, &fparms);
 			if (rc)
 				return rc;
 		}
 
-		em_db[i] = NULL;
+		em_db->em_db[i] = NULL;
 	}
 
 	init = 0;
