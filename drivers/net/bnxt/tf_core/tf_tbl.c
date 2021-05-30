@@ -41,6 +41,7 @@ tf_tbl_bind(struct tf *tfp,
 	    struct tf_tbl_cfg_parms *parms)
 {
 	int rc, d, i;
+	int db_rc[TF_DIR_MAX] = { 0 };
 	struct tf_rm_create_db_parms db_cfg = { 0 };
 	struct tbl_rm_db *tbl_db;
 	struct tfp_calloc_parms cparms;
@@ -79,17 +80,20 @@ tf_tbl_bind(struct tf *tfp,
 		db_cfg.rm_db = (void *)&tbl_db->tbl_db[d];
 		if (tf_session_is_shared_session(tfs) &&
 			(!tf_session_is_shared_session_creator(tfs)))
-			rc = tf_rm_create_db_no_reservation(tfp, &db_cfg);
+			db_rc[d] = tf_rm_create_db_no_reservation(tfp, &db_cfg);
 		else
-			rc = tf_rm_create_db(tfp, &db_cfg);
-		if (rc) {
+			db_rc[d] = tf_rm_create_db(tfp, &db_cfg);
+		if (db_rc[d]) {
 			TFP_DRV_LOG(ERR,
 				    "%s: Table DB creation failed\n",
 				    tf_dir_2_str(d));
 
-			return rc;
 		}
 	}
+
+	/* No db created */
+	if (db_rc[TF_DIR_RX] && db_rc[TF_DIR_TX])
+		return db_rc[TF_DIR_RX];
 
 	TFP_DRV_LOG(INFO,
 		    "Table Type - initialized\n");

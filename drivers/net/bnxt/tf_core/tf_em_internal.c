@@ -349,6 +349,7 @@ tf_em_int_bind(struct tf *tfp,
 	       struct tf_em_cfg_parms *parms)
 {
 	int rc;
+	int db_rc[TF_DIR_MAX] = { 0 };
 	int i;
 	struct tf_rm_create_db_parms db_cfg = { 0 };
 	struct tf_rm_get_alloc_info_parms iparms;
@@ -408,17 +409,21 @@ tf_em_int_bind(struct tf *tfp,
 		db_cfg.rm_db = (void *)&em_db->em_db[i];
 		if (tf_session_is_shared_session(tfs) &&
 			(!tf_session_is_shared_session_creator(tfs)))
-			rc = tf_rm_create_db_no_reservation(tfp, &db_cfg);
+			db_rc[i] = tf_rm_create_db_no_reservation(tfp, &db_cfg);
 		else
-			rc = tf_rm_create_db(tfp, &db_cfg);
-		if (rc) {
+			db_rc[i] = tf_rm_create_db(tfp, &db_cfg);
+		if (db_rc[i]) {
 			TFP_DRV_LOG(ERR,
 				    "%s: EM Int DB creation failed\n",
 				    tf_dir_2_str(i));
 
-			return rc;
 		}
 	}
+
+	/* No db created */
+	if (db_rc[TF_DIR_RX] && db_rc[TF_DIR_TX])
+		return db_rc[TF_DIR_RX];
+
 
 	if (!tf_session_is_shared_session(tfs)) {
 		for (i = 0; i < TF_DIR_MAX; i++) {

@@ -1636,7 +1636,6 @@ int tf_get_session_info(struct tf *tfp,
 		TFP_DRV_LOG(ERR,
 			    "Ident get resc info failed, rc:%s\n",
 			    strerror(-rc));
-		return rc;
 	}
 
 	if (dev->ops->tf_dev_get_tbl_resc_info == NULL) {
@@ -1652,7 +1651,6 @@ int tf_get_session_info(struct tf *tfp,
 		TFP_DRV_LOG(ERR,
 			    "Tbl get resc info failed, rc:%s\n",
 			    strerror(-rc));
-		return rc;
 	}
 
 	if (dev->ops->tf_dev_get_tcam_resc_info == NULL) {
@@ -1668,7 +1666,6 @@ int tf_get_session_info(struct tf *tfp,
 		TFP_DRV_LOG(ERR,
 			    "TCAM get resc info failed, rc:%s\n",
 			    strerror(-rc));
-		return rc;
 	}
 
 	if (dev->ops->tf_dev_get_em_resc_info == NULL) {
@@ -1684,7 +1681,6 @@ int tf_get_session_info(struct tf *tfp,
 		TFP_DRV_LOG(ERR,
 			    "EM get resc info failed, rc:%s\n",
 			    strerror(-rc));
-		return rc;
 	}
 
 	return 0;

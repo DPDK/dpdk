@@ -30,6 +30,7 @@ tf_ident_bind(struct tf *tfp,
 	      struct tf_ident_cfg_parms *parms)
 {
 	int rc;
+	int db_rc[TF_DIR_MAX] = { 0 };
 	int i;
 	struct tf_rm_create_db_parms db_cfg = { 0 };
 	struct tf_shadow_ident_cfg_parms shadow_cfg = { 0 };
@@ -70,15 +71,13 @@ tf_ident_bind(struct tf *tfp,
 		db_cfg.alloc_cnt = parms->resources->ident_cnt[i].cnt;
 		if (tf_session_is_shared_session(tfs) &&
 			(!tf_session_is_shared_session_creator(tfs)))
-			rc = tf_rm_create_db_no_reservation(tfp, &db_cfg);
+			db_rc[i] = tf_rm_create_db_no_reservation(tfp, &db_cfg);
 		else
-			rc = tf_rm_create_db(tfp, &db_cfg);
-		if (rc) {
-			TFP_DRV_LOG(ERR,
+			db_rc[i] = tf_rm_create_db(tfp, &db_cfg);
+		if (db_rc[i]) {
+			TFP_DRV_LOG(INFO,
 				    "%s: Identifier DB creation failed\n",
 				    tf_dir_2_str(i));
-
-			return rc;
 		}
 
 		if (parms->shadow_copy) {
@@ -98,6 +97,10 @@ tf_ident_bind(struct tf *tfp,
 			shadow_init = 1;
 		}
 	}
+
+	/* No db created */
+	if (db_rc[TF_DIR_RX] && db_rc[TF_DIR_TX])
+		return db_rc[TF_DIR_RX];
 
 	TFP_DRV_LOG(INFO,
 		    "Identifier - initialized\n");

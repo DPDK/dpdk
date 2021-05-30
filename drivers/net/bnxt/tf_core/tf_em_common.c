@@ -301,6 +301,7 @@ tf_em_page_tbl_pgcnt(uint32_t num_pages,
 {
 	return roundup(num_pages, MAX_PAGE_PTRS(page_size)) /
 		       MAX_PAGE_PTRS(page_size);
+	return 0;
 }
 
 /**
@@ -722,10 +723,6 @@ tf_insert_eem_entry(struct tf_dev_info *dev,
 	if (!mask)
 		return -EINVAL;
 
-#ifdef TF_EEM_DEBUG
-	dump_raw((uint8_t *)parms->key, TF_P4_HW_EM_KEY_MAX_SIZE + 4, "In Key");
-#endif
-
 	if (dev->ops->tf_dev_cfa_key_hash == NULL)
 		return -EINVAL;
 
@@ -737,10 +734,6 @@ tf_insert_eem_entry(struct tf_dev_info *dev,
 	key0_index = key0_hash & mask;
 	key1_index = key1_hash & mask;
 
-#ifdef TF_EEM_DEBUG
-	TFP_DRV_LOG(DEBUG, "Key0 hash:0x%08x\n", key0_hash);
-	TFP_DRV_LOG(DEBUG, "Key1 hash:0x%08x\n", key1_hash);
-#endif
 	/*
 	 * Use the "result" arg to populate all of the key entry then
 	 * store the byte swapped "raw" entry in a local copy ready
@@ -1010,35 +1003,41 @@ tf_em_ext_common_unbind(struct tf *tfp)
 	}
 	ext_db = (struct em_ext_db *)ext_ptr;
 
-	entry = ext_db->tbl_scope_ll.head;
-	while (entry != NULL) {
-		tbl_scope_cb = (struct tf_tbl_scope_cb *)entry;
-		entry = entry->next;
-		tparms.tbl_scope_id = tbl_scope_cb->tbl_scope_id;
+	if (ext_db != NULL) {
+		entry = ext_db->tbl_scope_ll.head;
+		while (entry != NULL) {
+			tbl_scope_cb = (struct tf_tbl_scope_cb *)entry;
+			entry = entry->next;
+			tparms.tbl_scope_id =
+				tbl_scope_cb->tbl_scope_id;
 
-		if (dev->ops->tf_dev_free_tbl_scope) {
-			dev->ops->tf_dev_free_tbl_scope(tfp, &tparms);
-		} else {
-			/* should not reach here */
-			ll_delete(&ext_db->tbl_scope_ll, &tbl_scope_cb->ll_entry);
-			tfp_free(tbl_scope_cb);
+			if (dev->ops->tf_dev_free_tbl_scope) {
+				dev->ops->tf_dev_free_tbl_scope(tfp,
+								&tparms);
+			} else {
+				/* should not reach here */
+				ll_delete(&ext_db->tbl_scope_ll,
+					  &tbl_scope_cb->ll_entry);
+				tfp_free(tbl_scope_cb);
+			}
 		}
+
+		for (i = 0; i < TF_DIR_MAX; i++) {
+			if (ext_db->eem_db[i] == NULL)
+				continue;
+
+			fparms.dir = i;
+			fparms.rm_db = ext_db->eem_db[i];
+			rc = tf_rm_free_db(tfp, &fparms);
+			if (rc)
+				return rc;
+
+			ext_db->eem_db[i] = NULL;
+		}
+
+		tfp_free(ext_db);
 	}
 
-	for (i = 0; i < TF_DIR_MAX; i++) {
-		if (ext_db->eem_db[i] == NULL)
-			continue;
-
-		fparms.dir = i;
-		fparms.rm_db = ext_db->eem_db[i];
-		rc = tf_rm_free_db(tfp, &fparms);
-		if (rc)
-			return rc;
-
-		ext_db->eem_db[i] = NULL;
-	}
-
-	tfp_free(ext_db);
 	tf_session_set_em_ext_db(tfp, NULL);
 
 	return 0;
