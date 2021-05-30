@@ -18,20 +18,6 @@
 
 #define ULP_IDENTS_INVALID ((uint16_t)0xffff)
 
-/*
- * The cache table opcode is used to convey informat from the cache handler
- * to the tcam handler.  The opcodes do the following:
- * NORMAL - tcam should process all instructions as normal
- * SKIP - tcam is using the cached entry and doesn't need to process the
- *	instruction.
- * ALLOC - tcam needs to allocate the tcam index and store in the cache entry
- */
-enum bnxt_ulp_cache_table_opc {
-	BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL,
-	BNXT_ULP_MAPPER_TCAM_TBL_OPC_CACHE_SKIP,
-	BNXT_ULP_MAPPER_TCAM_TBL_OPC_CACHE_ALLOC
-};
-
 struct bnxt_ulp_mapper_glb_resource_entry {
 	enum bnxt_ulp_resource_func	resource_func;
 	uint32_t			resource_type; /* TF_ enum type */
@@ -66,7 +52,6 @@ struct bnxt_ulp_mapper_parms {
 	uint32_t				fid;
 	enum bnxt_ulp_fdb_type			flow_type;
 	struct bnxt_ulp_mapper_data		*mapper_data;
-	enum bnxt_ulp_cache_table_opc		tcam_tbl_opc;
 	struct bnxt_ulp_device_params		*device_params;
 	uint32_t				parent_fid;
 	uint32_t				parent_flow;

@@ -1356,20 +1356,11 @@ ulp_mapper_tcam_tbl_scan_ident_alloc(struct bnxt_ulp_mapper_parms *parms,
 	uint32_t num_idents;
 	uint32_t i;
 
-	/*
-	 * Since the cache entry is responsible for allocating
-	 * identifiers when in use, allocate the identifiers only
-	 * during normal processing.
-	 */
-	if (parms->tcam_tbl_opc ==
-	    BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL) {
-		idents = ulp_mapper_ident_fields_get(parms, tbl, &num_idents);
-
-		for (i = 0; i < num_idents; i++) {
-			if (ulp_mapper_ident_process(parms, tbl,
-						     &idents[i], NULL))
-				return -EINVAL;
-		}
+	idents = ulp_mapper_ident_fields_get(parms, tbl, &num_idents);
+	for (i = 0; i < num_idents; i++) {
+		if (ulp_mapper_ident_process(parms, tbl,
+					     &idents[i], NULL))
+			return -EINVAL;
 	}
 	return 0;
 }
@@ -1490,14 +1481,15 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	struct tf_search_tcam_entry_parms searchparms   = { 0 };
 	struct ulp_flow_db_res_params	fid_parms	= { 0 };
 	struct tf_free_tcam_entry_parms free_parms	= { 0 };
-	enum bnxt_ulp_search_before_alloc search_flag;
 	uint32_t hit = 0;
 	uint16_t tmplen = 0;
 	uint16_t idx;
 
-	/* Skip this if was handled by the cache. */
-	if (parms->tcam_tbl_opc == BNXT_ULP_MAPPER_TCAM_TBL_OPC_CACHE_SKIP) {
-		parms->tcam_tbl_opc = BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL;
+	/* Skip this if table opcode is NOP */
+	if (tbl->tbl_opcode == BNXT_ULP_TCAM_TBL_OPC_NOT_USED ||
+	    tbl->tbl_opcode >= BNXT_ULP_TCAM_TBL_OPC_LAST) {
+		BNXT_TF_DBG(ERR, "Invalid tcam table opcode %d\n",
+			    tbl->tbl_opcode);
 		return 0;
 	}
 
@@ -1555,41 +1547,31 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 	}
 
+	/* For wild card tcam perform the post process to swap the blob */
 	if (tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM) {
 		ulp_mapper_wc_tcam_tbl_post_process(&key, tbl->key_bit_size);
 		ulp_mapper_wc_tcam_tbl_post_process(&mask, tbl->key_bit_size);
 	}
 
-	if (tbl->srch_b4_alloc == BNXT_ULP_SEARCH_BEFORE_ALLOC_NO) {
-		/*
-		 * No search for re-use is requested, so simply allocate the
-		 * tcam index.
-		 */
-		aparms.dir		= tbl->direction;
-		aparms.tcam_tbl_type	= tbl->resource_type;
-		aparms.search_enable	= tbl->srch_b4_alloc;
-		aparms.key		= ulp_blob_data_get(&key, &tmplen);
-		aparms.key_sz_in_bits	= tmplen;
+	if (tbl->tbl_opcode == BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE) {
+		/* allocate the tcam index */
+		aparms.dir = tbl->direction;
+		aparms.tcam_tbl_type = tbl->resource_type;
+		aparms.key = ulp_blob_data_get(&key, &tmplen);
+		aparms.key_sz_in_bits = tmplen;
 		if (tbl->blob_key_bit_size != tmplen) {
 			BNXT_TF_DBG(ERR, "Key len (%d) != Expected (%d)\n",
 				    tmplen, tbl->blob_key_bit_size);
 			return -EINVAL;
 		}
 
-		aparms.mask		= ulp_blob_data_get(&mask, &tmplen);
+		aparms.mask = ulp_blob_data_get(&mask, &tmplen);
 		if (tbl->blob_key_bit_size != tmplen) {
 			BNXT_TF_DBG(ERR, "Mask len (%d) != Expected (%d)\n",
 				    tmplen, tbl->blob_key_bit_size);
 			return -EINVAL;
 		}
-
-		aparms.priority		= tbl->priority;
-
-		/*
-		 * All failures after this succeeds require the entry to be
-		 * freed. cannot return directly on failure, but needs to goto
-		 * error.
-		 */
+		aparms.priority = tbl->priority;
 		rc = tf_alloc_tcam_entry(tfp, &aparms);
 		if (rc) {
 			BNXT_TF_DBG(ERR, "tcam alloc failed rc=%d.\n", rc);
@@ -1627,14 +1609,18 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		hit = searchparms.hit;
 	}
 
-	/* if it is miss then it is same as no search before alloc */
-	if (!hit)
-		search_flag = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO;
-	else
-		search_flag = tbl->srch_b4_alloc;
+	/* Write the tcam index into the regfile*/
+	if (!ulp_regfile_write(parms->regfile, tbl->tbl_operand,
+			       (uint64_t)tfp_cpu_to_be_64(idx))) {
+		BNXT_TF_DBG(ERR, "Regfile[%d] write failed.\n",
+			    tbl->tbl_operand);
+		rc = -EINVAL;
+		/* Need to free the tcam idx, so goto error */
+		goto error;
+	}
 
-	switch (search_flag) {
-	case BNXT_ULP_SEARCH_BEFORE_ALLOC_NO:
+	/* if it is miss then it is same as no search before alloc */
+	if (!hit || tbl->tbl_opcode == BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE) {
 		/*Scan identifier list, allocate identifier and update regfile*/
 		rc = ulp_mapper_tcam_tbl_scan_ident_alloc(parms, tbl);
 		/* Create the result blob */
@@ -1645,60 +1631,29 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		if (!rc)
 			rc = ulp_mapper_tcam_tbl_entry_write(parms, tbl, &key,
 							     &mask, &data, idx);
-		break;
-	case BNXT_ULP_SEARCH_BEFORE_ALLOC_SEARCH_IF_HIT_SKIP:
+	} else {
 		/*Scan identifier list, extract identifier and update regfile*/
 		rc = ulp_mapper_tcam_tbl_scan_ident_extract(parms, tbl, &data);
-		break;
-	case BNXT_ULP_SEARCH_BEFORE_ALLOC_SEARCH_IF_HIT_UPDATE:
-		/*Scan identifier list, extract identifier and update regfile*/
-		rc = ulp_mapper_tcam_tbl_scan_ident_extract(parms, tbl, &data);
-		/* Create the result blob */
-		if (!rc)
-			rc = ulp_mapper_tcam_tbl_result_create(parms, tbl,
-							       &update_data);
-		/* Update/overwrite the tcam entry */
-		if (!rc)
-			rc = ulp_mapper_tcam_tbl_entry_write(parms, tbl, &key,
-							     &mask,
-							     &update_data, idx);
-		break;
-	default:
-		BNXT_TF_DBG(ERR, "invalid search opcode\n");
-		rc =  -EINVAL;
-		break;
 	}
 	if (rc)
 		goto error;
-	/*
-	 * Only link the entry to the flow db in the event that cache was not
-	 * used.
-	 */
-	if (parms->tcam_tbl_opc == BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL) {
-		fid_parms.direction = tbl->direction;
-		fid_parms.resource_func	= tbl->resource_func;
-		fid_parms.resource_type	= tbl->resource_type;
-		fid_parms.critical_resource = tbl->critical_resource;
-		fid_parms.resource_hndl	= idx;
-		rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
-		if (rc) {
-			BNXT_TF_DBG(ERR,
-				    "Failed to link resource to flow rc = %d\n",
-				    rc);
-			/* Need to free the identifier, so goto error */
-			goto error;
-		}
-	} else {
-		/*
-		 * Reset the tcam table opcode to normal in case the next tcam
-		 * entry does not use cache.
-		 */
-		parms->tcam_tbl_opc = BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL;
+
+	/* Add the tcam index to the flow database */
+	fid_parms.direction = tbl->direction;
+	fid_parms.resource_func	= tbl->resource_func;
+	fid_parms.resource_type	= tbl->resource_type;
+	fid_parms.critical_resource = tbl->critical_resource;
+	fid_parms.resource_hndl	= idx;
+	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to link resource to flow rc = %d\n",
+			    rc);
+		/* Need to free the identifier, so goto error */
+		goto error;
 	}
 
 	return 0;
 error:
-	parms->tcam_tbl_opc = BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL;
 	free_parms.dir			= tbl->direction;
 	free_parms.tcam_tbl_type	= tbl->resource_type;
 	free_parms.idx			= idx;
@@ -1706,7 +1661,6 @@ error:
 	if (trc)
 		BNXT_TF_DBG(ERR, "Failed to free tcam[%d][%d][%d] on failure\n",
 			    tbl->resource_type, tbl->direction, idx);
-
 	return rc;
 }
 
@@ -2976,7 +2930,6 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	parms.comp_fld = cparms->comp_fld;
 	parms.tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
 	parms.ulp_ctx = ulp_ctx;
-	parms.tcam_tbl_opc = BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL;
 	parms.act_tid = cparms->act_tid;
 	parms.class_tid = cparms->class_tid;
 	parms.flow_type = cparms->flow_type;

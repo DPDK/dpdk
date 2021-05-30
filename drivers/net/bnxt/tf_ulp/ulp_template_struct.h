@@ -234,6 +234,7 @@ struct bnxt_ulp_mapper_tbl_info {
 
 	/* Table opcode for table operations */
 	uint32_t			tbl_opcode;
+	uint32_t			tbl_operand;
 
 	/* FDB table opcode */
 	enum bnxt_ulp_fdb_opc		fdb_opcode;
