@@ -2403,6 +2403,7 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		/* increment the reference count */
 		ULP_GEN_TBL_REF_CNT_INC(&gen_tbl_ent);
 		fdb_write = 1;
+		parms->shared_hndl = (uint64_t)tbl_idx << 32 | ckey;
 		break;
 	default:
 		BNXT_TF_DBG(ERR, "Invalid table opcode %x\n", tbl->tbl_opcode);

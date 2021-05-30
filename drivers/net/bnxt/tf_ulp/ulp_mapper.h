@@ -57,6 +57,7 @@ struct bnxt_ulp_mapper_parms {
 	uint32_t				parent_flow;
 	uint8_t					tun_idx;
 	uint32_t				app_priority;
+	uint64_t				shared_hndl;
 };
 
 struct bnxt_ulp_mapper_create_parms {
