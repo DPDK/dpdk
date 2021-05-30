@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Sun Mar 21 13:04:51 2021 */
+/* date: Wed Apr 14 09:56:27 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -94,8 +94,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	.key_start_idx = 1,
-	.blob_key_bit_size = 70,
-	.key_bit_size = 70,
+	.blob_key_bit_size = 73,
+	.key_bit_size = 73,
 	.key_num_fields = 5,
 	.ident_start_idx = 1,
 	.ident_nums = 1
@@ -156,8 +156,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	.key_start_idx = 19,
-	.blob_key_bit_size = 70,
-	.key_bit_size = 70,
+	.blob_key_bit_size = 73,
+	.key_bit_size = 73,
 	.key_num_fields = 5,
 	.result_start_idx = 13,
 	.result_bit_size = 62,
@@ -209,13 +209,13 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 		.cond_start_idx = 4,
 		.cond_nums = 1 },
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
-	.cc_upd_info = {
-		.cc_opc = BNXT_ULP_CC_UPD_OPC_EQ,
-		.cc_src1 = BNXT_ULP_CC_UPD_SRC_REGFILE,
-		.cc_opr1 = BNXT_ULP_RF_IDX_FLOW_SIG_ID,
-		.cc_src2 = BNXT_ULP_CC_UPD_SRC_REGFILE,
-		.cc_opr2 = BNXT_ULP_RF_IDX_CF_FLOW_SIG_ID,
-		.cc_dst_opr = BNXT_ULP_RF_IDX_CC },
+	.func_info = {
+		.func_opc = BNXT_ULP_FUNC_OPC_EQ,
+		.func_src1 = BNXT_ULP_FUNC_SRC_REGFILE,
+		.func_opr1 = BNXT_ULP_RF_IDX_FLOW_SIG_ID,
+		.func_src2 = BNXT_ULP_FUNC_SRC_COMP_FIELD,
+		.func_opr2 = BNXT_ULP_CF_IDX_FLOW_SIG_ID,
+		.func_dst_opr = BNXT_ULP_RF_IDX_CC },
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
 	{ /* class_tid: 1, wh_plus, table: profile_tcam.ipv4 */
@@ -320,7 +320,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.key_bit_size = 14,
 	.key_num_fields = 3,
 	.result_start_idx = 68,
-	.result_bit_size = 74,
+	.result_bit_size = 90,
 	.result_num_fields = 5
 	},
 	{ /* class_tid: 1, wh_plus, table: em.ipv4 */
@@ -493,8 +493,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	.key_start_idx = 224,
-	.blob_key_bit_size = 70,
-	.key_bit_size = 70,
+	.blob_key_bit_size = 73,
+	.key_bit_size = 73,
 	.key_num_fields = 5,
 	.ident_start_idx = 10,
 	.ident_nums = 1
@@ -555,8 +555,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	.key_start_idx = 242,
-	.blob_key_bit_size = 70,
-	.key_bit_size = 70,
+	.blob_key_bit_size = 73,
+	.key_bit_size = 73,
 	.key_num_fields = 5,
 	.result_start_idx = 140,
 	.result_bit_size = 62,
@@ -607,13 +607,13 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 		.cond_start_idx = 28,
 		.cond_nums = 1 },
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
-	.cc_upd_info = {
-		.cc_opc = BNXT_ULP_CC_UPD_OPC_EQ,
-		.cc_src1 = BNXT_ULP_CC_UPD_SRC_REGFILE,
-		.cc_opr1 = BNXT_ULP_RF_IDX_FLOW_SIG_ID,
-		.cc_src2 = BNXT_ULP_CC_UPD_SRC_COMP_FIELD,
-		.cc_opr2 = BNXT_ULP_CF_IDX_FLOW_SIG_ID,
-		.cc_dst_opr = BNXT_ULP_RF_IDX_CC },
+	.func_info = {
+		.func_opc = BNXT_ULP_FUNC_OPC_EQ,
+		.func_src1 = BNXT_ULP_FUNC_SRC_REGFILE,
+		.func_opr1 = BNXT_ULP_RF_IDX_FLOW_SIG_ID,
+		.func_src2 = BNXT_ULP_FUNC_SRC_COMP_FIELD,
+		.func_opr2 = BNXT_ULP_CF_IDX_FLOW_SIG_ID,
+		.func_dst_opr = BNXT_ULP_RF_IDX_CC },
 	.byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
 	{ /* class_tid: 2, wh_plus, table: profile_tcam.ipv4 */
@@ -690,7 +690,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.key_bit_size = 14,
 	.key_num_fields = 3,
 	.result_start_idx = 178,
-	.result_bit_size = 74,
+	.result_bit_size = 90,
 	.result_num_fields = 5
 	},
 	{ /* class_tid: 2, wh_plus, table: em.ipv4 */
@@ -1883,7 +1883,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 	{
 	.field_info_mask = {
 		.description = "tun_hdr",
-		.field_bit_size = 1,
+		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr1 = {
@@ -1891,7 +1891,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		},
 	.field_info_spec = {
 		.description = "tun_hdr",
-		.field_bit_size = 1,
+		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr1 = {
@@ -2239,7 +2239,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 	{
 	.field_info_mask = {
 		.description = "tun_hdr",
-		.field_bit_size = 1,
+		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr1 = {
@@ -2247,7 +2247,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		},
 	.field_info_spec = {
 		.description = "tun_hdr",
-		.field_bit_size = 1,
+		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr1 = {
@@ -5714,7 +5714,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 	{
 	.field_info_mask = {
 		.description = "tun_hdr",
-		.field_bit_size = 1,
+		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr1 = {
@@ -5722,7 +5722,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		},
 	.field_info_spec = {
 		.description = "tun_hdr",
-		.field_bit_size = 1,
+		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr1 = {
@@ -6070,7 +6070,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 	{
 	.field_info_mask = {
 		.description = "tun_hdr",
-		.field_bit_size = 1,
+		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr1 = {
@@ -6078,7 +6078,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		},
 	.field_info_spec = {
 		.description = "tun_hdr",
-		.field_bit_size = 1,
+		.field_bit_size = 4,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr1 = {
@@ -10076,7 +10076,7 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[] = {
 		1}
 		}
 	},
-	/* class_tid: 4, table: l2_cntxt_tcam_bypass.vfr_stagged_ing0 */
+	/* class_tid: 4,  table: l2_cntxt_tcam_bypass.vfr_stagged_ing0 */
 	{
 	.field_info_mask = {
 		.description = "l2_ivlan_vid",
@@ -10852,7 +10852,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	},
 	{
 	.description = "flow_sig_id",
-	.field_bit_size = 16,
+	.field_bit_size = 32,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
@@ -11711,7 +11711,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	},
 	{
 	.description = "flow_sig_id",
-	.field_bit_size = 16,
+	.field_bit_size = 32,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_CF,
 	.field_opr1 = {
@@ -14176,7 +14176,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	{
 	.description = "flow_sig_id",
 	.regfile_idx = BNXT_ULP_RF_IDX_FLOW_SIG_ID,
-	.ident_bit_size = 16,
+	.ident_bit_size = 32,
 	.ident_bit_pos = 58
 	},
 	{
@@ -14245,7 +14245,7 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	{
 	.description = "flow_sig_id",
 	.regfile_idx = BNXT_ULP_RF_IDX_FLOW_SIG_ID,
-	.ident_bit_size = 16,
+	.ident_bit_size = 32,
 	.ident_bit_pos = 58
 	},
 	{

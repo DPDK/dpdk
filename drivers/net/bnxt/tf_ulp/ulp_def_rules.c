@@ -299,7 +299,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 			uint32_t *flow_id)
 {
 	struct ulp_rte_hdr_field	hdr_field[BNXT_ULP_PROTO_HDR_MAX];
-	uint32_t			comp_fld[BNXT_ULP_CF_IDX_LAST];
+	uint64_t			comp_fld[BNXT_ULP_CF_IDX_LAST];
 	struct bnxt_ulp_mapper_create_parms mapper_params = { 0 };
 	struct ulp_rte_act_prop		act_prop;
 	struct ulp_rte_act_bitmap	act = { 0 };
@@ -318,6 +318,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	mapper_params.comp_fld = comp_fld;
 	mapper_params.class_tid = ulp_class_tid;
 	mapper_params.flow_type = BNXT_ULP_FDB_TYPE_DEFAULT;
+	mapper_params.port_id = eth_dev->data->port_id;
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (!ulp_ctx) {

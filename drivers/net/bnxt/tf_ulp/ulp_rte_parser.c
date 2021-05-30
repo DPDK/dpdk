@@ -201,8 +201,7 @@ bnxt_ulp_comp_fld_intf_update(struct ulp_rte_parser_params *params)
 	dir = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_DIRECTION);
 
 	/* read the port id details */
-	port_id = ULP_COMP_FLD_IDX_RD(params,
-				      BNXT_ULP_CF_IDX_INCOMING_IF);
+	port_id = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_INCOMING_IF);
 	if (ulp_port_db_dev_port_to_ulp_index(params->ulp_ctx,
 					      port_id,
 					      &ifindex)) {
@@ -856,7 +855,7 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 			       BNXT_ULP_HDR_BIT_II_VLAN);
 		inner_flag = 1;
 	} else {
-		BNXT_TF_DBG(ERR, "Error Parsing:Vlan hdr found withtout eth\n");
+		BNXT_TF_DBG(ERR, "Error Parsing:Vlan hdr found without eth\n");
 		return BNXT_TF_RC_ERROR;
 	}
 	/* Update the field protocol hdr bitmap */
@@ -1691,15 +1690,34 @@ int32_t
 ulp_rte_rss_act_handler(const struct rte_flow_action *action_item,
 			struct ulp_rte_parser_params *param)
 {
-	const struct rte_flow_action_rss *rss = action_item->conf;
+	const struct rte_flow_action_rss *rss;
+	struct ulp_rte_act_prop *ap = &param->act_prop;
 
-	if (rss) {
-		/* Update the hdr_bitmap with vxlan */
-		ULP_BITMAP_SET(param->act_bitmap.bits, BNXT_ULP_ACT_BIT_RSS);
-		return BNXT_TF_RC_SUCCESS;
+	if (action_item == NULL || action_item->conf == NULL) {
+		BNXT_TF_DBG(ERR, "Parse Err: invalid rss configuration\n");
+		return BNXT_TF_RC_ERROR;
 	}
-	BNXT_TF_DBG(ERR, "Parse Error: RSS arg is invalid\n");
-	return BNXT_TF_RC_ERROR;
+
+	rss = action_item->conf;
+	/* Copy the rss into the specific action properties */
+	memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_RSS_TYPES], &rss->types,
+	       BNXT_ULP_ACT_PROP_SZ_RSS_TYPES);
+	memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_RSS_LEVEL], &rss->level,
+	       BNXT_ULP_ACT_PROP_SZ_RSS_LEVEL);
+	memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_RSS_KEY_LEN],
+	       &rss->key_len, BNXT_ULP_ACT_PROP_SZ_RSS_KEY_LEN);
+
+	if (rss->key_len > BNXT_ULP_ACT_PROP_SZ_RSS_KEY) {
+		BNXT_TF_DBG(ERR, "Parse Err: RSS key too big\n");
+		return BNXT_TF_RC_ERROR;
+	}
+	memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_RSS_KEY], rss->key,
+	       rss->key_len);
+
+	/* set the RSS action header bit */
+	ULP_BITMAP_SET(param->act_bitmap.bits, BNXT_ULP_ACT_BIT_RSS);
+
+	return BNXT_TF_RC_SUCCESS;
 }
 
 /* Function to handle the parsing of RTE Flow action vxlan_encap Header. */

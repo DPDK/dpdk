@@ -95,7 +95,7 @@
  *  |   Index      |E |
  *  +--------------+--+
  *
- * E = Entry (bucket inndex)
+ * E = Entry (bucket index)
  */
 #define TF_EM_INTERNAL_INDEX_SHIFT 2
 #define TF_EM_INTERNAL_INDEX_MASK 0xFFFC

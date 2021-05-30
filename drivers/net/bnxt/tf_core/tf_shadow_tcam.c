@@ -25,7 +25,7 @@
  *   - the result table is stored separately since it only needs to be accessed
  *   when the key matches.
  *   - the result has a back pointer to the hash table via the hb handle.  The
- *   hb handle is a 32 bit represention of the hash with a valid bit, bucket
+ *   hb handle is a 32 bit representation of the hash with a valid bit, bucket
  *   element index, and the hash index.  It is necessary to store the hb handle
  *   with the result since subsequent removes only provide the tcam index.
  *

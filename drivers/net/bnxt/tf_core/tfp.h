@@ -38,7 +38,7 @@ struct tfp_spinlock_parms {
 /**
  * @file
  *
- * TrueFlow Portability API Header File
+ * TruFlow Portability API Header File
  */
 
 /**
@@ -119,8 +119,8 @@ struct tfp_calloc_parms {
  */
 
 /**
- * Provides communication capability from the TrueFlow API layer to
- * the TrueFlow firmware. The portability layer internally provides
+ * Provides communication capability from the TruFlow API layer to
+ * the TruFlow firmware. The portability layer internally provides
  * the transport to the firmware.
  *
  * [in] session, pointer to session handle

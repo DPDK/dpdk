@@ -64,10 +64,10 @@
 
 /* Macros to read the computed fields */
 #define ULP_COMP_FLD_IDX_RD(params, idx) \
-	rte_be_to_cpu_32((params)->comp_fld[(idx)])
+	rte_be_to_cpu_64((params)->comp_fld[(idx)])
 
 #define ULP_COMP_FLD_IDX_WR(params, idx, val)	\
-	((params)->comp_fld[(idx)] = rte_cpu_to_be_32((val)))
+	((params)->comp_fld[(idx)] = rte_cpu_to_be_64((uint64_t)(val)))
 /*
  * Making the blob statically sized to 128 bytes for now.
  * The blob must be initialized with ulp_blob_init prior to using.

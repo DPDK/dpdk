@@ -46,7 +46,7 @@ struct bnxt_ulp_mapper_parms {
 	struct ulp_rte_hdr_bitmap		*hdr_bitmap;
 	struct ulp_rte_hdr_field		*hdr_field;
 	struct ulp_rte_field_bitmap		*fld_bitmap;
-	uint32_t				*comp_fld;
+	uint64_t				*comp_fld;
 	struct ulp_regfile			*regfile;
 	struct bnxt_ulp_context			*ulp_ctx;
 	uint32_t				fid;
@@ -61,13 +61,14 @@ struct bnxt_ulp_mapper_parms {
 	uint32_t				flow_pattern_id;
 	uint32_t				act_pattern_id;
 	uint8_t					app_id;
+	uint16_t				port_id;
 };
 
 struct bnxt_ulp_mapper_create_parms {
 	uint32_t			app_priority;
 	struct ulp_rte_hdr_bitmap	*hdr_bitmap;
 	struct ulp_rte_hdr_field	*hdr_field;
-	uint32_t			*comp_fld;
+	uint64_t			*comp_fld;
 	struct ulp_rte_act_bitmap	*act;
 	struct ulp_rte_act_prop		*act_prop;
 	struct ulp_rte_field_bitmap	*fld_bitmap;
@@ -89,6 +90,7 @@ struct bnxt_ulp_mapper_create_parms {
 	uint32_t			flow_pattern_id;
 	uint32_t			act_pattern_id;
 	uint8_t				app_id;
+	uint16_t			port_id;
 };
 
 /* Function to initialize any dynamic mapper data. */

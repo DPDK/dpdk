@@ -48,6 +48,7 @@ struct bnxt_ulp_fc_info {
 	uint32_t		flags;
 	uint32_t		num_entries;
 	pthread_mutex_t		fc_lock;
+	uint32_t		num_counters;
 };
 
 int32_t

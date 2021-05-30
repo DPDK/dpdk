@@ -231,7 +231,7 @@ struct hcapi_cfa_key_tbl {
 	uint32_t size;
 	/** [in] number of key buckets, applicable for newer chips */
 	uint32_t num_buckets;
-	/** [in] For EEM, this is KEY1 base mem pointer. Fo off-chip EM,
+	/** [in] For EEM, this is KEY1 base mem pointer. For off-chip EM,
 	 *  this is the key record memory base pointer within the key table,
 	 *  applicable for newer chip
 	 */
@@ -273,8 +273,8 @@ struct hcapi_cfa_key_data {
 	uint8_t tbl_scope;
 	/** [in] the fid owner of the key */
 	uint64_t metadata;
-	/** [in] stored with the bucket which can be used to by
-	 *       the caller to retreved later via the GET HW OP.
+	/** [in] stored with the bucket which can be used by
+	 *       the caller to retrieve later via the GET HW OP.
 	 */
 };
 

@@ -22,6 +22,7 @@ sources += files(
         'ulp_def_rules.c',
         'ulp_fc_mgr.c',
         'ulp_tun.c',
+        'bnxt_tf_pmd_shim.c',
         'ulp_gen_tbl.c',
         'ulp_gen_hash.c',
         'ulp_ha_mgr.c',

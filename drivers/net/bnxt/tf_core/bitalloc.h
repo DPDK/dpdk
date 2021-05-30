@@ -60,7 +60,7 @@ struct bitalloc {
 #define BA_NO_ENTRY_FOUND   -1
 
 /**
- * Initializates the bitallocator
+ * Initializes the bitallocator
  *
  * Returns 0 on success, -1 on failure.  Size is arbitrary up to
  * BITALLOC_MAX_SIZE

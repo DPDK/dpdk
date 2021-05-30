@@ -39,7 +39,7 @@ struct hcapi_cfa_devinfo {
 /** CFA device specific function hooks structure
  *
  * The following device hooks can be defined; unless noted otherwise, they are
- * optional and can be filled with a null pointer. The pupose of these hooks
+ * optional and can be filled with a null pointer. The purpose of these hooks
  * to support CFA device operations for different device variants.
  */
 struct hcapi_cfa_devops {
@@ -88,7 +88,7 @@ struct hcapi_cfa_devops {
 	 *   is stored.  It holds the bucket index and the data pointer of
 	 *   a dynamic bucket that is chained to static bucket
 	 *   When using the HWOP GET, this is a pointer to the key location
-	 *   which should be retreved.
+	 *   which should be retrieved.
 	 *
 	 *   (valid for SR2 only).
 	 * @return

@@ -57,7 +57,7 @@
 #define CFA_RESOURCE_TYPE_P59_RANGE_PROF         0x15UL
 /* Range */
 #define CFA_RESOURCE_TYPE_P59_RANGE              0x16UL
-/* Link Aggrigation */
+/* Link Aggregation */
 #define CFA_RESOURCE_TYPE_P59_LAG                0x17UL
 /* VEB TCAM */
 #define CFA_RESOURCE_TYPE_P59_VEB_TCAM           0x18UL

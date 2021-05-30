@@ -103,6 +103,7 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 	mapper_cparms->flow_pattern_id = params->flow_pattern_id;
 	mapper_cparms->act_pattern_id = params->act_pattern_id;
 	mapper_cparms->app_id = params->app_id;
+	mapper_cparms->port_id = params->port_id;
 
 	/* update the signature fields into the computed field list */
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_HDR_SIG_ID,

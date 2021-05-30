@@ -24,8 +24,9 @@
 #define ULP_HA_IF_TBL_DIR	TF_DIR_RX
 #define ULP_HA_IF_TBL_TYPE	TF_IF_TBL_TYPE_PROF_PARIF_ERR_ACT_REC_PTR
 #define ULP_HA_IF_TBL_IDX 10
+#define ULP_HA_CLIENT_CNT_IF_TBL_IDX 9
 
-static void ulp_ha_mgr_timer_cancel(struct bnxt_ulp_context *ulp_ctx);
+static void ulp_ha_mgr_timer_cancel(void);
 static int32_t ulp_ha_mgr_timer_start(void);
 static void ulp_ha_mgr_timer_cb(void *arg);
 static int32_t ulp_ha_mgr_app_type_set(struct bnxt_ulp_context *ulp_ctx,
@@ -36,6 +37,9 @@ ulp_ha_mgr_region_set(struct bnxt_ulp_context *ulp_ctx,
 static int32_t
 ulp_ha_mgr_state_set(struct bnxt_ulp_context *ulp_ctx,
 		     enum ulp_ha_mgr_state state);
+
+static int32_t
+ulp_ha_mgr_tf_client_num_get(struct bnxt_ulp_context *ulp_ctx, uint32_t *cnt);
 
 static int32_t
 ulp_ha_mgr_state_set(struct bnxt_ulp_context *ulp_ctx,
@@ -68,6 +72,39 @@ ulp_ha_mgr_state_set(struct bnxt_ulp_context *ulp_ctx,
 	if (rc)
 		BNXT_TF_DBG(ERR, "Failed to write the HA state\n");
 
+	return rc;
+}
+
+static int32_t
+ulp_ha_mgr_tf_client_num_get(struct bnxt_ulp_context *ulp_ctx,
+			     uint32_t *cnt)
+{
+	struct tf_get_if_tbl_entry_parms get_parms = { 0 };
+	struct tf *tfp;
+	uint32_t val = 0;
+	int32_t rc = 0;
+
+	if (ulp_ctx == NULL || cnt == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid parms in client num get.\n");
+		return -EINVAL;
+	}
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_NO);
+	if (tfp == NULL) {
+		BNXT_TF_DBG(ERR, "Unable to get the TFP.\n");
+		return -EINVAL;
+	}
+
+	get_parms.dir = ULP_HA_IF_TBL_DIR;
+	get_parms.type = ULP_HA_IF_TBL_TYPE;
+	get_parms.idx = ULP_HA_CLIENT_CNT_IF_TBL_IDX;
+	get_parms.data = (uint8_t *)&val;
+	get_parms.data_sz_in_bytes = sizeof(val);
+
+	rc = tf_get_if_tbl_entry(tfp, &get_parms);
+	if (rc)
+		BNXT_TF_DBG(ERR, "Failed to read the number of HA clients\n");
+
+	*cnt = val;
 	return rc;
 }
 
@@ -113,44 +150,113 @@ ulp_ha_mgr_app_type_set(struct bnxt_ulp_context *ulp_ctx,
 	return 0;
 }
 
-/*
- * When a secondary opens, the timer is started and periodically checks for a
- * close of the primary (state moved to SEC_TIMER_COPY).
- * In SEC_TIMER_COPY:
- * - The flow db must be locked to prevent flows from being added to the high
- *   region during a move.
- * - Move the high entries to low
- * - Set the region to low for subsequent flows
- * - Switch our persona to Primary
- * - Set the state to Primary Run
- * - Release the flow db lock for flows to continue
- */
 static void
 ulp_ha_mgr_timer_cb(void *arg __rte_unused)
 {
 	struct tf_move_tcam_shared_entries_parms mparms = { 0 };
+	struct tf_clear_tcam_shared_entries_parms cparms = { 0 };
 	struct bnxt_ulp_context *ulp_ctx;
 	enum ulp_ha_mgr_state curr_state;
+	enum ulp_ha_mgr_app_type app_type;
+	uint8_t myclient_cnt = 0;
+	uint32_t client_cnt = 0;
 	struct tf *tfp;
 	int32_t rc;
 
 	ulp_ctx = bnxt_ulp_cntxt_entry_acquire();
 	if (ulp_ctx == NULL) {
-		BNXT_TF_DBG(INFO, "could not get the ulp context lock\n");
 		ulp_ha_mgr_timer_start();
 		return;
+	}
+
+	myclient_cnt = bnxt_ulp_cntxt_num_shared_clients_get(ulp_ctx);
+	if (myclient_cnt == 0) {
+		BNXT_TF_DBG(ERR,
+			    "PANIC Client Count is zero kill timer\n.");
+		return;
+	}
+
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_YES);
+	if (tfp == NULL) {
+		BNXT_TF_DBG(ERR, "Unable to get the TFP.\n");
+		goto cb_restart;
 	}
 
 	rc = ulp_ha_mgr_state_get(ulp_ctx, &curr_state);
 	if (rc) {
 		/*
-		 * This shouldn't happen, if it does, resetart the timer
+		 * This shouldn't happen, if it does, reset the timer
 		 * and try again next time.
 		 */
-		BNXT_TF_DBG(ERR, "On HA CB:Failed(%d) to get state.\n", rc);
+		BNXT_TF_DBG(ERR, "Failed(%d) to get state.\n",
+			    rc);
 		goto cb_restart;
 	}
-	if (curr_state != ULP_HA_STATE_SEC_TIMER_COPY)
+
+	rc = ulp_ha_mgr_tf_client_num_get(ulp_ctx, &client_cnt);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed(%d) to get cnt.\n",
+			    rc);
+		goto cb_restart;
+	}
+
+	rc =  ulp_ha_mgr_app_type_get(ulp_ctx, &app_type);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed(%d) to get type.\n",
+			    rc);
+		goto cb_restart;
+	}
+
+	/* Handle the Cleanup if an app went away */
+	if (client_cnt == myclient_cnt) {
+		if (curr_state == ULP_HA_STATE_PRIM_SEC_RUN &&
+		    app_type == ULP_HA_APP_TYPE_PRIM) {
+		    /*
+		     * The SECONDARY went away:
+		     * 1. Set the state to PRIM_RUN
+		     * 2. Clear the High region so our TCAM will hit.
+		     */
+			rc = ulp_ha_mgr_state_set(ulp_ctx,
+						  ULP_HA_STATE_PRIM_RUN);
+			if (rc) {
+				BNXT_TF_DBG(ERR,
+					    "On HA CB:Failed(%d) to set state\n",
+					    rc);
+				goto cb_restart;
+			}
+
+			cparms.dir = TF_DIR_RX;
+			cparms.tcam_tbl_type =
+				TF_TCAM_TBL_TYPE_WC_TCAM_HIGH;
+			rc = tf_clear_tcam_shared_entries(tfp, &cparms);
+			if (rc) {
+				BNXT_TF_DBG(ERR,
+					    "On HA CB:Failed(%d) clear tcam\n",
+					    rc);
+				goto cb_restart;
+			}
+		} else if (curr_state == ULP_HA_STATE_PRIM_SEC_RUN &&
+			    app_type == ULP_HA_APP_TYPE_SEC) {
+			/*
+			 * The PRIMARY went away:
+			 * 1. Set the state to SEC_COPY
+			 * 2. Clear the Low Region for the next copy
+			 */
+			rc = ulp_ha_mgr_state_set(ulp_ctx,
+						  ULP_HA_STATE_SEC_TIMER_COPY);
+			if (rc) {
+				BNXT_TF_DBG(ERR,
+					    "On HA CB:Failed(%d) to set state\n",
+					    rc);
+				goto cb_restart;
+			}
+			curr_state = ULP_HA_STATE_SEC_TIMER_COPY;
+		}
+	}
+
+	/* Only the Secondary has work to on SEC_TIMER_COPY */
+	if (curr_state != ULP_HA_STATE_SEC_TIMER_COPY ||
+	    app_type != ULP_HA_APP_TYPE_SEC)
 		goto cb_restart;
 
 	/* Protect the flow database during the copy */
@@ -166,14 +272,19 @@ ulp_ha_mgr_timer_cb(void *arg __rte_unused)
 	 * move WC entries to Low Region.
 	 */
 	BNXT_TF_DBG(INFO, "On HA CB: Moving entries HI to LOW\n");
-	mparms.dir = TF_DIR_RX;
-	mparms.tcam_tbl_type = TF_TCAM_TBL_TYPE_WC_TCAM_HIGH;
-	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_YES);
-	if (tfp == NULL) {
-		BNXT_TF_DBG(ERR, "On HA CB: Unable to get the TFP.\n");
+
+	cparms.dir = TF_DIR_RX;
+	cparms.tcam_tbl_type = TF_TCAM_TBL_TYPE_WC_TCAM_LOW;
+	rc = tf_clear_tcam_shared_entries(tfp, &cparms);
+	if (rc) {
+		BNXT_TF_DBG(ERR,
+			    "On HA CB:Failed(%d) clear tcam low\n",
+			    rc);
 		goto unlock;
 	}
 
+	mparms.dir = TF_DIR_RX;
+	mparms.tcam_tbl_type = TF_TCAM_TBL_TYPE_WC_TCAM_HIGH;
 	rc = tf_move_tcam_shared_entries(tfp, &mparms);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "On HA_CB: Failed to move entries\n");
@@ -186,8 +297,6 @@ ulp_ha_mgr_timer_cb(void *arg __rte_unused)
 	BNXT_TF_DBG(INFO, "On HA CB: SEC[SEC_TIMER_COPY] => PRIM[PRIM_RUN]\n");
 unlock:
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
-	bnxt_ulp_cntxt_entry_release();
-	return;
 cb_restart:
 	bnxt_ulp_cntxt_entry_release();
 	ulp_ha_mgr_timer_start();
@@ -202,18 +311,9 @@ ulp_ha_mgr_timer_start(void)
 }
 
 static void
-ulp_ha_mgr_timer_cancel(struct bnxt_ulp_context *ulp_ctx)
+ulp_ha_mgr_timer_cancel(void)
 {
-	struct bnxt_ulp_ha_mgr_info *ha_info;
-
-	ha_info = bnxt_ulp_cntxt_ptr2_ha_info_get(ulp_ctx);
-	if (ha_info == NULL) {
-		BNXT_TF_DBG(ERR, "Unable to get ha info\n");
-		return;
-	}
-
-	ha_info->flags &= ~ULP_HA_TIMER_THREAD;
-	rte_eal_alarm_cancel(ulp_ha_mgr_timer_cb, (void *)ulp_ctx);
+	rte_eal_alarm_cancel(ulp_ha_mgr_timer_cb, (void *)NULL);
 }
 
 int32_t
@@ -233,6 +333,11 @@ ulp_ha_mgr_init(struct bnxt_ulp_context *ulp_ctx)
 		PMD_DRV_LOG(ERR, "Failed to initialize ha mutex\n");
 		goto cleanup;
 	}
+	rc = ulp_ha_mgr_timer_start();
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to start timer CB.\n");
+		goto cleanup;
+	}
 
 	return 0;
 cleanup:
@@ -245,6 +350,8 @@ void
 ulp_ha_mgr_deinit(struct bnxt_ulp_context *ulp_ctx)
 {
 	struct bnxt_ulp_ha_mgr_info *ha_info;
+
+	ulp_ha_mgr_timer_cancel();
 
 	ha_info = bnxt_ulp_cntxt_ptr2_ha_info_get(ulp_ctx);
 	if (ha_info == NULL) {
@@ -355,23 +462,9 @@ ulp_ha_mgr_open(struct bnxt_ulp_context *ulp_ctx)
 		 * The current primary is expected to eventually close and pass
 		 * full control to this system;however, until the primary closes
 		 * both are operational.
-		 *
-		 * The timer is started in order to determine when the
-		 * primary has closed.
 		 */
 		ulp_ha_mgr_app_type_set(ulp_ctx, ULP_HA_APP_TYPE_SEC);
 		ulp_ha_mgr_region_set(ulp_ctx, ULP_HA_REGION_HI);
-
-		/*
-		 * TODO:
-		 * Clear the high region so the secondary can begin overriding
-		 * the current entries.
-		 */
-		rc = ulp_ha_mgr_timer_start();
-		if (rc) {
-			BNXT_TF_DBG(ERR, "Unable to start timer on HA Open.\n");
-			return -EINVAL;
-		}
 
 		rc = ulp_ha_mgr_state_set(ulp_ctx, ULP_HA_STATE_PRIM_SEC_RUN);
 		if (rc) {
@@ -396,6 +489,8 @@ ulp_ha_mgr_close(struct bnxt_ulp_context *ulp_ctx)
 	int32_t timeout;
 	int32_t rc;
 
+	curr_state = ULP_HA_STATE_INIT;
+	app_type = ULP_HA_APP_TYPE_NONE;
 	rc = ulp_ha_mgr_state_get(ulp_ctx, &curr_state);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "On Close: Failed(%d) to get HA state\n", rc);
@@ -462,10 +557,8 @@ ulp_ha_mgr_close(struct bnxt_ulp_context *ulp_ctx)
 		   app_type == ULP_HA_APP_TYPE_SEC) {
 		/*
 		 * While both are running, the secondary unexpectedly received a
-		 * close.  Cancel the timer, set the state to Primary RUN since
-		 * it is the only one running.
+		 * close.
 		 */
-		ulp_ha_mgr_timer_cancel(ulp_ctx);
 		ulp_ha_mgr_state_set(ulp_ctx, ULP_HA_STATE_PRIM_RUN);
 
 		BNXT_TF_DBG(INFO, "On Close: SEC[PRIM_SEC_RUN] => [PRIM_RUN]\n");

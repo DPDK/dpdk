@@ -20,6 +20,7 @@
 #include "ulp_template_db_tbl.h"
 #include "ulp_port_db.h"
 #include "ulp_ha_mgr.h"
+#include "bnxt_tf_pmd_shim.h"
 
 static uint8_t mapper_fld_zeros[16] = { 0 };
 
@@ -996,13 +997,13 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
-		if (idx >= BNXT_ULP_CF_IDX_LAST || bytelen > sizeof(uint32_t)) {
+		if (idx >= BNXT_ULP_CF_IDX_LAST || bytelen > sizeof(uint64_t)) {
 			BNXT_TF_DBG(ERR, "comp field [%d] read oob %d\n", idx,
 				    bytelen);
 			return -EINVAL;
 		}
 		buffer = (uint8_t *)&parms->comp_fld[idx];
-		*val = &buffer[sizeof(uint32_t) - bytelen];
+		*val = &buffer[sizeof(uint64_t) - bytelen];
 		*value = ULP_COMP_FLD_IDX_RD(parms, idx);
 		break;
 	case BNXT_ULP_FIELD_SRC_RF:
@@ -3177,109 +3178,141 @@ ulp_mapper_cond_opc_process(struct bnxt_ulp_mapper_parms *parms,
 }
 
 static int32_t
-ulp_mapper_cc_upd_opr_compute(struct bnxt_ulp_mapper_parms *parms,
-			      enum tf_dir dir,
-			      enum bnxt_ulp_cc_upd_src cc_src,
-			      uint16_t cc_opr,
-			      uint64_t *result)
+ulp_mapper_func_opr_compute(struct bnxt_ulp_mapper_parms *parms,
+			    enum tf_dir dir,
+			    enum bnxt_ulp_func_src func_src,
+			    uint16_t func_opr,
+			    uint64_t *result)
 {
 	uint64_t regval;
 	bool shared;
 
 	*result =  false;
-	switch (cc_src) {
-	case BNXT_ULP_CC_UPD_SRC_COMP_FIELD:
-		if (cc_opr >= BNXT_ULP_CF_IDX_LAST) {
-			BNXT_TF_DBG(ERR, "invalid index %u\n", cc_opr);
+	switch (func_src) {
+	case BNXT_ULP_FUNC_SRC_COMP_FIELD:
+		if (func_opr >= BNXT_ULP_CF_IDX_LAST) {
+			BNXT_TF_DBG(ERR, "invalid index %u\n", func_opr);
 			return -EINVAL;
 		}
-		*result = (uint64_t)ULP_COMP_FLD_IDX_RD(parms, cc_opr);
+		*result = ULP_COMP_FLD_IDX_RD(parms, func_opr);
 		break;
-	case BNXT_ULP_CC_UPD_SRC_REGFILE:
-		if (!ulp_regfile_read(parms->regfile, cc_opr, &regval)) {
-			BNXT_TF_DBG(ERR, "regfile[%d] read oob\n", cc_opr);
+	case BNXT_ULP_FUNC_SRC_REGFILE:
+		if (!ulp_regfile_read(parms->regfile, func_opr, &regval)) {
+			BNXT_TF_DBG(ERR, "regfile[%d] read oob\n", func_opr);
 			return -EINVAL;
 		}
 		*result = tfp_be_to_cpu_64(regval);
 		break;
-	case BNXT_ULP_CC_UPD_SRC_GLB_REGFILE:
+	case BNXT_ULP_FUNC_SRC_GLB_REGFILE:
 		if (ulp_mapper_glb_resource_read(parms->mapper_data, dir,
-						 cc_opr, &regval, &shared)) {
+						 func_opr, &regval, &shared)) {
 			BNXT_TF_DBG(ERR, "global regfile[%d] read failed.\n",
-				    cc_opr);
+				    func_opr);
 			return -EINVAL;
 		}
 		*result = tfp_be_to_cpu_64(regval);
 		break;
-	case BNXT_ULP_CC_UPD_SRC_CONST:
-		*result = cc_opr;
+	case BNXT_ULP_FUNC_SRC_CONST:
+		*result = func_opr;
 		break;
 	default:
-		BNXT_TF_DBG(ERR, "invalid src code %u\n", cc_src);
+		BNXT_TF_DBG(ERR, "invalid src code %u\n", func_src);
 		return -EINVAL;
 	}
 	return 0;
 }
 
 static int32_t
-ulp_mapper_cc_upd_info_process(struct bnxt_ulp_mapper_parms *parms,
-			       struct bnxt_ulp_mapper_tbl_info *tbl)
+ulp_mapper_func_info_process(struct bnxt_ulp_mapper_parms *parms,
+			     struct bnxt_ulp_mapper_tbl_info *tbl)
 {
-	struct bnxt_ulp_mapper_cc_upd_info *cc_upd = &tbl->cc_upd_info;
-	uint64_t res = 0, res1, res2;
+	struct bnxt_ulp_mapper_func_info *func_info = &tbl->func_info;
+	uint64_t res = 0, res1 = 0, res2 = 0;
 	int32_t rc = 0;
+	uint32_t process_src1 = 0, process_src2 = 0;
 
-	if (cc_upd->cc_opc == BNXT_ULP_CC_UPD_OPC_NOP)
+	/* determine which functional operands to compute */
+	switch (func_info->func_opc) {
+	case BNXT_ULP_FUNC_OPC_NOP:
 		return rc;
-
-	rc = ulp_mapper_cc_upd_opr_compute(parms, tbl->direction,
-					   cc_upd->cc_src1,
-					   cc_upd->cc_opr1, &res1);
-	if (rc)
-		return rc;
-
-	rc = ulp_mapper_cc_upd_opr_compute(parms, tbl->direction,
-					   cc_upd->cc_src2,
-					   cc_upd->cc_opr2, &res2);
-	if (rc)
-		return rc;
-
-	switch (cc_upd->cc_opc) {
-	case BNXT_ULP_CC_UPD_OPC_NOP:
-		res = 1;
+	case BNXT_ULP_FUNC_OPC_EQ:
+	case BNXT_ULP_FUNC_OPC_NE:
+	case BNXT_ULP_FUNC_OPC_GE:
+	case BNXT_ULP_FUNC_OPC_GT:
+	case BNXT_ULP_FUNC_OPC_LE:
+	case BNXT_ULP_FUNC_OPC_LT:
+		process_src1 = 1;
+		process_src2 = 1;
 		break;
-	case BNXT_ULP_CC_UPD_OPC_EQ:
+	case BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF:
+		process_src1 = 1;
+		break;
+	default:
+		break;
+	}
+
+	if (process_src1) {
+		rc = ulp_mapper_func_opr_compute(parms, tbl->direction,
+						 func_info->func_src1,
+						 func_info->func_opr1, &res1);
+		if (rc)
+			return rc;
+	}
+
+	if (process_src2) {
+		rc = ulp_mapper_func_opr_compute(parms, tbl->direction,
+						 func_info->func_src2,
+						 func_info->func_opr2, &res2);
+		if (rc)
+			return rc;
+	}
+
+	/* perform the functional opcode operations */
+	switch (func_info->func_opc) {
+	case BNXT_ULP_FUNC_OPC_EQ:
 		if (res1 == res2)
 			res = 1;
 		break;
-	case BNXT_ULP_CC_UPD_OPC_NE:
+	case BNXT_ULP_FUNC_OPC_NE:
 		if (res1 != res2)
 			res = 1;
 		break;
-	case BNXT_ULP_CC_UPD_OPC_GE:
+	case BNXT_ULP_FUNC_OPC_GE:
 		if (res1 >= res2)
 			res = 1;
 		break;
-	case BNXT_ULP_CC_UPD_OPC_GT:
+	case BNXT_ULP_FUNC_OPC_GT:
 		if (res1 > res2)
 			res = 1;
 		break;
-	case BNXT_ULP_CC_UPD_OPC_LE:
+	case BNXT_ULP_FUNC_OPC_LE:
 		if (res1 <= res2)
 			res = 1;
 		break;
-	case BNXT_ULP_CC_UPD_OPC_LT:
+	case BNXT_ULP_FUNC_OPC_LT:
 		if (res1 < res2)
 			res = 1;
 		break;
-	case BNXT_ULP_CC_UPD_OPC_LAST:
-		BNXT_TF_DBG(ERR, "invalid code %u\n", cc_upd->cc_opc);
+	case BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF:
+		res = res1;
+		break;
+	case BNXT_ULP_FUNC_OPC_RSS_CONFIG:
+		/* apply the rss config using pmd method */
+		return bnxt_rss_config_action_apply(parms);
+	case BNXT_ULP_FUNC_OPC_GET_PARENT_MAC_ADDR:
+		rc = bnxt_pmd_get_parent_mac_addr(parms, (uint8_t *)&res);
+		if (rc)
+			return -EINVAL;
+		res = tfp_be_to_cpu_64(res);
+		break;
+	default:
+		BNXT_TF_DBG(ERR, "invalid func code %u\n", func_info->func_opc);
 		return -EINVAL;
 	}
-	if (ulp_regfile_write(parms->regfile, cc_upd->cc_dst_opr,
+	if (ulp_regfile_write(parms->regfile, func_info->func_dst_opr,
 			      tfp_cpu_to_be_64(res))) {
-		BNXT_TF_DBG(ERR, "Failed write the cc_opc %u\n",
-			    cc_upd->cc_dst_opr);
+		BNXT_TF_DBG(ERR, "Failed write the func_opc %u\n",
+			    func_info->func_dst_opr);
 		return -EINVAL;
 	}
 
@@ -3366,7 +3399,7 @@ ulp_mapper_conflict_resolution_process(struct bnxt_ulp_mapper_parms *parms,
 {
 	int32_t rc = 0;
 	uint64_t regval;
-	uint64_t comp_sig_id;
+	uint64_t comp_sig;
 
 	*res = 0;
 	switch (tbl->accept_opcode) {
@@ -3399,14 +3432,14 @@ ulp_mapper_conflict_resolution_process(struct bnxt_ulp_mapper_parms *parms,
 				    BNXT_ULP_RF_IDX_FLOW_SIG_ID);
 			return -EINVAL;
 		}
-		comp_sig_id = ULP_COMP_FLD_IDX_RD(parms,
-						  BNXT_ULP_CF_IDX_FLOW_SIG_ID);
+		comp_sig = ULP_COMP_FLD_IDX_RD(parms,
+					       BNXT_ULP_CF_IDX_FLOW_SIG_ID);
 		regval = tfp_be_to_cpu_64(regval);
-		if (comp_sig_id == regval)
+		if (comp_sig == regval)
 			*res = 1;
 		else
-			BNXT_TF_DBG(ERR, "failed signature match %x:%x\n",
-				    (uint32_t)comp_sig_id, (uint32_t)regval);
+			BNXT_TF_DBG(ERR, "failed signature match 0x%016"
+				    PRIX64 ":%x\n", comp_sig, (uint32_t)regval);
 		break;
 	default:
 		BNXT_TF_DBG(ERR, "Invalid accept opcode %d\n",
@@ -3462,8 +3495,9 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, uint32_t tid)
 
 	for (tbl_idx = 0; tbl_idx < num_tbls && cond_goto;) {
 		tbl = &tbls[tbl_idx];
-		/* Process the conditional code update opcodes */
-		if (ulp_mapper_cc_upd_info_process(parms, tbl)) {
+		cond_goto = tbl->execute_info.cond_true_goto;
+		/* Process the conditional func code opcodes */
+		if (ulp_mapper_func_info_process(parms, tbl)) {
 			BNXT_TF_DBG(ERR, "Failed to process cond update\n");
 			rc = -EINVAL;
 			goto error;
@@ -3758,6 +3792,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	parms.flow_pattern_id = cparms->flow_pattern_id;
 	parms.act_pattern_id = cparms->act_pattern_id;
 	parms.app_id = cparms->app_id;
+	parms.port_id = cparms->port_id;
 
 	/* Get the device id from the ulp context */
 	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &parms.dev_id)) {

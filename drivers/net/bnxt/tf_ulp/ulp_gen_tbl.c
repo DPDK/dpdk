@@ -346,11 +346,15 @@ ulp_mapper_gen_tbl_res_free(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 	}
 	fid = tfp_be_to_cpu_32(fid);
-
-	/* Destroy the flow associated with the shared flow id */
-	if (ulp_mapper_flow_destroy(ulp_ctx, BNXT_ULP_FDB_TYPE_RID,
-				    fid))
-		BNXT_TF_DBG(ERR, "Error in deleting shared flow id %x\n", fid);
+	/* no need to del if fid is 0 since there is no associated resource */
+	if (fid) {
+		/* Destroy the flow associated with the shared flow id */
+		if (ulp_mapper_flow_destroy(ulp_ctx, BNXT_ULP_FDB_TYPE_RID,
+					    fid))
+			BNXT_TF_DBG(ERR,
+				    "Error in deleting shared flow id %x\n",
+				    fid);
+	}
 
 	/* Delete the entry from the hash table */
 	if (gen_tbl_list->hash_tbl)

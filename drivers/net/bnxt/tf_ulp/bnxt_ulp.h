@@ -32,6 +32,7 @@
 #define BNXT_ULP_SHARED_SESSION_ENABLED	0x2
 #define BNXT_ULP_APP_DEV_UNSUPPORTED	0x4
 #define BNXT_ULP_HIGH_AVAIL_ENABLED	0x8
+#define BNXT_ULP_APP_UNICAST_ONLY	0x10
 #define ULP_VF_REP_IS_ENABLED(flag)	((flag) & BNXT_ULP_VF_REP_ENABLED)
 #define ULP_SHARED_SESSION_IS_ENABLED(flag) ((flag) &\
 					     BNXT_ULP_SHARED_SESSION_ENABLED)
@@ -77,6 +78,7 @@ struct bnxt_ulp_data {
 	struct bnxt_tun_cache_entry	tun_tbl[BNXT_ULP_MAX_TUN_CACHE_ENTRIES];
 	bool				accum_stats;
 	uint8_t				app_id;
+	uint8_t				num_shared_clients;
 };
 
 struct bnxt_ulp_context {
@@ -297,4 +299,6 @@ bnxt_ulp_cntxt_entry_acquire(void);
 void
 bnxt_ulp_cntxt_entry_release(void);
 
+uint8_t
+bnxt_ulp_cntxt_num_shared_clients_get(struct bnxt_ulp_context *ulp_ctx);
 #endif /* _BNXT_ULP_H_ */

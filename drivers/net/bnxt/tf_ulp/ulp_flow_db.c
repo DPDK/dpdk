@@ -116,7 +116,7 @@ ulp_flow_db_resource_func_get(struct ulp_fdb_resource_info *res_info)
 
 	func = (((res_info->nxt_resource_idx & ULP_FLOW_DB_RES_FUNC_MASK) >>
 		 ULP_FLOW_DB_RES_FUNC_BITS) << ULP_FLOW_DB_RES_FUNC_UPPER);
-	/* The reource func is split into upper and lower */
+	/* The resource func is split into upper and lower */
 	if (func & ULP_FLOW_DB_RES_FUNC_NEED_LOWER)
 		return (func | res_info->resource_func_lower);
 	return func;
@@ -712,6 +712,12 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
 	}
 	fid_resource = &flow_tbl->flow_resources[fid];
 
+	if (params->critical_resource && fid_resource->resource_em_handle) {
+		BNXT_TF_DBG(DEBUG, "Ignore multiple critical resources\n");
+		/* Ignore the multiple critical resources */
+		params->critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
+	}
+
 	if (!params->critical_resource) {
 		/* Not the critical_resource so allocate a resource */
 		idx = flow_tbl->flow_tbl_stack[flow_tbl->tail_index];
@@ -735,7 +741,7 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
 	if (params->resource_type == TF_TBL_TYPE_ACT_STATS_64 &&
 	    params->resource_sub_type ==
 	    BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT &&
-	    ulp_fc_info) {
+	    ulp_fc_info && ulp_fc_info->num_counters) {
 		/* Store the first HW counter ID for this table */
 		if (!ulp_fc_mgr_start_idx_isset(ulp_ctxt, params->direction))
 			ulp_fc_mgr_start_idx_set(ulp_ctxt, params->direction,
@@ -760,7 +766,7 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
  * flow_type [in] Specify it is regular or default flow
  * fid [in] The index to the flow entry
  * params [in/out] The contents to be copied into params.
- * Onlythe critical_resource needs to be set by the caller.
+ * Only the critical_resource needs to be set by the caller.
  *
  * Returns 0 on success and negative on failure.
  */
@@ -1287,7 +1293,7 @@ ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 					     BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 					     sub_typ, &params);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "CFA Action ptr not found for flow id %u\n",
+		BNXT_TF_DBG(INFO, "CFA Action ptr not found for flow id %u\n",
 			    flow_id);
 		return -ENOENT;
 	}

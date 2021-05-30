@@ -396,7 +396,7 @@ enum tf_search_status {
 enum tf_em_tbl_type {
 	/** The number of internal EM records for the session */
 	TF_EM_TBL_TYPE_EM_RECORD,
-	/** The number of table scopes reequested */
+	/** The number of table scopes requested */
 	TF_EM_TBL_TYPE_TBL_SCOPE,
 	TF_EM_TBL_TYPE_MAX
 };
@@ -415,7 +415,7 @@ enum tf_em_tbl_type {
  */
 struct tf_session_info {
 	/**
-	 * TrueFlow Version. Used to control the structure layout when
+	 * TruFlow Version. Used to control the structure layout when
 	 * sharing sessions. No guarantee that a secondary process
 	 * would come from the same version of an executable.
 	 * TruFlow initializes this variable on tf_open_session().
@@ -520,7 +520,7 @@ struct tf_identifier_resources {
 struct tf_tbl_resources {
 	/**
 	 * Array of TF Table types where each entry is expected to be
-	 * set to the requeste resource number of that specific
+	 * set to the requested resource number of that specific
 	 * type. The index used is tf_tbl_type.
 	 */
 	uint16_t cnt[TF_TBL_TYPE_MAX];
@@ -1677,7 +1677,7 @@ struct tf_search_tbl_entry_parms {
  *
  * Implementation:
  *
- * A hash is performed on the result data and mappe3d to a shadow copy entry
+ * A hash is performed on the result data and mapped to a shadow copy entry
  * where the result is populated.  If the result matches the entry, hit is set,
  * ref_cnt is incremented (if alloc), and the search status indicates what
  * action the caller can take regarding setting the entry.

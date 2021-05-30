@@ -25,6 +25,7 @@
 #include "ulp_port_db.h"
 #include "ulp_tun.h"
 #include "ulp_ha_mgr.h"
+#include "bnxt_tf_pmd_shim.h"
 
 /* Linked list of all TF sessions. */
 STAILQ_HEAD(, bnxt_ulp_session_state) bnxt_ulp_session_list =
@@ -67,7 +68,6 @@ bnxt_ulp_devid_get(struct bnxt *bp,
 		   enum bnxt_ulp_device_id  *ulp_dev_id)
 {
 	if (BNXT_CHIP_P5(bp)) {
-		/* TBD: needs to accommodate even SR2 */
 		*ulp_dev_id = BNXT_ULP_DEVICE_ID_THOR;
 		return 0;
 	}
@@ -123,7 +123,7 @@ bnxt_ulp_named_resources_calc(struct bnxt_ulp_context *ulp_ctx,
 			      uint32_t num,
 			      struct tf_session_resources *res)
 {
-	uint32_t dev_id, res_type, i;
+	uint32_t dev_id = BNXT_ULP_DEVICE_ID_LAST, res_type, i;
 	enum tf_dir dir;
 	uint8_t app_id;
 	int32_t rc = 0;
@@ -331,6 +331,9 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt_ulp_context *ulp_ctx,
 		if (info[i].flags & BNXT_ULP_APP_CAP_HOT_UPGRADE_EN)
 			ulp_ctx->cfg_data->ulp_flags |=
 				BNXT_ULP_HIGH_AVAIL_ENABLED;
+		if (info[i].flags & BNXT_ULP_APP_CAP_UNICAST_ONLY)
+			ulp_ctx->cfg_data->ulp_flags |=
+				BNXT_ULP_APP_UNICAST_ONLY;
 	}
 	if (!found) {
 		BNXT_TF_DBG(ERR, "APP ID %d, Device ID: 0x%x not supported.\n",
@@ -378,8 +381,8 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 	struct rte_eth_dev *ethdev = bp->eth_dev;
 	struct tf_session_resources *resources;
 	struct tf_open_session_parms parms;
-	size_t copy_num_bytes;
-	uint32_t ulp_dev_id;
+	size_t copy_nbytes;
+	uint32_t ulp_dev_id = BNXT_ULP_DEVICE_ID_LAST;
 	int32_t	rc = 0;
 
 	/* only perform this if shared session is enabled. */
@@ -401,11 +404,19 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 	 * Need to account for size of ctrl_chan_name and 1 extra for Null
 	 * terminator
 	 */
-	copy_num_bytes = sizeof(parms.ctrl_chan_name) -
+	copy_nbytes = sizeof(parms.ctrl_chan_name) -
 		strlen(parms.ctrl_chan_name) - 1;
 
-	/* Build the ctrl_chan_name with shared token */
-	strncat(parms.ctrl_chan_name, "-tf_shared", copy_num_bytes);
+	/*
+	 * Build the ctrl_chan_name with shared token.
+	 * When HA is enabled, the WC TCAM needs extra management by the core,
+	 * so add the wc_tcam string to the control channel.
+	 */
+	if (bnxt_ulp_cntxt_ha_enabled(bp->ulp_ctx))
+		strncat(parms.ctrl_chan_name, "-tf_shared-wc_tcam",
+			copy_nbytes);
+	else
+		strncat(parms.ctrl_chan_name, "-tf_shared", copy_nbytes);
 
 	rc = bnxt_ulp_tf_shared_session_resources_get(bp->ulp_ctx, resources);
 	if (rc)
@@ -504,7 +515,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 	int32_t				rc = 0;
 	struct tf_open_session_parms	params;
 	struct tf_session_resources	*resources;
-	uint32_t			ulp_dev_id;
+	uint32_t ulp_dev_id = BNXT_ULP_DEVICE_ID_LAST;
 
 	memset(&params, 0, sizeof(params));
 
@@ -835,7 +846,7 @@ static int32_t
 ulp_dparms_init(struct bnxt *bp, struct bnxt_ulp_context *ulp_ctx)
 {
 	struct bnxt_ulp_device_params *dparms;
-	uint32_t dev_id;
+	uint32_t dev_id = BNXT_ULP_DEVICE_ID_LAST;
 
 	if (!bp->max_num_kflows) {
 		/* Defaults to Internal */
@@ -890,7 +901,7 @@ ulp_ctx_attach(struct bnxt *bp,
 	       struct bnxt_ulp_session_state *session)
 {
 	int32_t rc = 0;
-	uint32_t flags, dev_id;
+	uint32_t flags, dev_id = BNXT_ULP_DEVICE_ID_LAST;
 	uint8_t app_id;
 
 	/* Increment the ulp context data reference count usage. */
@@ -1350,15 +1361,21 @@ bnxt_ulp_port_init(struct bnxt *bp)
 {
 	struct bnxt_ulp_session_state *session;
 	bool initialized;
+	enum bnxt_ulp_device_id devid = BNXT_ULP_DEVICE_ID_LAST;
+	uint32_t ulp_flags;
 	int32_t rc = 0;
-
-	if (!bp || !BNXT_TRUFLOW_EN(bp))
-		return rc;
 
 	if (!BNXT_PF(bp) && !BNXT_VF_IS_TRUSTED(bp)) {
 		BNXT_TF_DBG(ERR,
 			    "Skip ulp init for port: %d, not a TVF or PF\n",
-			bp->eth_dev->data->port_id);
+			    bp->eth_dev->data->port_id);
+		return rc;
+	}
+
+	if (!BNXT_TRUFLOW_EN(bp)) {
+		BNXT_TF_DBG(DEBUG,
+			    "Skip ulp init for port: %d, truflow is not enabled\n",
+			    bp->eth_dev->data->port_id);
 		return rc;
 	}
 
@@ -1436,11 +1453,31 @@ bnxt_ulp_port_init(struct bnxt *bp)
 		goto jump_to_error;
 	}
 
-	if (BNXT_ACCUM_STATS_EN(bp))
+	rc = bnxt_ulp_devid_get(bp, &devid);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to determine device for ULP port init.\n");
+		goto jump_to_error;
+	}
+
+	if (devid != BNXT_ULP_DEVICE_ID_THOR && BNXT_ACCUM_STATS_EN(bp))
 		bp->ulp_ctx->cfg_data->accum_stats = true;
 
-	BNXT_TF_DBG(DEBUG, "BNXT Port:%d ULP port init\n",
-		    bp->eth_dev->data->port_id);
+	BNXT_TF_DBG(DEBUG, "BNXT Port:%d ULP port init, accum_stats:%d\n",
+		    bp->eth_dev->data->port_id,
+		    bp->ulp_ctx->cfg_data->accum_stats);
+
+	/* set the unicast mode */
+	if (bnxt_ulp_cntxt_ptr2_ulp_flags_get(bp->ulp_ctx, &ulp_flags)) {
+		BNXT_TF_DBG(ERR, "Error in getting ULP context flags\n");
+		goto jump_to_error;
+	}
+	if (ulp_flags & BNXT_ULP_APP_UNICAST_ONLY) {
+		if (bnxt_pmd_set_unicast_rxmask(bp->eth_dev)) {
+			BNXT_TF_DBG(ERR, "Error in setting unicast rxmode\n");
+			goto jump_to_error;
+		}
+	}
+
 	return rc;
 
 jump_to_error:
@@ -1459,12 +1496,16 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 	struct rte_pci_device *pci_dev;
 	struct rte_pci_addr *pci_addr;
 
-	if (!BNXT_TRUFLOW_EN(bp))
-		return;
-
 	if (!BNXT_PF(bp) && !BNXT_VF_IS_TRUSTED(bp)) {
 		BNXT_TF_DBG(ERR,
 			    "Skip ULP deinit port:%d, not a TVF or PF\n",
+			    bp->eth_dev->data->port_id);
+		return;
+	}
+
+	if (!BNXT_TRUFLOW_EN(bp)) {
+		BNXT_TF_DBG(DEBUG,
+			    "Skip ULP deinit for port:%d, truflow is not enabled\n",
 			    bp->eth_dev->data->port_id);
 		return;
 	}
@@ -1599,7 +1640,7 @@ bnxt_ulp_cntxt_dev_id_get(struct bnxt_ulp_context *ulp_ctx,
 		*dev_id = ulp_ctx->cfg_data->dev_id;
 		return 0;
 	}
-
+	*dev_id = BNXT_ULP_DEVICE_ID_LAST;
 	BNXT_TF_DBG(ERR, "Failed to read dev_id from ulp ctxt\n");
 	return -EINVAL;
 }
@@ -1624,6 +1665,7 @@ bnxt_ulp_cntxt_mem_type_get(struct bnxt_ulp_context *ulp_ctx,
 		*mem_type = ulp_ctx->cfg_data->mem_type;
 		return 0;
 	}
+	*mem_type = BNXT_ULP_FLOW_MEM_TYPE_LAST;
 	BNXT_TF_DBG(ERR, "Failed to read mem_type in ulp ctxt\n");
 	return -EINVAL;
 }
@@ -1663,6 +1705,13 @@ bnxt_ulp_cntxt_shared_tfp_set(struct bnxt_ulp_context *ulp, struct tf *tfp)
 		return -EINVAL;
 	}
 
+	if (tfp == NULL) {
+		if (ulp->cfg_data->num_shared_clients > 0)
+			ulp->cfg_data->num_shared_clients--;
+	} else {
+		ulp->cfg_data->num_shared_clients++;
+	}
+
 	ulp->g_shared_tfp = tfp;
 	return 0;
 }
@@ -1676,6 +1725,17 @@ bnxt_ulp_cntxt_shared_tfp_get(struct bnxt_ulp_context *ulp)
 		return NULL;
 	}
 	return ulp->g_shared_tfp;
+}
+
+/* Function to get the number of shared clients attached */
+uint8_t
+bnxt_ulp_cntxt_num_shared_clients_get(struct bnxt_ulp_context *ulp)
+{
+	if (ulp == NULL || ulp->cfg_data == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid arguments\n");
+		return 0;
+	}
+	return ulp->cfg_data->num_shared_clients;
 }
 
 /* Function to set the tfp session details from the ulp context. */

@@ -98,7 +98,7 @@ struct dpool_adj_list_entry {
  *
  * A list of references to entries in the dpool entry array that
  * have free entries to the left and right. Since we pack to the
- * left entries will always have a non zero left cout.
+ * left entries will always have a non zero left out.
  *
  * Used only during the defrag operation.
  */
@@ -281,17 +281,17 @@ void dpool_dump(struct dpool *dpool);
 /**
  * dpool_defrag
  *
- * De-fragment the dpool array and apply the specified defrag stratagy.
+ * De-fragment the dpool array and apply the specified defrag strategy.
  *
  * [in] dpool
  *      The dpool
  *
  * [in] entry_size
- *      If using the DP_DEFRAG_TO_FIT stratagy defrag will stop when there's
+ *      If using the DP_DEFRAG_TO_FIT strategy defrag will stop when there's
  *      at least entry_size space available.
  *
  * [i] defrag
- *     Defrag stratagy:
+ *     Defrag strategy:
  *
  *     DP_DEFRAG_ALL    (0x1) - Defrag until there is nothing left
  *                              to defrag.

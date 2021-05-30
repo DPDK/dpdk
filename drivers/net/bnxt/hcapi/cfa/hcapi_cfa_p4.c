@@ -227,7 +227,7 @@ static int hcapi_cfa_p4_key_hw_op_del(struct hcapi_cfa_hwop *op,
 	return rc;
 }
 
-/** Apporiximation of hcapi_cfa_key_hw_op()
+/** Approximation of hcapi_cfa_key_hw_op()
  *
  *
  */

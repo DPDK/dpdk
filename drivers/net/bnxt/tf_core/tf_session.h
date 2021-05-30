@@ -59,7 +59,7 @@
  * tf_session_info.
  */
 struct tf_session {
-	/** TrueFlow Version. Used to control the structure layout
+	/** TruFlow Version. Used to control the structure layout
 	 * when sharing sessions. No guarantee that a secondary
 	 * process would come from the same version of an executable.
 	 */
