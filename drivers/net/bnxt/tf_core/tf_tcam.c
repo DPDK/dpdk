@@ -71,7 +71,7 @@ tf_tcam_bind(struct tf *tfp,
 
 	memset(&db_cfg, 0, sizeof(db_cfg));
 
-	db_cfg.type = TF_DEVICE_MODULE_TYPE_TCAM;
+	db_cfg.module = TF_MODULE_TYPE_TCAM;
 	db_cfg.num_elements = parms->num_elements;
 	db_cfg.cfg = parms->cfg;
 
@@ -100,7 +100,7 @@ tf_tcam_bind(struct tf *tfp,
 				if (!parms->resources->tcam_cnt[d].cnt[i])
 					continue;
 				ainfo.rm_db = tcam_db[d];
-				ainfo.db_index = i;
+				ainfo.subtype = i;
 				ainfo.info = &info;
 				rc = tf_rm_get_info(&ainfo);
 				if (rc)
@@ -248,7 +248,7 @@ tf_tcam_alloc(struct tf *tfp,
 	memset(&aparms, 0, sizeof(aparms));
 
 	aparms.rm_db = tcam_db[parms->dir];
-	aparms.db_index = parms->type;
+	aparms.subtype = parms->type;
 	aparms.priority = parms->priority;
 	aparms.index = (uint32_t *)&parms->idx;
 	rc = tf_rm_allocate(&aparms);
@@ -331,7 +331,7 @@ tf_tcam_free(struct tf *tfp,
 	memset(&aparms, 0, sizeof(aparms));
 
 	aparms.rm_db = tcam_db[parms->dir];
-	aparms.db_index = parms->type;
+	aparms.subtype = parms->type;
 	aparms.index = parms->idx / num_slice_per_row;
 	aparms.allocated = &allocated;
 	rc = tf_rm_is_allocated(&aparms);
@@ -379,7 +379,7 @@ tf_tcam_free(struct tf *tfp,
 	/* Free requested element */
 	memset(&fparms, 0, sizeof(fparms));
 	fparms.rm_db = tcam_db[parms->dir];
-	fparms.db_index = parms->type;
+	fparms.subtype = parms->type;
 	fparms.index = parms->idx / num_slice_per_row;
 	rc = tf_rm_free(&fparms);
 	if (rc) {
@@ -421,7 +421,7 @@ tf_tcam_free(struct tf *tfp,
 	memset(&hparms, 0, sizeof(hparms));
 
 	hparms.rm_db = tcam_db[parms->dir];
-	hparms.db_index = parms->type;
+	hparms.subtype = parms->type;
 	hparms.hcapi_type = &parms->hcapi_type;
 
 	rc = tf_rm_get_hcapi_type(&hparms);
@@ -625,7 +625,7 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	memset(&aparms, 0, sizeof(aparms));
 
 	aparms.rm_db = tcam_db[parms->dir];
-	aparms.db_index = parms->type;
+	aparms.subtype = parms->type;
 	aparms.index = parms->idx / num_slice_per_row;
 	aparms.allocated = &allocated;
 	rc = tf_rm_is_allocated(&aparms);
@@ -645,7 +645,7 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	memset(&hparms, 0, sizeof(hparms));
 
 	hparms.rm_db = tcam_db[parms->dir];
-	hparms.db_index = parms->type;
+	hparms.subtype = parms->type;
 	hparms.hcapi_type = &parms->hcapi_type;
 
 	rc = tf_rm_get_hcapi_type(&hparms);
@@ -736,7 +736,7 @@ tf_tcam_get(struct tf *tfp __rte_unused,
 	memset(&aparms, 0, sizeof(aparms));
 
 	aparms.rm_db = tcam_db[parms->dir];
-	aparms.db_index = parms->type;
+	aparms.subtype = parms->type;
 	aparms.index = parms->idx / num_slice_per_row;
 	aparms.allocated = &allocated;
 	rc = tf_rm_is_allocated(&aparms);
@@ -756,7 +756,7 @@ tf_tcam_get(struct tf *tfp __rte_unused,
 	memset(&hparms, 0, sizeof(hparms));
 
 	hparms.rm_db = tcam_db[parms->dir];
-	hparms.db_index = parms->type;
+	hparms.subtype = parms->type;
 	hparms.hcapi_type = &parms->hcapi_type;
 
 	rc = tf_rm_get_hcapi_type(&hparms);

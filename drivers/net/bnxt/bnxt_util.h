@@ -9,6 +9,9 @@
 #ifndef BIT
 #define BIT(n)	(1UL << (n))
 #endif /* BIT */
+#ifndef BIT_MASK
+#define BIT_MASK(len) (BIT(len) - 1)
+#endif /* BIT_MASK */
 
 #define PCI_SUBSYSTEM_ID_OFFSET	0x2e
 

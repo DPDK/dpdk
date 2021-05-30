@@ -8,6 +8,7 @@
 #include "tf_device_p58.h"
 #include "tfp.h"
 #include "tf_em.h"
+#include "tf_rm.h"
 
 struct tf;
 
@@ -18,8 +19,8 @@ static int tf_dev_unbind_p58(struct tf *tfp);
 /**
  * Resource Reservation Check function
  *
- * [in] tfp
- *   Pointer to TF handle
+ * [in] count
+ *   Number of module subtypes
  *
  * [in] cfg
  *   Pointer to rm element config
@@ -28,11 +29,10 @@ static int tf_dev_unbind_p58(struct tf *tfp);
  *   Pointer to resource reservation array
  *
  * Returns
- *   - (n) number of tables that have non-zero reservation count.
+ *   - (n) number of tables in module that have non-zero reservation count.
  */
 static int
-tf_dev_reservation_check(struct tf *tfp __rte_unused,
-			 uint16_t count,
+tf_dev_reservation_check(uint16_t count,
 			 struct tf_rm_element_cfg *cfg,
 			 uint16_t *reservations)
 {
@@ -94,8 +94,7 @@ tf_dev_bind_p4(struct tf *tfp,
 
 	/* Initialize the modules */
 
-	rsv_cnt = tf_dev_reservation_check(tfp,
-					   TF_IDENT_TYPE_MAX,
+	rsv_cnt = tf_dev_reservation_check(TF_IDENT_TYPE_MAX,
 					   tf_ident_p4,
 					   (uint16_t *)resources->ident_cnt);
 	if (rsv_cnt) {
@@ -113,8 +112,7 @@ tf_dev_bind_p4(struct tf *tfp,
 		no_rsv_flag = false;
 	}
 
-	rsv_cnt = tf_dev_reservation_check(tfp,
-					   TF_TBL_TYPE_MAX,
+	rsv_cnt = tf_dev_reservation_check(TF_TBL_TYPE_MAX,
 					   tf_tbl_p4,
 					   (uint16_t *)resources->tbl_cnt);
 	if (rsv_cnt) {
@@ -132,8 +130,7 @@ tf_dev_bind_p4(struct tf *tfp,
 		no_rsv_flag = false;
 	}
 
-	rsv_cnt = tf_dev_reservation_check(tfp,
-					   TF_TCAM_TBL_TYPE_MAX,
+	rsv_cnt = tf_dev_reservation_check(TF_TCAM_TBL_TYPE_MAX,
 					   tf_tcam_p4,
 					   (uint16_t *)resources->tcam_cnt);
 	if (rsv_cnt) {
@@ -155,8 +152,7 @@ tf_dev_bind_p4(struct tf *tfp,
 	 */
 
 	em_cfg.cfg = tf_em_ext_p4;
-	rsv_cnt = tf_dev_reservation_check(tfp,
-					   TF_EM_TBL_TYPE_MAX,
+	rsv_cnt = tf_dev_reservation_check(TF_EM_TBL_TYPE_MAX,
 					   em_cfg.cfg,
 					   (uint16_t *)resources->em_cnt);
 	if (rsv_cnt) {
@@ -175,8 +171,7 @@ tf_dev_bind_p4(struct tf *tfp,
 	/*
 	 * EM
 	 */
-	rsv_cnt = tf_dev_reservation_check(tfp,
-					   TF_EM_TBL_TYPE_MAX,
+	rsv_cnt = tf_dev_reservation_check(TF_EM_TBL_TYPE_MAX,
 					   tf_em_int_p4,
 					   (uint16_t *)resources->em_cnt);
 	if (rsv_cnt) {
@@ -360,10 +355,7 @@ tf_dev_bind_p58(struct tf *tfp,
 	/* Initial function initialization */
 	dev_handle->ops = &tf_dev_ops_p58_init;
 
-	/* Initialize the modules */
-
-	rsv_cnt = tf_dev_reservation_check(tfp,
-					   TF_IDENT_TYPE_MAX,
+	rsv_cnt = tf_dev_reservation_check(TF_IDENT_TYPE_MAX,
 					   tf_ident_p58,
 					   (uint16_t *)resources->ident_cnt);
 	if (rsv_cnt) {
@@ -380,8 +372,7 @@ tf_dev_bind_p58(struct tf *tfp,
 		no_rsv_flag = false;
 	}
 
-	rsv_cnt = tf_dev_reservation_check(tfp,
-					   TF_TBL_TYPE_MAX,
+	rsv_cnt = tf_dev_reservation_check(TF_TBL_TYPE_MAX,
 					   tf_tbl_p58,
 					   (uint16_t *)resources->tbl_cnt);
 	if (rsv_cnt) {
@@ -398,8 +389,7 @@ tf_dev_bind_p58(struct tf *tfp,
 		no_rsv_flag = false;
 	}
 
-	rsv_cnt = tf_dev_reservation_check(tfp,
-					   TF_TCAM_TBL_TYPE_MAX,
+	rsv_cnt = tf_dev_reservation_check(TF_TCAM_TBL_TYPE_MAX,
 					   tf_tcam_p58,
 					   (uint16_t *)resources->tcam_cnt);
 	if (rsv_cnt) {
@@ -419,8 +409,7 @@ tf_dev_bind_p58(struct tf *tfp,
 	/*
 	 * EM
 	 */
-	rsv_cnt = tf_dev_reservation_check(tfp,
-					   TF_EM_TBL_TYPE_MAX,
+	rsv_cnt = tf_dev_reservation_check(TF_EM_TBL_TYPE_MAX,
 					   tf_em_int_p58,
 					   (uint16_t *)resources->em_cnt);
 	if (rsv_cnt) {
@@ -593,10 +582,10 @@ tf_dev_bind_ops(enum tf_device_type type,
 	switch (type) {
 	case TF_DEVICE_TYPE_WH:
 	case TF_DEVICE_TYPE_SR:
-		dev_handle->ops = &tf_dev_ops_p4;
+		dev_handle->ops = &tf_dev_ops_p4_init;
 		break;
 	case TF_DEVICE_TYPE_THOR:
-		dev_handle->ops = &tf_dev_ops_p58;
+		dev_handle->ops = &tf_dev_ops_p58_init;
 		break;
 	default:
 		TFP_DRV_LOG(ERR,

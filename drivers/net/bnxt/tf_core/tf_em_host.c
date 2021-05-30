@@ -379,7 +379,7 @@ tf_em_ext_alloc(struct tf *tfp, struct tf_alloc_tbl_scope_parms *parms)
 
 	/* Get Table Scope control block from the session pool */
 	aparms.rm_db = eem_db[TF_DIR_RX];
-	aparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
+	aparms.subtype = TF_EM_TBL_TYPE_TBL_SCOPE;
 	aparms.index = (uint32_t *)&parms->tbl_scope_id;
 	rc = tf_rm_allocate(&aparms);
 	if (rc) {
@@ -488,7 +488,7 @@ cleanup_full:
 cleanup:
 	/* Free Table control block */
 	fparms.rm_db = eem_db[TF_DIR_RX];
-	fparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
+	fparms.subtype = TF_EM_TBL_TYPE_TBL_SCOPE;
 	fparms.index = parms->tbl_scope_id;
 	tf_rm_free(&fparms);
 	return -EINVAL;
@@ -512,7 +512,7 @@ tf_em_ext_free(struct tf *tfp,
 
 	/* Free Table control block */
 	aparms.rm_db = eem_db[TF_DIR_RX];
-	aparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
+	aparms.subtype = TF_EM_TBL_TYPE_TBL_SCOPE;
 	aparms.index = parms->tbl_scope_id;
 	rc = tf_rm_free(&aparms);
 	if (rc) {

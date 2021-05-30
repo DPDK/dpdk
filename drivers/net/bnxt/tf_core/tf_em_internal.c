@@ -251,7 +251,7 @@ tf_em_int_bind(struct tf *tfp,
 		return -EINVAL;
 	}
 
-	db_cfg.type = TF_DEVICE_MODULE_TYPE_EM;
+	db_cfg.module = TF_MODULE_TYPE_EM;
 	db_cfg.num_elements = parms->num_elements;
 	db_cfg.cfg = parms->cfg;
 
@@ -294,7 +294,7 @@ tf_em_int_bind(struct tf *tfp,
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
 		iparms.rm_db = em_db[i];
-		iparms.db_index = TF_EM_DB_EM_REC;
+		iparms.subtype = TF_EM_DB_EM_REC;
 		iparms.info = &info;
 
 		rc = tf_rm_get_info(&iparms);

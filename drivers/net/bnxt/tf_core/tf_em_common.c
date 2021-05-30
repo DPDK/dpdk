@@ -54,7 +54,7 @@ tbl_scope_cb_find(uint32_t tbl_scope_id)
 
 	/* Check that id is valid */
 	parms.rm_db = eem_db[TF_DIR_RX];
-	parms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
+	parms.subtype = TF_EM_TBL_TYPE_TBL_SCOPE;
 	parms.index = tbl_scope_id;
 	parms.allocated = &allocated;
 
@@ -895,7 +895,7 @@ tf_em_ext_common_bind(struct tf *tfp,
 		return -EINVAL;
 	}
 
-	db_cfg.type = TF_DEVICE_MODULE_TYPE_EM;
+	db_cfg.module = TF_MODULE_TYPE_EM;
 	db_cfg.num_elements = parms->num_elements;
 	db_cfg.cfg = parms->cfg;
 

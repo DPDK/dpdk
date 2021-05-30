@@ -17,29 +17,6 @@ struct tf;
 struct tf_session;
 
 /**
- * Device module types
- */
-enum tf_device_module_type {
-	/**
-	 * Identifier module
-	 */
-	TF_DEVICE_MODULE_TYPE_IDENTIFIER,
-	/**
-	 * Table type module
-	 */
-	TF_DEVICE_MODULE_TYPE_TABLE,
-	/**
-	 * TCAM module
-	 */
-	TF_DEVICE_MODULE_TYPE_TCAM,
-	/**
-	 * EM module
-	 */
-	TF_DEVICE_MODULE_TYPE_EM,
-	TF_DEVICE_MODULE_TYPE_MAX
-};
-
-/**
  * The Device module provides a general device template. A supported
  * device type should implement one or more of the listed function
  * pointers according to its capabilities.

@@ -52,7 +52,7 @@ tf_ident_bind(struct tf *tfp,
 		return -EINVAL;
 	}
 
-	db_cfg.type = TF_DEVICE_MODULE_TYPE_IDENTIFIER;
+	db_cfg.module = TF_MODULE_TYPE_IDENTIFIER;
 	db_cfg.num_elements = parms->num_elements;
 	db_cfg.cfg = parms->cfg;
 
@@ -161,7 +161,7 @@ tf_ident_alloc(struct tf *tfp __rte_unused,
 
 	/* Allocate requested element */
 	aparms.rm_db = ident_db[parms->dir];
-	aparms.db_index = parms->type;
+	aparms.subtype = parms->type;
 	aparms.index = &id;
 	aparms.base_index = &base_id;
 	rc = tf_rm_allocate(&aparms);
@@ -215,7 +215,7 @@ tf_ident_free(struct tf *tfp __rte_unused,
 
 	/* Check if element is in use */
 	aparms.rm_db = ident_db[parms->dir];
-	aparms.db_index = parms->type;
+	aparms.subtype = parms->type;
 	aparms.index = parms->id;
 	aparms.base_index = &base_id;
 	aparms.allocated = &allocated;
@@ -255,7 +255,7 @@ tf_ident_free(struct tf *tfp __rte_unused,
 
 	/* Free requested element */
 	fparms.rm_db = ident_db[parms->dir];
-	fparms.db_index = parms->type;
+	fparms.subtype = parms->type;
 	fparms.index = parms->id;
 	rc = tf_rm_free(&fparms);
 	if (rc) {
@@ -298,7 +298,7 @@ tf_ident_search(struct tf *tfp __rte_unused,
 
 	/* Check if element is in use */
 	aparms.rm_db = ident_db[parms->dir];
-	aparms.db_index = parms->type;
+	aparms.subtype = parms->type;
 	aparms.index = parms->search_id;
 	aparms.base_index = &base_id;
 	aparms.allocated = &allocated;

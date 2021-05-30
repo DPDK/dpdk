@@ -65,34 +65,30 @@ const char *tf_tbl_type_2_str(enum tf_tbl_type tbl_type);
 const char *tf_em_tbl_type_2_str(enum tf_em_tbl_type em_type);
 
 /**
- * Helper function converting device module type and module type to
+ * Helper function converting module and submodule type to
  * text string.
  *
- * [in] dm_type
- *   Device Module type
+ * [in] module
+ *   Module type
  *
- * [in] mod_type
- *   Module specific type
+ * [in] submodule
+ *   Module specific subtype
  *
  * Returns:
  *   Pointer to a char string holding the string for the EM type
  */
-const char *tf_device_module_type_subtype_2_str
-					(enum tf_device_module_type dm_type,
-					 uint16_t mod_type);
+const char *tf_module_subtype_2_str(enum tf_module_type module,
+				    uint16_t subtype);
 
 /**
- * Helper function converting device module type to text string
+ * Helper function converting module type to text string
  *
- * [in] dm_type
- *   Device Module type
- *
- * [in] mod_type
- *   Module specific type
+ * [in] module
+ *   Module type
  *
  * Returns:
  *   Pointer to a char string holding the string for the EM type
  */
-const char *tf_device_module_type_2_str(enum tf_device_module_type dm_type);
+const char *tf_module_2_str(enum tf_module_type module);
 
 #endif /* _TF_UTIL_H_ */

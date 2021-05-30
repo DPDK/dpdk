@@ -144,7 +144,7 @@ int
 tf_if_tbl_get(struct tf *tfp,
 	      struct tf_if_tbl_get_parms *parms)
 {
-	int rc;
+	int rc = 0;
 	struct tf_if_tbl_get_hcapi_parms hparms;
 
 	TF_CHECK_PARMS3(tfp, parms, parms->data);

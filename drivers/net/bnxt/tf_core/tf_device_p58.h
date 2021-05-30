@@ -64,6 +64,105 @@ struct tf_rm_element_cfg tf_tbl_p58[TF_TBL_TYPE_MAX] = {
 	[TF_TBL_TYPE_MIRROR_CONFIG] = {
 		TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P58_MIRROR
 	},
+	/* Policy - ARs in bank 1 */
+	[TF_TBL_TYPE_FULL_ACT_RECORD] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_1,
+		.slices          = 4,
+		.divider         = 8,
+	},
+	[TF_TBL_TYPE_COMPACT_ACT_RECORD] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
+		.parent_subtype  = TF_TBL_TYPE_FULL_ACT_RECORD,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_1,
+		.slices          = 8,
+		.divider         = 8,
+	},
+	/* Policy - Encaps in bank 2 */
+	[TF_TBL_TYPE_ACT_ENCAP_8B] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
+		.slices          = 8,
+		.divider         = 8,
+	},
+	[TF_TBL_TYPE_ACT_ENCAP_16B] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
+		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
+		.slices          = 4,
+		.divider         = 8,
+	},
+	[TF_TBL_TYPE_ACT_ENCAP_32B] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
+		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
+		.slices          = 2,
+		.divider         = 8,
+	},
+	[TF_TBL_TYPE_ACT_ENCAP_64B] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
+		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
+		.slices          = 1,
+		.divider         = 8,
+	},
+	/* Policy - Modify in bank 2 with Encaps */
+	[TF_TBL_TYPE_ACT_MODIFY_8B] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
+		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
+		.slices          = 8,
+		.divider         = 8,
+	},
+	[TF_TBL_TYPE_ACT_MODIFY_16B] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
+		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
+		.slices          = 4,
+		.divider         = 8,
+	},
+	[TF_TBL_TYPE_ACT_MODIFY_32B] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
+		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
+		.slices          = 2,
+		.divider         = 8,
+	},
+	[TF_TBL_TYPE_ACT_MODIFY_64B] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
+		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
+		.slices          = 1,
+		.divider         = 8,
+	},
+	/* Policy - SP in bank 0 */
+	[TF_TBL_TYPE_ACT_SP_SMAC] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
+		.slices          = 8,
+		.divider         = 8,
+	},
+	[TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
+		.parent_subtype  = TF_TBL_TYPE_ACT_SP_SMAC,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
+		.slices          = 4,
+		.divider         = 8,
+	},
+	[TF_TBL_TYPE_ACT_SP_SMAC_IPV6] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
+		.parent_subtype  = TF_TBL_TYPE_ACT_SP_SMAC,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
+		.slices          = 2,
+		.divider         = 8,
+	},
+	/* Policy - Stats in bank 3 */
+	[TF_TBL_TYPE_ACT_STATS_64] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_3,
+		.slices          = 8,
+		.divider         = 8,
+	},
 };
 
 struct tf_rm_element_cfg tf_em_int_p58[TF_EM_TBL_TYPE_MAX] = {
@@ -72,7 +171,16 @@ struct tf_rm_element_cfg tf_em_int_p58[TF_EM_TBL_TYPE_MAX] = {
 	},
 };
 
-struct tf_if_tbl_cfg tf_if_tbl_p58[TF_IF_TBL_TYPE_MAX];
+struct tf_if_tbl_cfg tf_if_tbl_p58[TF_IF_TBL_TYPE_MAX] = {
+	[TF_IF_TBL_TYPE_PROF_PARIF_DFLT_ACT_REC_PTR] = {
+		TF_IF_TBL_CFG, CFA_P58_TBL_PROF_PARIF_DFLT_ACT_REC_PTR},
+	[TF_IF_TBL_TYPE_PROF_PARIF_ERR_ACT_REC_PTR] = {
+		TF_IF_TBL_CFG, CFA_P58_TBL_PROF_PARIF_ERR_ACT_REC_PTR},
+	[TF_IF_TBL_TYPE_ILT] = {
+		TF_IF_TBL_CFG, CFA_P58_TBL_ILT},
+	[TF_IF_TBL_TYPE_VSPT] = {
+		TF_IF_TBL_CFG, CFA_P58_TBL_VSPT},
+};
 
 struct tf_global_cfg_cfg tf_global_cfg_p58[TF_GLOBAL_CFG_TYPE_MAX] = {
 	[TF_TUNNEL_ENCAP] = {

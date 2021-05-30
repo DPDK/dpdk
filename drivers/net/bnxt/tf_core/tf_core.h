@@ -154,6 +154,30 @@ enum tf_device_type {
 };
 
 /**
+ * Module types
+ */
+enum tf_module_type {
+	/**
+	 * Identifier module
+	 */
+	TF_MODULE_TYPE_IDENTIFIER,
+	/**
+	 * Table type module
+	 */
+	TF_MODULE_TYPE_TABLE,
+	/**
+	 * TCAM module
+	 */
+	TF_MODULE_TYPE_TCAM,
+	/**
+	 * EM module
+	 */
+	TF_MODULE_TYPE_EM,
+	TF_MODULE_TYPE_MAX
+};
+
+
+/**
  * Identifier resource types
  */
 enum tf_identifier_type {

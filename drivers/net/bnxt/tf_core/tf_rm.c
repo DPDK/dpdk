@@ -43,9 +43,17 @@ struct tf_rm_element {
 	struct tf_rm_alloc_info alloc;
 
 	/**
+	 * If cfg_type == HCAPI_BA_CHILD, this field indicates
+	 * the parent module subtype for look up into the parent pool.
+	 * An example subtype is TF_TBL_TYPE_FULL_ACT_RECORD which is a
+	 * module subtype of TF_MODULE_TYPE_TABLE.
+	 */
+	uint16_t parent_subtype;
+
+	/**
 	 * Bit allocator pool for the element. Pool size is controlled
 	 * by the struct tf_session_resources at time of session creation.
-	 * Null indicates that the element is not used for the device.
+	 * Null indicates that the pool is not used for the element.
 	 */
 	struct bitalloc *pool;
 };
@@ -67,7 +75,7 @@ struct tf_rm_new_db {
 	/**
 	 * Module type, used for logging purposes.
 	 */
-	enum tf_device_module_type type;
+	enum tf_module_type module;
 
 	/**
 	 * The DB consists of an array of elements
@@ -100,7 +108,7 @@ struct tf_rm_new_db {
  */
 static void
 tf_rm_count_hcapi_reservations(enum tf_dir dir,
-			       enum tf_device_module_type type,
+			       enum tf_module_type module,
 			       struct tf_rm_element_cfg *cfg,
 			       uint16_t *reservations,
 			       uint16_t count,
@@ -110,8 +118,7 @@ tf_rm_count_hcapi_reservations(enum tf_dir dir,
 	uint16_t cnt = 0;
 
 	for (i = 0; i < count; i++) {
-		if ((cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI ||
-		     cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA) &&
+		if (cfg[i].cfg_type != TF_RM_ELEM_CFG_NULL &&
 		    reservations[i] > 0)
 			cnt++;
 
@@ -120,14 +127,14 @@ tf_rm_count_hcapi_reservations(enum tf_dir dir,
 		 * split configuration array thus it would fail for
 		 * this type of check.
 		 */
-		if (type != TF_DEVICE_MODULE_TYPE_EM &&
+		if (module != TF_MODULE_TYPE_EM &&
 		    cfg[i].cfg_type == TF_RM_ELEM_CFG_NULL &&
 		    reservations[i] > 0) {
 			TFP_DRV_LOG(ERR,
 				"%s, %s, %s allocation of %d not supported\n",
-				tf_device_module_type_2_str(type),
+				tf_module_2_str(module),
 				tf_dir_2_str(dir),
-				tf_device_module_type_subtype_2_str(type, i),
+				tf_module_subtype_2_str(module, i),
 				reservations[i]);
 		}
 	}
@@ -156,8 +163,10 @@ enum tf_rm_adjust_type {
  * [in] action
  *   Adjust action
  *
- * [in] db_index
- *   DB index for the element type
+ * [in] subtype
+ *   TF module subtype used as an index into the database.
+ *   An example subtype is TF_TBL_TYPE_FULL_ACT_RECORD which is a
+ *   module subtype of TF_MODULE_TYPE_TABLE.
  *
  * [in] index
  *   Index to convert
@@ -172,14 +181,14 @@ enum tf_rm_adjust_type {
 static int
 tf_rm_adjust_index(struct tf_rm_element *db,
 		   enum tf_rm_adjust_type action,
-		   uint32_t db_index,
+		   uint32_t subtype,
 		   uint32_t index,
 		   uint32_t *adj_index)
 {
 	int rc = 0;
 	uint32_t base_index;
 
-	base_index = db[db_index].alloc.entry.start;
+	base_index = db[subtype].alloc.entry.start;
 
 	switch (action) {
 	case TF_RM_ADJUST_RM_BASE:
@@ -201,7 +210,7 @@ tf_rm_adjust_index(struct tf_rm_element *db,
  * [in] dir
  *   Receive or transmit direction
  *
- * [in] type
+ * [in] module
  *   Type of Device Module
  *
  * [in] count
@@ -214,7 +223,7 @@ tf_rm_adjust_index(struct tf_rm_element *db,
  */
 static void
 tf_rm_log_residuals(enum tf_dir dir,
-		    enum tf_device_module_type type,
+		    enum tf_module_type module,
 		    uint16_t count,
 		    uint16_t *residuals)
 {
@@ -228,7 +237,7 @@ tf_rm_log_residuals(enum tf_dir dir,
 			TFP_DRV_LOG(ERR,
 				"%s, %s was not cleaned up, %d outstanding\n",
 				tf_dir_2_str(dir),
-				tf_device_module_type_subtype_2_str(type, i),
+				tf_module_subtype_2_str(module, i),
 				residuals[i]);
 	}
 }
@@ -295,7 +304,7 @@ tf_rm_check_residuals(struct tf_rm_new_db *rm_db,
 	iparms.rm_db = rm_db;
 	iparms.count = &count;
 	for (i = 0, found = 0; i < rm_db->num_entries; i++) {
-		iparms.db_index = i;
+		iparms.subtype = i;
 		rc = tf_rm_get_inuse_count(&iparms);
 		/* Not a device supported entry, just skip */
 		if (rc == -ENOTSUP)
@@ -329,13 +338,13 @@ tf_rm_check_residuals(struct tf_rm_new_db *rm_db,
 		for (i = 0, f = 0; i < rm_db->num_entries; i++) {
 			if (residuals[i] == 0)
 				continue;
-			aparms.db_index = i;
+			aparms.subtype = i;
 			aparms.info = &info;
 			rc = tf_rm_get_info(&aparms);
 			if (rc)
 				goto cleanup_all;
 
-			hparms.db_index = i;
+			hparms.subtype = i;
 			rc = tf_rm_get_hcapi_type(&hparms);
 			if (rc)
 				goto cleanup_all;
@@ -349,7 +358,7 @@ tf_rm_check_residuals(struct tf_rm_new_db *rm_db,
 	}
 
 	tf_rm_log_residuals(rm_db->dir,
-			    rm_db->type,
+			    rm_db->module,
 			    rm_db->num_entries,
 			    residuals);
 
@@ -367,16 +376,93 @@ tf_rm_check_residuals(struct tf_rm_new_db *rm_db,
 	return rc;
 }
 
+/**
+ * Some resources do not have a 1:1 mapping between the Truflow type and the cfa
+ * resource type (HCAPI RM).  These resources have multiple Truflow types which
+ * map to a single HCAPI RM type.  In order to support this, one Truflow type
+ * sharing the HCAPI resources is designated the parent.  All other Truflow
+ * types associated with that HCAPI RM type are designated the children.
+ *
+ * This function updates the resource counts of any HCAPI_BA_PARENT with the
+ * counts of the HCAPI_BA_CHILDREN.  These are read from the alloc_cnt and
+ * written back to the req_cnt.
+ *
+ * [in] cfg
+ *   Pointer to an array of module specific Truflow type indexed RM cfg items
+ *
+ * [in] alloc_cnt
+ *   Pointer to the tf_open_session() configured array of module specific
+ *   Truflow type indexed requested counts.
+ *
+ * [in/out] req_cnt
+ *   Pointer to the location to put the updated resource counts.
+ *
+ * Returns:
+ *     0          - Success
+ *     -          - Failure if negative
+ */
+static int
+tf_rm_update_parent_reservations(struct tf_rm_element_cfg *cfg,
+				 uint16_t *alloc_cnt,
+				 uint16_t num_elements,
+				 uint16_t *req_cnt)
+{
+	int parent, child;
+
+	/* Search through all the elements */
+	for (parent = 0; parent < num_elements; parent++) {
+		uint16_t combined_cnt = 0;
+
+		/* If I am a parent */
+		if (cfg[parent].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_PARENT) {
+			/* start with my own count */
+			RTE_ASSERT(cfg[parent].slices);
+			combined_cnt =
+				alloc_cnt[parent] / cfg[parent].slices;
+
+			if (alloc_cnt[parent] % cfg[parent].slices)
+				combined_cnt++;
+
+			/* Search again through all the elements */
+			for (child = 0; child < num_elements; child++) {
+				/* If this is one of my children */
+				if (cfg[child].cfg_type ==
+				    TF_RM_ELEM_CFG_HCAPI_BA_CHILD &&
+				    cfg[child].parent_subtype == parent) {
+					uint16_t cnt = 0;
+					RTE_ASSERT(cfg[child].slices);
+
+					/* Increment the parents combined count
+					 * with each child's count adjusted for
+					 * number of slices per RM allocated item.
+					 */
+					cnt =
+					 alloc_cnt[child] / cfg[child].slices;
+
+					if (alloc_cnt[child] % cfg[child].slices)
+						cnt++;
+
+					combined_cnt += cnt;
+					/* Clear the requested child count */
+					req_cnt[child] = 0;
+				}
+			}
+			/* Save the parent count to be requested */
+			req_cnt[parent] = combined_cnt;
+		}
+	}
+	return 0;
+}
+
 int
 tf_rm_create_db(struct tf *tfp,
 		struct tf_rm_create_db_parms *parms)
 {
 	int rc;
-	int i;
-	int j;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
-	uint16_t max_types;
+	int i, j;
+	uint16_t max_types, hcapi_items, *req_cnt;
 	struct tfp_calloc_parms cparms;
 	struct tf_rm_resc_req_entry *query;
 	enum tf_rm_resc_resv_strategy resv_strategy;
@@ -385,7 +471,6 @@ tf_rm_create_db(struct tf *tfp,
 	struct tf_rm_new_db *rm_db;
 	struct tf_rm_element *db;
 	uint32_t pool_size;
-	uint16_t hcapi_items;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -401,9 +486,9 @@ tf_rm_create_db(struct tf *tfp,
 
 	/* Need device max number of elements for the RM QCAPS */
 	rc = dev->ops->tf_dev_get_max_types(tfp, &max_types);
-	if (rc)
-		return rc;
 
+
+	/* Allocate memory for RM QCAPS request */
 	cparms.nitems = max_types;
 	cparms.size = sizeof(struct tf_rm_resc_req_entry);
 	cparms.alignment = 0;
@@ -423,6 +508,28 @@ tf_rm_create_db(struct tf *tfp,
 	if (rc)
 		return rc;
 
+	/* Copy requested counts (alloc_cnt) from tf_open_session() to local
+	 * copy (req_cnt) so that it can be updated if required.
+	 */
+
+	cparms.nitems = parms->num_elements;
+	cparms.size = sizeof(uint16_t);
+	rc = tfp_calloc(&cparms);
+	if (rc)
+		return rc;
+
+	req_cnt = (uint16_t *)cparms.mem_va;
+
+	tfp_memcpy(req_cnt, parms->alloc_cnt,
+		   parms->num_elements * sizeof(uint16_t));
+
+	/* Update the req_cnt based upon the element configuration
+	 */
+	tf_rm_update_parent_reservations(parms->cfg,
+					 parms->alloc_cnt,
+					 parms->num_elements,
+					 req_cnt);
+
 	/* Process capabilities against DB requirements. However, as a
 	 * DB can hold elements that are not HCAPI we can reduce the
 	 * req msg content by removing those out of the request yet
@@ -430,21 +537,17 @@ tf_rm_create_db(struct tf *tfp,
 	 * remove entries where there are no request for elements.
 	 */
 	tf_rm_count_hcapi_reservations(parms->dir,
-				       parms->type,
+				       parms->module,
 				       parms->cfg,
-				       parms->alloc_cnt,
+				       req_cnt,
 				       parms->num_elements,
 				       &hcapi_items);
 
-	/* Handle the case where a DB create request really ends up
-	 * being empty. Unsupported (if not rare) case but possible
-	 * that no resources are necessary for a 'direction'.
-	 */
 	if (hcapi_items == 0) {
 		TFP_DRV_LOG(ERR,
-			"%s: DB create request for Zero elements, DB Type:%s\n",
-			tf_dir_2_str(parms->dir),
-			tf_device_module_type_2_str(parms->type));
+			    "%s: module:%s Empty RM DB create request\n",
+			    tf_dir_2_str(parms->dir),
+			    tf_module_2_str(parms->module));
 
 		parms->rm_db = NULL;
 		return -ENOMEM;
@@ -467,44 +570,45 @@ tf_rm_create_db(struct tf *tfp,
 
 	/* Build the request */
 	for (i = 0, j = 0; i < parms->num_elements; i++) {
-		/* Skip any non HCAPI cfg elements */
-		if (parms->cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI ||
-		    parms->cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA) {
-			/* Only perform reservation for entries that
-			 * has been requested
-			 */
-			if (parms->alloc_cnt[i] == 0)
-				continue;
+		struct tf_rm_element_cfg *cfg = &parms->cfg[i];
+		uint16_t hcapi_type = cfg->hcapi_type;
 
-			/* Verify that we can get the full amount
-			 * allocated per the qcaps availability.
+		/* Only perform reservation for requested entries
+		 */
+		if (req_cnt[i] == 0)
+			continue;
+
+		/* Skip any children in the request */
+		if (cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI ||
+		    cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA ||
+		    cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_PARENT) {
+
+			/* Verify that we can get the full amount per qcaps.
 			 */
-			if (parms->alloc_cnt[i] <=
-			    query[parms->cfg[i].hcapi_type].max) {
-				req[j].type = parms->cfg[i].hcapi_type;
-				req[j].min = parms->alloc_cnt[i];
-				req[j].max = parms->alloc_cnt[i];
+			if (req_cnt[i] <= query[hcapi_type].max) {
+				req[j].type = hcapi_type;
+				req[j].min = req_cnt[i];
+				req[j].max = req_cnt[i];
 				j++;
 			} else {
 				const char *type_str;
-				uint16_t hcapi_type = parms->cfg[i].hcapi_type;
 
 				dev->ops->tf_dev_get_resource_str(tfp,
-								  hcapi_type,
-								  &type_str);
+							      hcapi_type,
+							      &type_str);
 				TFP_DRV_LOG(ERR,
-					"%s: Resource failure, type:%d:%s\n",
-					tf_dir_2_str(parms->dir),
-					hcapi_type, type_str);
-				TFP_DRV_LOG(ERR,
-					"req:%d, avail:%d\n",
-					parms->alloc_cnt[i],
-					query[hcapi_type].max);
+					    "Failure, %s:%d:%s req:%d avail:%d\n",
+					    tf_dir_2_str(parms->dir),
+					    hcapi_type, type_str,
+					    req_cnt[i],
+					    query[hcapi_type].max);
 				return -EINVAL;
 			}
 		}
 	}
 
+	/* Allocate all resources for the module type
+	 */
 	rc = tf_msg_session_resc_alloc(tfp,
 				       dev,
 				       parms->dir,
@@ -532,32 +636,56 @@ tf_rm_create_db(struct tf *tfp,
 
 	db = rm_db->db;
 	for (i = 0, j = 0; i < parms->num_elements; i++) {
-		db[i].cfg_type = parms->cfg[i].cfg_type;
-		db[i].hcapi_type = parms->cfg[i].hcapi_type;
+		struct tf_rm_element_cfg *cfg = &parms->cfg[i];
+		const char *type_str;
 
-		/* Skip any non HCAPI types as we didn't include them
-		 * in the reservation request.
+		dev->ops->tf_dev_get_resource_str(tfp,
+						  cfg->hcapi_type,
+						  &type_str);
+
+		db[i].cfg_type = cfg->cfg_type;
+		db[i].hcapi_type = cfg->hcapi_type;
+
+		/* Save the parent subtype for later use to find the pool
 		 */
-		if (parms->cfg[i].cfg_type != TF_RM_ELEM_CFG_HCAPI &&
-		    parms->cfg[i].cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
-			continue;
+		if (cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_CHILD)
+			db[i].parent_subtype = cfg->parent_subtype;
 
 		/* If the element didn't request an allocation no need
 		 * to create a pool nor verify if we got a reservation.
 		 */
-		if (parms->alloc_cnt[i] == 0)
+		if (req_cnt[i] == 0)
+			continue;
+
+		/* Skip any children or invalid
+		 */
+		if (cfg->cfg_type != TF_RM_ELEM_CFG_HCAPI &&
+		    cfg->cfg_type != TF_RM_ELEM_CFG_HCAPI_BA &&
+		    cfg->cfg_type != TF_RM_ELEM_CFG_HCAPI_BA_PARENT)
 			continue;
 
 		/* If the element had requested an allocation and that
 		 * allocation was a success (full amount) then
 		 * allocate the pool.
 		 */
-		if (parms->alloc_cnt[i] == resv[j].stride) {
+		if (req_cnt[i] == resv[j].stride) {
 			db[i].alloc.entry.start = resv[j].start;
 			db[i].alloc.entry.stride = resv[j].stride;
 
-			/* Only allocate BA pool if so requested */
-			if (parms->cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA) {
+			/* Only allocate BA pool if a BA type not a child */
+			if (cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA ||
+			    cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_PARENT) {
+				if (cfg->divider) {
+					resv[j].stride =
+						resv[j].stride / cfg->divider;
+					if (resv[j].stride <= 0) {
+						TFP_DRV_LOG(ERR,
+						     "%s:Divide fails:%d:%s\n",
+						     tf_dir_2_str(parms->dir),
+						     cfg->hcapi_type, type_str);
+						goto fail;
+					}
+				}
 				/* Create pool */
 				pool_size = (BITALLOC_SIZEOF(resv[j].stride) /
 					     sizeof(struct bitalloc));
@@ -567,9 +695,9 @@ tf_rm_create_db(struct tf *tfp,
 				rc = tfp_calloc(&cparms);
 				if (rc) {
 					TFP_DRV_LOG(ERR,
-					     "%s: Pool alloc failed, type:%d\n",
-					     tf_dir_2_str(parms->dir),
-					     db[i].cfg_type);
+					 "%s: Pool alloc failed, type:%d:%s\n",
+					 tf_dir_2_str(parms->dir),
+					 cfg->hcapi_type, type_str);
 					goto fail;
 				}
 				db[i].pool = (struct bitalloc *)cparms.mem_va;
@@ -577,9 +705,9 @@ tf_rm_create_db(struct tf *tfp,
 				rc = ba_init(db[i].pool, resv[j].stride);
 				if (rc) {
 					TFP_DRV_LOG(ERR,
-					     "%s: Pool init failed, type:%d\n",
-					     tf_dir_2_str(parms->dir),
-					     db[i].cfg_type);
+					  "%s: Pool init failed, type:%d:%s\n",
+					  tf_dir_2_str(parms->dir),
+					  cfg->hcapi_type, type_str);
 					goto fail;
 				}
 			}
@@ -589,25 +717,21 @@ tf_rm_create_db(struct tf *tfp,
 			 * all elements, not any less.
 			 */
 			TFP_DRV_LOG(ERR,
-				    "%s: Alloc failed, type:%d\n",
-				    tf_dir_2_str(parms->dir),
-				    db[i].cfg_type);
-			TFP_DRV_LOG(ERR,
-				    "req:%d, alloc:%d\n",
-				    parms->alloc_cnt[i],
-				    resv[j].stride);
+				    "%s: Alloc failed %d:%s req:%d, alloc:%d\n",
+				    tf_dir_2_str(parms->dir), cfg->hcapi_type,
+				    type_str, req_cnt[i], resv[j].stride);
 			goto fail;
 		}
 	}
 
 	rm_db->num_entries = parms->num_elements;
 	rm_db->dir = parms->dir;
-	rm_db->type = parms->type;
+	rm_db->module = parms->module;
 	*parms->rm_db = (void *)rm_db;
 
 	tfp_free((void *)req);
 	tfp_free((void *)resv);
-
+	tfp_free((void *)req_cnt);
 	return 0;
 
  fail:
@@ -616,6 +740,7 @@ tf_rm_create_db(struct tf *tfp,
 	tfp_free((void *)db->pool);
 	tfp_free((void *)db);
 	tfp_free((void *)rm_db);
+	tfp_free((void *)req_cnt);
 	parms->rm_db = NULL;
 
 	return -EINVAL;
@@ -682,7 +807,7 @@ tf_rm_free_db(struct tf *tfp,
 			TFP_DRV_LOG(ERR,
 				    "%s: Internal Flush error, module:%s\n",
 				    tf_dir_2_str(parms->dir),
-				    tf_device_module_type_2_str(rm_db->type));
+				    tf_module_2_str(rm_db->module));
 	}
 
 	/* No need to check for configuration type, even if we do not
@@ -695,6 +820,54 @@ tf_rm_free_db(struct tf *tfp,
 
 	return rc;
 }
+/**
+ * Get the bit allocator pool associated with the subtype and the db
+ *
+ * [in] rm_db
+ *   Pointer to the DB
+ *
+ * [in] subtype
+ *   Module subtype used to index into the module specific database.
+ *   An example subtype is TF_TBL_TYPE_FULL_ACT_RECORD which is a
+ *   module subtype of TF_MODULE_TYPE_TABLE.
+ *
+ * [in/out] pool
+ *   Pointer to the bit allocator pool used
+ *
+ * [in/out] new_subtype
+ *   Pointer to the subtype of the actual pool used
+ * Returns:
+ *     0          - Success
+ *   - ENOTSUP    - Operation not supported
+ */
+static int
+tf_rm_get_pool(struct tf_rm_new_db *rm_db,
+	       uint16_t subtype,
+	       struct bitalloc **pool,
+	       uint16_t *new_subtype)
+{
+	int rc = 0;
+	uint16_t tmp_subtype = subtype;
+
+	/* If we are a child, get the parent table index */
+	if (rm_db->db[subtype].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_CHILD)
+		tmp_subtype = rm_db->db[subtype].parent_subtype;
+
+	*pool = rm_db->db[tmp_subtype].pool;
+
+	/* Bail out if the pool is not valid, should never happen */
+	if (rm_db->db[tmp_subtype].pool == NULL) {
+		rc = -ENOTSUP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Invalid pool for this type:%d, rc:%s\n",
+			    tf_dir_2_str(rm_db->dir),
+			    tmp_subtype,
+			    strerror(-rc));
+		return rc;
+	}
+	*new_subtype = tmp_subtype;
+	return rc;
+}
 
 int
 tf_rm_allocate(struct tf_rm_allocate_parms *parms)
@@ -704,37 +877,33 @@ tf_rm_allocate(struct tf_rm_allocate_parms *parms)
 	uint32_t index;
 	struct tf_rm_new_db *rm_db;
 	enum tf_rm_elem_cfg_type cfg_type;
+	struct bitalloc *pool;
+	uint16_t subtype;
 
 	TF_CHECK_PARMS2(parms, parms->rm_db);
 
 	rm_db = (struct tf_rm_new_db *)parms->rm_db;
-	if (!rm_db->db)
-		return -EINVAL;
-	cfg_type = rm_db->db[parms->db_index].cfg_type;
+	TF_CHECK_PARMS1(rm_db->db);
+
+	cfg_type = rm_db->db[parms->subtype].cfg_type;
 
 	/* Bail out if not controlled by RM */
-	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
+	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA &&
+	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA_PARENT &&
+	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA_CHILD)
 		return -ENOTSUP;
 
-	/* Bail out if the pool is not valid, should never happen */
-	if (rm_db->db[parms->db_index].pool == NULL) {
-		rc = -ENOTSUP;
-		TFP_DRV_LOG(ERR,
-			    "%s: Invalid pool for this type:%d, rc:%s\n",
-			    tf_dir_2_str(rm_db->dir),
-			    parms->db_index,
-			    strerror(-rc));
+	rc = tf_rm_get_pool(rm_db, parms->subtype, &pool, &subtype);
+	if (rc)
 		return rc;
-	}
-
 	/*
 	 * priority  0: allocate from top of the tcam i.e. high
 	 * priority !0: allocate index from bottom i.e lowest
 	 */
 	if (parms->priority)
-		id = ba_alloc_reverse(rm_db->db[parms->db_index].pool);
+		id = ba_alloc_reverse(pool);
 	else
-		id = ba_alloc(rm_db->db[parms->db_index].pool);
+		id = ba_alloc(pool);
 	if (id == BA_FAIL) {
 		rc = -ENOMEM;
 		TFP_DRV_LOG(ERR,
@@ -747,7 +916,7 @@ tf_rm_allocate(struct tf_rm_allocate_parms *parms)
 	/* Adjust for any non zero start value */
 	rc = tf_rm_adjust_index(rm_db->db,
 				TF_RM_ADJUST_ADD_BASE,
-				parms->db_index,
+				subtype,
 				id,
 				&index);
 	if (rc) {
@@ -772,39 +941,35 @@ tf_rm_free(struct tf_rm_free_parms *parms)
 	uint32_t adj_index;
 	struct tf_rm_new_db *rm_db;
 	enum tf_rm_elem_cfg_type cfg_type;
+	struct bitalloc *pool;
+	uint16_t subtype;
 
 	TF_CHECK_PARMS2(parms, parms->rm_db);
-
 	rm_db = (struct tf_rm_new_db *)parms->rm_db;
-	if (!rm_db->db)
-		return -EINVAL;
-	cfg_type = rm_db->db[parms->db_index].cfg_type;
+	TF_CHECK_PARMS1(rm_db->db);
+
+	cfg_type = rm_db->db[parms->subtype].cfg_type;
 
 	/* Bail out if not controlled by RM */
-	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
+	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA &&
+	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA_PARENT &&
+	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA_CHILD)
 		return -ENOTSUP;
 
-	/* Bail out if the pool is not valid, should never happen */
-	if (rm_db->db[parms->db_index].pool == NULL) {
-		rc = -ENOTSUP;
-		TFP_DRV_LOG(ERR,
-			    "%s: Invalid pool for this type:%d, rc:%s\n",
-			    tf_dir_2_str(rm_db->dir),
-			    parms->db_index,
-			    strerror(-rc));
+	rc = tf_rm_get_pool(rm_db, parms->subtype, &pool, &subtype);
+	if (rc)
 		return rc;
-	}
 
 	/* Adjust for any non zero start value */
 	rc = tf_rm_adjust_index(rm_db->db,
 				TF_RM_ADJUST_RM_BASE,
-				parms->db_index,
+				subtype,
 				parms->index,
 				&adj_index);
 	if (rc)
 		return rc;
 
-	rc = ba_free(rm_db->db[parms->db_index].pool, adj_index);
+	rc = ba_free(pool, adj_index);
 	/* No logging direction matters and that is not available here */
 	if (rc)
 		return rc;
@@ -819,33 +984,30 @@ tf_rm_is_allocated(struct tf_rm_is_allocated_parms *parms)
 	uint32_t adj_index;
 	struct tf_rm_new_db *rm_db;
 	enum tf_rm_elem_cfg_type cfg_type;
+	struct bitalloc *pool;
+	uint16_t subtype;
 
 	TF_CHECK_PARMS2(parms, parms->rm_db);
-
 	rm_db = (struct tf_rm_new_db *)parms->rm_db;
-	if (!rm_db->db)
-		return -EINVAL;
-	cfg_type = rm_db->db[parms->db_index].cfg_type;
+	TF_CHECK_PARMS1(rm_db->db);
+
+	cfg_type = rm_db->db[parms->subtype].cfg_type;
+
 
 	/* Bail out if not controlled by RM */
-	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
+	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA &&
+	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA_PARENT &&
+	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA_CHILD)
 		return -ENOTSUP;
 
-	/* Bail out if the pool is not valid, should never happen */
-	if (rm_db->db[parms->db_index].pool == NULL) {
-		rc = -ENOTSUP;
-		TFP_DRV_LOG(ERR,
-			    "%s: Invalid pool for this type:%d, rc:%s\n",
-			    tf_dir_2_str(rm_db->dir),
-			    parms->db_index,
-			    strerror(-rc));
+	rc = tf_rm_get_pool(rm_db, parms->subtype, &pool, &subtype);
+	if (rc)
 		return rc;
-	}
 
 	/* Adjust for any non zero start value */
 	rc = tf_rm_adjust_index(rm_db->db,
 				TF_RM_ADJUST_RM_BASE,
-				parms->db_index,
+				subtype,
 				parms->index,
 				&adj_index);
 	if (rc)
@@ -853,8 +1015,7 @@ tf_rm_is_allocated(struct tf_rm_is_allocated_parms *parms)
 
 	if (parms->base_index)
 		*parms->base_index = adj_index;
-	*parms->allocated = ba_inuse(rm_db->db[parms->db_index].pool,
-				     adj_index);
+	*parms->allocated = ba_inuse(pool, adj_index);
 
 	return rc;
 }
@@ -866,19 +1027,17 @@ tf_rm_get_info(struct tf_rm_get_alloc_info_parms *parms)
 	enum tf_rm_elem_cfg_type cfg_type;
 
 	TF_CHECK_PARMS2(parms, parms->rm_db);
-
 	rm_db = (struct tf_rm_new_db *)parms->rm_db;
-	if (!rm_db->db)
-		return -EINVAL;
-	cfg_type = rm_db->db[parms->db_index].cfg_type;
+	TF_CHECK_PARMS1(rm_db->db);
+
+	cfg_type = rm_db->db[parms->subtype].cfg_type;
 
 	/* Bail out if not controlled by HCAPI */
-	if (cfg_type != TF_RM_ELEM_CFG_HCAPI &&
-	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
+	if (cfg_type == TF_RM_ELEM_CFG_NULL)
 		return -ENOTSUP;
 
 	memcpy(parms->info,
-	       &rm_db->db[parms->db_index].alloc,
+	       &rm_db->db[parms->subtype].alloc,
 	       sizeof(struct tf_rm_alloc_info));
 
 	return 0;
@@ -891,18 +1050,16 @@ tf_rm_get_hcapi_type(struct tf_rm_get_hcapi_parms *parms)
 	enum tf_rm_elem_cfg_type cfg_type;
 
 	TF_CHECK_PARMS2(parms, parms->rm_db);
-
 	rm_db = (struct tf_rm_new_db *)parms->rm_db;
-	if (!rm_db->db)
-		return -EINVAL;
-	cfg_type = rm_db->db[parms->db_index].cfg_type;
+	TF_CHECK_PARMS1(rm_db->db);
+
+	cfg_type = rm_db->db[parms->subtype].cfg_type;
 
 	/* Bail out if not controlled by HCAPI */
-	if (cfg_type != TF_RM_ELEM_CFG_HCAPI &&
-	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
+	if (cfg_type == TF_RM_ELEM_CFG_NULL)
 		return -ENOTSUP;
 
-	*parms->hcapi_type = rm_db->db[parms->db_index].hcapi_type;
+	*parms->hcapi_type = rm_db->db[parms->subtype].hcapi_type;
 
 	return 0;
 }
@@ -915,30 +1072,31 @@ tf_rm_get_inuse_count(struct tf_rm_get_inuse_count_parms *parms)
 	enum tf_rm_elem_cfg_type cfg_type;
 
 	TF_CHECK_PARMS2(parms, parms->rm_db);
-
 	rm_db = (struct tf_rm_new_db *)parms->rm_db;
-	if (!rm_db->db)
-		return -EINVAL;
-	cfg_type = rm_db->db[parms->db_index].cfg_type;
+	TF_CHECK_PARMS1(rm_db->db);
 
-	/* Bail out if not controlled by RM */
-	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
+	cfg_type = rm_db->db[parms->subtype].cfg_type;
+
+	/* Bail out if not a BA pool */
+	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA &&
+	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA_PARENT &&
+	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA_CHILD)
 		return -ENOTSUP;
 
 	/* Bail silently (no logging), if the pool is not valid there
 	 * was no elements allocated for it.
 	 */
-	if (rm_db->db[parms->db_index].pool == NULL) {
+	if (rm_db->db[parms->subtype].pool == NULL) {
 		*parms->count = 0;
 		return 0;
 	}
 
-	*parms->count = ba_inuse_count(rm_db->db[parms->db_index].pool);
+	*parms->count = ba_inuse_count(rm_db->db[parms->subtype].pool);
 
 	return rc;
-
 }
-
+/* Only used for table bulk get at this time
+ */
 int
 tf_rm_check_indexes_in_range(struct tf_rm_check_indexes_in_range_parms *parms)
 {
@@ -947,31 +1105,27 @@ tf_rm_check_indexes_in_range(struct tf_rm_check_indexes_in_range_parms *parms)
 	uint32_t base_index;
 	uint32_t stride;
 	int rc = 0;
+	struct bitalloc *pool;
+	uint16_t subtype;
 
 	TF_CHECK_PARMS2(parms, parms->rm_db);
-
 	rm_db = (struct tf_rm_new_db *)parms->rm_db;
-	if (!rm_db->db)
-		return -EINVAL;
-	cfg_type = rm_db->db[parms->db_index].cfg_type;
+	TF_CHECK_PARMS1(rm_db->db);
 
-	/* Bail out if not controlled by RM */
-	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
+	cfg_type = rm_db->db[parms->subtype].cfg_type;
+
+	/* Bail out if not a BA pool */
+	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA &&
+	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA_PARENT &&
+	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA_CHILD)
 		return -ENOTSUP;
 
-	/* Bail out if the pool is not valid, should never happen */
-	if (rm_db->db[parms->db_index].pool == NULL) {
-		rc = -ENOTSUP;
-		TFP_DRV_LOG(ERR,
-			    "%s: Invalid pool for this type:%d, rc:%s\n",
-			    tf_dir_2_str(rm_db->dir),
-			    parms->db_index,
-			    strerror(-rc));
+	rc = tf_rm_get_pool(rm_db, parms->subtype, &pool, &subtype);
+	if (rc)
 		return rc;
-	}
 
-	base_index = rm_db->db[parms->db_index].alloc.entry.start;
-	stride = rm_db->db[parms->db_index].alloc.entry.stride;
+	base_index = rm_db->db[subtype].alloc.entry.start;
+	stride = rm_db->db[subtype].alloc.entry.stride;
 
 	if (parms->starting_index < base_index ||
 	    parms->starting_index + parms->num_entries > base_index + stride)
