@@ -5689,7 +5689,8 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 		goto error_free;
 
 	PMD_DRV_LOG(INFO,
-		    DRV_MODULE_NAME "found at mem %" PRIX64 ", node addr %pM\n",
+		    "Found %s device at mem %" PRIX64 ", node addr %pM\n",
+		    DRV_MODULE_NAME,
 		    pci_dev->mem_resource[0].phys_addr,
 		    pci_dev->mem_resource[0].addr);
 
