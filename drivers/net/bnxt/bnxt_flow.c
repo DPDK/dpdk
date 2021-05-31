@@ -1543,9 +1543,11 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 
 	filter = bnxt_get_unused_filter(bp);
 	if (filter == NULL) {
-		PMD_DRV_LOG(ERR, "Not enough resources for a new flow.\n");
+		rte_flow_error_set(error, ENOSPC,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Not enough resources for a new flow");
 		bnxt_release_flow_lock(bp);
-		return -ENOMEM;
+		return -ENOSPC;
 	}
 
 	ret = bnxt_validate_and_parse_flow(dev, pattern, actions, attr,
