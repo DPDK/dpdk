@@ -1959,12 +1959,20 @@ static int bnxt_handle_tunnel_redirect_destroy(struct bnxt *bp,
 		/* Tunnel doesn't belong to this VF, so don't send HWRM
 		 * cmd, just delete the flow from driver
 		 */
-		if (bp->fw_fid != (tun_dst_fid + bp->first_vf_id))
+		if (bp->fw_fid != (tun_dst_fid + bp->first_vf_id)) {
 			PMD_DRV_LOG(ERR,
 				    "Tunnel does not belong to this VF, skip hwrm_tunnel_redirect_free\n");
-		else
+		} else {
 			ret = bnxt_hwrm_tunnel_redirect_free(bp,
 							filter->tunnel_type);
+			if (ret) {
+				rte_flow_error_set(error, -ret,
+						   RTE_FLOW_ERROR_TYPE_HANDLE,
+						   NULL,
+						   "Unable to free tunnel redirection");
+				return ret;
+			}
+		}
 	}
 	return ret;
 }
