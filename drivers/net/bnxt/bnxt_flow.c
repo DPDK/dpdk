@@ -1570,10 +1570,7 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 	vnic = find_matching_vnic(bp, filter);
 	if (vnic) {
 		if (STAILQ_EMPTY(&vnic->filter)) {
-			rte_free(vnic->fw_grp_ids);
-			bnxt_hwrm_vnic_ctx_free(bp, vnic);
-			bnxt_hwrm_vnic_free(bp, vnic);
-			vnic->rx_queue_cnt = 0;
+			bnxt_vnic_cleanup(bp, vnic);
 			bp->nr_vnics--;
 			PMD_DRV_LOG(DEBUG, "Free VNIC\n");
 		}
@@ -2035,12 +2032,7 @@ done:
 		 */
 		if (vnic && !vnic->func_default &&
 		    STAILQ_EMPTY(&vnic->flow_list)) {
-			rte_free(vnic->fw_grp_ids);
-			if (vnic->rx_queue_cnt > 1)
-				bnxt_hwrm_vnic_ctx_free(bp, vnic);
-
-			bnxt_hwrm_vnic_free(bp, vnic);
-			vnic->rx_queue_cnt = 0;
+			bnxt_vnic_cleanup(bp, vnic);
 			bp->nr_vnics--;
 		}
 	} else {
