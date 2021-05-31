@@ -9267,6 +9267,8 @@ flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *matcher,
 		MLX5_SET(fte_match_set_misc, misc_v, geneve_opt_len,
 			 geneve_opt_v->option_len + 1);
 	}
+	MLX5_SET(fte_match_set_misc, misc_m, geneve_tlv_option_0_exist, 1);
+	MLX5_SET(fte_match_set_misc, misc_v, geneve_tlv_option_0_exist, 1);
 	/* Set the data. */
 	if (geneve_opt_v->data) {
 		memcpy(&opt_data_key, geneve_opt_v->data,

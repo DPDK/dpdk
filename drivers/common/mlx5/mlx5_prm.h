@@ -853,7 +853,8 @@ struct mlx5_ifc_fte_match_set_misc_bits {
 	u8 vxlan_vni[0x18];
 	u8 reserved_at_b8[0x8];
 	u8 geneve_vni[0x18];
-	u8 reserved_at_e4[0x7];
+	u8 reserved_at_e4[0x6];
+	u8 geneve_tlv_option_0_exist[0x1];
 	u8 geneve_oam[0x1];
 	u8 reserved_at_e0[0xc];
 	u8 outer_ipv6_flow_label[0x14];
