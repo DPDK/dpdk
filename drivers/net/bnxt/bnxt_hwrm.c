@@ -635,9 +635,13 @@ static int bnxt_hwrm_ptp_qcfg(struct bnxt *bp)
 
 	HWRM_CHECK_RESULT();
 
-	if (!BNXT_CHIP_THOR(bp) &&
-	    !(resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_DIRECT_ACCESS))
-		return 0;
+	if (BNXT_CHIP_THOR(bp)) {
+		if (!(resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_HWRM_ACCESS))
+			return 0;
+	} else {
+		if (!(resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_DIRECT_ACCESS))
+			return 0;
+	}
 
 	if (resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_ONE_STEP_TX_TS)
 		bp->flags |= BNXT_FLAG_FW_CAP_ONE_STEP_TX_TS;
