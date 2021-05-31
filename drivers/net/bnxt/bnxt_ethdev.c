@@ -986,7 +986,6 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 
 	dev_info->speed_capa = bnxt_get_speed_capabilities(bp);
 
-	/* *INDENT-OFF* */
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
 			.pthresh = 8,
@@ -1021,8 +1020,6 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 				BNXT_PF(bp) ? BNXT_SWITCH_PORT_ID_PF :
 				    BNXT_SWITCH_PORT_ID_TRUSTED_VF;
 	}
-
-	/* *INDENT-ON* */
 
 	/*
 	 * TODO: default_rxconf, default_txconf, rx_desc_lim, and tx_desc_lim
