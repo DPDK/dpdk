@@ -953,7 +953,7 @@ static int bnxt_vnic_prep(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 
 	/* RSS context is required only when there is more than one RSS ring */
 	if (vnic->rx_queue_cnt > 1) {
-		rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic, 0 /* ctx_idx 0 */);
+		rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic, 0);
 		if (rc) {
 			rte_flow_error_set(error, -rc,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -961,8 +961,6 @@ static int bnxt_vnic_prep(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 					   "Failed to alloc VNIC context");
 			goto ret;
 		}
-	} else {
-		PMD_DRV_LOG(DEBUG, "No RSS context required\n");
 	}
 
 	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
