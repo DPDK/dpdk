@@ -1398,6 +1398,13 @@ struct rte_hairpin_peer_info {
 	uint16_t manual_bind;
 };
 
+#define BUF_SIZE 1024
+enum dr_dump_rec_type {
+	DR_DUMP_REC_TYPE_PMD_PKT_REFORMAT = 4410,
+	DR_DUMP_REC_TYPE_PMD_MODIFY_HDR = 4420,
+	DR_DUMP_REC_TYPE_PMD_COUNTER = 4430,
+};
+
 /* mlx5.c */
 
 int mlx5_getenv_int(const char *);
@@ -1629,6 +1636,14 @@ int mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 		       bool clear, uint64_t *pkts, uint64_t *bytes);
 int mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow,
 			FILE *file, struct rte_flow_error *error);
+int save_dump_file(const unsigned char *data, uint32_t size,
+		uint32_t type, uint32_t id, void *arg, FILE *file);
+int mlx5_flow_query_counter(struct rte_eth_dev *dev, struct rte_flow *flow,
+	struct rte_flow_query_count *count, struct rte_flow_error *error);
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+int mlx5_flow_dev_dump_ipool(struct rte_eth_dev *dev, struct rte_flow *flow,
+		FILE *file, struct rte_flow_error *error);
+#endif
 void mlx5_flow_rxq_dynf_metadata_set(struct rte_eth_dev *dev);
 int mlx5_flow_get_aged_flows(struct rte_eth_dev *dev, void **contexts,
 			uint32_t nb_contexts, struct rte_flow_error *error);

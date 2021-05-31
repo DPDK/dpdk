@@ -7898,6 +7898,157 @@ mlx5_flow_discover_mreg_c(struct rte_eth_dev *dev)
 	return 0;
 }
 
+int
+save_dump_file(const uint8_t *data, uint32_t size,
+	uint32_t type, uint32_t id, void *arg, FILE *file)
+{
+	char line[BUF_SIZE];
+	uint32_t out = 0;
+	uint32_t k;
+	uint32_t actions_num;
+	struct rte_flow_query_count *count;
+
+	memset(line, 0, BUF_SIZE);
+	switch (type) {
+	case DR_DUMP_REC_TYPE_PMD_MODIFY_HDR:
+		actions_num = *(uint32_t *)(arg);
+		out += snprintf(line + out, BUF_SIZE - out, "%d,0x%x,%d,",
+				type, id, actions_num);
+		break;
+	case DR_DUMP_REC_TYPE_PMD_PKT_REFORMAT:
+		out += snprintf(line + out, BUF_SIZE - out, "%d,0x%x,",
+				type, id);
+		break;
+	case DR_DUMP_REC_TYPE_PMD_COUNTER:
+		count = (struct rte_flow_query_count *)arg;
+		fprintf(file, "%d,0x%x,%" PRIu64 ",%" PRIu64 "\n", type,
+				id, count->hits, count->bytes);
+		return 0;
+	default:
+		return -1;
+	}
+
+	for (k = 0; k < size; k++) {
+		/* Make sure we do not overrun the line buffer length. */
+		if (out >= BUF_SIZE - 4) {
+			line[out] = '\0';
+			break;
+		}
+		out += snprintf(line + out, BUF_SIZE - out, "%02x",
+				(data[k]) & 0xff);
+	}
+	fprintf(file, "%s\n", line);
+	return 0;
+}
+
+int
+mlx5_flow_query_counter(struct rte_eth_dev *dev, struct rte_flow *flow,
+	struct rte_flow_query_count *count, struct rte_flow_error *error)
+{
+	struct rte_flow_action action[2];
+	enum mlx5_flow_drv_type ftype;
+	const struct mlx5_flow_driver_ops *fops;
+
+	if (!flow) {
+		return rte_flow_error_set(error, ENOENT,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"invalid flow handle");
+	}
+	action[0].type = RTE_FLOW_ACTION_TYPE_COUNT;
+	action[1].type = RTE_FLOW_ACTION_TYPE_END;
+	if (flow->counter) {
+		memset(count, 0, sizeof(struct rte_flow_query_count));
+		ftype = (enum mlx5_flow_drv_type)(flow->drv_type);
+		MLX5_ASSERT(ftype > MLX5_FLOW_TYPE_MIN &&
+						ftype < MLX5_FLOW_TYPE_MAX);
+		fops = flow_get_drv_ops(ftype);
+		return fops->query(dev, flow, action, count, error);
+	}
+	return -1;
+}
+
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+/**
+ * Dump flow ipool data to file
+ *
+ * @param[in] dev
+ *   The pointer to Ethernet device.
+ * @param[in] file
+ *   A pointer to a file for output.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ * @return
+ *   0 on success, a negative value otherwise.
+ */
+int
+mlx5_flow_dev_dump_ipool(struct rte_eth_dev *dev,
+	struct rte_flow *flow, FILE *file,
+	struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_dv_modify_hdr_resource  *modify_hdr;
+	struct mlx5_flow_dv_encap_decap_resource *encap_decap;
+	uint32_t handle_idx;
+	struct mlx5_flow_handle *dh;
+	struct rte_flow_query_count count;
+	uint32_t actions_num;
+	const uint8_t *data;
+	size_t size;
+	uint32_t id;
+	uint32_t type;
+
+	if (!flow) {
+		return rte_flow_error_set(error, ENOENT,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"invalid flow handle");
+	}
+	handle_idx = flow->dev_handles;
+	while (handle_idx) {
+		dh = mlx5_ipool_get(priv->sh->ipool
+			[MLX5_IPOOL_MLX5_FLOW], handle_idx);
+		if (!dh)
+			continue;
+		handle_idx = dh->next.next;
+		id = (uint32_t)(uintptr_t)dh->drv_flow;
+
+		/* query counter */
+		type = DR_DUMP_REC_TYPE_PMD_COUNTER;
+		if (!mlx5_flow_query_counter(dev, flow, &count, error))
+			save_dump_file(NULL, 0, type,
+					id, (void *)&count, file);
+
+		/* Get modify_hdr and encap_decap buf from ipools. */
+		encap_decap = NULL;
+		modify_hdr = dh->dvh.modify_hdr;
+
+		if (dh->dvh.rix_encap_decap) {
+			encap_decap = mlx5_ipool_get(priv->sh->ipool
+						[MLX5_IPOOL_DECAP_ENCAP],
+						dh->dvh.rix_encap_decap);
+		}
+		if (modify_hdr) {
+			data = (const uint8_t *)modify_hdr->actions;
+			size = (size_t)(modify_hdr->actions_num) * 8;
+			actions_num = modify_hdr->actions_num;
+			type = DR_DUMP_REC_TYPE_PMD_MODIFY_HDR;
+			save_dump_file(data, size, type, id,
+					(void *)(&actions_num), file);
+		}
+		if (encap_decap) {
+			data = encap_decap->buf;
+			size = encap_decap->size;
+			type = DR_DUMP_REC_TYPE_PMD_PKT_REFORMAT;
+			save_dump_file(data, size, type,
+						id, NULL, file);
+		}
+	}
+	return 0;
+}
+#endif
+
 /**
  * Dump flow raw hw data to file
  *
@@ -7922,6 +8073,9 @@ mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow_idx,
 	int ret;
 	struct mlx5_flow_handle *dh;
 	struct rte_flow *flow;
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	uint32_t idx;
+#endif
 
 	if (!priv->config.dv_flow_en) {
 		if (fputs("device dv flow disabled\n", file) <= 0)
@@ -7930,16 +8084,25 @@ mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow_idx,
 	}
 
 	/* dump all */
-	if (!flow_idx)
+	if (!flow_idx) {
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+		ILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW],
+						priv->flows, idx, flow, next)
+			mlx5_flow_dev_dump_ipool(dev, flow, file, error);
+#endif
 		return mlx5_devx_cmd_flow_dump(sh->fdb_domain,
 					sh->rx_domain,
 					sh->tx_domain, file);
+	}
 	/* dump one */
 	flow = mlx5_ipool_get(priv->sh->ipool
 			[MLX5_IPOOL_RTE_FLOW], (uintptr_t)(void *)flow_idx);
 	if (!flow)
 		return -ENOENT;
 
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	mlx5_flow_dev_dump_ipool(dev, flow, file, error);
+#endif
 	handle_idx = flow->dev_handles;
 	while (handle_idx) {
 		dh = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW],
