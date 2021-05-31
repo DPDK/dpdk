@@ -919,6 +919,19 @@ bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 	return l2_filter;
 }
 
+static void bnxt_vnic_cleanup(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	if (vnic->rx_queue_cnt > 1)
+		bnxt_hwrm_vnic_ctx_free(bp, vnic);
+
+	bnxt_hwrm_vnic_free(bp, vnic);
+
+	rte_free(vnic->fw_grp_ids);
+	vnic->fw_grp_ids = NULL;
+
+	vnic->rx_queue_cnt = 0;
+}
+
 static int bnxt_vnic_prep(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 			  const struct rte_flow_action *act,
 			  struct rte_flow_error *error)
@@ -948,8 +961,6 @@ static int bnxt_vnic_prep(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 				   "Failed to alloc VNIC");
 		goto ret;
 	}
-
-	bp->nr_vnics++;
 
 	/* RSS context is required only when there is more than one RSS ring */
 	if (vnic->rx_queue_cnt > 1) {
@@ -986,9 +997,12 @@ static int bnxt_vnic_prep(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 		goto ret;
 	}
 
+	bp->nr_vnics++;
+
 	return 0;
 
 ret:
+	bnxt_vnic_cleanup(bp, vnic);
 	return rc;
 }
 
