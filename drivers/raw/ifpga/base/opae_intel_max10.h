@@ -182,6 +182,7 @@ struct opae_retimer_status {
 #define   SBUS_VERSION			GENMASK(31, 16)
 
 #define DFT_MAX_SIZE		0x7e0000
+#define MAX_STAGING_AREA_BASE	0xffffffff
 #define MAX_STAGING_AREA_SIZE	0x3800000
 
 int max10_reg_read(struct intel_max10_device *dev,
