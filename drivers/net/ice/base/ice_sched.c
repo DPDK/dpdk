@@ -2841,8 +2841,8 @@ static enum ice_status
 ice_sched_assoc_vsi_to_agg(struct ice_port_info *pi, u32 agg_id,
 			   u16 vsi_handle, ice_bitmap_t *tc_bitmap)
 {
-	struct ice_sched_agg_vsi_info *agg_vsi_info;
-	struct ice_sched_agg_info *agg_info;
+	struct ice_sched_agg_vsi_info *agg_vsi_info, *old_agg_vsi_info = NULL;
+	struct ice_sched_agg_info *agg_info, *old_agg_info;
 	enum ice_status status = ICE_SUCCESS;
 	struct ice_hw *hw = pi->hw;
 	u8 tc;
@@ -2852,6 +2852,20 @@ ice_sched_assoc_vsi_to_agg(struct ice_port_info *pi, u32 agg_id,
 	agg_info = ice_get_agg_info(hw, agg_id);
 	if (!agg_info)
 		return ICE_ERR_PARAM;
+	/* If the vsi is already part of another aggregator then update
+	 * its vsi info list
+	 */
+	old_agg_info = ice_get_vsi_agg_info(hw, vsi_handle);
+	if (old_agg_info && old_agg_info != agg_info) {
+		struct ice_sched_agg_vsi_info *vtmp;
+
+		LIST_FOR_EACH_ENTRY_SAFE(old_agg_vsi_info, vtmp,
+					 &old_agg_info->agg_vsi_list,
+					 ice_sched_agg_vsi_info, list_entry)
+			if (old_agg_vsi_info->vsi_handle == vsi_handle)
+				break;
+	}
+
 	/* check if entry already exist */
 	agg_vsi_info = ice_get_agg_vsi_info(agg_info, vsi_handle);
 	if (!agg_vsi_info) {
@@ -2876,6 +2890,12 @@ ice_sched_assoc_vsi_to_agg(struct ice_port_info *pi, u32 agg_id,
 			break;
 
 		ice_set_bit(tc, agg_vsi_info->tc_bitmap);
+		if (old_agg_vsi_info)
+			ice_clear_bit(tc, old_agg_vsi_info->tc_bitmap);
+	}
+	if (old_agg_vsi_info && !old_agg_vsi_info->tc_bitmap[0]) {
+		LIST_DEL(&old_agg_vsi_info->list_entry);
+		ice_free(pi->hw, old_agg_vsi_info);
 	}
 	return status;
 }
