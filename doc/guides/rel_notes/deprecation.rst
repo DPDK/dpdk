@@ -32,6 +32,11 @@ Deprecation Notices
   ``__atomic_thread_fence`` must be used for patches that need to be merged in
   20.08 onwards. This change will not introduce any performance degradation.
 
+* pci: To reduce unnecessary ABIs exposed by DPDK bus driver, "rte_bus_pci.h"
+  will be made internal in 21.11 and macros/data structures/functions defined
+  in the header will not be considered as ABI anymore. This change is inspired
+  by the RFC https://patchwork.dpdk.org/project/dpdk/list/?series=17176.
+
 * lib: will fix extending some enum/define breaking the ABI. There are multiple
   samples in DPDK that enum/define terminated with a ``.*MAX.*`` value which is
   used by iterators, and arrays holding these values are sized with this
