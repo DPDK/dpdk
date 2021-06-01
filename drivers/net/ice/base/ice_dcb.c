@@ -736,6 +736,47 @@ ice_aq_get_cee_dcb_cfg(struct ice_hw *hw,
 }
 
 /**
+ * ice_aq_set_pfc_mode - Set PFC mode
+ * @hw: pointer to the HW struct
+ * @pfc_mode: value of PFC mode to set
+ * @cd: pointer to command details structure or NULL
+ *
+ * This AQ call configures the PFC mdoe to DSCP-based PFC mode or VLAN
+ * -based PFC (0x0303)
+ */
+enum ice_status
+ice_aq_set_pfc_mode(struct ice_hw *hw, u8 pfc_mode, struct ice_sq_cd *cd)
+{
+	struct ice_aqc_set_query_pfc_mode *cmd;
+	struct ice_aq_desc desc;
+	enum ice_status status;
+
+	if (pfc_mode > ICE_AQC_PFC_DSCP_BASED_PFC)
+		return ICE_ERR_PARAM;
+
+	cmd = &desc.params.set_query_pfc_mode;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_set_pfc_mode);
+
+	cmd->pfc_mode = pfc_mode;
+
+	status = ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
+	if (status)
+		return status;
+
+	/* The spec isn't clear about whether the FW will return an error code
+	 * if the PFC mode requested by the driver was not set. The spec just
+	 * says that the FW will write the PFC mode set back into cmd->pfc_mode,
+	 * so after the AQ has been executed, check if cmd->pfc_mode is what was
+	 * requested.
+	 */
+	if (cmd->pfc_mode != pfc_mode)
+		return ICE_ERR_NOT_SUPPORTED;
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_cee_to_dcb_cfg
  * @cee_cfg: pointer to CEE configuration struct
  * @pi: port information structure
