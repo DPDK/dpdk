@@ -1003,12 +1003,23 @@ done:
 	return rc;
 }
 
+#define OTX2_MCAM_TOT_ENTRIES_96XX (4096)
+#define OTX2_MCAM_TOT_ENTRIES_98XX (16384)
+
+static int otx2_mcam_tot_entries(struct otx2_eth_dev *dev)
+{
+	if (otx2_dev_is_98xx(dev))
+		return OTX2_MCAM_TOT_ENTRIES_98XX;
+	else
+		return OTX2_MCAM_TOT_ENTRIES_96XX;
+}
+
 int
 otx2_flow_init(struct otx2_eth_dev *hw)
 {
 	uint8_t *mem = NULL, *nix_mem = NULL, *npc_mem = NULL;
 	struct otx2_npc_flow_info *npc = &hw->npc_flow;
-	uint32_t bmap_sz;
+	uint32_t bmap_sz, tot_mcam_entries = 0;
 	int rc = 0, idx;
 
 	rc = flow_fetch_kex_cfg(hw);
@@ -1020,7 +1031,8 @@ otx2_flow_init(struct otx2_eth_dev *hw)
 	rte_atomic32_init(&npc->mark_actions);
 	npc->vtag_actions = 0;
 
-	npc->mcam_entries = NPC_MCAM_TOT_ENTRIES >> npc->keyw[NPC_MCAM_RX];
+	tot_mcam_entries = otx2_mcam_tot_entries(hw);
+	npc->mcam_entries = tot_mcam_entries >> npc->keyw[NPC_MCAM_RX];
 	/* Free, free_rev, live and live_rev entries */
 	bmap_sz = rte_bitmap_get_memory_footprint(npc->mcam_entries);
 	mem = rte_zmalloc(NULL, 4 * bmap_sz * npc->flow_max_priority,

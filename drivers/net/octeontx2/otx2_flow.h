@@ -35,7 +35,6 @@ enum {
 /* 32 bytes from LDATA_CFG & 32 bytes from FLAGS_CFG */
 #define NPC_MAX_EXTRACT_DATA_LEN	(64)
 #define NPC_LDATA_LFLAG_LEN		(16)
-#define NPC_MCAM_TOT_ENTRIES		(4096)
 #define NPC_MAX_KEY_NIBBLES		(31)
 /* Nibble offsets */
 #define NPC_LAYER_KEYX_SZ		(3)

@@ -55,6 +55,9 @@
 	 (RVU_PCI_REV_MINOR(otx2_dev_revid(dev)) == 0x0) &&	\
 	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x0))
 
+#define otx2_dev_is_98xx(dev)                                   \
+	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x3)
+
 struct otx2_dev;
 
 /* Link status callback */
