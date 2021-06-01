@@ -1151,6 +1151,7 @@ iavf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxd = *rxdp;
 		nb_hold++;
 		rxe = rxq->sw_ring[rx_id];
+		rxq->sw_ring[rx_id] = nmb;
 		rx_id++;
 		if (unlikely(rx_id == rxq->nb_rx_desc))
 			rx_id = 0;
@@ -1256,6 +1257,7 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 		rxd = *rxdp;
 		nb_hold++;
 		rxe = rxq->sw_ring[rx_id];
+		rxq->sw_ring[rx_id] = nmb;
 		rx_id++;
 		if (unlikely(rx_id == rxq->nb_rx_desc))
 			rx_id = 0;
@@ -1347,6 +1349,7 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxd = *rxdp;
 		nb_hold++;
 		rxe = rxq->sw_ring[rx_id];
+		rxq->sw_ring[rx_id] = nmb;
 		rx_id++;
 		if (rx_id == rxq->nb_rx_desc)
 			rx_id = 0;
@@ -1500,6 +1503,7 @@ iavf_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxd = *rxdp;
 		nb_hold++;
 		rxe = rxq->sw_ring[rx_id];
+		rxq->sw_ring[rx_id] = nmb;
 		rx_id++;
 		if (rx_id == rxq->nb_rx_desc)
 			rx_id = 0;
