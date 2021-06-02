@@ -1504,6 +1504,7 @@ enum virtchnl_proto_hdr_type {
 	 */
 	VIRTCHNL_PROTO_HDR_IPV4_FRAG,
 	VIRTCHNL_PROTO_HDR_IPV6_EH_FRAG,
+	VIRTCHNL_PROTO_HDR_GRE,
 };
 
 /* Protocol header field within a protocol header. */
