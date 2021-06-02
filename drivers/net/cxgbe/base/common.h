@@ -266,6 +266,9 @@ struct adapter_params {
 	u32 viid_smt_extn_support:1;	  /* FW returns vin and smt index */
 	u32 max_tx_coalesce_num; /* Max # of Tx packets that can be coalesced */
 	u8 vi_enable_rx; /* FW support for enable/disable VI Rx at runtime */
+
+	u16 rawf_start; /* FW supports RAW MAC match-all filters */
+	u16 rawf_size;
 };
 
 /* Firmware Port Capabilities types.

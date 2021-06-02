@@ -17,6 +17,7 @@ enum {
 				 * for a specific entry
 				 */
 	MPS_ENTRY_USED,
+	MPS_ENTRY_RAWF, /* Reserved for RAW MAC Filters */
 };
 
 struct mps_tcam_entry {
@@ -48,5 +49,6 @@ void t4_cleanup_mpstcam(struct adapter *adap);
 int cxgbe_mpstcam_alloc(struct port_info *pi, const u8 *mac, const u8 *mask);
 int cxgbe_mpstcam_remove(struct port_info *pi, u16 idx);
 int cxgbe_mpstcam_modify(struct port_info *pi, int idx, const u8 *addr);
-
+int cxgbe_mpstcam_rawf_enable(struct port_info *pi);
+int cxgbe_mpstcam_rawf_disable(struct port_info *pi);
 #endif /* _CXGBE_MPSTCAM_H_ */

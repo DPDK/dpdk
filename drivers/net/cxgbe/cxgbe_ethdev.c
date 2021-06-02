@@ -152,6 +152,13 @@ int cxgbe_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
+	int ret;
+
+	if (adapter->params.rawf_size != 0) {
+		ret = cxgbe_mpstcam_rawf_enable(pi);
+		if (ret < 0)
+			return ret;
+	}
 
 	return t4_set_rxmode(adapter, adapter->mbox, pi->viid, -1,
 			     1, -1, 1, -1, false);
@@ -161,6 +168,13 @@ int cxgbe_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
+	int ret;
+
+	if (adapter->params.rawf_size != 0) {
+		ret = cxgbe_mpstcam_rawf_disable(pi);
+		if (ret < 0)
+			return ret;
+	}
 
 	return t4_set_rxmode(adapter, adapter->mbox, pi->viid, -1,
 			     0, -1, 1, -1, false);

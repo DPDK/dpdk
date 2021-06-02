@@ -49,7 +49,8 @@ cxgbe_mpstcam_lookup(struct mpstcam_table *t, const u8 *eth_addr,
 		return NULL;
 
 	for (i = 0; i < t->size; i++) {
-		if (entry[i].state == MPS_ENTRY_UNUSED)
+		if (entry[i].state == MPS_ENTRY_UNUSED ||
+		    entry[i].state == MPS_ENTRY_RAWF)
 			continue;	/* entry is not being used */
 		if (match_entry(&entry[i], eth_addr, mask))
 			return &entry[i];
@@ -184,7 +185,7 @@ int cxgbe_mpstcam_remove(struct port_info *pi, u16 idx)
 		return -EOPNOTSUPP;
 	t4_os_write_lock(&t->lock);
 	entry = &t->entry[idx];
-	if (entry->state == MPS_ENTRY_UNUSED) {
+	if (entry->state != MPS_ENTRY_USED) {
 		t4_os_write_unlock(&t->lock);
 		return -EINVAL;
 	}
@@ -206,11 +207,73 @@ int cxgbe_mpstcam_remove(struct port_info *pi, u16 idx)
 	return ret;
 }
 
+int cxgbe_mpstcam_rawf_enable(struct port_info *pi)
+{
+	struct adapter *adap = pi->adapter;
+	struct mps_tcam_entry *entry;
+	struct mpstcam_table *t;
+	u16 rawf_idx;
+	int ret = 0;
+
+	t = adap->mpstcam;
+	if (adap->params.rawf_size == 0 || t == NULL)
+		return -EOPNOTSUPP;
+
+	t4_os_write_lock(&t->lock);
+	rawf_idx = adap->params.rawf_start + pi->port_id;
+	entry = &t->entry[rawf_idx];
+	if (__atomic_load_n(&entry->refcnt, __ATOMIC_RELAXED) == 1)
+		goto out_unlock;
+
+	ret = t4_alloc_raw_mac_filt(adap, pi->viid, entry->eth_addr,
+				    entry->mask, rawf_idx, 0, pi->port_id,
+				    false);
+	if (ret < 0)
+		goto out_unlock;
+
+	__atomic_store_n(&entry->refcnt, 1, __ATOMIC_RELAXED);
+
+out_unlock:
+	t4_os_write_unlock(&t->lock);
+	return ret;
+}
+
+int cxgbe_mpstcam_rawf_disable(struct port_info *pi)
+{
+	struct adapter *adap = pi->adapter;
+	struct mps_tcam_entry *entry;
+	struct mpstcam_table *t;
+	u16 rawf_idx;
+	int ret = 0;
+
+	t = adap->mpstcam;
+	if (adap->params.rawf_size == 0 || t == NULL)
+		return -EOPNOTSUPP;
+
+	t4_os_write_lock(&t->lock);
+	rawf_idx = adap->params.rawf_start + pi->port_id;
+	entry = &t->entry[rawf_idx];
+	if (__atomic_load_n(&entry->refcnt, __ATOMIC_RELAXED) != 1)
+		goto out_unlock;
+
+	ret = t4_free_raw_mac_filt(adap, pi->viid, entry->eth_addr,
+				   entry->mask, rawf_idx, 0, pi->port_id,
+				   false);
+	if (ret < 0)
+		goto out_unlock;
+
+	__atomic_store_n(&entry->refcnt, 0, __ATOMIC_RELAXED);
+
+out_unlock:
+	t4_os_write_unlock(&t->lock);
+	return ret;
+}
+
 struct mpstcam_table *t4_init_mpstcam(struct adapter *adap)
 {
+	u16 size = adap->params.arch.mps_tcam_size;
 	struct mpstcam_table *t;
 	int i;
-	u16 size = adap->params.arch.mps_tcam_size;
 
 	t =  t4_os_alloc(sizeof(*t) + size * sizeof(struct mps_tcam_entry));
 	if (!t)
@@ -225,6 +288,12 @@ struct mpstcam_table *t4_init_mpstcam(struct adapter *adap)
 		t->entry[i].mpstcam = t;
 		t->entry[i].idx = i;
 	}
+
+	/* RAW MAC entries are reserved for match-all wildcard to
+	 * match all promiscuous traffic. So, mark them special.
+	 */
+	for (i = 0; i < adap->params.rawf_size; i++)
+		t->entry[adap->params.rawf_start + i].state = MPS_ENTRY_RAWF;
 
 	/* first entry is used by chip. this is overwritten only
 	 * in t4_cleanup_mpstcam()

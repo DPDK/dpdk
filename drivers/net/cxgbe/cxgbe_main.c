@@ -1501,6 +1501,20 @@ static int adap_init0(struct adapter *adap)
 	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 1, params, val);
 	adap->params.vi_enable_rx = (ret == 0 && val[0] != 0);
 
+	/* Read the RAW MPS entries. In T6, the last 2 TCAM entries
+	 * are reserved for RAW MAC addresses (rawf = 2, one per port).
+	 */
+	if (CHELSIO_CHIP_VERSION(adap->params.chip) > CHELSIO_T5) {
+		params[0] = CXGBE_FW_PARAM_PFVF(RAWF_START);
+		params[1] = CXGBE_FW_PARAM_PFVF(RAWF_END);
+		ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 2,
+				      params, val);
+		if (ret == 0) {
+			adap->params.rawf_start = val[0];
+			adap->params.rawf_size = val[1] - val[0] + 1;
+		}
+	}
+
 	/*
 	 * The MTU/MSS Table is initialized by now, so load their values.  If
 	 * we're initializing the adapter, then we'll make any modifications
