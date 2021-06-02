@@ -308,6 +308,20 @@ extern enum rte_flow_item_type iavf_pattern_eth_ipv6_pfcp[];
 extern enum rte_flow_item_type iavf_pattern_eth_ecpri[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_ecpri[];
 
+/* GRE */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gre_ipv4[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gre_ipv6[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gre_ipv4[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gre_ipv6[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gre_ipv4_tcp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gre_ipv6_tcp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gre_ipv4_udp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gre_ipv6_udp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gre_ipv4_tcp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gre_ipv6_tcp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gre_ipv4_udp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gre_ipv6_udp[];
+
 extern const struct rte_flow_ops iavf_flow_ops;
 
 /* pattern structure */
