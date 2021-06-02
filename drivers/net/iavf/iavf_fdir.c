@@ -144,6 +144,30 @@
 #define IAVF_FDIR_INSET_ECPRI (\
 	IAVF_INSET_ECPRI)
 
+#define IAVF_FDIR_INSET_GRE_IPV4 (\
+	IAVF_INSET_TUN_IPV4_SRC | IAVF_INSET_TUN_IPV4_DST | \
+	IAVF_INSET_TUN_IPV4_TOS | IAVF_INSET_TUN_IPV4_PROTO)
+
+#define IAVF_FDIR_INSET_GRE_IPV4_TCP (\
+	IAVF_FDIR_INSET_GRE_IPV4 | IAVF_INSET_TUN_TCP_SRC_PORT | \
+	IAVF_INSET_TUN_TCP_DST_PORT)
+
+#define IAVF_FDIR_INSET_GRE_IPV4_UDP (\
+	IAVF_FDIR_INSET_GRE_IPV4 | IAVF_INSET_TUN_UDP_SRC_PORT | \
+	IAVF_INSET_TUN_UDP_DST_PORT)
+
+#define IAVF_FDIR_INSET_GRE_IPV6 (\
+	IAVF_INSET_TUN_IPV6_SRC | IAVF_INSET_TUN_IPV6_DST | \
+	IAVF_INSET_TUN_IPV6_TC | IAVF_INSET_TUN_IPV6_NEXT_HDR)
+
+#define IAVF_FDIR_INSET_GRE_IPV6_TCP (\
+	IAVF_FDIR_INSET_GRE_IPV6 | IAVF_INSET_TUN_TCP_SRC_PORT | \
+	IAVF_INSET_TUN_TCP_DST_PORT)
+
+#define IAVF_FDIR_INSET_GRE_IPV6_UDP (\
+	IAVF_FDIR_INSET_GRE_IPV6 | IAVF_INSET_TUN_UDP_SRC_PORT | \
+	IAVF_INSET_TUN_UDP_DST_PORT)
+
 static struct iavf_pattern_match_item iavf_fdir_pattern[] = {
 	{iavf_pattern_ethertype,		 IAVF_FDIR_INSET_ETH,		IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4,			 IAVF_FDIR_INSET_ETH_IPV4,	IAVF_INSET_NONE},
@@ -183,6 +207,18 @@ static struct iavf_pattern_match_item iavf_fdir_pattern[] = {
 	{iavf_pattern_eth_ipv6_pfcp,		 IAVF_FDIR_INSET_PFCP,		IAVF_INSET_NONE},
 	{iavf_pattern_eth_ecpri,		 IAVF_FDIR_INSET_ECPRI,		IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_ecpri,		 IAVF_FDIR_INSET_ECPRI,		IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gre_ipv4,	IAVF_FDIR_INSET_GRE_IPV4,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gre_ipv4_tcp,	IAVF_FDIR_INSET_GRE_IPV4_TCP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gre_ipv4_udp,	IAVF_FDIR_INSET_GRE_IPV4_UDP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gre_ipv6,	IAVF_FDIR_INSET_GRE_IPV6,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gre_ipv6_tcp,	IAVF_FDIR_INSET_GRE_IPV6_TCP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gre_ipv6_udp,	IAVF_FDIR_INSET_GRE_IPV6_UDP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_gre_ipv4,	IAVF_FDIR_INSET_GRE_IPV4,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_gre_ipv4_tcp,	IAVF_FDIR_INSET_GRE_IPV4_TCP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_gre_ipv4_udp,	IAVF_FDIR_INSET_GRE_IPV4_UDP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_gre_ipv6,	IAVF_FDIR_INSET_GRE_IPV6,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_gre_ipv6_tcp,	IAVF_FDIR_INSET_GRE_IPV6_TCP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_gre_ipv6_udp,	IAVF_FDIR_INSET_GRE_IPV6_UDP,	IAVF_INSET_NONE},
 };
 
 static struct iavf_flow_parser iavf_fdir_parser;
@@ -601,6 +637,7 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 	const struct rte_flow_item_ah *ah_spec, *ah_mask;
 	const struct rte_flow_item_pfcp *pfcp_spec, *pfcp_mask;
 	const struct rte_flow_item_ecpri *ecpri_spec, *ecpri_mask;
+	const struct rte_flow_item_gre *gre_spec, *gre_mask;
 	const struct rte_flow_item *item = pattern;
 	struct virtchnl_proto_hdr *hdr, *hdr1 = NULL;
 	struct rte_ecpri_common_hdr ecpri_common;
@@ -1196,6 +1233,24 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 				rte_memcpy(hdr->buffer, ecpri_spec,
 					sizeof(*ecpri_spec));
 			}
+
+			hdrs->count = ++layer;
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_GRE:
+			gre_spec = item->spec;
+			gre_mask = item->mask;
+
+			hdr = &hdrs->proto_hdr[layer];
+
+			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr, GRE);
+
+			if (gre_spec && gre_mask) {
+				rte_memcpy(hdr->buffer, gre_spec,
+					   sizeof(*gre_spec));
+			}
+
+			tun_inner = 1;
 
 			hdrs->count = ++layer;
 			break;
