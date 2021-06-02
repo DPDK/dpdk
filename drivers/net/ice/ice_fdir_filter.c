@@ -1780,6 +1780,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				 * ethertype, if the spec is for all valid
 				 * packet id, set ethertype into input set.
 				 */
+				flow_type = ICE_FLTR_PTYPE_FRAG_IPV4;
 				*input_set |= ICE_INSET_ETHERTYPE;
 				input_set_o |= ICE_INSET_ETHERTYPE;
 			} else if (ipv4_mask->hdr.packet_id == UINT16_MAX) {
