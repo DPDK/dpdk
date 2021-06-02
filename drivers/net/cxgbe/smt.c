@@ -119,7 +119,7 @@ static struct smt_entry *find_or_alloc_smte(struct smt_data *s, u8 *smac)
 	struct smt_entry *e, *end, *first_free = NULL;
 
 	for (e = &s->smtab[0], end = &s->smtab[s->smt_size]; e != end; ++e) {
-		if (!rte_atomic32_read(&e->refcnt)) {
+		if (__atomic_load_n(&e->refcnt, __ATOMIC_RELAXED) == 0) {
 			if (!first_free)
 				first_free = e;
 		} else {
@@ -156,7 +156,7 @@ static struct smt_entry *t4_smt_alloc_switching(struct rte_eth_dev *dev,
 	e = find_or_alloc_smte(s, smac);
 	if (e) {
 		t4_os_lock(&e->lock);
-		if (!rte_atomic32_read(&e->refcnt)) {
+		if (__atomic_load_n(&e->refcnt, __ATOMIC_RELAXED) == 0) {
 			e->pfvf = pfvf;
 			rte_memcpy(e->src_mac, smac, RTE_ETHER_ADDR_LEN);
 			ret = write_smt_entry(dev, e);
@@ -168,9 +168,9 @@ static struct smt_entry *t4_smt_alloc_switching(struct rte_eth_dev *dev,
 				goto out_write_unlock;
 			}
 			e->state = SMT_STATE_SWITCHING;
-			rte_atomic32_set(&e->refcnt, 1);
+			__atomic_store_n(&e->refcnt, 1, __ATOMIC_RELAXED);
 		} else {
-			rte_atomic32_inc(&e->refcnt);
+			__atomic_add_fetch(&e->refcnt, 1, __ATOMIC_RELAXED);
 		}
 		t4_os_unlock(&e->lock);
 	}
@@ -195,8 +195,8 @@ struct smt_entry *cxgbe_smt_alloc_switching(struct rte_eth_dev *dev, u8 *smac)
 
 void cxgbe_smt_release(struct smt_entry *e)
 {
-	if (rte_atomic32_read(&e->refcnt))
-		rte_atomic32_dec(&e->refcnt);
+	if (__atomic_load_n(&e->refcnt, __ATOMIC_RELAXED) != 0)
+		__atomic_sub_fetch(&e->refcnt, 1, __ATOMIC_RELAXED);
 }
 
 /**
@@ -221,7 +221,7 @@ struct smt_data *t4_init_smt(u32 smt_start_idx, u32 smt_size)
 		s->smtab[i].state = SMT_STATE_UNUSED;
 		memset(&s->smtab[i].src_mac, 0, RTE_ETHER_ADDR_LEN);
 		t4_os_lock_init(&s->smtab[i].lock);
-		rte_atomic32_set(&s->smtab[i].refcnt, 0);
+		s->smtab[i].refcnt = 0;
 	}
 	return s;
 }

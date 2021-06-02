@@ -55,7 +55,7 @@ void cxgbe_clip_release(struct rte_eth_dev *dev, struct clip_entry *ce)
 	int ret;
 
 	t4_os_lock(&ce->lock);
-	if (rte_atomic32_dec_and_test(&ce->refcnt)) {
+	if (__atomic_sub_fetch(&ce->refcnt, 1, __ATOMIC_RELAXED) == 0) {
 		ret = clip6_release_mbox(dev, ce->addr);
 		if (ret)
 			dev_debug(adap, "CLIP FW DEL CMD failed: %d", ret);
@@ -79,7 +79,7 @@ static struct clip_entry *find_or_alloc_clipe(struct clip_tbl *c,
 	unsigned int clipt_size = c->clipt_size;
 
 	for (e = &c->cl_list[0], end = &c->cl_list[clipt_size]; e != end; ++e) {
-		if (rte_atomic32_read(&e->refcnt) == 0) {
+		if (__atomic_load_n(&e->refcnt, __ATOMIC_RELAXED) == 0) {
 			if (!first_free)
 				first_free = e;
 		} else {
@@ -114,11 +114,12 @@ static struct clip_entry *t4_clip_alloc(struct rte_eth_dev *dev,
 	ce = find_or_alloc_clipe(ctbl, lip);
 	if (ce) {
 		t4_os_lock(&ce->lock);
-		if (!rte_atomic32_read(&ce->refcnt)) {
+		if (__atomic_load_n(&ce->refcnt, __ATOMIC_RELAXED) == 0) {
 			rte_memcpy(ce->addr, lip, sizeof(ce->addr));
 			if (v6) {
 				ce->type = FILTER_TYPE_IPV6;
-				rte_atomic32_set(&ce->refcnt, 1);
+				__atomic_store_n(&ce->refcnt, 1,
+						 __ATOMIC_RELAXED);
 				ret = clip6_get_mbox(dev, lip);
 				if (ret)
 					dev_debug(adap,
@@ -128,7 +129,7 @@ static struct clip_entry *t4_clip_alloc(struct rte_eth_dev *dev,
 				ce->type = FILTER_TYPE_IPV4;
 			}
 		} else {
-			rte_atomic32_inc(&ce->refcnt);
+			__atomic_add_fetch(&ce->refcnt, 1, __ATOMIC_RELAXED);
 		}
 		t4_os_unlock(&ce->lock);
 	}
@@ -177,7 +178,7 @@ struct clip_tbl *t4_init_clip_tbl(unsigned int clipt_start,
 
 	for (i = 0; i < ctbl->clipt_size; i++) {
 		t4_os_lock_init(&ctbl->cl_list[i].lock);
-		rte_atomic32_set(&ctbl->cl_list[i].refcnt, 0);
+		ctbl->cl_list[i].refcnt = 0;
 	}
 
 	return ctbl;

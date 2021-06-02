@@ -28,7 +28,7 @@ struct mps_tcam_entry {
 	u8 mask[RTE_ETHER_ADDR_LEN];
 
 	struct mpstcam_table *mpstcam; /* backptr */
-	rte_atomic32_t refcnt;
+	u32 refcnt;
 };
 
 struct mpstcam_table {

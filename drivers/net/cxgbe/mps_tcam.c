@@ -75,7 +75,7 @@ int cxgbe_mpstcam_alloc(struct port_info *pi, const u8 *eth_addr,
 	t4_os_write_lock(&mpstcam->lock);
 	entry = cxgbe_mpstcam_lookup(adap->mpstcam, eth_addr, mask);
 	if (entry) {
-		rte_atomic32_add(&entry->refcnt, 1);
+		__atomic_add_fetch(&entry->refcnt, 1, __ATOMIC_RELAXED);
 		t4_os_write_unlock(&mpstcam->lock);
 		return entry->idx;
 	}
@@ -97,7 +97,7 @@ int cxgbe_mpstcam_alloc(struct port_info *pi, const u8 *eth_addr,
 	entry = &mpstcam->entry[ret];
 	memcpy(entry->eth_addr, eth_addr, RTE_ETHER_ADDR_LEN);
 	memcpy(entry->mask, mask, RTE_ETHER_ADDR_LEN);
-	rte_atomic32_set(&entry->refcnt, 1);
+	__atomic_store_n(&entry->refcnt, 1, __ATOMIC_RELAXED);
 	entry->state = MPS_ENTRY_USED;
 
 	if (cxgbe_update_free_idx(mpstcam))
@@ -146,7 +146,7 @@ int cxgbe_mpstcam_modify(struct port_info *pi, int idx, const u8 *addr)
 	 * provided value is -1
 	 */
 	if (entry->state == MPS_ENTRY_UNUSED) {
-		rte_atomic32_set(&entry->refcnt, 1);
+		__atomic_store_n(&entry->refcnt, 1, __ATOMIC_RELAXED);
 		entry->state = MPS_ENTRY_USED;
 	}
 
@@ -164,7 +164,7 @@ static inline void reset_mpstcam_entry(struct mps_tcam_entry *entry)
 {
 	memset(entry->eth_addr, 0, RTE_ETHER_ADDR_LEN);
 	memset(entry->mask, 0, RTE_ETHER_ADDR_LEN);
-	rte_atomic32_clear(&entry->refcnt);
+	__atomic_store_n(&entry->refcnt, 0, __ATOMIC_RELAXED);
 	entry->state = MPS_ENTRY_UNUSED;
 }
 
@@ -189,12 +189,12 @@ int cxgbe_mpstcam_remove(struct port_info *pi, u16 idx)
 		return -EINVAL;
 	}
 
-	if (rte_atomic32_read(&entry->refcnt) == 1)
+	if (__atomic_load_n(&entry->refcnt, __ATOMIC_RELAXED) == 1)
 		ret = t4_free_raw_mac_filt(adap, pi->viid, entry->eth_addr,
 					   entry->mask, idx, 1, pi->port_id,
 					   false);
 	else
-		ret = rte_atomic32_sub_return(&entry->refcnt, 1);
+		ret = __atomic_sub_fetch(&entry->refcnt, 1, __ATOMIC_RELAXED);
 
 	if (ret == 0) {
 		reset_mpstcam_entry(entry);

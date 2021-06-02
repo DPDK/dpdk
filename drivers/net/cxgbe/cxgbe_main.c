@@ -20,7 +20,6 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_pci.h>
-#include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_memory.h>
 #include <rte_tailq.h>
@@ -417,13 +416,15 @@ void cxgbe_remove_tid(struct tid_info *t, unsigned int chan, unsigned int tid,
 
 	if (t->tid_tab[tid]) {
 		t->tid_tab[tid] = NULL;
-		rte_atomic32_dec(&t->conns_in_use);
+		__atomic_sub_fetch(&t->conns_in_use, 1, __ATOMIC_RELAXED);
 		if (t->hash_base && tid >= t->hash_base) {
 			if (family == FILTER_TYPE_IPV4)
-				rte_atomic32_dec(&t->hash_tids_in_use);
+				__atomic_sub_fetch(&t->hash_tids_in_use, 1,
+						   __ATOMIC_RELAXED);
 		} else {
 			if (family == FILTER_TYPE_IPV4)
-				rte_atomic32_dec(&t->tids_in_use);
+				__atomic_sub_fetch(&t->tids_in_use, 1,
+						   __ATOMIC_RELAXED);
 		}
 	}
 
@@ -445,13 +446,15 @@ void cxgbe_insert_tid(struct tid_info *t, void *data, unsigned int tid,
 	t->tid_tab[tid] = data;
 	if (t->hash_base && tid >= t->hash_base) {
 		if (family == FILTER_TYPE_IPV4)
-			rte_atomic32_inc(&t->hash_tids_in_use);
+			__atomic_add_fetch(&t->hash_tids_in_use, 1,
+					   __ATOMIC_RELAXED);
 	} else {
 		if (family == FILTER_TYPE_IPV4)
-			rte_atomic32_inc(&t->tids_in_use);
+			__atomic_add_fetch(&t->tids_in_use, 1,
+					   __ATOMIC_RELAXED);
 	}
 
-	rte_atomic32_inc(&t->conns_in_use);
+	__atomic_add_fetch(&t->conns_in_use, 1, __ATOMIC_RELAXED);
 }
 
 /**
@@ -504,10 +507,8 @@ static int tid_init(struct tid_info *t)
 
 	t->afree = NULL;
 	t->atids_in_use = 0;
-	rte_atomic32_init(&t->tids_in_use);
-	rte_atomic32_set(&t->tids_in_use, 0);
-	rte_atomic32_init(&t->conns_in_use);
-	rte_atomic32_set(&t->conns_in_use, 0);
+	t->tids_in_use = 0;
+	t->conns_in_use = 0;
 
 	/* Setup the free list for atid_tab and clear the stid bitmap. */
 	if (natids) {
