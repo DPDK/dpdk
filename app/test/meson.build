@@ -185,14 +185,12 @@ test_deps = [
 # to indicate whether it can run in no-huge mode.
 fast_tests = [
         ['acl_autotest', true],
-        ['alarm_autotest', false],
         ['atomic_autotest', false],
         ['bitops_autotest', true],
         ['byteorder_autotest', true],
         ['cmdline_autotest', true],
         ['common_autotest', true],
         ['cpuflags_autotest', true],
-        ['cycles_autotest', true],
         ['debug_autotest', true],
         ['eal_flags_c_opt_autotest', false],
         ['eal_flags_main_opt_autotest', false],
@@ -255,7 +253,6 @@ fast_tests = [
         ['user_delay_us', true],
         ['version_autotest', true],
         ['crc_autotest', true],
-        ['delay_us_sleep_autotest', true],
         ['distributor_autotest', false],
         ['eventdev_common_autotest', true],
         ['fbarray_autotest', true],
