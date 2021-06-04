@@ -228,6 +228,10 @@ Supported actions (***transfer*** rules):
 
 - OF_VLAN_SET_PCP
 
+- VXLAN_DECAP
+
+- VXLAN_ENCAP
+
 - FLAG
 
 - MARK
