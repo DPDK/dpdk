@@ -300,11 +300,11 @@ i40e_fdir_teardown(struct i40e_pf *pf)
 	if (err)
 		PMD_DRV_LOG(DEBUG, "Failed to do FDIR RX switch off");
 
-	i40e_dev_rx_queue_release(pf->fdir.rxq);
 	rte_eth_dma_zone_free(dev, "fdir_rx_ring", pf->fdir.rxq->queue_id);
+	i40e_dev_rx_queue_release(pf->fdir.rxq);
 	pf->fdir.rxq = NULL;
-	i40e_dev_tx_queue_release(pf->fdir.txq);
 	rte_eth_dma_zone_free(dev, "fdir_tx_ring", pf->fdir.txq->queue_id);
+	i40e_dev_tx_queue_release(pf->fdir.txq);
 	pf->fdir.txq = NULL;
 	i40e_vsi_release(vsi);
 	pf->fdir.fdir_vsi = NULL;
