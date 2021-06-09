@@ -965,7 +965,7 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->max_rx_queues = max_rx_rings;
 	dev_info->max_tx_queues = max_rx_rings;
 	dev_info->reta_size = bnxt_rss_hash_tbl_size(bp);
-	dev_info->hash_key_size = 40;
+	dev_info->hash_key_size = HW_HASH_KEY_SIZE;
 	max_vnics = bp->max_vnics;
 
 	/* MTU specifics */
@@ -1996,7 +1996,6 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 	if (rc)
 		return rc;
 
-	/* Retrieve from the default VNIC */
 	if (!vnic)
 		return -EINVAL;
 	if (!vnic->rss_table)

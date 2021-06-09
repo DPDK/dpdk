@@ -3149,7 +3149,6 @@ error:
 	return rc;
 }
 
-/* JIRA 22088 */
 int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 {
 	struct hwrm_func_qcfg_input req = {0};
@@ -3166,8 +3165,7 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 
 	HWRM_CHECK_RESULT();
 
-	/* Hard Coded.. 0xfff VLAN ID mask */
-	bp->vlan = rte_le_to_cpu_16(resp->vlan) & 0xfff;
+	bp->vlan = rte_le_to_cpu_16(resp->vlan) & ETH_VLAN_ID_MAX;
 
 	svif_info = rte_le_to_cpu_16(resp->svif_info);
 	if (svif_info & HWRM_FUNC_QCFG_OUTPUT_SVIF_INFO_SVIF_VALID)
