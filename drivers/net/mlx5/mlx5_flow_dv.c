@@ -6110,28 +6110,33 @@ flow_dv_counter_free(struct rte_eth_dev *dev, uint32_t counter)
 		return;
 	cnt = flow_dv_counter_get_by_idx(dev, counter, &pool);
 	MLX5_ASSERT(pool);
-	/*
-	 * If the counter action is shared by ID, the l3t_clear_entry function
-	 * reduces its references counter. If after the reduction the action is
-	 * still referenced, the function returns here and does not release it.
-	 */
-	if (IS_LEGACY_SHARED_CNT(counter) &&
-	    mlx5_l3t_clear_entry(priv->sh->cnt_id_tbl, cnt->shared_info.id))
-		return;
-	/*
-	 * If the counter action is shared by indirect action API, the atomic
-	 * function reduces its references counter. If after the reduction the
-	 * action is still referenced, the function returns here and does not
-	 * release it.
-	 * When the counter action is not shared neither by ID nor by indirect
-	 * action API, shared info is 1 before the reduction, so this condition
-	 * is failed and function doesn't return here.
-	 */
-	if (!IS_LEGACY_SHARED_CNT(counter) &&
-	    __atomic_sub_fetch(&cnt->shared_info.refcnt, 1, __ATOMIC_RELAXED))
-		return;
-	if (pool->is_aged)
+	if (pool->is_aged) {
 		flow_dv_counter_remove_from_age(dev, counter, cnt);
+	} else {
+		/*
+		 * If the counter action is shared by ID, the l3t_clear_entry
+		 * function reduces its references counter. If after the
+		 * reduction the action is still referenced, the function
+		 * returns here and does not release it.
+		 */
+		if (IS_LEGACY_SHARED_CNT(counter) &&
+		    mlx5_l3t_clear_entry(priv->sh->cnt_id_tbl,
+					 cnt->shared_info.id))
+			return;
+		/*
+		 * If the counter action is shared by indirect action API,
+		 * the atomic function reduces its references counter.
+		 * If after the reduction the action is still referenced, the
+		 * function returns here and does not release it.
+		 * When the counter action is not shared neither by ID nor by
+		 * indirect action API, shared info is 1 before the reduction,
+		 * so this condition is failed and function doesn't return here.
+		 */
+		if (!IS_LEGACY_SHARED_CNT(counter) &&
+		    __atomic_sub_fetch(&cnt->shared_info.refcnt, 1,
+				       __ATOMIC_RELAXED))
+			return;
+	}
 	cnt->pool = pool;
 	/*
 	 * Put the counter back to list to be updated in none fallback mode.
