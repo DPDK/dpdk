@@ -119,7 +119,12 @@
 #define IAVF_FDIR_INSET_L2TPV3OIP (\
 	IAVF_L2TPV3OIP_SESSION_ID)
 
-#define IAVF_FDIR_INSET_ESP (\
+#define IAVF_FDIR_INSET_IPV4_ESP (\
+	IAVF_INSET_IPV4_SRC | IAVF_INSET_IPV4_DST | \
+	IAVF_INSET_ESP_SPI)
+
+#define IAVF_FDIR_INSET_IPV6_ESP (\
+	IAVF_INSET_IPV6_SRC | IAVF_INSET_IPV6_DST | \
 	IAVF_INSET_ESP_SPI)
 
 #define IAVF_FDIR_INSET_AH (\
@@ -168,8 +173,8 @@ static struct iavf_pattern_match_item iavf_fdir_pattern[] = {
 	{iavf_pattern_eth_ipv6_gtpu_eh,		 IAVF_FDIR_INSET_IPV6_GTPU_EH,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_l2tpv3,		 IAVF_FDIR_INSET_L2TPV3OIP,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv6_l2tpv3,		 IAVF_FDIR_INSET_L2TPV3OIP,	IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4_esp,		 IAVF_FDIR_INSET_ESP,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv6_esp,		 IAVF_FDIR_INSET_ESP,		IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_esp,		 IAVF_FDIR_INSET_IPV4_ESP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_esp,		 IAVF_FDIR_INSET_IPV6_ESP,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_ah,		 IAVF_FDIR_INSET_AH,		IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv6_ah,		 IAVF_FDIR_INSET_AH,		IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_udp_esp,		 IAVF_FDIR_INSET_IPV4_NATT_ESP,	IAVF_INSET_NONE},
