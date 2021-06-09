@@ -1313,6 +1313,12 @@ struct i40e_adapter {
 
 	/* For RSS reta table update */
 	uint8_t rss_reta_updated;
+#ifdef RTE_ARCH_X86
+	bool rx_use_avx2;
+	bool rx_use_avx512;
+	bool tx_use_avx2;
+	bool tx_use_avx512;
+#endif
 };
 
 /**
