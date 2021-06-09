@@ -1733,10 +1733,18 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				   input->l2tpv3_data.session_id);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_ESP:
+		ice_pkt_insert_u32(loc, ICE_IPV4_DST_ADDR_OFFSET,
+				   input->ip.v4.src_ip);
+		ice_pkt_insert_u32(loc, ICE_IPV4_SRC_ADDR_OFFSET,
+				   input->ip.v4.dst_ip);
 		ice_pkt_insert_u32(loc, ICE_IPV4_ESP_SPI_OFFSET,
 				   input->ip.v4.sec_parm_idx);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_ESP:
+		ice_pkt_insert_ipv6_addr(loc, ICE_IPV6_DST_ADDR_OFFSET,
+					 input->ip.v6.src_ip);
+		ice_pkt_insert_ipv6_addr(loc, ICE_IPV6_SRC_ADDR_OFFSET,
+					 input->ip.v6.dst_ip);
 		ice_pkt_insert_u32(loc, ICE_IPV6_ESP_SPI_OFFSET,
 				   input->ip.v6.sec_parm_idx);
 		break;
