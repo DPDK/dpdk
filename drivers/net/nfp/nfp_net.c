@@ -60,7 +60,7 @@ static int nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int nfp_net_infos_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static int nfp_net_init(struct rte_eth_dev *eth_dev);
-static int nfp_pf_init(struct rte_eth_dev *eth_dev);
+static int nfp_pf_init(struct rte_pci_device *pci_dev);
 static int nfp_pci_uninit(struct rte_eth_dev *eth_dev);
 static int nfp_init_phyports(struct nfp_pf_dev *pf_dev);
 static int nfp_net_link_update(struct rte_eth_dev *dev, int wait_to_complete);
@@ -3498,20 +3498,14 @@ static int nfp_init_phyports(struct nfp_pf_dev *pf_dev)
 			goto nfp_net_init;
 		}
 
-		/* First port has already been initialized */
-		if (i == 0) {
-			eth_dev = pf_dev->eth_dev;
-			goto skip_dev_alloc;
-		}
-
-		/* Allocate a eth_dev for remaining ports */
+		/* Allocate a eth_dev for this phyport */
 		eth_dev = rte_eth_dev_allocate(port_name);
 		if (!eth_dev) {
 			ret = -ENODEV;
 			goto port_cleanup;
 		}
 
-		/* Allocate memory for remaining ports */
+		/* Allocate memory for this phyport */
 		eth_dev->data->dev_private =
 			rte_zmalloc_socket(port_name, sizeof(struct nfp_net_hw),
 					   RTE_CACHE_LINE_SIZE, numa_node);
@@ -3521,7 +3515,6 @@ static int nfp_init_phyports(struct nfp_pf_dev *pf_dev)
 			goto port_cleanup;
 		}
 
-skip_dev_alloc:
 		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
 		/* Add this device to the PF's array of physical ports */
@@ -3568,23 +3561,19 @@ error:
 	return ret;
 }
 
-static int nfp_pf_init(struct rte_eth_dev *eth_dev)
+static int nfp_pf_init(struct rte_pci_device *pci_dev)
 {
-	struct rte_pci_device *pci_dev;
-	struct nfp_net_hw *hw = NULL;
 	struct nfp_pf_dev *pf_dev = NULL;
 	struct nfp_cpp *cpp;
 	struct nfp_hwinfo *hwinfo;
 	struct nfp_rtsym_table *sym_tbl;
 	struct nfp_eth_table *nfp_eth_table = NULL;
 	struct rte_service_spec service;
+	uint32_t *nfp_cpp_service_id = NULL;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int total_ports;
 	int ret = -ENODEV;
 	int err;
-
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev);
 
 	if (!pci_dev)
 		return ret;
@@ -3653,7 +3642,7 @@ static int nfp_pf_init(struct rte_eth_dev *eth_dev)
 		goto sym_tbl_cleanup;
 	}
 	/* Allocate memory for the PF "device" */
-	snprintf(name, sizeof(name), "nfp_pf%d", eth_dev->data->port_id);
+	snprintf(name, sizeof(name), "nfp_pf%d", 0);
 	pf_dev = rte_zmalloc(name, sizeof(*pf_dev), 0);
 	if (!pf_dev) {
 		ret = -ENOMEM;
@@ -3670,9 +3659,6 @@ static int nfp_pf_init(struct rte_eth_dev *eth_dev)
 		pf_dev->multiport = true;
 
 	pf_dev->pci_dev = pci_dev;
-
-	/* The first eth_dev is part of the PF struct */
-	pf_dev->eth_dev = eth_dev;
 
 	/* Map the symbol table */
 	pf_dev->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, "_pf0_net_bar0",
@@ -3722,7 +3708,7 @@ static int nfp_pf_init(struct rte_eth_dev *eth_dev)
 	service.callback_userdata = (void *)cpp;
 
 	if (rte_service_component_register(&service,
-					   &hw->nfp_cpp_service_id))
+					   nfp_cpp_service_id))
 		RTE_LOG(ERR, PMD, "NFP CPP bridge service register() failed");
 	else
 		RTE_LOG(DEBUG, PMD, "NFP CPP bridge service registered");
@@ -3748,8 +3734,7 @@ error:
 static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			    struct rte_pci_device *dev)
 {
-	return rte_eth_dev_pci_generic_probe(dev,
-		sizeof(struct nfp_net_hw), nfp_pf_init);
+	return nfp_pf_init(dev);
 }
 
 static const struct rte_pci_id pci_id_nfp_pf_net_map[] = {

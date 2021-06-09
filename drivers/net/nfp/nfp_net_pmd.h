@@ -389,9 +389,6 @@ struct nfp_pf_dev {
 	/* Backpointer to associated pci device */
 	struct rte_pci_device *pci_dev;
 
-	/* First physical port's eth device */
-	struct rte_eth_dev *eth_dev;
-
 	/* Array of physical ports belonging to this PF */
 	struct nfp_net_hw *ports[NFP_MAX_PHYPORTS];
 
