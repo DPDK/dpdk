@@ -1363,6 +1363,7 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 
 	link_info->support_speeds = rte_le_to_cpu_16(resp->support_speeds);
 	link_info->auto_link_speed = rte_le_to_cpu_16(resp->auto_link_speed);
+	link_info->auto_link_speed_mask = rte_le_to_cpu_16(resp->auto_link_speed_mask);
 	link_info->preemphasis = rte_le_to_cpu_32(resp->preemphasis);
 	link_info->force_link_speed = rte_le_to_cpu_16(resp->force_link_speed);
 	link_info->phy_ver[0] = resp->phy_maj;
@@ -1415,6 +1416,12 @@ int bnxt_hwrm_port_phy_qcaps(struct bnxt *bp)
 			rte_le_to_cpu_16(resp->supported_pam4_speeds_auto_mode);
 
 	HWRM_UNLOCK();
+
+	/* Older firmware does not have supported_auto_speeds, so assume
+	 * that all supported speeds can be autonegotiated.
+	 */
+	if (link_info->auto_link_speed_mask && !link_info->support_auto_speeds)
+		link_info->support_auto_speeds = link_info->support_speeds;
 
 	return 0;
 }
@@ -3085,15 +3092,8 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	speed = bnxt_parse_eth_link_speed(dev_conf->link_speeds,
 					  bp->link_info->link_signal_mode);
 	link_req.phy_flags = HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESET_PHY;
-	/* Autoneg can be done only when the FW allows.
-	 * When user configures fixed speed of 40G and later changes to
-	 * any other speed, auto_link_speed/force_link_speed is still set
-	 * to 40G until link comes up at new speed.
-	 */
-	if (autoneg == 1 &&
-	    !(!BNXT_CHIP_THOR(bp) &&
-	      (bp->link_info->auto_link_speed ||
-	       bp->link_info->force_link_speed))) {
+	/* Autoneg can be done only when the FW allows. */
+	if (autoneg == 1 && bp->link_info->support_auto_speeds) {
 		link_req.phy_flags |=
 				HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESTART_AUTONEG;
 		link_req.auto_link_speed_mask =
