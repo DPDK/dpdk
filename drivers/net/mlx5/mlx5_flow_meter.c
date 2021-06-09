@@ -559,7 +559,8 @@ static int
 __mlx5_flow_meter_policy_delete(struct rte_eth_dev *dev,
 			uint32_t policy_id,
 			struct mlx5_flow_meter_policy *mtr_policy,
-			struct rte_mtr_error *error)
+			struct rte_mtr_error *error,
+			bool clear_l3t)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_meter_sub_policy *sub_policy;
@@ -590,7 +591,7 @@ __mlx5_flow_meter_policy_delete(struct rte_eth_dev *dev,
 			}
 		}
 	}
-	if (priv->sh->mtrmng->policy_idx_tbl) {
+	if (priv->sh->mtrmng->policy_idx_tbl && clear_l3t) {
 		if (mlx5_l3t_clear_entry(priv->sh->mtrmng->policy_idx_tbl,
 					policy_id)) {
 			rte_spinlock_unlock(&mtr_policy->sl);
@@ -768,7 +769,7 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 policy_add_err:
 	if (mtr_policy) {
 		ret = __mlx5_flow_meter_policy_delete(dev, policy_id,
-			mtr_policy, error);
+			mtr_policy, error, false);
 		mlx5_free(mtr_policy);
 		if (ret)
 			return ret;
@@ -815,7 +816,7 @@ mlx5_flow_meter_policy_delete(struct rte_eth_dev *dev,
 			RTE_MTR_ERROR_TYPE_METER_POLICY_ID, NULL,
 			"Meter policy id is invalid. ");
 	ret = __mlx5_flow_meter_policy_delete(dev, policy_id, mtr_policy,
-						error);
+						error, true);
 	if (ret)
 		return ret;
 	mlx5_free(mtr_policy);
@@ -1909,7 +1910,7 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 						"meter policy invalid.");
 			if (__mlx5_flow_meter_policy_delete(dev, i,
 						sub_policy->main_policy,
-						error))
+						error, true))
 				return -rte_mtr_error_set(error,
 						EINVAL,
 					RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
