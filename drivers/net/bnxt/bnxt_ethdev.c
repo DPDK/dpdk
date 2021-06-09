@@ -2077,7 +2077,8 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 
 	if (rss_conf->rss_key_len != HW_HASH_KEY_SIZE) {
 		PMD_DRV_LOG(ERR,
-			    "Invalid hashkey length, should be 16 bytes\n");
+			    "Invalid hashkey length, should be %d bytes\n",
+			    HW_HASH_KEY_SIZE);
 		return -EINVAL;
 	}
 	memcpy(vnic->rss_hash_key, rss_conf->rss_key, rss_conf->rss_key_len);
