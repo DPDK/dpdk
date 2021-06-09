@@ -48813,4 +48813,87 @@ struct hcomm_status {
 } __rte_packed;
 /* This is the GRC offset where the hcomm_status struct resides. */
 #define HCOMM_STATUS_STRUCT_LOC		0x31001F0UL
+
+/**************************
+ * hwrm_port_phy_i2c_read *
+ **************************/
+
+
+/* hwrm_port_phy_i2c_read_input (size:320b/40B) */
+struct hwrm_port_phy_i2c_read_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	uint32_t	enables;
+	/*
+	 * This bit must be '1' for the page_offset field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_PHY_I2C_READ_INPUT_ENABLES_PAGE_OFFSET     0x1UL
+	/* Port ID of port. */
+	uint16_t	port_id;
+	/* 8-bit I2C slave address. */
+	uint8_t	i2c_slave_addr;
+	uint8_t	unused_0;
+	/* The page number that is being accessed over I2C. */
+	uint16_t	page_number;
+	/* Offset within the page that is being accessed over I2C. */
+	uint16_t	page_offset;
+	/*
+	 * Length of data to read, in bytes starting at the offset
+	 * specified above. If the offset is not specified, then
+	 * the data shall be read from the beginning of the page.
+	 */
+	uint8_t	data_length;
+	uint8_t	unused_1[7];
+} __rte_packed;
+
+/* hwrm_port_phy_i2c_read_output (size:640b/80B) */
+struct hwrm_port_phy_i2c_read_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Up to 64B of data. */
+	uint32_t	data[16];
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
 #endif /* _HSI_STRUCT_DEF_DPDK_H_ */

@@ -1508,6 +1508,7 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 			rte_le_to_cpu_16(resp->support_pam4_speeds);
 	link_info->auto_pam4_link_speeds =
 			rte_le_to_cpu_16(resp->auto_pam4_link_speed_mask);
+	link_info->module_status = resp->module_status;
 	HWRM_UNLOCK();
 
 	PMD_DRV_LOG(DEBUG, "Link Speed:%d,Auto:%d:%x:%x,Support:%x,Force:%x\n",
@@ -6159,6 +6160,41 @@ int bnxt_hwrm_poll_ver_get(struct bnxt *bp)
 		rc = -EAGAIN;
 
 	HWRM_UNLOCK();
+
+	return rc;
+}
+
+int bnxt_hwrm_read_sfp_module_eeprom_info(struct bnxt *bp, uint16_t i2c_addr,
+					  uint16_t page_number, uint16_t start_addr,
+					  uint16_t data_length, uint8_t *buf)
+{
+	struct hwrm_port_phy_i2c_read_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_port_phy_i2c_read_input req = {0};
+	uint32_t enables = HWRM_PORT_PHY_I2C_READ_INPUT_ENABLES_PAGE_OFFSET;
+	int rc, byte_offset = 0;
+
+	do {
+		uint16_t xfer_size;
+
+		HWRM_PREP(&req, HWRM_PORT_PHY_I2C_READ, BNXT_USE_CHIMP_MB);
+		req.i2c_slave_addr = i2c_addr;
+		req.page_number = rte_cpu_to_le_16(page_number);
+		req.port_id = rte_cpu_to_le_16(bp->pf->port_id);
+
+		xfer_size = RTE_MIN(data_length, BNXT_MAX_PHY_I2C_RESP_SIZE);
+		req.page_offset = rte_cpu_to_le_16(start_addr + byte_offset);
+		req.data_length = xfer_size;
+		req.enables = rte_cpu_to_le_32(start_addr + byte_offset ? enables : 0);
+		rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+		HWRM_CHECK_RESULT();
+
+		memcpy(buf + byte_offset, resp->data, xfer_size);
+
+		data_length -= xfer_size;
+		byte_offset += xfer_size;
+
+		HWRM_UNLOCK();
+	} while (data_length > 0);
 
 	return rc;
 }

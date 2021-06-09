@@ -3858,6 +3858,149 @@ bnxt_set_eeprom_op(struct rte_eth_dev *dev,
 				     in_eeprom->data, in_eeprom->length);
 }
 
+static int bnxt_get_module_info(struct rte_eth_dev *dev,
+				struct rte_eth_dev_module_info *modinfo)
+{
+	uint8_t module_info[SFF_DIAG_SUPPORT_OFFSET + 1];
+	struct bnxt *bp = dev->data->dev_private;
+	int rc;
+
+	/* No point in going further if phy status indicates
+	 * module is not inserted or if it is powered down or
+	 * if it is of type 10GBase-T
+	 */
+	if (bp->link_info->module_status >
+	    HWRM_PORT_PHY_QCFG_OUTPUT_MODULE_STATUS_WARNINGMSG) {
+		PMD_DRV_LOG(NOTICE, "Port %u : Module is not inserted or is powered down\n",
+			    dev->data->port_id);
+		return -ENOTSUP;
+	}
+
+	/* This feature is not supported in older firmware versions */
+	if (bp->hwrm_spec_code < 0x10202) {
+		PMD_DRV_LOG(NOTICE, "Port %u : Feature is not supported in older firmware\n",
+			    dev->data->port_id);
+		return -ENOTSUP;
+	}
+
+	rc = bnxt_hwrm_read_sfp_module_eeprom_info(bp, I2C_DEV_ADDR_A0, 0, 0,
+						   SFF_DIAG_SUPPORT_OFFSET + 1,
+						   module_info);
+
+	if (rc)
+		return rc;
+
+	switch (module_info[0]) {
+	case SFF_MODULE_ID_SFP:
+		modinfo->type = RTE_ETH_MODULE_SFF_8472;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8472_LEN;
+		if (module_info[SFF_DIAG_SUPPORT_OFFSET] == 0)
+			modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8436_LEN;
+		break;
+	case SFF_MODULE_ID_QSFP:
+	case SFF_MODULE_ID_QSFP_PLUS:
+		modinfo->type = RTE_ETH_MODULE_SFF_8436;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8436_LEN;
+		break;
+	case SFF_MODULE_ID_QSFP28:
+		modinfo->type = RTE_ETH_MODULE_SFF_8636;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8636_MAX_LEN;
+		if (module_info[SFF8636_FLATMEM_OFFSET] & SFF8636_FLATMEM_MASK)
+			modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8636_LEN;
+		break;
+	default:
+		PMD_DRV_LOG(NOTICE, "Port %u : Unsupported module\n", dev->data->port_id);
+		return -ENOTSUP;
+	}
+
+	PMD_DRV_LOG(INFO, "Port %u : modinfo->type = %d modinfo->eeprom_len = %d\n",
+		    dev->data->port_id, modinfo->type, modinfo->eeprom_len);
+
+	return 0;
+}
+
+static int bnxt_get_module_eeprom(struct rte_eth_dev *dev,
+				  struct rte_dev_eeprom_info *info)
+{
+	uint8_t pg_addr[5] = { I2C_DEV_ADDR_A0, I2C_DEV_ADDR_A0 };
+	uint32_t offset = info->offset, length = info->length;
+	uint8_t module_info[SFF_DIAG_SUPPORT_OFFSET + 1];
+	struct bnxt *bp = dev->data->dev_private;
+	uint8_t *data = info->data;
+	uint8_t page = offset >> 7;
+	uint8_t max_pages = 2;
+	uint8_t opt_pages;
+	int rc;
+
+	rc = bnxt_hwrm_read_sfp_module_eeprom_info(bp, I2C_DEV_ADDR_A0, 0, 0,
+						   SFF_DIAG_SUPPORT_OFFSET + 1,
+						   module_info);
+	if (rc)
+		return rc;
+
+	switch (module_info[0]) {
+	case SFF_MODULE_ID_SFP:
+		module_info[SFF_DIAG_SUPPORT_OFFSET] = 0;
+		if (module_info[SFF_DIAG_SUPPORT_OFFSET]) {
+			pg_addr[2] = I2C_DEV_ADDR_A2;
+			pg_addr[3] = I2C_DEV_ADDR_A2;
+			max_pages = 4;
+		}
+		break;
+	case SFF_MODULE_ID_QSFP28:
+		rc = bnxt_hwrm_read_sfp_module_eeprom_info(bp, I2C_DEV_ADDR_A0, 0,
+							   SFF8636_OPT_PAGES_OFFSET,
+							   1, &opt_pages);
+		if (rc)
+			return rc;
+
+		if (opt_pages & SFF8636_PAGE1_MASK) {
+			pg_addr[2] = I2C_DEV_ADDR_A0;
+			max_pages = 3;
+		}
+		if (opt_pages & SFF8636_PAGE2_MASK) {
+			pg_addr[3] = I2C_DEV_ADDR_A0;
+			max_pages = 4;
+		}
+		if (~module_info[SFF8636_FLATMEM_OFFSET] & SFF8636_FLATMEM_MASK) {
+			pg_addr[4] = I2C_DEV_ADDR_A0;
+			max_pages = 5;
+		}
+		break;
+	default:
+		break;
+	}
+
+	memset(data, 0, length);
+
+	offset &= 0xff;
+	while (length && page < max_pages) {
+		uint8_t raw_page = page ? page - 1 : 0;
+		uint16_t chunk;
+
+		if (pg_addr[page] == I2C_DEV_ADDR_A2)
+			raw_page = 0;
+		else if (page)
+			offset |= 0x80;
+		chunk = RTE_MIN(length, 256 - offset);
+
+		if (pg_addr[page]) {
+			rc = bnxt_hwrm_read_sfp_module_eeprom_info(bp, pg_addr[page],
+								   raw_page, offset,
+								   chunk, data);
+			if (rc)
+				return rc;
+		}
+
+		data += chunk;
+		length -= chunk;
+		offset = 0;
+		page += 1 + (chunk > 128);
+	}
+
+	return length ? -EINVAL : 0;
+}
+
 /*
  * Initialization
  */
@@ -3919,6 +4062,8 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.get_eeprom_length    = bnxt_get_eeprom_length_op,
 	.get_eeprom           = bnxt_get_eeprom_op,
 	.set_eeprom           = bnxt_set_eeprom_op,
+	.get_module_info = bnxt_get_module_info,
+	.get_module_eeprom = bnxt_get_module_eeprom,
 	.timesync_enable      = bnxt_timesync_enable,
 	.timesync_disable     = bnxt_timesync_disable,
 	.timesync_read_time   = bnxt_timesync_read_time,

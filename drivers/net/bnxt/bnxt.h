@@ -292,6 +292,7 @@ struct bnxt_link_info {
 	uint16_t		auto_pam4_link_speeds;
 	uint16_t		support_pam4_auto_speeds;
 	uint8_t			req_signal_mode;
+	uint8_t			module_status;
 };
 
 #define BNXT_COS_QUEUE_COUNT	8
@@ -969,6 +970,20 @@ struct bnxt_vf_rep_tx_queue {
 	struct bnxt_tx_queue *txq;
 	struct bnxt_representor *bp;
 };
+
+#define I2C_DEV_ADDR_A0			0xa0
+#define I2C_DEV_ADDR_A2			0xa2
+#define SFF_DIAG_SUPPORT_OFFSET		0x5c
+#define SFF_MODULE_ID_SFP		0x3
+#define SFF_MODULE_ID_QSFP		0xc
+#define SFF_MODULE_ID_QSFP_PLUS		0xd
+#define SFF_MODULE_ID_QSFP28		0x11
+#define SFF8636_FLATMEM_OFFSET		0x2
+#define SFF8636_FLATMEM_MASK		0x4
+#define SFF8636_OPT_PAGES_OFFSET	0xc3
+#define SFF8636_PAGE1_MASK		0x40
+#define SFF8636_PAGE2_MASK		0x80
+#define BNXT_MAX_PHY_I2C_RESP_SIZE	64
 
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
 int bnxt_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete,
