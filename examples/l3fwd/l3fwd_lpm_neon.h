@@ -98,14 +98,14 @@ l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 	if (k) {
 		for (i = 0; i < FWDSTEP; i++) {
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i],
-						struct rte_ether_hdr *) + 1);
+							void *));
 		}
 
 		for (j = 0; j != k - FWDSTEP; j += FWDSTEP) {
 			for (i = 0; i < FWDSTEP; i++) {
 				rte_prefetch0(rte_pktmbuf_mtod(
 						pkts_burst[j + i + FWDSTEP],
-						struct rte_ether_hdr *) + 1);
+						void *));
 			}
 
 			processx4_step1(&pkts_burst[j], &dip, &ipv4_flag);
@@ -125,17 +125,17 @@ l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 		switch (m) {
 		case 3:
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[j],
-						struct rte_ether_hdr *) + 1);
+							void *));
 			j++;
 			/* fallthrough */
 		case 2:
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[j],
-						struct rte_ether_hdr *) + 1);
+							void *));
 			j++;
 			/* fallthrough */
 		case 1:
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[j],
-						struct rte_ether_hdr *) + 1);
+							void *));
 			j++;
 		}
 
