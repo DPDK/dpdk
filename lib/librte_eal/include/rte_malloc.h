@@ -160,7 +160,7 @@ rte_realloc(void *ptr, size_t size, unsigned int align)
 __rte_experimental
 void *
 rte_realloc_socket(void *ptr, size_t size, unsigned int align, int socket)
-	__rte_alloc_size(2, 3);
+	__rte_alloc_size(2);
 
 /**
  * This function allocates memory from the huge-page area of memory. The memory
