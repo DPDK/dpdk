@@ -320,7 +320,7 @@ cnxk_tim_add_entry_mp(struct cnxk_tim_ring *const tim_ring,
 	struct cnxk_tim_ent *chunk;
 	struct cnxk_tim_bkt *bkt;
 	uint64_t lock_sema;
-	int16_t rem;
+	int64_t rem;
 
 __retry:
 	cnxk_tim_get_target_bucket(tim_ring, rel_bkt, &bkt, &mirr_bkt);
