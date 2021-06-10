@@ -3430,7 +3430,7 @@ enum ice_status ice_flow_rem_vsi_prof(struct ice_hw *hw, enum ice_block blk, u16
 }
 
 #define ICE_FLOW_RSS_SEG_HDR_L2_MASKS \
-(ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_VLAN)
+(ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_ETH_NON_IP | ICE_FLOW_SEG_HDR_VLAN)
 
 #define ICE_FLOW_RSS_SEG_HDR_L3_MASKS \
 	(ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV6)

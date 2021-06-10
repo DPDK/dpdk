@@ -365,6 +365,13 @@ struct ice_rss_hash_cfg empty_tmplt = {
 	0
 };
 
+struct ice_rss_hash_cfg eth_tmplt = {
+	ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_ETH_NON_IP,
+	ICE_FLOW_HASH_ETH,
+	ICE_RSS_OUTER_HEADERS,
+	0
+};
+
 /* IPv4 */
 #define ICE_RSS_TYPE_ETH_IPV4		(ETH_RSS_ETH | ETH_RSS_IPV4 | \
 					 ETH_RSS_FRAG_IPV4)
@@ -467,6 +474,9 @@ struct ice_rss_hash_cfg empty_tmplt = {
 #define ICE_RSS_TYPE_IPV4_PFCP		(ETH_RSS_PFCP | ETH_RSS_IPV4)
 #define ICE_RSS_TYPE_IPV6_PFCP		(ETH_RSS_PFCP | ETH_RSS_IPV6)
 
+/* MAC */
+#define ICE_RSS_TYPE_ETH		ETH_RSS_ETH
+
 /**
  * Supported pattern for hash.
  * The first member is pattern item type,
@@ -536,6 +546,8 @@ static struct ice_pattern_match_item ice_hash_pattern_list[] = {
 	{pattern_eth_ipv6_pfcp,			ICE_RSS_TYPE_IPV6_PFCP,		ICE_INSET_NONE,	&eth_ipv6_pfcp_tmplt},
 	/* PPPOE */
 	{pattern_eth_pppoes,			ICE_RSS_TYPE_PPPOE,		ICE_INSET_NONE,	&pppoe_tmplt},
+	/* MAC */
+	{pattern_ethertype,			ICE_RSS_TYPE_ETH,		ICE_INSET_NONE, &eth_tmplt},
 	/* EMPTY */
 	{pattern_empty,				ICE_INSET_NONE,			ICE_INSET_NONE,	&empty_tmplt},
 };
@@ -635,6 +647,11 @@ ice_refine_hash_cfg_l234(struct ice_rss_hash_cfg *hash_cfg,
 		else if (rss_type & ETH_RSS_L2_DST_ONLY)
 			*hash_flds &= ~(BIT_ULL(ICE_FLOW_FIELD_IDX_ETH_SA));
 		*addl_hdrs &= ~ICE_FLOW_SEG_HDR_ETH;
+	}
+
+	if (*addl_hdrs & ICE_FLOW_SEG_HDR_ETH_NON_IP) {
+		if (rss_type & ETH_RSS_ETH)
+			*hash_flds |= BIT_ULL(ICE_FLOW_FIELD_IDX_ETH_TYPE);
 	}
 
 	if (*addl_hdrs & ICE_FLOW_SEG_HDR_VLAN) {
