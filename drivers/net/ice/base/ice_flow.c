@@ -239,11 +239,11 @@ static const u32 ice_ptypes_macvlan_il[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
-/* Packet types for packets with an Outer/First/Single IPv4 header, does NOT
- * include IPV4 other PTYPEs
+/* Packet types for packets with an Outer/First/Single non-frag IPv4 header,
+ * does NOT include IPV4 other PTYPEs
  */
 static const u32 ice_ptypes_ipv4_ofos[] = {
-	0x1DC00000, 0x24000800, 0x00000000, 0x00000000,
+	0x1D800000, 0x24000800, 0x00000000, 0x00000000,
 	0x00000000, 0x00000155, 0x00000000, 0x00000000,
 	0x00000000, 0x000FC000, 0x000002A0, 0x00100000,
 	0x00001500, 0x00000000, 0x00000000, 0x00000000,
@@ -253,11 +253,11 @@ static const u32 ice_ptypes_ipv4_ofos[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
-/* Packet types for packets with an Outer/First/Single IPv4 header, includes
- * IPV4 other PTYPEs
+/* Packet types for packets with an Outer/First/Single non-frag IPv4 header,
+ * includes IPV4 other PTYPEs
  */
 static const u32 ice_ptypes_ipv4_ofos_all[] = {
-	0x1DC00000, 0x24000800, 0x00000000, 0x00000000,
+	0x1D800000, 0x24000800, 0x00000000, 0x00000000,
 	0x00000000, 0x00000155, 0x00000000, 0x00000000,
 	0x00000000, 0x000FC000, 0x83E0FAA0, 0x00000101,
 	0x03FFD500, 0x00000000, 0x00000000, 0x00000000,
@@ -279,11 +279,11 @@ static const u32 ice_ptypes_ipv4_il[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
-/* Packet types for packets with an Outer/First/Single IPv6 header, does NOT
- * include IVP6 other PTYPEs
+/* Packet types for packets with an Outer/First/Single non-frag IPv6 header,
+ * does NOT include IVP6 other PTYPEs
  */
 static const u32 ice_ptypes_ipv6_ofos[] = {
-	0x00000000, 0x00000000, 0x77000000, 0x10002000,
+	0x00000000, 0x00000000, 0x76000000, 0x10002000,
 	0x00000000, 0x000002AA, 0x00000000, 0x00000000,
 	0x00000000, 0x03F00000, 0x00000540, 0x00000000,
 	0x00002A00, 0x00000000, 0x00000000, 0x00000000,
@@ -293,11 +293,11 @@ static const u32 ice_ptypes_ipv6_ofos[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
-/* Packet types for packets with an Outer/First/Single IPv6 header, includes
- * IPV6 other PTYPEs
+/* Packet types for packets with an Outer/First/Single non-frag IPv6 header,
+ * includes IPV6 other PTYPEs
  */
 static const u32 ice_ptypes_ipv6_ofos_all[] = {
-	0x00000000, 0x00000000, 0x77000000, 0x10002000,
+	0x00000000, 0x00000000, 0x76000000, 0x10002000,
 	0x00000000, 0x000002AA, 0x00000000, 0x00000000,
 	0x00000000, 0x03F00000, 0x7C1F0540, 0x00000206,
 	0xFC002A00, 0x0000003F, 0x00000000, 0x00000000,
@@ -319,9 +319,11 @@ static const u32 ice_ptypes_ipv6_il[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
-/* Packet types for packets with an Outer/First/Single IPv4 header - no L4 */
+/* Packet types for packets with an Outer/First/Single
+ * non-frag IPv4 header - no L4
+ */
 static const u32 ice_ptypes_ipv4_ofos_no_l4[] = {
-	0x10C00000, 0x04000800, 0x00000000, 0x00000000,
+	0x10800000, 0x04000800, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x000cc000, 0x000002A0, 0x00000000,
 	0x00001500, 0x00000000, 0x00000000, 0x00000000,
@@ -343,9 +345,11 @@ static const u32 ice_ptypes_ipv4_il_no_l4[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
-/* Packet types for packets with an Outer/First/Single IPv6 header - no L4 */
+/* Packet types for packets with an Outer/First/Single
+ * non-frag IPv6 header - no L4
+ */
 static const u32 ice_ptypes_ipv6_ofos_no_l4[] = {
-	0x00000000, 0x00000000, 0x43000000, 0x10002000,
+	0x00000000, 0x00000000, 0x42000000, 0x10002000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x02300000, 0x00000540, 0x00000000,
 	0x00002A00, 0x00000000, 0x00000000, 0x00000000,
