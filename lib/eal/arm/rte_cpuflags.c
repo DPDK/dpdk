@@ -48,7 +48,6 @@ struct feature_entry {
 
 #ifdef RTE_ARCH_ARMv7
 #define PLATFORM_STR "v7l"
-typedef Elf32_auxv_t _Elfx_auxv_t;
 
 const struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(SWP,       REG_HWCAP,    0)
@@ -83,7 +82,6 @@ const struct feature_entry rte_cpu_feature_table[] = {
 
 #elif defined RTE_ARCH_ARM64
 #define PLATFORM_STR "aarch64"
-typedef Elf64_auxv_t _Elfx_auxv_t;
 
 const struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(FP,		REG_HWCAP,    0)
