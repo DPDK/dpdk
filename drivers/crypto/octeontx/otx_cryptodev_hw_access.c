@@ -409,7 +409,7 @@ otx_cpt_deinit_device(void *dev)
 static int
 otx_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 			       struct cpt_instance *instance, uint8_t qp_id,
-			       int nb_elements)
+			       unsigned int nb_elements)
 {
 	char mempool_name[RTE_MEMPOOL_NAMESIZE];
 	struct cpt_qp_meta_info *meta_info;
@@ -417,6 +417,7 @@ otx_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 	int max_mlen = 0;
 	int sg_mlen = 0;
 	int lb_mlen = 0;
+	int mb_pool_sz;
 	int ret;
 
 	/*
@@ -453,7 +454,9 @@ otx_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 	snprintf(mempool_name, RTE_MEMPOOL_NAMESIZE, "otx_cpt_mb_%u:%u",
 		 dev->data->dev_id, qp_id);
 
-	pool = rte_mempool_create_empty(mempool_name, nb_elements, max_mlen,
+	mb_pool_sz = RTE_MAX(nb_elements, (METABUF_POOL_CACHE_SIZE * rte_lcore_count()));
+
+	pool = rte_mempool_create_empty(mempool_name, mb_pool_sz, max_mlen,
 					METABUF_POOL_CACHE_SIZE, 0,
 					rte_socket_id(), 0);
 
