@@ -2298,6 +2298,18 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 			ret = -rte_errno;
 			goto exit;
 		}
+		/*
+		 * New kernels may add the switch_id attribute for the case
+		 * there is no E-Switch and we wrongly recognized the
+		 * only device as master. Override this if there is the
+		 * single device with single port and new device name
+		 * format present.
+		 */
+		if (nd == 1 &&
+		    list[0].info.name_type == MLX5_PHYS_PORT_NAME_TYPE_UPLINK) {
+			list[0].info.master = 0;
+			list[0].info.representor = 0;
+		}
 	}
 	MLX5_ASSERT(ns);
 	/*
