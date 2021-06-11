@@ -45,12 +45,12 @@ qp_memzone_name_get(char *name, int size, int dev_id, int qp_id)
 static int
 otx2_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 				struct otx2_cpt_qp *qp, uint8_t qp_id,
-				int nb_elements)
+				unsigned int nb_elements)
 {
 	char mempool_name[RTE_MEMPOOL_NAMESIZE];
 	struct cpt_qp_meta_info *meta_info;
+	int ret, max_mlen, mb_pool_sz;
 	struct rte_mempool *pool;
-	int ret, max_mlen;
 	int asym_mlen = 0;
 	int lb_mlen = 0;
 	int sg_mlen = 0;
@@ -87,7 +87,9 @@ otx2_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 	snprintf(mempool_name, RTE_MEMPOOL_NAMESIZE, "otx2_cpt_mb_%u:%u",
 		 dev->data->dev_id, qp_id);
 
-	pool = rte_mempool_create_empty(mempool_name, nb_elements, max_mlen,
+	mb_pool_sz = RTE_MAX(nb_elements, (METABUF_POOL_CACHE_SIZE * rte_lcore_count()));
+
+	pool = rte_mempool_create_empty(mempool_name, mb_pool_sz, max_mlen,
 					METABUF_POOL_CACHE_SIZE, 0,
 					rte_socket_id(), 0);
 
