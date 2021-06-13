@@ -1968,7 +1968,7 @@ hns3vf_dev_stop(struct rte_eth_dev *dev)
 	/* Disable datapath on secondary process. */
 	hns3_mp_req_stop_rxtx(dev);
 	/* Prevent crashes when queues are still in use. */
-	rte_delay_ms(hw->tqps_num);
+	rte_delay_ms(hw->cfg_max_queues);
 
 	rte_spinlock_lock(&hw->lock);
 	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
@@ -2411,7 +2411,7 @@ hns3vf_stop_service(struct hns3_adapter *hns)
 	rte_wmb();
 	/* Disable datapath on secondary process. */
 	hns3_mp_req_stop_rxtx(eth_dev);
-	rte_delay_ms(hw->tqps_num);
+	rte_delay_ms(hw->cfg_max_queues);
 
 	rte_spinlock_lock(&hw->lock);
 	if (hw->adapter_state == HNS3_NIC_STARTED ||
