@@ -1947,7 +1947,7 @@ hns3_clear_reset_level(struct hns3_hw *hw, uint64_t *levels)
 static bool
 hns3_reset_err_handle(struct hns3_adapter *hns)
 {
-#define MAX_RESET_FAIL_CNT 5
+#define MAX_RESET_FAIL_CNT 30
 
 	struct hns3_hw *hw = &hns->hw;
 
@@ -2041,7 +2041,7 @@ hns3_reset_pre(struct hns3_adapter *hns)
 static int
 hns3_reset_post(struct hns3_adapter *hns)
 {
-#define TIMEOUT_RETRIES_CNT	5
+#define TIMEOUT_RETRIES_CNT	30
 	struct hns3_hw *hw = &hns->hw;
 	struct timeval tv_delta;
 	struct timeval tv;
