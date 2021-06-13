@@ -97,8 +97,6 @@ rte_strlcat(char *dst, const char *src, size_t size)
  * Copy string src to buffer dst of size dsize.
  * At most dsize-1 chars will be copied.
  * Always NUL-terminates, unless (dsize == 0).
- * Returns number of bytes copied (terminating NUL-byte excluded) on success ;
- * negative errno on error.
  *
  * @param dst
  *   The destination string.
@@ -110,8 +108,9 @@ rte_strlcat(char *dst, const char *src, size_t size)
  *   Length in bytes of the destination buffer.
  *
  * @return
- *   The number of bytes copied on success
+ *   The number of bytes copied (terminating NUL-byte excluded) on success.
  *   -E2BIG if the destination buffer is too small.
+ *   rte_errno is set.
  */
 ssize_t
 rte_strscpy(char *dst, const char *src, size_t dsize);

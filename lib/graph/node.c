@@ -86,10 +86,8 @@ __rte_node_register(const struct rte_node_register *reg)
 	}
 
 	/* Initialize the node */
-	if (rte_strscpy(node->name, reg->name, RTE_NODE_NAMESIZE) < 0) {
-		rte_errno = E2BIG;
+	if (rte_strscpy(node->name, reg->name, RTE_NODE_NAMESIZE) < 0)
 		goto free;
-	}
 	node->flags = reg->flags;
 	node->process = reg->process;
 	node->init = reg->init;
@@ -98,10 +96,8 @@ __rte_node_register(const struct rte_node_register *reg)
 	node->parent_id = reg->parent_id;
 	for (i = 0; i < reg->nb_edges; i++) {
 		if (rte_strscpy(node->next_nodes[i], reg->next_nodes[i],
-				RTE_NODE_NAMESIZE) < 0) {
-			rte_errno = E2BIG;
+				RTE_NODE_NAMESIZE) < 0)
 			goto free;
-		}
 	}
 
 	node->id = node_id++;
@@ -278,10 +274,8 @@ edge_update(struct node *node, struct node *prev, rte_edge_t from,
 	/* Update the new nodes name */
 	for (i = from; i < max_edges; i++, count++) {
 		if (rte_strscpy(node->next_nodes[i], next_nodes[count],
-				RTE_NODE_NAMESIZE) < 0) {
-			rte_errno = E2BIG;
+				RTE_NODE_NAMESIZE) < 0)
 			goto restore;
-		}
 	}
 restore:
 	/* Update the linked list to point new node address in prev node */

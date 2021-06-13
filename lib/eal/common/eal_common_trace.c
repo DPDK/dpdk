@@ -500,7 +500,6 @@ __rte_trace_point_register(rte_trace_point_t *handle, const char *name,
 	/* Initialize the trace point */
 	if (rte_strscpy(tp->name, name, TRACE_POINT_NAME_SIZE) < 0) {
 		trace_err("name is too long");
-		rte_errno = E2BIG;
 		goto free;
 	}
 

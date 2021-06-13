@@ -8,6 +8,7 @@
 #include <errno.h>
 
 #include <rte_string_fns.h>
+#include <rte_errno.h>
 
 /* split string into tokens */
 int
@@ -62,5 +63,6 @@ rte_strscpy(char *dst, const char *src, size_t dsize)
 	/* Not enough room in dst, set NUL and return error. */
 	if (res != 0)
 		dst[res - 1] = '\0';
-	return -E2BIG;
+	rte_errno = E2BIG;
+	return -rte_errno;
 }

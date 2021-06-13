@@ -84,6 +84,9 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: ``rte_strscpy`` sets ``rte_errno`` to ``E2BIG`` in case of string
+  truncation.
+
 
 ABI Changes
 -----------
