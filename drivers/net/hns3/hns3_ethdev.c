@@ -558,7 +558,8 @@ hns3_en_hw_strip_rxvtag(struct hns3_adapter *hns, bool enable)
 
 	ret = hns3_set_vlan_rx_offload_cfg(hns, &rxvlan_cfg);
 	if (ret) {
-		hns3_err(hw, "enable strip rx vtag failed, ret =%d", ret);
+		hns3_err(hw, "%s strip rx vtag failed, ret = %d.",
+				enable ? "enable" : "disable", ret);
 		return ret;
 	}
 
