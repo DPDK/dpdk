@@ -1787,7 +1787,8 @@ hns3_schedule_reset(struct hns3_adapter *hns)
 		return;
 	if (rte_atomic16_read(&hns->hw.reset.schedule) == SCHEDULE_DEFERRED)
 		rte_eal_alarm_cancel(hw->reset.ops->reset_service, hns);
-	rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_REQUESTED);
+	else
+		rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_REQUESTED);
 
 	rte_eal_alarm_set(SWITCH_CONTEXT_US, hw->reset.ops->reset_service, hns);
 }
