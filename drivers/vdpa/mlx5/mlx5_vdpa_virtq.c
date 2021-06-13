@@ -442,6 +442,13 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 		DRV_LOG(ERR, "Failed to configure negotiated features.");
 		return -1;
 	}
+	if ((priv->features & (1ULL << VIRTIO_NET_F_CSUM)) == 0 &&
+	    ((priv->features & (1ULL << VIRTIO_NET_F_HOST_TSO4)) > 0 ||
+	     (priv->features & (1ULL << VIRTIO_NET_F_HOST_TSO6)) > 0)) {
+		/* Packet may be corrupted if TSO is enabled without CSUM. */
+		DRV_LOG(INFO, "TSO is enabled without CSUM, force CSUM.");
+		priv->features |= (1ULL << VIRTIO_NET_F_CSUM);
+	}
 	if (nr_vring > priv->caps.max_num_virtio_queues * 2) {
 		DRV_LOG(ERR, "Do not support more than %d virtqs(%d).",
 			(int)priv->caps.max_num_virtio_queues * 2,
