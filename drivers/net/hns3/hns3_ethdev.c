@@ -2380,6 +2380,7 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 	ret = hns3_set_fake_rx_or_tx_queues(dev, nb_rx_q, nb_tx_q);
 	if (ret) {
 		hns3_err(hw, "fail to set Rx/Tx fake queues, ret = %d.", ret);
+		hw->cfg_max_queues = 0;
 		return ret;
 	}
 
@@ -2439,6 +2440,7 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 
 cfg_err:
+	hw->cfg_max_queues = 0;
 	(void)hns3_set_fake_rx_or_tx_queues(dev, 0, 0);
 	hw->adapter_state = HNS3_NIC_INITIALIZED;
 
