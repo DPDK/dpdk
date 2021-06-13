@@ -1616,6 +1616,9 @@ hns3_set_fake_rx_or_tx_queues(struct rte_eth_dev *dev, uint16_t nb_rx_q,
 	uint16_t q;
 	int ret;
 
+	if (hns3_dev_indep_txrx_supported(hw))
+		return 0;
+
 	/* Setup new number of fake RX/TX queues and reconfigure device. */
 	rx_need_add_nb_q = hw->cfg_max_queues - nb_rx_q;
 	tx_need_add_nb_q = hw->cfg_max_queues - nb_tx_q;

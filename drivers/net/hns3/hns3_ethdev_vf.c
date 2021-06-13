@@ -799,13 +799,10 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 	 * work as usual. But these fake queues are imperceptible, and can not
 	 * be used by upper applications.
 	 */
-	if (!hns3_dev_indep_txrx_supported(hw)) {
-		ret = hns3_set_fake_rx_or_tx_queues(dev, nb_rx_q, nb_tx_q);
-		if (ret) {
-			hns3_err(hw, "fail to set Rx/Tx fake queues, ret = %d.",
-				 ret);
-			return ret;
-		}
+	ret = hns3_set_fake_rx_or_tx_queues(dev, nb_rx_q, nb_tx_q);
+	if (ret) {
+		hns3_err(hw, "fail to set Rx/Tx fake queues, ret = %d.", ret);
+		return ret;
 	}
 
 	hw->adapter_state = HNS3_NIC_CONFIGURING;
