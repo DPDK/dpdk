@@ -127,12 +127,6 @@ Deprecation Notices
   from the release: ``0x16c8, 0x16c9, 0x16ca, 0x16ce, 0x16cf, 0x16df,``
   ``0x16d0, 0x16d1, 0x16d2, 0x16d4, 0x16d5, 0x16e7, 0x16e8, 0x16e9``.
 
-* sched: To allow more traffic classes, flexible mapping of pipe queues to
-  traffic classes, and subport level configuration of pipes and queues
-  changes will be made to macros, data structures and API functions defined
-  in "rte_sched.h". These changes are aligned to improvements suggested in the
-  RFC https://mails.dpdk.org/archives/dev/2018-November/120035.html.
-
 * metrics: The function ``rte_metrics_init`` will have a non-void return
   in order to notify errors instead of calling ``rte_exit``.
 
