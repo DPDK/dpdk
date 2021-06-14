@@ -249,6 +249,7 @@ mlx5_rxq_create_devx_rq_resources(struct rte_eth_dev *dev, uint16_t idx)
 	rq_attr.vsd = (rxq_data->vlan_strip) ? 0 : 1;
 	rq_attr.cqn = rxq_ctrl->obj->cq_obj.cq->id;
 	rq_attr.scatter_fcs = (rxq_data->crc_present) ? 1 : 0;
+	rq_attr.ts_format = mlx5_ts_format_conv(priv->sh->rq_ts_format);
 	/* Fill WQ attributes for this RQ. */
 	if (mlx5_rxq_mprq_enabled(rxq_data)) {
 		rq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC_STRIDING_RQ;
