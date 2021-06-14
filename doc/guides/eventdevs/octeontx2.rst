@@ -138,6 +138,15 @@ Runtime Config Options
 
       -a 0002:0e:00.0,npa_lock_mask=0xf
 
+- ``Force Rx Back pressure``
+
+   Force Rx back pressure when same mempool is used across ethernet device
+   connected to event device.
+
+   For example::
+
+      -a 0002:0e:00.0,force_rx_bp=1
+
 Debugging Options
 -----------------
 
@@ -152,3 +161,18 @@ Debugging Options
    +---+------------+-------------------------------------------------------+
    | 2 | TIM        | --log-level='pmd\.event\.octeontx2\.timer,8'          |
    +---+------------+-------------------------------------------------------+
+
+Limitations
+-----------
+
+Rx adapter support
+~~~~~~~~~~~~~~~~~~
+
+Using the same mempool for all the ethernet device ports connected to
+event device would cause back pressure to be asserted only on the first
+ethernet device.
+Back pressure is automatically disabled when using same mempool for all the
+ethernet devices connected to event device to override this applications can
+use `force_rx_bp=1` device arguments.
+Using unique mempool per each ethernet device is recommended when they are
+connected to event device.

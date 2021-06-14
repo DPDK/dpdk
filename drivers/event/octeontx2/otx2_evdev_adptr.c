@@ -4,6 +4,8 @@
 
 #include "otx2_evdev.h"
 
+#define NIX_RQ_AURA_THRESH(x) (((x)*95) / 100)
+
 int
 otx2_sso_rx_adapter_caps_get(const struct rte_eventdev *event_dev,
 			     const struct rte_eth_dev *eth_dev, uint32_t *caps)
@@ -306,6 +308,87 @@ sso_updt_lookup_mem(const struct rte_eventdev *event_dev, void *lookup_mem)
 	}
 }
 
+static inline void
+sso_cfg_nix_mp_bpid(struct otx2_sso_evdev *dev,
+		    struct otx2_eth_dev *otx2_eth_dev, struct otx2_eth_rxq *rxq,
+		    uint8_t ena)
+{
+	struct otx2_fc_info *fc = &otx2_eth_dev->fc_info;
+	struct npa_aq_enq_req *req;
+	struct npa_aq_enq_rsp *rsp;
+	struct otx2_npa_lf *lf;
+	struct otx2_mbox *mbox;
+	uint32_t limit;
+	int rc;
+
+	if (otx2_dev_is_sdp(otx2_eth_dev))
+		return;
+
+	lf = otx2_npa_lf_obj_get();
+	if (!lf)
+		return;
+	mbox = lf->mbox;
+
+	req = otx2_mbox_alloc_msg_npa_aq_enq(mbox);
+	if (req == NULL)
+		return;
+
+	req->aura_id = npa_lf_aura_handle_to_aura(rxq->pool->pool_id);
+	req->ctype = NPA_AQ_CTYPE_AURA;
+	req->op = NPA_AQ_INSTOP_READ;
+
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return;
+
+	limit = rsp->aura.limit;
+	/* BP is already enabled. */
+	if (rsp->aura.bp_ena) {
+		/* If BP ids don't match disable BP. */
+		if ((rsp->aura.nix0_bpid != fc->bpid[0]) && !dev->force_rx_bp) {
+			req = otx2_mbox_alloc_msg_npa_aq_enq(mbox);
+			if (req == NULL)
+				return;
+
+			req->aura_id =
+				npa_lf_aura_handle_to_aura(rxq->pool->pool_id);
+			req->ctype = NPA_AQ_CTYPE_AURA;
+			req->op = NPA_AQ_INSTOP_WRITE;
+
+			req->aura.bp_ena = 0;
+			req->aura_mask.bp_ena = ~(req->aura_mask.bp_ena);
+
+			otx2_mbox_process(mbox);
+		}
+		return;
+	}
+
+	/* BP was previously enabled but now disabled skip. */
+	if (rsp->aura.bp)
+		return;
+
+	req = otx2_mbox_alloc_msg_npa_aq_enq(mbox);
+	if (req == NULL)
+		return;
+
+	req->aura_id = npa_lf_aura_handle_to_aura(rxq->pool->pool_id);
+	req->ctype = NPA_AQ_CTYPE_AURA;
+	req->op = NPA_AQ_INSTOP_WRITE;
+
+	if (ena) {
+		req->aura.nix0_bpid = fc->bpid[0];
+		req->aura_mask.nix0_bpid = ~(req->aura_mask.nix0_bpid);
+		req->aura.bp = NIX_RQ_AURA_THRESH(
+			limit > 128 ? 256 : limit); /* 95% of size*/
+		req->aura_mask.bp = ~(req->aura_mask.bp);
+	}
+
+	req->aura.bp_ena = !!ena;
+	req->aura_mask.bp_ena = ~(req->aura_mask.bp_ena);
+
+	otx2_mbox_process(mbox);
+}
+
 int
 otx2_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
 			      const struct rte_eth_dev *eth_dev,
@@ -326,8 +409,9 @@ otx2_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
 		for (i = 0 ; i < eth_dev->data->nb_rx_queues; i++) {
 			rxq = eth_dev->data->rx_queues[i];
 			sso_updt_xae_cnt(dev, rxq, RTE_EVENT_TYPE_ETHDEV);
-			rc = sso_xae_reconfigure((struct rte_eventdev *)
-						 (uintptr_t)event_dev);
+			sso_cfg_nix_mp_bpid(dev, otx2_eth_dev, rxq, true);
+			rc = sso_xae_reconfigure(
+				(struct rte_eventdev *)(uintptr_t)event_dev);
 			rc |= sso_rxq_enable(otx2_eth_dev, i,
 					     queue_conf->ev.sched_type,
 					     queue_conf->ev.queue_id, port);
@@ -337,6 +421,7 @@ otx2_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
 	} else {
 		rxq = eth_dev->data->rx_queues[rx_queue_id];
 		sso_updt_xae_cnt(dev, rxq, RTE_EVENT_TYPE_ETHDEV);
+		sso_cfg_nix_mp_bpid(dev, otx2_eth_dev, rxq, true);
 		rc = sso_xae_reconfigure((struct rte_eventdev *)
 					 (uintptr_t)event_dev);
 		rc |= sso_rxq_enable(otx2_eth_dev, (uint16_t)rx_queue_id,
@@ -363,19 +448,25 @@ otx2_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
 			      const struct rte_eth_dev *eth_dev,
 			      int32_t rx_queue_id)
 {
-	struct otx2_eth_dev *dev = eth_dev->data->dev_private;
+	struct otx2_eth_dev *otx2_eth_dev = eth_dev->data->dev_private;
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
 	int i, rc;
 
-	RTE_SET_USED(event_dev);
 	rc = strncmp(eth_dev->device->driver->name, "net_octeontx2", 13);
 	if (rc)
 		return -EINVAL;
 
 	if (rx_queue_id < 0) {
-		for (i = 0 ; i < eth_dev->data->nb_rx_queues; i++)
-			rc = sso_rxq_disable(dev, i);
+		for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+			rc = sso_rxq_disable(otx2_eth_dev, i);
+			sso_cfg_nix_mp_bpid(dev, otx2_eth_dev,
+					    eth_dev->data->rx_queues[i], false);
+		}
 	} else {
-		rc = sso_rxq_disable(dev, (uint16_t)rx_queue_id);
+		rc = sso_rxq_disable(otx2_eth_dev, (uint16_t)rx_queue_id);
+		sso_cfg_nix_mp_bpid(dev, otx2_eth_dev,
+				    eth_dev->data->rx_queues[rx_queue_id],
+				    false);
 	}
 
 	if (rc < 0)

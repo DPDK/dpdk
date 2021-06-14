@@ -151,6 +151,7 @@ struct otx2_sso_evdev {
 	uint8_t dual_ws;
 	uint32_t xae_cnt;
 	uint8_t qos_queue_cnt;
+	uint8_t force_rx_bp;
 	struct otx2_sso_qos *qos_parse_data;
 	/* HW const */
 	uint32_t xae_waes;
