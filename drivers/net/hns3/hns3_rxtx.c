@@ -2895,6 +2895,69 @@ hns3_tx_queue_conf_check(struct hns3_hw *hw, const struct rte_eth_txconf *conf,
 	return 0;
 }
 
+static void *
+hns3_tx_push_get_queue_tail_reg(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+#define HNS3_TX_PUSH_TQP_REGION_SIZE		0x10000
+#define HNS3_TX_PUSH_QUICK_DOORBELL_OFFSET	64
+#define HNS3_TX_PUSH_PCI_BAR_INDEX		4
+
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	uint8_t bar_id = HNS3_TX_PUSH_PCI_BAR_INDEX;
+
+	/*
+	 * If device support Tx push then its PCIe bar45 must exist, and DPDK
+	 * framework will mmap the bar45 default in PCI probe stage.
+	 *
+	 * In the bar45, the first half is for RoCE (RDMA over Converged
+	 * Ethernet), and the second half is for NIC, every TQP occupy 64KB.
+	 *
+	 * The quick doorbell located at 64B offset in the TQP region.
+	 */
+	return (char *)pci_dev->mem_resource[bar_id].addr +
+			(pci_dev->mem_resource[bar_id].len >> 1) +
+			HNS3_TX_PUSH_TQP_REGION_SIZE * queue_id +
+			HNS3_TX_PUSH_QUICK_DOORBELL_OFFSET;
+}
+
+void
+hns3_tx_push_init(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	volatile uint32_t *reg;
+	uint32_t val;
+
+	if (!hns3_dev_tx_push_supported(hw))
+		return;
+
+	reg = (volatile uint32_t *)hns3_tx_push_get_queue_tail_reg(dev, 0);
+	/*
+	 * Because the size of bar45 is about 8GB size, it may take a long time
+	 * to do the page fault in Tx process when work with vfio-pci, so use
+	 * one read operation to make kernel setup page table mapping for bar45
+	 * in the init stage.
+	 * Note: the bar45 is readable but the result is all 1.
+	 */
+	val = *reg;
+	RTE_SET_USED(val);
+}
+
+static void
+hns3_tx_push_queue_init(struct rte_eth_dev *dev,
+			uint16_t queue_id,
+			struct hns3_tx_queue *txq)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (!hns3_dev_tx_push_supported(hw)) {
+		txq->tx_push_enable = false;
+		return;
+	}
+
+	txq->io_tail_reg = (volatile void *)hns3_tx_push_get_queue_tail_reg(dev,
+						queue_id);
+	txq->tx_push_enable = true;
+}
+
 int
 hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		    unsigned int socket_id, const struct rte_eth_txconf *conf)
@@ -2985,6 +3048,12 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	txq->udp_cksum_mode = hw->udp_cksum_mode;
 	memset(&txq->basic_stats, 0, sizeof(struct hns3_tx_basic_stats));
 	memset(&txq->dfx_stats, 0, sizeof(struct hns3_tx_dfx_stats));
+
+	/*
+	 * Call hns3_tx_push_queue_init after assigned io_tail_reg field because
+	 * it may overwrite the io_tail_reg field.
+	 */
+	hns3_tx_push_queue_init(dev, idx, txq);
 
 	rte_spinlock_lock(&hw->lock);
 	dev->data->tx_queues[idx] = txq;
@@ -4032,7 +4101,7 @@ hns3_xmit_pkts_simple(void *tx_queue,
 	hns3_tx_fill_hw_ring(txq, tx_pkts + nb_tx, nb_pkts - nb_tx);
 	txq->next_to_use += nb_pkts - nb_tx;
 
-	hns3_write_reg_opt(txq->io_tail_reg, nb_pkts);
+	hns3_write_txq_tail_reg(txq, nb_pkts);
 
 	return nb_pkts;
 }
@@ -4149,7 +4218,7 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 end_of_tx:
 
 	if (likely(nb_tx))
-		hns3_write_reg_opt(txq->io_tail_reg, nb_hold);
+		hns3_write_txq_tail_reg(txq, nb_hold);
 
 	return nb_tx;
 }

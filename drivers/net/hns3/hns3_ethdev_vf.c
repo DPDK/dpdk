@@ -1921,6 +1921,8 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 		goto err_cmd_init;
 	}
 
+	hns3_tx_push_init(eth_dev);
+
 	/* Get VF resource */
 	ret = hns3_query_vf_resource(hw);
 	if (ret)
@@ -2928,8 +2930,8 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 					  "process, ret = %d", ret);
 			goto err_mp_init_secondary;
 		}
-
 		hw->secondary_cnt++;
+		hns3_tx_push_init(eth_dev);
 		return 0;
 	}
 

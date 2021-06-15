@@ -5174,6 +5174,8 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_cmd_init;
 	}
 
+	hns3_tx_push_init(eth_dev);
+
 	/*
 	 * To ensure that the hardware environment is clean during
 	 * initialization, the driver actively clear the hardware environment
@@ -7418,8 +7420,8 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 				     "process, ret = %d", ret);
 			goto err_mp_init_secondary;
 		}
-
 		hw->secondary_cnt++;
+		hns3_tx_push_init(eth_dev);
 		return 0;
 	}
 

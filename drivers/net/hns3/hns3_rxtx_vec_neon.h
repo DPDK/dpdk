@@ -84,7 +84,7 @@ hns3_xmit_fixed_burst_vec(void *__restrict tx_queue,
 	txq->next_to_use = next_to_use;
 	txq->tx_bd_ready -= nb_tx;
 
-	hns3_write_reg_opt(txq->io_tail_reg, nb_tx);
+	hns3_write_txq_tail_reg(txq, nb_tx);
 
 	return nb_tx;
 }

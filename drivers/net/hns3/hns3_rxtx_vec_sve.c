@@ -475,7 +475,7 @@ hns3_xmit_fixed_burst_vec_sve(void *__restrict tx_queue,
 	txq->next_to_use += nb_pkts - nb_tx;
 
 	txq->tx_bd_ready -= nb_pkts;
-	hns3_write_reg_opt(txq->io_tail_reg, nb_pkts);
+	hns3_write_txq_tail_reg(txq, nb_pkts);
 
 	return nb_pkts;
 }
