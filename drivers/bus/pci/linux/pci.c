@@ -569,7 +569,7 @@ pci_device_iommu_support_va(__rte_unused const struct rte_pci_device *dev)
 
 	/* Check for a PowerNV platform */
 	while (getline(&line, &len, fp) != -1) {
-		if (strstr(line, "platform") != NULL)
+		if (strstr(line, "platform") == NULL)
 			continue;
 
 		if (strstr(line, "PowerNV") != NULL) {
