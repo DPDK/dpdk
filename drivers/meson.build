@@ -19,7 +19,7 @@ subdirs = [
 ]
 
 disabled_drivers = run_command(list_dir_globs, get_option('disable_drivers'),
-		).stdout().split()
+		check: true).stdout().split()
 
 default_cflags = machine_args
 default_cflags += ['-DALLOW_EXPERIMENTAL_API']
