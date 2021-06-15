@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2018 Atomic Rules LLC
  */
 
+#include <pthread.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dlfcn.h>
@@ -585,6 +586,7 @@ delay_pg_start(void *arg)
 	 * perform a blind sleep here to ensure that the external test
 	 * application has time to setup the test before we generate packets
 	 */
+	pthread_detach(pthread_self());
 	usleep(100000);
 	ark_pktgen_run(ark->pg);
 	return NULL;
