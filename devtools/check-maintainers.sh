@@ -15,10 +15,10 @@ files () # <path> [<path> ...]
 	if [ -z "$1" ] ; then
 		return
 	fi
-	if [ -d .git ] ; then
+	if [ -r .git ] ; then
 		git ls-files "$1"
 	else
-		find "$1" -type f |
+		find $1 -type f |
 		sed 's,^\./,,'
 	fi |
 	# if not ended by /
