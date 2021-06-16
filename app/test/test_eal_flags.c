@@ -124,6 +124,7 @@ process_hugefiles(const char * prefix, enum hugepage_action action)
 			case HUGEPAGE_CHECK_EXISTS:
 				{
 					/* file exists, return */
+					closedir(hugepage_dir);
 					result = 1;
 					goto end;
 				}
