@@ -15,14 +15,6 @@ struct bnxt_db_info;
 	(!!(rte_le_to_cpu_32(((struct cmpl_base *)(cmp))->info3_v) &	\
 	    CMPL_BASE_V) == !((raw_cons) & ((ring)->ring_size)))
 
-#define CMPL_VALID(cmp, v)						\
-	(!!(rte_le_to_cpu_32(((struct cmpl_base *)(cmp))->info3_v) &	\
-	    CMPL_BASE_V) == !(v))
-
-#define NQ_CMP_VALID(nqcmp, raw_cons, ring)		\
-	(!!((nqcmp)->v & rte_cpu_to_le_32(NQ_CN_V)) ==	\
-	 !((raw_cons) & ((ring)->ring_size)))
-
 #define CMP_TYPE(cmp)						\
 	(((struct cmpl_base *)cmp)->type & CMPL_BASE_TYPE_MASK)
 
@@ -35,18 +27,10 @@ struct bnxt_db_info;
 #define RING_CMP(ring, idx)	((idx) & (ring)->ring_mask)
 #define RING_CMPL(ring_mask, idx)	((idx) & (ring_mask))
 #define NEXT_CMP(idx)		RING_CMP(ADV_RAW_CMP(idx, 1))
-#define FLIP_VALID(cons, mask, val)	((cons) >= (mask) ? !(val) : (val))
 
 #define DB_CP_REARM_FLAGS	(DB_KEY_CP | DB_IDX_VALID)
 #define DB_CP_FLAGS		(DB_KEY_CP | DB_IDX_VALID | DB_IRQ_DIS)
 
-#define NEXT_CMPL(cpr, idx, v, inc)	do { \
-	(idx) += (inc); \
-	if (unlikely((idx) >= (cpr)->cp_ring_struct->ring_size)) { \
-		(v) = !(v); \
-		(idx) = 0; \
-	} \
-} while (0)
 #define B_CP_DB_REARM(cpr, raw_cons)					\
 	rte_write32((DB_CP_REARM_FLAGS |				\
 		    DB_RING_IDX(&((cpr)->cp_db), raw_cons)),		\
@@ -107,7 +91,6 @@ struct bnxt_cp_ring_info {
 	uint32_t		hw_stats_ctx_id;
 
 	struct bnxt_ring	*cp_ring_struct;
-	bool			valid;
 };
 
 #define RX_CMP_L2_ERRORS						\

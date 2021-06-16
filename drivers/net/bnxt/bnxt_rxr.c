@@ -297,9 +297,6 @@ static int bnxt_agg_bufs_valid(struct bnxt_cp_ring_info *cpr,
 	raw_cp_cons = ADV_RAW_CMP(raw_cp_cons, agg_bufs);
 	last_cp_cons = RING_CMP(cpr->cp_ring_struct, raw_cp_cons);
 	agg_cmpl = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[last_cp_cons];
-	cpr->valid = FLIP_VALID(raw_cp_cons,
-				cpr->cp_ring_struct->ring_mask,
-				cpr->valid);
 	return CMP_VALID(agg_cmpl, raw_cp_cons, cpr->cp_ring_struct);
 }
 
@@ -898,10 +895,6 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	if (!CMP_VALID(rxcmp1, tmp_raw_cons, cpr->cp_ring_struct))
 		return -EBUSY;
 
-	cpr->valid = FLIP_VALID(cp_cons,
-				cpr->cp_ring_struct->ring_mask,
-				cpr->valid);
-
 	if (cmp_type == RX_TPA_START_CMPL_TYPE_RX_TPA_START ||
 	    cmp_type == RX_TPA_START_V2_CMPL_TYPE_RX_TPA_START_V2) {
 		bnxt_tpa_start(rxq, (struct rx_tpa_start_cmpl *)rxcmp,
@@ -1086,10 +1079,6 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		if (!CMP_VALID(rxcmp, raw_cons, cpr->cp_ring_struct))
 			break;
-		cpr->valid = FLIP_VALID(cons,
-					cpr->cp_ring_struct->ring_mask,
-					cpr->valid);
-
 		if (CMP_TYPE(rxcmp) == CMPL_BASE_TYPE_HWRM_DONE) {
 			PMD_DRV_LOG(ERR, "Rx flush done\n");
 		} else if ((CMP_TYPE(rxcmp) >= CMPL_BASE_TYPE_RX_TPA_START_V2) &&

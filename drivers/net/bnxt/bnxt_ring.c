@@ -769,7 +769,6 @@ int bnxt_alloc_async_cp_ring(struct bnxt *bp)
 		return rc;
 
 	cpr->cp_raw_cons = 0;
-	cpr->valid = 0;
 	bnxt_set_db(bp, &cpr->cp_db, ring_type, 0,
 		    cp_ring->fw_ring_id, cp_ring->ring_mask);
 

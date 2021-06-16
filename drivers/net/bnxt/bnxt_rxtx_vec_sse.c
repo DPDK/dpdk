@@ -277,8 +277,6 @@ recv_burst_vec_sse(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		rxq->rxrearm_nb += nb_rx_pkts;
 		cpr->cp_raw_cons += 2 * nb_rx_pkts;
-		cpr->valid =
-			!!(cpr->cp_raw_cons & cpr->cp_ring_struct->ring_size);
 		bnxt_db_cq(cpr);
 	}
 
@@ -334,7 +332,6 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 		raw_cons = NEXT_RAW_CMP(raw_cons);
 	} while (nb_tx_pkts < ring_mask);
 
-	cpr->valid = !!(raw_cons & cp_ring_struct->ring_size);
 	if (nb_tx_pkts) {
 		if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 			bnxt_tx_cmp_vec_fast(txq, nb_tx_pkts);
