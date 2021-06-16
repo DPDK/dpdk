@@ -426,6 +426,8 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 		unsigned int off_b;
 		uint32_t mask;
 		uint32_t data;
+		bool next_field = true;
+		bool next_dcopy = true;
 
 		if (i >= MLX5_MAX_MODIFY_NUM)
 			return rte_flow_error_set(error, EINVAL,
@@ -443,15 +445,13 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 		size_b = sizeof(uint32_t) * CHAR_BIT -
 			 off_b - __builtin_clz(mask);
 		MLX5_ASSERT(size_b);
-		size_b = size_b == sizeof(uint32_t) * CHAR_BIT ? 0 : size_b;
 		actions[i] = (struct mlx5_modification_cmd) {
 			.action_type = type,
 			.field = field->id,
 			.offset = off_b,
-			.length = size_b,
+			.length = (size_b == sizeof(uint32_t) * CHAR_BIT) ?
+				0 : size_b,
 		};
-		/* Convert entire record to expected big-endian format. */
-		actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
 		if (type == MLX5_MODIFICATION_TYPE_COPY) {
 			MLX5_ASSERT(dcopy);
 			actions[i].dst_field = dcopy->id;
@@ -459,7 +459,27 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 				(int)dcopy->offset < 0 ? off_b : dcopy->offset;
 			/* Convert entire record to big-endian format. */
 			actions[i].data1 = rte_cpu_to_be_32(actions[i].data1);
-			++dcopy;
+			/*
+			 * Destination field overflow. Copy leftovers of
+			 * a source field to the next destination field.
+			 */
+			if ((size_b > dcopy->size * CHAR_BIT) && dcopy->size) {
+				actions[i].length = dcopy->size * CHAR_BIT;
+				field->offset += dcopy->size;
+				next_field = false;
+			}
+			/*
+			 * Not enough bits in a source filed to fill a
+			 * destination field. Switch to the next source.
+			 */
+			if (dcopy->size > field->size &&
+			    (size_b == field->size * CHAR_BIT)) {
+				actions[i].length = field->size * CHAR_BIT;
+				dcopy->offset += field->size * CHAR_BIT;
+				next_dcopy = false;
+			}
+			if (next_dcopy)
+				++dcopy;
 		} else {
 			MLX5_ASSERT(item->spec);
 			data = flow_dv_fetch_field((const uint8_t *)item->spec +
@@ -468,8 +488,11 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 			data = (data & mask) >> off_b;
 			actions[i].data1 = rte_cpu_to_be_32(data);
 		}
+		/* Convert entire record to expected big-endian format. */
+		actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
+		if (next_field)
+			++field;
 		++i;
-		++field;
 	} while (field->size);
 	if (resource->actions_num == i)
 		return rte_flow_error_set(error, EINVAL,
@@ -1433,6 +1456,7 @@ mlx5_flow_field_id_to_modify_info
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *config = &priv->config;
 	uint32_t idx = 0;
+	uint32_t off = 0;
 	uint64_t val = 0;
 	switch (data->field) {
 	case RTE_FLOW_FIELD_START:
@@ -1440,61 +1464,63 @@ mlx5_flow_field_id_to_modify_info
 		MLX5_ASSERT(false);
 		break;
 	case RTE_FLOW_FIELD_MAC_DST:
+		off = data->offset > 16 ? data->offset - 16 : 0;
 		if (mask) {
-			if (data->offset < 32) {
-				info[idx] = (struct field_modify_info){4, 0,
-						MLX5_MODI_OUT_DMAC_47_16};
-				if (width < 32) {
-					mask[idx] =
-						rte_cpu_to_be_32(0xffffffff >>
-								 (32 - width));
+			if (data->offset < 16) {
+				info[idx] = (struct field_modify_info){2, 0,
+						MLX5_MODI_OUT_DMAC_15_0};
+				if (width < 16) {
+					mask[idx] = rte_cpu_to_be_16(0xffff >>
+								 (16 - width));
 					width = 0;
 				} else {
-					mask[idx] = RTE_BE32(0xffffffff);
-					width -= 32;
+					mask[idx] = RTE_BE16(0xffff);
+					width -= 16;
 				}
 				if (!width)
 					break;
 				++idx;
 			}
-			info[idx] = (struct field_modify_info){2, 4 * idx,
-						MLX5_MODI_OUT_DMAC_15_0};
-			mask[idx] = rte_cpu_to_be_16(0xffff >> (16 - width));
-		} else {
-			if (data->offset < 32)
-				info[idx++] = (struct field_modify_info){4, 0,
+			info[idx] = (struct field_modify_info){4, 4 * idx,
 						MLX5_MODI_OUT_DMAC_47_16};
-			info[idx] = (struct field_modify_info){2, 0,
+			mask[idx] = rte_cpu_to_be_32((0xffffffff >>
+						      (32 - width)) << off);
+		} else {
+			if (data->offset < 16)
+				info[idx++] = (struct field_modify_info){2, 0,
 						MLX5_MODI_OUT_DMAC_15_0};
+			info[idx] = (struct field_modify_info){4, off,
+						MLX5_MODI_OUT_DMAC_47_16};
 		}
 		break;
 	case RTE_FLOW_FIELD_MAC_SRC:
+		off = data->offset > 16 ? data->offset - 16 : 0;
 		if (mask) {
-			if (data->offset < 32) {
-				info[idx] = (struct field_modify_info){4, 0,
-						MLX5_MODI_OUT_SMAC_47_16};
-				if (width < 32) {
-					mask[idx] =
-						rte_cpu_to_be_32(0xffffffff >>
-								(32 - width));
+			if (data->offset < 16) {
+				info[idx] = (struct field_modify_info){2, 0,
+						MLX5_MODI_OUT_SMAC_15_0};
+				if (width < 16) {
+					mask[idx] = rte_cpu_to_be_16(0xffff >>
+								 (16 - width));
 					width = 0;
 				} else {
-					mask[idx] = RTE_BE32(0xffffffff);
-					width -= 32;
+					mask[idx] = RTE_BE16(0xffff);
+					width -= 16;
 				}
 				if (!width)
 					break;
 				++idx;
 			}
-			info[idx] = (struct field_modify_info){2, 4 * idx,
-						MLX5_MODI_OUT_SMAC_15_0};
-			mask[idx] = rte_cpu_to_be_16(0xffff >> (16 - width));
-		} else {
-			if (data->offset < 32)
-				info[idx++] = (struct field_modify_info){4, 0,
+			info[idx] = (struct field_modify_info){4, 4 * idx,
 						MLX5_MODI_OUT_SMAC_47_16};
-			info[idx] = (struct field_modify_info){2, 0,
+			mask[idx] = rte_cpu_to_be_32((0xffffffff >>
+						      (32 - width)) << off);
+		} else {
+			if (data->offset < 16)
+				info[idx++] = (struct field_modify_info){2, 0,
 						MLX5_MODI_OUT_SMAC_15_0};
+			info[idx] = (struct field_modify_info){4, off,
+						MLX5_MODI_OUT_SMAC_47_16};
 		}
 		break;
 	case RTE_FLOW_FIELD_VLAN_TYPE:
@@ -1818,7 +1844,12 @@ mlx5_flow_field_id_to_modify_info
 			val = data->value;
 		for (idx = 0; idx < MLX5_ACT_MAX_MOD_FIELDS; idx++) {
 			if (mask[idx]) {
-				if (dst_width > 16) {
+				if (dst_width == 48) {
+					/*special case for MAC addresses */
+					value[idx] = rte_cpu_to_be_16(val);
+					val >>= 16;
+					dst_width -= 16;
+				} else if (dst_width > 16) {
 					value[idx] = rte_cpu_to_be_32(val);
 					val >>= 32;
 				} else if (dst_width > 8) {
