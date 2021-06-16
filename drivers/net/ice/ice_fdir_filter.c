@@ -806,6 +806,28 @@ ice_fdir_cross_prof_conflict(struct ice_pf *pf,
 			(pf, cflct_ptype, is_tunnel))
 			goto err;
 		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_UDP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_TCP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_SCTP:
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_OTHER;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_OTHER:
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_UDP;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_TCP;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_SCTP;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		break;
 	default:
 		break;
 	}
@@ -988,11 +1010,12 @@ ice_fdir_input_set_hdrs(enum ice_fltr_ptype flow, struct ice_flow_seg_info *seg)
 		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV6 |
 				  ICE_FLOW_SEG_HDR_IPV_FRAG);
 		break;
-	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN:
-		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP |
-				ICE_FLOW_SEG_HDR_IPV4 |
-				ICE_FLOW_SEG_HDR_VXLAN |
-				ICE_FLOW_SEG_HDR_IPV_OTHER);
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_UDP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_TCP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_SCTP:
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_OTHER:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV_OTHER);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU:
 		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_GTPU_IP |
@@ -2136,8 +2159,18 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 	else if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_GTPU_EH &&
 		flow_type == ICE_FLTR_PTYPE_NONF_IPV6_UDP)
 		flow_type = ICE_FLTR_PTYPE_NONF_IPV6_GTPU_EH;
-	else if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_VXLAN)
-		flow_type = ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN;
+	else if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_VXLAN &&
+		flow_type == ICE_FLTR_PTYPE_NONF_IPV4_UDP)
+		flow_type = ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_UDP;
+	else if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_VXLAN &&
+		flow_type == ICE_FLTR_PTYPE_NONF_IPV4_TCP)
+		flow_type = ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_TCP;
+	else if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_VXLAN &&
+		flow_type == ICE_FLTR_PTYPE_NONF_IPV4_SCTP)
+		flow_type = ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_SCTP;
+	else if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_VXLAN &&
+		flow_type == ICE_FLTR_PTYPE_NONF_IPV4_OTHER)
+		flow_type = ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_OTHER;
 
 	filter->tunnel_type = tunnel_type;
 	filter->input.flow_type = flow_type;
