@@ -740,8 +740,9 @@ rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 		}
 	}
 	if (rxq->dynf_meta) {
-		uint32_t meta = cqe->flow_table_metadata &
-				rxq->flow_meta_port_mask;
+		uint32_t meta = rte_be_to_cpu_32(cqe->flow_table_metadata >>
+			__builtin_popcount(rxq->flow_meta_port_mask)) &
+			rxq->flow_meta_port_mask;
 
 		if (meta) {
 			pkt->ol_flags |= rxq->flow_meta_mask;

@@ -1262,8 +1262,8 @@ flow_dv_convert_action_set_meta
 			 const struct rte_flow_action_set_meta *conf,
 			 struct rte_flow_error *error)
 {
-	uint32_t data = conf->data;
-	uint32_t mask = conf->mask;
+	uint32_t mask = rte_cpu_to_be_32(conf->mask);
+	uint32_t data = rte_cpu_to_be_32(conf->data) & mask;
 	struct rte_flow_item item = {
 		.spec = &data,
 		.mask = &mask,
@@ -1276,25 +1276,14 @@ flow_dv_convert_action_set_meta
 	if (reg < 0)
 		return reg;
 	MLX5_ASSERT(reg != REG_NON);
-	/*
-	 * In datapath code there is no endianness
-	 * coversions for perfromance reasons, all
-	 * pattern conversions are done in rte_flow.
-	 */
 	if (reg == REG_C_0) {
 		struct mlx5_priv *priv = dev->data->dev_private;
 		uint32_t msk_c0 = priv->sh->dv_regc0_mask;
-		uint32_t shl_c0;
+		uint32_t shl_c0 = rte_bsf32(msk_c0);
 
-		MLX5_ASSERT(msk_c0);
-#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
-		shl_c0 = rte_bsf32(msk_c0);
-#else
-		shl_c0 = sizeof(msk_c0) * CHAR_BIT - rte_fls_u32(msk_c0);
-#endif
-		mask <<= shl_c0;
-		data <<= shl_c0;
-		MLX5_ASSERT(!(~msk_c0 & rte_cpu_to_be_32(mask)));
+		data = rte_cpu_to_be_32(rte_cpu_to_be_32(data) << shl_c0);
+		mask = rte_cpu_to_be_32(mask) & msk_c0;
+		mask = rte_cpu_to_be_32(mask << shl_c0);
 	}
 	reg_c_x[0] = (struct field_modify_info){4, 0, reg_to_field[reg]};
 	/* The routine expects parameters in memory as big-endian ones. */
@@ -9255,27 +9244,14 @@ flow_dv_translate_item_meta(struct rte_eth_dev *dev,
 		if (reg < 0)
 			return;
 		MLX5_ASSERT(reg != REG_NON);
-		/*
-		 * In datapath code there is no endianness
-		 * coversions for perfromance reasons, all
-		 * pattern conversions are done in rte_flow.
-		 */
-		value = rte_cpu_to_be_32(value);
-		mask = rte_cpu_to_be_32(mask);
 		if (reg == REG_C_0) {
 			struct mlx5_priv *priv = dev->data->dev_private;
 			uint32_t msk_c0 = priv->sh->dv_regc0_mask;
 			uint32_t shl_c0 = rte_bsf32(msk_c0);
-#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
-			uint32_t shr_c0 = __builtin_clz(priv->sh->dv_meta_mask);
 
-			value >>= shr_c0;
-			mask >>= shr_c0;
-#endif
-			value <<= shl_c0;
+			mask &= msk_c0;
 			mask <<= shl_c0;
-			MLX5_ASSERT(msk_c0);
-			MLX5_ASSERT(!(~msk_c0 & mask));
+			value <<= shl_c0;
 		}
 		flow_dv_match_meta_reg(matcher, key, reg, value, mask);
 	}
