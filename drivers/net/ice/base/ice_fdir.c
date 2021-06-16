@@ -1024,6 +1024,26 @@ static const struct ice_fdir_base_pkt ice_fdir_pkt[] = {
 		sizeof(ice_fdir_udp4_vxlan_pkt), ice_fdir_udp4_vxlan_pkt,
 	},
 	{
+		ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_UDP,
+		sizeof(ice_fdir_udp4_tun_pkt), ice_fdir_udp4_tun_pkt,
+		sizeof(ice_fdir_udp4_tun_pkt), ice_fdir_udp4_tun_pkt,
+	},
+	{
+		ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_TCP,
+		sizeof(ice_fdir_tcp4_tun_pkt), ice_fdir_tcp4_tun_pkt,
+		sizeof(ice_fdir_tcp4_tun_pkt), ice_fdir_tcp4_tun_pkt,
+	},
+	{
+		ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_SCTP,
+		sizeof(ice_fdir_sctp4_tun_pkt), ice_fdir_sctp4_tun_pkt,
+		sizeof(ice_fdir_sctp4_tun_pkt), ice_fdir_sctp4_tun_pkt,
+	},
+	{
+		ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_OTHER,
+		sizeof(ice_fdir_ip4_tun_pkt), ice_fdir_ip4_tun_pkt,
+		sizeof(ice_fdir_ip4_tun_pkt), ice_fdir_ip4_tun_pkt,
+	},
+	{
 		ICE_FLTR_PTYPE_NONF_ECPRI_TP0,
 		sizeof(ice_fdir_ecpri_tp0_pkt), ice_fdir_ecpri_tp0_pkt,
 		sizeof(ice_fdir_ecpri_tp0_pkt), ice_fdir_ecpri_tp0_pkt,
@@ -1583,6 +1603,7 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 		ice_pkt_insert_mac_addr(loc, input->ext_data.dst_mac);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN:
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_UDP:
 		ice_pkt_insert_mac_addr(pkt, input->ext_data_outer.dst_mac);
 		ice_pkt_insert_mac_addr(pkt + ETH_ALEN, input->ext_data_outer.src_mac);
 		ice_pkt_insert_u32(pkt, ICE_IPV4_SRC_ADDR_OFFSET,
@@ -1604,6 +1625,84 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 		ice_pkt_insert_u8(loc, ICE_IPV4_TTL_OFFSET, input->ip.v4.ttl);
 		ice_pkt_insert_mac_addr(loc, input->ext_data.dst_mac);
 		ice_pkt_insert_mac_addr(loc + ETH_ALEN, input->ext_data.src_mac);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_TCP:
+		ice_pkt_insert_mac_addr(pkt, input->ext_data_outer.dst_mac);
+		ice_pkt_insert_mac_addr(pkt + ETH_ALEN,
+					input->ext_data_outer.src_mac);
+		ice_pkt_insert_u32(pkt, ICE_IPV4_SRC_ADDR_OFFSET,
+				   input->ip_outer.v4.dst_ip);
+		ice_pkt_insert_u32(pkt, ICE_IPV4_DST_ADDR_OFFSET,
+				   input->ip_outer.v4.src_ip);
+		ice_pkt_insert_u8(pkt, ICE_IPV4_TOS_OFFSET,
+				  input->ip_outer.v4.tos);
+		ice_pkt_insert_u32(pkt, ICE_IPV4_VXLAN_VNI_OFFSET,
+				   input->vxlan_data.vni);
+		ice_pkt_insert_u32(loc, ICE_IPV4_DST_ADDR_OFFSET,
+				   input->ip.v4.src_ip);
+		ice_pkt_insert_u16(loc, ICE_IPV4_TCP_DST_PORT_OFFSET,
+				   input->ip.v4.src_port);
+		ice_pkt_insert_u32(loc, ICE_IPV4_SRC_ADDR_OFFSET,
+				   input->ip.v4.dst_ip);
+		ice_pkt_insert_u16(loc, ICE_IPV4_TCP_SRC_PORT_OFFSET,
+				   input->ip.v4.dst_port);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TOS_OFFSET, input->ip.v4.tos);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TTL_OFFSET, input->ip.v4.ttl);
+		ice_pkt_insert_mac_addr(loc, input->ext_data.dst_mac);
+		ice_pkt_insert_mac_addr(loc + ETH_ALEN,
+					input->ext_data.src_mac);
+		if (frag)
+			loc[20] = ICE_FDIR_IPV4_PKT_FLAG_MF;
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_SCTP:
+		ice_pkt_insert_mac_addr(pkt, input->ext_data_outer.dst_mac);
+		ice_pkt_insert_mac_addr(pkt + ETH_ALEN,
+					input->ext_data_outer.src_mac);
+		ice_pkt_insert_u32(pkt, ICE_IPV4_SRC_ADDR_OFFSET,
+				   input->ip_outer.v4.dst_ip);
+		ice_pkt_insert_u32(pkt, ICE_IPV4_DST_ADDR_OFFSET,
+				   input->ip_outer.v4.src_ip);
+		ice_pkt_insert_u8(pkt, ICE_IPV4_TOS_OFFSET,
+				  input->ip_outer.v4.tos);
+		ice_pkt_insert_u32(pkt, ICE_IPV4_VXLAN_VNI_OFFSET,
+				   input->vxlan_data.vni);
+		ice_pkt_insert_u32(loc, ICE_IPV4_DST_ADDR_OFFSET,
+				   input->ip.v4.src_ip);
+		ice_pkt_insert_u16(loc, ICE_IPV4_SCTP_DST_PORT_OFFSET,
+				   input->ip.v4.src_port);
+		ice_pkt_insert_u32(loc, ICE_IPV4_SRC_ADDR_OFFSET,
+				   input->ip.v4.dst_ip);
+		ice_pkt_insert_u16(loc, ICE_IPV4_SCTP_SRC_PORT_OFFSET,
+				   input->ip.v4.dst_port);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TOS_OFFSET, input->ip.v4.tos);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TTL_OFFSET, input->ip.v4.ttl);
+		ice_pkt_insert_mac_addr(loc, input->ext_data.dst_mac);
+		ice_pkt_insert_mac_addr(loc + ETH_ALEN,
+					input->ext_data.src_mac);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN_IPV4_OTHER:
+		ice_pkt_insert_mac_addr(pkt, input->ext_data_outer.dst_mac);
+		ice_pkt_insert_mac_addr(pkt + ETH_ALEN,
+					input->ext_data_outer.src_mac);
+		ice_pkt_insert_u32(pkt, ICE_IPV4_SRC_ADDR_OFFSET,
+				   input->ip_outer.v4.dst_ip);
+		ice_pkt_insert_u32(pkt, ICE_IPV4_DST_ADDR_OFFSET,
+				   input->ip_outer.v4.src_ip);
+		ice_pkt_insert_u8(pkt, ICE_IPV4_TOS_OFFSET,
+				  input->ip_outer.v4.tos);
+		ice_pkt_insert_u32(pkt, ICE_IPV4_VXLAN_VNI_OFFSET,
+				   input->vxlan_data.vni);
+		ice_pkt_insert_u32(loc, ICE_IPV4_DST_ADDR_OFFSET,
+				   input->ip.v4.src_ip);
+		ice_pkt_insert_u32(loc, ICE_IPV4_SRC_ADDR_OFFSET,
+				   input->ip.v4.dst_ip);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TOS_OFFSET, input->ip.v4.tos);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TTL_OFFSET, input->ip.v4.ttl);
+		ice_pkt_insert_u8(loc, ICE_IPV4_PROTO_OFFSET,
+				  input->ip.v4.proto);
+		ice_pkt_insert_mac_addr(loc, input->ext_data.dst_mac);
+		ice_pkt_insert_mac_addr(loc + ETH_ALEN,
+					input->ext_data.src_mac);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU:
 		ice_pkt_insert_u32(loc, ICE_IPV4_DST_ADDR_OFFSET,
