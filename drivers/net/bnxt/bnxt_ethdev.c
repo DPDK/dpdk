@@ -3213,41 +3213,49 @@ static int
 bnxt_tx_descriptor_status_op(void *tx_queue, uint16_t offset)
 {
 	struct bnxt_tx_queue *txq = (struct bnxt_tx_queue *)tx_queue;
-	struct bnxt_tx_ring_info *txr;
-	struct bnxt_cp_ring_info *cpr;
-	struct bnxt_sw_tx_bd *tx_buf;
-	struct tx_pkt_cmpl *txcmp;
-	uint32_t cons, cp_cons;
+	struct bnxt_cp_ring_info *cpr = txq->cp_ring;
+	uint32_t ring_mask, raw_cons, nb_tx_pkts = 0;
+	struct bnxt_ring *cp_ring_struct;
+	struct cmpl_base *cp_desc_ring;
 	int rc;
-
-	if (!txq)
-		return -EINVAL;
 
 	rc = is_bnxt_in_error(txq->bp);
 	if (rc)
 		return rc;
 
-	cpr = txq->cp_ring;
-	txr = txq->tx_ring;
-
 	if (offset >= txq->nb_tx_desc)
 		return -EINVAL;
 
-	cons = RING_CMP(cpr->cp_ring_struct, offset);
-	txcmp = (struct tx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
-	cp_cons = cpr->cp_raw_cons;
-
-	if (cons > cp_cons) {
-		if (CMPL_VALID(txcmp, cpr->valid))
-			return RTE_ETH_TX_DESC_UNAVAIL;
-	} else {
-		if (CMPL_VALID(txcmp, !cpr->valid))
-			return RTE_ETH_TX_DESC_UNAVAIL;
-	}
-	tx_buf = &txr->tx_buf_ring[cons];
-	if (tx_buf->mbuf == NULL)
+	/* Return "desc done" if descriptor is available for use. */
+	if (bnxt_tx_bds_in_hw(txq) <= offset)
 		return RTE_ETH_TX_DESC_DONE;
 
+	raw_cons = cpr->cp_raw_cons;
+	cp_desc_ring = cpr->cp_desc_ring;
+	cp_ring_struct = cpr->cp_ring_struct;
+	ring_mask = cpr->cp_ring_struct->ring_mask;
+
+	/* Check to see if hw has posted a completion for the descriptor. */
+	while (1) {
+		struct tx_cmpl *txcmp;
+		uint32_t cons;
+
+		cons = RING_CMPL(ring_mask, raw_cons);
+		txcmp = (struct tx_cmpl *)&cp_desc_ring[cons];
+
+		if (!CMP_VALID(txcmp, raw_cons, cp_ring_struct))
+			break;
+
+		if (CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2)
+			nb_tx_pkts += rte_le_to_cpu_32(txcmp->opaque);
+
+		if (nb_tx_pkts > offset)
+			return RTE_ETH_TX_DESC_DONE;
+
+		raw_cons = NEXT_RAW_CMP(raw_cons);
+	}
+
+	/* Descriptor is pending transmit, not yet completed by hardware. */
 	return RTE_ETH_TX_DESC_FULL;
 }
 
