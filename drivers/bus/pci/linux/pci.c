@@ -331,7 +331,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 		else
 			dev->kdrv = RTE_PCI_KDRV_UNKNOWN;
 	} else {
-		dev->kdrv = RTE_PCI_KDRV_NONE;
+		free(dev);
 		return 0;
 	}
 	/* device is valid, add in list (sorted) */
