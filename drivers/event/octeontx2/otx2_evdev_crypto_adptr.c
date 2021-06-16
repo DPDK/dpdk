@@ -88,6 +88,14 @@ otx2_ca_qp_add(const struct rte_eventdev *dev, const struct rte_cryptodev *cdev,
 	sso_evdev->rx_offloads |= NIX_RX_OFFLOAD_SECURITY_F;
 	sso_fastpath_fns_set((struct rte_eventdev *)(uintptr_t)dev);
 
+	/* Update crypto adapter xae count */
+	if (queue_pair_id == -1)
+		sso_evdev->adptr_xae_cnt +=
+			vf->nb_queues * OTX2_CPT_DEFAULT_CMD_QLEN;
+	else
+		sso_evdev->adptr_xae_cnt += OTX2_CPT_DEFAULT_CMD_QLEN;
+	sso_xae_reconfigure((struct rte_eventdev *)(uintptr_t)dev);
+
 	return 0;
 }
 
