@@ -381,15 +381,6 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 }
 
 static uint64_t
-tap_rx_offload_get_port_capa(void)
-{
-	/*
-	 * No specific port Rx offload capabilities.
-	 */
-	return 0;
-}
-
-static uint64_t
 tap_rx_offload_get_queue_capa(void)
 {
 	return DEV_RX_OFFLOAD_SCATTER |
@@ -511,15 +502,6 @@ end:
 		rxq->trigger_seen = trigger;
 
 	return num_rx;
-}
-
-static uint64_t
-tap_tx_offload_get_port_capa(void)
-{
-	/*
-	 * No specific port Tx offload capabilities.
-	 */
-	return 0;
 }
 
 static uint64_t
@@ -1023,11 +1005,9 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 0;
 	dev_info->speed_capa = tap_dev_speed_capa();
 	dev_info->rx_queue_offload_capa = tap_rx_offload_get_queue_capa();
-	dev_info->rx_offload_capa = tap_rx_offload_get_port_capa() |
-				    dev_info->rx_queue_offload_capa;
+	dev_info->rx_offload_capa = dev_info->rx_queue_offload_capa;
 	dev_info->tx_queue_offload_capa = tap_tx_offload_get_queue_capa();
-	dev_info->tx_offload_capa = tap_tx_offload_get_port_capa() |
-				    dev_info->tx_queue_offload_capa;
+	dev_info->tx_offload_capa = dev_info->tx_queue_offload_capa;
 	dev_info->hash_key_size = TAP_RSS_HASH_KEY_SIZE;
 	/*
 	 * limitation: TAP supports all of IP, UDP and TCP hash
