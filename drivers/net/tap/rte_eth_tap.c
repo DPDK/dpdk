@@ -70,6 +70,17 @@
 
 #define TAP_IOV_DEFAULT_MAX 1024
 
+#define TAP_RX_OFFLOAD (DEV_RX_OFFLOAD_SCATTER |	\
+			DEV_RX_OFFLOAD_IPV4_CKSUM |	\
+			DEV_RX_OFFLOAD_UDP_CKSUM |	\
+			DEV_RX_OFFLOAD_TCP_CKSUM)
+
+#define TAP_TX_OFFLOAD (DEV_TX_OFFLOAD_MULTI_SEGS |	\
+			DEV_TX_OFFLOAD_IPV4_CKSUM |	\
+			DEV_TX_OFFLOAD_UDP_CKSUM |	\
+			DEV_TX_OFFLOAD_TCP_CKSUM |	\
+			DEV_TX_OFFLOAD_TCP_TSO)
+
 static int tap_devices_count;
 
 static const char *tuntap_types[ETH_TUNTAP_TYPE_MAX] = {
@@ -380,15 +391,6 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 	}
 }
 
-static uint64_t
-tap_rx_offload_get_queue_capa(void)
-{
-	return DEV_RX_OFFLOAD_SCATTER |
-	       DEV_RX_OFFLOAD_IPV4_CKSUM |
-	       DEV_RX_OFFLOAD_UDP_CKSUM |
-	       DEV_RX_OFFLOAD_TCP_CKSUM;
-}
-
 static void
 tap_rxq_pool_free(struct rte_mbuf *pool)
 {
@@ -502,16 +504,6 @@ end:
 		rxq->trigger_seen = trigger;
 
 	return num_rx;
-}
-
-static uint64_t
-tap_tx_offload_get_queue_capa(void)
-{
-	return DEV_TX_OFFLOAD_MULTI_SEGS |
-	       DEV_TX_OFFLOAD_IPV4_CKSUM |
-	       DEV_TX_OFFLOAD_UDP_CKSUM |
-	       DEV_TX_OFFLOAD_TCP_CKSUM |
-	       DEV_TX_OFFLOAD_TCP_TSO;
 }
 
 /* Finalize l4 checksum calculation */
@@ -1004,9 +996,9 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_tx_queues = RTE_PMD_TAP_MAX_QUEUES;
 	dev_info->min_rx_bufsize = 0;
 	dev_info->speed_capa = tap_dev_speed_capa();
-	dev_info->rx_queue_offload_capa = tap_rx_offload_get_queue_capa();
+	dev_info->rx_queue_offload_capa = TAP_RX_OFFLOAD;
 	dev_info->rx_offload_capa = dev_info->rx_queue_offload_capa;
-	dev_info->tx_queue_offload_capa = tap_tx_offload_get_queue_capa();
+	dev_info->tx_queue_offload_capa = TAP_TX_OFFLOAD;
 	dev_info->tx_offload_capa = dev_info->tx_queue_offload_capa;
 	dev_info->hash_key_size = TAP_RSS_HASH_KEY_SIZE;
 	/*
