@@ -149,8 +149,8 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	txq->port_id = eth_dev->data->port_id;
 
 	/* Allocate TX ring hardware descriptors */
-	if (bnxt_alloc_rings(bp, queue_idx, txq, NULL, txq->cp_ring, NULL,
-			     "txr")) {
+	if (bnxt_alloc_rings(bp, socket_id, queue_idx, txq, NULL, txq->cp_ring,
+			     NULL, "txr")) {
 		PMD_DRV_LOG(ERR, "ring_dma_zone_reserve for tx_ring failed!");
 		rc = -ENOMEM;
 		goto err;
