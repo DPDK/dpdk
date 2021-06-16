@@ -94,7 +94,7 @@ int bnxt_alloc_ring_grps(struct bnxt *bp)
  * tx bd ring - Only non-zero length if tx_ring_info is not NULL
  * rx bd ring - Only non-zero length if rx_ring_info is not NULL
  */
-int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
+int bnxt_alloc_rings(struct bnxt *bp, unsigned int socket_id, uint16_t qidx,
 			    struct bnxt_tx_queue *txq,
 			    struct bnxt_rx_queue *rxq,
 			    struct bnxt_cp_ring_info *cp_ring_info,
@@ -203,7 +203,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	mz = rte_memzone_lookup(mz_name);
 	if (!mz) {
 		mz = rte_memzone_reserve_aligned(mz_name, total_alloc_len,
-				SOCKET_ID_ANY,
+				socket_id,
 				RTE_MEMZONE_2MB |
 				RTE_MEMZONE_SIZE_HINT_ONLY |
 				RTE_MEMZONE_IOVA_CONTIG,
@@ -422,24 +422,23 @@ int bnxt_alloc_rxtx_nq_ring(struct bnxt *bp)
 	struct bnxt_cp_ring_info *nqr;
 	struct bnxt_ring *ring;
 	int ring_index = BNXT_NUM_ASYNC_CPR(bp);
-	unsigned int socket_id;
 	uint8_t ring_type;
 	int rc = 0;
 
 	if (!BNXT_HAS_NQ(bp) || bp->rxtx_nq_ring)
 		return 0;
 
-	socket_id = rte_lcore_to_socket_id(rte_get_main_lcore());
-
 	nqr = rte_zmalloc_socket("nqr",
 				 sizeof(struct bnxt_cp_ring_info),
-				 RTE_CACHE_LINE_SIZE, socket_id);
+				 RTE_CACHE_LINE_SIZE,
+				 bp->eth_dev->device->numa_node);
 	if (nqr == NULL)
 		return -ENOMEM;
 
 	ring = rte_zmalloc_socket("bnxt_cp_ring_struct",
 				  sizeof(struct bnxt_ring),
-				  RTE_CACHE_LINE_SIZE, socket_id);
+				  RTE_CACHE_LINE_SIZE,
+				  bp->eth_dev->device->numa_node);
 	if (ring == NULL) {
 		rte_free(nqr);
 		return -ENOMEM;
@@ -454,7 +453,8 @@ int bnxt_alloc_rxtx_nq_ring(struct bnxt *bp)
 	ring->fw_ring_id = INVALID_HW_RING_ID;
 
 	nqr->cp_ring_struct = ring;
-	rc = bnxt_alloc_rings(bp, 0, NULL, NULL, nqr, NULL, "l2_nqr");
+	rc = bnxt_alloc_rings(bp, bp->eth_dev->device->numa_node, 0, NULL,
+			      NULL, nqr, NULL, "l2_nqr");
 	if (rc) {
 		rte_free(ring);
 		rte_free(nqr);
@@ -837,22 +837,21 @@ int bnxt_alloc_async_ring_struct(struct bnxt *bp)
 {
 	struct bnxt_cp_ring_info *cpr = NULL;
 	struct bnxt_ring *ring = NULL;
-	unsigned int socket_id;
 
 	if (BNXT_NUM_ASYNC_CPR(bp) == 0)
 		return 0;
 
-	socket_id = rte_lcore_to_socket_id(rte_get_main_lcore());
-
 	cpr = rte_zmalloc_socket("cpr",
 				 sizeof(struct bnxt_cp_ring_info),
-				 RTE_CACHE_LINE_SIZE, socket_id);
+				 RTE_CACHE_LINE_SIZE,
+				 bp->eth_dev->device->numa_node);
 	if (cpr == NULL)
 		return -ENOMEM;
 
 	ring = rte_zmalloc_socket("bnxt_cp_ring_struct",
 				  sizeof(struct bnxt_ring),
-				  RTE_CACHE_LINE_SIZE, socket_id);
+				  RTE_CACHE_LINE_SIZE,
+				  bp->eth_dev->device->numa_node);
 	if (ring == NULL) {
 		rte_free(cpr);
 		return -ENOMEM;
@@ -868,7 +867,6 @@ int bnxt_alloc_async_ring_struct(struct bnxt *bp)
 	bp->async_cp_ring = cpr;
 	cpr->cp_ring_struct = ring;
 
-	return bnxt_alloc_rings(bp, 0, NULL, NULL,
-				bp->async_cp_ring, NULL,
-				"def_cp");
+	return bnxt_alloc_rings(bp, bp->eth_dev->device->numa_node, 0, NULL,
+				NULL, bp->async_cp_ring, NULL, "def_cp");
 }

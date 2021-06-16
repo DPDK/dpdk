@@ -145,7 +145,8 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	mz = rte_memzone_lookup(mz_name);
 	if (!mz) {
 		mz = rte_memzone_reserve(mz_name,
-				entry_length * max_vnics, SOCKET_ID_ANY,
+				entry_length * max_vnics,
+				bp->eth_dev->device->numa_node,
 				RTE_MEMZONE_2MB |
 				RTE_MEMZONE_SIZE_HINT_ONLY |
 				RTE_MEMZONE_IOVA_CONTIG);
