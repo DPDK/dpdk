@@ -177,6 +177,8 @@ M(SSO_GRP_GET_STATS,	0x609, sso_grp_get_stats, sso_info_req,		\
 				sso_grp_stats)				\
 M(SSO_HWS_GET_STATS,	0x610, sso_hws_get_stats, sso_info_req,		\
 				sso_hws_stats)				\
+M(SSO_HW_RELEASE_XAQ,	0x611, sso_hw_release_xaq_aura,			\
+				sso_release_xaq, msg_rsp)		\
 /* TIM mbox IDs (range 0x800 - 0x9FF) */				\
 M(TIM_LF_ALLOC,		0x800, tim_lf_alloc, tim_lf_alloc_req,		\
 				tim_lf_alloc_rsp)			\
@@ -1174,6 +1176,11 @@ struct sso_hw_setconfig {
 	struct mbox_msghdr hdr;
 	uint32_t __otx2_io npa_aura_id;
 	uint16_t __otx2_io npa_pf_func;
+	uint16_t __otx2_io hwgrps;
+};
+
+struct sso_release_xaq {
+	struct mbox_msghdr hdr;
 	uint16_t __otx2_io hwgrps;
 };
 
