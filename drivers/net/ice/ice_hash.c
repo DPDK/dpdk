@@ -312,6 +312,9 @@ struct rss_type_match_hdr hint_eth_pppoes_ipv6_tcp = {
 struct rss_type_match_hdr hint_eth_pppoes = {
 	ICE_FLOW_SEG_HDR_PPPOE,
 	ETH_RSS_ETH | ETH_RSS_PPPOE};
+struct rss_type_match_hdr hint_ethertype = {
+	ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_ETH_NON_IP,
+	ETH_RSS_ETH};
 
 /* Supported pattern for os default package. */
 static struct ice_pattern_match_item ice_hash_pattern_list_os[] = {
@@ -444,6 +447,8 @@ static struct ice_pattern_match_item ice_hash_pattern_list_comms[] = {
 		&hint_eth_pppoes_ipv6_tcp},
 	{pattern_eth_pppoes,		    ICE_INSET_NONE,
 		&hint_eth_pppoes},
+	{pattern_ethertype,		    ICE_INSET_NONE,
+		&hint_ethertype},
 };
 
 /**
@@ -1138,6 +1143,15 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 				return rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
 					"Not supported flow");
+			}
+
+			/* update hash field for eth-non-ip. */
+			if (rss_type & ETH_RSS_ETH) {
+				if (hash_meta->pkt_hdr &
+				    ICE_FLOW_SEG_HDR_ETH_NON_IP) {
+					hash_meta->hash_flds |=
+					BIT_ULL(ICE_FLOW_FIELD_IDX_ETH_TYPE);
+				}
 			}
 
 			/* update hash field for nat-t esp. */
