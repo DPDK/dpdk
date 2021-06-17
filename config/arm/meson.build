@@ -179,7 +179,8 @@ implementer_qualcomm = {
         ['RTE_MAX_NUMA_NODES', 1]
     ],
     'part_number_config': {
-        '0xc00': {'machine_args':  ['-march=armv8-a+crc']}
+        '0x800': {'machine_args':  ['-march=armv8-a+crc']},
+        '0xc00': {'machine_args':  ['-march=armv8-a+crc']},
     }
 }
 
