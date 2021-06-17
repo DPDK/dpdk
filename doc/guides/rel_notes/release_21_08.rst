@@ -170,6 +170,11 @@ New Features
   The experimental PMD power management API now supports managing
   multiple Ethernet Rx queues per lcore.
 
+* **Updated testpmd to log errors to stderr.**
+
+  Updated testpmd application to log errors and warnings to stderr
+  instead of stdout used before.
+
 
 Removed Items
 -------------

@@ -97,7 +97,8 @@ print_err_msg(struct rte_tm_error *error)
 	if (error->cause)
 		snprintf(buf, sizeof(buf), "cause: %p, ", error->cause);
 
-	printf("%s: %s%s (error %d)\n", errstr, error->cause ? buf : "",
+	fprintf(stderr, "%s: %s%s (error %d)\n",
+		errstr, error->cause ? buf : "",
 		error->message ? error->message : "(no stated reason)",
 		error->type);
 }
@@ -174,7 +175,8 @@ parse_multi_ss_id_str(char *s_str, uint32_t *n_ssp, uint32_t shaper_id[])
 
 	/* Check: num of shared shaper */
 	if (n_shared_shapers >= MAX_NUM_SHARED_SHAPERS) {
-		printf(" Number of shared shapers exceed the max (error)\n");
+		fprintf(stderr,
+			" Number of shared shapers exceed the max (error)\n");
 		return -1;
 	}
 
@@ -670,7 +672,7 @@ static void cmd_show_port_tm_node_stats_parsed(void *parsed_result,
 	memset(&error, 0, sizeof(struct rte_tm_error));
 	/* Port status */
 	if (!port_is_started(port_id)) {
-		printf(" Port %u not started (error)\n", port_id);
+		fprintf(stderr, " Port %u not started (error)\n", port_id);
 		return;
 	}
 
@@ -1085,14 +1087,14 @@ static void cmd_add_port_tm_node_shared_shaper_parsed(void *parsed_result,
 	/* Command type: add */
 	if ((strcmp(res->cmd_type, "add") == 0) &&
 		(port_is_started(port_id))) {
-		printf(" Port %u not stopped (error)\n", port_id);
+		fprintf(stderr, " Port %u not stopped (error)\n", port_id);
 		return;
 	}
 
 	/* Command type: set (update) */
 	if ((strcmp(res->cmd_type, "set") == 0) &&
 		(!port_is_started(port_id))) {
-		printf(" Port %u not started (error)\n", port_id);
+		fprintf(stderr, " Port %u not started (error)\n", port_id);
 		return;
 	}
 
@@ -1539,7 +1541,7 @@ static void cmd_set_port_tm_node_shaper_profile_parsed(void *parsed_result,
 	memset(&error, 0, sizeof(struct rte_tm_error));
 	/* Port status */
 	if (!port_is_started(port_id)) {
-		printf(" Port %u not started (error)\n", port_id);
+		fprintf(stderr, " Port %u not started (error)\n", port_id);
 		return;
 	}
 
@@ -1664,14 +1666,15 @@ static void cmd_add_port_tm_nonleaf_node_parsed(void *parsed_result,
 	shared_shaper_id = (uint32_t *)malloc(MAX_NUM_SHARED_SHAPERS *
 		sizeof(uint32_t));
 	if (shared_shaper_id == NULL) {
-		printf(" Memory not allocated for shared shapers (error)\n");
+		fprintf(stderr,
+			" Memory not allocated for shared shapers (error)\n");
 		return;
 	}
 
 	/* Parse multi shared shaper id string */
 	ret = parse_multi_ss_id_str(s_str, &n_shared_shapers, shared_shaper_id);
 	if (ret) {
-		printf(" Shared shapers params string parse error\n");
+		fprintf(stderr, " Shared shapers params string parse error\n");
 		free(shared_shaper_id);
 		return;
 	}
@@ -1827,14 +1830,15 @@ static void cmd_add_port_tm_nonleaf_node_pmode_parsed(void *parsed_result,
 	shared_shaper_id = (uint32_t *)malloc(MAX_NUM_SHARED_SHAPERS *
 		sizeof(uint32_t));
 	if (shared_shaper_id == NULL) {
-		printf(" Memory not allocated for shared shapers (error)\n");
+		fprintf(stderr,
+			" Memory not allocated for shared shapers (error)\n");
 		return;
 	}
 
 	/* Parse multi shared shaper id string */
 	ret = parse_multi_ss_id_str(s_str, &n_shared_shapers, shared_shaper_id);
 	if (ret) {
-		printf(" Shared shapers params string parse error\n");
+		fprintf(stderr, " Shared shapers params string parse error\n");
 		free(shared_shaper_id);
 		return;
 	}
@@ -1991,14 +1995,15 @@ static void cmd_add_port_tm_leaf_node_parsed(void *parsed_result,
 	shared_shaper_id = (uint32_t *)malloc(MAX_NUM_SHARED_SHAPERS *
 		sizeof(uint32_t));
 	if (shared_shaper_id == NULL) {
-		printf(" Memory not allocated for shared shapers (error)\n");
+		fprintf(stderr,
+			" Memory not allocated for shared shapers (error)\n");
 		return;
 	}
 
 	/* Parse multi shared shaper id string */
 	ret = parse_multi_ss_id_str(s_str, &n_shared_shapers, shared_shaper_id);
 	if (ret) {
-		printf(" Shared shapers params string parse error\n");
+		fprintf(stderr, " Shared shapers params string parse error\n");
 		free(shared_shaper_id);
 		return;
 	}
@@ -2101,7 +2106,7 @@ static void cmd_del_port_tm_node_parsed(void *parsed_result,
 	memset(&error, 0, sizeof(struct rte_tm_error));
 	/* Port status */
 	if (port_is_started(port_id)) {
-		printf(" Port %u not stopped (error)\n", port_id);
+		fprintf(stderr, " Port %u not stopped (error)\n", port_id);
 		return;
 	}
 
@@ -2193,7 +2198,7 @@ static void cmd_set_port_tm_node_parent_parsed(void *parsed_result,
 	memset(&error, 0, sizeof(struct rte_tm_error));
 	/* Port status */
 	if (!port_is_started(port_id)) {
-		printf(" Port %u not started (error)\n", port_id);
+		fprintf(stderr, " Port %u not started (error)\n", port_id);
 		return;
 	}
 

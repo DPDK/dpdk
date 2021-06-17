@@ -1107,8 +1107,9 @@ tunnel_update:
 	nb_prep = rte_eth_tx_prepare(fs->tx_port, fs->tx_queue,
 			tx_pkts_burst, nb_rx);
 	if (nb_prep != nb_rx)
-		printf("Preparing packet burst to transmit failed: %s\n",
-				rte_strerror(rte_errno));
+		fprintf(stderr,
+			"Preparing packet burst to transmit failed: %s\n",
+			rte_strerror(rte_errno));
 
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, tx_pkts_burst,
 			nb_prep);

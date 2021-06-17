@@ -53,7 +53,8 @@ print_err_msg(struct rte_mtr_error *error)
 	if (error->cause)
 		snprintf(buf, sizeof(buf), "cause: %p, ", error->cause);
 
-	printf("%s: %s%s (error %d)\n", errstr, error->cause ? buf : "",
+	fprintf(stderr, "%s: %s%s (error %d)\n",
+		errstr, error->cause ? buf : "",
 		error->message ? error->message : "(no stated reason)",
 		error->type);
 }
@@ -791,7 +792,8 @@ static void cmd_create_port_meter_parsed(void *parsed_result,
 	/* Parse meter input color string params */
 	ret = parse_meter_color_str(c_str, &use_prev_meter_color, &dscp_table);
 	if (ret) {
-		printf(" Meter input color params string parse error\n");
+		fprintf(stderr,
+			" Meter input color params string parse error\n");
 		return;
 	}
 
@@ -1199,7 +1201,7 @@ static void cmd_set_port_meter_dscp_table_parsed(void *parsed_result,
 	/* Parse string */
 	ret = parse_multi_token_string(t_str, &port_id, &mtr_id, &dscp_table);
 	if (ret) {
-		printf(" Multi token string parse error\n");
+		fprintf(stderr, " Multi token string parse error\n");
 		return;
 	}
 

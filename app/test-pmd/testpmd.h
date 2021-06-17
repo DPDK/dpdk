@@ -687,7 +687,7 @@ port_pci_reg_read(struct rte_port *port, uint32_t reg_off)
 	uint32_t reg_v;
 
 	if (!port->dev_info.device) {
-		printf("Invalid device\n");
+		fprintf(stderr, "Invalid device\n");
 		return 0;
 	}
 
@@ -695,7 +695,7 @@ port_pci_reg_read(struct rte_port *port, uint32_t reg_off)
 	if (bus && !strcmp(bus->name, "pci")) {
 		pci_dev = RTE_DEV_TO_PCI(port->dev_info.device);
 	} else {
-		printf("Not a PCI device\n");
+		fprintf(stderr, "Not a PCI device\n");
 		return 0;
 	}
 
@@ -715,7 +715,7 @@ port_pci_reg_write(struct rte_port *port, uint32_t reg_off, uint32_t reg_v)
 	void *reg_addr;
 
 	if (!port->dev_info.device) {
-		printf("Invalid device\n");
+		fprintf(stderr, "Invalid device\n");
 		return;
 	}
 
@@ -723,7 +723,7 @@ port_pci_reg_write(struct rte_port *port, uint32_t reg_off, uint32_t reg_v)
 	if (bus && !strcmp(bus->name, "pci")) {
 		pci_dev = RTE_DEV_TO_PCI(port->dev_info.device);
 	} else {
-		printf("Not a PCI device\n");
+		fprintf(stderr, "Not a PCI device\n");
 		return;
 	}
 

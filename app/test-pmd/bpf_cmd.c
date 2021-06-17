@@ -82,7 +82,7 @@ bpf_parse_flags(const char *str, struct rte_bpf_arg *arg, uint32_t *flags)
 		} else if (v == '-')
 			continue;
 		else
-			printf("unknown flag: \'%c\'", v);
+			fprintf(stderr, "unknown flag: \'%c\'", v);
 	}
 }
 
@@ -114,7 +114,7 @@ static void cmd_operate_bpf_ld_parsed(void *parsed_result,
 			fname, sname, flags);
 		printf("%d:%s\n", rc, strerror(-rc));
 	} else
-		printf("invalid value: %s\n", res->dir);
+		fprintf(stderr, "invalid value: %s\n", res->dir);
 }
 
 cmdline_parse_token_string_t cmd_load_bpf_start =
@@ -170,7 +170,7 @@ static void cmd_operate_bpf_unld_parsed(void *parsed_result,
 	else if (strcmp(res->dir, "tx") == 0)
 		rte_bpf_eth_tx_unload(res->port, res->queue);
 	else
-		printf("invalid value: %s\n", res->dir);
+		fprintf(stderr, "invalid value: %s\n", res->dir);
 }
 
 cmdline_parse_token_string_t cmd_unload_bpf_start =
