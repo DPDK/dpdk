@@ -174,6 +174,7 @@ idxd_dev_configure(const struct rte_rawdev *dev,
 	}
 	rte_idxd->hdls_read = rte_idxd->batch_start = 0;
 	rte_idxd->batch_size = 0;
+	rte_idxd->hdls_avail = 0;
 
 	return 0;
 }
