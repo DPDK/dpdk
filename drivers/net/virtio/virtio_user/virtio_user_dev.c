@@ -573,11 +573,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER)
 		dev->frontend_features |= (1ull << VIRTIO_NET_F_STATUS);
 
-	/*
-	 * Device features =
-	 *     (frontend_features | backend_features) & ~unsupported_features;
-	 */
-	dev->device_features |= dev->frontend_features;
+	dev->frontend_features &= ~dev->unsupported_features;
 	dev->device_features &= ~dev->unsupported_features;
 
 	if (rte_mem_event_callback_register(VIRTIO_USER_MEM_EVENT_CLB_NAME,
@@ -980,12 +976,10 @@ virtio_user_dev_server_reconnect(struct virtio_user_dev *dev)
 		return -1;
 	}
 
-	dev->device_features |= dev->frontend_features;
-
 	/* unmask vhost-user unsupported features */
 	dev->device_features &= ~(dev->unsupported_features);
 
-	dev->features &= dev->device_features;
+	dev->features &= (dev->device_features | dev->frontend_features);
 
 	/* For packed ring, resetting queues is required in reconnection. */
 	if (virtio_with_packed_queue(hw) &&
