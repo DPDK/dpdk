@@ -79,6 +79,9 @@ struct virtio_user_backend_ops {
 	int (*set_vring_addr)(struct virtio_user_dev *dev, struct vhost_vring_addr *addr);
 	int (*get_status)(struct virtio_user_dev *dev, uint8_t *status);
 	int (*set_status)(struct virtio_user_dev *dev, uint8_t status);
+	int (*get_config)(struct virtio_user_dev *dev, uint8_t *data, uint32_t off, uint32_t len);
+	int (*set_config)(struct virtio_user_dev *dev, const uint8_t *data, uint32_t off,
+			uint32_t len);
 	int (*enable_qp)(struct virtio_user_dev *dev, uint16_t pair_idx, int enable);
 	int (*dma_map)(struct virtio_user_dev *dev, void *addr, uint64_t iova, size_t len);
 	int (*dma_unmap)(struct virtio_user_dev *dev, void *addr, uint64_t iova, size_t len);

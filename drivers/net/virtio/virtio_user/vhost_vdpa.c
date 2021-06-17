@@ -41,6 +41,8 @@ struct vhost_vdpa_data {
 #define VHOST_VDPA_GET_DEVICE_ID _IOR(VHOST_VIRTIO, 0x70, __u32)
 #define VHOST_VDPA_GET_STATUS _IOR(VHOST_VIRTIO, 0x71, __u8)
 #define VHOST_VDPA_SET_STATUS _IOW(VHOST_VIRTIO, 0x72, __u8)
+#define VHOST_VDPA_GET_CONFIG _IOR(VHOST_VIRTIO, 0x73, struct vhost_vdpa_config)
+#define VHOST_VDPA_SET_CONFIG _IOW(VHOST_VIRTIO, 0x74, struct vhost_vdpa_config)
 #define VHOST_VDPA_SET_VRING_ENABLE _IOW(VHOST_VIRTIO, 0x75, struct vhost_vring_state)
 #define VHOST_SET_BACKEND_FEATURES _IOW(VHOST_VIRTIO, 0x25, __u64)
 #define VHOST_GET_BACKEND_FEATURES _IOR(VHOST_VIRTIO, 0x26, __u64)
@@ -64,6 +66,12 @@ struct vhost_iotlb_msg {
 };
 
 #define VHOST_IOTLB_MSG_V2 0x2
+
+struct vhost_vdpa_config {
+	uint32_t off;
+	uint32_t len;
+	uint8_t buf[0];
+};
 
 struct vhost_msg {
 	uint32_t type;
@@ -440,6 +448,65 @@ vhost_vdpa_set_status(struct virtio_user_dev *dev, uint8_t status)
 	return vhost_vdpa_ioctl(data->vhostfd, VHOST_VDPA_SET_STATUS, &status);
 }
 
+static int
+vhost_vdpa_get_config(struct virtio_user_dev *dev, uint8_t *data, uint32_t off, uint32_t len)
+{
+	struct vhost_vdpa_data *vdpa_data = dev->backend_data;
+	struct vhost_vdpa_config *config;
+	int ret = 0;
+
+	config = malloc(sizeof(*config) + len);
+	if (!config) {
+		PMD_DRV_LOG(ERR, "Failed to allocate vDPA config data");
+		return -1;
+	}
+
+	config->off = off;
+	config->len = len;
+
+	ret = vhost_vdpa_ioctl(vdpa_data->vhostfd, VHOST_VDPA_GET_CONFIG, config);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get vDPA config (offset 0x%x, len 0x%x)", off, len);
+		ret = -1;
+		goto out;
+	}
+
+	memcpy(data, config->buf, len);
+out:
+	free(config);
+
+	return ret;
+}
+
+static int
+vhost_vdpa_set_config(struct virtio_user_dev *dev, const uint8_t *data, uint32_t off, uint32_t len)
+{
+	struct vhost_vdpa_data *vdpa_data = dev->backend_data;
+	struct vhost_vdpa_config *config;
+	int ret = 0;
+
+	config = malloc(sizeof(*config) + len);
+	if (!config) {
+		PMD_DRV_LOG(ERR, "Failed to allocate vDPA config data");
+		return -1;
+	}
+
+	config->off = off;
+	config->len = len;
+
+	memcpy(config->buf, data, len);
+
+	ret = vhost_vdpa_ioctl(vdpa_data->vhostfd, VHOST_VDPA_SET_CONFIG, config);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to set vDPA config (offset 0x%x, len 0x%x)", off, len);
+		ret = -1;
+	}
+
+	free(config);
+
+	return ret;
+}
+
 /**
  * Set up environment to talk with a vhost vdpa backend.
  *
@@ -559,6 +626,8 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.set_vring_addr = vhost_vdpa_set_vring_addr,
 	.get_status = vhost_vdpa_get_status,
 	.set_status = vhost_vdpa_set_status,
+	.get_config = vhost_vdpa_get_config,
+	.set_config = vhost_vdpa_set_config,
 	.enable_qp = vhost_vdpa_enable_queue_pair,
 	.dma_map = vhost_vdpa_dma_map_batch,
 	.dma_unmap = vhost_vdpa_dma_unmap_batch,
