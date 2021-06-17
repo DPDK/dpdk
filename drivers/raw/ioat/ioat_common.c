@@ -147,6 +147,7 @@ idxd_dev_configure(const struct rte_rawdev *dev,
 	/* in case we are reconfiguring a device, free any existing memory */
 	rte_free(rte_idxd->desc_ring);
 	rte_free(rte_idxd->hdl_ring);
+	rte_free(rte_idxd->hdl_ring_flags);
 
 	/* allocate the descriptor ring at 2x size as batches can't wrap */
 	rte_idxd->desc_ring = rte_zmalloc(NULL,
