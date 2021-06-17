@@ -77,6 +77,8 @@ uint8_t virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs);
 int virtio_user_dev_set_status(struct virtio_user_dev *dev, uint8_t status);
 int virtio_user_dev_update_status(struct virtio_user_dev *dev);
 int virtio_user_dev_update_link_state(struct virtio_user_dev *dev);
+int virtio_user_dev_set_mac(struct virtio_user_dev *dev);
+int virtio_user_dev_get_mac(struct virtio_user_dev *dev);
 void virtio_user_dev_delayed_disconnect_handler(void *param);
 int virtio_user_dev_server_reconnect(struct virtio_user_dev *dev);
 extern const char * const virtio_user_backend_strings[];
