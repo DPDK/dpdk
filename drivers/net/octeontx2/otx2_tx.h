@@ -197,7 +197,8 @@ otx2_nix_xmit_prepare_tso(struct rte_mbuf *m, const uint64_t flags)
 }
 
 static __rte_always_inline void
-otx2_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
+otx2_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
+		      const uint64_t lso_tun_fmt)
 {
 	struct nix_send_ext_s *send_hdr_ext;
 	struct nix_send_hdr_s *send_hdr;
@@ -339,14 +340,15 @@ otx2_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 		    (ol_flags & PKT_TX_TUNNEL_MASK)) {
 			const uint8_t is_udp_tun = (NIX_UDP_TUN_BITMASK >>
 				((ol_flags & PKT_TX_TUNNEL_MASK) >> 45)) & 0x1;
+			uint8_t shift = is_udp_tun ? 32 : 0;
+
+			shift += (!!(ol_flags & PKT_TX_OUTER_IPV6) << 4);
+			shift += (!!(ol_flags & PKT_TX_IPV6) << 3);
 
 			w1.il4type = NIX_SENDL4TYPE_TCP_CKSUM;
 			w1.ol4type = is_udp_tun ? NIX_SENDL4TYPE_UDP_CKSUM : 0;
 			/* Update format for UDP tunneled packet */
-			send_hdr_ext->w0.lso_format += is_udp_tun ? 2 : 6;
-
-			send_hdr_ext->w0.lso_format +=
-				!!(ol_flags & PKT_TX_OUTER_IPV6) << 1;
+			send_hdr_ext->w0.lso_format = (lso_tun_fmt >> shift);
 		}
 	}
 

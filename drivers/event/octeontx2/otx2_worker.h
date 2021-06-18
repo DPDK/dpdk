@@ -264,7 +264,7 @@ otx2_ssogws_prepare_pkt(const struct otx2_eth_txq *txq, struct rte_mbuf *m,
 			uint64_t *cmd, const uint32_t flags)
 {
 	otx2_lmt_mov(cmd, txq->cmd, otx2_nix_tx_ext_subs(flags));
-	otx2_nix_xmit_prepare(m, cmd, flags);
+	otx2_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt);
 }
 
 static __rte_always_inline uint16_t
