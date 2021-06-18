@@ -201,11 +201,11 @@ struct i40e_hash_match_pattern {
 #define I40E_HASH_MAP_CUS_PATTERN(pattern, rss_mask, cus_pctype) { \
 	pattern, rss_mask, true, cus_pctype }
 
-#define I40E_HASH_L2_RSS_MASK		(ETH_RSS_ETH | ETH_RSS_L2_SRC_ONLY | \
+#define I40E_HASH_L2_RSS_MASK		(ETH_RSS_VLAN | ETH_RSS_ETH | \
+					ETH_RSS_L2_SRC_ONLY | \
 					ETH_RSS_L2_DST_ONLY)
 
 #define I40E_HASH_L23_RSS_MASK		(I40E_HASH_L2_RSS_MASK | \
-					ETH_RSS_VLAN | \
 					ETH_RSS_L3_SRC_ONLY | \
 					ETH_RSS_L3_DST_ONLY)
 
