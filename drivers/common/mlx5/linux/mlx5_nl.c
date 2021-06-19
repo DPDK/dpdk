@@ -33,6 +33,8 @@
 #define MLX5_SEND_BUF_SIZE 32768
 /* Receive buffer size for the Netlink socket */
 #define MLX5_RECV_BUF_SIZE 32768
+/* Maximal physical port name length. */
+#define MLX5_PHYS_PORT_NAME_MAX 128
 
 /** Parameters of VLAN devices created by driver. */
 #define MLX5_VMWA_VLAN_DEVICE_PFX "evmlx"
@@ -1188,6 +1190,7 @@ mlx5_nl_switch_info_cb(struct nlmsghdr *nh, void *arg)
 	size_t off = NLMSG_LENGTH(sizeof(struct ifinfomsg));
 	bool switch_id_set = false;
 	bool num_vf_set = false;
+	int len;
 
 	if (nh->nlmsg_type != RTM_NEWLINK)
 		goto error;
@@ -1203,7 +1206,24 @@ mlx5_nl_switch_info_cb(struct nlmsghdr *nh, void *arg)
 			num_vf_set = true;
 			break;
 		case IFLA_PHYS_PORT_NAME:
-			mlx5_translate_port_name((char *)payload, &info);
+			len = RTA_PAYLOAD(ra);
+			/* Some kernels do not pad attributes with zero. */
+			if (len > 0 && len < MLX5_PHYS_PORT_NAME_MAX) {
+				char name[MLX5_PHYS_PORT_NAME_MAX];
+
+				/*
+				 * We can't just patch the message with padding
+				 * zero - it might corrupt the following items
+				 * in the message, we have to copy the string
+				 * by attribute length and pad the copied one.
+				 */
+				memcpy(name, payload, len);
+				name[len] = 0;
+				mlx5_translate_port_name(name, &info);
+			} else {
+				info.name_type =
+					MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN;
+			}
 			break;
 		case IFLA_PHYS_SWITCH_ID:
 			info.switch_id = 0;
