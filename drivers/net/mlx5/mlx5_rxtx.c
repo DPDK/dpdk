@@ -2743,7 +2743,8 @@ mlx5_tx_eseg_mdat(struct mlx5_txq_data *__rte_restrict txq,
 		 * Copying may be interrupted inside the routine
 		 * if run into no inline hint flag.
 		 */
-		copy = tlen >= txq->inlen_mode ? 0 : (txq->inlen_mode - tlen);
+		copy = tso ? inlen : txq->inlen_mode;
+		copy = tlen >= copy ? 0 : (copy - tlen);
 		copy = mlx5_tx_mseg_memcpy(pdst, loc, part, copy, olx);
 		tlen += copy;
 		if (likely(inlen <= tlen) || copy < part) {
