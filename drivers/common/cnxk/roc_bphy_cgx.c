@@ -285,6 +285,34 @@ roc_bphy_cgx_get_linkinfo(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 }
 
 int
+roc_bphy_cgx_set_link_mode(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
+			   struct roc_bphy_cgx_link_mode *mode)
+{
+	uint64_t scr1, scr0;
+
+	if (roc_model_is_cn10k())
+		return -ENOTSUP;
+
+	if (!roc_cgx)
+		return -EINVAL;
+
+	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
+		return -ENODEV;
+
+	if (!mode)
+		return -EINVAL;
+
+	scr1 = FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_MODE_CHANGE) |
+	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_SPEED, mode->speed) |
+	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_DUPLEX, mode->full_duplex) |
+	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_AN, mode->an) |
+	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_PORT, mode->port) |
+	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_MODE, BIT_ULL(mode->mode));
+
+	return roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);
+}
+
+int
 roc_bphy_cgx_intlbk_enable(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
 {
 	return roc_bphy_cgx_intlbk_ena_dis(roc_cgx, lmac, true);

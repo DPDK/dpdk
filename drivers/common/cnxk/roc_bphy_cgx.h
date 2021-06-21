@@ -75,6 +75,14 @@ enum roc_bphy_cgx_eth_link_mode {
 	__ROC_BPHY_CGX_ETH_LINK_MODE_MAX
 };
 
+struct roc_bphy_cgx_link_mode {
+	bool full_duplex;
+	bool an;
+	unsigned int port;
+	enum roc_bphy_cgx_eth_link_speed speed;
+	enum roc_bphy_cgx_eth_link_mode mode;
+};
+
 struct roc_bphy_cgx_link_info {
 	bool link_up;
 	bool full_duplex;
@@ -90,6 +98,9 @@ __roc_api int roc_bphy_cgx_dev_fini(struct roc_bphy_cgx *roc_cgx);
 __roc_api int roc_bphy_cgx_get_linkinfo(struct roc_bphy_cgx *roc_cgx,
 					unsigned int lmac,
 					struct roc_bphy_cgx_link_info *info);
+__roc_api int roc_bphy_cgx_set_link_mode(struct roc_bphy_cgx *roc_cgx,
+					 unsigned int lmac,
+					 struct roc_bphy_cgx_link_mode *mode);
 __roc_api int roc_bphy_cgx_intlbk_enable(struct roc_bphy_cgx *roc_cgx,
 					 unsigned int lmac);
 __roc_api int roc_bphy_cgx_intlbk_disable(struct roc_bphy_cgx *roc_cgx,
