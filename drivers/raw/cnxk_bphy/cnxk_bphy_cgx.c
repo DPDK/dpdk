@@ -9,6 +9,7 @@
 
 #include <roc_api.h>
 
+#include "cnxk_bphy_cgx.h"
 #include "rte_pmd_bphy.h"
 
 struct cnxk_bphy_cgx_queue {
@@ -196,6 +197,7 @@ static const struct rte_rawdev_ops cnxk_bphy_cgx_rawdev_ops = {
 	.enqueue_bufs = cnxk_bphy_cgx_enqueue_bufs,
 	.dequeue_bufs = cnxk_bphy_cgx_dequeue_bufs,
 	.queue_count = cnxk_bphy_cgx_queue_count,
+	.dev_selftest = cnxk_bphy_cgx_dev_selftest,
 };
 
 static void

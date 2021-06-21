@@ -38,7 +38,8 @@ To perform data transfer use standard ``rte_rawdev_enqueue_buffers()`` and
 responses hence dequeueing is not always necessary.
 
 BPHY CGX/RPM PMD accepts ``struct cnxk_bphy_cgx_msg`` messages which differ by type and payload.
-Message types along with description are listed below.
+Message types along with description are listed below. As for the usage examples please refer to
+``cnxk_bphy_cgx_dev_selftest()``.
 
 Get link information
 ~~~~~~~~~~~~~~~~~~~~
@@ -93,3 +94,19 @@ Message is used to start or stop accepting traffic.
 Message must have type set to ``CNXK_BPHY_CGX_MSG_TYPE_START_RXTX`` or
 ``CNXK_BPHY_CGX_MSG_TYPE_STOP_RXTX``. Former will enable traffic while the latter will
 do the opposite.
+
+Self test
+---------
+
+On EAL initialization, BPHY CGX/RPM devices will be probed and populated into
+the raw devices. The rawdev ID of the device can be obtained using invocation
+of ``rte_rawdev_get_dev_id("NAME:x")`` from the test application, where:
+
+- NAME is the desired subsystem: use "BPHY_CGX" for
+  RFOE module,
+- x is the device's bus id specified in "bus:device.func" (BDF) format.
+
+Use this identifier for further rawdev function calls.
+
+The driver's selftest rawdev API can be used to verify the BPHY CGX/RPM
+functionality.
