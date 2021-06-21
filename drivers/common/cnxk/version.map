@@ -14,6 +14,8 @@ INTERNAL {
 	roc_bphy_cgx_get_linkinfo;
 	roc_bphy_cgx_intlbk_disable;
 	roc_bphy_cgx_intlbk_enable;
+	roc_bphy_cgx_ptp_rx_disable;
+	roc_bphy_cgx_ptp_rx_enable;
 	roc_clk_freq_get;
 	roc_error_msg_get;
 	roc_idev_lmt_base_addr_get;

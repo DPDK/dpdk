@@ -10,6 +10,7 @@ enum eth_cmd_id {
 	ETH_CMD_GET_LINK_STS = 4,
 	ETH_CMD_INTERNAL_LBK = 7,
 	ETH_CMD_INTF_SHUTDOWN = 12,
+	ETH_CMD_SET_PTP_MODE = 34,
 };
 
 /* event types - cause of interrupt */

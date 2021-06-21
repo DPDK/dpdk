@@ -232,6 +232,27 @@ roc_bphy_cgx_intlbk_ena_dis(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 	return roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);
 }
 
+static int
+roc_bphy_cgx_ptp_rx_ena_dis(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
+			    bool enable)
+{
+	uint64_t scr1, scr0;
+
+	if (roc_model_is_cn10k())
+		return -ENOTSUP;
+
+	if (!roc_cgx)
+		return -EINVAL;
+
+	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
+		return -ENODEV;
+
+	scr1 = FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_SET_PTP_MODE) |
+	       FIELD_PREP(SCR1_ETH_CTL_ARGS_ENABLE, enable);
+
+	return roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);
+}
+
 int
 roc_bphy_cgx_get_linkinfo(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 			  struct roc_bphy_cgx_link_info *info)
@@ -273,4 +294,16 @@ int
 roc_bphy_cgx_intlbk_disable(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
 {
 	return roc_bphy_cgx_intlbk_ena_dis(roc_cgx, lmac, false);
+}
+
+int
+roc_bphy_cgx_ptp_rx_enable(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
+{
+	return roc_bphy_cgx_ptp_rx_ena_dis(roc_cgx, lmac, true);
+}
+
+int
+roc_bphy_cgx_ptp_rx_disable(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
+{
+	return roc_bphy_cgx_ptp_rx_ena_dis(roc_cgx, lmac, false);
 }
