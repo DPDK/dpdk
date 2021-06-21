@@ -50,6 +50,7 @@
 #define PCI_DEVID_CNXK_EP_VF	      0xB203
 #define PCI_DEVID_CNXK_RVU_SDP_PF     0xA0f6
 #define PCI_DEVID_CNXK_RVU_SDP_VF     0xA0f7
+#define PCI_DEVID_CNXK_BPHY	      0xA089
 
 #define PCI_DEVID_CN9K_CGX  0xA059
 #define PCI_DEVID_CN10K_RPM 0xA060
@@ -102,5 +103,8 @@
 
 /* Baseband phy cgx */
 #include "roc_bphy_cgx.h"
+
+/* Baseband phy */
+#include "roc_bphy.h"
 
 #endif /* _ROC_API_H_ */

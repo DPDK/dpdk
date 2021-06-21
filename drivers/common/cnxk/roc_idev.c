@@ -36,6 +36,7 @@ idev_set_defaults(struct idev_cfg *idev)
 	idev->lmt_pf_func = 0;
 	idev->lmt_base_addr = 0;
 	idev->num_lmtlines = 0;
+	idev->bphy = NULL;
 	__atomic_store_n(&idev->npa_refcnt, 0, __ATOMIC_RELEASE);
 }
 
