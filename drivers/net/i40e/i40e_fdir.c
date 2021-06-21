@@ -159,7 +159,7 @@ i40e_fdir_setup(struct i40e_pf *pf)
 	int err = I40E_SUCCESS;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz = NULL;
-	struct rte_eth_dev *eth_dev = pf->adapter->eth_dev;
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[pf->dev_data->port_id];
 	uint16_t i;
 
 	if ((pf->flags & I40E_FLAG_FDIR) == 0) {
@@ -283,7 +283,7 @@ i40e_fdir_teardown(struct i40e_pf *pf)
 {
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct i40e_vsi *vsi;
-	struct rte_eth_dev *dev = pf->adapter->eth_dev;
+	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
 
 	vsi = pf->fdir.fdir_vsi;
 	if (!vsi)
