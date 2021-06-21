@@ -32,4 +32,7 @@
 /* TIM */
 #include "roc_tim_priv.h"
 
+/* BPHY CGX */
+#include "roc_bphy_cgx_priv.h"
+
 #endif /* _ROC_PRIV_H_ */
