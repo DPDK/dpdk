@@ -94,3 +94,12 @@ roc_bphy_intr_fini(struct roc_bphy_irq_chip *irq_chip)
 	plt_free(irq_chip->irq_vecs);
 	plt_free(irq_chip);
 }
+
+bool
+roc_bphy_intr_available(struct roc_bphy_irq_chip *irq_chip, int irq_num)
+{
+	if (irq_num < 0 || (uint64_t)irq_num >= irq_chip->max_irq)
+		return false;
+
+	return irq_chip->avail_irq_bmask & BIT(irq_num);
+}
