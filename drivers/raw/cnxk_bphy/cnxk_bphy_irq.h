@@ -31,5 +31,6 @@ struct bphy_device {
 
 int cnxk_bphy_intr_init(uint16_t dev_id);
 void cnxk_bphy_intr_fini(uint16_t dev_id);
+uint64_t cnxk_bphy_irq_max_get(uint16_t dev_id);
 
 #endif /* _CNXK_BPHY_IRQ_ */
