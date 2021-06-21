@@ -184,4 +184,13 @@ roc_lmt_mov_seg_nv(void *out, const void *in, const uint16_t segdw)
 		dst128[i] = src128[i];
 }
 
+static __plt_always_inline void
+roc_atf_ret(void)
+{
+	/* This will allow wfi in EL0 to cause async exception to EL3
+	 * which will optionally perform necessary actions.
+	 */
+	__asm("wfi");
+}
+
 #endif /* _ROC_IO_H_ */

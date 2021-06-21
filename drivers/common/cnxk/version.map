@@ -24,7 +24,9 @@ INTERNAL {
 	roc_bphy_dev_init;
 	roc_bphy_intr_available;
 	roc_bphy_intr_fini;
+	roc_bphy_intr_handler;
 	roc_bphy_intr_init;
+	roc_bphy_irq_handler_set;
 	roc_bphy_irq_stack_get;
 	roc_bphy_irq_stack_remove;
 	roc_clk_freq_get;

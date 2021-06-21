@@ -4,11 +4,21 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/queue.h>
 #include <unistd.h>
 
 #include "roc_api.h"
 #include "roc_bphy_irq.h"
+
+#define roc_cpuset_t cpu_set_t
+
+struct roc_bphy_irq_usr_data {
+	uint64_t isr_base;
+	uint64_t sp;
+	uint64_t cpu;
+	uint64_t irq_num;
+};
 
 struct roc_bphy_irq_stack {
 	STAILQ_ENTRY(roc_bphy_irq_stack) entries;
@@ -21,6 +31,8 @@ struct roc_bphy_irq_stack {
 #define ROC_BPHY_CTR_DEV_PATH "/dev/otx-bphy-ctr"
 
 #define ROC_BPHY_IOC_MAGIC 0xF3
+#define ROC_BPHY_IOC_SET_BPHY_HANDLER                                          \
+	_IOW(ROC_BPHY_IOC_MAGIC, 1, struct roc_bphy_irq_usr_data)
 #define ROC_BPHY_IOC_GET_BPHY_MAX_IRQ	_IOR(ROC_BPHY_IOC_MAGIC, 3, uint64_t)
 #define ROC_BPHY_IOC_GET_BPHY_BMASK_IRQ _IOR(ROC_BPHY_IOC_MAGIC, 4, uint64_t)
 
@@ -185,6 +197,115 @@ err_buffer:
 err_stack:
 	pthread_mutex_unlock(&stacks_mutex);
 	return NULL;
+}
+
+void
+roc_bphy_intr_handler(unsigned int irq_num)
+{
+	struct roc_bphy_irq_chip *irq_chip;
+	const struct plt_memzone *mz;
+
+	mz = plt_memzone_lookup(ROC_BPHY_MEMZONE_NAME);
+	if (mz == NULL)
+		return;
+
+	irq_chip = *(struct roc_bphy_irq_chip **)mz->addr;
+	if (irq_chip == NULL)
+		return;
+
+	if (irq_chip->irq_vecs[irq_num].handler != NULL)
+		irq_chip->irq_vecs[irq_num].handler(
+			(int)irq_num, irq_chip->irq_vecs[irq_num].isr_data);
+
+	roc_atf_ret();
+}
+
+int
+roc_bphy_irq_handler_set(struct roc_bphy_irq_chip *chip, int irq_num,
+			 void (*isr)(int irq_num, void *isr_data),
+			 void *isr_data)
+{
+	roc_cpuset_t orig_cpuset, intr_cpuset;
+	struct roc_bphy_irq_usr_data irq_usr;
+	const struct plt_memzone *mz;
+	int i, retval, curr_cpu, rc;
+	char *env;
+
+	mz = plt_memzone_lookup(chip->mz_name);
+	if (mz == NULL) {
+		/* what we want is just a pointer to chip, not object itself */
+		mz = plt_memzone_reserve_cache_align(chip->mz_name,
+						     sizeof(chip));
+		if (mz == NULL)
+			return -ENOMEM;
+	}
+
+	if (chip->irq_vecs[irq_num].handler != NULL)
+		return -EINVAL;
+
+	rc = pthread_getaffinity_np(pthread_self(), sizeof(orig_cpuset),
+				    &orig_cpuset);
+	if (rc < 0) {
+		plt_err("Failed to get affinity mask");
+		return rc;
+	}
+
+	for (curr_cpu = -1, i = 0; i < CPU_SETSIZE; i++)
+		if (CPU_ISSET(i, &orig_cpuset))
+			curr_cpu = i;
+	if (curr_cpu < 0)
+		return -ENOENT;
+
+	CPU_ZERO(&intr_cpuset);
+	CPU_SET(curr_cpu, &intr_cpuset);
+	retval = pthread_setaffinity_np(pthread_self(), sizeof(intr_cpuset),
+					&intr_cpuset);
+	if (rc < 0) {
+		plt_err("Failed to set affinity mask");
+		return rc;
+	}
+
+	irq_usr.isr_base = (uint64_t)roc_bphy_intr_handler;
+	irq_usr.sp = (uint64_t)roc_bphy_irq_stack_get(curr_cpu);
+	irq_usr.cpu = curr_cpu;
+	if (irq_usr.sp == 0) {
+		rc = pthread_setaffinity_np(pthread_self(), sizeof(orig_cpuset),
+					    &orig_cpuset);
+		if (rc < 0)
+			plt_err("Failed to restore affinity mask");
+		return rc;
+	}
+
+	/* On simulator memory locking operation takes much time. We want
+	 * to skip this when running in such an environment.
+	 */
+	env = getenv("BPHY_INTR_MLOCK_DISABLE");
+	if (env == NULL) {
+		rc = mlockall(MCL_CURRENT | MCL_FUTURE);
+		if (rc < 0)
+			plt_warn("Failed to lock memory into RAM");
+	}
+
+	*((struct roc_bphy_irq_chip **)(mz->addr)) = chip;
+	irq_usr.irq_num = irq_num;
+	chip->irq_vecs[irq_num].handler_cpu = curr_cpu;
+	chip->irq_vecs[irq_num].handler = isr;
+	chip->irq_vecs[irq_num].isr_data = isr_data;
+	retval = ioctl(chip->intfd, ROC_BPHY_IOC_SET_BPHY_HANDLER, &irq_usr);
+	if (retval != 0) {
+		roc_bphy_irq_stack_remove(curr_cpu);
+		chip->irq_vecs[irq_num].handler = NULL;
+		chip->irq_vecs[irq_num].handler_cpu = -1;
+	} else {
+		chip->n_handlers++;
+	}
+
+	rc = pthread_setaffinity_np(pthread_self(), sizeof(orig_cpuset),
+				    &orig_cpuset);
+	if (rc < 0)
+		plt_warn("Failed to restore affinity mask");
+
+	return retval;
 }
 
 bool

@@ -119,4 +119,9 @@ roc_lmt_mov_seg_nv(void *out, const void *in, const uint16_t segdw)
 	PLT_SET_USED(segdw);
 }
 
+static __plt_always_inline void
+roc_atf_ret(void)
+{
+}
+
 #endif /* _ROC_IO_GENERIC_H_ */
