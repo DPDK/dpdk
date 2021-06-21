@@ -1,11 +1,15 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(C) 2021 Marvell.
  */
+#include <string.h>
+
 #include <rte_bus_pci.h>
 #include <rte_rawdev.h>
 #include <rte_rawdev_pmd.h>
 
 #include <roc_api.h>
+
+#include "rte_pmd_bphy.h"
 
 struct cnxk_bphy_cgx_queue {
 	unsigned int lmac;
@@ -46,6 +50,113 @@ cnxk_bphy_cgx_queue_def_conf(struct rte_rawdev *dev, uint16_t queue_id,
 	return 0;
 }
 
+static int
+cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
+			  struct rte_rawdev_buf *buf)
+{
+	struct cnxk_bphy_cgx_queue *qp = &cgx->queues[queue];
+	struct cnxk_bphy_cgx_msg_set_link_state *link_state;
+	struct cnxk_bphy_cgx_msg *msg = buf->buf_addr;
+	struct cnxk_bphy_cgx_msg_link_mode *link_mode;
+	struct cnxk_bphy_cgx_msg_link_info *link_info;
+	struct roc_bphy_cgx_link_info rlink_info;
+	struct roc_bphy_cgx_link_mode rlink_mode;
+	unsigned int lmac = qp->lmac;
+	void *rsp = NULL;
+	int ret;
+
+	switch (msg->type) {
+	case CNXK_BPHY_CGX_MSG_TYPE_GET_LINKINFO:
+		memset(&rlink_info, 0, sizeof(rlink_info));
+		ret = roc_bphy_cgx_get_linkinfo(cgx->rcgx, lmac, &rlink_info);
+		if (ret)
+			break;
+
+		link_info = rte_zmalloc(NULL, sizeof(*link_info), 0);
+		if (!link_info)
+			return -ENOMEM;
+
+		link_info->link_up = rlink_info.link_up;
+		link_info->full_duplex = rlink_info.full_duplex;
+		link_info->speed =
+			(enum cnxk_bphy_cgx_eth_link_speed)rlink_info.speed;
+		link_info->autoneg = rlink_info.an;
+		link_info->fec =
+			(enum cnxk_bphy_cgx_eth_link_fec)rlink_info.fec;
+		link_info->mode =
+			(enum cnxk_bphy_cgx_eth_link_mode)rlink_info.mode;
+		rsp = link_info;
+		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_INTLBK_DISABLE:
+		ret = roc_bphy_cgx_intlbk_disable(cgx->rcgx, lmac);
+		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_INTLBK_ENABLE:
+		ret = roc_bphy_cgx_intlbk_enable(cgx->rcgx, lmac);
+		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_PTP_RX_DISABLE:
+		ret = roc_bphy_cgx_ptp_rx_disable(cgx->rcgx, lmac);
+		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_PTP_RX_ENABLE:
+		ret = roc_bphy_cgx_ptp_rx_enable(cgx->rcgx, lmac);
+		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_SET_LINK_MODE:
+		link_mode = msg->data;
+		memset(&rlink_mode, 0, sizeof(rlink_mode));
+		rlink_mode.full_duplex = link_mode->full_duplex;
+		rlink_mode.an = link_mode->autoneg;
+		rlink_mode.speed =
+			(enum roc_bphy_cgx_eth_link_speed)link_mode->speed;
+		rlink_mode.mode =
+			(enum roc_bphy_cgx_eth_link_mode)link_mode->mode;
+		ret = roc_bphy_cgx_set_link_mode(cgx->rcgx, lmac, &rlink_mode);
+		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_SET_LINK_STATE:
+		link_state = msg->data;
+		ret = roc_bphy_cgx_set_link_state(cgx->rcgx, lmac,
+						  link_state->state);
+		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_START_RXTX:
+		ret = roc_bphy_cgx_start_rxtx(cgx->rcgx, lmac);
+		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_STOP_RXTX:
+		ret = roc_bphy_cgx_stop_rxtx(cgx->rcgx, lmac);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	/* get rid of last response if any */
+	if (qp->rsp) {
+		RTE_LOG(WARNING, PMD, "Previous response got overwritten\n");
+		rte_free(qp->rsp);
+	}
+	qp->rsp = rsp;
+
+	return ret;
+}
+
+static int
+cnxk_bphy_cgx_enqueue_bufs(struct rte_rawdev *dev,
+			   struct rte_rawdev_buf **buffers, unsigned int count,
+			   rte_rawdev_obj_t context)
+{
+	struct cnxk_bphy_cgx *cgx = dev->dev_private;
+	unsigned int queue = (size_t)context;
+	int ret;
+
+	if (queue >= cgx->num_queues)
+		return -EINVAL;
+
+	if (count == 0)
+		return 0;
+
+	ret = cnxk_bphy_cgx_process_buf(cgx, queue, buffers[0]);
+	if (ret)
+		return ret;
+
+	return 1;
+}
+
 static uint16_t
 cnxk_bphy_cgx_queue_count(struct rte_rawdev *dev)
 {
@@ -56,6 +167,7 @@ cnxk_bphy_cgx_queue_count(struct rte_rawdev *dev)
 
 static const struct rte_rawdev_ops cnxk_bphy_cgx_rawdev_ops = {
 	.queue_def_conf = cnxk_bphy_cgx_queue_def_conf,
+	.enqueue_bufs = cnxk_bphy_cgx_enqueue_bufs,
 	.queue_count = cnxk_bphy_cgx_queue_count,
 };
 

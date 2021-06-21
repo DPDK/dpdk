@@ -11,6 +11,13 @@ backed by ethernet I/O block called CGX or RPM (depending on the chip version).
 RFOE stands for Radio Frequency Over Ethernet and provides support for
 IEEE 1904.3 (RoE) standard.
 
+Features
+--------
+
+The BPHY CGX/RPM implements following features in the rawdev API:
+
+- Access to BPHY CGX/RPM via a set of predefined messages
+
 Device Setup
 ------------
 
@@ -25,3 +32,64 @@ devices alone.
 Before performing actual data transfer one needs to first retrieve number of
 available queues with ``rte_rawdev_queue_count()`` and capacity of each
 using ``rte_rawdev_queue_conf_get()``.
+
+To perform data transfer use standard ``rte_rawdev_enqueue_buffers()`` and
+``rte_rawdev_dequeue_buffers()`` APIs. Not all messages produce sensible
+responses hence dequeueing is not always necessary.
+
+BPHY CGX/RPM PMD accepts ``struct cnxk_bphy_cgx_msg`` messages which differ by type and payload.
+Message types along with description are listed below.
+
+Get link information
+~~~~~~~~~~~~~~~~~~~~
+
+Message is used to get information about link state.
+
+Message must have type set to ``CNXK_BPHY_CGX_MSG_TYPE_GET_LINKINFO``. In response one will
+get message containing payload i.e ``struct cnxk_bphy_cgx_msg_link_info`` filled with information
+about current link state.
+
+Change internal loopback state
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Message is used to enable or disable internal loopback.
+
+Message must have type set to ``CNXK_BPHY_CGX_MSG_TYPE_INTLBK_ENABLE`` or
+``CNXK_BPHY_CGX_MSG_TYPE_INTLBK_DISABLE``. Former will activate internal loopback while the latter
+will do the opposite.
+
+Change PTP RX state
+~~~~~~~~~~~~~~~~~~~
+
+Message is used to enable or disable PTP mode.
+
+Message must have type set to ``CNXK_BPHY_CGX_MSG_TYPE_PTP_RX_ENABLE`` or
+``CNXK_BPHY_CGX_MSG_TYPE_PTP_RX_DISABLE``. Former will enable PTP while the latter will do the
+opposite.
+
+Set link mode
+~~~~~~~~~~~~~
+
+Message is used to change link mode.
+
+Message must have type set to ``CNXK_BPHY_CGX_MSG_TYPE_SET_LINK_MODE``. Prior to sending actual
+message payload i.e ``struct cnxk_bphy_cgx_msg_link_mode`` needs to be filled with relevant
+information.
+
+Change link state
+~~~~~~~~~~~~~~~~~
+
+Message is used to set link up or down.
+
+Message must have type set to ``CNXK_BPHY_CGX_MSG_TYPE_SET_LINK_STATE``. Prior to sending actual
+message payload i.e ``struct cnxk_bphy_cgx_msg_set_link_state`` needs to be filled with relevant
+information.
+
+Start or stop RX/TX
+~~~~~~~~~~~~~~~~~~~
+
+Message is used to start or stop accepting traffic.
+
+Message must have type set to ``CNXK_BPHY_CGX_MSG_TYPE_START_RXTX`` or
+``CNXK_BPHY_CGX_MSG_TYPE_STOP_RXTX``. Former will enable traffic while the latter will
+do the opposite.
