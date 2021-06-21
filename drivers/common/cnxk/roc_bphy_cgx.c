@@ -214,6 +214,24 @@ roc_bphy_cgx_lmac_exists(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
 	       (roc_cgx->lmac_bmap & BIT_ULL(lmac));
 }
 
+static int
+roc_bphy_cgx_intlbk_ena_dis(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
+			    bool enable)
+{
+	uint64_t scr1, scr0;
+
+	if (!roc_cgx)
+		return -EINVAL;
+
+	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
+		return -ENODEV;
+
+	scr1 = FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_INTERNAL_LBK) |
+	       FIELD_PREP(SCR1_ETH_CTL_ARGS_ENABLE, enable);
+
+	return roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);
+}
+
 int
 roc_bphy_cgx_get_linkinfo(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 			  struct roc_bphy_cgx_link_info *info)
@@ -243,4 +261,16 @@ roc_bphy_cgx_get_linkinfo(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 	info->mode = FIELD_GET(SCR0_ETH_LNK_STS_S_MODE, scr0);
 
 	return 0;
+}
+
+int
+roc_bphy_cgx_intlbk_enable(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
+{
+	return roc_bphy_cgx_intlbk_ena_dis(roc_cgx, lmac, true);
+}
+
+int
+roc_bphy_cgx_intlbk_disable(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
+{
+	return roc_bphy_cgx_intlbk_ena_dis(roc_cgx, lmac, false);
 }

@@ -8,6 +8,7 @@
 /* REQUEST ID types. Input to firmware */
 enum eth_cmd_id {
 	ETH_CMD_GET_LINK_STS = 4,
+	ETH_CMD_INTERNAL_LBK = 7,
 	ETH_CMD_INTF_SHUTDOWN = 12,
 };
 
@@ -57,6 +58,9 @@ enum eth_cmd_own {
 
 /* struct eth_cmd */
 #define SCR1_ETH_CMD_ID GENMASK_ULL(7, 2)
+
+/* struct eth_ctl_args */
+#define SCR1_ETH_CTL_ARGS_ENABLE BIT_ULL(8)
 
 #define SCR1_OWN_STATUS GENMASK_ULL(1, 0)
 
