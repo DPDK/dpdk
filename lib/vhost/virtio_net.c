@@ -2259,14 +2259,17 @@ virtio_net_with_host_offload(struct virtio_net *dev)
 	return false;
 }
 
-static void
-parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
+static int
+parse_headers(struct rte_mbuf *m, uint8_t *l4_proto)
 {
 	struct rte_ipv4_hdr *ipv4_hdr;
 	struct rte_ipv6_hdr *ipv6_hdr;
-	void *l3_hdr = NULL;
 	struct rte_ether_hdr *eth_hdr;
 	uint16_t ethertype;
+	uint16_t data_len = rte_pktmbuf_data_len(m);
+
+	if (data_len < sizeof(struct rte_ether_hdr))
+		return -EINVAL;
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
@@ -2274,6 +2277,10 @@ parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
 	ethertype = rte_be_to_cpu_16(eth_hdr->ether_type);
 
 	if (ethertype == RTE_ETHER_TYPE_VLAN) {
+		if (data_len < sizeof(struct rte_ether_hdr) +
+				sizeof(struct rte_vlan_hdr))
+			goto error;
+
 		struct rte_vlan_hdr *vlan_hdr =
 			(struct rte_vlan_hdr *)(eth_hdr + 1);
 
@@ -2281,70 +2288,118 @@ parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
 		ethertype = rte_be_to_cpu_16(vlan_hdr->eth_proto);
 	}
 
-	l3_hdr = (char *)eth_hdr + m->l2_len;
-
 	switch (ethertype) {
 	case RTE_ETHER_TYPE_IPV4:
-		ipv4_hdr = l3_hdr;
-		*l4_proto = ipv4_hdr->next_proto_id;
+		if (data_len < m->l2_len + sizeof(struct rte_ipv4_hdr))
+			goto error;
+		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
+				m->l2_len);
 		m->l3_len = rte_ipv4_hdr_len(ipv4_hdr);
-		*l4_hdr = (char *)l3_hdr + m->l3_len;
+		if (data_len < m->l2_len + m->l3_len)
+			goto error;
 		m->ol_flags |= PKT_TX_IPV4;
+		*l4_proto = ipv4_hdr->next_proto_id;
 		break;
 	case RTE_ETHER_TYPE_IPV6:
-		ipv6_hdr = l3_hdr;
-		*l4_proto = ipv6_hdr->proto;
+		if (data_len < m->l2_len + sizeof(struct rte_ipv6_hdr))
+			goto error;
+		ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
+				m->l2_len);
 		m->l3_len = sizeof(struct rte_ipv6_hdr);
-		*l4_hdr = (char *)l3_hdr + m->l3_len;
 		m->ol_flags |= PKT_TX_IPV6;
+		*l4_proto = ipv6_hdr->proto;
 		break;
 	default:
-		m->l3_len = 0;
-		*l4_proto = 0;
-		*l4_hdr = NULL;
-		break;
+		/* a valid L3 header is needed for further L4 parsing */
+		goto error;
 	}
+
+	/* both CSUM and GSO need a valid L4 header */
+	switch (*l4_proto) {
+	case IPPROTO_TCP:
+		if (data_len < m->l2_len + m->l3_len +
+				sizeof(struct rte_tcp_hdr))
+			goto error;
+		break;
+	case IPPROTO_UDP:
+		if (data_len < m->l2_len + m->l3_len +
+				sizeof(struct rte_udp_hdr))
+			goto error;
+		break;
+	case IPPROTO_SCTP:
+		if (data_len < m->l2_len + m->l3_len +
+				sizeof(struct rte_sctp_hdr))
+			goto error;
+		break;
+	default:
+		goto error;
+	}
+
+	return 0;
+
+error:
+	m->l2_len = 0;
+	m->l3_len = 0;
+	m->ol_flags = 0;
+	return -EINVAL;
 }
 
 static __rte_always_inline void
 vhost_dequeue_offload_legacy(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 {
-	uint16_t l4_proto = 0;
-	void *l4_hdr = NULL;
+	uint8_t l4_proto = 0;
 	struct rte_tcp_hdr *tcp_hdr = NULL;
+	uint16_t tcp_len;
+	uint16_t data_len = rte_pktmbuf_data_len(m);
 
-	parse_ethernet(m, &l4_proto, &l4_hdr);
+	if (parse_headers(m, &l4_proto) < 0)
+		return;
+
 	if (hdr->flags == VIRTIO_NET_HDR_F_NEEDS_CSUM) {
 		if (hdr->csum_start == (m->l2_len + m->l3_len)) {
 			switch (hdr->csum_offset) {
 			case (offsetof(struct rte_tcp_hdr, cksum)):
-				if (l4_proto == IPPROTO_TCP)
-					m->ol_flags |= PKT_TX_TCP_CKSUM;
+				if (l4_proto != IPPROTO_TCP)
+					goto error;
+				m->ol_flags |= PKT_TX_TCP_CKSUM;
 				break;
 			case (offsetof(struct rte_udp_hdr, dgram_cksum)):
-				if (l4_proto == IPPROTO_UDP)
-					m->ol_flags |= PKT_TX_UDP_CKSUM;
+				if (l4_proto != IPPROTO_UDP)
+					goto error;
+				m->ol_flags |= PKT_TX_UDP_CKSUM;
 				break;
 			case (offsetof(struct rte_sctp_hdr, cksum)):
-				if (l4_proto == IPPROTO_SCTP)
-					m->ol_flags |= PKT_TX_SCTP_CKSUM;
+				if (l4_proto != IPPROTO_SCTP)
+					goto error;
+				m->ol_flags |= PKT_TX_SCTP_CKSUM;
 				break;
 			default:
-				break;
+				goto error;
 			}
+		} else {
+			goto error;
 		}
 	}
 
-	if (l4_hdr && hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE) {
+	if (hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE) {
 		switch (hdr->gso_type & ~VIRTIO_NET_HDR_GSO_ECN) {
 		case VIRTIO_NET_HDR_GSO_TCPV4:
 		case VIRTIO_NET_HDR_GSO_TCPV6:
-			tcp_hdr = l4_hdr;
+			if (l4_proto != IPPROTO_TCP)
+				goto error;
+			tcp_hdr = rte_pktmbuf_mtod_offset(m,
+					struct rte_tcp_hdr *,
+					m->l2_len + m->l3_len);
+			tcp_len = (tcp_hdr->data_off & 0xf0) >> 2;
+			if (data_len < m->l2_len + m->l3_len + tcp_len)
+				goto error;
 			m->ol_flags |= PKT_TX_TCP_SEG;
 			m->tso_segsz = hdr->gso_size;
-			m->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
+			m->l4_len = tcp_len;
 			break;
 		case VIRTIO_NET_HDR_GSO_UDP:
+			if (l4_proto != IPPROTO_UDP)
+				goto error;
 			m->ol_flags |= PKT_TX_UDP_SEG;
 			m->tso_segsz = hdr->gso_size;
 			m->l4_len = sizeof(struct rte_udp_hdr);
@@ -2352,9 +2407,15 @@ vhost_dequeue_offload_legacy(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 		default:
 			VHOST_LOG_DATA(WARNING,
 				"unsupported gso type %u.\n", hdr->gso_type);
-			break;
+			goto error;
 		}
 	}
+	return;
+
+error:
+	m->l2_len = 0;
+	m->l3_len = 0;
+	m->ol_flags = 0;
 }
 
 static __rte_always_inline void
