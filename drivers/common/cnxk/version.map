@@ -22,6 +22,8 @@ INTERNAL {
 	roc_bphy_cgx_stop_rxtx;
 	roc_bphy_dev_fini;
 	roc_bphy_dev_init;
+	roc_bphy_intr_fini;
+	roc_bphy_intr_init;
 	roc_clk_freq_get;
 	roc_error_msg_get;
 	roc_idev_lmt_base_addr_get;
