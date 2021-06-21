@@ -415,7 +415,7 @@ hns3_dcb_pg_shapping_cfg(struct hns3_hw *hw, enum hns3_shap_bucket bucket,
 	return hns3_cmd_send(hw, &desc, 1);
 }
 
-int
+static int
 hns3_pg_shaper_rate_cfg(struct hns3_hw *hw, uint8_t pg_id, uint32_t rate)
 {
 	struct hns3_shaper_parameter shaper_parameter;
@@ -551,7 +551,7 @@ hns3_dcb_pri_shapping_cfg(struct hns3_hw *hw, enum hns3_shap_bucket bucket,
 	return hns3_cmd_send(hw, &desc, 1);
 }
 
-int
+static int
 hns3_pri_shaper_rate_cfg(struct hns3_hw *hw, uint8_t tc_no, uint32_t rate)
 {
 	struct hns3_shaper_parameter shaper_parameter;

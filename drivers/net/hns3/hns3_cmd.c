@@ -429,7 +429,8 @@ hns3_get_caps_name(uint32_t caps_id)
 		{ HNS3_CAPS_STASH_B,           "stash"           },
 		{ HNS3_CAPS_UDP_TUNNEL_CSUM_B, "udp_tunnel_csum" },
 		{ HNS3_CAPS_RAS_IMP_B,         "ras_imp"         },
-		{ HNS3_CAPS_RXD_ADV_LAYOUT_B,  "rxd_adv_layout"  }
+		{ HNS3_CAPS_RXD_ADV_LAYOUT_B,  "rxd_adv_layout"  },
+		{ HNS3_CAPS_TM_B,              "tm_capability"   }
 	};
 	uint32_t i;
 
@@ -505,6 +506,8 @@ hns3_parse_capability(struct hns3_hw *hw,
 				HNS3_DEV_SUPPORT_OUTER_UDP_CKSUM_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_RAS_IMP_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_RAS_IMP_B, 1);
+	if (hns3_get_bit(caps, HNS3_CAPS_TM_B))
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_TM_B, 1);
 }
 
 static uint32_t

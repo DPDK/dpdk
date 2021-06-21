@@ -209,8 +209,6 @@ int hns3_queue_to_tc_mapping(struct hns3_hw *hw, uint16_t nb_rx_q,
 
 int hns3_update_queue_map_configure(struct hns3_adapter *hns);
 int hns3_port_shaper_update(struct hns3_hw *hw, uint32_t speed);
-int hns3_pg_shaper_rate_cfg(struct hns3_hw *hw, uint8_t pg_id, uint32_t rate);
-int hns3_pri_shaper_rate_cfg(struct hns3_hw *hw, uint8_t tc_no, uint32_t rate);
 uint8_t hns3_txq_mapped_tc_get(struct hns3_hw *hw, uint16_t txq_no);
 
 #endif /* _HNS3_DCB_H_ */

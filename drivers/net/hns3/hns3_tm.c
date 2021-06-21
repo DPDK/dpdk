@@ -28,7 +28,11 @@ void
 hns3_tm_conf_init(struct rte_eth_dev *dev)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t max_tx_queues = hns3_tm_max_tx_queues_get(dev);
+
+	if (!hns3_dev_tm_supported(hw))
+		return;
 
 	pf->tm_conf.nb_leaf_nodes_max = max_tx_queues;
 	pf->tm_conf.nb_nodes_max = 1 + HNS3_MAX_TC_NUM + max_tx_queues;
@@ -50,8 +54,12 @@ void
 hns3_tm_conf_uninit(struct rte_eth_dev *dev)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_tm_shaper_profile *shaper_profile;
 	struct hns3_tm_node *tm_node;
+
+	if (!hns3_dev_tm_supported(hw))
+		return;
 
 	if (pf->tm_conf.nb_queue_node > 0) {
 		while ((tm_node = TAILQ_FIRST(&pf->tm_conf.queue_list))) {
@@ -912,40 +920,39 @@ static int
 hns3_tm_config_port_rate(struct hns3_hw *hw,
 			 struct hns3_tm_shaper_profile *shaper_profile)
 {
+	struct hns3_port_limit_rate_cmd *cfg;
+	struct hns3_cmd_desc desc;
 	uint32_t firmware_rate;
 	uint64_t rate;
+	int ret;
 
 	if (shaper_profile) {
 		rate = shaper_profile->profile.peak.rate;
 		firmware_rate = hns3_tm_rate_convert_tm2firmware(rate);
 	} else {
-		firmware_rate = hw->dcb_info.pg_info[0].bw_limit;
+		firmware_rate = hw->max_tm_rate;
 	}
 
-	/*
-	 * The TM shaper topology after device inited:
-	 *     pri0 shaper   --->|
-	 *     pri1 shaper   --->|
-	 *     ...               |----> pg0 shaper ----> port shaper
-	 *     ...               |
-	 *     priX shaper   --->|
-	 *
-	 * Because port shaper rate maybe changed by firmware, to avoid
-	 * concurrent configure, driver use pg0 shaper to achieve the rate limit
-	 * of port.
-	 *
-	 * The finally port rate = MIN(pg0 shaper rate, port shaper rate)
-	 */
-	return hns3_pg_shaper_rate_cfg(hw, 0, firmware_rate);
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_TM_PORT_LIMIT_RATE, false);
+	cfg = (struct hns3_port_limit_rate_cmd *)desc.data;
+	cfg->speed = rte_cpu_to_le_32(firmware_rate);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "failed to config port rate, ret = %d", ret);
+
+	return ret;
 }
 
 static int
-hns3_tm_config_tc_rate(struct hns3_hw *hw,
-		       uint8_t tc_no,
+hns3_tm_config_tc_rate(struct hns3_hw *hw, uint8_t tc_no,
 		       struct hns3_tm_shaper_profile *shaper_profile)
 {
+	struct hns3_tc_limit_rate_cmd *cfg;
+	struct hns3_cmd_desc desc;
 	uint32_t firmware_rate;
 	uint64_t rate;
+	int ret;
 
 	if (shaper_profile) {
 		rate = shaper_profile->profile.peak.rate;
@@ -954,7 +961,17 @@ hns3_tm_config_tc_rate(struct hns3_hw *hw,
 		firmware_rate = hw->dcb_info.tc_info[tc_no].bw_limit;
 	}
 
-	return hns3_pri_shaper_rate_cfg(hw, tc_no, firmware_rate);
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_TM_TC_LIMIT_RATE, false);
+	cfg = (struct hns3_tc_limit_rate_cmd *)desc.data;
+	cfg->speed = rte_cpu_to_le_32(firmware_rate);
+	cfg->tc_id = tc_no;
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "failed to config tc (%u) rate, ret = %d",
+			 tc_no, ret);
+
+	return ret;
 }
 
 static bool
@@ -1227,11 +1244,15 @@ static const struct rte_tm_ops hns3_tm_ops = {
 };
 
 int
-hns3_tm_ops_get(struct rte_eth_dev *dev __rte_unused,
-		void *arg)
+hns3_tm_ops_get(struct rte_eth_dev *dev, void *arg)
 {
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	if (arg == NULL)
 		return -EINVAL;
+
+	if (!hns3_dev_tm_supported(hw))
+		return -EOPNOTSUPP;
 
 	*(const void **)arg = &hns3_tm_ops;
 
@@ -1242,6 +1263,9 @@ void
 hns3_tm_dev_start_proc(struct hns3_hw *hw)
 {
 	struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
+
+	if (!hns3_dev_tm_supported(hw))
+		return;
 
 	if (pf->tm_conf.root && !pf->tm_conf.committed)
 		hns3_warn(hw,
@@ -1288,6 +1312,9 @@ hns3_tm_conf_update(struct hns3_hw *hw)
 {
 	struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
 	struct rte_tm_error error;
+
+	if (!hns3_dev_tm_supported(hw))
+		return 0;
 
 	if (pf->tm_conf.root == NULL || !pf->tm_conf.committed)
 		return 0;
