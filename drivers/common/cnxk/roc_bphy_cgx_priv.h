@@ -61,6 +61,8 @@ enum eth_mode {
 /* REQUEST ID types. Input to firmware */
 enum eth_cmd_id {
 	ETH_CMD_GET_LINK_STS = 4,
+	ETH_CMD_LINK_BRING_UP = 5,
+	ETH_CMD_LINK_BRING_DOWN = 6,
 	ETH_CMD_INTERNAL_LBK = 7,
 	ETH_CMD_MODE_CHANGE = 11, /* hot plug support */
 	ETH_CMD_INTF_SHUTDOWN = 12,

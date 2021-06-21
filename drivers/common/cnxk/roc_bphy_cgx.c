@@ -254,6 +254,24 @@ roc_bphy_cgx_ptp_rx_ena_dis(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 }
 
 int
+roc_bphy_cgx_set_link_state(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
+			    bool state)
+{
+	uint64_t scr1, scr0;
+
+	if (!roc_cgx)
+		return -EINVAL;
+
+	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
+		return -ENODEV;
+
+	scr1 = state ? FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_LINK_BRING_UP) :
+		       FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_LINK_BRING_DOWN);
+
+	return roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);
+}
+
+int
 roc_bphy_cgx_get_linkinfo(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 			  struct roc_bphy_cgx_link_info *info)
 {
