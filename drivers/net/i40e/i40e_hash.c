@@ -1105,13 +1105,21 @@ i40e_hash_parse_pattern_act(const struct rte_eth_dev *dev,
 					  NULL,
 					  "RSS Queues not supported when pattern specified");
 
-	if (rss_act->func == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ)
+	switch (rss_act->func) {
+	case RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ:
 		rss_conf->symmetric_enable = true;
-	else if (rss_act->func != RTE_ETH_HASH_FUNCTION_DEFAULT)
-		return rte_flow_error_set(error, -EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
-					  NULL,
-					  "Only symmetric TOEPLITZ supported when pattern specified");
+		break;
+	case RTE_ETH_HASH_FUNCTION_DEFAULT:
+	case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
+	case RTE_ETH_HASH_FUNCTION_SIMPLE_XOR:
+		break;
+	default:
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+				NULL,
+				"RSS hash function not supported "
+				"when pattern specified");
+	}
 
 	if (!i40e_hash_validate_rss_types(rss_act->types))
 		return rte_flow_error_set(error, EINVAL,
