@@ -382,3 +382,41 @@ roc_bphy_handler_clear(struct roc_bphy_irq_chip *chip, int irq_num)
 
 	return retval;
 }
+
+int
+roc_bphy_intr_register(struct roc_bphy_irq_chip *irq_chip,
+		       struct roc_bphy_intr *intr)
+{
+	roc_cpuset_t orig_cpuset, intr_cpuset;
+	int retval;
+	int ret;
+
+	if (!roc_bphy_intr_available(irq_chip, intr->irq_num))
+		return -ENOTSUP;
+
+	retval = pthread_getaffinity_np(pthread_self(), sizeof(orig_cpuset),
+					&orig_cpuset);
+	if (retval < 0) {
+		plt_err("Failed to get affinity mask");
+		return retval;
+	}
+
+	CPU_ZERO(&intr_cpuset);
+	CPU_SET(intr->cpu, &intr_cpuset);
+	retval = pthread_setaffinity_np(pthread_self(), sizeof(intr_cpuset),
+					&intr_cpuset);
+	if (retval < 0) {
+		plt_err("Failed to set affinity mask");
+		return retval;
+	}
+
+	ret = roc_bphy_irq_handler_set(irq_chip, intr->irq_num,
+				       intr->intr_handler, intr->isr_data);
+
+	retval = pthread_setaffinity_np(pthread_self(), sizeof(orig_cpuset),
+					&orig_cpuset);
+	if (retval < 0)
+		plt_warn("Failed to restore affinity mask");
+
+	return ret;
+}
