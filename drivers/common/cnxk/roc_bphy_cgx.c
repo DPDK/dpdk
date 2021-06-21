@@ -7,6 +7,9 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+#define CGX_CMRX_CONFIG		       0x00
+#define CGX_CMRX_CONFIG_DATA_PKT_RX_EN BIT_ULL(54)
+#define CGX_CMRX_CONFIG_DATA_PKT_TX_EN BIT_ULL(53)
 #define CGX_CMRX_INT		       0x40
 #define CGX_CMRX_INT_OVERFLW	       BIT_ULL(1)
 /*
@@ -215,6 +218,33 @@ roc_bphy_cgx_lmac_exists(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
 }
 
 static int
+roc_bphy_cgx_start_stop_rxtx(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
+			     bool start)
+{
+	uint64_t val;
+
+	if (!roc_cgx)
+		return -EINVAL;
+
+	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
+		return -ENODEV;
+
+	pthread_mutex_lock(&roc_cgx->lock);
+	val = roc_bphy_cgx_read(roc_cgx, lmac, CGX_CMRX_CONFIG);
+	val &= ~(CGX_CMRX_CONFIG_DATA_PKT_RX_EN |
+		 CGX_CMRX_CONFIG_DATA_PKT_TX_EN);
+
+	if (start)
+		val |= FIELD_PREP(CGX_CMRX_CONFIG_DATA_PKT_RX_EN, 1) |
+		       FIELD_PREP(CGX_CMRX_CONFIG_DATA_PKT_TX_EN, 1);
+
+	roc_bphy_cgx_write(roc_cgx, lmac, CGX_CMRX_CONFIG, val);
+	pthread_mutex_unlock(&roc_cgx->lock);
+
+	return 0;
+}
+
+static int
 roc_bphy_cgx_intlbk_ena_dis(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 			    bool enable)
 {
@@ -251,6 +281,18 @@ roc_bphy_cgx_ptp_rx_ena_dis(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 	       FIELD_PREP(SCR1_ETH_CTL_ARGS_ENABLE, enable);
 
 	return roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);
+}
+
+int
+roc_bphy_cgx_start_rxtx(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
+{
+	return roc_bphy_cgx_start_stop_rxtx(roc_cgx, lmac, true);
+}
+
+int
+roc_bphy_cgx_stop_rxtx(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
+{
+	return roc_bphy_cgx_start_stop_rxtx(roc_cgx, lmac, false);
 }
 
 int
