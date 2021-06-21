@@ -27,7 +27,27 @@ cnxk_bphy_cgx_format_name(char *name, unsigned int len,
 		 pci_dev->addr.devid, pci_dev->addr.function);
 }
 
+static int
+cnxk_bphy_cgx_queue_def_conf(struct rte_rawdev *dev, uint16_t queue_id,
+			     rte_rawdev_obj_t queue_conf,
+			     size_t queue_conf_size)
+{
+	unsigned int *conf;
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(queue_id);
+
+	if (queue_conf_size != sizeof(*conf))
+		return -EINVAL;
+
+	conf = (unsigned int *)queue_conf;
+	*conf = 1;
+
+	return 0;
+}
+
 static const struct rte_rawdev_ops cnxk_bphy_cgx_rawdev_ops = {
+	.queue_def_conf = cnxk_bphy_cgx_queue_def_conf,
 };
 
 static void
