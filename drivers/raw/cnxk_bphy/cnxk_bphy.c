@@ -54,6 +54,25 @@ cnxk_bphy_irq_enqueue_bufs(struct rte_rawdev *dev,
 	return ret;
 }
 
+static int
+cnxk_bphy_irq_dequeue_bufs(struct rte_rawdev *dev,
+			   struct rte_rawdev_buf **buffers, unsigned int count,
+			   rte_rawdev_obj_t context)
+{
+	struct bphy_device *bphy_dev = (struct bphy_device *)dev->dev_private;
+	unsigned int queue = (size_t)context;
+
+	if (queue >= RTE_DIM(bphy_dev->queues))
+		return -EINVAL;
+
+	if (count == 0)
+		return 0;
+
+	buffers[0]->buf_addr = bphy_dev->queues[queue].rsp;
+
+	return 0;
+}
+
 static uint16_t
 cnxk_bphy_irq_queue_count(struct rte_rawdev *dev)
 {
@@ -81,6 +100,7 @@ cnxk_bphy_irq_queue_def_conf(struct rte_rawdev *dev, uint16_t queue_id,
 static const struct rte_rawdev_ops bphy_rawdev_ops = {
 	.queue_def_conf = cnxk_bphy_irq_queue_def_conf,
 	.enqueue_bufs = cnxk_bphy_irq_enqueue_bufs,
+	.dequeue_bufs = cnxk_bphy_irq_dequeue_bufs,
 	.queue_count = cnxk_bphy_irq_queue_count,
 };
 
