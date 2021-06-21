@@ -29,7 +29,24 @@ bphy_rawdev_get_name(char *name, struct rte_pci_device *pci_dev)
 		 pci_dev->addr.function);
 }
 
+static int
+cnxk_bphy_irq_queue_def_conf(struct rte_rawdev *dev, uint16_t queue_id,
+			     rte_rawdev_obj_t queue_conf,
+			     size_t queue_conf_size)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(queue_id);
+
+	if (queue_conf_size != sizeof(unsigned int))
+		return -EINVAL;
+
+	*(unsigned int *)queue_conf = 1;
+
+	return 0;
+}
+
 static const struct rte_rawdev_ops bphy_rawdev_ops = {
+	.queue_def_conf = cnxk_bphy_irq_queue_def_conf,
 };
 
 static int
