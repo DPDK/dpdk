@@ -157,6 +157,32 @@ cnxk_bphy_cgx_enqueue_bufs(struct rte_rawdev *dev,
 	return 1;
 }
 
+static int
+cnxk_bphy_cgx_dequeue_bufs(struct rte_rawdev *dev,
+			   struct rte_rawdev_buf **buffers, unsigned int count,
+			   rte_rawdev_obj_t context)
+{
+	struct cnxk_bphy_cgx *cgx = dev->dev_private;
+	unsigned int queue = (size_t)context;
+	struct cnxk_bphy_cgx_queue *qp;
+
+	if (queue >= cgx->num_queues)
+		return -EINVAL;
+
+	if (count == 0)
+		return 0;
+
+	qp = &cgx->queues[queue];
+	if (qp->rsp) {
+		buffers[0]->buf_addr = qp->rsp;
+		qp->rsp = NULL;
+
+		return 1;
+	}
+
+	return 0;
+}
+
 static uint16_t
 cnxk_bphy_cgx_queue_count(struct rte_rawdev *dev)
 {
@@ -168,6 +194,7 @@ cnxk_bphy_cgx_queue_count(struct rte_rawdev *dev)
 static const struct rte_rawdev_ops cnxk_bphy_cgx_rawdev_ops = {
 	.queue_def_conf = cnxk_bphy_cgx_queue_def_conf,
 	.enqueue_bufs = cnxk_bphy_cgx_enqueue_bufs,
+	.dequeue_bufs = cnxk_bphy_cgx_dequeue_bufs,
 	.queue_count = cnxk_bphy_cgx_queue_count,
 };
 
