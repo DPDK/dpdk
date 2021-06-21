@@ -29,6 +29,14 @@ bphy_rawdev_get_name(char *name, struct rte_pci_device *pci_dev)
 		 pci_dev->addr.function);
 }
 
+static uint16_t
+cnxk_bphy_irq_queue_count(struct rte_rawdev *dev)
+{
+	struct bphy_device *bphy_dev = (struct bphy_device *)dev->dev_private;
+
+	return RTE_DIM(bphy_dev->queues);
+}
+
 static int
 cnxk_bphy_irq_queue_def_conf(struct rte_rawdev *dev, uint16_t queue_id,
 			     rte_rawdev_obj_t queue_conf,
@@ -47,6 +55,7 @@ cnxk_bphy_irq_queue_def_conf(struct rte_rawdev *dev, uint16_t queue_id,
 
 static const struct rte_rawdev_ops bphy_rawdev_ops = {
 	.queue_def_conf = cnxk_bphy_irq_queue_def_conf,
+	.queue_count = cnxk_bphy_irq_queue_count,
 };
 
 static int
