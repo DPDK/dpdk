@@ -732,7 +732,7 @@ i40e_hash_config_region(struct i40e_pf *pf,
 			const struct i40e_rte_flow_rss_conf *rss_conf)
 {
 	struct i40e_hw *hw = &pf->adapter->hw;
-	struct rte_eth_dev *dev = pf->adapter->eth_dev;
+	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
 	struct i40e_queue_region_info *regions = pf->queue_region.region;
 	uint32_t num = pf->queue_region.queue_region_number;
 	uint32_t i, region_id_mask = 0;
@@ -1270,6 +1270,7 @@ i40e_hash_reset_conf(struct i40e_pf *pf,
 		     struct i40e_rte_flow_rss_conf *rss_conf)
 {
 	struct i40e_hw *hw = &pf->adapter->hw;
+	struct rte_eth_dev *dev;
 	uint64_t inset;
 	uint32_t idx;
 	int ret;
@@ -1283,8 +1284,8 @@ i40e_hash_reset_conf(struct i40e_pf *pf,
 	}
 
 	if (rss_conf->misc_reset_flags & I40E_HASH_FLOW_RESET_FLAG_REGION) {
-		ret = i40e_flush_queue_region_all_conf(pf->adapter->eth_dev,
-						       hw, pf, 0);
+		dev = &rte_eth_devices[pf->dev_data->port_id];
+		ret = i40e_flush_queue_region_all_conf(dev, hw, pf, 0);
 		if (ret)
 			return ret;
 
