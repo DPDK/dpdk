@@ -53,6 +53,9 @@ cnxk_bphy_irq_enqueue_bufs(struct rte_rawdev *dev,
 	case CNXK_BPHY_IRQ_MSG_TYPE_FINI:
 		cnxk_bphy_intr_fini(dev->dev_id);
 		break;
+	case CNXK_BPHY_IRQ_MSG_TYPE_MEM_GET:
+		bphy_dev->queues[queue].rsp = &bphy_dev->mem;
+		break;
 	default:
 		ret = -EINVAL;
 	}

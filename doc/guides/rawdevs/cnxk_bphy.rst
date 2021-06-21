@@ -17,6 +17,7 @@ Features
 The BPHY CGX/RPM implements following features in the rawdev API:
 
 - Access to BPHY CGX/RPM via a set of predefined messages
+- Access to BPHY memory
 
 Device Setup
 ------------
@@ -114,6 +115,15 @@ Message must have type set to ``CNXK_BPHY_IRQ_MSG_TYPE_INIT`` or ``CNXK_BPHY_IRQ
 The former will setup low level interrupt handling while the latter will tear everything down. There
 are also two convenience functions namely ``rte_pmd_bphy_intr_init()`` and
 ``rte_pmd_bphy_intr_fini()`` that take care of all details.
+
+
+Get device memory
+~~~~~~~~~~~~~~~~~
+
+Message is used to read device MMIO address.
+
+Message must have type set to ``CNXK_BPHY_IRQ_MSG_TYPE_MEM_GET``. There's a convenience function
+``rte_pmd_bphy_intr_mem_get()`` available that takes care of retrieving that address.
 
 Self test
 ---------

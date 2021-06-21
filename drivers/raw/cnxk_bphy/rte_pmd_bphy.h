@@ -103,6 +103,7 @@ struct cnxk_bphy_cgx_msg {
 	void *data;
 };
 
+#define cnxk_bphy_mem	    bphy_mem
 #define CNXK_BPHY_DEF_QUEUE 0
 
 enum cnxk_bphy_irq_msg_type {
@@ -115,6 +116,11 @@ enum cnxk_bphy_irq_msg_type {
 
 struct cnxk_bphy_irq_msg {
 	enum cnxk_bphy_irq_msg_type type;
+	/*
+	 * The data field, depending on message type, may point to
+	 * - (deq) struct cnxk_bphy_mem for memory range request response
+	 * - (xxx) NULL
+	 */
 	void *data;
 };
 
@@ -153,6 +159,30 @@ rte_pmd_bphy_intr_fini(uint16_t dev_id)
 	bufs[0] = &buf;
 
 	rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+}
+
+static __rte_always_inline struct cnxk_bphy_mem *
+rte_pmd_bphy_intr_mem_get(uint16_t dev_id)
+{
+	struct cnxk_bphy_irq_msg msg = {
+		.type = CNXK_BPHY_IRQ_MSG_TYPE_MEM_GET,
+	};
+	struct rte_rawdev_buf *bufs[1];
+	struct rte_rawdev_buf buf;
+	int ret;
+
+	buf.buf_addr = &msg;
+	bufs[0] = &buf;
+
+	ret = rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+	if (ret)
+		return NULL;
+
+	ret = rte_rawdev_dequeue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+	if (ret)
+		return NULL;
+
+	return buf.buf_addr;
 }
 
 #endif /* _CNXK_BPHY_H_ */

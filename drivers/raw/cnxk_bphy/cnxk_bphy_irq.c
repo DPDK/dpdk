@@ -57,3 +57,11 @@ cnxk_bphy_intr_fini(uint16_t dev_id)
 	roc_bphy_intr_fini(irq_chip);
 	bphy_dev->irq_chip = NULL;
 }
+
+struct bphy_mem *
+cnxk_bphy_mem_get(uint16_t dev_id)
+{
+	struct bphy_device *bphy_dev = cnxk_bphy_get_bphy_dev_by_dev_id(dev_id);
+
+	return &bphy_dev->mem;
+}
