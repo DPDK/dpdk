@@ -101,4 +101,17 @@ struct cnxk_bphy_cgx_msg {
 	void *data;
 };
 
+enum cnxk_bphy_irq_msg_type {
+	CNXK_BPHY_IRQ_MSG_TYPE_INIT,
+	CNXK_BPHY_IRQ_MSG_TYPE_FINI,
+	CNXK_BPHY_IRQ_MSG_TYPE_REGISTER,
+	CNXK_BPHY_IRQ_MSG_TYPE_UNREGISTER,
+	CNXK_BPHY_IRQ_MSG_TYPE_MEM_GET,
+};
+
+struct cnxk_bphy_irq_msg {
+	enum cnxk_bphy_irq_msg_type type;
+	void *data;
+};
+
 #endif /* _CNXK_BPHY_H_ */

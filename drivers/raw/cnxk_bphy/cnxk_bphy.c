@@ -13,6 +13,7 @@
 #include <roc_api.h>
 
 #include "cnxk_bphy_irq.h"
+#include "rte_pmd_bphy.h"
 
 static const struct rte_pci_id pci_bphy_map[] = {
 	{RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_CNXK_BPHY)},
@@ -27,6 +28,30 @@ bphy_rawdev_get_name(char *name, struct rte_pci_device *pci_dev)
 	snprintf(name, RTE_RAWDEV_NAME_MAX_LEN, "BPHY:%x:%02x.%x",
 		 pci_dev->addr.bus, pci_dev->addr.devid,
 		 pci_dev->addr.function);
+}
+
+static int
+cnxk_bphy_irq_enqueue_bufs(struct rte_rawdev *dev,
+			   struct rte_rawdev_buf **buffers, unsigned int count,
+			   rte_rawdev_obj_t context)
+{
+	struct bphy_device *bphy_dev = (struct bphy_device *)dev->dev_private;
+	struct cnxk_bphy_irq_msg *msg = buffers[0]->buf_addr;
+	unsigned int queue = (size_t)context;
+	int ret = 0;
+
+	if (queue >= RTE_DIM(bphy_dev->queues))
+		return -EINVAL;
+
+	if (count == 0)
+		return 0;
+
+	switch (msg->type) {
+	default:
+		ret = -EINVAL;
+	}
+
+	return ret;
 }
 
 static uint16_t
@@ -55,6 +80,7 @@ cnxk_bphy_irq_queue_def_conf(struct rte_rawdev *dev, uint16_t queue_id,
 
 static const struct rte_rawdev_ops bphy_rawdev_ops = {
 	.queue_def_conf = cnxk_bphy_irq_queue_def_conf,
+	.enqueue_bufs = cnxk_bphy_irq_enqueue_bufs,
 	.queue_count = cnxk_bphy_irq_queue_count,
 };
 
