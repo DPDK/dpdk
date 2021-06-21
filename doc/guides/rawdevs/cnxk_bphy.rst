@@ -141,15 +141,14 @@ Message must have type set to ``CNXK_BPHY_IRQ_MSG_TYPE_MEM_GET``. There's a conv
 Self test
 ---------
 
-On EAL initialization, BPHY CGX/RPM devices will be probed and populated into
+On EAL initialization BPHY and BPHY CGX/RPM devices will be probed and populated into
 the raw devices. The rawdev ID of the device can be obtained using invocation
 of ``rte_rawdev_get_dev_id("NAME:x")`` from the test application, where:
 
-- NAME is the desired subsystem: use "BPHY_CGX" for
+- NAME is the desired subsystem: use "BPHY" for regular, and "BPHY_CGX" for
   RFOE module,
 - x is the device's bus id specified in "bus:device.func" (BDF) format.
 
 Use this identifier for further rawdev function calls.
 
-The driver's selftest rawdev API can be used to verify the BPHY CGX/RPM
-functionality.
+Selftest rawdev API can be used to verify the BPHY and BPHY CGX/RPM functionality.

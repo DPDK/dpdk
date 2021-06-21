@@ -11,6 +11,7 @@
 #include <rte_rawdev_pmd.h>
 
 #include <roc_api.h>
+#include <roc_bphy_irq.h>
 
 #include "cnxk_bphy_irq.h"
 #include "rte_pmd_bphy.h"
@@ -21,6 +22,128 @@ static const struct rte_pci_id pci_bphy_map[] = {
 		.vendor_id = 0,
 	},
 };
+
+struct bphy_test {
+	int irq_num;
+	cnxk_bphy_intr_handler_t handler;
+	void *data;
+	int cpu;
+	bool handled_intr;
+	int handled_data;
+	int test_data;
+};
+
+static struct bphy_test *test;
+
+static void
+bphy_test_handler_fn(int irq_num, void *isr_data)
+{
+	test[irq_num].handled_intr = true;
+	test[irq_num].handled_data = *((int *)isr_data);
+}
+
+static int
+bphy_rawdev_selftest(uint16_t dev_id)
+{
+	unsigned int i, queues, descs;
+	uint64_t max_irq;
+	int ret;
+
+	queues = rte_rawdev_queue_count(dev_id);
+	if (queues == 0)
+		return -ENODEV;
+
+	ret = rte_rawdev_start(dev_id);
+	if (ret)
+		return ret;
+
+	ret = rte_rawdev_queue_conf_get(dev_id, CNXK_BPHY_DEF_QUEUE, &descs,
+					sizeof(descs));
+	if (ret)
+		goto err_desc;
+	if (descs != 1) {
+		ret = -ENODEV;
+		plt_err("Wrong number of descs reported\n");
+		goto err_desc;
+	}
+
+	ret = rte_pmd_bphy_intr_init(dev_id);
+	if (ret) {
+		plt_err("intr init failed");
+		return ret;
+	}
+
+	max_irq = cnxk_bphy_irq_max_get(dev_id);
+
+	test = rte_zmalloc("BPHY", max_irq * sizeof(*test), 0);
+	if (test == NULL) {
+		plt_err("intr alloc failed");
+		goto err_alloc;
+	}
+
+	for (i = 0; i < max_irq; i++) {
+		test[i].test_data = i;
+		test[i].irq_num = i;
+		test[i].handler = bphy_test_handler_fn;
+		test[i].data = &test[i].test_data;
+	}
+
+	for (i = 0; i < max_irq; i++) {
+		ret = rte_pmd_bphy_intr_register(dev_id, test[i].irq_num,
+						 test[i].handler, test[i].data,
+						 0);
+		if (ret == -ENOTSUP) {
+			/* In the test we iterate over all irq numbers
+			 * so if some of them are not supported by given
+			 * platform we treat respective results as valid
+			 * ones. This way they have no impact on overall
+			 * test results.
+			 */
+			test[i].handled_intr = true;
+			test[i].handled_data = test[i].test_data;
+			ret = 0;
+			continue;
+		}
+
+		if (ret) {
+			plt_err("intr register failed at irq %d", i);
+			goto err_register;
+		}
+	}
+
+	for (i = 0; i < max_irq; i++)
+		roc_bphy_intr_handler(i);
+
+	for (i = 0; i < max_irq; i++) {
+		if (!test[i].handled_intr) {
+			plt_err("intr %u not handled", i);
+			ret = -1;
+			break;
+		}
+		if (test[i].handled_data != test[i].test_data) {
+			plt_err("intr %u has wrong handler", i);
+			ret = -1;
+			break;
+		}
+	}
+
+err_register:
+	/*
+	 * In case of registration failure the loop goes over all
+	 * interrupts which is safe due to internal guards in
+	 * rte_pmd_bphy_intr_unregister().
+	 */
+	for (i = 0; i < max_irq; i++)
+		rte_pmd_bphy_intr_unregister(dev_id, i);
+
+	rte_free(test);
+err_alloc:
+	rte_pmd_bphy_intr_fini(dev_id);
+err_desc:
+	rte_rawdev_stop(dev_id);
+
+	return ret;
+}
 
 static void
 bphy_rawdev_get_name(char *name, struct rte_pci_device *pci_dev)
@@ -122,6 +245,7 @@ static const struct rte_rawdev_ops bphy_rawdev_ops = {
 	.enqueue_bufs = cnxk_bphy_irq_enqueue_bufs,
 	.dequeue_bufs = cnxk_bphy_irq_dequeue_bufs,
 	.queue_count = cnxk_bphy_irq_queue_count,
+	.dev_selftest = bphy_rawdev_selftest,
 };
 
 static int
