@@ -23,6 +23,7 @@ struct roc_bphy_irq_chip {
 
 __roc_api struct roc_bphy_irq_chip *roc_bphy_intr_init(void);
 __roc_api void roc_bphy_intr_fini(struct roc_bphy_irq_chip *irq_chip);
+__roc_api void *roc_bphy_irq_stack_get(int cpu);
 __roc_api bool roc_bphy_intr_available(struct roc_bphy_irq_chip *irq_chip,
 				       int irq_num);
 

@@ -25,6 +25,7 @@ INTERNAL {
 	roc_bphy_intr_available;
 	roc_bphy_intr_fini;
 	roc_bphy_intr_init;
+	roc_bphy_irq_stack_get;
 	roc_clk_freq_get;
 	roc_error_msg_get;
 	roc_idev_lmt_base_addr_get;
