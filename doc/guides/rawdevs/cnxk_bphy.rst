@@ -21,3 +21,7 @@ kernel driver. When querying the status of the devices, they will appear under
 the category of "Misc (rawdev) devices", i.e. the command
 ``dpdk-devbind.py --status-dev misc`` can be used to see the state of those
 devices alone.
+
+Before performing actual data transfer one needs to first retrieve number of
+available queues with ``rte_rawdev_queue_count()`` and capacity of each
+using ``rte_rawdev_queue_conf_get()``.

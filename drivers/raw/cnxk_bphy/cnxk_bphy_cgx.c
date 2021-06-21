@@ -46,8 +46,17 @@ cnxk_bphy_cgx_queue_def_conf(struct rte_rawdev *dev, uint16_t queue_id,
 	return 0;
 }
 
+static uint16_t
+cnxk_bphy_cgx_queue_count(struct rte_rawdev *dev)
+{
+	struct cnxk_bphy_cgx *cgx = dev->dev_private;
+
+	return cgx->num_queues;
+}
+
 static const struct rte_rawdev_ops cnxk_bphy_cgx_rawdev_ops = {
 	.queue_def_conf = cnxk_bphy_cgx_queue_def_conf,
+	.queue_count = cnxk_bphy_cgx_queue_count,
 };
 
 static void
