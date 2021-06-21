@@ -110,6 +110,36 @@ roc_bphy_intr_fini(struct roc_bphy_irq_chip *irq_chip)
 	plt_free(irq_chip);
 }
 
+void
+roc_bphy_irq_stack_remove(int cpu)
+{
+	struct roc_bphy_irq_stack *curr_stack;
+
+	if (pthread_mutex_lock(&stacks_mutex))
+		return;
+
+	STAILQ_FOREACH(curr_stack, &irq_stacks, entries) {
+		if (curr_stack->cpu == cpu)
+			break;
+	}
+
+	if (curr_stack == NULL)
+		goto leave;
+
+	if (curr_stack->inuse > 0)
+		curr_stack->inuse--;
+
+	if (curr_stack->inuse == 0) {
+		STAILQ_REMOVE(&irq_stacks, curr_stack, roc_bphy_irq_stack,
+			      entries);
+		plt_free(curr_stack->sp_buffer);
+		plt_free(curr_stack);
+	}
+
+leave:
+	pthread_mutex_unlock(&stacks_mutex);
+}
+
 void *
 roc_bphy_irq_stack_get(int cpu)
 {
