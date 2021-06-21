@@ -118,6 +118,8 @@ struct cnxk_bphy_irq_msg {
 	enum cnxk_bphy_irq_msg_type type;
 	/*
 	 * The data field, depending on message type, may point to
+	 * - (enq) full struct cnxk_bphy_irq_info for registration request
+	 * - (enq) struct cnxk_bphy_irq_info with irq_num set for unregistration
 	 * - (deq) struct cnxk_bphy_mem for memory range request response
 	 * - (xxx) NULL
 	 */
@@ -159,6 +161,49 @@ rte_pmd_bphy_intr_fini(uint16_t dev_id)
 	bufs[0] = &buf;
 
 	rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+}
+
+static __rte_always_inline int
+rte_pmd_bphy_intr_register(uint16_t dev_id, int irq_num,
+			   cnxk_bphy_intr_handler_t handler, void *data,
+			   int cpu)
+{
+	struct cnxk_bphy_irq_info info = {
+		.irq_num = irq_num,
+		.handler = handler,
+		.data = data,
+		.cpu = cpu,
+	};
+	struct cnxk_bphy_irq_msg msg = {
+		.type = CNXK_BPHY_IRQ_MSG_TYPE_REGISTER,
+		.data = &info
+	};
+	struct rte_rawdev_buf *bufs[1];
+	struct rte_rawdev_buf buf;
+
+	buf.buf_addr = &msg;
+	bufs[0] = &buf;
+
+	return rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+}
+
+static __rte_always_inline void
+rte_pmd_bphy_intr_unregister(uint16_t dev_id, int irq_num)
+{
+	struct cnxk_bphy_irq_info info = {
+		.irq_num = irq_num,
+	};
+	struct cnxk_bphy_irq_msg msg = {
+		.type = CNXK_BPHY_IRQ_MSG_TYPE_UNREGISTER,
+		.data = &info
+	};
+	struct rte_rawdev_buf *bufs[1];
+	struct rte_rawdev_buf buf;
+
+	buf.buf_addr = &msg;
+	bufs[0] = &buf;
+
+	rte_rawdev_enqueue_buffers(dev_id, bufs, 1, 0);
 }
 
 static __rte_always_inline struct cnxk_bphy_mem *

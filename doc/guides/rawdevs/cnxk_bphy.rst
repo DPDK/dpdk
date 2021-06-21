@@ -18,6 +18,7 @@ The BPHY CGX/RPM implements following features in the rawdev API:
 
 - Access to BPHY CGX/RPM via a set of predefined messages
 - Access to BPHY memory
+- Custom interrupt handlers
 
 Device Setup
 ------------
@@ -116,6 +117,18 @@ The former will setup low level interrupt handling while the latter will tear ev
 are also two convenience functions namely ``rte_pmd_bphy_intr_init()`` and
 ``rte_pmd_bphy_intr_fini()`` that take care of all details.
 
+
+Register or remove interrupt handler
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Message is used setup custom interrupt handler.
+
+Message must have type set to ``CNXK_BPHY_IRQ_MSG_TYPE_REGISTER`` or
+``CNXK_BPHY_IRQ_MSG_TYPE_UNREGISTER``. The former will register an interrupt handler while the
+latter will remove it. Prior sending actual message payload i.e ``struct cnxk_bphy_irq_info`` needs
+to be filled with relevant information. There are also two convenience functions namely
+``rte_pmd_bphy_intr_register()`` and ``rte_pmd_bphy_intr_unregister()`` that take care of all
+details.
 
 Get device memory
 ~~~~~~~~~~~~~~~~~

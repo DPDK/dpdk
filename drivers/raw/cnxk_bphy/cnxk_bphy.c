@@ -38,6 +38,7 @@ cnxk_bphy_irq_enqueue_bufs(struct rte_rawdev *dev,
 	struct bphy_device *bphy_dev = (struct bphy_device *)dev->dev_private;
 	struct cnxk_bphy_irq_msg *msg = buffers[0]->buf_addr;
 	unsigned int queue = (size_t)context;
+	struct cnxk_bphy_irq_info *info;
 	int ret = 0;
 
 	if (queue >= RTE_DIM(bphy_dev->queues))
@@ -52,6 +53,16 @@ cnxk_bphy_irq_enqueue_bufs(struct rte_rawdev *dev,
 		break;
 	case CNXK_BPHY_IRQ_MSG_TYPE_FINI:
 		cnxk_bphy_intr_fini(dev->dev_id);
+		break;
+	case CNXK_BPHY_IRQ_MSG_TYPE_REGISTER:
+		info = (struct cnxk_bphy_irq_info *)msg->data;
+		ret = cnxk_bphy_intr_register(dev->dev_id, info->irq_num,
+					      info->handler, info->data,
+					      info->cpu);
+		break;
+	case CNXK_BPHY_IRQ_MSG_TYPE_UNREGISTER:
+		info = (struct cnxk_bphy_irq_info *)msg->data;
+		cnxk_bphy_intr_unregister(dev->dev_id, info->irq_num);
 		break;
 	case CNXK_BPHY_IRQ_MSG_TYPE_MEM_GET:
 		bphy_dev->queues[queue].rsp = &bphy_dev->mem;
