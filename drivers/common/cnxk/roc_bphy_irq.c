@@ -33,6 +33,7 @@ struct roc_bphy_irq_stack {
 #define ROC_BPHY_IOC_MAGIC 0xF3
 #define ROC_BPHY_IOC_SET_BPHY_HANDLER                                          \
 	_IOW(ROC_BPHY_IOC_MAGIC, 1, struct roc_bphy_irq_usr_data)
+#define ROC_BPHY_IOC_CLR_BPHY_HANDLER	_IO(ROC_BPHY_IOC_MAGIC, 2)
 #define ROC_BPHY_IOC_GET_BPHY_MAX_IRQ	_IOR(ROC_BPHY_IOC_MAGIC, 3, uint64_t)
 #define ROC_BPHY_IOC_GET_BPHY_BMASK_IRQ _IOR(ROC_BPHY_IOC_MAGIC, 4, uint64_t)
 
@@ -315,4 +316,69 @@ roc_bphy_intr_available(struct roc_bphy_irq_chip *irq_chip, int irq_num)
 		return false;
 
 	return irq_chip->avail_irq_bmask & BIT(irq_num);
+}
+
+int
+roc_bphy_handler_clear(struct roc_bphy_irq_chip *chip, int irq_num)
+{
+	roc_cpuset_t orig_cpuset, intr_cpuset;
+	const struct plt_memzone *mz;
+	int retval;
+
+	if (chip == NULL)
+		return -EINVAL;
+	if ((uint64_t)irq_num >= chip->max_irq || irq_num < 0)
+		return -EINVAL;
+	if (!roc_bphy_intr_available(chip, irq_num))
+		return -ENOTSUP;
+	if (chip->irq_vecs[irq_num].handler == NULL)
+		return -EINVAL;
+	mz = plt_memzone_lookup(chip->mz_name);
+	if (mz == NULL)
+		return -ENXIO;
+
+	retval = pthread_getaffinity_np(pthread_self(), sizeof(orig_cpuset),
+					&orig_cpuset);
+	if (retval < 0) {
+		plt_warn("Failed to get affinity mask");
+		CPU_ZERO(&orig_cpuset);
+		CPU_SET(0, &orig_cpuset);
+	}
+
+	CPU_ZERO(&intr_cpuset);
+	CPU_SET(chip->irq_vecs[irq_num].handler_cpu, &intr_cpuset);
+	retval = pthread_setaffinity_np(pthread_self(), sizeof(intr_cpuset),
+					&intr_cpuset);
+	if (retval < 0) {
+		plt_warn("Failed to set affinity mask");
+		CPU_ZERO(&orig_cpuset);
+		CPU_SET(0, &orig_cpuset);
+	}
+
+	retval = ioctl(chip->intfd, ROC_BPHY_IOC_CLR_BPHY_HANDLER, irq_num);
+	if (retval == 0) {
+		roc_bphy_irq_stack_remove(chip->irq_vecs[irq_num].handler_cpu);
+		chip->n_handlers--;
+		chip->irq_vecs[irq_num].isr_data = NULL;
+		chip->irq_vecs[irq_num].handler = NULL;
+		chip->irq_vecs[irq_num].handler_cpu = -1;
+		if (chip->n_handlers == 0) {
+			retval = plt_memzone_free(mz);
+			if (retval < 0)
+				plt_err("Failed to free memzone: irq %d",
+					irq_num);
+		}
+	} else {
+		plt_err("Failed to clear bphy interrupt handler");
+	}
+
+	retval = pthread_setaffinity_np(pthread_self(), sizeof(orig_cpuset),
+					&orig_cpuset);
+	if (retval < 0) {
+		plt_warn("Failed to restore affinity mask");
+		CPU_ZERO(&orig_cpuset);
+		CPU_SET(0, &orig_cpuset);
+	}
+
+	return retval;
 }
