@@ -1292,6 +1292,12 @@ M: Nipun Gupta <nipun.gupta@nxp.com>
 F: drivers/raw/dpaa2_cmdif/
 F: doc/guides/rawdevs/dpaa2_cmdif.rst
 
+Marvell CNXK BPHY
+M: Jakub Palider <jpalider@marvell.com>
+M: Tomasz Duszynski <tduszynski@marvell.com>
+F: doc/guides/rawdevs/cnxk_bphy.rst
+F: drivers/raw/cnxk_bphy/
+
 Marvell OCTEON TX2 DMA
 M: Radha Mohan Chintakuntla <radhac@marvell.com>
 M: Veerasenareddy Burru <vburru@marvell.com>
@@ -1311,7 +1317,6 @@ F: drivers/raw/ntb/
 F: doc/guides/rawdevs/ntb.rst
 F: examples/ntb/
 F: doc/guides/sample_app_ug/ntb.rst
-
 
 Packet processing
 -----------------

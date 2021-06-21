@@ -61,6 +61,13 @@ New Features
   representing sub-domains of functionality. Each auxiliary device
   represents a part of its parent functionality.
 
+* **Added Baseband PHY CNXK PMD.**
+
+  Added Baseband PHY PMD which allows to configure BPHY hardware block
+  comprising accelerators and DSPs specifically tailored for 5G/LTE inline
+  usecases. Configuration happens via standard rawdev enq/deq operations. See
+  the :doc:`../rawdevs/cnxk_bphy` rawdev guide for more details on this driver.
+
 
 Removed Items
 -------------

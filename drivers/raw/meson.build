@@ -6,6 +6,7 @@ if is_windows
 endif
 
 drivers = [
+        'cnxk_bphy',
         'dpaa2_cmdif',
         'dpaa2_qdma',
         'ifpga',

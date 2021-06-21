@@ -145,6 +145,9 @@ This section lists dataplane H/W block(s) available in cnxk SoC.
 #. **Mempool Driver**
    See :doc:`../mempool/cnxk` for NPA mempool driver information.
 
+#. **Baseband PHY Driver**
+   See :doc:`../rawdevs/cnxk_bphy` for Baseband PHY driver information.
+
 Procedure to Setup Platform
 ---------------------------
 
