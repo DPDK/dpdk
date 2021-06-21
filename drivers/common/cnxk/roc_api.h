@@ -100,4 +100,7 @@
 /* Idev */
 #include "roc_idev.h"
 
+/* Baseband phy cgx */
+#include "roc_bphy_cgx.h"
+
 #endif /* _ROC_API_H_ */
