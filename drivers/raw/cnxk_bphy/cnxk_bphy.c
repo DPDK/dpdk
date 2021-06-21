@@ -47,6 +47,12 @@ cnxk_bphy_irq_enqueue_bufs(struct rte_rawdev *dev,
 		return 0;
 
 	switch (msg->type) {
+	case CNXK_BPHY_IRQ_MSG_TYPE_INIT:
+		ret = cnxk_bphy_intr_init(dev->dev_id);
+		break;
+	case CNXK_BPHY_IRQ_MSG_TYPE_FINI:
+		cnxk_bphy_intr_fini(dev->dev_id);
+		break;
 	default:
 		ret = -EINVAL;
 	}

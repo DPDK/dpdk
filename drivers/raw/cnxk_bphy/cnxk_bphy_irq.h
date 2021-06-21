@@ -10,6 +10,8 @@
 
 #include <roc_api.h>
 
+typedef void (*cnxk_bphy_intr_handler_t)(int irq_num, void *isr_data);
+
 struct bphy_mem {
 	struct rte_mem_resource res0;
 	struct rte_mem_resource res2;
@@ -26,5 +28,8 @@ struct bphy_device {
 	/* bphy irq interface supports single queue only */
 	struct bphy_irq_queue queues[1];
 };
+
+int cnxk_bphy_intr_init(uint16_t dev_id);
+void cnxk_bphy_intr_fini(uint16_t dev_id);
 
 #endif /* _CNXK_BPHY_IRQ_ */

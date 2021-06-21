@@ -37,6 +37,9 @@ To perform data transfer use standard ``rte_rawdev_enqueue_buffers()`` and
 ``rte_rawdev_dequeue_buffers()`` APIs. Not all messages produce sensible
 responses hence dequeueing is not always necessary.
 
+BPHY CGX/RPM PMD
+----------------
+
 BPHY CGX/RPM PMD accepts ``struct cnxk_bphy_cgx_msg`` messages which differ by type and payload.
 Message types along with description are listed below. As for the usage examples please refer to
 ``cnxk_bphy_cgx_dev_selftest()``.
@@ -94,6 +97,23 @@ Message is used to start or stop accepting traffic.
 Message must have type set to ``CNXK_BPHY_CGX_MSG_TYPE_START_RXTX`` or
 ``CNXK_BPHY_CGX_MSG_TYPE_STOP_RXTX``. Former will enable traffic while the latter will
 do the opposite.
+
+BPHY PMD
+--------
+
+BPHY PMD accepts ``struct cnxk_bphy_irq_msg`` messages which differ by type and payload.
+Message types along with description are listed below. For some usage examples please refer to
+``bphy_rawdev_selftest()``.
+
+Initialize or finalize interrupt handling
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Message is used to setup low level interrupt handling.
+
+Message must have type set to ``CNXK_BPHY_IRQ_MSG_TYPE_INIT`` or ``CNXK_BPHY_IRQ_MSG_TYPE_FINI``.
+The former will setup low level interrupt handling while the latter will tear everything down. There
+are also two convenience functions namely ``rte_pmd_bphy_intr_init()`` and
+``rte_pmd_bphy_intr_fini()`` that take care of all details.
 
 Self test
 ---------

@@ -5,6 +5,8 @@
 #ifndef _CNXK_BPHY_H_
 #define _CNXK_BPHY_H_
 
+#include "cnxk_bphy_irq.h"
+
 enum cnxk_bphy_cgx_msg_type {
 	CNXK_BPHY_CGX_MSG_TYPE_GET_LINKINFO,
 	CNXK_BPHY_CGX_MSG_TYPE_INTLBK_DISABLE,
@@ -101,6 +103,8 @@ struct cnxk_bphy_cgx_msg {
 	void *data;
 };
 
+#define CNXK_BPHY_DEF_QUEUE 0
+
 enum cnxk_bphy_irq_msg_type {
 	CNXK_BPHY_IRQ_MSG_TYPE_INIT,
 	CNXK_BPHY_IRQ_MSG_TYPE_FINI,
@@ -113,5 +117,42 @@ struct cnxk_bphy_irq_msg {
 	enum cnxk_bphy_irq_msg_type type;
 	void *data;
 };
+
+struct cnxk_bphy_irq_info {
+	int irq_num;
+	cnxk_bphy_intr_handler_t handler;
+	void *data;
+	int cpu;
+};
+
+static __rte_always_inline int
+rte_pmd_bphy_intr_init(uint16_t dev_id)
+{
+	struct cnxk_bphy_irq_msg msg = {
+		.type = CNXK_BPHY_IRQ_MSG_TYPE_INIT,
+	};
+	struct rte_rawdev_buf *bufs[1];
+	struct rte_rawdev_buf buf;
+
+	buf.buf_addr = &msg;
+	bufs[0] = &buf;
+
+	return rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+}
+
+static __rte_always_inline void
+rte_pmd_bphy_intr_fini(uint16_t dev_id)
+{
+	struct cnxk_bphy_irq_msg msg = {
+		.type = CNXK_BPHY_IRQ_MSG_TYPE_FINI,
+	};
+	struct rte_rawdev_buf *bufs[1];
+	struct rte_rawdev_buf buf;
+
+	buf.buf_addr = &msg;
+	bufs[0] = &buf;
+
+	rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+}
 
 #endif /* _CNXK_BPHY_H_ */

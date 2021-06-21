@@ -7,5 +7,6 @@ sources = files(
         'cnxk_bphy.c',
         'cnxk_bphy_cgx.c',
         'cnxk_bphy_cgx_test.c',
+        'cnxk_bphy_irq.c',
 )
 headers = files('rte_pmd_bphy.h')
