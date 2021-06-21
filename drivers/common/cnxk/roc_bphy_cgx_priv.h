@@ -7,6 +7,7 @@
 
 /* REQUEST ID types. Input to firmware */
 enum eth_cmd_id {
+	ETH_CMD_GET_LINK_STS = 4,
 	ETH_CMD_INTF_SHUTDOWN = 12,
 };
 
@@ -41,6 +42,14 @@ enum eth_cmd_own {
 
 /* struct eth_lnk_sts_s */
 #define SCR0_ETH_LNK_STS_S_ERR_TYPE    GENMASK_ULL(24, 15)
+#define SCR0_ETH_LNK_STS_S_LINK_UP     BIT_ULL(9)
+#define SCR0_ETH_LNK_STS_S_FULL_DUPLEX BIT_ULL(10)
+#define SCR0_ETH_LNK_STS_S_SPEED       GENMASK_ULL(14, 11)
+#define SCR0_ETH_LNK_STS_S_ERR_TYPE    GENMASK_ULL(24, 15)
+#define SCR0_ETH_LNK_STS_S_AN	       BIT_ULL(25)
+#define SCR0_ETH_LNK_STS_S_FEC	       GENMASK_ULL(27, 26)
+#define SCR0_ETH_LNK_STS_S_LMAC_TYPE   GENMASK_ULL(35, 28)
+#define SCR0_ETH_LNK_STS_S_MODE	       GENMASK_ULL(43, 36)
 
 /* scratchx(1) CSR used for non-secure SW->ATF communication
  * This CSR acts as a command register

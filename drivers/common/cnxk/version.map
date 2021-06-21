@@ -11,6 +11,7 @@ INTERNAL {
 	cnxk_logtype_tm;
 	roc_bphy_cgx_dev_fini;
 	roc_bphy_cgx_dev_init;
+	roc_bphy_cgx_get_linkinfo;
 	roc_clk_freq_get;
 	roc_error_msg_get;
 	roc_idev_lmt_base_addr_get;

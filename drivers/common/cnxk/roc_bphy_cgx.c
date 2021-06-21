@@ -106,7 +106,7 @@ roc_bphy_cgx_wait_for_ack(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 	return tries ? 0 : -ETIMEDOUT;
 }
 
-static int __rte_unused
+static int
 roc_bphy_cgx_intf_req(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 		      uint64_t scr1, uint64_t *scr0)
 {
@@ -203,6 +203,44 @@ roc_bphy_cgx_dev_fini(struct roc_bphy_cgx *roc_cgx)
 		return -EINVAL;
 
 	pthread_mutex_destroy(&roc_cgx->lock);
+
+	return 0;
+}
+
+static bool
+roc_bphy_cgx_lmac_exists(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
+{
+	return (lmac < MAX_LMACS_PER_CGX) &&
+	       (roc_cgx->lmac_bmap & BIT_ULL(lmac));
+}
+
+int
+roc_bphy_cgx_get_linkinfo(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
+			  struct roc_bphy_cgx_link_info *info)
+{
+	uint64_t scr1, scr0;
+	int ret;
+
+	if (!roc_cgx)
+		return -EINVAL;
+
+	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
+		return -ENODEV;
+
+	if (!info)
+		return -EINVAL;
+
+	scr1 = FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_GET_LINK_STS);
+	ret = roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);
+	if (ret)
+		return ret;
+
+	info->link_up = FIELD_GET(SCR0_ETH_LNK_STS_S_LINK_UP, scr0);
+	info->full_duplex = FIELD_GET(SCR0_ETH_LNK_STS_S_FULL_DUPLEX, scr0);
+	info->speed = FIELD_GET(SCR0_ETH_LNK_STS_S_SPEED, scr0);
+	info->an = FIELD_GET(SCR0_ETH_LNK_STS_S_AN, scr0);
+	info->fec = FIELD_GET(SCR0_ETH_LNK_STS_S_FEC, scr0);
+	info->mode = FIELD_GET(SCR0_ETH_LNK_STS_S_MODE, scr0);
 
 	return 0;
 }
