@@ -3456,6 +3456,8 @@ mlx5_tx_packet_multi_inline(struct mlx5_txq_data *__rte_restrict txq,
 		unsigned int nxlen;
 		uintptr_t start;
 
+		mbuf = loc->mbuf;
+		nxlen = rte_pktmbuf_data_len(mbuf);
 		/*
 		 * Packet length exceeds the allowed inline
 		 * data length, check whether the minimal
@@ -3466,28 +3468,23 @@ mlx5_tx_packet_multi_inline(struct mlx5_txq_data *__rte_restrict txq,
 				    MLX5_ESEG_MIN_INLINE_SIZE);
 			MLX5_ASSERT(txq->inlen_mode <= txq->inlen_send);
 			inlen = txq->inlen_mode;
-		} else {
-			if (loc->mbuf->ol_flags & PKT_TX_DYNF_NOINLINE ||
-			    !vlan || txq->vlan_en) {
-				/*
-				 * VLAN insertion will be done inside by HW.
-				 * It is not utmost effective - VLAN flag is
-				 * checked twice, but we should proceed the
-				 * inlining length correctly and take into
-				 * account the VLAN header being inserted.
-				 */
-				return mlx5_tx_packet_multi_send
-							(txq, loc, olx);
-			}
+		} else if (vlan && !txq->vlan_en) {
+			/*
+			 * VLAN insertion is requested and hardware does not
+			 * support the offload, will do with software inline.
+			 */
 			inlen = MLX5_ESEG_MIN_INLINE_SIZE;
+		} else if (mbuf->ol_flags & PKT_TX_DYNF_NOINLINE ||
+			   nxlen > txq->inlen_send) {
+			return mlx5_tx_packet_multi_send(txq, loc, olx);
+		} else {
+			goto do_first;
 		}
 		/*
 		 * Now we know the minimal amount of data is requested
 		 * to inline. Check whether we should inline the buffers
 		 * from the chain beginning to eliminate some mbufs.
 		 */
-		mbuf = loc->mbuf;
-		nxlen = rte_pktmbuf_data_len(mbuf);
 		if (unlikely(nxlen <= txq->inlen_send)) {
 			/* We can inline first mbuf at least. */
 			if (nxlen < inlen) {
@@ -3509,6 +3506,7 @@ mlx5_tx_packet_multi_inline(struct mlx5_txq_data *__rte_restrict txq,
 					goto do_align;
 				}
 			}
+do_first:
 			do {
 				inlen = nxlen;
 				mbuf = NEXT(mbuf);
