@@ -42,6 +42,8 @@ mlx5_flow_os_item_supported(int item)
 	case RTE_FLOW_ITEM_TYPE_ETH:
 	case RTE_FLOW_ITEM_TYPE_IPV4:
 	case RTE_FLOW_ITEM_TYPE_UDP:
+	case RTE_FLOW_ITEM_TYPE_TCP:
+	case RTE_FLOW_ITEM_TYPE_IPV6:
 		return true;
 	default:
 		return false;

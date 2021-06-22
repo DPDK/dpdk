@@ -124,6 +124,11 @@ Limitations
     - IPv4/UDP with CVLAN filtering
     - Unicast MAC filtering
 
+  - Additional rules are supported from WinOF2 version 2.70:
+
+    - IPv4/TCP with CVLAN filtering
+    - L4 steering rules for port RSS of UDP, TCP and IP
+
 - For secondary process:
 
   - Forked secondary process not supported.
