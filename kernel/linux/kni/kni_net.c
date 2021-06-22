@@ -245,7 +245,7 @@ kni_fifo_trans_pa2va(struct kni_dev *kni,
 					break;
 
 				prev_kva = kva;
-				kva = pa2kva(kva->next);
+				kva = get_kva(kni, kva->next);
 				/* Convert physical address to virtual address */
 				prev_kva->next = pa2va(prev_kva->next, kva);
 			}
@@ -422,7 +422,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 					break;
 
 				prev_kva = kva;
-				kva = pa2kva(kva->next);
+				kva = get_kva(kni, kva->next);
 				data_kva = kva2data_kva(kva);
 				/* Convert physical address to virtual address */
 				prev_kva->next = pa2va(prev_kva->next, kva);
@@ -501,7 +501,7 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 			kni->va[i] = pa2va(kni->pa[i], kva);
 
 			while (kva->next) {
-				next_kva = pa2kva(kva->next);
+				next_kva = get_kva(kni, kva->next);
 				/* Convert physical address to virtual address */
 				kva->next = pa2va(kva->next, next_kva);
 				kva = next_kva;
