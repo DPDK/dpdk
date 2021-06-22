@@ -306,7 +306,7 @@ l2fwd_usage(const char *prgname)
 	       "  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
 	       "  -q NQ: number of queue (=ports) per lcore (default is 1)\n"
 	       "  -T PERIOD: statistics will be refreshed each PERIOD seconds (0 to disable, 10 default, 86400 maximum)\n"
-	       "  --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default)\n"
+	       "  --no-mac-updating: Disable MAC addresses updating (enabled by default)\n"
 	       "      When enabled:\n"
 	       "       - The source MAC address is replaced by the TX port MAC address\n"
 	       "       - The destination MAC address is replaced by 02:00:00:00:00:TX_PORT_ID\n"
@@ -424,7 +424,6 @@ static const char short_options[] =
 	"T:"  /* timer period */
 	;
 
-#define CMD_LINE_OPT_MAC_UPDATING "mac-updating"
 #define CMD_LINE_OPT_NO_MAC_UPDATING "no-mac-updating"
 #define CMD_LINE_OPT_PORTMAP_CONFIG "portmap"
 
@@ -433,14 +432,11 @@ enum {
 
 	/* first long only option value must be >= 256, so that we won't
 	 * conflict with short options */
-	CMD_LINE_OPT_MAC_UPDATING_NUM = 256,
-	CMD_LINE_OPT_NO_MAC_UPDATING_NUM,
+	CMD_LINE_OPT_NO_MAC_UPDATING_NUM = 256,
 	CMD_LINE_OPT_PORTMAP_NUM,
 };
 
 static const struct option lgopts[] = {
-	{ CMD_LINE_OPT_MAC_UPDATING, no_argument, 0,
-		CMD_LINE_OPT_MAC_UPDATING_NUM},
 	{ CMD_LINE_OPT_NO_MAC_UPDATING, no_argument, 0,
 		CMD_LINE_OPT_NO_MAC_UPDATING_NUM},
 	{ CMD_LINE_OPT_PORTMAP_CONFIG, 1, 0, CMD_LINE_OPT_PORTMAP_NUM},
@@ -502,10 +498,6 @@ l2fwd_parse_args(int argc, char **argv)
 				l2fwd_usage(prgname);
 				return -1;
 			}
-			break;
-
-		case CMD_LINE_OPT_MAC_UPDATING_NUM:
-			mac_updating = 1;
 			break;
 
 		case CMD_LINE_OPT_NO_MAC_UPDATING_NUM:
