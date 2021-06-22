@@ -1794,12 +1794,13 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 				!= 0)
 			return errval;
 
-		if (bond_ethdev_8023ad_flow_verify(bonded_eth_dev,
-				slave_eth_dev->data->port_id) != 0) {
+		errval = bond_ethdev_8023ad_flow_verify(bonded_eth_dev,
+				slave_eth_dev->data->port_id);
+		if (errval != 0) {
 			RTE_BOND_LOG(ERR,
-				"rte_eth_tx_queue_setup: port=%d queue_id %d, err (%d)",
-				slave_eth_dev->data->port_id, q_id, errval);
-			return -1;
+				"bond_ethdev_8023ad_flow_verify: port=%d, err (%d)",
+				slave_eth_dev->data->port_id, errval);
+			return errval;
 		}
 
 		if (internals->mode4.dedicated_queues.flow[slave_eth_dev->data->port_id] != NULL)
