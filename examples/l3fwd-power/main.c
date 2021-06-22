@@ -207,6 +207,7 @@ enum appmode {
 enum appmode app_mode;
 
 static enum rte_power_pmd_mgmt_type pmgmt_type;
+bool baseline_enabled;
 
 enum freq_scale_hint_t
 {
@@ -1617,7 +1618,7 @@ print_usage(const char *prgname)
 		" empty polls, full polls, and core busyness to telemetry\n"
 		" --interrupt-only: enable interrupt-only mode\n"
 		" --pmd-mgmt MODE: enable PMD power management mode. "
-		"Currently supported modes: monitor, pause, scale\n",
+		"Currently supported modes: baseline, monitor, pause, scale\n",
 		prgname);
 }
 
@@ -1714,6 +1715,7 @@ parse_pmd_mgmt_config(const char *name)
 #define PMD_MGMT_MONITOR "monitor"
 #define PMD_MGMT_PAUSE   "pause"
 #define PMD_MGMT_SCALE   "scale"
+#define PMD_MGMT_BASELINE  "baseline"
 
 	if (strncmp(PMD_MGMT_MONITOR, name, sizeof(PMD_MGMT_MONITOR)) == 0) {
 		pmgmt_type = RTE_POWER_MGMT_TYPE_MONITOR;
@@ -1727,6 +1729,10 @@ parse_pmd_mgmt_config(const char *name)
 
 	if (strncmp(PMD_MGMT_SCALE, name, sizeof(PMD_MGMT_SCALE)) == 0) {
 		pmgmt_type = RTE_POWER_MGMT_TYPE_SCALE;
+		return 0;
+	}
+	if (strncmp(PMD_MGMT_BASELINE, name, sizeof(PMD_MGMT_BASELINE)) == 0) {
+		baseline_enabled = true;
 		return 0;
 	}
 	/* unknown PMD power management mode */
@@ -2528,6 +2534,9 @@ main(int argc, char **argv)
 	/* init RTE timer library to be used late */
 	rte_timer_subsystem_init();
 
+	/* if we're running pmd-mgmt mode, don't default to baseline mode */
+	baseline_enabled = false;
+
 	/* parse application arguments (after the EAL ones) */
 	ret = parse_args(argc, argv);
 	if (ret < 0)
@@ -2761,7 +2770,7 @@ main(int argc, char **argv)
 						 "Fail to add ptype cb\n");
 			}
 
-			if (app_mode == APP_MODE_PMD_MGMT) {
+			if (app_mode == APP_MODE_PMD_MGMT && !baseline_enabled) {
 				ret = rte_power_ethdev_pmgmt_queue_enable(
 						lcore_id, portid, queueid,
 						pmgmt_type);
