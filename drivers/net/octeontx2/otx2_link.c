@@ -48,6 +48,29 @@ nix_link_status_print(struct rte_eth_dev *eth_dev, struct rte_eth_link *link)
 }
 
 void
+otx2_eth_dev_link_status_get(struct otx2_dev *dev,
+			     struct cgx_link_user_info *link)
+{
+	struct otx2_eth_dev *otx2_dev = (struct otx2_eth_dev *)dev;
+	struct rte_eth_link eth_link;
+	struct rte_eth_dev *eth_dev;
+
+	if (!link || !dev)
+		return;
+
+	eth_dev = otx2_dev->eth_dev;
+	if (!eth_dev)
+		return;
+
+	rte_eth_linkstatus_get(eth_dev, &eth_link);
+
+	link->link_up = eth_link.link_status;
+	link->speed = eth_link.link_speed;
+	link->an = eth_link.link_autoneg;
+	link->full_duplex = eth_link.link_duplex;
+}
+
+void
 otx2_eth_dev_link_status_update(struct otx2_dev *dev,
 				struct cgx_link_user_info *link)
 {

@@ -42,7 +42,8 @@ nix_get_tx_offload_capa(struct otx2_eth_dev *dev)
 
 static const struct otx2_dev_ops otx2_dev_ops = {
 	.link_status_update = otx2_eth_dev_link_status_update,
-	.ptp_info_update = otx2_eth_dev_ptp_info_update
+	.ptp_info_update = otx2_eth_dev_ptp_info_update,
+	.link_status_get = otx2_eth_dev_link_status_get,
 };
 
 static int
@@ -2634,6 +2635,11 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 		otx2_nix_timesync_disable(eth_dev);
 
 	nix_cgx_stop_link_event(dev);
+
+	/* Unregister the dev ops, this is required to stop VFs from
+	 * receiving link status updates on exit path.
+	 */
+	dev->ops = NULL;
 
 	/* Free up SQs */
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
