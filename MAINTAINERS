@@ -118,7 +118,6 @@ F: .ci/
 
 ABI Policy & Versioning
 M: Ray Kinsella <mdr@ashroe.eu>
-M: Neil Horman <nhorman@tuxdriver.com>
 F: lib/eal/include/rte_compat.h
 F: lib/eal/include/rte_function_versioning.h
 F: doc/guides/contributing/abi_*.rst
