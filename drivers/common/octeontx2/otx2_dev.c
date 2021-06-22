@@ -163,6 +163,32 @@ af_pf_wait_msg(struct otx2_dev *dev, uint16_t vf, int num_msg)
 		rsp->rc = msg->rc;
 		rsp->pcifunc = msg->pcifunc;
 
+		/* Whenever a PF comes up, AF sends the link status to it but
+		 * when VF comes up no such event is sent to respective VF.
+		 * Using MBOX_MSG_NIX_LF_START_RX response from AF for the
+		 * purpose and send the link status of PF to VF.
+		 */
+		if (msg->id == MBOX_MSG_NIX_LF_START_RX) {
+			/* Send link status to VF */
+			struct cgx_link_user_info linfo;
+			struct mbox_msghdr *vf_msg;
+
+			/* Get the link status */
+			if (dev->ops && dev->ops->link_status_get)
+				dev->ops->link_status_get(dev, &linfo);
+
+			/* Prepare the message to be sent */
+			vf_msg = otx2_mbox_alloc_msg(&dev->mbox_vfpf_up, vf,
+						     size);
+			otx2_mbox_req_init(MBOX_MSG_CGX_LINK_EVENT, vf_msg);
+			memcpy((uint8_t *)vf_msg + sizeof(struct mbox_msghdr),
+			       &linfo, sizeof(struct cgx_link_user_info));
+
+			vf_msg->rc = msg->rc;
+			vf_msg->pcifunc = msg->pcifunc;
+			/* Send to VF */
+			otx2_mbox_msg_send(&dev->mbox_vfpf_up, vf);
+		}
 		offset = mbox->rx_start + msg->next_msgoff;
 	}
 	rte_spinlock_unlock(&mdev->mbox_lock);

@@ -60,15 +60,19 @@
 
 struct otx2_dev;
 
-/* Link status callback */
-typedef void (*otx2_link_status_t)(struct otx2_dev *dev,
+/* Link status update callback */
+typedef void (*otx2_link_status_update_t)(struct otx2_dev *dev,
 				   struct cgx_link_user_info *link);
 /* PTP info callback */
 typedef int (*otx2_ptp_info_t)(struct otx2_dev *dev, bool ptp_en);
+/* Link status get callback */
+typedef void (*otx2_link_status_get_t)(struct otx2_dev *dev,
+				   struct cgx_link_user_info *link);
 
 struct otx2_dev_ops {
-	otx2_link_status_t link_status_update;
+	otx2_link_status_update_t link_status_update;
 	otx2_ptp_info_t ptp_info_update;
+	otx2_link_status_get_t link_status_get;
 };
 
 #define OTX2_DEV					\
