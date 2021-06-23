@@ -66,6 +66,103 @@ cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev)
 	return *tmp;
 }
 
+static inline uint8_t
+nix_sq_max_sqe_sz(struct cnxk_eth_dev *dev)
+{
+	/*
+	 * Maximum three segments can be supported with W8, Choose
+	 * NIX_MAXSQESZ_W16 for multi segment offload.
+	 */
+	if (dev->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+		return NIX_MAXSQESZ_W16;
+	else
+		return NIX_MAXSQESZ_W8;
+}
+
+int
+cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
+			uint16_t nb_desc, uint16_t fp_tx_q_sz,
+			const struct rte_eth_txconf *tx_conf)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	const struct eth_dev_ops *dev_ops = eth_dev->dev_ops;
+	struct cnxk_eth_txq_sp *txq_sp;
+	struct roc_nix_sq *sq;
+	size_t txq_sz;
+	int rc;
+
+	/* Free memory prior to re-allocation if needed. */
+	if (eth_dev->data->tx_queues[qid] != NULL) {
+		plt_nix_dbg("Freeing memory prior to re-allocation %d", qid);
+		dev_ops->tx_queue_release(eth_dev->data->tx_queues[qid]);
+		eth_dev->data->tx_queues[qid] = NULL;
+	}
+
+	/* Setup ROC SQ */
+	sq = &dev->sqs[qid];
+	sq->qid = qid;
+	sq->nb_desc = nb_desc;
+	sq->max_sqe_sz = nix_sq_max_sqe_sz(dev);
+
+	rc = roc_nix_sq_init(&dev->nix, sq);
+	if (rc) {
+		plt_err("Failed to init sq=%d, rc=%d", qid, rc);
+		return rc;
+	}
+
+	rc = -ENOMEM;
+	txq_sz = sizeof(struct cnxk_eth_txq_sp) + fp_tx_q_sz;
+	txq_sp = plt_zmalloc(txq_sz, PLT_CACHE_LINE_SIZE);
+	if (!txq_sp) {
+		plt_err("Failed to alloc tx queue mem");
+		rc |= roc_nix_sq_fini(sq);
+		return rc;
+	}
+
+	txq_sp->dev = dev;
+	txq_sp->qid = qid;
+	txq_sp->qconf.conf.tx = *tx_conf;
+	txq_sp->qconf.nb_desc = nb_desc;
+
+	plt_nix_dbg("sq=%d fc=%p offload=0x%" PRIx64 " lmt_addr=%p"
+		    " nb_sqb_bufs=%d sqes_per_sqb_log2=%d",
+		    qid, sq->fc, dev->tx_offloads, sq->lmt_addr,
+		    sq->nb_sqb_bufs, sq->sqes_per_sqb_log2);
+
+	/* Store start of fast path area */
+	eth_dev->data->tx_queues[qid] = txq_sp + 1;
+	eth_dev->data->tx_queue_state[qid] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
+}
+
+static void
+cnxk_nix_tx_queue_release(void *txq)
+{
+	struct cnxk_eth_txq_sp *txq_sp;
+	struct cnxk_eth_dev *dev;
+	struct roc_nix_sq *sq;
+	uint16_t qid;
+	int rc;
+
+	if (!txq)
+		return;
+
+	txq_sp = cnxk_eth_txq_to_sp(txq);
+	dev = txq_sp->dev;
+	qid = txq_sp->qid;
+
+	plt_nix_dbg("Releasing txq %u", qid);
+
+	/* Cleanup ROC SQ */
+	sq = &dev->sqs[qid];
+	rc = roc_nix_sq_fini(sq);
+	if (rc)
+		plt_err("Failed to cleanup sq, rc=%d", rc);
+
+	/* Finally free */
+	plt_free(txq_sp);
+}
+
 int
 cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			uint16_t nb_desc, uint16_t fp_rx_q_sz,
@@ -773,6 +870,7 @@ fail_configure:
 struct eth_dev_ops cnxk_eth_dev_ops = {
 	.dev_infos_get = cnxk_nix_info_get,
 	.link_update = cnxk_nix_link_update,
+	.tx_queue_release = cnxk_nix_tx_queue_release,
 	.rx_queue_release = cnxk_nix_rx_queue_release,
 };
 

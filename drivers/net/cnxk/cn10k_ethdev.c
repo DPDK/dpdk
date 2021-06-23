@@ -2,6 +2,77 @@
  * Copyright(C) 2021 Marvell.
  */
 #include "cn10k_ethdev.h"
+#include "cn10k_tx.h"
+
+static void
+nix_form_default_desc(struct cnxk_eth_dev *dev, struct cn10k_eth_txq *txq,
+		      uint16_t qid)
+{
+	struct nix_send_ext_s *send_hdr_ext;
+	union nix_send_hdr_w0_u send_hdr_w0;
+	union nix_send_sg_s sg_w0;
+
+	RTE_SET_USED(dev);
+
+	/* Initialize the fields based on basic single segment packet */
+	memset(&txq->cmd, 0, sizeof(txq->cmd));
+	send_hdr_w0.u = 0;
+	sg_w0.u = 0;
+
+	if (dev->tx_offload_flags & NIX_TX_NEED_EXT_HDR) {
+		/* 2(HDR) + 2(EXT_HDR) + 1(SG) + 1(IOVA) = 6/2 - 1 = 2 */
+		send_hdr_w0.sizem1 = 2;
+
+		send_hdr_ext = (struct nix_send_ext_s *)&txq->cmd[0];
+		send_hdr_ext->w0.subdc = NIX_SUBDC_EXT;
+	} else {
+		/* 2(HDR) + 1(SG) + 1(IOVA) = 4/2 - 1 = 1 */
+		send_hdr_w0.sizem1 = 1;
+	}
+
+	send_hdr_w0.sq = qid;
+	sg_w0.subdc = NIX_SUBDC_SG;
+	sg_w0.segs = 1;
+	sg_w0.ld_type = NIX_SENDLDTYPE_LDD;
+
+	txq->send_hdr_w0 = send_hdr_w0.u;
+	txq->sg_w0 = sg_w0.u;
+
+	rte_wmb();
+}
+
+static int
+cn10k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
+			 uint16_t nb_desc, unsigned int socket,
+			 const struct rte_eth_txconf *tx_conf)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cn10k_eth_txq *txq;
+	struct roc_nix_sq *sq;
+	int rc;
+
+	RTE_SET_USED(socket);
+
+	/* Common Tx queue setup */
+	rc = cnxk_nix_tx_queue_setup(eth_dev, qid, nb_desc,
+				     sizeof(struct cn10k_eth_txq), tx_conf);
+	if (rc)
+		return rc;
+
+	sq = &dev->sqs[qid];
+	/* Update fast path queue */
+	txq = eth_dev->data->tx_queues[qid];
+	txq->fc_mem = sq->fc;
+	/* Store lmt base in tx queue for easy access */
+	txq->lmt_base = dev->nix.lmt_base;
+	txq->io_addr = sq->io_addr;
+	txq->nb_sqb_bufs_adj = sq->nb_sqb_bufs_adj;
+	txq->sqes_per_sqb_log2 = sq->sqes_per_sqb_log2;
+
+	nix_form_default_desc(dev, txq, qid);
+	txq->lso_tun_fmt = dev->lso_tun_fmt;
+	return 0;
+}
 
 static int
 cn10k_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
@@ -76,6 +147,7 @@ nix_eth_dev_ops_override(void)
 
 	/* Update platform specific ops */
 	cnxk_eth_dev_ops.dev_configure = cn10k_nix_configure;
+	cnxk_eth_dev_ops.tx_queue_setup = cn10k_nix_tx_queue_setup;
 	cnxk_eth_dev_ops.rx_queue_setup = cn10k_nix_rx_queue_setup;
 }
 

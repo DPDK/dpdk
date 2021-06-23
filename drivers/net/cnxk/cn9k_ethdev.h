@@ -6,6 +6,17 @@
 
 #include <cnxk_ethdev.h>
 
+struct cn9k_eth_txq {
+	uint64_t cmd[8];
+	int64_t fc_cache_pkts;
+	uint64_t *fc_mem;
+	void *lmt_addr;
+	rte_iova_t io_addr;
+	uint64_t lso_tun_fmt;
+	uint16_t sqes_per_sqb_log2;
+	int16_t nb_sqb_bufs_adj;
+} __plt_cache_aligned;
+
 struct cn9k_eth_rxq {
 	uint64_t mbuf_initializer;
 	uint64_t data_off;
