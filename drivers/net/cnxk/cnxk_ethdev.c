@@ -1199,6 +1199,11 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.queue_stats_mapping_set = cnxk_nix_queue_stats_mapping,
 	.stats_get = cnxk_nix_stats_get,
 	.stats_reset = cnxk_nix_stats_reset,
+	.xstats_get = cnxk_nix_xstats_get,
+	.xstats_get_names = cnxk_nix_xstats_get_names,
+	.xstats_reset = cnxk_nix_xstats_reset,
+	.xstats_get_by_id = cnxk_nix_xstats_get_by_id,
+	.xstats_get_names_by_id = cnxk_nix_xstats_get_names_by_id,
 };
 
 static int
