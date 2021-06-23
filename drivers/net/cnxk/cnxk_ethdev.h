@@ -91,6 +91,9 @@
 #define RSS_SCTP_INDEX 4
 #define RSS_DMAC_INDEX 5
 
+/* Default mark value used when none is provided. */
+#define CNXK_FLOW_ACTION_FLAG_DEFAULT 0xffff
+
 #define PTYPE_NON_TUNNEL_WIDTH	  16
 #define PTYPE_TUNNEL_WIDTH	  12
 #define PTYPE_NON_TUNNEL_ARRAY_SZ BIT(PTYPE_NON_TUNNEL_WIDTH)

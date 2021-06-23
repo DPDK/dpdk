@@ -19,6 +19,7 @@ sources = files(
 # CN9K
 sources += files(
         'cn9k_ethdev.c',
+        'cn9k_rx.c',
 )
 # CN10K
 sources += files(
