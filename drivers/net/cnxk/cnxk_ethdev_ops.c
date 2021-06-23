@@ -101,6 +101,43 @@ exit:
 }
 
 int
+cnxk_nix_mac_addr_add(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr,
+		      uint32_t index, uint32_t pool)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	int rc;
+
+	PLT_SET_USED(index);
+	PLT_SET_USED(pool);
+
+	rc = roc_nix_mac_addr_add(nix, addr->addr_bytes);
+	if (rc < 0) {
+		plt_err("Failed to add mac address, rc=%d", rc);
+		return rc;
+	}
+
+	/* Enable promiscuous mode at NIX level */
+	roc_nix_npc_promisc_ena_dis(nix, true);
+	dev->dmac_filter_enable = true;
+	eth_dev->data->promiscuous = false;
+
+	return 0;
+}
+
+void
+cnxk_nix_mac_addr_del(struct rte_eth_dev *eth_dev, uint32_t index)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	int rc;
+
+	rc = roc_nix_mac_addr_del(nix, index);
+	if (rc)
+		plt_err("Failed to delete mac address, rc=%d", rc);
+}
+
+int
 cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 {
 	uint32_t old_frame_size, frame_size = mtu + CNXK_NIX_L2_OVERHEAD;
@@ -212,8 +249,8 @@ cnxk_nix_promisc_disable(struct rte_eth_dev *eth_dev)
 	if (roc_nix_is_vf_or_sdp(nix))
 		return rc;
 
-	rc = roc_nix_npc_promisc_ena_dis(nix, false);
-	if (rc < 0) {
+	rc = roc_nix_npc_promisc_ena_dis(nix, dev->dmac_filter_enable);
+	if (rc) {
 		plt_err("Failed to setup promisc mode in npc, rc=%d(%s)", rc,
 			roc_error_msg_get(rc));
 		return rc;
@@ -223,9 +260,10 @@ cnxk_nix_promisc_disable(struct rte_eth_dev *eth_dev)
 	if (rc) {
 		plt_err("Failed to setup promisc mode in mac, rc=%d(%s)", rc,
 			roc_error_msg_get(rc));
-		roc_nix_npc_promisc_ena_dis(nix, true);
+		roc_nix_npc_promisc_ena_dis(nix, !dev->dmac_filter_enable);
 		return rc;
 	}
 
+	dev->dmac_filter_enable = false;
 	return 0;
 }

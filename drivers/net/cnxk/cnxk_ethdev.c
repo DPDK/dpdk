@@ -1097,6 +1097,8 @@ rx_disable:
 /* CNXK platform independent eth dev ops */
 struct eth_dev_ops cnxk_eth_dev_ops = {
 	.mtu_set = cnxk_nix_mtu_set,
+	.mac_addr_add = cnxk_nix_mac_addr_add,
+	.mac_addr_remove = cnxk_nix_mac_addr_del,
 	.mac_addr_set = cnxk_nix_mac_addr_set,
 	.dev_infos_get = cnxk_nix_info_get,
 	.link_update = cnxk_nix_link_update,

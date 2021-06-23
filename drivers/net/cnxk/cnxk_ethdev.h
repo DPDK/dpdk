@@ -139,6 +139,7 @@ struct cnxk_eth_dev {
 
 	/* Max macfilter entries */
 	uint8_t max_mac_entries;
+	bool dmac_filter_enable;
 
 	uint16_t flags;
 	uint8_t ptype_disable;
@@ -221,6 +222,10 @@ int cnxk_nix_probe(struct rte_pci_driver *pci_drv,
 		   struct rte_pci_device *pci_dev);
 int cnxk_nix_remove(struct rte_pci_device *pci_dev);
 int cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu);
+int cnxk_nix_mac_addr_add(struct rte_eth_dev *eth_dev,
+			  struct rte_ether_addr *addr, uint32_t index,
+			  uint32_t pool);
+void cnxk_nix_mac_addr_del(struct rte_eth_dev *eth_dev, uint32_t index);
 int cnxk_nix_mac_addr_set(struct rte_eth_dev *eth_dev,
 			  struct rte_ether_addr *addr);
 int cnxk_nix_promisc_enable(struct rte_eth_dev *eth_dev);
