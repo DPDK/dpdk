@@ -4,6 +4,17 @@
 
 #include "cnxk_ethdev.h"
 
+void
+cnxk_nix_toggle_flag_link_cfg(struct cnxk_eth_dev *dev, bool set)
+{
+	if (set)
+		dev->flags |= CNXK_LINK_CFG_IN_PROGRESS_F;
+	else
+		dev->flags &= ~CNXK_LINK_CFG_IN_PROGRESS_F;
+
+	rte_wmb();
+}
+
 static inline int
 nix_wait_for_link_cfg(struct cnxk_eth_dev *dev)
 {

@@ -39,6 +39,58 @@ Driver compilation and testing
 Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
 for details.
 
+#. Running testpmd:
+
+   Follow instructions available in the document
+   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+   to run testpmd.
+
+   Example output:
+
+   .. code-block:: console
+
+      ./<build_dir>/app/dpdk-testpmd -c 0xc -a 0002:02:00.0 -- --portmask=0x1 --nb-cores=1 --port-topology=loop --rxq=1 --txq=1
+      EAL: Detected 4 lcore(s)
+      EAL: Detected 1 NUMA nodes
+      EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
+      EAL: Selected IOVA mode 'VA'
+      EAL: No available hugepages reported in hugepages-16777216kB
+      EAL: No available hugepages reported in hugepages-2048kB
+      EAL: Probing VFIO support...
+      EAL: VFIO support initialized
+      EAL:   using IOMMU type 1 (Type 1)
+      [ 2003.202721] vfio-pci 0002:02:00.0: vfio_cap_init: hiding cap 0x14@0x98
+      EAL: Probe PCI driver: net_cn10k (177d:a063) device: 0002:02:00.0 (socket 0)
+      PMD: RoC Model: cn10k
+      EAL: No legacy callbacks, legacy socket not created
+      testpmd: create a new mbuf pool <mb_pool_0>: n=155456, size=2176, socket=0
+      testpmd: preferred mempool ops selected: cn10k_mempool_ops
+      Configuring Port 0 (socket 0)
+      PMD: Port 0: Link Up - speed 25000 Mbps - full-duplex
+
+      Port 0: link state change event
+      Port 0: 96:D4:99:72:A5:BF
+      Checking link statuses...
+      Done
+      No commandline core given, start packet forwarding
+      io packet forwarding - ports=1 - cores=1 - streams=1 - NUMA support enabled, MP allocation mode: native
+      Logical Core 3 (socket 0) forwards packets on 1 streams:
+        RX P=0/Q=0 (socket 0) -> TX P=0/Q=0 (socket 0) peer=02:00:00:00:00:00
+
+        io packet forwarding packets/burst=32
+        nb forwarding cores=1 - nb forwarding ports=1
+        port 0: RX queue number: 1 Tx queue number: 1
+          Rx offloads=0x0 Tx offloads=0x10000
+          RX queue: 0
+            RX desc=4096 - RX free threshold=0
+            RX threshold registers: pthresh=0 hthresh=0  wthresh=0
+            RX Offloads=0x0
+          TX queue: 0
+            TX desc=512 - TX free threshold=0
+            TX threshold registers: pthresh=0 hthresh=0  wthresh=0
+            TX offloads=0x0 - TX RS bit threshold=0
+      Press enter to exit
+
 Runtime Config Options
 ----------------------
 
@@ -131,3 +183,35 @@ Runtime Config Options
    Above devarg parameters are configurable per device, user needs to pass the
    parameters to all the PCIe devices if application requires to configure on
    all the ethdev ports.
+
+Limitations
+-----------
+
+``mempool_cnxk`` external mempool handler dependency
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The OCTEON CN9K/CN10K SoC family NIC has inbuilt HW assisted external mempool manager.
+``net_cnxk`` pmd only works with ``mempool_cnxk`` mempool handler
+as it is performance wise most effective way for packet allocation and Tx buffer
+recycling on OCTEON TX2 SoC platform.
+
+CRC stripping
+~~~~~~~~~~~~~
+
+The OCTEON CN9K/CN10K SoC family NICs strip the CRC for every packet being received by
+the host interface irrespective of the offload configuration.
+
+Debugging Options
+-----------------
+
+.. _table_cnxk_ethdev_debug_options:
+
+.. table:: cnxk ethdev debug options
+
+   +---+------------+-------------------------------------------------------+
+   | # | Component  | EAL log command                                       |
+   +===+============+=======================================================+
+   | 1 | NIX        | --log-level='pmd\.net.cnxk,8'                         |
+   +---+------------+-------------------------------------------------------+
+   | 2 | NPC        | --log-level='pmd\.net.cnxk\.flow,8'                   |
+   +---+------------+-------------------------------------------------------+

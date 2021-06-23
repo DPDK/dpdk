@@ -955,12 +955,102 @@ done:
 	return rc;
 }
 
+static int
+cnxk_nix_dev_stop(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	const struct eth_dev_ops *dev_ops = eth_dev->dev_ops;
+	struct rte_mbuf *rx_pkts[32];
+	int count, i, j, rc;
+	void *rxq;
+
+	/* Disable switch hdr pkind */
+	roc_nix_switch_hdr_set(&dev->nix, 0);
+
+	/* Stop link change events */
+	if (!roc_nix_is_vf_or_sdp(&dev->nix))
+		roc_nix_mac_link_event_start_stop(&dev->nix, false);
+
+	/* Disable Rx via NPC */
+	roc_nix_npc_rx_ena_dis(&dev->nix, false);
+
+	/* Stop rx queues and free up pkts pending */
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rc = dev_ops->rx_queue_stop(eth_dev, i);
+		if (rc)
+			continue;
+
+		rxq = eth_dev->data->rx_queues[i];
+		count = dev->rx_pkt_burst_no_offload(rxq, rx_pkts, 32);
+		while (count) {
+			for (j = 0; j < count; j++)
+				rte_pktmbuf_free(rx_pkts[j]);
+			count = dev->rx_pkt_burst_no_offload(rxq, rx_pkts, 32);
+		}
+	}
+
+	/* Stop tx queues  */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		dev_ops->tx_queue_stop(eth_dev, i);
+
+	return 0;
+}
+
+int
+cnxk_nix_dev_start(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	int rc, i;
+
+	/* Start rx queues */
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rc = cnxk_nix_rx_queue_start(eth_dev, i);
+		if (rc)
+			return rc;
+	}
+
+	/* Start tx queues  */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		rc = cnxk_nix_tx_queue_start(eth_dev, i);
+		if (rc)
+			return rc;
+	}
+
+	/* Enable Rx in NPC */
+	rc = roc_nix_npc_rx_ena_dis(&dev->nix, true);
+	if (rc) {
+		plt_err("Failed to enable NPC rx %d", rc);
+		return rc;
+	}
+
+	cnxk_nix_toggle_flag_link_cfg(dev, true);
+
+	/* Start link change events */
+	if (!roc_nix_is_vf_or_sdp(&dev->nix)) {
+		rc = roc_nix_mac_link_event_start_stop(&dev->nix, true);
+		if (rc) {
+			plt_err("Failed to start cgx link event %d", rc);
+			goto rx_disable;
+		}
+	}
+
+	cnxk_nix_toggle_flag_link_cfg(dev, false);
+
+	return 0;
+
+rx_disable:
+	roc_nix_npc_rx_ena_dis(&dev->nix, false);
+	cnxk_nix_toggle_flag_link_cfg(dev, false);
+	return rc;
+}
+
 /* CNXK platform independent eth dev ops */
 struct eth_dev_ops cnxk_eth_dev_ops = {
 	.dev_infos_get = cnxk_nix_info_get,
 	.link_update = cnxk_nix_link_update,
 	.tx_queue_release = cnxk_nix_tx_queue_release,
 	.rx_queue_release = cnxk_nix_rx_queue_release,
+	.dev_stop = cnxk_nix_dev_stop,
 	.tx_queue_start = cnxk_nix_tx_queue_start,
 	.rx_queue_start = cnxk_nix_rx_queue_start,
 	.rx_queue_stop = cnxk_nix_rx_queue_stop,

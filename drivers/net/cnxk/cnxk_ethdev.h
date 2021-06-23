@@ -229,6 +229,7 @@ int cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			    const struct rte_eth_rxconf *rx_conf,
 			    struct rte_mempool *mp);
 int cnxk_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qid);
+int cnxk_nix_dev_start(struct rte_eth_dev *eth_dev);
 
 uint64_t cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev);
 
@@ -237,6 +238,7 @@ uint32_t cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
 				uint8_t rss_level);
 
 /* Link */
+void cnxk_nix_toggle_flag_link_cfg(struct cnxk_eth_dev *dev, bool set);
 void cnxk_eth_dev_link_status_cb(struct roc_nix *nix,
 				 struct roc_nix_link_info *link);
 int cnxk_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);
