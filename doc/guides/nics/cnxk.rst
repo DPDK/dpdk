@@ -24,6 +24,7 @@ Features of the CNXK Ethdev PMD are:
 - Multiple queues for TX and RX
 - Receiver Side Scaling (RSS)
 - MAC filtering
+- Generic flow API
 - Inner and Outer Checksum offload
 - Port hardware statistics
 - Link state information
@@ -206,6 +207,12 @@ CRC stripping
 
 The OCTEON CN9K/CN10K SoC family NICs strip the CRC for every packet being received by
 the host interface irrespective of the offload configuration.
+
+RTE flow GRE support
+~~~~~~~~~~~~~~~~~~~~
+
+- ``RTE_FLOW_ITEM_TYPE_GRE_KEY`` works only when checksum and routing
+  bits in the GRE header are equal to 0.
 
 Debugging Options
 -----------------

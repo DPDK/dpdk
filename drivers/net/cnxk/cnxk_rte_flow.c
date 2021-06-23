@@ -1,0 +1,330 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(C) 2021 Marvell.
+ */
+#include <cnxk_rte_flow.h>
+
+const struct cnxk_rte_flow_term_info term[] = {
+	[RTE_FLOW_ITEM_TYPE_ETH] = {ROC_NPC_ITEM_TYPE_ETH,
+				    sizeof(struct rte_flow_item_eth)},
+	[RTE_FLOW_ITEM_TYPE_VLAN] = {ROC_NPC_ITEM_TYPE_VLAN,
+				     sizeof(struct rte_flow_item_vlan)},
+	[RTE_FLOW_ITEM_TYPE_E_TAG] = {ROC_NPC_ITEM_TYPE_E_TAG,
+				      sizeof(struct rte_flow_item_e_tag)},
+	[RTE_FLOW_ITEM_TYPE_IPV4] = {ROC_NPC_ITEM_TYPE_IPV4,
+				     sizeof(struct rte_flow_item_ipv4)},
+	[RTE_FLOW_ITEM_TYPE_IPV6] = {ROC_NPC_ITEM_TYPE_IPV6,
+				     sizeof(struct rte_flow_item_ipv6)},
+	[RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4] = {
+		ROC_NPC_ITEM_TYPE_ARP_ETH_IPV4,
+		sizeof(struct rte_flow_item_arp_eth_ipv4)},
+	[RTE_FLOW_ITEM_TYPE_MPLS] = {ROC_NPC_ITEM_TYPE_MPLS,
+				     sizeof(struct rte_flow_item_mpls)},
+	[RTE_FLOW_ITEM_TYPE_ICMP] = {ROC_NPC_ITEM_TYPE_ICMP,
+				     sizeof(struct rte_flow_item_icmp)},
+	[RTE_FLOW_ITEM_TYPE_UDP] = {ROC_NPC_ITEM_TYPE_UDP,
+				    sizeof(struct rte_flow_item_udp)},
+	[RTE_FLOW_ITEM_TYPE_TCP] = {ROC_NPC_ITEM_TYPE_TCP,
+				    sizeof(struct rte_flow_item_tcp)},
+	[RTE_FLOW_ITEM_TYPE_SCTP] = {ROC_NPC_ITEM_TYPE_SCTP,
+				     sizeof(struct rte_flow_item_sctp)},
+	[RTE_FLOW_ITEM_TYPE_ESP] = {ROC_NPC_ITEM_TYPE_ESP,
+				    sizeof(struct rte_flow_item_esp)},
+	[RTE_FLOW_ITEM_TYPE_GRE] = {ROC_NPC_ITEM_TYPE_GRE,
+				    sizeof(struct rte_flow_item_gre)},
+	[RTE_FLOW_ITEM_TYPE_NVGRE] = {ROC_NPC_ITEM_TYPE_NVGRE,
+				      sizeof(struct rte_flow_item_nvgre)},
+	[RTE_FLOW_ITEM_TYPE_VXLAN] = {ROC_NPC_ITEM_TYPE_VXLAN,
+				      sizeof(struct rte_flow_item_vxlan)},
+	[RTE_FLOW_ITEM_TYPE_GTPC] = {ROC_NPC_ITEM_TYPE_GTPC,
+				     sizeof(struct rte_flow_item_gtp)},
+	[RTE_FLOW_ITEM_TYPE_GTPU] = {ROC_NPC_ITEM_TYPE_GTPU,
+				     sizeof(struct rte_flow_item_gtp)},
+	[RTE_FLOW_ITEM_TYPE_GENEVE] = {ROC_NPC_ITEM_TYPE_GENEVE,
+				       sizeof(struct rte_flow_item_geneve)},
+	[RTE_FLOW_ITEM_TYPE_VXLAN_GPE] = {
+			ROC_NPC_ITEM_TYPE_VXLAN_GPE,
+			sizeof(struct rte_flow_item_vxlan_gpe)},
+	[RTE_FLOW_ITEM_TYPE_IPV6_EXT] = {ROC_NPC_ITEM_TYPE_IPV6_EXT,
+					 sizeof(struct rte_flow_item_ipv6_ext)},
+	[RTE_FLOW_ITEM_TYPE_VOID] = {ROC_NPC_ITEM_TYPE_VOID, 0},
+	[RTE_FLOW_ITEM_TYPE_ANY] = {ROC_NPC_ITEM_TYPE_ANY, 0},
+	[RTE_FLOW_ITEM_TYPE_GRE_KEY] = {ROC_NPC_ITEM_TYPE_GRE_KEY,
+					sizeof(uint32_t)},
+	[RTE_FLOW_ITEM_TYPE_HIGIG2] = {
+		ROC_NPC_ITEM_TYPE_HIGIG2,
+		sizeof(struct rte_flow_item_higig2_hdr)}
+};
+
+static int
+cnxk_map_actions(struct rte_eth_dev *eth_dev,
+		 const struct rte_flow_action actions[],
+		 struct roc_npc_action in_actions[])
+{
+	const struct rte_flow_action_count *act_count;
+	const struct rte_flow_action_queue *act_q;
+	int rq;
+	int i = 0;
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_VOID;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_MARK;
+			in_actions[i].conf = actions->conf;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_FLAG:
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_FLAG;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			act_count = (const struct rte_flow_action_count *)
+					    actions->conf;
+
+			if (act_count->shared == 1) {
+				plt_npc_dbg("Shared counter is not supported");
+				goto err_exit;
+			}
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_COUNT;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_DROP;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_PF:
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_PF;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_VF:
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_VF;
+			in_actions[i].conf = actions->conf;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			act_q = (const struct rte_flow_action_queue *)
+					actions->conf;
+			rq = act_q->index;
+			if (rq >= eth_dev->data->nb_rx_queues) {
+				plt_npc_dbg("Invalid queue index");
+				goto err_exit;
+			}
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_QUEUE;
+			in_actions[i].conf = actions->conf;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_RSS;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_SECURITY:
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_SEC;
+			break;
+		default:
+			plt_npc_dbg("Action is not supported = %d",
+				    actions->type);
+			goto err_exit;
+		}
+		i++;
+	}
+	in_actions[i].type = ROC_NPC_ACTION_TYPE_END;
+	return 0;
+
+err_exit:
+	return -EINVAL;
+}
+
+static int
+cnxk_map_flow_data(struct rte_eth_dev *eth_dev,
+		   const struct rte_flow_attr *attr,
+		   const struct rte_flow_item pattern[],
+		   const struct rte_flow_action actions[],
+		   struct roc_npc_attr *in_attr,
+		   struct roc_npc_item_info in_pattern[],
+		   struct roc_npc_action in_actions[])
+{
+	int i = 0;
+
+	in_attr->priority = attr->priority;
+	in_attr->ingress = attr->ingress;
+	in_attr->egress = attr->egress;
+
+	while (pattern->type != RTE_FLOW_ITEM_TYPE_END) {
+		in_pattern[i].spec = pattern->spec;
+		in_pattern[i].last = pattern->last;
+		in_pattern[i].mask = pattern->mask;
+		in_pattern[i].type = term[pattern->type].item_type;
+		in_pattern[i].size = term[pattern->type].item_size;
+		pattern++;
+		i++;
+	}
+	in_pattern[i].type = ROC_NPC_ITEM_TYPE_END;
+
+	return cnxk_map_actions(eth_dev, actions, in_actions);
+}
+
+static int
+cnxk_flow_validate(struct rte_eth_dev *eth_dev,
+		   const struct rte_flow_attr *attr,
+		   const struct rte_flow_item pattern[],
+		   const struct rte_flow_action actions[],
+		   struct rte_flow_error *error)
+{
+	struct roc_npc_item_info in_pattern[ROC_NPC_ITEM_TYPE_END + 1];
+	struct roc_npc_action in_actions[ROC_NPC_MAX_ACTION_COUNT];
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_npc *npc = &dev->npc;
+	struct roc_npc_attr in_attr;
+	struct roc_npc_flow flow;
+	int rc;
+
+	memset(&flow, 0, sizeof(flow));
+
+	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr,
+				in_pattern, in_actions);
+	if (rc) {
+		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_ACTION_NUM,
+				   NULL, "Failed to map flow data");
+		return rc;
+	}
+
+	return roc_npc_flow_parse(npc, &in_attr, in_pattern, in_actions, &flow);
+}
+
+struct roc_npc_flow *
+cnxk_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
+		 const struct rte_flow_item pattern[],
+		 const struct rte_flow_action actions[],
+		 struct rte_flow_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_npc_item_info in_pattern[ROC_NPC_ITEM_TYPE_END + 1];
+	struct roc_npc_action in_actions[ROC_NPC_MAX_ACTION_COUNT];
+	struct roc_npc *npc = &dev->npc;
+	struct roc_npc_attr in_attr;
+	struct roc_npc_flow *flow;
+	int errcode;
+	int rc;
+
+	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr,
+				in_pattern, in_actions);
+	if (rc) {
+		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_ACTION_NUM,
+				   NULL, "Failed to map flow data");
+		return NULL;
+	}
+
+	flow = roc_npc_flow_create(npc, &in_attr, in_pattern, in_actions,
+				   &errcode);
+	if (errcode != 0) {
+		rte_flow_error_set(error, errcode, errcode, NULL,
+				   roc_error_msg_get(errcode));
+		return NULL;
+	}
+
+	return flow;
+}
+
+int
+cnxk_flow_destroy(struct rte_eth_dev *eth_dev, struct roc_npc_flow *flow,
+		  struct rte_flow_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_npc *npc = &dev->npc;
+	int rc;
+
+	rc = roc_npc_flow_destroy(npc, flow);
+	if (rc)
+		rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "Flow Destroy failed");
+	return rc;
+}
+
+static int
+cnxk_flow_flush(struct rte_eth_dev *eth_dev, struct rte_flow_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_npc *npc = &dev->npc;
+	int rc;
+
+	rc = roc_npc_mcam_free_all_resources(npc);
+	if (rc) {
+		rte_flow_error_set(error, EIO, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "Failed to flush filter");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+cnxk_flow_query(struct rte_eth_dev *eth_dev, struct rte_flow *flow,
+		const struct rte_flow_action *action, void *data,
+		struct rte_flow_error *error)
+{
+	struct roc_npc_flow *in_flow = (struct roc_npc_flow *)flow;
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_npc *npc = &dev->npc;
+	struct rte_flow_query_count *query = data;
+	const char *errmsg = NULL;
+	int errcode = ENOTSUP;
+	int rc;
+
+	if (action->type != RTE_FLOW_ACTION_TYPE_COUNT) {
+		errmsg = "Only COUNT is supported in query";
+		goto err_exit;
+	}
+
+	if (in_flow->ctr_id == NPC_COUNTER_NONE) {
+		errmsg = "Counter is not available";
+		goto err_exit;
+	}
+
+	rc = roc_npc_mcam_read_counter(npc, in_flow->ctr_id, &query->hits);
+	if (rc != 0) {
+		errcode = EIO;
+		errmsg = "Error reading flow counter";
+		goto err_exit;
+	}
+	query->hits_set = 1;
+	query->bytes_set = 0;
+
+	if (query->reset)
+		rc = roc_npc_mcam_clear_counter(npc, in_flow->ctr_id);
+	if (rc != 0) {
+		errcode = EIO;
+		errmsg = "Error clearing flow counter";
+		goto err_exit;
+	}
+
+	return 0;
+
+err_exit:
+	rte_flow_error_set(error, errcode, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			   NULL, errmsg);
+	return -rte_errno;
+}
+
+static int
+cnxk_flow_isolate(struct rte_eth_dev *eth_dev __rte_unused,
+		  int enable __rte_unused, struct rte_flow_error *error)
+{
+	/* If we support, we need to un-install the default mcam
+	 * entry for this port.
+	 */
+
+	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			   NULL, "Flow isolation not supported");
+
+	return -rte_errno;
+}
+
+struct rte_flow_ops cnxk_flow_ops = {
+	.validate = cnxk_flow_validate,
+	.flush = cnxk_flow_flush,
+	.query = cnxk_flow_query,
+	.isolate = cnxk_flow_isolate,
+};

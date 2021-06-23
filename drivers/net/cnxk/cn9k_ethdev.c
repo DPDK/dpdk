@@ -2,6 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 #include "cn9k_ethdev.h"
+#include "cn9k_rte_flow.h"
 #include "cn9k_rx.h"
 #include "cn9k_tx.h"
 
@@ -317,6 +318,20 @@ nix_eth_dev_ops_override(void)
 	cnxk_eth_dev_ops.dev_ptypes_set = cn9k_nix_ptypes_set;
 }
 
+static void
+npc_flow_ops_override(void)
+{
+	static int init_once;
+
+	if (init_once)
+		return;
+	init_once = 1;
+
+	/* Update platform specific ops */
+	cnxk_flow_ops.create = cn9k_flow_create;
+	cnxk_flow_ops.destroy = cn9k_flow_destroy;
+}
+
 static int
 cn9k_nix_remove(struct rte_pci_device *pci_dev)
 {
@@ -342,6 +357,7 @@ cn9k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	}
 
 	nix_eth_dev_ops_override();
+	npc_flow_ops_override();
 
 	/* Common probe */
 	rc = cnxk_nix_probe(pci_drv, pci_dev);

@@ -233,6 +233,9 @@ cnxk_eth_txq_to_sp(void *__txq)
 /* Common ethdev ops */
 extern struct eth_dev_ops cnxk_eth_dev_ops;
 
+/* Common flow ops */
+extern struct rte_flow_ops cnxk_flow_ops;
+
 /* Ops */
 int cnxk_nix_probe(struct rte_pci_driver *pci_drv,
 		   struct rte_pci_device *pci_dev);
