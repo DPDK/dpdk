@@ -46,6 +46,10 @@
 #define CNXK_NIX_TX_NB_SEG_MAX 9
 #endif
 
+#define CNXK_NIX_TX_MSEG_SG_DWORDS                                             \
+	((RTE_ALIGN_MUL_CEIL(CNXK_NIX_TX_NB_SEG_MAX, 3) / 3) +                 \
+	 CNXK_NIX_TX_NB_SEG_MAX)
+
 #define CNXK_NIX_RSS_L3_L4_SRC_DST                                             \
 	(ETH_RSS_L3_SRC_ONLY | ETH_RSS_L3_DST_ONLY | ETH_RSS_L4_SRC_ONLY |     \
 	 ETH_RSS_L4_DST_ONLY)
