@@ -85,10 +85,11 @@ struct roc_nix_eeprom_info {
 #define ROC_NIX_LF_RX_CFG_LEN_OL3     BIT_ULL(41)
 
 /* Group 0 will be used for RSS, 1 -7 will be used for npc_flow RSS action*/
-#define ROC_NIX_RSS_GROUP_DEFAULT 0
-#define ROC_NIX_RSS_GRPS	  8
-#define ROC_NIX_RSS_RETA_MAX	  ROC_NIX_RSS_RETA_SZ_256
-#define ROC_NIX_RSS_KEY_LEN	  48 /* 352 Bits */
+#define ROC_NIX_RSS_GROUP_DEFAULT    0
+#define ROC_NIX_RSS_GRPS	     8
+#define ROC_NIX_RSS_RETA_MAX	     ROC_NIX_RSS_RETA_SZ_256
+#define ROC_NIX_RSS_KEY_LEN	     48 /* 352 Bits */
+#define ROC_NIX_RSS_MCAM_IDX_DEFAULT (-1)
 
 #define ROC_NIX_DEFAULT_HW_FRS 1514
 
@@ -184,6 +185,7 @@ struct roc_nix_sq {
 	enum roc_nix_sq_max_sqe_sz max_sqe_sz;
 	uint32_t nb_desc;
 	uint16_t qid;
+	bool sso_ena;
 	/* End of Input parameters */
 	uint16_t sqes_per_sqb_log2;
 	struct roc_nix *roc_nix;
@@ -241,6 +243,8 @@ struct roc_nix {
 	uint16_t max_sqb_count;
 	enum roc_nix_rss_reta_sz reta_sz;
 	bool enable_loop;
+	bool hw_vlan_ins;
+	uint8_t lock_rx_ctx;
 	/* End of input parameters */
 	/* LMT line base for "Per Core Tx LMT line" mode*/
 	uintptr_t lmt_base;
@@ -371,6 +375,22 @@ struct roc_nix_tm_shaper_profile {
 	void (*free_fn)(void *profile);
 };
 
+enum roc_nix_tm_node_stats_type {
+	ROC_NIX_TM_NODE_PKTS_DROPPED,
+	ROC_NIX_TM_NODE_BYTES_DROPPED,
+	ROC_NIX_TM_NODE_GREEN_PKTS,
+	ROC_NIX_TM_NODE_GREEN_BYTES,
+	ROC_NIX_TM_NODE_YELLOW_PKTS,
+	ROC_NIX_TM_NODE_YELLOW_BYTES,
+	ROC_NIX_TM_NODE_RED_PKTS,
+	ROC_NIX_TM_NODE_RED_BYTES,
+	ROC_NIX_TM_NODE_STATS_MAX,
+};
+
+struct roc_nix_tm_node_stats {
+	uint64_t stats[ROC_NIX_TM_NODE_STATS_MAX];
+};
+
 int __roc_api roc_nix_tm_node_add(struct roc_nix *roc_nix,
 				  struct roc_nix_tm_node *roc_node);
 int __roc_api roc_nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id,
@@ -408,6 +428,9 @@ roc_nix_tm_shaper_profile_get(struct roc_nix *roc_nix, uint32_t profile_id);
 struct roc_nix_tm_shaper_profile *__roc_api roc_nix_tm_shaper_profile_next(
 	struct roc_nix *roc_nix, struct roc_nix_tm_shaper_profile *__prev);
 
+int __roc_api roc_nix_tm_node_stats_get(struct roc_nix *roc_nix,
+					uint32_t node_id, bool clear,
+					struct roc_nix_tm_node_stats *stats);
 /*
  * TM ratelimit tree API.
  */

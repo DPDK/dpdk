@@ -127,6 +127,8 @@
 #define plt_memzone_reserve_cache_align(name, sz)                              \
 	rte_memzone_reserve_aligned(name, sz, 0, 0, RTE_CACHE_LINE_SIZE)
 #define plt_memzone_free rte_memzone_free
+#define plt_memzone_reserve_aligned(name, len, flags, align)                   \
+	rte_memzone_reserve_aligned((name), (len), 0, (flags), (align))
 
 #define plt_tsc_hz   rte_get_tsc_hz
 #define plt_delay_ms rte_delay_ms

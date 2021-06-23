@@ -52,7 +52,7 @@ roc_nix_rss_key_get(struct roc_nix *roc_nix, uint8_t key[ROC_NIX_RSS_KEY_LEN])
 
 static int
 nix_cn9k_rss_reta_set(struct nix *nix, uint8_t group,
-		      uint16_t reta[ROC_NIX_RSS_RETA_MAX])
+		      uint16_t reta[ROC_NIX_RSS_RETA_MAX], uint8_t lock_rx_ctx)
 {
 	struct mbox *mbox = (&nix->dev)->mbox;
 	struct nix_aq_enq_req *req;
@@ -77,6 +77,27 @@ nix_cn9k_rss_reta_set(struct nix *nix, uint8_t group,
 		req->qidx = (group * nix->reta_sz) + idx;
 		req->ctype = NIX_AQ_CTYPE_RSS;
 		req->op = NIX_AQ_INSTOP_INIT;
+
+		if (!lock_rx_ctx)
+			continue;
+
+		req = mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!req) {
+			/* The shared memory buffer can be full.
+			 * Flush it and retry
+			 */
+			rc = mbox_process(mbox);
+			if (rc < 0)
+				return rc;
+			req = mbox_alloc_msg_nix_aq_enq(mbox);
+			if (!req)
+				return NIX_ERR_NO_MEM;
+		}
+		req->rss.rq = reta[idx];
+		/* Fill AQ info */
+		req->qidx = (group * nix->reta_sz) + idx;
+		req->ctype = NIX_AQ_CTYPE_RSS;
+		req->op = NIX_AQ_INSTOP_LOCK;
 	}
 
 	rc = mbox_process(mbox);
@@ -88,7 +109,7 @@ nix_cn9k_rss_reta_set(struct nix *nix, uint8_t group,
 
 static int
 nix_rss_reta_set(struct nix *nix, uint8_t group,
-		 uint16_t reta[ROC_NIX_RSS_RETA_MAX])
+		 uint16_t reta[ROC_NIX_RSS_RETA_MAX], uint8_t lock_rx_ctx)
 {
 	struct mbox *mbox = (&nix->dev)->mbox;
 	struct nix_cn10k_aq_enq_req *req;
@@ -113,6 +134,27 @@ nix_rss_reta_set(struct nix *nix, uint8_t group,
 		req->qidx = (group * nix->reta_sz) + idx;
 		req->ctype = NIX_AQ_CTYPE_RSS;
 		req->op = NIX_AQ_INSTOP_INIT;
+
+		if (!lock_rx_ctx)
+			continue;
+
+		req = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!req) {
+			/* The shared memory buffer can be full.
+			 * Flush it and retry
+			 */
+			rc = mbox_process(mbox);
+			if (rc < 0)
+				return rc;
+			req = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+			if (!req)
+				return NIX_ERR_NO_MEM;
+		}
+		req->rss.rq = reta[idx];
+		/* Fill AQ info */
+		req->qidx = (group * nix->reta_sz) + idx;
+		req->ctype = NIX_AQ_CTYPE_RSS;
+		req->op = NIX_AQ_INSTOP_LOCK;
 	}
 
 	rc = mbox_process(mbox);
@@ -133,9 +175,10 @@ roc_nix_rss_reta_set(struct roc_nix *roc_nix, uint8_t group,
 		return NIX_ERR_PARAM;
 
 	if (roc_model_is_cn9k())
-		rc = nix_cn9k_rss_reta_set(nix, group, reta);
+		rc = nix_cn9k_rss_reta_set(nix, group, reta,
+					   roc_nix->lock_rx_ctx);
 	else
-		rc = nix_rss_reta_set(nix, group, reta);
+		rc = nix_rss_reta_set(nix, group, reta, roc_nix->lock_rx_ctx);
 	if (rc)
 		return rc;
 

@@ -145,6 +145,7 @@ INTERNAL {
 	roc_nix_tm_node_parent_update;
 	roc_nix_tm_node_pkt_mode_update;
 	roc_nix_tm_node_shaper_update;
+	roc_nix_tm_node_stats_get;
 	roc_nix_tm_node_suspend_resume;
 	roc_nix_tm_prealloc_res;
 	roc_nix_tm_rlimit_sq;

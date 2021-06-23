@@ -409,6 +409,7 @@ nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 			 volatile uint64_t *reg, volatile uint64_t *regval,
 			 volatile uint64_t *regval_mask)
 {
+	struct roc_nix *roc_nix = nix_priv_to_roc_nix(nix);
 	uint8_t k = 0, hw_lvl, parent_lvl;
 	uint64_t parent = 0, child = 0;
 	enum roc_nix_tm_tree tree;
@@ -454,8 +455,11 @@ nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 		reg[k] = NIX_AF_SMQX_CFG(schq);
 		regval[k] = (BIT_ULL(50) | NIX_MIN_HW_FRS |
 			     ((nix->mtu & 0xFFFF) << 8));
-		regval_mask[k] =
-			~(BIT_ULL(50) | GENMASK_ULL(6, 0) | GENMASK_ULL(23, 8));
+		/* Maximum Vtag insertion size as a multiple of four bytes */
+		if (roc_nix->hw_vlan_ins)
+			regval[k] |= (0x2ULL << 36);
+		regval_mask[k] = ~(BIT_ULL(50) | GENMASK_ULL(6, 0) |
+				   GENMASK_ULL(23, 8) | GENMASK_ULL(38, 36));
 		k++;
 
 		/* Parent and schedule conf */
@@ -999,4 +1003,82 @@ nix_tm_shaper_profile_free(struct nix_tm_shaper_profile *profile)
 		return;
 
 	(profile->free_fn)(profile);
+}
+
+int
+roc_nix_tm_node_stats_get(struct roc_nix *roc_nix, uint32_t node_id, bool clear,
+			  struct roc_nix_tm_node_stats *n_stats)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_txschq_config *req, *rsp;
+	struct nix_tm_node *node;
+	uint32_t schq;
+	int rc, i;
+
+	node = nix_tm_node_search(nix, node_id, ROC_NIX_TM_USER);
+	if (!node)
+		return NIX_ERR_TM_INVALID_NODE;
+
+	if (node->hw_lvl != NIX_TXSCH_LVL_TL1)
+		return NIX_ERR_OP_NOTSUP;
+
+	schq = node->hw_id;
+	/* Skip fetch if not requested */
+	if (!n_stats)
+		goto clear_stats;
+
+	memset(n_stats, 0, sizeof(struct roc_nix_tm_node_stats));
+	/* Check if node has HW resource */
+	if (!(node->flags & NIX_TM_NODE_HWRES))
+		return 0;
+
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->read = 1;
+	req->lvl = NIX_TXSCH_LVL_TL1;
+
+	i = 0;
+	req->reg[i++] = NIX_AF_TL1X_DROPPED_PACKETS(schq);
+	req->reg[i++] = NIX_AF_TL1X_DROPPED_BYTES(schq);
+	req->reg[i++] = NIX_AF_TL1X_GREEN_PACKETS(schq);
+	req->reg[i++] = NIX_AF_TL1X_GREEN_BYTES(schq);
+	req->reg[i++] = NIX_AF_TL1X_YELLOW_PACKETS(schq);
+	req->reg[i++] = NIX_AF_TL1X_YELLOW_BYTES(schq);
+	req->reg[i++] = NIX_AF_TL1X_RED_PACKETS(schq);
+	req->reg[i++] = NIX_AF_TL1X_RED_BYTES(schq);
+	req->num_regs = i;
+
+	rc = mbox_process_msg(mbox, (void **)&rsp);
+	if (rc)
+		return rc;
+
+	/* Return stats */
+	n_stats->stats[ROC_NIX_TM_NODE_PKTS_DROPPED] = rsp->regval[0];
+	n_stats->stats[ROC_NIX_TM_NODE_BYTES_DROPPED] = rsp->regval[1];
+	n_stats->stats[ROC_NIX_TM_NODE_GREEN_PKTS] = rsp->regval[2];
+	n_stats->stats[ROC_NIX_TM_NODE_GREEN_BYTES] = rsp->regval[3];
+	n_stats->stats[ROC_NIX_TM_NODE_YELLOW_PKTS] = rsp->regval[4];
+	n_stats->stats[ROC_NIX_TM_NODE_YELLOW_BYTES] = rsp->regval[5];
+	n_stats->stats[ROC_NIX_TM_NODE_RED_PKTS] = rsp->regval[6];
+	n_stats->stats[ROC_NIX_TM_NODE_RED_BYTES] = rsp->regval[7];
+
+clear_stats:
+	if (!clear)
+		return 0;
+
+	/* Clear all the stats */
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->lvl = NIX_TXSCH_LVL_TL1;
+	i = 0;
+	req->reg[i++] = NIX_AF_TL1X_DROPPED_PACKETS(schq);
+	req->reg[i++] = NIX_AF_TL1X_DROPPED_BYTES(schq);
+	req->reg[i++] = NIX_AF_TL1X_GREEN_PACKETS(schq);
+	req->reg[i++] = NIX_AF_TL1X_GREEN_BYTES(schq);
+	req->reg[i++] = NIX_AF_TL1X_YELLOW_PACKETS(schq);
+	req->reg[i++] = NIX_AF_TL1X_YELLOW_BYTES(schq);
+	req->reg[i++] = NIX_AF_TL1X_RED_PACKETS(schq);
+	req->reg[i++] = NIX_AF_TL1X_RED_BYTES(schq);
+	req->num_regs = i;
+
+	return mbox_process_msg(mbox, (void **)&rsp);
 }
