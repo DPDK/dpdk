@@ -1191,6 +1191,8 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.flow_ctrl_set = cnxk_nix_flow_ctrl_set,
 	.dev_set_link_up = cnxk_nix_set_link_up,
 	.dev_set_link_down = cnxk_nix_set_link_down,
+	.get_module_info = cnxk_nix_get_module_info,
+	.get_module_eeprom = cnxk_nix_get_module_eeprom,
 };
 
 static int

@@ -253,6 +253,10 @@ int cnxk_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_fc_conf *fc_conf);
 int cnxk_nix_set_link_up(struct rte_eth_dev *eth_dev);
 int cnxk_nix_set_link_down(struct rte_eth_dev *eth_dev);
+int cnxk_nix_get_module_info(struct rte_eth_dev *eth_dev,
+			     struct rte_eth_dev_module_info *modinfo);
+int cnxk_nix_get_module_eeprom(struct rte_eth_dev *eth_dev,
+			       struct rte_dev_eeprom_info *info);
 
 int cnxk_nix_configure(struct rte_eth_dev *eth_dev);
 int cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,

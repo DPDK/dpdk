@@ -559,3 +559,42 @@ cnxk_nix_set_link_down(struct rte_eth_dev *eth_dev)
 exit:
 	return rc;
 }
+
+int
+cnxk_nix_get_module_info(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_dev_module_info *modinfo)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix_eeprom_info eeprom_info = {0};
+	struct roc_nix *nix = &dev->nix;
+	int rc;
+
+	rc = roc_nix_eeprom_info_get(nix, &eeprom_info);
+	if (rc)
+		return rc;
+
+	modinfo->type = eeprom_info.sff_id;
+	modinfo->eeprom_len = ROC_NIX_EEPROM_SIZE;
+	return 0;
+}
+
+int
+cnxk_nix_get_module_eeprom(struct rte_eth_dev *eth_dev,
+			   struct rte_dev_eeprom_info *info)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix_eeprom_info eeprom_info = {0};
+	struct roc_nix *nix = &dev->nix;
+	int rc = -EINVAL;
+
+	if (!info->data || !info->length ||
+	    (info->offset + info->length > ROC_NIX_EEPROM_SIZE))
+		return rc;
+
+	rc = roc_nix_eeprom_info_get(nix, &eeprom_info);
+	if (rc)
+		return rc;
+
+	rte_memcpy(info->data, eeprom_info.buf + info->offset, info->length);
+	return 0;
+}
