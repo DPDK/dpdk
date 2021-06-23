@@ -15,6 +15,9 @@
 
 #define CNXK_ETH_DEV_PMD_VERSION "1.0"
 
+/* Used for struct cnxk_eth_dev::flags */
+#define CNXK_LINK_CFG_IN_PROGRESS_F BIT_ULL(0)
+
 /* VLAN tag inserted by NIX_TX_VTAG_ACTION.
  * In Tx space is always reserved for this in FRS.
  */
@@ -195,6 +198,11 @@ int cnxk_nix_configure(struct rte_eth_dev *eth_dev);
 /* RSS */
 uint32_t cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
 				uint8_t rss_level);
+
+/* Link */
+void cnxk_eth_dev_link_status_cb(struct roc_nix *nix,
+				 struct roc_nix_link_info *link);
+int cnxk_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);
 
 /* Devargs */
 int cnxk_ethdev_parse_devargs(struct rte_devargs *devargs,

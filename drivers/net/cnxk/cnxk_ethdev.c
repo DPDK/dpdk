@@ -601,6 +601,7 @@ fail_configure:
 /* CNXK platform independent eth dev ops */
 struct eth_dev_ops cnxk_eth_dev_ops = {
 	.dev_infos_get = cnxk_nix_info_get,
+	.link_update = cnxk_nix_link_update,
 };
 
 static int
@@ -634,6 +635,9 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 		plt_err("Failed to initialize roc nix rc=%d", rc);
 		goto error;
 	}
+
+	/* Register up msg callbacks */
+	roc_nix_mac_link_cb_register(nix, cnxk_eth_dev_link_status_cb);
 
 	dev->eth_dev = eth_dev;
 	dev->configured = 0;
@@ -722,6 +726,9 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 	dev->configured = 0;
 
 	roc_nix_npc_rx_ena_dis(nix, false);
+
+	/* Disable link status events */
+	roc_nix_mac_link_event_start_stop(nix, false);
 
 	/* Free up SQs */
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {

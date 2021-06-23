@@ -20,6 +20,7 @@ Features of the CNXK Ethdev PMD are:
 - Lock-free Tx queue
 - Multiple queues for TX and RX
 - Receiver Side Scaling (RSS)
+- Link state information
 
 Prerequisites
 -------------
