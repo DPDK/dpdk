@@ -328,6 +328,10 @@ void *cnxk_nix_fastpath_lookup_mem_get(void);
 int cnxk_ethdev_parse_devargs(struct rte_devargs *devargs,
 			      struct cnxk_eth_dev *dev);
 
+/* Debug */
+int cnxk_nix_dev_get_reg(struct rte_eth_dev *eth_dev,
+			 struct rte_dev_reg_info *regs);
+
 /* Inlines */
 static __rte_always_inline uint64_t
 cnxk_pktmbuf_detach(struct rte_mbuf *m)

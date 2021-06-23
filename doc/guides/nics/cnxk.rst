@@ -32,6 +32,7 @@ Features of the CNXK Ethdev PMD are:
 - MTU update
 - Scatter-Gather IO support
 - Vector Poll mode driver
+- Debug utilities - Context dump and error interrupt support
 - Support Rx interrupt
 
 Prerequisites

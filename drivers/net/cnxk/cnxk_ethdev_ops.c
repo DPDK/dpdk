@@ -697,3 +697,28 @@ cnxk_nix_tx_done_cleanup(void *txq, uint32_t free_cnt)
 
 	return 0;
 }
+
+int
+cnxk_nix_dev_get_reg(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	uint64_t *data = regs->data;
+	int rc = -ENOTSUP;
+
+	if (data == NULL) {
+		rc = roc_nix_lf_get_reg_count(nix);
+		if (rc > 0) {
+			regs->length = rc;
+			regs->width = 8;
+			rc = 0;
+		}
+		return rc;
+	}
+
+	if (!regs->length ||
+	    regs->length == (uint32_t)roc_nix_lf_get_reg_count(nix))
+		return roc_nix_lf_reg_dump(nix, data);
+
+	return rc;
+}

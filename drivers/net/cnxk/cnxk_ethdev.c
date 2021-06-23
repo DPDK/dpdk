@@ -1227,6 +1227,7 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.txq_info_get = cnxk_nix_txq_info_get,
 	.tx_done_cleanup = cnxk_nix_tx_done_cleanup,
 	.flow_ops_get = cnxk_nix_flow_ops_get,
+	.get_reg = cnxk_nix_dev_get_reg,
 };
 
 static int
