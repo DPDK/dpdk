@@ -50,7 +50,18 @@ cn10k_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 #undef R
 	};
 
-	pick_rx_func(eth_dev, nix_eth_rx_burst);
+	const eth_rx_burst_t nix_eth_rx_vec_burst[2][2][2][2] = {
+#define R(name, f3, f2, f1, f0, flags)					      \
+	[f3][f2][f1][f0] = cn10k_nix_recv_pkts_vec_##name,
+
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	if (dev->scalar_ena)
+		pick_rx_func(eth_dev, nix_eth_rx_burst);
+	else
+		pick_rx_func(eth_dev, nix_eth_rx_vec_burst);
 
 	if (dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)
 		pick_rx_func(eth_dev, nix_eth_rx_burst_mseg);

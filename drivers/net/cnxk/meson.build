@@ -31,6 +31,7 @@ sources += files(
         'cn10k_ethdev.c',
         'cn10k_rx.c',
         'cn10k_rx_mseg.c',
+        'cn10k_rx_vec.c',
 )
 
 deps += ['bus_pci', 'cryptodev', 'eventdev', 'security']

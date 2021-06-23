@@ -24,6 +24,7 @@ Features of the CNXK Ethdev PMD are:
 - Receiver Side Scaling (RSS)
 - Link state information
 - Scatter-Gather IO support
+- Vector Poll mode driver
 
 Prerequisites
 -------------
