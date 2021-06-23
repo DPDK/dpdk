@@ -658,3 +658,13 @@ cnxk_nix_txq_info_get(struct rte_eth_dev *eth_dev, uint16_t qid,
 
 	memcpy(&qinfo->conf, &txq_sp->qconf.conf.tx, sizeof(qinfo->conf));
 }
+
+/* It is a NOP for cnxk as HW frees the buffer on xmit */
+int
+cnxk_nix_tx_done_cleanup(void *txq, uint32_t free_cnt)
+{
+	RTE_SET_USED(txq);
+	RTE_SET_USED(free_cnt);
+
+	return 0;
+}
