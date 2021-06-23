@@ -639,6 +639,25 @@ cnxk_nix_pool_ops_supported(struct rte_eth_dev *eth_dev, const char *pool)
 	return -ENOTSUP;
 }
 
+int
+cnxk_nix_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
+			size_t fw_size)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	const char *str = roc_npc_profile_name_get(&dev->npc);
+	uint32_t size = strlen(str) + 1;
+
+	if (fw_size > size)
+		fw_size = size;
+
+	rte_strlcpy(fw_version, str, fw_size);
+
+	if (fw_size < size)
+		return size;
+
+	return 0;
+}
+
 void
 cnxk_nix_rxq_info_get(struct rte_eth_dev *eth_dev, uint16_t qid,
 		      struct rte_eth_rxq_info *qinfo)

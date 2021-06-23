@@ -313,6 +313,8 @@ int cnxk_nix_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
 int cnxk_nix_xstats_get_by_id(struct rte_eth_dev *eth_dev, const uint64_t *ids,
 			      uint64_t *values, unsigned int n);
 int cnxk_nix_xstats_reset(struct rte_eth_dev *eth_dev);
+int cnxk_nix_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
+			    size_t fw_size);
 void cnxk_nix_rxq_info_get(struct rte_eth_dev *eth_dev, uint16_t qid,
 			   struct rte_eth_rxq_info *qinfo);
 void cnxk_nix_txq_info_get(struct rte_eth_dev *eth_dev, uint16_t qid,
