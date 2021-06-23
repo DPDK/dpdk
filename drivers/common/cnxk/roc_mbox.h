@@ -403,6 +403,9 @@ struct lmtst_tbl_setup_req {
 	uint64_t __io dis_line_pref : 1;
 	uint64_t __io ssow_pf_func : 13;
 	uint16_t __io pcifunc;
+	uint8_t __io use_local_lmt_region;
+	uint64_t __io lmt_iova;
+	uint64_t __io rsvd[2]; /* Future use */
 };
 
 /* CGX mbox message formats */

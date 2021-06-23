@@ -194,4 +194,15 @@ int roc_plt_init(void);
 typedef int (*roc_plt_init_cb_t)(void);
 int __roc_api roc_plt_init_cb_register(roc_plt_init_cb_t cb);
 
+static inline const void *
+plt_lmt_region_reserve_aligned(const char *name, size_t len, uint32_t align)
+{
+	/* To ensure returned memory is physically contiguous, bounding
+	 * the start and end address in 2M range.
+	 */
+	return rte_memzone_reserve_bounded(name, len, SOCKET_ID_ANY,
+					   RTE_MEMZONE_IOVA_CONTIG,
+					   align, RTE_PGSIZE_2M);
+}
+
 #endif /* _ROC_PLATFORM_H_ */
