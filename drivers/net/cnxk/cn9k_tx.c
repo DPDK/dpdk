@@ -21,7 +21,6 @@
 NIX_TX_FASTPATH_MODES
 #undef T
 
-
 static inline void
 pick_tx_func(struct rte_eth_dev *eth_dev,
 	     const eth_tx_burst_t tx_burst[2][2][2][2][2])
@@ -58,7 +57,20 @@ cn9k_eth_set_tx_function(struct rte_eth_dev *eth_dev)
 #undef T
 	};
 
-	pick_tx_func(eth_dev, nix_eth_tx_burst);
+	const eth_tx_burst_t nix_eth_tx_vec_burst[2][2][2][2][2] = {
+#define T(name, f4, f3, f2, f1, f0, sz, flags)				       \
+	[f4][f3][f2][f1][f0] = cn9k_nix_xmit_pkts_vec_##name,
+
+		NIX_TX_FASTPATH_MODES
+#undef T
+	};
+
+	if (dev->scalar_ena ||
+	    (dev->tx_offload_flags &
+	     (NIX_TX_OFFLOAD_VLAN_QINQ_F | NIX_TX_OFFLOAD_TSO_F)))
+		pick_tx_func(eth_dev, nix_eth_tx_burst);
+	else
+		pick_tx_func(eth_dev, nix_eth_tx_vec_burst);
 
 	if (dev->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
 		pick_tx_func(eth_dev, nix_eth_tx_burst_mseg);
