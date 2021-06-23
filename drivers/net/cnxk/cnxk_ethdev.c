@@ -1166,6 +1166,9 @@ rx_disable:
 	return rc;
 }
 
+static int cnxk_nix_dev_reset(struct rte_eth_dev *eth_dev);
+static int cnxk_nix_dev_close(struct rte_eth_dev *eth_dev);
+
 /* CNXK platform independent eth dev ops */
 struct eth_dev_ops cnxk_eth_dev_ops = {
 	.mtu_set = cnxk_nix_mtu_set,
@@ -1177,6 +1180,8 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.tx_queue_release = cnxk_nix_tx_queue_release,
 	.rx_queue_release = cnxk_nix_rx_queue_release,
 	.dev_stop = cnxk_nix_dev_stop,
+	.dev_close = cnxk_nix_dev_close,
+	.dev_reset = cnxk_nix_dev_reset,
 	.tx_queue_start = cnxk_nix_tx_queue_start,
 	.rx_queue_start = cnxk_nix_rx_queue_start,
 	.rx_queue_stop = cnxk_nix_rx_queue_stop,
@@ -1316,7 +1321,7 @@ error:
 }
 
 static int
-cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
+cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	const struct eth_dev_ops *dev_ops = eth_dev->dev_ops;
@@ -1370,20 +1375,36 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
 
-	/* Check if mbox close is needed */
-	if (!mbox_close)
-		return 0;
-
 	rc = roc_nix_dev_fini(nix);
 	/* Can be freed later by PMD if NPA LF is in use */
 	if (rc == -EAGAIN) {
-		eth_dev->data->dev_private = NULL;
+		if (!reset)
+			eth_dev->data->dev_private = NULL;
 		return 0;
 	} else if (rc) {
 		plt_err("Failed in nix dev fini, rc=%d", rc);
 	}
 
 	return rc;
+}
+
+static int
+cnxk_nix_dev_close(struct rte_eth_dev *eth_dev)
+{
+	cnxk_eth_dev_uninit(eth_dev, false);
+	return 0;
+}
+
+static int
+cnxk_nix_dev_reset(struct rte_eth_dev *eth_dev)
+{
+	int rc;
+
+	rc = cnxk_eth_dev_uninit(eth_dev, true);
+	if (rc)
+		return rc;
+
+	return cnxk_eth_dev_init(eth_dev);
 }
 
 int
@@ -1396,7 +1417,7 @@ cnxk_nix_remove(struct rte_pci_device *pci_dev)
 	eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
 	if (eth_dev) {
 		/* Cleanup eth dev */
-		rc = cnxk_eth_dev_uninit(eth_dev, true);
+		rc = cnxk_eth_dev_uninit(eth_dev, false);
 		if (rc)
 			return rc;
 
