@@ -371,6 +371,54 @@ cn9k_nix_ptp_info_update_cb(struct roc_nix *nix, bool ptp_en)
 }
 
 static int
+cn9k_nix_timesync_enable(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	int i, rc;
+
+	rc = cnxk_nix_timesync_enable(eth_dev);
+	if (rc)
+		return rc;
+
+	dev->rx_offload_flags |= NIX_RX_OFFLOAD_TSTAMP_F;
+	dev->tx_offload_flags |= NIX_TX_OFFLOAD_TSTAMP_F;
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		nix_form_default_desc(dev, eth_dev->data->tx_queues[i], i);
+
+	/* Setting up the rx[tx]_offload_flags due to change
+	 * in rx[tx]_offloads.
+	 */
+	cn9k_eth_set_rx_function(eth_dev);
+	cn9k_eth_set_tx_function(eth_dev);
+	return 0;
+}
+
+static int
+cn9k_nix_timesync_disable(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	int i, rc;
+
+	rc = cnxk_nix_timesync_disable(eth_dev);
+	if (rc)
+		return rc;
+
+	dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_TSTAMP_F;
+	dev->tx_offload_flags &= ~NIX_TX_OFFLOAD_TSTAMP_F;
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		nix_form_default_desc(dev, eth_dev->data->tx_queues[i], i);
+
+	/* Setting up the rx[tx]_offload_flags due to change
+	 * in rx[tx]_offloads.
+	 */
+	cn9k_eth_set_rx_function(eth_dev);
+	cn9k_eth_set_tx_function(eth_dev);
+	return 0;
+}
+
+static int
 cn9k_nix_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
@@ -416,6 +464,8 @@ nix_eth_dev_ops_override(void)
 	cnxk_eth_dev_ops.tx_queue_stop = cn9k_nix_tx_queue_stop;
 	cnxk_eth_dev_ops.dev_start = cn9k_nix_dev_start;
 	cnxk_eth_dev_ops.dev_ptypes_set = cn9k_nix_ptypes_set;
+	cnxk_eth_dev_ops.timesync_enable = cn9k_nix_timesync_enable;
+	cnxk_eth_dev_ops.timesync_disable = cn9k_nix_timesync_disable;
 }
 
 static void
