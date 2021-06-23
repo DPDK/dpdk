@@ -103,6 +103,10 @@
 /* Fastpath lookup */
 #define CNXK_NIX_FASTPATH_LOOKUP_MEM "cnxk_nix_fastpath_lookup_mem"
 
+#define CNXK_NIX_UDP_TUN_BITMASK                                               \
+	((1ull << (PKT_TX_TUNNEL_VXLAN >> 45)) |                               \
+	 (1ull << (PKT_TX_TUNNEL_GENEVE >> 45)))
+
 struct cnxk_eth_qconf {
 	union {
 		struct rte_eth_txconf tx;
@@ -240,5 +244,72 @@ void *cnxk_nix_fastpath_lookup_mem_get(void);
 /* Devargs */
 int cnxk_ethdev_parse_devargs(struct rte_devargs *devargs,
 			      struct cnxk_eth_dev *dev);
+
+/* Inlines */
+static __rte_always_inline uint64_t
+cnxk_pktmbuf_detach(struct rte_mbuf *m)
+{
+	struct rte_mempool *mp = m->pool;
+	uint32_t mbuf_size, buf_len;
+	struct rte_mbuf *md;
+	uint16_t priv_size;
+	uint16_t refcount;
+
+	/* Update refcount of direct mbuf */
+	md = rte_mbuf_from_indirect(m);
+	refcount = rte_mbuf_refcnt_update(md, -1);
+
+	priv_size = rte_pktmbuf_priv_size(mp);
+	mbuf_size = (uint32_t)(sizeof(struct rte_mbuf) + priv_size);
+	buf_len = rte_pktmbuf_data_room_size(mp);
+
+	m->priv_size = priv_size;
+	m->buf_addr = (char *)m + mbuf_size;
+	m->buf_iova = rte_mempool_virt2iova(m) + mbuf_size;
+	m->buf_len = (uint16_t)buf_len;
+	rte_pktmbuf_reset_headroom(m);
+	m->data_len = 0;
+	m->ol_flags = 0;
+	m->next = NULL;
+	m->nb_segs = 1;
+
+	/* Now indirect mbuf is safe to free */
+	rte_pktmbuf_free(m);
+
+	if (refcount == 0) {
+		rte_mbuf_refcnt_set(md, 1);
+		md->data_len = 0;
+		md->ol_flags = 0;
+		md->next = NULL;
+		md->nb_segs = 1;
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+static __rte_always_inline uint64_t
+cnxk_nix_prefree_seg(struct rte_mbuf *m)
+{
+	if (likely(rte_mbuf_refcnt_read(m) == 1)) {
+		if (!RTE_MBUF_DIRECT(m))
+			return cnxk_pktmbuf_detach(m);
+
+		m->next = NULL;
+		m->nb_segs = 1;
+		return 0;
+	} else if (rte_mbuf_refcnt_update(m, -1) == 0) {
+		if (!RTE_MBUF_DIRECT(m))
+			return cnxk_pktmbuf_detach(m);
+
+		rte_mbuf_refcnt_set(m, 1);
+		m->next = NULL;
+		m->nb_segs = 1;
+		return 0;
+	}
+
+	/* Mbuf is having refcount more than 1 so need not to be freed */
+	return 1;
+}
 
 #endif /* __CNXK_ETHDEV_H__ */

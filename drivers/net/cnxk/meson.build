@@ -22,6 +22,7 @@ sources += files(
         'cn9k_rx.c',
         'cn9k_rx_mseg.c',
         'cn9k_rx_vec.c',
+        'cn9k_tx.c',
 )
 # CN10K
 sources += files(
