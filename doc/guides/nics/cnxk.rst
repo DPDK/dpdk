@@ -17,11 +17,13 @@ Features
 Features of the CNXK Ethdev PMD are:
 
 - Packet type information
+- Jumbo frames
 - SR-IOV VF
 - Lock-free Tx queue
 - Multiple queues for TX and RX
 - Receiver Side Scaling (RSS)
 - Link state information
+- Scatter-Gather IO support
 
 Prerequisites
 -------------

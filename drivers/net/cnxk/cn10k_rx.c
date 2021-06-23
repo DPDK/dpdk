@@ -10,7 +10,7 @@
 		void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts)      \
 	{                                                                      \
 		return cn10k_nix_recv_pkts(rx_queue, rx_pkts, pkts, (flags));  \
-	}
+	}                                                                      \
 
 NIX_RX_FASTPATH_MODES
 #undef R
@@ -32,6 +32,8 @@ pick_rx_func(struct rte_eth_dev *eth_dev,
 void
 cn10k_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 {
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
 	const eth_rx_burst_t nix_eth_rx_burst[2][2][2][2] = {
 #define R(name, f3, f2, f1, f0, flags)					      \
 	[f3][f2][f1][f0] = cn10k_nix_recv_pkts_##name,
@@ -40,6 +42,22 @@ cn10k_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 #undef R
 	};
 
+	const eth_rx_burst_t nix_eth_rx_burst_mseg[2][2][2][2] = {
+#define R(name, f3, f2, f1, f0, flags)					      \
+	[f3][f2][f1][f0] = cn10k_nix_recv_pkts_mseg_##name,
+
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
 	pick_rx_func(eth_dev, nix_eth_rx_burst);
+
+	if (dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)
+		pick_rx_func(eth_dev, nix_eth_rx_burst_mseg);
+
+	/* Copy multi seg version with no offload for tear down sequence */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		dev->rx_pkt_burst_no_offload =
+			nix_eth_rx_burst_mseg[0][0][0][0];
 	rte_mb();
 }

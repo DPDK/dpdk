@@ -30,6 +30,7 @@ sources += files(
 sources += files(
         'cn10k_ethdev.c',
         'cn10k_rx.c',
+        'cn10k_rx_mseg.c',
 )
 
 deps += ['bus_pci', 'cryptodev', 'eventdev', 'security']
