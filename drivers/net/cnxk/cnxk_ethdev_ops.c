@@ -359,6 +359,7 @@ cnxk_nix_mac_addr_add(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr,
 	roc_nix_npc_promisc_ena_dis(nix, true);
 	dev->dmac_filter_enable = true;
 	eth_dev->data->promiscuous = false;
+	dev->dmac_filter_count++;
 
 	return 0;
 }
@@ -373,6 +374,8 @@ cnxk_nix_mac_addr_del(struct rte_eth_dev *eth_dev, uint32_t index)
 	rc = roc_nix_mac_addr_del(nix, index);
 	if (rc)
 		plt_err("Failed to delete mac address, rc=%d", rc);
+
+	dev->dmac_filter_count--;
 }
 
 int
@@ -842,6 +845,68 @@ cnxk_nix_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
 
 	rss_conf->rss_key_len = ROC_NIX_RSS_KEY_LEN;
 	rss_conf->rss_hf = dev->ethdev_rss_hf;
+
+	return 0;
+}
+
+int
+cnxk_nix_mc_addr_list_configure(struct rte_eth_dev *eth_dev,
+				struct rte_ether_addr *mc_addr_set,
+				uint32_t nb_mc_addr)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct rte_ether_addr null_mac_addr;
+	struct roc_nix *nix = &dev->nix;
+	int rc, index;
+	uint32_t i;
+
+	memset(&null_mac_addr, 0, sizeof(null_mac_addr));
+
+	/* All configured multicast filters should be flushed first */
+	for (i = 0; i < dev->max_mac_entries; i++) {
+		if (rte_is_multicast_ether_addr(&data->mac_addrs[i])) {
+			rc = roc_nix_mac_addr_del(nix, i);
+			if (rc) {
+				plt_err("Failed to flush mcast address, rc=%d",
+					rc);
+				return rc;
+			}
+
+			dev->dmac_filter_count--;
+			/* Update address in NIC data structure */
+			rte_ether_addr_copy(&null_mac_addr,
+					    &data->mac_addrs[i]);
+		}
+	}
+
+	if (!mc_addr_set || !nb_mc_addr)
+		return 0;
+
+	/* Check for available space */
+	if (nb_mc_addr >
+	    ((uint32_t)(dev->max_mac_entries - dev->dmac_filter_count))) {
+		plt_err("No space is available to add multicast filters");
+		return -ENOSPC;
+	}
+
+	/* Multicast addresses are to be installed */
+	for (i = 0; i < nb_mc_addr; i++) {
+		index = roc_nix_mac_addr_add(nix, mc_addr_set[i].addr_bytes);
+		if (index < 0) {
+			plt_err("Failed to add mcast mac address, rc=%d",
+				index);
+			return index;
+		}
+
+		dev->dmac_filter_count++;
+		/* Update address in NIC data structure */
+		rte_ether_addr_copy(&mc_addr_set[i], &data->mac_addrs[index]);
+	}
+
+	roc_nix_npc_promisc_ena_dis(nix, true);
+	dev->dmac_filter_enable = true;
+	eth_dev->data->promiscuous = false;
 
 	return 0;
 }

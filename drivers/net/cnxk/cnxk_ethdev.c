@@ -1270,6 +1270,7 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.reta_query = cnxk_nix_reta_query,
 	.rss_hash_update = cnxk_nix_rss_hash_update,
 	.rss_hash_conf_get = cnxk_nix_rss_hash_conf_get,
+	.set_mc_addr_list = cnxk_nix_mc_addr_list_configure,
 };
 
 static int
@@ -1334,6 +1335,7 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	dev->max_mac_entries = max_entries;
+	dev->dmac_filter_count = 1;
 
 	/* Get mac address */
 	rc = roc_nix_npc_mac_addr_get(nix, dev->mac_addr);
