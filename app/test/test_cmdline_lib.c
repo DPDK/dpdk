@@ -71,10 +71,12 @@ test_cmdline_parse_fns(void)
 	if (cmdline_complete(cl, "buffer", &i, NULL, sizeof(dst)) >= 0)
 		goto error;
 
+	cmdline_free(cl);
 	return 0;
 
 error:
 	printf("Error: function accepted null parameter!\n");
+	cmdline_free(cl);
 	return -1;
 }
 
@@ -140,22 +142,31 @@ static int
 test_cmdline_socket_fns(void)
 {
 	cmdline_parse_ctx_t ctx;
+	struct cmdline *cl;
 
-	if (cmdline_stdin_new(NULL, "prompt") != NULL)
+	cl = cmdline_stdin_new(NULL, "prompt");
+	if (cl != NULL)
 		goto error;
-	if (cmdline_stdin_new(&ctx, NULL) != NULL)
+	cl = cmdline_stdin_new(&ctx, NULL);
+	if (cl != NULL)
 		goto error;
-	if (cmdline_file_new(NULL, "prompt", "/dev/null") != NULL)
+	cl = cmdline_file_new(NULL, "prompt", "/dev/null");
+	if (cl != NULL)
 		goto error;
-	if (cmdline_file_new(&ctx, NULL, "/dev/null") != NULL)
+	cl = cmdline_file_new(&ctx, NULL, "/dev/null");
+	if (cl != NULL)
 		goto error;
-	if (cmdline_file_new(&ctx, "prompt", NULL) != NULL)
+	cl = cmdline_file_new(&ctx, "prompt", NULL);
+	if (cl != NULL)
 		goto error;
-	if (cmdline_file_new(&ctx, "prompt", "-/invalid/~/path") != NULL) {
+	cl = cmdline_file_new(&ctx, "prompt", "-/invalid/~/path");
+	if (cl != NULL) {
 		printf("Error: succeeded in opening invalid file for reading!");
+		cmdline_free(cl);
 		return -1;
 	}
-	if (cmdline_file_new(&ctx, "prompt", "/dev/null") == NULL) {
+	cl = cmdline_file_new(&ctx, "prompt", "/dev/null");
+	if (cl == NULL) {
 		printf("Error: failed to open /dev/null for reading!");
 		return -1;
 	}
@@ -163,9 +174,11 @@ test_cmdline_socket_fns(void)
 	/* void functions */
 	cmdline_stdin_exit(NULL);
 
+	cmdline_free(cl);
 	return 0;
 error:
 	printf("Error: function accepted null parameter!\n");
+	cmdline_free(cl);
 	return -1;
 }
 
@@ -176,13 +189,14 @@ test_cmdline_fns(void)
 	struct cmdline *cl;
 
 	memset(&ctx, 0, sizeof(ctx));
+	cl = cmdline_new(NULL, "prompt", 0, 0);
+	if (cl != NULL)
+		goto error;
+	cl = cmdline_new(&ctx, NULL, 0, 0);
+	if (cl != NULL)
+		goto error;
 	cl = cmdline_new(&ctx, "test", -1, -1);
 	if (cl == NULL)
-		goto error;
-
-	if (cmdline_new(NULL, "prompt", 0, 0) != NULL)
-		goto error;
-	if (cmdline_new(&ctx, NULL, 0, 0) != NULL)
 		goto error;
 	if (cmdline_in(NULL, "buffer", CMDLINE_TEST_BUFSIZE) >= 0)
 		goto error;
@@ -198,6 +212,7 @@ test_cmdline_fns(void)
 	cmdline_interact(NULL);
 	cmdline_quit(NULL);
 
+	cmdline_free(cl);
 	return 0;
 
 error:
