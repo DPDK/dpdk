@@ -138,6 +138,21 @@ cn10k_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 }
 
 static int
+cn10k_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx)
+{
+	struct cn10k_eth_txq *txq = eth_dev->data->tx_queues[qidx];
+	int rc;
+
+	rc = cnxk_nix_tx_queue_stop(eth_dev, qidx);
+	if (rc)
+		return rc;
+
+	/* Clear fc cache pkts to trigger worker stop */
+	txq->fc_cache_pkts = 0;
+	return 0;
+}
+
+static int
 cn10k_nix_configure(struct rte_eth_dev *eth_dev)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
@@ -169,6 +184,7 @@ nix_eth_dev_ops_override(void)
 	cnxk_eth_dev_ops.dev_configure = cn10k_nix_configure;
 	cnxk_eth_dev_ops.tx_queue_setup = cn10k_nix_tx_queue_setup;
 	cnxk_eth_dev_ops.rx_queue_setup = cn10k_nix_rx_queue_setup;
+	cnxk_eth_dev_ops.tx_queue_stop = cn10k_nix_tx_queue_stop;
 	cnxk_eth_dev_ops.dev_ptypes_set = cn10k_nix_ptypes_set;
 }
 

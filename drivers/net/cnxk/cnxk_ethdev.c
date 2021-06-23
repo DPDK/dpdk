@@ -866,12 +866,104 @@ fail_configure:
 	return rc;
 }
 
+static int
+cnxk_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qid)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct roc_nix_sq *sq = &dev->sqs[qid];
+	int rc = -EINVAL;
+
+	if (data->tx_queue_state[qid] == RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
+
+	rc = roc_nix_tm_sq_aura_fc(sq, true);
+	if (rc) {
+		plt_err("Failed to enable sq aura fc, txq=%u, rc=%d", qid, rc);
+		goto done;
+	}
+
+	data->tx_queue_state[qid] = RTE_ETH_QUEUE_STATE_STARTED;
+done:
+	return rc;
+}
+
+int
+cnxk_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qid)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct roc_nix_sq *sq = &dev->sqs[qid];
+	int rc;
+
+	if (data->tx_queue_state[qid] == RTE_ETH_QUEUE_STATE_STOPPED)
+		return 0;
+
+	rc = roc_nix_tm_sq_aura_fc(sq, false);
+	if (rc) {
+		plt_err("Failed to disable sqb aura fc, txq=%u, rc=%d", qid,
+			rc);
+		goto done;
+	}
+
+	data->tx_queue_state[qid] = RTE_ETH_QUEUE_STATE_STOPPED;
+done:
+	return rc;
+}
+
+static int
+cnxk_nix_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qid)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct roc_nix_rq *rq = &dev->rqs[qid];
+	int rc;
+
+	if (data->rx_queue_state[qid] == RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
+
+	rc = roc_nix_rq_ena_dis(rq, true);
+	if (rc) {
+		plt_err("Failed to enable rxq=%u, rc=%d", qid, rc);
+		goto done;
+	}
+
+	data->rx_queue_state[qid] = RTE_ETH_QUEUE_STATE_STARTED;
+done:
+	return rc;
+}
+
+static int
+cnxk_nix_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qid)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct roc_nix_rq *rq = &dev->rqs[qid];
+	int rc;
+
+	if (data->rx_queue_state[qid] == RTE_ETH_QUEUE_STATE_STOPPED)
+		return 0;
+
+	rc = roc_nix_rq_ena_dis(rq, false);
+	if (rc) {
+		plt_err("Failed to disable rxq=%u, rc=%d", qid, rc);
+		goto done;
+	}
+
+	data->rx_queue_state[qid] = RTE_ETH_QUEUE_STATE_STOPPED;
+done:
+	return rc;
+}
+
 /* CNXK platform independent eth dev ops */
 struct eth_dev_ops cnxk_eth_dev_ops = {
 	.dev_infos_get = cnxk_nix_info_get,
 	.link_update = cnxk_nix_link_update,
 	.tx_queue_release = cnxk_nix_tx_queue_release,
 	.rx_queue_release = cnxk_nix_rx_queue_release,
+	.tx_queue_start = cnxk_nix_tx_queue_start,
+	.rx_queue_start = cnxk_nix_rx_queue_start,
+	.rx_queue_stop = cnxk_nix_rx_queue_stop,
 	.dev_supported_ptypes_get = cnxk_nix_supported_ptypes_get,
 };
 

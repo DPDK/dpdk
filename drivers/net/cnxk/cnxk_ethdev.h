@@ -214,6 +214,7 @@ int cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			    uint16_t nb_desc, uint16_t fp_rx_q_sz,
 			    const struct rte_eth_rxconf *rx_conf,
 			    struct rte_mempool *mp);
+int cnxk_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qid);
 
 uint64_t cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev);
 
