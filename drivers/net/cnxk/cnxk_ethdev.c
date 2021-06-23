@@ -8,7 +8,8 @@ nix_get_rx_offload_capa(struct cnxk_eth_dev *dev)
 {
 	uint64_t capa = CNXK_NIX_RX_OFFLOAD_CAPA;
 
-	if (roc_nix_is_vf_or_sdp(&dev->nix))
+	if (roc_nix_is_vf_or_sdp(&dev->nix) ||
+	    dev->npc.switch_header_type == ROC_PRIV_FLAGS_HIGIG)
 		capa &= ~DEV_RX_OFFLOAD_TIMESTAMP;
 
 	return capa;
@@ -120,6 +121,7 @@ nix_update_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 
 	/* To avoid Link credit deadlock on Ax, disable Tx FC if it's enabled */
 	if (roc_model_is_cn96_ax() &&
+	    dev->npc.switch_header_type != ROC_PRIV_FLAGS_HIGIG &&
 	    (fc_cfg.mode == RTE_FC_FULL || fc_cfg.mode == RTE_FC_RX_PAUSE)) {
 		fc_cfg.mode =
 				(fc_cfg.mode == RTE_FC_FULL ||
@@ -419,8 +421,10 @@ cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
 
 	dev->ethdev_rss_hf = ethdev_rss;
 
-	if (ethdev_rss & ETH_RSS_L2_PAYLOAD)
+	if (ethdev_rss & ETH_RSS_L2_PAYLOAD &&
+	    dev->npc.switch_header_type == ROC_PRIV_FLAGS_LEN_90B) {
 		flowkey_cfg |= FLOW_KEY_TYPE_CH_LEN_90B;
+	}
 
 	if (ethdev_rss & ETH_RSS_C_VLAN)
 		flowkey_cfg |= FLOW_KEY_TYPE_VLAN;
@@ -849,8 +853,15 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	roc_nix_err_intr_ena_dis(nix, true);
 	roc_nix_ras_intr_ena_dis(nix, true);
 
-	if (nix->rx_ptp_ena) {
+	if (nix->rx_ptp_ena &&
+	    dev->npc.switch_header_type == ROC_PRIV_FLAGS_HIGIG) {
 		plt_err("Both PTP and switch header enabled");
+		goto free_nix_lf;
+	}
+
+	rc = roc_nix_switch_hdr_set(nix, dev->npc.switch_header_type);
+	if (rc) {
+		plt_err("Failed to enable switch type nix_lf rc=%d", rc);
 		goto free_nix_lf;
 	}
 
@@ -1305,6 +1316,11 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	dev->speed_capa = nix_get_speed_capa(dev);
 
 	/* Initialize roc npc */
+	dev->npc.roc_nix = nix;
+	rc = roc_npc_init(&dev->npc);
+	if (rc)
+		goto free_mac_addrs;
+
 	plt_nix_dbg("Port=%d pf=%d vf=%d ver=%s hwcap=0x%" PRIx64
 		    " rxoffload_capa=0x%" PRIx64 " txoffload_capa=0x%" PRIx64,
 		    eth_dev->data->port_id, roc_nix_get_pf(nix),
@@ -1337,6 +1353,9 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 	dev->configured = 0;
 
 	roc_nix_npc_rx_ena_dis(nix, false);
+
+	/* Disable and free rte_flow entries */
+	roc_npc_fini(&dev->npc);
 
 	/* Disable link status events */
 	roc_nix_mac_link_event_start_stop(nix, false);

@@ -150,6 +150,9 @@ null_devargs:
 	dev->nix.rss_tag_as_xor = !!rss_tag_as_xor;
 	dev->nix.max_sqb_count = sqb_count;
 	dev->nix.reta_sz = reta_sz;
+	dev->npc.flow_prealloc_size = flow_prealloc_size;
+	dev->npc.flow_max_priority = flow_max_priority;
+	dev->npc.switch_header_type = switch_header_type;
 	return 0;
 
 exit:

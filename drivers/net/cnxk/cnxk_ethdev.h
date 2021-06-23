@@ -133,6 +133,9 @@ struct cnxk_eth_dev {
 	/* ROC NIX */
 	struct roc_nix nix;
 
+	/* ROC NPC */
+	struct roc_npc npc;
+
 	/* ROC RQs, SQs and CQs */
 	struct roc_nix_rq *rqs;
 	struct roc_nix_sq *sqs;
