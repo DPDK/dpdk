@@ -4613,7 +4613,6 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 			struct mlx5_flow dev_flow = {0};
 			struct mlx5_flow_handle dev_handle = { {0} };
 
-			rss_desc_v[i] = wks->rss_desc;
 			if (policy->is_rss) {
 				const void *rss_act =
 					policy->act_cnt[i].rss->conf;
@@ -4641,14 +4640,19 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 				if (flow_drv_translate(dev, &dev_flow, attr,
 						items, rss_actions, error))
 					goto exit;
+				rss_desc_v[i] = wks->rss_desc;
 				rss_desc_v[i].key_len = MLX5_RSS_HASH_KEY_LEN;
 				rss_desc_v[i].hash_fields =
 						dev_flow.hash_fields;
 				rss_desc_v[i].queue_num =
 						rss_desc_v[i].hash_fields ?
 						rss_desc_v[i].queue_num : 1;
+				rss_desc_v[i].tunnel =
+					!!(dev_flow.handle->layers &
+					MLX5_FLOW_LAYER_TUNNEL);
 			} else {
 				/* This is queue action. */
+				rss_desc_v[i] = wks->rss_desc;
 				rss_desc_v[i].key_len = 0;
 				rss_desc_v[i].hash_fields = 0;
 				rss_desc_v[i].queue =
