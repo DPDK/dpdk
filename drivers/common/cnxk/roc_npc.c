@@ -757,6 +757,23 @@ npc_rss_action_program(struct roc_npc *roc_npc,
 	return 0;
 }
 
+int
+roc_npc_mark_actions_get(struct roc_npc *roc_npc)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc->mark_actions;
+}
+
+int
+roc_npc_mark_actions_sub_return(struct roc_npc *roc_npc, uint32_t count)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	npc->mark_actions -= count;
+	return npc->mark_actions;
+}
+
 struct roc_npc_flow *
 roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		    const struct roc_npc_item_info pattern[],
