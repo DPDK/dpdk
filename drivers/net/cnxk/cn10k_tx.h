@@ -339,6 +339,77 @@ cn10k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, uintptr_t lmt_addr,
 }
 
 static __rte_always_inline uint16_t
+cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
+{
+	struct nix_send_hdr_s *send_hdr;
+	union nix_send_sg_s *sg;
+	struct rte_mbuf *m_next;
+	uint64_t *slist, sg_u;
+	uint64_t nb_segs;
+	uint64_t segdw;
+	uint8_t off, i;
+
+	send_hdr = (struct nix_send_hdr_s *)cmd;
+	send_hdr->w0.total = m->pkt_len;
+	send_hdr->w0.aura = roc_npa_aura_handle_to_aura(m->pool->pool_id);
+
+	if (flags & NIX_TX_NEED_EXT_HDR)
+		off = 2;
+	else
+		off = 0;
+
+	sg = (union nix_send_sg_s *)&cmd[2 + off];
+	/* Clear sg->u header before use */
+	sg->u &= 0xFC00000000000000;
+	sg_u = sg->u;
+	slist = &cmd[3 + off];
+
+	i = 0;
+	nb_segs = m->nb_segs;
+
+	/* Fill mbuf segments */
+	do {
+		m_next = m->next;
+		sg_u = sg_u | ((uint64_t)m->data_len << (i << 4));
+		*slist = rte_mbuf_data_iova(m);
+		/* Set invert df if buffer is not to be freed by H/W */
+		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
+			sg_u |= (cnxk_nix_prefree_seg(m) << (i + 55));
+			/* Mark mempool object as "put" since it is freed by NIX
+			 */
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+		if (!(sg_u & (1ULL << (i + 55))))
+			__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+#endif
+		slist++;
+		i++;
+		nb_segs--;
+		if (i > 2 && nb_segs) {
+			i = 0;
+			/* Next SG subdesc */
+			*(uint64_t *)slist = sg_u & 0xFC00000000000000;
+			sg->u = sg_u;
+			sg->segs = 3;
+			sg = (union nix_send_sg_s *)slist;
+			sg_u = sg->u;
+			slist++;
+		}
+		m = m_next;
+	} while (nb_segs);
+
+	sg->u = sg_u;
+	sg->segs = i;
+	segdw = (uint64_t *)slist - (uint64_t *)&cmd[2 + off];
+	/* Roundup extra dwords to multiple of 2 */
+	segdw = (segdw >> 1) + (segdw & 0x1);
+	/* Default dwords */
+	segdw += (off >> 1) + 1;
+	send_hdr->w0.sizem1 = segdw - 1;
+
+	return segdw;
+}
+
+static __rte_always_inline uint16_t
 cn10k_nix_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts,
 		    uint64_t *cmd, const uint16_t flags)
 {
@@ -405,6 +476,103 @@ again:
 
 		/* STEOR0 */
 		roc_lmt_submit_steorl(data, pa);
+	}
+
+	left -= burst;
+	rte_io_wmb();
+	if (left) {
+		/* Start processing another burst */
+		tx_pkts += burst;
+		/* Reset lmt base addr */
+		lmt_addr -= (1ULL << ROC_LMT_LINE_SIZE_LOG2);
+		lmt_addr &= (~(BIT_ULL(ROC_LMT_BASE_PER_CORE_LOG2) - 1));
+		goto again;
+	}
+
+	return pkts;
+}
+
+static __rte_always_inline uint16_t
+cn10k_nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
+			 uint16_t pkts, uint64_t *cmd, const uint16_t flags)
+{
+	struct cn10k_eth_txq *txq = tx_queue;
+	uintptr_t pa0, pa1, lmt_addr = txq->lmt_base;
+	const rte_iova_t io_addr = txq->io_addr;
+	uint16_t segdw, lmt_id, burst, left, i;
+	uint64_t data0, data1;
+	uint64_t lso_tun_fmt;
+	__uint128_t data128;
+	uint16_t shft;
+
+	NIX_XMIT_FC_OR_RETURN(txq, pkts);
+
+	cn10k_nix_tx_skeleton(txq, cmd, flags);
+
+	/* Reduce the cached count */
+	txq->fc_cache_pkts -= pkts;
+
+	if (flags & NIX_TX_OFFLOAD_TSO_F)
+		lso_tun_fmt = txq->lso_tun_fmt;
+
+	/* Get LMT base address and LMT ID as lcore id */
+	ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id);
+	left = pkts;
+again:
+	burst = left > 32 ? 32 : left;
+	shft = 16;
+	data128 = 0;
+	for (i = 0; i < burst; i++) {
+		/* Perform header writes for TSO, barrier at
+		 * lmt steorl will suffice.
+		 */
+		if (flags & NIX_TX_OFFLOAD_TSO_F)
+			cn10k_nix_xmit_prepare_tso(tx_pkts[i], flags);
+
+		cn10k_nix_xmit_prepare(tx_pkts[i], cmd, lmt_addr, flags,
+				       lso_tun_fmt);
+		/* Store sg list directly on lmt line */
+		segdw = cn10k_nix_prepare_mseg(tx_pkts[i], (uint64_t *)lmt_addr,
+					       flags);
+		lmt_addr += (1ULL << ROC_LMT_LINE_SIZE_LOG2);
+		data128 |= (((__uint128_t)(segdw - 1)) << shft);
+		shft += 3;
+	}
+
+	data0 = (uint64_t)data128;
+	data1 = (uint64_t)(data128 >> 64);
+	/* Make data0 similar to data1 */
+	data0 >>= 16;
+	/* Trigger LMTST */
+	if (burst > 16) {
+		pa0 = io_addr | (data0 & 0x7) << 4;
+		data0 &= ~0x7ULL;
+		/* Move lmtst1..15 sz to bits 63:19 */
+		data0 <<= 16;
+		data0 |= (15ULL << 12);
+		data0 |= (uint64_t)lmt_id;
+
+		/* STEOR0 */
+		roc_lmt_submit_steorl(data0, pa0);
+
+		pa1 = io_addr | (data1 & 0x7) << 4;
+		data1 &= ~0x7ULL;
+		data1 <<= 16;
+		data1 |= ((uint64_t)(burst - 17)) << 12;
+		data1 |= (uint64_t)(lmt_id + 16);
+
+		/* STEOR1 */
+		roc_lmt_submit_steorl(data1, pa1);
+	} else if (burst) {
+		pa0 = io_addr | (data0 & 0x7) << 4;
+		data0 &= ~0x7ULL;
+		/* Move lmtst1..15 sz to bits 63:19 */
+		data0 <<= 16;
+		data0 |= ((burst - 1) << 12);
+		data0 |= (uint64_t)lmt_id;
+
+		/* STEOR0 */
+		roc_lmt_submit_steorl(data0, pa0);
 	}
 
 	left -= burst;
@@ -496,6 +664,9 @@ T(tso_noff_vlan_ol3ol4csum_l3l4csum,	1, 1, 1, 1, 1,	6,		\
 
 #define T(name, f4, f3, f2, f1, f0, sz, flags)                                 \
 	uint16_t __rte_noinline __rte_hot cn10k_nix_xmit_pkts_##name(          \
+		void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts);     \
+									       \
+	uint16_t __rte_noinline __rte_hot cn10k_nix_xmit_pkts_mseg_##name(     \
 		void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts);
 
 NIX_TX_FASTPATH_MODES
