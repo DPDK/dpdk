@@ -1260,6 +1260,8 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.tx_done_cleanup = cnxk_nix_tx_done_cleanup,
 	.flow_ops_get = cnxk_nix_flow_ops_get,
 	.get_reg = cnxk_nix_dev_get_reg,
+	.timesync_read_rx_timestamp = cnxk_nix_timesync_read_rx_timestamp,
+	.timesync_read_tx_timestamp = cnxk_nix_timesync_read_tx_timestamp,
 };
 
 static int

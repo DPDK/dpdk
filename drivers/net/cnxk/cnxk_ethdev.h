@@ -312,6 +312,11 @@ int cnxk_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qid);
 int cnxk_nix_dev_start(struct rte_eth_dev *eth_dev);
 int cnxk_nix_timesync_enable(struct rte_eth_dev *eth_dev);
 int cnxk_nix_timesync_disable(struct rte_eth_dev *eth_dev);
+int cnxk_nix_timesync_read_rx_timestamp(struct rte_eth_dev *eth_dev,
+					struct timespec *timestamp,
+					uint32_t flags);
+int cnxk_nix_timesync_read_tx_timestamp(struct rte_eth_dev *eth_dev,
+					struct timespec *timestamp);
 int cnxk_nix_tsc_convert(struct cnxk_eth_dev *dev);
 
 uint64_t cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev);

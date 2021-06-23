@@ -56,6 +56,44 @@ fail:
 }
 
 int
+cnxk_nix_timesync_read_rx_timestamp(struct rte_eth_dev *eth_dev,
+				    struct timespec *timestamp, uint32_t flags)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_timesync_info *tstamp = &dev->tstamp;
+	uint64_t ns;
+
+	PLT_SET_USED(flags);
+
+	if (!tstamp->rx_ready)
+		return -EINVAL;
+
+	ns = rte_timecounter_update(&dev->rx_tstamp_tc, tstamp->rx_tstamp);
+	*timestamp = rte_ns_to_timespec(ns);
+	tstamp->rx_ready = 0;
+	return 0;
+}
+
+int
+cnxk_nix_timesync_read_tx_timestamp(struct rte_eth_dev *eth_dev,
+				    struct timespec *timestamp)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_timesync_info *tstamp = &dev->tstamp;
+	uint64_t ns;
+
+	if (*tstamp->tx_tstamp == 0)
+		return -EINVAL;
+
+	ns = rte_timecounter_update(&dev->tx_tstamp_tc, *tstamp->tx_tstamp);
+	*timestamp = rte_ns_to_timespec(ns);
+	*tstamp->tx_tstamp = 0;
+	rte_wmb();
+
+	return 0;
+}
+
+int
 cnxk_nix_timesync_enable(struct rte_eth_dev *eth_dev)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
