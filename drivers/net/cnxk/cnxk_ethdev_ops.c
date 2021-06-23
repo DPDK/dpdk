@@ -385,6 +385,8 @@ cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	int rc = -EINVAL;
 	uint32_t buffsz;
 
+	frame_size += CNXK_NIX_TIMESYNC_RX_OFFSET * dev->ptp_en;
+
 	/* Check if MTU is within the allowed range */
 	if ((frame_size - RTE_ETHER_CRC_LEN) < NIX_MIN_HW_FRS) {
 		plt_err("MTU is lesser than minimum");

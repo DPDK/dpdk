@@ -100,6 +100,7 @@
 /* Default mark value used when none is provided. */
 #define CNXK_FLOW_ACTION_FLAG_DEFAULT 0xffff
 
+#define CNXK_NIX_TIMESYNC_RX_OFFSET 8
 #define PTYPE_NON_TUNNEL_WIDTH	  16
 #define PTYPE_TUNNEL_WIDTH	  12
 #define PTYPE_NON_TUNNEL_ARRAY_SZ BIT(PTYPE_NON_TUNNEL_WIDTH)
@@ -153,6 +154,7 @@ struct cnxk_eth_dev {
 	uint16_t flags;
 	uint8_t ptype_disable;
 	bool scalar_ena;
+	bool ptp_en;
 
 	/* Pointer back to rte */
 	struct rte_eth_dev *eth_dev;
@@ -331,6 +333,9 @@ int cnxk_ethdev_parse_devargs(struct rte_devargs *devargs,
 /* Debug */
 int cnxk_nix_dev_get_reg(struct rte_eth_dev *eth_dev,
 			 struct rte_dev_reg_info *regs);
+
+/* Other private functions */
+int nix_recalc_mtu(struct rte_eth_dev *eth_dev);
 
 /* Inlines */
 static __rte_always_inline uint64_t

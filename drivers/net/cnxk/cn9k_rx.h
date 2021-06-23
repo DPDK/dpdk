@@ -13,6 +13,7 @@
 #define NIX_RX_OFFLOAD_PTYPE_F	     BIT(1)
 #define NIX_RX_OFFLOAD_CHECKSUM_F    BIT(2)
 #define NIX_RX_OFFLOAD_MARK_UPDATE_F BIT(3)
+#define NIX_RX_OFFLOAD_TSTAMP_F	     BIT(4)
 
 /* Flags to control cqe_to_mbuf conversion function.
  * Defining it from backwards to denote its been

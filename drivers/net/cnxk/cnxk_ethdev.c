@@ -59,7 +59,7 @@ nix_enable_mseg_on_jumbo(struct cnxk_eth_rxq_sp *rxq)
 	}
 }
 
-static int
+int
 nix_recalc_mtu(struct rte_eth_dev *eth_dev)
 {
 	struct rte_eth_dev_data *data = eth_dev->data;

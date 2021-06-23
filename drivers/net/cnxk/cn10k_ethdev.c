@@ -268,6 +268,76 @@ cn10k_nix_configure(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+/* Function to enable ptp config for VFs */
+static void
+nix_ptp_enable_vf(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	if (nix_recalc_mtu(eth_dev))
+		plt_err("Failed to set MTU size for ptp");
+
+	dev->scalar_ena = true;
+	dev->rx_offload_flags |= NIX_RX_OFFLOAD_TSTAMP_F;
+
+	/* Setting up the function pointers as per new offload flags */
+	cn10k_eth_set_rx_function(eth_dev);
+	cn10k_eth_set_tx_function(eth_dev);
+}
+
+static uint16_t
+nix_ptp_vf_burst(void *queue, struct rte_mbuf **mbufs, uint16_t pkts)
+{
+	struct cn10k_eth_rxq *rxq = queue;
+	struct cnxk_eth_rxq_sp *rxq_sp;
+	struct rte_eth_dev *eth_dev;
+
+	RTE_SET_USED(mbufs);
+	RTE_SET_USED(pkts);
+
+	rxq_sp = cnxk_eth_rxq_to_sp(rxq);
+	eth_dev = rxq_sp->dev->eth_dev;
+	nix_ptp_enable_vf(eth_dev);
+
+	return 0;
+}
+
+static int
+cn10k_nix_ptp_info_update_cb(struct roc_nix *nix, bool ptp_en)
+{
+	struct cnxk_eth_dev *dev = (struct cnxk_eth_dev *)nix;
+	struct rte_eth_dev *eth_dev;
+	struct cn10k_eth_rxq *rxq;
+	int i;
+
+	if (!dev)
+		return -EINVAL;
+
+	eth_dev = dev->eth_dev;
+	if (!eth_dev)
+		return -EINVAL;
+
+	dev->ptp_en = ptp_en;
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rxq = eth_dev->data->rx_queues[i];
+		rxq->mbuf_initializer = cnxk_nix_rxq_mbuf_setup(dev);
+	}
+
+	if (roc_nix_is_vf_or_sdp(nix) && !(roc_nix_is_sdp(nix)) &&
+	    !(roc_nix_is_lbk(nix))) {
+		/* In case of VF, setting of MTU cannot be done directly in this
+		 * function as this is running as part of MBOX request(PF->VF)
+		 * and MTU setting also requires MBOX message to be
+		 * sent(VF->PF)
+		 */
+		eth_dev->rx_pkt_burst = nix_ptp_vf_burst;
+		rte_mb();
+	}
+
+	return 0;
+}
+
 static int
 cn10k_nix_dev_start(struct rte_eth_dev *eth_dev)
 {
@@ -333,6 +403,7 @@ static int
 cn10k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 {
 	struct rte_eth_dev *eth_dev;
+	struct cnxk_eth_dev *dev;
 	int rc;
 
 	if (RTE_CACHE_LINE_SIZE != 64) {
@@ -354,15 +425,23 @@ cn10k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	if (rc)
 		return rc;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
-		if (!eth_dev)
-			return -ENOENT;
+	/* Find eth dev allocated */
+	eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
+	if (!eth_dev)
+		return -ENOENT;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		/* Setup callbacks for secondary process */
 		cn10k_eth_set_tx_function(eth_dev);
 		cn10k_eth_set_rx_function(eth_dev);
+		return 0;
 	}
+
+	dev = cnxk_eth_pmd_priv(eth_dev);
+
+	/* Register up msg callbacks for PTP information */
+	roc_nix_ptp_info_cb_register(&dev->nix, cn10k_nix_ptp_info_update_cb);
+
 	return 0;
 }
 
