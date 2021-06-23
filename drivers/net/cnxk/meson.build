@@ -32,13 +32,14 @@ sources += files(
         'cn10k_rx.c',
         'cn10k_rx_mseg.c',
         'cn10k_rx_vec.c',
+        'cn10k_tx.c',
 )
 
 deps += ['bus_pci', 'cryptodev', 'eventdev', 'security']
 deps += ['common_cnxk', 'mempool_cnxk']
 
-# Allow implicit vector conversions
-extra_flags = ['-flax-vector-conversions']
+# Allow implicit vector conversions and strict aliasing warning
+extra_flags = ['-flax-vector-conversions', '-Wno-strict-aliasing']
 foreach flag: extra_flags
     if cc.has_argument(flag)
         cflags += flag

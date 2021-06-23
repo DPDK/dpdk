@@ -35,5 +35,6 @@ struct cn10k_eth_rxq {
 
 /* Rx and Tx routines */
 void cn10k_eth_set_rx_function(struct rte_eth_dev *eth_dev);
+void cn10k_eth_set_tx_function(struct rte_eth_dev *eth_dev);
 
 #endif /* __CN10K_ETHDEV_H__ */
