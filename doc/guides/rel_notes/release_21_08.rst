@@ -61,6 +61,11 @@ New Features
   representing sub-domains of functionality. Each auxiliary device
   represents a part of its parent functionality.
 
+* **Added support for Marvell CN10K SoC ethernet device.**
+
+  * Added net/cnxk driver which provides the support for the integrated ethernet
+    device.
+
 * **Added Baseband PHY CNXK PMD.**
 
   Added Baseband PHY PMD which allows to configure BPHY hardware block

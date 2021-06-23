@@ -19,6 +19,7 @@ Network Interface Controller Drivers
     axgbe
     bnx2x
     bnxt
+    cnxk
     cxgbe
     dpaa
     dpaa2

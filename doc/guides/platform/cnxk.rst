@@ -142,6 +142,9 @@ HW Offload Drivers
 
 This section lists dataplane H/W block(s) available in cnxk SoC.
 
+#. **Ethdev Driver**
+   See :doc:`../nics/cnxk` for NIX Ethdev driver information.
+
 #. **Mempool Driver**
    See :doc:`../mempool/cnxk` for NPA mempool driver information.
 
