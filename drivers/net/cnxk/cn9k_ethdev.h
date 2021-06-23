@@ -29,6 +29,7 @@ struct cn9k_eth_rxq {
 	uint32_t qmask;
 	uint32_t available;
 	uint16_t rq;
+	struct cnxk_timesync_info *tstamp;
 } __plt_cache_aligned;
 
 /* Rx and Tx routines */

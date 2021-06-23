@@ -30,6 +30,9 @@ nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
 	if (dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)
 		flags |= NIX_RX_MULTI_SEG_F;
 
+	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP))
+		flags |= NIX_RX_OFFLOAD_TSTAMP_F;
+
 	if (!dev->ptype_disable)
 		flags |= NIX_RX_OFFLOAD_PTYPE_F;
 
@@ -95,6 +98,9 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 		flags |= (NIX_TX_OFFLOAD_TSO_F | NIX_TX_OFFLOAD_OL3_OL4_CSUM_F |
 			  NIX_TX_OFFLOAD_L3_L4_CSUM_F);
 
+	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP))
+		flags |= NIX_TX_OFFLOAD_TSTAMP_F;
+
 	return flags;
 }
 
@@ -121,9 +127,8 @@ nix_form_default_desc(struct cnxk_eth_dev *dev, struct cn9k_eth_txq *txq,
 {
 	struct nix_send_ext_s *send_hdr_ext;
 	struct nix_send_hdr_s *send_hdr;
+	struct nix_send_mem_s *send_mem;
 	union nix_send_sg_s *sg;
-
-	RTE_SET_USED(dev);
 
 	/* Initialize the fields based on basic single segment packet */
 	memset(&txq->cmd, 0, sizeof(txq->cmd));
@@ -135,6 +140,23 @@ nix_form_default_desc(struct cnxk_eth_dev *dev, struct cn9k_eth_txq *txq,
 
 		send_hdr_ext = (struct nix_send_ext_s *)&txq->cmd[2];
 		send_hdr_ext->w0.subdc = NIX_SUBDC_EXT;
+		if (dev->tx_offload_flags & NIX_TX_OFFLOAD_TSTAMP_F) {
+			/* Default: one seg packet would have:
+			 * 2(HDR) + 2(EXT) + 1(SG) + 1(IOVA) + 2(MEM)
+			 * => 8/2 - 1 = 3
+			 */
+			send_hdr->w0.sizem1 = 3;
+			send_hdr_ext->w0.tstmp = 1;
+
+			/* To calculate the offset for send_mem,
+			 * send_hdr->w0.sizem1 * 2
+			 */
+			send_mem = (struct nix_send_mem_s *)
+				(txq->cmd + (send_hdr->w0.sizem1 << 1));
+			send_mem->w0.cn9k.subdc = NIX_SUBDC_MEM;
+			send_mem->w0.cn9k.alg = NIX_SENDMEMALG_SETTSTMP;
+			send_mem->addr = dev->tstamp.tx_tstamp_iova;
+		}
 		sg = (union nix_send_sg_s *)&txq->cmd[4];
 	} else {
 		send_hdr = (struct nix_send_hdr_s *)&txq->cmd[0];
@@ -219,6 +241,7 @@ cn9k_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	rxq->wdata = cq->wdata;
 	rxq->head = cq->head;
 	rxq->qmask = cq->qmask;
+	rxq->tstamp = &dev->tstamp;
 
 	/* Data offset from data to start of mbuf is first_skip */
 	rxq->data_off = rq->first_skip;
@@ -351,12 +374,19 @@ static int
 cn9k_nix_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
 	int rc;
 
 	/* Common eth dev start */
 	rc = cnxk_nix_dev_start(eth_dev);
 	if (rc)
 		return rc;
+
+	/* Update VF about data off shifted by 8 bytes if PTP already
+	 * enabled in PF owning this VF
+	 */
+	if (dev->ptp_en && (!roc_nix_is_pf(nix) && (!roc_nix_is_sdp(nix))))
+		nix_ptp_enable_vf(eth_dev);
 
 	/* Setting up the rx[tx]_offload_flags due to change
 	 * in rx[tx]_offloads.

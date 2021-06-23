@@ -13,6 +13,7 @@
 #include <rte_mbuf.h>
 #include <rte_mbuf_pool_ops.h>
 #include <rte_mempool.h>
+#include <rte_time.h>
 
 #include "roc_api.h"
 
@@ -75,7 +76,7 @@
 	(DEV_RX_OFFLOAD_CHECKSUM | DEV_RX_OFFLOAD_SCTP_CKSUM |                 \
 	 DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM | DEV_RX_OFFLOAD_SCATTER |            \
 	 DEV_RX_OFFLOAD_JUMBO_FRAME | DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |         \
-	 DEV_RX_OFFLOAD_RSS_HASH)
+	 DEV_RX_OFFLOAD_RSS_HASH | DEV_RX_OFFLOAD_TIMESTAMP)
 
 #define RSS_IPV4_ENABLE                                                        \
 	(ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 | ETH_RSS_NONFRAG_IPV4_UDP |         \
@@ -100,7 +101,10 @@
 /* Default mark value used when none is provided. */
 #define CNXK_FLOW_ACTION_FLAG_DEFAULT 0xffff
 
+/* Default cycle counter mask */
+#define CNXK_CYCLECOUNTER_MASK     0xffffffffffffffffULL
 #define CNXK_NIX_TIMESYNC_RX_OFFSET 8
+
 #define PTYPE_NON_TUNNEL_WIDTH	  16
 #define PTYPE_TUNNEL_WIDTH	  12
 #define PTYPE_NON_TUNNEL_ARRAY_SZ BIT(PTYPE_NON_TUNNEL_WIDTH)
@@ -129,6 +133,16 @@ struct cnxk_eth_qconf {
 	uint16_t nb_desc;
 	uint8_t valid;
 };
+
+struct cnxk_timesync_info {
+	uint64_t rx_tstamp_dynflag;
+	rte_iova_t tx_tstamp_iova;
+	uint64_t *tx_tstamp;
+	uint64_t rx_tstamp;
+	int tstamp_dynfield_offset;
+	uint8_t tx_ready;
+	uint8_t rx_ready;
+} __plt_cache_aligned;
 
 struct cnxk_eth_dev {
 	/* ROC NIX */
@@ -187,6 +201,14 @@ struct cnxk_eth_dev {
 
 	/* Flow control configuration */
 	struct cnxk_fc_cfg fc_cfg;
+
+	/* PTP Counters */
+	struct cnxk_timesync_info tstamp;
+	struct rte_timecounter systime_tc;
+	struct rte_timecounter rx_tstamp_tc;
+	struct rte_timecounter tx_tstamp_tc;
+	double clk_freq_mult;
+	uint64_t clk_delta;
 
 	/* Rx burst for cleanup(Only Primary) */
 	eth_rx_burst_t rx_pkt_burst_no_offload;
@@ -288,6 +310,9 @@ int cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 int cnxk_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qid);
 int cnxk_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qid);
 int cnxk_nix_dev_start(struct rte_eth_dev *eth_dev);
+int cnxk_nix_timesync_enable(struct rte_eth_dev *eth_dev);
+int cnxk_nix_timesync_disable(struct rte_eth_dev *eth_dev);
+int cnxk_nix_tsc_convert(struct cnxk_eth_dev *dev);
 
 uint64_t cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev);
 
@@ -402,6 +427,43 @@ cnxk_nix_prefree_seg(struct rte_mbuf *m)
 
 	/* Mbuf is having refcount more than 1 so need not to be freed */
 	return 1;
+}
+
+static inline rte_mbuf_timestamp_t *
+cnxk_nix_timestamp_dynfield(struct rte_mbuf *mbuf,
+			    struct cnxk_timesync_info *info)
+{
+	return RTE_MBUF_DYNFIELD(mbuf, info->tstamp_dynfield_offset,
+				 rte_mbuf_timestamp_t *);
+}
+
+static __rte_always_inline void
+cnxk_nix_mbuf_to_tstamp(struct rte_mbuf *mbuf,
+			struct cnxk_timesync_info *tstamp, bool ts_enable,
+			uint64_t *tstamp_ptr)
+{
+	if (ts_enable &&
+	    (mbuf->data_off ==
+	     RTE_PKTMBUF_HEADROOM + CNXK_NIX_TIMESYNC_RX_OFFSET)) {
+		mbuf->pkt_len -= CNXK_NIX_TIMESYNC_RX_OFFSET;
+
+		/* Reading the rx timestamp inserted by CGX, viz at
+		 * starting of the packet data.
+		 */
+		*cnxk_nix_timestamp_dynfield(mbuf, tstamp) =
+			rte_be_to_cpu_64(*tstamp_ptr);
+		/* PKT_RX_IEEE1588_TMST flag needs to be set only in case
+		 * PTP packets are received.
+		 */
+		if (mbuf->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC) {
+			tstamp->rx_tstamp =
+				*cnxk_nix_timestamp_dynfield(mbuf, tstamp);
+			tstamp->rx_ready = 1;
+			mbuf->ol_flags |= PKT_RX_IEEE1588_PTP |
+					  PKT_RX_IEEE1588_TMST |
+					  tstamp->rx_tstamp_dynflag;
+		}
+	}
 }
 
 #endif /* __CNXK_ETHDEV_H__ */

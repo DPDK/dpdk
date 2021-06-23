@@ -7,6 +7,8 @@
 #include <rte_ether.h>
 #include <rte_vect.h>
 
+#include <cnxk_ethdev.h>
+
 #define NIX_RX_OFFLOAD_NONE	     (0)
 #define NIX_RX_OFFLOAD_RSS_F	     BIT(0)
 #define NIX_RX_OFFLOAD_PTYPE_F	     BIT(1)
@@ -250,6 +252,10 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 
 		cn10k_nix_cqe_to_mbuf(cq, cq->tag, mbuf, lookup_mem, mbuf_init,
 				      flags);
+		cnxk_nix_mbuf_to_tstamp(mbuf, rxq->tstamp,
+					(flags & NIX_RX_OFFLOAD_TSTAMP_F),
+					(uint64_t *)((uint8_t *)mbuf + data_off)
+					);
 		rx_pkts[packets++] = mbuf;
 		roc_prefetch_store_keep(mbuf);
 		head++;
@@ -487,27 +493,44 @@ cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 #define PTYPE_F	  NIX_RX_OFFLOAD_PTYPE_F
 #define CKSUM_F	  NIX_RX_OFFLOAD_CHECKSUM_F
 #define MARK_F	  NIX_RX_OFFLOAD_MARK_UPDATE_F
+#define TS_F      NIX_RX_OFFLOAD_TSTAMP_F
 
-/* [MARK] [CKSUM] [PTYPE] [RSS] */
-#define NIX_RX_FASTPATH_MODES					       \
-R(no_offload,			0, 0, 0, 0, NIX_RX_OFFLOAD_NONE)       \
-R(rss,				0, 0, 0, 1, RSS_F)		       \
-R(ptype,			0, 0, 1, 0, PTYPE_F)		       \
-R(ptype_rss,			0, 0, 1, 1, PTYPE_F | RSS_F)	       \
-R(cksum,			0, 1, 0, 0, CKSUM_F)		       \
-R(cksum_rss,			0, 1, 0, 1, CKSUM_F | RSS_F)	       \
-R(cksum_ptype,			0, 1, 1, 0, CKSUM_F | PTYPE_F)	       \
-R(cksum_ptype_rss,		0, 1, 1, 1, CKSUM_F | PTYPE_F | RSS_F) \
-R(mark,				1, 0, 0, 0, MARK_F)		       \
-R(mark_rss,			1, 0, 0, 1, MARK_F | RSS_F)	       \
-R(mark_ptype,			1, 0, 1, 0, MARK_F | PTYPE_F)	       \
-R(mark_ptype_rss,		1, 0, 1, 1, MARK_F | PTYPE_F | RSS_F)  \
-R(mark_cksum,			1, 1, 0, 0, MARK_F | CKSUM_F)	       \
-R(mark_cksum_rss,		1, 1, 0, 1, MARK_F | CKSUM_F | RSS_F)  \
-R(mark_cksum_ptype,		1, 1, 1, 0, MARK_F | CKSUM_F | PTYPE_F)\
-R(mark_cksum_ptype_rss,		1, 1, 1, 1, MARK_F | CKSUM_F | PTYPE_F | RSS_F)
+/* [TS] [MARK] [CKSUM] [PTYPE] [RSS] */
+#define NIX_RX_FASTPATH_MODES						       \
+R(no_offload,			0, 0, 0, 0, 0, NIX_RX_OFFLOAD_NONE)	       \
+R(rss,				0, 0, 0, 0, 1, RSS_F)			       \
+R(ptype,			0, 0, 0, 1, 0, PTYPE_F)			       \
+R(ptype_rss,			0, 0, 0, 1, 1, PTYPE_F | RSS_F)		       \
+R(cksum,			0, 0, 1, 0, 0, CKSUM_F)			       \
+R(cksum_rss,			0, 0, 1, 0, 1, CKSUM_F | RSS_F)		       \
+R(cksum_ptype,			0, 0, 1, 1, 0, CKSUM_F | PTYPE_F)	       \
+R(cksum_ptype_rss,		0, 0, 1, 1, 1, CKSUM_F | PTYPE_F | RSS_F)      \
+R(mark,				0, 1, 0, 0, 0, MARK_F)			       \
+R(mark_rss,			0, 1, 0, 0, 1, MARK_F | RSS_F)		       \
+R(mark_ptype,			0, 1, 0, 1, 0, MARK_F | PTYPE_F)	       \
+R(mark_ptype_rss,		0, 1, 0, 1, 1, MARK_F | PTYPE_F | RSS_F)       \
+R(mark_cksum,			0, 1, 1, 0, 0, MARK_F | CKSUM_F)	       \
+R(mark_cksum_rss,		0, 1, 1, 0, 1, MARK_F | CKSUM_F | RSS_F)       \
+R(mark_cksum_ptype,		0, 1, 1, 1, 0, MARK_F | CKSUM_F | PTYPE_F)     \
+R(mark_cksum_ptype_rss,		0, 1, 1, 1, 1, MARK_F | CKSUM_F | PTYPE_F | RSS_F)\
+R(ts,				1, 0, 0, 0, 0, TS_F)			       \
+R(ts_rss,			1, 0, 0, 0, 1, TS_F | RSS_F)		       \
+R(ts_ptype,			1, 0, 0, 1, 0, TS_F | PTYPE_F)		       \
+R(ts_ptype_rss,			1, 0, 0, 1, 1, TS_F | PTYPE_F | RSS_F)	       \
+R(ts_cksum,			1, 0, 1, 0, 0, TS_F | CKSUM_F)		       \
+R(ts_cksum_rss,			1, 0, 1, 0, 1, TS_F | CKSUM_F | RSS_F)	       \
+R(ts_cksum_ptype,		1, 0, 1, 1, 0, TS_F | CKSUM_F | PTYPE_F)       \
+R(ts_cksum_ptype_rss,		1, 0, 1, 1, 1, TS_F | CKSUM_F | PTYPE_F | RSS_F)\
+R(ts_mark,			1, 1, 0, 0, 0, TS_F | MARK_F)		       \
+R(ts_mark_rss,			1, 1, 0, 0, 1, TS_F | MARK_F | RSS_F)	       \
+R(ts_mark_ptype,		1, 1, 0, 1, 0, TS_F | MARK_F | PTYPE_F)	       \
+R(ts_mark_ptype_rss,		1, 1, 0, 1, 1, TS_F | MARK_F | PTYPE_F | RSS_F)\
+R(ts_mark_cksum,		1, 1, 1, 0, 0, TS_F | MARK_F | CKSUM_F)	       \
+R(ts_mark_cksum_rss,		1, 1, 1, 0, 1, TS_F | MARK_F | CKSUM_F | RSS_F)\
+R(ts_mark_cksum_ptype,		1, 1, 1, 1, 0, TS_F | MARK_F | CKSUM_F | PTYPE_F)\
+R(ts_mark_cksum_ptype_rss,	1, 1, 1, 1, 1, TS_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)
 
-#define R(name, f3, f2, f1, f0, flags)                                         \
+#define R(name, f4, f3, f2, f1, f0, flags)				       \
 	uint16_t __rte_noinline __rte_hot cn10k_nix_recv_pkts_##name(          \
 		void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts);     \
 									       \

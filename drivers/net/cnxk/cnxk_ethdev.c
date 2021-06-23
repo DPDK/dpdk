@@ -150,7 +150,8 @@ cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev)
 				 offsetof(struct rte_mbuf, data_off) !=
 			 6);
 	mb_def.nb_segs = 1;
-	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
+	mb_def.data_off = RTE_PKTMBUF_HEADROOM +
+			  (dev->ptp_en * CNXK_NIX_TIMESYNC_RX_OFFSET);
 	mb_def.port = port_id;
 	rte_mbuf_refcnt_set(&mb_def, 1);
 
@@ -355,6 +356,18 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	/* Store start of fast path area */
 	eth_dev->data->rx_queues[qid] = rxq_sp + 1;
 	eth_dev->data->rx_queue_state[qid] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	/* Calculating delta and freq mult between PTP HI clock and tsc.
+	 * These are needed in deriving raw clock value from tsc counter.
+	 * read_clock eth op returns raw clock value.
+	 */
+	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) || dev->ptp_en) {
+		rc = cnxk_nix_tsc_convert(dev);
+		if (rc) {
+			plt_err("Failed to calculate delta and freq mult");
+			goto rq_fini;
+		}
+	}
 
 	return 0;
 rq_fini:
@@ -1124,7 +1137,7 @@ cnxk_nix_dev_start(struct rte_eth_dev *eth_dev)
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	int rc, i;
 
-	if (eth_dev->data->nb_rx_queues != 0) {
+	if (eth_dev->data->nb_rx_queues != 0 && !dev->ptp_en) {
 		rc = nix_recalc_mtu(eth_dev);
 		if (rc)
 			return rc;
@@ -1165,6 +1178,25 @@ cnxk_nix_dev_start(struct rte_eth_dev *eth_dev)
 		rc = roc_nix_mac_link_event_start_stop(&dev->nix, true);
 		if (rc) {
 			plt_err("Failed to start cgx link event %d", rc);
+			goto rx_disable;
+		}
+	}
+
+	/* Enable PTP if it is requested by the user or already
+	 * enabled on PF owning this VF
+	 */
+	memset(&dev->tstamp, 0, sizeof(struct cnxk_timesync_info));
+	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) || dev->ptp_en)
+		cnxk_eth_dev_ops.timesync_enable(eth_dev);
+	else
+		cnxk_eth_dev_ops.timesync_disable(eth_dev);
+
+	if (dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
+		rc = rte_mbuf_dyn_rx_timestamp_register
+			(&dev->tstamp.tstamp_dynfield_offset,
+			 &dev->tstamp.rx_tstamp_dynflag);
+		if (rc != 0) {
+			plt_err("Failed to register Rx timestamp field/flag");
 			goto rx_disable;
 		}
 	}
