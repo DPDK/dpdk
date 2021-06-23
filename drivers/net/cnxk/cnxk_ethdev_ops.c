@@ -598,3 +598,22 @@ cnxk_nix_get_module_eeprom(struct rte_eth_dev *eth_dev,
 	rte_memcpy(info->data, eeprom_info.buf + info->offset, info->length);
 	return 0;
 }
+
+int
+cnxk_nix_rx_queue_intr_enable(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	roc_nix_rx_queue_intr_enable(&dev->nix, rx_queue_id);
+	return 0;
+}
+
+int
+cnxk_nix_rx_queue_intr_disable(struct rte_eth_dev *eth_dev,
+			       uint16_t rx_queue_id)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	roc_nix_rx_queue_intr_disable(&dev->nix, rx_queue_id);
+	return 0;
+}

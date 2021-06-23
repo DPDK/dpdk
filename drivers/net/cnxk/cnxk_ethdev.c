@@ -1193,6 +1193,8 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.dev_set_link_down = cnxk_nix_set_link_down,
 	.get_module_info = cnxk_nix_get_module_info,
 	.get_module_eeprom = cnxk_nix_get_module_eeprom,
+	.rx_queue_intr_enable = cnxk_nix_rx_queue_intr_enable,
+	.rx_queue_intr_disable = cnxk_nix_rx_queue_intr_disable,
 };
 
 static int
