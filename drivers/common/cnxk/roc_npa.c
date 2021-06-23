@@ -278,13 +278,15 @@ npa_aura_pool_pair_alloc(struct npa_lf *lf, const uint32_t block_size,
 	/* Update aura fields */
 	aura->pool_addr = pool_id; /* AF will translate to associated poolctx */
 	aura->ena = 1;
-	aura->shift = __builtin_clz(block_count) - 8;
+	aura->shift = plt_log2_u32(block_count);
+	aura->shift = aura->shift < 8 ? 0 : aura->shift - 8;
 	aura->limit = block_count;
 	aura->pool_caching = 1;
 	aura->err_int_ena = BIT(NPA_AURA_ERR_INT_AURA_ADD_OVER);
 	aura->err_int_ena |= BIT(NPA_AURA_ERR_INT_AURA_ADD_UNDER);
 	aura->err_int_ena |= BIT(NPA_AURA_ERR_INT_AURA_FREE_UNDER);
 	aura->err_int_ena |= BIT(NPA_AURA_ERR_INT_POOL_DIS);
+	aura->avg_con = ROC_NPA_AVG_CONT;
 	/* Many to one reduction */
 	aura->err_qint_idx = aura_id % lf->qints;
 
@@ -293,13 +295,15 @@ npa_aura_pool_pair_alloc(struct npa_lf *lf, const uint32_t block_size,
 	pool->ena = 1;
 	pool->buf_size = block_size / ROC_ALIGN;
 	pool->stack_max_pages = stack_size;
-	pool->shift = __builtin_clz(block_count) - 8;
+	pool->shift = plt_log2_u32(block_count);
+	pool->shift = pool->shift < 8 ? 0 : pool->shift - 8;
 	pool->ptr_start = 0;
 	pool->ptr_end = ~0;
 	pool->stack_caching = 1;
 	pool->err_int_ena = BIT(NPA_POOL_ERR_INT_OVFLS);
 	pool->err_int_ena |= BIT(NPA_POOL_ERR_INT_RANGE);
 	pool->err_int_ena |= BIT(NPA_POOL_ERR_INT_PERR);
+	pool->avg_con = ROC_NPA_AVG_CONT;
 
 	/* Many to one reduction */
 	pool->err_qint_idx = pool_id % lf->qints;

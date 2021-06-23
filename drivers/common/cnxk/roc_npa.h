@@ -12,6 +12,11 @@
 #define ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS 512
 #define ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS  15
 
+/* This value controls how much of the present average resource level is used to
+ * calculate the new resource level.
+ */
+#define ROC_NPA_AVG_CONT 0xE0
+
 /* 16 CASP instructions can be outstanding in CN9k, but we use only 15
  * outstanding CASPs as we run out of registers.
  */

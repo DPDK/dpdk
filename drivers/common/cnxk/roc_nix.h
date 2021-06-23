@@ -161,6 +161,14 @@ struct roc_nix_rq {
 	uint32_t vwqe_max_sz_exp;
 	uint64_t vwqe_wait_tmo;
 	uint64_t vwqe_aura_handle;
+	/* Average LPB aura level drop threshold for RED */
+	uint8_t red_drop;
+	/* Average LPB aura level pass threshold for RED */
+	uint8_t red_pass;
+	/* Average SPB aura level drop threshold for RED */
+	uint8_t spb_red_drop;
+	/* Average SPB aura level pass threshold for RED */
+	uint8_t spb_red_pass;
 	/* End of Input parameters */
 	struct roc_nix *roc_nix;
 };
