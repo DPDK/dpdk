@@ -13,6 +13,7 @@ sources = files(
         'cnxk_ethdev_devargs.c',
         'cnxk_ethdev_ops.c',
         'cnxk_link.c',
+        'cnxk_lookup.c',
 )
 
 # CN9K

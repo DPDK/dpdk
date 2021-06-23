@@ -2,7 +2,24 @@
  * Copyright(C) 2021 Marvell.
  */
 #include "cn9k_ethdev.h"
+#include "cn9k_rx.h"
 #include "cn9k_tx.h"
+
+static int
+cn9k_nix_ptypes_set(struct rte_eth_dev *eth_dev, uint32_t ptype_mask)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	if (ptype_mask) {
+		dev->rx_offload_flags |= NIX_RX_OFFLOAD_PTYPE_F;
+		dev->ptype_disable = 0;
+	} else {
+		dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_PTYPE_F;
+		dev->ptype_disable = 1;
+	}
+
+	return 0;
+}
 
 static void
 nix_form_default_desc(struct cnxk_eth_dev *dev, struct cn9k_eth_txq *txq,
@@ -112,6 +129,9 @@ cn9k_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	/* Data offset from data to start of mbuf is first_skip */
 	rxq->data_off = rq->first_skip;
 	rxq->mbuf_initializer = cnxk_nix_rxq_mbuf_setup(dev);
+
+	/* Lookup mem */
+	rxq->lookup_mem = cnxk_nix_fastpath_lookup_mem_get();
 	return 0;
 }
 
@@ -158,6 +178,7 @@ nix_eth_dev_ops_override(void)
 	cnxk_eth_dev_ops.dev_configure = cn9k_nix_configure;
 	cnxk_eth_dev_ops.tx_queue_setup = cn9k_nix_tx_queue_setup;
 	cnxk_eth_dev_ops.rx_queue_setup = cn9k_nix_rx_queue_setup;
+	cnxk_eth_dev_ops.dev_ptypes_set = cn9k_nix_ptypes_set;
 }
 
 static int

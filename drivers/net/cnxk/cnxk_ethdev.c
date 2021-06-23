@@ -872,6 +872,7 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.link_update = cnxk_nix_link_update,
 	.tx_queue_release = cnxk_nix_tx_queue_release,
 	.rx_queue_release = cnxk_nix_rx_queue_release,
+	.dev_supported_ptypes_get = cnxk_nix_supported_ptypes_get,
 };
 
 static int
@@ -911,6 +912,7 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 	dev->eth_dev = eth_dev;
 	dev->configured = 0;
+	dev->ptype_disable = 0;
 
 	/* For vfs, returned max_entries will be 0. but to keep default mac
 	 * address, one entry must be allocated. so setting up to 1.

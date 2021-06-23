@@ -91,6 +91,15 @@
 #define RSS_SCTP_INDEX 4
 #define RSS_DMAC_INDEX 5
 
+#define PTYPE_NON_TUNNEL_WIDTH	  16
+#define PTYPE_TUNNEL_WIDTH	  12
+#define PTYPE_NON_TUNNEL_ARRAY_SZ BIT(PTYPE_NON_TUNNEL_WIDTH)
+#define PTYPE_TUNNEL_ARRAY_SZ	  BIT(PTYPE_TUNNEL_WIDTH)
+#define PTYPE_ARRAY_SZ                                                         \
+	((PTYPE_NON_TUNNEL_ARRAY_SZ + PTYPE_TUNNEL_ARRAY_SZ) * sizeof(uint16_t))
+/* Fastpath lookup */
+#define CNXK_NIX_FASTPATH_LOOKUP_MEM "cnxk_nix_fastpath_lookup_mem"
+
 struct cnxk_eth_qconf {
 	union {
 		struct rte_eth_txconf tx;
@@ -119,6 +128,7 @@ struct cnxk_eth_dev {
 	uint8_t max_mac_entries;
 
 	uint16_t flags;
+	uint8_t ptype_disable;
 	bool scalar_ena;
 
 	/* Pointer back to rte */
@@ -215,6 +225,10 @@ uint32_t cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
 void cnxk_eth_dev_link_status_cb(struct roc_nix *nix,
 				 struct roc_nix_link_info *link);
 int cnxk_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);
+
+/* Lookup configuration */
+const uint32_t *cnxk_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev);
+void *cnxk_nix_fastpath_lookup_mem_get(void);
 
 /* Devargs */
 int cnxk_ethdev_parse_devargs(struct rte_devargs *devargs,
