@@ -33,4 +33,7 @@ struct cn10k_eth_rxq {
 	uint16_t rq;
 } __plt_cache_aligned;
 
+/* Rx and Tx routines */
+void cn10k_eth_set_rx_function(struct rte_eth_dev *eth_dev);
+
 #endif /* __CN10K_ETHDEV_H__ */
