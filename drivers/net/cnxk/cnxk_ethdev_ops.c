@@ -724,3 +724,124 @@ cnxk_nix_dev_get_reg(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs)
 
 	return rc;
 }
+
+int
+cnxk_nix_reta_update(struct rte_eth_dev *eth_dev,
+		     struct rte_eth_rss_reta_entry64 *reta_conf,
+		     uint16_t reta_size)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	uint16_t reta[ROC_NIX_RSS_RETA_MAX];
+	struct roc_nix *nix = &dev->nix;
+	int i, j, rc = -EINVAL, idx = 0;
+
+	if (reta_size != dev->nix.reta_sz) {
+		plt_err("Size of hash lookup table configured (%d) does not "
+			"match the number hardware can supported (%d)",
+			reta_size, dev->nix.reta_sz);
+		goto fail;
+	}
+
+	/* Copy RETA table */
+	for (i = 0; i < (int)(dev->nix.reta_sz / RTE_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++) {
+			if ((reta_conf[i].mask >> j) & 0x01)
+				reta[idx] = reta_conf[i].reta[j];
+			idx++;
+		}
+	}
+
+	return roc_nix_rss_reta_set(nix, 0, reta);
+
+fail:
+	return rc;
+}
+
+int
+cnxk_nix_reta_query(struct rte_eth_dev *eth_dev,
+		    struct rte_eth_rss_reta_entry64 *reta_conf,
+		    uint16_t reta_size)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	uint16_t reta[ROC_NIX_RSS_RETA_MAX];
+	struct roc_nix *nix = &dev->nix;
+	int rc = -EINVAL, i, j, idx = 0;
+
+	if (reta_size != dev->nix.reta_sz) {
+		plt_err("Size of hash lookup table configured (%d) does not "
+			"match the number hardware can supported (%d)",
+			reta_size, dev->nix.reta_sz);
+		goto fail;
+	}
+
+	rc = roc_nix_rss_reta_get(nix, 0, reta);
+	if (rc)
+		goto fail;
+
+	/* Copy RETA table */
+	for (i = 0; i < (int)(dev->nix.reta_sz / RTE_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++) {
+			if ((reta_conf[i].mask >> j) & 0x01)
+				reta_conf[i].reta[j] = reta[idx];
+			idx++;
+		}
+	}
+
+	return 0;
+
+fail:
+	return rc;
+}
+
+int
+cnxk_nix_rss_hash_update(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_rss_conf *rss_conf)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	uint8_t rss_hash_level;
+	uint32_t flowkey_cfg;
+	int rc = -EINVAL;
+	uint8_t alg_idx;
+
+	if (rss_conf->rss_key && rss_conf->rss_key_len != ROC_NIX_RSS_KEY_LEN) {
+		plt_err("Hash key size mismatch %d vs %d",
+			rss_conf->rss_key_len, ROC_NIX_RSS_KEY_LEN);
+		goto fail;
+	}
+
+	if (rss_conf->rss_key)
+		roc_nix_rss_key_set(nix, rss_conf->rss_key);
+
+	rss_hash_level = ETH_RSS_LEVEL(rss_conf->rss_hf);
+	if (rss_hash_level)
+		rss_hash_level -= 1;
+	flowkey_cfg =
+		cnxk_rss_ethdev_to_nix(dev, rss_conf->rss_hf, rss_hash_level);
+
+	rc = roc_nix_rss_flowkey_set(nix, &alg_idx, flowkey_cfg,
+				     ROC_NIX_RSS_GROUP_DEFAULT,
+				     ROC_NIX_RSS_MCAM_IDX_DEFAULT);
+	if (rc) {
+		plt_err("Failed to set RSS hash function rc=%d", rc);
+		return rc;
+	}
+
+fail:
+	return rc;
+}
+
+int
+cnxk_nix_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
+			   struct rte_eth_rss_conf *rss_conf)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	if (rss_conf->rss_key)
+		roc_nix_rss_key_get(&dev->nix, rss_conf->rss_key);
+
+	rss_conf->rss_key_len = ROC_NIX_RSS_KEY_LEN;
+	rss_conf->rss_hf = dev->ethdev_rss_hf;
+
+	return 0;
+}

@@ -330,6 +330,16 @@ uint64_t cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev);
 /* RSS */
 uint32_t cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
 				uint8_t rss_level);
+int cnxk_nix_reta_update(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size);
+int cnxk_nix_reta_query(struct rte_eth_dev *eth_dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size);
+int cnxk_nix_rss_hash_update(struct rte_eth_dev *eth_dev,
+			     struct rte_eth_rss_conf *rss_conf);
+int cnxk_nix_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
+			       struct rte_eth_rss_conf *rss_conf);
 
 /* Link */
 void cnxk_nix_toggle_flag_link_cfg(struct cnxk_eth_dev *dev, bool set);

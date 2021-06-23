@@ -109,6 +109,7 @@ parse_switch_header_type(const char *key, const char *value, void *extra_args)
 #define CNXK_FLOW_MAX_PRIORITY	"flow_max_priority"
 #define CNXK_SWITCH_HEADER_TYPE "switch_header"
 #define CNXK_RSS_TAG_AS_XOR	"tag_as_xor"
+#define CNXK_LOCK_RX_CTX	"lock_rx_ctx"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
@@ -120,6 +121,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t flow_max_priority = 3;
 	uint16_t rss_tag_as_xor = 0;
 	uint16_t scalar_enable = 0;
+	uint8_t lock_rx_ctx = 0;
 	struct rte_kvargs *kvlist;
 
 	if (devargs == NULL)
@@ -143,6 +145,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 			   &parse_switch_header_type, &switch_header_type);
 	rte_kvargs_process(kvlist, CNXK_RSS_TAG_AS_XOR, &parse_flag,
 			   &rss_tag_as_xor);
+	rte_kvargs_process(kvlist, CNXK_LOCK_RX_CTX, &parse_flag, &lock_rx_ctx);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -150,6 +153,7 @@ null_devargs:
 	dev->nix.rss_tag_as_xor = !!rss_tag_as_xor;
 	dev->nix.max_sqb_count = sqb_count;
 	dev->nix.reta_sz = reta_sz;
+	dev->nix.lock_rx_ctx = lock_rx_ctx;
 	dev->npc.flow_prealloc_size = flow_prealloc_size;
 	dev->npc.flow_max_priority = flow_max_priority;
 	dev->npc.switch_header_type = switch_header_type;
