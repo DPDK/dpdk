@@ -3278,7 +3278,7 @@ rte_flow_dynf_metadata_set(struct rte_mbuf *m, uint32_t v)
 	*RTE_FLOW_DYNF_METADATA(m) = v;
 }
 
-/*
+/**
  * Definition of a single action.
  *
  * A list of actions is terminated by a END action.
