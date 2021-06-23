@@ -10,6 +10,9 @@
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
 #include <rte_kvargs.h>
+#include <rte_mbuf.h>
+#include <rte_mbuf_pool_ops.h>
+#include <rte_mempool.h>
 
 #include "roc_api.h"
 
@@ -194,6 +197,12 @@ int cnxk_nix_remove(struct rte_pci_device *pci_dev);
 int cnxk_nix_info_get(struct rte_eth_dev *eth_dev,
 		      struct rte_eth_dev_info *dev_info);
 int cnxk_nix_configure(struct rte_eth_dev *eth_dev);
+int cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
+			    uint16_t nb_desc, uint16_t fp_rx_q_sz,
+			    const struct rte_eth_rxconf *rx_conf,
+			    struct rte_mempool *mp);
+
+uint64_t cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev);
 
 /* RSS */
 uint32_t cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,

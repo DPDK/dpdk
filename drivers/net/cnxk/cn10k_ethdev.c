@@ -4,6 +4,49 @@
 #include "cn10k_ethdev.h"
 
 static int
+cn10k_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
+			 uint16_t nb_desc, unsigned int socket,
+			 const struct rte_eth_rxconf *rx_conf,
+			 struct rte_mempool *mp)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cn10k_eth_rxq *rxq;
+	struct roc_nix_rq *rq;
+	struct roc_nix_cq *cq;
+	int rc;
+
+	RTE_SET_USED(socket);
+
+	/* CQ Errata needs min 4K ring */
+	if (dev->cq_min_4k && nb_desc < 4096)
+		nb_desc = 4096;
+
+	/* Common Rx queue setup */
+	rc = cnxk_nix_rx_queue_setup(eth_dev, qid, nb_desc,
+				     sizeof(struct cn10k_eth_rxq), rx_conf, mp);
+	if (rc)
+		return rc;
+
+	rq = &dev->rqs[qid];
+	cq = &dev->cqs[qid];
+
+	/* Update fast path queue */
+	rxq = eth_dev->data->rx_queues[qid];
+	rxq->rq = qid;
+	rxq->desc = (uintptr_t)cq->desc_base;
+	rxq->cq_door = cq->door;
+	rxq->cq_status = cq->status;
+	rxq->wdata = cq->wdata;
+	rxq->head = cq->head;
+	rxq->qmask = cq->qmask;
+
+	/* Data offset from data to start of mbuf is first_skip */
+	rxq->data_off = rq->first_skip;
+	rxq->mbuf_initializer = cnxk_nix_rxq_mbuf_setup(dev);
+	return 0;
+}
+
+static int
 cn10k_nix_configure(struct rte_eth_dev *eth_dev)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
@@ -33,6 +76,7 @@ nix_eth_dev_ops_override(void)
 
 	/* Update platform specific ops */
 	cnxk_eth_dev_ops.dev_configure = cn10k_nix_configure;
+	cnxk_eth_dev_ops.rx_queue_setup = cn10k_nix_rx_queue_setup;
 }
 
 static int

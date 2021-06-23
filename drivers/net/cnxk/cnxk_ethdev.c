@@ -37,6 +37,177 @@ nix_get_speed_capa(struct cnxk_eth_dev *dev)
 	return speed_capa;
 }
 
+uint64_t
+cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev)
+{
+	uint16_t port_id = dev->eth_dev->data->port_id;
+	struct rte_mbuf mb_def;
+	uint64_t *tmp;
+
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_off) % 8 != 0);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, refcnt) -
+				 offsetof(struct rte_mbuf, data_off) !=
+			 2);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, nb_segs) -
+				 offsetof(struct rte_mbuf, data_off) !=
+			 4);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, port) -
+				 offsetof(struct rte_mbuf, data_off) !=
+			 6);
+	mb_def.nb_segs = 1;
+	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
+	mb_def.port = port_id;
+	rte_mbuf_refcnt_set(&mb_def, 1);
+
+	/* Prevent compiler reordering: rearm_data covers previous fields */
+	rte_compiler_barrier();
+	tmp = (uint64_t *)&mb_def.rearm_data;
+
+	return *tmp;
+}
+
+int
+cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
+			uint16_t nb_desc, uint16_t fp_rx_q_sz,
+			const struct rte_eth_rxconf *rx_conf,
+			struct rte_mempool *mp)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_eth_rxq_sp *rxq_sp;
+	struct rte_mempool_ops *ops;
+	const char *platform_ops;
+	struct roc_nix_rq *rq;
+	struct roc_nix_cq *cq;
+	uint16_t first_skip;
+	int rc = -EINVAL;
+	size_t rxq_sz;
+
+	/* Sanity checks */
+	if (rx_conf->rx_deferred_start == 1) {
+		plt_err("Deferred Rx start is not supported");
+		goto fail;
+	}
+
+	platform_ops = rte_mbuf_platform_mempool_ops();
+	/* This driver needs cnxk_npa mempool ops to work */
+	ops = rte_mempool_get_ops(mp->ops_index);
+	if (strncmp(ops->name, platform_ops, RTE_MEMPOOL_OPS_NAMESIZE)) {
+		plt_err("mempool ops should be of cnxk_npa type");
+		goto fail;
+	}
+
+	if (mp->pool_id == 0) {
+		plt_err("Invalid pool_id");
+		goto fail;
+	}
+
+	/* Free memory prior to re-allocation if needed */
+	if (eth_dev->data->rx_queues[qid] != NULL) {
+		const struct eth_dev_ops *dev_ops = eth_dev->dev_ops;
+
+		plt_nix_dbg("Freeing memory prior to re-allocation %d", qid);
+		dev_ops->rx_queue_release(eth_dev->data->rx_queues[qid]);
+		eth_dev->data->rx_queues[qid] = NULL;
+	}
+
+	/* Setup ROC CQ */
+	cq = &dev->cqs[qid];
+	cq->qid = qid;
+	cq->nb_desc = nb_desc;
+	rc = roc_nix_cq_init(&dev->nix, cq);
+	if (rc) {
+		plt_err("Failed to init roc cq for rq=%d, rc=%d", qid, rc);
+		goto fail;
+	}
+
+	/* Setup ROC RQ */
+	rq = &dev->rqs[qid];
+	rq->qid = qid;
+	rq->aura_handle = mp->pool_id;
+	rq->flow_tag_width = 32;
+	rq->sso_ena = false;
+
+	/* Calculate first mbuf skip */
+	first_skip = (sizeof(struct rte_mbuf));
+	first_skip += RTE_PKTMBUF_HEADROOM;
+	first_skip += rte_pktmbuf_priv_size(mp);
+	rq->first_skip = first_skip;
+	rq->later_skip = sizeof(struct rte_mbuf);
+	rq->lpb_size = mp->elt_size;
+
+	rc = roc_nix_rq_init(&dev->nix, rq, !!eth_dev->data->dev_started);
+	if (rc) {
+		plt_err("Failed to init roc rq for rq=%d, rc=%d", qid, rc);
+		goto cq_fini;
+	}
+
+	/* Allocate and setup fast path rx queue */
+	rc = -ENOMEM;
+	rxq_sz = sizeof(struct cnxk_eth_rxq_sp) + fp_rx_q_sz;
+	rxq_sp = plt_zmalloc(rxq_sz, PLT_CACHE_LINE_SIZE);
+	if (!rxq_sp) {
+		plt_err("Failed to alloc rx queue for rq=%d", qid);
+		goto rq_fini;
+	}
+
+	/* Setup slow path fields */
+	rxq_sp->dev = dev;
+	rxq_sp->qid = qid;
+	rxq_sp->qconf.conf.rx = *rx_conf;
+	rxq_sp->qconf.nb_desc = nb_desc;
+	rxq_sp->qconf.mp = mp;
+
+	plt_nix_dbg("rq=%d pool=%s nb_desc=%d->%d", qid, mp->name, nb_desc,
+		    cq->nb_desc);
+
+	/* Store start of fast path area */
+	eth_dev->data->rx_queues[qid] = rxq_sp + 1;
+	eth_dev->data->rx_queue_state[qid] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+rq_fini:
+	rc |= roc_nix_rq_fini(rq);
+cq_fini:
+	rc |= roc_nix_cq_fini(cq);
+fail:
+	return rc;
+}
+
+static void
+cnxk_nix_rx_queue_release(void *rxq)
+{
+	struct cnxk_eth_rxq_sp *rxq_sp;
+	struct cnxk_eth_dev *dev;
+	struct roc_nix_rq *rq;
+	struct roc_nix_cq *cq;
+	uint16_t qid;
+	int rc;
+
+	if (!rxq)
+		return;
+
+	rxq_sp = cnxk_eth_rxq_to_sp(rxq);
+	dev = rxq_sp->dev;
+	qid = rxq_sp->qid;
+
+	plt_nix_dbg("Releasing rxq %u", qid);
+
+	/* Cleanup ROC RQ */
+	rq = &dev->rqs[qid];
+	rc = roc_nix_rq_fini(rq);
+	if (rc)
+		plt_err("Failed to cleanup rq, rc=%d", rc);
+
+	/* Cleanup ROC CQ */
+	cq = &dev->cqs[qid];
+	rc = roc_nix_cq_fini(cq);
+	if (rc)
+		plt_err("Failed to cleanup cq, rc=%d", rc);
+
+	/* Finally free fast path area */
+	plt_free(rxq_sp);
+}
+
 uint32_t
 cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
 		       uint8_t rss_level)
@@ -602,6 +773,7 @@ fail_configure:
 struct eth_dev_ops cnxk_eth_dev_ops = {
 	.dev_infos_get = cnxk_nix_info_get,
 	.link_update = cnxk_nix_link_update,
+	.rx_queue_release = cnxk_nix_rx_queue_release,
 };
 
 static int
