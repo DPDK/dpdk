@@ -4,6 +4,38 @@
 #include "cn10k_ethdev.h"
 
 static int
+cn10k_nix_configure(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	int rc;
+
+	/* Common nix configure */
+	rc = cnxk_nix_configure(eth_dev);
+	if (rc)
+		return rc;
+
+	plt_nix_dbg("Configured port%d platform specific rx_offload_flags=%x"
+		    " tx_offload_flags=0x%x",
+		    eth_dev->data->port_id, dev->rx_offload_flags,
+		    dev->tx_offload_flags);
+	return 0;
+}
+
+/* Update platform specific eth dev ops */
+static void
+nix_eth_dev_ops_override(void)
+{
+	static int init_once;
+
+	if (init_once)
+		return;
+	init_once = 1;
+
+	/* Update platform specific ops */
+	cnxk_eth_dev_ops.dev_configure = cn10k_nix_configure;
+}
+
+static int
 cn10k_nix_remove(struct rte_pci_device *pci_dev)
 {
 	return cnxk_nix_remove(pci_dev);
@@ -25,6 +57,8 @@ cn10k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		plt_err("Failed to initialize platform model, rc=%d", rc);
 		return rc;
 	}
+
+	nix_eth_dev_ops_override();
 
 	/* Common probe */
 	rc = cnxk_nix_probe(pci_drv, pci_dev);

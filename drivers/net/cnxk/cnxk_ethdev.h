@@ -65,9 +65,49 @@
 	 DEV_RX_OFFLOAD_JUMBO_FRAME | DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |         \
 	 DEV_RX_OFFLOAD_RSS_HASH)
 
+#define RSS_IPV4_ENABLE                                                        \
+	(ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 | ETH_RSS_NONFRAG_IPV4_UDP |         \
+	 ETH_RSS_NONFRAG_IPV4_TCP | ETH_RSS_NONFRAG_IPV4_SCTP)
+
+#define RSS_IPV6_ENABLE                                                        \
+	(ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 | ETH_RSS_NONFRAG_IPV6_UDP |         \
+	 ETH_RSS_NONFRAG_IPV6_TCP | ETH_RSS_NONFRAG_IPV6_SCTP)
+
+#define RSS_IPV6_EX_ENABLE                                                     \
+	(ETH_RSS_IPV6_EX | ETH_RSS_IPV6_TCP_EX | ETH_RSS_IPV6_UDP_EX)
+
+#define RSS_MAX_LEVELS 3
+
+#define RSS_IPV4_INDEX 0
+#define RSS_IPV6_INDEX 1
+#define RSS_TCP_INDEX  2
+#define RSS_UDP_INDEX  3
+#define RSS_SCTP_INDEX 4
+#define RSS_DMAC_INDEX 5
+
+struct cnxk_eth_qconf {
+	union {
+		struct rte_eth_txconf tx;
+		struct rte_eth_rxconf rx;
+	} conf;
+	struct rte_mempool *mp;
+	uint16_t nb_desc;
+	uint8_t valid;
+};
+
 struct cnxk_eth_dev {
 	/* ROC NIX */
 	struct roc_nix nix;
+
+	/* ROC RQs, SQs and CQs */
+	struct roc_nix_rq *rqs;
+	struct roc_nix_sq *sqs;
+	struct roc_nix_cq *cqs;
+
+	/* Configured queue count */
+	uint16_t nb_rxq;
+	uint16_t nb_txq;
+	uint8_t configured;
 
 	/* Max macfilter entries */
 	uint8_t max_mac_entries;
@@ -90,15 +130,55 @@ struct cnxk_eth_dev {
 	uint64_t rx_offload_capa;
 	uint64_t tx_offload_capa;
 	uint32_t speed_capa;
+	/* Configured Rx and Tx offloads */
+	uint64_t rx_offloads;
+	uint64_t tx_offloads;
+	/* Platform specific offload flags */
+	uint16_t rx_offload_flags;
+	uint16_t tx_offload_flags;
+
+	/* ETHDEV RSS HF bitmask */
+	uint64_t ethdev_rss_hf;
+
+	/* Saved qconf before lf realloc */
+	struct cnxk_eth_qconf *tx_qconf;
+	struct cnxk_eth_qconf *rx_qconf;
 
 	/* Default mac address */
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
+
+	/* LSO Tunnel format indices */
+	uint64_t lso_tun_fmt;
 };
+
+struct cnxk_eth_rxq_sp {
+	struct cnxk_eth_dev *dev;
+	struct cnxk_eth_qconf qconf;
+	uint16_t qid;
+} __plt_cache_aligned;
+
+struct cnxk_eth_txq_sp {
+	struct cnxk_eth_dev *dev;
+	struct cnxk_eth_qconf qconf;
+	uint16_t qid;
+} __plt_cache_aligned;
 
 static inline struct cnxk_eth_dev *
 cnxk_eth_pmd_priv(struct rte_eth_dev *eth_dev)
 {
 	return eth_dev->data->dev_private;
+}
+
+static inline struct cnxk_eth_rxq_sp *
+cnxk_eth_rxq_to_sp(void *__rxq)
+{
+	return ((struct cnxk_eth_rxq_sp *)__rxq) - 1;
+}
+
+static inline struct cnxk_eth_txq_sp *
+cnxk_eth_txq_to_sp(void *__txq)
+{
+	return ((struct cnxk_eth_txq_sp *)__txq) - 1;
 }
 
 /* Common ethdev ops */
@@ -110,6 +190,11 @@ int cnxk_nix_probe(struct rte_pci_driver *pci_drv,
 int cnxk_nix_remove(struct rte_pci_device *pci_dev);
 int cnxk_nix_info_get(struct rte_eth_dev *eth_dev,
 		      struct rte_eth_dev_info *dev_info);
+int cnxk_nix_configure(struct rte_eth_dev *eth_dev);
+
+/* RSS */
+uint32_t cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
+				uint8_t rss_level);
 
 /* Devargs */
 int cnxk_ethdev_parse_devargs(struct rte_devargs *devargs,
