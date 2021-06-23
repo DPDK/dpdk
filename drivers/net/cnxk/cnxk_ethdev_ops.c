@@ -617,3 +617,14 @@ cnxk_nix_rx_queue_intr_disable(struct rte_eth_dev *eth_dev,
 	roc_nix_rx_queue_intr_disable(&dev->nix, rx_queue_id);
 	return 0;
 }
+
+int
+cnxk_nix_pool_ops_supported(struct rte_eth_dev *eth_dev, const char *pool)
+{
+	RTE_SET_USED(eth_dev);
+
+	if (!strcmp(pool, rte_mbuf_platform_mempool_ops()))
+		return 0;
+
+	return -ENOTSUP;
+}
