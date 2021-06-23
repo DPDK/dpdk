@@ -206,6 +206,7 @@ npc_update_parse_state(struct npc_parse_state *pst,
 		       uint8_t flags)
 {
 	struct npc_lid_lt_xtract_info *xinfo;
+	struct roc_npc_flow_dump_data *dump;
 	struct npc_xtract_info *lfinfo;
 	int intf, lf_cfg;
 	int i, j, rc = 0;
@@ -248,6 +249,9 @@ npc_update_parse_state(struct npc_parse_state *pst,
 	}
 
 done:
+	dump = &pst->flow->dump_data[pst->flow->num_patterns++];
+	dump->lid = lid;
+	dump->ltype = lt;
 	pst->pattern++;
 	return 0;
 }

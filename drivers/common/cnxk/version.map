@@ -182,6 +182,8 @@ INTERNAL {
 	roc_npc_fini;
 	roc_npc_flow_create;
 	roc_npc_flow_destroy;
+	roc_npc_flow_dump;
+	roc_npc_flow_mcam_dump;
 	roc_npc_flow_parse;
 	roc_npc_get_low_priority_mcam;
 	roc_npc_init;

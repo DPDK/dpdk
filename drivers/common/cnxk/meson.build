@@ -40,6 +40,7 @@ sources = files(
         'roc_npa_irq.c',
         'roc_npc.c',
         'roc_npc_mcam.c',
+        'roc_npc_mcam_dump.c',
         'roc_npc_parse.c',
         'roc_npc_utils.c',
         'roc_platform.c',

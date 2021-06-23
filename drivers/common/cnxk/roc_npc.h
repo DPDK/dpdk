@@ -90,6 +90,11 @@ struct roc_npc_attr {
 	uint32_t reserved : 30; /**< Reserved, must be zero. */
 };
 
+struct roc_npc_flow_dump_data {
+	uint8_t lid;
+	uint16_t ltype;
+};
+
 struct roc_npc_flow {
 	uint8_t nix_intf;
 	uint8_t enable;
@@ -102,6 +107,9 @@ struct roc_npc_flow {
 	uint64_t mcam_mask[ROC_NPC_MAX_MCAM_WIDTH_DWORDS];
 	uint64_t npc_action;
 	uint64_t vtag_action;
+#define ROC_NPC_MAX_FLOW_PATTERNS 32
+	struct roc_npc_flow_dump_data dump_data[ROC_NPC_MAX_FLOW_PATTERNS];
+	uint16_t num_patterns;
 
 	TAILQ_ENTRY(roc_npc_flow) next;
 };
@@ -185,5 +193,7 @@ int __roc_api roc_npc_mcam_clear_counter(struct roc_npc *roc_npc,
 					 uint32_t ctr_id);
 
 int __roc_api roc_npc_mcam_free_all_resources(struct roc_npc *roc_npc);
-
+void __roc_api roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc);
+void __roc_api roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
+				      struct roc_npc_flow *mcam);
 #endif /* _ROC_NPC_H_ */

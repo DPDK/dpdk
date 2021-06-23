@@ -870,3 +870,23 @@ roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 	plt_free(flow);
 	return 0;
 }
+
+void
+roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	struct roc_npc_flow *flow_iter;
+	struct npc_flow_list *list;
+	uint32_t max_prio, i;
+
+	max_prio = npc->flow_max_priority;
+
+	for (i = 0; i < max_prio; i++) {
+		list = &npc->flow_list[i];
+
+		/* List in ascending order of mcam entries */
+		TAILQ_FOREACH(flow_iter, list, next) {
+			roc_npc_flow_mcam_dump(file, roc_npc, flow_iter);
+		}
+	}
+}

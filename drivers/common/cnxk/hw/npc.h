@@ -193,6 +193,7 @@ enum npc_kpu_lb_ltype {
 	NPC_LT_LB_EXDSA,
 	NPC_LT_LB_EXDSA_VLAN,
 	NPC_LT_LB_FDSA,
+	NPC_LT_LB_VLAN_EXDSA,
 	NPC_LT_LB_CUSTOM0 = 0xE,
 	NPC_LT_LB_CUSTOM1 = 0xF,
 };
@@ -208,6 +209,7 @@ enum npc_kpu_lc_ltype {
 	NPC_LT_LC_MPLS,
 	NPC_LT_LC_NSH,
 	NPC_LT_LC_FCOE,
+	NPC_LT_LC_NGIO,
 	NPC_LT_LC_CUSTOM0 = 0xE,
 	NPC_LT_LC_CUSTOM1 = 0xF,
 };

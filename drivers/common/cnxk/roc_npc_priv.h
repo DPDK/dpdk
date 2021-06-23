@@ -47,7 +47,7 @@
 #define NPC_RVUPF_MAX_9XXX 0x10 /* HRM: RVU_PRIV_CONST */
 #define NPC_RVUPF_MAX_10XX 0x20 /* HRM: RVU_PRIV_CONST */
 #define NPC_NIXLF_MAX	   0x80 /* HRM: NIX_AF_CONST2 */
-#define NPC_MCAME_PER_PF   2	/* DRV: RSVD_MCAM_ENTRIES_PER_PF */
+#define NPC_MCAME_PER_PF   3	/* DRV: RSVD_MCAM_ENTRIES_PER_PF */
 #define NPC_MCAME_PER_LF   1	/* DRV: RSVD_MCAM_ENTRIES_PER_NIXLF */
 #define NPC_MCAME_RESVD_9XXX                                                   \
 	(NPC_NIXLF_MAX * NPC_MCAME_PER_LF +                                    \
