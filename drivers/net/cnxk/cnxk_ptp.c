@@ -56,6 +56,69 @@ fail:
 }
 
 int
+cnxk_nix_timesync_read_time(struct rte_eth_dev *eth_dev, struct timespec *ts)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	uint64_t clock, ns;
+	int rc;
+
+	rc = roc_nix_ptp_clock_read(nix, &clock, NULL, false);
+	if (rc)
+		return rc;
+
+	ns = rte_timecounter_update(&dev->systime_tc, clock);
+	*ts = rte_ns_to_timespec(ns);
+	return 0;
+}
+
+int
+cnxk_nix_timesync_write_time(struct rte_eth_dev *eth_dev,
+			     const struct timespec *ts)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	uint64_t ns;
+
+	ns = rte_timespec_to_ns(ts);
+	/* Set the time counters to a new value. */
+	dev->systime_tc.nsec = ns;
+	dev->rx_tstamp_tc.nsec = ns;
+	dev->tx_tstamp_tc.nsec = ns;
+
+	return 0;
+}
+
+int
+cnxk_nix_timesync_adjust_time(struct rte_eth_dev *eth_dev, int64_t delta)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	int rc;
+
+	/* Adjust the frequent to make tics increments in 10^9 tics per sec */
+	if (delta < ROC_NIX_PTP_FREQ_ADJUST &&
+	    delta > -ROC_NIX_PTP_FREQ_ADJUST) {
+		rc = roc_nix_ptp_sync_time_adjust(nix, delta);
+		if (rc)
+			return rc;
+
+		/* Since the frequency of PTP comp register is tuned, delta and
+		 * freq mult calculation for deriving PTP_HI from timestamp
+		 * counter should be done again.
+		 */
+		rc = cnxk_nix_tsc_convert(dev);
+		if (rc)
+			plt_err("Failed to calculate delta and freq mult");
+	}
+
+	dev->systime_tc.nsec += delta;
+	dev->rx_tstamp_tc.nsec += delta;
+	dev->tx_tstamp_tc.nsec += delta;
+
+	return 0;
+}
+
+int
 cnxk_nix_timesync_read_rx_timestamp(struct rte_eth_dev *eth_dev,
 				    struct timespec *timestamp, uint32_t flags)
 {
