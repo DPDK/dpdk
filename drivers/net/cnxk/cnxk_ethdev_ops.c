@@ -300,6 +300,16 @@ cnxk_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 }
 
 int
+cnxk_nix_flow_ops_get(struct rte_eth_dev *eth_dev,
+		      const struct rte_flow_ops **ops)
+{
+	RTE_SET_USED(eth_dev);
+
+	*ops = &cnxk_flow_ops;
+	return 0;
+}
+
+int
 cnxk_nix_mac_addr_set(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);

@@ -322,9 +322,37 @@ cnxk_flow_isolate(struct rte_eth_dev *eth_dev __rte_unused,
 	return -rte_errno;
 }
 
+static int
+cnxk_flow_dev_dump(struct rte_eth_dev *eth_dev, struct rte_flow *flow,
+		   FILE *file, struct rte_flow_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_npc *npc = &dev->npc;
+
+	if (file == NULL) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Invalid file");
+		return -rte_errno;
+	}
+
+	if (flow != NULL) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL,
+				   "Invalid argument");
+		return -EINVAL;
+	}
+
+	roc_npc_flow_dump(file, npc);
+
+	return 0;
+}
+
 struct rte_flow_ops cnxk_flow_ops = {
 	.validate = cnxk_flow_validate,
 	.flush = cnxk_flow_flush,
 	.query = cnxk_flow_query,
 	.isolate = cnxk_flow_isolate,
+	.dev_dump = cnxk_flow_dev_dump,
 };

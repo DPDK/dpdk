@@ -819,6 +819,8 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto fail_configure;
 	}
 
+	dev->npc.channel = roc_nix_get_base_chan(nix);
+
 	nb_rxq = data->nb_rx_queues;
 	nb_txq = data->nb_tx_queues;
 	rc = -ENOMEM;
@@ -1223,6 +1225,7 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.rxq_info_get = cnxk_nix_rxq_info_get,
 	.txq_info_get = cnxk_nix_txq_info_get,
 	.tx_done_cleanup = cnxk_nix_tx_done_cleanup,
+	.flow_ops_get = cnxk_nix_flow_ops_get,
 };
 
 static int

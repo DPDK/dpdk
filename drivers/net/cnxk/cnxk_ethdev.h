@@ -273,7 +273,8 @@ int cnxk_nix_rx_queue_intr_disable(struct rte_eth_dev *eth_dev,
 				   uint16_t rx_queue_id);
 int cnxk_nix_pool_ops_supported(struct rte_eth_dev *eth_dev, const char *pool);
 int cnxk_nix_tx_done_cleanup(void *txq, uint32_t free_cnt);
-
+int cnxk_nix_flow_ops_get(struct rte_eth_dev *eth_dev,
+			  const struct rte_flow_ops **ops);
 int cnxk_nix_configure(struct rte_eth_dev *eth_dev);
 int cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			    uint16_t nb_desc, uint16_t fp_tx_q_sz,

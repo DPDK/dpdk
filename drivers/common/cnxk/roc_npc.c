@@ -1009,6 +1009,8 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	struct npc_flow_list *list;
 	int rc;
 
+	npc->channel = roc_npc->channel;
+
 	flow = plt_zmalloc(sizeof(*flow), 0);
 	if (flow == NULL) {
 		*errcode = NPC_ERR_NO_MEM;
