@@ -5,6 +5,7 @@
 #include <inttypes.h>
 
 #include <rte_common.h>
+#include <rte_cryptodev.h>
 #include <rte_debug.h>
 #include <rte_dev.h>
 #include <rte_eal.h>
@@ -19,6 +20,7 @@
 
 #include "ssovf_evdev.h"
 #include "timvf_evdev.h"
+#include "otx_cryptodev_hw_access.h"
 
 static uint8_t timvf_enable_stats;
 
@@ -725,6 +727,67 @@ ssovf_timvf_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 			timvf_enable_stats);
 }
 
+static int
+ssovf_crypto_adapter_caps_get(const struct rte_eventdev *dev,
+			      const struct rte_cryptodev *cdev, uint32_t *caps)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(cdev);
+
+	*caps = 0;
+
+	return 0;
+}
+
+static int
+ssovf_crypto_adapter_qp_add(const struct rte_eventdev *dev,
+			    const struct rte_cryptodev *cdev,
+			    int32_t queue_pair_id,
+			    const struct rte_event *event)
+{
+	struct cpt_instance *qp;
+	uint8_t qp_id;
+
+	RTE_SET_USED(event);
+
+	if (queue_pair_id == -1) {
+		for (qp_id = 0; qp_id < cdev->data->nb_queue_pairs; qp_id++) {
+			qp = cdev->data->queue_pairs[qp_id];
+			qp->ca_enabled = 1;
+		}
+	} else {
+		qp = cdev->data->queue_pairs[queue_pair_id];
+		qp->ca_enabled = 1;
+	}
+
+	ssovf_fastpath_fns_set((struct rte_eventdev *)(uintptr_t)dev);
+
+	return 0;
+}
+
+static int
+ssovf_crypto_adapter_qp_del(const struct rte_eventdev *dev,
+			    const struct rte_cryptodev *cdev,
+			    int32_t queue_pair_id)
+{
+	struct cpt_instance *qp;
+	uint8_t qp_id;
+
+	RTE_SET_USED(dev);
+
+	if (queue_pair_id == -1) {
+		for (qp_id = 0; qp_id < cdev->data->nb_queue_pairs; qp_id++) {
+			qp = cdev->data->queue_pairs[qp_id];
+			qp->ca_enabled = 0;
+		}
+	} else {
+		qp = cdev->data->queue_pairs[queue_pair_id];
+		qp->ca_enabled = 0;
+	}
+
+	return 0;
+}
+
 /* Initialize and register event driver with DPDK Application */
 static struct rte_eventdev_ops ssovf_ops = {
 	.dev_infos_get    = ssovf_info_get,
@@ -754,6 +817,10 @@ static struct rte_eventdev_ops ssovf_ops = {
 	.eth_tx_adapter_stop = ssovf_eth_tx_adapter_stop,
 
 	.timer_adapter_caps_get = ssovf_timvf_caps_get,
+
+	.crypto_adapter_caps_get = ssovf_crypto_adapter_caps_get,
+	.crypto_adapter_queue_pair_add = ssovf_crypto_adapter_qp_add,
+	.crypto_adapter_queue_pair_del = ssovf_crypto_adapter_qp_del,
 
 	.dev_selftest = test_eventdev_octeontx,
 

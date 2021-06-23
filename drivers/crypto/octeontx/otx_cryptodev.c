@@ -14,6 +14,10 @@
 
 #include "cpt_pmd_logs.h"
 
+/* Device ID */
+#define PCI_VENDOR_ID_CAVIUM		0x177d
+#define CPT_81XX_PCI_VF_DEVICE_ID	0xa041
+
 uint8_t otx_cryptodev_driver_id;
 
 static struct rte_pci_id pci_id_cpt_table[] = {

@@ -12,3 +12,4 @@ sources = files(
 )
 
 deps += ['common_octeontx', 'mempool_octeontx', 'bus_vdev', 'net_octeontx']
+deps += ['crypto_octeontx']

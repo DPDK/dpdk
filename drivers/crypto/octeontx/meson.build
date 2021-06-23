@@ -7,6 +7,7 @@ endif
 
 deps += ['bus_pci']
 deps += ['common_cpt']
+deps += ['eventdev']
 
 sources = files(
         'otx_cryptodev.c',
