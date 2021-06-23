@@ -1204,6 +1204,8 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.xstats_reset = cnxk_nix_xstats_reset,
 	.xstats_get_by_id = cnxk_nix_xstats_get_by_id,
 	.xstats_get_names_by_id = cnxk_nix_xstats_get_names_by_id,
+	.rxq_info_get = cnxk_nix_rxq_info_get,
+	.txq_info_get = cnxk_nix_txq_info_get,
 };
 
 static int

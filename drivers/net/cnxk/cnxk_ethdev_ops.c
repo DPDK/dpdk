@@ -628,3 +628,33 @@ cnxk_nix_pool_ops_supported(struct rte_eth_dev *eth_dev, const char *pool)
 
 	return -ENOTSUP;
 }
+
+void
+cnxk_nix_rxq_info_get(struct rte_eth_dev *eth_dev, uint16_t qid,
+		      struct rte_eth_rxq_info *qinfo)
+{
+	void *rxq = eth_dev->data->rx_queues[qid];
+	struct cnxk_eth_rxq_sp *rxq_sp = cnxk_eth_rxq_to_sp(rxq);
+
+	memset(qinfo, 0, sizeof(*qinfo));
+
+	qinfo->mp = rxq_sp->qconf.mp;
+	qinfo->scattered_rx = eth_dev->data->scattered_rx;
+	qinfo->nb_desc = rxq_sp->qconf.nb_desc;
+
+	memcpy(&qinfo->conf, &rxq_sp->qconf.conf.rx, sizeof(qinfo->conf));
+}
+
+void
+cnxk_nix_txq_info_get(struct rte_eth_dev *eth_dev, uint16_t qid,
+		      struct rte_eth_txq_info *qinfo)
+{
+	void *txq = eth_dev->data->tx_queues[qid];
+	struct cnxk_eth_txq_sp *txq_sp = cnxk_eth_txq_to_sp(txq);
+
+	memset(qinfo, 0, sizeof(*qinfo));
+
+	qinfo->nb_desc = txq_sp->qconf.nb_desc;
+
+	memcpy(&qinfo->conf, &txq_sp->qconf.conf.tx, sizeof(qinfo->conf));
+}
