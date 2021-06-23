@@ -1113,6 +1113,8 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.promiscuous_disable = cnxk_nix_promisc_disable,
 	.allmulticast_enable = cnxk_nix_allmulticast_enable,
 	.allmulticast_disable = cnxk_nix_allmulticast_disable,
+	.rx_burst_mode_get = cnxk_nix_rx_burst_mode_get,
+	.tx_burst_mode_get = cnxk_nix_tx_burst_mode_get,
 };
 
 static int

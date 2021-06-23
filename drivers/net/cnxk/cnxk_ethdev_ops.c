@@ -72,6 +72,133 @@ cnxk_nix_info_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *devinfo)
 }
 
 int
+cnxk_nix_rx_burst_mode_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
+			   struct rte_eth_burst_mode *mode)
+{
+	ssize_t bytes = 0, str_size = RTE_ETH_BURST_MODE_INFO_SIZE, rc;
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	const struct burst_info {
+		uint64_t flags;
+		const char *output;
+	} rx_offload_map[] = {
+		{DEV_RX_OFFLOAD_VLAN_STRIP, " VLAN Strip,"},
+		{DEV_RX_OFFLOAD_IPV4_CKSUM, " Inner IPv4 Checksum,"},
+		{DEV_RX_OFFLOAD_UDP_CKSUM, " UDP Checksum,"},
+		{DEV_RX_OFFLOAD_TCP_CKSUM, " TCP Checksum,"},
+		{DEV_RX_OFFLOAD_TCP_LRO, " TCP LRO,"},
+		{DEV_RX_OFFLOAD_QINQ_STRIP, " QinQ VLAN Strip,"},
+		{DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM, " Outer IPv4 Checksum,"},
+		{DEV_RX_OFFLOAD_MACSEC_STRIP, " MACsec Strip,"},
+		{DEV_RX_OFFLOAD_HEADER_SPLIT, " Header Split,"},
+		{DEV_RX_OFFLOAD_VLAN_FILTER, " VLAN Filter,"},
+		{DEV_RX_OFFLOAD_VLAN_EXTEND, " VLAN Extend,"},
+		{DEV_RX_OFFLOAD_JUMBO_FRAME, " Jumbo Frame,"},
+		{DEV_RX_OFFLOAD_SCATTER, " Scattered,"},
+		{DEV_RX_OFFLOAD_TIMESTAMP, " Timestamp,"},
+		{DEV_RX_OFFLOAD_SECURITY, " Security,"},
+		{DEV_RX_OFFLOAD_KEEP_CRC, " Keep CRC,"},
+		{DEV_RX_OFFLOAD_SCTP_CKSUM, " SCTP,"},
+		{DEV_RX_OFFLOAD_OUTER_UDP_CKSUM, " Outer UDP Checksum,"},
+		{DEV_RX_OFFLOAD_RSS_HASH, " RSS,"}
+	};
+	static const char *const burst_mode[] = {"Vector Neon, Rx Offloads:",
+						 "Scalar, Rx Offloads:"
+	};
+	uint32_t i;
+
+	PLT_SET_USED(queue_id);
+
+	/* Update burst mode info */
+	rc = rte_strscpy(mode->info + bytes, burst_mode[dev->scalar_ena],
+			 str_size - bytes);
+	if (rc < 0)
+		goto done;
+
+	bytes += rc;
+
+	/* Update Rx offload info */
+	for (i = 0; i < RTE_DIM(rx_offload_map); i++) {
+		if (dev->rx_offloads & rx_offload_map[i].flags) {
+			rc = rte_strscpy(mode->info + bytes,
+					 rx_offload_map[i].output,
+					 str_size - bytes);
+			if (rc < 0)
+				goto done;
+
+			bytes += rc;
+		}
+	}
+
+done:
+	return 0;
+}
+
+int
+cnxk_nix_tx_burst_mode_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
+			   struct rte_eth_burst_mode *mode)
+{
+	ssize_t bytes = 0, str_size = RTE_ETH_BURST_MODE_INFO_SIZE, rc;
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	const struct burst_info {
+		uint64_t flags;
+		const char *output;
+	} tx_offload_map[] = {
+		{DEV_TX_OFFLOAD_VLAN_INSERT, " VLAN Insert,"},
+		{DEV_TX_OFFLOAD_IPV4_CKSUM, " Inner IPv4 Checksum,"},
+		{DEV_TX_OFFLOAD_UDP_CKSUM, " UDP Checksum,"},
+		{DEV_TX_OFFLOAD_TCP_CKSUM, " TCP Checksum,"},
+		{DEV_TX_OFFLOAD_SCTP_CKSUM, " SCTP Checksum,"},
+		{DEV_TX_OFFLOAD_TCP_TSO, " TCP TSO,"},
+		{DEV_TX_OFFLOAD_UDP_TSO, " UDP TSO,"},
+		{DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM, " Outer IPv4 Checksum,"},
+		{DEV_TX_OFFLOAD_QINQ_INSERT, " QinQ VLAN Insert,"},
+		{DEV_TX_OFFLOAD_VXLAN_TNL_TSO, " VXLAN Tunnel TSO,"},
+		{DEV_TX_OFFLOAD_GRE_TNL_TSO, " GRE Tunnel TSO,"},
+		{DEV_TX_OFFLOAD_IPIP_TNL_TSO, " IP-in-IP Tunnel TSO,"},
+		{DEV_TX_OFFLOAD_GENEVE_TNL_TSO, " Geneve Tunnel TSO,"},
+		{DEV_TX_OFFLOAD_MACSEC_INSERT, " MACsec Insert,"},
+		{DEV_TX_OFFLOAD_MT_LOCKFREE, " Multi Thread Lockless Tx,"},
+		{DEV_TX_OFFLOAD_MULTI_SEGS, " Scattered,"},
+		{DEV_TX_OFFLOAD_MBUF_FAST_FREE, " H/W MBUF Free,"},
+		{DEV_TX_OFFLOAD_SECURITY, " Security,"},
+		{DEV_TX_OFFLOAD_UDP_TNL_TSO, " UDP Tunnel TSO,"},
+		{DEV_TX_OFFLOAD_IP_TNL_TSO, " IP Tunnel TSO,"},
+		{DEV_TX_OFFLOAD_OUTER_UDP_CKSUM, " Outer UDP Checksum,"},
+		{DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP, " Timestamp,"}
+	};
+	static const char *const burst_mode[] = {"Vector Neon, Tx Offloads:",
+						 "Scalar, Tx Offloads:"
+	};
+	uint32_t i;
+
+	PLT_SET_USED(queue_id);
+
+	/* Update burst mode info */
+	rc = rte_strscpy(mode->info + bytes, burst_mode[dev->scalar_ena],
+			 str_size - bytes);
+	if (rc < 0)
+		goto done;
+
+	bytes += rc;
+
+	/* Update Tx offload info */
+	for (i = 0; i < RTE_DIM(tx_offload_map); i++) {
+		if (dev->tx_offloads & tx_offload_map[i].flags) {
+			rc = rte_strscpy(mode->info + bytes,
+					 tx_offload_map[i].output,
+					 str_size - bytes);
+			if (rc < 0)
+				goto done;
+
+			bytes += rc;
+		}
+	}
+
+done:
+	return 0;
+}
+
+int
 cnxk_nix_mac_addr_set(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);

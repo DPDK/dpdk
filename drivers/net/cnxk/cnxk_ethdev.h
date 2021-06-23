@@ -234,6 +234,10 @@ int cnxk_nix_allmulticast_enable(struct rte_eth_dev *eth_dev);
 int cnxk_nix_allmulticast_disable(struct rte_eth_dev *eth_dev);
 int cnxk_nix_info_get(struct rte_eth_dev *eth_dev,
 		      struct rte_eth_dev_info *dev_info);
+int cnxk_nix_rx_burst_mode_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
+			       struct rte_eth_burst_mode *mode);
+int cnxk_nix_tx_burst_mode_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
+			       struct rte_eth_burst_mode *mode);
 int cnxk_nix_configure(struct rte_eth_dev *eth_dev);
 int cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			    uint16_t nb_desc, uint16_t fp_tx_q_sz,
