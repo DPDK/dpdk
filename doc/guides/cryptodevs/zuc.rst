@@ -77,9 +77,10 @@ and the external crypto libraries supported by them:
    DPDK version   Crypto library version
    =============  ================================
    16.11 - 19.11  LibSSO ZUC
-   20.02+         Multi-buffer library 0.53 - 1.0
+   20.02+         Multi-buffer library 0.53 - 1.0*
    =============  ================================
 
+\* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.
 
 Initialization
 --------------
