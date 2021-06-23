@@ -383,9 +383,10 @@ next_slot:
 			if (mbuf != mbuf_head)
 				rte_pktmbuf_pkt_len(mbuf_head) += cp_len;
 
-			memcpy(rte_pktmbuf_mtod_offset(mbuf, void *, dst_off),
-			       (uint8_t *)memif_get_buffer(proc_private, d0) + src_off,
-			       cp_len);
+			rte_memcpy(rte_pktmbuf_mtod_offset(mbuf, void *,
+							   dst_off),
+				(uint8_t *)memif_get_buffer(proc_private, d0) +
+				src_off, cp_len);
 
 			src_off += cp_len;
 			dst_off += cp_len;
@@ -644,9 +645,10 @@ next_in_chain:
 			}
 			cp_len = RTE_MIN(dst_len, src_len);
 
-			memcpy((uint8_t *)memif_get_buffer(proc_private, d0) + dst_off,
-			       rte_pktmbuf_mtod_offset(mbuf, void *, src_off),
-			       cp_len);
+			rte_memcpy((uint8_t *)memif_get_buffer(proc_private,
+							       d0) + dst_off,
+				rte_pktmbuf_mtod_offset(mbuf, void *, src_off),
+				cp_len);
 
 			mq->n_bytes += cp_len;
 			src_off += cp_len;
