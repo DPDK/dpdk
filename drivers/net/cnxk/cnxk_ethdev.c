@@ -37,6 +37,50 @@ nix_get_speed_capa(struct cnxk_eth_dev *dev)
 	return speed_capa;
 }
 
+static void
+nix_enable_mseg_on_jumbo(struct cnxk_eth_rxq_sp *rxq)
+{
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	struct rte_eth_dev *eth_dev;
+	struct cnxk_eth_dev *dev;
+	uint32_t buffsz;
+
+	dev = rxq->dev;
+	eth_dev = dev->eth_dev;
+
+	/* Get rx buffer size */
+	mbp_priv = rte_mempool_get_priv(rxq->qconf.mp);
+	buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
+
+	if (eth_dev->data->dev_conf.rxmode.max_rx_pkt_len > buffsz) {
+		dev->rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
+		dev->tx_offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+	}
+}
+
+static int
+nix_recalc_mtu(struct rte_eth_dev *eth_dev)
+{
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct cnxk_eth_rxq_sp *rxq;
+	uint16_t mtu;
+	int rc;
+
+	rxq = ((struct cnxk_eth_rxq_sp *)data->rx_queues[0]) - 1;
+	/* Setup scatter mode if needed by jumbo */
+	nix_enable_mseg_on_jumbo(rxq);
+
+	/* Setup MTU based on max_rx_pkt_len */
+	mtu = data->dev_conf.rxmode.max_rx_pkt_len - CNXK_NIX_L2_OVERHEAD +
+				CNXK_NIX_MAX_VTAG_ACT_SIZE;
+
+	rc = cnxk_nix_mtu_set(eth_dev, mtu);
+	if (rc)
+		plt_err("Failed to set default MTU size, rc=%d", rc);
+
+	return rc;
+}
+
 uint64_t
 cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev)
 {
@@ -1002,6 +1046,12 @@ cnxk_nix_dev_start(struct rte_eth_dev *eth_dev)
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	int rc, i;
 
+	if (eth_dev->data->nb_rx_queues != 0) {
+		rc = nix_recalc_mtu(eth_dev);
+		if (rc)
+			return rc;
+	}
+
 	/* Start rx queues */
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		rc = cnxk_nix_rx_queue_start(eth_dev, i);
@@ -1046,6 +1096,7 @@ rx_disable:
 
 /* CNXK platform independent eth dev ops */
 struct eth_dev_ops cnxk_eth_dev_ops = {
+	.mtu_set = cnxk_nix_mtu_set,
 	.mac_addr_set = cnxk_nix_mac_addr_set,
 	.dev_infos_get = cnxk_nix_info_get,
 	.link_update = cnxk_nix_link_update,

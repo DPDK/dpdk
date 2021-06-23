@@ -28,7 +28,9 @@
 #define CNXK_NIX_MAX_VTAG_ACT_SIZE (4 * CNXK_NIX_MAX_VTAG_INS)
 
 /* ETH_HLEN+ETH_FCS+2*VLAN_HLEN */
-#define CNXK_NIX_L2_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + 8)
+#define CNXK_NIX_L2_OVERHEAD (RTE_ETHER_HDR_LEN + \
+			      RTE_ETHER_CRC_LEN + \
+			      CNXK_NIX_MAX_VTAG_ACT_SIZE)
 
 #define CNXK_NIX_RX_MIN_DESC	    16
 #define CNXK_NIX_RX_MIN_DESC_ALIGN  16
@@ -218,6 +220,7 @@ extern struct eth_dev_ops cnxk_eth_dev_ops;
 int cnxk_nix_probe(struct rte_pci_driver *pci_drv,
 		   struct rte_pci_device *pci_dev);
 int cnxk_nix_remove(struct rte_pci_device *pci_dev);
+int cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu);
 int cnxk_nix_mac_addr_set(struct rte_eth_dev *eth_dev,
 			  struct rte_ether_addr *addr);
 int cnxk_nix_info_get(struct rte_eth_dev *eth_dev,
