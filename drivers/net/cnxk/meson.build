@@ -14,6 +14,7 @@ sources = files(
         'cnxk_ethdev_ops.c',
         'cnxk_link.c',
         'cnxk_lookup.c',
+        'cnxk_stats.c',
 )
 
 # CN9K

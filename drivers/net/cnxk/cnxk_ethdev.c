@@ -1196,6 +1196,9 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.rx_queue_intr_enable = cnxk_nix_rx_queue_intr_enable,
 	.rx_queue_intr_disable = cnxk_nix_rx_queue_intr_disable,
 	.pool_ops_supported = cnxk_nix_pool_ops_supported,
+	.queue_stats_mapping_set = cnxk_nix_queue_stats_mapping,
+	.stats_get = cnxk_nix_stats_get,
+	.stats_reset = cnxk_nix_stats_reset,
 };
 
 static int

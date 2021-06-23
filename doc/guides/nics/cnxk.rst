@@ -25,6 +25,7 @@ Features of the CNXK Ethdev PMD are:
 - Receiver Side Scaling (RSS)
 - MAC filtering
 - Inner and Outer Checksum offload
+- Port hardware statistics
 - Link state information
 - Link flow control
 - MTU update
