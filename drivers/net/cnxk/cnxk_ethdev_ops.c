@@ -69,3 +69,32 @@ cnxk_nix_info_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *devinfo)
 			    RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
 	return 0;
 }
+
+int
+cnxk_nix_mac_addr_set(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	int rc;
+
+	/* Update mac address at NPC */
+	rc = roc_nix_npc_mac_addr_set(nix, addr->addr_bytes);
+	if (rc)
+		goto exit;
+
+	/* Update mac address at CGX for PFs only */
+	if (!roc_nix_is_vf_or_sdp(nix)) {
+		rc = roc_nix_mac_addr_set(nix, addr->addr_bytes);
+		if (rc) {
+			/* Rollback to previous mac address */
+			roc_nix_npc_mac_addr_set(nix, dev->mac_addr);
+			goto exit;
+		}
+	}
+
+	/* Update mac address to cnxk ethernet device */
+	rte_memcpy(dev->mac_addr, addr->addr_bytes, RTE_ETHER_ADDR_LEN);
+
+exit:
+	return rc;
+}

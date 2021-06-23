@@ -218,6 +218,8 @@ extern struct eth_dev_ops cnxk_eth_dev_ops;
 int cnxk_nix_probe(struct rte_pci_driver *pci_drv,
 		   struct rte_pci_device *pci_dev);
 int cnxk_nix_remove(struct rte_pci_device *pci_dev);
+int cnxk_nix_mac_addr_set(struct rte_eth_dev *eth_dev,
+			  struct rte_ether_addr *addr);
 int cnxk_nix_info_get(struct rte_eth_dev *eth_dev,
 		      struct rte_eth_dev_info *dev_info);
 int cnxk_nix_configure(struct rte_eth_dev *eth_dev);
