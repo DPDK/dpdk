@@ -79,20 +79,33 @@ is_covered(const uint8_t ip1[RTE_RIB6_IPV6_ADDR_SIZE],
 static inline int
 get_dir(const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth)
 {
-	int i = 0;
-	uint8_t p_depth, msk;
+	uint8_t index, msk;
 
-	for (p_depth = depth; p_depth >= 8; p_depth -= 8)
-		i++;
+	/*
+	 * depth & 127 clamps depth to values that will not
+	 * read off the end of ip.
+	 * depth is the number of bits deep into ip to traverse, and
+	 * is incremented in blocks of 8 (1 byte). This means the last
+	 * 3 bits are irrelevant to what the index of ip should be.
+	 */
+	index = (depth & (UINT8_MAX - 1)) / CHAR_BIT;
 
-	msk = 1 << (7 - p_depth);
-	return (ip[i] & msk) != 0;
+	/*
+	 * msk is the bitmask used to extract the bit used to decide the
+	 * direction of the next step of the binary search.
+	 */
+	msk = 1 << (7 - (depth & 7));
+
+	return (ip[index] & msk) != 0;
 }
 
 static inline struct rte_rib6_node *
 get_nxt_node(struct rte_rib6_node *node,
 	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE])
 {
+	if (node->depth == RIB6_MAXDEPTH)
+		return NULL;
+
 	return (get_dir(ip, node->depth)) ? node->right : node->left;
 }
 
