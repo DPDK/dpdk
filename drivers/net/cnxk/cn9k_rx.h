@@ -16,6 +16,7 @@
 #define NIX_RX_OFFLOAD_CHECKSUM_F    BIT(2)
 #define NIX_RX_OFFLOAD_MARK_UPDATE_F BIT(3)
 #define NIX_RX_OFFLOAD_TSTAMP_F	     BIT(4)
+#define NIX_RX_OFFLOAD_VLAN_STRIP_F  BIT(5)
 
 /* Flags to control cqe_to_mbuf conversion function.
  * Defining it from backwards to denote its been
@@ -181,6 +182,17 @@ cn9k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 	if (flag & NIX_RX_OFFLOAD_CHECKSUM_F)
 		ol_flags |= nix_rx_olflags_get(lookup_mem, w1);
 
+	if (flag & NIX_RX_OFFLOAD_VLAN_STRIP_F) {
+		if (rx->cn9k.vtag0_gone) {
+			ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+			mbuf->vlan_tci = rx->cn9k.vtag0_tci;
+		}
+		if (rx->cn9k.vtag1_gone) {
+			ol_flags |= PKT_RX_QINQ | PKT_RX_QINQ_STRIPPED;
+			mbuf->vlan_tci_outer = rx->cn9k.vtag1_tci;
+		}
+	}
+
 	if (flag & NIX_RX_OFFLOAD_MARK_UPDATE_F)
 		ol_flags =
 			nix_update_match_id(rx->cn9k.match_id, ol_flags, mbuf);
@@ -275,6 +287,28 @@ cn9k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 }
 
 #if defined(RTE_ARCH_ARM64)
+
+static __rte_always_inline uint64_t
+nix_vlan_update(const uint64_t w2, uint64_t ol_flags, uint8x16_t *f)
+{
+	if (w2 & BIT_ULL(21) /* vtag0_gone */) {
+		ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		*f = vsetq_lane_u16((uint16_t)(w2 >> 32), *f, 5);
+	}
+
+	return ol_flags;
+}
+
+static __rte_always_inline uint64_t
+nix_qinq_update(const uint64_t w2, uint64_t ol_flags, struct rte_mbuf *mbuf)
+{
+	if (w2 & BIT_ULL(23) /* vtag1_gone */) {
+		ol_flags |= PKT_RX_QINQ | PKT_RX_QINQ_STRIPPED;
+		mbuf->vlan_tci_outer = (uint16_t)(w2 >> 48);
+	}
+
+	return ol_flags;
+}
 
 static __rte_always_inline uint16_t
 cn9k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -400,6 +434,23 @@ cn9k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 			ol_flags3 |= nix_rx_olflags_get(lookup_mem, cq3_w1);
 		}
 
+		if (flags & NIX_RX_OFFLOAD_VLAN_STRIP_F) {
+			uint64_t cq0_w2 = *(uint64_t *)(cq0 + CQE_SZ(0) + 16);
+			uint64_t cq1_w2 = *(uint64_t *)(cq0 + CQE_SZ(1) + 16);
+			uint64_t cq2_w2 = *(uint64_t *)(cq0 + CQE_SZ(2) + 16);
+			uint64_t cq3_w2 = *(uint64_t *)(cq0 + CQE_SZ(3) + 16);
+
+			ol_flags0 = nix_vlan_update(cq0_w2, ol_flags0, &f0);
+			ol_flags1 = nix_vlan_update(cq1_w2, ol_flags1, &f1);
+			ol_flags2 = nix_vlan_update(cq2_w2, ol_flags2, &f2);
+			ol_flags3 = nix_vlan_update(cq3_w2, ol_flags3, &f3);
+
+			ol_flags0 = nix_qinq_update(cq0_w2, ol_flags0, mbuf0);
+			ol_flags1 = nix_qinq_update(cq1_w2, ol_flags1, mbuf1);
+			ol_flags2 = nix_qinq_update(cq2_w2, ol_flags2, mbuf2);
+			ol_flags3 = nix_qinq_update(cq3_w2, ol_flags3, mbuf3);
+		}
+
 		if (flags & NIX_RX_OFFLOAD_MARK_UPDATE_F) {
 			ol_flags0 = nix_update_match_id(
 				*(uint16_t *)(cq0 + CQE_SZ(0) + 38), ol_flags0,
@@ -496,43 +547,99 @@ cn9k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 #define CKSUM_F	  NIX_RX_OFFLOAD_CHECKSUM_F
 #define MARK_F	  NIX_RX_OFFLOAD_MARK_UPDATE_F
 #define TS_F	  NIX_RX_OFFLOAD_TSTAMP_F
+#define RX_VLAN_F NIX_RX_OFFLOAD_VLAN_STRIP_F
 
-/* [TS] [MARK] [CKSUM] [PTYPE] [RSS] */
+/* [RX_VLAN_F] [TS] [MARK] [CKSUM] [PTYPE] [RSS] */
 #define NIX_RX_FASTPATH_MODES						       \
-R(no_offload,			0, 0, 0, 0, 0, NIX_RX_OFFLOAD_NONE)	       \
-R(rss,				0, 0, 0, 0, 1, RSS_F)			       \
-R(ptype,			0, 0, 0, 1, 0, PTYPE_F)			       \
-R(ptype_rss,			0, 0, 0, 1, 1, PTYPE_F | RSS_F)		       \
-R(cksum,			0, 0, 1, 0, 0, CKSUM_F)			       \
-R(cksum_rss,			0, 0, 1, 0, 1, CKSUM_F | RSS_F)		       \
-R(cksum_ptype,			0, 0, 1, 1, 0, CKSUM_F | PTYPE_F)	       \
-R(cksum_ptype_rss,		0, 0, 1, 1, 1, CKSUM_F | PTYPE_F | RSS_F)      \
-R(mark,				0, 1, 0, 0, 0, MARK_F)			       \
-R(mark_rss,			0, 1, 0, 0, 1, MARK_F | RSS_F)		       \
-R(mark_ptype,			0, 1, 0, 1, 0, MARK_F | PTYPE_F)	       \
-R(mark_ptype_rss,		0, 1, 0, 1, 1, MARK_F | PTYPE_F | RSS_F)       \
-R(mark_cksum,			0, 1, 1, 0, 0, MARK_F | CKSUM_F)	       \
-R(mark_cksum_rss,		0, 1, 1, 0, 1, MARK_F | CKSUM_F | RSS_F)       \
-R(mark_cksum_ptype,		0, 1, 1, 1, 0, MARK_F | CKSUM_F | PTYPE_F)     \
-R(mark_cksum_ptype_rss,		0, 1, 1, 1, 1, MARK_F | CKSUM_F | PTYPE_F | RSS_F)\
-R(ts,				1, 0, 0, 0, 0, TS_F)			       \
-R(ts_rss,			1, 0, 0, 0, 1, TS_F | RSS_F)		       \
-R(ts_ptype,			1, 0, 0, 1, 0, TS_F | PTYPE_F)		       \
-R(ts_ptype_rss,			1, 0, 0, 1, 1, TS_F | PTYPE_F | RSS_F)	       \
-R(ts_cksum,			1, 0, 1, 0, 0, TS_F | CKSUM_F)		       \
-R(ts_cksum_rss,			1, 0, 1, 0, 1, TS_F | CKSUM_F | RSS_F)	       \
-R(ts_cksum_ptype,		1, 0, 1, 1, 0, TS_F | CKSUM_F | PTYPE_F)       \
-R(ts_cksum_ptype_rss,		1, 0, 1, 1, 1, TS_F | CKSUM_F | PTYPE_F | RSS_F)\
-R(ts_mark,			1, 1, 0, 0, 0, TS_F | MARK_F)		       \
-R(ts_mark_rss,			1, 1, 0, 0, 1, TS_F | MARK_F | RSS_F)	       \
-R(ts_mark_ptype,		1, 1, 0, 1, 0, TS_F | MARK_F | PTYPE_F)	       \
-R(ts_mark_ptype_rss,		1, 1, 0, 1, 1, TS_F | MARK_F | PTYPE_F | RSS_F)\
-R(ts_mark_cksum,		1, 1, 1, 0, 0, TS_F | MARK_F | CKSUM_F)	       \
-R(ts_mark_cksum_rss,		1, 1, 1, 0, 1, TS_F | MARK_F | CKSUM_F | RSS_F)\
-R(ts_mark_cksum_ptype,		1, 1, 1, 1, 0, TS_F | MARK_F | CKSUM_F | PTYPE_F)\
-R(ts_mark_cksum_ptype_rss,	1, 1, 1, 1, 1, TS_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)
+R(no_offload,			0, 0, 0, 0, 0, 0, NIX_RX_OFFLOAD_NONE)	       \
+R(rss,				0, 0, 0, 0, 0, 1, RSS_F)		       \
+R(ptype,			0, 0, 0, 0, 1, 0, PTYPE_F)		       \
+R(ptype_rss,			0, 0, 0, 0, 1, 1, PTYPE_F | RSS_F)	       \
+R(cksum,			0, 0, 0, 1, 0, 0, CKSUM_F)		       \
+R(cksum_rss,			0, 0, 0, 1, 0, 1, CKSUM_F | RSS_F)	       \
+R(cksum_ptype,			0, 0, 0, 1, 1, 0, CKSUM_F | PTYPE_F)	       \
+R(cksum_ptype_rss,		0, 0, 0, 1, 1, 1, CKSUM_F | PTYPE_F | RSS_F)   \
+R(mark,				0, 0, 1, 0, 0, 0, MARK_F)		       \
+R(mark_rss,			0, 0, 1, 0, 0, 1, MARK_F | RSS_F)	       \
+R(mark_ptype,			0, 0, 1, 0, 1, 0, MARK_F | PTYPE_F)	       \
+R(mark_ptype_rss,		0, 0, 1, 0, 1, 1, MARK_F | PTYPE_F | RSS_F)    \
+R(mark_cksum,			0, 0, 1, 1, 0, 0, MARK_F | CKSUM_F)	       \
+R(mark_cksum_rss,		0, 0, 1, 1, 0, 1, MARK_F | CKSUM_F | RSS_F)    \
+R(mark_cksum_ptype,		0, 0, 1, 1, 1, 0, MARK_F | CKSUM_F | PTYPE_F)  \
+R(mark_cksum_ptype_rss,		0, 0, 1, 1, 1, 1,			       \
+			MARK_F | CKSUM_F | PTYPE_F | RSS_F)		       \
+R(ts,				0, 1, 0, 0, 0, 0, TS_F)			       \
+R(ts_rss,			0, 1, 0, 0, 0, 1, TS_F | RSS_F)		       \
+R(ts_ptype,			0, 1, 0, 0, 1, 0, TS_F | PTYPE_F)	       \
+R(ts_ptype_rss,			0, 1, 0, 0, 1, 1, TS_F | PTYPE_F | RSS_F)      \
+R(ts_cksum,			0, 1, 0, 1, 0, 0, TS_F | CKSUM_F)	       \
+R(ts_cksum_rss,			0, 1, 0, 1, 0, 1, TS_F | CKSUM_F | RSS_F)      \
+R(ts_cksum_ptype,		0, 1, 0, 1, 1, 0, TS_F | CKSUM_F | PTYPE_F)    \
+R(ts_cksum_ptype_rss,		0, 1, 0, 1, 1, 1,			       \
+			TS_F | CKSUM_F | PTYPE_F | RSS_F)		       \
+R(ts_mark,			0, 1, 1, 0, 0, 0, TS_F | MARK_F)	       \
+R(ts_mark_rss,			0, 1, 1, 0, 0, 1, TS_F | MARK_F | RSS_F)       \
+R(ts_mark_ptype,		0, 1, 1, 0, 1, 0, TS_F | MARK_F | PTYPE_F)     \
+R(ts_mark_ptype_rss,		0, 1, 1, 0, 1, 1,			       \
+			TS_F | MARK_F | PTYPE_F | RSS_F)		       \
+R(ts_mark_cksum,		0, 1, 1, 1, 0, 0, TS_F | MARK_F | CKSUM_F)     \
+R(ts_mark_cksum_rss,		0, 1, 1, 1, 0, 1,			       \
+			TS_F | MARK_F | CKSUM_F | RSS_F)		       \
+R(ts_mark_cksum_ptype,		0, 1, 1, 1, 1, 0,			       \
+			TS_F | MARK_F | CKSUM_F | PTYPE_F)		       \
+R(ts_mark_cksum_ptype_rss,	0, 1, 1, 1, 1, 1,			       \
+			TS_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)	       \
+R(vlan,				1, 0, 0, 0, 0, 0, RX_VLAN_F)		       \
+R(vlan_rss,			1, 0, 0, 0, 0, 1, RX_VLAN_F | RSS_F)	       \
+R(vlan_ptype,			1, 0, 0, 0, 1, 0, RX_VLAN_F | PTYPE_F)	       \
+R(vlan_ptype_rss,		1, 0, 0, 0, 1, 1, RX_VLAN_F | PTYPE_F | RSS_F) \
+R(vlan_cksum,			1, 0, 0, 1, 0, 0, RX_VLAN_F | CKSUM_F)	       \
+R(vlan_cksum_rss,		1, 0, 0, 1, 0, 1, RX_VLAN_F | CKSUM_F | RSS_F) \
+R(vlan_cksum_ptype,		1, 0, 0, 1, 1, 0,			       \
+			RX_VLAN_F | CKSUM_F | PTYPE_F)			       \
+R(vlan_cksum_ptype_rss,		1, 0, 0, 1, 1, 1,			       \
+			RX_VLAN_F | CKSUM_F | PTYPE_F | RSS_F)		       \
+R(vlan_mark,			1, 0, 1, 0, 0, 0, RX_VLAN_F | MARK_F)	       \
+R(vlan_mark_rss,		1, 0, 1, 0, 0, 1, RX_VLAN_F | MARK_F | RSS_F)  \
+R(vlan_mark_ptype,		1, 0, 1, 0, 1, 0, RX_VLAN_F | MARK_F | PTYPE_F)\
+R(vlan_mark_ptype_rss,		1, 0, 1, 0, 1, 1,			       \
+			RX_VLAN_F | MARK_F | PTYPE_F | RSS_F)		       \
+R(vlan_mark_cksum,		1, 0, 1, 1, 0, 0, RX_VLAN_F | MARK_F | CKSUM_F)\
+R(vlan_mark_cksum_rss,		1, 0, 1, 1, 0, 1,			       \
+			RX_VLAN_F | MARK_F | CKSUM_F | RSS_F)		       \
+R(vlan_mark_cksum_ptype,	1, 0, 1, 1, 1, 0,			       \
+			RX_VLAN_F | MARK_F | CKSUM_F | PTYPE_F)		       \
+R(vlan_mark_cksum_ptype_rss,	1, 0, 1, 1, 1, 1,			       \
+			RX_VLAN_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)	       \
+R(vlan_ts,			1, 1, 0, 0, 0, 0, RX_VLAN_F | TS_F)	       \
+R(vlan_ts_rss,			1, 1, 0, 0, 0, 1, RX_VLAN_F | TS_F | RSS_F)    \
+R(vlan_ts_ptype,		1, 1, 0, 0, 1, 0, RX_VLAN_F | TS_F | PTYPE_F)  \
+R(vlan_ts_ptype_rss,		1, 1, 0, 0, 1, 1,			       \
+			RX_VLAN_F | TS_F | PTYPE_F | RSS_F)		       \
+R(vlan_ts_cksum,		1, 1, 0, 1, 0, 0, RX_VLAN_F | TS_F | CKSUM_F)  \
+R(vlan_ts_cksum_rss,		1, 1, 0, 1, 0, 1,			       \
+			RX_VLAN_F | TS_F | CKSUM_F | RSS_F)		       \
+R(vlan_ts_cksum_ptype,		1, 1, 0, 1, 1, 0,			       \
+			RX_VLAN_F | TS_F | CKSUM_F | PTYPE_F)		       \
+R(vlan_ts_cksum_ptype_rss,	1, 1, 0, 1, 1, 1,			       \
+			RX_VLAN_F | TS_F | CKSUM_F | PTYPE_F | RSS_F)	       \
+R(vlan_ts_mark,			1, 1, 1, 0, 0, 0, RX_VLAN_F | TS_F | MARK_F)   \
+R(vlan_ts_mark_rss,		1, 1, 1, 0, 0, 1,			       \
+			RX_VLAN_F | TS_F | MARK_F | RSS_F)		       \
+R(vlan_ts_mark_ptype,		1, 1, 1, 0, 1, 0,			       \
+			RX_VLAN_F | TS_F | MARK_F | PTYPE_F)		       \
+R(vlan_ts_mark_ptype_rss,	1, 1, 1, 0, 1, 1,			       \
+			RX_VLAN_F | TS_F | MARK_F | PTYPE_F | RSS_F)	       \
+R(vlan_ts_mark_cksum,		1, 1, 1, 1, 0, 0,			       \
+			RX_VLAN_F | TS_F | MARK_F | CKSUM_F)		       \
+R(vlan_ts_mark_cksum_rss,	1, 1, 1, 1, 0, 1,			       \
+			RX_VLAN_F | TS_F | MARK_F | CKSUM_F | RSS_F)	       \
+R(vlan_ts_mark_cksum_ptype,	1, 1, 1, 1, 1, 0,			       \
+			RX_VLAN_F | TS_F | MARK_F | CKSUM_F | PTYPE_F)	       \
+R(vlan_ts_mark_cksum_ptype_rss,	1, 1, 1, 1, 1, 1,			       \
+			RX_VLAN_F | TS_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)
 
-#define R(name, f4, f3, f2, f1, f0, flags)				       \
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				       \
 	uint16_t __rte_noinline __rte_hot cn9k_nix_recv_pkts_##name(           \
 		void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts);     \
 									       \

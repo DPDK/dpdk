@@ -1299,6 +1299,7 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Initialize base roc nix */
 	nix->pci_dev = pci_dev;
+	nix->hw_vlan_ins = true;
 	rc = roc_nix_dev_init(nix);
 	if (rc) {
 		plt_err("Failed to initialize roc nix rc=%d", rc);

@@ -178,6 +178,23 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_SECURITY:
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_SEC;
 			break;
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_VLAN_STRIP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_VLAN_INSERT;
+			in_actions[i].conf = actions->conf;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+			in_actions[i].type =
+				ROC_NPC_ACTION_TYPE_VLAN_ETHTYPE_INSERT;
+			in_actions[i].conf = actions->conf;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
+			in_actions[i].type =
+				ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT;
+			in_actions[i].conf = actions->conf;
+			break;
 		default:
 			plt_npc_dbg("Action is not supported = %d",
 				    actions->type);
