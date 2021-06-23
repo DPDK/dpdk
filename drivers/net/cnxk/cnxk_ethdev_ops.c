@@ -267,3 +267,20 @@ cnxk_nix_promisc_disable(struct rte_eth_dev *eth_dev)
 	dev->dmac_filter_enable = false;
 	return 0;
 }
+
+int
+cnxk_nix_allmulticast_enable(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	return roc_nix_npc_mcast_config(&dev->nix, true, false);
+}
+
+int
+cnxk_nix_allmulticast_disable(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	return roc_nix_npc_mcast_config(&dev->nix, false,
+					eth_dev->data->promiscuous);
+}

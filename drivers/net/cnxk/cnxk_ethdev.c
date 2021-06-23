@@ -1111,6 +1111,8 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.dev_supported_ptypes_get = cnxk_nix_supported_ptypes_get,
 	.promiscuous_enable = cnxk_nix_promisc_enable,
 	.promiscuous_disable = cnxk_nix_promisc_disable,
+	.allmulticast_enable = cnxk_nix_allmulticast_enable,
+	.allmulticast_disable = cnxk_nix_allmulticast_disable,
 };
 
 static int
