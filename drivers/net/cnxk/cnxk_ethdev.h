@@ -251,6 +251,9 @@ int cnxk_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_fc_conf *fc_conf);
 int cnxk_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_fc_conf *fc_conf);
+int cnxk_nix_set_link_up(struct rte_eth_dev *eth_dev);
+int cnxk_nix_set_link_down(struct rte_eth_dev *eth_dev);
+
 int cnxk_nix_configure(struct rte_eth_dev *eth_dev);
 int cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			    uint16_t nb_desc, uint16_t fp_tx_q_sz,
@@ -259,6 +262,7 @@ int cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			    uint16_t nb_desc, uint16_t fp_rx_q_sz,
 			    const struct rte_eth_rxconf *rx_conf,
 			    struct rte_mempool *mp);
+int cnxk_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qid);
 int cnxk_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qid);
 int cnxk_nix_dev_start(struct rte_eth_dev *eth_dev);
 

@@ -975,7 +975,7 @@ fail_configure:
 	return rc;
 }
 
-static int
+int
 cnxk_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qid)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
@@ -1189,6 +1189,8 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.tx_burst_mode_get = cnxk_nix_tx_burst_mode_get,
 	.flow_ctrl_get = cnxk_nix_flow_ctrl_get,
 	.flow_ctrl_set = cnxk_nix_flow_ctrl_set,
+	.dev_set_link_up = cnxk_nix_set_link_up,
+	.dev_set_link_down = cnxk_nix_set_link_down,
 };
 
 static int

@@ -512,3 +512,50 @@ cnxk_nix_allmulticast_disable(struct rte_eth_dev *eth_dev)
 	return roc_nix_npc_mcast_config(&dev->nix, false,
 					eth_dev->data->promiscuous);
 }
+
+int
+cnxk_nix_set_link_up(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	int rc, i;
+
+	if (roc_nix_is_vf_or_sdp(nix))
+		return -ENOTSUP;
+
+	rc = roc_nix_mac_link_state_set(nix, true);
+	if (rc)
+		goto exit;
+
+	/* Start tx queues  */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		rc = cnxk_nix_tx_queue_start(eth_dev, i);
+		if (rc)
+			goto exit;
+	}
+
+exit:
+	return rc;
+}
+
+int
+cnxk_nix_set_link_down(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	int rc, i;
+
+	if (roc_nix_is_vf_or_sdp(nix))
+		return -ENOTSUP;
+
+	/* Stop tx queues  */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		rc = cnxk_nix_tx_queue_stop(eth_dev, i);
+		if (rc)
+			goto exit;
+	}
+
+	rc = roc_nix_mac_link_state_set(nix, false);
+exit:
+	return rc;
+}
