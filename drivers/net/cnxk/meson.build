@@ -21,6 +21,7 @@ sources += files(
         'cn9k_ethdev.c',
         'cn9k_rx.c',
         'cn9k_rx_mseg.c',
+        'cn9k_rx_vec.c',
 )
 # CN10K
 sources += files(
@@ -29,3 +30,11 @@ sources += files(
 
 deps += ['bus_pci', 'cryptodev', 'eventdev', 'security']
 deps += ['common_cnxk', 'mempool_cnxk']
+
+# Allow implicit vector conversions
+extra_flags = ['-flax-vector-conversions']
+foreach flag: extra_flags
+    if cc.has_argument(flag)
+        cflags += flag
+    endif
+endforeach
