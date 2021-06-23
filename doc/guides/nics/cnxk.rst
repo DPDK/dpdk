@@ -16,6 +16,9 @@ Features
 
 Features of the CNXK Ethdev PMD are:
 
+- SR-IOV VF
+- Lock-free Tx queue
+
 Prerequisites
 -------------
 

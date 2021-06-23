@@ -38,7 +38,9 @@ nix_get_speed_capa(struct cnxk_eth_dev *dev)
 }
 
 /* CNXK platform independent eth dev ops */
-struct eth_dev_ops cnxk_eth_dev_ops;
+struct eth_dev_ops cnxk_eth_dev_ops = {
+	.dev_infos_get = cnxk_nix_info_get,
+};
 
 static int
 cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
