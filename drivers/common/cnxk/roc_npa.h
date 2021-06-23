@@ -8,6 +8,7 @@
 #define ROC_AURA_ID_MASK       (BIT_ULL(16) - 1)
 #define ROC_AURA_OP_LIMIT_MASK (BIT_ULL(36) - 1)
 
+#define ROC_NPA_MAX_BLOCK_SZ		   (128 * 1024)
 #define ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS 512
 #define ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS  15
 
@@ -219,6 +220,17 @@ roc_npa_aura_batch_alloc_issue(uint64_t aura_handle, uint64_t *buf,
 	return 0;
 }
 
+static inline void
+roc_npa_batch_alloc_wait(uint64_t *cache_line)
+{
+	/* Batch alloc status code is updated in bits [5:6] of the first word
+	 * of the 128 byte cache line.
+	 */
+	while (((__atomic_load_n(cache_line, __ATOMIC_RELAXED) >> 5) & 0x3) ==
+	       ALLOC_CCODE_INVAL)
+		;
+}
+
 static inline unsigned int
 roc_npa_aura_batch_alloc_count(uint64_t *aligned_buf, unsigned int num)
 {
@@ -231,17 +243,10 @@ roc_npa_aura_batch_alloc_count(uint64_t *aligned_buf, unsigned int num)
 	/* Check each ROC cache line one by one */
 	for (i = 0; i < num; i += (ROC_ALIGN >> 3)) {
 		struct npa_batch_alloc_status_s *status;
-		int ccode;
 
 		status = (struct npa_batch_alloc_status_s *)&aligned_buf[i];
 
-		/* Status is updated in first 7 bits of each 128 byte cache
-		 * line. Wait until the status gets updated.
-		 */
-		do {
-			ccode = (volatile int)status->ccode;
-		} while (ccode == ALLOC_CCODE_INVAL);
-
+		roc_npa_batch_alloc_wait(&aligned_buf[i]);
 		count += status->count;
 	}
 
@@ -261,16 +266,11 @@ roc_npa_aura_batch_alloc_extract(uint64_t *buf, uint64_t *aligned_buf,
 	/* Check each ROC cache line one by one */
 	for (i = 0; i < num; i += (ROC_ALIGN >> 3)) {
 		struct npa_batch_alloc_status_s *status;
-		int line_count, ccode;
+		int line_count;
 
 		status = (struct npa_batch_alloc_status_s *)&aligned_buf[i];
 
-		/* Status is updated in first 7 bits of each 128 byte cache
-		 * line. Wait until the status gets updated.
-		 */
-		do {
-			ccode = (volatile int)status->ccode;
-		} while (ccode == ALLOC_CCODE_INVAL);
+		roc_npa_batch_alloc_wait(&aligned_buf[i]);
 
 		line_count = status->count;
 

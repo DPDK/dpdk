@@ -236,7 +236,7 @@ npa_aura_pool_pair_alloc(struct npa_lf *lf, const uint32_t block_size,
 
 	/* Block size should be cache line aligned and in range of 128B-128KB */
 	if (block_size % ROC_ALIGN || block_size < 128 ||
-	    block_size > 128 * 1024)
+	    block_size > ROC_NPA_MAX_BLOCK_SZ)
 		return NPA_ERR_INVALID_BLOCK_SZ;
 
 	pos = 0;
