@@ -163,6 +163,9 @@ struct cnxk_eth_dev {
 	struct cnxk_eth_qconf *tx_qconf;
 	struct cnxk_eth_qconf *rx_qconf;
 
+	/* Rx burst for cleanup(Only Primary) */
+	eth_rx_burst_t rx_pkt_burst_no_offload;
+
 	/* Default mac address */
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 
