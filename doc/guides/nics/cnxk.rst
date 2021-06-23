@@ -17,6 +17,7 @@ Features
 Features of the CNXK Ethdev PMD are:
 
 - Packet type information
+- Promiscuous mode
 - Jumbo frames
 - SR-IOV VF
 - Lock-free Tx queue

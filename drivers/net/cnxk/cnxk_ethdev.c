@@ -1107,6 +1107,8 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.rx_queue_start = cnxk_nix_rx_queue_start,
 	.rx_queue_stop = cnxk_nix_rx_queue_stop,
 	.dev_supported_ptypes_get = cnxk_nix_supported_ptypes_get,
+	.promiscuous_enable = cnxk_nix_promisc_enable,
+	.promiscuous_disable = cnxk_nix_promisc_disable,
 };
 
 static int

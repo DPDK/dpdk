@@ -173,3 +173,59 @@ cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 exit:
 	return rc;
 }
+
+int
+cnxk_nix_promisc_enable(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	int rc = 0;
+
+	if (roc_nix_is_vf_or_sdp(nix))
+		return rc;
+
+	rc = roc_nix_npc_promisc_ena_dis(nix, true);
+	if (rc) {
+		plt_err("Failed to setup promisc mode in npc, rc=%d(%s)", rc,
+			roc_error_msg_get(rc));
+		return rc;
+	}
+
+	rc = roc_nix_mac_promisc_mode_enable(nix, true);
+	if (rc) {
+		plt_err("Failed to setup promisc mode in mac, rc=%d(%s)", rc,
+			roc_error_msg_get(rc));
+		roc_nix_npc_promisc_ena_dis(nix, false);
+		return rc;
+	}
+
+	return 0;
+}
+
+int
+cnxk_nix_promisc_disable(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	int rc = 0;
+
+	if (roc_nix_is_vf_or_sdp(nix))
+		return rc;
+
+	rc = roc_nix_npc_promisc_ena_dis(nix, false);
+	if (rc < 0) {
+		plt_err("Failed to setup promisc mode in npc, rc=%d(%s)", rc,
+			roc_error_msg_get(rc));
+		return rc;
+	}
+
+	rc = roc_nix_mac_promisc_mode_enable(nix, false);
+	if (rc) {
+		plt_err("Failed to setup promisc mode in mac, rc=%d(%s)", rc,
+			roc_error_msg_get(rc));
+		roc_nix_npc_promisc_ena_dis(nix, true);
+		return rc;
+	}
+
+	return 0;
+}
