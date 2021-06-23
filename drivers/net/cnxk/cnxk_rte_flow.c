@@ -56,14 +56,64 @@ const struct cnxk_rte_flow_term_info term[] = {
 };
 
 static int
-cnxk_map_actions(struct rte_eth_dev *eth_dev,
-		 const struct rte_flow_action actions[],
-		 struct roc_npc_action in_actions[])
+npc_rss_action_validate(struct rte_eth_dev *eth_dev,
+			const struct rte_flow_attr *attr,
+			const struct rte_flow_action *act)
 {
+	const struct rte_flow_action_rss *rss;
+
+	rss = (const struct rte_flow_action_rss *)act->conf;
+
+	if (attr->egress) {
+		plt_err("No support of RSS in egress");
+		return -EINVAL;
+	}
+
+	if (eth_dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS) {
+		plt_err("multi-queue mode is disabled");
+		return -ENOTSUP;
+	}
+
+	if (!rss || !rss->queue_num) {
+		plt_err("no valid queues");
+		return -EINVAL;
+	}
+
+	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT) {
+		plt_err("non-default RSS hash functions are not supported");
+		return -ENOTSUP;
+	}
+
+	if (rss->key_len && rss->key_len > ROC_NIX_RSS_KEY_LEN) {
+		plt_err("RSS hash key too large");
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
+static void
+npc_rss_flowkey_get(struct cnxk_eth_dev *eth_dev,
+		    const struct roc_npc_action *rss_action,
+		    uint32_t *flowkey_cfg)
+{
+	const struct roc_npc_action_rss *rss;
+
+	rss = (const struct roc_npc_action_rss *)rss_action->conf;
+
+	*flowkey_cfg = cnxk_rss_ethdev_to_nix(eth_dev, rss->types, rss->level);
+}
+
+static int
+cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
+		 const struct rte_flow_action actions[],
+		 struct roc_npc_action in_actions[], uint32_t *flowkey_cfg)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	const struct rte_flow_action_count *act_count;
 	const struct rte_flow_action_queue *act_q;
+	int i = 0, rc = 0;
 	int rq;
-	int i = 0;
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
@@ -117,7 +167,12 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev,
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_RSS:
+			rc = npc_rss_action_validate(eth_dev, attr, actions);
+			if (rc)
+				goto err_exit;
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_RSS;
+			in_actions[i].conf = actions->conf;
+			npc_rss_flowkey_get(dev, &in_actions[i], flowkey_cfg);
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_SECURITY:
@@ -144,7 +199,7 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev,
 		   const struct rte_flow_action actions[],
 		   struct roc_npc_attr *in_attr,
 		   struct roc_npc_item_info in_pattern[],
-		   struct roc_npc_action in_actions[])
+		   struct roc_npc_action in_actions[], uint32_t *flowkey_cfg)
 {
 	int i = 0;
 
@@ -163,7 +218,8 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev,
 	}
 	in_pattern[i].type = ROC_NPC_ITEM_TYPE_END;
 
-	return cnxk_map_actions(eth_dev, actions, in_actions);
+	return cnxk_map_actions(eth_dev, attr, actions, in_actions,
+				flowkey_cfg);
 }
 
 static int
@@ -179,12 +235,13 @@ cnxk_flow_validate(struct rte_eth_dev *eth_dev,
 	struct roc_npc *npc = &dev->npc;
 	struct roc_npc_attr in_attr;
 	struct roc_npc_flow flow;
+	uint32_t flowkey_cfg = 0;
 	int rc;
 
 	memset(&flow, 0, sizeof(flow));
 
 	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr,
-				in_pattern, in_actions);
+				in_pattern, in_actions, &flowkey_cfg);
 	if (rc) {
 		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_ACTION_NUM,
 				   NULL, "Failed to map flow data");
@@ -206,11 +263,12 @@ cnxk_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 	struct roc_npc *npc = &dev->npc;
 	struct roc_npc_attr in_attr;
 	struct roc_npc_flow *flow;
-	int errcode;
+	int errcode = 0;
 	int rc;
 
 	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr,
-				in_pattern, in_actions);
+				in_pattern, in_actions,
+				&npc->flowkey_cfg_state);
 	if (rc) {
 		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_ACTION_NUM,
 				   NULL, "Failed to map flow data");
