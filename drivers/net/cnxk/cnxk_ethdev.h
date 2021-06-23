@@ -323,6 +323,7 @@ int cnxk_nix_timesync_write_time(struct rte_eth_dev *eth_dev,
 				 const struct timespec *ts);
 int cnxk_nix_timesync_adjust_time(struct rte_eth_dev *eth_dev, int64_t delta);
 int cnxk_nix_tsc_convert(struct cnxk_eth_dev *dev);
+int cnxk_nix_read_clock(struct rte_eth_dev *eth_dev, uint64_t *clock);
 
 uint64_t cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev);
 

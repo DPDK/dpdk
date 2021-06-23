@@ -1265,6 +1265,7 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.timesync_read_time = cnxk_nix_timesync_read_time,
 	.timesync_write_time = cnxk_nix_timesync_write_time,
 	.timesync_adjust_time = cnxk_nix_timesync_adjust_time,
+	.read_clock = cnxk_nix_read_clock,
 };
 
 static int
