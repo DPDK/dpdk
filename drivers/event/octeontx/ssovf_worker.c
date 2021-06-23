@@ -322,6 +322,15 @@ sso_event_tx_adapter_enqueue_ ## name(void *port, struct rte_event ev[],     \
 SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
 
+static uint16_t __rte_hot
+ssow_crypto_adapter_enqueue(void *port, struct rte_event ev[],
+			    uint16_t nb_events)
+{
+	RTE_SET_USED(nb_events);
+
+	return otx_crypto_adapter_enqueue(port, ev->event_ptr);
+}
+
 void
 ssovf_fastpath_fns_set(struct rte_eventdev *dev)
 {
@@ -331,6 +340,8 @@ ssovf_fastpath_fns_set(struct rte_eventdev *dev)
 	dev->enqueue_burst = ssows_enq_burst;
 	dev->enqueue_new_burst = ssows_enq_new_burst;
 	dev->enqueue_forward_burst = ssows_enq_fwd_burst;
+
+	dev->ca_enqueue = ssow_crypto_adapter_enqueue;
 
 	const event_tx_adapter_enqueue ssow_txa_enqueue[2][2][2][2] = {
 #define T(name, f3, f2, f1, f0, sz, flags)				\

@@ -92,6 +92,10 @@ New Features
   * Added support for lookaside protocol (IPsec) offload in cn10k PMD.
   * Added support for asymmetric crypto operations in cn9k and cn10k PMD.
 
+* **Updated Marvell OCTEON TX crypto PMD.**
+
+  Added support for crypto adapter OP_FORWARD mode.
+
 * **Added Baseband PHY CNXK PMD.**
 
   Added Baseband PHY PMD which allows to configure BPHY hardware block

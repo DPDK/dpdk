@@ -6,6 +6,7 @@ if not is_linux
 endif
 
 deps += ['bus_pci']
+deps += ['bus_vdev']
 deps += ['common_cpt']
 deps += ['eventdev']
 
@@ -18,3 +19,7 @@ sources = files(
 )
 
 includes += include_directories('../../common/cpt')
+includes += include_directories('../../common/octeontx')
+includes += include_directories('../../event/octeontx')
+includes += include_directories('../../mempool/octeontx')
+includes += include_directories('../../net/octeontx')

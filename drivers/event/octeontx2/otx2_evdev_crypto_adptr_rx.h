@@ -54,6 +54,7 @@ static inline uint64_t
 otx2_handle_crypto_event(uint64_t get_work1)
 {
 	struct cpt_request_info *req;
+	const struct otx2_cpt_qp *qp;
 	struct rte_crypto_op *cop;
 	uintptr_t *rsp;
 	void *metabuf;
@@ -61,14 +62,15 @@ otx2_handle_crypto_event(uint64_t get_work1)
 
 	req = (struct cpt_request_info *)(get_work1);
 	cc = otx2_cpt_compcode_get(req);
+	qp = req->qp;
 
 	rsp = req->op;
 	metabuf = (void *)rsp[0];
 	cop = (void *)rsp[1];
 
-	otx2_ca_deq_post_process(req->qp, cop, rsp, cc);
+	otx2_ca_deq_post_process(qp, cop, rsp, cc);
 
-	rte_mempool_put(req->qp->meta_info.pool, metabuf);
+	rte_mempool_put(qp->meta_info.pool, metabuf);
 
 	return (uint64_t)(cop);
 }

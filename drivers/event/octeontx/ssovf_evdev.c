@@ -734,7 +734,8 @@ ssovf_crypto_adapter_caps_get(const struct rte_eventdev *dev,
 	RTE_SET_USED(dev);
 	RTE_SET_USED(cdev);
 
-	*caps = 0;
+	*caps = RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD |
+		RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA;
 
 	return 0;
 }

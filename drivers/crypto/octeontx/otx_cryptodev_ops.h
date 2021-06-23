@@ -14,4 +14,12 @@
 int
 otx_cpt_dev_create(struct rte_cryptodev *c_dev);
 
+__rte_internal
+uint16_t __rte_hot
+otx_crypto_adapter_enqueue(void *port, struct rte_crypto_op *op);
+
+__rte_internal
+uintptr_t __rte_hot
+otx_crypto_adapter_dequeue(uintptr_t get_work1);
+
 #endif /* _OTX_CRYPTODEV_OPS_H_ */
