@@ -14,6 +14,22 @@
 
 #define CNXK_ETH_DEV_PMD_VERSION "1.0"
 
+#define CNXK_NIX_TX_OFFLOAD_CAPA                                               \
+	(DEV_TX_OFFLOAD_MBUF_FAST_FREE | DEV_TX_OFFLOAD_MT_LOCKFREE |          \
+	 DEV_TX_OFFLOAD_VLAN_INSERT | DEV_TX_OFFLOAD_QINQ_INSERT |             \
+	 DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM | DEV_TX_OFFLOAD_OUTER_UDP_CKSUM |    \
+	 DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_UDP_CKSUM |                 \
+	 DEV_TX_OFFLOAD_SCTP_CKSUM | DEV_TX_OFFLOAD_TCP_TSO |                  \
+	 DEV_TX_OFFLOAD_VXLAN_TNL_TSO | DEV_TX_OFFLOAD_GENEVE_TNL_TSO |        \
+	 DEV_TX_OFFLOAD_GRE_TNL_TSO | DEV_TX_OFFLOAD_MULTI_SEGS |              \
+	 DEV_TX_OFFLOAD_IPV4_CKSUM)
+
+#define CNXK_NIX_RX_OFFLOAD_CAPA                                               \
+	(DEV_RX_OFFLOAD_CHECKSUM | DEV_RX_OFFLOAD_SCTP_CKSUM |                 \
+	 DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM | DEV_RX_OFFLOAD_SCATTER |            \
+	 DEV_RX_OFFLOAD_JUMBO_FRAME | DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |         \
+	 DEV_RX_OFFLOAD_RSS_HASH)
+
 struct cnxk_eth_dev {
 	/* ROC NIX */
 	struct roc_nix nix;
@@ -28,6 +44,9 @@ struct cnxk_eth_dev {
 
 	/* HW capabilities / Limitations */
 	union {
+		struct {
+			uint64_t cq_min_4k : 1;
+		};
 		uint64_t hwcap;
 	};
 

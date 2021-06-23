@@ -12,5 +12,14 @@ sources = files(
         'cnxk_ethdev.c',
 )
 
+# CN9K
+sources += files(
+        'cn9k_ethdev.c',
+)
+# CN10K
+sources += files(
+        'cn10k_ethdev.c',
+)
+
 deps += ['bus_pci', 'cryptodev', 'eventdev', 'security']
 deps += ['common_cnxk', 'mempool_cnxk']

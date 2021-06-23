@@ -3,6 +3,40 @@
  */
 #include <cnxk_ethdev.h>
 
+static inline uint64_t
+nix_get_rx_offload_capa(struct cnxk_eth_dev *dev)
+{
+	uint64_t capa = CNXK_NIX_RX_OFFLOAD_CAPA;
+
+	if (roc_nix_is_vf_or_sdp(&dev->nix))
+		capa &= ~DEV_RX_OFFLOAD_TIMESTAMP;
+
+	return capa;
+}
+
+static inline uint64_t
+nix_get_tx_offload_capa(struct cnxk_eth_dev *dev)
+{
+	RTE_SET_USED(dev);
+	return CNXK_NIX_TX_OFFLOAD_CAPA;
+}
+
+static inline uint32_t
+nix_get_speed_capa(struct cnxk_eth_dev *dev)
+{
+	uint32_t speed_capa;
+
+	/* Auto negotiation disabled */
+	speed_capa = ETH_LINK_SPEED_FIXED;
+	if (!roc_nix_is_vf_or_sdp(&dev->nix) && !roc_nix_is_lbk(&dev->nix)) {
+		speed_capa |= ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G |
+			      ETH_LINK_SPEED_25G | ETH_LINK_SPEED_40G |
+			      ETH_LINK_SPEED_50G | ETH_LINK_SPEED_100G;
+	}
+
+	return speed_capa;
+}
+
 /* CNXK platform independent eth dev ops */
 struct eth_dev_ops cnxk_eth_dev_ops;
 
@@ -75,6 +109,14 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 			goto free_mac_addrs;
 		}
 	}
+
+	/* Union of all capabilities supported by CNXK.
+	 * Platform specific capabilities will be
+	 * updated later.
+	 */
+	dev->rx_offload_capa = nix_get_rx_offload_capa(dev);
+	dev->tx_offload_capa = nix_get_tx_offload_capa(dev);
+	dev->speed_capa = nix_get_speed_capa(dev);
 
 	/* Initialize roc npc */
 	plt_nix_dbg("Port=%d pf=%d vf=%d ver=%s hwcap=0x%" PRIx64
