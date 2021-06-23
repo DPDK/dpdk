@@ -189,6 +189,8 @@ INTERNAL {
 	roc_npc_init;
 	roc_npc_mark_actions_get;
 	roc_npc_mark_actions_sub_return;
+	roc_npc_vtag_actions_get;
+	roc_npc_vtag_actions_sub_return;
 	roc_npc_mcam_alloc_entries;
 	roc_npc_mcam_alloc_entry;
 	roc_npc_mcam_clear_counter;

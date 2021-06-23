@@ -350,6 +350,7 @@ struct npc {
 	uint16_t flow_max_priority;		/* Max priority for flow */
 	uint16_t switch_header_type; /* Suppprted switch header type */
 	uint32_t mark_actions;	     /* Number of mark actions */
+	uint32_t vtag_actions;	     /* vtag insert/strip actions */
 	uint16_t pf_func;	     /* pf_func of device */
 	npc_dxcfg_t prx_dxcfg;	     /* intf, lid, lt, extract */
 	npc_fxcfg_t prx_fxcfg;	     /* Flag extract */

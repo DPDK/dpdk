@@ -546,7 +546,7 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 	 *
 	 * Second approach is used now.
 	 */
-	req->entry_data.vtag_action = 0ULL;
+	req->entry_data.vtag_action = flow->vtag_action;
 
 	for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
 		req->entry_data.kw[idx] = flow->mcam_data[idx];

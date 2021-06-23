@@ -6,6 +6,23 @@
 #include "roc_priv.h"
 
 int
+roc_npc_vtag_actions_get(struct roc_npc *roc_npc)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc->vtag_actions;
+}
+
+int
+roc_npc_vtag_actions_sub_return(struct roc_npc *roc_npc, uint32_t count)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	npc->vtag_actions -= count;
+	return npc->vtag_actions;
+}
+
+int
 roc_npc_mcam_free_counter(struct roc_npc *roc_npc, uint16_t ctr_id)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
@@ -101,7 +118,7 @@ npc_mcam_tot_entries(void)
 	/* FIXME: change to reading in AF from NPC_AF_CONST1/2
 	 * MCAM_BANK_DEPTH(_EXT) * MCAM_BANKS
 	 */
-	if (roc_model_is_cn10k())
+	if (roc_model_is_cn10k() || roc_model_is_cn98xx())
 		return 16 * 1024; /* MCAM_BANKS = 4, BANK_DEPTH_EXT = 4096 */
 	else
 		return 4 * 1024; /* MCAM_BANKS = 4, BANK_DEPTH_EXT = 1024 */
@@ -330,6 +347,7 @@ npc_parse_actions(struct npc *npc, const struct roc_npc_attr *attr,
 	const struct roc_npc_action_mark *act_mark;
 	const struct roc_npc_action_queue *act_q;
 	const struct roc_npc_action_vf *vf_act;
+	bool vlan_insert_action = false;
 	int sel_act, req_act = 0;
 	uint16_t pf_func, vf_id;
 	int errcode = 0;
@@ -417,25 +435,69 @@ npc_parse_actions(struct npc *npc, const struct roc_npc_attr *attr,
 			req_act |= ROC_NPC_ACTION_TYPE_SEC;
 			rq = 0;
 			break;
+		case ROC_NPC_ACTION_TYPE_VLAN_STRIP:
+			req_act |= ROC_NPC_ACTION_TYPE_VLAN_STRIP;
+			break;
+		case ROC_NPC_ACTION_TYPE_VLAN_INSERT:
+			req_act |= ROC_NPC_ACTION_TYPE_VLAN_INSERT;
+			break;
+		case ROC_NPC_ACTION_TYPE_VLAN_ETHTYPE_INSERT:
+			req_act |= ROC_NPC_ACTION_TYPE_VLAN_ETHTYPE_INSERT;
+			break;
+		case ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT:
+			req_act |= ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT;
+			break;
 		default:
 			errcode = NPC_ERR_ACTION_NOTSUP;
 			goto err_exit;
 		}
 	}
 
+	if (req_act & (ROC_NPC_ACTION_TYPE_VLAN_INSERT |
+		       ROC_NPC_ACTION_TYPE_VLAN_ETHTYPE_INSERT |
+		       ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT))
+		vlan_insert_action = true;
+
+	if ((req_act & (ROC_NPC_ACTION_TYPE_VLAN_INSERT |
+			ROC_NPC_ACTION_TYPE_VLAN_ETHTYPE_INSERT |
+			ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT)) ==
+	    ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT) {
+		plt_err("PCP insert action can't be supported alone");
+		errcode = NPC_ERR_ACTION_NOTSUP;
+		goto err_exit;
+	}
+
+	/* Both STRIP and INSERT actions are not supported */
+	if (vlan_insert_action && (req_act & ROC_NPC_ACTION_TYPE_VLAN_STRIP)) {
+		errcode = NPC_ERR_ACTION_NOTSUP;
+		goto err_exit;
+	}
+
 	/* Check if actions specified are compatible */
 	if (attr->egress) {
-		/* Only DROP/COUNT is supported */
-		if (!(req_act & ROC_NPC_ACTION_TYPE_DROP)) {
-			errcode = NPC_ERR_ACTION_NOTSUP;
-			goto err_exit;
-		} else if (req_act & ~(ROC_NPC_ACTION_TYPE_DROP |
-				       ROC_NPC_ACTION_TYPE_COUNT)) {
+		if (req_act & ROC_NPC_ACTION_TYPE_VLAN_STRIP) {
+			plt_err("VLAN pop action is not supported on Egress");
 			errcode = NPC_ERR_ACTION_NOTSUP;
 			goto err_exit;
 		}
-		flow->npc_action = NIX_TX_ACTIONOP_DROP;
+
+		if (req_act & ROC_NPC_ACTION_TYPE_DROP) {
+			flow->npc_action = NIX_TX_ACTIONOP_DROP;
+		} else if ((req_act & ROC_NPC_ACTION_TYPE_COUNT) ||
+			   vlan_insert_action) {
+			flow->npc_action = NIX_TX_ACTIONOP_UCAST_DEFAULT;
+		} else {
+			plt_err("Unsupported action for egress");
+			errcode = NPC_ERR_ACTION_NOTSUP;
+			goto err_exit;
+		}
+
 		goto set_pf_func;
+	} else {
+		if (vlan_insert_action) {
+			errcode = NPC_ERR_ACTION_NOTSUP;
+			goto err_exit;
+		}
 	}
 
 	/* We have already verified the attr, this is ingress.
@@ -462,6 +524,13 @@ npc_parse_actions(struct npc *npc, const struct roc_npc_attr *attr,
 		errcode = NPC_ERR_ACTION_NOTSUP;
 		goto err_exit;
 	}
+
+	if (req_act & ROC_NPC_ACTION_TYPE_VLAN_STRIP)
+		npc->vtag_actions++;
+
+	/* Only VLAN action is provided */
+	if (req_act == ROC_NPC_ACTION_TYPE_VLAN_STRIP)
+		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
 
 	/* Set NIX_RX_ACTIONOP */
 	if (req_act & (ROC_NPC_ACTION_TYPE_PF | ROC_NPC_ACTION_TYPE_VF)) {
@@ -774,6 +843,161 @@ roc_npc_mark_actions_sub_return(struct roc_npc *roc_npc, uint32_t count)
 	return npc->mark_actions;
 }
 
+static int
+npc_vtag_cfg_delete(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
+{
+	struct roc_nix *roc_nix = roc_npc->roc_nix;
+	struct nix_vtag_config *vtag_cfg;
+	struct nix_vtag_config_rsp *rsp;
+	struct mbox *mbox;
+	struct nix *nix;
+	int rc = 0;
+
+	union {
+		uint64_t reg;
+		struct nix_tx_vtag_action_s act;
+	} tx_vtag_action;
+
+	nix = roc_nix_to_nix_priv(roc_nix);
+	mbox = (&nix->dev)->mbox;
+
+	tx_vtag_action.reg = flow->vtag_action;
+	vtag_cfg = mbox_alloc_msg_nix_vtag_cfg(mbox);
+
+	if (vtag_cfg == NULL)
+		return -ENOSPC;
+
+	vtag_cfg->cfg_type = VTAG_TX;
+	vtag_cfg->vtag_size = NIX_VTAGSIZE_T4;
+	vtag_cfg->tx.vtag0_idx = tx_vtag_action.act.vtag0_def;
+	vtag_cfg->tx.free_vtag0 = true;
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	return 0;
+}
+
+static int
+npc_vtag_action_program(struct roc_npc *roc_npc,
+			const struct roc_npc_action actions[],
+			struct roc_npc_flow *flow)
+{
+	uint16_t vlan_id = 0, vlan_ethtype = ROC_ETHER_TYPE_VLAN;
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	struct roc_nix *roc_nix = roc_npc->roc_nix;
+	struct nix_vtag_config *vtag_cfg;
+	struct nix_vtag_config_rsp *rsp;
+	uint64_t rx_vtag_action = 0;
+	uint8_t vlan_pcp = 0;
+	struct mbox *mbox;
+	struct nix *nix;
+	int rc;
+
+	union {
+		uint64_t reg;
+		struct nix_tx_vtag_action_s act;
+	} tx_vtag_action;
+
+	nix = roc_nix_to_nix_priv(roc_nix);
+	mbox = (&nix->dev)->mbox;
+
+	flow->vtag_insert_enabled = false;
+
+	for (; actions->type != ROC_NPC_ACTION_TYPE_END; actions++) {
+		if (actions->type == ROC_NPC_ACTION_TYPE_VLAN_STRIP) {
+			if (npc->vtag_actions == 1) {
+				vtag_cfg = mbox_alloc_msg_nix_vtag_cfg(mbox);
+
+				if (vtag_cfg == NULL)
+					return -ENOSPC;
+
+				vtag_cfg->cfg_type = VTAG_RX;
+				vtag_cfg->rx.strip_vtag = 1;
+				/* Always capture */
+				vtag_cfg->rx.capture_vtag = 1;
+				vtag_cfg->vtag_size = NIX_VTAGSIZE_T4;
+				vtag_cfg->rx.vtag_type = 0;
+
+				rc = mbox_process(mbox);
+				if (rc)
+					return rc;
+			}
+
+			rx_vtag_action |= (NIX_RX_VTAGACTION_VTAG_VALID << 15);
+			rx_vtag_action |= ((uint64_t)NPC_LID_LB << 8);
+			rx_vtag_action |= NIX_RX_VTAGACTION_VTAG0_RELPTR;
+			flow->vtag_action = rx_vtag_action;
+		} else if (actions->type == ROC_NPC_ACTION_TYPE_VLAN_INSERT) {
+			const struct roc_npc_action_of_set_vlan_vid *vtag =
+				(const struct roc_npc_action_of_set_vlan_vid *)
+					actions->conf;
+			vlan_id = plt_be_to_cpu_16(vtag->vlan_vid);
+			if (vlan_id > 0xfff) {
+				plt_err("Invalid vlan_id for set vlan action");
+				return -EINVAL;
+			}
+			flow->vtag_insert_enabled = true;
+		} else if (actions->type ==
+			   ROC_NPC_ACTION_TYPE_VLAN_ETHTYPE_INSERT) {
+			const struct roc_npc_action_of_push_vlan *ethtype =
+				(const struct roc_npc_action_of_push_vlan *)
+					actions->conf;
+			vlan_ethtype = plt_be_to_cpu_16(ethtype->ethertype);
+			if (vlan_ethtype != ROC_ETHER_TYPE_VLAN &&
+			    vlan_ethtype != ROC_ETHER_TYPE_QINQ) {
+				plt_err("Invalid ethtype specified for push"
+					" vlan action");
+				return -EINVAL;
+			}
+			flow->vtag_insert_enabled = true;
+		} else if (actions->type ==
+			   ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT) {
+			const struct roc_npc_action_of_set_vlan_pcp *pcp =
+				(const struct roc_npc_action_of_set_vlan_pcp *)
+					actions->conf;
+			vlan_pcp = pcp->vlan_pcp;
+			if (vlan_pcp > 0x7) {
+				plt_err("Invalid PCP value for pcp action");
+				return -EINVAL;
+			}
+			flow->vtag_insert_enabled = true;
+		}
+	}
+
+	if (flow->vtag_insert_enabled) {
+		vtag_cfg = mbox_alloc_msg_nix_vtag_cfg(mbox);
+
+		if (vtag_cfg == NULL)
+			return -ENOSPC;
+
+		vtag_cfg->cfg_type = VTAG_TX;
+		vtag_cfg->vtag_size = NIX_VTAGSIZE_T4;
+		vtag_cfg->tx.vtag0 =
+			((vlan_ethtype << 16) | (vlan_pcp << 13) | vlan_id);
+
+		vtag_cfg->tx.cfg_vtag0 = 1;
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			return rc;
+
+		if (rsp->vtag0_idx < 0) {
+			plt_err("Failed to config TX VTAG action");
+			return -EINVAL;
+		}
+
+		tx_vtag_action.reg = 0;
+		tx_vtag_action.act.vtag0_def = rsp->vtag0_idx;
+		tx_vtag_action.act.vtag0_lid = NPC_LID_LA;
+		tx_vtag_action.act.vtag0_op = NIX_TX_VTAGOP_INSERT;
+		tx_vtag_action.act.vtag0_relptr =
+			NIX_TX_VTAGACTION_VTAG0_RELPTR;
+		flow->vtag_action = tx_vtag_action.reg;
+	}
+	return 0;
+}
+
 struct roc_npc_flow *
 roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		    const struct roc_npc_item_info pattern[],
@@ -793,6 +1017,12 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	memset(flow, 0, sizeof(*flow));
 
 	rc = npc_parse_rule(npc, attr, pattern, actions, flow, &parse_state);
+	if (rc != 0) {
+		*errcode = rc;
+		goto err_exit;
+	}
+
+	rc = npc_vtag_action_program(roc_npc, actions, flow);
 	if (rc != 0) {
 		*errcode = rc;
 		goto err_exit;
@@ -858,21 +1088,18 @@ roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	struct plt_bitmap *bmap;
-	uint16_t match_id;
 	int rc;
-
-	match_id = (flow->npc_action >> NPC_RX_ACT_MATCH_OFFSET) &
-		   NPC_RX_ACT_MATCH_MASK;
-
-	if (match_id && match_id < NPC_ACTION_FLAG_DEFAULT) {
-		if (npc->mark_actions == 0)
-			return NPC_ERR_PARAM;
-	}
 
 	rc = npc_rss_group_free(npc, flow);
 	if (rc != 0) {
 		plt_err("Failed to free rss action rc = %d", rc);
 		return rc;
+	}
+
+	if (flow->vtag_insert_enabled) {
+		rc = npc_vtag_cfg_delete(roc_npc, flow);
+		if (rc != 0)
+			return rc;
 	}
 
 	rc = npc_mcam_free_entry(npc, flow->mcam_id);

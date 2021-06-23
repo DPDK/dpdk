@@ -88,6 +88,12 @@ roc_model_is_cn10k(void)
 }
 
 static inline uint64_t
+roc_model_is_cn98xx(void)
+{
+	return (roc_model->flag & ROC_MODEL_CN98xx_A0);
+}
+
+static inline uint64_t
 roc_model_is_cn96_a0(void)
 {
 	return roc_model->flag & ROC_MODEL_CN96xx_A0;
