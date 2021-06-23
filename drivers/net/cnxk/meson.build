@@ -10,6 +10,7 @@ endif
 
 sources = files(
         'cnxk_ethdev.c',
+        'cnxk_ethdev_devargs.c',
 )
 
 # CN9K

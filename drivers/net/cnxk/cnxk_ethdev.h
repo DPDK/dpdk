@@ -9,10 +9,14 @@
 
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
+#include <rte_kvargs.h>
 
 #include "roc_api.h"
 
 #define CNXK_ETH_DEV_PMD_VERSION "1.0"
+
+/* Max supported SQB count */
+#define CNXK_NIX_TX_MAX_SQB 512
 
 #define CNXK_NIX_TX_OFFLOAD_CAPA                                               \
 	(DEV_TX_OFFLOAD_MBUF_FAST_FREE | DEV_TX_OFFLOAD_MT_LOCKFREE |          \
@@ -38,6 +42,7 @@ struct cnxk_eth_dev {
 	uint8_t max_mac_entries;
 
 	uint16_t flags;
+	bool scalar_ena;
 
 	/* Pointer back to rte */
 	struct rte_eth_dev *eth_dev;
@@ -72,5 +77,9 @@ extern struct eth_dev_ops cnxk_eth_dev_ops;
 int cnxk_nix_probe(struct rte_pci_driver *pci_drv,
 		   struct rte_pci_device *pci_dev);
 int cnxk_nix_remove(struct rte_pci_device *pci_dev);
+
+/* Devargs */
+int cnxk_ethdev_parse_devargs(struct rte_devargs *devargs,
+			      struct cnxk_eth_dev *dev);
 
 #endif /* __CNXK_ETHDEV_H__ */

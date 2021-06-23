@@ -57,6 +57,13 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
+	/* Parse devargs string */
+	rc = cnxk_ethdev_parse_devargs(eth_dev->device->devargs, dev);
+	if (rc) {
+		plt_err("Failed to parse devargs rc=%d", rc);
+		goto error;
+	}
+
 	/* Initialize base roc nix */
 	nix->pci_dev = pci_dev;
 	rc = roc_nix_dev_init(nix);
