@@ -26,6 +26,7 @@ Features of the CNXK Ethdev PMD are:
 - MAC filtering
 - Inner and Outer Checksum offload
 - Link state information
+- Link flow control
 - MTU update
 - Scatter-Gather IO support
 - Vector Poll mode driver

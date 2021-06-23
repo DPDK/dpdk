@@ -81,6 +81,55 @@ nix_recalc_mtu(struct rte_eth_dev *eth_dev)
 	return rc;
 }
 
+static int
+nix_init_flow_ctrl_config(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_fc_cfg *fc = &dev->fc_cfg;
+	struct rte_eth_fc_conf fc_conf = {0};
+	int rc;
+
+	/* Both Rx & Tx flow ctrl get enabled(RTE_FC_FULL) in HW
+	 * by AF driver, update those info in PMD structure.
+	 */
+	rc = cnxk_nix_flow_ctrl_get(eth_dev, &fc_conf);
+	if (rc)
+		goto exit;
+
+	fc->mode = fc_conf.mode;
+	fc->rx_pause = (fc_conf.mode == RTE_FC_FULL) ||
+			(fc_conf.mode == RTE_FC_RX_PAUSE);
+	fc->tx_pause = (fc_conf.mode == RTE_FC_FULL) ||
+			(fc_conf.mode == RTE_FC_TX_PAUSE);
+
+exit:
+	return rc;
+}
+
+static int
+nix_update_flow_ctrl_config(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_fc_cfg *fc = &dev->fc_cfg;
+	struct rte_eth_fc_conf fc_cfg = {0};
+
+	if (roc_nix_is_vf_or_sdp(&dev->nix))
+		return 0;
+
+	fc_cfg.mode = fc->mode;
+
+	/* To avoid Link credit deadlock on Ax, disable Tx FC if it's enabled */
+	if (roc_model_is_cn96_ax() &&
+	    (fc_cfg.mode == RTE_FC_FULL || fc_cfg.mode == RTE_FC_RX_PAUSE)) {
+		fc_cfg.mode =
+				(fc_cfg.mode == RTE_FC_FULL ||
+				fc_cfg.mode == RTE_FC_TX_PAUSE) ?
+				RTE_FC_TX_PAUSE : RTE_FC_NONE;
+	}
+
+	return cnxk_nix_flow_ctrl_set(eth_dev, &fc_cfg);
+}
+
 uint64_t
 cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev)
 {
@@ -686,6 +735,7 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	struct rte_eth_rxmode *rxmode = &conf->rxmode;
 	struct rte_eth_txmode *txmode = &conf->txmode;
 	char ea_fmt[RTE_ETHER_ADDR_FMT_SIZE];
+	struct roc_nix_fc_cfg fc_cfg = {0};
 	struct roc_nix *nix = &dev->nix;
 	struct rte_ether_addr *ea;
 	uint8_t nb_rxq, nb_txq;
@@ -867,6 +917,21 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto cq_fini;
 	}
 
+	/* Init flow control configuration */
+	fc_cfg.cq_cfg_valid = false;
+	fc_cfg.rxchan_cfg.enable = true;
+	rc = roc_nix_fc_config_set(nix, &fc_cfg);
+	if (rc) {
+		plt_err("Failed to initialize flow control rc=%d", rc);
+		goto cq_fini;
+	}
+
+	/* Update flow control configuration to PMD */
+	rc = nix_init_flow_ctrl_config(eth_dev);
+	if (rc) {
+		plt_err("Failed to initialize flow control rc=%d", rc);
+		goto cq_fini;
+	}
 	/*
 	 * Restore queue config when reconfigure followed by
 	 * reconfigure and no queue configure invoked from application case.
@@ -1066,6 +1131,13 @@ cnxk_nix_dev_start(struct rte_eth_dev *eth_dev)
 			return rc;
 	}
 
+	/* Update Flow control configuration */
+	rc = nix_update_flow_ctrl_config(eth_dev);
+	if (rc) {
+		plt_err("Failed to enable flow control. error code(%d)", rc);
+		return rc;
+	}
+
 	/* Enable Rx in NPC */
 	rc = roc_nix_npc_rx_ena_dis(&dev->nix, true);
 	if (rc) {
@@ -1115,6 +1187,8 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.allmulticast_disable = cnxk_nix_allmulticast_disable,
 	.rx_burst_mode_get = cnxk_nix_rx_burst_mode_get,
 	.tx_burst_mode_get = cnxk_nix_tx_burst_mode_get,
+	.flow_ctrl_get = cnxk_nix_flow_ctrl_get,
+	.flow_ctrl_set = cnxk_nix_flow_ctrl_set,
 };
 
 static int

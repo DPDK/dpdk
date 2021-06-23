@@ -113,6 +113,12 @@
 	((1ull << (PKT_TX_TUNNEL_VXLAN >> 45)) |                               \
 	 (1ull << (PKT_TX_TUNNEL_GENEVE >> 45)))
 
+struct cnxk_fc_cfg {
+	enum rte_eth_fc_mode mode;
+	uint8_t rx_pause;
+	uint8_t tx_pause;
+};
+
 struct cnxk_eth_qconf {
 	union {
 		struct rte_eth_txconf tx;
@@ -173,6 +179,9 @@ struct cnxk_eth_dev {
 	/* Saved qconf before lf realloc */
 	struct cnxk_eth_qconf *tx_qconf;
 	struct cnxk_eth_qconf *rx_qconf;
+
+	/* Flow control configuration */
+	struct cnxk_fc_cfg fc_cfg;
 
 	/* Rx burst for cleanup(Only Primary) */
 	eth_rx_burst_t rx_pkt_burst_no_offload;
@@ -238,6 +247,10 @@ int cnxk_nix_rx_burst_mode_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
 			       struct rte_eth_burst_mode *mode);
 int cnxk_nix_tx_burst_mode_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
 			       struct rte_eth_burst_mode *mode);
+int cnxk_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
+			   struct rte_eth_fc_conf *fc_conf);
+int cnxk_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
+			   struct rte_eth_fc_conf *fc_conf);
 int cnxk_nix_configure(struct rte_eth_dev *eth_dev);
 int cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			    uint16_t nb_desc, uint16_t fp_tx_q_sz,

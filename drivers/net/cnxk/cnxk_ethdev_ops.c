@@ -199,6 +199,107 @@ done:
 }
 
 int
+cnxk_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
+		       struct rte_eth_fc_conf *fc_conf)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	enum rte_eth_fc_mode mode_map[] = {
+					   RTE_FC_NONE, RTE_FC_RX_PAUSE,
+					   RTE_FC_TX_PAUSE, RTE_FC_FULL
+					  };
+	struct roc_nix *nix = &dev->nix;
+	int mode;
+
+	mode = roc_nix_fc_mode_get(nix);
+	if (mode < 0)
+		return mode;
+
+	memset(fc_conf, 0, sizeof(struct rte_eth_fc_conf));
+	fc_conf->mode = mode_map[mode];
+	return 0;
+}
+
+static int
+nix_fc_cq_config_set(struct cnxk_eth_dev *dev, uint16_t qid, bool enable)
+{
+	struct roc_nix *nix = &dev->nix;
+	struct roc_nix_fc_cfg fc_cfg;
+	struct roc_nix_cq *cq;
+
+	memset(&fc_cfg, 0, sizeof(struct roc_nix_fc_cfg));
+	cq = &dev->cqs[qid];
+	fc_cfg.cq_cfg_valid = true;
+	fc_cfg.cq_cfg.enable = enable;
+	fc_cfg.cq_cfg.rq = qid;
+	fc_cfg.cq_cfg.cq_drop = cq->drop_thresh;
+
+	return roc_nix_fc_config_set(nix, &fc_cfg);
+}
+
+int
+cnxk_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
+		       struct rte_eth_fc_conf *fc_conf)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	enum roc_nix_fc_mode mode_map[] = {
+					   ROC_NIX_FC_NONE, ROC_NIX_FC_RX,
+					   ROC_NIX_FC_TX, ROC_NIX_FC_FULL
+					  };
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct cnxk_fc_cfg *fc = &dev->fc_cfg;
+	struct roc_nix *nix = &dev->nix;
+	uint8_t rx_pause, tx_pause;
+	int rc, i;
+
+	if (roc_nix_is_vf_or_sdp(nix)) {
+		plt_err("Flow control configuration is not allowed on VFs");
+		return -ENOTSUP;
+	}
+
+	if (fc_conf->high_water || fc_conf->low_water || fc_conf->pause_time ||
+	    fc_conf->mac_ctrl_frame_fwd || fc_conf->autoneg) {
+		plt_info("Only MODE configuration is supported");
+		return -EINVAL;
+	}
+
+	if (fc_conf->mode == fc->mode)
+		return 0;
+
+	rx_pause = (fc_conf->mode == RTE_FC_FULL) ||
+		    (fc_conf->mode == RTE_FC_RX_PAUSE);
+	tx_pause = (fc_conf->mode == RTE_FC_FULL) ||
+		    (fc_conf->mode == RTE_FC_TX_PAUSE);
+
+	/* Check if TX pause frame is already enabled or not */
+	if (fc->tx_pause ^ tx_pause) {
+		if (roc_model_is_cn96_ax() && data->dev_started) {
+			/* On Ax, CQ should be in disabled state
+			 * while setting flow control configuration.
+			 */
+			plt_info("Stop the port=%d for setting flow control",
+				 data->port_id);
+			return 0;
+		}
+
+		for (i = 0; i < data->nb_rx_queues; i++) {
+			rc = nix_fc_cq_config_set(dev, i, tx_pause);
+			if (rc)
+				return rc;
+		}
+	}
+
+	rc = roc_nix_fc_mode_set(nix, mode_map[fc_conf->mode]);
+	if (rc)
+		return rc;
+
+	fc->rx_pause = rx_pause;
+	fc->tx_pause = tx_pause;
+	fc->mode = fc_conf->mode;
+
+	return rc;
+}
+
+int
 cnxk_nix_mac_addr_set(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
