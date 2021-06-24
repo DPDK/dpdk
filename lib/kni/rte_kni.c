@@ -811,6 +811,9 @@ rte_kni_update_link(struct rte_kni *kni, unsigned int linkup)
 	}
 	old_linkup = (old_carrier[0] == '1');
 
+	if (old_linkup == (int)linkup)
+		goto out;
+
 	new_carrier = linkup ? "1" : "0";
 	ret = write(fd, new_carrier, 1);
 	if (ret < 1) {
@@ -818,7 +821,7 @@ rte_kni_update_link(struct rte_kni *kni, unsigned int linkup)
 		close(fd);
 		return -1;
 	}
-
+out:
 	close(fd);
 	return old_linkup;
 }

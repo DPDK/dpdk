@@ -19,5 +19,6 @@ DPDK_21 {
 EXPERIMENTAL {
 	global:
 
+	# updated in v21.08
 	rte_kni_update_link;
 };
