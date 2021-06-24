@@ -4,7 +4,8 @@
 
 #include <string.h>
 
-#include "../../lib/telemetry/telemetry_json.h"
+#include "telemetry_json.h"
+
 #include "test.h"
 
 static int

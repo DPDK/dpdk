@@ -8,8 +8,7 @@
 #include <string.h>
 #include <errno.h>
 
-/* eal_filesystem.h is not a public header file, so use relative path */
-#include "../../lib/eal/common/eal_filesystem.h"
+#include "eal_filesystem.h"
 
 static int
 test_parse_sysfs_value(void)
