@@ -700,7 +700,6 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 {
 	struct bnxt_coal coal;
 	unsigned int i;
-	uint8_t ring_type;
 	int rc = 0;
 
 	bnxt_init_dflt_coal(&coal);
@@ -712,36 +711,11 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 			goto err_out;
 	}
 
+	/* If something is wrong with Rx ring alloc, skip Tx ring alloc */
 	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
-		struct bnxt_tx_queue *txq = bp->tx_queues[i];
-		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
-		struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
-		struct bnxt_tx_ring_info *txr = txq->tx_ring;
-		struct bnxt_ring *ring = txr->tx_ring_struct;
-		unsigned int idx = i + bp->rx_cp_nr_rings;
-		uint16_t tx_cosq_id = 0;
-
-		if (bnxt_alloc_cmpl_ring(bp, idx, cpr))
-			goto err_out;
-
-		if (bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY)
-			tx_cosq_id = bp->tx_cosq_id[i < bp->max_lltc ? i : 0];
-		else
-			tx_cosq_id = bp->tx_cosq_id[0];
-		/* Tx ring */
-		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_TX;
-		rc = bnxt_hwrm_ring_alloc(bp, ring,
-					  ring_type,
-					  i, cpr->hw_stats_ctx_id,
-					  cp_ring->fw_ring_id,
-					  tx_cosq_id);
+		rc = bnxt_alloc_hwrm_tx_ring(bp, i);
 		if (rc)
 			goto err_out;
-
-		bnxt_set_db(bp, &txr->tx_db, ring_type, i, ring->fw_ring_id,
-			    ring->ring_mask);
-		txq->index = idx;
-		bnxt_hwrm_set_ring_coal(bp, &coal, cp_ring->fw_ring_id);
 	}
 
 err_out:
