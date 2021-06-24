@@ -1082,6 +1082,7 @@ i40e_init_fdir_filter_list(struct rte_eth_dev *dev)
 	char fdir_hash_name[RTE_HASH_NAMESIZE];
 	uint32_t alloc = hw->func_caps.fd_filters_guaranteed;
 	uint32_t best = hw->func_caps.fd_filters_best_effort;
+	enum i40e_filter_pctype pctype;
 	struct rte_bitmap *bmp = NULL;
 	uint32_t bmp_size;
 	void *mem = NULL;
@@ -1129,6 +1130,10 @@ i40e_init_fdir_filter_list(struct rte_eth_dev *dev)
 		ret = -ENOMEM;
 		goto err_fdir_filter_array_alloc;
 	}
+
+	for (pctype = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
+	     pctype <= I40E_FILTER_PCTYPE_L2_PAYLOAD; pctype++)
+		pf->fdir.flow_count[pctype] = 0;
 
 	fdir_info->fdir_space_size = alloc + best;
 	fdir_info->fdir_actual_cnt = 0;

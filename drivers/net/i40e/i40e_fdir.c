@@ -1606,13 +1606,13 @@ i40e_flow_set_fdir_inset(struct i40e_pf *pf,
 	}
 
 	/* Check if the configuration is conflicted */
-	if (pf->fdir.inset_flag[pctype] &&
+	if (pf->fdir.flow_count[pctype] &&
 	    memcmp(&pf->fdir.input_set[pctype], &input_set, sizeof(uint64_t))) {
 		PMD_DRV_LOG(ERR, "Conflict with the first rule's input set.");
 		return -EINVAL;
 	}
 
-	if (pf->fdir.inset_flag[pctype] &&
+	if (pf->fdir.flow_count[pctype] &&
 	    !memcmp(&pf->fdir.input_set[pctype], &input_set, sizeof(uint64_t)))
 		return 0;
 
@@ -1665,7 +1665,6 @@ i40e_flow_set_fdir_inset(struct i40e_pf *pf,
 	I40E_WRITE_FLUSH(hw);
 
 	pf->fdir.input_set[pctype] = input_set;
-	pf->fdir.inset_flag[pctype] = 1;
 	return 0;
 }
 
@@ -1889,11 +1888,13 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 	}
 
 	if (add) {
+		fdir_info->flow_count[pctype]++;
 		fdir_info->fdir_actual_cnt++;
 		if (fdir_info->fdir_invalprio == 1 &&
 				fdir_info->fdir_guarantee_free_space > 0)
 			fdir_info->fdir_guarantee_free_space--;
 	} else {
+		fdir_info->flow_count[pctype]--;
 		fdir_info->fdir_actual_cnt--;
 		if (fdir_info->fdir_invalprio == 1 &&
 				fdir_info->fdir_guarantee_free_space <
