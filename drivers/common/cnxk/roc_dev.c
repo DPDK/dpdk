@@ -870,6 +870,8 @@ dev_vf_hwcap_update(struct plt_pci_device *pci_dev, struct dev *dev)
 		break;
 	case PCI_DEVID_CNXK_RVU_SSO_TIM_VF:
 	case PCI_DEVID_CNXK_RVU_NPA_VF:
+	case PCI_DEVID_CN10K_RVU_CPT_VF:
+	case PCI_DEVID_CN9K_RVU_CPT_VF:
 	case PCI_DEVID_CNXK_RVU_AF_VF:
 	case PCI_DEVID_CNXK_RVU_VF:
 	case PCI_DEVID_CNXK_RVU_SDP_VF:

@@ -2,6 +2,7 @@ INTERNAL {
 	global:
 
 	cnxk_logtype_base;
+	cnxk_logtype_cpt;
 	cnxk_logtype_mbox;
 	cnxk_logtype_nix;
 	cnxk_logtype_npa;
@@ -32,6 +33,11 @@ INTERNAL {
 	roc_bphy_irq_stack_get;
 	roc_bphy_irq_stack_remove;
 	roc_clk_freq_get;
+	roc_cpt_dev_clear;
+	roc_cpt_dev_configure;
+	roc_cpt_dev_fini;
+	roc_cpt_dev_init;
+	roc_cpt_eng_grp_add;
 	roc_error_msg_get;
 	roc_idev_lmt_base_addr_get;
 	roc_idev_npa_maxpools_get;

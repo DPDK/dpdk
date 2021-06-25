@@ -83,6 +83,7 @@ struct dev {
 	uint16_t maxvf;
 	struct dev_ops *ops;
 	void *roc_nix;
+	void *roc_cpt;
 	bool disable_shared_lmt; /* false(default): shared lmt mode enabled */
 	const struct plt_memzone *lmt_mz;
 } __plt_cache_aligned;

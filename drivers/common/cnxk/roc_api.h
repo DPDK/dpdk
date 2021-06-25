@@ -115,4 +115,7 @@
 /* Baseband phy */
 #include "roc_bphy.h"
 
+/* CPT */
+#include "roc_cpt.h"
+
 #endif /* _ROC_API_H_ */
