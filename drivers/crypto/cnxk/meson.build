@@ -10,7 +10,10 @@ endif
 
 sources = files(
         'cn9k_cryptodev.c',
+        'cn9k_cryptodev_ops.c',
         'cn10k_cryptodev.c',
+        'cn10k_cryptodev_ops.c',
+        'cnxk_cryptodev.c',
 )
 
 deps += ['bus_pci', 'common_cnxk']
