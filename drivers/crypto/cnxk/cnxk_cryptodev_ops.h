@@ -11,6 +11,11 @@
 
 #define CNXK_CPT_MIN_HEADROOM_REQ 24
 
+/* Default command timeout in seconds */
+#define DEFAULT_COMMAND_TIMEOUT 4
+
+#define MOD_INC(i, l) ((i) == (l - 1) ? (i) = 0 : (i)++)
+
 struct cpt_qp_meta_info {
 	struct rte_mempool *pool;
 	int mlen;
@@ -25,6 +30,10 @@ enum sym_xform_type {
 	CNXK_CPT_AUTH_GEN_CIPHER_ENC,
 	CNXK_CPT_CIPHER_DEC_AUTH_VRFY
 };
+
+#define CPT_OP_FLAGS_METABUF	       (1 << 1)
+#define CPT_OP_FLAGS_AUTH_VERIFY       (1 << 0)
+#define CPT_OP_FLAGS_IPSEC_DIR_INBOUND (1 << 2)
 
 struct cpt_inflight_req {
 	union cpt_res_s res;

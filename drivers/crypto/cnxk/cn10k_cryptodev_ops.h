@@ -10,4 +10,6 @@
 
 extern struct rte_cryptodev_ops cn10k_cpt_ops;
 
+void cn10k_cpt_set_enqdeq_fns(struct rte_cryptodev *dev);
+
 #endif /* _CN10K_CRYPTODEV_OPS_H_ */
