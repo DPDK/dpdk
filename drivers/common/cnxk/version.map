@@ -1,6 +1,10 @@
 INTERNAL {
 	global:
 
+	cnxk_ipsec_icvlen_get;
+	cnxk_ipsec_ivlen_get;
+	cnxk_ipsec_outb_rlens_get;
+	cnxk_ipsec_outb_roundup_byte;
 	cnxk_logtype_base;
 	cnxk_logtype_cpt;
 	cnxk_logtype_mbox;
@@ -10,6 +14,10 @@ INTERNAL {
 	cnxk_logtype_sso;
 	cnxk_logtype_tim;
 	cnxk_logtype_tm;
+	cnxk_ot_ipsec_inb_sa_fill;
+	cnxk_ot_ipsec_outb_sa_fill;
+	cnxk_ot_ipsec_inb_sa_valid;
+	cnxk_ot_ipsec_outb_sa_valid;
 	roc_ae_ec_grp_get;
 	roc_ae_ec_grp_put;
 	roc_ae_fpm_get;

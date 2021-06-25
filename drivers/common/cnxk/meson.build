@@ -9,7 +9,7 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 endif
 
 config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'
-deps = ['eal', 'pci', 'bus_pci', 'mbuf']
+deps = ['eal', 'pci', 'bus_pci', 'mbuf', 'security']
 sources = files(
         'roc_ae.c',
         'roc_ae_fpm_tables.c',
@@ -55,4 +55,8 @@ sources = files(
         'roc_tim_irq.c',
         'roc_utils.c',
 )
+
+# Security common code
+sources += files('cnxk_security.c')
+
 includes += include_directories('../../bus/pci')
