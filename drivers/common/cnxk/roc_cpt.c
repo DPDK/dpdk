@@ -806,3 +806,23 @@ roc_cpt_iq_disable(struct roc_cpt_lf *lf)
 	lf_inprog.s.eena = 0x0;
 	plt_write64(lf_inprog.u, lf->rbase + CPT_LF_INPROG);
 }
+
+int
+roc_cpt_lmtline_init(struct roc_cpt *roc_cpt, struct roc_cpt_lmtline *lmtline,
+		     int lf_id)
+{
+	struct roc_cpt_lf *lf;
+
+	lf = roc_cpt->lf[lf_id];
+	if (lf == NULL)
+		return -ENOTSUP;
+
+	lmtline->io_addr = lf->io_addr;
+	if (roc_model_is_cn10k())
+		lmtline->io_addr |= ROC_CN10K_CPT_INST_DW_M1 << 4;
+
+	lmtline->fc_addr = lf->fc_addr;
+	lmtline->lmt_base = lf->lmt_base;
+
+	return 0;
+}
