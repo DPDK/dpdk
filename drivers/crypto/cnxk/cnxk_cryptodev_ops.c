@@ -460,12 +460,25 @@ sym_session_configure(struct roc_cpt *roc_cpt, int driver_id,
 	case CNXK_CPT_CIPHER:
 		ret = fill_sess_cipher(xform, sess_priv);
 		break;
+	case CNXK_CPT_AUTH:
+		if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC)
+			ret = fill_sess_gmac(xform, sess_priv);
+		else
+			ret = fill_sess_auth(xform, sess_priv);
+		break;
 	default:
 		ret = -1;
 	}
 
 	if (ret)
 		goto priv_put;
+
+	if ((sess_priv->roc_se_ctx.fc_type == ROC_SE_HASH_HMAC) &&
+	    cpt_mac_len_verify(&xform->auth)) {
+		plt_dp_err("MAC length is not supported");
+		ret = -ENOTSUP;
+		goto priv_put;
+	}
 
 	sess_priv->cpt_inst_w7 = cnxk_cpt_inst_w7_get(sess_priv, roc_cpt);
 
