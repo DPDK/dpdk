@@ -457,6 +457,9 @@ sym_session_configure(struct roc_cpt *roc_cpt, int driver_id,
 	sess_priv = priv;
 
 	switch (ret) {
+	case CNXK_CPT_CIPHER:
+		ret = fill_sess_cipher(xform, sess_priv);
+		break;
 	default:
 		ret = -1;
 	}
