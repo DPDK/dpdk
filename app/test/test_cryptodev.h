@@ -71,6 +71,8 @@
 #define CRYPTODEV_NAME_CAAM_JR_PMD	crypto_caam_jr
 #define CRYPTODEV_NAME_NITROX_PMD	crypto_nitrox_sym
 #define CRYPTODEV_NAME_BCMFS_PMD	crypto_bcmfs
+#define CRYPTODEV_NAME_CN9K_PMD		crypto_cn9k
+#define CRYPTODEV_NAME_CN10K_PMD	crypto_cn10k
 
 enum cryptodev_api_test_type {
 	CRYPTODEV_API_TEST = 0,

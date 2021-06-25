@@ -319,6 +319,8 @@ perf_test_names = [
 driver_test_names = [
         'cryptodev_aesni_mb_autotest',
         'cryptodev_aesni_gcm_autotest',
+        'cryptodev_cn9k_autotest',
+        'cryptodev_cn10k_autotest',
         'cryptodev_dpaa_sec_autotest',
         'cryptodev_dpaa2_sec_autotest',
         'cryptodev_null_autotest',

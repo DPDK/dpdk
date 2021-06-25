@@ -165,6 +165,26 @@ Debugging Options
     | 1 | CPT        | --log-level='pmd\.crypto\.cnxk,8'                     |
     +---+------------+-------------------------------------------------------+
 
+Testing
+-------
+
+The symmetric crypto operations on OCTEON cnxk crypto PMD may be verified by
+running the test application:
+
+``CN9K``
+
+.. code-block:: console
+
+    ./dpdk-test
+    RTE>>cryptodev_cn9k_autotest
+
+``CN10K``
+
+.. code-block:: console
+
+    ./dpdk-test
+    RTE>>cryptodev_cn10k_autotest
+
 Limitations
 -----------
 
