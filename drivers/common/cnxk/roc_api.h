@@ -57,6 +57,11 @@
 #define PCI_DEVID_CN9K_CGX  0xA059
 #define PCI_DEVID_CN10K_RPM 0xA060
 
+#define PCI_DEVID_CN9K_RVU_CPT_PF  0xA0FD
+#define PCI_DEVID_CN9K_RVU_CPT_VF  0xA0FE
+#define PCI_DEVID_CN10K_RVU_CPT_PF 0xA0F2
+#define PCI_DEVID_CN10K_RVU_CPT_VF 0xA0F3
+
 #define PCI_SUBSYSTEM_DEVID_CN10KA  0xB900
 #define PCI_SUBSYSTEM_DEVID_CN10KAS 0xB900
 
@@ -67,6 +72,7 @@
 #define PCI_SUBSYSTEM_DEVID_CN9KE 0xB100
 
 /* HW structure definition */
+#include "hw/cpt.h"
 #include "hw/nix.h"
 #include "hw/npa.h"
 #include "hw/npc.h"
