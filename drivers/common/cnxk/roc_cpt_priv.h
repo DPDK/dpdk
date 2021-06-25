@@ -33,6 +33,8 @@ int cpt_lfs_free(struct dev *dev);
 int cpt_lf_init(struct roc_cpt_lf *lf);
 void cpt_lf_fini(struct roc_cpt_lf *lf);
 
+int cpt_lf_outb_cfg(struct dev *dev, uint16_t sso_pf_func, uint16_t nix_pf_func,
+		    uint8_t lf_id, bool ena);
 int cpt_get_msix_offset(struct dev *dev, struct msix_offset_rsp **msix_rsp);
 uint64_t cpt_get_blkaddr(struct dev *dev);
 

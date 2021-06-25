@@ -29,6 +29,7 @@ struct roc_cpt_lf {
 	uint64_t *fc_addr;
 	uint64_t io_addr;
 	uint8_t *iq_vaddr;
+	struct roc_nix *inl_outb_nix;
 } __plt_cache_aligned;
 
 struct roc_cpt {
@@ -64,6 +65,10 @@ void __roc_api roc_cpt_dev_clear(struct roc_cpt *roc_cpt);
 int __roc_api roc_cpt_lf_init(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf);
 void __roc_api roc_cpt_lf_fini(struct roc_cpt_lf *lf);
 int __roc_api roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, uint64_t cptr);
+int __roc_api roc_cpt_inline_ipsec_cfg(struct dev *dev, uint8_t slot,
+				       struct roc_nix *nix);
+int __roc_api roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt,
+					   uint16_t param1, uint16_t param2);
 int __roc_api roc_cpt_afs_print(struct roc_cpt *roc_cpt);
 int __roc_api roc_cpt_lfs_print(struct roc_cpt *roc_cpt);
 void __roc_api roc_cpt_iq_disable(struct roc_cpt_lf *lf);

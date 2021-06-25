@@ -217,6 +217,67 @@ cpt_lf_dump(struct roc_cpt_lf *lf)
 }
 
 int
+cpt_lf_outb_cfg(struct dev *dev, uint16_t sso_pf_func, uint16_t nix_pf_func,
+		uint8_t lf_id, bool ena)
+{
+	struct cpt_inline_ipsec_cfg_msg *req;
+	struct mbox *mbox = dev->mbox;
+
+	req = mbox_alloc_msg_cpt_inline_ipsec_cfg(mbox);
+	if (req == NULL)
+		return -ENOSPC;
+
+	req->dir = CPT_INLINE_OUTBOUND;
+	req->slot = lf_id;
+	if (ena) {
+		req->enable = 1;
+		req->sso_pf_func = sso_pf_func;
+		req->nix_pf_func = nix_pf_func;
+	} else {
+		req->enable = 0;
+	}
+
+	return mbox_process(mbox);
+}
+
+int
+roc_cpt_inline_ipsec_cfg(struct dev *cpt_dev, uint8_t lf_id,
+			 struct roc_nix *roc_nix)
+{
+	bool ena = roc_nix ? true : false;
+	uint16_t nix_pf_func = 0;
+	uint16_t sso_pf_func = 0;
+
+	if (ena) {
+		nix_pf_func = roc_nix_get_pf_func(roc_nix);
+		sso_pf_func = idev_sso_pffunc_get();
+	}
+
+	return cpt_lf_outb_cfg(cpt_dev, sso_pf_func, nix_pf_func, lf_id, ena);
+}
+
+int
+roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt, uint16_t param1,
+			     uint16_t param2)
+{
+	struct cpt *cpt = roc_cpt_to_cpt_priv(roc_cpt);
+	struct cpt_rx_inline_lf_cfg_msg *req;
+	struct mbox *mbox;
+
+	mbox = cpt->dev.mbox;
+
+	req = mbox_alloc_msg_cpt_rx_inline_lf_cfg(mbox);
+	if (req == NULL)
+		return -ENOSPC;
+
+	req->sso_pf_func = idev_sso_pffunc_get();
+	req->param1 = param1;
+	req->param2 = param2;
+
+	return mbox_process(mbox);
+}
+
+int
 roc_cpt_rxc_time_cfg(struct roc_cpt *roc_cpt, struct roc_cpt_rxc_time_cfg *cfg)
 {
 	struct cpt *cpt = roc_cpt_to_cpt_priv(roc_cpt);
