@@ -6,6 +6,33 @@
 #include "roc_priv.h"
 
 int
+roc_cpt_rxc_time_cfg(struct roc_cpt *roc_cpt, struct roc_cpt_rxc_time_cfg *cfg)
+{
+	struct cpt *cpt = roc_cpt_to_cpt_priv(roc_cpt);
+	struct cpt_rxc_time_cfg_req *req;
+	struct dev *dev = &cpt->dev;
+
+	req = mbox_alloc_msg_cpt_rxc_time_cfg(dev->mbox);
+	if (req == NULL)
+		return -ENOSPC;
+
+	req->blkaddr = 0;
+
+	/* The step value is in microseconds. */
+	req->step = cfg->step;
+
+	/* The timeout will be: limit * step microseconds */
+	req->zombie_limit = cfg->zombie_limit;
+	req->zombie_thres = cfg->zombie_thres;
+
+	/* The timeout will be: limit * step microseconds */
+	req->active_limit = cfg->active_limit;
+	req->active_thres = cfg->active_thres;
+
+	return mbox_process(dev->mbox);
+}
+
+int
 cpt_get_msix_offset(struct dev *dev, struct msix_offset_rsp **msix_rsp)
 {
 	struct mbox *mbox = dev->mbox;

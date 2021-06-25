@@ -38,6 +38,7 @@ INTERNAL {
 	roc_cpt_dev_fini;
 	roc_cpt_dev_init;
 	roc_cpt_eng_grp_add;
+	roc_cpt_rxc_time_cfg;
 	roc_error_msg_get;
 	roc_idev_cpt_get;
 	roc_idev_cpt_set;

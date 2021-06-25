@@ -28,6 +28,16 @@ struct roc_cpt {
 	uint8_t reserved[ROC_CPT_MEM_SZ] __plt_cache_aligned;
 } __plt_cache_aligned;
 
+struct roc_cpt_rxc_time_cfg {
+	uint32_t step;
+	uint16_t active_limit;
+	uint16_t active_thres;
+	uint16_t zombie_limit;
+	uint16_t zombie_thres;
+};
+
+int __roc_api roc_cpt_rxc_time_cfg(struct roc_cpt *roc_cpt,
+				   struct roc_cpt_rxc_time_cfg *cfg);
 int __roc_api roc_cpt_dev_init(struct roc_cpt *roc_cpt);
 int __roc_api roc_cpt_dev_fini(struct roc_cpt *roc_cpt);
 int __roc_api roc_cpt_eng_grp_add(struct roc_cpt *roc_cpt,
