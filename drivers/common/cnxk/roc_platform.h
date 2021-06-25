@@ -49,6 +49,7 @@
 #define PLT_MODEL_MZ_NAME	 "roc_model_mz"
 #define PLT_CACHE_LINE_SIZE      RTE_CACHE_LINE_SIZE
 #define BITMASK_ULL		 GENMASK_ULL
+#define PLT_ALIGN_CEIL		 RTE_ALIGN_CEIL
 
 /** Divide ceil */
 #define PLT_DIV_CEIL(x, y)			\
