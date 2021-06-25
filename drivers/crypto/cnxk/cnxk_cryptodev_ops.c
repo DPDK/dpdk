@@ -466,6 +466,9 @@ sym_session_configure(struct roc_cpt *roc_cpt, int driver_id,
 		else
 			ret = fill_sess_auth(xform, sess_priv);
 		break;
+	case CNXK_CPT_AEAD:
+		ret = fill_sess_aead(xform, sess_priv);
+		break;
 	default:
 		ret = -1;
 	}
