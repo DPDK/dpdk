@@ -12,6 +12,9 @@ void __roc_api roc_idev_npa_maxpools_set(uint32_t max_pools);
 uint64_t __roc_api roc_idev_lmt_base_addr_get(void);
 uint16_t __roc_api roc_idev_num_lmtlines_get(void);
 
+struct roc_cpt *__roc_api roc_idev_cpt_get(void);
+void __roc_api roc_idev_cpt_set(struct roc_cpt *cpt);
+
 struct roc_nix *__roc_api roc_idev_npa_nix_get(void);
 
 #endif /* _ROC_IDEV_H_ */

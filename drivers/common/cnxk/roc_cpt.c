@@ -230,6 +230,10 @@ roc_cpt_dev_init(struct roc_cpt *roc_cpt)
 
 	dev->roc_cpt = roc_cpt;
 
+	/* Set it to idev if not already present */
+	if (!roc_idev_cpt_get())
+		roc_idev_cpt_set(roc_cpt);
+
 	return 0;
 
 fail:
@@ -243,6 +247,10 @@ roc_cpt_dev_fini(struct roc_cpt *roc_cpt)
 
 	if (cpt == NULL)
 		return -EINVAL;
+
+	/* Remove idev references */
+	if (roc_idev_cpt_get() == roc_cpt)
+		roc_idev_cpt_set(NULL);
 
 	roc_cpt->nb_lf_avail = 0;
 
