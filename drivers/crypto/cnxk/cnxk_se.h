@@ -1475,6 +1475,137 @@ cpt_kasumi_enc_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 }
 
 static __rte_always_inline int
+cpt_kasumi_dec_prep(uint64_t d_offs, uint64_t d_lens,
+		    struct roc_se_fc_params *params, struct cpt_inst_s *inst)
+{
+	void *m_vaddr = params->meta_buf.vaddr;
+	uint32_t size;
+	int32_t inputlen = 0, outputlen;
+	struct roc_se_ctx *se_ctx;
+	uint8_t i = 0, iv_len = 8;
+	uint32_t encr_offset;
+	uint32_t encr_data_len;
+	int flags;
+	uint8_t dir = 0;
+	uint64_t *offset_vaddr;
+	union cpt_inst_w4 cpt_inst_w4;
+	uint8_t *in_buffer;
+	uint32_t g_size_bytes, s_size_bytes;
+	struct roc_se_sglist_comp *gather_comp;
+	struct roc_se_sglist_comp *scatter_comp;
+
+	encr_offset = ROC_SE_ENCR_OFFSET(d_offs) / 8;
+	encr_data_len = ROC_SE_ENCR_DLEN(d_lens);
+
+	se_ctx = params->ctx_buf.vaddr;
+	flags = se_ctx->zsk_flags;
+
+	cpt_inst_w4.u64 = 0;
+	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_KASUMI | ROC_SE_DMA_MODE;
+
+	/* indicates ECB/CBC, direction, ctx from cptr, iv from dptr */
+	cpt_inst_w4.s.opcode_minor = ((1 << 6) | (se_ctx->k_ecb << 5) |
+				      (dir << 4) | (0 << 3) | (flags & 0x7));
+
+	/*
+	 * GP op header, lengths are expected in bits.
+	 */
+	cpt_inst_w4.s.param1 = encr_data_len;
+
+	/* consider iv len */
+	encr_offset += iv_len;
+
+	inputlen = iv_len + (RTE_ALIGN(encr_data_len, 8) / 8);
+	outputlen = inputlen;
+
+	/* save space for offset ctrl & iv */
+	offset_vaddr = m_vaddr;
+
+	m_vaddr = (uint8_t *)m_vaddr + ROC_SE_OFF_CTRL_LEN + iv_len;
+
+	/* DPTR has SG list */
+	in_buffer = m_vaddr;
+
+	((uint16_t *)in_buffer)[0] = 0;
+	((uint16_t *)in_buffer)[1] = 0;
+
+	/* TODO Add error check if space will be sufficient */
+	gather_comp = (struct roc_se_sglist_comp *)((uint8_t *)m_vaddr + 8);
+
+	/*
+	 * Input Gather List
+	 */
+	i = 0;
+
+	/* Offset control word followed by iv */
+	*offset_vaddr = rte_cpu_to_be_64((uint64_t)encr_offset << 16);
+	if (unlikely((encr_offset >> 16))) {
+		plt_dp_err("Offset not supported");
+		plt_dp_err("enc_offset: %d", encr_offset);
+		return -1;
+	}
+
+	i = fill_sg_comp(gather_comp, i, (uint64_t)offset_vaddr,
+			 ROC_SE_OFF_CTRL_LEN + iv_len);
+
+	/* IV */
+	memcpy((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN, params->iv_buf,
+	       iv_len);
+
+	/* Add input data */
+	size = inputlen - iv_len;
+	if (size) {
+		i = fill_sg_comp_from_iov(gather_comp, i, params->src_iov, 0,
+					  &size, NULL, 0);
+		if (unlikely(size)) {
+			plt_dp_err("Insufficient buffer space,"
+				   " size %d needed",
+				   size);
+			return -1;
+		}
+	}
+	((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
+	g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+
+	/*
+	 * Output Scatter List
+	 */
+
+	i = 0;
+	scatter_comp = (struct roc_se_sglist_comp *)((uint8_t *)gather_comp +
+						     g_size_bytes);
+
+	/* IV */
+	i = fill_sg_comp(scatter_comp, i,
+			 (uint64_t)offset_vaddr + ROC_SE_OFF_CTRL_LEN, iv_len);
+
+	/* Add output data */
+	size = outputlen - iv_len;
+	if (size) {
+		i = fill_sg_comp_from_iov(scatter_comp, i, params->dst_iov, 0,
+					  &size, NULL, 0);
+		if (unlikely(size)) {
+			plt_dp_err("Insufficient buffer space,"
+				   " size %d needed",
+				   size);
+			return -1;
+		}
+	}
+	((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
+	s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+
+	size = g_size_bytes + s_size_bytes + ROC_SE_SG_LIST_HDR_SIZE;
+
+	/* This is DPTR len in case of SG mode */
+	cpt_inst_w4.s.dlen = size;
+
+	inst->dptr = (uint64_t)in_buffer;
+	inst->w4.u64 = cpt_inst_w4.u64;
+
+	return 0;
+}
+
+static __rte_always_inline int
 cpt_fc_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 		     struct roc_se_fc_params *fc_params,
 		     struct cpt_inst_s *inst)
@@ -1490,6 +1621,8 @@ cpt_fc_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 	} else if (fc_type == ROC_SE_PDCP) {
 		ret = cpt_zuc_snow3g_dec_prep(flags, d_offs, d_lens, fc_params,
 					      inst);
+	} else if (fc_type == ROC_SE_KASUMI) {
+		ret = cpt_kasumi_dec_prep(d_offs, d_lens, fc_params, inst);
 	}
 	return ret;
 }
