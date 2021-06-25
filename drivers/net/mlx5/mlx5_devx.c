@@ -339,6 +339,7 @@ mlx5_rxq_create_devx_rq_resources(struct rte_eth_dev *dev, uint16_t idx)
 	rq_attr.mem_rq_type = MLX5_RQC_MEM_RQ_TYPE_MEMORY_RQ_INLINE;
 	rq_attr.flush_in_error_en = 1;
 	mlx5_devx_create_rq_attr_fill(rxq_data, cqn, &rq_attr);
+	rq_attr.ts_format = mlx5_ts_format_conv(priv->sh->rq_ts_format);
 	/* Fill WQ attributes for this RQ. */
 	if (mlx5_rxq_mprq_enabled(rxq_data)) {
 		rq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC_STRIDING_RQ;
