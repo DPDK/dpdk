@@ -188,6 +188,34 @@ cpt_lf_unregister_irqs(struct roc_cpt_lf *lf)
 	cpt_lf_unregister_done_irq(lf);
 }
 
+static void
+cpt_lf_dump(struct roc_cpt_lf *lf)
+{
+	plt_cpt_dbg("CPT LF");
+	plt_cpt_dbg("RBASE: 0x%016" PRIx64, lf->rbase);
+	plt_cpt_dbg("LMT_BASE: 0x%016" PRIx64, lf->lmt_base);
+	plt_cpt_dbg("MSIXOFF: 0x%x", lf->msixoff);
+	plt_cpt_dbg("LF_ID: 0x%x", lf->lf_id);
+	plt_cpt_dbg("NB DESC: %d", lf->nb_desc);
+	plt_cpt_dbg("FC_ADDR: 0x%016" PRIx64, (uintptr_t)lf->fc_addr);
+	plt_cpt_dbg("CQ.VADDR: 0x%016" PRIx64, (uintptr_t)lf->iq_vaddr);
+
+	plt_cpt_dbg("CPT LF REG:");
+	plt_cpt_dbg("LF_CTL[0x%016llx]: 0x%016" PRIx64, CPT_LF_CTL,
+		    plt_read64(lf->rbase + CPT_LF_CTL));
+	plt_cpt_dbg("Q_SIZE[0x%016llx]: 0x%016" PRIx64, CPT_LF_INPROG,
+		    plt_read64(lf->rbase + CPT_LF_INPROG));
+
+	plt_cpt_dbg("Q_BASE[0x%016llx]: 0x%016" PRIx64, CPT_LF_Q_BASE,
+		    plt_read64(lf->rbase + CPT_LF_Q_BASE));
+	plt_cpt_dbg("Q_SIZE[0x%016llx]: 0x%016" PRIx64, CPT_LF_Q_SIZE,
+		    plt_read64(lf->rbase + CPT_LF_Q_SIZE));
+	plt_cpt_dbg("Q_INST_PTR[0x%016llx]: 0x%016" PRIx64, CPT_LF_Q_INST_PTR,
+		    plt_read64(lf->rbase + CPT_LF_Q_INST_PTR));
+	plt_cpt_dbg("Q_GRP_PTR[0x%016llx]: 0x%016" PRIx64, CPT_LF_Q_GRP_PTR,
+		    plt_read64(lf->rbase + CPT_LF_Q_GRP_PTR));
+}
+
 int
 roc_cpt_rxc_time_cfg(struct roc_cpt *roc_cpt, struct roc_cpt_rxc_time_cfg *cfg)
 {
@@ -484,6 +512,7 @@ cpt_lf_init(struct roc_cpt_lf *lf)
 	if (rc)
 		goto disable_iq;
 
+	cpt_lf_dump(lf);
 	return 0;
 
 disable_iq:

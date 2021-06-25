@@ -33,6 +33,7 @@ INTERNAL {
 	roc_bphy_irq_stack_get;
 	roc_bphy_irq_stack_remove;
 	roc_clk_freq_get;
+	roc_cpt_afs_print;
 	roc_cpt_dev_clear;
 	roc_cpt_dev_configure;
 	roc_cpt_dev_fini;
@@ -41,6 +42,7 @@ INTERNAL {
 	roc_cpt_iq_disable;
 	roc_cpt_lf_init;
 	roc_cpt_lf_fini;
+	roc_cpt_lfs_print;
 	roc_cpt_rxc_time_cfg;
 	roc_error_msg_get;
 	roc_idev_cpt_get;

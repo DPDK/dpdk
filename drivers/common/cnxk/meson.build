@@ -15,6 +15,7 @@ sources = files(
         'roc_bphy_cgx.c',
         'roc_bphy_irq.c',
         'roc_cpt.c',
+        'roc_cpt_debug.c',
         'roc_dev.c',
         'roc_idev.c',
         'roc_irq.c',
