@@ -1067,6 +1067,15 @@ F: drivers/crypto/kasumi/
 F: doc/guides/cryptodevs/kasumi.rst
 F: doc/guides/cryptodevs/features/kasumi.ini
 
+Marvell cnxk crypto
+M: Ankur Dwivedi <adwivedi@marvell.com>
+M: Anoob Joseph <anoobj@marvell.com>
+M: Tejasree Kondoj <ktejasree@marvell.com>
+F: drivers/crypto/cnxk/
+F: doc/guides/cryptodevs/cnxk.rst
+F: doc/guides/cryptodevs/features/cn9k.ini
+F: doc/guides/cryptodevs/features/cn10k.ini
+
 Marvell mvsam
 M: Michael Shamis <michaelsh@marvell.com>
 M: Liron Himi <lironh@marvell.com>
