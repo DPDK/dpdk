@@ -53,4 +53,11 @@ struct roc_ae_ec_ctx {
 	uint8_t curveid;
 };
 
+/* Buffer pointer */
+struct roc_ae_buf_ptr {
+	void *vaddr;
+};
+
+int __roc_api roc_ae_ec_grp_get(struct roc_ae_ec_group **tbl);
+void __roc_api roc_ae_ec_grp_put(void);
 #endif /* __ROC_AE_H__ */
