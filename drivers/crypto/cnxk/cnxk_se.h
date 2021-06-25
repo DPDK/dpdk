@@ -512,6 +512,327 @@ cpt_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 }
 
 static __rte_always_inline int
+cpt_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
+		  struct roc_se_fc_params *fc_params, struct cpt_inst_s *inst)
+{
+	uint32_t iv_offset = 0, size;
+	int32_t inputlen, outputlen, enc_dlen, auth_dlen;
+	struct roc_se_ctx *se_ctx;
+	int32_t hash_type, mac_len;
+	uint8_t iv_len = 16;
+	struct roc_se_buf_ptr *aad_buf = NULL;
+	uint32_t encr_offset, auth_offset;
+	uint32_t encr_data_len, auth_data_len, aad_len = 0;
+	uint32_t passthrough_len = 0;
+	union cpt_inst_w4 cpt_inst_w4;
+	void *offset_vaddr;
+	uint8_t op_minor;
+
+	encr_offset = ROC_SE_ENCR_OFFSET(d_offs);
+	auth_offset = ROC_SE_AUTH_OFFSET(d_offs);
+	encr_data_len = ROC_SE_ENCR_DLEN(d_lens);
+	auth_data_len = ROC_SE_AUTH_DLEN(d_lens);
+
+	if (unlikely(flags & ROC_SE_VALID_AAD_BUF)) {
+		/* We don't support both AAD and auth data separately */
+		auth_data_len = 0;
+		auth_offset = 0;
+		aad_len = fc_params->aad_buf.size;
+		aad_buf = &fc_params->aad_buf;
+	}
+
+	se_ctx = fc_params->ctx_buf.vaddr;
+	hash_type = se_ctx->hash_type;
+	mac_len = se_ctx->mac_len;
+	op_minor = se_ctx->template_w4.s.opcode_minor;
+
+	if (unlikely(!(flags & ROC_SE_VALID_IV_BUF))) {
+		iv_len = 0;
+		iv_offset = ROC_SE_ENCR_IV_OFFSET(d_offs);
+	}
+
+	if (unlikely(flags & ROC_SE_VALID_AAD_BUF)) {
+		/*
+		 * When AAD is given, data above encr_offset is pass through
+		 * Since AAD is given as separate pointer and not as offset,
+		 * this is a special case as we need to fragment input data
+		 * into passthrough + encr_data and then insert AAD in between.
+		 */
+		if (hash_type != ROC_SE_GMAC_TYPE) {
+			passthrough_len = encr_offset;
+			auth_offset = passthrough_len + iv_len;
+			encr_offset = passthrough_len + aad_len + iv_len;
+			auth_data_len = aad_len + encr_data_len;
+		} else {
+			passthrough_len = 16 + aad_len;
+			auth_offset = passthrough_len + iv_len;
+			auth_data_len = aad_len;
+		}
+	} else {
+		encr_offset += iv_len;
+		auth_offset += iv_len;
+	}
+
+	/* Decryption */
+	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_FC;
+	cpt_inst_w4.s.opcode_minor = ROC_SE_FC_MINOR_OP_DECRYPT;
+	cpt_inst_w4.s.opcode_minor |= (uint64_t)op_minor;
+
+	if (hash_type == ROC_SE_GMAC_TYPE) {
+		encr_offset = 0;
+		encr_data_len = 0;
+	}
+
+	enc_dlen = encr_offset + encr_data_len;
+	auth_dlen = auth_offset + auth_data_len;
+
+	if (auth_dlen > enc_dlen) {
+		inputlen = auth_dlen + mac_len;
+		outputlen = auth_dlen;
+	} else {
+		inputlen = enc_dlen + mac_len;
+		outputlen = enc_dlen;
+	}
+
+	if (op_minor & ROC_SE_FC_MINOR_OP_HMAC_FIRST)
+		outputlen = inputlen = enc_dlen;
+
+	cpt_inst_w4.s.param1 = encr_data_len;
+	cpt_inst_w4.s.param2 = auth_data_len;
+
+	/*
+	 * In cn9k, cn10k since we have a limitation of
+	 * IV & Offset control word not part of instruction
+	 * and need to be part of Data Buffer, we check if
+	 * head room is there and then only do the Direct mode processing
+	 */
+	if (likely((flags & ROC_SE_SINGLE_BUF_INPLACE) &&
+		   (flags & ROC_SE_SINGLE_BUF_HEADROOM))) {
+		void *dm_vaddr = fc_params->bufs[0].vaddr;
+
+		/* Use Direct mode */
+
+		offset_vaddr =
+			(uint8_t *)dm_vaddr - ROC_SE_OFF_CTRL_LEN - iv_len;
+		inst->dptr = (uint64_t)offset_vaddr;
+
+		/* RPTR should just exclude offset control word */
+		inst->rptr = (uint64_t)dm_vaddr - iv_len;
+
+		cpt_inst_w4.s.dlen = inputlen + ROC_SE_OFF_CTRL_LEN;
+
+		if (likely(iv_len)) {
+			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr +
+						      ROC_SE_OFF_CTRL_LEN);
+			uint64_t *src = fc_params->iv_buf;
+			dest[0] = src[0];
+			dest[1] = src[1];
+		}
+
+	} else {
+		void *m_vaddr = fc_params->meta_buf.vaddr;
+		uint32_t g_size_bytes, s_size_bytes;
+		struct roc_se_sglist_comp *gather_comp;
+		struct roc_se_sglist_comp *scatter_comp;
+		uint8_t *in_buffer;
+		uint8_t i = 0;
+
+		/* This falls under strict SG mode */
+		offset_vaddr = m_vaddr;
+		size = ROC_SE_OFF_CTRL_LEN + iv_len;
+
+		m_vaddr = (uint8_t *)m_vaddr + size;
+
+		cpt_inst_w4.s.opcode_major |= (uint64_t)ROC_SE_DMA_MODE;
+
+		if (likely(iv_len)) {
+			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr +
+						      ROC_SE_OFF_CTRL_LEN);
+			uint64_t *src = fc_params->iv_buf;
+			dest[0] = src[0];
+			dest[1] = src[1];
+		}
+
+		/* DPTR has SG list */
+		in_buffer = m_vaddr;
+
+		((uint16_t *)in_buffer)[0] = 0;
+		((uint16_t *)in_buffer)[1] = 0;
+
+		/* TODO Add error check if space will be sufficient */
+		gather_comp =
+			(struct roc_se_sglist_comp *)((uint8_t *)m_vaddr + 8);
+
+		/*
+		 * Input Gather List
+		 */
+		i = 0;
+
+		/* Offset control word that includes iv */
+		i = fill_sg_comp(gather_comp, i, (uint64_t)offset_vaddr,
+				 ROC_SE_OFF_CTRL_LEN + iv_len);
+
+		/* Add input data */
+		if (flags & ROC_SE_VALID_MAC_BUF) {
+			size = inputlen - iv_len - mac_len;
+			if (size) {
+				/* input data only */
+				if (unlikely(flags &
+					     ROC_SE_SINGLE_BUF_INPLACE)) {
+					i = fill_sg_comp_from_buf_min(
+						gather_comp, i, fc_params->bufs,
+						&size);
+				} else {
+					uint32_t aad_offset =
+						aad_len ? passthrough_len : 0;
+
+					i = fill_sg_comp_from_iov(
+						gather_comp, i,
+						fc_params->src_iov, 0, &size,
+						aad_buf, aad_offset);
+				}
+				if (unlikely(size)) {
+					plt_dp_err("Insufficient buffer"
+						   " space, size %d needed",
+						   size);
+					return -1;
+				}
+			}
+
+			/* mac data */
+			if (mac_len) {
+				i = fill_sg_comp_from_buf(gather_comp, i,
+							  &fc_params->mac_buf);
+			}
+		} else {
+			/* input data + mac */
+			size = inputlen - iv_len;
+			if (size) {
+				if (unlikely(flags &
+					     ROC_SE_SINGLE_BUF_INPLACE)) {
+					i = fill_sg_comp_from_buf_min(
+						gather_comp, i, fc_params->bufs,
+						&size);
+				} else {
+					uint32_t aad_offset =
+						aad_len ? passthrough_len : 0;
+
+					if (unlikely(!fc_params->src_iov)) {
+						plt_dp_err("Bad input args");
+						return -1;
+					}
+
+					i = fill_sg_comp_from_iov(
+						gather_comp, i,
+						fc_params->src_iov, 0, &size,
+						aad_buf, aad_offset);
+				}
+
+				if (unlikely(size)) {
+					plt_dp_err("Insufficient buffer"
+						   " space, size %d needed",
+						   size);
+					return -1;
+				}
+			}
+		}
+		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
+		g_size_bytes =
+			((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+
+		/*
+		 * Output Scatter List
+		 */
+
+		i = 0;
+		scatter_comp =
+			(struct roc_se_sglist_comp *)((uint8_t *)gather_comp +
+						      g_size_bytes);
+
+		/* Add iv */
+		if (iv_len) {
+			i = fill_sg_comp(scatter_comp, i,
+					 (uint64_t)offset_vaddr +
+						 ROC_SE_OFF_CTRL_LEN,
+					 iv_len);
+		}
+
+		/* Add output data */
+		size = outputlen - iv_len;
+		if (size) {
+			if (unlikely(flags & ROC_SE_SINGLE_BUF_INPLACE)) {
+				/* handle single buffer here */
+				i = fill_sg_comp_from_buf_min(scatter_comp, i,
+							      fc_params->bufs,
+							      &size);
+			} else {
+				uint32_t aad_offset =
+					aad_len ? passthrough_len : 0;
+
+				if (unlikely(!fc_params->dst_iov)) {
+					plt_dp_err("Bad input args");
+					return -1;
+				}
+
+				i = fill_sg_comp_from_iov(
+					scatter_comp, i, fc_params->dst_iov, 0,
+					&size, aad_buf, aad_offset);
+			}
+
+			if (unlikely(size)) {
+				plt_dp_err("Insufficient buffer space,"
+					   " size %d needed",
+					   size);
+				return -1;
+			}
+		}
+
+		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
+		s_size_bytes =
+			((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+
+		size = g_size_bytes + s_size_bytes + ROC_SE_SG_LIST_HDR_SIZE;
+
+		/* This is DPTR len in case of SG mode */
+		cpt_inst_w4.s.dlen = size;
+
+		inst->dptr = (uint64_t)in_buffer;
+	}
+
+	if (unlikely((encr_offset >> 16) || (iv_offset >> 8) ||
+		     (auth_offset >> 8))) {
+		plt_dp_err("Offset not supported");
+		plt_dp_err("enc_offset: %d", encr_offset);
+		plt_dp_err("iv_offset : %d", iv_offset);
+		plt_dp_err("auth_offset: %d", auth_offset);
+		return -1;
+	}
+
+	*(uint64_t *)offset_vaddr = rte_cpu_to_be_64(
+		((uint64_t)encr_offset << 16) | ((uint64_t)iv_offset << 8) |
+		((uint64_t)auth_offset));
+
+	inst->w4.u64 = cpt_inst_w4.u64;
+	return 0;
+}
+
+static __rte_always_inline int
+cpt_fc_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
+		     struct roc_se_fc_params *fc_params,
+		     struct cpt_inst_s *inst)
+{
+	struct roc_se_ctx *ctx = fc_params->ctx_buf.vaddr;
+	uint8_t fc_type;
+	int ret = -1;
+
+	fc_type = ctx->fc_type;
+
+	if (likely(fc_type == ROC_SE_FC_GEN))
+		ret = cpt_dec_hmac_prep(flags, d_offs, d_lens, fc_params, inst);
+	return ret;
+}
+
+static __rte_always_inline int
 cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 		     struct roc_se_fc_params *fc_params,
 		     struct cpt_inst_s *inst)
@@ -1192,7 +1513,8 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		ret = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens, &fc_params,
 					   inst);
 	else
-		ret = ENOTSUP;
+		ret = cpt_fc_dec_hmac_prep(flags, d_offs, d_lens, &fc_params,
+					   inst);
 
 	if (unlikely(ret)) {
 		plt_dp_err("Preparing request failed due to bad input arg");
