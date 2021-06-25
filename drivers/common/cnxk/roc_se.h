@@ -264,4 +264,12 @@ struct roc_se_ctx {
 	uint8_t auth_key[1024];
 };
 
+int __roc_api roc_se_auth_key_set(struct roc_se_ctx *se_ctx,
+				  roc_se_auth_type type, const uint8_t *key,
+				  uint16_t key_len, uint16_t mac_len);
+
+int __roc_api roc_se_ciph_key_set(struct roc_se_ctx *se_ctx,
+				  roc_se_cipher_type type, const uint8_t *key,
+				  uint16_t key_len, uint8_t *salt);
+
 #endif /* __ROC_SE_H__ */
