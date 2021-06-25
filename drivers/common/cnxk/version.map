@@ -10,6 +10,8 @@ INTERNAL {
 	cnxk_logtype_sso;
 	cnxk_logtype_tim;
 	cnxk_logtype_tm;
+	roc_ae_fpm_get;
+	roc_ae_fpm_put;
 	roc_bphy_cgx_dev_fini;
 	roc_bphy_cgx_dev_init;
 	roc_bphy_cgx_get_linkinfo;
