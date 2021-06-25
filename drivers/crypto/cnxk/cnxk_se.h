@@ -212,6 +212,137 @@ fill_sg_comp_from_iov(struct roc_se_sglist_comp *list, uint32_t i,
 }
 
 static __rte_always_inline int
+cpt_digest_gen_prep(uint32_t flags, uint64_t d_lens,
+		    struct roc_se_fc_params *params, struct cpt_inst_s *inst)
+{
+	void *m_vaddr = params->meta_buf.vaddr;
+	uint32_t size, i;
+	uint16_t data_len, mac_len, key_len;
+	roc_se_auth_type hash_type;
+	struct roc_se_ctx *ctx;
+	struct roc_se_sglist_comp *gather_comp;
+	struct roc_se_sglist_comp *scatter_comp;
+	uint8_t *in_buffer;
+	uint32_t g_size_bytes, s_size_bytes;
+	union cpt_inst_w4 cpt_inst_w4;
+
+	ctx = params->ctx_buf.vaddr;
+
+	hash_type = ctx->hash_type;
+	mac_len = ctx->mac_len;
+	key_len = ctx->auth_key_len;
+	data_len = ROC_SE_AUTH_DLEN(d_lens);
+
+	/*GP op header */
+	cpt_inst_w4.s.opcode_minor = 0;
+	cpt_inst_w4.s.param2 = ((uint16_t)hash_type << 8);
+	if (ctx->hmac) {
+		cpt_inst_w4.s.opcode_major =
+			ROC_SE_MAJOR_OP_HMAC | ROC_SE_DMA_MODE;
+		cpt_inst_w4.s.param1 = key_len;
+		cpt_inst_w4.s.dlen = data_len + RTE_ALIGN_CEIL(key_len, 8);
+	} else {
+		cpt_inst_w4.s.opcode_major =
+			ROC_SE_MAJOR_OP_HASH | ROC_SE_DMA_MODE;
+		cpt_inst_w4.s.param1 = 0;
+		cpt_inst_w4.s.dlen = data_len;
+	}
+
+	/* Null auth only case enters the if */
+	if (unlikely(!hash_type && !ctx->enc_cipher)) {
+		cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_MISC;
+		/* Minor op is passthrough */
+		cpt_inst_w4.s.opcode_minor = 0x03;
+		/* Send out completion code only */
+		cpt_inst_w4.s.param2 = 0x1;
+	}
+
+	/* DPTR has SG list */
+	in_buffer = m_vaddr;
+
+	((uint16_t *)in_buffer)[0] = 0;
+	((uint16_t *)in_buffer)[1] = 0;
+
+	/* TODO Add error check if space will be sufficient */
+	gather_comp = (struct roc_se_sglist_comp *)((uint8_t *)m_vaddr + 8);
+
+	/*
+	 * Input gather list
+	 */
+
+	i = 0;
+
+	if (ctx->hmac) {
+		uint64_t k_vaddr = (uint64_t)params->ctx_buf.vaddr +
+				   offsetof(struct roc_se_ctx, auth_key);
+		/* Key */
+		i = fill_sg_comp(gather_comp, i, k_vaddr,
+				 RTE_ALIGN_CEIL(key_len, 8));
+	}
+
+	/* input data */
+	size = data_len;
+	if (size) {
+		i = fill_sg_comp_from_iov(gather_comp, i, params->src_iov, 0,
+					  &size, NULL, 0);
+		if (unlikely(size)) {
+			plt_dp_err("Insufficient dst IOV size, short by %dB",
+				   size);
+			return -1;
+		}
+	} else {
+		/*
+		 * Looks like we need to support zero data
+		 * gather ptr in case of hash & hmac
+		 */
+		i++;
+	}
+	((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
+	g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+
+	/*
+	 * Output Gather list
+	 */
+
+	i = 0;
+	scatter_comp = (struct roc_se_sglist_comp *)((uint8_t *)gather_comp +
+						     g_size_bytes);
+
+	if (flags & ROC_SE_VALID_MAC_BUF) {
+		if (unlikely(params->mac_buf.size < mac_len)) {
+			plt_dp_err("Insufficient MAC size");
+			return -1;
+		}
+
+		size = mac_len;
+		i = fill_sg_comp_from_buf_min(scatter_comp, i, &params->mac_buf,
+					      &size);
+	} else {
+		size = mac_len;
+		i = fill_sg_comp_from_iov(scatter_comp, i, params->src_iov,
+					  data_len, &size, NULL, 0);
+		if (unlikely(size)) {
+			plt_dp_err("Insufficient dst IOV size, short by %dB",
+				   size);
+			return -1;
+		}
+	}
+
+	((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
+	s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+
+	size = g_size_bytes + s_size_bytes + ROC_SE_SG_LIST_HDR_SIZE;
+
+	/* This is DPTR len in case of SG mode */
+	cpt_inst_w4.s.dlen = size;
+
+	inst->dptr = (uint64_t)in_buffer;
+	inst->w4.u64 = cpt_inst_w4.u64;
+
+	return 0;
+}
+
+static __rte_always_inline int
 cpt_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 		  struct roc_se_fc_params *fc_params, struct cpt_inst_s *inst)
 {
@@ -1624,6 +1755,13 @@ cpt_fc_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 	} else if (fc_type == ROC_SE_KASUMI) {
 		ret = cpt_kasumi_dec_prep(d_offs, d_lens, fc_params, inst);
 	}
+
+	/*
+	 * For AUTH_ONLY case,
+	 * MC only supports digest generation and verification
+	 * should be done in software by memcmp()
+	 */
+
 	return ret;
 }
 
@@ -1646,6 +1784,8 @@ cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 	} else if (fc_type == ROC_SE_KASUMI) {
 		ret = cpt_kasumi_enc_prep(flags, d_offs, d_lens, fc_params,
 					  inst);
+	} else if (fc_type == ROC_SE_HASH_HMAC) {
+		ret = cpt_digest_gen_prep(flags, d_lens, fc_params, inst);
 	}
 
 	return ret;
@@ -2332,4 +2472,204 @@ err_exit:
 	return ret;
 }
 
+static __rte_always_inline void
+compl_auth_verify(struct rte_crypto_op *op, uint8_t *gen_mac, uint64_t mac_len)
+{
+	uint8_t *mac;
+	struct rte_crypto_sym_op *sym_op = op->sym;
+
+	if (sym_op->auth.digest.data)
+		mac = sym_op->auth.digest.data;
+	else
+		mac = rte_pktmbuf_mtod_offset(sym_op->m_src, uint8_t *,
+					      sym_op->auth.data.length +
+						      sym_op->auth.data.offset);
+	if (!mac) {
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return;
+	}
+
+	if (memcmp(mac, gen_mac, mac_len))
+		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	else
+		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+}
+
+static __rte_always_inline void
+find_kasumif9_direction_and_length(uint8_t *src, uint32_t counter_num_bytes,
+				   uint32_t *addr_length_in_bits,
+				   uint8_t *addr_direction)
+{
+	uint8_t found = 0;
+	uint32_t pos;
+	uint8_t last_byte;
+	while (!found && counter_num_bytes > 0) {
+		counter_num_bytes--;
+		if (src[counter_num_bytes] == 0x00)
+			continue;
+		pos = rte_bsf32(src[counter_num_bytes]);
+		if (pos == 7) {
+			if (likely(counter_num_bytes > 0)) {
+				last_byte = src[counter_num_bytes - 1];
+				*addr_direction = last_byte & 0x1;
+				*addr_length_in_bits =
+					counter_num_bytes * 8 - 1;
+			}
+		} else {
+			last_byte = src[counter_num_bytes];
+			*addr_direction = (last_byte >> (pos + 1)) & 0x1;
+			*addr_length_in_bits =
+				counter_num_bytes * 8 + (8 - (pos + 2));
+		}
+		found = 1;
+	}
+}
+
+/*
+ * This handles all auth only except AES_GMAC
+ */
+static __rte_always_inline int
+fill_digest_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
+		   struct cpt_qp_meta_info *m_info,
+		   struct cpt_inflight_req *infl_req, struct cpt_inst_s *inst)
+{
+	uint32_t space = 0;
+	struct rte_crypto_sym_op *sym_op = cop->sym;
+	void *mdata;
+	uint32_t auth_range_off;
+	uint32_t flags = 0;
+	uint64_t d_offs = 0, d_lens;
+	struct rte_mbuf *m_src, *m_dst;
+	uint16_t auth_op = sess->cpt_op & ROC_SE_OP_AUTH_MASK;
+	uint16_t mac_len = sess->mac_len;
+	struct roc_se_fc_params params;
+	char src[SRC_IOV_SIZE];
+	uint8_t iv_buf[16];
+	int ret;
+
+	memset(&params, 0, sizeof(struct roc_se_fc_params));
+
+	m_src = sym_op->m_src;
+
+	mdata = alloc_op_meta(&params.meta_buf, m_info->mlen, m_info->pool,
+			      infl_req);
+	if (mdata == NULL) {
+		ret = -ENOMEM;
+		goto err_exit;
+	}
+
+	auth_range_off = sym_op->auth.data.offset;
+
+	flags = ROC_SE_VALID_MAC_BUF;
+	params.src_iov = (void *)src;
+	if (unlikely(sess->zsk_flag)) {
+		/*
+		 * Since for Zuc, Kasumi, Snow3g offsets are in bits
+		 * we will send pass through even for auth only case,
+		 * let MC handle it
+		 */
+		d_offs = auth_range_off;
+		auth_range_off = 0;
+		params.auth_iv_buf = rte_crypto_op_ctod_offset(
+			cop, uint8_t *, sess->auth_iv_offset);
+		if (sess->zsk_flag == ROC_SE_K_F9) {
+			uint32_t length_in_bits, num_bytes;
+			uint8_t *src, direction = 0;
+
+			memcpy(iv_buf,
+			       rte_pktmbuf_mtod(cop->sym->m_src, uint8_t *), 8);
+			/*
+			 * This is kasumi f9, take direction from
+			 * source buffer
+			 */
+			length_in_bits = cop->sym->auth.data.length;
+			num_bytes = (length_in_bits >> 3);
+			src = rte_pktmbuf_mtod(cop->sym->m_src, uint8_t *);
+			find_kasumif9_direction_and_length(
+				src, num_bytes, &length_in_bits, &direction);
+			length_in_bits -= 64;
+			cop->sym->auth.data.offset += 64;
+			d_offs = cop->sym->auth.data.offset;
+			auth_range_off = d_offs / 8;
+			cop->sym->auth.data.length = length_in_bits;
+
+			/* Store it at end of auth iv */
+			iv_buf[8] = direction;
+			params.auth_iv_buf = iv_buf;
+		}
+	}
+
+	d_lens = sym_op->auth.data.length;
+
+	params.ctx_buf.vaddr = &sess->roc_se_ctx;
+
+	if (auth_op == ROC_SE_OP_AUTH_GENERATE) {
+		if (sym_op->auth.digest.data) {
+			/*
+			 * Digest to be generated
+			 * in separate buffer
+			 */
+			params.mac_buf.size = sess->mac_len;
+			params.mac_buf.vaddr = sym_op->auth.digest.data;
+		} else {
+			uint32_t off = sym_op->auth.data.offset +
+				       sym_op->auth.data.length;
+			int32_t dlen, space;
+
+			m_dst = sym_op->m_dst ? sym_op->m_dst : sym_op->m_src;
+			dlen = rte_pktmbuf_pkt_len(m_dst);
+
+			space = off + mac_len - dlen;
+			if (space > 0)
+				if (!rte_pktmbuf_append(m_dst, space)) {
+					plt_dp_err("Failed to extend "
+						   "mbuf by %uB",
+						   space);
+					ret = -EINVAL;
+					goto free_mdata_and_exit;
+				}
+
+			params.mac_buf.vaddr =
+				rte_pktmbuf_mtod_offset(m_dst, void *, off);
+			params.mac_buf.size = mac_len;
+		}
+	} else {
+		uint64_t *op = mdata;
+
+		/* Need space for storing generated mac */
+		space += 2 * sizeof(uint64_t);
+
+		params.mac_buf.vaddr = (uint8_t *)mdata + space;
+		params.mac_buf.size = mac_len;
+		space += RTE_ALIGN_CEIL(mac_len, 8);
+		op[0] = (uintptr_t)params.mac_buf.vaddr;
+		op[1] = mac_len;
+		infl_req->op_flags |= CPT_OP_FLAGS_AUTH_VERIFY;
+	}
+
+	params.meta_buf.vaddr = (uint8_t *)mdata + space;
+	params.meta_buf.size -= space;
+
+	/* Out of place processing */
+	params.src_iov = (void *)src;
+
+	/*Store SG I/O in the api for reuse */
+	if (prepare_iov_from_pkt(m_src, params.src_iov, auth_range_off)) {
+		plt_dp_err("Prepare src iov failed");
+		ret = -EINVAL;
+		goto free_mdata_and_exit;
+	}
+
+	ret = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens, &params, inst);
+	if (ret)
+		goto free_mdata_and_exit;
+
+	return 0;
+
+free_mdata_and_exit:
+	if (infl_req->op_flags & CPT_OP_FLAGS_METABUF)
+		rte_mempool_put(m_info->pool, infl_req->mdata);
+err_exit:
+	return ret;
+}
 #endif /*_CNXK_SE_H_ */

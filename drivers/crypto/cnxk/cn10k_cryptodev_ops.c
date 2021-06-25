@@ -53,6 +53,9 @@ cpt_sym_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 
 	if (cpt_op & ROC_SE_OP_CIPHER_MASK)
 		ret = fill_fc_params(op, sess, &qp->meta_info, infl_req, inst);
+	else
+		ret = fill_digest_params(op, sess, &qp->meta_info, infl_req,
+					 inst);
 
 	return ret;
 }
@@ -203,7 +206,10 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 	if (likely(res->compcode == CPT_COMP_GOOD ||
 		   res->compcode == CPT_COMP_WARN)) {
 		if (unlikely(res->uc_compcode)) {
-			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			if (res->uc_compcode == ROC_SE_ERR_GC_ICV_MISCOMPARE)
+				cop->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+			else
+				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 
 			plt_dp_info("Request failed with microcode error");
 			plt_dp_info("MC completion code 0x%x",
@@ -212,6 +218,16 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 		}
 
 		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+		if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+
+			/* Verify authentication data if required */
+			if (unlikely(infl_req->op_flags &
+				     CPT_OP_FLAGS_AUTH_VERIFY)) {
+				uintptr_t *rsp = infl_req->mdata;
+				compl_auth_verify(cop, (uint8_t *)rsp[0],
+						  rsp[1]);
+			}
+		}
 	} else {
 		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		plt_dp_info("HW completion code 0x%x", res->compcode);
