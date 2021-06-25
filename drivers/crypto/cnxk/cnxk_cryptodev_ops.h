@@ -16,6 +16,16 @@ struct cpt_qp_meta_info {
 	int mlen;
 };
 
+enum sym_xform_type {
+	CNXK_CPT_CIPHER = 1,
+	CNXK_CPT_AUTH,
+	CNXK_CPT_AEAD,
+	CNXK_CPT_CIPHER_ENC_AUTH_GEN,
+	CNXK_CPT_AUTH_VRFY_CIPHER_DEC,
+	CNXK_CPT_AUTH_GEN_CIPHER_ENC,
+	CNXK_CPT_CIPHER_DEC_AUTH_VRFY
+};
+
 struct cpt_inflight_req {
 	union cpt_res_s res;
 	struct rte_crypto_op *cop;
@@ -68,5 +78,22 @@ int cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 			      int socket_id __rte_unused);
 
 int cnxk_cpt_queue_pair_release(struct rte_cryptodev *dev, uint16_t qp_id);
+
+unsigned int cnxk_cpt_sym_session_get_size(struct rte_cryptodev *dev);
+
+int cnxk_cpt_sym_session_configure(struct rte_cryptodev *dev,
+				   struct rte_crypto_sym_xform *xform,
+				   struct rte_cryptodev_sym_session *sess,
+				   struct rte_mempool *pool);
+
+int sym_session_configure(struct roc_cpt *roc_cpt, int driver_id,
+			  struct rte_crypto_sym_xform *xform,
+			  struct rte_cryptodev_sym_session *sess,
+			  struct rte_mempool *pool);
+
+void cnxk_cpt_sym_session_clear(struct rte_cryptodev *dev,
+				struct rte_cryptodev_sym_session *sess);
+
+void sym_session_clear(int driver_id, struct rte_cryptodev_sym_session *sess);
 
 #endif /* _CNXK_CRYPTODEV_OPS_H_ */

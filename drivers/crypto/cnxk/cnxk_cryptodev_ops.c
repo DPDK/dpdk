@@ -10,6 +10,7 @@
 
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
+#include "cnxk_se.h"
 
 static int
 cnxk_cpt_get_mlen(void)
@@ -327,4 +328,190 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 exit:
 	cnxk_cpt_qp_destroy(dev, qp);
 	return ret;
+}
+
+unsigned int
+cnxk_cpt_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
+{
+	return sizeof(struct cnxk_se_sess);
+}
+
+static int
+sym_xform_verify(struct rte_crypto_sym_xform *xform)
+{
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+	    xform->auth.algo == RTE_CRYPTO_AUTH_NULL &&
+	    xform->auth.op == RTE_CRYPTO_AUTH_OP_VERIFY)
+		return -ENOTSUP;
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER && xform->next == NULL)
+		return CNXK_CPT_CIPHER;
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH && xform->next == NULL)
+		return CNXK_CPT_AUTH;
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD && xform->next == NULL)
+		return CNXK_CPT_AEAD;
+
+	if (xform->next == NULL)
+		return -EIO;
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+	    xform->cipher.algo == RTE_CRYPTO_CIPHER_3DES_CBC &&
+	    xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+	    xform->next->auth.algo == RTE_CRYPTO_AUTH_SHA1)
+		return -ENOTSUP;
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+	    xform->auth.algo == RTE_CRYPTO_AUTH_SHA1 &&
+	    xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+	    xform->next->cipher.algo == RTE_CRYPTO_CIPHER_3DES_CBC)
+		return -ENOTSUP;
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+	    xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
+	    xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+	    xform->next->auth.op == RTE_CRYPTO_AUTH_OP_GENERATE)
+		return CNXK_CPT_CIPHER_ENC_AUTH_GEN;
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+	    xform->auth.op == RTE_CRYPTO_AUTH_OP_VERIFY &&
+	    xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+	    xform->next->cipher.op == RTE_CRYPTO_CIPHER_OP_DECRYPT)
+		return CNXK_CPT_AUTH_VRFY_CIPHER_DEC;
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+	    xform->auth.op == RTE_CRYPTO_AUTH_OP_GENERATE &&
+	    xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+	    xform->next->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+		switch (xform->auth.algo) {
+		case RTE_CRYPTO_AUTH_SHA1_HMAC:
+			switch (xform->next->cipher.algo) {
+			case RTE_CRYPTO_CIPHER_AES_CBC:
+				return CNXK_CPT_AUTH_GEN_CIPHER_ENC;
+			default:
+				return -ENOTSUP;
+			}
+		default:
+			return -ENOTSUP;
+		}
+	}
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+	    xform->cipher.op == RTE_CRYPTO_CIPHER_OP_DECRYPT &&
+	    xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+	    xform->next->auth.op == RTE_CRYPTO_AUTH_OP_VERIFY) {
+		switch (xform->cipher.algo) {
+		case RTE_CRYPTO_CIPHER_AES_CBC:
+			switch (xform->next->auth.algo) {
+			case RTE_CRYPTO_AUTH_SHA1_HMAC:
+				return CNXK_CPT_CIPHER_DEC_AUTH_VRFY;
+			default:
+				return -ENOTSUP;
+			}
+		default:
+			return -ENOTSUP;
+		}
+	}
+
+	return -ENOTSUP;
+}
+
+static uint64_t
+cnxk_cpt_inst_w7_get(struct cnxk_se_sess *sess, struct roc_cpt *roc_cpt)
+{
+	union cpt_inst_w7 inst_w7;
+
+	inst_w7.s.cptr = (uint64_t)&sess->roc_se_ctx.se_ctx;
+
+	/* Set the engine group */
+	if (sess->zsk_flag || sess->chacha_poly)
+		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_SE];
+	else
+		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
+
+	return inst_w7.u64;
+}
+
+int
+sym_session_configure(struct roc_cpt *roc_cpt, int driver_id,
+		      struct rte_crypto_sym_xform *xform,
+		      struct rte_cryptodev_sym_session *sess,
+		      struct rte_mempool *pool)
+{
+	struct cnxk_se_sess *sess_priv;
+	void *priv;
+	int ret;
+
+	ret = sym_xform_verify(xform);
+	if (unlikely(ret < 0))
+		return ret;
+
+	if (unlikely(rte_mempool_get(pool, &priv))) {
+		plt_dp_err("Could not allocate session private data");
+		return -ENOMEM;
+	}
+
+	memset(priv, 0, sizeof(struct cnxk_se_sess));
+
+	sess_priv = priv;
+
+	switch (ret) {
+	default:
+		ret = -1;
+	}
+
+	if (ret)
+		goto priv_put;
+
+	sess_priv->cpt_inst_w7 = cnxk_cpt_inst_w7_get(sess_priv, roc_cpt);
+
+	set_sym_session_private_data(sess, driver_id, sess_priv);
+
+	return 0;
+
+priv_put:
+	rte_mempool_put(pool, priv);
+
+	return -ENOTSUP;
+}
+
+int
+cnxk_cpt_sym_session_configure(struct rte_cryptodev *dev,
+			       struct rte_crypto_sym_xform *xform,
+			       struct rte_cryptodev_sym_session *sess,
+			       struct rte_mempool *pool)
+{
+	struct cnxk_cpt_vf *vf = dev->data->dev_private;
+	struct roc_cpt *roc_cpt = &vf->cpt;
+	uint8_t driver_id;
+
+	driver_id = dev->driver_id;
+
+	return sym_session_configure(roc_cpt, driver_id, xform, sess, pool);
+}
+
+void
+sym_session_clear(int driver_id, struct rte_cryptodev_sym_session *sess)
+{
+	void *priv = get_sym_session_private_data(sess, driver_id);
+	struct rte_mempool *pool;
+
+	if (priv == NULL)
+		return;
+
+	memset(priv, 0, cnxk_cpt_sym_session_get_size(NULL));
+
+	pool = rte_mempool_from_obj(priv);
+
+	set_sym_session_private_data(sess, driver_id, NULL);
+
+	rte_mempool_put(pool, priv);
+}
+
+void
+cnxk_cpt_sym_session_clear(struct rte_cryptodev *dev,
+			   struct rte_cryptodev_sym_session *sess)
+{
+	return sym_session_clear(dev->driver_id, sess);
 }
