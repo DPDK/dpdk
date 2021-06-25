@@ -14,6 +14,40 @@
 
 #define ROC_CPT_MAX_LFS 64
 
+/* CPT helper macros */
+#define ROC_CPT_AH_HDR_LEN	 12
+#define ROC_CPT_AES_GCM_IV_LEN	 8
+#define ROC_CPT_AES_GCM_MAC_LEN	 16
+#define ROC_CPT_AES_CBC_IV_LEN	 16
+#define ROC_CPT_SHA1_HMAC_LEN	 12
+#define ROC_CPT_AUTH_KEY_LEN_MAX 64
+
+#define ROC_CPT_DES3_KEY_LEN	  24
+#define ROC_CPT_AES128_KEY_LEN	  16
+#define ROC_CPT_AES192_KEY_LEN	  24
+#define ROC_CPT_AES256_KEY_LEN	  32
+#define ROC_CPT_MD5_KEY_LENGTH	  16
+#define ROC_CPT_SHA1_KEY_LENGTH	  20
+#define ROC_CPT_SHA256_KEY_LENGTH 32
+#define ROC_CPT_SHA384_KEY_LENGTH 48
+#define ROC_CPT_SHA512_KEY_LENGTH 64
+#define ROC_CPT_AUTH_KEY_LEN_MAX  64
+
+#define ROC_CPT_DES_BLOCK_LENGTH 8
+#define ROC_CPT_AES_BLOCK_LENGTH 16
+
+#define ROC_CPT_AES_GCM_ROUNDUP_BYTE_LEN 4
+#define ROC_CPT_AES_CBC_ROUNDUP_BYTE_LEN 16
+
+/* Salt length for AES-CTR/GCM/CCM and AES-GMAC */
+#define ROC_CPT_SALT_LEN 4
+
+#define ROC_CPT_ESP_HDR_LEN	    8
+#define ROC_CPT_ESP_TRL_LEN	    2
+#define ROC_CPT_AH_HDR_LEN	    12
+#define ROC_CPT_TUNNEL_IPV4_HDR_LEN 20
+#define ROC_CPT_TUNNEL_IPV6_HDR_LEN 40
+
 struct roc_cpt_lf {
 	/* Input parameters */
 	uint16_t lf_id;
