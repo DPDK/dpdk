@@ -13,6 +13,8 @@
 #include "cn9k_cryptodev.h"
 #include "cn9k_cryptodev_ops.h"
 #include "cnxk_cryptodev.h"
+#include "cnxk_cryptodev_capabilities.h"
+
 #include "roc_api.h"
 
 uint8_t cn9k_cryptodev_driver_id;
@@ -77,6 +79,8 @@ cn9k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	dev->dev_ops = &cn9k_cpt_ops;
 	dev->driver_id = cn9k_cryptodev_driver_id;
+
+	cnxk_cpt_caps_populate(vf);
 
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			     RTE_CRYPTODEV_FF_HW_ACCELERATED |

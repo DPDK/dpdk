@@ -10,6 +10,7 @@
 
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
+#include "cnxk_cryptodev_capabilities.h"
 #include "cnxk_se.h"
 
 static int
@@ -99,7 +100,7 @@ cnxk_cpt_dev_info_get(struct rte_cryptodev *dev,
 
 	info->max_nb_queue_pairs = roc_cpt->nb_lf_avail;
 	info->feature_flags = dev->feature_flags;
-	info->capabilities = NULL;
+	info->capabilities = cnxk_crypto_capabilities_get(vf);
 	info->sym.max_nb_sessions = 0;
 	info->min_mbuf_headroom_req = CNXK_CPT_MIN_HEADROOM_REQ;
 	info->min_mbuf_tailroom_req = 0;

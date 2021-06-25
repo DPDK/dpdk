@@ -84,6 +84,12 @@ New Features
   * Added net/cnxk driver which provides the support for the integrated ethernet
     device.
 
+* **Added support for Marvell CNXK crypto driver.**
+
+  * Added cnxk crypto PMD which provides support for an integrated
+    crypto driver for CN9K and CN10K series of SOCs. Support for
+    symmetric crypto algorithms is added to both the PMDs.
+
 * **Added Baseband PHY CNXK PMD.**
 
   Added Baseband PHY PMD which allows to configure BPHY hardware block
