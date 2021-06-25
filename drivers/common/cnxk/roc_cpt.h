@@ -7,6 +7,9 @@
 
 #include "roc_api.h"
 
+#define ROC_AE_CPT_BLOCK_TYPE1 0
+#define ROC_AE_CPT_BLOCK_TYPE2 1
+
 /* Default engine groups */
 #define ROC_CPT_DFLT_ENG_GRP_SE	   0UL
 #define ROC_CPT_DFLT_ENG_GRP_SE_IE 1UL
