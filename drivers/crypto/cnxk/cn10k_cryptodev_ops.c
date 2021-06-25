@@ -190,10 +190,115 @@ update_pending:
 	return count + i;
 }
 
+static inline void
+cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
+			       struct rte_crypto_op *cop,
+			       struct cpt_inflight_req *infl_req)
+{
+	struct cpt_cn10k_res_s *res = (struct cpt_cn10k_res_s *)&infl_req->res;
+	unsigned int sz;
+
+	if (likely(res->compcode == CPT_COMP_GOOD ||
+		   res->compcode == CPT_COMP_WARN)) {
+		if (unlikely(res->uc_compcode)) {
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+
+			plt_dp_info("Request failed with microcode error");
+			plt_dp_info("MC completion code 0x%x",
+				    res->uc_compcode);
+			goto temp_sess_free;
+		}
+
+		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	} else {
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		plt_dp_info("HW completion code 0x%x", res->compcode);
+
+		switch (res->compcode) {
+		case CPT_COMP_INSTERR:
+			plt_dp_err("Request failed with instruction error");
+			break;
+		case CPT_COMP_FAULT:
+			plt_dp_err("Request failed with DMA fault");
+			break;
+		case CPT_COMP_HWERR:
+			plt_dp_err("Request failed with hardware error");
+			break;
+		default:
+			plt_dp_err(
+				"Request failed with unknown completion code");
+		}
+	}
+
+temp_sess_free:
+	if (unlikely(cop->sess_type == RTE_CRYPTO_OP_SESSIONLESS)) {
+		if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+			sym_session_clear(cn10k_cryptodev_driver_id,
+					  cop->sym->session);
+			sz = rte_cryptodev_sym_get_existing_header_session_size(
+				cop->sym->session);
+			memset(cop->sym->session, 0, sz);
+			rte_mempool_put(qp->sess_mp, cop->sym->session);
+			cop->sym->session = NULL;
+		}
+	}
+}
+
+static uint16_t
+cn10k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
+{
+	struct cpt_inflight_req *infl_req;
+	struct cnxk_cpt_qp *qp = qptr;
+	struct pending_queue *pend_q;
+	struct cpt_cn10k_res_s *res;
+	struct rte_crypto_op *cop;
+	int i, nb_pending;
+
+	pend_q = &qp->pend_q;
+
+	nb_pending = pend_q->pending_count;
+
+	if (nb_ops > nb_pending)
+		nb_ops = nb_pending;
+
+	for (i = 0; i < nb_ops; i++) {
+		infl_req = &pend_q->req_queue[pend_q->deq_head];
+
+		res = (struct cpt_cn10k_res_s *)&infl_req->res;
+
+		if (unlikely(res->compcode == CPT_COMP_NOT_DONE)) {
+			if (unlikely(rte_get_timer_cycles() >
+				     pend_q->time_out)) {
+				plt_err("Request timed out");
+				pend_q->time_out = rte_get_timer_cycles() +
+						   DEFAULT_COMMAND_TIMEOUT *
+							   rte_get_timer_hz();
+			}
+			break;
+		}
+
+		MOD_INC(pend_q->deq_head, qp->lf.nb_desc);
+
+		cop = infl_req->cop;
+
+		ops[i] = cop;
+
+		cn10k_cpt_dequeue_post_process(qp, cop, infl_req);
+
+		if (unlikely(infl_req->op_flags & CPT_OP_FLAGS_METABUF))
+			rte_mempool_put(qp->meta_info.pool, infl_req->mdata);
+	}
+
+	pend_q->pending_count -= i;
+
+	return i;
+}
+
 void
 cn10k_cpt_set_enqdeq_fns(struct rte_cryptodev *dev)
 {
 	dev->enqueue_burst = cn10k_cpt_enqueue_burst;
+	dev->dequeue_burst = cn10k_cpt_dequeue_burst;
 
 	rte_mb();
 }
