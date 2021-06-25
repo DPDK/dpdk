@@ -29,8 +29,8 @@ struct rte_cryptodev_ops cn10k_cpt_ops = {
 
 	.stats_get = NULL,
 	.stats_reset = NULL,
-	.queue_pair_setup = NULL,
-	.queue_pair_release = NULL,
+	.queue_pair_setup = cnxk_cpt_queue_pair_setup,
+	.queue_pair_release = cnxk_cpt_queue_pair_release,
 
 	/* Symmetric crypto ops */
 	.sym_session_get_size = NULL,
