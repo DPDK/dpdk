@@ -46,13 +46,15 @@ cpt_sym_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 		  struct cnxk_se_sess *sess, struct cpt_inflight_req *infl_req,
 		  struct cpt_inst_s *inst)
 {
-	RTE_SET_USED(qp);
-	RTE_SET_USED(op);
-	RTE_SET_USED(sess);
-	RTE_SET_USED(infl_req);
-	RTE_SET_USED(inst);
+	uint64_t cpt_op;
+	int ret = -1;
 
-	return -ENOTSUP;
+	cpt_op = sess->cpt_op;
+
+	if (cpt_op & ROC_SE_OP_CIPHER_MASK)
+		ret = fill_fc_params(op, sess, &qp->meta_info, infl_req, inst);
+
+	return ret;
 }
 
 static inline int
