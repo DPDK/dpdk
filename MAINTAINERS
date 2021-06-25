@@ -269,7 +269,6 @@ F: lib/eal/arm/
 X: lib/eal/arm/include/*_64.h
 
 ARM v8
-M: Jerin Jacob <jerinj@marvell.com>
 M: Ruifeng Wang <ruifeng.wang@arm.com>
 F: config/arm/
 F: doc/guides/linux_gsg/cross_build_dpdk_for_arm64.rst
