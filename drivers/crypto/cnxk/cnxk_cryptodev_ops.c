@@ -469,6 +469,20 @@ sym_session_configure(struct roc_cpt *roc_cpt, int driver_id,
 	case CNXK_CPT_AEAD:
 		ret = fill_sess_aead(xform, sess_priv);
 		break;
+	case CNXK_CPT_CIPHER_ENC_AUTH_GEN:
+	case CNXK_CPT_CIPHER_DEC_AUTH_VRFY:
+		ret = fill_sess_cipher(xform, sess_priv);
+		if (ret < 0)
+			break;
+		ret = fill_sess_auth(xform->next, sess_priv);
+		break;
+	case CNXK_CPT_AUTH_VRFY_CIPHER_DEC:
+	case CNXK_CPT_AUTH_GEN_CIPHER_ENC:
+		ret = fill_sess_auth(xform, sess_priv);
+		if (ret < 0)
+			break;
+		ret = fill_sess_cipher(xform->next, sess_priv);
+		break;
 	default:
 		ret = -1;
 	}
