@@ -599,6 +599,24 @@ fail:
 	return rc;
 }
 
+int
+roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, uint64_t cptr)
+{
+	union cpt_lf_ctx_flush reg;
+
+	if (lf == NULL)
+		return -ENOTSUP;
+
+	reg.u = 0;
+	reg.s.pf_func = lf->pf_func;
+	reg.s.inval = 1;
+	reg.s.cptr = cptr;
+
+	plt_write64(reg.u, lf->rbase + CPT_LF_CTX_FLUSH);
+
+	return 0;
+}
+
 void
 cpt_lf_fini(struct roc_cpt_lf *lf)
 {
