@@ -1331,6 +1331,9 @@ struct cpt_rxc_time_cfg_req {
 struct cpt_rx_inline_lf_cfg_msg {
 	struct mbox_msghdr hdr;
 	uint16_t __io sso_pf_func;
+	uint16_t __io param1;
+	uint16_t __io param2;
+	uint16_t __io reserved;
 };
 
 enum cpt_eng_type {
