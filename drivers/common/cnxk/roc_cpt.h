@@ -14,6 +14,23 @@
 
 #define ROC_CPT_MAX_LFS 64
 
+struct roc_cpt_lf {
+	/* Input parameters */
+	uint16_t lf_id;
+	uint32_t nb_desc;
+	/* End of Input parameters */
+	struct plt_pci_device *pci_dev;
+	struct dev *dev;
+	struct roc_cpt *roc_cpt;
+	uintptr_t rbase;
+	uintptr_t lmt_base;
+	uint16_t msixoff;
+	uint16_t pf_func;
+	uint64_t *fc_addr;
+	uint64_t io_addr;
+	uint8_t *iq_vaddr;
+} __plt_cache_aligned;
+
 struct roc_cpt {
 	struct plt_pci_device *pci_dev;
 	struct roc_cpt_lf *lf[ROC_CPT_MAX_LFS];
@@ -44,4 +61,7 @@ int __roc_api roc_cpt_eng_grp_add(struct roc_cpt *roc_cpt,
 				  enum cpt_eng_type eng_type);
 int __roc_api roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf);
 void __roc_api roc_cpt_dev_clear(struct roc_cpt *roc_cpt);
+int __roc_api roc_cpt_lf_init(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf);
+void __roc_api roc_cpt_lf_fini(struct roc_cpt_lf *lf);
+void __roc_api roc_cpt_iq_disable(struct roc_cpt_lf *lf);
 #endif /* _ROC_CPT_H_ */

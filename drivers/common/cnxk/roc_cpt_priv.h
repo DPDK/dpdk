@@ -30,6 +30,8 @@ int cpt_lfs_detach(struct dev *dev);
 int cpt_lfs_alloc(struct dev *dev, uint8_t eng_grpmsk, uint8_t blk,
 		  bool inl_dev_sso);
 int cpt_lfs_free(struct dev *dev);
+int cpt_lf_init(struct roc_cpt_lf *lf);
+void cpt_lf_fini(struct roc_cpt_lf *lf);
 
 int cpt_get_msix_offset(struct dev *dev, struct msix_offset_rsp **msix_rsp);
 uint64_t cpt_get_blkaddr(struct dev *dev);
