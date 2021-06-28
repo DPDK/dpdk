@@ -128,7 +128,8 @@ unsigned int
 qat_sym_session_get_private_size(struct rte_cryptodev *dev);
 
 void
-qat_sym_sesssion_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
+qat_sym_sesssion_init_common_hdr(struct qat_sym_session *session,
+					struct icp_qat_fw_comn_req_hdr *header,
 					enum qat_sym_proto_flag proto_flags);
 int
 qat_sym_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
