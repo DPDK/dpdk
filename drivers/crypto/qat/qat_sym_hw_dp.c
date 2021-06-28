@@ -102,204 +102,6 @@ qat_sym_dp_fill_vec_status(int32_t *sta, int status, uint32_t n)
 	RTE_MIN((q->max_inflights - q->enqueued + q->dequeued - c), n)
 
 static __rte_always_inline void
-enqueue_one_aead_job(struct qat_sym_session *ctx,
-	struct icp_qat_fw_la_bulk_req *req,
-	struct rte_crypto_va_iova_ptr *iv,
-	struct rte_crypto_va_iova_ptr *digest,
-	struct rte_crypto_va_iova_ptr *aad,
-	union rte_crypto_sym_ofs ofs, uint32_t data_len)
-{
-	struct icp_qat_fw_la_cipher_req_params *cipher_param =
-		(void *)&req->serv_specif_rqpars;
-	struct icp_qat_fw_la_auth_req_params *auth_param =
-		(void *)((uint8_t *)&req->serv_specif_rqpars +
-		ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET);
-	uint8_t *aad_data;
-	uint8_t aad_ccm_real_len;
-	uint8_t aad_len_field_sz;
-	uint32_t msg_len_be;
-	rte_iova_t aad_iova = 0;
-	uint8_t q;
-
-	switch (ctx->qat_hash_alg) {
-	case ICP_QAT_HW_AUTH_ALGO_GALOIS_128:
-	case ICP_QAT_HW_AUTH_ALGO_GALOIS_64:
-		ICP_QAT_FW_LA_GCM_IV_LEN_FLAG_SET(
-			req->comn_hdr.serv_specif_flags,
-				ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
-		rte_memcpy(cipher_param->u.cipher_IV_array, iv->va,
-				ctx->cipher_iv.length);
-		aad_iova = aad->iova;
-		break;
-	case ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC:
-		aad_data = aad->va;
-		aad_iova = aad->iova;
-		aad_ccm_real_len = 0;
-		aad_len_field_sz = 0;
-		msg_len_be = rte_bswap32((uint32_t)data_len -
-				ofs.ofs.cipher.head);
-
-		if (ctx->aad_len > ICP_QAT_HW_CCM_AAD_DATA_OFFSET) {
-			aad_len_field_sz = ICP_QAT_HW_CCM_AAD_LEN_INFO;
-			aad_ccm_real_len = ctx->aad_len -
-				ICP_QAT_HW_CCM_AAD_B0_LEN -
-				ICP_QAT_HW_CCM_AAD_LEN_INFO;
-		} else {
-			aad_data = iv->va;
-			aad_iova = iv->iova;
-		}
-
-		q = ICP_QAT_HW_CCM_NQ_CONST - ctx->cipher_iv.length;
-		aad_data[0] = ICP_QAT_HW_CCM_BUILD_B0_FLAGS(
-			aad_len_field_sz, ctx->digest_length, q);
-		if (q > ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE) {
-			memcpy(aad_data	+ ctx->cipher_iv.length +
-				ICP_QAT_HW_CCM_NONCE_OFFSET + (q -
-				ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE),
-				(uint8_t *)&msg_len_be,
-				ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE);
-		} else {
-			memcpy(aad_data	+ ctx->cipher_iv.length +
-				ICP_QAT_HW_CCM_NONCE_OFFSET,
-				(uint8_t *)&msg_len_be +
-				(ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE
-				- q), q);
-		}
-
-		if (aad_len_field_sz > 0) {
-			*(uint16_t *)&aad_data[ICP_QAT_HW_CCM_AAD_B0_LEN] =
-				rte_bswap16(aad_ccm_real_len);
-
-			if ((aad_ccm_real_len + aad_len_field_sz)
-				% ICP_QAT_HW_CCM_AAD_B0_LEN) {
-				uint8_t pad_len = 0;
-				uint8_t pad_idx = 0;
-
-				pad_len = ICP_QAT_HW_CCM_AAD_B0_LEN -
-					((aad_ccm_real_len +
-					aad_len_field_sz) %
-					ICP_QAT_HW_CCM_AAD_B0_LEN);
-				pad_idx = ICP_QAT_HW_CCM_AAD_B0_LEN +
-					aad_ccm_real_len +
-					aad_len_field_sz;
-				memset(&aad_data[pad_idx], 0, pad_len);
-			}
-		}
-
-		rte_memcpy(((uint8_t *)cipher_param->u.cipher_IV_array)
-			+ ICP_QAT_HW_CCM_NONCE_OFFSET,
-			(uint8_t *)iv->va +
-			ICP_QAT_HW_CCM_NONCE_OFFSET, ctx->cipher_iv.length);
-		*(uint8_t *)&cipher_param->u.cipher_IV_array[0] =
-			q - ICP_QAT_HW_CCM_NONCE_OFFSET;
-
-		rte_memcpy((uint8_t *)aad->va +
-				ICP_QAT_HW_CCM_NONCE_OFFSET,
-			(uint8_t *)iv->va + ICP_QAT_HW_CCM_NONCE_OFFSET,
-			ctx->cipher_iv.length);
-		break;
-	default:
-		break;
-	}
-
-	cipher_param->cipher_offset = ofs.ofs.cipher.head;
-	cipher_param->cipher_length = data_len - ofs.ofs.cipher.head -
-			ofs.ofs.cipher.tail;
-	auth_param->auth_off = ofs.ofs.cipher.head;
-	auth_param->auth_len = cipher_param->cipher_length;
-	auth_param->auth_res_addr = digest->iova;
-	auth_param->u1.aad_adr = aad_iova;
-
-	if (ctx->is_single_pass) {
-		cipher_param->spc_aad_addr = aad_iova;
-		cipher_param->spc_auth_res_addr = digest->iova;
-	}
-}
-
-static __rte_always_inline int
-qat_sym_dp_enqueue_single_aead(void *qp_data, uint8_t *drv_ctx,
-	struct rte_crypto_vec *data, uint16_t n_data_vecs,
-	union rte_crypto_sym_ofs ofs,
-	struct rte_crypto_va_iova_ptr *iv,
-	struct rte_crypto_va_iova_ptr *digest,
-	struct rte_crypto_va_iova_ptr *aad,
-	void *user_data)
-{
-	struct qat_qp *qp = qp_data;
-	struct qat_sym_dp_ctx *dp_ctx = (void *)drv_ctx;
-	struct qat_queue *tx_queue = &qp->tx_q;
-	struct qat_sym_session *ctx = dp_ctx->session;
-	struct icp_qat_fw_la_bulk_req *req;
-	int32_t data_len;
-	uint32_t tail = dp_ctx->tail;
-
-	req = (struct icp_qat_fw_la_bulk_req *)(
-		(uint8_t *)tx_queue->base_addr + tail);
-	tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
-	rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
-	rte_prefetch0((uint8_t *)tx_queue->base_addr + tail);
-	data_len = qat_sym_dp_parse_data_vec(qp, req, data, n_data_vecs);
-	if (unlikely(data_len < 0))
-		return -1;
-	req->comn_mid.opaque_data = (uint64_t)(uintptr_t)user_data;
-
-	enqueue_one_aead_job(ctx, req, iv, digest, aad, ofs,
-		(uint32_t)data_len);
-
-	dp_ctx->tail = tail;
-	dp_ctx->cached_enqueue++;
-
-	return 0;
-}
-
-static __rte_always_inline uint32_t
-qat_sym_dp_enqueue_aead_jobs(void *qp_data, uint8_t *drv_ctx,
-	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
-	void *user_data[], int *status)
-{
-	struct qat_qp *qp = qp_data;
-	struct qat_sym_dp_ctx *dp_ctx = (void *)drv_ctx;
-	struct qat_queue *tx_queue = &qp->tx_q;
-	struct qat_sym_session *ctx = dp_ctx->session;
-	uint32_t i, n;
-	uint32_t tail;
-	struct icp_qat_fw_la_bulk_req *req;
-	int32_t data_len;
-
-	n = QAT_SYM_DP_GET_MAX_ENQ(qp, dp_ctx->cached_enqueue, vec->num);
-	if (unlikely(n == 0)) {
-		qat_sym_dp_fill_vec_status(vec->status, -1, vec->num);
-		*status = 0;
-		return 0;
-	}
-
-	tail = dp_ctx->tail;
-
-	for (i = 0; i < n; i++) {
-		req  = (struct icp_qat_fw_la_bulk_req *)(
-			(uint8_t *)tx_queue->base_addr + tail);
-		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
-
-		data_len = qat_sym_dp_parse_data_vec(qp, req, vec->sgl[i].vec,
-			vec->sgl[i].num);
-		if (unlikely(data_len < 0))
-			break;
-		req->comn_mid.opaque_data = (uint64_t)(uintptr_t)user_data[i];
-		enqueue_one_aead_job(ctx, req, &vec->iv[i], &vec->digest[i],
-			&vec->aad[i], ofs, (uint32_t)data_len);
-		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
-	}
-
-	if (unlikely(i < n))
-		qat_sym_dp_fill_vec_status(vec->status + i, -1, n - i);
-
-	dp_ctx->tail = tail;
-	dp_ctx->cached_enqueue += i;
-	*status = 0;
-	return i;
-}
-
-static __rte_always_inline void
 enqueue_one_cipher_job(struct qat_sym_session *ctx,
 	struct icp_qat_fw_la_bulk_req *req,
 	struct rte_crypto_va_iova_ptr *iv,
@@ -704,6 +506,207 @@ qat_sym_dp_enqueue_chain_jobs(void *qp_data, uint8_t *drv_ctx,
 	return i;
 }
 
+static __rte_always_inline void
+enqueue_one_aead_job(struct qat_sym_session *ctx,
+	struct icp_qat_fw_la_bulk_req *req,
+	struct rte_crypto_va_iova_ptr *iv,
+	struct rte_crypto_va_iova_ptr *digest,
+	struct rte_crypto_va_iova_ptr *aad,
+	union rte_crypto_sym_ofs ofs, uint32_t data_len)
+{
+	struct icp_qat_fw_la_cipher_req_params *cipher_param =
+		(void *)&req->serv_specif_rqpars;
+	struct icp_qat_fw_la_auth_req_params *auth_param =
+		(void *)((uint8_t *)&req->serv_specif_rqpars +
+		ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET);
+	uint8_t *aad_data;
+	uint8_t aad_ccm_real_len;
+	uint8_t aad_len_field_sz;
+	uint32_t msg_len_be;
+	rte_iova_t aad_iova = 0;
+	uint8_t q;
+
+	/* CPM 1.7 uses single pass to treat AEAD as cipher operation */
+	if (ctx->is_single_pass) {
+		enqueue_one_cipher_job(ctx, req, iv, ofs, data_len);
+		cipher_param->spc_aad_addr = aad->iova;
+		cipher_param->spc_auth_res_addr = digest->iova;
+		return;
+	}
+
+	switch (ctx->qat_hash_alg) {
+	case ICP_QAT_HW_AUTH_ALGO_GALOIS_128:
+	case ICP_QAT_HW_AUTH_ALGO_GALOIS_64:
+		ICP_QAT_FW_LA_GCM_IV_LEN_FLAG_SET(
+			req->comn_hdr.serv_specif_flags,
+				ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
+		rte_memcpy(cipher_param->u.cipher_IV_array, iv->va,
+				ctx->cipher_iv.length);
+		aad_iova = aad->iova;
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC:
+		aad_data = aad->va;
+		aad_iova = aad->iova;
+		aad_ccm_real_len = 0;
+		aad_len_field_sz = 0;
+		msg_len_be = rte_bswap32((uint32_t)data_len -
+				ofs.ofs.cipher.head);
+
+		if (ctx->aad_len > ICP_QAT_HW_CCM_AAD_DATA_OFFSET) {
+			aad_len_field_sz = ICP_QAT_HW_CCM_AAD_LEN_INFO;
+			aad_ccm_real_len = ctx->aad_len -
+				ICP_QAT_HW_CCM_AAD_B0_LEN -
+				ICP_QAT_HW_CCM_AAD_LEN_INFO;
+		} else {
+			aad_data = iv->va;
+			aad_iova = iv->iova;
+		}
+
+		q = ICP_QAT_HW_CCM_NQ_CONST - ctx->cipher_iv.length;
+		aad_data[0] = ICP_QAT_HW_CCM_BUILD_B0_FLAGS(
+			aad_len_field_sz, ctx->digest_length, q);
+		if (q > ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE) {
+			memcpy(aad_data	+ ctx->cipher_iv.length +
+				ICP_QAT_HW_CCM_NONCE_OFFSET + (q -
+				ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE),
+				(uint8_t *)&msg_len_be,
+				ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE);
+		} else {
+			memcpy(aad_data	+ ctx->cipher_iv.length +
+				ICP_QAT_HW_CCM_NONCE_OFFSET,
+				(uint8_t *)&msg_len_be +
+				(ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE
+				- q), q);
+		}
+
+		if (aad_len_field_sz > 0) {
+			*(uint16_t *)&aad_data[ICP_QAT_HW_CCM_AAD_B0_LEN] =
+				rte_bswap16(aad_ccm_real_len);
+
+			if ((aad_ccm_real_len + aad_len_field_sz)
+				% ICP_QAT_HW_CCM_AAD_B0_LEN) {
+				uint8_t pad_len = 0;
+				uint8_t pad_idx = 0;
+
+				pad_len = ICP_QAT_HW_CCM_AAD_B0_LEN -
+					((aad_ccm_real_len +
+					aad_len_field_sz) %
+					ICP_QAT_HW_CCM_AAD_B0_LEN);
+				pad_idx = ICP_QAT_HW_CCM_AAD_B0_LEN +
+					aad_ccm_real_len +
+					aad_len_field_sz;
+				memset(&aad_data[pad_idx], 0, pad_len);
+			}
+		}
+
+		rte_memcpy(((uint8_t *)cipher_param->u.cipher_IV_array)
+			+ ICP_QAT_HW_CCM_NONCE_OFFSET,
+			(uint8_t *)iv->va +
+			ICP_QAT_HW_CCM_NONCE_OFFSET, ctx->cipher_iv.length);
+		*(uint8_t *)&cipher_param->u.cipher_IV_array[0] =
+			q - ICP_QAT_HW_CCM_NONCE_OFFSET;
+
+		rte_memcpy((uint8_t *)aad->va +
+				ICP_QAT_HW_CCM_NONCE_OFFSET,
+			(uint8_t *)iv->va + ICP_QAT_HW_CCM_NONCE_OFFSET,
+			ctx->cipher_iv.length);
+		break;
+	default:
+		break;
+	}
+
+	cipher_param->cipher_offset = ofs.ofs.cipher.head;
+	cipher_param->cipher_length = data_len - ofs.ofs.cipher.head -
+			ofs.ofs.cipher.tail;
+	auth_param->auth_off = ofs.ofs.cipher.head;
+	auth_param->auth_len = cipher_param->cipher_length;
+	auth_param->auth_res_addr = digest->iova;
+	auth_param->u1.aad_adr = aad_iova;
+}
+
+static __rte_always_inline int
+qat_sym_dp_enqueue_single_aead(void *qp_data, uint8_t *drv_ctx,
+	struct rte_crypto_vec *data, uint16_t n_data_vecs,
+	union rte_crypto_sym_ofs ofs,
+	struct rte_crypto_va_iova_ptr *iv,
+	struct rte_crypto_va_iova_ptr *digest,
+	struct rte_crypto_va_iova_ptr *aad,
+	void *user_data)
+{
+	struct qat_qp *qp = qp_data;
+	struct qat_sym_dp_ctx *dp_ctx = (void *)drv_ctx;
+	struct qat_queue *tx_queue = &qp->tx_q;
+	struct qat_sym_session *ctx = dp_ctx->session;
+	struct icp_qat_fw_la_bulk_req *req;
+	int32_t data_len;
+	uint32_t tail = dp_ctx->tail;
+
+	req = (struct icp_qat_fw_la_bulk_req *)(
+		(uint8_t *)tx_queue->base_addr + tail);
+	tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
+	rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
+	rte_prefetch0((uint8_t *)tx_queue->base_addr + tail);
+	data_len = qat_sym_dp_parse_data_vec(qp, req, data, n_data_vecs);
+	if (unlikely(data_len < 0))
+		return -1;
+	req->comn_mid.opaque_data = (uint64_t)(uintptr_t)user_data;
+
+	enqueue_one_aead_job(ctx, req, iv, digest, aad, ofs,
+		(uint32_t)data_len);
+
+	dp_ctx->tail = tail;
+	dp_ctx->cached_enqueue++;
+
+	return 0;
+}
+
+static __rte_always_inline uint32_t
+qat_sym_dp_enqueue_aead_jobs(void *qp_data, uint8_t *drv_ctx,
+	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
+	void *user_data[], int *status)
+{
+	struct qat_qp *qp = qp_data;
+	struct qat_sym_dp_ctx *dp_ctx = (void *)drv_ctx;
+	struct qat_queue *tx_queue = &qp->tx_q;
+	struct qat_sym_session *ctx = dp_ctx->session;
+	uint32_t i, n;
+	uint32_t tail;
+	struct icp_qat_fw_la_bulk_req *req;
+	int32_t data_len;
+
+	n = QAT_SYM_DP_GET_MAX_ENQ(qp, dp_ctx->cached_enqueue, vec->num);
+	if (unlikely(n == 0)) {
+		qat_sym_dp_fill_vec_status(vec->status, -1, vec->num);
+		*status = 0;
+		return 0;
+	}
+
+	tail = dp_ctx->tail;
+
+	for (i = 0; i < n; i++) {
+		req  = (struct icp_qat_fw_la_bulk_req *)(
+			(uint8_t *)tx_queue->base_addr + tail);
+		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
+
+		data_len = qat_sym_dp_parse_data_vec(qp, req, vec->sgl[i].vec,
+			vec->sgl[i].num);
+		if (unlikely(data_len < 0))
+			break;
+		req->comn_mid.opaque_data = (uint64_t)(uintptr_t)user_data[i];
+		enqueue_one_aead_job(ctx, req, &vec->iv[i], &vec->digest[i],
+			&vec->aad[i], ofs, (uint32_t)data_len);
+		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
+	}
+
+	if (unlikely(i < n))
+		qat_sym_dp_fill_vec_status(vec->status + i, -1, n - i);
+
+	dp_ctx->tail = tail;
+	dp_ctx->cached_enqueue += i;
+	*status = 0;
+	return i;
+}
+
 static __rte_always_inline uint32_t
 qat_sym_dp_dequeue_burst(void *qp_data, uint8_t *drv_ctx,
 	rte_cryptodev_raw_get_dequeue_count_t get_dequeue_count,
@@ -937,8 +940,9 @@ qat_sym_configure_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 	raw_dp_ctx->dequeue = qat_sym_dp_dequeue;
 	raw_dp_ctx->dequeue_done = qat_sym_dp_update_head;
 
-	if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_HASH_CIPHER ||
-			ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_HASH) {
+	if ((ctx->qat_cmd == ICP_QAT_FW_LA_CMD_HASH_CIPHER ||
+			ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_HASH) &&
+			!ctx->is_gmac) {
 		/* AES-GCM or AES-CCM */
 		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
 			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64 ||
@@ -954,12 +958,21 @@ qat_sym_configure_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 					qat_sym_dp_enqueue_chain_jobs;
 			raw_dp_ctx->enqueue = qat_sym_dp_enqueue_single_chain;
 		}
-	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_AUTH) {
+	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_AUTH || ctx->is_gmac) {
 		raw_dp_ctx->enqueue_burst = qat_sym_dp_enqueue_auth_jobs;
 		raw_dp_ctx->enqueue = qat_sym_dp_enqueue_single_auth;
 	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER) {
-		raw_dp_ctx->enqueue_burst = qat_sym_dp_enqueue_cipher_jobs;
-		raw_dp_ctx->enqueue = qat_sym_dp_enqueue_single_cipher;
+		if (ctx->qat_mode == ICP_QAT_HW_CIPHER_AEAD_MODE ||
+			ctx->qat_cipher_alg ==
+				ICP_QAT_HW_CIPHER_ALGO_CHACHA20_POLY1305) {
+			raw_dp_ctx->enqueue_burst =
+					qat_sym_dp_enqueue_aead_jobs;
+			raw_dp_ctx->enqueue = qat_sym_dp_enqueue_single_aead;
+		} else {
+			raw_dp_ctx->enqueue_burst =
+					qat_sym_dp_enqueue_cipher_jobs;
+			raw_dp_ctx->enqueue = qat_sym_dp_enqueue_single_cipher;
+		}
 	} else
 		return -1;
 

@@ -409,8 +409,10 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
-			RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED |
-			RTE_CRYPTODEV_FF_SYM_RAW_DP;
+			RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED;
+
+	if (qat_pci_dev->qat_dev_gen < QAT_GEN4)
+		cryptodev->feature_flags |= RTE_CRYPTODEV_FF_SYM_RAW_DP;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
