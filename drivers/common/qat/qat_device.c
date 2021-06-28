@@ -11,6 +11,7 @@
 #include "qat_sym_pmd.h"
 #include "qat_comp_pmd.h"
 #include "adf_pf2vf_msg.h"
+#include "qat_pf2vf.h"
 
 /* pv2vf data Gen 4*/
 struct qat_pf2vf_dev qat_pf2vf_gen4 = {
@@ -123,6 +124,28 @@ qat_get_qat_dev_from_pci_dev(struct rte_pci_device *pci_dev)
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
 
 	return qat_pci_get_named_dev(name);
+}
+
+static int
+qat_gen4_reset_ring_pair(struct qat_pci_device *qat_pci_dev)
+{
+	int ret = 0, i;
+	uint8_t data[4];
+	struct qat_pf2vf_msg pf2vf_msg;
+
+	pf2vf_msg.msg_type = ADF_VF2PF_MSGTYPE_RP_RESET;
+	pf2vf_msg.block_hdr = -1;
+	for (i = 0; i < QAT_GEN4_BUNDLE_NUM; i++) {
+		pf2vf_msg.msg_data = i;
+		ret = qat_pf2vf_exch_msg(qat_pci_dev, pf2vf_msg, 1, data);
+		if (ret) {
+			QAT_LOG(ERR, "QAT error when reset bundle no %d",
+				i);
+			return ret;
+		}
+	}
+
+	return 0;
 }
 
 static void qat_dev_parse_cmd(const char *str, struct qat_dev_cmd_param
@@ -370,6 +393,15 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	qat_pci_dev = qat_pci_device_allocate(pci_dev, qat_dev_cmd_param);
 	if (qat_pci_dev == NULL)
 		return -ENODEV;
+
+	if (qat_pci_dev->qat_dev_gen == QAT_GEN4) {
+		if (qat_gen4_reset_ring_pair(qat_pci_dev)) {
+			QAT_LOG(ERR,
+				"Cannot reset ring pairs, does pf driver supports pf2vf comms?"
+				);
+			return -ENODEV;
+		}
+	}
 
 	sym_ret = qat_sym_dev_create(qat_pci_dev, qat_dev_cmd_param);
 	if (sym_ret == 0) {
