@@ -898,16 +898,15 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 
 		if (qat_dev_gen == QAT_GEN4)
 			session->is_ucs = 1;
-
 		if (session->cipher_iv.length == 0) {
 			session->cipher_iv.length = AES_GCM_J0_LEN;
 			break;
 		}
 		session->is_iv12B = 1;
-		if (qat_dev_gen == QAT_GEN3) {
-			qat_sym_session_handle_single_pass(session,
-					aead_xform);
-		}
+		if (qat_dev_gen < QAT_GEN3)
+			break;
+		qat_sym_session_handle_single_pass(session,
+				aead_xform);
 		break;
 	case RTE_CRYPTO_AEAD_AES_CCM:
 		if (qat_sym_validate_aes_key(aead_xform->key.length,
