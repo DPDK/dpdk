@@ -69,6 +69,7 @@ INTERNAL {
 	mlx5_mr_create_primary;
 	mlx5_mr_flush_local_cache;
 	mlx5_mr_free;
+	mlx5_free_mr_by_addr;
 
 	mlx5_nl_allmulti;
 	mlx5_nl_devlink_family_id_get;
