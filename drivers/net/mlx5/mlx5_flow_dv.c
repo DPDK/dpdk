@@ -7573,7 +7573,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
 				modify_after_mirror = 1;
 			/* Count all modify-header actions as one action. */
-			if (!(action_flags & MLX5_FLOW_ACTION_MODIFY_FIELD))
+			if (!(action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS))
 				++actions_n;
 			action_flags |= MLX5_FLOW_ACTION_MODIFY_FIELD;
 			rw_act_num += ret;
