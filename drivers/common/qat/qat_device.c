@@ -30,6 +30,11 @@ struct qat_gen_hw_data qat_gen_config[] =  {
 		.qp_hw_data = qat_gen3_qps,
 		.comp_num_im_bufs_required = QAT_NUM_INTERM_BUFS_GEN3
 	},
+	[QAT_GEN4] = {
+		.dev_gen = QAT_GEN4,
+		.qp_hw_data = NULL,
+		.comp_num_im_bufs_required = QAT_NUM_INTERM_BUFS_GEN3
+	},
 };
 
 /* per-process array of device data */
@@ -58,6 +63,9 @@ static const struct rte_pci_id pci_id_qat_map[] = {
 		},
 		{
 			RTE_PCI_DEVICE(0x8086, 0x18a1),
+		},
+		{
+			RTE_PCI_DEVICE(0x8086, 0x4941),
 		},
 		{.device_id = 0},
 };
@@ -232,6 +240,9 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 	case 0x18a1:
 		qat_dev->qat_dev_gen = QAT_GEN3;
 		break;
+	case 0x4941:
+		qat_dev->qat_dev_gen = QAT_GEN4;
+		break;
 	default:
 		QAT_LOG(ERR, "Invalid dev_id, can't determine generation");
 		rte_memzone_free(qat_pci_devs[qat_dev->qat_dev_id].mz);
@@ -240,6 +251,17 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 
 	if (devargs && devargs->drv_str)
 		qat_dev_parse_cmd(devargs->drv_str, qat_dev_cmd_param);
+
+	if (qat_dev->qat_dev_gen >= QAT_GEN4) {
+		int ret = qat_read_qp_config(qat_dev, qat_dev->qat_dev_gen);
+
+		if (ret) {
+			QAT_LOG(ERR,
+				"Cannot acquire ring configuration for QAT_%d",
+				qat_dev_id);
+			return NULL;
+		}
+	}
 
 	rte_spinlock_init(&qat_dev->arb_csr_lock);
 	qat_nb_pci_devices++;

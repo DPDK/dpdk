@@ -74,6 +74,7 @@ qat_comp_qp_release(struct rte_compressdev *dev, uint16_t queue_pair_id)
 	struct qat_qp **qp_addr =
 		(struct qat_qp **)&(dev->data->queue_pairs[queue_pair_id]);
 	struct qat_qp *qp = (struct qat_qp *)*qp_addr;
+	enum qat_device_gen qat_dev_gen = qat_private->qat_dev->qat_dev_gen;
 	uint32_t i;
 
 	QAT_LOG(DEBUG, "Release comp qp %u on device %d",
@@ -90,7 +91,7 @@ qat_comp_qp_release(struct rte_compressdev *dev, uint16_t queue_pair_id)
 			rte_free(cookie->qat_sgl_dst_d);
 		}
 
-	return qat_qp_release((struct qat_qp **)
+	return qat_qp_release(qat_dev_gen, (struct qat_qp **)
 			&(dev->data->queue_pairs[queue_pair_id]));
 }
 
@@ -710,6 +711,10 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 	const struct rte_compressdev_capabilities *capabilities;
 	uint64_t capa_size;
 
+	if (qat_pci_dev->qat_dev_gen == QAT_GEN4) {
+		QAT_LOG(ERR, "Compression PMD not supported on QAT 4xxx");
+		return 0;
+	}
 	snprintf(name, RTE_COMPRESSDEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "comp");
 	QAT_LOG(DEBUG, "Creating QAT COMP device %s", name);

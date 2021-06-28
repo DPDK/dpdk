@@ -550,6 +550,7 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 		return -EINVAL;
 	}
 
+	memset(session, 0, sizeof(*session));
 	/* Set context descriptor physical address */
 	session->cd_paddr = session_paddr +
 			offsetof(struct qat_sym_session, cd);

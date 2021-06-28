@@ -139,6 +139,7 @@ static void qat_sym_stats_reset(struct rte_cryptodev *dev)
 static int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 {
 	struct qat_sym_dev_private *qat_private = dev->data->dev_private;
+	enum qat_device_gen qat_dev_gen = qat_private->qat_dev->qat_dev_gen;
 
 	QAT_LOG(DEBUG, "Release sym qp %u on device %d",
 				queue_pair_id, dev->data->dev_id);
@@ -146,7 +147,7 @@ static int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 	qat_private->qat_dev->qps_in_use[QAT_SERVICE_SYMMETRIC][queue_pair_id]
 						= NULL;
 
-	return qat_qp_release((struct qat_qp **)
+	return qat_qp_release(qat_dev_gen, (struct qat_qp **)
 			&(dev->data->queue_pairs[queue_pair_id]));
 }
 
@@ -158,15 +159,33 @@ static int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	int ret = 0;
 	uint32_t i;
 	struct qat_qp_config qat_qp_conf;
+	const struct qat_qp_hw_data *sym_hw_qps = NULL;
+	const struct qat_qp_hw_data *qp_hw_data = NULL;
 
 	struct qat_qp **qp_addr =
 			(struct qat_qp **)&(dev->data->queue_pairs[qp_id]);
 	struct qat_sym_dev_private *qat_private = dev->data->dev_private;
 	struct qat_pci_device *qat_dev = qat_private->qat_dev;
-	const struct qat_qp_hw_data *sym_hw_qps =
-			qat_gen_config[qat_private->qat_dev->qat_dev_gen]
-				      .qp_hw_data[QAT_SERVICE_SYMMETRIC];
-	const struct qat_qp_hw_data *qp_hw_data = sym_hw_qps + qp_id;
+
+	if (qat_dev->qat_dev_gen == QAT_GEN4) {
+		int ring_pair =
+			qat_select_valid_queue(qat_dev, qp_id,
+				QAT_SERVICE_SYMMETRIC);
+		sym_hw_qps =
+			&qat_dev->qp_gen4_data[0][0];
+		qp_hw_data =
+			&qat_dev->qp_gen4_data[ring_pair][0];
+		if (ring_pair < 0) {
+			QAT_LOG(ERR,
+				"qp_id %u invalid for this device, no enough services allocated for GEN4 device",
+				qp_id);
+			return -EINVAL;
+		}
+	} else {
+		sym_hw_qps = qat_gen_config[qat_dev->qat_dev_gen]
+				.qp_hw_data[QAT_SERVICE_SYMMETRIC];
+		qp_hw_data = sym_hw_qps + qp_id;
+	}
 
 	/* If qp is already in use free ring memory and qp metadata. */
 	if (*qp_addr != NULL) {
@@ -429,6 +448,10 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	case QAT_GEN3:
 		capabilities = qat_gen3_sym_capabilities;
 		capa_size = sizeof(qat_gen3_sym_capabilities);
+		break;
+	case QAT_GEN4:
+		capabilities = NULL;
+		capa_size = 0;
 		break;
 	default:
 		QAT_LOG(DEBUG,

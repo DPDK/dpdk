@@ -105,6 +105,12 @@ New Features
 
   * Added COUNT action support for SN1000 NICs
 
+* **Updated Intel QuickAssist crypto PMD.**
+
+  Added fourth generation of QuickAssist Technology(QAT) devices support.
+  Only symmetric crypto has been currently enabled, compression and asymmetric
+  crypto PMD will fail to create.
+
 * **Added support for Marvell CNXK crypto driver.**
 
   * Added cnxk crypto PMD which provides support for an integrated

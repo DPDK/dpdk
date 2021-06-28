@@ -25,6 +25,7 @@ poll mode crypto driver support for the following hardware accelerator devices:
 * ``Intel QuickAssist Technology 200xx``
 * ``Intel QuickAssist Technology D15xx``
 * ``Intel QuickAssist Technology C4xxx``
+* ``Intel QuickAssist Technology 4xxx``
 
 
 Features
@@ -94,15 +95,16 @@ All the usual chains are supported and also some mixed chains:
    +==================+===========+=============+==========+==========+
    | NULL CIPHER      | Y         | 2&3         | 2&3      | Y        |
    +------------------+-----------+-------------+----------+----------+
-   | SNOW3G UEA2      | 2&3       | Y           | 2&3      | 2&3      |
+   | SNOW3G UEA2      | 2&3       | 1&2&3       | 2&3      | 2&3      |
    +------------------+-----------+-------------+----------+----------+
    | ZUC EEA3         | 2&3       | 2&3         | 2&3      | 2&3      |
    +------------------+-----------+-------------+----------+----------+
-   | AES CTR          | Y         | 2&3         | 2&3      | Y        |
+   | AES CTR          | 1&2&3     | 2&3         | 2&3      | Y        |
    +------------------+-----------+-------------+----------+----------+
 
 * The combinations marked as "Y" are supported on all QAT hardware versions.
-* The combinations marked as "2&3" are supported on GEN2/GEN3 QAT hardware only.
+* The combinations marked as "2&3" are supported on GEN2 and GEN3 QAT hardware only.
+* The combinations marked as "1&2&3" are supported on GEN1, GEN2 and GEN3 QAT hardware only.
 
 
 Limitations
@@ -372,6 +374,8 @@ to see the full table)
    | Yes | No  | No  | 2   | D15xx    | 01.org/4.2.0+ | qat_d15xx     | d15xx      | 6f54   | 1    | 6f55   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
    | Yes | No  | No  | 3   | C4xxx    | p             | qat_c4xxx     | c4xxx      | 18a0   | 1    | 18a1   | 128    |
+   +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
+   | Yes | No  | No  | 4   | 4xxx     | N/A           | qat_4xxx      | 4xxx       | 4940   | 4    | 4941   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
 
 * Note: Symmetric mixed crypto algorithms feature on Gen 2 works only with 01.org driver version 4.9.0+

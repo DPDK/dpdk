@@ -14,6 +14,16 @@ struct qat_pci_device;
 
 #define QAT_QP_MIN_INFL_THRESHOLD	256
 
+/* Default qp configuration for GEN4 devices */
+#define QAT_GEN4_QP_DEFCON	(QAT_SERVICE_SYMMETRIC |	\
+				QAT_SERVICE_SYMMETRIC << 8 |	\
+				QAT_SERVICE_SYMMETRIC << 16 |	\
+				QAT_SERVICE_SYMMETRIC << 24)
+
+/* QAT GEN 4 specific macros */
+#define QAT_GEN4_BUNDLE_NUM             4
+#define QAT_GEN4_QPS_PER_BUNDLE_NUM     1
+
 /**
  * Structure with data needed for creation of queue pair.
  */
@@ -24,6 +34,15 @@ struct qat_qp_hw_data {
 	uint8_t rx_ring_num;
 	uint16_t tx_msg_size;
 	uint16_t rx_msg_size;
+};
+
+/**
+ * Structure with data needed for creation of queue pair on gen4.
+ */
+struct qat_qp_gen4_data {
+	struct qat_qp_hw_data qat_qp_hw_data;
+	uint8_t reserved;
+	uint8_t valid;
 };
 
 /**
@@ -90,7 +109,7 @@ uint16_t
 qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops);
 
 int
-qat_qp_release(struct qat_qp **qp_addr);
+qat_qp_release(enum qat_device_gen qat_dev_gen, struct qat_qp **qp_addr);
 
 int
 qat_qp_setup(struct qat_pci_device *qat_dev,
@@ -109,5 +128,13 @@ int
 qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,
 			  void *op_cookie __rte_unused,
 			  uint64_t *dequeue_err_count __rte_unused);
+
+int
+qat_select_valid_queue(struct qat_pci_device *qat_dev, int qp_id,
+			enum qat_service_type service_type);
+
+int
+qat_read_qp_config(struct qat_pci_device *qat_dev,
+			enum qat_device_gen qat_dev_gen);
 
 #endif /* _QAT_QP_H_ */
