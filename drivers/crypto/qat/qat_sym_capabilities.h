@@ -1064,6 +1064,26 @@
 				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
+	},								\
+	{	/* AES CTR */						\
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,			\
+		{.sym = {						\
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,	\
+			{.cipher = {					\
+				.algo = RTE_CRYPTO_CIPHER_AES_CTR,	\
+				.block_size = 16,			\
+				.key_size = {				\
+					.min = 16,			\
+					.max = 32,			\
+					.increment = 8			\
+				},					\
+				.iv_size = {				\
+					.min = 16,			\
+					.max = 16,			\
+					.increment = 0			\
+				}					\
+			}, }						\
+		}, }							\
 	}								\
 
 

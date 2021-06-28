@@ -246,6 +246,8 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 {
 	struct qat_sym_dev_private *internals = dev->data->dev_private;
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
+	enum qat_device_gen qat_dev_gen =
+				internals->qat_dev->qat_dev_gen;
 	int ret;
 
 	/* Get cipher xform from crypto xform chain */
@@ -272,6 +274,13 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
+		if (qat_dev_gen == QAT_GEN4) {
+			/* TODO: Filter WCP */
+			ICP_QAT_FW_LA_SLICE_TYPE_SET(
+				session->fw_req.comn_hdr.serv_specif_flags,
+				ICP_QAT_FW_LA_USE_UCS_SLICE_TYPE);
+			session->is_ucs = 1;
+		}
 		break;
 	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
 		if (qat_sym_validate_snow3g_key(cipher_xform->key.length,
@@ -556,6 +565,7 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 			offsetof(struct qat_sym_session, cd);
 
 	session->min_qat_dev_gen = QAT_GEN1;
+	session->is_ucs = 0;
 
 	/* Get requested QAT command id */
 	qat_cmd_id = qat_get_cmd_id(xform);
@@ -1521,6 +1531,7 @@ int qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cdesc,
 						uint32_t cipherkeylen)
 {
 	struct icp_qat_hw_cipher_algo_blk *cipher;
+	struct icp_qat_hw_cipher_algo_blk20 *cipher20;
 	struct icp_qat_fw_la_bulk_req *req_tmpl = &cdesc->fw_req;
 	struct icp_qat_fw_comn_req_hdr_cd_pars *cd_pars = &req_tmpl->cd_pars;
 	struct icp_qat_fw_comn_req_hdr *header = &req_tmpl->comn_hdr;
@@ -1614,7 +1625,6 @@ int qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cdesc,
 		qat_proto_flag =
 			qat_get_crypto_proto_flag(header->serv_specif_flags);
 	}
-	cipher_cd_ctrl->cipher_key_sz = total_key_size >> 3;
 	cipher_offset = cdesc->cd_cur_ptr-((uint8_t *)&cdesc->cd);
 	cipher_cd_ctrl->cipher_cfg_offset = cipher_offset >> 3;
 
@@ -1622,6 +1632,7 @@ int qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cdesc,
 	qat_sym_session_init_common_hdr(header, qat_proto_flag);
 
 	cipher = (struct icp_qat_hw_cipher_algo_blk *)cdesc->cd_cur_ptr;
+	cipher20 = (struct icp_qat_hw_cipher_algo_blk20 *)cdesc->cd_cur_ptr;
 	cipher->cipher_config.val =
 	    ICP_QAT_HW_CIPHER_CONFIG_BUILD(cdesc->qat_mode,
 					cdesc->qat_cipher_alg, key_convert,
@@ -1641,6 +1652,19 @@ int qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cdesc,
 
 		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_cipher_config) +
 					cipherkeylen + cipherkeylen;
+	} else if (cdesc->is_ucs) {
+		const uint8_t *final_key = cipherkey;
+
+		total_key_size = RTE_ALIGN_CEIL(cipherkeylen,
+			ICP_QAT_HW_AES_128_KEY_SZ);
+		cipher20->cipher_config.reserved[0] = 0;
+		cipher20->cipher_config.reserved[1] = 0;
+		cipher20->cipher_config.reserved[2] = 0;
+
+		rte_memcpy(cipher20->key, final_key, cipherkeylen);
+		cdesc->cd_cur_ptr +=
+			sizeof(struct icp_qat_hw_ucs_cipher_config) +
+					cipherkeylen;
 	} else {
 		memcpy(cipher->key, cipherkey, cipherkeylen);
 		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_cipher_config) +
@@ -1667,6 +1691,7 @@ int qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cdesc,
 	}
 	cd_size = cdesc->cd_cur_ptr-(uint8_t *)&cdesc->cd;
 	cd_pars->u.s.content_desc_params_sz = RTE_ALIGN_CEIL(cd_size, 8) >> 3;
+	cipher_cd_ctrl->cipher_key_sz = total_key_size >> 3;
 
 	return 0;
 }

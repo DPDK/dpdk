@@ -92,6 +92,7 @@ struct qat_sym_session {
 	uint8_t aes_cmac;
 	uint8_t is_single_pass;
 	uint8_t is_single_pass_gmac;
+	uint8_t is_ucs;
 };
 
 int

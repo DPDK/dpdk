@@ -371,4 +371,32 @@ struct icp_qat_fw_la_resp {
 	& ICP_QAT_FW_COMN_NEXT_ID_MASK) | \
 	((val) & ICP_QAT_FW_COMN_CURR_ID_MASK)) }
 
+#define ICP_QAT_FW_LA_USE_WIRELESS_SLICE_TYPE 2
+#define ICP_QAT_FW_LA_USE_UCS_SLICE_TYPE 1
+#define ICP_QAT_FW_LA_USE_LEGACY_SLICE_TYPE 0
+#define QAT_LA_SLICE_TYPE_BITPOS 14
+#define QAT_LA_SLICE_TYPE_MASK 0x3
+#define ICP_QAT_FW_LA_SLICE_TYPE_SET(flags, val)	\
+	QAT_FIELD_SET(flags, val, QAT_LA_SLICE_TYPE_BITPOS,	\
+		QAT_LA_SLICE_TYPE_MASK)
+
+struct icp_qat_fw_la_cipher_20_req_params {
+	uint32_t cipher_offset;
+	uint32_t cipher_length;
+	union {
+	uint32_t cipher_IV_array[ICP_QAT_FW_NUM_LONGWORDS_4];
+	struct {
+		uint64_t cipher_IV_ptr;
+		uint64_t resrvd1;
+		} s;
+
+	} u;
+	uint32_t   spc_aad_offset;
+	uint32_t   spc_aad_sz;
+	uint64_t   spc_aad_addr;
+	uint64_t   spc_auth_res_addr;
+	uint8_t    reserved[3];
+	uint8_t    spc_auth_res_sz;
+};
+
 #endif
