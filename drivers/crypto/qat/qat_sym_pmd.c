@@ -39,6 +39,11 @@ static const struct rte_cryptodev_capabilities qat_gen3_sym_capabilities[] = {
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
+static const struct rte_cryptodev_capabilities qat_gen4_sym_capabilities[] = {
+	QAT_BASE_GEN4_SYM_CAPABILITIES,
+	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
+};
+
 #ifdef RTE_LIB_SECURITY
 static const struct rte_cryptodev_capabilities
 					qat_security_sym_capabilities[] = {
@@ -450,8 +455,8 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 		capa_size = sizeof(qat_gen3_sym_capabilities);
 		break;
 	case QAT_GEN4:
-		capabilities = NULL;
-		capa_size = 0;
+		capabilities = qat_gen4_sym_capabilities;
+		capa_size = sizeof(qat_gen4_sym_capabilities);
 		break;
 	default:
 		QAT_LOG(DEBUG,
