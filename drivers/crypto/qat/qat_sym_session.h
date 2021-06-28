@@ -103,6 +103,8 @@ struct qat_sym_session {
 	uint8_t is_iv12B;
 	uint8_t is_gmac;
 	uint8_t is_auth;
+	uint8_t is_cnt_zero;
+	/* Some generations need different setup of counter */
 	uint32_t slice_types;
 	enum qat_sym_proto_flag qat_proto_flag;
 };

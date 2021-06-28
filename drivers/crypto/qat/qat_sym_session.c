@@ -710,6 +710,8 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 	struct qat_sym_dev_private *internals = dev->data->dev_private;
 	const uint8_t *key_data = auth_xform->key.data;
 	uint8_t key_length = auth_xform->key.length;
+	enum qat_device_gen qat_dev_gen =
+			internals->qat_dev->qat_dev_gen;
 
 	session->aes_cmac = 0;
 	session->auth_key_length = auth_xform->key.length;
@@ -717,6 +719,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 	session->auth_iv.length = auth_xform->iv.length;
 	session->auth_mode = ICP_QAT_HW_AUTH_MODE1;
 	session->is_auth = 1;
+	session->digest_length = auth_xform->digest_length;
 
 	switch (auth_xform->algo) {
 	case RTE_CRYPTO_AUTH_SHA1:
@@ -773,6 +776,10 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 			session->auth_iv.length = AES_GCM_J0_LEN;
 		else
 			session->is_iv12B = 1;
+		if (qat_dev_gen == QAT_GEN4) {
+			session->is_cnt_zero = 1;
+			session->is_ucs = 1;
+		}
 		break;
 	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2;
@@ -858,7 +865,6 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 			return -EINVAL;
 	}
 
-	session->digest_length = auth_xform->digest_length;
 	return 0;
 }
 
@@ -1814,6 +1820,7 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL
+		|| cdesc->is_cnt_zero
 			)
 		hash->auth_counter.counter = 0;
 	else {
