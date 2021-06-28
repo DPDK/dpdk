@@ -108,12 +108,24 @@ struct qat_pci_device {
 	struct qat_qp_hw_data qp_gen4_data[QAT_GEN4_BUNDLE_NUM]
 		[QAT_GEN4_QPS_PER_BUNDLE_NUM];
 	/**< Data of ring configuration on gen4 */
+	void *misc_bar_io_addr;
+	/**< Address of misc bar */
 };
 
 struct qat_gen_hw_data {
 	enum qat_device_gen dev_gen;
 	const struct qat_qp_hw_data (*qp_hw_data)[ADF_MAX_QPS_ON_ANY_SERVICE];
 	enum qat_comp_num_im_buffers comp_num_im_bufs_required;
+	struct qat_pf2vf_dev *pf2vf_dev;
+};
+
+struct qat_pf2vf_dev {
+	uint32_t pf2vf_offset;
+	uint32_t vf2pf_offset;
+	int pf2vf_type_shift;
+	uint32_t pf2vf_type_mask;
+	int pf2vf_data_shift;
+	uint32_t pf2vf_data_mask;
 };
 
 extern struct qat_gen_hw_data qat_gen_config[];

@@ -10,6 +10,17 @@
 #include "adf_transport_access_macros.h"
 #include "qat_sym_pmd.h"
 #include "qat_comp_pmd.h"
+#include "adf_pf2vf_msg.h"
+
+/* pv2vf data Gen 4*/
+struct qat_pf2vf_dev qat_pf2vf_gen4 = {
+	.pf2vf_offset = ADF_4XXXIOV_PF2VM_OFFSET,
+	.vf2pf_offset = ADF_4XXXIOV_VM2PF_OFFSET,
+	.pf2vf_type_shift = ADF_PFVF_2X_MSGTYPE_SHIFT,
+	.pf2vf_type_mask = ADF_PFVF_2X_MSGTYPE_MASK,
+	.pf2vf_data_shift = ADF_PFVF_2X_MSGDATA_SHIFT,
+	.pf2vf_data_mask = ADF_PFVF_2X_MSGDATA_MASK,
+};
 
 /* Hardware device information per generation */
 __extension__
@@ -33,7 +44,8 @@ struct qat_gen_hw_data qat_gen_config[] =  {
 	[QAT_GEN4] = {
 		.dev_gen = QAT_GEN4,
 		.qp_hw_data = NULL,
-		.comp_num_im_bufs_required = QAT_NUM_INTERM_BUFS_GEN3
+		.comp_num_im_bufs_required = QAT_NUM_INTERM_BUFS_GEN3,
+		.pf2vf_dev = &qat_pf2vf_gen4
 	},
 };
 
@@ -247,6 +259,14 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 		QAT_LOG(ERR, "Invalid dev_id, can't determine generation");
 		rte_memzone_free(qat_pci_devs[qat_dev->qat_dev_id].mz);
 		return NULL;
+	}
+
+	if (qat_dev->qat_dev_gen == QAT_GEN4) {
+		qat_dev->misc_bar_io_addr = pci_dev->mem_resource[2].addr;
+		if (qat_dev->misc_bar_io_addr == NULL) {
+			QAT_LOG(ERR, "QAT cannot get access to VF misc bar");
+			return NULL;
+		}
 	}
 
 	if (devargs && devargs->drv_str)

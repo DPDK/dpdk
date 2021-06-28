@@ -49,6 +49,7 @@ sources += files(
         'qat_qp.c',
         'qat_device.c',
         'qat_logs.c',
+        'qat_pf2vf.c',
 )
 includes += include_directories(
         'qat_adf',
