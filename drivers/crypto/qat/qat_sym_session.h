@@ -120,19 +120,6 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 				struct rte_crypto_sym_xform *xform,
 				struct qat_sym_session *session);
 
-int
-qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cd,
-						const uint8_t *enckey,
-						uint32_t enckeylen);
-
-int
-qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
-						const uint8_t *authkey,
-						uint32_t authkeylen,
-						uint32_t aad_length,
-						uint32_t digestsize,
-						unsigned int operation);
-
 void
 qat_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *session);

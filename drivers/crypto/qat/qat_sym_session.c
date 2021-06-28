@@ -57,6 +57,19 @@ static const uint8_t sha512InitialState[] = {
 	0x2b, 0x3e, 0x6c, 0x1f, 0x1f, 0x83, 0xd9, 0xab, 0xfb, 0x41, 0xbd,
 	0x6b, 0x5b, 0xe0, 0xcd, 0x19, 0x13, 0x7e, 0x21, 0x79};
 
+static int
+qat_sym_cd_cipher_set(struct qat_sym_session *cd,
+						const uint8_t *enckey,
+						uint32_t enckeylen);
+
+static int
+qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
+						const uint8_t *authkey,
+						uint32_t authkeylen,
+						uint32_t aad_length,
+						uint32_t digestsize,
+						unsigned int operation);
+
 /** Frees a context previously created
  *  Depends on openssl libcrypto
  */
@@ -420,7 +433,7 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 	else
 		session->qat_dir = ICP_QAT_HW_CIPHER_DECRYPT;
 
-	if (qat_sym_session_aead_create_cd_cipher(session,
+	if (qat_sym_cd_cipher_set(session,
 						cipher_xform->key.data,
 						cipher_xform->key.length)) {
 		ret = -EINVAL;
@@ -669,7 +682,7 @@ qat_sym_session_handle_single_pass(struct qat_sym_session *session,
 	}
 	session->cipher_iv.offset = aead_xform->iv.offset;
 	session->cipher_iv.length = aead_xform->iv.length;
-	if (qat_sym_session_aead_create_cd_cipher(session,
+	if (qat_sym_cd_cipher_set(session,
 			aead_xform->key.data, aead_xform->key.length))
 		return -EINVAL;
 	session->aad_len = aead_xform->aad_length;
@@ -825,12 +838,12 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 			 * then authentication
 			 */
 
-			if (qat_sym_session_aead_create_cd_cipher(session,
+			if (qat_sym_cd_cipher_set(session,
 						auth_xform->key.data,
 						auth_xform->key.length))
 				return -EINVAL;
 
-			if (qat_sym_session_aead_create_cd_auth(session,
+			if (qat_sym_cd_auth_set(session,
 						key_data,
 						key_length,
 						0,
@@ -845,7 +858,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 			 * then cipher
 			 */
 
-			if (qat_sym_session_aead_create_cd_auth(session,
+			if (qat_sym_cd_auth_set(session,
 					key_data,
 					key_length,
 					0,
@@ -853,7 +866,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 					auth_xform->op))
 				return -EINVAL;
 
-			if (qat_sym_session_aead_create_cd_cipher(session,
+			if (qat_sym_cd_cipher_set(session,
 						auth_xform->key.data,
 						auth_xform->key.length))
 				return -EINVAL;
@@ -861,7 +874,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 		/* Restore to authentication only only */
 		session->qat_cmd = ICP_QAT_FW_LA_CMD_AUTH;
 	} else {
-		if (qat_sym_session_aead_create_cd_auth(session,
+		if (qat_sym_cd_auth_set(session,
 				key_data,
 				key_length,
 				0,
@@ -948,12 +961,12 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 		crypto_operation = aead_xform->algo == RTE_CRYPTO_AEAD_AES_GCM ?
 			RTE_CRYPTO_AUTH_OP_GENERATE : RTE_CRYPTO_AUTH_OP_VERIFY;
 
-		if (qat_sym_session_aead_create_cd_cipher(session,
+		if (qat_sym_cd_cipher_set(session,
 					aead_xform->key.data,
 					aead_xform->key.length))
 			return -EINVAL;
 
-		if (qat_sym_session_aead_create_cd_auth(session,
+		if (qat_sym_cd_auth_set(session,
 					aead_xform->key.data,
 					aead_xform->key.length,
 					aead_xform->aad_length,
@@ -970,7 +983,7 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 		crypto_operation = aead_xform->algo == RTE_CRYPTO_AEAD_AES_GCM ?
 			RTE_CRYPTO_AUTH_OP_VERIFY : RTE_CRYPTO_AUTH_OP_GENERATE;
 
-		if (qat_sym_session_aead_create_cd_auth(session,
+		if (qat_sym_cd_auth_set(session,
 					aead_xform->key.data,
 					aead_xform->key.length,
 					aead_xform->aad_length,
@@ -978,7 +991,7 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 					crypto_operation))
 			return -EINVAL;
 
-		if (qat_sym_session_aead_create_cd_cipher(session,
+		if (qat_sym_cd_cipher_set(session,
 					aead_xform->key.data,
 					aead_xform->key.length))
 			return -EINVAL;
@@ -1526,7 +1539,7 @@ qat_get_crypto_proto_flag(uint16_t flags)
 	return qat_proto_flag;
 }
 
-int qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cdesc,
+int qat_sym_cd_cipher_set(struct qat_sym_session *cdesc,
 						const uint8_t *cipherkey,
 						uint32_t cipherkeylen)
 {
@@ -1696,7 +1709,7 @@ int qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cdesc,
 	return 0;
 }
 
-int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
+int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 						const uint8_t *authkey,
 						uint32_t authkeylen,
 						uint32_t aad_length,
