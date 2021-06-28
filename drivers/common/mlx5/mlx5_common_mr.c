@@ -1063,6 +1063,95 @@ mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id,
 }
 
 /**
+ * Callback for memory free event. Iterate freed memsegs and check whether it
+ * belongs to an existing MR. If found, clear the bit from bitmap of MR. As a
+ * result, the MR would be fragmented. If it becomes empty, the MR will be freed
+ * later by mlx5_mr_garbage_collect(). Even if this callback is called from a
+ * secondary process, the garbage collector will be called in primary process
+ * as the secondary process can't call mlx5_mr_create().
+ *
+ * The global cache must be rebuilt if there's any change and this event has to
+ * be propagated to dataplane threads to flush the local caches.
+ *
+ * @param share_cache
+ *   Pointer to a global shared MR cache.
+ * @param ibdev_name
+ *   Name of ibv device.
+ * @param addr
+ *   Address of freed memory.
+ * @param len
+ *   Size of freed memory.
+ */
+void
+mlx5_free_mr_by_addr(struct mlx5_mr_share_cache *share_cache,
+		     const char *ibdev_name, const void *addr, size_t len)
+{
+	const struct rte_memseg_list *msl;
+	struct mlx5_mr *mr;
+	int ms_n;
+	int i;
+	int rebuild = 0;
+
+	DRV_LOG(DEBUG, "device %s free callback: addr=%p, len=%zu",
+		ibdev_name, addr, len);
+	msl = rte_mem_virt2memseg_list(addr);
+	/* addr and len must be page-aligned. */
+	MLX5_ASSERT((uintptr_t)addr ==
+		    RTE_ALIGN((uintptr_t)addr, msl->page_sz));
+	MLX5_ASSERT(len == RTE_ALIGN(len, msl->page_sz));
+	ms_n = len / msl->page_sz;
+	rte_rwlock_write_lock(&share_cache->rwlock);
+	/* Clear bits of freed memsegs from MR. */
+	for (i = 0; i < ms_n; ++i) {
+		const struct rte_memseg *ms;
+		struct mr_cache_entry entry;
+		uintptr_t start;
+		int ms_idx;
+		uint32_t pos;
+
+		/* Find MR having this memseg. */
+		start = (uintptr_t)addr + i * msl->page_sz;
+		mr = mlx5_mr_lookup_list(share_cache, &entry, start);
+		if (mr == NULL)
+			continue;
+		MLX5_ASSERT(mr->msl); /* Can't be external memory. */
+		ms = rte_mem_virt2memseg((void *)start, msl);
+		MLX5_ASSERT(ms != NULL);
+		MLX5_ASSERT(msl->page_sz == ms->hugepage_sz);
+		ms_idx = rte_fbarray_find_idx(&msl->memseg_arr, ms);
+		pos = ms_idx - mr->ms_base_idx;
+		MLX5_ASSERT(rte_bitmap_get(mr->ms_bmp, pos));
+		MLX5_ASSERT(pos < mr->ms_bmp_n);
+		DRV_LOG(DEBUG, "device %s MR(%p): clear bitmap[%u] for addr %p",
+			ibdev_name, (void *)mr, pos, (void *)start);
+		rte_bitmap_clear(mr->ms_bmp, pos);
+		if (--mr->ms_n == 0) {
+			LIST_REMOVE(mr, mr);
+			LIST_INSERT_HEAD(&share_cache->mr_free_list, mr, mr);
+			DRV_LOG(DEBUG, "device %s remove MR(%p) from list",
+				ibdev_name, (void *)mr);
+		}
+		/*
+		 * MR is fragmented or will be freed. the global cache must be
+		 * rebuilt.
+		 */
+		rebuild = 1;
+	}
+	if (rebuild) {
+		mlx5_mr_rebuild_cache(share_cache);
+		/*
+		 * No explicit wmb is needed after updating dev_gen due to
+		 * store-release ordering in unlock that provides the
+		 * implicit barrier at the software visible level.
+		 */
+		++share_cache->dev_gen;
+		DRV_LOG(DEBUG, "broadcasting local cache flush, gen=%d",
+			share_cache->dev_gen);
+	}
+	rte_rwlock_write_unlock(&share_cache->rwlock);
+}
+
+/**
  * Dump all the created MRs and the global cache entries.
  *
  * @param sh

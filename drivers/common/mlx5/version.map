@@ -103,6 +103,7 @@ INTERNAL {
 	mlx5_mr_insert_cache;
 	mlx5_mr_lookup_cache;
 	mlx5_mr_lookup_list;
+	mlx5_free_mr_by_addr;
 	mlx5_mr_rebuild_cache;
 	mlx5_mr_release_cache;
 
