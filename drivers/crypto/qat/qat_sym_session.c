@@ -922,6 +922,8 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AEAD_CHACHA20_POLY1305:
 		if (aead_xform->key.length != ICP_QAT_HW_CHACHAPOLY_KEY_SZ)
 			return -EINVAL;
+		if (qat_dev_gen == QAT_GEN4)
+			session->is_ucs = 1;
 		session->qat_cipher_alg =
 				ICP_QAT_HW_CIPHER_ALGO_CHACHA20_POLY1305;
 		qat_sym_session_handle_single_pass(session,
