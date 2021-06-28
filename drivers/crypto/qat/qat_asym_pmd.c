@@ -54,12 +54,10 @@ static void qat_asym_dev_info_get(struct rte_cryptodev *dev,
 				  struct rte_cryptodev_info *info)
 {
 	struct qat_asym_dev_private *internals = dev->data->dev_private;
-	const struct qat_qp_hw_data *asym_hw_qps =
-		qat_gen_config[internals->qat_dev->qat_dev_gen]
-			      .qp_hw_data[QAT_SERVICE_ASYMMETRIC];
+	struct qat_pci_device *qat_dev = internals->qat_dev;
 
 	if (info != NULL) {
-		info->max_nb_queue_pairs = qat_qps_per_service(asym_hw_qps,
+		info->max_nb_queue_pairs = qat_qps_per_service(qat_dev,
 							QAT_SERVICE_ASYMMETRIC);
 		info->feature_flags = dev->feature_flags;
 		info->capabilities = internals->qat_dev_capabilities;
@@ -128,6 +126,7 @@ static int qat_asym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	struct qat_qp **qp_addr =
 			(struct qat_qp **)&(dev->data->queue_pairs[qp_id]);
 	struct qat_asym_dev_private *qat_private = dev->data->dev_private;
+	struct qat_pci_device *qat_dev = qat_private->qat_dev;
 	const struct qat_qp_hw_data *asym_hw_qps =
 			qat_gen_config[qat_private->qat_dev->qat_dev_gen]
 				      .qp_hw_data[QAT_SERVICE_ASYMMETRIC];
@@ -139,7 +138,7 @@ static int qat_asym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		if (ret < 0)
 			return ret;
 	}
-	if (qp_id >= qat_qps_per_service(asym_hw_qps, QAT_SERVICE_ASYMMETRIC)) {
+	if (qp_id >= qat_qps_per_service(qat_dev, QAT_SERVICE_ASYMMETRIC)) {
 		QAT_LOG(ERR, "qp_id %u invalid for this device", qp_id);
 		return -EINVAL;
 	}

@@ -98,7 +98,7 @@ qat_qp_setup(struct qat_pci_device *qat_dev,
 		struct qat_qp_config *qat_qp_conf);
 
 int
-qat_qps_per_service(const struct qat_qp_hw_data *qp_hw_data,
+qat_qps_per_service(struct qat_pci_device *qat_dev,
 			enum qat_service_type service);
 
 int

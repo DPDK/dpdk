@@ -106,6 +106,7 @@ qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	struct qat_qp **qp_addr =
 			(struct qat_qp **)&(dev->data->queue_pairs[qp_id]);
 	struct qat_comp_dev_private *qat_private = dev->data->dev_private;
+	struct qat_pci_device *qat_dev = qat_private->qat_dev;
 	const struct qat_qp_hw_data *comp_hw_qps =
 			qat_gen_config[qat_private->qat_dev->qat_dev_gen]
 				      .qp_hw_data[QAT_SERVICE_COMPRESSION];
@@ -117,7 +118,7 @@ qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		if (ret < 0)
 			return ret;
 	}
-	if (qp_id >= qat_qps_per_service(comp_hw_qps,
+	if (qp_id >= qat_qps_per_service(qat_dev,
 					 QAT_SERVICE_COMPRESSION)) {
 		QAT_LOG(ERR, "qp_id %u invalid for this device", qp_id);
 		return -EINVAL;
@@ -592,13 +593,11 @@ qat_comp_dev_info_get(struct rte_compressdev *dev,
 			struct rte_compressdev_info *info)
 {
 	struct qat_comp_dev_private *comp_dev = dev->data->dev_private;
-	const struct qat_qp_hw_data *comp_hw_qps =
-		qat_gen_config[comp_dev->qat_dev->qat_dev_gen]
-			      .qp_hw_data[QAT_SERVICE_COMPRESSION];
+	struct qat_pci_device *qat_dev = comp_dev->qat_dev;
 
 	if (info != NULL) {
 		info->max_nb_queue_pairs =
-			qat_qps_per_service(comp_hw_qps,
+			qat_qps_per_service(qat_dev,
 					    QAT_SERVICE_COMPRESSION);
 		info->feature_flags = dev->feature_flags;
 		info->capabilities = comp_dev->qat_dev_capabilities;

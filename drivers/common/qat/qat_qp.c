@@ -145,14 +145,19 @@ static void adf_queue_arb_disable(struct qat_queue *txq, void *base_addr,
 	rte_spinlock_t *lock);
 
 
-int qat_qps_per_service(const struct qat_qp_hw_data *qp_hw_data,
+int qat_qps_per_service(struct qat_pci_device *qat_dev,
 		enum qat_service_type service)
 {
-	int i, count;
+	int i = 0, count = 0, max_ops_per_srv = 0;
+	const struct qat_qp_hw_data*
+		sym_hw_qps = qat_gen_config[qat_dev->qat_dev_gen]
+						.qp_hw_data[service];
 
-	for (i = 0, count = 0; i < ADF_MAX_QPS_ON_ANY_SERVICE; i++)
-		if (qp_hw_data[i].service_type == service)
+	max_ops_per_srv = ADF_MAX_QPS_ON_ANY_SERVICE;
+	for (; i < max_ops_per_srv; i++)
+		if (sym_hw_qps[i].service_type == service)
 			count++;
+
 	return count;
 }
 
