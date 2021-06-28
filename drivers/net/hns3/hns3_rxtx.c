@@ -2561,7 +2561,7 @@ hns3_get_default_vec_support(void)
 static bool
 hns3_check_sve_support(void)
 {
-#if defined(RTE_ARCH_ARM64) && defined(__ARM_FEATURE_SVE)
+#if defined(RTE_HAS_SVE_ACLE)
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SVE))
 		return true;
 #endif
