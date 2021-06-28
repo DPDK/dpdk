@@ -134,7 +134,6 @@ qat_select_valid_queue(struct qat_pci_device *qat_dev, int qp_id,
 			enum qat_service_type service_type);
 
 int
-qat_read_qp_config(struct qat_pci_device *qat_dev,
-			enum qat_device_gen qat_dev_gen);
+qat_read_qp_config(struct qat_pci_device *qat_dev);
 
 #endif /* _QAT_QP_H_ */

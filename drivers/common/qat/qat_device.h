@@ -159,4 +159,7 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
 int
 qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
 
+int
+qat_query_svc(struct qat_pci_device *qat_pci_dev, uint8_t *ret);
+
 #endif /* _QAT_DEVICE_H_ */

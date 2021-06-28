@@ -148,6 +148,22 @@ qat_gen4_reset_ring_pair(struct qat_pci_device *qat_pci_dev)
 	return 0;
 }
 
+int qat_query_svc(struct qat_pci_device *qat_dev, uint8_t *val)
+{
+	int ret = -(EINVAL);
+	struct qat_pf2vf_msg pf2vf_msg;
+
+	if (qat_dev->qat_dev_gen == QAT_GEN4) {
+		pf2vf_msg.msg_type = ADF_VF2PF_MSGTYPE_GET_SMALL_BLOCK_REQ;
+		pf2vf_msg.block_hdr = ADF_VF2PF_BLOCK_MSG_GET_RING_TO_SVC_REQ;
+		pf2vf_msg.msg_data = 2;
+		ret = qat_pf2vf_exch_msg(qat_dev, pf2vf_msg, 2, val);
+	}
+
+	return ret;
+}
+
+
 static void qat_dev_parse_cmd(const char *str, struct qat_dev_cmd_param
 		*qat_dev_cmd_param)
 {
@@ -296,9 +312,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 		qat_dev_parse_cmd(devargs->drv_str, qat_dev_cmd_param);
 
 	if (qat_dev->qat_dev_gen >= QAT_GEN4) {
-		int ret = qat_read_qp_config(qat_dev, qat_dev->qat_dev_gen);
-
-		if (ret) {
+		if (qat_read_qp_config(qat_dev)) {
 			QAT_LOG(ERR,
 				"Cannot acquire ring configuration for QAT_%d",
 				qat_dev_id);

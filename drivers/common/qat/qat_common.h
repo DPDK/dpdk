@@ -29,6 +29,14 @@ enum qat_service_type {
 	QAT_SERVICE_INVALID
 };
 
+enum qat_svc_list {
+	QAT_SVC_UNUSED = 0,
+	QAT_SVC_CRYPTO = 1,
+	QAT_SVC_COMPRESSION = 2,
+	QAT_SVC_SYM = 3,
+	QAT_SVC_ASYM = 4,
+};
+
 #define QAT_MAX_SERVICES		(QAT_SERVICE_INVALID)
 
 /**< Common struct for scatter-gather list operations */

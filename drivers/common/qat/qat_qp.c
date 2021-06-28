@@ -504,20 +504,43 @@ qat_select_valid_queue(struct qat_pci_device *qat_dev, int qp_id,
 }
 
 int
-qat_read_qp_config(struct qat_pci_device *qat_dev,
-			enum qat_device_gen qat_dev_gen)
+qat_read_qp_config(struct qat_pci_device *qat_dev)
 {
-	if (qat_dev_gen == QAT_GEN4) {
-		/* Read default configuration,
-		 * until some probe of it can be done
-		 */
-		int i = 0;
+	int i = 0;
+	enum qat_device_gen qat_dev_gen = qat_dev->qat_dev_gen;
 
+	if (qat_dev_gen == QAT_GEN4) {
+		uint16_t svc = 0;
+
+		if (qat_query_svc(qat_dev, (uint8_t *)&svc))
+			return -(EFAULT);
 		for (; i < QAT_GEN4_BUNDLE_NUM; i++) {
 			struct qat_qp_hw_data *hw_data =
 				&qat_dev->qp_gen4_data[i][0];
-			enum qat_service_type service_type =
-				(QAT_GEN4_QP_DEFCON >> (8 * i)) & 0xFF;
+			uint8_t svc1 = (svc >> (3 * i)) & 0x7;
+			enum qat_service_type service_type = QAT_SERVICE_INVALID;
+
+			if (svc1 == QAT_SVC_SYM) {
+				service_type = QAT_SERVICE_SYMMETRIC;
+				QAT_LOG(DEBUG,
+					"Discovered SYMMETRIC service on bundle %d",
+					i);
+			} else if (svc1 == QAT_SVC_COMPRESSION) {
+				service_type = QAT_SERVICE_COMPRESSION;
+				QAT_LOG(DEBUG,
+					"Discovered COPRESSION service on bundle %d",
+					i);
+			} else if (svc1 == QAT_SVC_ASYM) {
+				service_type = QAT_SERVICE_ASYMMETRIC;
+				QAT_LOG(DEBUG,
+					"Discovered ASYMMETRIC service on bundle %d",
+					i);
+			} else {
+				QAT_LOG(ERR,
+					"Unrecognized service on bundle %d",
+					i);
+				return -(EFAULT);
+			}
 
 			memset(hw_data, 0, sizeof(*hw_data));
 			hw_data->service_type = service_type;
@@ -534,9 +557,9 @@ qat_read_qp_config(struct qat_pci_device *qat_dev,
 			hw_data->rx_ring_num = 1;
 			hw_data->hw_bundle_num = i;
 		}
+		return 0;
 	}
-	/* With default config will always return success */
-	return 0;
+	return -(EINVAL);
 }
 
 static int qat_qp_check_queue_alignment(uint64_t phys_addr,
