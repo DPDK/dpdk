@@ -2811,7 +2811,7 @@ hns3_get_default_vec_support(void)
 static bool
 hns3_get_sve_support(void)
 {
-#if defined(RTE_ARCH_ARM64) && defined(__ARM_FEATURE_SVE)
+#if defined(RTE_HAS_SVE_ACLE)
 	if (rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_256)
 		return false;
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SVE))
