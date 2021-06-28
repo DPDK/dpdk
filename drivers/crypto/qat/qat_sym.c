@@ -289,8 +289,9 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	auth_param = (void *)((uint8_t *)cipher_param +
 			ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET);
 
-	if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_HASH_CIPHER ||
-			ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_HASH) {
+	if ((ctx->qat_cmd == ICP_QAT_FW_LA_CMD_HASH_CIPHER ||
+			ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_HASH) &&
+			!ctx->is_gmac) {
 		/* AES-GCM or AES-CCM */
 		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
 			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64 ||
@@ -303,7 +304,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			do_auth = 1;
 			do_cipher = 1;
 		}
-	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_AUTH) {
+	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_AUTH || ctx->is_gmac) {
 		do_auth = 1;
 		do_cipher = 0;
 	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER) {
@@ -383,15 +384,6 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			auth_param->u1.aad_adr = 0;
 			auth_param->u2.aad_sz = 0;
 
-			/*
-			 * If len(iv)==12B fw computes J0
-			 */
-			if (ctx->auth_iv.length == 12) {
-				ICP_QAT_FW_LA_GCM_IV_LEN_FLAG_SET(
-					qat_req->comn_hdr.serv_specif_flags,
-					ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
-
-			}
 		} else {
 			auth_ofs = op->sym->auth.data.offset;
 			auth_len = op->sym->auth.data.length;
@@ -416,14 +408,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 				ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
 				ctx->qat_hash_alg ==
 					ICP_QAT_HW_AUTH_ALGO_GALOIS_64) {
-			/*
-			 * If len(iv)==12B fw computes J0
-			 */
-			if (ctx->cipher_iv.length == 12) {
-				ICP_QAT_FW_LA_GCM_IV_LEN_FLAG_SET(
-					qat_req->comn_hdr.serv_specif_flags,
-					ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
-			}
+
 			set_cipher_iv(ctx->cipher_iv.length,
 					ctx->cipher_iv.offset,
 					cipher_param, op, qat_req);

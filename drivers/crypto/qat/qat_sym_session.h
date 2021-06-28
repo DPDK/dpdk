@@ -48,6 +48,13 @@
 
 #define QAT_AES_CMAC_CONST_RB 0x87
 
+#define QAT_CRYPTO_SLICE_SPC	1
+#define QAT_CRYPTO_SLICE_UCS	2
+#define QAT_CRYPTO_SLICE_WCP	4
+
+#define QAT_SESSION_IS_SLICE_SET(flags, flag)	\
+	(!!((flags) & (flag)))
+
 enum qat_sym_proto_flag {
 	QAT_CRYPTO_PROTO_FLAG_NONE = 0,
 	QAT_CRYPTO_PROTO_FLAG_CCM = 1,
@@ -93,6 +100,11 @@ struct qat_sym_session {
 	uint8_t is_single_pass;
 	uint8_t is_single_pass_gmac;
 	uint8_t is_ucs;
+	uint8_t is_iv12B;
+	uint8_t is_gmac;
+	uint8_t is_auth;
+	uint32_t slice_types;
+	enum qat_sym_proto_flag qat_proto_flag;
 };
 
 int
