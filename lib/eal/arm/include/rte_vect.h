@@ -9,7 +9,7 @@
 #include "generic/rte_vect.h"
 #include "rte_debug.h"
 #include "arm_neon.h"
-#ifdef __ARM_FEATURE_SVE
+#ifdef RTE_HAS_SVE_ACLE
 #include <arm_sve.h>
 #endif
 
