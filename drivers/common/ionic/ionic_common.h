@@ -18,6 +18,7 @@
 
 #define IONIC_DEVCMD_TIMEOUT            5       /* devcmd_timeout */
 #define IONIC_DEVCMD_CHECK_PERIOD_US    10      /* devcmd status chk period */
+#define IONIC_DEVCMD_RETRY_WAIT_US      20000
 
 #define IONIC_ALIGN                     4096
 
