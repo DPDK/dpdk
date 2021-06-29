@@ -136,13 +136,12 @@ struct cnxk_eth_qconf {
 };
 
 struct cnxk_timesync_info {
+	uint8_t rx_ready;
+	uint64_t rx_tstamp;
 	uint64_t rx_tstamp_dynflag;
+	int tstamp_dynfield_offset;
 	rte_iova_t tx_tstamp_iova;
 	uint64_t *tx_tstamp;
-	uint64_t rx_tstamp;
-	int tstamp_dynfield_offset;
-	uint8_t tx_ready;
-	uint8_t rx_ready;
 } __plt_cache_aligned;
 
 struct cnxk_eth_dev {
@@ -465,13 +464,15 @@ cnxk_nix_timestamp_dynfield(struct rte_mbuf *mbuf,
 
 static __rte_always_inline void
 cnxk_nix_mbuf_to_tstamp(struct rte_mbuf *mbuf,
-			struct cnxk_timesync_info *tstamp, bool ts_enable,
+			struct cnxk_timesync_info *tstamp,
+			const uint8_t ts_enable, const uint8_t mseg_enable,
 			uint64_t *tstamp_ptr)
 {
-	if (ts_enable &&
-	    (mbuf->data_off ==
-	     RTE_PKTMBUF_HEADROOM + CNXK_NIX_TIMESYNC_RX_OFFSET)) {
-		mbuf->pkt_len -= CNXK_NIX_TIMESYNC_RX_OFFSET;
+	if (ts_enable) {
+		if (!mseg_enable) {
+			mbuf->pkt_len -= CNXK_NIX_TIMESYNC_RX_OFFSET;
+			mbuf->data_len -= CNXK_NIX_TIMESYNC_RX_OFFSET;
+		}
 
 		/* Reading the rx timestamp inserted by CGX, viz at
 		 * starting of the packet data.

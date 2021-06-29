@@ -301,7 +301,6 @@ nix_ptp_enable_vf(struct rte_eth_dev *eth_dev)
 	if (nix_recalc_mtu(eth_dev))
 		plt_err("Failed to set MTU size for ptp");
 
-	dev->scalar_ena = true;
 	dev->rx_offload_flags |= NIX_RX_OFFLOAD_TSTAMP_F;
 
 	/* Setting up the function pointers as per new offload flags */

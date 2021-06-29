@@ -11,9 +11,6 @@
 					       struct rte_mbuf **rx_pkts,      \
 					       uint16_t pkts)                  \
 	{                                                                      \
-		/* TSTMP is not supported by vector */                         \
-		if ((flags) & NIX_RX_OFFLOAD_TSTAMP_F)                         \
-			return 0;                                              \
 		return cn10k_nix_recv_pkts_vector(rx_queue, rx_pkts, pkts,     \
 						  (flags));		       \
 	}

@@ -75,10 +75,7 @@ cn9k_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 		dev->rx_pkt_burst_no_offload =
 			nix_eth_rx_burst_mseg[0][0][0][0][0][0];
 
-	/* For PTP enabled, scalar rx function should be chosen as most of the
-	 * PTP apps are implemented to rx burst 1 pkt.
-	 */
-	if (dev->scalar_ena || dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
+	if (dev->scalar_ena) {
 		if (dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)
 			return pick_rx_func(eth_dev, nix_eth_rx_burst_mseg);
 		return pick_rx_func(eth_dev, nix_eth_rx_burst);

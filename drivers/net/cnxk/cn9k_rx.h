@@ -110,7 +110,7 @@ nix_update_match_id(const uint16_t match_id, uint64_t ol_flags,
 
 static __rte_always_inline void
 nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
-		    uint64_t rearm)
+		    uint64_t rearm, const uint16_t flags)
 {
 	const rte_iova_t *iova_list;
 	struct rte_mbuf *head;
@@ -126,8 +126,10 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 		return;
 	}
 
-	mbuf->pkt_len = rx->pkt_lenm1 + 1;
-	mbuf->data_len = sg & 0xFFFF;
+	mbuf->pkt_len = (rx->pkt_lenm1 + 1) - (flags & NIX_RX_OFFLOAD_TSTAMP_F ?
+					       CNXK_NIX_TIMESYNC_RX_OFFSET : 0);
+	mbuf->data_len = (sg & 0xFFFF) - (flags & NIX_RX_OFFLOAD_TSTAMP_F ?
+					  CNXK_NIX_TIMESYNC_RX_OFFSET : 0);
 	mbuf->nb_segs = nb_segs;
 	sg = sg >> 16;
 
@@ -210,7 +212,7 @@ cn9k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 	*(uint64_t *)(&mbuf->rearm_data) = val;
 
 	if (flag & NIX_RX_MULTI_SEG_F)
-		nix_cqe_xtract_mseg(rx, mbuf, val);
+		nix_cqe_xtract_mseg(rx, mbuf, val, flag);
 	else
 		mbuf->next = NULL;
 }
@@ -275,8 +277,9 @@ cn9k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 				     flags);
 		cnxk_nix_mbuf_to_tstamp(mbuf, rxq->tstamp,
 					(flags & NIX_RX_OFFLOAD_TSTAMP_F),
-					(uint64_t *)((uint8_t *)mbuf + data_off)
-					);
+					(flags & NIX_RX_MULTI_SEG_F),
+					(uint64_t *)((uint8_t *)mbuf
+								+ data_off));
 		rx_pkts[packets++] = mbuf;
 		roc_prefetch_store_keep(mbuf);
 		head++;
@@ -472,6 +475,99 @@ cn9k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 				mbuf3);
 		}
 
+		if (flags & NIX_RX_OFFLOAD_TSTAMP_F) {
+			const uint16x8_t len_off = {
+				0,			     /* ptype   0:15 */
+				0,			     /* ptype  16:32 */
+				CNXK_NIX_TIMESYNC_RX_OFFSET, /* pktlen  0:15*/
+				0,			     /* pktlen 16:32 */
+				CNXK_NIX_TIMESYNC_RX_OFFSET, /* datalen 0:15 */
+				0,
+				0,
+				0};
+			const uint32x4_t ptype = {RTE_PTYPE_L2_ETHER_TIMESYNC,
+						  RTE_PTYPE_L2_ETHER_TIMESYNC,
+						  RTE_PTYPE_L2_ETHER_TIMESYNC,
+						  RTE_PTYPE_L2_ETHER_TIMESYNC};
+			const uint64_t ts_olf = PKT_RX_IEEE1588_PTP |
+						PKT_RX_IEEE1588_TMST |
+						rxq->tstamp->rx_tstamp_dynflag;
+			const uint32x4_t and_mask = {0x1, 0x2, 0x4, 0x8};
+			uint64x2_t ts01, ts23, mask;
+			uint64_t ts[4];
+			uint8_t res;
+
+			/* Subtract timesync length from total pkt length. */
+			f0 = vsubq_u16(f0, len_off);
+			f1 = vsubq_u16(f1, len_off);
+			f2 = vsubq_u16(f2, len_off);
+			f3 = vsubq_u16(f3, len_off);
+
+			/* Get the address of actual timestamp. */
+			ts01 = vaddq_u64(mbuf01, data_off);
+			ts23 = vaddq_u64(mbuf23, data_off);
+			/* Load timestamp from address. */
+			ts01 = vsetq_lane_u64(*(uint64_t *)vgetq_lane_u64(ts01,
+									  0),
+					      ts01, 0);
+			ts01 = vsetq_lane_u64(*(uint64_t *)vgetq_lane_u64(ts01,
+									  1),
+					      ts01, 1);
+			ts23 = vsetq_lane_u64(*(uint64_t *)vgetq_lane_u64(ts23,
+									  0),
+					      ts23, 0);
+			ts23 = vsetq_lane_u64(*(uint64_t *)vgetq_lane_u64(ts23,
+									  1),
+					      ts23, 1);
+			/* Convert from be to cpu byteorder. */
+			ts01 = vrev64q_u8(ts01);
+			ts23 = vrev64q_u8(ts23);
+			/* Store timestamp into scalar for later use. */
+			ts[0] = vgetq_lane_u64(ts01, 0);
+			ts[1] = vgetq_lane_u64(ts01, 1);
+			ts[2] = vgetq_lane_u64(ts23, 0);
+			ts[3] = vgetq_lane_u64(ts23, 1);
+
+			/* Store timestamp into dynfield. */
+			*cnxk_nix_timestamp_dynfield(mbuf0, rxq->tstamp) =
+				ts[0];
+			*cnxk_nix_timestamp_dynfield(mbuf1, rxq->tstamp) =
+				ts[1];
+			*cnxk_nix_timestamp_dynfield(mbuf2, rxq->tstamp) =
+				ts[2];
+			*cnxk_nix_timestamp_dynfield(mbuf3, rxq->tstamp) =
+				ts[3];
+
+			/* Generate ptype mask to filter L2 ether timesync */
+			mask = vdupq_n_u32(vgetq_lane_u32(f0, 0));
+			mask = vsetq_lane_u32(vgetq_lane_u32(f1, 0), mask, 1);
+			mask = vsetq_lane_u32(vgetq_lane_u32(f2, 0), mask, 2);
+			mask = vsetq_lane_u32(vgetq_lane_u32(f3, 0), mask, 3);
+
+			/* Match against L2 ether timesync. */
+			mask = vceqq_u32(mask, ptype);
+			/* Convert from vector from scalar mask */
+			res = vaddvq_u32(vandq_u32(mask, and_mask));
+			res &= 0xF;
+
+			if (res) {
+				/* Fill in the ol_flags for any packets that
+				 * matched.
+				 */
+				ol_flags0 |= ((res & 0x1) ? ts_olf : 0);
+				ol_flags1 |= ((res & 0x2) ? ts_olf : 0);
+				ol_flags2 |= ((res & 0x4) ? ts_olf : 0);
+				ol_flags3 |= ((res & 0x8) ? ts_olf : 0);
+
+				/* Update Rxq timestamp with the latest
+				 * timestamp.
+				 */
+				rxq->tstamp->rx_ready = 1;
+				rxq->tstamp->rx_tstamp =
+					ts[31 - __builtin_clz(res)];
+			}
+		}
+
 		/* Form rearm_data with ol_flags */
 		rearm0 = vsetq_lane_u64(ol_flags0, rearm0, 1);
 		rearm1 = vsetq_lane_u64(ol_flags1, rearm1, 1);
@@ -499,17 +595,17 @@ cn9k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 			 * individual mbufs in scalar mode.
 			 */
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
-					    (cq0 + CQE_SZ(0) + 8), mbuf0,
-					    mbuf_initializer);
+						(cq0 + CQE_SZ(0) + 8), mbuf0,
+					    mbuf_initializer, flags);
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
-					    (cq0 + CQE_SZ(1) + 8), mbuf1,
-					    mbuf_initializer);
+						(cq0 + CQE_SZ(1) + 8), mbuf1,
+					    mbuf_initializer, flags);
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
-					    (cq0 + CQE_SZ(2) + 8), mbuf2,
-					    mbuf_initializer);
+						(cq0 + CQE_SZ(2) + 8), mbuf2,
+					    mbuf_initializer, flags);
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
-					    (cq0 + CQE_SZ(3) + 8), mbuf3,
-					    mbuf_initializer);
+						(cq0 + CQE_SZ(3) + 8), mbuf3,
+					    mbuf_initializer, flags);
 		} else {
 			/* Update that no more segments */
 			mbuf0->next = NULL;
