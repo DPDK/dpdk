@@ -164,6 +164,7 @@ struct vhost_virtqueue {
 
 	uint16_t		batch_copy_nb_elems;
 	struct batch_copy_elem	*batch_copy_elems;
+	int			numa_node;
 	bool			used_wrap_counter;
 	bool			avail_wrap_counter;
 

@@ -433,10 +433,10 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
 	if (vq_is_packed(dev)) {
 		if (vq->shadow_used_packed)
 			rte_free(vq->shadow_used_packed);
-		vq->shadow_used_packed = rte_malloc(NULL,
+		vq->shadow_used_packed = rte_malloc_socket(NULL,
 				vq->size *
 				sizeof(struct vring_used_elem_packed),
-				RTE_CACHE_LINE_SIZE);
+				RTE_CACHE_LINE_SIZE, vq->numa_node);
 		if (!vq->shadow_used_packed) {
 			VHOST_LOG_CONFIG(ERR,
 					"failed to allocate memory for shadow used ring.\n");
@@ -447,9 +447,9 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
 		if (vq->shadow_used_split)
 			rte_free(vq->shadow_used_split);
 
-		vq->shadow_used_split = rte_malloc(NULL,
+		vq->shadow_used_split = rte_malloc_socket(NULL,
 				vq->size * sizeof(struct vring_used_elem),
-				RTE_CACHE_LINE_SIZE);
+				RTE_CACHE_LINE_SIZE, vq->numa_node);
 
 		if (!vq->shadow_used_split) {
 			VHOST_LOG_CONFIG(ERR,
@@ -460,9 +460,9 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
 
 	if (vq->batch_copy_elems)
 		rte_free(vq->batch_copy_elems);
-	vq->batch_copy_elems = rte_malloc(NULL,
+	vq->batch_copy_elems = rte_malloc_socket(NULL,
 				vq->size * sizeof(struct batch_copy_elem),
-				RTE_CACHE_LINE_SIZE);
+				RTE_CACHE_LINE_SIZE, vq->numa_node);
 	if (!vq->batch_copy_elems) {
 		VHOST_LOG_CONFIG(ERR,
 			"failed to allocate memory for batching copy.\n");
@@ -504,6 +504,9 @@ numa_realloc(struct virtio_net *dev, int index)
 		VHOST_LOG_CONFIG(ERR, "Unable to get virtqueue %d numa information.\n", index);
 		return dev;
 	}
+
+	if (node == vq->numa_node)
+		goto out_dev_realloc;
 
 	vq = rte_realloc_socket(vq, sizeof(*vq), 0, node);
 	if (!vq) {
@@ -558,6 +561,10 @@ numa_realloc(struct virtio_net *dev, int index)
 		}
 		vq->log_cache = lc;
 	}
+
+	vq->numa_node = node;
+
+out_dev_realloc:
 
 	if (dev->flags & VIRTIO_DEV_RUNNING)
 		return dev;
@@ -1213,7 +1220,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	struct virtio_net *dev = *pdev;
 	struct VhostUserMemory *memory = &msg->payload.memory;
 	struct rte_vhost_mem_region *reg;
-
+	int numa_node = SOCKET_ID_ANY;
 	uint64_t mmap_offset;
 	uint32_t i;
 
@@ -1253,13 +1260,21 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		for (i = 0; i < dev->nr_vring; i++)
 			vhost_user_iotlb_flush_all(dev->virtqueue[i]);
 
+	/*
+	 * If VQ 0 has already been allocated, try to allocate on the same
+	 * NUMA node. It can be reallocated later in numa_realloc().
+	 */
+	if (dev->nr_vring > 0)
+		numa_node = dev->virtqueue[0]->numa_node;
+
 	dev->nr_guest_pages = 0;
 	if (dev->guest_pages == NULL) {
 		dev->max_guest_pages = 8;
-		dev->guest_pages = rte_zmalloc(NULL,
+		dev->guest_pages = rte_zmalloc_socket(NULL,
 					dev->max_guest_pages *
 					sizeof(struct guest_page),
-					RTE_CACHE_LINE_SIZE);
+					RTE_CACHE_LINE_SIZE,
+					numa_node);
 		if (dev->guest_pages == NULL) {
 			VHOST_LOG_CONFIG(ERR,
 				"(%d) failed to allocate memory "
@@ -1269,8 +1284,8 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		}
 	}
 
-	dev->mem = rte_zmalloc("vhost-mem-table", sizeof(struct rte_vhost_memory) +
-		sizeof(struct rte_vhost_mem_region) * memory->nregions, 0);
+	dev->mem = rte_zmalloc_socket("vhost-mem-table", sizeof(struct rte_vhost_memory) +
+		sizeof(struct rte_vhost_mem_region) * memory->nregions, 0, numa_node);
 	if (dev->mem == NULL) {
 		VHOST_LOG_CONFIG(ERR,
 			"(%d) failed to allocate memory for dev->mem\n",
@@ -2193,9 +2208,9 @@ vhost_user_set_log_base(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		rte_free(vq->log_cache);
 		vq->log_cache = NULL;
 		vq->log_cache_nb_elem = 0;
-		vq->log_cache = rte_zmalloc("vq log cache",
+		vq->log_cache = rte_malloc_socket("vq log cache",
 				sizeof(struct log_cache_entry) * VHOST_LOG_CACHE_NR,
-				0);
+				0, vq->numa_node);
 		/*
 		 * If log cache alloc fail, don't fail migration, but no
 		 * caching will be done, which will impact performance
