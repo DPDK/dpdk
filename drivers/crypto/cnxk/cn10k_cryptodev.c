@@ -92,7 +92,9 @@ cn10k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	dev->driver_id = cn10k_cryptodev_driver_id;
 
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
+			     RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO |
 			     RTE_CRYPTODEV_FF_HW_ACCELERATED |
+			     RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT |
 			     RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
 			     RTE_CRYPTODEV_FF_IN_PLACE_SGL |
 			     RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |

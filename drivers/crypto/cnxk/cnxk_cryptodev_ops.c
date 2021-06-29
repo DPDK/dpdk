@@ -8,10 +8,14 @@
 
 #include "roc_cpt.h"
 
+#include "cnxk_ae.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
 #include "cnxk_cryptodev_capabilities.h"
 #include "cnxk_se.h"
+
+#define CNXK_CPT_MAX_ASYM_OP_NUM_PARAMS 5
+#define CNXK_CPT_MAX_ASYM_OP_MOD_LEN	1024
 
 static int
 cnxk_cpt_get_mlen(void)
@@ -27,6 +31,20 @@ cnxk_cpt_get_mlen(void)
 			       (RTE_ALIGN_CEIL(ROC_SE_MAX_SG_IN_OUT_CNT, 4) >>
 				2) * ROC_SE_SG_ENTRY_SIZE),
 			      8);
+
+	return len;
+}
+
+static int
+cnxk_cpt_asym_get_mlen(void)
+{
+	uint32_t len;
+
+	/* To hold RPTR */
+	len = sizeof(uint64_t);
+
+	/* Get meta len for asymmetric operations */
+	len += CNXK_CPT_MAX_ASYM_OP_NUM_PARAMS * CNXK_CPT_MAX_ASYM_OP_MOD_LEN;
 
 	return len;
 }
@@ -52,6 +70,23 @@ cnxk_cpt_dev_config(struct rte_cryptodev *dev,
 	if (ret) {
 		plt_err("Could not configure device");
 		return ret;
+	}
+
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) {
+		/* Initialize shared FPM table */
+		ret = roc_ae_fpm_get(vf->cnxk_fpm_iova);
+		if (ret) {
+			plt_err("Could not get FPM table");
+			return ret;
+		}
+
+		/* Init EC grp table */
+		ret = roc_ae_ec_grp_get(vf->ec_grp);
+		if (ret) {
+			plt_err("Could not get EC grp table");
+			roc_ae_fpm_put();
+			return ret;
+		}
 	}
 
 	return 0;
@@ -84,6 +119,11 @@ cnxk_cpt_dev_close(struct rte_cryptodev *dev)
 			plt_err("Could not release queue pair %u", i);
 			return ret;
 		}
+	}
+
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) {
+		roc_ae_fpm_put();
+		roc_ae_ec_grp_put();
 	}
 
 	roc_cpt_dev_clear(&vf->cpt);
@@ -126,6 +166,12 @@ cnxk_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 	if (dev->feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) {
 		/* Get meta len */
 		mlen = cnxk_cpt_get_mlen();
+	}
+
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) {
+
+		/* Get meta len required for asymmetric operations */
+		mlen = RTE_MAX(mlen, cnxk_cpt_asym_get_mlen());
 	}
 
 	cache_sz = RTE_MIN(RTE_MEMPOOL_CACHE_MAX_SIZE, nb_elements / 1.5);
@@ -548,4 +594,64 @@ cnxk_cpt_sym_session_clear(struct rte_cryptodev *dev,
 			   struct rte_cryptodev_sym_session *sess)
 {
 	return sym_session_clear(dev->driver_id, sess);
+}
+
+unsigned int
+cnxk_ae_session_size_get(struct rte_cryptodev *dev __rte_unused)
+{
+	return sizeof(struct cnxk_ae_sess);
+}
+
+void
+cnxk_ae_session_clear(struct rte_cryptodev *dev,
+		      struct rte_cryptodev_asym_session *sess)
+{
+	struct rte_mempool *sess_mp;
+	struct cnxk_ae_sess *priv;
+
+	priv = get_asym_session_private_data(sess, dev->driver_id);
+	if (priv == NULL)
+		return;
+
+	/* Free resources allocated in session_cfg */
+	cnxk_ae_free_session_parameters(priv);
+
+	/* Reset and free object back to pool */
+	memset(priv, 0, cnxk_ae_session_size_get(dev));
+	sess_mp = rte_mempool_from_obj(priv);
+	set_asym_session_private_data(sess, dev->driver_id, NULL);
+	rte_mempool_put(sess_mp, priv);
+}
+
+int
+cnxk_ae_session_cfg(struct rte_cryptodev *dev,
+		    struct rte_crypto_asym_xform *xform,
+		    struct rte_cryptodev_asym_session *sess,
+		    struct rte_mempool *pool)
+{
+	struct cnxk_cpt_vf *vf = dev->data->dev_private;
+	struct roc_cpt *roc_cpt = &vf->cpt;
+	struct cnxk_ae_sess *priv;
+	union cpt_inst_w7 w7;
+	int ret;
+
+	if (rte_mempool_get(pool, (void **)&priv))
+		return -ENOMEM;
+
+	memset(priv, 0, sizeof(struct cnxk_ae_sess));
+
+	ret = cnxk_ae_fill_session_parameters(priv, xform);
+	if (ret) {
+		rte_mempool_put(pool, priv);
+		return ret;
+	}
+
+	w7.u64 = 0;
+	w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_AE];
+	priv->cpt_inst_w7 = w7.u64;
+	priv->cnxk_fpm_iova = vf->cnxk_fpm_iova;
+	priv->ec_grp = vf->ec_grp;
+	set_asym_session_private_data(sess, dev->driver_id, priv);
+
+	return 0;
 }

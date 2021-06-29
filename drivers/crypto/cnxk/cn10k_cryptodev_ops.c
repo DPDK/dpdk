@@ -426,8 +426,8 @@ struct rte_cryptodev_ops cn10k_cpt_ops = {
 	.sym_session_clear = cnxk_cpt_sym_session_clear,
 
 	/* Asymmetric crypto ops */
-	.asym_session_get_size = NULL,
-	.asym_session_configure = NULL,
-	.asym_session_clear = NULL,
+	.asym_session_get_size = cnxk_ae_session_size_get,
+	.asym_session_configure = cnxk_ae_session_cfg,
+	.asym_session_clear = cnxk_ae_session_clear,
 
 };

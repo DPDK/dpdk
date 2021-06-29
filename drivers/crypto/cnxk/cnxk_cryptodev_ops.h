@@ -105,4 +105,12 @@ void cnxk_cpt_sym_session_clear(struct rte_cryptodev *dev,
 
 void sym_session_clear(int driver_id, struct rte_cryptodev_sym_session *sess);
 
+unsigned int cnxk_ae_session_size_get(struct rte_cryptodev *dev __rte_unused);
+
+void cnxk_ae_session_clear(struct rte_cryptodev *dev,
+			   struct rte_cryptodev_asym_session *sess);
+int cnxk_ae_session_cfg(struct rte_cryptodev *dev,
+			struct rte_crypto_asym_xform *xform,
+			struct rte_cryptodev_asym_session *sess,
+			struct rte_mempool *pool);
 #endif /* _CNXK_CRYPTODEV_OPS_H_ */
