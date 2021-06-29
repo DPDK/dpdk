@@ -1474,6 +1474,7 @@ ionic_lif_notifyq_init(struct ionic_lif *lif)
 	struct ionic_dev *idev = &lif->adapter->idev;
 	struct ionic_notify_qcq *nqcq = lif->notifyqcq;
 	struct ionic_queue *q = &nqcq->qcq.q;
+	uint16_t flags = IONIC_QINIT_F_ENA;
 	int err;
 
 	struct ionic_admin_ctx ctx = {
@@ -1483,13 +1484,18 @@ ionic_lif_notifyq_init(struct ionic_lif *lif)
 			.type = q->type,
 			.ver = lif->qtype_info[q->type].version,
 			.index = rte_cpu_to_le_32(q->index),
-			.intr_index = rte_cpu_to_le_16(nqcq->intr.index),
-			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_IRQ |
-						IONIC_QINIT_F_ENA),
+			.intr_index = rte_cpu_to_le_16(IONIC_INTR_NONE),
 			.ring_size = rte_log2_u32(q->num_descs),
 			.ring_base = rte_cpu_to_le_64(q->base_pa),
 		}
 	};
+
+	/* Only enable an interrupt if the device supports them */
+	if (lif->adapter->intf->configure_intr != NULL) {
+		flags |= IONIC_QINIT_F_IRQ;
+		ctx.cmd.q_init.intr_index = rte_cpu_to_le_16(nqcq->intr.index);
+	}
+	ctx.cmd.q_init.flags = rte_cpu_to_le_16(flags);
 
 	IONIC_PRINT(DEBUG, "notifyq_init.index %d", q->index);
 	IONIC_PRINT(DEBUG, "notifyq_init.ring_base 0x%" PRIx64 "", q->base_pa);
