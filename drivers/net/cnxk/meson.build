@@ -30,6 +30,7 @@ sources += files(
         'cn9k_tx.c',
         'cn9k_tx_mseg.c',
         'cn9k_tx_vec.c',
+        'cn9k_tx_vec_mseg.c',
 )
 # CN10K
 sources += files(
@@ -42,6 +43,7 @@ sources += files(
         'cn10k_tx.c',
         'cn10k_tx_mseg.c',
         'cn10k_tx_vec.c',
+        'cn10k_tx_vec_mseg.c',
 )
 
 deps += ['bus_pci', 'cryptodev', 'eventdev', 'security']

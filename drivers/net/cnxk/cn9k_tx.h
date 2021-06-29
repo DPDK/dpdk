@@ -582,7 +582,238 @@ cn9k_nix_prepare_tso(struct rte_mbuf *m, union nix_send_hdr_w1_u *w1,
 	}
 }
 
+static __rte_always_inline uint8_t
+cn9k_nix_prepare_mseg_vec_list(struct rte_mbuf *m, uint64_t *cmd,
+			       union nix_send_hdr_w0_u *sh,
+			       union nix_send_sg_s *sg, const uint32_t flags)
+{
+	struct rte_mbuf *m_next;
+	uint64_t *slist, sg_u;
+	uint16_t nb_segs;
+	uint64_t segdw;
+	int i = 1;
+
+	sh->total = m->pkt_len;
+	/* Clear sg->u header before use */
+	sg->u &= 0xFC00000000000000;
+	sg_u = sg->u;
+	slist = &cmd[0];
+
+	sg_u = sg_u | ((uint64_t)m->data_len);
+
+	nb_segs = m->nb_segs - 1;
+	m_next = m->next;
+
+	/* Set invert df if buffer is not to be freed by H/W */
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
+		sg_u |= (cnxk_nix_prefree_seg(m) << 55);
+		/* Mark mempool object as "put" since it is freed by NIX */
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	if (!(sg_u & (1ULL << 55)))
+		__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+	rte_io_wmb();
+#endif
+
+	m = m_next;
+	/* Fill mbuf segments */
+	do {
+		m_next = m->next;
+		sg_u = sg_u | ((uint64_t)m->data_len << (i << 4));
+		*slist = rte_mbuf_data_iova(m);
+		/* Set invert df if buffer is not to be freed by H/W */
+		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
+			sg_u |= (cnxk_nix_prefree_seg(m) << (i + 55));
+			/* Mark mempool object as "put" since it is freed by NIX
+			 */
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+		if (!(sg_u & (1ULL << (i + 55))))
+			__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+		rte_io_wmb();
+#endif
+		slist++;
+		i++;
+		nb_segs--;
+		if (i > 2 && nb_segs) {
+			i = 0;
+			/* Next SG subdesc */
+			*(uint64_t *)slist = sg_u & 0xFC00000000000000;
+			sg->u = sg_u;
+			sg->segs = 3;
+			sg = (union nix_send_sg_s *)slist;
+			sg_u = sg->u;
+			slist++;
+		}
+		m = m_next;
+	} while (nb_segs);
+
+	sg->u = sg_u;
+	sg->segs = i;
+	segdw = (uint64_t *)slist - (uint64_t *)&cmd[0];
+
+	segdw += 2;
+	/* Roundup extra dwords to multiple of 2 */
+	segdw = (segdw >> 1) + (segdw & 0x1);
+	/* Default dwords */
+	segdw += 1 + !!(flags & NIX_TX_NEED_EXT_HDR) +
+		 !!(flags & NIX_TX_OFFLOAD_TSTAMP_F);
+	sh->sizem1 = segdw - 1;
+
+	return segdw;
+}
+
+static __rte_always_inline uint8_t
+cn9k_nix_prepare_mseg_vec(struct rte_mbuf *m, uint64_t *cmd, uint64x2_t *cmd0,
+			  uint64x2_t *cmd1, const uint32_t flags)
+{
+	union nix_send_hdr_w0_u sh;
+	union nix_send_sg_s sg;
+	uint8_t ret;
+
+	if (m->nb_segs == 1) {
+		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
+			sg.u = vgetq_lane_u64(cmd1[0], 0);
+			sg.u |= (cnxk_nix_prefree_seg(m) << 55);
+			cmd1[0] = vsetq_lane_u64(sg.u, cmd1[0], 0);
+		}
+
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+		sg.u = vgetq_lane_u64(cmd1[0], 0);
+		if (!(sg.u & (1ULL << 55)))
+			__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+		rte_io_wmb();
+#endif
+		return 2 + !!(flags & NIX_TX_NEED_EXT_HDR) +
+		       !!(flags & NIX_TX_OFFLOAD_TSTAMP_F);
+	}
+
+	sh.u = vgetq_lane_u64(cmd0[0], 0);
+	sg.u = vgetq_lane_u64(cmd1[0], 0);
+
+	ret = cn9k_nix_prepare_mseg_vec_list(m, cmd, &sh, &sg, flags);
+
+	cmd0[0] = vsetq_lane_u64(sh.u, cmd0[0], 0);
+	cmd1[0] = vsetq_lane_u64(sg.u, cmd1[0], 0);
+	return ret;
+}
+
 #define NIX_DESCS_PER_LOOP 4
+
+static __rte_always_inline void
+cn9k_nix_xmit_pkts_mseg_vector(uint64x2_t *cmd0, uint64x2_t *cmd1,
+			       uint64x2_t *cmd2, uint64x2_t *cmd3,
+			       uint8_t *segdw,
+			       uint64_t slist[][CNXK_NIX_TX_MSEG_SG_DWORDS - 2],
+			       uint64_t *lmt_addr, rte_iova_t io_addr,
+			       const uint32_t flags)
+{
+	uint64_t lmt_status;
+	uint8_t j, off;
+
+	if (!(flags & NIX_TX_NEED_EXT_HDR) &&
+	    !(flags & NIX_TX_OFFLOAD_TSTAMP_F)) {
+		/* No segments in 4 consecutive packets. */
+		if ((segdw[0] + segdw[1] + segdw[2] + segdw[3]) <= 8) {
+			do {
+				vst1q_u64(lmt_addr, cmd0[0]);
+				vst1q_u64(lmt_addr + 2, cmd1[0]);
+				vst1q_u64(lmt_addr + 4, cmd0[1]);
+				vst1q_u64(lmt_addr + 6, cmd1[1]);
+				vst1q_u64(lmt_addr + 8, cmd0[2]);
+				vst1q_u64(lmt_addr + 10, cmd1[2]);
+				vst1q_u64(lmt_addr + 12, cmd0[3]);
+				vst1q_u64(lmt_addr + 14, cmd1[3]);
+				lmt_status = roc_lmt_submit_ldeor(io_addr);
+			} while (lmt_status == 0);
+
+			return;
+		}
+	}
+
+	for (j = 0; j < NIX_DESCS_PER_LOOP;) {
+		/* Fit consecutive packets in same LMTLINE. */
+		if ((segdw[j] + segdw[j + 1]) <= 8) {
+again0:
+			if ((flags & NIX_TX_NEED_EXT_HDR) &&
+			    (flags & NIX_TX_OFFLOAD_TSTAMP_F)) {
+				vst1q_u64(lmt_addr, cmd0[j]);
+				vst1q_u64(lmt_addr + 2, cmd2[j]);
+				vst1q_u64(lmt_addr + 4, cmd1[j]);
+				/* Copy segs */
+				off = segdw[j] - 4;
+				roc_lmt_mov_seg(lmt_addr + 6, slist[j], off);
+				off <<= 1;
+				vst1q_u64(lmt_addr + 6 + off, cmd3[j]);
+
+				vst1q_u64(lmt_addr + 8 + off, cmd0[j + 1]);
+				vst1q_u64(lmt_addr + 10 + off, cmd2[j + 1]);
+				vst1q_u64(lmt_addr + 12 + off, cmd1[j + 1]);
+				roc_lmt_mov_seg(lmt_addr + 14 + off,
+						slist[j + 1], segdw[j + 1] - 4);
+				off += ((segdw[j + 1] - 4) << 1);
+				vst1q_u64(lmt_addr + 14 + off, cmd3[j + 1]);
+			} else if (flags & NIX_TX_NEED_EXT_HDR) {
+				vst1q_u64(lmt_addr, cmd0[j]);
+				vst1q_u64(lmt_addr + 2, cmd2[j]);
+				vst1q_u64(lmt_addr + 4, cmd1[j]);
+				/* Copy segs */
+				off = segdw[j] - 3;
+				roc_lmt_mov_seg(lmt_addr + 6, slist[j], off);
+				off <<= 1;
+				vst1q_u64(lmt_addr + 6 + off, cmd0[j + 1]);
+				vst1q_u64(lmt_addr + 8 + off, cmd2[j + 1]);
+				vst1q_u64(lmt_addr + 10 + off, cmd1[j + 1]);
+				roc_lmt_mov_seg(lmt_addr + 12 + off,
+						slist[j + 1], segdw[j + 1] - 3);
+			} else {
+				vst1q_u64(lmt_addr, cmd0[j]);
+				vst1q_u64(lmt_addr + 2, cmd1[j]);
+				/* Copy segs */
+				off = segdw[j] - 2;
+				roc_lmt_mov_seg(lmt_addr + 4, slist[j], off);
+				off <<= 1;
+				vst1q_u64(lmt_addr + 4 + off, cmd0[j + 1]);
+				vst1q_u64(lmt_addr + 6 + off, cmd1[j + 1]);
+				roc_lmt_mov_seg(lmt_addr + 8 + off,
+						slist[j + 1], segdw[j + 1] - 2);
+			}
+			lmt_status = roc_lmt_submit_ldeor(io_addr);
+			if (lmt_status == 0)
+				goto again0;
+			j += 2;
+		} else {
+again1:
+			if ((flags & NIX_TX_NEED_EXT_HDR) &&
+			    (flags & NIX_TX_OFFLOAD_TSTAMP_F)) {
+				vst1q_u64(lmt_addr, cmd0[j]);
+				vst1q_u64(lmt_addr + 2, cmd2[j]);
+				vst1q_u64(lmt_addr + 4, cmd1[j]);
+				/* Copy segs */
+				off = segdw[j] - 4;
+				roc_lmt_mov_seg(lmt_addr + 6, slist[j], off);
+				off <<= 1;
+				vst1q_u64(lmt_addr + 6 + off, cmd3[j]);
+			} else if (flags & NIX_TX_NEED_EXT_HDR) {
+				vst1q_u64(lmt_addr, cmd0[j]);
+				vst1q_u64(lmt_addr + 2, cmd2[j]);
+				vst1q_u64(lmt_addr + 4, cmd1[j]);
+				/* Copy segs */
+				off = segdw[j] - 3;
+				roc_lmt_mov_seg(lmt_addr + 6, slist[j], off);
+			} else {
+				vst1q_u64(lmt_addr, cmd0[j]);
+				vst1q_u64(lmt_addr + 2, cmd1[j]);
+				/* Copy segs */
+				off = segdw[j] - 2;
+				roc_lmt_mov_seg(lmt_addr + 4, slist[j], off);
+			}
+			lmt_status = roc_lmt_submit_ldeor(io_addr);
+			if (lmt_status == 0)
+				goto again1;
+			j += 1;
+		}
+	}
+}
+
 static __rte_always_inline uint16_t
 cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			  uint16_t pkts, uint64_t *cmd, const uint16_t flags)
@@ -1380,7 +1611,8 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			sendext23_w0 = vld1q_u64(sx_w0 + 2);
 		}
 
-		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
+		if ((flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) &&
+		    !(flags & NIX_TX_MULTI_SEG_F)) {
 			/* Set don't free bit if reference count > 1 */
 			xmask01 = vdupq_n_u64(0);
 			xmask23 = xmask01;
@@ -1424,7 +1656,7 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 * cnxk_nix_prefree_seg are written before LMTST.
 			 */
 			rte_io_wmb();
-		} else {
+		} else if (!(flags & NIX_TX_MULTI_SEG_F)) {
 			/* Move mbufs to iova */
 			mbuf0 = (uint64_t *)tx_pkts[0];
 			mbuf1 = (uint64_t *)tx_pkts[1];
@@ -1472,7 +1704,27 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			cmd2[3] = vzip2q_u64(sendext23_w0, sendext23_w1);
 		}
 
-		if (flags & NIX_TX_NEED_EXT_HDR) {
+		if (flags & NIX_TX_MULTI_SEG_F) {
+			uint64_t seg_list[NIX_DESCS_PER_LOOP]
+					 [CNXK_NIX_TX_MSEG_SG_DWORDS - 2];
+			uint8_t j, segdw[NIX_DESCS_PER_LOOP + 1];
+
+			/* Build mseg list for each packet individually. */
+			for (j = 0; j < NIX_DESCS_PER_LOOP; j++)
+				segdw[j] = cn9k_nix_prepare_mseg_vec(tx_pkts[j],
+							seg_list[j], &cmd0[j],
+							&cmd1[j], flags);
+			segdw[4] = 8;
+
+			/* Commit all changes to mbuf before LMTST. */
+			if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
+				rte_io_wmb();
+
+			cn9k_nix_xmit_pkts_mseg_vector(cmd0, cmd1, cmd2, cmd3,
+						       segdw, seg_list,
+						       lmt_addr, io_addr,
+						       flags);
+		} else if (flags & NIX_TX_NEED_EXT_HDR) {
 			/* With ext header in the command we can no longer send
 			 * all 4 packets together since LMTLINE is 128bytes.
 			 * Split and Tx twice.
@@ -1534,9 +1786,14 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_pkts = tx_pkts + NIX_DESCS_PER_LOOP;
 	}
 
-	if (unlikely(pkts_left))
-		pkts += cn9k_nix_xmit_pkts(tx_queue, tx_pkts, pkts_left, cmd,
-					   flags);
+	if (unlikely(pkts_left)) {
+		if (flags & NIX_TX_MULTI_SEG_F)
+			pkts += cn9k_nix_xmit_pkts_mseg(tx_queue, tx_pkts,
+							pkts_left, cmd, flags);
+		else
+			pkts += cn9k_nix_xmit_pkts(tx_queue, tx_pkts, pkts_left,
+						   cmd, flags);
+	}
 
 	return pkts;
 }
@@ -1701,6 +1958,9 @@ T(ts_tso_noff_vlan_ol3ol4csum_l3l4csum,	1, 1, 1, 1, 1, 1,	8,	       \
 		void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts);     \
 									       \
 	uint16_t __rte_noinline __rte_hot cn9k_nix_xmit_pkts_vec_##name(       \
+		void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts);     \
+									       \
+	uint16_t __rte_noinline __rte_hot cn9k_nix_xmit_pkts_vec_mseg_##name(  \
 		void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts);
 
 NIX_TX_FASTPATH_MODES
