@@ -559,7 +559,8 @@ numa_realloc(struct virtio_net *dev, int index)
 	}
 	if (oldnode != newnode) {
 		struct rte_vhost_memory *old_mem;
-		ssize_t mem_size;
+		struct guest_page *old_gp;
+		ssize_t mem_size, gp_size;
 
 		VHOST_LOG_CONFIG(INFO,
 			"reallocate dev from %d to %d node\n",
@@ -584,6 +585,17 @@ numa_realloc(struct virtio_net *dev, int index)
 
 		memcpy(dev->mem, old_mem, mem_size);
 		rte_free(old_mem);
+
+		gp_size = dev->max_guest_pages * sizeof(*dev->guest_pages);
+		old_gp = dev->guest_pages;
+		dev->guest_pages = rte_malloc_socket(NULL, gp_size, RTE_CACHE_LINE_SIZE, newnode);
+		if (!dev->guest_pages) {
+			dev->guest_pages = old_gp;
+			goto out;
+		}
+
+		memcpy(dev->guest_pages, old_gp, gp_size);
+		rte_free(old_gp);
 	}
 
 out:
