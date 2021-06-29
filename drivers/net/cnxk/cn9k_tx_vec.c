@@ -13,8 +13,9 @@
 	{                                                                      \
 		uint64_t cmd[sz];                                              \
 									       \
-		/* TSO is not supported by vec */                              \
-		if ((flags) & NIX_TX_OFFLOAD_TSO_F)			       \
+		/* For TSO inner checksum is a must */                         \
+		if (((flags) & NIX_TX_OFFLOAD_TSO_F) &&                        \
+		    !((flags) & NIX_TX_OFFLOAD_L3_L4_CSUM_F))                  \
 			return 0;                                              \
 		return cn9k_nix_xmit_pkts_vector(tx_queue, tx_pkts, pkts, cmd, \
 						 (flags));		       \

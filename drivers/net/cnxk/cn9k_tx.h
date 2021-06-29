@@ -545,6 +545,43 @@ cn9k_nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 #if defined(RTE_ARCH_ARM64)
 
+static __rte_always_inline void
+cn9k_nix_prepare_tso(struct rte_mbuf *m, union nix_send_hdr_w1_u *w1,
+		     union nix_send_ext_w0_u *w0, uint64_t ol_flags,
+		     uint64_t flags)
+{
+	uint16_t lso_sb;
+	uint64_t mask;
+
+	if (!(ol_flags & PKT_TX_TCP_SEG))
+		return;
+
+	mask = -(!w1->il3type);
+	lso_sb = (mask & w1->ol4ptr) + (~mask & w1->il4ptr) + m->l4_len;
+
+	w0->u |= BIT(14);
+	w0->lso_sb = lso_sb;
+	w0->lso_mps = m->tso_segsz;
+	w0->lso_format = NIX_LSO_FORMAT_IDX_TSOV4 + !!(ol_flags & PKT_TX_IPV6);
+	w1->ol4type = NIX_SENDL4TYPE_TCP_CKSUM;
+
+	/* Handle tunnel tso */
+	if ((flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F) &&
+	    (ol_flags & PKT_TX_TUNNEL_MASK)) {
+		const uint8_t is_udp_tun =
+			(CNXK_NIX_UDP_TUN_BITMASK >>
+			 ((ol_flags & PKT_TX_TUNNEL_MASK) >> 45)) &
+			0x1;
+
+		w1->il4type = NIX_SENDL4TYPE_TCP_CKSUM;
+		w1->ol4type = is_udp_tun ? NIX_SENDL4TYPE_UDP_CKSUM : 0;
+		/* Update format for UDP tunneled packet */
+		w0->lso_format += is_udp_tun ? 2 : 6;
+
+		w0->lso_format += !!(ol_flags & PKT_TX_OUTER_IPV6) << 1;
+	}
+}
+
 #define NIX_DESCS_PER_LOOP 4
 static __rte_always_inline uint16_t
 cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
@@ -579,6 +616,12 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	/* Reduce the cached count */
 	txq->fc_cache_pkts -= pkts;
+
+	/* Perform header writes before barrier for TSO */
+	if (flags & NIX_TX_OFFLOAD_TSO_F) {
+		for (i = 0; i < pkts; i++)
+			cn9k_nix_xmit_prepare_tso(tx_pkts[i], flags);
+	}
 
 	/* Lets commit any changes in the packet here as no further changes
 	 * to the packet will be done unless no fast free is enabled.
@@ -635,6 +678,13 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 				vbicq_u64(sendmem01_w1, vdupq_n_u64(0xF));
 			sendmem23_w0 = sendmem01_w0;
 			sendmem23_w1 = sendmem01_w1;
+		}
+
+		if (flags & NIX_TX_OFFLOAD_TSO_F) {
+			/* Clear the LSO enable bit. */
+			sendext01_w0 = vbicq_u64(sendext01_w0,
+						 vdupq_n_u64(BIT_ULL(14)));
+			sendext23_w0 = sendext01_w0;
 		}
 
 		/* Move mbufs to iova */
@@ -1284,6 +1334,50 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			cmd3[1] = vzip2q_u64(sendmem01_w0, sendmem01_w1);
 			cmd3[2] = vzip1q_u64(sendmem23_w0, sendmem23_w1);
 			cmd3[3] = vzip2q_u64(sendmem23_w0, sendmem23_w1);
+		}
+
+		if (flags & NIX_TX_OFFLOAD_TSO_F) {
+			uint64_t sx_w0[NIX_DESCS_PER_LOOP];
+			uint64_t sd_w1[NIX_DESCS_PER_LOOP];
+
+			/* Extract SD W1 as we need to set L4 types. */
+			vst1q_u64(sd_w1, senddesc01_w1);
+			vst1q_u64(sd_w1 + 2, senddesc23_w1);
+
+			/* Extract SX W0 as we need to set LSO fields. */
+			vst1q_u64(sx_w0, sendext01_w0);
+			vst1q_u64(sx_w0 + 2, sendext23_w0);
+
+			/* Extract ol_flags. */
+			xtmp128 = vzip1q_u64(len_olflags0, len_olflags1);
+			ytmp128 = vzip1q_u64(len_olflags2, len_olflags3);
+
+			/* Prepare individual mbufs. */
+			cn9k_nix_prepare_tso(tx_pkts[0],
+				(union nix_send_hdr_w1_u *)&sd_w1[0],
+				(union nix_send_ext_w0_u *)&sx_w0[0],
+				vgetq_lane_u64(xtmp128, 0), flags);
+
+			cn9k_nix_prepare_tso(tx_pkts[1],
+				(union nix_send_hdr_w1_u *)&sd_w1[1],
+				(union nix_send_ext_w0_u *)&sx_w0[1],
+				vgetq_lane_u64(xtmp128, 1), flags);
+
+			cn9k_nix_prepare_tso(tx_pkts[2],
+				(union nix_send_hdr_w1_u *)&sd_w1[2],
+				(union nix_send_ext_w0_u *)&sx_w0[2],
+				vgetq_lane_u64(ytmp128, 0), flags);
+
+			cn9k_nix_prepare_tso(tx_pkts[3],
+				(union nix_send_hdr_w1_u *)&sd_w1[3],
+				(union nix_send_ext_w0_u *)&sx_w0[3],
+				vgetq_lane_u64(ytmp128, 1), flags);
+
+			senddesc01_w1 = vld1q_u64(sd_w1);
+			senddesc23_w1 = vld1q_u64(sd_w1 + 2);
+
+			sendext01_w0 = vld1q_u64(sx_w0);
+			sendext23_w0 = vld1q_u64(sx_w0 + 2);
 		}
 
 		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
