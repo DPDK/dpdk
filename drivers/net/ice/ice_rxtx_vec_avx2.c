@@ -769,30 +769,32 @@ ice_recv_scattered_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 				rx_pkts + retval, nb_pkts);
 }
 
-static inline void
+static __rte_always_inline void
 ice_vtx1(volatile struct ice_tx_desc *txdp,
-	 struct rte_mbuf *pkt, uint64_t flags)
+	 struct rte_mbuf *pkt, uint64_t flags, bool offload)
 {
 	uint64_t high_qw =
 		(ICE_TX_DESC_DTYPE_DATA |
 		 ((uint64_t)flags  << ICE_TXD_QW1_CMD_S) |
 		 ((uint64_t)pkt->data_len << ICE_TXD_QW1_TX_BUF_SZ_S));
+	if (offload)
+		ice_txd_enable_offload(pkt, &high_qw);
 
 	__m128i descriptor = _mm_set_epi64x(high_qw,
 				pkt->buf_iova + pkt->data_off);
 	_mm_store_si128((__m128i *)txdp, descriptor);
 }
 
-static inline void
+static __rte_always_inline void
 ice_vtx(volatile struct ice_tx_desc *txdp,
-	struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
+	struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags, bool offload)
 {
 	const uint64_t hi_qw_tmpl = (ICE_TX_DESC_DTYPE_DATA |
 			((uint64_t)flags  << ICE_TXD_QW1_CMD_S));
 
 	/* if unaligned on 32-bit boundary, do one to align */
 	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
-		ice_vtx1(txdp, *pkt, flags);
+		ice_vtx1(txdp, *pkt, flags, offload);
 		nb_pkts--, txdp++, pkt++;
 	}
 
@@ -802,18 +804,26 @@ ice_vtx(volatile struct ice_tx_desc *txdp,
 			hi_qw_tmpl |
 			((uint64_t)pkt[3]->data_len <<
 			 ICE_TXD_QW1_TX_BUF_SZ_S);
+		if (offload)
+			ice_txd_enable_offload(pkt[3], &hi_qw3);
 		uint64_t hi_qw2 =
 			hi_qw_tmpl |
 			((uint64_t)pkt[2]->data_len <<
 			 ICE_TXD_QW1_TX_BUF_SZ_S);
+		if (offload)
+			ice_txd_enable_offload(pkt[2], &hi_qw2);
 		uint64_t hi_qw1 =
 			hi_qw_tmpl |
 			((uint64_t)pkt[1]->data_len <<
 			 ICE_TXD_QW1_TX_BUF_SZ_S);
+		if (offload)
+			ice_txd_enable_offload(pkt[1], &hi_qw1);
 		uint64_t hi_qw0 =
 			hi_qw_tmpl |
 			((uint64_t)pkt[0]->data_len <<
 			 ICE_TXD_QW1_TX_BUF_SZ_S);
+		if (offload)
+			ice_txd_enable_offload(pkt[0], &hi_qw0);
 
 		__m256i desc2_3 =
 			_mm256_set_epi64x
@@ -833,14 +843,14 @@ ice_vtx(volatile struct ice_tx_desc *txdp,
 
 	/* do any last ones */
 	while (nb_pkts) {
-		ice_vtx1(txdp, *pkt, flags);
+		ice_vtx1(txdp, *pkt, flags, offload);
 		txdp++, pkt++, nb_pkts--;
 	}
 }
 
-static inline uint16_t
+static __rte_always_inline uint16_t
 ice_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
-			      uint16_t nb_pkts)
+			      uint16_t nb_pkts, bool offload)
 {
 	struct ice_tx_queue *txq = (struct ice_tx_queue *)tx_queue;
 	volatile struct ice_tx_desc *txdp;
@@ -869,11 +879,11 @@ ice_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 	if (nb_commit >= n) {
 		ice_tx_backlog_entry(txep, tx_pkts, n);
 
-		ice_vtx(txdp, tx_pkts, n - 1, flags);
+		ice_vtx(txdp, tx_pkts, n - 1, flags, offload);
 		tx_pkts += (n - 1);
 		txdp += (n - 1);
 
-		ice_vtx1(txdp, *tx_pkts++, rs);
+		ice_vtx1(txdp, *tx_pkts++, rs, offload);
 
 		nb_commit = (uint16_t)(nb_commit - n);
 
@@ -887,7 +897,7 @@ ice_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	ice_tx_backlog_entry(txep, tx_pkts, nb_commit);
 
-	ice_vtx(txdp, tx_pkts, nb_commit, flags);
+	ice_vtx(txdp, tx_pkts, nb_commit, flags, offload);
 
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->tx_next_rs) {
@@ -905,9 +915,9 @@ ice_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_pkts;
 }
 
-uint16_t
-ice_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
-		       uint16_t nb_pkts)
+static __rte_always_inline uint16_t
+ice_xmit_pkts_vec_avx2_common(void *tx_queue, struct rte_mbuf **tx_pkts,
+			      uint16_t nb_pkts, bool offload)
 {
 	uint16_t nb_tx = 0;
 	struct ice_tx_queue *txq = (struct ice_tx_queue *)tx_queue;
@@ -917,7 +927,7 @@ ice_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
 		ret = ice_xmit_fixed_burst_vec_avx2(tx_queue, &tx_pkts[nb_tx],
-						    num);
+						    num, offload);
 		nb_tx += ret;
 		nb_pkts -= ret;
 		if (ret < num)
@@ -925,4 +935,18 @@ ice_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
 
 	return nb_tx;
+}
+
+uint16_t
+ice_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
+		       uint16_t nb_pkts)
+{
+	return ice_xmit_pkts_vec_avx2_common(tx_queue, tx_pkts, nb_pkts, false);
+}
+
+uint16_t
+ice_xmit_pkts_vec_avx2_offload(void *tx_queue, struct rte_mbuf **tx_pkts,
+			       uint16_t nb_pkts)
+{
+	return ice_xmit_pkts_vec_avx2_common(tx_queue, tx_pkts, nb_pkts, true);
 }
