@@ -696,7 +696,7 @@ pkt_copy_split(const struct rte_mbuf *pkt)
 	mp = current_fwd_lcore()->mbp;
 
 	if (tx_pkt_split == TX_PKT_SPLIT_RND)
-		nb_seg = random() % tx_pkt_nb_segs + 1;
+		nb_seg = rte_rand() % tx_pkt_nb_segs + 1;
 	else
 		nb_seg = tx_pkt_nb_segs;
 

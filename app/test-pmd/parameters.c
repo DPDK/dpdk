@@ -19,7 +19,6 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <inttypes.h>
-#include <arpa/inet.h>
 
 #include <rte_common.h>
 #include <rte_byteorder.h>
@@ -185,8 +184,10 @@ usage(char* progname)
 	printf("  --hot-plug: enable hot plug for device.\n");
 	printf("  --vxlan-gpe-port=N: UPD port of tunnel VXLAN-GPE\n");
 	printf("  --geneve-parsed-port=N: UPD port to parse GENEVE tunnel protocol\n");
+#ifndef RTE_EXEC_ENV_WINDOWS
 	printf("  --mlockall: lock all memory\n");
 	printf("  --no-mlockall: do not lock all memory\n");
+#endif
 	printf("  --mp-alloc <native|anon|xmem|xmemhuge>: mempool allocation method.\n"
 	       "    native: use regular DPDK memory to create and populate mempool\n"
 	       "    anon: use regular DPDK memory to create and anonymous memory to populate mempool\n"
@@ -211,7 +212,7 @@ usage(char* progname)
 
 #ifdef RTE_LIB_CMDLINE
 static int
-init_peer_eth_addrs(char *config_filename)
+init_peer_eth_addrs(const char *config_filename)
 {
 	FILE *config_file;
 	portid_t i;
@@ -610,8 +611,10 @@ launch_args_parse(int argc, char** argv)
 		{ "hot-plug",			0, 0, 0 },
 		{ "vxlan-gpe-port",		1, 0, 0 },
 		{ "geneve-parsed-port",		1, 0, 0 },
+#ifndef RTE_EXEC_ENV_WINDOWS
 		{ "mlockall",			0, 0, 0 },
 		{ "no-mlockall",		0, 0, 0 },
+#endif
 		{ "mp-alloc",			1, 0, 0 },
 		{ "tx-ip",			1, 0, 0 },
 		{ "tx-udp",			1, 0, 0 },
@@ -723,13 +726,13 @@ launch_args_parse(int argc, char** argv)
 						 "Invalid tx-ip: %s", optarg);
 
 				*end++ = 0;
-				if (inet_aton(optarg, &in) == 0)
+				if (inet_pton(AF_INET, optarg, &in) == 0)
 					rte_exit(EXIT_FAILURE,
 						 "Invalid source IP address: %s\n",
 						 optarg);
 				tx_ip_src_addr = rte_be_to_cpu_32(in.s_addr);
 
-				if (inet_aton(end, &in) == 0)
+				if (inet_pton(AF_INET, end, &in) == 0)
 					rte_exit(EXIT_FAILURE,
 						 "Invalid destination IP address: %s\n",
 						 optarg);

@@ -60,8 +60,8 @@ port_ieee1588_rx_timestamp_check(portid_t pi, uint32_t index)
 		printf("Port %u RX timestamp registers not valid\n", pi);
 		return;
 	}
-	printf("Port %u RX timestamp value %lu s %lu ns\n",
-		pi, timestamp.tv_sec, timestamp.tv_nsec);
+	printf("Port %u RX timestamp value %ju s %lu ns\n",
+		pi, (uintmax_t)timestamp.tv_sec, timestamp.tv_nsec);
 }
 
 #define MAX_TX_TMST_WAIT_MICROSECS 1000 /**< 1 milli-second */
@@ -83,9 +83,9 @@ port_ieee1588_tx_timestamp_check(portid_t pi)
 		       pi, MAX_TX_TMST_WAIT_MICROSECS);
 		return;
 	}
-	printf("Port %u TX timestamp value %lu s %lu ns validated after "
+	printf("Port %u TX timestamp value %ju s %lu ns validated after "
 	       "%u micro-second%s\n",
-	       pi, timestamp.tv_sec, timestamp.tv_nsec, wait_us,
+	       pi, (uintmax_t)timestamp.tv_sec, timestamp.tv_nsec, wait_us,
 	       (wait_us == 1) ? "" : "s");
 }
 

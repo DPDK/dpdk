@@ -8,12 +8,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <termios.h>
 #include <unistd.h>
 #include <inttypes.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-
 #include <sys/queue.h>
 
 #include <rte_common.h>
@@ -3614,7 +3610,7 @@ cmdline_parse_inst_t cmd_stop = {
 /* *** SET CORELIST and PORTLIST CONFIGURATION *** */
 
 unsigned int
-parse_item_list(char* str, const char* item_name, unsigned int max_items,
+parse_item_list(const char *str, const char *item_name, unsigned int max_items,
 		unsigned int *parsed_items, int check_unique_values)
 {
 	unsigned int nb_item;

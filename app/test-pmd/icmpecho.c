@@ -474,8 +474,8 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 		}
 		icmp_h->icmp_type = RTE_IP_ICMP_ECHO_REPLY;
 		cksum = ~icmp_h->icmp_cksum & 0xffff;
-		cksum += ~htons(RTE_IP_ICMP_ECHO_REQUEST << 8) & 0xffff;
-		cksum += htons(RTE_IP_ICMP_ECHO_REPLY << 8);
+		cksum += ~RTE_BE16(RTE_IP_ICMP_ECHO_REQUEST << 8) & 0xffff;
+		cksum += RTE_BE16(RTE_IP_ICMP_ECHO_REPLY << 8);
 		cksum = (cksum & 0xffff) + (cksum >> 16);
 		cksum = (cksum & 0xffff) + (cksum >> 16);
 		icmp_h->icmp_cksum = ~cksum;

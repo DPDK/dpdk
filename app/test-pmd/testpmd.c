@@ -9,7 +9,9 @@
 #include <string.h>
 #include <time.h>
 #include <fcntl.h>
+#ifndef RTE_EXEC_ENV_WINDOWS
 #include <sys/mman.h>
+#endif
 #include <sys/types.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -59,6 +61,9 @@
 #endif
 #ifdef RTE_LIB_LATENCYSTATS
 #include <rte_latencystats.h>
+#endif
+#ifdef RTE_EXEC_ENV_WINDOWS
+#include <process.h>
 #endif
 
 #include "testpmd.h"
@@ -629,6 +634,7 @@ set_def_fwd_config(void)
 	set_default_fwd_ports_config();
 }
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 /* extremely pessimistic estimation of memory required to create a mempool */
 static int
 calc_mem_size(uint32_t nb_mbufs, uint32_t mbuf_sz, size_t pgsz, size_t *out)
@@ -899,6 +905,7 @@ dma_map_cb(struct rte_mempool *mp __rte_unused, void *opaque __rte_unused,
 		}
 	}
 }
+#endif
 
 static unsigned int
 setup_extbuf(uint32_t nb_mbufs, uint16_t mbuf_sz, unsigned int socket_id,
@@ -969,9 +976,11 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 {
 	char pool_name[RTE_MEMPOOL_NAMESIZE];
 	struct rte_mempool *rte_mp = NULL;
+#ifndef RTE_EXEC_ENV_WINDOWS
 	uint32_t mb_size;
 
 	mb_size = sizeof(struct rte_mbuf) + mbuf_seg_size;
+#endif
 	mbuf_poolname_build(socket_id, pool_name, sizeof(pool_name), size_idx);
 
 	TESTPMD_LOG(INFO,
@@ -988,6 +997,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 				mb_mempool_cache, 0, mbuf_seg_size, socket_id);
 			break;
 		}
+#ifndef RTE_EXEC_ENV_WINDOWS
 	case MP_ALLOC_ANON:
 		{
 			rte_mp = rte_mempool_create_empty(pool_name, nb_mbuf,
@@ -1028,6 +1038,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 					heap_socket);
 			break;
 		}
+#endif
 	case MP_ALLOC_XBUF:
 		{
 			struct rte_pktmbuf_extmem *ext_mem;
@@ -1054,7 +1065,9 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		}
 	}
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 err:
+#endif
 	if (rte_mp == NULL) {
 		rte_exit(EXIT_FAILURE,
 			"Creation of mbuf pool for socket %u failed: %s\n",
@@ -3021,6 +3034,7 @@ pmd_test_exit(void)
 	if (test_done == 0)
 		stop_packet_forwarding();
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 	for (i = 0 ; i < RTE_DIM(mempools) ; i++) {
 		if (mempools[i]) {
 			if (mp_alloc_type == MP_ALLOC_ANON)
@@ -3028,6 +3042,7 @@ pmd_test_exit(void)
 						     NULL);
 		}
 	}
+#endif
 	if (ports != NULL) {
 		no_link_check = 1;
 		RTE_ETH_FOREACH_DEV(pt_id) {
@@ -3728,8 +3743,10 @@ signal_handler(int signum)
 		/* Set flag to indicate the force termination. */
 		f_quit = 1;
 		/* exit with the expected status */
+#ifndef RTE_EXEC_ENV_WINDOWS
 		signal(signum, SIG_DFL);
 		kill(getpid(), signum);
+#endif
 	}
 }
 
@@ -3804,10 +3821,12 @@ main(int argc, char** argv)
 	if (argc > 1)
 		launch_args_parse(argc, argv);
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 	if (do_mlockall && mlockall(MCL_CURRENT | MCL_FUTURE)) {
 		TESTPMD_LOG(NOTICE, "mlockall() failed with error \"%s\"\n",
 			strerror(errno));
 	}
+#endif
 
 	if (tx_first && interactive)
 		rte_exit(EXIT_FAILURE, "--tx-first cannot be used on "
@@ -3928,7 +3947,7 @@ main(int argc, char** argv)
 				}
 				/* Sleep to avoid unnecessary checks */
 				prev_time = cur_time;
-				sleep(1);
+				rte_delay_us_sleep(US_PER_S);
 			}
 		}
 
