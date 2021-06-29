@@ -489,11 +489,15 @@ numa_realloc(struct virtio_net *dev, int index)
 	struct batch_copy_elem *new_batch_copy_elems;
 	int ret;
 
-	if (dev->flags & VIRTIO_DEV_RUNNING)
-		return dev;
-
 	old_dev = dev;
 	vq = old_vq = dev->virtqueue[index];
+
+	/*
+	 * If VQ is ready, it is too late to reallocate, it certainly already
+	 * happened anyway on VHOST_USER_SET_VRING_ADRR.
+	 */
+	if (vq->ready)
+		return dev;
 
 	ret = get_mempolicy(&newnode, NULL, 0, old_vq->desc,
 			    MPOL_F_NODE | MPOL_F_ADDR);
@@ -548,6 +552,9 @@ numa_realloc(struct virtio_net *dev, int index)
 
 		rte_free(old_vq);
 	}
+
+	if (dev->flags & VIRTIO_DEV_RUNNING)
+		goto out;
 
 	/* check if we need to reallocate dev */
 	ret = get_mempolicy(&oldnode, NULL, 0, old_dev,
