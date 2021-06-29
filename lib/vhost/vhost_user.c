@@ -545,6 +545,16 @@ numa_realloc(struct virtio_net *dev, int index)
 			vq->batch_copy_elems = new_batch_copy_elems;
 		}
 
+		if (vq->log_cache) {
+			struct log_cache_entry *log_cache;
+
+			log_cache = rte_realloc_socket(vq->log_cache,
+					sizeof(struct log_cache_entry) * VHOST_LOG_CACHE_NR,
+					0, newnode);
+			if (log_cache)
+				vq->log_cache = log_cache;
+		}
+
 		rte_free(old_vq);
 	}
 
