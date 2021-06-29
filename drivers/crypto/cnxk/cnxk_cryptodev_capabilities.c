@@ -28,6 +28,61 @@
 				     RTE_DIM(sec_caps_##name));                \
 	} while (0)
 
+static const struct rte_cryptodev_capabilities caps_mul[] = {
+	{	/* RSA */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,
+				.op_types = ((1 << RTE_CRYPTO_ASYM_OP_SIGN) |
+					(1 << RTE_CRYPTO_ASYM_OP_VERIFY) |
+					(1 << RTE_CRYPTO_ASYM_OP_ENCRYPT) |
+					(1 << RTE_CRYPTO_ASYM_OP_DECRYPT)),
+				{.modlen = {
+					.min = 17,
+					.max = 1024,
+					.increment = 1
+				}, }
+			}
+		}, }
+	},
+	{	/* MOD_EXP */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_MODEX,
+				.op_types = 0,
+				{.modlen = {
+					.min = 17,
+					.max = 1024,
+					.increment = 1
+				}, }
+			}
+		}, }
+	},
+	{	/* ECDSA */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_ECDSA,
+				.op_types = ((1 << RTE_CRYPTO_ASYM_OP_SIGN) |
+					(1 << RTE_CRYPTO_ASYM_OP_VERIFY)),
+				}
+			},
+		}
+	},
+	{	/* ECPM */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_ECPM,
+				.op_types = 0
+				}
+			},
+		}
+	},
+};
+
 static const struct rte_cryptodev_capabilities caps_sha1_sha2[] = {
 	{	/* SHA1 */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
@@ -748,6 +803,7 @@ crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 {
 	int cur_pos = 0;
 
+	CPT_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, mul);
 	CPT_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, sha1_sha2);
 	CPT_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, chacha20);
 	CPT_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, zuc_snow3g);

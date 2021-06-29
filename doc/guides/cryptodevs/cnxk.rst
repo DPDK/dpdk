@@ -67,6 +67,12 @@ AEAD algorithms:
 * ``RTE_CRYPTO_AEAD_AES_GCM``
 * ``RTE_CRYPTO_AEAD_CHACHA20_POLY1305``
 
+Asymmetric Crypto Algorithms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ``RTE_CRYPTO_ASYM_XFORM_RSA``
+* ``RTE_CRYPTO_ASYM_XFORM_MODEX``
+
 Installation
 ------------
 
