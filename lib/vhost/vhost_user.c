@@ -188,7 +188,7 @@ vhost_backend_cleanup(struct virtio_net *dev)
 			dev->inflight_info->fd = -1;
 		}
 
-		free(dev->inflight_info);
+		rte_free(dev->inflight_info);
 		dev->inflight_info = NULL;
 	}
 
@@ -560,6 +560,31 @@ numa_realloc(struct virtio_net *dev, int index)
 			return dev;
 		}
 		vq->log_cache = lc;
+	}
+
+	if (vq->resubmit_inflight) {
+		struct rte_vhost_resubmit_info *ri;
+
+		ri = rte_realloc_socket(vq->resubmit_inflight, sizeof(*ri), 0, node);
+		if (!ri) {
+			VHOST_LOG_CONFIG(ERR, "Failed to realloc resubmit inflight on node %d\n",
+					node);
+			return dev;
+		}
+		vq->resubmit_inflight = ri;
+
+		if (ri->resubmit_list) {
+			struct rte_vhost_resubmit_desc *rd;
+
+			rd = rte_realloc_socket(ri->resubmit_list, sizeof(*rd) * ri->resubmit_num,
+					0, node);
+			if (!rd) {
+				VHOST_LOG_CONFIG(ERR, "Failed to realloc resubmit list on node %d\n",
+						node);
+				return dev;
+			}
+			ri->resubmit_list = rd;
+		}
 	}
 
 	vq->numa_node = node;
@@ -1491,6 +1516,7 @@ vhost_user_get_inflight_fd(struct virtio_net **pdev,
 	uint16_t num_queues, queue_size;
 	struct virtio_net *dev = *pdev;
 	int fd, i, j;
+	int numa_node = SOCKET_ID_ANY;
 	void *addr;
 
 	if (msg->size != sizeof(msg->payload.inflight)) {
@@ -1500,9 +1526,16 @@ vhost_user_get_inflight_fd(struct virtio_net **pdev,
 		return RTE_VHOST_MSG_RESULT_ERR;
 	}
 
+	/*
+	 * If VQ 0 has already been allocated, try to allocate on the same
+	 * NUMA node. It can be reallocated later in numa_realloc().
+	 */
+	if (dev->nr_vring > 0)
+		numa_node = dev->virtqueue[0]->numa_node;
+
 	if (dev->inflight_info == NULL) {
-		dev->inflight_info = calloc(1,
-					    sizeof(struct inflight_mem_info));
+		dev->inflight_info = rte_zmalloc_socket("inflight_info",
+				sizeof(struct inflight_mem_info), 0, numa_node);
 		if (!dev->inflight_info) {
 			VHOST_LOG_CONFIG(ERR,
 				"failed to alloc dev inflight area\n");
@@ -1585,6 +1618,7 @@ vhost_user_set_inflight_fd(struct virtio_net **pdev, VhostUserMsg *msg,
 	struct vhost_virtqueue *vq;
 	void *addr;
 	int fd, i;
+	int numa_node = SOCKET_ID_ANY;
 
 	fd = msg->fds[0];
 	if (msg->size != sizeof(msg->payload.inflight) || fd < 0) {
@@ -1618,9 +1652,16 @@ vhost_user_set_inflight_fd(struct virtio_net **pdev, VhostUserMsg *msg,
 		"set_inflight_fd pervq_inflight_size: %d\n",
 		pervq_inflight_size);
 
+	/*
+	 * If VQ 0 has already been allocated, try to allocate on the same
+	 * NUMA node. It can be reallocated later in numa_realloc().
+	 */
+	if (dev->nr_vring > 0)
+		numa_node = dev->virtqueue[0]->numa_node;
+
 	if (!dev->inflight_info) {
-		dev->inflight_info = calloc(1,
-					    sizeof(struct inflight_mem_info));
+		dev->inflight_info = rte_zmalloc_socket("inflight_info",
+				sizeof(struct inflight_mem_info), 0, numa_node);
 		if (dev->inflight_info == NULL) {
 			VHOST_LOG_CONFIG(ERR,
 				"failed to alloc dev inflight area\n");
@@ -1779,19 +1820,21 @@ vhost_check_queue_inflights_split(struct virtio_net *dev,
 	vq->last_avail_idx += resubmit_num;
 
 	if (resubmit_num) {
-		resubmit  = calloc(1, sizeof(struct rte_vhost_resubmit_info));
+		resubmit = rte_zmalloc_socket("resubmit", sizeof(struct rte_vhost_resubmit_info),
+				0, vq->numa_node);
 		if (!resubmit) {
 			VHOST_LOG_CONFIG(ERR,
 				"failed to allocate memory for resubmit info.\n");
 			return RTE_VHOST_MSG_RESULT_ERR;
 		}
 
-		resubmit->resubmit_list = calloc(resubmit_num,
-			sizeof(struct rte_vhost_resubmit_desc));
+		resubmit->resubmit_list = rte_zmalloc_socket("resubmit_list",
+				resubmit_num * sizeof(struct rte_vhost_resubmit_desc),
+				0, vq->numa_node);
 		if (!resubmit->resubmit_list) {
 			VHOST_LOG_CONFIG(ERR,
 				"failed to allocate memory for inflight desc.\n");
-			free(resubmit);
+			rte_free(resubmit);
 			return RTE_VHOST_MSG_RESULT_ERR;
 		}
 
@@ -1873,19 +1916,21 @@ vhost_check_queue_inflights_packed(struct virtio_net *dev,
 	}
 
 	if (resubmit_num) {
-		resubmit = calloc(1, sizeof(struct rte_vhost_resubmit_info));
+		resubmit = rte_zmalloc_socket("resubmit", sizeof(struct rte_vhost_resubmit_info),
+				0, vq->numa_node);
 		if (resubmit == NULL) {
 			VHOST_LOG_CONFIG(ERR,
 				"failed to allocate memory for resubmit info.\n");
 			return RTE_VHOST_MSG_RESULT_ERR;
 		}
 
-		resubmit->resubmit_list = calloc(resubmit_num,
-			sizeof(struct rte_vhost_resubmit_desc));
+		resubmit->resubmit_list = rte_zmalloc_socket("resubmit_list",
+				resubmit_num * sizeof(struct rte_vhost_resubmit_desc),
+				0, vq->numa_node);
 		if (resubmit->resubmit_list == NULL) {
 			VHOST_LOG_CONFIG(ERR,
 				"failed to allocate memory for resubmit desc.\n");
-			free(resubmit);
+			rte_free(resubmit);
 			return RTE_VHOST_MSG_RESULT_ERR;
 		}
 

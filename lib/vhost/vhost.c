@@ -312,10 +312,10 @@ cleanup_vq_inflight(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 	if (vq->resubmit_inflight) {
 		if (vq->resubmit_inflight->resubmit_list) {
-			free(vq->resubmit_inflight->resubmit_list);
+			rte_free(vq->resubmit_inflight->resubmit_list);
 			vq->resubmit_inflight->resubmit_list = NULL;
 		}
-		free(vq->resubmit_inflight);
+		rte_free(vq->resubmit_inflight);
 		vq->resubmit_inflight = NULL;
 	}
 }
