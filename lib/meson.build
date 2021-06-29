@@ -76,8 +76,15 @@ if is_windows
             'ethdev',
             'pci',
             'cmdline',
+            'metrics',
             'hash',
+            'timer',
+            'bitratestats',
             'cfgfile',
+            'gro',
+            'gso',
+            'latencystats',
+            'pdump',
     ] # only supported libraries for windows
 endif
 
