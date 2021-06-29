@@ -3760,13 +3760,14 @@ set_tx_pkt_split(const char *name)
 }
 
 int
-parse_fec_mode(const char *name, uint32_t *mode)
+parse_fec_mode(const char *name, uint32_t *fec_capa)
 {
 	uint8_t i;
 
 	for (i = 0; i < RTE_DIM(fec_mode_name); i++) {
 		if (strcmp(fec_mode_name[i].name, name) == 0) {
-			*mode = RTE_ETH_FEC_MODE_TO_CAPA(fec_mode_name[i].mode);
+			*fec_capa =
+				RTE_ETH_FEC_MODE_TO_CAPA(fec_mode_name[i].mode);
 			return 0;
 		}
 	}

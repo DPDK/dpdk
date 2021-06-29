@@ -16449,17 +16449,17 @@ cmd_set_port_fec_mode_parsed(
 {
 	struct cmd_set_port_fec_mode *res = parsed_result;
 	uint16_t port_id = res->port_id;
-	uint32_t mode;
+	uint32_t fec_capa;
 	int ret;
 
-	ret = parse_fec_mode(res->fec_value, &mode);
+	ret = parse_fec_mode(res->fec_value, &fec_capa);
 	if (ret < 0) {
 		printf("Unknown fec mode: %s for Port %d\n", res->fec_value,
 			port_id);
 		return;
 	}
 
-	ret = rte_eth_fec_set(port_id, mode);
+	ret = rte_eth_fec_set(port_id, fec_capa);
 	if (ret == -ENOTSUP) {
 		printf("Function not implemented\n");
 		return;
