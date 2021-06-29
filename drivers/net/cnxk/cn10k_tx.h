@@ -69,7 +69,9 @@ cn10k_nix_pkts_per_vec_brst(const uint16_t flags)
 static __rte_always_inline uint8_t
 cn10k_nix_tx_dwords_per_line(const uint16_t flags)
 {
-	return (flags & NIX_TX_NEED_EXT_HDR) ? 6 : 8;
+	return (flags & NIX_TX_NEED_EXT_HDR) ?
+			     ((flags & NIX_TX_OFFLOAD_TSTAMP_F) ? 8 : 6) :
+			     8;
 }
 
 static __rte_always_inline uint64_t
@@ -695,13 +697,15 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64x2_t dataoff_iova0, dataoff_iova1, dataoff_iova2, dataoff_iova3;
 	uint64x2_t len_olflags0, len_olflags1, len_olflags2, len_olflags3;
 	uint64x2_t cmd0[NIX_DESCS_PER_LOOP], cmd1[NIX_DESCS_PER_LOOP],
-		cmd2[NIX_DESCS_PER_LOOP];
+		cmd2[NIX_DESCS_PER_LOOP], cmd3[NIX_DESCS_PER_LOOP];
 	uint64_t *mbuf0, *mbuf1, *mbuf2, *mbuf3, data, pa;
 	uint64x2_t senddesc01_w0, senddesc23_w0;
 	uint64x2_t senddesc01_w1, senddesc23_w1;
 	uint16_t left, scalar, burst, i, lmt_id;
 	uint64x2_t sendext01_w0, sendext23_w0;
 	uint64x2_t sendext01_w1, sendext23_w1;
+	uint64x2_t sendmem01_w0, sendmem23_w0;
+	uint64x2_t sendmem01_w1, sendmem23_w1;
 	uint64x2_t sgdesc01_w0, sgdesc23_w0;
 	uint64x2_t sgdesc01_w1, sgdesc23_w1;
 	struct cn10k_eth_txq *txq = tx_queue;
@@ -733,6 +737,12 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 		sendext23_w0 = sendext01_w0;
 		sendext01_w1 = vdupq_n_u64(12 | 12U << 24);
 		sendext23_w1 = sendext01_w1;
+		if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
+			sendmem01_w0 = vld1q_dup_u64(&txq->cmd[2]);
+			sendmem23_w0 = sendmem01_w0;
+			sendmem01_w1 = vld1q_dup_u64(&txq->cmd[3]);
+			sendmem23_w1 = sendmem01_w1;
+		}
 	}
 
 	/* Get LMT base address and LMT ID as lcore id */
@@ -758,6 +768,17 @@ again:
 			sendext01_w1 = vbicq_u64(sendext01_w1,
 						 vdupq_n_u64(0x3FFFF00FFFF00));
 			sendext23_w1 = sendext01_w1;
+		}
+
+		if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
+			/* Reset send mem alg to SETTSTMP from SUB*/
+			sendmem01_w0 = vbicq_u64(sendmem01_w0,
+						 vdupq_n_u64(BIT_ULL(59)));
+			/* Reset send mem address to default. */
+			sendmem01_w1 =
+				vbicq_u64(sendmem01_w1, vdupq_n_u64(0xF));
+			sendmem23_w0 = sendmem01_w0;
+			sendmem23_w1 = sendmem01_w1;
 		}
 
 		/* Move mbufs to iova */
@@ -1371,6 +1392,44 @@ again:
 			sendext23_w1 = vorrq_u64(sendext23_w1, ytmp128);
 		}
 
+		if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
+			/* Tx ol_flag for timestam. */
+			const uint64x2_t olf = {PKT_TX_IEEE1588_TMST,
+						PKT_TX_IEEE1588_TMST};
+			/* Set send mem alg to SUB. */
+			const uint64x2_t alg = {BIT_ULL(59), BIT_ULL(59)};
+			/* Increment send mem address by 8. */
+			const uint64x2_t addr = {0x8, 0x8};
+
+			xtmp128 = vzip1q_u64(len_olflags0, len_olflags1);
+			ytmp128 = vzip1q_u64(len_olflags2, len_olflags3);
+
+			/* Check if timestamp is requested and generate inverted
+			 * mask as we need not make any changes to default cmd
+			 * value.
+			 */
+			xtmp128 = vmvnq_u32(vtstq_u64(olf, xtmp128));
+			ytmp128 = vmvnq_u32(vtstq_u64(olf, ytmp128));
+
+			/* Change send mem address to an 8 byte offset when
+			 * TSTMP is disabled.
+			 */
+			sendmem01_w1 = vaddq_u64(sendmem01_w1,
+						 vandq_u64(xtmp128, addr));
+			sendmem23_w1 = vaddq_u64(sendmem23_w1,
+						 vandq_u64(ytmp128, addr));
+			/* Change send mem alg to SUB when TSTMP is disabled. */
+			sendmem01_w0 = vorrq_u64(sendmem01_w0,
+						 vandq_u64(xtmp128, alg));
+			sendmem23_w0 = vorrq_u64(sendmem23_w0,
+						 vandq_u64(ytmp128, alg));
+
+			cmd3[0] = vzip1q_u64(sendmem01_w0, sendmem01_w1);
+			cmd3[1] = vzip2q_u64(sendmem01_w0, sendmem01_w1);
+			cmd3[2] = vzip1q_u64(sendmem23_w0, sendmem23_w1);
+			cmd3[3] = vzip2q_u64(sendmem23_w0, sendmem23_w1);
+		}
+
 		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
 			/* Set don't free bit if reference count > 1 */
 			xmask01 = vdupq_n_u64(0);
@@ -1458,19 +1517,39 @@ again:
 
 		if (flags & NIX_TX_NEED_EXT_HDR) {
 			/* Store the prepared send desc to LMT lines */
-			vst1q_u64(LMT_OFF(laddr, lnum, 0), cmd0[0]);
-			vst1q_u64(LMT_OFF(laddr, lnum, 16), cmd2[0]);
-			vst1q_u64(LMT_OFF(laddr, lnum, 32), cmd1[0]);
-			vst1q_u64(LMT_OFF(laddr, lnum, 48), cmd0[1]);
-			vst1q_u64(LMT_OFF(laddr, lnum, 64), cmd2[1]);
-			vst1q_u64(LMT_OFF(laddr, lnum, 80), cmd1[1]);
-			lnum += 1;
-			vst1q_u64(LMT_OFF(laddr, lnum, 0), cmd0[2]);
-			vst1q_u64(LMT_OFF(laddr, lnum, 16), cmd2[2]);
-			vst1q_u64(LMT_OFF(laddr, lnum, 32), cmd1[2]);
-			vst1q_u64(LMT_OFF(laddr, lnum, 48), cmd0[3]);
-			vst1q_u64(LMT_OFF(laddr, lnum, 64), cmd2[3]);
-			vst1q_u64(LMT_OFF(laddr, lnum, 80), cmd1[3]);
+			if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
+				vst1q_u64(LMT_OFF(laddr, lnum, 0), cmd0[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 16), cmd2[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 32), cmd1[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 48), cmd3[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 64), cmd0[1]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 80), cmd2[1]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 96), cmd1[1]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 112), cmd3[1]);
+				lnum += 1;
+				vst1q_u64(LMT_OFF(laddr, lnum, 0), cmd0[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 16), cmd2[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 32), cmd1[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 48), cmd3[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 64), cmd0[3]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 80), cmd2[3]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 96), cmd1[3]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 112), cmd3[3]);
+			} else {
+				vst1q_u64(LMT_OFF(laddr, lnum, 0), cmd0[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 16), cmd2[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 32), cmd1[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 48), cmd0[1]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 64), cmd2[1]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 80), cmd1[1]);
+				lnum += 1;
+				vst1q_u64(LMT_OFF(laddr, lnum, 0), cmd0[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 16), cmd2[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 32), cmd1[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 48), cmd0[3]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 64), cmd2[3]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 80), cmd1[3]);
+			}
 			lnum += 1;
 		} else {
 			/* Store the prepared send desc to LMT lines */

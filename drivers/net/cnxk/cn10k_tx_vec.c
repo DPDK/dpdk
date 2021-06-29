@@ -13,9 +13,8 @@
 	{                                                                      \
 		uint64_t cmd[sz];                                              \
 									       \
-		/* VLAN, TSTMP, TSO is not supported by vec */                 \
-		if ((flags) & NIX_TX_OFFLOAD_TSTAMP_F ||		       \
-		    (flags) & NIX_TX_OFFLOAD_TSO_F)			       \
+		/* TSO is not supported by vec */                              \
+		if ((flags) & NIX_TX_OFFLOAD_TSO_F)			       \
 			return 0;                                              \
 		return cn10k_nix_xmit_pkts_vector(tx_queue, tx_pkts, pkts, cmd,\
 						  (flags));                    \
