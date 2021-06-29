@@ -1331,7 +1331,7 @@ struct mlx5_priv {
 	uint16_t vport_id; /* Associated VF vport index (if any). */
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */
 	uint32_t vport_meta_mask; /* Used for vport index field match mask. */
-	int32_t representor_id; /* -1 if not a representor. */
+	uint16_t representor_id; /* UINT16_MAX if not a representor. */
 	int32_t pf_bond; /* >=0, representor owner PF index in bonding. */
 	unsigned int if_index; /* Associated kernel network device index. */
 	/* RX/TX queues. */

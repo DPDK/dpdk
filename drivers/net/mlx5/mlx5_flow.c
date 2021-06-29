@@ -5900,8 +5900,8 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL, "no memory to split "
 						  "sample flow");
-		/* The representor_id is -1 for uplink. */
-		fdb_tx = (attr->transfer && priv->representor_id != -1);
+		/* The representor_id is UINT16_MAX for uplink. */
+		fdb_tx = (attr->transfer && priv->representor_id != UINT16_MAX);
 		/*
 		 * When reg_c_preserve is set, metadata registers Cx preserve
 		 * their value even through packet duplication.

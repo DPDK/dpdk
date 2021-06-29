@@ -5524,7 +5524,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 						  "E-Switch must has a dest "
 						  "port for mirroring");
 		if (!priv->config.hca_attr.reg_c_preserve &&
-		     priv->representor_id != -1)
+		     priv->representor_id != UINT16_MAX)
 			*fdb_mirror_limit = 1;
 	}
 	/* Continue validation for Xcap actions.*/
