@@ -6,6 +6,7 @@
 #define _CNXK_CRYPTODEV_H_
 
 #include <rte_cryptodev.h>
+#include <rte_security.h>
 
 #include "roc_cpt.h"
 
@@ -19,6 +20,9 @@
 struct cnxk_cpt_vf {
 	struct roc_cpt cpt;
 	struct rte_cryptodev_capabilities crypto_caps[CNXK_CPT_MAX_CAPS];
+	struct rte_cryptodev_capabilities
+		sec_crypto_caps[CNXK_SEC_CRYPTO_MAX_CAPS];
+	struct rte_security_capability sec_caps[CNXK_SEC_MAX_CAPS];
 };
 
 int cnxk_cpt_eng_grp_add(struct roc_cpt *roc_cpt);

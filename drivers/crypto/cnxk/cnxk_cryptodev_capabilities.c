@@ -3,6 +3,7 @@
  */
 
 #include <rte_cryptodev.h>
+#include <rte_security.h>
 
 #include "roc_api.h"
 
@@ -16,6 +17,15 @@
 		    (hw_caps[CPT_ENG_TYPE_AE].name))                           \
 			cpt_caps_add(cnxk_caps, cur_pos, caps_##name,          \
 				     RTE_DIM(caps_##name));                    \
+	} while (0)
+
+#define SEC_CAPS_ADD(cnxk_caps, cur_pos, hw_caps, name)                        \
+	do {                                                                   \
+		if ((hw_caps[CPT_ENG_TYPE_SE].name) ||                         \
+		    (hw_caps[CPT_ENG_TYPE_IE].name) ||                         \
+		    (hw_caps[CPT_ENG_TYPE_AE].name))                           \
+			sec_caps_add(cnxk_caps, cur_pos, sec_caps_##name,      \
+				     RTE_DIM(sec_caps_##name));                \
 	} while (0)
 
 static const struct rte_cryptodev_capabilities caps_sha1_sha2[] = {
@@ -658,6 +668,69 @@ static const struct rte_cryptodev_capabilities caps_end[] = {
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
+static const struct rte_cryptodev_capabilities sec_caps_aes[] = {
+	{	/* AES GCM */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AEAD,
+			{.aead = {
+				.algo = RTE_CRYPTO_AEAD_AES_GCM,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.digest_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.aad_size = {
+					.min = 8,
+					.max = 12,
+					.increment = 4
+				},
+				.iv_size = {
+					.min = 12,
+					.max = 12,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+};
+
+static const struct rte_security_capability sec_caps_templ[] = {
+	{	/* IPsec Lookaside Protocol ESP Tunnel Ingress */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
+			.options = { 0 }
+		},
+		.crypto_capabilities = NULL,
+		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
+	},
+	{	/* IPsec Lookaside Protocol ESP Tunnel Egress */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
+			.options = { 0 }
+		},
+		.crypto_capabilities = NULL,
+		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
+	},
+	{
+		.action = RTE_SECURITY_ACTION_TYPE_NONE
+	}
+};
+
 static void
 cpt_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos,
 	     const struct rte_cryptodev_capabilities *caps, int nb_caps)
@@ -692,8 +765,49 @@ cnxk_crypto_capabilities_get(struct cnxk_cpt_vf *vf)
 	return vf->crypto_caps;
 }
 
+static void
+sec_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos,
+	     const struct rte_cryptodev_capabilities *caps, int nb_caps)
+{
+	if (*cur_pos + nb_caps > CNXK_SEC_CRYPTO_MAX_CAPS)
+		return;
+
+	memcpy(&cnxk_caps[*cur_pos], caps, nb_caps * sizeof(caps[0]));
+	*cur_pos += nb_caps;
+}
+
+static void
+sec_crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
+			 union cpt_eng_caps *hw_caps)
+{
+	int cur_pos = 0;
+
+	SEC_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, aes);
+
+	sec_caps_add(cnxk_caps, &cur_pos, caps_end, RTE_DIM(caps_end));
+}
+
 void
 cnxk_cpt_caps_populate(struct cnxk_cpt_vf *vf)
 {
+	unsigned long i;
+
 	crypto_caps_populate(vf->crypto_caps, vf->cpt.hw_caps);
+	sec_crypto_caps_populate(vf->sec_crypto_caps, vf->cpt.hw_caps);
+
+	PLT_STATIC_ASSERT(RTE_DIM(sec_caps_templ) <= RTE_DIM(vf->sec_caps));
+	memcpy(vf->sec_caps, sec_caps_templ, sizeof(sec_caps_templ));
+
+	for (i = 0; i < RTE_DIM(sec_caps_templ) - 1; i++)
+		vf->sec_caps[i].crypto_capabilities = vf->sec_crypto_caps;
+}
+
+const struct rte_security_capability *
+cnxk_crypto_sec_capabilities_get(void *device)
+{
+	struct rte_cryptodev *dev = device;
+	struct cnxk_cpt_vf *vf;
+
+	vf = dev->data->dev_private;
+	return vf->sec_caps;
 }

@@ -7,6 +7,7 @@
 #include <rte_security.h>
 #include <rte_security_driver.h>
 
+#include "cnxk_cryptodev_capabilities.h"
 #include "cnxk_cryptodev_sec.h"
 
 /* Common security ops */
@@ -16,7 +17,7 @@ struct rte_security_ops cnxk_sec_ops = {
 	.session_get_size = NULL,
 	.set_pkt_metadata = NULL,
 	.get_userdata = NULL,
-	.capabilities_get = NULL,
+	.capabilities_get = cnxk_crypto_sec_capabilities_get
 };
 
 int

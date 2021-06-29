@@ -185,6 +185,30 @@ running the test application:
     ./dpdk-test
     RTE>>cryptodev_cn10k_autotest
 
+Lookaside IPsec Support
+-----------------------
+
+The OCTEON cnxk SoCs can accelerate IPsec traffic in lookaside protocol mode,
+with its **cryptographic accelerator (CPT)**. ``OCTEON cnxk crypto PMD`` implements
+this as an ``RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL`` offload.
+
+Refer to :doc:`../prog_guide/rte_security` for more details on protocol offloads.
+
+This feature can be tested with ipsec-secgw sample application.
+
+Supported OCTEON cnxk SoCs
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- CN10XX
+
+Features supported
+~~~~~~~~~~~~~~~~~~
+
+* IPv4
+* ESP
+* Tunnel mode
+* AES-128/192/256-GCM
+
 Limitations
 -----------
 

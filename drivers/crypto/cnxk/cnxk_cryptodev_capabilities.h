@@ -10,7 +10,7 @@
 #include "cnxk_cryptodev.h"
 
 /*
- * Initialize crypto capabilities for the device
+ * Initialize crypto and IPsec capabilities for the device
  *
  */
 void cnxk_cpt_caps_populate(struct cnxk_cpt_vf *vf);
@@ -21,5 +21,12 @@ void cnxk_cpt_caps_populate(struct cnxk_cpt_vf *vf);
  */
 const struct rte_cryptodev_capabilities *
 cnxk_crypto_capabilities_get(struct cnxk_cpt_vf *vf);
+
+/*
+ * Get security capabilities list for the device
+ *
+ */
+const struct rte_security_capability *
+cnxk_crypto_sec_capabilities_get(void *device);
 
 #endif /* _CNXK_CRYPTODEV_CAPABILITIES_H_ */
