@@ -12,6 +12,7 @@
 
 #include "cn10k_cryptodev.h"
 #include "cn10k_cryptodev_ops.h"
+#include "cn10k_ipsec.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_capabilities.h"
 #include "cnxk_cryptodev_sec.h"
@@ -101,6 +102,7 @@ cn10k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			     RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED;
 
 	cn10k_cpt_set_enqdeq_fns(dev);
+	cn10k_sec_ops_override();
 
 	return 0;
 

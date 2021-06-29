@@ -13,6 +13,7 @@ sources = files(
         'cn9k_cryptodev_ops.c',
         'cn10k_cryptodev.c',
         'cn10k_cryptodev_ops.c',
+        'cn10k_ipsec.c',
         'cnxk_cryptodev.c',
         'cnxk_cryptodev_capabilities.c',
         'cnxk_cryptodev_ops.c',
@@ -20,3 +21,5 @@ sources = files(
 )
 
 deps += ['bus_pci', 'common_cnxk', 'security']
+
+includes += include_directories('../../../lib/net')
