@@ -21,6 +21,7 @@
 #define strdup(str) _strdup(str)
 #define strtok_r(str, delim, saveptr) strtok_s(str, delim, saveptr)
 #ifndef RTE_TOOLCHAIN_GCC
+#define strcasecmp(s1, s2) _stricmp(s1, s2)
 #define strncasecmp(s1, s2, count) _strnicmp(s1, s2, count)
 #endif
 
@@ -36,6 +37,14 @@
 #define IPPROTO_GRE	47
 #ifdef RTE_TOOLCHAIN_GCC
 #define IPPROTO_SCTP	132
+#endif
+
+#ifndef IPDEFTTL
+#define IPDEFTTL 64
+#endif
+
+#ifndef S_ISREG
+#define S_ISREG(mode)  (((mode) & S_IFMT) == S_IFREG)
 #endif
 
 #ifdef RTE_TOOLCHAIN_GCC
