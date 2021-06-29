@@ -90,6 +90,7 @@ New Features
     crypto driver for CN9K and CN10K series of SOCs. Support for
     symmetric crypto algorithms is added to both the PMDs.
   * Added support for lookaside protocol (IPsec) offload in cn10k PMD.
+  * Added support for asymmetric crypto operations in cn9k and cn10k PMD.
 
 * **Added Baseband PHY CNXK PMD.**
 

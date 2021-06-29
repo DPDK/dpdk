@@ -191,6 +191,23 @@ running the test application:
     ./dpdk-test
     RTE>>cryptodev_cn10k_autotest
 
+The asymmetric crypto operations on OCTEON cnxk crypto PMD may be verified by
+running the test application:
+
+``CN9K``
+
+.. code-block:: console
+
+    ./dpdk-test
+    RTE>>cryptodev_cn9k_asym_autotest
+
+``CN10K``
+
+.. code-block:: console
+
+    ./dpdk-test
+    RTE>>cryptodev_cn10k_asym_autotest
+
 Lookaside IPsec Support
 -----------------------
 

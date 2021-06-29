@@ -2390,6 +2390,34 @@ test_cryptodev_octeontx2_asym(void)
 	return unit_test_suite_runner(&cryptodev_octeontx_asym_testsuite);
 }
 
+static int
+test_cryptodev_cn9k_asym(void)
+{
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_CN9K_PMD));
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "CN9K PMD must be loaded.\n");
+		return TEST_FAILED;
+	}
+
+	/* Use test suite registered for crypto_octeontx PMD */
+	return unit_test_suite_runner(&cryptodev_octeontx_asym_testsuite);
+}
+
+static int
+test_cryptodev_cn10k_asym(void)
+{
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_CN10K_PMD));
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "CN10K PMD must be loaded.\n");
+		return TEST_FAILED;
+	}
+
+	/* Use test suite registered for crypto_octeontx PMD */
+	return unit_test_suite_runner(&cryptodev_octeontx_asym_testsuite);
+}
+
 REGISTER_TEST_COMMAND(cryptodev_openssl_asym_autotest,
 					  test_cryptodev_openssl_asym);
 
@@ -2400,3 +2428,5 @@ REGISTER_TEST_COMMAND(cryptodev_octeontx_asym_autotest,
 
 REGISTER_TEST_COMMAND(cryptodev_octeontx2_asym_autotest,
 					  test_cryptodev_octeontx2_asym);
+REGISTER_TEST_COMMAND(cryptodev_cn9k_asym_autotest, test_cryptodev_cn9k_asym);
+REGISTER_TEST_COMMAND(cryptodev_cn10k_asym_autotest, test_cryptodev_cn10k_asym);
