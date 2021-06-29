@@ -61,6 +61,13 @@ New Features
   representing sub-domains of functionality. Each auxiliary device
   represents a part of its parent functionality.
 
+* **Updated Intel ice driver.**
+
+  * In AVX2 code, added the new RX and TX paths to use the HW offload
+    features. When the HW offload features are configured to be used, the
+    offload paths are chosen automatically. In parallel the support for HW
+    offload features was removed from the legacy AVX2 paths.
+
 * **Added support for Marvell CN10K SoC ethernet device.**
 
   * Added net/cnxk driver which provides the support for the integrated ethernet
