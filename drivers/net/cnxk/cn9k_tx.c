@@ -68,8 +68,7 @@ cn9k_eth_set_tx_function(struct rte_eth_dev *eth_dev)
 
 	if (dev->scalar_ena ||
 	    (dev->tx_offload_flags &
-	     (NIX_TX_OFFLOAD_VLAN_QINQ_F | NIX_TX_OFFLOAD_TSTAMP_F |
-	      NIX_TX_OFFLOAD_TSO_F)))
+	     (NIX_TX_OFFLOAD_TSTAMP_F | NIX_TX_OFFLOAD_TSO_F)))
 		pick_tx_func(eth_dev, nix_eth_tx_burst);
 	else
 		pick_tx_func(eth_dev, nix_eth_tx_vec_burst);

@@ -552,10 +552,13 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	uint64x2_t dataoff_iova0, dataoff_iova1, dataoff_iova2, dataoff_iova3;
 	uint64x2_t len_olflags0, len_olflags1, len_olflags2, len_olflags3;
-	uint64x2_t cmd0[NIX_DESCS_PER_LOOP], cmd1[NIX_DESCS_PER_LOOP];
+	uint64x2_t cmd0[NIX_DESCS_PER_LOOP], cmd1[NIX_DESCS_PER_LOOP],
+		cmd2[NIX_DESCS_PER_LOOP];
 	uint64_t *mbuf0, *mbuf1, *mbuf2, *mbuf3;
 	uint64x2_t senddesc01_w0, senddesc23_w0;
 	uint64x2_t senddesc01_w1, senddesc23_w1;
+	uint64x2_t sendext01_w0, sendext23_w0;
+	uint64x2_t sendext01_w1, sendext23_w1;
 	uint64x2_t sgdesc01_w0, sgdesc23_w0;
 	uint64x2_t sgdesc01_w1, sgdesc23_w1;
 	struct cn9k_eth_txq *txq = tx_queue;
@@ -585,8 +588,19 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 	senddesc23_w0 = senddesc01_w0;
 	senddesc01_w1 = vdupq_n_u64(0);
 	senddesc23_w1 = senddesc01_w1;
-	sgdesc01_w0 = vld1q_dup_u64(&txq->cmd[2]);
-	sgdesc23_w0 = sgdesc01_w0;
+
+	/* Load command defaults into vector variables. */
+	if (flags & NIX_TX_NEED_EXT_HDR) {
+		sendext01_w0 = vld1q_dup_u64(&txq->cmd[2]);
+		sendext23_w0 = sendext01_w0;
+		sendext01_w1 = vdupq_n_u64(12 | 12U << 24);
+		sendext23_w1 = sendext01_w1;
+		sgdesc01_w0 = vld1q_dup_u64(&txq->cmd[4]);
+		sgdesc23_w0 = sgdesc01_w0;
+	} else {
+		sgdesc01_w0 = vld1q_dup_u64(&txq->cmd[2]);
+		sgdesc23_w0 = sgdesc01_w0;
+	}
 
 	for (i = 0; i < pkts; i += NIX_DESCS_PER_LOOP) {
 		/* Clear lower 32bit of SEND_HDR_W0 and SEND_SG_W0 */
@@ -596,6 +610,13 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		senddesc23_w0 = senddesc01_w0;
 		sgdesc23_w0 = sgdesc01_w0;
+
+		/* Clear vlan enables. */
+		if (flags & NIX_TX_NEED_EXT_HDR) {
+			sendext01_w1 = vbicq_u64(sendext01_w1,
+						 vdupq_n_u64(0x3FFFF00FFFF00));
+			sendext23_w1 = sendext01_w1;
+		}
 
 		/* Move mbufs to iova */
 		mbuf0 = (uint64_t *)tx_pkts[0];
@@ -1162,6 +1183,52 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 		senddesc01_w0 = vorrq_u64(senddesc01_w0, xmask01);
 		senddesc23_w0 = vorrq_u64(senddesc23_w0, xmask23);
 
+		if (flags & NIX_TX_OFFLOAD_VLAN_QINQ_F) {
+			/* Tx ol_flag for vlan. */
+			const uint64x2_t olv = {PKT_TX_VLAN, PKT_TX_VLAN};
+			/* Bit enable for VLAN1 */
+			const uint64x2_t mlv = {BIT_ULL(49), BIT_ULL(49)};
+			/* Tx ol_flag for QnQ. */
+			const uint64x2_t olq = {PKT_TX_QINQ, PKT_TX_QINQ};
+			/* Bit enable for VLAN0 */
+			const uint64x2_t mlq = {BIT_ULL(48), BIT_ULL(48)};
+			/* Load vlan values from packet. outer is VLAN 0 */
+			uint64x2_t ext01 = {
+				((uint32_t)tx_pkts[0]->vlan_tci_outer) << 8 |
+					((uint64_t)tx_pkts[0]->vlan_tci) << 32,
+				((uint32_t)tx_pkts[1]->vlan_tci_outer) << 8 |
+					((uint64_t)tx_pkts[1]->vlan_tci) << 32,
+			};
+			uint64x2_t ext23 = {
+				((uint32_t)tx_pkts[2]->vlan_tci_outer) << 8 |
+					((uint64_t)tx_pkts[2]->vlan_tci) << 32,
+				((uint32_t)tx_pkts[3]->vlan_tci_outer) << 8 |
+					((uint64_t)tx_pkts[3]->vlan_tci) << 32,
+			};
+
+			/* Get ol_flags of the packets. */
+			xtmp128 = vzip1q_u64(len_olflags0, len_olflags1);
+			ytmp128 = vzip1q_u64(len_olflags2, len_olflags3);
+
+			/* ORR vlan outer/inner values into cmd. */
+			sendext01_w1 = vorrq_u64(sendext01_w1, ext01);
+			sendext23_w1 = vorrq_u64(sendext23_w1, ext23);
+
+			/* Test for offload enable bits and generate masks. */
+			xtmp128 = vorrq_u64(vandq_u64(vtstq_u64(xtmp128, olv),
+						      mlv),
+					    vandq_u64(vtstq_u64(xtmp128, olq),
+						      mlq));
+			ytmp128 = vorrq_u64(vandq_u64(vtstq_u64(ytmp128, olv),
+						      mlv),
+					    vandq_u64(vtstq_u64(ytmp128, olq),
+						      mlq));
+
+			/* Set vlan enable bits into cmd based on mask. */
+			sendext01_w1 = vorrq_u64(sendext01_w1, xtmp128);
+			sendext23_w1 = vorrq_u64(sendext23_w1, ytmp128);
+		}
+
 		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
 			/* Set don't free bit if reference count > 1 */
 			xmask01 = vdupq_n_u64(0);
@@ -1247,17 +1314,50 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 		cmd1[2] = vzip1q_u64(sgdesc23_w0, sgdesc23_w1);
 		cmd1[3] = vzip2q_u64(sgdesc23_w0, sgdesc23_w1);
 
-		do {
-			vst1q_u64(lmt_addr, cmd0[0]);
-			vst1q_u64(lmt_addr + 2, cmd1[0]);
-			vst1q_u64(lmt_addr + 4, cmd0[1]);
-			vst1q_u64(lmt_addr + 6, cmd1[1]);
-			vst1q_u64(lmt_addr + 8, cmd0[2]);
-			vst1q_u64(lmt_addr + 10, cmd1[2]);
-			vst1q_u64(lmt_addr + 12, cmd0[3]);
-			vst1q_u64(lmt_addr + 14, cmd1[3]);
-			lmt_status = roc_lmt_submit_ldeor(io_addr);
-		} while (lmt_status == 0);
+		if (flags & NIX_TX_NEED_EXT_HDR) {
+			cmd2[0] = vzip1q_u64(sendext01_w0, sendext01_w1);
+			cmd2[1] = vzip2q_u64(sendext01_w0, sendext01_w1);
+			cmd2[2] = vzip1q_u64(sendext23_w0, sendext23_w1);
+			cmd2[3] = vzip2q_u64(sendext23_w0, sendext23_w1);
+		}
+
+		if (flags & NIX_TX_NEED_EXT_HDR) {
+			/* With ext header in the command we can no longer send
+			 * all 4 packets together since LMTLINE is 128bytes.
+			 * Split and Tx twice.
+			 */
+			do {
+				vst1q_u64(lmt_addr, cmd0[0]);
+				vst1q_u64(lmt_addr + 2, cmd2[0]);
+				vst1q_u64(lmt_addr + 4, cmd1[0]);
+				vst1q_u64(lmt_addr + 6, cmd0[1]);
+				vst1q_u64(lmt_addr + 8, cmd2[1]);
+				vst1q_u64(lmt_addr + 10, cmd1[1]);
+				lmt_status = roc_lmt_submit_ldeor(io_addr);
+			} while (lmt_status == 0);
+
+			do {
+				vst1q_u64(lmt_addr, cmd0[2]);
+				vst1q_u64(lmt_addr + 2, cmd2[2]);
+				vst1q_u64(lmt_addr + 4, cmd1[2]);
+				vst1q_u64(lmt_addr + 6, cmd0[3]);
+				vst1q_u64(lmt_addr + 8, cmd2[3]);
+				vst1q_u64(lmt_addr + 10, cmd1[3]);
+				lmt_status = roc_lmt_submit_ldeor(io_addr);
+			} while (lmt_status == 0);
+		} else {
+			do {
+				vst1q_u64(lmt_addr, cmd0[0]);
+				vst1q_u64(lmt_addr + 2, cmd1[0]);
+				vst1q_u64(lmt_addr + 4, cmd0[1]);
+				vst1q_u64(lmt_addr + 6, cmd1[1]);
+				vst1q_u64(lmt_addr + 8, cmd0[2]);
+				vst1q_u64(lmt_addr + 10, cmd1[2]);
+				vst1q_u64(lmt_addr + 12, cmd0[3]);
+				vst1q_u64(lmt_addr + 14, cmd1[3]);
+				lmt_status = roc_lmt_submit_ldeor(io_addr);
+			} while (lmt_status == 0);
+		}
 		tx_pkts = tx_pkts + NIX_DESCS_PER_LOOP;
 	}
 
