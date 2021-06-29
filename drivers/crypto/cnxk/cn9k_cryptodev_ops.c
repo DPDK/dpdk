@@ -7,6 +7,7 @@
 
 #include "cn9k_cryptodev.h"
 #include "cn9k_cryptodev_ops.h"
+#include "cnxk_ae.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
 #include "cnxk_se.h"
@@ -65,11 +66,11 @@ static uint16_t
 cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct cpt_inflight_req *infl_req;
+	struct rte_crypto_asym_op *asym_op;
 	struct rte_crypto_sym_op *sym_op;
 	uint16_t nb_allowed, count = 0;
 	struct cnxk_cpt_qp *qp = qptr;
 	struct pending_queue *pend_q;
-	struct cnxk_se_sess *sess;
 	struct rte_crypto_op *op;
 	struct cpt_inst_s inst;
 	uint64_t lmt_status;
@@ -95,6 +96,8 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 		infl_req->op_flags = 0;
 
 		if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+			struct cnxk_se_sess *sess;
+
 			if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 				sym_op = op->sym;
 				sess = get_sym_session_private_data(
@@ -120,6 +123,20 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 							op->sym->session);
 				}
 			}
+			inst.w7.u64 = sess->cpt_inst_w7;
+		} else if (op->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+			struct cnxk_ae_sess *sess;
+
+			ret = -EINVAL;
+			if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+				asym_op = op->asym;
+				sess = get_asym_session_private_data(
+					asym_op->session,
+					cn9k_cryptodev_driver_id);
+				ret = cnxk_ae_enqueue(qp, op, infl_req, &inst,
+						      sess);
+				inst.w7.u64 = sess->cpt_inst_w7;
+			}
 		} else {
 			plt_dp_err("Unsupported op type");
 			break;
@@ -134,7 +151,6 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 
 		infl_req->res.cn9k.compcode = CPT_COMP_NOT_DONE;
 		inst.res_addr = (uint64_t)&infl_req->res;
-		inst.w7.u64 = sess->cpt_inst_w7;
 
 		do {
 			/* Copy CPT command to LMTLINE */
@@ -189,6 +205,15 @@ cn9k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop,
 				compl_auth_verify(cop, (uint8_t *)rsp[0],
 						  rsp[1]);
 			}
+		} else if (cop->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+			struct rte_crypto_asym_op *op = cop->asym;
+			uintptr_t *mdata = infl_req->mdata;
+			struct cnxk_ae_sess *sess;
+
+			sess = get_asym_session_private_data(
+				op->session, cn9k_cryptodev_driver_id);
+
+			cnxk_ae_post_process(cop, sess, (uint8_t *)mdata[0]);
 		}
 	} else {
 		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;

@@ -10,6 +10,7 @@
 #include "cn10k_cryptodev_ops.h"
 #include "cn10k_ipsec_la_ops.h"
 #include "cn10k_ipsec.h"
+#include "cnxk_ae.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
 #include "cnxk_se.h"
@@ -100,7 +101,9 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[],
 		    struct cpt_inst_s inst[], struct cpt_inflight_req *infl_req)
 {
 	struct cn10k_sec_session *sec_sess;
+	struct rte_crypto_asym_op *asym_op;
 	struct rte_crypto_sym_op *sym_op;
+	struct cnxk_ae_sess *ae_sess;
 	struct cnxk_se_sess *sess;
 	struct rte_crypto_op *op;
 	uint64_t w7;
@@ -147,6 +150,21 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[],
 				return 0;
 			}
 			w7 = sess->cpt_inst_w7;
+		}
+	} else if (op->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+
+		if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+			asym_op = op->asym;
+			ae_sess = get_asym_session_private_data(
+				asym_op->session, cn10k_cryptodev_driver_id);
+			ret = cnxk_ae_enqueue(qp, op, infl_req, &inst[0],
+					      ae_sess);
+			if (unlikely(ret))
+				return 0;
+			w7 = ae_sess->cpt_inst_w7;
+		} else {
+			plt_dp_err("Not supported Asym op without session");
+			return 0;
 		}
 	} else {
 		plt_dp_err("Unsupported op type");
@@ -303,6 +321,15 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 				compl_auth_verify(cop, (uint8_t *)rsp[0],
 						  rsp[1]);
 			}
+		} else if (cop->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+			struct rte_crypto_asym_op *op = cop->asym;
+			uintptr_t *mdata = infl_req->mdata;
+			struct cnxk_ae_sess *sess;
+
+			sess = get_asym_session_private_data(
+				op->session, cn10k_cryptodev_driver_id);
+
+			cnxk_ae_post_process(cop, sess, (uint8_t *)mdata[0]);
 		}
 	} else {
 		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
