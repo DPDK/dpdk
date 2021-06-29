@@ -1446,10 +1446,17 @@ ionic_lif_adminq_init(struct ionic_lif *lif)
 	struct ionic_admin_qcq *aqcq = lif->adminqcq;
 	struct ionic_queue *q = &aqcq->qcq.q;
 	struct ionic_q_init_comp comp;
+	uint32_t retries = 5;
 	int err;
 
+retry_adminq_init:
 	ionic_dev_cmd_adminq_init(idev, &aqcq->qcq);
 	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
+	if (err == -EAGAIN && retries > 0) {
+		retries--;
+		rte_delay_us_block(IONIC_DEVCMD_RETRY_WAIT_US);
+		goto retry_adminq_init;
+	}
 	if (err)
 		return err;
 
@@ -1736,12 +1743,19 @@ ionic_lif_init(struct ionic_lif *lif)
 {
 	struct ionic_dev *idev = &lif->adapter->idev;
 	struct ionic_lif_init_comp comp;
+	uint32_t retries = 5;
 	int err;
 
 	memset(&lif->stats_base, 0, sizeof(lif->stats_base));
 
+retry_lif_init:
 	ionic_dev_cmd_lif_init(idev, lif->info_pa);
 	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
+	if (err == -EAGAIN && retries > 0) {
+		retries--;
+		rte_delay_us_block(IONIC_DEVCMD_RETRY_WAIT_US);
+		goto retry_lif_init;
+	}
 	if (err)
 		return err;
 

@@ -315,10 +315,10 @@ ionic_dev_cmd_check_error(struct ionic_dev *idev)
 	uint8_t status;
 
 	status = ionic_dev_cmd_status(idev);
-	if (status == 0)
+	if (status == IONIC_RC_SUCCESS)
 		return 0;
 
-	return -EIO;
+	return (status == IONIC_RC_EAGAIN) ? -EAGAIN : -EIO;
 }
 
 int
