@@ -350,6 +350,8 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 		return;
 	}
 	if (l4 == RTE_PTYPE_L4_UDP || l4 == RTE_PTYPE_L4_TCP) {
+		int cksum_ok;
+
 		l4_hdr = rte_pktmbuf_mtod_offset(mbuf, void *, l2_len + l3_len);
 		/* Don't verify checksum for multi-segment packets. */
 		if (mbuf->nb_segs > 1)
@@ -367,13 +369,13 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 					return;
 				}
 			}
-			cksum = ~rte_ipv4_udptcp_cksum(l3_hdr, l4_hdr);
+			cksum = rte_ipv4_udptcp_cksum(l3_hdr, l4_hdr);
 		} else { /* l3 == RTE_PTYPE_L3_IPV6, checked above */
-			cksum = ~rte_ipv6_udptcp_cksum(l3_hdr, l4_hdr);
+			cksum = rte_ipv6_udptcp_cksum(l3_hdr, l4_hdr);
 		}
-		mbuf->ol_flags |= cksum ?
-			PKT_RX_L4_CKSUM_BAD :
-			PKT_RX_L4_CKSUM_GOOD;
+		cksum_ok = (cksum == 0) || (cksum == 0xffff);
+		mbuf->ol_flags |= cksum_ok ?
+			PKT_RX_L4_CKSUM_GOOD : PKT_RX_L4_CKSUM_BAD;
 	}
 }
 
