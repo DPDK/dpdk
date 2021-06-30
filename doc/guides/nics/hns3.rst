@@ -115,6 +115,18 @@ Runtime Config Options
   For example::
   -a 0000:7d:00.0,dev_caps_mask=0xF
 
+
+Link status event Pre-conditions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Firmware 1.8.0.0 and later versions support reporting link changes to the PF.
+Therefore, to use the LSC for the PF driver, ensure that the firmware version
+also supports reporting link changes.
+If the VF driver needs to support LSC, special patch must be added:
+`<https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/drivers/net/ethernet/hisilicon/hns3?h=next-20210428&id=18b6e31f8bf4ac7af7b057228f38a5a530378e4e>`_.
+Note: The patch has been uploaded to 5.13 of the Linux kernel mainline.
+
+
 Driver compilation and testing
 ------------------------------
 
