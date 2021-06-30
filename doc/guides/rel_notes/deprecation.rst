@@ -51,6 +51,12 @@ Deprecation Notices
   us extending existing enum/define.
   One solution can be using a fixed size array instead of ``.*MAX.*`` value.
 
+* ethdev: Will add ``RTE_ETH_`` prefix to all ethdev macros/enums in v21.11.
+  Macros will be added for backward compatibility.
+  Backward compatibility macros will be removed on v22.11.
+  A few old backward compatibility macros from 2013 that does not have
+  proper prefix will be removed on v21.11.
+
 * ethdev: The flow director API, including ``rte_eth_conf.fdir_conf`` field,
   and the related structures (``rte_fdir_*`` and ``rte_eth_fdir_*``),
   will be removed in DPDK 20.11.
