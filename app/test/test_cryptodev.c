@@ -14522,19 +14522,19 @@ run_cryptodev_testsuite(const char *pmd_name)
 }
 
 static int
-test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
+test_cryptodev_qat(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
 }
 
 static int
-test_cryptodev_virtio(void /*argv __rte_unused, int argc __rte_unused*/)
+test_cryptodev_virtio(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
 }
 
 static int
-test_cryptodev_aesni_mb(void /*argv __rte_unused, int argc __rte_unused*/)
+test_cryptodev_aesni_mb(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
 }
@@ -14580,19 +14580,19 @@ test_cryptodev_null(void)
 }
 
 static int
-test_cryptodev_sw_snow3g(void /*argv __rte_unused, int argc __rte_unused*/)
+test_cryptodev_sw_snow3g(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
 }
 
 static int
-test_cryptodev_sw_kasumi(void /*argv __rte_unused, int argc __rte_unused*/)
+test_cryptodev_sw_kasumi(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_KASUMI_PMD));
 }
 
 static int
-test_cryptodev_sw_zuc(void /*argv __rte_unused, int argc __rte_unused*/)
+test_cryptodev_sw_zuc(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_ZUC_PMD));
 }
@@ -14612,7 +14612,7 @@ test_cryptodev_mrvl(void)
 #ifdef RTE_CRYPTO_SCHEDULER
 
 static int
-test_cryptodev_scheduler(void /*argv __rte_unused, int argc __rte_unused*/)
+test_cryptodev_scheduler(void)
 {
 	uint8_t ret, sched_i, j, i = 0, blk_start_idx = 0;
 	const enum blockcipher_test_type blk_suites[] = {
@@ -14720,13 +14720,13 @@ REGISTER_TEST_COMMAND(cryptodev_scheduler_autotest, test_cryptodev_scheduler);
 #endif
 
 static int
-test_cryptodev_dpaa2_sec(void /*argv __rte_unused, int argc __rte_unused*/)
+test_cryptodev_dpaa2_sec(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
 }
 
 static int
-test_cryptodev_dpaa_sec(void /*argv __rte_unused, int argc __rte_unused*/)
+test_cryptodev_dpaa_sec(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD));
 }
@@ -14750,7 +14750,7 @@ test_cryptodev_octeontx2(void)
 }
 
 static int
-test_cryptodev_caam_jr(void /*argv __rte_unused, int argc __rte_unused*/)
+test_cryptodev_caam_jr(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD));
 }
@@ -14768,7 +14768,7 @@ test_cryptodev_bcmfs(void)
 }
 
 static int
-test_cryptodev_qat_raw_api(void /*argv __rte_unused, int argc __rte_unused*/)
+test_cryptodev_qat_raw_api(void)
 {
 	int ret;
 
