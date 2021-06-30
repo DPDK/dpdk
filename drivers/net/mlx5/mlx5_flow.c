@@ -264,6 +264,7 @@ mlx5_flow_expand_rss_item_complete(const struct rte_flow_item *item)
  *   set, the following errors are defined:
  *
  *   -E2BIG: graph-depth @p graph is too deep.
+ *   -EINVAL: @p size has not enough space for expanded pattern.
  */
 static int
 mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
@@ -290,12 +291,12 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 	memset(&missed_item, 0, sizeof(missed_item));
 	lsize = offsetof(struct mlx5_flow_expand_rss, entry) +
 		MLX5_RSS_EXP_ELT_N * sizeof(buf->entry[0]);
-	if (lsize <= size) {
-		buf->entry[0].priority = 0;
-		buf->entry[0].pattern = (void *)&buf->entry[MLX5_RSS_EXP_ELT_N];
-		buf->entries = 0;
-		addr = buf->entry[0].pattern;
-	}
+	if (lsize > size)
+		return -EINVAL;
+	buf->entry[0].priority = 0;
+	buf->entry[0].pattern = (void *)&buf->entry[MLX5_RSS_EXP_ELT_N];
+	buf->entries = 0;
+	addr = buf->entry[0].pattern;
 	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		if (!mlx5_flow_is_rss_expandable_item(item)) {
 			user_pattern_size += sizeof(*item);
@@ -313,12 +314,12 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 	}
 	user_pattern_size += sizeof(*item); /* Handle END item. */
 	lsize += user_pattern_size;
+	if (lsize > size)
+		return -EINVAL;
 	/* Copy the user pattern in the first entry of the buffer. */
-	if (lsize <= size) {
-		rte_memcpy(addr, pattern, user_pattern_size);
-		addr = (void *)(((uintptr_t)addr) + user_pattern_size);
-		buf->entries = 1;
-	}
+	rte_memcpy(addr, pattern, user_pattern_size);
+	addr = (void *)(((uintptr_t)addr) + user_pattern_size);
+	buf->entries = 1;
 	/* Start expanding. */
 	memset(flow_items, 0, sizeof(flow_items));
 	user_pattern_size -= sizeof(*item);
@@ -348,7 +349,9 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 		elt = 2; /* missed item + item end. */
 		node = next;
 		lsize += elt * sizeof(*item) + user_pattern_size;
-		if ((node->rss_types & types) && lsize <= size) {
+		if (lsize > size)
+			return -EINVAL;
+		if (node->rss_types & types) {
 			buf->entry[buf->entries].priority = 1;
 			buf->entry[buf->entries].pattern = addr;
 			buf->entries++;
@@ -367,6 +370,7 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 	while (node) {
 		flow_items[stack_pos].type = node->type;
 		if (node->rss_types & types) {
+			size_t n;
 			/*
 			 * compute the number of items to copy from the
 			 * expansion and copy it.
@@ -376,24 +380,23 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 			elt = stack_pos + 2;
 			flow_items[stack_pos + 1].type = RTE_FLOW_ITEM_TYPE_END;
 			lsize += elt * sizeof(*item) + user_pattern_size;
-			if (lsize <= size) {
-				size_t n = elt * sizeof(*item);
-
-				buf->entry[buf->entries].priority =
-					stack_pos + 1 + missed;
-				buf->entry[buf->entries].pattern = addr;
-				buf->entries++;
-				rte_memcpy(addr, buf->entry[0].pattern,
-					   user_pattern_size);
-				addr = (void *)(((uintptr_t)addr) +
-						user_pattern_size);
-				rte_memcpy(addr, &missed_item,
-					   missed * sizeof(*item));
-				addr = (void *)(((uintptr_t)addr) +
-					missed * sizeof(*item));
-				rte_memcpy(addr, flow_items, n);
-				addr = (void *)(((uintptr_t)addr) + n);
-			}
+			if (lsize > size)
+				return -EINVAL;
+			n = elt * sizeof(*item);
+			buf->entry[buf->entries].priority =
+				stack_pos + 1 + missed;
+			buf->entry[buf->entries].pattern = addr;
+			buf->entries++;
+			rte_memcpy(addr, buf->entry[0].pattern,
+				   user_pattern_size);
+			addr = (void *)(((uintptr_t)addr) +
+					user_pattern_size);
+			rte_memcpy(addr, &missed_item,
+				   missed * sizeof(*item));
+			addr = (void *)(((uintptr_t)addr) +
+				missed * sizeof(*item));
+			rte_memcpy(addr, flow_items, n);
+			addr = (void *)(((uintptr_t)addr) + n);
 		}
 		/* Go deeper. */
 		if (!node->optional && node->next) {
