@@ -1327,6 +1327,7 @@ Packet processing
 Network headers
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/net/
+F: app/test/test_cksum.c
 
 Packet CRC
 M: Jasvinder Singh <jasvinder.singh@intel.com>
