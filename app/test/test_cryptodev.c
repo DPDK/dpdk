@@ -13475,7 +13475,7 @@ scheduler_testsuite_setup(void)
 }
 
 static int
-test_scheduler_attach_slave_op(void)
+test_scheduler_attach_worker_op(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	uint8_t sched_id = ts_params->valid_devs[0];
@@ -13585,7 +13585,7 @@ test_scheduler_attach_slave_op(void)
 }
 
 static int
-test_scheduler_detach_slave_op(void)
+test_scheduler_detach_worker_op(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	uint8_t sched_id = ts_params->valid_devs[0];
@@ -13651,7 +13651,7 @@ test_scheduler_mode_pkt_size_distr_op(void)
 static int
 scheduler_multicore_testsuite_setup(void)
 {
-	if (test_scheduler_attach_slave_op() < 0)
+	if (test_scheduler_attach_worker_op() < 0)
 		return TEST_SKIPPED;
 	if (test_scheduler_mode_op(CDEV_SCHED_MODE_MULTICORE) < 0)
 		return TEST_SKIPPED;
@@ -13661,7 +13661,7 @@ scheduler_multicore_testsuite_setup(void)
 static int
 scheduler_roundrobin_testsuite_setup(void)
 {
-	if (test_scheduler_attach_slave_op() < 0)
+	if (test_scheduler_attach_worker_op() < 0)
 		return TEST_SKIPPED;
 	if (test_scheduler_mode_op(CDEV_SCHED_MODE_ROUNDROBIN) < 0)
 		return TEST_SKIPPED;
@@ -13671,7 +13671,7 @@ scheduler_roundrobin_testsuite_setup(void)
 static int
 scheduler_failover_testsuite_setup(void)
 {
-	if (test_scheduler_attach_slave_op() < 0)
+	if (test_scheduler_attach_worker_op() < 0)
 		return TEST_SKIPPED;
 	if (test_scheduler_mode_op(CDEV_SCHED_MODE_FAILOVER) < 0)
 		return TEST_SKIPPED;
@@ -13681,7 +13681,7 @@ scheduler_failover_testsuite_setup(void)
 static int
 scheduler_pkt_size_distr_testsuite_setup(void)
 {
-	if (test_scheduler_attach_slave_op() < 0)
+	if (test_scheduler_attach_worker_op() < 0)
 		return TEST_SKIPPED;
 	if (test_scheduler_mode_op(CDEV_SCHED_MODE_PKT_SIZE_DISTR) < 0)
 		return TEST_SKIPPED;
@@ -13691,7 +13691,7 @@ scheduler_pkt_size_distr_testsuite_setup(void)
 static void
 scheduler_mode_testsuite_teardown(void)
 {
-	test_scheduler_detach_slave_op();
+	test_scheduler_detach_worker_op();
 }
 
 #endif /* RTE_CRYPTO_SCHEDULER */
@@ -14653,12 +14653,12 @@ test_cryptodev_scheduler(void)
 	static struct unit_test_suite scheduler_config = {
 		.suite_name = "Crypto Device Scheduler Config Unit Test Suite",
 		.unit_test_cases = {
-			TEST_CASE(test_scheduler_attach_slave_op),
+			TEST_CASE(test_scheduler_attach_worker_op),
 			TEST_CASE(test_scheduler_mode_multicore_op),
 			TEST_CASE(test_scheduler_mode_roundrobin_op),
 			TEST_CASE(test_scheduler_mode_failover_op),
 			TEST_CASE(test_scheduler_mode_pkt_size_distr_op),
-			TEST_CASE(test_scheduler_detach_slave_op),
+			TEST_CASE(test_scheduler_detach_worker_op),
 
 			TEST_CASES_END() /**< NULL terminate array */
 		}
