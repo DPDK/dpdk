@@ -99,6 +99,16 @@ i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 	  * tx_next_dd - (tx_rs_thresh-1)
 	  */
 	txep = &txq->sw_ring[txq->tx_next_dd - (n - 1)];
+
+	if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE) {
+		for (i = 0; i < n; i++) {
+			free[i] = txep[i].mbuf;
+			txep[i].mbuf = NULL;
+		}
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, n);
+		goto done;
+	}
+
 	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
 	if (likely(m != NULL)) {
 		free[0] = m;
@@ -126,6 +136,7 @@ i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 		}
 	}
 
+done:
 	/* buffers were freed, update counters */
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
 	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
