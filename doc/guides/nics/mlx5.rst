@@ -591,6 +591,13 @@ Driver options
   it is not recommended and may prevent NIC from sending packets over
   some configurations.
 
+  For ConnectX-4 and ConnectX-4 Lx NICs, automatically configured value
+  is insufficient for some traffic, because they require at least all L2 headers
+  to be inlined. For example, Q-in-Q adds 4 bytes to default 18 bytes
+  of Ethernet and VLAN, thus ``txq_inline_min`` must be set to 22.
+  MPLS would add 4 bytes per label. Final value must account for all possible
+  L2 encapsulation headers used in particular environment.
+
   Please, note, this minimal data inlining disengages eMPW feature (Enhanced
   Multi-Packet Write), because last one does not support partial packet inlining.
   This is not very critical due to minimal data inlining is mostly required
