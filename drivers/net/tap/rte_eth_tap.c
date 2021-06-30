@@ -342,7 +342,11 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 				rte_pktmbuf_data_len(mbuf))
 			return;
 	} else {
-		/* IPv6 extensions are not supported */
+		/* - RTE_PTYPE_L3_IPV4_EXT_UNKNOWN cannot happen because
+		 *   mbuf->packet_type is filled by rte_net_get_ptype() which
+		 *   never returns this value.
+		 * - IPv6 extensions are not supported.
+		 */
 		return;
 	}
 	if (l4 == RTE_PTYPE_L4_UDP || l4 == RTE_PTYPE_L4_TCP) {
@@ -350,7 +354,7 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 		/* Don't verify checksum for multi-segment packets. */
 		if (mbuf->nb_segs > 1)
 			return;
-		if (l3 == RTE_PTYPE_L3_IPV4) {
+		if (l3 == RTE_PTYPE_L3_IPV4 || l3 == RTE_PTYPE_L3_IPV4_EXT) {
 			if (l4 == RTE_PTYPE_L4_UDP) {
 				udp_hdr = (struct rte_udp_hdr *)l4_hdr;
 				if (udp_hdr->dgram_cksum == 0) {
@@ -364,7 +368,7 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 				}
 			}
 			cksum = ~rte_ipv4_udptcp_cksum(l3_hdr, l4_hdr);
-		} else if (l3 == RTE_PTYPE_L3_IPV6) {
+		} else { /* l3 == RTE_PTYPE_L3_IPV6, checked above */
 			cksum = ~rte_ipv6_udptcp_cksum(l3_hdr, l4_hdr);
 		}
 		mbuf->ol_flags |= cksum ?
