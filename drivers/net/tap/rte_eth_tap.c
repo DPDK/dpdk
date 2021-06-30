@@ -369,11 +369,12 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 					return;
 				}
 			}
-			cksum = rte_ipv4_udptcp_cksum(l3_hdr, l4_hdr);
+			cksum_ok = !rte_ipv4_udptcp_cksum_verify(l3_hdr,
+								 l4_hdr);
 		} else { /* l3 == RTE_PTYPE_L3_IPV6, checked above */
-			cksum = rte_ipv6_udptcp_cksum(l3_hdr, l4_hdr);
+			cksum_ok = !rte_ipv6_udptcp_cksum_verify(l3_hdr,
+								 l4_hdr);
 		}
-		cksum_ok = (cksum == 0) || (cksum == 0xffff);
 		mbuf->ol_flags |= cksum_ok ?
 			PKT_RX_L4_CKSUM_GOOD : PKT_RX_L4_CKSUM_BAD;
 	}
