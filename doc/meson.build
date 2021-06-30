@@ -11,5 +11,5 @@ if doc_targets.length() == 0
 else
     message = 'Building docs:'
 endif
-run_target('doc', command: ['echo', message, doc_target_names],
+run_target('doc', command: [echo, message, doc_target_names],
     depends: doc_targets)
