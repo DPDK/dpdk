@@ -1294,22 +1294,40 @@ static __rte_always_inline int
 i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 {
 	struct i40e_tx_entry *txep;
-	uint16_t i;
+	uint16_t tx_rs_thresh = txq->tx_rs_thresh;
+	uint16_t i = 0, j = 0;
+	struct rte_mbuf *free[RTE_I40E_TX_MAX_FREE_BUF_SZ];
+	const uint16_t k = RTE_ALIGN_FLOOR(tx_rs_thresh, RTE_I40E_TX_MAX_FREE_BUF_SZ);
+	const uint16_t m = tx_rs_thresh % RTE_I40E_TX_MAX_FREE_BUF_SZ;
 
 	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) !=
 			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
 
-	txep = &(txq->sw_ring[txq->tx_next_dd - (txq->tx_rs_thresh - 1)]);
+	txep = &txq->sw_ring[txq->tx_next_dd - (tx_rs_thresh - 1)];
 
-	for (i = 0; i < txq->tx_rs_thresh; i++)
+	for (i = 0; i < tx_rs_thresh; i++)
 		rte_prefetch0((txep + i)->mbuf);
 
 	if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE) {
-		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
-			rte_mempool_put(txep->mbuf->pool, txep->mbuf);
-			txep->mbuf = NULL;
+		if (k) {
+			for (j = 0; j != k; j += RTE_I40E_TX_MAX_FREE_BUF_SZ) {
+				for (i = 0; i < RTE_I40E_TX_MAX_FREE_BUF_SZ; ++i, ++txep) {
+					free[i] = txep->mbuf;
+					txep->mbuf = NULL;
+				}
+				rte_mempool_put_bulk(free[0]->pool, (void **)free,
+						RTE_I40E_TX_MAX_FREE_BUF_SZ);
+			}
+		}
+
+		if (m) {
+			for (i = 0; i < m; ++i, ++txep) {
+				free[i] = txep->mbuf;
+				txep->mbuf = NULL;
+			}
+			rte_mempool_put_bulk(free[0]->pool, (void **)free, m);
 		}
 	} else {
 		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
