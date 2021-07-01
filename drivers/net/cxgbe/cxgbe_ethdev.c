@@ -778,22 +778,297 @@ static int cxgbe_dev_stats_reset(struct rte_eth_dev *eth_dev)
 
 	cxgbe_stats_reset(pi);
 	for (i = 0; i < pi->n_rx_qsets; i++) {
-		struct sge_eth_rxq *rxq =
-			&s->ethrxq[pi->first_rxqset + i];
+		struct sge_eth_rxq *rxq = &s->ethrxq[pi->first_rxqset + i];
 
-		rxq->stats.pkts = 0;
-		rxq->stats.rx_bytes = 0;
+		memset(&rxq->stats, 0, sizeof(rxq->stats));
 	}
 	for (i = 0; i < pi->n_tx_qsets; i++) {
-		struct sge_eth_txq *txq =
-			&s->ethtxq[pi->first_txqset + i];
+		struct sge_eth_txq *txq = &s->ethtxq[pi->first_txqset + i];
 
-		txq->stats.pkts = 0;
-		txq->stats.tx_bytes = 0;
-		txq->stats.mapping_err = 0;
+		memset(&txq->stats, 0, sizeof(txq->stats));
 	}
 
 	return 0;
+}
+
+/* Store extended statistics names and its offset in stats structure  */
+struct cxgbe_dev_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+static const struct cxgbe_dev_xstats_name_off cxgbe_dev_rxq_stats_strings[] = {
+	{"packets", offsetof(struct sge_eth_rx_stats, pkts)},
+	{"bytes", offsetof(struct sge_eth_rx_stats, rx_bytes)},
+	{"checksum_offloads", offsetof(struct sge_eth_rx_stats, rx_cso)},
+	{"vlan_extractions", offsetof(struct sge_eth_rx_stats, vlan_ex)},
+	{"dropped_packets", offsetof(struct sge_eth_rx_stats, rx_drops)},
+};
+
+static const struct cxgbe_dev_xstats_name_off cxgbe_dev_txq_stats_strings[] = {
+	{"packets", offsetof(struct sge_eth_tx_stats, pkts)},
+	{"bytes", offsetof(struct sge_eth_tx_stats, tx_bytes)},
+	{"tso_requests", offsetof(struct sge_eth_tx_stats, tso)},
+	{"checksum_offloads", offsetof(struct sge_eth_tx_stats, tx_cso)},
+	{"vlan_insertions", offsetof(struct sge_eth_tx_stats, vlan_ins)},
+	{"packet_mapping_errors",
+	 offsetof(struct sge_eth_tx_stats, mapping_err)},
+	{"coalesced_wrs", offsetof(struct sge_eth_tx_stats, coal_wr)},
+	{"coalesced_packets", offsetof(struct sge_eth_tx_stats, coal_pkts)},
+};
+
+static const struct cxgbe_dev_xstats_name_off cxgbe_dev_port_stats_strings[] = {
+	{"tx_bytes", offsetof(struct port_stats, tx_octets)},
+	{"tx_packets", offsetof(struct port_stats, tx_frames)},
+	{"tx_broadcast_packets", offsetof(struct port_stats, tx_bcast_frames)},
+	{"tx_multicast_packets", offsetof(struct port_stats, tx_mcast_frames)},
+	{"tx_unicast_packets", offsetof(struct port_stats, tx_ucast_frames)},
+	{"tx_error_packets", offsetof(struct port_stats, tx_error_frames)},
+	{"tx_size_64_packets", offsetof(struct port_stats, tx_frames_64)},
+	{"tx_size_65_to_127_packets",
+	 offsetof(struct port_stats, tx_frames_65_127)},
+	{"tx_size_128_to_255_packets",
+	 offsetof(struct port_stats, tx_frames_128_255)},
+	{"tx_size_256_to_511_packets",
+	 offsetof(struct port_stats, tx_frames_256_511)},
+	{"tx_size_512_to_1023_packets",
+	 offsetof(struct port_stats, tx_frames_512_1023)},
+	{"tx_size_1024_to_1518_packets",
+	 offsetof(struct port_stats, tx_frames_1024_1518)},
+	{"tx_size_1519_to_max_packets",
+	 offsetof(struct port_stats, tx_frames_1519_max)},
+	{"tx_drop_packets", offsetof(struct port_stats, tx_drop)},
+	{"tx_pause_frames", offsetof(struct port_stats, tx_pause)},
+	{"tx_ppp_pri0_packets", offsetof(struct port_stats, tx_ppp0)},
+	{"tx_ppp_pri1_packets", offsetof(struct port_stats, tx_ppp1)},
+	{"tx_ppp_pri2_packets", offsetof(struct port_stats, tx_ppp2)},
+	{"tx_ppp_pri3_packets", offsetof(struct port_stats, tx_ppp3)},
+	{"tx_ppp_pri4_packets", offsetof(struct port_stats, tx_ppp4)},
+	{"tx_ppp_pri5_packets", offsetof(struct port_stats, tx_ppp5)},
+	{"tx_ppp_pri6_packets", offsetof(struct port_stats, tx_ppp6)},
+	{"tx_ppp_pri7_packets", offsetof(struct port_stats, tx_ppp7)},
+	{"rx_bytes", offsetof(struct port_stats, rx_octets)},
+	{"rx_packets", offsetof(struct port_stats, rx_frames)},
+	{"rx_broadcast_packets", offsetof(struct port_stats, rx_bcast_frames)},
+	{"rx_multicast_packets", offsetof(struct port_stats, rx_mcast_frames)},
+	{"rx_unicast_packets", offsetof(struct port_stats, rx_ucast_frames)},
+	{"rx_too_long_packets", offsetof(struct port_stats, rx_too_long)},
+	{"rx_jabber_packets", offsetof(struct port_stats, rx_jabber)},
+	{"rx_fcs_error_packets", offsetof(struct port_stats, rx_fcs_err)},
+	{"rx_length_error_packets", offsetof(struct port_stats, rx_len_err)},
+	{"rx_symbol_error_packets",
+	 offsetof(struct port_stats, rx_symbol_err)},
+	{"rx_short_packets", offsetof(struct port_stats, rx_runt)},
+	{"rx_size_64_packets", offsetof(struct port_stats, rx_frames_64)},
+	{"rx_size_65_to_127_packets",
+	 offsetof(struct port_stats, rx_frames_65_127)},
+	{"rx_size_128_to_255_packets",
+	 offsetof(struct port_stats, rx_frames_128_255)},
+	{"rx_size_256_to_511_packets",
+	 offsetof(struct port_stats, rx_frames_256_511)},
+	{"rx_size_512_to_1023_packets",
+	 offsetof(struct port_stats, rx_frames_512_1023)},
+	{"rx_size_1024_to_1518_packets",
+	 offsetof(struct port_stats, rx_frames_1024_1518)},
+	{"rx_size_1519_to_max_packets",
+	 offsetof(struct port_stats, rx_frames_1519_max)},
+	{"rx_pause_packets", offsetof(struct port_stats, rx_pause)},
+	{"rx_ppp_pri0_packets", offsetof(struct port_stats, rx_ppp0)},
+	{"rx_ppp_pri1_packets", offsetof(struct port_stats, rx_ppp1)},
+	{"rx_ppp_pri2_packets", offsetof(struct port_stats, rx_ppp2)},
+	{"rx_ppp_pri3_packets", offsetof(struct port_stats, rx_ppp3)},
+	{"rx_ppp_pri4_packets", offsetof(struct port_stats, rx_ppp4)},
+	{"rx_ppp_pri5_packets", offsetof(struct port_stats, rx_ppp5)},
+	{"rx_ppp_pri6_packets", offsetof(struct port_stats, rx_ppp6)},
+	{"rx_ppp_pri7_packets", offsetof(struct port_stats, rx_ppp7)},
+	{"rx_bg0_dropped_packets", offsetof(struct port_stats, rx_ovflow0)},
+	{"rx_bg1_dropped_packets", offsetof(struct port_stats, rx_ovflow1)},
+	{"rx_bg2_dropped_packets", offsetof(struct port_stats, rx_ovflow2)},
+	{"rx_bg3_dropped_packets", offsetof(struct port_stats, rx_ovflow3)},
+	{"rx_bg0_truncated_packets", offsetof(struct port_stats, rx_trunc0)},
+	{"rx_bg1_truncated_packets", offsetof(struct port_stats, rx_trunc1)},
+	{"rx_bg2_truncated_packets", offsetof(struct port_stats, rx_trunc2)},
+	{"rx_bg3_truncated_packets", offsetof(struct port_stats, rx_trunc3)},
+};
+
+#define CXGBE_NB_RXQ_STATS RTE_DIM(cxgbe_dev_rxq_stats_strings)
+#define CXGBE_NB_TXQ_STATS RTE_DIM(cxgbe_dev_txq_stats_strings)
+#define CXGBE_NB_PORT_STATS RTE_DIM(cxgbe_dev_port_stats_strings)
+
+static u16 cxgbe_dev_xstats_count(struct port_info *pi)
+{
+	return CXGBE_NB_PORT_STATS +
+	       (pi->n_tx_qsets * CXGBE_NB_TXQ_STATS) +
+	       (pi->n_rx_qsets * CXGBE_NB_RXQ_STATS);
+}
+
+static int cxgbe_dev_xstats(struct rte_eth_dev *dev,
+			    struct rte_eth_xstat_name *xstats_names,
+			    struct rte_eth_xstat *xstats, unsigned int size)
+{
+	const struct cxgbe_dev_xstats_name_off *xstats_str;
+	struct port_info *pi = dev->data->dev_private;
+	struct adapter *adap = pi->adapter;
+	struct sge *s = &adap->sge;
+	struct port_stats ps;
+	u16 count, i, qid;
+	u64 *stats_ptr;
+
+	count = cxgbe_dev_xstats_count(pi);
+	if (size < count)
+		return count;
+
+	/* port stats */
+	cxgbe_stats_get(pi, &ps);
+
+	count = 0;
+	xstats_str = cxgbe_dev_port_stats_strings;
+	for (i = 0; i < CXGBE_NB_PORT_STATS; i++, count++) {
+		if (xstats_names != NULL)
+			snprintf(xstats_names[count].name,
+				 sizeof(xstats_names[count].name),
+				 "%s", xstats_str[i].name);
+		if (xstats != NULL) {
+			stats_ptr = RTE_PTR_ADD(&ps,
+						xstats_str[i].offset);
+			xstats[count].value = *stats_ptr;
+			xstats[count].id = count;
+		}
+	}
+
+	/* per-txq stats */
+	xstats_str = cxgbe_dev_txq_stats_strings;
+	for (qid = 0; qid < pi->n_tx_qsets; qid++) {
+		struct sge_eth_txq *txq = &s->ethtxq[pi->first_txqset + qid];
+
+		for (i = 0; i < CXGBE_NB_TXQ_STATS; i++, count++) {
+			if (xstats_names != NULL)
+				snprintf(xstats_names[count].name,
+					 sizeof(xstats_names[count].name),
+					 "tx_q%u_%s",
+					 qid, xstats_str[i].name);
+			if (xstats != NULL) {
+				stats_ptr = RTE_PTR_ADD(&txq->stats,
+							xstats_str[i].offset);
+				xstats[count].value = *stats_ptr;
+				xstats[count].id = count;
+			}
+		}
+	}
+
+	/* per-rxq stats */
+	xstats_str = cxgbe_dev_rxq_stats_strings;
+	for (qid = 0; qid < pi->n_rx_qsets; qid++) {
+		struct sge_eth_rxq *rxq = &s->ethrxq[pi->first_rxqset + qid];
+
+		for (i = 0; i < CXGBE_NB_RXQ_STATS; i++, count++) {
+			if (xstats_names != NULL)
+				snprintf(xstats_names[count].name,
+					 sizeof(xstats_names[count].name),
+					 "rx_q%u_%s",
+					 qid, xstats_str[i].name);
+			if (xstats != NULL) {
+				stats_ptr = RTE_PTR_ADD(&rxq->stats,
+							xstats_str[i].offset);
+				xstats[count].value = *stats_ptr;
+				xstats[count].id = count;
+			}
+		}
+	}
+
+	return count;
+}
+
+/* Get port extended statistics by ID. */
+static int cxgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev,
+				      const uint64_t *ids, uint64_t *values,
+				      unsigned int n)
+{
+	struct port_info *pi = dev->data->dev_private;
+	struct rte_eth_xstat *xstats_copy;
+	u16 count, i;
+	int ret = 0;
+
+	count = cxgbe_dev_xstats_count(pi);
+	if (ids == NULL || values == NULL)
+		return count;
+
+	xstats_copy = rte_calloc(NULL, count, sizeof(*xstats_copy), 0);
+	if (xstats_copy == NULL)
+		return -ENOMEM;
+
+	cxgbe_dev_xstats(dev, NULL, xstats_copy, count);
+
+	for (i = 0; i < n; i++) {
+		if (ids[i] >= count) {
+			ret = -EINVAL;
+			goto out_err;
+		}
+		values[i] = xstats_copy[ids[i]].value;
+	}
+
+	ret = n;
+
+out_err:
+	rte_free(xstats_copy);
+	return ret;
+}
+
+/* Get names of port extended statistics by ID. */
+static int cxgbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
+					    struct rte_eth_xstat_name *xnames,
+					    const uint64_t *ids, unsigned int n)
+{
+	struct port_info *pi = dev->data->dev_private;
+	struct rte_eth_xstat_name *xnames_copy;
+	u16 count, i;
+	int ret = 0;
+
+	count = cxgbe_dev_xstats_count(pi);
+	if (ids == NULL || xnames == NULL)
+		return count;
+
+	xnames_copy = rte_calloc(NULL, count, sizeof(*xnames_copy), 0);
+	if (xnames_copy == NULL)
+		return -ENOMEM;
+
+	cxgbe_dev_xstats(dev, xnames_copy, NULL, count);
+
+	for (i = 0; i < n; i++) {
+		if (ids[i] >= count) {
+			ret = -EINVAL;
+			goto out_err;
+		}
+		rte_strlcpy(xnames[i].name, xnames_copy[ids[i]].name,
+			    sizeof(xnames[i].name));
+	}
+
+	ret = n;
+
+out_err:
+	rte_free(xnames_copy);
+	return ret;
+}
+
+/* Get port extended statistics. */
+static int cxgbe_dev_xstats_get(struct rte_eth_dev *dev,
+				struct rte_eth_xstat *xstats, unsigned int n)
+{
+	return cxgbe_dev_xstats(dev, NULL, xstats, n);
+}
+
+/* Get names of port extended statistics. */
+static int cxgbe_dev_xstats_get_names(struct rte_eth_dev *dev,
+				      struct rte_eth_xstat_name *xstats_names,
+				      unsigned int n)
+{
+	return cxgbe_dev_xstats(dev, xstats_names, NULL, n);
+}
+
+/* Reset port extended statistics. */
+static int cxgbe_dev_xstats_reset(struct rte_eth_dev *dev)
+{
+	return cxgbe_dev_stats_reset(dev);
 }
 
 static int cxgbe_flow_ctrl_get(struct rte_eth_dev *eth_dev,
@@ -1351,6 +1626,11 @@ static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.flow_ops_get           = cxgbe_dev_flow_ops_get,
 	.stats_get		= cxgbe_dev_stats_get,
 	.stats_reset		= cxgbe_dev_stats_reset,
+	.xstats_get             = cxgbe_dev_xstats_get,
+	.xstats_get_by_id       = cxgbe_dev_xstats_get_by_id,
+	.xstats_get_names       = cxgbe_dev_xstats_get_names,
+	.xstats_get_names_by_id = cxgbe_dev_xstats_get_names_by_id,
+	.xstats_reset           = cxgbe_dev_xstats_reset,
 	.flow_ctrl_get		= cxgbe_flow_ctrl_get,
 	.flow_ctrl_set		= cxgbe_flow_ctrl_set,
 	.get_eeprom_length	= cxgbe_get_eeprom_length,
