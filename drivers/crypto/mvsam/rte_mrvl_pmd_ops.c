@@ -793,7 +793,7 @@ mrvl_crypto_pmd_sym_session_clear(struct rte_cryptodev *dev,
 			MRVL_LOG(ERR, "Error while destroying session!");
 		}
 
-		memset(sess, 0, sizeof(struct mrvl_crypto_session));
+		memset(mrvl_sess, 0, sizeof(struct mrvl_crypto_session));
 		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
 		set_sym_session_private_data(sess, index, NULL);
 		rte_mempool_put(sess_mp, sess_priv);
