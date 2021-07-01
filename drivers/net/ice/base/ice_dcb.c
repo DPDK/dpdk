@@ -1524,7 +1524,8 @@ ice_aq_query_port_ets(struct ice_port_info *pi,
 		return ICE_ERR_PARAM;
 	cmd = &desc.params.port_ets;
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_query_port_ets);
-	cmd->port_teid = pi->root->info.node_teid;
+	if (pi->root)
+		cmd->port_teid = pi->root->info.node_teid;
 
 	status = ice_aq_send_cmd(pi->hw, &desc, buf, buf_size, cd);
 	return status;
