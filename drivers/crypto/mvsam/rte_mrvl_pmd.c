@@ -360,6 +360,14 @@ mrvl_crypto_set_aead_session_parameters(struct mrvl_crypto_session *sess,
 	sess->sam_sess_params.cipher_mode =
 		aead_map[aead_xform->aead.algo].cipher_mode;
 
+	if (sess->sam_sess_params.cipher_mode == SAM_CIPHER_GCM) {
+		/* IV must include nonce for all counter modes */
+		sess->cipher_iv_offset = aead_xform->cipher.iv.offset;
+
+		/* Set order of authentication then encryption to 0 in GCM */
+		sess->sam_sess_params.u.basic.auth_then_encrypt = 0;
+	}
+
 	/* Assume IV will be passed together with data. */
 	sess->sam_sess_params.cipher_iv = NULL;
 
