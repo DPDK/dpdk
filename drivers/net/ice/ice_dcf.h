@@ -6,6 +6,7 @@
 #define _ICE_DCF_H_
 
 #include <ethdev_driver.h>
+#include <rte_tm_driver.h>
 
 #include <iavf_prototype.h>
 #include <iavf_adminq_cmd.h>
@@ -30,6 +31,49 @@ struct dcf_virtchnl_cmd {
 	volatile int pending;
 };
 
+struct ice_dcf_tm_shaper_profile {
+	TAILQ_ENTRY(ice_dcf_tm_shaper_profile) node;
+	uint32_t shaper_profile_id;
+	uint32_t reference_count;
+	struct rte_tm_shaper_params profile;
+};
+
+TAILQ_HEAD(ice_dcf_shaper_profile_list, ice_dcf_tm_shaper_profile);
+
+/* Struct to store Traffic Manager node configuration. */
+struct ice_dcf_tm_node {
+	TAILQ_ENTRY(ice_dcf_tm_node) node;
+	uint32_t id;
+	uint32_t tc;
+	uint32_t priority;
+	uint32_t weight;
+	uint32_t reference_count;
+	struct ice_dcf_tm_node *parent;
+	struct ice_dcf_tm_shaper_profile *shaper_profile;
+	struct rte_tm_node_params params;
+};
+
+TAILQ_HEAD(ice_dcf_tm_node_list, ice_dcf_tm_node);
+
+/* node type of Traffic Manager */
+enum ice_dcf_tm_node_type {
+	ICE_DCF_TM_NODE_TYPE_PORT,
+	ICE_DCF_TM_NODE_TYPE_TC,
+	ICE_DCF_TM_NODE_TYPE_VSI,
+	ICE_DCF_TM_NODE_TYPE_MAX,
+};
+
+/* Struct to store all the Traffic Manager configuration. */
+struct ice_dcf_tm_conf {
+	struct ice_dcf_shaper_profile_list shaper_profile_list;
+	struct ice_dcf_tm_node *root; /* root node - port */
+	struct ice_dcf_tm_node_list tc_list; /* node list for all the TCs */
+	struct ice_dcf_tm_node_list vsi_list; /* node list for all the queues */
+	uint32_t nb_tc_node;
+	uint32_t nb_vsi_node;
+	bool committed;
+};
+
 struct ice_dcf_hw {
 	struct iavf_hw avf;
 
@@ -45,6 +89,8 @@ struct ice_dcf_hw {
 	uint16_t *vf_vsi_map;
 	uint16_t pf_vsi_id;
 
+	struct ice_dcf_tm_conf tm_conf;
+	struct ice_aqc_port_ets_elem *ets_config;
 	struct virtchnl_version_info virtchnl_version;
 	struct virtchnl_vf_resource *vf_res; /* VF resource */
 	struct virtchnl_vsi_resource *vsi_res; /* LAN VSI */
@@ -83,5 +129,7 @@ int ice_dcf_query_stats(struct ice_dcf_hw *hw,
 int ice_dcf_add_del_all_mac_addr(struct ice_dcf_hw *hw, bool add);
 int ice_dcf_link_update(struct rte_eth_dev *dev,
 		    __rte_unused int wait_to_complete);
+void ice_dcf_tm_conf_init(struct rte_eth_dev *dev);
+void ice_dcf_tm_conf_uninit(struct rte_eth_dev *dev);
 
 #endif /* _ICE_DCF_H_ */

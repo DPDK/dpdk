@@ -622,6 +622,7 @@ ice_dcf_dev_stop(struct rte_eth_dev *dev)
 	ice_dcf_add_del_all_mac_addr(&dcf_ad->real_hw, false);
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	ad->pf.adapter_stopped = 1;
+	dcf_ad->real_hw.tm_conf.committed = false;
 
 	return 0;
 }
@@ -994,6 +995,18 @@ ice_dcf_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static int
+ice_dcf_tm_ops_get(struct rte_eth_dev *dev __rte_unused,
+		void *arg)
+{
+	if (!arg)
+		return -EINVAL;
+
+	*(const void **)arg = &ice_dcf_tm_ops;
+
+	return 0;
+}
+
 static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.dev_start               = ice_dcf_dev_start,
 	.dev_stop                = ice_dcf_dev_stop,
@@ -1018,6 +1031,7 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.flow_ops_get            = ice_dcf_dev_flow_ops_get,
 	.udp_tunnel_port_add	 = ice_dcf_dev_udp_tunnel_port_add,
 	.udp_tunnel_port_del	 = ice_dcf_dev_udp_tunnel_port_del,
+	.tm_ops_get              = ice_dcf_tm_ops_get,
 };
 
 static int

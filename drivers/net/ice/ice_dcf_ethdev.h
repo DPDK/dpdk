@@ -7,6 +7,8 @@
 
 #include "base/ice_common.h"
 #include "base/ice_adminq_cmd.h"
+#include "base/ice_dcb.h"
+#include "base/ice_sched.h"
 
 #include "ice_ethdev.h"
 #include "ice_dcf.h"
@@ -52,6 +54,7 @@ struct ice_dcf_vf_repr {
 	struct ice_dcf_vlan outer_vlan_info; /* DCF always handle outer VLAN */
 };
 
+extern const struct rte_tm_ops ice_dcf_tm_ops;
 void ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
 				 uint8_t *msg, uint16_t msglen);
 int ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev);

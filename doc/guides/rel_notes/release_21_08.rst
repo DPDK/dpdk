@@ -67,6 +67,7 @@ New Features
     features. When the HW offload features are configured to be used, the
     offload paths are chosen automatically. In parallel the support for HW
     offload features was removed from the legacy AVX2 paths.
+  * Added Tx QoS TC bandwidth configuration in DCF.
 
 * **Added support for Marvell CN10K SoC ethernet device.**
 

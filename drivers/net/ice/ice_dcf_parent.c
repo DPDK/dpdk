@@ -265,6 +265,29 @@ ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
 }
 
 static int
+ice_dcf_query_port_ets(struct ice_hw *parent_hw, struct ice_dcf_hw *real_hw)
+{
+	int ret;
+
+	real_hw->ets_config = (struct ice_aqc_port_ets_elem *)
+			ice_malloc(real_hw, sizeof(*real_hw->ets_config));
+	if (!real_hw->ets_config)
+		return ICE_ERR_NO_MEMORY;
+
+	ret = ice_aq_query_port_ets(parent_hw->port_info,
+			real_hw->ets_config, sizeof(*real_hw->ets_config),
+			NULL);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "DCF Query Port ETS failed");
+		rte_free(real_hw->ets_config);
+		real_hw->ets_config = NULL;
+		return ret;
+	}
+
+	return ICE_SUCCESS;
+}
+
+static int
 ice_dcf_init_parent_hw(struct ice_hw *hw)
 {
 	struct ice_aqc_get_phy_caps_data *pcaps;
@@ -484,6 +507,15 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 		PMD_INIT_LOG(ERR, "failed to init the DCF parent hardware with error %d",
 			     err);
 		return err;
+	}
+
+	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS) {
+		err = ice_dcf_query_port_ets(parent_hw, hw);
+		if (err) {
+			PMD_INIT_LOG(ERR, "failed to query port ets with error %d",
+				     err);
+			goto uninit_hw;
+		}
 	}
 
 	err = ice_dcf_load_pkg(parent_hw);
