@@ -629,8 +629,8 @@ mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 	attr.wq_umem_id = eqp->umem_obj->umem_id;
 	attr.wq_umem_offset = 0;
 	attr.dbr_umem_id = eqp->umem_obj->umem_id;
-	attr.dbr_address = (1 << log_desc_n) * MLX5_WSEG_SIZE;
 	attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
+	attr.dbr_address = RTE_BIT64(log_desc_n) * MLX5_WSEG_SIZE;
 	eqp->sw_qp = mlx5_devx_cmd_create_qp(priv->ctx, &attr);
 	if (!eqp->sw_qp) {
 		DRV_LOG(ERR, "Failed to create SW QP(%u).", rte_errno);
