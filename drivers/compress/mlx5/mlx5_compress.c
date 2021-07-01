@@ -207,7 +207,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		return -rte_errno;
 	}
 	dev->data->queue_pairs[qp_id] = qp;
-	opaq_buf = rte_calloc(__func__, 1u << log_ops_n,
+	opaq_buf = rte_calloc(__func__, (size_t)1 << log_ops_n,
 			      sizeof(struct mlx5_gga_compress_opaque),
 			      sizeof(struct mlx5_gga_compress_opaque));
 	if (opaq_buf == NULL) {
