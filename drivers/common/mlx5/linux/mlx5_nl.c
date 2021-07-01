@@ -189,8 +189,8 @@ int
 mlx5_nl_init(int protocol)
 {
 	int fd;
-	int sndbuf_size = MLX5_SEND_BUF_SIZE;
-	int rcvbuf_size = MLX5_RECV_BUF_SIZE;
+	int buf_size;
+	socklen_t opt_size;
 	struct sockaddr_nl local = {
 		.nl_family = AF_NETLINK,
 	};
@@ -201,15 +201,35 @@ mlx5_nl_init(int protocol)
 		rte_errno = errno;
 		return -rte_errno;
 	}
-	ret = setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(int));
+	opt_size = sizeof(buf_size);
+	ret = getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &buf_size, &opt_size);
 	if (ret == -1) {
 		rte_errno = errno;
 		goto error;
 	}
-	ret = setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(int));
+	DRV_LOG(DEBUG, "Netlink socket send buffer: %d", buf_size);
+	if (buf_size < MLX5_SEND_BUF_SIZE) {
+		ret = setsockopt(fd, SOL_SOCKET, SO_SNDBUF,
+				 &buf_size, sizeof(buf_size));
+		if (ret == -1) {
+			rte_errno = errno;
+			goto error;
+		}
+	}
+	opt_size = sizeof(buf_size);
+	ret = getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &buf_size, &opt_size);
 	if (ret == -1) {
 		rte_errno = errno;
 		goto error;
+	}
+	DRV_LOG(DEBUG, "Netlink socket recv buffer: %d", buf_size);
+	if (buf_size < MLX5_RECV_BUF_SIZE) {
+		ret = setsockopt(fd, SOL_SOCKET, SO_RCVBUF,
+				 &buf_size, sizeof(buf_size));
+		if (ret == -1) {
+			rte_errno = errno;
+			goto error;
+		}
 	}
 	ret = bind(fd, (struct sockaddr *)&local, sizeof(local));
 	if (ret == -1) {
@@ -332,11 +352,7 @@ mlx5_nl_recv(int nlsk_fd, uint32_t sn, int (*cb)(struct nlmsghdr *, void *arg),
 	     void *arg)
 {
 	struct sockaddr_nl sa;
-	void *buf = mlx5_malloc(0, MLX5_RECV_BUF_SIZE, 0, SOCKET_ID_ANY);
-	struct iovec iov = {
-		.iov_base = buf,
-		.iov_len = MLX5_RECV_BUF_SIZE,
-	};
+	struct iovec iov;
 	struct msghdr msg = {
 		.msg_name = &sa,
 		.msg_namelen = sizeof(sa),
@@ -344,18 +360,43 @@ mlx5_nl_recv(int nlsk_fd, uint32_t sn, int (*cb)(struct nlmsghdr *, void *arg),
 		/* One message at a time */
 		.msg_iovlen = 1,
 	};
+	void *buf = NULL;
 	int multipart = 0;
 	int ret = 0;
 
-	if (!buf) {
-		rte_errno = ENOMEM;
-		return -rte_errno;
-	}
 	do {
 		struct nlmsghdr *nh;
-		int recv_bytes = 0;
+		int recv_bytes;
 
 		do {
+			/* Query length of incoming message. */
+			iov.iov_base = NULL;
+			iov.iov_len = 0;
+			recv_bytes = recvmsg(nlsk_fd, &msg,
+					     MSG_PEEK | MSG_TRUNC);
+			if (recv_bytes < 0) {
+				rte_errno = errno;
+				ret = -rte_errno;
+				goto exit;
+			}
+			if (recv_bytes == 0) {
+				rte_errno = ENODATA;
+				ret = -rte_errno;
+				goto exit;
+			}
+			/* Allocate buffer to fetch the message. */
+			if (recv_bytes < MLX5_RECV_BUF_SIZE)
+				recv_bytes = MLX5_RECV_BUF_SIZE;
+			mlx5_free(buf);
+			buf = mlx5_malloc(0, recv_bytes, 0, SOCKET_ID_ANY);
+			if (!buf) {
+				rte_errno = ENOMEM;
+				ret = -rte_errno;
+				goto exit;
+			}
+			/* Fetch the message. */
+			iov.iov_base = buf;
+			iov.iov_len = recv_bytes;
 			recv_bytes = recvmsg(nlsk_fd, &msg, 0);
 			if (recv_bytes == -1) {
 				rte_errno = errno;
