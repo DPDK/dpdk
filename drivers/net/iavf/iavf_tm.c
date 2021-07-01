@@ -655,6 +655,7 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 	struct virtchnl_queue_tc_mapping *q_tc_mapping;
 	struct iavf_tm_node_list *queue_list = &vf->tm_conf.queue_list;
 	struct iavf_tm_node *tm_node;
+	struct iavf_qtc_map *qtc_map;
 	uint16_t size;
 	int index = 0, node_committed = 0;
 	int i, ret_val = IAVF_SUCCESS;
@@ -690,6 +691,7 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 	q_tc_mapping->vsi_id = vf->vsi.vsi_id;
 	q_tc_mapping->num_tc = vf->qos_cap->num_elem;
 	q_tc_mapping->num_queue_pairs = vf->num_queue_pairs;
+
 	TAILQ_FOREACH(tm_node, queue_list, node) {
 		if (tm_node->tc >= q_tc_mapping->num_tc) {
 			PMD_DRV_LOG(ERR, "TC%d is not enabled", tm_node->tc);
@@ -707,15 +709,26 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 		goto fail_clear;
 	}
 
+	/* store the queue TC mapping info */
+	qtc_map = rte_zmalloc("qtc_map",
+		sizeof(struct iavf_qtc_map) * q_tc_mapping->num_tc, 0);
+	if (!qtc_map)
+		return IAVF_ERR_NO_MEMORY;
+
 	for (i = 0; i < q_tc_mapping->num_tc; i++) {
 		q_tc_mapping->tc[i].req.start_queue_id = index;
 		index += q_tc_mapping->tc[i].req.queue_count;
+		qtc_map[i].tc = i;
+		qtc_map[i].start_queue_id =
+			q_tc_mapping->tc[i].req.start_queue_id;
+		qtc_map[i].queue_count = q_tc_mapping->tc[i].req.queue_count;
 	}
 
 	ret_val = iavf_set_q_tc_map(dev, q_tc_mapping, size);
 	if (ret_val)
 		goto fail_clear;
 
+	vf->qtc_map = qtc_map;
 	vf->tm_conf.committed = true;
 	return ret_val;
 

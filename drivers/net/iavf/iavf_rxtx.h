@@ -252,6 +252,7 @@ struct iavf_tx_queue {
 #define IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1	BIT(0)
 #define IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2	BIT(1)
 	uint8_t vlan_flag;
+	uint8_t tc;
 };
 
 /* Offload features */

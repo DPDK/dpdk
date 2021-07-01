@@ -785,6 +785,22 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		ad->tx_vec_allowed = false;
 	}
 
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS &&
+	    vf->tm_conf.committed) {
+		int tc;
+		for (tc = 0; tc < vf->qos_cap->num_elem; tc++) {
+			if (txq->queue_id >= vf->qtc_map[tc].start_queue_id &&
+			    txq->queue_id < (vf->qtc_map[tc].start_queue_id +
+			    vf->qtc_map[tc].queue_count))
+				break;
+		}
+		if (tc >= vf->qos_cap->num_elem) {
+			PMD_INIT_LOG(ERR, "Queue TC mapping is not correct");
+			return -EINVAL;
+		}
+		txq->tc = tc;
+	}
+
 	return 0;
 }
 
@@ -2342,6 +2358,27 @@ end_of_tx:
 	return nb_tx;
 }
 
+/* Check if the packet with vlan user priority is transmitted in the
+ * correct queue.
+ */
+static int
+iavf_check_vlan_up2tc(struct iavf_tx_queue *txq, struct rte_mbuf *m)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[txq->port_id];
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	uint16_t up;
+
+	up = m->vlan_tci >> IAVF_VLAN_TAG_PCP_OFFSET;
+
+	if (!(vf->qos_cap->cap[txq->tc].tc_prio & BIT(up))) {
+		PMD_TX_LOG(ERR, "packet with vlan pcp %u cannot transmit in queue %u\n",
+			up, txq->queue_id);
+		return -1;
+	} else {
+		return 0;
+	}
+}
+
 /* TX prep functions */
 uint16_t
 iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
@@ -2350,6 +2387,9 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	int i, ret;
 	uint64_t ol_flags;
 	struct rte_mbuf *m;
+	struct iavf_tx_queue *txq = tx_queue;
+	struct rte_eth_dev *dev = &rte_eth_devices[txq->port_id];
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
 	for (i = 0; i < nb_pkts; i++) {
 		m = tx_pkts[i];
@@ -2384,6 +2424,15 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		if (ret != 0) {
 			rte_errno = -ret;
 			return i;
+		}
+
+		if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS &&
+		    ol_flags & (PKT_RX_VLAN_STRIPPED | PKT_RX_VLAN)) {
+			ret = iavf_check_vlan_up2tc(txq, m);
+			if (ret != 0) {
+				rte_errno = -ret;
+				return i;
+			}
 		}
 	}
 

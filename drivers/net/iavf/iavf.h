@@ -86,6 +86,8 @@
 
 #define IAVF_BITS_PER_BYTE 8
 
+#define IAVF_VLAN_TAG_PCP_OFFSET 13
+
 struct iavf_adapter;
 struct iavf_rx_queue;
 struct iavf_tx_queue;
@@ -165,6 +167,13 @@ struct iavf_tm_conf {
 	bool committed;
 };
 
+/* Struct to store queue TC mapping. Queue is continuous in one TC */
+struct iavf_qtc_map {
+	uint8_t	tc;
+	uint16_t start_queue_id;
+	uint16_t queue_count;
+};
+
 /* Structure to store private data specific for VF instance. */
 struct iavf_info {
 	uint16_t num_queue_pairs;
@@ -213,6 +222,7 @@ struct iavf_info {
 	bool lv_enabled;
 
 	struct virtchnl_qos_cap_list *qos_cap;
+	struct iavf_qtc_map *qtc_map;
 	struct iavf_tm_conf tm_conf;
 };
 
