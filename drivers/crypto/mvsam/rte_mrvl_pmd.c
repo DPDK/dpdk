@@ -924,14 +924,14 @@ mrvl_pmd_parse_input_args(struct mrvl_pmd_init_params *params,
 		ret = rte_kvargs_process(kvlist,
 					 RTE_CRYPTODEV_PMD_NAME_ARG,
 					 &parse_name_arg,
-					 &params->common);
+					 &params->common.name);
 		if (ret < 0)
 			goto free_kvlist;
 
 		ret = rte_kvargs_process(kvlist,
 					 MRVL_PMD_MAX_NB_SESS_ARG,
 					 &parse_integer_arg,
-					 params);
+					 &params->max_nb_sessions);
 		if (ret < 0)
 			goto free_kvlist;
 
