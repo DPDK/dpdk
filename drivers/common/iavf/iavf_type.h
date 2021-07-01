@@ -141,6 +141,8 @@ enum iavf_debug_mask {
 #define IAVF_PHY_LED_MODE_MASK			0xFFFF
 #define IAVF_PHY_LED_MODE_ORIG			0x80000000
 
+#define IAVF_MAX_TRAFFIC_CLASS	8
+
 /* Memory types */
 enum iavf_memset_type {
 	IAVF_NONDMA_MEM = 0,
