@@ -60,6 +60,10 @@ struct ice_dcf_hw {
 	uint16_t nb_msix;
 	uint16_t rxq_map[16];
 	struct virtchnl_eth_stats eth_stats_offset;
+
+	/* Link status */
+	bool link_up;
+	uint32_t link_speed;
 };
 
 int ice_dcf_execute_virtchnl_cmd(struct ice_dcf_hw *hw,
@@ -77,5 +81,7 @@ int ice_dcf_disable_queues(struct ice_dcf_hw *hw);
 int ice_dcf_query_stats(struct ice_dcf_hw *hw,
 			struct virtchnl_eth_stats *pstats);
 int ice_dcf_add_del_all_mac_addr(struct ice_dcf_hw *hw, bool add);
+int ice_dcf_link_update(struct rte_eth_dev *dev,
+		    __rte_unused int wait_to_complete);
 
 #endif /* _ICE_DCF_H_ */

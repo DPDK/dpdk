@@ -881,11 +881,59 @@ ice_dcf_dev_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int
-ice_dcf_link_update(__rte_unused struct rte_eth_dev *dev,
+int
+ice_dcf_link_update(struct rte_eth_dev *dev,
 		    __rte_unused int wait_to_complete)
 {
-	return 0;
+	struct ice_dcf_adapter *ad = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &ad->real_hw;
+	struct rte_eth_link new_link;
+
+	memset(&new_link, 0, sizeof(new_link));
+
+	/* Only read status info stored in VF, and the info is updated
+	 * when receive LINK_CHANGE event from PF by virtchnl.
+	 */
+	switch (hw->link_speed) {
+	case 10:
+		new_link.link_speed = ETH_SPEED_NUM_10M;
+		break;
+	case 100:
+		new_link.link_speed = ETH_SPEED_NUM_100M;
+		break;
+	case 1000:
+		new_link.link_speed = ETH_SPEED_NUM_1G;
+		break;
+	case 10000:
+		new_link.link_speed = ETH_SPEED_NUM_10G;
+		break;
+	case 20000:
+		new_link.link_speed = ETH_SPEED_NUM_20G;
+		break;
+	case 25000:
+		new_link.link_speed = ETH_SPEED_NUM_25G;
+		break;
+	case 40000:
+		new_link.link_speed = ETH_SPEED_NUM_40G;
+		break;
+	case 50000:
+		new_link.link_speed = ETH_SPEED_NUM_50G;
+		break;
+	case 100000:
+		new_link.link_speed = ETH_SPEED_NUM_100G;
+		break;
+	default:
+		new_link.link_speed = ETH_SPEED_NUM_NONE;
+		break;
+	}
+
+	new_link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	new_link.link_status = hw->link_up ? ETH_LINK_UP :
+					     ETH_LINK_DOWN;
+	new_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+				ETH_LINK_SPEED_FIXED);
+
+	return rte_eth_linkstatus_set(dev, &new_link);
 }
 
 /* Add UDP tunneling port */

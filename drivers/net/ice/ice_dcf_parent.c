@@ -178,6 +178,44 @@ start_vsi_reset_thread(struct ice_dcf_hw *dcf_hw, bool vfr, uint16_t vf_id)
 	}
 }
 
+static uint32_t
+ice_dcf_convert_link_speed(enum virtchnl_link_speed virt_link_speed)
+{
+	uint32_t speed;
+
+	switch (virt_link_speed) {
+	case VIRTCHNL_LINK_SPEED_100MB:
+		speed = 100;
+		break;
+	case VIRTCHNL_LINK_SPEED_1GB:
+		speed = 1000;
+		break;
+	case VIRTCHNL_LINK_SPEED_10GB:
+		speed = 10000;
+		break;
+	case VIRTCHNL_LINK_SPEED_40GB:
+		speed = 40000;
+		break;
+	case VIRTCHNL_LINK_SPEED_20GB:
+		speed = 20000;
+		break;
+	case VIRTCHNL_LINK_SPEED_25GB:
+		speed = 25000;
+		break;
+	case VIRTCHNL_LINK_SPEED_2_5GB:
+		speed = 2500;
+		break;
+	case VIRTCHNL_LINK_SPEED_5GB:
+		speed = 5000;
+		break;
+	default:
+		speed = 0;
+		break;
+	}
+
+	return speed;
+}
+
 void
 ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
 			    uint8_t *msg, uint16_t msglen)
@@ -196,6 +234,19 @@ ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
 		break;
 	case VIRTCHNL_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
+		dcf_hw->link_up = pf_msg->event_data.link_event.link_status;
+		if (dcf_hw->vf_res->vf_cap_flags &
+			VIRTCHNL_VF_CAP_ADV_LINK_SPEED) {
+			dcf_hw->link_speed =
+				pf_msg->event_data.link_event_adv.link_speed;
+		} else {
+			enum virtchnl_link_speed speed;
+			speed = pf_msg->event_data.link_event.link_speed;
+			dcf_hw->link_speed = ice_dcf_convert_link_speed(speed);
+		}
+		ice_dcf_link_update(dcf_hw->eth_dev, 0);
+		rte_eth_dev_callback_process(dcf_hw->eth_dev,
+			RTE_ETH_EVENT_INTR_LSC, NULL);
 		break;
 	case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_PF_DRIVER_CLOSE event");
