@@ -747,22 +747,12 @@ static int cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
 	eth_stats->oerrors  = ps.tx_error_frames;
 
 	for (i = 0; i < pi->n_rx_qsets; i++) {
-		struct sge_eth_rxq *rxq =
-			&s->ethrxq[pi->first_rxqset + i];
+		struct sge_eth_rxq *rxq = &s->ethrxq[pi->first_rxqset + i];
 
-		eth_stats->q_ipackets[i] = rxq->stats.pkts;
-		eth_stats->q_ibytes[i] = rxq->stats.rx_bytes;
-		eth_stats->ipackets += eth_stats->q_ipackets[i];
-		eth_stats->ibytes += eth_stats->q_ibytes[i];
+		eth_stats->ipackets += rxq->stats.pkts;
+		eth_stats->ibytes += rxq->stats.rx_bytes;
 	}
 
-	for (i = 0; i < pi->n_tx_qsets; i++) {
-		struct sge_eth_txq *txq =
-			&s->ethtxq[pi->first_txqset + i];
-
-		eth_stats->q_opackets[i] = txq->stats.pkts;
-		eth_stats->q_obytes[i] = txq->stats.tx_bytes;
-	}
 	return 0;
 }
 
@@ -1692,8 +1682,6 @@ static int eth_cxgbe_dev_init(struct rte_eth_dev *eth_dev)
 		}
 		return 0;
 	}
-
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	snprintf(name, sizeof(name), "cxgbeadapter%d", eth_dev->data->port_id);
 	adapter = rte_zmalloc(name, sizeof(*adapter), 0);
