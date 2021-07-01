@@ -7342,6 +7342,8 @@ flow_dv_translate_item_mpls(void *matcher, void *key,
 			 MLX5_UDP_PORT_MPLS);
 		break;
 	case MLX5_FLOW_LAYER_GRE:
+		/* Fall-through. */
+	case MLX5_FLOW_LAYER_GRE_KEY:
 		MLX5_SET(fte_match_set_misc, misc_m, gre_protocol, 0xffff);
 		MLX5_SET(fte_match_set_misc, misc_v, gre_protocol,
 			 RTE_ETHER_TYPE_MPLS);
