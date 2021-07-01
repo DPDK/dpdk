@@ -467,7 +467,8 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 		VIRTCHNL_VF_OFFLOAD_REQ_QUEUES |
 		VIRTCHNL_VF_OFFLOAD_CRC |
 		VIRTCHNL_VF_OFFLOAD_VLAN_V2 |
-		VIRTCHNL_VF_LARGE_NUM_QPAIRS;
+		VIRTCHNL_VF_LARGE_NUM_QPAIRS |
+		VIRTCHNL_VF_OFFLOAD_QOS;
 
 	args.in_args = (uint8_t *)&caps;
 	args.in_args_size = sizeof(caps);
@@ -1547,6 +1548,59 @@ iavf_set_hena(struct iavf_adapter *adapter, uint64_t hena)
 		PMD_DRV_LOG(ERR,
 			    "Failed to execute command of OP_SET_RSS_HENA");
 
+	return err;
+}
+
+int
+iavf_get_qos_cap(struct iavf_adapter *adapter)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct iavf_cmd_info args;
+	uint32_t len;
+	int err;
+
+	args.ops = VIRTCHNL_OP_GET_QOS_CAPS;
+	args.in_args = NULL;
+	args.in_args_size = 0;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+	err = iavf_execute_vf_cmd(adapter, &args);
+
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_GET_VF_RESOURCE");
+		return -1;
+	}
+
+	len =  sizeof(struct virtchnl_qos_cap_list) +
+		IAVF_MAX_TRAFFIC_CLASS * sizeof(struct virtchnl_qos_cap_elem);
+
+	rte_memcpy(vf->qos_cap, args.out_buffer,
+		   RTE_MIN(args.out_size, len));
+
+	return 0;
+}
+
+int iavf_set_q_tc_map(struct rte_eth_dev *dev,
+		struct virtchnl_queue_tc_mapping *q_tc_mapping, uint16_t size)
+{
+	struct iavf_adapter *adapter =
+			IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_cmd_info args;
+	int err;
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL_OP_CONFIG_QUEUE_TC_MAP;
+	args.in_args = (uint8_t *)q_tc_mapping;
+	args.in_args_size = size;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "Failed to execute command of"
+			    " VIRTCHNL_OP_CONFIG_TC_MAP");
 	return err;
 }
 

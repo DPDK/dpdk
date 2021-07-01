@@ -61,6 +61,10 @@ New Features
   representing sub-domains of functionality. Each auxiliary device
   represents a part of its parent functionality.
 
+* **Updated Intel iavf driver.**
+
+  * Added Tx QoS VF queue TC mapping.
+
 * **Updated Intel ice driver.**
 
   * In AVX2 code, added the new RX and TX paths to use the HW offload

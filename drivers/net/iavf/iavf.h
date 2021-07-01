@@ -6,6 +6,8 @@
 #define _IAVF_ETHDEV_H_
 
 #include <rte_kvargs.h>
+#include <rte_tm_driver.h>
+
 #include <iavf_prototype.h>
 #include <iavf_adminq_cmd.h>
 #include <iavf_type.h>
@@ -82,6 +84,8 @@
 #define IAVF_RX_DESC_EXT_STATUS_FLEXBH_MASK  0x03
 #define IAVF_RX_DESC_EXT_STATUS_FLEXBH_FD_ID 0x01
 
+#define IAVF_BITS_PER_BYTE 8
+
 struct iavf_adapter;
 struct iavf_rx_queue;
 struct iavf_tx_queue;
@@ -127,6 +131,38 @@ enum iavf_aq_result {
 	IAVF_MSG_NON,      /* Read nothing from admin queue */
 	IAVF_MSG_SYS,      /* Read system msg from admin queue */
 	IAVF_MSG_CMD,      /* Read async command result */
+};
+
+/* Struct to store Traffic Manager node configuration. */
+struct iavf_tm_node {
+	TAILQ_ENTRY(iavf_tm_node) node;
+	uint32_t id;
+	uint32_t tc;
+	uint32_t priority;
+	uint32_t weight;
+	uint32_t reference_count;
+	struct iavf_tm_node *parent;
+	struct rte_tm_node_params params;
+};
+
+TAILQ_HEAD(iavf_tm_node_list, iavf_tm_node);
+
+/* node type of Traffic Manager */
+enum iavf_tm_node_type {
+	IAVF_TM_NODE_TYPE_PORT,
+	IAVF_TM_NODE_TYPE_TC,
+	IAVF_TM_NODE_TYPE_QUEUE,
+	IAVF_TM_NODE_TYPE_MAX,
+};
+
+/* Struct to store all the Traffic Manager configuration. */
+struct iavf_tm_conf {
+	struct iavf_tm_node *root; /* root node - vf vsi */
+	struct iavf_tm_node_list tc_list; /* node list for all the TCs */
+	struct iavf_tm_node_list queue_list; /* node list for all the queues */
+	uint32_t nb_tc_node;
+	uint32_t nb_queue_node;
+	bool committed;
 };
 
 /* Structure to store private data specific for VF instance. */
@@ -175,6 +211,9 @@ struct iavf_info {
 	struct iavf_fdir_info fdir; /* flow director info */
 	/* indicate large VF support enabled or not */
 	bool lv_enabled;
+
+	struct virtchnl_qos_cap_list *qos_cap;
+	struct iavf_tm_conf tm_conf;
 };
 
 #define IAVF_MAX_PKT_TYPE 1024
@@ -344,4 +383,11 @@ int iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 			uint32_t mc_addrs_num, bool add);
 int iavf_request_queues(struct iavf_adapter *adapter, uint16_t num);
 int iavf_get_max_rss_queue_region(struct iavf_adapter *adapter);
+int iavf_get_qos_cap(struct iavf_adapter *adapter);
+int iavf_set_q_tc_map(struct rte_eth_dev *dev,
+			struct virtchnl_queue_tc_mapping *q_tc_mapping,
+			uint16_t size);
+void iavf_tm_conf_init(struct rte_eth_dev *dev);
+void iavf_tm_conf_uninit(struct rte_eth_dev *dev);
+extern const struct rte_tm_ops iavf_tm_ops;
 #endif /* _IAVF_ETHDEV_H_ */
