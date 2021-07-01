@@ -2650,7 +2650,7 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 	},
 	{
-		.test_descr = "AES-192-CBC Encryption Scater gather",
+		.test_descr = "AES-192-CBC Encryption Scatter gather",
 		.test_data = &aes_test_data_10,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
