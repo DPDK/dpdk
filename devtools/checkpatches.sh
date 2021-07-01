@@ -126,6 +126,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# refrain from using RTE_LOG_REGISTER for drivers and libs
+	awk -v FOLDERS='lib drivers' \
+		-v EXPRESSIONS='\\<RTE_LOG_REGISTER\\>' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using RTE_LOG_REGISTER, prefer RTE_LOG_REGISTER_(DEFAULT|SUFFIX)' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# SVG must be included with wildcard extension to allow conversion
 	awk -v FOLDERS='doc' \
 		-v EXPRESSIONS='::[[:space:]]*[^[:space:]]*\\.svg' \
