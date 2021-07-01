@@ -166,8 +166,9 @@ winupdate:
 }
 
 static inline int
-cpt_ipsec_ip_antireplay_check(struct otx2_ipsec_fp_in_sa *sa, char *data)
+cpt_ipsec_ip_antireplay_check(struct otx2_ipsec_fp_in_sa *sa, void *l3_ptr)
 {
+	struct otx2_ipsec_fp_res_hdr *hdr = l3_ptr;
 	uint64_t seq_in_sa;
 	uint32_t seqh = 0;
 	uint32_t seql;
@@ -176,14 +177,12 @@ cpt_ipsec_ip_antireplay_check(struct otx2_ipsec_fp_in_sa *sa, char *data)
 	int ret;
 
 	esn = sa->ctl.esn_en;
-	seql = rte_be_to_cpu_32(*((uint32_t *)(data +
-			OTX2_IPSEC_SEQNO_LO_INDEX)));
+	seql = rte_be_to_cpu_32(hdr->seq_no_lo);
 
 	if (!esn)
 		seq = (uint64_t)seql;
 	else {
-		seqh = rte_be_to_cpu_32(*((uint32_t *)(data +
-				OTX2_IPSEC_SEQNO_HI_INDEX)));
+		seqh = rte_be_to_cpu_32(hdr->seq_no_hi);
 		seq = ((uint64_t)seqh << 32) | seql;
 	}
 
