@@ -259,9 +259,10 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 		}
 
 		for (j = 0; j < opt->eth_queues; j++) {
-			if (rte_eth_rx_queue_setup(i, j, NB_RX_DESC,
-						   rte_socket_id(), &rx_conf,
-						   t->pool) < 0) {
+			if (rte_eth_rx_queue_setup(
+				    i, j, NB_RX_DESC, rte_socket_id(), &rx_conf,
+				    opt->per_port_pool ? t->pool[i] :
+							      t->pool[0]) < 0) {
 				evt_err("Failed to setup eth port [%d] rx_queue: %d.",
 					i, 0);
 				return -EINVAL;
@@ -569,18 +570,35 @@ pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt)
 			if (data_size  > opt->mbuf_sz)
 				opt->mbuf_sz = data_size;
 		}
+		if (opt->per_port_pool) {
+			char name[RTE_MEMPOOL_NAMESIZE];
+
+			snprintf(name, RTE_MEMPOOL_NAMESIZE, "%s-%d",
+				 test->name, i);
+			t->pool[i] = rte_pktmbuf_pool_create(
+				name,	      /* mempool name */
+				opt->pool_sz, /* number of elements*/
+				0,	      /* cache size*/
+				0, opt->mbuf_sz, opt->socket_id); /* flags */
+
+			if (t->pool[i] == NULL) {
+				evt_err("failed to create mempool %s", name);
+				return -ENOMEM;
+			}
+		}
 	}
 
-	t->pool = rte_pktmbuf_pool_create(test->name, /* mempool name */
+	if (!opt->per_port_pool) {
+		t->pool[0] = rte_pktmbuf_pool_create(
+			test->name,   /* mempool name */
 			opt->pool_sz, /* number of elements*/
-			512, /* cache size*/
-			0,
-			opt->mbuf_sz,
-			opt->socket_id); /* flags */
+			0,	      /* cache size*/
+			0, opt->mbuf_sz, opt->socket_id); /* flags */
 
-	if (t->pool == NULL) {
-		evt_err("failed to create mempool");
-		return -ENOMEM;
+		if (t->pool[0] == NULL) {
+			evt_err("failed to create mempool");
+			return -ENOMEM;
+		}
 	}
 
 	return 0;
@@ -589,10 +607,16 @@ pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt)
 void
 pipeline_mempool_destroy(struct evt_test *test, struct evt_options *opt)
 {
-	RTE_SET_USED(opt);
 	struct test_pipeline *t = evt_test_priv(test);
+	int i;
 
-	rte_mempool_free(t->pool);
+	RTE_SET_USED(opt);
+	if (opt->per_port_pool) {
+		RTE_ETH_FOREACH_DEV(i)
+			rte_mempool_free(t->pool[i]);
+	} else {
+		rte_mempool_free(t->pool[0]);
+	}
 }
 
 int

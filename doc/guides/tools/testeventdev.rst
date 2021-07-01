@@ -178,6 +178,12 @@ The following are the application command-line options:
        Vector timeout nanoseconds to be configured for the Rx adapter.
        Only applicable for `pipeline_atq` and `pipeline_queue` tests.
 
+* ``--per_port_pool``
+
+        Configure unique mempool per ethernet device, the size of each pool
+        is equal to `pool_sz`.
+        Only applicable for pipeline_atq` and `pipeline_queue` tests.
+
 
 Eventdev Tests
 --------------
@@ -631,6 +637,7 @@ Supported application command line options are following::
         --enable_vector
         --vector_size
         --vector_tmo_ns
+        --per_port_pool
 
 
 .. Note::
@@ -734,6 +741,7 @@ Supported application command line options are following::
         --enable_vector
         --vector_size
         --vector_tmo_ns
+        --per_port_pool
 
 
 .. Note::

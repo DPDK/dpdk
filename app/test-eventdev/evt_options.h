@@ -46,6 +46,7 @@
 #define EVT_ENA_VECTOR           ("enable_vector")
 #define EVT_VECTOR_SZ            ("vector_size")
 #define EVT_VECTOR_TMO           ("vector_tmo_ns")
+#define EVT_PER_PORT_POOL	 ("per_port_pool")
 #define EVT_HELP                 ("help")
 
 void evt_options_default(struct evt_options *opt);

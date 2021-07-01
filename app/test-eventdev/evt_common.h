@@ -55,6 +55,7 @@ struct evt_options {
 	uint8_t timdev_cnt;
 	uint8_t nb_timer_adptrs;
 	uint8_t timdev_use_burst;
+	uint8_t per_port_pool;
 	uint8_t sched_type_list[EVT_MAX_STAGES];
 	uint16_t mbuf_sz;
 	uint16_t wkr_deq_dep;

@@ -47,7 +47,7 @@ struct test_pipeline {
 	enum evt_test_result result;
 	uint32_t nb_flows;
 	uint64_t outstand_pkts;
-	struct rte_mempool *pool;
+	struct rte_mempool *pool[RTE_MAX_ETHPORTS];
 	struct worker_data worker[EVT_MAX_PORTS];
 	struct evt_options *opt;
 	uint8_t sched_type_list[EVT_MAX_STAGES] __rte_cache_aligned;

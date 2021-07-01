@@ -297,6 +297,13 @@ evt_parse_eth_queues(struct evt_options *opt, const char *arg)
 	return ret;
 }
 
+static int
+evt_parse_per_port_pool(struct evt_options *opt, const char *arg __rte_unused)
+{
+	opt->per_port_pool = 1;
+	return 0;
+}
+
 static void
 usage(char *program)
 {
@@ -333,6 +340,7 @@ usage(char *program)
 		"\t--enable_vector    : enable event vectorization.\n"
 		"\t--vector_size      : Max vector size.\n"
 		"\t--vector_tmo_ns    : Max vector timeout in nanoseconds\n"
+		"\t--per_port_pool    : Configure unique pool per ethdev port\n"
 		);
 	printf("available tests:\n");
 	evt_test_dump_names();
@@ -408,6 +416,7 @@ static struct option lgopts[] = {
 	{ EVT_ENA_VECTOR,          0, 0, 0 },
 	{ EVT_VECTOR_SZ,           1, 0, 0 },
 	{ EVT_VECTOR_TMO,          1, 0, 0 },
+	{ EVT_PER_PORT_POOL,       0, 0, 0 },
 	{ EVT_HELP,                0, 0, 0 },
 	{ NULL,                    0, 0, 0 }
 };
@@ -446,6 +455,7 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_ENA_VECTOR, evt_parse_ena_vector},
 		{ EVT_VECTOR_SZ, evt_parse_vector_size},
 		{ EVT_VECTOR_TMO, evt_parse_vector_tmo_ns},
+		{ EVT_PER_PORT_POOL, evt_parse_per_port_pool},
 	};
 
 	for (i = 0; i < RTE_DIM(parsermap); i++) {
