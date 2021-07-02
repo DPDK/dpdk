@@ -589,6 +589,8 @@ otx2_crypto_sec_session_destroy(void *device __rte_unused,
 
 	sess_mp = rte_mempool_from_obj(priv);
 
+	memset(priv, 0, sizeof(*priv));
+
 	set_sec_session_private_data(sess, NULL);
 	rte_mempool_put(sess_mp, priv);
 
