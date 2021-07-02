@@ -663,7 +663,9 @@ sfc_ev_qstart(struct sfc_evq *evq, unsigned int hw_index)
 		     efx_evq_size(sa->nic, evq->entries, evq_flags));
 
 	if ((sa->intr.lsc_intr && hw_index == sa->mgmt_evq_index) ||
-	    (sa->intr.rxq_intr && evq->dp_rxq != NULL))
+	    (sa->intr.rxq_intr && evq->dp_rxq != NULL &&
+	     sfc_ethdev_rx_qid_by_rxq_sw_index(sfc_sa2shared(sa),
+		evq->dp_rxq->dpq.queue_id) != SFC_ETHDEV_QID_INVALID))
 		evq_flags |= EFX_EVQ_FLAGS_NOTIFY_INTERRUPT;
 	else
 		evq_flags |= EFX_EVQ_FLAGS_NOTIFY_DISABLED;
