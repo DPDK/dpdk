@@ -22,6 +22,7 @@ pipeline PIPELINE0 port out 3 link LINK3 txq 0 bsz 32
 pipeline PIPELINE0 port out 4 sink none
 
 pipeline PIPELINE0 build ./examples/pipeline/examples/vxlan.spec
-pipeline PIPELINE0 table vxlan_table update ./examples/pipeline/examples/vxlan_table.txt none none
+pipeline PIPELINE0 table vxlan_table add ./examples/pipeline/examples/vxlan_table.txt
+pipeline PIPELINE0 commit
 
 thread 1 pipeline PIPELINE0 enable

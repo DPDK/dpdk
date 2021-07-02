@@ -1038,25 +1038,76 @@ table_entry_free(struct rte_swx_table_entry *entry)
 	free(entry);
 }
 
-static const char cmd_pipeline_table_update_help[] =
-"pipeline <pipeline_name> table <table_name> update <file_name_add> "
-"<file_name_delete> <file_name_default>";
+#ifndef MAX_LINE_SIZE
+#define MAX_LINE_SIZE 2048
+#endif
+
+static int
+pipeline_table_entries_add(struct rte_swx_ctl_pipeline *p,
+			   const char *table_name,
+			   FILE *file,
+			   uint32_t *file_line_number)
+{
+	char *line = NULL;
+	uint32_t line_id = 0;
+	int status = 0;
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return -ENOMEM;
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		struct rte_swx_table_entry *entry;
+		int is_blank_or_comment;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		entry = rte_swx_ctl_pipeline_table_entry_read(p,
+							      table_name,
+							      line,
+							      &is_blank_or_comment);
+		if (!entry) {
+			if (is_blank_or_comment)
+				continue;
+
+			status = -EINVAL;
+			goto error;
+		}
+
+		status = rte_swx_ctl_pipeline_table_entry_add(p,
+							      table_name,
+							      entry);
+		table_entry_free(entry);
+		if (status)
+			goto error;
+	}
+
+error:
+	free(line);
+	*file_line_number = line_id;
+	return status;
+}
+
+static const char cmd_pipeline_table_add_help[] =
+"pipeline <pipeline_name> table <table_name> add <file_name>\n";
 
 static void
-cmd_pipeline_table_update(char **tokens,
-	uint32_t n_tokens,
-	char *out,
-	size_t out_size,
-	void *obj)
+cmd_pipeline_table_add(char **tokens,
+		       uint32_t n_tokens,
+		       char *out,
+		       size_t out_size,
+		       void *obj)
 {
 	struct pipeline *p;
-	char *pipeline_name, *table_name, *line = NULL;
-	char *file_name_add, *file_name_delete, *file_name_default;
-	FILE *file_add = NULL, *file_delete = NULL, *file_default = NULL;
-	uint32_t line_id;
+	char *pipeline_name, *table_name, *file_name;
+	FILE *file = NULL;
+	uint32_t file_line_number = 0;
 	int status;
 
-	if (n_tokens != 8) {
+	if (n_tokens != 6) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
@@ -1068,192 +1119,313 @@ cmd_pipeline_table_update(char **tokens,
 		return;
 	}
 
-	if (strcmp(tokens[2], "table") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "table");
+	table_name = tokens[3];
+
+	file_name = tokens[5];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
+		return;
+	}
+
+	status = pipeline_table_entries_add(p->ctl,
+					    table_name,
+					    file,
+					    &file_line_number);
+	if (status)
+		snprintf(out, out_size, "Invalid entry in file %s at line %u\n",
+			 file_name,
+			 file_line_number);
+
+	fclose(file);
+}
+
+static int
+pipeline_table_entries_delete(struct rte_swx_ctl_pipeline *p,
+			      const char *table_name,
+			      FILE *file,
+			      uint32_t *file_line_number)
+{
+	char *line = NULL;
+	uint32_t line_id = 0;
+	int status = 0;
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return -ENOMEM;
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		struct rte_swx_table_entry *entry;
+		int is_blank_or_comment;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		entry = rte_swx_ctl_pipeline_table_entry_read(p,
+							      table_name,
+							      line,
+							      &is_blank_or_comment);
+		if (!entry) {
+			if (is_blank_or_comment)
+				continue;
+
+			status = -EINVAL;
+			goto error;
+		}
+
+		status = rte_swx_ctl_pipeline_table_entry_delete(p,
+								 table_name,
+								 entry);
+		table_entry_free(entry);
+		if (status)
+			goto error;
+	}
+
+error:
+	*file_line_number = line_id;
+	free(line);
+	return status;
+}
+
+static const char cmd_pipeline_table_delete_help[] =
+"pipeline <pipeline_name> table <table_name> delete <file_name>\n";
+
+static void
+cmd_pipeline_table_delete(char **tokens,
+			  uint32_t n_tokens,
+			  char *out,
+			  size_t out_size,
+			  void *obj)
+{
+	struct pipeline *p;
+	char *pipeline_name, *table_name, *file_name;
+	FILE *file = NULL;
+	uint32_t file_line_number = 0;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = pipeline_find(obj, pipeline_name);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
 
 	table_name = tokens[3];
 
-	if (strcmp(tokens[4], "update") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "update");
+	file_name = tokens[5];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
 		return;
 	}
 
-	file_name_add = tokens[5];
-	file_name_delete = tokens[6];
-	file_name_default = tokens[7];
+	status = pipeline_table_entries_delete(p->ctl,
+					       table_name,
+					       file,
+					       &file_line_number);
+	if (status)
+		snprintf(out, out_size, "Invalid entry in file %s at line %u\n",
+			 file_name,
+			 file_line_number);
 
-	/* File open. */
-	if (strcmp(file_name_add, "none")) {
-		file_add = fopen(file_name_add, "r");
-		if (!file_add) {
-			snprintf(out, out_size, "Cannot open file %s.\n",
-				file_name_add);
-			goto error;
-		}
-	}
+	fclose(file);
+}
 
-	if (strcmp(file_name_delete, "none")) {
-		file_delete = fopen(file_name_delete, "r");
-		if (!file_delete) {
-			snprintf(out, out_size, "Cannot open file %s.\n",
-				file_name_delete);
-			goto error;
-		}
-	}
-
-	if (strcmp(file_name_default, "none")) {
-		file_default = fopen(file_name_default, "r");
-		if (!file_default) {
-			snprintf(out, out_size, "Cannot open file %s.\n",
-				file_name_default);
-			goto error;
-		}
-	}
-
-	if (!file_add && !file_delete && !file_default) {
-		snprintf(out, out_size, "Nothing to be done.");
-		return;
-	}
+static int
+pipeline_table_default_entry_add(struct rte_swx_ctl_pipeline *p,
+				 const char *table_name,
+				 FILE *file,
+				 uint32_t *file_line_number)
+{
+	char *line = NULL;
+	uint32_t line_id = 0;
+	int status = 0;
 
 	/* Buffer allocation. */
-	line = malloc(2048);
-	if (!line) {
-		snprintf(out, out_size, MSG_OUT_OF_MEMORY);
-		goto error;
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return -ENOMEM;
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		struct rte_swx_table_entry *entry;
+		int is_blank_or_comment;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		entry = rte_swx_ctl_pipeline_table_entry_read(p,
+							      table_name,
+							      line,
+							      &is_blank_or_comment);
+		if (!entry) {
+			if (is_blank_or_comment)
+				continue;
+
+			status = -EINVAL;
+			goto error;
+		}
+
+		status = rte_swx_ctl_pipeline_table_default_entry_add(p,
+								      table_name,
+								      entry);
+		table_entry_free(entry);
+		if (status)
+			goto error;
 	}
-
-	/* Add. */
-	if (file_add)
-		for (line_id = 1; ; line_id++) {
-			struct rte_swx_table_entry *entry;
-			int is_blank_or_comment;
-
-			if (fgets(line, 2048, file_add) == NULL)
-				break;
-
-			entry = rte_swx_ctl_pipeline_table_entry_read(p->ctl,
-				table_name,
-				line,
-				&is_blank_or_comment);
-			if (!entry) {
-				if (is_blank_or_comment)
-					continue;
-
-				snprintf(out, out_size, MSG_FILE_ERR,
-					file_name_add, line_id);
-				goto error;
-			}
-
-			status = rte_swx_ctl_pipeline_table_entry_add(p->ctl,
-				table_name,
-				entry);
-			table_entry_free(entry);
-			if (status) {
-				snprintf(out, out_size,
-					"Invalid entry in file %s at line %u",
-					file_name_add, line_id);
-				goto error;
-			}
-		}
-
-
-	/* Delete. */
-	if (file_delete)
-		for (line_id = 1; ; line_id++) {
-			struct rte_swx_table_entry *entry;
-			int is_blank_or_comment;
-
-			if (fgets(line, 2048, file_delete) == NULL)
-				break;
-
-			entry = rte_swx_ctl_pipeline_table_entry_read(p->ctl,
-				table_name,
-				line,
-				&is_blank_or_comment);
-			if (!entry) {
-				if (is_blank_or_comment)
-					continue;
-
-				snprintf(out, out_size, MSG_FILE_ERR,
-					file_name_delete, line_id);
-				goto error;
-			}
-
-			status = rte_swx_ctl_pipeline_table_entry_delete(p->ctl,
-				table_name,
-				entry);
-			table_entry_free(entry);
-			if (status)  {
-				snprintf(out, out_size,
-					"Invalid entry in file %s at line %u",
-					file_name_delete, line_id);
-				goto error;
-			}
-		}
-
-	/* Default. */
-	if (file_default)
-		for (line_id = 1; ; line_id++) {
-			struct rte_swx_table_entry *entry;
-			int is_blank_or_comment;
-
-			if (fgets(line, 2048, file_default) == NULL)
-				break;
-
-			entry = rte_swx_ctl_pipeline_table_entry_read(p->ctl,
-				table_name,
-				line,
-				&is_blank_or_comment);
-			if (!entry) {
-				if (is_blank_or_comment)
-					continue;
-
-				snprintf(out, out_size, MSG_FILE_ERR,
-					file_name_default, line_id);
-				goto error;
-			}
-
-			status = rte_swx_ctl_pipeline_table_default_entry_add(p->ctl,
-				table_name,
-				entry);
-			table_entry_free(entry);
-			if (status) {
-				snprintf(out, out_size,
-					"Invalid entry in file %s at line %u",
-					file_name_default, line_id);
-				goto error;
-			}
-		}
-
-	status = rte_swx_ctl_pipeline_commit(p->ctl, 1);
-	if (status) {
-		snprintf(out, out_size, "Commit failed.");
-		goto error;
-	}
-
-
-	rte_swx_ctl_pipeline_table_fprintf(stdout, p->ctl, table_name);
-
-	free(line);
-	if (file_add)
-		fclose(file_add);
-	if (file_delete)
-		fclose(file_delete);
-	if (file_default)
-		fclose(file_default);
-	return;
 
 error:
-	rte_swx_ctl_pipeline_abort(p->ctl);
+	*file_line_number = line_id;
 	free(line);
-	if (file_add)
-		fclose(file_add);
-	if (file_delete)
-		fclose(file_delete);
-	if (file_default)
-		fclose(file_default);
+	return status;
+}
+
+static const char cmd_pipeline_table_default_help[] =
+"pipeline <pipeline_name> table <table_name> default <file_name>\n";
+
+static void
+cmd_pipeline_table_default(char **tokens,
+			   uint32_t n_tokens,
+			   char *out,
+			   size_t out_size,
+			   void *obj)
+{
+	struct pipeline *p;
+	char *pipeline_name, *table_name, *file_name;
+	FILE *file = NULL;
+	uint32_t file_line_number = 0;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = pipeline_find(obj, pipeline_name);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	table_name = tokens[3];
+
+	file_name = tokens[5];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
+		return;
+	}
+
+	status = pipeline_table_default_entry_add(p->ctl,
+						  table_name,
+						  file,
+						  &file_line_number);
+	if (status)
+		snprintf(out, out_size, "Invalid entry in file %s at line %u\n",
+			 file_name,
+			 file_line_number);
+
+	fclose(file);
+}
+
+static const char cmd_pipeline_table_show_help[] =
+"pipeline <pipeline_name> table <table_name> show\n";
+
+static void
+cmd_pipeline_table_show(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	char *pipeline_name, *table_name;
+	int status;
+
+	if (n_tokens != 5) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = pipeline_find(obj, pipeline_name);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	table_name = tokens[3];
+	status = rte_swx_ctl_pipeline_table_fprintf(stdout, p->ctl, table_name);
+	if (status)
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_name");
+}
+
+static const char cmd_pipeline_commit_help[] =
+"pipeline <pipeline_name> commit\n";
+
+static void
+cmd_pipeline_commit(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	char *pipeline_name;
+	int status;
+
+	if (n_tokens != 3) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = pipeline_find(obj, pipeline_name);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_commit(p->ctl, 1);
+	if (status)
+		snprintf(out, out_size, "Commit failed. "
+			"Use \"commit\" to retry or \"abort\" to discard the pending work.\n");
+}
+
+static const char cmd_pipeline_abort_help[] =
+"pipeline <pipeline_name> abort\n";
+
+static void
+cmd_pipeline_abort(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	char *pipeline_name;
+
+	if (n_tokens != 3) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = pipeline_find(obj, pipeline_name);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	rte_swx_ctl_pipeline_abort(p->ctl);
 }
 
 static const char cmd_pipeline_regrd_help[] =
@@ -1992,7 +2164,12 @@ cmd_help(char **tokens,
 			"\tpipeline port in\n"
 			"\tpipeline port out\n"
 			"\tpipeline build\n"
-			"\tpipeline table update\n"
+			"\tpipeline table add\n"
+			"\tpipeline table delete\n"
+			"\tpipeline table default\n"
+			"\tpipeline table show\n"
+			"\tpipeline commit\n"
+			"\tpipeline abort\n"
 			"\tpipeline regrd\n"
 			"\tpipeline regwr\n"
 			"\tpipeline meter profile add\n"
@@ -2056,9 +2233,52 @@ cmd_help(char **tokens,
 	if ((strcmp(tokens[0], "pipeline") == 0) &&
 		(n_tokens == 3) &&
 		(strcmp(tokens[1], "table") == 0) &&
-		(strcmp(tokens[2], "update") == 0)) {
+		(strcmp(tokens[2], "add") == 0)) {
 		snprintf(out, out_size, "\n%s\n",
-			cmd_pipeline_table_update_help);
+			cmd_pipeline_table_add_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 3) &&
+		(strcmp(tokens[1], "table") == 0) &&
+		(strcmp(tokens[2], "delete") == 0)) {
+		snprintf(out, out_size, "\n%s\n",
+			cmd_pipeline_table_delete_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 3) &&
+		(strcmp(tokens[1], "table") == 0) &&
+		(strcmp(tokens[2], "default") == 0)) {
+		snprintf(out, out_size, "\n%s\n",
+			cmd_pipeline_table_default_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 3) &&
+		(strcmp(tokens[1], "table") == 0) &&
+		(strcmp(tokens[2], "show") == 0)) {
+		snprintf(out, out_size, "\n%s\n",
+			cmd_pipeline_table_show_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 2) &&
+		(strcmp(tokens[1], "commit") == 0)) {
+		snprintf(out, out_size, "\n%s\n",
+			cmd_pipeline_commit_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 2) &&
+		(strcmp(tokens[1], "abort") == 0)) {
+		snprintf(out, out_size, "\n%s\n",
+			cmd_pipeline_abort_help);
 		return;
 	}
 
@@ -2216,9 +2436,48 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 			return;
 		}
 
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "add") == 0)) {
+			cmd_pipeline_table_add(tokens, n_tokens, out,
+				out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "delete") == 0)) {
+			cmd_pipeline_table_delete(tokens, n_tokens, out,
+				out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "default") == 0)) {
+			cmd_pipeline_table_default(tokens, n_tokens, out,
+				out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "show") == 0)) {
+			cmd_pipeline_table_show(tokens, n_tokens, out,
+				out_size, obj);
+			return;
+		}
+
 		if ((n_tokens >= 3) &&
-			(strcmp(tokens[2], "table") == 0)) {
-			cmd_pipeline_table_update(tokens, n_tokens, out,
+			(strcmp(tokens[2], "commit") == 0)) {
+			cmd_pipeline_commit(tokens, n_tokens, out,
+				out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 3) &&
+			(strcmp(tokens[2], "abort") == 0)) {
+			cmd_pipeline_abort(tokens, n_tokens, out,
 				out_size, obj);
 			return;
 		}
