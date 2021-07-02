@@ -983,7 +983,7 @@ sfc_ev_attach(struct sfc_adapter *sa)
 		goto fail_kvarg_perf_profile;
 	}
 
-	sa->mgmt_evq_index = 0;
+	sa->mgmt_evq_index = sfc_mgmt_evq_sw_index(sfc_sa2shared(sa));
 	rte_spinlock_init(&sa->mgmt_evq_lock);
 
 	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_MGMT, 0, sa->evq_min_entries,

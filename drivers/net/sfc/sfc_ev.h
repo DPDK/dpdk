@@ -60,6 +60,12 @@ struct sfc_evq {
 	unsigned int			entries;
 };
 
+static inline sfc_sw_index_t
+sfc_mgmt_evq_sw_index(__rte_unused const struct sfc_adapter_shared *sas)
+{
+	return 0;
+}
+
 /*
  * Functions below define event queue to transmit/receive queue and vice
  * versa mapping.
