@@ -131,6 +131,7 @@ rhead_ev_qcreate(
 	__in		uint32_t id,
 	__in		uint32_t us,
 	__in		uint32_t flags,
+	__in		uint32_t irq,
 	__in		efx_evq_t *eep);
 
 LIBEFX_INTERNAL

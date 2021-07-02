@@ -35,6 +35,7 @@ siena_ev_qcreate(
 	__in		uint32_t id,
 	__in		uint32_t us,
 	__in		uint32_t flags,
+	__in		uint32_t irq,
 	__in		efx_evq_t *eep);
 
 static			void
@@ -253,7 +254,7 @@ efx_ev_fini(
 
 
 	__checkReturn	efx_rc_t
-efx_ev_qcreate(
+efx_ev_qcreate_irq(
 	__in		efx_nic_t *enp,
 	__in		unsigned int index,
 	__in		efsys_mem_t *esmp,
@@ -261,6 +262,7 @@ efx_ev_qcreate(
 	__in		uint32_t id,
 	__in		uint32_t us,
 	__in		uint32_t flags,
+	__in		uint32_t irq,
 	__deref_out	efx_evq_t **eepp)
 {
 	const efx_ev_ops_t *eevop = enp->en_eevop;
@@ -347,7 +349,7 @@ efx_ev_qcreate(
 	*eepp = eep;
 
 	if ((rc = eevop->eevo_qcreate(enp, index, esmp, ndescs, id, us, flags,
-	    eep)) != 0)
+	    irq, eep)) != 0)
 		goto fail9;
 
 	return (0);
@@ -375,6 +377,23 @@ fail2:
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_ev_qcreate(
+	__in		efx_nic_t *enp,
+	__in		unsigned int index,
+	__in		efsys_mem_t *esmp,
+	__in		size_t ndescs,
+	__in		uint32_t id,
+	__in		uint32_t us,
+	__in		uint32_t flags,
+	__deref_out	efx_evq_t **eepp)
+{
+	uint32_t irq = index;
+
+	return (efx_ev_qcreate_irq(enp, index, esmp, ndescs, id, us, flags,
+	    irq, eepp));
 }
 
 		void
@@ -1278,6 +1297,7 @@ siena_ev_qcreate(
 	__in		uint32_t id,
 	__in		uint32_t us,
 	__in		uint32_t flags,
+	__in		uint32_t irq,
 	__in		efx_evq_t *eep)
 {
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
@@ -1290,11 +1310,16 @@ siena_ev_qcreate(
 
 	EFSYS_ASSERT((flags & EFX_EVQ_FLAGS_EXTENDED_WIDTH) == 0);
 
+	if (irq != index) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
 #if EFSYS_OPT_RX_SCALE
 	if (enp->en_intr.ei_type == EFX_INTR_LINE &&
 	    index >= EFX_MAXRSS_LEGACY) {
 		rc = EINVAL;
-		goto fail1;
+		goto fail2;
 	}
 #endif
 	for (size = 0;
@@ -1304,7 +1329,7 @@ siena_ev_qcreate(
 			break;
 	if (id + (1 << size) >= encp->enc_buftbl_limit) {
 		rc = EINVAL;
-		goto fail2;
+		goto fail3;
 	}
 
 	/* Set up the handler table */
@@ -1336,11 +1361,13 @@ siena_ev_qcreate(
 
 	return (0);
 
+fail3:
+	EFSYS_PROBE(fail3);
+#if EFSYS_OPT_RX_SCALE
 fail2:
 	EFSYS_PROBE(fail2);
-#if EFSYS_OPT_RX_SCALE
-fail1:
 #endif
+fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 
 	return (rc);

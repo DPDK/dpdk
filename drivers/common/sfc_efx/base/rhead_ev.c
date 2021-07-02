@@ -102,11 +102,11 @@ rhead_ev_qcreate(
 	__in		uint32_t id,
 	__in		uint32_t us,
 	__in		uint32_t flags,
+	__in		uint32_t irq,
 	__in		efx_evq_t *eep)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
 	size_t desc_size;
-	uint32_t irq = 0;
 	uint32_t target_evq = 0;
 	efx_rc_t rc;
 
@@ -141,7 +141,7 @@ rhead_ev_qcreate(
 	/* INIT_EVQ expects function-relative vector number */
 	if ((flags & EFX_EVQ_FLAGS_NOTIFY_MASK) ==
 	    EFX_EVQ_FLAGS_NOTIFY_INTERRUPT) {
-		irq = index;
+		/* IRQ number is specified by caller */
 	} else if (index == EFX_RHEAD_ALWAYS_INTERRUPTING_EVQ_INDEX) {
 		/* Use the first interrupt for always interrupting EvQ */
 		irq = 0;

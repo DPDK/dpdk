@@ -2334,6 +2334,19 @@ efx_ev_qcreate(
 	__deref_out	efx_evq_t **eepp);
 
 LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_ev_qcreate_irq(
+	__in		efx_nic_t *enp,
+	__in		unsigned int index,
+	__in		efsys_mem_t *esmp,
+	__in		size_t ndescs,
+	__in		uint32_t id,
+	__in		uint32_t us,
+	__in		uint32_t flags,
+	__in		uint32_t irq,
+	__deref_out	efx_evq_t **eepp);
+
+LIBEFX_API
 extern		void
 efx_ev_qpost(
 	__in		efx_evq_t *eep,
