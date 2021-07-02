@@ -1115,7 +1115,7 @@ otx2_cpt_dev_config(struct rte_cryptodev *dev,
 		return -EINVAL;
 	}
 
-	dev->feature_flags &= ~conf->ff_disable;
+	dev->feature_flags = otx2_cpt_default_ff_get() & ~conf->ff_disable;
 
 	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) {
 		/* Initialize shared FPM table */
@@ -1227,7 +1227,7 @@ otx2_cpt_dev_info_get(struct rte_cryptodev *dev,
 
 	if (info != NULL) {
 		info->max_nb_queue_pairs = vf->max_queues;
-		info->feature_flags = dev->feature_flags;
+		info->feature_flags = otx2_cpt_default_ff_get();
 		info->capabilities = otx2_cpt_capabilities_get();
 		info->sym.max_nb_sessions = 0;
 		info->driver_id = otx2_cryptodev_driver_id;
