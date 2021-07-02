@@ -648,6 +648,7 @@ sfc_ev_qstart(struct sfc_evq *evq, unsigned int hw_index)
 	struct sfc_adapter *sa = evq->sa;
 	efsys_mem_t *esmp;
 	uint32_t evq_flags = sa->evq_flags;
+	uint32_t irq = 0;
 	unsigned int total_delay_us;
 	unsigned int delay_us;
 	int rc;
@@ -662,20 +663,35 @@ sfc_ev_qstart(struct sfc_evq *evq, unsigned int hw_index)
 	(void)memset((void *)esmp->esm_base, 0xff,
 		     efx_evq_size(sa->nic, evq->entries, evq_flags));
 
-	if ((sa->intr.lsc_intr && hw_index == sa->mgmt_evq_index) ||
-	    (sa->intr.rxq_intr && evq->dp_rxq != NULL &&
-	     sfc_ethdev_rx_qid_by_rxq_sw_index(sfc_sa2shared(sa),
-		evq->dp_rxq->dpq.queue_id) != SFC_ETHDEV_QID_INVALID))
+	if (sa->intr.lsc_intr && hw_index == sa->mgmt_evq_index) {
 		evq_flags |= EFX_EVQ_FLAGS_NOTIFY_INTERRUPT;
-	else
+		irq = 0;
+	} else if (sa->intr.rxq_intr && evq->dp_rxq != NULL) {
+		sfc_ethdev_qid_t ethdev_qid;
+
+		ethdev_qid =
+			sfc_ethdev_rx_qid_by_rxq_sw_index(sfc_sa2shared(sa),
+				evq->dp_rxq->dpq.queue_id);
+		if (ethdev_qid != SFC_ETHDEV_QID_INVALID) {
+			evq_flags |= EFX_EVQ_FLAGS_NOTIFY_INTERRUPT;
+			/*
+			 * The first interrupt is used for management EvQ
+			 * (LSC etc). RxQ interrupts follow it.
+			 */
+			irq = 1 + ethdev_qid;
+		} else {
+			evq_flags |= EFX_EVQ_FLAGS_NOTIFY_DISABLED;
+		}
+	} else {
 		evq_flags |= EFX_EVQ_FLAGS_NOTIFY_DISABLED;
+	}
 
 	evq->init_state = SFC_EVQ_STARTING;
 
 	/* Create the common code event queue */
-	rc = efx_ev_qcreate(sa->nic, hw_index, esmp, evq->entries,
-			    0 /* unused on EF10 */, 0, evq_flags,
-			    &evq->common);
+	rc = efx_ev_qcreate_irq(sa->nic, hw_index, esmp, evq->entries,
+				0 /* unused on EF10 */, 0, evq_flags,
+				irq, &evq->common);
 	if (rc != 0)
 		goto fail_ev_qcreate;
 
