@@ -181,6 +181,12 @@ typedef int (sfc_flow_insert_cb_t)(struct sfc_adapter *sa,
 typedef int (sfc_flow_remove_cb_t)(struct sfc_adapter *sa,
 				   struct rte_flow *flow);
 
+typedef int (sfc_flow_query_cb_t)(struct rte_eth_dev *dev,
+				  struct rte_flow *flow,
+				  const struct rte_flow_action *action,
+				  void *data,
+				  struct rte_flow_error *error);
+
 #ifdef __cplusplus
 }
 #endif

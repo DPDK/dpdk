@@ -304,6 +304,7 @@ int sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 sfc_flow_verify_cb_t sfc_mae_flow_verify;
 sfc_flow_insert_cb_t sfc_mae_flow_insert;
 sfc_flow_remove_cb_t sfc_mae_flow_remove;
+sfc_flow_query_cb_t sfc_mae_flow_query;
 
 #ifdef __cplusplus
 }

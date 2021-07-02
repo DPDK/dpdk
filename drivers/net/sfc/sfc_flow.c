@@ -32,6 +32,7 @@ struct sfc_flow_ops_by_spec {
 	sfc_flow_cleanup_cb_t	*cleanup;
 	sfc_flow_insert_cb_t	*insert;
 	sfc_flow_remove_cb_t	*remove;
+	sfc_flow_query_cb_t	*query;
 };
 
 static sfc_flow_parse_cb_t sfc_flow_parse_rte_to_filter;
@@ -45,6 +46,7 @@ static const struct sfc_flow_ops_by_spec sfc_flow_ops_filter = {
 	.cleanup = NULL,
 	.insert = sfc_flow_filter_insert,
 	.remove = sfc_flow_filter_remove,
+	.query = NULL,
 };
 
 static const struct sfc_flow_ops_by_spec sfc_flow_ops_mae = {
@@ -53,6 +55,7 @@ static const struct sfc_flow_ops_by_spec sfc_flow_ops_mae = {
 	.cleanup = sfc_mae_flow_cleanup,
 	.insert = sfc_mae_flow_insert,
 	.remove = sfc_mae_flow_remove,
+	.query = sfc_mae_flow_query,
 };
 
 static const struct sfc_flow_ops_by_spec *
@@ -2789,6 +2792,49 @@ sfc_flow_flush(struct rte_eth_dev *dev,
 }
 
 static int
+sfc_flow_query(struct rte_eth_dev *dev,
+	       struct rte_flow *flow,
+	       const struct rte_flow_action *action,
+	       void *data,
+	       struct rte_flow_error *error)
+{
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	const struct sfc_flow_ops_by_spec *ops;
+	int ret;
+
+	sfc_adapter_lock(sa);
+
+	ops = sfc_flow_get_ops_by_spec(flow);
+	if (ops == NULL || ops->query == NULL) {
+		ret = rte_flow_error_set(error, ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"No backend to handle this flow");
+		goto fail_no_backend;
+	}
+
+	if (sa->state != SFC_ADAPTER_STARTED) {
+		ret = rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"Can't query the flow: the adapter is not started");
+		goto fail_not_started;
+	}
+
+	ret = ops->query(dev, flow, action, data, error);
+	if (ret != 0)
+		goto fail_query;
+
+	sfc_adapter_unlock(sa);
+
+	return 0;
+
+fail_query:
+fail_not_started:
+fail_no_backend:
+	sfc_adapter_unlock(sa);
+	return ret;
+}
+
+static int
 sfc_flow_isolate(struct rte_eth_dev *dev, int enable,
 		 struct rte_flow_error *error)
 {
@@ -2814,7 +2860,7 @@ const struct rte_flow_ops sfc_flow_ops = {
 	.create = sfc_flow_create,
 	.destroy = sfc_flow_destroy,
 	.flush = sfc_flow_flush,
-	.query = NULL,
+	.query = sfc_flow_query,
 	.isolate = sfc_flow_isolate,
 };
 

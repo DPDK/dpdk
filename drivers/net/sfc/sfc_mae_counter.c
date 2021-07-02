@@ -793,3 +793,35 @@ fail_counter_stream:
 
 	return rc;
 }
+
+int
+sfc_mae_counter_get(struct sfc_mae_counters *counters,
+		    const struct sfc_mae_counter_id *counter,
+		    struct rte_flow_query_count *data)
+{
+	struct sfc_mae_counter *p;
+	union sfc_pkts_bytes value;
+
+	SFC_ASSERT(counter->mae_id.id < counters->n_mae_counters);
+	p = &counters->mae_counters[counter->mae_id.id];
+
+	/*
+	 * Ordering is relaxed since it is the only operation on counter value.
+	 * And it does not depend on different stores/loads in other threads.
+	 * Paired with relaxed ordering in counter increment.
+	 */
+	value.pkts_bytes.int128 = __atomic_load_n(&p->value.pkts_bytes.int128,
+						  __ATOMIC_RELAXED);
+
+	data->hits_set = 1;
+	data->bytes_set = 1;
+	data->hits = value.pkts - p->reset.pkts;
+	data->bytes = value.bytes - p->reset.bytes;
+
+	if (data->reset != 0) {
+		p->reset.pkts = value.pkts;
+		p->reset.bytes = value.bytes;
+	}
+
+	return 0;
+}

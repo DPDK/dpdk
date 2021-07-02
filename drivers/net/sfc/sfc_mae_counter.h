@@ -45,6 +45,9 @@ int sfc_mae_counter_enable(struct sfc_adapter *sa,
 			   struct sfc_mae_counter_id *counterp);
 int sfc_mae_counter_disable(struct sfc_adapter *sa,
 			    struct sfc_mae_counter_id *counter);
+int sfc_mae_counter_get(struct sfc_mae_counters *counters,
+			const struct sfc_mae_counter_id *counter,
+			struct rte_flow_query_count *data);
 
 int sfc_mae_counter_start(struct sfc_adapter *sa);
 void sfc_mae_counter_stop(struct sfc_adapter *sa);
