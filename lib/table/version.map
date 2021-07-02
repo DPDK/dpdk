@@ -28,4 +28,12 @@ EXPERIMENTAL {
 
 	# added in 21.05
 	rte_swx_table_wildcard_match_ops;
+
+	# added in 21.08
+	rte_swx_table_selector_create;
+	rte_swx_table_selector_footprint_get;
+	rte_swx_table_selector_free;
+	rte_swx_table_selector_group_set;
+	rte_swx_table_selector_mailbox_size_get;
+	rte_swx_table_selector_select;
 };
