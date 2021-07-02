@@ -92,8 +92,25 @@ sfc_evq_sw_index_by_rxq_sw_index(__rte_unused struct sfc_adapter *sa,
 	return 1 + rxq_sw_index;
 }
 
-static inline unsigned int
-sfc_evq_index_by_txq_sw_index(struct sfc_adapter *sa, unsigned int txq_sw_index)
+static inline sfc_ethdev_qid_t
+sfc_ethdev_tx_qid_by_txq_sw_index(__rte_unused struct sfc_adapter_shared *sas,
+				  sfc_sw_index_t txq_sw_index)
+{
+	/* Only ethdev queues are present for now */
+	return txq_sw_index;
+}
+
+static inline sfc_sw_index_t
+sfc_txq_sw_index_by_ethdev_tx_qid(__rte_unused struct sfc_adapter_shared *sas,
+				  sfc_ethdev_qid_t ethdev_qid)
+{
+	/* Only ethdev queues are present for now */
+	return ethdev_qid;
+}
+
+static inline sfc_sw_index_t
+sfc_evq_sw_index_by_txq_sw_index(struct sfc_adapter *sa,
+				 sfc_sw_index_t txq_sw_index)
 {
 	return 1 + sa->eth_dev->data->nb_rx_queues + txq_sw_index;
 }

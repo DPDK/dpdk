@@ -58,7 +58,8 @@ struct sfc_txq {
 };
 
 struct sfc_txq *sfc_txq_by_dp_txq(const struct sfc_dp_txq *dp_txq);
-
+struct sfc_txq_info *sfc_txq_info_by_ethdev_qid(struct sfc_adapter_shared *sas,
+						sfc_ethdev_qid_t ethdev_qid);
 /**
  * Transmit queue information used on libefx-based data path.
  * Allocated on the socket specified on the queue setup.
@@ -107,14 +108,14 @@ struct sfc_txq_info *sfc_txq_info_by_dp_txq(const struct sfc_dp_txq *dp_txq);
 int sfc_tx_configure(struct sfc_adapter *sa);
 void sfc_tx_close(struct sfc_adapter *sa);
 
-int sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
+int sfc_tx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 		 uint16_t nb_tx_desc, unsigned int socket_id,
 		 const struct rte_eth_txconf *tx_conf);
-void sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index);
+void sfc_tx_qfini(struct sfc_adapter *sa, sfc_sw_index_t sw_index);
 
 void sfc_tx_qflush_done(struct sfc_txq_info *txq_info);
-int sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index);
-void sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index);
+int sfc_tx_qstart(struct sfc_adapter *sa, sfc_sw_index_t sw_index);
+void sfc_tx_qstop(struct sfc_adapter *sa, sfc_sw_index_t sw_index);
 int sfc_tx_start(struct sfc_adapter *sa);
 void sfc_tx_stop(struct sfc_adapter *sa);
 
