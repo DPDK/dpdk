@@ -5031,6 +5031,8 @@ flow_dv_modify_hdr_action_max(struct rte_eth_dev *dev __rte_unused,
  *   Pointer to the meter action.
  * @param[in] attr
  *   Attributes of flow that includes this action.
+ * @param[in] port_id_item
+ *   Pointer to item indicating port id.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -5042,6 +5044,7 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 				uint64_t action_flags,
 				const struct rte_flow_action *action,
 				const struct rte_flow_attr *attr,
+				const struct rte_flow_item *port_id_item,
 				bool *def_policy,
 				struct rte_flow_error *error)
 {
@@ -5112,6 +5115,37 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 					  "Flow attributes domain "
 					  "have a conflict with current "
 					  "meter domain attributes");
+		if (attr->transfer && mtr_policy->dev) {
+			/**
+			 * When policy has fate action of port_id,
+			 * the flow should have the same src port as policy.
+			 */
+			struct mlx5_priv *policy_port_priv =
+					mtr_policy->dev->data->dev_private;
+			int32_t flow_src_port = priv->representor_id;
+
+			if (port_id_item) {
+				const struct rte_flow_item_port_id *spec =
+							port_id_item->spec;
+				struct mlx5_priv *port_priv =
+					mlx5_port_to_eswitch_info(spec->id,
+								  false);
+				if (!port_priv)
+					return rte_flow_error_set(error,
+						rte_errno,
+						RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+						spec,
+						"Failed to get port info.");
+				flow_src_port = port_priv->representor_id;
+			}
+			if (flow_src_port != policy_port_priv->representor_id)
+				return rte_flow_error_set(error,
+						rte_errno,
+						RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+						NULL,
+						"Flow and meter policy "
+						"have different src port.");
+		}
 		*def_policy = false;
 	}
 	return 0;
@@ -6685,6 +6719,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	};
 	const struct rte_eth_hairpin_conf *conf;
 	const struct rte_flow_item *rule_items = items;
+	const struct rte_flow_item *port_id_item = NULL;
 	bool def_policy = false;
 
 	if (items == NULL)
@@ -6726,6 +6761,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_ITEM_PORT_ID;
+			port_id_item = items;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			ret = mlx5_flow_validate_item_eth(items, item_flags,
@@ -7463,6 +7499,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			ret = mlx5_flow_validate_action_meter(dev,
 							      action_flags,
 							      actions, attr,
+							      port_id_item,
 							      &def_policy,
 							      error);
 			if (ret < 0)
@@ -15348,7 +15385,7 @@ __flow_dv_create_policy_flow(struct rte_eth_dev *dev,
 			uint32_t color_reg_c_idx,
 			enum rte_color color, void *matcher_object,
 			int actions_n, void *actions,
-			bool is_default_policy, void **rule,
+			bool match_src_port, void **rule,
 			const struct rte_flow_attr *attr)
 {
 	int ret;
@@ -15362,7 +15399,7 @@ __flow_dv_create_policy_flow(struct rte_eth_dev *dev,
 	};
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (!is_default_policy && (priv->representor || priv->master)) {
+	if (match_src_port && (priv->representor || priv->master)) {
 		if (flow_dv_translate_item_port_id(dev, matcher.buf,
 						   value.buf, NULL, attr)) {
 			DRV_LOG(ERR,
@@ -15389,7 +15426,7 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 			uint16_t priority,
 			struct mlx5_flow_meter_sub_policy *sub_policy,
 			const struct rte_flow_attr *attr,
-			bool is_default_policy,
+			bool match_src_port,
 			struct rte_flow_error *error)
 {
 	struct mlx5_cache_entry *entry;
@@ -15413,7 +15450,7 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t color_mask = (UINT32_C(1) << MLX5_MTR_COLOR_BITS) - 1;
 
-	if (!is_default_policy && (priv->representor || priv->master)) {
+	if (match_src_port && (priv->representor || priv->master)) {
 		if (flow_dv_translate_item_port_id(dev, matcher.mask.buf,
 						   value.buf, NULL, attr)) {
 			DRV_LOG(ERR,
@@ -15458,7 +15495,7 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 static int
 __flow_dv_create_domain_policy_rules(struct rte_eth_dev *dev,
 		struct mlx5_flow_meter_sub_policy *sub_policy,
-		uint8_t egress, uint8_t transfer, bool is_default_policy,
+		uint8_t egress, uint8_t transfer, bool match_src_port,
 		struct mlx5_meter_policy_acts acts[RTE_COLORS])
 {
 	struct rte_flow_error flow_err;
@@ -15497,7 +15534,7 @@ __flow_dv_create_domain_policy_rules(struct rte_eth_dev *dev,
 			/* Create matchers for Color. */
 			if (__flow_dv_create_policy_matcher(dev,
 				color_reg_c_idx, i, sub_policy,
-				&attr, is_default_policy, &flow_err))
+				&attr, match_src_port, &flow_err))
 				return -1;
 		}
 		/* Create flow, matching color. */
@@ -15507,7 +15544,7 @@ __flow_dv_create_domain_policy_rules(struct rte_eth_dev *dev,
 				sub_policy->color_matcher[i]->matcher_object,
 				acts[i].actions_n,
 				acts[i].dv_actions,
-				is_default_policy,
+				match_src_port,
 				&sub_policy->color_rule[i],
 				&attr))
 				return -1;
@@ -15527,6 +15564,7 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 	struct mlx5_flow_dv_port_id_action_resource *port_action;
 	struct mlx5_hrxq *hrxq;
 	uint8_t egress, transfer;
+	bool match_src_port = false;
 	int i;
 
 	for (i = 0; i < RTE_COLORS; i++) {
@@ -15571,6 +15609,8 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 				acts[i].dv_actions[acts[i].actions_n] =
 				port_action->action;
 				acts[i].actions_n++;
+				mtr_policy->dev = dev;
+				match_src_port = true;
 				break;
 			case MLX5_FLOW_FATE_DROP:
 			case MLX5_FLOW_FATE_JUMP:
@@ -15601,7 +15641,7 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 	egress = (domain == MLX5_MTR_DOMAIN_EGRESS) ? 1 : 0;
 	transfer = (domain == MLX5_MTR_DOMAIN_TRANSFER) ? 1 : 0;
 	if (__flow_dv_create_domain_policy_rules(dev, sub_policy,
-				egress, transfer, false, acts)) {
+				egress, transfer, match_src_port, acts)) {
 		DRV_LOG(ERR,
 		"Failed to create policy rules per domain.");
 		return -1;
@@ -15709,7 +15749,7 @@ __flow_dv_create_domain_def_policy(struct rte_eth_dev *dev, uint32_t domain)
 		/* Create default policy rules. */
 		ret = __flow_dv_create_domain_policy_rules(dev,
 					&def_policy->sub_policy,
-					egress, transfer, true, acts);
+					egress, transfer, false, acts);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to create "
 				"default policy rules.");
