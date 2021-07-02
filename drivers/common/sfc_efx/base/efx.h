@@ -4406,6 +4406,10 @@ efx_mae_action_set_fill_in_eh_id(
 	__in				efx_mae_actions_t *spec,
 	__in				const efx_mae_eh_id_t *eh_idp);
 
+typedef struct efx_counter_s {
+	uint32_t id;
+} efx_counter_t;
+
 /* Action set ID */
 typedef struct efx_mae_aset_id_s {
 	uint32_t id;
@@ -4417,6 +4421,39 @@ efx_mae_action_set_alloc(
 	__in				efx_nic_t *enp,
 	__in				const efx_mae_actions_t *spec,
 	__out				efx_mae_aset_id_t *aset_idp);
+
+/*
+ * Generation count has two purposes:
+ *
+ * 1) Distinguish between counter packets that belong to freed counter
+ *    and the packets that belong to reallocated counter (with the same ID);
+ * 2) Make sure that all packets are received for a counter that was freed;
+ *
+ * API users should provide generation count out parameter in allocation
+ * function if counters can be reallocated and consistent counter values are
+ * required.
+ *
+ * API users that need consistent final counter values after counter
+ * deallocation or counter stream stop should provide the parameter in
+ * functions that free the counters and stop the counter stream.
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_counters_alloc(
+	__in				efx_nic_t *enp,
+	__in				uint32_t n_counters,
+	__out				uint32_t *n_allocatedp,
+	__out_ecount(n_counters)	efx_counter_t *countersp,
+	__out_opt			uint32_t *gen_countp);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_counters_free(
+	__in				efx_nic_t *enp,
+	__in				uint32_t n_counters,
+	__out				uint32_t *n_freedp,
+	__in_ecount(n_counters)		const efx_counter_t *countersp,
+	__out_opt			uint32_t *gen_countp);
 
 LIBEFX_API
 extern	__checkReturn			efx_rc_t

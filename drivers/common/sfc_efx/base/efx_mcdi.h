@@ -311,6 +311,10 @@ efx_mcdi_phy_module_get_info(
 	EFX_SET_DWORD_FIELD(*MCDI_IN2(_emr, efx_dword_t, _ofst),	\
 		MC_CMD_ ## _field, _value)
 
+#define	MCDI_IN_SET_INDEXED_DWORD(_emr, _ofst, _idx, _value)		\
+	EFX_POPULATE_DWORD_1(*(MCDI_IN2(_emr, efx_dword_t, _ofst) +	\
+			     (_idx)), EFX_DWORD_0, _value)		\
+
 #define	MCDI_IN_POPULATE_DWORD_1(_emr, _ofst, _field1, _value1)		\
 	EFX_POPULATE_DWORD_1(*MCDI_IN2(_emr, efx_dword_t, _ofst),	\
 		MC_CMD_ ## _field1, _value1)
@@ -450,6 +454,9 @@ efx_mcdi_phy_module_get_info(
 #define	MCDI_OUT_DWORD_FIELD(_emr, _ofst, _field)			\
 	EFX_DWORD_FIELD(*MCDI_OUT2(_emr, efx_dword_t, _ofst),		\
 			MC_CMD_ ## _field)
+
+#define	MCDI_OUT_INDEXED_DWORD(_emr, _ofst, _idx)			\
+	MCDI_OUT_INDEXED_DWORD_FIELD(_emr, _ofst, _idx, EFX_DWORD_0)
 
 #define	MCDI_OUT_INDEXED_DWORD_FIELD(_emr, _ofst, _idx, _field)		\
 	EFX_DWORD_FIELD(*(MCDI_OUT2(_emr, efx_dword_t, _ofst) +		\

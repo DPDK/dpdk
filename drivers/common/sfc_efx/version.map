@@ -102,6 +102,8 @@ INTERNAL {
 	efx_mae_action_set_spec_fini;
 	efx_mae_action_set_spec_init;
 	efx_mae_action_set_specs_equal;
+	efx_mae_counters_alloc;
+	efx_mae_counters_free;
 	efx_mae_encap_header_alloc;
 	efx_mae_encap_header_free;
 	efx_mae_fini;
