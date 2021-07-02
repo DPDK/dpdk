@@ -20,6 +20,7 @@
 #include "sfc_log.h"
 #include "sfc_ev.h"
 #include "sfc_rx.h"
+#include "sfc_mae_counter.h"
 #include "sfc_tx.h"
 #include "sfc_kvargs.h"
 #include "sfc_tweak.h"
@@ -174,6 +175,7 @@ static int
 sfc_estimate_resource_limits(struct sfc_adapter *sa)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	struct sfc_adapter_shared *sas = sfc_sa2shared(sa);
 	efx_drv_limits_t limits;
 	int rc;
 	uint32_t evq_allocated;
@@ -235,17 +237,53 @@ sfc_estimate_resource_limits(struct sfc_adapter *sa)
 	rxq_allocated = MIN(rxq_allocated, limits.edl_max_rxq_count);
 	txq_allocated = MIN(txq_allocated, limits.edl_max_txq_count);
 
-	/* Subtract management EVQ not used for traffic */
-	SFC_ASSERT(evq_allocated > 0);
+	/*
+	 * Subtract management EVQ not used for traffic
+	 * The resource allocation strategy is as follows:
+	 * - one EVQ for management
+	 * - one EVQ for each ethdev RXQ
+	 * - one EVQ for each ethdev TXQ
+	 * - one EVQ and one RXQ for optional MAE counters.
+	 */
+	if (evq_allocated == 0) {
+		sfc_err(sa, "count of allocated EvQ is 0");
+		rc = ENOMEM;
+		goto fail_allocate_evq;
+	}
 	evq_allocated--;
 
-	/* Right now we use separate EVQ for Rx and Tx */
-	sa->rxq_max = MIN(rxq_allocated, evq_allocated / 2);
-	sa->txq_max = MIN(txq_allocated, evq_allocated - sa->rxq_max);
+	/*
+	 * Reserve absolutely required minimum.
+	 * Right now we use separate EVQ for Rx and Tx.
+	 */
+	if (rxq_allocated > 0 && evq_allocated > 0) {
+		sa->rxq_max = 1;
+		rxq_allocated--;
+		evq_allocated--;
+	}
+	if (txq_allocated > 0 && evq_allocated > 0) {
+		sa->txq_max = 1;
+		txq_allocated--;
+		evq_allocated--;
+	}
+
+	if (sfc_mae_counter_rxq_required(sa) &&
+	    rxq_allocated > 0 && evq_allocated > 0) {
+		rxq_allocated--;
+		evq_allocated--;
+		sas->counters_rxq_allocated = true;
+	} else {
+		sas->counters_rxq_allocated = false;
+	}
+
+	/* Add remaining allocated queues */
+	sa->rxq_max += MIN(rxq_allocated, evq_allocated / 2);
+	sa->txq_max += MIN(txq_allocated, evq_allocated - sa->rxq_max);
 
 	/* Keep NIC initialized */
 	return 0;
 
+fail_allocate_evq:
 fail_get_vi_pool:
 	efx_nic_fini(sa->nic);
 fail_nic_init:
@@ -256,14 +294,20 @@ static int
 sfc_set_drv_limits(struct sfc_adapter *sa)
 {
 	const struct rte_eth_dev_data *data = sa->eth_dev->data;
+	uint32_t rxq_reserved = sfc_nb_reserved_rxq(sfc_sa2shared(sa));
 	efx_drv_limits_t lim;
 
 	memset(&lim, 0, sizeof(lim));
 
-	/* Limits are strict since take into account initial estimation */
+	/*
+	 * Limits are strict since take into account initial estimation.
+	 * Resource allocation stategy is described in
+	 * sfc_estimate_resource_limits().
+	 */
 	lim.edl_min_evq_count = lim.edl_max_evq_count =
-		1 + data->nb_rx_queues + data->nb_tx_queues;
-	lim.edl_min_rxq_count = lim.edl_max_rxq_count = data->nb_rx_queues;
+		1 + data->nb_rx_queues + data->nb_tx_queues + rxq_reserved;
+	lim.edl_min_rxq_count = lim.edl_max_rxq_count =
+		data->nb_rx_queues + rxq_reserved;
 	lim.edl_min_txq_count = lim.edl_max_txq_count = data->nb_tx_queues;
 
 	return efx_nic_set_drv_limits(sa->nic, &lim);
@@ -834,6 +878,10 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_filter_attach;
 
+	rc = sfc_mae_counter_rxq_attach(sa);
+	if (rc != 0)
+		goto fail_mae_counter_rxq_attach;
+
 	rc = sfc_mae_attach(sa);
 	if (rc != 0)
 		goto fail_mae_attach;
@@ -862,6 +910,9 @@ fail_sriov_vswitch_create:
 	sfc_mae_detach(sa);
 
 fail_mae_attach:
+	sfc_mae_counter_rxq_detach(sa);
+
+fail_mae_counter_rxq_attach:
 	sfc_filter_detach(sa);
 
 fail_filter_attach:
@@ -903,6 +954,7 @@ sfc_detach(struct sfc_adapter *sa)
 	sfc_flow_fini(sa);
 
 	sfc_mae_detach(sa);
+	sfc_mae_counter_rxq_detach(sa);
 	sfc_filter_detach(sa);
 	sfc_rss_detach(sa);
 	sfc_port_detach(sa);

@@ -16,6 +16,7 @@
 #include "sfc_log.h"
 #include "sfc_ev.h"
 #include "sfc_rx.h"
+#include "sfc_mae_counter.h"
 #include "sfc_kvargs.h"
 #include "sfc_tweak.h"
 
@@ -1705,6 +1706,9 @@ sfc_rx_configure(struct sfc_adapter *sa)
 	struct sfc_rss *rss = &sas->rss;
 	struct rte_eth_conf *dev_conf = &sa->eth_dev->data->dev_conf;
 	const unsigned int nb_rx_queues = sa->eth_dev->data->nb_rx_queues;
+	const unsigned int nb_rsrv_rx_queues = sfc_nb_reserved_rxq(sas);
+	const unsigned int nb_rxq_total = nb_rx_queues + nb_rsrv_rx_queues;
+	bool reconfigure;
 	int rc;
 
 	sfc_log_init(sa, "nb_rx_queues=%u (old %u)",
@@ -1714,12 +1718,15 @@ sfc_rx_configure(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_check_mode;
 
-	if (nb_rx_queues == sas->rxq_count)
+	if (nb_rxq_total == sas->rxq_count) {
+		reconfigure = true;
 		goto configure_rss;
+	}
 
 	if (sas->rxq_info == NULL) {
+		reconfigure = false;
 		rc = ENOMEM;
-		sas->rxq_info = rte_calloc_socket("sfc-rxqs", nb_rx_queues,
+		sas->rxq_info = rte_calloc_socket("sfc-rxqs", nb_rxq_total,
 						  sizeof(sas->rxq_info[0]), 0,
 						  sa->socket_id);
 		if (sas->rxq_info == NULL)
@@ -1730,39 +1737,42 @@ sfc_rx_configure(struct sfc_adapter *sa)
 		 * since it should not be shared.
 		 */
 		rc = ENOMEM;
-		sa->rxq_ctrl = calloc(nb_rx_queues, sizeof(sa->rxq_ctrl[0]));
+		sa->rxq_ctrl = calloc(nb_rxq_total, sizeof(sa->rxq_ctrl[0]));
 		if (sa->rxq_ctrl == NULL)
 			goto fail_rxqs_ctrl_alloc;
 	} else {
 		struct sfc_rxq_info *new_rxq_info;
 		struct sfc_rxq *new_rxq_ctrl;
 
+		reconfigure = true;
+
+		/* Do not ununitialize reserved queues */
 		if (nb_rx_queues < sas->ethdev_rxq_count)
 			sfc_rx_fini_queues(sa, nb_rx_queues);
 
 		rc = ENOMEM;
 		new_rxq_info =
 			rte_realloc(sas->rxq_info,
-				    nb_rx_queues * sizeof(sas->rxq_info[0]), 0);
-		if (new_rxq_info == NULL && nb_rx_queues > 0)
+				    nb_rxq_total * sizeof(sas->rxq_info[0]), 0);
+		if (new_rxq_info == NULL && nb_rxq_total > 0)
 			goto fail_rxqs_realloc;
 
 		rc = ENOMEM;
 		new_rxq_ctrl = realloc(sa->rxq_ctrl,
-				       nb_rx_queues * sizeof(sa->rxq_ctrl[0]));
-		if (new_rxq_ctrl == NULL && nb_rx_queues > 0)
+				       nb_rxq_total * sizeof(sa->rxq_ctrl[0]));
+		if (new_rxq_ctrl == NULL && nb_rxq_total > 0)
 			goto fail_rxqs_ctrl_realloc;
 
 		sas->rxq_info = new_rxq_info;
 		sa->rxq_ctrl = new_rxq_ctrl;
-		if (nb_rx_queues > sas->rxq_count) {
+		if (nb_rxq_total > sas->rxq_count) {
 			unsigned int rxq_count = sas->rxq_count;
 
 			memset(&sas->rxq_info[rxq_count], 0,
-			       (nb_rx_queues - rxq_count) *
+			       (nb_rxq_total - rxq_count) *
 			       sizeof(sas->rxq_info[0]));
 			memset(&sa->rxq_ctrl[rxq_count], 0,
-			       (nb_rx_queues - rxq_count) *
+			       (nb_rxq_total - rxq_count) *
 			       sizeof(sa->rxq_ctrl[0]));
 		}
 	}
@@ -1779,7 +1789,13 @@ sfc_rx_configure(struct sfc_adapter *sa)
 		sas->ethdev_rxq_count++;
 	}
 
-	sas->rxq_count = sas->ethdev_rxq_count;
+	sas->rxq_count = sas->ethdev_rxq_count + nb_rsrv_rx_queues;
+
+	if (!reconfigure) {
+		rc = sfc_mae_counter_rxq_init(sa);
+		if (rc != 0)
+			goto fail_count_rxq_init;
+	}
 
 configure_rss:
 	rss->channels = (dev_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) ?
@@ -1801,6 +1817,10 @@ configure_rss:
 	return 0;
 
 fail_rx_process_adv_conf_rss:
+	if (!reconfigure)
+		sfc_mae_counter_rxq_fini(sa);
+
+fail_count_rxq_init:
 fail_rx_qinit_info:
 fail_rxqs_ctrl_realloc:
 fail_rxqs_realloc:
@@ -1824,6 +1844,7 @@ sfc_rx_close(struct sfc_adapter *sa)
 	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 
 	sfc_rx_fini_queues(sa, 0);
+	sfc_mae_counter_rxq_fini(sa);
 
 	rss->channels = 0;
 

@@ -186,6 +186,8 @@ struct sfc_adapter_shared {
 
 	char				*dp_rx_name;
 	char				*dp_tx_name;
+
+	bool				counters_rxq_allocated;
 };
 
 /* Adapter process private data */
@@ -204,6 +206,15 @@ sfc_adapter_priv_by_eth_dev(struct rte_eth_dev *eth_dev)
 	SFC_ASSERT(sap != NULL);
 	return sap;
 }
+
+/* RxQ dedicated for counters (counter only RxQ) data */
+struct sfc_counter_rxq {
+	unsigned int			state;
+#define SFC_COUNTER_RXQ_ATTACHED		0x1
+#define SFC_COUNTER_RXQ_INITIALIZED		0x2
+	sfc_sw_index_t			sw_index;
+	struct rte_mempool		*mp;
+};
 
 /* Adapter private data */
 struct sfc_adapter {
@@ -283,6 +294,8 @@ struct sfc_adapter {
 	bool				mgmt_evq_running;
 	struct sfc_evq			*mgmt_evq;
 
+	struct sfc_counter_rxq		counter_rxq;
+
 	struct sfc_rxq			*rxq_ctrl;
 	struct sfc_txq			*txq_ctrl;
 
@@ -355,6 +368,12 @@ static inline void
 sfc_adapter_lock_fini(__rte_unused struct sfc_adapter *sa)
 {
 	/* Just for symmetry of the API */
+}
+
+static inline unsigned int
+sfc_nb_counter_rxq(const struct sfc_adapter_shared *sas)
+{
+	return sas->counters_rxq_allocated ? 1 : 0;
 }
 
 /** Get the number of milliseconds since boot from the default timer */

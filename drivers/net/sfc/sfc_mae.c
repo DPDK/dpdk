@@ -16,6 +16,7 @@
 #include "efx.h"
 
 #include "sfc.h"
+#include "sfc_mae_counter.h"
 #include "sfc_log.h"
 #include "sfc_switch.h"
 

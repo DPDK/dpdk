@@ -66,36 +66,87 @@ sfc_mgmt_evq_sw_index(__rte_unused const struct sfc_adapter_shared *sas)
 	return 0;
 }
 
+/* Return the number of Rx queues reserved for driver's internal use */
+static inline unsigned int
+sfc_nb_reserved_rxq(const struct sfc_adapter_shared *sas)
+{
+	return sfc_nb_counter_rxq(sas);
+}
+
+static inline unsigned int
+sfc_nb_reserved_evq(const struct sfc_adapter_shared *sas)
+{
+	/* An EvQ is required for each reserved RxQ */
+	return 1 + sfc_nb_reserved_rxq(sas);
+}
+
+/*
+ * The mapping functions that return SW index of a specific reserved
+ * queue rely on the relative order of reserved queues. Some reserved
+ * queues are optional, and if they are disabled or not supported, then
+ * the function for that specific reserved queue will return previous
+ * valid index of a reserved queue in the dependency chain or
+ * SFC_SW_INDEX_INVALID if it is the first reserved queue in the chain.
+ * If at least one of the reserved queues in the chain is enabled, then
+ * the corresponding function will give valid SW index, even if previous
+ * functions in the chain returned SFC_SW_INDEX_INVALID, since this value
+ * is one less than the first valid SW index.
+ *
+ * The dependency mechanism is utilized to avoid regid defines for SW indices
+ * for reserved queues and to allow these indices to shrink and make space
+ * for ethdev queue indices when some of the reserved queues are disabled.
+ */
+
+static inline sfc_sw_index_t
+sfc_counters_rxq_sw_index(const struct sfc_adapter_shared *sas)
+{
+	return sas->counters_rxq_allocated ? 0 : SFC_SW_INDEX_INVALID;
+}
+
 /*
  * Functions below define event queue to transmit/receive queue and vice
  * versa mapping.
+ * SFC_ETHDEV_QID_INVALID is returned when sw_index is converted to
+ * ethdev_qid, but sw_index represents a reserved queue for driver's
+ * internal use.
  * Own event queue is allocated for management, each Rx and each Tx queue.
  * Zero event queue is used for management events.
- * Rx event queues from 1 to RxQ number follow management event queue.
+ * When counters are supported, one Rx event queue is reserved.
+ * Rx event queues follow reserved event queues.
  * Tx event queues follow Rx event queues.
  */
 
 static inline sfc_ethdev_qid_t
-sfc_ethdev_rx_qid_by_rxq_sw_index(__rte_unused struct sfc_adapter_shared *sas,
+sfc_ethdev_rx_qid_by_rxq_sw_index(struct sfc_adapter_shared *sas,
 				  sfc_sw_index_t rxq_sw_index)
 {
-	/* Only ethdev queues are present for now */
-	return rxq_sw_index;
+	if (rxq_sw_index < sfc_nb_reserved_rxq(sas))
+		return SFC_ETHDEV_QID_INVALID;
+
+	return rxq_sw_index - sfc_nb_reserved_rxq(sas);
 }
 
 static inline sfc_sw_index_t
-sfc_rxq_sw_index_by_ethdev_rx_qid(__rte_unused struct sfc_adapter_shared *sas,
+sfc_rxq_sw_index_by_ethdev_rx_qid(struct sfc_adapter_shared *sas,
 				  sfc_ethdev_qid_t ethdev_qid)
 {
-	/* Only ethdev queues are present for now */
-	return ethdev_qid;
+	return sfc_nb_reserved_rxq(sas) + ethdev_qid;
 }
 
 static inline sfc_sw_index_t
-sfc_evq_sw_index_by_rxq_sw_index(__rte_unused struct sfc_adapter *sa,
+sfc_evq_sw_index_by_rxq_sw_index(struct sfc_adapter *sa,
 				 sfc_sw_index_t rxq_sw_index)
 {
-	return 1 + rxq_sw_index;
+	struct sfc_adapter_shared *sas = sfc_sa2shared(sa);
+	sfc_ethdev_qid_t ethdev_qid;
+
+	ethdev_qid = sfc_ethdev_rx_qid_by_rxq_sw_index(sas, rxq_sw_index);
+	if (ethdev_qid == SFC_ETHDEV_QID_INVALID) {
+		/* One EvQ is reserved for management */
+		return 1 + rxq_sw_index;
+	}
+
+	return sfc_nb_reserved_evq(sas) + ethdev_qid;
 }
 
 static inline sfc_ethdev_qid_t
@@ -118,7 +169,8 @@ static inline sfc_sw_index_t
 sfc_evq_sw_index_by_txq_sw_index(struct sfc_adapter *sa,
 				 sfc_sw_index_t txq_sw_index)
 {
-	return 1 + sa->eth_dev->data->nb_rx_queues + txq_sw_index;
+	return sfc_nb_reserved_evq(sfc_sa2shared(sa)) +
+		sa->eth_dev->data->nb_rx_queues + txq_sw_index;
 }
 
 int sfc_ev_attach(struct sfc_adapter *sa);

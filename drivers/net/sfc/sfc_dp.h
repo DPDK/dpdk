@@ -97,6 +97,8 @@ struct sfc_dp {
 TAILQ_HEAD(sfc_dp_list, sfc_dp);
 
 typedef unsigned int sfc_sw_index_t;
+#define SFC_SW_INDEX_INVALID	((sfc_sw_index_t)(UINT_MAX))
+
 typedef int32_t	sfc_ethdev_qid_t;
 #define SFC_ETHDEV_QID_INVALID	((sfc_ethdev_qid_t)(-1))
 
