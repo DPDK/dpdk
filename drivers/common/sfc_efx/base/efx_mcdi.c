@@ -2568,6 +2568,7 @@ efx_mcdi_init_evq(
 	__in		efsys_mem_t *esmp,
 	__in		size_t nevs,
 	__in		uint32_t irq,
+	__in		uint32_t target_evq,
 	__in		uint32_t us,
 	__in		uint32_t flags,
 	__in		boolean_t low_latency)
@@ -2602,10 +2603,14 @@ efx_mcdi_init_evq(
 
 	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_SIZE, nevs);
 	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_INSTANCE, instance);
-	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_IRQ_NUM, irq);
 
 	interrupting = ((flags & EFX_EVQ_FLAGS_NOTIFY_MASK) ==
 	    EFX_EVQ_FLAGS_NOTIFY_INTERRUPT);
+
+	if (interrupting)
+		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_IRQ_NUM, irq);
+	else
+		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TARGET_EVQ, target_evq);
 
 	if (encp->enc_init_evq_v2_supported) {
 		/*

@@ -121,7 +121,8 @@ ef10_ev_qcreate(
 	__in		efx_evq_t *eep)
 {
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
-	uint32_t irq;
+	uint32_t irq = 0;
+	uint32_t target_evq = 0;
 	efx_rc_t rc;
 	boolean_t low_latency;
 
@@ -159,11 +160,12 @@ ef10_ev_qcreate(
 	    EFX_EVQ_FLAGS_NOTIFY_INTERRUPT) {
 		irq = index;
 	} else if (index == EFX_EF10_ALWAYS_INTERRUPTING_EVQ_INDEX) {
-		irq = index;
+		/* Use the first interrupt for always interrupting EvQ */
+		irq = 0;
 		flags = (flags & ~EFX_EVQ_FLAGS_NOTIFY_MASK) |
 		    EFX_EVQ_FLAGS_NOTIFY_INTERRUPT;
 	} else {
-		irq = EFX_EF10_ALWAYS_INTERRUPTING_EVQ_INDEX;
+		target_evq = EFX_EF10_ALWAYS_INTERRUPTING_EVQ_INDEX;
 	}
 
 	/*
@@ -187,8 +189,8 @@ ef10_ev_qcreate(
 	 * decision and low_latency hint is ignored.
 	 */
 	low_latency = encp->enc_datapath_cap_evb ? 0 : 1;
-	rc = efx_mcdi_init_evq(enp, index, esmp, ndescs, irq, us, flags,
-	    low_latency);
+	rc = efx_mcdi_init_evq(enp, index, esmp, ndescs, irq, target_evq, us,
+	    flags, low_latency);
 	if (rc != 0)
 		goto fail2;
 

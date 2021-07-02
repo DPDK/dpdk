@@ -106,7 +106,8 @@ rhead_ev_qcreate(
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
 	size_t desc_size;
-	uint32_t irq;
+	uint32_t irq = 0;
+	uint32_t target_evq = 0;
 	efx_rc_t rc;
 
 	_NOTE(ARGUNUSED(id))	/* buftbl id managed by MC */
@@ -142,19 +143,20 @@ rhead_ev_qcreate(
 	    EFX_EVQ_FLAGS_NOTIFY_INTERRUPT) {
 		irq = index;
 	} else if (index == EFX_RHEAD_ALWAYS_INTERRUPTING_EVQ_INDEX) {
-		irq = index;
+		/* Use the first interrupt for always interrupting EvQ */
+		irq = 0;
 		flags = (flags & ~EFX_EVQ_FLAGS_NOTIFY_MASK) |
 		    EFX_EVQ_FLAGS_NOTIFY_INTERRUPT;
 	} else {
-		irq = EFX_RHEAD_ALWAYS_INTERRUPTING_EVQ_INDEX;
+		target_evq = EFX_RHEAD_ALWAYS_INTERRUPTING_EVQ_INDEX;
 	}
 
 	/*
 	 * Interrupts may be raised for events immediately after the queue is
 	 * created. See bug58606.
 	 */
-	rc = efx_mcdi_init_evq(enp, index, esmp, ndescs, irq, us, flags,
-	    B_FALSE);
+	rc = efx_mcdi_init_evq(enp, index, esmp, ndescs, irq, target_evq, us,
+	    flags, B_FALSE);
 	if (rc != 0)
 		goto fail2;
 
