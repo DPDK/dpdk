@@ -89,8 +89,11 @@ INTERNAL {
 	efx_mae_action_rule_insert;
 	efx_mae_action_rule_remove;
 	efx_mae_action_set_alloc;
+	efx_mae_action_set_fill_in_counter_id;
 	efx_mae_action_set_fill_in_eh_id;
 	efx_mae_action_set_free;
+	efx_mae_action_set_get_nb_count;
+	efx_mae_action_set_populate_count;
 	efx_mae_action_set_populate_decap;
 	efx_mae_action_set_populate_deliver;
 	efx_mae_action_set_populate_drop;

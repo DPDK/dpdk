@@ -4306,6 +4306,15 @@ extern	__checkReturn			efx_rc_t
 efx_mae_action_set_populate_encap(
 	__in				efx_mae_actions_t *spec);
 
+/*
+ * Use efx_mae_action_set_fill_in_counter_id() to set ID of a counter
+ * in the specification prior to action set allocation.
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_count(
+	__in				efx_mae_actions_t *spec);
+
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mae_action_set_populate_flag(
@@ -4409,6 +4418,18 @@ efx_mae_action_set_fill_in_eh_id(
 typedef struct efx_counter_s {
 	uint32_t id;
 } efx_counter_t;
+
+LIBEFX_API
+extern	__checkReturn			unsigned int
+efx_mae_action_set_get_nb_count(
+	__in				const efx_mae_actions_t *spec);
+
+/* See description before efx_mae_action_set_populate_count(). */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_fill_in_counter_id(
+	__in				efx_mae_actions_t *spec,
+	__in				const efx_counter_t *counter_idp);
 
 /* Action set ID */
 typedef struct efx_mae_aset_id_s {
