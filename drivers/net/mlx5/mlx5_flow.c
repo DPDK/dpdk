@@ -1674,6 +1674,13 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, NULL,
 					  "RSS on eCPRI is not supported now");
 	}
+	if ((item_flags & MLX5_FLOW_LAYER_MPLS) &&
+	    !(item_flags &
+	      (MLX5_FLOW_LAYER_INNER_L2 | MLX5_FLOW_LAYER_INNER_L3)) &&
+	    rss->level > 1)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					  "MPLS inner RSS needs to specify inner L2/L3 items after MPLS in pattern");
 	return 0;
 }
 
