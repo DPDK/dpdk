@@ -512,11 +512,9 @@ mlx5_flow_meter_policy_find(struct rte_eth_dev *dev,
 	struct mlx5_flow_meter_sub_policy *sub_policy = NULL;
 	union mlx5_l3t_data data;
 
-	if (policy_id > MLX5_MAX_SUB_POLICY_TBL_NUM ||
-		!priv->sh->mtrmng->policy_idx_tbl)
+	if (policy_id > MLX5_MAX_SUB_POLICY_TBL_NUM || !priv->policy_idx_tbl)
 		return NULL;
-	if (mlx5_l3t_get_entry(priv->sh->mtrmng->policy_idx_tbl,
-				policy_id, &data) ||
+	if (mlx5_l3t_get_entry(priv->policy_idx_tbl, policy_id, &data) ||
 				!data.dword)
 		return NULL;
 	if (policy_idx)
@@ -524,8 +522,7 @@ mlx5_flow_meter_policy_find(struct rte_eth_dev *dev,
 	sub_policy = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
 					data.dword);
 	/* Remove reference taken by the mlx5_l3t_get_entry. */
-	mlx5_l3t_clear_entry(priv->sh->mtrmng->policy_idx_tbl,
-				policy_id);
+	mlx5_l3t_clear_entry(priv->policy_idx_tbl, policy_id);
 	if (sub_policy)
 		if (sub_policy->main_policy_id)
 			return sub_policy->main_policy;
@@ -605,9 +602,8 @@ __mlx5_flow_meter_policy_delete(struct rte_eth_dev *dev,
 			}
 		}
 	}
-	if (priv->sh->mtrmng->policy_idx_tbl && clear_l3t) {
-		if (mlx5_l3t_clear_entry(priv->sh->mtrmng->policy_idx_tbl,
-					policy_id)) {
+	if (priv->policy_idx_tbl && clear_l3t) {
+		if (mlx5_l3t_clear_entry(priv->policy_idx_tbl, policy_id)) {
 			rte_spinlock_unlock(&mtr_policy->sl);
 			return -rte_mtr_error_set(error, ENOTSUP,
 				RTE_MTR_ERROR_TYPE_METER_POLICY_ID, NULL,
@@ -770,14 +766,12 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 			goto policy_add_err;
 	}
 	data.dword = policy_idx;
-	if (!priv->sh->mtrmng->policy_idx_tbl) {
-		priv->sh->mtrmng->policy_idx_tbl =
-				mlx5_l3t_create(MLX5_L3T_TYPE_DWORD);
-		if (!priv->sh->mtrmng->policy_idx_tbl)
+	if (!priv->policy_idx_tbl) {
+		priv->policy_idx_tbl = mlx5_l3t_create(MLX5_L3T_TYPE_DWORD);
+		if (!priv->policy_idx_tbl)
 			goto policy_add_err;
 	}
-	if (mlx5_l3t_set_entry(priv->sh->mtrmng->policy_idx_tbl,
-				policy_id, &data))
+	if (mlx5_l3t_set_entry(priv->policy_idx_tbl, policy_id, &data))
 		goto policy_add_err;
 	return 0;
 policy_add_err:
@@ -1840,9 +1834,8 @@ mlx5_flow_meter_rxq_flush(struct rte_eth_dev *dev)
 
 	if (!priv->mtr_en)
 		return;
-	if (priv->sh->mtrmng->policy_idx_tbl && priv->sh->refcnt == 1) {
-		MLX5_L3T_FOREACH(priv->sh->mtrmng->policy_idx_tbl,
-					i, entry) {
+	if (priv->policy_idx_tbl) {
+		MLX5_L3T_FOREACH(priv->policy_idx_tbl, i, entry) {
 			policy_idx = *(uint32_t *)entry;
 			sub_policy = mlx5_ipool_get
 				(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
@@ -1908,9 +1901,8 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 				NULL, "MTR object meter profile invalid.");
 		}
 	}
-	if (priv->sh->mtrmng->policy_idx_tbl && priv->sh->refcnt == 1) {
-		MLX5_L3T_FOREACH(priv->sh->mtrmng->policy_idx_tbl,
-					i, entry) {
+	if (priv->policy_idx_tbl) {
+		MLX5_L3T_FOREACH(priv->policy_idx_tbl, i, entry) {
 			policy_idx = *(uint32_t *)entry;
 			sub_policy = mlx5_ipool_get
 				(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
@@ -1931,8 +1923,8 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 						"meter policy invalid.");
 			mlx5_free(sub_policy->main_policy);
 		}
-		mlx5_l3t_destroy(priv->sh->mtrmng->policy_idx_tbl);
-		priv->sh->mtrmng->policy_idx_tbl = NULL;
+		mlx5_l3t_destroy(priv->policy_idx_tbl);
+		priv->policy_idx_tbl = NULL;
 	}
 	if (priv->mtr_profile_tbl) {
 		MLX5_L3T_FOREACH(priv->mtr_profile_tbl, i, entry) {

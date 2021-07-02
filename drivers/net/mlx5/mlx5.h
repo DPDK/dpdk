@@ -870,8 +870,6 @@ struct mlx5_flow_mtr_mng {
 	/* Default policy id. */
 	uint32_t def_policy_ref_cnt;
 	/** def_policy meter use count. */
-	struct mlx5_l3t_tbl *policy_idx_tbl;
-	/* Policy index lookup table. */
 	struct mlx5_flow_tbl_resource *drop_tbl[MLX5_MTR_DOMAIN_MAX];
 	/* Meter drop table. */
 	struct mlx5_flow_dv_matcher *
@@ -1375,6 +1373,7 @@ struct mlx5_priv {
 	uint8_t mtr_color_reg; /* Meter color match REG_C. */
 	struct mlx5_legacy_flow_meters flow_meters; /* MTR list. */
 	struct mlx5_l3t_tbl *mtr_profile_tbl; /* Meter index lookup table. */
+	struct mlx5_l3t_tbl *policy_idx_tbl; /* Policy index lookup table. */
 	struct mlx5_l3t_tbl *mtr_idx_tbl; /* Meter index lookup table. */
 	uint8_t skip_default_rss_reta; /* Skip configuration of default reta. */
 	uint8_t fdb_def_rule; /* Whether fdb jump to table 1 is configured. */
