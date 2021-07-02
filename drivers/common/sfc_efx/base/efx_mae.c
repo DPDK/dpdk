@@ -2551,6 +2551,144 @@ fail2:
 	EFSYS_PROBE(fail2);
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_counters_stream_start(
+	__in				efx_nic_t *enp,
+	__in				uint16_t rxq_id,
+	__in				uint16_t packet_size,
+	__in				uint32_t flags_in,
+	__out				uint32_t *flags_out)
+{
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_MAE_COUNTERS_STREAM_START_IN_LEN,
+			     MC_CMD_MAE_COUNTERS_STREAM_START_OUT_LEN);
+	efx_rc_t rc;
+
+	EFX_STATIC_ASSERT(EFX_MAE_COUNTERS_STREAM_IN_ZERO_SQUASH_DISABLE ==
+	    1U << MC_CMD_MAE_COUNTERS_STREAM_START_IN_ZERO_SQUASH_DISABLE_LBN);
+
+	EFX_STATIC_ASSERT(EFX_MAE_COUNTERS_STREAM_OUT_USES_CREDITS ==
+	    1U << MC_CMD_MAE_COUNTERS_STREAM_START_OUT_USES_CREDITS_LBN);
+
+	req.emr_cmd = MC_CMD_MAE_COUNTERS_STREAM_START;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_COUNTERS_STREAM_START_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_COUNTERS_STREAM_START_OUT_LEN;
+
+	MCDI_IN_SET_WORD(req, MAE_COUNTERS_STREAM_START_IN_QID, rxq_id);
+	MCDI_IN_SET_WORD(req, MAE_COUNTERS_STREAM_START_IN_PACKET_SIZE,
+			 packet_size);
+	MCDI_IN_SET_DWORD(req, MAE_COUNTERS_STREAM_START_IN_FLAGS, flags_in);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	if (req.emr_out_length_used <
+	    MC_CMD_MAE_COUNTERS_STREAM_START_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail2;
+	}
+
+	*flags_out = MCDI_OUT_DWORD(req, MAE_COUNTERS_STREAM_START_OUT_FLAGS);
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_counters_stream_stop(
+	__in				efx_nic_t *enp,
+	__in				uint16_t rxq_id,
+	__out_opt			uint32_t *gen_countp)
+{
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_MAE_COUNTERS_STREAM_STOP_IN_LEN,
+			     MC_CMD_MAE_COUNTERS_STREAM_STOP_OUT_LEN);
+	efx_rc_t rc;
+
+	req.emr_cmd = MC_CMD_MAE_COUNTERS_STREAM_STOP;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_COUNTERS_STREAM_STOP_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_COUNTERS_STREAM_STOP_OUT_LEN;
+
+	MCDI_IN_SET_WORD(req, MAE_COUNTERS_STREAM_STOP_IN_QID, rxq_id);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	if (req.emr_out_length_used <
+	    MC_CMD_MAE_COUNTERS_STREAM_STOP_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail2;
+	}
+
+	if (gen_countp != NULL) {
+		*gen_countp = MCDI_OUT_DWORD(req,
+			    MAE_COUNTERS_STREAM_STOP_OUT_GENERATION_COUNT);
+	}
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_counters_stream_give_credits(
+	__in				efx_nic_t *enp,
+	__in				uint32_t n_credits)
+{
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+			     MC_CMD_MAE_COUNTERS_STREAM_GIVE_CREDITS_IN_LEN,
+			     MC_CMD_MAE_COUNTERS_STREAM_GIVE_CREDITS_OUT_LEN);
+	efx_rc_t rc;
+
+	req.emr_cmd = MC_CMD_MAE_COUNTERS_STREAM_GIVE_CREDITS;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_COUNTERS_STREAM_GIVE_CREDITS_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_COUNTERS_STREAM_GIVE_CREDITS_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req, MAE_COUNTERS_STREAM_GIVE_CREDITS_IN_NUM_CREDITS,
+			 n_credits);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
 	return (rc);
 }
 

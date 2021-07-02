@@ -4455,6 +4455,38 @@ efx_mae_counters_free(
 	__in_ecount(n_counters)		const efx_counter_t *countersp,
 	__out_opt			uint32_t *gen_countp);
 
+/* When set, include counters with a value of zero */
+#define	EFX_MAE_COUNTERS_STREAM_IN_ZERO_SQUASH_DISABLE	(1U << 0)
+
+/*
+ * Set if credit-based flow control is used. In this case the driver
+ * must call efx_mae_counters_stream_give_credits() to notify the
+ * packetiser of descriptors written.
+ */
+#define	EFX_MAE_COUNTERS_STREAM_OUT_USES_CREDITS	(1U << 0)
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_counters_stream_start(
+	__in				efx_nic_t *enp,
+	__in				uint16_t rxq_id,
+	__in				uint16_t packet_size,
+	__in				uint32_t flags_in,
+	__out				uint32_t *flags_out);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_counters_stream_stop(
+	__in				efx_nic_t *enp,
+	__in				uint16_t rxq_id,
+	__out_opt			uint32_t *gen_countp);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_counters_stream_give_credits(
+	__in				efx_nic_t *enp,
+	__in				uint32_t n_credits);
+
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mae_action_set_free(
