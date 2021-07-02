@@ -2925,6 +2925,7 @@ typedef enum efx_rx_prefix_field_e {
 	EFX_RX_PREFIX_FIELD_USER_MARK_VALID,
 	EFX_RX_PREFIX_FIELD_CSUM_FRAME,
 	EFX_RX_PREFIX_FIELD_INGRESS_VPORT,
+	EFX_RX_PREFIX_FIELD_INGRESS_MPORT = EFX_RX_PREFIX_FIELD_INGRESS_VPORT,
 	EFX_RX_PREFIX_NFIELDS
 } efx_rx_prefix_field_t;
 
@@ -2998,6 +2999,10 @@ typedef enum efx_rxq_type_e {
  * the driver.
  */
 #define	EFX_RXQ_FLAG_RSS_HASH		0x4
+/*
+ * Request ingress mport field in the Rx prefix of a queue.
+ */
+#define	EFX_RXQ_FLAG_INGRESS_MPORT	0x8
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t

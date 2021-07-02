@@ -1031,6 +1031,11 @@ ef10_rx_qcreate(
 	EFSYS_ASSERT(params.es_bufs_per_desc == 0);
 #endif /* EFSYS_OPT_RX_ES_SUPER_BUFFER */
 
+	if (flags & EFX_RXQ_FLAG_INGRESS_MPORT) {
+		rc = ENOTSUP;
+		goto fail12;
+	}
+
 	/* Scatter can only be disabled if the firmware supports doing so */
 	if (flags & EFX_RXQ_FLAG_SCATTER)
 		params.disable_scatter = B_FALSE;
@@ -1044,7 +1049,7 @@ ef10_rx_qcreate(
 
 	if ((rc = efx_mcdi_init_rxq(enp, ndescs, eep, label, index,
 		    esmp, &params)) != 0)
-		goto fail12;
+		goto fail13;
 
 	erp->er_eep = eep;
 	erp->er_label = label;
@@ -1057,6 +1062,8 @@ ef10_rx_qcreate(
 
 	return (0);
 
+fail13:
+	EFSYS_PROBE(fail13);
 fail12:
 	EFSYS_PROBE(fail12);
 #if EFSYS_OPT_RX_ES_SUPER_BUFFER
