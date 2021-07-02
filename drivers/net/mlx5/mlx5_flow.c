@@ -2700,9 +2700,8 @@ mlx5_flow_validate_item_mpls(struct rte_eth_dev *dev __rte_unused,
 					  "MPLS not supported or"
 					  " disabled in firmware"
 					  " configuration.");
-	/* MPLS over IP, UDP, GRE is allowed */
-	if (!(prev_layer & (MLX5_FLOW_LAYER_OUTER_L3 |
-			    MLX5_FLOW_LAYER_OUTER_L4_UDP |
+	/* MPLS over UDP, GRE is allowed */
+	if (!(prev_layer & (MLX5_FLOW_LAYER_OUTER_L4_UDP |
 			    MLX5_FLOW_LAYER_GRE |
 			    MLX5_FLOW_LAYER_GRE_KEY)))
 		return rte_flow_error_set(error, EINVAL,

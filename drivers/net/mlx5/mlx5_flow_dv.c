@@ -7349,9 +7349,6 @@ flow_dv_translate_item_mpls(void *matcher, void *key,
 			 RTE_ETHER_TYPE_MPLS);
 		break;
 	default:
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xff);
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
-			 IPPROTO_MPLS);
 		break;
 	}
 	if (!in_mpls_v)
