@@ -53,6 +53,15 @@ sfc_rx_qflush_failed(struct sfc_rxq_info *rxq_info)
 	rxq_info->state &= ~SFC_RXQ_FLUSHING;
 }
 
+/* This returns the running counter, which is not bounded by ring size */
+unsigned int
+sfc_rx_get_pushed(struct sfc_adapter *sa, struct sfc_dp_rxq *dp_rxq)
+{
+	SFC_ASSERT(sa->priv.dp_rx->get_pushed != NULL);
+
+	return sa->priv.dp_rx->get_pushed(dp_rxq);
+}
+
 static int
 sfc_efx_rx_qprime(struct sfc_efx_rxq *rxq)
 {

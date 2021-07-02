@@ -204,6 +204,9 @@ typedef int (sfc_dp_rx_intr_enable_t)(struct sfc_dp_rxq *dp_rxq);
 /** Disable Rx interrupts */
 typedef int (sfc_dp_rx_intr_disable_t)(struct sfc_dp_rxq *dp_rxq);
 
+/** Get number of pushed Rx buffers */
+typedef unsigned int (sfc_dp_rx_get_pushed_t)(struct sfc_dp_rxq *dp_rxq);
+
 /** Receive datapath definition */
 struct sfc_dp_rx {
 	struct sfc_dp				dp;
@@ -238,6 +241,7 @@ struct sfc_dp_rx {
 	sfc_dp_rx_qdesc_status_t		*qdesc_status;
 	sfc_dp_rx_intr_enable_t			*intr_enable;
 	sfc_dp_rx_intr_disable_t		*intr_disable;
+	sfc_dp_rx_get_pushed_t			*get_pushed;
 	eth_rx_burst_t				pkt_burst;
 };
 
