@@ -1578,7 +1578,9 @@ err_secondary:
 	priv->ctrl_flows = 0;
 	rte_spinlock_init(&priv->flow_list_lock);
 	TAILQ_INIT(&priv->flow_meters);
-	TAILQ_INIT(&priv->flow_meter_profiles);
+	priv->mtr_profile_tbl = mlx5_l3t_create(MLX5_L3T_TYPE_PTR);
+	if (!priv->mtr_profile_tbl)
+		goto error;
 	/* Hint libmlx5 to use PMD allocator for data plane resources */
 	mlx5_glue->dv_set_context_attr(sh->ctx,
 			MLX5DV_CTX_ATTR_BUF_ALLOCATORS,
@@ -1721,6 +1723,8 @@ error:
 			mlx5_vlan_vmwa_exit(priv->vmwa_context);
 		if (eth_dev && priv->drop_queue.hrxq)
 			mlx5_drop_action_destroy(eth_dev);
+		if (priv->mtr_profile_tbl)
+			mlx5_l3t_destroy(priv->mtr_profile_tbl);
 		if (own_domain_id)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
 		mlx5_cache_list_destroy(&priv->hrxqs);

@@ -91,13 +91,20 @@ mlx5_flow_meter_action_create(struct mlx5_priv *priv,
 static struct mlx5_flow_meter_profile *
 mlx5_flow_meter_profile_find(struct mlx5_priv *priv, uint32_t meter_profile_id)
 {
-	struct mlx5_mtr_profiles *fmps = &priv->flow_meter_profiles;
 	struct mlx5_flow_meter_profile *fmp;
+	union mlx5_l3t_data data;
+	int32_t ret;
 
-	TAILQ_FOREACH(fmp, fmps, next)
-		if (meter_profile_id == fmp->id)
-			return fmp;
-	return NULL;
+	if (mlx5_l3t_get_entry(priv->mtr_profile_tbl,
+			       meter_profile_id, &data) || !data.ptr)
+		return NULL;
+	fmp = data.ptr;
+	/* Remove reference taken by the mlx5_l3t_get_entry. */
+	ret = mlx5_l3t_clear_entry(priv->mtr_profile_tbl,
+				   meter_profile_id);
+	if (!ret || ret == -1)
+		return NULL;
+	return fmp;
 }
 
 /**
@@ -399,8 +406,8 @@ mlx5_flow_meter_profile_add(struct rte_eth_dev *dev,
 		       struct rte_mtr_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_mtr_profiles *fmps = &priv->flow_meter_profiles;
 	struct mlx5_flow_meter_profile *fmp;
+	union mlx5_l3t_data data;
 	int ret;
 
 	if (!priv->mtr_en)
@@ -427,8 +434,13 @@ mlx5_flow_meter_profile_add(struct rte_eth_dev *dev,
 	ret = mlx5_flow_meter_param_fill(fmp, priv, error);
 	if (ret)
 		goto error;
-	/* Add to list. */
-	TAILQ_INSERT_TAIL(fmps, fmp, next);
+	data.ptr = fmp;
+	ret = mlx5_l3t_set_entry(priv->mtr_profile_tbl,
+				 meter_profile_id, &data);
+	if (ret)
+		return -rte_mtr_error_set(error, ENOTSUP,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "Meter profile insert fail.");
 	return 0;
 error:
 	mlx5_free(fmp);
@@ -472,8 +484,10 @@ mlx5_flow_meter_profile_delete(struct rte_eth_dev *dev,
 		return -rte_mtr_error_set(error, EBUSY,
 					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
 					  NULL, "Meter profile is in use.");
-	/* Remove from list. */
-	TAILQ_REMOVE(&priv->flow_meter_profiles, fmp, next);
+	if (mlx5_l3t_clear_entry(priv->mtr_profile_tbl, meter_profile_id))
+		return -rte_mtr_error_set(error, EBUSY,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+					  NULL, "Meter profile remove fail.");
 	mlx5_free(fmp);
 	return 0;
 }
@@ -1859,7 +1873,6 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_legacy_flow_meters *fms = &priv->flow_meters;
-	struct mlx5_mtr_profiles *fmps = &priv->flow_meter_profiles;
 	struct mlx5_flow_meter_profile *fmp;
 	struct mlx5_legacy_flow_meter *legacy_fm;
 	struct mlx5_flow_meter_info *fm;
@@ -1921,12 +1934,18 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 		mlx5_l3t_destroy(priv->sh->mtrmng->policy_idx_tbl);
 		priv->sh->mtrmng->policy_idx_tbl = NULL;
 	}
-	TAILQ_FOREACH_SAFE(fmp, fmps, next, tmp) {
-		/* Check unused. */
-		MLX5_ASSERT(!fmp->ref_cnt);
-		/* Remove from list. */
-		TAILQ_REMOVE(&priv->flow_meter_profiles, fmp, next);
-		mlx5_free(fmp);
+	if (priv->mtr_profile_tbl) {
+		MLX5_L3T_FOREACH(priv->mtr_profile_tbl, i, entry) {
+			fmp = entry;
+			if (mlx5_flow_meter_profile_delete(dev, fmp->id,
+							   error))
+				return -rte_mtr_error_set(error, EINVAL,
+					RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+						NULL, "Fail to destroy "
+						"meter profile.");
+		}
+		mlx5_l3t_destroy(priv->mtr_profile_tbl);
+		priv->mtr_profile_tbl = NULL;
 	}
 	/* Delete default policy table. */
 	mlx5_flow_destroy_def_policy(dev);

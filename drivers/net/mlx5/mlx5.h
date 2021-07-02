@@ -1373,8 +1373,8 @@ struct mlx5_priv {
 	/* Hash table of Rx metadata register copy table. */
 	uint8_t mtr_sfx_reg; /* Meter prefix-suffix flow match REG_C. */
 	uint8_t mtr_color_reg; /* Meter color match REG_C. */
-	struct mlx5_mtr_profiles flow_meter_profiles; /* MTR profile list. */
 	struct mlx5_legacy_flow_meters flow_meters; /* MTR list. */
+	struct mlx5_l3t_tbl *mtr_profile_tbl; /* Meter index lookup table. */
 	struct mlx5_l3t_tbl *mtr_idx_tbl; /* Meter index lookup table. */
 	uint8_t skip_default_rss_reta; /* Skip configuration of default reta. */
 	uint8_t fdb_def_rule; /* Whether fdb jump to table 1 is configured. */

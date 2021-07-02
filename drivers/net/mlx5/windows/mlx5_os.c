@@ -566,7 +566,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	priv->flows = 0;
 	priv->ctrl_flows = 0;
 	TAILQ_INIT(&priv->flow_meters);
-	TAILQ_INIT(&priv->flow_meter_profiles);
+	priv->mtr_profile_tbl = mlx5_l3t_create(MLX5_L3T_TYPE_PTR);
+	if (!priv->mtr_profile_tbl)
+		goto error;
 	/* Bring Ethernet device up. */
 	DRV_LOG(DEBUG, "port %u forcing Ethernet interface up.",
 		eth_dev->data->port_id);
@@ -644,6 +646,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	return eth_dev;
 error:
 	if (priv) {
+		if (priv->mtr_profile_tbl)
+			mlx5_l3t_destroy(priv->mtr_profile_tbl);
 		if (own_domain_id)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
 		mlx5_free(priv);
