@@ -42,4 +42,13 @@
  */
 #define SFC_RXD_WAIT_TIMEOUT_NS_DEF	(200U * 1000)
 
+/**
+ * Ideally reading packet and byte counters together should return
+ * consistent values. I.e. a number of bytes corresponds to a number of
+ * packets. Since counters are updated in one thread and queried in
+ * another it requires either locking or atomics which are very
+ * expensive from performance point of view. So, disable it by default.
+ */
+#define SFC_SW_STATS_ATOMIC		0
+
 #endif /* _SFC_TWEAK_H_ */

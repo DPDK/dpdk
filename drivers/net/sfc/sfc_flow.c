@@ -24,6 +24,7 @@
 #include "sfc_flow.h"
 #include "sfc_log.h"
 #include "sfc_dp_rx.h"
+#include "sfc_mae_counter.h"
 
 struct sfc_flow_ops_by_spec {
 	sfc_flow_parse_cb_t	*parse;
@@ -2854,6 +2855,12 @@ sfc_flow_stop(struct sfc_adapter *sa)
 		efx_rx_scale_context_free(sa->nic, rss->dummy_rss_context);
 		rss->dummy_rss_context = EFX_RSS_CONTEXT_DEFAULT;
 	}
+
+	/*
+	 * MAE counter service is not stopped on flow rule remove to avoid
+	 * extra work. Make sure that it is stopped here.
+	 */
+	sfc_mae_counter_stop(sa);
 }
 
 int

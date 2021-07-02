@@ -244,6 +244,8 @@ Supported actions (***transfer*** rules):
 
 - PORT_ID
 
+- COUNT
+
 - DROP
 
 Validating flow rules depends on the firmware variant.

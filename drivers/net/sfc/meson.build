@@ -15,6 +15,7 @@ endif
 if (arch_subdir != 'x86' and arch_subdir != 'arm') or (not dpdk_conf.get('RTE_ARCH_64'))
     build = false
     reason = 'only supported on x86_64 and aarch64'
+    subdir_done()
 endif
 
 extra_flags = []
@@ -38,6 +39,29 @@ foreach flag: extra_flags
         cflags += flag
     endif
 endforeach
+
+# for gcc compiles we need -latomic for 128-bit atomic ops
+if cc.get_id() == 'gcc'
+    libatomic_dep = cc.find_library('atomic', required: false)
+    if not libatomic_dep.found()
+        build = false
+        reason = 'missing dependency, "libatomic"'
+        subdir_done()
+    endif
+
+    # libatomic could be half-installed when above check finds it but
+    # linkage fails
+    atomic_link_code = '''
+    #include <stdio.h>
+    void main() { printf("libatomic link check\n"); }
+    '''
+    if not cc.links(atomic_link_code, dependencies: libatomic_dep)
+        build = false
+        reason = 'broken dependency, "libatomic"'
+        subdir_done()
+    endif
+    ext_deps += libatomic_dep
+endif
 
 deps += ['common_sfc_efx', 'bus_pci']
 sources = files(

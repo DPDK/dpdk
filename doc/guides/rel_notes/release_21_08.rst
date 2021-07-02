@@ -99,6 +99,12 @@ New Features
   Added a new PMD driver for Wangxun 1 Gigabit Ethernet NICs.
   See the :doc:`../nics/ngbe` for more details.
 
+* **Updated Solarflare network PMD.**
+
+  Updated the Solarflare ``sfc_efx`` driver with changes including:
+
+  * Added COUNT action support for SN1000 NICs
+
 * **Added support for Marvell CNXK crypto driver.**
 
   * Added cnxk crypto PMD which provides support for an integrated
