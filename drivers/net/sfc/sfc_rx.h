@@ -119,6 +119,10 @@ struct sfc_rxq_info {
 };
 
 struct sfc_rxq_info *sfc_rxq_info_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq);
+struct sfc_rxq_info *sfc_rxq_info_by_ethdev_qid(struct sfc_adapter_shared *sas,
+						sfc_ethdev_qid_t ethdev_qid);
+struct sfc_rxq *sfc_rxq_ctrl_by_ethdev_qid(struct sfc_adapter *sa,
+					   sfc_ethdev_qid_t ethdev_qid);
 
 int sfc_rx_configure(struct sfc_adapter *sa);
 void sfc_rx_close(struct sfc_adapter *sa);
@@ -129,9 +133,9 @@ int sfc_rx_qinit(struct sfc_adapter *sa, unsigned int rx_queue_id,
 		 uint16_t nb_rx_desc, unsigned int socket_id,
 		 const struct rte_eth_rxconf *rx_conf,
 		 struct rte_mempool *mb_pool);
-void sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index);
-int sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index);
-void sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index);
+void sfc_rx_qfini(struct sfc_adapter *sa, sfc_sw_index_t sw_index);
+int sfc_rx_qstart(struct sfc_adapter *sa, sfc_sw_index_t sw_index);
+void sfc_rx_qstop(struct sfc_adapter *sa, sfc_sw_index_t sw_index);
 
 uint64_t sfc_rx_get_dev_offload_caps(struct sfc_adapter *sa);
 uint64_t sfc_rx_get_queue_offload_caps(struct sfc_adapter *sa);

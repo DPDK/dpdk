@@ -29,6 +29,7 @@
 #include "sfc_filter.h"
 #include "sfc_sriov.h"
 #include "sfc_mae.h"
+#include "sfc_dp.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -168,6 +169,7 @@ struct sfc_rss {
 struct sfc_adapter_shared {
 	unsigned int			rxq_count;
 	struct sfc_rxq_info		*rxq_info;
+	unsigned int			ethdev_rxq_count;
 
 	unsigned int			txq_count;
 	struct sfc_txq_info		*txq_info;

@@ -582,7 +582,7 @@ sfc_ev_qpoll(struct sfc_evq *evq)
 		int rc;
 
 		if (evq->dp_rxq != NULL) {
-			unsigned int rxq_sw_index;
+			sfc_sw_index_t rxq_sw_index;
 
 			rxq_sw_index = evq->dp_rxq->dpq.queue_id;
 

@@ -1400,10 +1400,10 @@ sfc_flow_parse_queue(struct sfc_adapter *sa,
 	struct sfc_rxq *rxq;
 	struct sfc_rxq_info *rxq_info;
 
-	if (queue->index >= sfc_sa2shared(sa)->rxq_count)
+	if (queue->index >= sfc_sa2shared(sa)->ethdev_rxq_count)
 		return -EINVAL;
 
-	rxq = &sa->rxq_ctrl[queue->index];
+	rxq = sfc_rxq_ctrl_by_ethdev_qid(sa, queue->index);
 	spec_filter->template.efs_dmaq_id = (uint16_t)rxq->hw_index;
 
 	rxq_info = &sfc_sa2shared(sa)->rxq_info[queue->index];
@@ -1420,7 +1420,7 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 {
 	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct sfc_rss *rss = &sas->rss;
-	unsigned int rxq_sw_index;
+	sfc_ethdev_qid_t ethdev_qid;
 	struct sfc_rxq *rxq;
 	unsigned int rxq_hw_index_min;
 	unsigned int rxq_hw_index_max;
@@ -1434,18 +1434,19 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 	if (action_rss->queue_num == 0)
 		return -EINVAL;
 
-	rxq_sw_index = sfc_sa2shared(sa)->rxq_count - 1;
-	rxq = &sa->rxq_ctrl[rxq_sw_index];
+	ethdev_qid = sfc_sa2shared(sa)->ethdev_rxq_count - 1;
+	rxq = sfc_rxq_ctrl_by_ethdev_qid(sa, ethdev_qid);
 	rxq_hw_index_min = rxq->hw_index;
 	rxq_hw_index_max = 0;
 
 	for (i = 0; i < action_rss->queue_num; ++i) {
-		rxq_sw_index = action_rss->queue[i];
+		ethdev_qid = action_rss->queue[i];
 
-		if (rxq_sw_index >= sfc_sa2shared(sa)->rxq_count)
+		if ((unsigned int)ethdev_qid >=
+		    sfc_sa2shared(sa)->ethdev_rxq_count)
 			return -EINVAL;
 
-		rxq = &sa->rxq_ctrl[rxq_sw_index];
+		rxq = sfc_rxq_ctrl_by_ethdev_qid(sa, ethdev_qid);
 
 		if (rxq->hw_index < rxq_hw_index_min)
 			rxq_hw_index_min = rxq->hw_index;
@@ -1509,9 +1510,10 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 
 	for (i = 0; i < RTE_DIM(sfc_rss_conf->rss_tbl); ++i) {
 		unsigned int nb_queues = action_rss->queue_num;
-		unsigned int rxq_sw_index = action_rss->queue[i % nb_queues];
-		struct sfc_rxq *rxq = &sa->rxq_ctrl[rxq_sw_index];
+		struct sfc_rxq *rxq;
 
+		ethdev_qid = action_rss->queue[i % nb_queues];
+		rxq = sfc_rxq_ctrl_by_ethdev_qid(sa, ethdev_qid);
 		sfc_rss_conf->rss_tbl[i] = rxq->hw_index - rxq_hw_index_min;
 	}
 

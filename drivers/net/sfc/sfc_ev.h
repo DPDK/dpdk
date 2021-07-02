@@ -69,9 +69,25 @@ struct sfc_evq {
  * Tx event queues follow Rx event queues.
  */
 
-static inline unsigned int
-sfc_evq_index_by_rxq_sw_index(__rte_unused struct sfc_adapter *sa,
-			      unsigned int rxq_sw_index)
+static inline sfc_ethdev_qid_t
+sfc_ethdev_rx_qid_by_rxq_sw_index(__rte_unused struct sfc_adapter_shared *sas,
+				  sfc_sw_index_t rxq_sw_index)
+{
+	/* Only ethdev queues are present for now */
+	return rxq_sw_index;
+}
+
+static inline sfc_sw_index_t
+sfc_rxq_sw_index_by_ethdev_rx_qid(__rte_unused struct sfc_adapter_shared *sas,
+				  sfc_ethdev_qid_t ethdev_qid)
+{
+	/* Only ethdev queues are present for now */
+	return ethdev_qid;
+}
+
+static inline sfc_sw_index_t
+sfc_evq_sw_index_by_rxq_sw_index(__rte_unused struct sfc_adapter *sa,
+				 sfc_sw_index_t rxq_sw_index)
 {
 	return 1 + rxq_sw_index;
 }

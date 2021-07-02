@@ -96,6 +96,10 @@ struct sfc_dp {
 /** List of datapath variants */
 TAILQ_HEAD(sfc_dp_list, sfc_dp);
 
+typedef unsigned int sfc_sw_index_t;
+typedef int32_t	sfc_ethdev_qid_t;
+#define SFC_ETHDEV_QID_INVALID	((sfc_ethdev_qid_t)(-1))
+
 /* Check if available HW/FW capabilities are sufficient for the datapath */
 static inline bool
 sfc_dp_match_hw_fw_caps(const struct sfc_dp *dp, unsigned int avail_caps)
