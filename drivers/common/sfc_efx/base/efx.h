@@ -4093,6 +4093,7 @@ typedef struct efx_mae_limits_s {
 	uint32_t			eml_max_n_outer_prios;
 	uint32_t			eml_encap_types_supported;
 	uint32_t			eml_encap_header_size_limit;
+	uint32_t			eml_max_n_counters;
 } efx_mae_limits_t;
 
 LIBEFX_API

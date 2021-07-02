@@ -374,6 +374,7 @@ efx_mae_get_limits(
 	emlp->eml_encap_types_supported = maep->em_encap_types_supported;
 	emlp->eml_encap_header_size_limit =
 	    MC_CMD_MAE_ENCAP_HEADER_ALLOC_IN_HDR_DATA_MAXNUM_MCDI2;
+	emlp->eml_max_n_counters = maep->em_max_ncounters;
 
 	return (0);
 
