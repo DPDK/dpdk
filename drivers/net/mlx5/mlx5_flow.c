@@ -4740,12 +4740,12 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	struct mlx5_rte_flow_item_tag *tag_item_spec;
 	struct mlx5_rte_flow_item_tag *tag_item_mask;
 	uint32_t tag_id = 0;
-	bool copy_vlan = false;
+	struct rte_flow_item *vlan_item_dst = NULL;
+	const struct rte_flow_item *vlan_item_src = NULL;
 	struct rte_flow_action *hw_mtr_action;
 	struct rte_flow_action *action_pre_head = NULL;
-	bool mtr_first = priv->sh->meter_aso_en &&
-			(attr->egress ||
-			(attr->transfer && priv->representor_id != UINT16_MAX));
+	int32_t flow_src_port = priv->representor_id;
+	bool mtr_first;
 	uint8_t mtr_id_offset = priv->mtr_reg_share ? MLX5_MTR_COLOR_BITS : 0;
 	uint8_t mtr_reg_bits = priv->mtr_reg_share ?
 				MLX5_MTR_IDLE_BITS_IN_COLOR_REG : MLX5_REG_BITS;
@@ -4754,6 +4754,42 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	uint8_t flow_id_bits = 0;
 	int shift;
 
+	/* Prepare the suffix subflow items. */
+	tag_item = sfx_items++;
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		struct mlx5_priv *port_priv;
+		const struct rte_flow_item_port_id *pid_v;
+		int item_type = items->type;
+
+		switch (item_type) {
+		case RTE_FLOW_ITEM_TYPE_PORT_ID:
+			pid_v = items->spec;
+			MLX5_ASSERT(pid_v);
+			port_priv = mlx5_port_to_eswitch_info(pid_v->id, false);
+			if (!port_priv)
+				return rte_flow_error_set(error,
+						rte_errno,
+						RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+						pid_v,
+						"Failed to get port info.");
+			flow_src_port = port_priv->representor_id;
+			memcpy(sfx_items, items, sizeof(*sfx_items));
+			sfx_items++;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VLAN:
+			/* Determine if copy vlan item below. */
+			vlan_item_src = items;
+			vlan_item_dst = sfx_items++;
+			vlan_item_dst->type = RTE_FLOW_ITEM_TYPE_VOID;
+			break;
+		default:
+			break;
+		}
+	}
+	sfx_items->type = RTE_FLOW_ITEM_TYPE_END;
+	sfx_items++;
+	mtr_first = priv->sh->meter_aso_en &&
+		(attr->egress || (attr->transfer && flow_src_port != UINT16_MAX));
 	/* For ASO meter, meter must be before tag in TX direction. */
 	if (mtr_first) {
 		action_pre_head = actions_pre++;
@@ -4790,7 +4826,16 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
-			copy_vlan = true;
+			if (vlan_item_dst && vlan_item_src) {
+				memcpy(vlan_item_dst, vlan_item_src,
+					sizeof(*vlan_item_dst));
+				/*
+				 * Convert to internal match item, it is used
+				 * for vlan push and set vid.
+				 */
+				vlan_item_dst->type = (enum rte_flow_item_type)
+						MLX5_RTE_FLOW_ITEM_TYPE_VLAN;
+			}
 			break;
 		default:
 			break;
@@ -4862,34 +4907,6 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 		if (flow_id_bits > priv->sh->mtrmng->max_mtr_flow_bits)
 			priv->sh->mtrmng->max_mtr_flow_bits = flow_id_bits;
 	}
-	/* Prepare the suffix subflow items. */
-	tag_item = sfx_items++;
-	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
-		int item_type = items->type;
-
-		switch (item_type) {
-		case RTE_FLOW_ITEM_TYPE_PORT_ID:
-			memcpy(sfx_items, items, sizeof(*sfx_items));
-			sfx_items++;
-			break;
-		case RTE_FLOW_ITEM_TYPE_VLAN:
-			if (copy_vlan) {
-				memcpy(sfx_items, items, sizeof(*sfx_items));
-				/*
-				 * Convert to internal match item, it is used
-				 * for vlan push and set vid.
-				 */
-				sfx_items->type = (enum rte_flow_item_type)
-						  MLX5_RTE_FLOW_ITEM_TYPE_VLAN;
-				sfx_items++;
-			}
-			break;
-		default:
-			break;
-		}
-	}
-	sfx_items->type = RTE_FLOW_ITEM_TYPE_END;
-	sfx_items++;
 	/* Build tag actions and items for meter_id/meter flow_id. */
 	set_tag = (struct mlx5_rte_flow_action_set_tag *)actions_pre;
 	tag_item_spec = (struct mlx5_rte_flow_item_tag *)sfx_items;
