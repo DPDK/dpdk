@@ -4856,6 +4856,8 @@ struct rte_eth_representor_range {
 struct rte_eth_representor_info {
 	uint16_t controller; /**< Controller ID of caller device. */
 	uint16_t pf; /**< Physical function ID of caller device. */
+	uint32_t nb_ranges_alloc; /**< Size of the ranges array. */
+	uint32_t nb_ranges; /**< Number of initialized ranges. */
 	struct rte_eth_representor_range ranges[];/**< Representor ID range. */
 };
 
@@ -4871,11 +4873,16 @@ struct rte_eth_representor_info {
  *   A pointer to a representor info structure.
  *   NULL to return number of range entries and allocate memory
  *   for next call to store detail.
+ *   The number of ranges that were written into this structure
+ *   will be placed into its nb_ranges field. This number cannot be
+ *   larger than the nb_ranges_alloc that by the user before calling
+ *   this function. It can be smaller than the value returned by the
+ *   function, however.
  * @return
  *   - (-ENOTSUP) if operation is not supported.
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EIO) if device is removed.
- *   - (>=0) number of representor range entries supported by device.
+ *   - (>=0) number of available representor range entries.
  */
 __rte_experimental
 int rte_eth_representor_info_get(uint16_t port_id,

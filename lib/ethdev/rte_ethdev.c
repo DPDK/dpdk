@@ -6002,7 +6002,8 @@ rte_eth_representor_id_get(const struct rte_eth_dev *ethdev,
 			   int controller, int pf, int representor_port,
 			   uint16_t *repr_id)
 {
-	int ret, n, i, count;
+	int ret, n, count;
+	uint32_t i;
 	struct rte_eth_representor_info *info = NULL;
 	size_t size;
 
@@ -6026,6 +6027,7 @@ rte_eth_representor_id_get(const struct rte_eth_dev *ethdev,
 	info = calloc(1, size);
 	if (info == NULL)
 		return -ENOMEM;
+	info->nb_ranges_alloc = n;
 	ret = rte_eth_representor_info_get(ethdev->data->port_id, info);
 	if (ret < 0)
 		goto out;
@@ -6038,7 +6040,7 @@ rte_eth_representor_id_get(const struct rte_eth_dev *ethdev,
 
 	/* Locate representor ID. */
 	ret = -ENOENT;
-	for (i = 0; i < n; ++i) {
+	for (i = 0; i < info->nb_ranges; ++i) {
 		if (info->ranges[i].type != type)
 			continue;
 		if (info->ranges[i].controller != controller)
