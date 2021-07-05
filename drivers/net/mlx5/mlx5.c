@@ -1931,7 +1931,7 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->max_dump_files_num = tmp;
 	} else if (strcmp(MLX5_LRO_TIMEOUT_USEC, key) == 0) {
 		config->lro.timeout = tmp;
-	} else if (strcmp(MLX5_CLASS_ARG_NAME, key) == 0) {
+	} else if (strcmp(RTE_DEVARGS_KEY_CLASS, key) == 0) {
 		DRV_LOG(DEBUG, "class argument is %s.", val);
 	} else if (strcmp(MLX5_HP_BUF_SIZE, key) == 0) {
 		config->log_hp_size = tmp;
@@ -2002,7 +2002,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_REPRESENTOR,
 		MLX5_MAX_DUMP_FILES_NUM,
 		MLX5_LRO_TIMEOUT_USEC,
-		MLX5_CLASS_ARG_NAME,
+		RTE_DEVARGS_KEY_CLASS,
 		MLX5_HP_BUF_SIZE,
 		MLX5_RECLAIM_MEM,
 		MLX5_SYS_MEM_EN,

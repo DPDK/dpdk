@@ -1660,7 +1660,6 @@ static int
 i40evf_driver_selected(struct rte_devargs *devargs)
 {
 	struct rte_kvargs *kvlist;
-	const char *key = "driver";
 	int ret = 0;
 
 	if (devargs == NULL)
@@ -1670,13 +1669,13 @@ i40evf_driver_selected(struct rte_devargs *devargs)
 	if (kvlist == NULL)
 		return 0;
 
-	if (!rte_kvargs_count(kvlist, key))
+	if (!rte_kvargs_count(kvlist, RTE_DEVARGS_KEY_DRIVER))
 		goto exit;
 
 	/* i40evf driver selected when there's a key-value pair:
 	 * driver=i40evf
 	 */
-	if (rte_kvargs_process(kvlist, key,
+	if (rte_kvargs_process(kvlist, RTE_DEVARGS_KEY_DRIVER,
 			       i40evf_check_driver_handler, NULL) < 0)
 		goto exit;
 

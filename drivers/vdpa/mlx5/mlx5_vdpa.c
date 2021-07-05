@@ -588,7 +588,7 @@ mlx5_vdpa_args_check_handler(const char *key, const char *val, void *opaque)
 	unsigned long tmp;
 	int n_cores = sysconf(_SC_NPROCESSORS_ONLN);
 
-	if (strcmp(key, "class") == 0)
+	if (strcmp(key, RTE_DEVARGS_KEY_CLASS) == 0)
 		return 0;
 	errno = 0;
 	tmp = strtoul(val, NULL, 0);

@@ -118,7 +118,7 @@ err:
 static int
 parse_class_options(const struct rte_devargs *devargs)
 {
-	const char *key = MLX5_CLASS_ARG_NAME;
+	const char *key = RTE_DEVARGS_KEY_CLASS;
 	struct rte_kvargs *kvlist;
 	int ret = 0;
 

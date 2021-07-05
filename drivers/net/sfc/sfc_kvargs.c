@@ -28,7 +28,7 @@ sfc_kvargs_parse(struct sfc_adapter *sa)
 		SFC_KVARG_TX_DATAPATH,
 		SFC_KVARG_FW_VARIANT,
 		SFC_KVARG_RXD_WAIT_TIMEOUT_NS,
-		SFC_EFX_KVARG_DEV_CLASS,
+		RTE_DEVARGS_KEY_CLASS,
 		NULL,
 	};
 

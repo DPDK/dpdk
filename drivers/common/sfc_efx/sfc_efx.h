@@ -19,8 +19,6 @@
 extern "C" {
 #endif
 
-#define SFC_EFX_KVARG_DEV_CLASS	"class"
-
 enum sfc_efx_dev_class {
 	SFC_EFX_DEV_CLASS_INVALID = 0,
 	SFC_EFX_DEV_CLASS_NET,

@@ -18,7 +18,7 @@ const char *pmd_bond_init_valid_arguments[] = {
 	PMD_BOND_SOCKET_ID_KVARG,
 	PMD_BOND_MAC_ADDR_KVARG,
 	PMD_BOND_AGG_MODE_KVARG,
-	"driver",
+	RTE_DEVARGS_KEY_DRIVER,
 	NULL
 };
 

@@ -42,7 +42,6 @@ enum sfc_efx_dev_class
 sfc_efx_dev_class_get(struct rte_devargs *devargs)
 {
 	struct rte_kvargs *kvargs;
-	const char *key = SFC_EFX_KVARG_DEV_CLASS;
 	enum sfc_efx_dev_class dev_class = SFC_EFX_DEV_CLASS_NET;
 
 	if (devargs == NULL)
@@ -52,9 +51,9 @@ sfc_efx_dev_class_get(struct rte_devargs *devargs)
 	if (kvargs == NULL)
 		return dev_class;
 
-	if (rte_kvargs_count(kvargs, key) != 0) {
-		rte_kvargs_process(kvargs, key, sfc_efx_kvarg_dev_class_handler,
-				   &dev_class);
+	if (rte_kvargs_count(kvargs, RTE_DEVARGS_KEY_CLASS) != 0) {
+		rte_kvargs_process(kvargs, RTE_DEVARGS_KEY_CLASS,
+				   sfc_efx_kvarg_dev_class_handler, &dev_class);
 	}
 
 	rte_kvargs_free(kvargs);
