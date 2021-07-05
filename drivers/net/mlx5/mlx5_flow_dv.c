@@ -413,6 +413,7 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 {
 	uint32_t i = resource->actions_num;
 	struct mlx5_modification_cmd *actions = resource->actions;
+	uint32_t carry_b = 0;
 
 	/*
 	 * The item and mask are provided in big-endian format.
@@ -422,8 +423,8 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 	MLX5_ASSERT(item->mask);
 	MLX5_ASSERT(field->size);
 	do {
-		unsigned int size_b;
-		unsigned int off_b;
+		uint32_t size_b;
+		uint32_t off_b;
 		uint32_t mask;
 		uint32_t data;
 		bool next_field = true;
@@ -441,7 +442,7 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 			continue;
 		}
 		/* Deduce actual data width in bits from mask value. */
-		off_b = rte_bsf32(mask);
+		off_b = rte_bsf32(mask) + carry_b;
 		size_b = sizeof(uint32_t) * CHAR_BIT -
 			 off_b - __builtin_clz(mask);
 		MLX5_ASSERT(size_b);
@@ -463,19 +464,23 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 			 * Destination field overflow. Copy leftovers of
 			 * a source field to the next destination field.
 			 */
-			if ((size_b > dcopy->size * CHAR_BIT) && dcopy->size) {
-				actions[i].length = dcopy->size * CHAR_BIT;
-				field->offset += dcopy->size;
+			carry_b = 0;
+			if ((size_b > dcopy->size * CHAR_BIT - dcopy->offset) &&
+			    dcopy->size != 0) {
+				actions[i].length =
+					dcopy->size * CHAR_BIT - dcopy->offset;
+				carry_b = actions[i].length;
 				next_field = false;
 			}
 			/*
 			 * Not enough bits in a source filed to fill a
 			 * destination field. Switch to the next source.
 			 */
-			if (dcopy->size > field->size &&
-			    (size_b == field->size * CHAR_BIT)) {
-				actions[i].length = field->size * CHAR_BIT;
-				dcopy->offset += field->size * CHAR_BIT;
+			if ((size_b < dcopy->size * CHAR_BIT - dcopy->offset) &&
+			    (size_b == field->size * CHAR_BIT - off_b)) {
+				actions[i].length =
+					field->size * CHAR_BIT - off_b;
+				dcopy->offset += actions[i].length;
 				next_dcopy = false;
 			}
 			if (next_dcopy)
