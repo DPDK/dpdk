@@ -55,6 +55,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added auxiliary bus support.**
+
+  Auxiliary bus provides a way to split function into child-devices
+  representing sub-domains of functionality. Each auxiliary device
+  represents a part of its parent functionality.
+
 
 Removed Items
 -------------

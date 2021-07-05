@@ -525,6 +525,11 @@ F: doc/guides/mempool/octeontx2.rst
 Bus Drivers
 -----------
 
+Auxiliary bus driver - EXPERIMENTAL
+M: Parav Pandit <parav@nvidia.com>
+M: Xueming Li <xuemingl@nvidia.com>
+F: drivers/bus/auxiliary/
+
 Intel FPGA bus
 M: Rosen Xu <rosen.xu@intel.com>
 F: drivers/bus/ifpga/

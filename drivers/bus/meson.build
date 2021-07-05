@@ -2,6 +2,7 @@
 # Copyright(c) 2017 Intel Corporation
 
 drivers = [
+        'auxiliary',
         'dpaa',
         'fslmc',
         'ifpga',
