@@ -11623,7 +11623,7 @@ flow_dv_translate_integrity_l4(const struct rte_flow_item_integrity *mask,
 	} else if (mask->l4_csum_ok) {
 		MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_checksum_ok,
 			 mask->l4_csum_ok);
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ipv4_checksum_ok,
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, l4_checksum_ok,
 			 value->l4_csum_ok);
 	}
 }
