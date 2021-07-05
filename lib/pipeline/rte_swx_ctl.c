@@ -1636,7 +1636,7 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 	/*
 	 * Match.
 	 */
-	if (n_tokens && strcmp(tokens[0], "match"))
+	if (!(n_tokens && !strcmp(tokens[0], "match")))
 		goto action;
 
 	if (n_tokens < 1 + table->info.n_match_fields)
@@ -1719,7 +1719,7 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 	 * Action.
 	 */
 action:
-	if (n_tokens && strcmp(tokens[0], "action"))
+	if (!(n_tokens && !strcmp(tokens[0], "action")))
 		goto other;
 
 	if (n_tokens < 2)
