@@ -61,10 +61,6 @@
 #define IN_PLACE 0
 #define OUT_OF_PLACE 1
 
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
-#endif
-
 static int gbl_driver_id;
 
 static enum rte_security_session_action_type gbl_action_type =
@@ -8737,7 +8733,7 @@ test_PDCP_SDAP_PROTO_encap_all(void)
 	int err, all_err = TEST_SUCCESS;
 	const struct pdcp_sdap_test *cur_test;
 
-	size = ARRAY_SIZE(list_pdcp_sdap_tests);
+	size = RTE_DIM(list_pdcp_sdap_tests);
 
 	for (i = 0; i < size; i++) {
 		cur_test = &list_pdcp_sdap_tests[i];
@@ -8779,7 +8775,7 @@ test_PDCP_SDAP_PROTO_decap_all(void)
 	int err, all_err = TEST_SUCCESS;
 	const struct pdcp_sdap_test *cur_test;
 
-	size = ARRAY_SIZE(list_pdcp_sdap_tests);
+	size = RTE_DIM(list_pdcp_sdap_tests);
 
 	for (i = 0; i < size; i++) {
 		cur_test = &list_pdcp_sdap_tests[i];
