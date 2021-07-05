@@ -88,6 +88,7 @@ New Features
 
   * Added support for meter hierarchy.
   * Added devargs options ``allow_duplicate_pattern``.
+  * Added matching on IPv4 Internet Header Length (IHL).
   * Added support for matching on VXLAN header last 8-bits reserved field.
   * Optimized multi-thread flow rule insertion rate.
 

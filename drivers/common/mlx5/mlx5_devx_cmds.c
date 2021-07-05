@@ -951,6 +951,12 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		(flow_table_nic_cap, hcattr,
 		 ft_field_support_2_nic_receive.tunnel_header_0_1);
 	attr->pkt_integrity_match = mlx5_devx_query_pkt_integrity_match(hcattr);
+	attr->inner_ipv4_ihl = MLX5_GET
+		(flow_table_nic_cap, hcattr,
+		 ft_field_support_2_nic_receive.inner_ipv4_ihl);
+	attr->outer_ipv4_ihl = MLX5_GET
+		(flow_table_nic_cap, hcattr,
+		 ft_field_support_2_nic_receive.outer_ipv4_ihl);
 	/* Query HCA offloads for Ethernet protocol. */
 	memset(in, 0, sizeof(in));
 	memset(out, 0, sizeof(out));
