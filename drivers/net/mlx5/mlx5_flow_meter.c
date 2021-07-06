@@ -1892,6 +1892,136 @@ mlx5_flow_meter_rxq_flush(struct rte_eth_dev *dev)
 }
 
 /**
+ * Iterate a meter hierarchy and flush all meters and policies if possible.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] fm
+ *   Pointer to flow meter.
+ * @param[in] mtr_idx
+ *   .Meter's index
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_meter_flush_hierarchy(struct rte_eth_dev *dev,
+				struct mlx5_flow_meter_info *fm,
+				uint32_t mtr_idx,
+				struct rte_mtr_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter_policy *policy;
+	uint32_t policy_id;
+	struct mlx5_flow_meter_info *next_fm;
+	uint32_t next_mtr_idx;
+	struct mlx5_flow_meter_policy *next_policy = NULL;
+
+	policy = mlx5_flow_meter_policy_find(dev, fm->policy_id, NULL);
+	MLX5_ASSERT(policy);
+	while (!fm->ref_cnt && policy->is_hierarchy) {
+		policy_id = fm->policy_id;
+		next_fm = mlx5_flow_meter_find(priv,
+				policy->act_cnt[RTE_COLOR_GREEN].next_mtr_id,
+				&next_mtr_idx);
+		if (next_fm) {
+			next_policy = mlx5_flow_meter_policy_find(dev,
+							next_fm->policy_id,
+							NULL);
+			MLX5_ASSERT(next_policy);
+		}
+		if (mlx5_flow_meter_params_flush(dev, fm, mtr_idx))
+			return -rte_mtr_error_set(error, ENOTSUP,
+						RTE_MTR_ERROR_TYPE_MTR_ID,
+						NULL,
+						"Failed to flush meter.");
+		if (policy->ref_cnt)
+			break;
+		if (__mlx5_flow_meter_policy_delete(dev, policy_id,
+						policy, error, true))
+			return -rte_errno;
+		mlx5_free(policy);
+		if (!next_fm || !next_policy)
+			break;
+		fm = next_fm;
+		mtr_idx = next_mtr_idx;
+		policy = next_policy;
+	}
+	return 0;
+}
+
+/**
+ * Flush all the hierarchy meters and their policies.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_meter_flush_all_hierarchies(struct rte_eth_dev *dev,
+				      struct rte_mtr_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter_info *fm;
+	struct mlx5_flow_meter_policy *policy;
+	struct mlx5_flow_meter_sub_policy *sub_policy;
+	struct mlx5_flow_meter_info *next_fm;
+	struct mlx5_aso_mtr *aso_mtr;
+	uint32_t mtr_idx = 0;
+	uint32_t i, policy_idx;
+	void *entry;
+
+	if (!priv->mtr_idx_tbl || !priv->policy_idx_tbl)
+		return 0;
+	MLX5_L3T_FOREACH(priv->mtr_idx_tbl, i, entry) {
+		mtr_idx = *(uint32_t *)entry;
+		if (!mtr_idx)
+			continue;
+		aso_mtr = mlx5_aso_meter_by_idx(priv, mtr_idx);
+		fm = &aso_mtr->fm;
+		if (fm->ref_cnt || fm->def_policy)
+			continue;
+		if (mlx5_flow_meter_flush_hierarchy(dev, fm, mtr_idx, error))
+			return -rte_errno;
+	}
+	MLX5_L3T_FOREACH(priv->policy_idx_tbl, i, entry) {
+		policy_idx = *(uint32_t *)entry;
+		sub_policy = mlx5_ipool_get
+				(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
+				policy_idx);
+		if (!sub_policy)
+			return -rte_mtr_error_set(error,
+					EINVAL,
+					RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+					NULL, "Meter policy invalid.");
+		policy = sub_policy->main_policy;
+		if (!policy || !policy->is_hierarchy || policy->ref_cnt)
+			continue;
+		next_fm = mlx5_flow_meter_find(priv,
+				policy->act_cnt[RTE_COLOR_GREEN].next_mtr_id,
+				&mtr_idx);
+		if (__mlx5_flow_meter_policy_delete(dev, i, policy,
+						    error, true))
+			return -rte_mtr_error_set(error,
+					EINVAL,
+					RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+					NULL, "Meter policy invalid.");
+		mlx5_free(policy);
+		if (!next_fm || next_fm->ref_cnt || next_fm->def_policy)
+			continue;
+		if (mlx5_flow_meter_flush_hierarchy(dev, next_fm,
+						    mtr_idx, error))
+			return -rte_errno;
+	}
+	return 0;
+}
+/**
  * Flush meter configuration.
  *
  * @param[in] dev
@@ -1919,6 +2049,8 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 	if (!priv->mtr_en)
 		return 0;
 	if (priv->sh->meter_aso_en) {
+		if (mlx5_flow_meter_flush_all_hierarchies(dev, error))
+			return -rte_errno;
 		if (priv->mtr_idx_tbl) {
 			MLX5_L3T_FOREACH(priv->mtr_idx_tbl, i, entry) {
 				mtr_idx = *(uint32_t *)entry;

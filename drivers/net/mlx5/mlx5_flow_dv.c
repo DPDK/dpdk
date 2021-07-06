@@ -14592,12 +14592,20 @@ static void
 __flow_dv_destroy_sub_policy_rules(struct rte_eth_dev *dev,
 			     struct mlx5_flow_meter_sub_policy *sub_policy)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_tbl_data_entry *tbl;
+	struct mlx5_flow_meter_policy *policy = sub_policy->main_policy;
+	struct mlx5_flow_meter_info *next_fm;
 	struct mlx5_sub_policy_color_rule *color_rule;
 	void *tmp;
-	int i;
+	uint32_t i;
 
 	for (i = 0; i < RTE_COLORS; i++) {
+		next_fm = NULL;
+		if (i == RTE_COLOR_GREEN && policy &&
+		    policy->act_cnt[i].fate_action == MLX5_FLOW_FATE_MTR)
+			next_fm = mlx5_flow_meter_find(priv,
+					policy->act_cnt[i].next_mtr_id, NULL);
 		TAILQ_FOREACH_SAFE(color_rule, &sub_policy->color_rules[i],
 				   next_port, tmp) {
 			claim_zero(mlx5_flow_os_destroy_flow(color_rule->rule));
@@ -14608,11 +14616,14 @@ __flow_dv_destroy_sub_policy_rules(struct rte_eth_dev *dev,
 			TAILQ_REMOVE(&sub_policy->color_rules[i],
 					color_rule, next_port);
 			mlx5_free(color_rule);
+			if (next_fm)
+				mlx5_flow_meter_detach(priv, next_fm);
 		}
 	}
 	for (i = 0; i < MLX5_MTR_RTE_COLORS; i++) {
 		if (sub_policy->rix_hrxq[i]) {
-			mlx5_hrxq_release(dev, sub_policy->rix_hrxq[i]);
+			if (policy && !policy->is_hierarchy)
+				mlx5_hrxq_release(dev, sub_policy->rix_hrxq[i]);
 			sub_policy->rix_hrxq[i] = 0;
 		}
 		if (sub_policy->jump_tbl[i]) {
