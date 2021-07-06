@@ -141,6 +141,47 @@ __rte_experimental
 int rte_vhost_async_channel_unregister(int vid, uint16_t queue_id);
 
 /**
+ * Register an async channel for a vhost queue without performing any
+ * locking
+ *
+ * @note This function does not perform any locking, and is only safe to
+ *       call in vhost callback functions.
+ *
+ * @param vid
+ *  vhost device id async channel to be attached to
+ * @param queue_id
+ *  vhost queue id async channel to be attached to
+ * @param config
+ *  Async channel configuration
+ * @param ops
+ *  Async channel operation callbacks
+ * @return
+ *  0 on success, -1 on failures
+ */
+__rte_experimental
+int rte_vhost_async_channel_register_thread_unsafe(int vid, uint16_t queue_id,
+	struct rte_vhost_async_config config,
+	struct rte_vhost_async_channel_ops *ops);
+
+/**
+ * Unregister an async channel for a vhost queue without performing any
+ * locking
+ *
+ * @note This function does not perform any locking, and is only safe to
+ *       call in vhost callback functions.
+ *
+ * @param vid
+ *  vhost device id async channel to be detached from
+ * @param queue_id
+ *  vhost queue id async channel to be detached from
+ * @return
+ *  0 on success, -1 on failures
+ */
+__rte_experimental
+int rte_vhost_async_channel_unregister_thread_unsafe(int vid,
+		uint16_t queue_id);
+
+/**
  * This function submits enqueue data to async engine. Successfully
  * enqueued packets can be transfer completed or being occupied by DMA
  * engines, when this API returns. Transfer completed packets are returned
