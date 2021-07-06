@@ -677,6 +677,12 @@ struct mlx5_meter_policy_action_container {
 		/* Jump/drop action per color. */
 		uint16_t queue;
 		/* Queue action configuration. */
+		struct {
+			uint32_t next_mtr_id;
+			/* The next meter id. */
+			void *next_sub_policy;
+			/* Next meter's sub-policy. */
+		};
 	};
 };
 
@@ -694,6 +700,8 @@ struct mlx5_flow_meter_policy {
 	/* Rule applies to transfer domain. */
 	uint32_t is_queue:1;
 	/* Is queue action in policy table. */
+	uint32_t is_hierarchy:1;
+	/* Is meter action in policy table. */
 	rte_spinlock_t sl;
 	uint32_t ref_cnt;
 	/* Use count. */
@@ -712,6 +720,7 @@ struct mlx5_flow_meter_policy {
 #define MLX5_MTR_SUB_POLICY_NUM_SHIFT  3
 #define MLX5_MTR_SUB_POLICY_NUM_MASK  0x7
 #define MLX5_MTRS_DEFAULT_RULE_PRIORITY 0xFFFF
+#define MLX5_MTR_CHAIN_MAX_NUM 8
 
 /* Flow meter default policy parameter structure.
  * Policy index 0 is reserved by default policy table.
@@ -1684,6 +1693,9 @@ struct mlx5_flow_meter_policy *mlx5_flow_meter_policy_find
 		(struct rte_eth_dev *dev,
 		uint32_t policy_id,
 		uint32_t *policy_idx);
+struct mlx5_flow_meter_policy *
+mlx5_flow_meter_hierarchy_get_final_policy(struct rte_eth_dev *dev,
+					struct mlx5_flow_meter_policy *policy);
 int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
 			  struct rte_mtr_error *error);
 void mlx5_flow_meter_rxq_flush(struct rte_eth_dev *dev);

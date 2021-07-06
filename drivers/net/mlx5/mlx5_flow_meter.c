@@ -530,6 +530,37 @@ mlx5_flow_meter_policy_find(struct rte_eth_dev *dev,
 }
 
 /**
+ * Get the last meter's policy from one meter's policy in hierarchy.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] policy
+ *   Pointer to flow meter policy.
+ *
+ * @return
+ *   Pointer to the final meter's policy, or NULL when fail.
+ */
+struct mlx5_flow_meter_policy *
+mlx5_flow_meter_hierarchy_get_final_policy(struct rte_eth_dev *dev,
+					struct mlx5_flow_meter_policy *policy)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter_info *next_fm;
+	struct mlx5_flow_meter_policy *next_policy = policy;
+
+	while (next_policy->is_hierarchy) {
+		next_fm = mlx5_flow_meter_find(priv,
+		       next_policy->act_cnt[RTE_COLOR_GREEN].next_mtr_id, NULL);
+		if (!next_fm || next_fm->def_policy)
+			return NULL;
+		next_policy = mlx5_flow_meter_policy_find(dev,
+						next_fm->policy_id, NULL);
+		MLX5_ASSERT(next_policy);
+	}
+	return next_policy;
+}
+
+/**
  * Callback to check MTR policy action validate
  *
  * @param[in] dev
@@ -650,6 +681,7 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 	uint16_t sub_policy_num;
 	uint8_t domain_bitmap = 0;
 	union mlx5_l3t_data data;
+	bool skip_rule = false;
 
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
@@ -759,7 +791,16 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 					policy->actions, error);
 	if (ret)
 		goto policy_add_err;
-	if (!is_rss && !mtr_policy->is_queue) {
+	if (mtr_policy->is_hierarchy) {
+		struct mlx5_flow_meter_policy *final_policy;
+
+		final_policy =
+		mlx5_flow_meter_hierarchy_get_final_policy(dev, mtr_policy);
+		if (!final_policy)
+			goto policy_add_err;
+		skip_rule = (final_policy->is_rss || final_policy->is_queue);
+	}
+	if (!is_rss && !mtr_policy->is_queue && !skip_rule) {
 		/* Create policy rules in HW. */
 		ret = mlx5_flow_create_policy_rules(dev, mtr_policy);
 		if (ret)

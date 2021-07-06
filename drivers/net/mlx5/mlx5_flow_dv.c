@@ -7869,6 +7869,8 @@ flow_dv_prepare(struct rte_eth_dev *dev,
 
 	MLX5_ASSERT(wks);
 	wks->skip_matcher_reg = 0;
+	wks->policy = NULL;
+	wks->final_policy = NULL;
 	/* In case of corrupting the memory. */
 	if (wks->flow_idx >= MLX5_NUM_MAX_DEV_FLOWS) {
 		rte_flow_error_set(error, ENOSPC,
@@ -15032,6 +15034,37 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 				action_flags |= MLX5_FLOW_ACTION_JUMP;
 				break;
 			}
+			case RTE_FLOW_ACTION_TYPE_METER:
+			{
+				const struct rte_flow_action_meter *mtr;
+				struct mlx5_flow_meter_info *next_fm;
+				struct mlx5_flow_meter_policy *next_policy;
+				uint32_t next_mtr_idx = 0;
+
+				mtr = act->conf;
+				next_fm = mlx5_flow_meter_find(priv,
+							mtr->mtr_id,
+							&next_mtr_idx);
+				if (!next_fm)
+					return -rte_mtr_error_set(error, EINVAL,
+						RTE_MTR_ERROR_TYPE_MTR_ID, NULL,
+						"Fail to find next meter.");
+				if (next_fm->def_policy)
+					return -rte_mtr_error_set(error, EINVAL,
+						RTE_MTR_ERROR_TYPE_MTR_ID, NULL,
+				"Hierarchy only supports termination meter.");
+				next_policy = mlx5_flow_meter_policy_find(dev,
+						next_fm->policy_id, NULL);
+				MLX5_ASSERT(next_policy);
+				act_cnt->fate_action = MLX5_FLOW_FATE_MTR;
+				act_cnt->next_mtr_id = next_fm->meter_id;
+				act_cnt->next_sub_policy = NULL;
+				mtr_policy->is_hierarchy = 1;
+				mtr_policy->dev = next_policy->dev;
+				action_flags |=
+				MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY;
+				break;
+			}
 			default:
 				return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_METER_POLICY,
@@ -15567,7 +15600,14 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 	struct mlx5_flow_dv_tag_resource *tag;
 	struct mlx5_flow_dv_port_id_action_resource *port_action;
 	struct mlx5_hrxq *hrxq;
-	uint8_t egress, transfer;
+	struct mlx5_flow_meter_info *next_fm = NULL;
+	struct mlx5_flow_meter_policy *next_policy;
+	struct mlx5_flow_meter_sub_policy *next_sub_policy;
+	struct mlx5_flow_tbl_data_entry *tbl_data;
+	struct rte_flow_error error;
+	uint8_t egress = (domain == MLX5_MTR_DOMAIN_EGRESS) ? 1 : 0;
+	uint8_t transfer = (domain == MLX5_MTR_DOMAIN_TRANSFER) ? 1 : 0;
+	bool mtr_first = egress || (transfer && priv->representor_id != UINT16_MAX);
 	bool match_src_port = false;
 	int i;
 
@@ -15582,13 +15622,39 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 			acts[i].actions_n = 1;
 			continue;
 		}
+		if (mtr_policy->act_cnt[i].fate_action == MLX5_FLOW_FATE_MTR) {
+			struct rte_flow_attr attr = {
+				.transfer = transfer
+			};
+
+			next_fm = mlx5_flow_meter_find(priv,
+					mtr_policy->act_cnt[i].next_mtr_id,
+					NULL);
+			if (!next_fm) {
+				DRV_LOG(ERR,
+					"Failed to get next hierarchy meter.");
+				goto err_exit;
+			}
+			if (mlx5_flow_meter_attach(priv, next_fm,
+						   &attr, &error)) {
+				DRV_LOG(ERR, "%s", error.message);
+				next_fm = NULL;
+				goto err_exit;
+			}
+			/* Meter action must be the first for TX. */
+			if (mtr_first) {
+				acts[i].dv_actions[acts[i].actions_n] =
+					next_fm->meter_action;
+				acts[i].actions_n++;
+			}
+		}
 		if (mtr_policy->act_cnt[i].rix_mark) {
 			tag = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_TAG],
 					mtr_policy->act_cnt[i].rix_mark);
 			if (!tag) {
 				DRV_LOG(ERR, "Failed to find "
 				"mark action for policy.");
-				return -1;
+				goto err_exit;
 			}
 			acts[i].dv_actions[acts[i].actions_n] =
 						tag->action;
@@ -15608,7 +15674,7 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 				if (!port_action) {
 					DRV_LOG(ERR, "Failed to find "
 						"port action for policy.");
-					return -1;
+					goto err_exit;
 				}
 				acts[i].dv_actions[acts[i].actions_n] =
 				port_action->action;
@@ -15630,11 +15696,41 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 				if (!hrxq) {
 					DRV_LOG(ERR, "Failed to find "
 						"queue action for policy.");
-					return -1;
+					goto err_exit;
 				}
 				acts[i].dv_actions[acts[i].actions_n] =
 				hrxq->action;
 				acts[i].actions_n++;
+				break;
+			case MLX5_FLOW_FATE_MTR:
+				if (!next_fm) {
+					DRV_LOG(ERR,
+						"No next hierarchy meter.");
+					goto err_exit;
+				}
+				if (!mtr_first) {
+					acts[i].dv_actions[acts[i].actions_n] =
+							next_fm->meter_action;
+					acts[i].actions_n++;
+				}
+				if (mtr_policy->act_cnt[i].next_sub_policy) {
+					next_sub_policy =
+					mtr_policy->act_cnt[i].next_sub_policy;
+				} else {
+					next_policy =
+						mlx5_flow_meter_policy_find(dev,
+						next_fm->policy_id, NULL);
+					MLX5_ASSERT(next_policy);
+					next_sub_policy =
+					next_policy->sub_policys[domain][0];
+				}
+				tbl_data =
+					container_of(next_sub_policy->tbl_rsc,
+					struct mlx5_flow_tbl_data_entry, tbl);
+				acts[i].dv_actions[acts[i].actions_n++] =
+							tbl_data->jump.action;
+				if (mtr_policy->act_cnt[i].modify_hdr)
+					match_src_port = !!transfer;
 				break;
 			default:
 				/*Queue action do nothing*/
@@ -15648,9 +15744,13 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 				egress, transfer, match_src_port, acts)) {
 		DRV_LOG(ERR,
 		"Failed to create policy rules per domain.");
-		return -1;
+		goto err_exit;
 	}
 	return 0;
+err_exit:
+	if (next_fm)
+		mlx5_flow_meter_detach(priv, next_fm);
+	return -1;
 }
 
 /**
@@ -15960,22 +16060,12 @@ policy_error:
 	return -1;
 }
 
-/**
- * Find the policy table for prefix table with RSS.
- *
- * @param[in] dev
- *   Pointer to Ethernet device.
- * @param[in] mtr_policy
- *   Pointer to meter policy table.
- * @param[in] rss_desc
- *   Pointer to rss_desc
- * @return
- *   Pointer to table set on success, NULL otherwise and rte_errno is set.
- */
 static struct mlx5_flow_meter_sub_policy *
-flow_dv_meter_sub_policy_rss_prepare(struct rte_eth_dev *dev,
+__flow_dv_meter_get_rss_sub_policy(struct rte_eth_dev *dev,
 		struct mlx5_flow_meter_policy *mtr_policy,
-		struct mlx5_flow_rss_desc *rss_desc[MLX5_MTR_RTE_COLORS])
+		struct mlx5_flow_rss_desc *rss_desc[MLX5_MTR_RTE_COLORS],
+		struct mlx5_flow_meter_sub_policy *next_sub_policy,
+		bool *is_reuse)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_meter_sub_policy *sub_policy = NULL;
@@ -16017,6 +16107,7 @@ flow_dv_meter_sub_policy_rss_prepare(struct rte_eth_dev *dev,
 			rte_spinlock_unlock(&mtr_policy->sl);
 			for (j = 0; j < MLX5_MTR_RTE_COLORS; j++)
 				mlx5_hrxq_release(dev, hrxq_idx[j]);
+			*is_reuse = true;
 			return mtr_policy->sub_policys[domain][i];
 		}
 	}
@@ -16042,24 +16133,30 @@ flow_dv_meter_sub_policy_rss_prepare(struct rte_eth_dev *dev,
 		if (!rss_desc[i])
 			continue;
 		sub_policy->rix_hrxq[i] = hrxq_idx[i];
-		/*
-		 * Overwrite the last action from
-		 * RSS action to Queue action.
-		 */
-		hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
-			      hrxq_idx[i]);
-		if (!hrxq) {
-			DRV_LOG(ERR, "Failed to create policy hrxq");
-			goto rss_sub_policy_error;
-		}
-		act_cnt = &mtr_policy->act_cnt[i];
-		if (act_cnt->rix_mark || act_cnt->modify_hdr) {
-			memset(&dh, 0, sizeof(struct mlx5_flow_handle));
-			if (act_cnt->rix_mark)
-				dh.mark = 1;
-			dh.fate_action = MLX5_FLOW_FATE_QUEUE;
-			dh.rix_hrxq = hrxq_idx[i];
-			flow_drv_rxq_flags_set(dev, &dh);
+		if (mtr_policy->is_hierarchy) {
+			act_cnt = &mtr_policy->act_cnt[i];
+			act_cnt->next_sub_policy = next_sub_policy;
+			mlx5_hrxq_release(dev, hrxq_idx[i]);
+		} else {
+			/*
+			 * Overwrite the last action from
+			 * RSS action to Queue action.
+			 */
+			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+				hrxq_idx[i]);
+			if (!hrxq) {
+				DRV_LOG(ERR, "Failed to create policy hrxq");
+				goto rss_sub_policy_error;
+			}
+			act_cnt = &mtr_policy->act_cnt[i];
+			if (act_cnt->rix_mark || act_cnt->modify_hdr) {
+				memset(&dh, 0, sizeof(struct mlx5_flow_handle));
+				if (act_cnt->rix_mark)
+					dh.mark = 1;
+				dh.fate_action = MLX5_FLOW_FATE_QUEUE;
+				dh.rix_hrxq = hrxq_idx[i];
+				flow_drv_rxq_flags_set(dev, &dh);
+			}
 		}
 	}
 	if (__flow_dv_create_policy_acts_rules(dev, mtr_policy,
@@ -16083,6 +16180,7 @@ flow_dv_meter_sub_policy_rss_prepare(struct rte_eth_dev *dev,
 			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain);
 	}
 	rte_spinlock_unlock(&mtr_policy->sl);
+	*is_reuse = false;
 	return sub_policy;
 rss_sub_policy_error:
 	if (sub_policy) {
@@ -16097,13 +16195,105 @@ rss_sub_policy_error:
 					sub_policy->idx);
 		}
 	}
-	if (sub_policy_idx)
-		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
-			sub_policy_idx);
 	rte_spinlock_unlock(&mtr_policy->sl);
 	return NULL;
 }
 
+/**
+ * Find the policy table for prefix table with RSS.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_policy
+ *   Pointer to meter policy table.
+ * @param[in] rss_desc
+ *   Pointer to rss_desc
+ * @return
+ *   Pointer to table set on success, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_flow_meter_sub_policy *
+flow_dv_meter_sub_policy_rss_prepare(struct rte_eth_dev *dev,
+		struct mlx5_flow_meter_policy *mtr_policy,
+		struct mlx5_flow_rss_desc *rss_desc[MLX5_MTR_RTE_COLORS])
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter_sub_policy *sub_policy = NULL;
+	struct mlx5_flow_meter_info *next_fm;
+	struct mlx5_flow_meter_policy *next_policy;
+	struct mlx5_flow_meter_sub_policy *next_sub_policy = NULL;
+	struct mlx5_flow_meter_policy *policies[MLX5_MTR_CHAIN_MAX_NUM];
+	struct mlx5_flow_meter_sub_policy *sub_policies[MLX5_MTR_CHAIN_MAX_NUM];
+	uint32_t domain = MLX5_MTR_DOMAIN_INGRESS;
+	bool reuse_sub_policy;
+	uint32_t i = 0;
+	uint32_t j = 0;
+
+	while (true) {
+		/* Iterate hierarchy to get all policies in this hierarchy. */
+		policies[i++] = mtr_policy;
+		if (!mtr_policy->is_hierarchy)
+			break;
+		if (i >= MLX5_MTR_CHAIN_MAX_NUM) {
+			DRV_LOG(ERR, "Exceed max meter number in hierarchy.");
+			return NULL;
+		}
+		next_fm = mlx5_flow_meter_find(priv,
+			mtr_policy->act_cnt[RTE_COLOR_GREEN].next_mtr_id, NULL);
+		if (!next_fm) {
+			DRV_LOG(ERR, "Failed to get next meter in hierarchy.");
+			return NULL;
+		}
+		next_policy =
+			mlx5_flow_meter_policy_find(dev, next_fm->policy_id,
+						    NULL);
+		MLX5_ASSERT(next_policy);
+		mtr_policy = next_policy;
+	}
+	while (i) {
+		/**
+		 * From last policy to the first one in hierarchy,
+		 * create/get the sub policy for each of them.
+		 */
+		sub_policy = __flow_dv_meter_get_rss_sub_policy(dev,
+							policies[--i],
+							rss_desc,
+							next_sub_policy,
+							&reuse_sub_policy);
+		if (!sub_policy) {
+			DRV_LOG(ERR, "Failed to get the sub policy.");
+			goto err_exit;
+		}
+		if (!reuse_sub_policy)
+			sub_policies[j++] = sub_policy;
+		next_sub_policy = sub_policy;
+	}
+	return sub_policy;
+err_exit:
+	while (j) {
+		uint16_t sub_policy_num;
+
+		sub_policy = sub_policies[--j];
+		mtr_policy = sub_policy->main_policy;
+		__flow_dv_destroy_sub_policy_rules(dev, sub_policy);
+		if (sub_policy != mtr_policy->sub_policys[domain][0]) {
+			sub_policy_num = (mtr_policy->sub_policy_num >>
+				(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain)) &
+				MLX5_MTR_SUB_POLICY_NUM_MASK;
+			mtr_policy->sub_policys[domain][sub_policy_num - 1] =
+									NULL;
+			sub_policy_num--;
+			mtr_policy->sub_policy_num &=
+				~(MLX5_MTR_SUB_POLICY_NUM_MASK <<
+				  (MLX5_MTR_SUB_POLICY_NUM_SHIFT * i));
+			mtr_policy->sub_policy_num |=
+			(sub_policy_num & MLX5_MTR_SUB_POLICY_NUM_MASK) <<
+			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * i);
+			mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
+					sub_policy->idx);
+		}
+	}
+	return NULL;
+}
 
 /**
  * Destroy the sub policy table with RX queue.

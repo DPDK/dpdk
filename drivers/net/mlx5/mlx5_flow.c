@@ -3506,10 +3506,18 @@ flow_get_rss_action(struct rte_eth_dev *dev,
 			const struct rte_flow_action_meter *mtr = actions->conf;
 
 			fm = mlx5_flow_meter_find(priv, mtr->mtr_id, &mtr_idx);
-			if (fm) {
+			if (fm && !fm->def_policy) {
 				policy = mlx5_flow_meter_policy_find(dev,
 						fm->policy_id, NULL);
-				if (policy && policy->is_rss)
+				MLX5_ASSERT(policy);
+				if (policy->is_hierarchy) {
+					policy =
+				mlx5_flow_meter_hierarchy_get_final_policy(dev,
+									policy);
+					if (!policy)
+						return NULL;
+				}
+				if (policy->is_rss)
 					rss =
 				policy->act_cnt[RTE_COLOR_GREEN].rss->conf;
 			}
@@ -4578,8 +4586,8 @@ flow_create_split_inner(struct rte_eth_dev *dev,
  *   Pointer to Ethernet device.
  * @param[in] flow
  *   Parent flow structure pointer.
- * @param[in] policy_id;
- *   Meter Policy id.
+ * @param wks
+ *   Pointer to thread flow work space.
  * @param[in] attr
  *   Flow rule attributes.
  * @param[in] items
@@ -4593,31 +4601,22 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 static struct mlx5_flow_meter_sub_policy *
 get_meter_sub_policy(struct rte_eth_dev *dev,
 		     struct rte_flow *flow,
-		     uint32_t policy_id,
+		     struct mlx5_flow_workspace *wks,
 		     const struct rte_flow_attr *attr,
 		     const struct rte_flow_item items[],
 		     struct rte_flow_error *error)
 {
 	struct mlx5_flow_meter_policy *policy;
+	struct mlx5_flow_meter_policy *final_policy;
 	struct mlx5_flow_meter_sub_policy *sub_policy = NULL;
 
-	policy = mlx5_flow_meter_policy_find(dev, policy_id, NULL);
-	if (!policy) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "Failed to find Meter Policy.");
-		goto exit;
-	}
-	if (policy->is_rss ||
-		(policy->is_queue &&
-	!policy->sub_policys[MLX5_MTR_DOMAIN_INGRESS][0]->rix_hrxq[0])) {
-		struct mlx5_flow_workspace *wks =
-				mlx5_flow_get_thread_workspace();
+	policy = wks->policy;
+	final_policy = policy->is_hierarchy ? wks->final_policy : policy;
+	if (final_policy->is_rss || final_policy->is_queue) {
 		struct mlx5_flow_rss_desc rss_desc_v[MLX5_MTR_RTE_COLORS];
 		struct mlx5_flow_rss_desc *rss_desc[MLX5_MTR_RTE_COLORS] = {0};
 		uint32_t i;
 
-		MLX5_ASSERT(wks);
 		/**
 		 * This is a tmp dev_flow,
 		 * no need to register any matcher for it in translate.
@@ -4627,9 +4626,9 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 			struct mlx5_flow dev_flow = {0};
 			struct mlx5_flow_handle dev_handle = { {0} };
 
-			if (policy->is_rss) {
+			if (final_policy->is_rss) {
 				const void *rss_act =
-					policy->act_cnt[i].rss->conf;
+					final_policy->act_cnt[i].rss->conf;
 				struct rte_flow_action rss_actions[2] = {
 					[0] = {
 					.type = RTE_FLOW_ACTION_TYPE_RSS,
@@ -4670,7 +4669,7 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 				rss_desc_v[i].key_len = 0;
 				rss_desc_v[i].hash_fields = 0;
 				rss_desc_v[i].queue =
-					&policy->act_cnt[i].queue;
+					&final_policy->act_cnt[i].queue;
 				rss_desc_v[i].queue_num = 1;
 			}
 			rss_desc[i] = &rss_desc_v[i];
@@ -4710,8 +4709,8 @@ exit:
  *   Pointer to Ethernet device.
  * @param[in] flow
  *   Parent flow structure pointer.
- * @param[in] fm
- *   Pointer to flow meter structure.
+ * @param wks
+ *   Pointer to thread flow work space.
  * @param[in] attr
  *   Flow rule attributes.
  * @param[in] items
@@ -4735,7 +4734,7 @@ exit:
 static int
 flow_meter_split_prep(struct rte_eth_dev *dev,
 		      struct rte_flow *flow,
-		      struct mlx5_flow_meter_info *fm,
+		      struct mlx5_flow_workspace *wks,
 		      const struct rte_flow_attr *attr,
 		      const struct rte_flow_item items[],
 		      struct rte_flow_item sfx_items[],
@@ -4746,6 +4745,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 		      struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter_info *fm = wks->fm;
 	struct rte_flow_action *tag_action = NULL;
 	struct rte_flow_item *tag_item;
 	struct mlx5_rte_flow_action_set_tag *set_tag;
@@ -4870,9 +4870,8 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 		struct mlx5_flow_tbl_data_entry *tbl_data;
 
 		if (!fm->def_policy) {
-			sub_policy = get_meter_sub_policy(dev, flow,
-							  fm->policy_id, attr,
-							  items, error);
+			sub_policy = get_meter_sub_policy(dev, flow, wks,
+							  attr, items, error);
 			if (!sub_policy)
 				return -rte_errno;
 		} else {
@@ -5760,6 +5759,22 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 		}
 		MLX5_ASSERT(wks);
 		wks->fm = fm;
+		if (!fm->def_policy) {
+			wks->policy = mlx5_flow_meter_policy_find(dev,
+								  fm->policy_id,
+								  NULL);
+			MLX5_ASSERT(wks->policy);
+			if (wks->policy->is_hierarchy) {
+				wks->final_policy =
+				mlx5_flow_meter_hierarchy_get_final_policy(dev,
+								wks->policy);
+				if (!wks->final_policy)
+					return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+				"Failed to find terminal policy of hierarchy.");
+			}
+		}
 		/*
 		 * If it isn't default-policy Meter, and
 		 * 1. There's no action in flow to change
@@ -5790,7 +5805,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			pre_actions = sfx_actions + 1;
 		else
 			pre_actions = sfx_actions + actions_n;
-		ret = flow_meter_split_prep(dev, flow, fm, &sfx_attr,
+		ret = flow_meter_split_prep(dev, flow, wks, &sfx_attr,
 					    items, sfx_items, actions,
 					    sfx_actions, pre_actions,
 					    (set_mtr_reg ? &mtr_flow_id : NULL),
