@@ -87,6 +87,7 @@ New Features
 * **Updated Mellanox mlx5 driver.**
 
   * Added support for meter hierarchy.
+  * Added devargs options ``allow_duplicate_pattern``.
 
 * **Added support for Marvell CNXK crypto driver.**
 

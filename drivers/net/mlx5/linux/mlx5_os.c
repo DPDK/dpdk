@@ -355,6 +355,15 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 			mlx5_glue->dr_reclaim_domain_memory(sh->fdb_domain, 1);
 	}
 	sh->pop_vlan_action = mlx5_glue->dr_create_flow_action_pop_vlan();
+	if (!priv->config.allow_duplicate_pattern) {
+#ifndef HAVE_MLX5_DR_ALLOW_DUPLICATE
+		DRV_LOG(WARNING, "Disallow duplicate pattern is not supported - maybe old rdma-core version?");
+#endif
+		mlx5_glue->dr_allow_duplicate_rules(sh->rx_domain, 0);
+		mlx5_glue->dr_allow_duplicate_rules(sh->tx_domain, 0);
+		if (sh->fdb_domain)
+			mlx5_glue->dr_allow_duplicate_rules(sh->fdb_domain, 0);
+	}
 #endif /* HAVE_MLX5DV_DR */
 	sh->default_miss_action =
 			mlx5_glue->dr_create_flow_action_default_miss();
@@ -2375,6 +2384,7 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 		dev_config.dv_flow_en = 1;
 		dev_config.decap_en = 1;
 		dev_config.log_hp_size = MLX5_ARG_UNSET;
+		dev_config.allow_duplicate_pattern = 1;
 		list[i].eth_dev = mlx5_dev_spawn(&pci_dev->device,
 						 &list[i],
 						 &dev_config,

@@ -244,6 +244,8 @@ struct mlx5_dev_config {
 	unsigned int sys_mem_en:1; /* The default memory allocator. */
 	unsigned int decap_en:1; /* Whether decap will be used or not. */
 	unsigned int dv_miss_info:1; /* restore packet after partial hw miss */
+	unsigned int allow_duplicate_pattern:1;
+	/* Allow/Prevent the duplicate rules pattern. */
 	struct {
 		unsigned int enabled:1; /* Whether MPRQ is enabled. */
 		unsigned int stride_num_n; /* Number of strides. */

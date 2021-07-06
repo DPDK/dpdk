@@ -1071,6 +1071,20 @@ Driver options
 
   By default, the PMD will set this value to 1.
 
+- ``allow_duplicate_pattern`` parameter [int]
+
+  There are two options to choose:
+
+  - 0. Prevent insertion of rules with the same pattern items on non-root table.
+    In this case, only the first rule is inserted and the following rules are
+    rejected and error code EEXIST is returned.
+
+  - 1. Allow insertion of rules with the same pattern items.
+    In this case, all rules are inserted but only the first rule takes effect,
+    the next rule takes effect only if the previous rules are deleted.
+
+  By default, the PMD will set this value to 1.
+
 .. _mlx5_firmware_config:
 
 Firmware configuration

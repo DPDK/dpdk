@@ -13362,10 +13362,14 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					       (void *)&dv->value, n,
 					       dv->actions, &dh->drv_flow);
 		if (err) {
-			rte_flow_error_set(error, errno,
-					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					   NULL,
-					   "hardware refuses to create flow");
+			rte_flow_error_set
+				(error, errno,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				(!priv->config.allow_duplicate_pattern &&
+				errno == EEXIST) ?
+				"duplicating pattern is not allowed" :
+				"hardware refuses to create flow");
 			goto error;
 		}
 		if (priv->vmwa_context &&

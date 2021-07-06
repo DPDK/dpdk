@@ -336,6 +336,7 @@ struct mlx5_glue {
 			 struct mlx5dv_devx_async_event_hdr *event_data,
 			 size_t event_resp_len);
 	void (*dr_reclaim_domain_memory)(void *domain, uint32_t enable);
+	void (*dr_allow_duplicate_rules)(void *domain, uint32_t allow);
 	struct mlx5dv_pp *(*dv_alloc_pp)(struct ibv_context *context,
 					 size_t pp_context_sz,
 					 const void *pp_context,
