@@ -631,6 +631,20 @@ enum mlx5_meter_domain {
 					MLX5_MTR_DOMAIN_EGRESS_BIT | \
 					MLX5_MTR_DOMAIN_TRANSFER_BIT)
 
+/* The color tag rule structure. */
+struct mlx5_sub_policy_color_rule {
+	void *rule;
+	/* The color rule. */
+	struct mlx5_flow_dv_matcher *matcher;
+	/* The color matcher. */
+	TAILQ_ENTRY(mlx5_sub_policy_color_rule) next_port;
+	/**< Pointer to the next color rule structure. */
+	int32_t src_port;
+	/* On which src port this rule applied. */
+};
+
+TAILQ_HEAD(mlx5_sub_policy_color_rules, mlx5_sub_policy_color_rule);
+
 /*
  * Meter sub-policy structure.
  * Each RSS TIR in meter policy need its own sub-policy resource.
@@ -648,10 +662,8 @@ struct mlx5_flow_meter_sub_policy {
 	/* Index to TIR resource. */
 	struct mlx5_flow_tbl_resource *jump_tbl[MLX5_MTR_RTE_COLORS];
 	/* Meter jump/drop table. */
-	struct mlx5_flow_dv_matcher *color_matcher[RTE_COLORS];
-	/* Matcher for Color. */
-	void *color_rule[RTE_COLORS];
-	/* Meter green/yellow/drop rule. */
+	struct mlx5_sub_policy_color_rules color_rules[RTE_COLORS];
+	/* List for the color rules. */
 };
 
 struct mlx5_meter_policy_acts {

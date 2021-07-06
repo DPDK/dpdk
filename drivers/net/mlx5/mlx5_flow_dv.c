@@ -23,6 +23,7 @@
 #include <rte_mpls.h>
 #include <rte_mtr.h>
 #include <rte_mtr_driver.h>
+#include <rte_tailq.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -13094,6 +13095,15 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				    matcher.mask.size);
 	matcher.priority = mlx5_get_matcher_priority(dev, attr,
 					matcher.priority);
+	/**
+	 * When creating meter drop flow in drop table, using original
+	 * 5-tuple match, the matcher priority should be lower than
+	 * mtr_id matcher.
+	 */
+	if (attr->group == MLX5_FLOW_TABLE_LEVEL_METER &&
+	    dev_flow->dv.table_id == MLX5_MTR_TABLE_ID_DROP &&
+	    matcher.priority <= MLX5_REG_BITS)
+		matcher.priority += MLX5_REG_BITS;
 	/* reserved field no needs to be set to 0 here. */
 	tbl_key.is_fdb = attr->transfer;
 	tbl_key.is_egress = attr->egress;
@@ -14583,20 +14593,21 @@ __flow_dv_destroy_sub_policy_rules(struct rte_eth_dev *dev,
 			     struct mlx5_flow_meter_sub_policy *sub_policy)
 {
 	struct mlx5_flow_tbl_data_entry *tbl;
+	struct mlx5_sub_policy_color_rule *color_rule;
+	void *tmp;
 	int i;
 
 	for (i = 0; i < RTE_COLORS; i++) {
-		if (sub_policy->color_rule[i]) {
-			claim_zero(mlx5_flow_os_destroy_flow
-				(sub_policy->color_rule[i]));
-			sub_policy->color_rule[i] = NULL;
-		}
-		if (sub_policy->color_matcher[i]) {
-			tbl = container_of(sub_policy->color_matcher[i]->tbl,
-				typeof(*tbl), tbl);
+		TAILQ_FOREACH_SAFE(color_rule, &sub_policy->color_rules[i],
+				   next_port, tmp) {
+			claim_zero(mlx5_flow_os_destroy_flow(color_rule->rule));
+			tbl = container_of(color_rule->matcher->tbl,
+					typeof(*tbl), tbl);
 			mlx5_cache_unregister(&tbl->matchers,
-				      &sub_policy->color_matcher[i]->entry);
-			sub_policy->color_matcher[i] = NULL;
+						&color_rule->matcher->entry);
+			TAILQ_REMOVE(&sub_policy->color_rules[i],
+					color_rule, next_port);
+			mlx5_free(color_rule);
 		}
 	}
 	for (i = 0; i < MLX5_MTR_RTE_COLORS; i++) {
@@ -14745,6 +14756,7 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 			    sizeof(struct mlx5_modification_cmd) *
 			    (MLX5_MAX_MODIFY_NUM + 1)];
 	} mhdr_dummy;
+	struct mlx5_flow_dv_modify_hdr_resource *mhdr_res = &mhdr_dummy.res;
 
 	egress = (domain == MLX5_MTR_DOMAIN_EGRESS) ? 1 : 0;
 	transfer = (domain == MLX5_MTR_DOMAIN_TRANSFER) ? 1 : 0;
@@ -14752,6 +14764,11 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 	memset(&dev_flow, 0, sizeof(struct mlx5_flow));
 	memset(&port_id_action, 0,
 		sizeof(struct mlx5_flow_dv_port_id_action_resource));
+	memset(mhdr_res, 0, sizeof(*mhdr_res));
+	mhdr_res->ft_type = transfer ? MLX5DV_FLOW_TABLE_TYPE_FDB :
+					egress ?
+					MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
+					MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
 	dev_flow.handle = &dh;
 	dev_flow.dv.port_id_action = &port_id_action;
 	dev_flow.external = true;
@@ -14790,10 +14807,6 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 				break;
 			}
 			case RTE_FLOW_ACTION_TYPE_SET_TAG:
-			{
-				struct mlx5_flow_dv_modify_hdr_resource
-					*mhdr_res = &mhdr_dummy.res;
-
 				if (i >= MLX5_MTR_RTE_COLORS)
 					return -rte_mtr_error_set(error,
 					  ENOTSUP,
@@ -14801,12 +14814,6 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 					  NULL,
 					  "cannot create policy "
 					  "set tag action for this color");
-				memset(mhdr_res, 0, sizeof(*mhdr_res));
-				mhdr_res->ft_type = transfer ?
-					MLX5DV_FLOW_TABLE_TYPE_FDB :
-					egress ?
-					MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
-					MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
 				if (flow_dv_convert_action_set_tag
 				(dev, mhdr_res,
 				(const struct rte_flow_action_set_tag *)
@@ -14822,20 +14829,8 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 					RTE_MTR_ERROR_TYPE_METER_POLICY,
 					NULL, "cannot find policy "
 					"set tag action");
-				/* create modify action if needed. */
-				dev_flow.dv.group = 1;
-				if (flow_dv_modify_hdr_resource_register
-					(dev, mhdr_res, &dev_flow, &flow_err))
-					return -rte_mtr_error_set(error,
-					ENOTSUP,
-					RTE_MTR_ERROR_TYPE_METER_POLICY,
-					NULL, "cannot register policy "
-					"set tag action");
-				act_cnt->modify_hdr =
-				dev_flow.handle->dvh.modify_hdr;
 				action_flags |= MLX5_FLOW_ACTION_SET_TAG;
 				break;
-			}
 			case RTE_FLOW_ACTION_TYPE_DROP:
 			{
 				struct mlx5_flow_mtr_mng *mtrmng =
@@ -15039,6 +15034,8 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 				const struct rte_flow_action_meter *mtr;
 				struct mlx5_flow_meter_info *next_fm;
 				struct mlx5_flow_meter_policy *next_policy;
+				struct rte_flow_action tag_action;
+				struct mlx5_rte_flow_action_set_tag set_tag;
 				uint32_t next_mtr_idx = 0;
 
 				mtr = act->conf;
@@ -15056,6 +15053,30 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 				next_policy = mlx5_flow_meter_policy_find(dev,
 						next_fm->policy_id, NULL);
 				MLX5_ASSERT(next_policy);
+				if (next_fm->drop_cnt) {
+					set_tag.id =
+						(enum modify_reg)
+						mlx5_flow_get_reg_id(dev,
+						MLX5_MTR_ID,
+						0,
+						(struct rte_flow_error *)error);
+					set_tag.offset = (priv->mtr_reg_share ?
+						MLX5_MTR_COLOR_BITS : 0);
+					set_tag.length = (priv->mtr_reg_share ?
+					       MLX5_MTR_IDLE_BITS_IN_COLOR_REG :
+					       MLX5_REG_BITS);
+					set_tag.data = next_mtr_idx;
+					tag_action.type =
+						(enum rte_flow_action_type)
+						MLX5_RTE_FLOW_ACTION_TYPE_TAG;
+					tag_action.conf = &set_tag;
+					if (flow_dv_convert_action_set_reg
+						(mhdr_res, &tag_action,
+						(struct rte_flow_error *)error))
+						return -rte_errno;
+					action_flags |=
+						MLX5_FLOW_ACTION_SET_TAG;
+				}
 				act_cnt->fate_action = MLX5_FLOW_FATE_MTR;
 				act_cnt->next_mtr_id = next_fm->meter_id;
 				act_cnt->next_sub_policy = NULL;
@@ -15069,6 +15090,19 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 				return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_METER_POLICY,
 					  NULL, "action type not supported");
+			}
+			if (action_flags & MLX5_FLOW_ACTION_SET_TAG) {
+				/* create modify action if needed. */
+				dev_flow.dv.group = 1;
+				if (flow_dv_modify_hdr_resource_register
+					(dev, mhdr_res, &dev_flow, &flow_err))
+					return -rte_mtr_error_set(error,
+						ENOTSUP,
+						RTE_MTR_ERROR_TYPE_METER_POLICY,
+						NULL, "cannot register policy "
+						"set tag action");
+				act_cnt->modify_hdr =
+					dev_flow.handle->dvh.modify_hdr;
 			}
 		}
 	}
@@ -15422,8 +15456,8 @@ __flow_dv_create_policy_flow(struct rte_eth_dev *dev,
 			uint32_t color_reg_c_idx,
 			enum rte_color color, void *matcher_object,
 			int actions_n, void *actions,
-			bool match_src_port, void **rule,
-			const struct rte_flow_attr *attr)
+			bool match_src_port, const struct rte_flow_item *item,
+			void **rule, const struct rte_flow_attr *attr)
 {
 	int ret;
 	struct mlx5_flow_dv_match_params value = {
@@ -15438,7 +15472,7 @@ __flow_dv_create_policy_flow(struct rte_eth_dev *dev,
 
 	if (match_src_port && (priv->representor || priv->master)) {
 		if (flow_dv_translate_item_port_id(dev, matcher.buf,
-						   value.buf, NULL, attr)) {
+						   value.buf, item, attr)) {
 			DRV_LOG(ERR,
 			"Failed to create meter policy flow with port.");
 			return -1;
@@ -15464,6 +15498,8 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 			struct mlx5_flow_meter_sub_policy *sub_policy,
 			const struct rte_flow_attr *attr,
 			bool match_src_port,
+			const struct rte_flow_item *item,
+			struct mlx5_flow_dv_matcher **policy_matcher,
 			struct rte_flow_error *error)
 {
 	struct mlx5_cache_entry *entry;
@@ -15489,7 +15525,7 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 
 	if (match_src_port && (priv->representor || priv->master)) {
 		if (flow_dv_translate_item_port_id(dev, matcher.mask.buf,
-						   value.buf, NULL, attr)) {
+						   value.buf, item, attr)) {
 			DRV_LOG(ERR,
 			"Failed to register meter drop matcher with port.");
 			return -1;
@@ -15507,7 +15543,7 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 		DRV_LOG(ERR, "Failed to register meter drop matcher.");
 		return -1;
 	}
-	sub_policy->color_matcher[priority] =
+	*policy_matcher =
 		container_of(entry, struct mlx5_flow_dv_matcher, entry);
 	return 0;
 }
@@ -15535,6 +15571,7 @@ __flow_dv_create_domain_policy_rules(struct rte_eth_dev *dev,
 		uint8_t egress, uint8_t transfer, bool match_src_port,
 		struct mlx5_meter_policy_acts acts[RTE_COLORS])
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_error flow_err;
 	uint32_t color_reg_c_idx;
 	struct rte_flow_attr attr = {
@@ -15547,6 +15584,7 @@ __flow_dv_create_domain_policy_rules(struct rte_eth_dev *dev,
 	};
 	int i;
 	int ret = mlx5_flow_get_reg_id(dev, MLX5_MTR_COLOR, 0, &flow_err);
+	struct mlx5_sub_policy_color_rule *color_rule;
 
 	if (ret < 0)
 		return -1;
@@ -15564,29 +15602,56 @@ __flow_dv_create_domain_policy_rules(struct rte_eth_dev *dev,
 	/* Prepare matchers. */
 	color_reg_c_idx = ret;
 	for (i = 0; i < RTE_COLORS; i++) {
+		TAILQ_INIT(&sub_policy->color_rules[i]);
 		if (i == RTE_COLOR_YELLOW || !acts[i].actions_n)
 			continue;
+		color_rule = mlx5_malloc(MLX5_MEM_ZERO,
+				sizeof(struct mlx5_sub_policy_color_rule),
+				0, SOCKET_ID_ANY);
+		if (!color_rule) {
+			DRV_LOG(ERR, "No memory to create color rule.");
+			goto err_exit;
+		}
+		color_rule->src_port = priv->representor_id;
 		attr.priority = i;
-		if (!sub_policy->color_matcher[i]) {
-			/* Create matchers for Color. */
-			if (__flow_dv_create_policy_matcher(dev,
-				color_reg_c_idx, i, sub_policy,
-				&attr, match_src_port, &flow_err))
-				return -1;
+		/* Create matchers for Color. */
+		if (__flow_dv_create_policy_matcher(dev,
+				color_reg_c_idx, i, sub_policy, &attr,
+				(i != RTE_COLOR_RED ? match_src_port : false),
+				NULL, &color_rule->matcher, &flow_err)) {
+			DRV_LOG(ERR, "Failed to create color matcher.");
+			goto err_exit;
 		}
 		/* Create flow, matching color. */
-		if (acts[i].actions_n)
-			if (__flow_dv_create_policy_flow(dev,
+		if (__flow_dv_create_policy_flow(dev,
 				color_reg_c_idx, (enum rte_color)i,
-				sub_policy->color_matcher[i]->matcher_object,
+				color_rule->matcher->matcher_object,
 				acts[i].actions_n,
 				acts[i].dv_actions,
-				match_src_port,
-				&sub_policy->color_rule[i],
-				&attr))
-				return -1;
+				(i != RTE_COLOR_RED ? match_src_port : false),
+				NULL, &color_rule->rule,
+				&attr)) {
+			DRV_LOG(ERR, "Failed to create color rule.");
+			goto err_exit;
+		}
+		TAILQ_INSERT_TAIL(&sub_policy->color_rules[i],
+				  color_rule, next_port);
 	}
 	return 0;
+err_exit:
+	if (color_rule) {
+		if (color_rule->rule)
+			mlx5_flow_os_destroy_flow(color_rule->rule);
+		if (color_rule->matcher) {
+			struct mlx5_flow_tbl_data_entry *tbl =
+				container_of(color_rule->matcher->tbl,
+						typeof(*tbl), tbl);
+			mlx5_cache_unregister(&tbl->matchers,
+						&color_rule->matcher->entry);
+		}
+		mlx5_free(color_rule);
+	}
+	return -1;
 }
 
 static int
@@ -15738,8 +15803,6 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 			}
 		}
 	}
-	egress = (domain == MLX5_MTR_DOMAIN_EGRESS) ? 1 : 0;
-	transfer = (domain == MLX5_MTR_DOMAIN_TRANSFER) ? 1 : 0;
 	if (__flow_dv_create_domain_policy_rules(dev, sub_policy,
 				egress, transfer, match_src_port, acts)) {
 		DRV_LOG(ERR,
@@ -16293,6 +16356,156 @@ err_exit:
 		}
 	}
 	return NULL;
+}
+
+/**
+ * Create the sub policy tag rule for all meters in hierarchy.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] fm
+ *   Meter information table.
+ * @param[in] src_port
+ *   The src port this extra rule should use.
+ * @param[in] item
+ *   The src port match item.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_meter_hierarchy_rule_create(struct rte_eth_dev *dev,
+				struct mlx5_flow_meter_info *fm,
+				int32_t src_port,
+				const struct rte_flow_item *item,
+				struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter_policy *mtr_policy;
+	struct mlx5_flow_meter_sub_policy *sub_policy;
+	struct mlx5_flow_meter_info *next_fm = NULL;
+	struct mlx5_flow_meter_policy *next_policy;
+	struct mlx5_flow_meter_sub_policy *next_sub_policy;
+	struct mlx5_flow_tbl_data_entry *tbl_data;
+	struct mlx5_sub_policy_color_rule *color_rule;
+	struct mlx5_meter_policy_acts acts;
+	uint32_t color_reg_c_idx;
+	bool mtr_first = (src_port != UINT16_MAX) ? true : false;
+	struct rte_flow_attr attr = {
+		.group = MLX5_FLOW_TABLE_LEVEL_POLICY,
+		.priority = 0,
+		.ingress = 0,
+		.egress = 0,
+		.transfer = 1,
+		.reserved = 0,
+	};
+	uint32_t domain = MLX5_MTR_DOMAIN_TRANSFER;
+	int i;
+
+	mtr_policy = mlx5_flow_meter_policy_find(dev, fm->policy_id, NULL);
+	MLX5_ASSERT(mtr_policy);
+	if (!mtr_policy->is_hierarchy)
+		return 0;
+	next_fm = mlx5_flow_meter_find(priv,
+			mtr_policy->act_cnt[RTE_COLOR_GREEN].next_mtr_id, NULL);
+	if (!next_fm) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+				"Failed to find next meter in hierarchy.");
+	}
+	if (!next_fm->drop_cnt)
+		goto exit;
+	color_reg_c_idx = mlx5_flow_get_reg_id(dev, MLX5_MTR_COLOR, 0, error);
+	sub_policy = mtr_policy->sub_policys[domain][0];
+	for (i = 0; i < RTE_COLORS; i++) {
+		bool rule_exist = false;
+		struct mlx5_meter_policy_action_container *act_cnt;
+
+		if (i >= RTE_COLOR_YELLOW)
+			break;
+		TAILQ_FOREACH(color_rule,
+			      &sub_policy->color_rules[i], next_port)
+			if (color_rule->src_port == src_port) {
+				rule_exist = true;
+				break;
+			}
+		if (rule_exist)
+			continue;
+		color_rule = mlx5_malloc(MLX5_MEM_ZERO,
+				sizeof(struct mlx5_sub_policy_color_rule),
+				0, SOCKET_ID_ANY);
+		if (!color_rule)
+			return rte_flow_error_set(error, ENOMEM,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL, "No memory to create tag color rule.");
+		color_rule->src_port = src_port;
+		attr.priority = i;
+		next_policy = mlx5_flow_meter_policy_find(dev,
+						next_fm->policy_id, NULL);
+		MLX5_ASSERT(next_policy);
+		next_sub_policy = next_policy->sub_policys[domain][0];
+		tbl_data = container_of(next_sub_policy->tbl_rsc,
+					struct mlx5_flow_tbl_data_entry, tbl);
+		act_cnt = &mtr_policy->act_cnt[i];
+		if (mtr_first) {
+			acts.dv_actions[0] = next_fm->meter_action;
+			acts.dv_actions[1] = act_cnt->modify_hdr->action;
+		} else {
+			acts.dv_actions[0] = act_cnt->modify_hdr->action;
+			acts.dv_actions[1] = next_fm->meter_action;
+		}
+		acts.dv_actions[2] = tbl_data->jump.action;
+		acts.actions_n = 3;
+		if (mlx5_flow_meter_attach(priv, next_fm, &attr, error)) {
+			next_fm = NULL;
+			goto err_exit;
+		}
+		if (__flow_dv_create_policy_matcher(dev, color_reg_c_idx,
+					i, sub_policy, &attr, true, item,
+					&color_rule->matcher, error)) {
+			rte_flow_error_set(error, errno,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"Failed to create hierarchy meter matcher.");
+			goto err_exit;
+		}
+		if (__flow_dv_create_policy_flow(dev, color_reg_c_idx,
+					(enum rte_color)i,
+					color_rule->matcher->matcher_object,
+					acts.actions_n, acts.dv_actions,
+					true, item,
+					&color_rule->rule, &attr)) {
+			rte_flow_error_set(error, errno,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"Failed to create hierarchy meter rule.");
+			goto err_exit;
+		}
+		TAILQ_INSERT_TAIL(&sub_policy->color_rules[i],
+				  color_rule, next_port);
+	}
+exit:
+	/**
+	 * Recursive call to iterate all meters in hierarchy and
+	 * create needed rules.
+	 */
+	return flow_dv_meter_hierarchy_rule_create(dev, next_fm,
+						src_port, item, error);
+err_exit:
+	if (color_rule) {
+		if (color_rule->rule)
+			mlx5_flow_os_destroy_flow(color_rule->rule);
+		if (color_rule->matcher) {
+			struct mlx5_flow_tbl_data_entry *tbl =
+				container_of(color_rule->matcher->tbl,
+						typeof(*tbl), tbl);
+			mlx5_cache_unregister(&tbl->matchers,
+						&color_rule->matcher->entry);
+		}
+		mlx5_free(color_rule);
+	}
+	if (next_fm)
+		mlx5_flow_meter_detach(priv, next_fm);
+	return -rte_errno;
 }
 
 /**
@@ -16970,6 +17183,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.create_def_policy = flow_dv_create_def_policy,
 	.destroy_def_policy = flow_dv_destroy_def_policy,
 	.meter_sub_policy_rss_prepare = flow_dv_meter_sub_policy_rss_prepare,
+	.meter_hierarchy_rule_create = flow_dv_meter_hierarchy_rule_create,
 	.destroy_sub_policy_with_rxq = flow_dv_destroy_sub_policy_with_rxq,
 	.counter_alloc = flow_dv_counter_allocate,
 	.counter_free = flow_dv_counter_free,

@@ -3464,6 +3464,41 @@ flow_drv_meter_sub_policy_rss_prepare(struct rte_eth_dev *dev,
 }
 
 /**
+ * Flow driver color tag rule API. This abstracts calling driver
+ * specific functions. Parent flow (rte_flow) should have driver
+ * type (drv_type). It will create the color tag rules in hierarchy meter.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] fm
+ *   Pointer to flow meter structure.
+ * @param[in] src_port
+ *   The src port this extra rule should use.
+ * @param[in] item
+ *   The src port id match item.
+ * @param[out] error
+ *   Pointer to error structure.
+ */
+static int
+flow_drv_mtr_hierarchy_rule_create(struct rte_eth_dev *dev,
+		struct rte_flow *flow,
+		struct mlx5_flow_meter_info *fm,
+		int32_t src_port,
+		const struct rte_flow_item *item,
+		struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	enum mlx5_flow_drv_type type = flow->drv_type;
+
+	MLX5_ASSERT(type > MLX5_FLOW_TYPE_MIN && type < MLX5_FLOW_TYPE_MAX);
+	fops = flow_get_drv_ops(type);
+	return fops->meter_hierarchy_rule_create(dev, fm,
+						src_port, item, error);
+}
+
+/**
  * Get RSS action from the action list.
  *
  * @param[in] dev
@@ -4787,6 +4822,15 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 						pid_v,
 						"Failed to get port info.");
 			flow_src_port = port_priv->representor_id;
+			if (!fm->def_policy && wks->policy->is_hierarchy &&
+			    flow_src_port != priv->representor_id) {
+				if (flow_drv_mtr_hierarchy_rule_create(dev,
+								flow, fm,
+								flow_src_port,
+								items,
+								error))
+					return -rte_errno;
+			}
 			memcpy(sfx_items, items, sizeof(*sfx_items));
 			sfx_items++;
 			break;
@@ -5727,6 +5771,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 	bool has_mtr = false;
 	bool has_modify = false;
 	bool set_mtr_reg = true;
+	bool is_mtr_hierarchy = false;
 	uint32_t meter_id = 0;
 	uint32_t mtr_idx = 0;
 	uint32_t mtr_flow_id = 0;
@@ -5773,6 +5818,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 					EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 				"Failed to find terminal policy of hierarchy.");
+				is_mtr_hierarchy = true;
 			}
 		}
 		/*
@@ -5780,9 +5826,11 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 		 * 1. There's no action in flow to change
 		 *    packet (modify/encap/decap etc.), OR
 		 * 2. No drop count needed for this meter.
-		 * no need to use regC to save meter id anymore.
+		 * 3. It's not meter hierarchy.
+		 * Then no need to use regC to save meter id anymore.
 		 */
-		if (!fm->def_policy && (!has_modify || !fm->drop_cnt))
+		if (!fm->def_policy && !is_mtr_hierarchy &&
+		    (!has_modify || !fm->drop_cnt))
 			set_mtr_reg = false;
 		/* Prefix actions: meter, decap, encap, tag, jump, end. */
 		act_size = sizeof(struct rte_flow_action) * (actions_n + 6) +
