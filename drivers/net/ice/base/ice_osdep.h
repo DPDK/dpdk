@@ -21,7 +21,6 @@
 #include <rte_cycles.h>
 #include <rte_spinlock.h>
 #include <rte_log.h>
-#include <rte_random.h>
 #include <rte_io.h>
 
 #include "ice_alloc.h"
@@ -245,13 +244,15 @@ static inline void *
 ice_alloc_dma_mem(__rte_unused struct ice_hw *hw,
 		  struct ice_dma_mem *mem, u64 size)
 {
+	static uint64_t ice_dma_memzone_id;
 	const struct rte_memzone *mz = NULL;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 
 	if (!mem)
 		return NULL;
 
-	snprintf(z_name, sizeof(z_name), "ice_dma_%"PRIu64, rte_rand());
+	snprintf(z_name, sizeof(z_name), "ice_dma_%" PRIu64,
+		__atomic_fetch_add(&ice_dma_memzone_id, 1, __ATOMIC_RELAXED));
 	mz = rte_memzone_reserve_bounded(z_name, size, SOCKET_ID_ANY, 0,
 					 0, RTE_PGSIZE_2M);
 	if (!mz)

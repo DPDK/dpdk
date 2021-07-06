@@ -6,7 +6,6 @@
 #include <inttypes.h>
 
 #include <rte_common.h>
-#include <rte_random.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 
@@ -19,13 +18,15 @@ iavf_allocate_dma_mem_d(__rte_unused struct iavf_hw *hw,
 			u64 size,
 			u32 alignment)
 {
+	static uint64_t iavf_dma_memzone_id;
 	const struct rte_memzone *mz = NULL;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 
 	if (!mem)
 		return IAVF_ERR_PARAM;
 
-	snprintf(z_name, sizeof(z_name), "iavf_dma_%"PRIu64, rte_rand());
+	snprintf(z_name, sizeof(z_name), "iavf_dma_%" PRIu64,
+		__atomic_fetch_add(&iavf_dma_memzone_id, 1, __ATOMIC_RELAXED));
 	mz = rte_memzone_reserve_bounded(z_name, size, SOCKET_ID_ANY,
 					 RTE_MEMZONE_IOVA_CONTIG, alignment,
 					 RTE_PGSIZE_2M);

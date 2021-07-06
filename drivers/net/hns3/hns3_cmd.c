@@ -44,10 +44,12 @@ static int
 hns3_allocate_dma_mem(struct hns3_hw *hw, struct hns3_cmq_ring *ring,
 		      uint64_t size, uint32_t alignment)
 {
+	static uint64_t hns3_dma_memzone_id;
 	const struct rte_memzone *mz = NULL;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 
-	snprintf(z_name, sizeof(z_name), "hns3_dma_%" PRIu64, rte_rand());
+	snprintf(z_name, sizeof(z_name), "hns3_dma_%" PRIu64,
+		__atomic_fetch_add(&hns3_dma_memzone_id, 1, __ATOMIC_RELAXED));
 	mz = rte_memzone_reserve_bounded(z_name, size, SOCKET_ID_ANY,
 					 RTE_MEMZONE_IOVA_CONTIG, alignment,
 					 RTE_PGSIZE_2M);
