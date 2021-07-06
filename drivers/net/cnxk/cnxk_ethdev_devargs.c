@@ -116,7 +116,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 {
 	uint16_t reta_sz = ROC_NIX_RSS_RETA_SZ_64;
 	uint16_t sqb_count = CNXK_NIX_TX_MAX_SQB;
-	uint16_t flow_prealloc_size = 8;
+	uint16_t flow_prealloc_size = 1;
 	uint16_t switch_header_type = 0;
 	uint16_t flow_max_priority = 3;
 	uint16_t rss_tag_as_xor = 0;
