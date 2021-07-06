@@ -12,7 +12,7 @@ dpdk_conf.set('RTE_ARCH_PPC_64', 1)
 # is used, resulting in a build failure.
 power9_supported = cc.has_argument('-mcpu=power9')
 if not power9_supported
-    machine = 'power8'
+    cpu_instruction_set = 'power8'
     machine_args = ['-mcpu=power8', '-mtune=power8']
     dpdk_conf.set('RTE_MACHINE','power8')
 endif

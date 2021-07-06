@@ -65,43 +65,68 @@ endif
 disable_drivers = ''
 enable_drivers = ''
 
-# set the machine type and cflags for it
+platform = get_option('platform')
+
+# set the cpu_instruction_set and cflags for it
 if meson.is_cross_build()
-    machine = host_machine.cpu()
+    cpu_instruction_set = host_machine.cpu()
 else
+    cpu_instruction_set = get_option('cpu_instruction_set')
     machine = get_option('machine')
+    if machine != 'auto'
+        warning('The "machine" option is deprecated. ' +
+                'Please use "cpu_instruction_set" instead.')
+        if cpu_instruction_set != 'auto'
+            error('Setting both "machine" and ' +
+                '"cpu_instruction_set" is unsupported.')
+        endif
+        cpu_instruction_set = machine
+        if cpu_instruction_set == 'default'
+            cpu_instruction_set = 'generic'
+        endif
+    endif
 endif
 
-# machine type 'generic' is special, it selects the per arch agreed common
-# minimal baseline needed for DPDK. Machine type 'default' is also supported
-# with the same meaning for backwards compatibility.
+if platform == 'native'
+    if cpu_instruction_set == 'auto'
+        cpu_instruction_set = 'native'
+    endif
+elif platform == 'generic'
+    if cpu_instruction_set == 'auto'
+        cpu_instruction_set = 'generic'
+    endif
+endif
+
+# cpu_instruction_set 'generic' is special, it selects the per arch agreed
+# common minimal baseline needed for DPDK. cpu_instruction_set 'default' is
+# also supported with the same meaning for backwards compatibility.
 # That might not be the most optimized, but the most portable version while
 # still being able to support the CPU features required for DPDK.
 # This can be bumped up by the DPDK project, but it can never be an
 # invariant like 'native'
-if machine == 'default' or machine == 'generic'
+if cpu_instruction_set == 'generic'
     if host_machine.cpu_family().startswith('x86')
-        # matches the old pre-meson build systems generic machine
-        machine = 'corei7'
+        # matches the old pre-meson build systems generic cpu_instruction_set
+        cpu_instruction_set = 'corei7'
     elif host_machine.cpu_family().startswith('arm')
-        machine = 'armv7-a'
+        cpu_instruction_set = 'armv7-a'
     elif host_machine.cpu_family().startswith('aarch')
         # arm64 manages generic config in config/arm/meson.build
-        machine = 'generic'
+        cpu_instruction_set = 'generic'
     elif host_machine.cpu_family().startswith('ppc')
-        machine = 'power8'
+        cpu_instruction_set = 'power8'
     endif
 endif
 
-dpdk_conf.set('RTE_MACHINE', machine)
+dpdk_conf.set('RTE_MACHINE', cpu_instruction_set)
 machine_args = []
 
 # ppc64 does not support -march= at all, use -mcpu and -mtune for that
 if host_machine.cpu_family().startswith('ppc')
-    machine_args += '-mcpu=' + machine
-    machine_args += '-mtune=' + machine
+    machine_args += '-mcpu=' + cpu_instruction_set
+    machine_args += '-mtune=' + cpu_instruction_set
 else
-    machine_args += '-march=' + machine
+    machine_args += '-march=' + cpu_instruction_set
 endif
 
 toolchain = cc.get_id()

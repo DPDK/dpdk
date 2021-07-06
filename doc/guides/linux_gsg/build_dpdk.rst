@@ -89,7 +89,36 @@ to a regular "debug" build, you can either:
 * run ``meson configure -Dbuildtype=debug`` inside the build folder after the initial meson run.
 
 Other options are specific to the DPDK project but can be adjusted similarly.
-To set the "max_lcores" value to 256, for example, you can either:
+The "platform" option specifies a set a configuration parameters that will be used.
+The valid values are:
+
+* ``-Dplatform=native`` will tailor the configuration to the build machine.
+
+* ``-Dplatform=generic`` will use configuration that works on all machines
+  of the same architecture as the build machine.
+
+* ``-Dplatform=<SoC>`` will use configuration optimized for a particular SoC.
+  Consult the "socs" dictionary in ``config/arm/meson.build`` to see which
+  SoCs are supported.
+
+The instruction set will be set automatically by default according to these rules:
+
+* ``-Dplatform=native`` sets ``cpu_instruction_set`` to ``native``,
+  which configures ``-march`` (x86_64), ``-mcpu`` (ppc), ``-mtune`` (ppc) to ``native``.
+
+* ``-Dplatform=generic`` sets ``cpu_instruction_set`` to ``generic``,
+  which configures ``-march`` (x86_64), ``-mcpu`` (ppc), ``-mtune`` (ppc) to
+  a common minimal baseline needed for DPDK.
+
+To override what instruction set will be used, set the ``cpu_instruction_set``
+parameter to the instruction set of your choice (such as ``corei7``, ``power8``, etc.).
+
+``cpu_instruction_set`` is not used in Arm builds, as setting the instruction set
+without other parameters leads to inferior builds. The way to tailor Arm builds
+is to build for a SoC using ``-Dplatform=<SoC>`` mentioned above.
+
+The values determined by the ``platform`` parameter may be overwritten.
+For example, to set the ``max_lcores`` value to 256, you can either:
 
 * pass ``-Dmax_lcores=256`` to meson when configuring the build folder initially
 

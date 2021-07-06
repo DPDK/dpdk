@@ -2,6 +2,8 @@
 
 option('check_includes', type: 'boolean', value: false, description:
        'build "chkincs" to verify each header file can compile alone')
+option('cpu_instruction_set', type: 'string', value: 'auto',
+	description: 'Set the target machine ISA (instruction set architecture). Will be set according to the platform option by default.')
 option('developer_mode', type: 'feature', description:
        'turn on additional build checks relevant for DPDK developers')
 option('disable_drivers', type: 'string', value: '', description:
@@ -28,16 +30,16 @@ option('include_subdir_arch', type: 'string', value: '', description:
        'subdirectory where to install arch-dependent headers')
 option('kernel_dir', type: 'string', value: '', description:
        'Path to the kernel for building kernel modules. Headers must be in $kernel_dir or $kernel_dir/build. Modules will be installed in /lib/modules.')
-option('machine', type: 'string', value: 'native', description:
-       'set the target machine type or "generic", a build usable on all machines of the build machine architecture or "native", which lets the compiler pick the architecture of the build machine.')
+option('machine', type: 'string', value: 'auto', description:
+       'Alias of cpu_instruction_set.')
 option('max_ethports', type: 'integer', value: 32, description:
        'maximum number of Ethernet devices')
 option('max_lcores', type: 'integer', value: 128, description:
        'maximum number of cores/threads supported by EAL')
 option('max_numa_nodes', type: 'integer', value: 32, description:
        'maximum number of NUMA nodes supported by EAL')
-option('platform', type: 'string', value: '', description:
-       'use configuration for a particular platform (such as a SoC).')
+option('platform', type: 'string', value: 'native', description:
+       'Platform to build, either "native", "generic" or a SoC. Please refer to the Linux build guide for more information.')
 option('enable_trace_fp', type: 'boolean', value: false, description:
        'enable fast path trace points.')
 option('tests', type: 'boolean', value: true, description:
