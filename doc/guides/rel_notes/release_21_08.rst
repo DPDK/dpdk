@@ -84,6 +84,10 @@ New Features
   * Added net/cnxk driver which provides the support for the integrated ethernet
     device.
 
+* **Updated Mellanox mlx5 driver.**
+
+  * Added support for meter hierarchy.
+
 * **Added support for Marvell CNXK crypto driver.**
 
   * Added cnxk crypto PMD which provides support for an integrated

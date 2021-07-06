@@ -16863,6 +16863,78 @@ flow_dv_action_validate(struct rte_eth_dev *dev,
 }
 
 /**
+ * Validate the meter hierarchy chain for meter policy.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] meter_id
+ *   Meter id.
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[out] is_rss
+ *   Is RSS or not.
+ * @param[out] hierarchy_domain
+ *   The domain bitmap for hierarchy policy.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value with error set.
+ */
+static int
+flow_dv_validate_policy_mtr_hierarchy(struct rte_eth_dev *dev,
+				  uint32_t meter_id,
+				  uint64_t action_flags,
+				  bool *is_rss,
+				  uint8_t *hierarchy_domain,
+				  struct rte_mtr_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter_info *fm;
+	struct mlx5_flow_meter_policy *policy;
+	uint8_t cnt = 1;
+
+	if (action_flags & (MLX5_FLOW_FATE_ACTIONS |
+			    MLX5_FLOW_FATE_ESWITCH_ACTIONS))
+		return -rte_mtr_error_set(error, EINVAL,
+					RTE_MTR_ERROR_TYPE_POLICER_ACTION_GREEN,
+					NULL,
+					"Multiple fate actions not supported.");
+	while (true) {
+		fm = mlx5_flow_meter_find(priv, meter_id, NULL);
+		if (!fm)
+			return -rte_mtr_error_set(error, EINVAL,
+						RTE_MTR_ERROR_TYPE_MTR_ID, NULL,
+					"Meter not found in meter hierarchy.");
+		if (fm->def_policy)
+			return -rte_mtr_error_set(error, EINVAL,
+					RTE_MTR_ERROR_TYPE_MTR_ID, NULL,
+			"Non termination meter not supported in hierarchy.");
+		policy = mlx5_flow_meter_policy_find(dev, fm->policy_id, NULL);
+		MLX5_ASSERT(policy);
+		if (!policy->is_hierarchy) {
+			if (policy->transfer)
+				*hierarchy_domain |=
+						MLX5_MTR_DOMAIN_TRANSFER_BIT;
+			if (policy->ingress)
+				*hierarchy_domain |=
+						MLX5_MTR_DOMAIN_INGRESS_BIT;
+			if (policy->egress)
+				*hierarchy_domain |= MLX5_MTR_DOMAIN_EGRESS_BIT;
+			*is_rss = policy->is_rss;
+			break;
+		}
+		meter_id = policy->act_cnt[RTE_COLOR_GREEN].next_mtr_id;
+		if (++cnt >= MLX5_MTR_CHAIN_MAX_NUM)
+			return -rte_mtr_error_set(error, EINVAL,
+					RTE_MTR_ERROR_TYPE_METER_POLICY, NULL,
+					"Exceed max hierarchy meter number.");
+	}
+	return 0;
+}
+
+/**
  * Validate meter policy actions.
  * Dispatcher for action type specific validation.
  *
@@ -16897,6 +16969,8 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 	struct rte_flow_error flow_err;
 	uint8_t domain_color[RTE_COLORS] = {0};
 	uint8_t def_domain = MLX5_MTR_ALL_DOMAIN_BIT;
+	uint8_t hierarchy_domain = 0;
+	const struct rte_flow_action_meter *mtr;
 
 	if (!priv->config.dv_esw_en)
 		def_domain &= ~MLX5_MTR_DOMAIN_TRANSFER_BIT;
@@ -17074,6 +17148,27 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 				++actions_n;
 				action_flags |= MLX5_FLOW_ACTION_JUMP;
 				break;
+			case RTE_FLOW_ACTION_TYPE_METER:
+				if (i != RTE_COLOR_GREEN)
+					return -rte_mtr_error_set(error,
+						ENOTSUP,
+						RTE_MTR_ERROR_TYPE_METER_POLICY,
+						NULL, flow_err.message ?
+						flow_err.message :
+				  "Meter hierarchy only supports GREEN color.");
+				mtr = act->conf;
+				ret = flow_dv_validate_policy_mtr_hierarchy(dev,
+							mtr->mtr_id,
+							action_flags,
+							is_rss,
+							&hierarchy_domain,
+							error);
+				if (ret)
+					return ret;
+				++actions_n;
+				action_flags |=
+				MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY;
+				break;
 			default:
 				return -rte_mtr_error_set(error, ENOTSUP,
 					RTE_MTR_ERROR_TYPE_METER_POLICY,
@@ -17094,6 +17189,9 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 			 * so MARK action only in ingress domain.
 			 */
 			domain_color[i] = MLX5_MTR_DOMAIN_INGRESS_BIT;
+		else if (action_flags &
+			MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY)
+			domain_color[i] = hierarchy_domain;
 		else
 			domain_color[i] = def_domain;
 		/*
