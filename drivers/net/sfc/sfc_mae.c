@@ -1576,12 +1576,12 @@ sfc_mae_rule_process_outer(struct sfc_adapter *sa,
 			   struct sfc_mae_outer_rule **rulep,
 			   struct rte_flow_error *error)
 {
-	struct sfc_mae_outer_rule *rule;
+	efx_mae_rule_id_t invalid_rule_id = { .id = EFX_MAE_RSRC_ID_INVALID };
 	int rc;
 
 	if (ctx->encap_type == EFX_TUNNEL_PROTOCOL_NONE) {
 		*rulep = NULL;
-		return 0;
+		goto no_or_id;
 	}
 
 	SFC_ASSERT(ctx->match_spec_outer != NULL);
@@ -1609,21 +1609,27 @@ sfc_mae_rule_process_outer(struct sfc_adapter *sa,
 	/* The spec has now been tracked by the outer rule entry. */
 	ctx->match_spec_outer = NULL;
 
+no_or_id:
 	/*
-	 * Depending on whether we reuse an existing outer rule or create a
-	 * new one (see above), outer rule ID is either a valid value or
-	 * EFX_MAE_RSRC_ID_INVALID. Set it in the action rule match
-	 * specification (and the full mask, too) in order to have correct
-	 * class comparisons of the new rule with existing ones.
-	 * Also, action rule match specification will be validated shortly,
-	 * and having the full mask set for outer rule ID indicates that we
-	 * will use this field, and support for this field has to be checked.
+	 * In MAE, lookup sequence comprises outer parse, outer rule lookup,
+	 * inner parse (when some outer rule is hit) and action rule lookup.
+	 * If the currently processed flow does not come with an outer rule,
+	 * its action rule must be available only for packets which miss in
+	 * outer rule table. Set OR_ID match field to 0xffffffff/0xffffffff
+	 * in the action rule specification; this ensures correct behaviour.
+	 *
+	 * If, on the other hand, this flow does have an outer rule, its ID
+	 * may be unknown at the moment (not yet allocated), but OR_ID mask
+	 * has to be set to 0xffffffff anyway for correct class comparisons.
+	 * When the outer rule has been allocated, this match field will be
+	 * overridden by sfc_mae_outer_rule_enable() to use the right value.
 	 */
-	rule = *rulep;
 	rc = efx_mae_match_spec_outer_rule_id_set(ctx->match_spec_action,
-						  &rule->fw_rsrc.rule_id);
+						  &invalid_rule_id);
 	if (rc != 0) {
-		sfc_mae_outer_rule_del(sa, *rulep);
+		if (*rulep != NULL)
+			sfc_mae_outer_rule_del(sa, *rulep);
+
 		*rulep = NULL;
 
 		return rte_flow_error_set(error, rc,
