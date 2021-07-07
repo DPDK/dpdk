@@ -106,22 +106,27 @@ mlx5_rx_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq)
 			rxq->stats.rx_nombuf += n;
 			return;
 		}
-		for (i = 0; i < n; ++i) {
-			void *buf_addr;
+		if (unlikely(mlx5_mr_btree_len(&rxq->mr_ctrl.cache_bh) > 1)) {
+			for (i = 0; i < n; ++i) {
+				/*
+				 * In order to support the mbufs with external attached
+				 * data buffer we should use the buf_addr pointer
+				 * instead of rte_mbuf_buf_addr(). It touches the mbuf
+				 * itself and may impact the performance.
+				 */
+				void *buf_addr = elts[i]->buf_addr;
 
-			/*
-			 * In order to support the mbufs with external attached
-			 * data buffer we should use the buf_addr pointer
-			 * instead of rte_mbuf_buf_addr(). It touches the mbuf
-			 * itself and may impact the performance.
-			 */
-			buf_addr = elts[i]->buf_addr;
-			wq[i].addr = rte_cpu_to_be_64((uintptr_t)buf_addr +
-						      RTE_PKTMBUF_HEADROOM);
-			/* If there's a single MR, no need to replace LKey. */
-			if (unlikely(mlx5_mr_btree_len(&rxq->mr_ctrl.cache_bh)
-				     > 1))
+				wq[i].addr = rte_cpu_to_be_64((uintptr_t)buf_addr +
+							      RTE_PKTMBUF_HEADROOM);
 				wq[i].lkey = mlx5_rx_mb2mr(rxq, elts[i]);
+			}
+		} else {
+			for (i = 0; i < n; ++i) {
+				void *buf_addr = elts[i]->buf_addr;
+
+				wq[i].addr = rte_cpu_to_be_64((uintptr_t)buf_addr +
+							      RTE_PKTMBUF_HEADROOM);
+			}
 		}
 		rxq->rq_ci += n;
 		/* Prevent overflowing into consumed mbufs. */
