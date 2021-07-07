@@ -695,9 +695,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	int own_domain_id = 0;
 	uint16_t port_id;
 	unsigned int i;
-#ifdef HAVE_MLX5DV_DR_DEVX_PORT
-	struct mlx5dv_devx_port devx_port = { .comp_mask = 0 };
-#endif
+	struct mlx5_port_info vport_info = { .query_flags = 0 };
 
 	/* Determine if this port representor is supposed to be spawned. */
 	if (switch_info->representor && dpdk_dev->devargs) {
@@ -940,29 +938,27 @@ err_secondary:
 	priv->vport_meta_tag = 0;
 	priv->vport_meta_mask = 0;
 	priv->pf_bond = spawn->pf_bond;
-#ifdef HAVE_MLX5DV_DR_DEVX_PORT
 	/*
-	 * The DevX port query API is implemented. E-Switch may use
-	 * either vport or reg_c[0] metadata register to match on
-	 * vport index. The engaged part of metadata register is
-	 * defined by mask.
+	 * If we have E-Switch we should determine the vport attributes.
+	 * E-Switch may use either source vport field or reg_c[0] metadata
+	 * register to match on vport index. The engaged part of metadata
+	 * register is defined by mask.
 	 */
 	if (switch_info->representor || switch_info->master) {
-		devx_port.comp_mask = MLX5DV_DEVX_PORT_VPORT |
-				      MLX5DV_DEVX_PORT_MATCH_REG_C_0;
-		err = mlx5_glue->devx_port_query(sh->ctx, spawn->phys_port,
-						 &devx_port);
+		err = mlx5_glue->devx_port_query(sh->ctx,
+						 spawn->phys_port,
+						 &vport_info);
 		if (err) {
 			DRV_LOG(WARNING,
 				"can't query devx port %d on device %s",
 				spawn->phys_port,
 				mlx5_os_get_dev_device_name(spawn->phys_dev));
-			devx_port.comp_mask = 0;
+			vport_info.query_flags = 0;
 		}
 	}
-	if (devx_port.comp_mask & MLX5DV_DEVX_PORT_MATCH_REG_C_0) {
-		priv->vport_meta_tag = devx_port.reg_c_0.value;
-		priv->vport_meta_mask = devx_port.reg_c_0.mask;
+	if (vport_info.query_flags & MLX5_PORT_QUERY_REG_C0) {
+		priv->vport_meta_tag = vport_info.vport_meta_tag;
+		priv->vport_meta_mask = vport_info.vport_meta_mask;
 		if (!priv->vport_meta_mask) {
 			DRV_LOG(ERR, "vport zero mask for port %d"
 				     " on bonding device %s",
@@ -982,8 +978,8 @@ err_secondary:
 			goto error;
 		}
 	}
-	if (devx_port.comp_mask & MLX5DV_DEVX_PORT_VPORT) {
-		priv->vport_id = devx_port.vport_num;
+	if (vport_info.query_flags & MLX5_PORT_QUERY_VPORT) {
+		priv->vport_id = vport_info.vport_id;
 	} else if (spawn->pf_bond >= 0 &&
 		   (switch_info->representor || switch_info->master)) {
 		DRV_LOG(ERR, "can't deduce vport index for port %d"
@@ -993,25 +989,21 @@ err_secondary:
 		err = ENOTSUP;
 		goto error;
 	} else {
-		/* Suppose vport index in compatible way. */
+		/*
+		 * Suppose vport index in compatible way. Kernel/rdma_core
+		 * support single E-Switch per PF configurations only and
+		 * vport_id field contains the vport index for associated VF,
+		 * which is deduced from representor port name.
+		 * For example, let's have the IB device port 10, it has
+		 * attached network device eth0, which has port name attribute
+		 * pf0vf2, we can deduce the VF number as 2, and set vport index
+		 * as 3 (2+1). This assigning schema should be changed if the
+		 * multiple E-Switch instances per PF configurations or/and PCI
+		 * subfunctions are added.
+		 */
 		priv->vport_id = switch_info->representor ?
 				 switch_info->port_name + 1 : -1;
 	}
-#else
-	/*
-	 * Kernel/rdma_core support single E-Switch per PF configurations
-	 * only and vport_id field contains the vport index for
-	 * associated VF, which is deduced from representor port name.
-	 * For example, let's have the IB device port 10, it has
-	 * attached network device eth0, which has port name attribute
-	 * pf0vf2, we can deduce the VF number as 2, and set vport index
-	 * as 3 (2+1). This assigning schema should be changed if the
-	 * multiple E-Switch instances per PF configurations or/and PCI
-	 * subfunctions are added.
-	 */
-	priv->vport_id = switch_info->representor ?
-			 switch_info->port_name + 1 : -1;
-#endif
 	/* representor_id field keeps the unmodified VF index. */
 	priv->representor_id = switch_info->representor ?
 			       switch_info->port_name : -1;

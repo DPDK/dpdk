@@ -94,6 +94,8 @@ has_sym_args = [
 	'IBV_WQ_FLAG_RX_END_PADDING' ],
 	[ 'HAVE_MLX5DV_DR_DEVX_PORT', 'infiniband/mlx5dv.h',
 	'mlx5dv_query_devx_port' ],
+	[ 'HAVE_MLX5DV_DR_DEVX_PORT_V35', 'infiniband/mlx5dv.h',
+	'mlx5dv_query_port' ],
 	[ 'HAVE_IBV_DEVX_OBJ', 'infiniband/mlx5dv.h',
 	'mlx5dv_devx_obj_create' ],
 	[ 'HAVE_IBV_FLOW_DEVX_COUNTERS', 'infiniband/mlx5dv.h',

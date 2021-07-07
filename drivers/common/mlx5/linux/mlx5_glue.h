@@ -84,6 +84,20 @@ struct mlx5dv_dr_action;
 struct mlx5dv_devx_port;
 #endif
 
+#ifndef HAVE_MLX5DV_DR_DEVX_PORT_V35
+struct mlx5dv_port;
+#endif
+
+#define MLX5_PORT_QUERY_VPORT (1u << 0)
+#define MLX5_PORT_QUERY_REG_C0 (1u << 1)
+
+struct mlx5_port_info {
+	uint16_t query_flags;
+	uint16_t vport_id; /* Associated VF vport index (if any). */
+	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */
+	uint32_t vport_meta_mask; /* Used for vport index field match mask. */
+};
+
 #ifndef HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER
 struct mlx5dv_dr_flow_meter_attr;
 #endif
@@ -311,7 +325,7 @@ struct mlx5_glue {
 			     void *out, size_t outlen);
 	int (*devx_port_query)(struct ibv_context *ctx,
 			       uint32_t port_num,
-			       struct mlx5dv_devx_port *mlx5_devx_port);
+			       struct mlx5_port_info *info);
 	int (*dr_dump_domain)(FILE *file, void *domain);
 	int (*devx_query_eqn)(struct ibv_context *context, uint32_t cpus,
 			      uint32_t *eqn);
