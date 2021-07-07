@@ -8498,7 +8498,7 @@ flow_dv_translate_action_port_id(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
 					  "No eswitch info was found for port");
-#ifdef HAVE_MLX5DV_DR_DEVX_PORT
+#ifdef HAVE_MLX5DV_DR_CREATE_DEST_IB_PORT
 	/*
 	 * This parameter is transferred to
 	 * mlx5dv_dr_action_create_dest_ib_port().

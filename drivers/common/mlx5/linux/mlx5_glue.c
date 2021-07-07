@@ -391,7 +391,7 @@ mlx5_glue_dr_create_flow_action_dest_flow_tbl(void *tbl)
 static void *
 mlx5_glue_dr_create_flow_action_dest_port(void *domain, uint32_t port)
 {
-#ifdef HAVE_MLX5DV_DR_DEVX_PORT
+#ifdef HAVE_MLX5DV_DR_CREATE_DEST_IB_PORT
 	return mlx5dv_dr_action_create_dest_ib_port(domain, port);
 #else
 #ifdef HAVE_MLX5DV_DR_ESWITCH
