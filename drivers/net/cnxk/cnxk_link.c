@@ -90,7 +90,7 @@ cnxk_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 	RTE_SET_USED(wait_to_complete);
 	memset(&link, 0, sizeof(struct rte_eth_link));
 
-	if (roc_nix_is_sdp(&dev->nix))
+	if (!eth_dev->data->dev_started || roc_nix_is_sdp(&dev->nix))
 		return 0;
 
 	if (roc_nix_is_lbk(&dev->nix)) {
