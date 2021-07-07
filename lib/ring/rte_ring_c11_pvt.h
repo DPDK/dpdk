@@ -2,6 +2,7 @@
  *
  * Copyright (c) 2017,2018 HXT-semitech Corporation.
  * Copyright (c) 2007-2009 Kip Macy kmacy@freebsd.org
+ * Copyright (c) 2021 Arm Limited
  * All rights reserved.
  * Derived from FreeBSD's bufring.h
  * Used as BSD-3 Licensed with permission from Kip Macy.
@@ -21,8 +22,7 @@ __rte_ring_update_tail(struct rte_ring_headtail *ht, uint32_t old_val,
 	 * we need to wait for them to complete
 	 */
 	if (!single)
-		while (unlikely(ht->tail != old_val))
-			rte_pause();
+		rte_wait_until_equal_32(&ht->tail, old_val, __ATOMIC_RELAXED);
 
 	__atomic_store_n(&ht->tail, new_val, __ATOMIC_RELEASE);
 }
