@@ -350,7 +350,7 @@ ice_dcf_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 			return -EINVAL;
 		}
 		/* check the vsi node id */
-		if (node_id > tc_nb * hw->num_vfs) {
+		if (node_id > (uint32_t)(tc_nb * hw->num_vfs)) {
 			error->type = RTE_TM_ERROR_TYPE_NODE_ID;
 			error->message = "too large VSI id";
 			return -EINVAL;
