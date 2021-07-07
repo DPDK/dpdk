@@ -372,13 +372,14 @@ static void ice_dcf_uninit_parent_hw(struct ice_hw *hw)
 }
 
 static int
-ice_dcf_request_pkg_name(struct ice_hw *hw, char *pkg_name)
+ice_dcf_load_pkg(struct ice_adapter *adapter)
 {
 	struct ice_dcf_adapter *dcf_adapter =
-			container_of(hw, struct ice_dcf_adapter, parent.hw);
+			container_of(&adapter->hw, struct ice_dcf_adapter, parent.hw);
 	struct virtchnl_pkg_info pkg_info;
 	struct dcf_virtchnl_cmd vc_cmd;
-	uint64_t dsn;
+	bool use_dsn;
+	uint64_t dsn = 0;
 
 	vc_cmd.v_op = VIRTCHNL_OP_DCF_GET_PKG_INFO;
 	vc_cmd.req_msglen = 0;
@@ -386,90 +387,11 @@ ice_dcf_request_pkg_name(struct ice_hw *hw, char *pkg_name)
 	vc_cmd.rsp_buflen = sizeof(pkg_info);
 	vc_cmd.rsp_msgbuf = (uint8_t *)&pkg_info;
 
-	if (ice_dcf_execute_virtchnl_cmd(&dcf_adapter->real_hw, &vc_cmd))
-		goto pkg_file_direct;
+	use_dsn = ice_dcf_execute_virtchnl_cmd(&dcf_adapter->real_hw, &vc_cmd) == 0;
+	if (use_dsn)
+		rte_memcpy(&dsn, pkg_info.dsn, sizeof(dsn));
 
-	rte_memcpy(&dsn, pkg_info.dsn, sizeof(dsn));
-
-	snprintf(pkg_name, ICE_MAX_PKG_FILENAME_SIZE,
-		 ICE_PKG_FILE_SEARCH_PATH_UPDATES "ice-%016llx.pkg",
-		 (unsigned long long)dsn);
-	if (!ice_access(pkg_name, 0))
-		return 0;
-
-	snprintf(pkg_name, ICE_MAX_PKG_FILENAME_SIZE,
-		 ICE_PKG_FILE_SEARCH_PATH_DEFAULT "ice-%016llx.pkg",
-		 (unsigned long long)dsn);
-	if (!ice_access(pkg_name, 0))
-		return 0;
-
-pkg_file_direct:
-	snprintf(pkg_name,
-		 ICE_MAX_PKG_FILENAME_SIZE, "%s", ICE_PKG_FILE_UPDATES);
-	if (!ice_access(pkg_name, 0))
-		return 0;
-
-	snprintf(pkg_name,
-		 ICE_MAX_PKG_FILENAME_SIZE, "%s", ICE_PKG_FILE_DEFAULT);
-	if (!ice_access(pkg_name, 0))
-		return 0;
-
-	return -1;
-}
-
-static int
-ice_dcf_load_pkg(struct ice_hw *hw)
-{
-	char pkg_name[ICE_MAX_PKG_FILENAME_SIZE];
-	uint8_t *pkg_buf;
-	uint32_t buf_len;
-	struct stat st;
-	FILE *fp;
-	int err;
-
-	if (ice_dcf_request_pkg_name(hw, pkg_name)) {
-		PMD_INIT_LOG(ERR, "Failed to locate the package file");
-		return -ENOENT;
-	}
-
-	PMD_INIT_LOG(DEBUG, "DDP package name: %s", pkg_name);
-
-	err = stat(pkg_name, &st);
-	if (err) {
-		PMD_INIT_LOG(ERR, "Failed to get file status");
-		return err;
-	}
-
-	buf_len = st.st_size;
-	pkg_buf = rte_malloc(NULL, buf_len, 0);
-	if (!pkg_buf) {
-		PMD_INIT_LOG(ERR, "failed to allocate buffer of size %u for package",
-			     buf_len);
-		return -1;
-	}
-
-	fp = fopen(pkg_name, "rb");
-	if (!fp)  {
-		PMD_INIT_LOG(ERR, "failed to open file: %s", pkg_name);
-		err = -1;
-		goto ret;
-	}
-
-	err = fread(pkg_buf, buf_len, 1, fp);
-	fclose(fp);
-	if (err != 1) {
-		PMD_INIT_LOG(ERR, "failed to read package data");
-		err = -1;
-		goto ret;
-	}
-
-	err = ice_copy_and_init_pkg(hw, pkg_buf, buf_len);
-	if (err)
-		PMD_INIT_LOG(ERR, "ice_copy_and_init_hw failed: %d", err);
-
-ret:
-	rte_free(pkg_buf);
-	return err;
+	return ice_load_pkg(adapter, use_dsn, dsn);
 }
 
 int
@@ -518,13 +440,12 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 		}
 	}
 
-	err = ice_dcf_load_pkg(parent_hw);
+	err = ice_dcf_load_pkg(parent_adapter);
 	if (err) {
 		PMD_INIT_LOG(ERR, "failed to load package with error %d",
 			     err);
 		goto uninit_hw;
 	}
-	parent_adapter->active_pkg_type = ice_load_pkg_type(parent_hw);
 
 	parent_adapter->pf.main_vsi->idx = hw->num_vfs;
 	ice_dcf_update_pf_vsi_map(parent_hw,

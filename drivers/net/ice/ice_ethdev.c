@@ -1651,57 +1651,7 @@ ice_pf_setup(struct ice_pf *pf)
 	return 0;
 }
 
-/*
- * Extract device serial number from PCIe Configuration Space and
- * determine the pkg file path according to the DSN.
- */
-#ifndef RTE_EXEC_ENV_WINDOWS
-static int
-ice_pkg_file_search_path(struct rte_pci_device *pci_dev, char *pkg_file)
-{
-	off_t pos;
-	char opt_ddp_filename[ICE_MAX_PKG_FILENAME_SIZE];
-	uint32_t dsn_low, dsn_high;
-	memset(opt_ddp_filename, 0, ICE_MAX_PKG_FILENAME_SIZE);
-
-	pos = rte_pci_find_ext_capability(pci_dev, RTE_PCI_EXT_CAP_ID_DSN);
-
-	if (pos) {
-		if (rte_pci_read_config(pci_dev, &dsn_low, 4, pos + 4) < 0) {
-			PMD_INIT_LOG(ERR, "Failed to read pci config space\n");
-			return -1;
-		}
-		if (rte_pci_read_config(pci_dev, &dsn_high, 4, pos + 8) < 0) {
-			PMD_INIT_LOG(ERR, "Failed to read pci config space\n");
-			return -1;
-		}
-		snprintf(opt_ddp_filename, ICE_MAX_PKG_FILENAME_SIZE,
-			 "ice-%08x%08x.pkg", dsn_high, dsn_low);
-	} else {
-		PMD_INIT_LOG(ERR, "Failed to read device serial number\n");
-		goto fail_dsn;
-	}
-
-	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_UPDATES,
-		ICE_MAX_PKG_FILENAME_SIZE);
-	if (!ice_access(strcat(pkg_file, opt_ddp_filename), 0))
-		return 0;
-
-	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_DEFAULT,
-		ICE_MAX_PKG_FILENAME_SIZE);
-	if (!ice_access(strcat(pkg_file, opt_ddp_filename), 0))
-		return 0;
-
-fail_dsn:
-	strncpy(pkg_file, ICE_PKG_FILE_UPDATES, ICE_MAX_PKG_FILENAME_SIZE);
-	if (!ice_access(pkg_file, 0))
-		return 0;
-	strncpy(pkg_file, ICE_PKG_FILE_DEFAULT, ICE_MAX_PKG_FILENAME_SIZE);
-	return 0;
-}
-#endif
-
-enum ice_pkg_type
+static enum ice_pkg_type
 ice_load_pkg_type(struct ice_hw *hw)
 {
 	enum ice_pkg_type package_type;
@@ -1725,37 +1675,62 @@ ice_load_pkg_type(struct ice_hw *hw)
 	return package_type;
 }
 
-#ifndef RTE_EXEC_ENV_WINDOWS
-static int ice_load_pkg(struct rte_eth_dev *dev)
+#ifdef RTE_EXEC_ENV_WINDOWS
+#define ice_access _access
+#else
+#define ice_access access
+#endif
+
+int ice_load_pkg(struct ice_adapter *adapter, bool use_dsn, uint64_t dsn)
 {
-	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_hw *hw = &adapter->hw;
 	char pkg_file[ICE_MAX_PKG_FILENAME_SIZE];
+	char opt_ddp_filename[ICE_MAX_PKG_FILENAME_SIZE];
 	int err;
-	uint8_t *buf;
+	uint8_t *buf = NULL;
 	int buf_len;
 	FILE *file;
 	struct stat fstat;
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
-	struct ice_adapter *ad =
-		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
-	err = ice_pkg_file_search_path(pci_dev, pkg_file);
-	if (err) {
+	if (!use_dsn)
+		goto no_dsn;
+
+	memset(opt_ddp_filename, 0, ICE_MAX_PKG_FILENAME_SIZE);
+	snprintf(opt_ddp_filename, ICE_MAX_PKG_FILENAME_SIZE,
+		"ice-%016" PRIx64 ".pkg", dsn);
+	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_UPDATES,
+		ICE_MAX_PKG_FILENAME_SIZE);
+	if (!ice_access(strcat(pkg_file, opt_ddp_filename), 0))
+		goto load_fw;
+
+	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_DEFAULT,
+		ICE_MAX_PKG_FILENAME_SIZE);
+	if (!ice_access(strcat(pkg_file, opt_ddp_filename), 0))
+		goto load_fw;
+
+no_dsn:
+	strncpy(pkg_file, ICE_PKG_FILE_UPDATES, ICE_MAX_PKG_FILENAME_SIZE);
+	if (!ice_access(pkg_file, 0))
+		goto load_fw;
+	strncpy(pkg_file, ICE_PKG_FILE_DEFAULT, ICE_MAX_PKG_FILENAME_SIZE);
+	if (ice_access(pkg_file, 0)) {
 		PMD_INIT_LOG(ERR, "failed to search file path\n");
-		return err;
+		return -1;
 	}
 
+load_fw:
 	file = fopen(pkg_file, "rb");
 	if (!file)  {
 		PMD_INIT_LOG(ERR, "failed to open file: %s\n", pkg_file);
 		return -1;
 	}
 
+	PMD_INIT_LOG(DEBUG, "DDP package name: %s", pkg_file);
+
 	err = stat(pkg_file, &fstat);
 	if (err) {
 		PMD_INIT_LOG(ERR, "failed to get file stats\n");
-		fclose(file);
-		return err;
+		goto out;
 	}
 
 	buf_len = fstat.st_size;
@@ -1764,44 +1739,33 @@ static int ice_load_pkg(struct rte_eth_dev *dev)
 	if (!buf) {
 		PMD_INIT_LOG(ERR, "failed to allocate buf of size %d for package\n",
 				buf_len);
-		fclose(file);
-		return -1;
+		err = -1;
+		goto out;
 	}
 
 	err = fread(buf, buf_len, 1, file);
 	if (err != 1) {
 		PMD_INIT_LOG(ERR, "failed to read package data\n");
-		fclose(file);
 		err = -1;
-		goto fail_exit;
+		goto out;
 	}
-
-	fclose(file);
 
 	err = ice_copy_and_init_pkg(hw, buf, buf_len);
 	if (err) {
 		PMD_INIT_LOG(ERR, "ice_copy_and_init_hw failed: %d\n", err);
-		goto fail_exit;
+		goto out;
 	}
 
 	/* store the loaded pkg type info */
-	ad->active_pkg_type = ice_load_pkg_type(hw);
+	adapter->active_pkg_type = ice_load_pkg_type(hw);
 
-	err = ice_init_hw_tbls(hw);
-	if (err) {
-		PMD_INIT_LOG(ERR, "ice_init_hw_tbls failed: %d\n", err);
-		goto fail_init_tbls;
-	}
-
-	return 0;
-
-fail_init_tbls:
-	rte_free(hw->pkg_copy);
-fail_exit:
+out:
+	fclose(file);
 	rte_free(buf);
 	return err;
 }
-#endif
+
+#undef ice_access
 
 static void
 ice_base_queue_get(struct ice_pf *pf)
@@ -2056,6 +2020,12 @@ ice_dev_init(struct rte_eth_dev *dev)
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ice_vsi *vsi;
 	int ret;
+#ifndef RTE_EXEC_ENV_WINDOWS
+	off_t pos;
+	uint32_t dsn_low, dsn_high;
+	uint64_t dsn;
+	bool use_dsn;
+#endif
 
 	dev->dev_ops = &ice_eth_dev_ops;
 	dev->rx_queue_count = ice_rx_queue_count;
@@ -2106,7 +2076,30 @@ ice_dev_init(struct rte_eth_dev *dev)
 	}
 
 #ifndef RTE_EXEC_ENV_WINDOWS
-	ret = ice_load_pkg(dev);
+	use_dsn = false;
+	dsn = 0;
+	pos = rte_pci_find_ext_capability(pci_dev, RTE_PCI_EXT_CAP_ID_DSN);
+	if (pos) {
+		if (rte_pci_read_config(pci_dev, &dsn_low, 4, pos + 4) < 0 ||
+				rte_pci_read_config(pci_dev, &dsn_high, 4, pos + 8) < 0) {
+			PMD_INIT_LOG(ERR, "Failed to read pci config space\n");
+		} else {
+			use_dsn = true;
+			dsn = (uint64_t)dsn_high << 32 | dsn_low;
+		}
+	} else {
+		PMD_INIT_LOG(ERR, "Failed to read device serial number\n");
+	}
+
+	ret = ice_load_pkg(pf->adapter, use_dsn, dsn);
+	if (ret == 0) {
+		ret = ice_init_hw_tbls(hw);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "ice_init_hw_tbls failed: %d\n", ret);
+			rte_free(hw->pkg_copy);
+		}
+	}
+
 	if (ret) {
 		if (ad->devargs.safe_mode_support == 0) {
 			PMD_INIT_LOG(ERR, "Failed to load the DDP package,"
