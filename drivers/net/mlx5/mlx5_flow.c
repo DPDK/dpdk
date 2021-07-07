@@ -134,6 +134,7 @@ mlx5_flow_is_rss_expandable_item(const struct rte_flow_item *item)
 	case RTE_FLOW_ITEM_TYPE_MPLS:
 	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
 	case RTE_FLOW_ITEM_TYPE_GRE_KEY:
+	case RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT:
 		return true;
 	default:
 		break;
@@ -453,6 +454,7 @@ enum mlx5_expansion {
 	MLX5_EXPANSION_IPV6,
 	MLX5_EXPANSION_IPV6_UDP,
 	MLX5_EXPANSION_IPV6_TCP,
+	MLX5_EXPANSION_IPV6_FRAG_EXT,
 };
 
 /** Supported expansion of items. */
@@ -607,7 +609,8 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 	},
 	[MLX5_EXPANSION_IPV6] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV6_UDP,
-						  MLX5_EXPANSION_IPV6_TCP),
+						  MLX5_EXPANSION_IPV6_TCP,
+						  MLX5_EXPANSION_IPV6_FRAG_EXT),
 		.type = RTE_FLOW_ITEM_TYPE_IPV6,
 		.rss_types = ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
 			ETH_RSS_NONFRAG_IPV6_OTHER,
@@ -619,6 +622,9 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 	[MLX5_EXPANSION_IPV6_TCP] = {
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
 		.rss_types = ETH_RSS_NONFRAG_IPV6_TCP,
+	},
+	[MLX5_EXPANSION_IPV6_FRAG_EXT] = {
+		.type = RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT,
 	},
 };
 
