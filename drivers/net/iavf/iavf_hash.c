@@ -31,6 +31,9 @@
 #define IAVF_PHINT_OUTER_IPV4			BIT_ULL(4)
 #define IAVF_PHINT_OUTER_IPV6			BIT_ULL(5)
 #define IAVF_PHINT_GRE				BIT_ULL(6)
+/* the second IP header of GTPoGRE */
+#define IAVF_PHINT_MID_IPV4			BIT_ULL(7)
+#define IAVF_PHINT_MID_IPV6			BIT_ULL(8)
 
 #define IAVF_PHINT_GTPU_MSK	(IAVF_PHINT_GTPU	| \
 				 IAVF_PHINT_GTPU_EH	| \
@@ -233,6 +236,30 @@ struct virtchnl_proto_hdrs inner_ipv4_tcp_tmplt = {
 	TUNNEL_LEVEL_INNER, 2, {proto_hdr_ipv4_with_prot, proto_hdr_tcp}
 };
 
+struct virtchnl_proto_hdrs second_inner_ipv4_tmplt = {
+	2, 1, {proto_hdr_ipv4}
+};
+
+struct virtchnl_proto_hdrs second_inner_ipv4_udp_tmplt = {
+	2, 2, {proto_hdr_ipv4_with_prot, proto_hdr_udp}
+};
+
+struct virtchnl_proto_hdrs second_inner_ipv4_tcp_tmplt = {
+	2, 2, {proto_hdr_ipv4_with_prot, proto_hdr_tcp}
+};
+
+struct virtchnl_proto_hdrs second_inner_ipv6_tmplt = {
+	2, 1, {proto_hdr_ipv6}
+};
+
+struct virtchnl_proto_hdrs second_inner_ipv6_udp_tmplt = {
+	2, 2, {proto_hdr_ipv6_with_prot, proto_hdr_udp}
+};
+
+struct virtchnl_proto_hdrs second_inner_ipv6_tcp_tmplt = {
+	2, 2, {proto_hdr_ipv6_with_prot, proto_hdr_tcp}
+};
+
 struct virtchnl_proto_hdrs inner_ipv4_sctp_tmplt = {
 	TUNNEL_LEVEL_INNER, 2, {proto_hdr_ipv4, proto_hdr_sctp}
 };
@@ -421,6 +448,30 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_ipv6_gtpu_eh_ipv4,		IAVF_RSS_TYPE_GTPU_IPV4,	&inner_ipv4_tmplt},
 	{iavf_pattern_eth_ipv6_gtpu_eh_ipv4_udp,	IAVF_RSS_TYPE_GTPU_IPV4_UDP,	&inner_ipv4_udp_tmplt},
 	{iavf_pattern_eth_ipv6_gtpu_eh_ipv4_tcp,	IAVF_RSS_TYPE_GTPU_IPV4_TCP,	&inner_ipv4_tcp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv4_gtpu_ipv4,		IAVF_RSS_TYPE_GTPU_IPV4,	&second_inner_ipv4_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv4_gtpu_ipv4_udp,		IAVF_RSS_TYPE_GTPU_IPV4_UDP,	&second_inner_ipv4_udp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv4_gtpu_ipv4_tcp,		IAVF_RSS_TYPE_GTPU_IPV4_TCP,	&second_inner_ipv4_tcp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv6_gtpu_ipv4,		IAVF_RSS_TYPE_GTPU_IPV4,	&second_inner_ipv4_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv6_gtpu_ipv4_udp,		IAVF_RSS_TYPE_GTPU_IPV4_UDP,	&second_inner_ipv4_udp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv6_gtpu_ipv4_tcp,		IAVF_RSS_TYPE_GTPU_IPV4_TCP,	&second_inner_ipv4_tcp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv4_gtpu_ipv4,		IAVF_RSS_TYPE_GTPU_IPV4,	&second_inner_ipv4_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv4_gtpu_ipv4_udp,		IAVF_RSS_TYPE_GTPU_IPV4_UDP,	&second_inner_ipv4_udp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv4_gtpu_ipv4_tcp,		IAVF_RSS_TYPE_GTPU_IPV4_TCP,	&second_inner_ipv4_tcp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv6_gtpu_ipv4,		IAVF_RSS_TYPE_GTPU_IPV4,	&second_inner_ipv4_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv6_gtpu_ipv4_udp,		IAVF_RSS_TYPE_GTPU_IPV4_UDP,	&second_inner_ipv4_udp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv6_gtpu_ipv4_tcp,		IAVF_RSS_TYPE_GTPU_IPV4_TCP,	&second_inner_ipv4_tcp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv4_gtpu_eh_ipv4,		IAVF_RSS_TYPE_GTPU_IPV4,	&second_inner_ipv4_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv4_gtpu_eh_ipv4_udp,	IAVF_RSS_TYPE_GTPU_IPV4_UDP,	&second_inner_ipv4_udp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv4_gtpu_eh_ipv4_tcp,	IAVF_RSS_TYPE_GTPU_IPV4_TCP,	&second_inner_ipv4_tcp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv6_gtpu_eh_ipv4,		IAVF_RSS_TYPE_GTPU_IPV4,	&second_inner_ipv4_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv6_gtpu_eh_ipv4_udp,	IAVF_RSS_TYPE_GTPU_IPV4_UDP,	&second_inner_ipv4_udp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv6_gtpu_eh_ipv4_tcp,	IAVF_RSS_TYPE_GTPU_IPV4_TCP,	&second_inner_ipv4_tcp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv4_gtpu_eh_ipv4,		IAVF_RSS_TYPE_GTPU_IPV4,	&second_inner_ipv4_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv4_gtpu_eh_ipv4_udp,	IAVF_RSS_TYPE_GTPU_IPV4_UDP,	&second_inner_ipv4_udp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv4_gtpu_eh_ipv4_tcp,	IAVF_RSS_TYPE_GTPU_IPV4_TCP,	&second_inner_ipv4_tcp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv6_gtpu_eh_ipv4,		IAVF_RSS_TYPE_GTPU_IPV4,	&second_inner_ipv4_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv6_gtpu_eh_ipv4_udp,	IAVF_RSS_TYPE_GTPU_IPV4_UDP,	&second_inner_ipv4_udp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv6_gtpu_eh_ipv4_tcp,	IAVF_RSS_TYPE_GTPU_IPV4_TCP,	&second_inner_ipv4_tcp_tmplt},
 	{iavf_pattern_eth_ipv4_esp,			IAVF_RSS_TYPE_IPV4_ESP,		&ipv4_esp_tmplt},
 	{iavf_pattern_eth_ipv4_udp_esp,			IAVF_RSS_TYPE_IPV4_ESP,		&ipv4_udp_esp_tmplt},
 	{iavf_pattern_eth_ipv4_ah,			IAVF_RSS_TYPE_IPV4_AH,		&ipv4_ah_tmplt},
@@ -459,6 +510,30 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_ipv6_gtpu_eh_ipv6,		IAVF_RSS_TYPE_GTPU_IPV6,	&inner_ipv6_tmplt},
 	{iavf_pattern_eth_ipv6_gtpu_eh_ipv6_udp,	IAVF_RSS_TYPE_GTPU_IPV6_UDP,	&inner_ipv6_udp_tmplt},
 	{iavf_pattern_eth_ipv6_gtpu_eh_ipv6_tcp,	IAVF_RSS_TYPE_GTPU_IPV6_TCP,	&inner_ipv6_tcp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv4_gtpu_ipv6,		IAVF_RSS_TYPE_GTPU_IPV6,	&second_inner_ipv6_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv4_gtpu_ipv6_udp,		IAVF_RSS_TYPE_GTPU_IPV6_UDP,	&second_inner_ipv6_udp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv4_gtpu_ipv6_tcp,		IAVF_RSS_TYPE_GTPU_IPV6_TCP,	&second_inner_ipv6_tcp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv6_gtpu_ipv6,		IAVF_RSS_TYPE_GTPU_IPV6,	&second_inner_ipv6_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv6_gtpu_ipv6_udp,		IAVF_RSS_TYPE_GTPU_IPV6_UDP,	&second_inner_ipv6_udp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv6_gtpu_ipv6_tcp,		IAVF_RSS_TYPE_GTPU_IPV6_TCP,	&second_inner_ipv6_tcp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv4_gtpu_ipv6,		IAVF_RSS_TYPE_GTPU_IPV6,	&second_inner_ipv6_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv4_gtpu_ipv6_udp,		IAVF_RSS_TYPE_GTPU_IPV6_UDP,	&second_inner_ipv6_udp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv4_gtpu_ipv6_tcp,		IAVF_RSS_TYPE_GTPU_IPV6_TCP,	&second_inner_ipv6_tcp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv6_gtpu_ipv6,		IAVF_RSS_TYPE_GTPU_IPV6,	&second_inner_ipv6_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv6_gtpu_ipv6_udp,		IAVF_RSS_TYPE_GTPU_IPV6_UDP,	&second_inner_ipv6_udp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv6_gtpu_ipv6_tcp,		IAVF_RSS_TYPE_GTPU_IPV6_TCP,	&second_inner_ipv6_tcp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv4_gtpu_eh_ipv6,		IAVF_RSS_TYPE_GTPU_IPV6,	&second_inner_ipv6_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv4_gtpu_eh_ipv6_udp,	IAVF_RSS_TYPE_GTPU_IPV6_UDP,	&second_inner_ipv6_udp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv4_gtpu_eh_ipv6_tcp,	IAVF_RSS_TYPE_GTPU_IPV6_TCP,	&second_inner_ipv6_tcp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv6_gtpu_eh_ipv6,		IAVF_RSS_TYPE_GTPU_IPV6,	&second_inner_ipv6_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv6_gtpu_eh_ipv6_udp,	IAVF_RSS_TYPE_GTPU_IPV6_UDP,	&second_inner_ipv6_udp_tmplt},
+	{iavf_pattern_eth_ipv4_gre_ipv6_gtpu_eh_ipv6_tcp,	IAVF_RSS_TYPE_GTPU_IPV6_TCP,	&second_inner_ipv6_tcp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv4_gtpu_eh_ipv6,		IAVF_RSS_TYPE_GTPU_IPV6,	&second_inner_ipv6_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv4_gtpu_eh_ipv6_udp,	IAVF_RSS_TYPE_GTPU_IPV6_UDP,	&second_inner_ipv6_udp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv4_gtpu_eh_ipv6_tcp,	IAVF_RSS_TYPE_GTPU_IPV6_TCP,	&second_inner_ipv6_tcp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv6_gtpu_eh_ipv6,		IAVF_RSS_TYPE_GTPU_IPV6,	&second_inner_ipv6_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv6_gtpu_eh_ipv6_udp,	IAVF_RSS_TYPE_GTPU_IPV6_UDP,	&second_inner_ipv6_udp_tmplt},
+	{iavf_pattern_eth_ipv6_gre_ipv6_gtpu_eh_ipv6_tcp,	IAVF_RSS_TYPE_GTPU_IPV6_TCP,	&second_inner_ipv6_tcp_tmplt},
 	{iavf_pattern_eth_ipv6_esp,			IAVF_RSS_TYPE_IPV6_ESP,		&ipv6_esp_tmplt},
 	{iavf_pattern_eth_ipv6_udp_esp,			IAVF_RSS_TYPE_IPV6_ESP,		&ipv6_udp_esp_tmplt},
 	{iavf_pattern_eth_ipv6_ah,			IAVF_RSS_TYPE_IPV6_AH,		&ipv6_ah_tmplt},
@@ -607,10 +682,14 @@ iavf_hash_parse_pattern(const struct rte_flow_item pattern[], uint64_t *phint,
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			if (!(*phint & IAVF_PHINT_GTPU_MSK) && !(*phint & IAVF_PHINT_GRE))
 				*phint |= IAVF_PHINT_OUTER_IPV4;
+			if ((*phint & IAVF_PHINT_GRE) && !(*phint & IAVF_PHINT_GTPU_MSK))
+				*phint |= IAVF_PHINT_MID_IPV4;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			if (!(*phint & IAVF_PHINT_GTPU_MSK) && !(*phint & IAVF_PHINT_GRE))
 				*phint |= IAVF_PHINT_OUTER_IPV6;
+			if ((*phint & IAVF_PHINT_GRE) && !(*phint & IAVF_PHINT_GTPU_MSK))
+				*phint |= IAVF_PHINT_MID_IPV6;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GTPU:
 			*phint |= IAVF_PHINT_GTPU;
@@ -881,14 +960,15 @@ iavf_refine_proto_hdrs_by_pattern(struct virtchnl_proto_hdrs *proto_hdrs,
 	struct virtchnl_proto_hdr *hdr1;
 	struct virtchnl_proto_hdr *hdr2;
 	int i, shift_count = 1;
+	int tun_lvl = proto_hdrs->tunnel_level;
 
 	if (!(phint & IAVF_PHINT_GTPU_MSK) && !(phint & IAVF_PHINT_GRE))
 		return;
 
-	if (phint & IAVF_PHINT_LAYERS_MSK)
-		shift_count++;
+	while (tun_lvl) {
+		if (phint & IAVF_PHINT_LAYERS_MSK)
+			shift_count = 2;
 
-	if (proto_hdrs->tunnel_level == TUNNEL_LEVEL_INNER) {
 		/* shift headers layer */
 		for (i = proto_hdrs->count - 1 + shift_count;
 		     i > shift_count - 1; i--) {
@@ -906,30 +986,44 @@ iavf_refine_proto_hdrs_by_pattern(struct virtchnl_proto_hdrs *proto_hdrs,
 			hdr2 = &proto_hdrs->proto_hdr[0];
 			hdr2->field_selector = 0;
 			proto_hdrs->count++;
-			proto_hdrs->tunnel_level = TUNNEL_LEVEL_OUTER;
+			tun_lvl--;
 
-			if (phint & IAVF_PHINT_OUTER_IPV4)
-				VIRTCHNL_SET_PROTO_HDR_TYPE(hdr2, IPV4);
-			else if (phint & IAVF_PHINT_OUTER_IPV6)
-				VIRTCHNL_SET_PROTO_HDR_TYPE(hdr2, IPV6);
+			if (tun_lvl == TUNNEL_LEVEL_OUTER) {
+				if (phint & IAVF_PHINT_OUTER_IPV4)
+					VIRTCHNL_SET_PROTO_HDR_TYPE(hdr2, IPV4);
+				else if (phint & IAVF_PHINT_OUTER_IPV6)
+					VIRTCHNL_SET_PROTO_HDR_TYPE(hdr2, IPV6);
+			} else if (tun_lvl == TUNNEL_LEVEL_INNER) {
+				if (phint & IAVF_PHINT_MID_IPV4)
+					VIRTCHNL_SET_PROTO_HDR_TYPE(hdr2, IPV4);
+				else if (phint & IAVF_PHINT_MID_IPV6)
+					VIRTCHNL_SET_PROTO_HDR_TYPE(hdr2, IPV6);
+			}
 		}
-	} else {
-		hdr1 = &proto_hdrs->proto_hdr[proto_hdrs->count];
+
+		hdr1->field_selector = 0;
+		proto_hdrs->count++;
+
+		if (phint & IAVF_PHINT_GTPU_EH_DWN)
+			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, GTPU_EH_PDU_DWN);
+		else if (phint & IAVF_PHINT_GTPU_EH_UP)
+			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, GTPU_EH_PDU_UP);
+		else if (phint & IAVF_PHINT_GTPU_EH)
+			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, GTPU_EH);
+		else if (phint & IAVF_PHINT_GTPU)
+			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, GTPU_IP);
+
+		if (phint & IAVF_PHINT_GRE) {
+			if (phint & IAVF_PHINT_GTPU) {
+				/* if GTPoGRE, add GRE header at the outer tunnel  */
+				if (tun_lvl == TUNNEL_LEVEL_OUTER)
+					VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, GRE);
+			} else {
+					VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, GRE);
+			}
+		}
 	}
-
-	hdr1->field_selector = 0;
-	proto_hdrs->count++;
-
-	if (phint & IAVF_PHINT_GTPU_EH_DWN)
-		VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, GTPU_EH_PDU_DWN);
-	else if (phint & IAVF_PHINT_GTPU_EH_UP)
-		VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, GTPU_EH_PDU_UP);
-	else if (phint & IAVF_PHINT_GTPU_EH)
-		VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, GTPU_EH);
-	else if (phint & IAVF_PHINT_GTPU)
-		VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, GTPU_IP);
-	else if (phint & IAVF_PHINT_GRE)
-		VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, GRE);
+	proto_hdrs->tunnel_level = tun_lvl;
 }
 
 static void iavf_refine_proto_hdrs(struct virtchnl_proto_hdrs *proto_hdrs,

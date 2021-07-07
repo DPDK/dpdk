@@ -70,7 +70,7 @@ New Features
 * **Updated Intel iavf driver.**
 
   * Added Tx QoS VF queue TC mapping.
-  * Added FDIR for GTPoGRE, support filter based on GTPU TEID/QFI,
+  * Added FDIR and RSS for GTPoGRE, support filter based on GTPU TEID/QFI,
     outer most L3 or inner most l3/l4. 
 
 * **Updated Intel ice driver.**
