@@ -91,6 +91,12 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 	LARGE_INTEGER deadline;
 	int ret;
 
+	if (cb_fn == NULL) {
+		RTE_LOG(ERR, EAL, "NULL callback\n");
+		ret = -EINVAL;
+		goto exit;
+	}
+
 	/* Calculate deadline ASAP, unit of measure = 100ns. */
 	GetSystemTimePreciseAsFileTime(&ft);
 	deadline.LowPart = ft.dwLowDateTime;
@@ -180,6 +186,12 @@ rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 	bool executing;
 
 	removed = 0;
+
+	if (cb_fn == NULL) {
+		RTE_LOG(ERR, EAL, "NULL callback\n");
+		return -EINVAL;
+	}
+
 	do {
 		executing = false;
 
