@@ -65,8 +65,8 @@ rte_spinlock_lock(rte_spinlock_t *sl)
 
 	while (!__atomic_compare_exchange_n(&sl->locked, &exp, 1, 0,
 				__ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
-		while (__atomic_load_n(&sl->locked, __ATOMIC_RELAXED))
-			rte_pause();
+		rte_wait_until_equal_32((volatile uint32_t *)&sl->locked,
+			       0, __ATOMIC_RELAXED);
 		exp = 0;
 	}
 }
