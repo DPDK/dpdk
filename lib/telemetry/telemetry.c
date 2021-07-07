@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/stat.h>
 #include <dlfcn.h>
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
@@ -422,7 +423,11 @@ create_socket(char *path)
 	strlcpy(sun.sun_path, path, sizeof(sun.sun_path));
 	unlink(sun.sun_path);
 	if (bind(sock, (void *) &sun, sizeof(sun)) < 0) {
+		struct stat st;
+
 		TMTY_LOG(ERR, "Error binding socket: %s\n", strerror(errno));
+		if (stat(socket_dir, &st) < 0 || !S_ISDIR(st.st_mode))
+			TMTY_LOG(ERR, "Cannot access DPDK runtime directory: %s\n", socket_dir);
 		sun.sun_path[0] = 0;
 		goto error;
 	}
