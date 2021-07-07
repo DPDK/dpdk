@@ -24,9 +24,9 @@ flags_common = [
 ]
 
 ## Part numbers are specific to Arm implementers
-# implementer specific aarch64 flags have middle priority
+# implementer specific armv8 flags have middle priority
 #     (will overwrite common flags)
-# part number specific aarch64 flags have higher priority
+# part number specific armv8 flags have higher priority
 #     (will overwrite both common and implementer specific flags)
 implementer_generic = {
     'description': 'Generic armv8',
@@ -37,7 +37,18 @@ implementer_generic = {
         ['RTE_MAX_NUMA_NODES', 4]
     ],
     'part_number_config': {
-        'generic': {'machine_args': ['-march=armv8-a+crc', '-moutline-atomics']}
+        'generic': {
+            'machine_args': ['-march=armv8-a+crc', '-moutline-atomics']
+        },
+        'generic_aarch32': {
+            'machine_args': ['-march=armv8-a', '-mfpu=neon'],
+            'flags': [
+                ['RTE_ARCH_ARM_NEON_MEMCPY', false],
+                ['RTE_ARCH_STRICT_ALIGN', true],
+                ['RTE_ARCH_ARMv8_AARCH32', true],
+                ['RTE_CACHE_LINE_SIZE', 64]
+            ]
+        }
     }
 }
 
@@ -194,12 +205,18 @@ implementers = {
     '0x51': implementer_qualcomm
 }
 
-# SoC specific aarch64 flags have the highest priority
+# SoC specific armv8 flags have the highest priority
 #     (will overwrite all other flags)
 soc_generic = {
-    'description': 'Generic un-optimized build for all aarch64 machines',
+    'description': 'Generic un-optimized build for armv8 aarch64 exec mode',
     'implementer': 'generic',
     'part_number': 'generic'
+}
+
+soc_generic_aarch32 = {
+    'description': 'Generic un-optimized build for armv8 aarch32 exec mode',
+    'implementer': 'generic',
+    'part_number': 'generic_aarch32'
 }
 
 soc_armada = {
@@ -331,28 +348,30 @@ soc_thunderxt88 = {
 
 '''
 Start of SoCs list
-generic:     Generic un-optimized build for all aarch64 machines.
-armada:      Marvell ARMADA
-bluefield:   NVIDIA BlueField
-centriq2400: Qualcomm Centriq 2400
-cn10k:       Marvell OCTEON 10
-dpaa:        NXP DPAA
-emag:        Ampere eMAG
-graviton2:   AWS Graviton2
-kunpeng920:  HiSilicon Kunpeng 920
-kunpeng930:  HiSilicon Kunpeng 930
-n1sdp:       Arm Neoverse N1SDP
-n2:          Arm Neoverse N2
-octeontx2:   Marvell OCTEON TX2
-stingray:    Broadcom Stingray
-thunderx2:   Marvell ThunderX2 T99
-thunderxt88: Marvell ThunderX T88
+generic:         Generic un-optimized build for armv8 aarch64 execution mode.
+generic_aarch32: Generic un-optimized build for armv8 aarch32 execution mode.
+armada:          Marvell ARMADA
+bluefield:       NVIDIA BlueField
+centriq2400:     Qualcomm Centriq 2400
+cn10k:           Marvell OCTEON 10
+dpaa:            NXP DPAA
+emag:            Ampere eMAG
+graviton2:       AWS Graviton2
+kunpeng920:      HiSilicon Kunpeng 920
+kunpeng930:      HiSilicon Kunpeng 930
+n1sdp:           Arm Neoverse N1SDP
+n2:              Arm Neoverse N2
+octeontx2:       Marvell OCTEON TX2
+stingray:        Broadcom Stingray
+thunderx2:       Marvell ThunderX2 T99
+thunderxt88:     Marvell ThunderX T88
 End of SoCs list
 '''
 # The string above is included in the documentation, keep it in sync with the
 # SoCs list below.
 socs = {
     'generic': soc_generic,
+    'generic_aarch32': soc_generic_aarch32,
     'armada': soc_armada,
     'bluefield': soc_bluefield,
     'centriq2400': soc_centriq2400,
@@ -373,14 +392,28 @@ socs = {
 dpdk_conf.set('RTE_ARCH_ARM', 1)
 dpdk_conf.set('RTE_FORCE_INTRINSICS', 1)
 
+update_flags = false
+soc_flags = []
 if dpdk_conf.get('RTE_ARCH_32')
-    # armv7 build
+    # 32-bit build
     dpdk_conf.set('RTE_CACHE_LINE_SIZE', 64)
-    dpdk_conf.set('RTE_ARCH_ARMv7', 1)
-    # the minimum architecture supported, armv7-a, needs the following,
-    machine_args += '-mfpu=neon'
+    if meson.is_cross_build()
+        update_flags = true
+        soc = meson.get_cross_property('platform', '')
+        if soc == ''
+            error('Arm SoC must be specified in the cross file.')
+        endif
+        soc_config = socs.get(soc, {'not_supported': true})
+        flags_common = []
+    else
+        # armv7 build
+        dpdk_conf.set('RTE_ARCH_ARMv7', true)
+        # the minimum architecture supported, armv7-a, needs the following,
+        machine_args += '-mfpu=neon'
+    endif
 else
-    # aarch64 build
+    # armv8 build
+    update_flags = true
     soc_config = {}
     if not meson.is_cross_build()
         # for backwards compatibility:
@@ -423,8 +456,9 @@ else
         endif
         soc_config = socs.get(soc, {'not_supported': true})
     endif
+endif
 
-    soc_flags = []
+if update_flags
     if soc_config.has_key('not_supported')
         error('SoC @0@ not supported.'.format(soc))
     elif soc_config != {}
