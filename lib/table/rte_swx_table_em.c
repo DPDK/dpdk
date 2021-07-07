@@ -280,7 +280,7 @@ table_key_data(struct table *t, uint32_t key_id)
 static inline int
 bkt_is_empty(struct bucket_extension *bkt)
 {
-	return (!bkt->sig[0] && !bkt->sig[1] && !bkt->sig[2] && !bkt->sig[2]) ?
+	return (!bkt->sig[0] && !bkt->sig[1] && !bkt->sig[2] && !bkt->sig[3]) ?
 		1 : 0;
 }
 
