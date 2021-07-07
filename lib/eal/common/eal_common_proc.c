@@ -35,6 +35,7 @@
 #include "eal_internal_cfg.h"
 
 static int mp_fd = -1;
+static pthread_t mp_handle_tid;
 static char mp_filter[PATH_MAX];   /* Filter for secondary process sockets */
 static char mp_dir_path[PATH_MAX]; /* The directory path for all mp sockets */
 static pthread_mutex_t mp_mutex_action = PTHREAD_MUTEX_INITIALIZER;
@@ -383,7 +384,7 @@ mp_handle(void *arg __rte_unused)
 	struct mp_msg_internal msg;
 	struct sockaddr_un sa;
 
-	while (1) {
+	while (mp_fd >= 0) {
 		if (read_msg(&msg, &sa) == 0)
 			process_msg(&msg, &sa);
 	}
@@ -567,14 +568,11 @@ open_socket_fd(void)
 }
 
 static void
-close_socket_fd(void)
+close_socket_fd(int fd)
 {
 	char path[PATH_MAX];
 
-	if (mp_fd < 0)
-		return;
-
-	close(mp_fd);
+	close(fd);
 	create_socket_path(peer_name, path, sizeof(path));
 	unlink(path);
 }
@@ -584,7 +582,6 @@ rte_mp_channel_init(void)
 {
 	char path[PATH_MAX];
 	int dir_fd;
-	pthread_t mp_handle_tid;
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
@@ -645,7 +642,16 @@ rte_mp_channel_init(void)
 void
 rte_mp_channel_cleanup(void)
 {
-	close_socket_fd();
+	int fd;
+
+	if (mp_fd < 0)
+		return;
+
+	fd = mp_fd;
+	mp_fd = -1;
+	pthread_cancel(mp_handle_tid);
+	pthread_join(mp_handle_tid, NULL);
+	close_socket_fd(fd);
 }
 
 /**
