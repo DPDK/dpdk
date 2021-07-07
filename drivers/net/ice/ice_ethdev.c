@@ -12,6 +12,8 @@
 
 #include <rte_tailq.h>
 
+#include "eal_firmware.h"
+
 #include "base/ice_sched.h"
 #include "base/ice_flow.h"
 #include "base/ice_dcb.h"
@@ -1675,22 +1677,14 @@ ice_load_pkg_type(struct ice_hw *hw)
 	return package_type;
 }
 
-#ifdef RTE_EXEC_ENV_WINDOWS
-#define ice_access _access
-#else
-#define ice_access access
-#endif
-
 int ice_load_pkg(struct ice_adapter *adapter, bool use_dsn, uint64_t dsn)
 {
 	struct ice_hw *hw = &adapter->hw;
 	char pkg_file[ICE_MAX_PKG_FILENAME_SIZE];
 	char opt_ddp_filename[ICE_MAX_PKG_FILENAME_SIZE];
+	void *buf;
+	size_t bufsz;
 	int err;
-	uint8_t *buf = NULL;
-	int buf_len;
-	FILE *file;
-	struct stat fstat;
 
 	if (!use_dsn)
 		goto no_dsn;
@@ -1700,57 +1694,31 @@ int ice_load_pkg(struct ice_adapter *adapter, bool use_dsn, uint64_t dsn)
 		"ice-%016" PRIx64 ".pkg", dsn);
 	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_UPDATES,
 		ICE_MAX_PKG_FILENAME_SIZE);
-	if (!ice_access(strcat(pkg_file, opt_ddp_filename), 0))
+	strcat(pkg_file, opt_ddp_filename);
+	if (rte_firmware_read(pkg_file, &buf, &bufsz) == 0)
 		goto load_fw;
 
 	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_DEFAULT,
 		ICE_MAX_PKG_FILENAME_SIZE);
-	if (!ice_access(strcat(pkg_file, opt_ddp_filename), 0))
+	strcat(pkg_file, opt_ddp_filename);
+	if (rte_firmware_read(pkg_file, &buf, &bufsz) == 0)
 		goto load_fw;
 
 no_dsn:
 	strncpy(pkg_file, ICE_PKG_FILE_UPDATES, ICE_MAX_PKG_FILENAME_SIZE);
-	if (!ice_access(pkg_file, 0))
+	if (rte_firmware_read(pkg_file, &buf, &bufsz) == 0)
 		goto load_fw;
+
 	strncpy(pkg_file, ICE_PKG_FILE_DEFAULT, ICE_MAX_PKG_FILENAME_SIZE);
-	if (ice_access(pkg_file, 0)) {
+	if (rte_firmware_read(pkg_file, &buf, &bufsz) < 0) {
 		PMD_INIT_LOG(ERR, "failed to search file path\n");
 		return -1;
 	}
 
 load_fw:
-	file = fopen(pkg_file, "rb");
-	if (!file)  {
-		PMD_INIT_LOG(ERR, "failed to open file: %s\n", pkg_file);
-		return -1;
-	}
-
 	PMD_INIT_LOG(DEBUG, "DDP package name: %s", pkg_file);
 
-	err = stat(pkg_file, &fstat);
-	if (err) {
-		PMD_INIT_LOG(ERR, "failed to get file stats\n");
-		goto out;
-	}
-
-	buf_len = fstat.st_size;
-	buf = rte_malloc(NULL, buf_len, 0);
-
-	if (!buf) {
-		PMD_INIT_LOG(ERR, "failed to allocate buf of size %d for package\n",
-				buf_len);
-		err = -1;
-		goto out;
-	}
-
-	err = fread(buf, buf_len, 1, file);
-	if (err != 1) {
-		PMD_INIT_LOG(ERR, "failed to read package data\n");
-		err = -1;
-		goto out;
-	}
-
-	err = ice_copy_and_init_pkg(hw, buf, buf_len);
+	err = ice_copy_and_init_pkg(hw, buf, bufsz);
 	if (err) {
 		PMD_INIT_LOG(ERR, "ice_copy_and_init_hw failed: %d\n", err);
 		goto out;
@@ -1760,12 +1728,9 @@ load_fw:
 	adapter->active_pkg_type = ice_load_pkg_type(hw);
 
 out:
-	fclose(file);
-	rte_free(buf);
+	free(buf);
 	return err;
 }
-
-#undef ice_access
 
 static void
 ice_base_queue_get(struct ice_pf *pf)

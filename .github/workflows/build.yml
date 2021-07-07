@@ -93,6 +93,7 @@ jobs:
       run: sudo apt install -y ccache libnuma-dev python3-setuptools
         python3-wheel python3-pip python3-pyelftools ninja-build libbsd-dev
         libpcap-dev libibverbs-dev libcrypto++-dev libfdt-dev libjansson-dev
+        libarchive-dev
     - name: Install libabigail build dependencies if no cache is available
       if: env.ABI_CHECKS == 'true' && steps.libabigail-cache.outputs.cache-hit != 'true'
       run: sudo apt install -y autoconf automake libtool pkg-config libxml2-dev

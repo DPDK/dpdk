@@ -428,6 +428,7 @@ EXPERIMENTAL {
 INTERNAL {
 	global:
 
+	rte_firmware_read;
 	rte_mem_lock;
 	rte_mem_map;
 	rte_mem_page_size;

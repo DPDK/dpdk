@@ -61,6 +61,12 @@ New Features
   representing sub-domains of functionality. Each auxiliary device
   represents a part of its parent functionality.
 
+* **Added XZ compressed firmware support.**
+
+  Using ``rte_firmware_read``, a driver can now handle XZ compressed firmware
+  in a transparent way, with EAL uncompressing using libarchive if this library
+  is available when building DPDK.
+
 * **Updated Intel iavf driver.**
 
   * Added Tx QoS VF queue TC mapping.

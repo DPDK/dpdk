@@ -30,6 +30,8 @@
 #include <rte_spinlock.h>
 #include <rte_service_component.h>
 
+#include "eal_firmware.h"
+
 #include "nfpcore/nfp_cpp.h"
 #include "nfpcore/nfp_nffw.h"
 #include "nfpcore/nfp_hwinfo.h"
@@ -3366,12 +3368,10 @@ static int
 nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 {
 	struct nfp_cpp *cpp = nsp->cpp;
-	int fw_f;
-	char *fw_buf;
+	void *fw_buf;
 	char fw_name[125];
 	char serial[40];
-	struct stat file_stat;
-	off_t fsize, bytes;
+	size_t fsize;
 
 	/* Looking for firmware file in order of priority */
 
@@ -3384,66 +3384,34 @@ nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 
 	snprintf(fw_name, sizeof(fw_name), "%s/%s.nffw", DEFAULT_FW_PATH,
 			serial);
-
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
-	fw_f = open(fw_name, O_RDONLY);
-	if (fw_f >= 0)
-		goto read_fw;
+	if (rte_firmware_read(fw_name, &fw_buf, &fsize) == 0)
+		goto load_fw;
 
 	/* Then try the PCI name */
 	snprintf(fw_name, sizeof(fw_name), "%s/pci-%s.nffw", DEFAULT_FW_PATH,
 			dev->device.name);
-
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
-	fw_f = open(fw_name, O_RDONLY);
-	if (fw_f >= 0)
-		goto read_fw;
+	if (rte_firmware_read(fw_name, &fw_buf, &fsize) == 0)
+		goto load_fw;
 
 	/* Finally try the card type and media */
 	snprintf(fw_name, sizeof(fw_name), "%s/%s", DEFAULT_FW_PATH, card);
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
-	fw_f = open(fw_name, O_RDONLY);
-	if (fw_f < 0) {
+	if (rte_firmware_read(fw_name, &fw_buf, &fsize) < 0) {
 		PMD_DRV_LOG(INFO, "Firmware file %s not found.", fw_name);
 		return -ENOENT;
 	}
 
-read_fw:
-	if (fstat(fw_f, &file_stat) < 0) {
-		PMD_DRV_LOG(INFO, "Firmware file %s size is unknown", fw_name);
-		close(fw_f);
-		return -ENOENT;
-	}
-
-	fsize = file_stat.st_size;
-	PMD_DRV_LOG(INFO, "Firmware file found at %s with size: %" PRIu64 "",
-			    fw_name, (uint64_t)fsize);
-
-	fw_buf = malloc((size_t)fsize);
-	if (!fw_buf) {
-		PMD_DRV_LOG(INFO, "malloc failed for fw buffer");
-		close(fw_f);
-		return -ENOMEM;
-	}
-	memset(fw_buf, 0, fsize);
-
-	bytes = read(fw_f, fw_buf, fsize);
-	if (bytes != fsize) {
-		PMD_DRV_LOG(INFO, "Reading fw to buffer failed."
-				   "Just %" PRIu64 " of %" PRIu64 " bytes read",
-				   (uint64_t)bytes, (uint64_t)fsize);
-		free(fw_buf);
-		close(fw_f);
-		return -EIO;
-	}
+load_fw:
+	PMD_DRV_LOG(INFO, "Firmware file found at %s with size: %zu",
+		fw_name, fsize);
 
 	PMD_DRV_LOG(INFO, "Uploading the firmware ...");
-	nfp_nsp_load_fw(nsp, fw_buf, bytes);
+	nfp_nsp_load_fw(nsp, fw_buf, fsize);
 	PMD_DRV_LOG(INFO, "Done");
 
 	free(fw_buf);
-	close(fw_f);
-
 	return 0;
 }
 

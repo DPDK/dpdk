@@ -5,8 +5,11 @@
  */
 
 #include <limits.h>
+
 #include <rte_alarm.h>
 #include <rte_string_fns.h>
+
+#include "eal_firmware.h"
 
 #include "qede_ethdev.h"
 /* ######### DEBUG ###########*/
@@ -127,51 +130,40 @@ static void qed_free_stream_mem(struct ecore_dev *edev)
 #ifdef CONFIG_ECORE_BINARY_FW
 static int qed_load_firmware_data(struct ecore_dev *edev)
 {
-	int fd;
-	struct stat st;
 	const char *fw = RTE_LIBRTE_QEDE_FW;
+	void *buf;
+	size_t bufsz;
+	int ret;
 
 	if (strcmp(fw, "") == 0)
 		strcpy(qede_fw_file, QEDE_DEFAULT_FIRMWARE);
 	else
 		strcpy(qede_fw_file, fw);
 
-	fd = open(qede_fw_file, O_RDONLY);
-	if (fd < 0) {
-		DP_ERR(edev, "Can't open firmware file\n");
-		return -ENOENT;
-	}
-
-	if (fstat(fd, &st) < 0) {
-		DP_ERR(edev, "Can't stat firmware file\n");
-		close(fd);
+	if (rte_firmware_read(qede_fw_file, &buf, &bufsz) < 0) {
+		DP_ERR(edev, "Can't read firmware data: %s\n", qede_fw_file);
 		return -1;
 	}
 
-	edev->firmware = rte_zmalloc("qede_fw", st.st_size,
-				    RTE_CACHE_LINE_SIZE);
+	edev->firmware = rte_zmalloc("qede_fw", bufsz, RTE_CACHE_LINE_SIZE);
 	if (!edev->firmware) {
 		DP_ERR(edev, "Can't allocate memory for firmware\n");
-		close(fd);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto out;
 	}
 
-	if (read(fd, edev->firmware, st.st_size) != st.st_size) {
-		DP_ERR(edev, "Can't read firmware data\n");
-		close(fd);
-		return -1;
-	}
-
-	edev->fw_len = st.st_size;
+	memcpy(edev->firmware, buf, bufsz);
+	edev->fw_len = bufsz;
 	if (edev->fw_len < 104) {
 		DP_ERR(edev, "Invalid fw size: %" PRIu64 "\n",
 			  edev->fw_len);
-		close(fd);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
-
-	close(fd);
-	return 0;
+	ret = 0;
+out:
+	free(buf);
+	return ret;
 }
 #endif
 
