@@ -74,6 +74,6 @@ sources = files('bnxt_cpr.c',
 
 if arch_subdir == 'x86'
 	sources += files('bnxt_rxtx_vec_sse.c')
-elif arch_subdir == 'arm' and host_machine.cpu_family().startswith('aarch64')
+elif arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
 	sources += files('bnxt_rxtx_vec_neon.c')
 endif
