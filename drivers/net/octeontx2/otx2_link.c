@@ -148,7 +148,7 @@ otx2_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 	RTE_SET_USED(wait_to_complete);
 	memset(&link, 0, sizeof(struct rte_eth_link));
 
-	if (otx2_dev_is_sdp(dev))
+	if (!eth_dev->data->dev_started || otx2_dev_is_sdp(dev))
 		return 0;
 
 	if (otx2_dev_is_lbk(dev))

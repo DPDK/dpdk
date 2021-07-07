@@ -2171,6 +2171,7 @@ otx2_nix_dev_stop(struct rte_eth_dev *eth_dev)
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct rte_mbuf *rx_pkts[32];
 	struct otx2_eth_rxq *rxq;
+	struct rte_eth_link link;
 	int count, i, j, rc;
 
 	nix_lf_switch_header_type_enable(dev, false);
@@ -2195,6 +2196,10 @@ otx2_nix_dev_stop(struct rte_eth_dev *eth_dev)
 	/* Stop tx queues  */
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
 		otx2_nix_tx_queue_stop(eth_dev, i);
+
+	/* Bring down link status internally */
+	memset(&link, 0, sizeof(link));
+	rte_eth_linkstatus_set(eth_dev, &link);
 
 	return 0;
 }
