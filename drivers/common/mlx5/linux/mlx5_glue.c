@@ -1087,17 +1087,54 @@ mlx5_glue_devx_wq_query(struct ibv_wq *wq, const void *in, size_t inlen,
 static int
 mlx5_glue_devx_port_query(struct ibv_context *ctx,
 			  uint32_t port_num,
-			  struct mlx5dv_devx_port *mlx5_devx_port)
+			  struct mlx5_port_info *info)
 {
-#ifdef HAVE_MLX5DV_DR_DEVX_PORT
-	return mlx5dv_query_devx_port(ctx, port_num, mlx5_devx_port);
+	int err = 0;
+
+	info->query_flags = 0;
+#ifdef HAVE_MLX5DV_DR_DEVX_PORT_V35
+	/* The DevX port query API is implemented (rdma-core v35 and above). */
+	struct mlx5_ib_uapi_query_port devx_port;
+
+	memset(&devx_port, 0, sizeof(devx_port));
+	err = mlx5dv_query_port(ctx, port_num, &devx_port);
+	if (err)
+		return err;
+	if (devx_port.flags & MLX5DV_QUERY_PORT_VPORT_REG_C0) {
+		info->vport_meta_tag = devx_port.reg_c0.value;
+		info->vport_meta_mask = devx_port.reg_c0.mask;
+		info->query_flags |= MLX5_PORT_QUERY_REG_C0;
+	}
+	if (devx_port.flags & MLX5DV_QUERY_PORT_VPORT) {
+		info->vport_id = devx_port.vport;
+		info->query_flags |= MLX5_PORT_QUERY_VPORT;
+	}
 #else
-	(void)ctx;
-	(void)port_num;
-	(void)mlx5_devx_port;
-	errno = ENOTSUP;
-	return errno;
-#endif
+#ifdef HAVE_MLX5DV_DR_DEVX_PORT
+	/* The legacy DevX port query API is implemented (prior v35). */
+	struct mlx5dv_devx_port devx_port = {
+		.comp_mask = MLX5DV_DEVX_PORT_VPORT |
+			     MLX5DV_DEVX_PORT_MATCH_REG_C_0
+	};
+
+	err = mlx5dv_query_devx_port(ctx, port_num, &devx_port);
+	if (err)
+		return err;
+	if (devx_port.comp_mask & MLX5DV_DEVX_PORT_MATCH_REG_C_0) {
+		info->vport_meta_tag = devx_port.reg_c_0.value;
+		info->vport_meta_mask = devx_port.reg_c_0.mask;
+		info->query_flags |= MLX5_PORT_QUERY_REG_C0;
+	}
+	if (devx_port.comp_mask & MLX5DV_DEVX_PORT_VPORT) {
+		info->vport_id = devx_port.vport_num;
+		info->query_flags |= MLX5_PORT_QUERY_VPORT;
+	}
+#else
+	RTE_SET_USED(ctx);
+	RTE_SET_USED(port_num);
+#endif /* HAVE_MLX5DV_DR_DEVX_PORT */
+#endif /* HAVE_MLX5DV_DR_DEVX_PORT_V35 */
+	return err;
 }
 
 static int
