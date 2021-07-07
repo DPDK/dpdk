@@ -2769,6 +2769,12 @@ otx2_nix_tm_node_stats_read(struct rte_eth_dev *eth_dev, uint32_t node_id,
 		return -EINVAL;
 	}
 
+	if (!(tm_node->flags & NIX_TM_NODE_HWRES)) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "HW resources not allocated";
+		return -EINVAL;
+	}
+
 	/* Stats support only for leaf node or TL1 root */
 	if (nix_tm_is_leaf(dev, tm_node->lvl)) {
 		reg = (((uint64_t)tm_node->id) << 32);
