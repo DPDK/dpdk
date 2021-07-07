@@ -1586,7 +1586,7 @@ virtio_dev_rx_async_get_info_idx(uint16_t pkts_idx,
 	uint16_t vq_size, uint16_t n_inflight)
 {
 	return pkts_idx > n_inflight ? (pkts_idx - n_inflight) :
-		(vq_size - n_inflight + pkts_idx) & (vq_size - 1);
+		(vq_size - n_inflight + pkts_idx) % vq_size;
 }
 
 static __rte_always_inline void
@@ -2228,7 +2228,7 @@ uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 
 	if (vq_is_packed(dev)) {
 		for (i = 0; i < n_pkts_put; i++) {
-			from = (start_idx + i) & (vq_size - 1);
+			from = (start_idx + i) % vq_size;
 			n_buffers += pkts_info[from].nr_buffers;
 			pkts[i] = pkts_info[from].mbuf;
 		}
