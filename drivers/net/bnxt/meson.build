@@ -66,6 +66,6 @@ if arch_subdir == 'x86'
                             c_args: [cflags, '-mavx2'])
             objs += bnxt_avx2_lib.extract_objects('bnxt_rxtx_vec_avx2.c')
      endif
-elif arch_subdir == 'arm' and host_machine.cpu_family().startswith('aarch64')
+elif arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
     sources += files('bnxt_rxtx_vec_neon.c')
 endif
