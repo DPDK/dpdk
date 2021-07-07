@@ -132,6 +132,8 @@ mlx5_flow_is_rss_expandable_item(const struct rte_flow_item *item)
 	case RTE_FLOW_ITEM_TYPE_GRE:
 	case RTE_FLOW_ITEM_TYPE_GENEVE:
 	case RTE_FLOW_ITEM_TYPE_MPLS:
+	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+	case RTE_FLOW_ITEM_TYPE_GRE_KEY:
 		return true;
 	default:
 		break;
