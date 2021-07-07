@@ -1656,7 +1656,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 	const struct rte_flow_item_ipv4 *ipv4_spec, *ipv4_last, *ipv4_mask;
 	const struct rte_flow_item_ipv6 *ipv6_spec, *ipv6_mask;
 	const struct rte_flow_item_ipv6_frag_ext *ipv6_frag_spec,
-					*ipv6_frag_last, *ipv6_frag_mask;
+					*ipv6_frag_mask;
 	const struct rte_flow_item_tcp *tcp_spec, *tcp_mask;
 	const struct rte_flow_item_udp *udp_spec, *udp_mask;
 	const struct rte_flow_item_sctp *sctp_spec, *sctp_mask;
@@ -1806,21 +1806,16 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			p_v4->proto = ipv4_spec->hdr.next_proto_id;
 			p_v4->tos = ipv4_spec->hdr.type_of_service;
 
-			/* only support any packet id for fragment IPv4
-			 * any packet_id:
-			 * spec is 0, last is 0xffff, mask is 0xffff
-			 * fragment Ipv4:
-			 * spec is 0x2000, mask is 0xffff
+			/* fragment Ipv4:
+			 * spec is 0x2000, mask is 0x2000
 			 */
-			if (ipv4_last && ipv4_spec->hdr.packet_id == 0 &&
-			    ipv4_last->hdr.packet_id == UINT16_MAX &&
-			    ipv4_mask->hdr.packet_id == UINT16_MAX &&
-			    ipv4_spec->hdr.fragment_offset ==
+			if (ipv4_spec->hdr.fragment_offset ==
 			    rte_cpu_to_be_16(RTE_IPV4_HDR_MF_FLAG) &&
-			    ipv4_mask->hdr.fragment_offset == UINT16_MAX) {
+			    ipv4_mask->hdr.fragment_offset ==
+			    rte_cpu_to_be_16(RTE_IPV4_HDR_MF_FLAG)) {
 				/* all IPv4 fragment packet has the same
-				 * ethertype, if the spec is for all valid
-				 * packet id, set ethertype into input set.
+				 * ethertype, if the spec and mask is valid,
+				 * set ethertype into input set.
 				 */
 				flow_type = ICE_FLTR_PTYPE_FRAG_IPV4;
 				*input_set |= ICE_INSET_ETHERTYPE;
@@ -1881,27 +1876,21 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			l3 = RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT;
 			flow_type = ICE_FLTR_PTYPE_FRAG_IPV6;
 			ipv6_frag_spec = item->spec;
-			ipv6_frag_last = item->last;
 			ipv6_frag_mask = item->mask;
 
 			if (!(ipv6_frag_spec && ipv6_frag_mask))
 				break;
 
-			/* only support any packet id for fragment IPv6
-			 * any packet_id:
-			 * spec is 0, last is 0xffffffff, mask is 0xffffffff
-			 * fragment Ipv6:
-			 * spec is 0x1, mask is 0xffff
+			/* fragment Ipv6:
+			 * spec is 0x1, mask is 0x1
 			 */
-			if (ipv6_frag_last && ipv6_frag_spec->hdr.id == 0 &&
-			    ipv6_frag_last->hdr.id == UINT32_MAX &&
-			    ipv6_frag_mask->hdr.id == UINT32_MAX &&
-			    ipv6_frag_spec->hdr.frag_data ==
+			if (ipv6_frag_spec->hdr.frag_data ==
 			    rte_cpu_to_be_16(1) &&
-			    ipv6_frag_mask->hdr.frag_data == UINT16_MAX) {
+			    ipv6_frag_mask->hdr.frag_data ==
+			    rte_cpu_to_be_16(1)) {
 				/* all IPv6 fragment packet has the same
-				 * ethertype, if the spec is for all valid
-				 * packet id, set ethertype into input set.
+				 * ethertype, if the spec and mask is valid,
+				 * set ethertype into input set.
 				 */
 				*input_set |= ICE_INSET_ETHERTYPE;
 				input_set_o |= ICE_INSET_ETHERTYPE;
