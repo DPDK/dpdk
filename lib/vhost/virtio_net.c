@@ -221,11 +221,6 @@ vhost_flush_enqueue_batch_packed(struct virtio_net *dev,
 	uint16_t last_used_idx;
 	struct vring_packed_desc *desc_base;
 
-	if (vq->shadow_used_idx) {
-		do_data_copy_enqueue(dev, vq);
-		vhost_flush_enqueue_shadow_packed(dev, vq);
-	}
-
 	last_used_idx = vq->last_used_idx;
 	desc_base = &vq->desc_packed[last_used_idx];
 
@@ -1258,18 +1253,16 @@ virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 }
 
 static __rte_always_inline int
-virtio_dev_rx_batch_packed(struct virtio_net *dev,
+virtio_dev_rx_sync_batch_check(struct virtio_net *dev,
 			   struct vhost_virtqueue *vq,
-			   struct rte_mbuf **pkts)
+			   struct rte_mbuf **pkts,
+			   uint64_t *desc_addrs,
+			   uint64_t *lens)
 {
 	bool wrap_counter = vq->avail_wrap_counter;
 	struct vring_packed_desc *descs = vq->desc_packed;
 	uint16_t avail_idx = vq->last_avail_idx;
-	uint64_t desc_addrs[PACKED_BATCH_SIZE];
-	struct virtio_net_hdr_mrg_rxbuf *hdrs[PACKED_BATCH_SIZE];
 	uint32_t buf_offset = sizeof(struct virtio_net_hdr_mrg_rxbuf);
-	uint64_t lens[PACKED_BATCH_SIZE];
-	uint16_t ids[PACKED_BATCH_SIZE];
 	uint16_t i;
 
 	if (unlikely(avail_idx & PACKED_BATCH_MASK))
@@ -1307,6 +1300,84 @@ virtio_dev_rx_batch_packed(struct virtio_net *dev,
 			return -1;
 	}
 
+	return 0;
+}
+
+static __rte_always_inline int
+virtio_dev_rx_async_batch_check(struct virtio_net *dev,
+			   struct vhost_virtqueue *vq,
+			   struct rte_mbuf **pkts,
+			   uint64_t *desc_addrs,
+			   uint64_t *lens)
+{
+	bool wrap_counter = vq->avail_wrap_counter;
+	struct vring_packed_desc *descs = vq->desc_packed;
+	uint16_t avail_idx = vq->last_avail_idx;
+	uint16_t used_idx = vq->last_used_idx;
+	uint32_t buf_offset = sizeof(struct virtio_net_hdr_mrg_rxbuf);
+	uint32_t cpy_threshold = vq->async_threshold;
+	uint16_t i;
+
+	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+		if (unlikely(pkts[i]->data_len >= cpy_threshold))
+			return -1;
+	}
+
+	if (unlikely(avail_idx & PACKED_BATCH_MASK))
+		return -1;
+
+	if (unlikely((avail_idx + PACKED_BATCH_SIZE) > vq->size))
+		return -1;
+
+	if (unlikely((used_idx + PACKED_BATCH_SIZE) > vq->size))
+		return -1;
+
+	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+		if (unlikely(pkts[i]->next != NULL))
+			return -1;
+		if (unlikely(!desc_is_avail(&descs[avail_idx + i],
+					    wrap_counter)))
+			return -1;
+	}
+
+	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
+		lens[i] = descs[avail_idx + i].len;
+
+	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+		if (unlikely(pkts[i]->pkt_len > (lens[i] - buf_offset)))
+			return -1;
+	}
+
+	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
+		desc_addrs[i] = vhost_iova_to_vva(dev, vq,
+						  descs[avail_idx + i].addr,
+						  &lens[i],
+						  VHOST_ACCESS_RW);
+
+	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+		if (unlikely(!desc_addrs[i]))
+			return -1;
+		if (unlikely(lens[i] != descs[avail_idx + i].len))
+			return -1;
+	}
+
+	return 0;
+}
+
+static __rte_always_inline void
+virtio_dev_rx_batch_packed_copy(struct virtio_net *dev,
+			   struct vhost_virtqueue *vq,
+			   struct rte_mbuf **pkts,
+			   uint64_t *desc_addrs,
+			   uint64_t *lens)
+{
+	uint32_t buf_offset = sizeof(struct virtio_net_hdr_mrg_rxbuf);
+	struct virtio_net_hdr_mrg_rxbuf *hdrs[PACKED_BATCH_SIZE];
+	struct vring_packed_desc *descs = vq->desc_packed;
+	uint16_t avail_idx = vq->last_avail_idx;
+	uint16_t ids[PACKED_BATCH_SIZE];
+	uint16_t i;
+
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
 		rte_prefetch0((void *)(uintptr_t)desc_addrs[i]);
 		hdrs[i] = (struct virtio_net_hdr_mrg_rxbuf *)
@@ -1334,6 +1405,51 @@ virtio_dev_rx_batch_packed(struct virtio_net *dev,
 		ids[i] = descs[avail_idx + i].id;
 
 	vhost_flush_enqueue_batch_packed(dev, vq, lens, ids);
+}
+
+static __rte_always_inline int
+virtio_dev_rx_sync_batch_packed(struct virtio_net *dev,
+			   struct vhost_virtqueue *vq,
+			   struct rte_mbuf **pkts)
+{
+	uint64_t desc_addrs[PACKED_BATCH_SIZE];
+	uint64_t lens[PACKED_BATCH_SIZE];
+
+	if (virtio_dev_rx_sync_batch_check(dev, vq, pkts, desc_addrs, lens) == -1)
+		return -1;
+
+	if (vq->shadow_used_idx) {
+		do_data_copy_enqueue(dev, vq);
+		vhost_flush_enqueue_shadow_packed(dev, vq);
+	}
+
+	virtio_dev_rx_batch_packed_copy(dev, vq, pkts, desc_addrs, lens);
+
+	return 0;
+}
+
+static __rte_always_inline int
+virtio_dev_rx_async_batch_packed(struct virtio_net *dev,
+			   struct vhost_virtqueue *vq,
+			   struct rte_mbuf **pkts,
+			   struct rte_mbuf **comp_pkts, uint32_t *pkt_done)
+{
+	uint16_t i;
+	uint64_t desc_addrs[PACKED_BATCH_SIZE];
+	uint64_t lens[PACKED_BATCH_SIZE];
+
+	if (virtio_dev_rx_async_batch_check(dev, vq, pkts, desc_addrs, lens) == -1)
+		return -1;
+
+	virtio_dev_rx_batch_packed_copy(dev, vq, pkts, desc_addrs, lens);
+
+	if (vq->shadow_used_idx) {
+		do_data_copy_enqueue(dev, vq);
+		vhost_flush_enqueue_shadow_packed(dev, vq);
+	}
+
+	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
+		comp_pkts[(*pkt_done)++] = pkts[i];
 
 	return 0;
 }
@@ -1375,7 +1491,7 @@ virtio_dev_rx_packed(struct virtio_net *dev,
 		rte_prefetch0(&vq->desc_packed[vq->last_avail_idx]);
 
 		if (count - pkt_idx >= PACKED_BATCH_SIZE) {
-			if (!virtio_dev_rx_batch_packed(dev, vq,
+			if (!virtio_dev_rx_sync_batch_packed(dev, vq,
 							&pkts[pkt_idx])) {
 				pkt_idx += PACKED_BATCH_SIZE;
 				continue;
@@ -1726,29 +1842,6 @@ vhost_update_used_packed(struct vhost_virtqueue *vq,
 	}
 
 	vq->desc_packed[head_idx].flags = head_flags;
-}
-
-static __rte_always_inline int
-virtio_dev_rx_async_batch_packed(struct virtio_net *dev,
-			   struct vhost_virtqueue *vq,
-			   struct rte_mbuf **pkts,
-			   struct rte_mbuf **comp_pkts, uint32_t *pkt_done)
-{
-	uint16_t i;
-	uint32_t cpy_threshold = vq->async_threshold;
-
-	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
-		if (unlikely(pkts[i]->pkt_len >= cpy_threshold))
-			return -1;
-	}
-	if (!virtio_dev_rx_batch_packed(dev, vq, pkts)) {
-		vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
-			comp_pkts[(*pkt_done)++] = pkts[i];
-
-		return 0;
-	}
-
-	return -1;
 }
 
 static __rte_always_inline int
