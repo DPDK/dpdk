@@ -14,6 +14,7 @@
 #define NGBE_EM_MC_TBL_SIZE   32
 
 s32 ngbe_init_hw(struct ngbe_hw *hw);
+s32 ngbe_start_hw(struct ngbe_hw *hw);
 s32 ngbe_reset_hw_em(struct ngbe_hw *hw);
 s32 ngbe_stop_hw(struct ngbe_hw *hw);
 s32 ngbe_get_mac_addr(struct ngbe_hw *hw, u8 *mac_addr);
@@ -22,6 +23,9 @@ void ngbe_set_lan_id_multi_port(struct ngbe_hw *hw);
 
 s32 ngbe_check_mac_link_em(struct ngbe_hw *hw, u32 *speed,
 			bool *link_up, bool link_up_wait_to_complete);
+s32 ngbe_get_link_capabilities_em(struct ngbe_hw *hw,
+				      u32 *speed,
+				      bool *autoneg);
 s32 ngbe_setup_mac_link_em(struct ngbe_hw *hw,
 			       u32 speed,
 			       bool autoneg_wait_to_complete);

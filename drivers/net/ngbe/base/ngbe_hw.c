@@ -10,6 +10,22 @@
 #include "ngbe_hw.h"
 
 /**
+ *  ngbe_start_hw - Prepare hardware for Tx/Rx
+ *  @hw: pointer to hardware structure
+ *
+ *  Starts the hardware.
+ **/
+s32 ngbe_start_hw(struct ngbe_hw *hw)
+{
+	DEBUGFUNC("ngbe_start_hw");
+
+	/* Clear adapter stopped flag */
+	hw->adapter_stopped = false;
+
+	return 0;
+}
+
+/**
  *  ngbe_init_hw - Generic hardware initialization
  *  @hw: pointer to hardware structure
  *
@@ -27,6 +43,10 @@ s32 ngbe_init_hw(struct ngbe_hw *hw)
 
 	/* Reset the hardware */
 	status = hw->mac.reset_hw(hw);
+	if (status == 0) {
+		/* Start the HW */
+		status = hw->mac.start_hw(hw);
+	}
 
 	if (status != 0)
 		DEBUGOUT("Failed to initialize HW, STATUS = %d\n", status);
@@ -633,6 +653,29 @@ s32 ngbe_check_mac_link_em(struct ngbe_hw *hw, u32 *speed,
 	return status;
 }
 
+s32 ngbe_get_link_capabilities_em(struct ngbe_hw *hw,
+				      u32 *speed,
+				      bool *autoneg)
+{
+	s32 status = 0;
+
+	DEBUGFUNC("\n");
+
+	hw->mac.autoneg = *autoneg;
+
+	switch (hw->sub_device_id) {
+	case NGBE_SUB_DEV_ID_EM_RTL_SGMII:
+		*speed = NGBE_LINK_SPEED_1GB_FULL |
+			NGBE_LINK_SPEED_100M_FULL |
+			NGBE_LINK_SPEED_10M_FULL;
+		break;
+	default:
+		break;
+	}
+
+	return status;
+}
+
 s32 ngbe_setup_mac_link_em(struct ngbe_hw *hw,
 			       u32 speed,
 			       bool autoneg_wait_to_complete)
@@ -842,6 +885,7 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	/* MAC */
 	mac->init_hw = ngbe_init_hw;
 	mac->reset_hw = ngbe_reset_hw_em;
+	mac->start_hw = ngbe_start_hw;
 	mac->get_mac_addr = ngbe_get_mac_addr;
 	mac->stop_hw = ngbe_stop_hw;
 	mac->acquire_swfw_sync = ngbe_acquire_swfw_sync;
@@ -855,6 +899,7 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	mac->clear_vmdq = ngbe_clear_vmdq;
 
 	/* Link */
+	mac->get_link_capabilities = ngbe_get_link_capabilities_em;
 	mac->check_link = ngbe_check_mac_link_em;
 	mac->setup_link = ngbe_setup_mac_link_em;
 
@@ -870,6 +915,10 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	mac->num_rar_entries	= NGBE_EM_RAR_ENTRIES;
 	mac->max_rx_queues	= NGBE_EM_MAX_RX_QUEUES;
 	mac->max_tx_queues	= NGBE_EM_MAX_TX_QUEUES;
+
+	mac->default_speeds = NGBE_LINK_SPEED_10M_FULL |
+				NGBE_LINK_SPEED_100M_FULL |
+				NGBE_LINK_SPEED_1GB_FULL;
 
 	return 0;
 }

@@ -15,9 +15,17 @@
 #include "ngbe_rxtx.h"
 
 static int ngbe_dev_close(struct rte_eth_dev *dev);
+static int ngbe_dev_link_update(struct rte_eth_dev *dev,
+				int wait_to_complete);
 
+static void ngbe_dev_link_status_print(struct rte_eth_dev *dev);
+static int ngbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on);
+static int ngbe_dev_macsec_interrupt_setup(struct rte_eth_dev *dev);
+static int ngbe_dev_misc_interrupt_setup(struct rte_eth_dev *dev);
+static int ngbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev);
 static void ngbe_dev_interrupt_handler(void *param);
 static void ngbe_dev_interrupt_delayed_handler(void *param);
+static void ngbe_configure_msix(struct rte_eth_dev *dev);
 
 /*
  * The set of PCI devices this driver supports
@@ -53,6 +61,25 @@ static const struct rte_eth_desc_lim tx_desc_lim = {
 };
 
 static const struct eth_dev_ops ngbe_eth_dev_ops;
+
+static inline int32_t
+ngbe_pf_reset_hw(struct ngbe_hw *hw)
+{
+	uint32_t ctrl_ext;
+	int32_t status;
+
+	status = hw->mac.reset_hw(hw);
+
+	ctrl_ext = rd32(hw, NGBE_PORTCTL);
+	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
+	ctrl_ext |= NGBE_PORTCTL_RSTDONE;
+	wr32(hw, NGBE_PORTCTL, ctrl_ext);
+	ngbe_flush(hw);
+
+	if (status == NGBE_ERR_SFP_NOT_PRESENT)
+		status = 0;
+	return status;
+}
 
 static inline void
 ngbe_enable_intr(struct rte_eth_dev *dev)
@@ -198,6 +225,13 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	wr32(hw, NGBE_PORTCTL, ctrl_ext);
 	ngbe_flush(hw);
 
+	PMD_INIT_LOG(DEBUG, "MAC: %d, PHY: %d",
+			(int)hw->mac.type, (int)hw->phy.type);
+
+	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
+		     eth_dev->data->port_id, pci_dev->id.vendor_id,
+		     pci_dev->id.device_id);
+
 	rte_intr_callback_register(intr_handle,
 				   ngbe_dev_interrupt_handler, eth_dev);
 
@@ -268,6 +302,249 @@ ngbe_dev_configure(struct rte_eth_dev *dev)
 	 * allocation Rx preconditions we will reset it.
 	 */
 	adapter->rx_bulk_alloc_allowed = true;
+
+	return 0;
+}
+
+static void
+ngbe_dev_phy_intr_setup(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+
+	wr32(hw, NGBE_GPIODIR, NGBE_GPIODIR_DDR(1));
+	wr32(hw, NGBE_GPIOINTEN, NGBE_GPIOINTEN_INT(3));
+	wr32(hw, NGBE_GPIOINTTYPE, NGBE_GPIOINTTYPE_LEVEL(0));
+	if (hw->phy.type == ngbe_phy_yt8521s_sfi)
+		wr32(hw, NGBE_GPIOINTPOL, NGBE_GPIOINTPOL_ACT(0));
+	else
+		wr32(hw, NGBE_GPIOINTPOL, NGBE_GPIOINTPOL_ACT(3));
+
+	intr->mask_misc |= NGBE_ICRMISC_GPIO;
+}
+
+/*
+ * Configure device link speed and setup link.
+ * It returns 0 on success.
+ */
+static int
+ngbe_dev_start(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	uint32_t intr_vector = 0;
+	int err;
+	bool link_up = false, negotiate = false;
+	uint32_t speed = 0;
+	uint32_t allowed_speeds = 0;
+	int status;
+	uint32_t *link_speeds;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* disable uio/vfio intr/eventfd mapping */
+	rte_intr_disable(intr_handle);
+
+	/* stop adapter */
+	hw->adapter_stopped = 0;
+	ngbe_stop_hw(hw);
+
+	/* reinitialize adapter, this calls reset and start */
+	hw->nb_rx_queues = dev->data->nb_rx_queues;
+	hw->nb_tx_queues = dev->data->nb_tx_queues;
+	status = ngbe_pf_reset_hw(hw);
+	if (status != 0)
+		return -1;
+	hw->mac.start_hw(hw);
+	hw->mac.get_link_status = true;
+
+	ngbe_dev_phy_intr_setup(dev);
+
+	/* check and configure queue intr-vector mapping */
+	if ((rte_intr_cap_multiple(intr_handle) ||
+	     !RTE_ETH_DEV_SRIOV(dev).active) &&
+	    dev->data->dev_conf.intr_conf.rxq != 0) {
+		intr_vector = dev->data->nb_rx_queues;
+		if (rte_intr_efd_enable(intr_handle, intr_vector))
+			return -1;
+	}
+
+	if (rte_intr_dp_is_en(intr_handle) && intr_handle->intr_vec == NULL) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    dev->data->nb_rx_queues * sizeof(int), 0);
+		if (intr_handle->intr_vec == NULL) {
+			PMD_INIT_LOG(ERR,
+				     "Failed to allocate %d rx_queues intr_vec",
+				     dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+	}
+
+	/* confiugre MSI-X for sleep until Rx interrupt */
+	ngbe_configure_msix(dev);
+
+	/* initialize transmission unit */
+	ngbe_dev_tx_init(dev);
+
+	/* This can fail when allocating mbufs for descriptor rings */
+	err = ngbe_dev_rx_init(dev);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "Unable to initialize Rx hardware");
+		goto error;
+	}
+
+	err = ngbe_dev_rxtx_start(dev);
+	if (err < 0) {
+		PMD_INIT_LOG(ERR, "Unable to start rxtx queues");
+		goto error;
+	}
+
+	err = hw->mac.check_link(hw, &speed, &link_up, 0);
+	if (err != 0)
+		goto error;
+	dev->data->dev_link.link_status = link_up;
+
+	link_speeds = &dev->data->dev_conf.link_speeds;
+	if (*link_speeds == ETH_LINK_SPEED_AUTONEG)
+		negotiate = true;
+
+	err = hw->mac.get_link_capabilities(hw, &speed, &negotiate);
+	if (err != 0)
+		goto error;
+
+	allowed_speeds = 0;
+	if (hw->mac.default_speeds & NGBE_LINK_SPEED_1GB_FULL)
+		allowed_speeds |= ETH_LINK_SPEED_1G;
+	if (hw->mac.default_speeds & NGBE_LINK_SPEED_100M_FULL)
+		allowed_speeds |= ETH_LINK_SPEED_100M;
+	if (hw->mac.default_speeds & NGBE_LINK_SPEED_10M_FULL)
+		allowed_speeds |= ETH_LINK_SPEED_10M;
+
+	if (*link_speeds & ~allowed_speeds) {
+		PMD_INIT_LOG(ERR, "Invalid link setting");
+		goto error;
+	}
+
+	speed = 0x0;
+	if (*link_speeds == ETH_LINK_SPEED_AUTONEG) {
+		speed = hw->mac.default_speeds;
+	} else {
+		if (*link_speeds & ETH_LINK_SPEED_1G)
+			speed |= NGBE_LINK_SPEED_1GB_FULL;
+		if (*link_speeds & ETH_LINK_SPEED_100M)
+			speed |= NGBE_LINK_SPEED_100M_FULL;
+		if (*link_speeds & ETH_LINK_SPEED_10M)
+			speed |= NGBE_LINK_SPEED_10M_FULL;
+	}
+
+	hw->phy.init_hw(hw);
+	err = hw->mac.setup_link(hw, speed, link_up);
+	if (err != 0)
+		goto error;
+
+	if (rte_intr_allow_others(intr_handle)) {
+		ngbe_dev_misc_interrupt_setup(dev);
+		/* check if lsc interrupt is enabled */
+		if (dev->data->dev_conf.intr_conf.lsc != 0)
+			ngbe_dev_lsc_interrupt_setup(dev, TRUE);
+		else
+			ngbe_dev_lsc_interrupt_setup(dev, FALSE);
+		ngbe_dev_macsec_interrupt_setup(dev);
+		ngbe_set_ivar_map(hw, -1, 1, NGBE_MISC_VEC_ID);
+	} else {
+		rte_intr_callback_unregister(intr_handle,
+					     ngbe_dev_interrupt_handler, dev);
+		if (dev->data->dev_conf.intr_conf.lsc != 0)
+			PMD_INIT_LOG(INFO,
+				     "LSC won't enable because of no intr multiplex");
+	}
+
+	/* check if rxq interrupt is enabled */
+	if (dev->data->dev_conf.intr_conf.rxq != 0 &&
+	    rte_intr_dp_is_en(intr_handle))
+		ngbe_dev_rxq_interrupt_setup(dev);
+
+	/* enable UIO/VFIO intr/eventfd mapping */
+	rte_intr_enable(intr_handle);
+
+	/* resume enabled intr since HW reset */
+	ngbe_enable_intr(dev);
+
+	if ((hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_M88E1512_SFP ||
+		(hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_YT8521S_SFP) {
+		/* gpio0 is used to power on/off control*/
+		wr32(hw, NGBE_GPIODATA, 0);
+	}
+
+	/*
+	 * Update link status right before return, because it may
+	 * start link configuration process in a separate thread.
+	 */
+	ngbe_dev_link_update(dev, 0);
+
+	return 0;
+
+error:
+	PMD_INIT_LOG(ERR, "failure in dev start: %d", err);
+	ngbe_dev_clear_queues(dev);
+	return -EIO;
+}
+
+/*
+ * Stop device: disable rx and tx functions to allow for reconfiguring.
+ */
+static int
+ngbe_dev_stop(struct rte_eth_dev *dev)
+{
+	struct rte_eth_link link;
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+
+	if (hw->adapter_stopped)
+		return 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if ((hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_M88E1512_SFP ||
+		(hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_YT8521S_SFP) {
+		/* gpio0 is used to power on/off control*/
+		wr32(hw, NGBE_GPIODATA, NGBE_GPIOBIT_0);
+	}
+
+	/* disable interrupts */
+	ngbe_disable_intr(hw);
+
+	/* reset the NIC */
+	ngbe_pf_reset_hw(hw);
+	hw->adapter_stopped = 0;
+
+	/* stop adapter */
+	ngbe_stop_hw(hw);
+
+	ngbe_dev_clear_queues(dev);
+
+	/* Clear recorded link status */
+	memset(&link, 0, sizeof(link));
+	rte_eth_linkstatus_set(dev, &link);
+
+	if (!rte_intr_allow_others(intr_handle))
+		/* resume to the default handler */
+		rte_intr_callback_register(intr_handle,
+					   ngbe_dev_interrupt_handler,
+					   (void *)dev);
+
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec != NULL) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
+
+	hw->adapter_stopped = true;
+	dev->data->dev_started = 0;
 
 	return 0;
 }
@@ -412,6 +689,106 @@ static int
 ngbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	return ngbe_dev_link_update_share(dev, wait_to_complete);
+}
+
+/**
+ * It clears the interrupt causes and enables the interrupt.
+ * It will be called once only during NIC initialized.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ * @param on
+ *  Enable or Disable.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static int
+ngbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on)
+{
+	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+
+	ngbe_dev_link_status_print(dev);
+	if (on != 0) {
+		intr->mask_misc |= NGBE_ICRMISC_PHY;
+		intr->mask_misc |= NGBE_ICRMISC_GPIO;
+	} else {
+		intr->mask_misc &= ~NGBE_ICRMISC_PHY;
+		intr->mask_misc &= ~NGBE_ICRMISC_GPIO;
+	}
+
+	return 0;
+}
+
+/**
+ * It clears the interrupt causes and enables the interrupt.
+ * It will be called once only during NIC initialized.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static int
+ngbe_dev_misc_interrupt_setup(struct rte_eth_dev *dev)
+{
+	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+	u64 mask;
+
+	mask = NGBE_ICR_MASK;
+	mask &= (1ULL << NGBE_MISC_VEC_ID);
+	intr->mask |= mask;
+	intr->mask_misc |= NGBE_ICRMISC_GPIO;
+
+	return 0;
+}
+
+/**
+ * It clears the interrupt causes and enables the interrupt.
+ * It will be called once only during NIC initialized.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static int
+ngbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev)
+{
+	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+	u64 mask;
+
+	mask = NGBE_ICR_MASK;
+	mask &= ~((1ULL << NGBE_RX_VEC_START) - 1);
+	intr->mask |= mask;
+
+	return 0;
+}
+
+/**
+ * It clears the interrupt causes and enables the interrupt.
+ * It will be called once only during NIC initialized.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static int
+ngbe_dev_macsec_interrupt_setup(struct rte_eth_dev *dev)
+{
+	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+
+	intr->mask_misc |= NGBE_ICRMISC_LNKSEC;
+
+	return 0;
 }
 
 /*
@@ -610,9 +987,103 @@ ngbe_dev_interrupt_handler(void *param)
 	ngbe_dev_interrupt_action(dev);
 }
 
+/**
+ * Set the IVAR registers, mapping interrupt causes to vectors
+ * @param hw
+ *  pointer to ngbe_hw struct
+ * @direction
+ *  0 for Rx, 1 for Tx, -1 for other causes
+ * @queue
+ *  queue to map the corresponding interrupt to
+ * @msix_vector
+ *  the vector to map to the corresponding queue
+ */
+void
+ngbe_set_ivar_map(struct ngbe_hw *hw, int8_t direction,
+		   uint8_t queue, uint8_t msix_vector)
+{
+	uint32_t tmp, idx;
+
+	if (direction == -1) {
+		/* other causes */
+		msix_vector |= NGBE_IVARMISC_VLD;
+		idx = 0;
+		tmp = rd32(hw, NGBE_IVARMISC);
+		tmp &= ~(0xFF << idx);
+		tmp |= (msix_vector << idx);
+		wr32(hw, NGBE_IVARMISC, tmp);
+	} else {
+		/* rx or tx causes */
+		/* Workround for ICR lost */
+		idx = ((16 * (queue & 1)) + (8 * direction));
+		tmp = rd32(hw, NGBE_IVAR(queue >> 1));
+		tmp &= ~(0xFF << idx);
+		tmp |= (msix_vector << idx);
+		wr32(hw, NGBE_IVAR(queue >> 1), tmp);
+	}
+}
+
+/**
+ * Sets up the hardware to properly generate MSI-X interrupts
+ * @hw
+ *  board private structure
+ */
+static void
+ngbe_configure_msix(struct rte_eth_dev *dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t queue_id, base = NGBE_MISC_VEC_ID;
+	uint32_t vec = NGBE_MISC_VEC_ID;
+	uint32_t gpie;
+
+	/*
+	 * Won't configure MSI-X register if no mapping is done
+	 * between intr vector and event fd
+	 * but if MSI-X has been enabled already, need to configure
+	 * auto clean, auto mask and throttling.
+	 */
+	gpie = rd32(hw, NGBE_GPIE);
+	if (!rte_intr_dp_is_en(intr_handle) &&
+	    !(gpie & NGBE_GPIE_MSIX))
+		return;
+
+	if (rte_intr_allow_others(intr_handle)) {
+		base = NGBE_RX_VEC_START;
+		vec = base;
+	}
+
+	/* setup GPIE for MSI-X mode */
+	gpie = rd32(hw, NGBE_GPIE);
+	gpie |= NGBE_GPIE_MSIX;
+	wr32(hw, NGBE_GPIE, gpie);
+
+	/* Populate the IVAR table and set the ITR values to the
+	 * corresponding register.
+	 */
+	if (rte_intr_dp_is_en(intr_handle)) {
+		for (queue_id = 0; queue_id < dev->data->nb_rx_queues;
+			queue_id++) {
+			/* by default, 1:1 mapping */
+			ngbe_set_ivar_map(hw, 0, queue_id, vec);
+			intr_handle->intr_vec[queue_id] = vec;
+			if (vec < base + intr_handle->nb_efd - 1)
+				vec++;
+		}
+
+		ngbe_set_ivar_map(hw, -1, 1, NGBE_MISC_VEC_ID);
+	}
+	wr32(hw, NGBE_ITR(NGBE_MISC_VEC_ID),
+			NGBE_ITR_IVAL_1G(NGBE_QUEUE_ITR_INTERVAL_DEFAULT)
+			| NGBE_ITR_WRDSA);
+}
+
 static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.dev_configure              = ngbe_dev_configure,
 	.dev_infos_get              = ngbe_dev_info_get,
+	.dev_start                  = ngbe_dev_start,
+	.dev_stop                   = ngbe_dev_stop,
 	.link_update                = ngbe_dev_link_update,
 	.rx_queue_setup             = ngbe_dev_rx_queue_setup,
 	.rx_queue_release           = ngbe_dev_rx_queue_release,

@@ -47,6 +47,10 @@ static inline s32 ngbe_mac_reset_hw_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
+static inline s32 ngbe_mac_start_hw_dummy(struct ngbe_hw *TUP0)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
 static inline s32 ngbe_mac_stop_hw_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
@@ -71,6 +75,11 @@ static inline s32 ngbe_mac_setup_link_dummy(struct ngbe_hw *TUP0, u32 TUP1,
 }
 static inline s32 ngbe_mac_check_link_dummy(struct ngbe_hw *TUP0, u32 *TUP1,
 					bool *TUP3, bool TUP4)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_mac_get_link_capabilities_dummy(struct ngbe_hw *TUP0,
+					u32 *TUP1, bool *TUP2)
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
@@ -107,6 +116,10 @@ static inline s32 ngbe_mac_check_overtemp_dummy(struct ngbe_hw *TUP0)
 }
 /* struct ngbe_phy_operations */
 static inline s32 ngbe_phy_identify_dummy(struct ngbe_hw *TUP0)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_phy_init_hw_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
@@ -151,12 +164,14 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->rom.validate_checksum = ngbe_rom_validate_checksum_dummy;
 	hw->mac.init_hw = ngbe_mac_init_hw_dummy;
 	hw->mac.reset_hw = ngbe_mac_reset_hw_dummy;
+	hw->mac.start_hw = ngbe_mac_start_hw_dummy;
 	hw->mac.stop_hw = ngbe_mac_stop_hw_dummy;
 	hw->mac.get_mac_addr = ngbe_mac_get_mac_addr_dummy;
 	hw->mac.acquire_swfw_sync = ngbe_mac_acquire_swfw_sync_dummy;
 	hw->mac.release_swfw_sync = ngbe_mac_release_swfw_sync_dummy;
 	hw->mac.setup_link = ngbe_mac_setup_link_dummy;
 	hw->mac.check_link = ngbe_mac_check_link_dummy;
+	hw->mac.get_link_capabilities = ngbe_mac_get_link_capabilities_dummy;
 	hw->mac.set_rar = ngbe_mac_set_rar_dummy;
 	hw->mac.clear_rar = ngbe_mac_clear_rar_dummy;
 	hw->mac.set_vmdq = ngbe_mac_set_vmdq_dummy;
@@ -165,6 +180,7 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->mac.init_thermal_sensor_thresh = ngbe_mac_init_thermal_ssth_dummy;
 	hw->mac.check_overtemp = ngbe_mac_check_overtemp_dummy;
 	hw->phy.identify = ngbe_phy_identify_dummy;
+	hw->phy.init_hw = ngbe_phy_init_hw_dummy;
 	hw->phy.reset_hw = ngbe_phy_reset_hw_dummy;
 	hw->phy.read_reg = ngbe_phy_read_reg_dummy;
 	hw->phy.write_reg = ngbe_phy_write_reg_dummy;

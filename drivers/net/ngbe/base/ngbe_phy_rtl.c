@@ -38,6 +38,64 @@ s32 ngbe_write_phy_reg_rtl(struct ngbe_hw *hw,
 	return 0;
 }
 
+s32 ngbe_init_phy_rtl(struct ngbe_hw *hw)
+{
+	int i;
+	u16 value = 0;
+
+	/* enable interrupts, only link status change and an done is allowed */
+	value = RTL_INER_LSC | RTL_INER_ANC;
+	hw->phy.write_reg(hw, RTL_INER, 0xa42, value);
+
+	hw->phy.read_reg(hw, RTL_INSR, 0xa43, &value);
+
+	for (i = 0; i < 15; i++) {
+		if (!rd32m(hw, NGBE_STAT,
+			NGBE_STAT_GPHY_IN_RST(hw->bus.lan_id)))
+			break;
+
+		msec_delay(10);
+	}
+	if (i == 15) {
+		DEBUGOUT("GPhy reset exceeds maximum times.\n");
+		return NGBE_ERR_PHY_TIMEOUT;
+	}
+
+	for (i = 0; i < 1000; i++) {
+		hw->phy.read_reg(hw, RTL_INSR, 0xa43, &value);
+		if (value & RTL_INSR_ACCESS)
+			break;
+	}
+
+	hw->phy.write_reg(hw, RTL_SCR, 0xa46, RTL_SCR_EFUSE);
+	for (i = 0; i < 1000; i++) {
+		hw->phy.read_reg(hw, RTL_INSR, 0xa43, &value);
+		if (value & RTL_INSR_ACCESS)
+			break;
+	}
+	if (i == 1000)
+		return NGBE_ERR_PHY_TIMEOUT;
+
+	hw->phy.write_reg(hw, RTL_SCR, 0xa46, RTL_SCR_EXTINI);
+	for (i = 0; i < 1000; i++) {
+		hw->phy.read_reg(hw, RTL_INSR, 0xa43, &value);
+		if (value & RTL_INSR_ACCESS)
+			break;
+	}
+	if (i == 1000)
+		return NGBE_ERR_PHY_TIMEOUT;
+
+	for (i = 0; i < 1000; i++) {
+		hw->phy.read_reg(hw, RTL_GSR, 0xa42, &value);
+		if ((value & RTL_GSR_ST) == RTL_GSR_ST_LANON)
+			break;
+	}
+	if (i == 1000)
+		return NGBE_ERR_PHY_TIMEOUT;
+
+	return 0;
+}
+
 /**
  *  ngbe_setup_phy_link_rtl - Set and restart auto-neg
  *  @hw: pointer to hardware structure

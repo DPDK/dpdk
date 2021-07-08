@@ -48,6 +48,70 @@ s32 ngbe_write_phy_reg_mvl(struct ngbe_hw *hw,
 	return 0;
 }
 
+s32 ngbe_init_phy_mvl(struct ngbe_hw *hw)
+{
+	s32 ret_val = 0;
+	u16 value = 0;
+	int i;
+
+	DEBUGFUNC("ngbe_init_phy_mvl");
+
+	/* enable interrupts, only link status change and an done is allowed */
+	ngbe_write_phy_reg_mdi(hw, MVL_PAGE_SEL, 0, 2);
+	ngbe_read_phy_reg_mdi(hw, MVL_RGM_CTL2, 0, &value);
+	value &= ~MVL_RGM_CTL2_TTC;
+	value |= MVL_RGM_CTL2_RTC;
+	ngbe_write_phy_reg_mdi(hw, MVL_RGM_CTL2, 0, value);
+
+	hw->phy.write_reg(hw, MVL_CTRL, 0, MVL_CTRL_RESET);
+	for (i = 0; i < 15; i++) {
+		ngbe_read_phy_reg_mdi(hw, MVL_CTRL, 0, &value);
+		if (value & MVL_CTRL_RESET)
+			msleep(1);
+		else
+			break;
+	}
+
+	if (i == 15) {
+		DEBUGOUT("phy reset exceeds maximum waiting period.\n");
+		return NGBE_ERR_TIMEOUT;
+	}
+
+	ret_val = hw->phy.reset_hw(hw);
+	if (ret_val)
+		return ret_val;
+
+	/* set LED2 to interrupt output and INTn active low */
+	ngbe_write_phy_reg_mdi(hw, MVL_PAGE_SEL, 0, 3);
+	ngbe_read_phy_reg_mdi(hw, MVL_LEDTCR, 0, &value);
+	value |= MVL_LEDTCR_INTR_EN;
+	value &= ~(MVL_LEDTCR_INTR_POL);
+	ngbe_write_phy_reg_mdi(hw, MVL_LEDTCR, 0, value);
+
+	if (hw->phy.type == ngbe_phy_mvl_sfi) {
+		hw->phy.read_reg(hw, MVL_CTRL1, 0, &value);
+		value &= ~MVL_CTRL1_INTR_POL;
+		ngbe_write_phy_reg_mdi(hw, MVL_CTRL1, 0, value);
+	}
+
+	/* enable link status change and AN complete interrupts */
+	value = MVL_INTR_EN_ANC | MVL_INTR_EN_LSC;
+	hw->phy.write_reg(hw, MVL_INTR_EN, 0, value);
+
+	/* LED control */
+	ngbe_write_phy_reg_mdi(hw, MVL_PAGE_SEL, 0, 3);
+	ngbe_read_phy_reg_mdi(hw, MVL_LEDFCR, 0, &value);
+	value &= ~(MVL_LEDFCR_CTL0 | MVL_LEDFCR_CTL1);
+	value |= MVL_LEDFCR_CTL0_CONF | MVL_LEDFCR_CTL1_CONF;
+	ngbe_write_phy_reg_mdi(hw, MVL_LEDFCR, 0, value);
+	ngbe_read_phy_reg_mdi(hw, MVL_LEDPCR, 0, &value);
+	value &= ~(MVL_LEDPCR_CTL0 | MVL_LEDPCR_CTL1);
+	value |= MVL_LEDPCR_CTL0_CONF | MVL_LEDPCR_CTL1_CONF;
+	ngbe_write_phy_reg_mdi(hw, MVL_LEDPCR, 0, value);
+
+	return ret_val;
+}
+
 s32 ngbe_setup_phy_link_mvl(struct ngbe_hw *hw, u32 speed,
 				bool autoneg_wait_to_complete)
 {

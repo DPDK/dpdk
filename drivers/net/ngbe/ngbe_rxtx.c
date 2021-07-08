@@ -484,3 +484,60 @@ ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
+void
+ngbe_dev_clear_queues(struct rte_eth_dev *dev)
+{
+	unsigned int i;
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct ngbe_tx_queue *txq = dev->data->tx_queues[i];
+
+		if (txq != NULL) {
+			txq->ops->release_mbufs(txq);
+			txq->ops->reset(txq);
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct ngbe_rx_queue *rxq = dev->data->rx_queues[i];
+
+		if (rxq != NULL) {
+			ngbe_rx_queue_release_mbufs(rxq);
+			ngbe_reset_rx_queue(adapter, rxq);
+		}
+	}
+}
+
+/*
+ * Initializes Receive Unit.
+ */
+int
+ngbe_dev_rx_init(struct rte_eth_dev *dev)
+{
+	RTE_SET_USED(dev);
+
+	return -EINVAL;
+}
+
+/*
+ * Initializes Transmit Unit.
+ */
+void
+ngbe_dev_tx_init(struct rte_eth_dev *dev)
+{
+	RTE_SET_USED(dev);
+}
+
+/*
+ * Start Transmit and Receive Units.
+ */
+int
+ngbe_dev_rxtx_start(struct rte_eth_dev *dev)
+{
+	RTE_SET_USED(dev);
+
+	return -EINVAL;
+}

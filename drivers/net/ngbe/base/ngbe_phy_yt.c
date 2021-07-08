@@ -98,6 +98,32 @@ s32 ngbe_write_phy_reg_sds_ext_yt(struct ngbe_hw *hw,
 	return 0;
 }
 
+s32 ngbe_init_phy_yt(struct ngbe_hw *hw)
+{
+	u16 value = 0;
+
+	DEBUGFUNC("ngbe_init_phy_yt");
+
+	if (hw->phy.type != ngbe_phy_yt8521s_sfi)
+		return 0;
+
+	/* select sds area register */
+	ngbe_write_phy_reg_ext_yt(hw, YT_SMI_PHY, 0, 0);
+	/* enable interrupts */
+	ngbe_write_phy_reg_mdi(hw, YT_INTR, 0, YT_INTR_ENA_MASK);
+
+	/* select fiber_to_rgmii first in multiplex */
+	ngbe_read_phy_reg_ext_yt(hw, YT_MISC, 0, &value);
+	value |= YT_MISC_FIBER_PRIO;
+	ngbe_write_phy_reg_ext_yt(hw, YT_MISC, 0, value);
+
+	hw->phy.read_reg(hw, YT_BCR, 0, &value);
+	value |= YT_BCR_PWDN;
+	hw->phy.write_reg(hw, YT_BCR, 0, value);
+
+	return 0;
+}
+
 s32 ngbe_setup_phy_link_yt(struct ngbe_hw *hw, u32 speed,
 				bool autoneg_wait_to_complete)
 {

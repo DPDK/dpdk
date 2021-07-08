@@ -13,7 +13,10 @@
 #define NGBE_FLAG_MACSEC            ((uint32_t)(1 << 3))
 #define NGBE_FLAG_NEED_LINK_CONFIG  ((uint32_t)(1 << 4))
 
+#define NGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
+
 #define NGBE_MISC_VEC_ID               RTE_INTR_VEC_ZERO_OFFSET
+#define NGBE_RX_VEC_START              RTE_INTR_VEC_RXTX_OFFSET
 
 /* structure for interrupt relative data */
 struct ngbe_interrupt {
@@ -59,6 +62,11 @@ ngbe_dev_intr(struct rte_eth_dev *dev)
 	return intr;
 }
 
+/*
+ * Rx/Tx function prototypes
+ */
+void ngbe_dev_clear_queues(struct rte_eth_dev *dev);
+
 void ngbe_dev_rx_queue_release(void *rxq);
 
 void ngbe_dev_tx_queue_release(void *txq);
@@ -71,6 +79,15 @@ int  ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 int  ngbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
+
+int ngbe_dev_rx_init(struct rte_eth_dev *dev);
+
+void ngbe_dev_tx_init(struct rte_eth_dev *dev);
+
+int ngbe_dev_rxtx_start(struct rte_eth_dev *dev);
+
+void ngbe_set_ivar_map(struct ngbe_hw *hw, int8_t direction,
+			       uint8_t queue, uint8_t msix_vector);
 
 int
 ngbe_dev_link_update_share(struct rte_eth_dev *dev,

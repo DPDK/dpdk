@@ -94,15 +94,20 @@ struct ngbe_rom_info {
 struct ngbe_mac_info {
 	s32 (*init_hw)(struct ngbe_hw *hw);
 	s32 (*reset_hw)(struct ngbe_hw *hw);
+	s32 (*start_hw)(struct ngbe_hw *hw);
 	s32 (*stop_hw)(struct ngbe_hw *hw);
 	s32 (*get_mac_addr)(struct ngbe_hw *hw, u8 *mac_addr);
 	s32 (*acquire_swfw_sync)(struct ngbe_hw *hw, u32 mask);
 	void (*release_swfw_sync)(struct ngbe_hw *hw, u32 mask);
 
+	/* Link */
 	s32 (*setup_link)(struct ngbe_hw *hw, u32 speed,
 			       bool autoneg_wait_to_complete);
 	s32 (*check_link)(struct ngbe_hw *hw, u32 *speed,
 			       bool *link_up, bool link_up_wait_to_complete);
+	s32 (*get_link_capabilities)(struct ngbe_hw *hw,
+				      u32 *speed, bool *autoneg);
+
 	/* RAR */
 	s32 (*set_rar)(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 			  u32 enable_addr);
@@ -128,11 +133,13 @@ struct ngbe_mac_info {
 	bool set_lben;
 	u32  max_link_up_time;
 
+	u32 default_speeds;
 	bool autoneg;
 };
 
 struct ngbe_phy_info {
 	s32 (*identify)(struct ngbe_hw *hw);
+	s32 (*init_hw)(struct ngbe_hw *hw);
 	s32 (*reset_hw)(struct ngbe_hw *hw);
 	s32 (*read_reg)(struct ngbe_hw *hw, u32 reg_addr,
 				u32 device_type, u16 *phy_data);
@@ -180,6 +187,8 @@ struct ngbe_hw {
 
 	uint64_t isb_dma;
 	void IOMEM *isb_mem;
+	u16 nb_rx_queues;
+	u16 nb_tx_queues;
 
 	bool is_pf;
 };
