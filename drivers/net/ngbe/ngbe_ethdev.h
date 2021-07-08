@@ -30,4 +30,6 @@ ngbe_dev_hw(struct rte_eth_dev *dev)
 	return hw;
 }
 
+#define NGBE_VMDQ_NUM_UC_MAC         4096 /* Maximum nb. of UC MAC addr. */
+
 #endif /* _NGBE_ETHDEV_H_ */

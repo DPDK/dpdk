@@ -142,7 +142,47 @@ s32 ngbe_reset_hw_em(struct ngbe_hw *hw)
 
 	msec_delay(50);
 
+	/* Store the permanent mac address */
+	hw->mac.get_mac_addr(hw, hw->mac.perm_addr);
+
+	/*
+	 * Store MAC address from RAR0, clear receive address registers, and
+	 * clear the multicast table.
+	 */
+	hw->mac.num_rar_entries = NGBE_EM_RAR_ENTRIES;
+	hw->mac.init_rx_addrs(hw);
+
 	return status;
+}
+
+/**
+ *  ngbe_get_mac_addr - Generic get MAC address
+ *  @hw: pointer to hardware structure
+ *  @mac_addr: Adapter MAC address
+ *
+ *  Reads the adapter's MAC address from first Receive Address Register (RAR0)
+ *  A reset of the adapter must be performed prior to calling this function
+ *  in order for the MAC address to have been loaded from the EEPROM into RAR0
+ **/
+s32 ngbe_get_mac_addr(struct ngbe_hw *hw, u8 *mac_addr)
+{
+	u32 rar_high;
+	u32 rar_low;
+	u16 i;
+
+	DEBUGFUNC("ngbe_get_mac_addr");
+
+	wr32(hw, NGBE_ETHADDRIDX, 0);
+	rar_high = rd32(hw, NGBE_ETHADDRH);
+	rar_low = rd32(hw, NGBE_ETHADDRL);
+
+	for (i = 0; i < 2; i++)
+		mac_addr[i] = (u8)(rar_high >> (1 - i) * 8);
+
+	for (i = 0; i < 4; i++)
+		mac_addr[i + 2] = (u8)(rar_low >> (3 - i) * 8);
+
+	return 0;
 }
 
 /**
@@ -216,6 +256,196 @@ s32 ngbe_stop_hw(struct ngbe_hw *hw)
 }
 
 /**
+ *  ngbe_validate_mac_addr - Validate MAC address
+ *  @mac_addr: pointer to MAC address.
+ *
+ *  Tests a MAC address to ensure it is a valid Individual Address.
+ **/
+s32 ngbe_validate_mac_addr(u8 *mac_addr)
+{
+	s32 status = 0;
+
+	DEBUGFUNC("ngbe_validate_mac_addr");
+
+	/* Make sure it is not a multicast address */
+	if (NGBE_IS_MULTICAST((struct rte_ether_addr *)mac_addr)) {
+		status = NGBE_ERR_INVALID_MAC_ADDR;
+	/* Not a broadcast address */
+	} else if (NGBE_IS_BROADCAST((struct rte_ether_addr *)mac_addr)) {
+		status = NGBE_ERR_INVALID_MAC_ADDR;
+	/* Reject the zero address */
+	} else if (mac_addr[0] == 0 && mac_addr[1] == 0 && mac_addr[2] == 0 &&
+		   mac_addr[3] == 0 && mac_addr[4] == 0 && mac_addr[5] == 0) {
+		status = NGBE_ERR_INVALID_MAC_ADDR;
+	}
+	return status;
+}
+
+/**
+ *  ngbe_set_rar - Set Rx address register
+ *  @hw: pointer to hardware structure
+ *  @index: Receive address register to write
+ *  @addr: Address to put into receive address register
+ *  @vmdq: VMDq "set" or "pool" index
+ *  @enable_addr: set flag that address is active
+ *
+ *  Puts an ethernet address into a receive address register.
+ **/
+s32 ngbe_set_rar(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
+			  u32 enable_addr)
+{
+	u32 rar_low, rar_high;
+	u32 rar_entries = hw->mac.num_rar_entries;
+
+	DEBUGFUNC("ngbe_set_rar");
+
+	/* Make sure we are using a valid rar index range */
+	if (index >= rar_entries) {
+		DEBUGOUT("RAR index %d is out of range.\n", index);
+		return NGBE_ERR_INVALID_ARGUMENT;
+	}
+
+	/* setup VMDq pool selection before this RAR gets enabled */
+	hw->mac.set_vmdq(hw, index, vmdq);
+
+	/*
+	 * HW expects these in little endian so we reverse the byte
+	 * order from network order (big endian) to little endian
+	 */
+	rar_low = NGBE_ETHADDRL_AD0(addr[5]) |
+		  NGBE_ETHADDRL_AD1(addr[4]) |
+		  NGBE_ETHADDRL_AD2(addr[3]) |
+		  NGBE_ETHADDRL_AD3(addr[2]);
+	/*
+	 * Some parts put the VMDq setting in the extra RAH bits,
+	 * so save everything except the lower 16 bits that hold part
+	 * of the address and the address valid bit.
+	 */
+	rar_high = rd32(hw, NGBE_ETHADDRH);
+	rar_high &= ~NGBE_ETHADDRH_AD_MASK;
+	rar_high |= (NGBE_ETHADDRH_AD4(addr[1]) |
+		     NGBE_ETHADDRH_AD5(addr[0]));
+
+	rar_high &= ~NGBE_ETHADDRH_VLD;
+	if (enable_addr != 0)
+		rar_high |= NGBE_ETHADDRH_VLD;
+
+	wr32(hw, NGBE_ETHADDRIDX, index);
+	wr32(hw, NGBE_ETHADDRL, rar_low);
+	wr32(hw, NGBE_ETHADDRH, rar_high);
+
+	return 0;
+}
+
+/**
+ *  ngbe_clear_rar - Remove Rx address register
+ *  @hw: pointer to hardware structure
+ *  @index: Receive address register to write
+ *
+ *  Clears an ethernet address from a receive address register.
+ **/
+s32 ngbe_clear_rar(struct ngbe_hw *hw, u32 index)
+{
+	u32 rar_high;
+	u32 rar_entries = hw->mac.num_rar_entries;
+
+	DEBUGFUNC("ngbe_clear_rar");
+
+	/* Make sure we are using a valid rar index range */
+	if (index >= rar_entries) {
+		DEBUGOUT("RAR index %d is out of range.\n", index);
+		return NGBE_ERR_INVALID_ARGUMENT;
+	}
+
+	/*
+	 * Some parts put the VMDq setting in the extra RAH bits,
+	 * so save everything except the lower 16 bits that hold part
+	 * of the address and the address valid bit.
+	 */
+	wr32(hw, NGBE_ETHADDRIDX, index);
+	rar_high = rd32(hw, NGBE_ETHADDRH);
+	rar_high &= ~(NGBE_ETHADDRH_AD_MASK | NGBE_ETHADDRH_VLD);
+
+	wr32(hw, NGBE_ETHADDRL, 0);
+	wr32(hw, NGBE_ETHADDRH, rar_high);
+
+	/* clear VMDq pool/queue selection for this RAR */
+	hw->mac.clear_vmdq(hw, index, BIT_MASK32);
+
+	return 0;
+}
+
+/**
+ *  ngbe_init_rx_addrs - Initializes receive address filters.
+ *  @hw: pointer to hardware structure
+ *
+ *  Places the MAC address in receive address register 0 and clears the rest
+ *  of the receive address registers. Clears the multicast table. Assumes
+ *  the receiver is in reset when the routine is called.
+ **/
+s32 ngbe_init_rx_addrs(struct ngbe_hw *hw)
+{
+	u32 i;
+	u32 psrctl;
+	u32 rar_entries = hw->mac.num_rar_entries;
+
+	DEBUGFUNC("ngbe_init_rx_addrs");
+
+	/*
+	 * If the current mac address is valid, assume it is a software override
+	 * to the permanent address.
+	 * Otherwise, use the permanent address from the eeprom.
+	 */
+	if (ngbe_validate_mac_addr(hw->mac.addr) ==
+	    NGBE_ERR_INVALID_MAC_ADDR) {
+		/* Get the MAC address from the RAR0 for later reference */
+		hw->mac.get_mac_addr(hw, hw->mac.addr);
+
+		DEBUGOUT(" Keeping Current RAR0 Addr =%.2X %.2X %.2X ",
+			  hw->mac.addr[0], hw->mac.addr[1],
+			  hw->mac.addr[2]);
+		DEBUGOUT("%.2X %.2X %.2X\n", hw->mac.addr[3],
+			  hw->mac.addr[4], hw->mac.addr[5]);
+	} else {
+		/* Setup the receive address. */
+		DEBUGOUT("Overriding MAC Address in RAR[0]\n");
+		DEBUGOUT(" New MAC Addr =%.2X %.2X %.2X ",
+			  hw->mac.addr[0], hw->mac.addr[1],
+			  hw->mac.addr[2]);
+		DEBUGOUT("%.2X %.2X %.2X\n", hw->mac.addr[3],
+			  hw->mac.addr[4], hw->mac.addr[5]);
+
+		hw->mac.set_rar(hw, 0, hw->mac.addr, 0, true);
+	}
+
+	/* clear VMDq pool/queue selection for RAR 0 */
+	hw->mac.clear_vmdq(hw, 0, BIT_MASK32);
+
+	/* Zero out the other receive addresses. */
+	DEBUGOUT("Clearing RAR[1-%d]\n", rar_entries - 1);
+	for (i = 1; i < rar_entries; i++) {
+		wr32(hw, NGBE_ETHADDRIDX, i);
+		wr32(hw, NGBE_ETHADDRL, 0);
+		wr32(hw, NGBE_ETHADDRH, 0);
+	}
+
+	/* Clear the MTA */
+	hw->addr_ctrl.mta_in_use = 0;
+	psrctl = rd32(hw, NGBE_PSRCTL);
+	psrctl &= ~(NGBE_PSRCTL_ADHF12_MASK | NGBE_PSRCTL_MCHFENA);
+	psrctl |= NGBE_PSRCTL_ADHF12(hw->mac.mc_filter_type);
+	wr32(hw, NGBE_PSRCTL, psrctl);
+
+	DEBUGOUT(" Clearing MTA\n");
+	for (i = 0; i < hw->mac.mcft_size; i++)
+		wr32(hw, NGBE_MCADDRTBL(i), 0);
+
+	ngbe_init_uta_tables(hw);
+
+	return 0;
+}
+
+/**
  *  ngbe_acquire_swfw_sync - Acquire SWFW semaphore
  *  @hw: pointer to hardware structure
  *  @mask: Mask to specify which semaphore to acquire
@@ -284,6 +514,89 @@ void ngbe_release_swfw_sync(struct ngbe_hw *hw, u32 mask)
 	wr32(hw, NGBE_MNGSEM, mngsem);
 
 	ngbe_release_eeprom_semaphore(hw);
+}
+
+/**
+ *  ngbe_clear_vmdq - Disassociate a VMDq pool index from a rx address
+ *  @hw: pointer to hardware struct
+ *  @rar: receive address register index to disassociate
+ *  @vmdq: VMDq pool index to remove from the rar
+ **/
+s32 ngbe_clear_vmdq(struct ngbe_hw *hw, u32 rar, u32 vmdq)
+{
+	u32 mpsar;
+	u32 rar_entries = hw->mac.num_rar_entries;
+
+	DEBUGFUNC("ngbe_clear_vmdq");
+
+	/* Make sure we are using a valid rar index range */
+	if (rar >= rar_entries) {
+		DEBUGOUT("RAR index %d is out of range.\n", rar);
+		return NGBE_ERR_INVALID_ARGUMENT;
+	}
+
+	wr32(hw, NGBE_ETHADDRIDX, rar);
+	mpsar = rd32(hw, NGBE_ETHADDRASS);
+
+	if (NGBE_REMOVED(hw->hw_addr))
+		goto done;
+
+	if (!mpsar)
+		goto done;
+
+	mpsar &= ~(1 << vmdq);
+	wr32(hw, NGBE_ETHADDRASS, mpsar);
+
+	/* was that the last pool using this rar? */
+	if (mpsar == 0 && rar != 0)
+		hw->mac.clear_rar(hw, rar);
+done:
+	return 0;
+}
+
+/**
+ *  ngbe_set_vmdq - Associate a VMDq pool index with a rx address
+ *  @hw: pointer to hardware struct
+ *  @rar: receive address register index to associate with a VMDq index
+ *  @vmdq: VMDq pool index
+ **/
+s32 ngbe_set_vmdq(struct ngbe_hw *hw, u32 rar, u32 vmdq)
+{
+	u32 mpsar;
+	u32 rar_entries = hw->mac.num_rar_entries;
+
+	DEBUGFUNC("ngbe_set_vmdq");
+
+	/* Make sure we are using a valid rar index range */
+	if (rar >= rar_entries) {
+		DEBUGOUT("RAR index %d is out of range.\n", rar);
+		return NGBE_ERR_INVALID_ARGUMENT;
+	}
+
+	wr32(hw, NGBE_ETHADDRIDX, rar);
+
+	mpsar = rd32(hw, NGBE_ETHADDRASS);
+	mpsar |= 1 << vmdq;
+	wr32(hw, NGBE_ETHADDRASS, mpsar);
+
+	return 0;
+}
+
+/**
+ *  ngbe_init_uta_tables - Initialize the Unicast Table Array
+ *  @hw: pointer to hardware structure
+ **/
+s32 ngbe_init_uta_tables(struct ngbe_hw *hw)
+{
+	int i;
+
+	DEBUGFUNC("ngbe_init_uta_tables");
+	DEBUGOUT(" Clearing UTA\n");
+
+	for (i = 0; i < 128; i++)
+		wr32(hw, NGBE_UCADDRTBL(i), 0);
+
+	return 0;
 }
 
 /**
@@ -481,9 +794,17 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	/* MAC */
 	mac->init_hw = ngbe_init_hw;
 	mac->reset_hw = ngbe_reset_hw_em;
+	mac->get_mac_addr = ngbe_get_mac_addr;
 	mac->stop_hw = ngbe_stop_hw;
 	mac->acquire_swfw_sync = ngbe_acquire_swfw_sync;
 	mac->release_swfw_sync = ngbe_release_swfw_sync;
+
+	/* RAR */
+	mac->set_rar = ngbe_set_rar;
+	mac->clear_rar = ngbe_clear_rar;
+	mac->init_rx_addrs = ngbe_init_rx_addrs;
+	mac->set_vmdq = ngbe_set_vmdq;
+	mac->clear_vmdq = ngbe_clear_vmdq;
 
 	/* Manageability interface */
 	mac->init_thermal_sensor_thresh = ngbe_init_thermal_sensor_thresh;
@@ -493,6 +814,8 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	rom->init_params = ngbe_init_eeprom_params;
 	rom->validate_checksum = ngbe_validate_eeprom_checksum_em;
 
+	mac->mcft_size		= NGBE_EM_MC_TBL_SIZE;
+	mac->num_rar_entries	= NGBE_EM_RAR_ENTRIES;
 	mac->max_rx_queues	= NGBE_EM_MAX_RX_QUEUES;
 	mac->max_tx_queues	= NGBE_EM_MAX_TX_QUEUES;
 

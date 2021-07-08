@@ -51,6 +51,10 @@ static inline s32 ngbe_mac_stop_hw_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
+static inline s32 ngbe_mac_get_mac_addr_dummy(struct ngbe_hw *TUP0, u8 *TUP1)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
 static inline s32 ngbe_mac_acquire_swfw_sync_dummy(struct ngbe_hw *TUP0,
 					u32 TUP1)
 {
@@ -59,6 +63,29 @@ static inline s32 ngbe_mac_acquire_swfw_sync_dummy(struct ngbe_hw *TUP0,
 static inline void ngbe_mac_release_swfw_sync_dummy(struct ngbe_hw *TUP0,
 					u32 TUP1)
 {
+}
+static inline s32 ngbe_mac_set_rar_dummy(struct ngbe_hw *TUP0, u32 TUP1,
+					u8 *TUP2, u32 TUP3, u32 TUP4)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_mac_clear_rar_dummy(struct ngbe_hw *TUP0, u32 TUP1)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_mac_set_vmdq_dummy(struct ngbe_hw *TUP0, u32 TUP1,
+					u32 TUP2)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_mac_clear_vmdq_dummy(struct ngbe_hw *TUP0, u32 TUP1,
+					u32 TUP2)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_mac_init_rx_addrs_dummy(struct ngbe_hw *TUP0)
+{
+	return NGBE_ERR_OPS_DUMMY;
 }
 static inline s32 ngbe_mac_init_thermal_ssth_dummy(struct ngbe_hw *TUP0)
 {
@@ -105,8 +132,14 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->mac.init_hw = ngbe_mac_init_hw_dummy;
 	hw->mac.reset_hw = ngbe_mac_reset_hw_dummy;
 	hw->mac.stop_hw = ngbe_mac_stop_hw_dummy;
+	hw->mac.get_mac_addr = ngbe_mac_get_mac_addr_dummy;
 	hw->mac.acquire_swfw_sync = ngbe_mac_acquire_swfw_sync_dummy;
 	hw->mac.release_swfw_sync = ngbe_mac_release_swfw_sync_dummy;
+	hw->mac.set_rar = ngbe_mac_set_rar_dummy;
+	hw->mac.clear_rar = ngbe_mac_clear_rar_dummy;
+	hw->mac.set_vmdq = ngbe_mac_set_vmdq_dummy;
+	hw->mac.clear_vmdq = ngbe_mac_clear_vmdq_dummy;
+	hw->mac.init_rx_addrs = ngbe_mac_init_rx_addrs_dummy;
 	hw->mac.init_thermal_sensor_thresh = ngbe_mac_init_thermal_ssth_dummy;
 	hw->mac.check_overtemp = ngbe_mac_check_overtemp_dummy;
 	hw->phy.identify = ngbe_phy_identify_dummy;

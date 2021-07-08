@@ -115,6 +115,32 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		return -EIO;
 	}
 
+	/* Allocate memory for storing MAC addresses */
+	eth_dev->data->mac_addrs = rte_zmalloc("ngbe", RTE_ETHER_ADDR_LEN *
+					       hw->mac.num_rar_entries, 0);
+	if (eth_dev->data->mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate %u bytes needed to store MAC addresses",
+			     RTE_ETHER_ADDR_LEN * hw->mac.num_rar_entries);
+		return -ENOMEM;
+	}
+
+	/* Copy the permanent MAC address */
+	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.perm_addr,
+			&eth_dev->data->mac_addrs[0]);
+
+	/* Allocate memory for storing hash filter MAC addresses */
+	eth_dev->data->hash_mac_addrs = rte_zmalloc("ngbe",
+			RTE_ETHER_ADDR_LEN * NGBE_VMDQ_NUM_UC_MAC, 0);
+	if (eth_dev->data->hash_mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate %d bytes needed to store MAC addresses",
+			     RTE_ETHER_ADDR_LEN * NGBE_VMDQ_NUM_UC_MAC);
+		rte_free(eth_dev->data->mac_addrs);
+		eth_dev->data->mac_addrs = NULL;
+		return -ENOMEM;
+	}
+
 	return 0;
 }
 

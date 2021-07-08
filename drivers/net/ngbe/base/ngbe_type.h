@@ -63,6 +63,10 @@ enum ngbe_media_type {
 
 struct ngbe_hw;
 
+struct ngbe_addr_filter_info {
+	u32 mta_in_use;
+};
+
 /* Bus parameters */
 struct ngbe_bus_info {
 	void (*set_lan_id)(struct ngbe_hw *hw);
@@ -89,14 +93,28 @@ struct ngbe_mac_info {
 	s32 (*init_hw)(struct ngbe_hw *hw);
 	s32 (*reset_hw)(struct ngbe_hw *hw);
 	s32 (*stop_hw)(struct ngbe_hw *hw);
+	s32 (*get_mac_addr)(struct ngbe_hw *hw, u8 *mac_addr);
 	s32 (*acquire_swfw_sync)(struct ngbe_hw *hw, u32 mask);
 	void (*release_swfw_sync)(struct ngbe_hw *hw, u32 mask);
+
+	/* RAR */
+	s32 (*set_rar)(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
+			  u32 enable_addr);
+	s32 (*clear_rar)(struct ngbe_hw *hw, u32 index);
+	s32 (*set_vmdq)(struct ngbe_hw *hw, u32 rar, u32 vmdq);
+	s32 (*clear_vmdq)(struct ngbe_hw *hw, u32 rar, u32 vmdq);
+	s32 (*init_rx_addrs)(struct ngbe_hw *hw);
 
 	/* Manageability interface */
 	s32 (*init_thermal_sensor_thresh)(struct ngbe_hw *hw);
 	s32 (*check_overtemp)(struct ngbe_hw *hw);
 
 	enum ngbe_mac_type type;
+	u8 addr[ETH_ADDR_LEN];
+	u8 perm_addr[ETH_ADDR_LEN];
+	s32 mc_filter_type;
+	u32 mcft_size;
+	u32 num_rar_entries;
 	u32 max_tx_queues;
 	u32 max_rx_queues;
 	struct ngbe_thermal_sensor_data  thermal_sensor_data;
@@ -128,6 +146,7 @@ struct ngbe_hw {
 	void IOMEM *hw_addr;
 	void *back;
 	struct ngbe_mac_info mac;
+	struct ngbe_addr_filter_info addr_ctrl;
 	struct ngbe_phy_info phy;
 	struct ngbe_rom_info rom;
 	struct ngbe_bus_info bus;
