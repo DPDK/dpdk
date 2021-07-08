@@ -22,6 +22,234 @@
 
 /*********************************************************************
  *
+ *  Tx functions
+ *
+ **********************************************************************/
+
+/*
+ * Check for descriptors with their DD bit set and free mbufs.
+ * Return the total number of buffers freed.
+ */
+static __rte_always_inline int
+ngbe_tx_free_bufs(struct ngbe_tx_queue *txq)
+{
+	struct ngbe_tx_entry *txep;
+	uint32_t status;
+	int i, nb_free = 0;
+	struct rte_mbuf *m, *free[RTE_NGBE_TX_MAX_FREE_BUF_SZ];
+
+	/* check DD bit on threshold descriptor */
+	status = txq->tx_ring[txq->tx_next_dd].dw3;
+	if (!(status & rte_cpu_to_le_32(NGBE_TXD_DD))) {
+		if (txq->nb_tx_free >> 1 < txq->tx_free_thresh)
+			ngbe_set32_masked(txq->tdc_reg_addr,
+				NGBE_TXCFG_FLUSH, NGBE_TXCFG_FLUSH);
+		return 0;
+	}
+
+	/*
+	 * first buffer to free from S/W ring is at index
+	 * tx_next_dd - (tx_free_thresh-1)
+	 */
+	txep = &txq->sw_ring[txq->tx_next_dd - (txq->tx_free_thresh - 1)];
+	for (i = 0; i < txq->tx_free_thresh; ++i, ++txep) {
+		/* free buffers one at a time */
+		m = rte_pktmbuf_prefree_seg(txep->mbuf);
+		txep->mbuf = NULL;
+
+		if (unlikely(m == NULL))
+			continue;
+
+		if (nb_free >= RTE_NGBE_TX_MAX_FREE_BUF_SZ ||
+		    (nb_free > 0 && m->pool != free[0]->pool)) {
+			rte_mempool_put_bulk(free[0]->pool,
+					     (void **)free, nb_free);
+			nb_free = 0;
+		}
+
+		free[nb_free++] = m;
+	}
+
+	if (nb_free > 0)
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+
+	/* buffers were freed, update counters */
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_free_thresh);
+	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_free_thresh);
+	if (txq->tx_next_dd >= txq->nb_tx_desc)
+		txq->tx_next_dd = (uint16_t)(txq->tx_free_thresh - 1);
+
+	return txq->tx_free_thresh;
+}
+
+/* Populate 4 descriptors with data from 4 mbufs */
+static inline void
+tx4(volatile struct ngbe_tx_desc *txdp, struct rte_mbuf **pkts)
+{
+	uint64_t buf_dma_addr;
+	uint32_t pkt_len;
+	int i;
+
+	for (i = 0; i < 4; ++i, ++txdp, ++pkts) {
+		buf_dma_addr = rte_mbuf_data_iova(*pkts);
+		pkt_len = (*pkts)->data_len;
+
+		/* write data to descriptor */
+		txdp->qw0 = rte_cpu_to_le_64(buf_dma_addr);
+		txdp->dw2 = cpu_to_le32(NGBE_TXD_FLAGS |
+					NGBE_TXD_DATLEN(pkt_len));
+		txdp->dw3 = cpu_to_le32(NGBE_TXD_PAYLEN(pkt_len));
+
+		rte_prefetch0(&(*pkts)->pool);
+	}
+}
+
+/* Populate 1 descriptor with data from 1 mbuf */
+static inline void
+tx1(volatile struct ngbe_tx_desc *txdp, struct rte_mbuf **pkts)
+{
+	uint64_t buf_dma_addr;
+	uint32_t pkt_len;
+
+	buf_dma_addr = rte_mbuf_data_iova(*pkts);
+	pkt_len = (*pkts)->data_len;
+
+	/* write data to descriptor */
+	txdp->qw0 = cpu_to_le64(buf_dma_addr);
+	txdp->dw2 = cpu_to_le32(NGBE_TXD_FLAGS |
+				NGBE_TXD_DATLEN(pkt_len));
+	txdp->dw3 = cpu_to_le32(NGBE_TXD_PAYLEN(pkt_len));
+
+	rte_prefetch0(&(*pkts)->pool);
+}
+
+/*
+ * Fill H/W descriptor ring with mbuf data.
+ * Copy mbuf pointers to the S/W ring.
+ */
+static inline void
+ngbe_tx_fill_hw_ring(struct ngbe_tx_queue *txq, struct rte_mbuf **pkts,
+		      uint16_t nb_pkts)
+{
+	volatile struct ngbe_tx_desc *txdp = &txq->tx_ring[txq->tx_tail];
+	struct ngbe_tx_entry *txep = &txq->sw_ring[txq->tx_tail];
+	const int N_PER_LOOP = 4;
+	const int N_PER_LOOP_MASK = N_PER_LOOP - 1;
+	int mainpart, leftover;
+	int i, j;
+
+	/*
+	 * Process most of the packets in chunks of N pkts.  Any
+	 * leftover packets will get processed one at a time.
+	 */
+	mainpart = (nb_pkts & ((uint32_t)~N_PER_LOOP_MASK));
+	leftover = (nb_pkts & ((uint32_t)N_PER_LOOP_MASK));
+	for (i = 0; i < mainpart; i += N_PER_LOOP) {
+		/* Copy N mbuf pointers to the S/W ring */
+		for (j = 0; j < N_PER_LOOP; ++j)
+			(txep + i + j)->mbuf = *(pkts + i + j);
+		tx4(txdp + i, pkts + i);
+	}
+
+	if (unlikely(leftover > 0)) {
+		for (i = 0; i < leftover; ++i) {
+			(txep + mainpart + i)->mbuf = *(pkts + mainpart + i);
+			tx1(txdp + mainpart + i, pkts + mainpart + i);
+		}
+	}
+}
+
+static inline uint16_t
+tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+	     uint16_t nb_pkts)
+{
+	struct ngbe_tx_queue *txq = (struct ngbe_tx_queue *)tx_queue;
+	uint16_t n = 0;
+
+	/*
+	 * Begin scanning the H/W ring for done descriptors when the
+	 * number of available descriptors drops below tx_free_thresh.
+	 * For each done descriptor, free the associated buffer.
+	 */
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		ngbe_tx_free_bufs(txq);
+
+	/* Only use descriptors that are available */
+	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	/* Use exactly nb_pkts descriptors */
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
+
+	/*
+	 * At this point, we know there are enough descriptors in the
+	 * ring to transmit all the packets.  This assumes that each
+	 * mbuf contains a single segment, and that no new offloads
+	 * are expected, which would require a new context descriptor.
+	 */
+
+	/*
+	 * See if we're going to wrap-around. If so, handle the top
+	 * of the descriptor ring first, then do the bottom.  If not,
+	 * the processing looks just like the "bottom" part anyway...
+	 */
+	if ((txq->tx_tail + nb_pkts) > txq->nb_tx_desc) {
+		n = (uint16_t)(txq->nb_tx_desc - txq->tx_tail);
+		ngbe_tx_fill_hw_ring(txq, tx_pkts, n);
+		txq->tx_tail = 0;
+	}
+
+	/* Fill H/W descriptor ring with mbuf data */
+	ngbe_tx_fill_hw_ring(txq, tx_pkts + n, (uint16_t)(nb_pkts - n));
+	txq->tx_tail = (uint16_t)(txq->tx_tail + (nb_pkts - n));
+
+	/*
+	 * Check for wrap-around. This would only happen if we used
+	 * up to the last descriptor in the ring, no more, no less.
+	 */
+	if (txq->tx_tail >= txq->nb_tx_desc)
+		txq->tx_tail = 0;
+
+	PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u tx_tail=%u nb_tx=%u",
+		   (uint16_t)txq->port_id, (uint16_t)txq->queue_id,
+		   (uint16_t)txq->tx_tail, (uint16_t)nb_pkts);
+
+	/* update tail pointer */
+	rte_wmb();
+	ngbe_set32_relaxed(txq->tdt_reg_addr, txq->tx_tail);
+
+	return nb_pkts;
+}
+
+uint16_t
+ngbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
+		       uint16_t nb_pkts)
+{
+	uint16_t nb_tx;
+
+	/* Try to transmit at least chunks of TX_MAX_BURST pkts */
+	if (likely(nb_pkts <= RTE_PMD_NGBE_TX_MAX_BURST))
+		return tx_xmit_pkts(tx_queue, tx_pkts, nb_pkts);
+
+	/* transmit more than the max burst, in chunks of TX_MAX_BURST */
+	nb_tx = 0;
+	while (nb_pkts != 0) {
+		uint16_t ret, n;
+
+		n = (uint16_t)RTE_MIN(nb_pkts, RTE_PMD_NGBE_TX_MAX_BURST);
+		ret = tx_xmit_pkts(tx_queue, &tx_pkts[nb_tx], n);
+		nb_tx = (uint16_t)(nb_tx + ret);
+		nb_pkts = (uint16_t)(nb_pkts - ret);
+		if (ret < n)
+			break;
+	}
+
+	return nb_tx;
+}
+
+/*********************************************************************
+ *
  *  Rx functions
  *
  **********************************************************************/

@@ -147,7 +147,34 @@ struct ngbe_tx_desc {
 	rte_le32_t dw3; /* r.olinfo_status, w.status      */
 };
 
+/* @ngbe_tx_desc.dw2 */
+#define NGBE_TXD_DATLEN(v)        ((0xFFFF & (v))) /* data buffer length */
+#define NGBE_TXD_1588             ((0x1) << 19) /* IEEE1588 time stamp */
+#define NGBE_TXD_DATA             ((0x0) << 20) /* data descriptor */
+#define NGBE_TXD_EOP              ((0x1) << 24) /* End of Packet */
+#define NGBE_TXD_FCS              ((0x1) << 25) /* Insert FCS */
+#define NGBE_TXD_LINKSEC          ((0x1) << 26) /* Insert LinkSec */
+#define NGBE_TXD_ECU              ((0x1) << 28) /* forward to ECU */
+#define NGBE_TXD_CNTAG            ((0x1) << 29) /* insert CN tag */
+#define NGBE_TXD_VLE              ((0x1) << 30) /* insert VLAN tag */
+#define NGBE_TXD_TSE              ((0x1) << 31) /* transmit segmentation */
+
+#define NGBE_TXD_FLAGS (NGBE_TXD_FCS | NGBE_TXD_EOP)
+
+/* @ngbe_tx_desc.dw3 */
+#define NGBE_TXD_DD_UNUSED        NGBE_TXD_DD
+#define NGBE_TXD_IDX_UNUSED(v)    NGBE_TXD_IDX(v)
+#define NGBE_TXD_CC               ((0x1) << 7) /* check context */
+#define NGBE_TXD_IPSEC            ((0x1) << 8) /* request ipsec offload */
+#define NGBE_TXD_L4CS             ((0x1) << 9) /* insert TCP/UDP/SCTP csum */
+#define NGBE_TXD_IPCS             ((0x1) << 10) /* insert IPv4 csum */
+#define NGBE_TXD_EIPCS            ((0x1) << 11) /* insert outer IP csum */
+#define NGBE_TXD_MNGFLT           ((0x1) << 12) /* enable management filter */
+#define NGBE_TXD_PAYLEN(v)        ((0x7FFFF & (v)) << 13) /* payload length */
+
+#define RTE_PMD_NGBE_TX_MAX_BURST 32
 #define RTE_PMD_NGBE_RX_MAX_BURST 32
+#define RTE_NGBE_TX_MAX_FREE_BUF_SZ 64
 
 #define RX_RING_SZ ((NGBE_RING_DESC_MAX + RTE_PMD_NGBE_RX_MAX_BURST) * \
 		    sizeof(struct ngbe_rx_desc))
