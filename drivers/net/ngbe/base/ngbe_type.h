@@ -190,6 +190,7 @@ struct ngbe_hw {
 	u16 nb_rx_queues;
 	u16 nb_tx_queues;
 
+	u32 q_tx_regs[8 * 4];
 	bool is_pf;
 };
 

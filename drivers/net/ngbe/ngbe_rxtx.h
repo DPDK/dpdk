@@ -73,6 +73,9 @@ struct ngbe_tx_desc {
 #define RX_RING_SZ ((NGBE_RING_DESC_MAX + RTE_PMD_NGBE_RX_MAX_BURST) * \
 		    sizeof(struct ngbe_rx_desc))
 
+#define RTE_NGBE_REGISTER_POLL_WAIT_10_MS  10
+#define RTE_NGBE_WAIT_100_US               100
+
 #define NGBE_TX_MAX_SEG                    40
 
 #ifndef DEFAULT_TX_FREE_THRESH

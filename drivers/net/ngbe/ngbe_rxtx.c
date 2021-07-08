@@ -528,7 +528,32 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 void
 ngbe_dev_tx_init(struct rte_eth_dev *dev)
 {
-	RTE_SET_USED(dev);
+	struct ngbe_hw     *hw;
+	struct ngbe_tx_queue *txq;
+	uint64_t bus_addr;
+	uint16_t i;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = ngbe_dev_hw(dev);
+
+	wr32m(hw, NGBE_SECTXCTL, NGBE_SECTXCTL_ODSA, NGBE_SECTXCTL_ODSA);
+	wr32m(hw, NGBE_SECTXCTL, NGBE_SECTXCTL_XDSA, 0);
+
+	/* Setup the Base and Length of the Tx Descriptor Rings */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+
+		bus_addr = txq->tx_ring_phys_addr;
+		wr32(hw, NGBE_TXBAL(txq->reg_idx),
+				(uint32_t)(bus_addr & BIT_MASK32));
+		wr32(hw, NGBE_TXBAH(txq->reg_idx),
+				(uint32_t)(bus_addr >> 32));
+		wr32m(hw, NGBE_TXCFG(txq->reg_idx), NGBE_TXCFG_BUFLEN_MASK,
+			NGBE_TXCFG_BUFLEN(txq->nb_tx_desc));
+		/* Setup the HW Tx Head and TX Tail descriptor pointers */
+		wr32(hw, NGBE_TXRP(txq->reg_idx), 0);
+		wr32(hw, NGBE_TXWP(txq->reg_idx), 0);
+	}
 }
 
 /*
@@ -537,7 +562,140 @@ ngbe_dev_tx_init(struct rte_eth_dev *dev)
 int
 ngbe_dev_rxtx_start(struct rte_eth_dev *dev)
 {
-	RTE_SET_USED(dev);
+	struct ngbe_hw     *hw;
+	struct ngbe_tx_queue *txq;
+	uint32_t dmatxctl;
+	uint16_t i;
+	int ret = 0;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = ngbe_dev_hw(dev);
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		/* Setup Transmit Threshold Registers */
+		wr32m(hw, NGBE_TXCFG(txq->reg_idx),
+		      NGBE_TXCFG_HTHRESH_MASK |
+		      NGBE_TXCFG_WTHRESH_MASK,
+		      NGBE_TXCFG_HTHRESH(txq->hthresh) |
+		      NGBE_TXCFG_WTHRESH(txq->wthresh));
+	}
+
+	dmatxctl = rd32(hw, NGBE_DMATXCTRL);
+	dmatxctl |= NGBE_DMATXCTRL_ENA;
+	wr32(hw, NGBE_DMATXCTRL, dmatxctl);
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (txq->tx_deferred_start == 0) {
+			ret = ngbe_dev_tx_queue_start(dev, i);
+			if (ret < 0)
+				return ret;
+		}
+	}
 
 	return -EINVAL;
+}
+
+void
+ngbe_dev_save_tx_queue(struct ngbe_hw *hw, uint16_t tx_queue_id)
+{
+	u32 *reg = &hw->q_tx_regs[tx_queue_id * 8];
+	*(reg++) = rd32(hw, NGBE_TXBAL(tx_queue_id));
+	*(reg++) = rd32(hw, NGBE_TXBAH(tx_queue_id));
+	*(reg++) = rd32(hw, NGBE_TXCFG(tx_queue_id));
+}
+
+void
+ngbe_dev_store_tx_queue(struct ngbe_hw *hw, uint16_t tx_queue_id)
+{
+	u32 *reg = &hw->q_tx_regs[tx_queue_id * 8];
+	wr32(hw, NGBE_TXBAL(tx_queue_id), *(reg++));
+	wr32(hw, NGBE_TXBAH(tx_queue_id), *(reg++));
+	wr32(hw, NGBE_TXCFG(tx_queue_id), *(reg++) & ~NGBE_TXCFG_ENA);
+}
+
+/*
+ * Start Transmit Units for specified queue.
+ */
+int
+ngbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_tx_queue *txq;
+	uint32_t txdctl;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+
+	txq = dev->data->tx_queues[tx_queue_id];
+	wr32m(hw, NGBE_TXCFG(txq->reg_idx), NGBE_TXCFG_ENA, NGBE_TXCFG_ENA);
+
+	/* Wait until Tx Enable ready */
+	poll_ms = RTE_NGBE_REGISTER_POLL_WAIT_10_MS;
+	do {
+		rte_delay_ms(1);
+		txdctl = rd32(hw, NGBE_TXCFG(txq->reg_idx));
+	} while (--poll_ms && !(txdctl & NGBE_TXCFG_ENA));
+	if (poll_ms == 0)
+		PMD_INIT_LOG(ERR, "Could not enable Tx Queue %d",
+			     tx_queue_id);
+
+	rte_wmb();
+	wr32(hw, NGBE_TXWP(txq->reg_idx), txq->tx_tail);
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+/*
+ * Stop Transmit Units for specified queue.
+ */
+int
+ngbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_tx_queue *txq;
+	uint32_t txdctl;
+	uint32_t txtdh, txtdt;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+
+	txq = dev->data->tx_queues[tx_queue_id];
+
+	/* Wait until Tx queue is empty */
+	poll_ms = RTE_NGBE_REGISTER_POLL_WAIT_10_MS;
+	do {
+		rte_delay_us(RTE_NGBE_WAIT_100_US);
+		txtdh = rd32(hw, NGBE_TXRP(txq->reg_idx));
+		txtdt = rd32(hw, NGBE_TXWP(txq->reg_idx));
+	} while (--poll_ms && (txtdh != txtdt));
+	if (poll_ms == 0)
+		PMD_INIT_LOG(ERR, "Tx Queue %d is not empty when stopping.",
+			     tx_queue_id);
+
+	ngbe_dev_save_tx_queue(hw, txq->reg_idx);
+	wr32m(hw, NGBE_TXCFG(txq->reg_idx), NGBE_TXCFG_ENA, 0);
+
+	/* Wait until Tx Enable bit clear */
+	poll_ms = RTE_NGBE_REGISTER_POLL_WAIT_10_MS;
+	do {
+		rte_delay_ms(1);
+		txdctl = rd32(hw, NGBE_TXCFG(txq->reg_idx));
+	} while (--poll_ms && (txdctl & NGBE_TXCFG_ENA));
+	if (poll_ms == 0)
+		PMD_INIT_LOG(ERR, "Could not disable Tx Queue %d",
+			     tx_queue_id);
+
+	rte_delay_us(RTE_NGBE_WAIT_100_US);
+	ngbe_dev_store_tx_queue(hw, txq->reg_idx);
+
+	if (txq->ops != NULL) {
+		txq->ops->release_mbufs(txq);
+		txq->ops->reset(txq);
+	}
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
 }
