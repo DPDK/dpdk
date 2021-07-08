@@ -2249,7 +2249,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	struct tf_free_tbl_entry_parms free_parms = { 0 };
 	uint32_t tbl_scope_id;
 	struct tf *tfp;
-	struct bnxt_ulp_glb_resource_info glb_res;
+	struct bnxt_ulp_glb_resource_info glb_res = { 0 };
 	uint16_t bit_size;
 	bool alloc = false;
 	bool write = false;

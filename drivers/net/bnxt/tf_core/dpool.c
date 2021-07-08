@@ -125,6 +125,7 @@ int dpool_defrag(struct dpool *dpool,
 		largest_free_size = 0;
 		largest_free_index = 0;
 		count = 0;
+		index = 0;
 
 		for (i = 0; i < dpool->size; i++) {
 			if (DP_IS_FREE(dpool->entry[i].flags)) {
