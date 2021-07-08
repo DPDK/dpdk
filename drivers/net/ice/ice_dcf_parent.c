@@ -143,6 +143,9 @@ ice_dcf_vsi_update_service_handler(void *param)
 		}
 	}
 
+	if (hw->tm_conf.committed)
+		ice_dcf_replay_vf_bw(hw, reset_param->vf_id);
+
 	rte_spinlock_unlock(&vsi_update_lock);
 
 	free(param);

@@ -622,7 +622,6 @@ ice_dcf_dev_stop(struct rte_eth_dev *dev)
 	ice_dcf_add_del_all_mac_addr(&dcf_ad->real_hw, false);
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	ad->pf.adapter_stopped = 1;
-	dcf_ad->real_hw.tm_conf.committed = false;
 
 	return 0;
 }

@@ -668,6 +668,47 @@ static int ice_dcf_commit_check(struct ice_dcf_hw *hw)
 	return ICE_SUCCESS;
 }
 
+int
+ice_dcf_replay_vf_bw(struct ice_dcf_hw *hw, uint16_t vf_id)
+{
+	struct ice_aqc_port_ets_elem old_ets_config;
+	struct ice_dcf_adapter *adapter;
+	struct ice_hw *parent_hw;
+	int ret, size;
+
+	adapter = hw->eth_dev->data->dev_private;
+	parent_hw = &adapter->parent.hw;
+
+	/* store the old ets config */
+	old_ets_config = *hw->ets_config;
+
+	ice_memset(hw->ets_config, 0, sizeof(*hw->ets_config), ICE_NONDMA_MEM);
+	ret = ice_aq_query_port_ets(parent_hw->port_info,
+			hw->ets_config, sizeof(*hw->ets_config),
+			NULL);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "DCF Query Port ETS failed");
+		return ret;
+	}
+
+	if (memcmp(&old_ets_config, hw->ets_config, sizeof(old_ets_config))) {
+		PMD_DRV_LOG(DEBUG, "ETS config changes, do not replay BW");
+		return ICE_SUCCESS;
+	}
+
+	size = sizeof(struct virtchnl_dcf_bw_cfg_list) +
+		sizeof(struct virtchnl_dcf_bw_cfg) *
+		(hw->tm_conf.nb_tc_node - 1);
+
+	ret = ice_dcf_set_vf_bw(hw, hw->qos_bw_cfg[vf_id], size);
+	if (ret) {
+		PMD_DRV_LOG(DEBUG, "VF %u BW replay failed", vf_id);
+		return ICE_ERR_CFG;
+	}
+
+	return ICE_SUCCESS;
+}
+
 static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 				 int clear_on_fail,
 				 __rte_unused struct rte_tm_error *error)
@@ -757,7 +798,16 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 		ret_val = ice_dcf_set_vf_bw(hw, vf_bw, size);
 		if (ret_val)
 			goto fail_clear;
-		memset(vf_bw, 0, size);
+
+		hw->qos_bw_cfg[vf_id] = rte_zmalloc("vf_bw_cfg", size, 0);
+		if (!hw->qos_bw_cfg[vf_id]) {
+			ret_val = ICE_ERR_NO_MEMORY;
+			goto fail_clear;
+		}
+		/* store the bandwidth information for replay */
+		ice_memcpy(hw->qos_bw_cfg[vf_id], vf_bw, sizeof(*vf_bw),
+			   ICE_NONDMA_TO_NONDMA);
+		ice_memset(vf_bw, 0, size, ICE_NONDMA_MEM);
 	}
 
 	/* check if total CIR is larger than port bandwidth */

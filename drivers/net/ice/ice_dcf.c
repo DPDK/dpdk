@@ -577,7 +577,7 @@ int
 ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	int ret;
+	int ret, size;
 
 	hw->avf.hw_addr = pci_dev->mem_resource[0].addr;
 	hw->avf.back = hw;
@@ -669,8 +669,15 @@ ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 		}
 	}
 
-	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS)
+	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS) {
 		ice_dcf_tm_conf_init(eth_dev);
+		size = sizeof(struct virtchnl_dcf_bw_cfg_list *) * hw->num_vfs;
+		hw->qos_bw_cfg = rte_zmalloc("qos_bw_cfg", size, 0);
+		if (!hw->qos_bw_cfg) {
+			PMD_INIT_LOG(ERR, "no memory for qos_bw_cfg");
+			goto err_rss;
+		}
+	}
 
 	hw->eth_dev = eth_dev;
 	rte_intr_callback_register(&pci_dev->intr_handle,

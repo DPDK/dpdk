@@ -90,6 +90,7 @@ struct ice_dcf_hw {
 	uint16_t pf_vsi_id;
 
 	struct ice_dcf_tm_conf tm_conf;
+	struct virtchnl_dcf_bw_cfg_list **qos_bw_cfg;
 	struct ice_aqc_port_ets_elem *ets_config;
 	struct virtchnl_version_info virtchnl_version;
 	struct virtchnl_vf_resource *vf_res; /* VF resource */
@@ -131,5 +132,6 @@ int ice_dcf_link_update(struct rte_eth_dev *dev,
 		    __rte_unused int wait_to_complete);
 void ice_dcf_tm_conf_init(struct rte_eth_dev *dev);
 void ice_dcf_tm_conf_uninit(struct rte_eth_dev *dev);
+int ice_dcf_replay_vf_bw(struct ice_dcf_hw *hw, uint16_t vf_id);
 
 #endif /* _ICE_DCF_H_ */
