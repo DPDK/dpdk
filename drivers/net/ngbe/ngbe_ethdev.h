@@ -99,6 +99,9 @@ int ngbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
 int ngbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
+uint16_t ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+
 void ngbe_set_ivar_map(struct ngbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
 

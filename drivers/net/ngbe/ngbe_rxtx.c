@@ -15,6 +15,175 @@
 #include "ngbe_ethdev.h"
 #include "ngbe_rxtx.h"
 
+/*
+ * Prefetch a cache line into all cache levels.
+ */
+#define rte_ngbe_prefetch(p)   rte_prefetch0(p)
+
+/*********************************************************************
+ *
+ *  Rx functions
+ *
+ **********************************************************************/
+uint16_t
+ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	struct ngbe_rx_queue *rxq;
+	volatile struct ngbe_rx_desc *rx_ring;
+	volatile struct ngbe_rx_desc *rxdp;
+	struct ngbe_rx_entry *sw_ring;
+	struct ngbe_rx_entry *rxe;
+	struct rte_mbuf *rxm;
+	struct rte_mbuf *nmb;
+	struct ngbe_rx_desc rxd;
+	uint64_t dma_addr;
+	uint32_t staterr;
+	uint16_t pkt_len;
+	uint16_t rx_id;
+	uint16_t nb_rx;
+	uint16_t nb_hold;
+
+	nb_rx = 0;
+	nb_hold = 0;
+	rxq = rx_queue;
+	rx_id = rxq->rx_tail;
+	rx_ring = rxq->rx_ring;
+	sw_ring = rxq->sw_ring;
+	struct rte_eth_dev *dev = &rte_eth_devices[rxq->port_id];
+	while (nb_rx < nb_pkts) {
+		/*
+		 * The order of operations here is important as the DD status
+		 * bit must not be read after any other descriptor fields.
+		 * rx_ring and rxdp are pointing to volatile data so the order
+		 * of accesses cannot be reordered by the compiler. If they were
+		 * not volatile, they could be reordered which could lead to
+		 * using invalid descriptor fields when read from rxd.
+		 */
+		rxdp = &rx_ring[rx_id];
+		staterr = rxdp->qw1.lo.status;
+		if (!(staterr & rte_cpu_to_le_32(NGBE_RXD_STAT_DD)))
+			break;
+		rxd = *rxdp;
+
+		/*
+		 * End of packet.
+		 *
+		 * If the NGBE_RXD_STAT_EOP flag is not set, the Rx packet
+		 * is likely to be invalid and to be dropped by the various
+		 * validation checks performed by the network stack.
+		 *
+		 * Allocate a new mbuf to replenish the RX ring descriptor.
+		 * If the allocation fails:
+		 *    - arrange for that Rx descriptor to be the first one
+		 *      being parsed the next time the receive function is
+		 *      invoked [on the same queue].
+		 *
+		 *    - Stop parsing the Rx ring and return immediately.
+		 *
+		 * This policy do not drop the packet received in the Rx
+		 * descriptor for which the allocation of a new mbuf failed.
+		 * Thus, it allows that packet to be later retrieved if
+		 * mbuf have been freed in the mean time.
+		 * As a side effect, holding Rx descriptors instead of
+		 * systematically giving them back to the NIC may lead to
+		 * Rx ring exhaustion situations.
+		 * However, the NIC can gracefully prevent such situations
+		 * to happen by sending specific "back-pressure" flow control
+		 * frames to its peer(s).
+		 */
+		PMD_RX_LOG(DEBUG,
+			   "port_id=%u queue_id=%u rx_id=%u ext_err_stat=0x%08x pkt_len=%u",
+			   (uint16_t)rxq->port_id, (uint16_t)rxq->queue_id,
+			   (uint16_t)rx_id, (uint32_t)staterr,
+			   (uint16_t)rte_le_to_cpu_16(rxd.qw1.hi.len));
+
+		nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
+		if (nmb == NULL) {
+			PMD_RX_LOG(DEBUG,
+				   "Rx mbuf alloc failed port_id=%u queue_id=%u",
+				   (uint16_t)rxq->port_id,
+				   (uint16_t)rxq->queue_id);
+			dev->data->rx_mbuf_alloc_failed++;
+			break;
+		}
+
+		nb_hold++;
+		rxe = &sw_ring[rx_id];
+		rx_id++;
+		if (rx_id == rxq->nb_rx_desc)
+			rx_id = 0;
+
+		/* Prefetch next mbuf while processing current one. */
+		rte_ngbe_prefetch(sw_ring[rx_id].mbuf);
+
+		/*
+		 * When next Rx descriptor is on a cache-line boundary,
+		 * prefetch the next 4 Rx descriptors and the next 8 pointers
+		 * to mbufs.
+		 */
+		if ((rx_id & 0x3) == 0) {
+			rte_ngbe_prefetch(&rx_ring[rx_id]);
+			rte_ngbe_prefetch(&sw_ring[rx_id]);
+		}
+
+		rxm = rxe->mbuf;
+		rxe->mbuf = nmb;
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+		NGBE_RXD_HDRADDR(rxdp, 0);
+		NGBE_RXD_PKTADDR(rxdp, dma_addr);
+
+		/*
+		 * Initialize the returned mbuf.
+		 * setup generic mbuf fields:
+		 *    - number of segments,
+		 *    - next segment,
+		 *    - packet length,
+		 *    - Rx port identifier.
+		 */
+		pkt_len = (uint16_t)(rte_le_to_cpu_16(rxd.qw1.hi.len));
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_packet_prefetch((char *)rxm->buf_addr + rxm->data_off);
+		rxm->nb_segs = 1;
+		rxm->next = NULL;
+		rxm->pkt_len = pkt_len;
+		rxm->data_len = pkt_len;
+		rxm->port = rxq->port_id;
+
+		/*
+		 * Store the mbuf address into the next entry of the array
+		 * of returned packets.
+		 */
+		rx_pkts[nb_rx++] = rxm;
+	}
+	rxq->rx_tail = rx_id;
+
+	/*
+	 * If the number of free Rx descriptors is greater than the Rx free
+	 * threshold of the queue, advance the Receive Descriptor Tail (RDT)
+	 * register.
+	 * Update the RDT with the value of the last processed Rx descriptor
+	 * minus 1, to guarantee that the RDT register is never equal to the
+	 * RDH register, which creates a "full" ring situation from the
+	 * hardware point of view...
+	 */
+	nb_hold = (uint16_t)(nb_hold + rxq->nb_rx_hold);
+	if (nb_hold > rxq->rx_free_thresh) {
+		PMD_RX_LOG(DEBUG,
+			   "port_id=%u queue_id=%u rx_tail=%u nb_hold=%u nb_rx=%u",
+			   (uint16_t)rxq->port_id, (uint16_t)rxq->queue_id,
+			   (uint16_t)rx_id, (uint16_t)nb_hold,
+			   (uint16_t)nb_rx);
+		rx_id = (uint16_t)((rx_id == 0) ?
+				(rxq->nb_rx_desc - 1) : (rx_id - 1));
+		ngbe_set32(rxq->rdt_reg_addr, rx_id);
+		nb_hold = 0;
+	}
+	rxq->nb_rx_hold = nb_hold;
+	return nb_rx;
+}
+
+
 /*********************************************************************
  *
  *  Queue management functions

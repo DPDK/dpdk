@@ -137,6 +137,7 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &ngbe_eth_dev_ops;
+	eth_dev->rx_pkt_burst = &ngbe_recv_pkts;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
