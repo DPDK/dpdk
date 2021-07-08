@@ -89,6 +89,11 @@ New Features
   * Added support for meter hierarchy.
   * Added devargs options ``allow_duplicate_pattern``.
 
+* **Added Wangxun ngbe PMD.**
+
+  Added a new PMD driver for Wangxun 1 Gigabit Ethernet NICs.
+  See the :doc:`../nics/ngbe` for more details.
+
 * **Added support for Marvell CNXK crypto driver.**
 
   * Added cnxk crypto PMD which provides support for an integrated

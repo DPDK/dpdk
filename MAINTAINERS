@@ -903,6 +903,12 @@ F: drivers/net/sfc/
 F: doc/guides/nics/sfc_efx.rst
 F: doc/guides/nics/features/sfc.ini
 
+Wangxun ngbe
+M: Jiawen Wu <jiawenwu@trustnetic.com>
+F: drivers/net/ngbe/
+F: doc/guides/nics/ngbe.rst
+F: doc/guides/nics/features/ngbe.ini
+
 Wangxun txgbe
 M: Jiawen Wu <jiawenwu@trustnetic.com>
 M: Jian Wang <jianwang@trustnetic.com>
