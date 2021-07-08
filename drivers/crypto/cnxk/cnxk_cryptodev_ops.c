@@ -95,7 +95,13 @@ cnxk_cpt_dev_config(struct rte_cryptodev *dev,
 int
 cnxk_cpt_dev_start(struct rte_cryptodev *dev)
 {
-	RTE_SET_USED(dev);
+	struct cnxk_cpt_vf *vf = dev->data->dev_private;
+	struct roc_cpt *roc_cpt = &vf->cpt;
+	uint16_t nb_lf = roc_cpt->nb_lf;
+	uint16_t qp_id;
+
+	for (qp_id = 0; qp_id < nb_lf; qp_id++)
+		roc_cpt_iq_enable(roc_cpt->lf[qp_id]);
 
 	return 0;
 }
@@ -103,7 +109,13 @@ cnxk_cpt_dev_start(struct rte_cryptodev *dev)
 void
 cnxk_cpt_dev_stop(struct rte_cryptodev *dev)
 {
-	RTE_SET_USED(dev);
+	struct cnxk_cpt_vf *vf = dev->data->dev_private;
+	struct roc_cpt *roc_cpt = &vf->cpt;
+	uint16_t nb_lf = roc_cpt->nb_lf;
+	uint16_t qp_id;
+
+	for (qp_id = 0; qp_id < nb_lf; qp_id++)
+		roc_cpt_iq_disable(roc_cpt->lf[qp_id]);
 }
 
 int
