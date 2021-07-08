@@ -17,6 +17,27 @@ Prerequisites
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
 
+Pre-Installation Configuration
+------------------------------
+
+Dynamic Logging Parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One may leverage EAL option "--log-level" to change default levels
+for the log types supported by the driver. The option is used with
+an argument typically consisting of two parts separated by a colon.
+
+NGBE PMD provides the following log types available for control:
+
+- ``pmd.net.ngbe.driver`` (default level is **notice**)
+
+  Affects driver-wide messages unrelated to any particular devices.
+
+- ``pmd.net.ngbe.init`` (default level is **notice**)
+
+  Extra logging of the messages during PMD initialization.
+
+
 Driver compilation and testing
 ------------------------------
 
