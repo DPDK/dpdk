@@ -9,6 +9,133 @@
 #include "ngbe_hw.h"
 
 /**
+ *  ngbe_init_hw - Generic hardware initialization
+ *  @hw: pointer to hardware structure
+ *
+ *  Initialize the hardware by resetting the hardware, filling the bus info
+ *  structure and media type, clears all on chip counters, initializes receive
+ *  address registers, multicast table, VLAN filter table, calls routine to set
+ *  up link and flow control settings, and leaves transmit and receive units
+ *  disabled and uninitialized
+ **/
+s32 ngbe_init_hw(struct ngbe_hw *hw)
+{
+	s32 status;
+
+	DEBUGFUNC("ngbe_init_hw");
+
+	/* Reset the hardware */
+	status = hw->mac.reset_hw(hw);
+
+	if (status != 0)
+		DEBUGOUT("Failed to initialize HW, STATUS = %d\n", status);
+
+	return status;
+}
+
+static void
+ngbe_reset_misc_em(struct ngbe_hw *hw)
+{
+	int i;
+
+	wr32(hw, NGBE_ISBADDRL, hw->isb_dma & 0xFFFFFFFF);
+	wr32(hw, NGBE_ISBADDRH, hw->isb_dma >> 32);
+
+	/* receive packets that size > 2048 */
+	wr32m(hw, NGBE_MACRXCFG,
+		NGBE_MACRXCFG_JUMBO, NGBE_MACRXCFG_JUMBO);
+
+	wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
+		NGBE_FRMSZ_MAX(NGBE_FRAME_SIZE_DFT));
+
+	/* clear counters on read */
+	wr32m(hw, NGBE_MACCNTCTL,
+		NGBE_MACCNTCTL_RC, NGBE_MACCNTCTL_RC);
+
+	wr32m(hw, NGBE_RXFCCFG,
+		NGBE_RXFCCFG_FC, NGBE_RXFCCFG_FC);
+	wr32m(hw, NGBE_TXFCCFG,
+		NGBE_TXFCCFG_FC, NGBE_TXFCCFG_FC);
+
+	wr32m(hw, NGBE_MACRXFLT,
+		NGBE_MACRXFLT_PROMISC, NGBE_MACRXFLT_PROMISC);
+
+	wr32m(hw, NGBE_RSTSTAT,
+		NGBE_RSTSTAT_TMRINIT_MASK, NGBE_RSTSTAT_TMRINIT(30));
+
+	/* errata 4: initialize mng flex tbl and wakeup flex tbl*/
+	wr32(hw, NGBE_MNGFLEXSEL, 0);
+	for (i = 0; i < 16; i++) {
+		wr32(hw, NGBE_MNGFLEXDWL(i), 0);
+		wr32(hw, NGBE_MNGFLEXDWH(i), 0);
+		wr32(hw, NGBE_MNGFLEXMSK(i), 0);
+	}
+	wr32(hw, NGBE_LANFLEXSEL, 0);
+	for (i = 0; i < 16; i++) {
+		wr32(hw, NGBE_LANFLEXDWL(i), 0);
+		wr32(hw, NGBE_LANFLEXDWH(i), 0);
+		wr32(hw, NGBE_LANFLEXMSK(i), 0);
+	}
+
+	/* set pause frame dst mac addr */
+	wr32(hw, NGBE_RXPBPFCDMACL, 0xC2000001);
+	wr32(hw, NGBE_RXPBPFCDMACH, 0x0180);
+
+	wr32(hw, NGBE_MDIOMODE, 0xF);
+
+	wr32m(hw, NGBE_GPIE, NGBE_GPIE_MSIX, NGBE_GPIE_MSIX);
+
+	if ((hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_M88E1512_SFP ||
+		(hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_YT8521S_SFP) {
+		/* gpio0 is used to power on/off control*/
+		wr32(hw, NGBE_GPIODIR, NGBE_GPIODIR_DDR(1));
+		wr32(hw, NGBE_GPIODATA, NGBE_GPIOBIT_0);
+	}
+
+	hw->mac.init_thermal_sensor_thresh(hw);
+
+	/* enable mac transmitter */
+	wr32m(hw, NGBE_MACTXCFG, NGBE_MACTXCFG_TE, NGBE_MACTXCFG_TE);
+
+	/* sellect GMII */
+	wr32m(hw, NGBE_MACTXCFG,
+		NGBE_MACTXCFG_SPEED_MASK, NGBE_MACTXCFG_SPEED_1G);
+
+	for (i = 0; i < 4; i++)
+		wr32m(hw, NGBE_IVAR(i), 0x80808080, 0);
+}
+
+/**
+ *  ngbe_reset_hw_em - Perform hardware reset
+ *  @hw: pointer to hardware structure
+ *
+ *  Resets the hardware by resetting the transmit and receive units, masks
+ *  and clears all interrupts, perform a PHY reset, and perform a link (MAC)
+ *  reset.
+ **/
+s32 ngbe_reset_hw_em(struct ngbe_hw *hw)
+{
+	s32 status;
+
+	DEBUGFUNC("ngbe_reset_hw_em");
+
+	/* Call adapter stop to disable tx/rx and clear interrupts */
+	status = hw->mac.stop_hw(hw);
+	if (status != 0)
+		return status;
+
+	wr32(hw, NGBE_RST, NGBE_RST_LAN(hw->bus.lan_id));
+	ngbe_flush(hw);
+	msec_delay(50);
+
+	ngbe_reset_misc_em(hw);
+
+	msec_delay(50);
+
+	return status;
+}
+
+/**
  *  ngbe_set_lan_id_multi_port - Set LAN id for PCIe multiple port devices
  *  @hw: pointer to the HW structure
  *
@@ -25,6 +152,57 @@ void ngbe_set_lan_id_multi_port(struct ngbe_hw *hw)
 	reg = rd32(hw, NGBE_PORTSTAT);
 	bus->lan_id = NGBE_PORTSTAT_ID(reg);
 	bus->func = bus->lan_id;
+}
+
+/**
+ *  ngbe_stop_hw - Generic stop Tx/Rx units
+ *  @hw: pointer to hardware structure
+ *
+ *  Sets the adapter_stopped flag within ngbe_hw struct. Clears interrupts,
+ *  disables transmit and receive units. The adapter_stopped flag is used by
+ *  the shared code and drivers to determine if the adapter is in a stopped
+ *  state and should not touch the hardware.
+ **/
+s32 ngbe_stop_hw(struct ngbe_hw *hw)
+{
+	u32 reg_val;
+	u16 i;
+
+	DEBUGFUNC("ngbe_stop_hw");
+
+	/*
+	 * Set the adapter_stopped flag so other driver functions stop touching
+	 * the hardware
+	 */
+	hw->adapter_stopped = true;
+
+	/* Disable the receive unit */
+	ngbe_disable_rx(hw);
+
+	/* Clear interrupt mask to stop interrupts from being generated */
+	wr32(hw, NGBE_IENMISC, 0);
+	wr32(hw, NGBE_IMS(0), NGBE_IMS_MASK);
+
+	/* Clear any pending interrupts, flush previous writes */
+	wr32(hw, NGBE_ICRMISC, NGBE_ICRMISC_MASK);
+	wr32(hw, NGBE_ICR(0), NGBE_ICR_MASK);
+
+	/* Disable the transmit unit.  Each queue must be disabled. */
+	for (i = 0; i < hw->mac.max_tx_queues; i++)
+		wr32(hw, NGBE_TXCFG(i), NGBE_TXCFG_FLUSH);
+
+	/* Disable the receive unit by stopping each queue */
+	for (i = 0; i < hw->mac.max_rx_queues; i++) {
+		reg_val = rd32(hw, NGBE_RXCFG(i));
+		reg_val &= ~NGBE_RXCFG_ENA;
+		wr32(hw, NGBE_RXCFG(i), reg_val);
+	}
+
+	/* flush all queues disables */
+	ngbe_flush(hw);
+	msec_delay(2);
+
+	return 0;
 }
 
 /**
@@ -96,6 +274,54 @@ void ngbe_release_swfw_sync(struct ngbe_hw *hw, u32 mask)
 	wr32(hw, NGBE_MNGSEM, mngsem);
 
 	ngbe_release_eeprom_semaphore(hw);
+}
+
+/**
+ *  ngbe_init_thermal_sensor_thresh - Inits thermal sensor thresholds
+ *  @hw: pointer to hardware structure
+ *
+ *  Inits the thermal sensor thresholds according to the NVM map
+ *  and save off the threshold and location values into mac.thermal_sensor_data
+ **/
+s32 ngbe_init_thermal_sensor_thresh(struct ngbe_hw *hw)
+{
+	struct ngbe_thermal_sensor_data *data = &hw->mac.thermal_sensor_data;
+
+	DEBUGFUNC("ngbe_init_thermal_sensor_thresh");
+
+	memset(data, 0, sizeof(struct ngbe_thermal_sensor_data));
+
+	if (hw->bus.lan_id != 0)
+		return NGBE_NOT_IMPLEMENTED;
+
+	wr32(hw, NGBE_TSINTR,
+		NGBE_TSINTR_AEN | NGBE_TSINTR_DEN);
+	wr32(hw, NGBE_TSEN, NGBE_TSEN_ENA);
+
+
+	data->sensor[0].alarm_thresh = 115;
+	wr32(hw, NGBE_TSATHRE, 0x344);
+	data->sensor[0].dalarm_thresh = 110;
+	wr32(hw, NGBE_TSDTHRE, 0x330);
+
+	return 0;
+}
+
+void ngbe_disable_rx(struct ngbe_hw *hw)
+{
+	u32 pfdtxgswc;
+
+	pfdtxgswc = rd32(hw, NGBE_PSRCTL);
+	if (pfdtxgswc & NGBE_PSRCTL_LBENA) {
+		pfdtxgswc &= ~NGBE_PSRCTL_LBENA;
+		wr32(hw, NGBE_PSRCTL, pfdtxgswc);
+		hw->mac.set_lben = true;
+	} else {
+		hw->mac.set_lben = false;
+	}
+
+	wr32m(hw, NGBE_PBRXCTL, NGBE_PBRXCTL_ENA, 0);
+	wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_ENA, 0);
 }
 
 /**
@@ -216,12 +442,21 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	bus->set_lan_id = ngbe_set_lan_id_multi_port;
 
 	/* MAC */
+	mac->init_hw = ngbe_init_hw;
+	mac->reset_hw = ngbe_reset_hw_em;
+	mac->stop_hw = ngbe_stop_hw;
 	mac->acquire_swfw_sync = ngbe_acquire_swfw_sync;
 	mac->release_swfw_sync = ngbe_release_swfw_sync;
+
+	/* Manageability interface */
+	mac->init_thermal_sensor_thresh = ngbe_init_thermal_sensor_thresh;
 
 	/* EEPROM */
 	rom->init_params = ngbe_init_eeprom_params;
 	rom->validate_checksum = ngbe_validate_eeprom_checksum_em;
+
+	mac->max_rx_queues	= NGBE_EM_MAX_RX_QUEUES;
+	mac->max_tx_queues	= NGBE_EM_MAX_TX_QUEUES;
 
 	return 0;
 }

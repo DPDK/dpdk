@@ -6,9 +6,24 @@
 #ifndef _NGBE_TYPE_H_
 #define _NGBE_TYPE_H_
 
+#define NGBE_FRAME_SIZE_DFT       (1522) /* Default frame size, +FCS */
+
+#define NGBE_ALIGN		128 /* as intel did */
+#define NGBE_ISB_SIZE		16
+
 #include "ngbe_status.h"
 #include "ngbe_osdep.h"
 #include "ngbe_devids.h"
+
+struct ngbe_thermal_diode_data {
+	s16 temp;
+	s16 alarm_thresh;
+	s16 dalarm_thresh;
+};
+
+struct ngbe_thermal_sensor_data {
+	struct ngbe_thermal_diode_data sensor[1];
+};
 
 enum ngbe_eeprom_type {
 	ngbe_eeprom_unknown = 0,
@@ -71,9 +86,20 @@ struct ngbe_rom_info {
 };
 
 struct ngbe_mac_info {
+	s32 (*init_hw)(struct ngbe_hw *hw);
+	s32 (*reset_hw)(struct ngbe_hw *hw);
+	s32 (*stop_hw)(struct ngbe_hw *hw);
 	s32 (*acquire_swfw_sync)(struct ngbe_hw *hw, u32 mask);
 	void (*release_swfw_sync)(struct ngbe_hw *hw, u32 mask);
+
+	/* Manageability interface */
+	s32 (*init_thermal_sensor_thresh)(struct ngbe_hw *hw);
+
 	enum ngbe_mac_type type;
+	u32 max_tx_queues;
+	u32 max_rx_queues;
+	struct ngbe_thermal_sensor_data  thermal_sensor_data;
+	bool set_lben;
 };
 
 struct ngbe_phy_info {
@@ -92,6 +118,10 @@ struct ngbe_hw {
 	u16 vendor_id;
 	u16 sub_device_id;
 	u16 sub_system_id;
+	bool adapter_stopped;
+
+	uint64_t isb_dma;
+	void IOMEM *isb_mem;
 
 	bool is_pf;
 };

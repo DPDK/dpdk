@@ -60,6 +60,7 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct ngbe_hw *hw = ngbe_dev_hw(eth_dev);
+	const struct rte_memzone *mz;
 	int err;
 
 	PMD_INIT_FUNC_TRACE();
@@ -75,6 +76,15 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	hw->sub_system_id = pci_dev->id.subsystem_device_id;
 	ngbe_map_device_id(hw);
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
+
+	/* Reserve memory for interrupt status block */
+	mz = rte_eth_dma_zone_reserve(eth_dev, "ngbe_driver", -1,
+		NGBE_ISB_SIZE, NGBE_ALIGN, SOCKET_ID_ANY);
+	if (mz == NULL)
+		return -ENOMEM;
+
+	hw->isb_dma = TMZ_PADDR(mz);
+	hw->isb_mem = TMZ_VADDR(mz);
 
 	/* Initialize the shared code (base driver) */
 	err = ngbe_init_shared_code(hw);
@@ -96,6 +106,12 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	err = hw->rom.validate_checksum(hw, NULL);
 	if (err != 0) {
 		PMD_INIT_LOG(ERR, "The EEPROM checksum is not valid: %d", err);
+		return -EIO;
+	}
+
+	err = hw->mac.init_hw(hw);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "Hardware Initialization Failure: %d", err);
 		return -EIO;
 	}
 
