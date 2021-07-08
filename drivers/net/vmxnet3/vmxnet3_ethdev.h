@@ -28,6 +28,8 @@
 
 #define VMXNET3_RSS_MAX_KEY_SIZE        40
 #define VMXNET3_RSS_MAX_IND_TABLE_SIZE  128
+#define VMXNET3_MAX_MSIX_VECT (VMXNET3_MAX_TX_QUEUES + \
+				VMXNET3_MAX_RX_QUEUES + 1)
 
 #define VMXNET3_RSS_OFFLOAD_ALL ( \
 	ETH_RSS_IPV4 | \
@@ -62,6 +64,15 @@ typedef struct vmxnet3_mf_table {
 	uint64_t      mfTablePA;    /* Physical address of the list */
 	uint16_t      num_addrs;    /* number of multicast addrs */
 } vmxnet3_mf_table_t;
+
+struct vmxnet3_intr {
+	enum vmxnet3_intr_mask_mode mask_mode;
+	enum vmxnet3_intr_type      type; /* MSI-X, MSI, or INTx? */
+	uint8_t num_intrs;                /* # of intr vectors */
+	uint8_t event_intr_idx;           /* idx of the intr vector for event */
+	uint8_t mod_levels[VMXNET3_MAX_MSIX_VECT]; /* moderation level */
+	bool lsc_only;                    /* no Rx queue interrupt */
+};
 
 struct vmxnet3_hw {
 	uint8_t *hw_addr0;	/* BAR0: PT-Passthrough Regs    */
@@ -102,6 +113,7 @@ struct vmxnet3_hw {
 	uint64_t              rss_confPA;
 	vmxnet3_mf_table_t    *mf_table;
 	uint32_t              shadow_vfta[VMXNET3_VFT_SIZE];
+	struct vmxnet3_intr   intr;
 	Vmxnet3_MemRegs	      *memRegs;
 	uint64_t	      memRegsPA;
 #define VMXNET3_VFT_TABLE_SIZE     (VMXNET3_VFT_SIZE * sizeof(uint32_t))
