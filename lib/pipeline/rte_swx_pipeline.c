@@ -9199,37 +9199,42 @@ rte_swx_pipeline_table_type_register(struct rte_swx_pipeline *p,
 	return 0;
 }
 
-static enum rte_swx_table_match_type
+static int
 table_match_type_resolve(struct rte_swx_match_field_params *fields,
 			 uint32_t n_fields,
-			 uint32_t max_offset_field_id)
+			 enum rte_swx_table_match_type *match_type)
 {
-	uint32_t n_fields_em = 0, i;
+	uint32_t n_fields_em = 0, n_fields_lpm = 0, i;
 
-	for (i = 0; i < n_fields; i++)
-		if (fields[i].match_type == RTE_SWX_TABLE_MATCH_EXACT)
+	for (i = 0; i < n_fields; i++) {
+		struct rte_swx_match_field_params  *f = &fields[i];
+
+		if (f->match_type == RTE_SWX_TABLE_MATCH_EXACT)
 			n_fields_em++;
 
-	if (n_fields_em == n_fields)
-		return RTE_SWX_TABLE_MATCH_EXACT;
+		if (f->match_type == RTE_SWX_TABLE_MATCH_LPM)
+			n_fields_lpm++;
+	}
 
-	if ((n_fields_em == n_fields - 1) &&
-	    (fields[max_offset_field_id].match_type == RTE_SWX_TABLE_MATCH_LPM))
-		return RTE_SWX_TABLE_MATCH_LPM;
+	if ((n_fields_lpm > 1) ||
+	    (n_fields_lpm && (n_fields_em != n_fields - 1)))
+		return -EINVAL;
 
-	return RTE_SWX_TABLE_MATCH_WILDCARD;
+	*match_type = (n_fields_em == n_fields) ?
+		       RTE_SWX_TABLE_MATCH_EXACT :
+		       RTE_SWX_TABLE_MATCH_WILDCARD;
+
+	return 0;
 }
 
 static int
 table_match_fields_check(struct rte_swx_pipeline *p,
 			 struct rte_swx_pipeline_table_params *params,
-			 struct header **header,
-			 uint32_t *min_offset_field_id,
-			 uint32_t *max_offset_field_id)
+			 struct header **header)
 {
 	struct header *h0 = NULL;
 	struct field *hf, *mf;
-	uint32_t *offset = NULL, min_offset, max_offset, min_offset_pos, max_offset_pos, i;
+	uint32_t *offset = NULL, i;
 	int status = 0;
 
 	/* Return if no match fields. */
@@ -9293,33 +9298,9 @@ table_match_fields_check(struct rte_swx_pipeline *p,
 			}
 	}
 
-	/* Find the min and max offset fields. */
-	min_offset = offset[0];
-	max_offset = offset[0];
-	min_offset_pos = 0;
-	max_offset_pos = 0;
-
-	for (i = 1; i < params->n_fields; i++) {
-		if (offset[i] < min_offset) {
-			min_offset = offset[i];
-			min_offset_pos = i;
-		}
-
-		if (offset[i] > max_offset) {
-			max_offset = offset[i];
-			max_offset_pos = i;
-		}
-	}
-
 	/* Return. */
 	if (header)
 		*header = h0;
-
-	if (min_offset_field_id)
-		*min_offset_field_id = min_offset_pos;
-
-	if (max_offset_field_id)
-		*max_offset_field_id = max_offset_pos;
 
 end:
 	free(offset);
@@ -9338,7 +9319,7 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	struct table *t;
 	struct action *default_action;
 	struct header *header = NULL;
-	uint32_t action_data_size_max = 0, min_offset_field_id = 0, max_offset_field_id = 0, i;
+	uint32_t action_data_size_max = 0, i;
 	int status = 0;
 
 	CHECK(p, EINVAL);
@@ -9350,11 +9331,7 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	CHECK(params, EINVAL);
 
 	/* Match checks. */
-	status = table_match_fields_check(p,
-					  params,
-					  &header,
-					  &min_offset_field_id,
-					  &max_offset_field_id);
+	status = table_match_fields_check(p, params, &header);
 	if (status)
 		return status;
 
@@ -9393,12 +9370,11 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	if (params->n_fields) {
 		enum rte_swx_table_match_type match_type;
 
-		match_type = table_match_type_resolve(params->fields,
-						      params->n_fields,
-						      max_offset_field_id);
-		type = table_type_resolve(p,
-					  recommended_table_type_name,
-					  match_type);
+		status = table_match_type_resolve(params->fields, params->n_fields, &match_type);
+		if (status)
+			return status;
+
+		type = table_type_resolve(p, recommended_table_type_name, match_type);
 		CHECK(type, EINVAL);
 	} else {
 		type = NULL;

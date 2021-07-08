@@ -218,9 +218,6 @@ table_params_get(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 
 		if (n_match_fields_em == table->info.n_match_fields)
 			match_type = RTE_SWX_TABLE_MATCH_EXACT;
-		else if ((n_match_fields_em == table->info.n_match_fields - 1) &&
-			 (last->match_type == RTE_SWX_TABLE_MATCH_LPM))
-			match_type = RTE_SWX_TABLE_MATCH_LPM;
 
 		/* key_offset. */
 		key_offset = first->offset / 8;
@@ -347,35 +344,15 @@ table_entry_check(struct rte_swx_ctl_pipeline *ctl,
 
 	CHECK(entry, EINVAL);
 
-	if (key_check) {
-		if (table->is_stub) {
-			/* key. */
-			CHECK(!entry->key, EINVAL);
+	if (key_check && !table->is_stub) {
+		/* key. */
+		CHECK(entry->key, EINVAL);
 
-			/* key_mask. */
-			CHECK(!entry->key_mask, EINVAL);
-		} else {
-			/* key. */
-			CHECK(entry->key, EINVAL);
-
-			/* key_mask. */
-			switch (table->params.match_type) {
-			case RTE_SWX_TABLE_MATCH_WILDCARD:
-				break;
-
-			case RTE_SWX_TABLE_MATCH_LPM:
-				/* TBD Check that key mask is prefix. */
-				break;
-
-			case RTE_SWX_TABLE_MATCH_EXACT:
-				status = table_entry_key_check_em(table, entry);
-				if (status)
-					return status;
-				break;
-
-			default:
-				CHECK(0, EINVAL);
-			}
+		/* key_mask. */
+		if (table->params.match_type == RTE_SWX_TABLE_MATCH_EXACT) {
+			status = table_entry_key_check_em(table, entry);
+			if (status)
+				return status;
 		}
 	}
 
@@ -2208,6 +2185,45 @@ rte_swx_ctl_pipeline_abort(struct rte_swx_ctl_pipeline *ctl)
 }
 
 static int
+mask_to_prefix(uint64_t mask, uint32_t mask_length, uint32_t *prefix_length)
+{
+	uint32_t n_trailing_zeros = 0, n_ones = 0, i;
+
+	if (!mask) {
+		*prefix_length = 0;
+		return 0;
+	}
+
+	/* Count trailing zero bits. */
+	for (i = 0; i < 64; i++) {
+		if (mask & (1LLU << i))
+			break;
+
+		n_trailing_zeros++;
+	}
+
+	/* Count the one bits that follow. */
+	for ( ; i < 64; i++) {
+		if (!(mask & (1LLU << i)))
+			break;
+
+		n_ones++;
+	}
+
+	/* Check that no more one bits are present */
+	for ( ; i < 64; i++)
+		if (mask & (1LLU << i))
+			return -EINVAL;
+
+	/* Check that the input mask is a prefix or the right length. */
+	if (n_ones + n_trailing_zeros != mask_length)
+		return -EINVAL;
+
+	*prefix_length = n_ones;
+	return 0;
+}
+
+static int
 token_is_comment(const char *token)
 {
 	if ((token[0] == '#') ||
@@ -2231,8 +2247,8 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 	struct action *action;
 	struct rte_swx_table_entry *entry = NULL;
 	char *s0 = NULL, *s;
-	uint32_t n_tokens = 0, arg_offset = 0, i;
-	int blank_or_comment = 0;
+	uint32_t n_tokens = 0, arg_offset = 0, lpm_prefix_length_max = 0, lpm_prefix_length = 0, i;
+	int lpm = 0, blank_or_comment = 0;
 
 	/* Check input arguments. */
 	if (!ctl)
@@ -2307,6 +2323,19 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 			if (mf_mask[0])
 				goto error;
 
+			/* LPM. */
+			if (mf->match_type == RTE_SWX_TABLE_MATCH_LPM) {
+				int status;
+
+				lpm = 1;
+
+				lpm_prefix_length_max = mf->n_bits;
+
+				status = mask_to_prefix(mask, mf->n_bits, &lpm_prefix_length);
+				if (status)
+					goto error;
+			}
+
 			/* Endianness conversion. */
 			if (mf->is_header)
 				mask = field_hton(mask, mf->n_bits);
@@ -2360,6 +2389,10 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 		tokens += 2;
 		n_tokens -= 2;
 	}
+
+	/* LPM. */
+	if (lpm)
+		entry->key_priority = lpm_prefix_length_max - lpm_prefix_length;
 
 	/*
 	 * Action.
