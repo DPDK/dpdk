@@ -677,6 +677,53 @@ mlx5_flow_drop_action_config(struct rte_eth_dev *dev __rte_unused)
 #endif
 }
 
+static void
+mlx5_queue_counter_id_prepare(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	void *ctx = priv->sh->ctx;
+
+	priv->q_counters = mlx5_devx_cmd_queue_counter_alloc(ctx);
+	if (!priv->q_counters) {
+		struct ibv_cq *cq = mlx5_glue->create_cq(ctx, 1, NULL, NULL, 0);
+		struct ibv_wq *wq;
+
+		DRV_LOG(DEBUG, "Port %d queue counter object cannot be created "
+			"by DevX - fall-back to use the kernel driver global "
+			"queue counter.", dev->data->port_id);
+		/* Create WQ by kernel and query its queue counter ID. */
+		if (cq) {
+			wq = mlx5_glue->create_wq(ctx,
+						  &(struct ibv_wq_init_attr){
+						    .wq_type = IBV_WQT_RQ,
+						    .max_wr = 1,
+						    .max_sge = 1,
+						    .pd = priv->sh->pd,
+						    .cq = cq,
+						});
+			if (wq) {
+				/* Counter is assigned only on RDY state. */
+				int ret = mlx5_glue->modify_wq(wq,
+						 &(struct ibv_wq_attr){
+						 .attr_mask = IBV_WQ_ATTR_STATE,
+						 .wq_state = IBV_WQS_RDY,
+						});
+
+				if (ret == 0)
+					mlx5_devx_cmd_wq_query(wq,
+							 &priv->counter_set_id);
+				claim_zero(mlx5_glue->destroy_wq(wq));
+			}
+			claim_zero(mlx5_glue->destroy_cq(cq));
+		}
+	} else {
+		priv->counter_set_id = priv->q_counters->id;
+	}
+	if (priv->counter_set_id == 0)
+		DRV_LOG(INFO, "Part of the port %d statistics will not be "
+			"available.", dev->data->port_id);
+}
+
 /**
  * Spawn an Ethernet device from Verbs information.
  *
@@ -1530,6 +1577,7 @@ err_secondary:
 					mlx5_rxq_ibv_obj_dummy_lb_create;
 		priv->obj_ops.lb_dummy_queue_release =
 					mlx5_rxq_ibv_obj_dummy_lb_release;
+		mlx5_queue_counter_id_prepare(eth_dev);
 	} else {
 		priv->obj_ops = ibv_obj_ops;
 	}
@@ -2511,6 +2559,10 @@ mlx5_os_read_dev_stat(struct mlx5_priv *priv, const char *ctr_name,
 	int fd;
 
 	if (priv->sh) {
+		if (priv->q_counters != NULL &&
+		    strcmp(ctr_name, "out_of_buffer") == 0)
+			return mlx5_devx_cmd_queue_counter_query(priv->sh->ctx,
+							   0, (uint32_t *)stat);
 		MKSTR(path, "%s/ports/%d/hw_counters/%s",
 		      priv->sh->ibdev_path,
 		      priv->dev_port,
