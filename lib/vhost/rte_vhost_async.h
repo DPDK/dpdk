@@ -193,4 +193,18 @@ __rte_experimental
 uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 		struct rte_mbuf **pkts, uint16_t count);
 
+/**
+ * This function returns the amount of in-flight packets for the vhost
+ * queue which uses async channel acceleration.
+ *
+ * @param vid
+ *  id of vhost device to enqueue data
+ * @param queue_id
+ *  queue id to enqueue data
+ * @return
+ *  the amount of in-flight packets on success; -1 on failure
+ */
+__rte_experimental
+int rte_vhost_async_get_inflight(int vid, uint16_t queue_id);
+
 #endif /* _RTE_VHOST_ASYNC_H_ */

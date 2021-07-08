@@ -281,6 +281,11 @@ The following is an overview of some key Vhost API functions:
   Poll enqueue completion status from async data path. Completed packets
   are returned to applications through ``pkts``.
 
+* ``rte_vhost_async_get_inflight(vid, queue_id)``
+
+  This function returns the amount of in-flight packets for the vhost
+  queue using async acceleration.
+
 Vhost-user Implementations
 --------------------------
 

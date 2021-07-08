@@ -1778,5 +1778,38 @@ out:
 	return ret;
 }
 
+int rte_vhost_async_get_inflight(int vid, uint16_t queue_id)
+{
+	struct vhost_virtqueue *vq;
+	struct virtio_net *dev = get_device(vid);
+	int ret = -1;
+
+	if (dev == NULL)
+		return ret;
+
+	if (queue_id >= VHOST_MAX_VRING)
+		return ret;
+
+	vq = dev->virtqueue[queue_id];
+
+	if (vq == NULL)
+		return ret;
+
+	if (!vq->async_registered)
+		return ret;
+
+	if (!rte_spinlock_trylock(&vq->access_lock)) {
+		VHOST_LOG_CONFIG(DEBUG, "Failed to check in-flight packets. "
+			"virt queue busy.\n");
+		return ret;
+	}
+
+	ret = vq->async_pkts_inflight_n;
+	rte_spinlock_unlock(&vq->access_lock);
+
+	return ret;
+
+}
+
 RTE_LOG_REGISTER_SUFFIX(vhost_config_log_level, config, INFO);
 RTE_LOG_REGISTER_SUFFIX(vhost_data_log_level, data, WARNING);
