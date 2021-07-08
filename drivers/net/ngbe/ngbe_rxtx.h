@@ -43,6 +43,14 @@ struct ngbe_rx_desc {
 	} qw1; /* also as r.hdr_addr */
 };
 
+/* @ngbe_rx_desc.qw0 */
+#define NGBE_RXD_PKTADDR(rxd, v)  \
+	(((volatile __le64 *)(rxd))[0] = cpu_to_le64(v))
+
+/* @ngbe_rx_desc.qw1 */
+#define NGBE_RXD_HDRADDR(rxd, v)  \
+	(((volatile __le64 *)(rxd))[1] = cpu_to_le64(v))
+
 /*****************************************************************************
  * Transmit Descriptor
  *****************************************************************************/

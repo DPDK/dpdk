@@ -537,6 +537,63 @@ void ngbe_release_swfw_sync(struct ngbe_hw *hw, u32 mask)
 }
 
 /**
+ *  ngbe_disable_sec_rx_path - Stops the receive data path
+ *  @hw: pointer to hardware structure
+ *
+ *  Stops the receive data path and waits for the HW to internally empty
+ *  the Rx security block
+ **/
+s32 ngbe_disable_sec_rx_path(struct ngbe_hw *hw)
+{
+#define NGBE_MAX_SECRX_POLL 4000
+
+	int i;
+	u32 secrxreg;
+
+	DEBUGFUNC("ngbe_disable_sec_rx_path");
+
+
+	secrxreg = rd32(hw, NGBE_SECRXCTL);
+	secrxreg |= NGBE_SECRXCTL_XDSA;
+	wr32(hw, NGBE_SECRXCTL, secrxreg);
+	for (i = 0; i < NGBE_MAX_SECRX_POLL; i++) {
+		secrxreg = rd32(hw, NGBE_SECRXSTAT);
+		if (!(secrxreg & NGBE_SECRXSTAT_RDY))
+			/* Use interrupt-safe sleep just in case */
+			usec_delay(10);
+		else
+			break;
+	}
+
+	/* For informational purposes only */
+	if (i >= NGBE_MAX_SECRX_POLL)
+		DEBUGOUT("Rx unit being enabled before security "
+			 "path fully disabled.  Continuing with init.\n");
+
+	return 0;
+}
+
+/**
+ *  ngbe_enable_sec_rx_path - Enables the receive data path
+ *  @hw: pointer to hardware structure
+ *
+ *  Enables the receive data path.
+ **/
+s32 ngbe_enable_sec_rx_path(struct ngbe_hw *hw)
+{
+	u32 secrxreg;
+
+	DEBUGFUNC("ngbe_enable_sec_rx_path");
+
+	secrxreg = rd32(hw, NGBE_SECRXCTL);
+	secrxreg &= ~NGBE_SECRXCTL_XDSA;
+	wr32(hw, NGBE_SECRXCTL, secrxreg);
+	ngbe_flush(hw);
+
+	return 0;
+}
+
+/**
  *  ngbe_clear_vmdq - Disassociate a VMDq pool index from a rx address
  *  @hw: pointer to hardware struct
  *  @rar: receive address register index to disassociate
@@ -756,6 +813,21 @@ void ngbe_disable_rx(struct ngbe_hw *hw)
 	wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_ENA, 0);
 }
 
+void ngbe_enable_rx(struct ngbe_hw *hw)
+{
+	u32 pfdtxgswc;
+
+	wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_ENA, NGBE_MACRXCFG_ENA);
+	wr32m(hw, NGBE_PBRXCTL, NGBE_PBRXCTL_ENA, NGBE_PBRXCTL_ENA);
+
+	if (hw->mac.set_lben) {
+		pfdtxgswc = rd32(hw, NGBE_PSRCTL);
+		pfdtxgswc |= NGBE_PSRCTL_LBENA;
+		wr32(hw, NGBE_PSRCTL, pfdtxgswc);
+		hw->mac.set_lben = false;
+	}
+}
+
 /**
  *  ngbe_set_mac_type - Sets MAC type
  *  @hw: pointer to the HW structure
@@ -800,6 +872,36 @@ s32 ngbe_set_mac_type(struct ngbe_hw *hw)
 	DEBUGOUT("found mac: %d media: %d, returns: %d\n",
 		  hw->mac.type, hw->phy.media_type, err);
 	return err;
+}
+
+/**
+ *  ngbe_enable_rx_dma - Enable the Rx DMA unit
+ *  @hw: pointer to hardware structure
+ *  @regval: register value to write to RXCTRL
+ *
+ *  Enables the Rx DMA unit
+ **/
+s32 ngbe_enable_rx_dma(struct ngbe_hw *hw, u32 regval)
+{
+	DEBUGFUNC("ngbe_enable_rx_dma");
+
+	/*
+	 * Workaround silicon errata when enabling the Rx datapath.
+	 * If traffic is incoming before we enable the Rx unit, it could hang
+	 * the Rx DMA unit.  Therefore, make sure the security engine is
+	 * completely disabled prior to enabling the Rx unit.
+	 */
+
+	hw->mac.disable_sec_rx_path(hw);
+
+	if (regval & NGBE_PBRXCTL_ENA)
+		ngbe_enable_rx(hw);
+	else
+		ngbe_disable_rx(hw);
+
+	hw->mac.enable_sec_rx_path(hw);
+
+	return 0;
 }
 
 void ngbe_map_device_id(struct ngbe_hw *hw)
@@ -886,11 +988,14 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	mac->init_hw = ngbe_init_hw;
 	mac->reset_hw = ngbe_reset_hw_em;
 	mac->start_hw = ngbe_start_hw;
+	mac->enable_rx_dma = ngbe_enable_rx_dma;
 	mac->get_mac_addr = ngbe_get_mac_addr;
 	mac->stop_hw = ngbe_stop_hw;
 	mac->acquire_swfw_sync = ngbe_acquire_swfw_sync;
 	mac->release_swfw_sync = ngbe_release_swfw_sync;
 
+	mac->disable_sec_rx_path = ngbe_disable_sec_rx_path;
+	mac->enable_sec_rx_path = ngbe_enable_sec_rx_path;
 	/* RAR */
 	mac->set_rar = ngbe_set_rar;
 	mac->clear_rar = ngbe_clear_rar;

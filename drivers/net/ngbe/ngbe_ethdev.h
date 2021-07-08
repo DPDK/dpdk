@@ -86,8 +86,14 @@ void ngbe_dev_tx_init(struct rte_eth_dev *dev);
 
 int ngbe_dev_rxtx_start(struct rte_eth_dev *dev);
 
+void ngbe_dev_save_rx_queue(struct ngbe_hw *hw, uint16_t rx_queue_id);
+void ngbe_dev_store_rx_queue(struct ngbe_hw *hw, uint16_t rx_queue_id);
 void ngbe_dev_save_tx_queue(struct ngbe_hw *hw, uint16_t tx_queue_id);
 void ngbe_dev_store_tx_queue(struct ngbe_hw *hw, uint16_t tx_queue_id);
+
+int ngbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
+int ngbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 
 int ngbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 

@@ -569,6 +569,8 @@ ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
+	dev_info->min_rx_bufsize = 1024;
+	dev_info->max_rx_pktlen = 15872;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -598,6 +600,7 @@ ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 				ETH_LINK_SPEED_10M;
 
 	/* Driver-preferred Rx/Tx parameters */
+	dev_info->default_rxportconf.burst_size = 32;
 	dev_info->default_txportconf.burst_size = 32;
 	dev_info->default_rxportconf.nb_queues = 1;
 	dev_info->default_txportconf.nb_queues = 1;
@@ -1086,6 +1089,8 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.dev_start                  = ngbe_dev_start,
 	.dev_stop                   = ngbe_dev_stop,
 	.link_update                = ngbe_dev_link_update,
+	.rx_queue_start	            = ngbe_dev_rx_queue_start,
+	.rx_queue_stop              = ngbe_dev_rx_queue_stop,
 	.tx_queue_start	            = ngbe_dev_tx_queue_start,
 	.tx_queue_stop              = ngbe_dev_tx_queue_stop,
 	.rx_queue_setup             = ngbe_dev_rx_queue_setup,

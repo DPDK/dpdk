@@ -97,6 +97,9 @@ struct ngbe_mac_info {
 	s32 (*start_hw)(struct ngbe_hw *hw);
 	s32 (*stop_hw)(struct ngbe_hw *hw);
 	s32 (*get_mac_addr)(struct ngbe_hw *hw, u8 *mac_addr);
+	s32 (*enable_rx_dma)(struct ngbe_hw *hw, u32 regval);
+	s32 (*disable_sec_rx_path)(struct ngbe_hw *hw);
+	s32 (*enable_sec_rx_path)(struct ngbe_hw *hw);
 	s32 (*acquire_swfw_sync)(struct ngbe_hw *hw, u32 mask);
 	void (*release_swfw_sync)(struct ngbe_hw *hw, u32 mask);
 
@@ -190,6 +193,7 @@ struct ngbe_hw {
 	u16 nb_rx_queues;
 	u16 nb_tx_queues;
 
+	u32 q_rx_regs[8 * 4];
 	u32 q_tx_regs[8 * 4];
 	bool is_pf;
 };

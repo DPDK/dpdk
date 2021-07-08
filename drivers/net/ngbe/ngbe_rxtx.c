@@ -511,15 +511,111 @@ ngbe_dev_clear_queues(struct rte_eth_dev *dev)
 	}
 }
 
+static int
+ngbe_alloc_rx_queue_mbufs(struct ngbe_rx_queue *rxq)
+{
+	struct ngbe_rx_entry *rxe = rxq->sw_ring;
+	uint64_t dma_addr;
+	unsigned int i;
+
+	/* Initialize software ring entries */
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		/* the ring can also be modified by hardware */
+		volatile struct ngbe_rx_desc *rxd;
+		struct rte_mbuf *mbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
+
+		if (mbuf == NULL) {
+			PMD_INIT_LOG(ERR, "Rx mbuf alloc failed queue_id=%u port_id=%u",
+				     (unsigned int)rxq->queue_id,
+				     (unsigned int)rxq->port_id);
+			return -ENOMEM;
+		}
+
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		mbuf->port = rxq->port_id;
+
+		dma_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
+		rxd = &rxq->rx_ring[i];
+		NGBE_RXD_HDRADDR(rxd, 0);
+		NGBE_RXD_PKTADDR(rxd, dma_addr);
+		rxe[i].mbuf = mbuf;
+	}
+
+	return 0;
+}
+
 /*
  * Initializes Receive Unit.
  */
 int
 ngbe_dev_rx_init(struct rte_eth_dev *dev)
 {
-	RTE_SET_USED(dev);
+	struct ngbe_hw *hw;
+	struct ngbe_rx_queue *rxq;
+	uint64_t bus_addr;
+	uint32_t fctrl;
+	uint32_t hlreg0;
+	uint32_t srrctl;
+	uint16_t buf_size;
+	uint16_t i;
 
-	return -EINVAL;
+	PMD_INIT_FUNC_TRACE();
+	hw = ngbe_dev_hw(dev);
+
+	/*
+	 * Make sure receives are disabled while setting
+	 * up the Rx context (registers, descriptor rings, etc.).
+	 */
+	wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_ENA, 0);
+	wr32m(hw, NGBE_PBRXCTL, NGBE_PBRXCTL_ENA, 0);
+
+	/* Enable receipt of broadcasted frames */
+	fctrl = rd32(hw, NGBE_PSRCTL);
+	fctrl |= NGBE_PSRCTL_BCA;
+	wr32(hw, NGBE_PSRCTL, fctrl);
+
+	hlreg0 = rd32(hw, NGBE_SECRXCTL);
+	hlreg0 &= ~NGBE_SECRXCTL_XDSA;
+	wr32(hw, NGBE_SECRXCTL, hlreg0);
+
+	wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
+			NGBE_FRMSZ_MAX(NGBE_FRAME_SIZE_DFT));
+
+	/* Setup Rx queues */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+
+		/* Setup the Base and Length of the Rx Descriptor Rings */
+		bus_addr = rxq->rx_ring_phys_addr;
+		wr32(hw, NGBE_RXBAL(rxq->reg_idx),
+				(uint32_t)(bus_addr & BIT_MASK32));
+		wr32(hw, NGBE_RXBAH(rxq->reg_idx),
+				(uint32_t)(bus_addr >> 32));
+		wr32(hw, NGBE_RXRP(rxq->reg_idx), 0);
+		wr32(hw, NGBE_RXWP(rxq->reg_idx), 0);
+
+		srrctl = NGBE_RXCFG_RNGLEN(rxq->nb_rx_desc);
+
+		/* Set if packets are dropped when no descriptors available */
+		if (rxq->drop_en)
+			srrctl |= NGBE_RXCFG_DROP;
+
+		/*
+		 * Configure the Rx buffer size in the PKTLEN field of
+		 * the RXCFG register of the queue.
+		 * The value is in 1 KB resolution. Valid values can be from
+		 * 1 KB to 16 KB.
+		 */
+		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
+			RTE_PKTMBUF_HEADROOM);
+		buf_size = ROUND_DOWN(buf_size, 0x1 << 10);
+		srrctl |= NGBE_RXCFG_PKTLEN(buf_size);
+
+		wr32(hw, NGBE_RXCFG(rxq->reg_idx), srrctl);
+	}
+
+	return 0;
 }
 
 /*
@@ -564,7 +660,9 @@ ngbe_dev_rxtx_start(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw     *hw;
 	struct ngbe_tx_queue *txq;
+	struct ngbe_rx_queue *rxq;
 	uint32_t dmatxctl;
+	uint32_t rxctrl;
 	uint16_t i;
 	int ret = 0;
 
@@ -594,7 +692,39 @@ ngbe_dev_rxtx_start(struct rte_eth_dev *dev)
 		}
 	}
 
-	return -EINVAL;
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		if (rxq->rx_deferred_start == 0) {
+			ret = ngbe_dev_rx_queue_start(dev, i);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	/* Enable Receive engine */
+	rxctrl = rd32(hw, NGBE_PBRXCTL);
+	rxctrl |= NGBE_PBRXCTL_ENA;
+	hw->mac.enable_rx_dma(hw, rxctrl);
+
+	return 0;
+}
+
+void
+ngbe_dev_save_rx_queue(struct ngbe_hw *hw, uint16_t rx_queue_id)
+{
+	u32 *reg = &hw->q_rx_regs[rx_queue_id * 8];
+	*(reg++) = rd32(hw, NGBE_RXBAL(rx_queue_id));
+	*(reg++) = rd32(hw, NGBE_RXBAH(rx_queue_id));
+	*(reg++) = rd32(hw, NGBE_RXCFG(rx_queue_id));
+}
+
+void
+ngbe_dev_store_rx_queue(struct ngbe_hw *hw, uint16_t rx_queue_id)
+{
+	u32 *reg = &hw->q_rx_regs[rx_queue_id * 8];
+	wr32(hw, NGBE_RXBAL(rx_queue_id), *(reg++));
+	wr32(hw, NGBE_RXBAH(rx_queue_id), *(reg++));
+	wr32(hw, NGBE_RXCFG(rx_queue_id), *(reg++) & ~NGBE_RXCFG_ENA);
 }
 
 void
@@ -613,6 +743,85 @@ ngbe_dev_store_tx_queue(struct ngbe_hw *hw, uint16_t tx_queue_id)
 	wr32(hw, NGBE_TXBAL(tx_queue_id), *(reg++));
 	wr32(hw, NGBE_TXBAH(tx_queue_id), *(reg++));
 	wr32(hw, NGBE_TXCFG(tx_queue_id), *(reg++) & ~NGBE_TXCFG_ENA);
+}
+
+/*
+ * Start Receive Units for specified queue.
+ */
+int
+ngbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_rx_queue *rxq;
+	uint32_t rxdctl;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+
+	/* Allocate buffers for descriptor rings */
+	if (ngbe_alloc_rx_queue_mbufs(rxq) != 0) {
+		PMD_INIT_LOG(ERR, "Could not alloc mbuf for queue:%d",
+			     rx_queue_id);
+		return -1;
+	}
+	rxdctl = rd32(hw, NGBE_RXCFG(rxq->reg_idx));
+	rxdctl |= NGBE_RXCFG_ENA;
+	wr32(hw, NGBE_RXCFG(rxq->reg_idx), rxdctl);
+
+	/* Wait until Rx Enable ready */
+	poll_ms = RTE_NGBE_REGISTER_POLL_WAIT_10_MS;
+	do {
+		rte_delay_ms(1);
+		rxdctl = rd32(hw, NGBE_RXCFG(rxq->reg_idx));
+	} while (--poll_ms && !(rxdctl & NGBE_RXCFG_ENA));
+	if (poll_ms == 0)
+		PMD_INIT_LOG(ERR, "Could not enable Rx Queue %d", rx_queue_id);
+	rte_wmb();
+	wr32(hw, NGBE_RXRP(rxq->reg_idx), 0);
+	wr32(hw, NGBE_RXWP(rxq->reg_idx), rxq->nb_rx_desc - 1);
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+/*
+ * Stop Receive Units for specified queue.
+ */
+int
+ngbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+	struct ngbe_rx_queue *rxq;
+	uint32_t rxdctl;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+
+	ngbe_dev_save_rx_queue(hw, rxq->reg_idx);
+	wr32m(hw, NGBE_RXCFG(rxq->reg_idx), NGBE_RXCFG_ENA, 0);
+
+	/* Wait until Rx Enable bit clear */
+	poll_ms = RTE_NGBE_REGISTER_POLL_WAIT_10_MS;
+	do {
+		rte_delay_ms(1);
+		rxdctl = rd32(hw, NGBE_RXCFG(rxq->reg_idx));
+	} while (--poll_ms && (rxdctl & NGBE_RXCFG_ENA));
+	if (poll_ms == 0)
+		PMD_INIT_LOG(ERR, "Could not disable Rx Queue %d", rx_queue_id);
+
+	rte_delay_us(RTE_NGBE_WAIT_100_US);
+	ngbe_dev_store_rx_queue(hw, rxq->reg_idx);
+
+	ngbe_rx_queue_release_mbufs(rxq);
+	ngbe_reset_rx_queue(adapter, rxq);
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
 }
 
 /*
