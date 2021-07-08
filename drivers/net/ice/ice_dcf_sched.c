@@ -631,6 +631,43 @@ ice_dcf_validate_tc_bw(struct virtchnl_dcf_bw_cfg_list *tc_bw,
 
 	return 0;
 }
+
+static int ice_dcf_commit_check(struct ice_dcf_hw *hw)
+{
+	struct ice_dcf_tm_node_list *tc_list = &hw->tm_conf.tc_list;
+	struct ice_dcf_tm_node_list *vsi_list = &hw->tm_conf.vsi_list;
+	struct ice_dcf_tm_node *tm_node;
+
+	if (!(hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS)) {
+		PMD_DRV_LOG(ERR, "Configure VF bandwidth is not supported");
+		return ICE_ERR_NOT_SUPPORTED;
+	}
+
+	/* check if all TC nodes are set */
+	if (BIT(hw->tm_conf.nb_tc_node) & hw->ets_config->tc_valid_bits) {
+		PMD_DRV_LOG(ERR, "Not all enabled TC nodes are set");
+		return ICE_ERR_PARAM;
+	}
+
+	/* check if all VF vsi nodes are binded to all TCs */
+	TAILQ_FOREACH(tm_node, tc_list, node) {
+		if (tm_node->reference_count != hw->num_vfs) {
+			PMD_DRV_LOG(ERR, "Not all VFs are binded to TC%u",
+					tm_node->tc);
+			return ICE_ERR_PARAM;
+		}
+	}
+
+	/* check if VF vsi node id start with 0 */
+	tm_node = TAILQ_FIRST(vsi_list);
+	if (tm_node->id != 0) {
+		PMD_DRV_LOG(ERR, "VF vsi node id must start with 0");
+		return ICE_ERR_PARAM;
+	}
+
+	return ICE_SUCCESS;
+}
+
 static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 				 int clear_on_fail,
 				 __rte_unused struct rte_tm_error *error)
@@ -645,20 +682,11 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 	uint32_t port_bw, cir_total;
 	uint16_t size, vf_id;
 	uint8_t num_elem = 0;
-	int i, ret_val = ICE_SUCCESS;
+	int i, ret_val;
 
-	if (!(hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS)) {
-		PMD_DRV_LOG(ERR, "Configure VF bandwidth is not supported");
-		ret_val = ICE_ERR_NOT_SUPPORTED;
+	ret_val = ice_dcf_commit_check(hw);
+	if (ret_val)
 		goto fail_clear;
-	}
-
-	/* check if all TC nodes are set */
-	if (BIT(hw->tm_conf.nb_tc_node) & hw->ets_config->tc_valid_bits) {
-		PMD_DRV_LOG(ERR, "Not all enabled TC nodes are set");
-		ret_val = ICE_ERR_PARAM;
-		goto fail_clear;
-	}
 
 	size = sizeof(struct virtchnl_dcf_bw_cfg_list) +
 		sizeof(struct virtchnl_dcf_bw_cfg) *
@@ -690,7 +718,10 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 			VIRTCHNL_DCF_BW_PIR | VIRTCHNL_DCF_BW_CIR;
 	}
 
-	for (vf_id = 0; vf_id < hw->num_vfs; vf_id++) {
+	/* start with VF1, skip VF0 since DCF does not need to configure
+	 * bandwidth for itself
+	 */
+	for (vf_id = 1; vf_id < hw->num_vfs; vf_id++) {
 		num_elem = 0;
 		vf_bw->vf_id = vf_id;
 		vf_bw->node_type = VIRTCHNL_DCF_TARGET_VF_BW;
@@ -720,14 +751,6 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 
 			cir_total += vf_bw->cfg[num_elem].shaper.committed;
 			num_elem++;
-		}
-
-		/* check if all TC nodes are set with VF vsi nodes */
-		if (num_elem != hw->tm_conf.nb_tc_node) {
-			PMD_DRV_LOG(ERR, "VF%u vsi nodes are not set to all TC nodes, node id should be continuous",
-				    vf_id);
-			ret_val = ICE_ERR_PARAM;
-			goto fail_clear;
 		}
 
 		vf_bw->num_elem = num_elem;
