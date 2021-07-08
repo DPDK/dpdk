@@ -12,6 +12,7 @@ objs = [base_objs]
 
 sources = files(
         'ngbe_ethdev.c',
+        'ngbe_rxtx.c',
 )
 
 includes += include_directories('base')

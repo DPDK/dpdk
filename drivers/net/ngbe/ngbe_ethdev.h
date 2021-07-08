@@ -30,6 +30,7 @@ struct ngbe_interrupt {
 struct ngbe_adapter {
 	struct ngbe_hw             hw;
 	struct ngbe_interrupt      intr;
+	bool                       rx_bulk_alloc_allowed;
 };
 
 static inline struct ngbe_adapter *
@@ -58,6 +59,13 @@ ngbe_dev_intr(struct rte_eth_dev *dev)
 	return intr;
 }
 
+void ngbe_dev_rx_queue_release(void *rxq);
+
+int  ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
+		uint16_t nb_rx_desc, unsigned int socket_id,
+		const struct rte_eth_rxconf *rx_conf,
+		struct rte_mempool *mb_pool);
+
 int
 ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 		int wait_to_complete);
@@ -65,5 +73,13 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 #define NGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define NGBE_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
 #define NGBE_VMDQ_NUM_UC_MAC         4096 /* Maximum nb. of UC MAC addr. */
+
+/*
+ *  Default values for Rx/Tx configuration
+ */
+#define NGBE_DEFAULT_RX_FREE_THRESH  32
+#define NGBE_DEFAULT_RX_PTHRESH      8
+#define NGBE_DEFAULT_RX_HTHRESH      8
+#define NGBE_DEFAULT_RX_WTHRESH      0
 
 #endif /* _NGBE_ETHDEV_H_ */

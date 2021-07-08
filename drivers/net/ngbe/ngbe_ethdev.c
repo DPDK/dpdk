@@ -12,6 +12,7 @@
 #include "ngbe_logs.h"
 #include "ngbe.h"
 #include "ngbe_ethdev.h"
+#include "ngbe_rxtx.h"
 
 static int ngbe_dev_close(struct rte_eth_dev *dev);
 
@@ -35,6 +36,12 @@ static const struct rte_pci_id pci_id_ngbe_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_WANGXUN, NGBE_DEV_ID_EM_WX1860A1L) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_WANGXUN, NGBE_DEV_ID_EM_WX1860AL_W) },
 	{ .vendor_id = 0, /* sentinel */ },
+};
+
+static const struct rte_eth_desc_lim rx_desc_lim = {
+	.nb_max = NGBE_RING_DESC_MAX,
+	.nb_min = NGBE_RING_DESC_MIN,
+	.nb_align = NGBE_RXD_ALIGN,
 };
 
 static const struct eth_dev_ops ngbe_eth_dev_ops;
@@ -241,11 +248,18 @@ static int
 ngbe_dev_configure(struct rte_eth_dev *dev)
 {
 	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
 
 	PMD_INIT_FUNC_TRACE();
 
 	/* set flag to update link status after init */
 	intr->flags |= NGBE_FLAG_NEED_LINK_UPDATE;
+
+	/*
+	 * Initialize to TRUE. If any of Rx queues doesn't meet the bulk
+	 * allocation Rx preconditions we will reset it.
+	 */
+	adapter->rx_bulk_alloc_allowed = true;
 
 	return 0;
 }
@@ -266,10 +280,29 @@ ngbe_dev_close(struct rte_eth_dev *dev)
 static int
 ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
-	RTE_SET_USED(dev);
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
+	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = NGBE_DEFAULT_RX_PTHRESH,
+			.hthresh = NGBE_DEFAULT_RX_HTHRESH,
+			.wthresh = NGBE_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = NGBE_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+		.offloads = 0,
+	};
+
+	dev_info->rx_desc_lim = rx_desc_lim;
 
 	dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_100M |
 				ETH_LINK_SPEED_10M;
+
+	/* Driver-preferred Rx/Tx parameters */
+	dev_info->default_rxportconf.nb_queues = 1;
+	dev_info->default_rxportconf.ring_size = 256;
 
 	return 0;
 }
@@ -559,6 +592,8 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.dev_configure              = ngbe_dev_configure,
 	.dev_infos_get              = ngbe_dev_info_get,
 	.link_update                = ngbe_dev_link_update,
+	.rx_queue_setup             = ngbe_dev_rx_queue_setup,
+	.rx_queue_release           = ngbe_dev_rx_queue_release,
 };
 
 RTE_PMD_REGISTER_PCI(net_ngbe, rte_ngbe_pmd);
