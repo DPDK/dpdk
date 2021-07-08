@@ -256,7 +256,7 @@ eth_ngbe_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	ngbe_dev_close(eth_dev);
 
-	return -EINVAL;
+	return 0;
 }
 
 static int
@@ -557,11 +557,66 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 static int
 ngbe_dev_close(struct rte_eth_dev *dev)
 {
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	int retries = 0;
+	int ret;
+
 	PMD_INIT_FUNC_TRACE();
 
-	RTE_SET_USED(dev);
+	ngbe_pf_reset_hw(hw);
 
-	return -EINVAL;
+	ngbe_dev_stop(dev);
+
+	ngbe_dev_free_queues(dev);
+
+	/* reprogram the RAR[0] in case user changed it. */
+	ngbe_set_rar(hw, 0, hw->mac.addr, 0, true);
+
+	/* Unlock any pending hardware semaphore */
+	ngbe_swfw_lock_reset(hw);
+
+	/* disable uio intr before callback unregister */
+	rte_intr_disable(intr_handle);
+
+	do {
+		ret = rte_intr_callback_unregister(intr_handle,
+				ngbe_dev_interrupt_handler, dev);
+		if (ret >= 0 || ret == -ENOENT) {
+			break;
+		} else if (ret != -EAGAIN) {
+			PMD_INIT_LOG(ERR,
+				"intr callback unregister failed: %d",
+				ret);
+		}
+		rte_delay_ms(100);
+	} while (retries++ < (10 + NGBE_LINK_UP_TIME));
+
+	rte_free(dev->data->mac_addrs);
+	dev->data->mac_addrs = NULL;
+
+	rte_free(dev->data->hash_mac_addrs);
+	dev->data->hash_mac_addrs = NULL;
+
+	return ret;
+}
+
+/*
+ * Reset PF device.
+ */
+static int
+ngbe_dev_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	ret = eth_ngbe_dev_uninit(dev);
+	if (ret != 0)
+		return ret;
+
+	ret = eth_ngbe_dev_init(dev, NULL);
+
+	return ret;
 }
 
 static int
@@ -1090,6 +1145,8 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.dev_infos_get              = ngbe_dev_info_get,
 	.dev_start                  = ngbe_dev_start,
 	.dev_stop                   = ngbe_dev_stop,
+	.dev_close                  = ngbe_dev_close,
+	.dev_reset                  = ngbe_dev_reset,
 	.link_update                = ngbe_dev_link_update,
 	.rx_queue_start	            = ngbe_dev_rx_queue_start,
 	.rx_queue_stop              = ngbe_dev_rx_queue_stop,

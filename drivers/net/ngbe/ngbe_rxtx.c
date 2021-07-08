@@ -908,6 +908,26 @@ ngbe_dev_clear_queues(struct rte_eth_dev *dev)
 	}
 }
 
+void
+ngbe_dev_free_queues(struct rte_eth_dev *dev)
+{
+	unsigned int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		ngbe_dev_rx_queue_release(dev->data->rx_queues[i]);
+		dev->data->rx_queues[i] = NULL;
+	}
+	dev->data->nb_rx_queues = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		ngbe_dev_tx_queue_release(dev->data->tx_queues[i]);
+		dev->data->tx_queues[i] = NULL;
+	}
+	dev->data->nb_tx_queues = 0;
+}
+
 static int
 ngbe_alloc_rx_queue_mbufs(struct ngbe_rx_queue *rxq)
 {

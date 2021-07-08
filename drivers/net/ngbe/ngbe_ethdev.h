@@ -67,6 +67,8 @@ ngbe_dev_intr(struct rte_eth_dev *dev)
  */
 void ngbe_dev_clear_queues(struct rte_eth_dev *dev);
 
+void ngbe_dev_free_queues(struct rte_eth_dev *dev);
+
 void ngbe_dev_rx_queue_release(void *rxq);
 
 void ngbe_dev_tx_queue_release(void *txq);
