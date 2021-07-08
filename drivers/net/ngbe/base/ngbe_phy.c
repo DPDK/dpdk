@@ -420,7 +420,29 @@ s32 ngbe_init_phy(struct ngbe_hw *hw)
 
 	/* Identify the PHY */
 	err = phy->identify(hw);
+	if (err == NGBE_ERR_PHY_ADDR_INVALID)
+		goto init_phy_ops_out;
 
+	/* Set necessary function pointers based on PHY type */
+	switch (hw->phy.type) {
+	case ngbe_phy_rtl:
+		hw->phy.check_link = ngbe_check_phy_link_rtl;
+		hw->phy.setup_link = ngbe_setup_phy_link_rtl;
+		break;
+	case ngbe_phy_mvl:
+	case ngbe_phy_mvl_sfi:
+		hw->phy.check_link = ngbe_check_phy_link_mvl;
+		hw->phy.setup_link = ngbe_setup_phy_link_mvl;
+		break;
+	case ngbe_phy_yt8521s:
+	case ngbe_phy_yt8521s_sfi:
+		hw->phy.check_link = ngbe_check_phy_link_yt;
+		hw->phy.setup_link = ngbe_setup_phy_link_yt;
+	default:
+		break;
+	}
+
+init_phy_ops_out:
 	return err;
 }
 

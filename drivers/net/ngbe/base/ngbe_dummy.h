@@ -64,6 +64,11 @@ static inline void ngbe_mac_release_swfw_sync_dummy(struct ngbe_hw *TUP0,
 					u32 TUP1)
 {
 }
+static inline s32 ngbe_mac_setup_link_dummy(struct ngbe_hw *TUP0, u32 TUP1,
+					bool TUP2)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
 static inline s32 ngbe_mac_check_link_dummy(struct ngbe_hw *TUP0, u32 *TUP1,
 					bool *TUP3, bool TUP4)
 {
@@ -129,6 +134,16 @@ static inline s32 ngbe_phy_write_reg_unlocked_dummy(struct ngbe_hw *TUP0,
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
+static inline s32 ngbe_phy_setup_link_dummy(struct ngbe_hw *TUP0,
+					u32 TUP1, bool TUP2)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_phy_check_link_dummy(struct ngbe_hw *TUP0, u32 *TUP1,
+					bool *TUP2)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
 static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 {
 	hw->bus.set_lan_id = ngbe_bus_set_lan_id_dummy;
@@ -140,6 +155,7 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->mac.get_mac_addr = ngbe_mac_get_mac_addr_dummy;
 	hw->mac.acquire_swfw_sync = ngbe_mac_acquire_swfw_sync_dummy;
 	hw->mac.release_swfw_sync = ngbe_mac_release_swfw_sync_dummy;
+	hw->mac.setup_link = ngbe_mac_setup_link_dummy;
 	hw->mac.check_link = ngbe_mac_check_link_dummy;
 	hw->mac.set_rar = ngbe_mac_set_rar_dummy;
 	hw->mac.clear_rar = ngbe_mac_clear_rar_dummy;
@@ -154,6 +170,8 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->phy.write_reg = ngbe_phy_write_reg_dummy;
 	hw->phy.read_reg_unlocked = ngbe_phy_read_reg_unlocked_dummy;
 	hw->phy.write_reg_unlocked = ngbe_phy_write_reg_unlocked_dummy;
+	hw->phy.setup_link = ngbe_phy_setup_link_dummy;
+	hw->phy.check_link = ngbe_phy_check_link_dummy;
 }
 
 #endif /* _NGBE_TYPE_DUMMY_H_ */

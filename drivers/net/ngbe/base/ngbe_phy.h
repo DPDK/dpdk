@@ -22,6 +22,8 @@
 #define NGBE_MD_PHY_ID_LOW		0x3 /* PHY ID Low Reg*/
 #define   NGBE_PHY_REVISION_MASK	0xFFFFFFF0
 
+#define NGBE_MII_AUTONEG_REG			0x0
+
 /* IEEE 802.3 Clause 22 */
 struct mdi_reg_22 {
 	u16 page;

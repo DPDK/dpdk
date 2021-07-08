@@ -89,4 +89,8 @@ s32 ngbe_write_phy_reg_mvl(struct ngbe_hw *hw, u32 reg_addr, u32 device_type,
 
 s32 ngbe_reset_phy_mvl(struct ngbe_hw *hw);
 
+s32 ngbe_check_phy_link_mvl(struct ngbe_hw *hw,
+		u32 *speed, bool *link_up);
+s32 ngbe_setup_phy_link_mvl(struct ngbe_hw *hw,
+			u32 speed, bool autoneg_wait_to_complete);
 #endif /* _NGBE_PHY_MVL_H_ */

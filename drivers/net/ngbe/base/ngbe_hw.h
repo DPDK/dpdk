@@ -20,6 +20,12 @@ s32 ngbe_get_mac_addr(struct ngbe_hw *hw, u8 *mac_addr);
 
 void ngbe_set_lan_id_multi_port(struct ngbe_hw *hw);
 
+s32 ngbe_check_mac_link_em(struct ngbe_hw *hw, u32 *speed,
+			bool *link_up, bool link_up_wait_to_complete);
+s32 ngbe_setup_mac_link_em(struct ngbe_hw *hw,
+			       u32 speed,
+			       bool autoneg_wait_to_complete);
+
 s32 ngbe_set_rar(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 			  u32 enable_addr);
 s32 ngbe_clear_rar(struct ngbe_hw *hw, u32 index);

@@ -61,7 +61,15 @@ s32 ngbe_read_phy_reg_ext_yt(struct ngbe_hw *hw,
 		u32 reg_addr, u32 device_type, u16 *phy_data);
 s32 ngbe_write_phy_reg_ext_yt(struct ngbe_hw *hw,
 		u32 reg_addr, u32 device_type, u16 phy_data);
+s32 ngbe_read_phy_reg_sds_ext_yt(struct ngbe_hw *hw,
+		u32 reg_addr, u32 device_type, u16 *phy_data);
+s32 ngbe_write_phy_reg_sds_ext_yt(struct ngbe_hw *hw,
+		u32 reg_addr, u32 device_type, u16 phy_data);
 
 s32 ngbe_reset_phy_yt(struct ngbe_hw *hw);
 
+s32 ngbe_check_phy_link_yt(struct ngbe_hw *hw,
+		u32 *speed, bool *link_up);
+s32 ngbe_setup_phy_link_yt(struct ngbe_hw *hw,
+			u32 speed, bool autoneg_wait_to_complete);
 #endif /* _NGBE_PHY_YT_H_ */

@@ -600,6 +600,54 @@ s32 ngbe_init_uta_tables(struct ngbe_hw *hw)
 }
 
 /**
+ *  ngbe_check_mac_link_em - Determine link and speed status
+ *  @hw: pointer to hardware structure
+ *  @speed: pointer to link speed
+ *  @link_up: true when link is up
+ *  @link_up_wait_to_complete: bool used to wait for link up or not
+ *
+ *  Reads the links register to determine if link is up and the current speed
+ **/
+s32 ngbe_check_mac_link_em(struct ngbe_hw *hw, u32 *speed,
+			bool *link_up, bool link_up_wait_to_complete)
+{
+	u32 i, reg;
+	s32 status = 0;
+
+	DEBUGFUNC("ngbe_check_mac_link_em");
+
+	reg = rd32(hw, NGBE_GPIOINTSTAT);
+	wr32(hw, NGBE_GPIOEOI, reg);
+
+	if (link_up_wait_to_complete) {
+		for (i = 0; i < hw->mac.max_link_up_time; i++) {
+			status = hw->phy.check_link(hw, speed, link_up);
+			if (*link_up)
+				break;
+			msec_delay(100);
+		}
+	} else {
+		status = hw->phy.check_link(hw, speed, link_up);
+	}
+
+	return status;
+}
+
+s32 ngbe_setup_mac_link_em(struct ngbe_hw *hw,
+			       u32 speed,
+			       bool autoneg_wait_to_complete)
+{
+	s32 status;
+
+	DEBUGFUNC("\n");
+
+	/* Setup the PHY according to input speed */
+	status = hw->phy.setup_link(hw, speed, autoneg_wait_to_complete);
+
+	return status;
+}
+
+/**
  *  ngbe_init_thermal_sensor_thresh - Inits thermal sensor thresholds
  *  @hw: pointer to hardware structure
  *
@@ -806,6 +854,10 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	mac->set_vmdq = ngbe_set_vmdq;
 	mac->clear_vmdq = ngbe_clear_vmdq;
 
+	/* Link */
+	mac->check_link = ngbe_check_mac_link_em;
+	mac->setup_link = ngbe_setup_mac_link_em;
+
 	/* Manageability interface */
 	mac->init_thermal_sensor_thresh = ngbe_init_thermal_sensor_thresh;
 	mac->check_overtemp = ngbe_mac_check_overtemp;
@@ -853,6 +905,7 @@ s32 ngbe_init_shared_code(struct ngbe_hw *hw)
 		status = NGBE_ERR_DEVICE_NOT_SUPPORTED;
 		break;
 	}
+	hw->mac.max_link_up_time = NGBE_LINK_UP_TIME;
 
 	hw->bus.set_lan_id(hw);
 
