@@ -64,6 +64,11 @@ static inline void ngbe_mac_release_swfw_sync_dummy(struct ngbe_hw *TUP0,
 					u32 TUP1)
 {
 }
+static inline s32 ngbe_mac_check_link_dummy(struct ngbe_hw *TUP0, u32 *TUP1,
+					bool *TUP3, bool TUP4)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
 static inline s32 ngbe_mac_set_rar_dummy(struct ngbe_hw *TUP0, u32 TUP1,
 					u8 *TUP2, u32 TUP3, u32 TUP4)
 {
@@ -135,6 +140,7 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->mac.get_mac_addr = ngbe_mac_get_mac_addr_dummy;
 	hw->mac.acquire_swfw_sync = ngbe_mac_acquire_swfw_sync_dummy;
 	hw->mac.release_swfw_sync = ngbe_mac_release_swfw_sync_dummy;
+	hw->mac.check_link = ngbe_mac_check_link_dummy;
 	hw->mac.set_rar = ngbe_mac_set_rar_dummy;
 	hw->mac.clear_rar = ngbe_mac_clear_rar_dummy;
 	hw->mac.set_vmdq = ngbe_mac_set_vmdq_dummy;

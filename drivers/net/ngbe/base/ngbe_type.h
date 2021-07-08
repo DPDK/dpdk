@@ -97,6 +97,8 @@ struct ngbe_mac_info {
 	s32 (*acquire_swfw_sync)(struct ngbe_hw *hw, u32 mask);
 	void (*release_swfw_sync)(struct ngbe_hw *hw, u32 mask);
 
+	s32 (*check_link)(struct ngbe_hw *hw, u32 *speed,
+			       bool *link_up, bool link_up_wait_to_complete);
 	/* RAR */
 	s32 (*set_rar)(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 			  u32 enable_addr);
@@ -117,6 +119,7 @@ struct ngbe_mac_info {
 	u32 num_rar_entries;
 	u32 max_tx_queues;
 	u32 max_rx_queues;
+	bool get_link_status;
 	struct ngbe_thermal_sensor_data  thermal_sensor_data;
 	bool set_lben;
 };
@@ -140,6 +143,14 @@ struct ngbe_phy_info {
 	u32 revision;
 	u32 phy_semaphore_mask;
 	bool reset_disable;
+};
+
+enum ngbe_isb_idx {
+	NGBE_ISB_HEADER,
+	NGBE_ISB_MISC,
+	NGBE_ISB_VEC0,
+	NGBE_ISB_VEC1,
+	NGBE_ISB_MAX
 };
 
 struct ngbe_hw {

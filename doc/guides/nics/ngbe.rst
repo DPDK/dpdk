@@ -8,6 +8,12 @@ The NGBE PMD (librte_pmd_ngbe) provides poll mode driver support
 for Wangxun 1 Gigabit Ethernet NICs.
 
 
+Features
+--------
+
+- Link state information
+
+
 Prerequisites
 -------------
 
