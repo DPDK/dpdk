@@ -54,6 +54,7 @@ INTERNAL {
 	roc_cpt_inline_ipsec_cfg;
 	roc_cpt_inline_ipsec_inb_cfg;
 	roc_cpt_iq_disable;
+	roc_cpt_iq_enable;
 	roc_cpt_lf_ctx_flush;
 	roc_cpt_lf_init;
 	roc_cpt_lf_fini;

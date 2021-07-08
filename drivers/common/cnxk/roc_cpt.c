@@ -444,8 +444,6 @@ cpt_iq_init(struct roc_cpt_lf *lf)
 {
 	union cpt_lf_q_size lf_q_size = {.u = 0x0};
 	union cpt_lf_q_base lf_q_base = {.u = 0x0};
-	union cpt_lf_inprog lf_inprog;
-	union cpt_lf_ctl lf_ctl;
 	uintptr_t addr;
 
 	lf->io_addr = lf->rbase + CPT_LF_NQX(0);
@@ -464,19 +462,6 @@ cpt_iq_init(struct roc_cpt_lf *lf)
 	/* Set command queue size */
 	lf_q_size.s.size_div40 = CPT_IQ_NB_DESC_SIZE_DIV40(lf->nb_desc);
 	plt_write64(lf_q_size.u, lf->rbase + CPT_LF_Q_SIZE);
-
-	/* Enable command queue execution */
-	lf_inprog.u = plt_read64(lf->rbase + CPT_LF_INPROG);
-	lf_inprog.s.eena = 1;
-	plt_write64(lf_inprog.u, lf->rbase + CPT_LF_INPROG);
-
-	/* Enable instruction queue enqueuing */
-	lf_ctl.u = plt_read64(lf->rbase + CPT_LF_CTL);
-	lf_ctl.s.ena = 1;
-	lf_ctl.s.fc_ena = 1;
-	lf_ctl.s.fc_up_crossing = 1;
-	lf_ctl.s.fc_hyst_bits = CPT_FC_NUM_HYST_BITS;
-	plt_write64(lf_ctl.u, lf->rbase + CPT_LF_CTL);
 
 	lf->fc_addr = (uint64_t *)addr;
 }
@@ -573,7 +558,6 @@ cpt_lf_init(struct roc_cpt_lf *lf)
 	if (rc)
 		goto disable_iq;
 
-	cpt_lf_dump(lf);
 	return 0;
 
 disable_iq:
@@ -805,6 +789,31 @@ roc_cpt_iq_disable(struct roc_cpt_lf *lf)
 	 */
 	lf_inprog.s.eena = 0x0;
 	plt_write64(lf_inprog.u, lf->rbase + CPT_LF_INPROG);
+}
+
+void
+roc_cpt_iq_enable(struct roc_cpt_lf *lf)
+{
+	union cpt_lf_inprog lf_inprog;
+	union cpt_lf_ctl lf_ctl;
+
+	/* Disable command queue */
+	roc_cpt_iq_disable(lf);
+
+	/* Enable command queue execution */
+	lf_inprog.u = plt_read64(lf->rbase + CPT_LF_INPROG);
+	lf_inprog.s.eena = 1;
+	plt_write64(lf_inprog.u, lf->rbase + CPT_LF_INPROG);
+
+	/* Enable instruction queue enqueuing */
+	lf_ctl.u = plt_read64(lf->rbase + CPT_LF_CTL);
+	lf_ctl.s.ena = 1;
+	lf_ctl.s.fc_ena = 1;
+	lf_ctl.s.fc_up_crossing = 1;
+	lf_ctl.s.fc_hyst_bits = CPT_FC_NUM_HYST_BITS;
+	plt_write64(lf_ctl.u, lf->rbase + CPT_LF_CTL);
+
+	cpt_lf_dump(lf);
 }
 
 int
