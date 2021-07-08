@@ -4,6 +4,7 @@
  */
 
 #include "ngbe_type.h"
+#include "ngbe_phy.h"
 #include "ngbe_eeprom.h"
 #include "ngbe_mng.h"
 #include "ngbe_hw.h"
@@ -123,6 +124,15 @@ s32 ngbe_reset_hw_em(struct ngbe_hw *hw)
 	status = hw->mac.stop_hw(hw);
 	if (status != 0)
 		return status;
+
+	/* Identify PHY and related function pointers */
+	status = ngbe_init_phy(hw);
+	if (status)
+		return status;
+
+	/* Reset PHY */
+	if (!hw->phy.reset_disable)
+		hw->phy.reset_hw(hw);
 
 	wr32(hw, NGBE_RST, NGBE_RST_LAN(hw->bus.lan_id));
 	ngbe_flush(hw);
@@ -307,6 +317,24 @@ s32 ngbe_init_thermal_sensor_thresh(struct ngbe_hw *hw)
 	return 0;
 }
 
+s32 ngbe_mac_check_overtemp(struct ngbe_hw *hw)
+{
+	s32 status = 0;
+	u32 ts_state;
+
+	DEBUGFUNC("ngbe_mac_check_overtemp");
+
+	/* Check that the LASI temp alarm status was triggered */
+	ts_state = rd32(hw, NGBE_TSALM);
+
+	if (ts_state & NGBE_TSALM_HI)
+		status = NGBE_ERR_UNDERTEMP;
+	else if (ts_state & NGBE_TSALM_LO)
+		status = NGBE_ERR_OVERTEMP;
+
+	return status;
+}
+
 void ngbe_disable_rx(struct ngbe_hw *hw)
 {
 	u32 pfdtxgswc;
@@ -434,12 +462,21 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 {
 	struct ngbe_bus_info *bus = &hw->bus;
 	struct ngbe_mac_info *mac = &hw->mac;
+	struct ngbe_phy_info *phy = &hw->phy;
 	struct ngbe_rom_info *rom = &hw->rom;
 
 	DEBUGFUNC("ngbe_init_ops_pf");
 
 	/* BUS */
 	bus->set_lan_id = ngbe_set_lan_id_multi_port;
+
+	/* PHY */
+	phy->identify = ngbe_identify_phy;
+	phy->read_reg = ngbe_read_phy_reg;
+	phy->write_reg = ngbe_write_phy_reg;
+	phy->read_reg_unlocked = ngbe_read_phy_reg_mdi;
+	phy->write_reg_unlocked = ngbe_write_phy_reg_mdi;
+	phy->reset_hw = ngbe_reset_phy;
 
 	/* MAC */
 	mac->init_hw = ngbe_init_hw;
@@ -450,6 +487,7 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 
 	/* Manageability interface */
 	mac->init_thermal_sensor_thresh = ngbe_init_thermal_sensor_thresh;
+	mac->check_overtemp = ngbe_mac_check_overtemp;
 
 	/* EEPROM */
 	rom->init_params = ngbe_init_eeprom_params;

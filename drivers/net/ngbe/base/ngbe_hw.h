@@ -21,10 +21,12 @@ s32 ngbe_acquire_swfw_sync(struct ngbe_hw *hw, u32 mask);
 void ngbe_release_swfw_sync(struct ngbe_hw *hw, u32 mask);
 
 s32 ngbe_init_thermal_sensor_thresh(struct ngbe_hw *hw);
+s32 ngbe_mac_check_overtemp(struct ngbe_hw *hw);
 void ngbe_disable_rx(struct ngbe_hw *hw);
 s32 ngbe_init_shared_code(struct ngbe_hw *hw);
 s32 ngbe_set_mac_type(struct ngbe_hw *hw);
 s32 ngbe_init_ops_pf(struct ngbe_hw *hw);
+s32 ngbe_init_phy(struct ngbe_hw *hw);
 void ngbe_map_device_id(struct ngbe_hw *hw);
 
 #endif /* _NGBE_HW_H_ */

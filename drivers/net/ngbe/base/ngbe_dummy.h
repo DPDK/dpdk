@@ -64,6 +64,39 @@ static inline s32 ngbe_mac_init_thermal_ssth_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
+static inline s32 ngbe_mac_check_overtemp_dummy(struct ngbe_hw *TUP0)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+/* struct ngbe_phy_operations */
+static inline s32 ngbe_phy_identify_dummy(struct ngbe_hw *TUP0)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_phy_reset_hw_dummy(struct ngbe_hw *TUP0)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_phy_read_reg_dummy(struct ngbe_hw *TUP0, u32 TUP1,
+					u32 TUP2, u16 *TUP3)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_phy_write_reg_dummy(struct ngbe_hw *TUP0, u32 TUP1,
+					u32 TUP2, u16 TUP3)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_phy_read_reg_unlocked_dummy(struct ngbe_hw *TUP0,
+					u32 TUP1, u32 TUP2, u16 *TUP3)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_phy_write_reg_unlocked_dummy(struct ngbe_hw *TUP0,
+					u32 TUP1, u32 TUP2, u16 TUP3)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
 static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 {
 	hw->bus.set_lan_id = ngbe_bus_set_lan_id_dummy;
@@ -75,6 +108,13 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->mac.acquire_swfw_sync = ngbe_mac_acquire_swfw_sync_dummy;
 	hw->mac.release_swfw_sync = ngbe_mac_release_swfw_sync_dummy;
 	hw->mac.init_thermal_sensor_thresh = ngbe_mac_init_thermal_ssth_dummy;
+	hw->mac.check_overtemp = ngbe_mac_check_overtemp_dummy;
+	hw->phy.identify = ngbe_phy_identify_dummy;
+	hw->phy.reset_hw = ngbe_phy_reset_hw_dummy;
+	hw->phy.read_reg = ngbe_phy_read_reg_dummy;
+	hw->phy.write_reg = ngbe_phy_write_reg_dummy;
+	hw->phy.read_reg_unlocked = ngbe_phy_read_reg_unlocked_dummy;
+	hw->phy.write_reg_unlocked = ngbe_phy_write_reg_unlocked_dummy;
 }
 
 #endif /* _NGBE_TYPE_DUMMY_H_ */

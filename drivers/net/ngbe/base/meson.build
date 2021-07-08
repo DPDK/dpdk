@@ -5,6 +5,10 @@ sources = [
         'ngbe_eeprom.c',
         'ngbe_hw.c',
         'ngbe_mng.c',
+        'ngbe_phy.c',
+        'ngbe_phy_rtl.c',
+        'ngbe_phy_mvl.c',
+        'ngbe_phy_yt.c',
 ]
 
 error_cflags = []

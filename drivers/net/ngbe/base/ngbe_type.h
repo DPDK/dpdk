@@ -94,6 +94,7 @@ struct ngbe_mac_info {
 
 	/* Manageability interface */
 	s32 (*init_thermal_sensor_thresh)(struct ngbe_hw *hw);
+	s32 (*check_overtemp)(struct ngbe_hw *hw);
 
 	enum ngbe_mac_type type;
 	u32 max_tx_queues;
@@ -103,8 +104,24 @@ struct ngbe_mac_info {
 };
 
 struct ngbe_phy_info {
+	s32 (*identify)(struct ngbe_hw *hw);
+	s32 (*reset_hw)(struct ngbe_hw *hw);
+	s32 (*read_reg)(struct ngbe_hw *hw, u32 reg_addr,
+				u32 device_type, u16 *phy_data);
+	s32 (*write_reg)(struct ngbe_hw *hw, u32 reg_addr,
+				u32 device_type, u16 phy_data);
+	s32 (*read_reg_unlocked)(struct ngbe_hw *hw, u32 reg_addr,
+				u32 device_type, u16 *phy_data);
+	s32 (*write_reg_unlocked)(struct ngbe_hw *hw, u32 reg_addr,
+				u32 device_type, u16 phy_data);
+
 	enum ngbe_media_type media_type;
 	enum ngbe_phy_type type;
+	u32 addr;
+	u32 id;
+	u32 revision;
+	u32 phy_semaphore_mask;
+	bool reset_disable;
 };
 
 struct ngbe_hw {
