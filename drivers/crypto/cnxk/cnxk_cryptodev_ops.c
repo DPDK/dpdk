@@ -58,7 +58,7 @@ cnxk_cpt_dev_config(struct rte_cryptodev *dev,
 	uint16_t nb_lf_avail, nb_lf;
 	int ret;
 
-	dev->feature_flags &= ~conf->ff_disable;
+	dev->feature_flags = cnxk_cpt_default_ff_get() & ~conf->ff_disable;
 
 	nb_lf_avail = roc_cpt->nb_lf_avail;
 	nb_lf = conf->nb_queue_pairs;
@@ -151,7 +151,7 @@ cnxk_cpt_dev_info_get(struct rte_cryptodev *dev,
 	struct roc_cpt *roc_cpt = &vf->cpt;
 
 	info->max_nb_queue_pairs = roc_cpt->nb_lf_avail;
-	info->feature_flags = dev->feature_flags;
+	info->feature_flags = cnxk_cpt_default_ff_get();
 	info->capabilities = cnxk_crypto_capabilities_get(vf);
 	info->sym.max_nb_sessions = 0;
 	info->min_mbuf_headroom_req = CNXK_CPT_MIN_HEADROOM_REQ;

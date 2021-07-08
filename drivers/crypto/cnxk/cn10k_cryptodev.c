@@ -90,19 +90,7 @@ cn10k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	dev->dev_ops = &cn10k_cpt_ops;
 	dev->driver_id = cn10k_cryptodev_driver_id;
-
-	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
-			     RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO |
-			     RTE_CRYPTODEV_FF_HW_ACCELERATED |
-			     RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT |
-			     RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
-			     RTE_CRYPTODEV_FF_IN_PLACE_SGL |
-			     RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
-			     RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
-			     RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT |
-			     RTE_CRYPTODEV_FF_SYM_SESSIONLESS |
-			     RTE_CRYPTODEV_FF_SECURITY |
-			     RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED;
+	dev->feature_flags = cnxk_cpt_default_ff_get();
 
 	cn10k_cpt_set_enqdeq_fns(dev);
 	cn10k_sec_ops_override();
