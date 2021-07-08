@@ -32,6 +32,29 @@ static const struct rte_pci_id pci_id_ngbe_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+/*
+ * Ensure that all locks are released before first NVM or PHY access
+ */
+static void
+ngbe_swfw_lock_reset(struct ngbe_hw *hw)
+{
+	uint16_t mask;
+
+	/*
+	 * These ones are more tricky since they are common to all ports; but
+	 * swfw_sync retries last long enough (1s) to be almost sure that if
+	 * lock can not be taken it is due to an improper lock of the
+	 * semaphore.
+	 */
+	mask = NGBE_MNGSEM_SWPHY |
+	       NGBE_MNGSEM_SWMBX |
+	       NGBE_MNGSEM_SWFLASH;
+	if (hw->mac.acquire_swfw_sync(hw, mask) < 0)
+		PMD_DRV_LOG(DEBUG, "SWFW common locks released");
+
+	hw->mac.release_swfw_sync(hw, mask);
+}
+
 static int
 eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
@@ -57,6 +80,22 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	err = ngbe_init_shared_code(hw);
 	if (err != 0) {
 		PMD_INIT_LOG(ERR, "Shared code init failed: %d", err);
+		return -EIO;
+	}
+
+	/* Unlock any pending hardware semaphore */
+	ngbe_swfw_lock_reset(hw);
+
+	err = hw->rom.init_params(hw);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "The EEPROM init failed: %d", err);
+		return -EIO;
+	}
+
+	/* Make sure we have a good EEPROM before we read from it */
+	err = hw->rom.validate_checksum(hw, NULL);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "The EEPROM checksum is not valid: %d", err);
 		return -EIO;
 	}
 

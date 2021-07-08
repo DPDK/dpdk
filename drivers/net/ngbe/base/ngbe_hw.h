@@ -10,6 +10,9 @@
 
 void ngbe_set_lan_id_multi_port(struct ngbe_hw *hw);
 
+s32 ngbe_acquire_swfw_sync(struct ngbe_hw *hw, u32 mask);
+void ngbe_release_swfw_sync(struct ngbe_hw *hw, u32 mask);
+
 s32 ngbe_init_shared_code(struct ngbe_hw *hw);
 s32 ngbe_set_mac_type(struct ngbe_hw *hw);
 s32 ngbe_init_ops_pf(struct ngbe_hw *hw);

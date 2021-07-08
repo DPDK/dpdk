@@ -2,7 +2,9 @@
 # Copyright(c) 2018-2021 Beijing WangXun Technology Co., Ltd.
 
 sources = [
+        'ngbe_eeprom.c',
         'ngbe_hw.c',
+        'ngbe_mng.c',
 ]
 
 error_cflags = []

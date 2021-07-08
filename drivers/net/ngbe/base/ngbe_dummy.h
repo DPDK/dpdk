@@ -28,9 +28,32 @@
 static inline void ngbe_bus_set_lan_id_dummy(struct ngbe_hw *TUP0)
 {
 }
+/* struct ngbe_rom_operations */
+static inline s32 ngbe_rom_init_params_dummy(struct ngbe_hw *TUP0)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_rom_validate_checksum_dummy(struct ngbe_hw *TUP0,
+					u16 *TUP1)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_mac_acquire_swfw_sync_dummy(struct ngbe_hw *TUP0,
+					u32 TUP1)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline void ngbe_mac_release_swfw_sync_dummy(struct ngbe_hw *TUP0,
+					u32 TUP1)
+{
+}
 static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 {
 	hw->bus.set_lan_id = ngbe_bus_set_lan_id_dummy;
+	hw->rom.init_params = ngbe_rom_init_params_dummy;
+	hw->rom.validate_checksum = ngbe_rom_validate_checksum_dummy;
+	hw->mac.acquire_swfw_sync = ngbe_mac_acquire_swfw_sync_dummy;
+	hw->mac.release_swfw_sync = ngbe_mac_release_swfw_sync_dummy;
 }
 
 #endif /* _NGBE_TYPE_DUMMY_H_ */

@@ -4,6 +4,8 @@
  */
 
 #include "ngbe_type.h"
+#include "ngbe_eeprom.h"
+#include "ngbe_mng.h"
 #include "ngbe_hw.h"
 
 /**
@@ -23,6 +25,77 @@ void ngbe_set_lan_id_multi_port(struct ngbe_hw *hw)
 	reg = rd32(hw, NGBE_PORTSTAT);
 	bus->lan_id = NGBE_PORTSTAT_ID(reg);
 	bus->func = bus->lan_id;
+}
+
+/**
+ *  ngbe_acquire_swfw_sync - Acquire SWFW semaphore
+ *  @hw: pointer to hardware structure
+ *  @mask: Mask to specify which semaphore to acquire
+ *
+ *  Acquires the SWFW semaphore through the MNGSEM register for the specified
+ *  function (CSR, PHY0, PHY1, EEPROM, Flash)
+ **/
+s32 ngbe_acquire_swfw_sync(struct ngbe_hw *hw, u32 mask)
+{
+	u32 mngsem = 0;
+	u32 swmask = NGBE_MNGSEM_SW(mask);
+	u32 fwmask = NGBE_MNGSEM_FW(mask);
+	u32 timeout = 200;
+	u32 i;
+
+	DEBUGFUNC("ngbe_acquire_swfw_sync");
+
+	for (i = 0; i < timeout; i++) {
+		/*
+		 * SW NVM semaphore bit is used for access to all
+		 * SW_FW_SYNC bits (not just NVM)
+		 */
+		if (ngbe_get_eeprom_semaphore(hw))
+			return NGBE_ERR_SWFW_SYNC;
+
+		mngsem = rd32(hw, NGBE_MNGSEM);
+		if (mngsem & (fwmask | swmask)) {
+			/* Resource is currently in use by FW or SW */
+			ngbe_release_eeprom_semaphore(hw);
+			msec_delay(5);
+		} else {
+			mngsem |= swmask;
+			wr32(hw, NGBE_MNGSEM, mngsem);
+			ngbe_release_eeprom_semaphore(hw);
+			return 0;
+		}
+	}
+
+	/* If time expired clear the bits holding the lock and retry */
+	if (mngsem & (fwmask | swmask))
+		ngbe_release_swfw_sync(hw, mngsem & (fwmask | swmask));
+
+	msec_delay(5);
+	return NGBE_ERR_SWFW_SYNC;
+}
+
+/**
+ *  ngbe_release_swfw_sync - Release SWFW semaphore
+ *  @hw: pointer to hardware structure
+ *  @mask: Mask to specify which semaphore to release
+ *
+ *  Releases the SWFW semaphore through the MNGSEM register for the specified
+ *  function (CSR, PHY0, PHY1, EEPROM, Flash)
+ **/
+void ngbe_release_swfw_sync(struct ngbe_hw *hw, u32 mask)
+{
+	u32 mngsem;
+	u32 swmask = mask;
+
+	DEBUGFUNC("ngbe_release_swfw_sync");
+
+	ngbe_get_eeprom_semaphore(hw);
+
+	mngsem = rd32(hw, NGBE_MNGSEM);
+	mngsem &= ~swmask;
+	wr32(hw, NGBE_MNGSEM, mngsem);
+
+	ngbe_release_eeprom_semaphore(hw);
 }
 
 /**
@@ -134,11 +207,21 @@ void ngbe_map_device_id(struct ngbe_hw *hw)
 s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 {
 	struct ngbe_bus_info *bus = &hw->bus;
+	struct ngbe_mac_info *mac = &hw->mac;
+	struct ngbe_rom_info *rom = &hw->rom;
 
 	DEBUGFUNC("ngbe_init_ops_pf");
 
 	/* BUS */
 	bus->set_lan_id = ngbe_set_lan_id_multi_port;
+
+	/* MAC */
+	mac->acquire_swfw_sync = ngbe_acquire_swfw_sync;
+	mac->release_swfw_sync = ngbe_release_swfw_sync;
+
+	/* EEPROM */
+	rom->init_params = ngbe_init_eeprom_params;
+	rom->validate_checksum = ngbe_validate_eeprom_checksum_em;
 
 	return 0;
 }

@@ -10,6 +10,13 @@
 #include "ngbe_osdep.h"
 #include "ngbe_devids.h"
 
+enum ngbe_eeprom_type {
+	ngbe_eeprom_unknown = 0,
+	ngbe_eeprom_spi,
+	ngbe_eeprom_flash,
+	ngbe_eeprom_none /* No NVM support */
+};
+
 enum ngbe_mac_type {
 	ngbe_mac_unknown = 0,
 	ngbe_mac_em,
@@ -49,7 +56,23 @@ struct ngbe_bus_info {
 	u8 lan_id;
 };
 
+struct ngbe_rom_info {
+	s32 (*init_params)(struct ngbe_hw *hw);
+	s32 (*validate_checksum)(struct ngbe_hw *hw, u16 *checksum_val);
+
+	enum ngbe_eeprom_type type;
+	u32 semaphore_delay;
+	u16 word_size;
+	u16 address_bits;
+	u16 word_page_size;
+	u32 sw_addr;
+	u32 saved_version;
+	u16 cksum_devcap;
+};
+
 struct ngbe_mac_info {
+	s32 (*acquire_swfw_sync)(struct ngbe_hw *hw, u32 mask);
+	void (*release_swfw_sync)(struct ngbe_hw *hw, u32 mask);
 	enum ngbe_mac_type type;
 };
 
@@ -63,6 +86,7 @@ struct ngbe_hw {
 	void *back;
 	struct ngbe_mac_info mac;
 	struct ngbe_phy_info phy;
+	struct ngbe_rom_info rom;
 	struct ngbe_bus_info bus;
 	u16 device_id;
 	u16 vendor_id;
