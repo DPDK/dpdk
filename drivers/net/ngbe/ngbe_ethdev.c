@@ -8,7 +8,10 @@
 #include <ethdev_pci.h>
 
 #include "ngbe_logs.h"
-#include "ngbe_devids.h"
+#include "ngbe.h"
+#include "ngbe_ethdev.h"
+
+static int ngbe_dev_close(struct rte_eth_dev *dev);
 
 /*
  * The set of PCI devices this driver supports
@@ -33,6 +36,8 @@ static int
 eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct ngbe_hw *hw = ngbe_dev_hw(eth_dev);
+	int err;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -41,7 +46,21 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-	return -EINVAL;
+	/* Vendor and Device ID need to be set before init of shared code */
+	hw->device_id = pci_dev->id.device_id;
+	hw->vendor_id = pci_dev->id.vendor_id;
+	hw->sub_system_id = pci_dev->id.subsystem_device_id;
+	ngbe_map_device_id(hw);
+	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
+
+	/* Initialize the shared code (base driver) */
+	err = ngbe_init_shared_code(hw);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "Shared code init failed: %d", err);
+		return -EIO;
+	}
+
+	return 0;
 }
 
 static int
@@ -52,7 +71,7 @@ eth_ngbe_dev_uninit(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	RTE_SET_USED(eth_dev);
+	ngbe_dev_close(eth_dev);
 
 	return -EINVAL;
 }
@@ -62,7 +81,8 @@ eth_ngbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
 {
 	return rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
-			0, eth_dev_pci_specific_init, pci_dev,
+			sizeof(struct ngbe_adapter),
+			eth_dev_pci_specific_init, pci_dev,
 			eth_ngbe_dev_init, NULL);
 }
 
@@ -83,6 +103,19 @@ static struct rte_pci_driver rte_ngbe_pmd = {
 	.probe = eth_ngbe_pci_probe,
 	.remove = eth_ngbe_pci_remove,
 };
+
+/*
+ * Reset and stop device.
+ */
+static int
+ngbe_dev_close(struct rte_eth_dev *dev)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+
+	return -EINVAL;
+}
 
 RTE_PMD_REGISTER_PCI(net_ngbe, rte_ngbe_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ngbe, pci_id_ngbe_map);

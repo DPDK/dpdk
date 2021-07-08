@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018-2021 Beijing WangXun Technology Co., Ltd.
 
-sources = []
+sources = [
+        'ngbe_hw.c',
+]
 
 error_cflags = []
 
