@@ -44,6 +44,14 @@ static const struct rte_eth_desc_lim rx_desc_lim = {
 	.nb_align = NGBE_RXD_ALIGN,
 };
 
+static const struct rte_eth_desc_lim tx_desc_lim = {
+	.nb_max = NGBE_RING_DESC_MAX,
+	.nb_min = NGBE_RING_DESC_MIN,
+	.nb_align = NGBE_TXD_ALIGN,
+	.nb_seg_max = NGBE_TX_MAX_SEG,
+	.nb_mtu_seg_max = NGBE_TX_MAX_SEG,
+};
+
 static const struct eth_dev_ops ngbe_eth_dev_ops;
 
 static inline void
@@ -283,6 +291,7 @@ ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 
 	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
+	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -295,14 +304,27 @@ ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.offloads = 0,
 	};
 
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = NGBE_DEFAULT_TX_PTHRESH,
+			.hthresh = NGBE_DEFAULT_TX_HTHRESH,
+			.wthresh = NGBE_DEFAULT_TX_WTHRESH,
+		},
+		.tx_free_thresh = NGBE_DEFAULT_TX_FREE_THRESH,
+		.offloads = 0,
+	};
+
 	dev_info->rx_desc_lim = rx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim;
 
 	dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_100M |
 				ETH_LINK_SPEED_10M;
 
 	/* Driver-preferred Rx/Tx parameters */
 	dev_info->default_rxportconf.nb_queues = 1;
+	dev_info->default_txportconf.nb_queues = 1;
 	dev_info->default_rxportconf.ring_size = 256;
+	dev_info->default_txportconf.ring_size = 256;
 
 	return 0;
 }
@@ -594,6 +616,8 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.link_update                = ngbe_dev_link_update,
 	.rx_queue_setup             = ngbe_dev_rx_queue_setup,
 	.rx_queue_release           = ngbe_dev_rx_queue_release,
+	.tx_queue_setup             = ngbe_dev_tx_queue_setup,
+	.tx_queue_release           = ngbe_dev_tx_queue_release,
 };
 
 RTE_PMD_REGISTER_PCI(net_ngbe, rte_ngbe_pmd);

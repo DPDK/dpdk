@@ -43,11 +43,41 @@ struct ngbe_rx_desc {
 	} qw1; /* also as r.hdr_addr */
 };
 
+/*****************************************************************************
+ * Transmit Descriptor
+ *****************************************************************************/
+/**
+ * Transmit Context Descriptor (NGBE_TXD_TYP=CTXT)
+ **/
+struct ngbe_tx_ctx_desc {
+	rte_le32_t dw0; /* w.vlan_macip_lens  */
+	rte_le32_t dw1; /* w.seqnum_seed      */
+	rte_le32_t dw2; /* w.type_tucmd_mlhl  */
+	rte_le32_t dw3; /* w.mss_l4len_idx    */
+};
+
+/* @ngbe_tx_ctx_desc.dw3 */
+#define NGBE_TXD_DD               MS(0, 0x1) /* descriptor done */
+
+/**
+ * Transmit Data Descriptor (NGBE_TXD_TYP=DATA)
+ **/
+struct ngbe_tx_desc {
+	rte_le64_t qw0; /* r.buffer_addr ,  w.reserved    */
+	rte_le32_t dw2; /* r.cmd_type_len,  w.nxtseq_seed */
+	rte_le32_t dw3; /* r.olinfo_status, w.status      */
+};
+
 #define RTE_PMD_NGBE_RX_MAX_BURST 32
 
 #define RX_RING_SZ ((NGBE_RING_DESC_MAX + RTE_PMD_NGBE_RX_MAX_BURST) * \
 		    sizeof(struct ngbe_rx_desc))
 
+#define NGBE_TX_MAX_SEG                    40
+
+#ifndef DEFAULT_TX_FREE_THRESH
+#define DEFAULT_TX_FREE_THRESH 32
+#endif
 
 /**
  * Structure associated with each descriptor of the Rx ring of a Rx queue.
@@ -58,6 +88,15 @@ struct ngbe_rx_entry {
 
 struct ngbe_scattered_rx_entry {
 	struct rte_mbuf *fbuf; /**< First segment of the fragmented packet. */
+};
+
+/**
+ * Structure associated with each descriptor of the Tx ring of a Tx queue.
+ */
+struct ngbe_tx_entry {
+	struct rte_mbuf *mbuf; /**< mbuf associated with Tx desc, if any. */
+	uint16_t next_id; /**< Index of next descriptor in ring. */
+	uint16_t last_id; /**< Index of last scattered descriptor. */
 };
 
 /**
@@ -95,6 +134,65 @@ struct ngbe_rx_queue {
 	struct rte_mbuf fake_mbuf;
 	/** hold packets to return to application */
 	struct rte_mbuf *rx_stage[RTE_PMD_NGBE_RX_MAX_BURST * 2];
+};
+
+/**
+ * NGBE CTX Constants
+ */
+enum ngbe_ctx_num {
+	NGBE_CTX_0    = 0, /**< CTX0 */
+	NGBE_CTX_1    = 1, /**< CTX1  */
+	NGBE_CTX_NUM  = 2, /**< CTX NUMBER  */
+};
+
+/**
+ * Structure to check if new context need be built
+ */
+struct ngbe_ctx_info {
+	uint64_t flags;           /**< ol_flags for context build. */
+};
+
+/**
+ * Structure associated with each Tx queue.
+ */
+struct ngbe_tx_queue {
+	/** Tx ring virtual address */
+	volatile struct ngbe_tx_desc *tx_ring;
+
+	uint64_t             tx_ring_phys_addr; /**< Tx ring DMA address */
+	struct ngbe_tx_entry *sw_ring; /**< address of SW ring for scalar PMD */
+	volatile uint32_t    *tdt_reg_addr; /**< Address of TDT register */
+	volatile uint32_t    *tdc_reg_addr; /**< Address of TDC register */
+	uint16_t             nb_tx_desc;    /**< number of Tx descriptors */
+	uint16_t             tx_tail;       /**< current value of TDT reg */
+	/**
+	 * Start freeing Tx buffers if there are less free descriptors than
+	 * this value.
+	 */
+	uint16_t             tx_free_thresh;
+	/** Index to last Tx descriptor to have been cleaned */
+	uint16_t             last_desc_cleaned;
+	/** Total number of Tx descriptors ready to be allocated */
+	uint16_t             nb_tx_free;
+	uint16_t             tx_next_dd;    /**< next desc to scan for DD bit */
+	uint16_t             queue_id;      /**< Tx queue index */
+	uint16_t             reg_idx;       /**< Tx queue register index */
+	uint16_t             port_id;       /**< Device port identifier */
+	uint8_t              pthresh;       /**< Prefetch threshold register */
+	uint8_t              hthresh;       /**< Host threshold register */
+	uint8_t              wthresh;       /**< Write-back threshold reg */
+	uint32_t             ctx_curr;      /**< Hardware context states */
+	/** Hardware context0 history */
+	struct ngbe_ctx_info ctx_cache[NGBE_CTX_NUM];
+	uint8_t              tx_deferred_start; /**< not in global dev start */
+
+	const struct ngbe_txq_ops *ops;       /**< txq ops */
+};
+
+struct ngbe_txq_ops {
+	void (*release_mbufs)(struct ngbe_tx_queue *txq);
+	void (*free_swring)(struct ngbe_tx_queue *txq);
+	void (*reset)(struct ngbe_tx_queue *txq);
 };
 
 #endif /* _NGBE_RXTX_H_ */

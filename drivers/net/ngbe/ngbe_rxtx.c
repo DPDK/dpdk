@@ -15,6 +15,201 @@
 #include "ngbe_ethdev.h"
 #include "ngbe_rxtx.h"
 
+/*********************************************************************
+ *
+ *  Queue management functions
+ *
+ **********************************************************************/
+
+static void
+ngbe_tx_queue_release_mbufs(struct ngbe_tx_queue *txq)
+{
+	unsigned int i;
+
+	if (txq->sw_ring != NULL) {
+		for (i = 0; i < txq->nb_tx_desc; i++) {
+			if (txq->sw_ring[i].mbuf != NULL) {
+				rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
+				txq->sw_ring[i].mbuf = NULL;
+			}
+		}
+	}
+}
+
+static void
+ngbe_tx_free_swring(struct ngbe_tx_queue *txq)
+{
+	if (txq != NULL)
+		rte_free(txq->sw_ring);
+}
+
+static void
+ngbe_tx_queue_release(struct ngbe_tx_queue *txq)
+{
+	if (txq != NULL) {
+		if (txq->ops != NULL) {
+			txq->ops->release_mbufs(txq);
+			txq->ops->free_swring(txq);
+		}
+		rte_free(txq);
+	}
+}
+
+void
+ngbe_dev_tx_queue_release(void *txq)
+{
+	ngbe_tx_queue_release(txq);
+}
+
+/* (Re)set dynamic ngbe_tx_queue fields to defaults */
+static void
+ngbe_reset_tx_queue(struct ngbe_tx_queue *txq)
+{
+	static const struct ngbe_tx_desc zeroed_desc = {0};
+	struct ngbe_tx_entry *txe = txq->sw_ring;
+	uint16_t prev, i;
+
+	/* Zero out HW ring memory */
+	for (i = 0; i < txq->nb_tx_desc; i++)
+		txq->tx_ring[i] = zeroed_desc;
+
+	/* Initialize SW ring entries */
+	prev = (uint16_t)(txq->nb_tx_desc - 1);
+	for (i = 0; i < txq->nb_tx_desc; i++) {
+		/* the ring can also be modified by hardware */
+		volatile struct ngbe_tx_desc *txd = &txq->tx_ring[i];
+
+		txd->dw3 = rte_cpu_to_le_32(NGBE_TXD_DD);
+		txe[i].mbuf = NULL;
+		txe[i].last_id = i;
+		txe[prev].next_id = i;
+		prev = i;
+	}
+
+	txq->tx_next_dd = (uint16_t)(txq->tx_free_thresh - 1);
+	txq->tx_tail = 0;
+
+	/*
+	 * Always allow 1 descriptor to be un-allocated to avoid
+	 * a H/W race condition
+	 */
+	txq->last_desc_cleaned = (uint16_t)(txq->nb_tx_desc - 1);
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_desc - 1);
+	txq->ctx_curr = 0;
+	memset((void *)&txq->ctx_cache, 0,
+		NGBE_CTX_NUM * sizeof(struct ngbe_ctx_info));
+}
+
+static const struct ngbe_txq_ops def_txq_ops = {
+	.release_mbufs = ngbe_tx_queue_release_mbufs,
+	.free_swring = ngbe_tx_free_swring,
+	.reset = ngbe_reset_tx_queue,
+};
+
+int
+ngbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
+			 uint16_t queue_idx,
+			 uint16_t nb_desc,
+			 unsigned int socket_id,
+			 const struct rte_eth_txconf *tx_conf)
+{
+	const struct rte_memzone *tz;
+	struct ngbe_tx_queue *txq;
+	struct ngbe_hw     *hw;
+	uint16_t tx_free_thresh;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = ngbe_dev_hw(dev);
+
+	/*
+	 * The Tx descriptor ring will be cleaned after txq->tx_free_thresh
+	 * descriptors are used or if the number of descriptors required
+	 * to transmit a packet is greater than the number of free Tx
+	 * descriptors.
+	 * One descriptor in the Tx ring is used as a sentinel to avoid a
+	 * H/W race condition, hence the maximum threshold constraints.
+	 * When set to zero use default values.
+	 */
+	tx_free_thresh = (uint16_t)((tx_conf->tx_free_thresh) ?
+			tx_conf->tx_free_thresh : DEFAULT_TX_FREE_THRESH);
+	if (tx_free_thresh >= (nb_desc - 3)) {
+		PMD_INIT_LOG(ERR,
+			     "tx_free_thresh must be less than the number of TX descriptors minus 3. (tx_free_thresh=%u port=%d queue=%d)",
+			     (unsigned int)tx_free_thresh,
+			     (int)dev->data->port_id, (int)queue_idx);
+		return -(EINVAL);
+	}
+
+	if (nb_desc % tx_free_thresh != 0) {
+		PMD_INIT_LOG(ERR,
+			     "tx_free_thresh must be a divisor of the number of Tx descriptors. (tx_free_thresh=%u port=%d queue=%d)",
+			     (unsigned int)tx_free_thresh,
+			     (int)dev->data->port_id, (int)queue_idx);
+		return -(EINVAL);
+	}
+
+	/* Free memory prior to re-allocation if needed... */
+	if (dev->data->tx_queues[queue_idx] != NULL) {
+		ngbe_tx_queue_release(dev->data->tx_queues[queue_idx]);
+		dev->data->tx_queues[queue_idx] = NULL;
+	}
+
+	/* First allocate the Tx queue data structure */
+	txq = rte_zmalloc_socket("ethdev Tx queue",
+				 sizeof(struct ngbe_tx_queue),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (txq == NULL)
+		return -ENOMEM;
+
+	/*
+	 * Allocate Tx ring hardware descriptors. A memzone large enough to
+	 * handle the maximum ring size is allocated in order to allow for
+	 * resizing in later calls to the queue setup function.
+	 */
+	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
+			sizeof(struct ngbe_tx_desc) * NGBE_RING_DESC_MAX,
+			NGBE_ALIGN, socket_id);
+	if (tz == NULL) {
+		ngbe_tx_queue_release(txq);
+		return -ENOMEM;
+	}
+
+	txq->nb_tx_desc = nb_desc;
+	txq->tx_free_thresh = tx_free_thresh;
+	txq->pthresh = tx_conf->tx_thresh.pthresh;
+	txq->hthresh = tx_conf->tx_thresh.hthresh;
+	txq->wthresh = tx_conf->tx_thresh.wthresh;
+	txq->queue_id = queue_idx;
+	txq->reg_idx = queue_idx;
+	txq->port_id = dev->data->port_id;
+	txq->ops = &def_txq_ops;
+	txq->tx_deferred_start = tx_conf->tx_deferred_start;
+
+	txq->tdt_reg_addr = NGBE_REG_ADDR(hw, NGBE_TXWP(txq->reg_idx));
+	txq->tdc_reg_addr = NGBE_REG_ADDR(hw, NGBE_TXCFG(txq->reg_idx));
+
+	txq->tx_ring_phys_addr = TMZ_PADDR(tz);
+	txq->tx_ring = (struct ngbe_tx_desc *)TMZ_VADDR(tz);
+
+	/* Allocate software ring */
+	txq->sw_ring = rte_zmalloc_socket("txq->sw_ring",
+				sizeof(struct ngbe_tx_entry) * nb_desc,
+				RTE_CACHE_LINE_SIZE, socket_id);
+	if (txq->sw_ring == NULL) {
+		ngbe_tx_queue_release(txq);
+		return -ENOMEM;
+	}
+	PMD_INIT_LOG(DEBUG,
+		     "sw_ring=%p hw_ring=%p dma_addr=0x%" PRIx64,
+		     txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
+
+	txq->ops->reset(txq);
+
+	dev->data->tx_queues[queue_idx] = txq;
+
+	return 0;
+}
+
 /**
  * ngbe_free_sc_cluster - free the not-yet-completed scattered cluster
  *
