@@ -242,7 +242,8 @@ static int bnxt_agg_bufs_valid(struct bnxt_cp_ring_info *cpr,
 	cpr->valid = FLIP_VALID(raw_cp_cons,
 				cpr->cp_ring_struct->ring_mask,
 				cpr->valid);
-	return CMP_VALID(agg_cmpl, raw_cp_cons, cpr->cp_ring_struct);
+	return bnxt_cpr_cmp_valid(agg_cmpl, raw_cp_cons,
+				  cpr->cp_ring_struct->ring_size);
 }
 
 /* TPA consume agg buffer out of order, allocate connected data only */
@@ -827,7 +828,8 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	cp_cons = RING_CMP(cpr->cp_ring_struct, tmp_raw_cons);
 	rxcmp1 = (struct rx_pkt_cmpl_hi *)&cpr->cp_desc_ring[cp_cons];
 
-	if (!CMP_VALID(rxcmp1, tmp_raw_cons, cpr->cp_ring_struct))
+	if (!bnxt_cpr_cmp_valid(rxcmp1, tmp_raw_cons,
+				cpr->cp_ring_struct->ring_size))
 		return -EBUSY;
 
 	cpr->valid = FLIP_VALID(cp_cons,
@@ -1006,7 +1008,8 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
 		rxcmp = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
 
-		if (!CMP_VALID(rxcmp, raw_cons, cpr->cp_ring_struct))
+		if (!bnxt_cpr_cmp_valid(rxcmp, raw_cons,
+					cpr->cp_ring_struct->ring_size))
 			break;
 		cpr->valid = FLIP_VALID(cons,
 					cpr->cp_ring_struct->ring_mask,

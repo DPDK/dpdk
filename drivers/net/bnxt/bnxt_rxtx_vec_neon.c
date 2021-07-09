@@ -347,7 +347,7 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 		cons = RING_CMPL(ring_mask, raw_cons);
 		txcmp = (struct tx_cmpl *)&cp_desc_ring[cons];
 
-		if (!CMP_VALID(txcmp, raw_cons, cp_ring_struct))
+		if (!bnxt_cpr_cmp_valid(txcmp, raw_cons, ring_mask + 1))
 			break;
 
 		if (likely(CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2))

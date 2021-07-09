@@ -3041,7 +3041,7 @@ bnxt_rx_queue_count_op(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 	struct bnxt_cp_ring_info *cpr;
-	uint32_t desc = 0, raw_cons;
+	uint32_t desc = 0, raw_cons, cp_ring_size;
 	struct bnxt_rx_queue *rxq;
 	struct rx_pkt_cmpl *rxcmp;
 	int rc;
@@ -3053,6 +3053,7 @@ bnxt_rx_queue_count_op(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	rxq = dev->data->rx_queues[rx_queue_id];
 	cpr = rxq->cp_ring;
 	raw_cons = cpr->cp_raw_cons;
+	cp_ring_size = cpr->cp_ring_struct->ring_size;
 
 	while (1) {
 		uint32_t agg_cnt, cons, cmpl_type;
@@ -3060,7 +3061,7 @@ bnxt_rx_queue_count_op(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
 		rxcmp = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
 
-		if (!CMP_VALID(rxcmp, raw_cons, cpr->cp_ring_struct))
+		if (!bnxt_cpr_cmp_valid(rxcmp, raw_cons, cp_ring_size))
 			break;
 
 		cmpl_type = CMP_TYPE(rxcmp);
@@ -3104,7 +3105,7 @@ bnxt_rx_descriptor_status_op(void *rx_queue, uint16_t offset)
 	struct bnxt_rx_queue *rxq = rx_queue;
 	struct bnxt_cp_ring_info *cpr;
 	struct bnxt_rx_ring_info *rxr;
-	uint32_t desc, raw_cons;
+	uint32_t desc, raw_cons, cp_ring_size;
 	struct bnxt *bp = rxq->bp;
 	struct rx_pkt_cmpl *rxcmp;
 	int rc;
@@ -3118,6 +3119,7 @@ bnxt_rx_descriptor_status_op(void *rx_queue, uint16_t offset)
 
 	rxr = rxq->rx_ring;
 	cpr = rxq->cp_ring;
+	cp_ring_size = cpr->cp_ring_struct->ring_size;
 
 	/*
 	 * For the vector receive case, the completion at the requested
@@ -3134,7 +3136,7 @@ bnxt_rx_descriptor_status_op(void *rx_queue, uint16_t offset)
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
 		rxcmp = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
 
-		if (CMP_VALID(rxcmp, raw_cons, cpr->cp_ring_struct))
+		if (bnxt_cpr_cmp_valid(rxcmp, raw_cons, cp_ring_size))
 			return RTE_ETH_RX_DESC_DONE;
 
 		/* Check whether rx desc has an mbuf attached. */
@@ -3160,7 +3162,7 @@ bnxt_rx_descriptor_status_op(void *rx_queue, uint16_t offset)
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
 		rxcmp = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
 
-		if (!CMP_VALID(rxcmp, raw_cons, cpr->cp_ring_struct))
+		if (!bnxt_cpr_cmp_valid(rxcmp, raw_cons, cp_ring_size))
 			break;
 
 		cmpl_type = CMP_TYPE(rxcmp);
@@ -3214,7 +3216,6 @@ bnxt_tx_descriptor_status_op(void *tx_queue, uint16_t offset)
 	struct bnxt_tx_queue *txq = (struct bnxt_tx_queue *)tx_queue;
 	struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 	uint32_t ring_mask, raw_cons, nb_tx_pkts = 0;
-	struct bnxt_ring *cp_ring_struct;
 	struct cmpl_base *cp_desc_ring;
 	int rc;
 
@@ -3231,7 +3232,6 @@ bnxt_tx_descriptor_status_op(void *tx_queue, uint16_t offset)
 
 	raw_cons = cpr->cp_raw_cons;
 	cp_desc_ring = cpr->cp_desc_ring;
-	cp_ring_struct = cpr->cp_ring_struct;
 	ring_mask = cpr->cp_ring_struct->ring_mask;
 
 	/* Check to see if hw has posted a completion for the descriptor. */
@@ -3242,7 +3242,7 @@ bnxt_tx_descriptor_status_op(void *tx_queue, uint16_t offset)
 		cons = RING_CMPL(ring_mask, raw_cons);
 		txcmp = (struct tx_cmpl *)&cp_desc_ring[cons];
 
-		if (!CMP_VALID(txcmp, raw_cons, cp_ring_struct))
+		if (!bnxt_cpr_cmp_valid(txcmp, raw_cons, ring_mask + 1))
 			break;
 
 		if (CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2)
