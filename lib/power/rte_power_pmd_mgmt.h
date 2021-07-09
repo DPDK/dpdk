@@ -43,6 +43,9 @@ enum rte_power_pmd_mgmt_type {
  *
  * @note This function is not thread-safe.
  *
+ * @warning This function must be called when all affected Ethernet queues are
+ *   stopped and no Rx/Tx is in progress!
+ *
  * @param lcore_id
  *   The lcore the Rx queue will be polled from.
  * @param port_id
@@ -68,6 +71,9 @@ rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id,
  * Disable power management on a specified Ethernet device Rx queue and lcore.
  *
  * @note This function is not thread-safe.
+ *
+ * @warning This function must be called when all affected Ethernet queues are
+ *   stopped and no Rx/Tx is in progress!
  *
  * @param lcore_id
  *   The lcore the Rx queue is polled from.

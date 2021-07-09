@@ -40,8 +40,6 @@ struct pmd_queue_cfg {
 	/**< Callback mode for this queue */
 	const struct rte_eth_rxtx_callback *cur_cb;
 	/**< Callback instance */
-	volatile bool umwait_in_progress;
-	/**< are we currently sleeping? */
 	uint64_t empty_poll_stats;
 	/**< Number of empty polls */
 } __rte_cache_aligned;
@@ -92,30 +90,11 @@ clb_umwait(uint16_t port_id, uint16_t qidx, struct rte_mbuf **pkts __rte_unused,
 			struct rte_power_monitor_cond pmc;
 			uint16_t ret;
 
-			/*
-			 * we might get a cancellation request while being
-			 * inside the callback, in which case the wakeup
-			 * wouldn't work because it would've arrived too early.
-			 *
-			 * to get around this, we notify the other thread that
-			 * we're sleeping, so that it can spin until we're done.
-			 * unsolicited wakeups are perfectly safe.
-			 */
-			q_conf->umwait_in_progress = true;
-
-			rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
-
-			/* check if we need to cancel sleep */
-			if (q_conf->pwr_mgmt_state == PMD_MGMT_ENABLED) {
-				/* use monitoring condition to sleep */
-				ret = rte_eth_get_monitor_addr(port_id, qidx,
-						&pmc);
-				if (ret == 0)
-					rte_power_monitor(&pmc, UINT64_MAX);
-			}
-			q_conf->umwait_in_progress = false;
-
-			rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
+			/* use monitoring condition to sleep */
+			ret = rte_eth_get_monitor_addr(port_id, qidx,
+					&pmc);
+			if (ret == 0)
+				rte_power_monitor(&pmc, UINT64_MAX);
 		}
 	} else
 		q_conf->empty_poll_stats = 0;
@@ -177,12 +156,24 @@ clb_scale_freq(uint16_t port_id, uint16_t qidx,
 	return nb_rx;
 }
 
+static int
+queue_stopped(const uint16_t port_id, const uint16_t queue_id)
+{
+	struct rte_eth_rxq_info qinfo;
+
+	if (rte_eth_rx_queue_info_get(port_id, queue_id, &qinfo) < 0)
+		return -1;
+
+	return qinfo.queue_state == RTE_ETH_QUEUE_STATE_STOPPED;
+}
+
 int
 rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id, uint16_t port_id,
 		uint16_t queue_id, enum rte_power_pmd_mgmt_type mode)
 {
 	struct pmd_queue_cfg *queue_cfg;
 	struct rte_eth_dev_info info;
+	rte_rx_callback_fn clb;
 	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
@@ -200,6 +191,14 @@ rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id, uint16_t port_id,
 	/* check if queue id is valid */
 	if (queue_id >= info.nb_rx_queues) {
 		ret = -EINVAL;
+		goto end;
+	}
+
+	/* check if the queue is stopped */
+	ret = queue_stopped(port_id, queue_id);
+	if (ret != 1) {
+		/* error means invalid queue, 0 means queue wasn't stopped */
+		ret = ret < 0 ? -EINVAL : -EBUSY;
 		goto end;
 	}
 
@@ -232,17 +231,7 @@ rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id, uint16_t port_id,
 			ret = -ENOTSUP;
 			goto end;
 		}
-		/* initialize data before enabling the callback */
-		queue_cfg->empty_poll_stats = 0;
-		queue_cfg->cb_mode = mode;
-		queue_cfg->umwait_in_progress = false;
-		queue_cfg->pwr_mgmt_state = PMD_MGMT_ENABLED;
-
-		/* ensure we update our state before callback starts */
-		rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
-
-		queue_cfg->cur_cb = rte_eth_add_rx_callback(port_id, queue_id,
-				clb_umwait, NULL);
+		clb = clb_umwait;
 		break;
 	}
 	case RTE_POWER_MGMT_TYPE_SCALE:
@@ -269,16 +258,7 @@ rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id, uint16_t port_id,
 			ret = -ENOTSUP;
 			goto end;
 		}
-		/* initialize data before enabling the callback */
-		queue_cfg->empty_poll_stats = 0;
-		queue_cfg->cb_mode = mode;
-		queue_cfg->pwr_mgmt_state = PMD_MGMT_ENABLED;
-
-		/* this is not necessary here, but do it anyway */
-		rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
-
-		queue_cfg->cur_cb = rte_eth_add_rx_callback(port_id,
-				queue_id, clb_scale_freq, NULL);
+		clb = clb_scale_freq;
 		break;
 	}
 	case RTE_POWER_MGMT_TYPE_PAUSE:
@@ -286,18 +266,21 @@ rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id, uint16_t port_id,
 		if (global_data.tsc_per_us == 0)
 			calc_tsc();
 
-		/* initialize data before enabling the callback */
-		queue_cfg->empty_poll_stats = 0;
-		queue_cfg->cb_mode = mode;
-		queue_cfg->pwr_mgmt_state = PMD_MGMT_ENABLED;
-
-		/* this is not necessary here, but do it anyway */
-		rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
-
-		queue_cfg->cur_cb = rte_eth_add_rx_callback(port_id, queue_id,
-				clb_pause, NULL);
+		clb = clb_pause;
 		break;
+	default:
+		RTE_LOG(DEBUG, POWER, "Invalid power management type\n");
+		ret = -EINVAL;
+		goto end;
 	}
+
+	/* initialize data before enabling the callback */
+	queue_cfg->empty_poll_stats = 0;
+	queue_cfg->cb_mode = mode;
+	queue_cfg->pwr_mgmt_state = PMD_MGMT_ENABLED;
+	queue_cfg->cur_cb = rte_eth_add_rx_callback(port_id, queue_id,
+			clb, NULL);
+
 	ret = 0;
 end:
 	return ret;
@@ -308,11 +291,19 @@ rte_power_ethdev_pmgmt_queue_disable(unsigned int lcore_id,
 		uint16_t port_id, uint16_t queue_id)
 {
 	struct pmd_queue_cfg *queue_cfg;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
 	if (lcore_id >= RTE_MAX_LCORE || queue_id >= RTE_MAX_QUEUES_PER_PORT)
 		return -EINVAL;
+
+	/* check if the queue is stopped */
+	ret = queue_stopped(port_id, queue_id);
+	if (ret != 1) {
+		/* error means invalid queue, 0 means queue wasn't stopped */
+		return ret < 0 ? -EINVAL : -EBUSY;
+	}
 
 	/* no need to check queue id as wrong queue id would not be enabled */
 	queue_cfg = &port_cfg[port_id][queue_id];
@@ -323,27 +314,8 @@ rte_power_ethdev_pmgmt_queue_disable(unsigned int lcore_id,
 	/* stop any callbacks from progressing */
 	queue_cfg->pwr_mgmt_state = PMD_MGMT_DISABLED;
 
-	/* ensure we update our state before continuing */
-	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
-
 	switch (queue_cfg->cb_mode) {
-	case RTE_POWER_MGMT_TYPE_MONITOR:
-	{
-		bool exit = false;
-		do {
-			/*
-			 * we may request cancellation while the other thread
-			 * has just entered the callback but hasn't started
-			 * sleeping yet, so keep waking it up until we know it's
-			 * done sleeping.
-			 */
-			if (queue_cfg->umwait_in_progress)
-				rte_power_monitor_wakeup(lcore_id);
-			else
-				exit = true;
-		} while (!exit);
-	}
-	/* fall-through */
+	case RTE_POWER_MGMT_TYPE_MONITOR: /* fall-through */
 	case RTE_POWER_MGMT_TYPE_PAUSE:
 		rte_eth_remove_rx_callback(port_id, queue_id,
 				queue_cfg->cur_cb);
@@ -356,10 +328,11 @@ rte_power_ethdev_pmgmt_queue_disable(unsigned int lcore_id,
 		break;
 	}
 	/*
-	 * we don't free the RX callback here because it is unsafe to do so
-	 * unless we know for a fact that all data plane threads have stopped.
+	 * the API doc mandates that the user stops all processing on affected
+	 * ports before calling any of these API's, so we can assume that the
+	 * callbacks can be freed. we're intentionally casting away const-ness.
 	 */
-	queue_cfg->cur_cb = NULL;
+	rte_free((void *)queue_cfg->cur_cb);
 
 	return 0;
 }

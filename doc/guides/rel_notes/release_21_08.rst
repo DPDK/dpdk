@@ -147,6 +147,10 @@ API Changes
 * eal: ``rte_power_monitor`` and the ``rte_power_monitor_cond`` struct changed
   to use a callback mechanism.
 
+* rte_power: The experimental PMD power management API is no longer considered
+  to be thread safe; all Rx queues affected by the API will now need to be
+  stopped before making any changes to the power management scheme.
+
 
 ABI Changes
 -----------
