@@ -362,7 +362,6 @@ int octeontx_pki_port_open(int port);
 int octeontx_pki_port_hash_config(int port, pki_hash_cfg_t *hash_cfg);
 int octeontx_pki_port_pktbuf_config(int port, pki_pktbuf_cfg_t *buf_cfg);
 int octeontx_pki_port_create_qos(int port, pki_qos_cfg_t *qos_cfg);
-int octeontx_pki_port_close(int port);
 int octeontx_pki_port_errchk_config(int port, pki_errchk_cfg_t *cfg);
 int octeontx_pki_port_vlan_fltr_config(int port,
 				pki_port_vlan_filter_config_t *fltr_cfg);
