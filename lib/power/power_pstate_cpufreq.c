@@ -440,8 +440,10 @@ power_get_available_freqs(struct pstate_power_info *pi)
 			num_freqs, pi->lcore_id);
 
 out:
-	fclose(f_min);
-	fclose(f_max);
+	if (f_min != NULL)
+		fclose(f_min);
+	if (f_max != NULL)
+		fclose(f_max);
 
 	return ret;
 }
