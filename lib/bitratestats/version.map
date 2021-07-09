@@ -3,13 +3,8 @@ DPDK_22 {
 
 	rte_stats_bitrate_calc;
 	rte_stats_bitrate_create;
+	rte_stats_bitrate_free;
 	rte_stats_bitrate_reg;
 
 	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	rte_stats_bitrate_free;
 };
