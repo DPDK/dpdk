@@ -14,3 +14,4 @@ endian = 'little'
 
 [properties]
 platform = 'octeontx2'
+disable_drivers = 'common/cnxk'

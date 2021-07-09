@@ -21,6 +21,8 @@ uint8_t cn9k_cryptodev_driver_id;
 
 static struct rte_pci_id pci_id_cpt_table[] = {
 	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM,
+			       PCI_DEVID_CN9K_RVU_CPT_VF)
 	},
 	/* sentinel */
 	{
