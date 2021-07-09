@@ -3437,6 +3437,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 			TAILQ_REMOVE(&ixgbe_flow_list,
 				ixgbe_flow_mem_ptr, entries);
 			rte_free(ixgbe_flow_mem_ptr);
+			break;
 		}
 	}
 	rte_free(flow);
