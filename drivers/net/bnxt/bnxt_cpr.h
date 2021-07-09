@@ -8,12 +8,9 @@
 #include <stdbool.h>
 
 #include <rte_io.h>
+#include "hsi_struct_def_dpdk.h"
 
 struct bnxt_db_info;
-
-#define CMP_VALID(cmp, raw_cons, ring)					\
-	(!!(rte_le_to_cpu_32(((struct cmpl_base *)(cmp))->info3_v) &	\
-	    CMPL_BASE_V) == !((raw_cons) & ((ring)->ring_size)))
 
 #define CMP_TYPE(cmp)						\
 	(((struct cmpl_base *)cmp)->type & CMPL_BASE_TYPE_MASK)
@@ -121,4 +118,35 @@ bool bnxt_is_recovery_enabled(struct bnxt *bp);
 bool bnxt_is_master_func(struct bnxt *bp);
 
 void bnxt_stop_rxtx(struct bnxt *bp);
+
+/**
+ * Check validity of a completion ring entry. If the entry is valid, include a
+ * C11 __ATOMIC_ACQUIRE fence to ensure that subsequent loads of fields in the
+ * completion are not hoisted by the compiler or by the CPU to come before the
+ * loading of the "valid" field.
+ *
+ * Note: the caller must not access any fields in the specified completion
+ * entry prior to calling this function.
+ *
+ * @param cmpl
+ *   Pointer to an entry in the completion ring.
+ * @param raw_cons
+ *   Raw consumer index of entry in completion ring.
+ * @param ring_size
+ *   Size of completion ring.
+ */
+static __rte_always_inline bool
+bnxt_cpr_cmp_valid(const void *cmpl, uint32_t raw_cons, uint32_t ring_size)
+{
+	const struct cmpl_base *c = cmpl;
+	bool expected, valid;
+
+	expected = !(raw_cons & ring_size);
+	valid = !!(rte_le_to_cpu_32(c->info3_v) & CMPL_BASE_V);
+	if (valid == expected) {
+		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+		return true;
+	}
+	return false;
+}
 #endif
