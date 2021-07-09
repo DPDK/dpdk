@@ -912,6 +912,16 @@ Supports to get Rx/Tx packet burst mode information.
 * **[implements] eth_dev_ops**: ``rx_burst_mode_get``, ``tx_burst_mode_get``.
 * **[related] API**: ``rte_eth_rx_burst_mode_get()``, ``rte_eth_tx_burst_mode_get()``.
 
+.. _nic_features_get_monitor_addr:
+
+PMD power management using monitor addresses
+--------------------------------------------
+
+Supports getting a monitoring condition to use together with Ethernet PMD power
+management (see :doc:`../prog_guide/power_man` for more details).
+
+* **[implements] eth_dev_ops**: ``get_monitor_addr``
+
 .. _nic_features_other:
 
 Other dev ops not represented by a Feature
