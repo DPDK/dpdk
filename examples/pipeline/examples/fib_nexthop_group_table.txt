@@ -1,0 +1,54 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2021 Intel Corporation
+
+// Nexthop group #0 (Single member)
+group 0 member 0 weight 1
+
+// Nexthop group #1 (Single member)
+group 1 member 1 weight 1
+
+// Nexthop group #2 (Single member)
+group 2 member 2 weight 1
+
+// Nexthop group #3 (Single member)
+group 3 member 3 weight 1
+
+// Nexthop group #4 (ECMP)
+group 4 member 4 weight 1
+group 4 member 5 weight 1
+
+// Nexthop group #5 (ECMP)
+group 5 member 5 weight 1
+group 5 member 6 weight 1
+
+// Nexthop group #6 (ECMP)
+group 6 member 6 weight 1
+group 6 member 7 weight 1
+
+// Nexthop group #7 (ECMP)
+group 7 member 7 weight 1
+group 7 member 4 weight 1
+
+// Nexthop group #8 (WCMP)
+group 8 member 8 weight 4
+group 8 member 9 weight 2
+group 8 member 10 weight 1
+group 8 member 11 weight 1
+
+// Nexthop group #9 (WCMP)
+group 9 member 9 weight 4
+group 9 member 10 weight 2
+group 9 member 11 weight 1
+group 9 member 8 weight 1
+
+// Nexthop group #10 (WCMP)
+group 10 member 10 weight 4
+group 10 member 11 weight 2
+group 10 member 8 weight 1
+group 10 member 9 weight 1
+
+// Nexthop group #11 (WCMP)
+group 11 member 11 weight 4
+group 11 member 8 weight 2
+group 11 member 9 weight 1
+group 11 member 10 weight 1

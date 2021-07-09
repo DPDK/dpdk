@@ -1,0 +1,22 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2021 Intel Corporation
+
+match  0 action nexthop_action ethernet_dst_addr 0xaabbcc000000 ethernet_src_addr 0xddeeff000000 ethernet_ethertype 0x0800 port_out 0
+match  1 action nexthop_action ethernet_dst_addr 0xaabbcc000001 ethernet_src_addr 0xddeeff000001 ethernet_ethertype 0x0800 port_out 1
+match  2 action nexthop_action ethernet_dst_addr 0xaabbcc000002 ethernet_src_addr 0xddeeff000002 ethernet_ethertype 0x0800 port_out 2
+match  3 action nexthop_action ethernet_dst_addr 0xaabbcc000003 ethernet_src_addr 0xddeeff000003 ethernet_ethertype 0x0800 port_out 3
+
+match  4 action nexthop_action ethernet_dst_addr 0xaabbcc000004 ethernet_src_addr 0xddeeff000004 ethernet_ethertype 0x0800 port_out 0
+match  5 action nexthop_action ethernet_dst_addr 0xaabbcc000005 ethernet_src_addr 0xddeeff000005 ethernet_ethertype 0x0800 port_out 1
+match  6 action nexthop_action ethernet_dst_addr 0xaabbcc000006 ethernet_src_addr 0xddeeff000006 ethernet_ethertype 0x0800 port_out 2
+match  7 action nexthop_action ethernet_dst_addr 0xaabbcc000007 ethernet_src_addr 0xddeeff000007 ethernet_ethertype 0x0800 port_out 3
+
+match  8 action nexthop_action ethernet_dst_addr 0xaabbcc000008 ethernet_src_addr 0xddeeff000008 ethernet_ethertype 0x0800 port_out 0
+match  9 action nexthop_action ethernet_dst_addr 0xaabbcc000009 ethernet_src_addr 0xddeeff000009 ethernet_ethertype 0x0800 port_out 1
+match 10 action nexthop_action ethernet_dst_addr 0xaabbcc00000a ethernet_src_addr 0xddeeff00000a ethernet_ethertype 0x0800 port_out 2
+match 11 action nexthop_action ethernet_dst_addr 0xaabbcc00000b ethernet_src_addr 0xddeeff00000b ethernet_ethertype 0x0800 port_out 3
+
+match 12 action nexthop_action ethernet_dst_addr 0xaabbcc00000c ethernet_src_addr 0xddeeff00000c ethernet_ethertype 0x0800 port_out 0
+match 13 action nexthop_action ethernet_dst_addr 0xaabbcc00000d ethernet_src_addr 0xddeeff00000d ethernet_ethertype 0x0800 port_out 1
+match 14 action nexthop_action ethernet_dst_addr 0xaabbcc00000e ethernet_src_addr 0xddeeff00000e ethernet_ethertype 0x0800 port_out 2
+match 15 action nexthop_action ethernet_dst_addr 0xaabbcc00000f ethernet_src_addr 0xddeeff00000f ethernet_ethertype 0x0800 port_out 3
