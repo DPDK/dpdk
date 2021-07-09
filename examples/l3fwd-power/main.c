@@ -2723,12 +2723,6 @@ main(int argc, char **argv)
 		printf("\nInitializing rx queues on lcore %u ... ", lcore_id );
 		fflush(stdout);
 
-		/* PMD power management mode can only do 1 queue per core */
-		if (app_mode == APP_MODE_PMD_MGMT && qconf->n_rx_queue > 1) {
-			rte_exit(EXIT_FAILURE,
-				"In PMD power management mode, only one queue per lcore is allowed\n");
-		}
-
 		/* init RX queues */
 		for(queue = 0; queue < qconf->n_rx_queue; ++queue) {
 			struct rte_eth_rxconf rxq_conf;
