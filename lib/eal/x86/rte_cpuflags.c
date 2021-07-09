@@ -189,5 +189,7 @@ rte_cpu_get_intrinsics_support(struct rte_cpu_intrinsics *intrinsics)
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_WAITPKG)) {
 		intrinsics->power_monitor = 1;
 		intrinsics->power_pause = 1;
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_RTM))
+			intrinsics->power_monitor_multi = 1;
 	}
 }

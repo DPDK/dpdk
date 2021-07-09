@@ -129,4 +129,39 @@ int rte_power_monitor_wakeup(const unsigned int lcore_id);
 __rte_experimental
 int rte_power_pause(const uint64_t tsc_timestamp);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Monitor a set of addresses for changes. This will cause the CPU to enter an
+ * architecture-defined optimized power state until either one of the specified
+ * memory addresses is written to, a certain TSC timestamp is reached, or other
+ * reasons cause the CPU to wake up.
+ *
+ * Additionally, `expected` 64-bit values and 64-bit masks are provided. If
+ * mask is non-zero, the current value pointed to by the `p` pointer will be
+ * checked against the expected value, and if they do not match, the entering of
+ * optimized power state may be aborted.
+ *
+ * @warning It is responsibility of the user to check if this function is
+ *   supported at runtime using `rte_cpu_get_intrinsics_support()` API call.
+ *   Failing to do so may result in an illegal CPU instruction error.
+ *
+ * @param pmc
+ *   An array of monitoring condition structures.
+ * @param num
+ *   Length of the `pmc` array.
+ * @param tsc_timestamp
+ *   Maximum TSC timestamp to wait for. Note that the wait behavior is
+ *   architecture-dependent.
+ *
+ * @return
+ *   0 on success
+ *   -EINVAL on invalid parameters
+ *   -ENOTSUP if unsupported
+ */
+__rte_experimental
+int rte_power_monitor_multi(const struct rte_power_monitor_cond pmc[],
+		const uint32_t num, const uint64_t tsc_timestamp);
+
 #endif /* _RTE_POWER_INTRINSIC_H_ */

@@ -423,6 +423,9 @@ EXPERIMENTAL {
 	rte_version_release; # WINDOWS_NO_EXPORT
 	rte_version_suffix; # WINDOWS_NO_EXPORT
 	rte_version_year; # WINDOWS_NO_EXPORT
+
+	# added in 21.08
+	rte_power_monitor_multi; # WINDOWS_NO_EXPORT
 };
 
 INTERNAL {
