@@ -221,17 +221,22 @@ power saving whenever empty poll count reaches a certain number.
 The "monitor" mode is only supported in the following configurations and scenarios:
 
 * On Linux* x86_64, `rte_power_monitor()` requires WAITPKG instruction set being
-  supported by the CPU. Please refer to your platform documentation for further
-  information.
+  supported by the CPU, while `rte_power_monitor_multi()` requires WAITPKG and
+  RTM instruction sets being supported by the CPU. RTM instruction set may also
+  require booting the Linux with `tsx=on` command line parameter. Please refer
+  to your platform documentation for further information.
 
 * If ``rte_cpu_get_intrinsics_support()`` function indicates that
+  ``rte_power_monitor_multi()`` function is supported by the platform, then
+  monitoring multiple Ethernet Rx queues for traffic will be supported.
+
+* If ``rte_cpu_get_intrinsics_support()`` function indicates that only
   ``rte_power_monitor()`` is supported by the platform, then monitoring will be
   limited to a mapping of 1 core 1 queue (thus, each Rx queue will have to be
   monitored from a different lcore).
 
-* If ``rte_cpu_get_intrinsics_support()`` function indicates that the
-  ``rte_power_monitor()`` function is not supported, then monitor mode will not
-  be supported.
+* If ``rte_cpu_get_intrinsics_support()`` function indicates that neither of the
+  two monitoring functions are supported, then monitor mode will not be supported.
 
 * Not all Ethernet drivers support monitoring, even if the underlying
   platform may support the necessary CPU instructions. Please refer to
