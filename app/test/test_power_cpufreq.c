@@ -496,7 +496,8 @@ test_power_cpufreq(void)
 
 	/* Test environment configuration */
 	env = rte_power_get_env();
-	if ((env != PM_ENV_ACPI_CPUFREQ) && (env != PM_ENV_PSTATE_CPUFREQ)) {
+	if ((env != PM_ENV_ACPI_CPUFREQ) && (env != PM_ENV_PSTATE_CPUFREQ) &&
+			(env != PM_ENV_CPPC_CPUFREQ)) {
 		printf("Unexpectedly got an environment other than ACPI/PSTATE\n");
 		goto fail_all;
 	}

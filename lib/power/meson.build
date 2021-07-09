@@ -9,6 +9,7 @@ sources = files(
         'guest_channel.c',
         'power_acpi_cpufreq.c',
         'power_common.c',
+        'power_cppc_cpufreq.c',
         'power_kvm_vm.c',
         'power_pstate_cpufreq.c',
         'rte_power.c',
