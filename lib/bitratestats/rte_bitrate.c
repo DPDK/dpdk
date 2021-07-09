@@ -80,7 +80,7 @@ rte_stats_bitrate_calc(struct rte_stats_bitrates *bitrate_data,
 
 	ret_code = rte_eth_stats_get(port_id, &eth_stats);
 	if (ret_code != 0)
-		return ret_code;
+		return ret_code < 0 ? ret_code : -ret_code;
 
 	port_data = &bitrate_data->port_stats[port_id];
 
