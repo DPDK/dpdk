@@ -112,6 +112,11 @@ New Features
 
   Added support for cppc_cpufreq driver which works on most arm64 platforms.
 
+* **Added multi-queue support to Ethernet PMD Power Management**
+
+  The experimental PMD power management API now supports managing
+  multiple Ethernet Rx queues per lcore.
+
 
 Removed Items
 -------------
