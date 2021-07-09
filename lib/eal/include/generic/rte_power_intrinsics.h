@@ -18,19 +18,39 @@
  * which are architecture-dependent.
  */
 
+/** Size of the opaque data in monitor condition */
+#define RTE_POWER_MONITOR_OPAQUE_SZ 4
+
+/**
+ * Callback definition for monitoring conditions. Callbacks with this signature
+ * will be used by `rte_power_monitor()` to check if the entering of power
+ * optimized state should be aborted.
+ *
+ * @param val
+ *   The value read from memory.
+ * @param opaque
+ *   Callback-specific data.
+ *
+ * @return
+ *   0 if entering of power optimized state should proceed
+ *   -1 if entering of power optimized state should be aborted
+ */
+typedef int (*rte_power_monitor_clb_t)(const uint64_t val,
+		const uint64_t opaque[RTE_POWER_MONITOR_OPAQUE_SZ]);
+
 struct rte_power_monitor_cond {
 	volatile void *addr;  /**< Address to monitor for changes */
-	uint64_t val;         /**< If the `mask` is non-zero, location pointed
-	                       *   to by `addr` will be read and compared
-	                       *   against this value.
-	                       */
-	uint64_t mask;   /**< 64-bit mask to extract value read from `addr` */
-	uint8_t size;    /**< Data size (in bytes) that will be used to compare
-	                  *   expected value (`val`) with data read from the
+	uint8_t size;    /**< Data size (in bytes) that will be read from the
 	                  *   monitored memory location (`addr`). Can be 1, 2,
 	                  *   4, or 8. Supplying any other value will result in
 	                  *   an error.
 	                  */
+	rte_power_monitor_clb_t fn; /**< Callback to be used to check if
+	                             *   entering power optimized state should
+	                             *   be aborted.
+	                             */
+	uint64_t opaque[RTE_POWER_MONITOR_OPAQUE_SZ];
+	/**< Callback-specific data */
 };
 
 /**

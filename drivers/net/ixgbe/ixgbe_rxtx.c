@@ -1369,6 +1369,18 @@ const uint32_t
 		RTE_PTYPE_INNER_L3_IPV4_EXT | RTE_PTYPE_INNER_L4_UDP,
 };
 
+static int
+ixgbe_monitor_callback(const uint64_t value,
+		const uint64_t arg[RTE_POWER_MONITOR_OPAQUE_SZ] __rte_unused)
+{
+	const uint64_t m = rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD);
+	/*
+	 * we expect the DD bit to be set to 1 if this descriptor was already
+	 * written to.
+	 */
+	return (value & m) == m ? -1 : 0;
+}
+
 int
 ixgbe_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 {
@@ -1381,12 +1393,8 @@ ixgbe_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 	/* watch for changes in status bit */
 	pmc->addr = &rxdp->wb.upper.status_error;
 
-	/*
-	 * we expect the DD bit to be set to 1 if this descriptor was already
-	 * written to.
-	 */
-	pmc->val = rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD);
-	pmc->mask = rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD);
+	/* comparison callback */
+	pmc->fn = ixgbe_monitor_callback;
 
 	/* the registers are 32-bit */
 	pmc->size = sizeof(uint32_t);

@@ -76,6 +76,7 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 	const uint32_t tsc_h = (uint32_t)(tsc_timestamp >> 32);
 	const unsigned int lcore_id = rte_lcore_id();
 	struct power_wait_status *s;
+	uint64_t cur_value;
 
 	/* prevent user from running this instruction if it's not supported */
 	if (!wait_supported)
@@ -89,6 +90,9 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 		return -EINVAL;
 
 	if (__check_val_size(pmc->size) < 0)
+		return -EINVAL;
+
+	if (pmc->fn == NULL)
 		return -EINVAL;
 
 	s = &wait_status[lcore_id];
@@ -110,16 +114,11 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 	/* now that we've put this address into monitor, we can unlock */
 	rte_spinlock_unlock(&s->lock);
 
-	/* if we have a comparison mask, we might not need to sleep at all */
-	if (pmc->mask) {
-		const uint64_t cur_value = __get_umwait_val(
-				pmc->addr, pmc->size);
-		const uint64_t masked = cur_value & pmc->mask;
+	cur_value = __get_umwait_val(pmc->addr, pmc->size);
 
-		/* if the masked value is already matching, abort */
-		if (masked == pmc->val)
-			goto end;
-	}
+	/* check if callback indicates we should abort */
+	if (pmc->fn(cur_value, pmc->opaque) != 0)
+		goto end;
 
 	/* execute UMWAIT */
 	asm volatile(".byte 0xf2, 0x0f, 0xae, 0xf7;"

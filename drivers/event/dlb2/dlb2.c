@@ -3154,6 +3154,16 @@ dlb2_port_credits_inc(struct dlb2_port *qm_port, int num)
 	}
 }
 
+#define CLB_MASK_IDX 0
+#define CLB_VAL_IDX 1
+static int
+dlb2_monitor_callback(const uint64_t val,
+		const uint64_t opaque[RTE_POWER_MONITOR_OPAQUE_SZ])
+{
+	/* abort if the value matches */
+	return (val & opaque[CLB_MASK_IDX]) == opaque[CLB_VAL_IDX] ? -1 : 0;
+}
+
 static inline int
 dlb2_dequeue_wait(struct dlb2_eventdev *dlb2,
 		  struct dlb2_eventdev_port *ev_port,
@@ -3194,8 +3204,11 @@ dlb2_dequeue_wait(struct dlb2_eventdev *dlb2,
 			expected_value = 0;
 
 		pmc.addr = monitor_addr;
-		pmc.val = expected_value;
-		pmc.mask = qe_mask.raw_qe[1];
+		/* store expected value and comparison mask in opaque data */
+		pmc.opaque[CLB_VAL_IDX] = expected_value;
+		pmc.opaque[CLB_MASK_IDX] = qe_mask.raw_qe[1];
+		/* set up callback */
+		pmc.fn = dlb2_monitor_callback;
 		pmc.size = sizeof(uint64_t);
 
 		rte_power_monitor(&pmc, timeout + start_ticks);

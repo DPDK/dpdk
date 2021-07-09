@@ -269,6 +269,18 @@ mlx5_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	return rx_queue_count(rxq);
 }
 
+#define CLB_VAL_IDX 0
+#define CLB_MSK_IDX 1
+static int
+mlx5_monitor_callback(const uint64_t value,
+		const uint64_t opaque[RTE_POWER_MONITOR_OPAQUE_SZ])
+{
+	const uint64_t m = opaque[CLB_MSK_IDX];
+	const uint64_t v = opaque[CLB_VAL_IDX];
+
+	return (value & m) == v ? -1 : 0;
+}
+
 int mlx5_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 {
 	struct mlx5_rxq_data *rxq = rx_queue;
@@ -282,8 +294,9 @@ int mlx5_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 		return -rte_errno;
 	}
 	pmc->addr = &cqe->op_own;
-	pmc->val =  !!idx;
-	pmc->mask = MLX5_CQE_OWNER_MASK;
+	pmc->opaque[CLB_VAL_IDX] = !!idx;
+	pmc->opaque[CLB_MSK_IDX] = MLX5_CQE_OWNER_MASK;
+	pmc->fn = mlx5_monitor_callback;
 	pmc->size = sizeof(uint8_t);
 	return 0;
 }
