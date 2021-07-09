@@ -55,8 +55,10 @@ rte_stats_bitrate_reg(struct rte_stats_bitrates *bitrate_data)
 		return -EINVAL;
 
 	return_value = rte_metrics_reg_names(&names[0], RTE_DIM(names));
-	if (return_value >= 0)
+	if (return_value >= 0) {
 		bitrate_data->id_stats_set = return_value;
+		return 0;
+	}
 	return return_value;
 }
 
