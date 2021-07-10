@@ -71,6 +71,7 @@ enum hns3_mbx_vlan_cfg_subcode {
 	HNS3_MBX_VLAN_TX_OFF_CFG,               /* set tx side vlan offload */
 	HNS3_MBX_VLAN_RX_OFF_CFG,               /* set rx side vlan offload */
 	HNS3_MBX_GET_PORT_BASE_VLAN_STATE = 4,  /* get port based vlan state */
+	HNS3_MBX_ENABLE_VLAN_FILTER,            /* set vlan filter state */
 };
 
 enum hns3_mbx_tbl_cfg_subcode {

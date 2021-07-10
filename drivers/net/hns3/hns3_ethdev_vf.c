@@ -1408,6 +1408,14 @@ hns3vf_get_queue_depth(struct hns3_hw *hw)
 	return 0;
 }
 
+static void
+hns3vf_update_caps(struct hns3_hw *hw, uint32_t caps)
+{
+	if (hns3_get_bit(caps, HNS3VF_CAPS_VLAN_FLT_MOD_B))
+		hns3_set_bit(hw->capability,
+				HNS3_DEV_SUPPORT_VF_VLAN_FLT_MOD_B, 1);
+}
+
 static int
 hns3vf_get_num_tc(struct hns3_hw *hw)
 {
@@ -1440,7 +1448,7 @@ hns3vf_get_basic_info(struct hns3_hw *hw)
 	hw->hw_tc_map = basic_info->hw_tc_map;
 	hw->num_tc = hns3vf_get_num_tc(hw);
 	hw->pf_vf_if_version = basic_info->pf_vf_if_version;
-
+	hns3vf_update_caps(hw, basic_info->caps);
 
 	return 0;
 }
@@ -1611,6 +1619,26 @@ hns3vf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 }
 
 static int
+hns3vf_en_vlan_filter(struct hns3_hw *hw, bool enable)
+{
+	uint8_t msg_data;
+	int ret;
+
+	if (!hns3_dev_vf_vlan_flt_supported(hw))
+		return 0;
+
+	msg_data = enable ? 1 : 0;
+	ret = hns3_send_mbx_msg(hw, HNS3_MBX_SET_VLAN,
+			HNS3_MBX_ENABLE_VLAN_FILTER, &msg_data,
+			sizeof(msg_data), true, NULL, 0);
+	if (ret)
+		hns3_err(hw, "%s vlan filter failed, ret = %d.",
+				enable ? "enable" : "disable", ret);
+
+	return ret;
+}
+
+static int
 hns3vf_en_hw_strip_rxvtag(struct hns3_hw *hw, bool enable)
 {
 	uint8_t msg_data;
@@ -1641,6 +1669,19 @@ hns3vf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	tmp_mask = (unsigned int)mask;
+
+	if (tmp_mask & ETH_VLAN_FILTER_MASK) {
+		rte_spinlock_lock(&hw->lock);
+		/* Enable or disable VLAN filter */
+		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+			ret = hns3vf_en_vlan_filter(hw, true);
+		else
+			ret = hns3vf_en_vlan_filter(hw, false);
+		rte_spinlock_unlock(&hw->lock);
+		if (ret)
+			return ret;
+	}
+
 	/* Vlan stripping setting */
 	if (tmp_mask & ETH_VLAN_STRIP_MASK) {
 		rte_spinlock_lock(&hw->lock);
@@ -1738,9 +1779,10 @@ hns3vf_dev_configure_vlan(struct rte_eth_dev *dev)
 	}
 
 	/* Apply vlan offload setting */
-	ret = hns3vf_vlan_offload_set(dev, ETH_VLAN_STRIP_MASK);
+	ret = hns3vf_vlan_offload_set(dev, ETH_VLAN_STRIP_MASK |
+					ETH_VLAN_FILTER_MASK);
 	if (ret)
-		hns3_err(hw, "dev config vlan offload failed, ret =%d", ret);
+		hns3_err(hw, "dev config vlan offload failed, ret = %d.", ret);
 
 	return ret;
 }

@@ -325,6 +325,15 @@ enum HNS3_CAPS_BITS {
 	HNS3_CAPS_TM_B = 17,
 };
 
+/* Capabilities of VF dependent on the PF */
+enum HNS3VF_CAPS_BITS {
+	/*
+	 * The following capability index definitions must be the same as those
+	 * in kernel side PF.
+	 */
+	HNS3VF_CAPS_VLAN_FLT_MOD_B = 0,
+};
+
 enum HNS3_API_CAP_BITS {
 	HNS3_API_CAP_FLEX_RSS_TBL_B,
 };
