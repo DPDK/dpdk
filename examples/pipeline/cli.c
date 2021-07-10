@@ -1368,6 +1368,467 @@ cmd_pipeline_table_show(char **tokens,
 		snprintf(out, out_size, MSG_ARG_INVALID, "table_name");
 }
 
+static const char cmd_pipeline_selector_group_add_help[] =
+"pipeline <pipeline_name> selector <selector_name> group add\n";
+
+static void
+cmd_pipeline_selector_group_add(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	char *pipeline_name, *selector_name;
+	uint32_t group_id;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = pipeline_find(obj, pipeline_name);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "selector") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "selector");
+		return;
+	}
+
+	selector_name = tokens[3];
+
+	if (strcmp(tokens[4], "group") ||
+		strcmp(tokens[5], "add")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "group add");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_selector_group_add(p->ctl,
+		selector_name,
+		&group_id);
+	if (status)
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+	else
+		snprintf(out, out_size, "Group ID: %u\n", group_id);
+}
+
+static const char cmd_pipeline_selector_group_delete_help[] =
+"pipeline <pipeline_name> selector <selector_name> group delete <group_id>\n";
+
+static void
+cmd_pipeline_selector_group_delete(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	char *pipeline_name, *selector_name;
+	uint32_t group_id;
+	int status;
+
+	if (n_tokens != 7) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = pipeline_find(obj, pipeline_name);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "selector") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "selector");
+		return;
+	}
+
+	selector_name = tokens[3];
+
+	if (strcmp(tokens[4], "group") ||
+		strcmp(tokens[5], "delete")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "group delete");
+		return;
+	}
+
+	if (parser_read_uint32(&group_id, tokens[6]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "group_id");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_selector_group_delete(p->ctl,
+		selector_name,
+		group_id);
+	if (status)
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+}
+
+#define GROUP_MEMBER_INFO_TOKENS_MAX 6
+
+static int
+token_is_comment(const char *token)
+{
+	if ((token[0] == '#') ||
+	    (token[0] == ';') ||
+	    ((token[0] == '/') && (token[1] == '/')))
+		return 1; /* TRUE. */
+
+	return 0; /* FALSE. */
+}
+
+static int
+pipeline_selector_group_member_read(const char *string,
+				      uint32_t *group_id,
+				      uint32_t *member_id,
+				      uint32_t *weight,
+				      int *is_blank_or_comment)
+{
+	char *token_array[GROUP_MEMBER_INFO_TOKENS_MAX], **tokens;
+	char *s0 = NULL, *s;
+	uint32_t n_tokens = 0, group_id_val, member_id_val, weight_val;
+	int blank_or_comment = 0;
+
+	/* Check input arguments. */
+	if (!string || !string[0])
+		goto error;
+
+	/* Memory allocation. */
+	s0 = strdup(string);
+	if (!s0)
+		goto error;
+
+	/* Parse the string into tokens. */
+	for (s = s0; ; ) {
+		char *token;
+
+		token = strtok_r(s, " \f\n\r\t\v", &s);
+		if (!token || token_is_comment(token))
+			break;
+
+		if (n_tokens > GROUP_MEMBER_INFO_TOKENS_MAX)
+			goto error;
+
+		token_array[n_tokens] = token;
+		n_tokens++;
+	}
+
+	if (!n_tokens) {
+		blank_or_comment = 1;
+		goto error;
+	}
+
+	tokens = token_array;
+
+	if (n_tokens < 4 ||
+		strcmp(tokens[0], "group") ||
+		strcmp(tokens[2], "member"))
+		goto error;
+
+	/*
+	 * Group ID.
+	 */
+	if (parser_read_uint32(&group_id_val, tokens[1]) != 0)
+		goto error;
+	*group_id = group_id_val;
+
+	/*
+	 * Member ID.
+	 */
+	if (parser_read_uint32(&member_id_val, tokens[3]) != 0)
+		goto error;
+	*member_id = member_id_val;
+
+	tokens += 4;
+	n_tokens -= 4;
+
+	/*
+	 * Weight.
+	 */
+	if (n_tokens && !strcmp(tokens[0], "weight")) {
+		if (n_tokens < 2)
+			goto error;
+
+		if (parser_read_uint32(&weight_val, tokens[1]) != 0)
+			goto error;
+		*weight = weight_val;
+
+		tokens += 2;
+		n_tokens -= 2;
+	}
+
+	if (n_tokens)
+		goto error;
+
+	free(s0);
+	return 0;
+
+error:
+	free(s0);
+	if (is_blank_or_comment)
+		*is_blank_or_comment = blank_or_comment;
+	return -EINVAL;
+}
+
+static int
+pipeline_selector_group_members_add(struct rte_swx_ctl_pipeline *p,
+			   const char *selector_name,
+			   FILE *file,
+			   uint32_t *file_line_number)
+{
+	char *line = NULL;
+	uint32_t line_id = 0;
+	int status = 0;
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return -ENOMEM;
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		uint32_t group_id, member_id, weight;
+		int is_blank_or_comment;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		status = pipeline_selector_group_member_read(line,
+							      &group_id,
+							      &member_id,
+							      &weight,
+							      &is_blank_or_comment);
+		if (status) {
+			if (is_blank_or_comment)
+				continue;
+
+			goto error;
+		}
+
+		status = rte_swx_ctl_pipeline_selector_group_member_add(p,
+			selector_name,
+			group_id,
+			member_id,
+			weight);
+		if (status)
+			goto error;
+	}
+
+error:
+	free(line);
+	*file_line_number = line_id;
+	return status;
+}
+
+static const char cmd_pipeline_selector_group_member_add_help[] =
+"pipeline <pipeline_name> selector <selector_name> group member add <file_name>";
+
+static void
+cmd_pipeline_selector_group_member_add(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	char *pipeline_name, *selector_name, *file_name;
+	FILE *file = NULL;
+	uint32_t file_line_number = 0;
+	int status;
+
+	if (n_tokens != 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = pipeline_find(obj, pipeline_name);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "selector") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "selector");
+		return;
+	}
+
+	selector_name = tokens[3];
+
+	if (strcmp(tokens[4], "group") ||
+		strcmp(tokens[5], "member") ||
+		strcmp(tokens[6], "add")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "group member add");
+		return;
+	}
+
+	file_name = tokens[7];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
+		return;
+	}
+
+	status = pipeline_selector_group_members_add(p->ctl,
+					    selector_name,
+					    file,
+					    &file_line_number);
+	if (status)
+		snprintf(out, out_size, "Invalid entry in file %s at line %u\n",
+			 file_name,
+			 file_line_number);
+
+	fclose(file);
+}
+
+static int
+pipeline_selector_group_members_delete(struct rte_swx_ctl_pipeline *p,
+			   const char *selector_name,
+			   FILE *file,
+			   uint32_t *file_line_number)
+{
+	char *line = NULL;
+	uint32_t line_id = 0;
+	int status = 0;
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return -ENOMEM;
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		uint32_t group_id, member_id, weight;
+		int is_blank_or_comment;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		status = pipeline_selector_group_member_read(line,
+							      &group_id,
+							      &member_id,
+							      &weight,
+							      &is_blank_or_comment);
+		if (status) {
+			if (is_blank_or_comment)
+				continue;
+
+			goto error;
+		}
+
+		status = rte_swx_ctl_pipeline_selector_group_member_delete(p,
+			selector_name,
+			group_id,
+			member_id);
+		if (status)
+			goto error;
+	}
+
+error:
+	free(line);
+	*file_line_number = line_id;
+	return status;
+}
+
+static const char cmd_pipeline_selector_group_member_delete_help[] =
+"pipeline <pipeline_name> selector <selector_name> group member delete <file_name>";
+
+static void
+cmd_pipeline_selector_group_member_delete(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	char *pipeline_name, *selector_name, *file_name;
+	FILE *file = NULL;
+	uint32_t file_line_number = 0;
+	int status;
+
+	if (n_tokens != 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = pipeline_find(obj, pipeline_name);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "selector") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "selector");
+		return;
+	}
+
+	selector_name = tokens[3];
+
+	if (strcmp(tokens[4], "group") ||
+		strcmp(tokens[5], "member") ||
+		strcmp(tokens[6], "delete")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "group member delete");
+		return;
+	}
+
+	file_name = tokens[7];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
+		return;
+	}
+
+	status = pipeline_selector_group_members_delete(p->ctl,
+					    selector_name,
+					    file,
+					    &file_line_number);
+	if (status)
+		snprintf(out, out_size, "Invalid entry in file %s at line %u\n",
+			 file_name,
+			 file_line_number);
+
+	fclose(file);
+}
+
+static const char cmd_pipeline_selector_show_help[] =
+"pipeline <pipeline_name> selector <selector_name> show\n";
+
+static void
+cmd_pipeline_selector_show(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	char *pipeline_name, *selector_name;
+	int status;
+
+	if (n_tokens != 5) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = pipeline_find(obj, pipeline_name);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	selector_name = tokens[3];
+	status = rte_swx_ctl_pipeline_selector_fprintf(stdout,
+		p->ctl, selector_name);
+	if (status)
+		snprintf(out, out_size, MSG_ARG_INVALID, "selector_name");
+}
+
 static const char cmd_pipeline_commit_help[] =
 "pipeline <pipeline_name> commit\n";
 
@@ -2168,6 +2629,11 @@ cmd_help(char **tokens,
 			"\tpipeline table delete\n"
 			"\tpipeline table default\n"
 			"\tpipeline table show\n"
+			"\tpipeline selector group add\n"
+			"\tpipeline selector group delete\n"
+			"\tpipeline selector group member add\n"
+			"\tpipeline selector group member delete\n"
+			"\tpipeline selector show\n"
 			"\tpipeline commit\n"
 			"\tpipeline abort\n"
 			"\tpipeline regrd\n"
@@ -2263,6 +2729,57 @@ cmd_help(char **tokens,
 		(strcmp(tokens[2], "show") == 0)) {
 		snprintf(out, out_size, "\n%s\n",
 			cmd_pipeline_table_show_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 4) &&
+		(strcmp(tokens[1], "selector") == 0) &&
+		(strcmp(tokens[2], "group") == 0) &&
+		(strcmp(tokens[3], "add") == 0)) {
+		snprintf(out, out_size, "\n%s\n",
+			cmd_pipeline_selector_group_add_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 4) &&
+		(strcmp(tokens[1], "selector") == 0) &&
+		(strcmp(tokens[2], "group") == 0) &&
+		(strcmp(tokens[3], "delete") == 0)) {
+		snprintf(out, out_size, "\n%s\n",
+			cmd_pipeline_selector_group_delete_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 5) &&
+		(strcmp(tokens[1], "selector") == 0) &&
+		(strcmp(tokens[2], "group") == 0) &&
+		(strcmp(tokens[3], "member") == 0) &&
+		(strcmp(tokens[4], "add") == 0)) {
+		snprintf(out, out_size, "\n%s\n",
+			cmd_pipeline_selector_group_member_add_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 5) &&
+		(strcmp(tokens[1], "selector") == 0) &&
+		(strcmp(tokens[2], "group") == 0) &&
+		(strcmp(tokens[3], "member") == 0) &&
+		(strcmp(tokens[4], "delete") == 0)) {
+		snprintf(out, out_size, "\n%s\n",
+			cmd_pipeline_selector_group_member_delete_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 3) &&
+		(strcmp(tokens[1], "selector") == 0) &&
+		(strcmp(tokens[2], "show") == 0)) {
+		snprintf(out, out_size, "\n%s\n",
+			cmd_pipeline_selector_show_help);
 		return;
 	}
 
@@ -2464,6 +2981,52 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 			(strcmp(tokens[2], "table") == 0) &&
 			(strcmp(tokens[4], "show") == 0)) {
 			cmd_pipeline_table_show(tokens, n_tokens, out,
+				out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 6) &&
+			(strcmp(tokens[2], "selector") == 0) &&
+			(strcmp(tokens[4], "group") == 0) &&
+			(strcmp(tokens[5], "add") == 0)) {
+			cmd_pipeline_selector_group_add(tokens, n_tokens, out,
+				out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 6) &&
+			(strcmp(tokens[2], "selector") == 0) &&
+			(strcmp(tokens[4], "group") == 0) &&
+			(strcmp(tokens[5], "delete") == 0)) {
+			cmd_pipeline_selector_group_delete(tokens, n_tokens, out,
+				out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 7) &&
+			(strcmp(tokens[2], "selector") == 0) &&
+			(strcmp(tokens[4], "group") == 0) &&
+			(strcmp(tokens[5], "member") == 0) &&
+			(strcmp(tokens[6], "add") == 0)) {
+			cmd_pipeline_selector_group_member_add(tokens, n_tokens, out,
+				out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 7) &&
+			(strcmp(tokens[2], "selector") == 0) &&
+			(strcmp(tokens[4], "group") == 0) &&
+			(strcmp(tokens[5], "member") == 0) &&
+			(strcmp(tokens[6], "delete") == 0)) {
+			cmd_pipeline_selector_group_member_delete(tokens, n_tokens, out,
+				out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[2], "selector") == 0) &&
+			(strcmp(tokens[4], "show") == 0)) {
+			cmd_pipeline_selector_show(tokens, n_tokens, out,
 				out_size, obj);
 			return;
 		}
