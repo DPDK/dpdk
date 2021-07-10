@@ -18,7 +18,7 @@ enum HNS3_MBX_OPCODE {
 	HNS3_MBX_API_NEGOTIATE,         /* (VF -> PF) negotiate API version */
 	HNS3_MBX_GET_QINFO,             /* (VF -> PF) get queue config */
 	HNS3_MBX_GET_QDEPTH,            /* (VF -> PF) get queue depth */
-	HNS3_MBX_GET_TCINFO,            /* (VF -> PF) get TC config */
+	HNS3_MBX_GET_BASIC_INFO,        /* (VF -> PF) get basic info */
 	HNS3_MBX_GET_RETA,              /* (VF -> PF) get RETA */
 	HNS3_MBX_GET_RSS_KEY,           /* (VF -> PF) get RSS key */
 	HNS3_MBX_GET_MAC_ADDR,          /* (VF -> PF) get MAC addr */
@@ -45,6 +45,14 @@ enum HNS3_MBX_OPCODE {
 	HNS3_MBX_HANDLE_VF_TBL = 38,    /* (VF -> PF) store/clear hw cfg tbl */
 	HNS3_MBX_GET_RING_VECTOR_MAP,   /* (VF -> PF) get ring-to-vector map */
 	HNS3_MBX_PUSH_LINK_STATUS = 201, /* (IMP -> PF) get port link status */
+};
+
+struct hns3_basic_info {
+	uint8_t hw_tc_map;
+	uint8_t rsv;
+	uint16_t pf_vf_if_version;
+	/* capabilities of VF dependent on PF */
+	uint32_t caps;
 };
 
 /* below are per-VF mac-vlan subcodes */

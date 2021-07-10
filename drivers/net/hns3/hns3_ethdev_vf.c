@@ -1409,26 +1409,38 @@ hns3vf_get_queue_depth(struct hns3_hw *hw)
 }
 
 static int
-hns3vf_get_tc_info(struct hns3_hw *hw)
+hns3vf_get_num_tc(struct hns3_hw *hw)
 {
-	uint8_t resp_msg;
-	int ret;
+	uint8_t num_tc = 0;
 	uint32_t i;
-
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_TCINFO, 0, NULL, 0,
-				true, &resp_msg, sizeof(resp_msg));
-	if (ret) {
-		hns3_err(hw, "VF request to get TC info from PF failed %d",
-			 ret);
-		return ret;
-	}
-
-	hw->hw_tc_map = resp_msg;
 
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
 		if (hw->hw_tc_map & BIT(i))
-			hw->num_tc++;
+			num_tc++;
 	}
+	return num_tc;
+}
+
+static int
+hns3vf_get_basic_info(struct hns3_hw *hw)
+{
+	uint8_t resp_msg[HNS3_MBX_MAX_RESP_DATA_SIZE];
+	struct hns3_basic_info *basic_info;
+	int ret;
+
+	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_BASIC_INFO, 0, NULL, 0,
+				true, resp_msg, sizeof(resp_msg));
+	if (ret) {
+		hns3_err(hw, "failed to get basic info from PF, ret = %d.",
+				ret);
+		return ret;
+	}
+
+	basic_info = (struct hns3_basic_info *)resp_msg;
+	hw->hw_tc_map = basic_info->hw_tc_map;
+	hw->num_tc = hns3vf_get_num_tc(hw);
+	hw->pf_vf_if_version = basic_info->pf_vf_if_version;
+
 
 	return 0;
 }
@@ -1468,6 +1480,11 @@ hns3vf_get_configuration(struct hns3_hw *hw)
 
 	hns3vf_get_push_lsc_cap(hw);
 
+	/* Get basic info from PF */
+	ret = hns3vf_get_basic_info(hw);
+	if (ret)
+		return ret;
+
 	/* Get queue configuration from PF */
 	ret = hns3vf_get_queue_info(hw);
 	if (ret)
@@ -1483,12 +1500,7 @@ hns3vf_get_configuration(struct hns3_hw *hw)
 	if (ret)
 		return ret;
 
-	ret = hns3vf_get_port_base_vlan_filter_state(hw);
-	if (ret)
-		return ret;
-
-	/* Get tc configuration from PF */
-	return hns3vf_get_tc_info(hw);
+	return hns3vf_get_port_base_vlan_filter_state(hw);
 }
 
 static int
