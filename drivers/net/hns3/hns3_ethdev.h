@@ -783,6 +783,7 @@ struct hns3_pf {
 	uint8_t prio_tc[HNS3_MAX_USER_PRIO]; /* TC indexed by prio */
 	uint16_t pause_time;
 	bool support_fc_autoneg;       /* support FC autonegotiate */
+	bool support_multi_tc_pause;
 
 	uint16_t wanted_umv_size;
 	uint16_t max_umv_size;
