@@ -1,0 +1,4 @@
+group 0 member 0 weight 1
+group 0 member 1 weight 1
+group 0 member 2 weight 2
+group 0 member 3 weight 4
