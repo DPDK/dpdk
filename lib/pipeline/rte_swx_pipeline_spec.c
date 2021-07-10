@@ -18,7 +18,9 @@
 #define TABLE_BLOCK 2
 #define TABLE_KEY_BLOCK 3
 #define TABLE_ACTIONS_BLOCK 4
-#define APPLY_BLOCK 5
+#define SELECTOR_BLOCK 5
+#define SELECTOR_SELECTOR_BLOCK 6
+#define APPLY_BLOCK 7
 
 /*
  * extobj.
@@ -941,6 +943,307 @@ table_block_parse(struct table_spec *s,
 }
 
 /*
+ * selector.
+ *
+ * selector SELECTOR_NAME {
+ *	group_id FIELD_NAME
+ *	selector {
+ *		FIELD_NAME
+ *		...
+ *	}
+ *	member_id FIELD_NAME
+ *	n_groups N_GROUPS
+ *	n_members_per_group N_MEMBERS_PER_GROUP
+ * }
+ */
+struct selector_spec {
+	char *name;
+	struct rte_swx_pipeline_selector_params params;
+};
+
+static void
+selector_spec_free(struct selector_spec *s)
+{
+	uintptr_t field_name;
+	uint32_t i;
+
+	if (!s)
+		return;
+
+	/* name. */
+	free(s->name);
+	s->name = NULL;
+
+	/* params->group_id_field_name. */
+	field_name = (uintptr_t)s->params.group_id_field_name;
+	free((void *)field_name);
+	s->params.group_id_field_name = NULL;
+
+	/* params->selector_field_names. */
+	for (i = 0; i < s->params.n_selector_fields; i++) {
+		field_name = (uintptr_t)s->params.selector_field_names[i];
+
+		free((void *)field_name);
+	}
+
+	free(s->params.selector_field_names);
+	s->params.selector_field_names = NULL;
+
+	s->params.n_selector_fields = 0;
+
+	/* params->member_id_field_name. */
+	field_name = (uintptr_t)s->params.member_id_field_name;
+	free((void *)field_name);
+	s->params.member_id_field_name = NULL;
+
+	/* params->n_groups_max. */
+	s->params.n_groups_max = 0;
+
+	/* params->n_members_per_group_max. */
+	s->params.n_members_per_group_max = 0;
+}
+
+static int
+selector_statement_parse(struct selector_spec *s,
+			 uint32_t *block_mask,
+			 char **tokens,
+			 uint32_t n_tokens,
+			 uint32_t n_lines,
+			 uint32_t *err_line,
+			 const char **err_msg)
+{
+	/* Check format. */
+	if ((n_tokens != 3) || strcmp(tokens[2], "{")) {
+		if (err_line)
+			*err_line = n_lines;
+		if (err_msg)
+			*err_msg = "Invalid selector statement.";
+		return -EINVAL;
+	}
+
+	/* spec. */
+	s->name = strdup(tokens[1]);
+	if (!s->name) {
+		if (err_line)
+			*err_line = n_lines;
+		if (err_msg)
+			*err_msg = "Memory allocation failed.";
+		return -ENOMEM;
+	}
+
+	/* block_mask. */
+	*block_mask |= 1 << SELECTOR_BLOCK;
+
+	return 0;
+}
+
+static int
+selector_selector_statement_parse(uint32_t *block_mask,
+				  char **tokens,
+				  uint32_t n_tokens,
+				  uint32_t n_lines,
+				  uint32_t *err_line,
+				  const char **err_msg)
+{
+	/* Check format. */
+	if ((n_tokens != 2) || strcmp(tokens[1], "{")) {
+		if (err_line)
+			*err_line = n_lines;
+		if (err_msg)
+			*err_msg = "Invalid selector statement.";
+		return -EINVAL;
+	}
+
+	/* block_mask. */
+	*block_mask |= 1 << SELECTOR_SELECTOR_BLOCK;
+
+	return 0;
+}
+
+static int
+selector_selector_block_parse(struct selector_spec *s,
+			      uint32_t *block_mask,
+			      char **tokens,
+			      uint32_t n_tokens,
+			      uint32_t n_lines,
+			      uint32_t *err_line,
+			      const char **err_msg)
+{
+	const char **new_fields;
+	char *name;
+
+	/* Handle end of block. */
+	if ((n_tokens == 1) && !strcmp(tokens[0], "}")) {
+		*block_mask &= ~(1 << SELECTOR_SELECTOR_BLOCK);
+		return 0;
+	}
+
+	/* Check input arguments. */
+	if (n_tokens != 1) {
+		if (err_line)
+			*err_line = n_lines;
+		if (err_msg)
+			*err_msg = "Invalid selector field statement.";
+		return -EINVAL;
+	}
+
+	name = strdup(tokens[0]);
+	if (!name) {
+		if (err_line)
+			*err_line = n_lines;
+		if (err_msg)
+			*err_msg = "Memory allocation failed.";
+		return -ENOMEM;
+	}
+
+	new_fields = realloc(s->params.selector_field_names,
+			     (s->params.n_selector_fields + 1) * sizeof(char *));
+	if (!new_fields) {
+		free(name);
+
+		if (err_line)
+			*err_line = n_lines;
+		if (err_msg)
+			*err_msg = "Memory allocation failed.";
+		return -ENOMEM;
+	}
+
+	s->params.selector_field_names = new_fields;
+	s->params.selector_field_names[s->params.n_selector_fields] = name;
+	s->params.n_selector_fields++;
+
+	return 0;
+}
+
+static int
+selector_block_parse(struct selector_spec *s,
+		     uint32_t *block_mask,
+		     char **tokens,
+		     uint32_t n_tokens,
+		     uint32_t n_lines,
+		     uint32_t *err_line,
+		     const char **err_msg)
+{
+	if (*block_mask & (1 << SELECTOR_SELECTOR_BLOCK))
+		return selector_selector_block_parse(s,
+						     block_mask,
+						     tokens,
+						     n_tokens,
+						     n_lines,
+						     err_line,
+						     err_msg);
+
+	/* Handle end of block. */
+	if ((n_tokens == 1) && !strcmp(tokens[0], "}")) {
+		*block_mask &= ~(1 << SELECTOR_BLOCK);
+		return 0;
+	}
+
+	if (!strcmp(tokens[0], "group_id")) {
+		if (n_tokens != 2) {
+			if (err_line)
+				*err_line = n_lines;
+			if (err_msg)
+				*err_msg = "Invalid group_id statement.";
+			return -EINVAL;
+		}
+
+		s->params.group_id_field_name = strdup(tokens[1]);
+		if (!s->params.group_id_field_name) {
+			if (err_line)
+				*err_line = n_lines;
+			if (err_msg)
+				*err_msg = "Memory allocation failed.";
+			return -ENOMEM;
+		}
+
+		return 0;
+	}
+
+	if (!strcmp(tokens[0], "selector"))
+		return selector_selector_statement_parse(block_mask,
+							 tokens,
+							 n_tokens,
+							 n_lines,
+							 err_line,
+							 err_msg);
+
+	if (!strcmp(tokens[0], "member_id")) {
+		if (n_tokens != 2) {
+			if (err_line)
+				*err_line = n_lines;
+			if (err_msg)
+				*err_msg = "Invalid member_id statement.";
+			return -EINVAL;
+		}
+
+		s->params.member_id_field_name = strdup(tokens[1]);
+		if (!s->params.member_id_field_name) {
+			if (err_line)
+				*err_line = n_lines;
+			if (err_msg)
+				*err_msg = "Memory allocation failed.";
+			return -ENOMEM;
+		}
+
+		return 0;
+	}
+
+	if (!strcmp(tokens[0], "n_groups_max")) {
+		char *p = tokens[1];
+
+		if (n_tokens != 2) {
+			if (err_line)
+				*err_line = n_lines;
+			if (err_msg)
+				*err_msg = "Invalid n_groups statement.";
+			return -EINVAL;
+		}
+
+		s->params.n_groups_max = strtoul(p, &p, 0);
+		if (p[0]) {
+			if (err_line)
+				*err_line = n_lines;
+			if (err_msg)
+				*err_msg = "Invalid n_groups argument.";
+			return -EINVAL;
+		}
+
+		return 0;
+	}
+
+	if (!strcmp(tokens[0], "n_members_per_group_max")) {
+		char *p = tokens[1];
+
+		if (n_tokens != 2) {
+			if (err_line)
+				*err_line = n_lines;
+			if (err_msg)
+				*err_msg = "Invalid n_members_per_group statement.";
+			return -EINVAL;
+		}
+
+		s->params.n_members_per_group_max = strtoul(p, &p, 0);
+		if (p[0]) {
+			if (err_line)
+				*err_line = n_lines;
+			if (err_msg)
+				*err_msg = "Invalid n_members_per_group argument.";
+			return -EINVAL;
+		}
+
+		return 0;
+	}
+
+	/* Anything else. */
+	if (err_line)
+		*err_line = n_lines;
+	if (err_msg)
+		*err_msg = "Invalid statement.";
+	return -EINVAL;
+}
+
+/*
  * regarray.
  *
  * regarray NAME size SIZE initval INITVAL
@@ -1203,6 +1506,7 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 	struct metadata_spec metadata_spec = {0};
 	struct action_spec action_spec = {0};
 	struct table_spec table_spec = {0};
+	struct selector_spec selector_spec = {0};
 	struct regarray_spec regarray_spec = {0};
 	struct metarray_spec metarray_spec = {0};
 	struct apply_spec apply_spec = {0};
@@ -1386,6 +1690,38 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 			continue;
 		}
 
+		/* selector block. */
+		if (block_mask & (1 << SELECTOR_BLOCK)) {
+			status = selector_block_parse(&selector_spec,
+						      &block_mask,
+						      tokens,
+						      n_tokens,
+						      n_lines,
+						      err_line,
+						      err_msg);
+			if (status)
+				goto error;
+
+			if (block_mask & (1 << SELECTOR_BLOCK))
+				continue;
+
+			/* End of block. */
+			status = rte_swx_pipeline_selector_config(p,
+				selector_spec.name,
+				&selector_spec.params);
+			if (status) {
+				if (err_line)
+					*err_line = n_lines;
+				if (err_msg)
+					*err_msg = "Selector configuration error.";
+				goto error;
+			}
+
+			selector_spec_free(&selector_spec);
+
+			continue;
+		}
+
 		/* apply block. */
 		if (block_mask & (1 << APPLY_BLOCK)) {
 			status = apply_block_parse(&apply_spec,
@@ -1544,6 +1880,21 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 			continue;
 		}
 
+		/* selector. */
+		if (!strcmp(tokens[0], "selector")) {
+			status = selector_statement_parse(&selector_spec,
+							  &block_mask,
+							  tokens,
+							  n_tokens,
+							  n_lines,
+							  err_line,
+							  err_msg);
+			if (status)
+				goto error;
+
+			continue;
+		}
+
 		/* regarray. */
 		if (!strcmp(tokens[0], "regarray")) {
 			status = regarray_statement_parse(&regarray_spec,
@@ -1651,6 +2002,7 @@ error:
 	metadata_spec_free(&metadata_spec);
 	action_spec_free(&action_spec);
 	table_spec_free(&table_spec);
+	selector_spec_free(&selector_spec);
 	regarray_spec_free(&regarray_spec);
 	metarray_spec_free(&metarray_spec);
 	apply_spec_free(&apply_spec);

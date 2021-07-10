@@ -22,6 +22,7 @@ extern "C" {
 
 #include "rte_swx_port.h"
 #include "rte_swx_table.h"
+#include "rte_swx_table_selector.h"
 
 struct rte_swx_pipeline;
 
@@ -47,6 +48,9 @@ struct rte_swx_ctl_pipeline_info {
 
 	/** Number of tables. */
 	uint32_t n_tables;
+
+	/** Number of selector tables. */
+	uint32_t n_selectors;
 
 	/** Number of register arrays. */
 	uint32_t n_regarrays;
@@ -386,6 +390,129 @@ rte_swx_ctl_pipeline_table_stats_read(struct rte_swx_pipeline *p,
 				      struct rte_swx_table_stats *stats);
 
 /*
+ * Selector Table Query API.
+ */
+
+/** Selector info. */
+struct rte_swx_ctl_selector_info {
+	/** Selector table name. */
+	char name[RTE_SWX_CTL_NAME_SIZE];
+
+	/** Number of selector fields. */
+	uint32_t n_selector_fields;
+
+	/** Maximum number of groups. */
+	uint32_t n_groups_max;
+
+	/** Maximum number of members per group. */
+	uint32_t n_members_per_group_max;
+};
+
+/**
+ * Selector table info get
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] selector_id
+ *   Selector table ID (0 .. *n_selectors* - 1).
+ * @param[out] selector
+ *   Selector table info.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_selector_info_get(struct rte_swx_pipeline *p,
+			      uint32_t selector_id,
+			      struct rte_swx_ctl_selector_info *selector);
+
+/**
+ * Selector table "group ID" field info get
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] selector_id
+ *   Selector table ID (0 .. *n_selectors*).
+ * @param[out] field
+ *   Selector table "group ID" field info.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_selector_group_id_field_info_get(struct rte_swx_pipeline *p,
+					     uint32_t selector_id,
+					     struct rte_swx_ctl_table_match_field_info *field);
+
+/**
+ * Sselector table selector field info get
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] selector_id
+ *   Selector table ID (0 .. *n_selectors*).
+ * @param[in] selector_field_id
+ *   Selector table selector field ID (0 .. *n_selector_fields* - 1).
+ * @param[out] field
+ *   Selector table selector field info.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_selector_field_info_get(struct rte_swx_pipeline *p,
+				    uint32_t selector_id,
+				    uint32_t selector_field_id,
+				    struct rte_swx_ctl_table_match_field_info *field);
+
+/**
+ * Selector table "member ID" field info get
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] selector_id
+ *   Selector table ID (0 .. *n_selectors*).
+ * @param[out] field
+ *   Selector table "member ID" field info.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_selector_member_id_field_info_get(struct rte_swx_pipeline *p,
+					      uint32_t selector_id,
+					      struct rte_swx_ctl_table_match_field_info *field);
+
+/** Selector table statistics. */
+struct rte_swx_pipeline_selector_stats {
+	/** Number of packets. */
+	uint64_t n_pkts;
+};
+
+/**
+ * Selector table statistics counters read
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] selector_name
+ *   Selector table name.
+ * @param[out] stats
+ *   Selector table stats. Must point to a pre-allocated structure.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_selector_stats_read(struct rte_swx_pipeline *p,
+					 const char *selector_name,
+					 struct rte_swx_pipeline_selector_stats *stats);
+
+/*
  * Table Update API.
  */
 
@@ -530,6 +657,111 @@ rte_swx_ctl_pipeline_table_entry_delete(struct rte_swx_ctl_pipeline *ctl,
 					struct rte_swx_table_entry *entry);
 
 /**
+ * Pipeline selector table group add
+ *
+ * Add a new group to a selector table. This operation is executed before this
+ * function returns and its result is independent of the result of the next
+ * commit operation.
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] selector_name
+ *   Selector table name.
+ * @param[out] group_id
+ *   The ID of the new group. Only valid when the function call is successful.
+ *   This group is initially empty, i.e. it does not contain any members.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOSPC: All groups are currently in use, no group available.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_selector_group_add(struct rte_swx_ctl_pipeline *ctl,
+					const char *selector_name,
+					uint32_t *group_id);
+
+/**
+ * Pipeline selector table group delete
+ *
+ * Schedule a group for deletion as part of the next commit operation. The group
+ * to be deleted can be empty or non-empty.
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] selector_name
+ *   Selector table name.
+ * @param[in] group_id
+ *   Group to be deleted from the selector table.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough memory.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_selector_group_delete(struct rte_swx_ctl_pipeline *ctl,
+					   const char *selector_name,
+					   uint32_t group_id);
+
+/**
+ * Pipeline selector table member add to group
+ *
+ * Schedule the operation to add a new member to an existing group as part of
+ * the next commit operation. If this member is already in this group, the
+ * member weight is updated to the new value. A weight of zero means this member
+ * is to be deleted from the group.
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] selector_name
+ *   Selector table name.
+ * @param[in] group_id
+ *   The group ID.
+ * @param[in] member_id
+ *   The member to be added to the group.
+ * @param[in] member_weight
+ *   Member weight.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough memory;
+ *   -ENOSPC: The group is full.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_selector_group_member_add(struct rte_swx_ctl_pipeline *ctl,
+					       const char *selector_name,
+					       uint32_t group_id,
+					       uint32_t member_id,
+					       uint32_t member_weight);
+
+/**
+ * Pipeline selector table member delete from group
+ *
+ * Schedule the operation to delete a member from an existing group as part of
+ * the next commit operation.
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] selector_name
+ *   Selector table name.
+ * @param[in] group_id
+ *   The group ID. Must be valid.
+ * @param[in] member_id
+ *   The member to be added to the group. Must be valid.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_selector_group_member_delete(struct rte_swx_ctl_pipeline *ctl,
+						  const char *selector_name,
+						  uint32_t group_id,
+						  uint32_t member_id);
+
+/**
  * Pipeline commit
  *
  * Perform all the scheduled table work.
@@ -607,6 +839,27 @@ int
 rte_swx_ctl_pipeline_table_fprintf(FILE *f,
 				   struct rte_swx_ctl_pipeline *ctl,
 				   const char *table_name);
+
+/**
+ * Pipeline selector print to file
+ *
+ * Print all the selector entries to file.
+ *
+ * @param[in] f
+ *   Output file.
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] selector_name
+ *   Selector table name.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_selector_fprintf(FILE *f,
+				      struct rte_swx_ctl_pipeline *ctl,
+				      const char *selector_name);
 
 /*
  * Register Array Query API.

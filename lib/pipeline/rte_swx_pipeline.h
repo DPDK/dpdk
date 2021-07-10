@@ -612,6 +612,57 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 			      const char *args,
 			      uint32_t size);
 
+/** Pipeline selector table parameters. */
+struct rte_swx_pipeline_selector_params {
+	/** The group ID field. Input into the selection operation.
+	 * Restriction: This field must be a meta-data field.
+	 */
+	const char *group_id_field_name;
+
+	/** The set of fields used to select (through a hashing scheme) the
+	 * member within the current group. Inputs into the seletion operation.
+	 * Restriction: All the selector fields must be part of the same struct,
+	 * i.e. part of the same header or part of the meta-data structure.
+	 */
+	const char **selector_field_names;
+
+	/** The number of selector fields. Must be non-zero. */
+	uint32_t n_selector_fields;
+
+	/** The member ID field. Output from the selection operation.
+	 * Restriction: This field must be a meta-data field.
+	 */
+	const char *member_id_field_name;
+
+	/** Maximum number of groups. Must be non-zero. */
+	uint32_t n_groups_max;
+
+	/** Maximum number of members per group. Must be non-zero. */
+	uint32_t n_members_per_group_max;
+};
+
+/**
+ * Pipeline selector table configure
+ *
+ * @param[out] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Selector table name.
+ * @param[in] params
+ *   Selector table parameters.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Selector table with this name already exists;
+ *   -ENODEV: Selector table creation error.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_selector_config(struct rte_swx_pipeline *p,
+				 const char *name,
+				 struct rte_swx_pipeline_selector_params *params);
+
 /**
  * Pipeline register array configure
  *

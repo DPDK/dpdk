@@ -10,6 +10,8 @@
 #include <rte_common.h>
 #include <rte_byteorder.h>
 
+#include <rte_swx_table_selector.h>
+
 #include "rte_swx_ctl.h"
 
 #define CHECK(condition, err_code)                                             \
@@ -89,11 +91,44 @@ struct table {
 	uint32_t n_delete;
 };
 
+struct selector {
+	/* Selector table info. */
+	struct rte_swx_ctl_selector_info info;
+
+	/* group_id field. */
+	struct rte_swx_ctl_table_match_field_info group_id_field;
+
+	/* selector fields. */
+	struct rte_swx_ctl_table_match_field_info *selector_fields;
+
+	/* member_id field. */
+	struct rte_swx_ctl_table_match_field_info member_id_field;
+
+	/* Current selector table. Array of info.n_groups_max elements.*/
+	struct rte_swx_table_selector_group **groups;
+
+	/* Pending selector table subject to the next commit. Array of info.n_groups_max elements.
+	 */
+	struct rte_swx_table_selector_group **pending_groups;
+
+	/* Valid flag per group. Array of n_groups_max elements. */
+	int *groups_added;
+
+	/* Pending delete flag per group. Group deletion is subject to the next commit. Array of
+	 * info.n_groups_max elements.
+	 */
+	int *groups_pending_delete;
+
+	/* Params. */
+	struct rte_swx_table_selector_params params;
+};
+
 struct rte_swx_ctl_pipeline {
 	struct rte_swx_ctl_pipeline_info info;
 	struct rte_swx_pipeline *p;
 	struct action *actions;
 	struct table *tables;
+	struct selector *selectors;
 	struct rte_swx_table_state *ts;
 	struct rte_swx_table_state *ts_next;
 	int numa_node;
@@ -710,6 +745,209 @@ table_free(struct rte_swx_ctl_pipeline *ctl)
 }
 
 static void
+selector_group_members_free(struct selector *s, uint32_t group_id)
+{
+	struct rte_swx_table_selector_group *group = s->groups[group_id];
+
+	if (!group)
+		return;
+
+	for ( ; ; ) {
+		struct rte_swx_table_selector_member *m;
+
+		m = TAILQ_FIRST(&group->members);
+		if (!m)
+			break;
+
+		TAILQ_REMOVE(&group->members, m, node);
+		free(m);
+	}
+
+	free(group);
+	s->groups[group_id] = NULL;
+}
+
+static void
+selector_pending_group_members_free(struct selector *s, uint32_t group_id)
+{
+	struct rte_swx_table_selector_group *group = s->pending_groups[group_id];
+
+	if (!group)
+		return;
+
+	for ( ; ; ) {
+		struct rte_swx_table_selector_member *m;
+
+		m = TAILQ_FIRST(&group->members);
+		if (!m)
+			break;
+
+		TAILQ_REMOVE(&group->members, m, node);
+		free(m);
+	}
+
+	free(group);
+	s->pending_groups[group_id] = NULL;
+}
+
+static int
+selector_group_duplicate_to_pending(struct selector *s, uint32_t group_id)
+{
+	struct rte_swx_table_selector_group *g, *gp;
+	struct rte_swx_table_selector_member *m;
+
+	selector_pending_group_members_free(s, group_id);
+
+	g = s->groups[group_id];
+	gp = s->pending_groups[group_id];
+
+	if (!gp) {
+		gp = calloc(1, sizeof(struct rte_swx_table_selector_group));
+		if (!gp)
+			goto error;
+
+		TAILQ_INIT(&gp->members);
+
+		s->pending_groups[group_id] = gp;
+	}
+
+	if (!g)
+		return 0;
+
+	TAILQ_FOREACH(m, &g->members, node) {
+		struct rte_swx_table_selector_member *mp;
+
+		mp = calloc(1, sizeof(struct rte_swx_table_selector_member));
+		if (!mp)
+			goto error;
+
+		memcpy(mp, m, sizeof(struct rte_swx_table_selector_member));
+
+		TAILQ_INSERT_TAIL(&gp->members, mp, node);
+	}
+
+	return 0;
+
+error:
+	selector_pending_group_members_free(s, group_id);
+	return -ENOMEM;
+}
+
+static void
+selector_free(struct rte_swx_ctl_pipeline *ctl)
+{
+	uint32_t i;
+
+	if (ctl->selectors)
+		return;
+
+	for (i = 0; i < ctl->info.n_selectors; i++) {
+		struct selector *s = &ctl->selectors[i];
+		uint32_t i;
+
+		/* selector_fields. */
+		free(s->selector_fields);
+
+		/* groups. */
+		if (s->groups)
+			for (i = 0; i < s->info.n_groups_max; i++)
+				selector_group_members_free(s, i);
+
+		free(s->groups);
+
+		/* pending_groups. */
+		if (s->pending_groups)
+			for (i = 0; i < s->info.n_groups_max; i++)
+				selector_pending_group_members_free(s, i);
+
+		free(s->pending_groups);
+
+		/* groups_added. */
+		free(s->groups_added);
+
+		/* groups_pending_delete. */
+		free(s->groups_pending_delete);
+
+		/* params. */
+		free(s->params.selector_mask);
+	}
+
+	free(ctl->selectors);
+	ctl->selectors = NULL;
+}
+
+static struct selector *
+selector_find(struct rte_swx_ctl_pipeline *ctl, const char *selector_name)
+{
+	uint32_t i;
+
+	for (i = 0; i < ctl->info.n_selectors; i++) {
+		struct selector *s = &ctl->selectors[i];
+
+		if (!strcmp(selector_name, s->info.name))
+			return s;
+	}
+
+	return NULL;
+}
+
+static int
+selector_params_get(struct rte_swx_ctl_pipeline *ctl, uint32_t selector_id)
+{
+	struct selector *s = &ctl->selectors[selector_id];
+	struct rte_swx_ctl_table_match_field_info *first = NULL, *last = NULL;
+	uint8_t *selector_mask = NULL;
+	uint32_t selector_size = 0, selector_offset = 0, i;
+
+	/* Find first (smallest offset) and last (biggest offset) match fields. */
+	first = &s->selector_fields[0];
+	last = &s->selector_fields[0];
+
+	for (i = 1; i < s->info.n_selector_fields; i++) {
+		struct rte_swx_ctl_table_match_field_info *f = &s->selector_fields[i];
+
+		if (f->offset < first->offset)
+			first = f;
+
+		if (f->offset > last->offset)
+			last = f;
+	}
+
+	/* selector_offset. */
+	selector_offset = first->offset / 8;
+
+	/* selector_size. */
+	selector_size = (last->offset + last->n_bits - first->offset) / 8;
+
+	/* selector_mask. */
+	selector_mask = calloc(1, selector_size);
+	if (!selector_mask)
+		return -ENOMEM;
+
+	for (i = 0; i < s->info.n_selector_fields; i++) {
+		struct rte_swx_ctl_table_match_field_info *f = &s->selector_fields[i];
+		uint32_t start;
+		size_t size;
+
+		start = (f->offset - first->offset) / 8;
+		size = f->n_bits / 8;
+
+		memset(&selector_mask[start], 0xFF, size);
+	}
+
+	/* Fill in. */
+	s->params.group_id_offset = s->group_id_field.offset / 8;
+	s->params.selector_size = selector_size;
+	s->params.selector_offset = selector_offset;
+	s->params.selector_mask = selector_mask;
+	s->params.member_id_offset = s->member_id_field.offset / 8;
+	s->params.n_groups_max = s->info.n_groups_max;
+	s->params.n_members_per_group_max = s->info.n_members_per_group_max;
+
+	return 0;
+}
+
+static void
 table_state_free(struct rte_swx_ctl_pipeline *ctl)
 {
 	uint32_t i;
@@ -730,6 +968,15 @@ table_state_free(struct rte_swx_ctl_pipeline *ctl)
 			table->ops.free(ts->obj);
 	}
 
+	/* For each selector table, free its table state. */
+	for (i = 0; i < ctl->info.n_selectors; i++) {
+		struct rte_swx_table_state *ts = &ctl->ts_next[i];
+
+		/* Table object. */
+		if (ts->obj)
+			rte_swx_table_selector_free(ts->obj);
+	}
+
 	free(ctl->ts_next);
 	ctl->ts_next = NULL;
 }
@@ -740,13 +987,14 @@ table_state_create(struct rte_swx_ctl_pipeline *ctl)
 	int status = 0;
 	uint32_t i;
 
-	ctl->ts_next = calloc(ctl->info.n_tables,
+	ctl->ts_next = calloc(ctl->info.n_tables + ctl->info.n_selectors,
 			      sizeof(struct rte_swx_table_state));
 	if (!ctl->ts_next) {
 		status = -ENOMEM;
 		goto error;
 	}
 
+	/* Tables. */
 	for (i = 0; i < ctl->info.n_tables; i++) {
 		struct table *table = &ctl->tables[i];
 		struct rte_swx_table_state *ts = &ctl->ts[i];
@@ -782,6 +1030,19 @@ table_state_create(struct rte_swx_ctl_pipeline *ctl)
 		ts_next->default_action_id = ts->default_action_id;
 	}
 
+	/* Selector tables. */
+	for (i = 0; i < ctl->info.n_selectors; i++) {
+		struct selector *s = &ctl->selectors[i];
+		struct rte_swx_table_state *ts_next = &ctl->ts_next[ctl->info.n_tables + i];
+
+		/* Table object. */
+		ts_next->obj = rte_swx_table_selector_create(&s->params, NULL, ctl->numa_node);
+		if (!ts_next->obj) {
+			status = -ENODEV;
+			goto error;
+		}
+	}
+
 	return 0;
 
 error:
@@ -798,6 +1059,8 @@ rte_swx_ctl_pipeline_free(struct rte_swx_ctl_pipeline *ctl)
 	action_free(ctl);
 
 	table_state_free(ctl);
+
+	selector_free(ctl);
 
 	table_free(ctl);
 
@@ -936,6 +1199,77 @@ rte_swx_ctl_pipeline_create(struct rte_swx_pipeline *p)
 
 		/* params. */
 		status = table_params_get(ctl, i);
+		if (status)
+			goto error;
+	}
+
+	/* selector tables. */
+	ctl->selectors = calloc(ctl->info.n_selectors, sizeof(struct selector));
+	if (!ctl->selectors)
+		goto error;
+
+	for (i = 0; i < ctl->info.n_selectors; i++) {
+		struct selector *s = &ctl->selectors[i];
+		uint32_t j;
+
+		/* info. */
+		status = rte_swx_ctl_selector_info_get(p, i, &s->info);
+		if (status)
+			goto error;
+
+		/* group_id field. */
+		status = rte_swx_ctl_selector_group_id_field_info_get(p,
+			i,
+			&s->group_id_field);
+		if (status)
+			goto error;
+
+		/* selector fields. */
+		s->selector_fields = calloc(s->info.n_selector_fields,
+			sizeof(struct rte_swx_ctl_table_match_field_info));
+		if (!s->selector_fields)
+			goto error;
+
+		for (j = 0; j < s->info.n_selector_fields; j++) {
+			status = rte_swx_ctl_selector_field_info_get(p,
+				i,
+				j,
+				&s->selector_fields[j]);
+			if (status)
+				goto error;
+		}
+
+		/* member_id field. */
+		status = rte_swx_ctl_selector_member_id_field_info_get(p,
+			i,
+			&s->member_id_field);
+		if (status)
+			goto error;
+
+		/* groups. */
+		s->groups = calloc(s->info.n_groups_max,
+			sizeof(struct rte_swx_table_selector_group *));
+		if (!s->groups)
+			goto error;
+
+		/* pending_groups. */
+		s->pending_groups = calloc(s->info.n_groups_max,
+			sizeof(struct rte_swx_table_selector_group *));
+		if (!s->pending_groups)
+			goto error;
+
+		/* groups_added. */
+		s->groups_added = calloc(s->info.n_groups_max, sizeof(int));
+		if (!s->groups_added)
+			goto error;
+
+		/* groups_pending_delete. */
+		s->groups_pending_delete = calloc(s->info.n_groups_max, sizeof(int));
+		if (!s->groups_pending_delete)
+			goto error;
+
+		/* params. */
+		status = selector_params_get(ctl, i);
 		if (status)
 			goto error;
 	}
@@ -1500,6 +1834,295 @@ table_abort(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 }
 
 int
+rte_swx_ctl_pipeline_selector_group_add(struct rte_swx_ctl_pipeline *ctl,
+					const char *selector_name,
+					uint32_t *group_id)
+{
+	struct selector *s;
+	uint32_t i;
+
+	/* Check input arguments. */
+	if (!ctl || !selector_name || !selector_name[0] || !group_id)
+		return -EINVAL;
+
+	s = selector_find(ctl, selector_name);
+	if (!s)
+		return -EINVAL;
+
+	/* Find an unused group. */
+	for (i = 0; i < s->info.n_groups_max; i++)
+		if (!s->groups_added[i]) {
+			*group_id = i;
+			s->groups_added[i] = 1;
+			return 0;
+		}
+
+	return -ENOSPC;
+}
+
+int
+rte_swx_ctl_pipeline_selector_group_delete(struct rte_swx_ctl_pipeline *ctl,
+					   const char *selector_name,
+					   uint32_t group_id)
+{
+	struct selector *s;
+	struct rte_swx_table_selector_group *group;
+
+	/* Check input arguments. */
+	if (!ctl || !selector_name || !selector_name[0])
+		return -EINVAL;
+
+	s = selector_find(ctl, selector_name);
+	if (!s ||
+	   (group_id >= s->info.n_groups_max) ||
+	   !s->groups_added[group_id])
+		return -EINVAL;
+
+	/* Check if this group is already scheduled for deletion. */
+	if (s->groups_pending_delete[group_id])
+		return 0;
+
+	/* Initialize the pending group, if needed. */
+	if (!s->pending_groups[group_id]) {
+		int status;
+
+		status = selector_group_duplicate_to_pending(s, group_id);
+		if (status)
+			return status;
+	}
+
+	group = s->pending_groups[group_id];
+
+	/* Schedule removal of all the members from the current group. */
+	for ( ; ; ) {
+		struct rte_swx_table_selector_member *m;
+
+		m = TAILQ_FIRST(&group->members);
+		if (!m)
+			break;
+
+		TAILQ_REMOVE(&group->members, m, node);
+		free(m);
+	}
+
+	/* Schedule the group for deletion. */
+	s->groups_pending_delete[group_id] = 1;
+
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_selector_group_member_add(struct rte_swx_ctl_pipeline *ctl,
+					       const char *selector_name,
+					       uint32_t group_id,
+					       uint32_t member_id,
+					       uint32_t member_weight)
+{
+	struct selector *s;
+	struct rte_swx_table_selector_group *group;
+	struct rte_swx_table_selector_member *m;
+
+	if (!member_weight)
+		return rte_swx_ctl_pipeline_selector_group_member_delete(ctl,
+									 selector_name,
+									 group_id,
+									 member_id);
+
+	/* Check input arguments. */
+	if (!ctl || !selector_name || !selector_name[0])
+		return -EINVAL;
+
+	s = selector_find(ctl, selector_name);
+	if (!s ||
+	   (group_id >= s->info.n_groups_max) ||
+	   !s->groups_added[group_id] ||
+	   s->groups_pending_delete[group_id])
+		return -EINVAL;
+
+	/* Initialize the pending group, if needed. */
+	if (!s->pending_groups[group_id]) {
+		int status;
+
+		status = selector_group_duplicate_to_pending(s, group_id);
+		if (status)
+			return status;
+	}
+
+	group = s->pending_groups[group_id];
+
+	/* If this member is already in this group, then simply update its weight and return. */
+	TAILQ_FOREACH(m, &group->members, node)
+		if (m->member_id == member_id) {
+			m->member_weight = member_weight;
+			return 0;
+		}
+
+	/* Add new member to this group. */
+	m = calloc(1, sizeof(struct rte_swx_table_selector_member));
+	if (!m)
+		return -ENOMEM;
+
+	m->member_id = member_id;
+	m->member_weight = member_weight;
+
+	TAILQ_INSERT_TAIL(&group->members, m, node);
+
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_selector_group_member_delete(struct rte_swx_ctl_pipeline *ctl,
+						  const char *selector_name,
+						  uint32_t group_id __rte_unused,
+						  uint32_t member_id __rte_unused)
+{
+	struct selector *s;
+	struct rte_swx_table_selector_group *group;
+	struct rte_swx_table_selector_member *m;
+
+	/* Check input arguments. */
+	if (!ctl || !selector_name || !selector_name[0])
+		return -EINVAL;
+
+	s = selector_find(ctl, selector_name);
+	if (!s ||
+	    (group_id >= s->info.n_groups_max) ||
+	    !s->groups_added[group_id] ||
+	    s->groups_pending_delete[group_id])
+		return -EINVAL;
+
+	/* Initialize the pending group, if needed. */
+	if (!s->pending_groups[group_id]) {
+		int status;
+
+		status = selector_group_duplicate_to_pending(s, group_id);
+		if (status)
+			return status;
+	}
+
+	group = s->pending_groups[group_id];
+
+	/* Look for this member in the group and remove it, if found. */
+	TAILQ_FOREACH(m, &group->members, node)
+		if (m->member_id == member_id) {
+			TAILQ_REMOVE(&group->members, m, node);
+			free(m);
+			return 0;
+		}
+
+	return 0;
+}
+
+static int
+selector_rollfwd(struct rte_swx_ctl_pipeline *ctl, uint32_t selector_id)
+{
+	struct selector *s = &ctl->selectors[selector_id];
+	struct rte_swx_table_state *ts_next = &ctl->ts_next[ctl->info.n_tables + selector_id];
+	uint32_t group_id;
+
+	/* Push pending group member changes (s->pending_groups[group_id]) to the selector table
+	 * mirror copy (ts_next->obj).
+	 */
+	for (group_id = 0; group_id < s->info.n_groups_max; group_id++) {
+		struct rte_swx_table_selector_group *group = s->pending_groups[group_id];
+		int status;
+
+		/* Skip this group if no change needed. */
+		if (!group)
+			continue;
+
+		/* Apply the pending changes for the current group. */
+		status = rte_swx_table_selector_group_set(ts_next->obj, group_id, group);
+		if (status)
+			return status;
+	}
+
+	return 0;
+}
+
+static void
+selector_rollfwd_finalize(struct rte_swx_ctl_pipeline *ctl, uint32_t selector_id)
+{
+	struct selector *s = &ctl->selectors[selector_id];
+	uint32_t group_id;
+
+	/* Commit pending group member changes (s->pending_groups[group_id]) to the stable group
+	 * records (s->groups[group_id).
+	 */
+	for (group_id = 0; group_id < s->info.n_groups_max; group_id++) {
+		struct rte_swx_table_selector_group *g = s->groups[group_id];
+		struct rte_swx_table_selector_group *gp = s->pending_groups[group_id];
+
+		/* Skip this group if no change needed. */
+		if (!gp)
+			continue;
+
+		/* Transition the pending changes to stable. */
+		s->groups[group_id] = gp;
+		s->pending_groups[group_id] = NULL;
+
+		/* Free the old group member list. */
+		if (!g)
+			continue;
+
+		for ( ; ; ) {
+			struct rte_swx_table_selector_member *m;
+
+			m = TAILQ_FIRST(&g->members);
+			if (!m)
+				break;
+
+			TAILQ_REMOVE(&g->members, m, node);
+			free(m);
+		}
+
+		free(g);
+	}
+
+	/* Commit pending group validity changes (from s->groups_pending_delete[group_id] to
+	 * s->groups_added[group_id].
+	 */
+	for (group_id = 0; group_id < s->info.n_groups_max; group_id++)
+		if (s->groups_pending_delete[group_id]) {
+			s->groups_added[group_id] = 0;
+			s->groups_pending_delete[group_id] = 0;
+		}
+}
+
+static void
+selector_rollback(struct rte_swx_ctl_pipeline *ctl, uint32_t selector_id)
+{
+	struct selector *s = &ctl->selectors[selector_id];
+	struct rte_swx_table_state *ts = &ctl->ts[ctl->info.n_tables + selector_id];
+	struct rte_swx_table_state *ts_next = &ctl->ts_next[ctl->info.n_tables + selector_id];
+	uint32_t group_id;
+
+	/* Discard any previous changes to the selector table mirror copy (ts_next->obj). */
+	for (group_id = 0; group_id < s->info.n_groups_max; group_id++) {
+		struct rte_swx_table_selector_group *gp = s->pending_groups[group_id];
+
+		if (gp) {
+			ts_next->obj = ts->obj;
+			break;
+		}
+	}
+}
+
+static void
+selector_abort(struct rte_swx_ctl_pipeline *ctl, uint32_t selector_id)
+{
+	struct selector *s = &ctl->selectors[selector_id];
+	uint32_t group_id;
+
+	/* Discard any pending group member changes (s->pending_groups[group_id]). */
+	for (group_id = 0; group_id < s->info.n_groups_max; group_id++)
+		selector_pending_group_members_free(s, group_id);
+
+	/* Discard any pending group deletions. */
+	memset(s->groups_pending_delete, 0, s->info.n_groups_max * sizeof(int));
+}
+
+int
 rte_swx_ctl_pipeline_commit(struct rte_swx_ctl_pipeline *ctl, int abort_on_fail)
 {
 	struct rte_swx_table_state *ts;
@@ -1508,11 +2131,17 @@ rte_swx_ctl_pipeline_commit(struct rte_swx_ctl_pipeline *ctl, int abort_on_fail)
 
 	CHECK(ctl, EINVAL);
 
-	/* Operate the changes on the current ts_next before it becomes the new
-	 * ts.
+	/* Operate the changes on the current ts_next before it becomes the new ts. First, operate
+	 * all the changes that can fail; if no failure, then operate the changes that cannot fail.
 	 */
 	for (i = 0; i < ctl->info.n_tables; i++) {
 		status = table_rollfwd0(ctl, i, 0);
+		if (status)
+			goto rollback;
+	}
+
+	for (i = 0; i < ctl->info.n_selectors; i++) {
+		status = selector_rollfwd(ctl, i);
 		if (status)
 			goto rollback;
 	}
@@ -1529,12 +2158,20 @@ rte_swx_ctl_pipeline_commit(struct rte_swx_ctl_pipeline *ctl, int abort_on_fail)
 	ctl->ts = ctl->ts_next;
 	ctl->ts_next = ts;
 
-	/* Operate the changes on the current ts_next, which is the previous ts.
+	/* Operate the changes on the current ts_next, which is the previous ts, in order to get
+	 * the current ts_next in sync with the current ts. Since the changes that can fail did
+	 * not fail on the previous ts_next, it is guaranteed that they will not fail on the
+	 * current ts_next, hence no error checking is needed.
 	 */
 	for (i = 0; i < ctl->info.n_tables; i++) {
 		table_rollfwd0(ctl, i, 1);
 		table_rollfwd1(ctl, i);
 		table_rollfwd2(ctl, i);
+	}
+
+	for (i = 0; i < ctl->info.n_selectors; i++) {
+		selector_rollfwd(ctl, i);
+		selector_rollfwd_finalize(ctl, i);
 	}
 
 	return 0;
@@ -1544,6 +2181,12 @@ rollback:
 		table_rollback(ctl, i);
 		if (abort_on_fail)
 			table_abort(ctl, i);
+	}
+
+	for (i = 0; i < ctl->info.n_selectors; i++) {
+		selector_rollback(ctl, i);
+		if (abort_on_fail)
+			selector_abort(ctl, i);
 	}
 
 	return status;
@@ -1559,6 +2202,9 @@ rte_swx_ctl_pipeline_abort(struct rte_swx_ctl_pipeline *ctl)
 
 	for (i = 0; i < ctl->info.n_tables; i++)
 		table_abort(ctl, i);
+
+	for (i = 0; i < ctl->info.n_selectors; i++)
+		selector_abort(ctl, i);
 }
 
 static int
@@ -1856,5 +2502,51 @@ rte_swx_ctl_pipeline_table_fprintf(FILE *f,
 	fprintf(f, "# Table %s currently has %u entries.\n",
 		table_name,
 		n_entries);
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_selector_fprintf(FILE *f,
+				      struct rte_swx_ctl_pipeline *ctl,
+				      const char *selector_name)
+{
+	struct selector *s;
+	uint32_t group_id;
+
+	if (!f || !ctl || !selector_name || !selector_name[0])
+		return -EINVAL;
+
+	s = selector_find(ctl, selector_name);
+	if (!s)
+		return -EINVAL;
+
+	/* Selector. */
+	fprintf(f, "# Selector %s: max groups %u, max members per group %u\n",
+		s->info.name,
+		s->info.n_groups_max,
+		s->info.n_members_per_group_max);
+
+	/* Groups. */
+	for (group_id = 0; group_id < s->info.n_groups_max; group_id++) {
+		struct rte_swx_table_selector_group *group = s->groups[group_id];
+		struct rte_swx_table_selector_member *m;
+		uint32_t n_members = 0;
+
+		fprintf(f, "Group %u = [", group_id);
+
+		/* Non-empty group. */
+		if (group)
+			TAILQ_FOREACH(m, &group->members, node) {
+				fprintf(f, "%u:%u ", m->member_id, m->member_weight);
+				n_members++;
+			}
+
+		/* Empty group. */
+		if (!n_members)
+			fprintf(f, "0:1 ");
+
+		fprintf(f, "]\n");
+	}
+
 	return 0;
 }

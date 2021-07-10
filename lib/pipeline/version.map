@@ -116,4 +116,17 @@ EXPERIMENTAL {
 	rte_swx_ctl_regarray_info_get;
 	rte_swx_pipeline_metarray_config;
 	rte_swx_pipeline_regarray_config;
+
+	#added in 21.08
+	rte_swx_pipeline_selector_config;
+	rte_swx_ctl_pipeline_selector_fprintf;
+	rte_swx_ctl_pipeline_selector_group_add;
+	rte_swx_ctl_pipeline_selector_group_delete;
+	rte_swx_ctl_pipeline_selector_group_member_add;
+	rte_swx_ctl_pipeline_selector_group_member_delete;
+	rte_swx_ctl_pipeline_selector_stats_read;
+	rte_swx_ctl_selector_info_get;
+	rte_swx_ctl_selector_field_info_get;
+	rte_swx_ctl_selector_group_id_field_info_get;
+	rte_swx_ctl_selector_member_id_field_info_get;
 };
