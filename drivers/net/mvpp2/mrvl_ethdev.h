@@ -186,6 +186,8 @@ struct mrvl_priv {
 
 	uint8_t forward_bad_frames;
 	uint32_t fill_bpool_buffs;
+
+	uint8_t configured; /** indicates if device has been configured */
 };
 
 /** Flow operations forward declaration. */
