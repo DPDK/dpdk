@@ -1873,8 +1873,10 @@ static int mrvl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 	int ret;
 
-	if (mask & ETH_VLAN_STRIP_MASK)
+	if (mask & ETH_VLAN_STRIP_MASK) {
 		MRVL_LOG(ERR, "VLAN stripping is not supported\n");
+		return -ENOTSUP;
+	}
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
 		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
@@ -1886,8 +1888,10 @@ static int mrvl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			return ret;
 	}
 
-	if (mask & ETH_VLAN_EXTEND_MASK)
+	if (mask & ETH_VLAN_EXTEND_MASK) {
 		MRVL_LOG(ERR, "Extend VLAN not supported\n");
+		return -ENOTSUP;
+	}
 
 	return 0;
 }
