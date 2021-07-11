@@ -57,7 +57,7 @@ mrvl_get_max_rate(struct rte_eth_dev *dev, uint64_t *rate)
 
 	close(fd);
 
-	*rate = ethtool_cmd_speed(&edata) * 1000 * 1000 / 8;
+	*rate = (uint64_t)ethtool_cmd_speed(&edata) * 1000 * 1000 / 8;
 
 	return 0;
 }
