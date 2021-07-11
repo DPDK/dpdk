@@ -8,6 +8,7 @@
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
+#include <rte_security_driver.h>
 #include <rte_bus_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
@@ -406,7 +407,7 @@ mrvl_crypto_set_aead_session_parameters(struct mrvl_crypto_session *sess,
  * Parse crypto transform chain and setup session parameters.
  *
  * @param dev Pointer to crypto device
- * @param sess Poiner to crypto session
+ * @param sess Pointer to crypto session
  * @param xform Pointer to configuration structure chain for crypto operations.
  * @returns 0 in case of success, negative value otherwise.
  */
@@ -469,6 +470,96 @@ mrvl_crypto_set_session_parameters(struct mrvl_crypto_session *sess,
 	return 0;
 }
 
+static int
+replay_wsz_to_mask(uint32_t replay_win_sz)
+{
+	int mask = 0;
+
+	switch (replay_win_sz) {
+	case 0:
+		mask = SAM_ANTI_REPLY_MASK_NONE;
+		break;
+	case 32:
+		mask = SAM_ANTI_REPLY_MASK_32B;
+		break;
+	case 64:
+		mask = SAM_ANTI_REPLY_MASK_64B;
+		break;
+	case 128:
+		mask = SAM_ANTI_REPLY_MASK_128B;
+		break;
+	default:
+		MRVL_LOG(ERR, "Invalid antireplay window size");
+		return -EINVAL;
+	}
+
+	return mask;
+}
+
+/**
+ * Parse IPSEC session parameters.
+ *
+ * @param sess Pointer to security session
+ * @param ipsec_xform Pointer to configuration structure IPSEC operations.
+ * @param crypto_xform Pointer to chain for crypto operations.
+ * @returns 0 in case of success, negative value otherwise.
+ */
+int
+mrvl_ipsec_set_session_parameters(struct mrvl_crypto_session *sess,
+		struct rte_security_ipsec_xform *ipsec_xform,
+		struct rte_crypto_sym_xform *crypto_xform)
+{
+	int seq_mask_size;
+
+	/* Filter out spurious/broken requests */
+	if (ipsec_xform == NULL || crypto_xform == NULL)
+		return -EINVAL;
+
+	/* Crypto parameters handling */
+	if (mrvl_crypto_set_session_parameters(sess, crypto_xform))
+		return -EINVAL;
+
+	seq_mask_size = replay_wsz_to_mask(ipsec_xform->replay_win_sz);
+	if (seq_mask_size < 0)
+		return -EINVAL;
+
+	/* IPSEC protocol parameters handling */
+	sess->sam_sess_params.proto = SAM_PROTO_IPSEC;
+	sess->sam_sess_params.u.ipsec.is_esp =
+		(ipsec_xform->proto == RTE_SECURITY_IPSEC_SA_PROTO_ESP) ?
+		1 : 0;
+	sess->sam_sess_params.u.ipsec.is_ip6 = 0;
+	sess->sam_sess_params.u.ipsec.is_tunnel =
+		(ipsec_xform->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) ?
+		1 : 0;
+	sess->sam_sess_params.u.ipsec.is_esn = ipsec_xform->options.esn;
+	sess->sam_sess_params.u.ipsec.seq_mask_size = seq_mask_size;
+
+	sess->sam_sess_params.u.ipsec.tunnel.u.ipv4.sip =
+		(uint8_t *)(&ipsec_xform->tunnel.ipv4.src_ip.s_addr);
+	sess->sam_sess_params.u.ipsec.tunnel.u.ipv4.dip =
+		(uint8_t *)&(ipsec_xform->tunnel.ipv4.dst_ip.s_addr);
+
+	sess->sam_sess_params.u.ipsec.tunnel.u.ipv4.dscp =
+		ipsec_xform->tunnel.ipv4.dscp;
+	sess->sam_sess_params.u.ipsec.tunnel.u.ipv4.ttl =
+		ipsec_xform->tunnel.ipv4.ttl;
+	sess->sam_sess_params.u.ipsec.tunnel.u.ipv4.df =
+		ipsec_xform->tunnel.ipv4.df;
+	sess->sam_sess_params.u.ipsec.tunnel.copy_dscp =
+		ipsec_xform->options.copy_dscp;
+	sess->sam_sess_params.u.ipsec.tunnel.copy_flabel =
+		ipsec_xform->options.copy_flabel;
+	sess->sam_sess_params.u.ipsec.tunnel.copy_df =
+		ipsec_xform->options.copy_df;
+
+	sess->sam_sess_params.u.ipsec.is_natt = 0;
+	sess->sam_sess_params.u.ipsec.spi = ipsec_xform->spi;
+	sess->sam_sess_params.u.ipsec.seq = 0;
+
+	return 0;
+}
+
 /*
  *-----------------------------------------------------------------------------
  * Process Operations
@@ -488,7 +579,7 @@ mrvl_crypto_set_session_parameters(struct mrvl_crypto_session *sess,
  * @param op Pointer to DPDK crypto operation struct [In].
  */
 static inline int
-mrvl_request_prepare(struct sam_cio_op_params *request,
+mrvl_request_prepare_crp(struct sam_cio_op_params *request,
 		struct sam_buf_info *src_bd,
 		struct sam_buf_info *dst_bd,
 		struct rte_crypto_op *op)
@@ -507,7 +598,8 @@ mrvl_request_prepare(struct sam_cio_op_params *request,
 	}
 
 	sess = (struct mrvl_crypto_session *)get_sym_session_private_data(
-			op->sym->session, cryptodev_driver_id);
+					     op->sym->session,
+					     cryptodev_driver_id);
 	if (unlikely(sess == NULL)) {
 		MRVL_LOG(ERR, "Session was not created for this device!");
 		return -EINVAL;
@@ -577,7 +669,7 @@ mrvl_request_prepare(struct sam_cio_op_params *request,
 		request->cipher_len = op->sym->aead.data.length;
 		request->cipher_offset = op->sym->aead.data.offset;
 		request->cipher_iv = rte_crypto_op_ctod_offset(op, uint8_t *,
-			sess->cipher_iv_offset);
+						  sess->cipher_iv_offset);
 
 		request->auth_aad = op->sym->aead.aad.data;
 		request->auth_offset = request->cipher_offset;
@@ -653,6 +745,108 @@ mrvl_request_prepare(struct sam_cio_op_params *request,
 	return -1;
 }
 
+/**
+ * Prepare a single security protocol request.
+ *
+ * This function basically translates DPDK security request into one
+ * understandable by MUDSK's SAM. If this is a first request in a session,
+ * it starts the session.
+ *
+ * @param request Pointer to pre-allocated && reset request buffer [Out].
+ * @param src_bd Pointer to pre-allocated source descriptor [Out].
+ * @param dst_bd Pointer to pre-allocated destination descriptor [Out].
+ * @param op Pointer to DPDK crypto operation struct [In].
+ */
+static inline int
+mrvl_request_prepare_sec(struct sam_cio_ipsec_params *request,
+		struct sam_buf_info *src_bd,
+		struct sam_buf_info *dst_bd,
+		struct rte_crypto_op *op)
+{
+	struct mrvl_crypto_session *sess;
+	struct rte_mbuf *src_mbuf, *dst_mbuf;
+	uint16_t segments_nb;
+	int i;
+
+	if (unlikely(op->sess_type != RTE_CRYPTO_OP_SECURITY_SESSION)) {
+		MRVL_LOG(ERR, "MRVL SECURITY: sess_type is not SECURITY_SESSION");
+		return -EINVAL;
+	}
+
+	sess = (struct mrvl_crypto_session *)get_sec_session_private_data(
+			op->sym->sec_session);
+	if (unlikely(sess == NULL)) {
+		MRVL_LOG(ERR, "Session was not created for this device! %d",
+			 cryptodev_driver_id);
+		return -EINVAL;
+	}
+
+	request->sa = sess->sam_sess;
+	request->cookie = op;
+	src_mbuf = op->sym->m_src;
+	segments_nb = src_mbuf->nb_segs;
+	/* The following conditions must be met:
+	 * - Destination buffer is required when segmented source buffer
+	 * - Segmented destination buffer is not supported
+	 */
+	if ((segments_nb > 1) && (!op->sym->m_dst)) {
+		MRVL_LOG(ERR, "op->sym->m_dst = NULL!");
+		return -1;
+	}
+	/* For non SG case:
+	 * If application delivered us null dst buffer, it means it expects
+	 * us to deliver the result in src buffer.
+	 */
+	dst_mbuf = op->sym->m_dst ? op->sym->m_dst : op->sym->m_src;
+
+	if (!rte_pktmbuf_is_contiguous(dst_mbuf)) {
+		MRVL_LOG(ERR, "Segmented destination buffer not supported!");
+		return -1;
+	}
+
+	request->num_bufs = segments_nb;
+	for (i = 0; i < segments_nb; i++) {
+		/* Empty source. */
+		if (rte_pktmbuf_data_len(src_mbuf) == 0) {
+			/* EIP does not support 0 length buffers. */
+			MRVL_LOG(ERR, "Buffer length == 0 not supported!");
+			return -1;
+		}
+		src_bd[i].vaddr = rte_pktmbuf_mtod(src_mbuf, void *);
+		src_bd[i].paddr = rte_pktmbuf_iova(src_mbuf);
+		src_bd[i].len = rte_pktmbuf_data_len(src_mbuf);
+
+		src_mbuf = src_mbuf->next;
+	}
+	request->src = src_bd;
+
+	/* Empty destination. */
+	if (rte_pktmbuf_data_len(dst_mbuf) == 0) {
+		/* Make dst buffer fit at least source data. */
+		if (rte_pktmbuf_append(dst_mbuf,
+			rte_pktmbuf_data_len(op->sym->m_src)) == NULL) {
+			MRVL_LOG(ERR, "Unable to set big enough dst buffer!");
+			return -1;
+		}
+	}
+
+	request->dst = dst_bd;
+	dst_bd->vaddr = rte_pktmbuf_mtod(dst_mbuf, void *);
+	dst_bd->paddr = rte_pktmbuf_iova(dst_mbuf);
+
+	/*
+	 * We can use all available space in dst_mbuf,
+	 * not only what's used currently.
+	 */
+	dst_bd->len = dst_mbuf->buf_len - rte_pktmbuf_headroom(dst_mbuf);
+
+
+	request->l3_offset = 0;
+	request->pkt_size = rte_pktmbuf_pkt_len(op->sym->m_src);
+
+	return 0;
+}
+
 /*
  *-----------------------------------------------------------------------------
  * PMD Framework handlers
@@ -672,10 +866,16 @@ mrvl_crypto_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
 	uint16_t iter_ops = 0;
-	uint16_t to_enq = 0;
+	uint16_t to_enq_crp = 0;
+	uint16_t to_enq_sec = 0;
 	uint16_t consumed = 0;
 	int ret;
-	struct sam_cio_op_params requests[nb_ops];
+	int iter;
+	struct sam_cio_op_params requests_crp[nb_ops];
+	struct sam_cio_ipsec_params requests_sec[nb_ops];
+	uint16_t indx_map_crp[nb_ops];
+	uint16_t indx_map_sec[nb_ops];
+
 	/*
 	 * SAM does not store bd pointers, so on-stack scope will be enough.
 	 */
@@ -687,53 +887,98 @@ mrvl_crypto_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		return 0;
 
 	/* Prepare the burst. */
-	memset(&requests, 0, sizeof(requests));
+	memset(&requests_crp, 0, sizeof(requests_crp));
+	memset(&requests_sec, 0, sizeof(requests_sec));
 	memset(&src_bd, 0, sizeof(src_bd));
 
 	/* Iterate through */
 	for (; iter_ops < nb_ops; ++iter_ops) {
 		/* store the op id for debug */
-		src_bd[iter_ops].iter_ops = iter_ops;
-		if (mrvl_request_prepare(&requests[iter_ops],
-					src_bd[iter_ops].src_bd,
-					&dst_bd[iter_ops],
-					ops[iter_ops]) < 0) {
-			MRVL_LOG(ERR, "Error while preparing parameters!");
-			qp->stats.enqueue_err_count++;
-			ops[iter_ops]->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		if (ops[iter_ops]->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+			src_bd[iter_ops].iter_ops = to_enq_crp;
+			indx_map_crp[to_enq_crp] = iter_ops;
 
-			/*
-			 * Number of handled ops is increased
-			 * (even if the result of handling is error).
-			 */
-			++consumed;
-			break;
+			if (mrvl_request_prepare_crp(&requests_crp[to_enq_crp],
+						src_bd[iter_ops].src_bd,
+						&dst_bd[iter_ops],
+						ops[iter_ops]) < 0) {
+				MRVL_LOG(ERR,
+					"Error while preparing parameters!");
+				qp->stats.enqueue_err_count++;
+				ops[iter_ops]->status =
+					RTE_CRYPTO_OP_STATUS_ERROR;
+				/*
+				 * Number of handled ops is increased
+				 * (even if the result of handling is error).
+				 */
+				++consumed;
+
+				break;
+			}
+			/* Increase the number of ops to enqueue. */
+			++to_enq_crp;
+		} else {
+			src_bd[iter_ops].iter_ops = to_enq_sec;
+			indx_map_sec[to_enq_sec] = iter_ops;
+			if (mrvl_request_prepare_sec(&requests_sec[to_enq_sec],
+						src_bd[iter_ops].src_bd,
+						&dst_bd[iter_ops],
+						ops[iter_ops]) < 0) {
+				MRVL_LOG(ERR,
+					"Error while preparing parameters!");
+				qp->stats.enqueue_err_count++;
+				ops[iter_ops]->status =
+					RTE_CRYPTO_OP_STATUS_ERROR;
+				/*
+				 * Number of handled ops is increased
+				 * (even if the result of handling is error).
+				 */
+				++consumed;
+
+				break;
+			}
+			/* Increase the number of ops to enqueue. */
+			++to_enq_sec;
 		}
 
 		ops[iter_ops]->status =
 			RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 
-		/* Increase the number of ops to enqueue. */
-		++to_enq;
 	} /* for (; iter_ops < nb_ops;... */
 
-	if (to_enq > 0) {
+	if (to_enq_crp > 0) {
 		/* Send the burst */
-		ret = sam_cio_enq(qp->cio, requests, &to_enq);
-		consumed += to_enq;
+		ret = sam_cio_enq(qp->cio, requests_crp, &to_enq_crp);
+		consumed += to_enq_crp;
 		if (ret < 0) {
 			/*
 			 * Trust SAM that in this case returned value will be at
 			 * some point correct (now it is returned unmodified).
 			 */
-			qp->stats.enqueue_err_count += to_enq;
-			for (iter_ops = 0; iter_ops < to_enq; ++iter_ops)
-				ops[iter_ops]->status =
+			qp->stats.enqueue_err_count += to_enq_crp;
+			for (iter = 0; iter < to_enq_crp; ++iter)
+				ops[indx_map_crp[iter]]->status =
 					RTE_CRYPTO_OP_STATUS_ERROR;
 		}
 	}
 
-	qp->stats.enqueued_count += to_enq;
+	if (to_enq_sec > 0) {
+		/* Send the burst */
+		ret = sam_cio_enq_ipsec(qp->cio, requests_sec, &to_enq_sec);
+		consumed += to_enq_sec;
+		if (ret < 0) {
+			/*
+			 * Trust SAM that in this case returned value will be at
+			 * some point correct (now it is returned unmodified).
+			 */
+			qp->stats.enqueue_err_count += to_enq_sec;
+			for (iter = 0; iter < to_enq_crp; ++iter)
+				ops[indx_map_sec[iter]]->status =
+					RTE_CRYPTO_OP_STATUS_ERROR;
+		}
+	}
+
+	qp->stats.enqueued_count += to_enq_sec + to_enq_crp;
 	return consumed;
 }
 
@@ -755,6 +1000,7 @@ mrvl_crypto_pmd_dequeue_burst(void *queue_pair,
 	struct sam_cio *cio = qp->cio;
 	struct sam_cio_op_result results[nb_ops];
 	uint16_t i;
+	struct rte_mbuf *dst;
 
 	ret = sam_cio_deq(cio, results, &nb_ops);
 	if (ret < 0) {
@@ -774,6 +1020,16 @@ mrvl_crypto_pmd_dequeue_burst(void *queue_pair,
 		switch (results[i].status) {
 		case SAM_CIO_OK:
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+			if (ops[i]->sess_type ==
+				RTE_CRYPTO_OP_SECURITY_SESSION) {
+
+				if (ops[i]->sym->m_dst)
+					dst = ops[i]->sym->m_dst;
+				else
+					dst = ops[i]->sym->m_src;
+				dst->pkt_len = results[i].out_len;
+				dst->data_len = results[i].out_len;
+			}
 			break;
 		case SAM_CIO_ERR_ICV:
 			MRVL_LOG(DEBUG, "CIO returned SAM_CIO_ERR_ICV.");
@@ -807,6 +1063,7 @@ cryptodev_mrvl_crypto_create(const char *name,
 	struct rte_cryptodev *dev;
 	struct mrvl_crypto_private *internals;
 	struct sam_init_params	sam_params;
+	struct rte_security_ctx *security_instance;
 	int ret = -EINVAL;
 
 	dev = rte_cryptodev_pmd_create(name, &vdev->device,
@@ -827,7 +1084,8 @@ cryptodev_mrvl_crypto_create(const char *name,
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
 			RTE_CRYPTODEV_FF_HW_ACCELERATED |
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
-			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT;
+			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
+			RTE_CRYPTODEV_FF_SECURITY;
 
 	internals = dev->data->dev_private;
 
@@ -840,7 +1098,17 @@ cryptodev_mrvl_crypto_create(const char *name,
 
 	sam_params.max_num_sessions = internals->max_nb_sessions;
 
-	/* sam_set_debug_flags(3); */
+	/* Initialize security_ctx only for primary process*/
+	security_instance = rte_malloc("rte_security_instances_ops",
+		sizeof(struct rte_security_ctx), 0);
+	if (security_instance == NULL)
+		return -ENOMEM;
+	security_instance->device = (void *)dev;
+	security_instance->ops = rte_mrvl_security_pmd_ops;
+	security_instance->sess_cnt = 0;
+	dev->security_ctx = security_instance;
+
+	/*sam_set_debug_flags(3);*/
 
 	ret = sam_init(&sam_params);
 	if (ret)

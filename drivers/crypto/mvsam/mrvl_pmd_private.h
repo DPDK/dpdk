@@ -82,11 +82,17 @@ struct mrvl_crypto_src_table {
 } __rte_cache_aligned;
 
 /** Set and validate MRVL crypto session parameters */
-extern int
+int
 mrvl_crypto_set_session_parameters(struct mrvl_crypto_session *sess,
 		const struct rte_crypto_sym_xform *xform);
 
+int
+mrvl_ipsec_set_session_parameters(struct mrvl_crypto_session *sess,
+		struct rte_security_ipsec_xform *ipsec_xform,
+		struct rte_crypto_sym_xform *crypto_xform);
+
 /** device specific operations function pointer structure */
 extern struct rte_cryptodev_ops *rte_mrvl_crypto_pmd_ops;
+extern struct rte_security_ops *rte_mrvl_security_pmd_ops;
 
 #endif /* _MRVL_PMD_PRIVATE_H_ */

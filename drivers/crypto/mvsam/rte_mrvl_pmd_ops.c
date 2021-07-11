@@ -9,6 +9,7 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_cryptodev_pmd.h>
+#include <rte_security_driver.h>
 
 #include "mrvl_pmd_private.h"
 
@@ -835,3 +836,177 @@ static struct rte_cryptodev_ops mrvl_crypto_pmd_ops = {
 };
 
 struct rte_cryptodev_ops *rte_mrvl_crypto_pmd_ops = &mrvl_crypto_pmd_ops;
+
+/* IPSEC full offloading */
+
+/** Configure the session from a crypto xform chain (PMD ops callback).
+ *
+ * @param dev Pointer to the device structure.
+ * @param conf Pointer to the security session configuration structure.
+ * @param sess Pointer to the empty session structure.
+ * @param mempool Pointer to memory pool.
+ * @returns 0 upon success, negative value otherwise.
+ */
+static int
+mrvl_crypto_pmd_security_session_create(__rte_unused void *dev,
+				 struct rte_security_session_conf *conf,
+				 struct rte_security_session *sess,
+				 struct rte_mempool *mempool)
+{
+	struct mrvl_crypto_session *mrvl_sess;
+	void *sess_private_data;
+	int ret;
+
+	if (sess == NULL) {
+		MRVL_LOG(ERR, "Invalid session struct.");
+		return -EINVAL;
+	}
+
+	if (rte_mempool_get(mempool, &sess_private_data)) {
+		MRVL_LOG(ERR, "Couldn't get object from session mempool.");
+		return -ENOMEM;
+	}
+
+	switch (conf->protocol) {
+	case RTE_SECURITY_PROTOCOL_IPSEC:
+		mrvl_sess = (struct mrvl_crypto_session *)sess_private_data;
+
+		struct rte_security_ipsec_xform *ipsec_xform = &conf->ipsec;
+		struct rte_crypto_sym_xform *crypto_xform = conf->crypto_xform;
+
+		ret = mrvl_ipsec_set_session_parameters(mrvl_sess,
+							ipsec_xform,
+							crypto_xform);
+		if (ret != 0) {
+			MRVL_LOG(ERR, "Failed to configure session parameters.");
+
+			/* Return session to mempool */
+			rte_mempool_put(mempool, sess_private_data);
+			return ret;
+		}
+
+		if (mrvl_sess->sam_sess_params.cipher_mode == SAM_CIPHER_GCM) {
+			/* Nonce is must for all counter modes */
+			mrvl_sess->sam_sess_params.cipher_iv =
+				(uint8_t *)&(conf->ipsec.salt);
+		}
+
+		ret = sam_session_create(&mrvl_sess->sam_sess_params,
+				&mrvl_sess->sam_sess);
+		if (ret < 0) {
+			MRVL_LOG(ERR, "PMD: failed to create IPSEC session.");
+			/* Return session to mempool */
+			rte_mempool_put(mempool, sess_private_data);
+			return ret;
+		}
+		break;
+	case RTE_SECURITY_PROTOCOL_MACSEC:
+		return -ENOTSUP;
+	default:
+		return -EINVAL;
+	}
+
+	set_sec_session_private_data(sess, sess_private_data);
+
+	return ret;
+}
+
+/** Clear the memory of session so it doesn't leave key material behind */
+static int
+mrvl_crypto_pmd_security_session_destroy(void *dev __rte_unused,
+		struct rte_security_session *sess)
+{
+	void *sess_priv = get_sec_session_private_data(sess);
+
+	/* Zero out the whole structure */
+	if (sess_priv) {
+		struct mrvl_crypto_session *mrvl_sess =
+			(struct mrvl_crypto_session *)sess_priv;
+		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
+
+		if (mrvl_sess->sam_sess &&
+		    sam_session_destroy(mrvl_sess->sam_sess) < 0) {
+			MRVL_LOG(ERR, "Error while destroying session!");
+		}
+
+		rte_free(mrvl_sess->sam_sess_params.cipher_key);
+		rte_free(mrvl_sess->sam_sess_params.auth_key);
+		rte_free(mrvl_sess->sam_sess_params.cipher_iv);
+		memset(sess, 0, sizeof(struct rte_security_session));
+		set_sec_session_private_data(sess, NULL);
+		rte_mempool_put(sess_mp, sess_priv);
+	}
+	return 0;
+}
+
+static const
+struct rte_security_capability mrvl_crypto_pmd_sec_security_cap[] = {
+	{ /* IPsec Lookaside Protocol offload ESP Tunnel Egress */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
+			.options = { 0 },
+			.replay_win_sz_max = 128
+		},
+		.crypto_capabilities = mrvl_crypto_pmd_capabilities
+	},
+	{ /* IPsec Lookaside Protocol offload ESP Tunnel Ingress */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
+			.options = { 0 },
+			.replay_win_sz_max = 128
+		},
+		.crypto_capabilities = mrvl_crypto_pmd_capabilities
+	},
+	{ /* IPsec Lookaside Protocol offload ESP Transport Egress */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
+			.options = { 0 },
+			.replay_win_sz_max = 128
+		},
+		.crypto_capabilities = mrvl_crypto_pmd_capabilities
+	},
+	{ /* IPsec Lookaside Protocol offload ESP Transport Ingress */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
+			.options = { 0 },
+			.replay_win_sz_max = 128
+		},
+		.crypto_capabilities = mrvl_crypto_pmd_capabilities
+	},
+	{
+		.action = RTE_SECURITY_ACTION_TYPE_NONE
+	}
+};
+
+static const struct rte_security_capability *
+mrvl_crypto_pmd_security_capabilities_get(void *device __rte_unused)
+{
+	return mrvl_crypto_pmd_sec_security_cap;
+}
+
+struct rte_security_ops mrvl_sec_security_pmd_ops = {
+	.session_create = mrvl_crypto_pmd_security_session_create,
+	.session_update = NULL,
+	.session_stats_get = NULL,
+	.session_destroy = mrvl_crypto_pmd_security_session_destroy,
+	.set_pkt_metadata = NULL,
+	.capabilities_get = mrvl_crypto_pmd_security_capabilities_get
+};
+
+struct rte_security_ops *rte_mrvl_security_pmd_ops = &mrvl_sec_security_pmd_ops;
