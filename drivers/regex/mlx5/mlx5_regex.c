@@ -248,8 +248,6 @@ mlx5_regex_pci_remove(struct rte_pci_device *pci_dev)
 			rte_regexdev_unregister(priv->regexdev);
 		if (priv->ctx)
 			mlx5_glue->close_device(priv->ctx);
-		if (priv->regexdev)
-			rte_regexdev_unregister(priv->regexdev);
 		rte_free(priv);
 	}
 	return 0;
