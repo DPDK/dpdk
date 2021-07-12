@@ -272,6 +272,8 @@ mlx5_regex_dev_remove(struct rte_device *rte_dev)
 		if (TAILQ_EMPTY(&mlx5_mem_event_list))
 			rte_mem_event_callback_unregister("MLX5_MEM_EVENT_CB",
 							  NULL);
+		if (priv->mr_scache.cache.table)
+			mlx5_mr_release_cache(&priv->mr_scache);
 		if (priv->pd)
 			mlx5_glue->dealloc_pd(priv->pd);
 		if (priv->uar)
