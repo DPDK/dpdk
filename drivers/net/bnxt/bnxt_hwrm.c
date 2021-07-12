@@ -3340,7 +3340,7 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 	}
 
 	if (mtu)
-		*mtu = rte_le_to_cpu_16(resp->mtu);
+		*mtu = rte_le_to_cpu_16(resp->admin_mtu);
 
 	switch (resp->port_partition_type) {
 	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_0:
@@ -3468,7 +3468,7 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp,
 	uint32_t enables;
 	int rc;
 
-	enables = HWRM_FUNC_CFG_INPUT_ENABLES_MTU |
+	enables = HWRM_FUNC_CFG_INPUT_ENABLES_ADMIN_MTU |
 		  HWRM_FUNC_CFG_INPUT_ENABLES_MRU |
 		  HWRM_FUNC_CFG_INPUT_ENABLES_NUM_RSSCOS_CTXS |
 		  HWRM_FUNC_CFG_INPUT_ENABLES_NUM_STAT_CTXS |
@@ -3488,7 +3488,7 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp,
 	}
 
 	req.flags = rte_cpu_to_le_32(bp->pf->func_cfg_flags);
-	req.mtu = rte_cpu_to_le_16(BNXT_MAX_MTU);
+	req.admin_mtu = rte_cpu_to_le_16(BNXT_MAX_MTU);
 	req.mru = rte_cpu_to_le_16(BNXT_VNIC_MRU(bp->eth_dev->data->mtu));
 	req.num_rsscos_ctxs = rte_cpu_to_le_16(pf_resc->num_rsscos_ctxs);
 	req.num_stat_ctxs = rte_cpu_to_le_16(pf_resc->num_stat_ctxs);
@@ -3548,7 +3548,7 @@ bnxt_fill_vf_func_cfg_req_old(struct bnxt *bp,
 			      struct hwrm_func_cfg_input *req,
 			      int num_vfs)
 {
-	req->enables = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_MTU |
+	req->enables = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_ADMIN_MTU |
 			HWRM_FUNC_CFG_INPUT_ENABLES_MRU |
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_RSSCOS_CTXS |
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_STAT_CTXS |
@@ -3559,9 +3559,9 @@ bnxt_fill_vf_func_cfg_req_old(struct bnxt *bp,
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_VNICS |
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS);
 
-	req->mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
-				    RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE *
-				    BNXT_NUM_VLANS);
+	req->admin_mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
+					  RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE *
+					  BNXT_NUM_VLANS);
 	req->mru = rte_cpu_to_le_16(BNXT_VNIC_MRU(bp->eth_dev->data->mtu));
 	req->num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx /
 						(num_vfs + 1));
