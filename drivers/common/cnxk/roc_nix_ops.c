@@ -378,6 +378,8 @@ roc_nix_switch_hdr_set(struct roc_nix *roc_nix, uint64_t switch_header_type)
 	    switch_header_type != ROC_PRIV_FLAGS_EDSA &&
 	    switch_header_type != ROC_PRIV_FLAGS_HIGIG &&
 	    switch_header_type != ROC_PRIV_FLAGS_LEN_90B &&
+	    switch_header_type != ROC_PRIV_FLAGS_EXDSA &&
+	    switch_header_type != ROC_PRIV_FLAGS_VLAN_EXDSA &&
 	    switch_header_type != ROC_PRIV_FLAGS_CUSTOM) {
 		plt_err("switch header type is not supported");
 		return NIX_ERR_PARAM;
@@ -399,6 +401,18 @@ roc_nix_switch_hdr_set(struct roc_nix *roc_nix, uint64_t switch_header_type)
 	if (req == NULL)
 		return rc;
 	req->mode = switch_header_type;
+
+	if (switch_header_type == ROC_PRIV_FLAGS_LEN_90B) {
+		req->mode = ROC_PRIV_FLAGS_CUSTOM;
+		req->pkind = NPC_RX_CHLEN90B_PKIND;
+	} else if (switch_header_type == ROC_PRIV_FLAGS_EXDSA) {
+		req->mode = ROC_PRIV_FLAGS_CUSTOM;
+		req->pkind = NPC_RX_EXDSA_PKIND;
+	} else if (switch_header_type == ROC_PRIV_FLAGS_VLAN_EXDSA) {
+		req->mode = ROC_PRIV_FLAGS_CUSTOM;
+		req->pkind = NPC_RX_VLAN_EXDSA_PKIND;
+	}
+
 	req->dir = PKIND_RX;
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)

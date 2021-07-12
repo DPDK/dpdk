@@ -136,14 +136,46 @@ npc_parse_la(struct npc_parse_state *pst)
 	return npc_update_parse_state(pst, &info, lid, lt, 0);
 }
 
+static int
+npc_flow_raw_item_prepare(const struct roc_npc_flow_item_raw *raw_spec,
+			  const struct roc_npc_flow_item_raw *raw_mask,
+			  struct npc_parse_item_info *info, uint8_t *spec_buf,
+			  uint8_t *mask_buf)
+{
+	uint32_t custom_hdr_size = 0;
+
+	memset(spec_buf, 0, NPC_MAX_RAW_ITEM_LEN);
+	memset(mask_buf, 0, NPC_MAX_RAW_ITEM_LEN);
+	custom_hdr_size = raw_spec->offset + raw_spec->length;
+
+	memcpy(spec_buf + raw_spec->offset, raw_spec->pattern,
+	       raw_spec->length);
+
+	if (raw_mask->pattern) {
+		memcpy(mask_buf + raw_spec->offset, raw_mask->pattern,
+		       raw_spec->length);
+	} else {
+		memset(mask_buf + raw_spec->offset, 0xFF, raw_spec->length);
+	}
+
+	info->len = custom_hdr_size;
+	info->spec = spec_buf;
+	info->mask = mask_buf;
+
+	return 0;
+}
+
 int
 npc_parse_lb(struct npc_parse_state *pst)
 {
 	const struct roc_npc_item_info *pattern = pst->pattern;
 	const struct roc_npc_item_info *last_pattern;
+	const struct roc_npc_flow_item_raw *raw_spec;
+	uint8_t raw_spec_buf[NPC_MAX_RAW_ITEM_LEN];
+	uint8_t raw_mask_buf[NPC_MAX_RAW_ITEM_LEN];
 	char hw_mask[NPC_MAX_EXTRACT_HW_LEN];
 	struct npc_parse_item_info info;
-	int lid, lt, lflags;
+	int lid, lt, lflags, len = 0;
 	int nr_vlans = 0;
 	int rc;
 
@@ -221,13 +253,35 @@ npc_parse_lb(struct npc_parse_state *pst)
 		info.len = pst->pattern->size;
 		lt = NPC_LT_LB_STAG_QINQ;
 		lflags = NPC_F_STAG_CTAG;
+	} else if (pst->pattern->type == ROC_NPC_ITEM_TYPE_RAW) {
+		raw_spec = pst->pattern->spec;
+		if (raw_spec->relative)
+			return 0;
+		len = raw_spec->length + raw_spec->offset;
+		if (len > NPC_MAX_RAW_ITEM_LEN)
+			return -EINVAL;
+
+		if (pst->npc->switch_header_type == ROC_PRIV_FLAGS_VLAN_EXDSA) {
+			lt = NPC_LT_LB_VLAN_EXDSA;
+		} else if (pst->npc->switch_header_type ==
+			   ROC_PRIV_FLAGS_EXDSA) {
+			lt = NPC_LT_LB_EXDSA;
+		} else {
+			return -EINVAL;
+		}
+
+		npc_flow_raw_item_prepare((const struct roc_npc_flow_item_raw *)
+						  pst->pattern->spec,
+					  (const struct roc_npc_flow_item_raw *)
+						  pst->pattern->mask,
+					  &info, raw_spec_buf, raw_mask_buf);
+
+		info.hw_hdr_len = 0;
 	} else {
 		return 0;
 	}
 
 	info.hw_mask = &hw_mask;
-	info.spec = NULL;
-	info.mask = NULL;
 	npc_get_hw_supp_mask(pst, &info, lid, lt);
 
 	rc = npc_parse_item_basic(pst->pattern, &info);
@@ -340,9 +394,12 @@ npc_check_lc_ip_tunnel(struct npc_parse_state *pst)
 int
 npc_parse_lc(struct npc_parse_state *pst)
 {
+	const struct roc_npc_flow_item_raw *raw_spec;
+	uint8_t raw_spec_buf[NPC_MAX_RAW_ITEM_LEN];
+	uint8_t raw_mask_buf[NPC_MAX_RAW_ITEM_LEN];
 	uint8_t hw_mask[NPC_MAX_EXTRACT_HW_LEN];
 	struct npc_parse_item_info info;
-	int lid, lt;
+	int lid, lt, len = 0;
 	int rc;
 
 	if (pst->pattern->type == ROC_NPC_ITEM_TYPE_MPLS)
@@ -378,6 +435,26 @@ npc_parse_lc(struct npc_parse_state *pst)
 		lt = NPC_LT_LC_CUSTOM0;
 		info.len = pst->pattern->size;
 		break;
+	case ROC_NPC_ITEM_TYPE_RAW:
+		raw_spec = pst->pattern->spec;
+		if (!raw_spec->relative)
+			return 0;
+
+		len = raw_spec->length + raw_spec->offset;
+		if (len > NPC_MAX_RAW_ITEM_LEN)
+			return -EINVAL;
+
+		npc_flow_raw_item_prepare((const struct roc_npc_flow_item_raw *)
+						  pst->pattern->spec,
+					  (const struct roc_npc_flow_item_raw *)
+						  pst->pattern->mask,
+					  &info, raw_spec_buf, raw_mask_buf);
+
+		lid = NPC_LID_LC;
+		lt = NPC_LT_LC_NGIO;
+		info.hw_mask = &hw_mask;
+		npc_get_hw_supp_mask(pst, &info, lid, lt);
+		break;
 	default:
 		/* No match at this layer */
 		return 0;
@@ -388,6 +465,7 @@ npc_parse_lc(struct npc_parse_state *pst)
 
 	npc_get_hw_supp_mask(pst, &info, lid, lt);
 	rc = npc_parse_item_basic(pst->pattern, &info);
+
 	if (rc != 0)
 		return rc;
 

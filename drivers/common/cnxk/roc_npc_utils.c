@@ -130,7 +130,8 @@ npc_parse_item_basic(const struct roc_npc_item_info *item,
 	}
 
 	/* We have valid spec */
-	info->spec = item->spec;
+	if (item->type != ROC_NPC_ITEM_TYPE_RAW)
+		info->spec = item->spec;
 
 	/* If mask is not set, use default mask, err if default mask is
 	 * also NULL.
@@ -140,7 +141,8 @@ npc_parse_item_basic(const struct roc_npc_item_info *item,
 			return NPC_ERR_PARAM;
 		info->mask = info->def_mask;
 	} else {
-		info->mask = item->mask;
+		if (item->type != ROC_NPC_ITEM_TYPE_RAW)
+			info->mask = item->mask;
 	}
 
 	/* mask specified must be subset of hw supported mask

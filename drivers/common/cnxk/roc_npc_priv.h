@@ -5,10 +5,11 @@
 #ifndef _ROC_NPC_PRIV_H_
 #define _ROC_NPC_PRIV_H_
 
-#define NPC_IH_LENGTH	  8
-#define NPC_TPID_LENGTH	  2
-#define NPC_HIGIG2_LENGTH 16
-#define NPC_COUNTER_NONE  (-1)
+#define NPC_IH_LENGTH	     8
+#define NPC_TPID_LENGTH	     2
+#define NPC_HIGIG2_LENGTH    16
+#define NPC_MAX_RAW_ITEM_LEN 16
+#define NPC_COUNTER_NONE     (-1)
 
 #define NPC_RSS_GRPS 8
 

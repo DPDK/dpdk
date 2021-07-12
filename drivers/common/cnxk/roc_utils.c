@@ -113,7 +113,7 @@ roc_error_msg_get(int errorcode)
 		err_msg = "NPC invalid spec";
 		break;
 	case NPC_ERR_INVALID_MASK:
-		err_msg = "NPC  invalid mask";
+		err_msg = "NPC invalid mask";
 		break;
 	case NPC_ERR_INVALID_KEX:
 		err_msg = "NPC invalid key";

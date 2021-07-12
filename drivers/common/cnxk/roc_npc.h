@@ -36,6 +36,7 @@ enum roc_npc_item_type {
 	ROC_NPC_ITEM_TYPE_CPT_HDR,
 	ROC_NPC_ITEM_TYPE_L3_CUSTOM,
 	ROC_NPC_ITEM_TYPE_QINQ,
+	ROC_NPC_ITEM_TYPE_RAW,
 	ROC_NPC_ITEM_TYPE_END,
 };
 
@@ -45,6 +46,16 @@ struct roc_npc_item_info {
 	const void *spec; /**< Pointer to item specification structure. */
 	const void *mask; /**< Bit-mask applied to spec and last. */
 	const void *last; /* For range */
+};
+
+struct roc_npc_flow_item_raw {
+	uint32_t relative : 1; /**< Look for pattern after the previous item. */
+	uint32_t search : 1;   /**< Search pattern from offset. */
+	uint32_t reserved : 30; /**< Reserved, must be set to zero. */
+	int32_t offset;		/**< Absolute or relative offset for pattern. */
+	uint16_t limit;		/**< Search area limit for start of pattern. */
+	uint16_t length;	/**< Pattern length. */
+	const uint8_t *pattern; /**< Byte string to look for. */
 };
 
 #define ROC_NPC_MAX_ACTION_COUNT 12
