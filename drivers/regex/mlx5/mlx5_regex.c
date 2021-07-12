@@ -282,8 +282,6 @@ mlx5_regex_dev_remove(struct rte_device *rte_dev)
 			rte_regexdev_unregister(priv->regexdev);
 		if (priv->ctx)
 			mlx5_glue->close_device(priv->ctx);
-		if (priv->regexdev)
-			rte_regexdev_unregister(priv->regexdev);
 		rte_free(priv);
 	}
 	return 0;
