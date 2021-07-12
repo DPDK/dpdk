@@ -15,8 +15,8 @@ const struct cnxk_rte_flow_term_info term[] = {
 	[RTE_FLOW_ITEM_TYPE_IPV6] = {ROC_NPC_ITEM_TYPE_IPV6,
 				     sizeof(struct rte_flow_item_ipv6)},
 	[RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4] = {
-		ROC_NPC_ITEM_TYPE_ARP_ETH_IPV4,
-		sizeof(struct rte_flow_item_arp_eth_ipv4)},
+			ROC_NPC_ITEM_TYPE_ARP_ETH_IPV4,
+			sizeof(struct rte_flow_item_arp_eth_ipv4)},
 	[RTE_FLOW_ITEM_TYPE_MPLS] = {ROC_NPC_ITEM_TYPE_MPLS,
 				     sizeof(struct rte_flow_item_mpls)},
 	[RTE_FLOW_ITEM_TYPE_ICMP] = {ROC_NPC_ITEM_TYPE_ICMP,
@@ -50,10 +50,10 @@ const struct cnxk_rte_flow_term_info term[] = {
 	[RTE_FLOW_ITEM_TYPE_ANY] = {ROC_NPC_ITEM_TYPE_ANY, 0},
 	[RTE_FLOW_ITEM_TYPE_GRE_KEY] = {ROC_NPC_ITEM_TYPE_GRE_KEY,
 					sizeof(uint32_t)},
-	[RTE_FLOW_ITEM_TYPE_HIGIG2] = {
-		ROC_NPC_ITEM_TYPE_HIGIG2,
-		sizeof(struct rte_flow_item_higig2_hdr)}
-};
+	[RTE_FLOW_ITEM_TYPE_HIGIG2] = {ROC_NPC_ITEM_TYPE_HIGIG2,
+				       sizeof(struct rte_flow_item_higig2_hdr)},
+	[RTE_FLOW_ITEM_TYPE_RAW] = {ROC_NPC_ITEM_TYPE_RAW,
+				    sizeof(struct rte_flow_item_raw)}};
 
 static int
 npc_rss_action_validate(struct rte_eth_dev *eth_dev,

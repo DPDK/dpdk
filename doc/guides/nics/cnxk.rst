@@ -165,7 +165,7 @@ Runtime Config Options
 
    With the above configuration, higig2 will be enabled on that port and the
    traffic on this port should be higig2 traffic only. Supported switch header
-   types are "higig2", "dsa", "chlen90b" and "chlen24b".
+   types are "chlen24b", "chlen90b", "dsa", "exdsa", "higig2" and "vlan_exdsa".
 
 - ``RSS tag as XOR`` (default ``0``)
 
@@ -214,6 +214,41 @@ RTE flow GRE support
 
 - ``RTE_FLOW_ITEM_TYPE_GRE_KEY`` works only when checksum and routing
   bits in the GRE header are equal to 0.
+
+Custom protocols supported in RTE Flow
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``RTE_FLOW_ITEM_TYPE_RAW`` can be used to parse the below custom protocols.
+
+* ``vlan_exdsa`` and ``exdsa`` can be parsed at L2 level.
+* ``NGIO`` can be parsed at L3 level.
+
+For ``vlan_exdsa`` and ``exdsa``, the port has to be configured with the
+respective switch header.
+
+For example::
+
+   -a 0002:02:00.0,switch_header="vlan_exdsa"
+
+The below fields of ``struct rte_flow_item_raw`` shall be used to specify the
+pattern.
+
+- ``relative`` Selects the layer at which parsing is done.
+
+  - 0 for ``exdsa`` and ``vlan_exdsa``.
+
+  - 1 for  ``NGIO``.
+
+- ``offset`` The offset in the header where the pattern should be matched.
+- ``length`` Length of the pattern.
+- ``pattern`` Pattern as a byte string.
+
+Example usage in testpmd::
+
+   ./dpdk-testpmd -c 3 -w 0002:02:00.0,switch_header=exdsa -- -i \
+                  --rx-offloads=0x00080000 --rxq 8 --txq 8
+   testpmd> flow create 0 ingress pattern eth / raw relative is 0 pattern \
+          spec ab pattern mask ab offset is 4 / end actions queue index 1 / end
 
 Debugging Options
 -----------------
