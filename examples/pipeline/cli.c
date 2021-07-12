@@ -1511,7 +1511,7 @@ pipeline_selector_group_member_read(const char *string,
 		if (!token || token_is_comment(token))
 			break;
 
-		if (n_tokens > GROUP_MEMBER_INFO_TOKENS_MAX)
+		if (n_tokens >= GROUP_MEMBER_INFO_TOKENS_MAX)
 			goto error;
 
 		token_array[n_tokens] = token;
