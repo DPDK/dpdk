@@ -815,7 +815,7 @@ selector_free(struct rte_swx_ctl_pipeline *ctl)
 {
 	uint32_t i;
 
-	if (ctl->selectors)
+	if (!ctl->selectors)
 		return;
 
 	for (i = 0; i < ctl->info.n_selectors; i++) {
