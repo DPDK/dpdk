@@ -3062,6 +3062,9 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	if (!rc)
 		eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = new_pkt_size;
 
+	if (bnxt_hwrm_config_host_mtu(bp))
+		PMD_DRV_LOG(WARNING, "Failed to configure host MTU\n");
+
 	PMD_DRV_LOG(INFO, "New MTU is %d\n", new_mtu);
 
 	return rc;

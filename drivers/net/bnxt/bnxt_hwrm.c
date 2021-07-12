@@ -3469,6 +3469,7 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp,
 	int rc;
 
 	enables = HWRM_FUNC_CFG_INPUT_ENABLES_ADMIN_MTU |
+		  HWRM_FUNC_CFG_INPUT_ENABLES_HOST_MTU |
 		  HWRM_FUNC_CFG_INPUT_ENABLES_MRU |
 		  HWRM_FUNC_CFG_INPUT_ENABLES_NUM_RSSCOS_CTXS |
 		  HWRM_FUNC_CFG_INPUT_ENABLES_NUM_STAT_CTXS |
@@ -3489,6 +3490,7 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp,
 
 	req.flags = rte_cpu_to_le_32(bp->pf->func_cfg_flags);
 	req.admin_mtu = rte_cpu_to_le_16(BNXT_MAX_MTU);
+	req.host_mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu);
 	req.mru = rte_cpu_to_le_16(BNXT_VNIC_MRU(bp->eth_dev->data->mtu));
 	req.num_rsscos_ctxs = rte_cpu_to_le_16(pf_resc->num_rsscos_ctxs);
 	req.num_stat_ctxs = rte_cpu_to_le_16(pf_resc->num_stat_ctxs);
@@ -6202,4 +6204,26 @@ void bnxt_free_hwrm_tx_ring(struct bnxt *bp, int queue_index)
 	bnxt_hwrm_stat_ctx_free(bp, cpr);
 
 	bnxt_free_cp_ring(bp, cpr);
+}
+
+int bnxt_hwrm_config_host_mtu(struct bnxt *bp)
+{
+	struct hwrm_func_cfg_input req = {0};
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	if (!BNXT_PF(bp))
+		return 0;
+
+	HWRM_PREP(&req, HWRM_FUNC_CFG, BNXT_USE_CHIMP_MB);
+
+	req.fid = rte_cpu_to_le_16(0xffff);
+	req.enables = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_HOST_MTU);
+	req.host_mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	return rc;
 }
