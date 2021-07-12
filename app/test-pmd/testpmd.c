@@ -1399,22 +1399,69 @@ check_nb_hairpinq(queueid_t hairpinq)
 }
 
 static void
+init_config_port_offloads(portid_t pid, uint32_t socket_id)
+{
+	struct rte_port *port = &ports[pid];
+	uint16_t data_size;
+	int ret;
+	int i;
+
+	port->dev_conf.txmode = tx_mode;
+	port->dev_conf.rxmode = rx_mode;
+
+	ret = eth_dev_info_get_print_err(pid, &port->dev_info);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE, "rte_eth_dev_info_get() failed\n");
+
+	ret = update_jumbo_frame_offload(pid);
+	if (ret != 0)
+		printf("Updating jumbo frame offload failed for port %u\n",
+			pid);
+
+	if (!(port->dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE))
+		port->dev_conf.txmode.offloads &=
+			~DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+
+	/* Apply Rx offloads configuration */
+	for (i = 0; i < port->dev_info.max_rx_queues; i++)
+		port->rx_conf[i].offloads = port->dev_conf.rxmode.offloads;
+	/* Apply Tx offloads configuration */
+	for (i = 0; i < port->dev_info.max_tx_queues; i++)
+		port->tx_conf[i].offloads = port->dev_conf.txmode.offloads;
+
+	/* set flag to initialize port/queue */
+	port->need_reconfig = 1;
+	port->need_reconfig_queues = 1;
+	port->socket_id = socket_id;
+	port->tx_metadata = 0;
+
+	/*
+	 * Check for maximum number of segments per MTU.
+	 * Accordingly update the mbuf data size.
+	 */
+	if (port->dev_info.rx_desc_lim.nb_mtu_seg_max != UINT16_MAX &&
+	    port->dev_info.rx_desc_lim.nb_mtu_seg_max != 0) {
+		data_size = rx_mode.max_rx_pkt_len /
+			port->dev_info.rx_desc_lim.nb_mtu_seg_max;
+
+		if ((data_size + RTE_PKTMBUF_HEADROOM) > mbuf_data_size[0]) {
+			mbuf_data_size[0] = data_size + RTE_PKTMBUF_HEADROOM;
+			TESTPMD_LOG(WARNING,
+				    "Configured mbuf size of the first segment %hu\n",
+				    mbuf_data_size[0]);
+		}
+	}
+}
+
+static void
 init_config(void)
 {
 	portid_t pid;
-	struct rte_port *port;
 	struct rte_mempool *mbp;
 	unsigned int nb_mbuf_per_pool;
 	lcoreid_t  lc_id;
-	uint8_t port_per_socket[RTE_MAX_NUMA_NODES];
 	struct rte_gro_param gro_param;
 	uint32_t gso_types;
-	uint16_t data_size;
-	bool warning = 0;
-	int k;
-	int ret;
-
-	memset(port_per_socket,0,RTE_MAX_NUMA_NODES);
 
 	/* Configuration of logical cores. */
 	fwd_lcores = rte_zmalloc("testpmd: fwd_lcores",
@@ -1436,30 +1483,12 @@ init_config(void)
 	}
 
 	RTE_ETH_FOREACH_DEV(pid) {
-		port = &ports[pid];
-		/* Apply default TxRx configuration for all ports */
-		port->dev_conf.txmode = tx_mode;
-		port->dev_conf.rxmode = rx_mode;
+		uint32_t socket_id;
 
-		ret = eth_dev_info_get_print_err(pid, &port->dev_info);
-		if (ret != 0)
-			rte_exit(EXIT_FAILURE,
-				 "rte_eth_dev_info_get() failed\n");
-
-		ret = update_jumbo_frame_offload(pid);
-		if (ret != 0)
-			printf("Updating jumbo frame offload failed for port %u\n",
-				pid);
-
-		if (!(port->dev_info.tx_offload_capa &
-		      DEV_TX_OFFLOAD_MBUF_FAST_FREE))
-			port->dev_conf.txmode.offloads &=
-				~DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 		if (numa_support) {
-			if (port_numa[pid] != NUMA_NO_CONFIG)
-				port_per_socket[port_numa[pid]]++;
-			else {
-				uint32_t socket_id = rte_eth_dev_socket_id(pid);
+			socket_id = port_numa[pid];
+			if (port_numa[pid] == NUMA_NO_CONFIG) {
+				socket_id = rte_eth_dev_socket_id(pid);
 
 				/*
 				 * if socket_id is invalid,
@@ -1467,45 +1496,14 @@ init_config(void)
 				 */
 				if (check_socket_id(socket_id) < 0)
 					socket_id = socket_ids[0];
-				port_per_socket[socket_id]++;
 			}
+		} else {
+			socket_id = (socket_num == UMA_NO_CONFIG) ?
+				    0 : socket_num;
 		}
-
-		/* Apply Rx offloads configuration */
-		for (k = 0; k < port->dev_info.max_rx_queues; k++)
-			port->rx_conf[k].offloads =
-				port->dev_conf.rxmode.offloads;
-		/* Apply Tx offloads configuration */
-		for (k = 0; k < port->dev_info.max_tx_queues; k++)
-			port->tx_conf[k].offloads =
-				port->dev_conf.txmode.offloads;
-
-		/* set flag to initialize port/queue */
-		port->need_reconfig = 1;
-		port->need_reconfig_queues = 1;
-		port->tx_metadata = 0;
-
-		/* Check for maximum number of segments per MTU. Accordingly
-		 * update the mbuf data size.
-		 */
-		if (port->dev_info.rx_desc_lim.nb_mtu_seg_max != UINT16_MAX &&
-				port->dev_info.rx_desc_lim.nb_mtu_seg_max != 0) {
-			data_size = rx_mode.max_rx_pkt_len /
-				port->dev_info.rx_desc_lim.nb_mtu_seg_max;
-
-			if ((data_size + RTE_PKTMBUF_HEADROOM) >
-							mbuf_data_size[0]) {
-				mbuf_data_size[0] = data_size +
-						 RTE_PKTMBUF_HEADROOM;
-				warning = 1;
-			}
-		}
+		/* Apply default TxRx configuration for all ports */
+		init_config_port_offloads(pid, socket_id);
 	}
-
-	if (warning)
-		TESTPMD_LOG(WARNING,
-			    "Configured mbuf size of the first segment %hu\n",
-			    mbuf_data_size[0]);
 	/*
 	 * Create pools of mbuf.
 	 * If NUMA support is disabled, create a single pool of mbuf in
@@ -1592,21 +1590,8 @@ init_config(void)
 void
 reconfig(portid_t new_port_id, unsigned socket_id)
 {
-	struct rte_port *port;
-	int ret;
-
 	/* Reconfiguration of Ethernet ports. */
-	port = &ports[new_port_id];
-
-	ret = eth_dev_info_get_print_err(new_port_id, &port->dev_info);
-	if (ret != 0)
-		return;
-
-	/* set flag to initialize port/queue */
-	port->need_reconfig = 1;
-	port->need_reconfig_queues = 1;
-	port->socket_id = socket_id;
-
+	init_config_port_offloads(new_port_id, socket_id);
 	init_port_config();
 }
 
