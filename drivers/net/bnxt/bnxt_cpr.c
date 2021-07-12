@@ -103,7 +103,10 @@ void bnxt_handle_async_event(struct bnxt *bp,
 	uint16_t port_id = bp->eth_dev->data->port_id;
 	struct bnxt_error_recovery_info *info;
 	uint32_t event_data;
-	uint32_t echo_req_data1, echo_req_data2;
+	uint32_t data1, data2;
+
+	data1 = rte_le_to_cpu_32(async_cmp->event_data1);
+	data2 = rte_le_to_cpu_32(async_cmp->event_data2);
 
 	switch (event_id) {
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_STATUS_CHANGE:
@@ -138,7 +141,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		}
 
 		pthread_mutex_lock(&bp->err_recovery_lock);
-		event_data = rte_le_to_cpu_32(async_cmp->event_data1);
+		event_data = data1;
 		/* timestamp_lo/hi values are in units of 100ms */
 		bp->fw_reset_max_msecs = async_cmp->timestamp_hi ?
 			rte_le_to_cpu_16(async_cmp->timestamp_hi) * 100 :
@@ -172,8 +175,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		PMD_DRV_LOG(INFO, "Port %u: Error recovery async event received\n",
 			    port_id);
 
-		event_data = rte_le_to_cpu_32(async_cmp->event_data1) &
-				EVENT_DATA1_FLAGS_MASK;
+		event_data = data1 & EVENT_DATA1_FLAGS_MASK;
 
 		if (event_data & EVENT_DATA1_FLAGS_MASTER_FUNC)
 			info->flags |= BNXT_FLAG_MASTER_FUNC;
@@ -200,22 +202,18 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		bnxt_schedule_fw_health_check(bp);
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DEBUG_NOTIFICATION:
-		PMD_DRV_LOG(INFO, "DNC event: evt_data1 %#x evt_data2 %#x\n",
-			    rte_le_to_cpu_32(async_cmp->event_data1),
-			    rte_le_to_cpu_32(async_cmp->event_data2));
+		PMD_DRV_LOG(INFO, "Port: %u DNC event: data1 %#x data2 %#x\n",
+			    port_id, data1, data2);
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DEFAULT_VNIC_CHANGE:
 		bnxt_process_default_vnic_change(bp, async_cmp);
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_ECHO_REQUEST:
-		echo_req_data1 = rte_le_to_cpu_32(async_cmp->event_data1);
-		echo_req_data2 = rte_le_to_cpu_32(async_cmp->event_data2);
 		PMD_DRV_LOG(INFO,
 			    "Port %u: Received fw echo request: data1 %#x data2 %#x\n",
-			    port_id, echo_req_data1, echo_req_data2);
+			    port_id, data1, data2);
 		if (bp->recovery_info)
-			bnxt_hwrm_fw_echo_reply(bp, echo_req_data1,
-						echo_req_data2);
+			bnxt_hwrm_fw_echo_reply(bp, data1, data2);
 		break;
 	default:
 		PMD_DRV_LOG(DEBUG, "handle_async_event id = 0x%x\n", event_id);
