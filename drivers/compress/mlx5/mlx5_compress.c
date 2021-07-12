@@ -258,6 +258,8 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		DRV_LOG(ERR, "Can't change SQ state to ready.");
 		goto err;
 	}
+	/* Save pointer of global generation number to check memory event. */
+	qp->mr_ctrl.dev_gen_ptr = &priv->mr_scache.dev_gen;
 	DRV_LOG(INFO, "QP %u: SQN=0x%X CQN=0x%X entries num = %u",
 		(uint32_t)qp_id, qp->sq.sq->id, qp->cq.cq->id, qp->entries_n);
 	return 0;
@@ -428,6 +430,40 @@ static struct rte_compressdev_ops mlx5_compress_ops = {
 	.stream_free		= NULL,
 };
 
+/**
+ * Query LKey from a packet buffer for QP. If not found, add the mempool.
+ *
+ * @param priv
+ *   Pointer to the priv object.
+ * @param addr
+ *   Search key.
+ * @param mr_ctrl
+ *   Pointer to per-queue MR control structure.
+ * @param ol_flags
+ *   Mbuf offload features.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on no match.
+ */
+static __rte_always_inline uint32_t
+mlx5_compress_addr2mr(struct mlx5_compress_priv *priv, uintptr_t addr,
+		      struct mlx5_mr_ctrl *mr_ctrl, uint64_t ol_flags)
+{
+	uint32_t lkey;
+
+	/* Check generation bit to see if there's any change on existing MRs. */
+	if (unlikely(*mr_ctrl->dev_gen_ptr != mr_ctrl->cur_gen))
+		mlx5_mr_flush_local_cache(mr_ctrl);
+	/* Linear search on MR cache array. */
+	lkey = mlx5_mr_lookup_lkey(mr_ctrl->cache, &mr_ctrl->mru,
+				   MLX5_MR_CACHE_N, addr);
+	if (likely(lkey != UINT32_MAX))
+		return lkey;
+	/* Take slower bottom-half on miss. */
+	return mlx5_mr_addr2mr_bh(priv->pd, 0, &priv->mr_scache, mr_ctrl, addr,
+				  !!(ol_flags & EXT_ATTACHED_MBUF));
+}
+
 static __rte_always_inline uint32_t
 mlx5_compress_dseg_set(struct mlx5_compress_qp *qp,
 		       volatile struct mlx5_wqe_dseg *restrict dseg,
@@ -437,9 +473,8 @@ mlx5_compress_dseg_set(struct mlx5_compress_qp *qp,
 	uintptr_t addr = rte_pktmbuf_mtod_offset(mbuf, uintptr_t, offset);
 
 	dseg->bcount = rte_cpu_to_be_32(len);
-	dseg->lkey = mlx5_mr_addr2mr_bh(qp->priv->pd, 0, &qp->priv->mr_scache,
-					&qp->mr_ctrl, addr,
-					!!(mbuf->ol_flags & EXT_ATTACHED_MBUF));
+	dseg->lkey = mlx5_compress_addr2mr(qp->priv, addr, &qp->mr_ctrl,
+					   mbuf->ol_flags);
 	dseg->pbuf = rte_cpu_to_be_64(addr);
 	return dseg->lkey;
 }
@@ -712,6 +747,40 @@ mlx5_compress_hw_global_prepare(struct mlx5_compress_priv *priv)
 }
 
 /**
+ * Callback for memory event.
+ *
+ * @param event_type
+ *   Memory event type.
+ * @param addr
+ *   Address of memory.
+ * @param len
+ *   Size of memory.
+ */
+static void
+mlx5_compress_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
+			      size_t len, void *arg __rte_unused)
+{
+	struct mlx5_compress_priv *priv;
+
+	/* Must be called from the primary process. */
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	switch (event_type) {
+	case RTE_MEM_EVENT_FREE:
+		pthread_mutex_lock(&priv_list_lock);
+		/* Iterate all the existing mlx5 devices. */
+		TAILQ_FOREACH(priv, &mlx5_compress_priv_list, next)
+			mlx5_free_mr_by_addr(&priv->mr_scache,
+					     priv->ctx->device->name,
+					     addr, len);
+		pthread_mutex_unlock(&priv_list_lock);
+		break;
+	case RTE_MEM_EVENT_ALLOC:
+	default:
+		break;
+	}
+}
+
+/**
  * DPDK callback to register a PCI device.
  *
  * This function spawns compress device out of a given PCI device.
@@ -804,6 +873,11 @@ mlx5_compress_pci_probe(struct rte_pci_driver *pci_drv,
 	}
 	priv->mr_scache.reg_mr_cb = mlx5_common_verbs_reg_mr;
 	priv->mr_scache.dereg_mr_cb = mlx5_common_verbs_dereg_mr;
+	/* Register callback function for global shared MR cache management. */
+	if (TAILQ_EMPTY(&mlx5_compress_priv_list))
+		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
+						mlx5_compress_mr_mem_event_cb,
+						NULL);
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&mlx5_compress_priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
@@ -834,6 +908,9 @@ mlx5_compress_pci_remove(struct rte_pci_device *pdev)
 		TAILQ_REMOVE(&mlx5_compress_priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
 	if (priv) {
+		if (TAILQ_EMPTY(&mlx5_compress_priv_list))
+			rte_mem_event_callback_unregister("MLX5_MEM_EVENT_CB",
+							  NULL);
 		mlx5_mr_release_cache(&priv->mr_scache);
 		mlx5_compress_hw_global_release(priv);
 		rte_compressdev_pmd_destroy(priv->cdev);
