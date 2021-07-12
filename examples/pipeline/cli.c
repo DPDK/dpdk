@@ -1491,7 +1491,7 @@ pipeline_selector_group_member_read(const char *string,
 {
 	char *token_array[GROUP_MEMBER_INFO_TOKENS_MAX], **tokens;
 	char *s0 = NULL, *s;
-	uint32_t n_tokens = 0, group_id_val, member_id_val, weight_val;
+	uint32_t n_tokens = 0, group_id_val = 0, member_id_val = 0, weight_val = 0;
 	int blank_or_comment = 0;
 
 	/* Check input arguments. */
@@ -2141,7 +2141,7 @@ cmd_pipeline_meter_reset(char **tokens,
 {
 	struct pipeline *p;
 	const char *name;
-	uint32_t idx0, idx1;
+	uint32_t idx0 = 0, idx1 = 0;
 
 	if (n_tokens != 9) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
@@ -2210,7 +2210,7 @@ cmd_pipeline_meter_set(char **tokens,
 {
 	struct pipeline *p;
 	const char *name, *profile_name;
-	uint32_t idx0, idx1;
+	uint32_t idx0 = 0, idx1 = 0;
 
 	if (n_tokens != 11) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
@@ -2287,7 +2287,7 @@ cmd_pipeline_meter_stats(char **tokens,
 	struct rte_swx_ctl_meter_stats stats;
 	struct pipeline *p;
 	const char *name;
-	uint32_t idx0, idx1;
+	uint32_t idx0 = 0, idx1 = 0;
 
 	if (n_tokens != 9) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
