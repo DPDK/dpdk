@@ -91,6 +91,22 @@ bnxt_process_default_vnic_change(struct bnxt *bp,
 	bnxt_rep_dev_start_op(eth_dev);
 }
 
+static void bnxt_handle_event_error_report(struct bnxt *bp,
+					   uint32_t data1,
+					   uint32_t data2)
+{
+	switch (BNXT_EVENT_ERROR_REPORT_TYPE(data1)) {
+	case HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_BASE_EVENT_DATA1_ERROR_TYPE_PAUSE_STORM:
+		PMD_DRV_LOG(WARNING, "Port:%d Pause Storm detected!\n",
+			    bp->eth_dev->data->port_id);
+		break;
+	default:
+		PMD_DRV_LOG(INFO, "FW reported unknown error type data1 %d"
+			    " data2: %d\n", data1, data2);
+		break;
+	}
+}
+
 /*
  * Async event handling
  */
@@ -214,6 +230,9 @@ void bnxt_handle_async_event(struct bnxt *bp,
 			    port_id, data1, data2);
 		if (bp->recovery_info)
 			bnxt_hwrm_fw_echo_reply(bp, data1, data2);
+		break;
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_ERROR_REPORT:
+		bnxt_handle_event_error_report(bp, data1, data2);
 		break;
 	default:
 		PMD_DRV_LOG(DEBUG, "handle_async_event id = 0x%x\n", event_id);

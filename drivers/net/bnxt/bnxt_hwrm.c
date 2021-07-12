@@ -1085,7 +1085,8 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_DEFAULT_VNIC_CHANGE);
 
 	req.async_event_fwd[2] |=
-		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_ECHO_REQUEST);
+		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_ECHO_REQUEST |
+				 ASYNC_CMPL_EVENT_ID_ERROR_REPORT);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
