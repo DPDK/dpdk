@@ -15,14 +15,13 @@
 
 static int
 mlx5_list_init(struct mlx5_list *list, const char *name, void *ctx,
-	       bool lcores_share, mlx5_list_create_cb cb_create,
+	       bool lcores_share, struct mlx5_list_cache *gc,
+	       mlx5_list_create_cb cb_create,
 	       mlx5_list_match_cb cb_match,
 	       mlx5_list_remove_cb cb_remove,
 	       mlx5_list_clone_cb cb_clone,
 	       mlx5_list_clone_free_cb cb_clone_free)
 {
-	int i;
-
 	if (!cb_match || !cb_create || !cb_remove || !cb_clone ||
 	    !cb_clone_free) {
 		rte_errno = EINVAL;
@@ -38,9 +37,11 @@ mlx5_list_init(struct mlx5_list *list, const char *name, void *ctx,
 	list->cb_clone = cb_clone;
 	list->cb_clone_free = cb_clone_free;
 	rte_rwlock_init(&list->lock);
+	if (lcores_share) {
+		list->cache[RTE_MAX_LCORE] = gc;
+		LIST_INIT(&list->cache[RTE_MAX_LCORE]->h);
+	}
 	DRV_LOG(DEBUG, "mlx5 list %s initialized.", list->name);
-	for (i = 0; i <= RTE_MAX_LCORE; i++)
-		LIST_INIT(&list->cache[i].h);
 	return 0;
 }
 
@@ -53,11 +54,16 @@ mlx5_list_create(const char *name, void *ctx, bool lcores_share,
 		 mlx5_list_clone_free_cb cb_clone_free)
 {
 	struct mlx5_list *list;
+	struct mlx5_list_cache *gc = NULL;
 
-	list = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*list), 0, SOCKET_ID_ANY);
+	list = mlx5_malloc(MLX5_MEM_ZERO,
+			   sizeof(*list) + (lcores_share ? sizeof(*gc) : 0),
+			   0, SOCKET_ID_ANY);
 	if (!list)
 		return NULL;
-	if (mlx5_list_init(list, name, ctx, lcores_share,
+	if (lcores_share)
+		gc = (struct mlx5_list_cache *)(list + 1);
+	if (mlx5_list_init(list, name, ctx, lcores_share, gc,
 			   cb_create, cb_match, cb_remove, cb_clone,
 			   cb_clone_free) != 0) {
 		mlx5_free(list);
@@ -69,7 +75,8 @@ mlx5_list_create(const char *name, void *ctx, bool lcores_share,
 static struct mlx5_list_entry *
 __list_lookup(struct mlx5_list *list, int lcore_index, void *ctx, bool reuse)
 {
-	struct mlx5_list_entry *entry = LIST_FIRST(&list->cache[lcore_index].h);
+	struct mlx5_list_entry *entry =
+				LIST_FIRST(&list->cache[lcore_index]->h);
 	uint32_t ret;
 
 	while (entry != NULL) {
@@ -121,14 +128,14 @@ mlx5_list_cache_insert(struct mlx5_list *list, int lcore_index,
 	lentry->ref_cnt = 1u;
 	lentry->gentry = gentry;
 	lentry->lcore_idx = (uint32_t)lcore_index;
-	LIST_INSERT_HEAD(&list->cache[lcore_index].h, lentry, next);
+	LIST_INSERT_HEAD(&list->cache[lcore_index]->h, lentry, next);
 	return lentry;
 }
 
 static void
 __list_cache_clean(struct mlx5_list *list, int lcore_index)
 {
-	struct mlx5_list_cache *c = &list->cache[lcore_index];
+	struct mlx5_list_cache *c = list->cache[lcore_index];
 	struct mlx5_list_entry *entry = LIST_FIRST(&c->h);
 	uint32_t inv_cnt = __atomic_exchange_n(&c->inv_cnt, 0,
 					       __ATOMIC_RELAXED);
@@ -161,6 +168,17 @@ mlx5_list_register(struct mlx5_list *list, void *ctx)
 		rte_errno = ENOTSUP;
 		return NULL;
 	}
+	if (unlikely(!list->cache[lcore_index])) {
+		list->cache[lcore_index] = mlx5_malloc(0,
+					sizeof(struct mlx5_list_cache),
+					RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+		if (!list->cache[lcore_index]) {
+			rte_errno = ENOMEM;
+			return NULL;
+		}
+		list->cache[lcore_index]->inv_cnt = 0;
+		LIST_INIT(&list->cache[lcore_index]->h);
+	}
 	/* 0. Free entries that was invalidated by other lcores. */
 	__list_cache_clean(list, lcore_index);
 	/* 1. Lookup in local cache. */
@@ -186,7 +204,7 @@ mlx5_list_register(struct mlx5_list *list, void *ctx)
 	entry->ref_cnt = 1u;
 	if (!list->lcores_share) {
 		entry->lcore_idx = (uint32_t)lcore_index;
-		LIST_INSERT_HEAD(&list->cache[lcore_index].h, entry, next);
+		LIST_INSERT_HEAD(&list->cache[lcore_index]->h, entry, next);
 		__atomic_add_fetch(&list->count, 1, __ATOMIC_RELAXED);
 		DRV_LOG(DEBUG, "MLX5 list %s c%d entry %p new: %u.",
 			list->name, lcore_index, (void *)entry, entry->ref_cnt);
@@ -217,10 +235,10 @@ mlx5_list_register(struct mlx5_list *list, void *ctx)
 		}
 	}
 	/* 5. Update lists. */
-	LIST_INSERT_HEAD(&list->cache[RTE_MAX_LCORE].h, entry, next);
+	LIST_INSERT_HEAD(&list->cache[RTE_MAX_LCORE]->h, entry, next);
 	list->gen_cnt++;
 	rte_rwlock_write_unlock(&list->lock);
-	LIST_INSERT_HEAD(&list->cache[lcore_index].h, local_entry, next);
+	LIST_INSERT_HEAD(&list->cache[lcore_index]->h, local_entry, next);
 	__atomic_add_fetch(&list->count, 1, __ATOMIC_RELAXED);
 	DRV_LOG(DEBUG, "mlx5 list %s entry %p new: %u.", list->name,
 		(void *)entry, entry->ref_cnt);
@@ -245,7 +263,7 @@ mlx5_list_unregister(struct mlx5_list *list,
 		else
 			list->cb_remove(list->ctx, entry);
 	} else if (likely(lcore_idx != -1)) {
-		__atomic_add_fetch(&list->cache[entry->lcore_idx].inv_cnt, 1,
+		__atomic_add_fetch(&list->cache[entry->lcore_idx]->inv_cnt, 1,
 				   __ATOMIC_RELAXED);
 	} else {
 		return 0;
@@ -280,8 +298,10 @@ mlx5_list_uninit(struct mlx5_list *list)
 
 	MLX5_ASSERT(list);
 	for (i = 0; i <= RTE_MAX_LCORE; i++) {
-		while (!LIST_EMPTY(&list->cache[i].h)) {
-			entry = LIST_FIRST(&list->cache[i].h);
+		if (!list->cache[i])
+			continue;
+		while (!LIST_EMPTY(&list->cache[i]->h)) {
+			entry = LIST_FIRST(&list->cache[i]->h);
 			LIST_REMOVE(entry, next);
 			if (i == RTE_MAX_LCORE) {
 				list->cb_remove(list->ctx, entry);
@@ -292,6 +312,8 @@ mlx5_list_uninit(struct mlx5_list *list)
 				list->cb_clone_free(list->ctx, entry);
 			}
 		}
+		if (i != RTE_MAX_LCORE)
+			mlx5_free(list->cache[i]);
 	}
 }
 
@@ -320,6 +342,7 @@ mlx5_hlist_create(const char *name, uint32_t size, bool direct_key,
 		  mlx5_list_clone_free_cb cb_clone_free)
 {
 	struct mlx5_hlist *h;
+	struct mlx5_list_cache *gc;
 	uint32_t act_size;
 	uint32_t alloc_size;
 	uint32_t i;
@@ -333,7 +356,9 @@ mlx5_hlist_create(const char *name, uint32_t size, bool direct_key,
 		act_size = size;
 	}
 	alloc_size = sizeof(struct mlx5_hlist) +
-		     sizeof(struct mlx5_hlist_bucket) * act_size;
+		     sizeof(struct mlx5_hlist_bucket)  * act_size;
+	if (lcores_share)
+		alloc_size += sizeof(struct mlx5_list_cache)  * act_size;
 	/* Using zmalloc, then no need to initialize the heads. */
 	h = mlx5_malloc(MLX5_MEM_ZERO, alloc_size, RTE_CACHE_LINE_SIZE,
 			SOCKET_ID_ANY);
@@ -345,8 +370,10 @@ mlx5_hlist_create(const char *name, uint32_t size, bool direct_key,
 	h->mask = act_size - 1;
 	h->lcores_share = lcores_share;
 	h->direct_key = direct_key;
+	gc = (struct mlx5_list_cache *)&h->buckets[act_size];
 	for (i = 0; i < act_size; i++) {
 		if (mlx5_list_init(&h->buckets[i].l, name, ctx, lcores_share,
+				   lcores_share ? &gc[i] : NULL,
 				   cb_create, cb_match, cb_remove, cb_clone,
 				   cb_clone_free) != 0) {
 			mlx5_free(h);
@@ -357,7 +384,6 @@ mlx5_hlist_create(const char *name, uint32_t size, bool direct_key,
 		name, act_size);
 	return h;
 }
-
 
 struct mlx5_list_entry *
 mlx5_hlist_lookup(struct mlx5_hlist *h, uint64_t key, void *ctx)

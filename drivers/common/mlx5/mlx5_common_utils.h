@@ -104,7 +104,7 @@ struct mlx5_list {
 	mlx5_list_remove_cb cb_remove; /**< entry remove callback. */
 	mlx5_list_clone_cb cb_clone; /**< entry clone callback. */
 	mlx5_list_clone_free_cb cb_clone_free;
-	struct mlx5_list_cache cache[RTE_MAX_LCORE + 1];
+	struct mlx5_list_cache *cache[RTE_MAX_LCORE + 1];
 	/* Lcore cache, last index is the global cache. */
 	volatile uint32_t gen_cnt; /* List modification may update it. */
 	volatile uint32_t count; /* number of entries in list. */
