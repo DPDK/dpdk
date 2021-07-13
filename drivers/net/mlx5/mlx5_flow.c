@@ -8897,7 +8897,7 @@ mlx5_flow_tunnel_allocate(struct rte_eth_dev *dev,
 		DRV_LOG(ERR, "Tunnel ID %d exceed max limit.", id);
 		return NULL;
 	}
-	tunnel->groups = mlx5_hlist_create("tunnel groups", 1024, false, true,
+	tunnel->groups = mlx5_hlist_create("tunnel groups", 64, false, true,
 					   priv->sh,
 					   mlx5_flow_tunnel_grp2tbl_create_cb,
 					   mlx5_flow_tunnel_grp2tbl_match_cb,
@@ -9006,8 +9006,7 @@ int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh)
 		return -ENOMEM;
 	LIST_INIT(&thub->tunnels);
 	rte_spinlock_init(&thub->sl);
-	thub->groups = mlx5_hlist_create("flow groups",
-					 rte_align32pow2(MLX5_MAX_TABLES),
+	thub->groups = mlx5_hlist_create("flow groups", 64,
 					 false, true, sh,
 					 mlx5_flow_tunnel_grp2tbl_create_cb,
 					 mlx5_flow_tunnel_grp2tbl_match_cb,

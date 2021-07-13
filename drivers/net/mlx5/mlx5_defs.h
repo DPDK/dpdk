@@ -178,15 +178,15 @@
 				 sizeof(struct rte_ipv4_hdr))
 
 /* Size of the simple hash table for metadata register table. */
-#define MLX5_FLOW_MREG_HTABLE_SZ 4096
+#define MLX5_FLOW_MREG_HTABLE_SZ 64
 #define MLX5_FLOW_MREG_HNAME "MARK_COPY_TABLE"
 #define MLX5_DEFAULT_COPY_ID UINT32_MAX
 
 /* Size of the simple hash table for header modify table. */
-#define MLX5_FLOW_HDR_MODIFY_HTABLE_SZ (1 << 16)
+#define MLX5_FLOW_HDR_MODIFY_HTABLE_SZ (1 << 15)
 
 /* Size of the simple hash table for encap decap table. */
-#define MLX5_FLOW_ENCAP_DECAP_HTABLE_SZ (1 << 16)
+#define MLX5_FLOW_ENCAP_DECAP_HTABLE_SZ (1 << 12)
 
 /* Hairpin TX/RX queue configuration parameters. */
 #define MLX5_HAIRPIN_QUEUE_STRIDE 6

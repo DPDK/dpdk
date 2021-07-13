@@ -50,7 +50,7 @@
 #include "mlx5_nl.h"
 #include "mlx5_devx.h"
 
-#define MLX5_TAGS_HLIST_ARRAY_SIZE 8192
+#define MLX5_TAGS_HLIST_ARRAY_SIZE	(1 << 15)
 
 #ifndef HAVE_IBV_MLX5_MOD_MPW
 #define MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED (1 << 2)
