@@ -261,6 +261,9 @@ struct mlx5_indexed_pool {
 			/* Global cache. */
 			struct mlx5_ipool_per_lcore *cache[RTE_MAX_LCORE];
 			/* Local cache. */
+			struct rte_bitmap *ibmp;
+			void *bmp_mem;
+			/* Allocate objects bitmap. Use during flush. */
 		};
 	};
 #ifdef POOL_DEBUG
@@ -861,5 +864,10 @@ struct {								\
 	for (idx = 0, (entry) = mlx5_l3t_get_next((tbl), &idx);		\
 	     (entry);							\
 	     idx++, (entry) = mlx5_l3t_get_next((tbl), &idx))
+
+#define MLX5_IPOOL_FOREACH(ipool, idx, entry)				\
+	for ((idx) = 0, mlx5_ipool_flush_cache((ipool)),		\
+	    (entry) = mlx5_ipool_get_next((ipool), &idx);		\
+	    (entry); idx++, (entry) = mlx5_ipool_get_next((ipool), &idx))
 
 #endif /* RTE_PMD_MLX5_UTILS_H_ */

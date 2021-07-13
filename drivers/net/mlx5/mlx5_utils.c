@@ -529,6 +529,16 @@ mlx5_ipool_get_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
 		rte_errno = ENOTSUP;
 		return NULL;
 	}
+	if (unlikely(!pool->cache[cidx])) {
+		pool->cache[cidx] = pool->cfg.malloc(MLX5_MEM_ZERO,
+			sizeof(struct mlx5_ipool_per_lcore) +
+			(pool->cfg.per_core_cache * sizeof(uint32_t)),
+			RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+		if (!pool->cache[cidx]) {
+			DRV_LOG(ERR, "Ipool cache%d allocate failed\n", cidx);
+			return NULL;
+		}
+	}
 	lc = mlx5_ipool_update_global_cache(pool, cidx);
 	idx -= 1;
 	trunk_idx = mlx5_trunk_idx_get(pool, idx);
@@ -837,6 +847,92 @@ mlx5_ipool_destroy(struct mlx5_indexed_pool *pool)
 	mlx5_ipool_unlock(pool);
 	mlx5_free(pool);
 	return 0;
+}
+
+void
+mlx5_ipool_flush_cache(struct mlx5_indexed_pool *pool)
+{
+	uint32_t i, j;
+	struct mlx5_indexed_cache *gc;
+	struct rte_bitmap *ibmp;
+	uint32_t bmp_num, mem_size;
+
+	if (!pool->cfg.per_core_cache)
+		return;
+	gc = pool->gc;
+	if (!gc)
+		return;
+	/* Reset bmp. */
+	bmp_num = mlx5_trunk_idx_offset_get(pool, gc->n_trunk_valid);
+	mem_size = rte_bitmap_get_memory_footprint(bmp_num);
+	pool->bmp_mem = pool->cfg.malloc(MLX5_MEM_ZERO, mem_size,
+					 RTE_CACHE_LINE_SIZE, rte_socket_id());
+	if (!pool->bmp_mem) {
+		DRV_LOG(ERR, "Ipool bitmap mem allocate failed.\n");
+		return;
+	}
+	ibmp = rte_bitmap_init_with_all_set(bmp_num, pool->bmp_mem, mem_size);
+	if (!ibmp) {
+		pool->cfg.free(pool->bmp_mem);
+		pool->bmp_mem = NULL;
+		DRV_LOG(ERR, "Ipool bitmap create failed.\n");
+		return;
+	}
+	pool->ibmp = ibmp;
+	/* Clear global cache. */
+	for (i = 0; i < gc->len; i++)
+		rte_bitmap_clear(ibmp, gc->idx[i] - 1);
+	/* Clear core cache. */
+	for (i = 0; i < RTE_MAX_LCORE; i++) {
+		struct mlx5_ipool_per_lcore *ilc = pool->cache[i];
+
+		if (!ilc)
+			continue;
+		for (j = 0; j < ilc->len; j++)
+			rte_bitmap_clear(ibmp, ilc->idx[j] - 1);
+	}
+}
+
+static void *
+mlx5_ipool_get_next_cache(struct mlx5_indexed_pool *pool, uint32_t *pos)
+{
+	struct rte_bitmap *ibmp;
+	uint64_t slab = 0;
+	uint32_t iidx = *pos;
+
+	ibmp = pool->ibmp;
+	if (!ibmp || !rte_bitmap_scan(ibmp, &iidx, &slab)) {
+		if (pool->bmp_mem) {
+			pool->cfg.free(pool->bmp_mem);
+			pool->bmp_mem = NULL;
+			pool->ibmp = NULL;
+		}
+		return NULL;
+	}
+	iidx += __builtin_ctzll(slab);
+	rte_bitmap_clear(ibmp, iidx);
+	iidx++;
+	*pos = iidx;
+	return mlx5_ipool_get_cache(pool, iidx);
+}
+
+void *
+mlx5_ipool_get_next(struct mlx5_indexed_pool *pool, uint32_t *pos)
+{
+	uint32_t idx = *pos;
+	void *entry;
+
+	if (pool->cfg.per_core_cache)
+		return mlx5_ipool_get_next_cache(pool, pos);
+	while (idx <= mlx5_trunk_idx_offset_get(pool, pool->n_trunk)) {
+		entry = mlx5_ipool_get(pool, idx);
+		if (entry) {
+			*pos = idx;
+			return entry;
+		}
+		idx++;
+	}
+	return NULL;
 }
 
 void
