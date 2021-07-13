@@ -1118,6 +1118,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t ct_aso_en:1; /* Connection Tracking ASO is supported. */
 	uint32_t tunnel_header_0_1:1; /* tunnel_header_0_1 is supported. */
 	uint32_t misc5_cap:1; /* misc5 matcher parameter is supported. */
+	uint32_t reclaim_mode:1; /* Reclaim memory. */
 	uint32_t max_port; /* Maximal IB device port index. */
 	struct mlx5_bond_info bond; /* Bonding information. */
 	void *ctx; /* Verbs/DV/DevX context. */

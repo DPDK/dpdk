@@ -217,7 +217,8 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.grow_trunk = 3,
 		.grow_shift = 2,
 		.need_lock = 1,
-		.release_mem_en = 1,
+		.release_mem_en = 0,
+		.per_core_cache = (1 << 16),
 		.malloc = mlx5_malloc,
 		.free = mlx5_free,
 		.type = "mlx5_tag_ipool",
@@ -1129,6 +1130,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	}
 	sh->refcnt = 1;
 	sh->max_port = spawn->max_port;
+	sh->reclaim_mode = config->reclaim_mode;
 	strncpy(sh->ibdev_name, mlx5_os_get_ctx_device_name(sh->ctx),
 		sizeof(sh->ibdev_name) - 1);
 	strncpy(sh->ibdev_path, mlx5_os_get_ctx_device_path(sh->ctx),
