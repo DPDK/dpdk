@@ -81,6 +81,32 @@ typedef struct mlx5_list_entry *(*mlx5_list_create_cb)(void *tool_ctx,
 						       void *ctx);
 
 /**
+ * Linked mlx5 list constant object.
+ */
+struct mlx5_list_const {
+	char name[MLX5_NAME_SIZE]; /**< Name of the mlx5 list. */
+	void *ctx; /* user objects target to callback. */
+	bool lcores_share; /* Whether to share objects between the lcores. */
+	mlx5_list_create_cb cb_create; /**< entry create callback. */
+	mlx5_list_match_cb cb_match; /**< entry match callback. */
+	mlx5_list_remove_cb cb_remove; /**< entry remove callback. */
+	mlx5_list_clone_cb cb_clone; /**< entry clone callback. */
+	mlx5_list_clone_free_cb cb_clone_free;
+	/**< entry clone free callback. */
+};
+
+/**
+ * Linked mlx5 list inconstant data.
+ */
+struct mlx5_list_inconst {
+	rte_rwlock_t lock; /* read/write lock. */
+	volatile uint32_t gen_cnt; /* List modification may update it. */
+	volatile uint32_t count; /* number of entries in list. */
+	struct mlx5_list_cache *cache[RTE_MAX_LCORE + 1];
+	/* Lcore cache, last index is the global cache. */
+};
+
+/**
  * Linked mlx5 list structure.
  *
  * Entry in mlx5 list could be reused if entry already exists,
@@ -96,19 +122,8 @@ typedef struct mlx5_list_entry *(*mlx5_list_create_cb)(void *tool_ctx,
  *
  */
 struct mlx5_list {
-	char name[MLX5_NAME_SIZE]; /**< Name of the mlx5 list. */
-	void *ctx; /* user objects target to callback. */
-	bool lcores_share; /* Whether to share objects between the lcores. */
-	mlx5_list_create_cb cb_create; /**< entry create callback. */
-	mlx5_list_match_cb cb_match; /**< entry match callback. */
-	mlx5_list_remove_cb cb_remove; /**< entry remove callback. */
-	mlx5_list_clone_cb cb_clone; /**< entry clone callback. */
-	mlx5_list_clone_free_cb cb_clone_free;
-	struct mlx5_list_cache *cache[RTE_MAX_LCORE + 1];
-	/* Lcore cache, last index is the global cache. */
-	volatile uint32_t gen_cnt; /* List modification may update it. */
-	volatile uint32_t count; /* number of entries in list. */
-	rte_rwlock_t lock; /* read/write lock. */
+	struct mlx5_list_const l_const;
+	struct mlx5_list_inconst l_inconst;
 };
 
 /**
@@ -219,7 +234,7 @@ mlx5_list_get_entry_num(struct mlx5_list *list);
 
 /* Hash list bucket. */
 struct mlx5_hlist_bucket {
-	struct mlx5_list l;
+	struct mlx5_list_inconst l;
 } __rte_cache_aligned;
 
 /**
@@ -231,7 +246,7 @@ struct mlx5_hlist {
 	uint32_t mask; /* A mask for the bucket index range. */
 	uint8_t flags;
 	bool direct_key; /* Whether to use the key directly as hash index. */
-	bool lcores_share; /* Whether to share objects between the lcores. */
+	struct mlx5_list_const l_const; /* List constant data. */
 	struct mlx5_hlist_bucket buckets[] __rte_cache_aligned;
 };
 
