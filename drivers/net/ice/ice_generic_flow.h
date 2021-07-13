@@ -26,6 +26,7 @@
 #define ICE_PROT_AH			BIT_ULL(15)
 #define ICE_PROT_L2TPV3OIP		BIT_ULL(16)
 #define ICE_PROT_PFCP			BIT_ULL(17)
+#define ICE_PROT_NAT_T_ESP		BIT_ULL(18)
 
 /* field */
 
@@ -117,6 +118,8 @@
 	(ICE_PROT_PFCP | ICE_PFCP_S_FIELD)
 #define ICE_INSET_PFCP_SEID \
 	(ICE_PROT_PFCP | ICE_PFCP_S_FIELD | ICE_PFCP_SEID)
+#define ICE_INSET_NAT_T_ESP_SPI \
+	(ICE_PROT_NAT_T_ESP | ICE_ESP_SPI)
 
 /* empty pattern */
 extern enum rte_flow_item_type pattern_empty[];

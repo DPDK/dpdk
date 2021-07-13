@@ -100,11 +100,11 @@
 
 #define ICE_FDIR_INSET_IPV4_NATT_ESP (\
 	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | \
-	ICE_INSET_ESP_SPI)
+	ICE_INSET_NAT_T_ESP_SPI)
 
 #define ICE_FDIR_INSET_IPV6_NATT_ESP (\
 	ICE_INSET_IPV6_SRC | ICE_INSET_IPV6_DST | \
-	ICE_INSET_ESP_SPI)
+	ICE_INSET_NAT_T_ESP_SPI)
 
 static struct ice_pattern_match_item ice_fdir_pattern_list[] = {
 	{pattern_ethertype,				ICE_FDIR_INSET_ETH,		ICE_INSET_NONE,			ICE_INSET_NONE},
@@ -951,6 +951,8 @@ ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
 		{ICE_INSET_GTPU_TEID, ICE_FLOW_FIELD_IDX_GTPU_IP_TEID},
 		{ICE_INSET_GTPU_QFI, ICE_FLOW_FIELD_IDX_GTPU_EH_QFI},
 		{ICE_INSET_VXLAN_VNI, ICE_FLOW_FIELD_IDX_VXLAN_VNI},
+		{ICE_INSET_ESP_SPI, ICE_FLOW_FIELD_IDX_ESP_SPI},
+		{ICE_INSET_NAT_T_ESP_SPI, ICE_FLOW_FIELD_IDX_NAT_T_ESP_SPI},
 	};
 
 	for (i = 0, j = 0; i < RTE_DIM(ice_inset_map); i++) {
@@ -2128,8 +2130,12 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			if (!(esp_spec && esp_mask))
 				break;
 
-			if (esp_mask->hdr.spi == UINT32_MAX)
-				*input_set |= ICE_INSET_ESP_SPI;
+			if (esp_mask->hdr.spi == UINT32_MAX) {
+				if (l4 == RTE_FLOW_ITEM_TYPE_UDP)
+					*input_set |= ICE_INSET_NAT_T_ESP_SPI;
+				else
+					*input_set |= ICE_INSET_ESP_SPI;
+			}
 
 			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
 				filter->input.ip.v4.sec_parm_idx =
