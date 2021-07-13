@@ -563,7 +563,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	eth_dev->rx_queue_count = mlx5_rx_queue_count;
 	/* Register MAC address. */
 	claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
-	priv->flows = 0;
 	priv->ctrl_flows = 0;
 	TAILQ_INIT(&priv->flow_meters);
 	priv->mtr_profile_tbl = mlx5_l3t_create(MLX5_L3T_TYPE_PTR);

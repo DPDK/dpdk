@@ -69,6 +69,44 @@ static rte_spinlock_t mlx5_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 /* Process local data for secondary processes. */
 static struct mlx5_local_data mlx5_local_data;
 
+/* rte flow indexed pool configuration. */
+static struct mlx5_indexed_pool_config icfg[] = {
+	{
+		.size = sizeof(struct rte_flow),
+		.trunk_size = 64,
+		.need_lock = 1,
+		.release_mem_en = 0,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
+		.per_core_cache = 0,
+		.type = "ctl_flow_ipool",
+	},
+	{
+		.size = sizeof(struct rte_flow),
+		.trunk_size = 64,
+		.grow_trunk = 3,
+		.grow_shift = 2,
+		.need_lock = 1,
+		.release_mem_en = 0,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
+		.per_core_cache = 1 << 14,
+		.type = "rte_flow_ipool",
+	},
+	{
+		.size = sizeof(struct rte_flow),
+		.trunk_size = 64,
+		.grow_trunk = 3,
+		.grow_shift = 2,
+		.need_lock = 1,
+		.release_mem_en = 0,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
+		.per_core_cache = 0,
+		.type = "mcp_flow_ipool",
+	},
+};
+
 /**
  * Set the completion channel file descriptor interrupt as non-blocking.
  *
@@ -907,6 +945,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	int own_domain_id = 0;
 	uint16_t port_id;
 	struct mlx5_port_info vport_info = { .query_flags = 0 };
+	int i;
 
 	/* Determine if this port representor is supposed to be spawned. */
 	if (switch_info->representor && dpdk_dev->devargs &&
@@ -1652,7 +1691,6 @@ err_secondary:
 				      mlx5_ifindex(eth_dev),
 				      eth_dev->data->mac_addrs,
 				      MLX5_MAX_MAC_ADDRESSES);
-	priv->flows = 0;
 	priv->ctrl_flows = 0;
 	rte_spinlock_init(&priv->flow_list_lock);
 	TAILQ_INIT(&priv->flow_meters);
@@ -1688,6 +1726,14 @@ err_secondary:
 	mlx5_set_min_inline(spawn, config);
 	/* Store device configuration on private structure. */
 	priv->config = *config;
+	for (i = 0; i < MLX5_FLOW_TYPE_MAXI; i++) {
+		icfg[i].release_mem_en = !!config->reclaim_mode;
+		if (config->reclaim_mode)
+			icfg[i].per_core_cache = 0;
+		priv->flows[i] = mlx5_ipool_create(&icfg[i]);
+		if (!priv->flows[i])
+			goto error;
+	}
 	/* Create context for virtual machine VLAN workaround. */
 	priv->vmwa_context = mlx5_vlan_vmwa_init(eth_dev, spawn->ifindex);
 	if (config->dv_flow_en) {

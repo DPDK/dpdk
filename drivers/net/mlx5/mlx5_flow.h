@@ -998,9 +998,9 @@ flow_items_to_tunnel(const struct rte_flow_item items[])
 
 /* Flow structure. */
 struct rte_flow {
-	ILIST_ENTRY(uint32_t)next; /**< Index to the next flow structure. */
 	uint32_t dev_handles;
 	/**< Device flow handles that are part of the flow. */
+	uint32_t type:2;
 	uint32_t drv_type:2; /**< Driver type. */
 	uint32_t tunnel:1;
 	uint32_t meter:24; /**< Holds flow meter id. */
