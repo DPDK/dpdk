@@ -388,8 +388,9 @@ typedef struct mlx5_list_entry *(*mlx5_list_create_cb)
  */
 struct mlx5_list {
 	char name[MLX5_NAME_SIZE]; /**< Name of the mlx5 list. */
-	uint32_t gen_cnt; /* List modification will update generation count. */
-	uint32_t count; /* number of entries in list. */
+	volatile uint32_t gen_cnt;
+	/* List modification will update generation count. */
+	volatile uint32_t count; /* number of entries in list. */
 	void *ctx; /* user objects target to callback. */
 	rte_rwlock_t lock; /* read/write lock. */
 	mlx5_list_create_cb cb_create; /**< entry create callback. */

@@ -101,7 +101,7 @@ mlx5_list_cache_insert(struct mlx5_list *list, int lcore_index,
 {
 	struct mlx5_list_entry *lentry = list->cb_clone(list, gentry, ctx);
 
-	if (!lentry)
+	if (unlikely(!lentry))
 		return NULL;
 	lentry->ref_cnt = 1u;
 	lentry->gentry = gentry;
@@ -112,8 +112,8 @@ mlx5_list_cache_insert(struct mlx5_list *list, int lcore_index,
 struct mlx5_list_entry *
 mlx5_list_register(struct mlx5_list *list, void *ctx)
 {
-	struct mlx5_list_entry *entry, *lentry;
-	uint32_t prev_gen_cnt = 0;
+	struct mlx5_list_entry *entry, *local_entry;
+	volatile uint32_t prev_gen_cnt = 0;
 	int lcore_index = rte_lcore_index(rte_lcore_id());
 
 	MLX5_ASSERT(list);
@@ -122,51 +122,56 @@ mlx5_list_register(struct mlx5_list *list, void *ctx)
 		rte_errno = ENOTSUP;
 		return NULL;
 	}
-	/* Lookup in local cache. */
-	lentry = __list_lookup(list, lcore_index, ctx, true);
-	if (lentry)
-		return lentry;
-	/* Lookup with read lock, reuse if found. */
+	/* 1. Lookup in local cache. */
+	local_entry = __list_lookup(list, lcore_index, ctx, true);
+	if (local_entry)
+		return local_entry;
+	/* 2. Lookup with read lock on global list, reuse if found. */
 	rte_rwlock_read_lock(&list->lock);
 	entry = __list_lookup(list, RTE_MAX_LCORE, ctx, true);
-	if (entry == NULL) {
-		prev_gen_cnt = __atomic_load_n(&list->gen_cnt,
-					       __ATOMIC_ACQUIRE);
-		rte_rwlock_read_unlock(&list->lock);
-	} else {
+	if (likely(entry)) {
 		rte_rwlock_read_unlock(&list->lock);
 		return mlx5_list_cache_insert(list, lcore_index, entry, ctx);
 	}
-	/* Not found, append with write lock - block read from other threads. */
+	prev_gen_cnt = list->gen_cnt;
+	rte_rwlock_read_unlock(&list->lock);
+	/* 3. Prepare new entry for global list and for cache. */
+	entry = list->cb_create(list, entry, ctx);
+	if (unlikely(!entry))
+		return NULL;
+	local_entry = list->cb_clone(list, entry, ctx);
+	if (unlikely(!local_entry)) {
+		list->cb_remove(list, entry);
+		return NULL;
+	}
+	entry->ref_cnt = 1u;
+	local_entry->ref_cnt = 1u;
+	local_entry->gentry = entry;
 	rte_rwlock_write_lock(&list->lock);
-	/* If list changed by other threads before lock, search again. */
-	if (prev_gen_cnt != __atomic_load_n(&list->gen_cnt, __ATOMIC_ACQUIRE)) {
-		/* Lookup and reuse w/o read lock. */
-		entry = __list_lookup(list, RTE_MAX_LCORE, ctx, true);
-		if (entry) {
+	/* 4. Make sure the same entry was not created before the write lock. */
+	if (unlikely(prev_gen_cnt != list->gen_cnt)) {
+		struct mlx5_list_entry *oentry = __list_lookup(list,
+							       RTE_MAX_LCORE,
+							       ctx, true);
+
+		if (unlikely(oentry)) {
+			/* 4.5. Found real race!!, reuse the old entry. */
 			rte_rwlock_write_unlock(&list->lock);
-			return mlx5_list_cache_insert(list, lcore_index, entry,
+			list->cb_remove(list, entry);
+			list->cb_clone_free(list, local_entry);
+			return mlx5_list_cache_insert(list, lcore_index, oentry,
 						      ctx);
 		}
 	}
-	entry = list->cb_create(list, entry, ctx);
-	if (entry) {
-		lentry = mlx5_list_cache_insert(list, lcore_index, entry, ctx);
-		if (!lentry) {
-			list->cb_remove(list, entry);
-		} else {
-			entry->ref_cnt = 1u;
-			LIST_INSERT_HEAD(&list->cache[RTE_MAX_LCORE].h, entry,
-					 next);
-			__atomic_add_fetch(&list->gen_cnt, 1, __ATOMIC_RELEASE);
-			__atomic_add_fetch(&list->count, 1, __ATOMIC_ACQUIRE);
-			DRV_LOG(DEBUG, "mlx5 list %s entry %p new: %u.",
-				list->name, (void *)entry, entry->ref_cnt);
-		}
-
-	}
+	/* 5. Update lists. */
+	LIST_INSERT_HEAD(&list->cache[RTE_MAX_LCORE].h, entry, next);
+	list->gen_cnt++;
 	rte_rwlock_write_unlock(&list->lock);
-	return lentry;
+	LIST_INSERT_HEAD(&list->cache[lcore_index].h, local_entry, next);
+	__atomic_add_fetch(&list->count, 1, __ATOMIC_ACQUIRE);
+	DRV_LOG(DEBUG, "mlx5 list %s entry %p new: %u.",
+		list->name, (void *)entry, entry->ref_cnt);
+	return local_entry;
 }
 
 int
@@ -180,12 +185,11 @@ mlx5_list_unregister(struct mlx5_list *list,
 	if (__atomic_sub_fetch(&gentry->ref_cnt, 1, __ATOMIC_ACQUIRE) != 0)
 		return 1;
 	rte_rwlock_write_lock(&list->lock);
-	if (__atomic_load_n(&gentry->ref_cnt, __ATOMIC_ACQUIRE) == 0) {
-		__atomic_add_fetch(&list->gen_cnt, 1, __ATOMIC_ACQUIRE);
-		__atomic_sub_fetch(&list->count, 1, __ATOMIC_ACQUIRE);
+	if (likely(gentry->ref_cnt == 0)) {
 		LIST_REMOVE(gentry, next);
-		list->cb_remove(list, gentry);
 		rte_rwlock_write_unlock(&list->lock);
+		list->cb_remove(list, gentry);
+		__atomic_sub_fetch(&list->count, 1, __ATOMIC_ACQUIRE);
 		DRV_LOG(DEBUG, "mlx5 list %s entry %p removed.",
 			list->name, (void *)gentry);
 		return 0;
