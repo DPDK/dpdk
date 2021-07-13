@@ -21,6 +21,8 @@
 #include "otx2_sec_idev.h"
 #include "otx2_security.h"
 
+#define ERR_STR_SZ 256
+
 struct eth_sec_tag_const {
 	RTE_STD_C11
 	union {
@@ -162,7 +164,8 @@ lookup_mem_sa_tbl_clear(struct rte_eth_dev *eth_dev)
 }
 
 static int
-lookup_mem_sa_index_update(struct rte_eth_dev *eth_dev, int spi, void *sa)
+lookup_mem_sa_index_update(struct rte_eth_dev *eth_dev, int spi, void *sa,
+			   char *err_str)
 {
 	static const char name[] = OTX2_NIX_FASTPATH_LOOKUP_MEM;
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
@@ -173,7 +176,8 @@ lookup_mem_sa_index_update(struct rte_eth_dev *eth_dev, int spi, void *sa)
 
 	mz = rte_memzone_lookup(name);
 	if (mz == NULL) {
-		otx2_err("Could not find fastpath lookup table");
+		snprintf(err_str, ERR_STR_SZ,
+			 "Could not find fastpath lookup table");
 		return -EINVAL;
 	}
 
@@ -472,7 +476,10 @@ eth_sec_ipsec_in_sess_create(struct rte_eth_dev *eth_dev,
 	struct otx2_ipsec_fp_sa_ctl *ctl;
 	struct otx2_ipsec_fp_in_sa *sa;
 	struct otx2_sec_session *priv;
+	char err_str[ERR_STR_SZ];
 	struct otx2_cpt_qp *qp;
+
+	memset(err_str, 0, ERR_STR_SZ);
 
 	if (ipsec->spi >= dev->ipsec_in_max_spi) {
 		otx2_err("SPI exceeds max supported");
@@ -480,15 +487,21 @@ eth_sec_ipsec_in_sess_create(struct rte_eth_dev *eth_dev,
 	}
 
 	sa = in_sa_get(port, ipsec->spi);
+	if (sa == NULL)
+		return -ENOMEM;
+
 	ctl = &sa->ctl;
 
 	priv = get_sec_session_private_data(sec_sess);
 	priv->ipsec.dir = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
 	sess = &priv->ipsec.ip;
 
+	rte_spinlock_lock(&dev->ipsec_tbl_lock);
+
 	if (ctl->valid) {
-		otx2_err("SA already registered");
-		return -EINVAL;
+		snprintf(err_str, ERR_STR_SZ, "SA already registered");
+		ret = -EEXIST;
+		goto tbl_unlock;
 	}
 
 	memset(sa, 0, sizeof(struct otx2_ipsec_fp_in_sa));
@@ -512,10 +525,13 @@ eth_sec_ipsec_in_sess_create(struct rte_eth_dev *eth_dev,
 		auth_key_len = auth_xform->auth.key.length;
 	}
 
-	if (cipher_key_len != 0)
+	if (cipher_key_len != 0) {
 		memcpy(sa->cipher_key, cipher_key, cipher_key_len);
-	else
-		return -EINVAL;
+	} else {
+		snprintf(err_str, ERR_STR_SZ, "Invalid cipher key len");
+		ret = -EINVAL;
+		goto sa_clear;
+	}
 
 	sess->in_sa = sa;
 
@@ -523,33 +539,49 @@ eth_sec_ipsec_in_sess_create(struct rte_eth_dev *eth_dev,
 
 	sa->replay_win_sz = ipsec->replay_win_sz;
 
-	if (lookup_mem_sa_index_update(eth_dev, ipsec->spi, sa))
-		return -EINVAL;
+	if (lookup_mem_sa_index_update(eth_dev, ipsec->spi, sa, err_str)) {
+		ret = -EINVAL;
+		goto sa_clear;
+	}
 
 	ret = ipsec_fp_sa_ctl_set(ipsec, crypto_xform, ctl);
-	if (ret)
-		return ret;
+	if (ret) {
+		snprintf(err_str, ERR_STR_SZ,
+			"Could not set SA CTL word (err: %d)", ret);
+		goto sa_clear;
+	}
 
 	if (auth_key_len && auth_key) {
 		/* Get a queue pair for HMAC init */
 		ret = otx2_sec_idev_tx_cpt_qp_get(port, &qp);
-		if (ret)
-			return ret;
+		if (ret) {
+			snprintf(err_str, ERR_STR_SZ, "Could not get CPT QP");
+			goto sa_clear;
+		}
+
 		ret = hmac_init(ctl, qp, auth_key, auth_key_len, sa->hmac_key);
 		otx2_sec_idev_tx_cpt_qp_put(qp);
-		if (ret)
-			return ret;
+		if (ret) {
+			snprintf(err_str, ERR_STR_SZ, "Could not put CPT QP");
+			goto sa_clear;
+		}
 	}
 
 	if (sa->replay_win_sz) {
 		if (sa->replay_win_sz > OTX2_IPSEC_MAX_REPLAY_WIN_SZ) {
-			otx2_err("Replay window size is not supported");
-			return -ENOTSUP;
+			snprintf(err_str, ERR_STR_SZ,
+				 "Replay window size is not supported");
+			ret = -ENOTSUP;
+			goto sa_clear;
 		}
 		sa->replay = rte_zmalloc(NULL, sizeof(struct otx2_ipsec_replay),
 				0);
-		if (sa->replay == NULL)
-			return -ENOMEM;
+		if (sa->replay == NULL) {
+			snprintf(err_str, ERR_STR_SZ,
+				"Could not allocate memory");
+			ret = -ENOMEM;
+			goto sa_clear;
+		}
 
 		rte_spinlock_init(&sa->replay->lock);
 		/*
@@ -562,6 +594,17 @@ eth_sec_ipsec_in_sess_create(struct rte_eth_dev *eth_dev,
 		sa->esn_low = 0;
 		sa->esn_hi = 0;
 	}
+
+	rte_spinlock_unlock(&dev->ipsec_tbl_lock);
+	return 0;
+
+sa_clear:
+	memset(sa, 0, sizeof(struct otx2_ipsec_fp_in_sa));
+
+tbl_unlock:
+	rte_spinlock_unlock(&dev->ipsec_tbl_lock);
+
+	otx2_err("%s", err_str);
 
 	return ret;
 }
@@ -852,6 +895,8 @@ otx2_eth_sec_init(struct rte_eth_dev *eth_dev)
 		otx2_err("Could not configure inline IPsec");
 		goto sec_fini;
 	}
+
+	rte_spinlock_init(&dev->ipsec_tbl_lock);
 
 	return 0;
 

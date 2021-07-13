@@ -14,6 +14,7 @@
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 #include <rte_security_driver.h>
+#include <rte_spinlock.h>
 #include <rte_string_fns.h>
 #include <rte_time.h>
 
@@ -356,6 +357,7 @@ struct otx2_eth_dev {
 	bool sdp_link; /* SDP flag */
 	/* Inline IPsec params */
 	uint16_t ipsec_in_max_spi;
+	rte_spinlock_t ipsec_tbl_lock;
 	uint8_t duplex;
 	uint32_t speed;
 } __rte_cache_aligned;
