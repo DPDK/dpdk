@@ -1139,10 +1139,10 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_hlist *encaps_decaps; /* Encap/decap action hash list. */
 	struct mlx5_hlist *modify_cmds;
 	struct mlx5_hlist *tag_table;
-	struct mlx5_list port_id_action_list; /* Port ID action list. */
-	struct mlx5_list push_vlan_action_list; /* Push VLAN actions. */
-	struct mlx5_list sample_action_list; /* List of sample actions. */
-	struct mlx5_list dest_array_list;
+	struct mlx5_list *port_id_action_list; /* Port ID action list. */
+	struct mlx5_list *push_vlan_action_list; /* Push VLAN actions. */
+	struct mlx5_list *sample_action_list; /* List of sample actions. */
+	struct mlx5_list *dest_array_list;
 	/* List of destination array actions. */
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
 	void *default_miss_action; /* Default miss action. */
@@ -1384,7 +1384,7 @@ struct mlx5_priv {
 	struct mlx5_obj_ops obj_ops; /* HW objects operations. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqobj, mlx5_rxq_obj) rxqsobj; /* Verbs/DevX Rx queues. */
-	struct mlx5_list hrxqs; /* Hash Rx queues. */
+	struct mlx5_list *hrxqs; /* Hash Rx queues. */
 	LIST_HEAD(txq, mlx5_txq_ctrl) txqsctrl; /* DPDK Tx queues. */
 	LIST_HEAD(txqobj, mlx5_txq_obj) txqsobj; /* Verbs/DevX Tx queues. */
 	/* Indirection tables. */

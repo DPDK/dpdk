@@ -420,15 +420,14 @@ struct mlx5_list {
  * @param cb_remove
  *   Callback function for entry remove.
  * @return
- *   0 on success, otherwise failure.
+ *   List pointer on success, otherwise NULL.
  */
-int mlx5_list_create(struct mlx5_list *list,
-			 const char *name, void *ctx,
-			 mlx5_list_create_cb cb_create,
-			 mlx5_list_match_cb cb_match,
-			 mlx5_list_remove_cb cb_remove,
-			 mlx5_list_clone_cb cb_clone,
-			 mlx5_list_clone_free_cb cb_clone_free);
+struct mlx5_list *mlx5_list_create(const char *name, void *ctx,
+				   mlx5_list_create_cb cb_create,
+				   mlx5_list_match_cb cb_match,
+				   mlx5_list_remove_cb cb_remove,
+				   mlx5_list_clone_cb cb_clone,
+				   mlx5_list_clone_free_cb cb_clone_free);
 
 /**
  * Search an entry matching the key.

@@ -11,20 +11,25 @@
 
 /********************* mlx5 list ************************/
 
-int
-mlx5_list_create(struct mlx5_list *list, const char *name, void *ctx,
+struct mlx5_list *
+mlx5_list_create(const char *name, void *ctx,
 		 mlx5_list_create_cb cb_create,
 		 mlx5_list_match_cb cb_match,
 		 mlx5_list_remove_cb cb_remove,
 		 mlx5_list_clone_cb cb_clone,
 		 mlx5_list_clone_free_cb cb_clone_free)
 {
+	struct mlx5_list *list;
 	int i;
 
-	MLX5_ASSERT(list);
 	if (!cb_match || !cb_create || !cb_remove || !cb_clone ||
-	    !cb_clone_free)
-		return -1;
+	    !cb_clone_free) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	list = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*list), 0, SOCKET_ID_ANY);
+	if (!list)
+		return NULL;
 	if (name)
 		snprintf(list->name, sizeof(list->name), "%s", name);
 	list->ctx = ctx;
@@ -37,7 +42,7 @@ mlx5_list_create(struct mlx5_list *list, const char *name, void *ctx,
 	DRV_LOG(DEBUG, "mlx5 list %s initialized.", list->name);
 	for (i = 0; i <= RTE_MAX_LCORE; i++)
 		LIST_INIT(&list->cache[i].h);
-	return 0;
+	return list;
 }
 
 static struct mlx5_list_entry *
@@ -244,7 +249,7 @@ mlx5_list_destroy(struct mlx5_list *list)
 			}
 		}
 	}
-	memset(list, 0, sizeof(*list));
+	mlx5_free(list);
 }
 
 uint32_t

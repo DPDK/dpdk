@@ -591,7 +591,7 @@ struct mlx5_flow_tbl_data_entry {
 	/**< hash list entry, 64-bits key inside. */
 	struct mlx5_flow_tbl_resource tbl;
 	/**< flow table resource. */
-	struct mlx5_list matchers;
+	struct mlx5_list *matchers;
 	/**< matchers' header associated with the flow table. */
 	struct mlx5_flow_dv_jump_tbl_resource jump;
 	/**< jump resource, at most one for each table created. */

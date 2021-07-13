@@ -3889,7 +3889,7 @@ flow_dv_port_id_action_resource_register
 		.data = ref,
 	};
 
-	entry = mlx5_list_register(&priv->sh->port_id_action_list, &ctx);
+	entry = mlx5_list_register(priv->sh->port_id_action_list, &ctx);
 	if (!entry)
 		return -rte_errno;
 	resource = container_of(entry, typeof(*resource), entry);
@@ -4014,7 +4014,7 @@ flow_dv_push_vlan_action_resource_register
 		.data = ref,
 	};
 
-	entry = mlx5_list_register(&priv->sh->push_vlan_action_list, &ctx);
+	entry = mlx5_list_register(priv->sh->push_vlan_action_list, &ctx);
 	if (!entry)
 		return -rte_errno;
 	resource = container_of(entry, typeof(*resource), entry);
@@ -10117,12 +10117,22 @@ flow_dv_tbl_create_cb(struct mlx5_hlist *list, uint64_t key64, void *cb_ctx)
 	MKSTR(matcher_name, "%s_%s_%u_%u_matcher_list",
 	      key.is_fdb ? "FDB" : "NIC", key.is_egress ? "egress" : "ingress",
 	      key.level, key.id);
-	mlx5_list_create(&tbl_data->matchers, matcher_name, sh,
-			 flow_dv_matcher_create_cb,
-			 flow_dv_matcher_match_cb,
-			 flow_dv_matcher_remove_cb,
-			 flow_dv_matcher_clone_cb,
-			 flow_dv_matcher_clone_free_cb);
+	tbl_data->matchers = mlx5_list_create(matcher_name, sh,
+					      flow_dv_matcher_create_cb,
+					      flow_dv_matcher_match_cb,
+					      flow_dv_matcher_remove_cb,
+					      flow_dv_matcher_clone_cb,
+					      flow_dv_matcher_clone_free_cb);
+	if (!tbl_data->matchers) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "cannot create tbl matcher list");
+		mlx5_flow_os_destroy_flow_action(tbl_data->jump.action);
+		mlx5_flow_os_destroy_flow_tbl(tbl->obj);
+		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], idx);
+		return NULL;
+	}
 	return &tbl_data->entry;
 }
 
@@ -10250,7 +10260,7 @@ flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
 			tbl_data->tunnel->tunnel_id : 0,
 			tbl_data->group_id);
 	}
-	mlx5_list_destroy(&tbl_data->matchers);
+	mlx5_list_destroy(tbl_data->matchers);
 	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], tbl_data->idx);
 }
 
@@ -10383,7 +10393,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 		return -rte_errno;	/* No need to refill the error info */
 	tbl_data = container_of(tbl, struct mlx5_flow_tbl_data_entry, tbl);
 	ref->tbl = tbl;
-	entry = mlx5_list_register(&tbl_data->matchers, &ctx);
+	entry = mlx5_list_register(tbl_data->matchers, &ctx);
 	if (!entry) {
 		flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
 		return rte_flow_error_set(error, ENOMEM,
@@ -10980,7 +10990,7 @@ flow_dv_sample_resource_register(struct rte_eth_dev *dev,
 		.data = ref,
 	};
 
-	entry = mlx5_list_register(&priv->sh->sample_action_list, &ctx);
+	entry = mlx5_list_register(priv->sh->sample_action_list, &ctx);
 	if (!entry)
 		return -rte_errno;
 	resource = container_of(entry, typeof(*resource), entry);
@@ -11195,7 +11205,7 @@ flow_dv_dest_array_resource_register(struct rte_eth_dev *dev,
 		.data = ref,
 	};
 
-	entry = mlx5_list_register(&priv->sh->dest_array_list, &ctx);
+	entry = mlx5_list_register(priv->sh->dest_array_list, &ctx);
 	if (!entry)
 		return -rte_errno;
 	resource = container_of(entry, typeof(*resource), entry);
@@ -13673,7 +13683,7 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 	int ret;
 
 	MLX5_ASSERT(matcher->matcher_object);
-	ret = mlx5_list_unregister(&tbl->matchers, &matcher->entry);
+	ret = mlx5_list_unregister(tbl->matchers, &matcher->entry);
 	flow_dv_tbl_resource_release(MLX5_SH(dev), &tbl->tbl);
 	return ret;
 }
@@ -13816,7 +13826,7 @@ flow_dv_port_id_action_resource_release(struct rte_eth_dev *dev,
 	if (!resource)
 		return 0;
 	MLX5_ASSERT(resource->action);
-	return mlx5_list_unregister(&priv->sh->port_id_action_list,
+	return mlx5_list_unregister(priv->sh->port_id_action_list,
 				    &resource->entry);
 }
 
@@ -13874,7 +13884,7 @@ flow_dv_push_vlan_action_resource_release(struct rte_eth_dev *dev,
 	if (!resource)
 		return 0;
 	MLX5_ASSERT(resource->action);
-	return mlx5_list_unregister(&priv->sh->push_vlan_action_list,
+	return mlx5_list_unregister(priv->sh->push_vlan_action_list,
 				    &resource->entry);
 }
 
@@ -13955,7 +13965,7 @@ flow_dv_sample_resource_release(struct rte_eth_dev *dev,
 	if (!resource)
 		return 0;
 	MLX5_ASSERT(resource->verbs_action);
-	return mlx5_list_unregister(&priv->sh->sample_action_list,
+	return mlx5_list_unregister(priv->sh->sample_action_list,
 				    &resource->entry);
 }
 
@@ -14003,7 +14013,7 @@ flow_dv_dest_array_resource_release(struct rte_eth_dev *dev,
 	if (!resource)
 		return 0;
 	MLX5_ASSERT(resource->action);
-	return mlx5_list_unregister(&priv->sh->dest_array_list,
+	return mlx5_list_unregister(priv->sh->dest_array_list,
 				    &resource->entry);
 }
 
@@ -14854,7 +14864,7 @@ __flow_dv_destroy_sub_policy_rules(struct rte_eth_dev *dev,
 			claim_zero(mlx5_flow_os_destroy_flow(color_rule->rule));
 			tbl = container_of(color_rule->matcher->tbl,
 					typeof(*tbl), tbl);
-			mlx5_list_unregister(&tbl->matchers,
+			mlx5_list_unregister(tbl->matchers,
 						&color_rule->matcher->entry);
 			TAILQ_REMOVE(&sub_policy->color_rules[i],
 					color_rule, next_port);
@@ -15647,7 +15657,7 @@ flow_dv_destroy_mtr_drop_tbls(struct rte_eth_dev *dev)
 		if (mtrmng->def_matcher[i]) {
 			tbl = container_of(mtrmng->def_matcher[i]->tbl,
 				struct mlx5_flow_tbl_data_entry, tbl);
-			mlx5_list_unregister(&tbl->matchers,
+			mlx5_list_unregister(tbl->matchers,
 					     &mtrmng->def_matcher[i]->entry);
 			mtrmng->def_matcher[i] = NULL;
 		}
@@ -15657,7 +15667,7 @@ flow_dv_destroy_mtr_drop_tbls(struct rte_eth_dev *dev)
 				container_of(mtrmng->drop_matcher[i][j]->tbl,
 					     struct mlx5_flow_tbl_data_entry,
 					     tbl);
-				mlx5_list_unregister(&tbl->matchers,
+				mlx5_list_unregister(tbl->matchers,
 					    &mtrmng->drop_matcher[i][j]->entry);
 				mtrmng->drop_matcher[i][j] = NULL;
 			}
@@ -15791,7 +15801,7 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 	matcher.priority = priority;
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
 					matcher.mask.size);
-	entry = mlx5_list_register(&tbl_data->matchers, &ctx);
+	entry = mlx5_list_register(tbl_data->matchers, &ctx);
 	if (!entry) {
 		DRV_LOG(ERR, "Failed to register meter drop matcher.");
 		return -1;
@@ -15899,7 +15909,7 @@ err_exit:
 			struct mlx5_flow_tbl_data_entry *tbl =
 				container_of(color_rule->matcher->tbl,
 						typeof(*tbl), tbl);
-			mlx5_list_unregister(&tbl->matchers,
+			mlx5_list_unregister(tbl->matchers,
 						&color_rule->matcher->entry);
 		}
 		mlx5_free(color_rule);
@@ -16295,7 +16305,7 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 			matcher.crc = rte_raw_cksum
 					((const void *)matcher.mask.buf,
 					matcher.mask.size);
-			entry = mlx5_list_register(&tbl_data->matchers, &ctx);
+			entry = mlx5_list_register(tbl_data->matchers, &ctx);
 			if (!entry) {
 				DRV_LOG(ERR, "Failed to register meter "
 				"drop default matcher.");
@@ -16334,7 +16344,7 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 			matcher.crc = rte_raw_cksum
 					((const void *)matcher.mask.buf,
 					matcher.mask.size);
-			entry = mlx5_list_register(&tbl_data->matchers, &ctx);
+			entry = mlx5_list_register(tbl_data->matchers, &ctx);
 			if (!entry) {
 				DRV_LOG(ERR,
 				"Failed to register meter drop matcher.");
@@ -16753,7 +16763,7 @@ err_exit:
 			struct mlx5_flow_tbl_data_entry *tbl =
 				container_of(color_rule->matcher->tbl,
 						typeof(*tbl), tbl);
-			mlx5_list_unregister(&tbl->matchers,
+			mlx5_list_unregister(tbl->matchers,
 						&color_rule->matcher->entry);
 		}
 		mlx5_free(color_rule);
