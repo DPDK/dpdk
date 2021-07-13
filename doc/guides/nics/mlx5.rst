@@ -455,6 +455,11 @@ Limitations
   - 256 ports maximum.
   - 4M connections maximum.
 
+- Multi-thread flow insertion:
+
+  - In order to achieve best insertion rate, application should manage the flows per lcore.
+  - Better to disable memory reclaim by setting ``reclaim_mem_mode`` to 0 to accelerate the flow object allocation and release with cache.
+
 Statistics
 ----------
 
