@@ -157,7 +157,8 @@ mlx5_rx_mprq_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq)
 	unsigned int i;
 
 	if (n >= rxq->rq_repl_thresh &&
-	    rxq->elts_ci - rxq->rq_pi <= rxq->rq_repl_thresh) {
+	    rxq->elts_ci - rxq->rq_pi <=
+	    rxq->rq_repl_thresh + MLX5_VPMD_RX_MAX_BURST) {
 		MLX5_ASSERT(n >= MLX5_VPMD_RXQ_RPLNSH_THRESH(elts_n));
 		MLX5_ASSERT(MLX5_VPMD_RXQ_RPLNSH_THRESH(elts_n) >
 			     MLX5_VPMD_DESCS_PER_LOOP);
