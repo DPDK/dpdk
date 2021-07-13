@@ -270,6 +270,9 @@ mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 		if (i > 0)
 			pool->grow_tbl[i] += pool->grow_tbl[i - 1];
 	}
+	if (!pool->cfg.max_idx)
+		pool->cfg.max_idx =
+			mlx5_trunk_idx_offset_get(pool, TRUNK_MAX_IDX + 1);
 	return pool;
 }
 
@@ -282,9 +285,11 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 	size_t trunk_size = 0;
 	size_t data_size;
 	size_t bmp_size;
-	uint32_t idx;
+	uint32_t idx, cur_max_idx, i;
 
-	if (pool->n_trunk_valid == TRUNK_MAX_IDX)
+	cur_max_idx = mlx5_trunk_idx_offset_get(pool, pool->n_trunk_valid);
+	if (pool->n_trunk_valid == TRUNK_MAX_IDX ||
+	    cur_max_idx >= pool->cfg.max_idx)
 		return -ENOMEM;
 	if (pool->n_trunk_valid == pool->n_trunk) {
 		/* No free trunk flags, expand trunk list. */
@@ -336,6 +341,11 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 	trunk->bmp = rte_bitmap_init_with_all_set(data_size, &trunk->data
 		     [RTE_CACHE_LINE_ROUNDUP(data_size * pool->cfg.size)],
 		     bmp_size);
+	/* Clear the overhead bits in the trunk if it happens. */
+	if (cur_max_idx + data_size > pool->cfg.max_idx) {
+		for (i = pool->cfg.max_idx - cur_max_idx; i < data_size; i++)
+			rte_bitmap_clear(trunk->bmp, i);
+	}
 	MLX5_ASSERT(trunk->bmp);
 	pool->n_trunk_valid++;
 #ifdef POOL_DEBUG

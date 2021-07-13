@@ -208,6 +208,7 @@ struct mlx5_indexed_pool_config {
 	uint32_t need_lock:1;
 	/* Lock is needed for multiple thread usage. */
 	uint32_t release_mem_en:1; /* Rlease trunk when it is free. */
+	uint32_t max_idx; /* The maximum index can be allocated. */
 	const char *type; /* Memory allocate type name. */
 	void *(*malloc)(uint32_t flags, size_t size, unsigned int align,
 			int socket);
