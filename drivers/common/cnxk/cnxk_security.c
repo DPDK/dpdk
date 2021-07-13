@@ -2,6 +2,8 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <rte_udp.h>
+
 #include "cnxk_security.h"
 
 static int
@@ -70,6 +72,10 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 	} else {
 		return -ENOTSUP;
 	}
+
+	/* Set encapsulation type */
+	if (ipsec_xfrm->options.udp_encap)
+		w2->s.encap_type = ROC_IE_OT_SA_ENCAP_UDP;
 
 	w2->s.spi = ipsec_xfrm->spi;
 
@@ -149,6 +155,10 @@ cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 
 	/* ESN */
 	sa->w2.s.esn_en = !!ipsec_xfrm->options.esn;
+	if (ipsec_xfrm->options.udp_encap) {
+		sa->w10.s.udp_src_port = 4500;
+		sa->w10.s.udp_dst_port = 4500;
+	}
 
 	offset = offsetof(struct roc_ot_ipsec_inb_sa, ctx);
 	/* Word offset for HW managed SA field */
@@ -266,6 +276,11 @@ cnxk_ot_ipsec_outb_sa_fill(struct roc_ot_ipsec_outb_sa *sa,
 skip_tunnel_info:
 	/* ESN */
 	sa->w0.s.esn_en = !!ipsec_xfrm->options.esn;
+
+	if (ipsec_xfrm->options.udp_encap) {
+		sa->w10.s.udp_src_port = 4500;
+		sa->w10.s.udp_dst_port = 4500;
+	}
 
 	offset = offsetof(struct roc_ot_ipsec_outb_sa, ctx);
 	/* Word offset for HW managed SA field */
@@ -459,6 +474,9 @@ cnxk_ipsec_outb_rlens_get(struct cnxk_ipsec_outb_rlens *rlens,
 	partial_len += cnxk_ipsec_ivlen_get(c_algo, a_algo, aead_algo);
 	partial_len += cnxk_ipsec_icvlen_get(c_algo, a_algo, aead_algo);
 	roundup_byte = cnxk_ipsec_outb_roundup_byte(c_algo, aead_algo);
+
+	if (ipsec_xfrm->options.udp_encap)
+		partial_len += sizeof(struct rte_udp_hdr);
 
 	rlens->partial_len = partial_len;
 	rlens->roundup_len = roundup_len;

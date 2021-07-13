@@ -61,3 +61,4 @@ sources = files(
 sources += files('cnxk_security.c')
 
 includes += include_directories('../../bus/pci')
+includes += include_directories('../../../lib/net')
