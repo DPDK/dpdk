@@ -192,8 +192,15 @@ Limitations
   size and ``txq_inline_min`` settings and may be from 2 (worst case forced by maximal
   inline settings) to 58.
 
-- Flows with a VXLAN Network Identifier equal (or ends to be equal)
-  to 0 are not supported.
+- Match on VXLAN supports the following fields only:
+
+     - VNI
+     - Last reserved 8-bits
+
+  Last reserved 8-bits matching is only supported When using DV flow
+  engine (``dv_flow_en`` = 1).
+  Group zero's behavior may differ which depends on FW.
+  Matching value equals 0 (value & mask) is not supported.
 
 - L3 VXLAN and VXLAN-GPE tunnels cannot be supported together with MPLSoGRE and MPLSoUDP.
 

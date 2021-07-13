@@ -6930,7 +6930,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			last_item = MLX5_FLOW_LAYER_GRE_KEY;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			ret = mlx5_flow_validate_item_vxlan(items, item_flags,
+			ret = mlx5_flow_validate_item_vxlan(dev, items,
+							    item_flags, attr,
 							    error);
 			if (ret < 0)
 				return ret;
@@ -7892,15 +7893,7 @@ flow_dv_prepare(struct rte_eth_dev *dev,
 	memset(dev_flow, 0, sizeof(*dev_flow));
 	dev_flow->handle = dev_handle;
 	dev_flow->handle_idx = handle_idx;
-	/*
-	 * In some old rdma-core releases, before continuing, a check of the
-	 * length of matching parameter will be done at first. It needs to use
-	 * the length without misc4 param. If the flow has misc4 support, then
-	 * the length needs to be adjusted accordingly. Each param member is
-	 * aligned with a 64B boundary naturally.
-	 */
-	dev_flow->dv.value.size = MLX5_ST_SZ_BYTES(fte_match_param) -
-				  MLX5_ST_SZ_BYTES(fte_match_set_misc4);
+	dev_flow->dv.value.size = MLX5_ST_SZ_BYTES(fte_match_param);
 	dev_flow->ingress = attr->ingress;
 	dev_flow->dv.transfer = attr->transfer;
 	return dev_flow;
@@ -8681,6 +8674,10 @@ flow_dv_translate_item_nvgre(void *matcher, void *key,
 /**
  * Add VXLAN item to matcher and to the value.
  *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] attr
+ *   Flow rule attributes.
  * @param[in, out] matcher
  *   Flow matcher.
  * @param[in, out] key
@@ -8691,7 +8688,9 @@ flow_dv_translate_item_nvgre(void *matcher, void *key,
  *   Item is inner pattern.
  */
 static void
-flow_dv_translate_item_vxlan(void *matcher, void *key,
+flow_dv_translate_item_vxlan(struct rte_eth_dev *dev,
+			     const struct rte_flow_attr *attr,
+			     void *matcher, void *key,
 			     const struct rte_flow_item *item,
 			     int inner)
 {
@@ -8699,13 +8698,16 @@ flow_dv_translate_item_vxlan(void *matcher, void *key,
 	const struct rte_flow_item_vxlan *vxlan_v = item->spec;
 	void *headers_m;
 	void *headers_v;
-	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
-	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
-	char *vni_m;
-	char *vni_v;
+	void *misc5_m;
+	void *misc5_v;
+	uint32_t *tunnel_header_v;
+	uint32_t *tunnel_header_m;
 	uint16_t dport;
-	int size;
-	int i;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item_vxlan nic_mask = {
+		.vni = "\xff\xff\xff",
+		.rsvd1 = 0xff,
+	};
 
 	if (inner) {
 		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
@@ -8724,14 +8726,52 @@ flow_dv_translate_item_vxlan(void *matcher, void *key,
 	}
 	if (!vxlan_v)
 		return;
-	if (!vxlan_m)
-		vxlan_m = &rte_flow_item_vxlan_mask;
-	size = sizeof(vxlan_m->vni);
-	vni_m = MLX5_ADDR_OF(fte_match_set_misc, misc_m, vxlan_vni);
-	vni_v = MLX5_ADDR_OF(fte_match_set_misc, misc_v, vxlan_vni);
-	memcpy(vni_m, vxlan_m->vni, size);
-	for (i = 0; i < size; ++i)
-		vni_v[i] = vni_m[i] & vxlan_v->vni[i];
+	if (!vxlan_m) {
+		if ((!attr->group && !priv->sh->tunnel_header_0_1) ||
+		    (attr->group && !priv->sh->misc5_cap))
+			vxlan_m = &rte_flow_item_vxlan_mask;
+		else
+			vxlan_m = &nic_mask;
+	}
+	if ((!attr->group && !attr->transfer && !priv->sh->tunnel_header_0_1) ||
+	    ((attr->group || attr->transfer) && !priv->sh->misc5_cap)) {
+		void *misc_m;
+		void *misc_v;
+		char *vni_m;
+		char *vni_v;
+		int size;
+		int i;
+		misc_m = MLX5_ADDR_OF(fte_match_param,
+				      matcher, misc_parameters);
+		misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+		size = sizeof(vxlan_m->vni);
+		vni_m = MLX5_ADDR_OF(fte_match_set_misc, misc_m, vxlan_vni);
+		vni_v = MLX5_ADDR_OF(fte_match_set_misc, misc_v, vxlan_vni);
+		memcpy(vni_m, vxlan_m->vni, size);
+		for (i = 0; i < size; ++i)
+			vni_v[i] = vni_m[i] & vxlan_v->vni[i];
+		return;
+	}
+	misc5_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_5);
+	misc5_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_5);
+	tunnel_header_v = (uint32_t *)MLX5_ADDR_OF(fte_match_set_misc5,
+						   misc5_v,
+						   tunnel_header_1);
+	tunnel_header_m = (uint32_t *)MLX5_ADDR_OF(fte_match_set_misc5,
+						   misc5_m,
+						   tunnel_header_1);
+	*tunnel_header_v = (vxlan_v->vni[0] & vxlan_m->vni[0]) |
+			   (vxlan_v->vni[1] & vxlan_m->vni[1]) << 8 |
+			   (vxlan_v->vni[2] & vxlan_m->vni[2]) << 16;
+	if (*tunnel_header_v)
+		*tunnel_header_m = vxlan_m->vni[0] |
+			vxlan_m->vni[1] << 8 |
+			vxlan_m->vni[2] << 16;
+	else
+		*tunnel_header_m = 0x0;
+	*tunnel_header_v |= (vxlan_v->rsvd1 & vxlan_m->rsvd1) << 24;
+	if (vxlan_v->rsvd1 & vxlan_m->rsvd1)
+		*tunnel_header_m |= vxlan_m->rsvd1 << 24;
 }
 
 /**
@@ -9892,7 +9932,30 @@ flow_dv_matcher_enable(uint32_t *match_criteria)
 	match_criteria_enable |=
 		(!HEADER_IS_ZERO(match_criteria, misc_parameters_4)) <<
 		MLX5_MATCH_CRITERIA_ENABLE_MISC4_BIT;
+	match_criteria_enable |=
+		(!HEADER_IS_ZERO(match_criteria, misc_parameters_5)) <<
+		MLX5_MATCH_CRITERIA_ENABLE_MISC5_BIT;
 	return match_criteria_enable;
+}
+
+static void
+__flow_dv_adjust_buf_size(size_t *size, uint8_t match_criteria)
+{
+	/*
+	 * Check flow matching criteria first, subtract misc5/4 length if flow
+	 * doesn't own misc5/4 parameters. In some old rdma-core releases,
+	 * misc5/4 are not supported, and matcher creation failure is expected
+	 * w/o subtration. If misc5 is provided, misc4 must be counted in since
+	 * misc5 is right after misc4.
+	 */
+	if (!(match_criteria & (1 << MLX5_MATCH_CRITERIA_ENABLE_MISC5_BIT))) {
+		*size = MLX5_ST_SZ_BYTES(fte_match_param) -
+			MLX5_ST_SZ_BYTES(fte_match_set_misc5);
+		if (!(match_criteria & (1 <<
+			MLX5_MATCH_CRITERIA_ENABLE_MISC4_BIT))) {
+			*size -= MLX5_ST_SZ_BYTES(fte_match_set_misc4);
+		}
+	}
 }
 
 struct mlx5_hlist_entry *
@@ -10161,6 +10224,8 @@ flow_dv_matcher_create_cb(struct mlx5_cache_list *list,
 	*cache = *ref;
 	dv_attr.match_criteria_enable =
 		flow_dv_matcher_enable(cache->mask.buf);
+	__flow_dv_adjust_buf_size(&ref->mask.size,
+				  dv_attr.match_criteria_enable);
 	dv_attr.priority = ref->priority;
 	if (tbl->is_egress)
 		dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
@@ -10210,7 +10275,6 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 		.error = error,
 		.data = ref,
 	};
-
 	/**
 	 * tunnel offload API requires this registration for cases when
 	 * tunnel match rule was inserted before tunnel set rule.
@@ -12069,8 +12133,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	uint64_t action_flags = 0;
 	struct mlx5_flow_dv_matcher matcher = {
 		.mask = {
-			.size = sizeof(matcher.mask.buf) -
-				MLX5_ST_SZ_BYTES(fte_match_set_misc4),
+			.size = sizeof(matcher.mask.buf),
 		},
 	};
 	int actions_n = 0;
@@ -12877,7 +12940,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			last_item = MLX5_FLOW_LAYER_GRE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			flow_dv_translate_item_vxlan(match_mask, match_value,
+			flow_dv_translate_item_vxlan(dev, attr,
+						     match_mask, match_value,
 						     items, tunnel);
 			matcher.priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
 			last_item = MLX5_FLOW_LAYER_VXLAN;
@@ -12975,10 +13039,6 @@ flow_dv_translate(struct rte_eth_dev *dev,
 						NULL,
 						"cannot create eCPRI parser");
 			}
-			/* Adjust the length matcher and device flow value. */
-			matcher.mask.size = MLX5_ST_SZ_BYTES(fte_match_param);
-			dev_flow->dv.value.size =
-					MLX5_ST_SZ_BYTES(fte_match_param);
 			flow_dv_translate_item_ecpri(dev, match_mask,
 						     match_value, items);
 			/* No other protocol should follow eCPRI layer. */
@@ -13288,6 +13348,7 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	int idx;
 	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 	struct mlx5_flow_rss_desc *rss_desc = &wks->rss_desc;
+	uint8_t misc_mask;
 
 	MLX5_ASSERT(wks);
 	for (idx = wks->flow_idx - 1; idx >= 0; idx--) {
@@ -13358,6 +13419,8 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			}
 			dv->actions[n++] = priv->sh->default_miss_action;
 		}
+		misc_mask = flow_dv_matcher_enable(dv->value.buf);
+		__flow_dv_adjust_buf_size(&dv->value.size, misc_mask);
 		err = mlx5_flow_os_create_flow(dv_h->matcher->matcher_object,
 					       (void *)&dv->value, n,
 					       dv->actions, &dh->drv_flow);
@@ -15476,14 +15539,13 @@ __flow_dv_create_policy_flow(struct rte_eth_dev *dev,
 {
 	int ret;
 	struct mlx5_flow_dv_match_params value = {
-		.size = sizeof(value.buf) -
-			MLX5_ST_SZ_BYTES(fte_match_set_misc4),
+		.size = sizeof(value.buf),
 	};
 	struct mlx5_flow_dv_match_params matcher = {
-		.size = sizeof(matcher.buf) -
-			MLX5_ST_SZ_BYTES(fte_match_set_misc4),
+		.size = sizeof(matcher.buf),
 	};
 	struct mlx5_priv *priv = dev->data->dev_private;
+	uint8_t misc_mask;
 
 	if (match_src_port && (priv->representor || priv->master)) {
 		if (flow_dv_translate_item_port_id(dev, matcher.buf,
@@ -15497,6 +15559,8 @@ __flow_dv_create_policy_flow(struct rte_eth_dev *dev,
 				(enum modify_reg)color_reg_c_idx,
 				rte_col_2_mlx5_col(color),
 				UINT32_MAX);
+	misc_mask = flow_dv_matcher_enable(value.buf);
+	__flow_dv_adjust_buf_size(&value.size, misc_mask);
 	ret = mlx5_flow_os_create_flow(matcher_object,
 			(void *)&value, actions_n, actions, rule);
 	if (ret) {
@@ -15521,14 +15585,12 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 	struct mlx5_flow_tbl_resource *tbl_rsc = sub_policy->tbl_rsc;
 	struct mlx5_flow_dv_matcher matcher = {
 		.mask = {
-			.size = sizeof(matcher.mask.buf) -
-				MLX5_ST_SZ_BYTES(fte_match_set_misc4),
+			.size = sizeof(matcher.mask.buf),
 		},
 		.tbl = tbl_rsc,
 	};
 	struct mlx5_flow_dv_match_params value = {
-		.size = sizeof(value.buf) -
-			MLX5_ST_SZ_BYTES(fte_match_set_misc4),
+		.size = sizeof(value.buf),
 	};
 	struct mlx5_flow_cb_ctx ctx = {
 		.error = error,
@@ -16002,12 +16064,10 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 	int domain, ret, i;
 	struct mlx5_flow_counter *cnt;
 	struct mlx5_flow_dv_match_params value = {
-		.size = sizeof(value.buf) -
-		MLX5_ST_SZ_BYTES(fte_match_set_misc4),
+		.size = sizeof(value.buf),
 	};
 	struct mlx5_flow_dv_match_params matcher_para = {
-		.size = sizeof(matcher_para.buf) -
-		MLX5_ST_SZ_BYTES(fte_match_set_misc4),
+		.size = sizeof(matcher_para.buf),
 	};
 	int mtr_id_reg_c = mlx5_flow_get_reg_id(dev, MLX5_MTR_ID,
 						     0, &error);
@@ -16016,8 +16076,7 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 	struct mlx5_cache_entry *entry;
 	struct mlx5_flow_dv_matcher matcher = {
 		.mask = {
-			.size = sizeof(matcher.mask.buf) -
-			MLX5_ST_SZ_BYTES(fte_match_set_misc4),
+			.size = sizeof(matcher.mask.buf),
 		},
 	};
 	struct mlx5_flow_dv_matcher *drop_matcher;
@@ -16025,6 +16084,7 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 		.error = &error,
 		.data = &matcher,
 	};
+	uint8_t misc_mask;
 
 	if (!priv->mtr_en || mtr_id_reg_c < 0) {
 		rte_errno = ENOTSUP;
@@ -16074,6 +16134,8 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 			actions[i++] = priv->sh->dr_drop_action;
 			flow_dv_match_meta_reg(matcher_para.buf, value.buf,
 				(enum modify_reg)mtr_id_reg_c, 0, 0);
+			misc_mask = flow_dv_matcher_enable(value.buf);
+			__flow_dv_adjust_buf_size(&value.size, misc_mask);
 			ret = mlx5_flow_os_create_flow
 				(mtrmng->def_matcher[domain]->matcher_object,
 				(void *)&value, i, actions,
@@ -16117,6 +16179,8 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 					fm->drop_cnt, NULL);
 		actions[i++] = cnt->action;
 		actions[i++] = priv->sh->dr_drop_action;
+		misc_mask = flow_dv_matcher_enable(value.buf);
+		__flow_dv_adjust_buf_size(&value.size, misc_mask);
 		ret = mlx5_flow_os_create_flow(drop_matcher->matcher_object,
 					       (void *)&value, i, actions,
 					       &fm->drop_rule[domain]);
@@ -16637,10 +16701,12 @@ mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev)
 	if (ret)
 		goto err;
 	dv_attr.match_criteria_enable = flow_dv_matcher_enable(mask.buf);
+	__flow_dv_adjust_buf_size(&mask.size, dv_attr.match_criteria_enable);
 	ret = mlx5_flow_os_create_flow_matcher(sh->ctx, &dv_attr, tbl->obj,
 					       &matcher);
 	if (ret)
 		goto err;
+	__flow_dv_adjust_buf_size(&value.size, dv_attr.match_criteria_enable);
 	ret = mlx5_flow_os_create_flow(matcher, (void *)&value, 1,
 				       actions, &flow);
 err:

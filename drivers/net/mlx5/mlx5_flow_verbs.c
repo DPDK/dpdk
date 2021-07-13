@@ -1381,7 +1381,8 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 					     MLX5_FLOW_LAYER_OUTER_L4_TCP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			ret = mlx5_flow_validate_item_vxlan(items, item_flags,
+			ret = mlx5_flow_validate_item_vxlan(dev, items,
+							    item_flags, attr,
 							    error);
 			if (ret < 0)
 				return ret;

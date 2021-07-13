@@ -2410,12 +2410,14 @@ mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
 /**
  * Validate VXLAN item.
  *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
  * @param[in] item
  *   Item specification.
  * @param[in] item_flags
  *   Bit-fields that holds the items detected until now.
- * @param[in] target_protocol
- *   The next protocol in the previous item.
+ * @param[in] attr
+ *   Flow rule attributes.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -2423,24 +2425,32 @@ mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_vxlan(const struct rte_flow_item *item,
+mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
+			      const struct rte_flow_item *item,
 			      uint64_t item_flags,
+			      const struct rte_flow_attr *attr,
 			      struct rte_flow_error *error)
 {
 	const struct rte_flow_item_vxlan *spec = item->spec;
 	const struct rte_flow_item_vxlan *mask = item->mask;
 	int ret;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	union vni {
 		uint32_t vlan_id;
 		uint8_t vni[4];
 	} id = { .vlan_id = 0, };
-
+	const struct rte_flow_item_vxlan nic_mask = {
+		.vni = "\xff\xff\xff",
+		.rsvd1 = 0xff,
+	};
+	const struct rte_flow_item_vxlan *valid_mask;
 
 	if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "multiple tunnel layers not"
 					  " supported");
+	valid_mask = &rte_flow_item_vxlan_mask;
 	/*
 	 * Verify only UDPv4 is present as defined in
 	 * https://tools.ietf.org/html/rfc7348
@@ -2451,9 +2461,15 @@ mlx5_flow_validate_item_vxlan(const struct rte_flow_item *item,
 					  "no outer UDP layer found");
 	if (!mask)
 		mask = &rte_flow_item_vxlan_mask;
+	/* FDB domain & NIC domain non-zero group */
+	if ((attr->transfer || attr->group) && priv->sh->misc5_cap)
+		valid_mask = &nic_mask;
+	/* Group zero in NIC domain */
+	if (!attr->group && !attr->transfer && priv->sh->tunnel_header_0_1)
+		valid_mask = &nic_mask;
 	ret = mlx5_flow_item_acceptable
 		(item, (const uint8_t *)mask,
-		 (const uint8_t *)&rte_flow_item_vxlan_mask,
+		 (const uint8_t *)valid_mask,
 		 sizeof(struct rte_flow_item_vxlan),
 		 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 	if (ret < 0)

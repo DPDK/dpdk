@@ -194,6 +194,79 @@ mlx5_alloc_verbs_buf(size_t size, void *data)
 }
 
 /**
+ * Detect misc5 support or not
+ *
+ * @param[in] priv
+ *   Device private data pointer
+ */
+#ifdef HAVE_MLX5DV_DR
+static void
+__mlx5_discovery_misc5_cap(struct mlx5_priv *priv)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	/* Dummy VxLAN matcher to detect rdma-core misc5 cap
+	 * Case: IPv4--->UDP--->VxLAN--->vni
+	 */
+	void *tbl;
+	struct mlx5_flow_dv_match_params matcher_mask;
+	void *match_m;
+	void *matcher;
+	void *headers_m;
+	void *misc5_m;
+	uint32_t *tunnel_header_m;
+	struct mlx5dv_flow_matcher_attr dv_attr;
+
+	memset(&matcher_mask, 0, sizeof(matcher_mask));
+	matcher_mask.size = sizeof(matcher_mask.buf);
+	match_m = matcher_mask.buf;
+	headers_m = MLX5_ADDR_OF(fte_match_param, match_m, outer_headers);
+	misc5_m = MLX5_ADDR_OF(fte_match_param,
+			       match_m, misc_parameters_5);
+	tunnel_header_m = (uint32_t *)
+				MLX5_ADDR_OF(fte_match_set_misc5,
+				misc5_m, tunnel_header_1);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xff);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 4);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xffff);
+	*tunnel_header_m = 0xffffff;
+
+	tbl = mlx5_glue->dr_create_flow_tbl(priv->sh->rx_domain, 1);
+	if (!tbl) {
+		DRV_LOG(INFO, "No SW steering support");
+		return;
+	}
+	dv_attr.type = IBV_FLOW_ATTR_NORMAL,
+	dv_attr.match_mask = (void *)&matcher_mask,
+	dv_attr.match_criteria_enable =
+			(1 << MLX5_MATCH_CRITERIA_ENABLE_OUTER_BIT) |
+			(1 << MLX5_MATCH_CRITERIA_ENABLE_MISC5_BIT);
+	dv_attr.priority = 3;
+#ifdef HAVE_MLX5DV_DR_ESWITCH
+	void *misc2_m;
+	if (priv->config.dv_esw_en) {
+		/* FDB enabled reg_c_0 */
+		dv_attr.match_criteria_enable |=
+				(1 << MLX5_MATCH_CRITERIA_ENABLE_MISC2_BIT);
+		misc2_m = MLX5_ADDR_OF(fte_match_param,
+				       match_m, misc_parameters_2);
+		MLX5_SET(fte_match_set_misc2, misc2_m,
+			 metadata_reg_c_0, 0xffff);
+	}
+#endif
+	matcher = mlx5_glue->dv_create_flow_matcher(priv->sh->ctx,
+						    &dv_attr, tbl);
+	if (matcher) {
+		priv->sh->misc5_cap = 1;
+		mlx5_glue->dv_destroy_flow_matcher(matcher);
+	}
+	mlx5_glue->dr_destroy_flow_tbl(tbl);
+#else
+	RTE_SET_USED(priv);
+#endif
+}
+#endif
+
+/**
  * Verbs callback to free a memory.
  *
  * @param[in] ptr
@@ -364,6 +437,8 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		if (sh->fdb_domain)
 			mlx5_glue->dr_allow_duplicate_rules(sh->fdb_domain, 0);
 	}
+
+	__mlx5_discovery_misc5_cap(priv);
 #endif /* HAVE_MLX5DV_DR */
 	sh->default_miss_action =
 			mlx5_glue->dr_create_flow_action_default_miss();
@@ -1313,6 +1388,8 @@ err_secondary:
 				goto error;
 			}
 		}
+		if (config->hca_attr.flow.tunnel_header_0_1)
+			sh->tunnel_header_0_1 = 1;
 #endif
 #ifdef HAVE_MLX5_DR_CREATE_ACTION_ASO
 		if (config->hca_attr.flow_hit_aso &&
