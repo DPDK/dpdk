@@ -266,8 +266,9 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 				vx_vni = rte_be_to_cpu_32(vxlan_hdr->vx_vni);
 				MKDUMPSTR(print_buf, buf_size, cur_len,
 					  " - VXLAN packet: packet type =%d, "
-					  "Destination UDP port =%d, VNI = %d",
-					  packet_type, udp_port, vx_vni >> 8);
+					  "Destination UDP port =%d, VNI = %d, "
+					  "last_rsvd = %d", packet_type,
+					  udp_port, vx_vni >> 8, vx_vni & 0xff);
 			}
 		}
 		MKDUMPSTR(print_buf, buf_size, cur_len,

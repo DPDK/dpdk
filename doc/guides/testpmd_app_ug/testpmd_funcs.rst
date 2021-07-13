@@ -3695,6 +3695,7 @@ This section lists supported pattern items and their attributes, if any.
 - ``vxlan``: match VXLAN header.
 
   - ``vni {unsigned}``: VXLAN identifier.
+  - ``last_rsvd {unsigned}``: VXLAN last reserved 8-bits.
 
 - ``e_tag``: match IEEE 802.1BR E-Tag header.
 
