@@ -50,8 +50,6 @@
 #include "mlx5_nl.h"
 #include "mlx5_devx.h"
 
-#define MLX5_TAGS_HLIST_ARRAY_SIZE	(1 << 15)
-
 #ifndef HAVE_IBV_MLX5_MOD_MPW
 #define MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED (1 << 2)
 #define MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW (1 << 3)
@@ -385,46 +383,6 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 					      flow_dv_dest_array_clone_free_cb);
 	if (!sh->dest_array_list)
 		goto error;
-	/* Create tags hash list table. */
-	snprintf(s, sizeof(s), "%s_tags", sh->ibdev_name);
-	sh->tag_table = mlx5_hlist_create(s, MLX5_TAGS_HLIST_ARRAY_SIZE, false,
-					  false, sh, flow_dv_tag_create_cb,
-					  flow_dv_tag_match_cb,
-					  flow_dv_tag_remove_cb,
-					  flow_dv_tag_clone_cb,
-					  flow_dv_tag_clone_free_cb);
-	if (!sh->tag_table) {
-		DRV_LOG(ERR, "tags with hash creation failed.");
-		err = ENOMEM;
-		goto error;
-	}
-	snprintf(s, sizeof(s), "%s_hdr_modify", sh->ibdev_name);
-	sh->modify_cmds = mlx5_hlist_create(s, MLX5_FLOW_HDR_MODIFY_HTABLE_SZ,
-					    true, false, sh,
-					    flow_dv_modify_create_cb,
-					    flow_dv_modify_match_cb,
-					    flow_dv_modify_remove_cb,
-					    flow_dv_modify_clone_cb,
-					    flow_dv_modify_clone_free_cb);
-	if (!sh->modify_cmds) {
-		DRV_LOG(ERR, "hdr modify hash creation failed");
-		err = ENOMEM;
-		goto error;
-	}
-	snprintf(s, sizeof(s), "%s_encaps_decaps", sh->ibdev_name);
-	sh->encaps_decaps = mlx5_hlist_create(s,
-					      MLX5_FLOW_ENCAP_DECAP_HTABLE_SZ,
-					      true, true, sh,
-					      flow_dv_encap_decap_create_cb,
-					      flow_dv_encap_decap_match_cb,
-					      flow_dv_encap_decap_remove_cb,
-					      flow_dv_encap_decap_clone_cb,
-					     flow_dv_encap_decap_clone_free_cb);
-	if (!sh->encaps_decaps) {
-		DRV_LOG(ERR, "encap decap hash creation failed");
-		err = ENOMEM;
-		goto error;
-	}
 #endif
 #ifdef HAVE_MLX5DV_DR
 	void *domain;
@@ -469,7 +427,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		goto error;
 	}
 #endif
-	if (!sh->tunnel_hub)
+	if (!sh->tunnel_hub && priv->config.dv_miss_info)
 		err = mlx5_alloc_tunnel_hub(sh);
 	if (err) {
 		DRV_LOG(ERR, "mlx5_alloc_tunnel_hub failed err=%d", err);

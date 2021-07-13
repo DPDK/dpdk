@@ -188,6 +188,12 @@
 /* Size of the simple hash table for encap decap table. */
 #define MLX5_FLOW_ENCAP_DECAP_HTABLE_SZ (1 << 12)
 
+/* Size of the hash table for tag table. */
+#define MLX5_TAGS_HLIST_ARRAY_SIZE	(1 << 15)
+
+/* Size fo the hash table for SFT table. */
+#define MLX5_FLOW_SFT_HLIST_ARRAY_SIZE	4096
+
 /* Hairpin TX/RX queue configuration parameters. */
 #define MLX5_HAIRPIN_QUEUE_STRIDE 6
 #define MLX5_HAIRPIN_JUMBO_LOG_SIZE (14 + 2)

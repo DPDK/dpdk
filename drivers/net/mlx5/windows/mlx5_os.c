@@ -30,8 +30,6 @@
 #include "mlx5_flow.h"
 #include "mlx5_devx.h"
 
-#define MLX5_TAGS_HLIST_ARRAY_SIZE 8192
-
 static const char *MZ_MLX5_PMD_SHARED_DATA = "mlx5_pmd_shared_data";
 
 /* Spinlock for mlx5_shared_data allocation. */
