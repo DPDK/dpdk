@@ -2094,23 +2094,19 @@ error:
 }
 
 int
-mlx5_hrxq_match_cb(void *tool_ctx, struct mlx5_list_entry *entry, void *cb_ctx)
+mlx5_hrxq_match_cb(void *tool_ctx __rte_unused, struct mlx5_list_entry *entry,
+		   void *cb_ctx)
 {
-	struct rte_eth_dev *dev = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_rss_desc *rss_desc = ctx->data;
 	struct mlx5_hrxq *hrxq = container_of(entry, typeof(*hrxq), entry);
-	struct mlx5_ind_table_obj *ind_tbl;
 
-	if (hrxq->rss_key_len != rss_desc->key_len ||
+	return (hrxq->rss_key_len != rss_desc->key_len ||
 	    memcmp(hrxq->rss_key, rss_desc->key, rss_desc->key_len) ||
-	    hrxq->hash_fields != rss_desc->hash_fields)
-		return 1;
-	ind_tbl = mlx5_ind_table_obj_get(dev, rss_desc->queue,
-					 rss_desc->queue_num);
-	if (ind_tbl)
-		mlx5_ind_table_obj_release(dev, ind_tbl, hrxq->standalone);
-	return ind_tbl != hrxq->ind_table;
+	    hrxq->hash_fields != rss_desc->hash_fields ||
+	    hrxq->ind_table->queues_n != rss_desc->queue_num ||
+	    memcmp(hrxq->ind_table->queues, rss_desc->queue,
+	    rss_desc->queue_num * sizeof(rss_desc->queue[0])));
 }
 
 /**
