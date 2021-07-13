@@ -47,36 +47,25 @@ __list_lookup(struct mlx5_list *list, int lcore_index, void *ctx, bool reuse)
 	uint32_t ret;
 
 	while (entry != NULL) {
-		struct mlx5_list_entry *nentry = LIST_NEXT(entry, next);
-
-		if (list->cb_match(list, entry, ctx)) {
-			if (lcore_index < RTE_MAX_LCORE) {
+		if (list->cb_match(list, entry, ctx) == 0) {
+			if (reuse) {
+				ret = __atomic_add_fetch(&entry->ref_cnt, 1,
+							 __ATOMIC_ACQUIRE) - 1;
+				DRV_LOG(DEBUG, "mlx5 list %s entry %p ref: %u.",
+					list->name, (void *)entry,
+					entry->ref_cnt);
+			} else if (lcore_index < RTE_MAX_LCORE) {
 				ret = __atomic_load_n(&entry->ref_cnt,
 						      __ATOMIC_ACQUIRE);
-				if (ret == 0) {
-					LIST_REMOVE(entry, next);
-					list->cb_clone_free(list, entry);
-				}
 			}
-			entry = nentry;
-			continue;
+			if (likely(ret != 0 || lcore_index == RTE_MAX_LCORE))
+				return entry;
+			if (reuse && ret == 0)
+				entry->ref_cnt--; /* Invalid entry. */
 		}
-		if (reuse) {
-			ret = __atomic_add_fetch(&entry->ref_cnt, 1,
-						 __ATOMIC_ACQUIRE);
-			if (ret == 1u) {
-				/* Entry was invalid before, free it. */
-				LIST_REMOVE(entry, next);
-				list->cb_clone_free(list, entry);
-				entry = nentry;
-				continue;
-			}
-			DRV_LOG(DEBUG, "mlx5 list %s entry %p ref++: %u.",
-				list->name, (void *)entry, entry->ref_cnt);
-		}
-		break;
+		entry = LIST_NEXT(entry, next);
 	}
-	return entry;
+	return NULL;
 }
 
 struct mlx5_list_entry *
@@ -105,8 +94,29 @@ mlx5_list_cache_insert(struct mlx5_list *list, int lcore_index,
 		return NULL;
 	lentry->ref_cnt = 1u;
 	lentry->gentry = gentry;
+	lentry->lcore_idx = (uint32_t)lcore_index;
 	LIST_INSERT_HEAD(&list->cache[lcore_index].h, lentry, next);
 	return lentry;
+}
+
+static void
+__list_cache_clean(struct mlx5_list *list, int lcore_index)
+{
+	struct mlx5_list_cache *c = &list->cache[lcore_index];
+	struct mlx5_list_entry *entry = LIST_FIRST(&c->h);
+	uint32_t inv_cnt = __atomic_exchange_n(&c->inv_cnt, 0,
+					       __ATOMIC_RELAXED);
+
+	while (inv_cnt != 0 && entry != NULL) {
+		struct mlx5_list_entry *nentry = LIST_NEXT(entry, next);
+
+		if (__atomic_load_n(&entry->ref_cnt, __ATOMIC_RELAXED) == 0) {
+			LIST_REMOVE(entry, next);
+			list->cb_clone_free(list, entry);
+			inv_cnt--;
+		}
+		entry = nentry;
+	}
 }
 
 struct mlx5_list_entry *
@@ -122,6 +132,8 @@ mlx5_list_register(struct mlx5_list *list, void *ctx)
 		rte_errno = ENOTSUP;
 		return NULL;
 	}
+	/* 0. Free entries that was invalidated by other lcores. */
+	__list_cache_clean(list, lcore_index);
 	/* 1. Lookup in local cache. */
 	local_entry = __list_lookup(list, lcore_index, ctx, true);
 	if (local_entry)
@@ -147,6 +159,7 @@ mlx5_list_register(struct mlx5_list *list, void *ctx)
 	entry->ref_cnt = 1u;
 	local_entry->ref_cnt = 1u;
 	local_entry->gentry = entry;
+	local_entry->lcore_idx = (uint32_t)lcore_index;
 	rte_rwlock_write_lock(&list->lock);
 	/* 4. Make sure the same entry was not created before the write lock. */
 	if (unlikely(prev_gen_cnt != list->gen_cnt)) {
@@ -169,8 +182,8 @@ mlx5_list_register(struct mlx5_list *list, void *ctx)
 	rte_rwlock_write_unlock(&list->lock);
 	LIST_INSERT_HEAD(&list->cache[lcore_index].h, local_entry, next);
 	__atomic_add_fetch(&list->count, 1, __ATOMIC_ACQUIRE);
-	DRV_LOG(DEBUG, "mlx5 list %s entry %p new: %u.",
-		list->name, (void *)entry, entry->ref_cnt);
+	DRV_LOG(DEBUG, "mlx5 list %s entry %p new: %u.", list->name,
+		(void *)entry, entry->ref_cnt);
 	return local_entry;
 }
 
@@ -179,9 +192,21 @@ mlx5_list_unregister(struct mlx5_list *list,
 		      struct mlx5_list_entry *entry)
 {
 	struct mlx5_list_entry *gentry = entry->gentry;
+	int lcore_idx;
 
 	if (__atomic_sub_fetch(&entry->ref_cnt, 1, __ATOMIC_ACQUIRE) != 0)
 		return 1;
+	lcore_idx = rte_lcore_index(rte_lcore_id());
+	MLX5_ASSERT(lcore_idx < RTE_MAX_LCORE);
+	if (entry->lcore_idx == (uint32_t)lcore_idx) {
+		LIST_REMOVE(entry, next);
+		list->cb_clone_free(list, entry);
+	} else if (likely(lcore_idx != -1)) {
+		__atomic_add_fetch(&list->cache[entry->lcore_idx].inv_cnt, 1,
+				   __ATOMIC_RELAXED);
+	} else {
+		return 0;
+	}
 	if (__atomic_sub_fetch(&gentry->ref_cnt, 1, __ATOMIC_ACQUIRE) != 0)
 		return 1;
 	rte_rwlock_write_lock(&list->lock);

@@ -311,11 +311,13 @@ struct mlx5_list;
 struct mlx5_list_entry {
 	LIST_ENTRY(mlx5_list_entry) next; /* Entry pointers in the list. */
 	uint32_t ref_cnt; /* 0 means, entry is invalid. */
+	uint32_t lcore_idx;
 	struct mlx5_list_entry *gentry;
 };
 
 struct mlx5_list_cache {
 	LIST_HEAD(mlx5_list_head, mlx5_list_entry) h;
+	uint32_t inv_cnt; /* Invalid entries counter. */
 } __rte_cache_aligned;
 
 /**
