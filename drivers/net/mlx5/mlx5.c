@@ -1612,7 +1612,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (ret)
 		DRV_LOG(WARNING, "port %u some flows still remain",
 			dev->data->port_id);
-	mlx5_cache_list_destroy(&priv->hrxqs);
+	mlx5_list_destroy(&priv->hrxqs);
 	/*
 	 * Free the shared context in last turn, because the cleanup
 	 * routines above may use some shared fields, like

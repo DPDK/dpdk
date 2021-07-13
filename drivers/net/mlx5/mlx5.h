@@ -79,7 +79,7 @@ enum mlx5_flow_type {
 	MLX5_FLOW_TYPE_MAXI,
 };
 
-/* Hash and cache list callback context. */
+/* Hlist and list callback context. */
 struct mlx5_flow_cb_ctx {
 	struct rte_eth_dev *dev;
 	struct rte_flow_error *error;
@@ -1139,10 +1139,10 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_hlist *encaps_decaps; /* Encap/decap action hash list. */
 	struct mlx5_hlist *modify_cmds;
 	struct mlx5_hlist *tag_table;
-	struct mlx5_cache_list port_id_action_list; /* Port ID action cache. */
-	struct mlx5_cache_list push_vlan_action_list; /* Push VLAN actions. */
-	struct mlx5_cache_list sample_action_list; /* List of sample actions. */
-	struct mlx5_cache_list dest_array_list;
+	struct mlx5_list port_id_action_list; /* Port ID action list. */
+	struct mlx5_list push_vlan_action_list; /* Push VLAN actions. */
+	struct mlx5_list sample_action_list; /* List of sample actions. */
+	struct mlx5_list dest_array_list;
 	/* List of destination array actions. */
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
 	void *default_miss_action; /* Default miss action. */
@@ -1246,7 +1246,7 @@ struct mlx5_ind_table_obj {
 /* Hash Rx queue. */
 __extension__
 struct mlx5_hrxq {
-	struct mlx5_cache_entry entry; /* Cache entry. */
+	struct mlx5_list_entry entry; /* List entry. */
 	uint32_t standalone:1; /* This object used in shared action. */
 	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
 	RTE_STD_C11
@@ -1384,7 +1384,7 @@ struct mlx5_priv {
 	struct mlx5_obj_ops obj_ops; /* HW objects operations. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqobj, mlx5_rxq_obj) rxqsobj; /* Verbs/DevX Rx queues. */
-	struct mlx5_cache_list hrxqs; /* Hash Rx queues. */
+	struct mlx5_list hrxqs; /* Hash Rx queues. */
 	LIST_HEAD(txq, mlx5_txq_ctrl) txqsctrl; /* DPDK Tx queues. */
 	LIST_HEAD(txqobj, mlx5_txq_obj) txqsobj; /* Verbs/DevX Tx queues. */
 	/* Indirection tables. */
@@ -1394,7 +1394,6 @@ struct mlx5_priv {
 	/**< Verbs modify header action object. */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
 	uint8_t max_lro_msg_size;
-	/* Tags resources cache. */
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
 	struct mlx5_stats_ctrl stats_ctrl; /* Stats control. */

@@ -468,7 +468,7 @@ struct mlx5_flow_dv_match_params {
 
 /* Matcher structure. */
 struct mlx5_flow_dv_matcher {
-	struct mlx5_cache_entry entry; /**< Pointer to the next element. */
+	struct mlx5_list_entry entry; /**< Pointer to the next element. */
 	struct mlx5_flow_tbl_resource *tbl;
 	/**< Pointer to the table(group) the matcher associated with. */
 	void *matcher_object; /**< Pointer to DV matcher */
@@ -548,7 +548,7 @@ struct mlx5_flow_dv_jump_tbl_resource {
 
 /* Port ID resource structure. */
 struct mlx5_flow_dv_port_id_action_resource {
-	struct mlx5_cache_entry entry;
+	struct mlx5_list_entry entry;
 	void *action; /**< Action object. */
 	uint32_t port_id; /**< Port ID value. */
 	uint32_t idx; /**< Indexed pool memory index. */
@@ -556,7 +556,7 @@ struct mlx5_flow_dv_port_id_action_resource {
 
 /* Push VLAN action resource structure */
 struct mlx5_flow_dv_push_vlan_action_resource {
-	struct mlx5_cache_entry entry; /* Cache entry. */
+	struct mlx5_list_entry entry; /* Cache entry. */
 	void *action; /**< Action object. */
 	uint8_t ft_type; /**< Flow table type, Rx, Tx or FDB. */
 	rte_be32_t vlan_tag; /**< VLAN tag value. */
@@ -591,7 +591,7 @@ struct mlx5_flow_tbl_data_entry {
 	/**< hash list entry, 64-bits key inside. */
 	struct mlx5_flow_tbl_resource tbl;
 	/**< flow table resource. */
-	struct mlx5_cache_list matchers;
+	struct mlx5_list matchers;
 	/**< matchers' header associated with the flow table. */
 	struct mlx5_flow_dv_jump_tbl_resource jump;
 	/**< jump resource, at most one for each table created. */
@@ -632,7 +632,7 @@ struct mlx5_flow_sub_actions_idx {
 
 /* Sample action resource structure. */
 struct mlx5_flow_dv_sample_resource {
-	struct mlx5_cache_entry entry; /**< Cache entry. */
+	struct mlx5_list_entry entry; /**< Cache entry. */
 	union {
 		void *verbs_action; /**< Verbs sample action object. */
 		void **sub_actions; /**< Sample sub-action array. */
@@ -654,7 +654,7 @@ struct mlx5_flow_dv_sample_resource {
 
 /* Destination array action resource structure. */
 struct mlx5_flow_dv_dest_array_resource {
-	struct mlx5_cache_entry entry; /**< Cache entry. */
+	struct mlx5_list_entry entry; /**< Cache entry. */
 	uint32_t idx; /** Destination array action object index. */
 	uint8_t ft_type; /** Flow Table Type */
 	uint8_t num_of_dest; /**< Number of destination actions. */
@@ -1633,43 +1633,45 @@ struct mlx5_hlist_entry *flow_dv_encap_decap_create_cb(struct mlx5_hlist *list,
 void flow_dv_encap_decap_remove_cb(struct mlx5_hlist *list,
 				   struct mlx5_hlist_entry *entry);
 
-int flow_dv_matcher_match_cb(struct mlx5_cache_list *list,
-			     struct mlx5_cache_entry *entry, void *ctx);
-struct mlx5_cache_entry *flow_dv_matcher_create_cb(struct mlx5_cache_list *list,
-		struct mlx5_cache_entry *entry, void *ctx);
-void flow_dv_matcher_remove_cb(struct mlx5_cache_list *list,
-			       struct mlx5_cache_entry *entry);
+int flow_dv_matcher_match_cb(struct mlx5_list *list,
+			     struct mlx5_list_entry *entry, void *ctx);
+struct mlx5_list_entry *flow_dv_matcher_create_cb(struct mlx5_list *list,
+						  struct mlx5_list_entry *entry,
+						  void *ctx);
+void flow_dv_matcher_remove_cb(struct mlx5_list *list,
+			       struct mlx5_list_entry *entry);
 
-int flow_dv_port_id_match_cb(struct mlx5_cache_list *list,
-			     struct mlx5_cache_entry *entry, void *cb_ctx);
-struct mlx5_cache_entry *flow_dv_port_id_create_cb(struct mlx5_cache_list *list,
-		struct mlx5_cache_entry *entry, void *cb_ctx);
-void flow_dv_port_id_remove_cb(struct mlx5_cache_list *list,
-			       struct mlx5_cache_entry *entry);
+int flow_dv_port_id_match_cb(struct mlx5_list *list,
+			     struct mlx5_list_entry *entry, void *cb_ctx);
+struct mlx5_list_entry *flow_dv_port_id_create_cb(struct mlx5_list *list,
+						  struct mlx5_list_entry *entry,
+						  void *cb_ctx);
+void flow_dv_port_id_remove_cb(struct mlx5_list *list,
+			       struct mlx5_list_entry *entry);
 
-int flow_dv_push_vlan_match_cb(struct mlx5_cache_list *list,
-			       struct mlx5_cache_entry *entry, void *cb_ctx);
-struct mlx5_cache_entry *flow_dv_push_vlan_create_cb
-				(struct mlx5_cache_list *list,
-				 struct mlx5_cache_entry *entry, void *cb_ctx);
-void flow_dv_push_vlan_remove_cb(struct mlx5_cache_list *list,
-				 struct mlx5_cache_entry *entry);
+int flow_dv_push_vlan_match_cb(struct mlx5_list *list,
+			       struct mlx5_list_entry *entry, void *cb_ctx);
+struct mlx5_list_entry *flow_dv_push_vlan_create_cb(struct mlx5_list *list,
+						  struct mlx5_list_entry *entry,
+						  void *cb_ctx);
+void flow_dv_push_vlan_remove_cb(struct mlx5_list *list,
+				 struct mlx5_list_entry *entry);
 
-int flow_dv_sample_match_cb(struct mlx5_cache_list *list,
-			    struct mlx5_cache_entry *entry, void *cb_ctx);
-struct mlx5_cache_entry *flow_dv_sample_create_cb
-				(struct mlx5_cache_list *list,
-				 struct mlx5_cache_entry *entry, void *cb_ctx);
-void flow_dv_sample_remove_cb(struct mlx5_cache_list *list,
-			      struct mlx5_cache_entry *entry);
+int flow_dv_sample_match_cb(struct mlx5_list *list,
+			    struct mlx5_list_entry *entry, void *cb_ctx);
+struct mlx5_list_entry *flow_dv_sample_create_cb(struct mlx5_list *list,
+						 struct mlx5_list_entry *entry,
+						 void *cb_ctx);
+void flow_dv_sample_remove_cb(struct mlx5_list *list,
+			      struct mlx5_list_entry *entry);
 
-int flow_dv_dest_array_match_cb(struct mlx5_cache_list *list,
-				struct mlx5_cache_entry *entry, void *cb_ctx);
-struct mlx5_cache_entry *flow_dv_dest_array_create_cb
-				(struct mlx5_cache_list *list,
-				 struct mlx5_cache_entry *entry, void *cb_ctx);
-void flow_dv_dest_array_remove_cb(struct mlx5_cache_list *list,
-				  struct mlx5_cache_entry *entry);
+int flow_dv_dest_array_match_cb(struct mlx5_list *list,
+				struct mlx5_list_entry *entry, void *cb_ctx);
+struct mlx5_list_entry *flow_dv_dest_array_create_cb(struct mlx5_list *list,
+						  struct mlx5_list_entry *entry,
+						  void *cb_ctx);
+void flow_dv_dest_array_remove_cb(struct mlx5_list *list,
+				  struct mlx5_list_entry *entry);
 struct mlx5_aso_age_action *flow_aso_age_get_by_idx(struct rte_eth_dev *dev,
 						    uint32_t age_idx);
 int flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,

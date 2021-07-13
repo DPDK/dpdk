@@ -297,19 +297,19 @@ log2above(unsigned int v)
 	return l + r;
 }
 
-/************************ cache list *****************************/
+/************************ mlx5 list *****************************/
 
 /** Maximum size of string for naming. */
 #define MLX5_NAME_SIZE			32
 
-struct mlx5_cache_list;
+struct mlx5_list;
 
 /**
- * Structure of the entry in the cache list, user should define its own struct
+ * Structure of the entry in the mlx5 list, user should define its own struct
  * that contains this in order to store the data.
  */
-struct mlx5_cache_entry {
-	LIST_ENTRY(mlx5_cache_entry) next; /* Entry pointers in the list. */
+struct mlx5_list_entry {
+	LIST_ENTRY(mlx5_list_entry) next; /* Entry pointers in the list. */
 	uint32_t ref_cnt; /* Reference count. */
 };
 
@@ -317,18 +317,18 @@ struct mlx5_cache_entry {
  * Type of callback function for entry removal.
  *
  * @param list
- *   The cache list.
+ *   The mlx5 list.
  * @param entry
  *   The entry in the list.
  */
-typedef void (*mlx5_cache_remove_cb)(struct mlx5_cache_list *list,
-				     struct mlx5_cache_entry *entry);
+typedef void (*mlx5_list_remove_cb)(struct mlx5_list *list,
+				     struct mlx5_list_entry *entry);
 
 /**
  * Type of function for user defined matching.
  *
  * @param list
- *   The cache list.
+ *   The mlx5 list.
  * @param entry
  *   The entry in the list.
  * @param ctx
@@ -337,14 +337,14 @@ typedef void (*mlx5_cache_remove_cb)(struct mlx5_cache_list *list,
  * @return
  *   0 if matching, non-zero number otherwise.
  */
-typedef int (*mlx5_cache_match_cb)(struct mlx5_cache_list *list,
-				   struct mlx5_cache_entry *entry, void *ctx);
+typedef int (*mlx5_list_match_cb)(struct mlx5_list *list,
+				   struct mlx5_list_entry *entry, void *ctx);
 
 /**
- * Type of function for user defined cache list entry creation.
+ * Type of function for user defined mlx5 list entry creation.
  *
  * @param list
- *   The cache list.
+ *   The mlx5 list.
  * @param entry
  *   The new allocated entry, NULL if list entry size unspecified,
  *   New entry has to be allocated in callback and return.
@@ -354,46 +354,46 @@ typedef int (*mlx5_cache_match_cb)(struct mlx5_cache_list *list,
  * @return
  *   Pointer of entry on success, NULL otherwise.
  */
-typedef struct mlx5_cache_entry *(*mlx5_cache_create_cb)
-				 (struct mlx5_cache_list *list,
-				  struct mlx5_cache_entry *entry,
+typedef struct mlx5_list_entry *(*mlx5_list_create_cb)
+				 (struct mlx5_list *list,
+				  struct mlx5_list_entry *entry,
 				  void *ctx);
 
 /**
- * Linked cache list structure.
+ * Linked mlx5 list structure.
  *
- * Entry in cache list could be reused if entry already exists,
+ * Entry in mlx5 list could be reused if entry already exists,
  * reference count will increase and the existing entry returns.
  *
  * When destroy an entry from list, decrease reference count and only
  * destroy when no further reference.
  *
- * Linked list cache is designed for limited number of entries cache,
+ * Linked list is designed for limited number of entries,
  * read mostly, less modification.
  *
- * For huge amount of entries cache, please consider hash list cache.
+ * For huge amount of entries, please consider hash list.
  *
  */
-struct mlx5_cache_list {
-	char name[MLX5_NAME_SIZE]; /**< Name of the cache list. */
+struct mlx5_list {
+	char name[MLX5_NAME_SIZE]; /**< Name of the mlx5 list. */
 	uint32_t entry_sz; /**< Entry size, 0: use create callback. */
 	rte_rwlock_t lock; /* read/write lock. */
 	uint32_t gen_cnt; /* List modification will update generation count. */
 	uint32_t count; /* number of entries in list. */
 	void *ctx; /* user objects target to callback. */
-	mlx5_cache_create_cb cb_create; /**< entry create callback. */
-	mlx5_cache_match_cb cb_match; /**< entry match callback. */
-	mlx5_cache_remove_cb cb_remove; /**< entry remove callback. */
-	LIST_HEAD(mlx5_cache_head, mlx5_cache_entry) head;
+	mlx5_list_create_cb cb_create; /**< entry create callback. */
+	mlx5_list_match_cb cb_match; /**< entry match callback. */
+	mlx5_list_remove_cb cb_remove; /**< entry remove callback. */
+	LIST_HEAD(mlx5_list_head, mlx5_list_entry) head;
 };
 
 /**
- * Initialize a cache list.
+ * Create a mlx5 list.
  *
  * @param list
  *   Pointer to the hast list table.
  * @param name
- *   Name of the cache list.
+ *   Name of the mlx5 list.
  * @param entry_size
  *   Entry size to allocate, 0 to allocate by creation callback.
  * @param ctx
@@ -407,11 +407,11 @@ struct mlx5_cache_list {
  * @return
  *   0 on success, otherwise failure.
  */
-int mlx5_cache_list_init(struct mlx5_cache_list *list,
+int mlx5_list_create(struct mlx5_list *list,
 			 const char *name, uint32_t entry_size, void *ctx,
-			 mlx5_cache_create_cb cb_create,
-			 mlx5_cache_match_cb cb_match,
-			 mlx5_cache_remove_cb cb_remove);
+			 mlx5_list_create_cb cb_create,
+			 mlx5_list_match_cb cb_match,
+			 mlx5_list_remove_cb cb_remove);
 
 /**
  * Search an entry matching the key.
@@ -420,18 +420,18 @@ int mlx5_cache_list_init(struct mlx5_cache_list *list,
  * this function only in main thread.
  *
  * @param list
- *   Pointer to the cache list.
+ *   Pointer to the mlx5 list.
  * @param ctx
  *   Common context parameter used by entry callback function.
  *
  * @return
- *   Pointer of the cache entry if found, NULL otherwise.
+ *   Pointer of the list entry if found, NULL otherwise.
  */
-struct mlx5_cache_entry *mlx5_cache_lookup(struct mlx5_cache_list *list,
+struct mlx5_list_entry *mlx5_list_lookup(struct mlx5_list *list,
 					   void *ctx);
 
 /**
- * Reuse or create an entry to the cache list.
+ * Reuse or create an entry to the mlx5 list.
  *
  * @param list
  *   Pointer to the hast list table.
@@ -441,42 +441,42 @@ struct mlx5_cache_entry *mlx5_cache_lookup(struct mlx5_cache_list *list,
  * @return
  *   registered entry on success, NULL otherwise
  */
-struct mlx5_cache_entry *mlx5_cache_register(struct mlx5_cache_list *list,
+struct mlx5_list_entry *mlx5_list_register(struct mlx5_list *list,
 					     void *ctx);
 
 /**
- * Remove an entry from the cache list.
+ * Remove an entry from the mlx5 list.
  *
  * User should guarantee the validity of the entry.
  *
  * @param list
  *   Pointer to the hast list.
  * @param entry
- *   Entry to be removed from the cache list table.
+ *   Entry to be removed from the mlx5 list table.
  * @return
  *   0 on entry removed, 1 on entry still referenced.
  */
-int mlx5_cache_unregister(struct mlx5_cache_list *list,
-			  struct mlx5_cache_entry *entry);
+int mlx5_list_unregister(struct mlx5_list *list,
+			  struct mlx5_list_entry *entry);
 
 /**
- * Destroy the cache list.
+ * Destroy the mlx5 list.
  *
  * @param list
- *   Pointer to the cache list.
+ *   Pointer to the mlx5 list.
  */
-void mlx5_cache_list_destroy(struct mlx5_cache_list *list);
+void mlx5_list_destroy(struct mlx5_list *list);
 
 /**
- * Get entry number from the cache list.
+ * Get entry number from the mlx5 list.
  *
  * @param list
  *   Pointer to the hast list.
  * @return
- *   Cache list entry number.
+ *   mlx5 list entry number.
  */
 uint32_t
-mlx5_cache_list_get_entry_num(struct mlx5_cache_list *list);
+mlx5_list_get_entry_num(struct mlx5_list *list);
 
 /********************************* indexed pool *************************/
 
