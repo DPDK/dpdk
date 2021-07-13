@@ -33,19 +33,19 @@ struct mlx5_list_cache {
 /**
  * Type of callback function for entry removal.
  *
- * @param list
- *   The mlx5 list.
+ * @param tool_ctx
+ *   The tool instance user context.
  * @param entry
  *   The entry in the list.
  */
-typedef void (*mlx5_list_remove_cb)(struct mlx5_list *list,
-				     struct mlx5_list_entry *entry);
+typedef void (*mlx5_list_remove_cb)(void *tool_ctx,
+				    struct mlx5_list_entry *entry);
 
 /**
  * Type of function for user defined matching.
  *
- * @param list
- *   The mlx5 list.
+ * @param tool_ctx
+ *   The tool instance context.
  * @param entry
  *   The entry in the list.
  * @param ctx
@@ -54,34 +54,28 @@ typedef void (*mlx5_list_remove_cb)(struct mlx5_list *list,
  * @return
  *   0 if matching, non-zero number otherwise.
  */
-typedef int (*mlx5_list_match_cb)(struct mlx5_list *list,
+typedef int (*mlx5_list_match_cb)(void *tool_ctx,
 				   struct mlx5_list_entry *entry, void *ctx);
 
-typedef struct mlx5_list_entry *(*mlx5_list_clone_cb)
-				 (struct mlx5_list *list,
-				  struct mlx5_list_entry *entry, void *ctx);
+typedef struct mlx5_list_entry *(*mlx5_list_clone_cb)(void *tool_ctx,
+				      struct mlx5_list_entry *entry, void *ctx);
 
-typedef void (*mlx5_list_clone_free_cb)(struct mlx5_list *list,
-					 struct mlx5_list_entry *entry);
+typedef void (*mlx5_list_clone_free_cb)(void *tool_ctx,
+					struct mlx5_list_entry *entry);
 
 /**
  * Type of function for user defined mlx5 list entry creation.
  *
- * @param list
- *   The mlx5 list.
- * @param entry
- *   The new allocated entry, NULL if list entry size unspecified,
- *   New entry has to be allocated in callback and return.
+ * @param tool_ctx
+ *   The mlx5 tool instance context.
  * @param ctx
  *   The pointer to new entry context.
  *
  * @return
  *   Pointer of entry on success, NULL otherwise.
  */
-typedef struct mlx5_list_entry *(*mlx5_list_create_cb)
-				 (struct mlx5_list *list,
-				  struct mlx5_list_entry *entry,
-				  void *ctx);
+typedef struct mlx5_list_entry *(*mlx5_list_create_cb)(void *tool_ctx,
+						       void *ctx);
 
 /**
  * Linked mlx5 list structure.

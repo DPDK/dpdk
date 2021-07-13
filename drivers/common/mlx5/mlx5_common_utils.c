@@ -55,7 +55,7 @@ __list_lookup(struct mlx5_list *list, int lcore_index, void *ctx, bool reuse)
 	uint32_t ret;
 
 	while (entry != NULL) {
-		if (list->cb_match(list, entry, ctx) == 0) {
+		if (list->cb_match(list->ctx, entry, ctx) == 0) {
 			if (reuse) {
 				ret = __atomic_add_fetch(&entry->ref_cnt, 1,
 							 __ATOMIC_RELAXED) - 1;
@@ -96,7 +96,7 @@ static struct mlx5_list_entry *
 mlx5_list_cache_insert(struct mlx5_list *list, int lcore_index,
 		       struct mlx5_list_entry *gentry, void *ctx)
 {
-	struct mlx5_list_entry *lentry = list->cb_clone(list, gentry, ctx);
+	struct mlx5_list_entry *lentry = list->cb_clone(list->ctx, gentry, ctx);
 
 	if (unlikely(!lentry))
 		return NULL;
@@ -121,9 +121,9 @@ __list_cache_clean(struct mlx5_list *list, int lcore_index)
 		if (__atomic_load_n(&entry->ref_cnt, __ATOMIC_RELAXED) == 0) {
 			LIST_REMOVE(entry, next);
 			if (list->lcores_share)
-				list->cb_clone_free(list, entry);
+				list->cb_clone_free(list->ctx, entry);
 			else
-				list->cb_remove(list, entry);
+				list->cb_remove(list->ctx, entry);
 			inv_cnt--;
 		}
 		entry = nentry;
@@ -162,7 +162,7 @@ mlx5_list_register(struct mlx5_list *list, void *ctx)
 		rte_rwlock_read_unlock(&list->lock);
 	}
 	/* 3. Prepare new entry for global list and for cache. */
-	entry = list->cb_create(list, entry, ctx);
+	entry = list->cb_create(list->ctx, ctx);
 	if (unlikely(!entry))
 		return NULL;
 	entry->ref_cnt = 1u;
@@ -174,9 +174,9 @@ mlx5_list_register(struct mlx5_list *list, void *ctx)
 			list->name, lcore_index, (void *)entry, entry->ref_cnt);
 		return entry;
 	}
-	local_entry = list->cb_clone(list, entry, ctx);
+	local_entry = list->cb_clone(list->ctx, entry, ctx);
 	if (unlikely(!local_entry)) {
-		list->cb_remove(list, entry);
+		list->cb_remove(list->ctx, entry);
 		return NULL;
 	}
 	local_entry->ref_cnt = 1u;
@@ -192,8 +192,8 @@ mlx5_list_register(struct mlx5_list *list, void *ctx)
 		if (unlikely(oentry)) {
 			/* 4.5. Found real race!!, reuse the old entry. */
 			rte_rwlock_write_unlock(&list->lock);
-			list->cb_remove(list, entry);
-			list->cb_clone_free(list, local_entry);
+			list->cb_remove(list->ctx, entry);
+			list->cb_clone_free(list->ctx, local_entry);
 			return mlx5_list_cache_insert(list, lcore_index, oentry,
 						      ctx);
 		}
@@ -223,9 +223,9 @@ mlx5_list_unregister(struct mlx5_list *list,
 	if (entry->lcore_idx == (uint32_t)lcore_idx) {
 		LIST_REMOVE(entry, next);
 		if (list->lcores_share)
-			list->cb_clone_free(list, entry);
+			list->cb_clone_free(list->ctx, entry);
 		else
-			list->cb_remove(list, entry);
+			list->cb_remove(list->ctx, entry);
 	} else if (likely(lcore_idx != -1)) {
 		__atomic_add_fetch(&list->cache[entry->lcore_idx].inv_cnt, 1,
 				   __ATOMIC_RELAXED);
@@ -244,7 +244,7 @@ mlx5_list_unregister(struct mlx5_list *list,
 	if (likely(gentry->ref_cnt == 0)) {
 		LIST_REMOVE(gentry, next);
 		rte_rwlock_write_unlock(&list->lock);
-		list->cb_remove(list, gentry);
+		list->cb_remove(list->ctx, gentry);
 		__atomic_sub_fetch(&list->count, 1, __ATOMIC_RELAXED);
 		DRV_LOG(DEBUG, "mlx5 list %s entry %p removed.",
 			list->name, (void *)gentry);

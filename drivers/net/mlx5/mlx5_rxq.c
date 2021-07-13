@@ -2093,25 +2093,10 @@ error:
 	return ret;
 }
 
-/**
- * Match an Rx Hash queue.
- *
- * @param list
- *   mlx5 list pointer.
- * @param entry
- *   Hash queue entry pointer.
- * @param cb_ctx
- *   Context of the callback function.
- *
- * @return
- *   0 if match, none zero if not match.
- */
 int
-mlx5_hrxq_match_cb(struct mlx5_list *list,
-		   struct mlx5_list_entry *entry,
-		   void *cb_ctx)
+mlx5_hrxq_match_cb(void *tool_ctx, struct mlx5_list_entry *entry, void *cb_ctx)
 {
-	struct rte_eth_dev *dev = list->ctx;
+	struct rte_eth_dev *dev = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_rss_desc *rss_desc = ctx->data;
 	struct mlx5_hrxq *hrxq = container_of(entry, typeof(*hrxq), entry);
@@ -2251,10 +2236,9 @@ __mlx5_hrxq_remove(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
  *   Hash queue entry pointer.
  */
 void
-mlx5_hrxq_remove_cb(struct mlx5_list *list,
-		    struct mlx5_list_entry *entry)
+mlx5_hrxq_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
-	struct rte_eth_dev *dev = list->ctx;
+	struct rte_eth_dev *dev = tool_ctx;
 	struct mlx5_hrxq *hrxq = container_of(entry, typeof(*hrxq), entry);
 
 	__mlx5_hrxq_remove(dev, hrxq);
@@ -2305,25 +2289,10 @@ error:
 	return NULL;
 }
 
-/**
- * Create an Rx Hash queue.
- *
- * @param list
- *   mlx5 list pointer.
- * @param entry
- *   Hash queue entry pointer.
- * @param cb_ctx
- *   Context of the callback function.
- *
- * @return
- *   queue entry on success, NULL otherwise.
- */
 struct mlx5_list_entry *
-mlx5_hrxq_create_cb(struct mlx5_list *list,
-		    struct mlx5_list_entry *entry __rte_unused,
-		    void *cb_ctx)
+mlx5_hrxq_create_cb(void *tool_ctx, void *cb_ctx)
 {
-	struct rte_eth_dev *dev = list->ctx;
+	struct rte_eth_dev *dev = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_rss_desc *rss_desc = ctx->data;
 	struct mlx5_hrxq *hrxq;
@@ -2333,11 +2302,10 @@ mlx5_hrxq_create_cb(struct mlx5_list *list,
 }
 
 struct mlx5_list_entry *
-mlx5_hrxq_clone_cb(struct mlx5_list *list,
-		    struct mlx5_list_entry *entry,
+mlx5_hrxq_clone_cb(void *tool_ctx, struct mlx5_list_entry *entry,
 		    void *cb_ctx __rte_unused)
 {
-	struct rte_eth_dev *dev = list->ctx;
+	struct rte_eth_dev *dev = tool_ctx;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
 	uint32_t hrxq_idx = 0;
@@ -2351,10 +2319,9 @@ mlx5_hrxq_clone_cb(struct mlx5_list *list,
 }
 
 void
-mlx5_hrxq_clone_free_cb(struct mlx5_list *list,
-		    struct mlx5_list_entry *entry)
+mlx5_hrxq_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
-	struct rte_eth_dev *dev = list->ctx;
+	struct rte_eth_dev *dev = tool_ctx;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq = container_of(entry, typeof(*hrxq), entry);
 

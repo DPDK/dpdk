@@ -3780,23 +3780,21 @@ flow_dv_jump_tbl_resource_register
 }
 
 int
-flow_dv_port_id_match_cb(struct mlx5_list *list __rte_unused,
+flow_dv_port_id_match_cb(void *tool_ctx __rte_unused,
 			 struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_port_id_action_resource *ref = ctx->data;
 	struct mlx5_flow_dv_port_id_action_resource *res =
-			container_of(entry, typeof(*res), entry);
+				       container_of(entry, typeof(*res), entry);
 
 	return ref->port_id != res->port_id;
 }
 
 struct mlx5_list_entry *
-flow_dv_port_id_create_cb(struct mlx5_list *list,
-			  struct mlx5_list_entry *entry __rte_unused,
-			  void *cb_ctx)
+flow_dv_port_id_create_cb(void *tool_ctx, void *cb_ctx)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_port_id_action_resource *ref = ctx->data;
 	struct mlx5_flow_dv_port_id_action_resource *resource;
@@ -3827,11 +3825,11 @@ flow_dv_port_id_create_cb(struct mlx5_list *list,
 }
 
 struct mlx5_list_entry *
-flow_dv_port_id_clone_cb(struct mlx5_list *list,
-			  struct mlx5_list_entry *entry __rte_unused,
-			  void *cb_ctx)
+flow_dv_port_id_clone_cb(void *tool_ctx,
+			 struct mlx5_list_entry *entry __rte_unused,
+			 void *cb_ctx)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_port_id_action_resource *resource;
 	uint32_t idx;
@@ -3849,12 +3847,11 @@ flow_dv_port_id_clone_cb(struct mlx5_list *list,
 }
 
 void
-flow_dv_port_id_clone_free_cb(struct mlx5_list *list,
-			  struct mlx5_list_entry *entry)
+flow_dv_port_id_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_port_id_action_resource *resource =
-			container_of(entry, typeof(*resource), entry);
+				  container_of(entry, typeof(*resource), entry);
 
 	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_PORT_ID], resource->idx);
 }
@@ -3899,23 +3896,21 @@ flow_dv_port_id_action_resource_register
 }
 
 int
-flow_dv_push_vlan_match_cb(struct mlx5_list *list __rte_unused,
-			 struct mlx5_list_entry *entry, void *cb_ctx)
+flow_dv_push_vlan_match_cb(void *tool_ctx __rte_unused,
+			   struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_push_vlan_action_resource *ref = ctx->data;
 	struct mlx5_flow_dv_push_vlan_action_resource *res =
-			container_of(entry, typeof(*res), entry);
+				       container_of(entry, typeof(*res), entry);
 
 	return ref->vlan_tag != res->vlan_tag || ref->ft_type != res->ft_type;
 }
 
 struct mlx5_list_entry *
-flow_dv_push_vlan_create_cb(struct mlx5_list *list,
-			  struct mlx5_list_entry *entry __rte_unused,
-			  void *cb_ctx)
+flow_dv_push_vlan_create_cb(void *tool_ctx, void *cb_ctx)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_push_vlan_action_resource *ref = ctx->data;
 	struct mlx5_flow_dv_push_vlan_action_resource *resource;
@@ -3952,11 +3947,11 @@ flow_dv_push_vlan_create_cb(struct mlx5_list *list,
 }
 
 struct mlx5_list_entry *
-flow_dv_push_vlan_clone_cb(struct mlx5_list *list,
-			  struct mlx5_list_entry *entry __rte_unused,
-			  void *cb_ctx)
+flow_dv_push_vlan_clone_cb(void *tool_ctx,
+			   struct mlx5_list_entry *entry __rte_unused,
+			   void *cb_ctx)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_push_vlan_action_resource *resource;
 	uint32_t idx;
@@ -3974,12 +3969,11 @@ flow_dv_push_vlan_clone_cb(struct mlx5_list *list,
 }
 
 void
-flow_dv_push_vlan_clone_free_cb(struct mlx5_list *list,
-			    struct mlx5_list_entry *entry)
+flow_dv_push_vlan_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_push_vlan_action_resource *resource =
-			container_of(entry, typeof(*resource), entry);
+				  container_of(entry, typeof(*resource), entry);
 
 	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_PUSH_VLAN], resource->idx);
 }
@@ -10022,7 +10016,7 @@ __flow_dv_adjust_buf_size(size_t *size, uint8_t match_criteria)
 }
 
 static struct mlx5_list_entry *
-flow_dv_matcher_clone_cb(struct mlx5_list *list __rte_unused,
+flow_dv_matcher_clone_cb(void *tool_ctx __rte_unused,
 			 struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -10045,7 +10039,7 @@ flow_dv_matcher_clone_cb(struct mlx5_list *list __rte_unused,
 }
 
 static void
-flow_dv_matcher_clone_free_cb(struct mlx5_list *list __rte_unused,
+flow_dv_matcher_clone_free_cb(void *tool_ctx __rte_unused,
 			     struct mlx5_list_entry *entry)
 {
 	mlx5_free(entry);
@@ -10288,7 +10282,7 @@ flow_dv_tbl_resource_release(struct mlx5_dev_ctx_shared *sh,
 }
 
 int
-flow_dv_matcher_match_cb(struct mlx5_list *list __rte_unused,
+flow_dv_matcher_match_cb(void *tool_ctx __rte_unused,
 			 struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -10303,11 +10297,9 @@ flow_dv_matcher_match_cb(struct mlx5_list *list __rte_unused,
 }
 
 struct mlx5_list_entry *
-flow_dv_matcher_create_cb(struct mlx5_list *list,
-			  struct mlx5_list_entry *entry __rte_unused,
-			  void *cb_ctx)
+flow_dv_matcher_create_cb(void *tool_ctx, void *cb_ctx)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_matcher *ref = ctx->data;
 	struct mlx5_flow_dv_matcher *resource;
@@ -10804,7 +10796,7 @@ flow_dv_sample_sub_actions_release(struct rte_eth_dev *dev,
 }
 
 int
-flow_dv_sample_match_cb(struct mlx5_list *list __rte_unused,
+flow_dv_sample_match_cb(void *tool_ctx __rte_unused,
 			struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -10833,9 +10825,7 @@ flow_dv_sample_match_cb(struct mlx5_list *list __rte_unused,
 }
 
 struct mlx5_list_entry *
-flow_dv_sample_create_cb(struct mlx5_list *list __rte_unused,
-			 struct mlx5_list_entry *entry __rte_unused,
-			 void *cb_ctx)
+flow_dv_sample_create_cb(void *tool_ctx __rte_unused, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct rte_eth_dev *dev = ctx->dev;
@@ -10922,7 +10912,7 @@ error:
 }
 
 struct mlx5_list_entry *
-flow_dv_sample_clone_cb(struct mlx5_list *list __rte_unused,
+flow_dv_sample_clone_cb(void *tool_ctx __rte_unused,
 			 struct mlx5_list_entry *entry __rte_unused,
 			 void *cb_ctx)
 {
@@ -10948,16 +10938,15 @@ flow_dv_sample_clone_cb(struct mlx5_list *list __rte_unused,
 }
 
 void
-flow_dv_sample_clone_free_cb(struct mlx5_list *list __rte_unused,
-			 struct mlx5_list_entry *entry)
+flow_dv_sample_clone_free_cb(void *tool_ctx __rte_unused,
+			     struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_sample_resource *resource =
-			container_of(entry, typeof(*resource), entry);
+				  container_of(entry, typeof(*resource), entry);
 	struct rte_eth_dev *dev = resource->dev;
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_SAMPLE],
-			resource->idx);
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_SAMPLE], resource->idx);
 }
 
 /**
@@ -11000,14 +10989,14 @@ flow_dv_sample_resource_register(struct rte_eth_dev *dev,
 }
 
 int
-flow_dv_dest_array_match_cb(struct mlx5_list *list __rte_unused,
+flow_dv_dest_array_match_cb(void *tool_ctx __rte_unused,
 			    struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_dest_array_resource *ctx_resource = ctx->data;
 	struct rte_eth_dev *dev = ctx->dev;
 	struct mlx5_flow_dv_dest_array_resource *resource =
-			container_of(entry, typeof(*resource), entry);
+				  container_of(entry, typeof(*resource), entry);
 	uint32_t idx = 0;
 
 	if (ctx_resource->num_of_dest == resource->num_of_dest &&
@@ -11029,9 +11018,7 @@ flow_dv_dest_array_match_cb(struct mlx5_list *list __rte_unused,
 }
 
 struct mlx5_list_entry *
-flow_dv_dest_array_create_cb(struct mlx5_list *list __rte_unused,
-			 struct mlx5_list_entry *entry __rte_unused,
-			 void *cb_ctx)
+flow_dv_dest_array_create_cb(void *tool_ctx __rte_unused, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct rte_eth_dev *dev = ctx->dev;
@@ -11136,9 +11123,9 @@ error:
 }
 
 struct mlx5_list_entry *
-flow_dv_dest_array_clone_cb(struct mlx5_list *list __rte_unused,
-			 struct mlx5_list_entry *entry __rte_unused,
-			 void *cb_ctx)
+flow_dv_dest_array_clone_cb(void *tool_ctx __rte_unused,
+			    struct mlx5_list_entry *entry __rte_unused,
+			    void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct rte_eth_dev *dev = ctx->dev;
@@ -11164,8 +11151,8 @@ flow_dv_dest_array_clone_cb(struct mlx5_list *list __rte_unused,
 }
 
 void
-flow_dv_dest_array_clone_free_cb(struct mlx5_list *list __rte_unused,
-			     struct mlx5_list_entry *entry)
+flow_dv_dest_array_clone_free_cb(void *tool_ctx __rte_unused,
+				 struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_dest_array_resource *resource =
 			container_of(entry, typeof(*resource), entry);
@@ -13651,7 +13638,7 @@ error:
 }
 
 void
-flow_dv_matcher_remove_cb(struct mlx5_list *list __rte_unused,
+flow_dv_matcher_remove_cb(void *tool_ctx __rte_unused,
 			  struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_matcher *resource = container_of(entry,
@@ -13793,10 +13780,9 @@ flow_dv_modify_hdr_resource_release(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_port_id_remove_cb(struct mlx5_list *list,
-			  struct mlx5_list_entry *entry)
+flow_dv_port_id_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_port_id_action_resource *resource =
 				  container_of(entry, typeof(*resource), entry);
 
@@ -13850,10 +13836,9 @@ flow_dv_shared_rss_action_release(struct rte_eth_dev *dev, uint32_t srss)
 }
 
 void
-flow_dv_push_vlan_remove_cb(struct mlx5_list *list,
-			    struct mlx5_list_entry *entry)
+flow_dv_push_vlan_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_push_vlan_action_resource *resource =
 			container_of(entry, typeof(*resource), entry);
 
@@ -13922,7 +13907,7 @@ flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_sample_remove_cb(struct mlx5_list *list __rte_unused,
+flow_dv_sample_remove_cb(void *tool_ctx __rte_unused,
 			 struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_sample_resource *resource = container_of(entry,
@@ -13970,7 +13955,7 @@ flow_dv_sample_resource_release(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_dest_array_remove_cb(struct mlx5_list *list __rte_unused,
+flow_dv_dest_array_remove_cb(void *tool_ctx __rte_unused,
 			     struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_dest_array_resource *resource =

@@ -1633,64 +1633,50 @@ struct mlx5_hlist_entry *flow_dv_encap_decap_create_cb(struct mlx5_hlist *list,
 void flow_dv_encap_decap_remove_cb(struct mlx5_hlist *list,
 				   struct mlx5_hlist_entry *entry);
 
-int flow_dv_matcher_match_cb(struct mlx5_list *list,
-			     struct mlx5_list_entry *entry, void *ctx);
-struct mlx5_list_entry *flow_dv_matcher_create_cb(struct mlx5_list *list,
-						  struct mlx5_list_entry *entry,
-						  void *ctx);
-void flow_dv_matcher_remove_cb(struct mlx5_list *list,
-			       struct mlx5_list_entry *entry);
+int flow_dv_matcher_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
+			     void *ctx);
+struct mlx5_list_entry *flow_dv_matcher_create_cb(void *tool_ctx, void *ctx);
+void flow_dv_matcher_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry);
 
-int flow_dv_port_id_match_cb(struct mlx5_list *list,
-			     struct mlx5_list_entry *entry, void *cb_ctx);
-struct mlx5_list_entry *flow_dv_port_id_create_cb(struct mlx5_list *list,
-						  struct mlx5_list_entry *entry,
-						  void *cb_ctx);
-void flow_dv_port_id_remove_cb(struct mlx5_list *list,
-			       struct mlx5_list_entry *entry);
-struct mlx5_list_entry *flow_dv_port_id_clone_cb(struct mlx5_list *list,
-				struct mlx5_list_entry *entry __rte_unused,
-				 void *cb_ctx);
-void flow_dv_port_id_clone_free_cb(struct mlx5_list *list,
-				struct mlx5_list_entry *entry __rte_unused);
-int flow_dv_push_vlan_match_cb(struct mlx5_list *list,
-			       struct mlx5_list_entry *entry, void *cb_ctx);
-struct mlx5_list_entry *flow_dv_push_vlan_create_cb(struct mlx5_list *list,
-						  struct mlx5_list_entry *entry,
-						  void *cb_ctx);
-void flow_dv_push_vlan_remove_cb(struct mlx5_list *list,
-				 struct mlx5_list_entry *entry);
-struct mlx5_list_entry *flow_dv_push_vlan_clone_cb
-				(struct mlx5_list *list,
-				 struct mlx5_list_entry *entry, void *cb_ctx);
-void flow_dv_push_vlan_clone_free_cb(struct mlx5_list *list,
-				 struct mlx5_list_entry *entry);
-
-int flow_dv_sample_match_cb(struct mlx5_list *list,
-			    struct mlx5_list_entry *entry, void *cb_ctx);
-struct mlx5_list_entry *flow_dv_sample_create_cb(struct mlx5_list *list,
-						 struct mlx5_list_entry *entry,
-						 void *cb_ctx);
-void flow_dv_sample_remove_cb(struct mlx5_list *list,
-			      struct mlx5_list_entry *entry);
-struct mlx5_list_entry *flow_dv_sample_clone_cb
-				(struct mlx5_list *list,
-				 struct mlx5_list_entry *entry, void *cb_ctx);
-void flow_dv_sample_clone_free_cb(struct mlx5_list *list,
-			      struct mlx5_list_entry *entry);
-
-int flow_dv_dest_array_match_cb(struct mlx5_list *list,
+int flow_dv_port_id_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
+			     void *cb_ctx);
+struct mlx5_list_entry *flow_dv_port_id_create_cb(void *tool_ctx, void *cb_ctx);
+void flow_dv_port_id_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry);
+struct mlx5_list_entry *flow_dv_port_id_clone_cb(void *tool_ctx,
 				struct mlx5_list_entry *entry, void *cb_ctx);
-struct mlx5_list_entry *flow_dv_dest_array_create_cb(struct mlx5_list *list,
-						  struct mlx5_list_entry *entry,
-						  void *cb_ctx);
-void flow_dv_dest_array_remove_cb(struct mlx5_list *list,
-				  struct mlx5_list_entry *entry);
-struct mlx5_list_entry *flow_dv_dest_array_clone_cb
-				(struct mlx5_list *list,
+void flow_dv_port_id_clone_free_cb(void *tool_ctx,
+				   struct mlx5_list_entry *entry);
+
+int flow_dv_push_vlan_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
+			       void *cb_ctx);
+struct mlx5_list_entry *flow_dv_push_vlan_create_cb(void *tool_ctx,
+						    void *cb_ctx);
+void flow_dv_push_vlan_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry);
+struct mlx5_list_entry *flow_dv_push_vlan_clone_cb(void *tool_ctx,
 				 struct mlx5_list_entry *entry, void *cb_ctx);
-void flow_dv_dest_array_clone_free_cb(struct mlx5_list *list,
+void flow_dv_push_vlan_clone_free_cb(void *tool_ctx,
+				     struct mlx5_list_entry *entry);
+
+int flow_dv_sample_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
+			    void *cb_ctx);
+struct mlx5_list_entry *flow_dv_sample_create_cb(void *tool_ctx, void *cb_ctx);
+void flow_dv_sample_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry);
+struct mlx5_list_entry *flow_dv_sample_clone_cb(void *tool_ctx,
+				 struct mlx5_list_entry *entry, void *cb_ctx);
+void flow_dv_sample_clone_free_cb(void *tool_ctx,
 				  struct mlx5_list_entry *entry);
+
+int flow_dv_dest_array_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
+				void *cb_ctx);
+struct mlx5_list_entry *flow_dv_dest_array_create_cb(void *tool_ctx,
+						     void *cb_ctx);
+void flow_dv_dest_array_remove_cb(void *tool_ctx,
+				  struct mlx5_list_entry *entry);
+struct mlx5_list_entry *flow_dv_dest_array_clone_cb(void *tool_ctx,
+				   struct mlx5_list_entry *entry, void *cb_ctx);
+void flow_dv_dest_array_clone_free_cb(void *tool_ctx,
+				      struct mlx5_list_entry *entry);
+
 struct mlx5_aso_age_action *flow_aso_age_get_by_idx(struct rte_eth_dev *dev,
 						    uint32_t age_idx);
 int flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
