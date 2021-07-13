@@ -275,6 +275,7 @@ mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 			mlx5_trunk_idx_offset_get(pool, TRUNK_MAX_IDX + 1);
 	if (!cfg->per_core_cache)
 		pool->free_list = TRUNK_INVALID;
+	rte_spinlock_init(&pool->lcore_lock);
 	return pool;
 }
 
@@ -515,20 +516,14 @@ check_again:
 }
 
 static void *
-mlx5_ipool_get_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
+_mlx5_ipool_get_cache(struct mlx5_indexed_pool *pool, int cidx, uint32_t idx)
 {
 	struct mlx5_indexed_trunk *trunk;
 	struct mlx5_indexed_cache *lc;
 	uint32_t trunk_idx;
 	uint32_t entry_idx;
-	int cidx;
 
 	MLX5_ASSERT(idx);
-	cidx = rte_lcore_index(rte_lcore_id());
-	if (unlikely(cidx == -1)) {
-		rte_errno = ENOTSUP;
-		return NULL;
-	}
 	if (unlikely(!pool->cache[cidx])) {
 		pool->cache[cidx] = pool->cfg.malloc(MLX5_MEM_ZERO,
 			sizeof(struct mlx5_ipool_per_lcore) +
@@ -549,15 +544,27 @@ mlx5_ipool_get_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
 }
 
 static void *
-mlx5_ipool_malloc_cache(struct mlx5_indexed_pool *pool, uint32_t *idx)
+mlx5_ipool_get_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
 {
+	void *entry;
 	int cidx;
 
 	cidx = rte_lcore_index(rte_lcore_id());
 	if (unlikely(cidx == -1)) {
-		rte_errno = ENOTSUP;
-		return NULL;
+		cidx = RTE_MAX_LCORE;
+		rte_spinlock_lock(&pool->lcore_lock);
 	}
+	entry = _mlx5_ipool_get_cache(pool, cidx, idx);
+	if (unlikely(cidx == RTE_MAX_LCORE))
+		rte_spinlock_unlock(&pool->lcore_lock);
+	return entry;
+}
+
+
+static void *
+_mlx5_ipool_malloc_cache(struct mlx5_indexed_pool *pool, int cidx,
+			 uint32_t *idx)
+{
 	if (unlikely(!pool->cache[cidx])) {
 		pool->cache[cidx] = pool->cfg.malloc(MLX5_MEM_ZERO,
 			sizeof(struct mlx5_ipool_per_lcore) +
@@ -570,29 +577,40 @@ mlx5_ipool_malloc_cache(struct mlx5_indexed_pool *pool, uint32_t *idx)
 	} else if (pool->cache[cidx]->len) {
 		pool->cache[cidx]->len--;
 		*idx = pool->cache[cidx]->idx[pool->cache[cidx]->len];
-		return mlx5_ipool_get_cache(pool, *idx);
+		return _mlx5_ipool_get_cache(pool, cidx, *idx);
 	}
 	/* Not enough idx in global cache. Keep fetching from global. */
 	*idx = mlx5_ipool_allocate_from_global(pool, cidx);
 	if (unlikely(!(*idx)))
 		return NULL;
-	return mlx5_ipool_get_cache(pool, *idx);
+	return _mlx5_ipool_get_cache(pool, cidx, *idx);
+}
+
+static void *
+mlx5_ipool_malloc_cache(struct mlx5_indexed_pool *pool, uint32_t *idx)
+{
+	void *entry;
+	int cidx;
+
+	cidx = rte_lcore_index(rte_lcore_id());
+	if (unlikely(cidx == -1)) {
+		cidx = RTE_MAX_LCORE;
+		rte_spinlock_lock(&pool->lcore_lock);
+	}
+	entry = _mlx5_ipool_malloc_cache(pool, cidx, idx);
+	if (unlikely(cidx == RTE_MAX_LCORE))
+		rte_spinlock_unlock(&pool->lcore_lock);
+	return entry;
 }
 
 static void
-mlx5_ipool_free_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
+_mlx5_ipool_free_cache(struct mlx5_indexed_pool *pool, int cidx, uint32_t idx)
 {
-	int cidx;
 	struct mlx5_ipool_per_lcore *ilc;
 	struct mlx5_indexed_cache *gc, *olc = NULL;
 	uint32_t reclaim_num = 0;
 
 	MLX5_ASSERT(idx);
-	cidx = rte_lcore_index(rte_lcore_id());
-	if (unlikely(cidx == -1)) {
-		rte_errno = ENOTSUP;
-		return;
-	}
 	/*
 	 * When index was allocated on core A but freed on core B. In this
 	 * case check if local cache on core B was allocated before.
@@ -633,6 +651,21 @@ mlx5_ipool_free_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
 		pool->cfg.free(olc);
 	pool->cache[cidx]->idx[pool->cache[cidx]->len] = idx;
 	pool->cache[cidx]->len++;
+}
+
+static void
+mlx5_ipool_free_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
+{
+	int cidx;
+
+	cidx = rte_lcore_index(rte_lcore_id());
+	if (unlikely(cidx == -1)) {
+		cidx = RTE_MAX_LCORE;
+		rte_spinlock_lock(&pool->lcore_lock);
+	}
+	_mlx5_ipool_free_cache(pool, cidx, idx);
+	if (unlikely(cidx == RTE_MAX_LCORE))
+		rte_spinlock_unlock(&pool->lcore_lock);
 }
 
 void *
@@ -814,7 +847,7 @@ mlx5_ipool_destroy(struct mlx5_indexed_pool *pool)
 	MLX5_ASSERT(pool);
 	mlx5_ipool_lock(pool);
 	if (pool->cfg.per_core_cache) {
-		for (i = 0; i < RTE_MAX_LCORE; i++) {
+		for (i = 0; i <= RTE_MAX_LCORE; i++) {
 			/*
 			 * Free only old global cache. Pool gc will be
 			 * freed at last.
@@ -883,7 +916,7 @@ mlx5_ipool_flush_cache(struct mlx5_indexed_pool *pool)
 	for (i = 0; i < gc->len; i++)
 		rte_bitmap_clear(ibmp, gc->idx[i] - 1);
 	/* Clear core cache. */
-	for (i = 0; i < RTE_MAX_LCORE; i++) {
+	for (i = 0; i < RTE_MAX_LCORE + 1; i++) {
 		struct mlx5_ipool_per_lcore *ilc = pool->cache[i];
 
 		if (!ilc)

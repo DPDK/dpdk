@@ -248,6 +248,7 @@ struct mlx5_ipool_per_lcore {
 struct mlx5_indexed_pool {
 	struct mlx5_indexed_pool_config cfg; /* Indexed pool configuration. */
 	rte_spinlock_t rsz_lock; /* Pool lock for multiple thread usage. */
+	rte_spinlock_t lcore_lock;
 	/* Dim of trunk pointer array. */
 	union {
 		struct {
@@ -259,7 +260,7 @@ struct mlx5_indexed_pool {
 		struct {
 			struct mlx5_indexed_cache *gc;
 			/* Global cache. */
-			struct mlx5_ipool_per_lcore *cache[RTE_MAX_LCORE];
+			struct mlx5_ipool_per_lcore *cache[RTE_MAX_LCORE + 1];
 			/* Local cache. */
 			struct rte_bitmap *ibmp;
 			void *bmp_mem;
