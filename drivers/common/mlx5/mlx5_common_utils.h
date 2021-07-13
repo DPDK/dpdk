@@ -11,6 +11,12 @@
 
 /** Maximum size of string for naming. */
 #define MLX5_NAME_SIZE			32
+/** Maximum size of list. */
+#define MLX5_LIST_MAX			(RTE_MAX_LCORE + 2)
+/** Global list index. */
+#define MLX5_LIST_GLOBAL		((MLX5_LIST_MAX) - 1)
+/** None rte core list index. */
+#define MLX5_LIST_NLCORE		((MLX5_LIST_MAX) - 2)
 
 struct mlx5_list;
 
@@ -87,6 +93,7 @@ struct mlx5_list_const {
 	char name[MLX5_NAME_SIZE]; /**< Name of the mlx5 list. */
 	void *ctx; /* user objects target to callback. */
 	bool lcores_share; /* Whether to share objects between the lcores. */
+	rte_spinlock_t lcore_lock; /* Lock for non-lcore list. */
 	mlx5_list_create_cb cb_create; /**< entry create callback. */
 	mlx5_list_match_cb cb_match; /**< entry match callback. */
 	mlx5_list_remove_cb cb_remove; /**< entry remove callback. */
@@ -102,7 +109,7 @@ struct mlx5_list_inconst {
 	rte_rwlock_t lock; /* read/write lock. */
 	volatile uint32_t gen_cnt; /* List modification may update it. */
 	volatile uint32_t count; /* number of entries in list. */
-	struct mlx5_list_cache *cache[RTE_MAX_LCORE + 1];
+	struct mlx5_list_cache *cache[MLX5_LIST_MAX];
 	/* Lcore cache, last index is the global cache. */
 };
 

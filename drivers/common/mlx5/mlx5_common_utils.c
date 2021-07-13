@@ -20,8 +20,8 @@ mlx5_list_init(struct mlx5_list_inconst *l_inconst,
 {
 	rte_rwlock_init(&l_inconst->lock);
 	if (l_const->lcores_share) {
-		l_inconst->cache[RTE_MAX_LCORE] = gc;
-		LIST_INIT(&l_inconst->cache[RTE_MAX_LCORE]->h);
+		l_inconst->cache[MLX5_LIST_GLOBAL] = gc;
+		LIST_INIT(&l_inconst->cache[MLX5_LIST_GLOBAL]->h);
 	}
 	DRV_LOG(DEBUG, "mlx5 list %s initialized.", l_const->name);
 	return 0;
@@ -59,6 +59,7 @@ mlx5_list_create(const char *name, void *ctx, bool lcores_share,
 	list->l_const.cb_remove = cb_remove;
 	list->l_const.cb_clone = cb_clone;
 	list->l_const.cb_clone_free = cb_clone_free;
+	rte_spinlock_init(&list->l_const.lcore_lock);
 	if (lcores_share)
 		gc = (struct mlx5_list_cache *)(list + 1);
 	if (mlx5_list_init(&list->l_inconst, &list->l_const, gc) != 0) {
@@ -85,11 +86,11 @@ __list_lookup(struct mlx5_list_inconst *l_inconst,
 				DRV_LOG(DEBUG, "mlx5 list %s entry %p ref: %u.",
 					l_const->name, (void *)entry,
 					entry->ref_cnt);
-			} else if (lcore_index < RTE_MAX_LCORE) {
+			} else if (lcore_index < MLX5_LIST_GLOBAL) {
 				ret = __atomic_load_n(&entry->ref_cnt,
 						      __ATOMIC_RELAXED);
 			}
-			if (likely(ret != 0 || lcore_index == RTE_MAX_LCORE))
+			if (likely(ret != 0 || lcore_index == MLX5_LIST_GLOBAL))
 				return entry;
 			if (reuse && ret == 0)
 				entry->ref_cnt--; /* Invalid entry. */
@@ -107,10 +108,11 @@ _mlx5_list_lookup(struct mlx5_list_inconst *l_inconst,
 	int i;
 
 	rte_rwlock_read_lock(&l_inconst->lock);
-	for (i = 0; i < RTE_MAX_LCORE; i++) {
+	for (i = 0; i < MLX5_LIST_GLOBAL; i++) {
 		if (!l_inconst->cache[i])
 			continue;
-		entry = __list_lookup(l_inconst, l_const, i, ctx, false);
+		entry = __list_lookup(l_inconst, l_const, i,
+			      ctx, false);
 		if (entry)
 			break;
 	}
@@ -170,18 +172,11 @@ __list_cache_clean(struct mlx5_list_inconst *l_inconst,
 static inline struct mlx5_list_entry *
 _mlx5_list_register(struct mlx5_list_inconst *l_inconst,
 		    struct mlx5_list_const *l_const,
-		    void *ctx)
+		    void *ctx, int lcore_index)
 {
 	struct mlx5_list_entry *entry = NULL, *local_entry;
 	volatile uint32_t prev_gen_cnt = 0;
-	int lcore_index = rte_lcore_index(rte_lcore_id());
-
 	MLX5_ASSERT(l_inconst);
-	MLX5_ASSERT(lcore_index < RTE_MAX_LCORE);
-	if (unlikely(lcore_index == -1)) {
-		rte_errno = ENOTSUP;
-		return NULL;
-	}
 	if (unlikely(!l_inconst->cache[lcore_index])) {
 		l_inconst->cache[lcore_index] = mlx5_malloc(0,
 					sizeof(struct mlx5_list_cache),
@@ -202,7 +197,7 @@ _mlx5_list_register(struct mlx5_list_inconst *l_inconst,
 	if (l_const->lcores_share) {
 		/* 2. Lookup with read lock on global list, reuse if found. */
 		rte_rwlock_read_lock(&l_inconst->lock);
-		entry = __list_lookup(l_inconst, l_const, RTE_MAX_LCORE,
+		entry = __list_lookup(l_inconst, l_const, MLX5_LIST_GLOBAL,
 				      ctx, true);
 		if (likely(entry)) {
 			rte_rwlock_read_unlock(&l_inconst->lock);
@@ -241,7 +236,7 @@ _mlx5_list_register(struct mlx5_list_inconst *l_inconst,
 	if (unlikely(prev_gen_cnt != l_inconst->gen_cnt)) {
 		struct mlx5_list_entry *oentry = __list_lookup(l_inconst,
 							       l_const,
-							       RTE_MAX_LCORE,
+							       MLX5_LIST_GLOBAL,
 							       ctx, true);
 
 		if (unlikely(oentry)) {
@@ -255,7 +250,7 @@ _mlx5_list_register(struct mlx5_list_inconst *l_inconst,
 		}
 	}
 	/* 5. Update lists. */
-	LIST_INSERT_HEAD(&l_inconst->cache[RTE_MAX_LCORE]->h, entry, next);
+	LIST_INSERT_HEAD(&l_inconst->cache[MLX5_LIST_GLOBAL]->h, entry, next);
 	l_inconst->gen_cnt++;
 	rte_rwlock_write_unlock(&l_inconst->lock);
 	LIST_INSERT_HEAD(&l_inconst->cache[lcore_index]->h, local_entry, next);
@@ -268,21 +263,30 @@ _mlx5_list_register(struct mlx5_list_inconst *l_inconst,
 struct mlx5_list_entry *
 mlx5_list_register(struct mlx5_list *list, void *ctx)
 {
-	return _mlx5_list_register(&list->l_inconst, &list->l_const, ctx);
+	struct mlx5_list_entry *entry;
+	int lcore_index = rte_lcore_index(rte_lcore_id());
+
+	if (unlikely(lcore_index == -1)) {
+		lcore_index = MLX5_LIST_NLCORE;
+		rte_spinlock_lock(&list->l_const.lcore_lock);
+	}
+	entry =  _mlx5_list_register(&list->l_inconst, &list->l_const, ctx,
+				     lcore_index);
+	if (unlikely(lcore_index == MLX5_LIST_NLCORE))
+		rte_spinlock_unlock(&list->l_const.lcore_lock);
+	return entry;
 }
 
 static inline int
 _mlx5_list_unregister(struct mlx5_list_inconst *l_inconst,
 		      struct mlx5_list_const *l_const,
-		      struct mlx5_list_entry *entry)
+		      struct mlx5_list_entry *entry,
+		      int lcore_idx)
 {
 	struct mlx5_list_entry *gentry = entry->gentry;
-	int lcore_idx;
 
 	if (__atomic_sub_fetch(&entry->ref_cnt, 1, __ATOMIC_RELAXED) != 0)
 		return 1;
-	lcore_idx = rte_lcore_index(rte_lcore_id());
-	MLX5_ASSERT(lcore_idx < RTE_MAX_LCORE);
 	if (entry->lcore_idx == (uint32_t)lcore_idx) {
 		LIST_REMOVE(entry, next);
 		if (l_const->lcores_share)
@@ -321,7 +325,19 @@ int
 mlx5_list_unregister(struct mlx5_list *list,
 		      struct mlx5_list_entry *entry)
 {
-	return _mlx5_list_unregister(&list->l_inconst, &list->l_const, entry);
+	int ret;
+	int lcore_index = rte_lcore_index(rte_lcore_id());
+
+	if (unlikely(lcore_index == -1)) {
+		lcore_index = MLX5_LIST_NLCORE;
+		rte_spinlock_lock(&list->l_const.lcore_lock);
+	}
+	ret = _mlx5_list_unregister(&list->l_inconst, &list->l_const, entry,
+				    lcore_index);
+	if (unlikely(lcore_index == MLX5_LIST_NLCORE))
+		rte_spinlock_unlock(&list->l_const.lcore_lock);
+	return ret;
+
 }
 
 static void
@@ -332,13 +348,13 @@ mlx5_list_uninit(struct mlx5_list_inconst *l_inconst,
 	int i;
 
 	MLX5_ASSERT(l_inconst);
-	for (i = 0; i <= RTE_MAX_LCORE; i++) {
+	for (i = 0; i < MLX5_LIST_MAX; i++) {
 		if (!l_inconst->cache[i])
 			continue;
 		while (!LIST_EMPTY(&l_inconst->cache[i]->h)) {
 			entry = LIST_FIRST(&l_inconst->cache[i]->h);
 			LIST_REMOVE(entry, next);
-			if (i == RTE_MAX_LCORE) {
+			if (i == MLX5_LIST_GLOBAL) {
 				l_const->cb_remove(l_const->ctx, entry);
 				DRV_LOG(DEBUG, "mlx5 list %s entry %p "
 					"destroyed.", l_const->name,
@@ -347,7 +363,7 @@ mlx5_list_uninit(struct mlx5_list_inconst *l_inconst,
 				l_const->cb_clone_free(l_const->ctx, entry);
 			}
 		}
-		if (i != RTE_MAX_LCORE)
+		if (i != MLX5_LIST_GLOBAL)
 			mlx5_free(l_inconst->cache[i]);
 	}
 }
@@ -416,6 +432,7 @@ mlx5_hlist_create(const char *name, uint32_t size, bool direct_key,
 	h->l_const.cb_remove = cb_remove;
 	h->l_const.cb_clone = cb_clone;
 	h->l_const.cb_clone_free = cb_clone_free;
+	rte_spinlock_init(&h->l_const.lcore_lock);
 	h->mask = act_size - 1;
 	h->direct_key = direct_key;
 	gc = (struct mlx5_list_cache *)&h->buckets[act_size];
@@ -449,28 +466,45 @@ mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key, void *ctx)
 {
 	uint32_t idx;
 	struct mlx5_list_entry *entry;
+	int lcore_index = rte_lcore_index(rte_lcore_id());
 
 	if (h->direct_key)
 		idx = (uint32_t)(key & h->mask);
 	else
 		idx = rte_hash_crc_8byte(key, 0) & h->mask;
-	entry = _mlx5_list_register(&h->buckets[idx].l, &h->l_const, ctx);
+	if (unlikely(lcore_index == -1)) {
+		lcore_index = MLX5_LIST_NLCORE;
+		rte_spinlock_lock(&h->l_const.lcore_lock);
+	}
+	entry = _mlx5_list_register(&h->buckets[idx].l, &h->l_const, ctx,
+				    lcore_index);
 	if (likely(entry)) {
 		if (h->l_const.lcores_share)
 			entry->gentry->bucket_idx = idx;
 		else
 			entry->bucket_idx = idx;
 	}
+	if (unlikely(lcore_index == MLX5_LIST_NLCORE))
+		rte_spinlock_unlock(&h->l_const.lcore_lock);
 	return entry;
 }
 
 int
 mlx5_hlist_unregister(struct mlx5_hlist *h, struct mlx5_list_entry *entry)
 {
+	int lcore_index = rte_lcore_index(rte_lcore_id());
+	int ret;
 	uint32_t idx = h->l_const.lcores_share ? entry->gentry->bucket_idx :
 							      entry->bucket_idx;
-
-	return _mlx5_list_unregister(&h->buckets[idx].l, &h->l_const, entry);
+	if (unlikely(lcore_index == -1)) {
+		lcore_index = MLX5_LIST_NLCORE;
+		rte_spinlock_lock(&h->l_const.lcore_lock);
+	}
+	ret = _mlx5_list_unregister(&h->buckets[idx].l, &h->l_const, entry,
+				    lcore_index);
+	if (unlikely(lcore_index == MLX5_LIST_NLCORE))
+		rte_spinlock_unlock(&h->l_const.lcore_lock);
+	return ret;
 }
 
 void
