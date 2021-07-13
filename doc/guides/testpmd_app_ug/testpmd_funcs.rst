@@ -3654,6 +3654,7 @@ This section lists supported pattern items and their attributes, if any.
 
 - ``ipv4``: match IPv4 header.
 
+  - ``version_ihl {unsigned}``: IPv4 version and IP header length.
   - ``tos {unsigned}``: type of service.
   - ``ttl {unsigned}``: time to live.
   - ``proto {unsigned}``: next protocol ID.
