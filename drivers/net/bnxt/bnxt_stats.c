@@ -597,6 +597,16 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 	return rc;
 }
 
+static void bnxt_clear_prev_stat(struct bnxt *bp)
+{
+	/*
+	 * Clear the cached values of stats returned by HW in the previous
+	 * get operation.
+	 */
+	memset(bp->prev_rx_ring_stats, 0, sizeof(struct bnxt_ring_stats) * bp->rx_cp_nr_rings);
+	memset(bp->prev_tx_ring_stats, 0, sizeof(struct bnxt_ring_stats) * bp->tx_cp_nr_rings);
+}
+
 int bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
@@ -618,6 +628,8 @@ int bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 
 		rte_atomic64_clear(&rxq->rx_mbuf_alloc_fail);
 	}
+
+	bnxt_clear_prev_stat(bp);
 
 	return ret;
 }
@@ -926,6 +938,8 @@ int bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 	if (ret != 0)
 		PMD_DRV_LOG(ERR, "Failed to reset xstats: %s\n",
 			    strerror(-ret));
+
+	bnxt_clear_prev_stat(bp);
 
 	return ret;
 }
