@@ -73,6 +73,13 @@ INTERNAL {
 
 	mlx5_glue;
 
+	mlx5_list_create;
+	mlx5_list_register;
+	mlx5_list_unregister;
+	mlx5_list_lookup;
+	mlx5_list_get_entry_num;
+	mlx5_list_destroy;
+
 	mlx5_hlist_create;
 	mlx5_hlist_lookup;
 	mlx5_hlist_register;

@@ -14,6 +14,8 @@
 #include <rte_kvargs.h>
 #include <rte_devargs.h>
 #include <rte_bitops.h>
+#include <rte_lcore.h>
+#include <rte_spinlock.h>
 #include <rte_os_shim.h>
 
 #include "mlx5_prm.h"
