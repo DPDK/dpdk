@@ -14,7 +14,7 @@
 /********************* mlx5 list ************************/
 
 struct mlx5_list *
-mlx5_list_create(const char *name, void *ctx,
+mlx5_list_create(const char *name, void *ctx, bool lcores_share,
 		 mlx5_list_create_cb cb_create,
 		 mlx5_list_match_cb cb_match,
 		 mlx5_list_remove_cb cb_remove,
@@ -35,6 +35,7 @@ mlx5_list_create(const char *name, void *ctx,
 	if (name)
 		snprintf(list->name, sizeof(list->name), "%s", name);
 	list->ctx = ctx;
+	list->lcores_share = lcores_share;
 	list->cb_create = cb_create;
 	list->cb_match = cb_match;
 	list->cb_remove = cb_remove;
@@ -119,7 +120,10 @@ __list_cache_clean(struct mlx5_list *list, int lcore_index)
 
 		if (__atomic_load_n(&entry->ref_cnt, __ATOMIC_RELAXED) == 0) {
 			LIST_REMOVE(entry, next);
-			list->cb_clone_free(list, entry);
+			if (list->lcores_share)
+				list->cb_clone_free(list, entry);
+			else
+				list->cb_remove(list, entry);
 			inv_cnt--;
 		}
 		entry = nentry;
@@ -129,7 +133,7 @@ __list_cache_clean(struct mlx5_list *list, int lcore_index)
 struct mlx5_list_entry *
 mlx5_list_register(struct mlx5_list *list, void *ctx)
 {
-	struct mlx5_list_entry *entry, *local_entry;
+	struct mlx5_list_entry *entry = NULL, *local_entry;
 	volatile uint32_t prev_gen_cnt = 0;
 	int lcore_index = rte_lcore_index(rte_lcore_id());
 
@@ -145,25 +149,36 @@ mlx5_list_register(struct mlx5_list *list, void *ctx)
 	local_entry = __list_lookup(list, lcore_index, ctx, true);
 	if (local_entry)
 		return local_entry;
-	/* 2. Lookup with read lock on global list, reuse if found. */
-	rte_rwlock_read_lock(&list->lock);
-	entry = __list_lookup(list, RTE_MAX_LCORE, ctx, true);
-	if (likely(entry)) {
+	if (list->lcores_share) {
+		/* 2. Lookup with read lock on global list, reuse if found. */
+		rte_rwlock_read_lock(&list->lock);
+		entry = __list_lookup(list, RTE_MAX_LCORE, ctx, true);
+		if (likely(entry)) {
+			rte_rwlock_read_unlock(&list->lock);
+			return mlx5_list_cache_insert(list, lcore_index, entry,
+						      ctx);
+		}
+		prev_gen_cnt = list->gen_cnt;
 		rte_rwlock_read_unlock(&list->lock);
-		return mlx5_list_cache_insert(list, lcore_index, entry, ctx);
 	}
-	prev_gen_cnt = list->gen_cnt;
-	rte_rwlock_read_unlock(&list->lock);
 	/* 3. Prepare new entry for global list and for cache. */
 	entry = list->cb_create(list, entry, ctx);
 	if (unlikely(!entry))
 		return NULL;
+	entry->ref_cnt = 1u;
+	if (!list->lcores_share) {
+		entry->lcore_idx = (uint32_t)lcore_index;
+		LIST_INSERT_HEAD(&list->cache[lcore_index].h, entry, next);
+		__atomic_add_fetch(&list->count, 1, __ATOMIC_RELAXED);
+		DRV_LOG(DEBUG, "MLX5 list %s c%d entry %p new: %u.",
+			list->name, lcore_index, (void *)entry, entry->ref_cnt);
+		return entry;
+	}
 	local_entry = list->cb_clone(list, entry, ctx);
 	if (unlikely(!local_entry)) {
 		list->cb_remove(list, entry);
 		return NULL;
 	}
-	entry->ref_cnt = 1u;
 	local_entry->ref_cnt = 1u;
 	local_entry->gentry = entry;
 	local_entry->lcore_idx = (uint32_t)lcore_index;
@@ -207,11 +222,20 @@ mlx5_list_unregister(struct mlx5_list *list,
 	MLX5_ASSERT(lcore_idx < RTE_MAX_LCORE);
 	if (entry->lcore_idx == (uint32_t)lcore_idx) {
 		LIST_REMOVE(entry, next);
-		list->cb_clone_free(list, entry);
+		if (list->lcores_share)
+			list->cb_clone_free(list, entry);
+		else
+			list->cb_remove(list, entry);
 	} else if (likely(lcore_idx != -1)) {
 		__atomic_add_fetch(&list->cache[entry->lcore_idx].inv_cnt, 1,
 				   __ATOMIC_RELAXED);
 	} else {
+		return 0;
+	}
+	if (!list->lcores_share) {
+		__atomic_sub_fetch(&list->count, 1, __ATOMIC_RELAXED);
+		DRV_LOG(DEBUG, "mlx5 list %s entry %p removed.",
+			list->name, (void *)entry);
 		return 0;
 	}
 	if (__atomic_sub_fetch(&gentry->ref_cnt, 1, __ATOMIC_RELAXED) != 0)

@@ -610,7 +610,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			err = ENOTSUP;
 			goto error;
 	}
-	priv->hrxqs = mlx5_list_create("hrxq", eth_dev,
+	priv->hrxqs = mlx5_list_create("hrxq", eth_dev, true,
 		mlx5_hrxq_create_cb, mlx5_hrxq_match_cb,
 		mlx5_hrxq_remove_cb, mlx5_hrxq_clone_cb,
 		mlx5_hrxq_clone_free_cb);

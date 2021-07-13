@@ -10117,7 +10117,7 @@ flow_dv_tbl_create_cb(struct mlx5_hlist *list, uint64_t key64, void *cb_ctx)
 	MKSTR(matcher_name, "%s_%s_%u_%u_matcher_list",
 	      key.is_fdb ? "FDB" : "NIC", key.is_egress ? "egress" : "ingress",
 	      key.level, key.id);
-	tbl_data->matchers = mlx5_list_create(matcher_name, sh,
+	tbl_data->matchers = mlx5_list_create(matcher_name, sh, true,
 					      flow_dv_matcher_create_cb,
 					      flow_dv_matcher_match_cb,
 					      flow_dv_matcher_remove_cb,

@@ -347,7 +347,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	/* Init port id action list. */
 	snprintf(s, sizeof(s), "%s_port_id_action_list", sh->ibdev_name);
-	sh->port_id_action_list = mlx5_list_create(s, sh,
+	sh->port_id_action_list = mlx5_list_create(s, sh, true,
 						   flow_dv_port_id_create_cb,
 						   flow_dv_port_id_match_cb,
 						   flow_dv_port_id_remove_cb,
@@ -357,7 +357,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		goto error;
 	/* Init push vlan action list. */
 	snprintf(s, sizeof(s), "%s_push_vlan_action_list", sh->ibdev_name);
-	sh->push_vlan_action_list = mlx5_list_create(s, sh,
+	sh->push_vlan_action_list = mlx5_list_create(s, sh, true,
 						    flow_dv_push_vlan_create_cb,
 						    flow_dv_push_vlan_match_cb,
 						    flow_dv_push_vlan_remove_cb,
@@ -367,7 +367,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		goto error;
 	/* Init sample action list. */
 	snprintf(s, sizeof(s), "%s_sample_action_list", sh->ibdev_name);
-	sh->sample_action_list = mlx5_list_create(s, sh,
+	sh->sample_action_list = mlx5_list_create(s, sh, true,
 						  flow_dv_sample_create_cb,
 						  flow_dv_sample_match_cb,
 						  flow_dv_sample_remove_cb,
@@ -377,7 +377,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		goto error;
 	/* Init dest array action list. */
 	snprintf(s, sizeof(s), "%s_dest_array_list", sh->ibdev_name);
-	sh->dest_array_list = mlx5_list_create(s, sh,
+	sh->dest_array_list = mlx5_list_create(s, sh, true,
 					       flow_dv_dest_array_create_cb,
 					       flow_dv_dest_array_match_cb,
 					       flow_dv_dest_array_remove_cb,
@@ -1836,7 +1836,8 @@ err_secondary:
 			err = ENOTSUP;
 			goto error;
 	}
-	priv->hrxqs = mlx5_list_create("hrxq", eth_dev, mlx5_hrxq_create_cb,
+	priv->hrxqs = mlx5_list_create("hrxq", eth_dev, true,
+				       mlx5_hrxq_create_cb,
 				       mlx5_hrxq_match_cb,
 				       mlx5_hrxq_remove_cb,
 				       mlx5_hrxq_clone_cb,

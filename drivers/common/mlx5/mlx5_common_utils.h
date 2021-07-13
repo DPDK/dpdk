@@ -100,11 +100,8 @@ typedef struct mlx5_list_entry *(*mlx5_list_create_cb)
  */
 struct mlx5_list {
 	char name[MLX5_NAME_SIZE]; /**< Name of the mlx5 list. */
-	volatile uint32_t gen_cnt;
-	/* List modification will update generation count. */
-	volatile uint32_t count; /* number of entries in list. */
 	void *ctx; /* user objects target to callback. */
-	rte_rwlock_t lock; /* read/write lock. */
+	bool lcores_share; /* Whether to share objects between the lcores. */
 	mlx5_list_create_cb cb_create; /**< entry create callback. */
 	mlx5_list_match_cb cb_match; /**< entry match callback. */
 	mlx5_list_remove_cb cb_remove; /**< entry remove callback. */
@@ -112,10 +109,18 @@ struct mlx5_list {
 	mlx5_list_clone_free_cb cb_clone_free;
 	struct mlx5_list_cache cache[RTE_MAX_LCORE + 1];
 	/* Lcore cache, last index is the global cache. */
+	volatile uint32_t gen_cnt; /* List modification may update it. */
+	volatile uint32_t count; /* number of entries in list. */
+	rte_rwlock_t lock; /* read/write lock. */
 };
 
 /**
  * Create a mlx5 list.
+ *
+ * For actions in SW-steering is only memory and  can be allowed
+ * to create duplicate objects, the lists don't need to check if
+ * there are existing same objects in other sub local lists,
+ * search the object only in local list will be more efficient.
  *
  * @param list
  *   Pointer to the hast list table.
@@ -123,6 +128,8 @@ struct mlx5_list {
  *   Name of the mlx5 list.
  * @param ctx
  *   Pointer to the list context data.
+ * @param lcores_share
+ *   Whether to share objects between the lcores.
  * @param cb_create
  *   Callback function for entry create.
  * @param cb_match
@@ -134,6 +141,7 @@ struct mlx5_list {
  */
 __rte_internal
 struct mlx5_list *mlx5_list_create(const char *name, void *ctx,
+				   bool lcores_share,
 				   mlx5_list_create_cb cb_create,
 				   mlx5_list_match_cb cb_match,
 				   mlx5_list_remove_cb cb_remove,
