@@ -175,14 +175,14 @@ static inline void
 mlx5_ipool_lock(struct mlx5_indexed_pool *pool)
 {
 	if (pool->cfg.need_lock)
-		rte_spinlock_lock(&pool->lock);
+		rte_spinlock_lock(&pool->rsz_lock);
 }
 
 static inline void
 mlx5_ipool_unlock(struct mlx5_indexed_pool *pool)
 {
 	if (pool->cfg.need_lock)
-		rte_spinlock_unlock(&pool->lock);
+		rte_spinlock_unlock(&pool->rsz_lock);
 }
 
 static inline uint32_t
@@ -243,6 +243,7 @@ mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 	uint32_t i;
 
 	if (!cfg || (!cfg->malloc ^ !cfg->free) ||
+	    (cfg->per_core_cache && cfg->release_mem_en) ||
 	    (cfg->trunk_size && ((cfg->trunk_size & (cfg->trunk_size - 1)) ||
 	    ((__builtin_ffs(cfg->trunk_size) + TRUNK_IDX_BITS) > 32))))
 		return NULL;
@@ -258,9 +259,8 @@ mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 		pool->cfg.malloc = mlx5_malloc;
 		pool->cfg.free = mlx5_free;
 	}
-	pool->free_list = TRUNK_INVALID;
 	if (pool->cfg.need_lock)
-		rte_spinlock_init(&pool->lock);
+		rte_spinlock_init(&pool->rsz_lock);
 	/*
 	 * Initialize the dynamic grow trunk size lookup table to have a quick
 	 * lookup for the trunk entry index offset.
@@ -273,6 +273,8 @@ mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 	if (!pool->cfg.max_idx)
 		pool->cfg.max_idx =
 			mlx5_trunk_idx_offset_get(pool, TRUNK_MAX_IDX + 1);
+	if (!cfg->per_core_cache)
+		pool->free_list = TRUNK_INVALID;
 	return pool;
 }
 
@@ -355,6 +357,274 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 	return 0;
 }
 
+static inline struct mlx5_indexed_cache *
+mlx5_ipool_update_global_cache(struct mlx5_indexed_pool *pool, int cidx)
+{
+	struct mlx5_indexed_cache *gc, *lc, *olc = NULL;
+
+	lc = pool->cache[cidx]->lc;
+	gc = __atomic_load_n(&pool->gc, __ATOMIC_RELAXED);
+	if (gc && lc != gc) {
+		mlx5_ipool_lock(pool);
+		if (lc && !(--lc->ref_cnt))
+			olc = lc;
+		lc = pool->gc;
+		lc->ref_cnt++;
+		pool->cache[cidx]->lc = lc;
+		mlx5_ipool_unlock(pool);
+		if (olc)
+			pool->cfg.free(olc);
+	}
+	return lc;
+}
+
+static uint32_t
+mlx5_ipool_allocate_from_global(struct mlx5_indexed_pool *pool, int cidx)
+{
+	struct mlx5_indexed_trunk *trunk;
+	struct mlx5_indexed_cache *p, *lc, *olc = NULL;
+	size_t trunk_size = 0;
+	size_t data_size;
+	uint32_t cur_max_idx, trunk_idx, trunk_n;
+	uint32_t fetch_size, ts_idx, i;
+	int n_grow;
+
+check_again:
+	p = NULL;
+	fetch_size = 0;
+	/*
+	 * Fetch new index from global if possible. First round local
+	 * cache will be NULL.
+	 */
+	lc = pool->cache[cidx]->lc;
+	mlx5_ipool_lock(pool);
+	/* Try to update local cache first. */
+	if (likely(pool->gc)) {
+		if (lc != pool->gc) {
+			if (lc && !(--lc->ref_cnt))
+				olc = lc;
+			lc = pool->gc;
+			lc->ref_cnt++;
+			pool->cache[cidx]->lc = lc;
+		}
+		if (lc->len) {
+			/* Use the updated local cache to fetch index. */
+			fetch_size = pool->cfg.per_core_cache >> 2;
+			if (lc->len < fetch_size)
+				fetch_size = lc->len;
+			lc->len -= fetch_size;
+			memcpy(pool->cache[cidx]->idx, &lc->idx[lc->len],
+			       sizeof(uint32_t) * fetch_size);
+		}
+	}
+	mlx5_ipool_unlock(pool);
+	if (unlikely(olc)) {
+		pool->cfg.free(olc);
+		olc = NULL;
+	}
+	if (fetch_size) {
+		pool->cache[cidx]->len = fetch_size - 1;
+		return pool->cache[cidx]->idx[pool->cache[cidx]->len];
+	}
+	trunk_idx = lc ? __atomic_load_n(&lc->n_trunk_valid,
+			 __ATOMIC_ACQUIRE) : 0;
+	trunk_n = lc ? lc->n_trunk : 0;
+	cur_max_idx = mlx5_trunk_idx_offset_get(pool, trunk_idx);
+	/* Check if index reach maximum. */
+	if (trunk_idx == TRUNK_MAX_IDX ||
+	    cur_max_idx >= pool->cfg.max_idx)
+		return 0;
+	/* No enough space in trunk array, resize the trunks array. */
+	if (trunk_idx == trunk_n) {
+		n_grow = trunk_idx ? trunk_idx :
+			     RTE_CACHE_LINE_SIZE / sizeof(void *);
+		cur_max_idx = mlx5_trunk_idx_offset_get(pool, trunk_n + n_grow);
+		/* Resize the trunk array. */
+		p = pool->cfg.malloc(0, ((trunk_idx + n_grow) *
+			sizeof(struct mlx5_indexed_trunk *)) +
+			(cur_max_idx * sizeof(uint32_t)) + sizeof(*p),
+			RTE_CACHE_LINE_SIZE, rte_socket_id());
+		if (!p)
+			return 0;
+		p->trunks = (struct mlx5_indexed_trunk **)&p->idx[cur_max_idx];
+		if (lc)
+			memcpy(p->trunks, lc->trunks, trunk_idx *
+		       sizeof(struct mlx5_indexed_trunk *));
+#ifdef RTE_LIBRTE_MLX5_DEBUG
+		memset(RTE_PTR_ADD(p->trunks, trunk_idx * sizeof(void *)), 0,
+			n_grow * sizeof(void *));
+#endif
+		p->n_trunk_valid = trunk_idx;
+		p->n_trunk = trunk_n + n_grow;
+		p->len = 0;
+	}
+	/* Prepare the new trunk. */
+	trunk_size = sizeof(*trunk);
+	data_size = mlx5_trunk_size_get(pool, trunk_idx);
+	trunk_size += RTE_CACHE_LINE_ROUNDUP(data_size * pool->cfg.size);
+	trunk = pool->cfg.malloc(0, trunk_size,
+				 RTE_CACHE_LINE_SIZE, rte_socket_id());
+	if (unlikely(!trunk)) {
+		pool->cfg.free(p);
+		return 0;
+	}
+	trunk->idx = trunk_idx;
+	trunk->free = data_size;
+	mlx5_ipool_lock(pool);
+	/*
+	 * Double check if trunks has been updated or have available index.
+	 * During the new trunk allocate, index may still be flushed to the
+	 * global cache. So also need to check the pool->gc->len.
+	 */
+	if (pool->gc && (lc != pool->gc ||
+	    lc->n_trunk_valid != trunk_idx ||
+	    pool->gc->len)) {
+		mlx5_ipool_unlock(pool);
+		if (p)
+			pool->cfg.free(p);
+		pool->cfg.free(trunk);
+		goto check_again;
+	}
+	/* Resize the trunk array and update local cache first.  */
+	if (p) {
+		if (lc && !(--lc->ref_cnt))
+			olc = lc;
+		lc = p;
+		lc->ref_cnt = 1;
+		pool->cache[cidx]->lc = lc;
+		__atomic_store_n(&pool->gc, p, __ATOMIC_RELAXED);
+	}
+	/* Add trunk to trunks array. */
+	lc->trunks[trunk_idx] = trunk;
+	__atomic_fetch_add(&lc->n_trunk_valid, 1, __ATOMIC_RELAXED);
+	/* Enqueue half of the index to global. */
+	ts_idx = mlx5_trunk_idx_offset_get(pool, trunk_idx) + 1;
+	fetch_size = trunk->free >> 1;
+	for (i = 0; i < fetch_size; i++)
+		lc->idx[i] = ts_idx + i;
+	lc->len = fetch_size;
+	mlx5_ipool_unlock(pool);
+	/* Copy left half - 1 to local cache index array. */
+	pool->cache[cidx]->len = trunk->free - fetch_size - 1;
+	ts_idx += fetch_size;
+	for (i = 0; i < pool->cache[cidx]->len; i++)
+		pool->cache[cidx]->idx[i] = ts_idx + i;
+	if (olc)
+		pool->cfg.free(olc);
+	return ts_idx + i;
+}
+
+static void *
+mlx5_ipool_get_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
+{
+	struct mlx5_indexed_trunk *trunk;
+	struct mlx5_indexed_cache *lc;
+	uint32_t trunk_idx;
+	uint32_t entry_idx;
+	int cidx;
+
+	MLX5_ASSERT(idx);
+	cidx = rte_lcore_index(rte_lcore_id());
+	if (unlikely(cidx == -1)) {
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+	lc = mlx5_ipool_update_global_cache(pool, cidx);
+	idx -= 1;
+	trunk_idx = mlx5_trunk_idx_get(pool, idx);
+	trunk = lc->trunks[trunk_idx];
+	MLX5_ASSERT(trunk);
+	entry_idx = idx - mlx5_trunk_idx_offset_get(pool, trunk_idx);
+	return &trunk->data[entry_idx * pool->cfg.size];
+}
+
+static void *
+mlx5_ipool_malloc_cache(struct mlx5_indexed_pool *pool, uint32_t *idx)
+{
+	int cidx;
+
+	cidx = rte_lcore_index(rte_lcore_id());
+	if (unlikely(cidx == -1)) {
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+	if (unlikely(!pool->cache[cidx])) {
+		pool->cache[cidx] = pool->cfg.malloc(MLX5_MEM_ZERO,
+			sizeof(struct mlx5_ipool_per_lcore) +
+			(pool->cfg.per_core_cache * sizeof(uint32_t)),
+			RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+		if (!pool->cache[cidx]) {
+			DRV_LOG(ERR, "Ipool cache%d allocate failed\n", cidx);
+			return NULL;
+		}
+	} else if (pool->cache[cidx]->len) {
+		pool->cache[cidx]->len--;
+		*idx = pool->cache[cidx]->idx[pool->cache[cidx]->len];
+		return mlx5_ipool_get_cache(pool, *idx);
+	}
+	/* Not enough idx in global cache. Keep fetching from global. */
+	*idx = mlx5_ipool_allocate_from_global(pool, cidx);
+	if (unlikely(!(*idx)))
+		return NULL;
+	return mlx5_ipool_get_cache(pool, *idx);
+}
+
+static void
+mlx5_ipool_free_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
+{
+	int cidx;
+	struct mlx5_ipool_per_lcore *ilc;
+	struct mlx5_indexed_cache *gc, *olc = NULL;
+	uint32_t reclaim_num = 0;
+
+	MLX5_ASSERT(idx);
+	cidx = rte_lcore_index(rte_lcore_id());
+	if (unlikely(cidx == -1)) {
+		rte_errno = ENOTSUP;
+		return;
+	}
+	/*
+	 * When index was allocated on core A but freed on core B. In this
+	 * case check if local cache on core B was allocated before.
+	 */
+	if (unlikely(!pool->cache[cidx])) {
+		pool->cache[cidx] = pool->cfg.malloc(MLX5_MEM_ZERO,
+			sizeof(struct mlx5_ipool_per_lcore) +
+			(pool->cfg.per_core_cache * sizeof(uint32_t)),
+			RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+		if (!pool->cache[cidx]) {
+			DRV_LOG(ERR, "Ipool cache%d allocate failed\n", cidx);
+			return;
+		}
+	}
+	/* Try to enqueue to local index cache. */
+	if (pool->cache[cidx]->len < pool->cfg.per_core_cache) {
+		pool->cache[cidx]->idx[pool->cache[cidx]->len] = idx;
+		pool->cache[cidx]->len++;
+		return;
+	}
+	ilc = pool->cache[cidx];
+	reclaim_num = pool->cfg.per_core_cache >> 2;
+	ilc->len -= reclaim_num;
+	/* Local index cache full, try with global index cache. */
+	mlx5_ipool_lock(pool);
+	gc = pool->gc;
+	if (ilc->lc != gc) {
+		if (!(--ilc->lc->ref_cnt))
+			olc = ilc->lc;
+		gc->ref_cnt++;
+		ilc->lc = gc;
+	}
+	memcpy(&gc->idx[gc->len], &ilc->idx[ilc->len],
+	       reclaim_num * sizeof(uint32_t));
+	gc->len += reclaim_num;
+	mlx5_ipool_unlock(pool);
+	if (olc)
+		pool->cfg.free(olc);
+	pool->cache[cidx]->idx[pool->cache[cidx]->len] = idx;
+	pool->cache[cidx]->len++;
+}
+
 void *
 mlx5_ipool_malloc(struct mlx5_indexed_pool *pool, uint32_t *idx)
 {
@@ -363,6 +633,8 @@ mlx5_ipool_malloc(struct mlx5_indexed_pool *pool, uint32_t *idx)
 	uint32_t iidx = 0;
 	void *p;
 
+	if (pool->cfg.per_core_cache)
+		return mlx5_ipool_malloc_cache(pool, idx);
 	mlx5_ipool_lock(pool);
 	if (pool->free_list == TRUNK_INVALID) {
 		/* If no available trunks, grow new. */
@@ -432,6 +704,10 @@ mlx5_ipool_free(struct mlx5_indexed_pool *pool, uint32_t idx)
 
 	if (!idx)
 		return;
+	if (pool->cfg.per_core_cache) {
+		mlx5_ipool_free_cache(pool, idx);
+		return;
+	}
 	idx -= 1;
 	mlx5_ipool_lock(pool);
 	trunk_idx = mlx5_trunk_idx_get(pool, idx);
@@ -497,6 +773,8 @@ mlx5_ipool_get(struct mlx5_indexed_pool *pool, uint32_t idx)
 
 	if (!idx)
 		return NULL;
+	if (pool->cfg.per_core_cache)
+		return mlx5_ipool_get_cache(pool, idx);
 	idx -= 1;
 	mlx5_ipool_lock(pool);
 	trunk_idx = mlx5_trunk_idx_get(pool, idx);
@@ -519,18 +797,43 @@ out:
 int
 mlx5_ipool_destroy(struct mlx5_indexed_pool *pool)
 {
-	struct mlx5_indexed_trunk **trunks;
-	uint32_t i;
+	struct mlx5_indexed_trunk **trunks = NULL;
+	struct mlx5_indexed_cache *gc = pool->gc;
+	uint32_t i, n_trunk_valid = 0;
 
 	MLX5_ASSERT(pool);
 	mlx5_ipool_lock(pool);
-	trunks = pool->trunks;
-	for (i = 0; i < pool->n_trunk; i++) {
+	if (pool->cfg.per_core_cache) {
+		for (i = 0; i < RTE_MAX_LCORE; i++) {
+			/*
+			 * Free only old global cache. Pool gc will be
+			 * freed at last.
+			 */
+			if (pool->cache[i]) {
+				if (pool->cache[i]->lc &&
+				    pool->cache[i]->lc != pool->gc &&
+				    (!(--pool->cache[i]->lc->ref_cnt)))
+					pool->cfg.free(pool->cache[i]->lc);
+				pool->cfg.free(pool->cache[i]);
+			}
+		}
+		if (gc) {
+			trunks = gc->trunks;
+			n_trunk_valid = gc->n_trunk_valid;
+		}
+	} else {
+		gc = NULL;
+		trunks = pool->trunks;
+		n_trunk_valid = pool->n_trunk_valid;
+	}
+	for (i = 0; i < n_trunk_valid; i++) {
 		if (trunks[i])
 			pool->cfg.free(trunks[i]);
 	}
-	if (!pool->trunks)
-		pool->cfg.free(pool->trunks);
+	if (!gc && trunks)
+		pool->cfg.free(trunks);
+	if (gc)
+		pool->cfg.free(gc);
 	mlx5_ipool_unlock(pool);
 	mlx5_free(pool);
 	return 0;

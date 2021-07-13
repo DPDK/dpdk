@@ -209,6 +209,11 @@ struct mlx5_indexed_pool_config {
 	/* Lock is needed for multiple thread usage. */
 	uint32_t release_mem_en:1; /* Rlease trunk when it is free. */
 	uint32_t max_idx; /* The maximum index can be allocated. */
+	uint32_t per_core_cache;
+	/*
+	 * Cache entry number per core for performance. Should not be
+	 * set with release_mem_en.
+	 */
 	const char *type; /* Memory allocate type name. */
 	void *(*malloc)(uint32_t flags, size_t size, unsigned int align,
 			int socket);
@@ -225,14 +230,39 @@ struct mlx5_indexed_trunk {
 	uint8_t data[] __rte_cache_aligned; /* Entry data start. */
 };
 
+struct mlx5_indexed_cache {
+	struct mlx5_indexed_trunk **trunks;
+	volatile uint32_t n_trunk_valid; /* Trunks allocated. */
+	uint32_t n_trunk; /* Trunk pointer array size. */
+	uint32_t ref_cnt;
+	uint32_t len;
+	uint32_t idx[];
+};
+
+struct mlx5_ipool_per_lcore {
+	struct mlx5_indexed_cache *lc;
+	uint32_t len; /**< Current cache count. */
+	uint32_t idx[]; /**< Cache objects. */
+};
+
 struct mlx5_indexed_pool {
 	struct mlx5_indexed_pool_config cfg; /* Indexed pool configuration. */
-	rte_spinlock_t lock; /* Pool lock for multiple thread usage. */
-	uint32_t n_trunk_valid; /* Trunks allocated. */
-	uint32_t n_trunk; /* Trunk pointer array size. */
+	rte_spinlock_t rsz_lock; /* Pool lock for multiple thread usage. */
 	/* Dim of trunk pointer array. */
-	struct mlx5_indexed_trunk **trunks;
-	uint32_t free_list; /* Index to first free trunk. */
+	union {
+		struct {
+			uint32_t n_trunk_valid; /* Trunks allocated. */
+			uint32_t n_trunk; /* Trunk pointer array size. */
+			struct mlx5_indexed_trunk **trunks;
+			uint32_t free_list; /* Index to first free trunk. */
+		};
+		struct {
+			struct mlx5_indexed_cache *gc;
+			/* Global cache. */
+			struct mlx5_ipool_per_lcore *cache[RTE_MAX_LCORE];
+			/* Local cache. */
+		};
+	};
 #ifdef POOL_DEBUG
 	uint32_t n_entry;
 	uint32_t trunk_new;
@@ -541,6 +571,30 @@ int mlx5_ipool_destroy(struct mlx5_indexed_pool *pool);
  *   Pointer to indexed memory pool.
  */
 void mlx5_ipool_dump(struct mlx5_indexed_pool *pool);
+
+/**
+ * This function flushes all the cache index back to pool trunk.
+ *
+ * @param pool
+ *   Pointer to the index memory pool handler.
+ *
+ */
+
+void mlx5_ipool_flush_cache(struct mlx5_indexed_pool *pool);
+
+/**
+ * This function gets the available entry from pos.
+ *
+ * @param pool
+ *   Pointer to the index memory pool handler.
+ * @param pos
+ *   Pointer to the index position start from.
+ *
+ * @return
+ *  - Pointer to the next available entry.
+ *
+ */
+void *mlx5_ipool_get_next(struct mlx5_indexed_pool *pool, uint32_t *pos);
 
 /**
  * This function allocates new empty Three-level table.
