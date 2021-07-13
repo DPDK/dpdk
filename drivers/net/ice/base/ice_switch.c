@@ -16,6 +16,7 @@
 #define ICE_TCP_PROTO_ID		0x06
 #define ICE_GTPU_PROFILE		24
 #define ICE_ETH_P_8021Q			0x8100
+#define ICE_MPLS_ETHER_ID		0x8847
 
 /* Dummy ethernet header needed in the ice_aqc_sw_rules_elem
  * struct to configure any switch filter rules.
@@ -316,6 +317,25 @@ static const u8 dummy_tcp_packet[] = {
 	0x00, 0x00, 0x00, 0x00,
 	0x50, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00,	/* 2 bytes for 4 byte alignment */
+};
+
+/* offset info for MAC + MPLS dummy packet */
+static const struct ice_dummy_pkt_offsets dummy_mpls_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_ETYPE_OL,		12 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+/* Dummy packet for MAC + MPLS */
+static const u8 dummy_mpls_packet[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x88, 0x47,		/* ICE_ETYPE_OL 12 */
+	0x00, 0x00, 0x01, 0x00,
 
 	0x00, 0x00,	/* 2 bytes for 4 byte alignment */
 };
@@ -7857,7 +7877,7 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		      const struct ice_dummy_pkt_offsets **offsets)
 {
 	bool tcp = false, udp = false, ipv6 = false, vlan = false;
-	bool gre = false;
+	bool gre = false, mpls = false;
 	u16 i;
 
 	for (i = 0; i < lkups_cnt; i++) {
@@ -7893,6 +7913,11 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			 lkups[i].m_u.ipv4_hdr.protocol ==
 				0xFF)
 			tcp = true;
+		else if (lkups[i].type == ICE_ETYPE_OL &&
+			 lkups[i].h_u.ethertype.ethtype_id ==
+				CPU_TO_BE16(ICE_MPLS_ETHER_ID) &&
+			 lkups[i].m_u.ethertype.ethtype_id == 0xFFFF)
+			mpls = true;
 	}
 
 	if ((tun_type == ICE_SW_TUN_AND_NON_TUN_QINQ ||
@@ -8263,6 +8288,10 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		*pkt = dummy_vlan_tcp_packet;
 		*pkt_len = sizeof(dummy_vlan_tcp_packet);
 		*offsets = dummy_vlan_tcp_packet_offsets;
+	}  else if (mpls) {
+		*pkt = dummy_mpls_packet;
+		*pkt_len = sizeof(dummy_mpls_packet);
+		*offsets = dummy_mpls_packet_offsets;
 	} else {
 		*pkt = dummy_tcp_packet;
 		*pkt_len = sizeof(dummy_tcp_packet);
