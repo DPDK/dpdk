@@ -9,57 +9,68 @@
 #include "mlx5_utils.h"
 
 
-/********************* MLX5 list ************************/
-
-static struct mlx5_list_entry *
-mlx5_list_default_create_cb(struct mlx5_list *list,
-			     struct mlx5_list_entry *entry __rte_unused,
-			     void *ctx __rte_unused)
-{
-	return mlx5_malloc(MLX5_MEM_ZERO, list->entry_sz, 0, SOCKET_ID_ANY);
-}
-
-static void
-mlx5_list_default_remove_cb(struct mlx5_list *list __rte_unused,
-			     struct mlx5_list_entry *entry)
-{
-	mlx5_free(entry);
-}
+/********************* mlx5 list ************************/
 
 int
-mlx5_list_create(struct mlx5_list *list, const char *name,
-		     uint32_t entry_size, void *ctx,
-		     mlx5_list_create_cb cb_create,
-		     mlx5_list_match_cb cb_match,
-		     mlx5_list_remove_cb cb_remove)
+mlx5_list_create(struct mlx5_list *list, const char *name, void *ctx,
+		 mlx5_list_create_cb cb_create,
+		 mlx5_list_match_cb cb_match,
+		 mlx5_list_remove_cb cb_remove,
+		 mlx5_list_clone_cb cb_clone,
+		 mlx5_list_clone_free_cb cb_clone_free)
 {
+	int i;
+
 	MLX5_ASSERT(list);
-	if (!cb_match || (!cb_create ^ !cb_remove))
+	if (!cb_match || !cb_create || !cb_remove || !cb_clone ||
+	    !cb_clone_free)
 		return -1;
 	if (name)
 		snprintf(list->name, sizeof(list->name), "%s", name);
-	list->entry_sz = entry_size;
 	list->ctx = ctx;
-	list->cb_create = cb_create ? cb_create : mlx5_list_default_create_cb;
+	list->cb_create = cb_create;
 	list->cb_match = cb_match;
-	list->cb_remove = cb_remove ? cb_remove : mlx5_list_default_remove_cb;
+	list->cb_remove = cb_remove;
+	list->cb_clone = cb_clone;
+	list->cb_clone_free = cb_clone_free;
 	rte_rwlock_init(&list->lock);
 	DRV_LOG(DEBUG, "mlx5 list %s initialized.", list->name);
-	LIST_INIT(&list->head);
+	for (i = 0; i <= RTE_MAX_LCORE; i++)
+		LIST_INIT(&list->cache[i].h);
 	return 0;
 }
 
 static struct mlx5_list_entry *
-__list_lookup(struct mlx5_list *list, void *ctx, bool reuse)
+__list_lookup(struct mlx5_list *list, int lcore_index, void *ctx, bool reuse)
 {
-	struct mlx5_list_entry *entry;
+	struct mlx5_list_entry *entry = LIST_FIRST(&list->cache[lcore_index].h);
+	uint32_t ret;
 
-	LIST_FOREACH(entry, &list->head, next) {
-		if (list->cb_match(list, entry, ctx))
+	while (entry != NULL) {
+		struct mlx5_list_entry *nentry = LIST_NEXT(entry, next);
+
+		if (list->cb_match(list, entry, ctx)) {
+			if (lcore_index < RTE_MAX_LCORE) {
+				ret = __atomic_load_n(&entry->ref_cnt,
+						      __ATOMIC_ACQUIRE);
+				if (ret == 0) {
+					LIST_REMOVE(entry, next);
+					list->cb_clone_free(list, entry);
+				}
+			}
+			entry = nentry;
 			continue;
+		}
 		if (reuse) {
-			__atomic_add_fetch(&entry->ref_cnt, 1,
-					   __ATOMIC_RELAXED);
+			ret = __atomic_add_fetch(&entry->ref_cnt, 1,
+						 __ATOMIC_ACQUIRE);
+			if (ret == 1u) {
+				/* Entry was invalid before, free it. */
+				LIST_REMOVE(entry, next);
+				list->cb_clone_free(list, entry);
+				entry = nentry;
+				continue;
+			}
 			DRV_LOG(DEBUG, "mlx5 list %s entry %p ref++: %u.",
 				list->name, (void *)entry, entry->ref_cnt);
 		}
@@ -68,96 +79,141 @@ __list_lookup(struct mlx5_list *list, void *ctx, bool reuse)
 	return entry;
 }
 
-static struct mlx5_list_entry *
-list_lookup(struct mlx5_list *list, void *ctx, bool reuse)
+struct mlx5_list_entry *
+mlx5_list_lookup(struct mlx5_list *list, void *ctx)
 {
-	struct mlx5_list_entry *entry;
+	struct mlx5_list_entry *entry = NULL;
+	int i;
 
 	rte_rwlock_read_lock(&list->lock);
-	entry = __list_lookup(list, ctx, reuse);
+	for (i = 0; i < RTE_MAX_LCORE; i++) {
+		entry = __list_lookup(list, i, ctx, false);
+		if (entry)
+			break;
+	}
 	rte_rwlock_read_unlock(&list->lock);
 	return entry;
 }
 
-struct mlx5_list_entry *
-mlx5_list_lookup(struct mlx5_list *list, void *ctx)
+static struct mlx5_list_entry *
+mlx5_list_cache_insert(struct mlx5_list *list, int lcore_index,
+		       struct mlx5_list_entry *gentry, void *ctx)
 {
-	return list_lookup(list, ctx, false);
+	struct mlx5_list_entry *lentry = list->cb_clone(list, gentry, ctx);
+
+	if (!lentry)
+		return NULL;
+	lentry->ref_cnt = 1u;
+	lentry->gentry = gentry;
+	LIST_INSERT_HEAD(&list->cache[lcore_index].h, lentry, next);
+	return lentry;
 }
 
 struct mlx5_list_entry *
 mlx5_list_register(struct mlx5_list *list, void *ctx)
 {
-	struct mlx5_list_entry *entry;
+	struct mlx5_list_entry *entry, *lentry;
 	uint32_t prev_gen_cnt = 0;
+	int lcore_index = rte_lcore_index(rte_lcore_id());
 
 	MLX5_ASSERT(list);
-	prev_gen_cnt = __atomic_load_n(&list->gen_cnt, __ATOMIC_ACQUIRE);
+	MLX5_ASSERT(lcore_index < RTE_MAX_LCORE);
+	if (unlikely(lcore_index == -1)) {
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+	/* Lookup in local cache. */
+	lentry = __list_lookup(list, lcore_index, ctx, true);
+	if (lentry)
+		return lentry;
 	/* Lookup with read lock, reuse if found. */
-	entry = list_lookup(list, ctx, true);
-	if (entry)
-		return entry;
+	rte_rwlock_read_lock(&list->lock);
+	entry = __list_lookup(list, RTE_MAX_LCORE, ctx, true);
+	if (entry == NULL) {
+		prev_gen_cnt = __atomic_load_n(&list->gen_cnt,
+					       __ATOMIC_ACQUIRE);
+		rte_rwlock_read_unlock(&list->lock);
+	} else {
+		rte_rwlock_read_unlock(&list->lock);
+		return mlx5_list_cache_insert(list, lcore_index, entry, ctx);
+	}
 	/* Not found, append with write lock - block read from other threads. */
 	rte_rwlock_write_lock(&list->lock);
 	/* If list changed by other threads before lock, search again. */
 	if (prev_gen_cnt != __atomic_load_n(&list->gen_cnt, __ATOMIC_ACQUIRE)) {
 		/* Lookup and reuse w/o read lock. */
-		entry = __list_lookup(list, ctx, true);
-		if (entry)
-			goto done;
+		entry = __list_lookup(list, RTE_MAX_LCORE, ctx, true);
+		if (entry) {
+			rte_rwlock_write_unlock(&list->lock);
+			return mlx5_list_cache_insert(list, lcore_index, entry,
+						      ctx);
+		}
 	}
 	entry = list->cb_create(list, entry, ctx);
-	if (!entry) {
-		DRV_LOG(ERR, "Failed to init mlx5 list %s entry %p.",
-			list->name, (void *)entry);
-		goto done;
+	if (entry) {
+		lentry = mlx5_list_cache_insert(list, lcore_index, entry, ctx);
+		if (!lentry) {
+			list->cb_remove(list, entry);
+		} else {
+			entry->ref_cnt = 1u;
+			LIST_INSERT_HEAD(&list->cache[RTE_MAX_LCORE].h, entry,
+					 next);
+			__atomic_add_fetch(&list->gen_cnt, 1, __ATOMIC_RELEASE);
+			__atomic_add_fetch(&list->count, 1, __ATOMIC_ACQUIRE);
+			DRV_LOG(DEBUG, "mlx5 list %s entry %p new: %u.",
+				list->name, (void *)entry, entry->ref_cnt);
+		}
+
 	}
-	entry->ref_cnt = 1;
-	LIST_INSERT_HEAD(&list->head, entry, next);
-	__atomic_add_fetch(&list->gen_cnt, 1, __ATOMIC_RELEASE);
-	__atomic_add_fetch(&list->count, 1, __ATOMIC_ACQUIRE);
-	DRV_LOG(DEBUG, "mlx5 list %s entry %p new: %u.",
-		list->name, (void *)entry, entry->ref_cnt);
-done:
 	rte_rwlock_write_unlock(&list->lock);
-	return entry;
+	return lentry;
 }
 
 int
 mlx5_list_unregister(struct mlx5_list *list,
 		      struct mlx5_list_entry *entry)
 {
-	rte_rwlock_write_lock(&list->lock);
-	MLX5_ASSERT(entry && entry->next.le_prev);
-	DRV_LOG(DEBUG, "mlx5 list %s entry %p ref--: %u.",
-		list->name, (void *)entry, entry->ref_cnt);
-	if (--entry->ref_cnt) {
-		rte_rwlock_write_unlock(&list->lock);
+	struct mlx5_list_entry *gentry = entry->gentry;
+
+	if (__atomic_sub_fetch(&entry->ref_cnt, 1, __ATOMIC_ACQUIRE) != 0)
 		return 1;
+	if (__atomic_sub_fetch(&gentry->ref_cnt, 1, __ATOMIC_ACQUIRE) != 0)
+		return 1;
+	rte_rwlock_write_lock(&list->lock);
+	if (__atomic_load_n(&gentry->ref_cnt, __ATOMIC_ACQUIRE) == 0) {
+		__atomic_add_fetch(&list->gen_cnt, 1, __ATOMIC_ACQUIRE);
+		__atomic_sub_fetch(&list->count, 1, __ATOMIC_ACQUIRE);
+		LIST_REMOVE(gentry, next);
+		list->cb_remove(list, gentry);
+		rte_rwlock_write_unlock(&list->lock);
+		DRV_LOG(DEBUG, "mlx5 list %s entry %p removed.",
+			list->name, (void *)gentry);
+		return 0;
 	}
-	__atomic_add_fetch(&list->gen_cnt, 1, __ATOMIC_ACQUIRE);
-	__atomic_sub_fetch(&list->count, 1, __ATOMIC_ACQUIRE);
-	LIST_REMOVE(entry, next);
-	list->cb_remove(list, entry);
 	rte_rwlock_write_unlock(&list->lock);
-	DRV_LOG(DEBUG, "mlx5 list %s entry %p removed.",
-		list->name, (void *)entry);
-	return 0;
+	return 1;
 }
 
 void
 mlx5_list_destroy(struct mlx5_list *list)
 {
 	struct mlx5_list_entry *entry;
+	int i;
 
 	MLX5_ASSERT(list);
-	/* no LIST_FOREACH_SAFE, using while instead */
-	while (!LIST_EMPTY(&list->head)) {
-		entry = LIST_FIRST(&list->head);
-		LIST_REMOVE(entry, next);
-		list->cb_remove(list, entry);
-		DRV_LOG(DEBUG, "mlx5 list %s entry %p destroyed.",
-			list->name, (void *)entry);
+	for (i = 0; i <= RTE_MAX_LCORE; i++) {
+		while (!LIST_EMPTY(&list->cache[i].h)) {
+			entry = LIST_FIRST(&list->cache[i].h);
+			LIST_REMOVE(entry, next);
+			if (i == RTE_MAX_LCORE) {
+				list->cb_remove(list, entry);
+				DRV_LOG(DEBUG, "mlx5 list %s entry %p "
+					"destroyed.", list->name,
+					(void *)entry);
+			} else {
+				list->cb_clone_free(list, entry);
+			}
+		}
 	}
 	memset(list, 0, sizeof(*list));
 }

@@ -610,9 +610,10 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			err = ENOTSUP;
 			goto error;
 	}
-	mlx5_list_create(&priv->hrxqs, "hrxq", 0, eth_dev,
+	mlx5_list_create(&priv->hrxqs, "hrxq", eth_dev,
 		mlx5_hrxq_create_cb, mlx5_hrxq_match_cb,
-		mlx5_hrxq_remove_cb);
+		mlx5_hrxq_remove_cb, mlx5_hrxq_clone_cb,
+		mlx5_hrxq_clone_free_cb);
 	/* Query availability of metadata reg_c's. */
 	err = mlx5_flow_discover_mreg_c(eth_dev);
 	if (err < 0) {

@@ -310,8 +310,13 @@ struct mlx5_list;
  */
 struct mlx5_list_entry {
 	LIST_ENTRY(mlx5_list_entry) next; /* Entry pointers in the list. */
-	uint32_t ref_cnt; /* Reference count. */
+	uint32_t ref_cnt; /* 0 means, entry is invalid. */
+	struct mlx5_list_entry *gentry;
 };
+
+struct mlx5_list_cache {
+	LIST_HEAD(mlx5_list_head, mlx5_list_entry) h;
+} __rte_cache_aligned;
 
 /**
  * Type of callback function for entry removal.
@@ -339,6 +344,13 @@ typedef void (*mlx5_list_remove_cb)(struct mlx5_list *list,
  */
 typedef int (*mlx5_list_match_cb)(struct mlx5_list *list,
 				   struct mlx5_list_entry *entry, void *ctx);
+
+typedef struct mlx5_list_entry *(*mlx5_list_clone_cb)
+				 (struct mlx5_list *list,
+				  struct mlx5_list_entry *entry, void *ctx);
+
+typedef void (*mlx5_list_clone_free_cb)(struct mlx5_list *list,
+					 struct mlx5_list_entry *entry);
 
 /**
  * Type of function for user defined mlx5 list entry creation.
@@ -376,15 +388,17 @@ typedef struct mlx5_list_entry *(*mlx5_list_create_cb)
  */
 struct mlx5_list {
 	char name[MLX5_NAME_SIZE]; /**< Name of the mlx5 list. */
-	uint32_t entry_sz; /**< Entry size, 0: use create callback. */
-	rte_rwlock_t lock; /* read/write lock. */
 	uint32_t gen_cnt; /* List modification will update generation count. */
 	uint32_t count; /* number of entries in list. */
 	void *ctx; /* user objects target to callback. */
+	rte_rwlock_t lock; /* read/write lock. */
 	mlx5_list_create_cb cb_create; /**< entry create callback. */
 	mlx5_list_match_cb cb_match; /**< entry match callback. */
 	mlx5_list_remove_cb cb_remove; /**< entry remove callback. */
-	LIST_HEAD(mlx5_list_head, mlx5_list_entry) head;
+	mlx5_list_clone_cb cb_clone; /**< entry clone callback. */
+	mlx5_list_clone_free_cb cb_clone_free;
+	struct mlx5_list_cache cache[RTE_MAX_LCORE + 1];
+	/* Lcore cache, last index is the global cache. */
 };
 
 /**
@@ -394,8 +408,6 @@ struct mlx5_list {
  *   Pointer to the hast list table.
  * @param name
  *   Name of the mlx5 list.
- * @param entry_size
- *   Entry size to allocate, 0 to allocate by creation callback.
  * @param ctx
  *   Pointer to the list context data.
  * @param cb_create
@@ -408,10 +420,12 @@ struct mlx5_list {
  *   0 on success, otherwise failure.
  */
 int mlx5_list_create(struct mlx5_list *list,
-			 const char *name, uint32_t entry_size, void *ctx,
+			 const char *name, void *ctx,
 			 mlx5_list_create_cb cb_create,
 			 mlx5_list_match_cb cb_match,
-			 mlx5_list_remove_cb cb_remove);
+			 mlx5_list_remove_cb cb_remove,
+			 mlx5_list_clone_cb cb_clone,
+			 mlx5_list_clone_free_cb cb_clone_free);
 
 /**
  * Search an entry matching the key.

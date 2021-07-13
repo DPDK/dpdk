@@ -345,30 +345,38 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		goto error;
 	/* The resources below are only valid with DV support. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	/* Init port id action mlx5 list. */
+	/* Init port id action list. */
 	snprintf(s, sizeof(s), "%s_port_id_action_list", sh->ibdev_name);
-	mlx5_list_create(&sh->port_id_action_list, s, 0, sh,
-			     flow_dv_port_id_create_cb,
-			     flow_dv_port_id_match_cb,
-			     flow_dv_port_id_remove_cb);
-	/* Init push vlan action mlx5 list. */
+	mlx5_list_create(&sh->port_id_action_list, s, sh,
+			 flow_dv_port_id_create_cb,
+			 flow_dv_port_id_match_cb,
+			 flow_dv_port_id_remove_cb,
+			 flow_dv_port_id_clone_cb,
+			 flow_dv_port_id_clone_free_cb);
+	/* Init push vlan action list. */
 	snprintf(s, sizeof(s), "%s_push_vlan_action_list", sh->ibdev_name);
-	mlx5_list_create(&sh->push_vlan_action_list, s, 0, sh,
-			     flow_dv_push_vlan_create_cb,
-			     flow_dv_push_vlan_match_cb,
-			     flow_dv_push_vlan_remove_cb);
-	/* Init sample action mlx5 list. */
+	mlx5_list_create(&sh->push_vlan_action_list, s, sh,
+			 flow_dv_push_vlan_create_cb,
+			 flow_dv_push_vlan_match_cb,
+			 flow_dv_push_vlan_remove_cb,
+			 flow_dv_push_vlan_clone_cb,
+			 flow_dv_push_vlan_clone_free_cb);
+	/* Init sample action list. */
 	snprintf(s, sizeof(s), "%s_sample_action_list", sh->ibdev_name);
-	mlx5_list_create(&sh->sample_action_list, s, 0, sh,
-			     flow_dv_sample_create_cb,
-			     flow_dv_sample_match_cb,
-			     flow_dv_sample_remove_cb);
-	/* Init dest array action mlx5 list. */
+	mlx5_list_create(&sh->sample_action_list, s, sh,
+			 flow_dv_sample_create_cb,
+			 flow_dv_sample_match_cb,
+			 flow_dv_sample_remove_cb,
+			 flow_dv_sample_clone_cb,
+			 flow_dv_sample_clone_free_cb);
+	/* Init dest array action list. */
 	snprintf(s, sizeof(s), "%s_dest_array_list", sh->ibdev_name);
-	mlx5_list_create(&sh->dest_array_list, s, 0, sh,
-			     flow_dv_dest_array_create_cb,
-			     flow_dv_dest_array_match_cb,
-			     flow_dv_dest_array_remove_cb);
+	mlx5_list_create(&sh->dest_array_list, s, sh,
+			 flow_dv_dest_array_create_cb,
+			 flow_dv_dest_array_match_cb,
+			 flow_dv_dest_array_remove_cb,
+			 flow_dv_dest_array_clone_cb,
+			 flow_dv_dest_array_clone_free_cb);
 	/* Create tags hash list table. */
 	snprintf(s, sizeof(s), "%s_tags", sh->ibdev_name);
 	sh->tag_table = mlx5_hlist_create(s, MLX5_TAGS_HLIST_ARRAY_SIZE, 0,
@@ -1790,10 +1798,12 @@ err_secondary:
 			err = ENOTSUP;
 			goto error;
 	}
-	mlx5_list_create(&priv->hrxqs, "hrxq", 0, eth_dev,
-			     mlx5_hrxq_create_cb,
-			     mlx5_hrxq_match_cb,
-			     mlx5_hrxq_remove_cb);
+	mlx5_list_create(&priv->hrxqs, "hrxq", eth_dev, mlx5_hrxq_create_cb,
+			 mlx5_hrxq_match_cb,
+			 mlx5_hrxq_remove_cb,
+			 mlx5_hrxq_clone_cb,
+			 mlx5_hrxq_clone_free_cb);
+	rte_rwlock_init(&priv->ind_tbls_lock);
 	/* Query availability of metadata reg_c's. */
 	err = mlx5_flow_discover_mreg_c(eth_dev);
 	if (err < 0) {

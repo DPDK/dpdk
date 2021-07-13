@@ -1390,6 +1390,7 @@ struct mlx5_priv {
 	/* Indirection tables. */
 	LIST_HEAD(ind_tables, mlx5_ind_table_obj) ind_tbls;
 	/* Pointer to next element. */
+	rte_rwlock_t ind_tbls_lock;
 	uint32_t refcnt; /**< Reference counter. */
 	/**< Verbs modify header action object. */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */

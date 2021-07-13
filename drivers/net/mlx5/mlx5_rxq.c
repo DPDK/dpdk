@@ -1857,20 +1857,18 @@ mlx5_ind_table_obj_get(struct rte_eth_dev *dev, const uint16_t *queues,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_ind_table_obj *ind_tbl;
 
+	rte_rwlock_read_lock(&priv->ind_tbls_lock);
 	LIST_FOREACH(ind_tbl, &priv->ind_tbls, next) {
 		if ((ind_tbl->queues_n == queues_n) &&
 		    (memcmp(ind_tbl->queues, queues,
 			    ind_tbl->queues_n * sizeof(ind_tbl->queues[0]))
-		     == 0))
+		     == 0)) {
+			__atomic_fetch_add(&ind_tbl->refcnt, 1,
+					   __ATOMIC_RELAXED);
 			break;
+		}
 	}
-	if (ind_tbl) {
-		unsigned int i;
-
-		__atomic_fetch_add(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED);
-		for (i = 0; i != ind_tbl->queues_n; ++i)
-			mlx5_rxq_get(dev, ind_tbl->queues[i]);
-	}
+	rte_rwlock_read_unlock(&priv->ind_tbls_lock);
 	return ind_tbl;
 }
 
@@ -1893,19 +1891,20 @@ mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 			   bool standalone)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	unsigned int i;
+	unsigned int i, ret;
 
-	if (__atomic_sub_fetch(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED) == 0)
-		priv->obj_ops.ind_table_destroy(ind_tbl);
+	rte_rwlock_write_lock(&priv->ind_tbls_lock);
+	ret = __atomic_sub_fetch(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED);
+	if (!ret && !standalone)
+		LIST_REMOVE(ind_tbl, next);
+	rte_rwlock_write_unlock(&priv->ind_tbls_lock);
+	if (ret)
+		return 1;
+	priv->obj_ops.ind_table_destroy(ind_tbl);
 	for (i = 0; i != ind_tbl->queues_n; ++i)
 		claim_nonzero(mlx5_rxq_release(dev, ind_tbl->queues[i]));
-	if (__atomic_load_n(&ind_tbl->refcnt, __ATOMIC_RELAXED) == 0) {
-		if (!standalone)
-			LIST_REMOVE(ind_tbl, next);
-		mlx5_free(ind_tbl);
-		return 0;
-	}
-	return 1;
+	mlx5_free(ind_tbl);
+	return 0;
 }
 
 /**
@@ -1924,12 +1923,14 @@ mlx5_ind_table_obj_verify(struct rte_eth_dev *dev)
 	struct mlx5_ind_table_obj *ind_tbl;
 	int ret = 0;
 
+	rte_rwlock_read_lock(&priv->ind_tbls_lock);
 	LIST_FOREACH(ind_tbl, &priv->ind_tbls, next) {
 		DRV_LOG(DEBUG,
 			"port %u indirection table obj %p still referenced",
 			dev->data->port_id, (void *)ind_tbl);
 		++ret;
 	}
+	rte_rwlock_read_unlock(&priv->ind_tbls_lock);
 	return ret;
 }
 
@@ -2015,8 +2016,11 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 		mlx5_free(ind_tbl);
 		return NULL;
 	}
-	if (!standalone)
+	if (!standalone) {
+		rte_rwlock_write_lock(&priv->ind_tbls_lock);
 		LIST_INSERT_HEAD(&priv->ind_tbls, ind_tbl, next);
+		rte_rwlock_write_unlock(&priv->ind_tbls_lock);
+	}
 	return ind_tbl;
 }
 
@@ -2326,6 +2330,35 @@ mlx5_hrxq_create_cb(struct mlx5_list *list,
 
 	hrxq = __mlx5_hrxq_create(dev, rss_desc);
 	return hrxq ? &hrxq->entry : NULL;
+}
+
+struct mlx5_list_entry *
+mlx5_hrxq_clone_cb(struct mlx5_list *list,
+		    struct mlx5_list_entry *entry,
+		    void *cb_ctx __rte_unused)
+{
+	struct rte_eth_dev *dev = list->ctx;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hrxq *hrxq;
+	uint32_t hrxq_idx = 0;
+
+	hrxq = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_HRXQ], &hrxq_idx);
+	if (!hrxq)
+		return NULL;
+	memcpy(hrxq, entry, sizeof(*hrxq) + MLX5_RSS_HASH_KEY_LEN);
+	hrxq->idx = hrxq_idx;
+	return &hrxq->entry;
+}
+
+void
+mlx5_hrxq_clone_free_cb(struct mlx5_list *list,
+		    struct mlx5_list_entry *entry)
+{
+	struct rte_eth_dev *dev = list->ctx;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hrxq *hrxq = container_of(entry, typeof(*hrxq), entry);
+
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq->idx);
 }
 
 /**

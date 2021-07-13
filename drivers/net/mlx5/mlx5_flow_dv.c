@@ -3826,6 +3826,39 @@ flow_dv_port_id_create_cb(struct mlx5_list *list,
 	return &resource->entry;
 }
 
+struct mlx5_list_entry *
+flow_dv_port_id_clone_cb(struct mlx5_list *list,
+			  struct mlx5_list_entry *entry __rte_unused,
+			  void *cb_ctx)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_dv_port_id_action_resource *resource;
+	uint32_t idx;
+
+	resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_PORT_ID], &idx);
+	if (!resource) {
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot allocate port_id action memory");
+		return NULL;
+	}
+	memcpy(resource, entry, sizeof(*resource));
+	resource->idx = idx;
+	return &resource->entry;
+}
+
+void
+flow_dv_port_id_clone_free_cb(struct mlx5_list *list,
+			  struct mlx5_list_entry *entry)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_flow_dv_port_id_action_resource *resource =
+			container_of(entry, typeof(*resource), entry);
+
+	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_PORT_ID], resource->idx);
+}
+
 /**
  * Find existing table port ID resource or create and register a new one.
  *
@@ -3916,6 +3949,39 @@ flow_dv_push_vlan_create_cb(struct mlx5_list *list,
 	}
 	resource->idx = idx;
 	return &resource->entry;
+}
+
+struct mlx5_list_entry *
+flow_dv_push_vlan_clone_cb(struct mlx5_list *list,
+			  struct mlx5_list_entry *entry __rte_unused,
+			  void *cb_ctx)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_dv_push_vlan_action_resource *resource;
+	uint32_t idx;
+
+	resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_PUSH_VLAN], &idx);
+	if (!resource) {
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot allocate push_vlan action memory");
+		return NULL;
+	}
+	memcpy(resource, entry, sizeof(*resource));
+	resource->idx = idx;
+	return &resource->entry;
+}
+
+void
+flow_dv_push_vlan_clone_free_cb(struct mlx5_list *list,
+			    struct mlx5_list_entry *entry)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_flow_dv_push_vlan_action_resource *resource =
+			container_of(entry, typeof(*resource), entry);
+
+	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_PUSH_VLAN], resource->idx);
 }
 
 /**
@@ -9955,6 +10021,36 @@ __flow_dv_adjust_buf_size(size_t *size, uint8_t match_criteria)
 	}
 }
 
+static struct mlx5_list_entry *
+flow_dv_matcher_clone_cb(struct mlx5_list *list __rte_unused,
+			 struct mlx5_list_entry *entry, void *cb_ctx)
+{
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_dv_matcher *ref = ctx->data;
+	struct mlx5_flow_tbl_data_entry *tbl = container_of(ref->tbl,
+							    typeof(*tbl), tbl);
+	struct mlx5_flow_dv_matcher *resource = mlx5_malloc(MLX5_MEM_ANY,
+							    sizeof(*resource),
+							    0, SOCKET_ID_ANY);
+
+	if (!resource) {
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot create matcher");
+		return NULL;
+	}
+	memcpy(resource, entry, sizeof(*resource));
+	resource->tbl = &tbl->tbl;
+	return &resource->entry;
+}
+
+static void
+flow_dv_matcher_clone_free_cb(struct mlx5_list *list __rte_unused,
+			     struct mlx5_list_entry *entry)
+{
+	mlx5_free(entry);
+}
+
 struct mlx5_hlist_entry *
 flow_dv_tbl_create_cb(struct mlx5_hlist *list, uint64_t key64, void *cb_ctx)
 {
@@ -10021,10 +10117,12 @@ flow_dv_tbl_create_cb(struct mlx5_hlist *list, uint64_t key64, void *cb_ctx)
 	MKSTR(matcher_name, "%s_%s_%u_%u_matcher_list",
 	      key.is_fdb ? "FDB" : "NIC", key.is_egress ? "egress" : "ingress",
 	      key.level, key.id);
-	mlx5_list_create(&tbl_data->matchers, matcher_name, 0, sh,
+	mlx5_list_create(&tbl_data->matchers, matcher_name, sh,
 			 flow_dv_matcher_create_cb,
 			 flow_dv_matcher_match_cb,
-			 flow_dv_matcher_remove_cb);
+			 flow_dv_matcher_remove_cb,
+			 flow_dv_matcher_clone_cb,
+			 flow_dv_matcher_clone_free_cb);
 	return &tbl_data->entry;
 }
 
@@ -10813,6 +10911,45 @@ error:
 
 }
 
+struct mlx5_list_entry *
+flow_dv_sample_clone_cb(struct mlx5_list *list __rte_unused,
+			 struct mlx5_list_entry *entry __rte_unused,
+			 void *cb_ctx)
+{
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct rte_eth_dev *dev = ctx->dev;
+	struct mlx5_flow_dv_sample_resource *resource;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	uint32_t idx = 0;
+
+	resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_SAMPLE], &idx);
+	if (!resource) {
+		rte_flow_error_set(ctx->error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "cannot allocate resource memory");
+		return NULL;
+	}
+	memcpy(resource, entry, sizeof(*resource));
+	resource->idx = idx;
+	resource->dev = dev;
+	return &resource->entry;
+}
+
+void
+flow_dv_sample_clone_free_cb(struct mlx5_list *list __rte_unused,
+			 struct mlx5_list_entry *entry)
+{
+	struct mlx5_flow_dv_sample_resource *resource =
+			container_of(entry, typeof(*resource), entry);
+	struct rte_eth_dev *dev = resource->dev;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_SAMPLE],
+			resource->idx);
+}
+
 /**
  * Find existing sample resource or create and register a new one.
  *
@@ -10986,6 +11123,46 @@ error:
 	}
 	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_DEST_ARRAY], res_idx);
 	return NULL;
+}
+
+struct mlx5_list_entry *
+flow_dv_dest_array_clone_cb(struct mlx5_list *list __rte_unused,
+			 struct mlx5_list_entry *entry __rte_unused,
+			 void *cb_ctx)
+{
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct rte_eth_dev *dev = ctx->dev;
+	struct mlx5_flow_dv_dest_array_resource *resource;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	uint32_t res_idx = 0;
+	struct rte_flow_error *error = ctx->error;
+
+	resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_DEST_ARRAY],
+				      &res_idx);
+	if (!resource) {
+		rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "cannot allocate dest-array memory");
+		return NULL;
+	}
+	memcpy(resource, entry, sizeof(*resource));
+	resource->idx = res_idx;
+	resource->dev = dev;
+	return &resource->entry;
+}
+
+void
+flow_dv_dest_array_clone_free_cb(struct mlx5_list *list __rte_unused,
+			     struct mlx5_list_entry *entry)
+{
+	struct mlx5_flow_dv_dest_array_resource *resource =
+			container_of(entry, typeof(*resource), entry);
+	struct rte_eth_dev *dev = resource->dev;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_DEST_ARRAY], resource->idx);
 }
 
 /**
