@@ -36,6 +36,19 @@
 
 #define MLX5_SH(dev) (((struct mlx5_priv *)(dev)->data->dev_private)->sh)
 
+/*
+ * Number of modification commands.
+ * The maximal actions amount in FW is some constant, and it is 16 in the
+ * latest releases. In some old releases, it will be limited to 8.
+ * Since there is no interface to query the capacity, the maximal value should
+ * be used to allow PMD to create the flow. The validation will be done in the
+ * lower driver layer or FW. A failure will be returned if exceeds the maximal
+ * supported actions number on the root table.
+ * On non-root tables, there is no limitation, but 32 is enough right now.
+ */
+#define MLX5_MAX_MODIFY_NUM			32
+#define MLX5_ROOT_TBL_MODIFY_NUM		16
+
 enum mlx5_ipool_index {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	MLX5_IPOOL_DECAP_ENCAP = 0, /* Pool for encap/decap resource. */
@@ -1148,6 +1161,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
 	void *default_miss_action; /* Default miss action. */
 	struct mlx5_indexed_pool *ipool[MLX5_IPOOL_MAX];
+	struct mlx5_indexed_pool *mdh_ipools[MLX5_MAX_MODIFY_NUM];
 	/* Memory Pool for mlx5 flow resources. */
 	struct mlx5_l3t_tbl *cnt_id_tbl; /* Shared counter lookup table. */
 	/* Shared interrupt handler section. */

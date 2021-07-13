@@ -802,6 +802,7 @@ mlx5_flow_ipool_create(struct mlx5_dev_ctx_shared *sh,
 	}
 }
 
+
 /**
  * Release the flow resources' indexed mempool.
  *
@@ -815,6 +816,9 @@ mlx5_flow_ipool_destroy(struct mlx5_dev_ctx_shared *sh)
 
 	for (i = 0; i < MLX5_IPOOL_MAX; ++i)
 		mlx5_ipool_destroy(sh->ipool[i]);
+	for (i = 0; i < MLX5_MAX_MODIFY_NUM; ++i)
+		if (sh->mdh_ipools[i])
+			mlx5_ipool_destroy(sh->mdh_ipools[i]);
 }
 
 /*

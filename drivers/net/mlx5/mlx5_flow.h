@@ -505,23 +505,11 @@ struct mlx5_flow_dv_tag_resource {
 	uint32_t tag_id; /**< Tag ID. */
 };
 
-/*
- * Number of modification commands.
- * The maximal actions amount in FW is some constant, and it is 16 in the
- * latest releases. In some old releases, it will be limited to 8.
- * Since there is no interface to query the capacity, the maximal value should
- * be used to allow PMD to create the flow. The validation will be done in the
- * lower driver layer or FW. A failure will be returned if exceeds the maximal
- * supported actions number on the root table.
- * On non-root tables, there is no limitation, but 32 is enough right now.
- */
-#define MLX5_MAX_MODIFY_NUM			32
-#define MLX5_ROOT_TBL_MODIFY_NUM		16
-
 /* Modify resource structure */
 struct mlx5_flow_dv_modify_hdr_resource {
 	struct mlx5_list_entry entry;
 	void *action; /**< Modify header action object. */
+	uint32_t idx;
 	/* Key area for hash list matching: */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
 	uint8_t actions_num; /**< Number of modification actions. */

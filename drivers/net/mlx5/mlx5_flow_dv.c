@@ -5344,6 +5344,45 @@ flow_dv_modify_match_cb(void *tool_ctx __rte_unused,
 	       memcmp(&ref->ft_type, &resource->ft_type, key_len);
 }
 
+static struct mlx5_indexed_pool *
+flow_dv_modify_ipool_get(struct mlx5_dev_ctx_shared *sh, uint8_t index)
+{
+	struct mlx5_indexed_pool *ipool = __atomic_load_n
+				     (&sh->mdh_ipools[index], __ATOMIC_SEQ_CST);
+
+	if (!ipool) {
+		struct mlx5_indexed_pool *expected = NULL;
+		struct mlx5_indexed_pool_config cfg =
+		    (struct mlx5_indexed_pool_config) {
+		       .size = sizeof(struct mlx5_flow_dv_modify_hdr_resource) +
+								   (index + 1) *
+					   sizeof(struct mlx5_modification_cmd),
+		       .trunk_size = 64,
+		       .grow_trunk = 3,
+		       .grow_shift = 2,
+		       .need_lock = 1,
+		       .release_mem_en = 1,
+		       .malloc = mlx5_malloc,
+		       .free = mlx5_free,
+		       .type = "mlx5_modify_action_resource",
+		};
+
+		cfg.size = RTE_ALIGN(cfg.size, sizeof(ipool));
+		ipool = mlx5_ipool_create(&cfg);
+		if (!ipool)
+			return NULL;
+		if (!__atomic_compare_exchange_n(&sh->mdh_ipools[index],
+						 &expected, ipool, false,
+						 __ATOMIC_SEQ_CST,
+						 __ATOMIC_SEQ_CST)) {
+			mlx5_ipool_destroy(ipool);
+			ipool = __atomic_load_n(&sh->mdh_ipools[index],
+						__ATOMIC_SEQ_CST);
+		}
+	}
+	return ipool;
+}
+
 struct mlx5_list_entry *
 flow_dv_modify_create_cb(void *tool_ctx, void *cb_ctx)
 {
@@ -5352,12 +5391,20 @@ flow_dv_modify_create_cb(void *tool_ctx, void *cb_ctx)
 	struct mlx5dv_dr_domain *ns;
 	struct mlx5_flow_dv_modify_hdr_resource *entry;
 	struct mlx5_flow_dv_modify_hdr_resource *ref = ctx->data;
+	struct mlx5_indexed_pool *ipool = flow_dv_modify_ipool_get(sh,
+							  ref->actions_num - 1);
 	int ret;
 	uint32_t data_len = ref->actions_num * sizeof(ref->actions[0]);
 	uint32_t key_len = sizeof(*ref) - offsetof(typeof(*ref), ft_type);
+	uint32_t idx;
 
-	entry = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*entry) + data_len, 0,
-			    SOCKET_ID_ANY);
+	if (unlikely(!ipool)) {
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "cannot allocate modify ipool");
+		return NULL;
+	}
+	entry = mlx5_ipool_zmalloc(ipool, &idx);
 	if (!entry) {
 		rte_flow_error_set(ctx->error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -5377,25 +5424,29 @@ flow_dv_modify_create_cb(void *tool_ctx, void *cb_ctx)
 					(sh->ctx, ns, entry,
 					 data_len, &entry->action);
 	if (ret) {
-		mlx5_free(entry);
+		mlx5_ipool_free(sh->mdh_ipools[ref->actions_num - 1], idx);
 		rte_flow_error_set(ctx->error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL, "cannot create modification action");
 		return NULL;
 	}
+	entry->idx = idx;
 	return &entry->entry;
 }
 
 struct mlx5_list_entry *
-flow_dv_modify_clone_cb(void *tool_ctx __rte_unused,
-			struct mlx5_list_entry *oentry, void *cb_ctx)
+flow_dv_modify_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
+			void *cb_ctx)
 {
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_modify_hdr_resource *entry;
 	struct mlx5_flow_dv_modify_hdr_resource *ref = ctx->data;
 	uint32_t data_len = ref->actions_num * sizeof(ref->actions[0]);
+	uint32_t idx;
 
-	entry = mlx5_malloc(0, sizeof(*entry) + data_len, 0, SOCKET_ID_ANY);
+	entry = mlx5_ipool_malloc(sh->mdh_ipools[ref->actions_num - 1],
+				  &idx);
 	if (!entry) {
 		rte_flow_error_set(ctx->error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -5403,14 +5454,18 @@ flow_dv_modify_clone_cb(void *tool_ctx __rte_unused,
 		return NULL;
 	}
 	memcpy(entry, oentry, sizeof(*entry) + data_len);
+	entry->idx = idx;
 	return &entry->entry;
 }
 
 void
-flow_dv_modify_clone_free_cb(void *tool_ctx __rte_unused,
-			     struct mlx5_list_entry *entry)
+flow_dv_modify_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
-	mlx5_free(entry);
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
+	struct mlx5_flow_dv_modify_hdr_resource *res =
+		container_of(entry, typeof(*res), entry);
+
+	mlx5_ipool_free(sh->mdh_ipools[res->actions_num - 1], res->idx);
 }
 
 /**
@@ -13819,14 +13874,14 @@ flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_modify_remove_cb(void *tool_ctx __rte_unused,
-			 struct mlx5_list_entry *entry)
+flow_dv_modify_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_modify_hdr_resource *res =
 		container_of(entry, typeof(*res), entry);
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 
 	claim_zero(mlx5_flow_os_destroy_flow_action(res->action));
-	mlx5_free(entry);
+	mlx5_ipool_free(sh->mdh_ipools[res->actions_num - 1], res->idx);
 }
 
 /**
