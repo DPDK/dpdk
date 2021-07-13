@@ -364,7 +364,6 @@ ipsec_fp_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 		ctl->esn_en = 1;
 
 	ctl->spi = rte_cpu_to_be_32(ipsec->spi);
-	ctl->valid = 1;
 
 	return 0;
 }

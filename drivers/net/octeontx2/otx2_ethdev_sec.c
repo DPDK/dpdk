@@ -455,6 +455,9 @@ eth_sec_ipsec_out_sess_create(struct rte_eth_dev *eth_dev,
 			goto cpt_put;
 	}
 
+	rte_io_wmb();
+	ctl->valid = 1;
+
 	return 0;
 cpt_put:
 	otx2_sec_idev_tx_cpt_qp_put(sess->qp);
@@ -595,6 +598,9 @@ eth_sec_ipsec_in_sess_create(struct rte_eth_dev *eth_dev,
 		sa->esn_hi = 0;
 	}
 
+	rte_io_wmb();
+	ctl->valid = 1;
+
 	rte_spinlock_unlock(&dev->ipsec_tbl_lock);
 	return 0;
 
@@ -682,10 +688,12 @@ otx2_eth_sec_free_anti_replay(struct otx2_ipsec_fp_in_sa *sa)
 }
 
 static int
-otx2_eth_sec_session_destroy(void *device __rte_unused,
+otx2_eth_sec_session_destroy(void *device,
 			     struct rte_security_session *sess)
 {
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(device);
 	struct otx2_sec_session_ipsec_ip *sess_ip;
+	struct otx2_ipsec_fp_in_sa *sa;
 	struct otx2_sec_session *priv;
 	struct rte_mempool *sess_mp;
 	int ret;
@@ -696,9 +704,21 @@ otx2_eth_sec_session_destroy(void *device __rte_unused,
 
 	sess_ip = &priv->ipsec.ip;
 
-	/* Release the anti replay window */
-	if (priv->ipsec.dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
-		otx2_eth_sec_free_anti_replay(sess_ip->in_sa);
+	if (priv->ipsec.dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
+		rte_spinlock_lock(&dev->ipsec_tbl_lock);
+		sa = sess_ip->in_sa;
+
+		/* Release the anti replay window */
+		otx2_eth_sec_free_anti_replay(sa);
+
+		/* Clear SA table entry */
+		if (sa != NULL) {
+			sa->ctl.valid = 0;
+			rte_io_wmb();
+		}
+
+		rte_spinlock_unlock(&dev->ipsec_tbl_lock);
+	}
 
 	/* Release CPT LF used for this session */
 	if (sess_ip->qp != NULL) {
