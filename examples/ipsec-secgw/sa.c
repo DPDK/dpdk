@@ -759,20 +759,25 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			continue;
 		}
 		if (strcmp(tokens[ti], "udp-encap") == 0) {
-			APP_CHECK(ips->type ==
-				RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
-				status, "UDP encapsulation is allowed if the "
-				"session is of type lookaside-protocol-offload "
-				"only.");
-			if (status->status < 0)
-				return;
-			APP_CHECK_PRESENCE(udp_encap_p, tokens[ti], status);
-			if (status->status < 0)
-				return;
+			switch (ips->type) {
+			case RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL:
+			case RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL:
+				APP_CHECK_PRESENCE(udp_encap_p, tokens[ti],
+						   status);
+				if (status->status < 0)
+					return;
 
-			rule->udp_encap = 1;
-			app_sa_prm.udp_encap = 1;
-			udp_encap_p = 1;
+				rule->udp_encap = 1;
+				app_sa_prm.udp_encap = 1;
+				udp_encap_p = 1;
+				break;
+			default:
+				APP_CHECK(0, status,
+					"UDP encapsulation not supported for "
+					"security session type %d",
+					ips->type);
+				return;
+			}
 			continue;
 		}
 
