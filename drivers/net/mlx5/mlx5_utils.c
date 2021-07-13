@@ -50,13 +50,13 @@ __list_lookup(struct mlx5_list *list, int lcore_index, void *ctx, bool reuse)
 		if (list->cb_match(list, entry, ctx) == 0) {
 			if (reuse) {
 				ret = __atomic_add_fetch(&entry->ref_cnt, 1,
-							 __ATOMIC_ACQUIRE) - 1;
+							 __ATOMIC_RELAXED) - 1;
 				DRV_LOG(DEBUG, "mlx5 list %s entry %p ref: %u.",
 					list->name, (void *)entry,
 					entry->ref_cnt);
 			} else if (lcore_index < RTE_MAX_LCORE) {
 				ret = __atomic_load_n(&entry->ref_cnt,
-						      __ATOMIC_ACQUIRE);
+						      __ATOMIC_RELAXED);
 			}
 			if (likely(ret != 0 || lcore_index == RTE_MAX_LCORE))
 				return entry;
@@ -181,7 +181,7 @@ mlx5_list_register(struct mlx5_list *list, void *ctx)
 	list->gen_cnt++;
 	rte_rwlock_write_unlock(&list->lock);
 	LIST_INSERT_HEAD(&list->cache[lcore_index].h, local_entry, next);
-	__atomic_add_fetch(&list->count, 1, __ATOMIC_ACQUIRE);
+	__atomic_add_fetch(&list->count, 1, __ATOMIC_RELAXED);
 	DRV_LOG(DEBUG, "mlx5 list %s entry %p new: %u.", list->name,
 		(void *)entry, entry->ref_cnt);
 	return local_entry;
@@ -194,7 +194,7 @@ mlx5_list_unregister(struct mlx5_list *list,
 	struct mlx5_list_entry *gentry = entry->gentry;
 	int lcore_idx;
 
-	if (__atomic_sub_fetch(&entry->ref_cnt, 1, __ATOMIC_ACQUIRE) != 0)
+	if (__atomic_sub_fetch(&entry->ref_cnt, 1, __ATOMIC_RELAXED) != 0)
 		return 1;
 	lcore_idx = rte_lcore_index(rte_lcore_id());
 	MLX5_ASSERT(lcore_idx < RTE_MAX_LCORE);
@@ -207,14 +207,14 @@ mlx5_list_unregister(struct mlx5_list *list,
 	} else {
 		return 0;
 	}
-	if (__atomic_sub_fetch(&gentry->ref_cnt, 1, __ATOMIC_ACQUIRE) != 0)
+	if (__atomic_sub_fetch(&gentry->ref_cnt, 1, __ATOMIC_RELAXED) != 0)
 		return 1;
 	rte_rwlock_write_lock(&list->lock);
 	if (likely(gentry->ref_cnt == 0)) {
 		LIST_REMOVE(gentry, next);
 		rte_rwlock_write_unlock(&list->lock);
 		list->cb_remove(list, gentry);
-		__atomic_sub_fetch(&list->count, 1, __ATOMIC_ACQUIRE);
+		__atomic_sub_fetch(&list->count, 1, __ATOMIC_RELAXED);
 		DRV_LOG(DEBUG, "mlx5 list %s entry %p removed.",
 			list->name, (void *)gentry);
 		return 0;
