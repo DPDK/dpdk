@@ -1359,20 +1359,22 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv __rte_unused)
 	/* Tables are only used in DV and DR modes. */
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	char s[MLX5_HLIST_NAMESIZE];
+	char s[MLX5_NAME_SIZE];
 
 	MLX5_ASSERT(sh);
 	snprintf(s, sizeof(s), "%s_flow_table", priv->sh->ibdev_name);
 	sh->flow_tbls = mlx5_hlist_create(s, MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE,
-					  0, 0, flow_dv_tbl_create_cb,
+					  false, true, sh,
+					  flow_dv_tbl_create_cb,
 					  flow_dv_tbl_match_cb,
-					  flow_dv_tbl_remove_cb);
+					  flow_dv_tbl_remove_cb,
+					  flow_dv_tbl_clone_cb,
+					  flow_dv_tbl_clone_free_cb);
 	if (!sh->flow_tbls) {
 		DRV_LOG(ERR, "flow tables with hash creation failed.");
 		err = ENOMEM;
 		return err;
 	}
-	sh->flow_tbls->ctx = sh;
 #ifndef HAVE_MLX5DV_DR
 	struct rte_flow_error error;
 	struct rte_eth_dev *dev = &rte_eth_devices[priv->dev_data->port_id];

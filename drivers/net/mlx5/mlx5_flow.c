@@ -4056,28 +4056,27 @@ flow_list_destroy(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		  uint32_t flow_idx);
 
 int
-flow_dv_mreg_match_cb(struct mlx5_hlist *list __rte_unused,
-		      struct mlx5_hlist_entry *entry,
-		      uint64_t key, void *cb_ctx __rte_unused)
+flow_dv_mreg_match_cb(void *tool_ctx __rte_unused,
+		      struct mlx5_list_entry *entry, void *cb_ctx)
 {
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_mreg_copy_resource *mcp_res =
-		container_of(entry, typeof(*mcp_res), hlist_ent);
+			       container_of(entry, typeof(*mcp_res), hlist_ent);
 
-	return mcp_res->mark_id != key;
+	return mcp_res->mark_id != *(uint32_t *)(ctx->data);
 }
 
-struct mlx5_hlist_entry *
-flow_dv_mreg_create_cb(struct mlx5_hlist *list, uint64_t key,
-		       void *cb_ctx)
+struct mlx5_list_entry *
+flow_dv_mreg_create_cb(void *tool_ctx, void *cb_ctx)
 {
-	struct rte_eth_dev *dev = list->ctx;
+	struct rte_eth_dev *dev = tool_ctx;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_mreg_copy_resource *mcp_res;
 	struct rte_flow_error *error = ctx->error;
 	uint32_t idx = 0;
 	int ret;
-	uint32_t mark_id = key;
+	uint32_t mark_id = *(uint32_t *)(ctx->data);
 	struct rte_flow_attr attr = {
 		.group = MLX5_FLOW_MREG_CP_TABLE_GROUP,
 		.ingress = 1,
@@ -4183,6 +4182,36 @@ flow_dv_mreg_create_cb(struct mlx5_hlist *list, uint64_t key,
 	return &mcp_res->hlist_ent;
 }
 
+struct mlx5_list_entry *
+flow_dv_mreg_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
+		      void *cb_ctx __rte_unused)
+{
+	struct rte_eth_dev *dev = tool_ctx;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_mreg_copy_resource *mcp_res;
+	uint32_t idx = 0;
+
+	mcp_res = mlx5_ipool_malloc(priv->sh->ipool[MLX5_IPOOL_MCP], &idx);
+	if (!mcp_res) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	memcpy(mcp_res, oentry, sizeof(*mcp_res));
+	mcp_res->idx = idx;
+	return &mcp_res->hlist_ent;
+}
+
+void
+flow_dv_mreg_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+{
+	struct mlx5_flow_mreg_copy_resource *mcp_res =
+			       container_of(entry, typeof(*mcp_res), hlist_ent);
+	struct rte_eth_dev *dev = tool_ctx;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MCP], mcp_res->idx);
+}
+
 /**
  * Add a flow of copying flow metadata registers in RX_CP_TBL.
  *
@@ -4213,10 +4242,11 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 			  struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hlist_entry *entry;
+	struct mlx5_list_entry *entry;
 	struct mlx5_flow_cb_ctx ctx = {
 		.dev = dev,
 		.error = error,
+		.data = &mark_id,
 	};
 
 	/* Check if already registered. */
@@ -4229,11 +4259,11 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 }
 
 void
-flow_dv_mreg_remove_cb(struct mlx5_hlist *list, struct mlx5_hlist_entry *entry)
+flow_dv_mreg_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_mreg_copy_resource *mcp_res =
-		container_of(entry, typeof(*mcp_res), hlist_ent);
-	struct rte_eth_dev *dev = list->ctx;
+			       container_of(entry, typeof(*mcp_res), hlist_ent);
+	struct rte_eth_dev *dev = tool_ctx;
 	struct mlx5_priv *priv = dev->data->dev_private;
 
 	MLX5_ASSERT(mcp_res->rix_flow);
@@ -4279,14 +4309,17 @@ flow_mreg_del_copy_action(struct rte_eth_dev *dev,
 static void
 flow_mreg_del_default_copy_action(struct rte_eth_dev *dev)
 {
-	struct mlx5_hlist_entry *entry;
+	struct mlx5_list_entry *entry;
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_cb_ctx ctx;
+	uint32_t mark_id;
 
 	/* Check if default flow is registered. */
 	if (!priv->mreg_cp_tbl)
 		return;
-	entry = mlx5_hlist_lookup(priv->mreg_cp_tbl,
-				  MLX5_DEFAULT_COPY_ID, NULL);
+	mark_id = MLX5_DEFAULT_COPY_ID;
+	ctx.data = &mark_id;
+	entry = mlx5_hlist_lookup(priv->mreg_cp_tbl, mark_id, &ctx);
 	if (!entry)
 		return;
 	mlx5_hlist_unregister(priv->mreg_cp_tbl, entry);
@@ -4312,6 +4345,8 @@ flow_mreg_add_default_copy_action(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_mreg_copy_resource *mcp_res;
+	struct mlx5_flow_cb_ctx ctx;
+	uint32_t mark_id;
 
 	/* Check whether extensive metadata feature is engaged. */
 	if (!priv->config.dv_flow_en ||
@@ -4323,9 +4358,11 @@ flow_mreg_add_default_copy_action(struct rte_eth_dev *dev,
 	 * Add default mreg copy flow may be called multiple time, but
 	 * only be called once in stop. Avoid register it twice.
 	 */
-	if (mlx5_hlist_lookup(priv->mreg_cp_tbl, MLX5_DEFAULT_COPY_ID, NULL))
+	mark_id = MLX5_DEFAULT_COPY_ID;
+	ctx.data = &mark_id;
+	if (mlx5_hlist_lookup(priv->mreg_cp_tbl, mark_id, &ctx))
 		return 0;
-	mcp_res = flow_mreg_add_copy_action(dev, MLX5_DEFAULT_COPY_ID, error);
+	mcp_res = flow_mreg_add_copy_action(dev, mark_id, error);
 	if (!mcp_res)
 		return -rte_errno;
 	return 0;
@@ -8622,7 +8659,7 @@ tunnel_mark_decode(struct rte_eth_dev *dev, uint32_t mark)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_hlist_entry *he;
+	struct mlx5_list_entry *he;
 	union tunnel_offload_mark mbits = { .val = mark };
 	union mlx5_flow_tbl_key table_key = {
 		{
@@ -8634,16 +8671,20 @@ tunnel_mark_decode(struct rte_eth_dev *dev, uint32_t mark)
 			.is_egress = 0,
 		}
 	};
-	he = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64, NULL);
+	struct mlx5_flow_cb_ctx ctx = {
+		.data = &table_key.v64,
+	};
+
+	he = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64, &ctx);
 	return he ?
 	       container_of(he, struct mlx5_flow_tbl_data_entry, entry) : NULL;
 }
 
 static void
-mlx5_flow_tunnel_grp2tbl_remove_cb(struct mlx5_hlist *list,
-				   struct mlx5_hlist_entry *entry)
+mlx5_flow_tunnel_grp2tbl_remove_cb(void *tool_ctx,
+				   struct mlx5_list_entry *entry)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct tunnel_tbl_entry *tte = container_of(entry, typeof(*tte), hash);
 
 	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_TNL_TBL_ID],
@@ -8652,26 +8693,26 @@ mlx5_flow_tunnel_grp2tbl_remove_cb(struct mlx5_hlist *list,
 }
 
 static int
-mlx5_flow_tunnel_grp2tbl_match_cb(struct mlx5_hlist *list __rte_unused,
-				  struct mlx5_hlist_entry *entry,
-				  uint64_t key, void *cb_ctx __rte_unused)
+mlx5_flow_tunnel_grp2tbl_match_cb(void *tool_ctx __rte_unused,
+				  struct mlx5_list_entry *entry, void *cb_ctx)
 {
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	union tunnel_tbl_key tbl = {
-		.val = key,
+		.val = *(uint64_t *)(ctx->data),
 	};
 	struct tunnel_tbl_entry *tte = container_of(entry, typeof(*tte), hash);
 
 	return tbl.tunnel_id != tte->tunnel_id || tbl.group != tte->group;
 }
 
-static struct mlx5_hlist_entry *
-mlx5_flow_tunnel_grp2tbl_create_cb(struct mlx5_hlist *list, uint64_t key,
-				   void *ctx __rte_unused)
+static struct mlx5_list_entry *
+mlx5_flow_tunnel_grp2tbl_create_cb(void *tool_ctx, void *cb_ctx)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct tunnel_tbl_entry *tte;
 	union tunnel_tbl_key tbl = {
-		.val = key,
+		.val = *(uint64_t *)(ctx->data),
 	};
 
 	tte = mlx5_malloc(MLX5_MEM_SYS | MLX5_MEM_ZERO,
@@ -8700,13 +8741,36 @@ err:
 	return NULL;
 }
 
+static struct mlx5_list_entry *
+mlx5_flow_tunnel_grp2tbl_clone_cb(void *tool_ctx __rte_unused,
+				  struct mlx5_list_entry *oentry,
+				  void *cb_ctx __rte_unused)
+{
+	struct tunnel_tbl_entry *tte = mlx5_malloc(MLX5_MEM_SYS, sizeof(*tte),
+						   0, SOCKET_ID_ANY);
+
+	if (!tte)
+		return NULL;
+	memcpy(tte, oentry, sizeof(*tte));
+	return &tte->hash;
+}
+
+static void
+mlx5_flow_tunnel_grp2tbl_clone_free_cb(void *tool_ctx __rte_unused,
+				       struct mlx5_list_entry *entry)
+{
+	struct tunnel_tbl_entry *tte = container_of(entry, typeof(*tte), hash);
+
+	mlx5_free(tte);
+}
+
 static uint32_t
 tunnel_flow_group_to_flow_table(struct rte_eth_dev *dev,
 				const struct mlx5_flow_tunnel *tunnel,
 				uint32_t group, uint32_t *table,
 				struct rte_flow_error *error)
 {
-	struct mlx5_hlist_entry *he;
+	struct mlx5_list_entry *he;
 	struct tunnel_tbl_entry *tte;
 	union tunnel_tbl_key key = {
 		.tunnel_id = tunnel ? tunnel->tunnel_id : 0,
@@ -8714,9 +8778,12 @@ tunnel_flow_group_to_flow_table(struct rte_eth_dev *dev,
 	};
 	struct mlx5_flow_tunnel_hub *thub = mlx5_tunnel_hub(dev);
 	struct mlx5_hlist *group_hash;
+	struct mlx5_flow_cb_ctx ctx = {
+		.data = &key.val,
+	};
 
 	group_hash = tunnel ? tunnel->groups : thub->groups;
-	he = mlx5_hlist_register(group_hash, key.val, NULL);
+	he = mlx5_hlist_register(group_hash, key.val, &ctx);
 	if (!he)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
@@ -8830,15 +8897,17 @@ mlx5_flow_tunnel_allocate(struct rte_eth_dev *dev,
 		DRV_LOG(ERR, "Tunnel ID %d exceed max limit.", id);
 		return NULL;
 	}
-	tunnel->groups = mlx5_hlist_create("tunnel groups", 1024, 0, 0,
+	tunnel->groups = mlx5_hlist_create("tunnel groups", 1024, false, true,
+					   priv->sh,
 					   mlx5_flow_tunnel_grp2tbl_create_cb,
 					   mlx5_flow_tunnel_grp2tbl_match_cb,
-					   mlx5_flow_tunnel_grp2tbl_remove_cb);
+					   mlx5_flow_tunnel_grp2tbl_remove_cb,
+					   mlx5_flow_tunnel_grp2tbl_clone_cb,
+					mlx5_flow_tunnel_grp2tbl_clone_free_cb);
 	if (!tunnel->groups) {
 		mlx5_ipool_free(ipool, id);
 		return NULL;
 	}
-	tunnel->groups->ctx = priv->sh;
 	/* initiate new PMD tunnel */
 	memcpy(&tunnel->app_tunnel, app_tunnel, sizeof(*app_tunnel));
 	tunnel->tunnel_id = id;
@@ -8938,15 +9007,17 @@ int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh)
 	LIST_INIT(&thub->tunnels);
 	rte_spinlock_init(&thub->sl);
 	thub->groups = mlx5_hlist_create("flow groups",
-					 rte_align32pow2(MLX5_MAX_TABLES), 0,
-					 0, mlx5_flow_tunnel_grp2tbl_create_cb,
+					 rte_align32pow2(MLX5_MAX_TABLES),
+					 false, true, sh,
+					 mlx5_flow_tunnel_grp2tbl_create_cb,
 					 mlx5_flow_tunnel_grp2tbl_match_cb,
-					 mlx5_flow_tunnel_grp2tbl_remove_cb);
+					 mlx5_flow_tunnel_grp2tbl_remove_cb,
+					 mlx5_flow_tunnel_grp2tbl_clone_cb,
+					mlx5_flow_tunnel_grp2tbl_clone_free_cb);
 	if (!thub->groups) {
 		err = -rte_errno;
 		goto err;
 	}
-	thub->groups->ctx = sh;
 	sh->tunnel_hub = thub;
 
 	return 0;

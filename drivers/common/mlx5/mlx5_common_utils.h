@@ -20,10 +20,13 @@ struct mlx5_list;
  */
 struct mlx5_list_entry {
 	LIST_ENTRY(mlx5_list_entry) next; /* Entry pointers in the list. */
-	uint32_t ref_cnt; /* 0 means, entry is invalid. */
+	uint32_t ref_cnt __rte_aligned(8); /* 0 means, entry is invalid. */
 	uint32_t lcore_idx;
-	struct mlx5_list_entry *gentry;
-};
+	union {
+		struct mlx5_list_entry *gentry;
+		uint32_t bucket_idx;
+	};
+} __rte_packed;
 
 struct mlx5_list_cache {
 	LIST_HEAD(mlx5_list_head, mlx5_list_entry) h;
@@ -212,108 +215,24 @@ __rte_internal
 uint32_t
 mlx5_list_get_entry_num(struct mlx5_list *list);
 
-/************************ Hash list *****************************/
+/********************* Hash List **********************/
 
-#define MLX5_HLIST_DIRECT_KEY 0x0001 /* Use the key directly as hash index. */
-#define MLX5_HLIST_WRITE_MOST 0x0002 /* List mostly used for append new. */
-
-/** Maximum size of string for naming the hlist table. */
-#define MLX5_HLIST_NAMESIZE			32
-
-struct mlx5_hlist;
-
-/**
- * Structure of the entry in the hash list, user should define its own struct
- * that contains this in order to store the data. The 'key' is 64-bits right
- * now and its user's responsibility to guarantee there is no collision.
- */
-struct mlx5_hlist_entry {
-	LIST_ENTRY(mlx5_hlist_entry) next; /* entry pointers in the list. */
-	uint32_t idx; /* Bucket index the entry belongs to. */
-	uint32_t ref_cnt; /* Reference count. */
-};
-
-/** Structure for hash head. */
-LIST_HEAD(mlx5_hlist_head, mlx5_hlist_entry);
-
-/**
- * Type of callback function for entry removal.
- *
- * @param list
- *   The hash list.
- * @param entry
- *   The entry in the list.
- */
-typedef void (*mlx5_hlist_remove_cb)(struct mlx5_hlist *list,
-				     struct mlx5_hlist_entry *entry);
-
-/**
- * Type of function for user defined matching.
- *
- * @param list
- *   The hash list.
- * @param entry
- *   The entry in the list.
- * @param key
- *   The new entry key.
- * @param ctx
- *   The pointer to new entry context.
- *
- * @return
- *   0 if matching, non-zero number otherwise.
- */
-typedef int (*mlx5_hlist_match_cb)(struct mlx5_hlist *list,
-				   struct mlx5_hlist_entry *entry,
-				   uint64_t key, void *ctx);
-
-/**
- * Type of function for user defined hash list entry creation.
- *
- * @param list
- *   The hash list.
- * @param key
- *   The key of the new entry.
- * @param ctx
- *   The pointer to new entry context.
- *
- * @return
- *   Pointer to allocated entry on success, NULL otherwise.
- */
-typedef struct mlx5_hlist_entry *(*mlx5_hlist_create_cb)
-				  (struct mlx5_hlist *list,
-				   uint64_t key, void *ctx);
-
-/* Hash list bucket head. */
+/* Hash list bucket. */
 struct mlx5_hlist_bucket {
-	struct mlx5_hlist_head head; /* List head. */
-	rte_rwlock_t lock; /* Bucket lock. */
-	uint32_t gen_cnt; /* List modification will update generation count. */
+	struct mlx5_list l;
 } __rte_cache_aligned;
 
 /**
  * Hash list table structure
  *
- * Entry in hash list could be reused if entry already exists, reference
- * count will increase and the existing entry returns.
- *
- * When destroy an entry from list, decrease reference count and only
- * destroy when no further reference.
+ * The hash list bucket using the mlx5_list object for managing.
  */
 struct mlx5_hlist {
-	char name[MLX5_HLIST_NAMESIZE]; /**< Name of the hash list. */
-	/**< number of heads, need to be power of 2. */
-	uint32_t table_sz;
-	uint32_t entry_sz; /**< Size of entry, used to allocate entry. */
-	/**< mask to get the index of the list heads. */
-	uint32_t mask;
-	bool direct_key; /* Use the new entry key directly as hash index. */
-	bool write_most; /* List mostly used for append new or destroy. */
-	void *ctx;
-	mlx5_hlist_create_cb cb_create; /**< entry create callback. */
-	mlx5_hlist_match_cb cb_match; /**< entry match callback. */
-	mlx5_hlist_remove_cb cb_remove; /**< entry remove callback. */
+	uint32_t mask; /* A mask for the bucket index range. */
+	uint8_t flags;
+	bool direct_key; /* Whether to use the key directly as hash index. */
+	bool lcores_share; /* Whether to share objects between the lcores. */
 	struct mlx5_hlist_bucket buckets[] __rte_cache_aligned;
-	/**< list bucket arrays. */
 };
 
 /**
@@ -330,23 +249,33 @@ struct mlx5_hlist {
  *   Heads array size of the hash list.
  * @param entry_size
  *   Entry size to allocate if cb_create not specified.
- * @param flags
- *   The hash list attribute flags.
+ * @param direct key
+ *   Whether to use the key directly as hash index.
+ * @param lcores_share
+ *   Whether to share objects between the lcores.
+ * @param ctx
+ *   The hlist instance context.
  * @param cb_create
  *   Callback function for entry create.
  * @param cb_match
  *   Callback function for entry match.
- * @param cb_destroy
- *   Callback function for entry destroy.
+ * @param cb_remove
+ *   Callback function for entry remove.
+ * @param cb_clone
+ *   Callback function for entry clone.
+ * @param cb_clone_free
+ *   Callback function for entry clone free.
  * @return
  *   Pointer of the hash list table created, NULL on failure.
  */
 __rte_internal
 struct mlx5_hlist *mlx5_hlist_create(const char *name, uint32_t size,
-				     uint32_t entry_size, uint32_t flags,
-				     mlx5_hlist_create_cb cb_create,
-				     mlx5_hlist_match_cb cb_match,
-				     mlx5_hlist_remove_cb cb_destroy);
+				     bool direct_key, bool lcores_share,
+				     void *ctx, mlx5_list_create_cb cb_create,
+				     mlx5_list_match_cb cb_match,
+				     mlx5_list_remove_cb cb_remove,
+				     mlx5_list_clone_cb cb_clone,
+				     mlx5_list_clone_free_cb cb_clone_free);
 
 /**
  * Search an entry matching the key.
@@ -365,7 +294,7 @@ struct mlx5_hlist *mlx5_hlist_create(const char *name, uint32_t size,
  *   Pointer of the hlist entry if found, NULL otherwise.
  */
 __rte_internal
-struct mlx5_hlist_entry *mlx5_hlist_lookup(struct mlx5_hlist *h, uint64_t key,
+struct mlx5_list_entry *mlx5_hlist_lookup(struct mlx5_hlist *h, uint64_t key,
 					   void *ctx);
 
 /**
@@ -384,7 +313,7 @@ struct mlx5_hlist_entry *mlx5_hlist_lookup(struct mlx5_hlist *h, uint64_t key,
  *   registered entry on success, NULL otherwise
  */
 __rte_internal
-struct mlx5_hlist_entry *mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key,
+struct mlx5_list_entry *mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key,
 					     void *ctx);
 
 /**
@@ -399,7 +328,7 @@ struct mlx5_hlist_entry *mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key,
  *   0 on entry removed, 1 on entry still referenced.
  */
 __rte_internal
-int mlx5_hlist_unregister(struct mlx5_hlist *h, struct mlx5_hlist_entry *entry);
+int mlx5_hlist_unregister(struct mlx5_hlist *h, struct mlx5_list_entry *entry);
 
 /**
  * Destroy the hash list table, all the entries already inserted into the lists

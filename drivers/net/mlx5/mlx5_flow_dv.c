@@ -3586,25 +3586,9 @@ flow_dv_validate_action_aso_ct(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/**
- * Match encap_decap resource.
- *
- * @param list
- *   Pointer to the hash list.
- * @param entry
- *   Pointer to exist resource entry object.
- * @param key
- *   Key of the new entry.
- * @param ctx_cb
- *   Pointer to new encap_decap resource.
- *
- * @return
- *   0 on matching, none-zero otherwise.
- */
 int
-flow_dv_encap_decap_match_cb(struct mlx5_hlist *list __rte_unused,
-			     struct mlx5_hlist_entry *entry,
-			     uint64_t key __rte_unused, void *cb_ctx)
+flow_dv_encap_decap_match_cb(void *tool_ctx __rte_unused,
+			     struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_encap_decap_resource *ctx_resource = ctx->data;
@@ -3623,25 +3607,10 @@ flow_dv_encap_decap_match_cb(struct mlx5_hlist *list __rte_unused,
 	return -1;
 }
 
-/**
- * Allocate encap_decap resource.
- *
- * @param list
- *   Pointer to the hash list.
- * @param entry
- *   Pointer to exist resource entry object.
- * @param ctx_cb
- *   Pointer to new encap_decap resource.
- *
- * @return
- *   0 on matching, none-zero otherwise.
- */
-struct mlx5_hlist_entry *
-flow_dv_encap_decap_create_cb(struct mlx5_hlist *list,
-			      uint64_t key __rte_unused,
-			      void *cb_ctx)
+struct mlx5_list_entry *
+flow_dv_encap_decap_create_cb(void *tool_ctx, void *cb_ctx)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5dv_dr_domain *domain;
 	struct mlx5_flow_dv_encap_decap_resource *ctx_resource = ctx->data;
@@ -3679,6 +3648,38 @@ flow_dv_encap_decap_create_cb(struct mlx5_hlist *list,
 	return &resource->entry;
 }
 
+struct mlx5_list_entry *
+flow_dv_encap_decap_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
+			     void *cb_ctx)
+{
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_dv_encap_decap_resource *cache_resource;
+	uint32_t idx;
+
+	cache_resource = mlx5_ipool_malloc(sh->ipool[MLX5_IPOOL_DECAP_ENCAP],
+					   &idx);
+	if (!cache_resource) {
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot allocate resource memory");
+		return NULL;
+	}
+	memcpy(cache_resource, oentry, sizeof(*cache_resource));
+	cache_resource->idx = idx;
+	return &cache_resource->entry;
+}
+
+void
+flow_dv_encap_decap_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+{
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
+	struct mlx5_flow_dv_encap_decap_resource *res =
+				       container_of(entry, typeof(*res), entry);
+
+	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_DECAP_ENCAP], res->idx);
+}
+
 /**
  * Find existing encap/decap resource or create and register a new one.
  *
@@ -3703,7 +3704,7 @@ flow_dv_encap_decap_resource_register
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_hlist_entry *entry;
+	struct mlx5_list_entry *entry;
 	union {
 		struct {
 			uint32_t ft_type:8;
@@ -5328,30 +5329,14 @@ flow_dv_validate_action_modify_ipv6_dscp(const uint64_t action_flags,
 	return ret;
 }
 
-/**
- * Match modify-header resource.
- *
- * @param list
- *   Pointer to the hash list.
- * @param entry
- *   Pointer to exist resource entry object.
- * @param key
- *   Key of the new entry.
- * @param ctx
- *   Pointer to new modify-header resource.
- *
- * @return
- *   0 on matching, non-zero otherwise.
- */
 int
-flow_dv_modify_match_cb(struct mlx5_hlist *list __rte_unused,
-			struct mlx5_hlist_entry *entry,
-			uint64_t key __rte_unused, void *cb_ctx)
+flow_dv_modify_match_cb(void *tool_ctx __rte_unused,
+			struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_modify_hdr_resource *ref = ctx->data;
 	struct mlx5_flow_dv_modify_hdr_resource *resource =
-			container_of(entry, typeof(*resource), entry);
+				  container_of(entry, typeof(*resource), entry);
 	uint32_t key_len = sizeof(*ref) - offsetof(typeof(*ref), ft_type);
 
 	key_len += ref->actions_num * sizeof(ref->actions[0]);
@@ -5359,11 +5344,10 @@ flow_dv_modify_match_cb(struct mlx5_hlist *list __rte_unused,
 	       memcmp(&ref->ft_type, &resource->ft_type, key_len);
 }
 
-struct mlx5_hlist_entry *
-flow_dv_modify_create_cb(struct mlx5_hlist *list, uint64_t key __rte_unused,
-			 void *cb_ctx)
+struct mlx5_list_entry *
+flow_dv_modify_create_cb(void *tool_ctx, void *cb_ctx)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5dv_dr_domain *ns;
 	struct mlx5_flow_dv_modify_hdr_resource *entry;
@@ -5400,6 +5384,33 @@ flow_dv_modify_create_cb(struct mlx5_hlist *list, uint64_t key __rte_unused,
 		return NULL;
 	}
 	return &entry->entry;
+}
+
+struct mlx5_list_entry *
+flow_dv_modify_clone_cb(void *tool_ctx __rte_unused,
+			struct mlx5_list_entry *oentry, void *cb_ctx)
+{
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_dv_modify_hdr_resource *entry;
+	struct mlx5_flow_dv_modify_hdr_resource *ref = ctx->data;
+	uint32_t data_len = ref->actions_num * sizeof(ref->actions[0]);
+
+	entry = mlx5_malloc(0, sizeof(*entry) + data_len, 0, SOCKET_ID_ANY);
+	if (!entry) {
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot allocate resource memory");
+		return NULL;
+	}
+	memcpy(entry, oentry, sizeof(*entry) + data_len);
+	return &entry->entry;
+}
+
+void
+flow_dv_modify_clone_free_cb(void *tool_ctx __rte_unused,
+			     struct mlx5_list_entry *entry)
+{
+	mlx5_free(entry);
 }
 
 /**
@@ -5673,7 +5684,7 @@ flow_dv_modify_hdr_resource_register
 	uint32_t key_len = sizeof(*resource) -
 			   offsetof(typeof(*resource), ft_type) +
 			   resource->actions_num * sizeof(resource->actions[0]);
-	struct mlx5_hlist_entry *entry;
+	struct mlx5_list_entry *entry;
 	struct mlx5_flow_cb_ctx ctx = {
 		.error = error,
 		.data = resource,
@@ -10045,16 +10056,16 @@ flow_dv_matcher_clone_free_cb(void *tool_ctx __rte_unused,
 	mlx5_free(entry);
 }
 
-struct mlx5_hlist_entry *
-flow_dv_tbl_create_cb(struct mlx5_hlist *list, uint64_t key64, void *cb_ctx)
+struct mlx5_list_entry *
+flow_dv_tbl_create_cb(void *tool_ctx, void *cb_ctx)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct rte_eth_dev *dev = ctx->dev;
 	struct mlx5_flow_tbl_data_entry *tbl_data;
-	struct mlx5_flow_tbl_tunnel_prm *tt_prm = ctx->data;
+	struct mlx5_flow_tbl_tunnel_prm *tt_prm = ctx->data2;
 	struct rte_flow_error *error = ctx->error;
-	union mlx5_flow_tbl_key key = { .v64 = key64 };
+	union mlx5_flow_tbl_key key = { .v64 = *(uint64_t *)(ctx->data) };
 	struct mlx5_flow_tbl_resource *tbl;
 	void *domain;
 	uint32_t idx = 0;
@@ -10131,19 +10142,52 @@ flow_dv_tbl_create_cb(struct mlx5_hlist *list, uint64_t key64, void *cb_ctx)
 }
 
 int
-flow_dv_tbl_match_cb(struct mlx5_hlist *list __rte_unused,
-		     struct mlx5_hlist_entry *entry, uint64_t key64,
-		     void *cb_ctx __rte_unused)
+flow_dv_tbl_match_cb(void *tool_ctx __rte_unused, struct mlx5_list_entry *entry,
+		     void *cb_ctx)
 {
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_tbl_data_entry *tbl_data =
 		container_of(entry, struct mlx5_flow_tbl_data_entry, entry);
-	union mlx5_flow_tbl_key key = { .v64 = key64 };
+	union mlx5_flow_tbl_key key = { .v64 =  *(uint64_t *)(ctx->data) };
 
 	return tbl_data->level != key.level ||
 	       tbl_data->id != key.id ||
 	       tbl_data->dummy != key.dummy ||
 	       tbl_data->is_transfer != !!key.is_fdb ||
 	       tbl_data->is_egress != !!key.is_egress;
+}
+
+struct mlx5_list_entry *
+flow_dv_tbl_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
+		      void *cb_ctx)
+{
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_tbl_data_entry *tbl_data;
+	struct rte_flow_error *error = ctx->error;
+	uint32_t idx = 0;
+
+	tbl_data = mlx5_ipool_malloc(sh->ipool[MLX5_IPOOL_JUMP], &idx);
+	if (!tbl_data) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "cannot allocate flow table data entry");
+		return NULL;
+	}
+	memcpy(tbl_data, oentry, sizeof(*tbl_data));
+	tbl_data->idx = idx;
+	return &tbl_data->entry;
+}
+
+void
+flow_dv_tbl_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+{
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
+	struct mlx5_flow_tbl_data_entry *tbl_data =
+		    container_of(entry, struct mlx5_flow_tbl_data_entry, entry);
+
+	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], tbl_data->idx);
 }
 
 /**
@@ -10196,9 +10240,10 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 	struct mlx5_flow_cb_ctx ctx = {
 		.dev = dev,
 		.error = error,
-		.data = &tt_prm,
+		.data = &table_key.v64,
+		.data2 = &tt_prm,
 	};
-	struct mlx5_hlist_entry *entry;
+	struct mlx5_list_entry *entry;
 	struct mlx5_flow_tbl_data_entry *tbl_data;
 
 	entry = mlx5_hlist_register(priv->sh->flow_tbls, table_key.v64, &ctx);
@@ -10217,12 +10262,11 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
-		      struct mlx5_hlist_entry *entry)
+flow_dv_tbl_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_tbl_data_entry *tbl_data =
-		container_of(entry, struct mlx5_flow_tbl_data_entry, entry);
+		    container_of(entry, struct mlx5_flow_tbl_data_entry, entry);
 
 	MLX5_ASSERT(entry && sh);
 	if (tbl_data->jump.action)
@@ -10230,7 +10274,7 @@ flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
 	if (tbl_data->tbl.obj)
 		mlx5_flow_os_destroy_flow_tbl(tbl_data->tbl.obj);
 	if (tbl_data->tunnel_offload && tbl_data->external) {
-		struct mlx5_hlist_entry *he;
+		struct mlx5_list_entry *he;
 		struct mlx5_hlist *tunnel_grp_hash;
 		struct mlx5_flow_tunnel_hub *thub = sh->tunnel_hub;
 		union tunnel_tbl_key tunnel_key = {
@@ -10239,11 +10283,14 @@ flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
 			.group = tbl_data->group_id
 		};
 		uint32_t table_level = tbl_data->level;
+		struct mlx5_flow_cb_ctx ctx = {
+			.data = (void *)&tunnel_key.val,
+		};
 
 		tunnel_grp_hash = tbl_data->tunnel ?
 					tbl_data->tunnel->groups :
 					thub->groups;
-		he = mlx5_hlist_lookup(tunnel_grp_hash, tunnel_key.val, NULL);
+		he = mlx5_hlist_lookup(tunnel_grp_hash, tunnel_key.val, &ctx);
 		if (he)
 			mlx5_hlist_unregister(tunnel_grp_hash, he);
 		DRV_LOG(DEBUG,
@@ -10397,29 +10444,29 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	return 0;
 }
 
-struct mlx5_hlist_entry *
-flow_dv_tag_create_cb(struct mlx5_hlist *list, uint64_t key, void *ctx)
+struct mlx5_list_entry *
+flow_dv_tag_create_cb(void *tool_ctx, void *cb_ctx)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
-	struct rte_flow_error *error = ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_tag_resource *entry;
 	uint32_t idx = 0;
 	int ret;
 
 	entry = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_TAG], &idx);
 	if (!entry) {
-		rte_flow_error_set(error, ENOMEM,
+		rte_flow_error_set(ctx->error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				   "cannot allocate resource memory");
 		return NULL;
 	}
 	entry->idx = idx;
-	entry->tag_id = key;
-	ret = mlx5_flow_os_create_flow_action_tag(key,
+	entry->tag_id = *(uint32_t *)(ctx->data);
+	ret = mlx5_flow_os_create_flow_action_tag(entry->tag_id,
 						  &entry->action);
 	if (ret) {
 		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_TAG], idx);
-		rte_flow_error_set(error, ENOMEM,
+		rte_flow_error_set(ctx->error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL, "cannot create action");
 		return NULL;
@@ -10428,14 +10475,45 @@ flow_dv_tag_create_cb(struct mlx5_hlist *list, uint64_t key, void *ctx)
 }
 
 int
-flow_dv_tag_match_cb(struct mlx5_hlist *list __rte_unused,
-		     struct mlx5_hlist_entry *entry, uint64_t key,
-		     void *cb_ctx __rte_unused)
+flow_dv_tag_match_cb(void *tool_ctx __rte_unused, struct mlx5_list_entry *entry,
+		     void *cb_ctx)
 {
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_tag_resource *tag =
-		container_of(entry, struct mlx5_flow_dv_tag_resource, entry);
+		   container_of(entry, struct mlx5_flow_dv_tag_resource, entry);
 
-	return key != tag->tag_id;
+	return *(uint32_t *)(ctx->data) != tag->tag_id;
+}
+
+struct mlx5_list_entry *
+flow_dv_tag_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
+		     void *cb_ctx)
+{
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_dv_tag_resource *entry;
+	uint32_t idx = 0;
+
+	entry = mlx5_ipool_malloc(sh->ipool[MLX5_IPOOL_TAG], &idx);
+	if (!entry) {
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot allocate tag resource memory");
+		return NULL;
+	}
+	memcpy(entry, oentry, sizeof(*entry));
+	entry->idx = idx;
+	return &entry->entry;
+}
+
+void
+flow_dv_tag_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+{
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
+	struct mlx5_flow_dv_tag_resource *tag =
+		   container_of(entry, struct mlx5_flow_dv_tag_resource, entry);
+
+	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_TAG], tag->idx);
 }
 
 /**
@@ -10462,9 +10540,13 @@ flow_dv_tag_resource_register
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_dv_tag_resource *resource;
-	struct mlx5_hlist_entry *entry;
+	struct mlx5_list_entry *entry;
+	struct mlx5_flow_cb_ctx ctx = {
+					.error = error,
+					.data = &tag_be24,
+					};
 
-	entry = mlx5_hlist_register(priv->sh->tag_table, tag_be24, error);
+	entry = mlx5_hlist_register(priv->sh->tag_table, tag_be24, &ctx);
 	if (entry) {
 		resource = container_of(entry, struct mlx5_flow_dv_tag_resource,
 					entry);
@@ -10476,12 +10558,11 @@ flow_dv_tag_resource_register
 }
 
 void
-flow_dv_tag_remove_cb(struct mlx5_hlist *list,
-		      struct mlx5_hlist_entry *entry)
+flow_dv_tag_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_tag_resource *tag =
-		container_of(entry, struct mlx5_flow_dv_tag_resource, entry);
+		   container_of(entry, struct mlx5_flow_dv_tag_resource, entry);
 
 	MLX5_ASSERT(tag && sh && tag->action);
 	claim_zero(mlx5_flow_os_destroy_flow_action(tag->action));
@@ -13675,19 +13756,10 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 	return ret;
 }
 
-/**
- * Release encap_decap resource.
- *
- * @param list
- *   Pointer to the hash list.
- * @param entry
- *   Pointer to exist resource entry object.
- */
 void
-flow_dv_encap_decap_remove_cb(struct mlx5_hlist *list,
-			      struct mlx5_hlist_entry *entry)
+flow_dv_encap_decap_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
-	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_encap_decap_resource *res =
 				       container_of(entry, typeof(*res), entry);
 
@@ -13747,8 +13819,8 @@ flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_modify_remove_cb(struct mlx5_hlist *list __rte_unused,
-			 struct mlx5_hlist_entry *entry)
+flow_dv_modify_remove_cb(void *tool_ctx __rte_unused,
+			 struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_modify_hdr_resource *res =
 		container_of(entry, typeof(*res), entry);
