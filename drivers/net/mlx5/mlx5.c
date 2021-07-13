@@ -798,6 +798,8 @@ mlx5_flow_ipool_create(struct mlx5_dev_ctx_shared *sh,
 		if (config->reclaim_mode) {
 			cfg.release_mem_en = 1;
 			cfg.per_core_cache = 0;
+		} else {
+			cfg.release_mem_en = 0;
 		}
 		sh->ipool[i] = mlx5_ipool_create(&cfg);
 	}
