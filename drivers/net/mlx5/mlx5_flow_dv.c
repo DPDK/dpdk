@@ -5006,21 +5006,21 @@ flow_dv_validate_action_port_id(struct rte_eth_dev *dev,
  *
  * @param dev
  *   Pointer to rte_eth_dev structure.
- * @param flags
- *   Flags bits to check if root level.
+ * @param root
+ *   Whether action is on root table.
  *
  * @return
  *   Max number of modify header actions device can support.
  */
 static inline unsigned int
 flow_dv_modify_hdr_action_max(struct rte_eth_dev *dev __rte_unused,
-			      uint64_t flags)
+			      bool root)
 {
 	/*
 	 * There's no way to directly query the max capacity from FW.
 	 * The maximal value on root table should be assumed to be supported.
 	 */
-	if (!(flags & MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL))
+	if (!root)
 		return MLX5_MAX_MODIFY_NUM;
 	else
 		return MLX5_ROOT_TBL_MODIFY_NUM;
@@ -5622,10 +5622,9 @@ flow_dv_modify_hdr_resource_register
 	};
 	uint64_t key64;
 
-	resource->flags = dev_flow->dv.group ? 0 :
-			  MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL;
+	resource->root = !dev_flow->dv.group;
 	if (resource->actions_num > flow_dv_modify_hdr_action_max(dev,
-				    resource->flags))
+								resource->root))
 		return rte_flow_error_set(error, EOVERFLOW,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "too many modify header items");

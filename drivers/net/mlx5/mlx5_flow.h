@@ -524,11 +524,11 @@ struct mlx5_flow_dv_modify_hdr_resource {
 	void *action; /**< Modify header action object. */
 	/* Key area for hash list matching: */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
-	uint32_t actions_num; /**< Number of modification actions. */
-	uint64_t flags; /**< Flags for RDMA API. */
+	uint8_t actions_num; /**< Number of modification actions. */
+	bool root; /**< Whether action is in root table. */
 	struct mlx5_modification_cmd actions[];
 	/**< Modification actions. */
-};
+} __rte_packed;
 
 /* Modify resource key of the hash organization. */
 union mlx5_flow_modify_hdr_key {

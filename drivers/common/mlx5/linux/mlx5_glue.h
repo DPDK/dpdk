@@ -78,6 +78,7 @@ struct mlx5dv_devx_async_cmd_hdr;
 enum  mlx5dv_dr_domain_type { unused, };
 struct mlx5dv_dr_domain;
 struct mlx5dv_dr_action;
+#define MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL 1
 #endif
 
 #ifndef HAVE_MLX5DV_DR_DEVX_PORT
