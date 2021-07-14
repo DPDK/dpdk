@@ -62,13 +62,13 @@ check_cur_freq(unsigned int lcore_id, uint32_t idx, bool turbo)
 	int i;
 
 	if (snprintf(fullpath, sizeof(fullpath),
-		TEST_POWER_SYSFILE_SCALING_FREQ, lcore_id) < 0) {
+		TEST_POWER_SYSFILE_CPUINFO_FREQ, lcore_id) < 0) {
 		return 0;
 	}
 	f = fopen(fullpath, "r");
 	if (f == NULL) {
 		if (snprintf(fullpath, sizeof(fullpath),
-			TEST_POWER_SYSFILE_CPUINFO_FREQ, lcore_id) < 0) {
+			TEST_POWER_SYSFILE_SCALING_FREQ, lcore_id) < 0) {
 			return 0;
 		}
 		f = fopen(fullpath, "r");
@@ -85,7 +85,7 @@ check_cur_freq(unsigned int lcore_id, uint32_t idx, bool turbo)
 		freq_conv = cur_freq;
 
 		env = rte_power_get_env();
-		if (env == PM_ENV_CPPC_CPUFREQ) {
+		if (env == PM_ENV_CPPC_CPUFREQ || env == PM_ENV_PSTATE_CPUFREQ) {
 			/* convert the frequency to nearest 100000 value
 			 * Ex: if cur_freq=1396789 then freq_conv=1400000
 			 * Ex: if cur_freq=800030 then freq_conv=800000
