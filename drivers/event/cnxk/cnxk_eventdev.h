@@ -8,6 +8,7 @@
 #include <rte_devargs.h>
 #include <rte_ethdev.h>
 #include <rte_event_eth_rx_adapter.h>
+#include <rte_event_eth_tx_adapter.h>
 #include <rte_kvargs.h>
 #include <rte_mbuf_pool_ops.h>
 #include <rte_pci.h>
@@ -34,6 +35,7 @@
 #define CNXK_SSO_XAQ_CACHE_CNT (0x7)
 #define CNXK_SSO_XAQ_SLACK     (8)
 #define CNXK_SSO_WQE_SG_PTR    (9)
+#define CNXK_SSO_SQB_LIMIT     (0x180)
 
 #define CNXK_TT_FROM_TAG(x)	    (((x) >> 32) & SSO_TT_EMPTY)
 #define CNXK_TT_FROM_EVENT(x)	    (((x) >> 38) & SSO_TT_EMPTY)
@@ -86,9 +88,12 @@ struct cnxk_sso_evdev {
 	rte_iova_t fc_iova;
 	struct rte_mempool *xaq_pool;
 	uint64_t rx_offloads;
+	uint64_t tx_offloads;
 	uint64_t adptr_xae_cnt;
 	uint16_t rx_adptr_pool_cnt;
 	uint64_t *rx_adptr_pools;
+	uint64_t *tx_adptr_data;
+	uint16_t max_port_id;
 	uint16_t tim_adptr_ring_cnt;
 	uint16_t *timer_adptr_rings;
 	uint64_t *timer_adptr_sz;
@@ -115,7 +120,10 @@ struct cn10k_sso_hws {
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
 	uintptr_t grps_base[CNXK_SSO_MAX_HWGRP];
+	/* Tx Fastpath data */
+	uint64_t tx_base __rte_cache_aligned;
 	uintptr_t lmt_base;
+	uint8_t tx_adptr_data[];
 } __rte_cache_aligned;
 
 /* CN9K HWS ops */
@@ -140,7 +148,9 @@ struct cn9k_sso_hws {
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
 	uintptr_t grps_base[CNXK_SSO_MAX_HWGRP];
-	uint64_t base;
+	/* Tx Fastpath data */
+	uint64_t base __rte_cache_aligned;
+	uint8_t tx_adptr_data[];
 } __rte_cache_aligned;
 
 struct cn9k_sso_hws_state {
@@ -160,7 +170,9 @@ struct cn9k_sso_hws_dual {
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
 	uintptr_t grps_base[CNXK_SSO_MAX_HWGRP];
-	uint64_t base[2];
+	/* Tx Fastpath data */
+	uint64_t base[2] __rte_cache_aligned;
+	uint8_t tx_adptr_data[];
 } __rte_cache_aligned;
 
 struct cnxk_sso_hws_cookie {
@@ -267,5 +279,11 @@ int cnxk_sso_rx_adapter_start(const struct rte_eventdev *event_dev,
 			      const struct rte_eth_dev *eth_dev);
 int cnxk_sso_rx_adapter_stop(const struct rte_eventdev *event_dev,
 			     const struct rte_eth_dev *eth_dev);
+int cnxk_sso_tx_adapter_queue_add(const struct rte_eventdev *event_dev,
+				  const struct rte_eth_dev *eth_dev,
+				  int32_t tx_queue_id);
+int cnxk_sso_tx_adapter_queue_del(const struct rte_eventdev *event_dev,
+				  const struct rte_eth_dev *eth_dev,
+				  int32_t tx_queue_id);
 
 #endif /* __CNXK_EVENTDEV_H__ */

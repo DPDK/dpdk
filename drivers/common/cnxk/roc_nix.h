@@ -200,6 +200,7 @@ struct roc_nix_sq {
 	uint64_t aura_handle;
 	int16_t nb_sqb_bufs_adj;
 	uint16_t nb_sqb_bufs;
+	uint16_t aura_sqb_bufs;
 	plt_iova_t io_addr;
 	void *lmt_addr;
 	void *sqe_mem;

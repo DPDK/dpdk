@@ -248,6 +248,66 @@ cn9k_sso_rsrc_init(void *arg, uint8_t hws, uint8_t hwgrp)
 	return roc_sso_rsrc_init(&dev->sso, hws, hwgrp);
 }
 
+static int
+cn9k_sso_updt_tx_adptr_data(const struct rte_eventdev *event_dev)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	int i;
+
+	if (dev->tx_adptr_data == NULL)
+		return 0;
+
+	for (i = 0; i < dev->nb_event_ports; i++) {
+		if (dev->dual_ws) {
+			struct cn9k_sso_hws_dual *dws =
+				event_dev->data->ports[i];
+			void *ws_cookie;
+
+			ws_cookie = cnxk_sso_hws_get_cookie(dws);
+			ws_cookie = rte_realloc_socket(
+				ws_cookie,
+				sizeof(struct cnxk_sso_hws_cookie) +
+					sizeof(struct cn9k_sso_hws_dual) +
+					(sizeof(uint64_t) *
+					 (dev->max_port_id + 1) *
+					 RTE_MAX_QUEUES_PER_PORT),
+				RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+			if (ws_cookie == NULL)
+				return -ENOMEM;
+			dws = RTE_PTR_ADD(ws_cookie,
+					  sizeof(struct cnxk_sso_hws_cookie));
+			memcpy(&dws->tx_adptr_data, dev->tx_adptr_data,
+			       sizeof(uint64_t) * (dev->max_port_id + 1) *
+				       RTE_MAX_QUEUES_PER_PORT);
+			event_dev->data->ports[i] = dws;
+		} else {
+			struct cn9k_sso_hws *ws = event_dev->data->ports[i];
+			void *ws_cookie;
+
+			ws_cookie = cnxk_sso_hws_get_cookie(ws);
+			ws_cookie = rte_realloc_socket(
+				ws_cookie,
+				sizeof(struct cnxk_sso_hws_cookie) +
+					sizeof(struct cn9k_sso_hws_dual) +
+					(sizeof(uint64_t) *
+					 (dev->max_port_id + 1) *
+					 RTE_MAX_QUEUES_PER_PORT),
+				RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+			if (ws_cookie == NULL)
+				return -ENOMEM;
+			ws = RTE_PTR_ADD(ws_cookie,
+					 sizeof(struct cnxk_sso_hws_cookie));
+			memcpy(&ws->tx_adptr_data, dev->tx_adptr_data,
+			       sizeof(uint64_t) * (dev->max_port_id + 1) *
+				       RTE_MAX_QUEUES_PER_PORT);
+			event_dev->data->ports[i] = ws;
+		}
+	}
+	rte_mb();
+
+	return 0;
+}
+
 static void
 cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 {
@@ -734,6 +794,10 @@ cn9k_sso_start(struct rte_eventdev *event_dev)
 {
 	int rc;
 
+	rc = cn9k_sso_updt_tx_adptr_data(event_dev);
+	if (rc < 0)
+		return rc;
+
 	rc = cnxk_sso_start(event_dev, cn9k_sso_hws_reset,
 			    cn9k_sso_hws_flush_events);
 	if (rc < 0)
@@ -844,6 +908,86 @@ cn9k_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
 	return cnxk_sso_rx_adapter_queue_del(event_dev, eth_dev, rx_queue_id);
 }
 
+static int
+cn9k_sso_tx_adapter_caps_get(const struct rte_eventdev *dev,
+			     const struct rte_eth_dev *eth_dev, uint32_t *caps)
+{
+	int ret;
+
+	RTE_SET_USED(dev);
+	ret = strncmp(eth_dev->device->driver->name, "net_cn9k", 8);
+	if (ret)
+		*caps = 0;
+	else
+		*caps = RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT;
+
+	return 0;
+}
+
+static void
+cn9k_sso_txq_fc_update(const struct rte_eth_dev *eth_dev, int32_t tx_queue_id,
+		       bool ena)
+{
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct cn9k_eth_txq *txq;
+	struct roc_nix_sq *sq;
+	int i;
+
+	if (tx_queue_id < 0) {
+		for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+			cn9k_sso_txq_fc_update(eth_dev, i, ena);
+	} else {
+		uint16_t sq_limit;
+
+		sq = &cnxk_eth_dev->sqs[tx_queue_id];
+		txq = eth_dev->data->tx_queues[tx_queue_id];
+		sq_limit =
+			ena ? RTE_MIN(CNXK_SSO_SQB_LIMIT, sq->aura_sqb_bufs) :
+				    sq->nb_sqb_bufs;
+		txq->nb_sqb_bufs_adj =
+			sq_limit -
+			RTE_ALIGN_MUL_CEIL(sq_limit,
+					   (1ULL << txq->sqes_per_sqb_log2)) /
+				(1ULL << txq->sqes_per_sqb_log2);
+		txq->nb_sqb_bufs_adj = (70 * txq->nb_sqb_bufs_adj) / 100;
+	}
+}
+
+static int
+cn9k_sso_tx_adapter_queue_add(uint8_t id, const struct rte_eventdev *event_dev,
+			      const struct rte_eth_dev *eth_dev,
+			      int32_t tx_queue_id)
+{
+	int rc;
+
+	RTE_SET_USED(id);
+	rc = cnxk_sso_tx_adapter_queue_add(event_dev, eth_dev, tx_queue_id);
+	if (rc < 0)
+		return rc;
+	cn9k_sso_txq_fc_update(eth_dev, tx_queue_id, true);
+	rc = cn9k_sso_updt_tx_adptr_data(event_dev);
+	if (rc < 0)
+		return rc;
+	cn9k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+
+	return 0;
+}
+
+static int
+cn9k_sso_tx_adapter_queue_del(uint8_t id, const struct rte_eventdev *event_dev,
+			      const struct rte_eth_dev *eth_dev,
+			      int32_t tx_queue_id)
+{
+	int rc;
+
+	RTE_SET_USED(id);
+	rc = cnxk_sso_tx_adapter_queue_del(event_dev, eth_dev, tx_queue_id);
+	if (rc < 0)
+		return rc;
+	cn9k_sso_txq_fc_update(eth_dev, tx_queue_id, false);
+	return cn9k_sso_updt_tx_adptr_data(event_dev);
+}
+
 static struct rte_eventdev_ops cn9k_sso_dev_ops = {
 	.dev_infos_get = cn9k_sso_info_get,
 	.dev_configure = cn9k_sso_dev_configure,
@@ -862,6 +1006,10 @@ static struct rte_eventdev_ops cn9k_sso_dev_ops = {
 	.eth_rx_adapter_queue_del = cn9k_sso_rx_adapter_queue_del,
 	.eth_rx_adapter_start = cnxk_sso_rx_adapter_start,
 	.eth_rx_adapter_stop = cnxk_sso_rx_adapter_stop,
+
+	.eth_tx_adapter_caps_get = cn9k_sso_tx_adapter_caps_get,
+	.eth_tx_adapter_queue_add = cn9k_sso_tx_adapter_queue_add,
+	.eth_tx_adapter_queue_del = cn9k_sso_tx_adapter_queue_del,
 
 	.timer_adapter_caps_get = cnxk_tim_caps_get,
 

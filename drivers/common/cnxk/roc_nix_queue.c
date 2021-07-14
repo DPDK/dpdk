@@ -587,12 +587,12 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 	aura.fc_ena = 1;
 	aura.fc_addr = (uint64_t)sq->fc;
 	aura.fc_hyst_bits = 0; /* Store count on all updates */
-	rc = roc_npa_pool_create(&sq->aura_handle, blk_sz, nb_sqb_bufs, &aura,
+	rc = roc_npa_pool_create(&sq->aura_handle, blk_sz, NIX_MAX_SQB, &aura,
 				 &pool);
 	if (rc)
 		goto fail;
 
-	sq->sqe_mem = plt_zmalloc(blk_sz * nb_sqb_bufs, blk_sz);
+	sq->sqe_mem = plt_zmalloc(blk_sz * NIX_MAX_SQB, blk_sz);
 	if (sq->sqe_mem == NULL) {
 		rc = NIX_ERR_NO_MEM;
 		goto nomem;
@@ -600,11 +600,13 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 
 	/* Fill the initial buffers */
 	iova = (uint64_t)sq->sqe_mem;
-	for (count = 0; count < nb_sqb_bufs; count++) {
+	for (count = 0; count < NIX_MAX_SQB; count++) {
 		roc_npa_aura_op_free(sq->aura_handle, 0, iova);
 		iova += blk_sz;
 	}
 	roc_npa_aura_op_range_set(sq->aura_handle, (uint64_t)sq->sqe_mem, iova);
+	roc_npa_aura_limit_modify(sq->aura_handle, sq->nb_sqb_bufs);
+	sq->aura_sqb_bufs = NIX_MAX_SQB;
 
 	return rc;
 nomem:

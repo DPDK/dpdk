@@ -223,3 +223,91 @@ cnxk_sso_rx_adapter_stop(const struct rte_eventdev *event_dev,
 
 	return 0;
 }
+
+static int
+cnxk_sso_sqb_aura_limit_edit(struct roc_nix_sq *sq, uint16_t nb_sqb_bufs)
+{
+	return roc_npa_aura_limit_modify(
+		sq->aura_handle, RTE_MIN(nb_sqb_bufs, sq->aura_sqb_bufs));
+}
+
+static int
+cnxk_sso_updt_tx_queue_data(const struct rte_eventdev *event_dev,
+			    uint16_t eth_port_id, uint16_t tx_queue_id,
+			    void *txq)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint16_t max_port_id = dev->max_port_id;
+	uint64_t *txq_data = dev->tx_adptr_data;
+
+	if (txq_data == NULL || eth_port_id > max_port_id) {
+		max_port_id = RTE_MAX(max_port_id, eth_port_id);
+		txq_data = rte_realloc_socket(
+			txq_data,
+			(sizeof(uint64_t) * (max_port_id + 1) *
+			 RTE_MAX_QUEUES_PER_PORT),
+			RTE_CACHE_LINE_SIZE, event_dev->data->socket_id);
+		if (txq_data == NULL)
+			return -ENOMEM;
+	}
+
+	((uint64_t(*)[RTE_MAX_QUEUES_PER_PORT])
+		 txq_data)[eth_port_id][tx_queue_id] = (uint64_t)txq;
+	dev->max_port_id = max_port_id;
+	dev->tx_adptr_data = txq_data;
+	return 0;
+}
+
+int
+cnxk_sso_tx_adapter_queue_add(const struct rte_eventdev *event_dev,
+			      const struct rte_eth_dev *eth_dev,
+			      int32_t tx_queue_id)
+{
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	struct roc_nix_sq *sq;
+	int i, ret;
+	void *txq;
+
+	if (tx_queue_id < 0) {
+		for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+			cnxk_sso_tx_adapter_queue_add(event_dev, eth_dev, i);
+	} else {
+		txq = eth_dev->data->tx_queues[tx_queue_id];
+		sq = &cnxk_eth_dev->sqs[tx_queue_id];
+		cnxk_sso_sqb_aura_limit_edit(sq, CNXK_SSO_SQB_LIMIT);
+		ret = cnxk_sso_updt_tx_queue_data(
+			event_dev, eth_dev->data->port_id, tx_queue_id, txq);
+		if (ret < 0)
+			return ret;
+
+		dev->tx_offloads |= cnxk_eth_dev->tx_offload_flags;
+	}
+
+	return 0;
+}
+
+int
+cnxk_sso_tx_adapter_queue_del(const struct rte_eventdev *event_dev,
+			      const struct rte_eth_dev *eth_dev,
+			      int32_t tx_queue_id)
+{
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct roc_nix_sq *sq;
+	int i, ret;
+
+	RTE_SET_USED(event_dev);
+	if (tx_queue_id < 0) {
+		for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+			cnxk_sso_tx_adapter_queue_del(event_dev, eth_dev, i);
+	} else {
+		sq = &cnxk_eth_dev->sqs[tx_queue_id];
+		cnxk_sso_sqb_aura_limit_edit(sq, sq->nb_sqb_bufs);
+		ret = cnxk_sso_updt_tx_queue_data(
+			event_dev, eth_dev->data->port_id, tx_queue_id, NULL);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
