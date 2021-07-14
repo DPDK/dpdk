@@ -38,6 +38,31 @@ cnxk_sso_updt_xae_cnt(struct cnxk_sso_evdev *dev, void *data,
 		dev->adptr_xae_cnt += rxq->qconf.mp->size;
 		break;
 	}
+	case RTE_EVENT_TYPE_ETHDEV_VECTOR: {
+		struct rte_mempool *mp = data;
+		uint64_t *old_ptr;
+
+		for (i = 0; i < dev->vec_pool_cnt; i++) {
+			if ((uint64_t)mp == dev->vec_pools[i])
+				return;
+		}
+
+		dev->vec_pool_cnt++;
+		old_ptr = dev->vec_pools;
+		dev->vec_pools =
+			rte_realloc(dev->vec_pools,
+				    sizeof(uint64_t) * dev->vec_pool_cnt, 0);
+		if (dev->vec_pools == NULL) {
+			dev->adptr_xae_cnt += mp->size;
+			dev->vec_pools = old_ptr;
+			dev->vec_pool_cnt--;
+			return;
+		}
+		dev->vec_pools[dev->vec_pool_cnt - 1] = (uint64_t)mp;
+
+		dev->adptr_xae_cnt += mp->size;
+		break;
+	}
 	case RTE_EVENT_TYPE_TIMER: {
 		struct cnxk_tim_ring *timr = data;
 		uint16_t *old_ring_ptr;

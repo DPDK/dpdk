@@ -122,6 +122,7 @@ New Features
 
   * Added Rx/Tx adapter support for event/cnxk when the ethernet device requested
     is net/cnxk.
+  * Added support for event vectorization for Rx adapter.
 
 * **Added cppc_cpufreq support to Power Management library.**
 

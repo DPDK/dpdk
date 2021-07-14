@@ -97,6 +97,8 @@ struct cnxk_sso_evdev {
 	uint16_t tim_adptr_ring_cnt;
 	uint16_t *timer_adptr_rings;
 	uint64_t *timer_adptr_sz;
+	uint16_t vec_pool_cnt;
+	uint64_t *vec_pools;
 	/* Dev args */
 	uint32_t xae_cnt;
 	uint8_t qos_queue_cnt;

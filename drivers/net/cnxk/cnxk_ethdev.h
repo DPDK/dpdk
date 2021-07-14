@@ -238,7 +238,7 @@ struct cnxk_eth_txq_sp {
 } __plt_cache_aligned;
 
 static inline struct cnxk_eth_dev *
-cnxk_eth_pmd_priv(struct rte_eth_dev *eth_dev)
+cnxk_eth_pmd_priv(const struct rte_eth_dev *eth_dev)
 {
 	return eth_dev->data->dev_private;
 }
