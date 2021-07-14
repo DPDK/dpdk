@@ -561,8 +561,7 @@ cpt_digest_gen_prep(uint32_t flags,
 	i = 0;
 
 	if (ctx->hmac) {
-		uint64_t k_dma = params->ctx_buf.dma_addr +
-			offsetof(struct cpt_ctx, auth_key);
+		uint64_t k_dma = ctx->auth_key_iova;
 		/* Key */
 		i = fill_sg_comp(gather_comp, i, k_dma,
 				 RTE_ALIGN_CEIL(key_len, 8));
@@ -2551,7 +2550,12 @@ cpt_fc_auth_set_key(struct cpt_ctx *cpt_ctx, auth_type_t type,
 
 	if (key_len) {
 		cpt_ctx->hmac = 1;
-		memset(cpt_ctx->auth_key, 0, sizeof(cpt_ctx->auth_key));
+
+		cpt_ctx->auth_key = rte_zmalloc(NULL, key_len, 8);
+		if (cpt_ctx->auth_key == NULL)
+			return -1;
+
+		cpt_ctx->auth_key_iova = rte_mem_virt2iova(cpt_ctx->auth_key);
 		memcpy(cpt_ctx->auth_key, key, key_len);
 		cpt_ctx->auth_key_len = key_len;
 		memset(fctx->hmac.ipad, 0, sizeof(fctx->hmac.ipad));

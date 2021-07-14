@@ -11,10 +11,18 @@ static void
 sym_session_clear(int driver_id, struct rte_cryptodev_sym_session *sess)
 {
 	void *priv = get_sym_session_private_data(sess, driver_id);
+	struct cpt_sess_misc *misc;
 	struct rte_mempool *pool;
+	struct cpt_ctx *ctx;
 
 	if (priv == NULL)
 		return;
+
+	misc = priv;
+	ctx = SESS_PRIV(misc);
+
+	if (ctx->auth_key != NULL)
+		rte_free(ctx->auth_key);
 
 	memset(priv, 0, cpt_get_session_size());
 

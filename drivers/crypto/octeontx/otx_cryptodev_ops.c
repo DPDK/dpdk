@@ -292,6 +292,11 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 	if ((GET_SESS_FC_TYPE(misc) == HASH_HMAC) &&
 			cpt_mac_len_verify(&temp_xform->auth)) {
 		CPT_LOG_ERR("MAC length is not supported");
+		struct cpt_ctx *ctx = SESS_PRIV(misc);
+		if (ctx->auth_key != NULL) {
+			rte_free(ctx->auth_key);
+			ctx->auth_key = NULL;
+		}
 		ret = -ENOTSUP;
 		goto priv_put;
 	}
@@ -320,10 +325,18 @@ static void
 sym_session_clear(int driver_id, struct rte_cryptodev_sym_session *sess)
 {
 	void *priv = get_sym_session_private_data(sess, driver_id);
+	struct cpt_sess_misc *misc;
 	struct rte_mempool *pool;
+	struct cpt_ctx *ctx;
 
 	if (priv == NULL)
 		return;
+
+	misc = priv;
+	ctx = SESS_PRIV(misc);
+
+	if (ctx->auth_key != NULL)
+		rte_free(ctx->auth_key);
 
 	memset(priv, 0, cpt_get_session_size());
 
