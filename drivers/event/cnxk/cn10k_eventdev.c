@@ -328,6 +328,23 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 #undef R
 		};
 
+	/* Tx modes */
+	const event_tx_adapter_enqueue
+		sso_hws_tx_adptr_enq[2][2][2][2][2][2] = {
+#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)                             \
+	[f5][f4][f3][f2][f1][f0] = cn10k_sso_hws_tx_adptr_enq_##name,
+			NIX_TX_FASTPATH_MODES
+#undef T
+		};
+
+	const event_tx_adapter_enqueue
+		sso_hws_tx_adptr_enq_seg[2][2][2][2][2][2] = {
+#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)                             \
+	[f5][f4][f3][f2][f1][f0] = cn10k_sso_hws_tx_adptr_enq_seg_##name,
+			NIX_TX_FASTPATH_MODES
+#undef T
+		};
+
 	event_dev->enqueue = cn10k_sso_hws_enq;
 	event_dev->enqueue_burst = cn10k_sso_hws_enq_burst;
 	event_dev->enqueue_new_burst = cn10k_sso_hws_enq_new_burst;
@@ -407,6 +424,27 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 				[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
 		}
 	}
+
+	if (dev->tx_offloads & NIX_TX_MULTI_SEG_F) {
+		/* [SEC] [TSMP] [MBUF_NOFF] [VLAN] [OL3_L4_CSUM] [L3_L4_CSUM] */
+		event_dev->txa_enqueue = sso_hws_tx_adptr_enq_seg
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F)]
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSO_F)]
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_MBUF_NOFF_F)]
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_VLAN_QINQ_F)]
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F)]
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_L3_L4_CSUM_F)];
+	} else {
+		event_dev->txa_enqueue = sso_hws_tx_adptr_enq
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F)]
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSO_F)]
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_MBUF_NOFF_F)]
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_VLAN_QINQ_F)]
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F)]
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_L3_L4_CSUM_F)];
+	}
+
+	event_dev->txa_enqueue_same_dest = event_dev->txa_enqueue;
 }
 
 static void

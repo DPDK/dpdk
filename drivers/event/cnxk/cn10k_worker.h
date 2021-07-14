@@ -11,6 +11,7 @@
 
 #include "cn10k_ethdev.h"
 #include "cn10k_rx.h"
+#include "cn10k_tx.h"
 
 /* SSO Operations */
 
@@ -250,5 +251,71 @@ uint16_t __rte_hot cn10k_sso_hws_enq_fwd_burst(void *port,
 
 NIX_RX_FASTPATH_MODES
 #undef R
+
+static __rte_always_inline const struct cn10k_eth_txq *
+cn10k_sso_hws_xtract_meta(struct rte_mbuf *m,
+			  const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT])
+{
+	return (const struct cn10k_eth_txq *)
+		txq_data[m->port][rte_event_eth_tx_adapter_txq_get(m)];
+}
+
+static __rte_always_inline uint16_t
+cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
+		       uint64_t *cmd,
+		       const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT],
+		       const uint32_t flags)
+{
+	const struct cn10k_eth_txq *txq;
+	struct rte_mbuf *m = ev->mbuf;
+	uint16_t ref_cnt = m->refcnt;
+	uintptr_t lmt_addr;
+	uint16_t lmt_id;
+	uintptr_t pa;
+
+	lmt_addr = ws->lmt_base;
+	ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id);
+	txq = cn10k_sso_hws_xtract_meta(m, txq_data);
+	cn10k_nix_tx_skeleton(txq, cmd, flags);
+	/* Perform header writes before barrier for TSO */
+	if (flags & NIX_TX_OFFLOAD_TSO_F)
+		cn10k_nix_xmit_prepare_tso(m, flags);
+
+	cn10k_nix_xmit_prepare(m, cmd, lmt_addr, flags, txq->lso_tun_fmt);
+	if (flags & NIX_TX_MULTI_SEG_F) {
+		const uint16_t segdw =
+			cn10k_nix_prepare_mseg(m, (uint64_t *)lmt_addr, flags);
+		pa = txq->io_addr | ((segdw - 1) << 4);
+	} else {
+		pa = txq->io_addr | (cn10k_nix_tx_ext_subs(flags) + 1) << 4;
+	}
+	if (!ev->sched_type)
+		cnxk_sso_hws_head_wait(ws->tx_base + SSOW_LF_GWS_TAG);
+
+	roc_lmt_submit_steorl(lmt_id, pa);
+
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
+		if (ref_cnt > 1)
+			return 1;
+	}
+
+	cnxk_sso_hws_swtag_flush(ws->tx_base + SSOW_LF_GWS_TAG,
+				 ws->tx_base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
+
+	return 1;
+}
+
+#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)                             \
+	uint16_t __rte_hot cn10k_sso_hws_tx_adptr_enq_##name(                  \
+		void *port, struct rte_event ev[], uint16_t nb_events);        \
+	uint16_t __rte_hot cn10k_sso_hws_tx_adptr_enq_seg_##name(              \
+		void *port, struct rte_event ev[], uint16_t nb_events);        \
+	uint16_t __rte_hot cn10k_sso_hws_dual_tx_adptr_enq_##name(             \
+		void *port, struct rte_event ev[], uint16_t nb_events);        \
+	uint16_t __rte_hot cn10k_sso_hws_dual_tx_adptr_enq_seg_##name(         \
+		void *port, struct rte_event ev[], uint16_t nb_events);
+
+NIX_TX_FASTPATH_MODES
+#undef T
 
 #endif

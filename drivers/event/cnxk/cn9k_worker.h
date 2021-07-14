@@ -11,6 +11,7 @@
 
 #include "cn9k_ethdev.h"
 #include "cn9k_rx.h"
+#include "cn9k_tx.h"
 
 /* SSO Operations */
 
@@ -415,5 +416,101 @@ NIX_RX_FASTPATH_MODES
 
 NIX_RX_FASTPATH_MODES
 #undef R
+
+static __rte_always_inline void
+cn9k_sso_txq_fc_wait(const struct cn9k_eth_txq *txq)
+{
+	while (!(((txq)->nb_sqb_bufs_adj - *(txq)->fc_mem)
+		 << (txq)->sqes_per_sqb_log2))
+		;
+}
+
+static __rte_always_inline const struct cn9k_eth_txq *
+cn9k_sso_hws_xtract_meta(struct rte_mbuf *m,
+			 const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT])
+{
+	return (const struct cn9k_eth_txq *)
+		txq_data[m->port][rte_event_eth_tx_adapter_txq_get(m)];
+}
+
+static __rte_always_inline void
+cn9k_sso_hws_prepare_pkt(const struct cn9k_eth_txq *txq, struct rte_mbuf *m,
+			 uint64_t *cmd, const uint32_t flags)
+{
+	roc_lmt_mov(cmd, txq->cmd, cn9k_nix_tx_ext_subs(flags));
+	cn9k_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt);
+}
+
+static __rte_always_inline uint16_t
+cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
+		      const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT],
+		      const uint32_t flags)
+{
+	struct rte_mbuf *m = ev->mbuf;
+	const struct cn9k_eth_txq *txq;
+	uint16_t ref_cnt = m->refcnt;
+
+	/* Perform header writes before barrier for TSO */
+	cn9k_nix_xmit_prepare_tso(m, flags);
+	/* Lets commit any changes in the packet here in case when
+	 * fast free is set as no further changes will be made to mbuf.
+	 * In case of fast free is not set, both cn9k_nix_prepare_mseg()
+	 * and cn9k_nix_xmit_prepare() has a barrier after refcnt update.
+	 */
+	if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+		rte_io_wmb();
+	txq = cn9k_sso_hws_xtract_meta(m, txq_data);
+	cn9k_sso_hws_prepare_pkt(txq, m, cmd, flags);
+
+	if (flags & NIX_TX_MULTI_SEG_F) {
+		const uint16_t segdw = cn9k_nix_prepare_mseg(m, cmd, flags);
+		if (!CNXK_TT_FROM_EVENT(ev->event)) {
+			cn9k_nix_xmit_mseg_prep_lmt(cmd, txq->lmt_addr, segdw);
+			cnxk_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
+			cn9k_sso_txq_fc_wait(txq);
+			if (cn9k_nix_xmit_submit_lmt(txq->io_addr) == 0)
+				cn9k_nix_xmit_mseg_one(cmd, txq->lmt_addr,
+						       txq->io_addr, segdw);
+		} else {
+			cn9k_nix_xmit_mseg_one(cmd, txq->lmt_addr, txq->io_addr,
+					       segdw);
+		}
+	} else {
+		if (!CNXK_TT_FROM_EVENT(ev->event)) {
+			cn9k_nix_xmit_prep_lmt(cmd, txq->lmt_addr, flags);
+			cnxk_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
+			cn9k_sso_txq_fc_wait(txq);
+			if (cn9k_nix_xmit_submit_lmt(txq->io_addr) == 0)
+				cn9k_nix_xmit_one(cmd, txq->lmt_addr,
+						  txq->io_addr, flags);
+		} else {
+			cn9k_nix_xmit_one(cmd, txq->lmt_addr, txq->io_addr,
+					  flags);
+		}
+	}
+
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
+		if (ref_cnt > 1)
+			return 1;
+	}
+
+	cnxk_sso_hws_swtag_flush(base + SSOW_LF_GWS_TAG,
+				 base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
+
+	return 1;
+}
+
+#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)                             \
+	uint16_t __rte_hot cn9k_sso_hws_tx_adptr_enq_##name(                   \
+		void *port, struct rte_event ev[], uint16_t nb_events);        \
+	uint16_t __rte_hot cn9k_sso_hws_tx_adptr_enq_seg_##name(               \
+		void *port, struct rte_event ev[], uint16_t nb_events);        \
+	uint16_t __rte_hot cn9k_sso_hws_dual_tx_adptr_enq_##name(              \
+		void *port, struct rte_event ev[], uint16_t nb_events);        \
+	uint16_t __rte_hot cn9k_sso_hws_dual_tx_adptr_enq_seg_##name(          \
+		void *port, struct rte_event ev[], uint16_t nb_events);
+
+NIX_TX_FASTPATH_MODES
+#undef T
 
 #endif

@@ -79,21 +79,20 @@ static __rte_always_inline void
 cnxk_sso_hws_head_wait(uintptr_t tag_op)
 {
 #ifdef RTE_ARCH_ARM64
-	uint64_t swtp;
+	uint64_t tag;
 
-	asm volatile(PLT_CPU_FEATURE_PREAMBLE
-		     "		ldr %[swtb], [%[swtp_loc]]	\n"
-		     "		tbz %[swtb], 35, done%=		\n"
-		     "		sevl				\n"
-		     "rty%=:	wfe				\n"
-		     "		ldr %[swtb], [%[swtp_loc]]	\n"
-		     "		tbnz %[swtb], 35, rty%=		\n"
-		     "done%=:					\n"
-		     : [swtb] "=&r"(swtp)
-		     : [swtp_loc] "r"(tag_op));
+	asm volatile("       ldr %[tag], [%[tag_op]]         \n"
+		     "       tbnz %[tag], 35, done%=         \n"
+		     "       sevl                            \n"
+		     "rty%=: wfe                             \n"
+		     "       ldr %[tag], [%[tag_op]]         \n"
+		     "       tbz %[tag], 35, rty%=           \n"
+		     "done%=:                                \n"
+		     : [tag] "=&r"(tag)
+		     : [tag_op] "r"(tag_op));
 #else
-	/* Wait for the SWTAG/SWTAG_FULL operation */
-	while (plt_read64(tag_op) & BIT_ULL(35))
+	/* Wait for the HEAD to be set */
+	while (!(plt_read64(tag_op) & BIT_ULL(35)))
 		;
 #endif
 }
