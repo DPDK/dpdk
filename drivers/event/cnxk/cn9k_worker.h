@@ -466,7 +466,7 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 		const uint16_t segdw = cn9k_nix_prepare_mseg(m, cmd, flags);
 		if (!CNXK_TT_FROM_EVENT(ev->event)) {
 			cn9k_nix_xmit_mseg_prep_lmt(cmd, txq->lmt_addr, segdw);
-			cnxk_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
+			roc_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
 			cn9k_sso_txq_fc_wait(txq);
 			if (cn9k_nix_xmit_submit_lmt(txq->io_addr) == 0)
 				cn9k_nix_xmit_mseg_one(cmd, txq->lmt_addr,
@@ -478,7 +478,7 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 	} else {
 		if (!CNXK_TT_FROM_EVENT(ev->event)) {
 			cn9k_nix_xmit_prep_lmt(cmd, txq->lmt_addr, flags);
-			cnxk_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
+			roc_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
 			cn9k_sso_txq_fc_wait(txq);
 			if (cn9k_nix_xmit_submit_lmt(txq->io_addr) == 0)
 				cn9k_nix_xmit_one(cmd, txq->lmt_addr,

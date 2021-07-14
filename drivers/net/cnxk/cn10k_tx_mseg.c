@@ -18,7 +18,8 @@
 		    !((flags) & NIX_TX_OFFLOAD_L3_L4_CSUM_F))		       \
 			return 0;                                              \
 		return cn10k_nix_xmit_pkts_mseg(tx_queue, tx_pkts, pkts, cmd,  \
-						(flags) | NIX_TX_MULTI_SEG_F); \
+						0, (flags)		       \
+							| NIX_TX_MULTI_SEG_F); \
 	}
 
 NIX_TX_FASTPATH_MODES

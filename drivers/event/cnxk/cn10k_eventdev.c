@@ -782,7 +782,8 @@ cn10k_sso_tx_adapter_caps_get(const struct rte_eventdev *dev,
 	if (ret)
 		*caps = 0;
 	else
-		*caps = RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT;
+		*caps = RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT |
+			RTE_EVENT_ETH_TX_ADAPTER_CAP_EVENT_VECTOR;
 
 	return 0;
 }

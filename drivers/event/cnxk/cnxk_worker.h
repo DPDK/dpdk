@@ -75,26 +75,4 @@ cnxk_sso_hws_swtag_wait(uintptr_t tag_op)
 #endif
 }
 
-static __rte_always_inline void
-cnxk_sso_hws_head_wait(uintptr_t tag_op)
-{
-#ifdef RTE_ARCH_ARM64
-	uint64_t tag;
-
-	asm volatile("       ldr %[tag], [%[tag_op]]         \n"
-		     "       tbnz %[tag], 35, done%=         \n"
-		     "       sevl                            \n"
-		     "rty%=: wfe                             \n"
-		     "       ldr %[tag], [%[tag_op]]         \n"
-		     "       tbz %[tag], 35, rty%=           \n"
-		     "done%=:                                \n"
-		     : [tag] "=&r"(tag)
-		     : [tag_op] "r"(tag_op));
-#else
-	/* Wait for the HEAD to be set */
-	while (!(plt_read64(tag_op) & BIT_ULL(35)))
-		;
-#endif
-}
-
 #endif

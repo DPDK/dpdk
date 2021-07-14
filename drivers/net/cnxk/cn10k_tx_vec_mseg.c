@@ -16,7 +16,7 @@
 		    !((flags) & NIX_TX_OFFLOAD_L3_L4_CSUM_F))                  \
 			return 0;                                              \
 		return cn10k_nix_xmit_pkts_vector(                             \
-			tx_queue, tx_pkts, pkts, cmd,                          \
+			tx_queue, tx_pkts, pkts, cmd, 0,                       \
 			(flags) | NIX_TX_MULTI_SEG_F);                         \
 	}
 

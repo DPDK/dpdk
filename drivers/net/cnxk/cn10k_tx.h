@@ -18,6 +18,7 @@
  * Defining it from backwards to denote its been
  * not used as offload flags to pick function
  */
+#define NIX_TX_VWQE_F	   BIT(14)
 #define NIX_TX_MULTI_SEG_F BIT(15)
 
 #define NIX_TX_NEED_SEND_HDR_W1                                                \
@@ -519,7 +520,7 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 
 static __rte_always_inline uint16_t
 cn10k_nix_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts,
-		    uint64_t *cmd, const uint16_t flags)
+		    uint64_t *cmd, uintptr_t base, const uint16_t flags)
 {
 	struct cn10k_eth_txq *txq = tx_queue;
 	const rte_iova_t io_addr = txq->io_addr;
@@ -528,13 +529,14 @@ cn10k_nix_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts,
 	uint64_t lso_tun_fmt;
 	uint64_t data;
 
-	NIX_XMIT_FC_OR_RETURN(txq, pkts);
+	if (!(flags & NIX_TX_VWQE_F)) {
+		NIX_XMIT_FC_OR_RETURN(txq, pkts);
+		/* Reduce the cached count */
+		txq->fc_cache_pkts -= pkts;
+	}
 
 	/* Get cmd skeleton */
 	cn10k_nix_tx_skeleton(txq, cmd, flags);
-
-	/* Reduce the cached count */
-	txq->fc_cache_pkts -= pkts;
 
 	if (flags & NIX_TX_OFFLOAD_TSO_F)
 		lso_tun_fmt = txq->lso_tun_fmt;
@@ -557,6 +559,9 @@ again:
 					      tx_pkts[i]->ol_flags, 4, flags);
 		lmt_addr += (1ULL << ROC_LMT_LINE_SIZE_LOG2);
 	}
+
+	if (flags & NIX_TX_VWQE_F)
+		roc_sso_hws_head_wait(base);
 
 	/* Trigger LMTST */
 	if (burst > 16) {
@@ -604,7 +609,8 @@ again:
 
 static __rte_always_inline uint16_t
 cn10k_nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
-			 uint16_t pkts, uint64_t *cmd, const uint16_t flags)
+			 uint16_t pkts, uint64_t *cmd, uintptr_t base,
+			 const uint16_t flags)
 {
 	struct cn10k_eth_txq *txq = tx_queue;
 	uintptr_t pa0, pa1, lmt_addr = txq->lmt_base;
@@ -651,6 +657,9 @@ again:
 		data128 |= (((__uint128_t)(segdw - 1)) << shft);
 		shft += 3;
 	}
+
+	if (flags & NIX_TX_VWQE_F)
+		roc_sso_hws_head_wait(base);
 
 	data0 = (uint64_t)data128;
 	data1 = (uint64_t)(data128 >> 64);
@@ -984,7 +993,8 @@ cn10k_nix_prep_lmt_mseg_vector(struct rte_mbuf **mbufs, uint64x2_t *cmd0,
 
 static __rte_always_inline uint16_t
 cn10k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
-			   uint16_t pkts, uint64_t *cmd, const uint16_t flags)
+			   uint16_t pkts, uint64_t *cmd, uintptr_t base,
+			   const uint16_t flags)
 {
 	uint64x2_t dataoff_iova0, dataoff_iova1, dataoff_iova2, dataoff_iova3;
 	uint64x2_t len_olflags0, len_olflags1, len_olflags2, len_olflags3;
@@ -1013,13 +1023,17 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint64_t data[2];
 	} wd;
 
-	NIX_XMIT_FC_OR_RETURN(txq, pkts);
+	if (!(flags & NIX_TX_VWQE_F)) {
+		NIX_XMIT_FC_OR_RETURN(txq, pkts);
+		scalar = pkts & (NIX_DESCS_PER_LOOP - 1);
+		pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
+		/* Reduce the cached count */
+		txq->fc_cache_pkts -= pkts;
+	} else {
+		scalar = pkts & (NIX_DESCS_PER_LOOP - 1);
+		pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
+	}
 
-	scalar = pkts & (NIX_DESCS_PER_LOOP - 1);
-	pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
-
-	/* Reduce the cached count */
-	txq->fc_cache_pkts -= pkts;
 	/* Perform header writes before barrier for TSO */
 	if (flags & NIX_TX_OFFLOAD_TSO_F) {
 		for (i = 0; i < pkts; i++)
@@ -1973,6 +1987,9 @@ again:
 	if (flags & NIX_TX_MULTI_SEG_F)
 		wd.data[0] >>= 16;
 
+	if (flags & NIX_TX_VWQE_F)
+		roc_sso_hws_head_wait(base);
+
 	/* Trigger LMTST */
 	if (lnum > 16) {
 		if (!(flags & NIX_TX_MULTI_SEG_F))
@@ -2029,10 +2046,11 @@ again:
 	if (unlikely(scalar)) {
 		if (flags & NIX_TX_MULTI_SEG_F)
 			pkts += cn10k_nix_xmit_pkts_mseg(tx_queue, tx_pkts,
-							 scalar, cmd, flags);
+							 scalar, cmd, base,
+							 flags);
 		else
 			pkts += cn10k_nix_xmit_pkts(tx_queue, tx_pkts, scalar,
-						    cmd, flags);
+						    cmd, base, flags);
 	}
 
 	return pkts;
@@ -2041,13 +2059,15 @@ again:
 #else
 static __rte_always_inline uint16_t
 cn10k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
-			   uint16_t pkts, uint64_t *cmd, const uint16_t flags)
+			   uint16_t pkts, uint64_t *cmd, uintptr_t base,
+			   const uint16_t flags)
 {
 	RTE_SET_USED(tx_queue);
 	RTE_SET_USED(tx_pkts);
 	RTE_SET_USED(pkts);
 	RTE_SET_USED(cmd);
 	RTE_SET_USED(flags);
+	RTE_SET_USED(base);
 	return 0;
 }
 #endif
