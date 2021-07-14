@@ -2414,7 +2414,6 @@ start_port(portid_t pid)
 	int peer_pi;
 	queueid_t qi;
 	struct rte_port *port;
-	struct rte_ether_addr mac_addr;
 	struct rte_eth_hairpin_cap cap;
 
 	if (port_id_is_invalid(pid, ENABLED_WARN))
@@ -2583,11 +2582,14 @@ start_port(portid_t pid)
 			RTE_PORT_HANDLING, RTE_PORT_STARTED) == 0)
 			printf("Port %d can not be set into started\n", pi);
 
-		if (eth_macaddr_get_print_err(pi, &mac_addr) == 0)
+		if (eth_macaddr_get_print_err(pi, &port->eth_addr) == 0)
 			printf("Port %d: %02X:%02X:%02X:%02X:%02X:%02X\n", pi,
-				mac_addr.addr_bytes[0], mac_addr.addr_bytes[1],
-				mac_addr.addr_bytes[2], mac_addr.addr_bytes[3],
-				mac_addr.addr_bytes[4], mac_addr.addr_bytes[5]);
+				port->eth_addr.addr_bytes[0],
+				port->eth_addr.addr_bytes[1],
+				port->eth_addr.addr_bytes[2],
+				port->eth_addr.addr_bytes[3],
+				port->eth_addr.addr_bytes[4],
+				port->eth_addr.addr_bytes[5]);
 
 		/* at least one port started, need checking link status */
 		need_check_link_status = 1;
