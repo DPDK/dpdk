@@ -9,8 +9,9 @@
 	uint16_t __rte_noinline __rte_hot cn10k_nix_recv_pkts_vec_mseg_##name( \
 		void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts)      \
 	{                                                                      \
-		return cn10k_nix_recv_pkts_vector(rx_queue, rx_pkts, pkts,     \
-					  (flags) | NIX_RX_MULTI_SEG_F);       \
+		return cn10k_nix_recv_pkts_vector(                             \
+			rx_queue, rx_pkts, pkts, (flags) | NIX_RX_MULTI_SEG_F, \
+			NULL, NULL);                                           \
 	}
 
 NIX_RX_FASTPATH_MODES

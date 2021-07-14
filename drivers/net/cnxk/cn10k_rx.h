@@ -21,12 +21,18 @@
  * Defining it from backwards to denote its been
  * not used as offload flags to pick function
  */
+#define NIX_RX_VWQE_F	   BIT(14)
 #define NIX_RX_MULTI_SEG_F BIT(15)
 
 #define CNXK_NIX_CQ_ENTRY_SZ 128
 #define NIX_DESCS_PER_LOOP   4
 #define CQE_CAST(x)	     ((struct nix_cqe_hdr_s *)(x))
 #define CQE_SZ(x)	     ((x) * CNXK_NIX_CQ_ENTRY_SZ)
+
+#define CQE_PTR_OFF(b, i, o, f)                                                \
+	(((f) & NIX_RX_VWQE_F) ?                                               \
+		       (uint64_t *)(((uintptr_t)((uint64_t *)(b))[i]) + (o)) : \
+		       (uint64_t *)(((uintptr_t)(b)) + CQE_SZ(i) + (o)))
 
 union mbuf_initializer {
 	struct {
@@ -317,61 +323,87 @@ nix_qinq_update(const uint64_t w2, uint64_t ol_flags, struct rte_mbuf *mbuf)
 }
 
 static __rte_always_inline uint16_t
-cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
-			   uint16_t pkts, const uint16_t flags)
+cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
+			   const uint16_t flags, void *lookup_mem,
+			   struct cnxk_timesync_info *tstamp)
 {
-	struct cn10k_eth_rxq *rxq = rx_queue;
-	uint16_t packets = 0;
+	struct cn10k_eth_rxq *rxq = args;
+	const uint64_t mbuf_initializer = (flags & NIX_RX_VWQE_F) ?
+							*(uint64_t *)args :
+							rxq->mbuf_initializer;
+	const uint64x2_t data_off = flags & NIX_RX_VWQE_F ?
+						  vdupq_n_u64(0x80ULL) :
+						  vdupq_n_u64(rxq->data_off);
+	const uint32_t qmask = flags & NIX_RX_VWQE_F ? 0 : rxq->qmask;
+	const uint64_t wdata = flags & NIX_RX_VWQE_F ? 0 : rxq->wdata;
+	const uintptr_t desc = flags & NIX_RX_VWQE_F ? 0 : rxq->desc;
 	uint64x2_t cq0_w8, cq1_w8, cq2_w8, cq3_w8, mbuf01, mbuf23;
-	const uint64_t mbuf_initializer = rxq->mbuf_initializer;
-	const uint64x2_t data_off = vdupq_n_u64(rxq->data_off);
 	uint64_t ol_flags0, ol_flags1, ol_flags2, ol_flags3;
 	uint64x2_t rearm0 = vdupq_n_u64(mbuf_initializer);
 	uint64x2_t rearm1 = vdupq_n_u64(mbuf_initializer);
 	uint64x2_t rearm2 = vdupq_n_u64(mbuf_initializer);
 	uint64x2_t rearm3 = vdupq_n_u64(mbuf_initializer);
 	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3;
-	const uint16_t *lookup_mem = rxq->lookup_mem;
-	const uint32_t qmask = rxq->qmask;
-	const uint64_t wdata = rxq->wdata;
-	const uintptr_t desc = rxq->desc;
 	uint8x16_t f0, f1, f2, f3;
-	uint32_t head = rxq->head;
+	uint16_t packets = 0;
 	uint16_t pkts_left;
+	uint32_t head;
+	uintptr_t cq0;
 
-	pkts = nix_rx_nb_pkts(rxq, wdata, pkts, qmask);
-	pkts_left = pkts & (NIX_DESCS_PER_LOOP - 1);
+	if (!(flags & NIX_RX_VWQE_F)) {
+		lookup_mem = rxq->lookup_mem;
+		head = rxq->head;
 
-	/* Packets has to be floor-aligned to NIX_DESCS_PER_LOOP */
-	pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
+		pkts = nix_rx_nb_pkts(rxq, wdata, pkts, qmask);
+		pkts_left = pkts & (NIX_DESCS_PER_LOOP - 1);
+		/* Packets has to be floor-aligned to NIX_DESCS_PER_LOOP */
+		pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
+		if (flags & NIX_RX_OFFLOAD_TSTAMP_F)
+			tstamp = rxq->tstamp;
+	} else {
+		RTE_SET_USED(head);
+	}
 
 	while (packets < pkts) {
-		/* Exit loop if head is about to wrap and become unaligned */
-		if (((head + NIX_DESCS_PER_LOOP - 1) & qmask) <
-		    NIX_DESCS_PER_LOOP) {
-			pkts_left += (pkts - packets);
-			break;
+		if (!(flags & NIX_RX_VWQE_F)) {
+			/* Exit loop if head is about to wrap and become
+			 * unaligned.
+			 */
+			if (((head + NIX_DESCS_PER_LOOP - 1) & qmask) <
+			    NIX_DESCS_PER_LOOP) {
+				pkts_left += (pkts - packets);
+				break;
+			}
+
+			cq0 = desc + CQE_SZ(head);
+		} else {
+			cq0 = (uintptr_t)&mbufs[packets];
 		}
 
-		const uintptr_t cq0 = desc + CQE_SZ(head);
-
 		/* Prefetch N desc ahead */
-		rte_prefetch_non_temporal((void *)(cq0 + CQE_SZ(8)));
-		rte_prefetch_non_temporal((void *)(cq0 + CQE_SZ(9)));
-		rte_prefetch_non_temporal((void *)(cq0 + CQE_SZ(10)));
-		rte_prefetch_non_temporal((void *)(cq0 + CQE_SZ(11)));
+		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 8, 0, flags));
+		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 9, 0, flags));
+		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 10, 0, flags));
+		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 11, 0, flags));
 
 		/* Get NIX_RX_SG_S for size and buffer pointer */
-		cq0_w8 = vld1q_u64((uint64_t *)(cq0 + CQE_SZ(0) + 64));
-		cq1_w8 = vld1q_u64((uint64_t *)(cq0 + CQE_SZ(1) + 64));
-		cq2_w8 = vld1q_u64((uint64_t *)(cq0 + CQE_SZ(2) + 64));
-		cq3_w8 = vld1q_u64((uint64_t *)(cq0 + CQE_SZ(3) + 64));
+		cq0_w8 = vld1q_u64(CQE_PTR_OFF(cq0, 0, 64, flags));
+		cq1_w8 = vld1q_u64(CQE_PTR_OFF(cq0, 1, 64, flags));
+		cq2_w8 = vld1q_u64(CQE_PTR_OFF(cq0, 2, 64, flags));
+		cq3_w8 = vld1q_u64(CQE_PTR_OFF(cq0, 3, 64, flags));
 
-		/* Extract mbuf from NIX_RX_SG_S */
-		mbuf01 = vzip2q_u64(cq0_w8, cq1_w8);
-		mbuf23 = vzip2q_u64(cq2_w8, cq3_w8);
-		mbuf01 = vqsubq_u64(mbuf01, data_off);
-		mbuf23 = vqsubq_u64(mbuf23, data_off);
+		if (!(flags & NIX_RX_VWQE_F)) {
+			/* Extract mbuf from NIX_RX_SG_S */
+			mbuf01 = vzip2q_u64(cq0_w8, cq1_w8);
+			mbuf23 = vzip2q_u64(cq2_w8, cq3_w8);
+			mbuf01 = vqsubq_u64(mbuf01, data_off);
+			mbuf23 = vqsubq_u64(mbuf23, data_off);
+		} else {
+			mbuf01 =
+				vsubq_u64(vld1q_u64((uint64_t *)cq0), data_off);
+			mbuf23 = vsubq_u64(vld1q_u64((uint64_t *)(cq0 + 16)),
+					   data_off);
+		}
 
 		/* Move mbufs to scalar registers for future use */
 		mbuf0 = (struct rte_mbuf *)vgetq_lane_u64(mbuf01, 0);
@@ -395,14 +427,14 @@ cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 		f3 = vqtbl1q_u8(cq3_w8, shuf_msk);
 
 		/* Load CQE word0 and word 1 */
-		uint64_t cq0_w0 = ((uint64_t *)(cq0 + CQE_SZ(0)))[0];
-		uint64_t cq0_w1 = ((uint64_t *)(cq0 + CQE_SZ(0)))[1];
-		uint64_t cq1_w0 = ((uint64_t *)(cq0 + CQE_SZ(1)))[0];
-		uint64_t cq1_w1 = ((uint64_t *)(cq0 + CQE_SZ(1)))[1];
-		uint64_t cq2_w0 = ((uint64_t *)(cq0 + CQE_SZ(2)))[0];
-		uint64_t cq2_w1 = ((uint64_t *)(cq0 + CQE_SZ(2)))[1];
-		uint64_t cq3_w0 = ((uint64_t *)(cq0 + CQE_SZ(3)))[0];
-		uint64_t cq3_w1 = ((uint64_t *)(cq0 + CQE_SZ(3)))[1];
+		const uint64_t cq0_w0 = *CQE_PTR_OFF(cq0, 0, 0, flags);
+		const uint64_t cq0_w1 = *CQE_PTR_OFF(cq0, 0, 8, flags);
+		const uint64_t cq1_w0 = *CQE_PTR_OFF(cq0, 1, 0, flags);
+		const uint64_t cq1_w1 = *CQE_PTR_OFF(cq0, 1, 8, flags);
+		const uint64_t cq2_w0 = *CQE_PTR_OFF(cq0, 2, 0, flags);
+		const uint64_t cq2_w1 = *CQE_PTR_OFF(cq0, 2, 8, flags);
+		const uint64_t cq3_w0 = *CQE_PTR_OFF(cq0, 3, 0, flags);
+		const uint64_t cq3_w1 = *CQE_PTR_OFF(cq0, 3, 8, flags);
 
 		if (flags & NIX_RX_OFFLOAD_RSS_F) {
 			/* Fill rss in the rx_descriptor_fields1 */
@@ -459,17 +491,17 @@ cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		if (flags & NIX_RX_OFFLOAD_MARK_UPDATE_F) {
 			ol_flags0 = nix_update_match_id(
-				*(uint16_t *)(cq0 + CQE_SZ(0) + 38), ol_flags0,
-				mbuf0);
+				*(uint16_t *)CQE_PTR_OFF(cq0, 0, 38, flags),
+				ol_flags0, mbuf0);
 			ol_flags1 = nix_update_match_id(
-				*(uint16_t *)(cq0 + CQE_SZ(1) + 38), ol_flags1,
-				mbuf1);
+				*(uint16_t *)CQE_PTR_OFF(cq0, 1, 38, flags),
+				ol_flags1, mbuf1);
 			ol_flags2 = nix_update_match_id(
-				*(uint16_t *)(cq0 + CQE_SZ(2) + 38), ol_flags2,
-				mbuf2);
+				*(uint16_t *)CQE_PTR_OFF(cq0, 2, 38, flags),
+				ol_flags2, mbuf2);
 			ol_flags3 = nix_update_match_id(
-				*(uint16_t *)(cq0 + CQE_SZ(3) + 38), ol_flags3,
-				mbuf3);
+				*(uint16_t *)CQE_PTR_OFF(cq0, 3, 38, flags),
+				ol_flags3, mbuf3);
 		}
 
 		if (flags & NIX_RX_OFFLOAD_TSTAMP_F) {
@@ -488,7 +520,7 @@ cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 						  RTE_PTYPE_L2_ETHER_TIMESYNC};
 			const uint64_t ts_olf = PKT_RX_IEEE1588_PTP |
 						PKT_RX_IEEE1588_TMST |
-						rxq->tstamp->rx_tstamp_dynflag;
+						tstamp->rx_tstamp_dynflag;
 			const uint32x4_t and_mask = {0x1, 0x2, 0x4, 0x8};
 			uint64x2_t ts01, ts23, mask;
 			uint64_t ts[4];
@@ -526,14 +558,10 @@ cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 			ts[3] = vgetq_lane_u64(ts23, 1);
 
 			/* Store timestamp into dynfield. */
-			*cnxk_nix_timestamp_dynfield(mbuf0, rxq->tstamp) =
-				ts[0];
-			*cnxk_nix_timestamp_dynfield(mbuf1, rxq->tstamp) =
-				ts[1];
-			*cnxk_nix_timestamp_dynfield(mbuf2, rxq->tstamp) =
-				ts[2];
-			*cnxk_nix_timestamp_dynfield(mbuf3, rxq->tstamp) =
-				ts[3];
+			*cnxk_nix_timestamp_dynfield(mbuf0, tstamp) = ts[0];
+			*cnxk_nix_timestamp_dynfield(mbuf1, tstamp) = ts[1];
+			*cnxk_nix_timestamp_dynfield(mbuf2, tstamp) = ts[2];
+			*cnxk_nix_timestamp_dynfield(mbuf3, tstamp) = ts[3];
 
 			/* Generate ptype mask to filter L2 ether timesync */
 			mask = vdupq_n_u32(vgetq_lane_u32(f0, 0));
@@ -559,9 +587,8 @@ cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 				/* Update Rxq timestamp with the latest
 				 * timestamp.
 				 */
-				rxq->tstamp->rx_ready = 1;
-				rxq->tstamp->rx_tstamp =
-					ts[31 - __builtin_clz(res)];
+				tstamp->rx_ready = 1;
+				tstamp->rx_tstamp = ts[31 - __builtin_clz(res)];
 			}
 		}
 
@@ -584,25 +611,25 @@ cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 		vst1q_u64((uint64_t *)mbuf3->rearm_data, rearm3);
 
 		/* Store the mbufs to rx_pkts */
-		vst1q_u64((uint64_t *)&rx_pkts[packets], mbuf01);
-		vst1q_u64((uint64_t *)&rx_pkts[packets + 2], mbuf23);
+		vst1q_u64((uint64_t *)&mbufs[packets], mbuf01);
+		vst1q_u64((uint64_t *)&mbufs[packets + 2], mbuf23);
 
 		if (flags & NIX_RX_MULTI_SEG_F) {
 			/* Multi segment is enable build mseg list for
 			 * individual mbufs in scalar mode.
 			 */
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
-						(cq0 + CQE_SZ(0) + 8), mbuf0,
-					    mbuf_initializer, flags);
+					    (CQE_PTR_OFF(cq0, 0, 8, flags)),
+					    mbuf0, mbuf_initializer, flags);
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
-						(cq0 + CQE_SZ(1) + 8), mbuf1,
-					    mbuf_initializer, flags);
+					    (CQE_PTR_OFF(cq0, 1, 8, flags)),
+					    mbuf1, mbuf_initializer, flags);
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
-						(cq0 + CQE_SZ(2) + 8), mbuf2,
-					    mbuf_initializer, flags);
+					    (CQE_PTR_OFF(cq0, 2, 8, flags)),
+					    mbuf2, mbuf_initializer, flags);
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
-						(cq0 + CQE_SZ(3) + 8), mbuf3,
-					    mbuf_initializer, flags);
+					    (CQE_PTR_OFF(cq0, 3, 8, flags)),
+					    mbuf3, mbuf_initializer, flags);
 		} else {
 			/* Update that no more segments */
 			mbuf0->next = NULL;
@@ -623,11 +650,17 @@ cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 		__mempool_check_cookies(mbuf2->pool, (void **)&mbuf2, 1, 1);
 		__mempool_check_cookies(mbuf3->pool, (void **)&mbuf3, 1, 1);
 
-		/* Advance head pointer and packets */
-		head += NIX_DESCS_PER_LOOP;
-		head &= qmask;
 		packets += NIX_DESCS_PER_LOOP;
+
+		if (!(flags & NIX_RX_VWQE_F)) {
+			/* Advance head pointer and packets */
+			head += NIX_DESCS_PER_LOOP;
+			head &= qmask;
+		}
 	}
+
+	if (flags & NIX_RX_VWQE_F)
+		return packets;
 
 	rxq->head = head;
 	rxq->available -= packets;
@@ -637,8 +670,8 @@ cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 	plt_write64((rxq->wdata | packets), rxq->cq_door);
 
 	if (unlikely(pkts_left))
-		packets += cn10k_nix_recv_pkts(rx_queue, &rx_pkts[packets],
-					       pkts_left, flags);
+		packets += cn10k_nix_recv_pkts(args, &mbufs[packets], pkts_left,
+					       flags);
 
 	return packets;
 }
@@ -647,12 +680,15 @@ cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 static inline uint16_t
 cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
-			   uint16_t pkts, const uint16_t flags)
+			   uint16_t pkts, const uint16_t flags,
+			   void *lookup_mem, void *tstamp)
 {
+	RTE_SET_USED(lookup_mem);
 	RTE_SET_USED(rx_queue);
 	RTE_SET_USED(rx_pkts);
 	RTE_SET_USED(pkts);
 	RTE_SET_USED(flags);
+	RTE_SET_USED(tstamp);
 
 	return 0;
 }

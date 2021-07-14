@@ -12,7 +12,7 @@
 					       uint16_t pkts)                  \
 	{                                                                      \
 		return cn10k_nix_recv_pkts_vector(rx_queue, rx_pkts, pkts,     \
-						  (flags));		       \
+						  (flags), NULL, NULL);        \
 	}
 
 NIX_RX_FASTPATH_MODES

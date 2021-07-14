@@ -5,6 +5,8 @@
 #ifndef __CN10K_WORKER_H__
 #define __CN10K_WORKER_H__
 
+#include <rte_vect.h>
+
 #include "cnxk_ethdev.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
@@ -101,6 +103,49 @@ cn10k_wqe_to_mbuf(uint64_t wqe, const uint64_t mbuf, uint8_t port_id,
 			      mbuf_init | ((uint64_t)port_id) << 48, flags);
 }
 
+static __rte_always_inline void
+cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
+		   void *lookup_mem, void *tstamp)
+{
+	uint64_t mbuf_init = 0x100010000ULL | RTE_PKTMBUF_HEADROOM |
+			     (flags & NIX_RX_OFFLOAD_TSTAMP_F ? 8 : 0);
+	struct rte_event_vector *vec;
+	uint16_t nb_mbufs, non_vec;
+	uint64_t **wqe;
+
+	mbuf_init |= ((uint64_t)port_id) << 48;
+	vec = (struct rte_event_vector *)vwqe;
+	wqe = vec->u64s;
+
+	nb_mbufs = RTE_ALIGN_FLOOR(vec->nb_elem, NIX_DESCS_PER_LOOP);
+	nb_mbufs = cn10k_nix_recv_pkts_vector(&mbuf_init, vec->mbufs, nb_mbufs,
+					      flags | NIX_RX_VWQE_F, lookup_mem,
+					      tstamp);
+	wqe += nb_mbufs;
+	non_vec = vec->nb_elem - nb_mbufs;
+
+	while (non_vec) {
+		struct nix_cqe_hdr_s *cqe = (struct nix_cqe_hdr_s *)wqe[0];
+		struct rte_mbuf *mbuf;
+		uint64_t tstamp_ptr;
+
+		mbuf = (struct rte_mbuf *)((char *)cqe -
+					   sizeof(struct rte_mbuf));
+		cn10k_nix_cqe_to_mbuf(cqe, cqe->tag, mbuf, lookup_mem,
+				      mbuf_init, flags);
+		/* Extracting tstamp, if PTP enabled*/
+		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)cqe) +
+					   CNXK_SSO_WQE_SG_PTR);
+		cnxk_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp,
+					flags & NIX_RX_OFFLOAD_TSTAMP_F,
+					flags & NIX_RX_MULTI_SEG_F,
+					(uint64_t *)tstamp_ptr);
+		wqe[0] = (uint64_t *)mbuf;
+		non_vec--;
+		wqe++;
+	}
+}
+
 static __rte_always_inline uint16_t
 cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 		       const uint32_t flags, void *lookup_mem)
@@ -152,6 +197,17 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 						flags & NIX_RX_MULTI_SEG_F,
 						(uint64_t *)tstamp_ptr);
 			gw.u64[1] = mbuf;
+		} else if (CNXK_EVENT_TYPE_FROM_TAG(gw.u64[0]) ==
+			   RTE_EVENT_TYPE_ETHDEV_VECTOR) {
+			uint8_t port = CNXK_SUB_EVENT_FROM_TAG(gw.u64[0]);
+			__uint128_t vwqe_hdr = *(__uint128_t *)gw.u64[1];
+
+			vwqe_hdr = ((vwqe_hdr >> 64) & 0xFFF) | BIT_ULL(31) |
+				   ((vwqe_hdr & 0xFFFF) << 48) |
+				   ((uint64_t)port << 32);
+			*(uint64_t *)gw.u64[1] = (uint64_t)vwqe_hdr;
+			cn10k_process_vwqe(gw.u64[1], port, flags, lookup_mem,
+					   ws->tstamp);
 		}
 	}
 
