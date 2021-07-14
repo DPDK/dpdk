@@ -60,13 +60,13 @@ check_cur_freq(unsigned int lcore_id, uint32_t idx, bool turbo)
 	int i;
 
 	if (snprintf(fullpath, sizeof(fullpath),
-		TEST_POWER_SYSFILE_SCALING_FREQ, lcore_id) < 0) {
+		TEST_POWER_SYSFILE_CPUINFO_FREQ, lcore_id) < 0) {
 		return 0;
 	}
 	f = fopen(fullpath, "r");
 	if (f == NULL) {
 		if (snprintf(fullpath, sizeof(fullpath),
-			TEST_POWER_SYSFILE_CPUINFO_FREQ, lcore_id) < 0) {
+			TEST_POWER_SYSFILE_SCALING_FREQ, lcore_id) < 0) {
 			return 0;
 		}
 		f = fopen(fullpath, "r");
