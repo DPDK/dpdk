@@ -118,6 +118,11 @@ New Features
   usecases. Configuration happens via standard rawdev enq/deq operations. See
   the :doc:`../rawdevs/cnxk_bphy` rawdev guide for more details on this driver.
 
+* **Added support for Marvell CN10K, CN9K, event Rx adapter.**
+
+  * Added Rx adapter support for event/cnxk when the ethernet device requested
+    is net/cnxk.
+
 * **Added cppc_cpufreq support to Power Management library.**
 
   Added support for cppc_cpufreq driver which works on most arm64 platforms.

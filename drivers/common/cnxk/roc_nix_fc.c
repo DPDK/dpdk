@@ -249,3 +249,81 @@ roc_nix_fc_mode_set(struct roc_nix *roc_nix, enum roc_nix_fc_mode mode)
 exit:
 	return rc;
 }
+
+void
+rox_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
+		      uint8_t force)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct npa_lf *lf = idev_npa_obj_get();
+	struct npa_aq_enq_req *req;
+	struct npa_aq_enq_rsp *rsp;
+	struct mbox *mbox;
+	uint32_t limit;
+	int rc;
+
+	if (roc_nix_is_sdp(roc_nix))
+		return;
+
+	if (!lf)
+		return;
+	mbox = lf->mbox;
+
+	req = mbox_alloc_msg_npa_aq_enq(mbox);
+	if (req == NULL)
+		return;
+
+	req->aura_id = roc_npa_aura_handle_to_aura(pool_id);
+	req->ctype = NPA_AQ_CTYPE_AURA;
+	req->op = NPA_AQ_INSTOP_READ;
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return;
+
+	limit = rsp->aura.limit;
+	/* BP is already enabled. */
+	if (rsp->aura.bp_ena) {
+		/* If BP ids don't match disable BP. */
+		if ((rsp->aura.nix0_bpid != nix->bpid[0]) && !force) {
+			req = mbox_alloc_msg_npa_aq_enq(mbox);
+			if (req == NULL)
+				return;
+
+			req->aura_id = roc_npa_aura_handle_to_aura(pool_id);
+			req->ctype = NPA_AQ_CTYPE_AURA;
+			req->op = NPA_AQ_INSTOP_WRITE;
+
+			req->aura.bp_ena = 0;
+			req->aura_mask.bp_ena = ~(req->aura_mask.bp_ena);
+
+			mbox_process(mbox);
+		}
+		return;
+	}
+
+	/* BP was previously enabled but now disabled skip. */
+	if (rsp->aura.bp)
+		return;
+
+	req = mbox_alloc_msg_npa_aq_enq(mbox);
+	if (req == NULL)
+		return;
+
+	req->aura_id = roc_npa_aura_handle_to_aura(pool_id);
+	req->ctype = NPA_AQ_CTYPE_AURA;
+	req->op = NPA_AQ_INSTOP_WRITE;
+
+	if (ena) {
+		req->aura.nix0_bpid = nix->bpid[0];
+		req->aura_mask.nix0_bpid = ~(req->aura_mask.nix0_bpid);
+		req->aura.bp = NIX_RQ_AURA_THRESH(
+			limit > 128 ? 256 : limit); /* 95% of size*/
+		req->aura_mask.bp = ~(req->aura_mask.bp);
+	}
+
+	req->aura.bp_ena = !!ena;
+	req->aura_mask.bp_ena = ~(req->aura_mask.bp_ena);
+
+	mbox_process(mbox);
+}

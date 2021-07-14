@@ -514,6 +514,9 @@ int __roc_api roc_nix_fc_mode_set(struct roc_nix *roc_nix,
 
 enum roc_nix_fc_mode __roc_api roc_nix_fc_mode_get(struct roc_nix *roc_nix);
 
+void __roc_api rox_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id,
+				     uint8_t ena, uint8_t force);
+
 /* NPC */
 int __roc_api roc_nix_npc_promisc_ena_dis(struct roc_nix *roc_nix, int enable);
 

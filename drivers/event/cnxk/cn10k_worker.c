@@ -18,7 +18,8 @@ cn10k_sso_hws_enq(void *port, const struct rte_event *ev)
 		cn10k_sso_hws_forward_event(ws, ev);
 		break;
 	case RTE_EVENT_OP_RELEASE:
-		cnxk_sso_hws_swtag_flush(ws->tag_wqe_op, ws->swtag_flush_op);
+		cnxk_sso_hws_swtag_flush(ws->base + SSOW_LF_GWS_WQE0,
+					 ws->base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
 		break;
 	default:
 		return 0;
@@ -69,7 +70,7 @@ cn10k_sso_hws_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks)
 
 	if (ws->swtag_req) {
 		ws->swtag_req = 0;
-		cnxk_sso_hws_swtag_wait(ws->tag_wqe_op);
+		cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_WQE0);
 		return 1;
 	}
 
@@ -94,7 +95,7 @@ cn10k_sso_hws_tmo_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks)
 
 	if (ws->swtag_req) {
 		ws->swtag_req = 0;
-		cnxk_sso_hws_swtag_wait(ws->tag_wqe_op);
+		cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_WQE0);
 		return ret;
 	}
 

@@ -5,8 +5,12 @@
 #ifndef __CN9K_WORKER_H__
 #define __CN9K_WORKER_H__
 
+#include "cnxk_ethdev.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
+
+#include "cn9k_ethdev.h"
+#include "cn9k_rx.h"
 
 /* SSO Operations */
 

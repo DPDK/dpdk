@@ -5,8 +5,12 @@
 #ifndef __CN10K_WORKER_H__
 #define __CN10K_WORKER_H__
 
+#include "cnxk_ethdev.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
+
+#include "cn10k_ethdev.h"
+#include "cn10k_rx.h"
 
 /* SSO Operations */
 
@@ -31,7 +35,8 @@ cn10k_sso_hws_fwd_swtag(struct cn10k_sso_hws *ws, const struct rte_event *ev)
 {
 	const uint32_t tag = (uint32_t)ev->event;
 	const uint8_t new_tt = ev->sched_type;
-	const uint8_t cur_tt = CNXK_TT_FROM_TAG(plt_read64(ws->tag_wqe_op));
+	const uint8_t cur_tt =
+		CNXK_TT_FROM_TAG(plt_read64(ws->base + SSOW_LF_GWS_WQE0));
 
 	/* CNXK model
 	 * cur_tt/new_tt     SSO_TT_ORDERED SSO_TT_ATOMIC SSO_TT_UNTAGGED
@@ -43,9 +48,11 @@ cn10k_sso_hws_fwd_swtag(struct cn10k_sso_hws *ws, const struct rte_event *ev)
 
 	if (new_tt == SSO_TT_UNTAGGED) {
 		if (cur_tt != SSO_TT_UNTAGGED)
-			cnxk_sso_hws_swtag_untag(ws->swtag_untag_op);
+			cnxk_sso_hws_swtag_untag(ws->base +
+						 SSOW_LF_GWS_OP_SWTAG_UNTAG);
 	} else {
-		cnxk_sso_hws_swtag_norm(tag, new_tt, ws->swtag_norm_op);
+		cnxk_sso_hws_swtag_norm(tag, new_tt,
+					ws->base + SSOW_LF_GWS_OP_SWTAG_NORM);
 	}
 	ws->swtag_req = 1;
 }
@@ -57,8 +64,9 @@ cn10k_sso_hws_fwd_group(struct cn10k_sso_hws *ws, const struct rte_event *ev,
 	const uint32_t tag = (uint32_t)ev->event;
 	const uint8_t new_tt = ev->sched_type;
 
-	plt_write64(ev->u64, ws->updt_wqe_op);
-	cnxk_sso_hws_swtag_desched(tag, new_tt, grp, ws->swtag_desched_op);
+	plt_write64(ev->u64, ws->base + SSOW_LF_GWS_OP_UPD_WQP_GRP1);
+	cnxk_sso_hws_swtag_desched(tag, new_tt, grp,
+				   ws->base + SSOW_LF_GWS_OP_SWTAG_DESCHED);
 }
 
 static __rte_always_inline void
@@ -68,7 +76,7 @@ cn10k_sso_hws_forward_event(struct cn10k_sso_hws *ws,
 	const uint8_t grp = ev->queue_id;
 
 	/* Group hasn't changed, Use SWTAG to forward the event */
-	if (CNXK_GRP_FROM_TAG(plt_read64(ws->tag_wqe_op)) == grp)
+	if (CNXK_GRP_FROM_TAG(plt_read64(ws->base + SSOW_LF_GWS_WQE0)) == grp)
 		cn10k_sso_hws_fwd_swtag(ws, ev);
 	else
 		/*
@@ -93,12 +101,13 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev)
 		PLT_CPU_FEATURE_PREAMBLE
 		"caspl %[wdata], %H[wdata], %[wdata], %H[wdata], [%[gw_loc]]\n"
 		: [wdata] "+r"(gw.get_work)
-		: [gw_loc] "r"(ws->getwrk_op)
+		: [gw_loc] "r"(ws->base + SSOW_LF_GWS_OP_GET_WORK0)
 		: "memory");
 #else
-	plt_write64(gw.u64[0], ws->getwrk_op);
+	plt_write64(gw.u64[0], ws->base + SSOW_LF_GWS_OP_GET_WORK0);
 	do {
-		roc_load_pair(gw.u64[0], gw.u64[1], ws->tag_wqe_op);
+		roc_load_pair(gw.u64[0], gw.u64[1],
+			      ws->base + SSOW_LF_GWS_WQE0);
 	} while (gw.u64[0] & BIT_ULL(63));
 #endif
 	gw.u64[0] = (gw.u64[0] & (0x3ull << 32)) << 6 |
@@ -130,11 +139,12 @@ cn10k_sso_hws_get_work_empty(struct cn10k_sso_hws *ws, struct rte_event *ev)
 		     "		tbnz %[tag], 63, rty%=			\n"
 		     "done%=:	dmb ld					\n"
 		     : [tag] "=&r"(gw.u64[0]), [wqp] "=&r"(gw.u64[1])
-		     : [tag_loc] "r"(ws->tag_wqe_op)
+		     : [tag_loc] "r"(ws->base + SSOW_LF_GWS_WQE0)
 		     : "memory");
 #else
 	do {
-		roc_load_pair(gw.u64[0], gw.u64[1], ws->tag_wqe_op);
+		roc_load_pair(gw.u64[0], gw.u64[1],
+			      ws->base + SSOW_LF_GWS_WQE0);
 	} while (gw.u64[0] & BIT_ULL(63));
 #endif
 

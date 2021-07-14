@@ -39,6 +39,15 @@ Features of the OCTEON cnxk SSO PMD are:
   time granularity of 2.5us on CN9K and 1us on CN10K.
 - Up to 256 TIM rings a.k.a event timer adapters.
 - Up to 8 rings traversed in parallel.
+- HW managed packets enqueued from ethdev to eventdev exposed through event eth
+  RX adapter.
+- N:1 ethernet device Rx queue to Event queue mapping.
+- Lockfree Tx from event eth Tx adapter using ``DEV_TX_OFFLOAD_MT_LOCKFREE``
+  capability while maintaining receive packet order.
+- Full Rx/Tx offload support defined through ethdev queue configuration.
+- HW managed event vectorization on CN10K for packets enqueued from ethdev to
+  eventdev configurable per each Rx queue in Rx adapter.
+- Event vector transmission via Tx adapter.
 
 Prerequisites and Compilation procedure
 ---------------------------------------
@@ -92,6 +101,15 @@ Runtime Config Options
   For example::
 
     -a 0002:0e:00.0,qos=[1-50-50-50]
+
+- ``Force Rx Back pressure``
+
+   Force Rx back pressure when same mempool is used across ethernet device
+   connected to event device.
+
+   For example::
+
+      -a 0002:0e:00.0,force_rx_bp=1
 
 - ``TIM disable NPA``
 
@@ -160,3 +178,18 @@ Debugging Options
    +---+------------+-------------------------------------------------------+
    | 2 | TIM        | --log-level='pmd\.event\.cnxk\.timer,8'               |
    +---+------------+-------------------------------------------------------+
+
+Limitations
+-----------
+
+Rx adapter support
+~~~~~~~~~~~~~~~~~~
+
+Using the same mempool for all the ethernet device ports connected to
+event device would cause back pressure to be asserted only on the first
+ethernet device.
+Back pressure is automatically disabled when using same mempool for all the
+ethernet devices connected to event device to override this applications can
+use `force_rx_bp=1` device arguments.
+Using unique mempool per each ethernet device is recommended when they are
+connected to event device.

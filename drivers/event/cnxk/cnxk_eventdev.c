@@ -571,6 +571,8 @@ cnxk_sso_parse_devargs(struct cnxk_sso_evdev *dev, struct rte_devargs *devargs)
 			   &dev->xae_cnt);
 	rte_kvargs_process(kvlist, CNXK_SSO_GGRP_QOS, &parse_sso_kvargs_dict,
 			   dev);
+	rte_kvargs_process(kvlist, CNXK_SSO_FORCE_BP, &parse_kvargs_value,
+			   &dev->force_ena_bp);
 	rte_kvargs_process(kvlist, CN9K_SSO_SINGLE_WS, &parse_kvargs_value,
 			   &single_ws);
 	rte_kvargs_process(kvlist, CN10K_SSO_GW_MODE, &parse_kvargs_value,

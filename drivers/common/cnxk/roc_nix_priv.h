@@ -16,7 +16,8 @@
 #define NIX_SQB_LOWER_THRESH ((uint16_t)70)
 
 /* Apply BP/DROP when CQ is 95% full */
-#define NIX_CQ_THRESH_LEVEL (5 * 256 / 100)
+#define NIX_CQ_THRESH_LEVEL	(5 * 256 / 100)
+#define NIX_RQ_AURA_THRESH(x)	(((x) * 95) / 100)
 
 /* IRQ triggered when NIX_LF_CINTX_CNT[QCOUNT] crosses this value */
 #define CQ_CQE_THRESH_DEFAULT	0x1ULL

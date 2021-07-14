@@ -21,4 +21,11 @@ sources = files(
         'cnxk_tim_worker.c',
 )
 
-deps += ['bus_pci', 'common_cnxk']
+extra_flags = ['-flax-vector-conversions', '-Wno-strict-aliasing']
+foreach flag: extra_flags
+    if cc.has_argument(flag)
+        cflags += flag
+    endif
+endforeach
+
+deps += ['bus_pci', 'common_cnxk', 'net_cnxk']
