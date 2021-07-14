@@ -33,6 +33,7 @@
 #define CNXK_SSO_MZ_NAME       "cnxk_evdev_mz"
 #define CNXK_SSO_XAQ_CACHE_CNT (0x7)
 #define CNXK_SSO_XAQ_SLACK     (8)
+#define CNXK_SSO_WQE_SG_PTR    (9)
 
 #define CNXK_TT_FROM_TAG(x)	    (((x) >> 32) & SSO_TT_EMPTY)
 #define CNXK_TT_FROM_EVENT(x)	    (((x) >> 38) & SSO_TT_EMPTY)
