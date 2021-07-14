@@ -823,7 +823,7 @@ static void txgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
 			mask = 1;
 			for (j = 0; j < 32; j++) {
 				if (vfta & mask)
-					txgbe_set_vfta(hw, (i << 5) + j, 0,
+					hw->mac.set_vfta(hw, (i << 5) + j, 0,
 						       on, false);
 				mask <<= 1;
 			}
