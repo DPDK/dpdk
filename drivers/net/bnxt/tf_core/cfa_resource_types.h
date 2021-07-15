@@ -104,7 +104,9 @@
 #define CFA_RESOURCE_TYPE_P58_WC_FKB             0x12UL
 /* VEB TCAM */
 #define CFA_RESOURCE_TYPE_P58_VEB_TCAM           0x13UL
-#define CFA_RESOURCE_TYPE_P58_LAST              CFA_RESOURCE_TYPE_P58_VEB_TCAM
+/* Meter drop counter */
+#define CFA_RESOURCE_TYPE_P58_METER_DROP_CNT     0x15UL
+#define CFA_RESOURCE_TYPE_P58_LAST               CFA_RESOURCE_TYPE_P58_METER_DROP_CNT
 
 
 /* Multicast Group */
