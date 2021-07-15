@@ -28,14 +28,15 @@
 #include "conn.h"
 
 #define NAME_SIZE                                            64
+#define SOFTNIC_PATH_MAX                                     4096
 
 /**
  * PMD Parameters
  */
 
 struct pmd_params {
-	const char *name;
-	const char *firmware;
+	char name[NAME_SIZE];
+	char firmware[SOFTNIC_PATH_MAX];
 	uint16_t conn_port;
 	uint32_t cpu_id;
 	int sc; /**< Service cores. */

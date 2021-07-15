@@ -447,6 +447,7 @@ pmd_parse_args(struct pmd_params *p, const char *params)
 {
 	struct rte_kvargs *kvlist;
 	int ret = 0;
+	char *firmware = NULL;
 
 	kvlist = rte_kvargs_parse(params, pmd_valid_args);
 	if (kvlist == NULL)
@@ -454,7 +455,14 @@ pmd_parse_args(struct pmd_params *p, const char *params)
 
 	/* Set default values */
 	memset(p, 0, sizeof(*p));
-	p->firmware = SOFTNIC_FIRMWARE;
+	if (rte_strscpy(p->firmware, SOFTNIC_FIRMWARE,
+			sizeof(p->firmware)) < 0) {
+		PMD_LOG(WARNING,
+			"\"%s\": firmware path should be shorter than %zu",
+			SOFTNIC_FIRMWARE, sizeof(p->firmware));
+		ret = -EINVAL;
+		goto out_free;
+	}
 	p->cpu_id = SOFTNIC_CPU_ID;
 	p->sc = SOFTNIC_SC;
 	p->tm.n_queues = SOFTNIC_TM_N_QUEUES;
@@ -475,11 +483,20 @@ pmd_parse_args(struct pmd_params *p, const char *params)
 	/* Firmware script (optional) */
 	if (rte_kvargs_count(kvlist, PMD_PARAM_FIRMWARE) == 1) {
 		ret = rte_kvargs_process(kvlist, PMD_PARAM_FIRMWARE,
-			&get_string, &p->firmware);
+			&get_string, &firmware);
 		if (ret < 0)
 			goto out_free;
 	}
-
+	if (rte_strscpy(p->firmware, firmware,
+			sizeof(p->firmware)) < 0) {
+		PMD_LOG(WARNING,
+			"\"%s\": firmware path should be shorter than %zu",
+			firmware, sizeof(p->firmware));
+		free(firmware);
+		ret = -EINVAL;
+		goto out_free;
+	}
+	free(firmware);
 	/* Connection listening port (optional) */
 	if (rte_kvargs_count(kvlist, PMD_PARAM_CONN_PORT) == 1) {
 		ret = rte_kvargs_process(kvlist, PMD_PARAM_CONN_PORT,
@@ -628,7 +645,12 @@ pmd_probe(struct rte_vdev_device *vdev)
 	if (status)
 		return status;
 
-	p.name = name;
+	if (rte_strscpy(p.name, name, sizeof(p.name)) < 0) {
+		PMD_LOG(WARNING,
+			"\"%s\": device name should be shorter than %zu",
+			name, sizeof(p.name));
+		return -EINVAL;
+	}
 
 	/* Allocate and initialize soft ethdev private data */
 	dev_private = pmd_init(&p);
