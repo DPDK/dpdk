@@ -1943,7 +1943,7 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 
 		slot_idx = (vq->async_pkts_idx + num_async_pkts) % vq->size;
 		if (it_pool[it_idx].count) {
-			uint16_t from, to;
+			uint16_t from;
 
 			async_descs_idx += num_descs;
 			async_fill_desc(&tdes[pkt_burst_idx++],
@@ -1962,11 +1962,13 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 			 * descriptors.
 			 */
 			from = vq->shadow_used_idx - num_buffers;
-			to = vq->async_buffer_idx_packed % vq->size;
 			store_dma_desc_info_packed(vq->shadow_used_packed,
-					vq->async_buffers_packed, vq->size, from, to, num_buffers);
+					vq->async_buffers_packed, vq->size, from,
+					vq->async_buffer_idx_packed, num_buffers);
 
 			vq->async_buffer_idx_packed += num_buffers;
+			if (vq->async_buffer_idx_packed >= vq->size)
+				vq->async_buffer_idx_packed -= vq->size;
 			vq->shadow_used_idx -= num_buffers;
 		} else {
 			comp_pkts[num_done_pkts++] = pkts[pkt_idx];
@@ -2019,6 +2021,8 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 		dma_error_handler_packed(vq, async_descs, async_descs_idx, slot_idx, pkt_err,
 					&pkt_idx, &num_async_pkts, &num_done_pkts);
 	vq->async_pkts_idx += num_async_pkts;
+	if (vq->async_pkts_idx >= vq->size)
+		vq->async_pkts_idx -= vq->size;
 	*comp_count = num_done_pkts;
 
 	if (likely(vq->shadow_used_idx)) {
@@ -2067,7 +2071,7 @@ write_back_completed_descs_packed(struct vhost_virtqueue *vq,
 	uint16_t from, to;
 
 	do {
-		from = vq->last_async_buffer_idx_packed % vq->size;
+		from = vq->last_async_buffer_idx_packed;
 		to = (from + nr_left) % vq->size;
 		if (to > from) {
 			vhost_update_used_packed(vq, vq->async_buffers_packed + from, to - from);
@@ -2076,7 +2080,7 @@ write_back_completed_descs_packed(struct vhost_virtqueue *vq,
 		} else {
 			vhost_update_used_packed(vq, vq->async_buffers_packed + from,
 				vq->size - from);
-			vq->last_async_buffer_idx_packed += vq->size - from;
+			vq->last_async_buffer_idx_packed = 0;
 			nr_left -= vq->size - from;
 		}
 	} while (nr_left > 0);
@@ -2159,10 +2163,13 @@ uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 			vhost_vring_call_split(dev, vq);
 		}
 	} else {
-		if (vq_is_packed(dev))
+		if (vq_is_packed(dev)) {
 			vq->last_async_buffer_idx_packed += n_buffers;
-		else
+			if (vq->last_async_buffer_idx_packed >= vq->size)
+				vq->last_async_buffer_idx_packed -= vq->size;
+		} else {
 			vq->last_async_desc_idx_split += n_descs;
+		}
 	}
 
 done:
