@@ -857,16 +857,23 @@ dma_unmap_cb(struct rte_mempool *mp __rte_unused, void *opaque __rte_unused,
 	int ret;
 
 	RTE_ETH_FOREACH_DEV(pid) {
-		struct rte_eth_dev *dev =
-			&rte_eth_devices[pid];
+		struct rte_eth_dev_info dev_info;
 
-		ret = rte_dev_dma_unmap(dev->device, memhdr->addr, 0,
-					memhdr->len);
+		ret = eth_dev_info_get_print_err(pid, &dev_info);
+		if (ret != 0) {
+			TESTPMD_LOG(DEBUG,
+				    "unable to get device info for port %d on addr 0x%p,"
+				    "mempool unmapping will not be performed\n",
+				    pid, memhdr->addr);
+			continue;
+		}
+
+		ret = rte_dev_dma_unmap(dev_info.device, memhdr->addr, 0, memhdr->len);
 		if (ret) {
 			TESTPMD_LOG(DEBUG,
 				    "unable to DMA unmap addr 0x%p "
 				    "for device %s\n",
-				    memhdr->addr, dev->data->name);
+				    memhdr->addr, dev_info.device->name);
 		}
 	}
 	ret = rte_extmem_unregister(memhdr->addr, memhdr->len);
@@ -892,16 +899,22 @@ dma_map_cb(struct rte_mempool *mp __rte_unused, void *opaque __rte_unused,
 		return;
 	}
 	RTE_ETH_FOREACH_DEV(pid) {
-		struct rte_eth_dev *dev =
-			&rte_eth_devices[pid];
+		struct rte_eth_dev_info dev_info;
 
-		ret = rte_dev_dma_map(dev->device, memhdr->addr, 0,
-				      memhdr->len);
+		ret = eth_dev_info_get_print_err(pid, &dev_info);
+		if (ret != 0) {
+			TESTPMD_LOG(DEBUG,
+				    "unable to get device info for port %d on addr 0x%p,"
+				    "mempool mapping will not be performed\n",
+				    pid, memhdr->addr);
+			continue;
+		}
+		ret = rte_dev_dma_map(dev_info.device, memhdr->addr, 0, memhdr->len);
 		if (ret) {
 			TESTPMD_LOG(DEBUG,
 				    "unable to DMA map addr 0x%p "
 				    "for device %s\n",
-				    memhdr->addr, dev->data->name);
+				    memhdr->addr, dev_info.device->name);
 		}
 	}
 }
@@ -2955,6 +2968,9 @@ detach_device(struct rte_device *dev)
 void
 detach_port_device(portid_t port_id)
 {
+	int ret;
+	struct rte_eth_dev_info dev_info;
+
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
@@ -2966,7 +2982,14 @@ detach_port_device(portid_t port_id)
 		printf("Port was not closed\n");
 	}
 
-	detach_device(rte_eth_devices[port_id].device);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0) {
+		TESTPMD_LOG(ERR,
+			"Failed to get device info for port %d, not detaching\n",
+			port_id);
+		return;
+	}
+	detach_device(dev_info.device);
 }
 
 void
@@ -3147,7 +3170,8 @@ rmv_port_callback(void *arg)
 	int need_to_start = 0;
 	int org_no_link_check = no_link_check;
 	portid_t port_id = (intptr_t)arg;
-	struct rte_device *dev;
+	struct rte_eth_dev_info dev_info;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
 
@@ -3159,11 +3183,14 @@ rmv_port_callback(void *arg)
 	stop_port(port_id);
 	no_link_check = org_no_link_check;
 
-	/* Save rte_device pointer before closing ethdev port */
-	dev = rte_eth_devices[port_id].device;
 	close_port(port_id);
-	detach_device(dev); /* might be already removed or have more ports */
-
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		TESTPMD_LOG(ERR,
+			"Failed to get device info for port %d, not detaching\n",
+			port_id);
+	else
+		detach_device(dev_info.device); /* might be already removed or have more ports */
 	if (need_to_start)
 		start_packet_forwarding(0);
 }
@@ -3454,13 +3481,9 @@ init_port_config(void)
 		rte_pmd_ixgbe_bypass_init(pid);
 #endif
 
-		if (lsc_interrupt &&
-		    (rte_eth_devices[pid].data->dev_flags &
-		     RTE_ETH_DEV_INTR_LSC))
+		if (lsc_interrupt && (*port->dev_info.dev_flags & RTE_ETH_DEV_INTR_LSC))
 			port->dev_conf.intr_conf.lsc = 1;
-		if (rmv_interrupt &&
-		    (rte_eth_devices[pid].data->dev_flags &
-		     RTE_ETH_DEV_INTR_RMV))
+		if (rmv_interrupt && (*port->dev_info.dev_flags & RTE_ETH_DEV_INTR_RMV))
 			port->dev_conf.intr_conf.rmv = 1;
 	}
 }
@@ -3484,10 +3507,19 @@ void clear_port_slave_flag(portid_t slave_pid)
 uint8_t port_is_bonding_slave(portid_t slave_pid)
 {
 	struct rte_port *port;
+	struct rte_eth_dev_info dev_info;
+	int ret;
 
 	port = &ports[slave_pid];
-	if ((rte_eth_devices[slave_pid].data->dev_flags &
-	    RTE_ETH_DEV_BONDED_SLAVE) || (port->slave_flag == 1))
+	ret = eth_dev_info_get_print_err(slave_pid, &dev_info);
+	if (ret != 0) {
+		TESTPMD_LOG(ERR,
+			"Failed to get device info for port id %d,"
+			"cannot determine if the port is a bonded slave",
+			slave_pid);
+		return 0;
+	}
+	if ((*dev_info.dev_flags & RTE_ETH_DEV_BONDED_SLAVE) || (port->slave_flag == 1))
 		return 1;
 	return 0;
 }

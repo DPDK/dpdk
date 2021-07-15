@@ -266,9 +266,21 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 
 		if (unlikely(timestamp_init_req !=
 				RTE_PER_LCORE(timestamp_idone))) {
-			struct rte_eth_dev *dev = &rte_eth_devices[fs->tx_port];
-			unsigned int txqs_n = dev->data->nb_tx_queues;
-			uint64_t phase = tx_pkt_times_inter * fs->tx_queue /
+			struct rte_eth_dev_info dev_info;
+			unsigned int txqs_n;
+			uint64_t phase;
+			int ret;
+
+			ret = eth_dev_info_get_print_err(fs->tx_port, &dev_info);
+			if (ret != 0) {
+				TESTPMD_LOG(ERR,
+					"Failed to get device info for port %d,"
+					"could not finish timestamp init",
+					fs->tx_port);
+				return false;
+			}
+			txqs_n = dev_info.nb_tx_queues;
+			phase = tx_pkt_times_inter * fs->tx_queue /
 					 (txqs_n ? txqs_n : 1);
 			/*
 			 * Initialize the scheduling time phase shift
