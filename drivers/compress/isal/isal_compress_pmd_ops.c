@@ -4,6 +4,7 @@
 #include <isa-l.h>
 
 #include <rte_common.h>
+#include <rte_cpuflags.h>
 #include <rte_compressdev_pmd.h>
 #include <rte_malloc.h>
 
@@ -139,6 +140,7 @@ isal_comp_pmd_info_get(struct rte_compressdev *dev __rte_unused,
 		/* Check CPU for supported vector instruction and set
 		 * feature_flags
 		 */
+#if defined(RTE_ARCH_X86)
 		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
 			dev_info->feature_flags |= RTE_COMPDEV_FF_CPU_AVX512;
 		else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
@@ -147,6 +149,10 @@ isal_comp_pmd_info_get(struct rte_compressdev *dev __rte_unused,
 			dev_info->feature_flags |= RTE_COMPDEV_FF_CPU_AVX;
 		else
 			dev_info->feature_flags |= RTE_COMPDEV_FF_CPU_SSE;
+#elif defined(RTE_ARCH_ARM)
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON))
+			dev_info->feature_flags |= RTE_COMPDEV_FF_CPU_NEON;
+#endif
 	}
 }
 

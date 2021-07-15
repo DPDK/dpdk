@@ -123,6 +123,10 @@ New Features
 
   Added support for crypto adapter OP_FORWARD mode.
 
+* **Updated ISAL compress device PMD.**
+
+  The ISAL compress device PMD now supports Arm platforms.
+
 * **Added Baseband PHY CNXK PMD.**
 
   Added Baseband PHY PMD which allows to configure BPHY hardware block
