@@ -131,6 +131,10 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 		ret = roc_bphy_cgx_fec_supported_get(cgx->rcgx, lmac, fec);
 		rsp = fec;
 		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_SET_FEC:
+		fec = msg->data;
+		ret = roc_bphy_cgx_fec_set(cgx->rcgx, lmac, *fec);
+		break;
 	default:
 		return -EINVAL;
 	}

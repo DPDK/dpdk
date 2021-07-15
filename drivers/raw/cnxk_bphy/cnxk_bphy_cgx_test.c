@@ -221,6 +221,25 @@ cnxk_bphy_cgx_dev_selftest(uint16_t dev_id)
 			RTE_LOG(ERR, PMD, "Failed to get supported FEC\n");
 			break;
 		}
+
+		/* set supported fec */
+		msg.type = CNXK_BPHY_CGX_MSG_TYPE_SET_FEC;
+		msg.data = &fec;
+		ret = cnxk_bphy_cgx_enq_msg(dev_id, i, &msg);
+		if (ret) {
+			RTE_LOG(ERR, PMD, "Failed to set FEC to %d\n", fec);
+			break;
+		}
+
+		/* disable fec */
+		fec = CNXK_BPHY_CGX_ETH_LINK_FEC_NONE;
+		msg.type = CNXK_BPHY_CGX_MSG_TYPE_SET_FEC;
+		msg.data = &fec;
+		ret = cnxk_bphy_cgx_enq_msg(dev_id, i, &msg);
+		if (ret) {
+			RTE_LOG(ERR, PMD, "Failed to disable FEC\n");
+			break;
+		}
 	}
 
 	rte_rawdev_stop(dev_id);

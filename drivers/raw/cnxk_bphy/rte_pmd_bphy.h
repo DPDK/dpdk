@@ -18,6 +18,7 @@ enum cnxk_bphy_cgx_msg_type {
 	CNXK_BPHY_CGX_MSG_TYPE_START_RXTX,
 	CNXK_BPHY_CGX_MSG_TYPE_STOP_RXTX,
 	CNXK_BPHY_CGX_MSG_TYPE_GET_SUPPORTED_FEC,
+	CNXK_BPHY_CGX_MSG_TYPE_SET_FEC,
 };
 
 enum cnxk_bphy_cgx_eth_link_speed {
