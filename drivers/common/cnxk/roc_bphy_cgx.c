@@ -395,3 +395,28 @@ roc_bphy_cgx_ptp_rx_disable(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
 {
 	return roc_bphy_cgx_ptp_rx_ena_dis(roc_cgx, lmac, false);
 }
+
+int
+roc_bphy_cgx_fec_supported_get(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
+			       enum roc_bphy_cgx_eth_link_fec *fec)
+{
+	uint64_t scr1, scr0;
+	int ret;
+
+	if (!roc_cgx || !fec)
+		return -EINVAL;
+
+	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
+		return -EINVAL;
+
+	scr1 = FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_GET_SUPPORTED_FEC);
+
+	ret = roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);
+	if (ret)
+		return ret;
+
+	scr0 = FIELD_GET(SCR0_ETH_FEC_TYPES_S_FEC, scr0);
+	*fec = (enum roc_bphy_cgx_eth_link_fec)scr0;
+
+	return 0;
+}
