@@ -32,6 +32,9 @@ const struct rte_tm_ops ice_dcf_tm_ops = {
 	.node_delete = ice_dcf_node_delete,
 };
 
+#define ICE_DCF_SCHED_TC_NODE 0xffff
+#define ICE_DCF_VFID	0
+
 void
 ice_dcf_tm_conf_init(struct rte_eth_dev *dev)
 {
@@ -709,6 +712,32 @@ ice_dcf_replay_vf_bw(struct ice_dcf_hw *hw, uint16_t vf_id)
 	return ICE_SUCCESS;
 }
 
+int
+ice_dcf_clear_bw(struct ice_dcf_hw *hw)
+{
+	uint16_t vf_id;
+	uint32_t tc;
+	int ret, size;
+
+	size = sizeof(struct virtchnl_dcf_bw_cfg_list) +
+		sizeof(struct virtchnl_dcf_bw_cfg) *
+		(hw->tm_conf.nb_tc_node - 1);
+
+	for (vf_id = 0; vf_id < hw->num_vfs; vf_id++) {
+		for (tc = 0; tc < hw->tm_conf.nb_tc_node; tc++) {
+			hw->qos_bw_cfg[vf_id]->cfg[tc].shaper.peak = 0;
+			hw->qos_bw_cfg[vf_id]->cfg[tc].shaper.committed = 0;
+		}
+		ret = ice_dcf_set_vf_bw(hw, hw->qos_bw_cfg[vf_id], size);
+		if (ret) {
+			PMD_DRV_LOG(DEBUG, "VF %u BW clear failed", vf_id);
+			return ICE_ERR_CFG;
+		}
+	}
+
+	return ICE_SUCCESS;
+}
+
 static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 				 int clear_on_fail,
 				 __rte_unused struct rte_tm_error *error)
@@ -748,7 +777,6 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 	cir_total = 0;
 
 	/* init tc bw configuration */
-#define ICE_DCF_SCHED_TC_NODE 0xffff
 	tc_bw->vf_id = ICE_DCF_SCHED_TC_NODE;
 	tc_bw->node_type = VIRTCHNL_DCF_TARGET_TC_BW;
 	tc_bw->num_elem = hw->tm_conf.nb_tc_node;
@@ -824,6 +852,15 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 	ret_val = ice_dcf_set_vf_bw(hw, tc_bw, size);
 	if (ret_val)
 		goto fail_clear;
+
+	/* store TC node bw configuration */
+	hw->qos_bw_cfg[ICE_DCF_VFID] = rte_zmalloc("tc_bw_cfg", size, 0);
+	if (!hw->qos_bw_cfg[ICE_DCF_VFID]) {
+		ret_val = ICE_ERR_NO_MEMORY;
+		goto fail_clear;
+	}
+	ice_memcpy(hw->qos_bw_cfg[ICE_DCF_VFID], tc_bw, sizeof(*tc_bw),
+		   ICE_NONDMA_TO_NONDMA);
 
 	hw->tm_conf.committed = true;
 	return ret_val;

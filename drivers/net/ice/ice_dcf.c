@@ -706,6 +706,12 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
+	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS)
+		if (hw->tm_conf.committed) {
+			ice_dcf_clear_bw(hw);
+			ice_dcf_tm_conf_uninit(eth_dev);
+		}
+
 	ice_dcf_disable_irq0(hw);
 	rte_intr_disable(intr_handle);
 	rte_intr_callback_unregister(intr_handle,
@@ -714,14 +720,12 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	ice_dcf_mode_disable(hw);
 	iavf_shutdown_adminq(&hw->avf);
 
-	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS)
-		ice_dcf_tm_conf_uninit(eth_dev);
-
 	rte_free(hw->arq_buf);
 	rte_free(hw->vf_vsi_map);
 	rte_free(hw->vf_res);
 	rte_free(hw->rss_lut);
 	rte_free(hw->rss_key);
+	rte_free(hw->qos_bw_cfg);
 }
 
 static int

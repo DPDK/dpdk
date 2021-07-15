@@ -133,5 +133,6 @@ int ice_dcf_link_update(struct rte_eth_dev *dev,
 void ice_dcf_tm_conf_init(struct rte_eth_dev *dev);
 void ice_dcf_tm_conf_uninit(struct rte_eth_dev *dev);
 int ice_dcf_replay_vf_bw(struct ice_dcf_hw *hw, uint16_t vf_id);
+int ice_dcf_clear_bw(struct ice_dcf_hw *hw);
 
 #endif /* _ICE_DCF_H_ */
