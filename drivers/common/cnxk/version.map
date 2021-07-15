@@ -24,6 +24,7 @@ INTERNAL {
 	roc_ae_fpm_put;
 	roc_bphy_cgx_dev_fini;
 	roc_bphy_cgx_dev_init;
+	roc_bphy_cgx_fec_set;
 	roc_bphy_cgx_fec_supported_get;
 	roc_bphy_cgx_get_linkinfo;
 	roc_bphy_cgx_intlbk_disable;

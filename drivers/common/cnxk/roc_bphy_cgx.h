@@ -115,6 +115,9 @@ __roc_api int roc_bphy_cgx_ptp_rx_enable(struct roc_bphy_cgx *roc_cgx,
 					 unsigned int lmac);
 __roc_api int roc_bphy_cgx_ptp_rx_disable(struct roc_bphy_cgx *roc_cgx,
 					  unsigned int lmac);
+__roc_api int roc_bphy_cgx_fec_set(struct roc_bphy_cgx *roc_cgx,
+				   unsigned int lmac,
+				   enum roc_bphy_cgx_eth_link_fec fec);
 __roc_api int roc_bphy_cgx_fec_supported_get(struct roc_bphy_cgx *roc_cgx,
 					     unsigned int lmac,
 					     enum roc_bphy_cgx_eth_link_fec *fec);
