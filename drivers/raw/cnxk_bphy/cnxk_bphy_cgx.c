@@ -62,6 +62,7 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 	struct cnxk_bphy_cgx_msg_link_info *link_info;
 	struct roc_bphy_cgx_link_info rlink_info;
 	struct roc_bphy_cgx_link_mode rlink_mode;
+	enum roc_bphy_cgx_eth_link_fec *fec;
 	unsigned int lmac = qp->lmac;
 	void *rsp = NULL;
 	int ret;
@@ -121,6 +122,14 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 		break;
 	case CNXK_BPHY_CGX_MSG_TYPE_STOP_RXTX:
 		ret = roc_bphy_cgx_stop_rxtx(cgx->rcgx, lmac);
+		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_GET_SUPPORTED_FEC:
+		fec = rte_zmalloc(NULL, sizeof(*fec), 0);
+		if (!fec)
+			return -ENOMEM;
+
+		ret = roc_bphy_cgx_fec_supported_get(cgx->rcgx, lmac, fec);
+		rsp = fec;
 		break;
 	default:
 		return -EINVAL;

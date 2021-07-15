@@ -87,6 +87,22 @@ cnxk_bphy_cgx_link_cond(uint16_t dev_id, unsigned int queue, int cond)
 	return -ETIMEDOUT;
 }
 
+static int
+cnxk_bphy_cgx_get_supported_fec(uint16_t dev_id, unsigned int queue,
+				enum cnxk_bphy_cgx_eth_link_fec *fec)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_GET_SUPPORTED_FEC,
+	};
+	int ret;
+
+	ret = cnxk_bphy_cgx_enq_msg(dev_id, queue, &msg);
+	if (ret)
+		return ret;
+
+	return cnxk_bphy_cgx_deq_msg(dev_id, queue, (void **)&fec);
+}
+
 int
 cnxk_bphy_cgx_dev_selftest(uint16_t dev_id)
 {
@@ -103,6 +119,7 @@ cnxk_bphy_cgx_dev_selftest(uint16_t dev_id)
 
 	for (i = 0; i < queues; i++) {
 		struct cnxk_bphy_cgx_msg_set_link_state link_state;
+		enum cnxk_bphy_cgx_eth_link_fec fec;
 		struct cnxk_bphy_cgx_msg msg;
 		unsigned int descs;
 
@@ -198,6 +215,12 @@ cnxk_bphy_cgx_dev_selftest(uint16_t dev_id)
 			break;
 		}
 		ret = 0;
+
+		ret = cnxk_bphy_cgx_get_supported_fec(dev_id, i, &fec);
+		if (ret) {
+			RTE_LOG(ERR, PMD, "Failed to get supported FEC\n");
+			break;
+		}
 	}
 
 	rte_rawdev_stop(dev_id);
