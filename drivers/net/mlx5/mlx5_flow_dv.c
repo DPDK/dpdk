@@ -4944,10 +4944,11 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 				"source and destination fields"
 				" cannot be the same");
 	if (action_modify_field->dst.field == RTE_FLOW_FIELD_VALUE ||
-	    action_modify_field->dst.field == RTE_FLOW_FIELD_POINTER)
+	    action_modify_field->dst.field == RTE_FLOW_FIELD_POINTER ||
+	    action_modify_field->dst.field == RTE_FLOW_FIELD_MARK)
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
-				"immediate value or a pointer to it"
+				"mark, immediate value or a pointer to it"
 				" cannot be used as a destination");
 	if (action_modify_field->dst.field == RTE_FLOW_FIELD_START ||
 	    action_modify_field->src.field == RTE_FLOW_FIELD_START)
