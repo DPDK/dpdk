@@ -37,7 +37,7 @@ def configure_dsa(dsa_id, queues):
     max_groups = dsa_dir.read_int("max_groups")
     max_engines = dsa_dir.read_int("max_engines")
     max_queues = dsa_dir.read_int("max_work_queues")
-    max_tokens = dsa_dir.read_int("max_tokens")
+    max_work_queues_size = dsa_dir.read_int("max_work_queues_size")
 
     nb_queues = min(queues, max_queues)
     if queues > nb_queues:
@@ -56,7 +56,7 @@ def configure_dsa(dsa_id, queues):
                              "mode": "dedicated",
                              "name": f"dpdk_wq{dsa_id}.{q}",
                              "priority": 1,
-                             "size": int(max_tokens / nb_queues)})
+                             "size": int(max_work_queues_size / nb_queues)})
 
     # enable device and then queues
     drv_dir.write_values({"bind": f"dsa{dsa_id}"})
