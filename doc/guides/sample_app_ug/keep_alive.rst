@@ -99,39 +99,31 @@ The keepalive functionality is initialized with a struct
 rte_keepalive and the callback function to invoke in the
 case of a timeout.
 
-.. code-block:: c
-
-    rte_global_keepalive_info = rte_keepalive_create(&dead_core, NULL);
-    if (rte_global_keepalive_info == NULL)
-        rte_exit(EXIT_FAILURE, "keepalive_create() failed");
+.. literalinclude:: ../../../examples/l2fwd-keepalive/main.c
+    :language: c
+    :start-after: Initialize keepalive functionality. 8<
+    :end-before: >8 End of initializing keepalive functionality.
+    :dedent: 2
 
 The function that issues the pings keepalive_dispatch_pings()
 is configured to run every check_period milliseconds.
 
-.. code-block:: c
-
-    if (rte_timer_reset(&hb_timer,
-            (check_period * rte_get_timer_hz()) / 1000,
-            PERIODICAL,
-            rte_lcore_id(),
-            &rte_keepalive_dispatch_pings,
-            rte_global_keepalive_info
-            ) != 0 )
-        rte_exit(EXIT_FAILURE, "Keepalive setup failure.\n");
+.. literalinclude:: ../../../examples/l2fwd-keepalive/main.c
+    :language: c
+    :start-after: Issues the pings keepalive_dispatch_pings(). 8<
+    :end-before: >8 End of issuing the pings keepalive_dispatch_pings().
+    :dedent: 2
 
 The rest of the initialization and run-time path follows
 the same paths as the L2 forwarding application. The only
 addition to the main processing loop is the mark alive
 functionality and the example random failures.
 
-.. code-block:: c
-
-    rte_keepalive_mark_alive(&rte_global_keepalive_info);
-    cur_tsc = rte_rdtsc();
-
-    /* Die randomly within 7 secs for demo purposes.. */
-    if (cur_tsc - tsc_initial > tsc_lifetime)
-    break;
+.. literalinclude:: ../../../examples/l2fwd-keepalive/main.c
+    :language: c
+    :start-after: Keepalive heartbeat. 8<
+    :end-before: >8 End of keepalive heartbeat.
+    :dedent: 2
 
 The rte_keepalive_mark_alive function simply sets the core state to alive.
 

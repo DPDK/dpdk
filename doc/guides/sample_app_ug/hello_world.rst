@@ -37,16 +37,10 @@ EAL Initialization
 The first task is to initialize the Environment Abstraction Layer (EAL).
 This is done in the main() function using the following code:
 
-.. code-block:: c
-
-    int
-
-    main(int argc, char **argv)
-
-    {
-        ret = rte_eal_init(argc, argv);
-        if (ret < 0)
-            rte_panic("Cannot init EAL\n");
+.. literalinclude:: ../../../examples/helloworld/main.c
+    :language: c
+    :start-after: Initialization of Environment Abstraction Layer (EAL). 8<
+    :end-before: >8 End of initialization of Environment Abstraction Layer
 
 This call finishes the initialization process that was started before main() is called (in case of a Linux environment).
 The argc and argv arguments are provided to the rte_eal_init() function.
@@ -59,36 +53,25 @@ Once the EAL is initialized, the application is ready to launch a function on an
 In this example, lcore_hello() is called on every available lcore.
 The following is the definition of the function:
 
-.. code-block:: c
-
-    static int
-    lcore_hello(__rte_unused void *arg)
-    {
-        unsigned lcore_id;
-
-        lcore_id = rte_lcore_id();
-        printf("hello from core %u\n", lcore_id);
-        return 0;
-    }
+.. literalinclude:: ../../../examples/helloworld/main.c
+    :language: c
+    :start-after: Launch a function on lcore. 8<
+    :end-before: >8 End of launching function on lcore.
 
 The code that launches the function on each lcore is as follows:
 
-.. code-block:: c
-
-    /* call lcore_hello() on every worker lcore */
-
-    RTE_LCORE_FOREACH_WORKER(lcore_id) {
-       rte_eal_remote_launch(lcore_hello, NULL, lcore_id);
-    }
-
-    /* call it on main lcore too */
-
-    lcore_hello(NULL);
+.. literalinclude:: ../../../examples/helloworld/main.c
+    :language: c
+    :start-after: Launches the function on each lcore. 8<
+    :end-before: >8 End of launching the function on each lcore.
+    :dedent: 1
 
 The following code is equivalent and simpler:
 
-.. code-block:: c
-
-    rte_eal_mp_remote_launch(lcore_hello, NULL, CALL_MAIN);
+.. literalinclude:: ../../../examples/helloworld/main.c
+    :language: c
+    :start-after: Simpler equivalent. 8<
+    :end-before: >8 End of simpler equivalent.
+    :dedent: 2
 
 Refer to the *DPDK API Reference* for detailed information on the rte_eal_mp_remote_launch() function.

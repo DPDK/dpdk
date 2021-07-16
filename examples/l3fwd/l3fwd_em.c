@@ -243,6 +243,7 @@ em_mask_key(void *key, xmm_t mask)
 #error No vector engine (SSE, NEON, ALTIVEC) available, check your toolchain
 #endif
 
+/* Performing hash-based lookups. 8< */
 static inline uint16_t
 em_get_ipv4_dst_port(void *ipv4_hdr, uint16_t portid, void *lookup_struct)
 {
@@ -264,6 +265,7 @@ em_get_ipv4_dst_port(void *ipv4_hdr, uint16_t portid, void *lookup_struct)
 	ret = rte_hash_lookup(ipv4_l3fwd_lookup_struct, (const void *)&key);
 	return (ret < 0) ? portid : ipv4_l3fwd_out_if[ret];
 }
+/* >8 End of performing hash-based lookups. */
 
 static inline uint16_t
 em_get_ipv6_dst_port(void *ipv6_hdr, uint16_t portid, void *lookup_struct)
@@ -876,9 +878,7 @@ em_event_main_loop_tx_q_burst(__rte_unused void *dummy)
 	return 0;
 }
 
-/*
- * Initialize exact match (hash) parameters.
- */
+/* Initialize exact match (hash) parameters. 8< */
 void
 setup_hash(const int socketid)
 {
@@ -953,6 +953,7 @@ setup_hash(const int socketid)
 		}
 	}
 }
+/* >8 End of initialization of hash parameters. */
 
 /* Return ipv4/ipv6 em fwd lookup struct. */
 void *

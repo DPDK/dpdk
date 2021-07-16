@@ -122,22 +122,11 @@ Refer to the *glibc getopt(3)* man page for details.
 EAL arguments are parsed first, then application-specific arguments.
 This is done at the beginning of the main() function:
 
-.. code-block:: c
-
-    /* init EAL */
-
-    ret = rte_eal_init(argc, argv);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
-
-    argc -= ret;
-    argv += ret;
-
-    /* parse application arguments (after the EAL ones) */
-
-    ret = l2fwd_parse_args(argc, argv);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "Invalid L2FWD arguments\n");
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Init EAL. 8<
+    :end-before: >8 End of init EAL.
+    :dedent: 1
 
 Mbuf Pool Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -146,15 +135,11 @@ Once the arguments are parsed, the mbuf pool is created.
 The mbuf pool contains a set of mbuf objects that will be used by the driver
 and the application to store network packet data:
 
-.. code-block:: c
-
-    /* create the mbuf pool */
-    l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF,
-		MEMPOOL_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
-		rte_socket_id());
-
-    if (l2fwd_pktmbuf_pool == NULL)
-        rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Create the mbuf pool. 8<
+    :end-before: >8 End of creation of mbuf pool.
+    :dedent: 1
 
 The rte_mempool is a generic structure used to handle pools of objects.
 In this case, it is necessary to create a pool that will be used by the driver.
@@ -176,47 +161,22 @@ The main part of the code in the main() function relates to the initialization o
 To fully understand this code, it is recommended to study the chapters that related to the Poll Mode Driver
 in the *DPDK Programmer's Guide* and the *DPDK API Reference*.
 
-.. code-block:: c
-
-    /* reset l2fwd_dst_ports */
-
-    for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)
-        l2fwd_dst_ports[portid] = 0;
-
-    last_port = 0;
-
-    /*
-     * Each logical core is assigned a dedicated TX queue on each port.
-     */
-    RTE_ETH_FOREACH_DEV(portid) {
-        /* skip ports that are not enabled */
-        if ((l2fwd_enabled_port_mask & (1 << portid)) == 0)
-           continue;
-
-        if (nb_ports_in_mask % 2) {
-            l2fwd_dst_ports[portid] = last_port;
-            l2fwd_dst_ports[last_port] = portid;
-        }
-        else
-           last_port = portid;
-
-        nb_ports_in_mask++;
-
-        rte_eth_dev_info_get((uint8_t) portid, &dev_info);
-    }
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Reset l2fwd_dst_ports. 8<
+    :end-before: >8 End of reset l2fwd_dst_ports.
+    :dedent: 1
 
 The next step is to configure the RX and TX queues.
 For each port, there is only one RX queue (only one lcore is able to poll a given port).
 The number of TX queues depends on the number of available lcores.
 The rte_eth_dev_configure() function is used to configure the number of queues for a port:
 
-.. code-block:: c
-
-    ret = rte_eth_dev_configure((uint8_t)portid, 1, 1, &port_conf);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "Cannot configure device: "
-            "err=%d, port=%u\n",
-            ret, portid);
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Configure the RX and TX queues. 8<
+    :end-before: >8 End of configuring the RX and TX queues.
+    :dedent: 2
 
 RX Queue Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -228,37 +188,18 @@ For example, if the user specifies -q 4, the application is able to poll four po
 If there are 16 ports on the target (and if the portmask argument is -p ffff ),
 the application will need four lcores to poll all the ports.
 
-.. code-block:: c
-
-    ret = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
-                rte_eth_dev_socket_id(portid),
-                NULL,
-                l2fwd_pktmbuf_pool);
-
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup:err=%d, port=%u\n",
-                ret, (unsigned) portid);
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: RX queue initialization. 8<
+    :end-before: >8 End of RX queue initialization.
+    :dedent: 2
 
 The list of queues that must be polled for a given lcore is stored in a private structure called struct lcore_queue_conf.
 
-.. code-block:: c
-
-    struct lcore_queue_conf {
-        unsigned n_rx_port;
-        unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
-        truct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
-
-        struct rte_timer rx_timers[MAX_RX_QUEUE_PER_LCORE];
-        struct rte_jobstats port_fwd_jobs[MAX_RX_QUEUE_PER_LCORE];
-
-        struct rte_timer flush_timer;
-        struct rte_jobstats flush_job;
-        struct rte_jobstats idle_job;
-        struct rte_jobstats_context jobs_context;
-
-        rte_atomic16_t stats_read_pending;
-        rte_spinlock_t lock;
-    } __rte_cache_aligned;
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: List of queues to be polled for given lcore. 8<
+    :end-before: >8 End of list of queues to be polled for given lcore.
 
 Values of struct lcore_queue_conf:
 
@@ -276,17 +217,11 @@ TX Queue Initialization
 
 Each lcore should be able to transmit on any port. For every port, a single TX queue is initialized.
 
-.. code-block:: c
-
-    /* init one TX queue on each port */
-
-    fflush(stdout);
-    ret = rte_eth_tx_queue_setup(portid, 0, nb_txd,
-            rte_eth_dev_socket_id(portid),
-            NULL);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup:err=%d, port=%u\n",
-                ret, (unsigned) portid);
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Init one TX queue on each port. 8<
+    :end-before: >8 End of init one TX queue on each port.
+    :dedent: 2
 
 Jobs statistics initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -294,35 +229,19 @@ There are several statistics objects available:
 
 *   Flush job statistics
 
-.. code-block:: c
-
-    rte_jobstats_init(&qconf->flush_job, "flush", drain_tsc, drain_tsc,
-            drain_tsc, 0);
-
-    rte_timer_init(&qconf->flush_timer);
-    ret = rte_timer_reset(&qconf->flush_timer, drain_tsc, PERIODICAL,
-                lcore_id, &l2fwd_flush_job, NULL);
-
-    if (ret < 0) {
-        rte_exit(1, "Failed to reset flush job timer for lcore %u: %s",
-                    lcore_id, rte_strerror(-ret));
-    }
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Add flush job. 8<
+    :end-before: >8 End of add flush job.
+    :dedent: 2
 
 *   Statistics per RX port
 
-.. code-block:: c
-
-    rte_jobstats_init(job, name, 0, drain_tsc, 0, MAX_PKT_BURST);
-    rte_jobstats_set_update_period_function(job, l2fwd_job_update_cb);
-
-    rte_timer_init(&qconf->rx_timers[i]);
-    ret = rte_timer_reset(&qconf->rx_timers[i], 0, PERIODICAL, lcore_id,
-            l2fwd_fwd_job, (void *)(uintptr_t)i);
-
-    if (ret < 0) {
-        rte_exit(1, "Failed to reset lcore %u port %u job timer: %s",
-                    lcore_id, qconf->rx_port_list[i], rte_strerror(-ret));
-    }
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Setup forward job. 8<
+    :end-before: >8 End of forward job.
+    :dedent: 3
 
 Following parameters are passed to rte_jobstats_init():
 
@@ -338,43 +257,11 @@ Main loop
 The forwarding path is reworked comparing to original L2 Forwarding application.
 In the l2fwd_main_loop() function three loops are placed.
 
-.. code-block:: c
-
-    for (;;) {
-        rte_spinlock_lock(&qconf->lock);
-
-        do {
-            rte_jobstats_context_start(&qconf->jobs_context);
-
-            /* Do the Idle job:
-             * - Read stats_read_pending flag
-             * - check if some real job need to be executed
-             */
-            rte_jobstats_start(&qconf->jobs_context, &qconf->idle_job);
-
-            do {
-                uint8_t i;
-                uint64_t now = rte_get_timer_cycles();
-
-                need_manage = qconf->flush_timer.expire < now;
-                /* Check if we was esked to give a stats. */
-                stats_read_pending =
-                        rte_atomic16_read(&qconf->stats_read_pending);
-                need_manage |= stats_read_pending;
-
-                for (i = 0; i < qconf->n_rx_port && !need_manage; i++)
-                    need_manage = qconf->rx_timers[i].expire < now;
-
-            } while (!need_manage);
-            rte_jobstats_finish(&qconf->idle_job, qconf->idle_job.target);
-
-            rte_timer_manage();
-            rte_jobstats_context_finish(&qconf->jobs_context);
-        } while (likely(stats_read_pending == 0));
-
-        rte_spinlock_unlock(&qconf->lock);
-        rte_pause();
-    }
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Minimize impact of stats reading. 8<
+    :end-before: >8 End of minimize impact of stats reading.
+    :dedent: 1
 
 First infinite for loop is to minimize impact of stats reading. Lock is only locked/unlocked when asked.
 
@@ -392,16 +279,11 @@ Receive, Process and Transmit Packets
 The main task of l2fwd_fwd_job() function is to read ingress packets from the RX queue of particular port and forward it.
 This is done using the following code:
 
-.. code-block:: c
-
-    total_nb_rx = rte_eth_rx_burst((uint8_t) portid, 0, pkts_burst,
-            MAX_PKT_BURST);
-
-    for (j = 0; j < total_nb_rx; j++) {
-        m = pkts_burst[j];
-        rte_prefetch0(rte_pktmbuf_mtod(m, void *));
-        l2fwd_simple_forward(m, portid);
-    }
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Call rx burst 2 times. 8<
+    :end-before: >8 End of call rx burst 2 times.
+    :dedent: 1
 
 Packets are read in a burst of size MAX_PKT_BURST.
 Then, each mbuf in the table is processed by the l2fwd_simple_forward() function.
@@ -411,29 +293,19 @@ The rte_eth_rx_burst() function writes the mbuf pointers in a local table and re
 
 After first read second try is issued.
 
-.. code-block:: c
-
-    if (total_nb_rx == MAX_PKT_BURST) {
-        const uint16_t nb_rx = rte_eth_rx_burst((uint8_t) portid, 0, pkts_burst,
-                MAX_PKT_BURST);
-
-        total_nb_rx += nb_rx;
-        for (j = 0; j < nb_rx; j++) {
-            m = pkts_burst[j];
-            rte_prefetch0(rte_pktmbuf_mtod(m, void *));
-            l2fwd_simple_forward(m, portid);
-        }
-    }
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Read second try. 8<
+    :end-before: >8 End of read second try.
+    :dedent: 1
 
 This second read is important to give job stats library a feedback how many packets was processed.
 
-.. code-block:: c
-
-    /* Adjust period time in which we are running here. */
-    if (rte_jobstats_finish(job, total_nb_rx) != 0) {
-        rte_timer_reset(&qconf->rx_timers[port_idx], job->period, PERIODICAL,
-                lcore_id, l2fwd_fwd_job, arg);
-    }
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Adjust period time in which we are running here. 8<
+    :end-before: >8 End of adjust period time in which we are running.
+    :dedent: 1
 
 To maximize performance exactly MAX_PKT_BURST is expected (the target value) to be read for each l2fwd_fwd_job() call.
 If total_nb_rx is smaller than target value job->period will be increased. If it is greater the period will be decreased.
@@ -446,31 +318,10 @@ During the initialization process, a static array of destination ports (l2fwd_ds
 a destination port is assigned that is either the next or previous enabled port from the portmask.
 Naturally, the number of ports in the portmask must be even, otherwise, the application exits.
 
-.. code-block:: c
-
-    static void
-    l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
-    {
-        struct rte_ether_hdr *eth;
-        void *tmp;
-        unsigned dst_port;
-
-        dst_port = l2fwd_dst_ports[portid];
-
-        eth = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
-
-        /* 02:00:00:00:00:xx */
-
-        tmp = &eth->d_addr.addr_bytes[0];
-
-        *((uint64_t *)tmp) = 0x000000000002 + ((uint64_t) dst_port << 40);
-
-        /* src addr */
-
-        rte_ether_addr_copy(&l2fwd_ports_eth_addr[dst_port], &eth->s_addr);
-
-        l2fwd_send_packet(m, (uint8_t) dst_port);
-    }
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Start of l2fwd_simple_forward. 8<
+    :end-before: >8 End of l2fwd_simple_forward.
 
 Then, the packet is sent using the l2fwd_send_packet (m, dst_port) function.
 For this test application, the processing is exactly the same for all packets arriving on the same RX port.
@@ -485,66 +336,17 @@ The application is implemented to illustrate that, so the same approach can be r
 The l2fwd_send_packet() function stores the packet in a per-lcore and per-txport table.
 If the table is full, the whole packets table is transmitted using the l2fwd_send_burst() function:
 
-.. code-block:: c
-
-    /* Send the packet on an output interface */
-
-    static int
-    l2fwd_send_packet(struct rte_mbuf *m, uint16_t port)
-    {
-        unsigned lcore_id, len;
-        struct lcore_queue_conf *qconf;
-
-        lcore_id = rte_lcore_id();
-        qconf = &lcore_queue_conf[lcore_id];
-        len = qconf->tx_mbufs[port].len;
-        qconf->tx_mbufs[port].m_table[len] = m;
-        len++;
-
-        /* enough pkts to be sent */
-
-        if (unlikely(len == MAX_PKT_BURST)) {
-            l2fwd_send_burst(qconf, MAX_PKT_BURST, port);
-            len = 0;
-        }
-
-        qconf->tx_mbufs[port].len = len; return 0;
-    }
+.. literalinclude:: ../../../examples/l2fwd-crypto/main.c
+    :language: c
+    :start-after: Enqueue packets for TX and prepare them to be sent. 8<
+    :end-before: >8 End of Enqueuing packets for TX.
 
 To ensure that no packets remain in the tables, the flush job exists. The l2fwd_flush_job()
 is called periodically to for each lcore draining TX queue of each port.
 This technique introduces some latency when there are not many packets to send,
 however it improves performance:
 
-.. code-block:: c
-
-    static void
-    l2fwd_flush_job(__rte_unused struct rte_timer *timer, __rte_unused void *arg)
-    {
-        uint64_t now;
-        unsigned lcore_id;
-        struct lcore_queue_conf *qconf;
-        struct mbuf_table *m_table;
-        uint16_t portid;
-
-        lcore_id = rte_lcore_id();
-        qconf = &lcore_queue_conf[lcore_id];
-
-        rte_jobstats_start(&qconf->jobs_context, &qconf->flush_job);
-
-        now = rte_get_timer_cycles();
-        lcore_id = rte_lcore_id();
-        qconf = &lcore_queue_conf[lcore_id];
-        for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
-            m_table = &qconf->tx_mbufs[portid];
-            if (m_table->len == 0 || m_table->next_flush_time <= now)
-                continue;
-
-            l2fwd_send_burst(qconf, portid);
-        }
-
-
-        /* Pass target to indicate that this job is happy of time interval
-         * in which it was called. */
-        rte_jobstats_finish(&qconf->flush_job, qconf->flush_job.target);
-    }
+.. literalinclude:: ../../../examples/l2fwd-jobstats/main.c
+    :language: c
+    :start-after: Draining TX queue of each port. 8<
+    :end-before: >8 End of draining TX queue of each port.

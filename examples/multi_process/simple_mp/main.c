@@ -87,6 +87,7 @@ main(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Cannot init EAL\n");
 
+	/* Start of ring structure. 8< */
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY){
 		send_ring = rte_ring_create(_PRI_2_SEC, ring_size, rte_socket_id(), flags);
 		recv_ring = rte_ring_create(_SEC_2_PRI, ring_size, rte_socket_id(), flags);
@@ -99,6 +100,7 @@ main(int argc, char **argv)
 		send_ring = rte_ring_lookup(_SEC_2_PRI);
 		message_pool = rte_mempool_lookup(_MSG_POOL);
 	}
+	/* >8 End of ring structure. */
 	if (send_ring == NULL)
 		rte_exit(EXIT_FAILURE, "Problem getting sending ring\n");
 	if (recv_ring == NULL)

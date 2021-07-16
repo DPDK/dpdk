@@ -68,21 +68,18 @@ EAL Initialization and cmdline Start
 The first task is the initialization of the Environment Abstraction Layer (EAL).
 This is achieved as follows:
 
-.. code-block:: c
-
-    int main(int argc, char **argv)
-    {
-        ret = rte_eal_init(argc, argv);
-        if (ret < 0)
-            rte_panic("Cannot init EAL\n");
+.. literalinclude:: ../../../examples/cmdline/main.c
+    :language: c
+    :start-after: Initialization of the Environment Abstraction Layer (EAL). 8<
+    :end-before: >8 End of initialization of Environment Abstraction Layer (EAL).
 
 Then, a new command line object is created and started to interact with the user through the console:
 
-.. code-block:: c
-
-    cl = cmdline_stdin_new(main_ctx, "example> ");
-    cmdline_interact(cl);
-    cmdline_stdin_exit(cl);
+.. literalinclude:: ../../../examples/cmdline/main.c
+    :language: c
+    :start-after: Creating a new command line object. 8<
+    :end-before: >8 End of creating a new command line object.
+    :dedent: 1
 
 The cmd line_interact() function returns when the user types **Ctrl-d** and in this case,
 the application exits.
@@ -92,14 +89,10 @@ Defining a cmdline Context
 
 A cmdline context is a list of commands that are listed in a NULL-terminated table, for example:
 
-.. code-block:: c
-
-    cmdline_parse_ctx_t main_ctx[] = {
-        (cmdline_parse_inst_t *) &cmd_obj_del_show,
-        (cmdline_parse_inst_t *) &cmd_obj_add,
-        (cmdline_parse_inst_t *) &cmd_help,
-         NULL,
-    };
+.. literalinclude:: ../../../examples/cmdline/commands.c
+    :language: c
+    :start-after: Cmdline context list of commands in NULL-terminated table. 8<
+    :end-before: >8 End of context list.
 
 Each command (of type cmdline_parse_inst_t) is defined statically.
 It contains a pointer to a callback function that is executed when the command is parsed,
@@ -120,33 +113,10 @@ in the parse_obj_list.c and parse_obj_list.h files.
 
 For example, the cmd_obj_del_show command is defined as shown below:
 
-.. code-block:: c
-
-    struct cmd_obj_add_result {
-        cmdline_fixed_string_t action;
-        cmdline_fixed_string_t name;
-        struct object *obj;
-    };
-
-    static void cmd_obj_del_show_parsed(void *parsed_result, struct cmdline *cl, __rte_unused void *data)
-    {
-       /* ... */
-    }
-
-    cmdline_parse_token_string_t cmd_obj_action = TOKEN_STRING_INITIALIZER(struct cmd_obj_del_show_result, action, "show#del");
-
-    parse_token_obj_list_t cmd_obj_obj = TOKEN_OBJ_LIST_INITIALIZER(struct cmd_obj_del_show_result, obj, &global_obj_list);
-
-    cmdline_parse_inst_t cmd_obj_del_show = {
-        .f = cmd_obj_del_show_parsed, /* function to call */
-        .data = NULL,  /* 2nd arg of func */
-        .help_str = "Show/del an object",
-        .tokens = { /* token list, NULL terminated */
-            (void *)&cmd_obj_action,
-            (void *)&cmd_obj_obj,
-             NULL,
-        },
-    };
+.. literalinclude:: ../../../examples/cmdline/commands.c
+    :language: c
+    :start-after: Show or delete tokens. 8<
+    :end-before: >8 End of show or delete tokens.
 
 This command is composed of two tokens:
 

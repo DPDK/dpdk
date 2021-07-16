@@ -53,28 +53,11 @@ order to register services: ``rte_service_component.h``, in addition
 to the ordinary service cores header ``rte_service.h`` which provides
 the runtime functions to add, remove and remap service cores.
 
-.. code-block:: c
-
-        struct rte_service_spec service = {
-                .name = "service_name",
-        };
-        int ret = rte_service_component_register(services, &id);
-        if (ret)
-                return -1;
-
-        /* set the service itself to be ready to run. In the case of
-        * ethdev, eventdev etc PMDs, this will be set when the
-        * appropriate configure or setup function is called.
-        */
-        rte_service_component_runstate_set(id, 1);
-
-        /* Collect statistics for the service */
-        rte_service_set_stats_enable(id, 1);
-
-        /* The application sets the service to running state. Note that this
-         * function enables the service to run - while the 'component' version
-         * of this function (as above) marks the service itself as ready */
-        ret = rte_service_runstate_set(id, 1);
+.. literalinclude:: ../../../examples/service_cores/main.c
+    :language: c
+    :start-after: Register a service as an application. 8<
+    :end-before: >8 End of registering a service as an application.
+    :dedent: 2
 
 
 Controlling A Service Core
@@ -87,26 +70,11 @@ functions.
 
 These are the functions to start a service core, and have it run a service:
 
-.. code-block:: c
-
-        /* the lcore ID to use as a service core */
-        uint32_t service_core_id = 7;
-        ret = rte_service_lcore_add(service_core_id);
-        if(ret)
-                return -1;
-
-        /* service cores are in "stopped" state when added, so start it */
-        ret = rte_service_lcore_start(service_core_id);
-        if(ret)
-                return -1;
-
-        /* map a service to the service core, causing it to run the service */
-        uint32_t service_id; /* ID of a registered service */
-        uint32_t enable = 1; /* 1 maps the service, 0 unmaps */
-        ret = rte_service_map_lcore_set(service_id, service_core_id, enable);
-        if(ret)
-                return -1;
-
+.. literalinclude:: ../../../examples/service_cores/main.c
+    :language: c
+    :start-after: Register a service as an application. 8<
+    :end-before: >8 End of registering a service as an application.
+    :dedent: 2
 
 Removing A Service Core
 ~~~~~~~~~~~~~~~~~~~~~~~

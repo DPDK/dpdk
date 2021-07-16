@@ -61,34 +61,20 @@ Explanation
 
 Selecting one of the metering modes is done with these defines:
 
-.. code-block:: c
-
-    #define APP_MODE_FWD   0
-    #define APP_MODE_SRTCM_COLOR_BLIND  1
-    #define APP_MODE_SRTCM_COLOR_AWARE  2
-    #define APP_MODE_TRTCM_COLOR_BLIND  3
-    #define APP_MODE_TRTCM_COLOR_AWARE  4
-
-    #define APP_MODE  APP_MODE_SRTCM_COLOR_BLIND
+.. literalinclude:: ../../../examples/qos_meter/main.c
+        :language: c
+        :start-after: Traffic metering configuration. 8<
+        :end-before: >8 End of traffic metering configuration.
 
 To simplify debugging (for example, by using the traffic generator RX side MAC address based packet filtering feature),
 the color is defined as the LSB byte of the destination MAC address.
 
 The traffic meter parameters are configured in the application source code with following default values:
 
-.. code-block:: c
-
-    struct rte_meter_srtcm_params app_srtcm_params[] = {
-
-        {.cir = 1000000 * 46, .cbs = 2048, .ebs = 2048},
-
-    };
-
-    struct rte_meter_trtcm_params app_trtcm_params[] = {
-
-        {.cir = 1000000 * 46, .pir = 1500000 * 46, .cbs = 2048, .pbs = 2048},
-
-    };
+.. literalinclude:: ../../../examples/qos_meter/main.c
+        :language: c
+        :start-after: Traffic meter parameters are configured in the application. 8<
+        :end-before: >8 End of traffic meter parameters are configured in the application.
 
 Assuming the input traffic is generated at line rate and all packets are 64 bytes Ethernet frames (IPv4 packet size of 46 bytes)
 and green, the expected output traffic should be marked as shown in the following table:
@@ -120,14 +106,10 @@ and green, the expected output traffic should be marked as shown in the followin
 To set up the policing scheme as desired, it is necessary to modify the main.h source file,
 where this policy is implemented as a static structure, as follows:
 
-.. code-block:: c
-
-    int policer_table[e_RTE_METER_COLORS][e_RTE_METER_COLORS] =
-    {
-       { GREEN, RED, RED},
-       { DROP, YELLOW, RED},
-       { DROP, DROP, RED}
-    };
+.. literalinclude:: ../../../examples/qos_meter/main.h
+        :language: c
+        :start-after: Policy implemented as a static structure. 8<
+        :end-before: >8 End of policy implemented as a static structure.
 
 Where rows indicate the input color, columns indicate the output color,
 and the value that is stored in the table indicates the action to be taken for that particular case.

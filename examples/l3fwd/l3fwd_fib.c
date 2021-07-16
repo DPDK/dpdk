@@ -412,7 +412,7 @@ fib_event_main_loop_tx_q_burst(__rte_unused void *dummy)
 	return 0;
 }
 
-/* Function to setup fib. */
+/* Function to setup fib. 8< */
 void
 setup_fib(const int socketid)
 {
@@ -468,6 +468,7 @@ setup_fib(const int socketid)
 				ipv4_l3fwd_route_array[i].if_out);
 		}
 	}
+	/* >8 End of setup fib. */
 
 	/* Create the fib IPv6 table. */
 	snprintf(s, sizeof(s), "IPV6_L3FWD_FIB_%d", socketid);

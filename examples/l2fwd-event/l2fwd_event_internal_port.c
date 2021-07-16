@@ -226,7 +226,7 @@ l2fwd_rx_tx_adapter_setup_internal_port(struct l2fwd_resources *rsrc)
 		rte_panic("Failed to allocate memery for Rx adapter\n");
 	}
 
-
+	/* Assigned ethernet port. 8< */
 	RTE_ETH_FOREACH_DEV(port_id) {
 		if ((rsrc->enabled_port_mask & (1 << port_id)) == 0)
 			continue;
@@ -286,6 +286,7 @@ l2fwd_rx_tx_adapter_setup_internal_port(struct l2fwd_resources *rsrc)
 		evt_rsrc->tx_adptr.tx_adptr[adapter_id] = adapter_id;
 		adapter_id++;
 	}
+	/* >8 End of assigned ethernet port. */
 }
 
 void

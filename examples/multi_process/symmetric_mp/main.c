@@ -455,6 +455,7 @@ main(int argc, char **argv)
 	if (mp == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get memory pool for buffers\n");
 
+	/* Primary instance initialized. 8< */
 	if (num_ports & 1)
 		rte_exit(EXIT_FAILURE, "Application must use an even number of ports\n");
 	for(i = 0; i < num_ports; i++){
@@ -462,6 +463,7 @@ main(int argc, char **argv)
 			if (smp_port_init(ports[i], mp, (uint16_t)num_procs) < 0)
 				rte_exit(EXIT_FAILURE, "Error initialising ports\n");
 	}
+	/* >8 End of primary instance initialization. */
 
 	if (proc_type == RTE_PROC_PRIMARY)
 		check_all_ports_link_status((uint8_t)num_ports, (~0x0));

@@ -80,11 +80,13 @@ static unsigned int l2fwd_rx_queue_per_lcore = 1;
 
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
+/* List of queues to be polled for a given lcore. 8< */
 struct lcore_queue_conf {
 	unsigned n_rx_port;
 	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
 } __rte_cache_aligned;
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
+/* >8 End of list of queues to be polled for a given lcore. */
 
 static struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 
@@ -175,6 +177,7 @@ l2fwd_mac_updating(struct rte_mbuf *m, unsigned dest_portid)
 	rte_ether_addr_copy(&l2fwd_ports_eth_addr[dest_portid], &eth->s_addr);
 }
 
+/* Simple forward. 8< */
 static void
 l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 {
@@ -192,6 +195,7 @@ l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 	if (sent)
 		port_statistics[dst_port].tx += sent;
 }
+/* >8 End of simple forward. */
 
 /* main processing loop */
 static void
@@ -231,6 +235,7 @@ l2fwd_main_loop(void)
 
 	while (!force_quit) {
 
+		/* Drains TX queue in its main loop. 8< */
 		cur_tsc = rte_rdtsc();
 
 		/*
@@ -270,10 +275,9 @@ l2fwd_main_loop(void)
 
 			prev_tsc = cur_tsc;
 		}
+		/* >8 End of draining TX queue. */
 
-		/*
-		 * Read packet from RX queues
-		 */
+		/* Read packet from RX queues. 8< */
 		for (i = 0; i < qconf->n_rx_port; i++) {
 
 			portid = qconf->rx_port_list[i];
@@ -288,6 +292,7 @@ l2fwd_main_loop(void)
 				l2fwd_simple_forward(m, portid);
 			}
 		}
+		/* >8 End of read packet from RX queues. */
 	}
 }
 
@@ -647,7 +652,7 @@ main(int argc, char **argv)
 	unsigned int nb_lcores = 0;
 	unsigned int nb_mbufs;
 
-	/* init EAL */
+	/* Init EAL. 8< */
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
@@ -662,6 +667,7 @@ main(int argc, char **argv)
 	ret = l2fwd_parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid L2FWD arguments\n");
+	/* >8 End of init EAL. */
 
 	printf("MAC updating %s\n", mac_updating ? "enabled" : "disabled");
 
@@ -681,6 +687,8 @@ main(int argc, char **argv)
 	if (l2fwd_enabled_port_mask & ~((1 << nb_ports) - 1))
 		rte_exit(EXIT_FAILURE, "Invalid portmask; possible (0x%x)\n",
 			(1 << nb_ports) - 1);
+
+	/* Initialization of the driver. 8< */
 
 	/* reset l2fwd_dst_ports */
 	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)
@@ -717,6 +725,7 @@ main(int argc, char **argv)
 			l2fwd_dst_ports[last_port] = last_port;
 		}
 	}
+	/* >8 End of initialization of the driver. */
 
 	rx_lcore_id = 0;
 	qconf = NULL;
@@ -751,12 +760,13 @@ main(int argc, char **argv)
 	nb_mbufs = RTE_MAX(nb_ports * (nb_rxd + nb_txd + MAX_PKT_BURST +
 		nb_lcores * MEMPOOL_CACHE_SIZE), 8192U);
 
-	/* create the mbuf pool */
+	/* Create the mbuf pool. 8< */
 	l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", nb_mbufs,
 		MEMPOOL_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
 		rte_socket_id());
 	if (l2fwd_pktmbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
+	/* >8 End of create the mbuf pool. */
 
 	/* Initialise each port */
 	RTE_ETH_FOREACH_DEV(portid) {
@@ -785,10 +795,12 @@ main(int argc, char **argv)
 		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 			local_port_conf.txmode.offloads |=
 				DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+		/* Configure the number of queues for a port. */
 		ret = rte_eth_dev_configure(portid, 1, 1, &local_port_conf);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n",
 				  ret, portid);
+		/* >8 End of configuration of the number of queues for a port. */
 
 		ret = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &nb_rxd,
 						       &nb_txd);
@@ -808,6 +820,7 @@ main(int argc, char **argv)
 		fflush(stdout);
 		rxq_conf = dev_info.default_rxconf;
 		rxq_conf.offloads = local_port_conf.rxmode.offloads;
+		/* RX queue setup. 8< */
 		ret = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
 					     rte_eth_dev_socket_id(portid),
 					     &rxq_conf,
@@ -815,8 +828,9 @@ main(int argc, char **argv)
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup:err=%d, port=%u\n",
 				  ret, portid);
+		/* >8 End of RX queue setup. */
 
-		/* init one TX queue on each port */
+		/* Init one TX queue on each port. 8< */
 		fflush(stdout);
 		txq_conf = dev_info.default_txconf;
 		txq_conf.offloads = local_port_conf.txmode.offloads;
@@ -826,6 +840,7 @@ main(int argc, char **argv)
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup:err=%d, port=%u\n",
 				ret, portid);
+		/* >8 End of init one TX queue on each port. */
 
 		/* Initialize TX buffers */
 		tx_buffer[portid] = rte_zmalloc_socket("tx_buffer",

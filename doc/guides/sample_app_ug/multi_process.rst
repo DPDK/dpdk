@@ -113,17 +113,11 @@ These three objects are created at startup by the primary process,
 since the secondary process cannot create objects in memory as it cannot reserve memory zones,
 and the secondary process then uses lookup functions to attach to these objects as it starts up.
 
-.. code-block:: c
-
-    if (rte_eal_process_type() == RTE_PROC_PRIMARY){
-        send_ring = rte_ring_create(_PRI_2_SEC, ring_size, SOCKET0, flags);
-        recv_ring = rte_ring_create(_SEC_2_PRI, ring_size, SOCKET0, flags);
-        message_pool = rte_mempool_create(_MSG_POOL, pool_size, string_size, pool_cache, priv_data_sz, NULL, NULL, NULL, NULL, SOCKET0, flags);
-    } else {
-        recv_ring = rte_ring_lookup(_PRI_2_SEC);
-        send_ring = rte_ring_lookup(_SEC_2_PRI);
-        message_pool = rte_mempool_lookup(_MSG_POOL);
-    }
+.. literalinclude:: ../../../examples/multi_process/simple_mp/main.c
+        :language: c
+        :start-after: Start of ring structure. 8<
+        :end-before: >8 End of ring structure.
+        :dedent: 1
 
 Note, however, that the named ring structure used as send_ring in the primary process is the recv_ring in the secondary process.
 
@@ -216,16 +210,11 @@ the number of RX and TX queues per port being determined by the num-procs parame
 The structures for the initialized network ports are stored in shared memory and
 therefore will be accessible by the secondary process as it initializes.
 
-.. code-block:: c
-
-    if (num_ports & 1)
-       rte_exit(EXIT_FAILURE, "Application must use an even number of ports\n");
-
-    for(i = 0; i < num_ports; i++){
-        if(proc_type == RTE_PROC_PRIMARY)
-            if (smp_port_init(ports[i], mp, (uint16_t)num_procs) < 0)
-                rte_exit(EXIT_FAILURE, "Error initializing ports\n");
-    }
+.. literalinclude:: ../../../examples/multi_process/symmetric_mp/main.c
+        :language: c
+        :start-after: Primary instance initialized. 8<
+        :end-before: >8 End of primary instance initialization.
+        :dedent: 1
 
 In the secondary instance, rather than initializing the network ports, the port information exported by the primary process is used,
 giving the secondary process access to the hardware and software rings for each network port.

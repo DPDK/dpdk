@@ -911,7 +911,7 @@ static int event_register(struct lcore_conf *qconf)
 	return 0;
 }
 
-/* main processing loop */
+/* Main processing loop. 8< */
 static int main_intr_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
@@ -1074,6 +1074,7 @@ start_rx:
 
 	return 0;
 }
+/* >8 End of main processing loop. */
 
 /* main processing loop */
 static int
@@ -2504,6 +2505,7 @@ mode_to_str(enum appmode mode)
 	}
 }
 
+/* Power library initialized in the main routine. 8< */
 int
 main(int argc, char **argv)
 {
@@ -2781,6 +2783,7 @@ main(int argc, char **argv)
 			}
 		}
 	}
+	/* >8 End of power library initialization. */
 
 	printf("\n");
 

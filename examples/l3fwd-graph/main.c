@@ -691,7 +691,7 @@ print_stats(void)
 	rte_graph_cluster_stats_destroy(stats);
 }
 
-/* Main processing loop */
+/* Main processing loop. 8< */
 static int
 graph_main_loop(void *conf)
 {
@@ -720,12 +720,14 @@ graph_main_loop(void *conf)
 
 	return 0;
 }
+/* >8 End of main processing loop. */
 
 int
 main(int argc, char **argv)
 {
 	/* Rewrite data of src and dst ether addr */
 	uint8_t rewrite_data[2 * sizeof(struct rte_ether_addr)];
+	/* Graph initialization. 8< */
 	static const char * const default_patterns[] = {
 		"ip4*",
 		"ethdev_tx-*",
@@ -782,7 +784,7 @@ main(int argc, char **argv)
 	nb_ports = rte_eth_dev_count_avail();
 	nb_lcores = rte_lcore_count();
 
-	/* Initialize all ports */
+	/* Initialize all ports. 8< */
 	RTE_ETH_FOREACH_DEV(portid)
 	{
 		struct rte_eth_conf local_port_conf = port_conf;
@@ -962,6 +964,7 @@ main(int argc, char **argv)
 
 	/* Ethdev node config, skip rx queue mapping */
 	ret = rte_node_eth_config(ethdev_conf, nb_conf, nb_graphs);
+	/* >8 End of graph creation. */
 	if (ret)
 		rte_exit(EXIT_FAILURE, "rte_node_eth_config: err=%d\n", ret);
 
@@ -1037,6 +1040,7 @@ main(int argc, char **argv)
 
 		qconf->graph_id = graph_id;
 		qconf->graph = rte_graph_lookup(qconf->name);
+		/* >8 End of graph initialization. */
 		if (!qconf->graph)
 			rte_exit(EXIT_FAILURE,
 				 "rte_graph_lookup(): graph %s not found\n",
@@ -1046,7 +1050,7 @@ main(int argc, char **argv)
 	memset(&rewrite_data, 0, sizeof(rewrite_data));
 	rewrite_len = sizeof(rewrite_data);
 
-	/* Add route to ip4 graph infra */
+	/* Add route to ip4 graph infra. 8< */
 	for (i = 0; i < IPV4_L3FWD_LPM_NUM_ROUTES; i++) {
 		char route_str[INET6_ADDRSTRLEN * 4];
 		char abuf[INET6_ADDRSTRLEN];
@@ -1090,6 +1094,7 @@ main(int argc, char **argv)
 		RTE_LOG(INFO, L3FWD_GRAPH, "Added route %s, next_hop %u\n",
 			route_str, i);
 	}
+	/* >8 End of adding route to ip4 graph infa. */
 
 	/* Launch per-lcore init on every worker lcore */
 	rte_eal_mp_remote_launch(graph_main_loop, NULL, SKIP_MAIN);

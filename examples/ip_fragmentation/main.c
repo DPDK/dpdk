@@ -168,6 +168,7 @@ struct l3fwd_ipv4_route {
 	uint8_t  if_out;
 };
 
+/* Default l3fwd_ipv4_route_array table. 8< */
 struct l3fwd_ipv4_route l3fwd_ipv4_route_array[] = {
 		{RTE_IPV4(100,10,0,0), 16, 0},
 		{RTE_IPV4(100,20,0,0), 16, 1},
@@ -178,6 +179,7 @@ struct l3fwd_ipv4_route l3fwd_ipv4_route_array[] = {
 		{RTE_IPV4(100,70,0,0), 16, 6},
 		{RTE_IPV4(100,80,0,0), 16, 7},
 };
+/* >8 End of default l3fwd_ipv4_route_array table */
 
 /*
  * IPv6 forwarding table
@@ -189,6 +191,7 @@ struct l3fwd_ipv6_route {
 	uint8_t if_out;
 };
 
+/* Default l3fwd_ipv6_route_array table. 8< */
 static struct l3fwd_ipv6_route l3fwd_ipv6_route_array[] = {
 	{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 0},
 	{{2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 1},
@@ -199,6 +202,7 @@ static struct l3fwd_ipv6_route l3fwd_ipv6_route_array[] = {
 	{{7,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 6},
 	{{8,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 7},
 };
+/* >8 End of default l3fwd_ipv6_route_array table. */
 
 #define LPM_MAX_RULES         1024
 #define LPM6_MAX_RULES         1024

@@ -42,11 +42,13 @@ struct rxtx_port_config {
 	uint16_t ioat_ids[MAX_RX_QUEUES_COUNT];
 };
 
+/* Configuring ports and number of assigned lcores in struct. 8< */
 struct rxtx_transmission_config {
 	struct rxtx_port_config ports[RTE_MAX_ETHPORTS];
 	uint16_t nb_ports;
 	uint16_t nb_lcores;
 };
+/* >8 End of configuration of ports and number of assigned lcores. */
 
 /* per-port statistics struct */
 struct ioat_port_statistics {
@@ -327,6 +329,7 @@ update_mac_addrs(struct rte_mbuf *m, uint32_t dest_portid)
 	rte_ether_addr_copy(&ioat_ports_eth_addr[dest_portid], &eth->s_addr);
 }
 
+/* Perform packet copy there is a user-defined function. 8< */
 static inline void
 pktmbuf_sw_copy(struct rte_mbuf *src, struct rte_mbuf *dst)
 {
@@ -340,6 +343,7 @@ pktmbuf_sw_copy(struct rte_mbuf *src, struct rte_mbuf *dst)
 	rte_memcpy(rte_pktmbuf_mtod(dst, char *),
 		rte_pktmbuf_mtod(src, char *), src->data_len);
 }
+/* >8 End of perform packet copy there is a user-defined function. */
 
 static uint32_t
 ioat_enqueue_packets(struct rte_mbuf **pkts,
@@ -380,7 +384,7 @@ ioat_enqueue_packets(struct rte_mbuf **pkts,
 	return ret;
 }
 
-/* Receive packets on one port and enqueue to IOAT rawdev or rte_ring. */
+/* Receive packets on one port and enqueue to IOAT rawdev or rte_ring. 8< */
 static void
 ioat_rx_port(struct rxtx_port_config *rx_config)
 {
@@ -436,8 +440,9 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 			(nb_rx - nb_enq);
 	}
 }
+/* >8 End of receive packets on one port and enqueue to IOAT rawdev or rte_ring. */
 
-/* Transmit packets from IOAT rawdev/rte_ring for one port. */
+/* Transmit packets from IOAT rawdev/rte_ring for one port. 8< */
 static void
 ioat_tx_port(struct rxtx_port_config *tx_config)
 {
@@ -488,6 +493,7 @@ ioat_tx_port(struct rxtx_port_config *tx_config)
 				nb_dq - nb_tx);
 	}
 }
+/* >8 End of transmitting packets from IOAT. */
 
 /* Main rx processing loop for IOAT rawdev. */
 static void
@@ -536,6 +542,7 @@ rxtx_main_loop(void)
 		}
 }
 
+/* Start processing for each lcore. 8< */
 static void start_forwarding_cores(void)
 {
 	uint32_t lcore_id = rte_lcore_id();
@@ -557,6 +564,7 @@ static void start_forwarding_cores(void)
 			lcore_id);
 	}
 }
+/* >8 End of starting to processfor each lcore. */
 
 /* Display usage */
 static void
@@ -725,6 +733,7 @@ check_link_status(uint32_t port_mask)
 	return link_status;
 }
 
+/* Configuration of device. 8< */
 static void
 configure_rawdev_queue(uint32_t dev_id)
 {
@@ -743,7 +752,9 @@ configure_rawdev_queue(uint32_t dev_id)
 			"Error with rte_rawdev_start()\n");
 	}
 }
+/* >8 End of configuration of device. */
 
+/* Using IOAT rawdev API functions. 8< */
 static void
 assign_rawdevs(void)
 {
@@ -774,7 +785,9 @@ end:
 			nb_rawdev, cfg.nb_ports * cfg.ports[0].nb_queues);
 	RTE_LOG(INFO, IOAT, "Number of used rawdevs: %u.\n", nb_rawdev);
 }
+/* >8 End of using IOAT rawdev API functions. */
 
+/* Assign ring structures for packet exchanging. 8< */
 static void
 assign_rings(void)
 {
@@ -794,6 +807,7 @@ assign_rings(void)
 				rte_strerror(rte_errno));
 	}
 }
+/* >8 End of assigning ring structures for packet exchanging. */
 
 /*
  * Initializes a given port using global settings and with the RX buffers
@@ -802,7 +816,7 @@ assign_rings(void)
 static inline void
 port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 {
-	/* configuring port to use RSS for multiple RX queues */
+	/* Configuring port to use RSS for multiple RX queues. 8< */
 	static const struct rte_eth_conf port_conf = {
 		.rxmode = {
 			.mq_mode = ETH_MQ_RX_RSS,
@@ -815,6 +829,7 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 			}
 		}
 	};
+	/* >8 End of configuring port to use RSS for multiple RX queues. */
 
 	struct rte_eth_rxconf rxq_conf;
 	struct rte_eth_txconf txq_conf;
@@ -898,14 +913,17 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 			"Cannot set error callback for tx buffer on port %u\n",
 			portid);
 
-	/* Start device */
+	/* Start device. 8< */
 	ret = rte_eth_dev_start(portid);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE,
 			"rte_eth_dev_start:err=%d, port=%u\n",
 			ret, portid);
+	/* >8 End of starting device. */
 
+	/* RX port is set in promiscuous mode. 8< */
 	rte_eth_promiscuous_enable(portid);
+	/* >8 End of RX port is set in promiscuous mode. */
 
 	printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
 			portid,
@@ -938,10 +956,11 @@ main(int argc, char **argv)
 	uint32_t i;
 	unsigned int nb_mbufs;
 
-	/* Init EAL */
+	/* Init EAL. 8< */
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
+	/* >8 End of init EAL. */
 	argc -= ret;
 	argv += ret;
 
@@ -958,6 +977,7 @@ main(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid IOAT arguments\n");
 
+	/* Allocates mempool to hold the mbufs. 8< */
 	nb_mbufs = RTE_MAX(nb_ports * (nb_queues * (nb_rxd + nb_txd +
 		4 * MAX_PKT_BURST) + rte_lcore_count() * MEMPOOL_CACHE_SIZE),
 		MIN_POOL_SIZE);
@@ -968,15 +988,18 @@ main(int argc, char **argv)
 		rte_socket_id());
 	if (ioat_pktmbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
+	/* >8 End of allocates mempool to hold the mbufs. */
 
-	/* Initialise each port */
+	/* Initialize each port. 8< */
 	cfg.nb_ports = 0;
 	RTE_ETH_FOREACH_DEV(portid)
 		port_init(portid, ioat_pktmbuf_pool, nb_queues);
+	/* >8 End of initializing each port. */
 
 	/* Initialize port xstats */
 	memset(&port_statistics, 0, sizeof(port_statistics));
 
+	/* Assigning each port resources. 8< */
 	while (!check_link_status(ioat_enabled_port_mask) && !force_quit)
 		sleep(1);
 
@@ -990,6 +1013,7 @@ main(int argc, char **argv)
 		assign_rawdevs();
 	else /* copy_mode == COPY_MODE_SW_NUM */
 		assign_rings();
+	/* >8 End of assigning each port resources. */
 
 	start_forwarding_cores();
 	/* main core prints stats while other cores forward */

@@ -57,6 +57,7 @@ struct object_list global_obj_list;
 
 /**********************************************************/
 
+/* Show or delete tokens. 8< */
 struct cmd_obj_del_show_result {
 	cmdline_fixed_string_t action;
 	struct object *obj;
@@ -105,6 +106,7 @@ cmdline_parse_inst_t cmd_obj_del_show = {
 		NULL,
 	},
 };
+/* >8 End of show or delete tokens. */
 
 /**********************************************************/
 
@@ -211,9 +213,11 @@ cmdline_parse_inst_t cmd_help = {
 /**********************************************************/
 /****** CONTEXT (list of instruction) */
 
+/* Cmdline context list of commands in NULL-terminated table. 8< */
 cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_obj_del_show,
 	(cmdline_parse_inst_t *)&cmd_obj_add,
 	(cmdline_parse_inst_t *)&cmd_help,
 	NULL,
 };
+/* >8 End of context list. */

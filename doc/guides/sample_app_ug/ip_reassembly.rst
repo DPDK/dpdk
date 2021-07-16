@@ -104,33 +104,17 @@ fragment extension header are present in the packet.
 
 The default l3fwd_ipv4_route_array table is:
 
-.. code-block:: c
-
-    struct l3fwd_ipv4_route l3fwd_ipv4_route_array[] = {
-        {RTE_IPV4(100, 10, 0, 0), 16, 0},
-        {RTE_IPV4(100, 20, 0, 0), 16, 1},
-        {RTE_IPV4(100, 30, 0, 0), 16, 2},
-        {RTE_IPV4(100, 40, 0, 0), 16, 3},
-        {RTE_IPV4(100, 50, 0, 0), 16, 4},
-        {RTE_IPV4(100, 60, 0, 0), 16, 5},
-        {RTE_IPV4(100, 70, 0, 0), 16, 6},
-        {RTE_IPV4(100, 80, 0, 0), 16, 7},
-    };
+.. literalinclude:: ../../../examples/ip_reassembly/main.c
+    :language: c
+    :start-after: Default l3fwd_ipv4_route_array table. 8<
+    :end-before: >8 End of default l3fwd_ipv4_route_array table.
 
 The default l3fwd_ipv6_route_array table is:
 
-.. code-block:: c
-
-    struct l3fwd_ipv6_route l3fwd_ipv6_route_array[] = {
-        {{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 48, 0},
-        {{2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 48, 1},
-        {{3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 48, 2},
-        {{4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 48, 3},
-        {{5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 48, 4},
-        {{6, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 48, 5},
-        {{7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 48, 6},
-        {{8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 48, 7},
-    };
+.. literalinclude:: ../../../examples/ip_reassembly/main.c
+    :language: c
+    :start-after: Default l3fwd_ipv6_route_array table. 8<
+    :end-before: >8 End of default l3fwd_ipv6_route_array table.
 
 For example, for the fragmented input IPv4 packet with destination address: 100.10.1.1,
 a reassembled IPv4 packet be sent out from port #0 to the destination address 100.10.1.1
@@ -153,15 +137,11 @@ To avoid lock contention, each RX queue has its own Fragment Table,
 e.g. the application can't handle the situation when different fragments of the same packet arrive through different RX queues.
 Each table entry can hold information about packet consisting of up to RTE_LIBRTE_IP_FRAG_MAX_FRAGS fragments.
 
-.. code-block:: c
-
-    frag_cycles = (rte_get_tsc_hz() + MS_PER_S - 1) / MS_PER_S * max_flow_ttl;
-
-    if ((qconf->frag_tbl[queue] = rte_ip_frag_tbl_create(max_flow_num, IPV4_FRAG_TBL_BUCKET_ENTRIES, max_flow_num, frag_cycles, socket)) == NULL)
-    {
-        RTE_LOG(ERR, IP_RSMBL, "ip_frag_tbl_create(%u) on " "lcore: %u for queue: %u failed\n",  max_flow_num, lcore, queue);
-        return -1;
-    }
+.. literalinclude:: ../../../examples/ip_reassembly/main.c
+    :language: c
+    :start-after: Each table entry holds information about packet fragmentation. 8<
+    :end-before: >8 End of holding packet fragmentation.
+    :dedent: 1
 
 Mempools Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -172,22 +152,11 @@ can be stored inside Fragment Table waiting for remaining fragments.
 To keep mempool size under reasonable limits and to avoid situation when one RX queue can starve other queues,
 each RX queue uses its own mempool.
 
-.. code-block:: c
-
-    nb_mbuf = RTE_MAX(max_flow_num, 2UL * MAX_PKT_BURST) * RTE_LIBRTE_IP_FRAG_MAX_FRAGS;
-    nb_mbuf *= (port_conf.rxmode.max_rx_pkt_len + BUF_SIZE - 1) / BUF_SIZE;
-    nb_mbuf *= 2; /* ipv4 and ipv6 */
-    nb_mbuf += RTE_TEST_RX_DESC_DEFAULT + RTE_TEST_TX_DESC_DEFAULT;
-    nb_mbuf = RTE_MAX(nb_mbuf, (uint32_t)NB_MBUF);
-
-    snprintf(buf, sizeof(buf), "mbuf_pool_%u_%u", lcore, queue);
-
-    if ((rxq->pool = rte_mempool_create(buf, nb_mbuf, MBUF_SIZE, 0, sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init, NULL,
-        rte_pktmbuf_init, NULL, socket, MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET)) == NULL) {
-
-            RTE_LOG(ERR, IP_RSMBL, "mempool_create(%s) failed", buf);
-            return -1;
-    }
+.. literalinclude:: ../../../examples/ip_reassembly/main.c
+    :language: c
+    :start-after: mbufs stored int the gragment table. 8<
+    :end-before: >8 End of mbufs stored int the fragmentation table.
+    :dedent: 1
 
 Packet Reassembly and Forwarding
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

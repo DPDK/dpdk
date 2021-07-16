@@ -252,62 +252,20 @@ is within the structure of each device.
 The following code checks if the device supports the specified cipher algorithm
 (similar for the authentication algorithm):
 
-.. code-block:: c
-
-   /* Check if device supports cipher algo */
-   i = 0;
-   opt_cipher_algo = options->cipher_xform.cipher.algo;
-   cap = &dev_info.capabilities[i];
-   while (cap->op != RTE_CRYPTO_OP_TYPE_UNDEFINED) {
-           cap_cipher_algo = cap->sym.cipher.algo;
-           if (cap->sym.xform_type ==
-                           RTE_CRYPTO_SYM_XFORM_CIPHER) {
-                   if (cap_cipher_algo == opt_cipher_algo) {
-                           if (check_type(options, &dev_info) == 0)
-                                   break;
-                   }
-           }
-           cap = &dev_info.capabilities[++i];
-   }
+.. literalinclude:: ../../../examples/l2fwd-crypto/main.c
+    :language: c
+    :start-after: Check if device supports cipher algo. 8<
+    :end-before: >8 End of check if device supports cipher algo.
+    :dedent: 2
 
 If a capable crypto device is found, key sizes are checked to see if they are supported
 (cipher key and IV for the ciphering):
 
-.. code-block:: c
-
-   /*
-    * Check if length of provided cipher key is supported
-    * by the algorithm chosen.
-    */
-   if (options->ckey_param) {
-           if (check_supported_size(
-                           options->cipher_xform.cipher.key.length,
-                           cap->sym.cipher.key_size.min,
-                           cap->sym.cipher.key_size.max,
-                           cap->sym.cipher.key_size.increment)
-                                   != 0) {
-                   printf("Unsupported cipher key length\n");
-                   return -1;
-           }
-   /*
-    * Check if length of the cipher key to be randomly generated
-    * is supported by the algorithm chosen.
-    */
-   } else if (options->ckey_random_size != -1) {
-           if (check_supported_size(options->ckey_random_size,
-                           cap->sym.cipher.key_size.min,
-                           cap->sym.cipher.key_size.max,
-                           cap->sym.cipher.key_size.increment)
-                                   != 0) {
-                   printf("Unsupported cipher key length\n");
-                   return -1;
-           }
-           options->cipher_xform.cipher.key.length =
-                                   options->ckey_random_size;
-   /* No size provided, use minimum size. */
-   } else
-           options->cipher_xform.cipher.key.length =
-                           cap->sym.cipher.key_size.min;
+.. literalinclude:: ../../../examples/l2fwd-crypto/main.c
+    :language: c
+    :start-after: Check if capable cipher is supported. 8<
+    :end-before: >8 End of checking if cipher is supported.
+    :dedent: 2
 
 After all the checks, the device is configured and it is added to the
 crypto device list.
@@ -325,48 +283,10 @@ pointers to the keys, lengths... etc.
 
 This session is created and is later attached to the crypto operation:
 
-.. code-block:: c
-
-   static struct rte_cryptodev_sym_session *
-   initialize_crypto_session(struct l2fwd_crypto_options *options,
-                   uint8_t cdev_id)
-   {
-           struct rte_crypto_sym_xform *first_xform;
-           struct rte_cryptodev_sym_session *session;
-           uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
-           struct rte_mempool *sess_mp = session_pool_socket[socket_id];
-
-
-           if (options->xform_chain == L2FWD_CRYPTO_AEAD) {
-                   first_xform = &options->aead_xform;
-           } else if (options->xform_chain == L2FWD_CRYPTO_CIPHER_HASH) {
-                   first_xform = &options->cipher_xform;
-                   first_xform->next = &options->auth_xform;
-           } else if (options->xform_chain == L2FWD_CRYPTO_HASH_CIPHER) {
-                   first_xform = &options->auth_xform;
-                   first_xform->next = &options->cipher_xform;
-           } else if (options->xform_chain == L2FWD_CRYPTO_CIPHER_ONLY) {
-                   first_xform = &options->cipher_xform;
-           } else {
-                   first_xform = &options->auth_xform;
-           }
-
-           session = rte_cryptodev_sym_session_create(sess_mp);
-
-           if (session == NULL)
-                   return NULL;
-
-          if (rte_cryptodev_sym_session_init(cdev_id, session,
-                                first_xform, sess_mp) < 0)
-                   return NULL;
-
-          return session;
-   }
-
-   ...
-
-   port_cparams[i].session = initialize_crypto_session(options,
-                                port_cparams[i].dev_id);
+.. literalinclude:: ../../../examples/l2fwd-crypto/main.c
+    :language: c
+    :start-after: Session is created and is later attached to the crypto operation. 8<
+    :end-before: >8 End of creation of session.
 
 Crypto operation creation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -374,24 +294,11 @@ Crypto operation creation
 Given N packets received from a RX PORT, N crypto operations are allocated
 and filled:
 
-.. code-block:: c
-
-   if (nb_rx) {
-   /*
-    * If we can't allocate a crypto_ops, then drop
-    * the rest of the burst and dequeue and
-    * process the packets to free offload structs
-    */
-   if (rte_crypto_op_bulk_alloc(
-                   l2fwd_crypto_op_pool,
-                   RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-                   ops_burst, nb_rx) !=
-                                   nb_rx) {
-           for (j = 0; j < nb_rx; j++)
-                   rte_pktmbuf_free(pkts_burst[i]);
-
-           nb_rx = 0;
-   }
+.. literalinclude:: ../../../examples/l2fwd-crypto/main.c
+    :language: c
+    :start-after: Allocate and fillcrypto operations. 8<
+    :end-before: >8 End of crypto operation allocated and filled.
+    :dedent: 3
 
 After filling the crypto operation (including session attachment),
 the mbuf which will be transformed is attached to it::
@@ -409,79 +316,22 @@ Before doing so, for performance reasons, the operation stays in a buffer.
 When the buffer has enough operations (MAX_PKT_BURST), they are enqueued in the device,
 which will perform the operation at that moment:
 
-.. code-block:: c
+.. literalinclude:: ../../../examples/l2fwd-crypto/main.c
+    :language: c
+    :start-after: Crypto enqueue. 8<
+    :end-before: >8 End of crypto enqueue.
 
-   static int
-   l2fwd_crypto_enqueue(struct rte_crypto_op *op,
-                   struct l2fwd_crypto_params *cparams)
-   {
-           unsigned lcore_id, len;
-           struct lcore_queue_conf *qconf;
-
-           lcore_id = rte_lcore_id();
-
-           qconf = &lcore_queue_conf[lcore_id];
-           len = qconf->op_buf[cparams->dev_id].len;
-           qconf->op_buf[cparams->dev_id].buffer[len] = op;
-           len++;
-
-           /* enough ops to be sent */
-           if (len == MAX_PKT_BURST) {
-                   l2fwd_crypto_send_burst(qconf, MAX_PKT_BURST, cparams);
-                   len = 0;
-           }
-
-           qconf->op_buf[cparams->dev_id].len = len;
-           return 0;
-   }
-
-   ...
-
-   static int
-   l2fwd_crypto_send_burst(struct lcore_queue_conf *qconf, unsigned n,
-                   struct l2fwd_crypto_params *cparams)
-   {
-           struct rte_crypto_op **op_buffer;
-           unsigned ret;
-
-           op_buffer = (struct rte_crypto_op **)
-                           qconf->op_buf[cparams->dev_id].buffer;
-
-           ret = rte_cryptodev_enqueue_burst(cparams->dev_id,
-                           cparams->qp_id, op_buffer, (uint16_t) n);
-
-           crypto_statistics[cparams->dev_id].enqueued += ret;
-           if (unlikely(ret < n)) {
-                   crypto_statistics[cparams->dev_id].errors += (n - ret);
-                   do {
-                           rte_pktmbuf_free(op_buffer[ret]->sym->m_src);
-                           rte_crypto_op_free(op_buffer[ret]);
-                   } while (++ret < n);
-           }
-
-           return 0;
-   }
+.. literalinclude:: ../../../examples/l2fwd-crypto/main.c
+    :language: c
+    :start-after: l2fwd_crypto_send_burst 8<
+    :end-before: >8 End of l2fwd_crypto_send_burst.
 
 After this, the operations are dequeued from the device, and the transformed mbuf
 is extracted from the operation. Then, the operation is freed and the mbuf is
 forwarded as it is done in the L2 forwarding application.
 
-.. code-block:: c
-
-   /* Dequeue packets from Crypto device */
-   do {
-           nb_rx = rte_cryptodev_dequeue_burst(
-                           cparams->dev_id, cparams->qp_id,
-                           ops_burst, MAX_PKT_BURST);
-
-           crypto_statistics[cparams->dev_id].dequeued +=
-                           nb_rx;
-
-           /* Forward crypto'd packets */
-           for (j = 0; j < nb_rx; j++) {
-                   m = ops_burst[j]->sym->m_src;
-
-                   rte_crypto_op_free(ops_burst[j]);
-                   l2fwd_simple_forward(m, portid);
-           }
-   } while (nb_rx == MAX_PKT_BURST);
+.. literalinclude:: ../../../examples/l2fwd-crypto/main.c
+    :language: c
+    :start-after: Dequeue packets from Crypto device. 8<
+    :end-before: >8 End of dequeue packets from crypto device.
+    :dedent: 3

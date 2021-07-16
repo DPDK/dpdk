@@ -266,48 +266,10 @@ LPM Initialization
 
 The LPM object is created and loaded with the pre-configured entries read from a global array.
 
-.. code-block:: c
-
-    #if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
-
-    static void
-    setup_lpm(int socketid)
-    {
-        unsigned i;
-        int ret;
-        char s[64];
-
-        /* create the LPM table */
-
-        snprintf(s, sizeof(s), "IPV4_L3FWD_LPM_%d", socketid);
-
-        ipv4_l3fwd_lookup_struct[socketid] = rte_lpm_create(s, socketid, IPV4_L3FWD_LPM_MAX_RULES, 0);
-
-        if (ipv4_l3fwd_lookup_struct[socketid] == NULL)
-            rte_exit(EXIT_FAILURE, "Unable to create the l3fwd LPM table"
-                " on socket %d\n", socketid);
-
-        /* populate the LPM table */
-
-        for (i = 0; i < IPV4_L3FWD_NUM_ROUTES; i++) {
-            /* skip unused ports */
-
-            if ((1 << ipv4_l3fwd_route_array[i].if_out & enabled_port_mask) == 0)
-                continue;
-
-            ret = rte_lpm_add(ipv4_l3fwd_lookup_struct[socketid], ipv4_l3fwd_route_array[i].ip,
-           	                    ipv4_l3fwd_route_array[i].depth, ipv4_l3fwd_route_array[i].if_out);
-
-            if (ret < 0) {
-                rte_exit(EXIT_FAILURE, "Unable to add entry %u to the "
-                        "l3fwd LPM table on socket %d\n", i, socketid);
-            }
-
-            printf("LPM: Adding route 0x%08x / %d (%d)\n",
-                (unsigned)ipv4_l3fwd_route_array[i].ip, ipv4_l3fwd_route_array[i].depth, ipv4_l3fwd_route_array[i].if_out);
-        }
-    }
-    #endif
+.. literalinclude:: ../../../examples/l3fwd/l3fwd_em.c
+    :language: c
+    :start-after: Initialize exact match (hash) parameters. 8<
+    :end-before: >8 End of initialization of hash parameters.
 
 FIB Initialization
 ~~~~~~~~~~~~~~~~~~
@@ -319,8 +281,8 @@ the full setup function including the IPv6 setup can be seen in the app code.
 
 .. literalinclude:: ../../../examples/l3fwd/l3fwd_fib.c
    :language: c
-   :start-after: Function to setup fib.
-   :end-before: Create the fib IPv6 table.
+   :start-after: Function to setup fib. 8<
+   :end-before: >8 End of setup fib.
 
 Packet Forwarding for Hash-based Lookups
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -333,28 +295,10 @@ and the packet forwarding decision (that is, the identification of the output in
 for hash-based lookups is done by the  get_ipv4_dst_port() or get_ipv6_dst_port() function.
 The get_ipv4_dst_port() function is shown below:
 
-.. code-block:: c
-
-    static inline uint8_t
-    get_ipv4_dst_port(void *ipv4_hdr, uint16_t portid, lookup_struct_t *ipv4_l3fwd_lookup_struct)
-    {
-        int ret = 0;
-        union ipv4_5tuple_host key;
-
-        ipv4_hdr = (uint8_t *)ipv4_hdr + offsetof(struct rte_ipv4_hdr, time_to_live);
-
-        m128i data = _mm_loadu_si128(( m128i*)(ipv4_hdr));
-
-        /* Get 5 tuple: dst port, src port, dst IP address, src IP address and protocol */
-
-        key.xmm = _mm_and_si128(data, mask0);
-
-        /* Find destination port */
-
-        ret = rte_hash_lookup(ipv4_l3fwd_lookup_struct, (const void *)&key);
-
-        return (uint8_t)((ret < 0)? portid : ipv4_l3fwd_out_if[ret]);
-    }
+.. literalinclude:: ../../../examples/l3fwd/l3fwd_em.c
+   :language: c
+   :start-after: Performing hash-based lookups. 8<
+   :end-before: >8 End of performing hash-based lookups.
 
 The get_ipv6_dst_port() function is similar to the get_ipv4_dst_port() function.
 
@@ -402,15 +346,10 @@ For each input packet, the packet forwarding operation is done by the l3fwd_simp
 but the packet forwarding decision (that is, the identification of the output interface for the packet)
 for LPM-based lookups is done by the get_ipv4_dst_port() function below:
 
-.. code-block:: c
-
-    static inline uint16_t
-    get_ipv4_dst_port(struct rte_ipv4_hdr *ipv4_hdr, uint16_t portid, lookup_struct_t *ipv4_l3fwd_lookup_struct)
-    {
-        uint8_t next_hop;
-
-        return ((rte_lpm_lookup(ipv4_l3fwd_lookup_struct, rte_be_to_cpu_32(ipv4_hdr->dst_addr), &next_hop) == 0)? next_hop : portid);
-    }
+.. literalinclude:: ../../../examples/l3fwd/l3fwd_lpm.c
+   :language: c
+   :start-after: Performing LPM-based lookups. 8<
+   :end-before: >8 End of performing LPM-based lookups.
 
 Packet Forwarding for FIB-based Lookups
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

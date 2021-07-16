@@ -189,6 +189,7 @@ struct l3fwd_ipv4_route {
 	uint8_t  if_out;
 };
 
+/* Default l3fwd_ipv4_route_array table. 8< */
 struct l3fwd_ipv4_route l3fwd_ipv4_route_array[] = {
 		{RTE_IPV4(100,10,0,0), 16, 0},
 		{RTE_IPV4(100,20,0,0), 16, 1},
@@ -199,6 +200,7 @@ struct l3fwd_ipv4_route l3fwd_ipv4_route_array[] = {
 		{RTE_IPV4(100,70,0,0), 16, 6},
 		{RTE_IPV4(100,80,0,0), 16, 7},
 };
+/* >8 End of default l3fwd_ipv4_route_array table. */
 
 /*
  * IPv6 forwarding table
@@ -210,6 +212,7 @@ struct l3fwd_ipv6_route {
 	uint8_t if_out;
 };
 
+/* Default l3fwd_ipv6_route_array table. 8< */
 static struct l3fwd_ipv6_route l3fwd_ipv6_route_array[] = {
 	{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 0},
 	{{2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 1},
@@ -220,6 +223,7 @@ static struct l3fwd_ipv6_route l3fwd_ipv6_route_array[] = {
 	{{7,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 6},
 	{{8,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 7},
 };
+/* >8 End of default l3fwd_ipv6_route_array table. */
 
 #define LPM_MAX_RULES         1024
 #define LPM6_MAX_RULES         1024
@@ -856,6 +860,7 @@ setup_queue_tbl(struct rx_queue *rxq, uint32_t lcore, uint32_t queue)
 	if (socket == SOCKET_ID_ANY)
 		socket = 0;
 
+	/* Each table entry holds information about packet fragmentation. 8< */
 	frag_cycles = (rte_get_tsc_hz() + MS_PER_S - 1) / MS_PER_S *
 		max_flow_ttl;
 
@@ -867,6 +872,7 @@ setup_queue_tbl(struct rx_queue *rxq, uint32_t lcore, uint32_t queue)
 			max_flow_num, lcore, queue);
 		return -1;
 	}
+	/* >8 End of holding packet fragmentation. */
 
 	/*
 	 * At any given moment up to <max_flow_num * (MAX_FRAG_NUM)>
@@ -874,6 +880,7 @@ setup_queue_tbl(struct rx_queue *rxq, uint32_t lcore, uint32_t queue)
 	 * Plus, each TX queue can hold up to <max_flow_num> packets.
 	 */
 
+	/* mbufs stored int the gragment table. 8< */
 	nb_mbuf = RTE_MAX(max_flow_num, 2UL * MAX_PKT_BURST) * MAX_FRAG_NUM;
 	nb_mbuf *= (port_conf.rxmode.max_rx_pkt_len + BUF_SIZE - 1) / BUF_SIZE;
 	nb_mbuf *= 2; /* ipv4 and ipv6 */
@@ -890,6 +897,7 @@ setup_queue_tbl(struct rx_queue *rxq, uint32_t lcore, uint32_t queue)
 			"rte_pktmbuf_pool_create(%s) failed", buf);
 		return -1;
 	}
+	/* >8 End of mbufs stored int the fragmentation table. */
 
 	return 0;
 }

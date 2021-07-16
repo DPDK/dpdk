@@ -563,6 +563,8 @@ parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data)
 /* This function processes PTP packets, implementing slave PTP IEEE1588 L2
  * functionality.
  */
+
+/* Parse ptp frames. 8< */
 static void
 parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
 	struct ptp_header *ptp_hdr;
@@ -594,6 +596,7 @@ parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
 		}
 	}
 }
+/* >8 End of function processes PTP packets. */
 
 /*
  * The lcore main. This is the main thread that does the work, reading from an
@@ -612,7 +615,7 @@ lcore_main(void)
 	/* Run until the application is quit or killed. */
 
 	while (1) {
-		/* Read packet from RX queues. */
+		/* Read packet from RX queues. 8< */
 		for (portid = 0; portid < ptp_enabled_port_nb; portid++) {
 
 			portid = ptp_enabled_ports[portid];
@@ -621,11 +624,14 @@ lcore_main(void)
 			if (likely(nb_rx == 0))
 				continue;
 
+			/* Packet is parsed to determine which type. 8< */
 			if (m->ol_flags & PKT_RX_IEEE1588_PTP)
 				parse_ptp_frames(portid, m);
+			/* >8 End of packet is parsed to determine which type. */
 
 			rte_pktmbuf_free(m);
 		}
+		/* >8 End of read packets from RX queues. */
 	}
 }
 
@@ -732,32 +738,36 @@ main(int argc, char *argv[])
 
 	uint16_t portid;
 
-	/* Initialize the Environment Abstraction Layer (EAL). */
+	/* Initialize the Environment Abstraction Layer (EAL). 8< */
 	int ret = rte_eal_init(argc, argv);
 
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
+	/* >8 End of initialization of EAL. */
 
 	memset(&ptp_data, '\0', sizeof(struct ptpv2_data_slave_ordinary));
 
+	/* Parse specific arguments. 8< */
 	argc -= ret;
 	argv += ret;
 
 	ret = ptp_parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Error with PTP initialization\n");
+	/* >8 End of parsing specific arguments. */
 
 	/* Check that there is an even number of ports to send/receive on. */
 	nb_ports = rte_eth_dev_count_avail();
 
-	/* Creates a new mempool in memory to hold the mbufs. */
+	/* Creates a new mempool in memory to hold the mbufs. 8< */
 	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS * nb_ports,
 		MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
+	/* >8 End of a new mempool in memory to hold the mbufs. */
 
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
-	/* Initialize all ports. */
+	/* Initialize all ports. 8< */
 	RTE_ETH_FOREACH_DEV(portid) {
 		if ((ptp_enabled_port_mask & (1 << portid)) != 0) {
 			if (port_init(portid, mbuf_pool) == 0) {
@@ -771,6 +781,7 @@ main(int argc, char *argv[])
 		} else
 			printf("Skipping disabled port %u\n", portid);
 	}
+	/* >8 End of initialization of all ports. */
 
 	if (ptp_enabled_port_nb == 0) {
 		rte_exit(EXIT_FAILURE,

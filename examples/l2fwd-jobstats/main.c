@@ -67,6 +67,7 @@ static unsigned int l2fwd_rx_queue_per_lcore = 1;
 
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
+/* List of queues to be polled for given lcore. 8< */
 struct lcore_queue_conf {
 	unsigned n_rx_port;
 	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
@@ -83,6 +84,7 @@ struct lcore_queue_conf {
 	rte_atomic16_t stats_read_pending;
 	rte_spinlock_t lock;
 } __rte_cache_aligned;
+/* >8 End of list of queues to be polled for given lcore. */
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
 struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
@@ -335,6 +337,7 @@ show_stats_cb(__rte_unused void *param)
 	rte_eal_alarm_set(timer_period * US_PER_S, show_stats_cb, NULL);
 }
 
+/* Start of l2fwd_simple_forward. 8< */
 static void
 l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 {
@@ -359,6 +362,7 @@ l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 	if (sent)
 		port_statistics[dst_port].tx += sent;
 }
+/* >8 End of l2fwd_simple_forward. */
 
 static void
 l2fwd_job_update_cb(struct rte_jobstats *job, int64_t result)
@@ -395,6 +399,7 @@ l2fwd_fwd_job(__rte_unused struct rte_timer *timer, void *arg)
 	/* Call rx burst 2 times. This allow rte_jobstats logic to see if this
 	 * function must be called more frequently. */
 
+	/* Call rx burst 2 times. 8< */
 	total_nb_rx = rte_eth_rx_burst(portid, 0, pkts_burst,
 			MAX_PKT_BURST);
 
@@ -403,7 +408,9 @@ l2fwd_fwd_job(__rte_unused struct rte_timer *timer, void *arg)
 		rte_prefetch0(rte_pktmbuf_mtod(m, void *));
 		l2fwd_simple_forward(m, portid);
 	}
+	/* >8 End of call rx burst 2 times. */
 
+	/* Read second try. 8< */
 	if (total_nb_rx == MAX_PKT_BURST) {
 		const uint16_t nb_rx = rte_eth_rx_burst(portid, 0, pkts_burst,
 				MAX_PKT_BURST);
@@ -415,16 +422,19 @@ l2fwd_fwd_job(__rte_unused struct rte_timer *timer, void *arg)
 			l2fwd_simple_forward(m, portid);
 		}
 	}
+	/* >8 End of read second try. */
 
 	port_statistics[portid].rx += total_nb_rx;
 
-	/* Adjust period time in which we are running here. */
+	/* Adjust period time in which we are running here. 8< */
 	if (rte_jobstats_finish(job, total_nb_rx) != 0) {
 		rte_timer_reset(&qconf->rx_timers[port_idx], job->period, PERIODICAL,
 				lcore_id, l2fwd_fwd_job, arg);
 	}
+	/* >8 End of adjust period time in which we are running. */
 }
 
+/* Draining TX queue of each port. 8< */
 static void
 l2fwd_flush_job(__rte_unused struct rte_timer *timer, __rte_unused void *arg)
 {
@@ -463,6 +473,7 @@ l2fwd_flush_job(__rte_unused struct rte_timer *timer, __rte_unused void *arg)
 	 * in which it was called. */
 	rte_jobstats_finish(&qconf->flush_job, qconf->flush_job.target);
 }
+/* >8 End of draining TX queue of each port. */
 
 /* main processing loop */
 static void
@@ -493,6 +504,7 @@ l2fwd_main_loop(void)
 
 	rte_jobstats_init(&qconf->idle_job, "idle", 0, 0, 0, 0);
 
+	/* Minimize impact of stats reading. 8< */
 	for (;;) {
 		rte_spinlock_lock(&qconf->lock);
 
@@ -535,6 +547,7 @@ l2fwd_main_loop(void)
 		rte_spinlock_unlock(&qconf->lock);
 		rte_pause();
 	}
+	/* >8 End of minimize impact of stats reading. */
 }
 
 static int
@@ -749,7 +762,7 @@ main(int argc, char **argv)
 	uint16_t portid, last_port;
 	uint8_t i;
 
-	/* init EAL */
+	/* Init EAL. 8< */
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
@@ -760,24 +773,25 @@ main(int argc, char **argv)
 	ret = l2fwd_parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid L2FWD arguments\n");
+		/* >8 End of init EAL. */
 
 	rte_timer_subsystem_init();
 
 	/* fetch default timer frequency. */
 	hz = rte_get_timer_hz();
 
-	/* create the mbuf pool */
+	/* Create the mbuf pool. 8< */
 	l2fwd_pktmbuf_pool =
 		rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF, 32,
 			0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (l2fwd_pktmbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
-
+	/* >8 End of creation of mbuf pool. */
 	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
-	/* reset l2fwd_dst_ports */
+	/* Reset l2fwd_dst_ports. 8< */
 	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)
 		l2fwd_dst_ports[portid] = 0;
 	last_port = 0;
@@ -798,6 +812,7 @@ main(int argc, char **argv)
 
 		nb_ports_in_mask++;
 	}
+	/* >8 End of reset l2fwd_dst_ports. */
 	if (nb_ports_in_mask % 2) {
 		printf("Notice: odd number of ports in portmask.\n");
 		l2fwd_dst_ports[last_port] = last_port;
@@ -857,10 +872,12 @@ main(int argc, char **argv)
 		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 			local_port_conf.txmode.offloads |=
 				DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+		/* Configure the RX and TX queues. 8< */
 		ret = rte_eth_dev_configure(portid, 1, 1, &local_port_conf);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n",
 				  ret, portid);
+		/* >8 End of configuring the RX and TX queues. */
 
 		ret = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &nb_rxd,
 						       &nb_txd);
@@ -880,6 +897,7 @@ main(int argc, char **argv)
 		fflush(stdout);
 		rxq_conf = dev_info.default_rxconf;
 		rxq_conf.offloads = local_port_conf.rxmode.offloads;
+		/* RX queue initialization. 8< */
 		ret = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
 					     rte_eth_dev_socket_id(portid),
 					     &rxq_conf,
@@ -887,8 +905,9 @@ main(int argc, char **argv)
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup:err=%d, port=%u\n",
 				  ret, portid);
+		/* >8 End of RX queue initialization. */
 
-		/* init one TX queue on each port */
+		/* Init one TX queue on each port. 8< */
 		txq_conf = dev_info.default_txconf;
 		txq_conf.offloads = local_port_conf.txmode.offloads;
 		fflush(stdout);
@@ -899,6 +918,7 @@ main(int argc, char **argv)
 			rte_exit(EXIT_FAILURE,
 			"rte_eth_tx_queue_setup:err=%d, port=%u\n",
 				ret, portid);
+		/* >8 End of init one TX queue on each port. */
 
 		/* Initialize TX buffers */
 		tx_buffer[portid] = rte_zmalloc_socket("tx_buffer",
@@ -971,9 +991,11 @@ main(int argc, char **argv)
 				lcore_id);
 			continue;
 		}
-		/* Add flush job.
-		 * Set fixed period by setting min = max = initial period. Set target to
-		 * zero as it is irrelevant for this job. */
+		/* Add flush job. 8< */
+
+		/* Set fixed period by setting min = max = initial period. Set target to
+		 * zero as it is irrelevant for this job.
+		 */
 		rte_jobstats_init(&qconf->flush_job, "flush", drain_tsc, drain_tsc,
 				drain_tsc, 0);
 
@@ -985,6 +1007,7 @@ main(int argc, char **argv)
 			rte_exit(1, "Failed to reset flush job timer for lcore %u: %s",
 					lcore_id, rte_strerror(-ret));
 		}
+		/* >8 End of add flush job. */
 
 		for (i = 0; i < qconf->n_rx_port; i++) {
 			struct rte_jobstats *job = &qconf->port_fwd_jobs[i];
@@ -993,9 +1016,11 @@ main(int argc, char **argv)
 			printf("Setting forward job for port %u\n", portid);
 
 			snprintf(name, RTE_DIM(name), "port %u fwd", portid);
-			/* Setup forward job.
-			 * Set min, max and initial period. Set target to MAX_PKT_BURST as
-			 * this is desired optimal RX/TX burst size. */
+			/* Setup forward job. 8< */
+
+			/* Set min, max and initial period. Set target to MAX_PKT_BURST as
+			 * this is desired optimal RX/TX burst size.
+			 */
 			rte_jobstats_init(job, name, 0, drain_tsc, 0, MAX_PKT_BURST);
 			rte_jobstats_set_update_period_function(job, l2fwd_job_update_cb);
 
@@ -1007,6 +1032,7 @@ main(int argc, char **argv)
 				rte_exit(1, "Failed to reset lcore %u port %u job timer: %s",
 						lcore_id, qconf->rx_port_list[i], rte_strerror(-ret));
 			}
+			/* >8 End of forward job. */
 		}
 	}
 

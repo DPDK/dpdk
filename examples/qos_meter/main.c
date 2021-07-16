@@ -14,10 +14,7 @@
 #include <rte_mbuf.h>
 #include <rte_meter.h>
 
-/*
- * Traffic metering configuration
- *
- */
+/* Traffic metering configuration. 8< */
 #define APP_MODE_FWD                    0
 #define APP_MODE_SRTCM_COLOR_BLIND      1
 #define APP_MODE_SRTCM_COLOR_AWARE      2
@@ -25,6 +22,7 @@
 #define APP_MODE_TRTCM_COLOR_AWARE      4
 
 #define APP_MODE	APP_MODE_SRTCM_COLOR_BLIND
+/* >8 End of traffic metering configuration. */
 
 
 #include "main.h"
@@ -88,6 +86,7 @@ static uint16_t port_tx;
 static struct rte_mbuf *pkts_rx[PKT_RX_BURST_MAX];
 struct rte_eth_dev_tx_buffer *tx_buffer;
 
+/* Traffic meter parameters are configured in the application. 8< */
 struct rte_meter_srtcm_params app_srtcm_params = {
 	.cir = 1000000 * 46,
 	.cbs = 2048,
@@ -102,6 +101,7 @@ struct rte_meter_trtcm_params app_trtcm_params = {
 	.cbs = 2048,
 	.pbs = 2048
 };
+/* >8 End of traffic meter parameters are configured in the application. */
 
 struct rte_meter_trtcm_profile app_trtcm_profile;
 

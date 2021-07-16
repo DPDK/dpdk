@@ -227,7 +227,7 @@ l2fwd_main_loop(void)
 	uint64_t tsc_lifetime = (rand()&0x07) * rte_get_tsc_hz();
 
 	while (!terminate_signal_received) {
-		/* Keepalive heartbeat */
+		/* Keepalive heartbeat. 8< */
 		rte_keepalive_mark_alive(rte_global_keepalive_info);
 
 		cur_tsc = rte_rdtsc();
@@ -238,6 +238,7 @@ l2fwd_main_loop(void)
 		 */
 		if (check_period > 0 && cur_tsc - tsc_initial > tsc_lifetime)
 			break;
+		/* >8 End of keepalive heartbeat. */
 
 		/*
 		 * TX burst queue drain
@@ -760,10 +761,12 @@ main(int argc, char **argv)
 		if (ka_shm == NULL)
 			rte_exit(EXIT_FAILURE,
 				"rte_keepalive_shm_create() failed");
+		/* Initialize keepalive functionality. 8< */
 		rte_global_keepalive_info =
 			rte_keepalive_create(&dead_core, ka_shm);
 		if (rte_global_keepalive_info == NULL)
 			rte_exit(EXIT_FAILURE, "init_keep_alive() failed");
+		/* >8 End of initializing keepalive functionality. */
 		rte_keepalive_register_relay_callback(rte_global_keepalive_info,
 			relay_core_state, ka_shm);
 		rte_timer_init(&hb_timer);
@@ -778,6 +781,7 @@ main(int argc, char **argv)
 			rte_exit(EXIT_FAILURE, "Keepalive setup failure.\n");
 	}
 	if (timer_period > 0) {
+		/* Issues the pings keepalive_dispatch_pings(). 8< */
 		if (rte_timer_reset(&stats_timer,
 				(timer_period * rte_get_timer_hz()) / 1000,
 				PERIODICAL,
@@ -785,6 +789,7 @@ main(int argc, char **argv)
 				&print_stats, NULL
 				) != 0 )
 			rte_exit(EXIT_FAILURE, "Stats setup failure.\n");
+		/* >8 End of issuing the pings keepalive_dispatch_pings(). */
 	}
 	/* launch per-lcore init on every worker lcore */
 	RTE_LCORE_FOREACH_WORKER(lcore_id) {

@@ -176,6 +176,7 @@ main(int argc, char **argv)
 	for (i = 0; i < NUM_SERVICES; i++) {
 		services[i].callback_userdata = 0;
 		uint32_t id;
+		/* Register a service as an application. 8< */
 		ret = rte_service_component_register(&services[i], &id);
 		if (ret)
 			rte_exit(-1, "service register() failed");
@@ -198,6 +199,7 @@ main(int argc, char **argv)
 		ret = rte_service_runstate_set(id, 1);
 		if (ret)
 			return -ENOEXEC;
+		/* >8 End of registering a service as an application. */
 	}
 
 	i = 0;

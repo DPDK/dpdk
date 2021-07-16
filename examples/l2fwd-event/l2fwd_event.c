@@ -66,6 +66,7 @@ l2fwd_event_service_setup(struct l2fwd_resources *rsrc)
 	uint32_t service_id, caps;
 	int ret, i;
 
+	/* Running eventdev scheduler service on service core. 8< */
 	rte_event_dev_info_get(evt_rsrc->event_d_id, &evdev_info);
 	if (!(evdev_info.event_dev_cap & RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED)) {
 		ret = rte_event_dev_service_id_get(evt_rsrc->event_d_id,
@@ -74,7 +75,9 @@ l2fwd_event_service_setup(struct l2fwd_resources *rsrc)
 			rte_panic("Error in starting eventdev service\n");
 		l2fwd_event_service_enable(service_id);
 	}
+	/* >8 End of running eventdev scheduler service on service core. */
 
+	/* Gets service ID for RX/TX adapters. 8< */
 	for (i = 0; i < evt_rsrc->rx_adptr.nb_rx_adptr; i++) {
 		ret = rte_event_eth_rx_adapter_caps_get(evt_rsrc->event_d_id,
 				evt_rsrc->rx_adptr.rx_adptr[i], &caps);
@@ -104,6 +107,7 @@ l2fwd_event_service_setup(struct l2fwd_resources *rsrc)
 				  evt_rsrc->tx_adptr.tx_adptr[i]);
 		l2fwd_event_service_enable(service_id);
 	}
+	/* >8 End of get service ID for RX/TX adapters. */
 }
 
 static void
@@ -244,7 +248,7 @@ l2fwd_event_loop_burst(struct l2fwd_resources *rsrc,
 		rte_lcore_id());
 
 	while (!rsrc->force_quit) {
-		/* Read packet from eventdev */
+		/* Read packet from eventdev. 8< */
 		nb_rx = rte_event_dequeue_burst(event_d_id, port_id, ev,
 						deq_len, 0);
 		if (nb_rx == 0)
@@ -254,14 +258,17 @@ l2fwd_event_loop_burst(struct l2fwd_resources *rsrc,
 			l2fwd_event_fwd(rsrc, &ev[i], tx_q_id, timer_period,
 					flags);
 		}
+		/* >8 End of reading packets from eventdev. */
 
 		if (flags & L2FWD_EVENT_TX_ENQ) {
+			/* Forwarding to destination ports. 8< */
 			nb_tx = rte_event_enqueue_burst(event_d_id, port_id,
 							ev, nb_rx);
 			while (nb_tx < nb_rx && !rsrc->force_quit)
 				nb_tx += rte_event_enqueue_burst(event_d_id,
 						port_id, ev + nb_tx,
 						nb_rx - nb_tx);
+			/* >8 End of forwarding to destination ports. */
 		}
 
 		if (flags & L2FWD_EVENT_TX_DIRECT) {

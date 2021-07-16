@@ -59,12 +59,15 @@ static struct{
 } parm_config;
 const char cb_port_delim[] = ":";
 
+/* Ethernet ports configured with default settings using struct. 8< */
 static const struct rte_eth_conf port_conf_default = {
 	.rxmode = {
 		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 	},
 };
+/* >8 End of configuration of Ethernet ports. */
 
+/* Creation of flow classifier object. 8< */
 struct flow_classifier {
 	struct rte_flow_classifier *cls;
 };
@@ -72,9 +75,11 @@ struct flow_classifier {
 struct flow_classifier_acl {
 	struct flow_classifier cls;
 } __rte_cache_aligned;
+/* >8 End of creation of flow classifier object. */
+
+/*  Creation of ACL table during initialization of application. 8< */
 
 /* ACL field definitions for IPv4 5 tuple rule */
-
 enum {
 	PROTO_FIELD_IPV4,
 	SRC_FIELD_IPV4,
@@ -146,14 +151,16 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 			offsetof(struct rte_tcp_hdr, dst_port),
 	},
 };
+/* >8 End of creation of ACL table. */
 
-/* flow classify data */
+/* Flow classify data. 8< */
 static int num_classify_rules;
 static struct rte_flow_classify_rule *rules[MAX_NUM_CLASSIFY];
 static struct rte_flow_classify_ipv4_5tuple_stats ntuple_stats;
 static struct rte_flow_classify_stats classify_stats = {
 		.stats = (void **)&ntuple_stats
 };
+/* >8 End of flow classify data. */
 
 /* parameters for rte_flow_classify_validate and
  * rte_flow_classify_table_entry_add functions
@@ -188,6 +195,8 @@ static struct rte_flow_attr attr;
  * Initializes a given port using global settings and with the RX buffers
  * coming from the mbuf_pool passed as a parameter.
  */
+
+/* Initializing port using global settings. 8< */
 static inline int
 port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 {
@@ -236,8 +245,9 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 			return retval;
 	}
 
-	/* Start the Ethernet port. */
+	/* Start the Ethernet port. 8< */
 	retval = rte_eth_dev_start(port);
+	/* >8 End of starting the Ethernet port. */
 	if (retval < 0)
 		return retval;
 
@@ -260,11 +270,14 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 
 	return 0;
 }
+/* >8 End of initializing a given port. */
 
 /*
  * The lcore main. This is the main thread that does the work, reading from
  * an input port classifying the packets and writing to an output port.
  */
+
+/* Classifying the packets. 8< */
 static __rte_noreturn void
 lcore_main(struct flow_classifier *cls_app)
 {
@@ -295,7 +308,7 @@ lcore_main(struct flow_classifier *cls_app)
 	printf("\nCore %u forwarding packets. ", rte_lcore_id());
 	printf("[Ctrl+C to quit]\n");
 
-	/* Run until the application is quit or killed. */
+	/* Run until the application is quit or killed. 8< */
 	for (;;) {
 		/*
 		 * Receive packets on a port, classify them and forward them
@@ -345,7 +358,9 @@ lcore_main(struct flow_classifier *cls_app)
 			}
 		}
 	}
+	/* >8 End of main loop. */
 }
+/* >8 End of lcore main. */
 
 /*
  * Parse IPv4 5 tuple rules file, ipv4_rules_file.txt.
@@ -655,6 +670,7 @@ add_classify_rule(struct rte_eth_ntuple_filter *ntuple_filter,
 	return 0;
 }
 
+/* Reads file and calls the add_classify_rule function. 8< */
 static int
 add_rules(const char *rule_path, struct flow_classifier *cls_app)
 {
@@ -702,6 +718,7 @@ add_rules(const char *rule_path, struct flow_classifier *cls_app)
 	fclose(fh);
 	return 0;
 }
+/* >8 End of add_rules. */
 
 /* display usage */
 static void
@@ -771,43 +788,47 @@ main(int argc, char *argv[])
 	struct rte_flow_classifier_params cls_params;
 	uint32_t size;
 
-	/* Initialize the Environment Abstraction Layer (EAL). */
+	/* Initialize the Environment Abstraction Layer (EAL). 8< */
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
+	/* >8 End of initialization of EAL. */
 
 	argc -= ret;
 	argv += ret;
 
-	/* parse application arguments (after the EAL ones) */
+	/* Parse application arguments (after the EAL ones). 8< */
 	ret = parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid flow_classify parameters\n");
+	/* >8 End of parse application arguments. */
 
 	/* Check that there is an even number of ports to send/receive on. */
 	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports < 2 || (nb_ports & 1))
 		rte_exit(EXIT_FAILURE, "Error: number of ports must be even\n");
 
-	/* Creates a new mempool in memory to hold the mbufs. */
+	/* Creates a new mempool in memory to hold the mbufs. 8< */
 	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS * nb_ports,
 		MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
+	/* >8 End of creation of new mempool in memory. */
 
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
-	/* Initialize all ports. */
+	/* Initialize all ports. 8< */
 	RTE_ETH_FOREACH_DEV(portid)
 		if (port_init(portid, mbuf_pool) != 0)
 			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu8 "\n",
 					portid);
+	/* >8 End of initialization of all ports. */
 
 	if (rte_lcore_count() > 1)
 		printf("\nWARNING: Too many lcores enabled. Only 1 used.\n");
 
 	socket_id = rte_eth_dev_socket_id(0);
 
-	/* Memory allocation */
+	/* Memory allocation. 8< */
 	size = RTE_CACHE_LINE_ROUNDUP(sizeof(struct flow_classifier_acl));
 	cls_app = rte_zmalloc(NULL, size, RTE_CACHE_LINE_SIZE);
 	if (cls_app == NULL)
@@ -839,16 +860,20 @@ main(int argc, char *argv[])
 		rte_free(cls_app);
 		rte_exit(EXIT_FAILURE, "Failed to create classifier table\n");
 	}
+	/* >8 End of initialization of table create params. */
 
 	/* read file of IPv4 5 tuple rules and initialize parameters
 	 * for rte_flow_classify_validate and rte_flow_classify_table_entry_add
 	 * API's.
 	 */
+
+	/* Read file of IPv4 tuple rules. 8< */
 	if (add_rules(parm_config.rule_ipv4_name, cls_app)) {
 		rte_flow_classifier_free(cls_app->cls);
 		rte_free(cls_app);
 		rte_exit(EXIT_FAILURE, "Failed to add rules\n");
 	}
+	/* >8 End of reading file of IPv4 5 tuple rules. */
 
 	/* Call lcore_main on the main core only. */
 	lcore_main(cls_app);

@@ -40,6 +40,7 @@
 static struct rte_lpm *ipv4_l3fwd_lpm_lookup_struct[NB_SOCKETS];
 static struct rte_lpm6 *ipv6_l3fwd_lpm_lookup_struct[NB_SOCKETS];
 
+/* Performing LPM-based lookups. 8< */
 static inline uint16_t
 lpm_get_ipv4_dst_port(const struct rte_ipv4_hdr *ipv4_hdr,
 		      uint16_t portid,
@@ -53,6 +54,7 @@ lpm_get_ipv4_dst_port(const struct rte_ipv4_hdr *ipv4_hdr,
 	else
 		return portid;
 }
+/* >8 End of performing LPM-based lookups. */
 
 static inline uint16_t
 lpm_get_ipv6_dst_port(const struct rte_ipv6_hdr *ipv6_hdr,

@@ -99,6 +99,8 @@ get_printable_mac_addr(uint16_t port)
  * thread in the server process, when the process is run with more
  * than one lcore enabled.
  */
+
+/* Display recorded statistics. 8< */
 static void
 do_stats_display(void)
 {
@@ -166,6 +168,7 @@ do_stats_display(void)
 
 	printf("\n");
 }
+/* >8 End of displaying the recorded statistics. */
 
 /*
  * The function called from each non-main lcore used by the process.
@@ -212,6 +215,8 @@ clear_stats(void)
  * send a burst of traffic to a node, assuming there are packets
  * available to be sent to this node
  */
+
+/* Flush rx queue. 8< */
 static void
 flush_rx_queue(uint16_t node)
 {
@@ -232,6 +237,7 @@ flush_rx_queue(uint16_t node)
 
 	cl_rx_buf[node].count = 0;
 }
+/* >8 End of sending a burst of traffic to a node. */
 
 /*
  * marks a packet down to be sent to a particular node process
@@ -245,8 +251,10 @@ enqueue_rx_packet(uint8_t node, struct rte_mbuf *buf)
 /*
  * This function takes a group of packets and routes them
  * individually to the node process. Very simply round-robins the packets
- * without checking any of the packet contents.
+ * without checking any of the packet contents. 8<
  */
+
+/* Processing packets. 8< */
 static void
 process_packets(uint32_t port_num __rte_unused, struct rte_mbuf *pkts[],
 		uint16_t rx_count, unsigned int socket_id)
@@ -288,6 +296,7 @@ process_packets(uint32_t port_num __rte_unused, struct rte_mbuf *pkts[],
 	for (i = 0; i < num_nodes; i++)
 		flush_rx_queue(i);
 }
+/* >8 End of process_packets. */
 
 /*
  * Function called by the main lcore of the DPDK process.

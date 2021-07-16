@@ -86,56 +86,29 @@ The main part of the code in the main() function relates to the initialization o
 To fully understand this code, it is recommended to study the chapters that related to the Poll Mode Driver in the
 *DPDK Programmer's Guide and the DPDK API Reference*.
 
-.. code-block:: c
-
-    /*
-     * Each logical core is assigned a dedicated TX queue on each port.
-     */
-
-    RTE_ETH_FOREACH_DEV(portid) {
-        /* skip ports that are not enabled */
-
-        if ((lsi_enabled_port_mask & (1 << portid)) == 0)
-            continue;
-
-        /* save the destination port id */
-
-        if (nb_ports_in_mask % 2) {
-            lsi_dst_ports[portid] = portid_last;
-            lsi_dst_ports[portid_last] = portid;
-        }
-        else
-            portid_last = portid;
-
-        nb_ports_in_mask++;
-
-        rte_eth_dev_info_get((uint8_t) portid, &dev_info);
-    }
+.. literalinclude:: ../../../examples/link_status_interrupt/main.c
+        :language: c
+        :start-after: Each logical core is assigned a dedicated TX queue on each port. 8<
+        :end-before: >8 End of assigning logical core.
+        :dedent: 1
 
 The next step is to configure the RX and TX queues.
 For each port, there is only one RX queue (only one lcore is able to poll a given port).
 The number of TX queues depends on the number of available lcores.
 The rte_eth_dev_configure() function is used to configure the number of queues for a port:
 
-.. code-block:: c
-
-    ret = rte_eth_dev_configure((uint8_t) portid, 1, 1, &port_conf);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n", ret, portid);
+.. literalinclude:: ../../../examples/link_status_interrupt/main.c
+        :language: c
+        :start-after: Configure RX and TX queues. 8<
+        :end-before: >8 End of configure RX and TX queues.
+        :dedent: 2
 
 The global configuration is stored in a static structure:
 
-.. code-block:: c
-
-    static const struct rte_eth_conf port_conf = {
-        .rxmode = {
-            .split_hdr_size = 0,
-        },
-        .txmode = {},
-        .intr_conf = {
-            .lsc = 1, /**< link status interrupt feature enabled */
-        },
-    };
+.. literalinclude:: ../../../examples/link_status_interrupt/main.c
+        :language: c
+        :start-after: Global configuration stored in a static structure. 8<
+        :end-before: >8 End of global configuration stored in a static structure.
 
 Configuring lsc to 0 (the default) disables the generation of any link status change interrupts in kernel space
 and no user space interrupt event is received.
@@ -151,30 +124,10 @@ Interrupt Callback Registration
 The application can register one or more callbacks to a specific port and interrupt event.
 An example callback function that has been written as indicated below.
 
-.. code-block:: c
-
-    static void
-    lsi_event_callback(uint16_t port_id, enum rte_eth_event_type type, void *param)
-    {
-        struct rte_eth_link link;
-        int ret;
-        char link_status[RTE_ETH_LINK_MAX_STR_LEN];
-
-        RTE_SET_USED(param);
-
-        printf("\n\nIn registered callback...\n");
-
-        printf("Event type: %s\n", type == RTE_ETH_EVENT_INTR_LSC ? "LSC interrupt" : "unknown event");
-
-        ret = rte_eth_link_get_nowait(port_id, &link);
-        if (ret < 0) {
-            printf("Failed to get port %d link status: %s\n\n",
-                   port_id, rte_strerror(-ret));
-        } else {
-            rte_eth_link_to_str(link_status, sizeof(link_status), &link);
-            printf("Port %d %s\n", port_id, link_status);
-        }
-    }
+.. literalinclude:: ../../../examples/link_status_interrupt/main.c
+        :language: c
+        :start-after: lsi_event_callback 8<
+        :end-before: >8 End of registering one or more callbacks.
 
 This function is called when a link status interrupt is present for the right port.
 The port_id indicates which port the interrupt applies to.
@@ -186,9 +139,11 @@ which is different from the main thread of its caller.
 
 The application registers the lsi_event_callback and a NULL parameter to the link status interrupt event on each port:
 
-.. code-block:: c
-
-    rte_eth_dev_callback_register((uint8_t)portid, RTE_ETH_EVENT_INTR_LSC, lsi_event_callback, NULL);
+.. literalinclude:: ../../../examples/link_status_interrupt/main.c
+        :language: c
+        :start-after: RTE callback register. 8<
+        :end-before: >8 End of registering lsi interrupt callback.
+        :dedent: 2
 
 This registration can be done only after calling the rte_eth_dev_configure() function and before calling any other function.
 If lsc is initialized with 0, the callback is never called since no interrupt event would ever be present.
@@ -203,38 +158,28 @@ For example, if the user specifies -q 4, the application is able to poll four po
 If there are 16 ports on the target (and if the portmask argument is -p ffff),
 the application will need four lcores to poll all the ports.
 
-.. code-block:: c
-
-    ret = rte_eth_rx_queue_setup((uint8_t) portid, 0, nb_rxd, SOCKET0, &rx_conf, lsi_pktmbuf_pool);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup: err=%d, port=%u\n", ret, portid);
+.. literalinclude:: ../../../examples/link_status_interrupt/main.c
+        :language: c
+        :start-after: RX queue initialization. 8<
+        :end-before: >8 End of RX queue initialization.
+        :dedent: 2
 
 The list of queues that must be polled for a given lcore is stored in a private structure called struct lcore_queue_conf.
 
-.. code-block:: c
-
-    struct lcore_queue_conf {
-        unsigned n_rx_port;
-        unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE]; unsigned tx_queue_id;
-        struct mbuf_table tx_mbufs[LSI_MAX_PORTS];
-    } rte_cache_aligned;
-
-    struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
+.. literalinclude:: ../../../examples/link_status_interrupt/main.c
+        :language: c
+        :start-after: List of queues must be polled for a give lcore. 8<
+        :end-before: >8 End of list of queues to be polled.
 
 The n_rx_port and rx_port_list[] fields are used in the main packet processing loop
 (see `Receive, Process and Transmit Packets`_).
 
 The global configuration for the RX queues is stored in a static structure:
 
-.. code-block:: c
-
-    static const struct rte_eth_rxconf rx_conf = {
-        .rx_thresh = {
-            .pthresh = RX_PTHRESH,
-            .hthresh = RX_HTHRESH,
-            .wthresh = RX_WTHRESH,
-        },
-    };
+.. literalinclude:: ../../../examples/link_status_interrupt/main.c
+        :language: c
+        :start-after: List of queues must be polled for a give lcore. 8<
+        :end-before: >8 End of list of queues to be polled.
 
 TX Queue Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -242,15 +187,11 @@ TX Queue Initialization
 Each lcore should be able to transmit on any port.
 For every port, a single TX queue is initialized.
 
-.. code-block:: c
-
-    /* init one TX queue logical core on each port */
-
-    fflush(stdout);
-
-    ret = rte_eth_tx_queue_setup(portid, 0, nb_txd, rte_eth_dev_socket_id(portid), &tx_conf);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: err=%d,port=%u\n", ret, (unsigned) portid);
+.. literalinclude:: ../../../examples/link_status_interrupt/main.c
+        :language: c
+        :start-after: init one TX queue logical core on each port. 8<
+        :end-before: >8 End of init one TX queue.
+        :dedent: 2
 
 The global configuration for TX queues is stored in a static structure:
 
@@ -271,23 +212,11 @@ Receive, Process and Transmit Packets
 In the lsi_main_loop() function, the main task is to read ingress packets from the RX queues.
 This is done using the following code:
 
-.. code-block:: c
-
-    /*
-     *   Read packet from RX queues
-     */
-
-    for (i = 0; i < qconf->n_rx_port; i++) {
-        portid = qconf->rx_port_list[i];
-        nb_rx = rte_eth_rx_burst((uint8_t) portid, 0, pkts_burst, MAX_PKT_BURST);
-        port_statistics[portid].rx += nb_rx;
-
-        for (j = 0; j < nb_rx; j++) {
-            m = pkts_burst[j];
-            rte_prefetch0(rte_pktmbuf_mtod(m, void *));
-            lsi_simple_forward(m, portid);
-        }
-    }
+.. literalinclude:: ../../../examples/link_status_interrupt/main.c
+        :language: c
+        :start-after: Read packet from RX queues. 8<
+        :end-before: >8 End of reading packet from RX queues.
+        :dedent: 2
 
 Packets are read in a burst of size MAX_PKT_BURST.
 The rte_eth_rx_burst() function writes the mbuf pointers in a local table and returns the number of available mbufs in the table.
@@ -302,28 +231,10 @@ The processing is very simple: processes the TX port from the RX port and then r
     If portId is odd, the first line subtracts one and the second line does nothing.
     Therefore, 0 goes to 1, and 1 to 0, 2 goes to 3 and 3 to 2, and so on.
 
-.. code-block:: c
-
-    static void
-    lsi_simple_forward(struct rte_mbuf *m, unsigned portid)
-    {
-        struct rte_ether_hdr *eth;
-        void *tmp;
-        unsigned dst_port = lsi_dst_ports[portid];
-
-        eth = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
-
-        /* 02:00:00:00:00:xx */
-
-        tmp = &eth->d_addr.addr_bytes[0];
-
-        *((uint64_t *)tmp) = 0x000000000002 + (dst_port << 40);
-
-        /* src addr */
-        rte_ether_addr_copy(&lsi_ports_eth_addr[dst_port], &eth->s_addr);
-
-        lsi_send_packet(m, dst_port);
-    }
+.. literalinclude:: ../../../examples/link_status_interrupt/main.c
+        :language: c
+        :start-after: Replacing the source and destination MAC addresses. 8<
+        :end-before: >8 End of replacing the source and destination MAC addresses.
 
 Then, the packet is sent using the lsi_send_packet(m, dst_port) function.
 For this test application, the processing is exactly the same for all packets arriving on the same RX port.
@@ -338,77 +249,17 @@ The application is implemented to illustrate that so the same approach can be re
 The lsi_send_packet() function stores the packet in a per-lcore and per-txport table.
 If the table is full, the whole packets table is transmitted using the lsi_send_burst() function:
 
-.. code-block:: c
-
-    /* Send the packet on an output interface */
-
-    static int
-    lsi_send_packet(struct rte_mbuf *m, uint16_t port)
-    {
-        unsigned lcore_id, len;
-        struct lcore_queue_conf *qconf;
-
-        lcore_id = rte_lcore_id();
-        qconf = &lcore_queue_conf[lcore_id];
-        len = qconf->tx_mbufs[port].len;
-        qconf->tx_mbufs[port].m_table[len] = m;
-        len++;
-
-        /* enough pkts to be sent */
-
-        if (unlikely(len == MAX_PKT_BURST)) {
-            lsi_send_burst(qconf, MAX_PKT_BURST, port);
-            len = 0;
-        }
-        qconf->tx_mbufs[port].len = len;
-
-        return 0;
-    }
+.. literalinclude:: ../../../examples/l2fwd-crypto/main.c
+    :language: c
+    :start-after: Enqueue packets for TX and prepare them to be sent. 8<
+    :end-before: >8 End of Enqueuing packets for TX.
 
 To ensure that no packets remain in the tables, each lcore does a draining of the TX queue in its main loop.
 This technique introduces some latency when there are not many packets to send.
 However, it improves performance:
 
-.. code-block:: c
-
-    cur_tsc = rte_rdtsc();
-
-    /*
-     *    TX burst queue drain
-     */
-
-    diff_tsc = cur_tsc - prev_tsc;
-
-    if (unlikely(diff_tsc > drain_tsc)) {
-        /* this could be optimized (use queueid instead of * portid), but it is not called so often */
-
-        for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
-            if (qconf->tx_mbufs[portid].len == 0)
-                continue;
-
-            lsi_send_burst(&lcore_queue_conf[lcore_id],
-            qconf->tx_mbufs[portid].len, (uint8_t) portid);
-            qconf->tx_mbufs[portid].len = 0;
-        }
-
-        /* if timer is enabled */
-
-        if (timer_period > 0) {
-            /* advance the timer */
-
-            timer_tsc += diff_tsc;
-
-            /* if timer has reached its timeout */
-
-            if (unlikely(timer_tsc >= (uint64_t) timer_period)) {
-                /* do this only on main core */
-                if (lcore_id == rte_get_main_lcore()) {
-                    print_stats();
-
-                    /* reset the timer */
-                    timer_tsc = 0;
-                }
-            }
-        }
-        prev_tsc = cur_tsc;
-   }
+.. literalinclude:: ../../../examples/link_status_interrupt/main.c
+        :language: c
+        :start-after: Draining TX queue in its main loop. 8<
+        :end-before: >8 End of draining TX queue in its main loop.
+        :dedent: 2

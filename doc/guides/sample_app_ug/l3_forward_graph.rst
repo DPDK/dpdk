@@ -132,56 +132,11 @@ These cloned nodes along with existing static nodes such as ``ip4_lookup`` and
 ``ip4_rewrite`` will be used in graph creation to associate node's to lcore
 specific graph object.
 
-.. code-block:: c
-
-    RTE_ETH_FOREACH_DEV(portid)
-    {
-
-        /* ... */
-        ret = rte_eth_dev_configure(portid, nb_rx_queue,
-                                    n_tx_queue, &local_port_conf);
-        /* ... */
-
-        /* Init one TX queue per couple (lcore,port) */
-        queueid = 0;
-        for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-            /* ... */
-            ret = rte_eth_tx_queue_setup(portid, queueid, nb_txd,
-                                         socketid, txconf);
-            /* ... */
-            queueid++;
-        }
-
-        /* Setup ethdev node config */
-        ethdev_conf[nb_conf].port_id = portid;
-        ethdev_conf[nb_conf].num_rx_queues = nb_rx_queue;
-        ethdev_conf[nb_conf].num_tx_queues = n_tx_queue;
-        if (!per_port_pool)
-            ethdev_conf[nb_conf].mp = pktmbuf_pool[0];
-        else
-          ethdev_conf[nb_conf].mp = pktmbuf_pool[portid];
-        ethdev_conf[nb_conf].mp_count = NB_SOCKETS;
-
-        nb_conf++;
-        printf("\n");
-    }
-
-    for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-        /* Init RX queues */
-        for (queue = 0; queue < qconf->n_rx_queue; ++queue) {
-            /* ... */
-            if (!per_port_pool)
-                ret = rte_eth_rx_queue_setup(portid, queueid, nb_rxd, socketid,
-                                             &rxq_conf, pktmbuf_pool[0][socketid]);
-            else
-              ret = rte_eth_rx_queue_setup(portid, queueid, nb_rxd, socketid,
-                                           &rxq_conf, pktmbuf_pool[portid][socketid]);
-            /* ... */
-        }
-    }
-
-    /* Ethdev node config, skip rx queue mapping */
-    ret = rte_node_eth_config(ethdev_conf, nb_conf, nb_graphs);
+.. literalinclude:: ../../../examples/l3fwd-graph/main.c
+    :language: c
+    :start-after: Initialize all ports. 8<
+    :end-before: >8 End of graph creation.
+    :dedent: 1
 
 Graph Initialization
 ~~~~~~~~~~~~~~~~~~~~
@@ -200,58 +155,11 @@ the application argument ``--config`` specifying rx queue mapping to lcore.
     are not sufficient to meet their inter-dependency or even one node is not
     found with a given regex node pattern.
 
-.. code-block:: c
-
-    static const char *const default_patterns[] = {
-        "ip4*",
-        "ethdev_tx-*",
-        "pkt_drop",
-    };
-    const char **node_patterns;
-    uint16_t nb_pattern;
-
-    /* ... */
-
-    /* Create a graph object per lcore with common nodes and
-     * lcore specific nodes based on application arguments
-     */
-    nb_patterns = RTE_DIM(default_patterns);
-    node_patterns = malloc((MAX_RX_QUEUE_PER_LCORE + nb_patterns) *
-                           sizeof(*node_patterns));
-    memcpy(node_patterns, default_patterns,
-           nb_patterns * sizeof(*node_patterns));
-
-    memset(&graph_conf, 0, sizeof(graph_conf));
-
-    /* Common set of nodes in every lcore's graph object */
-    graph_conf.node_patterns = node_patterns;
-
-    for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-        /* ... */
-
-        /* Skip graph creation if no source exists */
-        if (!qconf->n_rx_queue)
-            continue;
-
-        /* Add rx node patterns of this lcore based on --config */
-        for (i = 0; i < qconf->n_rx_queue; i++) {
-            graph_conf.node_patterns[nb_patterns + i] =
-                                qconf->rx_queue_list[i].node_name;
-        }
-
-        graph_conf.nb_node_patterns = nb_patterns + i;
-        graph_conf.socket_id = rte_lcore_to_socket_id(lcore_id);
-
-        snprintf(qconf->name, sizeof(qconf->name), "worker_%u", lcore_id);
-
-        graph_id = rte_graph_create(qconf->name, &graph_conf);
-
-        /* ... */
-
-        qconf->graph = rte_graph_lookup(qconf->name);
-
-        /* ... */
-    }
+.. literalinclude:: ../../../examples/l3fwd-graph/main.c
+    :language: c
+    :start-after: Graph initialization. 8<
+    :end-before: >8 End of graph initialization.
+    :dedent: 1
 
 Forwarding data(Route, Next-Hop) addition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -267,31 +175,11 @@ headers will be provided run-time using ``rte_node_ip4_route_add()`` and
     rewrite data, forwarding data is added before packet processing loop is
     launched on worker lcore.
 
-.. code-block:: c
-
-    /* Add route to ip4 graph infra */
-    for (i = 0; i < IPV4_L3FWD_LPM_NUM_ROUTES; i++) {
-        /* ... */
-
-        dst_port = ipv4_l3fwd_lpm_route_array[i].if_out;
-        next_hop = i;
-
-        /* ... */
-        ret = rte_node_ip4_route_add(ipv4_l3fwd_lpm_route_array[i].ip,
-                                     ipv4_l3fwd_lpm_route_array[i].depth, next_hop,
-                                     RTE_NODE_IP4_LOOKUP_NEXT_REWRITE);
-
-        /* ... */
-
-        memcpy(rewrite_data, val_eth + dst_port, rewrite_len);
-
-        /* Add next hop for a given destination */
-        ret = rte_node_ip4_rewrite_add(next_hop, rewrite_data,
-                                       rewrite_len, dst_port);
-
-        RTE_LOG(INFO, L3FWD_GRAPH, "Added route %s, next_hop %u\n",
-                route_str, next_hop);
-    }
+.. literalinclude:: ../../../examples/l3fwd-graph/main.c
+    :language: c
+    :start-after: Add route to ip4 graph infra. 8<
+    :end-before: >8 End of adding route to ip4 graph infa.
+    :dedent: 1
 
 Packet Forwarding using Graph Walk
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -311,24 +199,7 @@ specific graph object that was already created.
     as per next-hop data and transmit the packet via port 'Z' by enqueuing
     to ``ethdev_tx-Z`` node instance in its graph object.
 
-.. code-block:: c
-
-    /* Main processing loop */
-    static int
-    graph_main_loop(void *conf)
-    {
-        // ...
-
-        lcore_id = rte_lcore_id();
-        qconf = &lcore_conf[lcore_id];
-        graph = qconf->graph;
-
-        RTE_LOG(INFO, L3FWD_GRAPH,
-                "Entering main loop on lcore %u, graph %s(%p)\n", lcore_id,
-                qconf->name, graph);
-
-        /* Walk over graph until signal to quit */
-        while (likely(!force_quit))
-            rte_graph_walk(graph);
-        return 0;
-    }
+.. literalinclude:: ../../../examples/l3fwd-graph/main.c
+    :language: c
+    :start-after: Main processing loop. 8<
+    :end-before: >8 End of main processing loop.

@@ -72,62 +72,19 @@ The Port Initialization  Function
 The main functional part of the port initialization is shown below with
 comments:
 
-.. code-block:: c
-
-    static inline int
-    port_init(uint16_t port, struct rte_mempool *mbuf_pool)
-    {
-        struct rte_eth_conf port_conf = port_conf_default;
-        const uint16_t rx_rings = 1, tx_rings = 1;
-        struct rte_ether_addr addr;
-        int retval;
-        uint16_t q;
-
-        /* Configure the Ethernet device. */
-        retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
-        if (retval != 0)
-            return retval;
-
-        /* Allocate and set up 1 RX queue per Ethernet port. */
-        for (q = 0; q < rx_rings; q++) {
-            retval = rte_eth_rx_queue_setup(port, q, RX_RING_SIZE,
-                    rte_eth_dev_socket_id(port), NULL, mbuf_pool);
-            if (retval < 0)
-                return retval;
-        }
-
-        /* Allocate and set up 1 TX queue per Ethernet port. */
-        for (q = 0; q < tx_rings; q++) {
-            retval = rte_eth_tx_queue_setup(port, q, TX_RING_SIZE,
-                    rte_eth_dev_socket_id(port), NULL);
-            if (retval < 0)
-                return retval;
-        }
-
-        /* Start the Ethernet port. */
-        retval = rte_eth_dev_start(port);
-        if (retval < 0)
-            return retval;
-
-        /* Enable RX in promiscuous mode for the Ethernet device. */
-        retval = rte_eth_promiscuous_enable(port);
-        if (retval != 0)
-            return retval;
-
-        /* Add the callbacks for RX and TX.*/
-        rte_eth_add_rx_callback(port, 0, add_timestamps, NULL);
-        rte_eth_add_tx_callback(port, 0, calc_latency, NULL);
-
-        return 0;
-    }
+.. literalinclude:: ../../../examples/rxtx_callbacks/main.c
+    :language: c
+    :start-after: Port initialization. 8<
+    :end-before: >8 End of port initialization.
 
 
 The RX and TX callbacks are added to the ports/queues as function pointers:
 
-.. code-block:: c
-
-        rte_eth_add_rx_callback(port, 0, add_timestamps, NULL);
-        rte_eth_add_tx_callback(port, 0, calc_latency,   NULL);
+.. literalinclude:: ../../../examples/rxtx_callbacks/main.c
+    :language: c
+    :start-after: RX and TX callbacks are added to the ports. 8<
+    :end-before: >8 End of RX and TX callbacks.
+    :dedent: 1
 
 More than one callback can be added and additional information can be passed
 to callback function pointers as a ``void*``. In the examples above ``NULL``
@@ -142,20 +99,10 @@ The add_timestamps() Callback
 The ``add_timestamps()`` callback is added to the RX port and is applied to
 all packets received:
 
-.. code-block:: c
-
-    static uint16_t
-    add_timestamps(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
-            struct rte_mbuf **pkts, uint16_t nb_pkts, void *_ __rte_unused)
-    {
-        unsigned i;
-        uint64_t now = rte_rdtsc();
-
-        for (i = 0; i < nb_pkts; i++)
-            *tsc_field(pkts[i]) = now;
-
-        return nb_pkts;
-    }
+.. literalinclude:: ../../../examples/rxtx_callbacks/main.c
+    :language: c
+    :start-after: Callback added to the RX port and applied to packets. 8<
+    :end-before: >8 End of callback addition and application.
 
 The DPDK function ``rte_rdtsc()`` is used to add a cycle count timestamp to
 each packet (see the *cycles* section of the *DPDK API Documentation* for
@@ -168,31 +115,10 @@ The calc_latency() Callback
 The ``calc_latency()`` callback is added to the TX port and is applied to all
 packets prior to transmission:
 
-.. code-block:: c
-
-    static uint16_t
-    calc_latency(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
-            struct rte_mbuf **pkts, uint16_t nb_pkts, void *_ __rte_unused)
-    {
-        uint64_t cycles = 0;
-        uint64_t now = rte_rdtsc();
-        unsigned i;
-
-        for (i = 0; i < nb_pkts; i++)
-            cycles += now - *tsc_field(pkts[i]);
-
-        latency_numbers.total_cycles += cycles;
-        latency_numbers.total_pkts   += nb_pkts;
-
-        if (latency_numbers.total_pkts > (100 * 1000 * 1000ULL)) {
-            printf("Latency = %"PRIu64" cycles\n",
-                    latency_numbers.total_cycles / latency_numbers.total_pkts);
-
-            latency_numbers.total_cycles = latency_numbers.total_pkts = 0;
-        }
-
-        return nb_pkts;
-    }
+.. literalinclude:: ../../../examples/rxtx_callbacks/main.c
+    :language: c
+    :start-after: Callback is added to the TX port. 8<
+    :end-before: >8 End of callback addition.
 
 The ``calc_latency()`` function accumulates the total number of packets and
 the total number of cycles used. Once more than 100 million packets have been

@@ -158,10 +158,11 @@ main(int argc, char *argv[])
 	unsigned nb_ports;
 	uint16_t portid;
 
-	/* Initialize the Environment Abstraction Layer (EAL). */
+	/* Initialize the Environment Abstraction Layer (EAL). 8< */
 	int ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
+	/* >8 End of initializion the Environment Abstraction Layer (EAL). */
 
 	argc -= ret;
 	argv += ret;
@@ -170,9 +171,12 @@ main(int argc, char *argv[])
 	 * Initialize the PQoS library and configure CAT.
 	 * Please see l2fwd-cat documentation for more info.
 	 */
+
+	/* Initialize the PQoS. 8< */
 	ret = cat_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "PQOS: L3CA init failed!\n");
+	/* >8 End of initialization of PQoS. */
 
 	argc -= ret;
 	argv += ret;

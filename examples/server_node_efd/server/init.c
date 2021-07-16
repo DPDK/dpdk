@@ -200,6 +200,8 @@ init_shm_rings(void)
  * Create EFD table which will contain all the flows
  * that will be distributed among the nodes
  */
+
+/* Create EFD table. 8< */
 static void
 create_efd_table(void)
 {
@@ -236,6 +238,7 @@ populate_efd_table(void)
 
 	printf("EFD table: Adding 0x%x keys\n", num_flows);
 }
+/* >8 End of creation EFD table. */
 
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void

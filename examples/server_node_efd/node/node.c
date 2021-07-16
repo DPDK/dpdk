@@ -189,6 +189,8 @@ configure_output_ports(const struct shared_info *info)
  * the node will handle, which will be used to decide if packet
  * is transmitted or dropped.
  */
+
+/* Creation of hash table. 8< */
 static struct rte_hash *
 create_hash_table(const struct shared_info *info)
 {
@@ -243,6 +245,7 @@ populate_hash_table(const struct rte_hash *h, const struct shared_info *info)
 
 	printf("Hash table: Adding 0x%x keys\n", num_flows_node);
 }
+/* >8 End of creation of hash table. */
 
 /*
  * This function performs routing of packets
@@ -263,6 +266,7 @@ transmit_packet(struct rte_mbuf *buf)
 
 }
 
+/* Packets dequeued from the shared ring. 8< */
 static inline void
 handle_packets(struct rte_hash *h, struct rte_mbuf **bufs, uint16_t num_packets)
 {
@@ -293,6 +297,7 @@ handle_packets(struct rte_hash *h, struct rte_mbuf **bufs, uint16_t num_packets)
 		}
 	}
 }
+/* >8 End of packets dequeueing. */
 
 /*
  * Application main function - loops through
@@ -323,6 +328,7 @@ main(int argc, char *argv[])
 	if (rte_eth_dev_count_avail() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
+	/* Attaching to the server process memory. 8< */
 	rx_ring = rte_ring_lookup(get_rx_queue_name(node_id));
 	if (rx_ring == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get RX ring - "
@@ -338,6 +344,7 @@ main(int argc, char *argv[])
 	info = mz->addr;
 	tx_stats = &(info->tx_stats[node_id]);
 	filter_stats = &(info->filter_stats[node_id]);
+	/* >8 End of attaching to the server process memory. */
 
 	configure_output_ports(info);
 

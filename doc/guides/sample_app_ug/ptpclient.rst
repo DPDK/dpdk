@@ -95,30 +95,28 @@ The first task is to initialize the Environment Abstraction Layer (EAL).  The
 ``argc`` and ``argv`` arguments are provided to the ``rte_eal_init()``
 function. The value returned is the number of parsed arguments:
 
-.. code-block:: c
-
-    int ret = rte_eal_init(argc, argv);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
+.. literalinclude:: ../../../examples/ptpclient/ptpclient.c
+    :language: c
+    :start-after: Initialize the Environment Abstraction Layer (EAL). 8<
+    :end-before: >8 End of initialization of EAL.
+    :dedent: 1
 
 And than we parse application specific arguments
 
-.. code-block:: c
-
-    argc -= ret;
-    argv += ret;
-
-    ret = ptp_parse_args(argc, argv);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "Error with PTP initialization\n");
+.. literalinclude:: ../../../examples/ptpclient/ptpclient.c
+    :language: c
+    :start-after: Parse specific arguments. 8<
+    :end-before: >8 End of parsing specific arguments.
+    :dedent: 1
 
 The ``main()`` also allocates a mempool to hold the mbufs (Message Buffers)
 used by the application:
 
-.. code-block:: c
-
-    mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS * nb_ports,
-           MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
+.. literalinclude:: ../../../examples/ptpclient/ptpclient.c
+    :language: c
+    :start-after: Creates a new mempool in memory to hold the mbufs. 8<
+    :end-before:  >8 End of a new mempool in memory to hold the mbufs.
+    :dedent: 1
 
 Mbufs are the packet buffer structure used by DPDK. They are explained in
 detail in the "Mbuf Library" section of the *DPDK Programmer's Guide*.
@@ -126,19 +124,11 @@ detail in the "Mbuf Library" section of the *DPDK Programmer's Guide*.
 The ``main()`` function also initializes all the ports using the user defined
 ``port_init()`` function with portmask provided by user:
 
-.. code-block:: c
-
-    for (portid = 0; portid < nb_ports; portid++)
-        if ((ptp_enabled_port_mask & (1 << portid)) != 0) {
-
-            if (port_init(portid, mbuf_pool) == 0) {
-                ptp_enabled_ports[ptp_enabled_port_nb] = portid;
-                ptp_enabled_port_nb++;
-            } else {
-                rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu8 "\n",
-                        portid);
-            }
-        }
+.. literalinclude:: ../../../examples/ptpclient/ptpclient.c
+    :language: c
+    :start-after: Initialize all ports. 8<
+    :end-before: >8 End of initialization of all ports.
+    :dedent: 1
 
 
 Once the initialization is complete, the application is ready to launch a
@@ -160,21 +150,11 @@ available lcores.
 
 The main work of the application is done within the loop:
 
-.. code-block:: c
-
-        for (portid = 0; portid < ptp_enabled_port_nb; portid++) {
-
-            portid = ptp_enabled_ports[portid];
-            nb_rx = rte_eth_rx_burst(portid, 0, &m, 1);
-
-            if (likely(nb_rx == 0))
-                continue;
-
-            if (m->ol_flags & PKT_RX_IEEE1588_PTP)
-                parse_ptp_frames(portid, m);
-
-            rte_pktmbuf_free(m);
-        }
+.. literalinclude:: ../../../examples/ptpclient/ptpclient.c
+    :language: c
+    :start-after: Read packet from RX queues. 8<
+    :end-before: >8 End of read packets from RX queues.
+    :dedent: 2
 
 Packets are received one by one on the RX ports and, if required, PTP response
 packets are transmitted on the TX ports.
@@ -182,10 +162,11 @@ packets are transmitted on the TX ports.
 If the offload flags in the mbuf indicate that the packet is a PTP packet then
 the packet is parsed to determine which type:
 
-.. code-block:: c
-
-            if (m->ol_flags & PKT_RX_IEEE1588_PTP)
-                 parse_ptp_frames(portid, m);
+.. literalinclude:: ../../../examples/ptpclient/ptpclient.c
+    :language: c
+    :start-after: Packet is parsed to determine which type. 8<
+    :end-before: >8 End of packet is parsed to determine which type.
+    :dedent: 3
 
 
 All packets are freed explicitly using ``rte_pktmbuf_free()``.
@@ -200,39 +181,10 @@ PTP parsing
 The ``parse_ptp_frames()`` function processes PTP packets, implementing slave
 PTP IEEE1588 L2 functionality.
 
-.. code-block:: c
-
-    void
-    parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
-        struct ptp_header *ptp_hdr;
-        struct rte_ether_hdr *eth_hdr;
-        uint16_t eth_type;
-
-        eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
-        eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
-
-        if (eth_type == PTP_PROTOCOL) {
-            ptp_data.m = m;
-            ptp_data.portid = portid;
-            ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(m, char *)
-                        + sizeof(struct rte_ether_hdr));
-
-            switch (ptp_hdr->msgtype) {
-            case SYNC:
-                parse_sync(&ptp_data);
-                break;
-            case FOLLOW_UP:
-                parse_fup(&ptp_data);
-                break;
-            case DELAY_RESP:
-                parse_drsp(&ptp_data);
-                print_clock_info(&ptp_data);
-                break;
-            default:
-                break;
-            }
-        }
-    }
+.. literalinclude:: ../../../examples/ptpclient/ptpclient.c
+    :language: c
+    :start-after: Parse ptp frames. 8<
+    :end-before:  >8 End of function processes PTP packets.
 
 There are 3 types of packets on the RX path which we must parse to create a minimal
 implementation of the PTP slave client:

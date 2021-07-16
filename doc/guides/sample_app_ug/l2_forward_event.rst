@@ -131,35 +131,11 @@ EAL arguments are parsed first, then application-specific arguments.
 This is done at the beginning of the main() function and eventdev parameters
 are parsed in eventdev_resource_setup() function during eventdev setup:
 
-.. code-block:: c
-
-    /* init EAL */
-
-    ret = rte_eal_init(argc, argv);
-    if (ret < 0)
-        rte_panic("Invalid EAL arguments\n");
-
-    argc -= ret;
-    argv += ret;
-
-    /* parse application arguments (after the EAL ones) */
-
-    ret = l2fwd_parse_args(argc, argv);
-    if (ret < 0)
-        rte_panic("Invalid L2FWD arguments\n");
-    .
-    .
-    .
-
-    /* Parse eventdev command line options */
-    ret = parse_eventdev_args(argc, argv);
-    if (ret < 0)
-        return ret;
-
-
-
-
-.. _l2_fwd_event_app_mbuf_init:
+.. literalinclude:: ../../../examples/l2fwd-event/main.c
+        :language: c
+        :start-after: Init EAL. 8<
+        :end-before: >8 End of init EAL.
+        :dedent: 1
 
 Mbuf Pool Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -168,16 +144,11 @@ Once the arguments are parsed, the mbuf pool is created.
 The mbuf pool contains a set of mbuf objects that will be used by the driver
 and the application to store network packet data:
 
-.. code-block:: c
-
-    /* create the mbuf pool */
-
-    l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF,
-                                                 MEMPOOL_CACHE_SIZE, 0,
-                                                 RTE_MBUF_DEFAULT_BUF_SIZE,
-                                                 rte_socket_id());
-    if (l2fwd_pktmbuf_pool == NULL)
-        rte_panic("Cannot init mbuf pool\n");
+.. literalinclude:: ../../../examples/l2fwd-event/main.c
+        :language: c
+        :start-after: Create the mbuf pool. 8<
+        :end-before: >8 End of creation of mbuf pool.
+        :dedent: 1
 
 The rte_mempool is a generic structure used to handle pools of objects.
 In this case, it is necessary to create a pool that will be used by the driver.
@@ -202,50 +173,22 @@ of the driver. To fully understand this code, it is recommended to study the
 chapters that related to the Poll Mode and Event mode Driver in the
 *DPDK Programmer's Guide* - Rel 1.4 EAR and the *DPDK API Reference*.
 
-.. code-block:: c
-
-    /* reset l2fwd_dst_ports */
-
-    for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)
-        l2fwd_dst_ports[portid] = 0;
-
-    last_port = 0;
-
-    /*
-     * Each logical core is assigned a dedicated TX queue on each port.
-     */
-
-    RTE_ETH_FOREACH_DEV(portid) {
-        /* skip ports that are not enabled */
-
-        if ((l2fwd_enabled_port_mask & (1 << portid)) == 0)
-           continue;
-
-        if (nb_ports_in_mask % 2) {
-            l2fwd_dst_ports[portid] = last_port;
-            l2fwd_dst_ports[last_port] = portid;
-        }
-        else
-           last_port = portid;
-
-        nb_ports_in_mask++;
-
-        rte_eth_dev_info_get((uint8_t) portid, &dev_info);
-    }
+.. literalinclude:: ../../../examples/l2fwd-event/main.c
+        :language: c
+        :start-after: Reset l2fwd_dst_ports. 8<
+        :end-before: >8 End of reset l2fwd_dst_ports.
+        :dedent: 1
 
 The next step is to configure the RX and TX queues. For each port, there is only
 one RX queue (only one lcore is able to poll a given port). The number of TX
 queues depends on the number of available lcores. The rte_eth_dev_configure()
 function is used to configure the number of queues for a port:
 
-.. code-block:: c
-
-    ret = rte_eth_dev_configure((uint8_t)portid, 1, 1, &port_conf);
-    if (ret < 0)
-        rte_panic("Cannot configure device: err=%d, port=%u\n",
-                  ret, portid);
-
-.. _l2_fwd_event_app_rx_init:
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_common.c
+        :language: c
+        :start-after: Configure RX and TX queue. 8<
+        :end-before: >8 End of configuration RX and TX queue.
+        :dedent: 2
 
 RX Queue Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -258,27 +201,19 @@ ports with one lcore. If there are 16 ports on the target (and if the portmask
 argument is -p ffff ), the application will need four lcores to poll all the
 ports.
 
-.. code-block:: c
-
-    ret = rte_eth_rx_queue_setup((uint8_t) portid, 0, nb_rxd, SOCKET0,
-                                 &rx_conf, l2fwd_pktmbuf_pool);
-    if (ret < 0)
-
-        rte_panic("rte_eth_rx_queue_setup: err=%d, port=%u\n",
-                  ret, portid);
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_common.c
+        :language: c
+        :start-after: Using lcore to poll one or several ports. 8<
+        :end-before: >8 End of using lcore to poll one or several ports.
+        :dedent: 2
 
 The list of queues that must be polled for a given lcore is stored in a private
 structure called struct lcore_queue_conf.
 
-.. code-block:: c
-
-    struct lcore_queue_conf {
-        unsigned n_rx_port;
-        unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
-        struct mbuf_table tx_mbufs[L2FWD_MAX_PORTS];
-    } rte_cache_aligned;
-
-    struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
+.. literalinclude:: ../../../examples/l2fwd/main.c
+        :language: c
+        :start-after: List of queues to be polled for a given lcore. 8<
+        :end-before: >8 End of list of queues to be polled for a given lcore.
 
 The values n_rx_port and rx_port_list[] are used in the main packet processing
 loop (see :ref:`l2_fwd_event_app_rx_tx_packets`).
@@ -291,17 +226,11 @@ TX Queue Initialization
 Each lcore should be able to transmit on any port. For every port, a single TX
 queue is initialized.
 
-.. code-block:: c
-
-    /* init one TX queue on each port */
-
-    fflush(stdout);
-
-    ret = rte_eth_tx_queue_setup((uint8_t) portid, 0, nb_txd,
-                                 rte_eth_dev_socket_id(portid), &tx_conf);
-    if (ret < 0)
-        rte_panic("rte_eth_tx_queue_setup:err=%d, port=%u\n",
-                  ret, (unsigned) portid);
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_common.c
+        :language: c
+        :start-after: Init one TX queue on each port. 8<
+        :end-before: >8 End of init one TX queue on each port.
+        :dedent: 2
 
 To configure eventdev support, application setups following components:
 
@@ -319,37 +248,21 @@ Application can use either H/W or S/W based event device scheduler
 implementation and supports single instance of event device. It configures event
 device as per below configuration
 
-.. code-block:: c
-
-   struct rte_event_dev_config event_d_conf = {
-        .nb_event_queues = ethdev_count, /* Dedicated to each Ethernet port */
-        .nb_event_ports = num_workers, /* Dedicated to each lcore */
-        .nb_events_limit  = 4096,
-        .nb_event_queue_flows = 1024,
-        .nb_event_port_dequeue_depth = 128,
-        .nb_event_port_enqueue_depth = 128
-   };
-
-   ret = rte_event_dev_configure(event_d_id, &event_d_conf);
-   if (ret < 0)
-        rte_panic("Error in configuring event device\n");
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event_generic.c
+        :language: c
+        :start-after: Configures event device as per below configuration. 8<
+        :end-before: >8 End of configuration event device as per below configuration.
+        :dedent: 1
 
 In case of S/W scheduler, application runs eventdev scheduler service on service
 core. Application retrieves service id and finds the best possible service core to
 run S/W scheduler.
 
-.. code-block:: c
-
-        rte_event_dev_info_get(evt_rsrc->event_d_id, &evdev_info);
-        if (evdev_info.event_dev_cap  & RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED) {
-                ret = rte_event_dev_service_id_get(evt_rsrc->event_d_id,
-                                &service_id);
-                if (ret != -ESRCH && ret != 0)
-                        rte_panic("Error in starting eventdev service\n");
-                l2fwd_event_service_enable(service_id);
-        }
-
-.. _l2_fwd_app_event_queue_init:
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event.c
+        :language: c
+        :start-after: Running eventdev scheduler service on service core. 8<
+        :end-before: >8 End of running eventdev scheduler service on service core.
+        :dedent: 1
 
 Event queue Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -357,24 +270,11 @@ Each Ethernet device is assigned a dedicated event queue which will be linked
 to all available event ports i.e. each lcore can dequeue packets from any of the
 Ethernet ports.
 
-.. code-block:: c
-
-   struct rte_event_queue_conf event_q_conf = {
-        .nb_atomic_flows = 1024,
-        .nb_atomic_order_sequences = 1024,
-        .event_queue_cfg = 0,
-        .schedule_type = RTE_SCHED_TYPE_ATOMIC,
-        .priority = RTE_EVENT_DEV_PRIORITY_HIGHEST
-   };
-
-   /* User requested sched mode */
-   event_q_conf.schedule_type = eventq_sched_mode;
-   for (event_q_id = 0; event_q_id < ethdev_count; event_q_id++) {
-        ret = rte_event_queue_setup(event_d_id, event_q_id,
-                                            &event_q_conf);
-        if (ret < 0)
-              rte_panic("Error in configuring event queue\n");
-   }
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event_generic.c
+        :language: c
+        :start-after: Event queue initialization. 8<
+        :end-before: >8 End of event queue initialization.
+        :dedent: 1
 
 In case of S/W scheduler, an extra event queue is created which will be used for
 Tx adapter service function for enqueue operation.
@@ -387,45 +287,20 @@ Each worker thread is assigned a dedicated event port for enq/deq operations
 to/from an event device. All event ports are linked with all available event
 queues.
 
-.. code-block:: c
-
-   struct rte_event_port_conf event_p_conf = {
-        .dequeue_depth = 32,
-        .enqueue_depth = 32,
-        .new_event_threshold = 4096
-   };
-
-   for (event_p_id = 0; event_p_id < num_workers; event_p_id++) {
-        ret = rte_event_port_setup(event_d_id, event_p_id,
-                                   &event_p_conf);
-        if (ret < 0)
-              rte_panic("Error in configuring event port %d\n", event_p_id);
-
-        ret = rte_event_port_link(event_d_id, event_p_id, NULL,
-                                  NULL, 0);
-        if (ret < 0)
-              rte_panic("Error in linking event port %d to queue\n",
-                        event_p_id);
-   }
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event_generic.c
+        :language: c
+        :start-after: Event port initialization. 8<
+        :end-before: >8 End of event port initialization.
+        :dedent: 1
 
 In case of S/W scheduler, an extra event port is created by DPDK library which
 is retrieved  by the application and same will be used by Tx adapter service.
 
-.. code-block:: c
-
-        ret = rte_event_eth_tx_adapter_event_port_get(tx_adptr_id, &tx_port_id);
-        if (ret)
-                rte_panic("Failed to get Tx adapter port id: %d\n", ret);
-
-        ret = rte_event_port_link(event_d_id, tx_port_id,
-                                  &evt_rsrc.evq.event_q_id[
-                                        evt_rsrc.evq.nb_queues - 1],
-                                  NULL, 1);
-        if (ret != 1)
-                rte_panic("Unable to link Tx adapter port to Tx queue:err=%d\n",
-                          ret);
-
-.. _l2_fwd_event_app_adapter_init:
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event_generic.c
+        :language: c
+        :start-after: Extra port created. 8<
+        :end-before: >8 End of extra port created.
+        :dedent: 1
 
 Rx/Tx adapter Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -434,57 +309,11 @@ Ethernet port's Rx queues are connected to its respective event queue at
 priority 0 via Rx adapter configuration and Ethernet port's tx queues are
 connected via Tx adapter.
 
-.. code-block:: c
-
-	RTE_ETH_FOREACH_DEV(port_id) {
-		if ((rsrc->enabled_port_mask & (1 << port_id)) == 0)
-			continue;
-		ret = rte_event_eth_rx_adapter_create(adapter_id, event_d_id,
-						&evt_rsrc->def_p_conf);
-		if (ret)
-			rte_panic("Failed to create rx adapter[%d]\n",
-                                  adapter_id);
-
-		/* Configure user requested sched type*/
-		eth_q_conf.ev.sched_type = rsrc->sched_type;
-		eth_q_conf.ev.queue_id = evt_rsrc->evq.event_q_id[q_id];
-		ret = rte_event_eth_rx_adapter_queue_add(adapter_id, port_id,
-							 -1, &eth_q_conf);
-		if (ret)
-			rte_panic("Failed to add queues to Rx adapter\n");
-
-		ret = rte_event_eth_rx_adapter_start(adapter_id);
-		if (ret)
-			rte_panic("Rx adapter[%d] start Failed\n", adapter_id);
-
-		evt_rsrc->rx_adptr.rx_adptr[adapter_id] = adapter_id;
-		adapter_id++;
-		if (q_id < evt_rsrc->evq.nb_queues)
-			q_id++;
-	}
-
-	adapter_id = 0;
-	RTE_ETH_FOREACH_DEV(port_id) {
-		if ((rsrc->enabled_port_mask & (1 << port_id)) == 0)
-			continue;
-		ret = rte_event_eth_tx_adapter_create(adapter_id, event_d_id,
-						&evt_rsrc->def_p_conf);
-		if (ret)
-			rte_panic("Failed to create tx adapter[%d]\n",
-                                  adapter_id);
-
-		ret = rte_event_eth_tx_adapter_queue_add(adapter_id, port_id,
-							 -1);
-		if (ret)
-			rte_panic("Failed to add queues to Tx adapter\n");
-
-		ret = rte_event_eth_tx_adapter_start(adapter_id);
-		if (ret)
-			rte_panic("Tx adapter[%d] start Failed\n", adapter_id);
-
-		evt_rsrc->tx_adptr.tx_adptr[adapter_id] = adapter_id;
-		adapter_id++;
-	}
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event_internal_port.c
+        :language: c
+        :start-after: Assigned ethernet port. 8<
+        :end-before: >8 End of assigned ethernet port.
+        :dedent: 1
 
 For S/W scheduler instead of dedicated adapters, common Rx/Tx adapters are
 configured which will be shared among all the Ethernet ports. Also DPDK library
@@ -492,37 +321,11 @@ need service cores to run internal services for Rx/Tx adapters. Application gets
 service id for Rx/Tx adapters and after successful setup it runs the services
 on dedicated service cores.
 
-.. code-block:: c
-
-	for (i = 0; i < evt_rsrc->rx_adptr.nb_rx_adptr; i++) {
-		ret = rte_event_eth_rx_adapter_caps_get(evt_rsrc->event_d_id,
-				evt_rsrc->rx_adptr.rx_adptr[i], &caps);
-		if (ret < 0)
-			rte_panic("Failed to get Rx adapter[%d] caps\n",
-                                  evt_rsrc->rx_adptr.rx_adptr[i]);
-		ret = rte_event_eth_rx_adapter_service_id_get(
-                                                evt_rsrc->event_d_id,
-                                                &service_id);
-		if (ret != -ESRCH && ret != 0)
-			rte_panic("Error in starting Rx adapter[%d] service\n",
-                                  evt_rsrc->rx_adptr.rx_adptr[i]);
-		l2fwd_event_service_enable(service_id);
-	}
-
-	for (i = 0; i < evt_rsrc->tx_adptr.nb_tx_adptr; i++) {
-		ret = rte_event_eth_tx_adapter_caps_get(evt_rsrc->event_d_id,
-				evt_rsrc->tx_adptr.tx_adptr[i], &caps);
-		if (ret < 0)
-			rte_panic("Failed to get Rx adapter[%d] caps\n",
-                                  evt_rsrc->tx_adptr.tx_adptr[i]);
-		ret = rte_event_eth_tx_adapter_service_id_get(
-				evt_rsrc->event_d_id,
-				&service_id);
-		if (ret != -ESRCH && ret != 0)
-			rte_panic("Error in starting Rx adapter[%d] service\n",
-                                  evt_rsrc->tx_adptr.tx_adptr[i]);
-		l2fwd_event_service_enable(service_id);
-	}
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event.c
+        :language: c
+        :start-after: Gets service ID for RX/TX adapters. 8<
+        :end-before: >8 End of get service ID for RX/TX adapters.
+        :dedent: 1
 
 .. _l2_fwd_event_app_rx_tx_packets:
 
@@ -532,23 +335,11 @@ Receive, Process and Transmit Packets
 In the **l2fwd_main_loop()** function, the main task is to read ingress packets from
 the RX queues. This is done using the following code:
 
-.. code-block:: c
-
-    /*
-     * Read packet from RX queues
-     */
-
-    for (i = 0; i < qconf->n_rx_port; i++) {
-        portid = qconf->rx_port_list[i];
-        nb_rx = rte_eth_rx_burst((uint8_t) portid, 0,  pkts_burst,
-                                 MAX_PKT_BURST);
-
-        for (j = 0; j < nb_rx; j++) {
-            m = pkts_burst[j];
-            rte_prefetch0(rte_pktmbuf_mtod(m, void *));
-            l2fwd_simple_forward(m, portid);
-        }
-    }
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_poll.c
+        :language: c
+        :start-after: Reading ingress packets. 8<
+        :end-before: >8 End of reading ingress packets.
+        :dedent: 2
 
 Packets are read in a burst of size MAX_PKT_BURST. The rte_eth_rx_burst()
 function writes the mbuf pointers in a local table and returns the number of
@@ -570,25 +361,10 @@ Also to optimize enqueue operation, l2fwd_simple_forward() stores incoming mbufs
 up to MAX_PKT_BURST. Once it reaches up to limit, all packets are transmitted to
 destination ports.
 
-.. code-block:: c
-
-   static void
-   l2fwd_simple_forward(struct rte_mbuf *m, uint32_t portid)
-   {
-       uint32_t dst_port;
-       int32_t sent;
-       struct rte_eth_dev_tx_buffer *buffer;
-
-       dst_port = l2fwd_dst_ports[portid];
-
-       if (mac_updating)
-           l2fwd_mac_updating(m, dst_port);
-
-       buffer = tx_buffer[dst_port];
-       sent = rte_eth_tx_buffer(dst_port, 0, buffer, m);
-       if (sent)
-       port_statistics[dst_port].tx += sent;
-   }
+.. literalinclude:: ../../../examples/l2fwd/main.c
+        :language: c
+        :start-after: Simple forward. 8<
+        :end-before: >8 End of simple forward.
 
 For this test application, the processing is exactly the same for all packets
 arriving on the same RX port. Therefore, it would have been possible to call
@@ -605,60 +381,20 @@ To ensure that no packets remain in the tables, each lcore does a draining of TX
 queue in its main loop. This technique introduces some latency when there are
 not many packets to send, however it improves performance:
 
-.. code-block:: c
-
-        cur_tsc = rte_rdtsc();
-
-        /*
-        * TX burst queue drain
-        */
-        diff_tsc = cur_tsc - prev_tsc;
-        if (unlikely(diff_tsc > drain_tsc)) {
-                for (i = 0; i < qconf->n_rx_port; i++) {
-                        portid = l2fwd_dst_ports[qconf->rx_port_list[i]];
-                        buffer = tx_buffer[portid];
-                        sent = rte_eth_tx_buffer_flush(portid, 0,
-                                                       buffer);
-                        if (sent)
-                                port_statistics[portid].tx += sent;
-                }
-
-                /* if timer is enabled */
-                if (timer_period > 0) {
-                        /* advance the timer */
-                        timer_tsc += diff_tsc;
-
-                        /* if timer has reached its timeout */
-                        if (unlikely(timer_tsc >= timer_period)) {
-                                /* do this only on main core */
-                                if (lcore_id == rte_get_main_lcore()) {
-                                        print_stats();
-                                        /* reset the timer */
-                                        timer_tsc = 0;
-                                }
-                        }
-                }
-
-                prev_tsc = cur_tsc;
-        }
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_poll.c
+        :language: c
+        :start-after: Draining TX queue in main loop. 8<
+        :end-before: >8 End of draining TX queue in main loop.
+        :dedent: 2
 
 In the **l2fwd_event_loop()** function, the main task is to read ingress
 packets from the event ports. This is done using the following code:
 
-.. code-block:: c
-
-        /* Read packet from eventdev */
-        nb_rx = rte_event_dequeue_burst(event_d_id, event_p_id,
-                                        events, deq_len, 0);
-        if (nb_rx == 0) {
-                rte_pause();
-                continue;
-        }
-
-        for (i = 0; i < nb_rx; i++) {
-                mbuf[i] = events[i].mbuf;
-                rte_prefetch0(rte_pktmbuf_mtod(mbuf[i], void *));
-        }
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event.c
+        :language: c
+        :start-after: Read packet from eventdev. 8<
+        :end-before: >8 End of reading packets from eventdev.
+        :dedent: 2
 
 
 Before reading packets, deq_len is fetched to ensure correct allowed deq length
@@ -682,11 +418,8 @@ l2fwd_eventdev_forward() does not stores incoming mbufs. Packet will forwarded
 be to destination ports via Tx adapter or generic event dev enqueue API
 depending H/W or S/W scheduler is used.
 
-.. code-block:: c
-
-	nb_tx = rte_event_eth_tx_adapter_enqueue(event_d_id, port_id, ev,
-						 nb_rx);
-	while (nb_tx < nb_rx && !rsrc->force_quit)
-		nb_tx += rte_event_eth_tx_adapter_enqueue(
-				event_d_id, port_id,
-				ev + nb_tx, nb_rx - nb_tx);
+.. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event.c
+        :language: c
+        :start-after: Read packet from eventdev. 8<
+        :end-before: >8 End of reading packets from eventdev.
+        :dedent: 2

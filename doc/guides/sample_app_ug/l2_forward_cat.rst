@@ -173,21 +173,21 @@ The first task is to initialize the Environment Abstraction Layer (EAL).  The
 ``argc`` and ``argv`` arguments are provided to the ``rte_eal_init()``
 function. The value returned is the number of parsed arguments:
 
-.. code-block:: c
-
-    int ret = rte_eal_init(argc, argv);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
+.. literalinclude:: ../../../examples/l2fwd-cat/l2fwd-cat.c
+    :language: c
+    :start-after: Initialize the Environment Abstraction Layer (EAL). 8<
+    :end-before: >8 End of initializion the Environment Abstraction Layer (EAL).
+    :dedent: 1
 
 The next task is to initialize the PQoS library and configure CAT. The
 ``argc`` and ``argv`` arguments are provided to the ``cat_init()``
 function. The value returned is the number of parsed arguments:
 
-.. code-block:: c
-
-    int ret = cat_init(argc, argv);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "PQOS: L3CA init failed!\n");
+.. literalinclude:: ../../../examples/l2fwd-cat/l2fwd-cat.c
+    :language: c
+    :start-after: Initialize the PQoS. 8<
+    :end-before: >8 End of initialization of PQoS.
+    :dedent: 1
 
 ``cat_init()`` is a wrapper function which parses the command, validates
 the requested parameters and configures CAT accordingly.
