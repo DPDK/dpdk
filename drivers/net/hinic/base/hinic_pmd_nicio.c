@@ -230,8 +230,8 @@ static void hinic_rq_prepare_ctxt(struct hinic_rq *rq,
 	wq_block_pfn_hi = upper_32_bits(wq_block_pfn);
 	wq_block_pfn_lo = lower_32_bits(wq_block_pfn);
 
-	/* must config as ceq enable but do not generate ceq */
-	rq_ctxt->ceq_attr = RQ_CTXT_CEQ_ATTR_SET(1, EN) |
+	/* config as ceq disable, but must set msix state disable */
+	rq_ctxt->ceq_attr = RQ_CTXT_CEQ_ATTR_SET(0, EN) |
 			    RQ_CTXT_CEQ_ATTR_SET(1, OWNER);
 
 	rq_ctxt->pi_intr_attr = RQ_CTXT_PI_SET(pi_start, IDX) |
