@@ -69,15 +69,6 @@
 
 #define HINIC_VLAN_FILTER_EN		(1U << 0)
 
-#define HINIC_MTU_TO_PKTLEN(mtu)	\
-	((mtu) + ETH_HLEN + ETH_CRC_LEN)
-
-#define HINIC_PKTLEN_TO_MTU(pktlen)	\
-	((pktlen) - (ETH_HLEN + ETH_CRC_LEN))
-
-/* The max frame size with default MTU */
-#define HINIC_ETH_MAX_LEN (RTE_ETHER_MTU + ETH_HLEN + ETH_CRC_LEN)
-
 /* lro numer limit for one packet */
 #define HINIC_LRO_WQE_NUM_DEFAULT	8
 

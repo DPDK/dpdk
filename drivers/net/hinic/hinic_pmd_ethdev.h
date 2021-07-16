@@ -32,6 +32,23 @@
 #define HINIC_UINT32_BIT_SIZE      (CHAR_BIT * sizeof(uint32_t))
 #define HINIC_VFTA_SIZE            (4096 / HINIC_UINT32_BIT_SIZE)
 
+#define HINIC_MAX_MTU_SIZE              9600
+#define HINIC_MIN_MTU_SIZE              256
+
+#define HINIC_VLAN_TAG_SIZE             4
+#define HINIC_ETH_OVERHEAD \
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + HINIC_VLAN_TAG_SIZE * 2)
+
+#define HINIC_MIN_FRAME_SIZE        (HINIC_MIN_MTU_SIZE + HINIC_ETH_OVERHEAD)
+#define HINIC_MAX_JUMBO_FRAME_SIZE  (HINIC_MAX_MTU_SIZE + HINIC_ETH_OVERHEAD)
+
+#define HINIC_MTU_TO_PKTLEN(mtu)    ((mtu) + HINIC_ETH_OVERHEAD)
+
+#define HINIC_PKTLEN_TO_MTU(pktlen) ((pktlen) - HINIC_ETH_OVERHEAD)
+
+/* The max frame size with default MTU */
+#define HINIC_ETH_MAX_LEN           (RTE_ETHER_MTU + HINIC_ETH_OVERHEAD)
+
 enum hinic_dev_status {
 	HINIC_DEV_INIT,
 	HINIC_DEV_CLOSE,
