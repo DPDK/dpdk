@@ -10,6 +10,7 @@
 #include <rte_byteorder.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>
+#include <rte_alarm.h>
 
 #include "bnxt.h"
 #include "bnxt_reps.h"
@@ -17,9 +18,7 @@
 #include "bnxt_rxr.h"
 #include "bnxt_rxq.h"
 #include "hsi_struct_def_dpdk.h"
-#ifdef RTE_LIBRTE_IEEE1588
 #include "bnxt_hwrm.h"
-#endif
 
 #include <bnxt_tf_common.h>
 #include <ulp_mark_mgr.h>
@@ -127,6 +126,50 @@ struct rte_mbuf *bnxt_consume_rx_buf(struct bnxt_rx_ring_info *rxr,
 	return mbuf;
 }
 
+static void bnxt_rx_ring_reset(void *arg)
+{
+	struct bnxt *bp = arg;
+	int i, rc = 0;
+	struct bnxt_rx_queue *rxq;
+
+
+	for (i = 0; i < (int)bp->rx_nr_rings; i++) {
+		struct bnxt_rx_ring_info *rxr;
+
+		rxq = bp->rx_queues[i];
+		if (!rxq || !rxq->in_reset)
+			continue;
+
+		rxr = rxq->rx_ring;
+		/* Disable and flush TPA before resetting the RX ring */
+		if (rxr->tpa_info)
+			bnxt_hwrm_vnic_tpa_cfg(bp, rxq->vnic, false);
+		rc = bnxt_hwrm_rx_ring_reset(bp, i);
+		if (rc) {
+			PMD_DRV_LOG(ERR, "Rx ring%d reset failed\n", i);
+			continue;
+		}
+
+		bnxt_rx_queue_release_mbufs(rxq);
+		rxr->rx_prod = 0;
+		rxr->ag_prod = 0;
+		rxr->rx_next_cons = 0;
+		bnxt_init_one_rx_ring(rxq);
+		bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
+		bnxt_db_write(&rxr->ag_db, rxr->ag_prod);
+		if (rxr->tpa_info)
+			bnxt_hwrm_vnic_tpa_cfg(bp, rxq->vnic, true);
+
+		rxq->in_reset = 0;
+	}
+}
+
+static void bnxt_sched_ring_reset(struct bnxt_rx_queue *rxq)
+{
+	rxq->in_reset = 1;
+	rte_eal_alarm_set(1, bnxt_rx_ring_reset, (void *)rxq->bp);
+}
+
 static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 			   struct rx_tpa_start_cmpl *tpa_start,
 			   struct rx_tpa_start_cmpl_hi *tpa_start1)
@@ -141,6 +184,12 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 
 	data_cons = tpa_start->opaque;
 	tpa_info = &rxr->tpa_info[agg_id];
+	if (unlikely(data_cons != rxr->rx_next_cons)) {
+		PMD_DRV_LOG(ERR, "TPA cons %x, expected cons %x\n",
+			    data_cons, rxr->rx_next_cons);
+		bnxt_sched_ring_reset(rxq);
+		return;
+	}
 
 	mbuf = bnxt_consume_rx_buf(rxr, data_cons);
 
@@ -177,6 +226,8 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 	/* recycle next mbuf */
 	data_cons = RING_NEXT(rxr->rx_ring_struct, data_cons);
 	bnxt_reuse_rx_mbuf(rxr, bnxt_consume_rx_buf(rxr, data_cons));
+
+	rxr->rx_next_cons = RING_NEXT(rxr->rx_ring_struct, data_cons);
 }
 
 static int bnxt_agg_bufs_valid(struct bnxt_cp_ring_info *cpr,
@@ -272,6 +323,34 @@ static int bnxt_rx_pages(struct bnxt_rx_queue *rxq,
 	return 0;
 }
 
+static int bnxt_discard_rx(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
+			   uint32_t *raw_cons, void *cmp)
+{
+	struct rx_pkt_cmpl *rxcmp = cmp;
+	uint32_t tmp_raw_cons = *raw_cons;
+	uint8_t cmp_type, agg_bufs = 0;
+
+	cmp_type = CMP_TYPE(rxcmp);
+
+	if (cmp_type == CMPL_BASE_TYPE_RX_L2) {
+		agg_bufs = BNXT_RX_L2_AGG_BUFS(rxcmp);
+	} else if (cmp_type == RX_TPA_END_CMPL_TYPE_RX_TPA_END) {
+		struct rx_tpa_end_cmpl *tpa_end = cmp;
+
+		if (BNXT_CHIP_THOR(bp))
+			return 0;
+
+		agg_bufs = BNXT_TPA_END_AGG_BUFS(tpa_end);
+	}
+
+	if (agg_bufs) {
+		if (!bnxt_agg_bufs_valid(cpr, agg_bufs, tmp_raw_cons))
+			return -EBUSY;
+	}
+	*raw_cons = tmp_raw_cons;
+	return 0;
+}
+
 static inline struct rte_mbuf *bnxt_tpa_end(
 		struct bnxt_rx_queue *rxq,
 		uint32_t *raw_cp_cons,
@@ -285,6 +364,13 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 	uint8_t agg_bufs;
 	uint8_t payload_offset;
 	struct bnxt_tpa_info *tpa_info;
+
+	if (unlikely(rxq->in_reset)) {
+		PMD_DRV_LOG(ERR, "rxq->in_reset: raw_cp_cons:%d\n",
+			    *raw_cp_cons);
+		bnxt_discard_rx(rxq->bp, cpr, raw_cp_cons, tpa_end);
+		return NULL;
+	}
 
 	if (BNXT_CHIP_THOR(rxq->bp)) {
 		struct rx_tpa_v2_end_cmpl *th_tpa_end;
@@ -773,6 +859,14 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	prod = rxr->rx_prod;
 
 	cons = rxcmp->opaque;
+	if (unlikely(cons != rxr->rx_next_cons)) {
+		bnxt_discard_rx(bp, cpr, &tmp_raw_cons, rxcmp);
+		PMD_DRV_LOG(ERR, "RX cons %x != expected cons %x\n",
+			    cons, rxr->rx_next_cons);
+		bnxt_sched_ring_reset(rxq);
+		rc = -EBUSY;
+		goto next_rx;
+	}
 	mbuf = bnxt_consume_rx_buf(rxr, cons);
 	if (mbuf == NULL)
 		return -EBUSY;
@@ -837,6 +931,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		goto rx;
 	}
 	rxr->rx_prod = prod;
+	rxr->rx_next_cons = RING_NEXT(rxr->rx_ring_struct, cons);
 
 	if (BNXT_TRUFLOW_EN(bp) && (BNXT_VF_IS_TRUSTED(bp) || BNXT_PF(bp)) &&
 	    vfr_flag) {

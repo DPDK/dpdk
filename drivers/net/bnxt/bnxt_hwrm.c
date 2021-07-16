@@ -2585,6 +2585,25 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 		bp->grp_info[queue_index].cp_fw_ring_id = INVALID_HW_RING_ID;
 }
 
+int bnxt_hwrm_rx_ring_reset(struct bnxt *bp, int queue_index)
+{
+	int rc;
+	struct hwrm_ring_reset_input req = {.req_type = 0 };
+	struct hwrm_ring_reset_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(&req, HWRM_RING_RESET, BNXT_USE_CHIMP_MB);
+
+	req.ring_type = HWRM_RING_RESET_INPUT_RING_TYPE_RX_RING_GRP;
+	req.ring_id = rte_cpu_to_le_16(bp->grp_info[queue_index].fw_grp_id);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
 static int
 bnxt_free_all_hwrm_rings(struct bnxt *bp)
 {

@@ -30,6 +30,7 @@ struct bnxt_rx_queue {
 	uint8_t			rx_deferred_start; /* not in global dev start */
 	uint8_t			rx_started; /* RX queue is started */
 	uint8_t			drop_en; /* Drop when rx desc not available. */
+	uint8_t			in_reset; /* Rx ring is scheduled for reset */
 
 	struct bnxt		*bp;
 	int			index;

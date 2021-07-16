@@ -58,6 +58,7 @@ struct bnxt_rx_ring_info {
 	uint16_t		rx_prod;
 	uint16_t		ag_prod;
 	uint16_t                rx_cons; /* Needed for representor */
+	uint16_t                rx_next_cons;
 	struct bnxt_db_info     rx_db;
 	struct bnxt_db_info     ag_db;
 
