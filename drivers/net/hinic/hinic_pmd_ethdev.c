@@ -1617,6 +1617,9 @@ static int hinic_vlan_filter_set(struct rte_eth_dev *dev,
 	if (vlan_id > RTE_ETHER_MAX_VLAN_ID)
 		return -EINVAL;
 
+	if (vlan_id == 0)
+		return 0;
+
 	func_id = hinic_global_func_id(nic_dev->hwdev);
 
 	if (enable) {
