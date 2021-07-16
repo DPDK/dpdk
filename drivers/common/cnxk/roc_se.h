@@ -261,7 +261,7 @@ struct roc_se_ctx {
 		struct roc_se_zuc_snow3g_ctx zs_ctx;
 		struct roc_se_kasumi_ctx k_ctx;
 	} se_ctx;
-	uint8_t auth_key[1024];
+	uint8_t *auth_key;
 };
 
 int __roc_api roc_se_auth_key_set(struct roc_se_ctx *se_ctx,

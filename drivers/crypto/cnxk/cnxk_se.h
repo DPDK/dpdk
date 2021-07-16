@@ -273,8 +273,7 @@ cpt_digest_gen_prep(uint32_t flags, uint64_t d_lens,
 	i = 0;
 
 	if (ctx->hmac) {
-		uint64_t k_vaddr = (uint64_t)params->ctx_buf.vaddr +
-				   offsetof(struct roc_se_ctx, auth_key);
+		uint64_t k_vaddr = (uint64_t)ctx->auth_key;
 		/* Key */
 		i = fill_sg_comp(gather_comp, i, k_vaddr,
 				 RTE_ALIGN_CEIL(key_len, 8));

@@ -206,7 +206,11 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 
 	if (key_len) {
 		se_ctx->hmac = 1;
-		memset(se_ctx->auth_key, 0, sizeof(se_ctx->auth_key));
+
+		se_ctx->auth_key = plt_zmalloc(key_len, 8);
+		if (se_ctx->auth_key == NULL)
+			return -1;
+
 		memcpy(se_ctx->auth_key, key, key_len);
 		se_ctx->auth_key_len = key_len;
 		memset(fctx->hmac.ipad, 0, sizeof(fctx->hmac.ipad));
