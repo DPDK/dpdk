@@ -232,6 +232,14 @@ __idxd_enqueue_copy(int dev_id, rte_iova_t src, rte_iova_t dst,
 }
 
 static __rte_always_inline int
+__idxd_enqueue_nop(int dev_id)
+{
+	/* only op field needs filling - zero src, dst and length */
+	return __idxd_write_desc(dev_id, idxd_op_nop << IDXD_CMD_OP_SHIFT,
+			0, 0, 0, NULL);
+}
+
+static __rte_always_inline int
 __idxd_fence(int dev_id)
 {
 	/* only op field needs filling - zero src, dst and length */
@@ -260,8 +268,8 @@ __idxd_perform_ops(int dev_id)
 		return 0;
 
 	if (idxd->batch_size == 1)
-		/* use a fence as a null descriptor, so batch_size >= 2 */
-		if (__idxd_fence(dev_id) != 1)
+		/* use a NOP as a null descriptor, so batch_size >= 2 */
+		if (__idxd_enqueue_nop(dev_id) != 1)
 			return -1;
 
 	/* write completion beyond last desc in the batch */
