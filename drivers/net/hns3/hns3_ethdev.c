@@ -317,6 +317,7 @@ hns3_interrupt_handler(void *param)
 	vector0_int = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
 	ras_int = hns3_read_dev(hw, HNS3_RAS_PF_OTHER_INT_STS_REG);
 	cmdq_int = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG);
+	hns3_clear_event_cause(hw, event_cause, clearval);
 	/* vector 0 interrupt is shared with reset and mailbox source events. */
 	if (event_cause == HNS3_VECTOR0_EVENT_ERR) {
 		hns3_warn(hw, "received interrupt: vector0_int_stat:0x%x "
@@ -335,7 +336,6 @@ hns3_interrupt_handler(void *param)
 			  vector0_int, ras_int, cmdq_int);
 	}
 
-	hns3_clear_event_cause(hw, event_cause, clearval);
 	/* Enable interrupt if it is not cause by reset */
 	hns3_pf_enable_irq0(hw);
 }

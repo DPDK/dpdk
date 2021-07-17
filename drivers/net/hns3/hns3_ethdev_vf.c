@@ -1116,6 +1116,8 @@ hns3vf_interrupt_handler(void *param)
 
 	/* Read out interrupt causes */
 	event_cause = hns3vf_check_event_cause(hns, &clearval);
+	/* Clear interrupt causes */
+	hns3vf_clear_event_cause(hw, clearval);
 
 	switch (event_cause) {
 	case HNS3VF_VECTOR0_EVENT_RST:
@@ -1127,9 +1129,6 @@ hns3vf_interrupt_handler(void *param)
 	default:
 		break;
 	}
-
-	/* Clear interrupt causes */
-	hns3vf_clear_event_cause(hw, clearval);
 
 	/* Enable interrupt */
 	hns3vf_enable_irq0(hw);
