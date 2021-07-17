@@ -1229,54 +1229,34 @@ hns3_parse_fdir_filter(struct rte_eth_dev *dev,
 	return hns3_handle_actions(dev, actions, rule, error);
 }
 
-void
-hns3_flow_init(struct rte_eth_dev *dev)
-{
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct hns3_process_private *process_list = dev->process_private;
-	pthread_mutexattr_t attr;
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		pthread_mutexattr_init(&attr);
-		pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
-		pthread_mutex_init(&hw->flows_lock, &attr);
-		dev->data->dev_flags |= RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE;
-	}
-
-	TAILQ_INIT(&process_list->fdir_list);
-	TAILQ_INIT(&process_list->filter_rss_list);
-	TAILQ_INIT(&process_list->flow_list);
-}
-
 static void
 hns3_filterlist_flush(struct rte_eth_dev *dev)
 {
-	struct hns3_process_private *process_list = dev->process_private;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_fdir_rule_ele *fdir_rule_ptr;
 	struct hns3_rss_conf_ele *rss_filter_ptr;
 	struct hns3_flow_mem *flow_node;
 
-	fdir_rule_ptr = TAILQ_FIRST(&process_list->fdir_list);
+	fdir_rule_ptr = TAILQ_FIRST(&hw->flow_fdir_list);
 	while (fdir_rule_ptr) {
-		TAILQ_REMOVE(&process_list->fdir_list, fdir_rule_ptr, entries);
+		TAILQ_REMOVE(&hw->flow_fdir_list, fdir_rule_ptr, entries);
 		rte_free(fdir_rule_ptr);
-		fdir_rule_ptr = TAILQ_FIRST(&process_list->fdir_list);
+		fdir_rule_ptr = TAILQ_FIRST(&hw->flow_fdir_list);
 	}
 
-	rss_filter_ptr = TAILQ_FIRST(&process_list->filter_rss_list);
+	rss_filter_ptr = TAILQ_FIRST(&hw->flow_rss_list);
 	while (rss_filter_ptr) {
-		TAILQ_REMOVE(&process_list->filter_rss_list, rss_filter_ptr,
-			     entries);
+		TAILQ_REMOVE(&hw->flow_rss_list, rss_filter_ptr, entries);
 		rte_free(rss_filter_ptr);
-		rss_filter_ptr = TAILQ_FIRST(&process_list->filter_rss_list);
+		rss_filter_ptr = TAILQ_FIRST(&hw->flow_rss_list);
 	}
 
-	flow_node = TAILQ_FIRST(&process_list->flow_list);
+	flow_node = TAILQ_FIRST(&hw->flow_list);
 	while (flow_node) {
-		TAILQ_REMOVE(&process_list->flow_list, flow_node, entries);
+		TAILQ_REMOVE(&hw->flow_list, flow_node, entries);
 		rte_free(flow_node->flow);
 		rte_free(flow_node);
-		flow_node = TAILQ_FIRST(&process_list->flow_list);
+		flow_node = TAILQ_FIRST(&hw->flow_list);
 	}
 }
 
@@ -1535,7 +1515,6 @@ static int
 hns3_config_rss_filter(struct rte_eth_dev *dev,
 		       const struct hns3_rss_conf *conf, bool add)
 {
-	struct hns3_process_private *process_list = dev->process_private;
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_rss_conf_ele *rss_filter_ptr;
 	struct hns3_hw *hw = &hns->hw;
@@ -1620,7 +1599,7 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 	 * When create a new RSS rule, the old rule will be overlaid and set
 	 * invalid.
 	 */
-	TAILQ_FOREACH(rss_filter_ptr, &process_list->filter_rss_list, entries)
+	TAILQ_FOREACH(rss_filter_ptr, &hw->flow_rss_list, entries)
 		rss_filter_ptr->filter_info.valid = false;
 
 rss_config_err:
@@ -1632,7 +1611,6 @@ rss_config_err:
 static int
 hns3_clear_rss_filter(struct rte_eth_dev *dev)
 {
-	struct hns3_process_private *process_list = dev->process_private;
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_rss_conf_ele *rss_filter_ptr;
 	struct hns3_hw *hw = &hns->hw;
@@ -1640,10 +1618,9 @@ hns3_clear_rss_filter(struct rte_eth_dev *dev)
 	int rss_rule_fail_cnt = 0; /* count for failure of clearing RSS rules */
 	int ret = 0;
 
-	rss_filter_ptr = TAILQ_FIRST(&process_list->filter_rss_list);
+	rss_filter_ptr = TAILQ_FIRST(&hw->flow_rss_list);
 	while (rss_filter_ptr) {
-		TAILQ_REMOVE(&process_list->filter_rss_list, rss_filter_ptr,
-			     entries);
+		TAILQ_REMOVE(&hw->flow_rss_list, rss_filter_ptr, entries);
 		ret = hns3_config_rss_filter(dev, &rss_filter_ptr->filter_info,
 					     false);
 		if (ret)
@@ -1651,7 +1628,7 @@ hns3_clear_rss_filter(struct rte_eth_dev *dev)
 		else
 			rss_rule_succ_cnt++;
 		rte_free(rss_filter_ptr);
-		rss_filter_ptr = TAILQ_FIRST(&process_list->filter_rss_list);
+		rss_filter_ptr = TAILQ_FIRST(&hw->flow_rss_list);
 	}
 
 	if (rss_rule_fail_cnt) {
@@ -1755,7 +1732,6 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		 const struct rte_flow_action actions[],
 		 struct rte_flow_error *error)
 {
-	struct hns3_process_private *process_list = dev->process_private;
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 	const struct hns3_rss_conf *rss_conf;
@@ -1787,7 +1763,7 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	}
 
 	flow_node->flow = flow;
-	TAILQ_INSERT_TAIL(&process_list->flow_list, flow_node, entries);
+	TAILQ_INSERT_TAIL(&hw->flow_list, flow_node, entries);
 
 	act = hns3_find_rss_general_action(pattern, actions);
 	if (act) {
@@ -1809,8 +1785,7 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		hns3_rss_conf_copy(&rss_filter_ptr->filter_info,
 				   &rss_conf->conf);
 		rss_filter_ptr->filter_info.valid = true;
-		TAILQ_INSERT_TAIL(&process_list->filter_rss_list,
-				  rss_filter_ptr, entries);
+		TAILQ_INSERT_TAIL(&hw->flow_rss_list, rss_filter_ptr, entries);
 
 		flow->rule = rss_filter_ptr;
 		flow->filter_type = RTE_ETH_FILTER_HASH;
@@ -1844,8 +1819,7 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	if (!ret) {
 		memcpy(&fdir_rule_ptr->fdir_conf, &fdir_rule,
 			sizeof(struct hns3_fdir_rule));
-		TAILQ_INSERT_TAIL(&process_list->fdir_list,
-				  fdir_rule_ptr, entries);
+		TAILQ_INSERT_TAIL(&hw->flow_fdir_list, fdir_rule_ptr, entries);
 		flow->rule = fdir_rule_ptr;
 		flow->filter_type = RTE_ETH_FILTER_FDIR;
 
@@ -1860,7 +1834,7 @@ err:
 	rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			   "Failed to create flow");
 out:
-	TAILQ_REMOVE(&process_list->flow_list, flow_node, entries);
+	TAILQ_REMOVE(&hw->flow_list, flow_node, entries);
 	rte_free(flow_node);
 	rte_free(flow);
 	return NULL;
@@ -1871,13 +1845,13 @@ static int
 hns3_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 		  struct rte_flow_error *error)
 {
-	struct hns3_process_private *process_list = dev->process_private;
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_fdir_rule_ele *fdir_rule_ptr;
 	struct hns3_rss_conf_ele *rss_filter_ptr;
 	struct hns3_flow_mem *flow_node;
 	enum rte_filter_type filter_type;
 	struct hns3_fdir_rule fdir_rule;
+	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
 	if (flow == NULL)
@@ -1899,7 +1873,7 @@ hns3_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 						  "Destroy FDIR fail.Try again");
 		if (fdir_rule.flags & HNS3_RULE_FLAG_COUNTER)
 			hns3_counter_release(dev, fdir_rule.act_cnt.id);
-		TAILQ_REMOVE(&process_list->fdir_list, fdir_rule_ptr, entries);
+		TAILQ_REMOVE(&hw->flow_fdir_list, fdir_rule_ptr, entries);
 		rte_free(fdir_rule_ptr);
 		fdir_rule_ptr = NULL;
 		break;
@@ -1912,8 +1886,7 @@ hns3_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 						  RTE_FLOW_ERROR_TYPE_HANDLE,
 						  flow,
 						  "Destroy RSS fail.Try again");
-		TAILQ_REMOVE(&process_list->filter_rss_list, rss_filter_ptr,
-			     entries);
+		TAILQ_REMOVE(&hw->flow_rss_list, rss_filter_ptr, entries);
 		rte_free(rss_filter_ptr);
 		rss_filter_ptr = NULL;
 		break;
@@ -1923,10 +1896,9 @@ hns3_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 					  "Unsupported filter type");
 	}
 
-	TAILQ_FOREACH(flow_node, &process_list->flow_list, entries) {
+	TAILQ_FOREACH(flow_node, &hw->flow_list, entries) {
 		if (flow_node->flow == flow) {
-			TAILQ_REMOVE(&process_list->flow_list, flow_node,
-				     entries);
+			TAILQ_REMOVE(&hw->flow_list, flow_node, entries);
 			rte_free(flow_node);
 			flow_node = NULL;
 			break;
@@ -2129,4 +2101,31 @@ hns3_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type filter_type,
 	}
 
 	return ret;
+}
+
+void
+hns3_flow_init(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	pthread_mutexattr_t attr;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+	pthread_mutex_init(&hw->flows_lock, &attr);
+	dev->data->dev_flags |= RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE;
+
+	TAILQ_INIT(&hw->flow_fdir_list);
+	TAILQ_INIT(&hw->flow_rss_list);
+	TAILQ_INIT(&hw->flow_list);
+}
+
+void
+hns3_flow_uninit(struct rte_eth_dev *dev)
+{
+	struct rte_flow_error error;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		hns3_flow_flush_wrap(dev, &error);
 }
