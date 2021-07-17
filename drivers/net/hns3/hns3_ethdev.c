@@ -1748,7 +1748,6 @@ hns3_set_default_mac_addr(struct rte_eth_dev *dev,
 	struct rte_ether_addr *oaddr;
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 	bool default_addr_setted;
-	bool rm_succes = false;
 	int ret, ret_val;
 
 	/*
@@ -1768,9 +1767,10 @@ hns3_set_default_mac_addr(struct rte_eth_dev *dev,
 					      oaddr);
 			hns3_warn(hw, "Remove old uc mac address(%s) fail: %d",
 				  mac_str, ret);
-			rm_succes = false;
-		} else
-			rm_succes = true;
+
+			rte_spinlock_unlock(&hw->lock);
+			return ret;
+		}
 	}
 
 	ret = hns3_add_uc_addr_common(hw, mac_addr);
@@ -1805,16 +1805,12 @@ err_pause_addr_cfg:
 	}
 
 err_add_uc_addr:
-	if (rm_succes) {
-		ret_val = hns3_add_uc_addr_common(hw, oaddr);
-		if (ret_val) {
-			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-					      oaddr);
-			hns3_warn(hw,
-				  "Failed to restore old uc mac addr(%s): %d",
+	ret_val = hns3_add_uc_addr_common(hw, oaddr);
+	if (ret_val) {
+		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE, oaddr);
+		hns3_warn(hw, "Failed to restore old uc mac addr(%s): %d",
 				  mac_str, ret_val);
-			hw->mac.default_addr_setted = false;
-		}
+		hw->mac.default_addr_setted = false;
 	}
 	rte_spinlock_unlock(&hw->lock);
 
