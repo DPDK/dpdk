@@ -5292,6 +5292,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 	hns3_rss_uninit(hns);
 	(void)hns3_config_gro(hw, false);
 	hns3_promisc_uninit(hw);
+	hns3_flow_uninit(eth_dev);
 	hns3_fdir_filter_uninit(hns);
 	hns3_uninit_umv_space(hw);
 	hns3_tqp_stats_uninit(hw);
@@ -5918,11 +5919,8 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	struct hns3_hw *hw = &hns->hw;
 	int ret = 0;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		rte_free(eth_dev->process_private);
-		eth_dev->process_private = NULL;
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
-	}
 
 	if (hw->adapter_state == HNS3_NIC_STARTED)
 		ret = hns3_dev_stop(eth_dev);
@@ -5937,8 +5935,6 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	hns3_uninit_pf(eth_dev);
 	hns3_free_all_queues(eth_dev);
 	rte_free(hw->reset.wait_data);
-	rte_free(eth_dev->process_private);
-	eth_dev->process_private = NULL;
 	hns3_mp_uninit_primary();
 	hns3_warn(hw, "Close port %u finished", hw->data->port_id);
 
@@ -7398,15 +7394,6 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	eth_dev->process_private = (struct hns3_process_private *)
-	    rte_zmalloc_socket("hns3_filter_list",
-			       sizeof(struct hns3_process_private),
-			       RTE_CACHE_LINE_SIZE, eth_dev->device->numa_node);
-	if (eth_dev->process_private == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to alloc memory for process private");
-		return -ENOMEM;
-	}
-
 	hns3_flow_init(eth_dev);
 
 	hns3_set_rxtx_function(eth_dev);
@@ -7510,8 +7497,6 @@ err_mp_init_secondary:
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->tx_pkt_prepare = NULL;
 	eth_dev->tx_descriptor_status = NULL;
-	rte_free(eth_dev->process_private);
-	eth_dev->process_private = NULL;
 	return ret;
 }
 
@@ -7523,11 +7508,8 @@ hns3_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		rte_free(eth_dev->process_private);
-		eth_dev->process_private = NULL;
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
-	}
 
 	if (hw->adapter_state < HNS3_NIC_CLOSING)
 		hns3_dev_close(eth_dev);
