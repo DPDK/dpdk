@@ -2437,14 +2437,11 @@ hns3_check_link_speed(struct hns3_hw *hw, uint32_t link_speeds)
 	/*
 	 * Some hardware doesn't support auto-negotiation, but users may not
 	 * configure link_speeds (default 0), which means auto-negotiation.
-	 * In this case, a warning message need to be printed, instead of
-	 * an error.
+	 * In this case, it should return success.
 	 */
 	if (link_speeds == ETH_LINK_SPEED_AUTONEG &&
-	    hw->mac.support_autoneg == 0) {
-		hns3_warn(hw, "auto-negotiation is not supported, use default fixed speed!");
+	    hw->mac.support_autoneg == 0)
 		return 0;
-	}
 
 	if (link_speeds != ETH_LINK_SPEED_AUTONEG) {
 		ret = hns3_check_port_speed(hw, link_speeds);
@@ -5515,10 +5512,13 @@ hns3_set_fiber_port_link_speed(struct hns3_hw *hw,
 	/*
 	 * Some hardware doesn't support auto-negotiation, but users may not
 	 * configure link_speeds (default 0), which means auto-negotiation.
-	 * In this case, it should return success.
+	 * In this case, a warning message need to be printed, instead of
+	 * an error.
 	 */
-	if (cfg->autoneg)
+	if (cfg->autoneg) {
+		hns3_warn(hw, "auto-negotiation is not supported, use default fixed speed!");
 		return 0;
+	}
 
 	return hns3_cfg_mac_speed_dup(hw, cfg->speed, cfg->duplex);
 }
