@@ -230,6 +230,16 @@ def get_device_details(devices_type):
             if rt_info[i] == "dev":
                 ssh_if.append(rt_info[i+1])
 
+        bdir = "/proc/net/bonding"
+        if os.path.exists(bdir):
+            for bn in os.listdir(bdir):
+                f = open(os.path.join(bdir, bn))
+                bs = f.read()
+                f.close()
+                for l in bs.splitlines():
+                    if l[:17] == "Slave Interface: ":
+                        ssh_if.append(l[17:])
+
     # based on the basic info, get extended text details
     for d in devices.keys():
         if not device_type_match(devices[d], devices_type):
