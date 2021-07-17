@@ -239,6 +239,7 @@ hns3_interrupt_handler(void *param)
 	hns3_pf_disable_irq0(hw);
 
 	event_cause = hns3_check_event_cause(hns, &clearval);
+	hns3_clear_event_cause(hw, event_cause, clearval);
 	/* vector 0 interrupt is shared with reset and mailbox source events. */
 	if (event_cause == HNS3_VECTOR0_EVENT_ERR) {
 		hns3_warn(hw, "Received err interrupt");
@@ -253,7 +254,6 @@ hns3_interrupt_handler(void *param)
 	else
 		hns3_err(hw, "Received unknown event");
 
-	hns3_clear_event_cause(hw, event_cause, clearval);
 	/* Enable interrupt if it is not cause by reset */
 	hns3_pf_enable_irq0(hw);
 }
