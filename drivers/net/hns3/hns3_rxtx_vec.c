@@ -172,15 +172,11 @@ hns3_rxq_vec_setup_rearm_data(struct hns3_rx_queue *rxq)
 			 offsetof(struct rte_mbuf, rearm_data));
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, refcnt) <
 			 offsetof(struct rte_mbuf, rearm_data));
-	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, refcnt) <
-			 offsetof(struct rte_mbuf, rearm_data));
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, nb_segs) <
 			 offsetof(struct rte_mbuf, rearm_data));
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, port) <
 			 offsetof(struct rte_mbuf, rearm_data));
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_off) -
-			 offsetof(struct rte_mbuf, rearm_data) > 6);
-	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, refcnt) -
 			 offsetof(struct rte_mbuf, rearm_data) > 6);
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, refcnt) -
 			 offsetof(struct rte_mbuf, rearm_data) > 6);
