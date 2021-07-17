@@ -4386,7 +4386,7 @@ void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 	} else {
 		eth_dev->rx_pkt_burst = hns3_dummy_rxtx_burst;
 		eth_dev->tx_pkt_burst = hns3_dummy_rxtx_burst;
-		eth_dev->tx_pkt_prepare = hns3_dummy_rxtx_burst;
+		eth_dev->tx_pkt_prepare = NULL;
 	}
 }
 
