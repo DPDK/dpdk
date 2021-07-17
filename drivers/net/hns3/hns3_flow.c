@@ -1134,42 +1134,29 @@ is_tunnel_packet(enum rte_flow_item_type type)
 }
 
 /*
- * Parse the rule to see if it is a IP or MAC VLAN flow director rule.
- * And get the flow director filter info BTW.
- * UDP/TCP/SCTP PATTERN:
- * The first not void item can be ETH or IPV4 or IPV6
- * The second not void item must be IPV4 or IPV6 if the first one is ETH.
- * The next not void item could be UDP or TCP or SCTP (optional)
- * The next not void item could be RAW (for flexbyte, optional)
- * The next not void item must be END.
- * A Fuzzy Match pattern can appear at any place before END.
- * Fuzzy Match is optional for IPV4 but is required for IPV6
- * MAC VLAN PATTERN:
- * The first not void item must be ETH.
- * The second not void item must be MAC VLAN.
- * The next not void item must be END.
- * ACTION:
- * The first not void action should be QUEUE or DROP.
- * The second not void optional action should be MARK,
- * mark_id is a uint32_t number.
- * The next not void action should be END.
- * UDP/TCP/SCTP pattern example:
- * ITEM		Spec			Mask
- * ETH		NULL			NULL
- * IPV4		src_addr 192.168.1.20	0xFFFFFFFF
- *		dst_addr 192.167.3.50	0xFFFFFFFF
- * UDP/TCP/SCTP	src_port	80	0xFFFF
- *		dst_port	80	0xFFFF
- * END
- * MAC VLAN pattern example:
- * ITEM		Spec			Mask
- * ETH		dst_addr
-		{0xAC, 0x7B, 0xA1,	{0xFF, 0xFF, 0xFF,
-		0x2C, 0x6D, 0x36}	0xFF, 0xFF, 0xFF}
- * MAC VLAN	tci	0x2016		0xEFFF
- * END
- * Other members in mask and spec should set to 0x00.
- * Item->last should be NULL.
+ * Parse the flow director rule.
+ * The supported PATTERN:
+ *   case: non-tunnel packet:
+ *     ETH : src-mac, dst-mac, ethertype
+ *     VLAN: tag1, tag2
+ *     IPv4: src-ip, dst-ip, tos, proto
+ *     IPv6: src-ip(last 32 bit addr), dst-ip(last 32 bit addr), proto
+ *     UDP : src-port, dst-port
+ *     TCP : src-port, dst-port
+ *     SCTP: src-port, dst-port, tag
+ *   case: tunnel packet:
+ *     OUTER-ETH: ethertype
+ *     OUTER-L3 : proto
+ *     OUTER-L4 : src-port, dst-port
+ *     TUNNEL   : vni, flow-id(only valid when NVGRE)
+ *     INNER-ETH/VLAN/IPv4/IPv6/UDP/TCP/SCTP: same as non-tunnel packet
+ * The supported ACTION:
+ *    QUEUE
+ *    DROP
+ *    COUNT
+ *    MARK: the id range [0, 4094]
+ *    FLAG
+ *    RSS: only valid if firmware support FD_QUEUE_REGION.
  */
 static int
 hns3_parse_fdir_filter(struct rte_eth_dev *dev,
