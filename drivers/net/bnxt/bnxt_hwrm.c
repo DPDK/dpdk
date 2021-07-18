@@ -3266,16 +3266,6 @@ int bnxt_hwrm_parent_pf_qcfg(struct bnxt *bp)
 	bp->parent->fid = rte_le_to_cpu_16(resp->fid);
 	bp->parent->port_id = rte_le_to_cpu_16(resp->port_id);
 
-	/* FIXME: Temporary workaround - remove when firmware issue is fixed. */
-	if (bp->parent->vnic == 0) {
-		PMD_DRV_LOG(DEBUG, "parent VNIC unavailable.\n");
-		/* Use hard-coded values appropriate for current Wh+ fw. */
-		if (bp->parent->fid == 2)
-			bp->parent->vnic = 0x100;
-		else
-			bp->parent->vnic = 1;
-	}
-
 	HWRM_UNLOCK();
 
 	return 0;
