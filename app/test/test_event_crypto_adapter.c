@@ -228,8 +228,7 @@ test_op_forward_mode(uint8_t session_less)
 		op->sess_type = RTE_CRYPTO_OP_SESSIONLESS;
 		first_xform = &cipher_xform;
 		sym_op->xform = first_xform;
-		uint32_t len = IV_OFFSET + MAXIMUM_IV_LENGTH +
-				(sizeof(struct rte_crypto_sym_xform) * 2);
+		uint32_t len = IV_OFFSET + MAXIMUM_IV_LENGTH;
 		op->private_data_offset = len;
 		/* Fill in private data information */
 		rte_memcpy(&m_data.response_info, &response_info,
@@ -423,8 +422,7 @@ test_op_new_mode(uint8_t session_less)
 		op->sess_type = RTE_CRYPTO_OP_SESSIONLESS;
 		first_xform = &cipher_xform;
 		sym_op->xform = first_xform;
-		uint32_t len = IV_OFFSET + MAXIMUM_IV_LENGTH +
-				(sizeof(struct rte_crypto_sym_xform) * 2);
+		uint32_t len = IV_OFFSET + MAXIMUM_IV_LENGTH;
 		op->private_data_offset = len;
 		/* Fill in private data information */
 		rte_memcpy(&m_data.response_info, &response_info,
@@ -520,7 +518,8 @@ configure_cryptodev(void)
 			NUM_MBUFS, MBUF_CACHE_SIZE,
 			DEFAULT_NUM_XFORMS *
 			sizeof(struct rte_crypto_sym_xform) +
-			MAXIMUM_IV_LENGTH,
+			MAXIMUM_IV_LENGTH +
+			sizeof(union rte_event_crypto_metadata),
 			rte_socket_id());
 	if (params.op_mpool == NULL) {
 		RTE_LOG(ERR, USER1, "Can't create CRYPTO_OP_POOL\n");
