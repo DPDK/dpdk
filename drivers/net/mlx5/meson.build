@@ -9,6 +9,7 @@ if not (is_linux or is_windows)
 endif
 
 deps += ['hash', 'common_mlx5']
+headers = files('rte_pmd_mlx5.h')
 sources = files(
         'mlx5.c',
         'mlx5_ethdev.c',
