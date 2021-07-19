@@ -41,6 +41,17 @@ rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
 	void *p_params;
 	int ret, tc_index = 0;
 
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		DPAA2_PMD_WARN("Invalid port id %u", port_id);
+		return -EINVAL;
+	}
+
+	if (strcmp(eth_dev->device->driver->name,
+			RTE_STR(NET_DPAA2_PMD_DRIVER_NAME))) {
+		DPAA2_PMD_WARN("Not a valid dpaa2 port");
+		return -EINVAL;
+	}
+
 	p_params = rte_zmalloc(
 		NULL, DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!p_params) {
