@@ -214,7 +214,7 @@ fman_if_init(const struct device_node *dpa_node)
 	const phandle *port_cell_idx, *ext_args_cell_idx;
 	const struct device_node *parent_node_ext_args;
 	uint64_t tx_phandle_host[4] = {0};
-	uint64_t rx_phandle_host[4] = {0};
+	uint64_t rx_phandle_host[6] = {0};
 	uint64_t regs_addr_host = 0;
 	uint64_t cell_idx_host = 0;
 	uint64_t port_cell_idx_val = 0;
@@ -511,6 +511,10 @@ fman_if_init(const struct device_node *dpa_node)
 		goto err;
 	}
 
+	/* Check if "fsl,qman-frame-queues-rx" in dtb file is valid entry or
+	 * not. A valid entry contains at least 4 entries, rx_error_queue,
+	 * rx_error_queue_count, fqid_rx_def and rx_error_queue_count.
+	 */
 	assert(lenp >= (4 * sizeof(phandle)));
 
 	na = of_n_addr_cells(mac_node);
@@ -519,10 +523,20 @@ fman_if_init(const struct device_node *dpa_node)
 	rx_phandle_host[1] = of_read_number(&rx_phandle[1], na);
 	rx_phandle_host[2] = of_read_number(&rx_phandle[2], na);
 	rx_phandle_host[3] = of_read_number(&rx_phandle[3], na);
+	rx_phandle_host[4] = of_read_number(&rx_phandle[4], na);
+	rx_phandle_host[5] = of_read_number(&rx_phandle[5], na);
 
 	assert((rx_phandle_host[1] == 1) && (rx_phandle_host[3] == 1));
 	__if->__if.fqid_rx_err = rx_phandle_host[0];
 	__if->__if.fqid_rx_def = rx_phandle_host[2];
+
+	/* If there are 6 entries in "fsl,qman-frame-queues-rx" in dtb file, it
+	 * means PCD queues are also available. Hence, store that information.
+	 */
+	if (lenp == 6 * sizeof(phandle)) {
+		__if->__if.fqid_rx_pcd = rx_phandle_host[4];
+		__if->__if.fqid_rx_pcd_count = rx_phandle_host[5];
+	}
 
 	/* Extract the Tx FQIDs */
 	tx_phandle = of_get_property(dpa_node,

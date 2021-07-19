@@ -2,7 +2,7 @@
  *
  * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * All rights reserved.
- * Copyright 2019-2020 NXP
+ * Copyright 2019-2021 NXP
  *
  */
 
@@ -329,8 +329,11 @@ struct fman_if {
 	uint8_t is_shared_mac;
 	/* The hard-coded FQIDs for this interface. Note: this doesn't cover
 	 * the PCD nor the "Rx default" FQIDs, which are configured via FMC
-	 * and its XML-based configuration.
+	 * and its XML-based configuration. These values are being parsed from
+	 * kernel device tree.
 	 */
+	uint32_t fqid_rx_pcd;
+	uint32_t fqid_rx_pcd_count;
 	uint32_t fqid_rx_def;
 	uint32_t fqid_rx_err;
 	uint32_t fqid_tx_err;
