@@ -50,7 +50,7 @@ if_destructor(struct __fman_if *__if)
 		free(bp);
 	}
 cleanup:
-	free(__if);
+	rte_free(__if);
 }
 
 static int
