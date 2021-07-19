@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2017-2019 NXP
+ * Copyright 2017-2019,2021 NXP
  */
 
 /* System headers */
@@ -999,6 +999,9 @@ static int dpaa_port_vsp_configure(struct dpaa_if *dpaa_intf,
 	buf_prefix_cont.pass_time_stamp = true;
 	buf_prefix_cont.pass_hash_result = false;
 	buf_prefix_cont.pass_all_other_pcdinfo = false;
+	buf_prefix_cont.manip_ext_space =
+		RTE_PKTMBUF_HEADROOM - DPAA_MBUF_HW_ANNOTATION;
+
 	ret = fm_vsp_config_buffer_prefix_content(dpaa_intf->vsp_handle[vsp_id],
 					       &buf_prefix_cont);
 	if (ret != E_OK) {
