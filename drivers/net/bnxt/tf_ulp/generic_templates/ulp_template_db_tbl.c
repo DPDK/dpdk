@@ -1154,7 +1154,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_ACT_STATS_64,
-	.count                   = 8192
+	.count                   = 6912
 	},
 	{
 	.app_id                  = 0,
@@ -1298,7 +1298,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_TX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_ACT_STATS_64,
-	.count                   = 8192
+	.count                   = 6912
 	},
 	{
 	.app_id                  = 0,
