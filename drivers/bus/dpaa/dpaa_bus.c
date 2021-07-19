@@ -12,7 +12,6 @@
 #include <signal.h>
 #include <pthread.h>
 #include <sys/types.h>
-#include <sys/syscall.h>
 #include <sys/eventfd.h>
 
 #include <rte_byteorder.h>
@@ -314,7 +313,7 @@ int rte_dpaa_portal_init(void *arg)
 
 	DPAA_PER_LCORE_PORTAL->qman_idx = qman_get_portal_index();
 	DPAA_PER_LCORE_PORTAL->bman_idx = bman_get_portal_index();
-	DPAA_PER_LCORE_PORTAL->tid = syscall(SYS_gettid);
+	DPAA_PER_LCORE_PORTAL->tid = rte_gettid();
 
 	ret = pthread_setspecific(dpaa_portal_key,
 				  (void *)DPAA_PER_LCORE_PORTAL);
