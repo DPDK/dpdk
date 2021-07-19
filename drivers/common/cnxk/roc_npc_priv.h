@@ -58,6 +58,15 @@
 	(NPC_NIXLF_MAX * NPC_MCAME_PER_LF +                                    \
 	 (NPC_RVUPF_MAX_10XX - 1) * NPC_MCAME_PER_PF)
 
+#define NPC_ACTION_MAX_VLAN_PARAMS    3
+#define NPC_ACTION_MAX_VLANS_STRIPPED 2
+
+struct npc_action_vtag_info {
+	uint16_t vlan_id;
+	uint16_t vlan_ethtype;
+	uint8_t vlan_pcp;
+};
+
 enum npc_err_status {
 	NPC_ERR_PARAM = -1024,
 	NPC_ERR_NO_MEM,
@@ -351,7 +360,7 @@ struct npc {
 	uint16_t flow_max_priority;		/* Max priority for flow */
 	uint16_t switch_header_type; /* Suppprted switch header type */
 	uint32_t mark_actions;	     /* Number of mark actions */
-	uint32_t vtag_actions;	     /* vtag insert/strip actions */
+	uint32_t vtag_strip_actions; /* vtag insert/strip actions */
 	uint16_t pf_func;	     /* pf_func of device */
 	npc_dxcfg_t prx_dxcfg;	     /* intf, lid, lt, extract */
 	npc_fxcfg_t prx_fxcfg;	     /* Flag extract */

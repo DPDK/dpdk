@@ -135,6 +135,7 @@ struct roc_npc_flow {
 	uint64_t npc_action;
 	uint64_t vtag_action;
 	bool vtag_insert_enabled;
+	uint8_t vtag_insert_count;
 #define ROC_NPC_MAX_FLOW_PATTERNS 32
 	struct roc_npc_flow_dump_data dump_data[ROC_NPC_MAX_FLOW_PATTERNS];
 	uint16_t num_patterns;
