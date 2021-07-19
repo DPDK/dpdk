@@ -1468,7 +1468,7 @@ new_device(int vid)
 		vid, vdev->coreid);
 
 	if (async_vhost_driver) {
-		struct rte_vhost_async_features f;
+		struct rte_vhost_async_config config = {0};
 		struct rte_vhost_async_channel_ops channel_ops;
 
 		if (dma_type != NULL && strncmp(dma_type, "ioat", 4) == 0) {
@@ -1476,11 +1476,11 @@ new_device(int vid)
 			channel_ops.check_completed_copies =
 				ioat_check_completed_copies_cb;
 
-			f.async_inorder = 1;
-			f.async_threshold = 256;
+			config.features = RTE_VHOST_ASYNC_INORDER;
+			config.async_threshold = 256;
 
 			return rte_vhost_async_channel_register(vid, VIRTIO_RXQ,
-				f.intval, &channel_ops);
+				config, &channel_ops);
 		}
 	}
 

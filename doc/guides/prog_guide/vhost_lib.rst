@@ -218,26 +218,29 @@ The following is an overview of some key Vhost API functions:
 
   Enable or disable zero copy feature of the vhost crypto backend.
 
-* ``rte_vhost_async_channel_register(vid, queue_id, features, ops)``
+* ``rte_vhost_async_channel_register(vid, queue_id, config, ops)``
 
-  Register a vhost queue with async copy device channel after vring
-  is enabled. Following device ``features`` must be specified together
+  Register an async copy device channel for a vhost queue after vring
+  is enabled. Following device ``config`` must be specified together
   with the registration:
 
-  * ``async_inorder``
+  * ``features``
 
-    Async copy device can guarantee the ordering of copy completion
-    sequence. Copies are completed in the same order with that at
-    the submission time.
+    This field is used to specify async copy device features.
 
-    Currently, only ``async_inorder`` capable device is supported by vhost.
+    ``RTE_VHOST_ASYNC_INORDER`` represents the async copy device can
+    guarantee the order of copy completion is the same as the order
+    of copy submission.
+
+    Currently, only ``RTE_VHOST_ASYNC_INORDER`` capable device is
+    supported by vhost.
 
   * ``async_threshold``
 
     The copy length (in bytes) below which CPU copy will be used even if
     applications call async vhost APIs to enqueue/dequeue data.
 
-    Typical value is 512~1024 depending on the async device capability.
+    Typical value is 256~1024 depending on the async device capability.
 
   Applications must provide following ``ops`` callbacks for vhost lib to
   work with the async copy devices:
