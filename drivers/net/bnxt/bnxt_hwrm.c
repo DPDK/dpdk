@@ -1676,12 +1676,16 @@ int bnxt_hwrm_ring_free(struct bnxt *bp,
 	struct hwrm_ring_free_input req = {.req_type = 0 };
 	struct hwrm_ring_free_output *resp = bp->hwrm_cmd_resp_addr;
 
+	if (ring->fw_ring_id == INVALID_HW_RING_ID)
+		return -EINVAL;
+
 	HWRM_PREP(&req, HWRM_RING_FREE, BNXT_USE_CHIMP_MB);
 
 	req.ring_type = ring_type;
 	req.ring_id = rte_cpu_to_le_16(ring->fw_ring_id);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+	ring->fw_ring_id = INVALID_HW_RING_ID;
 
 	if (rc || resp->error_code) {
 		if (rc == 0 && resp->error_code)
@@ -1767,7 +1771,7 @@ int bnxt_hwrm_stat_clear(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	struct hwrm_stat_ctx_clr_stats_input req = {.req_type = 0 };
 	struct hwrm_stat_ctx_clr_stats_output *resp = bp->hwrm_cmd_resp_addr;
 
-	if (cpr->hw_stats_ctx_id == (uint32_t)HWRM_NA_SIGNATURE)
+	if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE)
 		return rc;
 
 	HWRM_PREP(&req, HWRM_STAT_CTX_CLR_STATS, BNXT_USE_CHIMP_MB);
@@ -1787,6 +1791,9 @@ static int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp, struct bnxt_cp_ring_info *c
 	int rc;
 	struct hwrm_stat_ctx_alloc_input req = {.req_type = 0 };
 	struct hwrm_stat_ctx_alloc_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (cpr->hw_stats_ctx_id != HWRM_NA_SIGNATURE)
+		return 0;
 
 	HWRM_PREP(&req, HWRM_STAT_CTX_ALLOC, BNXT_USE_CHIMP_MB);
 
@@ -1811,6 +1818,9 @@ static int bnxt_hwrm_stat_ctx_free(struct bnxt *bp, struct bnxt_cp_ring_info *cp
 	struct hwrm_stat_ctx_free_input req = {.req_type = 0 };
 	struct hwrm_stat_ctx_free_output *resp = bp->hwrm_cmd_resp_addr;
 
+	if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE)
+		return 0;
+
 	HWRM_PREP(&req, HWRM_STAT_CTX_FREE, BNXT_USE_CHIMP_MB);
 
 	req.stat_ctx_id = rte_cpu_to_le_32(cpr->hw_stats_ctx_id);
@@ -1819,6 +1829,8 @@ static int bnxt_hwrm_stat_ctx_free(struct bnxt *bp, struct bnxt_cp_ring_info *cp
 
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
+
+	cpr->hw_stats_ctx_id = HWRM_NA_SIGNATURE;
 
 	return rc;
 }
@@ -2460,48 +2472,54 @@ bnxt_free_all_hwrm_stat_ctxs(struct bnxt *bp)
 	unsigned int i;
 	struct bnxt_cp_ring_info *cpr;
 
-	for (i = 0; i < bp->rx_cp_nr_rings + bp->tx_cp_nr_rings; i++) {
+	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 
-		if (i >= bp->rx_cp_nr_rings) {
-			cpr = bp->tx_queues[i - bp->rx_cp_nr_rings]->cp_ring;
-		} else {
-			cpr = bp->rx_queues[i]->cp_ring;
-			if (BNXT_HAS_RING_GRPS(bp))
-				bp->grp_info[i].fw_stats_ctx = -1;
-		}
-		if (cpr->hw_stats_ctx_id != HWRM_NA_SIGNATURE) {
-			rc = bnxt_hwrm_stat_ctx_free(bp, cpr);
-			cpr->hw_stats_ctx_id = HWRM_NA_SIGNATURE;
-			if (rc)
-				return rc;
-		}
+		cpr = bp->rx_queues[i]->cp_ring;
+		if (BNXT_HAS_RING_GRPS(bp))
+			bp->grp_info[i].fw_stats_ctx = -1;
+		rc = bnxt_hwrm_stat_ctx_free(bp, cpr);
+		if (rc)
+			return rc;
 	}
+
+	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
+		cpr = bp->tx_queues[i]->cp_ring;
+		rc = bnxt_hwrm_stat_ctx_free(bp, cpr);
+		if (rc)
+			return rc;
+	}
+
 	return 0;
 }
 
 int bnxt_alloc_all_hwrm_stat_ctxs(struct bnxt *bp)
 {
+	struct bnxt_cp_ring_info *cpr;
 	unsigned int i;
 	int rc = 0;
 
-	for (i = 0; i < bp->rx_cp_nr_rings + bp->tx_cp_nr_rings; i++) {
-		struct bnxt_tx_queue *txq;
-		struct bnxt_rx_queue *rxq;
-		struct bnxt_cp_ring_info *cpr;
+	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
+		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 
-		if (i >= bp->rx_cp_nr_rings) {
-			txq = bp->tx_queues[i - bp->rx_cp_nr_rings];
-			cpr = txq->cp_ring;
-		} else {
-			rxq = bp->rx_queues[i];
-			cpr = rxq->cp_ring;
+		cpr = rxq->cp_ring;
+		if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE) {
+			rc = bnxt_hwrm_stat_ctx_alloc(bp, cpr);
+			if (rc)
+				return rc;
 		}
-
-		rc = bnxt_hwrm_stat_ctx_alloc(bp, cpr);
-
-		if (rc)
-			return rc;
 	}
+
+	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
+		struct bnxt_tx_queue *txq = bp->tx_queues[i];
+
+		cpr = txq->cp_ring;
+		if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE) {
+			rc = bnxt_hwrm_stat_ctx_alloc(bp, cpr);
+			if (rc)
+				return rc;
+		}
+	}
+
 	return rc;
 }
 
@@ -2534,10 +2552,9 @@ void bnxt_free_nq_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	bnxt_hwrm_ring_free(bp, cp_ring,
 			    HWRM_RING_FREE_INPUT_RING_TYPE_NQ);
 	cp_ring->fw_ring_id = INVALID_HW_RING_ID;
-	memset(cpr->cp_desc_ring, 0, cpr->cp_ring_struct->ring_size *
-				     sizeof(*cpr->cp_desc_ring));
+	memset(cpr->cp_desc_ring, 0,
+	       cpr->cp_ring_struct->ring_size * sizeof(*cpr->cp_desc_ring));
 	cpr->cp_raw_cons = 0;
-	cpr->valid = 0;
 }
 
 void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
@@ -2545,12 +2562,11 @@ void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 
 	bnxt_hwrm_ring_free(bp, cp_ring,
-			HWRM_RING_FREE_INPUT_RING_TYPE_L2_CMPL);
+			    HWRM_RING_FREE_INPUT_RING_TYPE_L2_CMPL);
 	cp_ring->fw_ring_id = INVALID_HW_RING_ID;
-	memset(cpr->cp_desc_ring, 0, cpr->cp_ring_struct->ring_size *
-			sizeof(*cpr->cp_desc_ring));
+	memset(cpr->cp_desc_ring, 0,
+	       cpr->cp_ring_struct->ring_size * sizeof(*cpr->cp_desc_ring));
 	cpr->cp_raw_cons = 0;
-	cpr->valid = 0;
 }
 
 void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
@@ -2560,26 +2576,22 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	struct bnxt_ring *ring = rxr->rx_ring_struct;
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 
-	if (ring->fw_ring_id != INVALID_HW_RING_ID) {
-		bnxt_hwrm_ring_free(bp, ring,
-				    HWRM_RING_FREE_INPUT_RING_TYPE_RX);
-		ring->fw_ring_id = INVALID_HW_RING_ID;
-		if (BNXT_HAS_RING_GRPS(bp))
-			bp->grp_info[queue_index].rx_fw_ring_id =
-							INVALID_HW_RING_ID;
-	}
+	bnxt_hwrm_ring_free(bp, ring,
+			    HWRM_RING_FREE_INPUT_RING_TYPE_RX);
+	if (BNXT_HAS_RING_GRPS(bp))
+		bp->grp_info[queue_index].rx_fw_ring_id =
+						INVALID_HW_RING_ID;
+
 	ring = rxr->ag_ring_struct;
-	if (ring->fw_ring_id != INVALID_HW_RING_ID) {
-		bnxt_hwrm_ring_free(bp, ring,
-				    BNXT_CHIP_THOR(bp) ?
-				    HWRM_RING_FREE_INPUT_RING_TYPE_RX_AGG :
-				    HWRM_RING_FREE_INPUT_RING_TYPE_RX);
-		if (BNXT_HAS_RING_GRPS(bp))
-			bp->grp_info[queue_index].ag_fw_ring_id =
-							INVALID_HW_RING_ID;
-	}
-	if (cpr->cp_ring_struct->fw_ring_id != INVALID_HW_RING_ID)
-		bnxt_free_cp_ring(bp, cpr);
+	bnxt_hwrm_ring_free(bp, ring,
+			    BNXT_CHIP_THOR(bp) ?
+			    HWRM_RING_FREE_INPUT_RING_TYPE_RX_AGG :
+			    HWRM_RING_FREE_INPUT_RING_TYPE_RX);
+	if (BNXT_HAS_RING_GRPS(bp))
+		bp->grp_info[queue_index].ag_fw_ring_id =
+						INVALID_HW_RING_ID;
+
+	bnxt_free_cp_ring(bp, cpr);
 
 	if (BNXT_HAS_RING_GRPS(bp))
 		bp->grp_info[queue_index].cp_fw_ring_id = INVALID_HW_RING_ID;
