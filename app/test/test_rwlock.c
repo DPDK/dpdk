@@ -13,7 +13,6 @@
 #include <rte_memory.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
-#include <rte_atomic.h>
 #include <rte_rwlock.h>
 #include <rte_eal.h>
 #include <rte_lcore.h>
@@ -36,7 +35,7 @@
 
 static rte_rwlock_t sl;
 static rte_rwlock_t sl_tab[RTE_MAX_LCORE];
-static rte_atomic32_t synchro;
+static uint32_t synchro;
 
 enum {
 	LC_TYPE_RDLOCK,
@@ -102,8 +101,7 @@ load_loop_fn(__rte_unused void *arg)
 
 	/* wait synchro for workers */
 	if (lcore != rte_get_main_lcore())
-		while (rte_atomic32_read(&synchro) == 0)
-			;
+		rte_wait_until_equal_32(&synchro, 1, __ATOMIC_RELAXED);
 
 	begin = rte_rdtsc_precise();
 	while (lcount < MAX_LOOP) {
@@ -136,12 +134,12 @@ test_rwlock_perf(void)
 	printf("\nRwlock Perf Test on %u cores...\n", rte_lcore_count());
 
 	/* clear synchro and start workers */
-	rte_atomic32_set(&synchro, 0);
+	__atomic_store_n(&synchro, 0, __ATOMIC_RELAXED);
 	if (rte_eal_mp_remote_launch(load_loop_fn, NULL, SKIP_MAIN) < 0)
 		return -1;
 
 	/* start synchro and launch test on main */
-	rte_atomic32_set(&synchro, 1);
+	__atomic_store_n(&synchro, 1, __ATOMIC_RELAXED);
 	load_loop_fn(NULL);
 
 	rte_eal_mp_wait_lcore();
