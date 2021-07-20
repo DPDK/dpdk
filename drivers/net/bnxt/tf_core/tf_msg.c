@@ -440,18 +440,18 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 	 * Should always get expected number of entries
 	 */
 	if (tfp_le_to_cpu_32(resp.size) != size) {
-		TFP_DRV_LOG(ERR,
-			    "%s: QCAPS message size error, rc:%s\n",
+		TFP_DRV_LOG(WARNING,
+			    "%s: QCAPS message size error, rc:%s, request %d vs response %d\n",
 			    tf_dir_2_str(dir),
-			    strerror(EINVAL));
-		rc = -EINVAL;
-		goto cleanup;
+			    strerror(EINVAL),
+			    size,
+			    resp.size);
 	}
 
 	/* Post process the response */
 	data = (struct tf_rm_resc_req_entry *)qcaps_buf.va_addr;
 
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < resp.size; i++) {
 		query[i].type = tfp_le_to_cpu_32(data[i].type);
 		query[i].min = tfp_le_to_cpu_16(data[i].min);
 		query[i].max = tfp_le_to_cpu_16(data[i].max);
