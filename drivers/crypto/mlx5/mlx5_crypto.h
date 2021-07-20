@@ -11,9 +11,11 @@
 #include <rte_cryptodev_pmd.h>
 
 #include <mlx5_common_utils.h>
+#include <mlx5_common_devx.h>
 
 #define MLX5_CRYPTO_DEK_HTABLE_SZ (1 << 11)
 #define MLX5_CRYPTO_KEY_LENGTH 80
+#define MLX5_CRYPTO_WQE_SET_SIZE 1024
 
 struct mlx5_crypto_priv {
 	TAILQ_ENTRY(mlx5_crypto_priv) next;
@@ -25,6 +27,15 @@ struct mlx5_crypto_priv {
 	struct ibv_pd *pd;
 	struct mlx5_hlist *dek_hlist; /* Dek hash list. */
 	struct rte_cryptodev_config dev_config;
+};
+
+struct mlx5_crypto_qp {
+	struct mlx5_devx_cq cq_obj;
+	struct mlx5_devx_obj *qp_obj;
+	struct mlx5dv_devx_umem *umem_obj;
+	void *umem_buf;
+	volatile uint32_t *db_rec;
+	struct rte_crypto_op **ops;
 };
 
 struct mlx5_crypto_dek {
