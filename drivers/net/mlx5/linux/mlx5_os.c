@@ -2525,6 +2525,31 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 		}
 		restore = list[i].eth_dev->data->dev_flags;
 		rte_eth_copy_pci_info(list[i].eth_dev, pci_dev);
+		/**
+		 * Each representor has a dedicated interrupts vector.
+		 * rte_eth_copy_pci_info() assigns PF interrupts handle to
+		 * representor eth_dev object because representor and PF
+		 * share the same PCI address.
+		 * Override representor device with a dedicated
+		 * interrupts handle here.
+		 * Representor interrupts handle is released in mlx5_dev_stop().
+		 */
+		if (list[i].info.representor) {
+			struct rte_intr_handle *intr_handle;
+			intr_handle = mlx5_malloc(MLX5_MEM_SYS | MLX5_MEM_ZERO,
+						  sizeof(*intr_handle), 0,
+						  SOCKET_ID_ANY);
+			if (!intr_handle) {
+				DRV_LOG(ERR,
+					"port %u failed to allocate memory for interrupt handler "
+					"Rx interrupts will not be supported",
+					i);
+				rte_errno = ENOMEM;
+				ret = -rte_errno;
+				goto exit;
+			}
+			list[i].eth_dev->intr_handle = intr_handle;
+		}
 		/* Restore non-PCI flags cleared by the above call. */
 		list[i].eth_dev->data->dev_flags |= restore;
 		rte_eth_dev_probing_finish(list[i].eth_dev);
