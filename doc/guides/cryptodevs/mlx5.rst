@@ -55,6 +55,16 @@ Supported NICs
 
 * Mellanox\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
 
+
+Limitations
+-----------
+
+- AES-XTS keys provided in xform must include keytag and should be wrapped.
+- The supported data-unit lengths are 512B and 1KB. In case the `dataunit_len`
+  is not provided in the cipher xform, the OP length is limited to the above
+  values and 1MB.
+
+
 Prerequisites
 -------------
 

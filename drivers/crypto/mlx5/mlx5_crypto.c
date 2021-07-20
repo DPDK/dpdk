@@ -3,6 +3,7 @@
  */
 
 #include <rte_malloc.h>
+#include <rte_mempool.h>
 #include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_pci.h>
@@ -22,7 +23,9 @@
 #define MLX5_CRYPTO_MAX_QPS 1024
 
 #define MLX5_CRYPTO_FEATURE_FLAGS \
-	RTE_CRYPTODEV_FF_HW_ACCELERATED
+	(RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO | RTE_CRYPTODEV_FF_HW_ACCELERATED | \
+	 RTE_CRYPTODEV_FF_CIPHER_WRAPPED_KEY | \
+	 RTE_CRYPTODEV_FF_CIPHER_MULTIPLE_DATA_UNITS)
 
 TAILQ_HEAD(mlx5_crypto_privs, mlx5_crypto_priv) mlx5_crypto_priv_list =
 				TAILQ_HEAD_INITIALIZER(mlx5_crypto_priv_list);
@@ -66,6 +69,21 @@ static const struct rte_driver mlx5_drv = {
 };
 
 static struct cryptodev_driver mlx5_cryptodev_driver;
+
+struct mlx5_crypto_session {
+	uint32_t bs_bpt_eo_es;
+	/**< bsf_size, bsf_p_type, encryption_order and encryption standard,
+	 * saved in big endian format.
+	 */
+	uint32_t bsp_res;
+	/**< crypto_block_size_pointer and reserved 24 bits saved in big
+	 * endian format.
+	 */
+	uint32_t iv_offset:16;
+	/**< Starting point for Initialisation Vector. */
+	struct mlx5_crypto_dek *dek; /**< Pointer to dek struct. */
+	uint32_t dek_id; /**< DEK ID */
+} __rte_packed;
 
 static void
 mlx5_crypto_dev_infos_get(struct rte_cryptodev *dev,
@@ -132,6 +150,102 @@ mlx5_crypto_dev_close(struct rte_cryptodev *dev)
 	mlx5_crypto_dek_unset(priv);
 	DRV_LOG(DEBUG, "Device %u was closed.", dev->driver_id);
 	return 0;
+}
+
+static unsigned int
+mlx5_crypto_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
+{
+	return sizeof(struct mlx5_crypto_session);
+}
+
+static int
+mlx5_crypto_sym_session_configure(struct rte_cryptodev *dev,
+				  struct rte_crypto_sym_xform *xform,
+				  struct rte_cryptodev_sym_session *session,
+				  struct rte_mempool *mp)
+{
+	struct mlx5_crypto_priv *priv = dev->data->dev_private;
+	struct mlx5_crypto_session *sess_private_data;
+	struct rte_crypto_cipher_xform *cipher;
+	uint8_t encryption_order;
+	int ret;
+
+	if (unlikely(xform->next != NULL)) {
+		DRV_LOG(ERR, "Xform next is not supported.");
+		return -ENOTSUP;
+	}
+	if (unlikely((xform->type != RTE_CRYPTO_SYM_XFORM_CIPHER) ||
+		     (xform->cipher.algo != RTE_CRYPTO_CIPHER_AES_XTS))) {
+		DRV_LOG(ERR, "Only AES-XTS algorithm is supported.");
+		return -ENOTSUP;
+	}
+	ret = rte_mempool_get(mp, (void *)&sess_private_data);
+	if (ret != 0) {
+		DRV_LOG(ERR,
+			"Failed to get session %p private data from mempool.",
+			sess_private_data);
+		return -ENOMEM;
+	}
+	cipher = &xform->cipher;
+	sess_private_data->dek = mlx5_crypto_dek_prepare(priv, cipher);
+	if (sess_private_data->dek == NULL) {
+		rte_mempool_put(mp, sess_private_data);
+		DRV_LOG(ERR, "Failed to prepare dek.");
+		return -ENOMEM;
+	}
+	if (cipher->op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+		encryption_order = MLX5_ENCRYPTION_ORDER_ENCRYPTED_RAW_MEMORY;
+	else
+		encryption_order = MLX5_ENCRYPTION_ORDER_ENCRYPTED_RAW_WIRE;
+	sess_private_data->bs_bpt_eo_es = rte_cpu_to_be_32
+			(MLX5_BSF_SIZE_64B << MLX5_BSF_SIZE_OFFSET |
+			 MLX5_BSF_P_TYPE_CRYPTO << MLX5_BSF_P_TYPE_OFFSET |
+			 encryption_order << MLX5_ENCRYPTION_ORDER_OFFSET |
+			 MLX5_ENCRYPTION_STANDARD_AES_XTS);
+	switch (xform->cipher.dataunit_len) {
+	case 0:
+		sess_private_data->bsp_res = 0;
+		break;
+	case 512:
+		sess_private_data->bsp_res = rte_cpu_to_be_32
+					     ((uint32_t)MLX5_BLOCK_SIZE_512B <<
+					     MLX5_BLOCK_SIZE_OFFSET);
+		break;
+	case 4096:
+		sess_private_data->bsp_res = rte_cpu_to_be_32
+					     ((uint32_t)MLX5_BLOCK_SIZE_4096B <<
+					     MLX5_BLOCK_SIZE_OFFSET);
+		break;
+	default:
+		DRV_LOG(ERR, "Cipher data unit length is not supported.");
+		return -ENOTSUP;
+	}
+	sess_private_data->iv_offset = cipher->iv.offset;
+	sess_private_data->dek_id =
+			rte_cpu_to_be_32(sess_private_data->dek->obj->id &
+					 0xffffff);
+	set_sym_session_private_data(session, dev->driver_id,
+				     sess_private_data);
+	DRV_LOG(DEBUG, "Session %p was configured.", sess_private_data);
+	return 0;
+}
+
+static void
+mlx5_crypto_sym_session_clear(struct rte_cryptodev *dev,
+			      struct rte_cryptodev_sym_session *sess)
+{
+	struct mlx5_crypto_priv *priv = dev->data->dev_private;
+	struct mlx5_crypto_session *spriv = get_sym_session_private_data(sess,
+								dev->driver_id);
+
+	if (unlikely(spriv == NULL)) {
+		DRV_LOG(ERR, "Failed to get session %p private data.", spriv);
+		return;
+	}
+	mlx5_crypto_dek_destroy(priv, spriv->dek);
+	set_sym_session_private_data(sess, dev->driver_id, NULL);
+	rte_mempool_put(rte_mempool_from_obj(spriv), spriv);
+	DRV_LOG(DEBUG, "Session %p was cleared.", spriv);
 }
 
 static int
@@ -265,9 +379,9 @@ static struct rte_cryptodev_ops mlx5_crypto_ops = {
 	.stats_reset			= NULL,
 	.queue_pair_setup		= mlx5_crypto_queue_pair_setup,
 	.queue_pair_release		= mlx5_crypto_queue_pair_release,
-	.sym_session_get_size		= NULL,
-	.sym_session_configure		= NULL,
-	.sym_session_clear		= NULL,
+	.sym_session_get_size		= mlx5_crypto_sym_session_get_size,
+	.sym_session_configure		= mlx5_crypto_sym_session_configure,
+	.sym_session_clear		= mlx5_crypto_sym_session_clear,
 	.sym_get_raw_dp_ctx_size	= NULL,
 	.sym_configure_raw_dp_ctx	= NULL,
 };
