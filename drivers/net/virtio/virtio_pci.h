@@ -259,6 +259,7 @@ struct virtio_hw {
 	uint8_t     use_inorder_rx;
 	uint8_t     use_inorder_tx;
 	uint8_t     weak_barriers;
+	bool        rx_ol_scatter;
 	bool        has_tx_offload;
 	bool        has_rx_offload;
 	uint16_t    port_id;
@@ -268,6 +269,7 @@ struct virtio_hw {
 	uint8_t     duplex;
 	uint8_t     *isr;
 	uint16_t    *notify_base;
+	size_t      max_rx_pkt_len;
 	struct virtio_pci_common_cfg *common_cfg;
 	struct virtio_net_config *dev_cfg;
 	void	    *virtio_user_dev;
