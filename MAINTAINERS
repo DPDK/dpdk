@@ -1102,6 +1102,12 @@ F: drivers/crypto/octeontx2/
 F: doc/guides/cryptodevs/octeontx2.rst
 F: doc/guides/cryptodevs/features/octeontx2.ini
 
+Mellanox mlx5
+M: Matan Azrad <matan@nvidia.com>
+F: drivers/crypto/mlx5/
+F: doc/guides/cryptodevs/mlx5.rst
+F: doc/guides/cryptodevs/features/mlx5.ini
+
 Null Crypto
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/null/

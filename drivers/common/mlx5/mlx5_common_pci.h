@@ -9,17 +9,18 @@
  * @file
  *
  * RTE Mellanox PCI Driver Interface
- * Mellanox ConnectX PCI device supports multiple class: net,vdpa,regex and
- * compress devices. This layer enables creating such multiple class of devices
- * on a single PCI device by allowing to bind multiple class specific device
- * driver to attach to mlx5_pci driver.
+ * Mellanox ConnectX PCI device supports multiple class: net,vdpa,regex,compress
+ * and crypto devices. This layer enables creating such multiple class of
+ * devices on a single PCI device by allowing to bind multiple class specific
+ * device driver to attach to mlx5_pci driver.
  *
- * -----------    ------------    -------------    ----------------
- * |   mlx5  |    |   mlx5   |    |   mlx5    |    |     mlx5     |
- * | net pmd |    | vdpa pmd |    | regex pmd |    | compress pmd |
- * -----------    ------------    -------------    ----------------
- *      \              \                    /              /
- *       \              \                  /              /
+ * --------    --------    ---------    ------------    ----------
+ * | mlx5 |    | mlx5 |    | mlx5  |    |   mlx5   |    |  mlx5  |
+ * | net  |    | vdpa |    | regex |    | compress |    | crypto |
+ * | pmd  |    | pmd  |    |  pmd  |    |   pmd    |    |  pmd   |
+ * --------    --------    ---------    ------------    ----------
+ *      \              \         |          /              /
+ *       \              \        |         /              /
  *        \              \_--------------_/              /
  *         \_______________|   mlx5     |_______________/
  *                         | pci common |

@@ -23,6 +23,7 @@ Crypto Device Drivers
     octeontx
     octeontx2
     openssl
+    mlx5
     mvsam
     nitrox
     null
