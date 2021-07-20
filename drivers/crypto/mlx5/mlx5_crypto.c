@@ -295,6 +295,69 @@ mlx5_crypto_qp2rts(struct mlx5_crypto_qp *qp)
 	return 0;
 }
 
+static void
+mlx5_crypto_qp_init(struct mlx5_crypto_priv *priv, struct mlx5_crypto_qp *qp)
+{
+	uint32_t i;
+
+	for (i = 0 ; i < qp->entries_n; i++) {
+		struct mlx5_wqe_cseg *cseg = RTE_PTR_ADD(qp->umem_buf, i *
+							 priv->wqe_set_size);
+		struct mlx5_wqe_umr_cseg *ucseg = (struct mlx5_wqe_umr_cseg *)
+								     (cseg + 1);
+		struct mlx5_wqe_umr_bsf_seg *bsf =
+			(struct mlx5_wqe_umr_bsf_seg *)(RTE_PTR_ADD(cseg,
+						       priv->umr_wqe_size)) - 1;
+		struct mlx5_wqe_rseg *rseg;
+
+		/* Init UMR WQE. */
+		cseg->sq_ds = rte_cpu_to_be_32((qp->qp_obj->id << 8) |
+					 (priv->umr_wqe_size / MLX5_WSEG_SIZE));
+		cseg->flags = RTE_BE32(MLX5_COMP_ONLY_FIRST_ERR <<
+				       MLX5_COMP_MODE_OFFSET);
+		cseg->misc = rte_cpu_to_be_32(qp->mkey[i]->id);
+		ucseg->if_cf_toe_cq_res = RTE_BE32(1u << MLX5_UMRC_IF_OFFSET);
+		ucseg->mkey_mask = RTE_BE64(1u << 0); /* Mkey length bit. */
+		ucseg->ko_to_bs = rte_cpu_to_be_32
+			((RTE_ALIGN(priv->max_segs_num, 4u) <<
+			 MLX5_UMRC_KO_OFFSET) | (4 << MLX5_UMRC_TO_BS_OFFSET));
+		bsf->keytag = priv->keytag;
+		/* Init RDMA WRITE WQE. */
+		cseg = RTE_PTR_ADD(cseg, priv->umr_wqe_size);
+		cseg->flags = RTE_BE32((MLX5_COMP_ALWAYS <<
+				      MLX5_COMP_MODE_OFFSET) |
+				      MLX5_WQE_CTRL_INITIATOR_SMALL_FENCE);
+		rseg = (struct mlx5_wqe_rseg *)(cseg + 1);
+		rseg->rkey = rte_cpu_to_be_32(qp->mkey[i]->id);
+	}
+}
+
+static int
+mlx5_crypto_indirect_mkeys_prepare(struct mlx5_crypto_priv *priv,
+				  struct mlx5_crypto_qp *qp)
+{
+	struct mlx5_umr_wqe *umr;
+	uint32_t i;
+	struct mlx5_devx_mkey_attr attr = {
+		.pd = priv->pdn,
+		.umr_en = 1,
+		.crypto_en = 1,
+		.set_remote_rw = 1,
+		.klm_num = RTE_ALIGN(priv->max_segs_num, 4),
+	};
+
+	for (umr = (struct mlx5_umr_wqe *)qp->umem_buf, i = 0;
+	   i < qp->entries_n; i++, umr = RTE_PTR_ADD(umr, priv->wqe_set_size)) {
+		attr.klm_array = (struct mlx5_klm *)&umr->kseg[0];
+		qp->mkey[i] = mlx5_devx_cmd_mkey_create(priv->ctx, &attr);
+		if (!qp->mkey[i]) {
+			DRV_LOG(ERR, "Failed to allocate indirect mkey.");
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static int
 mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 			     const struct rte_cryptodev_qp_conf *qp_conf,
@@ -305,7 +368,7 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	struct mlx5_crypto_qp *qp;
 	uint16_t log_nb_desc = rte_log2_u32(qp_conf->nb_descriptors);
 	uint32_t umem_size = RTE_BIT32(log_nb_desc) *
-			      MLX5_CRYPTO_WQE_SET_SIZE +
+			      priv->wqe_set_size +
 			      sizeof(*qp->db_rec) * 2;
 	uint32_t alloc_size = sizeof(*qp);
 	struct mlx5_devx_cq_attr cq_attr = {
@@ -315,7 +378,9 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	if (dev->data->queue_pairs[qp_id] != NULL)
 		mlx5_crypto_queue_pair_release(dev, qp_id);
 	alloc_size = RTE_ALIGN(alloc_size, RTE_CACHE_LINE_SIZE);
-	alloc_size += sizeof(struct rte_crypto_op *) * RTE_BIT32(log_nb_desc);
+	alloc_size += (sizeof(struct rte_crypto_op *) +
+		       sizeof(struct mlx5_devx_obj *)) *
+		       RTE_BIT32(log_nb_desc);
 	qp = rte_zmalloc_socket(__func__, alloc_size, RTE_CACHE_LINE_SIZE,
 				socket_id);
 	if (qp == NULL) {
@@ -360,8 +425,7 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	attr.wq_umem_id = qp->umem_obj->umem_id;
 	attr.wq_umem_offset = 0;
 	attr.dbr_umem_id = qp->umem_obj->umem_id;
-	attr.dbr_address = RTE_BIT64(log_nb_desc) *
-			   MLX5_CRYPTO_WQE_SET_SIZE;
+	attr.dbr_address = RTE_BIT64(log_nb_desc) * priv->wqe_set_size;
 	qp->qp_obj = mlx5_devx_cmd_create_qp(priv->ctx, &attr);
 	if (qp->qp_obj == NULL) {
 		DRV_LOG(ERR, "Failed to create QP(%u).", rte_errno);
@@ -370,8 +434,17 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	qp->db_rec = RTE_PTR_ADD(qp->umem_buf, (uintptr_t)attr.dbr_address);
 	if (mlx5_crypto_qp2rts(qp))
 		goto error;
-	qp->ops = (struct rte_crypto_op **)RTE_ALIGN((uintptr_t)(qp + 1),
+	qp->mkey = (struct mlx5_devx_obj **)RTE_ALIGN((uintptr_t)(qp + 1),
 							   RTE_CACHE_LINE_SIZE);
+	qp->ops = (struct rte_crypto_op **)(qp->mkey + RTE_BIT32(log_nb_desc));
+	qp->entries_n = 1 << log_nb_desc;
+	if (mlx5_crypto_indirect_mkeys_prepare(priv, qp)) {
+		DRV_LOG(ERR, "Cannot allocate indirect memory regions.");
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	mlx5_crypto_qp_init(priv, qp);
+	qp->priv = priv;
 	dev->data->queue_pairs[qp_id] = qp;
 	return 0;
 error:
