@@ -1246,7 +1246,7 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_ctrl *txq_ctrl;
 
-	if (!(*priv->txqs)[idx])
+	if (priv->txqs == NULL || (*priv->txqs)[idx] == NULL)
 		return 0;
 	txq_ctrl = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
 	if (__atomic_sub_fetch(&txq_ctrl->refcnt, 1, __ATOMIC_RELAXED) > 1)
