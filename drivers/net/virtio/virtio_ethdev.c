@@ -841,6 +841,56 @@ virtio_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
+uint16_t
+virtio_rx_mem_pool_buf_size(struct rte_mempool *mp)
+{
+	return rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
+}
+
+bool
+virtio_rx_check_scatter(uint16_t max_rx_pkt_len, uint16_t rx_buf_size,
+			bool rx_scatter_enabled, const char **error)
+{
+	if (!rx_scatter_enabled && max_rx_pkt_len > rx_buf_size) {
+		*error = "Rx scatter is disabled and RxQ mbuf pool object size is too small";
+		return false;
+	}
+
+	return true;
+}
+
+static bool
+virtio_check_scatter_on_all_rx_queues(struct rte_eth_dev *dev,
+				      uint16_t frame_size)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	struct virtnet_rx *rxvq;
+	struct virtqueue *vq;
+	unsigned int qidx;
+	uint16_t buf_size;
+	const char *error;
+
+	if (hw->vqs == NULL)
+		return true;
+
+	for (qidx = 0; (vq = hw->vqs[2 * qidx + VTNET_SQ_RQ_QUEUE_IDX]) != NULL;
+	     qidx++) {
+		rxvq = &vq->rxq;
+		if (rxvq->mpool == NULL)
+			continue;
+		buf_size = virtio_rx_mem_pool_buf_size(rxvq->mpool);
+
+		if (!virtio_rx_check_scatter(frame_size, buf_size,
+					     hw->rx_ol_scatter, &error)) {
+			PMD_INIT_LOG(ERR, "MTU check for RxQ %u failed: %s",
+				     qidx, error);
+			return false;
+		}
+	}
+
+	return true;
+}
+
 #define VLAN_TAG_LEN           4    /* 802.3ac tag (not DMA'd) */
 static int
 virtio_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
@@ -858,6 +908,15 @@ virtio_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 			RTE_ETHER_MIN_MTU, max_frame_size - ether_hdr_len);
 		return -EINVAL;
 	}
+
+	if (!virtio_check_scatter_on_all_rx_queues(dev, frame_size)) {
+		PMD_INIT_LOG(ERR, "MTU vs Rx scatter and Rx buffers check failed");
+		return -EINVAL;
+	}
+
+	hw->max_rx_pkt_len = frame_size;
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = hw->max_rx_pkt_len;
+
 	return 0;
 }
 
@@ -2042,6 +2101,8 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	if (rxmode->max_rx_pkt_len > hw->max_mtu + ether_hdr_len)
 		req_features &= ~(1ULL << VIRTIO_NET_F_MTU);
 
+	hw->max_rx_pkt_len = rxmode->max_rx_pkt_len;
+
 	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
 			   DEV_RX_OFFLOAD_TCP_CKSUM))
 		req_features |= (1ULL << VIRTIO_NET_F_GUEST_CSUM);
@@ -2089,6 +2150,8 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 
 	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 		hw->vlan_strip = 1;
+
+	hw->rx_ol_scatter = (rx_offloads & DEV_RX_OFFLOAD_SCATTER);
 
 	if ((rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER) &&
 			!virtio_with_feature(hw, VIRTIO_NET_F_CTRL_VLAN)) {
@@ -2445,6 +2508,8 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	host_features = VIRTIO_OPS(hw)->get_features(hw);
 	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
 	dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	if (host_features & (1ULL << VIRTIO_NET_F_MRG_RXBUF))
+		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_SCATTER;
 	if (host_features & (1ULL << VIRTIO_NET_F_GUEST_CSUM)) {
 		dev_info->rx_offload_capa |=
 			DEV_RX_OFFLOAD_TCP_CKSUM |

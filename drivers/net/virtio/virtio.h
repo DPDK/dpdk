@@ -167,6 +167,7 @@ struct virtio_hw {
 	uint8_t started;
 	uint8_t weak_barriers;
 	uint8_t vlan_strip;
+	bool rx_ol_scatter;
 	uint8_t has_tx_offload;
 	uint8_t has_rx_offload;
 	uint8_t use_vec_rx;
@@ -180,6 +181,7 @@ struct virtio_hw {
 	uint8_t duplex;
 	uint8_t intr_lsc;
 	uint16_t max_mtu;
+	size_t max_rx_pkt_len;
 	/*
 	 * App management thread and virtio interrupt handler thread
 	 * both can change device state, this lock is meant to avoid

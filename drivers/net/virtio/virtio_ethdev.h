@@ -120,4 +120,9 @@ int virtio_dev_close(struct rte_eth_dev *dev);
 int virtio_inject_pkts(struct rte_eth_dev *dev, struct rte_mbuf **tx_pkts,
 		int nb_pkts);
 
+bool virtio_rx_check_scatter(uint16_t max_rx_pkt_len, uint16_t rx_buf_size,
+			bool rx_scatter_enabled, const char **error);
+
+uint16_t virtio_rx_mem_pool_buf_size(struct rte_mempool *mp);
+
 #endif /* _VIRTIO_ETHDEV_H_ */

@@ -666,11 +666,21 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	struct virtqueue *vq = hw->vqs[vq_idx];
 	struct virtnet_rx *rxvq;
 	uint16_t rx_free_thresh;
+	uint16_t buf_size;
+	const char *error;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (rx_conf->rx_deferred_start) {
 		PMD_INIT_LOG(ERR, "Rx deferred start is not supported");
+		return -EINVAL;
+	}
+
+	buf_size = virtio_rx_mem_pool_buf_size(mp);
+	if (!virtio_rx_check_scatter(hw->max_rx_pkt_len, buf_size,
+				     hw->rx_ol_scatter, &error)) {
+		PMD_INIT_LOG(ERR, "RxQ %u Rx scatter check failed: %s",
+			     queue_idx, error);
 		return -EINVAL;
 	}
 
