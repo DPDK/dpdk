@@ -28,6 +28,12 @@ when the MKEY is configured to perform crypto operations.
 
 The encryption does not require text to be aligned to the AES block size (128b).
 
+For security reasons and to increase robustness, this driver only deals with virtual
+memory addresses. The way resources allocations are handled by the kernel,
+combined with hardware specifications that allow handling virtual memory
+addresses directly, ensure that DPDK applications cannot access random
+physical memory (or memory that does not belong to the current process).
+
 The PMD uses ``libibverbs`` and ``libmlx5`` to access the device firmware
 or to access the hardware components directly.
 There are different levels of objects and bypassing abilities.

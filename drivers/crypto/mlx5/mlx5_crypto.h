@@ -12,6 +12,7 @@
 
 #include <mlx5_common_utils.h>
 #include <mlx5_common_devx.h>
+#include <mlx5_common_mr.h>
 
 #define MLX5_CRYPTO_DEK_HTABLE_SZ (1 << 11)
 #define MLX5_CRYPTO_KEY_LENGTH 80
@@ -27,6 +28,7 @@ struct mlx5_crypto_priv {
 	struct ibv_pd *pd;
 	struct mlx5_hlist *dek_hlist; /* Dek hash list. */
 	struct rte_cryptodev_config dev_config;
+	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 };
 
 struct mlx5_crypto_qp {
@@ -36,6 +38,7 @@ struct mlx5_crypto_qp {
 	void *umem_buf;
 	volatile uint32_t *db_rec;
 	struct rte_crypto_op **ops;
+	struct mlx5_mr_ctrl mr_ctrl;
 };
 
 struct mlx5_crypto_dek {
