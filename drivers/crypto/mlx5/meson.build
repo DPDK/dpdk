@@ -11,6 +11,7 @@ fmt_name = 'mlx5_crypto'
 deps += ['common_mlx5', 'eal', 'cryptodev']
 sources = files(
         'mlx5_crypto.c',
+        'mlx5_crypto_dek.c',
 )
 
 cflags_options = [
