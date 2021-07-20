@@ -1335,6 +1335,11 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		priv->rxqs_n = 0;
 		priv->rxqs = NULL;
 	}
+	if (priv->representor) {
+		/* Each representor has a dedicated interrupts handler */
+		mlx5_free(dev->intr_handle);
+		dev->intr_handle = NULL;
+	}
 	if (priv->txqs != NULL) {
 		/* XXX race condition if mlx5_tx_burst() is still running. */
 		usleep(1000);
