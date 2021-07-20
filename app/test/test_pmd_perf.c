@@ -454,6 +454,7 @@ main_loop(__rte_unused void *args)
 #define PACKET_SIZE 64
 #define FRAME_GAP 12
 #define MAC_PREAMBLE 8
+#define MAX_RETRY_COUNT 5
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	unsigned lcore_id;
 	unsigned i, portid, nb_rx = 0, nb_tx = 0;
@@ -461,6 +462,8 @@ main_loop(__rte_unused void *args)
 	int pkt_per_port;
 	uint64_t diff_tsc;
 	uint64_t packets_per_second, total_packets;
+	int retry_cnt = 0;
+	int free_pkt = 0;
 
 	lcore_id = rte_lcore_id();
 	conf = &lcore_conf[lcore_id];
@@ -478,10 +481,19 @@ main_loop(__rte_unused void *args)
 			nb_tx = RTE_MIN(MAX_PKT_BURST, num);
 			nb_tx = rte_eth_tx_burst(portid, 0,
 						&tx_burst[idx], nb_tx);
+			if (nb_tx == 0)
+				retry_cnt++;
 			num -= nb_tx;
 			idx += nb_tx;
+			if (retry_cnt == MAX_RETRY_COUNT) {
+				retry_cnt = 0;
+				break;
+			}
 		}
 	}
+	for (free_pkt = idx; free_pkt < (MAX_TRAFFIC_BURST * conf->nb_ports);
+			free_pkt++)
+		rte_pktmbuf_free(tx_burst[free_pkt]);
 	printf("Total packets inject to prime ports = %u\n", idx);
 
 	packets_per_second = (link_mbps * 1000 * 1000) /
