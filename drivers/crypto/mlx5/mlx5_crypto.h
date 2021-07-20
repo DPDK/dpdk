@@ -24,6 +24,7 @@ struct mlx5_crypto_priv {
 	uint32_t pdn; /* Protection Domain number. */
 	struct ibv_pd *pd;
 	struct mlx5_hlist *dek_hlist; /* Dek hash list. */
+	struct rte_cryptodev_config dev_config;
 };
 
 struct mlx5_crypto_dek {
