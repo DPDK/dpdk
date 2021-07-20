@@ -506,13 +506,17 @@ mlx5_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		op = *ops++;
 		umr = RTE_PTR_ADD(qp->umem_buf, priv->wqe_set_size * qp->pi);
 		if (unlikely(mlx5_crypto_wqe_set(priv, qp, op, umr) == 0)) {
-			if (remain != nb_ops)
+			qp->stats.enqueue_err_count++;
+			if (remain != nb_ops) {
+				qp->stats.enqueued_count -= remain;
 				break;
+			}
 			return 0;
 		}
 		qp->ops[qp->pi] = op;
 		qp->pi = (qp->pi + 1) & mask;
 	} while (--remain);
+	qp->stats.enqueued_count += nb_ops;
 	rte_io_wmb();
 	qp->db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(qp->db_pi);
 	rte_wmb();
@@ -529,6 +533,7 @@ mlx5_crypto_cqe_err_handle(struct mlx5_crypto_qp *qp, struct rte_crypto_op *op)
 							&qp->cq_obj.cqes[idx];
 
 	op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+	qp->stats.dequeue_err_count++;
 	DRV_LOG(ERR, "CQE ERR:%x.\n", rte_be_to_cpu_32(cqe->syndrome));
 }
 
@@ -568,6 +573,7 @@ mlx5_crypto_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	if (likely(i != 0)) {
 		rte_io_wmb();
 		qp->cq_obj.db_rec[0] = rte_cpu_to_be_32(qp->ci);
+		qp->stats.dequeued_count += i;
 	}
 	return i;
 }
@@ -729,14 +735,42 @@ error:
 	return -1;
 }
 
+static void
+mlx5_crypto_stats_get(struct rte_cryptodev *dev,
+		      struct rte_cryptodev_stats *stats)
+{
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		struct mlx5_crypto_qp *qp = dev->data->queue_pairs[qp_id];
+
+		stats->enqueued_count += qp->stats.enqueued_count;
+		stats->dequeued_count += qp->stats.dequeued_count;
+		stats->enqueue_err_count += qp->stats.enqueue_err_count;
+		stats->dequeue_err_count += qp->stats.dequeue_err_count;
+	}
+}
+
+static void
+mlx5_crypto_stats_reset(struct rte_cryptodev *dev)
+{
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		struct mlx5_crypto_qp *qp = dev->data->queue_pairs[qp_id];
+
+		memset(&qp->stats, 0, sizeof(qp->stats));
+	}
+}
+
 static struct rte_cryptodev_ops mlx5_crypto_ops = {
 	.dev_configure			= mlx5_crypto_dev_configure,
 	.dev_start			= mlx5_crypto_dev_start,
 	.dev_stop			= mlx5_crypto_dev_stop,
 	.dev_close			= mlx5_crypto_dev_close,
 	.dev_infos_get			= mlx5_crypto_dev_infos_get,
-	.stats_get			= NULL,
-	.stats_reset			= NULL,
+	.stats_get			= mlx5_crypto_stats_get,
+	.stats_reset			= mlx5_crypto_stats_reset,
 	.queue_pair_setup		= mlx5_crypto_queue_pair_setup,
 	.queue_pair_release		= mlx5_crypto_queue_pair_release,
 	.sym_session_get_size		= mlx5_crypto_sym_session_get_size,

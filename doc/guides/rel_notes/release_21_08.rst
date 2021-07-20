@@ -123,6 +123,11 @@ New Features
 
   Added support for crypto adapter OP_FORWARD mode.
 
+* **Added support for Nvidia crypto device driver.**
+
+  Added mlx5 crypto driver to support AES-XTS cipher operations.
+  The first device to support it is ConnectX-6.
+
 * **Updated ISAL compress device PMD.**
 
   The ISAL compress device PMD now supports Arm platforms.
