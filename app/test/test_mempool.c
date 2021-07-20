@@ -20,7 +20,6 @@
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
-#include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_mempool.h>
 #include <rte_spinlock.h>
@@ -56,8 +55,6 @@
 		var = -1;						\
 		goto label;						\
 	} while (0)
-
-static rte_atomic32_t synchro;
 
 /*
  * save the object number in the first 4 bytes of object data. All
@@ -490,8 +487,6 @@ test_mempool(void)
 		.ret = -1
 	};
 	const char *default_pool_ops = rte_mbuf_best_mempool_ops();
-
-	rte_atomic32_init(&synchro);
 
 	/* create a mempool (without cache) */
 	mp_nocache = rte_mempool_create("test_nocache", MEMPOOL_SIZE,
