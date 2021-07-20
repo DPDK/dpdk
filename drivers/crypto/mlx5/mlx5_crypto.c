@@ -455,6 +455,101 @@ mlx5_crypto_hw_global_prepare(struct mlx5_crypto_priv *priv)
 	return 0;
 }
 
+
+static int
+mlx5_crypto_args_check_handler(const char *key, const char *val, void *opaque)
+{
+	struct mlx5_crypto_devarg_params *devarg_prms = opaque;
+	struct mlx5_devx_crypto_login_attr *attr = &devarg_prms->login_attr;
+	unsigned long tmp;
+	FILE *file;
+	int ret;
+	int i;
+
+	if (strcmp(key, "class") == 0)
+		return 0;
+	if (strcmp(key, "wcs_file") == 0) {
+		file = fopen(val, "rb");
+		if (file == NULL) {
+			rte_errno = ENOTSUP;
+			return -rte_errno;
+		}
+		for (i = 0 ; i < MLX5_CRYPTO_CREDENTIAL_SIZE ; i++) {
+			ret = fscanf(file, "%02hhX", &attr->credential[i]);
+			if (ret <= 0) {
+				fclose(file);
+				DRV_LOG(ERR,
+					"Failed to read credential from file.");
+				rte_errno = EINVAL;
+				return -rte_errno;
+			}
+		}
+		fclose(file);
+		devarg_prms->login_devarg = true;
+		return 0;
+	}
+	errno = 0;
+	tmp = strtoul(val, NULL, 0);
+	if (errno) {
+		DRV_LOG(WARNING, "%s: \"%s\" is an invalid integer.", key, val);
+		return -errno;
+	}
+	if (strcmp(key, "import_kek_id") == 0)
+		attr->session_import_kek_ptr = (uint32_t)tmp;
+	else if (strcmp(key, "credential_id") == 0)
+		attr->credential_pointer = (uint32_t)tmp;
+	else
+		DRV_LOG(WARNING, "Invalid key %s.", key);
+	return 0;
+}
+
+static struct mlx5_devx_obj *
+mlx5_crypto_config_login(struct rte_devargs *devargs,
+			 struct ibv_context *ctx)
+{
+	/*
+	 * Set credential pointer and session import KEK pointer to a default
+	 * value of 0.
+	 */
+	struct mlx5_crypto_devarg_params login = {
+			.login_devarg = false,
+			.login_attr = {
+					.credential_pointer = 0,
+					.session_import_kek_ptr = 0,
+			}
+	};
+	struct rte_kvargs *kvlist;
+
+	if (devargs == NULL) {
+		DRV_LOG(ERR,
+	"No login devargs in order to enable crypto operations in the device.");
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL) {
+		DRV_LOG(ERR, "Failed to parse devargs.");
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	if (rte_kvargs_process(kvlist, NULL, mlx5_crypto_args_check_handler,
+			   &login) != 0) {
+		DRV_LOG(ERR, "Devargs handler function Failed.");
+		rte_kvargs_free(kvlist);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	rte_kvargs_free(kvlist);
+	if (login.login_devarg == false) {
+		DRV_LOG(ERR,
+	"No login credential devarg in order to enable crypto operations "
+	"in the device.");
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	return mlx5_devx_cmd_create_crypto_login_obj(ctx, &login.login_attr);
+}
+
 /**
  * Callback for memory event.
  *
@@ -510,6 +605,7 @@ mlx5_crypto_pci_probe(struct rte_pci_driver *pci_drv,
 	struct ibv_device *ibv;
 	struct rte_cryptodev *crypto_dev;
 	struct ibv_context *ctx;
+	struct mlx5_devx_obj *login;
 	struct mlx5_crypto_priv *priv;
 	struct mlx5_hca_attr attr = { 0 };
 	struct rte_cryptodev_pmd_init_params init_params = {
@@ -548,6 +644,11 @@ mlx5_crypto_pci_probe(struct rte_pci_driver *pci_drv,
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
+	login = mlx5_crypto_config_login(pci_dev->device.devargs, ctx);
+	if (login == NULL) {
+		DRV_LOG(ERR, "Failed to configure login.");
+		return -rte_errno;
+	}
 	crypto_dev = rte_cryptodev_pmd_create(ibv->name, &pci_dev->device,
 					&init_params);
 	if (crypto_dev == NULL) {
@@ -564,6 +665,7 @@ mlx5_crypto_pci_probe(struct rte_pci_driver *pci_drv,
 	crypto_dev->driver_id = mlx5_crypto_driver_id;
 	priv = crypto_dev->data->dev_private;
 	priv->ctx = ctx;
+	priv->login_obj = login;
 	priv->pci_dev = pci_dev;
 	priv->crypto_dev = crypto_dev;
 	if (mlx5_crypto_hw_global_prepare(priv) != 0) {
@@ -612,6 +714,7 @@ mlx5_crypto_pci_remove(struct rte_pci_device *pdev)
 		mlx5_mr_release_cache(&priv->mr_scache);
 		mlx5_crypto_hw_global_release(priv);
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
+		claim_zero(mlx5_devx_cmd_destroy(priv->login_obj));
 		claim_zero(mlx5_glue->close_device(priv->ctx));
 	}
 	return 0;

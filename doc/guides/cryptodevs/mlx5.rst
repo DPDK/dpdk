@@ -46,6 +46,56 @@ To get the best performances:
 Enabling ``librte_crypto_mlx5`` causes DPDK applications
 to be linked against libibverbs.
 
+In order to move the device to crypto operational mode, credential and KEK
+(Key Encrypting Key) should be set as the first step.
+The credential will be used by the software in order to perform crypto login, and the KEK is
+the AES Key Wrap Algorithm (rfc3394) key that will be used for sensitive data
+wrapping.
+The credential and the AES-XTS keys should be provided to the hardware, as ciphertext
+encrypted by the KEK.
+
+When crypto engines are defined to work in wrapped import method, they come out
+of the factory in Commissioning mode, and thus, cannot be used for crypto operations
+yet. A dedicated tool is used for changing the mode from Commissioning to
+Operational, while setting the first import_KEK and credential in plaintext.
+The mlxreg dedicated tool should be used as follows:
+
+- Set CRYPTO_OPERATIONAL register to set the device in crypto operational mode.
+
+  The input to this tool is:
+
+  - The first credential in plaintext, 40B.
+  - The first import_KEK in plaintext: kek size 0 for 16B or 1 for 32B, kek data.
+
+  Example::
+
+     mlxreg -d /dev/mst/mt4123_pciconf0 --reg_name CRYPTO_OPERATIONAL --get
+
+  The "wrapped_crypto_operational" value will be "0x00000000".
+  The command to set the register should be executed only once, and all the
+  values mentioned above should be specified in the same command.
+
+  Example::
+
+     mlxreg -d /dev/mst/mt4123_pciconf0 --reg_name CRYPTO_OPERATIONAL \
+     --set "credential[0]=0x10000000, credential[1]=0x10000000, kek[0]=0x00000000"
+
+  All values not specified will remain 0.
+  "wrapped_crypto_going_to_commissioning" and  "wrapped_crypto_operational"
+  should not be specified.
+
+  All the device ports should set it in order to move to operational mode.
+
+- Query CRYPTO_OPERATIONAL register to make sure the device is in Operational
+  mode.
+
+  Example::
+
+     mlxreg -d /dev/mst/mt4123_pciconf0 --reg_name CRYPTO_OPERATIONAL --get
+
+  The "wrapped_crypto_operational" value will be "0x00000001" if the mode was
+  successfully changed to operational mode.
+
 
 Driver options
 --------------
@@ -54,6 +104,21 @@ Driver options
 
   Select the class of the driver that should probe the device.
   `crypto` for the mlx5 crypto driver.
+
+- ``wcs_file`` parameter [string] - mandatory
+
+  File path including only the wrapped credential in string format of hexadecimal
+  numbers, represent 48 bytes (8 bytes IV added by the AES key wrap algorithm).
+
+- ``import_kek_id`` parameter [int]
+
+  The identifier of the KEK, default value is 0 represents the operational
+  register import_kek..
+
+- ``credential_id`` parameter [int]
+
+  The identifier of the credential, default value is 0 represents the operational
+  register credential.
 
 
 Supported NICs
