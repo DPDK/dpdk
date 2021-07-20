@@ -54,6 +54,9 @@ wrapping.
 The credential and the AES-XTS keys should be provided to the hardware, as ciphertext
 encrypted by the KEK.
 
+A keytag (64 bits) should be appended to the AES-XTS keys (before wrapping),
+and will be validated when the hardware attempts to access it.
+
 When crypto engines are defined to work in wrapped import method, they come out
 of the factory in Commissioning mode, and thus, cannot be used for crypto operations
 yet. A dedicated tool is used for changing the mode from Commissioning to
@@ -119,6 +122,10 @@ Driver options
 
   The identifier of the credential, default value is 0 represents the operational
   register credential.
+
+- ``keytag`` parameter [int]
+
+  The plaintext of the keytag appanded to the AES-XTS keys, default value is 0.
 
 
 Supported NICs

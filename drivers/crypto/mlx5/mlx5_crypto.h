@@ -30,6 +30,7 @@ struct mlx5_crypto_priv {
 	struct rte_cryptodev_config dev_config;
 	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 	struct mlx5_devx_obj *login_obj;
+	uint64_t keytag;
 };
 
 struct mlx5_crypto_qp {
@@ -49,10 +50,10 @@ struct mlx5_crypto_dek {
 	bool size_is_48; /* Whether the key\data size is 48 bytes or not. */
 } __rte_cache_aligned;
 
-
 struct mlx5_crypto_devarg_params {
 	bool login_devarg;
 	struct mlx5_devx_crypto_login_attr login_attr;
+	uint64_t keytag;
 };
 
 int
