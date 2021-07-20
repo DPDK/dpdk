@@ -25,6 +25,10 @@
 
 #define MLX5_CRYPTO_FEATURE_FLAGS \
 	(RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO | RTE_CRYPTODEV_FF_HW_ACCELERATED | \
+	 RTE_CRYPTODEV_FF_IN_PLACE_SGL | RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT | \
+	 RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT | \
+	 RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT | \
+	 RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT | \
 	 RTE_CRYPTODEV_FF_CIPHER_WRAPPED_KEY | \
 	 RTE_CRYPTODEV_FF_CIPHER_MULTIPLE_DATA_UNITS)
 
@@ -295,6 +299,279 @@ mlx5_crypto_qp2rts(struct mlx5_crypto_qp *qp)
 	return 0;
 }
 
+static __rte_noinline uint32_t
+mlx5_crypto_get_block_size(struct rte_crypto_op *op)
+{
+	uint32_t bl = op->sym->cipher.data.length;
+
+	switch (bl) {
+	case (1 << 20):
+		return RTE_BE32(MLX5_BLOCK_SIZE_1MB << MLX5_BLOCK_SIZE_OFFSET);
+	case (1 << 12):
+		return RTE_BE32(MLX5_BLOCK_SIZE_4096B <<
+				MLX5_BLOCK_SIZE_OFFSET);
+	case (1 << 9):
+		return RTE_BE32(MLX5_BLOCK_SIZE_512B << MLX5_BLOCK_SIZE_OFFSET);
+	default:
+		DRV_LOG(ERR, "Unknown block size: %u.", bl);
+		return UINT32_MAX;
+	}
+}
+
+/**
+ * Query LKey from a packet buffer for QP. If not found, add the mempool.
+ *
+ * @param priv
+ *   Pointer to the priv object.
+ * @param addr
+ *   Search key.
+ * @param mr_ctrl
+ *   Pointer to per-queue MR control structure.
+ * @param ol_flags
+ *   Mbuf offload features.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on no match.
+ */
+static __rte_always_inline uint32_t
+mlx5_crypto_addr2mr(struct mlx5_crypto_priv *priv, uintptr_t addr,
+		    struct mlx5_mr_ctrl *mr_ctrl, uint64_t ol_flags)
+{
+	uint32_t lkey;
+
+	/* Check generation bit to see if there's any change on existing MRs. */
+	if (unlikely(*mr_ctrl->dev_gen_ptr != mr_ctrl->cur_gen))
+		mlx5_mr_flush_local_cache(mr_ctrl);
+	/* Linear search on MR cache array. */
+	lkey = mlx5_mr_lookup_lkey(mr_ctrl->cache, &mr_ctrl->mru,
+				   MLX5_MR_CACHE_N, addr);
+	if (likely(lkey != UINT32_MAX))
+		return lkey;
+	/* Take slower bottom-half on miss. */
+	return mlx5_mr_addr2mr_bh(priv->pd, 0, &priv->mr_scache, mr_ctrl, addr,
+				  !!(ol_flags & EXT_ATTACHED_MBUF));
+}
+
+static __rte_always_inline uint32_t
+mlx5_crypto_klm_set(struct mlx5_crypto_priv *priv, struct mlx5_crypto_qp *qp,
+		      struct rte_mbuf *mbuf, struct mlx5_wqe_dseg *klm,
+		      uint32_t offset, uint32_t *remain)
+{
+	uint32_t data_len = (rte_pktmbuf_data_len(mbuf) - offset);
+	uintptr_t addr = rte_pktmbuf_mtod_offset(mbuf, uintptr_t, offset);
+
+	if (data_len > *remain)
+		data_len = *remain;
+	*remain -= data_len;
+	klm->bcount = rte_cpu_to_be_32(data_len);
+	klm->pbuf = rte_cpu_to_be_64(addr);
+	klm->lkey = mlx5_crypto_addr2mr(priv, addr, &qp->mr_ctrl,
+					mbuf->ol_flags);
+	return klm->lkey;
+
+}
+
+static __rte_always_inline uint32_t
+mlx5_crypto_klms_set(struct mlx5_crypto_priv *priv, struct mlx5_crypto_qp *qp,
+		     struct rte_crypto_op *op, struct rte_mbuf *mbuf,
+		     struct mlx5_wqe_dseg *klm)
+{
+	uint32_t remain_len = op->sym->cipher.data.length;
+	uint32_t nb_segs = mbuf->nb_segs;
+	uint32_t klm_n = 1u;
+
+	/* First mbuf needs to take the cipher offset. */
+	if (unlikely(mlx5_crypto_klm_set(priv, qp, mbuf, klm,
+		     op->sym->cipher.data.offset, &remain_len) == UINT32_MAX)) {
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return 0;
+	}
+	while (remain_len) {
+		nb_segs--;
+		mbuf = mbuf->next;
+		if (unlikely(mbuf == NULL || nb_segs == 0)) {
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return 0;
+		}
+		if (unlikely(mlx5_crypto_klm_set(priv, qp, mbuf, ++klm, 0,
+						 &remain_len) == UINT32_MAX)) {
+			op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			return 0;
+		}
+		klm_n++;
+	}
+	return klm_n;
+}
+
+static __rte_always_inline int
+mlx5_crypto_wqe_set(struct mlx5_crypto_priv *priv,
+			 struct mlx5_crypto_qp *qp,
+			 struct rte_crypto_op *op,
+			 struct mlx5_umr_wqe *umr)
+{
+	struct mlx5_crypto_session *sess = get_sym_session_private_data
+				(op->sym->session, mlx5_crypto_driver_id);
+	struct mlx5_wqe_cseg *cseg = &umr->ctr;
+	struct mlx5_wqe_mkey_cseg *mkc = &umr->mkc;
+	struct mlx5_wqe_dseg *klms = &umr->kseg[0];
+	struct mlx5_wqe_umr_bsf_seg *bsf = ((struct mlx5_wqe_umr_bsf_seg *)
+				      RTE_PTR_ADD(umr, priv->umr_wqe_size)) - 1;
+	uint32_t ds;
+	bool ipl = op->sym->m_dst == NULL || op->sym->m_dst == op->sym->m_src;
+	/* Set UMR WQE. */
+	uint32_t klm_n = mlx5_crypto_klms_set(priv, qp, op,
+				   ipl ? op->sym->m_src : op->sym->m_dst, klms);
+
+	if (unlikely(klm_n == 0))
+		return 0;
+	bsf->bs_bpt_eo_es = sess->bs_bpt_eo_es;
+	if (unlikely(!sess->bsp_res)) {
+		bsf->bsp_res = mlx5_crypto_get_block_size(op);
+		if (unlikely(bsf->bsp_res == UINT32_MAX)) {
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return 0;
+		}
+	} else {
+		bsf->bsp_res = sess->bsp_res;
+	}
+	bsf->raw_data_size = rte_cpu_to_be_32(op->sym->cipher.data.length);
+	memcpy(bsf->xts_initial_tweak,
+	       rte_crypto_op_ctod_offset(op, uint8_t *, sess->iv_offset), 16);
+	bsf->res_dp = sess->dek_id;
+	mkc->len = rte_cpu_to_be_64(op->sym->cipher.data.length);
+	cseg->opcode = rte_cpu_to_be_32((qp->db_pi << 8) | MLX5_OPCODE_UMR);
+	qp->db_pi += priv->umr_wqe_stride;
+	/* Set RDMA_WRITE WQE. */
+	cseg = RTE_PTR_ADD(cseg, priv->umr_wqe_size);
+	klms = RTE_PTR_ADD(cseg, sizeof(struct mlx5_rdma_write_wqe));
+	if (!ipl) {
+		klm_n = mlx5_crypto_klms_set(priv, qp, op, op->sym->m_src,
+					     klms);
+		if (unlikely(klm_n == 0))
+			return 0;
+	} else {
+		memcpy(klms, &umr->kseg[0], sizeof(*klms) * klm_n);
+	}
+	ds = 2 + klm_n;
+	cseg->sq_ds = rte_cpu_to_be_32((qp->qp_obj->id << 8) | ds);
+	cseg->opcode = rte_cpu_to_be_32((qp->db_pi << 8) |
+							MLX5_OPCODE_RDMA_WRITE);
+	ds = RTE_ALIGN(ds, 4);
+	qp->db_pi += ds >> 2;
+	/* Set NOP WQE if needed. */
+	if (priv->max_rdmar_ds > ds) {
+		cseg += ds;
+		ds = priv->max_rdmar_ds - ds;
+		cseg->sq_ds = rte_cpu_to_be_32((qp->qp_obj->id << 8) | ds);
+		cseg->opcode = rte_cpu_to_be_32((qp->db_pi << 8) |
+							       MLX5_OPCODE_NOP);
+		qp->db_pi += ds >> 2; /* Here, DS is 4 aligned for sure. */
+	}
+	qp->wqe = (uint8_t *)cseg;
+	return 1;
+}
+
+static __rte_always_inline void
+mlx5_crypto_uar_write(uint64_t val, struct mlx5_crypto_priv *priv)
+{
+#ifdef RTE_ARCH_64
+	*priv->uar_addr = val;
+#else /* !RTE_ARCH_64 */
+	rte_spinlock_lock(&priv->uar32_sl);
+	*(volatile uint32_t *)priv->uar_addr = val;
+	rte_io_wmb();
+	*((volatile uint32_t *)priv->uar_addr + 1) = val >> 32;
+	rte_spinlock_unlock(&priv->uar32_sl);
+#endif
+}
+
+static uint16_t
+mlx5_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
+			  uint16_t nb_ops)
+{
+	struct mlx5_crypto_qp *qp = queue_pair;
+	struct mlx5_crypto_priv *priv = qp->priv;
+	struct mlx5_umr_wqe *umr;
+	struct rte_crypto_op *op;
+	uint16_t mask = qp->entries_n - 1;
+	uint16_t remain = qp->entries_n - (qp->pi - qp->ci);
+
+	if (remain < nb_ops)
+		nb_ops = remain;
+	else
+		remain = nb_ops;
+	if (unlikely(remain == 0))
+		return 0;
+	do {
+		op = *ops++;
+		umr = RTE_PTR_ADD(qp->umem_buf, priv->wqe_set_size * qp->pi);
+		if (unlikely(mlx5_crypto_wqe_set(priv, qp, op, umr) == 0)) {
+			if (remain != nb_ops)
+				break;
+			return 0;
+		}
+		qp->ops[qp->pi] = op;
+		qp->pi = (qp->pi + 1) & mask;
+	} while (--remain);
+	rte_io_wmb();
+	qp->db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(qp->db_pi);
+	rte_wmb();
+	mlx5_crypto_uar_write(*(volatile uint64_t *)qp->wqe, qp->priv);
+	rte_wmb();
+	return nb_ops;
+}
+
+static __rte_noinline void
+mlx5_crypto_cqe_err_handle(struct mlx5_crypto_qp *qp, struct rte_crypto_op *op)
+{
+	const uint32_t idx = qp->ci & (qp->entries_n - 1);
+	volatile struct mlx5_err_cqe *cqe = (volatile struct mlx5_err_cqe *)
+							&qp->cq_obj.cqes[idx];
+
+	op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+	DRV_LOG(ERR, "CQE ERR:%x.\n", rte_be_to_cpu_32(cqe->syndrome));
+}
+
+static uint16_t
+mlx5_crypto_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
+			  uint16_t nb_ops)
+{
+	struct mlx5_crypto_qp *qp = queue_pair;
+	volatile struct mlx5_cqe *restrict cqe;
+	struct rte_crypto_op *restrict op;
+	const unsigned int cq_size = qp->entries_n;
+	const unsigned int mask = cq_size - 1;
+	uint32_t idx;
+	uint32_t next_idx = qp->ci & mask;
+	const uint16_t max = RTE_MIN((uint16_t)(qp->pi - qp->ci), nb_ops);
+	uint16_t i = 0;
+	int ret;
+
+	if (unlikely(max == 0))
+		return 0;
+	do {
+		idx = next_idx;
+		next_idx = (qp->ci + 1) & mask;
+		op = qp->ops[idx];
+		cqe = &qp->cq_obj.cqes[idx];
+		ret = check_cqe(cqe, cq_size, qp->ci);
+		rte_io_rmb();
+		if (unlikely(ret != MLX5_CQE_STATUS_SW_OWN)) {
+			if (unlikely(ret != MLX5_CQE_STATUS_HW_OWN))
+				mlx5_crypto_cqe_err_handle(qp, op);
+			break;
+		}
+		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+		ops[i++] = op;
+		qp->ci++;
+	} while (i < max);
+	if (likely(i != 0)) {
+		rte_io_wmb();
+		qp->cq_obj.db_rec[0] = rte_cpu_to_be_32(qp->ci);
+	}
+	return i;
+}
+
 static void
 mlx5_crypto_qp_init(struct mlx5_crypto_priv *priv, struct mlx5_crypto_qp *qp)
 {
@@ -519,8 +796,9 @@ mlx5_crypto_hw_global_prepare(struct mlx5_crypto_priv *priv)
 	if (mlx5_crypto_pd_create(priv) != 0)
 		return -1;
 	priv->uar = mlx5_devx_alloc_uar(priv->ctx, -1);
-	if (priv->uar == NULL || mlx5_os_get_devx_uar_reg_addr(priv->uar) ==
-	    NULL) {
+	if (priv->uar)
+		priv->uar_addr = mlx5_os_get_devx_uar_reg_addr(priv->uar);
+	if (priv->uar == NULL || priv->uar_addr == NULL) {
 		rte_errno = errno;
 		claim_zero(mlx5_glue->dealloc_pd(priv->pd));
 		DRV_LOG(ERR, "Failed to allocate UAR.");
@@ -750,8 +1028,8 @@ mlx5_crypto_pci_probe(struct rte_pci_driver *pci_drv,
 	DRV_LOG(INFO,
 		"Crypto device %s was created successfully.", ibv->name);
 	crypto_dev->dev_ops = &mlx5_crypto_ops;
-	crypto_dev->dequeue_burst = NULL;
-	crypto_dev->enqueue_burst = NULL;
+	crypto_dev->dequeue_burst = mlx5_crypto_dequeue_burst;
+	crypto_dev->enqueue_burst = mlx5_crypto_enqueue_burst;
 	crypto_dev->feature_flags = MLX5_CRYPTO_FEATURE_FLAGS;
 	crypto_dev->driver_id = mlx5_crypto_driver_id;
 	priv = crypto_dev->data->dev_private;
