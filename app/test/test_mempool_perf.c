@@ -20,7 +20,6 @@
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
-#include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_mempool.h>
 #include <rte_spinlock.h>
@@ -83,7 +82,7 @@
 static int use_external_cache;
 static unsigned external_cache_size = RTE_MEMPOOL_CACHE_MAX_SIZE;
 
-static rte_atomic32_t synchro;
+static uint32_t synchro;
 
 /* number of objects in one bulk operation (get or put) */
 static unsigned n_get_bulk;
@@ -145,7 +144,7 @@ per_lcore_mempool_test(void *arg)
 
 	/* wait synchro for workers */
 	if (lcore_id != rte_get_main_lcore())
-		while (rte_atomic32_read(&synchro) == 0);
+		rte_wait_until_equal_32(&synchro, 1, __ATOMIC_RELAXED);
 
 	start_cycles = rte_get_timer_cycles();
 
@@ -198,7 +197,7 @@ launch_cores(struct rte_mempool *mp, unsigned int cores)
 	int ret;
 	unsigned cores_save = cores;
 
-	rte_atomic32_set(&synchro, 0);
+	__atomic_store_n(&synchro, 0, __ATOMIC_RELAXED);
 
 	/* reset stats */
 	memset(stats, 0, sizeof(stats));
@@ -223,7 +222,7 @@ launch_cores(struct rte_mempool *mp, unsigned int cores)
 	}
 
 	/* start synchro and launch test on main */
-	rte_atomic32_set(&synchro, 1);
+	__atomic_store_n(&synchro, 1, __ATOMIC_RELAXED);
 
 	ret = per_lcore_mempool_test(mp);
 
@@ -287,8 +286,6 @@ test_mempool_perf(void)
 	struct rte_mempool *default_pool = NULL;
 	const char *default_pool_ops;
 	int ret = -1;
-
-	rte_atomic32_init(&synchro);
 
 	/* create a mempool (without cache) */
 	mp_nocache = rte_mempool_create("perf_test_nocache", MEMPOOL_SIZE,
