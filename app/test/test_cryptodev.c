@@ -14518,6 +14518,41 @@ run_cryptodev_testsuite(const char *pmd_name)
 }
 
 static int
+require_feature_flag(const char *pmd_name, uint64_t flag, const char *flag_name)
+{
+	struct rte_cryptodev_info dev_info;
+	uint8_t i, nb_devs;
+	int driver_id;
+
+	driver_id = rte_cryptodev_driver_id_get(pmd_name);
+	if (driver_id == -1) {
+		RTE_LOG(WARNING, USER1, "%s PMD must be loaded.\n", pmd_name);
+		return TEST_SKIPPED;
+	}
+
+	nb_devs = rte_cryptodev_count();
+	if (nb_devs < 1) {
+		RTE_LOG(WARNING, USER1, "No crypto devices found?\n");
+		return TEST_SKIPPED;
+	}
+
+	for (i = 0; i < nb_devs; i++) {
+		rte_cryptodev_info_get(i, &dev_info);
+		if (dev_info.driver_id == driver_id) {
+			if (!(dev_info.feature_flags & flag)) {
+				RTE_LOG(INFO, USER1, "%s not supported\n",
+						flag_name);
+				return TEST_SKIPPED;
+			}
+			return 0; /* found */
+		}
+	}
+
+	RTE_LOG(INFO, USER1, "%s not supported\n", flag_name);
+	return TEST_SKIPPED;
+}
+
+static int
 test_cryptodev_qat(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
@@ -14772,10 +14807,16 @@ test_cryptodev_bcmfs(void)
 static int
 test_cryptodev_qat_raw_api(void)
 {
+	static const char *pmd_name = RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD);
 	int ret;
 
+	ret = require_feature_flag(pmd_name, RTE_CRYPTODEV_FF_SYM_RAW_DP,
+			"RAW API");
+	if (ret)
+		return ret;
+
 	global_api_test_type = CRYPTODEV_RAW_API_TEST;
-	ret = run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
+	ret = run_cryptodev_testsuite(pmd_name);
 	global_api_test_type = CRYPTODEV_API_TEST;
 
 	return ret;
