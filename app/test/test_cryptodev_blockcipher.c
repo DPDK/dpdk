@@ -36,7 +36,8 @@ verify_algo_support(const struct blockcipher_test_case *t,
 		if (capability == NULL)
 			return -1;
 
-		if (cap_idx.algo.cipher != RTE_CRYPTO_CIPHER_NULL)
+		if (cap_idx.algo.cipher != RTE_CRYPTO_CIPHER_NULL &&
+				!(t->test_data->wrapped_key))
 			ret = rte_cryptodev_sym_capability_check_cipher(capability,
 							tdata->cipher_key.len,
 							tdata->iv.len);
@@ -144,6 +145,12 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		}
 
 		nb_segs = 3;
+	}
+	if (!!(feat_flags & RTE_CRYPTODEV_FF_CIPHER_WRAPPED_KEY) ^
+		tdata->wrapped_key) {
+		snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
+			"SKIPPED");
+		return TEST_SKIPPED;
 	}
 
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST &&
@@ -450,6 +457,7 @@ iterate:
 		cipher_xform->cipher.key.data = cipher_key;
 		cipher_xform->cipher.key.length = tdata->cipher_key.len;
 		cipher_xform->cipher.iv.offset = IV_OFFSET;
+		cipher_xform->cipher.dataunit_len = tdata->xts_dataunit_len;
 
 		if (tdata->crypto_algo == RTE_CRYPTO_CIPHER_NULL)
 			cipher_xform->cipher.iv.length = 0;
