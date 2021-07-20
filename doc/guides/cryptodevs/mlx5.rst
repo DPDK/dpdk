@@ -127,6 +127,10 @@ Driver options
 
   The plaintext of the keytag appanded to the AES-XTS keys, default value is 0.
 
+- ``max_segs_num`` parameter [int]
+
+  Maximum number of mbuf chain segments(src or dest), default value is 8.
+
 
 Supported NICs
 --------------

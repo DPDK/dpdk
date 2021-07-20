@@ -25,12 +25,17 @@ struct mlx5_crypto_priv {
 	struct rte_cryptodev *crypto_dev;
 	void *uar; /* User Access Region. */
 	uint32_t pdn; /* Protection Domain number. */
+	uint32_t max_segs_num; /* Maximum supported data segs. */
 	struct ibv_pd *pd;
 	struct mlx5_hlist *dek_hlist; /* Dek hash list. */
 	struct rte_cryptodev_config dev_config;
 	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 	struct mlx5_devx_obj *login_obj;
 	uint64_t keytag;
+	uint16_t wqe_set_size;
+	uint16_t umr_wqe_size;
+	uint16_t umr_wqe_stride;
+	uint16_t max_rdmar_ds;
 };
 
 struct mlx5_crypto_qp {
@@ -54,6 +59,7 @@ struct mlx5_crypto_devarg_params {
 	bool login_devarg;
 	struct mlx5_devx_crypto_login_attr login_attr;
 	uint64_t keytag;
+	uint32_t max_segs_num;
 };
 
 int
