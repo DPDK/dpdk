@@ -73,6 +73,8 @@
 #define CRYPTODEV_NAME_BCMFS_PMD	crypto_bcmfs
 #define CRYPTODEV_NAME_CN9K_PMD		crypto_cn9k
 #define CRYPTODEV_NAME_CN10K_PMD	crypto_cn10k
+#define CRYPTODEV_NAME_MLX5_PMD		crypto_mlx5
+
 
 enum cryptodev_api_test_type {
 	CRYPTODEV_API_TEST = 0,

@@ -14570,6 +14570,12 @@ test_cryptodev_cpu_aesni_gcm(void)
 }
 
 static int
+test_cryptodev_mlx5(void)
+{
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_MLX5_PMD));
+}
+
+static int
 test_cryptodev_null(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_NULL_PMD));
@@ -14797,6 +14803,7 @@ REGISTER_TEST_COMMAND(cryptodev_openssl_autotest, test_cryptodev_openssl);
 REGISTER_TEST_COMMAND(cryptodev_aesni_gcm_autotest, test_cryptodev_aesni_gcm);
 REGISTER_TEST_COMMAND(cryptodev_cpu_aesni_gcm_autotest,
 	test_cryptodev_cpu_aesni_gcm);
+REGISTER_TEST_COMMAND(cryptodev_mlx5_autotest, test_cryptodev_mlx5);
 REGISTER_TEST_COMMAND(cryptodev_null_autotest, test_cryptodev_null);
 REGISTER_TEST_COMMAND(cryptodev_sw_snow3g_autotest, test_cryptodev_sw_snow3g);
 REGISTER_TEST_COMMAND(cryptodev_sw_kasumi_autotest, test_cryptodev_sw_kasumi);
