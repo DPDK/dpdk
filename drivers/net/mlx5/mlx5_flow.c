@@ -1999,6 +1999,10 @@ mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "L2 layer should not follow VLAN");
+	if (item_flags & MLX5_FLOW_LAYER_GTP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "L2 layer should not follow GTP");
 	if (!mask)
 		mask = &rte_flow_item_eth_mask;
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
