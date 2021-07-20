@@ -53,18 +53,20 @@ static int32_t dummy_cb(void *args)
 static int32_t dummy_mt_unsafe_cb(void *args)
 {
 	/* before running test, the initialization has set pass_test to 1.
-	 * If the cmpset in service-cores is working correctly, the code here
+	 * If the CAS in service-cores is working correctly, the code here
 	 * should never fail to take the lock. If the lock *is* taken, fail the
 	 * test, because two threads are concurrently in a non-MT safe callback.
 	 */
 	uint32_t *test_params = args;
-	uint32_t *atomic_lock = &test_params[0];
+	uint32_t *lock = &test_params[0];
 	uint32_t *pass_test = &test_params[1];
-	int lock_taken = rte_atomic32_cmpset(atomic_lock, 0, 1);
+	uint32_t exp = 0;
+	int lock_taken = __atomic_compare_exchange_n(lock, &exp, 1, 0,
+					__ATOMIC_RELAXED, __ATOMIC_RELAXED);
 	if (lock_taken) {
 		/* delay with the lock held */
 		rte_delay_ms(250);
-		rte_atomic32_clear((rte_atomic32_t *)atomic_lock);
+		__atomic_store_n(lock, 0, __ATOMIC_RELAXED);
 	} else {
 		/* 2nd thread will fail to take lock, so set pass flag */
 		*pass_test = 0;
@@ -83,13 +85,15 @@ static int32_t dummy_mt_safe_cb(void *args)
 	 *    that 2 threads are running the callback at the same time: MT safe
 	 */
 	uint32_t *test_params = args;
-	uint32_t *atomic_lock = &test_params[0];
+	uint32_t *lock = &test_params[0];
 	uint32_t *pass_test = &test_params[1];
-	int lock_taken = rte_atomic32_cmpset(atomic_lock, 0, 1);
+	uint32_t exp = 0;
+	int lock_taken = __atomic_compare_exchange_n(lock, &exp, 1, 0,
+					__ATOMIC_RELAXED, __ATOMIC_RELAXED);
 	if (lock_taken) {
 		/* delay with the lock held */
 		rte_delay_ms(250);
-		rte_atomic32_clear((rte_atomic32_t *)atomic_lock);
+		__atomic_store_n(lock, 0, __ATOMIC_RELAXED);
 	} else {
 		/* 2nd thread will fail to take lock, so set pass flag */
 		*pass_test = 1;
@@ -622,9 +626,9 @@ service_threaded_test(int mt_safe)
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore_2),
 			"mt safe lcore add fail");
 
-	/* Use atomic locks to verify that two threads are in the same function
-	 * at the same time. These are passed to the unit tests through the
-	 * callback userdata parameter
+	/* Use locks to verify that two threads are in the same function
+	 * at the same time. These are passed to the unit tests through
+	 * the callback userdata parameter.
 	 */
 	uint32_t test_params[2];
 	memset(test_params, 0, sizeof(uint32_t) * 2);
@@ -713,7 +717,7 @@ service_mt_safe_poll(void)
 }
 
 /* tests a NON mt safe service with two cores, the callback is serialized
- * using the atomic cmpset.
+ * using the CAS.
  */
 static int
 service_mt_unsafe_poll(void)
@@ -735,17 +739,17 @@ delay_as_a_mt_safe_service(void *args)
 	RTE_SET_USED(args);
 	uint32_t *params = args;
 
-	/* retrieve done flag and atomic lock to inc/dec */
+	/* retrieve done flag and lock to add/sub */
 	uint32_t *done = &params[0];
-	rte_atomic32_t *lock = (rte_atomic32_t *)&params[1];
+	uint32_t *lock = &params[1];
 
 	while (!*done) {
-		rte_atomic32_inc(lock);
+		__atomic_add_fetch(lock, 1, __ATOMIC_RELAXED);
 		rte_delay_us(500);
-		if (rte_atomic32_read(lock) > 1)
+		if (__atomic_load_n(lock, __ATOMIC_RELAXED) > 1)
 			/* pass: second core has simultaneously incremented */
 			*done = 1;
-		rte_atomic32_dec(lock);
+		__atomic_sub_fetch(lock, 1, __ATOMIC_RELAXED);
 	}
 
 	return 0;
