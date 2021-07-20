@@ -832,29 +832,23 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			/* This code is subject for futher optimization. */
 			int32_t offs = rxq->flow_meta_offset;
 			uint32_t mask = rxq->flow_meta_port_mask;
-			uint32_t shift =
-				__builtin_popcount(rxq->flow_meta_port_mask);
 
 			*RTE_MBUF_DYNFIELD(pkts[pos], offs, uint32_t *) =
-				(rte_be_to_cpu_32(container_of
+				rte_be_to_cpu_32(container_of
 				(p0, struct mlx5_cqe,
-				pkt_info)->flow_table_metadata) >> shift) &
-				mask;
+				pkt_info)->flow_table_metadata) & mask;
 			*RTE_MBUF_DYNFIELD(pkts[pos + 1], offs, uint32_t *) =
-				(rte_be_to_cpu_32(container_of
+				rte_be_to_cpu_32(container_of
 				(p1, struct mlx5_cqe,
-				pkt_info)->flow_table_metadata) >> shift) &
-				mask;
+				pkt_info)->flow_table_metadata) & mask;
 			*RTE_MBUF_DYNFIELD(pkts[pos + 2], offs, uint32_t *) =
-				(rte_be_to_cpu_32(container_of
+				rte_be_to_cpu_32(container_of
 				(p2, struct mlx5_cqe,
-				pkt_info)->flow_table_metadata) >> shift) &
-				mask;
+				pkt_info)->flow_table_metadata) & mask;
 			*RTE_MBUF_DYNFIELD(pkts[pos + 3], offs, uint32_t *) =
-				(rte_be_to_cpu_32(container_of
+				rte_be_to_cpu_32(container_of
 				(p3, struct mlx5_cqe,
-				pkt_info)->flow_table_metadata) >> shift) &
-				mask;
+				pkt_info)->flow_table_metadata) & mask;
 			if (*RTE_MBUF_DYNFIELD(pkts[pos], offs, uint32_t *))
 				elts[pos]->ol_flags |= rxq->flow_meta_mask;
 			if (*RTE_MBUF_DYNFIELD(pkts[pos + 1], offs, uint32_t *))

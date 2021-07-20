@@ -1157,29 +1157,10 @@ flow_dv_convert_action_copy_mreg(struct rte_eth_dev *dev,
 		if (conf->dst == REG_C_0) {
 			/* Copy to reg_c[0], within mask only. */
 			reg_dst.offset = rte_bsf32(reg_c0);
-			/*
-			 * Mask is ignoring the enianness, because
-			 * there is no conversion in datapath.
-			 */
-#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
-			/* Copy from destination lower bits to reg_c[0]. */
-			mask = reg_c0 >> reg_dst.offset;
-#else
-			/* Copy from destination upper bits to reg_c[0]. */
-			mask = reg_c0 << (sizeof(reg_c0) * CHAR_BIT -
-					  rte_fls_u32(reg_c0));
-#endif
+			mask = rte_cpu_to_be_32(reg_c0 >> reg_dst.offset);
 		} else {
-			mask = rte_cpu_to_be_32(reg_c0);
-#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
-			/* Copy from reg_c[0] to destination lower bits. */
 			reg_dst.offset = 0;
-#else
-			/* Copy from reg_c[0] to destination upper bits. */
-			reg_dst.offset = sizeof(reg_c0) * CHAR_BIT -
-					 (rte_fls_u32(reg_c0) -
-					  rte_bsf32(reg_c0));
-#endif
+			mask = rte_cpu_to_be_32(reg_c0);
 		}
 	}
 	return flow_dv_convert_modify_action(&item,
@@ -1409,7 +1390,7 @@ flow_dv_convert_action_modify_ipv6_dscp
 }
 
 static int
-mlx5_flow_item_field_width(struct mlx5_dev_config *config,
+mlx5_flow_item_field_width(struct mlx5_priv *priv,
 			   enum rte_flow_field_id field)
 {
 	switch (field) {
@@ -1456,14 +1437,9 @@ mlx5_flow_item_field_width(struct mlx5_dev_config *config,
 	case RTE_FLOW_FIELD_TAG:
 		return 32;
 	case RTE_FLOW_FIELD_MARK:
-		return 24;
+		return __builtin_popcount(priv->sh->dv_mark_mask);
 	case RTE_FLOW_FIELD_META:
-		if (config->dv_xmeta_en == MLX5_XMETA_MODE_META16)
-			return 16;
-		else if (config->dv_xmeta_en == MLX5_XMETA_MODE_META32)
-			return 32;
-		else
-			return 0;
+		return __builtin_popcount(priv->sh->dv_meta_mask);
 	case RTE_FLOW_FIELD_POINTER:
 	case RTE_FLOW_FIELD_VALUE:
 		return 64;
@@ -1479,12 +1455,11 @@ mlx5_flow_field_id_to_modify_info
 		 struct field_modify_info *info,
 		 uint32_t *mask, uint32_t *value,
 		 uint32_t width, uint32_t dst_width,
-		 struct rte_eth_dev *dev,
+		 uint32_t *shift, struct rte_eth_dev *dev,
 		 const struct rte_flow_attr *attr,
 		 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_config *config = &priv->config;
 	uint32_t idx = 0;
 	uint32_t off = 0;
 	uint64_t val = 0;
@@ -1825,6 +1800,8 @@ mlx5_flow_field_id_to_modify_info
 		break;
 	case RTE_FLOW_FIELD_MARK:
 		{
+			uint32_t mark_mask = priv->sh->dv_mark_mask;
+			uint32_t mark_count = __builtin_popcount(mark_mask);
 			int reg = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK,
 						       0, error);
 			if (reg < 0)
@@ -1834,35 +1811,29 @@ mlx5_flow_field_id_to_modify_info
 			info[idx] = (struct field_modify_info){4, 0,
 						reg_to_field[reg]};
 			if (mask)
-				mask[idx] =
-					rte_cpu_to_be_32(0xffffffff >>
-							 (32 - width));
+				mask[idx] = rte_cpu_to_be_32((mark_mask >>
+					 (mark_count - width)) & mark_mask);
 		}
 		break;
 	case RTE_FLOW_FIELD_META:
 		{
-			unsigned int xmeta = config->dv_xmeta_en;
+			uint32_t meta_mask = priv->sh->dv_meta_mask;
+			uint32_t meta_count = __builtin_popcount(meta_mask);
+			uint32_t msk_c0 =
+				rte_cpu_to_be_32(priv->sh->dv_regc0_mask);
+			uint32_t shl_c0 = rte_bsf32(msk_c0);
 			int reg = flow_dv_get_metadata_reg(dev, attr, error);
 			if (reg < 0)
 				return;
 			MLX5_ASSERT(reg != REG_NON);
 			MLX5_ASSERT((unsigned int)reg < RTE_DIM(reg_to_field));
-			if (xmeta == MLX5_XMETA_MODE_META16) {
-				info[idx] = (struct field_modify_info){2, 0,
-							reg_to_field[reg]};
-				if (mask)
-					mask[idx] = rte_cpu_to_be_16(0xffff >>
-								(16 - width));
-			} else if (xmeta == MLX5_XMETA_MODE_META32) {
-				info[idx] = (struct field_modify_info){4, 0,
-							reg_to_field[reg]};
-				if (mask)
-					mask[idx] =
-						rte_cpu_to_be_32(0xffffffff >>
-								(32 - width));
-			} else {
-				MLX5_ASSERT(false);
-			}
+			if (reg == REG_C_0)
+				*shift = shl_c0;
+			info[idx] = (struct field_modify_info){4, 0,
+						reg_to_field[reg]};
+			if (mask)
+				mask[idx] = rte_cpu_to_be_32((meta_mask >>
+					(meta_count - width)) & meta_mask);
 		}
 		break;
 	case RTE_FLOW_FIELD_POINTER:
@@ -1889,6 +1860,8 @@ mlx5_flow_field_id_to_modify_info
 					value[idx] = (uint8_t)val;
 					val >>= 8;
 				}
+				if (*shift)
+					value[idx] <<= *shift;
 				if (!val)
 					break;
 			}
@@ -1926,7 +1899,6 @@ flow_dv_convert_action_modify_field
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_config *config = &priv->config;
 	const struct rte_flow_action_modify_field *conf =
 		(const struct rte_flow_action_modify_field *)(action->conf);
 	struct rte_flow_item item;
@@ -1937,27 +1909,31 @@ flow_dv_convert_action_modify_field
 	uint32_t mask[MLX5_ACT_MAX_MOD_FIELDS] = {0, 0, 0, 0, 0};
 	uint32_t value[MLX5_ACT_MAX_MOD_FIELDS] = {0, 0, 0, 0, 0};
 	uint32_t type;
-	uint32_t dst_width = mlx5_flow_item_field_width(config,
-							conf->dst.field);
+	uint32_t shift = 0;
+	uint32_t dst_width = mlx5_flow_item_field_width(priv, conf->dst.field);
 
 	if (conf->src.field == RTE_FLOW_FIELD_POINTER ||
 		conf->src.field == RTE_FLOW_FIELD_VALUE) {
 		type = MLX5_MODIFICATION_TYPE_SET;
 		/** For SET fill the destination field (field) first. */
 		mlx5_flow_field_id_to_modify_info(&conf->dst, field, mask,
-			value, conf->width, dst_width, dev, attr, error);
+						  value, conf->width, dst_width,
+						  &shift, dev, attr, error);
 		/** Then copy immediate value from source as per mask. */
 		mlx5_flow_field_id_to_modify_info(&conf->src, dcopy, mask,
-			value, conf->width, dst_width, dev, attr, error);
+						  value, conf->width, dst_width,
+						  &shift, dev, attr, error);
 		item.spec = &value;
 	} else {
 		type = MLX5_MODIFICATION_TYPE_COPY;
 		/** For COPY fill the destination field (dcopy) without mask. */
 		mlx5_flow_field_id_to_modify_info(&conf->dst, dcopy, NULL,
-			value, conf->width, dst_width, dev, attr, error);
+						  value, conf->width, dst_width,
+						  &shift, dev, attr, error);
 		/** Then construct the source field (field) with mask. */
 		mlx5_flow_field_id_to_modify_info(&conf->src, field, mask,
-			value, conf->width, dst_width, dev, attr, error);
+						  value, conf->width, dst_width,
+						  &shift, dev, attr, error);
 	}
 	item.mask = &mask;
 	return flow_dv_convert_modify_action(&item,
@@ -4903,9 +4879,9 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 	struct mlx5_dev_config *config = &priv->config;
 	const struct rte_flow_action_modify_field *action_modify_field =
 		action->conf;
-	uint32_t dst_width = mlx5_flow_item_field_width(config,
+	uint32_t dst_width = mlx5_flow_item_field_width(priv,
 				action_modify_field->dst.field);
-	uint32_t src_width = mlx5_flow_item_field_width(config,
+	uint32_t src_width = mlx5_flow_item_field_width(priv,
 				action_modify_field->src.field);
 
 	ret = flow_dv_validate_action_modify_hdr(action_flags, action, error);
