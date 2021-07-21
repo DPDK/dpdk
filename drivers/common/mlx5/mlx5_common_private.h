@@ -39,6 +39,8 @@ bool mlx5_dev_pci_match(const struct mlx5_class_driver *drv,
 void mlx5_common_auxiliary_init(void);
 struct ibv_device *mlx5_get_aux_ibv_device(
 		const struct rte_auxiliary_device *dev);
+int mlx5_auxiliary_get_pci_str(const struct rte_auxiliary_device *dev,
+			       char *addr, size_t size);
 
 #ifdef __cplusplus
 }

@@ -24,8 +24,7 @@ const struct mlx5_glue *mlx5_glue;
 #endif
 
 int
-mlx5_dev_to_pci_addr(const char *dev_path,
-		     struct rte_pci_addr *pci_addr)
+mlx5_get_pci_addr(const char *dev_path, struct rte_pci_addr *pci_addr)
 {
 	FILE *file;
 	char line[32];
@@ -417,7 +416,7 @@ mlx5_os_get_ibv_device(const struct rte_pci_addr *addr)
 		struct rte_pci_addr paddr;
 
 		DRV_LOG(DEBUG, "Checking device \"%s\"..", ibv_list[n]->name);
-		if (mlx5_dev_to_pci_addr(ibv_list[n]->ibdev_path, &paddr) != 0)
+		if (mlx5_get_pci_addr(ibv_list[n]->ibdev_path, &paddr) != 0)
 			continue;
 		if (rte_pci_addr_cmp(addr, &paddr) != 0)
 			continue;

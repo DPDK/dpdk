@@ -68,6 +68,23 @@ mlx5_auxiliary_get_pci_path(const struct rte_auxiliary_device *dev,
 	return 0;
 }
 
+int
+mlx5_auxiliary_get_pci_str(const struct rte_auxiliary_device *dev,
+			   char *addr, size_t size)
+{
+	char sysfs_pci[PATH_MAX];
+	char *base;
+
+	if (mlx5_auxiliary_get_pci_path(dev, sysfs_pci, sizeof(sysfs_pci)) != 0)
+		return -ENODEV;
+	base = basename(sysfs_pci);
+	if (base == NULL)
+		return -errno;
+	if (rte_strscpy(addr, base, size) < 0)
+		return -rte_errno;
+	return 0;
+}
+
 static int
 mlx5_auxiliary_get_numa(const struct rte_auxiliary_device *dev)
 {

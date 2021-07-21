@@ -1995,7 +1995,7 @@ mlx5_device_bond_pci_match(const struct ibv_device *ibv_dev,
 		/* Process slave interface names in the loop. */
 		snprintf(tmp_str, sizeof(tmp_str),
 			 "/sys/class/net/%s", ifname);
-		if (mlx5_dev_to_pci_addr(tmp_str, &pci_addr)) {
+		if (mlx5_get_pci_addr(tmp_str, &pci_addr)) {
 			DRV_LOG(WARNING, "can not get PCI address"
 					 " for netdev \"%s\"", ifname);
 			continue;
@@ -2172,8 +2172,8 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 			break;
 		} else {
 			/* Bonding device not found. */
-			if (mlx5_dev_to_pci_addr
-				(ibv_list[ret]->ibdev_path, &pci_addr))
+			if (mlx5_get_pci_addr(ibv_list[ret]->ibdev_path,
+					      &pci_addr))
 				continue;
 			if (owner_pci.domain != pci_addr.domain ||
 			    owner_pci.bus != pci_addr.bus ||

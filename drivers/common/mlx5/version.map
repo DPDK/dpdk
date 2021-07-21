@@ -15,7 +15,7 @@ INTERNAL {
 	mlx5_create_mr_ext;
 
 	mlx5_dev_is_pci;
-	mlx5_dev_to_pci_addr; # WINDOWS_NO_EXPORT
+	mlx5_dev_to_pci_str;
 
 	mlx5_devx_alloc_uar; # WINDOWS_NO_EXPORT
 
@@ -75,6 +75,7 @@ INTERNAL {
 	mlx5_free;
 
 	mlx5_get_ifname_sysfs; # WINDOWS_NO_EXPORT
+	mlx5_get_pci_addr; # WINDOWS_NO_EXPORT
 
 	mlx5_glue;
 

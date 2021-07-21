@@ -197,6 +197,29 @@ to_mlx5_device(const struct rte_device *rte_dev)
 	return NULL;
 }
 
+int
+mlx5_dev_to_pci_str(const struct rte_device *dev, char *addr, size_t size)
+{
+	struct rte_pci_addr pci_addr = { 0 };
+	int ret;
+
+	if (mlx5_dev_is_pci(dev)) {
+		/* Input might be <BDF>, format PCI address to <DBDF>. */
+		ret = rte_pci_addr_parse(dev->name, &pci_addr);
+		if (ret != 0)
+			return -ENODEV;
+		rte_pci_device_name(&pci_addr, addr, size);
+		return 0;
+	}
+#ifdef RTE_EXEC_ENV_LINUX
+	return mlx5_auxiliary_get_pci_str(RTE_DEV_TO_AUXILIARY_CONST(dev),
+			addr, size);
+#else
+	rte_errno = ENODEV;
+	return -rte_errno;
+#endif
+}
+
 static void
 dev_release(struct mlx5_common_device *dev)
 {
