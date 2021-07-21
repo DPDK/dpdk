@@ -333,6 +333,10 @@ mlx5_flow_meter_param_fill(struct mlx5_flow_meter_profile *fmp,
 	ebs_exp = exp;
 	srtcm->ebs_eir = rte_cpu_to_be_32(ebs_exp << ASO_DSEG_EBS_EXP_OFFSET |
 					  ebs_man << ASO_DSEG_EBS_MAN_OFFSET);
+	if (srtcm->cbs_cir)
+		fmp->g_support = 1;
+	if (srtcm->ebs_eir)
+		fmp->y_support = 1;
 	return 0;
 }
 
@@ -750,6 +754,10 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 		return -rte_mtr_error_set(error, ENOMEM,
 				RTE_MTR_ERROR_TYPE_METER_POLICY, NULL,
 				"Memory alloc failed for meter policy.");
+	if (policy_mode == MLX5_MTR_POLICY_MODE_OG)
+		mtr_policy->skip_y = 1;
+	else if (policy_mode == MLX5_MTR_POLICY_MODE_OY)
+		mtr_policy->skip_g = 1;
 	policy_size = sizeof(struct mlx5_flow_meter_policy);
 	for (i = 0; i < MLX5_MTR_DOMAIN_MAX; i++) {
 		if (!(domain_bitmap & (1 << i)))
@@ -1132,13 +1140,13 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 		if (!priv->config.dv_esw_en)
 			domain_bitmap &= ~MLX5_MTR_DOMAIN_TRANSFER_BIT;
 	} else {
-		mtr_policy = mlx5_flow_meter_policy_find(dev,
-				params->meter_policy_id, &policy_idx);
 		if (!priv->sh->meter_aso_en)
 			return -rte_mtr_error_set(error, ENOTSUP,
 				RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
 				"Part of the policies cannot be "
 				"supported without ASO ");
+		mtr_policy = mlx5_flow_meter_policy_find(dev,
+				params->meter_policy_id, &policy_idx);
 		if (!mtr_policy)
 			return -rte_mtr_error_set(error, ENOENT,
 				RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
@@ -1149,6 +1157,14 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 					MLX5_MTR_DOMAIN_EGRESS_BIT : 0) |
 				(mtr_policy->transfer ?
 					MLX5_MTR_DOMAIN_TRANSFER_BIT : 0);
+		if (fmp->g_support && mtr_policy->skip_g)
+			return -rte_mtr_error_set(error, ENOTSUP,
+					RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+					NULL, "Meter green policy is empty.");
+		if (fmp->y_support && mtr_policy->skip_y)
+			return -rte_mtr_error_set(error, ENOTSUP,
+					RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+					NULL, "Meter yellow policy is empty.");
 	}
 	/* Allocate the flow meter memory. */
 	if (priv->sh->meter_aso_en) {

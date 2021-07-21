@@ -15237,6 +15237,10 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 	for (i = 0; i < RTE_COLORS; i++) {
 		if (i < MLX5_MTR_RTE_COLORS)
 			act_cnt = &mtr_policy->act_cnt[i];
+		/* Skip the color policy actions creation. */
+		if ((i == RTE_COLOR_YELLOW && mtr_policy->skip_y) ||
+		    (i == RTE_COLOR_GREEN && mtr_policy->skip_g))
+			continue;
 		action_flags = 0;
 		for (act = actions[i];
 		     act && act->type != RTE_FLOW_ACTION_TYPE_END; act++) {

@@ -748,6 +748,10 @@ struct mlx5_flow_meter_policy {
 	/* Is queue action in policy table. */
 	uint32_t is_hierarchy:1;
 	/* Is meter action in policy table. */
+	uint32_t skip_y:1;
+	/* If yellow color policy is skipped. */
+	uint32_t skip_g:1;
+	/* If green color policy is skipped. */
 	rte_spinlock_t sl;
 	uint32_t ref_cnt;
 	/* Use count. */
@@ -868,6 +872,8 @@ struct mlx5_flow_meter_profile {
 		/**< srtcm_rfc2697 struct. */
 	};
 	uint32_t ref_cnt; /**< Use count. */
+	uint32_t g_support:1; /**< If G color will be generated. */
+	uint32_t y_support:1; /**< If Y color will be generated. */
 };
 
 /* 2 meters in each ASO cache line */
