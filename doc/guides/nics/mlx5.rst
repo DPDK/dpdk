@@ -435,6 +435,7 @@ Limitations
      - RED: must be DROP.
   - Policy actions of RSS for green and yellow should have the same configuration except queues.
   - meter profile packet mode is supported.
+  - meter profiles of RFC2697, RFC2698 and RFC4115 are supported.
 
 - Integrity:
 
