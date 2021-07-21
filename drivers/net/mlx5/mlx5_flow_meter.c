@@ -319,9 +319,9 @@ mlx5_flow_meter_param_fill(struct mlx5_flow_meter_profile *fmp,
 	cbs_man = man;
 	cbs_exp = exp;
 	srtcm->cbs_cir = rte_cpu_to_be_32(cbs_exp << ASO_DSEG_CBS_EXP_OFFSET |
-				cbs_man << ASO_DSEG_CBS_MAN_OFFSET |
-				cir_exp << ASO_DSEG_CIR_EXP_OFFSET |
-				cir_man);
+					  cbs_man << ASO_DSEG_CBS_MAN_OFFSET |
+					  cir_exp << ASO_DSEG_CIR_EXP_OFFSET |
+					  cir_man);
 	mlx5_flow_meter_xbs_man_exp_calc(ebs, &man, &exp);
 	/* Check if ebs mantissa is too large. */
 	if (exp > ASO_DSEG_EXP_MASK)
@@ -332,7 +332,7 @@ mlx5_flow_meter_param_fill(struct mlx5_flow_meter_profile *fmp,
 	ebs_man = man;
 	ebs_exp = exp;
 	srtcm->ebs_eir = rte_cpu_to_be_32(ebs_exp << ASO_DSEG_EBS_EXP_OFFSET |
-					ebs_man << ASO_DSEG_EBS_MAN_OFFSET);
+					  ebs_man << ASO_DSEG_EBS_MAN_OFFSET);
 	return 0;
 }
 
@@ -421,7 +421,7 @@ mlx5_flow_meter_profile_add(struct rte_eth_dev *dev,
 		return ret;
 	/* Meter profile memory allocation. */
 	fmp = mlx5_malloc(MLX5_MEM_ZERO, sizeof(struct mlx5_flow_meter_profile),
-			 RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+			  RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (fmp == NULL)
 		return -rte_mtr_error_set(error, ENOMEM,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED,

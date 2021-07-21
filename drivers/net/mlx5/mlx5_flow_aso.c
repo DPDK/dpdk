@@ -747,6 +747,10 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_aso_sq *sq,
 		wqe->aso_dseg.mtrs[dseg_idx].v_bo_sc_bbog_mm =
 				RTE_BE32((1 << ASO_DSEG_VALID_OFFSET) |
 				(MLX5_FLOW_COLOR_GREEN << ASO_DSEG_SC_OFFSET));
+	/* Only needed for RFC2697. */
+	if (fm->profile->srtcm_prm.ebs_eir)
+		wqe->aso_dseg.mtrs[dseg_idx].v_bo_sc_bbog_mm |=
+				RTE_BE32(1 << ASO_DSEG_BO_OFFSET);
 	sq->head++;
 	sq->pi += 2;/* Each WQE contains 2 WQEBB's. */
 	rte_io_wmb();
