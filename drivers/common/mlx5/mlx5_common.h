@@ -212,7 +212,7 @@ int mlx5_get_ifname_sysfs(const char *ibdev_path, char *ifname);
 
 enum mlx5_class {
 	MLX5_CLASS_INVALID,
-	MLX5_CLASS_NET = RTE_BIT64(0),
+	MLX5_CLASS_ETH = RTE_BIT64(0),
 	MLX5_CLASS_VDPA = RTE_BIT64(1),
 	MLX5_CLASS_REGEX = RTE_BIT64(2),
 	MLX5_CLASS_COMPRESS = RTE_BIT64(3),

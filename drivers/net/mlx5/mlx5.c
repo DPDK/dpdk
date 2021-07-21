@@ -2446,7 +2446,7 @@ static const struct rte_pci_id mlx5_pci_id_map[] = {
 };
 
 static struct mlx5_pci_driver mlx5_driver = {
-	.driver_class = MLX5_CLASS_NET,
+	.driver_class = MLX5_CLASS_ETH,
 	.pci_driver = {
 		.driver = {
 			.name = MLX5_PCI_DRIVER_NAME,
