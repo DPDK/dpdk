@@ -1128,6 +1128,7 @@ sfc_flow_parse_pppoex(const struct rte_flow_item *item,
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VOID,
+		.name = "VOID",
 		.prev_layer = SFC_FLOW_ITEM_ANY_LAYER,
 		.layer = SFC_FLOW_ITEM_ANY_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
@@ -1135,6 +1136,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.name = "ETH",
 		.prev_layer = SFC_FLOW_ITEM_START_LAYER,
 		.layer = SFC_FLOW_ITEM_L2,
 		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
@@ -1142,6 +1144,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VLAN,
+		.name = "VLAN",
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L2,
 		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
@@ -1149,6 +1152,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_PPPOED,
+		.name = "PPPOED",
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L2,
 		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
@@ -1156,6 +1160,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_PPPOES,
+		.name = "PPPOES",
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L2,
 		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
@@ -1163,6 +1168,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_IPV4,
+		.name = "IPV4",
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L3,
 		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
@@ -1170,6 +1176,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_IPV6,
+		.name = "IPV6",
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L3,
 		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
@@ -1177,6 +1184,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
+		.name = "TCP",
 		.prev_layer = SFC_FLOW_ITEM_L3,
 		.layer = SFC_FLOW_ITEM_L4,
 		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
@@ -1184,6 +1192,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
+		.name = "UDP",
 		.prev_layer = SFC_FLOW_ITEM_L3,
 		.layer = SFC_FLOW_ITEM_L4,
 		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
@@ -1191,6 +1200,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VXLAN,
+		.name = "VXLAN",
 		.prev_layer = SFC_FLOW_ITEM_L4,
 		.layer = SFC_FLOW_ITEM_START_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
@@ -1198,6 +1208,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_GENEVE,
+		.name = "GENEVE",
 		.prev_layer = SFC_FLOW_ITEM_L4,
 		.layer = SFC_FLOW_ITEM_START_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
@@ -1205,6 +1216,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_NVGRE,
+		.name = "NVGRE",
 		.prev_layer = SFC_FLOW_ITEM_L3,
 		.layer = SFC_FLOW_ITEM_START_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
@@ -1300,7 +1312,8 @@ sfc_flow_get_item(const struct sfc_flow_item *items,
 }
 
 int
-sfc_flow_parse_pattern(const struct sfc_flow_item *flow_items,
+sfc_flow_parse_pattern(struct sfc_adapter *sa,
+		       const struct sfc_flow_item *flow_items,
 		       unsigned int nb_flow_items,
 		       const struct rte_flow_item pattern[],
 		       struct sfc_flow_parse_ctx *parse_ctx,
@@ -1384,8 +1397,11 @@ sfc_flow_parse_pattern(const struct sfc_flow_item *flow_items,
 		}
 
 		rc = item->parse(pattern, parse_ctx, error);
-		if (rc != 0)
+		if (rc != 0) {
+			sfc_err(sa, "failed to parse item %s: %s",
+				item->name, strerror(-rc));
 			return rc;
+		}
 
 		if (item->layer != SFC_FLOW_ITEM_ANY_LAYER)
 			prev_layer = item->layer;
@@ -2483,7 +2499,7 @@ sfc_flow_parse_rte_to_filter(struct rte_eth_dev *dev,
 	ctx.type = SFC_FLOW_PARSE_CTX_FILTER;
 	ctx.filter = &spec_filter->template;
 
-	rc = sfc_flow_parse_pattern(sfc_flow_items, RTE_DIM(sfc_flow_items),
+	rc = sfc_flow_parse_pattern(sa, sfc_flow_items, RTE_DIM(sfc_flow_items),
 				    pattern, &ctx, error);
 	if (rc != 0)
 		goto fail_bad_value;

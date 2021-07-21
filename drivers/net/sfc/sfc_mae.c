@@ -1985,6 +1985,7 @@ sfc_mae_rule_parse_item_tunnel(const struct rte_flow_item *item,
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
 		.type = RTE_FLOW_ITEM_TYPE_PORT_ID,
+		.name = "PORT_ID",
 		/*
 		 * In terms of RTE flow, this item is a META one,
 		 * and its position in the pattern is don't care.
@@ -1996,6 +1997,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_PHY_PORT,
+		.name = "PHY_PORT",
 		/*
 		 * In terms of RTE flow, this item is a META one,
 		 * and its position in the pattern is don't care.
@@ -2007,6 +2009,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_PF,
+		.name = "PF",
 		/*
 		 * In terms of RTE flow, this item is a META one,
 		 * and its position in the pattern is don't care.
@@ -2018,6 +2021,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VF,
+		.name = "VF",
 		/*
 		 * In terms of RTE flow, this item is a META one,
 		 * and its position in the pattern is don't care.
@@ -2029,6 +2033,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.name = "ETH",
 		.prev_layer = SFC_FLOW_ITEM_START_LAYER,
 		.layer = SFC_FLOW_ITEM_L2,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
@@ -2036,6 +2041,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VLAN,
+		.name = "VLAN",
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L2,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
@@ -2043,6 +2049,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_IPV4,
+		.name = "IPV4",
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L3,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
@@ -2050,6 +2057,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_IPV6,
+		.name = "IPV6",
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L3,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
@@ -2057,6 +2065,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
+		.name = "TCP",
 		.prev_layer = SFC_FLOW_ITEM_L3,
 		.layer = SFC_FLOW_ITEM_L4,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
@@ -2064,6 +2073,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
+		.name = "UDP",
 		.prev_layer = SFC_FLOW_ITEM_L3,
 		.layer = SFC_FLOW_ITEM_L4,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
@@ -2071,6 +2081,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VXLAN,
+		.name = "VXLAN",
 		.prev_layer = SFC_FLOW_ITEM_L4,
 		.layer = SFC_FLOW_ITEM_START_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
@@ -2078,6 +2089,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_GENEVE,
+		.name = "GENEVE",
 		.prev_layer = SFC_FLOW_ITEM_L4,
 		.layer = SFC_FLOW_ITEM_START_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
@@ -2085,6 +2097,7 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_NVGRE,
+		.name = "NVGRE",
 		.prev_layer = SFC_FLOW_ITEM_L3,
 		.layer = SFC_FLOW_ITEM_START_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
@@ -2293,7 +2306,7 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_encap_parse_init;
 
-	rc = sfc_flow_parse_pattern(sfc_flow_items, RTE_DIM(sfc_flow_items),
+	rc = sfc_flow_parse_pattern(sa, sfc_flow_items, RTE_DIM(sfc_flow_items),
 				    pattern, &ctx, error);
 	if (rc != 0)
 		goto fail_parse_pattern;
@@ -2926,6 +2939,22 @@ sfc_mae_rule_parse_action_port_id(struct sfc_adapter *sa,
 	return rc;
 }
 
+static const char * const action_names[] = {
+	[RTE_FLOW_ACTION_TYPE_VXLAN_DECAP] = "VXLAN_DECAP",
+	[RTE_FLOW_ACTION_TYPE_OF_POP_VLAN] = "OF_POP_VLAN",
+	[RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN] = "OF_PUSH_VLAN",
+	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID] = "OF_SET_VLAN_VID",
+	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP] = "OF_SET_VLAN_PCP",
+	[RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP] = "VXLAN_ENCAP",
+	[RTE_FLOW_ACTION_TYPE_FLAG] = "FLAG",
+	[RTE_FLOW_ACTION_TYPE_MARK] = "MARK",
+	[RTE_FLOW_ACTION_TYPE_PHY_PORT] = "PHY_PORT",
+	[RTE_FLOW_ACTION_TYPE_PF] = "PF",
+	[RTE_FLOW_ACTION_TYPE_VF] = "VF",
+	[RTE_FLOW_ACTION_TYPE_PORT_ID] = "PORT_ID",
+	[RTE_FLOW_ACTION_TYPE_DROP] = "DROP",
+};
+
 static int
 sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			  const struct rte_flow_action *action,
@@ -3024,6 +3053,14 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 	if (rc == 0) {
 		bundle->actions_mask |= (1ULL << action->type);
 	} else if (!custom_error) {
+		if (action->type < RTE_DIM(action_names)) {
+			const char *action_name = action_names[action->type];
+
+			if (action_name != NULL) {
+				sfc_err(sa, "action %s was rejected: %s",
+					action_name, strerror(rc));
+			}
+		}
 		rc = rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ACTION,
 				NULL, "Failed to request the action");
 	}

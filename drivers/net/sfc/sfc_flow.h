@@ -136,13 +136,17 @@ typedef int (sfc_flow_item_parse)(const struct rte_flow_item *item,
 
 struct sfc_flow_item {
 	enum rte_flow_item_type type;		/* Type of item */
+	const char *name;			/* Item name */
 	enum sfc_flow_item_layers layer;	/* Layer of item */
 	enum sfc_flow_item_layers prev_layer;	/* Previous layer of item */
 	enum sfc_flow_parse_ctx_type ctx_type;	/* Parse context type */
 	sfc_flow_item_parse *parse;		/* Parsing function */
 };
 
-int sfc_flow_parse_pattern(const struct sfc_flow_item *flow_items,
+struct sfc_adapter;
+
+int sfc_flow_parse_pattern(struct sfc_adapter *sa,
+			   const struct sfc_flow_item *flow_items,
 			   unsigned int nb_flow_items,
 			   const struct rte_flow_item pattern[],
 			   struct sfc_flow_parse_ctx *parse_ctx,
@@ -155,8 +159,6 @@ int sfc_flow_parse_init(const struct rte_flow_item *item,
 			const void *def_mask,
 			unsigned int size,
 			struct rte_flow_error *error);
-
-struct sfc_adapter;
 
 void sfc_flow_init(struct sfc_adapter *sa);
 void sfc_flow_fini(struct sfc_adapter *sa);
