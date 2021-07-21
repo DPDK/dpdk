@@ -3,6 +3,8 @@ INTERNAL {
 
 	haswell_broadwell_cpu;
 
+	mlx5_class_driver_register;
+
 	mlx5_common_init;
 
 	mlx5_common_verbs_reg_mr; # WINDOWS_NO_EXPORT
@@ -10,6 +12,7 @@ INTERNAL {
 
 	mlx5_create_mr_ext;
 
+	mlx5_dev_is_pci;
 	mlx5_dev_to_pci_addr; # WINDOWS_NO_EXPORT
 
 	mlx5_devx_alloc_uar; # WINDOWS_NO_EXPORT
@@ -137,6 +140,7 @@ INTERNAL {
 	mlx5_os_alloc_pd;
 	mlx5_os_dealloc_pd;
 	mlx5_os_dereg_mr;
+	mlx5_os_get_ibv_dev; # WINDOWS_NO_EXPORT
 	mlx5_os_get_ibv_device; # WINDOWS_NO_EXPORT
 	mlx5_os_reg_mr;
 	mlx5_os_umem_dereg;

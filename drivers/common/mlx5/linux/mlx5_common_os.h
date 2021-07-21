@@ -291,6 +291,10 @@ mlx5_os_free(void *addr)
 
 __rte_internal
 struct ibv_device *
-mlx5_os_get_ibv_device(struct rte_pci_addr *addr);
+mlx5_os_get_ibv_device(const struct rte_pci_addr *addr);
+
+__rte_internal
+struct ibv_device *
+mlx5_os_get_ibv_dev(const struct rte_device *dev);
 
 #endif /* RTE_PMD_MLX5_COMMON_OS_H_ */

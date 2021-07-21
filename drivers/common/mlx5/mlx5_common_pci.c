@@ -3,11 +3,19 @@
  */
 
 #include <stdlib.h>
+
 #include <rte_malloc.h>
+#include <rte_devargs.h>
+#include <rte_errno.h>
 #include <rte_class.h>
 
 #include "mlx5_common_log.h"
 #include "mlx5_common_pci.h"
+#include "mlx5_common_private.h"
+
+static struct rte_pci_driver mlx5_common_pci_driver;
+
+/********** Legacy PCI bus driver, to be removed ********/
 
 struct mlx5_pci_device {
 	struct rte_pci_device *pci_dev;
@@ -298,8 +306,8 @@ probe_err:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_common_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-		      struct rte_pci_device *pci_dev)
+mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	       struct rte_pci_device *pci_dev)
 {
 	struct mlx5_pci_device *dev;
 	uint32_t user_classes = 0;
@@ -352,7 +360,7 @@ class_err:
  *   0 on success, the function cannot fail.
  */
 static int
-mlx5_common_pci_remove(struct rte_pci_device *pci_dev)
+mlx5_pci_remove(struct rte_pci_device *pci_dev)
 {
 	struct mlx5_pci_device *dev;
 	int ret;
@@ -368,8 +376,8 @@ mlx5_common_pci_remove(struct rte_pci_device *pci_dev)
 }
 
 static int
-mlx5_common_pci_dma_map(struct rte_pci_device *pci_dev, void *addr,
-			uint64_t iova, size_t len)
+mlx5_pci_dma_map(struct rte_pci_device *pci_dev, void *addr,
+		 uint64_t iova, size_t len)
 {
 	struct mlx5_pci_driver *driver = NULL;
 	struct mlx5_pci_driver *temp;
@@ -401,8 +409,8 @@ map_err:
 }
 
 static int
-mlx5_common_pci_dma_unmap(struct rte_pci_device *pci_dev, void *addr,
-			  uint64_t iova, size_t len)
+mlx5_pci_dma_unmap(struct rte_pci_device *pci_dev, void *addr,
+		   uint64_t iova, size_t len)
 {
 	struct mlx5_pci_driver *driver;
 	struct mlx5_pci_device *dev;
@@ -435,10 +443,10 @@ static struct rte_pci_driver mlx5_pci_driver = {
 	.driver = {
 		.name = MLX5_PCI_DRIVER_NAME,
 	},
-	.probe = mlx5_common_pci_probe,
-	.remove = mlx5_common_pci_remove,
-	.dma_map = mlx5_common_pci_dma_map,
-	.dma_unmap = mlx5_common_pci_dma_unmap,
+	.probe = mlx5_pci_probe,
+	.remove = mlx5_pci_remove,
+	.dma_map = mlx5_pci_dma_map,
+	.dma_unmap = mlx5_pci_dma_unmap,
 };
 
 static int
@@ -502,7 +510,7 @@ pci_ids_table_update(const struct rte_pci_id *driver_id_table)
 	updated_table = calloc(num_ids, sizeof(*updated_table));
 	if (!updated_table)
 		return -ENOMEM;
-	if (TAILQ_EMPTY(&drv_list)) {
+	if (old_table == NULL) {
 		/* Copy the first driver's ID table. */
 		for (id_iter = driver_id_table; id_iter->vendor_id != 0;
 		     id_iter++, i++)
@@ -518,6 +526,7 @@ pci_ids_table_update(const struct rte_pci_id *driver_id_table)
 	/* Terminate table with empty entry. */
 	updated_table[i].vendor_id = 0;
 	mlx5_pci_driver.id_table = updated_table;
+	mlx5_common_pci_driver.id_table = updated_table;
 	mlx5_pci_id_table = updated_table;
 	if (old_table)
 		free(old_table);
@@ -536,6 +545,101 @@ mlx5_pci_driver_register(struct mlx5_pci_driver *driver)
 	TAILQ_INSERT_TAIL(&drv_list, driver, next);
 }
 
+/********** New common PCI bus driver ********/
+
+bool
+mlx5_dev_is_pci(const struct rte_device *dev)
+{
+	return strcmp(dev->bus->name, "pci") == 0;
+}
+
+bool
+mlx5_dev_pci_match(const struct mlx5_class_driver *drv,
+		   const struct rte_device *dev)
+{
+	const struct rte_pci_device *pci_dev;
+	const struct rte_pci_id *id_table;
+
+	if (!mlx5_dev_is_pci(dev))
+		return false;
+	pci_dev = RTE_DEV_TO_PCI_CONST(dev);
+	for (id_table = drv->id_table; id_table->vendor_id != 0;
+	     id_table++) {
+		/* Check if device's ids match the class driver's ids. */
+		if (id_table->vendor_id != pci_dev->id.vendor_id &&
+		    id_table->vendor_id != RTE_PCI_ANY_ID)
+			continue;
+		if (id_table->device_id != pci_dev->id.device_id &&
+		    id_table->device_id != RTE_PCI_ANY_ID)
+			continue;
+		if (id_table->subsystem_vendor_id !=
+		    pci_dev->id.subsystem_vendor_id &&
+		    id_table->subsystem_vendor_id != RTE_PCI_ANY_ID)
+			continue;
+		if (id_table->subsystem_device_id !=
+		    pci_dev->id.subsystem_device_id &&
+		    id_table->subsystem_device_id != RTE_PCI_ANY_ID)
+			continue;
+		if (id_table->class_id != pci_dev->id.class_id &&
+		    id_table->class_id != RTE_CLASS_ANY_ID)
+			continue;
+		return true;
+	}
+	return false;
+}
+
+static int
+mlx5_common_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+		      struct rte_pci_device *pci_dev)
+{
+	return mlx5_common_dev_probe(&pci_dev->device);
+}
+
+static int
+mlx5_common_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return mlx5_common_dev_remove(&pci_dev->device);
+}
+
+static int
+mlx5_common_pci_dma_map(struct rte_pci_device *pci_dev, void *addr,
+			uint64_t iova, size_t len)
+{
+	return mlx5_common_dev_dma_map(&pci_dev->device, addr, iova, len);
+}
+
+static int
+mlx5_common_pci_dma_unmap(struct rte_pci_device *pci_dev, void *addr,
+			  uint64_t iova, size_t len)
+{
+	return mlx5_common_dev_dma_unmap(&pci_dev->device, addr, iova, len);
+}
+
+void
+mlx5_common_driver_on_register_pci(struct mlx5_class_driver *driver)
+{
+	if (driver->id_table != NULL) {
+		if (pci_ids_table_update(driver->id_table) != 0)
+			return;
+	}
+	if (driver->probe_again)
+		mlx5_common_pci_driver.drv_flags |= RTE_PCI_DRV_PROBE_AGAIN;
+	if (driver->intr_lsc)
+		mlx5_common_pci_driver.drv_flags |= RTE_PCI_DRV_INTR_LSC;
+	if (driver->intr_rmv)
+		mlx5_common_pci_driver.drv_flags |= RTE_PCI_DRV_INTR_RMV;
+}
+
+static struct rte_pci_driver mlx5_common_pci_driver = {
+	.driver = {
+		   .name = MLX5_PCI_DRIVER_NAME,
+	},
+	.probe = mlx5_common_pci_probe,
+	.remove = mlx5_common_pci_remove,
+	.dma_map = mlx5_common_pci_dma_map,
+	.dma_unmap = mlx5_common_pci_dma_unmap,
+};
+
 void mlx5_common_pci_init(void)
 {
 	const struct rte_pci_id empty_table[] = {
@@ -551,7 +655,7 @@ void mlx5_common_pci_init(void)
 	 */
 	if (mlx5_pci_id_table == NULL && pci_ids_table_update(empty_table))
 		return;
-	rte_pci_register(&mlx5_pci_driver);
+	rte_pci_register(&mlx5_common_pci_driver);
 }
 
 RTE_FINI(mlx5_common_pci_finish)
@@ -560,8 +664,9 @@ RTE_FINI(mlx5_common_pci_finish)
 		/* Constructor doesn't register with PCI bus if it failed
 		 * to build the table.
 		 */
-		rte_pci_unregister(&mlx5_pci_driver);
+		rte_pci_unregister(&mlx5_common_pci_driver);
 		free(mlx5_pci_id_table);
 	}
 }
+
 RTE_PMD_EXPORT_NAME(mlx5_common_pci, __COUNTER__);
