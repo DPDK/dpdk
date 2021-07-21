@@ -1751,8 +1751,7 @@ int mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
 			 const struct mlx5_dev_config *config,
 			 struct mlx5_dev_ctx_shared *sh);
 int mlx5_os_get_pdn(void *pd, uint32_t *pdn);
-int mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-		       struct rte_pci_device *pci_dev);
+int mlx5_os_net_probe(struct rte_device *dev);
 void mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh);
 void mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh);
 void mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,

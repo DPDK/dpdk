@@ -16,7 +16,6 @@
 #include <rte_hexdump.h>
 #include <rte_spinlock.h>
 #include <rte_io.h>
-#include <rte_bus_pci.h>
 #include <rte_cycles.h>
 
 #include <mlx5_common.h>
@@ -48,10 +47,10 @@ int mlx5_queue_state_modify(struct rte_eth_dev *dev,
 /* mlx5_mr.c */
 
 void mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl);
-int mlx5_dma_map(struct rte_pci_device *pdev, void *addr, uint64_t iova,
-		 size_t len);
-int mlx5_dma_unmap(struct rte_pci_device *pdev, void *addr, uint64_t iova,
-		   size_t len);
+int mlx5_net_dma_map(struct rte_device *rte_dev, void *addr, uint64_t iova,
+		     size_t len);
+int mlx5_net_dma_unmap(struct rte_device *rte_dev, void *addr, uint64_t iova,
+		       size_t len);
 
 /**
  * Get Memory Pool (MP) from mbuf. If mbuf is indirect, the pool from which the

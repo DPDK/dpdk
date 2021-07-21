@@ -12,7 +12,6 @@
 
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
-#include <ethdev_pci.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 #include <rte_common.h>
@@ -28,7 +27,6 @@
 #include <mlx5_common.h>
 #include <mlx5_common_os.h>
 #include <mlx5_common_mp.h>
-#include <mlx5_common_pci.h>
 #include <mlx5_malloc.h>
 
 #include "mlx5_defs.h"
@@ -42,6 +40,8 @@
 #include "mlx5_flow.h"
 #include "mlx5_flow_os.h"
 #include "rte_pmd_mlx5.h"
+
+#define MLX5_ETH_DRIVER_NAME mlx5_eth
 
 /* Device parameter to enable RX completion queue compression. */
 #define MLX5_RXQ_CQE_COMP_EN "rxq_cqe_comp_en"
@@ -2345,23 +2345,23 @@ mlx5_eth_find_next(uint16_t port_id, struct rte_device *odev)
 }
 
 /**
- * DPDK callback to remove a PCI device.
+ * Callback to remove a device.
  *
- * This function removes all Ethernet devices belong to a given PCI device.
+ * This function removes all Ethernet devices belong to a given device.
  *
- * @param[in] pci_dev
- *   Pointer to the PCI device.
+ * @param[in] dev
+ *   Pointer to the generic device.
  *
  * @return
  *   0 on success, the function cannot fail.
  */
 static int
-mlx5_pci_remove(struct rte_pci_device *pci_dev)
+mlx5_net_remove(struct rte_device *dev)
 {
 	uint16_t port_id;
 	int ret = 0;
 
-	RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device) {
+	RTE_ETH_FOREACH_DEV_OF(port_id, dev) {
 		/*
 		 * mlx5_dev_close() is not registered to secondary process,
 		 * call the close function explicitly for secondary process.
@@ -2452,19 +2452,17 @@ static const struct rte_pci_id mlx5_pci_id_map[] = {
 	}
 };
 
-static struct mlx5_pci_driver mlx5_driver = {
-	.driver_class = MLX5_CLASS_ETH,
-	.pci_driver = {
-		.driver = {
-			.name = MLX5_PCI_DRIVER_NAME,
-		},
-		.id_table = mlx5_pci_id_map,
-		.probe = mlx5_os_pci_probe,
-		.remove = mlx5_pci_remove,
-		.dma_map = mlx5_dma_map,
-		.dma_unmap = mlx5_dma_unmap,
-		.drv_flags = PCI_DRV_FLAGS,
-	},
+static struct mlx5_class_driver mlx5_net_driver = {
+	.drv_class = MLX5_CLASS_ETH,
+	.name = RTE_STR(MLX5_ETH_DRIVER_NAME),
+	.id_table = mlx5_pci_id_map,
+	.probe = mlx5_os_net_probe,
+	.remove = mlx5_net_remove,
+	.dma_map = mlx5_net_dma_map,
+	.dma_unmap = mlx5_net_dma_unmap,
+	.probe_again = 1,
+	.intr_lsc = 1,
+	.intr_rmv = 1,
 };
 
 /* Initialize driver log type. */
@@ -2482,9 +2480,9 @@ RTE_INIT(rte_mlx5_pmd_init)
 	mlx5_set_cksum_table();
 	mlx5_set_swp_types_table();
 	if (mlx5_glue)
-		mlx5_pci_driver_register(&mlx5_driver);
+		mlx5_class_driver_register(&mlx5_net_driver);
 }
 
-RTE_PMD_EXPORT_NAME(net_mlx5, __COUNTER__);
-RTE_PMD_REGISTER_PCI_TABLE(net_mlx5, mlx5_pci_id_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_mlx5, "* ib_uverbs & mlx5_core & mlx5_ib");
+RTE_PMD_EXPORT_NAME(MLX5_ETH_DRIVER_NAME, __COUNTER__);
+RTE_PMD_REGISTER_PCI_TABLE(MLX5_ETH_DRIVER_NAME, mlx5_pci_id_map);
+RTE_PMD_REGISTER_KMOD_DEP(MLX5_ETH_DRIVER_NAME, "* ib_uverbs & mlx5_core & mlx5_ib");

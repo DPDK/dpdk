@@ -2115,14 +2115,6 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 	struct mlx5_bond_info bond_info;
 	int ret = -1;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		mlx5_pmd_socket_init();
-	ret = mlx5_init_once();
-	if (ret) {
-		DRV_LOG(ERR, "unable to init PMD global data: %s",
-			strerror(rte_errno));
-		return -rte_errno;
-	}
 	errno = 0;
 	ibv_list = mlx5_glue->get_device_list(&ret);
 	if (!ibv_list) {
@@ -2569,21 +2561,18 @@ exit:
 }
 
 /**
- * DPDK callback to register a PCI device.
+ * Callback to register a PCI device.
  *
  * This function spawns Ethernet devices out of a given PCI device.
  *
- * @param[in] pci_drv
- *   PCI driver structure (mlx5_driver).
  * @param[in] pci_dev
  *   PCI device information.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-int
-mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-		  struct rte_pci_device *pci_dev)
+static int
+mlx5_os_pci_probe(struct rte_pci_device *pci_dev)
 {
 	struct rte_eth_devargs eth_da = { .type = RTE_ETH_REPRESENTOR_NONE };
 	int ret = 0;
@@ -2620,6 +2609,35 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		ret = mlx5_os_pci_probe_pf(pci_dev, &eth_da, 0);
 	}
 	return ret;
+}
+
+/**
+ * Net class driver callback to probe a device.
+ *
+ * This function probe PCI bus device(s).
+ *
+ * @param[in] dev
+ *   Pointer to the generic device.
+ *
+ * @return
+ *   0 on success, the function cannot fail.
+ */
+int
+mlx5_os_net_probe(struct rte_device *dev)
+{
+	int ret;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		mlx5_pmd_socket_init();
+	ret = mlx5_init_once();
+	if (ret) {
+		DRV_LOG(ERR, "unable to init PMD global data: %s",
+			strerror(rte_errno));
+		return -rte_errno;
+	}
+	if (mlx5_dev_is_pci(dev))
+		return mlx5_os_pci_probe(RTE_DEV_TO_PCI(dev));
+	return 0;
 }
 
 static int
