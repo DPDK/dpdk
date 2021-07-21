@@ -24,6 +24,7 @@
 
 /* Reported driver name. */
 #define MLX5_PCI_DRIVER_NAME "mlx5_pci"
+#define MLX5_AUXILIARY_DRIVER_NAME "mlx5_auxiliary"
 
 /* Bit-field manipulation. */
 #define BITFIELD_DECLARE(bf, type, size) \
@@ -109,6 +110,7 @@ pmd_drv_log_basename(const char *s)
 	int mkstr_size_##name = snprintf(NULL, 0, "" __VA_ARGS__); \
 	char name[mkstr_size_##name + 1]; \
 	\
+	memset(name, 0, mkstr_size_##name + 1); \
 	snprintf(name, sizeof(name), "" __VA_ARGS__)
 
 enum {
@@ -235,6 +237,9 @@ int mlx5_dev_to_pci_addr(const char *dev_path, struct rte_pci_addr *pci_addr);
 __rte_internal
 int mlx5_get_ifname_sysfs(const char *ibdev_path, char *ifname);
 
+__rte_internal
+int mlx5_auxiliary_get_child_name(const char *dev, const char *node,
+				  char *child, size_t size);
 
 enum mlx5_class {
 	MLX5_CLASS_INVALID,

@@ -398,6 +398,9 @@ mlx5_class_driver_register(struct mlx5_class_driver *driver)
 static void mlx5_common_driver_init(void)
 {
 	mlx5_common_pci_init();
+#ifdef RTE_EXEC_ENV_LINUX
+	mlx5_common_auxiliary_init();
+#endif
 }
 
 static bool mlx5_common_initialized;

@@ -3,6 +3,8 @@ INTERNAL {
 
 	haswell_broadwell_cpu;
 
+	mlx5_auxiliary_get_child_name; # WINDOWS_NO_EXPORT
+
 	mlx5_class_driver_register;
 
 	mlx5_common_init;

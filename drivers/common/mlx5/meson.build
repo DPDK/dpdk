@@ -7,7 +7,7 @@ if not (is_linux or (is_windows and is_ms_linker))
     subdir_done()
 endif
 
-deps += ['hash', 'pci', 'bus_pci', 'net', 'eal', 'kvargs']
+deps += ['hash', 'pci', 'bus_pci', 'bus_auxiliary', 'net', 'eal', 'kvargs']
 sources += files(
         'mlx5_devx_cmds.c',
         'mlx5_common.c',
