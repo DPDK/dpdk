@@ -9,8 +9,8 @@
 #include <rte_regexdev.h>
 #include <rte_regexdev_core.h>
 #include <rte_regexdev_driver.h>
+#include <rte_bus_pci.h>
 
-#include <mlx5_common_pci.h>
 #include <mlx5_common.h>
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -76,15 +76,13 @@ mlx5_regex_engines_status(struct ibv_context *ctx, int num_engines)
 }
 
 static void
-mlx5_regex_get_name(char *name, struct rte_pci_device *pci_dev __rte_unused)
+mlx5_regex_get_name(char *name, struct rte_device *dev)
 {
-	sprintf(name, "mlx5_regex_%02x:%02x.%02x", pci_dev->addr.bus,
-		pci_dev->addr.devid, pci_dev->addr.function);
+	sprintf(name, "mlx5_regex_%s", dev->name);
 }
 
 static int
-mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-		     struct rte_pci_device *pci_dev)
+mlx5_regex_dev_probe(struct rte_device *rte_dev)
 {
 	struct ibv_device *ibv;
 	struct mlx5_regex_priv *priv = NULL;
@@ -94,16 +92,10 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	int ret;
 	uint32_t val;
 
-	ibv = mlx5_os_get_ibv_device(&pci_dev->addr);
-	if (!ibv) {
-		DRV_LOG(ERR, "No matching IB device for PCI slot "
-			PCI_PRI_FMT ".", pci_dev->addr.domain,
-			pci_dev->addr.bus, pci_dev->addr.devid,
-			pci_dev->addr.function);
+	ibv = mlx5_os_get_ibv_dev(rte_dev);
+	if (ibv == NULL)
 		return -rte_errno;
-	}
-	DRV_LOG(INFO, "PCI information matches for device \"%s\".",
-		ibv->name);
+	DRV_LOG(INFO, "Probe device \"%s\".", ibv->name);
 	ctx = mlx5_glue->dv_open_device(ibv);
 	if (!ctx) {
 		DRV_LOG(ERR, "Failed to open IB device \"%s\".", ibv->name);
@@ -146,7 +138,7 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		priv->is_bf2 = 1;
 	/* Default RXP programming mode to Shared. */
 	priv->prog_mode = MLX5_RXP_SHARED_PROG_MODE;
-	mlx5_regex_get_name(name, pci_dev);
+	mlx5_regex_get_name(name, rte_dev);
 	priv->regexdev = rte_regexdev_register(name);
 	if (priv->regexdev == NULL) {
 		DRV_LOG(ERR, "Failed to register RegEx device.");
@@ -180,7 +172,7 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		priv->regexdev->enqueue = mlx5_regexdev_enqueue_gga;
 #endif
 	priv->regexdev->dequeue = mlx5_regexdev_dequeue;
-	priv->regexdev->device = (struct rte_device *)pci_dev;
+	priv->regexdev->device = rte_dev;
 	priv->regexdev->data->dev_private = priv;
 	priv->regexdev->state = RTE_REGEXDEV_READY;
 	priv->mr_scache.reg_mr_cb = mlx5_common_verbs_reg_mr;
@@ -213,13 +205,13 @@ dev_error:
 }
 
 static int
-mlx5_regex_pci_remove(struct rte_pci_device *pci_dev)
+mlx5_regex_dev_remove(struct rte_device *rte_dev)
 {
 	char name[RTE_REGEXDEV_NAME_MAX_LEN];
 	struct rte_regexdev *dev;
 	struct mlx5_regex_priv *priv = NULL;
 
-	mlx5_regex_get_name(name, pci_dev);
+	mlx5_regex_get_name(name, rte_dev);
 	dev = rte_regexdev_get_device_by_name(name);
 	if (!dev)
 		return 0;
@@ -254,24 +246,19 @@ static const struct rte_pci_id mlx5_regex_pci_id_map[] = {
 	}
 };
 
-static struct mlx5_pci_driver mlx5_regex_driver = {
-	.driver_class = MLX5_CLASS_REGEX,
-	.pci_driver = {
-		.driver = {
-			.name = RTE_STR(MLX5_REGEX_DRIVER_NAME),
-		},
-		.id_table = mlx5_regex_pci_id_map,
-		.probe = mlx5_regex_pci_probe,
-		.remove = mlx5_regex_pci_remove,
-		.drv_flags = 0,
-	},
+static struct mlx5_class_driver mlx5_regex_driver = {
+	.drv_class = MLX5_CLASS_REGEX,
+	.name = RTE_STR(MLX5_REGEX_DRIVER_NAME),
+	.id_table = mlx5_regex_pci_id_map,
+	.probe = mlx5_regex_dev_probe,
+	.remove = mlx5_regex_dev_remove,
 };
 
 RTE_INIT(rte_mlx5_regex_init)
 {
 	mlx5_common_init();
 	if (mlx5_glue)
-		mlx5_pci_driver_register(&mlx5_regex_driver);
+		mlx5_class_driver_register(&mlx5_regex_driver);
 }
 
 RTE_LOG_REGISTER_DEFAULT(mlx5_regex_logtype, NOTICE)

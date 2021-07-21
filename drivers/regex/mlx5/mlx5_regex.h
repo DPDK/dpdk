@@ -59,7 +59,6 @@ struct mlx5_regex_db {
 struct mlx5_regex_priv {
 	TAILQ_ENTRY(mlx5_regex_priv) next;
 	struct ibv_context *ctx; /* Device context. */
-	struct rte_pci_device *pci_dev;
 	struct rte_regexdev *regexdev; /* Pointer to the RegEx dev. */
 	uint16_t nb_queues; /* Number of queues. */
 	struct mlx5_regex_qp *qps; /* Pointer to the qp array. */
