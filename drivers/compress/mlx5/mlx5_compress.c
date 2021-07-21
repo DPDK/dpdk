@@ -5,7 +5,7 @@
 #include <rte_malloc.h>
 #include <rte_log.h>
 #include <rte_errno.h>
-#include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_spinlock.h>
 #include <rte_comp.h>
 #include <rte_compressdev.h>
@@ -13,7 +13,6 @@
 
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
-#include <mlx5_common_pci.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_common_os.h>
 #include <mlx5_common_devx.h>
@@ -37,7 +36,6 @@ struct mlx5_compress_xform {
 struct mlx5_compress_priv {
 	TAILQ_ENTRY(mlx5_compress_priv) next;
 	struct ibv_context *ctx; /* Device context. */
-	struct rte_pci_device *pci_dev;
 	struct rte_compressdev *cdev;
 	void *uar;
 	uint32_t pdn; /* Protection Domain number. */
@@ -780,23 +778,8 @@ mlx5_compress_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 	}
 }
 
-/**
- * DPDK callback to register a PCI device.
- *
- * This function spawns compress device out of a given PCI device.
- *
- * @param[in] pci_drv
- *   PCI driver structure (mlx5_compress_driver).
- * @param[in] pci_dev
- *   PCI device information.
- *
- * @return
- *   0 on success, 1 to skip this driver, a negative errno value otherwise
- *   and rte_errno is set.
- */
 static int
-mlx5_compress_pci_probe(struct rte_pci_driver *pci_drv,
-			struct rte_pci_device *pci_dev)
+mlx5_compress_dev_probe(struct rte_device *dev)
 {
 	struct ibv_device *ibv;
 	struct rte_compressdev *cdev;
@@ -805,24 +788,17 @@ mlx5_compress_pci_probe(struct rte_pci_driver *pci_drv,
 	struct mlx5_hca_attr att = { 0 };
 	struct rte_compressdev_pmd_init_params init_params = {
 		.name = "",
-		.socket_id = pci_dev->device.numa_node,
+		.socket_id = dev->numa_node,
 	};
 
-	RTE_SET_USED(pci_drv);
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		DRV_LOG(ERR, "Non-primary process type is not supported.");
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	ibv = mlx5_os_get_ibv_device(&pci_dev->addr);
-	if (ibv == NULL) {
-		DRV_LOG(ERR, "No matching IB device for PCI slot "
-			PCI_PRI_FMT ".", pci_dev->addr.domain,
-			pci_dev->addr.bus, pci_dev->addr.devid,
-			pci_dev->addr.function);
+	ibv = mlx5_os_get_ibv_dev(dev);
+	if (ibv == NULL)
 		return -rte_errno;
-	}
-	DRV_LOG(INFO, "PCI information matches for device \"%s\".", ibv->name);
 	ctx = mlx5_glue->dv_open_device(ibv);
 	if (ctx == NULL) {
 		DRV_LOG(ERR, "Failed to open IB device \"%s\".", ibv->name);
@@ -838,7 +814,7 @@ mlx5_compress_pci_probe(struct rte_pci_driver *pci_drv,
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
-	cdev = rte_compressdev_pmd_create(ibv->name, &pci_dev->device,
+	cdev = rte_compressdev_pmd_create(ibv->name, dev,
 					  sizeof(*priv), &init_params);
 	if (cdev == NULL) {
 		DRV_LOG(ERR, "Failed to create device \"%s\".", ibv->name);
@@ -853,7 +829,6 @@ mlx5_compress_pci_probe(struct rte_pci_driver *pci_drv,
 	cdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 	priv = cdev->data->dev_private;
 	priv->ctx = ctx;
-	priv->pci_dev = pci_dev;
 	priv->cdev = cdev;
 	priv->min_block_size = att.compress_min_block_size;
 	priv->sq_ts_format = att.sq_ts_format;
@@ -884,25 +859,14 @@ mlx5_compress_pci_probe(struct rte_pci_driver *pci_drv,
 	return 0;
 }
 
-/**
- * DPDK callback to remove a PCI device.
- *
- * This function removes all compress devices belong to a given PCI device.
- *
- * @param[in] pci_dev
- *   Pointer to the PCI device.
- *
- * @return
- *   0 on success, the function cannot fail.
- */
 static int
-mlx5_compress_pci_remove(struct rte_pci_device *pdev)
+mlx5_compress_dev_remove(struct rte_device *dev)
 {
 	struct mlx5_compress_priv *priv = NULL;
 
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_FOREACH(priv, &mlx5_compress_priv_list, next)
-		if (rte_pci_addr_cmp(&priv->pci_dev->addr, &pdev->addr) != 0)
+		if (priv->cdev->device == dev)
 			break;
 	if (priv)
 		TAILQ_REMOVE(&mlx5_compress_priv_list, priv, next);
@@ -929,24 +893,19 @@ static const struct rte_pci_id mlx5_compress_pci_id_map[] = {
 	}
 };
 
-static struct mlx5_pci_driver mlx5_compress_driver = {
-	.driver_class = MLX5_CLASS_COMPRESS,
-	.pci_driver = {
-		.driver = {
-			.name = RTE_STR(MLX5_COMPRESS_DRIVER_NAME),
-		},
-		.id_table = mlx5_compress_pci_id_map,
-		.probe = mlx5_compress_pci_probe,
-		.remove = mlx5_compress_pci_remove,
-		.drv_flags = 0,
-	},
+static struct mlx5_class_driver mlx5_compress_driver = {
+	.drv_class = MLX5_CLASS_COMPRESS,
+	.name = RTE_STR(MLX5_COMPRESS_DRIVER_NAME),
+	.id_table = mlx5_compress_pci_id_map,
+	.probe = mlx5_compress_dev_probe,
+	.remove = mlx5_compress_dev_remove,
 };
 
 RTE_INIT(rte_mlx5_compress_init)
 {
 	mlx5_common_init();
 	if (mlx5_glue != NULL)
-		mlx5_pci_driver_register(&mlx5_compress_driver);
+		mlx5_class_driver_register(&mlx5_compress_driver);
 }
 
 RTE_LOG_REGISTER_DEFAULT(mlx5_compress_logtype, NOTICE)
