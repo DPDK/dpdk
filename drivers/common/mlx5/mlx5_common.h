@@ -204,8 +204,34 @@ check_cqe(volatile struct mlx5_cqe *cqe, const uint16_t cqes_n,
 	return MLX5_CQE_STATUS_SW_OWN;
 }
 
+/*
+ * Get PCI address from sysfs of a PCI-related device.
+ *
+ * @param[in] dev_path
+ *   The sysfs path should not point to the direct plain PCI device.
+ *   Instead, the node "/device/" is used to access the real device.
+ * @param[out] pci_addr
+ *   Parsed PCI address.
+ *
+ * @return
+ *   - 0 on success.
+ *   - Negative value and rte_errno is set otherwise.
+ */
 __rte_internal
 int mlx5_dev_to_pci_addr(const char *dev_path, struct rte_pci_addr *pci_addr);
+
+/*
+ * Get kernel network interface name from sysfs IB device path.
+ *
+ * @param[in] ibdev_path
+ *   The sysfs path to IB device.
+ * @param[out] ifname
+ *   Interface name output of size IF_NAMESIZE.
+ *
+ * @return
+ *   - 0 on success.
+ *   - Negative value and rte_errno is set otherwise.
+ */
 __rte_internal
 int mlx5_get_ifname_sysfs(const char *ibdev_path, char *ifname);
 

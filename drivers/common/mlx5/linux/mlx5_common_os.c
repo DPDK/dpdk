@@ -23,17 +23,6 @@
 const struct mlx5_glue *mlx5_glue;
 #endif
 
-/**
- * Get PCI information by sysfs device path.
- *
- * @param dev_path
- *   Pointer to device sysfs folder name.
- * @param[out] pci_addr
- *   PCI bus address output buffer.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
 int
 mlx5_dev_to_pci_addr(const char *dev_path,
 		     struct rte_pci_addr *pci_addr)
@@ -159,17 +148,6 @@ mlx5_translate_port_name(const char *port_name_in,
 	port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN;
 }
 
-/**
- * Get kernel interface name from IB device path.
- *
- * @param[in] ibdev_path
- *   Pointer to IB device path.
- * @param[out] ifname
- *   Interface name output buffer.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
 int
 mlx5_get_ifname_sysfs(const char *ibdev_path, char *ifname)
 {
