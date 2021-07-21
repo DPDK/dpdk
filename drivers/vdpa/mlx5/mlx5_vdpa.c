@@ -24,6 +24,7 @@
 #include "mlx5_vdpa_utils.h"
 #include "mlx5_vdpa.h"
 
+#define MLX5_VDPA_DRIVER_NAME vdpa_mlx5
 
 #define MLX5_VDPA_DEFAULT_FEATURES ((1ULL << VHOST_USER_F_PROTOCOL_FEATURES) | \
 			    (1ULL << VIRTIO_F_ANY_LAYOUT) | \
@@ -834,7 +835,7 @@ static struct mlx5_pci_driver mlx5_vdpa_driver = {
 	.driver_class = MLX5_CLASS_VDPA,
 	.pci_driver = {
 		.driver = {
-			.name = "mlx5_vdpa",
+			.name = RTE_STR(MLX5_VDPA_DRIVER_NAME),
 		},
 		.id_table = mlx5_vdpa_pci_id_map,
 		.probe = mlx5_vdpa_pci_probe,
@@ -855,6 +856,6 @@ RTE_INIT(rte_mlx5_vdpa_init)
 		mlx5_pci_driver_register(&mlx5_vdpa_driver);
 }
 
-RTE_PMD_EXPORT_NAME(net_mlx5_vdpa, __COUNTER__);
-RTE_PMD_REGISTER_PCI_TABLE(net_mlx5_vdpa, mlx5_vdpa_pci_id_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_mlx5_vdpa, "* ib_uverbs & mlx5_core & mlx5_ib");
+RTE_PMD_EXPORT_NAME(MLX5_VDPA_DRIVER_NAME, __COUNTER__);
+RTE_PMD_REGISTER_PCI_TABLE(MLX5_VDPA_DRIVER_NAME, mlx5_vdpa_pci_id_map);
+RTE_PMD_REGISTER_KMOD_DEP(MLX5_VDPA_DRIVER_NAME, "* ib_uverbs & mlx5_core & mlx5_ib");
