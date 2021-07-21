@@ -139,6 +139,15 @@ Deprecation Notices
   can still be used if users specify the devarg "driver=i40evf". I40evf will
   be deleted in DPDK 21.11.
 
+* net: ``s_addr`` and ``d_addr`` fields of ``rte_ether_hdr`` structure
+  will be renamed in DPDK 21.11 to avoid conflict with Windows Sockets headers.
+
+* compressdev: ``min`` and ``max`` fields of ``rte_param_log2_range`` structure
+  will be renamed in DPDK 21.11 to avoid conflict with Windows Sockets headers.
+
+* cryptodev: ``min`` and ``max`` fields of ``rte_crypto_param_range`` structure
+  will be renamed in DPDK 21.11 to avoid conflict with Windows Sockets headers.
+
 * cryptodev: The field ``dataunit_len`` of the ``struct rte_crypto_cipher_xform``
   has a limited size ``uint16_t``.
   It will be moved and extended as ``uint32_t`` in DPDK 21.11.
