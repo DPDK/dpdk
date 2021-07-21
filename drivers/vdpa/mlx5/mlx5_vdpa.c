@@ -553,9 +553,13 @@ close:
 static int
 mlx5_vdpa_roce_disable(struct rte_device *dev)
 {
+	char pci_addr[PCI_PRI_STR_SIZE] = { 0 };
+
+	if (mlx5_dev_to_pci_str(dev, pci_addr, sizeof(pci_addr)) < 0)
+		return -rte_errno;
 	/* Firstly try to disable ROCE by Netlink and fallback to sysfs. */
-	if (mlx5_vdpa_nl_roce_disable(dev->name) != 0 &&
-	    mlx5_vdpa_sys_roce_disable(dev->name) != 0)
+	if (mlx5_vdpa_nl_roce_disable(pci_addr) != 0 &&
+	    mlx5_vdpa_sys_roce_disable(pci_addr) != 0)
 		return -rte_errno;
 	return 0;
 }
