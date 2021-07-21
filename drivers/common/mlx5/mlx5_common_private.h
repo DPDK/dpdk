@@ -31,6 +31,7 @@ int mlx5_common_dev_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova,
 
 /* Common PCI bus driver: */
 
+void mlx5_common_pci_init(void);
 void mlx5_common_driver_on_register_pci(struct mlx5_class_driver *driver);
 bool mlx5_dev_pci_match(const struct mlx5_class_driver *drv,
 			const struct rte_device *dev);

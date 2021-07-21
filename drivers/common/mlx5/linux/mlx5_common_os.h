@@ -289,7 +289,6 @@ mlx5_os_free(void *addr)
 	free(addr);
 }
 
-__rte_internal
 struct ibv_device *
 mlx5_os_get_ibv_device(const struct rte_pci_addr *addr);
 

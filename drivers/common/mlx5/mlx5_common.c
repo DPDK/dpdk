@@ -14,7 +14,6 @@
 #include "mlx5_common.h"
 #include "mlx5_common_os.h"
 #include "mlx5_common_log.h"
-#include "mlx5_common_pci.h"
 #include "mlx5_common_private.h"
 
 uint8_t haswell_broadwell_cpu;
