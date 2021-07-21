@@ -140,6 +140,7 @@ int
 rte_cryptodev_pmd_destroy(struct rte_cryptodev *cryptodev)
 {
 	int retval;
+	void *dev_priv = cryptodev->data->dev_private;
 
 	CDEV_LOG_INFO("Closing crypto device %s", cryptodev->device->name);
 
@@ -149,7 +150,7 @@ rte_cryptodev_pmd_destroy(struct rte_cryptodev *cryptodev)
 		return retval;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(cryptodev->data->dev_private);
+		rte_free(dev_priv);
 
 
 	cryptodev->device = NULL;
