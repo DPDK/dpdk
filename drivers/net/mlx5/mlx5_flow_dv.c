@@ -15206,7 +15206,7 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_error flow_err;
 	const struct rte_flow_action *act;
-	uint64_t action_flags = 0;
+	uint64_t action_flags;
 	struct mlx5_flow_handle dh;
 	struct mlx5_flow dev_flow;
 	struct mlx5_flow_dv_port_id_action_resource port_id_action;
@@ -15226,21 +15226,20 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 	memset(&dh, 0, sizeof(struct mlx5_flow_handle));
 	memset(&dev_flow, 0, sizeof(struct mlx5_flow));
 	memset(&port_id_action, 0,
-		sizeof(struct mlx5_flow_dv_port_id_action_resource));
+	       sizeof(struct mlx5_flow_dv_port_id_action_resource));
 	memset(mhdr_res, 0, sizeof(*mhdr_res));
 	mhdr_res->ft_type = transfer ? MLX5DV_FLOW_TABLE_TYPE_FDB :
-					egress ?
-					MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
-					MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
+				       (egress ? MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
+					MLX5DV_FLOW_TABLE_TYPE_NIC_RX);
 	dev_flow.handle = &dh;
 	dev_flow.dv.port_id_action = &port_id_action;
 	dev_flow.external = true;
 	for (i = 0; i < RTE_COLORS; i++) {
 		if (i < MLX5_MTR_RTE_COLORS)
 			act_cnt = &mtr_policy->act_cnt[i];
+		action_flags = 0;
 		for (act = actions[i];
-			act && act->type != RTE_FLOW_ACTION_TYPE_END;
-			act++) {
+		     act && act->type != RTE_FLOW_ACTION_TYPE_END; act++) {
 			switch (act->type) {
 			case RTE_FLOW_ACTION_TYPE_MARK:
 			{
@@ -15448,7 +15447,7 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 					(1 << MLX5_SCALE_FLOW_GROUP_BIT),
 				};
 				struct mlx5_flow_meter_sub_policy *sub_policy =
-				mtr_policy->sub_policys[domain][0];
+					mtr_policy->sub_policys[domain][0];
 
 				if (i >= MLX5_MTR_RTE_COLORS)
 					return -rte_mtr_error_set(error,
@@ -15492,6 +15491,10 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 				action_flags |= MLX5_FLOW_ACTION_JUMP;
 				break;
 			}
+			/*
+			 * No need to check meter hierarchy for Y or R colors
+			 * here since it is done in the validation stage.
+			 */
 			case RTE_FLOW_ACTION_TYPE_METER:
 			{
 				const struct rte_flow_action_meter *mtr;
@@ -15607,6 +15610,7 @@ flow_dv_create_mtr_policy_acts(struct rte_eth_dev *dev,
 			ret = __flow_dv_create_domain_policy_acts(dev,
 				mtr_policy, actions,
 				(enum mlx5_meter_domain)i, error);
+			/* Cleaning resource is done in the caller level. */
 			if (ret)
 				return ret;
 		}
@@ -16148,16 +16152,15 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 
 	for (i = 0; i < RTE_COLORS; i++) {
 		acts[i].actions_n = 0;
-		if (i == RTE_COLOR_YELLOW)
-			continue;
 		if (i == RTE_COLOR_RED) {
 			/* Only support drop on red. */
 			acts[i].dv_actions[0] =
-			mtr_policy->dr_drop_action[domain];
+				mtr_policy->dr_drop_action[domain];
 			acts[i].actions_n = 1;
 			continue;
 		}
-		if (mtr_policy->act_cnt[i].fate_action == MLX5_FLOW_FATE_MTR) {
+		if (i == RTE_COLOR_GREEN &&
+		    mtr_policy->act_cnt[i].fate_action == MLX5_FLOW_FATE_MTR) {
 			struct rte_flow_attr attr = {
 				.transfer = transfer
 			};
@@ -16191,13 +16194,12 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 				"mark action for policy.");
 				goto err_exit;
 			}
-			acts[i].dv_actions[acts[i].actions_n] =
-						tag->action;
+			acts[i].dv_actions[acts[i].actions_n] = tag->action;
 			acts[i].actions_n++;
 		}
 		if (mtr_policy->act_cnt[i].modify_hdr) {
 			acts[i].dv_actions[acts[i].actions_n] =
-			mtr_policy->act_cnt[i].modify_hdr->action;
+				mtr_policy->act_cnt[i].modify_hdr->action;
 			acts[i].actions_n++;
 		}
 		if (mtr_policy->act_cnt[i].fate_action) {
@@ -16212,7 +16214,7 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 					goto err_exit;
 				}
 				acts[i].dv_actions[acts[i].actions_n] =
-				port_action->action;
+					port_action->action;
 				acts[i].actions_n++;
 				mtr_policy->dev = dev;
 				match_src_port = true;
@@ -16226,15 +16228,15 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 			case MLX5_FLOW_FATE_SHARED_RSS:
 			case MLX5_FLOW_FATE_QUEUE:
 				hrxq = mlx5_ipool_get
-				(priv->sh->ipool[MLX5_IPOOL_HRXQ],
-				sub_policy->rix_hrxq[i]);
+					(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+					 sub_policy->rix_hrxq[i]);
 				if (!hrxq) {
 					DRV_LOG(ERR, "Failed to find "
 						"queue action for policy.");
 					goto err_exit;
 				}
 				acts[i].dv_actions[acts[i].actions_n] =
-				hrxq->action;
+					hrxq->action;
 				acts[i].actions_n++;
 				break;
 			case MLX5_FLOW_FATE_MTR:
@@ -16276,7 +16278,7 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 	if (__flow_dv_create_domain_policy_rules(dev, sub_policy,
 				egress, transfer, match_src_port, acts)) {
 		DRV_LOG(ERR,
-		"Failed to create policy rules per domain.");
+			"Failed to create policy rules per domain.");
 		goto err_exit;
 	}
 	return 0;
@@ -16313,8 +16315,8 @@ flow_dv_create_policy_rules(struct rte_eth_dev *dev,
 		/* Prepare actions list and create policy rules. */
 		if (__flow_dv_create_policy_acts_rules(dev, mtr_policy,
 			mtr_policy->sub_policys[i][0], i)) {
-			DRV_LOG(ERR,
-			"Failed to create policy action list per domain.");
+			DRV_LOG(ERR, "Failed to create policy action "
+				"list per domain.");
 			return -1;
 		}
 	}

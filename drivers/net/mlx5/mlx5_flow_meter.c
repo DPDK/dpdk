@@ -686,21 +686,20 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_METER_POLICY,
-					  NULL, "meter policy unsupported.");
+					  NULL, "meter policy unsupported. ");
 	if (policy_id == MLX5_INVALID_POLICY_ID)
 		return -rte_mtr_error_set(error, ENOTSUP,
-			RTE_MTR_ERROR_TYPE_METER_POLICY_ID, NULL,
-			"policy ID is invalid. ");
+					  RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+					  NULL, "policy ID is invalid. ");
 	if (policy_id == priv->sh->mtrmng->def_policy_id)
 		return -rte_mtr_error_set(error, EEXIST,
-			RTE_MTR_ERROR_TYPE_METER_POLICY_ID, NULL,
-			"policy ID exists. ");
-	mtr_policy = mlx5_flow_meter_policy_find(dev, policy_id,
-				&policy_idx);
+					  RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+					  NULL, "default policy ID exists. ");
+	mtr_policy = mlx5_flow_meter_policy_find(dev, policy_id, &policy_idx);
 	if (mtr_policy)
 		return -rte_mtr_error_set(error, EEXIST,
-			RTE_MTR_ERROR_TYPE_METER_POLICY_ID, NULL,
-			"policy ID exists. ");
+					  RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+					  NULL, "policy ID exists. ");
 	ret = mlx5_flow_validate_mtr_acts(dev, policy->actions, &attr,
 			&is_rss, &domain_bitmap, &is_def_policy, error);
 	if (ret)
@@ -730,16 +729,22 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 	for (i = 0; i < MLX5_MTR_DOMAIN_MAX; i++) {
 		if (!(domain_bitmap & (1 << i)))
 			continue;
+		/*
+		 * If RSS is found, it means that only the ingress domain can
+		 * be supported. It is invalid to support RSS for one color
+		 * and egress / transfer domain actions for another. Drop and
+		 * jump action should have no impact.
+		 */
 		if (is_rss) {
 			policy_size +=
-			sizeof(struct mlx5_flow_meter_sub_policy *) *
-			MLX5_MTR_RSS_MAX_SUB_POLICY;
+				sizeof(struct mlx5_flow_meter_sub_policy *) *
+				MLX5_MTR_RSS_MAX_SUB_POLICY;
 			break;
 		}
 		policy_size += sizeof(struct mlx5_flow_meter_sub_policy *);
 	}
 	mtr_policy = mlx5_malloc(MLX5_MEM_ZERO, policy_size,
-			 RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+				 RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (!mtr_policy)
 		return -rte_mtr_error_set(error, ENOMEM,
 				RTE_MTR_ERROR_TYPE_METER_POLICY, NULL,
@@ -756,10 +761,9 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 			mtr_policy->transfer = 1;
 		sub_policy = mlx5_ipool_zmalloc
 				(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
-				&sub_policy_idx);
-		if (!sub_policy)
-			goto policy_add_err;
-		if (sub_policy_idx > MLX5_MAX_SUB_POLICY_TBL_NUM)
+				 &sub_policy_idx);
+		if (!sub_policy ||
+		    sub_policy_idx > MLX5_MAX_SUB_POLICY_TBL_NUM)
 			goto policy_add_err;
 		sub_policy->idx = sub_policy_idx;
 		sub_policy->main_policy = mtr_policy;
@@ -768,7 +772,7 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 			sub_policy->main_policy_id = 1;
 		}
 		mtr_policy->sub_policys[i] =
-		(struct mlx5_flow_meter_sub_policy **)
+			(struct mlx5_flow_meter_sub_policy **)
 			((uint8_t *)mtr_policy + policy_size);
 		mtr_policy->sub_policys[i][0] = sub_policy;
 		sub_policy_num = (mtr_policy->sub_policy_num >>
@@ -780,11 +784,17 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 		mtr_policy->sub_policy_num |=
 			(sub_policy_num & MLX5_MTR_SUB_POLICY_NUM_MASK) <<
 			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * i);
+		/*
+		 * If RSS is found, it means that only the ingress domain can
+		 * be supported. It is invalid to support RSS for one color
+		 * and egress / transfer domain actions for another. Drop and
+		 * jump action should have no impact.
+		 */
 		if (is_rss) {
 			mtr_policy->is_rss = 1;
 			break;
 		}
-		policy_size += sizeof(struct mlx5_flow_meter_sub_policy  *);
+		policy_size += sizeof(struct mlx5_flow_meter_sub_policy *);
 	}
 	rte_spinlock_init(&mtr_policy->sl);
 	ret = mlx5_flow_create_mtr_acts(dev, mtr_policy,
@@ -800,6 +810,10 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 			goto policy_add_err;
 		skip_rule = (final_policy->is_rss || final_policy->is_queue);
 	}
+	/*
+	 * If either Green or Yellow has queue / RSS action, all the policy
+	 * rules will be created later in the flow splitting stage.
+	 */
 	if (!is_rss && !mtr_policy->is_queue && !skip_rule) {
 		/* Create policy rules in HW. */
 		ret = mlx5_flow_create_policy_rules(dev, mtr_policy);
