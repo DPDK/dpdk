@@ -128,6 +128,17 @@ struct ethtool_link_settings {
 #define ETHTOOL_LINK_MODE_200000baseCR4_Full_BIT 2 /* 66 - 64 */
 #endif
 
+/* Get interface index from SubFunction device name. */
+int
+mlx5_auxiliary_get_ifindex(const char *sf_name)
+{
+	char if_name[IF_NAMESIZE] = { 0 };
+
+	if (mlx5_auxiliary_get_child_name(sf_name, "/net",
+					  if_name, sizeof(if_name)) != 0)
+		return -rte_errno;
+	return if_nametoindex(if_name);
+}
 
 /**
  * Get interface name from private structure.
@@ -1619,4 +1630,3 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN])
 	memcpy(mac, request.ifr_hwaddr.sa_data, RTE_ETHER_ADDR_LEN);
 	return 0;
 }
-

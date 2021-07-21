@@ -922,20 +922,18 @@ mlx5_match_devx_devices_to_addr(struct devx_device_bdf *devx_bdf,
 /**
  * DPDK callback to register a PCI device.
  *
- * This function spawns Ethernet devices out of a given PCI device.
+ * This function spawns Ethernet devices out of a given device.
  *
- * @param[in] pci_drv
- *   PCI driver structure (mlx5_driver).
- * @param[in] pci_dev
- *   PCI device information.
+ * @param[in] dev
+ *   Pointer to the generic device.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-		  struct rte_pci_device *pci_dev)
+mlx5_os_net_probe(struct rte_device *dev)
 {
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev);
 	struct devx_device_bdf *devx_bdf_devs, *orig_devx_bdf_devs;
 	/*
 	 * Number of found IB Devices matching with requested PCI BDF.

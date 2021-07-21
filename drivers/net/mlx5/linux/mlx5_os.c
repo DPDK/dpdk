@@ -20,6 +20,7 @@
 #include <ethdev_pci.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
+#include <rte_bus_auxiliary.h>
 #include <rte_common.h>
 #include <rte_kvargs.h>
 #include <rte_rwlock.h>
@@ -2061,6 +2062,27 @@ mlx5_device_bond_pci_match(const struct ibv_device *ibv_dev,
 	return pf;
 }
 
+static void
+mlx5_os_config_default(struct mlx5_dev_config *config)
+{
+	memset(config, 0, sizeof(*config));
+	config->mps = MLX5_ARG_UNSET;
+	config->dbnc = MLX5_ARG_UNSET;
+	config->rx_vec_en = 1;
+	config->txq_inline_max = MLX5_ARG_UNSET;
+	config->txq_inline_min = MLX5_ARG_UNSET;
+	config->txq_inline_mpw = MLX5_ARG_UNSET;
+	config->txqs_inline = MLX5_ARG_UNSET;
+	config->vf_nl_en = 1;
+	config->mr_ext_memseg_en = 1;
+	config->mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
+	config->mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
+	config->dv_esw_en = 1;
+	config->dv_flow_en = 1;
+	config->decap_en = 1;
+	config->log_hp_size = MLX5_ARG_UNSET;
+}
+
 /**
  * Register a PCI device within bonding.
  *
@@ -2485,23 +2507,8 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 		uint32_t restore;
 
 		/* Default configuration. */
-		memset(&dev_config, 0, sizeof(struct mlx5_dev_config));
+		mlx5_os_config_default(&dev_config);
 		dev_config.vf = dev_config_vf;
-		dev_config.mps = MLX5_ARG_UNSET;
-		dev_config.dbnc = MLX5_ARG_UNSET;
-		dev_config.rx_vec_en = 1;
-		dev_config.txq_inline_max = MLX5_ARG_UNSET;
-		dev_config.txq_inline_min = MLX5_ARG_UNSET;
-		dev_config.txq_inline_mpw = MLX5_ARG_UNSET;
-		dev_config.txqs_inline = MLX5_ARG_UNSET;
-		dev_config.vf_nl_en = 1;
-		dev_config.mr_ext_memseg_en = 1;
-		dev_config.mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
-		dev_config.mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
-		dev_config.dv_esw_en = 1;
-		dev_config.dv_flow_en = 1;
-		dev_config.decap_en = 1;
-		dev_config.log_hp_size = MLX5_ARG_UNSET;
 		dev_config.allow_duplicate_pattern = 1;
 		list[i].numa_node = pci_dev->device.numa_node;
 		list[i].eth_dev = mlx5_dev_spawn(&pci_dev->device,
@@ -2560,6 +2567,35 @@ exit:
 	return ret;
 }
 
+static int
+mlx5_os_parse_eth_devargs(struct rte_device *dev,
+			  struct rte_eth_devargs *eth_da)
+{
+	int ret = 0;
+
+	if (dev->devargs == NULL)
+		return 0;
+	memset(eth_da, 0, sizeof(*eth_da));
+	/* Parse representor information first from class argument. */
+	if (dev->devargs->cls_str)
+		ret = rte_eth_devargs_parse(dev->devargs->cls_str, eth_da);
+	if (ret != 0) {
+		DRV_LOG(ERR, "failed to parse device arguments: %s",
+			dev->devargs->cls_str);
+		return -rte_errno;
+	}
+	if (eth_da->type == RTE_ETH_REPRESENTOR_NONE) {
+		/* Parse legacy device argument */
+		ret = rte_eth_devargs_parse(dev->devargs->args, eth_da);
+		if (ret) {
+			DRV_LOG(ERR, "failed to parse device arguments: %s",
+				dev->devargs->args);
+			return -rte_errno;
+		}
+	}
+	return 0;
+}
+
 /**
  * Callback to register a PCI device.
  *
@@ -2574,31 +2610,13 @@ exit:
 static int
 mlx5_os_pci_probe(struct rte_pci_device *pci_dev)
 {
-	struct rte_eth_devargs eth_da = { .type = RTE_ETH_REPRESENTOR_NONE };
+	struct rte_eth_devargs eth_da = { .nb_ports = 0 };
 	int ret = 0;
 	uint16_t p;
 
-	if (pci_dev->device.devargs) {
-		/* Parse representor information from device argument. */
-		if (pci_dev->device.devargs->cls_str)
-			ret = rte_eth_devargs_parse
-				(pci_dev->device.devargs->cls_str, &eth_da);
-		if (ret) {
-			DRV_LOG(ERR, "failed to parse device arguments: %s",
-				pci_dev->device.devargs->cls_str);
-			return -rte_errno;
-		}
-		if (eth_da.type == RTE_ETH_REPRESENTOR_NONE) {
-			/* Support legacy device argument */
-			ret = rte_eth_devargs_parse
-				(pci_dev->device.devargs->args, &eth_da);
-			if (ret) {
-				DRV_LOG(ERR, "failed to parse device arguments: %s",
-					pci_dev->device.devargs->args);
-				return -rte_errno;
-			}
-		}
-	}
+	ret = mlx5_os_parse_eth_devargs(&pci_dev->device, &eth_da);
+	if (ret != 0)
+		return ret;
 
 	if (eth_da.nb_ports > 0) {
 		/* Iterate all port if devargs pf is range: "pf[0-1]vf[...]". */
@@ -2611,10 +2629,56 @@ mlx5_os_pci_probe(struct rte_pci_device *pci_dev)
 	return ret;
 }
 
+/* Probe a single SF device on auxiliary bus, no representor support. */
+static int
+mlx5_os_auxiliary_probe(struct rte_device *dev)
+{
+	struct rte_eth_devargs eth_da = { .nb_ports = 0 };
+	struct mlx5_dev_config config;
+	struct mlx5_dev_spawn_data spawn = { .pf_bond = -1 };
+	struct rte_auxiliary_device *adev = RTE_DEV_TO_AUXILIARY(dev);
+	struct rte_eth_dev *eth_dev;
+	int ret = 0;
+
+	/* Parse ethdev devargs. */
+	ret = mlx5_os_parse_eth_devargs(dev, &eth_da);
+	if (ret != 0)
+		return ret;
+	/* Set default config data. */
+	mlx5_os_config_default(&config);
+	config.sf = 1;
+	/* Init spawn data. */
+	spawn.max_port = 1;
+	spawn.phys_port = 1;
+	spawn.phys_dev = mlx5_os_get_ibv_dev(dev);
+	if (spawn.phys_dev == NULL)
+		return -rte_errno;
+	ret = mlx5_auxiliary_get_ifindex(dev->name);
+	if (ret < 0) {
+		DRV_LOG(ERR, "failed to get ethdev ifindex: %s", dev->name);
+		return ret;
+	}
+	spawn.ifindex = ret;
+	spawn.numa_node = dev->numa_node;
+	/* Spawn device. */
+	eth_dev = mlx5_dev_spawn(dev, &spawn, &config, &eth_da);
+	if (eth_dev == NULL)
+		return -rte_errno;
+	/* Post create. */
+	eth_dev->intr_handle = &adev->intr_handle;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_RMV;
+		eth_dev->data->numa_node = dev->numa_node;
+	}
+	rte_eth_dev_probing_finish(eth_dev);
+	return 0;
+}
+
 /**
  * Net class driver callback to probe a device.
  *
- * This function probe PCI bus device(s).
+ * This function probe PCI bus device(s) or a single SF on auxiliary bus.
  *
  * @param[in] dev
  *   Pointer to the generic device.
@@ -2637,7 +2701,8 @@ mlx5_os_net_probe(struct rte_device *dev)
 	}
 	if (mlx5_dev_is_pci(dev))
 		return mlx5_os_pci_probe(RTE_DEV_TO_PCI(dev));
-	return 0;
+	else
+		return mlx5_os_auxiliary_probe(dev);
 }
 
 static int

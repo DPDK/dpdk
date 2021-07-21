@@ -159,7 +159,7 @@ mlx5_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 	 * Configuring the VF instead of its representor,
 	 * need to skip the special case of HPF on Bluefield.
 	 */
-	if (priv->representor && !mlx5_is_hpf(dev)) {
+	if (priv->representor && !mlx5_is_hpf(dev) && !mlx5_is_sf_repr(dev)) {
 		DRV_LOG(DEBUG, "VF represented by port %u setting primary MAC address",
 			dev->data->port_id);
 		if (priv->pf_bond >= 0) {

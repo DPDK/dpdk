@@ -88,6 +88,7 @@ New Features
 
 * **Updated Mellanox mlx5 driver.**
 
+  * Added Sub-Function support based on auxiliary bus.
   * Added support for meter hierarchy.
   * Added devargs options ``allow_duplicate_pattern``.
   * Added matching on IPv4 Internet Header Length (IHL).

@@ -112,6 +112,8 @@ Features
 - Flow integrity offload API.
 - Connection tracking.
 - Sub-Function representors.
+- Sub-Function.
+
 
 Limitations
 -----------
@@ -1478,40 +1480,52 @@ the DPDK application.
 
         echo switchdev > /sys/class/net/<net device>/compat/devlink/mode
 
-Sub-Function representor
-------------------------
+Sub-Function support
+--------------------
 
 Sub-Function is a portion of the PCI device, a SF netdev has its own
-dedicated queues(txq, rxq). A SF netdev supports E-Switch representation
-offload similar to existing PF and VF representors. A SF shares PCI
-level resources with other SFs and/or with its parent PCI function.
+dedicated queues (txq, rxq).
+A SF shares PCI level resources with other SFs and/or with its parent PCI function.
+
+0. Requirement::
+
+        OFED version >= 5.4-0.3.3.0
 
 1. Configure SF feature::
 
-        mlxconfig -d <mst device> set PF_BAR2_SIZE=<0/1/2/3> PF_BAR2_ENABLE=1
+        # Run mlxconfig on both PFs on host and ECPFs on BlueField.
+        mlxconfig -d <mst device> set PER_PF_NUM_SF=1 PF_TOTAL_SF=252 PF_SF_BAR_SIZE=12
 
-        Value of PF_BAR2_SIZE:
+2. Enable switchdev mode::
 
-            0: 8 SFs
-            1: 16 SFs
-            2: 32 SFs
-            3: 64 SFs
+        mlxdevm dev eswitch set pci/<DBDF> mode switchdev
 
-2. Reset the FW::
+3. Add SF port::
 
-        mlxfwreset -d <mst device> reset
+        mlxdevm port add pci/<DBDF> flavour pcisf pfnum 0 sfnum <sfnum>
 
-3. Enable switchdev mode::
+        Get SFID from output: pci/<DBDF>/<SFID>
 
-        echo switchdev > /sys/class/net/<net device>/compat/devlink/mode
+4. Modify MAC address::
 
-4. Create SF::
+        mlxdevm port function set pci/<DBDF>/<SFID> hw_addr <MAC>
 
-        mlnx-sf -d <PCI_BDF> -a create
+5. Activate SF port::
 
-5. Probe SF representor::
+        mlxdevm port function set pci/<DBDF>/<ID> state active
 
-        testpmd> port attach <PCI_BDF>,representor=sf0,dv_flow_en=1
+6. Devargs to probe SF device::
+
+        auxiliary:mlx5_core.sf.<num>,dv_flow_en=1
+
+Sub-Function representor support
+--------------------------------
+
+A SF netdev supports E-Switch representation offload
+similar to PF and VF representors.
+Use <sfnum> to probe SF representor::
+
+        testpmd> port attach <PCI_BDF>,representor=sf<sfnum>,dv_flow_en=1
 
 Performance tuning
 ------------------

@@ -19,4 +19,6 @@ enum {
 
 #define MLX5_NAMESIZE IF_NAMESIZE
 
+int mlx5_auxiliary_get_ifindex(const char *sf_name);
+
 #endif /* RTE_PMD_MLX5_OS_H_ */

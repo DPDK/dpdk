@@ -400,6 +400,24 @@ mlx5_is_hpf(struct rte_eth_dev *dev)
 }
 
 /**
+ * Decide whether representor ID is a SF port representor.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   Non-zero if HPF, otherwise 0.
+ */
+bool
+mlx5_is_sf_repr(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	int type = MLX5_REPRESENTOR_TYPE(priv->representor_id);
+
+	return priv->representor != 0 && type == RTE_ETH_REPRESENTOR_SF;
+}
+
+/**
  * Initialize the ASO aging management structure.
  *
  * @param[in] sh
@@ -2335,7 +2353,10 @@ mlx5_eth_find_next(uint16_t port_id, struct rte_device *odev)
 		    (dev->device == odev ||
 		     (dev->device->driver &&
 		     dev->device->driver->name &&
-		     !strcmp(dev->device->driver->name, MLX5_PCI_DRIVER_NAME))))
+		     ((strcmp(dev->device->driver->name,
+			      MLX5_PCI_DRIVER_NAME) == 0) ||
+		      (strcmp(dev->device->driver->name,
+			      MLX5_AUXILIARY_DRIVER_NAME) == 0)))))
 			break;
 		port_id++;
 	}
