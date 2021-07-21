@@ -134,6 +134,7 @@ struct mlx5_dev_spawn_data {
 	uint32_t max_port; /**< Device maximal port index. */
 	uint32_t phys_port; /**< Device physical port index. */
 	int pf_bond; /**< bonding device PF index. < 0 - no bonding */
+	int numa_node; /**< Device numa node. */
 	struct mlx5_switch_info info; /**< Switch information. */
 	void *phys_dev; /**< Associated physical device. */
 	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
@@ -1462,16 +1463,16 @@ int mlx5_proc_priv_init(struct rte_eth_dev *dev);
 void mlx5_proc_priv_uninit(struct rte_eth_dev *dev);
 int mlx5_udp_tunnel_port_add(struct rte_eth_dev *dev,
 			      struct rte_eth_udp_tunnel *udp_tunnel);
-uint16_t mlx5_eth_find_next(uint16_t port_id, struct rte_pci_device *pci_dev);
+uint16_t mlx5_eth_find_next(uint16_t port_id, struct rte_device *odev);
 int mlx5_dev_close(struct rte_eth_dev *dev);
 bool mlx5_is_hpf(struct rte_eth_dev *dev);
 void mlx5_age_event_prepare(struct mlx5_dev_ctx_shared *sh);
 
 /* Macro to iterate over all valid ports for mlx5 driver. */
-#define MLX5_ETH_FOREACH_DEV(port_id, pci_dev) \
-	for (port_id = mlx5_eth_find_next(0, pci_dev); \
+#define MLX5_ETH_FOREACH_DEV(port_id, dev) \
+	for (port_id = mlx5_eth_find_next(0, dev); \
 	     port_id < RTE_MAX_ETHPORTS; \
-	     port_id = mlx5_eth_find_next(port_id + 1, pci_dev))
+	     port_id = mlx5_eth_find_next(port_id + 1, dev))
 int mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs);
 struct mlx5_dev_ctx_shared *
 mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,

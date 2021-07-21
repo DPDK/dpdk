@@ -391,7 +391,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 * Look for sibling devices in order to reuse their switch domain
 	 * if any, otherwise allocate one.
 	 */
-	MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
+	MLX5_ETH_FOREACH_DEV(port_id, NULL) {
 		const struct mlx5_priv *opriv =
 			rte_eth_devices[port_id].data->dev_private;
 
@@ -1080,6 +1080,7 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	dev_config.dv_flow_en = 1;
 	dev_config.decap_en = 0;
 	dev_config.log_hp_size = MLX5_ARG_UNSET;
+	list[ns].numa_node = pci_dev->device.numa_node;
 	list[ns].eth_dev = mlx5_dev_spawn(&pci_dev->device,
 					  &list[ns],
 					  &dev_config);

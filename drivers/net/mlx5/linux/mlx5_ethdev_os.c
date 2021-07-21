@@ -346,7 +346,7 @@ mlx5_find_master_dev(struct rte_eth_dev *dev)
 	priv = dev->data->dev_private;
 	domain_id = priv->domain_id;
 	MLX5_ASSERT(priv->representor);
-	MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
+	MLX5_ETH_FOREACH_DEV(port_id, dev->device) {
 		struct mlx5_priv *opriv =
 			rte_eth_devices[port_id].data->dev_private;
 		if (opriv &&

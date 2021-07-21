@@ -199,23 +199,23 @@ mlx5_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 }
 
 /**
- * Finds the first ethdev that match the pci device.
+ * Finds the first ethdev that match the device.
  * The existence of multiple ethdev per pci device is only with representors.
  * On such case, it is enough to get only one of the ports as they all share
  * the same ibv context.
  *
- * @param pdev
- *   Pointer to the PCI device.
+ * @param dev
+ *   Pointer to the device.
  *
  * @return
  *   Pointer to the ethdev if found, NULL otherwise.
  */
 static struct rte_eth_dev *
-pci_dev_to_eth_dev(struct rte_pci_device *pdev)
+dev_to_eth_dev(struct rte_device *dev)
 {
 	uint16_t port_id;
 
-	port_id = rte_eth_find_next_of(0, &pdev->device);
+	port_id = rte_eth_find_next_of(0, dev);
 	if (port_id == RTE_MAX_ETHPORTS)
 		return NULL;
 	return &rte_eth_devices[port_id];
@@ -245,7 +245,7 @@ mlx5_dma_map(struct rte_pci_device *pdev, void *addr,
 	struct mlx5_priv *priv;
 	struct mlx5_dev_ctx_shared *sh;
 
-	dev = pci_dev_to_eth_dev(pdev);
+	dev = dev_to_eth_dev(&pdev->device);
 	if (!dev) {
 		DRV_LOG(WARNING, "unable to find matching ethdev "
 				 "to PCI device %p", (void *)pdev);
@@ -295,7 +295,7 @@ mlx5_dma_unmap(struct rte_pci_device *pdev, void *addr,
 	struct mlx5_mr *mr;
 	struct mr_cache_entry entry;
 
-	dev = pci_dev_to_eth_dev(pdev);
+	dev = dev_to_eth_dev(&pdev->device);
 	if (!dev) {
 		DRV_LOG(WARNING, "unable to find matching ethdev "
 				 "to PCI device %p", (void *)pdev);

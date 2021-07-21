@@ -697,7 +697,7 @@ mlx5_hairpin_bind_single_port(struct rte_eth_dev *dev, uint16_t rx_port)
 	uint32_t explicit;
 	uint16_t rx_queue;
 
-	if (mlx5_eth_find_next(rx_port, priv->pci_dev) != rx_port) {
+	if (mlx5_eth_find_next(rx_port, dev->device) != rx_port) {
 		rte_errno = ENODEV;
 		DRV_LOG(ERR, "Rx port %u does not belong to mlx5", rx_port);
 		return -rte_errno;
@@ -835,7 +835,7 @@ mlx5_hairpin_unbind_single_port(struct rte_eth_dev *dev, uint16_t rx_port)
 	int ret;
 	uint16_t cur_port = priv->dev_data->port_id;
 
-	if (mlx5_eth_find_next(rx_port, priv->pci_dev) != rx_port) {
+	if (mlx5_eth_find_next(rx_port, dev->device) != rx_port) {
 		rte_errno = ENODEV;
 		DRV_LOG(ERR, "Rx port %u does not belong to mlx5", rx_port);
 		return -rte_errno;
@@ -893,7 +893,6 @@ mlx5_hairpin_bind(struct rte_eth_dev *dev, uint16_t rx_port)
 {
 	int ret = 0;
 	uint16_t p, pp;
-	struct mlx5_priv *priv = dev->data->dev_private;
 
 	/*
 	 * If the Rx port has no hairpin configuration with the current port,
@@ -902,7 +901,7 @@ mlx5_hairpin_bind(struct rte_eth_dev *dev, uint16_t rx_port)
 	 * information updating.
 	 */
 	if (rx_port == RTE_MAX_ETHPORTS) {
-		MLX5_ETH_FOREACH_DEV(p, priv->pci_dev) {
+		MLX5_ETH_FOREACH_DEV(p, dev->device) {
 			ret = mlx5_hairpin_bind_single_port(dev, p);
 			if (ret != 0)
 				goto unbind;
@@ -912,7 +911,7 @@ mlx5_hairpin_bind(struct rte_eth_dev *dev, uint16_t rx_port)
 		return mlx5_hairpin_bind_single_port(dev, rx_port);
 	}
 unbind:
-	MLX5_ETH_FOREACH_DEV(pp, priv->pci_dev)
+	MLX5_ETH_FOREACH_DEV(pp, dev->device)
 		if (pp < p)
 			mlx5_hairpin_unbind_single_port(dev, pp);
 	return ret;
@@ -927,10 +926,9 @@ mlx5_hairpin_unbind(struct rte_eth_dev *dev, uint16_t rx_port)
 {
 	int ret = 0;
 	uint16_t p;
-	struct mlx5_priv *priv = dev->data->dev_private;
 
 	if (rx_port == RTE_MAX_ETHPORTS)
-		MLX5_ETH_FOREACH_DEV(p, priv->pci_dev) {
+		MLX5_ETH_FOREACH_DEV(p, dev->device) {
 			ret = mlx5_hairpin_unbind_single_port(dev, p);
 			if (ret != 0)
 				return ret;

@@ -335,7 +335,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	if (priv->representor) {
 		uint16_t port_id;
 
-		MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
+		MLX5_ETH_FOREACH_DEV(port_id, dev->device) {
 			struct mlx5_priv *opriv =
 				rte_eth_devices[port_id].data->dev_private;
 

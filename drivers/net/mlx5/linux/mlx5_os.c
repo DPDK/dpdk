@@ -1252,7 +1252,7 @@ err_secondary:
 	 * Look for sibling devices in order to reuse their switch domain
 	 * if any, otherwise allocate one.
 	 */
-	MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
+	MLX5_ETH_FOREACH_DEV(port_id, NULL) {
 		const struct mlx5_priv *opriv =
 			rte_eth_devices[port_id].data->dev_private;
 
@@ -2511,6 +2511,7 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 		dev_config.decap_en = 1;
 		dev_config.log_hp_size = MLX5_ARG_UNSET;
 		dev_config.allow_duplicate_pattern = 1;
+		list[i].numa_node = pci_dev->device.numa_node;
 		list[i].eth_dev = mlx5_dev_spawn(&pci_dev->device,
 						 &list[i],
 						 &dev_config,
@@ -2708,7 +2709,6 @@ mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
 	int dbmap_env;
 	int err = 0;
 
-	sh->numa_node = spawn->pci_dev->device.numa_node;
 	pthread_mutex_init(&sh->txpp.mutex, NULL);
 	/*
 	 * Configure environment variable "MLX5_BF_SHUT_UP"

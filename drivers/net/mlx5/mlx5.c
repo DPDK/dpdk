@@ -1120,6 +1120,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		rte_errno  = ENOMEM;
 		goto exit;
 	}
+	sh->numa_node = spawn->numa_node;
 	if (spawn->bond_info)
 		sh->bond = *spawn->bond_info;
 	err = mlx5_os_open_device(spawn, config, sh);
@@ -1197,7 +1198,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	 */
 	err = mlx5_mr_btree_init(&sh->share_cache.cache,
 				 MLX5_MR_BTREE_CACHE_N * 2,
-				 spawn->pci_dev->device.numa_node);
+				 sh->numa_node);
 	if (err) {
 		err = rte_errno;
 		goto error;
@@ -1635,7 +1636,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		unsigned int c = 0;
 		uint16_t port_id;
 
-		MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
+		MLX5_ETH_FOREACH_DEV(port_id, dev->device) {
 			struct mlx5_priv *opriv =
 				rte_eth_devices[port_id].data->dev_private;
 
@@ -2077,18 +2078,20 @@ mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 {
 	if (config->txq_inline_min != MLX5_ARG_UNSET) {
 		/* Application defines size of inlined data explicitly. */
-		switch (spawn->pci_dev->id.device_id) {
-		case PCI_DEVICE_ID_MELLANOX_CONNECTX4:
-		case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
-			if (config->txq_inline_min <
-				       (int)MLX5_INLINE_HSIZE_L2) {
-				DRV_LOG(DEBUG,
-					"txq_inline_mix aligned to minimal"
-					" ConnectX-4 required value %d",
-					(int)MLX5_INLINE_HSIZE_L2);
-				config->txq_inline_min = MLX5_INLINE_HSIZE_L2;
+		if (spawn->pci_dev != NULL) {
+			switch (spawn->pci_dev->id.device_id) {
+			case PCI_DEVICE_ID_MELLANOX_CONNECTX4:
+			case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
+				if (config->txq_inline_min <
+					       (int)MLX5_INLINE_HSIZE_L2) {
+					DRV_LOG(DEBUG,
+						"txq_inline_mix aligned to minimal ConnectX-4 required value %d",
+						(int)MLX5_INLINE_HSIZE_L2);
+					config->txq_inline_min =
+							MLX5_INLINE_HSIZE_L2;
+				}
+				break;
 			}
-			break;
 		}
 		goto exit;
 	}
@@ -2141,6 +2144,10 @@ mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 				goto exit;
 			}
 		}
+	}
+	if (spawn->pci_dev == NULL) {
+		config->txq_inline_min = MLX5_INLINE_HSIZE_NONE;
+		goto exit;
 	}
 	/*
 	 * We get here if we are unable to deduce
@@ -2276,7 +2283,7 @@ mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
 	if (sh->refcnt == 1)
 		return 0;
 	/* Find the device with shared context. */
-	MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
+	MLX5_ETH_FOREACH_DEV(port_id, NULL) {
 		struct mlx5_priv *opriv =
 			rte_eth_devices[port_id].data->dev_private;
 
@@ -2307,25 +2314,25 @@ mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
  *
  * @param[in] port_id
  *   port_id to start looking for device.
- * @param[in] pci_dev
- *   Pointer to the hint PCI device. When device is being probed
+ * @param[in] odev
+ *   Pointer to the hint device. When device is being probed
  *   the its siblings (master and preceding representors might
  *   not have assigned driver yet (because the mlx5_os_pci_probe()
- *   is not completed yet, for this case match on hint PCI
+ *   is not completed yet, for this case match on hint
  *   device may be used to detect sibling device.
  *
  * @return
  *   port_id of found device, RTE_MAX_ETHPORT if not found.
  */
 uint16_t
-mlx5_eth_find_next(uint16_t port_id, struct rte_pci_device *pci_dev)
+mlx5_eth_find_next(uint16_t port_id, struct rte_device *odev)
 {
 	while (port_id < RTE_MAX_ETHPORTS) {
 		struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 
 		if (dev->state != RTE_ETH_DEV_UNUSED &&
 		    dev->device &&
-		    (dev->device == &pci_dev->device ||
+		    (dev->device == odev ||
 		     (dev->device->driver &&
 		     dev->device->driver->name &&
 		     !strcmp(dev->device->driver->name, MLX5_PCI_DRIVER_NAME))))
