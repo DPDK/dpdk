@@ -17350,6 +17350,31 @@ flow_dv_action_validate(struct rte_eth_dev *dev,
 	}
 }
 
+/*
+ * Check if the RSS configurations for colors of a meter policy match
+ * each other, except the queues.
+ *
+ * @param[in] r1
+ *   Pointer to the first RSS flow action.
+ * @param[in] r2
+ *   Pointer to the second RSS flow action.
+ *
+ * @return
+ *   0 on match, 1 on conflict.
+ */
+static inline int
+flow_dv_mtr_policy_rss_compare(const struct rte_flow_action_rss *r1,
+			       const struct rte_flow_action_rss *r2)
+{
+	if (!r1 || !r2)
+		return 0;
+	if (r1->func != r2->func || r1->level != r2->level ||
+	    r1->types != r2->types || r1->key_len != r2->key_len ||
+	    memcmp(r1->key, r2->key, r1->key_len))
+		return 1;
+	return 0;
+}
+
 /**
  * Validate the meter hierarchy chain for meter policy.
  *
@@ -17445,13 +17470,13 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 			struct rte_flow_attr *attr,
 			bool *is_rss,
 			uint8_t *domain_bitmap,
-			bool *is_def_policy,
+			uint8_t *policy_mode,
 			struct rte_mtr_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *dev_conf = &priv->config;
 	const struct rte_flow_action *act;
-	uint64_t action_flags = 0;
+	uint64_t action_flags[RTE_COLORS] = {0};
 	int actions_n;
 	int i, ret;
 	struct rte_flow_error flow_err;
@@ -17459,36 +17484,45 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 	uint8_t def_domain = MLX5_MTR_ALL_DOMAIN_BIT;
 	uint8_t hierarchy_domain = 0;
 	const struct rte_flow_action_meter *mtr;
+	bool def_green = false;
+	bool def_yellow = false;
+	const struct rte_flow_action_rss *rss_color[RTE_COLORS] = {NULL};
 
 	if (!priv->config.dv_esw_en)
 		def_domain &= ~MLX5_MTR_DOMAIN_TRANSFER_BIT;
 	*domain_bitmap = def_domain;
-	if (actions[RTE_COLOR_YELLOW] &&
-		actions[RTE_COLOR_YELLOW]->type != RTE_FLOW_ACTION_TYPE_END)
-		return -rte_mtr_error_set(error, ENOTSUP,
-				RTE_MTR_ERROR_TYPE_METER_POLICY,
-				NULL,
-				"Yellow color does not support any action.");
-	if (actions[RTE_COLOR_YELLOW] &&
-		actions[RTE_COLOR_YELLOW]->type != RTE_FLOW_ACTION_TYPE_DROP)
+	/* Red color could only support DROP action. */
+	if (!actions[RTE_COLOR_RED] ||
+	    actions[RTE_COLOR_RED]->type != RTE_FLOW_ACTION_TYPE_DROP)
 		return -rte_mtr_error_set(error, ENOTSUP,
 				RTE_MTR_ERROR_TYPE_METER_POLICY,
 				NULL, "Red color only supports drop action.");
 	/*
 	 * Check default policy actions:
-	 * Green/Yellow: no action, Red: drop action
+	 * Green / Yellow: no action, Red: drop action
+	 * Either G or Y will trigger default policy actions to be created.
 	 */
-	if ((!actions[RTE_COLOR_GREEN] ||
-		actions[RTE_COLOR_GREEN]->type == RTE_FLOW_ACTION_TYPE_END)) {
-		*is_def_policy = true;
+	if (!actions[RTE_COLOR_GREEN] ||
+	    actions[RTE_COLOR_GREEN]->type == RTE_FLOW_ACTION_TYPE_END)
+		def_green = true;
+	if (!actions[RTE_COLOR_YELLOW] ||
+	    actions[RTE_COLOR_YELLOW]->type == RTE_FLOW_ACTION_TYPE_END)
+		def_yellow = true;
+	if (def_green && def_yellow) {
+		*policy_mode = MLX5_MTR_POLICY_MODE_DEF;
 		return 0;
+	} else if (!def_green && def_yellow) {
+		*policy_mode = MLX5_MTR_POLICY_MODE_OG;
+	} else if (def_green && !def_yellow) {
+		*policy_mode = MLX5_MTR_POLICY_MODE_OY;
 	}
-	flow_err.message = NULL;
+	/* Set to empty string in case of NULL pointer access by user. */
+	flow_err.message = "";
 	for (i = 0; i < RTE_COLORS; i++) {
 		act = actions[i];
-		for (action_flags = 0, actions_n = 0;
-			act && act->type != RTE_FLOW_ACTION_TYPE_END;
-			act++) {
+		for (action_flags[i] = 0, actions_n = 0;
+		     act && act->type != RTE_FLOW_ACTION_TYPE_END;
+		     act++) {
 			if (actions_n == MLX5_DV_MAX_NUMBER_OF_ACTIONS)
 				return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_METER_POLICY,
@@ -17502,7 +17536,7 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					NULL, "PORT action validate check"
 					" fail for ESW disable");
 				ret = flow_dv_validate_action_port_id(dev,
-						action_flags,
+						action_flags[i],
 						act, attr, &flow_err);
 				if (ret)
 					return -rte_mtr_error_set(error,
@@ -17512,11 +17546,11 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					flow_err.message :
 					"PORT action validate check fail");
 				++actions_n;
-				action_flags |= MLX5_FLOW_ACTION_PORT_ID;
+				action_flags[i] |= MLX5_FLOW_ACTION_PORT_ID;
 				break;
 			case RTE_FLOW_ACTION_TYPE_MARK:
 				ret = flow_dv_validate_action_mark(dev, act,
-							   action_flags,
+							   action_flags[i],
 							   attr, &flow_err);
 				if (ret < 0)
 					return -rte_mtr_error_set(error,
@@ -17533,12 +17567,12 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					NULL, "Extend MARK action is "
 					"not supported. Please try use "
 					"default policy for meter.");
-				action_flags |= MLX5_FLOW_ACTION_MARK;
+				action_flags[i] |= MLX5_FLOW_ACTION_MARK;
 				++actions_n;
 				break;
 			case RTE_FLOW_ACTION_TYPE_SET_TAG:
 				ret = flow_dv_validate_action_set_tag(dev,
-							act, action_flags,
+							act, action_flags[i],
 							attr, &flow_err);
 				if (ret)
 					return -rte_mtr_error_set(error,
@@ -17547,19 +17581,12 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					NULL, flow_err.message ?
 					flow_err.message :
 					"Set tag action validate check fail");
-				/*
-				 * Count all modify-header actions
-				 * as one action.
-				 */
-				if (!(action_flags &
-					MLX5_FLOW_MODIFY_HDR_ACTIONS))
-					++actions_n;
-				action_flags |= MLX5_FLOW_ACTION_SET_TAG;
+				action_flags[i] |= MLX5_FLOW_ACTION_SET_TAG;
+				++actions_n;
 				break;
 			case RTE_FLOW_ACTION_TYPE_DROP:
 				ret = mlx5_flow_validate_action_drop
-					(action_flags,
-					attr, &flow_err);
+					(action_flags[i], attr, &flow_err);
 				if (ret < 0)
 					return -rte_mtr_error_set(error,
 					ENOTSUP,
@@ -17567,7 +17594,7 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					NULL, flow_err.message ?
 					flow_err.message :
 					"Drop action validate check fail");
-				action_flags |= MLX5_FLOW_ACTION_DROP;
+				action_flags[i] |= MLX5_FLOW_ACTION_DROP;
 				++actions_n;
 				break;
 			case RTE_FLOW_ACTION_TYPE_QUEUE:
@@ -17576,9 +17603,9 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 				 * metadata feature is engaged.
 				 */
 				if (dev_conf->dv_flow_en &&
-					(dev_conf->dv_xmeta_en !=
-					MLX5_XMETA_MODE_LEGACY) &&
-					mlx5_flow_ext_mreg_supported(dev))
+				    (dev_conf->dv_xmeta_en !=
+				     MLX5_XMETA_MODE_LEGACY) &&
+				    mlx5_flow_ext_mreg_supported(dev))
 					return -rte_mtr_error_set(error,
 					  ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_METER_POLICY,
@@ -17586,7 +17613,7 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					  "is not supported. Please try use "
 					  "default policy for meter.");
 				ret = mlx5_flow_validate_action_queue(act,
-							action_flags, dev,
+							action_flags[i], dev,
 							attr, &flow_err);
 				if (ret < 0)
 					return -rte_mtr_error_set(error,
@@ -17595,14 +17622,14 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					  NULL, flow_err.message ?
 					  flow_err.message :
 					  "Queue action validate check fail");
-				action_flags |= MLX5_FLOW_ACTION_QUEUE;
+				action_flags[i] |= MLX5_FLOW_ACTION_QUEUE;
 				++actions_n;
 				break;
 			case RTE_FLOW_ACTION_TYPE_RSS:
 				if (dev_conf->dv_flow_en &&
-					(dev_conf->dv_xmeta_en !=
-					MLX5_XMETA_MODE_LEGACY) &&
-					mlx5_flow_ext_mreg_supported(dev))
+				    (dev_conf->dv_xmeta_en !=
+				     MLX5_XMETA_MODE_LEGACY) &&
+				    mlx5_flow_ext_mreg_supported(dev))
 					return -rte_mtr_error_set(error,
 					  ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_METER_POLICY,
@@ -17610,7 +17637,7 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					  "is not supported. Please try use "
 					  "default policy for meter.");
 				ret = mlx5_validate_action_rss(dev, act,
-						&flow_err);
+							       &flow_err);
 				if (ret < 0)
 					return -rte_mtr_error_set(error,
 					  ENOTSUP,
@@ -17618,13 +17645,14 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					  NULL, flow_err.message ?
 					  flow_err.message :
 					  "RSS action validate check fail");
-				action_flags |= MLX5_FLOW_ACTION_RSS;
+				action_flags[i] |= MLX5_FLOW_ACTION_RSS;
 				++actions_n;
-				*is_rss = true;
+				/* Either G or Y will set the RSS. */
+				rss_color[i] = act->conf;
 				break;
 			case RTE_FLOW_ACTION_TYPE_JUMP:
 				ret = flow_dv_validate_action_jump(dev,
-					NULL, act, action_flags,
+					NULL, act, action_flags[i],
 					attr, true, &flow_err);
 				if (ret)
 					return -rte_mtr_error_set(error,
@@ -17634,8 +17662,13 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					  flow_err.message :
 					  "Jump action validate check fail");
 				++actions_n;
-				action_flags |= MLX5_FLOW_ACTION_JUMP;
+				action_flags[i] |= MLX5_FLOW_ACTION_JUMP;
 				break;
+			/*
+			 * Only the last meter in the hierarchy will support
+			 * the YELLOW color steering. Then in the meter policy
+			 * actions list, there should be no other meter inside.
+			 */
 			case RTE_FLOW_ACTION_TYPE_METER:
 				if (i != RTE_COLOR_GREEN)
 					return -rte_mtr_error_set(error,
@@ -17647,14 +17680,14 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 				mtr = act->conf;
 				ret = flow_dv_validate_policy_mtr_hierarchy(dev,
 							mtr->mtr_id,
-							action_flags,
+							action_flags[i],
 							is_rss,
 							&hierarchy_domain,
 							error);
 				if (ret)
 					return ret;
 				++actions_n;
-				action_flags |=
+				action_flags[i] |=
 				MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY;
 				break;
 			default:
@@ -17664,31 +17697,38 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					"Doesn't support optional action");
 			}
 		}
-		/* Yellow is not supported, just skip. */
-		if (i == RTE_COLOR_YELLOW)
-			continue;
-		if (action_flags & MLX5_FLOW_ACTION_PORT_ID)
+		if (action_flags[i] & MLX5_FLOW_ACTION_PORT_ID)
 			domain_color[i] = MLX5_MTR_DOMAIN_TRANSFER_BIT;
-		else if ((action_flags &
-			(MLX5_FLOW_ACTION_RSS | MLX5_FLOW_ACTION_QUEUE)) ||
-			(action_flags & MLX5_FLOW_ACTION_MARK))
+		else if ((action_flags[i] &
+			  (MLX5_FLOW_ACTION_RSS | MLX5_FLOW_ACTION_QUEUE)) ||
+			 (action_flags[i] & MLX5_FLOW_ACTION_MARK))
 			/*
 			 * Only support MLX5_XMETA_MODE_LEGACY
-			 * so MARK action only in ingress domain.
+			 * so MARK action is only in ingress domain.
 			 */
 			domain_color[i] = MLX5_MTR_DOMAIN_INGRESS_BIT;
-		else if (action_flags &
-			MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY)
+		else if (action_flags[i] &
+			 MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY)
 			domain_color[i] = hierarchy_domain;
 		else
 			domain_color[i] = def_domain;
+		/*
+		 * Non-termination actions only support NIC Tx domain.
+		 * The adjustion should be skipped when there is no
+		 * action or only END is provided. The default domains
+		 * bit-mask is set to find the MIN intersection.
+		 * The action flags checking should also be skipped.
+		 */
+		if ((def_green && i == RTE_COLOR_GREEN) ||
+		    (def_yellow && i == RTE_COLOR_YELLOW))
+			continue;
 		/*
 		 * Validate the drop action mutual exclusion
 		 * with other actions. Drop action is mutually-exclusive
 		 * with any other action, except for Count action.
 		 */
-		if ((action_flags & MLX5_FLOW_ACTION_DROP) &&
-			(action_flags & ~MLX5_FLOW_ACTION_DROP)) {
+		if ((action_flags[i] & MLX5_FLOW_ACTION_DROP) &&
+		    (action_flags[i] & ~MLX5_FLOW_ACTION_DROP)) {
 			return -rte_mtr_error_set(error, ENOTSUP,
 				RTE_MTR_ERROR_TYPE_METER_POLICY,
 				NULL, "Drop action is mutually-exclusive "
@@ -17697,40 +17737,60 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 		/* Eswitch has few restrictions on using items and actions */
 		if (domain_color[i] & MLX5_MTR_DOMAIN_TRANSFER_BIT) {
 			if (!mlx5_flow_ext_mreg_supported(dev) &&
-				action_flags & MLX5_FLOW_ACTION_MARK)
+			    action_flags[i] & MLX5_FLOW_ACTION_MARK)
 				return -rte_mtr_error_set(error, ENOTSUP,
 					RTE_MTR_ERROR_TYPE_METER_POLICY,
 					NULL, "unsupported action MARK");
-			if (action_flags & MLX5_FLOW_ACTION_QUEUE)
+			if (action_flags[i] & MLX5_FLOW_ACTION_QUEUE)
 				return -rte_mtr_error_set(error, ENOTSUP,
 					RTE_MTR_ERROR_TYPE_METER_POLICY,
 					NULL, "unsupported action QUEUE");
-			if (action_flags & MLX5_FLOW_ACTION_RSS)
+			if (action_flags[i] & MLX5_FLOW_ACTION_RSS)
 				return -rte_mtr_error_set(error, ENOTSUP,
 					RTE_MTR_ERROR_TYPE_METER_POLICY,
 					NULL, "unsupported action RSS");
-			if (!(action_flags & MLX5_FLOW_FATE_ESWITCH_ACTIONS))
+			if (!(action_flags[i] & MLX5_FLOW_FATE_ESWITCH_ACTIONS))
 				return -rte_mtr_error_set(error, ENOTSUP,
 					RTE_MTR_ERROR_TYPE_METER_POLICY,
 					NULL, "no fate action is found");
 		} else {
-			if (!(action_flags & MLX5_FLOW_FATE_ACTIONS) &&
-				(domain_color[i] &
-				MLX5_MTR_DOMAIN_INGRESS_BIT)) {
+			if (!(action_flags[i] & MLX5_FLOW_FATE_ACTIONS) &&
+			    (domain_color[i] & MLX5_MTR_DOMAIN_INGRESS_BIT)) {
 				if ((domain_color[i] &
-					MLX5_MTR_DOMAIN_EGRESS_BIT))
+				     MLX5_MTR_DOMAIN_EGRESS_BIT))
 					domain_color[i] =
-					MLX5_MTR_DOMAIN_EGRESS_BIT;
+						MLX5_MTR_DOMAIN_EGRESS_BIT;
 				else
 					return -rte_mtr_error_set(error,
-					ENOTSUP,
-					RTE_MTR_ERROR_TYPE_METER_POLICY,
-					NULL, "no fate action is found");
+						ENOTSUP,
+						RTE_MTR_ERROR_TYPE_METER_POLICY,
+						NULL,
+						"no fate action is found");
 			}
 		}
-		if (domain_color[i] != def_domain)
-			*domain_bitmap = domain_color[i];
 	}
+	/* If both colors have RSS, the attributes should be the same. */
+	if (flow_dv_mtr_policy_rss_compare(rss_color[RTE_COLOR_GREEN],
+					   rss_color[RTE_COLOR_YELLOW]))
+		return -rte_mtr_error_set(error, EINVAL,
+					  RTE_MTR_ERROR_TYPE_METER_POLICY,
+					  NULL, "policy RSS attr conflict");
+	if (rss_color[RTE_COLOR_GREEN] || rss_color[RTE_COLOR_YELLOW])
+		*is_rss = true;
+	/* "domain_color[C]" is non-zero for each color, default is ALL. */
+	if (!def_green && !def_yellow &&
+	    domain_color[RTE_COLOR_GREEN] != domain_color[RTE_COLOR_YELLOW] &&
+	    !(action_flags[RTE_COLOR_GREEN] & MLX5_FLOW_ACTION_DROP) &&
+	    !(action_flags[RTE_COLOR_YELLOW] & MLX5_FLOW_ACTION_DROP))
+		return -rte_mtr_error_set(error, EINVAL,
+					  RTE_MTR_ERROR_TYPE_METER_POLICY,
+					  NULL, "policy domains conflict");
+	/*
+	 * At least one color policy is listed in the actions, the domains
+	 * to be supported should be the intersection.
+	 */
+	*domain_bitmap = domain_color[RTE_COLOR_GREEN] &
+			 domain_color[RTE_COLOR_YELLOW];
 	return 0;
 }
 

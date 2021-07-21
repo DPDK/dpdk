@@ -90,6 +90,7 @@ New Features
 
   * Added Sub-Function support based on auxiliary bus.
   * Added support for meter hierarchy.
+  * Added support for metering policy actions of yellow color.
   * Added devargs options ``allow_duplicate_pattern``.
   * Added matching on IPv4 Internet Header Length (IHL).
   * Added support for matching on VXLAN header last 8-bits reserved field.

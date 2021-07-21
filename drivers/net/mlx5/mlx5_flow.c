@@ -7199,14 +7199,14 @@ mlx5_flow_validate_mtr_acts(struct rte_eth_dev *dev,
 			struct rte_flow_attr *attr,
 			bool *is_rss,
 			uint8_t *domain_bitmap,
-			bool *is_def_policy,
+			uint8_t *policy_mode,
 			struct rte_mtr_error *error)
 {
 	const struct mlx5_flow_driver_ops *fops;
 
 	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
-	return fops->validate_mtr_acts(dev, actions, attr,
-			is_rss, domain_bitmap, is_def_policy, error);
+	return fops->validate_mtr_acts(dev, actions, attr, is_rss,
+				       domain_bitmap, policy_mode, error);
 }
 
 /**

@@ -631,7 +631,7 @@ struct mlx5_dev_shared_port {
  */
 #define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
 
-/*ASO flow meter structures*/
+/* ASO flow meter structures */
 /* Modify this value if enum rte_mtr_color changes. */
 #define RTE_MTR_DROPPED RTE_COLORS
 /* Yellow is now supported. */
@@ -645,6 +645,12 @@ struct mlx5_dev_shared_port {
 #define MLX5_MTR_TABLE_ID_DROP 2
 /* Priority of the meter policy matcher. */
 #define MLX5_MTR_POLICY_MATCHER_PRIO 0
+/* Default policy. */
+#define MLX5_MTR_POLICY_MODE_DEF 1
+/* Only green color valid. */
+#define MLX5_MTR_POLICY_MODE_OG 2
+/* Only yellow color valid. */
+#define MLX5_MTR_POLICY_MODE_OY 3
 
 enum mlx5_meter_domain {
 	MLX5_MTR_DOMAIN_INGRESS,

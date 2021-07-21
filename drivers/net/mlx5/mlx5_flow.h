@@ -1209,7 +1209,7 @@ typedef int (*mlx5_flow_validate_mtr_acts_t)
 			 struct rte_flow_attr *attr,
 			 bool *is_rss,
 			 uint8_t *domain_bitmap,
-			 bool *is_def_policy,
+			 uint8_t *policy_mode,
 			 struct rte_mtr_error *error);
 typedef int (*mlx5_flow_create_mtr_acts_t)
 			(struct rte_eth_dev *dev,
@@ -1690,7 +1690,7 @@ int mlx5_flow_validate_mtr_acts(struct rte_eth_dev *dev,
 			struct rte_flow_attr *attr,
 			bool *is_rss,
 			uint8_t *domain_bitmap,
-			bool *is_def_policy,
+			uint8_t *policy_mode,
 			struct rte_mtr_error *error);
 void mlx5_flow_destroy_mtr_acts(struct rte_eth_dev *dev,
 		      struct mlx5_flow_meter_policy *mtr_policy);

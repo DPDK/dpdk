@@ -582,7 +582,7 @@ mlx5_flow_meter_policy_validate(struct rte_eth_dev *dev,
 	struct rte_flow_attr attr = { .transfer =
 			priv->config.dv_esw_en ? 1 : 0};
 	bool is_rss = false;
-	bool is_def_policy = false;
+	uint8_t policy_mode;
 	uint8_t domain_bitmap;
 	int ret;
 
@@ -591,7 +591,7 @@ mlx5_flow_meter_policy_validate(struct rte_eth_dev *dev,
 				RTE_MTR_ERROR_TYPE_METER_POLICY,
 				NULL, "meter policy unsupported.");
 	ret = mlx5_flow_validate_mtr_acts(dev, policy->actions, &attr,
-			&is_rss, &domain_bitmap, &is_def_policy, error);
+			&is_rss, &domain_bitmap, &policy_mode, error);
 	if (ret)
 		return ret;
 	return 0;
@@ -674,7 +674,7 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 	struct mlx5_flow_meter_policy *mtr_policy = NULL;
 	struct mlx5_flow_meter_sub_policy *sub_policy;
 	bool is_rss = false;
-	bool is_def_policy = false;
+	uint8_t policy_mode;
 	uint32_t i;
 	int ret;
 	uint32_t policy_size = sizeof(struct mlx5_flow_meter_policy);
@@ -701,14 +701,15 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 					  RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
 					  NULL, "policy ID exists. ");
 	ret = mlx5_flow_validate_mtr_acts(dev, policy->actions, &attr,
-			&is_rss, &domain_bitmap, &is_def_policy, error);
+					  &is_rss, &domain_bitmap,
+					  &policy_mode, error);
 	if (ret)
 		return ret;
 	if (!domain_bitmap)
 		return -rte_mtr_error_set(error, ENOTSUP,
-				RTE_MTR_ERROR_TYPE_METER_POLICY,
-				NULL, "fail to find policy domain.");
-	if (is_def_policy) {
+					  RTE_MTR_ERROR_TYPE_METER_POLICY,
+					  NULL, "fail to find policy domain.");
+	if (policy_mode == MLX5_MTR_POLICY_MODE_DEF) {
 		if (priv->sh->mtrmng->def_policy_id != MLX5_INVALID_POLICY_ID)
 			return -rte_mtr_error_set(error, EEXIST,
 				RTE_MTR_ERROR_TYPE_METER_POLICY_ID,

@@ -422,19 +422,18 @@ Limitations
 - Meter:
 
   - All the meter colors with drop action will be counted only by the global drop statistics.
-  - Green color is not supported with drop action.
-  - Yellow detection is not supported.
+  - Yellow detection is only supported with ASO metering.
   - Red color must be with drop action.
   - Meter statistics are supported only for drop case.
-  - Meter yellow color detection is not supported.
   - A meter action created with pre-defined policy must be the last action in the flow except single case where the policy actions are:
      - green: NULL or END.
      - yellow: NULL or END.
      - RED: DROP / END.
   - The only supported meter policy actions:
-     - green: QUEUE, RSS, PORT_ID, JUMP, MARK and SET_TAG.
-     - yellow: must be empty.
+     - green: QUEUE, RSS, PORT_ID, JUMP, DROP, MARK and SET_TAG.
+     - yellow: QUEUE, RSS, PORT_ID, JUMP, DROP, MARK and SET_TAG.
      - RED: must be DROP.
+  - Policy actions of RSS for green and yellow should have the same configuration except queues.
   - meter profile packet mode is supported.
 
 - Integrity:
