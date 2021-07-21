@@ -1294,6 +1294,12 @@ err_secondary:
 		config->dv_flow_en = 0;
 	}
 #endif
+	if (spawn->max_port > UINT8_MAX) {
+		/* Verbs can't support ports larger than 255 by design. */
+		DRV_LOG(ERR, "can't support IB ports > UINT8_MAX");
+		err = EINVAL;
+		goto error;
+	}
 	config->ind_table_max_size =
 		sh->device_attr.max_rwq_indirection_table_size;
 	/*
