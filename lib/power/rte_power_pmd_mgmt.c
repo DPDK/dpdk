@@ -534,11 +534,15 @@ rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id, uint16_t port_id,
 		clb = get_monitor_callback();
 		break;
 	case RTE_POWER_MGMT_TYPE_SCALE:
+		clb = clb_scale_freq;
+
+		/* we only have to check this when enabling first queue */
+		if (lcore_cfg->pwr_mgmt_state != PMD_MGMT_DISABLED)
+			break;
 		/* check if we can add a new queue */
 		ret = check_scale(lcore_id);
 		if (ret < 0)
 			goto end;
-		clb = clb_scale_freq;
 		break;
 	case RTE_POWER_MGMT_TYPE_PAUSE:
 		/* figure out various time-to-tsc conversions */
@@ -633,9 +637,12 @@ rte_power_ethdev_pmgmt_queue_disable(unsigned int lcore_id,
 		rte_eth_remove_rx_callback(port_id, queue_id, queue_cfg->cb);
 		break;
 	case RTE_POWER_MGMT_TYPE_SCALE:
-		rte_power_freq_max(lcore_id);
 		rte_eth_remove_rx_callback(port_id, queue_id, queue_cfg->cb);
-		rte_power_exit(lcore_id);
+		/* disable power library on this lcore if this was last queue */
+		if (lcore_cfg->pwr_mgmt_state == PMD_MGMT_DISABLED) {
+			rte_power_freq_max(lcore_id);
+			rte_power_exit(lcore_id);
+		}
 		break;
 	}
 	/*
