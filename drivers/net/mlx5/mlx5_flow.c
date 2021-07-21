@@ -4687,7 +4687,7 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 		struct mlx5_flow_rss_desc *rss_desc[MLX5_MTR_RTE_COLORS] = {0};
 		uint32_t i;
 
-		/**
+		/*
 		 * This is a tmp dev_flow,
 		 * no need to register any matcher for it in translate.
 		 */
@@ -4695,18 +4695,19 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 		for (i = 0; i < MLX5_MTR_RTE_COLORS; i++) {
 			struct mlx5_flow dev_flow = {0};
 			struct mlx5_flow_handle dev_handle = { {0} };
+			uint8_t fate = final_policy->act_cnt[i].fate_action;
 
-			if (final_policy->is_rss) {
+			if (fate == MLX5_FLOW_FATE_SHARED_RSS) {
 				const void *rss_act =
 					final_policy->act_cnt[i].rss->conf;
 				struct rte_flow_action rss_actions[2] = {
 					[0] = {
 					.type = RTE_FLOW_ACTION_TYPE_RSS,
-					.conf = rss_act
+					.conf = rss_act,
 					},
 					[1] = {
 					.type = RTE_FLOW_ACTION_TYPE_END,
-					.conf = NULL
+					.conf = NULL,
 					}
 				};
 
@@ -4731,9 +4732,10 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 						rss_desc_v[i].hash_fields ?
 						rss_desc_v[i].queue_num : 1;
 				rss_desc_v[i].tunnel =
-					!!(dev_flow.handle->layers &
-					MLX5_FLOW_LAYER_TUNNEL);
-			} else {
+						!!(dev_flow.handle->layers &
+						   MLX5_FLOW_LAYER_TUNNEL);
+				rss_desc[i] = &rss_desc_v[i];
+			} else if (fate == MLX5_FLOW_FATE_QUEUE) {
 				/* This is queue action. */
 				rss_desc_v[i] = wks->rss_desc;
 				rss_desc_v[i].key_len = 0;
@@ -4741,24 +4743,24 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 				rss_desc_v[i].queue =
 					&final_policy->act_cnt[i].queue;
 				rss_desc_v[i].queue_num = 1;
+				rss_desc[i] = &rss_desc_v[i];
+			} else {
+				rss_desc[i] = NULL;
 			}
-			rss_desc[i] = &rss_desc_v[i];
 		}
 		sub_policy = flow_drv_meter_sub_policy_rss_prepare(dev,
 						flow, policy, rss_desc);
 	} else {
 		enum mlx5_meter_domain mtr_domain =
 			attr->transfer ? MLX5_MTR_DOMAIN_TRANSFER :
-				attr->egress ? MLX5_MTR_DOMAIN_EGRESS :
-					MLX5_MTR_DOMAIN_INGRESS;
+				(attr->egress ? MLX5_MTR_DOMAIN_EGRESS :
+						MLX5_MTR_DOMAIN_INGRESS);
 		sub_policy = policy->sub_policys[mtr_domain][0];
 	}
-	if (!sub_policy) {
+	if (!sub_policy)
 		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-			"Failed to get meter sub-policy.");
-		goto exit;
-	}
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Failed to get meter sub-policy.");
 exit:
 	return sub_policy;
 }
@@ -4956,8 +4958,8 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 		} else {
 			enum mlx5_meter_domain mtr_domain =
 			attr->transfer ? MLX5_MTR_DOMAIN_TRANSFER :
-				attr->egress ? MLX5_MTR_DOMAIN_EGRESS :
-					MLX5_MTR_DOMAIN_INGRESS;
+				(attr->egress ? MLX5_MTR_DOMAIN_EGRESS :
+						MLX5_MTR_DOMAIN_INGRESS);
 
 			sub_policy =
 			&priv->sh->mtrmng->def_policy[mtr_domain]->sub_policy;
@@ -4973,8 +4975,8 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	actions_pre++;
 	if (!tag_action)
 		return rte_flow_error_set(error, ENOMEM,
-					RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					"No tag action space.");
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "No tag action space.");
 	if (!mtr_flow_id) {
 		tag_action->type = RTE_FLOW_ACTION_TYPE_VOID;
 		goto exit;

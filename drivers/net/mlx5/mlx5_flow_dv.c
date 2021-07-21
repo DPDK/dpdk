@@ -15062,11 +15062,11 @@ __flow_dv_destroy_sub_policy_rules(struct rte_eth_dev *dev,
 				   next_port, tmp) {
 			claim_zero(mlx5_flow_os_destroy_flow(color_rule->rule));
 			tbl = container_of(color_rule->matcher->tbl,
-					typeof(*tbl), tbl);
+					   typeof(*tbl), tbl);
 			mlx5_list_unregister(tbl->matchers,
-						&color_rule->matcher->entry);
+					     &color_rule->matcher->entry);
 			TAILQ_REMOVE(&sub_policy->color_rules[i],
-					color_rule, next_port);
+				     color_rule, next_port);
 			mlx5_free(color_rule);
 			if (next_fm)
 				mlx5_flow_meter_detach(priv, next_fm);
@@ -15080,13 +15080,13 @@ __flow_dv_destroy_sub_policy_rules(struct rte_eth_dev *dev,
 		}
 		if (sub_policy->jump_tbl[i]) {
 			flow_dv_tbl_resource_release(MLX5_SH(dev),
-			sub_policy->jump_tbl[i]);
+						     sub_policy->jump_tbl[i]);
 			sub_policy->jump_tbl[i] = NULL;
 		}
 	}
 	if (sub_policy->tbl_rsc) {
 		flow_dv_tbl_resource_release(MLX5_SH(dev),
-			sub_policy->tbl_rsc);
+					     sub_policy->tbl_rsc);
 		sub_policy->tbl_rsc = NULL;
 	}
 }
@@ -15103,7 +15103,7 @@ __flow_dv_destroy_sub_policy_rules(struct rte_eth_dev *dev,
  */
 static void
 flow_dv_destroy_policy_rules(struct rte_eth_dev *dev,
-		      struct mlx5_flow_meter_policy *mtr_policy)
+			     struct mlx5_flow_meter_policy *mtr_policy)
 {
 	uint32_t i, j;
 	struct mlx5_flow_meter_sub_policy *sub_policy;
@@ -15116,8 +15116,8 @@ flow_dv_destroy_policy_rules(struct rte_eth_dev *dev,
 		for (j = 0; j < sub_policy_num; j++) {
 			sub_policy = mtr_policy->sub_policys[i][j];
 			if (sub_policy)
-				__flow_dv_destroy_sub_policy_rules
-						(dev, sub_policy);
+				__flow_dv_destroy_sub_policy_rules(dev,
+								   sub_policy);
 		}
 	}
 }
@@ -16150,6 +16150,7 @@ __flow_dv_create_policy_acts_rules(struct rte_eth_dev *dev,
 	bool match_src_port = false;
 	int i;
 
+	/* If RSS or Queue, no previous actions / rules is created. */
 	for (i = 0; i < RTE_COLORS; i++) {
 		acts[i].actions_n = 0;
 		if (i == RTE_COLOR_RED) {
@@ -16649,37 +16650,36 @@ __flow_dv_meter_get_rss_sub_policy(struct rte_eth_dev *dev,
 	sub_policy_num = (mtr_policy->sub_policy_num >>
 			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain)) &
 			MLX5_MTR_SUB_POLICY_NUM_MASK;
-	for (i = 0; i < sub_policy_num;
-		i++) {
-		for (j = 0; j < MLX5_MTR_RTE_COLORS; j++) {
-			if (rss_desc[j] &&
-				hrxq_idx[j] !=
-			mtr_policy->sub_policys[domain][i]->rix_hrxq[j])
+	for (j = 0; j < sub_policy_num; j++) {
+		for (i = 0; i < MLX5_MTR_RTE_COLORS; i++) {
+			if (rss_desc[i] &&
+			    hrxq_idx[i] !=
+			    mtr_policy->sub_policys[domain][j]->rix_hrxq[i])
 				break;
 		}
-		if (j >= MLX5_MTR_RTE_COLORS) {
+		if (i >= MLX5_MTR_RTE_COLORS) {
 			/*
 			 * Found the sub policy table with
-			 * the same queue per color
+			 * the same queue per color.
 			 */
 			rte_spinlock_unlock(&mtr_policy->sl);
-			for (j = 0; j < MLX5_MTR_RTE_COLORS; j++)
-				mlx5_hrxq_release(dev, hrxq_idx[j]);
+			for (i = 0; i < MLX5_MTR_RTE_COLORS; i++)
+				mlx5_hrxq_release(dev, hrxq_idx[i]);
 			*is_reuse = true;
-			return mtr_policy->sub_policys[domain][i];
+			return mtr_policy->sub_policys[domain][j];
 		}
 	}
 	/* Create sub policy. */
 	if (!mtr_policy->sub_policys[domain][0]->rix_hrxq[0]) {
-		/* Reuse the first dummy sub_policy*/
+		/* Reuse the first pre-allocated sub_policy. */
 		sub_policy = mtr_policy->sub_policys[domain][0];
 		sub_policy_idx = sub_policy->idx;
 	} else {
 		sub_policy = mlx5_ipool_zmalloc
 				(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
-				&sub_policy_idx);
+				 &sub_policy_idx);
 		if (!sub_policy ||
-			sub_policy_idx > MLX5_MAX_SUB_POLICY_TBL_NUM) {
+		    sub_policy_idx > MLX5_MAX_SUB_POLICY_TBL_NUM) {
 			for (i = 0; i < MLX5_MTR_RTE_COLORS; i++)
 				mlx5_hrxq_release(dev, hrxq_idx[i]);
 			goto rss_sub_policy_error;
@@ -16701,9 +16701,9 @@ __flow_dv_meter_get_rss_sub_policy(struct rte_eth_dev *dev,
 			 * RSS action to Queue action.
 			 */
 			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
-				hrxq_idx[i]);
+					      hrxq_idx[i]);
 			if (!hrxq) {
-				DRV_LOG(ERR, "Failed to create policy hrxq");
+				DRV_LOG(ERR, "Failed to get policy hrxq");
 				goto rss_sub_policy_error;
 			}
 			act_cnt = &mtr_policy->act_cnt[i];
@@ -16718,19 +16718,21 @@ __flow_dv_meter_get_rss_sub_policy(struct rte_eth_dev *dev,
 		}
 	}
 	if (__flow_dv_create_policy_acts_rules(dev, mtr_policy,
-		sub_policy, domain)) {
+					       sub_policy, domain)) {
 		DRV_LOG(ERR, "Failed to create policy "
-			"rules per domain.");
+			"rules for ingress domain.");
 		goto rss_sub_policy_error;
 	}
 	if (sub_policy != mtr_policy->sub_policys[domain][0]) {
 		i = (mtr_policy->sub_policy_num >>
 			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain)) &
 			MLX5_MTR_SUB_POLICY_NUM_MASK;
+		if (i >= MLX5_MTR_RSS_MAX_SUB_POLICY) {
+			DRV_LOG(ERR, "No free sub-policy slot.");
+			goto rss_sub_policy_error;
+		}
 		mtr_policy->sub_policys[domain][i] = sub_policy;
 		i++;
-		if (i > MLX5_MTR_RSS_MAX_SUB_POLICY)
-			goto rss_sub_policy_error;
 		mtr_policy->sub_policy_num &= ~(MLX5_MTR_SUB_POLICY_NUM_MASK <<
 			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain));
 		mtr_policy->sub_policy_num |=
@@ -16748,8 +16750,7 @@ rss_sub_policy_error:
 			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain)) &
 			MLX5_MTR_SUB_POLICY_NUM_MASK;
 			mtr_policy->sub_policys[domain][i] = NULL;
-			mlx5_ipool_free
-			(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
+			mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
 					sub_policy->idx);
 		}
 	}
@@ -16810,7 +16811,7 @@ flow_dv_meter_sub_policy_rss_prepare(struct rte_eth_dev *dev,
 	while (i) {
 		/**
 		 * From last policy to the first one in hierarchy,
-		 * create/get the sub policy for each of them.
+		 * create / get the sub policy for each of them.
 		 */
 		sub_policy = __flow_dv_meter_get_rss_sub_policy(dev,
 							policies[--i],
@@ -17014,7 +17015,7 @@ err_exit:
  */
 static void
 flow_dv_destroy_sub_policy_with_rxq(struct rte_eth_dev *dev,
-		struct mlx5_flow_meter_policy *mtr_policy)
+				    struct mlx5_flow_meter_policy *mtr_policy)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_meter_sub_policy *sub_policy = NULL;
@@ -17060,7 +17061,7 @@ flow_dv_destroy_sub_policy_with_rxq(struct rte_eth_dev *dev,
 		case MLX5_FLOW_FATE_QUEUE:
 			sub_policy = mtr_policy->sub_policys[domain][0];
 			__flow_dv_destroy_sub_policy_rules(dev,
-						sub_policy);
+							   sub_policy);
 			break;
 		default:
 			/*Other actions without queue and do nothing*/
