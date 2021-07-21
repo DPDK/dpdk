@@ -2150,7 +2150,7 @@ mlx5_ind_table_obj_modify(struct rte_eth_dev *dev,
 error:
 	err = rte_errno;
 	for (j = 0; j < i; j++)
-		mlx5_rxq_release(dev, ind_tbl->queues[j]);
+		mlx5_rxq_release(dev, queues[j]);
 	rte_errno = err;
 	DEBUG("Port %u cannot setup indirection table.", dev->data->port_id);
 	return ret;
