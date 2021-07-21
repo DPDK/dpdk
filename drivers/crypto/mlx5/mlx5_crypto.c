@@ -6,12 +6,11 @@
 #include <rte_mempool.h>
 #include <rte_errno.h>
 #include <rte_log.h>
-#include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_memory.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
-#include <mlx5_common_pci.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_common_os.h>
 
@@ -977,23 +976,8 @@ mlx5_crypto_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 	}
 }
 
-/**
- * DPDK callback to register a PCI device.
- *
- * This function spawns crypto device out of a given PCI device.
- *
- * @param[in] pci_drv
- *   PCI driver structure (mlx5_crypto_driver).
- * @param[in] pci_dev
- *   PCI device information.
- *
- * @return
- *   0 on success, 1 to skip this driver, a negative errno value otherwise
- *   and rte_errno is set.
- */
 static int
-mlx5_crypto_pci_probe(struct rte_pci_driver *pci_drv,
-			struct rte_pci_device *pci_dev)
+mlx5_crypto_dev_probe(struct rte_device *dev)
 {
 	struct ibv_device *ibv;
 	struct rte_cryptodev *crypto_dev;
@@ -1005,28 +989,21 @@ mlx5_crypto_pci_probe(struct rte_pci_driver *pci_drv,
 	struct rte_cryptodev_pmd_init_params init_params = {
 		.name = "",
 		.private_data_size = sizeof(struct mlx5_crypto_priv),
-		.socket_id = pci_dev->device.numa_node,
+		.socket_id = dev->numa_node,
 		.max_nb_queue_pairs =
 				RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS,
 	};
 	uint16_t rdmw_wqe_size;
 	int ret;
 
-	RTE_SET_USED(pci_drv);
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		DRV_LOG(ERR, "Non-primary process type is not supported.");
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	ibv = mlx5_os_get_ibv_device(&pci_dev->addr);
-	if (ibv == NULL) {
-		DRV_LOG(ERR, "No matching IB device for PCI slot "
-			PCI_PRI_FMT ".", pci_dev->addr.domain,
-			pci_dev->addr.bus, pci_dev->addr.devid,
-			pci_dev->addr.function);
+	ibv = mlx5_os_get_ibv_dev(dev);
+	if (ibv == NULL)
 		return -rte_errno;
-	}
-	DRV_LOG(INFO, "PCI information matches for device \"%s\".", ibv->name);
 	ctx = mlx5_glue->dv_open_device(ibv);
 	if (ctx == NULL) {
 		DRV_LOG(ERR, "Failed to open IB device \"%s\".", ibv->name);
@@ -1041,7 +1018,7 @@ mlx5_crypto_pci_probe(struct rte_pci_driver *pci_drv,
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
-	ret = mlx5_crypto_parse_devargs(pci_dev->device.devargs, &devarg_prms);
+	ret = mlx5_crypto_parse_devargs(dev->devargs, &devarg_prms);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to parse devargs.");
 		return -rte_errno;
@@ -1052,7 +1029,7 @@ mlx5_crypto_pci_probe(struct rte_pci_driver *pci_drv,
 		DRV_LOG(ERR, "Failed to configure login.");
 		return -rte_errno;
 	}
-	crypto_dev = rte_cryptodev_pmd_create(ibv->name, &pci_dev->device,
+	crypto_dev = rte_cryptodev_pmd_create(ibv->name, dev,
 					&init_params);
 	if (crypto_dev == NULL) {
 		DRV_LOG(ERR, "Failed to create device \"%s\".", ibv->name);
@@ -1069,7 +1046,6 @@ mlx5_crypto_pci_probe(struct rte_pci_driver *pci_drv,
 	priv = crypto_dev->data->dev_private;
 	priv->ctx = ctx;
 	priv->login_obj = login;
-	priv->pci_dev = pci_dev;
 	priv->crypto_dev = crypto_dev;
 	if (mlx5_crypto_hw_global_prepare(priv) != 0) {
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
@@ -1112,13 +1088,13 @@ mlx5_crypto_pci_probe(struct rte_pci_driver *pci_drv,
 }
 
 static int
-mlx5_crypto_pci_remove(struct rte_pci_device *pdev)
+mlx5_crypto_dev_remove(struct rte_device *dev)
 {
 	struct mlx5_crypto_priv *priv = NULL;
 
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_FOREACH(priv, &mlx5_crypto_priv_list, next)
-		if (rte_pci_addr_cmp(&priv->pci_dev->addr, &pdev->addr) != 0)
+		if (priv->crypto_dev->device == dev)
 			break;
 	if (priv)
 		TAILQ_REMOVE(&mlx5_crypto_priv_list, priv, next);
@@ -1146,24 +1122,19 @@ static const struct rte_pci_id mlx5_crypto_pci_id_map[] = {
 		}
 };
 
-static struct mlx5_pci_driver mlx5_crypto_driver = {
-	.driver_class = MLX5_CLASS_CRYPTO,
-	.pci_driver = {
-		.driver = {
-			.name = RTE_STR(MLX5_CRYPTO_DRIVER_NAME),
-		},
-		.id_table = mlx5_crypto_pci_id_map,
-		.probe = mlx5_crypto_pci_probe,
-		.remove = mlx5_crypto_pci_remove,
-		.drv_flags = 0,
-	},
+static struct mlx5_class_driver mlx5_crypto_driver = {
+	.drv_class = MLX5_CLASS_CRYPTO,
+	.name = RTE_STR(MLX5_CRYPTO_DRIVER_NAME),
+	.id_table = mlx5_crypto_pci_id_map,
+	.probe = mlx5_crypto_dev_probe,
+	.remove = mlx5_crypto_dev_remove,
 };
 
 RTE_INIT(rte_mlx5_crypto_init)
 {
 	mlx5_common_init();
 	if (mlx5_glue != NULL)
-		mlx5_pci_driver_register(&mlx5_crypto_driver);
+		mlx5_class_driver_register(&mlx5_crypto_driver);
 }
 
 RTE_PMD_REGISTER_CRYPTO_DRIVER(mlx5_cryptodev_driver, mlx5_drv,
