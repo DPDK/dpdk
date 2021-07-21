@@ -908,6 +908,8 @@ sfc_mae_rule_process_pattern_data(struct sfc_mae_parse_ctx *ctx,
 
 	for (ethertype_idx = 0;
 	     ethertype_idx < pdata->nb_vlan_tags; ++ethertype_idx) {
+		rte_be16_t tpid_v = ethertypes[ethertype_idx].value;
+		rte_be16_t tpid_m = ethertypes[ethertype_idx].mask;
 		unsigned int tpid_idx;
 
 		/*
@@ -917,7 +919,7 @@ sfc_mae_rule_process_pattern_data(struct sfc_mae_parse_ctx *ctx,
 		 */
 		enforce_tag_presence[0] = B_FALSE;
 
-		if (ethertypes[ethertype_idx].mask == RTE_BE16(0)) {
+		if (tpid_m == RTE_BE16(0)) {
 			if (pdata->tci_masks[ethertype_idx] == RTE_BE16(0))
 				enforce_tag_presence[ethertype_idx] = B_TRUE;
 
@@ -927,19 +929,22 @@ sfc_mae_rule_process_pattern_data(struct sfc_mae_parse_ctx *ctx,
 		}
 
 		/* Exact match is supported only. */
-		if (ethertypes[ethertype_idx].mask != RTE_BE16(0xffff)) {
+		if (tpid_m != RTE_BE16(0xffff)) {
+			sfc_err(ctx->sa, "TPID mask must be 0x0 or 0xffff; got 0x%04x",
+				rte_be_to_cpu_16(tpid_m));
 			rc = EINVAL;
 			goto fail;
 		}
 
 		for (tpid_idx = pdata->nb_vlan_tags - ethertype_idx - 1;
 		     tpid_idx < nb_supported_tpids; ++tpid_idx) {
-			if (ethertypes[ethertype_idx].value ==
-			    supported_tpids[tpid_idx])
+			if (tpid_v == supported_tpids[tpid_idx])
 				break;
 		}
 
 		if (tpid_idx == nb_supported_tpids) {
+			sfc_err(ctx->sa, "TPID 0x%04x is unsupported",
+				rte_be_to_cpu_16(tpid_v));
 			rc = EINVAL;
 			goto fail;
 		}
@@ -949,14 +954,19 @@ sfc_mae_rule_process_pattern_data(struct sfc_mae_parse_ctx *ctx,
 
 	if (pdata->innermost_ethertype_restriction.mask == RTE_BE16(0xffff)) {
 		struct sfc_mae_ethertype *et = &ethertypes[ethertype_idx];
+		rte_be16_t enforced_et;
+
+		enforced_et = pdata->innermost_ethertype_restriction.value;
 
 		if (et->mask == 0) {
 			et->mask = RTE_BE16(0xffff);
-			et->value =
-			    pdata->innermost_ethertype_restriction.value;
+			et->value = enforced_et;
 		} else if (et->mask != RTE_BE16(0xffff) ||
-			   et->value !=
-			   pdata->innermost_ethertype_restriction.value) {
+			   et->value != enforced_et) {
+			sfc_err(ctx->sa, "L3 EtherType must be 0x0/0x0 or 0x%04x/0xffff; got 0x%04x/0x%04x",
+				rte_be_to_cpu_16(enforced_et),
+				rte_be_to_cpu_16(et->value),
+				rte_be_to_cpu_16(et->mask));
 			rc = EINVAL;
 			goto fail;
 		}
@@ -976,10 +986,14 @@ sfc_mae_rule_process_pattern_data(struct sfc_mae_parse_ctx *ctx,
 		if (pdata->l3_next_proto_mask == 0) {
 			pdata->l3_next_proto_mask = 0xff;
 			pdata->l3_next_proto_value =
-			    pdata->l3_next_proto_restriction_value;
+				pdata->l3_next_proto_restriction_value;
 		} else if (pdata->l3_next_proto_mask != 0xff ||
 			   pdata->l3_next_proto_value !=
 			   pdata->l3_next_proto_restriction_value) {
+			sfc_err(ctx->sa, "L3 next protocol must be 0x0/0x0 or 0x%02x/0xff; got 0x%02x/0x%02x",
+				pdata->l3_next_proto_restriction_value,
+				pdata->l3_next_proto_value,
+				pdata->l3_next_proto_mask);
 			rc = EINVAL;
 			goto fail;
 		}
@@ -2530,6 +2544,7 @@ sfc_mae_rule_parse_action_vxlan_encap(
 	size_t next_proto_ofst = 0;
 	size_t ethertype_ofst = 0;
 	uint64_t exp_items;
+	int rc;
 
 	if (pattern == NULL) {
 		return rte_flow_error_set(error, EINVAL,
@@ -2749,14 +2764,27 @@ sfc_mae_rule_parse_action_vxlan_encap(
 	/* Take care of the masks. */
 	sfc_mae_header_force_item_masks(buf, parsed_items, nb_parsed_items);
 
-	return (spec != NULL) ? efx_mae_action_set_populate_encap(spec) : 0;
+	rc = efx_mae_action_set_populate_encap(spec);
+	if (rc != 0) {
+		rc = rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL, "failed to request action ENCAP");
+	}
+
+	return rc;
 }
 
 static int
-sfc_mae_rule_parse_action_mark(const struct rte_flow_action_mark *conf,
+sfc_mae_rule_parse_action_mark(struct sfc_adapter *sa,
+			       const struct rte_flow_action_mark *conf,
 			       efx_mae_actions_t *spec)
 {
-	return efx_mae_action_set_populate_mark(spec, conf->id);
+	int rc;
+
+	rc = efx_mae_action_set_populate_mark(spec, conf->id);
+	if (rc != 0)
+		sfc_err(sa, "failed to request action MARK: %s", strerror(rc));
+
+	return rc;
 }
 
 static int
@@ -2816,10 +2844,19 @@ sfc_mae_rule_parse_action_phy_port(struct sfc_adapter *sa,
 		phy_port = conf->index;
 
 	rc = efx_mae_mport_by_phy_port(phy_port, &mport);
-	if (rc != 0)
+	if (rc != 0) {
+		sfc_err(sa, "failed to convert phys. port ID %u to m-port selector: %s",
+			phy_port, strerror(rc));
 		return rc;
+	}
 
-	return efx_mae_action_set_populate_deliver(spec, &mport);
+	rc = efx_mae_action_set_populate_deliver(spec, &mport);
+	if (rc != 0) {
+		sfc_err(sa, "failed to request action DELIVER with m-port selector 0x%08x: %s",
+			mport.sel, strerror(rc));
+	}
+
+	return rc;
 }
 
 static int
@@ -2840,10 +2877,20 @@ sfc_mae_rule_parse_action_pf_vf(struct sfc_adapter *sa,
 		vf = vf_conf->id;
 
 	rc = efx_mae_mport_by_pcie_function(encp->enc_pf, vf, &mport);
-	if (rc != 0)
+	if (rc != 0) {
+		sfc_err(sa, "failed to convert PF %u VF %d to m-port: %s",
+			encp->enc_pf, (vf != EFX_PCI_VF_INVALID) ? (int)vf : -1,
+			strerror(rc));
 		return rc;
+	}
 
-	return efx_mae_action_set_populate_deliver(spec, &mport);
+	rc = efx_mae_action_set_populate_deliver(spec, &mport);
+	if (rc != 0) {
+		sfc_err(sa, "failed to request action DELIVER with m-port selector 0x%08x: %s",
+			mport.sel, strerror(rc));
+	}
+
+	return rc;
 }
 
 static int
@@ -2864,10 +2911,19 @@ sfc_mae_rule_parse_action_port_id(struct sfc_adapter *sa,
 
 	rc = sfc_mae_switch_port_by_ethdev(mae->switch_domain_id,
 					   port_id, &mport);
-	if (rc != 0)
+	if (rc != 0) {
+		sfc_err(sa, "failed to find MAE switch port SW entry for RTE ethdev port %u: %s",
+			port_id, strerror(rc));
 		return rc;
+	}
 
-	return efx_mae_action_set_populate_deliver(spec, &mport);
+	rc = efx_mae_action_set_populate_deliver(spec, &mport);
+	if (rc != 0) {
+		sfc_err(sa, "failed to request action DELIVER with m-port selector 0x%08x: %s",
+			mport.sel, strerror(rc));
+	}
+
+	return rc;
 }
 
 static int
@@ -2932,7 +2988,7 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 	case RTE_FLOW_ACTION_TYPE_MARK:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_MARK,
 				       bundle->actions_mask);
-		rc = sfc_mae_rule_parse_action_mark(action->conf, spec);
+		rc = sfc_mae_rule_parse_action_mark(sa, action->conf, spec);
 		break;
 	case RTE_FLOW_ACTION_TYPE_PHY_PORT:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PHY_PORT,
