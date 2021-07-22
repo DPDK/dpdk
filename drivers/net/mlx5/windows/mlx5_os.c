@@ -35,6 +35,44 @@ static const char *MZ_MLX5_PMD_SHARED_DATA = "mlx5_pmd_shared_data";
 /* Spinlock for mlx5_shared_data allocation. */
 static rte_spinlock_t mlx5_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 
+/* rte flow indexed pool configuration. */
+static struct mlx5_indexed_pool_config icfg[] = {
+	{
+		.size = sizeof(struct rte_flow),
+		.trunk_size = 64,
+		.need_lock = 1,
+		.release_mem_en = 0,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
+		.per_core_cache = 0,
+		.type = "ctl_flow_ipool",
+	},
+	{
+		.size = sizeof(struct rte_flow),
+		.trunk_size = 64,
+		.grow_trunk = 3,
+		.grow_shift = 2,
+		.need_lock = 1,
+		.release_mem_en = 0,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
+		.per_core_cache = 1 << 14,
+		.type = "rte_flow_ipool",
+	},
+	{
+		.size = sizeof(struct rte_flow),
+		.trunk_size = 64,
+		.grow_trunk = 3,
+		.grow_shift = 2,
+		.need_lock = 1,
+		.release_mem_en = 0,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
+		.per_core_cache = 0,
+		.type = "mcp_flow_ipool",
+	},
+};
+
 /**
  * Initialize shared data between primary and secondary process.
  *
@@ -317,6 +355,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int own_domain_id = 0;
 	uint16_t port_id;
+	int i;
 
 	/* Build device name. */
 	strlcpy(name, dpdk_dev->name, sizeof(name));
@@ -584,6 +623,14 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	mlx5_set_min_inline(spawn, config);
 	/* Store device configuration on private structure. */
 	priv->config = *config;
+	for (i = 0; i < MLX5_FLOW_TYPE_MAXI; i++) {
+		icfg[i].release_mem_en = !!config->reclaim_mode;
+		if (config->reclaim_mode)
+			icfg[i].per_core_cache = 0;
+		priv->flows[i] = mlx5_ipool_create(&icfg[i]);
+		if (!priv->flows[i])
+			goto error;
+	}
 	/* Create context for virtual machine VLAN workaround. */
 	priv->vmwa_context = NULL;
 	if (config->dv_flow_en) {
