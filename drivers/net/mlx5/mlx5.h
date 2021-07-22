@@ -1129,6 +1129,8 @@ struct mlx5_dev_ctx_shared {
 	uint32_t flow_hit_aso_en:1; /* Flow Hit ASO is supported. */
 	uint32_t rq_ts_format:2; /* RQ timestamp formats supported. */
 	uint32_t sq_ts_format:2; /* SQ timestamp formats supported. */
+	uint32_t steering_format_version:4;
+	/* Indicates the device steering logic format. */
 	uint32_t qp_ts_format:2; /* QP timestamp formats supported. */
 	uint32_t meter_aso_en:1; /* Flow Meter ASO is supported. */
 	uint32_t ct_aso_en:1; /* Connection Tracking ASO is supported. */

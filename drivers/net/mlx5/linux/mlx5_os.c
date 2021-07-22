@@ -1364,6 +1364,8 @@ err_secondary:
 		}
 		sh->rq_ts_format = config->hca_attr.rq_ts_format;
 		sh->sq_ts_format = config->hca_attr.sq_ts_format;
+		sh->steering_format_version =
+			config->hca_attr.steering_format_version;
 		sh->qp_ts_format = config->hca_attr.qp_ts_format;
 		/* Check for LRO support. */
 		if (config->dest_tir && config->hca_attr.lro_cap &&

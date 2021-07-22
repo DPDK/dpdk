@@ -2790,20 +2790,30 @@ flow_dv_validate_action_pop_vlan(struct rte_eth_dev *dev,
 				 struct rte_flow_error *error)
 {
 	const struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	bool direction_error = false;
 
-	(void)action;
-	(void)attr;
 	if (!priv->sh->pop_vlan_action)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
 					  "pop vlan action is not supported");
-	if (attr->egress)
+	/* Pop VLAN is not supported in egress except for CX6 FDB mode. */
+	if (attr->transfer) {
+		bool fdb_tx = priv->representor_id != UINT16_MAX;
+		bool is_cx5 = sh->steering_format_version ==
+		    MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5;
+
+		if (fdb_tx && is_cx5)
+			direction_error = true;
+	} else if (attr->egress) {
+		direction_error = true;
+	}
+	if (direction_error)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
 					  NULL,
-					  "pop vlan action not supported for "
-					  "egress");
+					  "pop vlan action not supported for egress");
 	if (action_flags & MLX5_FLOW_VLAN_ACTIONS)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -2927,6 +2937,8 @@ flow_dv_validate_action_push_vlan(struct rte_eth_dev *dev,
 {
 	const struct rte_flow_action_of_push_vlan *push_vlan = action->conf;
 	const struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	bool direction_error = false;
 
 	if (push_vlan->ethertype != RTE_BE16(RTE_ETHER_TYPE_VLAN) &&
 	    push_vlan->ethertype != RTE_BE16(RTE_ETHER_TYPE_QINQ))
@@ -2938,6 +2950,22 @@ flow_dv_validate_action_push_vlan(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "wrong action order, port_id should "
 					  "be after push VLAN");
+	/* Push VLAN is not supported in ingress except for CX6 FDB mode. */
+	if (attr->transfer) {
+		bool fdb_tx = priv->representor_id != UINT16_MAX;
+		bool is_cx5 = sh->steering_format_version ==
+		    MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5;
+
+		if (!fdb_tx && is_cx5)
+			direction_error = true;
+	} else if (attr->ingress) {
+		direction_error = true;
+	}
+	if (direction_error)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+					  NULL,
+					  "push vlan action not supported for ingress");
 	if (!attr->transfer && priv->representor)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,

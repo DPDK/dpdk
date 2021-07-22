@@ -1317,6 +1317,10 @@ enum {
 #define MLX5_HCA_FLEX_ICMP_ENABLED (1UL << 8)
 #define MLX5_HCA_FLEX_ICMPV6_ENABLED (1UL << 9)
 
+/* The device steering logic format. */
+#define MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5 0x0
+#define MLX5_STEERING_LOGIC_FORMAT_CONNECTX_6DX 0x1
+
 struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 reserved_at_0[0x30];
 	u8 vhca_id[0x10];
@@ -1585,7 +1589,8 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 general_obj_types[0x40];
 	u8 sq_ts_format[0x2];
 	u8 rq_ts_format[0x2];
-	u8 reserved_at_444[0x1C];
+	u8 steering_format_version[0x4];
+	u8 reserved_at_448[0x18];
 	u8 reserved_at_460[0x8];
 	u8 aes_xts[0x1];
 	u8 crypto[0x1];

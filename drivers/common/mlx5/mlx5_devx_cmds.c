@@ -819,6 +819,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->roce = MLX5_GET(cmd_hca_cap, hcattr, roce);
 	attr->rq_ts_format = MLX5_GET(cmd_hca_cap, hcattr, rq_ts_format);
 	attr->sq_ts_format = MLX5_GET(cmd_hca_cap, hcattr, sq_ts_format);
+	attr->steering_format_version =
+		MLX5_GET(cmd_hca_cap, hcattr, steering_format_version);
 	attr->regex = MLX5_GET(cmd_hca_cap, hcattr, regexp);
 	attr->regexp_num_of_engines = MLX5_GET(cmd_hca_cap, hcattr,
 					       regexp_num_of_engines);
