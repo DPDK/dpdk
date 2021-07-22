@@ -708,7 +708,8 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		tx_conf->tx_rs_thresh : DEFAULT_TX_RS_THRESH);
 	tx_free_thresh = (uint16_t)((tx_conf->tx_free_thresh) ?
 		tx_conf->tx_free_thresh : DEFAULT_TX_FREE_THRESH);
-	check_tx_thresh(nb_desc, tx_rs_thresh, tx_rs_thresh);
+	if (check_tx_thresh(nb_desc, tx_rs_thresh, tx_free_thresh) != 0)
+		return -EINVAL;
 
 	/* Free memory if needed. */
 	if (dev->data->tx_queues[queue_idx]) {
