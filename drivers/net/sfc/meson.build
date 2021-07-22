@@ -40,8 +40,20 @@ foreach flag: extra_flags
     endif
 endforeach
 
-# for gcc compiles we need -latomic for 128-bit atomic ops
-if cc.get_id() == 'gcc'
+# for gcc and old Clang compiles we need -latomic for 128-bit atomic ops
+atomic_check_code = '''
+int main(void)
+{
+    __int128 a = 0;
+    __int128 b;
+
+    b = __atomic_load_n(&a, __ATOMIC_RELAXED);
+    __atomic_store(&b, &a, __ATOMIC_RELAXED);
+    __atomic_store_n(&b, a, __ATOMIC_RELAXED);
+    return 0;
+}
+'''
+if not cc.links(atomic_check_code)
     libatomic_dep = cc.find_library('atomic', required: false)
     if not libatomic_dep.found()
         build = false
@@ -51,11 +63,7 @@ if cc.get_id() == 'gcc'
 
     # libatomic could be half-installed when above check finds it but
     # linkage fails
-    atomic_link_code = '''
-    #include <stdio.h>
-    void main() { printf("libatomic link check\n"); }
-    '''
-    if not cc.links(atomic_link_code, dependencies: libatomic_dep)
+    if not cc.links(atomic_check_code, dependencies: libatomic_dep)
         build = false
         reason = 'broken dependency, "libatomic"'
         subdir_done()
