@@ -130,7 +130,6 @@ struct sfc_port {
 	unsigned int			nb_mcast_addrs;
 	uint8_t				*mcast_addrs;
 
-	rte_spinlock_t			mac_stats_lock;
 	uint64_t			*mac_stats_buf;
 	unsigned int			mac_stats_nb_supported;
 	efsys_mem_t			mac_stats_dma_mem;
