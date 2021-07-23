@@ -733,6 +733,11 @@ sfc_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 
 	sfc_adapter_lock(sa);
 
+	if (unlikely(xstats == NULL)) {
+		nstats = port->mac_stats_nb_supported;
+		goto unlock;
+	}
+
 	rc = sfc_port_update_mac_stats(sa, B_FALSE);
 	if (rc != 0) {
 		SFC_ASSERT(rc > 0);
@@ -744,7 +749,7 @@ sfc_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 
 	for (i = 0; i < EFX_MAC_NSTATS; ++i) {
 		if (EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i)) {
-			if (xstats != NULL && nstats < (int)xstats_count) {
+			if (nstats < (int)xstats_count) {
 				xstats[nstats].id = nstats;
 				xstats[nstats].value = mac_stats[i];
 			}
@@ -768,9 +773,16 @@ sfc_xstats_get_names(struct rte_eth_dev *dev,
 	unsigned int i;
 	unsigned int nstats = 0;
 
+	if (unlikely(xstats_names == NULL)) {
+		sfc_adapter_lock(sa);
+		nstats = port->mac_stats_nb_supported;
+		sfc_adapter_unlock(sa);
+		return nstats;
+	}
+
 	for (i = 0; i < EFX_MAC_NSTATS; ++i) {
 		if (EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i)) {
-			if (xstats_names != NULL && nstats < xstats_count)
+			if (nstats < xstats_count)
 				strlcpy(xstats_names[nstats].name,
 					efx_mac_stat_name(sa->nic, i),
 					sizeof(xstats_names[0].name));
