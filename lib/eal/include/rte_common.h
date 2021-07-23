@@ -623,7 +623,7 @@ rte_bsf32(uint32_t v)
  *     Returns 0 if ``v`` was 0, otherwise returns 1.
  */
 static inline int
-rte_bsf32_safe(uint64_t v, uint32_t *pos)
+rte_bsf32_safe(uint32_t v, uint32_t *pos)
 {
 	if (v == 0)
 		return 0;

@@ -202,6 +202,10 @@ API Changes
 * eal: ``rte_strscpy`` sets ``rte_errno`` to ``E2BIG`` in case of string
   truncation.
 
+* eal: ``rte_bsf32_safe`` now takes a 32-bit value for its first argument.
+  This fixes warnings about loss of precision
+  when used with some compilers settings.
+
 * eal: ``rte_power_monitor`` and the ``rte_power_monitor_cond`` struct changed
   to use a callback mechanism.
 
