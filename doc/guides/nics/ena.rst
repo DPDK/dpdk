@@ -141,6 +141,7 @@ Supported features
 * LSC event notification
 * Watchdog (requires handling of timers in the application)
 * Device reset upon failure
+* Rx interrupts
 
 Prerequisites
 -------------
@@ -179,6 +180,17 @@ Prerequisites
 At this point the system should be ready to run DPDK applications. Once the
 application runs to completion, the ENA can be detached from attached module if
 necessary.
+
+**Rx interrupts support**
+
+ENA PMD supports Rx interrupts, which can be used to wake up lcores waiting for
+input. Please note that it won't work with ``igb_uio``, so to use this feature,
+the ``vfio-pci`` should be used.
+
+ENA handles admin interrupts and AENQ notifications on separate interrupt.
+There is possibility that there won't be enough event file descriptors to
+handle both admin and Rx interrupts. In that situation the Rx interrupt request
+will fail.
 
 **Note about usage on \*.metal instances**
 

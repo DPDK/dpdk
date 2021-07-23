@@ -213,11 +213,11 @@ static void ena_rx_queue_release_bufs(struct ena_ring *ring);
 static void ena_tx_queue_release_bufs(struct ena_ring *ring);
 static int ena_link_update(struct rte_eth_dev *dev,
 			   int wait_to_complete);
-static int ena_create_io_queue(struct ena_ring *ring);
+static int ena_create_io_queue(struct rte_eth_dev *dev, struct ena_ring *ring);
 static void ena_queue_stop(struct ena_ring *ring);
 static void ena_queue_stop_all(struct rte_eth_dev *dev,
 			      enum ena_ring_type ring_type);
-static int ena_queue_start(struct ena_ring *ring);
+static int ena_queue_start(struct rte_eth_dev *dev, struct ena_ring *ring);
 static int ena_queue_start_all(struct rte_eth_dev *dev,
 			       enum ena_ring_type ring_type);
 static void ena_stats_restart(struct rte_eth_dev *dev);
@@ -249,6 +249,11 @@ static int ena_process_bool_devarg(const char *key,
 static int ena_parse_devargs(struct ena_adapter *adapter,
 			     struct rte_devargs *devargs);
 static int ena_copy_eni_stats(struct ena_adapter *adapter);
+static int ena_setup_rx_intr(struct rte_eth_dev *dev);
+static int ena_rx_queue_intr_enable(struct rte_eth_dev *dev,
+				    uint16_t queue_id);
+static int ena_rx_queue_intr_disable(struct rte_eth_dev *dev,
+				     uint16_t queue_id);
 
 static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -269,6 +274,8 @@ static const struct eth_dev_ops ena_dev_ops = {
 	.dev_reset            = ena_dev_reset,
 	.reta_update          = ena_rss_reta_update,
 	.reta_query           = ena_rss_reta_query,
+	.rx_queue_intr_enable = ena_rx_queue_intr_enable,
+	.rx_queue_intr_disable = ena_rx_queue_intr_disable,
 };
 
 void ena_rss_key_fill(void *key, size_t size)
@@ -829,7 +836,7 @@ static int ena_queue_start_all(struct rte_eth_dev *dev,
 					"Inconsistent state of Tx queues\n");
 			}
 
-			rc = ena_queue_start(&queues[i]);
+			rc = ena_queue_start(dev, &queues[i]);
 
 			if (rc) {
 				PMD_INIT_LOG(ERR,
@@ -1074,6 +1081,10 @@ static int ena_start(struct rte_eth_dev *dev)
 	if (rc)
 		return rc;
 
+	rc = ena_setup_rx_intr(dev);
+	if (rc)
+		return rc;
+
 	rc = ena_queue_start_all(dev, ENA_RING_TYPE_RX);
 	if (rc)
 		return rc;
@@ -1114,6 +1125,8 @@ static int ena_stop(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter = dev->data->dev_private;
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int rc;
 
 	/* Cannot free memory in secondary process */
@@ -1132,6 +1145,16 @@ static int ena_stop(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(ERR, "Device reset failed, rc: %d\n", rc);
 	}
 
+	rte_intr_disable(intr_handle);
+
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec != NULL) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
+
+	rte_intr_enable(intr_handle);
+
 	++adapter->dev_stats.dev_stop;
 	adapter->state = ENA_ADAPTER_STATE_STOPPED;
 	dev->data->dev_started = 0;
@@ -1139,10 +1162,12 @@ static int ena_stop(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int ena_create_io_queue(struct ena_ring *ring)
+static int ena_create_io_queue(struct rte_eth_dev *dev, struct ena_ring *ring)
 {
-	struct ena_adapter *adapter;
-	struct ena_com_dev *ena_dev;
+	struct ena_adapter *adapter = ring->adapter;
+	struct ena_com_dev *ena_dev = &adapter->ena_dev;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct ena_com_create_io_ctx ctx =
 		/* policy set to _HOST just to satisfy icc compiler */
 		{ ENA_ADMIN_PLACEMENT_POLICY_HOST,
@@ -1151,9 +1176,7 @@ static int ena_create_io_queue(struct ena_ring *ring)
 	unsigned int i;
 	int rc;
 
-	adapter = ring->adapter;
-	ena_dev = &adapter->ena_dev;
-
+	ctx.msix_vector = -1;
 	if (ring->type == ENA_RING_TYPE_TX) {
 		ena_qid = ENA_IO_TXQ_IDX(ring->id);
 		ctx.direction = ENA_COM_IO_QUEUE_DIRECTION_TX;
@@ -1163,12 +1186,13 @@ static int ena_create_io_queue(struct ena_ring *ring)
 	} else {
 		ena_qid = ENA_IO_RXQ_IDX(ring->id);
 		ctx.direction = ENA_COM_IO_QUEUE_DIRECTION_RX;
+		if (rte_intr_dp_is_en(intr_handle))
+			ctx.msix_vector = intr_handle->intr_vec[ring->id];
 		for (i = 0; i < ring->ring_size; i++)
 			ring->empty_rx_reqs[i] = i;
 	}
 	ctx.queue_size = ring->ring_size;
 	ctx.qid = ena_qid;
-	ctx.msix_vector = -1; /* interrupts not used */
 	ctx.numa_node = ring->numa_socket_id;
 
 	rc = ena_com_create_io_queue(ena_dev, &ctx);
@@ -1192,6 +1216,10 @@ static int ena_create_io_queue(struct ena_ring *ring)
 
 	if (ring->type == ENA_RING_TYPE_TX)
 		ena_com_update_numa_node(ring->ena_com_io_cq, ctx.numa_node);
+
+	/* Start with Rx interrupts being masked. */
+	if (ring->type == ENA_RING_TYPE_RX && rte_intr_dp_is_en(intr_handle))
+		ena_rx_queue_intr_disable(dev, ring->id);
 
 	return 0;
 }
@@ -1229,14 +1257,14 @@ static void ena_queue_stop_all(struct rte_eth_dev *dev,
 			ena_queue_stop(&queues[i]);
 }
 
-static int ena_queue_start(struct ena_ring *ring)
+static int ena_queue_start(struct rte_eth_dev *dev, struct ena_ring *ring)
 {
 	int rc, bufs_num;
 
 	ena_assert_msg(ring->configured == 1,
 		       "Trying to start unconfigured queue\n");
 
-	rc = ena_create_io_queue(ring);
+	rc = ena_create_io_queue(dev, ring);
 	if (rc) {
 		PMD_INIT_LOG(ERR, "Failed to create IO queue\n");
 		return rc;
@@ -2942,6 +2970,100 @@ static int ena_parse_devargs(struct ena_adapter *adapter,
 	rte_kvargs_free(kvlist);
 
 	return rc;
+}
+
+static int ena_setup_rx_intr(struct rte_eth_dev *dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	int rc;
+	uint16_t vectors_nb, i;
+	bool rx_intr_requested = dev->data->dev_conf.intr_conf.rxq;
+
+	if (!rx_intr_requested)
+		return 0;
+
+	if (!rte_intr_cap_multiple(intr_handle)) {
+		PMD_DRV_LOG(ERR,
+			"Rx interrupt requested, but it isn't supported by the PCI driver\n");
+		return -ENOTSUP;
+	}
+
+	/* Disable interrupt mapping before the configuration starts. */
+	rte_intr_disable(intr_handle);
+
+	/* Verify if there are enough vectors available. */
+	vectors_nb = dev->data->nb_rx_queues;
+	if (vectors_nb > RTE_MAX_RXTX_INTR_VEC_ID) {
+		PMD_DRV_LOG(ERR,
+			"Too many Rx interrupts requested, maximum number: %d\n",
+			RTE_MAX_RXTX_INTR_VEC_ID);
+		rc = -ENOTSUP;
+		goto enable_intr;
+	}
+
+	intr_handle->intr_vec =	rte_zmalloc("intr_vec",
+		dev->data->nb_rx_queues * sizeof(*intr_handle->intr_vec), 0);
+	if (intr_handle->intr_vec == NULL) {
+		PMD_DRV_LOG(ERR,
+			"Failed to allocate interrupt vector for %d queues\n",
+			dev->data->nb_rx_queues);
+		rc = -ENOMEM;
+		goto enable_intr;
+	}
+
+	rc = rte_intr_efd_enable(intr_handle, vectors_nb);
+	if (rc != 0)
+		goto free_intr_vec;
+
+	if (!rte_intr_allow_others(intr_handle)) {
+		PMD_DRV_LOG(ERR,
+			"Not enough interrupts available to use both ENA Admin and Rx interrupts\n");
+		goto disable_intr_efd;
+	}
+
+	for (i = 0; i < vectors_nb; ++i)
+		intr_handle->intr_vec[i] = RTE_INTR_VEC_RXTX_OFFSET + i;
+
+	rte_intr_enable(intr_handle);
+	return 0;
+
+disable_intr_efd:
+	rte_intr_efd_disable(intr_handle);
+free_intr_vec:
+	rte_free(intr_handle->intr_vec);
+	intr_handle->intr_vec = NULL;
+enable_intr:
+	rte_intr_enable(intr_handle);
+	return rc;
+}
+
+static void ena_rx_queue_intr_set(struct rte_eth_dev *dev,
+				 uint16_t queue_id,
+				 bool unmask)
+{
+	struct ena_adapter *adapter = dev->data->dev_private;
+	struct ena_ring *rxq = &adapter->rx_ring[queue_id];
+	struct ena_eth_io_intr_reg intr_reg;
+
+	ena_com_update_intr_reg(&intr_reg, 0, 0, unmask);
+	ena_com_unmask_intr(rxq->ena_com_io_cq, &intr_reg);
+}
+
+static int ena_rx_queue_intr_enable(struct rte_eth_dev *dev,
+				    uint16_t queue_id)
+{
+	ena_rx_queue_intr_set(dev, queue_id, true);
+
+	return 0;
+}
+
+static int ena_rx_queue_intr_disable(struct rte_eth_dev *dev,
+				     uint16_t queue_id)
+{
+	ena_rx_queue_intr_set(dev, queue_id, false);
+
+	return 0;
 }
 
 /*********************************************************************

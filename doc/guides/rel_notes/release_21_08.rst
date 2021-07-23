@@ -67,6 +67,13 @@ New Features
   in a transparent way, with EAL uncompressing using libarchive if this library
   is available when building DPDK.
 
+* **Updated Amazon ENA PMD.**
+
+  The new driver version (v2.4.0) introduced bug fixes and improvements,
+  including:
+
+  * Added Rx interrupt support.
+
 * **Updated Intel iavf driver.**
 
   * Added Tx QoS VF queue TC mapping.
