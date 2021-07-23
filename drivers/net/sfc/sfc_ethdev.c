@@ -780,11 +780,13 @@ sfc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 	int ret;
 	int rc;
 
-	if (unlikely(values == NULL) ||
-	    unlikely((ids == NULL) && (n < port->mac_stats_nb_supported)))
-		return port->mac_stats_nb_supported;
-
 	rte_spinlock_lock(&port->mac_stats_lock);
+
+	if (unlikely(values == NULL) ||
+	    unlikely(ids == NULL && n < port->mac_stats_nb_supported)) {
+		ret = port->mac_stats_nb_supported;
+		goto unlock;
+	}
 
 	rc = sfc_port_update_mac_stats(sa);
 	if (rc != 0) {
