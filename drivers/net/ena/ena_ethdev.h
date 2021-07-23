@@ -6,10 +6,16 @@
 #ifndef _ENA_ETHDEV_H_
 #define _ENA_ETHDEV_H_
 
+#include <rte_atomic.h>
+#include <rte_ether.h>
+#include <ethdev_driver.h>
+#include <ethdev_pci.h>
 #include <rte_cycles.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 #include <rte_timer.h>
+#include <rte_dev.h>
+#include <rte_net.h>
 
 #include "ena_com.h"
 
@@ -42,6 +48,21 @@
 
 #define ENA_IDX_NEXT_MASKED(idx, mask) (((idx) + 1) & (mask))
 #define ENA_IDX_ADD_MASKED(idx, n, mask) (((idx) + (n)) & (mask))
+
+#define ENA_RX_RSS_TABLE_LOG_SIZE	7
+#define ENA_RX_RSS_TABLE_SIZE		(1 << ENA_RX_RSS_TABLE_LOG_SIZE)
+
+#define ENA_HASH_KEY_SIZE		40
+
+#define ENA_ALL_RSS_HF (ETH_RSS_NONFRAG_IPV4_TCP | ETH_RSS_NONFRAG_IPV4_UDP | \
+			ETH_RSS_NONFRAG_IPV6_TCP | ETH_RSS_NONFRAG_IPV6_UDP)
+
+#define ENA_IO_TXQ_IDX(q)		(2 * (q))
+#define ENA_IO_RXQ_IDX(q)		(2 * (q) + 1)
+/* Reversed version of ENA_IO_RXQ_IDX */
+#define ENA_IO_RXQ_IDX_REV(q)		(((q) - 1) / 2)
+
+extern struct ena_shared_data *ena_shared_data;
 
 struct ena_adapter;
 
@@ -205,6 +226,7 @@ struct ena_offloads {
 	bool tso4_supported;
 	bool tx_csum_supported;
 	bool rx_csum_supported;
+	bool rss_hash_supported;
 };
 
 /* board specific private data structure */
@@ -267,5 +289,17 @@ struct ena_adapter {
 
 	bool use_large_llq_hdr;
 };
+
+int ena_rss_reta_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size);
+int ena_rss_reta_query(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_reta_entry64 *reta_conf,
+		       uint16_t reta_size);
+int ena_rss_hash_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf);
+int ena_rss_hash_conf_get(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf);
+int ena_rss_configure(struct ena_adapter *adapter);
 
 #endif /* _ENA_ETHDEV_H_ */

@@ -73,6 +73,7 @@ New Features
   including:
 
   * Added Rx interrupt support.
+  * RSS hash function key reconfiguration support.
 
 * **Updated Intel iavf driver.**
 

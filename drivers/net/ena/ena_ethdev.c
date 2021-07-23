@@ -4,12 +4,6 @@
  */
 
 #include <rte_string_fns.h>
-#include <rte_ether.h>
-#include <ethdev_driver.h>
-#include <ethdev_pci.h>
-#include <rte_tcp.h>
-#include <rte_atomic.h>
-#include <rte_dev.h>
 #include <rte_errno.h>
 #include <rte_version.h>
 #include <rte_net.h>
@@ -30,21 +24,12 @@
 #define DRV_MODULE_VER_MINOR	3
 #define DRV_MODULE_VER_SUBMINOR	0
 
-#define ENA_IO_TXQ_IDX(q)	(2 * (q))
-#define ENA_IO_RXQ_IDX(q)	(2 * (q) + 1)
-/*reverse version of ENA_IO_RXQ_IDX*/
-#define ENA_IO_RXQ_IDX_REV(q)	((q - 1) / 2)
-
 #define __MERGE_64B_H_L(h, l) (((uint64_t)h << 32) | l)
-#define TEST_BIT(val, bit_shift) (val & (1UL << bit_shift))
 
 #define GET_L4_HDR_LEN(mbuf)					\
 	((rte_pktmbuf_mtod_offset(mbuf,	struct rte_tcp_hdr *,	\
 		mbuf->l3_len + mbuf->l2_len)->data_off) >> 4)
 
-#define ENA_RX_RSS_TABLE_LOG_SIZE  7
-#define ENA_RX_RSS_TABLE_SIZE	(1 << ENA_RX_RSS_TABLE_LOG_SIZE)
-#define ENA_HASH_KEY_SIZE	40
 #define ETH_GSTRING_LEN	32
 
 #define ARRAY_SIZE(x) RTE_DIM(x)
@@ -223,12 +208,6 @@ static int ena_queue_start_all(struct rte_eth_dev *dev,
 static void ena_stats_restart(struct rte_eth_dev *dev);
 static int ena_infos_get(struct rte_eth_dev *dev,
 			 struct rte_eth_dev_info *dev_info);
-static int ena_rss_reta_update(struct rte_eth_dev *dev,
-			       struct rte_eth_rss_reta_entry64 *reta_conf,
-			       uint16_t reta_size);
-static int ena_rss_reta_query(struct rte_eth_dev *dev,
-			      struct rte_eth_rss_reta_entry64 *reta_conf,
-			      uint16_t reta_size);
 static void ena_interrupt_handler_rte(void *cb_arg);
 static void ena_timer_wd_callback(struct rte_timer *timer, void *arg);
 static void ena_destroy_device(struct rte_eth_dev *eth_dev);
@@ -276,27 +255,13 @@ static const struct eth_dev_ops ena_dev_ops = {
 	.reta_query           = ena_rss_reta_query,
 	.rx_queue_intr_enable = ena_rx_queue_intr_enable,
 	.rx_queue_intr_disable = ena_rx_queue_intr_disable,
+	.rss_hash_update      = ena_rss_hash_update,
+	.rss_hash_conf_get    = ena_rss_hash_conf_get,
 };
 
-void ena_rss_key_fill(void *key, size_t size)
-{
-	static bool key_generated;
-	static uint8_t default_key[ENA_HASH_KEY_SIZE];
-	size_t i;
-
-	RTE_ASSERT(size <= ENA_HASH_KEY_SIZE);
-
-	if (!key_generated) {
-		for (i = 0; i < ENA_HASH_KEY_SIZE; ++i)
-			default_key[i] = rte_rand() & 0xff;
-		key_generated = true;
-	}
-
-	rte_memcpy(key, default_key, size);
-}
-
 static inline void ena_rx_mbuf_prepare(struct rte_mbuf *mbuf,
-				       struct ena_com_rx_ctx *ena_rx_ctx)
+				       struct ena_com_rx_ctx *ena_rx_ctx,
+				       bool fill_hash)
 {
 	uint64_t ol_flags = 0;
 	uint32_t packet_type = 0;
@@ -324,7 +289,8 @@ static inline void ena_rx_mbuf_prepare(struct rte_mbuf *mbuf,
 		else
 			ol_flags |= PKT_RX_L4_CKSUM_GOOD;
 
-	if (likely((packet_type & ENA_PTYPE_HAS_HASH) && !ena_rx_ctx->frag)) {
+	if (fill_hash &&
+	    likely((packet_type & ENA_PTYPE_HAS_HASH) && !ena_rx_ctx->frag)) {
 		ol_flags |= PKT_RX_RSS_HASH;
 		mbuf->hash.rss = ena_rx_ctx->hash;
 	}
@@ -446,7 +412,8 @@ static void ena_config_host_info(struct ena_com_dev *ena_dev)
 	host_info->num_cpus = rte_lcore_count();
 
 	host_info->driver_supported_features =
-		ENA_ADMIN_HOST_INFO_RX_OFFSET_MASK;
+		ENA_ADMIN_HOST_INFO_RX_OFFSET_MASK |
+		ENA_ADMIN_HOST_INFO_RSS_CONFIGURABLE_FUNCTION_KEY_MASK;
 
 	rc = ena_com_set_host_attributes(ena_dev);
 	if (rc) {
@@ -552,151 +519,6 @@ ena_dev_reset(struct rte_eth_dev *dev)
 	rc = eth_ena_dev_init(dev);
 	if (rc)
 		PMD_INIT_LOG(CRIT, "Cannot initialize device\n");
-
-	return rc;
-}
-
-static int ena_rss_reta_update(struct rte_eth_dev *dev,
-			       struct rte_eth_rss_reta_entry64 *reta_conf,
-			       uint16_t reta_size)
-{
-	struct ena_adapter *adapter = dev->data->dev_private;
-	struct ena_com_dev *ena_dev = &adapter->ena_dev;
-	int rc, i;
-	u16 entry_value;
-	int conf_idx;
-	int idx;
-
-	if ((reta_size == 0) || (reta_conf == NULL))
-		return -EINVAL;
-
-	if (reta_size > ENA_RX_RSS_TABLE_SIZE) {
-		PMD_DRV_LOG(WARNING,
-			"Requested indirection table size (%d) is bigger than supported: %d\n",
-			reta_size, ENA_RX_RSS_TABLE_SIZE);
-		return -EINVAL;
-	}
-
-	for (i = 0 ; i < reta_size ; i++) {
-		/* each reta_conf is for 64 entries.
-		 * to support 128 we use 2 conf of 64
-		 */
-		conf_idx = i / RTE_RETA_GROUP_SIZE;
-		idx = i % RTE_RETA_GROUP_SIZE;
-		if (TEST_BIT(reta_conf[conf_idx].mask, idx)) {
-			entry_value =
-				ENA_IO_RXQ_IDX(reta_conf[conf_idx].reta[idx]);
-
-			rc = ena_com_indirect_table_fill_entry(ena_dev,
-							       i,
-							       entry_value);
-			if (unlikely(rc && rc != ENA_COM_UNSUPPORTED)) {
-				PMD_DRV_LOG(ERR,
-					"Cannot fill indirect table\n");
-				return rc;
-			}
-		}
-	}
-
-	rte_spinlock_lock(&adapter->admin_lock);
-	rc = ena_com_indirect_table_set(ena_dev);
-	rte_spinlock_unlock(&adapter->admin_lock);
-	if (unlikely(rc && rc != ENA_COM_UNSUPPORTED)) {
-		PMD_DRV_LOG(ERR, "Cannot flush the indirect table\n");
-		return rc;
-	}
-
-	PMD_DRV_LOG(DEBUG, "RSS configured %d entries for port %d\n",
-		reta_size, dev->data->port_id);
-
-	return 0;
-}
-
-/* Query redirection table. */
-static int ena_rss_reta_query(struct rte_eth_dev *dev,
-			      struct rte_eth_rss_reta_entry64 *reta_conf,
-			      uint16_t reta_size)
-{
-	struct ena_adapter *adapter = dev->data->dev_private;
-	struct ena_com_dev *ena_dev = &adapter->ena_dev;
-	int rc;
-	int i;
-	u32 indirect_table[ENA_RX_RSS_TABLE_SIZE] = {0};
-	int reta_conf_idx;
-	int reta_idx;
-
-	if (reta_size == 0 || reta_conf == NULL ||
-	    (reta_size > RTE_RETA_GROUP_SIZE && ((reta_conf + 1) == NULL)))
-		return -EINVAL;
-
-	rte_spinlock_lock(&adapter->admin_lock);
-	rc = ena_com_indirect_table_get(ena_dev, indirect_table);
-	rte_spinlock_unlock(&adapter->admin_lock);
-	if (unlikely(rc && rc != ENA_COM_UNSUPPORTED)) {
-		PMD_DRV_LOG(ERR, "Cannot get indirection table\n");
-		return -ENOTSUP;
-	}
-
-	for (i = 0 ; i < reta_size ; i++) {
-		reta_conf_idx = i / RTE_RETA_GROUP_SIZE;
-		reta_idx = i % RTE_RETA_GROUP_SIZE;
-		if (TEST_BIT(reta_conf[reta_conf_idx].mask, reta_idx))
-			reta_conf[reta_conf_idx].reta[reta_idx] =
-				ENA_IO_RXQ_IDX_REV(indirect_table[i]);
-	}
-
-	return 0;
-}
-
-static int ena_rss_init_default(struct ena_adapter *adapter)
-{
-	struct ena_com_dev *ena_dev = &adapter->ena_dev;
-	uint16_t nb_rx_queues = adapter->edev_data->nb_rx_queues;
-	int rc, i;
-	u32 val;
-
-	rc = ena_com_rss_init(ena_dev, ENA_RX_RSS_TABLE_LOG_SIZE);
-	if (unlikely(rc)) {
-		PMD_DRV_LOG(ERR, "Cannot init indirection table\n");
-		goto err_rss_init;
-	}
-
-	for (i = 0; i < ENA_RX_RSS_TABLE_SIZE; i++) {
-		val = i % nb_rx_queues;
-		rc = ena_com_indirect_table_fill_entry(ena_dev, i,
-						       ENA_IO_RXQ_IDX(val));
-		if (unlikely(rc && (rc != ENA_COM_UNSUPPORTED))) {
-			PMD_DRV_LOG(ERR, "Cannot fill indirection table\n");
-			goto err_fill_indir;
-		}
-	}
-
-	rc = ena_com_fill_hash_function(ena_dev, ENA_ADMIN_CRC32, NULL,
-					ENA_HASH_KEY_SIZE, 0xFFFFFFFF);
-	if (unlikely(rc && (rc != ENA_COM_UNSUPPORTED))) {
-		PMD_DRV_LOG(INFO, "Cannot fill hash function\n");
-		goto err_fill_indir;
-	}
-
-	rc = ena_com_set_default_hash_ctrl(ena_dev);
-	if (unlikely(rc && (rc != ENA_COM_UNSUPPORTED))) {
-		PMD_DRV_LOG(INFO, "Cannot fill hash control\n");
-		goto err_fill_indir;
-	}
-
-	rc = ena_com_indirect_table_set(ena_dev);
-	if (unlikely(rc && (rc != ENA_COM_UNSUPPORTED))) {
-		PMD_DRV_LOG(ERR, "Cannot flush indirection table\n");
-		goto err_fill_indir;
-	}
-	PMD_DRV_LOG(DEBUG, "RSS configured for port %d\n",
-		adapter->edev_data->port_id);
-
-	return 0;
-
-err_fill_indir:
-	ena_com_rss_destroy(ena_dev);
-err_rss_init:
 
 	return rc;
 }
@@ -1093,9 +915,8 @@ static int ena_start(struct rte_eth_dev *dev)
 	if (rc)
 		goto err_start_tx;
 
-	if (adapter->edev_data->dev_conf.rxmode.mq_mode &
-	    ETH_MQ_RX_RSS_FLAG && adapter->edev_data->nb_rx_queues > 0) {
-		rc = ena_rss_init_default(adapter);
+	if (adapter->edev_data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
+		rc = ena_rss_configure(adapter);
 		if (rc)
 			goto err_rss_init;
 	}
@@ -1385,7 +1206,7 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 			      uint16_t queue_idx,
 			      uint16_t nb_desc,
 			      unsigned int socket_id,
-			      __rte_unused const struct rte_eth_rxconf *rx_conf,
+			      const struct rte_eth_rxconf *rx_conf,
 			      struct rte_mempool *mp)
 {
 	struct ena_adapter *adapter = dev->data->dev_private;
@@ -1468,6 +1289,8 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 
 	for (i = 0; i < nb_desc; i++)
 		rxq->empty_rx_reqs[i] = i;
+
+	rxq->offloads = rx_conf->offloads | dev->data->dev_conf.rxmode.offloads;
 
 	/* Store pointer to this queue in upper layer */
 	rxq->configured = 1;
@@ -1932,12 +1755,21 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->offloads.rx_csum_supported =
 		(get_feat_ctx.offload.rx_supported &
 		ENA_ADMIN_FEATURE_OFFLOAD_DESC_RX_L4_IPV4_CSUM_MASK) != 0;
+	adapter->offloads.rss_hash_supported =
+		(get_feat_ctx.offload.rx_supported &
+		ENA_ADMIN_FEATURE_OFFLOAD_DESC_RX_HASH_MASK) != 0;
 
 	/* Copy MAC address and point DPDK to it */
 	eth_dev->data->mac_addrs = (struct rte_ether_addr *)adapter->mac_addr;
 	rte_ether_addr_copy((struct rte_ether_addr *)
 			get_feat_ctx.dev_attr.mac_addr,
 			(struct rte_ether_addr *)adapter->mac_addr);
+
+	rc = ena_com_rss_init(ena_dev, ENA_RX_RSS_TABLE_LOG_SIZE);
+	if (unlikely(rc != 0)) {
+		PMD_DRV_LOG(ERR, "Failed to initialize RSS in ENA device\n");
+		goto err_delete_debug_area;
+	}
 
 	adapter->drv_stats = rte_zmalloc("adapter stats",
 					 sizeof(*adapter->drv_stats),
@@ -1946,7 +1778,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		PMD_DRV_LOG(ERR,
 			"Failed to allocate memory for adapter statistics\n");
 		rc = -ENOMEM;
-		goto err_delete_debug_area;
+		goto err_rss_destroy;
 	}
 
 	rte_spinlock_init(&adapter->admin_lock);
@@ -1967,6 +1799,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 
 	return 0;
 
+err_rss_destroy:
+	ena_com_rss_destroy(ena_dev);
 err_delete_debug_area:
 	ena_com_delete_debug_area(ena_dev);
 
@@ -1990,6 +1824,8 @@ static void ena_destroy_device(struct rte_eth_dev *eth_dev)
 
 	if (adapter->state != ENA_ADAPTER_STATE_CLOSED)
 		ena_close(eth_dev);
+
+	ena_com_rss_destroy(ena_dev);
 
 	ena_com_delete_debug_area(ena_dev);
 	ena_com_delete_host_info(ena_dev);
@@ -2097,13 +1933,14 @@ static int ena_infos_get(struct rte_eth_dev *dev,
 
 	/* Inform framework about available features */
 	dev_info->rx_offload_capa = rx_feat;
-	dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (adapter->offloads.rss_hash_supported)
+		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_RSS_HASH;
 	dev_info->rx_queue_offload_capa = rx_feat;
 	dev_info->tx_offload_capa = tx_feat;
 	dev_info->tx_queue_offload_capa = tx_feat;
 
-	dev_info->flow_type_rss_offloads = ETH_RSS_IP | ETH_RSS_TCP |
-					   ETH_RSS_UDP;
+	dev_info->flow_type_rss_offloads = ENA_ALL_RSS_HF;
+	dev_info->hash_key_size = ENA_HASH_KEY_SIZE;
 
 	dev_info->min_rx_bufsize = ENA_MIN_FRAME_LEN;
 	dev_info->max_rx_pktlen  = adapter->max_mtu;
@@ -2250,6 +2087,7 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t completed;
 	struct ena_com_rx_ctx ena_rx_ctx;
 	int i, rc = 0;
+	bool fill_hash;
 
 #ifdef RTE_ETHDEV_DEBUG_RX
 	/* Check adapter state */
@@ -2259,6 +2097,8 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		return 0;
 	}
 #endif
+
+	fill_hash = rx_ring->offloads & DEV_RX_OFFLOAD_RSS_HASH;
 
 	descs_in_use = rx_ring->ring_size -
 		ena_com_free_q_entries(rx_ring->ena_com_io_sq) - 1;
@@ -2306,7 +2146,7 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 
 		/* fill mbuf attributes if any */
-		ena_rx_mbuf_prepare(mbuf, &ena_rx_ctx);
+		ena_rx_mbuf_prepare(mbuf, &ena_rx_ctx, fill_hash);
 
 		if (unlikely(mbuf->ol_flags &
 				(PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD))) {
