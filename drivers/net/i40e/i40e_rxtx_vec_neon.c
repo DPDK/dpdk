@@ -280,20 +280,20 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 
 		int32x4_t len_shl = {0, 0, 0, PKTLEN_SHIFT};
 
-		/* B.1 load 1 mbuf point */
+		/* B.1 load 2 mbuf point */
 		mbp1 = vld1q_u64((uint64_t *)&sw_ring[pos]);
 		/* Read desc statuses backwards to avoid race condition */
-		/* A.1 load 4 pkts desc */
+		/* A.1 load desc[3] */
 		descs[3] =  vld1q_u64((uint64_t *)(rxdp + 3));
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
 		vst1q_u64((uint64_t *)&rx_pkts[pos], mbp1);
 
-		/* B.1 load 1 mbuf point */
+		/* B.1 load 2 mbuf point */
 		mbp2 = vld1q_u64((uint64_t *)&sw_ring[pos + 2]);
 
+		/* A.1 load desc[2-0] */
 		descs[2] =  vld1q_u64((uint64_t *)(rxdp + 2));
-		/* B.1 load 2 mbuf point */
 		descs[1] =  vld1q_u64((uint64_t *)(rxdp + 1));
 		descs[0] =  vld1q_u64((uint64_t *)(rxdp));
 

@@ -281,22 +281,22 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 						  * in one XMM reg.
 						  */
 
-		/* B.1 load 1 mbuf point */
+		/* B.1 load 2 mbuf point */
 		mbp1 = *(vector unsigned long *)&sw_ring[pos];
 		/* Read desc statuses backwards to avoid race condition */
-		/* A.1 load 4 pkts desc */
+		/* A.1 load desc[3] */
 		descs[3] = *(vector unsigned long *)(rxdp + 3);
 		rte_compiler_barrier();
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
 		*(vector unsigned long *)&rx_pkts[pos] = mbp1;
 
-		/* B.1 load 1 mbuf point */
+		/* B.1 load 2 mbuf point */
 		mbp2 = *(vector unsigned long *)&sw_ring[pos + 2];
 
+		/* A.1 load desc[2-0] */
 		descs[2] = *(vector unsigned long *)(rxdp + 2);
 		rte_compiler_barrier();
-		/* B.1 load 2 mbuf point */
 		descs[1] = *(vector unsigned long *)(rxdp + 1);
 		rte_compiler_barrier();
 		descs[0] = *(vector unsigned long *)(rxdp);
