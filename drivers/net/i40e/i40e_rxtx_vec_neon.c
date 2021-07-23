@@ -280,24 +280,18 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 
 		int32x4_t len_shl = {0, 0, 0, PKTLEN_SHIFT};
 
-		/* B.1 load 2 mbuf point */
-		mbp1 = vld1q_u64((uint64_t *)&sw_ring[pos]);
-		/* Read desc statuses backwards to avoid race condition */
-		/* A.1 load desc[3] */
+		/* A.1 load desc[3-0] */
 		descs[3] =  vld1q_u64((uint64_t *)(rxdp + 3));
-
-		/* B.2 copy 2 mbuf point into rx_pkts  */
-		vst1q_u64((uint64_t *)&rx_pkts[pos], mbp1);
-
-		/* B.1 load 2 mbuf point */
-		mbp2 = vld1q_u64((uint64_t *)&sw_ring[pos + 2]);
-
-		/* A.1 load desc[2-0] */
 		descs[2] =  vld1q_u64((uint64_t *)(rxdp + 2));
 		descs[1] =  vld1q_u64((uint64_t *)(rxdp + 1));
 		descs[0] =  vld1q_u64((uint64_t *)(rxdp));
 
-		/* B.2 copy 2 mbuf point into rx_pkts  */
+		/* B.1 load 4 mbuf point */
+		mbp1 = vld1q_u64((uint64_t *)&sw_ring[pos]);
+		mbp2 = vld1q_u64((uint64_t *)&sw_ring[pos + 2]);
+
+		/* B.2 copy 4 mbuf point into rx_pkts  */
+		vst1q_u64((uint64_t *)&rx_pkts[pos], mbp1);
 		vst1q_u64((uint64_t *)&rx_pkts[pos + 2], mbp2);
 
 		if (split_packet) {
@@ -307,7 +301,19 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 			rte_mbuf_prefetch_part2(rx_pkts[pos + 3]);
 		}
 
-		/* pkt 3,4 shift the pktlen field to be 16-bit aligned*/
+		/* C.1 4=>2 filter staterr info only */
+		sterr_tmp2 = vzipq_u16(vreinterpretq_u16_u64(descs[1]),
+				       vreinterpretq_u16_u64(descs[3]));
+		sterr_tmp1 = vzipq_u16(vreinterpretq_u16_u64(descs[0]),
+				       vreinterpretq_u16_u64(descs[2]));
+
+		/* C.2 get 4 pkts staterr value  */
+		staterr = vzipq_u16(sterr_tmp1.val[1],
+				    sterr_tmp2.val[1]).val[0];
+
+		desc_to_olflags_v(rxq, descs, &rx_pkts[pos]);
+
+		/* pkts shift the pktlen field to be 16-bit aligned*/
 		uint32x4_t len3 = vshlq_u32(vreinterpretq_u32_u64(descs[3]),
 					    len_shl);
 		descs[3] = vreinterpretq_u64_u16(vsetq_lane_u16
@@ -320,31 +326,6 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 				(vgetq_lane_u16(vreinterpretq_u16_u32(len2), 7),
 				 vreinterpretq_u16_u64(descs[2]),
 				 7));
-
-		/* D.1 pkt 3,4 convert format from desc to pktmbuf */
-		pkt_mb4 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[3]), shuf_msk);
-		pkt_mb3 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[2]), shuf_msk);
-
-		/* C.1 4=>2 filter staterr info only */
-		sterr_tmp2 = vzipq_u16(vreinterpretq_u16_u64(descs[1]),
-				       vreinterpretq_u16_u64(descs[3]));
-		/* C.1 4=>2 filter staterr info only */
-		sterr_tmp1 = vzipq_u16(vreinterpretq_u16_u64(descs[0]),
-				       vreinterpretq_u16_u64(descs[2]));
-
-		/* C.2 get 4 pkts staterr value  */
-		staterr = vzipq_u16(sterr_tmp1.val[1],
-				    sterr_tmp2.val[1]).val[0];
-
-		desc_to_olflags_v(rxq, descs, &rx_pkts[pos]);
-
-		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
-		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb4), crc_adjust);
-		pkt_mb4 = vreinterpretq_u8_u16(tmp);
-		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb3), crc_adjust);
-		pkt_mb3 = vreinterpretq_u8_u16(tmp);
-
-		/* pkt 1,2 shift the pktlen field to be 16-bit aligned*/
 		uint32x4_t len1 = vshlq_u32(vreinterpretq_u32_u64(descs[1]),
 					    len_shl);
 		descs[1] = vreinterpretq_u64_u16(vsetq_lane_u16
@@ -358,21 +339,37 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 				 vreinterpretq_u16_u64(descs[0]),
 				 7));
 
-		/* D.1 pkt 1,2 convert format from desc to pktmbuf */
+		/* D.1 pkts convert format from desc to pktmbuf */
+		pkt_mb4 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[3]), shuf_msk);
+		pkt_mb3 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[2]), shuf_msk);
 		pkt_mb2 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[1]), shuf_msk);
 		pkt_mb1 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[0]), shuf_msk);
 
-		/* D.3 copy final 3,4 data to rx_pkts */
-		vst1q_u8((void *)&rx_pkts[pos + 3]->rx_descriptor_fields1,
-				 pkt_mb4);
-		vst1q_u8((void *)&rx_pkts[pos + 2]->rx_descriptor_fields1,
-				 pkt_mb3);
-
-		/* D.2 pkt 1,2 set in_port/nb_seg and remove crc */
+		/* D.2 pkts set in_port/nb_seg and remove crc */
+		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb4), crc_adjust);
+		pkt_mb4 = vreinterpretq_u8_u16(tmp);
+		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb3), crc_adjust);
+		pkt_mb3 = vreinterpretq_u8_u16(tmp);
 		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb2), crc_adjust);
 		pkt_mb2 = vreinterpretq_u8_u16(tmp);
 		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb1), crc_adjust);
 		pkt_mb1 = vreinterpretq_u8_u16(tmp);
+
+		/* D.3 copy final data to rx_pkts */
+		vst1q_u8((void *)&rx_pkts[pos + 3]->rx_descriptor_fields1,
+				pkt_mb4);
+		vst1q_u8((void *)&rx_pkts[pos + 2]->rx_descriptor_fields1,
+				pkt_mb3);
+		vst1q_u8((void *)&rx_pkts[pos + 1]->rx_descriptor_fields1,
+				pkt_mb2);
+		vst1q_u8((void *)&rx_pkts[pos]->rx_descriptor_fields1,
+				pkt_mb1);
+
+		desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
+
+		if (likely(pos + RTE_I40E_DESCS_PER_LOOP < nb_pkts)) {
+			rte_prefetch_non_temporal(rxdp + RTE_I40E_DESCS_PER_LOOP);
+		}
 
 		/* C* extract and record EOP bit */
 		if (split_packet) {
@@ -411,14 +408,6 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 					    I40E_UINT16_BIT - 1));
 		stat = ~vgetq_lane_u64(vreinterpretq_u64_u16(staterr), 0);
 
-		rte_prefetch_non_temporal(rxdp + RTE_I40E_DESCS_PER_LOOP);
-
-		/* D.3 copy final 1,2 data to rx_pkts */
-		vst1q_u8((void *)&rx_pkts[pos + 1]->rx_descriptor_fields1,
-			 pkt_mb2);
-		vst1q_u8((void *)&rx_pkts[pos]->rx_descriptor_fields1,
-			 pkt_mb1);
-		desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
 		/* C.4 calc avaialbe number of desc */
 		if (unlikely(stat == 0)) {
 			nb_pkts_recd += RTE_I40E_DESCS_PER_LOOP;
