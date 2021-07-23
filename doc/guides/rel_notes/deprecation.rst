@@ -27,16 +27,18 @@ Deprecation Notices
 
 * rte_atomicNN_xxx: These APIs do not take memory order parameter. This does
   not allow for writing optimized code for all the CPU architectures supported
-  in DPDK. DPDK will adopt C11 atomic operations semantics and provide wrappers
-  using C11 atomic built-ins. These wrappers must be used for patches that
-  need to be merged in 20.08 onwards. This change will not introduce any
-  performance degradation.
+  in DPDK. DPDK has adopted the atomic operations from
+  https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html. These
+  operations must be used for patches that need to be merged in 20.08 onwards.
+  This change will not introduce any performance degradation.
 
 * rte_smp_*mb: These APIs provide full barrier functionality. However, many
-  use cases do not require full barriers. To support such use cases, DPDK will
-  adopt C11 barrier semantics and provide wrappers using C11 atomic built-ins.
-  These wrappers must be used for patches that need to be merged in 20.08
-  onwards. This change will not introduce any performance degradation.
+  use cases do not require full barriers. To support such use cases, DPDK has
+  adopted atomic operations from
+  https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html. These
+  operations and a new wrapper ``rte_atomic_thread_fence`` instead of
+  ``__atomic_thread_fence`` must be used for patches that need to be merged in
+  20.08 onwards. This change will not introduce any performance degradation.
 
 * lib: will fix extending some enum/define breaking the ABI. There are multiple
   samples in DPDK that enum/define terminated with a ``.*MAX.*`` value which is
