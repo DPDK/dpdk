@@ -851,8 +851,11 @@ complete_async_pkts(struct vhost_dev *vdev)
 
 	complete_count = rte_vhost_poll_enqueue_completed(vdev->vid,
 					VIRTIO_RXQ, p_cpl, MAX_PKT_BURST);
-	if (complete_count)
+	if (complete_count) {
 		free_pkts(p_cpl, complete_count);
+		__atomic_sub_fetch(&vdev->pkts_inflight, complete_count, __ATOMIC_SEQ_CST);
+	}
+
 }
 
 static __rte_always_inline void
@@ -895,6 +898,7 @@ drain_vhost(struct vhost_dev *vdev)
 		complete_async_pkts(vdev);
 		ret = rte_vhost_submit_enqueue_burst(vdev->vid, VIRTIO_RXQ,
 					m, nr_xmit, m_cpu_cpl, &cpu_cpl_nr);
+		__atomic_add_fetch(&vdev->pkts_inflight, ret - cpu_cpl_nr, __ATOMIC_SEQ_CST);
 
 		if (cpu_cpl_nr)
 			free_pkts(m_cpu_cpl, cpu_cpl_nr);
@@ -1226,6 +1230,9 @@ drain_eth_rx(struct vhost_dev *vdev)
 		enqueue_count = rte_vhost_submit_enqueue_burst(vdev->vid,
 					VIRTIO_RXQ, pkts, rx_count,
 					m_cpu_cpl, &cpu_cpl_nr);
+		__atomic_add_fetch(&vdev->pkts_inflight, enqueue_count - cpu_cpl_nr,
+					__ATOMIC_SEQ_CST);
+
 		if (cpu_cpl_nr)
 			free_pkts(m_cpu_cpl, cpu_cpl_nr);
 
@@ -1397,8 +1404,19 @@ destroy_device(int vid)
 		"(%d) device has been removed from data core\n",
 		vdev->vid);
 
-	if (async_vhost_driver)
+	if (async_vhost_driver) {
+		uint16_t n_pkt = 0;
+		struct rte_mbuf *m_cpl[vdev->pkts_inflight];
+
+		while (vdev->pkts_inflight) {
+			n_pkt = rte_vhost_clear_queue_thread_unsafe(vid, VIRTIO_RXQ,
+						m_cpl, vdev->pkts_inflight);
+			free_pkts(m_cpl, n_pkt);
+			__atomic_sub_fetch(&vdev->pkts_inflight, n_pkt, __ATOMIC_SEQ_CST);
+		}
+
 		rte_vhost_async_channel_unregister(vid, VIRTIO_RXQ);
+	}
 
 	rte_free(vdev);
 }
@@ -1487,6 +1505,38 @@ new_device(int vid)
 	return 0;
 }
 
+static int
+vring_state_changed(int vid, uint16_t queue_id, int enable)
+{
+	struct vhost_dev *vdev = NULL;
+
+	TAILQ_FOREACH(vdev, &vhost_dev_list, global_vdev_entry) {
+		if (vdev->vid == vid)
+			break;
+	}
+	if (!vdev)
+		return -1;
+
+	if (queue_id != VIRTIO_RXQ)
+		return 0;
+
+	if (async_vhost_driver) {
+		if (!enable) {
+			uint16_t n_pkt = 0;
+			struct rte_mbuf *m_cpl[vdev->pkts_inflight];
+
+			while (vdev->pkts_inflight) {
+				n_pkt = rte_vhost_clear_queue_thread_unsafe(vid, queue_id,
+							m_cpl, vdev->pkts_inflight);
+				free_pkts(m_cpl, n_pkt);
+				__atomic_sub_fetch(&vdev->pkts_inflight, n_pkt, __ATOMIC_SEQ_CST);
+			}
+		}
+	}
+
+	return 0;
+}
+
 /*
  * These callback allow devices to be added to the data core when configuration
  * has been fully complete.
@@ -1495,6 +1545,7 @@ static const struct vhost_device_ops virtio_net_device_ops =
 {
 	.new_device =  new_device,
 	.destroy_device = destroy_device,
+	.vring_state_changed = vring_state_changed,
 };
 
 /*
