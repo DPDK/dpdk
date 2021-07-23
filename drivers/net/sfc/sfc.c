@@ -24,6 +24,7 @@
 #include "sfc_tx.h"
 #include "sfc_kvargs.h"
 #include "sfc_tweak.h"
+#include "sfc_sw_stats.h"
 
 
 int
@@ -636,9 +637,16 @@ sfc_configure(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_tx_configure;
 
+	rc = sfc_sw_xstats_configure(sa);
+	if (rc != 0)
+		goto fail_sw_xstats_configure;
+
 	sa->state = SFC_ADAPTER_CONFIGURED;
 	sfc_log_init(sa, "done");
 	return 0;
+
+fail_sw_xstats_configure:
+	sfc_tx_close(sa);
 
 fail_tx_configure:
 	sfc_rx_close(sa);
@@ -666,6 +674,7 @@ sfc_close(struct sfc_adapter *sa)
 	SFC_ASSERT(sa->state == SFC_ADAPTER_CONFIGURED);
 	sa->state = SFC_ADAPTER_CLOSING;
 
+	sfc_sw_xstats_close(sa);
 	sfc_tx_close(sa);
 	sfc_rx_close(sa);
 	sfc_port_close(sa);
@@ -891,6 +900,10 @@ sfc_attach(struct sfc_adapter *sa)
 
 	sfc_flow_init(sa);
 
+	rc = sfc_sw_xstats_init(sa);
+	if (rc != 0)
+		goto fail_sw_xstats_init;
+
 	/*
 	 * Create vSwitch to be able to use VFs when PF is not started yet
 	 * as DPDK port. VFs should be able to talk to each other even
@@ -906,6 +919,9 @@ sfc_attach(struct sfc_adapter *sa)
 	return 0;
 
 fail_sriov_vswitch_create:
+	sfc_sw_xstats_close(sa);
+
+fail_sw_xstats_init:
 	sfc_flow_fini(sa);
 	sfc_mae_detach(sa);
 

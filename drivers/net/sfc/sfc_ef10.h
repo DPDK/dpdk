@@ -99,7 +99,7 @@ sfc_ef10_ev_present(const efx_qword_t ev)
 
 static inline void
 sfc_ef10_rx_qpush(volatile void *doorbell, unsigned int added,
-		  unsigned int ptr_mask)
+		  unsigned int ptr_mask, uint32_t *dbell_counter)
 {
 	efx_dword_t dword;
 
@@ -118,6 +118,7 @@ sfc_ef10_rx_qpush(volatile void *doorbell, unsigned int added,
 	 * operations that follow it (i.e. doorbell write).
 	 */
 	rte_write32(dword.ed_u32[0], doorbell);
+	(*dbell_counter)++;
 }
 
 static inline void

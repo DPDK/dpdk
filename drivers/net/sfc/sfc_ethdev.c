@@ -28,6 +28,10 @@
 #include "sfc_flow.h"
 #include "sfc_dp.h"
 #include "sfc_dp_rx.h"
+#include "sfc_sw_stats.h"
+
+#define SFC_XSTAT_ID_INVALID_VAL  UINT64_MAX
+#define SFC_XSTAT_ID_INVALID_NAME '\0'
 
 uint32_t sfc_logtype_driver;
 
@@ -714,10 +718,26 @@ sfc_stats_reset(struct rte_eth_dev *dev)
 	if (rc != 0)
 		sfc_err(sa, "failed to reset statistics (rc = %d)", rc);
 
+	sfc_sw_xstats_reset(sa);
+
 	sfc_adapter_unlock(sa);
 
 	SFC_ASSERT(rc >= 0);
 	return -rc;
+}
+
+static unsigned int
+sfc_xstats_get_nb_supported(struct sfc_adapter *sa)
+{
+	struct sfc_port *port = &sa->port;
+	unsigned int nb_supported;
+
+	sfc_adapter_lock(sa);
+	nb_supported = port->mac_stats_nb_supported +
+		       sfc_sw_xstats_get_nb_supported(sa);
+	sfc_adapter_unlock(sa);
+
+	return nb_supported;
 }
 
 static int
@@ -725,18 +745,22 @@ sfc_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	       unsigned int xstats_count)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
-	struct sfc_port *port = &sa->port;
 	unsigned int nb_written = 0;
-	unsigned int nb_supp;
+	unsigned int nb_supported = 0;
+	int rc;
 
-	if (unlikely(xstats == NULL)) {
-		sfc_adapter_lock(sa);
-		nb_supp = port->mac_stats_nb_supported;
-		sfc_adapter_unlock(sa);
-		return nb_supp;
-	}
+	if (unlikely(xstats == NULL))
+		return sfc_xstats_get_nb_supported(sa);
 
-	return sfc_port_get_mac_stats(sa, xstats, xstats_count, &nb_written);
+	rc = sfc_port_get_mac_stats(sa, xstats, xstats_count, &nb_written);
+	if (rc < 0)
+		return rc;
+
+	nb_supported = rc;
+	sfc_sw_xstats_get_vals(sa, xstats, xstats_count, &nb_written,
+			       &nb_supported);
+
+	return nb_supported;
 }
 
 static int
@@ -748,22 +772,29 @@ sfc_xstats_get_names(struct rte_eth_dev *dev,
 	struct sfc_port *port = &sa->port;
 	unsigned int i;
 	unsigned int nstats = 0;
+	unsigned int nb_written = 0;
+	int ret;
 
-	if (unlikely(xstats_names == NULL)) {
-		sfc_adapter_lock(sa);
-		nstats = port->mac_stats_nb_supported;
-		sfc_adapter_unlock(sa);
-		return nstats;
-	}
+	if (unlikely(xstats_names == NULL))
+		return sfc_xstats_get_nb_supported(sa);
 
 	for (i = 0; i < EFX_MAC_NSTATS; ++i) {
 		if (EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i)) {
-			if (nstats < xstats_count)
+			if (nstats < xstats_count) {
 				strlcpy(xstats_names[nstats].name,
 					efx_mac_stat_name(sa->nic, i),
 					sizeof(xstats_names[0].name));
+				nb_written++;
+			}
 			nstats++;
 		}
+	}
+
+	ret = sfc_sw_xstats_get_names(sa, xstats_names, xstats_count,
+				      &nb_written, &nstats);
+	if (ret != 0) {
+		SFC_ASSERT(ret < 0);
+		return ret;
 	}
 
 	return nstats;
@@ -774,11 +805,35 @@ sfc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		     uint64_t *values, unsigned int n)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	struct sfc_port *port = &sa->port;
+	unsigned int nb_supported;
+	unsigned int i;
+	int rc;
 
 	if (unlikely(ids == NULL || values == NULL))
 		return -EINVAL;
 
-	return sfc_port_get_mac_stats_by_id(sa, ids, values, n);
+	/*
+	 * Values array could be filled in nonsequential order. Fill values with
+	 * constant indicating invalid ID first.
+	 */
+	for (i = 0; i < n; i++)
+		values[i] = SFC_XSTAT_ID_INVALID_VAL;
+
+	rc = sfc_port_get_mac_stats_by_id(sa, ids, values, n);
+	if (rc != 0)
+		return rc;
+
+	nb_supported = port->mac_stats_nb_supported;
+	sfc_sw_xstats_get_vals_by_id(sa, ids, values, n, &nb_supported);
+
+	/* Return number of written stats before invalid ID is encountered. */
+	for (i = 0; i < n; i++) {
+		if (values[i] == SFC_XSTAT_ID_INVALID_VAL)
+			return i;
+	}
+
+	return n;
 }
 
 static int
@@ -790,18 +845,23 @@ sfc_xstats_get_names_by_id(struct rte_eth_dev *dev,
 	struct sfc_port *port = &sa->port;
 	unsigned int nb_supported;
 	unsigned int i;
+	int ret;
 
 	if (unlikely(xstats_names == NULL && ids != NULL) ||
 	    unlikely(xstats_names != NULL && ids == NULL))
 		return -EINVAL;
 
-	sfc_adapter_lock(sa);
+	if (unlikely(xstats_names == NULL && ids == NULL))
+		return sfc_xstats_get_nb_supported(sa);
 
-	if (unlikely(xstats_names == NULL && ids == NULL)) {
-		nb_supported = port->mac_stats_nb_supported;
-		sfc_adapter_unlock(sa);
-		return nb_supported;
-	}
+	/*
+	 * Names array could be filled in nonsequential order. Fill names with
+	 * string indicating invalid ID first.
+	 */
+	for (i = 0; i < size; i++)
+		xstats_names[i].name[0] = SFC_XSTAT_ID_INVALID_NAME;
+
+	sfc_adapter_lock(sa);
 
 	SFC_ASSERT(port->mac_stats_nb_supported <=
 		   RTE_DIM(port->mac_stats_by_id));
@@ -812,13 +872,25 @@ sfc_xstats_get_names_by_id(struct rte_eth_dev *dev,
 				efx_mac_stat_name(sa->nic,
 						 port->mac_stats_by_id[ids[i]]),
 				sizeof(xstats_names[0].name));
-		} else {
-			sfc_adapter_unlock(sa);
-			return i;
 		}
 	}
 
+	nb_supported = port->mac_stats_nb_supported;
+
 	sfc_adapter_unlock(sa);
+
+	ret = sfc_sw_xstats_get_names_by_id(sa, ids, xstats_names, size,
+					    &nb_supported);
+	if (ret != 0) {
+		SFC_ASSERT(ret < 0);
+		return ret;
+	}
+
+	/* Return number of written names before invalid ID is encountered. */
+	for (i = 0; i < size; i++) {
+		if (xstats_names[i].name[0] == SFC_XSTAT_ID_INVALID_NAME)
+			return i;
+	}
 
 	return size;
 }

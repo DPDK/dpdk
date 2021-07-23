@@ -78,6 +78,7 @@ sources = files(
         'sfc.c',
         'sfc_mcdi.c',
         'sfc_sriov.c',
+        'sfc_sw_stats.c',
         'sfc_intr.c',
         'sfc_ev.c',
         'sfc_port.c',

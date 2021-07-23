@@ -7,6 +7,8 @@
  * for Solarflare) and Solarflare Communications, Inc.
  */
 
+#include <rte_bitmap.h>
+
 #include "efx.h"
 
 #include "sfc.h"
@@ -701,15 +703,11 @@ sfc_port_get_mac_stats_by_id(struct sfc_adapter *sa, const uint64_t *ids,
 		   RTE_DIM(port->mac_stats_by_id));
 
 	for (i = 0; i < n; i++) {
-		if (ids[i] < port->mac_stats_nb_supported) {
+		if (ids[i] < port->mac_stats_nb_supported)
 			values[i] = mac_stats[port->mac_stats_by_id[ids[i]]];
-		} else {
-			ret = i;
-			goto unlock;
-		}
 	}
 
-	ret = n;
+	ret = 0;
 
 unlock:
 	sfc_adapter_unlock(sa);

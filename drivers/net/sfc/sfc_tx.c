@@ -980,8 +980,10 @@ sfc_efx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				       txq->completed, &txq->added);
 		SFC_ASSERT(rc == 0);
 
-		if (likely(pushed != txq->added))
+		if (likely(pushed != txq->added)) {
 			efx_tx_qpush(txq->common, txq->added, pushed);
+			txq->dp.dpq.tx_dbells++;
+		}
 	}
 
 #if SFC_TX_XMIT_PKTS_REAP_AT_LEAST_ONCE
