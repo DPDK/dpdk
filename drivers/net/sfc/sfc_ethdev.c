@@ -794,13 +794,10 @@ sfc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 	int ret;
 	int rc;
 
-	sfc_adapter_lock(sa);
+	if (unlikely(ids == NULL || values == NULL))
+		return -EINVAL;
 
-	if (unlikely(values == NULL) ||
-	    unlikely(ids == NULL && n < port->mac_stats_nb_supported)) {
-		ret = port->mac_stats_nb_supported;
-		goto unlock;
-	}
+	sfc_adapter_lock(sa);
 
 	rc = sfc_port_update_mac_stats(sa);
 	if (rc != 0) {
@@ -815,7 +812,7 @@ sfc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		if (!EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i))
 			continue;
 
-		if ((ids == NULL) || (ids[nb_written] == nb_supported))
+		if (ids[nb_written] == nb_supported)
 			values[nb_written++] = mac_stats[i];
 
 		++nb_supported;
@@ -840,10 +837,13 @@ sfc_xstats_get_names_by_id(struct rte_eth_dev *dev,
 	unsigned int nb_written = 0;
 	unsigned int i;
 
+	if (unlikely(xstats_names == NULL && ids != NULL) ||
+	    unlikely(xstats_names != NULL && ids == NULL))
+		return -EINVAL;
+
 	sfc_adapter_lock(sa);
 
-	if (unlikely(xstats_names == NULL) ||
-	    unlikely((ids == NULL) && (size < port->mac_stats_nb_supported))) {
+	if (unlikely(xstats_names == NULL && ids == NULL)) {
 		nb_supported = port->mac_stats_nb_supported;
 		sfc_adapter_unlock(sa);
 		return nb_supported;
@@ -853,7 +853,7 @@ sfc_xstats_get_names_by_id(struct rte_eth_dev *dev,
 		if (!EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i))
 			continue;
 
-		if ((ids == NULL) || (ids[nb_written] == nb_supported)) {
+		if (ids[nb_written] == nb_supported) {
 			char *name = xstats_names[nb_written++].name;
 
 			strlcpy(name, efx_mac_stat_name(sa->nic, i),
