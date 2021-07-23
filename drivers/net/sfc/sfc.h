@@ -139,6 +139,8 @@ struct sfc_port {
 
 	uint32_t		mac_stats_mask[EFX_MAC_STATS_MASK_NPAGES];
 
+	unsigned int			mac_stats_by_id[EFX_MAC_NSTATS];
+
 	uint64_t			ipackets;
 };
 
