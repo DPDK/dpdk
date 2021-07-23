@@ -11,7 +11,7 @@ extern int ena_logtype_init;
 	rte_log(RTE_LOG_ ## level, ena_logtype_init, \
 		"%s(): " fmt, __func__, ## args)
 
-#ifdef RTE_LIBRTE_ENA_DEBUG_RX
+#ifdef RTE_ETHDEV_DEBUG_RX
 extern int ena_logtype_rx;
 #define PMD_RX_LOG(level, fmt, args...)			\
 	rte_log(RTE_LOG_ ## level, ena_logtype_rx,	\
@@ -20,22 +20,13 @@ extern int ena_logtype_rx;
 #define PMD_RX_LOG(level, fmt, args...) do { } while (0)
 #endif
 
-#ifdef RTE_LIBRTE_ENA_DEBUG_TX
+#ifdef RTE_ETHDEV_DEBUG_TX
 extern int ena_logtype_tx;
 #define PMD_TX_LOG(level, fmt, args...)			\
 	rte_log(RTE_LOG_ ## level, ena_logtype_tx,	\
 		"%s(): " fmt, __func__, ## args)
 #else
 #define PMD_TX_LOG(level, fmt, args...) do { } while (0)
-#endif
-
-#ifdef RTE_LIBRTE_ENA_DEBUG_TX_FREE
-extern int ena_logtype_tx_free;
-#define PMD_TX_FREE_LOG(level, fmt, args...)			\
-	rte_log(RTE_LOG_ ## level, ena_logtype_tx_free,	\
-		"%s(): " fmt, __func__, ## args)
-#else
-#define PMD_TX_FREE_LOG(level, fmt, args...) do { } while (0)
 #endif
 
 extern int ena_logtype_driver;

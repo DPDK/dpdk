@@ -399,9 +399,9 @@ static int validate_tx_req_id(struct ena_ring *tx_ring, u16 req_id)
 	}
 
 	if (tx_info)
-		PMD_DRV_LOG(ERR, "tx_info doesn't have valid mbuf\n");
+		PMD_TX_LOG(ERR, "tx_info doesn't have valid mbuf\n");
 	else
-		PMD_DRV_LOG(ERR, "Invalid req_id: %hu\n", req_id);
+		PMD_TX_LOG(ERR, "Invalid req_id: %hu\n", req_id);
 
 	/* Trigger device reset */
 	++tx_ring->tx_stats.bad_req_id;
@@ -1461,7 +1461,7 @@ static int ena_add_single_rx_desc(struct ena_com_io_sq *io_sq,
 	/* pass resource to device */
 	rc = ena_com_add_single_rx_desc(io_sq, &ebuf, id);
 	if (unlikely(rc != 0))
-		PMD_DRV_LOG(WARNING, "Failed adding Rx desc\n");
+		PMD_RX_LOG(WARNING, "Failed adding Rx desc\n");
 
 	return rc;
 }
@@ -1471,16 +1471,21 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 	unsigned int i;
 	int rc;
 	uint16_t next_to_use = rxq->next_to_use;
-	uint16_t in_use, req_id;
+	uint16_t req_id;
+#ifdef RTE_ETHDEV_DEBUG_RX
+	uint16_t in_use;
+#endif
 	struct rte_mbuf **mbufs = rxq->rx_refill_buffer;
 
 	if (unlikely(!count))
 		return 0;
 
+#ifdef RTE_ETHDEV_DEBUG_RX
 	in_use = rxq->ring_size - 1 -
 		ena_com_free_q_entries(rxq->ena_com_io_sq);
-	ena_assert_msg(((in_use + count) < rxq->ring_size),
-		"bad ring state\n");
+	if (unlikely((in_use + count) >= rxq->ring_size))
+		PMD_RX_LOG(ERR, "Bad Rx ring state\n");
+#endif
 
 	/* get resources for incoming packets */
 	rc = rte_pktmbuf_alloc_bulk(rxq->mb_pool, mbufs, count);
@@ -1510,7 +1515,7 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 	}
 
 	if (unlikely(i < count)) {
-		PMD_DRV_LOG(WARNING,
+		PMD_RX_LOG(WARNING,
 			"Refilled Rx queue[%d] with only %d/%d buffers\n",
 			rxq->id, i, count);
 		rte_pktmbuf_free_bulk(&mbufs[i], count - i);
@@ -2218,12 +2223,14 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct ena_com_rx_ctx ena_rx_ctx;
 	int i, rc = 0;
 
+#ifdef RTE_ETHDEV_DEBUG_RX
 	/* Check adapter state */
 	if (unlikely(rx_ring->adapter->state != ENA_ADAPTER_STATE_RUNNING)) {
-		PMD_DRV_LOG(ALERT,
+		PMD_RX_LOG(ALERT,
 			"Trying to receive pkts while device is NOT running\n");
 		return 0;
 	}
+#endif
 
 	descs_in_use = rx_ring->ring_size -
 		ena_com_free_q_entries(rx_ring->ena_com_io_sq) - 1;
@@ -2239,7 +2246,7 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				    rx_ring->ena_com_io_sq,
 				    &ena_rx_ctx);
 		if (unlikely(rc)) {
-			PMD_DRV_LOG(ERR,
+			PMD_RX_LOG(ERR,
 				"Failed to get the packet from the device, rc: %d\n",
 				rc);
 			if (rc == ENA_COM_NO_SPACE) {
@@ -2416,13 +2423,13 @@ static int ena_check_space_and_linearize_mbuf(struct ena_ring *tx_ring,
 	 * be needed so we reduce the segments number from num_segments to 1
 	 */
 	if (!ena_com_sq_have_enough_space(tx_ring->ena_com_io_sq, 3)) {
-		PMD_DRV_LOG(DEBUG, "Not enough space in the Tx queue\n");
+		PMD_TX_LOG(DEBUG, "Not enough space in the Tx queue\n");
 		return ENA_COM_NO_MEM;
 	}
 	++tx_ring->tx_stats.linearize;
 	rc = rte_pktmbuf_linearize(mbuf);
 	if (unlikely(rc)) {
-		PMD_DRV_LOG(WARNING, "Mbuf linearize failed\n");
+		PMD_TX_LOG(WARNING, "Mbuf linearize failed\n");
 		rte_atomic64_inc(&tx_ring->adapter->drv_stats->ierrors);
 		++tx_ring->tx_stats.linearize_failed;
 		return rc;
@@ -2436,7 +2443,7 @@ checkspace:
 	 */
 	if (!ena_com_sq_have_enough_space(tx_ring->ena_com_io_sq,
 					  num_segments + 2)) {
-		PMD_DRV_LOG(DEBUG, "Not enough space in the Tx queue\n");
+		PMD_TX_LOG(DEBUG, "Not enough space in the Tx queue\n");
 		return ENA_COM_NO_MEM;
 	}
 
@@ -2551,7 +2558,7 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 
 	if (unlikely(ena_com_is_doorbell_needed(tx_ring->ena_com_io_sq,
 			&ena_tx_ctx))) {
-		PMD_DRV_LOG(DEBUG,
+		PMD_TX_LOG(DEBUG,
 			"LLQ Tx max burst size of queue %d achieved, writing doorbell to send burst\n",
 			tx_ring->id);
 		ena_com_write_sq_doorbell(tx_ring->ena_com_io_sq);
@@ -2628,12 +2635,14 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ena_ring *tx_ring = (struct ena_ring *)(tx_queue);
 	uint16_t sent_idx = 0;
 
+#ifdef RTE_ETHDEV_DEBUG_TX
 	/* Check adapter state */
 	if (unlikely(tx_ring->adapter->state != ENA_ADAPTER_STATE_RUNNING)) {
-		PMD_DRV_LOG(ALERT,
+		PMD_TX_LOG(ALERT,
 			"Trying to xmit pkts while device is NOT running\n");
 		return 0;
 	}
+#endif
 
 	for (sent_idx = 0; sent_idx < nb_pkts; sent_idx++) {
 		if (ena_xmit_mbuf(tx_ring, tx_pkts[sent_idx]))
@@ -2960,18 +2969,13 @@ RTE_PMD_REGISTER_KMOD_DEP(net_ena, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_ena, ENA_DEVARG_LARGE_LLQ_HDR "=<0|1>");
 RTE_LOG_REGISTER_SUFFIX(ena_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(ena_logtype_driver, driver, NOTICE);
-#ifdef RTE_LIBRTE_ENA_DEBUG_RX
-RTE_LOG_REGISTER_SUFFIX(ena_logtype_rx, rx, NOTICE);
+#ifdef RTE_ETHDEV_DEBUG_RX
+RTE_LOG_REGISTER_SUFFIX(ena_logtype_rx, rx, DEBUG);
 #endif
-#ifdef RTE_LIBRTE_ENA_DEBUG_TX
-RTE_LOG_REGISTER_SUFFIX(ena_logtype_tx, tx, NOTICE);
+#ifdef RTE_ETHDEV_DEBUG_TX
+RTE_LOG_REGISTER_SUFFIX(ena_logtype_tx, tx, DEBUG);
 #endif
-#ifdef RTE_LIBRTE_ENA_DEBUG_TX_FREE
-RTE_LOG_REGISTER_SUFFIX(ena_logtype_tx_free, tx_free, NOTICE);
-#endif
-#ifdef RTE_LIBRTE_ENA_COM_DEBUG
-RTE_LOG_REGISTER_SUFFIX(ena_logtype_com, com, NOTICE);
-#endif
+RTE_LOG_REGISTER_SUFFIX(ena_logtype_com, com, WARNING);
 
 /******************************************************************************
  ******************************** AENQ Handlers *******************************

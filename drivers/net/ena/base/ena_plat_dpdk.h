@@ -108,7 +108,6 @@ extern int ena_logtype_com;
 #define GENMASK_ULL(h, l) (((~0ULL) - (1ULL << (l)) + 1) &		       \
 			  (~0ULL >> (BITS_PER_LONG_LONG - 1 - (h))))
 
-#ifdef RTE_LIBRTE_ENA_COM_DEBUG
 #define ena_trc_log(dev, level, fmt, arg...)				       \
 	(								       \
 		ENA_TOUCH(dev),						       \
@@ -121,12 +120,6 @@ extern int ena_logtype_com;
 #define ena_trc_warn(dev, format, arg...)				       \
 	ena_trc_log(dev, WARNING, format, ##arg)
 #define ena_trc_err(dev, format, arg...) ena_trc_log(dev, ERR, format, ##arg)
-#else
-#define ena_trc_dbg(dev, format, arg...) ENA_TOUCH(dev)
-#define ena_trc_info(dev, format, arg...) ENA_TOUCH(dev)
-#define ena_trc_warn(dev, format, arg...) ENA_TOUCH(dev)
-#define ena_trc_err(dev, format, arg...) ENA_TOUCH(dev)
-#endif /* RTE_LIBRTE_ENA_COM_DEBUG */
 
 #define ENA_WARN(cond, dev, format, arg...)				       \
 	do {								       \
