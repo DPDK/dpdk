@@ -2570,7 +2570,11 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 	rc = ena_com_prepare_tx(tx_ring->ena_com_io_sq,	&ena_tx_ctx,
 		&nb_hw_desc);
 	if (unlikely(rc)) {
+		PMD_DRV_LOG(ERR, "Failed to prepare Tx buffers, rc: %d\n", rc);
 		++tx_ring->tx_stats.prepare_ctx_err;
+		tx_ring->adapter->reset_reason =
+		    ENA_REGS_RESET_DRIVER_INVALID_STATE;
+		tx_ring->adapter->trigger_reset = true;
 		return rc;
 	}
 
