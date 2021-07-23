@@ -301,18 +301,6 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 			rte_mbuf_prefetch_part2(rx_pkts[pos + 3]);
 		}
 
-		/* C.1 4=>2 filter staterr info only */
-		sterr_tmp2 = vzipq_u16(vreinterpretq_u16_u64(descs[1]),
-				       vreinterpretq_u16_u64(descs[3]));
-		sterr_tmp1 = vzipq_u16(vreinterpretq_u16_u64(descs[0]),
-				       vreinterpretq_u16_u64(descs[2]));
-
-		/* C.2 get 4 pkts staterr value  */
-		staterr = vzipq_u16(sterr_tmp1.val[1],
-				    sterr_tmp2.val[1]).val[0];
-
-		desc_to_olflags_v(rxq, descs, &rx_pkts[pos]);
-
 		/* pkts shift the pktlen field to be 16-bit aligned*/
 		uint32x4_t len3 = vshlq_u32(vreinterpretq_u32_u64(descs[3]),
 					    len_shl);
@@ -367,9 +355,21 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 
 		desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
 
+		desc_to_olflags_v(rxq, descs, &rx_pkts[pos]);
+
 		if (likely(pos + RTE_I40E_DESCS_PER_LOOP < nb_pkts)) {
 			rte_prefetch_non_temporal(rxdp + RTE_I40E_DESCS_PER_LOOP);
 		}
+
+		/* C.1 4=>2 filter staterr info only */
+		sterr_tmp2 = vzipq_u16(vreinterpretq_u16_u64(descs[1]),
+				       vreinterpretq_u16_u64(descs[3]));
+		sterr_tmp1 = vzipq_u16(vreinterpretq_u16_u64(descs[0]),
+				       vreinterpretq_u16_u64(descs[2]));
+
+		/* C.2 get 4 pkts staterr value  */
+		staterr = vzipq_u16(sterr_tmp1.val[1],
+				    sterr_tmp2.val[1]).val[0];
 
 		/* C* extract and record EOP bit */
 		if (split_packet) {
