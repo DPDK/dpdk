@@ -726,41 +726,17 @@ sfc_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct sfc_port *port = &sa->port;
-	uint64_t *mac_stats;
-	int rc;
-	unsigned int i;
-	int nstats = 0;
-
-	sfc_adapter_lock(sa);
+	unsigned int nb_written = 0;
+	unsigned int nb_supp;
 
 	if (unlikely(xstats == NULL)) {
-		nstats = port->mac_stats_nb_supported;
-		goto unlock;
+		sfc_adapter_lock(sa);
+		nb_supp = port->mac_stats_nb_supported;
+		sfc_adapter_unlock(sa);
+		return nb_supp;
 	}
 
-	rc = sfc_port_update_mac_stats(sa, B_FALSE);
-	if (rc != 0) {
-		SFC_ASSERT(rc > 0);
-		nstats = -rc;
-		goto unlock;
-	}
-
-	mac_stats = port->mac_stats_buf;
-
-	for (i = 0; i < EFX_MAC_NSTATS; ++i) {
-		if (EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i)) {
-			if (nstats < (int)xstats_count) {
-				xstats[nstats].id = nstats;
-				xstats[nstats].value = mac_stats[i];
-			}
-			nstats++;
-		}
-	}
-
-unlock:
-	sfc_adapter_unlock(sa);
-
-	return nstats;
+	return sfc_port_get_mac_stats(sa, xstats, xstats_count, &nb_written);
 }
 
 static int
@@ -798,44 +774,11 @@ sfc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		     uint64_t *values, unsigned int n)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
-	struct sfc_port *port = &sa->port;
-	uint64_t *mac_stats;
-	unsigned int i;
-	int ret;
-	int rc;
 
 	if (unlikely(ids == NULL || values == NULL))
 		return -EINVAL;
 
-	sfc_adapter_lock(sa);
-
-	rc = sfc_port_update_mac_stats(sa, B_FALSE);
-	if (rc != 0) {
-		SFC_ASSERT(rc > 0);
-		ret = -rc;
-		goto unlock;
-	}
-
-	mac_stats = port->mac_stats_buf;
-
-	SFC_ASSERT(port->mac_stats_nb_supported <=
-		   RTE_DIM(port->mac_stats_by_id));
-
-	for (i = 0; i < n; i++) {
-		if (ids[i] < port->mac_stats_nb_supported) {
-			values[i] = mac_stats[port->mac_stats_by_id[ids[i]]];
-		} else {
-			ret = i;
-			goto unlock;
-		}
-	}
-
-	ret = n;
-
-unlock:
-	sfc_adapter_unlock(sa);
-
-	return ret;
+	return sfc_port_get_mac_stats_by_id(sa, ids, values, n);
 }
 
 static int

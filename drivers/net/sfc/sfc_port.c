@@ -636,3 +636,83 @@ sfc_port_link_mode_to_info(efx_link_mode_t link_mode,
 
 	link_info->link_autoneg = ETH_LINK_AUTONEG;
 }
+
+int
+sfc_port_get_mac_stats(struct sfc_adapter *sa, struct rte_eth_xstat *xstats,
+		       unsigned int xstats_count, unsigned int *nb_written)
+{
+	struct sfc_port *port = &sa->port;
+	uint64_t *mac_stats;
+	unsigned int i;
+	int nstats = 0;
+	int ret;
+
+	sfc_adapter_lock(sa);
+
+	ret = sfc_port_update_mac_stats(sa, B_FALSE);
+	if (ret != 0) {
+		SFC_ASSERT(ret > 0);
+		ret = -ret;
+		goto unlock;
+	}
+
+	mac_stats = port->mac_stats_buf;
+
+	for (i = 0; i < EFX_MAC_NSTATS; ++i) {
+		if (EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i)) {
+			if (nstats < (int)xstats_count) {
+				xstats[nstats].id = nstats;
+				xstats[nstats].value = mac_stats[i];
+				(*nb_written)++;
+			}
+			nstats++;
+		}
+	}
+	ret = nstats;
+
+unlock:
+	sfc_adapter_unlock(sa);
+
+	return ret;
+}
+
+int
+sfc_port_get_mac_stats_by_id(struct sfc_adapter *sa, const uint64_t *ids,
+			     uint64_t *values, unsigned int n)
+{
+	struct sfc_port *port = &sa->port;
+	uint64_t *mac_stats;
+	unsigned int i;
+	int ret;
+	int rc;
+
+	sfc_adapter_lock(sa);
+
+	rc = sfc_port_update_mac_stats(sa, B_FALSE);
+	if (rc != 0) {
+		SFC_ASSERT(rc > 0);
+		ret = -rc;
+		goto unlock;
+	}
+
+	mac_stats = port->mac_stats_buf;
+
+	SFC_ASSERT(port->mac_stats_nb_supported <=
+		   RTE_DIM(port->mac_stats_by_id));
+
+	for (i = 0; i < n; i++) {
+		if (ids[i] < port->mac_stats_nb_supported) {
+			values[i] = mac_stats[port->mac_stats_by_id[ids[i]]];
+		} else {
+			ret = i;
+			goto unlock;
+		}
+	}
+
+	ret = n;
+
+unlock:
+	sfc_adapter_unlock(sa);
+
+	return ret;
+}
