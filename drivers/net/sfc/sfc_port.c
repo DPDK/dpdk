@@ -157,6 +157,27 @@ sfc_port_phy_caps_to_max_link_speed(uint32_t phy_caps)
 
 #endif
 
+static void
+sfc_port_fill_mac_stats_info(struct sfc_adapter *sa)
+{
+	unsigned int mac_stats_nb_supported = 0;
+	struct sfc_port *port = &sa->port;
+	unsigned int stat_idx;
+
+	efx_mac_stats_get_mask(sa->nic, port->mac_stats_mask,
+			       sizeof(port->mac_stats_mask));
+
+	for (stat_idx = 0; stat_idx < EFX_MAC_NSTATS; ++stat_idx) {
+		if (!EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, stat_idx))
+			continue;
+
+		port->mac_stats_by_id[mac_stats_nb_supported] = stat_idx;
+		mac_stats_nb_supported++;
+	}
+
+	port->mac_stats_nb_supported = mac_stats_nb_supported;
+}
+
 int
 sfc_port_start(struct sfc_adapter *sa)
 {
@@ -165,7 +186,6 @@ sfc_port_start(struct sfc_adapter *sa)
 	uint32_t phy_adv_cap;
 	const uint32_t phy_pause_caps =
 		((1u << EFX_PHY_CAP_PAUSE) | (1u << EFX_PHY_CAP_ASYM));
-	unsigned int i;
 
 	sfc_log_init(sa, "entry");
 
@@ -259,12 +279,7 @@ sfc_port_start(struct sfc_adapter *sa)
 		port->mac_stats_reset_pending = B_FALSE;
 	}
 
-	efx_mac_stats_get_mask(sa->nic, port->mac_stats_mask,
-			       sizeof(port->mac_stats_mask));
-
-	for (i = 0, port->mac_stats_nb_supported = 0; i < EFX_MAC_NSTATS; ++i)
-		if (EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i))
-			port->mac_stats_nb_supported++;
+	sfc_port_fill_mac_stats_info(sa);
 
 	port->mac_stats_update_generation = 0;
 

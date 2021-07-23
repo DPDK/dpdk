@@ -788,8 +788,6 @@ sfc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct sfc_port *port = &sa->port;
 	uint64_t *mac_stats;
-	unsigned int nb_supported = 0;
-	unsigned int nb_written = 0;
 	unsigned int i;
 	int ret;
 	int rc;
@@ -808,17 +806,19 @@ sfc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 
 	mac_stats = port->mac_stats_buf;
 
-	for (i = 0; (i < EFX_MAC_NSTATS) && (nb_written < n); ++i) {
-		if (!EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i))
-			continue;
+	SFC_ASSERT(port->mac_stats_nb_supported <=
+		   RTE_DIM(port->mac_stats_by_id));
 
-		if (ids[nb_written] == nb_supported)
-			values[nb_written++] = mac_stats[i];
-
-		++nb_supported;
+	for (i = 0; i < n; i++) {
+		if (ids[i] < port->mac_stats_nb_supported) {
+			values[i] = mac_stats[port->mac_stats_by_id[ids[i]]];
+		} else {
+			ret = i;
+			goto unlock;
+		}
 	}
 
-	ret = nb_written;
+	ret = n;
 
 unlock:
 	sfc_adapter_unlock(sa);
@@ -833,8 +833,7 @@ sfc_xstats_get_names_by_id(struct rte_eth_dev *dev,
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct sfc_port *port = &sa->port;
-	unsigned int nb_supported = 0;
-	unsigned int nb_written = 0;
+	unsigned int nb_supported;
 	unsigned int i;
 
 	if (unlikely(xstats_names == NULL && ids != NULL) ||
@@ -849,23 +848,24 @@ sfc_xstats_get_names_by_id(struct rte_eth_dev *dev,
 		return nb_supported;
 	}
 
-	for (i = 0; (i < EFX_MAC_NSTATS) && (nb_written < size); ++i) {
-		if (!EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i))
-			continue;
+	SFC_ASSERT(port->mac_stats_nb_supported <=
+		   RTE_DIM(port->mac_stats_by_id));
 
-		if (ids[nb_written] == nb_supported) {
-			char *name = xstats_names[nb_written++].name;
-
-			strlcpy(name, efx_mac_stat_name(sa->nic, i),
+	for (i = 0; i < size; i++) {
+		if (ids[i] < port->mac_stats_nb_supported) {
+			strlcpy(xstats_names[i].name,
+				efx_mac_stat_name(sa->nic,
+						 port->mac_stats_by_id[ids[i]]),
 				sizeof(xstats_names[0].name));
+		} else {
+			sfc_adapter_unlock(sa);
+			return i;
 		}
-
-		++nb_supported;
 	}
 
 	sfc_adapter_unlock(sa);
 
-	return nb_written;
+	return size;
 }
 
 static int
