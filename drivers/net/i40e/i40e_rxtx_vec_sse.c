@@ -557,7 +557,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			/* and with mask to extract bits, flipping 1-0 */
 			__m128i eop_bits = _mm_andnot_si128(staterr, eop_check);
 			/* the staterr values are not in order, as the count
-			 * count of dd bits doesn't care. However, for end of
+			 * of dd bits doesn't care. However, for end of
 			 * packet tracking, we do care, so shuffle. This also
 			 * compresses the 32-bit values to 8-bit
 			 */
