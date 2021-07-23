@@ -59,9 +59,9 @@ struct rte_vhost_async_channel_ops {
 	 * @param count
 	 *  number of elements in the "descs" array
 	 * @return
-	 *  number of descs processed
+	 *  number of descs processed, negative value means error
 	 */
-	uint32_t (*transfer_data)(int vid, uint16_t queue_id,
+	int32_t (*transfer_data)(int vid, uint16_t queue_id,
 		struct rte_vhost_async_desc *descs,
 		struct rte_vhost_async_status *opaque_data,
 		uint16_t count);
@@ -76,9 +76,9 @@ struct rte_vhost_async_channel_ops {
 	 * @param max_packets
 	 *  max number of packets could be completed
 	 * @return
-	 *  number of async descs completed
+	 *  number of async descs completed, negative value means error
 	 */
-	uint32_t (*check_completed_copies)(int vid, uint16_t queue_id,
+	int32_t (*check_completed_copies)(int vid, uint16_t queue_id,
 		struct rte_vhost_async_status *opaque_data,
 		uint16_t max_packets);
 };

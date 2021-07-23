@@ -27,12 +27,12 @@ struct dma_for_vhost {
 #ifdef RTE_RAW_IOAT
 int open_ioat(const char *value);
 
-uint32_t
+int32_t
 ioat_transfer_data_cb(int vid, uint16_t queue_id,
 		struct rte_vhost_async_desc *descs,
 		struct rte_vhost_async_status *opaque_data, uint16_t count);
 
-uint32_t
+int32_t
 ioat_check_completed_copies_cb(int vid, uint16_t queue_id,
 		struct rte_vhost_async_status *opaque_data,
 		uint16_t max_packets);
@@ -42,7 +42,7 @@ static int open_ioat(const char *value __rte_unused)
 	return -1;
 }
 
-static uint32_t
+static int32_t
 ioat_transfer_data_cb(int vid __rte_unused, uint16_t queue_id __rte_unused,
 		struct rte_vhost_async_desc *descs __rte_unused,
 		struct rte_vhost_async_status *opaque_data __rte_unused,
@@ -51,7 +51,7 @@ ioat_transfer_data_cb(int vid __rte_unused, uint16_t queue_id __rte_unused,
 	return -1;
 }
 
-static uint32_t
+static int32_t
 ioat_check_completed_copies_cb(int vid __rte_unused,
 		uint16_t queue_id __rte_unused,
 		struct rte_vhost_async_status *opaque_data __rte_unused,

@@ -1644,6 +1644,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 	struct async_inflight_info *pkts_info = vq->async_pkts_info;
 	uint32_t n_pkts = 0, pkt_err = 0;
 	uint32_t num_async_pkts = 0, num_done_pkts = 0;
+	int32_t n_xfer;
 	struct {
 		uint16_t pkt_idx;
 		uint16_t last_avail_idx;
@@ -1724,8 +1725,17 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 		if (unlikely(pkt_burst_idx >= VHOST_ASYNC_BATCH_THRESHOLD ||
 			((VHOST_MAX_ASYNC_VEC >> 1) - segs_await <
 			BUF_VECTOR_MAX))) {
-			n_pkts = vq->async_ops.transfer_data(dev->vid,
+			n_xfer = vq->async_ops.transfer_data(dev->vid,
 					queue_id, tdes, 0, pkt_burst_idx);
+			if (n_xfer >= 0) {
+				n_pkts = n_xfer;
+			} else {
+				VHOST_LOG_DATA(ERR,
+					"(%d) %s: failed to transfer data for queue id %d.\n",
+					dev->vid, __func__, queue_id);
+				n_pkts = 0;
+			}
+
 			iovec_idx = 0;
 			it_idx = 0;
 
@@ -1748,8 +1758,15 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 	}
 
 	if (pkt_burst_idx) {
-		n_pkts = vq->async_ops.transfer_data(dev->vid,
-				queue_id, tdes, 0, pkt_burst_idx);
+		n_xfer = vq->async_ops.transfer_data(dev->vid, queue_id, tdes, 0, pkt_burst_idx);
+		if (n_xfer >= 0) {
+			n_pkts = n_xfer;
+		} else {
+			VHOST_LOG_DATA(ERR, "(%d) %s: failed to transfer data for queue id %d.\n",
+				dev->vid, __func__, queue_id);
+			n_pkts = 0;
+		}
+
 		vq->async_pkts_inflight_n += n_pkts;
 
 		if (unlikely(n_pkts < pkt_burst_idx))
@@ -1996,6 +2013,7 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 	uint16_t async_descs_idx = 0;
 	uint16_t num_buffers;
 	uint16_t num_descs;
+	int32_t n_xfer;
 
 	struct rte_vhost_iov_iter *it_pool = vq->it_pool;
 	struct iovec *vec_pool = vq->vec_pool;
@@ -2078,8 +2096,17 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 		 */
 		if (unlikely(pkt_burst_idx >= VHOST_ASYNC_BATCH_THRESHOLD ||
 			((VHOST_MAX_ASYNC_VEC >> 1) - segs_await < BUF_VECTOR_MAX))) {
-			n_pkts = vq->async_ops.transfer_data(dev->vid, queue_id,
-				tdes, 0, pkt_burst_idx);
+			n_xfer = vq->async_ops.transfer_data(dev->vid,
+					queue_id, tdes, 0, pkt_burst_idx);
+			if (n_xfer >= 0) {
+				n_pkts = n_xfer;
+			} else {
+				VHOST_LOG_DATA(ERR,
+					"(%d) %s: failed to transfer data for queue id %d.\n",
+					dev->vid, __func__, queue_id);
+				n_pkts = 0;
+			}
+
 			iovec_idx = 0;
 			it_idx = 0;
 			segs_await = 0;
@@ -2101,7 +2128,15 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 	} while (pkt_idx < count);
 
 	if (pkt_burst_idx) {
-		n_pkts = vq->async_ops.transfer_data(dev->vid, queue_id, tdes, 0, pkt_burst_idx);
+		n_xfer = vq->async_ops.transfer_data(dev->vid, queue_id, tdes, 0, pkt_burst_idx);
+		if (n_xfer >= 0) {
+			n_pkts = n_xfer;
+		} else {
+			VHOST_LOG_DATA(ERR, "(%d) %s: failed to transfer data for queue id %d.\n",
+				dev->vid, __func__, queue_id);
+			n_pkts = 0;
+		}
+
 		vq->async_pkts_inflight_n += n_pkts;
 
 		if (unlikely(n_pkts < pkt_burst_idx))
@@ -2188,6 +2223,7 @@ uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 	uint16_t start_idx, pkts_idx, vq_size;
 	struct async_inflight_info *pkts_info;
 	uint16_t from, i;
+	int32_t n_cpl;
 
 	if (!dev)
 		return 0;
@@ -2215,9 +2251,18 @@ uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 	start_idx = virtio_dev_rx_async_get_info_idx(pkts_idx,
 		vq_size, vq->async_pkts_inflight_n);
 
-	if (count > vq->async_last_pkts_n)
-		n_pkts_cpl = vq->async_ops.check_completed_copies(vid,
+	if (count > vq->async_last_pkts_n) {
+		n_cpl = vq->async_ops.check_completed_copies(vid,
 			queue_id, 0, count - vq->async_last_pkts_n);
+		if (n_cpl >= 0) {
+			n_pkts_cpl = n_cpl;
+		} else {
+			VHOST_LOG_DATA(ERR,
+				"(%d) %s: failed to check completed copies for queue id %d.\n",
+				dev->vid, __func__, queue_id);
+			n_pkts_cpl = 0;
+		}
+	}
 	n_pkts_cpl += vq->async_last_pkts_n;
 
 	n_pkts_put = RTE_MIN(count, n_pkts_cpl);

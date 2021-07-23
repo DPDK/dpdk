@@ -122,7 +122,7 @@ out:
 	return ret;
 }
 
-uint32_t
+int32_t
 ioat_transfer_data_cb(int vid, uint16_t queue_id,
 		struct rte_vhost_async_desc *descs,
 		struct rte_vhost_async_status *opaque_data, uint16_t count)
@@ -168,7 +168,7 @@ ioat_transfer_data_cb(int vid, uint16_t queue_id,
 	return i_desc;
 }
 
-uint32_t
+int32_t
 ioat_check_completed_copies_cb(int vid, uint16_t queue_id,
 		struct rte_vhost_async_status *opaque_data,
 		uint16_t max_packets)
