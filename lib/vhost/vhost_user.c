@@ -1248,6 +1248,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	int numa_node = SOCKET_ID_ANY;
 	uint64_t mmap_offset;
 	uint32_t i;
+	bool async_notify = false;
 
 	if (validate_msg_fds(msg, memory->nregions) != 0)
 		return RTE_VHOST_MSG_RESULT_ERR;
@@ -1275,6 +1276,16 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 				vdpa_dev->ops->dev_close(dev->vid);
 			dev->flags &= ~VIRTIO_DEV_VDPA_CONFIGURED;
 		}
+
+		/* notify the vhost application to stop DMA transfers */
+		if (dev->async_copy && dev->notify_ops->vring_state_changed) {
+			for (i = 0; i < dev->nr_vring; i++) {
+				dev->notify_ops->vring_state_changed(dev->vid,
+						i, 0);
+			}
+			async_notify = true;
+		}
+
 		free_mem_region(dev);
 		rte_free(dev->mem);
 		dev->mem = NULL;
@@ -1370,6 +1381,11 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	}
 
 	dump_guest_pages(dev);
+
+	if (async_notify) {
+		for (i = 0; i < dev->nr_vring; i++)
+			dev->notify_ops->vring_state_changed(dev->vid, i, 1);
+	}
 
 	return RTE_VHOST_MSG_RESULT_OK;
 
