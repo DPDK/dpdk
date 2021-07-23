@@ -604,7 +604,7 @@ sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	uint64_t *mac_stats;
 	int ret;
 
-	rte_spinlock_lock(&port->mac_stats_lock);
+	sfc_adapter_lock(sa);
 
 	ret = sfc_port_update_mac_stats(sa);
 	if (ret != 0)
@@ -677,7 +677,7 @@ sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	}
 
 unlock:
-	rte_spinlock_unlock(&port->mac_stats_lock);
+	sfc_adapter_unlock(sa);
 	SFC_ASSERT(ret >= 0);
 	return -ret;
 }
@@ -689,18 +689,23 @@ sfc_stats_reset(struct rte_eth_dev *dev)
 	struct sfc_port *port = &sa->port;
 	int rc;
 
+	sfc_adapter_lock(sa);
+
 	if (sa->state != SFC_ADAPTER_STARTED) {
 		/*
 		 * The operation cannot be done if port is not started; it
 		 * will be scheduled to be done during the next port start
 		 */
 		port->mac_stats_reset_pending = B_TRUE;
+		sfc_adapter_unlock(sa);
 		return 0;
 	}
 
 	rc = sfc_port_reset_mac_stats(sa);
 	if (rc != 0)
 		sfc_err(sa, "failed to reset statistics (rc = %d)", rc);
+
+	sfc_adapter_unlock(sa);
 
 	SFC_ASSERT(rc >= 0);
 	return -rc;
@@ -717,7 +722,7 @@ sfc_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	unsigned int i;
 	int nstats = 0;
 
-	rte_spinlock_lock(&port->mac_stats_lock);
+	sfc_adapter_lock(sa);
 
 	rc = sfc_port_update_mac_stats(sa);
 	if (rc != 0) {
@@ -739,7 +744,7 @@ sfc_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	}
 
 unlock:
-	rte_spinlock_unlock(&port->mac_stats_lock);
+	sfc_adapter_unlock(sa);
 
 	return nstats;
 }
@@ -780,7 +785,7 @@ sfc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 	int ret;
 	int rc;
 
-	rte_spinlock_lock(&port->mac_stats_lock);
+	sfc_adapter_lock(sa);
 
 	if (unlikely(values == NULL) ||
 	    unlikely(ids == NULL && n < port->mac_stats_nb_supported)) {
@@ -810,7 +815,7 @@ sfc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 	ret = nb_written;
 
 unlock:
-	rte_spinlock_unlock(&port->mac_stats_lock);
+	sfc_adapter_unlock(sa);
 
 	return ret;
 }
@@ -826,9 +831,14 @@ sfc_xstats_get_names_by_id(struct rte_eth_dev *dev,
 	unsigned int nb_written = 0;
 	unsigned int i;
 
+	sfc_adapter_lock(sa);
+
 	if (unlikely(xstats_names == NULL) ||
-	    unlikely((ids == NULL) && (size < port->mac_stats_nb_supported)))
-		return port->mac_stats_nb_supported;
+	    unlikely((ids == NULL) && (size < port->mac_stats_nb_supported))) {
+		nb_supported = port->mac_stats_nb_supported;
+		sfc_adapter_unlock(sa);
+		return nb_supported;
+	}
 
 	for (i = 0; (i < EFX_MAC_NSTATS) && (nb_written < size); ++i) {
 		if (!EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i))
@@ -843,6 +853,8 @@ sfc_xstats_get_names_by_id(struct rte_eth_dev *dev,
 
 		++nb_supported;
 	}
+
+	sfc_adapter_unlock(sa);
 
 	return nb_written;
 }

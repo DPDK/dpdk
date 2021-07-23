@@ -43,7 +43,7 @@ sfc_port_update_mac_stats(struct sfc_adapter *sa)
 	unsigned int nb_attempts = 0;
 	int rc;
 
-	SFC_ASSERT(rte_spinlock_is_locked(&port->mac_stats_lock));
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	if (sa->state != SFC_ADAPTER_STARTED)
 		return EINVAL;
@@ -103,14 +103,13 @@ sfc_port_reset_sw_stats(struct sfc_adapter *sa)
 int
 sfc_port_reset_mac_stats(struct sfc_adapter *sa)
 {
-	struct sfc_port *port = &sa->port;
 	int rc;
 
-	rte_spinlock_lock(&port->mac_stats_lock);
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
 	rc = efx_mac_stats_clear(sa->nic);
 	if (rc == 0)
 		sfc_port_reset_sw_stats(sa);
-	rte_spinlock_unlock(&port->mac_stats_lock);
 
 	return rc;
 }
@@ -415,8 +414,6 @@ sfc_port_attach(struct sfc_adapter *sa)
 		rc = ENOMEM;
 		goto fail_mcast_addr_list_buf_alloc;
 	}
-
-	rte_spinlock_init(&port->mac_stats_lock);
 
 	rc = ENOMEM;
 	port->mac_stats_buf = rte_calloc_socket("mac_stats_buf", EFX_MAC_NSTATS,
