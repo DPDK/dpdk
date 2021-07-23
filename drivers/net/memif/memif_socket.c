@@ -866,6 +866,7 @@ memif_socket_create(char *key, uint8_t listener, bool is_abstract)
 {
 	struct memif_socket *sock;
 	struct sockaddr_un un = { 0 };
+	uint32_t sunlen;
 	int sockfd;
 	int ret;
 	int on = 1;
@@ -890,7 +891,11 @@ memif_socket_create(char *key, uint8_t listener, bool is_abstract)
 			/* abstract address */
 			un.sun_path[0] = '\0';
 			strlcpy(un.sun_path + 1, sock->filename, MEMIF_SOCKET_UN_SIZE - 1);
+			sunlen = RTE_MIN(1 + strlen(sock->filename),
+					 MEMIF_SOCKET_UN_SIZE) +
+				 sizeof(un) - sizeof(un.sun_path);
 		} else {
+			sunlen = sizeof(un);
 			strlcpy(un.sun_path, sock->filename, MEMIF_SOCKET_UN_SIZE);
 		}
 
@@ -899,7 +904,7 @@ memif_socket_create(char *key, uint8_t listener, bool is_abstract)
 		if (ret < 0)
 			goto error;
 
-		ret = bind(sockfd, (struct sockaddr *)&un, sizeof(un));
+		ret = bind(sockfd, (struct sockaddr *)&un, sunlen);
 		if (ret < 0)
 			goto error;
 
@@ -1061,6 +1066,7 @@ memif_connect_client(struct rte_eth_dev *dev)
 {
 	int sockfd;
 	int ret;
+	uint32_t sunlen;
 	struct sockaddr_un sun = { 0 };
 	struct pmd_internals *pmd = dev->data->dev_private;
 
@@ -1075,16 +1081,19 @@ memif_connect_client(struct rte_eth_dev *dev)
 	}
 
 	sun.sun_family = AF_UNIX;
+	sunlen = sizeof(struct sockaddr_un);
 	if (pmd->flags & ETH_MEMIF_FLAG_SOCKET_ABSTRACT) {
 		/* abstract address */
 		sun.sun_path[0] = '\0';
 		strlcpy(sun.sun_path + 1,  pmd->socket_filename, MEMIF_SOCKET_UN_SIZE - 1);
+		sunlen = RTE_MIN(strlen(pmd->socket_filename) + 1,
+				 MEMIF_SOCKET_UN_SIZE) +
+			 sizeof(sun) - sizeof(sun.sun_path);
 	} else {
 		strlcpy(sun.sun_path,  pmd->socket_filename, MEMIF_SOCKET_UN_SIZE);
 	}
 
-	ret = connect(sockfd, (struct sockaddr *)&sun,
-		      sizeof(struct sockaddr_un));
+	ret = connect(sockfd, (struct sockaddr *)&sun, sunlen);
 	if (ret < 0) {
 		MIF_LOG(ERR, "Failed to connect socket: %s.", pmd->socket_filename);
 		goto error;
