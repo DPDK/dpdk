@@ -246,6 +246,11 @@ power_get_available_freqs(struct cppc_power_info *pi)
 			pi->nominal_perf * UNIT_DIFF : pi->nominal_perf;
 	num_freqs = (nominal_perf - scaling_min_freq) / BUS_FREQ + 1 +
 		pi->turbo_available;
+	if (num_freqs >= RTE_MAX_LCORE_FREQS) {
+		RTE_LOG(ERR, POWER, "Too many available frequencies: %d\n",
+				num_freqs);
+		goto out;
+	}
 
 	/* Generate the freq bucket array. */
 	for (i = 0, pi->nb_freqs = 0; i < num_freqs; i++) {

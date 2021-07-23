@@ -419,6 +419,11 @@ power_get_available_freqs(struct pstate_power_info *pi)
 	 */
 	num_freqs = (base_max_freq - sys_min_freq) / BUS_FREQ + 1 +
 		pi->turbo_available;
+	if (num_freqs >= RTE_MAX_LCORE_FREQS) {
+		RTE_LOG(ERR, POWER, "Too many available frequencies: %d\n",
+				num_freqs);
+		goto out;
+	}
 
 	/* Generate the freq bucket array.
 	 * If turbo is available the freq bucket[0] value is base_max +1
