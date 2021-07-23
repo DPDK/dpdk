@@ -116,6 +116,11 @@ New Features
 
   * Added COUNT action support for SN1000 NICs
 
+* **Added inflight packets clear API in vhost library.**
+
+  Added an API which can clear the inflight packets submitted to DMA
+  engine in vhost async data path.
+
 * **Updated Intel QuickAssist crypto PMD.**
 
   Added fourth generation of QuickAssist Technology(QAT) devices support.

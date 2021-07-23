@@ -84,4 +84,5 @@ EXPERIMENTAL {
 	rte_vhost_async_get_inflight;
 	rte_vhost_async_channel_register_thread_unsafe;
 	rte_vhost_async_channel_unregister_thread_unsafe;
+	rte_vhost_clear_queue_thread_unsafe;
 };

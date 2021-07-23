@@ -2214,10 +2214,10 @@ write_back_completed_descs_packed(struct vhost_virtqueue *vq,
 	} while (nr_left > 0);
 }
 
-uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
+static __rte_always_inline uint16_t
+vhost_poll_enqueue_completed(struct virtio_net *dev, uint16_t queue_id,
 		struct rte_mbuf **pkts, uint16_t count)
 {
-	struct virtio_net *dev = get_device(vid);
 	struct vhost_virtqueue *vq;
 	uint16_t n_pkts_cpl = 0, n_pkts_put = 0, n_descs = 0, n_buffers = 0;
 	uint16_t start_idx, pkts_idx, vq_size;
@@ -2225,25 +2225,7 @@ uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 	uint16_t from, i;
 	int32_t n_cpl;
 
-	if (!dev)
-		return 0;
-
-	VHOST_LOG_DATA(DEBUG, "(%d) %s\n", dev->vid, __func__);
-	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->nr_vring))) {
-		VHOST_LOG_DATA(ERR, "(%d) %s: invalid virtqueue idx %d.\n",
-			dev->vid, __func__, queue_id);
-		return 0;
-	}
-
 	vq = dev->virtqueue[queue_id];
-
-	if (unlikely(!vq->async_registered)) {
-		VHOST_LOG_DATA(ERR, "(%d) %s: async not registered for queue id %d.\n",
-			dev->vid, __func__, queue_id);
-		return 0;
-	}
-
-	rte_spinlock_lock(&vq->access_lock);
 
 	pkts_idx = vq->async_pkts_idx % vq->size;
 	pkts_info = vq->async_pkts_info;
@@ -2252,7 +2234,7 @@ uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 		vq_size, vq->async_pkts_inflight_n);
 
 	if (count > vq->async_last_pkts_n) {
-		n_cpl = vq->async_ops.check_completed_copies(vid,
+		n_cpl = vq->async_ops.check_completed_copies(dev->vid,
 			queue_id, 0, count - vq->async_last_pkts_n);
 		if (n_cpl >= 0) {
 			n_pkts_cpl = n_cpl;
@@ -2268,7 +2250,7 @@ uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 	n_pkts_put = RTE_MIN(count, n_pkts_cpl);
 	if (unlikely(n_pkts_put == 0)) {
 		vq->async_last_pkts_n = n_pkts_cpl;
-		goto done;
+		return 0;
 	}
 
 	if (vq_is_packed(dev)) {
@@ -2310,10 +2292,73 @@ uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 		}
 	}
 
-done:
+	return n_pkts_put;
+}
+
+uint16_t
+rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
+		struct rte_mbuf **pkts, uint16_t count)
+{
+	struct virtio_net *dev = get_device(vid);
+	struct vhost_virtqueue *vq;
+	uint16_t n_pkts_cpl = 0;
+
+	if (!dev)
+		return 0;
+
+	VHOST_LOG_DATA(DEBUG, "(%d) %s\n", dev->vid, __func__);
+	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->nr_vring))) {
+		VHOST_LOG_DATA(ERR, "(%d) %s: invalid virtqueue idx %d.\n",
+			dev->vid, __func__, queue_id);
+		return 0;
+	}
+
+	vq = dev->virtqueue[queue_id];
+
+	if (unlikely(!vq->async_registered)) {
+		VHOST_LOG_DATA(ERR, "(%d) %s: async not registered for queue id %d.\n",
+			dev->vid, __func__, queue_id);
+		return 0;
+	}
+
+	rte_spinlock_lock(&vq->access_lock);
+
+	n_pkts_cpl = vhost_poll_enqueue_completed(dev, queue_id, pkts, count);
+
 	rte_spinlock_unlock(&vq->access_lock);
 
-	return n_pkts_put;
+	return n_pkts_cpl;
+}
+
+uint16_t
+rte_vhost_clear_queue_thread_unsafe(int vid, uint16_t queue_id,
+		struct rte_mbuf **pkts, uint16_t count)
+{
+	struct virtio_net *dev = get_device(vid);
+	struct vhost_virtqueue *vq;
+	uint16_t n_pkts_cpl = 0;
+
+	if (!dev)
+		return 0;
+
+	VHOST_LOG_DATA(DEBUG, "(%d) %s\n", dev->vid, __func__);
+	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->nr_vring))) {
+		VHOST_LOG_DATA(ERR, "(%d) %s: invalid virtqueue idx %d.\n",
+			dev->vid, __func__, queue_id);
+		return 0;
+	}
+
+	vq = dev->virtqueue[queue_id];
+
+	if (unlikely(!vq->async_registered)) {
+		VHOST_LOG_DATA(ERR, "(%d) %s: async not registered for queue id %d.\n",
+			dev->vid, __func__, queue_id);
+		return 0;
+	}
+
+	n_pkts_cpl = vhost_poll_enqueue_completed(dev, queue_id, pkts, count);
+
+	return n_pkts_cpl;
 }
 
 static __rte_always_inline uint32_t

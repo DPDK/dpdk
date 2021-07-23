@@ -246,4 +246,26 @@ uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 __rte_experimental
 int rte_vhost_async_get_inflight(int vid, uint16_t queue_id);
 
+/**
+ * This function checks async completion status and clear packets for
+ * a specific vhost device queue. Packets which are inflight will be
+ * returned in an array.
+ *
+ * @note This function does not perform any locking
+ *
+ * @param vid
+ *  ID of vhost device to clear data
+ * @param queue_id
+ *  Queue id to clear data
+ * @param pkts
+ *  Blank array to get return packet pointer
+ * @param count
+ *  Size of the packet array
+ * @return
+ *  Number of packets returned
+ */
+__rte_experimental
+uint16_t rte_vhost_clear_queue_thread_unsafe(int vid, uint16_t queue_id,
+		struct rte_mbuf **pkts, uint16_t count);
+
 #endif /* _RTE_VHOST_ASYNC_H_ */
