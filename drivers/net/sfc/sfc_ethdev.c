@@ -606,7 +606,7 @@ sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	sfc_adapter_lock(sa);
 
-	ret = sfc_port_update_mac_stats(sa);
+	ret = sfc_port_update_mac_stats(sa, B_FALSE);
 	if (ret != 0)
 		goto unlock;
 
@@ -724,7 +724,7 @@ sfc_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 
 	sfc_adapter_lock(sa);
 
-	rc = sfc_port_update_mac_stats(sa);
+	rc = sfc_port_update_mac_stats(sa, B_FALSE);
 	if (rc != 0) {
 		SFC_ASSERT(rc > 0);
 		nstats = -rc;
@@ -788,7 +788,7 @@ sfc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 
 	sfc_adapter_lock(sa);
 
-	rc = sfc_port_update_mac_stats(sa);
+	rc = sfc_port_update_mac_stats(sa, B_FALSE);
 	if (rc != 0) {
 		SFC_ASSERT(rc > 0);
 		ret = -rc;

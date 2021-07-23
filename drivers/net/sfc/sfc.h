@@ -399,7 +399,7 @@ int sfc_port_start(struct sfc_adapter *sa);
 void sfc_port_stop(struct sfc_adapter *sa);
 void sfc_port_link_mode_to_info(efx_link_mode_t link_mode,
 				struct rte_eth_link *link_info);
-int sfc_port_update_mac_stats(struct sfc_adapter *sa);
+int sfc_port_update_mac_stats(struct sfc_adapter *sa, boolean_t manual_update);
 int sfc_port_reset_mac_stats(struct sfc_adapter *sa);
 int sfc_set_rx_mode(struct sfc_adapter *sa);
 int sfc_set_rx_mode_unchecked(struct sfc_adapter *sa);

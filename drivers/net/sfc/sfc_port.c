@@ -26,7 +26,8 @@
 /**
  * Update MAC statistics in the buffer.
  *
- * @param	sa	Adapter
+ * @param	sa		Adapter
+ * @param	force_upload	Flag to upload MAC stats in any case
  *
  * @return Status code
  * @retval	0	Success
@@ -34,7 +35,7 @@
  * @retval	ENOMEM	Memory allocation failure
  */
 int
-sfc_port_update_mac_stats(struct sfc_adapter *sa)
+sfc_port_update_mac_stats(struct sfc_adapter *sa, boolean_t force_upload)
 {
 	struct sfc_port *port = &sa->port;
 	efsys_mem_t *esmp = &port->mac_stats_dma_mem;
@@ -46,14 +47,14 @@ sfc_port_update_mac_stats(struct sfc_adapter *sa)
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	if (sa->state != SFC_ADAPTER_STARTED)
-		return EINVAL;
+		return 0;
 
 	/*
 	 * If periodic statistics DMA'ing is off or if not supported,
 	 * make a manual request and keep an eye on timer if need be
 	 */
 	if (!port->mac_stats_periodic_dma_supported ||
-	    (port->mac_stats_update_period_ms == 0)) {
+	    (port->mac_stats_update_period_ms == 0) || force_upload) {
 		if (port->mac_stats_update_period_ms != 0) {
 			uint64_t timestamp = sfc_get_system_msecs();
 
@@ -366,6 +367,8 @@ sfc_port_stop(struct sfc_adapter *sa)
 
 	(void)efx_mac_stats_periodic(sa->nic, &sa->port.mac_stats_dma_mem,
 				     0, B_FALSE);
+
+	sfc_port_update_mac_stats(sa, B_TRUE);
 
 	efx_port_fini(sa->nic);
 	efx_filter_fini(sa->nic);
