@@ -226,12 +226,11 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 		txq_ctrl = mlx5_txq_get(dev, i);
 		if (!txq_ctrl)
 			continue;
-		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN) {
+		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN ||
+		    txq_ctrl->hairpin_conf.peers[0].port != self_port) {
 			mlx5_txq_release(dev, i);
 			continue;
 		}
-		if (txq_ctrl->hairpin_conf.peers[0].port != self_port)
-			continue;
 		if (txq_ctrl->hairpin_conf.manual_bind) {
 			mlx5_txq_release(dev, i);
 			return 0;
@@ -245,13 +244,12 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 		txq_ctrl = mlx5_txq_get(dev, i);
 		if (!txq_ctrl)
 			continue;
-		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN) {
+		/* Skip hairpin queues with other peer ports. */
+		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN ||
+		    txq_ctrl->hairpin_conf.peers[0].port != self_port) {
 			mlx5_txq_release(dev, i);
 			continue;
 		}
-		/* Skip hairpin queues with other peer ports. */
-		if (txq_ctrl->hairpin_conf.peers[0].port != self_port)
-			continue;
 		if (!txq_ctrl->obj) {
 			rte_errno = ENOMEM;
 			DRV_LOG(ERR, "port %u no txq object found: %d",
