@@ -20,6 +20,7 @@
 #include "hns3_rxtx.h"
 #include "hns3_regs.h"
 #include "hns3_logs.h"
+#include "hns3_mp.h"
 
 #define HNS3_CFG_DESC_NUM(num)	((num) / 8 - 1)
 #define HNS3_RX_RING_PREFETCTH_MASK	3
@@ -4372,6 +4373,7 @@ hns3_trace_rxtx_function(struct rte_eth_dev *dev)
 
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 {
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	eth_tx_prep_t prep = NULL;
 
@@ -4379,7 +4381,9 @@ void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 	    __atomic_load_n(&hns->hw.reset.resetting, __ATOMIC_RELAXED) == 0) {
 		eth_dev->rx_pkt_burst = hns3_get_rx_function(eth_dev);
 		eth_dev->rx_descriptor_status = hns3_dev_rx_descriptor_status;
-		eth_dev->tx_pkt_burst = hns3_get_tx_function(eth_dev, &prep);
+		eth_dev->tx_pkt_burst = hw->set_link_down ?
+					hns3_dummy_rxtx_burst :
+					hns3_get_tx_function(eth_dev, &prep);
 		eth_dev->tx_pkt_prepare = prep;
 		eth_dev->tx_descriptor_status = hns3_dev_tx_descriptor_status;
 		hns3_trace_rxtx_function(eth_dev);
@@ -4702,4 +4706,26 @@ hns3_enable_rxd_adv_layout(struct hns3_hw *hw)
 	 */
 	if (hns3_dev_rxd_adv_layout_supported(hw))
 		hns3_write_dev(hw, HNS3_RXD_ADV_LAYOUT_EN_REG, 1);
+}
+
+void
+hns3_stop_tx_datapath(struct rte_eth_dev *dev)
+{
+	dev->tx_pkt_burst = hns3_dummy_rxtx_burst;
+	dev->tx_pkt_prepare = NULL;
+	rte_wmb();
+	/* Disable tx datapath on secondary process. */
+	hns3_mp_req_stop_tx(dev);
+	/* Prevent crashes when queues are still in use. */
+	rte_delay_ms(dev->data->nb_tx_queues);
+}
+
+void
+hns3_start_tx_datapath(struct rte_eth_dev *dev)
+{
+	eth_tx_prep_t prep = NULL;
+
+	dev->tx_pkt_burst = hns3_get_tx_function(dev, &prep);
+	dev->tx_pkt_prepare = prep;
+	hns3_mp_req_start_tx(dev);
 }

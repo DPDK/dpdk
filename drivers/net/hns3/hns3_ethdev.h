@@ -481,6 +481,11 @@ struct hns3_hw {
 	struct hns3_cmq cmq;
 	struct hns3_mbx_resp_status mbx_resp; /* mailbox response */
 	struct hns3_mac mac;
+	/*
+	 * This flag indicates dev_set_link_down() API is called, and is cleared
+	 * by dev_set_link_up() or dev_start().
+	 */
+	bool set_link_down;
 	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
 	struct hns3_tqp_stats tqp_stats;
 	/* Include Mac stats | Rx stats | Tx stats */
@@ -699,9 +704,9 @@ struct hns3_vtag_cfg {
 /* Request types for IPC. */
 enum hns3_mp_req_type {
 	HNS3_MP_REQ_START_RXTX = 1,
-	HNS3_MP_REQ_STOP_RXTX  = 2,
-	HNS3_MP_REQ_START_TX   = 3,
-	HNS3_MP_REQ_STOP_TX    = 4,
+	HNS3_MP_REQ_STOP_RXTX,
+	HNS3_MP_REQ_START_TX,
+	HNS3_MP_REQ_STOP_TX,
 	HNS3_MP_REQ_MAX
 };
 

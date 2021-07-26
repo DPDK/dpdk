@@ -103,6 +103,7 @@ static int hns3_restore_fec(struct hns3_hw *hw);
 static int hns3_query_dev_fec_info(struct hns3_hw *hw);
 static int hns3_do_stop(struct hns3_adapter *hns);
 static int hns3_check_port_speed(struct hns3_hw *hw, uint32_t link_speeds);
+static int hns3_cfg_mac_mode(struct hns3_hw *hw, bool enable);
 
 void hns3_ether_format_addr(char *buf, uint16_t size,
 			    const struct rte_ether_addr *ether_addr)
@@ -2924,6 +2925,88 @@ out:
 }
 
 static int
+hns3_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	/*
+	 * The "tx_pkt_burst" will be restored. But the secondary process does
+	 * not support the mechanism for notifying the primary process.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		hns3_err(hw, "secondary process does not support to set link up.");
+		return -ENOTSUP;
+	}
+
+	/*
+	 * If device isn't started Rx/Tx function is still disabled, setting
+	 * link up is not allowed. But it is probably better to return success
+	 * to reduce the impact on the upper layer.
+	 */
+	if (hw->adapter_state != HNS3_NIC_STARTED) {
+		hns3_info(hw, "device isn't started, can't set link up.");
+		return 0;
+	}
+
+	if (!hw->set_link_down)
+		return 0;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_cfg_mac_mode(hw, true);
+	if (ret) {
+		rte_spinlock_unlock(&hw->lock);
+		hns3_err(hw, "failed to set link up, ret = %d", ret);
+		return ret;
+	}
+
+	hw->set_link_down = false;
+	hns3_start_tx_datapath(dev);
+	rte_spinlock_unlock(&hw->lock);
+
+	return 0;
+}
+
+static int
+hns3_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	/*
+	 * The "tx_pkt_burst" will be set to dummy function. But the secondary
+	 * process does not support the mechanism for notifying the primary
+	 * process.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		hns3_err(hw, "secondary process does not support to set link down.");
+		return -ENOTSUP;
+	}
+
+	/*
+	 * If device isn't started or the API has been called, link status is
+	 * down, return success.
+	 */
+	if (hw->adapter_state != HNS3_NIC_STARTED || hw->set_link_down)
+		return 0;
+
+	rte_spinlock_lock(&hw->lock);
+	hns3_stop_tx_datapath(dev);
+	ret = hns3_cfg_mac_mode(hw, false);
+	if (ret) {
+		hns3_start_tx_datapath(dev);
+		rte_spinlock_unlock(&hw->lock);
+		hns3_err(hw, "failed to set link down, ret = %d", ret);
+		return ret;
+	}
+
+	hw->set_link_down = true;
+	rte_spinlock_unlock(&hw->lock);
+
+	return 0;
+}
+
+static int
 hns3_parse_func_status(struct hns3_hw *hw, struct hns3_func_status_cmd *status)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
@@ -5576,6 +5659,7 @@ static int
 hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 {
 	struct hns3_hw *hw = &hns->hw;
+	bool link_en;
 	int ret;
 
 	ret = hns3_update_queue_map_configure(hns);
@@ -5600,7 +5684,8 @@ hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 		return ret;
 	}
 
-	ret = hns3_cfg_mac_mode(hw, true);
+	link_en = hw->set_link_down ? false : true;
+	ret = hns3_cfg_mac_mode(hw, link_en);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "failed to enable MAC, ret = %d", ret);
 		goto err_config_mac_mode;
@@ -5731,6 +5816,7 @@ hns3_dev_start(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
+	bool old_state = hw->set_link_down;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -5740,12 +5826,17 @@ hns3_dev_start(struct rte_eth_dev *dev)
 	rte_spinlock_lock(&hw->lock);
 	hw->adapter_state = HNS3_NIC_STARTING;
 
+	/*
+	 * If the dev_set_link_down() API has been called, the "set_link_down"
+	 * flag can be cleared by dev_start() API. In addition, the flag should
+	 * also be cleared before calling hns3_do_start() so that MAC can be
+	 * enabled in dev_start stage.
+	 */
+	hw->set_link_down = false;
 	ret = hns3_do_start(hns, true);
-	if (ret) {
-		hw->adapter_state = HNS3_NIC_CONFIGURED;
-		rte_spinlock_unlock(&hw->lock);
-		return ret;
-	}
+	if (ret)
+		goto do_start_fail;
+
 	ret = hns3_map_rx_interrupt(dev);
 	if (ret)
 		goto map_rx_inter_err;
@@ -5801,6 +5892,8 @@ start_all_rxqs_fail:
 	hns3_stop_all_txqs(dev);
 map_rx_inter_err:
 	(void)hns3_do_stop(hns);
+do_start_fail:
+	hw->set_link_down = old_state;
 	hw->adapter_state = HNS3_NIC_CONFIGURED;
 	rte_spinlock_unlock(&hw->lock);
 
@@ -7345,6 +7438,8 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.mac_addr_set           = hns3_set_default_mac_addr,
 	.set_mc_addr_list       = hns3_set_mc_mac_addr_list,
 	.link_update            = hns3_dev_link_update,
+	.dev_set_link_up        = hns3_dev_set_link_up,
+	.dev_set_link_down      = hns3_dev_set_link_down,
 	.rss_hash_update        = hns3_dev_rss_hash_update,
 	.rss_hash_conf_get      = hns3_dev_rss_hash_conf_get,
 	.reta_update            = hns3_dev_rss_reta_update,
