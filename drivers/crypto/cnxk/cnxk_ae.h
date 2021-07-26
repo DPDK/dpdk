@@ -85,6 +85,9 @@ cnxk_ae_fill_rsa_params(struct cnxk_ae_sess *sess,
 	size_t len = (mod_len / 2);
 	uint64_t total_size;
 
+	if (qt.p.length != 0 && qt.p.data == NULL)
+		return -EINVAL;
+
 	/* Make sure key length used is not more than mod_len/2 */
 	if (qt.p.data != NULL)
 		len = RTE_MIN(len, qt.p.length);
@@ -109,7 +112,8 @@ cnxk_ae_fill_rsa_params(struct cnxk_ae_sess *sess,
 		rsa->qt.dQ.data = rsa->qt.q.data + qt.q.length;
 		memcpy(rsa->qt.dQ.data, qt.dQ.data, qt.dQ.length);
 		rsa->qt.p.data = rsa->qt.dQ.data + qt.dQ.length;
-		memcpy(rsa->qt.p.data, qt.p.data, qt.p.length);
+		if (qt.p.data != NULL)
+			memcpy(rsa->qt.p.data, qt.p.data, qt.p.length);
 		rsa->qt.dP.data = rsa->qt.p.data + qt.p.length;
 		memcpy(rsa->qt.dP.data, qt.dP.data, qt.dP.length);
 		rsa->qt.qInv.data = rsa->qt.dP.data + qt.dP.length;
