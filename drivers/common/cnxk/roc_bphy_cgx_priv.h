@@ -101,7 +101,6 @@ enum eth_cmd_own {
 #define SCR0_ETH_EVT_STS_S_ID	    GENMASK_ULL(8, 3)
 
 /* struct eth_lnk_sts_s */
-#define SCR0_ETH_LNK_STS_S_ERR_TYPE    GENMASK_ULL(24, 15)
 #define SCR0_ETH_LNK_STS_S_LINK_UP     BIT_ULL(9)
 #define SCR0_ETH_LNK_STS_S_FULL_DUPLEX BIT_ULL(10)
 #define SCR0_ETH_LNK_STS_S_SPEED       GENMASK_ULL(14, 11)
