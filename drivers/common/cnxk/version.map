@@ -37,8 +37,8 @@ INTERNAL {
 	roc_bphy_cgx_stop_rxtx;
 	roc_bphy_dev_fini;
 	roc_bphy_dev_init;
-	roc_bphy_handler_clear;
 	roc_bphy_intr_available;
+	roc_bphy_intr_clear;
 	roc_bphy_intr_fini;
 	roc_bphy_intr_handler;
 	roc_bphy_intr_init;

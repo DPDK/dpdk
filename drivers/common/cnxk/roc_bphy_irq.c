@@ -319,7 +319,7 @@ roc_bphy_intr_available(struct roc_bphy_irq_chip *irq_chip, int irq_num)
 }
 
 int
-roc_bphy_handler_clear(struct roc_bphy_irq_chip *chip, int irq_num)
+roc_bphy_intr_clear(struct roc_bphy_irq_chip *chip, int irq_num)
 {
 	roc_cpuset_t orig_cpuset, intr_cpuset;
 	const struct plt_memzone *mz;

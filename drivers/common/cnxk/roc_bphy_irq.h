@@ -35,8 +35,7 @@ __roc_api void roc_bphy_intr_fini(struct roc_bphy_irq_chip *irq_chip);
 __roc_api void roc_bphy_intr_handler(unsigned int irq_num);
 __roc_api bool roc_bphy_intr_available(struct roc_bphy_irq_chip *irq_chip,
 				       int irq_num);
-__roc_api int roc_bphy_handler_clear(struct roc_bphy_irq_chip *chip,
-				     int irq_num);
+__roc_api int roc_bphy_intr_clear(struct roc_bphy_irq_chip *chip, int irq_num);
 __roc_api int roc_bphy_intr_register(struct roc_bphy_irq_chip *irq_chip,
 				     struct roc_bphy_intr *intr);
 

@@ -85,7 +85,7 @@ cnxk_bphy_intr_unregister(uint16_t dev_id, int irq_num)
 	struct bphy_device *bphy_dev = cnxk_bphy_get_bphy_dev_by_dev_id(dev_id);
 
 	if (bphy_dev->irq_chip)
-		roc_bphy_handler_clear(bphy_dev->irq_chip, irq_num);
+		roc_bphy_intr_clear(bphy_dev->irq_chip, irq_num);
 	else
 		plt_err("Missing irq chip");
 }
