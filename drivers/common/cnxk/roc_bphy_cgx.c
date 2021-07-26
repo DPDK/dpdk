@@ -406,7 +406,7 @@ roc_bphy_cgx_fec_set(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 		return -EINVAL;
 
 	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
-		return -EINVAL;
+		return -ENODEV;
 
 	scr1 = FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_SET_FEC) |
 	       FIELD_PREP(SCR1_ETH_SET_FEC_ARGS, fec);
@@ -425,7 +425,7 @@ roc_bphy_cgx_fec_supported_get(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 		return -EINVAL;
 
 	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
-		return -EINVAL;
+		return -ENODEV;
 
 	scr1 = FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_GET_SUPPORTED_FEC);
 
