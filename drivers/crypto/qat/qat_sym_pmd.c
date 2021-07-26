@@ -176,16 +176,17 @@ static int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		int ring_pair =
 			qat_select_valid_queue(qat_dev, qp_id,
 				QAT_SERVICE_SYMMETRIC);
-		sym_hw_qps =
-			&qat_dev->qp_gen4_data[0][0];
-		qp_hw_data =
-			&qat_dev->qp_gen4_data[ring_pair][0];
+
 		if (ring_pair < 0) {
 			QAT_LOG(ERR,
 				"qp_id %u invalid for this device, no enough services allocated for GEN4 device",
 				qp_id);
 			return -EINVAL;
 		}
+		sym_hw_qps =
+			&qat_dev->qp_gen4_data[0][0];
+		qp_hw_data =
+			&qat_dev->qp_gen4_data[ring_pair][0];
 	} else {
 		sym_hw_qps = qat_gen_config[qat_dev->qat_dev_gen]
 				.qp_hw_data[QAT_SERVICE_SYMMETRIC];
