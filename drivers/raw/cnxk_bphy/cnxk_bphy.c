@@ -51,6 +51,8 @@ bphy_rawdev_selftest(uint16_t dev_id)
 	queues = rte_rawdev_queue_count(dev_id);
 	if (queues == 0)
 		return -ENODEV;
+	if (queues != BPHY_QUEUE_CNT)
+		return -EINVAL;
 
 	ret = rte_rawdev_start(dev_id);
 	if (ret)

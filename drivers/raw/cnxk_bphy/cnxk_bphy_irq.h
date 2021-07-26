@@ -23,10 +23,11 @@ struct bphy_irq_queue {
 };
 
 struct bphy_device {
+#define BPHY_QUEUE_CNT 1
 	struct roc_bphy_irq_chip *irq_chip;
 	struct bphy_mem mem;
 	/* bphy irq interface supports single queue only */
-	struct bphy_irq_queue queues[1];
+	struct bphy_irq_queue queues[BPHY_QUEUE_CNT];
 };
 
 int cnxk_bphy_intr_init(uint16_t dev_id);
