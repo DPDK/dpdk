@@ -220,7 +220,10 @@ typedef enum {
 	CPT_EC_ID_P256 = 2,
 	CPT_EC_ID_P384 = 3,
 	CPT_EC_ID_P521 = 4,
-	CPT_EC_ID_PMAX = 5
+	CPT_EC_ID_P160 = 5,
+	CPT_EC_ID_P320 = 6,
+	CPT_EC_ID_P512 = 7,
+	CPT_EC_ID_PMAX = 8
 } cpt_ec_id_t;
 
 typedef struct sglist_comp {
@@ -344,6 +347,18 @@ struct cpt_ec_group {
 		uint8_t data[66];
 		unsigned int length;
 	} order;
+
+	struct {
+		/* P521 maximum length */
+		uint8_t data[66];
+		unsigned int length;
+	} consta;
+
+	struct {
+		/* P521 maximum length */
+		uint8_t data[66];
+		unsigned int length;
+	} constb;
 };
 
 struct cpt_asym_ec_ctx {
