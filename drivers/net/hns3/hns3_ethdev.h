@@ -699,7 +699,9 @@ struct hns3_vtag_cfg {
 /* Request types for IPC. */
 enum hns3_mp_req_type {
 	HNS3_MP_REQ_START_RXTX = 1,
-	HNS3_MP_REQ_STOP_RXTX,
+	HNS3_MP_REQ_STOP_RXTX  = 2,
+	HNS3_MP_REQ_START_TX   = 3,
+	HNS3_MP_REQ_STOP_TX    = 4,
 	HNS3_MP_REQ_MAX
 };
 

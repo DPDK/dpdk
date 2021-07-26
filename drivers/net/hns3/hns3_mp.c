@@ -73,6 +73,7 @@ mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	struct hns3_mp_param *res = (struct hns3_mp_param *)mp_res.param;
 	const struct hns3_mp_param *param =
 		(const struct hns3_mp_param *)mp_msg->param;
+	eth_tx_prep_t prep = NULL;
 	struct rte_eth_dev *dev;
 	int ret;
 
@@ -87,19 +88,23 @@ mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 		PMD_INIT_LOG(INFO, "port %u starting datapath",
 			     dev->data->port_id);
 		hns3_set_rxtx_function(dev);
-		rte_mb();
-		mp_init_msg(dev, &mp_res, param->type);
-		res->result = 0;
-		ret = rte_mp_reply(&mp_res, peer);
 		break;
 	case HNS3_MP_REQ_STOP_RXTX:
 		PMD_INIT_LOG(INFO, "port %u stopping datapath",
 			     dev->data->port_id);
 		hns3_set_rxtx_function(dev);
-		rte_mb();
-		mp_init_msg(dev, &mp_res, param->type);
-		res->result = 0;
-		ret = rte_mp_reply(&mp_res, peer);
+		break;
+	case HNS3_MP_REQ_START_TX:
+		PMD_INIT_LOG(INFO, "port %u starting Tx datapath",
+			     dev->data->port_id);
+		dev->tx_pkt_burst = hns3_get_tx_function(dev, &prep);
+		dev->tx_pkt_prepare = prep;
+		break;
+	case HNS3_MP_REQ_STOP_TX:
+		PMD_INIT_LOG(INFO, "port %u stopping Tx datapath",
+			     dev->data->port_id);
+		dev->tx_pkt_burst = hns3_dummy_rxtx_burst;
+		dev->tx_pkt_prepare = NULL;
 		break;
 	default:
 		rte_errno = EINVAL;
@@ -107,7 +112,22 @@ mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 			     dev->data->port_id);
 		return -rte_errno;
 	}
+
+	rte_mb();
+	mp_init_msg(dev, &mp_res, param->type);
+	res->result = 0;
+	ret = rte_mp_reply(&mp_res, peer);
+
 	return ret;
+}
+
+static bool
+mp_req_type_is_valid(enum hns3_mp_req_type type)
+{
+	return type == HNS3_MP_REQ_START_RXTX ||
+		type == HNS3_MP_REQ_STOP_RXTX ||
+		type == HNS3_MP_REQ_START_TX ||
+		type == HNS3_MP_REQ_STOP_TX;
 }
 
 /*
@@ -132,7 +152,7 @@ mp_req_on_rxtx(struct rte_eth_dev *dev, enum hns3_mp_req_type type)
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY || !hw->secondary_cnt)
 		return;
-	if (type != HNS3_MP_REQ_START_RXTX && type != HNS3_MP_REQ_STOP_RXTX) {
+	if (!mp_req_type_is_valid(type)) {
 		hns3_err(hw, "port %u unknown request (req_type %d)",
 			 dev->data->port_id, type);
 		return;
@@ -187,6 +207,18 @@ void hns3_mp_req_start_rxtx(struct rte_eth_dev *dev)
 void hns3_mp_req_stop_rxtx(struct rte_eth_dev *dev)
 {
 	mp_req_on_rxtx(dev, HNS3_MP_REQ_STOP_RXTX);
+}
+
+void
+hns3_mp_req_stop_tx(struct rte_eth_dev *dev)
+{
+	mp_req_on_rxtx(dev, HNS3_MP_REQ_STOP_TX);
+}
+
+void
+hns3_mp_req_start_tx(struct rte_eth_dev *dev)
+{
+	mp_req_on_rxtx(dev, HNS3_MP_REQ_START_TX);
 }
 
 /*

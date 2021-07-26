@@ -4309,7 +4309,7 @@ hns3_get_tx_prep_needed(struct rte_eth_dev *dev)
 #endif
 }
 
-static eth_tx_burst_t
+eth_tx_burst_t
 hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
@@ -4346,7 +4346,7 @@ hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
 	return hns3_xmit_pkts;
 }
 
-static uint16_t
+uint16_t
 hns3_dummy_rxtx_burst(void *dpdk_txq __rte_unused,
 		      struct rte_mbuf **pkts __rte_unused,
 		      uint16_t pkts_n __rte_unused)
