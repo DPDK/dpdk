@@ -7,7 +7,6 @@
 #include <rte_rawdev_pmd.h>
 
 #include <roc_api.h>
-#include <roc_bphy_irq.h>
 
 #include "cnxk_bphy_irq.h"
 

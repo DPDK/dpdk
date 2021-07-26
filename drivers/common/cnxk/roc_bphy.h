@@ -6,6 +6,7 @@
 #define _ROC_BPHY_
 
 #include "roc_api.h"
+#include "roc_bphy_irq.h"
 
 struct roc_bphy {
 	struct plt_pci_device *pci_dev;
