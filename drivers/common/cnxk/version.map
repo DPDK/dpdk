@@ -43,9 +43,6 @@ INTERNAL {
 	roc_bphy_intr_handler;
 	roc_bphy_intr_init;
 	roc_bphy_intr_register;
-	roc_bphy_irq_handler_set;
-	roc_bphy_irq_stack_get;
-	roc_bphy_irq_stack_remove;
 	roc_clk_freq_get;
 	roc_cpt_afs_print;
 	roc_cpt_dev_clear;

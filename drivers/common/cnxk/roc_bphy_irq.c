@@ -123,7 +123,7 @@ roc_bphy_intr_fini(struct roc_bphy_irq_chip *irq_chip)
 	plt_free(irq_chip);
 }
 
-void
+static void
 roc_bphy_irq_stack_remove(int cpu)
 {
 	struct roc_bphy_irq_stack *curr_stack;
@@ -153,7 +153,7 @@ leave:
 	pthread_mutex_unlock(&stacks_mutex);
 }
 
-void *
+static void *
 roc_bphy_irq_stack_get(int cpu)
 {
 #define ARM_STACK_ALIGNMENT (2 * sizeof(void *))
@@ -221,7 +221,7 @@ roc_bphy_intr_handler(unsigned int irq_num)
 	roc_atf_ret();
 }
 
-int
+static int
 roc_bphy_irq_handler_set(struct roc_bphy_irq_chip *chip, int irq_num,
 			 void (*isr)(int irq_num, void *isr_data),
 			 void *isr_data)

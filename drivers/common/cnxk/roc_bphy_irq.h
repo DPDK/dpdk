@@ -32,13 +32,7 @@ struct roc_bphy_intr {
 
 __roc_api struct roc_bphy_irq_chip *roc_bphy_intr_init(void);
 __roc_api void roc_bphy_intr_fini(struct roc_bphy_irq_chip *irq_chip);
-__roc_api void roc_bphy_irq_stack_remove(int cpu);
-__roc_api void *roc_bphy_irq_stack_get(int cpu);
 __roc_api void roc_bphy_intr_handler(unsigned int irq_num);
-__roc_api int
-roc_bphy_irq_handler_set(struct roc_bphy_irq_chip *chip, int irq_num,
-			 void (*handler)(int irq_num, void *isr_data),
-			 void *isr_data);
 __roc_api bool roc_bphy_intr_available(struct roc_bphy_irq_chip *irq_chip,
 				       int irq_num);
 __roc_api int roc_bphy_handler_clear(struct roc_bphy_irq_chip *chip,
