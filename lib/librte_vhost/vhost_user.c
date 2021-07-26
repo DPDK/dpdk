@@ -2677,6 +2677,7 @@ vhost_user_check_and_alloc_queue_pair(struct virtio_net *dev,
 		break;
 	case VHOST_USER_SET_VRING_NUM:
 	case VHOST_USER_SET_VRING_BASE:
+	case VHOST_USER_GET_VRING_BASE:
 	case VHOST_USER_SET_VRING_ENABLE:
 		vring_idx = msg->payload.state.index;
 		break;
