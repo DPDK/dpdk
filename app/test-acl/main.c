@@ -48,6 +48,8 @@
 
 #define	RULE_NUM		0x10000
 
+#define COMMENT_LEAD_CHAR	'#'
+
 enum {
 	DUMP_NONE,
 	DUMP_SEARCH,
@@ -472,13 +474,28 @@ parse_cb_ipv6_trace(char *str, struct ipv6_5tuple *v)
 	return 0;
 }
 
+/* Bypass comment and empty lines */
+static int
+skip_line(const char *buf)
+{
+	uint32_t i;
+
+	for (i = 0; isspace(buf[i]) != 0; i++)
+		;
+
+	if (buf[i] == 0 || buf[i] == COMMENT_LEAD_CHAR)
+		return 1;
+
+	return 0;
+}
+
 static void
 tracef_init(void)
 {
 	static const char name[] = APP_NAME;
 	FILE *f;
 	size_t sz;
-	uint32_t n;
+	uint32_t i, k, n;
 	struct ipv4_5tuple *v;
 	struct ipv6_5tuple *w;
 
@@ -497,27 +514,36 @@ tracef_init(void)
 
 	v = config.traces;
 	w = config.traces;
-	for (n = 0; n != config.nb_traces; n++) {
+	k = 0;
+	n = 0;
+	for (i = 0; n != config.nb_traces; i++) {
 
 		if (fgets(line, sizeof(line), f) == NULL)
 			break;
+
+		if (skip_line(line) != 0) {
+			k++;
+			continue;
+		}
+
+		n = i - k;
 
 		if (config.ipv6) {
 			if (parse_cb_ipv6_trace(line, w + n) != 0)
 				rte_exit(EXIT_FAILURE,
 					"%s: failed to parse ipv6 trace "
 					"record at line %u\n",
-					config.trace_file, n + 1);
+					config.trace_file, i + 1);
 		} else {
 			if (parse_cb_ipv4_trace(line, v + n) != 0)
 				rte_exit(EXIT_FAILURE,
 					"%s: failed to parse ipv4 trace "
 					"record at line %u\n",
-					config.trace_file, n + 1);
+					config.trace_file, i + 1);
 		}
 	}
 
-	config.used_traces = n;
+	config.used_traces = i - k;
 	fclose(f);
 }
 
@@ -727,20 +753,27 @@ static int
 add_cb_rules(FILE *f, struct rte_acl_ctx *ctx)
 {
 	int rc;
-	uint32_t n;
+	uint32_t i, k, n;
 	struct acl_rule v;
 	parse_5tuple parser;
 
 	memset(&v, 0, sizeof(v));
 	parser = (config.ipv6 != 0) ? parse_cb_ipv6_rule : parse_cb_ipv4_rule;
 
-	for (n = 1; fgets(line, sizeof(line), f) != NULL; n++) {
+	k = 0;
+	for (i = 1; fgets(line, sizeof(line), f) != NULL; i++) {
 
+		if (skip_line(line) != 0) {
+			k++;
+			continue;
+		}
+
+		n = i - k;
 		rc = parser(line, &v);
 		if (rc != 0) {
 			RTE_LOG(ERR, TESTACL, "line %u: parse_cb_ipv4vlan_rule"
 				" failed, error code: %d (%s)\n",
-				n, rc, strerror(-rc));
+				i, rc, strerror(-rc));
 			return rc;
 		}
 
@@ -753,7 +786,7 @@ add_cb_rules(FILE *f, struct rte_acl_ctx *ctx)
 		if (rc != 0) {
 			RTE_LOG(ERR, TESTACL, "line %u: failed to add rules "
 				"into ACL context, error code: %d (%s)\n",
-				n, rc, strerror(-rc));
+				i, rc, strerror(-rc));
 			return rc;
 		}
 	}
