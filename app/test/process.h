@@ -110,6 +110,7 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 		for (i = 0; i < num; i++)
 			printf("'%s' ", argv_cpy[i]);
 		printf("\n");
+		fflush(stdout);
 
 		/* set the environment variable */
 		if (setenv(RECURSIVE_ENV_VAR, env_value, 1) != 0)
