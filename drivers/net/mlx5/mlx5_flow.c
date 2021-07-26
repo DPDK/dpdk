@@ -5259,6 +5259,7 @@ flow_check_match_action(const struct rte_flow_action actions[],
 			int *modify_after_mirror)
 {
 	const struct rte_flow_action_sample *sample;
+	const struct rte_flow_action_raw_decap *decap;
 	int actions_n = 0;
 	uint32_t ratio = 0;
 	int sub_type = 0;
@@ -5311,9 +5312,26 @@ flow_check_match_action(const struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
-		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
 		case RTE_FLOW_ACTION_TYPE_METER:
+			if (fdb_mirror)
+				*modify_after_mirror = 1;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+			decap = actions->conf;
+			while ((++actions)->type == RTE_FLOW_ACTION_TYPE_VOID)
+				;
+			actions_n++;
+			if (actions->type == RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
+				const struct rte_flow_action_raw_encap *encap =
+								actions->conf;
+				if (decap->size <=
+					MLX5_ENCAPSULATION_DECISION_SIZE &&
+				    encap->size >
+					MLX5_ENCAPSULATION_DECISION_SIZE)
+					/* L3 encap. */
+					break;
+			}
 			if (fdb_mirror)
 				*modify_after_mirror = 1;
 			break;
