@@ -198,6 +198,13 @@ exit:
 	return ret;
 }
 
+void
+eal_mem_virt2iova_cleanup(void)
+{
+	if (virt2phys_device != INVALID_HANDLE_VALUE)
+		CloseHandle(virt2phys_device);
+}
+
 phys_addr_t
 rte_mem_virt2phy(const void *virt)
 {
