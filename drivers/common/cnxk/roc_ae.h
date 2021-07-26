@@ -30,7 +30,10 @@ typedef enum {
 	ROC_AE_EC_ID_P256 = 2,
 	ROC_AE_EC_ID_P384 = 3,
 	ROC_AE_EC_ID_P521 = 4,
-	ROC_AE_EC_ID_PMAX = 5
+	ROC_AE_EC_ID_P160 = 5,
+	ROC_AE_EC_ID_P320 = 6,
+	ROC_AE_EC_ID_P512 = 7,
+	ROC_AE_EC_ID_PMAX = 8
 } roc_ae_ec_id;
 
 /* Prime and order fields of built-in elliptic curves */
@@ -46,6 +49,18 @@ struct roc_ae_ec_group {
 		uint8_t data[66];
 		unsigned int length;
 	} order;
+
+	struct {
+		/* P521 maximum length */
+		uint8_t data[66];
+		unsigned int length;
+	} consta;
+
+	struct {
+		/* P521 maximum length */
+		uint8_t data[66];
+		unsigned int length;
+	} constb;
 };
 
 struct roc_ae_ec_ctx {
