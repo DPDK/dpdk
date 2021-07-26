@@ -650,73 +650,17 @@ is_ccp_device(const char *dirname,
 }
 
 static int
-ccp_probe_device(const char *dirname, uint16_t domain,
-		 uint8_t bus, uint8_t devid,
-		 uint8_t function, int ccp_type)
+ccp_probe_device(int ccp_type, struct rte_pci_device *pci_dev)
 {
 	struct ccp_device *ccp_dev = NULL;
-	struct rte_pci_device *pci;
-	char filename[PATH_MAX];
-	unsigned long tmp;
 	int uio_fd = -1;
 
 	ccp_dev = rte_zmalloc("ccp_device", sizeof(*ccp_dev),
 			      RTE_CACHE_LINE_SIZE);
 	if (ccp_dev == NULL)
 		goto fail;
-	pci = &(ccp_dev->pci);
 
-	pci->addr.domain = domain;
-	pci->addr.bus = bus;
-	pci->addr.devid = devid;
-	pci->addr.function = function;
-
-	/* get vendor id */
-	snprintf(filename, sizeof(filename), "%s/vendor", dirname);
-	if (ccp_pci_parse_sysfs_value(filename, &tmp) < 0)
-		goto fail;
-	pci->id.vendor_id = (uint16_t)tmp;
-
-	/* get device id */
-	snprintf(filename, sizeof(filename), "%s/device", dirname);
-	if (ccp_pci_parse_sysfs_value(filename, &tmp) < 0)
-		goto fail;
-	pci->id.device_id = (uint16_t)tmp;
-
-	/* get subsystem_vendor id */
-	snprintf(filename, sizeof(filename), "%s/subsystem_vendor",
-			dirname);
-	if (ccp_pci_parse_sysfs_value(filename, &tmp) < 0)
-		goto fail;
-	pci->id.subsystem_vendor_id = (uint16_t)tmp;
-
-	/* get subsystem_device id */
-	snprintf(filename, sizeof(filename), "%s/subsystem_device",
-			dirname);
-	if (ccp_pci_parse_sysfs_value(filename, &tmp) < 0)
-		goto fail;
-	pci->id.subsystem_device_id = (uint16_t)tmp;
-
-	/* get class_id */
-	snprintf(filename, sizeof(filename), "%s/class",
-			dirname);
-	if (ccp_pci_parse_sysfs_value(filename, &tmp) < 0)
-		goto fail;
-	/* the least 24 bits are valid: class, subclass, program interface */
-	pci->id.class_id = (uint32_t)tmp & RTE_CLASS_ANY_ID;
-
-	/* parse resources */
-	snprintf(filename, sizeof(filename), "%s/resource", dirname);
-	if (ccp_pci_parse_sysfs_resource(filename, pci) < 0)
-		goto fail;
-	if (iommu_mode == 2)
-		pci->kdrv = RTE_PCI_KDRV_VFIO;
-	else if (iommu_mode == 0)
-		pci->kdrv = RTE_PCI_KDRV_IGB_UIO;
-	else if (iommu_mode == 1)
-		pci->kdrv = RTE_PCI_KDRV_UIO_GENERIC;
-
-	rte_pci_map_device(pci);
+	ccp_dev->pci = *pci_dev;
 
 	/* device is valid, add in list */
 	if (ccp_add_device(ccp_dev, ccp_type)) {
@@ -735,7 +679,8 @@ fail:
 }
 
 int
-ccp_probe_devices(const struct rte_pci_id *ccp_id)
+ccp_probe_devices(struct rte_pci_device *pci_dev,
+		const struct rte_pci_id *ccp_id)
 {
 	int dev_cnt = 0;
 	int ccp_type = 0;
@@ -767,8 +712,7 @@ ccp_probe_devices(const struct rte_pci_id *ccp_id)
 		if (is_ccp_device(dirname, ccp_id, &ccp_type)) {
 			printf("CCP : Detected CCP device with ID = 0x%x\n",
 			       ccp_id[ccp_type].device_id);
-			ret = ccp_probe_device(dirname, domain, bus, devid,
-					       function, ccp_type);
+			ret = ccp_probe_device(ccp_type, pci_dev);
 			if (ret == 0)
 				dev_cnt++;
 		}
