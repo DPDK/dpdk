@@ -439,7 +439,7 @@ cnxk_ae_ecdsa_sign_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	 * Please note, private key, order cannot exceed prime
 	 * length i.e 3 * p_align.
 	 */
-	dlen = sizeof(fpm_table_iova) + k_align + m_align + p_align * 3;
+	dlen = sizeof(fpm_table_iova) + k_align + m_align + p_align * 5;
 
 	memset(dptr, 0, dlen);
 
@@ -461,12 +461,18 @@ cnxk_ae_ecdsa_sign_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	memcpy(dptr, ecdsa->message.data, message_len);
 	dptr += m_align;
 
+	memcpy(dptr, ec_grp->consta.data, prime_len);
+	dptr += p_align;
+
+	memcpy(dptr, ec_grp->constb.data, prime_len);
+	dptr += p_align;
+
 	/* Setup opcodes */
 	w4.s.opcode_major = ROC_AE_MAJOR_OP_ECDSA;
 	w4.s.opcode_minor = ROC_AE_MINOR_OP_ECDSA_SIGN;
 
 	w4.s.param1 = curveid | (message_len << 8);
-	w4.s.param2 = k_len;
+	w4.s.param2 = (pkey_len << 8) | k_len;
 	w4.s.dlen = dlen;
 
 	inst->w4.u64 = w4.u64;
@@ -521,7 +527,7 @@ cnxk_ae_ecdsa_verify_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	 * Please note sign, public key and order can not exceed prime length
 	 * i.e. 6 * p_align
 	 */
-	dlen = sizeof(fpm_table_iova) + m_align + (6 * p_align);
+	dlen = sizeof(fpm_table_iova) + m_align + (8 * p_align);
 
 	memset(dptr, 0, dlen);
 
@@ -547,6 +553,12 @@ cnxk_ae_ecdsa_verify_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	dptr += p_align;
 
 	memcpy(dptr + qy_offset, ecdsa->q.y.data, qy_len);
+	dptr += p_align;
+
+	memcpy(dptr, ec_grp->consta.data, prime_len);
+	dptr += p_align;
+
+	memcpy(dptr, ec_grp->constb.data, prime_len);
 	dptr += p_align;
 
 	/* Setup opcodes */
@@ -612,7 +624,7 @@ cnxk_ae_ecpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	 * scalar length),
 	 * Please note point length is equivalent to prime of the curve
 	 */
-	dlen = 3 * p_align + scalar_align;
+	dlen = 5 * p_align + scalar_align;
 
 	x1_offset = prime_len - x1_len;
 	y1_offset = prime_len - y1_len;
@@ -627,6 +639,10 @@ cnxk_ae_ecpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	memcpy(dptr, ecpm->scalar.data, ecpm->scalar.length);
 	dptr += scalar_align;
 	memcpy(dptr, ec_grp->prime.data, ec_grp->prime.length);
+	dptr += p_align;
+	memcpy(dptr, ec_grp->consta.data, ec_grp->consta.length);
+	dptr += p_align;
+	memcpy(dptr, ec_grp->constb.data, ec_grp->constb.length);
 	dptr += p_align;
 
 	/* Setup opcodes */
