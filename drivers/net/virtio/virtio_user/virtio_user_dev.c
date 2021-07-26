@@ -599,6 +599,12 @@ void
 virtio_user_dev_uninit(struct virtio_user_dev *dev)
 {
 	uint32_t i;
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
+
+	if (eth_dev->intr_handle) {
+		free(eth_dev->intr_handle);
+		eth_dev->intr_handle = NULL;
+	}
 
 	virtio_user_stop_device(dev);
 
