@@ -251,6 +251,7 @@ TAILQ_HEAD(header_tailq, header);
 
 struct header_runtime {
 	uint8_t *ptr0;
+	uint32_t n_bytes;
 };
 
 struct header_out_runtime {
@@ -2522,11 +2523,14 @@ header_build(struct rte_swx_pipeline *p)
 
 		TAILQ_FOREACH(h, &p->headers, node) {
 			uint8_t *header_storage;
+			uint32_t n_bytes =  h->st->n_bits / 8;
 
 			header_storage = &t->header_storage[offset];
-			offset += h->st->n_bits / 8;
+			offset += n_bytes;
 
 			t->headers[h->id].ptr0 = header_storage;
+			t->headers[h->id].n_bytes = n_bytes;
+
 			t->structs[h->struct_id] = header_storage;
 		}
 	}
@@ -3262,9 +3266,11 @@ __instr_hdr_emit_exec(struct rte_swx_pipeline *p, uint32_t n_emit)
 	for (i = 0; i < n_emit; i++) {
 		uint32_t header_id = ip->io.hdr.header_id[i];
 		uint32_t struct_id = ip->io.hdr.struct_id[i];
-		uint32_t n_bytes = ip->io.hdr.n_bytes[i];
 
 		struct header_runtime *hi = &t->headers[header_id];
+		uint8_t *hi_ptr0 = hi->ptr0;
+		uint32_t n_bytes = hi->n_bytes;
+
 		uint8_t *hi_ptr = t->structs[struct_id];
 
 		if (!MASK64_BIT_GET(valid_headers, header_id))
@@ -3281,7 +3287,7 @@ __instr_hdr_emit_exec(struct rte_swx_pipeline *p, uint32_t n_emit)
 			if (!t->n_headers_out) {
 				ho = &t->headers_out[0];
 
-				ho->ptr0 = hi->ptr0;
+				ho->ptr0 = hi_ptr0;
 				ho->ptr = hi_ptr;
 
 				ho_ptr = hi_ptr;
@@ -3302,7 +3308,7 @@ __instr_hdr_emit_exec(struct rte_swx_pipeline *p, uint32_t n_emit)
 			ho->n_bytes = ho_nbytes;
 
 			ho++;
-			ho->ptr0 = hi->ptr0;
+			ho->ptr0 = hi_ptr0;
 			ho->ptr = hi_ptr;
 
 			ho_ptr = hi_ptr;
