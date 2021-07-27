@@ -10985,6 +10985,8 @@ flow_dv_hrxq_prepare(struct rte_eth_dev *dev,
 	rss_desc->hash_fields = dev_flow->hash_fields;
 	rss_desc->tunnel = !!(dh->layers & MLX5_FLOW_LAYER_TUNNEL);
 	rss_desc->shared_rss = 0;
+	if (rss_desc->hash_fields == 0)
+		rss_desc->queue_num = 1;
 	*hrxq_idx = mlx5_hrxq_get(dev, rss_desc);
 	if (!*hrxq_idx)
 		return NULL;
