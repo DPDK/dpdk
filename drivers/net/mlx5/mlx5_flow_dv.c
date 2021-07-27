@@ -10896,10 +10896,8 @@ flow_dv_hashfields_set(struct mlx5_flow *dev_flow,
 
 	dev_flow->hash_fields = 0;
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	if (rss_desc->level >= 2) {
-		dev_flow->hash_fields |= IBV_RX_HASH_INNER;
+	if (rss_desc->level >= 2)
 		rss_inner = 1;
-	}
 #endif
 	if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L3_IPV4)) ||
 	    (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L3_IPV4))) {
@@ -10922,6 +10920,12 @@ flow_dv_hashfields_set(struct mlx5_flow *dev_flow,
 				dev_flow->hash_fields |= MLX5_IPV6_IBV_RX_HASH;
 		}
 	}
+	if (dev_flow->hash_fields == 0)
+		/*
+		 * There is no match between the RSS types and the
+		 * L3 protocol (IPv4/IPv6) defined in the flow rule.
+		 */
+		return;
 	if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L4_UDP)) ||
 	    (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L4_UDP))) {
 		if (rss_types & ETH_RSS_UDP) {
@@ -10947,6 +10951,8 @@ flow_dv_hashfields_set(struct mlx5_flow *dev_flow,
 				dev_flow->hash_fields |= MLX5_TCP_IBV_RX_HASH;
 		}
 	}
+	if (rss_inner)
+		dev_flow->hash_fields |= IBV_RX_HASH_INNER;
 }
 
 /**
