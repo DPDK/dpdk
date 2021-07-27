@@ -744,14 +744,6 @@ qat_sym_dp_dequeue_burst(void *qp_data, uint8_t *drv_ctx,
 		n = get_dequeue_count(resp_opaque);
 		if (unlikely(n == 0))
 			return 0;
-		else if (n > 1) {
-			head = (head + rx_queue->msg_size * (n - 1)) &
-				rx_queue->modulo_mask;
-			resp = (struct icp_qat_fw_comn_resp *)(
-				(uint8_t *)rx_queue->base_addr + head);
-			if (*(uint32_t *)resp == ADF_RING_EMPTY_SIG)
-				return 0;
-		}
 	} else {
 		if (unlikely(max_nb_to_dequeue == 0))
 			return 0;
