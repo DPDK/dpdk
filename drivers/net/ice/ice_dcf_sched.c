@@ -833,7 +833,7 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 			goto fail_clear;
 		}
 		/* store the bandwidth information for replay */
-		ice_memcpy(hw->qos_bw_cfg[vf_id], vf_bw, sizeof(*vf_bw),
+		ice_memcpy(hw->qos_bw_cfg[vf_id], vf_bw, size,
 			   ICE_NONDMA_TO_NONDMA);
 		ice_memset(vf_bw, 0, size, ICE_NONDMA_MEM);
 	}
@@ -859,7 +859,7 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 		ret_val = ICE_ERR_NO_MEMORY;
 		goto fail_clear;
 	}
-	ice_memcpy(hw->qos_bw_cfg[ICE_DCF_VFID], tc_bw, sizeof(*tc_bw),
+	ice_memcpy(hw->qos_bw_cfg[ICE_DCF_VFID], tc_bw, size,
 		   ICE_NONDMA_TO_NONDMA);
 
 	hw->tm_conf.committed = true;
