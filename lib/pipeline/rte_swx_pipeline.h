@@ -298,6 +298,14 @@ struct rte_swx_field_params {
  * Similar to C language structs, they are a well defined sequence of fields,
  * with each field having a unique name and a constant size.
  *
+ * In order to use structs to express variable size packet headers such as IPv4
+ * with options, it is allowed for the last field of the struct type to have a
+ * variable size between 0 and *n_bits* bits, with the actual size of this field
+ * determined at run-time for each packet. This struct feature is restricted to
+ * just a few selected instructions that deal with packet headers, so a typical
+ * struct generally has a constant size that is fully known when its struct type
+ * is registered.
+ *
  * @param[in] p
  *   Pipeline handle.
  * @param[in] name
@@ -306,6 +314,10 @@ struct rte_swx_field_params {
  *   The sequence of struct fields.
  * @param[in] n_fields
  *   The number of struct fields.
+ * @param[in] last_field_has_variable_size
+ *   If non-zero (true), then the last field has a variable size between 0 and
+ *   *n_bits* bits, with its actual size determined at run-time for each packet.
+ *   If zero (false), then the last field has a constant size of *n_bits* bits.
  * @return
  *   0 on success or the following error codes otherwise:
  *   -EINVAL: Invalid argument;
@@ -317,7 +329,8 @@ int
 rte_swx_pipeline_struct_type_register(struct rte_swx_pipeline *p,
 				      const char *name,
 				      struct rte_swx_field_params *fields,
-				      uint32_t n_fields);
+				      uint32_t n_fields,
+				      int last_field_has_variable_size);
 
 /**
  * Pipeline packet header register

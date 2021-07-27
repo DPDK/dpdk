@@ -109,6 +109,7 @@ struct field {
 	char name[RTE_SWX_NAME_SIZE];
 	uint32_t n_bits;
 	uint32_t offset;
+	int var_size;
 };
 
 struct struct_type {
@@ -117,6 +118,8 @@ struct struct_type {
 	struct field *fields;
 	uint32_t n_fields;
 	uint32_t n_bits;
+	uint32_t n_bits_min;
+	int var_size;
 };
 
 TAILQ_HEAD(struct_type_tailq, struct_type);
@@ -1413,7 +1416,8 @@ int
 rte_swx_pipeline_struct_type_register(struct rte_swx_pipeline *p,
 				      const char *name,
 				      struct rte_swx_field_params *fields,
-				      uint32_t n_fields)
+				      uint32_t n_fields,
+				      int last_field_has_variable_size)
 {
 	struct struct_type *st;
 	uint32_t i;
@@ -1425,11 +1429,12 @@ rte_swx_pipeline_struct_type_register(struct rte_swx_pipeline *p,
 
 	for (i = 0; i < n_fields; i++) {
 		struct rte_swx_field_params *f = &fields[i];
+		int var_size = ((i == n_fields - 1) && last_field_has_variable_size) ? 1 : 0;
 		uint32_t j;
 
 		CHECK_NAME(f->name, EINVAL);
 		CHECK(f->n_bits, EINVAL);
-		CHECK(f->n_bits <= 64, EINVAL);
+		CHECK((f->n_bits <= 64) || var_size, EINVAL);
 		CHECK((f->n_bits & 7) == 0, EINVAL);
 
 		for (j = 0; j < i; j++) {
@@ -1456,14 +1461,18 @@ rte_swx_pipeline_struct_type_register(struct rte_swx_pipeline *p,
 	for (i = 0; i < n_fields; i++) {
 		struct field *dst = &st->fields[i];
 		struct rte_swx_field_params *src = &fields[i];
+		int var_size = ((i == n_fields - 1) && last_field_has_variable_size) ? 1 : 0;
 
 		strcpy(dst->name, src->name);
 		dst->n_bits = src->n_bits;
 		dst->offset = st->n_bits;
+		dst->var_size = var_size;
 
 		st->n_bits += src->n_bits;
+		st->n_bits_min += var_size ? 0 : src->n_bits;
 	}
 	st->n_fields = n_fields;
+	st->var_size = last_field_has_variable_size;
 
 	/* Node add to tailq. */
 	TAILQ_INSERT_TAIL(&p->struct_types, st, node);
@@ -1987,6 +1996,7 @@ rte_swx_pipeline_extern_type_register(struct rte_swx_pipeline *p,
 	CHECK_NAME(mailbox_struct_type_name, EINVAL);
 	mailbox_struct_type = struct_type_find(p, mailbox_struct_type_name);
 	CHECK(mailbox_struct_type, EINVAL);
+	CHECK(!mailbox_struct_type->var_size, EINVAL);
 
 	CHECK(constructor, EINVAL);
 	CHECK(destructor, EINVAL);
@@ -2278,6 +2288,7 @@ rte_swx_pipeline_extern_func_register(struct rte_swx_pipeline *p,
 	CHECK_NAME(mailbox_struct_type_name, EINVAL);
 	mailbox_struct_type = struct_type_find(p, mailbox_struct_type_name);
 	CHECK(mailbox_struct_type, EINVAL);
+	CHECK(!mailbox_struct_type->var_size, EINVAL);
 
 	CHECK(func, EINVAL);
 
@@ -2603,6 +2614,7 @@ rte_swx_pipeline_packet_metadata_register(struct rte_swx_pipeline *p,
 	CHECK_NAME(struct_type_name, EINVAL);
 	st  = struct_type_find(p, struct_type_name);
 	CHECK(st, EINVAL);
+	CHECK(!st->var_size, EINVAL);
 	CHECK(!p->metadata_st, EINVAL);
 
 	p->metadata_st = st;
@@ -3080,6 +3092,7 @@ instr_hdr_extract_translate(struct rte_swx_pipeline *p,
 
 	h = header_parse(p, tokens[1]);
 	CHECK(h, EINVAL);
+	CHECK(!h->st->var_size, EINVAL);
 
 	instr->type = INSTR_HDR_EXTRACT;
 	instr->io.hdr.header_id[0] = h->id;
@@ -3727,10 +3740,13 @@ instr_mov_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
 
 	/* MOV, MOV_MH, MOV_HM or MOV_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
+		CHECK(!fsrc->var_size, EINVAL);
+
 		instr->type = INSTR_MOV;
 		if (dst[0] != 'h' && src[0] == 'h')
 			instr->type = INSTR_MOV_MH;
@@ -3992,10 +4008,13 @@ instr_alu_add_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
 
 	/* ADD, ADD_HM, ADD_MH, ADD_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
+		CHECK(!fsrc->var_size, EINVAL);
+
 		instr->type = INSTR_ALU_ADD;
 		if (dst[0] == 'h' && src[0] != 'h')
 			instr->type = INSTR_ALU_ADD_HM;
@@ -4045,10 +4064,13 @@ instr_alu_sub_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
 
 	/* SUB, SUB_HM, SUB_MH, SUB_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
+		CHECK(!fsrc->var_size, EINVAL);
+
 		instr->type = INSTR_ALU_SUB;
 		if (dst[0] == 'h' && src[0] != 'h')
 			instr->type = INSTR_ALU_SUB_HM;
@@ -4097,10 +4119,13 @@ instr_alu_ckadd_translate(struct rte_swx_pipeline *p,
 
 	fdst = header_field_parse(p, dst, &hdst);
 	CHECK(fdst && (fdst->n_bits == 16), EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
 
 	/* CKADD_FIELD. */
 	fsrc = header_field_parse(p, src, &hsrc);
 	if (fsrc) {
+		CHECK(!fsrc->var_size, EINVAL);
+
 		instr->type = INSTR_ALU_CKADD_FIELD;
 		instr->alu.dst.struct_id = (uint8_t)hdst->struct_id;
 		instr->alu.dst.n_bits = fdst->n_bits;
@@ -4114,6 +4139,7 @@ instr_alu_ckadd_translate(struct rte_swx_pipeline *p,
 	/* CKADD_STRUCT, CKADD_STRUCT20. */
 	hsrc = header_parse(p, src);
 	CHECK(hsrc, EINVAL);
+	CHECK(!hsrc->st->var_size, EINVAL);
 
 	instr->type = INSTR_ALU_CKADD_STRUCT;
 	if ((hsrc->st->n_bits / 8) == 20)
@@ -4144,9 +4170,11 @@ instr_alu_cksub_translate(struct rte_swx_pipeline *p,
 
 	fdst = header_field_parse(p, dst, &hdst);
 	CHECK(fdst && (fdst->n_bits == 16), EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
 
 	fsrc = header_field_parse(p, src, &hsrc);
 	CHECK(fsrc, EINVAL);
+	CHECK(!fsrc->var_size, EINVAL);
 
 	instr->type = INSTR_ALU_CKSUB_FIELD;
 	instr->alu.dst.struct_id = (uint8_t)hdst->struct_id;
@@ -4175,10 +4203,13 @@ instr_alu_shl_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
 
 	/* SHL, SHL_HM, SHL_MH, SHL_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
+		CHECK(!fsrc->var_size, EINVAL);
+
 		instr->type = INSTR_ALU_SHL;
 		if (dst[0] == 'h' && src[0] != 'h')
 			instr->type = INSTR_ALU_SHL_HM;
@@ -4228,10 +4259,13 @@ instr_alu_shr_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
 
 	/* SHR, SHR_HM, SHR_MH, SHR_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
+		CHECK(!fsrc->var_size, EINVAL);
+
 		instr->type = INSTR_ALU_SHR;
 		if (dst[0] == 'h' && src[0] != 'h')
 			instr->type = INSTR_ALU_SHR_HM;
@@ -4281,10 +4315,13 @@ instr_alu_and_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
 
 	/* AND, AND_MH, AND_HM, AND_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
+		CHECK(!fsrc->var_size, EINVAL);
+
 		instr->type = INSTR_ALU_AND;
 		if (dst[0] != 'h' && src[0] == 'h')
 			instr->type = INSTR_ALU_AND_MH;
@@ -4334,10 +4371,13 @@ instr_alu_or_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
 
 	/* OR, OR_MH, OR_HM, OR_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
+		CHECK(!fsrc->var_size, EINVAL);
+
 		instr->type = INSTR_ALU_OR;
 		if (dst[0] != 'h' && src[0] == 'h')
 			instr->type = INSTR_ALU_OR_MH;
@@ -4387,10 +4427,13 @@ instr_alu_xor_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
 
 	/* XOR, XOR_MH, XOR_HM, XOR_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
+		CHECK(!fsrc->var_size, EINVAL);
+
 		instr->type = INSTR_ALU_XOR;
 		if (dst[0] != 'h' && src[0] == 'h')
 			instr->type = INSTR_ALU_XOR_MH;
@@ -5269,6 +5312,8 @@ instr_regprefetch_translate(struct rte_swx_pipeline *p,
 	/* REGPREFETCH_RH, REGPREFETCH_RM. */
 	fidx = struct_field_parse(p, action, idx, &idx_struct_id);
 	if (fidx) {
+		CHECK(!fidx->var_size, EINVAL);
+
 		instr->type = INSTR_REGPREFETCH_RM;
 		if (idx[0] == 'h')
 			instr->type = INSTR_REGPREFETCH_RH;
@@ -5312,10 +5357,13 @@ instr_regrd_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
 
 	/* REGRD_HRH, REGRD_HRM, REGRD_MRH, REGRD_MRM. */
 	fidx = struct_field_parse(p, action, idx, &idx_struct_id);
 	if (fidx) {
+		CHECK(!fidx->var_size, EINVAL);
+
 		instr->type = INSTR_REGRD_MRM;
 		if (dst[0] == 'h' && idx[0] != 'h')
 			instr->type = INSTR_REGRD_HRM;
@@ -5373,6 +5421,9 @@ instr_regwr_translate(struct rte_swx_pipeline *p,
 	fidx = struct_field_parse(p, action, idx, &idx_struct_id);
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fidx && fsrc) {
+		CHECK(!fidx->var_size, EINVAL);
+		CHECK(!fsrc->var_size, EINVAL);
+
 		instr->type = INSTR_REGWR_RMM;
 		if (idx[0] == 'h' && src[0] != 'h')
 			instr->type = INSTR_REGWR_RHM;
@@ -5393,6 +5444,8 @@ instr_regwr_translate(struct rte_swx_pipeline *p,
 
 	/* REGWR_RHI, REGWR_RMI. */
 	if (fidx && !fsrc) {
+		CHECK(!fidx->var_size, EINVAL);
+
 		src_val = strtoull(src, &src, 0);
 		CHECK(!src[0], EINVAL);
 
@@ -5412,6 +5465,8 @@ instr_regwr_translate(struct rte_swx_pipeline *p,
 	if (!fidx && fsrc) {
 		idx_val = strtoul(idx, &idx, 0);
 		CHECK(!idx[0], EINVAL);
+
+		CHECK(!fsrc->var_size, EINVAL);
 
 		instr->type = INSTR_REGWR_RIM;
 		if (src[0] == 'h')
@@ -5462,6 +5517,9 @@ instr_regadd_translate(struct rte_swx_pipeline *p,
 	fidx = struct_field_parse(p, action, idx, &idx_struct_id);
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fidx && fsrc) {
+		CHECK(!fidx->var_size, EINVAL);
+		CHECK(!fsrc->var_size, EINVAL);
+
 		instr->type = INSTR_REGADD_RMM;
 		if (idx[0] == 'h' && src[0] != 'h')
 			instr->type = INSTR_REGADD_RHM;
@@ -5482,6 +5540,8 @@ instr_regadd_translate(struct rte_swx_pipeline *p,
 
 	/* REGADD_RHI, REGADD_RMI. */
 	if (fidx && !fsrc) {
+		CHECK(!fidx->var_size, EINVAL);
+
 		src_val = strtoull(src, &src, 0);
 		CHECK(!src[0], EINVAL);
 
@@ -5501,6 +5561,8 @@ instr_regadd_translate(struct rte_swx_pipeline *p,
 	if (!fidx && fsrc) {
 		idx_val = strtoul(idx, &idx, 0);
 		CHECK(!idx[0], EINVAL);
+
+		CHECK(!fsrc->var_size, EINVAL);
 
 		instr->type = INSTR_REGADD_RIM;
 		if (src[0] == 'h')
@@ -6171,6 +6233,8 @@ instr_metprefetch_translate(struct rte_swx_pipeline *p,
 	/* METPREFETCH_H, METPREFETCH_M. */
 	fidx = struct_field_parse(p, action, idx, &idx_struct_id);
 	if (fidx) {
+		CHECK(!fidx->var_size, EINVAL);
+
 		instr->type = INSTR_METPREFETCH_M;
 		if (idx[0] == 'h')
 			instr->type = INSTR_METPREFETCH_H;
@@ -6216,14 +6280,19 @@ instr_meter_translate(struct rte_swx_pipeline *p,
 
 	flength = struct_field_parse(p, action, length, &length_struct_id);
 	CHECK(flength, EINVAL);
+	CHECK(!flength->var_size, EINVAL);
 
 	fcin = struct_field_parse(p, action, color_in, &color_in_struct_id);
 
 	fcout = struct_field_parse(p, NULL, color_out, &color_out_struct_id);
 	CHECK(fcout, EINVAL);
+	CHECK(!fcout->var_size, EINVAL);
 
 	/* index = HMEFT, length = HMEFT, color_in = MEFT, color_out = MEF. */
 	if (fidx && fcin) {
+		CHECK(!fidx->var_size, EINVAL);
+		CHECK(!fcin->var_size, EINVAL);
+
 		instr->type = INSTR_METER_MMM;
 		if (idx[0] == 'h' && length[0] == 'h')
 			instr->type = INSTR_METER_HHM;
@@ -6255,7 +6324,11 @@ instr_meter_translate(struct rte_swx_pipeline *p,
 
 	/* index = HMEFT, length = HMEFT, color_in = I, color_out = MEF. */
 	if (fidx && !fcin) {
-		uint32_t color_in_val = strtoul(color_in, &color_in, 0);
+		uint32_t color_in_val;
+
+		CHECK(!fidx->var_size, EINVAL);
+
+		color_in_val = strtoul(color_in, &color_in, 0);
 		CHECK(!color_in[0], EINVAL);
 
 		instr->type = INSTR_METER_MMI;
@@ -6291,6 +6364,8 @@ instr_meter_translate(struct rte_swx_pipeline *p,
 
 		idx_val = strtoul(idx, &idx, 0);
 		CHECK(!idx[0], EINVAL);
+
+		CHECK(!fcin->var_size, EINVAL);
 
 		instr->type = INSTR_METER_IMM;
 		if (length[0] == 'h')
@@ -7139,10 +7214,13 @@ instr_jmp_eq_translate(struct rte_swx_pipeline *p,
 
 	fa = struct_field_parse(p, action, a, &a_struct_id);
 	CHECK(fa, EINVAL);
+	CHECK(!fa->var_size, EINVAL);
 
 	/* JMP_EQ, JMP_EQ_MH, JMP_EQ_HM, JMP_EQ_HH. */
 	fb = struct_field_parse(p, action, b, &b_struct_id);
 	if (fb) {
+		CHECK(!fb->var_size, EINVAL);
+
 		instr->type = INSTR_JMP_EQ;
 		if (a[0] != 'h' && b[0] == 'h')
 			instr->type = INSTR_JMP_EQ_MH;
@@ -7196,10 +7274,13 @@ instr_jmp_neq_translate(struct rte_swx_pipeline *p,
 
 	fa = struct_field_parse(p, action, a, &a_struct_id);
 	CHECK(fa, EINVAL);
+	CHECK(!fa->var_size, EINVAL);
 
 	/* JMP_NEQ, JMP_NEQ_MH, JMP_NEQ_HM, JMP_NEQ_HH. */
 	fb = struct_field_parse(p, action, b, &b_struct_id);
 	if (fb) {
+		CHECK(!fb->var_size, EINVAL);
+
 		instr->type = INSTR_JMP_NEQ;
 		if (a[0] != 'h' && b[0] == 'h')
 			instr->type = INSTR_JMP_NEQ_MH;
@@ -7253,10 +7334,13 @@ instr_jmp_lt_translate(struct rte_swx_pipeline *p,
 
 	fa = struct_field_parse(p, action, a, &a_struct_id);
 	CHECK(fa, EINVAL);
+	CHECK(!fa->var_size, EINVAL);
 
 	/* JMP_LT, JMP_LT_MH, JMP_LT_HM, JMP_LT_HH. */
 	fb = struct_field_parse(p, action, b, &b_struct_id);
 	if (fb) {
+		CHECK(!fb->var_size, EINVAL);
+
 		instr->type = INSTR_JMP_LT;
 		if (a[0] == 'h' && b[0] != 'h')
 			instr->type = INSTR_JMP_LT_HM;
@@ -7310,10 +7394,13 @@ instr_jmp_gt_translate(struct rte_swx_pipeline *p,
 
 	fa = struct_field_parse(p, action, a, &a_struct_id);
 	CHECK(fa, EINVAL);
+	CHECK(!fa->var_size, EINVAL);
 
 	/* JMP_GT, JMP_GT_MH, JMP_GT_HM, JMP_GT_HH. */
 	fb = struct_field_parse(p, action, b, &b_struct_id);
 	if (fb) {
+		CHECK(!fb->var_size, EINVAL);
+
 		instr->type = INSTR_JMP_GT;
 		if (a[0] == 'h' && b[0] != 'h')
 			instr->type = INSTR_JMP_GT_HM;
@@ -8405,7 +8492,7 @@ instr_pattern_mov_all_validate_search(struct rte_swx_pipeline *p,
 		return 0;
 
 	h = header_find_by_struct_id(p, instr[0].mov.dst.struct_id);
-	if (!h)
+	if (!h || h->st->var_size)
 		return 0;
 
 	for (src_field_id = 0; src_field_id < a->st->n_fields; src_field_id++)
@@ -8987,7 +9074,7 @@ rte_swx_pipeline_action_config(struct rte_swx_pipeline *p,
 			       const char **instructions,
 			       uint32_t n_instructions)
 {
-	struct struct_type *args_struct_type;
+	struct struct_type *args_struct_type = NULL;
 	struct action *a;
 	int err;
 
@@ -9000,8 +9087,7 @@ rte_swx_pipeline_action_config(struct rte_swx_pipeline *p,
 		CHECK_NAME(args_struct_type_name, EINVAL);
 		args_struct_type = struct_type_find(p, args_struct_type_name);
 		CHECK(args_struct_type, EINVAL);
-	} else {
-		args_struct_type = NULL;
+		CHECK(!args_struct_type->var_size, EINVAL);
 	}
 
 	/* Node allocation. */
@@ -9250,6 +9336,9 @@ table_match_fields_check(struct rte_swx_pipeline *p,
 			goto end;
 		}
 
+		if (header)
+			*header = NULL;
+
 		return 0;
 	}
 
@@ -9265,7 +9354,7 @@ table_match_fields_check(struct rte_swx_pipeline *p,
 	 */
 	hf = header_field_parse(p, params->fields[0].name, &h0);
 	mf = metadata_field_parse(p, params->fields[0].name);
-	if (!hf && !mf) {
+	if ((!hf && !mf) || (hf && hf->var_size)) {
 		status = -EINVAL;
 		goto end;
 	}
@@ -9277,7 +9366,7 @@ table_match_fields_check(struct rte_swx_pipeline *p,
 			struct header *h;
 
 			hf = header_field_parse(p, params->fields[i].name, &h);
-			if (!hf || (h->id != h0->id)) {
+			if (!hf || (h->id != h0->id) || hf->var_size) {
 				status = -EINVAL;
 				goto end;
 			}

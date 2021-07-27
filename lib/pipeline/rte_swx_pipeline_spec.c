@@ -95,7 +95,7 @@ extobj_statement_parse(struct extobj_spec *s,
  * struct.
  *
  * struct STRUCT_TYPE_NAME {
- *	bit<SIZE> FIELD_NAME
+ *	bit<SIZE> | varbit<SIZE> FIELD_NAME
  *	...
  * }
  */
@@ -103,6 +103,7 @@ struct struct_spec {
 	char *name;
 	struct rte_swx_field_params *fields;
 	uint32_t n_fields;
+	int varbit;
 };
 
 static void
@@ -126,6 +127,8 @@ struct_spec_free(struct struct_spec *s)
 	s->fields = NULL;
 
 	s->n_fields = 0;
+
+	s->varbit = 0;
 }
 
 static int
@@ -172,8 +175,9 @@ struct_block_parse(struct struct_spec *s,
 		   const char **err_msg)
 {
 	struct rte_swx_field_params *new_fields;
-	char *p = tokens[0], *name;
+	char *p = tokens[0], *name = NULL;
 	uint32_t n_bits;
+	int varbit = 0, error = 0, error_size_invalid = 0, error_varbit_not_last = 0;
 
 	/* Handle end of block. */
 	if ((n_tokens == 1) && !strcmp(tokens[0], "}")) {
@@ -182,64 +186,98 @@ struct_block_parse(struct struct_spec *s,
 	}
 
 	/* Check format. */
-	if ((n_tokens != 2) ||
-	    (strlen(p) < 6) ||
-	    (p[0] != 'b') ||
-	    (p[1] != 'i') ||
-	    (p[2] != 't') ||
-	    (p[3] != '<') ||
-	    (p[strlen(p) - 1] != '>')) {
-		if (err_line)
-			*err_line = n_lines;
-		if (err_msg)
-			*err_msg = "Invalid struct field statement.";
-		return -EINVAL;
+	if (n_tokens != 2) {
+		error = -EINVAL;
+		goto error;
 	}
 
-	/* Remove the "bit<" and ">". */
-	p[strlen(p) - 1] = 0;
-	p += 4;
+	if (s->varbit) {
+		error = -EINVAL;
+		error_varbit_not_last = 1;
+		goto error;
+	}
+
+	if (!strncmp(p, "bit<", strlen("bit<"))) {
+		size_t len = strlen(p);
+
+		if ((len < strlen("bit< >")) || (p[len - 1] != '>')) {
+			error = -EINVAL;
+			goto error;
+		}
+
+		/* Remove the "bit<" and ">". */
+		p[strlen(p) - 1] = 0;
+		p += strlen("bit<");
+	} else if (!strncmp(p, "varbit<", strlen("varbit<"))) {
+		size_t len = strlen(p);
+
+		if ((len < strlen("varbit< >")) || (p[len - 1] != '>')) {
+			error = -EINVAL;
+			goto error;
+		}
+
+		/* Remove the "varbit<" and ">". */
+		p[strlen(p) - 1] = 0;
+		p += strlen("varbit<");
+
+		/* Set the varbit flag. */
+		varbit = 1;
+	} else {
+		error = -EINVAL;
+		goto error;
+	}
 
 	n_bits = strtoul(p, &p, 0);
 	if ((p[0]) ||
 	    !n_bits ||
 	    (n_bits % 8) ||
-	    (n_bits > 64)) {
-		if (err_line)
-			*err_line = n_lines;
-		if (err_msg)
-			*err_msg = "Invalid struct field size.";
-		return -EINVAL;
+	    ((n_bits > 64) && !varbit)) {
+		error = -EINVAL;
+		error_size_invalid = 1;
+		goto error;
 	}
 
 	/* spec. */
 	name = strdup(tokens[1]);
 	if (!name) {
-		if (err_line)
-			*err_line = n_lines;
-		if (err_msg)
-			*err_msg = "Memory allocation failed.";
-		return -ENOMEM;
+		error = -ENOMEM;
+		goto error;
 	}
 
-	new_fields = realloc(s->fields,
-			     (s->n_fields + 1) * sizeof(struct rte_swx_field_params));
+	new_fields = realloc(s->fields, (s->n_fields + 1) * sizeof(struct rte_swx_field_params));
 	if (!new_fields) {
-		free(name);
-
-		if (err_line)
-			*err_line = n_lines;
-		if (err_msg)
-			*err_msg = "Memory allocation failed.";
-		return -ENOMEM;
+		error = -ENOMEM;
+		goto error;
 	}
 
 	s->fields = new_fields;
 	s->fields[s->n_fields].name = name;
 	s->fields[s->n_fields].n_bits = n_bits;
 	s->n_fields++;
+	s->varbit = varbit;
 
 	return 0;
+
+error:
+	free(name);
+
+	if (err_line)
+		*err_line = n_lines;
+
+	if (err_msg) {
+		*err_msg = "Invalid struct field statement.";
+
+		if ((error == -EINVAL) && error_varbit_not_last)
+			*err_msg = "Varbit field is not the last struct field.";
+
+		if ((error == -EINVAL) && error_size_invalid)
+			*err_msg = "Invalid struct field size.";
+
+		if (error == -ENOMEM)
+			*err_msg = "Memory allocation failed.";
+	}
+
+	return error;
 }
 
 /*
@@ -1607,7 +1645,8 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 			status = rte_swx_pipeline_struct_type_register(p,
 				struct_spec.name,
 				struct_spec.fields,
-				struct_spec.n_fields);
+				struct_spec.n_fields,
+				struct_spec.varbit);
 			if (status) {
 				if (err_line)
 					*err_line = n_lines;
