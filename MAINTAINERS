@@ -604,9 +604,9 @@ F: drivers/net/axgbe/
 F: doc/guides/nics/axgbe.rst
 F: doc/guides/nics/features/axgbe.ini
 
-Aquantia atlantic
-M: Igor Russkikh <igor.russkikh@aquantia.com>
-M: Pavel Belous <pavel.belous@aquantia.com>
+Marvell/Aquantia atlantic
+M: Igor Russkikh <irusskikh@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/atlantic/
 F: doc/guides/nics/atlantic.rst
 F: doc/guides/nics/features/atlantic.ini
