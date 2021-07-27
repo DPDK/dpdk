@@ -303,6 +303,9 @@ enum instruction_type {
 	INSTR_HDR_EXTRACT7,
 	INSTR_HDR_EXTRACT8,
 
+	/* extract h.header m.last_field_size */
+	INSTR_HDR_EXTRACT_M,
+
 	/* emit h.header */
 	INSTR_HDR_EMIT,
 	INSTR_HDR_EMIT_TX,
@@ -3088,16 +3091,35 @@ instr_hdr_extract_translate(struct rte_swx_pipeline *p,
 	struct header *h;
 
 	CHECK(!action, EINVAL);
-	CHECK(n_tokens == 2, EINVAL);
+	CHECK((n_tokens == 2) || (n_tokens == 3), EINVAL);
 
 	h = header_parse(p, tokens[1]);
 	CHECK(h, EINVAL);
-	CHECK(!h->st->var_size, EINVAL);
 
-	instr->type = INSTR_HDR_EXTRACT;
-	instr->io.hdr.header_id[0] = h->id;
-	instr->io.hdr.struct_id[0] = h->struct_id;
-	instr->io.hdr.n_bytes[0] = h->st->n_bits / 8;
+	if (n_tokens == 2) {
+		CHECK(!h->st->var_size, EINVAL);
+
+		instr->type = INSTR_HDR_EXTRACT;
+		instr->io.hdr.header_id[0] = h->id;
+		instr->io.hdr.struct_id[0] = h->struct_id;
+		instr->io.hdr.n_bytes[0] = h->st->n_bits / 8;
+	} else {
+		struct field *mf;
+
+		CHECK(h->st->var_size, EINVAL);
+
+		mf = metadata_field_parse(p, tokens[2]);
+		CHECK(mf, EINVAL);
+		CHECK(!mf->var_size, EINVAL);
+
+		instr->type = INSTR_HDR_EXTRACT_M;
+		instr->io.io.offset = mf->offset / 8;
+		instr->io.io.n_bits = mf->n_bits;
+		instr->io.hdr.header_id[0] = h->id;
+		instr->io.hdr.struct_id[0] = h->struct_id;
+		instr->io.hdr.n_bytes[0] = h->st->n_bits_min / 8;
+	}
+
 	return 0;
 }
 
@@ -3232,6 +3254,46 @@ instr_hdr_extract8_exec(struct rte_swx_pipeline *p)
 	      p->thread_id);
 
 	__instr_hdr_extract_exec(p, 8);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_hdr_extract_m_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	uint64_t valid_headers = t->valid_headers;
+	uint8_t *ptr = t->ptr;
+	uint32_t offset = t->pkt.offset;
+	uint32_t length = t->pkt.length;
+
+	uint32_t n_bytes_last = METADATA_READ(t, ip->io.io.offset, ip->io.io.n_bits);
+	uint32_t header_id = ip->io.hdr.header_id[0];
+	uint32_t struct_id = ip->io.hdr.struct_id[0];
+	uint32_t n_bytes = ip->io.hdr.n_bytes[0];
+
+	struct header_runtime *h = &t->headers[header_id];
+
+	TRACE("[Thread %2u]: extract header %u (%u + %u bytes)\n",
+	      p->thread_id,
+	      header_id,
+	      n_bytes,
+	      n_bytes_last);
+
+	n_bytes += n_bytes_last;
+
+	/* Headers. */
+	t->structs[struct_id] = ptr;
+	t->valid_headers = MASK64_BIT_SET(valid_headers, header_id);
+	h->n_bytes = n_bytes;
+
+	/* Packet. */
+	t->pkt.offset = offset + n_bytes;
+	t->pkt.length = length - n_bytes;
+	t->ptr = ptr + n_bytes;
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -8842,6 +8904,7 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_HDR_EXTRACT6] = instr_hdr_extract6_exec,
 	[INSTR_HDR_EXTRACT7] = instr_hdr_extract7_exec,
 	[INSTR_HDR_EXTRACT8] = instr_hdr_extract8_exec,
+	[INSTR_HDR_EXTRACT_M] = instr_hdr_extract_m_exec,
 
 	[INSTR_HDR_EMIT] = instr_hdr_emit_exec,
 	[INSTR_HDR_EMIT_TX] = instr_hdr_emit_tx_exec,
