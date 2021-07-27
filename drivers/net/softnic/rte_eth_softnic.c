@@ -486,17 +486,19 @@ pmd_parse_args(struct pmd_params *p, const char *params)
 			&get_string, &firmware);
 		if (ret < 0)
 			goto out_free;
-	}
-	if (rte_strscpy(p->firmware, firmware,
-			sizeof(p->firmware)) < 0) {
-		PMD_LOG(WARNING,
-			"\"%s\": firmware path should be shorter than %zu",
-			firmware, sizeof(p->firmware));
+
+		if (rte_strscpy(p->firmware, firmware,
+				sizeof(p->firmware)) < 0) {
+			PMD_LOG(WARNING,
+				"\"%s\": "
+				"firmware path should be shorter than %zu",
+				firmware, sizeof(p->firmware));
+			free(firmware);
+			ret = -EINVAL;
+			goto out_free;
+		}
 		free(firmware);
-		ret = -EINVAL;
-		goto out_free;
 	}
-	free(firmware);
 	/* Connection listening port (optional) */
 	if (rte_kvargs_count(kvlist, PMD_PARAM_CONN_PORT) == 1) {
 		ret = rte_kvargs_process(kvlist, PMD_PARAM_CONN_PORT,
