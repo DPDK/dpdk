@@ -306,6 +306,9 @@ enum instruction_type {
 	/* extract h.header m.last_field_size */
 	INSTR_HDR_EXTRACT_M,
 
+	/* lookahead h.header */
+	INSTR_HDR_LOOKAHEAD,
+
 	/* emit h.header */
 	INSTR_HDR_EMIT,
 	INSTR_HDR_EMIT_TX,
@@ -3123,6 +3126,31 @@ instr_hdr_extract_translate(struct rte_swx_pipeline *p,
 	return 0;
 }
 
+static int
+instr_hdr_lookahead_translate(struct rte_swx_pipeline *p,
+			      struct action *action,
+			      char **tokens,
+			      int n_tokens,
+			      struct instruction *instr,
+			      struct instruction_data *data __rte_unused)
+{
+	struct header *h;
+
+	CHECK(!action, EINVAL);
+	CHECK(n_tokens == 2, EINVAL);
+
+	h = header_parse(p, tokens[1]);
+	CHECK(h, EINVAL);
+	CHECK(!h->st->var_size, EINVAL);
+
+	instr->type = INSTR_HDR_LOOKAHEAD;
+	instr->io.hdr.header_id[0] = h->id;
+	instr->io.hdr.struct_id[0] = h->struct_id;
+	instr->io.hdr.n_bytes[0] = 0; /* Unused. */
+
+	return 0;
+}
+
 static inline void
 __instr_hdr_extract_exec(struct rte_swx_pipeline *p, uint32_t n_extract);
 
@@ -3294,6 +3322,30 @@ instr_hdr_extract_m_exec(struct rte_swx_pipeline *p)
 	t->pkt.offset = offset + n_bytes;
 	t->pkt.length = length - n_bytes;
 	t->ptr = ptr + n_bytes;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_hdr_lookahead_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	uint64_t valid_headers = t->valid_headers;
+	uint8_t *ptr = t->ptr;
+
+	uint32_t header_id = ip->io.hdr.header_id[0];
+	uint32_t struct_id = ip->io.hdr.struct_id[0];
+
+	TRACE("[Thread %2u]: lookahead header %u\n",
+	      p->thread_id,
+	      header_id);
+
+	/* Headers. */
+	t->structs[struct_id] = ptr;
+	t->valid_headers = MASK64_BIT_SET(valid_headers, header_id);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -7916,6 +7968,14 @@ instr_translate(struct rte_swx_pipeline *p,
 						   instr,
 						   data);
 
+	if (!strcmp(tokens[tpos], "lookahead"))
+		return instr_hdr_lookahead_translate(p,
+						     action,
+						     &tokens[tpos],
+						     n_tokens - tpos,
+						     instr,
+						     data);
+
 	if (!strcmp(tokens[tpos], "emit"))
 		return instr_hdr_emit_translate(p,
 						action,
@@ -8905,6 +8965,7 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_HDR_EXTRACT7] = instr_hdr_extract7_exec,
 	[INSTR_HDR_EXTRACT8] = instr_hdr_extract8_exec,
 	[INSTR_HDR_EXTRACT_M] = instr_hdr_extract_m_exec,
+	[INSTR_HDR_LOOKAHEAD] = instr_hdr_lookahead_exec,
 
 	[INSTR_HDR_EMIT] = instr_hdr_emit_exec,
 	[INSTR_HDR_EMIT_TX] = instr_hdr_emit_tx_exec,
