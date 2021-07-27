@@ -880,7 +880,7 @@ F: drivers/net/ionic/
 F: doc/guides/nics/ionic.rst
 F: doc/guides/nics/features/ionic.ini
 
-QLogic bnx2x
+Marvell QLogic bnx2x
 M: Rasesh Mody <rmody@marvell.com>
 M: Shahed Shaikh <shshaikh@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
@@ -888,10 +888,9 @@ F: drivers/net/bnx2x/
 F: doc/guides/nics/bnx2x.rst
 F: doc/guides/nics/features/bnx2x*.ini
 
-QLogic qede PMD
+Marvell QLogic qede PMD
 M: Rasesh Mody <rmody@marvell.com>
 M: Devendra Singh Rawat <dsinghrawat@marvell.com>
-M: Igor Russkikh <irusskikh@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/qede/
 F: doc/guides/nics/qede.rst
