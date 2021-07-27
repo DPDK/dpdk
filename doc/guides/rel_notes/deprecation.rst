@@ -147,3 +147,7 @@ Deprecation Notices
 * cmdline: ``cmdline`` structure will be made opaque to hide platform-specific
   content. On Linux and FreeBSD, supported prior to DPDK 20.11,
   original structure will be kept until DPDK 21.11.
+
+* security: The functions ``rte_security_set_pkt_metadata`` and
+  ``rte_security_get_userdata`` will be made inline functions and additional
+  flags will be added in structure ``rte_security_ctx`` in DPDK 21.11.
