@@ -1994,6 +1994,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	if (ret < 0)
 		return ret;
 	hw->speed = speed;
+	hw->duplex = DUPLEX_UNKNOWN;
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("virtio",
