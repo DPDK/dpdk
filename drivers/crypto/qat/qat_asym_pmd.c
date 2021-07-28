@@ -253,7 +253,7 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 
 	if (qat_pci_dev->qat_dev_gen == QAT_GEN4) {
 		QAT_LOG(ERR, "Asymmetric crypto PMD not supported on QAT 4xxx");
-		return 0;
+		return -EFAULT;
 	}
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "asym");
