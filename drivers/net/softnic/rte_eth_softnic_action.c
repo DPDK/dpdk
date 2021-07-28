@@ -183,6 +183,7 @@ softnic_table_action_profile_free(struct pmd_internals *p)
 			break;
 
 		TAILQ_REMOVE(&p->table_action_profile_list, profile, node);
+		rte_table_action_profile_free(profile->ap);
 		free(profile);
 	}
 }
