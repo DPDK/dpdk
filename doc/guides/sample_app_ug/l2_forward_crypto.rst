@@ -41,8 +41,9 @@ The application requires a number of command line options:
 
     ./<build_dir>/examples/dpdk-l2fwd-crypto [EAL options] -- [-p PORTMASK] [-q NQ] [-s] [-T PERIOD] /
     [--cdev_type HW/SW/ANY] [--chain HASH_CIPHER/CIPHER_HASH/CIPHER_ONLY/HASH_ONLY/AEAD] /
-    [--cipher_algo ALGO] [--cipher_op ENCRYPT/DECRYPT] [--cipher_key KEY] /
-    [--cipher_key_random_size SIZE] [--cipher_iv IV] [--cipher_iv_random_size SIZE] /
+    [--cipher_algo ALGO] [--cipher_op ENCRYPT/DECRYPT] [--cipher_dataunit_len SIZE] /
+    [--cipher_key KEY] [--cipher_key_random_size SIZE] [--cipher_iv IV] /
+    [--cipher_iv_random_size SIZE] /
     [--auth_algo ALGO] [--auth_op GENERATE/VERIFY] [--auth_key KEY] /
     [--auth_key_random_size SIZE] [--auth_iv IV] [--auth_iv_random_size SIZE] /
     [--aead_algo ALGO] [--aead_op ENCRYPT/DECRYPT] [--aead_key KEY] /
@@ -80,6 +81,8 @@ where,
 *   cipher_op: select the ciphering operation to perform: ENCRYPT or DECRYPT
 
     (default is ENCRYPT)
+
+*   cipher_dataunit_len: set the length of the cipher data-unit.
 
 *   cipher_key: set the ciphering key to be used. Bytes has to be separated with ":"
 

@@ -182,6 +182,8 @@ struct l2fwd_crypto_params {
 	unsigned digest_length;
 	unsigned block_size;
 
+	uint16_t cipher_dataunit_len;
+
 	struct l2fwd_iv cipher_iv;
 	struct l2fwd_iv auth_iv;
 	struct l2fwd_iv aead_iv;
@@ -433,6 +435,12 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 			if (data_len % cparams->block_size)
 				pad_len = cparams->block_size -
 					(data_len % cparams->block_size);
+			break;
+		case RTE_CRYPTO_CIPHER_AES_XTS:
+			if (cparams->cipher_dataunit_len != 0 &&
+			    (data_len % cparams->cipher_dataunit_len))
+				pad_len = cparams->cipher_dataunit_len -
+					(data_len % cparams->cipher_dataunit_len);
 			break;
 		default:
 			pad_len = 0;
@@ -827,6 +835,8 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 						port_cparams[i].cipher_iv.length);
 
 			port_cparams[i].cipher_algo = options->cipher_xform.cipher.algo;
+			port_cparams[i].cipher_dataunit_len =
+				options->cipher_xform.cipher.dataunit_len;
 			/* Set IV parameters */
 			options->cipher_xform.cipher.iv.offset = IV_OFFSET;
 			options->cipher_xform.cipher.iv.length =
@@ -989,6 +999,7 @@ l2fwd_crypto_usage(const char *prgname)
 		"  --cipher_key_random_size SIZE: size of cipher key when generated randomly\n"
 		"  --cipher_iv IV (bytes separated with \":\")\n"
 		"  --cipher_iv_random_size SIZE: size of cipher IV when generated randomly\n"
+		"  --cipher_dataunit_len SIZE: length of the algorithm data-unit\n"
 
 		"  --auth_algo ALGO\n"
 		"  --auth_op GENERATE / VERIFY\n"
@@ -1215,6 +1226,7 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 		struct option *lgopts, int option_index)
 {
 	int retval;
+	int val;
 
 	if (strcmp(lgopts[option_index].name, "cdev_type") == 0) {
 		retval = parse_cryptodev_type(&options->type, optarg);
@@ -1242,6 +1254,16 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 		if (options->cipher_xform.cipher.key.length > 0)
 			return 0;
 		else
+			return -1;
+	}
+
+	else if (strcmp(lgopts[option_index].name, "cipher_dataunit_len") == 0) {
+		retval = parse_size(&val, optarg);
+		if (retval == 0 && val >= 0 && val <= UINT16_MAX) {
+			options->cipher_xform.cipher.dataunit_len =
+								(uint16_t)val;
+			return 0;
+		} else
 			return -1;
 	}
 
@@ -1469,6 +1491,7 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 
 	options->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
 	options->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+	options->cipher_xform.cipher.dataunit_len = 0;
 
 	/* Authentication Data */
 	options->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -1644,6 +1667,7 @@ l2fwd_crypto_parse_args(struct l2fwd_crypto_options *options,
 			{ "cipher_key_random_size", required_argument, 0, 0 },
 			{ "cipher_iv", required_argument, 0, 0 },
 			{ "cipher_iv_random_size", required_argument, 0, 0 },
+			{ "cipher_dataunit_len", required_argument, 0, 0},
 
 			{ "auth_algo", required_argument, 0, 0 },
 			{ "auth_op", required_argument, 0, 0 },
@@ -2156,6 +2180,43 @@ check_capabilities(struct l2fwd_crypto_options *options, uint8_t cdev_id)
 					"key length\n",
 					cdev_id);
 				return -1;
+			}
+		}
+
+		if (options->cipher_xform.cipher.dataunit_len > 0) {
+			if (!(dev_info.feature_flags &
+				RTE_CRYPTODEV_FF_CIPHER_MULTIPLE_DATA_UNITS)) {
+				RTE_LOG(DEBUG, USER1,
+					"Device %u does not support "
+					"cipher multiple data units\n",
+					cdev_id);
+				return -1;
+			}
+			if (cap->sym.cipher.dataunit_set != 0) {
+				int ret = 0;
+
+				switch (options->cipher_xform.cipher.dataunit_len) {
+				case 512:
+					if (!(cap->sym.cipher.dataunit_set &
+						RTE_CRYPTO_CIPHER_DATA_UNIT_LEN_512_BYTES))
+						ret = -1;
+					break;
+				case 4096:
+					if (!(cap->sym.cipher.dataunit_set &
+						RTE_CRYPTO_CIPHER_DATA_UNIT_LEN_4096_BYTES))
+						ret = -1;
+					break;
+				default:
+					ret = -1;
+				}
+				if (ret == -1) {
+					RTE_LOG(DEBUG, USER1,
+						"Device %u does not support "
+						"data-unit length %u\n",
+						cdev_id,
+						options->cipher_xform.cipher.dataunit_len);
+					return -1;
+				}
 			}
 		}
 	}
