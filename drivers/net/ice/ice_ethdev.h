@@ -50,7 +50,7 @@
 #define ICE_PKG_FILE_SEARCH_PATH_UPDATES "/lib/firmware/updates/intel/ice/ddp/"
 #define ICE_MAX_PKG_FILENAME_SIZE   256
 
-#define MAX_ACL_ENTRIES    512
+#define MAX_ACL_NORMAL_ENTRIES    256
 
 /**
  * vlan_id is a 12 bit number.
@@ -408,7 +408,7 @@ struct ice_acl_conf {
 struct ice_acl_info {
 	struct ice_acl_conf conf;
 	struct rte_bitmap *slots;
-	uint64_t hw_entry_id[MAX_ACL_ENTRIES];
+	uint64_t hw_entry_id[MAX_ACL_NORMAL_ENTRIES];
 };
 
 struct ice_pf {
