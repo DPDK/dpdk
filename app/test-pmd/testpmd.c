@@ -3197,14 +3197,16 @@ rmv_port_callback(void *arg)
 	stop_port(port_id);
 	no_link_check = org_no_link_check;
 
-	close_port(port_id);
 	ret = eth_dev_info_get_print_err(port_id, &dev_info);
 	if (ret != 0)
 		TESTPMD_LOG(ERR,
 			"Failed to get device info for port %d, not detaching\n",
 			port_id);
-	else
-		detach_device(dev_info.device); /* might be already removed or have more ports */
+	else {
+		struct rte_device *device = dev_info.device;
+		close_port(port_id);
+		detach_device(device); /* might be already removed or have more ports */
+	}
 	if (need_to_start)
 		start_packet_forwarding(0);
 }
