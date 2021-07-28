@@ -778,6 +778,14 @@ rte_log2_u64(uint64_t v)
 		})
 #endif
 
+/** Swap two variables. */
+#define RTE_SWAP(a, b) \
+	__extension__ ({ \
+		typeof (a) _a = a; \
+		a = b; \
+		b = _a; \
+	})
+
 /**
  * Get the size of a field in a structure.
  *

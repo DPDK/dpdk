@@ -30,9 +30,13 @@ test_macros(int __rte_unused unused_parm)
 	return -1;}
 
 	uintptr_t unused = 0;
+	unsigned int smaller = SMALLER, bigger  = BIGGER;
 
 	RTE_SET_USED(unused);
 
+	RTE_SWAP(smaller, bigger);
+	if (smaller != BIGGER && bigger != SMALLER)
+		FAIL_MACRO(RTE_SWAP);
 	if ((uintptr_t)RTE_PTR_ADD(SMALLER, PTR_DIFF) != BIGGER)
 		FAIL_MACRO(RTE_PTR_ADD);
 	if ((uintptr_t)RTE_PTR_SUB(BIGGER, PTR_DIFF) != SMALLER)
