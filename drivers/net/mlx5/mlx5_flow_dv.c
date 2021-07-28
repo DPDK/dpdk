@@ -12716,7 +12716,7 @@ flow_dv_counter_query(struct rte_eth_dev *dev, uint32_t counter, bool clear,
  * @note: only stub for now
  */
 static int
-flow_get_aged_flows(struct rte_eth_dev *dev,
+flow_dv_get_aged_flows(struct rte_eth_dev *dev,
 		    void **context,
 		    uint32_t nb_contexts,
 		    struct rte_flow_error *error)
@@ -12864,7 +12864,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.counter_alloc = flow_dv_counter_allocate,
 	.counter_free = flow_dv_counter_free,
 	.counter_query = flow_dv_counter_query,
-	.get_aged_flows = flow_get_aged_flows,
+	.get_aged_flows = flow_dv_get_aged_flows,
 	.action_validate = flow_dv_action_validate,
 	.action_create = flow_dv_action_create,
 	.action_destroy = flow_dv_action_destroy,
