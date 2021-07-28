@@ -530,8 +530,8 @@ mlx5_atomic_read_cqe(rte_int128_t *from, rte_int128_t *ts)
 {
 	/*
 	 * The only CQE of Clock Queue is being continuously
-	 * update by hardware with soecified rate. We have to
-	 * read timestump and WQE completion index atomically.
+	 * updated by hardware with specified rate. We must
+	 * read timestamp and WQE completion index atomically.
 	 */
 #if defined(RTE_ARCH_X86_64)
 	rte_int128_t src;
@@ -592,13 +592,22 @@ mlx5_txpp_update_timestamp(struct mlx5_dev_ctx_shared *sh)
 	} to;
 	uint64_t ts;
 	uint16_t ci;
+	uint8_t opcode;
 
 	mlx5_atomic_read_cqe((rte_int128_t *)&cqe->timestamp, &to.u128);
-	if (to.cts.op_own >> 4) {
-		DRV_LOG(DEBUG, "Clock Queue error sync lost.");
-		__atomic_fetch_add(&sh->txpp.err_clock_queue,
+	opcode = MLX5_CQE_OPCODE(to.cts.op_own);
+	if (opcode) {
+		if (opcode != MLX5_CQE_INVALID) {
+			/*
+			 * Commit the error state if and only if
+			 * we have got at least one actual completion.
+			 */
+			DRV_LOG(DEBUG,
+				"Clock Queue error sync lost (%X).", opcode);
+				__atomic_fetch_add(&sh->txpp.err_clock_queue,
 				   1, __ATOMIC_RELAXED);
-		sh->txpp.sync_lost = 1;
+			sh->txpp.sync_lost = 1;
+		}
 		return;
 	}
 	ci = rte_be_to_cpu_16(to.cts.wqe_counter);
