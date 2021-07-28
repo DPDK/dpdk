@@ -581,6 +581,7 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 						  MLX5_EXPANSION_IPV6,
 						  MLX5_EXPANSION_ETH),
 		.type = RTE_FLOW_ITEM_TYPE_MPLS,
+		.optional = 1,
 	},
 	[MLX5_EXPANSION_ETH] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
