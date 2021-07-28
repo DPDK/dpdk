@@ -430,7 +430,7 @@ ice_acl_hw_set_conf(struct ice_pf *pf, struct ice_fdir_fltr *input,
 	/* For IPV4_OTHER type, should add entry for all types.
 	 * For IPV4_UDP/TCP/SCTP type, only add entry for each.
 	 */
-	if (slot_id < MAX_ACL_ENTRIES) {
+	if (slot_id < MAX_ACL_NORMAL_ENTRIES) {
 		entry_id = ((uint64_t)flow_type << 32) | slot_id;
 		ret = ice_flow_add_entry(hw, blk, flow_type,
 					 entry_id, pf->main_vsi->idx,
@@ -444,7 +444,7 @@ ice_acl_hw_set_conf(struct ice_pf *pf, struct ice_fdir_fltr *input,
 		pf->acl.hw_entry_id[slot_id] = hw_entry;
 	} else {
 		PMD_DRV_LOG(ERR, "Exceed the maximum entry number(%d)"
-			    " HW supported!", MAX_ACL_ENTRIES);
+			    " HW supported!", MAX_ACL_NORMAL_ENTRIES);
 		return -1;
 	}
 
