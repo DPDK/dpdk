@@ -22,4 +22,5 @@ sources = files(
         'nfp_rxtx.c',
         'nfp_cpp_bridge.c',
         'nfp_ethdev_vf.c',
+        'nfp_ethdev.c',
 )
