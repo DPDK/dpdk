@@ -41,6 +41,12 @@ struct nfp_net_adapter;
 #define NFP_QCP_QUEUE_STS_HI                    0x000c
 #define NFP_QCP_QUEUE_STS_HI_WRITEPTR_mask    (0x3ffff)
 
+/* The offset of the queue controller queues in the PCIe Target */
+#define NFP_PCIE_QUEUE(_q) (0x80000 + (NFP_QCP_QUEUE_ADDR_SZ * ((_q) & 0xff)))
+
+/* Maximum value which can be added to a queue with one transaction */
+#define NFP_QCP_MAX_ADD	0x7f
+
 /* Interrupt definitions */
 #define NFP_NET_IRQ_LSC_IDX             0
 
@@ -95,47 +101,11 @@ struct nfp_net_adapter;
 #include <linux/types.h>
 #include <rte_io.h>
 
-static inline uint8_t nn_readb(volatile const void *addr)
-{
-	return rte_read8(addr);
-}
-
-static inline void nn_writeb(uint8_t val, volatile void *addr)
-{
-	rte_write8(val, addr);
-}
-
-static inline uint32_t nn_readl(volatile const void *addr)
-{
-	return rte_read32(addr);
-}
-
-static inline void nn_writel(uint32_t val, volatile void *addr)
-{
-	rte_write32(val, addr);
-}
-
-static inline void nn_writew(uint16_t val, volatile void *addr)
-{
-	rte_write16(val, addr);
-}
-
-static inline uint64_t nn_readq(volatile void *addr)
-{
-	const volatile uint32_t *p = addr;
-	uint32_t low, high;
-
-	high = nn_readl((volatile const void *)(p + 1));
-	low = nn_readl((volatile const void *)p);
-
-	return low + ((uint64_t)high << 32);
-}
-
-static inline void nn_writeq(uint64_t val, volatile void *addr)
-{
-	nn_writel(val >> 32, (volatile char *)addr + 4);
-	nn_writel(val, addr);
-}
+/* nfp_qcp_ptr - Read or Write Pointer of a queue */
+enum nfp_qcp_ptr {
+	NFP_QCP_READ_PTR = 0,
+	NFP_QCP_WRITE_PTR
+};
 
 struct nfp_pf_dev {
 	/* Backpointer to associated pci device */
@@ -246,6 +216,138 @@ struct nfp_net_hw {
 struct nfp_net_adapter {
 	struct nfp_net_hw hw;
 };
+
+static inline uint8_t nn_readb(volatile const void *addr)
+{
+	return rte_read8(addr);
+}
+
+static inline void nn_writeb(uint8_t val, volatile void *addr)
+{
+	rte_write8(val, addr);
+}
+
+static inline uint32_t nn_readl(volatile const void *addr)
+{
+	return rte_read32(addr);
+}
+
+static inline void nn_writel(uint32_t val, volatile void *addr)
+{
+	rte_write32(val, addr);
+}
+
+static inline void nn_writew(uint16_t val, volatile void *addr)
+{
+	rte_write16(val, addr);
+}
+
+static inline uint64_t nn_readq(volatile void *addr)
+{
+	const volatile uint32_t *p = addr;
+	uint32_t low, high;
+
+	high = nn_readl((volatile const void *)(p + 1));
+	low = nn_readl((volatile const void *)p);
+
+	return low + ((uint64_t)high << 32);
+}
+
+static inline void nn_writeq(uint64_t val, volatile void *addr)
+{
+	nn_writel(val >> 32, (volatile char *)addr + 4);
+	nn_writel(val, addr);
+}
+
+/*
+ * Functions to read/write from/to Config BAR
+ * Performs any endian conversion necessary.
+ */
+static inline uint8_t
+nn_cfg_readb(struct nfp_net_hw *hw, int off)
+{
+	return nn_readb(hw->ctrl_bar + off);
+}
+
+static inline void
+nn_cfg_writeb(struct nfp_net_hw *hw, int off, uint8_t val)
+{
+	nn_writeb(val, hw->ctrl_bar + off);
+}
+
+static inline uint32_t
+nn_cfg_readl(struct nfp_net_hw *hw, int off)
+{
+	return rte_le_to_cpu_32(nn_readl(hw->ctrl_bar + off));
+}
+
+static inline void
+nn_cfg_writel(struct nfp_net_hw *hw, int off, uint32_t val)
+{
+	nn_writel(rte_cpu_to_le_32(val), hw->ctrl_bar + off);
+}
+
+static inline uint64_t
+nn_cfg_readq(struct nfp_net_hw *hw, int off)
+{
+	return rte_le_to_cpu_64(nn_readq(hw->ctrl_bar + off));
+}
+
+static inline void
+nn_cfg_writeq(struct nfp_net_hw *hw, int off, uint64_t val)
+{
+	nn_writeq(rte_cpu_to_le_64(val), hw->ctrl_bar + off);
+}
+
+/*
+ * nfp_qcp_ptr_add - Add the value to the selected pointer of a queue
+ * @q: Base address for queue structure
+ * @ptr: Add to the Read or Write pointer
+ * @val: Value to add to the queue pointer
+ *
+ * If @val is greater than @NFP_QCP_MAX_ADD multiple writes are performed.
+ */
+static inline void
+nfp_qcp_ptr_add(uint8_t *q, enum nfp_qcp_ptr ptr, uint32_t val)
+{
+	uint32_t off;
+
+	if (ptr == NFP_QCP_READ_PTR)
+		off = NFP_QCP_QUEUE_ADD_RPTR;
+	else
+		off = NFP_QCP_QUEUE_ADD_WPTR;
+
+	while (val > NFP_QCP_MAX_ADD) {
+		nn_writel(rte_cpu_to_le_32(NFP_QCP_MAX_ADD), q + off);
+		val -= NFP_QCP_MAX_ADD;
+}
+
+nn_writel(rte_cpu_to_le_32(val), q + off);
+}
+
+/*
+ * nfp_qcp_read - Read the current Read/Write pointer value for a queue
+ * @q:  Base address for queue structure
+ * @ptr: Read or Write pointer
+ */
+static inline uint32_t
+nfp_qcp_read(uint8_t *q, enum nfp_qcp_ptr ptr)
+{
+	uint32_t off;
+	uint32_t val;
+
+	if (ptr == NFP_QCP_READ_PTR)
+		off = NFP_QCP_QUEUE_STS_LO;
+	else
+		off = NFP_QCP_QUEUE_STS_HI;
+
+	val = rte_cpu_to_le_32(nn_readl(q + off));
+
+	if (ptr == NFP_QCP_READ_PTR)
+		return val & NFP_QCP_QUEUE_STS_LO_READPTR_mask;
+	else
+		return val & NFP_QCP_QUEUE_STS_HI_WRITEPTR_mask;
+}
 
 #define NFP_NET_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct nfp_net_adapter *)adapter)->hw)

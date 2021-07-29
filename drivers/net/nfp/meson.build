@@ -19,4 +19,5 @@ sources = files(
         'nfpcore/nfp_nsp_eth.c',
         'nfpcore/nfp_hwinfo.c',
         'nfp_net.c',
+        'nfp_rxtx.c',
 )

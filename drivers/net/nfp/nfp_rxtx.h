@@ -17,6 +17,14 @@
 #include <linux/types.h>
 #include <rte_io.h>
 
+#define NFP_DESC_META_LEN(d) ((d)->rxd.meta_len_dd & PCIE_DESC_RX_META_LEN_MASK)
+
+#define NFP_HASH_OFFSET      ((uint8_t *)mbuf->buf_addr + mbuf->data_off - 4)
+#define NFP_HASH_TYPE_OFFSET ((uint8_t *)mbuf->buf_addr + mbuf->data_off - 8)
+
+#define RTE_MBUF_DMA_ADDR_DEFAULT(mb) \
+	((uint64_t)((mb)->buf_iova + RTE_PKTMBUF_HEADROOM))
+
 /*
  * The maximum number of descriptors is limited by design as
  * DPDK uses uint16_t variables for these values
@@ -265,6 +273,25 @@ struct nfp_net_rxq {
 	int fl_qcidx;
 	int rx_qcidx;
 } __rte_aligned(64);
+
+int nfp_net_rx_freelist_setup(struct rte_eth_dev *dev);
+uint32_t nfp_net_rx_queue_count(struct rte_eth_dev *dev,
+				       uint16_t queue_idx);
+uint16_t nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+				  uint16_t nb_pkts);
+void nfp_net_rx_queue_release(void *rxq);
+void nfp_net_reset_rx_queue(struct nfp_net_rxq *rxq);
+int nfp_net_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+				  uint16_t nb_desc, unsigned int socket_id,
+				  const struct rte_eth_rxconf *rx_conf,
+				  struct rte_mempool *mp);
+void nfp_net_tx_queue_release(void *txq);
+void nfp_net_reset_tx_queue(struct nfp_net_txq *txq);
+int nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+				  uint16_t nb_desc, unsigned int socket_id,
+				  const struct rte_eth_txconf *tx_conf);
+uint16_t nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+				  uint16_t nb_pkts);
 
 #endif /* _NFP_RXTX_H_ */
 /*
