@@ -4710,7 +4710,7 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 			uint8_t fate = final_policy->act_cnt[i].fate_action;
 
 			if (fate == MLX5_FLOW_FATE_SHARED_RSS) {
-				const void *rss_act =
+				const struct rte_flow_action_rss *rss_act =
 					final_policy->act_cnt[i].rss->conf;
 				struct rte_flow_action rss_actions[2] = {
 					[0] = {
@@ -4746,6 +4746,9 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 				rss_desc_v[i].tunnel =
 						!!(dev_flow.handle->layers &
 						   MLX5_FLOW_LAYER_TUNNEL);
+				/* Use the RSS queues in the containers. */
+				rss_desc_v[i].queue =
+					(uint16_t *)(uintptr_t)rss_act->queue;
 				rss_desc[i] = &rss_desc_v[i];
 			} else if (fate == MLX5_FLOW_FATE_QUEUE) {
 				/* This is queue action. */
