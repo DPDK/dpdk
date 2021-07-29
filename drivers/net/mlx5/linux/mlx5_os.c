@@ -1507,6 +1507,21 @@ err_secondary:
 	} else {
 		priv->obj_ops = ibv_obj_ops;
 	}
+	if (config->tx_pp &&
+	    (priv->config.dv_esw_en ||
+	     priv->obj_ops.txq_obj_new != mlx5_os_txq_obj_new)) {
+		/*
+		 * HAVE_MLX5DV_DEVX_UAR_OFFSET is required to support
+		 * packet pacing and already checked above.
+		 * Hence, we should only make sure the SQs will be created
+		 * with DevX, not with Verbs.
+		 * Verbs allocates the SQ UAR on its own and it can't be shared
+		 * with Clock Queue UAR as required for Tx scheduling.
+		 */
+		DRV_LOG(ERR, "Verbs SQs, UAR can't be shared as required for packet pacing");
+		err = ENODEV;
+		goto error;
+	}
 	priv->drop_queue.hrxq = mlx5_drop_action_create(eth_dev);
 	if (!priv->drop_queue.hrxq)
 		goto error;
