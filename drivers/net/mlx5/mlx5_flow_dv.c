@@ -17691,9 +17691,14 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					return -rte_mtr_error_set(error,
 						ENOTSUP,
 						RTE_MTR_ERROR_TYPE_METER_POLICY,
-						NULL, flow_err.message ?
-						flow_err.message :
-				  "Meter hierarchy only supports GREEN color.");
+						NULL,
+						"Meter hierarchy only supports GREEN color.");
+				if (*policy_mode != MLX5_MTR_POLICY_MODE_OG)
+					return -rte_mtr_error_set(error,
+						ENOTSUP,
+						RTE_MTR_ERROR_TYPE_METER_POLICY,
+						NULL,
+						"No yellow policy should be provided in meter hierarchy.");
 				mtr = act->conf;
 				ret = flow_dv_validate_policy_mtr_hierarchy(dev,
 							mtr->mtr_id,
