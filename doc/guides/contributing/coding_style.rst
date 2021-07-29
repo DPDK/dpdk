@@ -55,7 +55,7 @@ License Header
 ~~~~~~~~~~~~~~
 
 Each file must begin with a special comment containing the
-`Software Package Data Exchange (SPDX) License Identfier <https://spdx.org/using-spdx-license-identifier>`_.
+`Software Package Data Exchange (SPDX) License Identifier <https://spdx.org/using-spdx-license-identifier>`_.
 
 Generally this is the BSD License, except for code granted special exceptions.
 The SPDX licences identifier is sufficient, a file should not contain

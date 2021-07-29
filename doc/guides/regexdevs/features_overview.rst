@@ -16,7 +16,7 @@ PCRE atomic grouping
   Support PCRE atomic grouping.
 
 PCRE back reference
-  Support PCRE back regerence.
+  Support PCRE back reference.
 
 PCRE back tracking ctrl
   Support PCRE back tracking ctrl.

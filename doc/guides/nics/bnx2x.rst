@@ -105,7 +105,7 @@ Jumbo: Limitation
 -----------------
 
 Rx descriptor limit for number of segments per MTU is set to 1.
-PMD doesn't support Jumbo Rx scatter gather. Some applciations can
+PMD doesn't support Jumbo Rx scatter gather. Some applications can
 adjust mbuf_size based on this param and max_pkt_len.
 
 For others, PMD detects the condition where Rx packet length cannot

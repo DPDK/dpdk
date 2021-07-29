@@ -1732,7 +1732,7 @@ List all items from the ptype mapping table::
 
 Where:
 
-* ``valid_only``: A flag indicates if only list valid items(=1) or all itemss(=0).
+* ``valid_only``: A flag indicates if only list valid items(=1) or all items(=0).
 
 Replace a specific or a group of software defined ptype with a new one::
 
@@ -4767,7 +4767,7 @@ Sample Raw encapsulation rule
 
 Raw encapsulation configuration can be set by the following commands
 
-Eecapsulating VxLAN::
+Encapsulating VxLAN::
 
  testpmd> set raw_encap 4 eth src is 10:11:22:33:44:55 / vlan tci is 1
         inner_type is 0x0800 / ipv4 / udp dst is 4789 / vxlan vni

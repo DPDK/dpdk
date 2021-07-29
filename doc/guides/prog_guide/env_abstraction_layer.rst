@@ -465,7 +465,7 @@ devices would fail anyway.
     - By default, the mempool, first asks for IOVA-contiguous memory using
       ``RTE_MEMZONE_IOVA_CONTIG``. This is slow in RTE_IOVA_PA mode and it may
       affect the application boot time.
-    - It is easy to enable large amount of IOVA-contiguous memory use-cases
+    - It is easy to enable large amount of IOVA-contiguous memory use cases
       with IOVA in VA mode.
 
     It is expected that all PCI drivers work in both RTE_IOVA_PA and

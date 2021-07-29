@@ -325,7 +325,7 @@ supported. However, since sending messages (not requests) does not involve an
 IPC thread, sending messages while processing another message or request is
 supported.
 
-Since the memory sybsystem uses IPC internally, memory allocations and IPC must
+Since the memory subsystem uses IPC internally, memory allocations and IPC must
 not be mixed: it is not safe to use IPC inside a memory-related callback, nor is
 it safe to allocate/free memory inside IPC callbacks. Attempting to do so may
 lead to a deadlock.

@@ -737,7 +737,7 @@ Strict priority scheduling of traffic classes within the same pipe is implemente
 which selects the queues in ascending order.
 Therefore, queue 0 (associated with TC 0, highest priority TC) is handled before
 queue 1 (TC 1, lower priority than TC 0),
-which is handled before queue 2 (TC 2, lower priority than TC 1) and it conitnues until queues of all TCs except the
+which is handled before queue 2 (TC 2, lower priority than TC 1) and it continues until queues of all TCs except the
 lowest priority TC are handled. At last, queues 12..15 (best effort TC, lowest priority TC) are handled.
 
 Upper Limit Enforcement

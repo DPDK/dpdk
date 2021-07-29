@@ -65,7 +65,7 @@ To assign an engine to a group::
         $ accel-config config-engine dsa0/engine0.1 --group-id=1
 
 To assign work queues to groups for passing descriptors to the engines a similar accel-config command can be used.
-However, the work queues also need to be configured depending on the use-case.
+However, the work queues also need to be configured depending on the use case.
 Some configuration options include:
 
 * mode (Dedicated/Shared): Indicates whether a WQ may accept jobs from multiple queues simultaneously.

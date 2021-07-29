@@ -322,7 +322,7 @@ Drivers
 
   Several customers have reported a link flap issue on 82579. The symptoms
   are random and intermittent link losses when 82579 is connected to specific
-  switches. the Issue was root caused as an inter-operability problem between
+  switches. the Issue was root caused as an interoperability problem between
   the NIC and at least some Broadcom PHYs in the Energy Efficient Ethernet
   wake mechanism.
 

@@ -26,7 +26,7 @@ Setup overview
 
    PVP setup using 2 NICs
 
-In this diagram, each red arrow represents one logical core. This use-case
+In this diagram, each red arrow represents one logical core. This use case
 requires 6 dedicated logical cores. A forwarding configuration with a single
 NIC is also possible, requiring 3 logical cores.
 

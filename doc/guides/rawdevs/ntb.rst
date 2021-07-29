@@ -17,7 +17,7 @@ some information by using scratchpad registers.
 BIOS setting on Intel Xeon
 --------------------------
 
-Intel Non-transparent Bridge needs special BIOS setting. The referencce for
+Intel Non-transparent Bridge needs special BIOS setting. The reference for
 Skylake is https://www.intel.com/content/dam/support/us/en/documents/server-products/Intel_Xeon_Processor_Scalable_Family_BIOS_User_Guide.pdf
 
 - Set the needed PCIe port as NTB to NTB mode on both hosts.

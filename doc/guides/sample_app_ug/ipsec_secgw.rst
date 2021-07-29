@@ -93,7 +93,7 @@ Additionally the event mode introduces two submodes of processing packets:
   protocol use case, the worker thread resembles l2fwd worker thread as the IPsec
   processing is done entirely in HW. This mode can be used to benchmark the raw
   performance of the HW. The driver submode is selected with --single-sa option
-  (used also by poll mode). When --single-sa option is used in conjution with event
+  (used also by poll mode). When --single-sa option is used in conjunction with event
   mode then index passed to --single-sa is ignored.
 
 * App submode: This submode has all the features currently implemented with the

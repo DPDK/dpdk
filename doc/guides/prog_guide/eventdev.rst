@@ -120,7 +120,7 @@ Ports
 ~~~~~
 
 Ports are the points of contact between worker cores and the eventdev. The
-general use-case will see one CPU core using one port to enqueue and dequeue
+general use case will see one CPU core using one port to enqueue and dequeue
 events from an eventdev. Ports are linked to queues in order to retrieve events
 from those queues (more details in `Linking Queues and Ports`_ below).
 
