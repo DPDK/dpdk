@@ -112,7 +112,7 @@ The command line options are:
     Set the data size of the mbufs used to N bytes, where N < 65536.
     The default value is 2048. If multiple mbuf-size values are specified the
     extra memory pools will be created for allocating mbufs to receive packets
-    with buffer splittling features.
+    with buffer splitting features.
 
 *   ``--total-num-mbufs=N``
 

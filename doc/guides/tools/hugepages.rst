@@ -62,7 +62,7 @@ Options
 
 .. warning::
 
-   While any user can run the ``dpdk-hugpages.py`` script to view the
+   While any user can run the ``dpdk-hugepages.py`` script to view the
    status of huge pages, modifying the setup requires root privileges.
 
 
@@ -71,8 +71,8 @@ Examples
 
 To display current huge page settings::
 
-   dpdk-hugpages.py -s
+   dpdk-hugepages.py -s
 
 To a complete setup of with 2 Gigabyte of 1G huge pages::
 
-   dpdk-hugpages.py -p 1G --setup 2G
+   dpdk-hugepages.py -p 1G --setup 2G

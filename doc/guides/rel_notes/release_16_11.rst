@@ -77,7 +77,7 @@ New Features
   the current version, even 64 bytes packets take two slots with Virtio PMD on guest
   side.
 
-  The main impact is better performance for 0% packet loss use-cases, as it
+  The main impact is better performance for 0% packet loss use cases, as it
   behaves as if the virtqueue size was enlarged, so more packets can be buffered
   in the case of system perturbations. On the downside, small performance degradations
   were measured when running micro-benchmarks.

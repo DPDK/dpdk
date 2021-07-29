@@ -151,7 +151,7 @@ New Features
   * Added multi-queue support to allow one af_xdp vdev with multiple netdev
     queues.
   * Enabled "need_wakeup" feature which can provide efficient support for the
-    usecase where the application and driver executing on the same core.
+    use case where the application and driver executing on the same core.
 
 * **Enabled infinite Rx in the PCAP PMD.**
 

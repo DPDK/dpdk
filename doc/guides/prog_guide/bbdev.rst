@@ -639,7 +639,7 @@ optionally the ``soft_output`` mbuf data pointers.
    "soft output","soft LLR output buffer (optional)"
    "op_flags","bitmask of all active operation capabilities"
    "rv_index","redundancy version index [0..3]"
-   "iter_max","maximum number of iterations to perofrm in decode all CBs"
+   "iter_max","maximum number of iterations to perform in decode all CBs"
    "iter_min","minimum number of iterations to perform in decoding all CBs"
    "iter_count","number of iterations to performed in decoding all CBs"
    "ext_scale","scale factor on extrinsic info (5 bits)"

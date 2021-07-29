@@ -99,7 +99,7 @@ The mlxreg dedicated tool should be used as follows:
   The "wrapped_crypto_operational" value will be "0x00000001" if the mode was
   successfully changed to operational mode.
 
-  The mlx5 crypto PMD can be verfied by running the test application::
+  The mlx5 crypto PMD can be verified by running the test application::
 
      dpdk-test -c 1 -n 1 -w <dev>,class=crypto,wcs_file=<file_path>
      RTE>>cryptodev_mlx5_autotest
@@ -130,7 +130,7 @@ Driver options
 
 - ``keytag`` parameter [int]
 
-  The plaintext of the keytag appanded to the AES-XTS keys, default value is 0.
+  The plaintext of the keytag appended to the AES-XTS keys, default value is 0.
 
 - ``max_segs_num`` parameter [int]
 

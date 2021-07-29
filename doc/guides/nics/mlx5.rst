@@ -1476,7 +1476,7 @@ the DPDK application.
 
         echo -n "<device pci address" > /sys/bus/pci/drivers/mlx5_core/unbind
 
-5. Enbale switchdev mode::
+5. Enable switchdev mode::
 
         echo switchdev > /sys/class/net/<net device>/compat/devlink/mode
 

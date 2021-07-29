@@ -153,7 +153,7 @@ Runtime Config Options
 
       -a 0002:02:00.0,max_sqb_count=64
 
-   With the above configuration, each send queue's decscriptor buffer count is
+   With the above configuration, each send queue's descriptor buffer count is
    limited to a maximum of 64 buffers.
 
 - ``Switch header enable`` (default ``none``)
@@ -242,7 +242,7 @@ configure the following features:
 #. Hierarchical scheduling
 #. Single rate - Two color, Two rate - Three color shaping
 
-Both DWRR and Static Priority(SP) hierarchial scheduling is supported.
+Both DWRR and Static Priority(SP) hierarchical scheduling is supported.
 
 Every parent can have atmost 10 SP Children and unlimited DWRR children.
 

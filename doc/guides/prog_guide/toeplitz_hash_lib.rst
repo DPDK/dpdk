@@ -41,7 +41,7 @@ but it expects ``rss_key`` to be converted to the host byte order.
 Predictable RSS
 ---------------
 
-In some usecases it is useful to have a way to find partial collisions of the
+In some use cases it is useful to have a way to find partial collisions of the
 Toeplitz hash function. In figure :numref:`figure_rss_queue_assign` only a few
 of the least significant bits (LSB) of the hash value are used to indicate an
 entry in the RSS Redirection Table (ReTa) and thus the index of the queue. So,
@@ -178,10 +178,10 @@ It expects:
   tuple, if the callback function returns an error.
 
 
-Usecase example
----------------
+Use case example
+----------------
 
-There could be a number of different usecases, such as NAT, TCP stack, MPLS
+There could be a number of different use cases, such as NAT, TCP stack, MPLS
 tag allocation, etc. In the following we will consider a SNAT application.
 
 Packets of a single bidirectional flow belonging to different directions can

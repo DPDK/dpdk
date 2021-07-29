@@ -78,7 +78,7 @@ compatible board:
    based config (if /tmp/fmc.bin is present). DPAA FMD will be used only if no
    previous fmc config is existing.
 
-   Note that fmlib based integratin rely on underlying fmd driver in kernel,
+   Note that fmlib based integration rely on underlying fmd driver in kernel,
    which is available as part of NXP kernel or NXP SDK.
 
 The following dependencies are not part of DPDK and must be installed

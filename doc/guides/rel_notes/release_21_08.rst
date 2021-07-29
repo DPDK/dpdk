@@ -152,7 +152,7 @@ New Features
 
   Added Baseband PHY PMD which allows to configure BPHY hardware block
   comprising accelerators and DSPs specifically tailored for 5G/LTE inline
-  usecases. Configuration happens via standard rawdev enq/deq operations. See
+  use cases. Configuration happens via standard rawdev enq/deq operations. See
   the :doc:`../rawdevs/cnxk_bphy` rawdev guide for more details on this driver.
 
 * **Added support for Marvell CN10K, CN9K, event Rx/Tx adapter.**

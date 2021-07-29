@@ -358,7 +358,7 @@ RPM example usage:
         Packets received with FrameCheckSequenceErrors: 0
         Packets received with VLAN header: 0
         Error packets: 0
-        Packets recievd with unicast DMAC: 0
+        Packets received with unicast DMAC: 0
         Packets received with multicast DMAC: 0
         Packets received with broadcast DMAC: 0
         Dropped packets: 0

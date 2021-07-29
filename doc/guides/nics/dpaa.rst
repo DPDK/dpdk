@@ -297,7 +297,7 @@ FMC - FMAN Configuration Tool
 
 
    The details can be found in FMC Doc at:
-   `Frame Mnager Configuration Tool <https://www.nxp.com/docs/en/application-note/AN4760.pdf>`_.
+   `Frame Manager Configuration Tool <https://www.nxp.com/docs/en/application-note/AN4760.pdf>`_.
 
 FMLIB
 ~~~~~
@@ -307,7 +307,7 @@ FMLIB
 
    This is an alternate to the FMC based configuration. This library provides
    direct ioctl based interfaces for FMAN configuration as used by the FMC tool
-   as well. This helps in overcoming the main limitaiton of FMC - i.e. lack
+   as well. This helps in overcoming the main limitation of FMC - i.e. lack
    of dynamic configuration.
 
    The location for the fmd driver as used by FMLIB and FMC is as follows:
@@ -319,7 +319,7 @@ VSP (Virtual Storage Profile)
    The storage profiled are means to provide virtualized interface. A ranges of
    storage profiles cab be associated to Ethernet ports.
    They are selected during classification. Specify how the frame should be
-   written to memory and which buffer pool to select for packet storange in
+   written to memory and which buffer pool to select for packet storage in
    queues. Start and End margin of buffer can also be configured.
 
 Limitations

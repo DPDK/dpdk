@@ -509,7 +509,7 @@ are shown in below table:
    Split virtqueue in-order non-mergeable path  virtio_recv_pkts_inorder          virtio_xmit_pkts_inorder
    Split virtqueue vectorized Rx path           virtio_recv_pkts_vec              virtio_xmit_pkts
    Packed virtqueue mergeable path              virtio_recv_mergeable_pkts_packed virtio_xmit_pkts_packed
-   Packed virtqueue non-meregable path          virtio_recv_pkts_packed           virtio_xmit_pkts_packed
+   Packed virtqueue non-mergeable path          virtio_recv_pkts_packed           virtio_xmit_pkts_packed
    Packed virtqueue in-order mergeable path     virtio_recv_mergeable_pkts_packed virtio_xmit_pkts_packed
    Packed virtqueue in-order non-mergeable path virtio_recv_pkts_packed           virtio_xmit_pkts_packed
    Packed virtqueue vectorized Rx path          virtio_recv_pkts_packed_vec       virtio_xmit_pkts_packed
