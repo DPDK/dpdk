@@ -55,35 +55,12 @@
 
 /* Prototypes */
 static int nfp_net_close(struct rte_eth_dev *dev);
-static int nfp_net_configure(struct rte_eth_dev *dev);
-static void nfp_net_dev_interrupt_handler(void *param);
-static void nfp_net_dev_interrupt_delayed_handler(void *param);
-static int nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
-static int nfp_net_infos_get(struct rte_eth_dev *dev,
-			     struct rte_eth_dev_info *dev_info);
 static int nfp_net_init(struct rte_eth_dev *eth_dev);
 static int nfp_pf_init(struct rte_pci_device *pci_dev);
 static int nfp_pf_secondary_init(struct rte_pci_device *pci_dev);
 static int nfp_pci_uninit(struct rte_eth_dev *eth_dev);
 static int nfp_init_phyports(struct nfp_pf_dev *pf_dev);
-static int nfp_net_link_update(struct rte_eth_dev *dev, int wait_to_complete);
-static int nfp_net_promisc_enable(struct rte_eth_dev *dev);
-static int nfp_net_promisc_disable(struct rte_eth_dev *dev);
-static int nfp_net_start(struct rte_eth_dev *dev);
-static int nfp_net_stats_get(struct rte_eth_dev *dev,
-			      struct rte_eth_stats *stats);
-static int nfp_net_stats_reset(struct rte_eth_dev *dev);
 static int nfp_net_stop(struct rte_eth_dev *dev);
-static int nfp_net_rss_config_default(struct rte_eth_dev *dev);
-static int nfp_net_rss_hash_update(struct rte_eth_dev *dev,
-				   struct rte_eth_rss_conf *rss_conf);
-static int nfp_net_rss_reta_write(struct rte_eth_dev *dev,
-		    struct rte_eth_rss_reta_entry64 *reta_conf,
-		    uint16_t reta_size);
-static int nfp_net_rss_hash_write(struct rte_eth_dev *dev,
-			struct rte_eth_rss_conf *rss_conf);
-static int nfp_set_mac_addr(struct rte_eth_dev *dev,
-			     struct rte_ether_addr *mac_addr);
 static int nfp_fw_setup(struct rte_pci_device *dev,
 			struct nfp_cpp *cpp,
 			struct nfp_eth_table *nfp_eth_table,
@@ -138,7 +115,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t update)
  * Write the update word to the BAR and ping the reconfig queue. Then poll
  * until the firmware has acknowledged the update by zeroing the update word.
  */
-static int
+int
 nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update)
 {
 	uint32_t err;
@@ -174,7 +151,7 @@ nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update)
  * before any other function in the Ethernet API. This function can
  * also be re-invoked when a device is in the stopped state.
  */
-static int
+int
 nfp_net_configure(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf *dev_conf;
@@ -217,7 +194,7 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+void
 nfp_net_enable_queues(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
@@ -241,7 +218,7 @@ nfp_net_enable_queues(struct rte_eth_dev *dev)
 	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, enabled_queues);
 }
 
-static void
+void
 nfp_net_disable_queues(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
@@ -266,14 +243,14 @@ nfp_net_disable_queues(struct rte_eth_dev *dev)
 	hw->ctrl = new_ctrl;
 }
 
-static void
+void
 nfp_net_params_setup(struct nfp_net_hw *hw)
 {
 	nn_cfg_writel(hw, NFP_NET_CFG_MTU, hw->mtu);
 	nn_cfg_writel(hw, NFP_NET_CFG_FLBUFSZ, hw->flbufsz);
 }
 
-static void
+void
 nfp_net_cfg_queue_setup(struct nfp_net_hw *hw)
 {
 	hw->qcp_cfg = hw->tx_bar + NFP_QCP_QUEUE_ADDR_SZ;
@@ -281,7 +258,7 @@ nfp_net_cfg_queue_setup(struct nfp_net_hw *hw)
 
 #define ETH_ADDR_LEN	6
 
-static void
+void
 nfp_eth_copy_mac(uint8_t *dst, const uint8_t *src)
 {
 	int i;
@@ -320,7 +297,7 @@ nfp_net_vf_read_mac(struct nfp_net_hw *hw)
 	memcpy(&hw->mac_addr[4], &tmp, 2);
 }
 
-static void
+void
 nfp_net_write_mac(struct nfp_net_hw *hw, uint8_t *mac)
 {
 	uint32_t mac0 = *(uint32_t *)mac;
@@ -368,7 +345,7 @@ nfp_set_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 	return 0;
 }
 
-static int
+int
 nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 			   struct rte_intr_handle *intr_handle)
 {
@@ -412,7 +389,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static uint32_t
+uint32_t
 nfp_check_offloads(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
@@ -748,7 +725,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int
+int
 nfp_net_promisc_enable(struct rte_eth_dev *dev)
 {
 	uint32_t new_ctrl, update = 0;
@@ -785,7 +762,7 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int
+int
 nfp_net_promisc_disable(struct rte_eth_dev *dev)
 {
 	uint32_t new_ctrl, update = 0;
@@ -821,7 +798,7 @@ nfp_net_promisc_disable(struct rte_eth_dev *dev)
  * Wait to complete is needed as it can take up to 9 seconds to get the Link
  * status.
  */
-static int
+int
 nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 {
 	struct nfp_net_hw *hw;
@@ -871,7 +848,7 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 	return ret;
 }
 
-static int
+int
 nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	int i;
@@ -966,7 +943,7 @@ nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return -EINVAL;
 }
 
-static int
+int
 nfp_net_stats_reset(struct rte_eth_dev *dev)
 {
 	int i;
@@ -1031,7 +1008,7 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int
+int
 nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct nfp_net_hw *hw;
@@ -1125,7 +1102,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	return 0;
 }
 
-static const uint32_t *
+const uint32_t *
 nfp_net_supported_ptypes_get(struct rte_eth_dev *dev)
 {
 	static const uint32_t ptypes[] = {
@@ -1142,7 +1119,7 @@ nfp_net_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
-static int
+int
 nfp_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
 	struct rte_pci_device *pci_dev;
@@ -1162,7 +1139,7 @@ nfp_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	return 0;
 }
 
-static int
+int
 nfp_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
 	struct rte_pci_device *pci_dev;
@@ -1231,7 +1208,32 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 	}
 }
 
+/*
+ * Interrupt handler which shall be registered for alarm callback for delayed
+ * handling specific interrupt to wait for the stable nic state. As the NIC
+ * interrupt state is not stable for nfp after link is just down, it needs
+ * to wait 4 seconds to get the stable status.
+ *
+ * @param handle   Pointer to interrupt handle.
+ * @param param    The address of parameter (struct rte_eth_dev *)
+ *
+ * @return  void
+ */
 static void
+nfp_net_dev_interrupt_delayed_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+
+	nfp_net_link_update(dev, 0);
+	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+
+	nfp_net_dev_link_status_print(dev);
+
+	/* Unmasking */
+	nfp_net_irq_unmask(dev);
+}
+
+void
 nfp_net_dev_interrupt_handler(void *param)
 {
 	int64_t timeout;
@@ -1263,32 +1265,7 @@ nfp_net_dev_interrupt_handler(void *param)
 	}
 }
 
-/*
- * Interrupt handler which shall be registered for alarm callback for delayed
- * handling specific interrupt to wait for the stable nic state. As the NIC
- * interrupt state is not stable for nfp after link is just down, it needs
- * to wait 4 seconds to get the stable status.
- *
- * @param handle   Pointer to interrupt handle.
- * @param param    The address of parameter (struct rte_eth_dev *)
- *
- * @return  void
- */
-static void
-nfp_net_dev_interrupt_delayed_handler(void *param)
-{
-	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
-
-	nfp_net_link_update(dev, 0);
-	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
-
-	nfp_net_dev_link_status_print(dev);
-
-	/* Unmasking */
-	nfp_net_irq_unmask(dev);
-}
-
-static int
+int
 nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct nfp_net_hw *hw;
@@ -1323,7 +1300,7 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
-static int
+int
 nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	uint32_t new_ctrl, update;
@@ -1406,7 +1383,7 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 }
 
 /* Update Redirection Table(RETA) of Receive Side Scaling of Ethernet device */
-static int
+int
 nfp_net_reta_update(struct rte_eth_dev *dev,
 		    struct rte_eth_rss_reta_entry64 *reta_conf,
 		    uint16_t reta_size)
@@ -1432,7 +1409,7 @@ nfp_net_reta_update(struct rte_eth_dev *dev,
 }
 
  /* Query Redirection Table(RETA) of Receive Side Scaling of Ethernet device. */
-static int
+int
 nfp_net_reta_query(struct rte_eth_dev *dev,
 		   struct rte_eth_rss_reta_entry64 *reta_conf,
 		   uint16_t reta_size)
@@ -1529,7 +1506,7 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static int
+int
 nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf)
 {
@@ -1565,7 +1542,7 @@ nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static int
+int
 nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 			  struct rte_eth_rss_conf *rss_conf)
 {
@@ -1616,7 +1593,7 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static int
+int
 nfp_net_rss_config_default(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf *dev_conf;
