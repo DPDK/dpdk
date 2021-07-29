@@ -134,7 +134,7 @@ otx2_ethdev_parse_devargs(struct rte_devargs *devargs, struct otx2_eth_dev *dev)
 {
 	uint16_t rss_size = NIX_RSS_RETA_SIZE;
 	uint16_t sqb_count = NIX_MAX_SQB;
-	uint16_t flow_prealloc_size = 8;
+	uint16_t flow_prealloc_size = 1;
 	uint16_t switch_header_type = 0;
 	uint16_t flow_max_priority = 3;
 	uint16_t ipsec_in_max_spi = 1;
