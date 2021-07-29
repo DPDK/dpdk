@@ -1021,12 +1021,14 @@ mlx5_crypto_dev_probe(struct rte_device *dev)
 	ret = mlx5_crypto_parse_devargs(dev->devargs, &devarg_prms);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to parse devargs.");
+		claim_zero(mlx5_glue->close_device(ctx));
 		return -rte_errno;
 	}
 	login = mlx5_devx_cmd_create_crypto_login_obj(ctx,
 						      &devarg_prms.login_attr);
 	if (login == NULL) {
 		DRV_LOG(ERR, "Failed to configure login.");
+		claim_zero(mlx5_glue->close_device(ctx));
 		return -rte_errno;
 	}
 	crypto_dev = rte_cryptodev_pmd_create(ibv->name, dev,
