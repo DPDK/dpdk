@@ -245,17 +245,23 @@ mlx5_flow_meter_profile_validate(struct rte_eth_dev *dev,
 static inline void
 mlx5_flow_meter_xir_man_exp_calc(int64_t xir, uint8_t *man, uint8_t *exp)
 {
-	int64_t _cir;
+	int64_t _xir;
 	int64_t delta = INT64_MAX;
 	uint8_t _man = 0;
 	uint8_t _exp = 0;
 	uint64_t m, e;
 
+	/* Special case xir == 0 ? both exp and matissa are 0. */
+	if (xir == 0) {
+		*man = 0;
+		*exp = 0;
+		return;
+	}
 	for (m = 0; m <= 0xFF; m++) { /* man width 8 bit */
 		for (e = 0; e <= 0x1F; e++) { /* exp width 5bit */
-			_cir = (1000000000ULL * m) >> e;
-			if (llabs(xir - _cir) <= delta) {
-				delta = llabs(xir - _cir);
+			_xir = (1000000000ULL * m) >> e;
+			if (llabs(xir - _xir) <= delta) {
+				delta = llabs(xir - _xir);
 				_man = m;
 				_exp = e;
 			}
