@@ -1547,6 +1547,7 @@ static const uint32_t efx_mae_action_ordered_map =
  * strictly ordered actions.
  */
 static const uint32_t efx_mae_action_nonstrict_map =
+	(1U << EFX_MAE_ACTION_COUNT) |
 	(1U << EFX_MAE_ACTION_FLAG) |
 	(1U << EFX_MAE_ACTION_MARK);
 

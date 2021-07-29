@@ -4310,6 +4310,18 @@ efx_mae_action_set_populate_encap(
 /*
  * Use efx_mae_action_set_fill_in_counter_id() to set ID of a counter
  * in the specification prior to action set allocation.
+ *
+ * NOTICE: the HW will conduct action COUNT after actions DECAP,
+ * VLAN_POP, VLAN_PUSH (if any) have been applied to the packet,
+ * but, as a workaround, this order is not validated by the API.
+ *
+ * The workaround helps to unblock DPDK + Open vSwitch use case.
+ * In Open vSwitch, this action is always the first to be added,
+ * in particular, it's known to be inserted before action DECAP,
+ * so enforcing the right order here would cause runtime errors.
+ * The existing behaviour in Open vSwitch is unlikely to change
+ * any time soon, and the workaround is a good solution because
+ * in fact the real COUNT order is a don't care to Open vSwitch.
  */
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
