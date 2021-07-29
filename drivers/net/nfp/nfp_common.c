@@ -8,9 +8,9 @@
 /*
  * vim:shiftwidth=8:noexpandtab
  *
- * @file dpdk/pmd/nfp_net.c
+ * @file dpdk/pmd/nfp_common.c
  *
- * Netronome vNIC DPDK Poll-Mode Driver: Main entry point
+ * Netronome vNIC DPDK Poll-Mode Driver: Common files
  */
 
 #include <rte_byteorder.h>

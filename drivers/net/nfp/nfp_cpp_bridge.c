@@ -19,7 +19,7 @@
 #include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_nsp.h"
 
-#include "nfp_net_logs.h"
+#include "nfp_logs.h"
 #include "nfp_cpp_bridge.h"
 
 #include <sys/ioctl.h>

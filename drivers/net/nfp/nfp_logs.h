@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef _NFP_NET_LOGS_H_
-#define _NFP_NET_LOGS_H_
+#ifndef _NFP_LOGS_H_
+#define _NFP_LOGS_H_
 
 #include <rte_log.h>
 
@@ -37,4 +37,4 @@ extern int nfp_logtype_driver;
 	rte_log(RTE_LOG_ ## level, nfp_logtype_driver, \
 		"%s(): " fmt "\n", __func__, ## args)
 
-#endif /* _NFP_NET_LOGS_H_ */
+#endif /* _NFP_LOGS_H_ */

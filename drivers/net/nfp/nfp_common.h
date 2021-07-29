@@ -11,8 +11,8 @@
  * Netronome NFP_NET PMD driver
  */
 
-#ifndef _NFP_NET_PMD_H_
-#define _NFP_NET_PMD_H_
+#ifndef _NFP_COMMON_H_
+#define _NFP_COMMON_H_
 
 #define NFP_NET_PMD_VERSION "0.1"
 #define PCI_VENDOR_ID_NETRONOME         0x19ee
@@ -396,7 +396,7 @@ int nfp_net_rss_config_default(struct rte_eth_dev *dev);
 #define NFP_NET_DEV_PRIVATE_TO_PF(dev_priv)\
 	(((struct nfp_net_hw *)dev_priv)->pf_dev)
 
-#endif /* _NFP_NET_PMD_H_ */
+#endif /* _NFP_COMMON_H_ */
 /*
  * Local variables:
  * c-file-style: "Linux"

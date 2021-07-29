@@ -31,10 +31,10 @@
 #include "nfpcore/nfp_rtsym.h"
 #include "nfpcore/nfp_nsp.h"
 
-#include "nfp_net_pmd.h"
+#include "nfp_common.h"
 #include "nfp_rxtx.h"
-#include "nfp_net_logs.h"
-#include "nfp_net_ctrl.h"
+#include "nfp_logs.h"
+#include "nfp_ctrl.h"
 #include "nfp_cpp_bridge.h"
 
 

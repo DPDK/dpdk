@@ -8,8 +8,8 @@
  *
  * Netronome network device driver: Control BAR layout
  */
-#ifndef _NFP_NET_CTRL_H_
-#define _NFP_NET_CTRL_H_
+#ifndef _NFP_CTRL_H_
+#define _NFP_CTRL_H_
 
 /*
  * Configuration BAR size.
@@ -317,7 +317,7 @@
 /* PF multiport offset */
 #define NFP_PF_CSR_SLICE_SIZE	(32 * 1024)
 
-#endif /* _NFP_NET_CTRL_H_ */
+#endif /* _NFP_CTRL_H_ */
 /*
  * Local variables:
  * c-file-style: "Linux"

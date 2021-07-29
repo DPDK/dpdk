@@ -16,10 +16,10 @@
 #include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_rtsym.h"
 
-#include "nfp_net_pmd.h"
+#include "nfp_common.h"
 #include "nfp_rxtx.h"
-#include "nfp_net_logs.h"
-#include "nfp_net_ctrl.h"
+#include "nfp_logs.h"
+#include "nfp_ctrl.h"
 
 static void nfp_netvf_read_mac(struct nfp_net_hw *hw);
 static int nfp_netvf_start(struct rte_eth_dev *dev);

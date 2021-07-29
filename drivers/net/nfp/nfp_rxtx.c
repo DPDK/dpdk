@@ -16,10 +16,10 @@
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
 
-#include "nfp_net_pmd.h"
+#include "nfp_common.h"
 #include "nfp_rxtx.h"
-#include "nfp_net_logs.h"
-#include "nfp_net_ctrl.h"
+#include "nfp_logs.h"
+#include "nfp_ctrl.h"
 
 /* Prototypes */
 static int nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq);
