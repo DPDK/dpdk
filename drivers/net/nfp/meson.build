@@ -20,4 +20,5 @@ sources = files(
         'nfpcore/nfp_hwinfo.c',
         'nfp_net.c',
         'nfp_rxtx.c',
+        'nfp_cpp_bridge.c',
 )
