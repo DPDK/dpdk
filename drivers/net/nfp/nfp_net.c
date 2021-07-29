@@ -58,6 +58,7 @@ static int nfp_net_close(struct rte_eth_dev *dev);
 static int nfp_net_init(struct rte_eth_dev *eth_dev);
 static int nfp_pf_init(struct rte_pci_device *pci_dev);
 static int nfp_pf_secondary_init(struct rte_pci_device *pci_dev);
+static int nfp_net_pf_read_mac(struct nfp_pf_dev *pf_dev, int port);
 static int nfp_pci_uninit(struct rte_eth_dev *eth_dev);
 static int nfp_init_phyports(struct nfp_pf_dev *pf_dev);
 static int nfp_net_stop(struct rte_eth_dev *dev);
@@ -283,18 +284,6 @@ nfp_net_pf_read_mac(struct nfp_pf_dev *pf_dev, int port)
 
 	free(nfp_eth_table);
 	return 0;
-}
-
-static void
-nfp_net_vf_read_mac(struct nfp_net_hw *hw)
-{
-	uint32_t tmp;
-
-	tmp = rte_be_to_cpu_32(nn_cfg_readl(hw, NFP_NET_CFG_MACADDR));
-	memcpy(&hw->mac_addr[0], &tmp, 4);
-
-	tmp = rte_be_to_cpu_32(nn_cfg_readl(hw, NFP_NET_CFG_MACADDR + 4));
-	memcpy(&hw->mac_addr[4], &tmp, 2);
 }
 
 void
@@ -1854,8 +1843,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	if (hw->is_phyport) {
 		nfp_net_pf_read_mac(pf_dev, port);
 		nfp_net_write_mac(hw, (uint8_t *)&hw->mac_addr);
-	} else {
-		nfp_net_vf_read_mac(hw);
 	}
 
 	if (!rte_is_valid_assigned_ether_addr(
@@ -2337,16 +2324,6 @@ static const struct rte_pci_id pci_id_nfp_pf_net_map[] = {
 	},
 };
 
-static const struct rte_pci_id pci_id_nfp_vf_net_map[] = {
-	{
-		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETRONOME,
-			       PCI_DEVICE_ID_NFP6000_VF_NIC)
-	},
-	{
-		.vendor_id = 0,
-	},
-};
-
 static int nfp_pci_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
@@ -2370,13 +2347,6 @@ static int nfp_pci_uninit(struct rte_eth_dev *eth_dev)
 	return nfp_net_close(eth_dev);
 }
 
-static int eth_nfp_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-	struct rte_pci_device *pci_dev)
-{
-	return rte_eth_dev_pci_generic_probe(pci_dev,
-		sizeof(struct nfp_net_adapter), nfp_net_init);
-}
-
 static int eth_nfp_pci_remove(struct rte_pci_device *pci_dev)
 {
 	return rte_eth_dev_pci_generic_remove(pci_dev, nfp_pci_uninit);
@@ -2389,19 +2359,9 @@ static struct rte_pci_driver rte_nfp_net_pf_pmd = {
 	.remove = eth_nfp_pci_remove,
 };
 
-static struct rte_pci_driver rte_nfp_net_vf_pmd = {
-	.id_table = pci_id_nfp_vf_net_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-	.probe = eth_nfp_pci_probe,
-	.remove = eth_nfp_pci_remove,
-};
-
 RTE_PMD_REGISTER_PCI(net_nfp_pf, rte_nfp_net_pf_pmd);
-RTE_PMD_REGISTER_PCI(net_nfp_vf, rte_nfp_net_vf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_nfp_pf, pci_id_nfp_pf_net_map);
-RTE_PMD_REGISTER_PCI_TABLE(net_nfp_vf, pci_id_nfp_vf_net_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_nfp_pf, "* igb_uio | uio_pci_generic | vfio");
-RTE_PMD_REGISTER_KMOD_DEP(net_nfp_vf, "* igb_uio | uio_pci_generic | vfio");
 RTE_LOG_REGISTER_SUFFIX(nfp_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(nfp_logtype_driver, driver, NOTICE);
 /*
