@@ -480,17 +480,18 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 
 	if (info->ethertype == _htons(RTE_ETHER_TYPE_IPV4)) {
 		ipv4_hdr = l3_hdr;
-		ipv4_hdr->hdr_checksum = 0;
 
 		ol_flags |= PKT_TX_IPV4;
 		if (info->l4_proto == IPPROTO_TCP && tso_segsz) {
 			ol_flags |= PKT_TX_IP_CKSUM;
 		} else {
-			if (tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
+			if (tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) {
 				ol_flags |= PKT_TX_IP_CKSUM;
-			else
+			} else if (ipv4_hdr->hdr_checksum != 0) {
+				ipv4_hdr->hdr_checksum = 0;
 				ipv4_hdr->hdr_checksum =
 					rte_ipv4_cksum(ipv4_hdr);
+			}
 		}
 	} else if (info->ethertype == _htons(RTE_ETHER_TYPE_IPV6))
 		ol_flags |= PKT_TX_IPV6;
@@ -501,10 +502,10 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 		udp_hdr = (struct rte_udp_hdr *)((char *)l3_hdr + info->l3_len);
 		/* do not recalculate udp cksum if it was 0 */
 		if (udp_hdr->dgram_cksum != 0) {
-			udp_hdr->dgram_cksum = 0;
-			if (tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM)
+			if (tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM) {
 				ol_flags |= PKT_TX_UDP_CKSUM;
-			else {
+			} else {
+				udp_hdr->dgram_cksum = 0;
 				udp_hdr->dgram_cksum =
 					get_udptcp_checksum(l3_hdr, udp_hdr,
 						info->ethertype);
@@ -514,12 +515,12 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 			ol_flags |= PKT_TX_UDP_SEG;
 	} else if (info->l4_proto == IPPROTO_TCP) {
 		tcp_hdr = (struct rte_tcp_hdr *)((char *)l3_hdr + info->l3_len);
-		tcp_hdr->cksum = 0;
 		if (tso_segsz)
 			ol_flags |= PKT_TX_TCP_SEG;
-		else if (tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM)
+		else if (tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM) {
 			ol_flags |= PKT_TX_TCP_CKSUM;
-		else {
+		} else if (tcp_hdr->cksum != 0) {
+			tcp_hdr->cksum = 0;
 			tcp_hdr->cksum =
 				get_udptcp_checksum(l3_hdr, tcp_hdr,
 					info->ethertype);
@@ -529,13 +530,13 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 	} else if (info->l4_proto == IPPROTO_SCTP) {
 		sctp_hdr = (struct rte_sctp_hdr *)
 			((char *)l3_hdr + info->l3_len);
-		sctp_hdr->cksum = 0;
 		/* sctp payload must be a multiple of 4 to be
 		 * offloaded */
 		if ((tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) &&
 			((ipv4_hdr->total_length & 0x3) == 0)) {
 			ol_flags |= PKT_TX_SCTP_CKSUM;
-		} else {
+		} else if (sctp_hdr->cksum != 0) {
+			sctp_hdr->cksum = 0;
 			/* XXX implement CRC32c, example available in
 			 * RFC3309 */
 		}
