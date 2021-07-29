@@ -40,6 +40,7 @@
 #include "nfpcore/nfp_nsp.h"
 
 #include "nfp_net_pmd.h"
+#include "nfp_rxtx.h"
 #include "nfp_net_logs.h"
 #include "nfp_net_ctrl.h"
 
