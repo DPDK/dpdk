@@ -3849,10 +3849,9 @@ enum {
 	MLX5_FLOW_COLOR_UNDEFINED,
 };
 
-/* Maximum value of srTCM metering parameters. */
-#define MLX5_SRTCM_CBS_MAX (0xFF * (1ULL << 0x1F))
-#define MLX5_SRTCM_CIR_MAX (8 * (1ULL << 30) * 0xFF)
-#define MLX5_SRTCM_EBS_MAX 0
+/* Maximum value of srTCM & trTCM metering parameters. */
+#define MLX5_SRTCM_XBS_MAX (0xFF * (1ULL << 0x1F))
+#define MLX5_SRTCM_XIR_MAX (8 * (1ULL << 30) * 0xFF)
 
 /* The bits meter color use. */
 #define MLX5_MTR_COLOR_BITS 8
