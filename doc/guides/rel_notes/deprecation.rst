@@ -160,6 +160,10 @@ Deprecation Notices
   The second union is for existing ``fragment_offset``
   and new bitfield for fragment flags and offset.
 
+* vhost: ``rte_vdpa_register_device``, ``rte_vdpa_unregister_device``,
+  ``rte_vhost_host_notifier_ctrl`` and ``rte_vdpa_relay_vring_used`` vDPA
+  driver interface will be marked as internal in DPDK v21.11.
+
 * vhost: The experimental tags of ``rte_vhost_driver_get_protocol_features``,
   ``rte_vhost_driver_get_queue_num``, ``rte_vhost_crypto_create``,
   ``rte_vhost_crypto_free``, ``rte_vhost_crypto_fetch_requests``,
