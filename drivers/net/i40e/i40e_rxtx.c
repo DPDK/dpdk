@@ -3224,10 +3224,10 @@ i40e_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.offloads = txq->offloads;
 }
 
+#ifdef RTE_ARCH_X86
 static inline bool
 get_avx_supported(bool request_avx512)
 {
-#ifdef RTE_ARCH_X86
 	if (request_avx512) {
 		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512 &&
 		rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
@@ -3251,12 +3251,10 @@ get_avx_supported(bool request_avx512)
 		return false;
 #endif
 	}
-#else
-	RTE_SET_USED(request_avx512);
-#endif /* RTE_ARCH_X86 */
 
 	return false;
 }
+#endif /* RTE_ARCH_X86 */
 
 
 void __rte_cold
