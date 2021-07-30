@@ -1314,6 +1314,10 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	/* Register up msg callbacks */
 	roc_nix_mac_link_cb_register(nix, cnxk_eth_dev_link_status_cb);
 
+	/* Register up msg callbacks */
+	roc_nix_mac_link_info_get_cb_register(nix,
+					      cnxk_eth_dev_link_status_get_cb);
+
 	dev->eth_dev = eth_dev;
 	dev->configured = 0;
 	dev->ptype_disable = 0;
@@ -1414,6 +1418,11 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 
 	/* Disable link status events */
 	roc_nix_mac_link_event_start_stop(nix, false);
+
+	/* Unregister the link update op, this is required to stop VFs from
+	 * receiving link status updates on exit path.
+	 */
+	roc_nix_mac_link_cb_unregister(nix);
 
 	/* Free up SQs */
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {

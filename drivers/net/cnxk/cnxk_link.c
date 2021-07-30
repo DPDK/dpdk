@@ -46,6 +46,29 @@ nix_link_status_print(struct rte_eth_dev *eth_dev, struct rte_eth_link *link)
 }
 
 void
+cnxk_eth_dev_link_status_get_cb(struct roc_nix *nix,
+				struct roc_nix_link_info *link)
+{
+	struct cnxk_eth_dev *dev = (struct cnxk_eth_dev *)nix;
+	struct rte_eth_link eth_link;
+	struct rte_eth_dev *eth_dev;
+
+	if (!link || !nix)
+		return;
+
+	eth_dev = dev->eth_dev;
+	if (!eth_dev)
+		return;
+
+	rte_eth_linkstatus_get(eth_dev, &eth_link);
+
+	link->status = eth_link.link_status;
+	link->speed = eth_link.link_speed;
+	link->autoneg = eth_link.link_autoneg;
+	link->full_duplex = eth_link.link_duplex;
+}
+
+void
 cnxk_eth_dev_link_status_cb(struct roc_nix *nix, struct roc_nix_link_info *link)
 {
 	struct cnxk_eth_dev *dev = (struct cnxk_eth_dev *)nix;
