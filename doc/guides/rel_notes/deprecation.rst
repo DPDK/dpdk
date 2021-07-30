@@ -160,6 +160,14 @@ Deprecation Notices
   The second union is for existing ``fragment_offset``
   and new bitfield for fragment flags and offset.
 
+* vhost: The experimental tags of ``rte_vhost_driver_get_protocol_features``,
+  ``rte_vhost_driver_get_queue_num``, ``rte_vhost_crypto_create``,
+  ``rte_vhost_crypto_free``, ``rte_vhost_crypto_fetch_requests``,
+  ``rte_vhost_crypto_finalize_requests``, ``rte_vhost_crypto_set_zero_copy``,
+  ``rte_vhost_va_from_guest_pa``, ``rte_vhost_extern_callback_register``,
+  and ``rte_vhost_driver_set_protocol_features`` functions will be removed
+  and the API functions will be made stable in DPDK 21.11.
+
 * compressdev: ``min`` and ``max`` fields of ``rte_param_log2_range`` structure
   will be renamed in DPDK 21.11 to avoid conflict with Windows Sockets headers.
 
