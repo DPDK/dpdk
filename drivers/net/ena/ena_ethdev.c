@@ -1963,6 +1963,7 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 
 	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
 		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	dev->data->dev_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
 
 	adapter->tx_selected_offloads = dev->data->dev_conf.txmode.offloads;
 	adapter->rx_selected_offloads = dev->data->dev_conf.rxmode.offloads;
@@ -2037,6 +2038,7 @@ static int ena_infos_get(struct rte_eth_dev *dev,
 			DEV_RX_OFFLOAD_TCP_CKSUM;
 
 	rx_feat |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	tx_feat |= DEV_TX_OFFLOAD_MULTI_SEGS;
 
 	/* Inform framework about available features */
 	dev_info->rx_offload_capa = rx_feat;
