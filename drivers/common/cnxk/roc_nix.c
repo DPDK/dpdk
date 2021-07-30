@@ -148,9 +148,12 @@ roc_nix_lf_alloc(struct roc_nix *roc_nix, uint32_t nb_rxq, uint32_t nb_txq,
 	req->npa_func = idev_npa_pffunc_get();
 	req->sso_func = idev_sso_pffunc_get();
 	req->rx_cfg = rx_cfg;
+	if (roc_nix_is_lbk(roc_nix) && roc_nix->enable_loop &&
+	    roc_model_is_cn98xx())
+		req->flags = NIX_LF_LBK_BLK_SEL;
 
 	if (!roc_nix->rss_tag_as_xor)
-		req->flags = NIX_LF_RSS_TAG_LSB_AS_ADDER;
+		req->flags |= NIX_LF_RSS_TAG_LSB_AS_ADDER;
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
