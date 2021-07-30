@@ -16,4 +16,4 @@ base_lib = static_library('igc_base', sources,
     dependencies: static_rte_eal,
     c_args: cflags)
 
-base_objs = base_lib.extract_all_objects()
+base_objs = base_lib.extract_all_objects(recursive: true)

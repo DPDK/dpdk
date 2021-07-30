@@ -35,4 +35,4 @@ endforeach
 base_lib = static_library('e1000_base', sources,
     dependencies: static_rte_eal,
     c_args: c_args)
-base_objs = base_lib.extract_all_objects()
+base_objs = base_lib.extract_all_objects(recursive: true)

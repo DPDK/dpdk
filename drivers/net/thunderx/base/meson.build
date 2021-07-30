@@ -13,4 +13,4 @@ base_lib = static_library('nicvf_base', sources,
     dependencies: static_rte_ethdev
 )
 
-base_objs = base_lib.extract_all_objects()
+base_objs = base_lib.extract_all_objects(recursive: true)
