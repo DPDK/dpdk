@@ -75,6 +75,7 @@ otx_cpt_pci_remove(struct rte_pci_device *pci_dev)
 {
 	struct rte_cryptodev *cryptodev;
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
+	void *dev_priv;
 
 	if (pci_dev == NULL)
 		return -EINVAL;
@@ -88,11 +89,13 @@ otx_cpt_pci_remove(struct rte_pci_device *pci_dev)
 	if (pci_dev->driver == NULL)
 		return -ENODEV;
 
+	dev_priv = cryptodev->data->dev_private;
+
 	/* free crypto device */
 	rte_cryptodev_pmd_release_device(cryptodev);
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(cryptodev->data->dev_private);
+		rte_free(dev_priv);
 
 	cryptodev->device->driver = NULL;
 	cryptodev->device = NULL;
