@@ -296,3 +296,26 @@ roc_nix_mac_link_cb_unregister(struct roc_nix *roc_nix)
 
 	dev->ops->link_status_update = NULL;
 }
+
+int
+roc_nix_mac_link_info_get_cb_register(struct roc_nix *roc_nix,
+				      link_info_get_t link_info_get)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+
+	if (link_info_get == NULL)
+		return NIX_ERR_PARAM;
+
+	dev->ops->link_status_get = (link_info_t)link_info_get;
+	return 0;
+}
+
+void
+roc_nix_mac_link_info_get_cb_unregister(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+
+	dev->ops->link_status_get = NULL;
+}

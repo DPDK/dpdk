@@ -112,6 +112,8 @@ INTERNAL {
 	roc_nix_mac_addr_set;
 	roc_nix_mac_link_cb_register;
 	roc_nix_mac_link_cb_unregister;
+	roc_nix_mac_link_info_get_cb_register;
+	roc_nix_mac_link_info_get_cb_unregister;
 	roc_nix_mac_link_event_start_stop;
 	roc_nix_mac_link_info_get;
 	roc_nix_mac_link_info_set;

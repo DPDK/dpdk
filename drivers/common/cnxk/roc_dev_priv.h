@@ -30,9 +30,14 @@ typedef void (*link_info_t)(void *roc_nix,
 /* PTP info callback */
 typedef int (*ptp_info_t)(void *roc_nix, bool enable);
 
+/* Link status get callback */
+typedef void (*link_status_get_t)(void *roc_nix,
+				  struct cgx_link_user_info *link);
+
 struct dev_ops {
 	link_info_t link_status_update;
 	ptp_info_t ptp_info_update;
+	link_status_get_t link_status_get;
 };
 
 #define dev_is_vf(dev) ((dev)->hwcap & DEV_HWCAP_F_VF)
