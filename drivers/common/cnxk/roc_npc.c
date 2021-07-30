@@ -108,6 +108,8 @@ roc_npc_get_low_priority_mcam(struct roc_npc *roc_npc)
 
 	if (roc_model_is_cn10k())
 		return (npc->mcam_entries - NPC_MCAME_RESVD_10XX - 1);
+	else if (roc_model_is_cn98xx())
+		return (npc->mcam_entries - NPC_MCAME_RESVD_98XX - 1);
 	else
 		return (npc->mcam_entries - NPC_MCAME_RESVD_9XXX - 1);
 }

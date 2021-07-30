@@ -46,10 +46,12 @@
 #define NPC_MCAM_KEY_X4_WORDS	  7 /* Number of 64-bit words */
 
 #define NPC_RVUPF_MAX_9XXX 0x10 /* HRM: RVU_PRIV_CONST */
+#define NPC_RVUPF_MAX_98XX 0x18 /* HRM: RVU_PRIV_CONST */
 #define NPC_RVUPF_MAX_10XX 0x20 /* HRM: RVU_PRIV_CONST */
 #define NPC_NIXLF_MAX	   0x80 /* HRM: NIX_AF_CONST2 */
 #define NPC_MCAME_PER_PF   3	/* DRV: RSVD_MCAM_ENTRIES_PER_PF */
 #define NPC_MCAME_PER_LF   1	/* DRV: RSVD_MCAM_ENTRIES_PER_NIXLF */
+#define NPC_NIXLF_MAX_98XX (2 * NPC_NIXLF_MAX) /*2 NIXLFs */
 #define NPC_MCAME_RESVD_9XXX                                                   \
 	(NPC_NIXLF_MAX * NPC_MCAME_PER_LF +                                    \
 	 (NPC_RVUPF_MAX_9XXX - 1) * NPC_MCAME_PER_PF)
@@ -57,6 +59,10 @@
 #define NPC_MCAME_RESVD_10XX                                                   \
 	(NPC_NIXLF_MAX * NPC_MCAME_PER_LF +                                    \
 	 (NPC_RVUPF_MAX_10XX - 1) * NPC_MCAME_PER_PF)
+
+#define NPC_MCAME_RESVD_98XX                                                   \
+	(NPC_NIXLF_MAX_98XX * NPC_MCAME_PER_LF +                               \
+	 (NPC_RVUPF_MAX_98XX - 1) * NPC_MCAME_PER_PF)
 
 #define NPC_ACTION_MAX_VLAN_PARAMS    3
 #define NPC_ACTION_MAX_VLANS_STRIPPED 2
