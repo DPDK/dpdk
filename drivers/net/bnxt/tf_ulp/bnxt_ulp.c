@@ -815,6 +815,11 @@ ulp_ctx_init(struct bnxt *bp,
 		goto error_deinit;
 	}
 
+	if (devid == BNXT_ULP_DEVICE_ID_THOR) {
+		ulp_data->ulp_flags &= ~BNXT_ULP_VF_REP_ENABLED;
+		BNXT_TF_DBG(ERR, "Enabled non-VFR mode\n");
+	}
+
 	/*
 	 * Shared session must be created before first regular session but after
 	 * the ulp_ctx is valid.
