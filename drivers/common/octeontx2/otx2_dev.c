@@ -172,14 +172,17 @@ af_pf_wait_msg(struct otx2_dev *dev, uint16_t vf, int num_msg)
 			/* Send link status to VF */
 			struct cgx_link_user_info linfo;
 			struct mbox_msghdr *vf_msg;
+			size_t sz;
 
 			/* Get the link status */
 			if (dev->ops && dev->ops->link_status_get)
 				dev->ops->link_status_get(dev, &linfo);
 
+			sz = RTE_ALIGN(otx2_mbox_id2size(
+				MBOX_MSG_CGX_LINK_EVENT), MBOX_MSG_ALIGN);
 			/* Prepare the message to be sent */
 			vf_msg = otx2_mbox_alloc_msg(&dev->mbox_vfpf_up, vf,
-						     size);
+						     sz);
 			otx2_mbox_req_init(MBOX_MSG_CGX_LINK_EVENT, vf_msg);
 			memcpy((uint8_t *)vf_msg + sizeof(struct mbox_msghdr),
 			       &linfo, sizeof(struct cgx_link_user_info));
