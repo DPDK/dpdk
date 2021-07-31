@@ -624,17 +624,6 @@ tf_rm_create_db(struct tf *tfp,
 			/* Only allocate BA pool if a BA type not a child */
 			if (cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA ||
 			    cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_PARENT) {
-				if (cfg->divider) {
-					resv[j].stride =
-						resv[j].stride / cfg->divider;
-					if (resv[j].stride <= 0) {
-						TFP_DRV_LOG(ERR,
-						     "%s:Divide fails:%d:%s\n",
-						     tf_dir_2_str(parms->dir),
-						     cfg->hcapi_type, type_str);
-						goto fail;
-					}
-				}
 				/* Create pool */
 				pool_size = (BITALLOC_SIZEOF(resv[j].stride) /
 					     sizeof(struct bitalloc));
@@ -868,17 +857,6 @@ tf_rm_create_db_no_reservation(struct tf *tfp,
 			/* Only allocate BA pool if a BA type not a child */
 			if (cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA ||
 			    cfg->cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_PARENT) {
-				if (cfg->divider) {
-					resv[j].stride =
-						resv[j].stride / cfg->divider;
-					if (resv[j].stride <= 0) {
-						TFP_DRV_LOG(ERR,
-						     "%s:Divide fails:%d:%s\n",
-						     tf_dir_2_str(parms->dir),
-						     cfg->hcapi_type, type_str);
-						goto fail;
-					}
-				}
 				/* Create pool */
 				pool_size = (BITALLOC_SIZEOF(resv[j].stride) /
 					     sizeof(struct bitalloc));

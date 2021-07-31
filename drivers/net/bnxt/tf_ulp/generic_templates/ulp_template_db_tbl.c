@@ -1450,7 +1450,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_FULL_ACT_RECORD,
-	.count                   = 1024
+	.count                   = 2048
 	},
 	{
 	.app_id                  = 0,
