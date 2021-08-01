@@ -90,6 +90,11 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 			}
 
 			while ((dirent = readdir(dir)) != NULL) {
+
+				if (strcmp(dirent->d_name, ".") == 0 ||
+					strcmp(dirent->d_name, "..") == 0)
+					continue;
+
 				errno = 0;
 				fd = strtol(dirent->d_name, &endptr, 10);
 				if (errno != 0 || endptr[0] != '\0') {
