@@ -134,6 +134,11 @@ Deprecation Notices
   traffic direction to the represented entity or ethdev port itself
   in DPDK 21.11.
 
+* ethdev: Flow API documentation is unclear if ethdev port used to create
+  a flow rule adds any implicit match criteria in the case of transfer rules.
+  The semantics will be clarified in DPDK 21.11 and it will require fixes in
+  drivers and applications which interpret it in a different way.
+
 * ethdev: The flow API matching pattern structures, ``struct rte_flow_item_*``,
   should start with relevant protocol header.
   Some matching pattern structures implements this by duplicating protocol header
