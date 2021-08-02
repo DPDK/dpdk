@@ -1572,7 +1572,7 @@ ice_switch_parse_dcf_action(struct ice_dcf_adapter *ad,
 	rule_info->sw_act.src = rule_info->sw_act.vsi_handle;
 	rule_info->sw_act.flag = ICE_FLTR_RX;
 	rule_info->rx = 1;
-	rule_info->priority = priority + 5;
+	rule_info->priority = 6 - priority;
 
 	return 0;
 }
