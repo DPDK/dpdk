@@ -1411,6 +1411,7 @@ struct mlx5_priv {
 	unsigned int (*reta_idx)[]; /* RETA index table. */
 	unsigned int reta_idx_n; /* RETA index size. */
 	struct mlx5_drop drop_queue; /* Flow drop queues. */
+	void *root_drop_action; /* Pointer to root drop action. */
 	struct mlx5_indexed_pool *flows[MLX5_FLOW_TYPE_MAXI];
 	/* RTE Flow rules. */
 	uint32_t ctrl_flows; /* Control flow rules. */
