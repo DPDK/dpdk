@@ -2576,6 +2576,9 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	struct bnxt_ring *ring = rxr->rx_ring_struct;
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 
+	if (BNXT_HAS_RING_GRPS(bp))
+		bnxt_hwrm_ring_grp_free(bp, queue_index);
+
 	bnxt_hwrm_ring_free(bp, ring,
 			    HWRM_RING_FREE_INPUT_RING_TYPE_RX);
 	if (BNXT_HAS_RING_GRPS(bp))
