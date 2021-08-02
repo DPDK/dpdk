@@ -631,6 +631,12 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	if (rc)
 		goto err_out;
 
+	if (BNXT_HAS_RING_GRPS(bp)) {
+		rc = bnxt_hwrm_ring_grp_alloc(bp, queue_index);
+		if (rc)
+			goto err_out;
+	}
+
 	if (rxq->rx_started) {
 		if (bnxt_init_one_rx_ring(rxq)) {
 			PMD_DRV_LOG(ERR, "bnxt_init_one_rx_ring failed!\n");
