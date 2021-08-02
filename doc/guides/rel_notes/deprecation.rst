@@ -131,6 +131,9 @@ Deprecation Notices
   In v21.11 LTS, protocol header fields will be cleaned and only protocol header
   struct will remain.
 
+* ethdev: Add new Rx queue offload flag ``RTE_ETH_RX_OFFLOAD_SHARED_RXQ`` and
+  ``shared_group`` field to ``struct rte_eth_rxconf``.
+
 * ethdev: Queue specific stats fields will be removed from ``struct rte_eth_stats``.
   Mentioned fields are: ``q_ipackets``, ``q_opackets``, ``q_ibytes``, ``q_obytes``,
   ``q_errors``.
