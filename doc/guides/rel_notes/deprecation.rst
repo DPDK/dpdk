@@ -169,6 +169,17 @@ Deprecation Notices
 * cryptodev: The interface between library and drivers will be marked
   as internal in DPDK 21.11.
 
+* eventdev: The file ``rte_eventdev_pmd.h`` will be renamed to ``eventdev_driver.h``
+  to make the driver interface as internal and the structures ``rte_eventdev_data``,
+  ``rte_eventdev`` and ``rte_eventdevs`` will be moved to a new file named
+  ``rte_eventdev_core.h`` in DPDK 21.11.
+  The ``rte_`` prefix for internal structures and functions will be removed across the
+  library.
+  The experimental eventdev trace APIs and ``rte_event_vector_pool_create``,
+  ``rte_event_eth_rx_adapter_vector_limits_get`` will be promoted to stable.
+  An 8-byte reserved field will be added to the structure ``rte_event_timer`` to
+  support future extensions.
+
 * eventdev: The structure ``rte_event_eth_rx_adapter_queue_conf`` will be
   extended to include ``rte_event_eth_rx_adapter_event_vector_config`` elements
   and the function ``rte_event_eth_rx_adapter_queue_event_vector_config`` will
