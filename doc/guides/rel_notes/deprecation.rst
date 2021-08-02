@@ -150,6 +150,12 @@ Deprecation Notices
 * net: ``s_addr`` and ``d_addr`` fields of ``rte_ether_hdr`` structure
   will be renamed in DPDK 21.11 to avoid conflict with Windows Sockets headers.
 
+* net: The structure ``rte_ipv4_hdr`` will have two unions.
+  The first union is for existing ``version_ihl`` byte
+  and new bitfield for version and IHL.
+  The second union is for existing ``fragment_offset``
+  and new bitfield for fragment flags and offset.
+
 * compressdev: ``min`` and ``max`` fields of ``rte_param_log2_range`` structure
   will be renamed in DPDK 21.11 to avoid conflict with Windows Sockets headers.
 
