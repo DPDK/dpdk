@@ -487,7 +487,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 		} else {
 			if (tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) {
 				ol_flags |= PKT_TX_IP_CKSUM;
-			} else if (ipv4_hdr->hdr_checksum != 0) {
+			} else {
 				ipv4_hdr->hdr_checksum = 0;
 				ipv4_hdr->hdr_checksum =
 					rte_ipv4_cksum(ipv4_hdr);
@@ -519,7 +519,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 			ol_flags |= PKT_TX_TCP_SEG;
 		else if (tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM) {
 			ol_flags |= PKT_TX_TCP_CKSUM;
-		} else if (tcp_hdr->cksum != 0) {
+		} else {
 			tcp_hdr->cksum = 0;
 			tcp_hdr->cksum =
 				get_udptcp_checksum(l3_hdr, tcp_hdr,
@@ -535,7 +535,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 		if ((tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) &&
 			((ipv4_hdr->total_length & 0x3) == 0)) {
 			ol_flags |= PKT_TX_SCTP_CKSUM;
-		} else if (sctp_hdr->cksum != 0) {
+		} else {
 			sctp_hdr->cksum = 0;
 			/* XXX implement CRC32c, example available in
 			 * RFC3309 */
