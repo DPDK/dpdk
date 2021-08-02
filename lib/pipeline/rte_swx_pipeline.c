@@ -10940,8 +10940,8 @@ rte_swx_ctl_pipeline_table_stats_read(struct rte_swx_pipeline *p,
 
 	table_stats = &p->table_stats[table->id];
 
-	memcpy(&stats->n_pkts_action,
-	       &table_stats->n_pkts_action,
+	memcpy(stats->n_pkts_action,
+	       table_stats->n_pkts_action,
 	       p->n_actions * sizeof(uint64_t));
 
 	stats->n_pkts_hit = table_stats->n_pkts_hit[1];
