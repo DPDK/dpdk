@@ -1181,6 +1181,13 @@ err_secondary:
 	priv->vport_meta_tag = 0;
 	priv->vport_meta_mask = 0;
 	priv->pf_bond = spawn->pf_bond;
+
+	DRV_LOG(DEBUG,
+		"dev_port=%u bus=%s pci=%s master=%d representor=%d pf_bond=%d\n",
+		priv->dev_port, dpdk_dev->bus->name,
+		priv->pci_dev ? priv->pci_dev->name : "NONE",
+		priv->master, priv->representor, priv->pf_bond);
+
 	/*
 	 * If we have E-Switch we should determine the vport attributes.
 	 * E-Switch may use either source vport field or reg_c[0] metadata
@@ -1253,7 +1260,7 @@ err_secondary:
 	 * Look for sibling devices in order to reuse their switch domain
 	 * if any, otherwise allocate one.
 	 */
-	MLX5_ETH_FOREACH_DEV(port_id, NULL) {
+	MLX5_ETH_FOREACH_DEV(port_id, dpdk_dev) {
 		const struct mlx5_priv *opriv =
 			rte_eth_devices[port_id].data->dev_private;
 
@@ -1263,6 +1270,8 @@ err_secondary:
 			RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
 			continue;
 		priv->domain_id = opriv->domain_id;
+		DRV_LOG(DEBUG, "dev_port-%u inherit domain_id=%u\n",
+			priv->dev_port, priv->domain_id);
 		break;
 	}
 	if (priv->domain_id == RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) {
@@ -1274,6 +1283,8 @@ err_secondary:
 			goto error;
 		}
 		own_domain_id = 1;
+		DRV_LOG(DEBUG, "dev_port-%u new domain_id=%u\n",
+			priv->dev_port, priv->domain_id);
 	}
 	/* Override some values set by hardware configuration. */
 	mlx5_args(config, dpdk_dev->devargs);
