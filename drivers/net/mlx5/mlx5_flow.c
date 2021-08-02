@@ -2432,6 +2432,8 @@ mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
+ * @param[in] udp_dport
+ *   UDP destination port
  * @param[in] item
  *   Item specification.
  * @param[in] item_flags
@@ -2446,6 +2448,7 @@ mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
  */
 int
 mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
+			      uint16_t udp_dport,
 			      const struct rte_flow_item *item,
 			      uint64_t item_flags,
 			      const struct rte_flow_attr *attr,
@@ -2481,12 +2484,18 @@ mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
 					  "no outer UDP layer found");
 	if (!mask)
 		mask = &rte_flow_item_vxlan_mask;
-	/* FDB domain & NIC domain non-zero group */
-	if ((attr->transfer || attr->group) && priv->sh->misc5_cap)
-		valid_mask = &nic_mask;
-	/* Group zero in NIC domain */
-	if (!attr->group && !attr->transfer && priv->sh->tunnel_header_0_1)
-		valid_mask = &nic_mask;
+
+	if (priv->sh->steering_format_version !=
+	    MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5 ||
+	    !udp_dport || udp_dport == MLX5_UDP_PORT_VXLAN) {
+		/* FDB domain & NIC domain non-zero group */
+		if ((attr->transfer || attr->group) && priv->sh->misc5_cap)
+			valid_mask = &nic_mask;
+		/* Group zero in NIC domain */
+		if (!attr->group && !attr->transfer &&
+		    priv->sh->tunnel_header_0_1)
+			valid_mask = &nic_mask;
+	}
 	ret = mlx5_flow_item_acceptable
 		(item, (const uint8_t *)mask,
 		 (const uint8_t *)valid_mask,

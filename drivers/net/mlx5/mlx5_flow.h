@@ -1522,6 +1522,7 @@ int mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
 				 struct rte_eth_dev *dev,
 				 struct rte_flow_error *error);
 int mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
+				  uint16_t udp_dport,
 				  const struct rte_flow_item *item,
 				  uint64_t item_flags,
 				  const struct rte_flow_attr *attr,

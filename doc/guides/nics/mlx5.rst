@@ -202,6 +202,7 @@ Limitations
 
   Last reserved 8-bits matching is only supported When using DV flow
   engine (``dv_flow_en`` = 1).
+  For ConnectX-5, the UDP destination port must be the standard one (4789).
   Group zero's behavior may differ which depends on FW.
   Matching value equals 0 (value & mask) is not supported.
 
