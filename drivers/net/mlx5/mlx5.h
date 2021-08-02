@@ -969,6 +969,7 @@ struct mlx5_priv {
 	unsigned int reta_idx_n; /* RETA index size. */
 	struct mlx5_drop drop_queue; /* Flow drop queues. */
 	uint32_t flows; /* RTE Flow rules. */
+	void *root_drop_action; /* Pointer to root drop action. */
 	uint32_t ctrl_flows; /* Control flow rules. */
 	rte_spinlock_t flow_list_lock;
 	struct mlx5_obj_ops obj_ops; /* HW objects operations. */

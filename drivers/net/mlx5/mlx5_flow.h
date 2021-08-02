@@ -1429,6 +1429,7 @@ int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
 			  struct rte_mtr_error *error);
 int mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev);
 int mlx5_shared_action_flush(struct rte_eth_dev *dev);
+int mlx5_flow_discover_dr_action_support(struct rte_eth_dev *dev);
 void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id);
 int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh);
 

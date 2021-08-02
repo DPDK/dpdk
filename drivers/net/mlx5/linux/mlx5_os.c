@@ -652,6 +652,32 @@ mlx5_flow_counter_mode_config(struct rte_eth_dev *dev __rte_unused)
 }
 
 /**
+ * DR flow drop action support detect.
+ *
+ * @param dev
+ *   Pointer to rte_eth_dev structure.
+ *
+ */
+static void
+mlx5_flow_drop_action_config(struct rte_eth_dev *dev __rte_unused)
+{
+#ifdef HAVE_MLX5DV_DR
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!priv->config.dv_flow_en || !priv->sh->dr_drop_action)
+		return;
+	/**
+	 * DR supports drop action placeholder when it is supported;
+	 * otherwise, use the queue drop action.
+	 */
+	if (mlx5_flow_discover_dr_action_support(dev))
+		priv->root_drop_action = priv->drop_queue.hrxq->action;
+	else
+		priv->root_drop_action = priv->sh->dr_drop_action;
+#endif
+}
+
+/**
  * Spawn an Ethernet device from Verbs information.
  *
  * @param dpdk_dev
@@ -1587,6 +1613,7 @@ err_secondary:
 	}
 	rte_spinlock_init(&priv->shared_act_sl);
 	mlx5_flow_counter_mode_config(eth_dev);
+	mlx5_flow_drop_action_config(eth_dev);
 	if (priv->config.dv_flow_en)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE;
 	return eth_dev;
