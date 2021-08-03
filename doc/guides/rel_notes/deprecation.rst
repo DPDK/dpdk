@@ -166,6 +166,9 @@ Deprecation Notices
   has a limited size ``uint16_t``.
   It will be moved and extended as ``uint32_t`` in DPDK 21.11.
 
+* cryptodev: The interface between library and drivers will be marked
+  as internal in DPDK 21.11.
+
 * eventdev: The structure ``rte_event_eth_rx_adapter_queue_conf`` will be
   extended to include ``rte_event_eth_rx_adapter_event_vector_config`` elements
   and the function ``rte_event_eth_rx_adapter_queue_event_vector_config`` will
