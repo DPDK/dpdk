@@ -189,6 +189,11 @@ Deprecation Notices
   pointer for the private data to the application which can be attached
   to the packet while enqueuing.
 
+* security: The IPsec configuration structure
+  ``struct rte_security_ipsec_xform`` will be updated with new members to allow
+  SA lifetime configuration. A new structure would be introduced to replace the
+  current member, ``esn_soft_limit``.
+
 * eventdev: The file ``rte_eventdev_pmd.h`` will be renamed to ``eventdev_driver.h``
   to make the driver interface as internal and the structures ``rte_eventdev_data``,
   ``rte_eventdev`` and ``rte_eventdevs`` will be moved to a new file named
