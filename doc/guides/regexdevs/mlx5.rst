@@ -52,6 +52,11 @@ Prerequisites
 - Enable the RegEx capabilities using system call from the BlueField 2.
 - Official support is not yet released.
 
+Limitations
+-----------
+
+- The firmware version must be equal to or lower than XX.30.1004
+
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
