@@ -1314,7 +1314,7 @@ err_secondary:
 	}
 	/* Override some values set by hardware configuration. */
 	mlx5_args(config, dpdk_dev->devargs);
-	err = mlx5_dev_check_sibling_config(priv, config);
+	err = mlx5_dev_check_sibling_config(priv, config, dpdk_dev);
 	if (err)
 		goto error;
 	config->hw_csum = !!(sh->device_attr.device_cap_flags_ex &

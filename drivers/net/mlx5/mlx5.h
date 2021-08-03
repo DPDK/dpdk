@@ -1503,7 +1503,8 @@ void mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 			 struct mlx5_dev_config *config);
 void mlx5_set_metadata_mask(struct rte_eth_dev *dev);
 int mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
-				  struct mlx5_dev_config *config);
+				  struct mlx5_dev_config *config,
+				  struct rte_device *dpdk_dev);
 int mlx5_dev_configure(struct rte_eth_dev *dev);
 int mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info);
 int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size);

@@ -2297,7 +2297,8 @@ rte_pmd_mlx5_get_dyn_flag_names(char *names[], unsigned int n)
  */
 int
 mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
-			      struct mlx5_dev_config *config)
+			      struct mlx5_dev_config *config,
+			      struct rte_device *dpdk_dev)
 {
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_dev_config *sh_conf = NULL;
@@ -2308,7 +2309,7 @@ mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
 	if (sh->refcnt == 1)
 		return 0;
 	/* Find the device with shared context. */
-	MLX5_ETH_FOREACH_DEV(port_id, NULL) {
+	MLX5_ETH_FOREACH_DEV(port_id, dpdk_dev) {
 		struct mlx5_priv *opriv =
 			rte_eth_devices[port_id].data->dev_private;
 
