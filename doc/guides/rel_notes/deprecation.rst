@@ -218,6 +218,11 @@ Deprecation Notices
   data length so that driver/HW can write expanded size data after encryption.
   This change is targeted for DPDK 21.11.
 
+* cryptodev: Hide structures ``rte_cryptodev_sym_session`` and
+  ``rte_cryptodev_asym_session`` to remove unnecessary indirection between
+  session and the private data of session. An opaque pointer can be exposed
+  directly to application which can be attached to the ``rte_crypto_op``.
+
 * cryptodev: The interface between library and drivers will be marked
   as internal in DPDK 21.11.
 
