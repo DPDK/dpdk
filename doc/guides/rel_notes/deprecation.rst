@@ -185,6 +185,10 @@ Deprecation Notices
 * cryptodev: The interface between library and drivers will be marked
   as internal in DPDK 21.11.
 
+* security: Hide structure ``rte_security_session`` and expose an opaque
+  pointer for the private data to the application which can be attached
+  to the packet while enqueuing.
+
 * eventdev: The file ``rte_eventdev_pmd.h`` will be renamed to ``eventdev_driver.h``
   to make the driver interface as internal and the structures ``rte_eventdev_data``,
   ``rte_eventdev`` and ``rte_eventdevs`` will be moved to a new file named
