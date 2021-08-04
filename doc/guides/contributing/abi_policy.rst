@@ -26,9 +26,11 @@ General Guidelines
    symbols is managed with :ref:`ABI Versioning <abi_versioning>`.
 #. The removal of symbols is considered an :ref:`ABI breakage <abi_breakages>`,
    once approved these will form part of the next ABI version.
-#. Libraries or APIs marked as :ref:`experimental <experimental_apis>` may
-   be changed or removed without prior notice, as they are not considered part
-   of an ABI version.
+#. Libraries or APIs marked as :ref:`experimental <experimental_apis>`
+   may be changed or removed without prior notice,
+   as they are not considered part of an ABI version.
+   The :ref:`experimental <experimental_apis>` status of an API
+   is not an indefinite state.
 #. Updates to the :ref:`minimum hardware requirements <hw_rqmts>`, which drop
    support for hardware which was previously supported, should be treated as an
    ABI change.
@@ -358,3 +360,23 @@ Libraries
 Libraries marked as ``experimental`` are entirely not considered part of an ABI
 version.
 All functions in such libraries may be changed or removed without prior notice.
+
+Promotion to stable
+~~~~~~~~~~~~~~~~~~~
+
+An API's ``experimental`` status should be reviewed annually,
+by both the maintainer and/or the original contributor.
+Ordinarily APIs marked as ``experimental`` will be promoted to the stable ABI
+once a maintainer has become satisfied that the API is mature
+and is unlikely to change.
+
+In exceptional circumstances, should an API still be classified
+as ``experimental`` after two years
+and is without any prospect of becoming part of the stable API.
+The API will then become a candidate for removal,
+to avoid the accumulation of abandoned symbols.
+
+Should an ABI change, usually due to a direct change to the API's signature,
+it is reasonable for the review and expiry clocks to reset.
+The promotion or removal of symbols will typically form part of a conversation
+between the maintainer and the original contributor.
