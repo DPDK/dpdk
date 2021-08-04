@@ -16,6 +16,7 @@
 #include <rte_bus.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
+#include <rte_lcore.h>
 #include <rte_per_lcore.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
@@ -190,7 +191,9 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 	}
 
 	if (dev->device.numa_node < 0) {
-		RTE_LOG(WARNING, EAL, "  Invalid NUMA socket, default to 0\n");
+		if (rte_socket_count() > 1)
+			RTE_LOG(INFO, EAL, "Device %s is not NUMA-aware, defaulting socket to 0\n",
+					dev->name);
 		dev->device.numa_node = 0;
 	}
 
