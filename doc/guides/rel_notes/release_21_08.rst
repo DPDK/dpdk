@@ -251,6 +251,22 @@ Known Issues
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* **Last mbuf segment not implicitly reset.**
+
+  It is expected that free mbufs have their field ``nb_seg`` set to 1,
+  so that when it is allocated, the user does not need to set its value.
+  The mbuf free functions are responsible of resetting this field to 1
+  before returning the mbuf to the pool.
+
+  When a multi-segment mbuf is freed, the field ``nb_seg`` is not reset
+  to 1 for the last segment of the chain. On next allocation of this segment,
+  if the field is not explicitly reset by the user,
+  an invalid mbuf can be created, and can cause an undefined behavior.
+
+  This issue has a root cause in DPDK 17.05, meaning it is 4 years old.
+  A fix is available and discussed but not merged in DPDK 21.08:
+  https://patches.dpdk.org/patch/86458/
+
 
 Tested Platforms
 ----------------
