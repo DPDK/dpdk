@@ -270,3 +270,111 @@ Tested Platforms
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
+
+* Intel\ |reg| platforms with Intel\ |reg| NICs combinations
+
+  * CPU
+
+    * Intel\ |reg| Atom\ |trade| CPU C3958 @ 2.00GHz
+    * Intel\ |reg| Atom\ |trade| CPU C3758 @ 2.20GHz
+    * Intel\ |reg| Xeon\ |reg| CPU D-1541 @ 2.10GHz
+    * Intel\ |reg| Xeon\ |reg| CPU D-1553N @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2680 v2 @ 2.80GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2699 v3 @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2699 v4 @ 2.20GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6140M CPU @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6139 CPU @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6252N CPU @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8180 CPU @ 2.50GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8180M CPU @ 2.50GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8280M CPU @ 2.70GHz
+
+  * OS:
+
+    * Fedora 34
+    * OpenWRT 19.07.4
+    * FreeBSD 12.1
+    * Red Hat Enterprise Linux Server release 8.3
+    * Suse 15 SP2
+    * Ubuntu 20.04
+    * Ubuntu 21.04
+
+  * NICs:
+
+    * Intel\ |reg| Ethernet Controller E810-C for SFP (4x25G)
+
+      * Firmware version: 3.10
+      * Device id (pf/vf): 8086:1593 / 8086:1889
+      * Driver version: 1.7.0 (ice)
+      * OS Default DDP: 1.3.27.0
+      * COMMS DDP: 1.3.31.0
+      * Wireless Edge DDP: 1.3.7.0
+
+    * Intel\ |reg| Ethernet Controller E810-C for QSFP (2x100G)
+
+      * Firmware version: 3.10
+      * Device id (pf/vf): 8086:1592 / 8086:1889
+      * Driver version: 1.7.0 (ice)
+      * OS Default DDP: 1.3.27.0
+      * COMMS DDP: 1.3.31.0
+      * Wireless Edge DDP: 1.3.7.0
+
+    * Intel\ |reg| 82599ES 10 Gigabit Ethernet Controller
+
+      * Firmware version: 0x61bf0001
+      * Device id (pf/vf): 8086:10fb / 8086:10ed
+      * Driver version: 5.1.0-k (ixgbe)
+
+    * Intel\ |reg| Corporation Ethernet Connection X552/X557-AT 10GBASE-T
+
+      * Firmware version: 0x800003e7
+      * Device id (pf/vf): 8086:15ad / 8086:15a8
+      * Driver version: 5.1.0-k (ixgbe)
+
+    * Intel\ |reg| Corporation Ethernet Controller 10G X550T
+
+      * Firmware version: 0x8000113b
+      * Device id (pf): 8086:1563
+      * Driver version: 5.11.3 (ixgbe)
+
+    * Intel\ |reg| Ethernet Controller 10-Gigabit X540-AT2
+
+      * Firmware version: 0x800005f9
+      * Device id (pf): 8086:1528
+      * Driver version: 4.18.0-305.7.1.el8_4.x86_64 (ixgbe)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter X710-DA4 (4x10G)
+
+      * Firmware version: 8.30 0x8000a49d 1.2926.0
+      * Device id (pf/vf): 8086:1572 / 8086:154c
+      * Driver version: 2.15.9 (i40e)
+
+    * Intel\ |reg| Corporation Ethernet Connection X722 for 10GbE SFP+ (4x10G)
+
+      * Firmware version: 5.30 0x80002a29 1.2926.0
+      * Device id (pf/vf): 8086:37d0 / 8086:37cd
+      * Driver version: 2.15.9 (i40e)
+
+    * Intel\ |reg| Corporation Ethernet Connection X722 for 10GBASE-T (2x10G)
+
+      * Firmware version: 4.10 0x80001a7a 1.2154.0
+      * Device id (pf/vf): 8086:37d2 / 8086:37cd
+      * Driver version: 2.15.9 (i40e)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter XXV710-DA2 (2x25G)
+
+      * Firmware version: 8.30 0x8000a485 1.2926.0
+      * Device id (pf/vf): 8086:158b / 8086:154c
+      * Driver version: 2.15.9 (i40e)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter XL710-QDA2 (2X40G)
+
+      * Firmware version: 8.30 0x8000a4ae 1.2926.0
+      * Device id (pf/vf): 8086:1583 / 8086:154c
+      * Driver version: 2.15.9 (i40e)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter X710-T2L
+
+      * Firmware version: 8.30 0x8000a489 1.2926.0
+      * Device id (pf): 8086:15ff
+      * Driver version: 2.15.9 (i40e)
