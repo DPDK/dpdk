@@ -17527,6 +17527,7 @@ flow_dv_validate_policy_mtr_hierarchy(struct rte_eth_dev *dev,
 					RTE_MTR_ERROR_TYPE_POLICER_ACTION_GREEN,
 					NULL,
 					"Multiple fate actions not supported.");
+	*hierarchy_domain = 0;
 	while (true) {
 		fm = mlx5_flow_meter_find(priv, meter_id, NULL);
 		if (!fm)
@@ -17539,7 +17540,12 @@ flow_dv_validate_policy_mtr_hierarchy(struct rte_eth_dev *dev,
 			"Non termination meter not supported in hierarchy.");
 		policy = mlx5_flow_meter_policy_find(dev, fm->policy_id, NULL);
 		MLX5_ASSERT(policy);
-		if (!policy->is_hierarchy) {
+		/**
+		 * Only inherit the supported domains of the first meter in
+		 * hierarchy.
+		 * One meter supports at least one domain.
+		 */
+		if (!*hierarchy_domain) {
 			if (policy->transfer)
 				*hierarchy_domain |=
 						MLX5_MTR_DOMAIN_TRANSFER_BIT;
@@ -17548,6 +17554,8 @@ flow_dv_validate_policy_mtr_hierarchy(struct rte_eth_dev *dev,
 						MLX5_MTR_DOMAIN_INGRESS_BIT;
 			if (policy->egress)
 				*hierarchy_domain |= MLX5_MTR_DOMAIN_EGRESS_BIT;
+		}
+		if (!policy->is_hierarchy) {
 			*is_rss = policy->is_rss;
 			break;
 		}
@@ -17825,11 +17833,11 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 			 * so MARK action is only in ingress domain.
 			 */
 			domain_color[i] = MLX5_MTR_DOMAIN_INGRESS_BIT;
-		else if (action_flags[i] &
-			 MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY)
-			domain_color[i] = hierarchy_domain;
 		else
 			domain_color[i] = def_domain;
+		if (action_flags[i] &
+		    MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY)
+			domain_color[i] &= hierarchy_domain;
 		/*
 		 * Non-termination actions only support NIC Tx domain.
 		 * The adjustion should be skipped when there is no
