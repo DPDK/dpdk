@@ -246,7 +246,7 @@ Example output:
 
    [...]
    EAL: PCI device 0000:00:06.0 on NUMA socket -1
-   EAL:   Invalid NUMA socket, default to 0
+   EAL: Device 0000:00:06.0 is not NUMA-aware, defaulting socket to 0
    EAL:   probe driver: 1d0f:ec20 net_ena
 
    Interactive-mode selected

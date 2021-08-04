@@ -17,6 +17,7 @@
 #include <rte_memory.h>
 #include <rte_eal.h>
 #include <rte_eal_paging.h>
+#include <rte_lcore.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_devargs.h>
@@ -106,7 +107,9 @@ rte_auxiliary_probe_one_driver(struct rte_auxiliary_driver *drv,
 	}
 
 	if (dev->device.numa_node < 0) {
-		AUXILIARY_LOG(INFO, "Device is not NUMA-aware, defaulting NUMA node to 0");
+		if (rte_socket_count() > 1)
+			AUXILIARY_LOG(INFO, "Device %s is not NUMA-aware, defaulting socket to 0",
+					dev->name);
 		dev->device.numa_node = 0;
 	}
 
