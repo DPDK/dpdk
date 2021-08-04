@@ -448,6 +448,8 @@ rxq_burst_mprq_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	rte_prefetch0(cq + 3);
 	pkts_n = RTE_MIN(pkts_n, MLX5_VPMD_RX_MAX_BURST);
 	mlx5_rx_mprq_replenish_bulk_mbuf(rxq);
+	/* Not to move past the allocated mbufs. */
+	pkts_n = RTE_MIN(pkts_n, rxq->elts_ci - rxq->rq_pi);
 	/* See if there're unreturned mbufs from compressed CQE. */
 	rcvd_pkt = rxq->decompressed;
 	if (rcvd_pkt > 0) {
@@ -463,8 +465,6 @@ rxq_burst_mprq_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	/* Not to cross queue end. */
 	pkts_n = RTE_MIN(pkts_n, elts_n - elts_idx);
 	pkts_n = RTE_MIN(pkts_n, q_n - cq_idx);
-	/* Not to move past the allocated mbufs. */
-	pkts_n = RTE_MIN(pkts_n, rxq->elts_ci - rxq->rq_pi);
 	if (!pkts_n) {
 		*no_cq = !cp_pkt;
 		return cp_pkt;
