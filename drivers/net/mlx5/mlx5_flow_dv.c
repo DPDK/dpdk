@@ -12824,13 +12824,26 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_AGE;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_COUNT:
-			flow->counter = (uint32_t)(uintptr_t)(action->conf);
-			cnt_act = flow_dv_counter_get_by_idx(dev, flow->counter,
-							     NULL);
-			__atomic_fetch_add(&cnt_act->shared_info.refcnt, 1,
-					   __ATOMIC_RELAXED);
-			/* Save information first, will apply later. */
-			action_flags |= MLX5_FLOW_ACTION_COUNT;
+			cnt_act = flow_dv_counter_get_by_idx(dev,
+					(uint32_t)(uintptr_t)action->conf,
+					NULL);
+			MLX5_ASSERT(cnt_act != NULL);
+			/**
+			 * When creating meter drop flow in drop table, the
+			 * counter should not overwrite the rte flow counter.
+			 */
+			if (attr->group == MLX5_FLOW_TABLE_LEVEL_METER &&
+			    dev_flow->dv.table_id == MLX5_MTR_TABLE_ID_DROP) {
+				dev_flow->dv.actions[actions_n++] =
+							cnt_act->action;
+			} else {
+				flow->counter =
+					(uint32_t)(uintptr_t)(action->conf);
+				__atomic_fetch_add(&cnt_act->shared_info.refcnt,
+						1, __ATOMIC_RELAXED);
+				/* Save information first, will apply later. */
+				action_flags |= MLX5_FLOW_ACTION_COUNT;
+			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			if (!dev_conf->devx) {
