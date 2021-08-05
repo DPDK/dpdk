@@ -57,20 +57,20 @@ New Features
 
 * **Added auxiliary bus support.**
 
-  Auxiliary bus provides a way to split function into child-devices
+  An auxiliary bus provides a way to split a function into child-devices
   representing sub-domains of functionality. Each auxiliary device
   represents a part of its parent functionality.
 
 * **Added XZ compressed firmware support.**
 
-  Using ``rte_firmware_read``, a driver can now handle XZ compressed firmware
-  in a transparent way, with EAL uncompressing using libarchive if this library
+  Using ``rte_firmware_read`` a driver can now handle XZ compressed firmware
+  in a transparent way, with EAL uncompressing using libarchive, if this library
   is available when building DPDK.
 
 * **Updated Amazon ENA PMD.**
 
-  The new driver version (v2.4.0) introduced bug fixes and improvements,
-  including:
+  Updated the Amazon ENA PMD. The new driver version (v2.4.0) introduced
+  bug fixes and improvements, including:
 
   * Added Rx interrupt support.
   * RSS hash function key reconfiguration support.
@@ -78,20 +78,20 @@ New Features
 * **Updated Intel iavf driver.**
 
   * Added Tx QoS VF queue TC mapping.
-  * Added FDIR and RSS for GTPoGRE, support filter based on GTPU TEID/QFI,
-    outer most L3 or inner most l3/l4. 
+  * Added FDIR and RSS for GTPoGRE, and support for filters based on GTPU TEID/QFI,
+    outermost L3 or innermost L3/L4.
 
 * **Updated Intel ice driver.**
 
-  * In AVX2 code, added the new RX and TX paths to use the HW offload
+  * Added new RX and TX paths in the AVX2 code to use HW offload
     features. When the HW offload features are configured to be used, the
     offload paths are chosen automatically. In parallel the support for HW
     offload features was removed from the legacy AVX2 paths.
   * Added Tx QoS TC bandwidth configuration in DCF.
 
-* **Added support for Marvell CN10K SoC ethernet device.**
+* **Added support for Marvell CN10K SoC Ethernet device.**
 
-  * Added net/cnxk driver which provides the support for the integrated ethernet
+  * Added net/cnxk driver which provides the support for the integrated Ethernet
     device.
 
 * **Updated Mellanox mlx5 driver.**
@@ -100,44 +100,44 @@ New Features
   * Added support for meter hierarchy.
   * Added support for metering policy actions of yellow color.
   * Added support for metering trTCM RFC2698 and RFC4115.
-  * Added devargs options ``allow_duplicate_pattern``.
+  * Added devargs option ``allow_duplicate_pattern``.
   * Added matching on IPv4 Internet Header Length (IHL).
   * Added support for matching on VXLAN header last 8-bits reserved field.
   * Optimized multi-thread flow rule insertion rate.
-
-* **Added Wangxun ngbe PMD.**
-
-  Added a new PMD driver for Wangxun 1 Gigabit Ethernet NICs.
-  See the :doc:`../nics/ngbe` for more details.
 
 * **Updated Solarflare network PMD.**
 
   Updated the Solarflare ``sfc_efx`` driver with changes including:
 
-  * Added COUNT action support for SN1000 NICs
+  * Added COUNT action support for SN1000 NICs.
+
+* **Added Wangxun ngbe PMD.**
+
+  Added a new PMD driver for Wangxun 1Gb Ethernet NICs.
+  See the :doc:`../nics/ngbe` for more details.
 
 * **Added inflight packets clear API in vhost library.**
 
-  Added an API which can clear the inflight packets submitted to DMA
-  engine in vhost async data path.
+  Added an API which can clear the inflight packets submitted to
+  the DMA engine in the vhost async data path.
 
 * **Updated Intel QuickAssist crypto PMD.**
 
   Added fourth generation of QuickAssist Technology(QAT) devices support.
-  Only symmetric crypto has been currently enabled, compression and asymmetric
+  Only symmetric crypto has been currently enabled. Compression and asymmetric
   crypto PMD will fail to create.
 
 * **Added support for Marvell CNXK crypto driver.**
 
   * Added cnxk crypto PMD which provides support for an integrated
     crypto driver for CN9K and CN10K series of SOCs. Support for
-    symmetric crypto algorithms is added to both the PMDs.
+    symmetric crypto algorithms was added to both the PMDs.
   * Added support for lookaside protocol (IPsec) offload in cn10k PMD.
   * Added support for asymmetric crypto operations in cn9k and cn10k PMD.
 
 * **Updated Marvell OCTEON TX crypto PMD.**
 
-  Added support for crypto adapter OP_FORWARD mode.
+  Added support for crypto adapter ``OP_FORWARD`` mode.
 
 * **Added support for Nvidia crypto device driver.**
 
@@ -150,14 +150,14 @@ New Features
 
 * **Added Baseband PHY CNXK PMD.**
 
-  Added Baseband PHY PMD which allows to configure BPHY hardware block
+  Added Baseband PHY PMD which allows configuration of the BPHY hardware block
   comprising accelerators and DSPs specifically tailored for 5G/LTE inline
   use cases. Configuration happens via standard rawdev enq/deq operations. See
   the :doc:`../rawdevs/cnxk_bphy` rawdev guide for more details on this driver.
 
 * **Added support for Marvell CN10K, CN9K, event Rx/Tx adapter.**
 
-  * Added Rx/Tx adapter support for event/cnxk when the ethernet device requested
+  * Added Rx/Tx adapter support for event/cnxk when the Ethernet device requested
     is net/cnxk.
   * Added support for event vectorization for Rx/Tx adapter.
 
@@ -165,28 +165,15 @@ New Features
 
   Added support for cppc_cpufreq driver which works on most arm64 platforms.
 
-* **Added multi-queue support to Ethernet PMD Power Management**
+* **Added multi-queue support to Ethernet PMD Power Management.**
 
   The experimental PMD power management API now supports managing
   multiple Ethernet Rx queues per lcore.
 
-* **Updated testpmd to log errors to stderr.**
+* **Updated testpmd to output log errors to stderr.**
 
-  Updated testpmd application to log errors and warnings to stderr
-  instead of stdout used before.
-
-
-Removed Items
--------------
-
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item
-     in the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
+  Updated testpmd application to output log errors and warnings to stderr
+  instead of stdout.
 
 
 API Changes
