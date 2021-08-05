@@ -454,7 +454,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	/* Override some values set by hardware configuration. */
 	mlx5_args(config, dpdk_dev->devargs);
-	err = mlx5_dev_check_sibling_config(priv, config);
+	err = mlx5_dev_check_sibling_config(priv, config, dpdk_dev);
 	if (err)
 		goto error;
 	DRV_LOG(DEBUG, "counters are not supported");
