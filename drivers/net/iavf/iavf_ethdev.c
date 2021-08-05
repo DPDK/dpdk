@@ -574,13 +574,14 @@ iavf_init_rxq(struct rte_eth_dev *dev, struct iavf_rx_queue *rxq)
 {
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_dev_data *dev_data = dev->data;
-	uint16_t buf_size, max_pkt_len, len;
+	uint16_t buf_size, max_pkt_len;
 
 	buf_size = rte_pktmbuf_data_room_size(rxq->mp) - RTE_PKTMBUF_HEADROOM;
 
 	/* Calculate the maximum packet length allowed */
-	len = rxq->rx_buf_len * IAVF_MAX_CHAINED_RX_BUFFERS;
-	max_pkt_len = RTE_MIN(len, dev->data->dev_conf.rxmode.max_rx_pkt_len);
+	max_pkt_len = RTE_MIN((uint32_t)
+			rxq->rx_buf_len * IAVF_MAX_CHAINED_RX_BUFFERS,
+			dev->data->dev_conf.rxmode.max_rx_pkt_len);
 
 	/* Check if the jumbo frame and maximum packet length are set
 	 * correctly.
