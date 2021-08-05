@@ -170,6 +170,18 @@ Deprecation Notices
   has a limited size ``uint16_t``.
   It will be moved and extended as ``uint32_t`` in DPDK 21.11.
 
+* cryptodev: The structure ``rte_crypto_sym_vec`` would be updated to add
+  ``dest_sgl`` to support out of place processing.
+  This field will be null for inplace processing.
+  This change is targeted for DPDK 21.11.
+
+* cryptodev: The structure ``rte_crypto_vec`` would be updated to add
+  ``tot_len`` to support total buffer length.
+  This is required for security cases like IPsec and PDCP encryption offload
+  to know how much additional memory space is available in buffer other than
+  data length so that driver/HW can write expanded size data after encryption.
+  This change is targeted for DPDK 21.11.
+
 * cryptodev: The interface between library and drivers will be marked
   as internal in DPDK 21.11.
 
