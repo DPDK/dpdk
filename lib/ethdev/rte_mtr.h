@@ -219,7 +219,7 @@ struct rte_mtr_meter_policy_params {
  * @see enum rte_mtr_stats_type
  */
 struct rte_mtr_params {
-	/** Meter profile ID. */
+	/** Meter profile ID. @see rte_mtr_meter_profile_add() */
 	uint32_t meter_profile_id;
 
 	/** Meter input color in case of MTR object chaining. When non-zero: if
@@ -259,7 +259,7 @@ struct rte_mtr_params {
 	 */
 	uint64_t stats_mask;
 
-	/** Meter policy ID. */
+	/** Meter policy ID. @see rte_mtr_meter_policy_add() */
 	uint32_t meter_policy_id;
 };
 
