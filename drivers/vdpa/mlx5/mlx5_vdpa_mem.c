@@ -177,10 +177,10 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 	struct mlx5_devx_mkey_attr mkey_attr;
 	struct mlx5_vdpa_query_mr *entry = NULL;
 	struct rte_vhost_mem_region *reg = NULL;
-	uint8_t mode;
+	uint8_t mode = 0;
 	uint32_t entries_num = 0;
 	uint32_t i;
-	uint64_t gcd;
+	uint64_t gcd = 0;
 	uint64_t klm_size;
 	uint64_t mem_size;
 	uint64_t k;
