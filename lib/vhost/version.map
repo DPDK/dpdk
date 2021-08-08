@@ -1,12 +1,26 @@
-DPDK_21 {
+DPDK_22 {
 	global:
 
+	rte_vdpa_find_device_by_name;
+	rte_vdpa_get_features;
+	rte_vdpa_get_protocol_features;
+	rte_vdpa_get_queue_num;
+	rte_vdpa_get_rte_device;
+	rte_vdpa_get_stats;
+	rte_vdpa_get_stats_names;
+	rte_vdpa_register_device;
+	rte_vdpa_relay_vring_used;
+	rte_vdpa_reset_stats;
+	rte_vdpa_unregister_device;
 	rte_vhost_avail_entries;
 	rte_vhost_dequeue_burst;
+	rte_vhost_driver_attach_vdpa_device;
 	rte_vhost_driver_callback_register;
+	rte_vhost_driver_detach_vdpa_device;
 	rte_vhost_driver_disable_features;
 	rte_vhost_driver_enable_features;
 	rte_vhost_driver_get_features;
+	rte_vhost_driver_get_vdpa_device;
 	rte_vhost_driver_register;
 	rte_vhost_driver_set_features;
 	rte_vhost_driver_start;
@@ -14,37 +28,23 @@ DPDK_21 {
 	rte_vhost_enable_guest_notification;
 	rte_vhost_enqueue_burst;
 	rte_vhost_get_ifname;
+	rte_vhost_get_log_base;
 	rte_vhost_get_mem_table;
 	rte_vhost_get_mtu;
 	rte_vhost_get_negotiated_features;
 	rte_vhost_get_numa_node;
 	rte_vhost_get_queue_num;
+	rte_vhost_get_vdpa_device;
 	rte_vhost_get_vhost_vring;
+	rte_vhost_get_vring_base;
 	rte_vhost_get_vring_num;
 	rte_vhost_gpa_to_vva;
+	rte_vhost_host_notifier_ctrl;
 	rte_vhost_log_used_vring;
 	rte_vhost_log_write;
 	rte_vhost_rx_queue_count;
-	rte_vhost_vring_call;
-	rte_vhost_get_log_base;
-	rte_vhost_get_vring_base;
 	rte_vhost_set_vring_base;
-	rte_vhost_host_notifier_ctrl;
-	rte_vdpa_register_device;
-	rte_vdpa_unregister_device;
-	rte_vdpa_get_stats_names;
-	rte_vdpa_get_stats;
-	rte_vdpa_reset_stats;
-	rte_vhost_driver_attach_vdpa_device;
-	rte_vhost_driver_detach_vdpa_device;
-	rte_vhost_driver_get_vdpa_device;
-	rte_vhost_get_vdpa_device;
-	rte_vdpa_find_device_by_name;
-	rte_vdpa_get_rte_device;
-	rte_vdpa_get_queue_num;
-	rte_vdpa_get_features;
-	rte_vdpa_get_protocol_features;
-	rte_vdpa_relay_vring_used;
+	rte_vhost_vring_call;
 
 	local: *;
 };

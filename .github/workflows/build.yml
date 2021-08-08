@@ -21,7 +21,7 @@ jobs:
       CC: ccache ${{ matrix.config.compiler }}
       DEF_LIB: ${{ matrix.config.library }}
       LIBABIGAIL_VERSION: libabigail-1.8
-      REF_GIT_TAG: v21.05
+      REF_GIT_TAG: none
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
 
     strategy:
@@ -34,7 +34,7 @@ jobs:
           - os: ubuntu-18.04
             compiler: gcc
             library: shared
-            checks: abi+doc+tests
+            checks: doc+tests
           - os: ubuntu-18.04
             compiler: clang
             library: static
