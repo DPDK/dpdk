@@ -233,13 +233,15 @@ for c in gcc clang ; do
 	for s in static shared ; do
 		if [ $s = shared ] ; then
 			abicheck=ABI
+			buildtype=
 			stdatomic=-Denable_stdatomic=true
 		else
 			abicheck=skipABI # save time and disk space
+			buildtype='--buildtype=minsize'
 			stdatomic=-Denable_stdatomic=false
 		fi
 		export CC="$CCACHE $c"
-		build build-$c-$s $c $abicheck $stdatomic --default-library=$s
+		build build-$c-$s $c $abicheck $buildtype $stdatomic --default-library=$s
 		unset CC
 	done
 done
@@ -254,7 +256,7 @@ generic_isa='nehalem'
 if ! check_cc_flags "-march=$generic_isa" ; then
 	generic_isa='corei7'
 fi
-build build-x86-generic cc skipABI -Dcheck_includes=true \
+build build-x86-generic cc skipABI --buildtype=debug -Dcheck_includes=true \
 	-Dlibdir=lib -Dcpu_instruction_set=$generic_isa $use_shared
 
 # 32-bit with default compiler
