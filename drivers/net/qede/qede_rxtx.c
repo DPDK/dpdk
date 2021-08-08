@@ -721,9 +721,10 @@ qede_update_rx_prod(__rte_unused struct qede_dev *edev,
 {
 	uint16_t bd_prod = ecore_chain_get_prod_idx(&rxq->rx_bd_ring);
 	uint16_t cqe_prod = ecore_chain_get_prod_idx(&rxq->rx_comp_ring);
-	struct eth_rx_prod_data rx_prods = { 0 };
+	struct eth_rx_prod_data rx_prods;
 
 	/* Update producers */
+	memset(&rx_prods, 0, sizeof(rx_prods));
 	rx_prods.bd_prod = rte_cpu_to_le_16(bd_prod);
 	rx_prods.cqe_prod = rte_cpu_to_le_16(cqe_prod);
 
