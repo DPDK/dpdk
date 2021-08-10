@@ -10,9 +10,9 @@
 #define ICE_ETH_ETHTYPE_OFFSET		12
 #define ICE_ETH_VLAN_TCI_OFFSET		14
 #define ICE_MAX_VLAN_ID			0xFFF
+#define ICE_IPV6_ETHER_ID		0x86DD
 #define ICE_IPV4_NVGRE_PROTO_ID		0x002F
 #define ICE_PPP_IPV6_PROTO_ID		0x0057
-#define ICE_IPV6_ETHER_ID		0x86DD
 #define ICE_TCP_PROTO_ID		0x06
 #define ICE_GTPU_PROFILE		24
 #define ICE_ETH_P_8021Q			0x8100
@@ -7889,6 +7889,12 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			ipv6 = true;
 		else if (lkups[i].type == ICE_VLAN_OFOS)
 			vlan = true;
+		else if (lkups[i].type == ICE_ETYPE_OL &&
+			 lkups[i].h_u.ethertype.ethtype_id ==
+				CPU_TO_BE16(ICE_IPV6_ETHER_ID) &&
+			 lkups[i].m_u.ethertype.ethtype_id ==
+				CPU_TO_BE16(0xFFFF))
+			ipv6 = true;
 		else if (lkups[i].type == ICE_IPV4_OFOS &&
 			 lkups[i].h_u.ipv4_hdr.protocol ==
 				ICE_IPV4_NVGRE_PROTO_ID &&
@@ -7900,12 +7906,6 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 				CPU_TO_BE16(ICE_PPP_IPV6_PROTO_ID) &&
 			 lkups[i].m_u.pppoe_hdr.ppp_prot_id ==
 				0xFFFF)
-			ipv6 = true;
-		else if (lkups[i].type == ICE_ETYPE_OL &&
-			 lkups[i].h_u.ethertype.ethtype_id ==
-				CPU_TO_BE16(ICE_IPV6_ETHER_ID) &&
-			 lkups[i].m_u.ethertype.ethtype_id ==
-					0xFFFF)
 			ipv6 = true;
 		else if (lkups[i].type == ICE_IPV4_IL &&
 			 lkups[i].h_u.ipv4_hdr.protocol ==
