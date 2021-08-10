@@ -55,6 +55,7 @@
 #include "ice_lan_tx_rx.h"
 #include "ice_flex_type.h"
 #include "ice_protocol_type.h"
+#include "ice_sbq_cmd.h"
 #include "ice_vlan_mode.h"
 
 /**
@@ -131,6 +132,7 @@ static inline u32 ice_round_to_num(u32 N, u32 R)
 #define ICE_DBG_PKG		BIT_ULL(16)
 #define ICE_DBG_RES		BIT_ULL(17)
 #define ICE_DBG_ACL		BIT_ULL(18)
+#define ICE_DBG_PTP		BIT_ULL(19)
 #define ICE_DBG_AQ_MSG		BIT_ULL(24)
 #define ICE_DBG_AQ_DESC		BIT_ULL(25)
 #define ICE_DBG_AQ_DESC_BUF	BIT_ULL(26)
@@ -1016,6 +1018,7 @@ struct ice_hw {
 
 	/* Control Queue info */
 	struct ice_ctl_q_info adminq;
+	struct ice_ctl_q_info sbq;
 	struct ice_ctl_q_info mailboxq;
 	/* Additional function to send AdminQ command */
 	int (*aq_send_cmd_fn)(void *param, struct ice_aq_desc *desc,

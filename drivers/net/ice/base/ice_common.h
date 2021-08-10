@@ -51,6 +51,10 @@ ice_aq_alloc_free_res(struct ice_hw *hw, u16 num_entries,
 		      struct ice_aqc_alloc_free_res_elem *buf, u16 buf_size,
 		      enum ice_adminq_opc opc, struct ice_sq_cd *cd);
 enum ice_status
+ice_sq_send_cmd_nolock(struct ice_hw *hw, struct ice_ctl_q_info *cq,
+		       struct ice_aq_desc *desc, void *buf, u16 buf_size,
+		       struct ice_sq_cd *cd);
+enum ice_status
 ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 		struct ice_aq_desc *desc, void *buf, u16 buf_size,
 		struct ice_sq_cd *cd);
@@ -215,6 +219,11 @@ enum ice_status ice_replay_vsi(struct ice_hw *hw, u16 vsi_handle);
 void ice_replay_post(struct ice_hw *hw);
 struct ice_q_ctx *
 ice_get_lan_q_ctx(struct ice_hw *hw, u16 vsi_handle, u8 tc, u16 q_handle);
+enum ice_status ice_sbq_rw_reg_lp(struct ice_hw *hw,
+				  struct ice_sbq_msg_input *in, bool lock);
+void ice_sbq_lock(struct ice_hw *hw);
+void ice_sbq_unlock(struct ice_hw *hw);
+enum ice_status ice_sbq_rw_reg(struct ice_hw *hw, struct ice_sbq_msg_input *in);
 void
 ice_stat_update40(struct ice_hw *hw, u32 reg, bool prev_stat_loaded,
 		  u64 *prev_stat, u64 *cur_stat);
@@ -226,6 +235,8 @@ ice_stat_update_repc(struct ice_hw *hw, u16 vsi_handle, bool prev_stat_loaded,
 		     struct ice_eth_stats *cur_stats);
 enum ice_fw_modes ice_get_fw_mode(struct ice_hw *hw);
 void ice_print_rollback_msg(struct ice_hw *hw);
+bool ice_is_generic_mac(struct ice_hw *hw);
+bool ice_is_e810(struct ice_hw *hw);
 enum ice_status
 ice_sched_query_elem(struct ice_hw *hw, u32 node_teid,
 		     struct ice_aqc_txsched_elem_data *buf);

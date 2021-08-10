@@ -55,6 +55,21 @@ static void ice_mailbox_init_regs(struct ice_hw *hw)
 }
 
 /**
+ * ice_sb_init_regs - Initialize Sideband registers
+ * @hw: pointer to the hardware structure
+ *
+ * This assumes the alloc_sq and alloc_rq functions have already been called
+ */
+static void ice_sb_init_regs(struct ice_hw *hw)
+{
+	struct ice_ctl_q_info *cq = &hw->sbq;
+
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+
+	ICE_CQ_INIT_REGS(cq, PF_SB);
+}
+
+/**
  * ice_check_sq_alive
  * @hw: pointer to the HW struct
  * @cq: pointer to the specific Control queue
@@ -584,6 +599,10 @@ static enum ice_status ice_init_ctrlq(struct ice_hw *hw, enum ice_ctl_q q_type)
 		ice_adminq_init_regs(hw);
 		cq = &hw->adminq;
 		break;
+	case ICE_CTL_Q_SB:
+		ice_sb_init_regs(hw);
+		cq = &hw->sbq;
+		break;
 	case ICE_CTL_Q_MAILBOX:
 		ice_mailbox_init_regs(hw);
 		cq = &hw->mailboxq;
@@ -621,6 +640,18 @@ init_ctrlq_free_sq:
 }
 
 /**
+ * ice_is_sbq_supported - is the sideband queue supported
+ * @hw: pointer to the hardware structure
+ *
+ * Returns true if the sideband control queue interface is
+ * supported for the device, false otherwise
+ */
+static bool ice_is_sbq_supported(struct ice_hw *hw)
+{
+	return ice_is_generic_mac(hw);
+}
+
+/**
  * ice_shutdown_ctrlq - shutdown routine for any control queue
  * @hw: pointer to the hardware structure
  * @q_type: specific Control queue type
@@ -638,6 +669,9 @@ static void ice_shutdown_ctrlq(struct ice_hw *hw, enum ice_ctl_q q_type)
 		cq = &hw->adminq;
 		if (ice_check_sq_alive(hw, cq))
 			ice_aq_q_shutdown(hw, true);
+		break;
+	case ICE_CTL_Q_SB:
+		cq = &hw->sbq;
 		break;
 	case ICE_CTL_Q_MAILBOX:
 		cq = &hw->mailboxq;
@@ -663,6 +697,9 @@ void ice_shutdown_all_ctrlq(struct ice_hw *hw)
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 	/* Shutdown FW admin queue */
 	ice_shutdown_ctrlq(hw, ICE_CTL_Q_ADMIN);
+	/* Shutdown PHY Sideband */
+	if (ice_is_sbq_supported(hw))
+		ice_shutdown_ctrlq(hw, ICE_CTL_Q_SB);
 	/* Shutdown PF-VF Mailbox */
 	ice_shutdown_ctrlq(hw, ICE_CTL_Q_MAILBOX);
 }
@@ -704,6 +741,15 @@ enum ice_status ice_init_all_ctrlq(struct ice_hw *hw)
 
 	if (status)
 		return status;
+	/* sideband control queue (SBQ) interface is not supported on some
+	 * devices. Initialize if supported, else fallback to the admin queue
+	 * interface
+	 */
+	if (ice_is_sbq_supported(hw)) {
+		status = ice_init_ctrlq(hw, ICE_CTL_Q_SB);
+		if (status)
+			return status;
+	}
 	/* Init Mailbox queue */
 	return ice_init_ctrlq(hw, ICE_CTL_Q_MAILBOX);
 }
@@ -739,6 +785,8 @@ static void ice_init_ctrlq_locks(struct ice_ctl_q_info *cq)
 enum ice_status ice_create_all_ctrlq(struct ice_hw *hw)
 {
 	ice_init_ctrlq_locks(&hw->adminq);
+	if (ice_is_sbq_supported(hw))
+		ice_init_ctrlq_locks(&hw->sbq);
 	ice_init_ctrlq_locks(&hw->mailboxq);
 
 	return ice_init_all_ctrlq(hw);
@@ -771,6 +819,8 @@ void ice_destroy_all_ctrlq(struct ice_hw *hw)
 	ice_shutdown_all_ctrlq(hw);
 
 	ice_destroy_ctrlq_locks(&hw->adminq);
+	if (ice_is_sbq_supported(hw))
+		ice_destroy_ctrlq_locks(&hw->sbq);
 	ice_destroy_ctrlq_locks(&hw->mailboxq);
 }
 
@@ -882,7 +932,7 @@ static bool ice_sq_done(struct ice_hw *hw, struct ice_ctl_q_info *cq)
  * This is the main send command routine for the ATQ. It runs the queue,
  * cleans the queue, etc.
  */
-static enum ice_status
+enum ice_status
 ice_sq_send_cmd_nolock(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 		       struct ice_aq_desc *desc, void *buf, u16 buf_size,
 		       struct ice_sq_cd *cd)

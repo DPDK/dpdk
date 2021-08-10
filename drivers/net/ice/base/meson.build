@@ -14,6 +14,7 @@ sources = [
         'ice_acl.c',
         'ice_acl_ctrl.c',
         'ice_vlan_mode.c',
+        'ice_ptp_hw.c',
 ]
 
 error_cflags = [

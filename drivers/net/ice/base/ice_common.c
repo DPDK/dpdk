@@ -65,6 +65,28 @@ static enum ice_status ice_set_mac_type(struct ice_hw *hw)
 }
 
 /**
+ * ice_is_generic_mac
+ * @hw: pointer to the hardware structure
+ *
+ * returns true if mac_type is ICE_MAC_GENERIC, false if not
+ */
+bool ice_is_generic_mac(struct ice_hw *hw)
+{
+	return hw->mac_type == ICE_MAC_GENERIC;
+}
+
+/**
+ * ice_is_e810
+ * @hw: pointer to the hardware structure
+ *
+ * returns true if the device is E810 based, false if not.
+ */
+bool ice_is_e810(struct ice_hw *hw)
+{
+	return hw->mac_type == ICE_MAC_E810;
+}
+
+/**
  * ice_clear_pf_cfg - Clear PF configuration
  * @hw: pointer to the hardware structure
  *
@@ -1348,6 +1370,127 @@ ice_clear_tx_drbell_q_ctx(struct ice_hw *hw, u32 tx_drbell_q_index)
 		wr32(hw, QTX_COMM_DBLQ_CNTX(i, tx_drbell_q_index), 0);
 
 	return ICE_SUCCESS;
+}
+
+/* Sideband Queue command wrappers */
+
+/**
+ * ice_get_sbq - returns the right control queue to use for sideband
+ * @hw: pointer to the hardware structure
+ */
+static struct ice_ctl_q_info *ice_get_sbq(struct ice_hw *hw)
+{
+	if (!ice_is_generic_mac(hw))
+		return &hw->adminq;
+	return &hw->sbq;
+}
+
+/**
+ * ice_sbq_send_cmd - send Sideband Queue command to Sideband Queue
+ * @hw: pointer to the HW struct
+ * @desc: descriptor describing the command
+ * @buf: buffer to use for indirect commands (NULL for direct commands)
+ * @buf_size: size of buffer for indirect commands (0 for direct commands)
+ * @cd: pointer to command details structure
+ */
+static enum ice_status
+ice_sbq_send_cmd(struct ice_hw *hw, struct ice_sbq_cmd_desc *desc,
+		 void *buf, u16 buf_size, struct ice_sq_cd *cd)
+{
+	return ice_sq_send_cmd(hw, ice_get_sbq(hw), (struct ice_aq_desc *)desc,
+			       buf, buf_size, cd);
+}
+
+/**
+ * ice_sbq_send_cmd_nolock - send Sideband Queue command to Sideband Queue
+ *                           but do not lock sq_lock
+ * @hw: pointer to the HW struct
+ * @desc: descriptor describing the command
+ * @buf: buffer to use for indirect commands (NULL for direct commands)
+ * @buf_size: size of buffer for indirect commands (0 for direct commands)
+ * @cd: pointer to command details structure
+ */
+static enum ice_status
+ice_sbq_send_cmd_nolock(struct ice_hw *hw, struct ice_sbq_cmd_desc *desc,
+			void *buf, u16 buf_size, struct ice_sq_cd *cd)
+{
+	return ice_sq_send_cmd_nolock(hw, ice_get_sbq(hw),
+				      (struct ice_aq_desc *)desc, buf,
+				      buf_size, cd);
+}
+
+/**
+ * ice_sbq_rw_reg_lp - Fill Sideband Queue command, with lock parameter
+ * @hw: pointer to the HW struct
+ * @in: message info to be filled in descriptor
+ * @lock: true to lock the sq_lock (the usual case); false if the sq_lock has
+ *        already been locked at a higher level
+ */
+enum ice_status ice_sbq_rw_reg_lp(struct ice_hw *hw,
+				  struct ice_sbq_msg_input *in, bool lock)
+{
+	struct ice_sbq_cmd_desc desc = {0};
+	struct ice_sbq_msg_req msg = {0};
+	enum ice_status status;
+	u16 msg_len;
+
+	msg_len = sizeof(msg);
+
+	msg.dest_dev = in->dest_dev;
+	msg.opcode = in->opcode;
+	msg.flags = ICE_SBQ_MSG_FLAGS;
+	msg.sbe_fbe = ICE_SBQ_MSG_SBE_FBE;
+	msg.msg_addr_low = CPU_TO_LE16(in->msg_addr_low);
+	msg.msg_addr_high = CPU_TO_LE32(in->msg_addr_high);
+
+	if (in->opcode)
+		msg.data = CPU_TO_LE32(in->data);
+	else
+		/* data read comes back in completion, so shorten the struct by
+		 * sizeof(msg.data)
+		 */
+		msg_len -= sizeof(msg.data);
+
+	desc.flags = CPU_TO_LE16(ICE_AQ_FLAG_RD);
+	desc.opcode = CPU_TO_LE16(ice_sbq_opc_neigh_dev_req);
+	desc.param0.cmd_len = CPU_TO_LE16(msg_len);
+	if (lock)
+		status = ice_sbq_send_cmd(hw, &desc, &msg, msg_len, NULL);
+	else
+		status = ice_sbq_send_cmd_nolock(hw, &desc, &msg, msg_len,
+						 NULL);
+	if (!status && !in->opcode)
+		in->data = LE32_TO_CPU
+			(((struct ice_sbq_msg_cmpl *)&msg)->data);
+	return status;
+}
+
+/**
+ * ice_sbq_rw_reg - Fill Sideband Queue command
+ * @hw: pointer to the HW struct
+ * @in: message info to be filled in descriptor
+ */
+enum ice_status ice_sbq_rw_reg(struct ice_hw *hw, struct ice_sbq_msg_input *in)
+{
+	return ice_sbq_rw_reg_lp(hw, in, true);
+}
+
+/**
+ * ice_sbq_lock - Lock the sideband queue's sq_lock
+ * @hw: pointer to the HW struct
+ */
+void ice_sbq_lock(struct ice_hw *hw)
+{
+	ice_acquire_lock(&ice_get_sbq(hw)->sq_lock);
+}
+
+/**
+ * ice_sbq_unlock - Unlock the sideband queue's sq_lock
+ * @hw: pointer to the HW struct
+ */
+void ice_sbq_unlock(struct ice_hw *hw)
+{
+	ice_release_lock(&ice_get_sbq(hw)->sq_lock);
 }
 
 /* FW Admin Queue command wrappers */
