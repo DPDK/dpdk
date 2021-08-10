@@ -56,6 +56,44 @@ struct ice_time_ref_info_e822 {
 };
 
 /**
+ * struct ice_vernier_info_e822
+ * @tx_par_clk: Frequency used to calculate P_REG_PAR_TX_TUS
+ * @rx_par_clk: Frequency used to calculate P_REG_PAR_RX_TUS
+ * @tx_pcs_clk: Frequency used to calculate P_REG_PCS_TX_TUS
+ * @rx_pcs_clk: Frequency used to calculate P_REG_PCS_RX_TUS
+ * @tx_desk_rsgb_par: Frequency used to calculate P_REG_DESK_PAR_TX_TUS
+ * @rx_desk_rsgb_par: Frequency used to calculate P_REG_DESK_PAR_RX_TUS
+ * @tx_desk_rsgb_pcs: Frequency used to calculate P_REG_DESK_PCS_TX_TUS
+ * @rx_desk_rsgb_pcs: Frequency used to calculate P_REG_DESK_PCS_RX_TUS
+ * @tx_fixed_delay: Fixed Tx latency measured in 1/100th nanoseconds
+ * @pmd_adj_divisor: Divisor used to calculate PDM alignment adjustment
+ * @rx_fixed_delay: Fixed Rx latency measured in 1/100th nanoseconds
+ *
+ * Table of constants used during as part of the Vernier calibration of the Tx
+ * and Rx timestamps. This includes frequency values used to compute TUs per
+ * PAR/PCS clock cycle, and static delay values measured during hardware
+ * design.
+ *
+ * Note that some values are not used for all link speeds, and the
+ * P_REG_DESK_PAR* registers may represent different clock markers at
+ * different link speeds, either the deskew marker for multi-lane link speeds
+ * or the Reed Solomon gearbox marker for RS-FEC.
+ */
+struct ice_vernier_info_e822 {
+	u32 tx_par_clk;
+	u32 rx_par_clk;
+	u32 tx_pcs_clk;
+	u32 rx_pcs_clk;
+	u32 tx_desk_rsgb_par;
+	u32 rx_desk_rsgb_par;
+	u32 tx_desk_rsgb_pcs;
+	u32 rx_desk_rsgb_pcs;
+	u32 tx_fixed_delay;
+	u32 pmd_adj_divisor;
+	u32 rx_fixed_delay;
+};
+
+/**
  * struct ice_cgu_pll_params_e822
  * @refclk_pre_div: Reference clock pre-divisor
  * @feedback_div: Feedback divisor
@@ -77,6 +115,9 @@ ice_cgu_pll_params_e822 e822_cgu_params[NUM_ICE_TIME_REF_FREQ];
 
 /* Table of constants related to possible TIME_REF sources */
 extern const struct ice_time_ref_info_e822 e822_time_ref[NUM_ICE_TIME_REF_FREQ];
+
+/* Table of constants for Vernier calibration on E822 */
+extern const struct ice_vernier_info_e822 e822_vernier[NUM_ICE_PTP_LNK_SPD];
 
 /* Increment value to generate nanoseconds in the GLTSYN_TIME_L register for
  * the E810 devices. Based off of a PLL with an 812.5 MHz frequency.
@@ -171,6 +212,12 @@ ice_phy_get_speed_and_fec_e822(struct ice_hw *hw, u8 port,
 			       enum ice_ptp_link_spd *link_out,
 			       enum ice_ptp_fec_mode *fec_out);
 void ice_phy_cfg_lane_e822(struct ice_hw *hw, u8 port);
+enum ice_status
+ice_stop_phy_timer_e822(struct ice_hw *hw, u8 port, bool soft_reset);
+enum ice_status
+ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass);
+enum ice_status ice_phy_cfg_tx_offset_e822(struct ice_hw *hw, u8 port);
+enum ice_status ice_phy_cfg_rx_offset_e822(struct ice_hw *hw, u8 port);
 
 /* E810 family functions */
 enum ice_status ice_ptp_init_phy_e810(struct ice_hw *hw);

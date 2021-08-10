@@ -1573,6 +1573,1005 @@ void ice_phy_cfg_lane_e822(struct ice_hw *hw, u8 port)
 	}
 }
 
+/**
+ * ice_phy_cfg_uix_e822 - Configure Serdes UI to TU conversion for E822
+ * @hw: pointer to the HW structure
+ * @port: the port to configure
+ *
+ * Program the conversion ration of Serdes clock "unit intervals" (UIs) to PHC
+ * hardware clock time units (TUs). That is, determine the number of TUs per
+ * serdes unit interval, and program the UIX registers with this conversion.
+ *
+ * This conversion is used as part of the calibration process when determining
+ * the additional error of a timestamp vs the real time of transmission or
+ * receipt of the packet.
+ *
+ * Hardware uses the number of TUs per 66 UIs, written to the UIX registers
+ * for the two main serdes clock rates, 10G/40G and 25G/100G serdes clocks.
+ *
+ * To calculate the conversion ratio, we use the following facts:
+ *
+ * a) the clock frequency in Hz (cycles per second)
+ * b) the number of TUs per cycle (the increment value of the clock)
+ * c) 1 second per 1 billion nanoseconds
+ * d) the duration of 66 UIs in nanoseconds
+ *
+ * Given these facts, we can use the following table to work out what ratios
+ * to multiply in order to get the number of TUs per 66 UIs:
+ *
+ * cycles |   1 second   | incval (TUs) | nanoseconds
+ * -------+--------------+--------------+-------------
+ * second | 1 billion ns |    cycle     |   66 UIs
+ *
+ * To perform the multiplication using integers without too much loss of
+ * precision, we can take use the following equation:
+ *
+ * (freq * incval * 6600 LINE_UI ) / ( 100 * 1 billion)
+ *
+ * We scale up to using 6600 UI instead of 66 in order to avoid fractional
+ * nanosecond UIs (66 UI at 10G/40G is 6.4 ns)
+ *
+ * The increment value has a maximum expected range of about 34 bits, while
+ * the frequency value is about 29 bits. Multiplying these values shouldn't
+ * overflow the 64 bits. However, we must then further multiply them again by
+ * the Serdes unit interval duration. To avoid overflow here, we split the
+ * overall divide by 1e11 into a divide by 256 (shift down by 8 bits) and
+ * a divide by 390,625,000. This does lose some precision, but avoids
+ * miscalculation due to arithmetic overflow.
+ */
+static enum ice_status ice_phy_cfg_uix_e822(struct ice_hw *hw, u8 port)
+{
+	u64 cur_freq, clk_incval, tu_per_sec, uix;
+	enum ice_status status;
+
+	cur_freq = ice_e822_pll_freq(ice_e822_time_ref(hw));
+	clk_incval = ice_ptp_read_src_incval(hw);
+
+	/* Calculate TUs per second divided by 256 */
+	tu_per_sec = (cur_freq * clk_incval) >> 8;
+
+#define LINE_UI_10G_40G 640 /* 6600 UIs is 640 nanoseconds at 10Gb/40Gb */
+#define LINE_UI_25G_100G 256 /* 6600 UIs is 256 nanoseconds at 25Gb/100Gb */
+
+	/* Program the 10Gb/40Gb conversion ratio */
+	uix = (tu_per_sec * LINE_UI_10G_40G) / 390625000;
+
+	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_UIX66_10G_40G_L,
+					    uix);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write UIX66_10G_40G, status %d\n",
+			  status);
+		return status;
+	}
+
+	/* Program the 25Gb/100Gb conversion ratio */
+	uix = (tu_per_sec * LINE_UI_25G_100G) / 390625000;
+
+	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_UIX66_25G_100G_L,
+					    uix);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write UIX66_25G_100G, status %d\n",
+			  status);
+		return status;
+	}
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_phy_cfg_parpcs_e822 - Configure TUs per PAR/PCS clock cycle
+ * @hw: pointer to the HW struct
+ * @port: port to configure
+ *
+ * Configure the number of TUs for the PAR and PCS clocks used as part of the
+ * timestamp calibration process. This depends on the link speed, as the PHY
+ * uses different markers depending on the speed.
+ *
+ * 1Gb/10Gb/25Gb:
+ * - Tx/Rx PAR/PCS markers
+ *
+ * 25Gb RS:
+ * - Tx/Rx Reed Solomon gearbox PAR/PCS markers
+ *
+ * 40Gb/50Gb:
+ * - Tx/Rx PAR/PCS markers
+ * - Rx Deskew PAR/PCS markers
+ *
+ * 50G RS and 100GB RS:
+ * - Tx/Rx Reed Solomon gearbox PAR/PCS markers
+ * - Rx Deskew PAR/PCS markers
+ * - Tx PAR/PCS markers
+ *
+ * To calculate the conversion, we use the PHC clock frequency (cycles per
+ * second), the increment value (TUs per cycle), and the related PHY clock
+ * frequency to calculate the TUs per unit of the PHY link clock. The
+ * following table shows how the units convert:
+ *
+ * cycles |  TUs  | second
+ * -------+-------+--------
+ * second | cycle | cycles
+ *
+ * For each conversion register, look up the appropriate frequency from the
+ * e822 PAR/PCS table and calculate the TUs per unit of that clock. Program
+ * this to the appropriate register, preparing hardware to perform timestamp
+ * calibration to calculate the total Tx or Rx offset to adjust the timestamp
+ * in order to calibrate for the internal PHY delays.
+ *
+ * Note that the increment value ranges up to ~34 bits, and the clock
+ * frequency is ~29 bits, so multiplying them together should fit within the
+ * 64 bit arithmetic.
+ */
+static enum ice_status ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
+{
+	u64 cur_freq, clk_incval, tu_per_sec, phy_tus;
+	enum ice_ptp_link_spd link_spd;
+	enum ice_ptp_fec_mode fec_mode;
+	enum ice_status status;
+
+	status = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
+	if (status)
+		return status;
+
+	cur_freq = ice_e822_pll_freq(ice_e822_time_ref(hw));
+	clk_incval = ice_ptp_read_src_incval(hw);
+
+	/* Calculate TUs per cycle of the PHC clock */
+	tu_per_sec = cur_freq * clk_incval;
+
+	/* For each PHY conversion register, look up the appropriate link
+	 * speed frequency and determine the TUs per that clock's cycle time.
+	 * Split this into a high and low value and then program the
+	 * appropriate register. If that link speed does not use the
+	 * associated register, write zeros to clear it instead.
+	 */
+
+	/* P_REG_PAR_TX_TUS */
+	if (e822_vernier[link_spd].tx_par_clk)
+		phy_tus = tu_per_sec / e822_vernier[link_spd].tx_par_clk;
+	else
+		phy_tus = 0;
+
+	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_PAR_TX_TUS_L,
+					    phy_tus);
+	if (status)
+		return status;
+
+	/* P_REG_PAR_RX_TUS */
+	if (e822_vernier[link_spd].rx_par_clk)
+		phy_tus = tu_per_sec / e822_vernier[link_spd].rx_par_clk;
+	else
+		phy_tus = 0;
+
+	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_PAR_RX_TUS_L,
+					    phy_tus);
+	if (status)
+		return status;
+
+	/* P_REG_PCS_TX_TUS */
+	if (e822_vernier[link_spd].tx_pcs_clk)
+		phy_tus = tu_per_sec / e822_vernier[link_spd].tx_pcs_clk;
+	else
+		phy_tus = 0;
+
+	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_PCS_TX_TUS_L,
+					    phy_tus);
+	if (status)
+		return status;
+
+	/* P_REG_PCS_RX_TUS */
+	if (e822_vernier[link_spd].rx_pcs_clk)
+		phy_tus = tu_per_sec / e822_vernier[link_spd].rx_pcs_clk;
+	else
+		phy_tus = 0;
+
+	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_PCS_RX_TUS_L,
+					    phy_tus);
+	if (status)
+		return status;
+
+	/* P_REG_DESK_PAR_TX_TUS */
+	if (e822_vernier[link_spd].tx_desk_rsgb_par)
+		phy_tus = tu_per_sec / e822_vernier[link_spd].tx_desk_rsgb_par;
+	else
+		phy_tus = 0;
+
+	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_DESK_PAR_TX_TUS_L,
+					    phy_tus);
+	if (status)
+		return status;
+
+	/* P_REG_DESK_PAR_RX_TUS */
+	if (e822_vernier[link_spd].rx_desk_rsgb_par)
+		phy_tus = tu_per_sec / e822_vernier[link_spd].rx_desk_rsgb_par;
+	else
+		phy_tus = 0;
+
+	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_DESK_PAR_RX_TUS_L,
+					    phy_tus);
+	if (status)
+		return status;
+
+	/* P_REG_DESK_PCS_TX_TUS */
+	if (e822_vernier[link_spd].tx_desk_rsgb_pcs)
+		phy_tus = tu_per_sec / e822_vernier[link_spd].tx_desk_rsgb_pcs;
+	else
+		phy_tus = 0;
+
+	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_DESK_PCS_TX_TUS_L,
+					    phy_tus);
+	if (status)
+		return status;
+
+	/* P_REG_DESK_PCS_RX_TUS */
+	if (e822_vernier[link_spd].rx_desk_rsgb_pcs)
+		phy_tus = tu_per_sec / e822_vernier[link_spd].rx_desk_rsgb_pcs;
+	else
+		phy_tus = 0;
+
+	return ice_write_40b_phy_reg_e822(hw, port, P_REG_DESK_PCS_RX_TUS_L,
+					  phy_tus);
+}
+
+/**
+ * ice_calc_fixed_tx_offset_e822 - Calculated Fixed Tx offset for a port
+ * @hw: pointer to the HW struct
+ * @link_spd: the Link speed to calculate for
+ *
+ * Calculate the fixed offset due to known static latency data.
+ */
+static u64
+ice_calc_fixed_tx_offset_e822(struct ice_hw *hw, enum ice_ptp_link_spd link_spd)
+{
+	u64 cur_freq, clk_incval, tu_per_sec, fixed_offset;
+
+	cur_freq = ice_e822_pll_freq(ice_e822_time_ref(hw));
+	clk_incval = ice_ptp_read_src_incval(hw);
+
+	/* Calculate TUs per second */
+	tu_per_sec = cur_freq * clk_incval;
+
+	/* Calculate number of TUs to add for the fixed Tx latency. Since the
+	 * latency measurement is in 1/100th of a nanosecond, we need to
+	 * multiply by tu_per_sec and then divide by 1e11. This calculation
+	 * overflows 64 bit integer arithmetic, so break it up into two
+	 * divisions by 1e4 first then by 1e7.
+	 */
+	fixed_offset = tu_per_sec / 10000;
+	fixed_offset *= e822_vernier[link_spd].tx_fixed_delay;
+	fixed_offset /= 10000000;
+
+	return fixed_offset;
+}
+
+/**
+ * ice_phy_cfg_tx_offset_e822 - Configure total Tx timestamp offset
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to configure
+ *
+ * Program the P_REG_TOTAL_TX_OFFSET register with the total number of TUs to
+ * adjust Tx timestamps by. This is calculated by combining some known static
+ * latency along with the Vernier offset computations done by hardware.
+ *
+ * This function must be called only after the offset registers are valid,
+ * i.e. after the Vernier calibration wait has passed, to ensure that the PHY
+ * has measured the offset.
+ *
+ * To avoid overflow, when calculating the offset based on the known static
+ * latency values, we use measurements in 1/100th of a nanosecond, and divide
+ * the TUs per second up front. This avoids overflow while allowing
+ * calculation of the adjustment using integer arithmetic.
+ */
+enum ice_status ice_phy_cfg_tx_offset_e822(struct ice_hw *hw, u8 port)
+{
+	enum ice_ptp_link_spd link_spd;
+	enum ice_ptp_fec_mode fec_mode;
+	enum ice_status status;
+	u64 total_offset, val;
+
+	status = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
+	if (status)
+		return status;
+
+	total_offset = ice_calc_fixed_tx_offset_e822(hw, link_spd);
+
+	/* Read the first Vernier offset from the PHY register and add it to
+	 * the total offset.
+	 */
+	if (link_spd == ICE_PTP_LNK_SPD_1G ||
+	    link_spd == ICE_PTP_LNK_SPD_10G ||
+	    link_spd == ICE_PTP_LNK_SPD_25G ||
+	    link_spd == ICE_PTP_LNK_SPD_25G_RS ||
+	    link_spd == ICE_PTP_LNK_SPD_40G ||
+	    link_spd == ICE_PTP_LNK_SPD_50G) {
+		status = ice_read_64b_phy_reg_e822(hw, port,
+						   P_REG_PAR_PCS_TX_OFFSET_L,
+						   &val);
+		if (status)
+			return status;
+
+		total_offset += val;
+	}
+
+	/* For Tx, we only need to use the second Vernier offset for
+	 * multi-lane link speeds with RS-FEC. The lanes will always be
+	 * aligned.
+	 */
+	if (link_spd == ICE_PTP_LNK_SPD_50G_RS ||
+	    link_spd == ICE_PTP_LNK_SPD_100G_RS) {
+		status = ice_read_64b_phy_reg_e822(hw, port,
+						   P_REG_PAR_TX_TIME_L,
+						   &val);
+		if (status)
+			return status;
+
+		total_offset += val;
+	}
+
+	/* Now that the total offset has been calculated, program it to the
+	 * PHY and indicate that the Tx offset is ready. After this,
+	 * timestamps will be enabled.
+	 */
+	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_TX_OFFSET_L,
+					    total_offset);
+	if (status)
+		return status;
+
+	status = ice_write_phy_reg_e822(hw, port, P_REG_TX_OR, 1);
+	if (status)
+		return status;
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_phy_cfg_fixed_tx_offset_e822 - Configure Tx offset for bypass mode
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to configure
+ *
+ * Calculate and program the fixed Tx offset, and indicate that the offset is
+ * ready. This can be used when operating in bypass mode.
+ */
+static enum ice_status
+ice_phy_cfg_fixed_tx_offset_e822(struct ice_hw *hw, u8 port)
+{
+	enum ice_ptp_link_spd link_spd;
+	enum ice_ptp_fec_mode fec_mode;
+	enum ice_status status;
+	u64 total_offset;
+
+	status = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
+	if (status)
+		return status;
+
+	total_offset = ice_calc_fixed_tx_offset_e822(hw, link_spd);
+
+	/* Program the fixed Tx offset into the P_REG_TOTAL_TX_OFFSET_L
+	 * register, then indicate that the Tx offset is ready. After this,
+	 * timestamps will be enabled.
+	 *
+	 * Note that this skips including the more precise offsets generated
+	 * by the Vernier calibration.
+	 */
+	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_TX_OFFSET_L,
+					    total_offset);
+	if (status)
+		return status;
+
+	status = ice_write_phy_reg_e822(hw, port, P_REG_TX_OR, 1);
+	if (status)
+		return status;
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_phy_calc_pmd_adj_e822 - Calculate PMD adjustment for Rx
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to adjust for
+ * @link_spd: the current link speed of the PHY
+ * @fec_mode: the current FEC mode of the PHY
+ * @pmd_adj: on return, the amount to adjust the Rx total offset by
+ *
+ * Calculates the adjustment to Rx timestamps due to PMD alignment in the PHY.
+ * This varies by link speed and FEC mode. The value calculated accounts for
+ * various delays caused when receiving a packet.
+ */
+static enum ice_status
+ice_phy_calc_pmd_adj_e822(struct ice_hw *hw, u8 port,
+			  enum ice_ptp_link_spd link_spd,
+			  enum ice_ptp_fec_mode fec_mode, u64 *pmd_adj)
+{
+	u64 cur_freq, clk_incval, tu_per_sec, mult, adj;
+	enum ice_status status;
+	u8 pmd_align;
+	u32 val;
+
+	status = ice_read_phy_reg_e822(hw, port, P_REG_PMD_ALIGNMENT, &val);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read PMD alignment, status %d\n",
+			  status);
+		return status;
+	}
+
+	pmd_align = (u8)val;
+
+	cur_freq = ice_e822_pll_freq(ice_e822_time_ref(hw));
+	clk_incval = ice_ptp_read_src_incval(hw);
+
+	/* Calculate TUs per second */
+	tu_per_sec = cur_freq * clk_incval;
+
+	/* The PMD alignment adjustment measurement depends on the link speed,
+	 * and whether FEC is enabled. For each link speed, the alignment
+	 * adjustment is calculated by dividing a value by the length of
+	 * a Time Unit in nanoseconds.
+	 *
+	 * 1G: align == 4 ? 10 * 0.8 : (align + 6 % 10) * 0.8
+	 * 10G: align == 65 ? 0 : (align * 0.1 * 32/33)
+	 * 10G w/FEC: align * 0.1 * 32/33
+	 * 25G: align == 65 ? 0 : (align * 0.4 * 32/33)
+	 * 25G w/FEC: align * 0.4 * 32/33
+	 * 40G: align == 65 ? 0 : (align * 0.1 * 32/33)
+	 * 40G w/FEC: align * 0.1 * 32/33
+	 * 50G: align == 65 ? 0 : (align * 0.4 * 32/33)
+	 * 50G w/FEC: align * 0.8 * 32/33
+	 *
+	 * For RS-FEC, if align is < 17 then we must also add 1.6 * 32/33.
+	 *
+	 * To allow for calculating this value using integer arithmetic, we
+	 * instead start with the number of TUs per second, (inverse of the
+	 * length of a Time Unit in nanoseconds), multiply by a value based
+	 * on the PMD alignment register, and then divide by the right value
+	 * calculated based on the table above. To avoid integer overflow this
+	 * division is broken up into a step of dividing by 125 first.
+	 */
+	if (link_spd == ICE_PTP_LNK_SPD_1G) {
+		if (pmd_align == 4)
+			mult = 10;
+		else
+			mult = (pmd_align + 6) % 10;
+	} else if (link_spd == ICE_PTP_LNK_SPD_10G ||
+		   link_spd == ICE_PTP_LNK_SPD_25G ||
+		   link_spd == ICE_PTP_LNK_SPD_40G ||
+		   link_spd == ICE_PTP_LNK_SPD_50G) {
+		/* If Clause 74 FEC, always calculate PMD adjust */
+		if (pmd_align != 65 || fec_mode == ICE_PTP_FEC_MODE_CLAUSE74)
+			mult = pmd_align;
+		else
+			mult = 0;
+	} else if (link_spd == ICE_PTP_LNK_SPD_25G_RS ||
+		   link_spd == ICE_PTP_LNK_SPD_50G_RS ||
+		   link_spd == ICE_PTP_LNK_SPD_100G_RS) {
+		if (pmd_align < 17)
+			mult = pmd_align + 40;
+		else
+			mult = pmd_align;
+	} else {
+		ice_debug(hw, ICE_DBG_PTP, "Unknown link speed %d, skipping PMD adjustment\n",
+			  link_spd);
+		mult = 0;
+	}
+
+	/* In some cases, there's no need to adjust for the PMD alignment */
+	if (!mult) {
+		*pmd_adj = 0;
+		return ICE_SUCCESS;
+	}
+
+	/* Calculate the adjustment by multiplying TUs per second by the
+	 * appropriate multiplier and divisor. To avoid overflow, we first
+	 * divide by 125, and then handle remaining divisor based on the link
+	 * speed pmd_adj_divisor value.
+	 */
+	adj = tu_per_sec / 125;
+	adj *= mult;
+	adj /= e822_vernier[link_spd].pmd_adj_divisor;
+
+	/* Finally, for 25G-RS and 50G-RS, a further adjustment for the Rx
+	 * cycle count is necessary.
+	 */
+	if (link_spd == ICE_PTP_LNK_SPD_25G_RS) {
+		u64 cycle_adj;
+		u8 rx_cycle;
+
+		status = ice_read_phy_reg_e822(hw, port, P_REG_RX_40_TO_160_CNT,
+					       &val);
+		if (status) {
+			ice_debug(hw, ICE_DBG_PTP, "Failed to read 25G-RS Rx cycle count, status %d\n",
+				  status);
+			return status;
+		}
+
+		rx_cycle = val & P_REG_RX_40_TO_160_CNT_RXCYC_M;
+		if (rx_cycle) {
+			mult = (4 - rx_cycle) * 40;
+
+			cycle_adj = tu_per_sec / 125;
+			cycle_adj *= mult;
+			cycle_adj /= e822_vernier[link_spd].pmd_adj_divisor;
+
+			adj += cycle_adj;
+		}
+	} else if (link_spd == ICE_PTP_LNK_SPD_50G_RS) {
+		u64 cycle_adj;
+		u8 rx_cycle;
+
+		status = ice_read_phy_reg_e822(hw, port, P_REG_RX_80_TO_160_CNT,
+					       &val);
+		if (status) {
+			ice_debug(hw, ICE_DBG_PTP, "Failed to read 50G-RS Rx cycle count, status %d\n",
+				  status);
+			return status;
+		}
+
+		rx_cycle = val & P_REG_RX_80_TO_160_CNT_RXCYC_M;
+		if (rx_cycle) {
+			mult = rx_cycle * 40;
+
+			cycle_adj = tu_per_sec / 125;
+			cycle_adj *= mult;
+			cycle_adj /= e822_vernier[link_spd].pmd_adj_divisor;
+
+			adj += cycle_adj;
+		}
+	}
+
+	/* Return the calculated adjustment */
+	*pmd_adj = adj;
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_calc_fixed_rx_offset_e822 - Calculated the fixed Rx offset for a port
+ * @hw: pointer to HW struct
+ * @link_spd: The Link speed to calculate for
+ *
+ * Determine the fixed Rx latency for a given link speed.
+ */
+static u64
+ice_calc_fixed_rx_offset_e822(struct ice_hw *hw, enum ice_ptp_link_spd link_spd)
+{
+	u64 cur_freq, clk_incval, tu_per_sec, fixed_offset;
+
+	cur_freq = ice_e822_pll_freq(ice_e822_time_ref(hw));
+	clk_incval = ice_ptp_read_src_incval(hw);
+
+	/* Calculate TUs per second */
+	tu_per_sec = cur_freq * clk_incval;
+
+	/* Calculate number of TUs to add for the fixed Rx latency. Since the
+	 * latency measurement is in 1/100th of a nanosecond, we need to
+	 * multiply by tu_per_sec and then divide by 1e11. This calculation
+	 * overflows 64 bit integer arithmetic, so break it up into two
+	 * divisions by 1e4 first then by 1e7.
+	 */
+	fixed_offset = tu_per_sec / 10000;
+	fixed_offset *= e822_vernier[link_spd].rx_fixed_delay;
+	fixed_offset /= 10000000;
+
+	return fixed_offset;
+}
+
+/**
+ * ice_phy_cfg_rx_offset_e822 - Configure total Rx timestamp offset
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to configure
+ *
+ * Program the P_REG_TOTAL_RX_OFFSET register with the number of Time Units to
+ * adjust Rx timestamps by. This combines calculations from the Vernier offset
+ * measurements taken in hardware with some data about known fixed delay as
+ * well as adjusting for multi-lane alignment delay.
+ *
+ * This function must be called only after the offset registers are valid,
+ * i.e. after the Vernier calibration wait has passed, to ensure that the PHY
+ * has measured the offset.
+ *
+ * To avoid overflow, when calculating the offset based on the known static
+ * latency values, we use measurements in 1/100th of a nanosecond, and divide
+ * the TUs per second up front. This avoids overflow while allowing
+ * calculation of the adjustment using integer arithmetic.
+ */
+enum ice_status ice_phy_cfg_rx_offset_e822(struct ice_hw *hw, u8 port)
+{
+	enum ice_ptp_link_spd link_spd;
+	enum ice_ptp_fec_mode fec_mode;
+	u64 total_offset, pmd, val;
+	enum ice_status status;
+
+	status = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
+	if (status)
+		return status;
+
+	total_offset = ice_calc_fixed_rx_offset_e822(hw, link_spd);
+
+	/* Read the first Vernier offset from the PHY register and add it to
+	 * the total offset.
+	 */
+	status = ice_read_64b_phy_reg_e822(hw, port,
+					   P_REG_PAR_PCS_RX_OFFSET_L,
+					   &val);
+	if (status)
+		return status;
+
+	total_offset += val;
+
+	/* For Rx, all multi-lane link speeds include a second Vernier
+	 * calibration, because the lanes might not be aligned.
+	 */
+	if (link_spd == ICE_PTP_LNK_SPD_40G ||
+	    link_spd == ICE_PTP_LNK_SPD_50G ||
+	    link_spd == ICE_PTP_LNK_SPD_50G_RS ||
+	    link_spd == ICE_PTP_LNK_SPD_100G_RS) {
+		status = ice_read_64b_phy_reg_e822(hw, port,
+						   P_REG_PAR_RX_TIME_L,
+						   &val);
+		if (status)
+			return status;
+
+		total_offset += val;
+	}
+
+	/* In addition, Rx must account for the PMD alignment */
+	status = ice_phy_calc_pmd_adj_e822(hw, port, link_spd, fec_mode, &pmd);
+	if (status)
+		return status;
+
+	/* For RS-FEC, this adjustment adds delay, but for other modes, it
+	 * subtracts delay.
+	 */
+	if (fec_mode == ICE_PTP_FEC_MODE_RS_FEC)
+		total_offset += pmd;
+	else
+		total_offset -= pmd;
+
+	/* Now that the total offset has been calculated, program it to the
+	 * PHY and indicate that the Rx offset is ready. After this,
+	 * timestamps will be enabled.
+	 */
+	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_RX_OFFSET_L,
+					    total_offset);
+	if (status)
+		return status;
+
+	status = ice_write_phy_reg_e822(hw, port, P_REG_RX_OR, 1);
+	if (status)
+		return status;
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_phy_cfg_fixed_rx_offset_e822 - Configure fixed Rx offset for bypass mode
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to configure
+ *
+ * Calculate and program the fixed Rx offset, and indicate that the offset is
+ * ready. This can be used when operating in bypass mode.
+ */
+static enum ice_status
+ice_phy_cfg_fixed_rx_offset_e822(struct ice_hw *hw, u8 port)
+{
+	enum ice_ptp_link_spd link_spd;
+	enum ice_ptp_fec_mode fec_mode;
+	enum ice_status status;
+	u64 total_offset;
+
+	status = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
+	if (status)
+		return status;
+
+	total_offset = ice_calc_fixed_rx_offset_e822(hw, link_spd);
+
+	/* Program the fixed Rx offset into the P_REG_TOTAL_RX_OFFSET_L
+	 * register, then indicate that the Rx offset is ready. After this,
+	 * timestamps will be enabled.
+	 *
+	 * Note that this skips including the more precise offsets generated
+	 * by Vernier calibration.
+	 */
+	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_RX_OFFSET_L,
+					    total_offset);
+	if (status)
+		return status;
+
+	status = ice_write_phy_reg_e822(hw, port, P_REG_RX_OR, 1);
+	if (status)
+		return status;
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_read_phy_and_phc_time_e822 - Simultaneously capture PHC and PHY time
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to read
+ * @phy_time: on return, the 64bit PHY timer value
+ * @phc_time: on return, the lower 64bits of PHC time
+ *
+ * Issue a READ_TIME timer command to simultaneously capture the PHY and PHC
+ * timer values.
+ */
+static enum ice_status
+ice_read_phy_and_phc_time_e822(struct ice_hw *hw, u8 port, u64 *phy_time,
+			       u64 *phc_time)
+{
+	enum ice_status status;
+	u64 tx_time, rx_time;
+	u32 zo, lo;
+	u8 tmr_idx;
+
+	tmr_idx = ice_get_ptp_src_clock_index(hw);
+
+	/* Prepare the PHC timer for a READ_TIME capture command */
+	ice_ptp_src_cmd(hw, READ_TIME);
+
+	/* Prepare the PHY timer for a READ_TIME capture command */
+	status = ice_ptp_one_port_cmd(hw, port, READ_TIME, true);
+	if (status)
+		return status;
+
+	/* Issue the sync to start the READ_TIME capture */
+	ice_ptp_exec_tmr_cmd(hw);
+
+	/* Read the captured PHC time from the shadow time registers */
+	zo = rd32(hw, GLTSYN_SHTIME_0(tmr_idx));
+	lo = rd32(hw, GLTSYN_SHTIME_L(tmr_idx));
+	*phc_time = (u64)lo << 32 | zo;
+
+	/* Read the captured PHY time from the PHY shadow registers */
+	status = ice_ptp_read_port_capture(hw, port, &tx_time, &rx_time);
+	if (status)
+		return status;
+
+	/* If the PHY Tx and Rx timers don't match, log a warning message.
+	 * Note that this should not happen in normal circumstances since the
+	 * driver always programs them together.
+	 */
+	if (tx_time != rx_time)
+		ice_warn(hw, "PHY port %u Tx and Rx timers do not match, tx_time 0x%016llX, rx_time 0x%016llX\n",
+			 port, (unsigned long long)tx_time,
+			 (unsigned long long)rx_time);
+
+	*phy_time = tx_time;
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_sync_phy_timer_e822 - Synchronize the PHY timer with PHC timer
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to synchronize
+ *
+ * Perform an adjustment to ensure that the PHY and PHC timers are in sync.
+ * This is done by issuing a READ_TIME command which triggers a simultaneous
+ * read of the PHY timer and PHC timer. Then we use the difference to
+ * calculate an appropriate 2s complement addition to add to the PHY timer in
+ * order to ensure it reads the same value as the primary PHC timer.
+ */
+static enum ice_status ice_sync_phy_timer_e822(struct ice_hw *hw, u8 port)
+{
+	u64 phc_time, phy_time, difference;
+	enum ice_status status;
+
+	if (!ice_ptp_lock(hw)) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to acquire PTP semaphore\n");
+		return ICE_ERR_NOT_READY;
+	}
+
+	status = ice_read_phy_and_phc_time_e822(hw, port, &phy_time, &phc_time);
+	if (status)
+		goto err_unlock;
+
+	/* Calculate the amount required to add to the port time in order for
+	 * it to match the PHC time.
+	 *
+	 * Note that the port adjustment is done using 2s complement
+	 * arithmetic. This is convenient since it means that we can simply
+	 * calculate the difference between the PHC time and the port time,
+	 * and it will be interpreted correctly.
+	 */
+	difference = phc_time - phy_time;
+
+	status = ice_ptp_prep_port_adj_e822(hw, port, (s64)difference, true);
+	if (status)
+		goto err_unlock;
+
+	status = ice_ptp_one_port_cmd(hw, port, ADJ_TIME, true);
+	if (status)
+		goto err_unlock;
+
+	/* Issue the sync to activate the time adjustment */
+	ice_ptp_exec_tmr_cmd(hw);
+
+	/* Re-capture the timer values to flush the command registers and
+	 * verify that the time was properly adjusted.
+	 */
+	status = ice_read_phy_and_phc_time_e822(hw, port, &phy_time, &phc_time);
+	if (status)
+		goto err_unlock;
+
+	ice_info(hw, "Port %u PHY time synced to PHC: 0x%016llX, 0x%016llX\n",
+		 port, (unsigned long long)phy_time,
+		 (unsigned long long)phc_time);
+
+	ice_ptp_unlock(hw);
+
+	return ICE_SUCCESS;
+
+err_unlock:
+	ice_ptp_unlock(hw);
+	return status;
+}
+
+/**
+ * ice_stop_phy_timer_e822 - Stop the PHY clock timer
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to stop
+ * @soft_reset: if true, hold the SOFT_RESET bit of P_REG_PS
+ *
+ * Stop the clock of a PHY port. This must be done as part of the flow to
+ * re-calibrate Tx and Rx timestamping offsets whenever the clock time is
+ * initialized or when link speed changes.
+ */
+enum ice_status
+ice_stop_phy_timer_e822(struct ice_hw *hw, u8 port, bool soft_reset)
+{
+	enum ice_status status;
+	u32 val;
+
+	status = ice_write_phy_reg_e822(hw, port, P_REG_TX_OR, 0);
+	if (status)
+		return status;
+
+	status = ice_write_phy_reg_e822(hw, port, P_REG_RX_OR, 0);
+	if (status)
+		return status;
+
+	status = ice_read_phy_reg_e822(hw, port, P_REG_PS, &val);
+	if (status)
+		return status;
+
+	val &= ~P_REG_PS_START_M;
+	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (status)
+		return status;
+
+	val &= ~P_REG_PS_ENA_CLK_M;
+	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (status)
+		return status;
+
+	if (soft_reset) {
+		val |= P_REG_PS_SFT_RESET_M;
+		status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+		if (status)
+			return status;
+	}
+
+	ice_debug(hw, ICE_DBG_PTP, "Disabled clock on PHY port %u\n", port);
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_start_phy_timer_e822 - Start the PHY clock timer
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to start
+ * @bypass: if true, start the PHY in bypass mode
+ *
+ * Start the clock of a PHY port. This must be done as part of the flow to
+ * re-calibrate Tx and Rx timestamping offsets whenever the clock time is
+ * initialized or when link speed changes.
+ *
+ * Bypass mode enables timestamps immediately without waiting for Vernier
+ * calibration to complete. Hardware will still continue taking Vernier
+ * measurements on Tx or Rx of packets, but they will not be applied to
+ * timestamps. Use ice_phy_exit_bypass_e822 to exit bypass mode once hardware
+ * has completed offset calculation.
+ */
+enum ice_status
+ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass)
+{
+	enum ice_status status;
+	u32 lo, hi, val;
+	u64 incval;
+	u8 tmr_idx;
+
+	tmr_idx = ice_get_ptp_src_clock_index(hw);
+
+	status = ice_stop_phy_timer_e822(hw, port, false);
+	if (status)
+		return status;
+
+	ice_phy_cfg_lane_e822(hw, port);
+
+	status = ice_phy_cfg_uix_e822(hw, port);
+	if (status)
+		return status;
+
+	status = ice_phy_cfg_parpcs_e822(hw, port);
+	if (status)
+		return status;
+
+	lo = rd32(hw, GLTSYN_INCVAL_L(tmr_idx));
+	hi = rd32(hw, GLTSYN_INCVAL_H(tmr_idx));
+	incval = (u64)hi << 32 | lo;
+
+	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_TIMETUS_L, incval);
+	if (status)
+		return status;
+
+	status = ice_ptp_one_port_cmd(hw, port, INIT_INCVAL, true);
+	if (status)
+		return status;
+
+	ice_ptp_exec_tmr_cmd(hw);
+
+	status = ice_read_phy_reg_e822(hw, port, P_REG_PS, &val);
+	if (status)
+		return status;
+
+	val |= P_REG_PS_SFT_RESET_M;
+	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (status)
+		return status;
+
+	val |= P_REG_PS_START_M;
+	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (status)
+		return status;
+
+	val &= ~P_REG_PS_SFT_RESET_M;
+	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (status)
+		return status;
+
+	status = ice_ptp_one_port_cmd(hw, port, INIT_INCVAL, true);
+	if (status)
+		return status;
+
+	ice_ptp_exec_tmr_cmd(hw);
+
+	val |= P_REG_PS_ENA_CLK_M;
+	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (status)
+		return status;
+
+	val |= P_REG_PS_LOAD_OFFSET_M;
+	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (status)
+		return status;
+
+	ice_ptp_exec_tmr_cmd(hw);
+
+	status = ice_sync_phy_timer_e822(hw, port);
+	if (status)
+		return status;
+
+	if (bypass) {
+		val |= P_REG_PS_BYPASS_MODE_M;
+		/* Enter BYPASS mode, enabling timestamps immediately. */
+		status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+		if (status)
+			return status;
+
+		/* Program the fixed Tx offset */
+		status = ice_phy_cfg_fixed_tx_offset_e822(hw, port);
+		if (status)
+			return status;
+
+		/* Program the fixed Rx offset */
+		status = ice_phy_cfg_fixed_rx_offset_e822(hw, port);
+		if (status)
+			return status;
+	}
+
+	ice_debug(hw, ICE_DBG_PTP, "Enabled clock on PHY port %u\n", port);
+
+	return ICE_SUCCESS;
+}
+
 /* E810 functions
  *
  * The following functions operate on the E810 series devices which use
