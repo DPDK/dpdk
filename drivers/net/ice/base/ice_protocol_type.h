@@ -245,8 +245,8 @@ struct ice_ether_vlan_hdr {
 };
 
 struct ice_vlan_hdr {
-	__be16 vlan;
 	__be16 type;
+	__be16 vlan;
 };
 
 struct ice_ipv4_hdr {
