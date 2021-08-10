@@ -4518,6 +4518,56 @@ ice_set_ctx(struct ice_hw *hw, u8 *src_ctx, u8 *dest_ctx,
 }
 
 /**
+ * ice_aq_get_internal_data
+ * @hw: pointer to the hardware structure
+ * @cluster_id: specific cluster to dump
+ * @table_id: table ID within cluster
+ * @start: index of line in the block to read
+ * @buf: dump buffer
+ * @buf_size: dump buffer size
+ * @ret_buf_size: return buffer size (returned by FW)
+ * @ret_next_table: next block to read (returned by FW)
+ * @ret_next_index: next index to read (returned by FW)
+ * @cd: pointer to command details structure
+ *
+ * Get internal FW/HW data (0xFF08) for debug purposes.
+ */
+enum ice_status
+ice_aq_get_internal_data(struct ice_hw *hw, u8 cluster_id, u16 table_id,
+			 u32 start, void *buf, u16 buf_size, u16 *ret_buf_size,
+			 u16 *ret_next_table, u32 *ret_next_index,
+			 struct ice_sq_cd *cd)
+{
+	struct ice_aqc_debug_dump_internals *cmd;
+	struct ice_aq_desc desc;
+	enum ice_status status;
+
+	cmd = &desc.params.debug_dump;
+
+	if (buf_size == 0 || !buf)
+		return ICE_ERR_PARAM;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_debug_dump_internals);
+
+	cmd->cluster_id = cluster_id;
+	cmd->table_id = CPU_TO_LE16(table_id);
+	cmd->idx = CPU_TO_LE32(start);
+
+	status = ice_aq_send_cmd(hw, &desc, buf, buf_size, cd);
+
+	if (!status) {
+		if (ret_buf_size)
+			*ret_buf_size = LE16_TO_CPU(desc.datalen);
+		if (ret_next_table)
+			*ret_next_table = LE16_TO_CPU(cmd->table_id);
+		if (ret_next_index)
+			*ret_next_index = LE32_TO_CPU(cmd->idx);
+	}
+
+	return status;
+}
+
+/**
  * ice_read_byte - read context byte into struct
  * @src_ctx:  the context structure to read from
  * @dest_ctx: the context to be written to
