@@ -102,6 +102,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* cryptodev: The API rte_cryptodev_pmd_is_valid_dev is modified to
+  rte_cryptodev_is_valid_dev as it can be used by the application as
+  well as PMD to check whether the device is valid or not.
+
 
 ABI Changes
 -----------

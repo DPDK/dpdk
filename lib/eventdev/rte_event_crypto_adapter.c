@@ -781,7 +781,7 @@ rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 
 	EVENT_CRYPTO_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
-	if (!rte_cryptodev_pmd_is_valid_dev(cdev_id)) {
+	if (!rte_cryptodev_is_valid_dev(cdev_id)) {
 		RTE_EDEV_LOG_ERR("Invalid dev_id=%" PRIu8, cdev_id);
 		return -EINVAL;
 	}
@@ -898,7 +898,7 @@ rte_event_crypto_adapter_queue_pair_del(uint8_t id, uint8_t cdev_id,
 
 	EVENT_CRYPTO_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
-	if (!rte_cryptodev_pmd_is_valid_dev(cdev_id)) {
+	if (!rte_cryptodev_is_valid_dev(cdev_id)) {
 		RTE_EDEV_LOG_ERR("Invalid dev_id=%" PRIu8, cdev_id);
 		return -EINVAL;
 	}

@@ -196,7 +196,7 @@ parse_cryptodev_id_arg(char *arg)
 	}
 
 
-	if (!rte_cryptodev_pmd_is_valid_dev(cryptodev_id)) {
+	if (!rte_cryptodev_is_valid_dev(cryptodev_id)) {
 		RTE_LOG(ERR, USER1, "Error %i: invalid cryptodev id %s\n",
 				cryptodev_id, arg);
 		return -1;

@@ -1369,6 +1369,17 @@ unsigned int
 rte_cryptodev_asym_get_private_session_size(uint8_t dev_id);
 
 /**
+ * Validate if the crypto device index is valid attached crypto device.
+ *
+ * @param	dev_id	Crypto device index.
+ *
+ * @return
+ *   - If the device index is valid (1) or not (0).
+ */
+unsigned int
+rte_cryptodev_is_valid_dev(uint8_t dev_id);
+
+/**
  * Provide driver identifier.
  *
  * @param name

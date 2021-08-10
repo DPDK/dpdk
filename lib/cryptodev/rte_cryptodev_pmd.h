@@ -95,17 +95,6 @@ struct rte_cryptodev *
 rte_cryptodev_pmd_get_named_dev(const char *name);
 
 /**
- * Validate if the crypto device index is valid attached crypto device.
- *
- * @param	dev_id	Crypto device index.
- *
- * @return
- *   - If the device index is valid (1) or not (0).
- */
-unsigned int
-rte_cryptodev_pmd_is_valid_dev(uint8_t dev_id);
-
-/**
  * The pool of rte_cryptodev structures.
  */
 extern struct rte_cryptodev *rte_cryptodevs;

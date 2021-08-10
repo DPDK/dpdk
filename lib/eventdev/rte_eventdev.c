@@ -165,7 +165,7 @@ rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
 	struct rte_cryptodev *cdev;
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
-	if (!rte_cryptodev_pmd_is_valid_dev(cdev_id))
+	if (!rte_cryptodev_is_valid_dev(cdev_id))
 		return -EINVAL;
 
 	dev = &rte_eventdevs[dev_id];

@@ -663,7 +663,7 @@ rte_cryptodev_is_valid_device_data(uint8_t dev_id)
 }
 
 unsigned int
-rte_cryptodev_pmd_is_valid_dev(uint8_t dev_id)
+rte_cryptodev_is_valid_dev(uint8_t dev_id)
 {
 	struct rte_cryptodev *dev = NULL;
 
@@ -761,7 +761,7 @@ rte_cryptodev_socket_id(uint8_t dev_id)
 {
 	struct rte_cryptodev *dev;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id))
+	if (!rte_cryptodev_is_valid_dev(dev_id))
 		return -1;
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);
@@ -1032,7 +1032,7 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 	struct rte_cryptodev *dev;
 	int diag;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -EINVAL;
 	}
@@ -1080,7 +1080,7 @@ rte_cryptodev_start(uint8_t dev_id)
 
 	CDEV_LOG_DEBUG("Start dev_id=%" PRIu8, dev_id);
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -EINVAL;
 	}
@@ -1110,7 +1110,7 @@ rte_cryptodev_stop(uint8_t dev_id)
 {
 	struct rte_cryptodev *dev;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return;
 	}
@@ -1136,7 +1136,7 @@ rte_cryptodev_close(uint8_t dev_id)
 	struct rte_cryptodev *dev;
 	int retval;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -1;
 	}
@@ -1176,7 +1176,7 @@ rte_cryptodev_get_qp_status(uint8_t dev_id, uint16_t queue_pair_id)
 {
 	struct rte_cryptodev *dev;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -EINVAL;
 	}
@@ -1207,7 +1207,7 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 {
 	struct rte_cryptodev *dev;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -EINVAL;
 	}
@@ -1283,7 +1283,7 @@ rte_cryptodev_add_enq_callback(uint8_t dev_id,
 		return NULL;
 	}
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
 		rte_errno = ENODEV;
 		return NULL;
@@ -1349,7 +1349,7 @@ rte_cryptodev_remove_enq_callback(uint8_t dev_id,
 		return -EINVAL;
 	}
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
 		return -ENODEV;
 	}
@@ -1418,7 +1418,7 @@ rte_cryptodev_add_deq_callback(uint8_t dev_id,
 		return NULL;
 	}
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
 		rte_errno = ENODEV;
 		return NULL;
@@ -1484,7 +1484,7 @@ rte_cryptodev_remove_deq_callback(uint8_t dev_id,
 		return -EINVAL;
 	}
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
 		return -ENODEV;
 	}
@@ -1542,7 +1542,7 @@ rte_cryptodev_stats_get(uint8_t dev_id, struct rte_cryptodev_stats *stats)
 {
 	struct rte_cryptodev *dev;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
 		return -ENODEV;
 	}
@@ -1565,7 +1565,7 @@ rte_cryptodev_stats_reset(uint8_t dev_id)
 {
 	struct rte_cryptodev *dev;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return;
 	}
@@ -1581,7 +1581,7 @@ rte_cryptodev_info_get(uint8_t dev_id, struct rte_cryptodev_info *dev_info)
 {
 	struct rte_cryptodev *dev;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
 		return;
 	}
@@ -1608,7 +1608,7 @@ rte_cryptodev_callback_register(uint8_t dev_id,
 	if (!cb_fn)
 		return -EINVAL;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -EINVAL;
 	}
@@ -1652,7 +1652,7 @@ rte_cryptodev_callback_unregister(uint8_t dev_id,
 	if (!cb_fn)
 		return -EINVAL;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -EINVAL;
 	}
@@ -1720,7 +1720,7 @@ rte_cryptodev_sym_session_init(uint8_t dev_id,
 	uint8_t index;
 	int ret;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -EINVAL;
 	}
@@ -1765,7 +1765,7 @@ rte_cryptodev_asym_session_init(uint8_t dev_id,
 	uint8_t index;
 	int ret;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -EINVAL;
 	}
@@ -1939,7 +1939,7 @@ rte_cryptodev_sym_session_clear(uint8_t dev_id,
 	struct rte_cryptodev *dev;
 	uint8_t driver_id;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -EINVAL;
 	}
@@ -1969,7 +1969,7 @@ rte_cryptodev_asym_session_clear(uint8_t dev_id,
 {
 	struct rte_cryptodev *dev;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -EINVAL;
 	}
@@ -2079,7 +2079,7 @@ rte_cryptodev_sym_get_private_session_size(uint8_t dev_id)
 	struct rte_cryptodev *dev;
 	unsigned int priv_sess_size;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id))
+	if (!rte_cryptodev_is_valid_dev(dev_id))
 		return 0;
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);
@@ -2099,7 +2099,7 @@ rte_cryptodev_asym_get_private_session_size(uint8_t dev_id)
 	unsigned int header_size = sizeof(void *) * nb_drivers;
 	unsigned int priv_sess_size;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id))
+	if (!rte_cryptodev_is_valid_dev(dev_id))
 		return 0;
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);
@@ -2156,7 +2156,7 @@ rte_cryptodev_sym_cpu_crypto_process(uint8_t dev_id,
 {
 	struct rte_cryptodev *dev;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		sym_crypto_fill_status(vec, EINVAL);
 		return 0;
 	}
@@ -2179,7 +2179,7 @@ rte_cryptodev_get_raw_dp_ctx_size(uint8_t dev_id)
 	int32_t size = sizeof(struct rte_crypto_raw_dp_ctx);
 	int32_t priv_size;
 
-	if (!rte_cryptodev_pmd_is_valid_dev(dev_id))
+	if (!rte_cryptodev_is_valid_dev(dev_id))
 		return -EINVAL;
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);

@@ -1732,7 +1732,7 @@ struct sym_crypto_data {
 static int
 sym_crypto_cfg_check(struct rte_table_action_sym_crypto_config *cfg)
 {
-	if (!rte_cryptodev_pmd_is_valid_dev(cfg->cryptodev_id))
+	if (!rte_cryptodev_is_valid_dev(cfg->cryptodev_id))
 		return -EINVAL;
 	if (cfg->mp_create == NULL || cfg->mp_init == NULL)
 		return -EINVAL;

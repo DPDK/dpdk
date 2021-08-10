@@ -25,6 +25,7 @@ DPDK_22 {
 	rte_cryptodev_get_feature_name;
 	rte_cryptodev_get_sec_ctx;
 	rte_cryptodev_info_get;
+	rte_cryptodev_is_valid_dev;
 	rte_cryptodev_name_get;
 	rte_cryptodev_pmd_allocate;
 	rte_cryptodev_pmd_callback_process;
@@ -33,7 +34,6 @@ DPDK_22 {
 	rte_cryptodev_pmd_destroy;
 	rte_cryptodev_pmd_get_dev;
 	rte_cryptodev_pmd_get_named_dev;
-	rte_cryptodev_pmd_is_valid_dev;
 	rte_cryptodev_pmd_parse_input_args;
 	rte_cryptodev_pmd_release_device;
 	rte_cryptodev_queue_pair_count;
