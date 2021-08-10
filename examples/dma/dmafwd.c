@@ -561,7 +561,7 @@ static void start_forwarding_cores(void)
 			lcore_id);
 	}
 }
-/* >8 End of starting to processfor each lcore. */
+/* >8 End of starting to process for each lcore. */
 
 /* Display usage */
 static void

@@ -135,7 +135,7 @@ static struct rte_ether_addr vmdq_ports_eth_addr[RTE_MAX_ETHPORTS];
  * valid pool number
  */
 
- /* Building correct configruration for vdmq. 8< */
+ /* Building correct configuration for vdmq. 8< */
 static inline int
 get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_pools)
 {

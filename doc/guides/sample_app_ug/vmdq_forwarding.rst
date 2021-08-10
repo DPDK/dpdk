@@ -103,7 +103,7 @@ the MAC of VMDq pool 2 on port 1 is 52:54:00:12:01:02.
 
 .. literalinclude:: ../../../examples/vmdq/main.c
     :language: c
-    :start-after: Building correct configruration for vdmq. 8<
+    :start-after: Building correct configuration for vdmq. 8<
     :end-before: >8 End of get_eth_conf.
 
 Once the network port has been initialized using the correct VMDq values,

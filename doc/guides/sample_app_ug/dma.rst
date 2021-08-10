@@ -240,7 +240,7 @@ function in order to start processing for each lcore:
 .. literalinclude:: ../../../examples/dma/dmafwd.c
     :language: c
     :start-after: Start processing for each lcore. 8<
-    :end-before: >8 End of starting to processfor each lcore.
+    :end-before: >8 End of starting to process for each lcore.
     :dedent: 0
 
 The function launches Rx/Tx processing functions on configured lcores
