@@ -55,6 +55,26 @@ struct ice_time_ref_info_e822 {
 	u8 pps_delay;
 };
 
+/**
+ * struct ice_cgu_pll_params_e822
+ * @refclk_pre_div: Reference clock pre-divisor
+ * @feedback_div: Feedback divisor
+ * @frac_n_div: Fractional divisor
+ * @post_pll_div: Post PLL divisor
+ *
+ * Clock Generation Unit parameters used to program the PLL based on the
+ * selected TIME_REF frequency.
+ */
+struct ice_cgu_pll_params_e822 {
+	u32 refclk_pre_div;
+	u32 feedback_div;
+	u32 frac_n_div;
+	u32 post_pll_div;
+};
+
+extern const struct
+ice_cgu_pll_params_e822 e822_cgu_params[NUM_ICE_TIME_REF_FREQ];
+
 /* Table of constants related to possible TIME_REF sources */
 extern const struct ice_time_ref_info_e822 e822_time_ref[NUM_ICE_TIME_REF_FREQ];
 
@@ -79,6 +99,7 @@ enum ice_status
 ice_read_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx, u64 *tstamp);
 enum ice_status
 ice_clear_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx);
+enum ice_status ice_ptp_init_phc(struct ice_hw *hw);
 
 /* E822 family functions */
 enum ice_status
@@ -99,6 +120,9 @@ ice_ptp_read_port_capture(struct ice_hw *hw, u8 port, u64 *tx_ts, u64 *rx_ts);
 enum ice_status
 ice_ptp_one_port_cmd(struct ice_hw *hw, u8 port, enum ice_ptp_tmr_cmd cmd,
 		     bool lock_sbq);
+enum ice_status
+ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq clk_freq,
+		     enum ice_clk_src clk_src);
 
 static inline u64 ice_e822_pll_freq(enum ice_time_ref_freq time_ref)
 {
