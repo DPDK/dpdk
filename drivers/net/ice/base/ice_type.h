@@ -480,6 +480,10 @@ struct ice_hw_common_caps {
 #define ICE_NVM_MGMT_SEC_REV_DISABLED		BIT(0)
 #define ICE_NVM_MGMT_UPDATE_DISABLED		BIT(1)
 #define ICE_NVM_MGMT_UNIFIED_UPD_SUPPORT	BIT(3)
+	/* PCIe reset avoidance */
+	bool pcie_reset_avoidance; /* false: not supported, true: supported */
+	/* Post update reset restriction */
+	bool reset_restrict_support; /* false: not supported, true: supported */
 
 	/* External topology device images within the NVM */
 #define ICE_EXT_TOPO_DEV_IMG_COUNT	4

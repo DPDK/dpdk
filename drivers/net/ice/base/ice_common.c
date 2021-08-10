@@ -2281,6 +2281,18 @@ ice_parse_common_caps(struct ice_hw *hw, struct ice_hw_common_caps *caps,
 		ice_debug(hw, ICE_DBG_INIT, "%s: max_mtu = %d\n",
 			  prefix, caps->max_mtu);
 		break;
+	case ICE_AQC_CAPS_PCIE_RESET_AVOIDANCE:
+		caps->pcie_reset_avoidance = (number > 0);
+		ice_debug(hw, ICE_DBG_INIT,
+			  "%s: pcie_reset_avoidance = %d\n", prefix,
+			  caps->pcie_reset_avoidance);
+		break;
+	case ICE_AQC_CAPS_POST_UPDATE_RESET_RESTRICT:
+		caps->reset_restrict_support = (number == 1);
+		ice_debug(hw, ICE_DBG_INIT,
+			  "%s: reset_restrict_support = %d\n", prefix,
+			  caps->reset_restrict_support);
+		break;
 	case ICE_AQC_CAPS_EXT_TOPO_DEV_IMG0:
 	case ICE_AQC_CAPS_EXT_TOPO_DEV_IMG1:
 	case ICE_AQC_CAPS_EXT_TOPO_DEV_IMG2:
