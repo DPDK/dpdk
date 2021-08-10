@@ -3,7 +3,7 @@
  */
 
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <rte_malloc.h>
 
 #include "fips_dev_self_test.h"
 
@@ -1523,12 +1523,6 @@ static void
 fips_dev_auto_test_uninit(uint8_t dev_id,
 		struct fips_dev_auto_test_env *env)
 {
-	struct rte_cryptodev *dev = rte_cryptodev_pmd_get_dev(dev_id);
-	uint32_t i;
-
-	if (!dev)
-		return;
-
 	if (env->mbuf)
 		rte_pktmbuf_free(env->mbuf);
 	if (env->op)
@@ -1542,16 +1536,7 @@ fips_dev_auto_test_uninit(uint8_t dev_id,
 	if (env->sess_priv_pool)
 		rte_mempool_free(env->sess_priv_pool);
 
-	if (dev->data->dev_started)
-		rte_cryptodev_stop(dev_id);
-
-	if (dev->data->nb_queue_pairs) {
-		for (i = 0; i < dev->data->nb_queue_pairs; i++)
-			(*dev->dev_ops->queue_pair_release)(dev, i);
-		dev->data->nb_queue_pairs = 0;
-		rte_free(dev->data->queue_pairs);
-		dev->data->queue_pairs = NULL;
-	}
+	rte_cryptodev_stop(dev_id);
 }
 
 static int
