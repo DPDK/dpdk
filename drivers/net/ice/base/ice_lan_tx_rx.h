@@ -879,6 +879,14 @@ enum ice_rx_flex_desc_exstat_bits {
 	ICE_RX_FLEX_DESC_EXSTAT_OVERSIZE_S = 3,
 };
 
+/* For ice_32b_rx_flex_desc.ts_low:
+ * [0]: Timestamp-low validity bit
+ * [1:7]: Timestamp-low value
+ */
+#define ICE_RX_FLEX_DESC_TS_L_VALID_S	0x01
+#define ICE_RX_FLEX_DESC_TS_L_VALID_M	ICE_RX_FLEX_DESC_TS_L_VALID_S
+#define ICE_RX_FLEX_DESC_TS_L_M		0xFE
+
 #define ICE_RXQ_CTX_SIZE_DWORDS		8
 #define ICE_RXQ_CTX_SZ			(ICE_RXQ_CTX_SIZE_DWORDS * sizeof(u32))
 #define ICE_TX_CMPLTNQ_CTX_SIZE_DWORDS	22
