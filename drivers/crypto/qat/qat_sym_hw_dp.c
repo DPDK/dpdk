@@ -2,7 +2,7 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 
 #include "adf_transport_access_macros.h"
 #include "icp_qat_fw.h"

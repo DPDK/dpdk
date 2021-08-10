@@ -7,7 +7,7 @@
 #include <rte_malloc.h>
 #include <rte_dev.h>
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_reorder.h>
 
 #include "scheduler_pmd_private.h"

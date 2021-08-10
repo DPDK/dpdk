@@ -6,7 +6,7 @@
 
 #include <rte_common.h>
 #include <rte_malloc.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 
 #include "aesni_gcm_pmd_private.h"
 

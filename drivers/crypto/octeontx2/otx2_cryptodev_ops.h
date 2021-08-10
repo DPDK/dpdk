@@ -5,7 +5,7 @@
 #ifndef _OTX2_CRYPTODEV_OPS_H_
 #define _OTX2_CRYPTODEV_OPS_H_
 
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 
 #define OTX2_CPT_MIN_HEADROOM_REQ	24
 #define OTX2_CPT_MIN_TAILROOM_REQ	8

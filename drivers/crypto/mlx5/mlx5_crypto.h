@@ -8,7 +8,7 @@
 #include <stdbool.h>
 
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 
 #include <mlx5_common_utils.h>
 #include <mlx5_common_devx.h>

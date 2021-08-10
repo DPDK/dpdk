@@ -5,7 +5,7 @@
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
 
-#include "rte_cryptodev_pmd.h"
+#include "cryptodev_pmd.h"
 
 /**
  * Parse name from argument

@@ -2,7 +2,7 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 
 #include "qat_logs.h"
 

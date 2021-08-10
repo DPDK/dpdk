@@ -9,7 +9,7 @@
 #include <rte_dev.h>
 #include <rte_errno.h>
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_service_component.h>

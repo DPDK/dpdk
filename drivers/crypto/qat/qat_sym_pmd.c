@@ -7,7 +7,7 @@
 #include <rte_dev.h>
 #include <rte_malloc.h>
 #include <rte_pci.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #ifdef RTE_LIB_SECURITY
 #include <rte_security_driver.h>
 #endif

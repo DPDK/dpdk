@@ -106,6 +106,10 @@ API Changes
   rte_cryptodev_is_valid_dev as it can be used by the application as
   well as PMD to check whether the device is valid or not.
 
+* cryptodev: The rte_cryptodev_pmd.* files are renamed as cryptodev_pmd.*
+  as it is for drivers only and should be private to DPDK, and not
+  installed for app use.
+
 
 ABI Changes
 -----------

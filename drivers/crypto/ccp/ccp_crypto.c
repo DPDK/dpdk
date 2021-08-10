@@ -20,7 +20,7 @@
 #include <rte_memory.h>
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 
 #include "ccp_dev.h"
 #include "ccp_crypto.h"

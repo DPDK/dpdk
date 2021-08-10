@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_string_fns.h>
 
 #include "rte_eth_softnic_internals.h"

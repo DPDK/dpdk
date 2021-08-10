@@ -6,7 +6,7 @@
 #define _OTX2_EVDEV_CRYPTO_ADPTR_RX_H_
 
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_eventdev.h>
 
 #include "cpt_pmd_logs.h"

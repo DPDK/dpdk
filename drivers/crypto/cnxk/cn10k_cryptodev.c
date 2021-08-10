@@ -6,7 +6,7 @@
 #include <rte_common.h>
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_dev.h>
 #include <rte_pci.h>
 

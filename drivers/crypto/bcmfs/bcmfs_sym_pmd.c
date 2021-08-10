@@ -7,7 +7,7 @@
 #include <rte_dev.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 
 #include "bcmfs_device.h"
 #include "bcmfs_logs.h"

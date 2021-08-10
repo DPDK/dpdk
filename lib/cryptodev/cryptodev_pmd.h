@@ -2,8 +2,8 @@
  * Copyright(c) 2015-2020 Intel Corporation.
  */
 
-#ifndef _RTE_CRYPTODEV_PMD_H_
-#define _RTE_CRYPTODEV_PMD_H_
+#ifndef _CRYPTODEV_PMD_H_
+#define _CRYPTODEV_PMD_H_
 
 /** @file
  * RTE Crypto PMD APIs
@@ -80,6 +80,7 @@ struct cryptodev_driver {
  * @return
  *   - The rte_cryptodev structure pointer for the given device ID.
  */
+__rte_internal
 struct rte_cryptodev *
 rte_cryptodev_pmd_get_dev(uint8_t dev_id);
 
@@ -91,6 +92,7 @@ rte_cryptodev_pmd_get_dev(uint8_t dev_id);
  * @return
  *   - The rte_cryptodev structure pointer for the given device ID.
  */
+__rte_internal
 struct rte_cryptodev *
 rte_cryptodev_pmd_get_named_dev(const char *name);
 
@@ -401,6 +403,7 @@ struct rte_cryptodev_ops {
  * @return
  *   - Slot in the rte_dev_devices array for a new device;
  */
+__rte_internal
 struct rte_cryptodev *
 rte_cryptodev_pmd_allocate(const char *name, int socket_id);
 
@@ -414,6 +417,7 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id);
  * @return
  *   - 0 on success, negative on error
  */
+__rte_internal
 extern int
 rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev);
 
@@ -435,6 +439,7 @@ rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev);
  *  - 0 on success
  *  - errno on failure
  */
+__rte_internal
 int
 rte_cryptodev_pmd_parse_input_args(
 		struct rte_cryptodev_pmd_init_params *params,
@@ -454,6 +459,7 @@ rte_cryptodev_pmd_parse_input_args(
  *  - crypto device instance on success
  *  - NULL on creation failure
  */
+__rte_internal
 struct rte_cryptodev *
 rte_cryptodev_pmd_create(const char *name,
 		struct rte_device *device,
@@ -471,6 +477,7 @@ rte_cryptodev_pmd_create(const char *name,
  *  - 0 on success
  *  - errno on failure
  */
+__rte_internal
 int
 rte_cryptodev_pmd_destroy(struct rte_cryptodev *cryptodev);
 
@@ -484,6 +491,7 @@ rte_cryptodev_pmd_destroy(struct rte_cryptodev *cryptodev);
  * @return
  *  void
  */
+__rte_internal
 void rte_cryptodev_pmd_callback_process(struct rte_cryptodev *dev,
 				enum rte_cryptodev_event_type event);
 
@@ -491,6 +499,7 @@ void rte_cryptodev_pmd_callback_process(struct rte_cryptodev *dev,
  * @internal
  * Create unique device name
  */
+__rte_internal
 int
 rte_cryptodev_pmd_create_dev_name(char *name, const char *dev_name_prefix);
 
@@ -506,6 +515,7 @@ rte_cryptodev_pmd_create_dev_name(char *name, const char *dev_name_prefix);
  * @return
  *  The driver type identifier
  */
+__rte_internal
 uint8_t rte_cryptodev_allocate_driver(struct cryptodev_driver *crypto_drv,
 		const struct rte_driver *drv);
 
@@ -555,4 +565,4 @@ set_asym_session_private_data(struct rte_cryptodev_asym_session *sess,
 }
 #endif
 
-#endif /* _RTE_CRYPTODEV_PMD_H_ */
+#endif /* _CRYPTODEV_PMD_H_ */

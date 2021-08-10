@@ -5,7 +5,7 @@
 #ifndef _QAT_SYM_H_
 #define _QAT_SYM_H_
 
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #ifdef RTE_LIB_SECURITY
 #include <rte_net_crc.h>
 #endif

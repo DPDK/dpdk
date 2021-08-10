@@ -4,7 +4,7 @@
 
 #include <unistd.h>
 
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_errno.h>
 #include <rte_ethdev.h>
 #include <rte_event_crypto_adapter.h>

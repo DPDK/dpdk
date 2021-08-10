@@ -5,7 +5,7 @@
 #include <rte_alarm.h>
 #include <rte_bus_pci.h>
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_eventdev.h>
 #include <rte_event_crypto_adapter.h>
 #include <rte_errno.h>

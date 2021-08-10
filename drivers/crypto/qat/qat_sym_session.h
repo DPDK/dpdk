@@ -5,7 +5,7 @@
 #define _QAT_SYM_SESSION_H_
 
 #include <rte_crypto.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #ifdef RTE_LIB_SECURITY
 #include <rte_security.h>
 #endif

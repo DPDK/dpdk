@@ -16,7 +16,7 @@
 #include <rte_udp.h>
 #include <rte_vxlan.h>
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 
 #include "rte_table_action.h"
 

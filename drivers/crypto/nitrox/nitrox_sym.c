@@ -4,7 +4,7 @@
 
 #include <stdbool.h>
 
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_crypto.h>
 
 #include "nitrox_sym.h"

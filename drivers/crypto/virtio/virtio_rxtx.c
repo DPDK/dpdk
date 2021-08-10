@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2018 HUAWEI TECHNOLOGIES CO., LTD.
  */
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 
 #include "virtqueue.h"
 #include "virtio_cryptodev.h"

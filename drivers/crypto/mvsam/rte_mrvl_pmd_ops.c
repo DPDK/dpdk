@@ -8,7 +8,7 @@
 
 #include <rte_common.h>
 #include <rte_malloc.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_security_driver.h>
 
 #include "mrvl_pmd_private.h"

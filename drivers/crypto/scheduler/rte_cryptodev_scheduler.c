@@ -4,7 +4,7 @@
 #include <rte_string_fns.h>
 #include <rte_reorder.h>
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_malloc.h>
 
 #include "rte_cryptodev_scheduler.h"

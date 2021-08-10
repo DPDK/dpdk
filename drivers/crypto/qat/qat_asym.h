@@ -5,7 +5,7 @@
 #ifndef _QAT_ASYM_H_
 #define _QAT_ASYM_H_
 
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_crypto_asym.h>
 #include "icp_qat_fw_pke.h"
 #include "qat_common.h"

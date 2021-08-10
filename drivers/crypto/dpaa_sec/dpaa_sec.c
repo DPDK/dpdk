@@ -12,7 +12,7 @@
 
 #include <rte_byteorder.h>
 #include <rte_common.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
 #ifdef RTE_LIB_SECURITY

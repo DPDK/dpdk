@@ -8,7 +8,7 @@
 
 #include <stdbool.h>
 #include <rte_crypto.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 
 #include "bcmfs_sym_defs.h"
 #include "bcmfs_sym_req.h"

@@ -6,7 +6,7 @@
 #define _CN10K_CRYPTODEV_OPS_H_
 
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 
 extern struct rte_cryptodev_ops cn10k_cpt_ops;
 

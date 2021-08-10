@@ -3,7 +3,7 @@
  */
 
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_errno.h>
 
 #include "roc_cpt.h"

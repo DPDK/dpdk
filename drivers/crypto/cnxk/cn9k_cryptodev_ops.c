@@ -3,7 +3,7 @@
  */
 
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 #include <rte_event_crypto_adapter.h>
 #include <rte_ip.h>
 #include <rte_vect.h>

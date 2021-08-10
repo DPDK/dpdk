@@ -8,7 +8,7 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_ether.h>
-#include <rte_cryptodev_pmd.h>
+#include <cryptodev_pmd.h>
 
 #include "aesni_mb_pmd_private.h"
 
