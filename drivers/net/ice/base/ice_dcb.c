@@ -764,11 +764,10 @@ ice_aq_set_pfc_mode(struct ice_hw *hw, u8 pfc_mode, struct ice_sq_cd *cd)
 	if (status)
 		return status;
 
-	/* The spec isn't clear about whether the FW will return an error code
-	 * if the PFC mode requested by the driver was not set. The spec just
-	 * says that the FW will write the PFC mode set back into cmd->pfc_mode,
-	 * so after the AQ has been executed, check if cmd->pfc_mode is what was
-	 * requested.
+	/* FW will write the PFC mode set back into cmd->pfc_mode, but if DCB is
+	 * disabled, FW will write back 0 to cmd->pfc_mode. After the AQ has
+	 * been executed, check if cmd->pfc_mode is what was requested. If not,
+	 * return an error.
 	 */
 	if (cmd->pfc_mode != pfc_mode)
 		return ICE_ERR_NOT_SUPPORTED;
