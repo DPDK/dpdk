@@ -4730,7 +4730,7 @@ ice_add_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
 			if (ice_find_rule_entry(rule_head,
 						&m_list_itr->fltr_info)) {
 				ice_release_lock(rule_lock);
-				return ICE_ERR_ALREADY_EXISTS;
+				continue;
 			}
 			ice_release_lock(rule_lock);
 			num_unicast++;

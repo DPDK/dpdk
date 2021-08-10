@@ -5069,7 +5069,7 @@ static bool ice_is_main_vsi(struct ice_hw *hw, u16 vsi_handle)
  *
  * Initializes required config data for VSI, FD, ACL, and RSS before replay.
  */
-static enum ice_status
+enum ice_status
 ice_replay_pre_init(struct ice_hw *hw, struct ice_switch_info *sw)
 {
 	enum ice_status status;
