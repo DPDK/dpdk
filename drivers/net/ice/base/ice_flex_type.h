@@ -804,8 +804,8 @@ struct ice_ptg_ptype {
 	u8 ptg;
 };
 
-#define ICE_MAX_TCAM_PER_PROFILE	32
-#define ICE_MAX_PTG_PER_PROFILE		32
+#define ICE_MAX_TCAM_PER_PROFILE	64
+#define ICE_MAX_PTG_PER_PROFILE		64
 
 struct ice_prof_map {
 	struct LIST_ENTRY_TYPE list;
