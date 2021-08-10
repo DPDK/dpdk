@@ -15,7 +15,6 @@
 
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
 #include <rte_lcore.h>
 #include <rte_ipsec.h>
 #include <rte_random.h>

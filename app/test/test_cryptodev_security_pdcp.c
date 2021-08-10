@@ -17,7 +17,6 @@
 
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
 #include <rte_security.h>
 
 #include <rte_lcore.h>

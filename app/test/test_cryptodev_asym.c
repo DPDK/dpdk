@@ -12,7 +12,6 @@
 #include <rte_pause.h>
 
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
 #include <rte_crypto.h>
 
 #include "test_cryptodev.h"

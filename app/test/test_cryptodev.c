@@ -16,7 +16,6 @@
 
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
-#include <rte_cryptodev_pmd.h>
 #include <rte_string_fns.h>
 
 #ifdef RTE_CRYPTO_SCHEDULER
