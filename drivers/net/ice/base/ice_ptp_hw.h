@@ -218,6 +218,7 @@ enum ice_status
 ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass);
 enum ice_status ice_phy_cfg_tx_offset_e822(struct ice_hw *hw, u8 port);
 enum ice_status ice_phy_cfg_rx_offset_e822(struct ice_hw *hw, u8 port);
+enum ice_status ice_phy_exit_bypass_e822(struct ice_hw *hw, u8 port);
 
 /* E810 family functions */
 enum ice_status ice_ptp_init_phy_e810(struct ice_hw *hw);

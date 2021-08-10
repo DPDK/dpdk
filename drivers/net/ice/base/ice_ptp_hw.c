@@ -2572,6 +2572,90 @@ ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass)
 	return ICE_SUCCESS;
 }
 
+/**
+ * ice_phy_exit_bypass_e822 - Exit bypass mode, after vernier calculations
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to configure
+ *
+ * After hardware finishes vernier calculations for the Tx and Rx offset, this
+ * function can be used to exit bypass mode by updating the total Tx and Rx
+ * offsets, and then disabling bypass. This will enable hardware to include
+ * the more precise offset calibrations, increasing precision of the generated
+ * timestamps.
+ *
+ * This cannot be done until hardware has measured the offsets, which requires
+ * waiting until at least one packet has been sent and received by the device.
+ */
+enum ice_status ice_phy_exit_bypass_e822(struct ice_hw *hw, u8 port)
+{
+	enum ice_status status;
+	u32 val;
+
+	status = ice_read_phy_reg_e822(hw, port, P_REG_TX_OV_STATUS, &val);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read TX_OV_STATUS for port %u, status %d\n",
+			  port, status);
+		return status;
+	}
+
+	if (!(val & P_REG_TX_OV_STATUS_OV_M)) {
+		ice_debug(hw, ICE_DBG_PTP, "Tx offset is not yet valid for port %u\n",
+			  port);
+		return ICE_ERR_NOT_READY;
+	}
+
+	status = ice_read_phy_reg_e822(hw, port, P_REG_RX_OV_STATUS, &val);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read RX_OV_STATUS for port %u, status %d\n",
+			  port, status);
+		return status;
+	}
+
+	if (!(val & P_REG_TX_OV_STATUS_OV_M)) {
+		ice_debug(hw, ICE_DBG_PTP, "Rx offset is not yet valid for port %u\n",
+			  port);
+		return ICE_ERR_NOT_READY;
+	}
+
+	status = ice_phy_cfg_tx_offset_e822(hw, port);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to program total Tx offset for port %u, status %d\n",
+			  port, status);
+		return status;
+	}
+
+	status = ice_phy_cfg_rx_offset_e822(hw, port);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to program total Rx offset for port %u, status %d\n",
+			  port, status);
+		return status;
+	}
+
+	/* Exit bypass mode now that the offset has been updated */
+	status = ice_read_phy_reg_e822(hw, port, P_REG_PS, &val);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read P_REG_PS for port %u, status %d\n",
+			  port, status);
+		return status;
+	}
+
+	if (!(val & P_REG_PS_BYPASS_MODE_M))
+		ice_debug(hw, ICE_DBG_PTP, "Port %u not in bypass mode\n",
+			  port);
+
+	val &= ~P_REG_PS_BYPASS_MODE_M;
+	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to disable bypass for port %u, status %d\n",
+			  port, status);
+		return status;
+	}
+
+	ice_info(hw, "Exiting bypass mode on PHY port %u\n", port);
+
+	return ICE_SUCCESS;
+}
+
 /* E810 functions
  *
  * The following functions operate on the E810 series devices which use
