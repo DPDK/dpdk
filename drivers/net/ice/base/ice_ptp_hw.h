@@ -124,6 +124,31 @@ enum ice_status
 ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq clk_freq,
 		     enum ice_clk_src clk_src);
 
+/**
+ * ice_e822_time_ref - Get the current TIME_REF from capabilities
+ * @hw: pointer to the HW structure
+ *
+ * Returns the current TIME_REF from the capabilities structure.
+ */
+static inline enum ice_time_ref_freq ice_e822_time_ref(struct ice_hw *hw)
+{
+	return hw->func_caps.ts_func_info.time_ref;
+}
+
+/**
+ * ice_set_e822_time_ref - Set new TIME_REF
+ * @hw: pointer to the HW structure
+ * @time_ref: new TIME_REF to set
+ *
+ * Update the TIME_REF in the capabilities structure in response to some
+ * change, such as an update to the CGU registers.
+ */
+static inline void
+ice_set_e822_time_ref(struct ice_hw *hw, enum ice_time_ref_freq time_ref)
+{
+	hw->func_caps.ts_func_info.time_ref = time_ref;
+}
+
 static inline u64 ice_e822_pll_freq(enum ice_time_ref_freq time_ref)
 {
 	return e822_time_ref[time_ref].pll_freq;
