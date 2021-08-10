@@ -201,6 +201,18 @@ bool ice_is_e810(struct ice_hw *hw)
 }
 
 /**
+ * ice_is_e810t
+ * @hw: pointer to the hardware structure
+ *
+ * returns true if the device is E810T based, false if not.
+ */
+bool ice_is_e810t(struct ice_hw *hw)
+{
+	return (hw->device_id == ICE_DEV_ID_E810C_SFP &&
+		hw->subsystem_device_id == ICE_SUBDEV_ID_E810T);
+}
+
+/**
  * ice_clear_pf_cfg - Clear PF configuration
  * @hw: pointer to the hardware structure
  *
