@@ -4681,7 +4681,7 @@ ice_aq_get_res_descs(struct ice_hw *hw, u16 num_entries,
  * @sw: pointer to switch info struct for which function add rule
  * @lport: logic port number on which function add rule
  *
- * IMPORTANT: When the ucast_shared flag is set to false and m_list has
+ * IMPORTANT: When the umac_shared flag is set to false and m_list has
  * multiple unicast addresses, the function assumes that all the
  * addresses are unique in a given add_mac call. It doesn't
  * check for duplicates in this case, removing duplicates from a given
@@ -4724,7 +4724,7 @@ ice_add_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
 		if (m_list_itr->fltr_info.lkup_type != ICE_SW_LKUP_MAC ||
 		    IS_ZERO_ETHER_ADDR(add))
 			return ICE_ERR_PARAM;
-		if (IS_UNICAST_ETHER_ADDR(add) && !hw->ucast_shared) {
+		if (IS_UNICAST_ETHER_ADDR(add) && !hw->umac_shared) {
 			/* Don't overwrite the unicast address */
 			ice_acquire_lock(rule_lock);
 			if (ice_find_rule_entry(rule_head,
@@ -4735,7 +4735,7 @@ ice_add_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
 			ice_release_lock(rule_lock);
 			num_unicast++;
 		} else if (IS_MULTICAST_ETHER_ADDR(add) ||
-			   (IS_UNICAST_ETHER_ADDR(add) && hw->ucast_shared)) {
+			   (IS_UNICAST_ETHER_ADDR(add) && hw->umac_shared)) {
 			m_list_itr->status =
 				ice_add_rule_internal(hw, recp_list, lport,
 						      m_list_itr);
@@ -5424,7 +5424,7 @@ ice_remove_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
 
 		list_itr->fltr_info.fwd_id.hw_vsi_id =
 					ice_get_hw_vsi_num(hw, vsi_handle);
-		if (IS_UNICAST_ETHER_ADDR(add) && !hw->ucast_shared) {
+		if (IS_UNICAST_ETHER_ADDR(add) && !hw->umac_shared) {
 			/* Don't remove the unicast address that belongs to
 			 * another VSI on the switch, since it is not being
 			 * shared...
