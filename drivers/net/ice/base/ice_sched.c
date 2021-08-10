@@ -2945,6 +2945,9 @@ ice_sched_update_elem(struct ice_hw *hw, struct ice_sched_node *node,
 	u16 num_elems = 1;
 
 	buf = *info;
+	/* For TC nodes, CIR config is not supported */
+	if (node->info.data.elem_type == ICE_AQC_ELEM_TYPE_TC)
+		buf.data.valid_sections &= ~ICE_AQC_ELEM_VALID_CIR;
 	/* Parent TEID is reserved field in this aq call */
 	buf.parent_teid = 0;
 	/* Element type is reserved field in this aq call */
