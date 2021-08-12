@@ -165,18 +165,6 @@ configure_fdir_flags(const struct rte_fdir_conf *conf,
 	return 0;
 }
 
-static inline uint32_t
-reverse_fdir_bmks(uint16_t hi_dword, uint16_t lo_dword)
-{
-	uint32_t mask = hi_dword << 16;
-
-	mask |= lo_dword;
-	mask = ((mask & 0x55555555) << 1) | ((mask & 0xAAAAAAAA) >> 1);
-	mask = ((mask & 0x33333333) << 2) | ((mask & 0xCCCCCCCC) >> 2);
-	mask = ((mask & 0x0F0F0F0F) << 4) | ((mask & 0xF0F0F0F0) >> 4);
-	return ((mask & 0x00FF00FF) << 8) | ((mask & 0xFF00FF00) >> 8);
-}
-
 int
 txgbe_fdir_set_input_mask(struct rte_eth_dev *dev)
 {
@@ -213,9 +201,9 @@ txgbe_fdir_set_input_mask(struct rte_eth_dev *dev)
 	/* TBD: don't support encapsulation yet */
 	wr32(hw, TXGBE_FDIRMSK, fdirm);
 
-	/* store the TCP/UDP port masks, bit reversed from port layout */
-	fdirtcpm = reverse_fdir_bmks(rte_be_to_cpu_16(info->mask.dst_port_mask),
-			rte_be_to_cpu_16(info->mask.src_port_mask));
+	/* store the TCP/UDP port masks */
+	fdirtcpm = rte_be_to_cpu_16(info->mask.dst_port_mask) << 16;
+	fdirtcpm |= rte_be_to_cpu_16(info->mask.src_port_mask);
 
 	/* write all the same so that UDP, TCP and SCTP use the same mask
 	 * (little-endian)
