@@ -1828,8 +1828,10 @@ error_one_case:
 
 	fips_test_clear();
 
-	if (env.digest)
+	if (env.digest) {
 		rte_free(env.digest);
+		env.digest = NULL;
+	}
 	if (env.mbuf)
 		rte_pktmbuf_free(env.mbuf);
 
