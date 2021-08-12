@@ -8,7 +8,7 @@
 #include "txgbe_mng.h"
 #include "txgbe_phy.h"
 
-static void txgbe_i2c_start(struct txgbe_hw *hw);
+static void txgbe_i2c_start(struct txgbe_hw *hw, u8 dev_addr);
 static void txgbe_i2c_stop(struct txgbe_hw *hw);
 static s32 txgbe_handle_bp_flow(u32 link_mode, struct txgbe_hw *hw);
 static void txgbe_get_bp_ability(struct txgbe_backplane_ability *ability,
@@ -1248,11 +1248,9 @@ s32 txgbe_write_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
 s32 txgbe_read_i2c_byte_unlocked(struct txgbe_hw *hw, u8 byte_offset,
 					   u8 dev_addr, u8 *data)
 {
-	UNREFERENCED_PARAMETER(dev_addr);
-
 	DEBUGFUNC("txgbe_read_i2c_byte");
 
-	txgbe_i2c_start(hw);
+	txgbe_i2c_start(hw, dev_addr);
 
 	/* wait tx empty */
 	if (!po32m(hw, TXGBE_I2CICR, TXGBE_I2CICR_TXEMPTY,
@@ -1314,11 +1312,9 @@ s32 txgbe_read_i2c_byte(struct txgbe_hw *hw, u8 byte_offset,
 s32 txgbe_write_i2c_byte_unlocked(struct txgbe_hw *hw, u8 byte_offset,
 					    u8 dev_addr, u8 data)
 {
-	UNREFERENCED_PARAMETER(dev_addr);
-
 	DEBUGFUNC("txgbe_write_i2c_byte");
 
-	txgbe_i2c_start(hw);
+	txgbe_i2c_start(hw, dev_addr);
 
 	/* wait tx empty */
 	if (!po32m(hw, TXGBE_I2CICR, TXGBE_I2CICR_TXEMPTY,
@@ -1369,7 +1365,7 @@ s32 txgbe_write_i2c_byte(struct txgbe_hw *hw, u8 byte_offset,
  *
  *  Sets I2C start condition (High -> Low on SDA while SCL is High)
  **/
-static void txgbe_i2c_start(struct txgbe_hw *hw)
+static void txgbe_i2c_start(struct txgbe_hw *hw, u8 dev_addr)
 {
 	DEBUGFUNC("txgbe_i2c_start");
 
@@ -1380,9 +1376,9 @@ static void txgbe_i2c_start(struct txgbe_hw *hw)
 		TXGBE_I2CCON_SPEED(1) |
 		TXGBE_I2CCON_RESTART |
 		TXGBE_I2CCON_SDIA));
-	wr32(hw, TXGBE_I2CTAR, TXGBE_I2C_SLAVEADDR);
-	wr32(hw, TXGBE_I2CSSSCLHCNT, 600);
-	wr32(hw, TXGBE_I2CSSSCLLCNT, 600);
+	wr32(hw, TXGBE_I2CTAR, dev_addr >> 1);
+	wr32(hw, TXGBE_I2CSSSCLHCNT, 200);
+	wr32(hw, TXGBE_I2CSSSCLLCNT, 200);
 	wr32(hw, TXGBE_I2CRXTL, 0); /* 1byte for rx full signal */
 	wr32(hw, TXGBE_I2CTXTL, 4);
 	wr32(hw, TXGBE_I2CSCLTMOUT, 0xFFFFFF);
