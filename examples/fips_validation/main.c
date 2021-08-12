@@ -1632,7 +1632,6 @@ fips_mct_sha_test(void)
 	int ret;
 	uint32_t i, j;
 
-	val.val = rte_malloc(NULL, (MAX_DIGEST_SIZE*SHA_MD_BLOCK), 0);
 	for (i = 0; i < SHA_MD_BLOCK; i++)
 		md[i].val = rte_malloc(NULL, (MAX_DIGEST_SIZE*2), 0);
 
