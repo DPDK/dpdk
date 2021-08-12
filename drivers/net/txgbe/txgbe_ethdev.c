@@ -1664,6 +1664,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 		return -1;
 	hw->mac.start_hw(hw);
 	hw->mac.get_link_status = true;
+	hw->dev_start = true;
 
 	/* configure PF module if SRIOV enabled */
 	txgbe_pf_host_configure(dev);
@@ -1933,6 +1934,7 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 
 	hw->adapter_stopped = true;
 	dev->data->dev_started = 0;
+	hw->dev_start = false;
 
 	return 0;
 }
@@ -2734,6 +2736,8 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 			rte_eal_alarm_set(10,
 				txgbe_dev_setup_link_alarm_handler, dev);
 		}
+		return rte_eth_linkstatus_set(dev, &link);
+	} else if (!hw->dev_start) {
 		return rte_eth_linkstatus_set(dev, &link);
 	}
 

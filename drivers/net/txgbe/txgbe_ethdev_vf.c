@@ -628,6 +628,7 @@ txgbevf_dev_start(struct rte_eth_dev *dev)
 		return err;
 	}
 	hw->mac.get_link_status = true;
+	hw->dev_start = true;
 
 	/* negotiate mailbox API version to use with the PF. */
 	txgbevf_negotiate_api(hw);
@@ -749,6 +750,7 @@ txgbevf_dev_stop(struct rte_eth_dev *dev)
 	}
 
 	adapter->rss_reta_updated = 0;
+	hw->dev_start = false;
 
 	return 0;
 }
