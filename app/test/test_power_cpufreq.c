@@ -55,7 +55,9 @@ check_cur_freq(unsigned int lcore_id, uint32_t idx, bool turbo)
 	FILE *f;
 	char fullpath[PATH_MAX];
 	char buf[BUFSIZ];
+	enum power_management_env env;
 	uint32_t cur_freq;
+	uint32_t freq_conv;
 	int ret = -1;
 	int i;
 
@@ -80,15 +82,20 @@ check_cur_freq(unsigned int lcore_id, uint32_t idx, bool turbo)
 			goto fail_all;
 
 		cur_freq = strtoul(buf, NULL, TEST_POWER_CONVERT_TO_DECIMAL);
+		freq_conv = cur_freq;
 
-		/* convert the frequency to nearest 100000 value
-		 * Ex: if cur_freq=1396789 then freq_conv=1400000
-		 * Ex: if cur_freq=800030 then freq_conv=800000
-		 */
-		unsigned int freq_conv = 0;
-		freq_conv = (cur_freq + TEST_FREQ_ROUNDING_DELTA)
-					/ TEST_ROUND_FREQ_TO_N_100000;
-		freq_conv = freq_conv * TEST_ROUND_FREQ_TO_N_100000;
+		env = rte_power_get_env();
+
+		if (env == PM_ENV_PSTATE_CPUFREQ) {
+			/* convert the frequency to nearest 100000 value
+			 * Ex: if cur_freq=1396789 then freq_conv=1400000
+			 * Ex: if cur_freq=800030 then freq_conv=800000
+			 */
+			unsigned int freq_conv = 0;
+			freq_conv = (cur_freq + TEST_FREQ_ROUNDING_DELTA)
+						/ TEST_ROUND_FREQ_TO_N_100000;
+			freq_conv = freq_conv * TEST_ROUND_FREQ_TO_N_100000;
+		}
 
 		if (turbo)
 			ret = (freqs[idx] <= freq_conv ? 0 : -1);
