@@ -87,6 +87,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	/* Receive a burst of packets and discard them. */
 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
 				 nb_pkt_per_burst);
+	inc_rx_burst_stats(fs, nb_rx);
 	fs->rx_packets += nb_rx;
 
 	for (i = 0; i < nb_rx; i++)
@@ -186,6 +187,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 		while (next_flow < 0)
 			next_flow += cfg_n_flows;
 
+		fs->fwd_dropped += nb_pkt - nb_tx;
 		do {
 			rte_pktmbuf_free(pkts_burst[nb_tx]);
 		} while (++nb_tx < nb_pkt);
