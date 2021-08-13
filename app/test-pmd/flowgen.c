@@ -53,28 +53,6 @@ static struct rte_ether_addr cfg_ether_dst =
 
 #define IP_DEFTTL  64   /* from RFC 1340. */
 
-/* Use this type to inform GCC that ip_sum violates aliasing rules. */
-typedef unaligned_uint16_t alias_int16_t __attribute__((__may_alias__));
-
-static inline uint16_t
-ip_sum(const alias_int16_t *hdr, int hdr_len)
-{
-	uint32_t sum = 0;
-
-	while (hdr_len > 1)
-	{
-		sum += *hdr++;
-		if (sum & 0x80000000)
-			sum = (sum & 0xFFFF) + (sum >> 16);
-		hdr_len -= 2;
-	}
-
-	while (sum >> 16)
-		sum = (sum & 0xFFFF) + (sum >> 16);
-
-	return ~sum;
-}
-
 /*
  * Multi-flow generation mode.
  *
@@ -160,8 +138,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 								   next_flow);
 			ip_hdr->total_length	= RTE_CPU_TO_BE_16(pkt_size -
 								   sizeof(*eth_hdr));
-			ip_hdr->hdr_checksum	= ip_sum((const alias_int16_t *)ip_hdr,
-							 sizeof(*ip_hdr));
+			ip_hdr->hdr_checksum	= rte_ipv4_cksum(ip_hdr);
 
 			/* Initialize UDP header. */
 			udp_hdr = (struct rte_udp_hdr *)(ip_hdr + 1);
