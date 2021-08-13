@@ -651,8 +651,10 @@ ice_fdir_teardown(struct ice_pf *pf)
 
 	ice_tx_queue_release(pf->fdir.txq);
 	pf->fdir.txq = NULL;
+	rte_eth_dma_zone_free(eth_dev, "fdir_tx_ring", ICE_FDIR_QUEUE_ID);
 	ice_rx_queue_release(pf->fdir.rxq);
 	pf->fdir.rxq = NULL;
+	rte_eth_dma_zone_free(eth_dev, "fdir_rx_ring", ICE_FDIR_QUEUE_ID);
 	ice_fdir_prof_rm_all(pf);
 	ice_fdir_prof_free(hw);
 	ice_release_vsi(vsi);
