@@ -192,12 +192,12 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	/*
 	 * Retry if necessary
 	 */
-	if (unlikely(nb_tx < nb_rx) && fs->retry_enabled) {
+	if (unlikely(nb_tx < nb_pkt) && fs->retry_enabled) {
 		retry = 0;
-		while (nb_tx < nb_rx && retry++ < burst_tx_retry_num) {
+		while (nb_tx < nb_pkt && retry++ < burst_tx_retry_num) {
 			rte_delay_us(burst_tx_delay_time);
 			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-					&pkts_burst[nb_tx], nb_rx - nb_tx);
+					&pkts_burst[nb_tx], nb_pkt - nb_tx);
 		}
 	}
 	fs->tx_packets += nb_tx;
