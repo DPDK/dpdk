@@ -2258,20 +2258,26 @@ ice_dev_init(struct rte_eth_dev *dev)
 		ret = ice_flow_init(ad);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "Failed to initialize flow");
-			return ret;
+			goto err_flow_init;
 		}
 	}
 
 	ret = ice_reset_fxp_resource(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to reset fxp resource");
-		return ret;
+		goto err_flow_init;
 	}
 
 	pf->supported_rxdid = ice_get_supported_rxdid(hw);
 
 	return 0;
 
+err_flow_init:
+	ice_flow_uninit(ad);
+	rte_intr_disable(intr_handle);
+	ice_pf_disable_irq0(hw);
+	rte_intr_callback_unregister(intr_handle,
+				     ice_interrupt_handler, dev);
 err_pf_setup:
 	ice_res_pool_destroy(&pf->msix_pool);
 err_msix_pool_init:
