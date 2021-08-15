@@ -68,6 +68,14 @@ bphy_rawdev_selftest(uint16_t dev_id)
 		goto err_desc;
 	}
 
+	ret = rte_pmd_bphy_npa_pf_func_get(dev_id);
+	if (ret == 0)
+		plt_warn("NPA pf_func is invalid");
+
+	ret = rte_pmd_bphy_sso_pf_func_get(dev_id);
+	if (ret == 0)
+		plt_warn("SSO pf_func is invalid");
+
 	ret = rte_pmd_bphy_intr_init(dev_id);
 	if (ret) {
 		plt_err("intr init failed");
@@ -190,6 +198,14 @@ cnxk_bphy_irq_enqueue_bufs(struct rte_rawdev *dev,
 		break;
 	case CNXK_BPHY_IRQ_MSG_TYPE_MEM_GET:
 		bphy_dev->queues[queue].rsp = &bphy_dev->mem;
+		break;
+	case CNXK_BPHY_MSG_TYPE_NPA_PF_FUNC:
+		bphy_dev->queues[queue].rsp =
+			(void *)(size_t)roc_bphy_npa_pf_func_get();
+		break;
+	case CNXK_BPHY_MSG_TYPE_SSO_PF_FUNC:
+		bphy_dev->queues[queue].rsp =
+			(void *)(size_t)roc_bphy_sso_pf_func_get();
 		break;
 	default:
 		ret = -EINVAL;

@@ -114,6 +114,8 @@ enum cnxk_bphy_irq_msg_type {
 	CNXK_BPHY_IRQ_MSG_TYPE_REGISTER,
 	CNXK_BPHY_IRQ_MSG_TYPE_UNREGISTER,
 	CNXK_BPHY_IRQ_MSG_TYPE_MEM_GET,
+	CNXK_BPHY_MSG_TYPE_NPA_PF_FUNC,
+	CNXK_BPHY_MSG_TYPE_SSO_PF_FUNC,
 };
 
 struct cnxk_bphy_irq_msg {
@@ -230,6 +232,54 @@ rte_pmd_bphy_intr_mem_get(uint16_t dev_id)
 		return NULL;
 
 	return buf.buf_addr;
+}
+
+static __rte_always_inline uint16_t
+rte_pmd_bphy_npa_pf_func_get(uint16_t dev_id)
+{
+	struct cnxk_bphy_irq_msg msg = {
+		.type = CNXK_BPHY_MSG_TYPE_NPA_PF_FUNC,
+	};
+	struct rte_rawdev_buf *bufs[1];
+	struct rte_rawdev_buf buf;
+	int ret;
+
+	buf.buf_addr = &msg;
+	bufs[0] = &buf;
+
+	ret = rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+	if (ret)
+		return 0;
+
+	ret = rte_rawdev_dequeue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+	if (ret)
+		return 0;
+
+	return (uint16_t)(size_t)buf.buf_addr;
+}
+
+static __rte_always_inline uint16_t
+rte_pmd_bphy_sso_pf_func_get(uint16_t dev_id)
+{
+	struct cnxk_bphy_irq_msg msg = {
+		.type = CNXK_BPHY_MSG_TYPE_SSO_PF_FUNC,
+	};
+	struct rte_rawdev_buf *bufs[1];
+	struct rte_rawdev_buf buf;
+	int ret;
+
+	buf.buf_addr = &msg;
+	bufs[0] = &buf;
+
+	ret = rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+	if (ret)
+		return 0;
+
+	ret = rte_rawdev_dequeue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+	if (ret)
+		return 0;
+
+	return (uint16_t)(size_t)buf.buf_addr;
 }
 
 #endif /* _CNXK_BPHY_H_ */
