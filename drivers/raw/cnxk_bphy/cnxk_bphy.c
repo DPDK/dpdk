@@ -307,13 +307,12 @@ bphy_rawdev_remove(struct rte_pci_device *pci_dev)
 		return -EINVAL;
 	}
 
+	bphy_rawdev_get_name(name, pci_dev);
 	rawdev = rte_rawdev_pmd_get_named_dev(name);
 	if (rawdev == NULL) {
 		plt_err("invalid device name (%s)", name);
 		return -EINVAL;
 	}
-
-	bphy_rawdev_get_name(name, pci_dev);
 
 	return rte_rawdev_pmd_release(rawdev);
 }
