@@ -38,3 +38,15 @@ roc_bphy_dev_fini(struct roc_bphy *roc_bphy)
 
 	return 0;
 }
+
+uint16_t
+roc_bphy_npa_pf_func_get(void)
+{
+	return idev_npa_pffunc_get();
+}
+
+uint16_t
+roc_bphy_sso_pf_func_get(void)
+{
+	return idev_sso_pffunc_get();
+}

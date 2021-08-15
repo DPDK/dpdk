@@ -14,5 +14,7 @@ struct roc_bphy {
 
 int __roc_api roc_bphy_dev_init(struct roc_bphy *roc_bphy);
 int __roc_api roc_bphy_dev_fini(struct roc_bphy *roc_bphy);
+__roc_api uint16_t roc_bphy_npa_pf_func_get(void);
+__roc_api uint16_t roc_bphy_sso_pf_func_get(void);
 
 #endif /* _ROC_BPHY_ */
