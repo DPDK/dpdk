@@ -72,7 +72,7 @@ void *helloworld_pthread(void *arg)
 	print_count++;
 
 	/* yield thread to give opportunity for lock contention */
-	pthread_yield();
+	sched_yield();
 
 	/* retrieve arg from TLS */
 	uint64_t thread_no = (uint64_t) pthread_getspecific(key);
