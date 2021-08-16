@@ -84,6 +84,8 @@ struct ionic_rx_qcq {
 	struct rte_mempool *mb_seg_pool;
 	uint64_t rearm_data;
 	uint64_t rearm_seg_data;
+	uint64_t last_wdog_cycles;
+	uint64_t wdog_ms;
 	uint16_t frame_size;	/* Based on configured MTU */
 	uint16_t hdr_seg_size;	/* Length of first segment of RX chain */
 	uint16_t seg_size;	/* Length of all subsequent segments */
@@ -98,6 +100,7 @@ struct ionic_tx_qcq {
 	struct ionic_qcq qcq;
 
 	/* cacheline2 */
+	uint64_t last_wdog_cycles;
 	uint16_t num_segs_fw;	/* # segs supported by current FW */
 	uint16_t free_thresh;
 	uint16_t flags;
