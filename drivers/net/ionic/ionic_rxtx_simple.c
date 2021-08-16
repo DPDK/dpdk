@@ -40,7 +40,7 @@
 #include <rte_net.h>
 #include <rte_prefetch.h>
 
-#include "ionic_logs.h"
+#include "ionic.h"
 #include "ionic_ethdev.h"
 #include "ionic_lif.h"
 #include "ionic_rxtx.h"

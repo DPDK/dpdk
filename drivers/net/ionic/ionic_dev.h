@@ -7,9 +7,9 @@
 
 #include <stdbool.h>
 
-#include "ionic_osdep.h"
+#include "ionic_common.h"
 #include "ionic_if.h"
-#include "ionic_regs.h"
+#include "ionic_common_regs.h"
 
 #define VLAN_TAG_SIZE			4
 
@@ -22,20 +22,7 @@
 #define IONIC_DEF_TXRX_DESC		4096
 #define IONIC_DEF_TXRX_BURST		32
 
-#define IONIC_LIFS_MAX			1024
-
-#define IONIC_DEVCMD_TIMEOUT		5	/* devcmd_timeout */
-#define IONIC_DEVCMD_CHECK_PERIOD_US	10	/* devcmd status chk period */
-
-#define	IONIC_ALIGN             4096
-
 struct ionic_adapter;
-
-struct ionic_dev_bar {
-	void __iomem *vaddr;
-	rte_iova_t bus_addr;
-	unsigned long len;
-};
 
 static inline void ionic_struct_size_checks(void)
 {
@@ -154,14 +141,6 @@ struct ionic_queue {
 	uint32_t hw_index;
 	rte_iova_t base_pa;
 	rte_iova_t sg_base_pa;
-};
-
-#define IONIC_INTR_NONE		(-1)
-
-struct ionic_intr_info {
-	int index;
-	uint32_t vector;
-	struct ionic_intr __iomem *ctrl;
 };
 
 struct ionic_cq {

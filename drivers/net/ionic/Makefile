@@ -13,12 +13,14 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -I$(RTE_SDK)/drivers/common/ionic
 
 EXPORT_MAP := rte_pmd_ionic_version.map
 
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs -lrte_hash
 LDLIBS += -lrte_bus_pci -lrte_bus_vdev
+LDLIBS += -lrte_common_ionic
 
 #
 # all source are stored in SRCS-y

@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
 # Copyright(c) 2019 Pensando
 
-if is_windows
-    build = false
-    reason = 'not supported on Windows'
-    subdir_done()
-endif
+allow_experimental_apis = true
+
+deps += ['hash']
+deps += ['common_ionic']
+
+allow_experimental_apis = true
 
 sources = files(
 	'ionic_mac_api.c',
@@ -20,3 +21,7 @@ sources = files(
 	'ionic_lif.c',
 	'ionic_main.c'
 )
+
+includes += include_directories('../../common/ionic')
+
+# TODO cflags += ['-DIONIC_EMBEDDED']

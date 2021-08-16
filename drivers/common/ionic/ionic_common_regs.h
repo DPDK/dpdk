@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright(c) 2018-2019 Pensando Systems, Inc. All rights reserved.
+ * Copyright(c) 2018-2021 Pensando Systems, Inc. All rights reserved.
  */
 
-#ifndef _IONIC_REGS_H_
-#define _IONIC_REGS_H_
+#ifndef _IONIC_COMMON_REGS_H_
+#define _IONIC_COMMON_REGS_H_
 
 /** struct ionic_intr - interrupt control register set.
  * @coal_init:			coalesce timer initial value.
@@ -46,6 +46,19 @@ enum ionic_intr_credits_bits {
 					   IONIC_INTR_CRED_RESET_COALESCE),
 };
 
+#define IONIC_INTR_NONE			(-1)
+#define IONIC_INTR_CTRL_REGS_MAX	2048
+
+struct ionic_intr_info {
+	int index;
+        uint32_t vector;
+        struct ionic_intr __iomem *ctrl;
+};
+
+struct ionic_intr_status {
+	uint32_t status[2];
+};
+
 static inline void
 ionic_intr_coal_init(struct ionic_intr __iomem *intr_ctrl,
 		int intr_idx, uint32_t coal)
@@ -65,7 +78,6 @@ ionic_intr_credits(struct ionic_intr __iomem *intr_ctrl,
 		int intr_idx, uint32_t cred, uint32_t flags)
 {
 	if (cred > IONIC_INTR_CRED_COUNT) {
-		IONIC_WARN_ON(cred > IONIC_INTR_CRED_COUNT);
 		cred = ioread32(&intr_ctrl[intr_idx].credits);
 		cred &= IONIC_INTR_CRED_COUNT_SIGNED;
 	}
@@ -130,4 +142,37 @@ enum ionic_dbell_bits {
 	IONIC_DBELL_INDEX_MASK		= 0xffff,
 };
 
-#endif /* _IONIC_REGS_H_ */
+#define IONIC_BARS_MIN				2
+#define IONIC_BARS_MAX				6
+#define IONIC_PCI_BAR_DBELL			1
+
+/* BAR0 */
+#define IONIC_BAR0_SIZE				0x8000
+
+#define IONIC_BAR0_DEV_INFO_REGS_OFFSET		0x0000
+#define IONIC_BAR0_DEV_CMD_REGS_OFFSET		0x0800
+#define IONIC_BAR0_DEV_CMD_DATA_REGS_OFFSET	0x0c00
+#define IONIC_BAR0_INTR_STATUS_OFFSET		0x1000
+#define IONIC_BAR0_INTR_CTRL_OFFSET		0x2000
+#define IONIC_DEV_CMD_DONE			0x00000001
+
+/**
+ * struct ionic_doorbell - Doorbell register layout
+ * @p_index: Producer index
+ * @ring:    Selects the specific ring of the queue to update
+ *           Type-specific meaning:
+ *              ring=0: Default producer/consumer queue
+ *              ring=1: (CQ, EQ) Re-Arm queue.  CQs send events to EQs
+ *              when armed.  EQs send interrupts when armed.
+ * @qid_lo:  Queue destination for the producer index and flags (low bits)
+ * @qid_hi:  Queue destination for the producer index and flags (high bits)
+ */
+struct ionic_doorbell {
+	__le16 p_index;
+	u8     ring;
+	u8     qid_lo;
+	__le16 qid_hi;
+	u16    rsvd2;
+};
+
+#endif /* _IONIC_COMMON_REGS_H_ */
