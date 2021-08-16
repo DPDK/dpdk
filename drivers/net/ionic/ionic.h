@@ -10,9 +10,10 @@
 
 #include <rte_bus_pci.h>
 
+#include "ionic_common.h"
 #include "ionic_dev.h"
 #include "ionic_if.h"
-#include "ionic_osdep.h"
+#include "ionic_logs.h"
 
 #define IONIC_DRV_NAME			"ionic"
 #define IONIC_DRV_DESCRIPTION		"Pensando Ethernet NIC Driver"

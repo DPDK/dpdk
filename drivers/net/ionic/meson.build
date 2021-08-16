@@ -2,6 +2,7 @@
 # Copyright(c) 2019-2021 Pensando
 
 deps += ['hash']
+deps += ['common_ionic']
 
 if is_windows
     build = false
@@ -22,3 +23,7 @@ sources = files(
 	'ionic_lif.c',
 	'ionic_main.c'
 )
+
+includes += include_directories('../../common/ionic')
+
+# TODO cflags += ['-DIONIC_EMBEDDED']

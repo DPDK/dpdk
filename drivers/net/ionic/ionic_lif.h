@@ -10,7 +10,6 @@
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 
-#include "ionic_osdep.h"
 #include "ionic_dev.h"
 #include "ionic_rx_filter.h"
 

@@ -90,7 +90,7 @@ ionic_pci_setup(struct ionic_adapter *adapter)
 
 	/* BAR1: doorbells */
 	bar++;
-	if (num_bars < 2) {
+	if (num_bars < IONIC_BARS_MIN) {
 		IONIC_PRINT(ERR, "Doorbell bar missing, aborting\n");
 		return -EFAULT;
 	}
