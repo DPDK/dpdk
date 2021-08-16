@@ -961,8 +961,7 @@ tunnel_update:
 			    (tx_offloads &
 			     DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
 			    (tx_offloads &
-			     DEV_TX_OFFLOAD_OUTER_UDP_CKSUM) ||
-			    (tx_ol_flags & PKT_TX_OUTER_IPV6)) {
+			     DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)) {
 				m->outer_l2_len = info.outer_l2_len;
 				m->outer_l3_len = info.outer_l3_len;
 				m->l2_len = info.l2_len;
