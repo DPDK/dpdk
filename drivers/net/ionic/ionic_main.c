@@ -232,10 +232,16 @@ static int
 ionic_adminq_wait_for_completion(struct ionic_lif *lif,
 		struct ionic_admin_ctx *ctx, unsigned long max_wait)
 {
+	struct ionic_queue *q = &lif->adminqcq->qcq.q;
 	unsigned long step_usec = IONIC_DEVCMD_CHECK_PERIOD_US;
+	unsigned long step_deadline;
 	unsigned long max_wait_usec = max_wait * 1000000L;
 	unsigned long elapsed_usec = 0;
 	int budget = 8;
+	uint16_t idx;
+	void **info;
+
+	step_deadline = IONIC_ADMINQ_WDOG_MS * 1000 / step_usec;
 
 	while (ctx->pending_work && elapsed_usec < max_wait_usec) {
 		/*
@@ -247,10 +253,26 @@ ionic_adminq_wait_for_completion(struct ionic_lif *lif,
 		ionic_qcq_service(&lif->adminqcq->qcq, budget,
 				ionic_adminq_service, NULL);
 
+		/*
+		 * Ring the doorbell again if work is pending after deadline.
+		 */
+		if (ctx->pending_work && !step_deadline) {
+			step_deadline = IONIC_ADMINQ_WDOG_MS *
+				1000 / step_usec;
+
+			rte_spinlock_lock(&lif->adminq_lock);
+			idx = Q_NEXT_TO_POST(q, -1);
+			info = IONIC_INFO_PTR(q, idx);
+			if (info[0] == ctx)
+				ionic_q_flush(q);
+			rte_spinlock_unlock(&lif->adminq_lock);
+		}
+
 		rte_spinlock_unlock(&lif->adminq_service_lock);
 
 		rte_delay_us_block(step_usec);
 		elapsed_usec += step_usec;
+		step_deadline--;
 	}
 
 	return (!ctx->pending_work);

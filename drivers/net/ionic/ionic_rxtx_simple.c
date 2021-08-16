@@ -167,6 +167,7 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct rte_mbuf *mbuf;
 	uint32_t bytes_tx = 0;
 	uint16_t nb_avail, nb_tx = 0;
+	uint64_t then, now, hz, delta;
 	int err;
 
 #ifdef IONIC_PREFETCH
@@ -232,8 +233,26 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		rte_wmb();
 		ionic_q_flush(q);
 
+		txq->last_wdog_cycles = rte_get_timer_cycles();
+
 		stats->packets += nb_tx;
 		stats->bytes += bytes_tx;
+	} else {
+		/*
+		 * Ring the doorbell again if no work could be posted and work
+		 * is still pending after the deadline.
+		 */
+		if (q->head_idx != q->tail_idx) {
+			then = txq->last_wdog_cycles;
+			now = rte_get_timer_cycles();
+			hz = rte_get_timer_hz();
+			delta = (now - then) * 1000;
+
+			if (delta >= hz * IONIC_Q_WDOG_MS) {
+				ionic_q_flush(q);
+				txq->last_wdog_cycles = now;
+			}
+		}
 	}
 
 	return nb_tx;
@@ -384,6 +403,7 @@ ionic_rxq_service(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
 #endif
 	struct ionic_rxq_comp *cq_desc, *cq_desc_base = cq->base;
 	uint32_t work_done = 0;
+	uint64_t then, now, hz, delta;
 	int ret;
 
 	cq_desc = &cq_desc_base[cq->tail_idx];
@@ -425,6 +445,34 @@ ionic_rxq_service(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
 	/* Update the queue indices and ring the doorbell */
 	if (work_done) {
 		ionic_q_flush(q);
+
+		rxq->last_wdog_cycles = rte_get_timer_cycles();
+		rxq->wdog_ms = IONIC_Q_WDOG_MS;
+	} else {
+		/*
+		 * Ring the doorbell again if no recvs were posted and the
+		 * recv queue is not empty after the deadline.
+		 *
+		 * Exponentially back off the deadline to avoid excessive
+		 * doorbells when the recv queue is idle.
+		 */
+		if (q->head_idx != q->tail_idx) {
+			then = rxq->last_wdog_cycles;
+			now = rte_get_timer_cycles();
+			hz = rte_get_timer_hz();
+			delta = (now - then) * 1000;
+
+			if (delta >= hz * rxq->wdog_ms) {
+				ionic_q_flush(q);
+				rxq->last_wdog_cycles = now;
+
+				delta = 2 * rxq->wdog_ms;
+				if (delta > IONIC_Q_WDOG_MAX_MS)
+					delta = IONIC_Q_WDOG_MAX_MS;
+
+				rxq->wdog_ms = delta;
+			}
+		}
 	}
 }
 
