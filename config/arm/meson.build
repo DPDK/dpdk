@@ -76,7 +76,7 @@ part_number_config_arm = {
     },
     '0xd49': {
         'march': 'armv8.5-a',
-        'march_features': ['crypto', 'sve2'],
+        'march_features': ['sve2'],
         'flags': [
             ['RTE_MACHINE', '"neoverse-n2"'],
             ['RTE_ARM_FEATURE_ATOMICS', true],
@@ -278,6 +278,7 @@ soc_cn10k = {
         ['RTE_MAX_NUMA_NODES', 1]
     ],
     'part_number': '0xd49',
+    'extra_march_features': ['crypto'],
     'numa': false
 }
 
