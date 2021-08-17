@@ -847,7 +847,7 @@ ice_dcf_init_rss(struct ice_dcf_hw *hw)
 
 #define IAVF_RXDID_LEGACY_0 0
 #define IAVF_RXDID_LEGACY_1 1
-#define IAVF_RXDID_COMMS_GENERIC 16
+#define IAVF_RXDID_COMMS_OVS_1 22
 
 int
 ice_dcf_configure_queues(struct ice_dcf_hw *hw)
@@ -895,8 +895,8 @@ ice_dcf_configure_queues(struct ice_dcf_hw *hw)
 		if (hw->vf_res->vf_cap_flags &
 		    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
 		    hw->supported_rxdid &
-		    BIT(IAVF_RXDID_COMMS_GENERIC)) {
-			vc_qp->rxq.rxdid = IAVF_RXDID_COMMS_GENERIC;
+		    BIT(IAVF_RXDID_COMMS_OVS_1)) {
+			vc_qp->rxq.rxdid = IAVF_RXDID_COMMS_OVS_1;
 			PMD_DRV_LOG(NOTICE, "request RXDID == %d in "
 				    "Queue[%d]", vc_qp->rxq.rxdid, i);
 		} else {
