@@ -624,34 +624,12 @@ iavf_rss_hash_set(struct iavf_adapter *ad, uint64_t rss_hf, bool add)
 	}
 
 	if (rss_hf & ETH_RSS_FRAG_IPV4) {
-		struct virtchnl_proto_hdrs hdr = {
-			.tunnel_level = TUNNEL_LEVEL_OUTER,
-			.count = 3,
-			.proto_hdr = {
-				proto_hdr_eth,
-				proto_hdr_ipv4,
-				{
-					VIRTCHNL_PROTO_HDR_IPV4_FRAG,
-					FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_FRAG_PKID),
-					{BUFF_NOUSED},
-				},
-			},
-		};
-		rss_cfg.proto_hdrs = hdr;
+		rss_cfg.proto_hdrs = outer_ipv4_tmplt;
 		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
 	}
 
 	if (rss_hf & ETH_RSS_FRAG_IPV6) {
-		struct virtchnl_proto_hdrs hdr = {
-			.tunnel_level = TUNNEL_LEVEL_OUTER,
-			.count = 3,
-			.proto_hdr = {
-				proto_hdr_eth,
-				proto_hdr_ipv6,
-				proto_hdr_ipv6_frag,
-			},
-		};
-		rss_cfg.proto_hdrs = hdr;
+		rss_cfg.proto_hdrs = outer_ipv6_tmplt;
 		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
 	}
 
