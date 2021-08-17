@@ -664,6 +664,7 @@ iavf_fdir_add_fragment_hdr(struct virtchnl_proto_hdrs *hdrs, int layer)
 	/* adding dummy fragment header */
 	hdr1 = &hdrs->proto_hdr[layer];
 	VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, IPV4_FRAG);
+	hdr1->field_selector = 0;
 	hdrs->count = ++layer;
 }
 
