@@ -16,6 +16,8 @@ echo = py3 + ['-c', 'import sys; print(*sys.argv[1:])']
 list_dir_globs = py3 + files('list-dir-globs.py')
 map_to_win_cmd = py3 + files('map_to_win.py')
 sphinx_wrapper = py3 + files('call-sphinx-build.py')
+get_cpu_count_cmd = py3 + files('get-cpu-count.py')
+get_numa_count_cmd = py3 + files('get-numa-count.py')
 
 # select library and object file format
 pmdinfo = py3 + files('gen-pmdinfo-cfile.py') + [meson.current_build_dir()]

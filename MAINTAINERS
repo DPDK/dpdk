@@ -102,6 +102,8 @@ F: meson_options.txt
 F: config/
 F: buildtools/chkincs/
 F: buildtools/call-sphinx-build.py
+F: buildtools/get-cpu-count.py
+F: buildtools/get-numa-count.py
 F: buildtools/list-dir-globs.py
 F: buildtools/pkg-config/
 F: buildtools/symlink-drivers-solibs.sh
