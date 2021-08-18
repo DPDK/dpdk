@@ -109,16 +109,19 @@ foreach subpath:subdirs
                 build = false
                 reason = 'explicitly disabled via build config'
             endif
-        else
-            # pull in driver directory which should update all the local variables
-            subdir(drv_path)
         endif
 
         if build
+            # pull in driver directory which should update all the local variables
+            subdir(drv_path)
+
             # get dependency objs from strings
             shared_deps = ext_deps
             static_deps = ext_deps
             foreach d:deps
+                if not build
+                    break
+                endif
                 if not is_variable('shared_rte_' + d)
                     build = false
                     reason = 'missing internal dependency, "@0@"'.format(d)
