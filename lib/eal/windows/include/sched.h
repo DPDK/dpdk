@@ -49,7 +49,7 @@ count_cpu(rte_cpuset_t *s)
 	unsigned int _i;
 	int count = 0;
 
-	for (_i = 0; _i < _NUM_SETS(CPU_SETSIZE); _i++)
+	for (_i = 0; _i < CPU_SETSIZE; _i++)
 		if (CPU_ISSET(_i, s) != 0LL)
 			count++;
 	return count;
