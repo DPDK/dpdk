@@ -478,7 +478,7 @@ roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf)
 	int rc, i;
 
 	/* Request LF resources */
-	rc = cpt_lfs_attach(&cpt->dev, blkaddr, false, nb_lf);
+	rc = cpt_lfs_attach(&cpt->dev, blkaddr, true, nb_lf);
 	if (rc)
 		return rc;
 
