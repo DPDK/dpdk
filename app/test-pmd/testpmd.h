@@ -479,6 +479,7 @@ extern uint8_t txonly_multi_flow;
 
 extern uint16_t nb_pkt_per_burst;
 extern uint16_t nb_pkt_flowgen_clones;
+extern int nb_flows_flowgen;
 extern uint16_t mb_mempool_cache;
 extern int8_t rx_pthresh;
 extern int8_t rx_hthresh;

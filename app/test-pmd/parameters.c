@@ -143,6 +143,7 @@ usage(char* progname)
 	       "N.\n");
 	printf("  --burst=N: set the number of packets per burst to N.\n");
 	printf("  --flowgen-clones=N: set the number of single packet clones to send in flowgen mode. Should be less than burst value.\n");
+	printf("  --flowgen-flows=N: set the number of flows in flowgen mode to N (1 <= N <= INT32_MAX).\n");
 	printf("  --mbcache=N: set the cache of mbuf memory pool to N.\n");
 	printf("  --rxpt=N: set prefetch threshold register of RX rings to N.\n");
 	printf("  --rxht=N: set the host threshold register of RX rings to N.\n");
@@ -586,6 +587,7 @@ launch_args_parse(int argc, char** argv)
 		{ "hairpin-mode",		1, 0, 0 },
 		{ "burst",			1, 0, 0 },
 		{ "flowgen-clones",		1, 0, 0 },
+		{ "flowgen-flows",		1, 0, 0 },
 		{ "mbcache",			1, 0, 0 },
 		{ "txpt",			1, 0, 0 },
 		{ "txht",			1, 0, 0 },
@@ -1121,6 +1123,14 @@ launch_args_parse(int argc, char** argv)
 				else
 					rte_exit(EXIT_FAILURE,
 						 "clones must be >= 0 and <= current burst\n");
+			}
+			if (!strcmp(lgopts[opt_idx].name, "flowgen-flows")) {
+				n = atoi(optarg);
+				if (n > 0)
+					nb_flows_flowgen = (int) n;
+				else
+					rte_exit(EXIT_FAILURE,
+						 "flows must be >= 1\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "mbcache")) {
 				n = atoi(optarg);

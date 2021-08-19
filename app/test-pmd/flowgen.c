@@ -40,8 +40,6 @@
 
 #include "testpmd.h"
 
-/* hardcoded configuration (for now) */
-static unsigned cfg_n_flows	= 1024;
 static uint32_t cfg_ip_src	= RTE_IPV4(10, 254, 0, 0);
 static uint32_t cfg_ip_dst	= RTE_IPV4(10, 253, 0, 0);
 static uint16_t cfg_udp_src	= 1000;
@@ -76,6 +74,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	uint64_t ol_flags = 0;
 	uint16_t nb_rx;
 	uint16_t nb_tx;
+	uint16_t nb_dropped;
 	uint16_t nb_pkt;
 	uint16_t nb_clones = nb_pkt_flowgen_clones;
 	uint16_t i;
@@ -165,7 +164,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 		}
 		pkts_burst[nb_pkt] = pkt;
 
-		if (++next_flow >= (int)cfg_n_flows)
+		if (++next_flow >= nb_flows_flowgen)
 			next_flow = 0;
 	}
 
@@ -184,13 +183,14 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	fs->tx_packets += nb_tx;
 
 	inc_tx_burst_stats(fs, nb_tx);
-	if (unlikely(nb_tx < nb_pkt)) {
+	nb_dropped = nb_pkt - nb_tx;
+	if (unlikely(nb_dropped > 0)) {
 		/* Back out the flow counter. */
-		next_flow -= (nb_pkt - nb_tx);
+		next_flow -= nb_dropped;
 		while (next_flow < 0)
-			next_flow += cfg_n_flows;
+			next_flow += nb_flows_flowgen;
 
-		fs->fwd_dropped += nb_pkt - nb_tx;
+		fs->fwd_dropped += nb_dropped;
 		do {
 			rte_pktmbuf_free(pkts_burst[nb_tx]);
 		} while (++nb_tx < nb_pkt);
@@ -201,9 +201,15 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	get_end_cycles(fs, start_tsc);
 }
 
+static void
+flowgen_begin(portid_t pi)
+{
+	printf("  number of flows for port %u: %d\n", pi, nb_flows_flowgen);
+}
+
 struct fwd_engine flow_gen_engine = {
 	.fwd_mode_name  = "flowgen",
-	.port_fwd_begin = NULL,
+	.port_fwd_begin = flowgen_begin,
 	.port_fwd_end   = NULL,
 	.packet_fwd     = pkt_burst_flow_gen,
 };

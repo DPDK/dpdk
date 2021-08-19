@@ -306,6 +306,11 @@ The command line options are:
     in testing extreme speeds or maxing out Tx packet performance.
     N should be not zero, but less than 'burst' parameter.
 
+*   ``--flowgen-flows=N``
+
+    Set the number of flows to be generated in `flowgen` mode, where
+    1 <= N <= INT32_MAX.
+
 *   ``--mbcache=N``
 
     Set the cache of mbuf memory pools to N, where 0 <= N <= 512.
