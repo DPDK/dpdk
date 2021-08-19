@@ -278,7 +278,8 @@ if is_freebsd
 endif
 
 if is_windows
-	# VirtualAlloc2() is available since Windows 10 / Server 2016.
+	# VirtualAlloc2() is available since Windows 10 / Server 2019.
+	# It's essential for EAL, so we don't support older versions.
 	add_project_arguments('-D_WIN32_WINNT=0x0A00', language: 'c')
 
 	# Use MinGW-w64 stdio, because DPDK assumes ANSI-compliant formatting.
@@ -286,16 +287,6 @@ if is_windows
 		add_project_arguments('-D__USE_MINGW_ANSI_STDIO', language: 'c')
 	endif
 
-	add_project_link_arguments('-lws2_32', language: 'c')
-
-	# Contrary to docs, VirtualAlloc2() is exported by mincore.lib
-	# in Windows SDK, while MinGW exports it by advapi32.a.
-	if is_ms_linker
-		add_project_link_arguments('-lmincore', language: 'c')
-	endif
-
-	add_project_link_arguments('-ladvapi32', '-lsetupapi', language: 'c')
-	add_project_link_arguments('-ldbghelp', language: 'c')
 endif
 
 if get_option('b_lto')
