@@ -66,7 +66,7 @@ static int32_t dummy_mt_unsafe_cb(void *args)
 		rte_delay_ms(250);
 		rte_atomic32_clear((rte_atomic32_t *)atomic_lock);
 	} else {
-		/* 2nd thread will fail to take lock, so set pass flag */
+		/* 2nd thread will fail to take lock, so clear pass flag */
 		*pass_test = 0;
 	}
 
