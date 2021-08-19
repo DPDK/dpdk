@@ -121,6 +121,7 @@ register_client(const char *cmd __rte_unused, const char *params,
 		close(fd);
 		return -1;
 	}
+	pthread_detach(th);
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 	return 0;
 }
