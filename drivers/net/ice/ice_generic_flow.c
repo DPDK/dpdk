@@ -2518,15 +2518,16 @@ ice_flow_query(struct rte_eth_dev *dev,
 			ret = flow->engine->query_count(ad, flow, count, error);
 			break;
 		default:
-			return rte_flow_error_set(error, ENOTSUP,
+			ret = rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION,
 					actions,
 					"action not supported");
+			goto out;
 		}
 	}
 
+out:
 	rte_spinlock_unlock(&pf->flow_ops_lock);
-
 	return ret;
 }
 
