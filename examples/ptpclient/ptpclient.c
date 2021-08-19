@@ -217,8 +217,13 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 
 	/* Allocate and set up 1 RX queue per Ethernet port. */
 	for (q = 0; q < rx_rings; q++) {
+		struct rte_eth_rxconf *rxconf;
+
+		rxconf = &dev_info.default_rxconf;
+		rxconf->offloads = port_conf.rxmode.offloads;
+
 		retval = rte_eth_rx_queue_setup(port, q, nb_rxd,
-				rte_eth_dev_socket_id(port), NULL, mbuf_pool);
+				rte_eth_dev_socket_id(port), rxconf, mbuf_pool);
 
 		if (retval < 0)
 			return retval;
