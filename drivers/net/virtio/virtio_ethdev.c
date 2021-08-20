@@ -33,6 +33,7 @@
 #include "virtio_logs.h"
 #include "virtqueue.h"
 #include "virtio_rxtx.h"
+#include "virtio_rxtx_simple.h"
 #include "virtio_user/virtio_user_dev.h"
 
 static int  virtio_dev_configure(struct rte_eth_dev *dev);
@@ -2535,6 +2536,30 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		(1ULL << VIRTIO_NET_F_HOST_TSO6);
 	if ((host_features & tso_mask) == tso_mask)
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
+
+	if (host_features & (1ULL << VIRTIO_F_RING_PACKED)) {
+		/*
+		 * According to 2.7 Packed Virtqueues,
+		 * 2.7.10.1 Structure Size and Alignment:
+		 * The Queue Size value does not have to be a power of 2.
+		 */
+		dev_info->rx_desc_lim.nb_max = UINT16_MAX;
+	} else {
+		/*
+		 * According to 2.6 Split Virtqueues:
+		 * Queue Size value is always a power of 2. The maximum Queue
+		 * Size value is 32768.
+		 */
+		dev_info->rx_desc_lim.nb_max = 32768;
+	}
+	/*
+	 * Actual minimum is not the same for virtqueues of different kinds,
+	 * but to avoid tangling the code with separate branches, rely on
+	 * default thresholds since desc number must be at least of their size.
+	 */
+	dev_info->rx_desc_lim.nb_min = RTE_MAX(DEFAULT_RX_FREE_THRESH,
+					       RTE_VIRTIO_VPMD_RX_REARM_THRESH);
+	dev_info->rx_desc_lim.nb_align = 1;
 
 	return 0;
 }
