@@ -219,7 +219,6 @@ struct vhost_virtqueue {
 
 	/* vq async features */
 	bool		async_registered;
-	uint32_t	async_threshold;
 
 	int			notif_enable;
 #define VIRTIO_UNINITIALIZED_NOTIF	(-1)

@@ -1621,7 +1621,6 @@ int rte_vhost_extern_callback_register(int vid,
 
 static __rte_always_inline int
 async_channel_register(int vid, uint16_t queue_id,
-		struct rte_vhost_async_config config,
 		struct rte_vhost_async_channel_ops *ops)
 {
 	struct virtio_net *dev = get_device(vid);
@@ -1693,7 +1692,6 @@ async_channel_register(int vid, uint16_t queue_id,
 
 	vq->async_ops.check_completed_copies = ops->check_completed_copies;
 	vq->async_ops.transfer_data = ops->transfer_data;
-	vq->async_threshold = config.async_threshold;
 
 	vq->async_registered = true;
 
@@ -1732,7 +1730,7 @@ rte_vhost_async_channel_register(int vid, uint16_t queue_id,
 		return -1;
 
 	rte_spinlock_lock(&vq->access_lock);
-	ret = async_channel_register(vid, queue_id, config, ops);
+	ret = async_channel_register(vid, queue_id, ops);
 	rte_spinlock_unlock(&vq->access_lock);
 
 	return ret;
@@ -1768,7 +1766,7 @@ rte_vhost_async_channel_register_thread_unsafe(int vid, uint16_t queue_id,
 		ops->transfer_data == NULL))
 		return -1;
 
-	return async_channel_register(vid, queue_id, config, ops);
+	return async_channel_register(vid, queue_id, ops);
 }
 
 int

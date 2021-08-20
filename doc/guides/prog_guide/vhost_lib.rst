@@ -235,13 +235,6 @@ The following is an overview of some key Vhost API functions:
     Currently, only ``RTE_VHOST_ASYNC_INORDER`` capable device is
     supported by vhost.
 
-  * ``async_threshold``
-
-    The copy length (in bytes) below which CPU copy will be used even if
-    applications call async vhost APIs to enqueue/dequeue data.
-
-    Typical value is 256~1024 depending on the async device capability.
-
   Applications must provide following ``ops`` callbacks for vhost lib to
   work with the async copy devices:
 

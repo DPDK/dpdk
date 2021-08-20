@@ -882,17 +882,11 @@ drain_vhost(struct vhost_dev *vdev)
 	if (builtin_net_driver) {
 		ret = vs_enqueue_pkts(vdev, VIRTIO_RXQ, m, nr_xmit);
 	} else if (async_vhost_driver) {
-		uint32_t cpu_cpl_nr = 0;
 		uint16_t enqueue_fail = 0;
-		struct rte_mbuf *m_cpu_cpl[nr_xmit];
 
 		complete_async_pkts(vdev);
-		ret = rte_vhost_submit_enqueue_burst(vdev->vid, VIRTIO_RXQ,
-					m, nr_xmit, m_cpu_cpl, &cpu_cpl_nr);
-		__atomic_add_fetch(&vdev->pkts_inflight, ret - cpu_cpl_nr, __ATOMIC_SEQ_CST);
-
-		if (cpu_cpl_nr)
-			free_pkts(m_cpu_cpl, cpu_cpl_nr);
+		ret = rte_vhost_submit_enqueue_burst(vdev->vid, VIRTIO_RXQ, m, nr_xmit);
+		__atomic_add_fetch(&vdev->pkts_inflight, ret, __ATOMIC_SEQ_CST);
 
 		enqueue_fail = nr_xmit - ret;
 		if (enqueue_fail)
@@ -1213,19 +1207,12 @@ drain_eth_rx(struct vhost_dev *vdev)
 		enqueue_count = vs_enqueue_pkts(vdev, VIRTIO_RXQ,
 						pkts, rx_count);
 	} else if (async_vhost_driver) {
-		uint32_t cpu_cpl_nr = 0;
 		uint16_t enqueue_fail = 0;
-		struct rte_mbuf *m_cpu_cpl[MAX_PKT_BURST];
 
 		complete_async_pkts(vdev);
 		enqueue_count = rte_vhost_submit_enqueue_burst(vdev->vid,
-					VIRTIO_RXQ, pkts, rx_count,
-					m_cpu_cpl, &cpu_cpl_nr);
-		__atomic_add_fetch(&vdev->pkts_inflight, enqueue_count - cpu_cpl_nr,
-					__ATOMIC_SEQ_CST);
-
-		if (cpu_cpl_nr)
-			free_pkts(m_cpu_cpl, cpu_cpl_nr);
+					VIRTIO_RXQ, pkts, rx_count);
+		__atomic_add_fetch(&vdev->pkts_inflight, enqueue_count, __ATOMIC_SEQ_CST);
 
 		enqueue_fail = rx_count - enqueue_count;
 		if (enqueue_fail)
@@ -1486,7 +1473,6 @@ new_device(int vid)
 				ioat_check_completed_copies_cb;
 
 			config.features = RTE_VHOST_ASYNC_INORDER;
-			config.async_threshold = 256;
 
 			return rte_vhost_async_channel_register(vid, VIRTIO_RXQ,
 				config, &channel_ops);
