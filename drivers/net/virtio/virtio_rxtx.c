@@ -711,8 +711,14 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 	vq->vq_free_thresh = rx_free_thresh;
 
-	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
+	/*
+	 * For split ring vectorized path descriptors number must be
+	 * equal to the ring size.
+	 */
+	if (nb_desc > vq->vq_nentries ||
+	    (!vtpci_packed_queue(hw) && hw->use_vec_rx)) {
 		nb_desc = vq->vq_nentries;
+	}
 	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, nb_desc);
 
 	rxvq = &vq->rxq;
