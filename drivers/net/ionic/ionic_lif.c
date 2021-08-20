@@ -1948,6 +1948,24 @@ ionic_lif_start(struct ionic_lif *lif)
 	uint32_t i;
 	int err;
 
+	/*
+	 * Try to work around this common misconfiguration. The Rx SGL
+	 * setting can be turned on automatically in rx_queue_setup() if
+	 * the provided mbufs are too small to hold an entire jumbo packet.
+	 * However, by that point it may be too late to also enable Tx SGL,
+	 * since tx_queue_setup() may have already been called.
+	 *
+	 * If Rx SGL is enabled but Tx SGL is disabled, every packet Tx will
+	 * result in multiple leaked mbufs and quickly exhaust the mempool.
+	 * Instead just fail with an informative message.
+	 */
+	if ((lif->features & IONIC_ETH_HW_RX_SG) &&
+	    !(lif->features & IONIC_ETH_HW_TX_SG)) {
+		IONIC_PRINT(ERR, "Invalid configuration: please enable both "
+			"DEV_RX_OFFLOAD_SCATTER & DEV_TX_OFFLOAD_MULTI_SEGS");
+		return -EINVAL;
+	}
+
 	err = ionic_lif_rss_setup(lif);
 	if (err)
 		return err;
