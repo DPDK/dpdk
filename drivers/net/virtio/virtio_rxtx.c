@@ -768,10 +768,11 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 				if (unlikely(error)) {
 					for (i = 0; i < free_cnt; i++)
 						rte_pktmbuf_free(pkts[i]);
+				} else {
+					nbufs += free_cnt;
 				}
 			}
 
-			nbufs += free_cnt;
 			vq_update_avail_idx(vq);
 		}
 	} else {
