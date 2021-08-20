@@ -706,7 +706,7 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 	vq->vq_free_thresh = rx_free_thresh;
 
-	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
+	if (nb_desc > vq->vq_nentries)
 		nb_desc = vq->vq_nentries;
 	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, nb_desc);
 
