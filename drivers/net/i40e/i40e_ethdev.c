@@ -1760,12 +1760,14 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	return 0;
 
 err_init_fdir_filter_list:
-	rte_free(pf->tunnel.hash_table);
+	rte_hash_free(pf->tunnel.hash_table);
 	rte_free(pf->tunnel.hash_map);
 err_init_tunnel_filter_list:
-	rte_free(pf->ethertype.hash_table);
+	rte_hash_free(pf->ethertype.hash_table);
 	rte_free(pf->ethertype.hash_map);
 err_init_ethtype_filter_list:
+	rte_intr_callback_unregister(intr_handle,
+		i40e_dev_interrupt_handler, dev);
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;
 err_mac_alloc:
