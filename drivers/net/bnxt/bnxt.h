@@ -577,8 +577,7 @@ struct bnxt_rep_info {
 	ETH_RSS_NONFRAG_IPV6_UDP |	\
 	ETH_RSS_LEVEL_MASK)
 
-#define BNXT_DEV_TX_OFFLOAD_SUPPORT (DEV_TX_OFFLOAD_VLAN_INSERT | \
-				     DEV_TX_OFFLOAD_IPV4_CKSUM | \
+#define BNXT_DEV_TX_OFFLOAD_SUPPORT (DEV_TX_OFFLOAD_IPV4_CKSUM | \
 				     DEV_TX_OFFLOAD_TCP_CKSUM | \
 				     DEV_TX_OFFLOAD_UDP_CKSUM | \
 				     DEV_TX_OFFLOAD_TCP_TSO | \
@@ -591,7 +590,6 @@ struct bnxt_rep_info {
 				     DEV_TX_OFFLOAD_MULTI_SEGS)
 
 #define BNXT_DEV_RX_OFFLOAD_SUPPORT (DEV_RX_OFFLOAD_VLAN_FILTER | \
-				     DEV_RX_OFFLOAD_VLAN_STRIP | \
 				     DEV_RX_OFFLOAD_IPV4_CKSUM | \
 				     DEV_RX_OFFLOAD_UDP_CKSUM | \
 				     DEV_RX_OFFLOAD_TCP_CKSUM | \
@@ -737,6 +735,7 @@ struct bnxt {
 #define BNXT_FW_CAP_ADV_FLOW_COUNTERS	BIT(6)
 #define BNXT_FW_CAP_LINK_ADMIN		BIT(7)
 #define BNXT_FW_CAP_TRUFLOW_EN		BIT(8)
+#define BNXT_FW_CAP_VLAN_TX_INSERT	BIT(9)
 #define BNXT_TRUFLOW_EN(bp)	((bp)->fw_cap & BNXT_FW_CAP_TRUFLOW_EN)
 
 	pthread_mutex_t         flow_lock;
@@ -745,6 +744,7 @@ struct bnxt {
 #define BNXT_VNIC_CAP_COS_CLASSIFY	BIT(0)
 #define BNXT_VNIC_CAP_OUTER_RSS		BIT(1)
 #define BNXT_VNIC_CAP_RX_CMPL_V2	BIT(2)
+#define BNXT_VNIC_CAP_VLAN_RX_STRIP	BIT(3)
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
 	unsigned int		rx_num_qs_per_vnic;
