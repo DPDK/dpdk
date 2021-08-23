@@ -1379,6 +1379,9 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	}
 	PMD_DRV_LOG(DEBUG, "TPA alloc Done!\n");
 
+	/* Explicitly reset this driver internal tracker on a ring init */
+	rxr->rx_next_cons = 0;
+
 	return 0;
 }
 
