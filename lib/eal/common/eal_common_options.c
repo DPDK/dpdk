@@ -65,7 +65,6 @@ eal_short_options[] =
 	"n:" /* memory channels */
 	"r:" /* memory ranks */
 	"v"  /* version */
-	"w:" /* pci-whitelist (deprecated) */
 	;
 
 const struct option
@@ -83,7 +82,6 @@ eal_long_options[] = {
 	{OPT_TRACE_DIR,         1, NULL, OPT_TRACE_DIR_NUM        },
 	{OPT_TRACE_BUF_SIZE,    1, NULL, OPT_TRACE_BUF_SIZE_NUM   },
 	{OPT_TRACE_MODE,        1, NULL, OPT_TRACE_MODE_NUM       },
-	{OPT_MASTER_LCORE,      1, NULL, OPT_MASTER_LCORE_NUM     },
 	{OPT_MAIN_LCORE,        1, NULL, OPT_MAIN_LCORE_NUM       },
 	{OPT_MBUF_POOL_OPS_NAME, 1, NULL, OPT_MBUF_POOL_OPS_NAME_NUM},
 	{OPT_NO_HPET,           0, NULL, OPT_NO_HPET_NUM          },
@@ -107,10 +105,6 @@ eal_long_options[] = {
 	{OPT_TELEMETRY,         0, NULL, OPT_TELEMETRY_NUM        },
 	{OPT_NO_TELEMETRY,      0, NULL, OPT_NO_TELEMETRY_NUM     },
 	{OPT_FORCE_MAX_SIMD_BITWIDTH, 1, NULL, OPT_FORCE_MAX_SIMD_BITWIDTH_NUM},
-
-	/* legacy options that will be removed in future */
-	{OPT_PCI_BLACKLIST,     1, NULL, OPT_PCI_BLACKLIST_NUM    },
-	{OPT_PCI_WHITELIST,     1, NULL, OPT_PCI_WHITELIST_NUM    },
 
 	{0,                     0, NULL, 0                        }
 };
@@ -1521,10 +1515,6 @@ eal_parse_common_option(int opt, const char *optarg,
 	static int a_used;
 
 	switch (opt) {
-	case OPT_PCI_BLACKLIST_NUM:
-		fprintf(stderr,
-			"Option --pci-blacklist is deprecated, use -b, --block instead\n");
-		/* fallthrough */
 	case 'b':
 		if (a_used)
 			goto ba_conflict;
@@ -1533,10 +1523,6 @@ eal_parse_common_option(int opt, const char *optarg,
 		b_used = 1;
 		break;
 
-	case 'w':
-		fprintf(stderr,
-			"Option -w, --pci-whitelist is deprecated, use -a, --allow option instead\n");
-		/* fallthrough */
 	case 'a':
 		if (b_used)
 			goto ba_conflict;
@@ -1698,11 +1684,6 @@ eal_parse_common_option(int opt, const char *optarg,
 		conf->process_type = eal_parse_proc_type(optarg);
 		break;
 
-	case OPT_MASTER_LCORE_NUM:
-		fprintf(stderr,
-			"Option --" OPT_MASTER_LCORE
-			" is deprecated use " OPT_MAIN_LCORE "\n");
-		/* fallthrough */
 	case OPT_MAIN_LCORE_NUM:
 		if (eal_parse_main_lcore(optarg) < 0) {
 			RTE_LOG(ERR, EAL, "invalid parameter for --"

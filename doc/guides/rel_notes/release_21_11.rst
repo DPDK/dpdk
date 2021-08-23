@@ -100,6 +100,13 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: Removed the deprecated function ``rte_get_master_lcore()``
+  and the iterator macro ``RTE_LCORE_FOREACH_SLAVE``.
+
+* eal: The old api arguments that were deprecated for
+  blacklist/whitelist are removed. Users must use the new
+  block/allow list arguments.
+
 
 API Changes
 -----------

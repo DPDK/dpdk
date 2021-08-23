@@ -73,10 +73,6 @@ enum rte_rmt_call_main_t {
 	CALL_MAIN,     /**< lcore handler executed by main core. */
 };
 
-/* These legacy definitions will be removed in future release */
-#define SKIP_MASTER	RTE_DEPRECATED(SKIP_MASTER) SKIP_MAIN
-#define CALL_MASTER	RTE_DEPRECATED(CALL_MASTER) CALL_MAIN
-
 /**
  * Launch a function on all lcores.
  *

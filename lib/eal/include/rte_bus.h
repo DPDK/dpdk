@@ -235,12 +235,6 @@ enum rte_bus_scan_mode {
 	RTE_BUS_SCAN_BLOCKLIST,
 };
 
-/* Backwards compatibility will be removed */
-#define RTE_BUS_SCAN_WHITELIST \
-	RTE_DEPRECATED(RTE_BUS_SCAN_WHITELIST) RTE_BUS_SCAN_ALLOWLIST
-#define RTE_BUS_SCAN_BLACKLIST \
-	RTE_DEPRECATED(RTE_BUS_SCAN_BLACKLIST) RTE_BUS_SCAN_BLOCKLIST
-
 /**
  * A structure used to configure bus operations.
  */
