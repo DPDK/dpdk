@@ -126,3 +126,13 @@ bnxt_cfa_code_dynfield(struct rte_mbuf *mbuf)
 #define BNXT_PTYPE_TBL_DIM	128
 extern uint32_t bnxt_ptype_table[BNXT_PTYPE_TBL_DIM];
 #endif
+static inline void bnxt_set_vlan(struct rx_pkt_cmpl_hi *rxcmp1,
+				 struct rte_mbuf *mbuf)
+{
+	uint32_t metadata = rte_le_to_cpu_32(rxcmp1->metadata);
+
+	mbuf->vlan_tci = metadata & (RX_PKT_CMPL_METADATA_VID_MASK |
+				     RX_PKT_CMPL_METADATA_DE |
+				     RX_PKT_CMPL_METADATA_PRI_MASK);
+}
+

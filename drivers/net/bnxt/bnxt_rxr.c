@@ -891,6 +891,8 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	}
 #endif
 
+	bnxt_set_vlan(rxcmp1, mbuf);
+
 	if (BNXT_TRUFLOW_EN(bp))
 		mark_id = bnxt_ulp_set_mark_in_mbuf(rxq->bp, rxcmp1, mbuf,
 						    &vfr_flag);
