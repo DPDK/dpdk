@@ -111,7 +111,7 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
  * @param is_sc
  *   Indicates whether multi-consumer path is needed or not
  * @param n
- *   The number of elements we will want to enqueue, i.e. how far should the
+ *   The number of elements we will want to dequeue, i.e. how far should the
  *   head be moved
  * @param behavior
  *   RTE_RING_QUEUE_FIXED:    Dequeue a fixed number of items from a ring
