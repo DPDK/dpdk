@@ -272,7 +272,7 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 		mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 	}
 
-	if (tpa_info->vlan_valid) {
+	if (tpa_info->vlan_valid && BNXT_RX_VLAN_STRIP_EN(rxq->bp)) {
 		mbuf->vlan_tci = tpa_info->vlan;
 		mbuf->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 	}
@@ -574,8 +574,10 @@ bnxt_init_ol_flags_tables(struct bnxt_rx_queue *rxq)
 	for (i = 0; i < BNXT_OL_FLAGS_TBL_DIM; i++) {
 		pt[i] = 0;
 
-		if (i & RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN)
-			pt[i] |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		if (BNXT_RX_VLAN_STRIP_EN(rxq->bp)) {
+			if (i & RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN)
+				pt[i] |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		}
 
 		if (i & (RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC << 3)) {
 			/* Tunnel case. */
