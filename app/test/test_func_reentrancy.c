@@ -89,6 +89,10 @@ ring_clean(unsigned int lcore_id)
 	char ring_name[MAX_STRING_SIZE];
 	int i;
 
+	rp = rte_ring_lookup("fr_test_once");
+	if (rp != NULL)
+		rte_ring_free(rp);
+
 	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(ring_name, sizeof(ring_name),
 				"fr_test_%d_%d", lcore_id, i);
@@ -148,7 +152,10 @@ mempool_clean(unsigned int lcore_id)
 	char mempool_name[MAX_STRING_SIZE];
 	int i;
 
-	/* verify all ring created successful */
+	mp = rte_mempool_lookup("fr_test_once");
+	if (mp != NULL)
+		rte_mempool_free(mp);
+
 	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d",
 			 lcore_id, i);
@@ -207,6 +214,10 @@ hash_clean(unsigned lcore_id)
 	char hash_name[MAX_STRING_SIZE];
 	struct rte_hash *handle;
 	int i;
+
+	handle = rte_hash_find_existing("fr_test_once");
+	if (handle != NULL)
+		rte_hash_free(handle);
 
 	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d",  lcore_id, i);
@@ -271,6 +282,10 @@ fbk_clean(unsigned lcore_id)
 	char fbk_name[MAX_STRING_SIZE];
 	struct rte_fbk_hash_table *handle;
 	int i;
+
+	handle = rte_fbk_hash_find_existing("fr_test_once");
+	if (handle != NULL)
+		rte_fbk_hash_free(handle);
 
 	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d",  lcore_id, i);
@@ -337,6 +352,10 @@ lpm_clean(unsigned int lcore_id)
 	char lpm_name[MAX_STRING_SIZE];
 	struct rte_lpm *lpm;
 	int i;
+
+	lpm = rte_lpm_find_existing("fr_test_once");
+	if (lpm != NULL)
+		rte_lpm_free(lpm);
 
 	for (i = 0; i < MAX_LPM_ITER_TIMES; i++) {
 		snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d",  lcore_id, i);
@@ -418,11 +437,10 @@ struct test_case test_cases[] = {
 static int
 launch_test(struct test_case *pt_case)
 {
+	unsigned int lcore_id;
+	unsigned int cores;
+	unsigned int count;
 	int ret = 0;
-	unsigned lcore_id;
-	unsigned cores_save = rte_lcore_count();
-	unsigned cores = RTE_MIN(cores_save, MAX_LCORES);
-	unsigned count;
 
 	if (pt_case->func == NULL)
 		return -1;
@@ -430,6 +448,7 @@ launch_test(struct test_case *pt_case)
 	rte_atomic32_set(&obj_count, 0);
 	rte_atomic32_set(&synchro, 0);
 
+	cores = RTE_MIN(rte_lcore_count(), MAX_LCORES);
 	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (cores == 1)
 			break;
@@ -442,14 +461,12 @@ launch_test(struct test_case *pt_case)
 	if (pt_case->func(pt_case->arg) < 0)
 		ret = -1;
 
-	cores = cores_save;
 	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		if (cores == 1)
-			break;
-		cores--;
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			ret = -1;
+	}
 
+	RTE_LCORE_FOREACH(lcore_id) {
 		if (pt_case->clean != NULL)
 			pt_case->clean(lcore_id);
 	}
