@@ -28,10 +28,10 @@ struct nfp_net_adapter;
  * DPDK uses uint16_t variables for these values
  */
 #define NFP_NET_MAX_TX_DESC (32 * 1024)
-#define NFP_NET_MIN_TX_DESC 64
+#define NFP_NET_MIN_TX_DESC 256
 
 #define NFP_NET_MAX_RX_DESC (32 * 1024)
-#define NFP_NET_MIN_RX_DESC 64
+#define NFP_NET_MIN_RX_DESC 256
 
 /* Descriptor alignment */
 #define NFP_ALIGN_RING_DESC 128
