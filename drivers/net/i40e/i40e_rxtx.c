@@ -2590,6 +2590,10 @@ i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
 #endif /* RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC */
 	rxq->rx_tail = 0;
 	rxq->nb_rx_hold = 0;
+
+	if (rxq->pkt_first_seg != NULL)
+		rte_pktmbuf_free(rxq->pkt_first_seg);
+
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
 
