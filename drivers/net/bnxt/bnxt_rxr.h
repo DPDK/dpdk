@@ -185,6 +185,16 @@ bnxt_check_ptype_constants(void)
 
 extern uint32_t bnxt_ptype_table[BNXT_PTYPE_TBL_DIM];
 
+static inline void bnxt_set_vlan(struct rx_pkt_cmpl_hi *rxcmp1,
+				 struct rte_mbuf *mbuf)
+{
+	uint32_t metadata = rte_le_to_cpu_32(rxcmp1->metadata);
+
+	mbuf->vlan_tci = metadata & (RX_PKT_CMPL_METADATA_VID_MASK |
+				     RX_PKT_CMPL_METADATA_DE |
+				     RX_PKT_CMPL_METADATA_PRI_MASK);
+}
+
 /* Stingray2 specific code for RX completion parsing */
 #define RX_CMP_VLAN_VALID(rxcmp)        \
 	(((struct rx_pkt_v2_cmpl *)rxcmp)->metadata1_payload_offset &	\
