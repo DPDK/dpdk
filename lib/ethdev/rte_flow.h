@@ -34,6 +34,7 @@
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
 #include <rte_meter.h>
+#include <rte_gtp.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -1444,15 +1445,14 @@ static const struct rte_flow_item_meta rte_flow_item_meta_mask = {
  * Matches a GTP PDU extension header with type 0x85.
  */
 struct rte_flow_item_gtp_psc {
-	uint8_t pdu_type; /**< PDU type. */
-	uint8_t qfi; /**< PPP, RQI, QoS flow identifier. */
+	struct rte_gtp_psc_generic_hdr hdr; /**< gtp psc generic hdr. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_GTP_PSC. */
 #ifndef __cplusplus
 static const struct rte_flow_item_gtp_psc
 rte_flow_item_gtp_psc_mask = {
-	.qfi = 0xff,
+	.hdr.qfi = 0x3f,
 };
 #endif
 

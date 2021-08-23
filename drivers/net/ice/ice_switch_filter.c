@@ -1371,7 +1371,7 @@ ice_switch_parse_pattern(const struct rte_flow_item pattern[],
 				return false;
 			}
 			if (gtp_psc_spec && gtp_psc_mask) {
-				if (gtp_psc_mask->pdu_type) {
+				if (gtp_psc_mask->hdr.type) {
 					rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ITEM,
 						item,
@@ -1379,13 +1379,13 @@ ice_switch_parse_pattern(const struct rte_flow_item pattern[],
 					return false;
 				}
 				input = &outer_input_set;
-				if (gtp_psc_mask->qfi)
+				if (gtp_psc_mask->hdr.qfi)
 					*input |= ICE_INSET_GTPU_QFI;
 				list[t].type = ICE_GTP;
 				list[t].h_u.gtp_hdr.qfi =
-					gtp_psc_spec->qfi;
+					gtp_psc_spec->hdr.qfi;
 				list[t].m_u.gtp_hdr.qfi =
-					gtp_psc_mask->qfi;
+					gtp_psc_mask->hdr.qfi;
 				input_set_byte += 1;
 				t++;
 			}

@@ -2106,11 +2106,11 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			if (!(gtp_psc_spec && gtp_psc_mask))
 				break;
 
-			if (gtp_psc_mask->qfi == UINT8_MAX)
+			if (gtp_psc_mask->hdr.qfi == 0x3F)
 				input_set_o |= ICE_INSET_GTPU_QFI;
 
 			filter->input.gtpu_data.qfi =
-				gtp_psc_spec->qfi;
+				gtp_psc_spec->hdr.qfi;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ESP:
 			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4 &&

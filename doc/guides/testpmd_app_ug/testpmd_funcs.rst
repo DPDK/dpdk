@@ -3788,7 +3788,7 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``pdu_type {unsigned}``: PDU type.
 
-  - ``qfi {unsigned}``: PPP, RQI and QoS flow identifier.
+  - ``qfi {unsigned}``: QoS flow identifier.
 
 - ``pppoes``, ``pppoed``: match PPPoE header.
 

@@ -619,9 +619,9 @@ ice_hash_parse_pattern(const struct rte_flow_item pattern[], uint64_t *phint,
 			psc = item->spec;
 			if (!psc)
 				break;
-			else if (psc->pdu_type == ICE_GTPU_EH_UPLINK)
+			else if (psc->hdr.type == ICE_GTPU_EH_UPLINK)
 				*phint |= ICE_PHINT_GTPU_EH_UP;
-			else if (psc->pdu_type == ICE_GTPU_EH_DWNLINK)
+			else if (psc->hdr.type == ICE_GTPU_EH_DWNLINK)
 				*phint |= ICE_PHINT_GTPU_EH_DWN;
 			break;
 		default:

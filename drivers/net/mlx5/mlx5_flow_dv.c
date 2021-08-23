@@ -2412,11 +2412,10 @@ flow_dv_validate_item_gtp_psc(const struct rte_flow_item *item,
 {
 	const struct rte_flow_item_gtp *gtp_spec;
 	const struct rte_flow_item_gtp *gtp_mask;
-	const struct rte_flow_item_gtp_psc *spec;
 	const struct rte_flow_item_gtp_psc *mask;
 	const struct rte_flow_item_gtp_psc nic_mask = {
-		.pdu_type = 0xFF,
-		.qfi = 0xFF,
+		.hdr.type = 0xF,
+		.hdr.qfi = 0x3F,
 	};
 
 	if (!gtp_item || !(last_item & MLX5_FLOW_LAYER_GTP))
@@ -2440,12 +2439,7 @@ flow_dv_validate_item_gtp_psc(const struct rte_flow_item *item,
 	/* GTP spec is here and E flag is requested to match zero. */
 	if (!item->spec)
 		return 0;
-	spec = item->spec;
 	mask = item->mask ? item->mask : &rte_flow_item_gtp_psc_mask;
-	if (spec->pdu_type > MLX5_GTP_EXT_MAX_PDU_TYPE)
-		return rte_flow_error_set
-			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
-			 "PDU type should be smaller than 16");
 	return mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
 					 (const uint8_t *)&nic_mask,
 					 sizeof(struct rte_flow_item_gtp_psc),
@@ -9953,14 +9947,14 @@ flow_dv_translate_item_gtp_psc(void *matcher, void *key,
 		if (!gtp_psc_m)
 			gtp_psc_m = &rte_flow_item_gtp_psc_mask;
 		dw_0.w32 = 0;
-		dw_0.type_flags = MLX5_GTP_PDU_TYPE_SHIFT(gtp_psc_m->pdu_type);
-		dw_0.qfi = gtp_psc_m->qfi;
+		dw_0.type_flags = MLX5_GTP_PDU_TYPE_SHIFT(gtp_psc_m->hdr.type);
+		dw_0.qfi = gtp_psc_m->hdr.qfi;
 		MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_first_ext_dw_0,
 			 rte_cpu_to_be_32(dw_0.w32));
 		dw_0.w32 = 0;
-		dw_0.type_flags = MLX5_GTP_PDU_TYPE_SHIFT(gtp_psc_v->pdu_type &
-							gtp_psc_m->pdu_type);
-		dw_0.qfi = gtp_psc_v->qfi & gtp_psc_m->qfi;
+		dw_0.type_flags = MLX5_GTP_PDU_TYPE_SHIFT(gtp_psc_v->hdr.type &
+							gtp_psc_m->hdr.type);
+		dw_0.qfi = gtp_psc_v->hdr.qfi & gtp_psc_m->hdr.qfi;
 		MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_first_ext_dw_0,
 			 rte_cpu_to_be_32(dw_0.w32));
 	}

@@ -3315,16 +3315,16 @@ static const struct token token_list[] = {
 		.help = "QoS flow identifier",
 		.next = NEXT(item_gtp_psc, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
-		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_gtp_psc,
-					qfi)),
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_item_gtp_psc,
+					hdr.qfi, 6)),
 	},
 	[ITEM_GTP_PSC_PDU_T] = {
 		.name = "pdu_t",
 		.help = "PDU type",
 		.next = NEXT(item_gtp_psc, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
-		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_gtp_psc,
-					pdu_type)),
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_item_gtp_psc,
+					hdr.type, 4)),
 	},
 	[ITEM_PPPOES] = {
 		.name = "pppoes",
@@ -8600,20 +8600,13 @@ cmd_set_raw_parsed(const struct buffer *in)
 					*opt = item->spec;
 				struct {
 					uint8_t len;
-					uint8_t pdu_type;
-					uint8_t qfi;
+					uint8_t pdu_type:4;
+					uint8_t qfi:6;
 					uint8_t next;
 				} psc;
-
-				if (opt->pdu_type & 0x0F) {
-					/* Support the minimal option only. */
-					fprintf(stderr,
-						"Error - GTP PSC option with extra fields not supported\n");
-					goto error;
-				}
 				psc.len = sizeof(psc);
-				psc.pdu_type = opt->pdu_type;
-				psc.qfi = opt->qfi;
+				psc.pdu_type = opt->hdr.type;
+				psc.qfi = opt->hdr.qfi;
 				psc.next = 0;
 				*total_size += sizeof(psc);
 				rte_memcpy(data_tail - (*total_size),

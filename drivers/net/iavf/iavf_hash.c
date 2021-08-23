@@ -699,9 +699,9 @@ iavf_hash_parse_pattern(const struct rte_flow_item pattern[], uint64_t *phint,
 			psc = item->spec;
 			if (!psc)
 				break;
-			else if (psc->pdu_type == IAVF_GTPU_EH_UPLINK)
+			else if (psc->hdr.type == IAVF_GTPU_EH_UPLINK)
 				*phint |= IAVF_PHINT_GTPU_EH_UP;
-			else if (psc->pdu_type == IAVF_GTPU_EH_DWNLINK)
+			else if (psc->hdr.type == IAVF_GTPU_EH_DWNLINK)
 				*phint |= IAVF_PHINT_GTPU_EH_DWN;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ECPRI:

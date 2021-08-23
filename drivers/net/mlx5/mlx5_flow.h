@@ -397,9 +397,6 @@ enum mlx5_feature_name {
 /* GTP extension header flag. */
 #define MLX5_GTP_EXT_HEADER_FLAG 4
 
-/* GTP extension header max PDU type value. */
-#define MLX5_GTP_EXT_MAX_PDU_TYPE 15
-
 /* GTP extension header PDU type shift. */
 #define MLX5_GTP_PDU_TYPE_SHIFT(a) ((a) << 4)
 
