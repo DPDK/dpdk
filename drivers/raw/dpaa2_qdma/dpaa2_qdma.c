@@ -1606,7 +1606,7 @@ remove_hw_queues_from_list(struct dpaa2_dpdmai_dev *dpdmai_dev)
 
 	DPAA2_QDMA_FUNC_TRACE();
 
-	TAILQ_FOREACH_SAFE(queue, &qdma_queue_list, next, tqueue) {
+	RTE_TAILQ_FOREACH_SAFE(queue, &qdma_queue_list, next, tqueue) {
 		if (queue->dpdmai_dev == dpdmai_dev) {
 			TAILQ_REMOVE(&qdma_queue_list, queue, next);
 			rte_free(queue);

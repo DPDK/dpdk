@@ -38,7 +38,6 @@
 #include <stdint.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <sys/queue.h>
 
 #include <rte_config.h>
 #include <rte_spinlock.h>
@@ -141,7 +140,7 @@ struct rte_mempool_objsz {
  * double-frees.
  */
 struct rte_mempool_objhdr {
-	STAILQ_ENTRY(rte_mempool_objhdr) next; /**< Next in list. */
+	RTE_STAILQ_ENTRY(rte_mempool_objhdr) next; /**< Next in list. */
 	struct rte_mempool *mp;          /**< The mempool owning the object. */
 	rte_iova_t iova;                 /**< IO address of the object. */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
@@ -152,7 +151,7 @@ struct rte_mempool_objhdr {
 /**
  * A list of object headers type
  */
-STAILQ_HEAD(rte_mempool_objhdr_list, rte_mempool_objhdr);
+RTE_STAILQ_HEAD(rte_mempool_objhdr_list, rte_mempool_objhdr);
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 
@@ -171,7 +170,7 @@ struct rte_mempool_objtlr {
 /**
  * A list of memory where objects are stored
  */
-STAILQ_HEAD(rte_mempool_memhdr_list, rte_mempool_memhdr);
+RTE_STAILQ_HEAD(rte_mempool_memhdr_list, rte_mempool_memhdr);
 
 /**
  * Callback used to free a memory chunk
@@ -186,7 +185,7 @@ typedef void (rte_mempool_memchunk_free_cb_t)(struct rte_mempool_memhdr *memhdr,
  * and physically contiguous.
  */
 struct rte_mempool_memhdr {
-	STAILQ_ENTRY(rte_mempool_memhdr) next; /**< Next in list. */
+	RTE_STAILQ_ENTRY(rte_mempool_memhdr) next; /**< Next in list. */
 	struct rte_mempool *mp;  /**< The mempool owning the chunk */
 	void *addr;              /**< Virtual address of the chunk */
 	rte_iova_t iova;         /**< IO address of the chunk */

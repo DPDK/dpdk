@@ -2168,7 +2168,7 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 			priv->mtr_idx_tbl = NULL;
 		}
 	} else {
-		TAILQ_FOREACH_SAFE(legacy_fm, fms, next, tmp) {
+		RTE_TAILQ_FOREACH_SAFE(legacy_fm, fms, next, tmp) {
 			fm = &legacy_fm->fm;
 			if (mlx5_flow_meter_params_flush(dev, fm, 0))
 				return -rte_mtr_error_set(error, EINVAL,

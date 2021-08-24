@@ -2040,7 +2040,7 @@ bnxt_ulp_cntxt_list_del(struct bnxt_ulp_context *ulp_ctx)
 	struct ulp_context_list_entry	*entry, *temp;
 
 	rte_spinlock_lock(&bnxt_ulp_ctxt_lock);
-	TAILQ_FOREACH_SAFE(entry, &ulp_cntx_list, next, temp) {
+	RTE_TAILQ_FOREACH_SAFE(entry, &ulp_cntx_list, next, temp) {
 		if (entry->ulp_ctx == ulp_ctx) {
 			TAILQ_REMOVE(&ulp_cntx_list, entry, next);
 			rte_free(entry);

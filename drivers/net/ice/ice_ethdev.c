@@ -1109,7 +1109,7 @@ ice_remove_all_mac_vlan_filters(struct ice_vsi *vsi)
 	if (!vsi || !vsi->mac_num)
 		return -EINVAL;
 
-	TAILQ_FOREACH_SAFE(m_f, &vsi->mac_list, next, temp) {
+	RTE_TAILQ_FOREACH_SAFE(m_f, &vsi->mac_list, next, temp) {
 		ret = ice_remove_mac_filter(vsi, &m_f->mac_info.mac_addr);
 		if (ret != ICE_SUCCESS) {
 			ret = -EINVAL;
@@ -1120,7 +1120,7 @@ ice_remove_all_mac_vlan_filters(struct ice_vsi *vsi)
 	if (vsi->vlan_num == 0)
 		return 0;
 
-	TAILQ_FOREACH_SAFE(v_f, &vsi->vlan_list, next, temp) {
+	RTE_TAILQ_FOREACH_SAFE(v_f, &vsi->vlan_list, next, temp) {
 		ret = ice_remove_vlan_filter(vsi, &v_f->vlan_info.vlan);
 		if (ret != ICE_SUCCESS) {
 			ret = -EINVAL;

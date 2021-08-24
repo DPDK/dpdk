@@ -20,7 +20,6 @@ extern "C" {
 #include <limits.h>
 #include <stdbool.h>
 #include <errno.h>
-#include <sys/queue.h>
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -38,15 +37,15 @@ struct rte_vmbus_bus;
 struct vmbus_channel;
 struct vmbus_mon_page;
 
-TAILQ_HEAD(rte_vmbus_device_list, rte_vmbus_device);
-TAILQ_HEAD(rte_vmbus_driver_list, rte_vmbus_driver);
+RTE_TAILQ_HEAD(rte_vmbus_device_list, rte_vmbus_device);
+RTE_TAILQ_HEAD(rte_vmbus_driver_list, rte_vmbus_driver);
 
 /* VMBus iterators */
 #define FOREACH_DEVICE_ON_VMBUS(p)	\
-	TAILQ_FOREACH(p, &(rte_vmbus_bus.device_list), next)
+	RTE_TAILQ_FOREACH(p, &(rte_vmbus_bus.device_list), next)
 
 #define FOREACH_DRIVER_ON_VMBUS(p)	\
-	TAILQ_FOREACH(p, &(rte_vmbus_bus.driver_list), next)
+	RTE_TAILQ_FOREACH(p, &(rte_vmbus_bus.driver_list), next)
 
 /** Maximum number of VMBUS resources. */
 enum hv_uio_map {
@@ -62,7 +61,7 @@ enum hv_uio_map {
  * A structure describing a VMBUS device.
  */
 struct rte_vmbus_device {
-	TAILQ_ENTRY(rte_vmbus_device) next;    /**< Next probed VMBUS device */
+	RTE_TAILQ_ENTRY(rte_vmbus_device) next; /**< Next probed VMBUS device */
 	const struct rte_vmbus_driver *driver; /**< Associated driver */
 	struct rte_device device;              /**< Inherit core device */
 	rte_uuid_t device_id;		       /**< VMBUS device id */
@@ -93,7 +92,7 @@ typedef int (vmbus_remove_t)(struct rte_vmbus_device *);
  * A structure describing a VMBUS driver.
  */
 struct rte_vmbus_driver {
-	TAILQ_ENTRY(rte_vmbus_driver) next; /**< Next in list. */
+	RTE_TAILQ_ENTRY(rte_vmbus_driver) next; /**< Next in list. */
 	struct rte_driver driver;
 	struct rte_vmbus_bus *bus;          /**< VM bus reference. */
 	vmbus_probe_t *probe;               /**< Device Probe function. */

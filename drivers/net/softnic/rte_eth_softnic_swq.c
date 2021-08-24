@@ -39,7 +39,7 @@ softnic_softnic_swq_free_keep_rxq_txq(struct pmd_internals *p)
 {
 	struct softnic_swq *swq, *tswq;
 
-	TAILQ_FOREACH_SAFE(swq, &p->swq_list, node, tswq) {
+	RTE_TAILQ_FOREACH_SAFE(swq, &p->swq_list, node, tswq) {
 		if ((strncmp(swq->name, "RXQ", strlen("RXQ")) == 0) ||
 			(strncmp(swq->name, "TXQ", strlen("TXQ")) == 0))
 			continue;

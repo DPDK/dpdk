@@ -18,6 +18,33 @@
 extern "C" {
 #endif
 
+/* These macros are compatible with bundled sys/queue.h. */
+#define RTE_TAILQ_HEAD(name, type) \
+struct name { \
+	struct type *tqh_first; \
+	struct type **tqh_last; \
+}
+#define RTE_TAILQ_ENTRY(type) \
+struct { \
+	struct type *tqe_next; \
+	struct type **tqe_prev; \
+}
+#define RTE_TAILQ_FOREACH(var, head, field) \
+	for ((var) = RTE_TAILQ_FIRST((head)); \
+	    (var); \
+	    (var) = RTE_TAILQ_NEXT((var), field))
+#define RTE_TAILQ_FIRST(head) ((head)->tqh_first)
+#define RTE_TAILQ_NEXT(elm, field) ((elm)->field.tqe_next)
+#define RTE_STAILQ_HEAD(name, type) \
+struct name { \
+	struct type *stqh_first; \
+	struct type **stqh_last; \
+}
+#define RTE_STAILQ_ENTRY(type) \
+struct { \
+	struct type *stqe_next; \
+}
+
 /* cpu_set macros implementation */
 #define RTE_CPU_AND(dst, src1, src2) CPU_AND(dst, src1, src2)
 #define RTE_CPU_OR(dst, src1, src2) CPU_OR(dst, src1, src2)

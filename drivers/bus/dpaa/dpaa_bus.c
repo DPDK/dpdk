@@ -105,7 +105,7 @@ dpaa_add_to_device_list(struct rte_dpaa_device *newdev)
 	struct rte_dpaa_device *dev = NULL;
 	struct rte_dpaa_device *tdev = NULL;
 
-	TAILQ_FOREACH_SAFE(dev, &rte_dpaa_bus.device_list, next, tdev) {
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_dpaa_bus.device_list, next, tdev) {
 		comp = compare_dpaa_devices(newdev, dev);
 		if (comp < 0) {
 			TAILQ_INSERT_BEFORE(dev, newdev, next);
@@ -245,7 +245,7 @@ dpaa_clean_device_list(void)
 	struct rte_dpaa_device *dev = NULL;
 	struct rte_dpaa_device *tdev = NULL;
 
-	TAILQ_FOREACH_SAFE(dev, &rte_dpaa_bus.device_list, next, tdev) {
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_dpaa_bus.device_list, next, tdev) {
 		TAILQ_REMOVE(&rte_dpaa_bus.device_list, dev, next);
 		free(dev);
 		dev = NULL;

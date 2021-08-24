@@ -808,7 +808,8 @@ fslmc_vfio_process_group(void)
 	bool is_dpmcp_in_blocklist = false, is_dpio_in_blocklist = false;
 	int dpmcp_count = 0, dpio_count = 0, current_device;
 
-	TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, dev_temp) {
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next,
+		dev_temp) {
 		if (dev->dev_type == DPAA2_MPORTAL) {
 			dpmcp_count++;
 			if (dev->device.devargs &&
@@ -825,7 +826,8 @@ fslmc_vfio_process_group(void)
 
 	/* Search the MCP as that should be initialized first. */
 	current_device = 0;
-	TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, dev_temp) {
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next,
+		dev_temp) {
 		if (dev->dev_type == DPAA2_MPORTAL) {
 			current_device++;
 			if (dev->device.devargs &&
@@ -872,7 +874,8 @@ fslmc_vfio_process_group(void)
 	}
 
 	current_device = 0;
-	TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, dev_temp) {
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next,
+		dev_temp) {
 		if (dev->dev_type == DPAA2_IO)
 			current_device++;
 		if (dev->device.devargs &&

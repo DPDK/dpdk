@@ -21,7 +21,6 @@ extern "C" {
 #endif
 
 #include <stdio.h>
-#include <sys/queue.h>
 #include <rte_compat.h>
 #include <rte_bus.h>
 
@@ -70,7 +69,7 @@ enum rte_devtype {
  */
 struct rte_devargs {
 	/** Next in list. */
-	TAILQ_ENTRY(rte_devargs) next;
+	RTE_TAILQ_ENTRY(rte_devargs) next;
 	/** Type of device. */
 	enum rte_devtype type;
 	/** Device policy. */

@@ -62,7 +62,7 @@ struct ip_frag_key {
  * First two entries in the frags[] array are for the last and first fragments.
  */
 struct ip_frag_pkt {
-	TAILQ_ENTRY(ip_frag_pkt) lru;   /**< LRU list */
+	RTE_TAILQ_ENTRY(ip_frag_pkt) lru; /**< LRU list */
 	struct ip_frag_key key;           /**< fragmentation key */
 	uint64_t             start;       /**< creation timestamp */
 	uint32_t             total_size;  /**< expected reassembled size */
@@ -83,7 +83,7 @@ struct rte_ip_frag_death_row {
 	/**< mbufs to be freed */
 };
 
-TAILQ_HEAD(ip_pkt_list, ip_frag_pkt); /**< @internal fragments tailq */
+RTE_TAILQ_HEAD(ip_pkt_list, ip_frag_pkt); /**< @internal fragments tailq */
 
 /** fragmentation table statistics */
 struct ip_frag_tbl_stat {

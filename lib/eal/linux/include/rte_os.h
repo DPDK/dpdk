@@ -11,6 +11,16 @@
  */
 
 #include <sched.h>
+#include <sys/queue.h>
+
+/* These macros are compatible with system's sys/queue.h. */
+#define RTE_TAILQ_HEAD(name, type) TAILQ_HEAD(name, type)
+#define RTE_TAILQ_ENTRY(type) TAILQ_ENTRY(type)
+#define RTE_TAILQ_FOREACH(var, head, field) TAILQ_FOREACH(var, head, field)
+#define RTE_TAILQ_FIRST(head) TAILQ_FIRST(head)
+#define RTE_TAILQ_NEXT(elem, field) TAILQ_NEXT(elem, field)
+#define RTE_STAILQ_HEAD(name, type) STAILQ_HEAD(name, type)
+#define RTE_STAILQ_ENTRY(type) STAILQ_ENTRY(type)
 
 #ifdef CPU_SETSIZE /* may require _GNU_SOURCE */
 typedef cpu_set_t rte_cpuset_t;

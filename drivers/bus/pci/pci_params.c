@@ -2,6 +2,8 @@
  * Copyright 2018 Gaëtan Rivet
  */
 
+#include <sys/queue.h>
+
 #include <rte_bus.h>
 #include <rte_bus_pci.h>
 #include <rte_dev.h>

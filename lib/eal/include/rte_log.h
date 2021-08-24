@@ -21,7 +21,6 @@ extern "C" {
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <sys/queue.h>
 
 #include <rte_common.h>
 #include <rte_config.h>

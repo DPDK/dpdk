@@ -277,7 +277,7 @@ eal_option_device_parse(void)
 	void *tmp;
 	int ret = 0;
 
-	TAILQ_FOREACH_SAFE(devopt, &devopt_list, next, tmp) {
+	RTE_TAILQ_FOREACH_SAFE(devopt, &devopt_list, next, tmp) {
 		if (ret == 0) {
 			ret = rte_devargs_add(devopt->type, devopt->arg);
 			if (ret)

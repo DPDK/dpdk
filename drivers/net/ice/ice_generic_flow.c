@@ -1820,7 +1820,7 @@ ice_flow_init(struct ice_adapter *ad)
 	TAILQ_INIT(&pf->dist_parser_list);
 	rte_spinlock_init(&pf->flow_ops_lock);
 
-	TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
+	RTE_TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
 		if (engine->init == NULL) {
 			PMD_INIT_LOG(ERR, "Invalid engine type (%d)",
 					engine->type);
@@ -1846,7 +1846,7 @@ ice_flow_uninit(struct ice_adapter *ad)
 	struct ice_flow_parser_node *p_parser;
 	void *temp;
 
-	TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
+	RTE_TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
 		if (engine->uninit)
 			engine->uninit(ad);
 	}
@@ -1946,7 +1946,7 @@ ice_unregister_parser(struct ice_flow_parser *parser,
 	if (list == NULL)
 		return;
 
-	TAILQ_FOREACH_SAFE(p_parser, list, node, temp) {
+	RTE_TAILQ_FOREACH_SAFE(p_parser, list, node, temp) {
 		if (p_parser->parser->engine->type == parser->engine->type) {
 			TAILQ_REMOVE(list, p_parser, node);
 			rte_free(p_parser);
@@ -2276,7 +2276,7 @@ ice_parse_engine_create(struct ice_adapter *ad,
 	void *meta = NULL;
 	void *temp;
 
-	TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
+	RTE_TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
 		int ret;
 
 		if (parser_node->parser->parse_pattern_action(ad,
@@ -2309,7 +2309,7 @@ ice_parse_engine_validate(struct ice_adapter *ad,
 	struct ice_flow_parser_node *parser_node;
 	void *temp;
 
-	TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
+	RTE_TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
 		if (parser_node->parser->parse_pattern_action(ad,
 				parser_node->parser->array,
 				parser_node->parser->array_len,
@@ -2481,7 +2481,7 @@ ice_flow_flush(struct rte_eth_dev *dev,
 	void *temp;
 	int ret = 0;
 
-	TAILQ_FOREACH_SAFE(p_flow, &pf->flow_list, node, temp) {
+	RTE_TAILQ_FOREACH_SAFE(p_flow, &pf->flow_list, node, temp) {
 		ret = ice_flow_destroy(dev, p_flow, error);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to flush flows");
@@ -2546,7 +2546,7 @@ ice_flow_redirect(struct ice_adapter *ad,
 
 	rte_spinlock_lock(&pf->flow_ops_lock);
 
-	TAILQ_FOREACH_SAFE(p_flow, &pf->flow_list, node, temp) {
+	RTE_TAILQ_FOREACH_SAFE(p_flow, &pf->flow_list, node, temp) {
 		if (!p_flow->engine->redirect)
 			continue;
 		ret = p_flow->engine->redirect(ad, p_flow, rd);

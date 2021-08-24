@@ -879,7 +879,7 @@ typedef uint16_t (*enqueue_pkt_burst_t)(void *qp,
 struct rte_cryptodev_callback;
 
 /** Structure to keep track of registered callbacks */
-TAILQ_HEAD(rte_cryptodev_cb_list, rte_cryptodev_callback);
+RTE_TAILQ_HEAD(rte_cryptodev_cb_list, rte_cryptodev_callback);
 
 /**
  * Structure used to hold information about the callbacks to be called for a

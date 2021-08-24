@@ -19,7 +19,6 @@ extern "C" {
 #include <stdlib.h>
 #include <limits.h>
 #include <errno.h>
-#include <sys/queue.h>
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -113,7 +112,7 @@ typedef int (rte_auxiliary_dma_unmap_t)(struct rte_auxiliary_device *dev,
  * A structure describing an auxiliary device.
  */
 struct rte_auxiliary_device {
-	TAILQ_ENTRY(rte_auxiliary_device) next;   /**< Next probed device. */
+	RTE_TAILQ_ENTRY(rte_auxiliary_device) next; /**< Next probed device. */
 	struct rte_device device;                 /**< Inherit core device */
 	char name[RTE_DEV_NAME_MAX_LEN + 1];      /**< ASCII device name */
 	struct rte_intr_handle intr_handle;       /**< Interrupt handle */
@@ -124,7 +123,7 @@ struct rte_auxiliary_device {
  * A structure describing an auxiliary driver.
  */
 struct rte_auxiliary_driver {
-	TAILQ_ENTRY(rte_auxiliary_driver) next; /**< Next in list. */
+	RTE_TAILQ_ENTRY(rte_auxiliary_driver) next; /**< Next in list. */
 	struct rte_driver driver;             /**< Inherit core driver. */
 	struct rte_auxiliary_bus *bus;        /**< Auxiliary bus reference. */
 	rte_auxiliary_match_t *match;         /**< Device match function. */

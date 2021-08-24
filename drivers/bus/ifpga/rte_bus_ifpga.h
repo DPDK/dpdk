@@ -28,9 +28,9 @@ struct rte_afu_device;
 struct rte_afu_driver;
 
 /** Double linked list of Intel FPGA AFU device. */
-TAILQ_HEAD(ifpga_afu_dev_list, rte_afu_device);
+RTE_TAILQ_HEAD(ifpga_afu_dev_list, rte_afu_device);
 /** Double linked list of Intel FPGA AFU device drivers. */
-TAILQ_HEAD(ifpga_afu_drv_list, rte_afu_driver);
+RTE_TAILQ_HEAD(ifpga_afu_drv_list, rte_afu_driver);
 
 #define IFPGA_BUS_BITSTREAM_PATH_MAX_LEN 256
 
@@ -71,7 +71,7 @@ struct rte_afu_shared {
  * A structure describing a AFU device.
  */
 struct rte_afu_device {
-	TAILQ_ENTRY(rte_afu_device) next;       /**< Next in device list. */
+	RTE_TAILQ_ENTRY(rte_afu_device) next;       /**< Next in device list. */
 	struct rte_device device;               /**< Inherit core device */
 	struct rte_rawdev *rawdev;    /**< Point Rawdev */
 	struct rte_afu_id id;                   /**< AFU id within FPGA. */
@@ -105,7 +105,7 @@ typedef int (afu_remove_t)(struct rte_afu_device *);
  * A structure describing a AFU device.
  */
 struct rte_afu_driver {
-	TAILQ_ENTRY(rte_afu_driver) next;       /**< Next afu driver. */
+	RTE_TAILQ_ENTRY(rte_afu_driver) next;   /**< Next afu driver. */
 	struct rte_driver driver;               /**< Inherit core driver. */
 	afu_probe_t *probe;                     /**< Device Probe function. */
 	afu_remove_t *remove;                   /**< Device Remove function. */

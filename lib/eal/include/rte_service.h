@@ -29,7 +29,6 @@ extern "C" {
 
 #include<stdio.h>
 #include <stdint.h>
-#include <sys/queue.h>
 
 #include <rte_config.h>
 #include <rte_lcore.h>

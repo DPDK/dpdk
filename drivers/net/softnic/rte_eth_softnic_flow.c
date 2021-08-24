@@ -2207,7 +2207,8 @@ pmd_flow_flush(struct rte_eth_dev *dev,
 			void *temp;
 			int status;
 
-			TAILQ_FOREACH_SAFE(flow, &table->flows, node, temp) {
+			RTE_TAILQ_FOREACH_SAFE(flow, &table->flows, node,
+				temp) {
 				/* Rule delete. */
 				status = softnic_pipeline_table_rule_delete
 						(softnic,

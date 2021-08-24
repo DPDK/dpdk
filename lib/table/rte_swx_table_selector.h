@@ -16,7 +16,6 @@ extern "C" {
  */
 
 #include <stdint.h>
-#include <sys/queue.h>
 
 #include <rte_compat.h>
 
@@ -56,7 +55,7 @@ struct rte_swx_table_selector_params {
 /** Group member parameters. */
 struct rte_swx_table_selector_member {
 	/** Linked list connectivity. */
-	TAILQ_ENTRY(rte_swx_table_selector_member) node;
+	RTE_TAILQ_ENTRY(rte_swx_table_selector_member) node;
 
 	/** Member ID. */
 	uint32_t member_id;
@@ -66,7 +65,7 @@ struct rte_swx_table_selector_member {
 };
 
 /** List of group members. */
-TAILQ_HEAD(rte_swx_table_selector_member_list, rte_swx_table_selector_member);
+RTE_TAILQ_HEAD(rte_swx_table_selector_member_list, rte_swx_table_selector_member);
 
 /** Group parameters. */
 struct rte_swx_table_selector_group {

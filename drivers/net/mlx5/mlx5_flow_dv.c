@@ -15132,7 +15132,7 @@ __flow_dv_destroy_sub_policy_rules(struct rte_eth_dev *dev,
 		    policy->act_cnt[i].fate_action == MLX5_FLOW_FATE_MTR)
 			next_fm = mlx5_flow_meter_find(priv,
 					policy->act_cnt[i].next_mtr_id, NULL);
-		TAILQ_FOREACH_SAFE(color_rule, &sub_policy->color_rules[i],
+		RTE_TAILQ_FOREACH_SAFE(color_rule, &sub_policy->color_rules[i],
 				   next_port, tmp) {
 			claim_zero(mlx5_flow_os_destroy_flow(color_rule->rule));
 			tbl = container_of(color_rule->matcher->tbl,

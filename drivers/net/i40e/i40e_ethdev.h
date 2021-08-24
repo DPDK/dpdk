@@ -6,6 +6,7 @@
 #define _I40E_ETHDEV_H_
 
 #include <stdint.h>
+#include <sys/queue.h>
 
 #include <rte_time.h>
 #include <rte_kvargs.h>

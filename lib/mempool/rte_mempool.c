@@ -1337,7 +1337,7 @@ void rte_mempool_walk(void (*func)(struct rte_mempool *, void *),
 
 	rte_mcfg_mempool_read_lock();
 
-	TAILQ_FOREACH_SAFE(te, mempool_list, next, tmp_te) {
+	RTE_TAILQ_FOREACH_SAFE(te, mempool_list, next, tmp_te) {
 		(*func)((struct rte_mempool *) te->data, arg);
 	}
 

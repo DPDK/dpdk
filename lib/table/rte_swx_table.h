@@ -16,7 +16,8 @@ extern "C" {
  */
 
 #include <stdint.h>
-#include <sys/queue.h>
+
+#include <rte_os.h>
 
 /** Match type. */
 enum rte_swx_table_match_type {
@@ -68,7 +69,7 @@ struct rte_swx_table_entry {
 	/** Used to facilitate the membership of this table entry to a
 	 * linked list.
 	 */
-	TAILQ_ENTRY(rte_swx_table_entry) node;
+	RTE_TAILQ_ENTRY(rte_swx_table_entry) node;
 
 	/** Key value for the current entry. Array of *key_size* bytes or NULL
 	 * if the *key_size* for the current table is 0.
@@ -111,7 +112,7 @@ struct rte_swx_table_entry {
 };
 
 /** List of table entries. */
-TAILQ_HEAD(rte_swx_table_entry_list, rte_swx_table_entry);
+RTE_TAILQ_HEAD(rte_swx_table_entry_list, rte_swx_table_entry);
 
 /**
  * Table memory footprint get

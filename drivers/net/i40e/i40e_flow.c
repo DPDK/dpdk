@@ -4917,7 +4917,7 @@ i40e_flow_flush_fdir_filter(struct i40e_pf *pf)
 		}
 
 		/* Delete FDIR flows in flow list. */
-		TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, temp) {
+		RTE_TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, temp) {
 			if (flow->filter_type == RTE_ETH_FILTER_FDIR) {
 				TAILQ_REMOVE(&pf->flow_list, flow, node);
 			}
@@ -4972,7 +4972,7 @@ i40e_flow_flush_ethertype_filter(struct i40e_pf *pf)
 	}
 
 	/* Delete ethertype flows in flow list. */
-	TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, temp) {
+	RTE_TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, temp) {
 		if (flow->filter_type == RTE_ETH_FILTER_ETHERTYPE) {
 			TAILQ_REMOVE(&pf->flow_list, flow, node);
 			rte_free(flow);
@@ -5000,7 +5000,7 @@ i40e_flow_flush_tunnel_filter(struct i40e_pf *pf)
 	}
 
 	/* Delete tunnel flows in flow list. */
-	TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, temp) {
+	RTE_TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, temp) {
 		if (flow->filter_type == RTE_ETH_FILTER_TUNNEL) {
 			TAILQ_REMOVE(&pf->flow_list, flow, node);
 			rte_free(flow);

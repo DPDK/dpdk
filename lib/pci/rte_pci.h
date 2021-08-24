@@ -18,7 +18,6 @@ extern "C" {
 
 #include <stdio.h>
 #include <limits.h>
-#include <sys/queue.h>
 #include <inttypes.h>
 #include <sys/types.h>
 

@@ -180,7 +180,7 @@ fs_flow_flush(struct rte_eth_dev *dev,
 			return ret;
 		}
 	}
-	TAILQ_FOREACH_SAFE(flow, &PRIV(dev)->flow_list, next, tmp) {
+	RTE_TAILQ_FOREACH_SAFE(flow, &PRIV(dev)->flow_list, next, tmp) {
 		TAILQ_REMOVE(&PRIV(dev)->flow_list, flow, next);
 		fs_flow_release(&flow);
 	}

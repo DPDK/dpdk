@@ -2,6 +2,8 @@
  * Copyright(c) 2020 Intel Corporation.
  */
 
+#include <sys/queue.h>
+
 #include <rte_windows.h>
 #include <rte_errno.h>
 #include <rte_log.h>

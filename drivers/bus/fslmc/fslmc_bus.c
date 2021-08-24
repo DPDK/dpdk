@@ -45,7 +45,7 @@ cleanup_fslmc_device_list(void)
 	struct rte_dpaa2_device *dev;
 	struct rte_dpaa2_device *t_dev;
 
-	TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, t_dev) {
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, t_dev) {
 		TAILQ_REMOVE(&rte_fslmc_bus.device_list, dev, next);
 		free(dev);
 		dev = NULL;
@@ -82,7 +82,7 @@ insert_in_device_list(struct rte_dpaa2_device *newdev)
 	struct rte_dpaa2_device *dev = NULL;
 	struct rte_dpaa2_device *tdev = NULL;
 
-	TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, tdev) {
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, tdev) {
 		comp = compare_dpaa2_devname(newdev, dev);
 		if (comp < 0) {
 			TAILQ_INSERT_BEFORE(dev, newdev, next);

@@ -1366,7 +1366,7 @@ i40e_hash_filter_flush(struct i40e_pf *pf)
 {
 	struct rte_flow *flow, *next;
 
-	TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, next) {
+	RTE_TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, next) {
 		if (flow->filter_type != RTE_ETH_FILTER_HASH)
 			continue;
 

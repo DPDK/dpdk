@@ -71,7 +71,7 @@ struct rte_vdpa_dev_ops {
  * vdpa device structure includes device address and device operations.
  */
 struct rte_vdpa_device {
-	TAILQ_ENTRY(rte_vdpa_device) next;
+	RTE_TAILQ_ENTRY(rte_vdpa_device) next;
 	/** Generic device information */
 	struct rte_device *device;
 	/** vdpa device operations */

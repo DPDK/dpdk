@@ -17,7 +17,6 @@
 
 #include <stdint.h>
 #include <errno.h>
-#include <sys/queue.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -26,7 +26,6 @@ extern "C" {
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/queue.h>
 #include <errno.h>
 #include <rte_common.h>
 #include <rte_config.h>

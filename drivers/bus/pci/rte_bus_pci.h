@@ -19,7 +19,6 @@ extern "C" {
 #include <stdlib.h>
 #include <limits.h>
 #include <errno.h>
-#include <sys/queue.h>
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -37,16 +36,16 @@ struct rte_pci_device;
 struct rte_pci_driver;
 
 /** List of PCI devices */
-TAILQ_HEAD(rte_pci_device_list, rte_pci_device);
+RTE_TAILQ_HEAD(rte_pci_device_list, rte_pci_device);
 /** List of PCI drivers */
-TAILQ_HEAD(rte_pci_driver_list, rte_pci_driver);
+RTE_TAILQ_HEAD(rte_pci_driver_list, rte_pci_driver);
 
 /* PCI Bus iterators */
 #define FOREACH_DEVICE_ON_PCIBUS(p)	\
-		TAILQ_FOREACH(p, &(rte_pci_bus.device_list), next)
+		RTE_TAILQ_FOREACH(p, &(rte_pci_bus.device_list), next)
 
 #define FOREACH_DRIVER_ON_PCIBUS(p)	\
-		TAILQ_FOREACH(p, &(rte_pci_bus.driver_list), next)
+		RTE_TAILQ_FOREACH(p, &(rte_pci_bus.driver_list), next)
 
 struct rte_devargs;
 
@@ -64,7 +63,7 @@ enum rte_pci_kernel_driver {
  * A structure describing a PCI device.
  */
 struct rte_pci_device {
-	TAILQ_ENTRY(rte_pci_device) next;   /**< Next probed PCI device. */
+	RTE_TAILQ_ENTRY(rte_pci_device) next;   /**< Next probed PCI device. */
 	struct rte_device device;           /**< Inherit core device */
 	struct rte_pci_addr addr;           /**< PCI location. */
 	struct rte_pci_id id;               /**< PCI ID. */
@@ -160,7 +159,7 @@ typedef int (pci_dma_unmap_t)(struct rte_pci_device *dev, void *addr,
  * A structure describing a PCI driver.
  */
 struct rte_pci_driver {
-	TAILQ_ENTRY(rte_pci_driver) next;  /**< Next in list. */
+	RTE_TAILQ_ENTRY(rte_pci_driver) next;  /**< Next in list. */
 	struct rte_driver driver;          /**< Inherit core driver. */
 	struct rte_pci_bus *bus;           /**< PCI bus reference. */
 	rte_pci_probe_t *probe;            /**< Device probe function. */

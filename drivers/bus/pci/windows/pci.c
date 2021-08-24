@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2020 Mellanox Technologies, Ltd
  */
+
+#include <sys/queue.h>
+
 #include <rte_windows.h>
 #include <rte_errno.h>
 #include <rte_log.h>

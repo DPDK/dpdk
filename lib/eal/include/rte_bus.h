@@ -19,13 +19,12 @@ extern "C" {
 #endif
 
 #include <stdio.h>
-#include <sys/queue.h>
 
 #include <rte_log.h>
 #include <rte_dev.h>
 
 /** Double linked list of buses */
-TAILQ_HEAD(rte_bus_list, rte_bus);
+RTE_TAILQ_HEAD(rte_bus_list, rte_bus);
 
 
 /**
@@ -260,7 +259,7 @@ typedef enum rte_iova_mode (*rte_bus_get_iommu_class_t)(void);
  * A structure describing a generic bus.
  */
 struct rte_bus {
-	TAILQ_ENTRY(rte_bus) next;   /**< Next bus object in linked list */
+	RTE_TAILQ_ENTRY(rte_bus) next; /**< Next bus object in linked list */
 	const char *name;            /**< Name of the bus */
 	rte_bus_scan_t scan;         /**< Scan for devices attached to bus */
 	rte_bus_probe_t probe;       /**< Probe devices on bus */

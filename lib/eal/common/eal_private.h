@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/queue.h>
 
 #include <rte_dev.h>
 #include <rte_lcore.h>

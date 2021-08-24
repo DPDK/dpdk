@@ -2,6 +2,8 @@
  * Copyright(c) 2021 Intel Corporation
  */
 
+#include <sys/queue.h>
+
 #include <rte_thash.h>
 #include <rte_tailq.h>
 #include <rte_random.h>

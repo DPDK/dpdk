@@ -759,7 +759,7 @@ rte_efd_free(struct rte_efd_table *table)
 	efd_list = RTE_TAILQ_CAST(rte_efd_tailq.head, rte_efd_list);
 	rte_mcfg_tailq_write_lock();
 
-	TAILQ_FOREACH_SAFE(te, efd_list, next, temp) {
+	RTE_TAILQ_FOREACH_SAFE(te, efd_list, next, temp) {
 		if (te->data == (void *) table) {
 			TAILQ_REMOVE(efd_list, te, next);
 			rte_free(te);

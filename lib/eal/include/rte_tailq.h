@@ -15,17 +15,16 @@
 extern "C" {
 #endif
 
-#include <sys/queue.h>
 #include <stdio.h>
 #include <rte_debug.h>
 
 /** dummy structure type used by the rte_tailq APIs */
 struct rte_tailq_entry {
-	TAILQ_ENTRY(rte_tailq_entry) next; /**< Pointer entries for a tailq list */
+	RTE_TAILQ_ENTRY(rte_tailq_entry) next; /**< Pointer entries for a tailq list */
 	void *data; /**< Pointer to the data referenced by this tailq entry */
 };
 /** dummy */
-TAILQ_HEAD(rte_tailq_entry_head, rte_tailq_entry);
+RTE_TAILQ_HEAD(rte_tailq_entry_head, rte_tailq_entry);
 
 #define RTE_TAILQ_NAMESIZE 32
 
@@ -48,7 +47,7 @@ struct rte_tailq_elem {
 	 * rte_eal_tailqs_init()
 	 */
 	struct rte_tailq_head *head;
-	TAILQ_ENTRY(rte_tailq_elem) next;
+	RTE_TAILQ_ENTRY(rte_tailq_elem) next;
 	const char name[RTE_TAILQ_NAMESIZE];
 };
 
@@ -126,12 +125,10 @@ RTE_INIT(tailqinitfn_ ##t) \
 }
 
 /* This macro permits both remove and free var within the loop safely.*/
-#ifndef TAILQ_FOREACH_SAFE
-#define TAILQ_FOREACH_SAFE(var, head, field, tvar)		\
-	for ((var) = TAILQ_FIRST((head));			\
-	    (var) && ((tvar) = TAILQ_NEXT((var), field), 1);	\
+#define RTE_TAILQ_FOREACH_SAFE(var, head, field, tvar) \
+	for ((var) = RTE_TAILQ_FIRST((head)); \
+	    (var) && ((tvar) = RTE_TAILQ_NEXT((var), field), 1); \
 	    (var) = (tvar))
-#endif
 
 #ifdef __cplusplus
 }

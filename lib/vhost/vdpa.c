@@ -115,7 +115,7 @@ rte_vdpa_unregister_device(struct rte_vdpa_device *dev)
 	int ret = -1;
 
 	rte_spinlock_lock(&vdpa_device_list_lock);
-	TAILQ_FOREACH_SAFE(cur_dev, &vdpa_device_list, next, tmp_dev) {
+	RTE_TAILQ_FOREACH_SAFE(cur_dev, &vdpa_device_list, next, tmp_dev) {
 		if (dev != cur_dev)
 			continue;
 
