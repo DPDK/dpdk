@@ -5078,6 +5078,7 @@ static int
 bnxt_vnic_rss_configure_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	uint8_t *rxq_state = bp->eth_dev->data->rx_queue_state;
 	struct hwrm_vnic_rss_cfg_input req = {.req_type = 0 };
 	struct bnxt_rx_queue **rxqs = bp->rx_queues;
 	uint16_t *ring_tbl = vnic->rss_table;
@@ -5111,7 +5112,7 @@ bnxt_vnic_rss_configure_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 			/* Find next active ring. */
 			for (cnt = 0; cnt < max_rings; cnt++) {
-				if (rxqs[k]->rx_started)
+				if (rxq_state[k] != RTE_ETH_QUEUE_STATE_STOPPED)
 					break;
 				if (++k == max_rings)
 					k = 0;
