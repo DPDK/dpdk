@@ -882,11 +882,11 @@ ice_dcf_configure_queues(struct ice_dcf_hw *hw)
 		}
 		vc_qp->rxq.vsi_id = hw->vsi_res->vsi_id;
 		vc_qp->rxq.queue_id = i;
-		vc_qp->rxq.max_pkt_size = rxq[i]->max_pkt_len;
 
 		if (i >= hw->eth_dev->data->nb_rx_queues)
 			continue;
 
+		vc_qp->rxq.max_pkt_size = rxq[i]->max_pkt_len;
 		vc_qp->rxq.ring_len = rxq[i]->nb_rx_desc;
 		vc_qp->rxq.dma_ring_addr = rxq[i]->rx_ring_dma;
 		vc_qp->rxq.databuffer_size = rxq[i]->rx_buf_len;
