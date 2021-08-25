@@ -13,6 +13,7 @@
 #include <rte_common.h>
 
 #include <rte_debug.h>
+#include <rte_alarm.h>
 #include <rte_atomic.h>
 #include <rte_eal.h>
 #include <rte_ether.h>
@@ -1680,13 +1681,20 @@ iavf_request_queues(struct iavf_adapter *adapter, uint16_t num)
 	args.out_buffer = vf->aq_resp;
 	args.out_size = IAVF_AQ_BUF_SZ;
 
-	/*
-	 * disable interrupt to avoid the admin queue message to be read
-	 * before iavf_read_msg_from_pf.
-	 */
-	rte_intr_disable(&pci_dev->intr_handle);
-	err = iavf_execute_vf_cmd(adapter, &args);
-	rte_intr_enable(&pci_dev->intr_handle);
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
+		/* disable interrupt to avoid the admin queue message to be read
+		 * before iavf_read_msg_from_pf.
+		 */
+		rte_intr_disable(&pci_dev->intr_handle);
+		err = iavf_execute_vf_cmd(adapter, &args);
+		rte_intr_enable(&pci_dev->intr_handle);
+	} else {
+		rte_eal_alarm_cancel(iavf_dev_alarm_handler, dev);
+		err = iavf_execute_vf_cmd(adapter, &args);
+		rte_eal_alarm_set(IAVF_ALARM_INTERVAL,
+				  iavf_dev_alarm_handler, dev);
+	}
+
 	if (err) {
 		PMD_DRV_LOG(ERR, "fail to execute command OP_REQUEST_QUEUES");
 		return err;

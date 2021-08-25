@@ -16,6 +16,7 @@
 #include <rte_interrupts.h>
 #include <rte_debug.h>
 #include <rte_pci.h>
+#include <rte_alarm.h>
 #include <rte_atomic.h>
 #include <rte_eal.h>
 #include <rte_ether.h>
@@ -705,9 +706,9 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 			 */
 			vf->msix_base = IAVF_MISC_VEC_ID;
 
-			/* set ITR to max */
+			/* set ITR to default */
 			interval = iavf_calc_itr_interval(
-					IAVF_QUEUE_ITR_INTERVAL_MAX);
+					IAVF_QUEUE_ITR_INTERVAL_DEFAULT);
 			IAVF_WRITE_REG(hw, IAVF_VFINT_DYN_CTL01,
 				       IAVF_VFINT_DYN_CTL01_INTENA_MASK |
 				       (IAVF_ITR_INDEX_DEFAULT <<
@@ -868,7 +869,8 @@ iavf_dev_start(struct rte_eth_dev *dev)
 	}
 	/* re-enable intr again, because efd assign may change */
 	if (dev->data->dev_conf.intr_conf.rxq != 0) {
-		rte_intr_disable(intr_handle);
+		if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR)
+			rte_intr_disable(intr_handle);
 		rte_intr_enable(intr_handle);
 	}
 
@@ -901,6 +903,10 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
+
+	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) &&
+	    dev->data->dev_conf.intr_conf.rxq != 0)
+		rte_intr_disable(intr_handle);
 
 	if (adapter->stopped == 1)
 		return 0;
@@ -1650,6 +1656,7 @@ iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	uint16_t msix_intr;
 
 	msix_intr = pci_dev->intr_handle.intr_vec[queue_id];
@@ -1670,7 +1677,8 @@ iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 
 	IAVF_WRITE_FLUSH(hw);
 
-	rte_intr_ack(&pci_dev->intr_handle);
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR)
+		rte_intr_ack(&pci_dev->intr_handle);
 
 	return 0;
 }
@@ -2239,6 +2247,29 @@ iavf_dev_interrupt_handler(void *param)
 	iavf_enable_irq0(hw);
 }
 
+void
+iavf_dev_alarm_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t icr0;
+
+	iavf_disable_irq0(hw);
+
+	/* read out interrupt causes */
+	icr0 = IAVF_READ_REG(hw, IAVF_VFINT_ICR01);
+
+	if (icr0 & IAVF_VFINT_ICR01_ADMINQ_MASK) {
+		PMD_DRV_LOG(DEBUG, "ICR01_ADMINQ is reported");
+		iavf_handle_virtchnl_msg(dev);
+	}
+
+	iavf_enable_irq0(hw);
+
+	rte_eal_alarm_set(IAVF_ALARM_INTERVAL,
+			  iavf_dev_alarm_handler, dev);
+}
+
 static int
 iavf_dev_flow_ops_get(struct rte_eth_dev *dev,
 		      const struct rte_flow_ops **ops)
@@ -2275,6 +2306,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(eth_dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	int ret = 0;
 
@@ -2340,13 +2372,18 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
 
-	/* register callback func to eal lib */
-	rte_intr_callback_register(&pci_dev->intr_handle,
-				   iavf_dev_interrupt_handler,
-				   (void *)eth_dev);
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
+		/* register callback func to eal lib */
+		rte_intr_callback_register(&pci_dev->intr_handle,
+					   iavf_dev_interrupt_handler,
+					   (void *)eth_dev);
 
-	/* enable uio intr after callback register */
-	rte_intr_enable(&pci_dev->intr_handle);
+		/* enable uio intr after callback register */
+		rte_intr_enable(&pci_dev->intr_handle);
+	} else {
+		rte_eal_alarm_set(IAVF_ALARM_INTERVAL,
+				  iavf_dev_alarm_handler, eth_dev);
+	}
 
 	/* configure and enable device interrupt */
 	iavf_enable_irq0(hw);
@@ -2399,12 +2436,16 @@ iavf_dev_close(struct rte_eth_dev *dev)
 		iavf_config_promisc(adapter, false, false);
 
 	iavf_shutdown_adminq(hw);
-	/* disable uio intr before callback unregister */
-	rte_intr_disable(intr_handle);
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
+		/* disable uio intr before callback unregister */
+		rte_intr_disable(intr_handle);
 
-	/* unregister callback func from eal lib */
-	rte_intr_callback_unregister(intr_handle,
-				     iavf_dev_interrupt_handler, dev);
+		/* unregister callback func from eal lib */
+		rte_intr_callback_unregister(intr_handle,
+					     iavf_dev_interrupt_handler, dev);
+	} else {
+		rte_eal_alarm_cancel(iavf_dev_alarm_handler, dev);
+	}
 	iavf_disable_irq0(hw);
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS)
