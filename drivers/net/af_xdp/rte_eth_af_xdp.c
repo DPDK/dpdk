@@ -527,7 +527,6 @@ af_xdp_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 			if (!xsk_ring_prod__reserve(&txq->tx, 1, &idx_tx)) {
 				rte_pktmbuf_free(local_mbuf);
-				kick_tx(txq, cq);
 				goto out;
 			}
 
@@ -551,10 +550,9 @@ af_xdp_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		tx_bytes += mbuf->pkt_len;
 	}
 
-	kick_tx(txq, cq);
-
 out:
 	xsk_ring_prod__submit(&txq->tx, count);
+	kick_tx(txq, cq);
 
 	txq->stats.tx_pkts += count;
 	txq->stats.tx_bytes += tx_bytes;
