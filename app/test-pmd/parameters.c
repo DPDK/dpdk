@@ -513,6 +513,9 @@ parse_link_speed(int n)
 void
 launch_args_parse(int argc, char** argv)
 {
+#define PARAM_PROC_ID "proc-id"
+#define PARAM_NUM_PROCS "num-procs"
+
 	int n, opt;
 	char **argvopt;
 	int opt_idx;
@@ -633,6 +636,8 @@ launch_args_parse(int argc, char** argv)
 		{ "rx-mq-mode",                 1, 0, 0 },
 		{ "record-core-cycles",         0, 0, 0 },
 		{ "record-burst-stats",         0, 0, 0 },
+		{ PARAM_NUM_PROCS,              1, 0, 0 },
+		{ PARAM_PROC_ID,                1, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -1407,6 +1412,10 @@ launch_args_parse(int argc, char** argv)
 				record_core_cycles = 1;
 			if (!strcmp(lgopts[opt_idx].name, "record-burst-stats"))
 				record_burst_stats = 1;
+			if (!strcmp(lgopts[opt_idx].name, PARAM_NUM_PROCS))
+				num_procs = atoi(optarg);
+			if (!strcmp(lgopts[opt_idx].name, PARAM_PROC_ID))
+				proc_id = atoi(optarg);
 			break;
 		case 'h':
 			usage(argv[0]);

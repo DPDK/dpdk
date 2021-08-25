@@ -633,6 +633,15 @@ extern enum rte_eth_rx_mq_mode rx_mq_mode;
 
 extern struct rte_flow_action_conntrack conntrack_context;
 
+extern int proc_id;
+extern unsigned int num_procs;
+
+static inline bool
+is_proc_primary(void)
+{
+	return rte_eal_process_type() == RTE_PROC_PRIMARY;
+}
+
 static inline unsigned int
 lcore_num(void)
 {

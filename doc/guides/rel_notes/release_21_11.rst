@@ -82,6 +82,11 @@ New Features
 
   * Added PDCP short MAC-I support.
 
+* **Added multi-process support for testpmd.**
+
+  Added command-line options to specify total number of processes and
+  current process ID. Each process owns subset of Rx and Tx queues.
+
 
 Removed Items
 -------------

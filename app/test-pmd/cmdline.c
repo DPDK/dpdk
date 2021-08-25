@@ -5491,6 +5491,12 @@ cmd_set_flush_rx_parsed(void *parsed_result,
 		__rte_unused void *data)
 {
 	struct cmd_set_flush_rx *res = parsed_result;
+
+	if (num_procs > 1 && (strcmp(res->mode, "on") == 0)) {
+		printf("multi-process doesn't support to flush Rx queues.\n");
+		return;
+	}
+
 	no_flush_rx = (uint8_t)((strcmp(res->mode, "on") == 0) ? 0 : 1);
 }
 
