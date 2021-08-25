@@ -730,7 +730,7 @@ main(int argc, char **argv)
 				 rte_strerror(-ret), portid);
 
 		printf("Port %u, MAC address: "
-			"%02X:%02X:%02X:%02X:%02X:%02X\n\n",
+			RTE_ETHER_ADDR_PRT_FMT "\n\n",
 			portid,
 			l2fwd_ports_eth_addr[portid].addr_bytes[0],
 			l2fwd_ports_eth_addr[portid].addr_bytes[1],

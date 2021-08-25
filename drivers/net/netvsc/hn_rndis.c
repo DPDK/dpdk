@@ -1104,7 +1104,7 @@ hn_rndis_get_eaddr(struct hn_data *hv, uint8_t *eaddr)
 	if (error)
 		return error;
 
-	PMD_DRV_LOG(INFO, "MAC address %02x:%02x:%02x:%02x:%02x:%02x",
+	PMD_DRV_LOG(INFO, "MAC address " RTE_ETHER_ADDR_PRT_FMT,
 		    eaddr[0], eaddr[1], eaddr[2],
 		    eaddr[3], eaddr[4], eaddr[5]);
 	return 0;

@@ -473,8 +473,8 @@ update_client_stats(uint32_t addr, uint16_t port, uint32_t *TXorRXindicator)
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
 #define MODE6_DEBUG(info, src_ip, dst_ip, eth_h, arp_op, port, burstnumber) \
 	rte_log(RTE_LOG_DEBUG, bond_logtype,				\
-		"%s port:%d SrcMAC:%02X:%02X:%02X:%02X:%02X:%02X SrcIP:%s " \
-		"DstMAC:%02X:%02X:%02X:%02X:%02X:%02X DstIP:%s %s %d\n", \
+		"%s port:%d SrcMAC:" RTE_ETHER_ADDR_PRT_FMT " SrcIP:%s " \
+		"DstMAC:" RTE_ETHER_ADDR_PRT_FMT " DstIP:%s %s %d\n", \
 		info,							\
 		port,							\
 		eth_h->s_addr.addr_bytes[0], eth_h->s_addr.addr_bytes[1], \

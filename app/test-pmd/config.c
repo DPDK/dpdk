@@ -782,7 +782,7 @@ port_summary_display(portid_t port_id)
 	if (ret != 0)
 		return;
 
-	printf("%-4d %02X:%02X:%02X:%02X:%02X:%02X %-12s %-14s %-8s %s\n",
+	printf("%-4d " RTE_ETHER_ADDR_PRT_FMT " %-12s %-14s %-8s %s\n",
 		port_id, mac_addr.addr_bytes[0], mac_addr.addr_bytes[1],
 		mac_addr.addr_bytes[2], mac_addr.addr_bytes[3],
 		mac_addr.addr_bytes[4], mac_addr.addr_bytes[5], name,

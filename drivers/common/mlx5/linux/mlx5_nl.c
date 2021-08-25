@@ -693,7 +693,7 @@ mlx5_nl_vf_mac_addr_modify(int nlsk_fd, unsigned int iface_idx,
 error:
 	DRV_LOG(ERR,
 		"representor %u cannot set VF MAC address "
-		"%02X:%02X:%02X:%02X:%02X:%02X : %s",
+		RTE_ETHER_ADDR_PRT_FMT " : %s",
 		vf_index,
 		mac->addr_bytes[0], mac->addr_bytes[1],
 		mac->addr_bytes[2], mac->addr_bytes[3],

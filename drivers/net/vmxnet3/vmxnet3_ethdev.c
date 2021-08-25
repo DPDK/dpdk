@@ -371,7 +371,7 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->perm_addr,
 			&eth_dev->data->mac_addrs[0]);
 
-	PMD_INIT_LOG(DEBUG, "MAC Address : %02x:%02x:%02x:%02x:%02x:%02x",
+	PMD_INIT_LOG(DEBUG, "MAC Address : " RTE_ETHER_ADDR_PRT_FMT,
 		     hw->perm_addr[0], hw->perm_addr[1], hw->perm_addr[2],
 		     hw->perm_addr[3], hw->perm_addr[4], hw->perm_addr[5]);
 
@@ -575,7 +575,7 @@ vmxnet3_write_mac(struct vmxnet3_hw *hw, const uint8_t *addr)
 	uint32_t val;
 
 	PMD_INIT_LOG(DEBUG,
-		     "Writing MAC Address : %02x:%02x:%02x:%02x:%02x:%02x",
+		     "Writing MAC Address : " RTE_ETHER_ADDR_PRT_FMT,
 		     addr[0], addr[1], addr[2],
 		     addr[3], addr[4], addr[5]);
 

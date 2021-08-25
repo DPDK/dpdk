@@ -498,7 +498,7 @@ pcmd_macaddr_callback(void *ptr_params,
 		stat = rte_ethtool_net_get_mac_addr(params->port, &mac_addr);
 		if (stat == 0) {
 			printf(
-				"Port %i MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\n",
+				"Port %i MAC Address: " RTE_ETHER_ADDR_PRT_FMT "\n",
 				params->port,
 				mac_addr.addr_bytes[0],
 				mac_addr.addr_bytes[1],

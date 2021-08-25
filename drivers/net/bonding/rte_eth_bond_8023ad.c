@@ -55,11 +55,11 @@ bond_print_lacp(struct lacpdu *l)
 	uint8_t *addr;
 
 	addr = l->actor.port_params.system.addr_bytes;
-	snprintf(a_address, sizeof(a_address), "%02X:%02X:%02X:%02X:%02X:%02X",
+	snprintf(a_address, sizeof(a_address), RTE_ETHER_ADDR_PRT_FMT,
 		addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
 
 	addr = l->partner.port_params.system.addr_bytes;
-	snprintf(p_address, sizeof(p_address), "%02X:%02X:%02X:%02X:%02X:%02X",
+	snprintf(p_address, sizeof(p_address), RTE_ETHER_ADDR_PRT_FMT,
 		addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
 
 	for (i = 0; i < 8; i++) {

@@ -4996,7 +4996,7 @@ static int bnxt_setup_mac_addr(struct rte_eth_dev *eth_dev)
 		PMD_DRV_LOG(INFO, "VF MAC address not assigned by Host PF\n");
 		bnxt_eth_hw_addr_random(bp->mac_addr);
 		PMD_DRV_LOG(INFO,
-			    "Assign random MAC:%02X:%02X:%02X:%02X:%02X:%02X\n",
+			    "Assign random MAC:" RTE_ETHER_ADDR_PRT_FMT "\n",
 			    bp->mac_addr[0], bp->mac_addr[1], bp->mac_addr[2],
 			    bp->mac_addr[3], bp->mac_addr[4], bp->mac_addr[5]);
 

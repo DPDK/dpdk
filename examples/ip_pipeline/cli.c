@@ -272,7 +272,7 @@ print_link_info(struct link *link, char *out, size_t out_size)
 	snprintf(out, out_size,
 		"\n"
 		"%s: flags=<%s> mtu %u\n"
-		"\tether %02X:%02X:%02X:%02X:%02X:%02X rxqueues %u txqueues %u\n"
+		"\tether " RTE_ETHER_ADDR_PRT_FMT " rxqueues %u txqueues %u\n"
 		"\tport# %u  speed %s\n"
 		"\tRX packets %" PRIu64"  bytes %" PRIu64"\n"
 		"\tRX errors %" PRIu64"  missed %" PRIu64"  no-mbuf %" PRIu64"\n"
@@ -4776,7 +4776,7 @@ cmd_pipeline_table_rule_delete_default(char **tokens,
 static void
 ether_addr_show(FILE *f, struct rte_ether_addr *addr)
 {
-	fprintf(f, "%02x:%02x:%02x:%02x:%02x:%02x",
+	fprintf(f, RTE_ETHER_ADDR_PRT_FMT,
 		(uint32_t)addr->addr_bytes[0], (uint32_t)addr->addr_bytes[1],
 		(uint32_t)addr->addr_bytes[2], (uint32_t)addr->addr_bytes[3],
 		(uint32_t)addr->addr_bytes[4], (uint32_t)addr->addr_bytes[5]);

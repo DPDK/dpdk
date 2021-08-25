@@ -925,7 +925,7 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 	rte_eth_promiscuous_enable(portid);
 	/* >8 End of RX port is set in promiscuous mode. */
 
-	printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
+	printf("Port %u, MAC address: " RTE_ETHER_ADDR_PRT_FMT "\n\n",
 			portid,
 			ioat_ports_eth_addr[portid].addr_bytes[0],
 			ioat_ports_eth_addr[portid].addr_bytes[1],

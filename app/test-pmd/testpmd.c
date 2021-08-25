@@ -2692,7 +2692,7 @@ start_port(portid_t pid)
 				pi);
 
 		if (eth_macaddr_get_print_err(pi, &port->eth_addr) == 0)
-			printf("Port %d: %02X:%02X:%02X:%02X:%02X:%02X\n", pi,
+			printf("Port %d: " RTE_ETHER_ADDR_PRT_FMT "\n", pi,
 				port->eth_addr.addr_bytes[0],
 				port->eth_addr.addr_bytes[1],
 				port->eth_addr.addr_bytes[2],

@@ -1014,7 +1014,7 @@ err_secondary:
 			      " (error: %s)", strerror(err));
 			goto port_error;
 		}
-		INFO("port %u MAC address is %02x:%02x:%02x:%02x:%02x:%02x",
+		INFO("port %u MAC address is " RTE_ETHER_ADDR_PRT_FMT,
 		     priv->port,
 		     mac.addr_bytes[0], mac.addr_bytes[1],
 		     mac.addr_bytes[2], mac.addr_bytes[3],

@@ -207,11 +207,11 @@ mrvl_parse_mac(const struct rte_flow_item_eth *spec,
 	key_field->size = 6;
 
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX,
-		 "%02x:%02x:%02x:%02x:%02x:%02x",
+		 RTE_ETHER_ADDR_PRT_FMT,
 		 k[0], k[1], k[2], k[3], k[4], k[5]);
 
 	snprintf((char *)key_field->mask, MRVL_CLS_STR_SIZE_MAX,
-		 "%02x:%02x:%02x:%02x:%02x:%02x",
+		 RTE_ETHER_ADDR_PRT_FMT,
 		 m[0], m[1], m[2], m[3], m[4], m[5]);
 
 	flow->table_key.proto_field[flow->rule.num_fields].proto =

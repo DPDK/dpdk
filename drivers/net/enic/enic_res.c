@@ -113,7 +113,7 @@ int enic_get_vnic_config(struct enic *enic)
 				  vnic_dev_get_intr_coal_timer_max(enic->vdev));
 
 	dev_info(enic_get_dev(enic),
-		"vNIC MAC addr %02x:%02x:%02x:%02x:%02x:%02x "
+		"vNIC MAC addr " RTE_ETHER_ADDR_PRT_FMT
 		"wq/rq %d/%d mtu %d, max mtu:%d\n",
 		enic->mac_addr[0], enic->mac_addr[1], enic->mac_addr[2],
 		enic->mac_addr[3], enic->mac_addr[4], enic->mac_addr[5],

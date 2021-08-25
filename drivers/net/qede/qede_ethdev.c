@@ -2750,7 +2750,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 		qed_ops->sriov_configure(edev, pci_dev->max_vfs);
 	}
 
-	DP_INFO(edev, "MAC address : %02x:%02x:%02x:%02x:%02x:%02x\n",
+	DP_INFO(edev, "MAC address : " RTE_ETHER_ADDR_PRT_FMT "\n",
 		adapter->primary_mac.addr_bytes[0],
 		adapter->primary_mac.addr_bytes[1],
 		adapter->primary_mac.addr_bytes[2],

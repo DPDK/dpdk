@@ -359,7 +359,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		mac = pool_addr_template;
 		mac.addr_bytes[4] = port;
 		mac.addr_bytes[5] = q;
-		printf("Port %u vmdq pool %u set mac %02x:%02x:%02x:%02x:%02x:%02x\n",
+		printf("Port %u vmdq pool %u set mac " RTE_ETHER_ADDR_PRT_FMT "\n",
 			port, q,
 			mac.addr_bytes[0], mac.addr_bytes[1],
 			mac.addr_bytes[2], mac.addr_bytes[3],

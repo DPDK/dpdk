@@ -778,7 +778,7 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 
 	/* Print out VMDQ registration info. */
 	RTE_LOG(INFO, VHOST_DATA,
-		"(%d) mac %02x:%02x:%02x:%02x:%02x:%02x and vlan %d registered\n",
+		"(%d) mac " RTE_ETHER_ADDR_PRT_FMT " and vlan %d registered\n",
 		vdev->vid,
 		vdev->mac_address.addr_bytes[0], vdev->mac_address.addr_bytes[1],
 		vdev->mac_address.addr_bytes[2], vdev->mac_address.addr_bytes[3],

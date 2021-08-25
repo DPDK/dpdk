@@ -108,7 +108,7 @@ l2fwd_event_init_ports(struct l2fwd_resources *rsrc)
 
 		rte_eth_promiscuous_enable(port_id);
 
-		printf("Port %u,MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
+		printf("Port %u,MAC address: " RTE_ETHER_ADDR_PRT_FMT "\n\n",
 			port_id,
 			rsrc->eth_addr[port_id].addr_bytes[0],
 			rsrc->eth_addr[port_id].addr_bytes[1],

@@ -2094,7 +2094,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	/* copy the primary mac address */
 	rte_ether_addr_copy(&fman_intf->mac_addr, &eth_dev->data->mac_addrs[0]);
 
-	RTE_LOG(INFO, PMD, "net: dpaa: %s: %02x:%02x:%02x:%02x:%02x:%02x\n",
+	RTE_LOG(INFO, PMD, "net: dpaa: %s: " RTE_ETHER_ADDR_PRT_FMT "\n",
 		dpaa_device->name,
 		fman_intf->mac_addr.addr_bytes[0],
 		fman_intf->mac_addr.addr_bytes[1],

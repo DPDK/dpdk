@@ -2245,7 +2245,7 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 		PMD_INIT_LOG(ERR, "Failed to configure first skip");
 		goto malloc_fail;
 	}
-	PMD_INIT_LOG(INFO, "Port %d (%x:%x) mac=%02x:%02x:%02x:%02x:%02x:%02x",
+	PMD_INIT_LOG(INFO, "Port %d (%x:%x) mac=" RTE_ETHER_ADDR_PRT_FMT,
 		eth_dev->data->port_id, nic->vendor_id, nic->device_id,
 		nic->mac_addr[0], nic->mac_addr[1], nic->mac_addr[2],
 		nic->mac_addr[3], nic->mac_addr[4], nic->mac_addr[5]);

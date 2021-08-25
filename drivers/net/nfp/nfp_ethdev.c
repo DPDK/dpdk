@@ -566,7 +566,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	PMD_INIT_LOG(INFO, "port %d VendorID=0x%x DeviceID=0x%x "
-		     "mac=%02x:%02x:%02x:%02x:%02x:%02x",
+		     "mac=" RTE_ETHER_ADDR_PRT_FMT,
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id,
 		     hw->mac_addr[0], hw->mac_addr[1], hw->mac_addr[2],

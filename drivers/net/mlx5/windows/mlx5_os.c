@@ -566,7 +566,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		goto error;
 	}
 	DRV_LOG(INFO,
-		"port %u MAC address is %02x:%02x:%02x:%02x:%02x:%02x",
+		"port %u MAC address is " RTE_ETHER_ADDR_PRT_FMT,
 		eth_dev->data->port_id,
 		mac.addr_bytes[0], mac.addr_bytes[1],
 		mac.addr_bytes[2], mac.addr_bytes[3],

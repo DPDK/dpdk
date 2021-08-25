@@ -2327,7 +2327,7 @@ vhost_user_send_rarp(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		return RTE_VHOST_MSG_RESULT_ERR;
 
 	VHOST_LOG_CONFIG(DEBUG,
-		":: mac: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		":: mac: " RTE_ETHER_ADDR_PRT_FMT "\n",
 		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 	memcpy(dev->mac.addr_bytes, mac, 6);
 

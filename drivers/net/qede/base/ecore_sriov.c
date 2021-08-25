@@ -3539,7 +3539,7 @@ static void ecore_iov_vf_mbx_ucast_filter(struct ecore_hwfn *p_hwfn,
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 		   "VF[%d]: opcode 0x%02x type 0x%02x [%s %s] [vport 0x%02x]"
-		   " MAC %02x:%02x:%02x:%02x:%02x:%02x, vlan 0x%04x\n",
+		   " MAC " RTE_ETHER_ADDR_PRT_FMT ", vlan 0x%04x\n",
 		   vf->abs_vf_id, params.opcode, params.type,
 		   params.is_rx_filter ? "RX" : "",
 		   params.is_tx_filter ? "TX" : "",

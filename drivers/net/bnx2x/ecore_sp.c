@@ -618,7 +618,7 @@ static int ecore_check_mac_add(struct bnx2x_softc *sc __rte_unused,
 {
 	struct ecore_vlan_mac_registry_elem *pos;
 
-	ECORE_MSG(sc, "Checking MAC %02x:%02x:%02x:%02x:%02x:%02x for ADD command",
+	ECORE_MSG(sc, "Checking MAC " RTE_ETHER_ADDR_PRT_FMT " for ADD command",
 		  data->mac.mac[0], data->mac.mac[1], data->mac.mac[2],
 		  data->mac.mac[3], data->mac.mac[4], data->mac.mac[5]);
 
@@ -647,7 +647,7 @@ static struct ecore_vlan_mac_registry_elem *ecore_check_mac_del(struct bnx2x_sof
 {
 	struct ecore_vlan_mac_registry_elem *pos;
 
-	ECORE_MSG(sc, "Checking MAC %02x:%02x:%02x:%02x:%02x:%02x for DEL command",
+	ECORE_MSG(sc, "Checking MAC " RTE_ETHER_ADDR_PRT_FMT " for DEL command",
 		  data->mac.mac[0], data->mac.mac[1], data->mac.mac[2],
 		  data->mac.mac[3], data->mac.mac[4], data->mac.mac[5]);
 
@@ -841,7 +841,7 @@ static void ecore_set_one_mac_e2(struct bnx2x_softc *sc,
 	ecore_vlan_mac_set_cmd_hdr_e2(o, add, CLASSIFY_RULE_OPCODE_MAC,
 				      &rule_entry->mac.header);
 
-	ECORE_MSG(sc, "About to %s MAC %02x:%02x:%02x:%02x:%02x:%02x for Queue %d",
+	ECORE_MSG(sc, "About to %s MAC " RTE_ETHER_ADDR_PRT_FMT " for Queue %d",
 		  (add ? "add" : "delete"), mac[0], mac[1], mac[2], mac[3],
 		  mac[4], mac[5], raw->cl_id);
 
@@ -946,7 +946,7 @@ static void ecore_vlan_mac_set_rdata_e1x(struct bnx2x_softc *sc
 	ecore_vlan_mac_set_cfg_entry_e1x(o, add, opcode, mac, vlan_id,
 					 cfg_entry);
 
-	ECORE_MSG(sc, "%s MAC %02x:%02x:%02x:%02x:%02x:%02x CLID %d CAM offset %d",
+	ECORE_MSG(sc, "%s  MAC " RTE_ETHER_ADDR_PRT_FMT " CLID %d CAM offset %d",
 		  (add ? "setting" : "clearing"),
 		  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
 		  o->raw.cl_id, cam_offset);
@@ -2511,7 +2511,7 @@ static void ecore_mcast_hdl_pending_add_e2(struct bnx2x_softc *sc,
 		cnt++;
 
 		    ECORE_MSG
-		    (sc, "About to configure %02x:%02x:%02x:%02x:%02x:%02x mcast MAC",
+		    (sc, "About to configure " RTE_ETHER_ADDR_PRT_FMT " mcast MAC",
 		     pmac_pos->mac[0], pmac_pos->mac[1], pmac_pos->mac[2],
 		     pmac_pos->mac[3], pmac_pos->mac[4], pmac_pos->mac[5]);
 
@@ -2644,7 +2644,7 @@ static void ecore_mcast_hdl_add(struct bnx2x_softc *sc,
 		cnt++;
 
 		    ECORE_MSG
-		    (sc, "About to configure %02x:%02x:%02x:%02x:%02x:%02x mcast MAC",
+		    (sc, "About to configure " RTE_ETHER_ADDR_PRT_FMT " mcast MAC",
 		     mlist_pos->mac[0], mlist_pos->mac[1], mlist_pos->mac[2],
 		     mlist_pos->mac[3], mlist_pos->mac[4], mlist_pos->mac[5]);
 	}
@@ -2944,7 +2944,7 @@ static void ecore_mcast_hdl_add_e1h(struct bnx2x_softc *sc __rte_unused,
 		ECORE_57711_SET_MC_FILTER(mc_filter, bit);
 
 		    ECORE_MSG
-		    (sc, "About to configure %02x:%02x:%02x:%02x:%02x:%02x mcast MAC, bin %d",
+		    (sc, "About to configure " RTE_ETHER_ADDR_PRT_FMT " mcast MAC, bin %d",
 		     mlist_pos->mac[0], mlist_pos->mac[1], mlist_pos->mac[2],
 		     mlist_pos->mac[3], mlist_pos->mac[4], mlist_pos->mac[5],
 		     bit);

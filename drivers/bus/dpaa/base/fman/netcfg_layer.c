@@ -47,7 +47,7 @@ dump_netcfg(struct netcfg_info *cfg_ptr)
 		       (__if->mac_type == fman_mac_1g) ? "1G" :
 		       (__if->mac_type == fman_mac_2_5g) ? "2.5G" : "10G");
 
-		printf("\tmac_addr: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		printf("\tmac_addr: " RTE_ETHER_ADDR_PRT_FMT "\n",
 		       (&__if->mac_addr)->addr_bytes[0],
 		       (&__if->mac_addr)->addr_bytes[1],
 		       (&__if->mac_addr)->addr_bytes[2],

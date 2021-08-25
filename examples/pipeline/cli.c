@@ -376,7 +376,7 @@ print_link_info(struct link *link, char *out, size_t out_size)
 	snprintf(out, out_size,
 		"\n"
 		"%s: flags=<%s> mtu %u\n"
-		"\tether %02X:%02X:%02X:%02X:%02X:%02X rxqueues %u txqueues %u\n"
+		"\tether " RTE_ETHER_ADDR_PRT_FMT " rxqueues %u txqueues %u\n"
 		"\tport# %u  speed %s\n"
 		"\tRX packets %" PRIu64"  bytes %" PRIu64"\n"
 		"\tRX errors %" PRIu64"  missed %" PRIu64"  no-mbuf %" PRIu64"\n"

@@ -26,7 +26,7 @@ void
 rte_ether_format_addr(char *buf, uint16_t size,
 		      const struct rte_ether_addr *eth_addr)
 {
-	snprintf(buf, size, "%02X:%02X:%02X:%02X:%02X:%02X",
+	snprintf(buf, size, RTE_ETHER_ADDR_PRT_FMT,
 		 eth_addr->addr_bytes[0],
 		 eth_addr->addr_bytes[1],
 		 eth_addr->addr_bytes[2],

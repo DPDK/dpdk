@@ -8176,7 +8176,7 @@ static int bnx2x_get_shmem_info(struct bnx2x_softc *sc)
 		sc->link_params.mac_addr[4] = (uint8_t) (mac_lo >> 8);
 		sc->link_params.mac_addr[5] = (uint8_t) (mac_lo);
 		snprintf(sc->mac_addr_str, sizeof(sc->mac_addr_str),
-			 "%02x:%02x:%02x:%02x:%02x:%02x",
+			 RTE_ETHER_ADDR_PRT_FMT,
 			 sc->link_params.mac_addr[0],
 			 sc->link_params.mac_addr[1],
 			 sc->link_params.mac_addr[2],
@@ -11894,7 +11894,7 @@ void bnx2x_print_device_info(struct bnx2x_softc *sc)
 	PMD_DRV_LOG(INFO, sc, "%12s : %u", "MTU", sc->mtu);
 	PMD_DRV_LOG(INFO, sc,
 		    "%12s : %s", "PHY Type", get_ext_phy_type(ext_phy_type));
-	PMD_DRV_LOG(INFO, sc, "%12s : %x:%x:%x:%x:%x:%x", "MAC Addr",
+	PMD_DRV_LOG(INFO, sc, "%12s : " RTE_ETHER_ADDR_PRT_FMT, "MAC Addr",
 			sc->link_params.mac_addr[0],
 			sc->link_params.mac_addr[1],
 			sc->link_params.mac_addr[2],

@@ -285,7 +285,7 @@ signal_handler(int signum)
 static void
 print_mac(unsigned int portid, struct rte_ether_addr *bbdev_ports_eth_address)
 {
-	printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
+	printf("Port %u, MAC address: " RTE_ETHER_ADDR_PRT_FMT "\n\n",
 			(unsigned int) portid,
 			bbdev_ports_eth_address->addr_bytes[0],
 			bbdev_ports_eth_address->addr_bytes[1],

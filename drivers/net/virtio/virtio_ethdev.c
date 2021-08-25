@@ -1759,7 +1759,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac_addr,
 			&eth_dev->data->mac_addrs[0]);
 	PMD_INIT_LOG(DEBUG,
-		     "PORT MAC: %02X:%02X:%02X:%02X:%02X:%02X",
+		     "PORT MAC: " RTE_ETHER_ADDR_PRT_FMT,
 		     hw->mac_addr[0], hw->mac_addr[1], hw->mac_addr[2],
 		     hw->mac_addr[3], hw->mac_addr[4], hw->mac_addr[5]);
 
@@ -1840,7 +1840,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 				config->max_virtqueue_pairs);
 		PMD_INIT_LOG(DEBUG, "config->status=%d", config->status);
 		PMD_INIT_LOG(DEBUG,
-				"PORT MAC: %02X:%02X:%02X:%02X:%02X:%02X",
+				"PORT MAC: " RTE_ETHER_ADDR_PRT_FMT,
 				config->mac[0], config->mac[1],
 				config->mac[2], config->mac[3],
 				config->mac[4], config->mac[5]);

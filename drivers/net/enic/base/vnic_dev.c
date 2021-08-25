@@ -889,7 +889,7 @@ int vnic_dev_add_addr(struct vnic_dev *vdev, uint8_t *addr)
 
 	err = vnic_dev_cmd(vdev, CMD_ADDR_ADD, &a0, &a1, wait);
 	if (err)
-		pr_err("Can't add addr [%02x:%02x:%02x:%02x:%02x:%02x], %d\n",
+		pr_err("Can't add addr [" RTE_ETHER_ADDR_PRT_FMT "], %d\n",
 			addr[0], addr[1], addr[2], addr[3], addr[4], addr[5],
 			err);
 
@@ -908,7 +908,7 @@ int vnic_dev_del_addr(struct vnic_dev *vdev, uint8_t *addr)
 
 	err = vnic_dev_cmd(vdev, CMD_ADDR_DEL, &a0, &a1, wait);
 	if (err)
-		pr_err("Can't del addr [%02x:%02x:%02x:%02x:%02x:%02x], %d\n",
+		pr_err("Can't del addr [" RTE_ETHER_ADDR_PRT_FMT "], %d\n",
 			addr[0], addr[1], addr[2], addr[3], addr[4], addr[5],
 			err);
 
