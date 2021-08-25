@@ -477,13 +477,9 @@ update_client_stats(uint32_t addr, uint16_t port, uint32_t *TXorRXindicator)
 		"DstMAC:" RTE_ETHER_ADDR_PRT_FMT " DstIP:%s %s %d\n", \
 		info,							\
 		port,							\
-		eth_h->s_addr.addr_bytes[0], eth_h->s_addr.addr_bytes[1], \
-		eth_h->s_addr.addr_bytes[2], eth_h->s_addr.addr_bytes[3], \
-		eth_h->s_addr.addr_bytes[4], eth_h->s_addr.addr_bytes[5], \
+		RTE_ETHER_ADDR_BYTES(&eth_h->s_addr),                  \
 		src_ip,							\
-		eth_h->d_addr.addr_bytes[0], eth_h->d_addr.addr_bytes[1], \
-		eth_h->d_addr.addr_bytes[2], eth_h->d_addr.addr_bytes[3], \
-		eth_h->d_addr.addr_bytes[4], eth_h->d_addr.addr_bytes[5], \
+		RTE_ETHER_ADDR_BYTES(&eth_h->d_addr),                  \
 		dst_ip,							\
 		arp_op, ++burstnumber)
 #endif

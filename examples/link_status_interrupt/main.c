@@ -727,12 +727,7 @@ main(int argc, char **argv)
 
 		printf("Port %u, MAC address: " RTE_ETHER_ADDR_PRT_FMT "\n\n",
 				(unsigned) portid,
-				lsi_ports_eth_addr[portid].addr_bytes[0],
-				lsi_ports_eth_addr[portid].addr_bytes[1],
-				lsi_ports_eth_addr[portid].addr_bytes[2],
-				lsi_ports_eth_addr[portid].addr_bytes[3],
-				lsi_ports_eth_addr[portid].addr_bytes[4],
-				lsi_ports_eth_addr[portid].addr_bytes[5]);
+			RTE_ETHER_ADDR_BYTES(&lsi_ports_eth_addr[portid]));
 
 		/* initialize port stats */
 		memset(&port_statistics, 0, sizeof(port_statistics));

@@ -567,10 +567,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	DRV_LOG(INFO,
 		"port %u MAC address is " RTE_ETHER_ADDR_PRT_FMT,
-		eth_dev->data->port_id,
-		mac.addr_bytes[0], mac.addr_bytes[1],
-		mac.addr_bytes[2], mac.addr_bytes[3],
-		mac.addr_bytes[4], mac.addr_bytes[5]);
+		eth_dev->data->port_id, RTE_ETHER_ADDR_BYTES(&mac));
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	{
 		char ifname[MLX5_NAMESIZE];

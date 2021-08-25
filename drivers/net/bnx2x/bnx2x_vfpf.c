@@ -730,12 +730,7 @@ bnx2x_vfpf_set_mcast(struct bnx2x_softc *sc,
 	for (i = 0; i < mc_addrs_num; i++) {
 		PMD_DRV_LOG(DEBUG, sc, "Adding mcast MAC:"
 				RTE_ETHER_ADDR_PRT_FMT,
-				mc_addrs[i].addr_bytes[0],
-				mc_addrs[i].addr_bytes[1],
-				mc_addrs[i].addr_bytes[2],
-				mc_addrs[i].addr_bytes[3],
-				mc_addrs[i].addr_bytes[4],
-				mc_addrs[i].addr_bytes[5]);
+				RTE_ETHER_ADDR_BYTES(&mc_addrs[i]));
 		memcpy(query->multicast[i], mc_addrs[i].addr_bytes, ETH_ALEN);
 	}
 

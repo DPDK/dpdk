@@ -2751,12 +2751,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	}
 
 	DP_INFO(edev, "MAC address : " RTE_ETHER_ADDR_PRT_FMT "\n",
-		adapter->primary_mac.addr_bytes[0],
-		adapter->primary_mac.addr_bytes[1],
-		adapter->primary_mac.addr_bytes[2],
-		adapter->primary_mac.addr_bytes[3],
-		adapter->primary_mac.addr_bytes[4],
-		adapter->primary_mac.addr_bytes[5]);
+		RTE_ETHER_ADDR_BYTES(&adapter->primary_mac));
 
 	DP_INFO(edev, "Device initialized\n");
 

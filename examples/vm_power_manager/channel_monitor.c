@@ -124,9 +124,7 @@ set_policy_mac(struct rte_power_channel_packet *pkt, int idx, char *mac)
 
 	printf("Received MAC Address: %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8 ":"
 			"%02" PRIx8 ":%02" PRIx8 ":%02" PRIx8 "\n",
-			pfid.addr.addr_bytes[0], pfid.addr.addr_bytes[1],
-			pfid.addr.addr_bytes[2], pfid.addr.addr_bytes[3],
-			pfid.addr.addr_bytes[4], pfid.addr.addr_bytes[5]);
+			RTE_ETHER_ADDR_BYTES(&pfid.addr));
 
 	pkt->vfid[idx] = pfid.pfid;
 	return 0;

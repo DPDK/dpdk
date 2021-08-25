@@ -104,8 +104,7 @@
 #define MAX_PORTS	4
 #define PRINT_MAC(addr)		printf("%02"PRIx8":%02"PRIx8":%02"PRIx8 \
 		":%02"PRIx8":%02"PRIx8":%02"PRIx8,	\
-		addr.addr_bytes[0], addr.addr_bytes[1], addr.addr_bytes[2], \
-		addr.addr_bytes[3], addr.addr_bytes[4], addr.addr_bytes[5])
+		RTE_ETHER_ADDR_BYTES(&addr))
 
 uint16_t slaves[RTE_MAX_ETHPORTS];
 uint16_t slaves_count;

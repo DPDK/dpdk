@@ -2693,12 +2693,7 @@ start_port(portid_t pid)
 
 		if (eth_macaddr_get_print_err(pi, &port->eth_addr) == 0)
 			printf("Port %d: " RTE_ETHER_ADDR_PRT_FMT "\n", pi,
-				port->eth_addr.addr_bytes[0],
-				port->eth_addr.addr_bytes[1],
-				port->eth_addr.addr_bytes[2],
-				port->eth_addr.addr_bytes[3],
-				port->eth_addr.addr_bytes[4],
-				port->eth_addr.addr_bytes[5]);
+					RTE_ETHER_ADDR_BYTES(&port->eth_addr));
 
 		/* at least one port started, need checking link status */
 		need_check_link_status = 1;

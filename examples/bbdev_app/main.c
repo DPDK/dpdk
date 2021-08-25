@@ -287,12 +287,7 @@ print_mac(unsigned int portid, struct rte_ether_addr *bbdev_ports_eth_address)
 {
 	printf("Port %u, MAC address: " RTE_ETHER_ADDR_PRT_FMT "\n\n",
 			(unsigned int) portid,
-			bbdev_ports_eth_address->addr_bytes[0],
-			bbdev_ports_eth_address->addr_bytes[1],
-			bbdev_ports_eth_address->addr_bytes[2],
-			bbdev_ports_eth_address->addr_bytes[3],
-			bbdev_ports_eth_address->addr_bytes[4],
-			bbdev_ports_eth_address->addr_bytes[5]);
+			RTE_ETHER_ADDR_BYTES(bbdev_ports_eth_address));
 }
 
 static inline void

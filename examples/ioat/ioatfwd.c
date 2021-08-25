@@ -927,12 +927,7 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 
 	printf("Port %u, MAC address: " RTE_ETHER_ADDR_PRT_FMT "\n\n",
 			portid,
-			ioat_ports_eth_addr[portid].addr_bytes[0],
-			ioat_ports_eth_addr[portid].addr_bytes[1],
-			ioat_ports_eth_addr[portid].addr_bytes[2],
-			ioat_ports_eth_addr[portid].addr_bytes[3],
-			ioat_ports_eth_addr[portid].addr_bytes[4],
-			ioat_ports_eth_addr[portid].addr_bytes[5]);
+			RTE_ETHER_ADDR_BYTES(&ioat_ports_eth_addr[portid]));
 
 	cfg.ports[cfg.nb_ports].rxtx_port = portid;
 	cfg.ports[cfg.nb_ports++].nb_queues = nb_queues;

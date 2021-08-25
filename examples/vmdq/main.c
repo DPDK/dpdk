@@ -317,12 +317,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	printf("Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
 			" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
 			(unsigned)port,
-			vmdq_ports_eth_addr[port].addr_bytes[0],
-			vmdq_ports_eth_addr[port].addr_bytes[1],
-			vmdq_ports_eth_addr[port].addr_bytes[2],
-			vmdq_ports_eth_addr[port].addr_bytes[3],
-			vmdq_ports_eth_addr[port].addr_bytes[4],
-			vmdq_ports_eth_addr[port].addr_bytes[5]);
+			RTE_ETHER_ADDR_BYTES(&vmdq_ports_eth_addr[port]));
 
 	/*
 	 * Set mac for each pool.
@@ -335,10 +330,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		mac.addr_bytes[4] = port;
 		mac.addr_bytes[5] = q;
 		printf("Port %u vmdq pool %u set mac " RTE_ETHER_ADDR_PRT_FMT "\n",
-			port, q,
-			mac.addr_bytes[0], mac.addr_bytes[1],
-			mac.addr_bytes[2], mac.addr_bytes[3],
-			mac.addr_bytes[4], mac.addr_bytes[5]);
+			port, q, RTE_ETHER_ADDR_BYTES(&mac));
 		retval = rte_eth_dev_mac_addr_add(port, &mac,
 				q + vmdq_pool_base);
 		if (retval) {

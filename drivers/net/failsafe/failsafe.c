@@ -261,9 +261,7 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 			rte_eth_random_addr(&mac->addr_bytes[0]);
 	}
 	INFO("MAC address is " RTE_ETHER_ADDR_PRT_FMT,
-		mac->addr_bytes[0], mac->addr_bytes[1],
-		mac->addr_bytes[2], mac->addr_bytes[3],
-		mac->addr_bytes[4], mac->addr_bytes[5]);
+		RTE_ETHER_ADDR_BYTES(mac));
 	dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC |
 				RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 	PRIV(dev)->intr_handle = (struct rte_intr_handle){

@@ -1487,23 +1487,13 @@ iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 	if (ret)
 		PMD_DRV_LOG(ERR, "Fail to delete old MAC:"
 			    RTE_ETHER_ADDR_PRT_FMT,
-			    old_addr->addr_bytes[0],
-			    old_addr->addr_bytes[1],
-			    old_addr->addr_bytes[2],
-			    old_addr->addr_bytes[3],
-			    old_addr->addr_bytes[4],
-			    old_addr->addr_bytes[5]);
+				RTE_ETHER_ADDR_BYTES(old_addr));
 
 	ret = iavf_add_del_eth_addr(adapter, mac_addr, true, VIRTCHNL_ETHER_ADDR_PRIMARY);
 	if (ret)
 		PMD_DRV_LOG(ERR, "Fail to add new MAC:"
 			    RTE_ETHER_ADDR_PRT_FMT,
-			    mac_addr->addr_bytes[0],
-			    mac_addr->addr_bytes[1],
-			    mac_addr->addr_bytes[2],
-			    mac_addr->addr_bytes[3],
-			    mac_addr->addr_bytes[4],
-			    mac_addr->addr_bytes[5]);
+				RTE_ETHER_ADDR_BYTES(mac_addr));
 
 	if (ret)
 		return -EIO;

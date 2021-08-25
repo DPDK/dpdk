@@ -868,9 +868,7 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 
 	if (rte_is_zero_ether_addr(addr)) {
 		PMD_DRV_LOG(ERR, "Invalid mac:" RTE_ETHER_ADDR_PRT_FMT,
-			    addr->addr_bytes[0], addr->addr_bytes[1],
-			    addr->addr_bytes[2], addr->addr_bytes[3],
-			    addr->addr_bytes[4], addr->addr_bytes[5]);
+			    RTE_ETHER_ADDR_BYTES(addr));
 		return I40E_ERR_INVALID_MAC_ADDR;
 	}
 
@@ -2131,9 +2129,7 @@ i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 					      VIRTCHNL_ETHER_ADDR_PRIMARY :
 					      VIRTCHNL_ETHER_ADDR_EXTRA);
 			PMD_DRV_LOG(DEBUG, "add/rm mac:" RTE_ETHER_ADDR_PRT_FMT,
-				    addr->addr_bytes[0], addr->addr_bytes[1],
-				    addr->addr_bytes[2], addr->addr_bytes[3],
-				    addr->addr_bytes[4], addr->addr_bytes[5]);
+				    RTE_ETHER_ADDR_BYTES(addr));
 			j++;
 		}
 		list->vsi_id = vf->vsi_res->vsi_id;
@@ -2950,12 +2946,7 @@ i40evf_add_del_mc_addr_list(struct rte_eth_dev *dev,
 	for (i = 0; i < mc_addrs_num; i++) {
 		if (!I40E_IS_MULTICAST(mc_addrs[i].addr_bytes)) {
 			PMD_DRV_LOG(ERR, "Invalid mac:" RTE_ETHER_ADDR_PRT_FMT,
-				    mc_addrs[i].addr_bytes[0],
-				    mc_addrs[i].addr_bytes[1],
-				    mc_addrs[i].addr_bytes[2],
-				    mc_addrs[i].addr_bytes[3],
-				    mc_addrs[i].addr_bytes[4],
-				    mc_addrs[i].addr_bytes[5]);
+				    RTE_ETHER_ADDR_BYTES(&mc_addrs[i]));
 			return -EINVAL;
 		}
 

@@ -48,12 +48,7 @@ dump_netcfg(struct netcfg_info *cfg_ptr)
 		       (__if->mac_type == fman_mac_2_5g) ? "2.5G" : "10G");
 
 		printf("\tmac_addr: " RTE_ETHER_ADDR_PRT_FMT "\n",
-		       (&__if->mac_addr)->addr_bytes[0],
-		       (&__if->mac_addr)->addr_bytes[1],
-		       (&__if->mac_addr)->addr_bytes[2],
-		       (&__if->mac_addr)->addr_bytes[3],
-		       (&__if->mac_addr)->addr_bytes[4],
-		       (&__if->mac_addr)->addr_bytes[5]);
+		       RTE_ETHER_ADDR_BYTES(&__if->mac_addr));
 
 		printf("\ttx_channel_id: 0x%02x\n",
 		       __if->tx_channel_id);

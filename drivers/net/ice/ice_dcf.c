@@ -1076,9 +1076,7 @@ ice_dcf_add_del_all_mac_addr(struct ice_dcf_hw *hw, bool add)
 	rte_memcpy(list->list[0].addr, addr->addr_bytes,
 			sizeof(addr->addr_bytes));
 	PMD_DRV_LOG(DEBUG, "add/rm mac:" RTE_ETHER_ADDR_PRT_FMT,
-			    addr->addr_bytes[0], addr->addr_bytes[1],
-			    addr->addr_bytes[2], addr->addr_bytes[3],
-			    addr->addr_bytes[4], addr->addr_bytes[5]);
+			    RTE_ETHER_ADDR_BYTES(addr));
 
 	list->vsi_id = hw->vsi_res->vsi_id;
 	list->num_elements = 1;

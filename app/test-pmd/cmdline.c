@@ -10906,9 +10906,7 @@ static void cmd_mcast_addr_parsed(void *parsed_result,
 	if (!rte_is_multicast_ether_addr(&res->mc_addr)) {
 		fprintf(stderr,
 			"Invalid multicast addr " RTE_ETHER_ADDR_PRT_FMT "\n",
-			res->mc_addr.addr_bytes[0], res->mc_addr.addr_bytes[1],
-			res->mc_addr.addr_bytes[2], res->mc_addr.addr_bytes[3],
-			res->mc_addr.addr_bytes[4], res->mc_addr.addr_bytes[5]);
+			RTE_ETHER_ADDR_BYTES(&res->mc_addr));
 		return;
 	}
 	if (strcmp(res->what, "add") == 0)

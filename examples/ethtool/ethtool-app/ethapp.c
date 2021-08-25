@@ -499,13 +499,7 @@ pcmd_macaddr_callback(void *ptr_params,
 		if (stat == 0) {
 			printf(
 				"Port %i MAC Address: " RTE_ETHER_ADDR_PRT_FMT "\n",
-				params->port,
-				mac_addr.addr_bytes[0],
-				mac_addr.addr_bytes[1],
-				mac_addr.addr_bytes[2],
-				mac_addr.addr_bytes[3],
-				mac_addr.addr_bytes[4],
-				mac_addr.addr_bytes[5]);
+				params->port, RTE_ETHER_ADDR_BYTES(&mac_addr));
 			return;
 		}
 	}

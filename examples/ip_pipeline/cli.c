@@ -281,9 +281,7 @@ print_link_info(struct link *link, char *out, size_t out_size)
 		link->name,
 		eth_link.link_status == 0 ? "DOWN" : "UP",
 		mtu,
-		mac_addr.addr_bytes[0], mac_addr.addr_bytes[1],
-		mac_addr.addr_bytes[2], mac_addr.addr_bytes[3],
-		mac_addr.addr_bytes[4], mac_addr.addr_bytes[5],
+		RTE_ETHER_ADDR_BYTES(&mac_addr),
 		link->n_rxq,
 		link->n_txq,
 		link->port_id,
@@ -4776,10 +4774,7 @@ cmd_pipeline_table_rule_delete_default(char **tokens,
 static void
 ether_addr_show(FILE *f, struct rte_ether_addr *addr)
 {
-	fprintf(f, RTE_ETHER_ADDR_PRT_FMT,
-		(uint32_t)addr->addr_bytes[0], (uint32_t)addr->addr_bytes[1],
-		(uint32_t)addr->addr_bytes[2], (uint32_t)addr->addr_bytes[3],
-		(uint32_t)addr->addr_bytes[4], (uint32_t)addr->addr_bytes[5]);
+	fprintf(f, RTE_ETHER_ADDR_PRT_FMT, RTE_ETHER_ADDR_BYTES(addr));
 }
 
 static void

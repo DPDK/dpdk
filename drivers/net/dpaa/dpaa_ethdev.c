@@ -2095,13 +2095,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	rte_ether_addr_copy(&fman_intf->mac_addr, &eth_dev->data->mac_addrs[0]);
 
 	RTE_LOG(INFO, PMD, "net: dpaa: %s: " RTE_ETHER_ADDR_PRT_FMT "\n",
-		dpaa_device->name,
-		fman_intf->mac_addr.addr_bytes[0],
-		fman_intf->mac_addr.addr_bytes[1],
-		fman_intf->mac_addr.addr_bytes[2],
-		fman_intf->mac_addr.addr_bytes[3],
-		fman_intf->mac_addr.addr_bytes[4],
-		fman_intf->mac_addr.addr_bytes[5]);
+		dpaa_device->name, RTE_ETHER_ADDR_BYTES(&fman_intf->mac_addr));
 
 	if (!fman_intf->is_shared_mac) {
 		/* Configure error packet handling */

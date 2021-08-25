@@ -783,9 +783,7 @@ port_summary_display(portid_t port_id)
 		return;
 
 	printf("%-4d " RTE_ETHER_ADDR_PRT_FMT " %-12s %-14s %-8s %s\n",
-		port_id, mac_addr.addr_bytes[0], mac_addr.addr_bytes[1],
-		mac_addr.addr_bytes[2], mac_addr.addr_bytes[3],
-		mac_addr.addr_bytes[4], mac_addr.addr_bytes[5], name,
+		port_id, RTE_ETHER_ADDR_BYTES(&mac_addr), name,
 		dev_info.driver_name, (link.link_status) ? ("up") : ("down"),
 		rte_eth_link_speed_to_str(link.link_speed));
 }

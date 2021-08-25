@@ -1651,12 +1651,7 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 		PMD_INIT_LOG(INFO, "\tVF MAC address not assigned by Host PF");
 		PMD_INIT_LOG(INFO, "\tAssign randomly generated MAC address "
 			     RTE_ETHER_ADDR_PRT_FMT,
-			     perm_addr->addr_bytes[0],
-			     perm_addr->addr_bytes[1],
-			     perm_addr->addr_bytes[2],
-			     perm_addr->addr_bytes[3],
-			     perm_addr->addr_bytes[4],
-			     perm_addr->addr_bytes[5]);
+				 RTE_ETHER_ADDR_BYTES(perm_addr));
 	}
 
 	/* Copy the permanent MAC address */
@@ -6303,13 +6298,7 @@ ixgbevf_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 	if (diag != 0)
 		PMD_DRV_LOG(ERR, "Unable to add MAC address "
 			    RTE_ETHER_ADDR_PRT_FMT " - diag=%d",
-			    mac_addr->addr_bytes[0],
-			    mac_addr->addr_bytes[1],
-			    mac_addr->addr_bytes[2],
-			    mac_addr->addr_bytes[3],
-			    mac_addr->addr_bytes[4],
-			    mac_addr->addr_bytes[5],
-			    diag);
+			    RTE_ETHER_ADDR_BYTES(mac_addr), diag);
 	return diag;
 }
 
@@ -6352,13 +6341,7 @@ ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 			PMD_DRV_LOG(ERR,
 				    "Adding again MAC address "
 				     RTE_ETHER_ADDR_PRT_FMT " failed "
-				    "diag=%d",
-				    mac_addr->addr_bytes[0],
-				    mac_addr->addr_bytes[1],
-				    mac_addr->addr_bytes[2],
-				    mac_addr->addr_bytes[3],
-				    mac_addr->addr_bytes[4],
-				    mac_addr->addr_bytes[5],
+				    "diag=%d", RTE_ETHER_ADDR_BYTES(mac_addr),
 				    diag);
 	}
 }

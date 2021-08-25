@@ -85,9 +85,7 @@ get_printable_mac_addr(uint16_t port)
 
 		snprintf(addresses[port], sizeof(addresses[port]),
 				RTE_ETHER_ADDR_PRT_FMT "\n",
-				mac.addr_bytes[0], mac.addr_bytes[1],
-				mac.addr_bytes[2], mac.addr_bytes[3],
-				mac.addr_bytes[4], mac.addr_bytes[5]);
+				RTE_ETHER_ADDR_BYTES(&mac));
 	}
 	return addresses[port];
 }

@@ -369,14 +369,8 @@ port_init(uint16_t port)
 
 	RTE_LOG(INFO, VHOST_PORT, "Max virtio devices supported: %u\n", num_devices);
 	RTE_LOG(INFO, VHOST_PORT, "Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
-			" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
-			port,
-			vmdq_ports_eth_addr[port].addr_bytes[0],
-			vmdq_ports_eth_addr[port].addr_bytes[1],
-			vmdq_ports_eth_addr[port].addr_bytes[2],
-			vmdq_ports_eth_addr[port].addr_bytes[3],
-			vmdq_ports_eth_addr[port].addr_bytes[4],
-			vmdq_ports_eth_addr[port].addr_bytes[5]);
+		" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
+		port, RTE_ETHER_ADDR_BYTES(&vmdq_ports_eth_addr[port]));
 
 	return 0;
 }
@@ -779,10 +773,7 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 	/* Print out VMDQ registration info. */
 	RTE_LOG(INFO, VHOST_DATA,
 		"(%d) mac " RTE_ETHER_ADDR_PRT_FMT " and vlan %d registered\n",
-		vdev->vid,
-		vdev->mac_address.addr_bytes[0], vdev->mac_address.addr_bytes[1],
-		vdev->mac_address.addr_bytes[2], vdev->mac_address.addr_bytes[3],
-		vdev->mac_address.addr_bytes[4], vdev->mac_address.addr_bytes[5],
+		vdev->vid, RTE_ETHER_ADDR_BYTES(&vdev->mac_address),
 		vdev->vlan_tag);
 
 	/* Register the MAC address. */

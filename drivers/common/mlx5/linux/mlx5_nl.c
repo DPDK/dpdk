@@ -695,9 +695,7 @@ error:
 		"representor %u cannot set VF MAC address "
 		RTE_ETHER_ADDR_PRT_FMT " : %s",
 		vf_index,
-		mac->addr_bytes[0], mac->addr_bytes[1],
-		mac->addr_bytes[2], mac->addr_bytes[3],
-		mac->addr_bytes[4], mac->addr_bytes[5],
+		RTE_ETHER_ADDR_BYTES(mac),
 		strerror(rte_errno));
 	return -rte_errno;
 }

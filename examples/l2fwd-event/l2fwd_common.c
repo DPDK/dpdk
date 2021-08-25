@@ -110,12 +110,7 @@ l2fwd_event_init_ports(struct l2fwd_resources *rsrc)
 
 		printf("Port %u,MAC address: " RTE_ETHER_ADDR_PRT_FMT "\n\n",
 			port_id,
-			rsrc->eth_addr[port_id].addr_bytes[0],
-			rsrc->eth_addr[port_id].addr_bytes[1],
-			rsrc->eth_addr[port_id].addr_bytes[2],
-			rsrc->eth_addr[port_id].addr_bytes[3],
-			rsrc->eth_addr[port_id].addr_bytes[4],
-			rsrc->eth_addr[port_id].addr_bytes[5]);
+			RTE_ETHER_ADDR_BYTES(&rsrc->eth_addr[port_id]));
 	}
 
 	return nb_ports_available;
