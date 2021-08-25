@@ -21,19 +21,22 @@ static inline enum pkt_type
 process_ipsec_get_pkt_type(struct rte_mbuf *pkt, uint8_t **nlp)
 {
 	struct rte_ether_hdr *eth;
+	uint32_t ptype = pkt->packet_type;
 
 	eth = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	if (eth->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
+	rte_prefetch0(eth);
+
+	if (RTE_ETH_IS_IPV4_HDR(ptype)) {
 		*nlp = RTE_PTR_ADD(eth, RTE_ETHER_HDR_LEN +
 				offsetof(struct ip, ip_p));
-		if (**nlp == IPPROTO_ESP)
+		if ((ptype & RTE_PTYPE_TUNNEL_MASK) == RTE_PTYPE_TUNNEL_ESP)
 			return PKT_TYPE_IPSEC_IPV4;
 		else
 			return PKT_TYPE_PLAIN_IPV4;
-	} else if (eth->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6)) {
+	} else if (RTE_ETH_IS_IPV6_HDR(ptype)) {
 		*nlp = RTE_PTR_ADD(eth, RTE_ETHER_HDR_LEN +
 				offsetof(struct ip6_hdr, ip6_nxt));
-		if (**nlp == IPPROTO_ESP)
+		if ((ptype & RTE_PTYPE_TUNNEL_MASK) == RTE_PTYPE_TUNNEL_ESP)
 			return PKT_TYPE_IPSEC_IPV6;
 		else
 			return PKT_TYPE_PLAIN_IPV6;
@@ -343,7 +346,7 @@ process_ipsec_ev_outbound(struct ipsec_ctx *ctx, struct route_table *rt,
 	}
 
 	/* Validate sa_idx */
-	if (sa_idx >= ctx->sa_ctx->nb_sa)
+	if (unlikely(sa_idx >= ctx->sa_ctx->nb_sa))
 		goto drop_pkt_and_exit;
 
 	/* Else the packet has to be protected */
@@ -358,7 +361,7 @@ process_ipsec_ev_outbound(struct ipsec_ctx *ctx, struct route_table *rt,
 	sess = ipsec_get_primary_session(sa);
 
 	/* Allow only inline protocol for now */
-	if (sess->type != RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) {
+	if (unlikely(sess->type != RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)) {
 		RTE_LOG(ERR, IPSEC, "SA type not supported\n");
 		goto drop_pkt_and_exit;
 	}
