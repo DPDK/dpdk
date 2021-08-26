@@ -187,7 +187,7 @@ New Features
 * **Added Marvell OCTEON TX2 End Point rawdev PMD.**
 
   Added a new OCTEON TX2 rawdev PMD for End Point mode of operation.
-  See the :doc:`../rawdevs/octeontx2_ep` for more details on this new PMD.
+  See ``rawdevs/octeontx2_ep`` for more details on this new PMD.
 
 * **Added event mode to l3fwd sample application.**
 

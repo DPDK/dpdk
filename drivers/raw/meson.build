@@ -12,7 +12,6 @@ drivers = [
         'ifpga',
         'ioat',
         'ntb',
-        'octeontx2_ep',
         'skeleton',
 ]
 std_deps = ['rawdev']

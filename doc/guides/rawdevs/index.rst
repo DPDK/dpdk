@@ -17,4 +17,3 @@ application through rawdev API.
     ifpga
     ioat
     ntb
-    octeontx2_ep
