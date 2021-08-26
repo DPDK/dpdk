@@ -152,9 +152,6 @@ This section lists dataplane H/W block(s) available in OCTEON TX2 SoC.
 #. **Event Device Driver**
    See :doc:`../eventdevs/octeontx2` for SSO event device driver information.
 
-#. **DMA Rawdev Driver**
-   See :doc:`../rawdevs/octeontx2_dma` for DMA driver information.
-
 #. **Crypto Device Driver**
    See :doc:`../cryptodevs/octeontx2` for CPT crypto device driver information.
 

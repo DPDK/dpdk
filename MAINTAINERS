@@ -1319,12 +1319,6 @@ M: Tomasz Duszynski <tduszynski@marvell.com>
 F: doc/guides/rawdevs/cnxk_bphy.rst
 F: drivers/raw/cnxk_bphy/
 
-Marvell OCTEON TX2 DMA
-M: Radha Mohan Chintakuntla <radhac@marvell.com>
-M: Veerasenareddy Burru <vburru@marvell.com>
-F: drivers/raw/octeontx2_dma/
-F: doc/guides/rawdevs/octeontx2_dma.rst
-
 Marvell OCTEON TX2 EP
 M: Radha Mohan Chintakuntla <radhac@marvell.com>
 M: Veerasenareddy Burru <vburru@marvell.com>
