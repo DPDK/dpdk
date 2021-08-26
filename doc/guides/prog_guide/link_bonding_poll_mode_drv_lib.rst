@@ -29,7 +29,7 @@ bonded device and its slave devices.
 
     The Link Bonding PMD Library is enabled by default in the build
     configuration, the library can be disabled using the meson option
-    "-Ddisable_drivers=net/bond".
+    "-Ddisable_drivers=net/bonding".
 
 
 Link Bonding Modes Overview
