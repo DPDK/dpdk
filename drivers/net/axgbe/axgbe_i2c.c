@@ -233,6 +233,7 @@ static int axgbe_i2c_xfer(struct axgbe_port *pdata, struct axgbe_i2c_op *op)
 	ret = axgbe_i2c_disable(pdata);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "failed to disable i2c master\n");
+		pthread_mutex_unlock(&pdata->i2c_mutex);
 		return ret;
 	}
 
@@ -249,6 +250,7 @@ static int axgbe_i2c_xfer(struct axgbe_port *pdata, struct axgbe_i2c_op *op)
 	ret = axgbe_i2c_enable(pdata);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "failed to enable i2c master\n");
+		pthread_mutex_unlock(&pdata->i2c_mutex);
 		return ret;
 	}
 
