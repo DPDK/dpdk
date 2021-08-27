@@ -36,7 +36,7 @@ otx2_cpt_hardware_caps_get(const struct rte_cryptodev *dev,
 		return -EPIPE;
 	}
 
-	memcpy(hw_caps, rsp->eng_caps,
+	otx2_mbox_memcpy(hw_caps, rsp->eng_caps,
 		sizeof(union cpt_eng_caps) * CPT_MAX_ENG_TYPES);
 
 	return 0;
