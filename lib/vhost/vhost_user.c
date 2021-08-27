@@ -2113,6 +2113,8 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 	msg->size = sizeof(msg->payload.state);
 	msg->fd_num = 0;
 
+	vhost_user_iotlb_flush_all(vq);
+
 	vring_invalidate(dev, vq);
 
 	return RTE_VHOST_MSG_RESULT_REPLY;
