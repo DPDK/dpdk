@@ -3,7 +3,6 @@
  */
 
 #include <stdint.h>
-#include <sched.h>
 
 #include <rte_compat.h>
 

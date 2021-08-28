@@ -12,7 +12,6 @@
  */
 
 #include <stdint.h>
-#include <sched.h>
 #include <time.h>
 
 #include <rte_config.h>
