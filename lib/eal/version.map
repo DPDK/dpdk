@@ -263,10 +263,10 @@ DPDK_22 {
 	rte_thread_get_affinity;
 	rte_thread_set_affinity;
 	rte_thread_setname;
-	rte_uuid_compare; # WINDOWS_NO_EXPORT
-	rte_uuid_is_null; # WINDOWS_NO_EXPORT
-	rte_uuid_parse; # WINDOWS_NO_EXPORT
-	rte_uuid_unparse; # WINDOWS_NO_EXPORT
+	rte_uuid_compare;
+	rte_uuid_is_null;
+	rte_uuid_parse;
+	rte_uuid_unparse;
 	rte_version;
 	rte_vfio_clear_group; # WINDOWS_NO_EXPORT
 	rte_vfio_container_create; # WINDOWS_NO_EXPORT
