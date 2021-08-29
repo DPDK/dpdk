@@ -255,7 +255,7 @@ DPDK_22 {
 	rte_socket_count;
 	rte_socket_id;
 	rte_socket_id_by_idx;
-	rte_srand; # WINDOWS_NO_EXPORT
+	rte_srand;
 	rte_strerror;
 	rte_strscpy;
 	rte_strsplit;
@@ -296,8 +296,8 @@ EXPERIMENTAL {
 	# added in 18.05
 	rte_dev_event_callback_register;
 	rte_dev_event_callback_unregister;
-	rte_dev_event_monitor_start; # WINDOWS_NO_EXPORT
-	rte_dev_event_monitor_stop; # WINDOWS_NO_EXPORT
+	rte_dev_event_monitor_start;
+	rte_dev_event_monitor_stop;
 	rte_log_register_type_and_pick_level;
 
 	# added in 18.08
@@ -311,8 +311,8 @@ EXPERIMENTAL {
 	# added in 18.11
 	rte_delay_us_sleep;
 	rte_dev_event_callback_process;
-	rte_dev_hotplug_handle_disable; # WINDOWS_NO_EXPORT
-	rte_dev_hotplug_handle_enable; # WINDOWS_NO_EXPORT
+	rte_dev_hotplug_handle_disable;
+	rte_dev_hotplug_handle_enable;
 
 	# added in 19.05
 	rte_dev_dma_map;
@@ -323,7 +323,7 @@ EXPERIMENTAL {
 	rte_intr_ack;
 	rte_lcore_cpuset;
 	rte_lcore_to_cpu_id;
-	rte_rand_max; # WINDOWS_NO_EXPORT
+	rte_rand_max;
 
 	# added in 20.02
 	rte_thread_is_intr;
@@ -411,12 +411,12 @@ EXPERIMENTAL {
 	rte_thread_key_delete;
 	rte_thread_value_get;
 	rte_thread_value_set;
-	rte_version_minor; # WINDOWS_NO_EXPORT
-	rte_version_month; # WINDOWS_NO_EXPORT
-	rte_version_prefix; # WINDOWS_NO_EXPORT
-	rte_version_release; # WINDOWS_NO_EXPORT
-	rte_version_suffix; # WINDOWS_NO_EXPORT
-	rte_version_year; # WINDOWS_NO_EXPORT
+	rte_version_minor;
+	rte_version_month;
+	rte_version_prefix;
+	rte_version_release;
+	rte_version_suffix;
+	rte_version_year;
 
 	# added in 21.08
 	rte_power_monitor_multi; # WINDOWS_NO_EXPORT
