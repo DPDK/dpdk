@@ -166,10 +166,15 @@ ice_dcf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 		    VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
 			/* If WB_ON_ITR supports, enable it */
 			hw->msix_base = IAVF_RX_VEC_START;
+			/* Set the ITR for index zero, to 2us to make sure that
+			 * we leave time for aggregation to occur, but don't
+			 * increase latency dramatically.
+			 */
 			IAVF_WRITE_REG(&hw->avf,
 				       IAVF_VFINT_DYN_CTLN1(hw->msix_base - 1),
-				       IAVF_VFINT_DYN_CTLN1_ITR_INDX_MASK |
-				       IAVF_VFINT_DYN_CTLN1_WB_ON_ITR_MASK);
+				       (0 << IAVF_VFINT_DYN_CTLN1_ITR_INDX_SHIFT) |
+				       IAVF_VFINT_DYN_CTLN1_WB_ON_ITR_MASK |
+				       (2UL << IAVF_VFINT_DYN_CTLN1_INTERVAL_SHIFT));
 		} else {
 			/* If no WB_ON_ITR offload flags, need to set
 			 * interrupt for descriptor write back.
