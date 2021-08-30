@@ -697,7 +697,7 @@ hns3_reset_rcb_cmd(struct hns3_hw *hw, uint8_t *reset_status)
 
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_CFG_RST_TRIGGER, false);
 	req = (struct hns3_reset_cmd *)desc.data;
-	hns3_set_bit(req->mac_func_reset, HNS3_CFG_RESET_RCB_B, 1);
+	hns3_set_bit(req->fun_reset_rcb, HNS3_CFG_RESET_RCB_B, 1);
 
 	/*
 	 * The start qid should be the global qid of the first tqp of the
