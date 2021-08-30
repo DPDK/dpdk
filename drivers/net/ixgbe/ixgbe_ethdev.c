@@ -3798,6 +3798,7 @@ ixgbevf_dev_stats_reset(struct rte_eth_dev *dev)
 	hw_stats->vfgorc = 0;
 	hw_stats->vfgptc = 0;
 	hw_stats->vfgotc = 0;
+	hw_stats->vfmprc = 0;
 
 	return 0;
 }
