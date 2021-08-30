@@ -275,10 +275,10 @@ hns3_handle_action_queue(struct rte_eth_dev *dev,
 	struct hns3_hw *hw = &hns->hw;
 
 	queue = (const struct rte_flow_action_queue *)action->conf;
-	if (queue->index >= hw->used_rx_queues) {
+	if (queue->index >= hw->data->nb_rx_queues) {
 		hns3_err(hw, "queue ID(%u) is greater than number of "
 			  "available queue (%u) in driver.",
-			  queue->index, hw->used_rx_queues);
+			  queue->index, hw->data->nb_rx_queues);
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  action, "Invalid queue ID in PF");
@@ -308,8 +308,8 @@ hns3_handle_action_queue_region(struct rte_eth_dev *dev,
 
 	if ((!rte_is_power_of_2(conf->queue_num)) ||
 		conf->queue_num > hw->rss_size_max ||
-		conf->queue[0] >= hw->used_rx_queues ||
-		conf->queue[0] + conf->queue_num > hw->used_rx_queues) {
+		conf->queue[0] >= hw->data->nb_rx_queues ||
+		conf->queue[0] + conf->queue_num > hw->data->nb_rx_queues) {
 		return rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION_CONF, action,
 			"Invalid start queue ID and queue num! the start queue "
