@@ -90,8 +90,8 @@ struct cnxk_tim_evdev {
 	uint32_t chunk_sz;
 	/* Dev args */
 	uint8_t disable_npa;
-	uint16_t chunk_slots;
-	uint16_t min_ring_cnt;
+	uint32_t chunk_slots;
+	uint32_t min_ring_cnt;
 	uint8_t enable_stats;
 	uint16_t ring_ctl_cnt;
 	struct cnxk_tim_ctl *ring_ctl_data;
