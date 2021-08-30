@@ -423,6 +423,7 @@ hns3_get_caps_name(uint32_t caps_id)
 	} dev_caps[] = {
 		{ HNS3_CAPS_FD_QUEUE_REGION_B, "fd_queue_region" },
 		{ HNS3_CAPS_PTP_B,             "ptp"             },
+		{ HNS3_CAPS_TX_PUSH_B,         "tx_push"         },
 		{ HNS3_CAPS_PHY_IMP_B,         "phy_imp"         },
 		{ HNS3_CAPS_TQP_TXRX_INDEP_B,  "tqp_txrx_indep"  },
 		{ HNS3_CAPS_HW_PAD_B,          "hw_pad"          },
@@ -492,6 +493,8 @@ hns3_parse_capability(struct hns3_hw *hw,
 			hns3_warn(hw, "ignore PTP capability due to lack of "
 				  "rxd advanced layout capability.");
 	}
+	if (hns3_get_bit(caps, HNS3_CAPS_TX_PUSH_B))
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_TX_PUSH_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_PHY_IMP_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_COPPER_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_TQP_TXRX_INDEP_B))
