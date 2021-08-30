@@ -966,8 +966,6 @@ adapter_create(void)
 	TEST_ASSERT_SUCCESS(rte_event_timer_adapter_free(adapter),
 			"Failed to free adapter");
 
-	rte_mempool_free(eventdev_test_mempool);
-
 	return TEST_SUCCESS;
 }
 
