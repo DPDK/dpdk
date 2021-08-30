@@ -1362,6 +1362,33 @@ eth_from_pcaps(struct rte_vdev_device *vdev,
 	return 0;
 }
 
+static void
+eth_release_pcaps(struct pmd_devargs *pcaps,
+		struct pmd_devargs *dumpers,
+		int single_iface)
+{
+	unsigned int i;
+
+	if (single_iface) {
+		if (pcaps->queue[0].pcap)
+			pcap_close(pcaps->queue[0].pcap);
+		return;
+	}
+
+	for (i = 0; i < dumpers->num_of_queue; i++) {
+		if (dumpers->queue[i].dumper)
+			pcap_dump_close(dumpers->queue[i].dumper);
+
+		if (dumpers->queue[i].pcap)
+			pcap_close(dumpers->queue[i].pcap);
+	}
+
+	for (i = 0; i < pcaps->num_of_queue; i++) {
+		if (pcaps->queue[i].pcap)
+			pcap_close(pcaps->queue[i].pcap);
+	}
+}
+
 static int
 pmd_pcap_probe(struct rte_vdev_device *dev)
 {
@@ -1581,6 +1608,9 @@ create_eth:
 
 free_kvlist:
 	rte_kvargs_free(kvlist);
+
+	if (ret < 0)
+		eth_release_pcaps(&pcaps, &dumpers, devargs_all.single_iface);
 
 	return ret;
 }
