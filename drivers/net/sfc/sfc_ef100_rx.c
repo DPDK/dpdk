@@ -414,7 +414,7 @@ sfc_ef100_rx_prefix_to_offloads(const struct sfc_ef100_rxq *rxq,
 		user_mark = EFX_OWORD_FIELD(rx_prefix[0],
 					    ESF_GZ_RX_PREFIX_USER_MARK);
 		if (user_mark != SFC_EF100_USER_MARK_INVALID) {
-			ol_flags |= PKT_RX_FDIR_ID;
+			ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 			m->hash.fdir.hi = user_mark;
 		}
 	}
