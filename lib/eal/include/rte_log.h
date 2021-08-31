@@ -218,9 +218,6 @@ int rte_log_cur_msg_logtype(void);
 int rte_log_register(const char *name);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Register a dynamic log type and try to pick its level from EAL options
  *
  * rte_log_register() is called inside. If successful, the function tries
@@ -236,7 +233,6 @@ int rte_log_register(const char *name);
  *    - >=0: the newly registered log type
  *    - <0: rte_log_register() error value
  */
-__rte_experimental
 int rte_log_register_type_and_pick_level(const char *name, uint32_t level_def);
 
 /**

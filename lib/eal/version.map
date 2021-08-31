@@ -140,6 +140,7 @@ DPDK_22 {
 	rte_log_get_level;
 	rte_log_get_stream;
 	rte_log_register;
+	rte_log_register_type_and_pick_level;
 	rte_log_set_global_level;
 	rte_log_set_level;
 	rte_log_set_level_pattern;
@@ -299,7 +300,6 @@ EXPERIMENTAL {
 	rte_dev_event_callback_unregister;
 	rte_dev_event_monitor_start;
 	rte_dev_event_monitor_stop;
-	rte_log_register_type_and_pick_level;
 
 	# added in 18.08
 	rte_class_find;
