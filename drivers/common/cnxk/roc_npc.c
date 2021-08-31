@@ -1311,3 +1311,30 @@ roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc)
 		}
 	}
 }
+
+int
+roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc,
+				      struct roc_npc_flow *flow)
+{
+	struct npc_mcam_read_base_rule_rsp *base_rule_rsp;
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	struct mcam_entry *base_entry;
+	int idx, rc;
+
+	if (roc_nix_is_pf(roc_npc->roc_nix))
+		return 0;
+
+	(void)mbox_alloc_msg_npc_read_base_steer_rule(npc->mbox);
+	rc = mbox_process_msg(npc->mbox, (void *)&base_rule_rsp);
+	if (rc) {
+		plt_err("Failed to fetch VF's base MCAM entry");
+		return rc;
+	}
+	base_entry = &base_rule_rsp->entry_data;
+	for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
+		flow->mcam_data[idx] |= base_entry->kw[idx];
+		flow->mcam_mask[idx] |= base_entry->kw_mask[idx];
+	}
+
+	return 0;
+}
