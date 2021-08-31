@@ -171,7 +171,7 @@ mlx5_regex_dev_probe(struct rte_device *rte_dev)
 					    MLX5_RXP_CSR_IDENTIFIER, &val);
 	if (ret) {
 		DRV_LOG(ERR, "CSR read failed!");
-		return -1;
+		goto dev_error;
 	}
 	if (val == MLX5_RXP_BF2_IDENTIFIER)
 		priv->is_bf2 = 1;
