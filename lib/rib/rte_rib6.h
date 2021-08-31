@@ -11,10 +11,6 @@
  *
  * RTE rib6 library.
  *
- * @warning
- * @b EXPERIMENTAL:
- * All functions in this file may be changed or removed without prior notice.
- *
  * Level compressed tree implementation for IPv6 Longest Prefix Match
  */
 
@@ -127,7 +123,6 @@ get_msk_part(uint8_t depth, int byte) {
  *  pointer to struct rte_rib6_node on success
  *  NULL otherwise
  */
-__rte_experimental
 struct rte_rib6_node *
 rte_rib6_lookup(struct rte_rib6 *rib,
 	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE]);
@@ -142,7 +137,6 @@ rte_rib6_lookup(struct rte_rib6 *rib,
  *   less specific route on success
  *  NULL otherwise
  */
-__rte_experimental
 struct rte_rib6_node *
 rte_rib6_lookup_parent(struct rte_rib6_node *ent);
 
@@ -159,7 +153,6 @@ rte_rib6_lookup_parent(struct rte_rib6_node *ent);
  *  pointer to struct rte_rib6_node on success
  *  NULL otherwise
  */
-__rte_experimental
 struct rte_rib6_node *
 rte_rib6_lookup_exact(struct rte_rib6 *rib,
 	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth);
@@ -187,7 +180,6 @@ rte_rib6_lookup_exact(struct rte_rib6 *rib,
  *  pointer to the next more specific prefix
  *  NULL if there is no prefixes left
  */
-__rte_experimental
 struct rte_rib6_node *
 rte_rib6_get_nxt(struct rte_rib6 *rib,
 	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE],
@@ -203,7 +195,6 @@ rte_rib6_get_nxt(struct rte_rib6 *rib,
  * @param depth
  *  prefix length
  */
-__rte_experimental
 void
 rte_rib6_remove(struct rte_rib6 *rib,
 	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth);
@@ -221,7 +212,6 @@ rte_rib6_remove(struct rte_rib6 *rib,
  *  pointer to new rte_rib6_node on success
  *  NULL otherwise
  */
-__rte_experimental
 struct rte_rib6_node *
 rte_rib6_insert(struct rte_rib6 *rib,
 	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth);
@@ -237,7 +227,6 @@ rte_rib6_insert(struct rte_rib6 *rib,
  *  0 on success
  *  -1 on failure with rte_errno indicating reason for failure.
  */
-__rte_experimental
 int
 rte_rib6_get_ip(const struct rte_rib6_node *node,
 		uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE]);
@@ -253,7 +242,6 @@ rte_rib6_get_ip(const struct rte_rib6_node *node,
  *  0 on success
  *  -1 on failure with rte_errno indicating reason for failure.
  */
-__rte_experimental
 int
 rte_rib6_get_depth(const struct rte_rib6_node *node, uint8_t *depth);
 
@@ -267,7 +255,6 @@ rte_rib6_get_depth(const struct rte_rib6_node *node, uint8_t *depth);
  * @return
  *  pointer to the ext
  */
-__rte_experimental
 void *
 rte_rib6_get_ext(struct rte_rib6_node *node);
 
@@ -282,7 +269,6 @@ rte_rib6_get_ext(struct rte_rib6_node *node);
  *  0 on success
  *  -1 on failure, with rte_errno indicating reason for failure.
  */
-__rte_experimental
 int
 rte_rib6_get_nh(const struct rte_rib6_node *node, uint64_t *nh);
 
@@ -297,7 +283,6 @@ rte_rib6_get_nh(const struct rte_rib6_node *node, uint64_t *nh);
  *  0 on success
  *  -1 on failure, with rte_errno indicating reason for failure.
  */
-__rte_experimental
 int
 rte_rib6_set_nh(struct rte_rib6_node *node, uint64_t nh);
 
@@ -314,7 +299,6 @@ rte_rib6_set_nh(struct rte_rib6_node *node, uint64_t nh);
  *  Pointer to RIB object on success
  *  NULL otherwise with rte_errno indicating reason for failure.
  */
-__rte_experimental
 struct rte_rib6 *
 rte_rib6_create(const char *name, int socket_id,
 		const struct rte_rib6_conf *conf);
@@ -328,7 +312,6 @@ rte_rib6_create(const char *name, int socket_id,
  *  Pointer to RIB object on success
  *  NULL otherwise with rte_errno indicating reason for failure.
  */
-__rte_experimental
 struct rte_rib6 *
 rte_rib6_find_existing(const char *name);
 
@@ -340,7 +323,6 @@ rte_rib6_find_existing(const char *name);
  * @return
  *   None
  */
-__rte_experimental
 void
 rte_rib6_free(struct rte_rib6 *rib);
 

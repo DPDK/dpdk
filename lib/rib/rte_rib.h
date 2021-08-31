@@ -11,10 +11,6 @@
  *
  * RTE RIB library.
  *
- * @warning
- * @b EXPERIMENTAL:
- * All functions in this file may be changed or removed without prior notice.
- *
  * Level compressed tree implementation for IPv4 Longest Prefix Match
  */
 
@@ -78,7 +74,6 @@ rte_rib_depth_to_mask(uint8_t depth)
  *  pointer to struct rte_rib_node on success
  *  NULL otherwise
  */
-__rte_experimental
 struct rte_rib_node *
 rte_rib_lookup(struct rte_rib *rib, uint32_t ip);
 
@@ -92,7 +87,6 @@ rte_rib_lookup(struct rte_rib *rib, uint32_t ip);
  *   less specific route on success
  *  NULL otherwise
  */
-__rte_experimental
 struct rte_rib_node *
 rte_rib_lookup_parent(struct rte_rib_node *ent);
 
@@ -109,7 +103,6 @@ rte_rib_lookup_parent(struct rte_rib_node *ent);
  *  pointer to struct rte_rib_node on success
  *  NULL otherwise
  */
-__rte_experimental
 struct rte_rib_node *
 rte_rib_lookup_exact(struct rte_rib *rib, uint32_t ip, uint8_t depth);
 
@@ -136,7 +129,6 @@ rte_rib_lookup_exact(struct rte_rib *rib, uint32_t ip, uint8_t depth);
  *  pointer to the next more specific prefix
  *  NULL if there is no prefixes left
  */
-__rte_experimental
 struct rte_rib_node *
 rte_rib_get_nxt(struct rte_rib *rib, uint32_t ip, uint8_t depth,
 	struct rte_rib_node *last, int flag);
@@ -151,7 +143,6 @@ rte_rib_get_nxt(struct rte_rib *rib, uint32_t ip, uint8_t depth,
  * @param depth
  *  prefix length
  */
-__rte_experimental
 void
 rte_rib_remove(struct rte_rib *rib, uint32_t ip, uint8_t depth);
 
@@ -168,7 +159,6 @@ rte_rib_remove(struct rte_rib *rib, uint32_t ip, uint8_t depth);
  *  pointer to new rte_rib_node on success
  *  NULL otherwise
  */
-__rte_experimental
 struct rte_rib_node *
 rte_rib_insert(struct rte_rib *rib, uint32_t ip, uint8_t depth);
 
@@ -183,7 +173,6 @@ rte_rib_insert(struct rte_rib *rib, uint32_t ip, uint8_t depth);
  *  0 on success.
  *  -1 on failure with rte_errno indicating reason for failure.
  */
-__rte_experimental
 int
 rte_rib_get_ip(const struct rte_rib_node *node, uint32_t *ip);
 
@@ -198,7 +187,6 @@ rte_rib_get_ip(const struct rte_rib_node *node, uint32_t *ip);
  *  0 on success.
  *  -1 on failure with rte_errno indicating reason for failure.
  */
-__rte_experimental
 int
 rte_rib_get_depth(const struct rte_rib_node *node, uint8_t *depth);
 
@@ -212,7 +200,6 @@ rte_rib_get_depth(const struct rte_rib_node *node, uint8_t *depth);
  * @return
  *  pointer to the ext
  */
-__rte_experimental
 void *
 rte_rib_get_ext(struct rte_rib_node *node);
 
@@ -227,7 +214,6 @@ rte_rib_get_ext(struct rte_rib_node *node);
  *  0 on success.
  *  -1 on failure with rte_errno indicating reason for failure.
  */
-__rte_experimental
 int
 rte_rib_get_nh(const struct rte_rib_node *node, uint64_t *nh);
 
@@ -242,7 +228,6 @@ rte_rib_get_nh(const struct rte_rib_node *node, uint64_t *nh);
  *  0 on success.
  *  -1 on failure with rte_errno indicating reason for failure.
  */
-__rte_experimental
 int
 rte_rib_set_nh(struct rte_rib_node *node, uint64_t nh);
 
@@ -259,7 +244,6 @@ rte_rib_set_nh(struct rte_rib_node *node, uint64_t nh);
  *  Handle to RIB object on success
  *  NULL otherwise with rte_errno indicating reason for failure.
  */
-__rte_experimental
 struct rte_rib *
 rte_rib_create(const char *name, int socket_id,
 	       const struct rte_rib_conf *conf);
@@ -273,7 +257,6 @@ rte_rib_create(const char *name, int socket_id,
  *  Pointer to RIB object on success
  *  NULL otherwise with rte_errno indicating reason for failure.
  */
-__rte_experimental
 struct rte_rib *
 rte_rib_find_existing(const char *name);
 
@@ -285,7 +268,6 @@ rte_rib_find_existing(const char *name);
  * @return
  *   None
  */
-__rte_experimental
 void
 rte_rib_free(struct rte_rib *rib);
 
