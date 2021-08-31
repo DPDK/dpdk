@@ -207,18 +207,18 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		return -rte_errno;
 	}
 	dev->data->queue_pairs[qp_id] = qp;
+	if (mlx5_mr_btree_init(&qp->mr_ctrl.cache_bh, MLX5_MR_BTREE_CACHE_N,
+			       priv->dev_config.socket_id)) {
+		DRV_LOG(ERR, "Cannot allocate MR Btree for qp %u.",
+			(uint32_t)qp_id);
+		rte_errno = ENOMEM;
+		goto err;
+	}
 	opaq_buf = rte_calloc(__func__, (size_t)1 << log_ops_n,
 			      sizeof(struct mlx5_gga_compress_opaque),
 			      sizeof(struct mlx5_gga_compress_opaque));
 	if (opaq_buf == NULL) {
 		DRV_LOG(ERR, "Failed to allocate opaque memory.");
-		rte_errno = ENOMEM;
-		goto err;
-	}
-	if (mlx5_mr_btree_init(&qp->mr_ctrl.cache_bh, MLX5_MR_BTREE_CACHE_N,
-			       priv->dev_config.socket_id)) {
-		DRV_LOG(ERR, "Cannot allocate MR Btree for qp %u.",
-			(uint32_t)qp_id);
 		rte_errno = ENOMEM;
 		goto err;
 	}
