@@ -647,6 +647,7 @@ fail_q_alloc:
 	rte_memzone_free(hdr_mz);
 	rte_memzone_free(mz);
 	rte_free(vq);
+	hw->vqs[vtpci_queue_idx] = NULL;
 
 	return ret;
 }
