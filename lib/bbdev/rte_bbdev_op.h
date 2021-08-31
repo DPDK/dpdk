@@ -9,9 +9,6 @@
  * @file rte_bbdev_op.h
  *
  * Defines wireless base band layer 1 operations and capabilities
- *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
  */
 
 #ifdef __cplusplus
@@ -820,7 +817,6 @@ struct rte_bbdev_op_pool_private {
  *   Operation type as string or NULL if op_type is invalid
  *
  */
-__rte_experimental
 const char*
 rte_bbdev_op_type_str(enum rte_bbdev_op_type op_type);
 
@@ -844,7 +840,6 @@ rte_bbdev_op_type_str(enum rte_bbdev_op_type op_type);
  *   - Pointer to a mempool on success,
  *   - NULL pointer on failure.
  */
-__rte_experimental
 struct rte_mempool *
 rte_bbdev_op_pool_create(const char *name, enum rte_bbdev_op_type type,
 		unsigned int num_elements, unsigned int cache_size,
@@ -864,7 +859,6 @@ rte_bbdev_op_pool_create(const char *name, enum rte_bbdev_op_type type,
  *   - 0 on success
  *   - EINVAL if invalid mempool is provided
  */
-__rte_experimental
 static inline int
 rte_bbdev_enc_op_alloc_bulk(struct rte_mempool *mempool,
 		struct rte_bbdev_enc_op **ops, uint16_t num_ops)
@@ -901,7 +895,6 @@ rte_bbdev_enc_op_alloc_bulk(struct rte_mempool *mempool,
  *   - 0 on success
  *   - EINVAL if invalid mempool is provided
  */
-__rte_experimental
 static inline int
 rte_bbdev_dec_op_alloc_bulk(struct rte_mempool *mempool,
 		struct rte_bbdev_dec_op **ops, uint16_t num_ops)
@@ -934,7 +927,6 @@ rte_bbdev_dec_op_alloc_bulk(struct rte_mempool *mempool,
  * @param num_ops
  *   Number of structures
  */
-__rte_experimental
 static inline void
 rte_bbdev_dec_op_free_bulk(struct rte_bbdev_dec_op **ops, unsigned int num_ops)
 {
@@ -952,7 +944,6 @@ rte_bbdev_dec_op_free_bulk(struct rte_bbdev_dec_op **ops, unsigned int num_ops)
  * @param num_ops
  *   Number of structures
  */
-__rte_experimental
 static inline void
 rte_bbdev_enc_op_free_bulk(struct rte_bbdev_enc_op **ops, unsigned int num_ops)
 {

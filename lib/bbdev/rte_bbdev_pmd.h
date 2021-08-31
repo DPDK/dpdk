@@ -10,9 +10,6 @@
  *
  * Wireless base band driver-facing APIs.
  *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * This API provides the mechanism for device drivers to register with the
  * bbdev interface. User applications should not use this API.
  */
@@ -43,7 +40,6 @@ extern "C" {
  * @return
  *   - Slot in the rte_bbdev array for a new device;
  */
-__rte_experimental
 struct rte_bbdev *
 rte_bbdev_allocate(const char *name);
 
@@ -56,7 +52,6 @@ rte_bbdev_allocate(const char *name);
  * @return
  *   - 0 on success, negative on error
  */
-__rte_experimental
 int
 rte_bbdev_release(struct rte_bbdev *bbdev);
 
@@ -71,7 +66,6 @@ rte_bbdev_release(struct rte_bbdev *bbdev);
  *   - NULL otherwise
  *
  */
-__rte_experimental
 struct rte_bbdev *
 rte_bbdev_get_named_dev(const char *name);
 
@@ -190,7 +184,6 @@ struct rte_bbdev_ops {
  * @param ret_param
  *   To pass data back to user application.
  */
-__rte_experimental
 void
 rte_bbdev_pmd_callback_process(struct rte_bbdev *dev,
 	enum rte_bbdev_event_type event, void *ret_param);
