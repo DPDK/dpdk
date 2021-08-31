@@ -1685,13 +1685,15 @@ virtio_configure_intr(struct rte_eth_dev *dev)
 		}
 	}
 
-	/* Re-register callback to update max_intr */
-	rte_intr_callback_unregister(dev->intr_handle,
-				     virtio_interrupt_handler,
-				     dev);
-	rte_intr_callback_register(dev->intr_handle,
-				   virtio_interrupt_handler,
-				   dev);
+	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC) {
+		/* Re-register callback to update max_intr */
+		rte_intr_callback_unregister(dev->intr_handle,
+					     virtio_interrupt_handler,
+					     dev);
+		rte_intr_callback_register(dev->intr_handle,
+					   virtio_interrupt_handler,
+					   dev);
+	}
 
 	/* DO NOT try to remove this! This function will enable msix, or QEMU
 	 * will encounter SIGSEGV when DRIVER_OK is sent.
