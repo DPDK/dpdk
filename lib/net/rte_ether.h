@@ -263,7 +263,6 @@ rte_ether_format_addr(char *buf, uint16_t size,
  *   0 if successful
  *   -1 and sets rte_errno if invalid string
  */
-__rte_experimental
 int
 rte_ether_unformat_addr(const char *str, struct rte_ether_addr *eth_addr);
 
