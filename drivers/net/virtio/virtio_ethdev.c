@@ -632,6 +632,7 @@ free_mz:
 	rte_memzone_free(mz);
 free_vq:
 	rte_free(vq);
+	hw->vqs[queue_idx] = NULL;
 
 	return ret;
 }
