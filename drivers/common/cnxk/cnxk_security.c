@@ -6,6 +6,8 @@
 
 #include "cnxk_security.h"
 
+#include "roc_api.h"
+
 static void
 ipsec_hmac_opad_ipad_gen(struct rte_crypto_sym_xform *auth_xform,
 			 uint8_t *hmac_opad_ipad)
@@ -51,12 +53,12 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 	/* Set direction */
 	switch (ipsec_xfrm->direction) {
 	case RTE_SECURITY_IPSEC_SA_DIR_INGRESS:
-		w2->s.dir = ROC_IE_OT_SA_DIR_INBOUND;
+		w2->s.dir = ROC_IE_SA_DIR_INBOUND;
 		auth_xfrm = crypto_xfrm;
 		cipher_xfrm = crypto_xfrm->next;
 		break;
 	case RTE_SECURITY_IPSEC_SA_DIR_EGRESS:
-		w2->s.dir = ROC_IE_OT_SA_DIR_OUTBOUND;
+		w2->s.dir = ROC_IE_SA_DIR_OUTBOUND;
 		cipher_xfrm = crypto_xfrm;
 		auth_xfrm = crypto_xfrm->next;
 		break;
@@ -67,10 +69,10 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 	/* Set protocol - ESP vs AH */
 	switch (ipsec_xfrm->proto) {
 	case RTE_SECURITY_IPSEC_SA_PROTO_ESP:
-		w2->s.protocol = ROC_IE_OT_SA_PROTOCOL_ESP;
+		w2->s.protocol = ROC_IE_SA_PROTOCOL_ESP;
 		break;
 	case RTE_SECURITY_IPSEC_SA_PROTO_AH:
-		w2->s.protocol = ROC_IE_OT_SA_PROTOCOL_AH;
+		w2->s.protocol = ROC_IE_SA_PROTOCOL_AH;
 		break;
 	default:
 		return -EINVAL;
@@ -79,10 +81,10 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 	/* Set mode - transport vs tunnel */
 	switch (ipsec_xfrm->mode) {
 	case RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT:
-		w2->s.mode = ROC_IE_OT_SA_MODE_TRANSPORT;
+		w2->s.mode = ROC_IE_SA_MODE_TRANSPORT;
 		break;
 	case RTE_SECURITY_IPSEC_SA_MODE_TUNNEL:
-		w2->s.mode = ROC_IE_OT_SA_MODE_TUNNEL;
+		w2->s.mode = ROC_IE_SA_MODE_TUNNEL;
 		break;
 	default:
 		return -EINVAL;
@@ -147,13 +149,13 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 
 	switch (length) {
 	case ROC_CPT_AES128_KEY_LEN:
-		w2->s.aes_key_len = ROC_IE_OT_SA_AES_KEY_LEN_128;
+		w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
 		break;
 	case ROC_CPT_AES192_KEY_LEN:
-		w2->s.aes_key_len = ROC_IE_OT_SA_AES_KEY_LEN_192;
+		w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_192;
 		break;
 	case ROC_CPT_AES256_KEY_LEN:
-		w2->s.aes_key_len = ROC_IE_OT_SA_AES_KEY_LEN_256;
+		w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_256;
 		break;
 	default:
 		return -EINVAL;
@@ -271,7 +273,7 @@ cnxk_ot_ipsec_outb_sa_fill(struct roc_ot_ipsec_outb_sa *sa,
 	/* Tunnel header info */
 	switch (tunnel->type) {
 	case RTE_SECURITY_IPSEC_TUNNEL_IPV4:
-		sa->w2.s.outer_ip_ver = ROC_IE_OT_SA_IP_VERSION_4;
+		sa->w2.s.outer_ip_ver = ROC_IE_SA_IP_VERSION_4;
 		memcpy(&sa->outer_hdr.ipv4.src_addr, &tunnel->ipv4.src_ip,
 		       sizeof(struct in_addr));
 		memcpy(&sa->outer_hdr.ipv4.dst_addr, &tunnel->ipv4.dst_ip,
@@ -302,7 +304,7 @@ cnxk_ot_ipsec_outb_sa_fill(struct roc_ot_ipsec_outb_sa *sa,
 		}
 		break;
 	case RTE_SECURITY_IPSEC_TUNNEL_IPV6:
-		sa->w2.s.outer_ip_ver = ROC_IE_OT_SA_IP_VERSION_6;
+		sa->w2.s.outer_ip_ver = ROC_IE_SA_IP_VERSION_6;
 		memcpy(&sa->outer_hdr.ipv6.src_addr, &tunnel->ipv6.src_addr,
 		       sizeof(struct in6_addr));
 		memcpy(&sa->outer_hdr.ipv6.dst_addr, &tunnel->ipv6.dst_addr,

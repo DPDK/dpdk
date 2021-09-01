@@ -15,6 +15,8 @@
 #include "cnxk_cryptodev_ops.h"
 #include "cnxk_se.h"
 
+#include "roc_api.h"
+
 static inline struct cnxk_se_sess *
 cn10k_cpt_sym_temp_sess_create(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op)
 {
@@ -67,7 +69,7 @@ cpt_sec_inst_fill(struct rte_crypto_op *op, struct cn10k_sec_session *sess,
 	sa = &sess->sa;
 	w2 = (union roc_ot_ipsec_sa_word2 *)&sa->in_sa.w2;
 
-	if (w2->s.dir == ROC_IE_OT_SA_DIR_OUTBOUND)
+	if (w2->s.dir == ROC_IE_SA_DIR_OUTBOUND)
 		ret = process_outb_sa(op, sa, inst);
 	else
 		ret = process_inb_sa(op, sa, inst);

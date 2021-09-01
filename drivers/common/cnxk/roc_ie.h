@@ -5,15 +5,30 @@
 #ifndef __ROC_IE_H__
 #define __ROC_IE_H__
 
-/* CNXK IPSEC helper macros */
-#define ROC_IE_AH_HDR_LEN      12
-#define ROC_IE_AES_GCM_IV_LEN  8
-#define ROC_IE_AES_GCM_MAC_LEN 16
-#define ROC_IE_AES_CBC_IV_LEN  16
-#define ROC_IE_SHA1_HMAC_LEN   12
-#define ROC_IE_AUTH_KEY_LEN_MAX 64
+enum {
+	ROC_IE_SA_DIR_INBOUND = 0,
+	ROC_IE_SA_DIR_OUTBOUND = 1,
+};
 
-#define ROC_IE_AES_GCM_ROUNDUP_BYTE_LEN 4
-#define ROC_IE_AES_CBC_ROUNDUP_BYTE_LEN 16
+enum {
+	ROC_IE_SA_IP_VERSION_4 = 0,
+	ROC_IE_SA_IP_VERSION_6 = 1,
+};
+
+enum {
+	ROC_IE_SA_MODE_TRANSPORT = 0,
+	ROC_IE_SA_MODE_TUNNEL = 1,
+};
+
+enum {
+	ROC_IE_SA_PROTOCOL_AH = 0,
+	ROC_IE_SA_PROTOCOL_ESP = 1,
+};
+
+enum {
+	ROC_IE_SA_AES_KEY_LEN_128 = 1,
+	ROC_IE_SA_AES_KEY_LEN_192 = 2,
+	ROC_IE_SA_AES_KEY_LEN_256 = 3,
+};
 
 #endif /* __ROC_IE_H__ */
