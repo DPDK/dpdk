@@ -176,9 +176,7 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt,
 	if (ret)
 		return ret;
 
-	sa->partial_len = rlens.partial_len;
-	sa->roundup_byte = rlens.roundup_byte;
-	sa->roundup_len = rlens.roundup_len;
+	sa->max_extended_len = rlens.max_extended_len;
 
 	/* pre-populate CPT INST word 4 */
 	inst_w4.u64 = 0;

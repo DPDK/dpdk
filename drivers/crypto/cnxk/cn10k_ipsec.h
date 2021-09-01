@@ -20,9 +20,7 @@ struct cn10k_ipsec_sa {
 	};
 	/** Pre-populated CPT inst words */
 	struct cnxk_cpt_inst_tmpl inst;
-	uint8_t partial_len;
-	uint8_t roundup_len;
-	uint8_t roundup_byte;
+	uint16_t max_extended_len;
 };
 
 struct cn10k_sec_session {

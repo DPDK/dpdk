@@ -47,7 +47,7 @@ sess_put:
 
 static __rte_always_inline int __rte_hot
 cpt_sec_inst_fill(struct rte_crypto_op *op, struct cn10k_sec_session *sess,
-		  struct cpt_inflight_req *infl_req, struct cpt_inst_s *inst)
+		  struct cpt_inst_s *inst)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
 	union roc_ot_ipsec_sa_word2 *w2;
@@ -69,10 +69,8 @@ cpt_sec_inst_fill(struct rte_crypto_op *op, struct cn10k_sec_session *sess,
 
 	if (w2->s.dir == ROC_IE_OT_SA_DIR_OUTBOUND)
 		ret = process_outb_sa(op, sa, inst);
-	else {
-		infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_DIR_INBOUND;
+	else
 		ret = process_inb_sa(op, sa, inst);
-	}
 
 	return ret;
 }
@@ -121,8 +119,7 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[],
 		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 			sec_sess = get_sec_session_private_data(
 				sym_op->sec_session);
-			ret = cpt_sec_inst_fill(op, sec_sess, infl_req,
-						&inst[0]);
+			ret = cpt_sec_inst_fill(op, sec_sess, &inst[0]);
 			if (unlikely(ret))
 				return 0;
 			w7 = sec_sess->sa.inst.w7;
@@ -259,30 +256,13 @@ update_pending:
 
 static inline void
 cn10k_cpt_sec_post_process(struct rte_crypto_op *cop,
-			   struct cpt_inflight_req *infl_req)
+			   struct cpt_cn10k_res_s *res)
 {
-	struct rte_crypto_sym_op *sym_op = cop->sym;
-	struct rte_mbuf *m = sym_op->m_src;
-	struct rte_ipv6_hdr *ip6;
-	struct rte_ipv4_hdr *ip;
-	uint16_t m_len;
+	struct rte_mbuf *m = cop->sym->m_src;
+	const uint16_t m_len = res->rlen;
 
-	if (infl_req->op_flags & CPT_OP_FLAGS_IPSEC_DIR_INBOUND) {
-		ip = (struct rte_ipv4_hdr *)rte_pktmbuf_mtod(m, char *);
-
-		if (((ip->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER) ==
-		    IPVERSION) {
-			m_len = rte_be_to_cpu_16(ip->total_length);
-		} else {
-			PLT_ASSERT(((ip->version_ihl & 0xf0) >>
-				    RTE_IPV4_IHL_MULTIPLIER) == 6);
-			ip6 = (struct rte_ipv6_hdr *)ip;
-			m_len = rte_be_to_cpu_16(ip6->payload_len) +
-				sizeof(struct rte_ipv6_hdr);
-		}
-		m->data_len = m_len;
-		m->pkt_len = m_len;
-	}
+	m->data_len = m_len;
+	m->pkt_len = m_len;
 }
 
 static inline void
@@ -310,7 +290,7 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 			if (cop->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-				cn10k_cpt_sec_post_process(cop, infl_req);
+				cn10k_cpt_sec_post_process(cop, res);
 				return;
 			}
 
