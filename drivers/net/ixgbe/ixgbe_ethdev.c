@@ -1218,6 +1218,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		PMD_INIT_LOG(ERR,
 			     "Failed to allocate %d bytes needed to store MAC addresses",
 			     RTE_ETHER_ADDR_LEN * IXGBE_VMDQ_NUM_UC_MAC);
+		rte_free(eth_dev->data->mac_addrs);
+		eth_dev->data->mac_addrs = NULL;
 		return -ENOMEM;
 	}
 
@@ -1672,6 +1674,8 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 
 	default:
 		PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", diag);
+		rte_free(eth_dev->data->mac_addrs);
+		eth_dev->data->mac_addrs = NULL;
 		return -EIO;
 	}
 
