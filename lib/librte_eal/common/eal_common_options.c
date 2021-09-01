@@ -228,9 +228,9 @@ eal_save_args(int argc, char **argv)
 		return -1;
 
 	for (i = 0; i < argc; i++) {
-		eal_args[i] = strdup(argv[i]);
 		if (strcmp(argv[i], "--") == 0)
 			break;
+		eal_args[i] = strdup(argv[i]);
 	}
 	eal_args[i++] = NULL; /* always finish with NULL */
 
