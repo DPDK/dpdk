@@ -125,4 +125,7 @@
 #include "roc_ie_ot.h"
 #include "roc_se.h"
 
+/* HASH computation */
+#include "roc_hash.h"
+
 #endif /* _ROC_API_H_ */

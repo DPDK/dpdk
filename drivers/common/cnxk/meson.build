@@ -19,6 +19,7 @@ sources = files(
         'roc_cpt.c',
         'roc_cpt_debug.c',
         'roc_dev.c',
+        'roc_hash.c',
         'roc_idev.c',
         'roc_irq.c',
         'roc_mbox.c',

@@ -64,6 +64,9 @@ INTERNAL {
 	roc_cpt_lmtline_init;
 	roc_cpt_rxc_time_cfg;
 	roc_error_msg_get;
+	roc_hash_sha1_gen;
+	roc_hash_sha256_gen;
+	roc_hash_sha512_gen;
 	roc_idev_cpt_get;
 	roc_idev_cpt_set;
 	roc_idev_lmt_base_addr_get;
