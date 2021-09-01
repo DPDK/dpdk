@@ -231,6 +231,7 @@ Features supported
 * ESP
 * Tunnel mode
 * AES-128/192/256-GCM
+* AES-128/192/256-CBC-SHA1-HMAC
 
 Limitations
 -----------

@@ -18,6 +18,37 @@
 #include "roc_api.h"
 
 static int
+ipsec_xform_cipher_verify(struct rte_crypto_sym_xform *xform)
+{
+	if (xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC) {
+		switch (xform->cipher.key.length) {
+		case 16:
+		case 24:
+		case 32:
+			break;
+		default:
+			return -ENOTSUP;
+		}
+		return 0;
+	}
+
+	return -ENOTSUP;
+}
+
+static int
+ipsec_xform_auth_verify(struct rte_crypto_sym_xform *xform)
+{
+	uint16_t keylen = xform->auth.key.length;
+
+	if (xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC) {
+		if (keylen >= 20 && keylen <= 64)
+			return 0;
+	}
+
+	return -ENOTSUP;
+}
+
+static int
 ipsec_xform_aead_verify(struct rte_security_ipsec_xform *ipsec_xfrm,
 			struct rte_crypto_sym_xform *crypto_xfrm)
 {
@@ -48,6 +79,9 @@ static int
 cn10k_ipsec_xform_verify(struct rte_security_ipsec_xform *ipsec_xfrm,
 			 struct rte_crypto_sym_xform *crypto_xfrm)
 {
+	struct rte_crypto_sym_xform *auth_xform, *cipher_xform;
+	int ret;
+
 	if ((ipsec_xfrm->direction != RTE_SECURITY_IPSEC_SA_DIR_INGRESS) &&
 	    (ipsec_xfrm->direction != RTE_SECURITY_IPSEC_SA_DIR_EGRESS))
 		return -EINVAL;
@@ -67,7 +101,34 @@ cn10k_ipsec_xform_verify(struct rte_security_ipsec_xform *ipsec_xfrm,
 	if (crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD)
 		return ipsec_xform_aead_verify(ipsec_xfrm, crypto_xfrm);
 
-	return -ENOTSUP;
+	if (crypto_xfrm->next == NULL)
+		return -EINVAL;
+
+	if (ipsec_xfrm->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
+		/* Ingress */
+		if (crypto_xfrm->type != RTE_CRYPTO_SYM_XFORM_AUTH ||
+		    crypto_xfrm->next->type != RTE_CRYPTO_SYM_XFORM_CIPHER)
+			return -EINVAL;
+		auth_xform = crypto_xfrm;
+		cipher_xform = crypto_xfrm->next;
+	} else {
+		/* Egress */
+		if (crypto_xfrm->type != RTE_CRYPTO_SYM_XFORM_CIPHER ||
+		    crypto_xfrm->next->type != RTE_CRYPTO_SYM_XFORM_AUTH)
+			return -EINVAL;
+		cipher_xform = crypto_xfrm;
+		auth_xform = crypto_xfrm->next;
+	}
+
+	ret = ipsec_xform_cipher_verify(cipher_xform);
+	if (ret)
+		return ret;
+
+	ret = ipsec_xform_auth_verify(auth_xform);
+	if (ret)
+		return ret;
+
+	return 0;
 }
 
 static uint64_t
