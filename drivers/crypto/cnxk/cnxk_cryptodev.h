@@ -12,7 +12,7 @@
 
 #define CNXK_CPT_MAX_CAPS	 34
 #define CNXK_SEC_CRYPTO_MAX_CAPS 4
-#define CNXK_SEC_MAX_CAPS	 3
+#define CNXK_SEC_MAX_CAPS	 5
 #define CNXK_AE_EC_ID_MAX	 8
 /**
  * Device private data

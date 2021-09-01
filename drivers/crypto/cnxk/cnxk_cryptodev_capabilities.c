@@ -822,6 +822,28 @@ static const struct rte_security_capability sec_caps_templ[] = {
 		},
 		.crypto_capabilities = NULL,
 	},
+	{	/* IPsec Lookaside Protocol ESP Transport Ingress */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
+			.options = { 0 },
+		},
+		.crypto_capabilities = NULL,
+	},
+	{	/* IPsec Lookaside Protocol ESP Transport Egress */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
+			.options = { 0 },
+		},
+		.crypto_capabilities = NULL,
+	},
 	{
 		.action = RTE_SECURITY_ACTION_TYPE_NONE
 	}
@@ -885,6 +907,12 @@ sec_crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 	sec_caps_add(cnxk_caps, &cur_pos, caps_end, RTE_DIM(caps_end));
 }
 
+static void
+cnxk_sec_caps_update(struct rte_security_capability *sec_cap)
+{
+	sec_cap->ipsec.options.udp_encap = 1;
+}
+
 void
 cnxk_cpt_caps_populate(struct cnxk_cpt_vf *vf)
 {
@@ -896,8 +924,11 @@ cnxk_cpt_caps_populate(struct cnxk_cpt_vf *vf)
 	PLT_STATIC_ASSERT(RTE_DIM(sec_caps_templ) <= RTE_DIM(vf->sec_caps));
 	memcpy(vf->sec_caps, sec_caps_templ, sizeof(sec_caps_templ));
 
-	for (i = 0; i < RTE_DIM(sec_caps_templ) - 1; i++)
+	for (i = 0; i < RTE_DIM(sec_caps_templ) - 1; i++) {
 		vf->sec_caps[i].crypto_capabilities = vf->sec_crypto_caps;
+
+		cnxk_sec_caps_update(&vf->sec_caps[i]);
+	}
 }
 
 const struct rte_security_capability *

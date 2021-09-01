@@ -98,7 +98,8 @@ cnxk_ipsec_xform_verify(struct rte_security_ipsec_xform *ipsec_xform,
 	    (ipsec_xform->mode != RTE_SECURITY_IPSEC_SA_MODE_TUNNEL))
 		return -EINVAL;
 
-	if ((ipsec_xform->tunnel.type != RTE_SECURITY_IPSEC_TUNNEL_IPV4) &&
+	if ((ipsec_xform->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) &&
+	    (ipsec_xform->tunnel.type != RTE_SECURITY_IPSEC_TUNNEL_IPV4) &&
 	    (ipsec_xform->tunnel.type != RTE_SECURITY_IPSEC_TUNNEL_IPV6))
 		return -EINVAL;
 

@@ -65,6 +65,8 @@ New Features
 * **Updated Marvell cnxk crypto PMD.**
 
   * Added AES-CBC SHA1-HMAC support in lookaside protocol (IPsec) for CN10K.
+  * Added Transport mode support in lookaside protocol (IPsec) for CN10K.
+  * Added UDP encapsulation support in lookaside protocol (IPsec) for CN10K.
 
 
 Removed Items
