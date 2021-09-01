@@ -301,9 +301,6 @@ void
 rte_sched_port_free(struct rte_sched_port *port);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Hierarchical scheduler pipe profile add
  *
  * @param port
@@ -317,7 +314,6 @@ rte_sched_port_free(struct rte_sched_port *port);
  * @return
  *   0 upon success, error code otherwise
  */
-__rte_experimental
 int
 rte_sched_subport_pipe_profile_add(struct rte_sched_port *port,
 	uint32_t subport_id,

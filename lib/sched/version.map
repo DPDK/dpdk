@@ -19,6 +19,7 @@ DPDK_22 {
 	rte_sched_port_pkt_write;
 	rte_sched_queue_read_stats;
 	rte_sched_subport_config;
+	rte_sched_subport_pipe_profile_add;
 	rte_sched_subport_read_stats;
 
 	local: *;
@@ -27,7 +28,6 @@ DPDK_22 {
 EXPERIMENTAL {
 	global:
 
-	rte_sched_subport_pipe_profile_add;
 	# added in 20.11
 	rte_sched_port_subport_profile_add;
 };
