@@ -12840,10 +12840,13 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				MLX5_FLOW_FATE_QUEUE;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_AGE:
-			flow->age = (uint32_t)(uintptr_t)(action->conf);
-			age_act = flow_aso_age_get_by_idx(dev, flow->age);
-			__atomic_fetch_add(&age_act->refcnt, 1,
-					   __ATOMIC_RELAXED);
+			owner_idx = (uint32_t)(uintptr_t)action->conf;
+			age_act = flow_aso_age_get_by_idx(dev, owner_idx);
+			if (flow->age == 0) {
+				flow->age = owner_idx;
+				__atomic_fetch_add(&age_act->refcnt, 1,
+						   __ATOMIC_RELAXED);
+			}
 			age_act_pos = actions_n++;
 			action_flags |= MLX5_FLOW_ACTION_AGE;
 			break;
@@ -12853,9 +12856,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_AGE;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_COUNT:
-			cnt_act = flow_dv_counter_get_by_idx(dev,
-					(uint32_t)(uintptr_t)action->conf,
-					NULL);
+			owner_idx = (uint32_t)(uintptr_t)action->conf;
+			cnt_act = flow_dv_counter_get_by_idx(dev, owner_idx,
+							     NULL);
 			MLX5_ASSERT(cnt_act != NULL);
 			/**
 			 * When creating meter drop flow in drop table, the
@@ -12866,10 +12869,12 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				dev_flow->dv.actions[actions_n++] =
 							cnt_act->action;
 			} else {
-				flow->counter =
-					(uint32_t)(uintptr_t)(action->conf);
-				__atomic_fetch_add(&cnt_act->shared_info.refcnt,
-						1, __ATOMIC_RELAXED);
+				if (flow->counter == 0) {
+					flow->counter = owner_idx;
+					__atomic_fetch_add
+						(&cnt_act->shared_info.refcnt,
+						 1, __ATOMIC_RELAXED);
+				}
 				/* Save information first, will apply later. */
 				action_flags |= MLX5_FLOW_ACTION_COUNT;
 			}
@@ -13192,9 +13197,13 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			else
 				dev_flow->dv.actions[actions_n] =
 							ct->dr_action_rply;
-			flow->indirect_type = MLX5_INDIRECT_ACTION_TYPE_CT;
-			flow->ct = owner_idx;
-			__atomic_fetch_add(&ct->refcnt, 1, __ATOMIC_RELAXED);
+			if (flow->ct == 0) {
+				flow->indirect_type =
+						MLX5_INDIRECT_ACTION_TYPE_CT;
+				flow->ct = owner_idx;
+				__atomic_fetch_add(&ct->refcnt, 1,
+						   __ATOMIC_RELAXED);
+			}
 			actions_n++;
 			action_flags |= MLX5_FLOW_ACTION_CT;
 			break;
