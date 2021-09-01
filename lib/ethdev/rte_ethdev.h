@@ -3647,9 +3647,6 @@ int rte_eth_dev_rx_intr_ctl_q(uint16_t port_id, uint16_t queue_id,
 			      int epfd, int op, void *data);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Get interrupt fd per Rx queue.
  *
  * @param port_id
@@ -3663,7 +3660,6 @@ int rte_eth_dev_rx_intr_ctl_q(uint16_t port_id, uint16_t queue_id,
  *           successful.
  *   - (-1) on error.
  */
-__rte_experimental
 int
 rte_eth_dev_rx_intr_ctl_q_get_fd(uint16_t port_id, uint16_t queue_id);
 

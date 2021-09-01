@@ -42,6 +42,7 @@ DPDK_22 {
 	rte_eth_dev_rss_reta_update;
 	rte_eth_dev_rx_intr_ctl;
 	rte_eth_dev_rx_intr_ctl_q;
+	rte_eth_dev_rx_intr_ctl_q_get_fd;
 	rte_eth_dev_rx_intr_disable;
 	rte_eth_dev_rx_intr_enable;
 	rte_eth_dev_rx_offload_name;
@@ -154,7 +155,6 @@ EXPERIMENTAL {
 	rte_eth_dev_get_module_info;
 
 	# added in 18.11
-	rte_eth_dev_rx_intr_ctl_q_get_fd;
 	rte_flow_conv;
 
 	# added in 19.05
