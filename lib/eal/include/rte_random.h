@@ -62,7 +62,6 @@ rte_rand(void);
  * @return
  *   A pseudo-random value between 0 and (upper_bound-1).
  */
-__rte_experimental
 uint64_t
 rte_rand_max(uint64_t upper_bound);
 

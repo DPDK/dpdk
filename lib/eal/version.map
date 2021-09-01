@@ -216,6 +216,7 @@ DPDK_22 {
 	rte_mp_sendmsg;
 	rte_openlog_stream;
 	rte_rand;
+	rte_rand_max;
 	rte_realloc;
 	rte_realloc_socket;
 	rte_reciprocal_value;
@@ -323,7 +324,6 @@ EXPERIMENTAL {
 	rte_intr_ack;
 	rte_lcore_cpuset;
 	rte_lcore_to_cpu_id;
-	rte_rand_max;
 
 	# added in 20.02
 	rte_thread_is_intr;
