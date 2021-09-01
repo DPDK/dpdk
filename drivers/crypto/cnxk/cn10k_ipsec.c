@@ -17,120 +17,6 @@
 
 #include "roc_api.h"
 
-static int
-ipsec_xform_cipher_verify(struct rte_crypto_sym_xform *xform)
-{
-	if (xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC) {
-		switch (xform->cipher.key.length) {
-		case 16:
-		case 24:
-		case 32:
-			break;
-		default:
-			return -ENOTSUP;
-		}
-		return 0;
-	}
-
-	return -ENOTSUP;
-}
-
-static int
-ipsec_xform_auth_verify(struct rte_crypto_sym_xform *xform)
-{
-	uint16_t keylen = xform->auth.key.length;
-
-	if (xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC) {
-		if (keylen >= 20 && keylen <= 64)
-			return 0;
-	}
-
-	return -ENOTSUP;
-}
-
-static int
-ipsec_xform_aead_verify(struct rte_security_ipsec_xform *ipsec_xfrm,
-			struct rte_crypto_sym_xform *crypto_xfrm)
-{
-	if (ipsec_xfrm->direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS &&
-	    crypto_xfrm->aead.op != RTE_CRYPTO_AEAD_OP_ENCRYPT)
-		return -EINVAL;
-
-	if (ipsec_xfrm->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS &&
-	    crypto_xfrm->aead.op != RTE_CRYPTO_AEAD_OP_DECRYPT)
-		return -EINVAL;
-
-	if (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_AES_GCM) {
-		switch (crypto_xfrm->aead.key.length) {
-		case ROC_CPT_AES128_KEY_LEN:
-		case ROC_CPT_AES192_KEY_LEN:
-		case ROC_CPT_AES256_KEY_LEN:
-			break;
-		default:
-			return -EINVAL;
-		}
-		return 0;
-	}
-
-	return -ENOTSUP;
-}
-
-static int
-cn10k_ipsec_xform_verify(struct rte_security_ipsec_xform *ipsec_xfrm,
-			 struct rte_crypto_sym_xform *crypto_xfrm)
-{
-	struct rte_crypto_sym_xform *auth_xform, *cipher_xform;
-	int ret;
-
-	if ((ipsec_xfrm->direction != RTE_SECURITY_IPSEC_SA_DIR_INGRESS) &&
-	    (ipsec_xfrm->direction != RTE_SECURITY_IPSEC_SA_DIR_EGRESS))
-		return -EINVAL;
-
-	if ((ipsec_xfrm->proto != RTE_SECURITY_IPSEC_SA_PROTO_ESP) &&
-	    (ipsec_xfrm->proto != RTE_SECURITY_IPSEC_SA_PROTO_AH))
-		return -EINVAL;
-
-	if ((ipsec_xfrm->mode != RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT) &&
-	    (ipsec_xfrm->mode != RTE_SECURITY_IPSEC_SA_MODE_TUNNEL))
-		return -EINVAL;
-
-	if ((ipsec_xfrm->tunnel.type != RTE_SECURITY_IPSEC_TUNNEL_IPV4) &&
-	    (ipsec_xfrm->tunnel.type != RTE_SECURITY_IPSEC_TUNNEL_IPV6))
-		return -EINVAL;
-
-	if (crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD)
-		return ipsec_xform_aead_verify(ipsec_xfrm, crypto_xfrm);
-
-	if (crypto_xfrm->next == NULL)
-		return -EINVAL;
-
-	if (ipsec_xfrm->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
-		/* Ingress */
-		if (crypto_xfrm->type != RTE_CRYPTO_SYM_XFORM_AUTH ||
-		    crypto_xfrm->next->type != RTE_CRYPTO_SYM_XFORM_CIPHER)
-			return -EINVAL;
-		auth_xform = crypto_xfrm;
-		cipher_xform = crypto_xfrm->next;
-	} else {
-		/* Egress */
-		if (crypto_xfrm->type != RTE_CRYPTO_SYM_XFORM_CIPHER ||
-		    crypto_xfrm->next->type != RTE_CRYPTO_SYM_XFORM_AUTH)
-			return -EINVAL;
-		cipher_xform = crypto_xfrm;
-		auth_xform = crypto_xfrm->next;
-	}
-
-	ret = ipsec_xform_cipher_verify(cipher_xform);
-	if (ret)
-		return ret;
-
-	ret = ipsec_xform_auth_verify(auth_xform);
-	if (ret)
-		return ret;
-
-	return 0;
-}
-
 static uint64_t
 ipsec_cpt_inst_w7_get(struct roc_cpt *roc_cpt, void *sa)
 {
@@ -245,7 +131,7 @@ cn10k_ipsec_session_create(void *dev,
 		return -EPERM;
 	}
 
-	ret = cn10k_ipsec_xform_verify(ipsec_xfrm, crypto_xfrm);
+	ret = cnxk_ipsec_xform_verify(ipsec_xfrm, crypto_xfrm);
 	if (ret)
 		return ret;
 
