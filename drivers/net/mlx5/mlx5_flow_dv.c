@@ -11761,12 +11761,6 @@ __flow_dv_action_rss_release(struct rte_eth_dev *dev, uint32_t idx,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "invalid shared action");
-	remaining = __flow_dv_action_rss_hrxqs_release(dev, shared_rss);
-	if (remaining)
-		return rte_flow_error_set(error, EBUSY,
-					  RTE_FLOW_ERROR_TYPE_ACTION,
-					  NULL,
-					  "shared rss hrxq has references");
 	if (!__atomic_compare_exchange_n(&shared_rss->refcnt, &old_refcnt,
 					 0, 0, __ATOMIC_ACQUIRE,
 					 __ATOMIC_RELAXED))
@@ -11774,6 +11768,12 @@ __flow_dv_action_rss_release(struct rte_eth_dev *dev, uint32_t idx,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
 					  "shared rss has references");
+	remaining = __flow_dv_action_rss_hrxqs_release(dev, shared_rss);
+	if (remaining)
+		return rte_flow_error_set(error, EBUSY,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "shared rss hrxq has references");
 	queue = shared_rss->ind_tbl->queues;
 	remaining = mlx5_ind_table_obj_release(dev, shared_rss->ind_tbl, true);
 	if (remaining)
