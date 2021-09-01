@@ -111,6 +111,8 @@ struct ice_dcf_hw {
 	/* Link status */
 	bool link_up;
 	uint32_t link_speed;
+
+	bool resetting;
 };
 
 int ice_dcf_execute_virtchnl_cmd(struct ice_dcf_hw *hw,

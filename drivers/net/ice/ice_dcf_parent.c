@@ -234,6 +234,7 @@ ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
 	case VIRTCHNL_EVENT_RESET_IMPENDING:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_RESET_IMPENDING event");
 		start_vsi_reset_thread(dcf_hw, false, 0);
+		dcf_hw->resetting = true;
 		break;
 	case VIRTCHNL_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
@@ -357,6 +358,7 @@ err_unroll_fltr_mgmt_struct:
 err_unroll_alloc:
 	ice_free(hw, hw->port_info);
 	hw->port_info = NULL;
+	hw->switch_info = NULL;
 
 	return status;
 }
@@ -370,6 +372,7 @@ static void ice_dcf_uninit_parent_hw(struct ice_hw *hw)
 
 	ice_free(hw, hw->port_info);
 	hw->port_info = NULL;
+	hw->switch_info = NULL;
 
 	ice_clear_all_vsi_ctx(hw);
 }
@@ -485,6 +488,8 @@ ice_dcf_uninit_parent_adapter(struct rte_eth_dev *eth_dev)
 	struct ice_hw *parent_hw = &parent_adapter->hw;
 
 	eth_dev->data->mac_addrs = NULL;
+	rte_free(parent_adapter->pf.main_vsi);
+	parent_adapter->pf.main_vsi = NULL;
 
 	ice_flow_uninit(parent_adapter);
 	ice_dcf_uninit_parent_hw(parent_hw);

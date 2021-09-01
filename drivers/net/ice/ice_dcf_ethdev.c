@@ -32,6 +32,12 @@ static int
 ice_dcf_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 				struct rte_eth_udp_tunnel *udp_tunnel);
 
+static int
+ice_dcf_dev_init(struct rte_eth_dev *eth_dev);
+
+static int
+ice_dcf_dev_uninit(struct rte_eth_dev *eth_dev);
+
 static uint16_t
 ice_dcf_recv_pkts(__rte_unused void *rx_queue,
 		  __rte_unused struct rte_mbuf **bufs,
@@ -511,6 +517,12 @@ ice_dcf_dev_start(struct rte_eth_dev *dev)
 	struct ice_dcf_hw *hw = &dcf_ad->real_hw;
 	int ret;
 
+	if (hw->resetting) {
+		PMD_DRV_LOG(ERR,
+			    "The DCF has been reset by PF, please reinit first");
+		return -EIO;
+	}
+
 	ad->pf.adapter_stopped = 0;
 
 	hw->num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
@@ -585,6 +597,7 @@ ice_dcf_stop_queues(struct rte_eth_dev *dev)
 		txq->tx_rel_mbufs(txq);
 		reset_tx_queue(txq);
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+		dev->data->tx_queues[i] = NULL;
 	}
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
@@ -593,6 +606,7 @@ ice_dcf_stop_queues(struct rte_eth_dev *dev)
 		rxq->rx_rel_mbufs(rxq);
 		reset_rx_queue(rxq);
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+		dev->data->rx_queues[i] = NULL;
 	}
 }
 
@@ -805,6 +819,12 @@ ice_dcf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	struct virtchnl_eth_stats pstats;
 	int ret;
 
+	if (hw->resetting) {
+		PMD_DRV_LOG(ERR,
+			    "The DCF has been reset by PF, please reinit first");
+		return -EIO;
+	}
+
 	ret = ice_dcf_query_stats(hw, &pstats);
 	if (ret == 0) {
 		ice_dcf_update_stats(&hw->eth_stats_offset, &pstats);
@@ -830,6 +850,9 @@ ice_dcf_stats_reset(struct rte_eth_dev *dev)
 	struct ice_dcf_hw *hw = &ad->real_hw;
 	struct virtchnl_eth_stats pstats;
 	int ret;
+
+	if (hw->resetting)
+		return 0;
 
 	/* read stat values to clear hardware registers */
 	ret = ice_dcf_query_stats(hw, &pstats);
@@ -873,6 +896,8 @@ ice_dcf_dev_close(struct rte_eth_dev *dev)
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
+
+	(void)ice_dcf_dev_stop(dev);
 
 	ice_dcf_free_repr_info(adapter);
 	ice_dcf_uninit_parent_adapter(dev);
@@ -1006,10 +1031,25 @@ ice_dcf_tm_ops_get(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
+static int
+ice_dcf_dev_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	ret = ice_dcf_dev_uninit(dev);
+	if (ret)
+		return ret;
+
+	ret = ice_dcf_dev_init(dev);
+
+	return ret;
+}
+
 static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.dev_start               = ice_dcf_dev_start,
 	.dev_stop                = ice_dcf_dev_stop,
 	.dev_close               = ice_dcf_dev_close,
+	.dev_reset               = ice_dcf_dev_reset,
 	.dev_configure           = ice_dcf_dev_configure,
 	.dev_infos_get           = ice_dcf_dev_info_get,
 	.rx_queue_setup          = ice_rx_queue_setup,
@@ -1038,6 +1078,7 @@ ice_dcf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct ice_dcf_adapter *adapter = eth_dev->data->dev_private;
 
+	adapter->real_hw.resetting = false;
 	eth_dev->dev_ops = &ice_dcf_eth_dev_ops;
 	eth_dev->rx_pkt_burst = ice_dcf_recv_pkts;
 	eth_dev->tx_pkt_burst = ice_dcf_xmit_pkts;

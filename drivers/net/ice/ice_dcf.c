@@ -337,6 +337,9 @@ ice_dcf_mode_disable(struct ice_dcf_hw *hw)
 {
 	int err;
 
+	if (hw->resetting)
+		return 0;
+
 	err = ice_dcf_send_cmd_req_no_irq(hw, VIRTCHNL_OP_DCF_DISABLE,
 					  NULL, 0);
 	if (err) {
@@ -721,11 +724,25 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	iavf_shutdown_adminq(&hw->avf);
 
 	rte_free(hw->arq_buf);
+	hw->arq_buf = NULL;
+
 	rte_free(hw->vf_vsi_map);
+	hw->vf_vsi_map = NULL;
+
 	rte_free(hw->vf_res);
+	hw->vf_res = NULL;
+
 	rte_free(hw->rss_lut);
+	hw->rss_lut = NULL;
+
 	rte_free(hw->rss_key);
+	hw->rss_key = NULL;
+
 	rte_free(hw->qos_bw_cfg);
+	hw->qos_bw_cfg = NULL;
+
+	rte_free(hw->ets_config);
+	hw->ets_config = NULL;
 }
 
 static int
@@ -1009,6 +1026,9 @@ ice_dcf_disable_queues(struct ice_dcf_hw *hw)
 	struct dcf_virtchnl_cmd args;
 	int err;
 
+	if (hw->resetting)
+		return 0;
+
 	memset(&queue_select, 0, sizeof(queue_select));
 	queue_select.vsi_id = hw->vsi_res->vsi_id;
 
@@ -1062,6 +1082,14 @@ ice_dcf_add_del_all_mac_addr(struct ice_dcf_hw *hw, bool add)
 	struct rte_ether_addr *addr;
 	struct dcf_virtchnl_cmd args;
 	int len, err = 0;
+
+	if (hw->resetting) {
+		if (!add)
+			return 0;
+
+		PMD_DRV_LOG(ERR, "fail to add all MACs for VF resetting");
+		return -EIO;
+	}
 
 	len = sizeof(struct virtchnl_ether_addr_list);
 	addr = hw->eth_dev->data->mac_addrs;
