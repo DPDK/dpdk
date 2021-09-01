@@ -270,17 +270,12 @@ cn10k_sec_session_create(void *device, struct rte_security_session_conf *conf,
 	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL)
 		return -EINVAL;
 
-	if (rte_security_dynfield_register() < 0)
-		return -ENOTSUP;
-
 	if (rte_mempool_get(mempool, (void **)&priv)) {
 		plt_err("Could not allocate security session private data");
 		return -ENOMEM;
 	}
 
 	set_sec_session_private_data(sess, priv);
-
-	priv->userdata = conf->userdata;
 
 	if (conf->protocol != RTE_SECURITY_PROTOCOL_IPSEC) {
 		ret = -ENOTSUP;

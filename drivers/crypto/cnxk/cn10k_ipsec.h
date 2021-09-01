@@ -27,8 +27,6 @@ struct cn10k_ipsec_sa {
 
 struct cn10k_sec_session {
 	struct cn10k_ipsec_sa sa;
-	void *userdata;
-	/**< Userdata registered by the application */
 } __rte_cache_aligned;
 
 void cn10k_sec_ops_override(void);

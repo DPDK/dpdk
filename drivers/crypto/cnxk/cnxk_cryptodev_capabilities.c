@@ -810,7 +810,6 @@ static const struct rte_security_capability sec_caps_templ[] = {
 			.options = { 0 }
 		},
 		.crypto_capabilities = NULL,
-		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 	},
 	{	/* IPsec Lookaside Protocol ESP Tunnel Egress */
 		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
@@ -822,7 +821,6 @@ static const struct rte_security_capability sec_caps_templ[] = {
 			.options = { 0 }
 		},
 		.crypto_capabilities = NULL,
-		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 	},
 	{
 		.action = RTE_SECURITY_ACTION_TYPE_NONE
