@@ -12304,17 +12304,27 @@ flow_dv_aso_ct_dev_release(struct rte_eth_dev *dev, uint32_t idx)
 }
 
 static inline int
-flow_dv_aso_ct_release(struct rte_eth_dev *dev, uint32_t own_idx)
+flow_dv_aso_ct_release(struct rte_eth_dev *dev, uint32_t own_idx,
+		       struct rte_flow_error *error)
 {
 	uint16_t owner = (uint16_t)MLX5_INDIRECT_ACT_CT_GET_OWNER(own_idx);
 	uint32_t idx = MLX5_INDIRECT_ACT_CT_GET_IDX(own_idx);
 	struct rte_eth_dev *owndev = &rte_eth_devices[owner];
-	RTE_SET_USED(dev);
+	int ret;
 
 	MLX5_ASSERT(owner < RTE_MAX_ETHPORTS);
 	if (dev->data->dev_started != 1)
-		return -1;
-	return flow_dv_aso_ct_dev_release(owndev, idx);
+		return rte_flow_error_set(error, EAGAIN,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "Indirect CT action cannot be destroyed when the port is stopped");
+	ret = flow_dv_aso_ct_dev_release(owndev, idx);
+	if (ret < 0)
+		return rte_flow_error_set(error, EAGAIN,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "Current state prevents indirect CT action from being destroyed");
+	return ret;
 }
 
 /*
@@ -14365,7 +14375,7 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	}
 	/* Keep the current age handling by default. */
 	if (flow->indirect_type == MLX5_INDIRECT_ACTION_TYPE_CT && flow->ct)
-		flow_dv_aso_ct_release(dev, flow->ct);
+		flow_dv_aso_ct_release(dev, flow->ct, NULL);
 	else if (flow->age)
 		flow_dv_aso_age_release(dev, flow->age);
 	if (flow->geneve_tlv_option) {
@@ -14900,7 +14910,7 @@ flow_dv_action_destroy(struct rte_eth_dev *dev,
 				" released with references %d.", idx, ret);
 		return 0;
 	case MLX5_INDIRECT_ACTION_TYPE_CT:
-		ret = flow_dv_aso_ct_release(dev, idx);
+		ret = flow_dv_aso_ct_release(dev, idx, error);
 		if (ret < 0)
 			return ret;
 		if (ret > 0)
