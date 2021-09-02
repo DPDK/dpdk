@@ -1034,7 +1034,7 @@ test_memzone_basic(void)
 	if (mz != memzone1)
 		return -1;
 
-	printf("test duplcate zone name\n");
+	printf("test duplicate zone name\n");
 	mz = rte_memzone_reserve(TEST_MEMZONE_NAME("testzone1"), 100,
 			SOCKET_ID_ANY, 0);
 	if (mz != NULL)
