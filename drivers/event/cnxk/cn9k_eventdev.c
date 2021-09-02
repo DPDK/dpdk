@@ -358,6 +358,20 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 #undef R
 	};
 
+	const event_dequeue_t sso_hws_deq_ca[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
+	[f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_deq_ca_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_deq_ca_burst[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
+	[f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_deq_ca_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
 	const event_dequeue_t sso_hws_deq_seg[2][2][2][2][2][2] = {
 #define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
 	[f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_deq_seg_##name,
@@ -385,7 +399,22 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 	[f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_deq_tmo_seg_burst_##name,
 			NIX_RX_FASTPATH_MODES
 #undef R
-		};
+	};
+
+	const event_dequeue_t sso_hws_deq_ca_seg[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
+	[f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_deq_ca_seg_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t
+		sso_hws_deq_ca_seg_burst[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
+	[f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_deq_ca_seg_burst_##name,
+			NIX_RX_FASTPATH_MODES
+#undef R
+	};
 
 	/* Dual WS modes */
 	const event_dequeue_t sso_hws_dual_deq[2][2][2][2][2][2] = {
@@ -415,7 +444,22 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 	[f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_dual_deq_tmo_burst_##name,
 			NIX_RX_FASTPATH_MODES
 #undef R
-		};
+	};
+
+	const event_dequeue_t sso_hws_dual_deq_ca[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
+	[f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_dual_deq_ca_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t
+		sso_hws_dual_deq_ca_burst[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
+	[f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_dual_deq_ca_burst_##name,
+			NIX_RX_FASTPATH_MODES
+#undef R
+	};
 
 	const event_dequeue_t sso_hws_dual_deq_seg[2][2][2][2][2][2] = {
 #define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
@@ -446,6 +490,21 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 			NIX_RX_FASTPATH_MODES
 #undef R
 		};
+
+	const event_dequeue_t sso_hws_dual_deq_ca_seg[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
+	[f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_dual_deq_ca_seg_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t
+		sso_hws_dual_deq_ca_seg_burst[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
+	[f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_dual_deq_ca_seg_burst_##name,
+			NIX_RX_FASTPATH_MODES
+#undef R
+	};
 
 	/* Tx modes */
 	const event_tx_adapter_enqueue
@@ -494,6 +553,12 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 					      sso_hws_deq_tmo_seg_burst);
 		}
+		if (dev->is_ca_internal_port) {
+			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
+					      sso_hws_deq_ca_seg);
+			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+					      sso_hws_deq_ca_seg_burst);
+		}
 	} else {
 		CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq);
 		CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
@@ -504,7 +569,14 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 					      sso_hws_deq_tmo_burst);
 		}
+		if (dev->is_ca_internal_port) {
+			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
+					      sso_hws_deq_ca);
+			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+					      sso_hws_deq_ca_burst);
+		}
 	}
+	event_dev->ca_enqueue = cn9k_sso_hws_ca_enq;
 
 	if (dev->tx_offloads & NIX_TX_MULTI_SEG_F)
 		CN9K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue,
@@ -519,6 +591,7 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 		event_dev->enqueue_new_burst = cn9k_sso_hws_dual_enq_new_burst;
 		event_dev->enqueue_forward_burst =
 			cn9k_sso_hws_dual_enq_fwd_burst;
+		event_dev->ca_enqueue = cn9k_sso_hws_dual_ca_enq;
 
 		if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {
 			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
@@ -532,6 +605,13 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 					dev, event_dev->dequeue_burst,
 					sso_hws_dual_deq_tmo_seg_burst);
 			}
+			if (dev->is_ca_internal_port) {
+				CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
+						      sso_hws_dual_deq_ca_seg);
+				CN9K_SET_EVDEV_DEQ_OP(
+					dev, event_dev->dequeue_burst,
+					sso_hws_dual_deq_ca_seg_burst);
+			}
 		} else {
 			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
 					      sso_hws_dual_deq);
@@ -543,6 +623,13 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 				CN9K_SET_EVDEV_DEQ_OP(
 					dev, event_dev->dequeue_burst,
 					sso_hws_dual_deq_tmo_burst);
+			}
+			if (dev->is_ca_internal_port) {
+				CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
+						      sso_hws_dual_deq_ca);
+				CN9K_SET_EVDEV_DEQ_OP(
+					dev, event_dev->dequeue_burst,
+					sso_hws_dual_deq_ca_burst);
 			}
 		}
 
@@ -930,7 +1017,8 @@ cn9k_crypto_adapter_caps_get(const struct rte_eventdev *event_dev,
 	CNXK_VALID_DEV_OR_ERR_RET(event_dev->dev, "event_cn9k");
 	CNXK_VALID_DEV_OR_ERR_RET(cdev->device, "crypto_cn9k");
 
-	*caps = 0;
+	*caps = RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD |
+		RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA;
 
 	return 0;
 }

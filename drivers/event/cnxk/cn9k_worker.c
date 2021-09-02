@@ -5,6 +5,7 @@
 #include "roc_api.h"
 
 #include "cn9k_worker.h"
+#include "cn9k_cryptodev_ops.h"
 
 uint16_t __rte_hot
 cn9k_sso_hws_enq(void *port, const struct rte_event *ev)
@@ -116,4 +117,25 @@ cn9k_sso_hws_dual_enq_fwd_burst(void *port, const struct rte_event ev[],
 	cn9k_sso_hws_dual_forward_event(dws, &dws->ws_state[!dws->vws], ev);
 
 	return 1;
+}
+
+uint16_t __rte_hot
+cn9k_sso_hws_ca_enq(void *port, struct rte_event ev[], uint16_t nb_events)
+{
+	struct cn9k_sso_hws *ws = port;
+
+	RTE_SET_USED(nb_events);
+
+	return cn9k_cpt_crypto_adapter_enqueue(ws->tag_op, ev->event_ptr);
+}
+
+uint16_t __rte_hot
+cn9k_sso_hws_dual_ca_enq(void *port, struct rte_event ev[], uint16_t nb_events)
+{
+	struct cn9k_sso_hws_dual *dws = port;
+
+	RTE_SET_USED(nb_events);
+
+	return cn9k_cpt_crypto_adapter_enqueue(dws->ws_state[!dws->vws].tag_op,
+					       ev->event_ptr);
 }
