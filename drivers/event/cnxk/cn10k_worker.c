@@ -60,3 +60,14 @@ cn10k_sso_hws_enq_fwd_burst(void *port, const struct rte_event ev[],
 
 	return 1;
 }
+
+uint16_t __rte_hot
+cn10k_sso_hws_ca_enq(void *port, struct rte_event ev[], uint16_t nb_events)
+{
+	struct cn10k_sso_hws *ws = port;
+
+	RTE_SET_USED(nb_events);
+
+	return cn10k_cpt_crypto_adapter_enqueue(ws->base + SSOW_LF_GWS_TAG,
+						ev->event_ptr);
+}

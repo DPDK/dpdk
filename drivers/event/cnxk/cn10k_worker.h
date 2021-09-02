@@ -10,6 +10,7 @@
 #include "cnxk_ethdev.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
+#include "cn10k_cryptodev_ops.h"
 
 #include "cn10k_ethdev.h"
 #include "cn10k_rx.h"
@@ -179,8 +180,12 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 		    (gw.u64[0] & 0xffffffff);
 
 	if (CNXK_TT_FROM_EVENT(gw.u64[0]) != SSO_TT_EMPTY) {
-		if (CNXK_EVENT_TYPE_FROM_TAG(gw.u64[0]) ==
-		    RTE_EVENT_TYPE_ETHDEV) {
+		if ((flags & CPT_RX_WQE_F) &&
+		    (CNXK_EVENT_TYPE_FROM_TAG(gw.u64[0]) ==
+		     RTE_EVENT_TYPE_CRYPTODEV)) {
+			gw.u64[1] = cn10k_cpt_crypto_adapter_dequeue(gw.u64[1]);
+		} else if (CNXK_EVENT_TYPE_FROM_TAG(gw.u64[0]) ==
+			   RTE_EVENT_TYPE_ETHDEV) {
 			uint8_t port = CNXK_SUB_EVENT_FROM_TAG(gw.u64[0]);
 
 			gw.u64[0] = CNXK_CLR_SUB_EVENT(gw.u64[0]);
@@ -282,6 +287,8 @@ uint16_t __rte_hot cn10k_sso_hws_enq_new_burst(void *port,
 uint16_t __rte_hot cn10k_sso_hws_enq_fwd_burst(void *port,
 					       const struct rte_event ev[],
 					       uint16_t nb_events);
+uint16_t __rte_hot cn10k_sso_hws_ca_enq(void *port, struct rte_event ev[],
+					uint16_t nb_events);
 
 #define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
 	uint16_t __rte_hot cn10k_sso_hws_deq_##name(                           \
@@ -294,6 +301,11 @@ uint16_t __rte_hot cn10k_sso_hws_enq_fwd_burst(void *port,
 	uint16_t __rte_hot cn10k_sso_hws_deq_tmo_burst_##name(                 \
 		void *port, struct rte_event ev[], uint16_t nb_events,         \
 		uint64_t timeout_ticks);                                       \
+	uint16_t __rte_hot cn10k_sso_hws_deq_ca_##name(                        \
+		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
+	uint16_t __rte_hot cn10k_sso_hws_deq_ca_burst_##name(                  \
+		void *port, struct rte_event ev[], uint16_t nb_events,         \
+		uint64_t timeout_ticks);                                       \
 	uint16_t __rte_hot cn10k_sso_hws_deq_seg_##name(                       \
 		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
 	uint16_t __rte_hot cn10k_sso_hws_deq_seg_burst_##name(                 \
@@ -302,6 +314,11 @@ uint16_t __rte_hot cn10k_sso_hws_enq_fwd_burst(void *port,
 	uint16_t __rte_hot cn10k_sso_hws_deq_tmo_seg_##name(                   \
 		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
 	uint16_t __rte_hot cn10k_sso_hws_deq_tmo_seg_burst_##name(             \
+		void *port, struct rte_event ev[], uint16_t nb_events,         \
+		uint64_t timeout_ticks);                                       \
+	uint16_t __rte_hot cn10k_sso_hws_deq_ca_seg_##name(                    \
+		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
+	uint16_t __rte_hot cn10k_sso_hws_deq_ca_seg_burst_##name(              \
 		void *port, struct rte_event ev[], uint16_t nb_events,         \
 		uint64_t timeout_ticks);
 

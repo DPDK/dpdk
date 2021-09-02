@@ -27,6 +27,7 @@ sources = files(
         'cn10k_worker.c',
         'cn10k_worker_deq.c',
         'cn10k_worker_deq_burst.c',
+        'cn10k_worker_deq_ca.c',
         'cn10k_worker_deq_tmo.c',
         'cn10k_worker_tx_enq.c',
         'cn10k_worker_tx_enq_seg.c',
