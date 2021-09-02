@@ -21,8 +21,9 @@
  * Defining it from backwards to denote its been
  * not used as offload flags to pick function
  */
-#define NIX_RX_VWQE_F	   BIT(14)
-#define NIX_RX_MULTI_SEG_F BIT(15)
+#define NIX_RX_VWQE_F	   BIT(13)
+#define NIX_RX_MULTI_SEG_F BIT(14)
+#define CPT_RX_WQE_F	   BIT(15)
 
 #define CNXK_NIX_CQ_ENTRY_SZ 128
 #define NIX_DESCS_PER_LOOP   4
