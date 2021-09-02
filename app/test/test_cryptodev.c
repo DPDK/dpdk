@@ -13475,31 +13475,32 @@ test_scheduler_attach_worker_op(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	uint8_t sched_id = ts_params->valid_devs[0];
-	uint32_t nb_devs, i, nb_devs_attached = 0;
+	uint32_t i, nb_devs_attached = 0;
 	int ret;
 	char vdev_name[32];
+	unsigned int count = rte_cryptodev_count();
 
-	/* create 2 AESNI_MB if necessary */
-	nb_devs = rte_cryptodev_device_count_by_driver(
-			rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)));
-	if (nb_devs < 2) {
-		for (i = nb_devs; i < 2; i++) {
-			snprintf(vdev_name, sizeof(vdev_name), "%s_%u",
-					RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD),
-					i);
-			ret = rte_vdev_init(vdev_name, NULL);
+	/* create 2 AESNI_MB vdevs on top of existing devices */
+	for (i = count; i < count + 2; i++) {
+		snprintf(vdev_name, sizeof(vdev_name), "%s_%u",
+				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD),
+				i);
+		ret = rte_vdev_init(vdev_name, NULL);
 
-			TEST_ASSERT(ret == 0,
-				"Failed to create instance %u of"
-				" pmd : %s",
-				i, RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
+		TEST_ASSERT(ret == 0,
+			"Failed to create instance %u of"
+			" pmd : %s",
+			i, RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
+
+		if (ret < 0) {
+			RTE_LOG(ERR, USER1,
+				"Failed to create 2 AESNI MB PMDs.\n");
+			return TEST_SKIPPED;
 		}
 	}
 
 	/* attach 2 AESNI_MB cdevs */
-	for (i = 0; i < rte_cryptodev_count() && nb_devs_attached < 2;
-			i++) {
+	for (i = count; i < count + 2; i++) {
 		struct rte_cryptodev_info info;
 		unsigned int session_size;
 
