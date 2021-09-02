@@ -36,6 +36,29 @@ struct cnxk_se_sess {
 	struct roc_se_ctx roc_se_ctx;
 } __rte_cache_aligned;
 
+static inline void
+pdcp_iv_copy(uint8_t *iv_d, uint8_t *iv_s, const uint8_t pdcp_alg_type)
+{
+	uint32_t *iv_s_temp, iv_temp[4];
+	int j;
+
+	if (pdcp_alg_type == ROC_SE_PDCP_ALG_TYPE_SNOW3G) {
+		/*
+		 * DPDK seems to provide it in form of IV3 IV2 IV1 IV0
+		 * and BigEndian, MC needs it as IV0 IV1 IV2 IV3
+		 */
+
+		iv_s_temp = (uint32_t *)iv_s;
+
+		for (j = 0; j < 4; j++)
+			iv_temp[j] = iv_s_temp[3 - j];
+		memcpy(iv_d, iv_temp, 16);
+	} else {
+		/* ZUC doesn't need a swap */
+		memcpy(iv_d, iv_s, 16);
+	}
+}
+
 static __rte_always_inline int
 cpt_mac_len_verify(struct rte_crypto_auth_xform *auth)
 {
@@ -954,13 +977,13 @@ cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	int32_t inputlen, outputlen;
 	struct roc_se_ctx *se_ctx;
 	uint32_t mac_len = 0;
-	uint8_t pdcp_alg_type, j;
+	uint8_t pdcp_alg_type;
 	uint32_t encr_offset, auth_offset;
 	uint32_t encr_data_len, auth_data_len;
 	int flags, iv_len = 16;
 	uint64_t offset_ctrl;
 	uint64_t *offset_vaddr;
-	uint32_t *iv_s, iv[4];
+	uint8_t *iv_s;
 	union cpt_inst_w4 cpt_inst_w4;
 
 	se_ctx = params->ctx_buf.vaddr;
@@ -1030,20 +1053,6 @@ cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		return -1;
 	}
 
-	if (pdcp_alg_type == ROC_SE_PDCP_ALG_TYPE_SNOW3G) {
-		/*
-		 * DPDK seems to provide it in form of IV3 IV2 IV1 IV0
-		 * and BigEndian, MC needs it as IV0 IV1 IV2 IV3
-		 */
-
-		for (j = 0; j < 4; j++)
-			iv[j] = iv_s[3 - j];
-	} else {
-		/* ZUC doesn't need a swap */
-		for (j = 0; j < 4; j++)
-			iv[j] = iv_s[j];
-	}
-
 	/*
 	 * GP op header, lengths are expected in bits.
 	 */
@@ -1072,11 +1081,8 @@ cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 
 		cpt_inst_w4.s.dlen = inputlen + ROC_SE_OFF_CTRL_LEN;
 
-		if (likely(iv_len)) {
-			uint32_t *iv_d = (uint32_t *)((uint8_t *)offset_vaddr +
-						      ROC_SE_OFF_CTRL_LEN);
-			memcpy(iv_d, iv, 16);
-		}
+		uint8_t *iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN);
+		pdcp_iv_copy(iv_d, iv_s, pdcp_alg_type);
 
 		*offset_vaddr = offset_ctrl;
 	} else {
@@ -1085,7 +1091,7 @@ cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		struct roc_se_sglist_comp *gather_comp;
 		struct roc_se_sglist_comp *scatter_comp;
 		uint8_t *in_buffer;
-		uint32_t *iv_d;
+		uint8_t *iv_d;
 
 		/* save space for iv */
 		offset_vaddr = m_vaddr;
@@ -1117,9 +1123,8 @@ cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		/* iv offset is 0 */
 		*offset_vaddr = offset_ctrl;
 
-		iv_d = (uint32_t *)((uint8_t *)offset_vaddr +
-				    ROC_SE_OFF_CTRL_LEN);
-		memcpy(iv_d, iv, 16);
+		iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN);
+		pdcp_iv_copy(iv_d, iv_s, pdcp_alg_type);
 
 		/* input data */
 		size = inputlen - iv_len;
