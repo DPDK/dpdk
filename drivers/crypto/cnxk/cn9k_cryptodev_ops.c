@@ -5,6 +5,7 @@
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
 #include <rte_event_crypto_adapter.h>
+#include <rte_vect.h>
 
 #include "cn9k_cryptodev.h"
 #include "cn9k_cryptodev_ops.h"
@@ -64,9 +65,8 @@ sess_put:
 }
 
 static inline int
-cn9k_cpt_prepare_instruction(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
-			     struct cpt_inflight_req *infl_req,
-			     struct cpt_inst_s *inst)
+cn9k_cpt_inst_prep(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
+		   struct cpt_inflight_req *infl_req, struct cpt_inst_s *inst)
 {
 	int ret;
 
@@ -118,8 +118,8 @@ cn9k_cpt_prepare_instruction(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 }
 
 static inline void
-cn9k_cpt_submit_instruction(struct cpt_inst_s *inst, uint64_t lmtline,
-			    uint64_t io_addr)
+cn9k_cpt_inst_submit(struct cpt_inst_s *inst, uint64_t lmtline,
+		     uint64_t io_addr)
 {
 	uint64_t lmt_status;
 
@@ -138,46 +138,144 @@ cn9k_cpt_submit_instruction(struct cpt_inst_s *inst, uint64_t lmtline,
 	} while (lmt_status == 0);
 }
 
+static __plt_always_inline void
+cn9k_cpt_inst_submit_dual(struct cpt_inst_s *inst, uint64_t lmtline,
+			  uint64_t io_addr)
+{
+	uint64_t lmt_status;
+
+	do {
+		/* Copy 2 CPT inst_s to LMTLINE */
+#if defined(RTE_ARCH_ARM64)
+		uint64_t *s = (uint64_t *)inst;
+		uint64_t *d = (uint64_t *)lmtline;
+
+		vst1q_u64(&d[0], vld1q_u64(&s[0]));
+		vst1q_u64(&d[2], vld1q_u64(&s[2]));
+		vst1q_u64(&d[4], vld1q_u64(&s[4]));
+		vst1q_u64(&d[6], vld1q_u64(&s[6]));
+		vst1q_u64(&d[8], vld1q_u64(&s[8]));
+		vst1q_u64(&d[10], vld1q_u64(&s[10]));
+		vst1q_u64(&d[12], vld1q_u64(&s[12]));
+		vst1q_u64(&d[14], vld1q_u64(&s[14]));
+#else
+		roc_lmt_mov_seg((void *)lmtline, inst, 8);
+#endif
+
+		/*
+		 * Make sure compiler does not reorder memcpy and ldeor.
+		 * LMTST transactions are always flushed from the write
+		 * buffer immediately, a DMB is not required to push out
+		 * LMTSTs.
+		 */
+		rte_io_wmb();
+		lmt_status = roc_lmt_submit_ldeor(io_addr);
+	} while (lmt_status == 0);
+}
+
 static uint16_t
 cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
-	struct cpt_inflight_req *infl_req;
+	struct cpt_inflight_req *infl_req_1, *infl_req_2;
+	struct cpt_inst_s inst[2] __rte_cache_aligned;
+	struct rte_crypto_op *op_1, *op_2;
 	uint16_t nb_allowed, count = 0;
 	struct cnxk_cpt_qp *qp = qptr;
 	struct pending_queue *pend_q;
-	struct rte_crypto_op *op;
-	struct cpt_inst_s inst;
+	uint64_t enq_tail;
 	int ret;
+
+	const uint32_t nb_desc = qp->lf.nb_desc;
+	const uint64_t lmt_base = qp->lf.lmt_base;
+	const uint64_t io_addr = qp->lf.io_addr;
 
 	pend_q = &qp->pend_q;
 
-	inst.w0.u64 = 0;
-	inst.w2.u64 = 0;
-	inst.w3.u64 = 0;
+	/* Clear w0, w2, w3 of both inst */
+
+	inst[0].w0.u64 = 0;
+	inst[0].w2.u64 = 0;
+	inst[0].w3.u64 = 0;
+	inst[1].w0.u64 = 0;
+	inst[1].w2.u64 = 0;
+	inst[1].w3.u64 = 0;
 
 	nb_allowed = qp->lf.nb_desc - pend_q->pending_count;
 	nb_ops = RTE_MIN(nb_ops, nb_allowed);
 
-	for (count = 0; count < nb_ops; count++) {
-		op = ops[count];
-		infl_req = &pend_q->req_queue[pend_q->enq_tail];
-		infl_req->op_flags = 0;
+	enq_tail = pend_q->enq_tail;
 
-		ret = cn9k_cpt_prepare_instruction(qp, op, infl_req, &inst);
+	if (unlikely(nb_ops & 1)) {
+		op_1 = ops[0];
+		infl_req_1 = &pend_q->req_queue[enq_tail];
+		infl_req_1->op_flags = 0;
+
+		ret = cn9k_cpt_inst_prep(qp, op_1, infl_req_1, &inst[0]);
 		if (unlikely(ret)) {
-			plt_dp_err("Could not process op: %p", op);
+			plt_dp_err("Could not process op: %p", op_1);
+			return 0;
+		}
+
+		infl_req_1->cop = op_1;
+		infl_req_1->res.cn9k.compcode = CPT_COMP_NOT_DONE;
+		inst[0].res_addr = (uint64_t)&infl_req_1->res;
+
+		cn9k_cpt_inst_submit(&inst[0], lmt_base, io_addr);
+		MOD_INC(enq_tail, nb_desc);
+		count++;
+	}
+
+	while (count < nb_ops) {
+		op_1 = ops[count];
+		op_2 = ops[count + 1];
+
+		infl_req_1 = &pend_q->req_queue[enq_tail];
+		MOD_INC(enq_tail, nb_desc);
+		infl_req_2 = &pend_q->req_queue[enq_tail];
+		MOD_INC(enq_tail, nb_desc);
+
+		infl_req_1->cop = op_1;
+		infl_req_2->cop = op_2;
+		infl_req_1->op_flags = 0;
+		infl_req_2->op_flags = 0;
+
+		infl_req_1->res.cn9k.compcode = CPT_COMP_NOT_DONE;
+		inst[0].res_addr = (uint64_t)&infl_req_1->res;
+
+		infl_req_2->res.cn9k.compcode = CPT_COMP_NOT_DONE;
+		inst[1].res_addr = (uint64_t)&infl_req_2->res;
+
+		ret = cn9k_cpt_inst_prep(qp, op_1, infl_req_1, &inst[0]);
+		if (unlikely(ret)) {
+			plt_dp_err("Could not process op: %p", op_1);
+			if (enq_tail == 0)
+				enq_tail = nb_desc - 2;
+			else if (enq_tail == 1)
+				enq_tail = nb_desc - 1;
+			else
+				enq_tail--;
 			break;
 		}
 
-		infl_req->cop = op;
-		infl_req->res.cn9k.compcode = CPT_COMP_NOT_DONE;
-		inst.res_addr = (uint64_t)&infl_req->res;
+		ret = cn9k_cpt_inst_prep(qp, op_2, infl_req_2, &inst[1]);
+		if (unlikely(ret)) {
+			plt_dp_err("Could not process op: %p", op_2);
+			if (enq_tail == 0)
+				enq_tail = nb_desc - 1;
+			else
+				enq_tail--;
 
-		cn9k_cpt_submit_instruction(&inst, qp->lmtline.lmt_base,
-					    qp->lmtline.io_addr);
-		MOD_INC(pend_q->enq_tail, qp->lf.nb_desc);
+			cn9k_cpt_inst_submit(&inst[0], lmt_base, io_addr);
+			count++;
+			break;
+		}
+
+		cn9k_cpt_inst_submit_dual(&inst[0], lmt_base, io_addr);
+
+		count += 2;
 	}
 
+	pend_q->enq_tail = enq_tail;
 	pend_q->pending_count += count;
 	pend_q->time_out = rte_get_timer_cycles() +
 			   DEFAULT_COMMAND_TIMEOUT * rte_get_timer_hz();
@@ -219,7 +317,7 @@ cn9k_cpt_crypto_adapter_enqueue(uintptr_t tag_op, struct rte_crypto_op *op)
 	}
 	infl_req->op_flags = 0;
 
-	ret = cn9k_cpt_prepare_instruction(qp, op, infl_req, &inst);
+	ret = cn9k_cpt_inst_prep(qp, op, infl_req, &inst);
 	if (unlikely(ret)) {
 		plt_dp_err("Could not process op: %p", op);
 		rte_mempool_put(qp->ca.req_mp, infl_req);
@@ -245,8 +343,7 @@ cn9k_cpt_crypto_adapter_enqueue(uintptr_t tag_op, struct rte_crypto_op *op)
 	if (!rsp_info->sched_type)
 		roc_sso_hws_head_wait(tag_op);
 
-	cn9k_cpt_submit_instruction(&inst, qp->lmtline.lmt_base,
-				    qp->lmtline.io_addr);
+	cn9k_cpt_inst_submit(&inst, qp->lmtline.lmt_base, qp->lmtline.io_addr);
 
 	return 1;
 }
@@ -347,13 +444,15 @@ cn9k_cpt_crypto_adapter_dequeue(uintptr_t get_work1)
 static uint16_t
 cn9k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
+	struct cpt_inflight_req *infl_req;
 	struct cnxk_cpt_qp *qp = qptr;
 	struct pending_queue *pend_q;
-	struct cpt_inflight_req *infl_req;
 	struct cpt_cn9k_res_s *res;
 	struct rte_crypto_op *cop;
 	uint32_t pq_deq_head;
 	int i;
+
+	const uint32_t nb_desc = qp->lf.nb_desc;
 
 	pend_q = &qp->pend_q;
 
@@ -377,7 +476,7 @@ cn9k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 			break;
 		}
 
-		MOD_INC(pq_deq_head, qp->lf.nb_desc);
+		MOD_INC(pq_deq_head, nb_desc);
 
 		cop = infl_req->cop;
 
