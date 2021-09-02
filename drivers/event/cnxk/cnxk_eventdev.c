@@ -2,7 +2,101 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include "cnxk_cryptodev_ops.h"
 #include "cnxk_eventdev.h"
+
+static int
+crypto_adapter_qp_setup(const struct rte_cryptodev *cdev,
+			struct cnxk_cpt_qp *qp)
+{
+	char name[RTE_MEMPOOL_NAMESIZE];
+	uint32_t cache_size, nb_req;
+	unsigned int req_size;
+
+	snprintf(name, RTE_MEMPOOL_NAMESIZE, "cnxk_ca_req_%u:%u",
+		 cdev->data->dev_id, qp->lf.lf_id);
+	req_size = sizeof(struct cpt_inflight_req);
+	cache_size = RTE_MIN(RTE_MEMPOOL_CACHE_MAX_SIZE, qp->lf.nb_desc / 1.5);
+	nb_req = RTE_MAX(qp->lf.nb_desc, cache_size * rte_lcore_count());
+	qp->ca.req_mp = rte_mempool_create(name, nb_req, req_size, cache_size,
+					   0, NULL, NULL, NULL, NULL,
+					   rte_socket_id(), 0);
+	if (qp->ca.req_mp == NULL)
+		return -ENOMEM;
+
+	qp->ca.enabled = true;
+
+	return 0;
+}
+
+int
+cnxk_crypto_adapter_qp_add(const struct rte_eventdev *event_dev,
+			   const struct rte_cryptodev *cdev,
+			   int32_t queue_pair_id)
+{
+	struct cnxk_sso_evdev *sso_evdev = cnxk_sso_pmd_priv(event_dev);
+	uint32_t adptr_xae_cnt = 0;
+	struct cnxk_cpt_qp *qp;
+	int ret;
+
+	if (queue_pair_id == -1) {
+		uint16_t qp_id;
+
+		for (qp_id = 0; qp_id < cdev->data->nb_queue_pairs; qp_id++) {
+			qp = cdev->data->queue_pairs[qp_id];
+			ret = crypto_adapter_qp_setup(cdev, qp);
+			if (ret) {
+				cnxk_crypto_adapter_qp_del(cdev, -1);
+				return ret;
+			}
+			adptr_xae_cnt += qp->ca.req_mp->size;
+		}
+	} else {
+		qp = cdev->data->queue_pairs[queue_pair_id];
+		ret = crypto_adapter_qp_setup(cdev, qp);
+		if (ret)
+			return ret;
+		adptr_xae_cnt = qp->ca.req_mp->size;
+	}
+
+	/* Update crypto adapter XAE count */
+	sso_evdev->adptr_xae_cnt += adptr_xae_cnt;
+	cnxk_sso_xae_reconfigure((struct rte_eventdev *)(uintptr_t)event_dev);
+
+	return 0;
+}
+
+static int
+crypto_adapter_qp_free(struct cnxk_cpt_qp *qp)
+{
+	rte_mempool_free(qp->ca.req_mp);
+	qp->ca.enabled = false;
+
+	return 0;
+}
+
+int
+cnxk_crypto_adapter_qp_del(const struct rte_cryptodev *cdev,
+			   int32_t queue_pair_id)
+{
+	struct cnxk_cpt_qp *qp;
+
+	if (queue_pair_id == -1) {
+		uint16_t qp_id;
+
+		for (qp_id = 0; qp_id < cdev->data->nb_queue_pairs; qp_id++) {
+			qp = cdev->data->queue_pairs[qp_id];
+			if (qp->ca.enabled)
+				crypto_adapter_qp_free(qp);
+		}
+	} else {
+		qp = cdev->data->queue_pairs[queue_pair_id];
+		if (qp->ca.enabled)
+			crypto_adapter_qp_free(qp);
+	}
+
+	return 0;
+}
 
 void
 cnxk_sso_info_get(struct cnxk_sso_evdev *dev,

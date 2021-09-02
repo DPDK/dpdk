@@ -5,6 +5,9 @@
 #ifndef __CNXK_EVENTDEV_H__
 #define __CNXK_EVENTDEV_H__
 
+#include <string.h>
+
+#include <rte_cryptodev.h>
 #include <rte_devargs.h>
 #include <rte_ethdev.h>
 #include <rte_event_eth_rx_adapter.h>
@@ -50,6 +53,12 @@
 #define CN10K_GW_MODE_NONE     0
 #define CN10K_GW_MODE_PREF     1
 #define CN10K_GW_MODE_PREF_WFE 2
+
+#define CNXK_VALID_DEV_OR_ERR_RET(dev, drv_name)                               \
+	do {                                                                   \
+		if (strncmp(dev->driver->name, drv_name, strlen(drv_name)))    \
+			return -EINVAL;                                        \
+	} while (0)
 
 typedef void *(*cnxk_sso_init_hws_mem_t)(void *dev, uint8_t port_id);
 typedef void (*cnxk_sso_hws_setup_t)(void *dev, void *ws, uintptr_t *grp_base);
@@ -108,6 +117,8 @@ struct cnxk_sso_evdev {
 	uint8_t dual_ws;
 	/* CN10K */
 	uint8_t gw_mode;
+	/* Crypto adapter */
+	uint8_t is_ca_internal_port;
 } __rte_cache_aligned;
 
 struct cn10k_sso_hws {
@@ -265,6 +276,13 @@ int cnxk_sso_xstats_reset(struct rte_eventdev *event_dev,
 			  enum rte_event_dev_xstats_mode mode,
 			  int16_t queue_port_id, const uint32_t ids[],
 			  uint32_t n);
+
+/* Crypto adapter APIs. */
+int cnxk_crypto_adapter_qp_add(const struct rte_eventdev *event_dev,
+			       const struct rte_cryptodev *cdev,
+			       int32_t queue_pair_id);
+int cnxk_crypto_adapter_qp_del(const struct rte_cryptodev *cdev,
+			       int32_t queue_pair_id);
 
 /* CN9K */
 void cn9k_sso_set_rsrc(void *arg);

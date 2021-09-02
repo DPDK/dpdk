@@ -923,6 +923,47 @@ cn9k_sso_tx_adapter_queue_del(uint8_t id, const struct rte_eventdev *event_dev,
 	return cn9k_sso_updt_tx_adptr_data(event_dev);
 }
 
+static int
+cn9k_crypto_adapter_caps_get(const struct rte_eventdev *event_dev,
+			     const struct rte_cryptodev *cdev, uint32_t *caps)
+{
+	CNXK_VALID_DEV_OR_ERR_RET(event_dev->dev, "event_cn9k");
+	CNXK_VALID_DEV_OR_ERR_RET(cdev->device, "crypto_cn9k");
+
+	*caps = 0;
+
+	return 0;
+}
+
+static int
+cn9k_crypto_adapter_qp_add(const struct rte_eventdev *event_dev,
+			   const struct rte_cryptodev *cdev,
+			   int32_t queue_pair_id, const struct rte_event *event)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
+	RTE_SET_USED(event);
+
+	CNXK_VALID_DEV_OR_ERR_RET(event_dev->dev, "event_cn9k");
+	CNXK_VALID_DEV_OR_ERR_RET(cdev->device, "crypto_cn9k");
+
+	dev->is_ca_internal_port = 1;
+	cn9k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+
+	return cnxk_crypto_adapter_qp_add(event_dev, cdev, queue_pair_id);
+}
+
+static int
+cn9k_crypto_adapter_qp_del(const struct rte_eventdev *event_dev,
+			   const struct rte_cryptodev *cdev,
+			   int32_t queue_pair_id)
+{
+	CNXK_VALID_DEV_OR_ERR_RET(event_dev->dev, "event_cn9k");
+	CNXK_VALID_DEV_OR_ERR_RET(cdev->device, "crypto_cn9k");
+
+	return cnxk_crypto_adapter_qp_del(cdev, queue_pair_id);
+}
+
 static struct rte_eventdev_ops cn9k_sso_dev_ops = {
 	.dev_infos_get = cn9k_sso_info_get,
 	.dev_configure = cn9k_sso_dev_configure,
@@ -947,6 +988,10 @@ static struct rte_eventdev_ops cn9k_sso_dev_ops = {
 	.eth_tx_adapter_queue_del = cn9k_sso_tx_adapter_queue_del,
 
 	.timer_adapter_caps_get = cnxk_tim_caps_get,
+
+	.crypto_adapter_caps_get = cn9k_crypto_adapter_caps_get,
+	.crypto_adapter_queue_pair_add = cn9k_crypto_adapter_qp_add,
+	.crypto_adapter_queue_pair_del = cn9k_crypto_adapter_qp_del,
 
 	.dump = cnxk_sso_dump,
 	.dev_start = cn9k_sso_start,

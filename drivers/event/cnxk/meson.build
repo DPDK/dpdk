@@ -43,4 +43,4 @@ foreach flag: extra_flags
     endif
 endforeach
 
-deps += ['bus_pci', 'common_cnxk', 'net_cnxk']
+deps += ['bus_pci', 'common_cnxk', 'net_cnxk', 'crypto_cnxk']
