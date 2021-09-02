@@ -993,10 +993,7 @@ cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 
 	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_ZUC_SNOW3G;
 
-	/* indicates CPTR ctx, operation type, KEY & IV mode from DPTR */
-
-	cpt_inst_w4.s.opcode_minor = ((1 << 7) | (pdcp_alg_type << 5) |
-				      (0 << 4) | (0 << 3) | (flags & 0x7));
+	cpt_inst_w4.s.opcode_minor = se_ctx->template_w4.s.opcode_minor;
 
 	if (flags == 0x1) {
 		/*
@@ -1766,6 +1763,8 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 					 NULL)))
 		return -1;
 
+	if ((enc_type >= ROC_SE_ZUC_EEA3) && (enc_type <= ROC_SE_AES_CTR_EEA2))
+		roc_se_ctx_swap(&sess->roc_se_ctx);
 	return 0;
 }
 
@@ -1868,6 +1867,10 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 					 a_form->key.data, a_form->key.length,
 					 a_form->digest_length)))
 		return -1;
+
+	if ((auth_type >= ROC_SE_ZUC_EIA3) &&
+	    (auth_type <= ROC_SE_AES_CMAC_EIA2))
+		roc_se_ctx_swap(&sess->roc_se_ctx);
 
 	return 0;
 }
