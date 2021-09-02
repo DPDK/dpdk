@@ -2103,10 +2103,14 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			return ret;
 	}
 
-	if (rxmode->max_rx_pkt_len > hw->max_mtu + ether_hdr_len)
+	if ((rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) &&
+	    (rxmode->max_rx_pkt_len > hw->max_mtu + ether_hdr_len))
 		req_features &= ~(1ULL << VIRTIO_NET_F_MTU);
 
-	hw->max_rx_pkt_len = rxmode->max_rx_pkt_len;
+	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
+		hw->max_rx_pkt_len = rxmode->max_rx_pkt_len;
+	else
+		hw->max_rx_pkt_len = ether_hdr_len + dev->data->mtu;
 
 	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
 			   DEV_RX_OFFLOAD_TCP_CKSUM))
