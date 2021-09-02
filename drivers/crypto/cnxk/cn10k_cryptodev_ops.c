@@ -4,6 +4,7 @@
 
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
+#include <rte_event_crypto_adapter.h>
 #include <rte_ip.h>
 
 #include "cn10k_cryptodev.h"
@@ -256,6 +257,80 @@ update_pending:
 	return count + i;
 }
 
+uint16_t
+cn10k_cpt_crypto_adapter_enqueue(uintptr_t tag_op, struct rte_crypto_op *op)
+{
+	union rte_event_crypto_metadata *ec_mdata;
+	struct cpt_inflight_req *infl_req;
+	struct rte_event *rsp_info;
+	uint64_t lmt_base, lmt_arg;
+	struct cpt_inst_s *inst;
+	struct cnxk_cpt_qp *qp;
+	uint8_t cdev_id;
+	uint16_t lmt_id;
+	uint16_t qp_id;
+	int ret;
+
+	ec_mdata = cnxk_event_crypto_mdata_get(op);
+	if (!ec_mdata) {
+		rte_errno = EINVAL;
+		return 0;
+	}
+
+	cdev_id = ec_mdata->request_info.cdev_id;
+	qp_id = ec_mdata->request_info.queue_pair_id;
+	qp = rte_cryptodevs[cdev_id].data->queue_pairs[qp_id];
+	rsp_info = &ec_mdata->response_info;
+
+	if (unlikely(!qp->ca.enabled)) {
+		rte_errno = EINVAL;
+		return 0;
+	}
+
+	if (unlikely(rte_mempool_get(qp->ca.req_mp, (void **)&infl_req))) {
+		rte_errno = ENOMEM;
+		return 0;
+	}
+	infl_req->op_flags = 0;
+
+	lmt_base = qp->lmtline.lmt_base;
+	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
+	inst = (struct cpt_inst_s *)lmt_base;
+
+	ret = cn10k_cpt_fill_inst(qp, &op, inst, infl_req);
+	if (unlikely(ret != 1)) {
+		plt_dp_err("Could not process op: %p", op);
+		rte_mempool_put(qp->ca.req_mp, infl_req);
+		return 0;
+	}
+
+	infl_req->cop = op;
+	infl_req->res.cn10k.compcode = CPT_COMP_NOT_DONE;
+	infl_req->qp = qp;
+	inst->w0.u64 = 0;
+	inst->res_addr = (uint64_t)&infl_req->res;
+	inst->w2.u64 = CNXK_CPT_INST_W2(
+		(RTE_EVENT_TYPE_CRYPTODEV << 28) | rsp_info->flow_id,
+		rsp_info->sched_type, rsp_info->queue_id, 0);
+	inst->w3.u64 = CNXK_CPT_INST_W3(1, infl_req);
+
+	if (roc_cpt_is_iq_full(&qp->lf)) {
+		rte_mempool_put(qp->ca.req_mp, infl_req);
+		rte_errno = EAGAIN;
+		return 0;
+	}
+
+	if (!rsp_info->sched_type)
+		roc_sso_hws_head_wait(tag_op);
+
+	lmt_arg = ROC_CN10K_CPT_LMT_ARG | (uint64_t)lmt_id;
+	roc_lmt_submit_steorl(lmt_arg, qp->lmtline.io_addr);
+
+	rte_io_wmb();
+
+	return 1;
+}
+
 static inline void
 cn10k_cpt_sec_post_process(struct rte_crypto_op *cop,
 			   struct cpt_cn10k_res_s *res)
@@ -345,6 +420,26 @@ temp_sess_free:
 			cop->sym->session = NULL;
 		}
 	}
+}
+
+uintptr_t
+cn10k_cpt_crypto_adapter_dequeue(uintptr_t get_work1)
+{
+	struct cpt_inflight_req *infl_req;
+	struct rte_crypto_op *cop;
+	struct cnxk_cpt_qp *qp;
+
+	infl_req = (struct cpt_inflight_req *)(get_work1);
+	cop = infl_req->cop;
+	qp = infl_req->qp;
+
+	cn10k_cpt_dequeue_post_process(qp, infl_req->cop, infl_req);
+
+	if (unlikely(infl_req->op_flags & CPT_OP_FLAGS_METABUF))
+		rte_mempool_put(qp->meta_info.pool, infl_req->mdata);
+
+	rte_mempool_put(qp->ca.req_mp, infl_req);
+	return (uintptr_t)cop;
 }
 
 static uint16_t

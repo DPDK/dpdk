@@ -3,6 +3,8 @@ INTERNAL {
 
 	cn9k_cpt_crypto_adapter_enqueue;
 	cn9k_cpt_crypto_adapter_dequeue;
+	cn10k_cpt_crypto_adapter_enqueue;
+	cn10k_cpt_crypto_adapter_dequeue;
 
 	local: *;
 };
