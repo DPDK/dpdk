@@ -3123,9 +3123,6 @@ int rte_eth_dev_fw_version_get(uint16_t port_id,
 int rte_eth_dev_get_supported_ptypes(uint16_t port_id, uint32_t ptype_mask,
 				     uint32_t *ptypes, int num);
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Inform Ethernet device about reduced range of packet types to handle.
  *
  * Application can use this function to set only specific ptypes that it's
@@ -3155,7 +3152,6 @@ int rte_eth_dev_get_supported_ptypes(uint16_t port_id, uint32_t ptype_mask,
  *   - (-EINVAL) if *ptype_mask* is invalid (or) set_ptypes is NULL and
  *     num > 0.
  */
-__rte_experimental
 int rte_eth_dev_set_ptypes(uint16_t port_id, uint32_t ptype_mask,
 			   uint32_t *set_ptypes, unsigned int num);
 

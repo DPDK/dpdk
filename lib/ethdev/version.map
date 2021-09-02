@@ -53,6 +53,7 @@ DPDK_22 {
 	rte_eth_dev_set_link_up;
 	rte_eth_dev_set_mc_addr_list;
 	rte_eth_dev_set_mtu;
+	rte_eth_dev_set_ptypes;
 	rte_eth_dev_set_rx_queue_stats_mapping;
 	rte_eth_dev_set_tx_queue_stats_mapping;
 	rte_eth_dev_set_vlan_ether_type;
@@ -173,7 +174,6 @@ EXPERIMENTAL {
 	rte_flow_dynf_metadata_offs;
 	rte_flow_dynf_metadata_mask;
 	rte_flow_dynf_metadata_register;
-	rte_eth_dev_set_ptypes;
 
 	# added in 20.02
 	rte_flow_dev_dump;
