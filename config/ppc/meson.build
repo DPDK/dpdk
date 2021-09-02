@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Luca Boccassi <bluca@debian.org>
+# Copyright(c) 2021 IBM Corporation
 
 if not dpdk_conf.get('RTE_ARCH_64')
 	error('Only 64-bit compiles are supported for this platform type')
@@ -15,6 +16,13 @@ if not power9_supported
 	machine = 'power8'
 	machine_args = ['-mcpu=power8', '-mtune=power8']
 	dpdk_conf.set('RTE_MACHINE','power8')
+endif
+
+# Suppress the gcc warning "note: the layout of aggregates containing
+# vectors with 4-byte alignment has changed in GCC 5".
+if cc.get_id() == 'gcc' and cc.version().version_compare('>=10.0') and
+        cc.version().version_compare('<12.0') and cc.has_argument('-Wno-psabi')
+    add_project_arguments('-Wno-psabi', language: 'c')
 endif
 
 # Certain POWER9 systems can scale as high as 1536 LCORES, but setting such a
