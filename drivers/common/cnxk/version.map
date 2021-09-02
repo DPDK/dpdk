@@ -267,6 +267,7 @@ INTERNAL {
 	roc_tim_lf_disable;
 	roc_tim_lf_enable;
 	roc_tim_lf_free;
+	roc_se_ctx_swap;
 
 	local: *;
 };
