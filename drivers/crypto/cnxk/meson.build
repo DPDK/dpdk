@@ -20,6 +20,6 @@ sources = files(
         'cnxk_cryptodev_sec.c',
 )
 
-deps += ['bus_pci', 'common_cnxk', 'security']
+deps += ['bus_pci', 'common_cnxk', 'security', 'eventdev']
 
 includes += include_directories('../../../lib/net')
