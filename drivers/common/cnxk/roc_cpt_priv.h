@@ -5,12 +5,6 @@
 #ifndef _ROC_CPT_PRIV_H_
 #define _ROC_CPT_PRIV_H_
 
-/* Set number of hystbits to 6.
- * This will trigger the FC writes whenever number of outstanding commands in
- * the queue becomes multiple of 32.
- */
-#define CPT_FC_NUM_HYST_BITS 6
-
 struct cpt {
 	struct plt_pci_device *pci_dev;
 	struct dev dev;

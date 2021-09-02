@@ -464,6 +464,8 @@ cpt_iq_init(struct roc_cpt_lf *lf)
 	plt_write64(lf_q_size.u, lf->rbase + CPT_LF_Q_SIZE);
 
 	lf->fc_addr = (uint64_t *)addr;
+	lf->fc_hyst_bits = plt_log2_u32(lf->nb_desc) / 2;
+	lf->fc_thresh = lf->nb_desc - (lf->nb_desc % (1 << lf->fc_hyst_bits));
 }
 
 int
@@ -809,8 +811,8 @@ roc_cpt_iq_enable(struct roc_cpt_lf *lf)
 	lf_ctl.u = plt_read64(lf->rbase + CPT_LF_CTL);
 	lf_ctl.s.ena = 1;
 	lf_ctl.s.fc_ena = 1;
-	lf_ctl.s.fc_up_crossing = 1;
-	lf_ctl.s.fc_hyst_bits = CPT_FC_NUM_HYST_BITS;
+	lf_ctl.s.fc_up_crossing = 0;
+	lf_ctl.s.fc_hyst_bits = lf->fc_hyst_bits;
 	plt_write64(lf_ctl.u, lf->rbase + CPT_LF_CTL);
 
 	cpt_lf_dump(lf);
