@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: BSD-3-Clause
- * Copyright (C) IBM Corporation 2014.
+ * Copyright (C) IBM Corporation 2014,2021
  */
 
 #ifndef _RTE_MEMCPY_PPC_64_H_
@@ -18,9 +18,14 @@ extern "C" {
 
 #include "generic/rte_memcpy.h"
 
-#if (GCC_VERSION >= 90000 && GCC_VERSION < 90400)
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 90000)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
+
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 100000)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
 #endif
 
 static inline void
@@ -198,7 +203,11 @@ rte_memcpy_func(void *dst, const void *src, size_t n)
 	return ret;
 }
 
-#if (GCC_VERSION >= 90000 && GCC_VERSION < 90400)
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 100000)
+#pragma GCC diagnostic pop
+#endif
+
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 90000)
 #pragma GCC diagnostic pop
 #endif
 
