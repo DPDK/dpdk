@@ -20,7 +20,7 @@ cn9k_cpt_sym_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 		       struct cpt_inst_s *inst)
 {
 	uint64_t cpt_op;
-	int ret = -1;
+	int ret;
 
 	cpt_op = sess->cpt_op;
 
