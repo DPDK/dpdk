@@ -1,6 +1,7 @@
 DPDK_22 {
 	global:
 
+	rte_metrics_deinit;
 	rte_metrics_get_names;
 	rte_metrics_get_values;
 	rte_metrics_init;
@@ -15,7 +16,6 @@ DPDK_22 {
 EXPERIMENTAL {
 	global:
 
-	rte_metrics_deinit;
 	rte_metrics_tel_encode_json_format;
 	rte_metrics_tel_reg_all_ethdev;
 	rte_metrics_tel_get_global_stats;

@@ -83,9 +83,6 @@ struct rte_metric_value {
 void rte_metrics_init(int socket_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Deinitialize metric module. This function must be called from
  * a primary process after all the metrics usage is over, to
  *  release the shared memory.
@@ -96,7 +93,6 @@ void rte_metrics_init(int socket_id);
  *    (rte_metrics_init() not called)
  *  0 - success
  */
-__rte_experimental
 int rte_metrics_deinit(void);
 
 /**
