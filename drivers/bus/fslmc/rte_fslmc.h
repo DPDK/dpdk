@@ -45,15 +45,12 @@ typedef uint32_t dpaa2_seqn_t;
 extern int dpaa2_seqn_dynfield_offset;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Read dpaa2 sequence number from mbuf.
  *
  * @param mbuf Structure to read from.
  * @return pointer to dpaa2 sequence number.
  */
-__rte_experimental
+__rte_internal
 static inline dpaa2_seqn_t *
 dpaa2_seqn(struct rte_mbuf *mbuf)
 {

@@ -22,6 +22,7 @@ INTERNAL {
 	dpaa2_get_mcp_ptr;
 	dpaa2_io_portal;
 	dpaa2_seqn_dynfield_offset;
+	dpaa2_seqn;
 	dpaa2_svr_family;
 	dpaa2_virt_mode;
 	dpbp_disable;
