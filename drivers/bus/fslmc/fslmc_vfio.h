@@ -58,7 +58,6 @@ int fslmc_vfio_process_group(void);
 char *fslmc_get_container(void);
 int fslmc_get_container_group(int *gropuid);
 int rte_fslmc_vfio_dmamap(void);
-__rte_experimental
 int rte_fslmc_vfio_mem_dmamap(uint64_t vaddr, uint64_t iova, uint64_t size);
 
 #endif /* _FSLMC_VFIO_H_ */
