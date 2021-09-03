@@ -9,18 +9,11 @@
  * @file rte_pmd_dpaa2.h
  *
  * NXP dpaa2 PMD specific functions.
- *
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  */
 
 #include <rte_flow.h>
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Create a flow rule to demultiplex ethernet traffic to separate network
  * interfaces.
  *
@@ -34,7 +27,6 @@
  * @return
  *    A valid handle in case of success, NULL otherwise.
  */
-__rte_experimental
 struct rte_flow *
 rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 			      struct rte_flow_item *pattern[],
@@ -57,9 +49,6 @@ int
 rte_pmd_dpaa2_mux_rx_frame_len(uint32_t dpdmux_id, uint16_t max_rx_frame_len);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Create a custom hash key on basis of offset of start of packet and size.
  * for e.g. if we need GRE packets (non-vlan and without any extra headers)
  * to be hashed on basis of inner IP header, we will provide offset as:
@@ -78,7 +67,6 @@ rte_pmd_dpaa2_mux_rx_frame_len(uint32_t dpdmux_id, uint16_t max_rx_frame_len);
  *   - 0 if successful.
  *   - Negative in case of failure.
  */
-__rte_experimental
 int
 rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
 			      uint16_t offset,
