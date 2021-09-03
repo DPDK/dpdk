@@ -18,6 +18,7 @@ INTERNAL {
 	dpaa_update_link_speed;
 	dpaa_intr_disable;
 	dpaa_intr_enable;
+	dpaa_seqn;
 	dpaa_svr_family;
 	dpaa_update_link_status;
 	fman_dealloc_bufs_mask_hi;
