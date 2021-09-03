@@ -45,7 +45,7 @@ static struct ice_flow_parser ice_acl_parser;
 
 struct acl_rule {
 	enum ice_fltr_ptype flow_type;
-	uint32_t entry_id[4];
+	uint64_t entry_id[4];
 };
 
 static struct
@@ -440,7 +440,7 @@ ice_acl_hw_set_conf(struct ice_pf *pf, struct ice_fdir_fltr *input,
 			PMD_DRV_LOG(ERR, "Fail to add entry.");
 			return ret;
 		}
-		rule->entry_id[entry_idx] = slot_id;
+		rule->entry_id[entry_idx] = entry_id;
 		pf->acl.hw_entry_id[slot_id] = hw_entry;
 	} else {
 		PMD_DRV_LOG(ERR, "Exceed the maximum entry number(%d)"
@@ -452,17 +452,27 @@ ice_acl_hw_set_conf(struct ice_pf *pf, struct ice_fdir_fltr *input,
 }
 
 static inline void
+ice_acl_del_entry(struct ice_hw *hw, uint64_t entry_id)
+{
+	uint64_t hw_entry;
+
+	hw_entry = ice_flow_find_entry(hw, ICE_BLK_ACL, entry_id);
+	ice_flow_rem_entry(hw, ICE_BLK_ACL, hw_entry);
+}
+
+static inline void
 ice_acl_hw_rem_conf(struct ice_pf *pf, struct acl_rule *rule, int32_t entry_idx)
 {
 	uint32_t slot_id;
 	int32_t i;
+	uint64_t entry_id;
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 
 	for (i = 0; i < entry_idx; i++) {
-		slot_id = rule->entry_id[i];
+		entry_id = rule->entry_id[i];
+		slot_id = ICE_LO_DWORD(entry_id);
 		rte_bitmap_set(pf->acl.slots, slot_id);
-		ice_flow_rem_entry(hw, ICE_BLK_ACL,
-				   pf->acl.hw_entry_id[slot_id]);
+		ice_acl_del_entry(hw, entry_id);
 	}
 }
 
@@ -562,6 +572,7 @@ ice_acl_destroy_filter(struct ice_adapter *ad,
 {
 	struct acl_rule *rule = (struct acl_rule *)flow->rule;
 	uint32_t slot_id, i;
+	uint64_t entry_id;
 	struct ice_pf *pf = &ad->pf;
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	int ret = 0;
@@ -569,19 +580,19 @@ ice_acl_destroy_filter(struct ice_adapter *ad,
 	switch (rule->flow_type) {
 	case ICE_FLTR_PTYPE_NONF_IPV4_OTHER:
 		for (i = 0; i < 4; i++) {
-			slot_id = rule->entry_id[i];
+			entry_id = rule->entry_id[i];
+			slot_id = ICE_LO_DWORD(entry_id);
 			rte_bitmap_set(pf->acl.slots, slot_id);
-			ice_flow_rem_entry(hw, ICE_BLK_ACL,
-					   pf->acl.hw_entry_id[slot_id]);
+			ice_acl_del_entry(hw, entry_id);
 		}
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_UDP:
 	case ICE_FLTR_PTYPE_NONF_IPV4_TCP:
 	case ICE_FLTR_PTYPE_NONF_IPV4_SCTP:
-		slot_id = rule->entry_id[0];
+		entry_id = rule->entry_id[0];
+		slot_id = ICE_LO_DWORD(entry_id);
 		rte_bitmap_set(pf->acl.slots, slot_id);
-		ice_flow_rem_entry(hw, ICE_BLK_ACL,
-				   pf->acl.hw_entry_id[slot_id]);
+		ice_acl_del_entry(hw, entry_id);
 		break;
 	default:
 		rte_flow_error_set(error, EINVAL,
