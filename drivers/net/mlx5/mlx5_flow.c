@@ -460,12 +460,22 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 			/* Follow up with the next possibility. */
 			next_node = mlx5_flow_expand_rss_skip_explicit(graph,
 					++next_node);
+		} else if (!stack_pos) {
+			/*
+			 * Completing the traverse over the different paths.
+			 * The next_node is advanced to the terminator.
+			 */
+			++next_node;
 		} else {
 			/* Move to the next path. */
-			if (stack_pos)
+			while (stack_pos) {
 				next_node = stack[--stack_pos];
+				next_node++;
+				if (*next_node)
+					break;
+			}
 			next_node = mlx5_flow_expand_rss_skip_explicit(graph,
-					++next_node);
+					next_node);
 			stack[stack_pos] = next_node;
 		}
 		node = next_node && *next_node ? &graph[*next_node] : NULL;
