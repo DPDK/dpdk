@@ -25,6 +25,7 @@ struct mlx5_crypto_priv {
 	volatile uint64_t *uar_addr;
 	uint32_t pdn; /* Protection Domain number. */
 	uint32_t max_segs_num; /* Maximum supported data segs. */
+	uint8_t qp_ts_format; /* Whether QP supports timestamp formats. */
 	struct ibv_pd *pd;
 	struct mlx5_hlist *dek_hlist; /* Dek hash list. */
 	struct rte_cryptodev_config dev_config;

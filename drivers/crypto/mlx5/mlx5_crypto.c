@@ -707,6 +707,7 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	attr.wq_umem_id = qp->umem_obj->umem_id;
 	attr.wq_umem_offset = 0;
 	attr.dbr_umem_id = qp->umem_obj->umem_id;
+	attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
 	attr.dbr_address = RTE_BIT64(log_nb_desc) * priv->wqe_set_size;
 	qp->qp_obj = mlx5_devx_cmd_create_qp(priv->ctx, &attr);
 	if (qp->qp_obj == NULL) {
@@ -1049,6 +1050,7 @@ mlx5_crypto_dev_probe(struct rte_device *dev)
 	priv->ctx = ctx;
 	priv->login_obj = login;
 	priv->crypto_dev = crypto_dev;
+	priv->qp_ts_format = attr.qp_ts_format;
 	if (mlx5_crypto_hw_global_prepare(priv) != 0) {
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		claim_zero(mlx5_glue->close_device(priv->ctx));
