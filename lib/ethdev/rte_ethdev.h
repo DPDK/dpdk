@@ -1894,9 +1894,6 @@ uint16_t rte_eth_find_next(uint16_t port_id);
 	RTE_ETH_FOREACH_DEV_OWNED_BY(p, RTE_ETH_DEV_NO_OWNER)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Iterates over ethdev ports of a specified device.
  *
  * @param port_id_start
@@ -1907,7 +1904,6 @@ uint16_t rte_eth_find_next(uint16_t port_id);
  *   Next port id of the device, possibly port_id_start,
  *   RTE_MAX_ETHPORTS if there is none.
  */
-__rte_experimental
 uint16_t
 rte_eth_find_next_of(uint16_t port_id_start,
 		const struct rte_device *parent);
@@ -1926,9 +1922,6 @@ rte_eth_find_next_of(uint16_t port_id_start,
 		port_id = rte_eth_find_next_of(port_id + 1, parent))
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Iterates over sibling ethdev ports (i.e. sharing the same rte_device).
  *
  * @param port_id_start
@@ -1939,7 +1932,6 @@ rte_eth_find_next_of(uint16_t port_id_start,
  *   Next sibling port id, possibly port_id_start or ref_port_id itself,
  *   RTE_MAX_ETHPORTS if there is none.
  */
-__rte_experimental
 uint16_t
 rte_eth_find_next_sibling(uint16_t port_id_start, uint16_t ref_port_id);
 

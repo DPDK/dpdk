@@ -73,7 +73,9 @@ DPDK_22 {
 	rte_eth_dev_vlan_filter;
 	rte_eth_devices;
 	rte_eth_find_next;
+	rte_eth_find_next_of;
 	rte_eth_find_next_owned_by;
+	rte_eth_find_next_sibling;
 	rte_eth_iterator_cleanup;
 	rte_eth_iterator_init;
 	rte_eth_iterator_next;
@@ -159,10 +161,6 @@ EXPERIMENTAL {
 
 	# added in 18.11
 	rte_flow_conv;
-
-	# added in 19.05
-	rte_eth_find_next_of;
-	rte_eth_find_next_sibling;
 
 	# added in 19.08
 	rte_eth_read_clock;
