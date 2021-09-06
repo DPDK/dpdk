@@ -11,10 +11,6 @@
  *
  * RTE FIB6 library.
  *
- * @warning
- * @b EXPERIMENTAL:
- * All functions in this file may be changed or removed without prior notice.
- *
  * FIB (Forwarding information base) implementation
  * for IPv6 Longest Prefix Match
  */
@@ -96,7 +92,6 @@ struct rte_fib6_conf {
  *  Handle to FIB object on success
  *  NULL otherwise with rte_errno set to an appropriate values.
  */
-__rte_experimental
 struct rte_fib6 *
 rte_fib6_create(const char *name, int socket_id, struct rte_fib6_conf *conf);
 
@@ -110,7 +105,6 @@ rte_fib6_create(const char *name, int socket_id, struct rte_fib6_conf *conf);
  *  set appropriately. Possible rte_errno values include:
  *   - ENOENT - required entry not available to return.
  */
-__rte_experimental
 struct rte_fib6 *
 rte_fib6_find_existing(const char *name);
 
@@ -122,7 +116,6 @@ rte_fib6_find_existing(const char *name);
  * @return
  *   None
  */
-__rte_experimental
 void
 rte_fib6_free(struct rte_fib6 *fib);
 
@@ -140,7 +133,6 @@ rte_fib6_free(struct rte_fib6 *fib);
  * @return
  *   0 on success, negative value otherwise
  */
-__rte_experimental
 int
 rte_fib6_add(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
 	uint8_t depth, uint64_t next_hop);
@@ -157,7 +149,6 @@ rte_fib6_add(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
  * @return
  *   0 on success, negative value otherwise
  */
-__rte_experimental
 int
 rte_fib6_delete(struct rte_fib6 *fib,
 	const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE], uint8_t depth);
@@ -179,7 +170,6 @@ rte_fib6_delete(struct rte_fib6 *fib,
  *  @return
  *   -EINVAL for incorrect arguments, otherwise 0
  */
-__rte_experimental
 int
 rte_fib6_lookup_bulk(struct rte_fib6 *fib,
 	uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],
@@ -194,7 +184,6 @@ rte_fib6_lookup_bulk(struct rte_fib6 *fib,
  *   Pointer on the dataplane struct on success
  *   NULL othervise
  */
-__rte_experimental
 void *
 rte_fib6_get_dp(struct rte_fib6 *fib);
 
@@ -207,7 +196,6 @@ rte_fib6_get_dp(struct rte_fib6 *fib);
  *   Pointer on the RIB6 on success
  *   NULL othervise
  */
-__rte_experimental
 struct rte_rib6 *
 rte_fib6_get_rib(struct rte_fib6 *fib);
 
@@ -223,7 +211,6 @@ rte_fib6_get_rib(struct rte_fib6 *fib);
  *   0 on success
  *   -EINVAL on failure
  */
-__rte_experimental
 int
 rte_fib6_select_lookup(struct rte_fib6 *fib, enum rte_fib6_lookup_type type);
 

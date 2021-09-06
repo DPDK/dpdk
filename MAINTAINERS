@@ -1495,7 +1495,7 @@ F: lib/member/
 F: doc/guides/prog_guide/member_lib.rst
 F: app/test/test_member*
 
-RIB/FIB - EXPERIMENTAL
+RIB/FIB
 M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 F: lib/rib/
 F: app/test/test_rib*

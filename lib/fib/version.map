@@ -1,4 +1,4 @@
-EXPERIMENTAL {
+DPDK_22 {
 	global:
 
 	rte_fib_add;
