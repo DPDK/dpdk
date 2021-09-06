@@ -88,7 +88,7 @@ get_dir(const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth)
 	 * is incremented in blocks of 8 (1 byte). This means the last
 	 * 3 bits are irrelevant to what the index of ip should be.
 	 */
-	index = (depth & (UINT8_MAX - 1)) / CHAR_BIT;
+	index = (depth & INT8_MAX) / CHAR_BIT;
 
 	/*
 	 * msk is the bitmask used to extract the bit used to decide the
