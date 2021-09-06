@@ -2190,7 +2190,7 @@ rte_eth_dev_is_removed(uint16_t port_id);
  *   The configuration structure also contains the pointer to the array
  *   of the receiving buffer segment descriptions, see rx_seg and rx_nseg
  *   fields, this extended configuration might be used by split offloads like
- *   RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT. If mp_pool is not NULL,
+ *   RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT. If mb_pool is not NULL,
  *   the extended configuration fields must be set to NULL and zero.
  * @param mb_pool
  *   The pointer to the memory pool from which to allocate *rte_mbuf* network
