@@ -1879,7 +1879,7 @@ i40evf_rxq_init(struct rte_eth_dev *dev, struct i40e_rx_queue *rxq)
 					RTE_PKTMBUF_HEADROOM);
 	rxq->hs_mode = i40e_header_split_none;
 	rxq->rx_hdr_len = 0;
-	rxq->rx_buf_len = RTE_ALIGN(buf_size, (1 << I40E_RXQ_CTX_DBUFF_SHIFT));
+	rxq->rx_buf_len = RTE_ALIGN_FLOOR(buf_size, (1 << I40E_RXQ_CTX_DBUFF_SHIFT));
 	len = rxq->rx_buf_len * I40E_MAX_CHAINED_RX_BUFFERS;
 	rxq->max_pkt_len = RTE_MIN(len,
 		dev_data->dev_conf.rxmode.max_rx_pkt_len);
