@@ -89,6 +89,7 @@ DPDK_22 {
 	rte_eth_promiscuous_get;
 	rte_eth_remove_rx_callback;
 	rte_eth_remove_tx_callback;
+	rte_eth_rx_burst_mode_get;
 	rte_eth_rx_queue_info_get;
 	rte_eth_rx_queue_setup;
 	rte_eth_set_queue_rate_limit;
@@ -106,6 +107,7 @@ DPDK_22 {
 	rte_eth_tx_buffer_drop_callback;
 	rte_eth_tx_buffer_init;
 	rte_eth_tx_buffer_set_err_callback;
+	rte_eth_tx_burst_mode_get;
 	rte_eth_tx_done_cleanup;
 	rte_eth_tx_queue_info_get;
 	rte_eth_tx_queue_setup;
@@ -167,9 +169,7 @@ EXPERIMENTAL {
 
 	# added in 19.11
 	rte_eth_dev_hairpin_capability_get;
-	rte_eth_rx_burst_mode_get;
 	rte_eth_rx_hairpin_queue_setup;
-	rte_eth_tx_burst_mode_get;
 	rte_eth_tx_hairpin_queue_setup;
 	rte_flow_dynf_metadata_offs;
 	rte_flow_dynf_metadata_mask;
