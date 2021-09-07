@@ -5,10 +5,13 @@
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
 #include <rte_event_crypto_adapter.h>
+#include <rte_ip.h>
 #include <rte_vect.h>
 
 #include "cn9k_cryptodev.h"
 #include "cn9k_cryptodev_ops.h"
+#include "cn9k_ipsec.h"
+#include "cn9k_ipsec_la_ops.h"
 #include "cnxk_ae.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
@@ -32,6 +35,36 @@ cn9k_cpt_sym_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 					 inst);
 
 	return ret;
+}
+
+static __rte_always_inline int __rte_hot
+cn9k_cpt_sec_inst_fill(struct rte_crypto_op *op,
+		       struct cpt_inflight_req *infl_req,
+		       struct cpt_inst_s *inst)
+{
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	struct cn9k_sec_session *priv;
+	struct cn9k_ipsec_sa *sa;
+
+	if (unlikely(sym_op->m_dst && sym_op->m_dst != sym_op->m_src)) {
+		plt_dp_err("Out of place is not supported");
+		return -ENOTSUP;
+	}
+
+	if (unlikely(!rte_pktmbuf_is_contiguous(sym_op->m_src))) {
+		plt_dp_err("Scatter Gather mode is not supported");
+		return -ENOTSUP;
+	}
+
+	priv = get_sec_session_private_data(op->sym->sec_session);
+	sa = &priv->sa;
+
+	if (sa->dir == RTE_SECURITY_IPSEC_SA_DIR_EGRESS)
+		return process_outb_sa(op, sa, inst);
+
+	infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_DIR_INBOUND;
+
+	return process_inb_sa(op, sa, inst);
 }
 
 static inline struct cnxk_se_sess *
@@ -80,7 +113,10 @@ cn9k_cpt_inst_prep(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 				sym_op->session, cn9k_cryptodev_driver_id);
 			ret = cn9k_cpt_sym_inst_fill(qp, op, sess, infl_req,
 						     inst);
-		} else {
+			inst->w7.u64 = sess->cpt_inst_w7;
+		} else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
+			ret = cn9k_cpt_sec_inst_fill(op, infl_req, inst);
+		else {
 			sess = cn9k_cpt_sym_temp_sess_create(qp, op);
 			if (unlikely(sess == NULL)) {
 				plt_dp_err("Could not create temp session");
@@ -94,8 +130,8 @@ cn9k_cpt_inst_prep(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 						  op->sym->session);
 				rte_mempool_put(qp->sess_mp, op->sym->session);
 			}
+			inst->w7.u64 = sess->cpt_inst_w7;
 		}
-		inst->w7.u64 = sess->cpt_inst_w7;
 	} else if (op->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
 		struct rte_crypto_asym_op *asym_op;
 		struct cnxk_ae_sess *sess;
@@ -349,6 +385,39 @@ cn9k_cpt_crypto_adapter_enqueue(uintptr_t tag_op, struct rte_crypto_op *op)
 }
 
 static inline void
+cn9k_cpt_sec_post_process(struct rte_crypto_op *cop,
+			  struct cpt_inflight_req *infl_req)
+{
+	struct rte_crypto_sym_op *sym_op = cop->sym;
+	struct rte_mbuf *m = sym_op->m_src;
+	struct rte_ipv6_hdr *ip6;
+	struct rte_ipv4_hdr *ip;
+	uint16_t m_len = 0;
+	char *data;
+
+	if (infl_req->op_flags & CPT_OP_FLAGS_IPSEC_DIR_INBOUND) {
+		data = rte_pktmbuf_mtod(m, char *);
+
+		ip = (struct rte_ipv4_hdr *)(data + ROC_IE_ON_INB_RPTR_HDR);
+
+		if (((ip->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER) ==
+		    IPVERSION) {
+			m_len = rte_be_to_cpu_16(ip->total_length);
+		} else {
+			PLT_ASSERT(((ip->version_ihl & 0xf0) >>
+				    RTE_IPV4_IHL_MULTIPLIER) == 6);
+			ip6 = (struct rte_ipv6_hdr *)ip;
+			m_len = rte_be_to_cpu_16(ip6->payload_len) +
+				sizeof(struct rte_ipv6_hdr);
+		}
+
+		m->data_len = m_len;
+		m->pkt_len = m_len;
+		m->data_off += ROC_IE_ON_INB_RPTR_HDR;
+	}
+}
+
+static inline void
 cn9k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop,
 			      struct cpt_inflight_req *infl_req)
 {
@@ -370,6 +439,11 @@ cn9k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop,
 
 		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+			if (cop->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+				cn9k_cpt_sec_post_process(cop, infl_req);
+				return;
+			}
+
 			/* Verify authentication data if required */
 			if (unlikely(infl_req->op_flags &
 				     CPT_OP_FLAGS_AUTH_VERIFY)) {
