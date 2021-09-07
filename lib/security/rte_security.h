@@ -192,6 +192,20 @@ struct rte_security_ipsec_sa_options {
 	 * * 0: Disable per session security statistics collection for this SA.
 	 */
 	uint32_t stats : 1;
+
+	/** Disable IV generation in PMD
+	 *
+	 * * 1: Disable IV generation in PMD. When disabled, IV provided in
+	 *      rte_crypto_op will be used by the PMD.
+	 *
+	 * * 0: Enable IV generation in PMD. When enabled, PMD generated random
+	 *      value would be used and application is not required to provide
+	 *      IV.
+	 *
+	 * Note: For inline cases, IV generation would always need to be handled
+	 * by the PMD.
+	 */
+	uint32_t iv_gen_disable : 1;
 };
 
 /** IPSec security association direction */

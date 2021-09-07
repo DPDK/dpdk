@@ -169,6 +169,10 @@ ABI Changes
   have much processing in PMD specific callbacks but just 64-bit set/get.
   This avoids a per packet function pointer jump overhead for such PMDs.
 
+* security: A new option ``iv_gen_disable`` was added in structure
+  ``rte_security_ipsec_sa_options`` to disable IV generation inside PMD,
+  so that application can provide its own IV and test known test vectors.
+
 
 Known Issues
 ------------
