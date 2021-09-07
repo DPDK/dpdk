@@ -243,7 +243,7 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 			dev->async_copy = 1;
 	}
 
-	VHOST_LOG_CONFIG(INFO, "new device, handle is %d\n", vid);
+	VHOST_LOG_CONFIG(INFO, "new device, handle is %d, path is %s\n", vid, vsocket->path);
 
 	if (vsocket->notify_ops->new_connection) {
 		ret = vsocket->notify_ops->new_connection(vid);
