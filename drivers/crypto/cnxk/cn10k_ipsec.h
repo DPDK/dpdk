@@ -21,6 +21,8 @@ struct cn10k_ipsec_sa {
 	/** Pre-populated CPT inst words */
 	struct cnxk_cpt_inst_tmpl inst;
 	uint16_t max_extended_len;
+	uint16_t iv_offset;
+	uint8_t iv_length;
 };
 
 struct cn10k_sec_session {

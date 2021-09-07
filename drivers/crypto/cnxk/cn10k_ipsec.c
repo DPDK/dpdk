@@ -57,6 +57,22 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt,
 
 	sa->inst.w7 = ipsec_cpt_inst_w7_get(roc_cpt, sa);
 
+#ifdef LA_IPSEC_DEBUG
+	/* Use IV from application in debug mode */
+	if (ipsec_xfrm->options.iv_gen_disable == 1) {
+		out_sa->w2.s.iv_src = ROC_IE_OT_SA_IV_SRC_FROM_SA;
+		if (crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+			sa->iv_offset = crypto_xfrm->aead.iv.offset;
+			sa->iv_length = crypto_xfrm->aead.iv.length;
+		}
+	}
+#else
+	if (ipsec_xfrm->options.iv_gen_disable != 0) {
+		plt_err("Application provided IV not supported");
+		return -ENOTSUP;
+	}
+#endif
+
 	/* Get Rlen calculation data */
 	ret = cnxk_ipsec_outb_rlens_get(&rlens, ipsec_xfrm, crypto_xfrm);
 	if (ret)

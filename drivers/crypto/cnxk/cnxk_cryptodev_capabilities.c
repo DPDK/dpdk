@@ -807,7 +807,7 @@ static const struct rte_security_capability sec_caps_templ[] = {
 			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
-			.options = { 0 }
+			.options = { 0 },
 		},
 		.crypto_capabilities = NULL,
 	},
@@ -818,7 +818,7 @@ static const struct rte_security_capability sec_caps_templ[] = {
 			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
-			.options = { 0 }
+			.options = { 0 },
 		},
 		.crypto_capabilities = NULL,
 	},
@@ -913,6 +913,24 @@ cnxk_sec_caps_update(struct rte_security_capability *sec_cap)
 	sec_cap->ipsec.options.udp_encap = 1;
 }
 
+static void
+cn10k_sec_caps_update(struct rte_security_capability *sec_cap)
+{
+	if (sec_cap->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+#ifdef LA_IPSEC_DEBUG
+		sec_cap->ipsec.options.iv_gen_disable = 1;
+#endif
+	}
+}
+
+static void
+cn9k_sec_caps_update(struct rte_security_capability *sec_cap)
+{
+	if (sec_cap->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+		sec_cap->ipsec.options.iv_gen_disable = 1;
+	}
+}
+
 void
 cnxk_cpt_caps_populate(struct cnxk_cpt_vf *vf)
 {
@@ -928,6 +946,13 @@ cnxk_cpt_caps_populate(struct cnxk_cpt_vf *vf)
 		vf->sec_caps[i].crypto_capabilities = vf->sec_crypto_caps;
 
 		cnxk_sec_caps_update(&vf->sec_caps[i]);
+
+		if (roc_model_is_cn10k())
+			cn10k_sec_caps_update(&vf->sec_caps[i]);
+
+		if (roc_model_is_cn9k())
+			cn9k_sec_caps_update(&vf->sec_caps[i]);
+
 	}
 }
 
