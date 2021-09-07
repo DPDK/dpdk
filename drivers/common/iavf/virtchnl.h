@@ -146,7 +146,6 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_DEL_RSS_CFG = 46,
 	VIRTCHNL_OP_ADD_FDIR_FILTER = 47,
 	VIRTCHNL_OP_DEL_FDIR_FILTER = 48,
-	VIRTCHNL_OP_QUERY_FDIR_FILTER = 49,
 	VIRTCHNL_OP_GET_MAX_RSS_QREGION = 50,
 	VIRTCHNL_OP_GET_OFFLOAD_VLAN_V2_CAPS = 51,
 	VIRTCHNL_OP_ADD_VLAN_V2 = 52,
@@ -244,8 +243,6 @@ static inline const char *virtchnl_op_str(enum virtchnl_ops v_opcode)
 		return "VIRTCHNL_OP_ADD_FDIR_FILTER";
 	case VIRTCHNL_OP_DEL_FDIR_FILTER:
 		return "VIRTCHNL_OP_DEL_FDIR_FILTER";
-	case VIRTCHNL_OP_QUERY_FDIR_FILTER:
-		return "VIRTCHNL_OP_QUERY_FDIR_FILTER";
 	case VIRTCHNL_OP_GET_MAX_RSS_QREGION:
 		return "VIRTCHNL_OP_GET_MAX_RSS_QREGION";
 	case VIRTCHNL_OP_ENABLE_QUEUES_V2:
@@ -1733,20 +1730,6 @@ struct virtchnl_fdir_rule {
 
 VIRTCHNL_CHECK_STRUCT_LEN(2604, virtchnl_fdir_rule);
 
-/* query information to retrieve fdir rule counters.
- * PF will fill out this structure to reset counter.
- */
-struct virtchnl_fdir_query_info {
-	u32 match_packets_valid:1;
-	u32 match_bytes_valid:1;
-	u32 reserved:30;  /* Reserved, must be zero. */
-	u32 pad;
-	u64 matched_packets; /* Number of packets for this rule. */
-	u64 matched_bytes;   /* Number of bytes through this rule. */
-};
-
-VIRTCHNL_CHECK_STRUCT_LEN(24, virtchnl_fdir_query_info);
-
 /* Status returned to VF after VF requests FDIR commands
  * VIRTCHNL_FDIR_SUCCESS
  * VF FDIR related request is successfully done by PF
@@ -1879,24 +1862,6 @@ struct virtchnl_queue_tc_mapping {
 
 VIRTCHNL_CHECK_STRUCT_LEN(12, virtchnl_queue_tc_mapping);
 
-/* VIRTCHNL_OP_QUERY_FDIR_FILTER
- * VF sends this request to PF by filling out vsi_id,
- * flow_id and reset_counter. PF will return query_info
- * and query_status to VF.
- */
-struct virtchnl_fdir_query {
-	u16 vsi_id;   /* INPUT */
-	u16 pad1[3];
-	u32 flow_id;  /* INPUT */
-	u32 reset_counter:1; /* INPUT */
-	struct virtchnl_fdir_query_info query_info; /* OUTPUT */
-
-	/* see enum virtchnl_fdir_prgm_status; OUTPUT */
-	s32 status;
-	u32 pad2;
-};
-
-VIRTCHNL_CHECK_STRUCT_LEN(48, virtchnl_fdir_query);
 
 /* TX and RX queue types are valid in legacy as well as split queue models.
  * With Split Queue model, 2 additional types are introduced - TX_COMPLETION
@@ -2253,9 +2218,6 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 		break;
 	case VIRTCHNL_OP_DEL_FDIR_FILTER:
 		valid_len = sizeof(struct virtchnl_fdir_del);
-		break;
-	case VIRTCHNL_OP_QUERY_FDIR_FILTER:
-		valid_len = sizeof(struct virtchnl_fdir_query);
 		break;
 	case VIRTCHNL_OP_GET_QOS_CAPS:
 		break;
