@@ -58,7 +58,6 @@ rte_vhost_crypto_driver_start(const char *path);
  *  0 if the Vhost Crypto Instance is created successfully.
  *  Negative integer if otherwise
  */
-__rte_experimental
 int
 rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 		struct rte_mempool *sess_pool,
@@ -74,7 +73,6 @@ rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
  *  0 if the Vhost Crypto Instance is created successfully.
  *  Negative integer if otherwise.
  */
-__rte_experimental
 int
 rte_vhost_crypto_free(int vid);
 
@@ -89,7 +87,6 @@ rte_vhost_crypto_free(int vid);
  *  0 if completed successfully.
  *  Negative integer if otherwise.
  */
-__rte_experimental
 int
 rte_vhost_crypto_set_zero_copy(int vid, enum rte_vhost_crypto_zero_copy option);
 
@@ -110,7 +107,6 @@ rte_vhost_crypto_set_zero_copy(int vid, enum rte_vhost_crypto_zero_copy option);
  * @return
  *  The number of fetched and processed vhost crypto request operations.
  */
-__rte_experimental
 uint16_t
 rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 		struct rte_crypto_op **ops, uint16_t nb_ops);
@@ -132,7 +128,6 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
  * @return
  *  The number of ops processed.
  */
-__rte_experimental
 uint16_t
 rte_vhost_crypto_finalize_requests(struct rte_crypto_op **ops,
 		uint16_t nb_ops, int *callfds, uint16_t *nb_callfds);

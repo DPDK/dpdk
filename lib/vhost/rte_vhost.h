@@ -342,7 +342,6 @@ rte_vhost_gpa_to_vva(struct rte_vhost_memory *mem, uint64_t gpa)
  * @return
  *  the host virtual address on success, 0 on failure
  */
-__rte_experimental
 static __rte_always_inline uint64_t
 rte_vhost_va_from_guest_pa(struct rte_vhost_memory *mem,
 						   uint64_t gpa, uint64_t *len)
@@ -522,7 +521,6 @@ int rte_vhost_driver_get_features(const char *path, uint64_t *features);
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_driver_set_protocol_features(const char *path,
 		uint64_t protocol_features);
@@ -537,7 +535,6 @@ rte_vhost_driver_set_protocol_features(const char *path,
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_driver_get_protocol_features(const char *path,
 		uint64_t *protocol_features);
@@ -552,7 +549,6 @@ rte_vhost_driver_get_protocol_features(const char *path,
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num);
 
@@ -768,7 +764,6 @@ int rte_vhost_get_vhost_vring(int vid, uint16_t vring_idx,
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_get_vhost_ring_inflight(int vid, uint16_t vring_idx,
 	struct rte_vhost_ring_inflight *vring);
@@ -788,7 +783,6 @@ rte_vhost_get_vhost_ring_inflight(int vid, uint16_t vring_idx,
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_set_inflight_desc_split(int vid, uint16_t vring_idx,
 	uint16_t idx);
@@ -811,7 +805,6 @@ rte_vhost_set_inflight_desc_split(int vid, uint16_t vring_idx,
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_set_inflight_desc_packed(int vid, uint16_t vring_idx,
 	uint16_t head, uint16_t last, uint16_t *inflight_entry);
@@ -828,7 +821,6 @@ rte_vhost_set_inflight_desc_packed(int vid, uint16_t vring_idx,
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_set_last_inflight_io_split(int vid,
 	uint16_t vring_idx, uint16_t idx);
@@ -848,7 +840,6 @@ rte_vhost_set_last_inflight_io_split(int vid,
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_set_last_inflight_io_packed(int vid,
 	uint16_t vring_idx, uint16_t head);
@@ -867,7 +858,6 @@ rte_vhost_set_last_inflight_io_packed(int vid,
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_clr_inflight_desc_split(int vid, uint16_t vring_idx,
 	uint16_t last_used_idx, uint16_t idx);
@@ -884,7 +874,6 @@ rte_vhost_clr_inflight_desc_split(int vid, uint16_t vring_idx,
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_clr_inflight_desc_packed(int vid, uint16_t vring_idx,
 	uint16_t head);
@@ -965,7 +954,6 @@ rte_vhost_get_vring_base(int vid, uint16_t queue_id,
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_get_vring_base_from_inflight(int vid,
 	uint16_t queue_id, uint16_t *last_avail_idx, uint16_t *last_used_idx);
@@ -1000,7 +988,6 @@ rte_vhost_set_vring_base(int vid, uint16_t queue_id,
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_extern_callback_register(int vid,
 		struct rte_vhost_user_extern_ops const * const ops, void *ctx);
