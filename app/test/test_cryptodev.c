@@ -9026,6 +9026,22 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 		ut_params->op->sym->m_src = ut_params->ibuf;
 		ut_params->op->sym->m_dst = NULL;
 
+		/* Copy IV in crypto operation when IV generation is disabled */
+		if (dir == RTE_SECURITY_IPSEC_SA_DIR_EGRESS &&
+		    ipsec_xform.options.iv_gen_disable == 1) {
+			uint8_t *iv = rte_crypto_op_ctod_offset(ut_params->op,
+								uint8_t *,
+								IV_OFFSET);
+			int len;
+
+			if (td[i].aead)
+				len = td[i].xform.aead.aead.iv.length;
+			else
+				len = td[i].xform.chain.cipher.cipher.iv.length;
+
+			memcpy(iv, td[i].iv.data, len);
+		}
+
 		/* Process crypto operation */
 		process_crypto_request(dev_id, ut_params->op);
 
@@ -9060,6 +9076,22 @@ crypto_op_free:
 	ut_params->sec_session = NULL;
 
 	return ret;
+}
+
+static int
+test_ipsec_proto_known_vec(const void *test_data)
+{
+	struct ipsec_test_data td_outb;
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	memcpy(&td_outb, test_data, sizeof(td_outb));
+
+	/* Disable IV gen to be able to test with known vectors */
+	td_outb.ipsec_xform.options.iv_gen_disable = 1;
+
+	return test_ipsec_proto_process(&td_outb, NULL, 1, false, &flags);
 }
 
 static int
@@ -14067,6 +14099,18 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 	.suite_name = "IPsec Proto Unit Test Suite",
 	.setup = ipsec_proto_testsuite_setup,
 	.unit_test_cases = {
+		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (ESP tunnel mode IPv4 AES-GCM 128)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec, &pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (ESP tunnel mode IPv4 AES-GCM 192)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec, &pkt_aes_192_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (ESP tunnel mode IPv4 AES-GCM 256)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec, &pkt_aes_256_gcm),
 		TEST_CASE_NAMED_WITH_DATA(
 			"Inbound known vector (ESP tunnel mode IPv4 AES-GCM 128)",
 			ut_setup_security, ut_teardown,

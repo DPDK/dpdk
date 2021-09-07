@@ -77,6 +77,15 @@ test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
 		return -ENOTSUP;
 	}
 
+	if ((ipsec_xform->direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) &&
+	    (ipsec_xform->options.iv_gen_disable == 1) &&
+	    (sec_cap->ipsec.options.iv_gen_disable != 1)) {
+		if (!silent)
+			RTE_LOG(INFO, USER1,
+				"Application provided IV is not supported\n");
+		return -ENOTSUP;
+	}
+
 	return 0;
 }
 
@@ -161,9 +170,11 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 
 		td->xform.aead.aead.algo = param1->alg.aead;
 		td->xform.aead.aead.key.length = param1->key_length;
+
+		if (flags->iv_gen)
+			td->ipsec_xform.options.iv_gen_disable = 0;
 	}
 
-	RTE_SET_USED(flags);
 	RTE_SET_USED(param2);
 }
 
@@ -187,6 +198,9 @@ test_ipsec_td_update(struct ipsec_test_data td_inb[],
 
 		if (flags->udp_encap)
 			td_inb[i].ipsec_xform.options.udp_encap = 1;
+
+		/* Clear outbound specific flags */
+		td_inb[i].ipsec_xform.options.iv_gen_disable = 0;
 	}
 }
 
