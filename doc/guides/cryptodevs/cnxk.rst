@@ -222,10 +222,20 @@ This feature can be tested with ipsec-secgw sample application.
 Supported OCTEON cnxk SoCs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- CN9XX
 - CN10XX
 
-Features supported
-~~~~~~~~~~~~~~~~~~
+CN9XX Features supported
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+* IPv4
+* ESP
+* Tunnel mode
+* UDP Encapsulation
+* AES-128/192/256-GCM
+
+CN10XX Features supported
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * IPv4
 * ESP

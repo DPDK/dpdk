@@ -21,10 +21,8 @@ cnxk_cpt_default_ff_get(void)
 		      RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
 		      RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT |
 		      RTE_CRYPTODEV_FF_SYM_SESSIONLESS |
-		      RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED;
-
-	if (roc_model_is_cn10k())
-		ff |= RTE_CRYPTODEV_FF_SECURITY;
+		      RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED |
+		      RTE_CRYPTODEV_FF_SECURITY;
 
 	return ff;
 }
