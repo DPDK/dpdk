@@ -11,6 +11,7 @@
 #include "roc_api.h"
 
 #define CNXK_CPT_MIN_HEADROOM_REQ 24
+#define CNXK_CPT_MIN_TAILROOM_REQ 102
 
 /* Default command timeout in seconds */
 #define DEFAULT_COMMAND_TIMEOUT 4

@@ -155,7 +155,7 @@ cnxk_cpt_dev_info_get(struct rte_cryptodev *dev,
 	info->capabilities = cnxk_crypto_capabilities_get(vf);
 	info->sym.max_nb_sessions = 0;
 	info->min_mbuf_headroom_req = CNXK_CPT_MIN_HEADROOM_REQ;
-	info->min_mbuf_tailroom_req = 0;
+	info->min_mbuf_tailroom_req = CNXK_CPT_MIN_TAILROOM_REQ;
 }
 
 static void
