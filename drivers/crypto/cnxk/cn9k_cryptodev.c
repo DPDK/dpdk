@@ -14,6 +14,7 @@
 #include "cn9k_cryptodev_ops.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_capabilities.h"
+#include "cnxk_cryptodev_sec.h"
 
 #include "roc_api.h"
 
@@ -77,6 +78,11 @@ cn9k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			plt_err("Failed to add engine group rc=%d", rc);
 			goto dev_fini;
 		}
+
+		/* Create security context */
+		rc = cnxk_crypto_sec_ctx_create(dev);
+		if (rc)
+			goto dev_fini;
 	}
 
 	dev->dev_ops = &cn9k_cpt_ops;
@@ -116,6 +122,9 @@ cn9k_cpt_pci_remove(struct rte_pci_device *pci_dev)
 	dev = rte_cryptodev_pmd_get_named_dev(name);
 	if (dev == NULL)
 		return -ENODEV;
+
+	/* Destroy security context */
+	cnxk_crypto_sec_ctx_destroy(dev);
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		vf = dev->data->dev_private;
