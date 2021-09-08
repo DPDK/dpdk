@@ -249,6 +249,9 @@ ABI Changes
   ``rte_security_ipsec_xform`` to allow applications to configure SA soft
   and hard expiry limits. Limits can be either in number of packets or bytes.
 
+* bbdev: Added capability related to more comprehensive CRC options,
+  shifting values of the ``enum rte_bbdev_op_ldpcdec_flag_bitmasks``.
+
 
 Known Issues
 ------------

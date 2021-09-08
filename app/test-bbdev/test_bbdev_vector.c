@@ -167,6 +167,8 @@ op_ldpc_decoder_flag_strtoul(char *token, uint32_t *op_flag_value)
 		*op_flag_value = RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK;
 	else if (!strcmp(token, "RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP"))
 		*op_flag_value = RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP;
+	else if (!strcmp(token, "RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK"))
+		*op_flag_value = RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK;
 	else if (!strcmp(token, "RTE_BBDEV_LDPC_DEINTERLEAVER_BYPASS"))
 		*op_flag_value = RTE_BBDEV_LDPC_DEINTERLEAVER_BYPASS;
 	else if (!strcmp(token, "RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE"))

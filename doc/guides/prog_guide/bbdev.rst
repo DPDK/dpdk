@@ -891,6 +891,9 @@ given below.
 |RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP                                    |
 | Set to drop the last CRC bits decoding output                      |
 +--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK                                    |
+| Set for code block CRC-16 checking                                 |
++--------------------------------------------------------------------+
 |RTE_BBDEV_LDPC_DEINTERLEAVER_BYPASS                                 |
 | Set for bit-level de-interleaver bypass on input stream            |
 +--------------------------------------------------------------------+

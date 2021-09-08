@@ -142,51 +142,53 @@ enum rte_bbdev_op_ldpcdec_flag_bitmasks {
 	RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK = (1ULL << 1),
 	/** Set to drop the last CRC bits decoding output */
 	RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP = (1ULL << 2),
+	/** Set for transport block CRC-16 checking */
+	RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK = (1ULL << 3),
 	/** Set for bit-level de-interleaver bypass on Rx stream. */
-	RTE_BBDEV_LDPC_DEINTERLEAVER_BYPASS = (1ULL << 3),
+	RTE_BBDEV_LDPC_DEINTERLEAVER_BYPASS = (1ULL << 4),
 	/** Set for HARQ combined input stream enable. */
-	RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE = (1ULL << 4),
+	RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE = (1ULL << 5),
 	/** Set for HARQ combined output stream enable. */
-	RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE = (1ULL << 5),
+	RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE = (1ULL << 6),
 	/** Set for LDPC decoder bypass.
 	 *  RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE must be set.
 	 */
-	RTE_BBDEV_LDPC_DECODE_BYPASS = (1ULL << 6),
+	RTE_BBDEV_LDPC_DECODE_BYPASS = (1ULL << 7),
 	/** Set for soft-output stream enable */
-	RTE_BBDEV_LDPC_SOFT_OUT_ENABLE = (1ULL << 7),
+	RTE_BBDEV_LDPC_SOFT_OUT_ENABLE = (1ULL << 8),
 	/** Set for Rate-Matching bypass on soft-out stream. */
-	RTE_BBDEV_LDPC_SOFT_OUT_RM_BYPASS = (1ULL << 8),
+	RTE_BBDEV_LDPC_SOFT_OUT_RM_BYPASS = (1ULL << 9),
 	/** Set for bit-level de-interleaver bypass on soft-output stream. */
-	RTE_BBDEV_LDPC_SOFT_OUT_DEINTERLEAVER_BYPASS = (1ULL << 9),
+	RTE_BBDEV_LDPC_SOFT_OUT_DEINTERLEAVER_BYPASS = (1ULL << 10),
 	/** Set for iteration stopping on successful decode condition
 	 *  i.e. a successful syndrome check.
 	 */
-	RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE = (1ULL << 10),
+	RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE = (1ULL << 11),
 	/** Set if a device supports decoder dequeue interrupts. */
-	RTE_BBDEV_LDPC_DEC_INTERRUPTS = (1ULL << 11),
+	RTE_BBDEV_LDPC_DEC_INTERRUPTS = (1ULL << 12),
 	/** Set if a device supports scatter-gather functionality. */
-	RTE_BBDEV_LDPC_DEC_SCATTER_GATHER = (1ULL << 12),
+	RTE_BBDEV_LDPC_DEC_SCATTER_GATHER = (1ULL << 13),
 	/** Set if a device supports input/output HARQ compression. */
-	RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION = (1ULL << 13),
+	RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION = (1ULL << 14),
 	/** Set if a device supports input LLR compression. */
-	RTE_BBDEV_LDPC_LLR_COMPRESSION = (1ULL << 14),
+	RTE_BBDEV_LDPC_LLR_COMPRESSION = (1ULL << 15),
 	/** Set if a device supports HARQ input from
 	 *  device's internal memory.
 	 */
-	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE = (1ULL << 15),
+	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE = (1ULL << 16),
 	/** Set if a device supports HARQ output to
 	 *  device's internal memory.
 	 */
-	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE = (1ULL << 16),
+	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE = (1ULL << 17),
 	/** Set if a device supports loop-back access to
 	 *  HARQ internal memory. Intended for troubleshooting.
 	 */
-	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK = (1ULL << 17),
+	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK = (1ULL << 18),
 	/** Set if a device includes LLR filler bits in the circular buffer
 	 *  for HARQ memory. If not set, it is assumed the filler bits are not
 	 *  in HARQ memory and handled directly by the LDPC decoder.
 	 */
-	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS = (1ULL << 18)
+	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS = (1ULL << 19)
 };
 
 /** Flags for LDPC encoder operation and capability structure */
