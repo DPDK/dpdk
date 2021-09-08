@@ -1709,8 +1709,9 @@ dpaa2_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 
 		if (unlikely(fd->simple.frc)) {
 			/* TODO Parse SEC errors */
-			DPAA2_SEC_ERR("SEC returned Error - %x",
+			DPAA2_SEC_DP_ERR("SEC returned Error - %x\n",
 				      fd->simple.frc);
+			dpaa2_qp->rx_vq.err_pkts += 1;
 			ops[num_rx]->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		} else {
 			ops[num_rx]->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
@@ -1722,7 +1723,8 @@ dpaa2_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 
 	dpaa2_qp->rx_vq.rx_pkts += num_rx;
 
-	DPAA2_SEC_DP_DEBUG("SEC Received %d Packets\n", num_rx);
+	DPAA2_SEC_DP_DEBUG("SEC RX pkts %d err pkts %" PRIu64 "\n", num_rx,
+				dpaa2_qp->rx_vq.err_pkts);
 	/*Return the total number of packets received to DPAA2 app*/
 	return num_rx;
 }
