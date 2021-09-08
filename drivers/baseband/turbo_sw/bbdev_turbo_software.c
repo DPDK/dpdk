@@ -199,6 +199,7 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 			.cap.ldpc_enc = {
 				.capability_flags =
 						RTE_BBDEV_LDPC_RATE_MATCH |
+						RTE_BBDEV_LDPC_CRC_16_ATTACH |
 						RTE_BBDEV_LDPC_CRC_24A_ATTACH |
 						RTE_BBDEV_LDPC_CRC_24B_ATTACH,
 				.num_buffers_src =
@@ -211,6 +212,7 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 		.type   = RTE_BBDEV_OP_LDPC_DEC,
 		.cap.ldpc_dec = {
 			.capability_flags =
+					RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK |
 					RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK |
 					RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK |
 					RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP |
@@ -880,6 +882,12 @@ process_ldpc_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		crc_req.len = in_length_in_bits - 24;
 		crc_resp.data = q->enc_in;
 		bblib_lte_crc24b_gen(&crc_req, &crc_resp);
+	} else if (enc->op_flags & RTE_BBDEV_LDPC_CRC_16_ATTACH) {
+		rte_memcpy(q->enc_in, in, in_length_in_bytes - 2);
+		crc_req.data = in;
+		crc_req.len = in_length_in_bits - 16;
+		crc_resp.data = q->enc_in;
+		bblib_lte_crc16_gen(&crc_req, &crc_resp);
 	} else
 		rte_memcpy(q->enc_in, in, in_length_in_bytes);
 
@@ -1489,6 +1497,14 @@ process_ldpc_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 			bblib_lte_crc24b_check(&crc_req, &crc_resp);
 		else
 			bblib_lte_crc24a_check(&crc_req, &crc_resp);
+		if (!crc_resp.check_passed)
+			op->status |= 1 << RTE_BBDEV_CRC_ERROR;
+	} else if (check_bit(dec->op_flags, RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK)) {
+		crc_req.data = adapter_input;
+		crc_req.len  = K - dec->n_filler - 16;
+		crc_resp.check_passed = false;
+		crc_resp.data = adapter_input;
+		bblib_lte_crc16_check(&crc_req, &crc_resp);
 		if (!crc_resp.check_passed)
 			op->status |= 1 << RTE_BBDEV_CRC_ERROR;
 	}

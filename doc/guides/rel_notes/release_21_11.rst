@@ -122,6 +122,10 @@ New Features
 
   * Added PDCP short MAC-I support.
 
+* **Updated the turbo_sw bbdev PMD.**
+
+  Added support for more comprehensive CRC options.
+
 * **Added multi-process support for testpmd.**
 
   Added command-line options to specify total number of processes and
