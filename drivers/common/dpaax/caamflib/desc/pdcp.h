@@ -2546,7 +2546,8 @@ static inline int
 insert_hfn_ov_op(struct program *p,
 		 uint32_t shift,
 		 enum pdb_type_e pdb_type,
-		 unsigned char era_2_sw_hfn_ovrd)
+		 unsigned char era_2_sw_hfn_ovrd,
+		 bool clear_dpovrd_at_end)
 {
 	uint32_t imm = PDCP_DPOVRD_HFN_OV_EN;
 	uint16_t hfn_pdb_offset;
@@ -2597,13 +2598,14 @@ insert_hfn_ov_op(struct program *p,
 	MATHB(p, MATH0, SHLD, MATH0, MATH0, 8, 0);
 	MOVE(p, MATH0, 0, DESCBUF, hfn_pdb_offset, 4, IMMED);
 
-	if (rta_sec_era >= RTA_SEC_ERA_8)
+	if (clear_dpovrd_at_end && (rta_sec_era >= RTA_SEC_ERA_8)) {
 		/*
 		 * For ERA8, DPOVRD could be handled by the PROTOCOL command
 		 * itself. For now, this is not done. Thus, clear DPOVRD here
 		 * to alleviate any side-effects.
 		 */
 		MATHB(p, DPOVRD, AND, ZERO, DPOVRD, 4, STL);
+	}
 
 	SET_LABEL(p, keyjump);
 	PATCH_JUMP(p, pkeyjump, keyjump);
@@ -2989,7 +2991,7 @@ cnstr_shdsc_pdcp_c_plane_encap(uint32_t *descbuf,
 	SET_LABEL(p, pdb_end);
 
 	err = insert_hfn_ov_op(p, sn_size, pdb_type,
-			       era_2_sw_hfn_ovrd);
+			       era_2_sw_hfn_ovrd, true);
 	if (err)
 		return err;
 
@@ -3143,7 +3145,7 @@ cnstr_shdsc_pdcp_c_plane_decap(uint32_t *descbuf,
 	SET_LABEL(p, pdb_end);
 
 	err = insert_hfn_ov_op(p, sn_size, pdb_type,
-			       era_2_sw_hfn_ovrd);
+			       era_2_sw_hfn_ovrd, true);
 	if (err)
 		return err;
 
@@ -3319,7 +3321,7 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 	}
 	SET_LABEL(p, pdb_end);
 
-	err = insert_hfn_ov_op(p, sn_size, pdb_type, era_2_sw_hfn_ovrd);
+	err = insert_hfn_ov_op(p, sn_size, pdb_type, era_2_sw_hfn_ovrd, true);
 	if (err)
 		return err;
 
@@ -3523,7 +3525,7 @@ cnstr_shdsc_pdcp_u_plane_decap(uint32_t *descbuf,
 	}
 	SET_LABEL(p, pdb_end);
 
-	err = insert_hfn_ov_op(p, sn_size, pdb_type, era_2_sw_hfn_ovrd);
+	err = insert_hfn_ov_op(p, sn_size, pdb_type, era_2_sw_hfn_ovrd, true);
 	if (err)
 		return err;
 

@@ -990,7 +990,7 @@ cnstr_shdsc_pdcp_sdap_u_plane(uint32_t *descbuf,
 	SET_LABEL(p, pdb_end);
 
 	/* Inser the HFN override operation */
-	err = insert_hfn_ov_op(p, sn_size, pdb_type, era_2_sw_hfn_ovrd);
+	err = insert_hfn_ov_op(p, sn_size, pdb_type, era_2_sw_hfn_ovrd, false);
 	if (err)
 		return err;
 
