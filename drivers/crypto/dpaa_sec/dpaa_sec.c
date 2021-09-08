@@ -454,6 +454,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 		switch (ses->cipher_alg) {
 		case RTE_CRYPTO_CIPHER_AES_CBC:
 		case RTE_CRYPTO_CIPHER_3DES_CBC:
+		case RTE_CRYPTO_CIPHER_DES_CBC:
 		case RTE_CRYPTO_CIPHER_AES_CTR:
 		case RTE_CRYPTO_CIPHER_3DES_CTR:
 			shared_desc_len = cnstr_shdsc_blkcipher(
@@ -2043,6 +2044,10 @@ dpaa_sec_cipher_init(struct rte_cryptodev *dev __rte_unused,
 		session->cipher_key.alg = OP_ALG_ALGSEL_AES;
 		session->cipher_key.algmode = OP_ALG_AAI_CBC;
 		break;
+	case RTE_CRYPTO_CIPHER_DES_CBC:
+		session->cipher_key.alg = OP_ALG_ALGSEL_DES;
+		session->cipher_key.algmode = OP_ALG_AAI_CBC;
+		break;
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
 		session->cipher_key.alg = OP_ALG_ALGSEL_3DES;
 		session->cipher_key.algmode = OP_ALG_AAI_CBC;
@@ -2216,6 +2221,10 @@ dpaa_sec_chain_init(struct rte_cryptodev *dev __rte_unused,
 	switch (cipher_xform->algo) {
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 		session->cipher_key.alg = OP_ALG_ALGSEL_AES;
+		session->cipher_key.algmode = OP_ALG_AAI_CBC;
+		break;
+	case RTE_CRYPTO_CIPHER_DES_CBC:
+		session->cipher_key.alg = OP_ALG_ALGSEL_DES;
 		session->cipher_key.algmode = OP_ALG_AAI_CBC;
 		break;
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
@@ -2665,6 +2674,10 @@ dpaa_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 	switch (session->cipher_alg) {
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 		session->cipher_key.alg = OP_PCL_IPSEC_AES_CBC;
+		session->cipher_key.algmode = OP_ALG_AAI_CBC;
+		break;
+	case RTE_CRYPTO_CIPHER_DES_CBC:
+		session->cipher_key.alg = OP_PCL_IPSEC_DES;
 		session->cipher_key.algmode = OP_ALG_AAI_CBC;
 		break;
 	case RTE_CRYPTO_CIPHER_3DES_CBC:

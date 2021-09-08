@@ -73,6 +73,10 @@ New Features
 
   * Added event crypto adapter OP_FORWARD mode support.
 
+* **Updated NXP dpaa_sec crypto PMD.**
+
+  * Added DES-CBC algo support.
+
 
 Removed Items
 -------------
