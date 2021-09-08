@@ -270,6 +270,9 @@ enum pdb_type_e {
 	PDCP_PDB_TYPE_INVALID
 };
 
+#define REDUCED_PDB_DESCBUF_HFN_BEARER_DIR_OFFSET 4
+#define FULL_PDB_DESCBUF_HFN_BEARER_DIR_OFFSET 8
+
 /**
  * rta_inline_pdcp_query() - Provide indications if a key can be passed as
  *                           immediate data or shall be referenced in a
@@ -2564,11 +2567,11 @@ insert_hfn_ov_op(struct program *p,
 		return 0;
 
 	case PDCP_PDB_TYPE_REDUCED_PDB:
-		hfn_pdb_offset = 4;
+		hfn_pdb_offset = REDUCED_PDB_DESCBUF_HFN_BEARER_DIR_OFFSET;
 		break;
 
 	case PDCP_PDB_TYPE_FULL_PDB:
-		hfn_pdb_offset = 8;
+		hfn_pdb_offset = FULL_PDB_DESCBUF_HFN_BEARER_DIR_OFFSET;
 		break;
 
 	default:
