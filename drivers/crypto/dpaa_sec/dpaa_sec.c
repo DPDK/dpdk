@@ -489,6 +489,18 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 		alginfo_a.algtype = ses->auth_key.alg;
 		alginfo_a.algmode = ses->auth_key.algmode;
 		switch (ses->auth_alg) {
+		case RTE_CRYPTO_AUTH_MD5:
+		case RTE_CRYPTO_AUTH_SHA1:
+		case RTE_CRYPTO_AUTH_SHA224:
+		case RTE_CRYPTO_AUTH_SHA256:
+		case RTE_CRYPTO_AUTH_SHA384:
+		case RTE_CRYPTO_AUTH_SHA512:
+			shared_desc_len = cnstr_shdsc_hash(
+						cdb->sh_desc, true,
+						swap, SHR_NEVER, &alginfo_a,
+						!ses->dir,
+						ses->digest_length);
+			break;
 		case RTE_CRYPTO_AUTH_MD5_HMAC:
 		case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		case RTE_CRYPTO_AUTH_SHA224_HMAC:
@@ -2080,42 +2092,69 @@ dpaa_sec_auth_init(struct rte_cryptodev *dev __rte_unused,
 {
 	session->ctxt = DPAA_SEC_AUTH;
 	session->auth_alg = xform->auth.algo;
-	session->auth_key.data = rte_zmalloc(NULL, xform->auth.key.length,
-					     RTE_CACHE_LINE_SIZE);
-	if (session->auth_key.data == NULL && xform->auth.key.length > 0) {
-		DPAA_SEC_ERR("No Memory for auth key");
-		return -ENOMEM;
-	}
 	session->auth_key.length = xform->auth.key.length;
+	if (xform->auth.key.length) {
+		session->auth_key.data =
+				rte_zmalloc(NULL, xform->auth.key.length,
+					     RTE_CACHE_LINE_SIZE);
+		if (session->auth_key.data == NULL) {
+			DPAA_SEC_ERR("No Memory for auth key");
+			return -ENOMEM;
+		}
+		memcpy(session->auth_key.data, xform->auth.key.data,
+				xform->auth.key.length);
+
+	}
 	session->digest_length = xform->auth.digest_length;
 	if (session->cipher_alg == RTE_CRYPTO_CIPHER_NULL) {
 		session->iv.offset = xform->auth.iv.offset;
 		session->iv.length = xform->auth.iv.length;
 	}
 
-	memcpy(session->auth_key.data, xform->auth.key.data,
-	       xform->auth.key.length);
-
 	switch (xform->auth.algo) {
+	case RTE_CRYPTO_AUTH_SHA1:
+		session->auth_key.alg = OP_ALG_ALGSEL_SHA1;
+		session->auth_key.algmode = OP_ALG_AAI_HASH;
+		break;
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		session->auth_key.alg = OP_ALG_ALGSEL_SHA1;
 		session->auth_key.algmode = OP_ALG_AAI_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_MD5:
+		session->auth_key.alg = OP_ALG_ALGSEL_MD5;
+		session->auth_key.algmode = OP_ALG_AAI_HASH;
 		break;
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
 		session->auth_key.alg = OP_ALG_ALGSEL_MD5;
 		session->auth_key.algmode = OP_ALG_AAI_HMAC;
 		break;
+	case RTE_CRYPTO_AUTH_SHA224:
+		session->auth_key.alg = OP_ALG_ALGSEL_SHA224;
+		session->auth_key.algmode = OP_ALG_AAI_HASH;
+		break;
 	case RTE_CRYPTO_AUTH_SHA224_HMAC:
 		session->auth_key.alg = OP_ALG_ALGSEL_SHA224;
 		session->auth_key.algmode = OP_ALG_AAI_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_SHA256:
+		session->auth_key.alg = OP_ALG_ALGSEL_SHA256;
+		session->auth_key.algmode = OP_ALG_AAI_HASH;
 		break;
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
 		session->auth_key.alg = OP_ALG_ALGSEL_SHA256;
 		session->auth_key.algmode = OP_ALG_AAI_HMAC;
 		break;
+	case RTE_CRYPTO_AUTH_SHA384:
+		session->auth_key.alg = OP_ALG_ALGSEL_SHA384;
+		session->auth_key.algmode = OP_ALG_AAI_HASH;
+		break;
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
 		session->auth_key.alg = OP_ALG_ALGSEL_SHA384;
 		session->auth_key.algmode = OP_ALG_AAI_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_SHA512:
+		session->auth_key.alg = OP_ALG_ALGSEL_SHA512;
+		session->auth_key.algmode = OP_ALG_AAI_HASH;
 		break;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
 		session->auth_key.alg = OP_ALG_ALGSEL_SHA512;

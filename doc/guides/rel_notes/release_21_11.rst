@@ -75,7 +75,7 @@ New Features
 
 * **Updated NXP dpaa_sec crypto PMD.**
 
-  * Added DES-CBC algo support.
+  * Added DES-CBC and non-HMAC algo support.
 
 
 Removed Items
