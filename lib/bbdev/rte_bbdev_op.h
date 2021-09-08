@@ -114,7 +114,10 @@ enum rte_bbdev_op_td_flag_bitmasks {
 	/** Set to keep CRC24B bits appended while decoding. Only usable when
 	 * decoding Transport Block mode.
 	 */
-	RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP = (1ULL << 16)
+	RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP = (1ULL << 16),
+	/** Set to drop CRC24B bits not to be appended while decoding.
+	 */
+	RTE_BBDEV_TURBO_DEC_CRC_24B_DROP = (1ULL << 17)
 };
 
 
