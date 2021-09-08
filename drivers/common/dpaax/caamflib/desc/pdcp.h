@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause or GPL-2.0+
  * Copyright 2008-2013 Freescale Semiconductor, Inc.
- * Copyright 2019-2020 NXP
+ * Copyright 2019-2021 NXP
  */
 
 #ifndef __DESC_PDCP_H__
@@ -3710,9 +3710,10 @@ cnstr_shdsc_pdcp_short_mac(uint32_t *descbuf,
 		break;
 
 	case PDCP_AUTH_TYPE_SNOW:
+		/* IV calculation based on 3GPP specs. 36331, section:5.3.7.4 */
 		iv[0] = 0xFFFFFFFF;
-		iv[1] = swap ? swab32(0x04000000) : 0x04000000;
-		iv[2] = swap ? swab32(0xF8000000) : 0xF8000000;
+		iv[1] = swab32(0x04000000);
+		iv[2] = swab32(0xF8000000);
 
 		KEY(p, KEY2, authdata->key_enc_flags, authdata->key,
 		    authdata->keylen, INLINE_KEY(authdata));
