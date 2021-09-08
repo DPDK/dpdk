@@ -122,6 +122,10 @@ New Features
 
   * Added PDCP short MAC-I support.
 
+* **Updated the ACC100 bbdev PMD.**
+
+  Added support for more comprehensive CRC options.
+
 * **Updated the turbo_sw bbdev PMD.**
 
   Added support for more comprehensive CRC options.

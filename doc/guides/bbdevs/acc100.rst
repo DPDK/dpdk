@@ -58,6 +58,7 @@ ACC100 5G/4G FEC PMD supports the following BBDEV capabilities:
    - ``RTE_BBDEV_TURBO_NEG_LLR_1_BIT_IN`` :  set if negative LLR encoder i/p is supported
    - ``RTE_BBDEV_TURBO_POS_LLR_1_BIT_IN`` :  set if positive LLR encoder i/p is supported
    - ``RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP`` :  keep CRC24B bits appended while decoding
+   - ``RTE_BBDEV_TURBO_DEC_CRC_24B_DROP`` : option to drop the code block CRC after decoding
    - ``RTE_BBDEV_TURBO_EARLY_TERMINATION`` :  set early termination feature
    - ``RTE_BBDEV_TURBO_DEC_SCATTER_GATHER`` :  supports scatter-gather for input/output data
    - ``RTE_BBDEV_TURBO_HALF_ITERATION_EVEN`` :  set half iteration granularity

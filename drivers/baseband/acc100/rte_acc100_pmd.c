@@ -980,6 +980,7 @@ acc100_dev_info_get(struct rte_bbdev *dev,
 					RTE_BBDEV_TURBO_NEG_LLR_1_BIT_IN |
 					RTE_BBDEV_TURBO_MAP_DEC |
 					RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP |
+					RTE_BBDEV_TURBO_DEC_CRC_24B_DROP |
 					RTE_BBDEV_TURBO_DEC_SCATTER_GATHER,
 				.max_llr_modulus = INT8_MAX,
 				.num_buffers_src =
@@ -1708,8 +1709,12 @@ acc100_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 	}
 
 	if ((op->turbo_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
-		&& !check_bit(op->turbo_dec.op_flags,
-		RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP))
+			&& !check_bit(op->turbo_dec.op_flags,
+			RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP))
+		crc24_overlap = 24;
+	if ((op->turbo_dec.code_block_mode == RTE_BBDEV_CODE_BLOCK)
+			&& check_bit(op->turbo_dec.op_flags,
+			RTE_BBDEV_TURBO_DEC_CRC_24B_DROP))
 		crc24_overlap = 24;
 
 	/* Calculates circular buffer size.
@@ -1744,7 +1749,8 @@ acc100_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 
 	next_triplet = acc100_dma_fill_blk_type_out(
 			desc, h_output, *h_out_offset,
-			k >> 3, next_triplet, ACC100_DMA_BLKID_OUT_HARD);
+			k >> 3, next_triplet,
+			ACC100_DMA_BLKID_OUT_HARD);
 	if (unlikely(next_triplet < 0)) {
 		rte_bbdev_log(ERR,
 				"Mismatch between data to process and mbuf data length in bbdev_op: %p",
