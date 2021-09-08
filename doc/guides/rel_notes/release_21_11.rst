@@ -76,6 +76,7 @@ New Features
 * **Updated NXP dpaa_sec crypto PMD.**
 
   * Added DES-CBC, AES-XCBC-MAC, AES-CMAC and non-HMAC algo support.
+  * Added PDCP short MAC-I support.
 
 * **Updated NXP dpaa2_sec crypto PMD.**
 
