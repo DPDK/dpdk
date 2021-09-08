@@ -3261,12 +3261,28 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 		goto out;
 	}
 
-	if (rta_inline_pdcp_query(authdata.algtype,
-				cipherdata.algtype,
-				session->pdcp.sn_size,
-				session->pdcp.hfn_ovd)) {
-		cipherdata.key = DPAA2_VADDR_TO_IOVA(cipherdata.key);
-		cipherdata.key_type = RTA_DATA_PTR;
+	if (pdcp_xform->sdap_enabled) {
+		int nb_keys_to_inline =
+			rta_inline_pdcp_sdap_query(authdata.algtype,
+					cipherdata.algtype,
+					session->pdcp.sn_size,
+					session->pdcp.hfn_ovd);
+		if (nb_keys_to_inline >= 1) {
+			cipherdata.key = DPAA2_VADDR_TO_IOVA(cipherdata.key);
+			cipherdata.key_type = RTA_DATA_PTR;
+		}
+		if (nb_keys_to_inline >= 2) {
+			authdata.key = DPAA2_VADDR_TO_IOVA(authdata.key);
+			authdata.key_type = RTA_DATA_PTR;
+		}
+	} else {
+		if (rta_inline_pdcp_query(authdata.algtype,
+					cipherdata.algtype,
+					session->pdcp.sn_size,
+					session->pdcp.hfn_ovd)) {
+			cipherdata.key = DPAA2_VADDR_TO_IOVA(cipherdata.key);
+			cipherdata.key_type = RTA_DATA_PTR;
+		}
 	}
 
 	if (pdcp_xform->domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
