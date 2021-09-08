@@ -528,9 +528,10 @@ rte_bbdev_queue_configure(uint16_t dev_id, uint16_t queue_id,
 	ret = dev->dev_ops->queue_setup(dev, queue_id, (conf != NULL) ?
 			conf : &dev_info.default_queue_conf);
 	if (ret < 0) {
-		rte_bbdev_log(ERR,
-				"Device %u queue %u setup failed", dev_id,
-				queue_id);
+		/* This may happen when trying different priority levels */
+		rte_bbdev_log(INFO,
+				"Device %u queue %u setup failed",
+				dev_id, queue_id);
 		return ret;
 	}
 
