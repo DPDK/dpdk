@@ -941,6 +941,15 @@ static const struct rte_security_capability dpaa2_sec_security_cap[] = {
 		},
 		.crypto_capabilities = dpaa2_pdcp_capabilities
 	},
+	{ /* PDCP Lookaside Protocol offload Short MAC */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_PDCP,
+		.pdcp = {
+			.domain = RTE_SECURITY_PDCP_MODE_SHORT_MAC,
+			.capa_flags = 0
+		},
+		.crypto_capabilities = dpaa2_pdcp_capabilities
+	},
 	{
 		.action = RTE_SECURITY_ACTION_TYPE_NONE
 	}

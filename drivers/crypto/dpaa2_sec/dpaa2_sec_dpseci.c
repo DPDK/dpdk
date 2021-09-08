@@ -3309,6 +3309,10 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 					pdcp_xform->hfn_threshold,
 					&cipherdata, &authdata,
 					0);
+
+	} else if (pdcp_xform->domain == RTE_SECURITY_PDCP_MODE_SHORT_MAC) {
+		bufsize = cnstr_shdsc_pdcp_short_mac(priv->flc_desc[0].desc,
+						     1, swap, &authdata);
 	} else {
 		if (session->dir == DIR_ENC) {
 			if (pdcp_xform->sdap_enabled)
