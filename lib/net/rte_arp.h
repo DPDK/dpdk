@@ -50,9 +50,6 @@ struct rte_arp_hdr {
 } __rte_packed __rte_aligned(2);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Make a RARP packet based on MAC addr.
  *
  * @param mpool
@@ -63,7 +60,6 @@ struct rte_arp_hdr {
  * @return
  *   - RARP packet pointer on success, or NULL on error
  */
-__rte_experimental
 struct rte_mbuf *
 rte_net_make_rarp_packet(struct rte_mempool *mpool,
 		const struct rte_ether_addr *mac);
