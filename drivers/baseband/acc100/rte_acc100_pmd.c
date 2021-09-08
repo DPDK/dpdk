@@ -1744,7 +1744,8 @@ acc100_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 
 	next_triplet = acc100_dma_fill_blk_type_out(
 			desc, h_output, *h_out_offset,
-			k >> 3, next_triplet, ACC100_DMA_BLKID_OUT_HARD);
+			(k - crc24_overlap) >> 3, next_triplet,
+			ACC100_DMA_BLKID_OUT_HARD);
 	if (unlikely(next_triplet < 0)) {
 		rte_bbdev_log(ERR,
 				"Mismatch between data to process and mbuf data length in bbdev_op: %p",
