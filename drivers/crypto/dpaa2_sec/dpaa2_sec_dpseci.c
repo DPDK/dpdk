@@ -3104,7 +3104,7 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 	struct rte_security_pdcp_xform *pdcp_xform = &conf->pdcp;
 	struct rte_crypto_sym_xform *xform = conf->crypto_xform;
 	struct rte_crypto_auth_xform *auth_xform = NULL;
-	struct rte_crypto_cipher_xform *cipher_xform;
+	struct rte_crypto_cipher_xform *cipher_xform = NULL;
 	dpaa2_sec_session *session = (dpaa2_sec_session *)sess;
 	struct ctxt_priv *priv;
 	struct dpaa2_sec_dev_private *dev_priv = dev->data->dev_private;
@@ -3136,18 +3136,18 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 	flc = &priv->flc_desc[0].flc;
 
 	/* find xfrm types */
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER && xform->next == NULL) {
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
 		cipher_xform = &xform->cipher;
-	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
-		   xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
-		session->ext_params.aead_ctxt.auth_cipher_text = true;
-		cipher_xform = &xform->cipher;
-		auth_xform = &xform->next->auth;
-	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
-		   xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
-		session->ext_params.aead_ctxt.auth_cipher_text = false;
-		cipher_xform = &xform->next->cipher;
+		if (xform->next != NULL) {
+			session->ext_params.aead_ctxt.auth_cipher_text = true;
+			auth_xform = &xform->next->auth;
+		}
+	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
 		auth_xform = &xform->auth;
+		if (xform->next != NULL) {
+			session->ext_params.aead_ctxt.auth_cipher_text = false;
+			cipher_xform = &xform->next->cipher;
+		}
 	} else {
 		DPAA2_SEC_ERR("Invalid crypto type");
 		return -EINVAL;
@@ -3186,7 +3186,8 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 	session->pdcp.hfn_threshold = pdcp_xform->hfn_threshold;
 	session->pdcp.hfn_ovd = pdcp_xform->hfn_ovrd;
 	/* hfv ovd offset location is stored in iv.offset value*/
-	session->pdcp.hfn_ovd_offset = cipher_xform->iv.offset;
+	if (cipher_xform)
+		session->pdcp.hfn_ovd_offset = cipher_xform->iv.offset;
 
 	cipherdata.key = (size_t)session->cipher_key.data;
 	cipherdata.keylen = session->cipher_key.length;
