@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017-2019 NXP
+ *   Copyright 2017-2021 NXP
  *
  */
 
@@ -263,14 +263,31 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 		p_authdata = &authdata;
 	}
 
-	if (rta_inline_pdcp_query(authdata.algtype,
-				cipherdata.algtype,
-				ses->pdcp.sn_size,
-				ses->pdcp.hfn_ovd)) {
-		cipherdata.key =
-			(size_t)rte_dpaa_mem_vtop((void *)
-					(size_t)cipherdata.key);
-		cipherdata.key_type = RTA_DATA_PTR;
+	if (ses->pdcp.sdap_enabled) {
+		int nb_keys_to_inline =
+				rta_inline_pdcp_sdap_query(authdata.algtype,
+					cipherdata.algtype,
+					ses->pdcp.sn_size,
+					ses->pdcp.hfn_ovd);
+		if (nb_keys_to_inline >= 1) {
+			cipherdata.key = (size_t)rte_dpaa_mem_vtop((void *)
+						(size_t)cipherdata.key);
+			cipherdata.key_type = RTA_DATA_PTR;
+		}
+		if (nb_keys_to_inline >= 2) {
+			authdata.key = (size_t)rte_dpaa_mem_vtop((void *)
+						(size_t)authdata.key);
+			authdata.key_type = RTA_DATA_PTR;
+		}
+	} else {
+		if (rta_inline_pdcp_query(authdata.algtype,
+					cipherdata.algtype,
+					ses->pdcp.sn_size,
+					ses->pdcp.hfn_ovd)) {
+			cipherdata.key = (size_t)rte_dpaa_mem_vtop((void *)
+						(size_t)cipherdata.key);
+			cipherdata.key_type = RTA_DATA_PTR;
+		}
 	}
 
 	if (ses->pdcp.domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
