@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  * Copyright (C) 2015-2016 Freescale Semiconductor,Inc.
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2021 NXP
  */
 
 #ifndef SECURITY_PDCP_TEST_VECTOR_H_
@@ -26,6 +26,109 @@ struct pdcp_test_param {
 	enum rte_crypto_auth_algorithm auth_alg;
 	uint8_t auth_key_len;
 	const char *name;
+};
+
+struct pdcp_short_mac_test {
+	uint32_t test_idx;
+	struct pdcp_short_mac_test_param {
+		enum rte_security_pdcp_domain domain;
+		enum rte_crypto_auth_algorithm auth_alg;
+		uint8_t auth_key_len;
+		const char *name;
+	} param;
+	const uint8_t *auth_key;
+	const uint8_t *data_in;
+	uint32_t in_len;
+	const uint8_t *data_out;
+};
+
+static const struct pdcp_short_mac_test list_pdcp_smac_tests[] = {
+	{
+		.test_idx = 1,
+		.param = {.name = "PDCP-SMAC SNOW3G UIA2",
+			.auth_alg = RTE_CRYPTO_AUTH_SNOW3G_UIA2,
+			.domain = RTE_SECURITY_PDCP_MODE_SHORT_MAC,
+			.auth_key_len = 16,
+		},
+		.auth_key = (uint8_t[]){ 0x2b, 0xd6, 0x45, 0x9f, 0x82, 0xc5,
+					 0xb3, 0x00, 0x95, 0x2c, 0x49, 0x10,
+					 0x48, 0x81, 0xff, 0x48 },
+		.data_in = (uint8_t[]){ 0x33, 0x32, 0x34, 0x62, 0x63, 0x39,
+					0x38 },
+		.in_len = 7,
+		.data_out = (uint8_t[]){ 0x33, 0x32, 0x34, 0x62, 0x63, 0x39,
+					 0x38, 0x56, 0xd2, 0x09, 0xae },
+	},
+
+	{
+		.test_idx = 2,
+		.param = {.name = "PDCP-SMAC AES CMAC 1",
+			.auth_alg = RTE_CRYPTO_AUTH_AES_CMAC,
+			.domain = RTE_SECURITY_PDCP_MODE_SHORT_MAC,
+			.auth_key_len = 16,
+		},
+		.auth_key = (uint8_t[]){ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					 0x00, 0x00, 0x00, 0x00 },
+		.data_in = (uint8_t[]){ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00 },
+		.in_len = 7,
+		.data_out = (uint8_t[]){ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					 0x00, 0x13, 0xf8, 0x4b, 0xea },
+	},
+
+	{
+		.test_idx = 3,
+		.param = {.name = "PDCP-SMAC AES CMAC 2",
+			.auth_alg = RTE_CRYPTO_AUTH_AES_CMAC,
+			.domain = RTE_SECURITY_PDCP_MODE_SHORT_MAC,
+			.auth_key_len = 16,
+		},
+		.auth_key = (uint8_t[]){ 0x16, 0xc1, 0x98, 0x14,  0x9a, 0x2c,
+					 0xf4, 0x12, 0x4f, 0xd4, 0x14, 0xec,
+					 0x72, 0x43, 0x29, 0x04 },
+		.data_in = (uint8_t[]){ 0x00, 0xc0, 0x00, 0x00, 0x00, 0x05,
+					0x09, 0xe4 },
+		.in_len = 8,
+		.data_out = (uint8_t[]){ 0x00, 0xc0, 0x00, 0x00, 0x00, 0x05,
+					 0x09, 0xe4, 0xdd, 0xff, 0xde, 0xa9 },
+	},
+
+	{
+		.test_idx = 4,
+		.param = {.name = "PDCP-SMAC AES CMAC 3",
+			.auth_alg = RTE_CRYPTO_AUTH_AES_CMAC,
+			.domain = RTE_SECURITY_PDCP_MODE_SHORT_MAC,
+			.auth_key_len = 16,
+		},
+		.auth_key = (uint8_t[]){ 0xD3, 0xC5, 0xD5, 0x92, 0x32, 0x7F,
+					 0xB1, 0x1C, 0x40, 0x35, 0xC6, 0x68,
+					 0x0A, 0xF8, 0xC6, 0xD3 },
+		.data_in = (uint8_t[]){ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00 },
+		.in_len = 7,
+		.data_out = (uint8_t[]){ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					 0x00, 0x23, 0xea, 0x95, 0xb0 },
+	},
+
+	{
+		.test_idx = 5,
+		.param = {.name = "PDCP-SMAC NULL",
+			.auth_alg = RTE_CRYPTO_AUTH_NULL,
+			.domain = RTE_SECURITY_PDCP_MODE_SHORT_MAC,
+			.auth_key_len = 16,
+		},
+		.auth_key = (uint8_t[]){ 0x2B, 0xD6, 0x45, 0x9F, 0x82, 0xC5,
+					 0xB3, 0x00, 0x95, 0x2C, 0x49, 0x10,
+					 0x48, 0x81, 0xFF, 0x48
+		},
+		.data_in = (uint8_t[]){ 0x33, 0x32, 0x34, 0x62, 0x63, 0x39,
+					0x38 },
+		.in_len = 7,
+		.data_out = (uint8_t[]){ 0x33, 0x32, 0x34, 0x62, 0x63, 0x39,
+					 0x38, 0x00, 0x00, 0x00, 0x00 },
+	},
+
 };
 
 static struct pdcp_test_param pdcp_test_params[] = {
