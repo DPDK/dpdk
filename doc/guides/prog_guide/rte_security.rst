@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright 2017,2020 NXP
+    Copyright 2017,2020-2021 NXP
 
 
 
@@ -404,6 +404,15 @@ PMD which supports the IPsec and PDCP protocol.
                 .protocol = RTE_SECURITY_PROTOCOL_PDCP,
                 .pdcp = {
                         .domain = RTE_SECURITY_PDCP_MODE_CONTROL,
+                        .capa_flags = 0
+                },
+                .crypto_capabilities = pmd_capabilities
+        },
+	{ /* PDCP Lookaside Protocol offload short MAC-I */
+                .action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+                .protocol = RTE_SECURITY_PROTOCOL_PDCP,
+                .pdcp = {
+                        .domain = RTE_SECURITY_PDCP_MODE_SHORT_MAC,
                         .capa_flags = 0
                 },
                 .crypto_capabilities = pmd_capabilities

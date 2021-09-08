@@ -233,6 +233,7 @@ struct rte_security_macsec_xform {
 enum rte_security_pdcp_domain {
 	RTE_SECURITY_PDCP_MODE_CONTROL,	/**< PDCP control plane */
 	RTE_SECURITY_PDCP_MODE_DATA,	/**< PDCP data plane */
+	RTE_SECURITY_PDCP_MODE_SHORT_MAC,	/**< PDCP short mac */
 };
 
 /** PDCP Frame direction */
