@@ -528,6 +528,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 						ses->digest_length);
 			break;
 		case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
+		case RTE_CRYPTO_AUTH_AES_CMAC:
 			shared_desc_len = cnstr_shdsc_aes_mac(
 						cdb->sh_desc,
 						true, swap, SHR_NEVER,
@@ -2180,6 +2181,10 @@ dpaa_sec_auth_init(struct rte_cryptodev *dev __rte_unused,
 		session->auth_key.alg = OP_ALG_ALGSEL_AES;
 		session->auth_key.algmode = OP_ALG_AAI_XCBC_MAC;
 		break;
+	case RTE_CRYPTO_AUTH_AES_CMAC:
+		session->auth_key.alg = OP_ALG_ALGSEL_AES;
+		session->auth_key.algmode = OP_ALG_AAI_CMAC;
+		break;
 	default:
 		DPAA_SEC_ERR("Crypto: Unsupported Auth specified %u",
 			      xform->auth.algo);
@@ -2264,6 +2269,10 @@ dpaa_sec_chain_init(struct rte_cryptodev *dev __rte_unused,
 	case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
 		session->auth_key.alg = OP_ALG_ALGSEL_AES;
 		session->auth_key.algmode = OP_ALG_AAI_XCBC_MAC;
+		break;
+	case RTE_CRYPTO_AUTH_AES_CMAC:
+		session->auth_key.alg = OP_ALG_ALGSEL_AES;
+		session->auth_key.algmode = OP_ALG_AAI_CMAC;
 		break;
 	default:
 		DPAA_SEC_ERR("Crypto: Unsupported Auth specified %u",
@@ -2700,6 +2709,7 @@ dpaa_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 		break;
 	case RTE_CRYPTO_AUTH_AES_CMAC:
 		session->auth_key.alg = OP_PCL_IPSEC_AES_CMAC_96;
+		session->auth_key.algmode = OP_ALG_AAI_CMAC;
 		break;
 	case RTE_CRYPTO_AUTH_NULL:
 		session->auth_key.alg = OP_PCL_IPSEC_HMAC_NULL;
