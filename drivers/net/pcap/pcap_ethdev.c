@@ -51,6 +51,7 @@ struct queue_stat {
 	volatile unsigned long pkts;
 	volatile unsigned long bytes;
 	volatile unsigned long err_pkts;
+	volatile unsigned long rx_nombuf;
 };
 
 struct queue_missed_stat {
@@ -297,8 +298,10 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			break;
 
 		mbuf = rte_pktmbuf_alloc(pcap_q->mb_pool);
-		if (unlikely(mbuf == NULL))
+		if (unlikely(mbuf == NULL)) {
+			pcap_q->rx_stat.rx_nombuf++;
 			break;
+		}
 
 		if (header.caplen <= rte_pktmbuf_tailroom(mbuf)) {
 			/* pcap packet will fit in the mbuf, can copy it */
@@ -311,6 +314,7 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 						       mbuf,
 						       packet,
 						       header.caplen) == -1)) {
+				pcap_q->rx_stat.err_pkts++;
 				rte_pktmbuf_free(mbuf);
 				break;
 			}
@@ -743,6 +747,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	unsigned int i;
 	unsigned long rx_packets_total = 0, rx_bytes_total = 0;
 	unsigned long rx_missed_total = 0;
+	unsigned long rx_nombuf_total = 0, rx_err_total = 0;
 	unsigned long tx_packets_total = 0, tx_bytes_total = 0;
 	unsigned long tx_packets_err_total = 0;
 	const struct pmd_internals *internal = dev->data->dev_private;
@@ -751,6 +756,8 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			i < dev->data->nb_rx_queues; i++) {
 		stats->q_ipackets[i] = internal->rx_queue[i].rx_stat.pkts;
 		stats->q_ibytes[i] = internal->rx_queue[i].rx_stat.bytes;
+		rx_nombuf_total += internal->rx_queue[i].rx_stat.rx_nombuf;
+		rx_err_total += internal->rx_queue[i].rx_stat.err_pkts;
 		rx_packets_total += stats->q_ipackets[i];
 		rx_bytes_total += stats->q_ibytes[i];
 		rx_missed_total += queue_missed_stat_get(dev, i);
@@ -768,6 +775,8 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->ipackets = rx_packets_total;
 	stats->ibytes = rx_bytes_total;
 	stats->imissed = rx_missed_total;
+	stats->ierrors = rx_err_total;
+	stats->rx_nombuf = rx_nombuf_total;
 	stats->opackets = tx_packets_total;
 	stats->obytes = tx_bytes_total;
 	stats->oerrors = tx_packets_err_total;
@@ -784,6 +793,8 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		internal->rx_queue[i].rx_stat.pkts = 0;
 		internal->rx_queue[i].rx_stat.bytes = 0;
+		internal->rx_queue[i].rx_stat.err_pkts = 0;
+		internal->rx_queue[i].rx_stat.rx_nombuf = 0;
 		queue_missed_stat_reset(dev, i);
 	}
 
