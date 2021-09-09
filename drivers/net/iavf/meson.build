@@ -1,11 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Luca Boccassi <bluca@debian.org>
 
-if is_windows
-    build = false
-    reason = 'not supported on Windows'
-    subdir_done()
-endif
 
 cflags += ['-Wno-strict-aliasing']
 
@@ -24,6 +19,10 @@ sources = files(
 
 if arch_subdir == 'x86'
     sources += files('iavf_rxtx_vec_sse.c')
+
+    if is_windows and cc.get_id() != 'clang'
+        cflags += ['-fno-asynchronous-unwind-tables']
+    endif
 
     # compile AVX2 version if either:
     # a. we have AVX supported in minimum instruction set baseline

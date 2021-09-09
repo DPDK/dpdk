@@ -73,6 +73,10 @@ New Features
   * Implement support for tunnel offload.
   * Updated HWRM API to version 1.10.2.44
 
+* **Updated Intel iavf driver.**
+
+  * Added Intel iavf support on Windows.
+
 * **Updated Intel ice driver.**
 
   * Added 1PPS out support by a devargs.

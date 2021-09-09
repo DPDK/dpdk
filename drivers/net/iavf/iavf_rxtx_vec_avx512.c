@@ -4,7 +4,7 @@
 
 #include "iavf_rxtx_vec_common.h"
 
-#include <x86intrin.h>
+#include <rte_vect.h>
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wcast-qual"

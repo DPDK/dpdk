@@ -334,6 +334,8 @@ The expected guest operating systems in a virtualized environment are:
 
 For supported kernel versions, refer to the *DPDK Release Notes*.
 
+.. _intel_vf_kvm:
+
 Setting Up a KVM Virtual Machine Monitor
 ----------------------------------------
 
@@ -392,9 +394,8 @@ The setup procedure is as follows:
 #.  Create a Virtual Machine and install Fedora 14 on the Virtual Machine.
     This is referred to as the Guest Operating System (Guest OS).
 
-#.  Download and install the latest ixgbe driver from:
-
-    `http://downloadcenter.intel.com/Detail_Desc.aspx?agr=Y&amp;DwnldID=14687 <http://downloadcenter.intel.com/Detail_Desc.aspx?agr=Y&amp;DwnldID=14687>`_
+#.  Download and install the latest ixgbe driver from
+    `intel.com <https://downloadcenter.intel.com/download/14687>`_.
 
 #.  In the Host OS
 
@@ -616,3 +617,25 @@ which belongs to the destination VF on the VM.
 .. figure:: img/inter_vm_comms.*
 
    Inter-VM Communication
+
+
+Windows Support
+---------------
+
+*   IAVF PMD currently is supported only inside Windows guest created on Linux host.
+
+*   Physical PCI resources are exposed as virtual functions
+    into Windows VM using SR-IOV pass-through feature.
+
+*   Create a Windows guest on Linux host using KVM hypervisor.
+    Refer to the steps mentioned in the above section: :ref:`intel_vf_kvm`.
+
+*   In the Host machine, download and install the kernel Ethernet driver
+    for `i40e <https://downloadcenter.intel.com/download/24411>`_
+    or `ice <https://downloadcenter.intel.com/download/29746>`_.
+
+*   For Windows guest, install NetUIO driver
+    in place of existing built-in (inbox) Virtual Function driver.
+
+*   To load NetUIO driver, follow the steps mentioned in `dpdk-kmods repository
+    <https://git.dpdk.org/dpdk-kmods/tree/windows/netuio/README.rst>`_.

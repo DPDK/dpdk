@@ -337,7 +337,8 @@ _clear_cmd(struct iavf_info *vf)
 static inline int
 _atomic_set_cmd(struct iavf_info *vf, enum virtchnl_ops ops)
 {
-	int ret = rte_atomic32_cmpset(&vf->pend_cmd, VIRTCHNL_OP_UNKNOWN, ops);
+	int ret = rte_atomic32_cmpset((volatile uint32_t *)&vf->pend_cmd,
+		VIRTCHNL_OP_UNKNOWN, ops);
 
 	if (!ret)
 		PMD_DRV_LOG(ERR, "There is incomplete cmd %d", vf->pend_cmd);
