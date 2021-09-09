@@ -1,6 +1,7 @@
 /*
  * SPDX-License-Identifier: BSD-3-Clause
  * Inspired from FreeBSD src/sys/powerpc/include/atomic.h
+ * Copyright (c) 2021 IBM Corporation
  * Copyright (c) 2008 Marcel Moolenaar
  * Copyright (c) 2001 Benno Rice
  * Copyright (c) 2001 David E. O'Brien
@@ -16,6 +17,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <rte_compat.h>
 #include "generic/rte_atomic.h"
 
 #define	rte_mb()  asm volatile("sync" : : : "memory")
@@ -43,9 +45,6 @@ rte_atomic_thread_fence(int memorder)
 }
 
 /*------------------------- 16 bit atomic operations -------------------------*/
-/* To be compatible with Power7, use GCC built-in functions for 16 bit
- * operations */
-
 #ifndef RTE_FORCE_INTRINSICS
 static inline int
 rte_atomic16_cmpset(volatile uint16_t *dst, uint16_t exp, uint16_t src)
@@ -92,30 +91,8 @@ rte_atomic16_exchange(volatile uint16_t *dst, uint16_t val)
 static inline int
 rte_atomic32_cmpset(volatile uint32_t *dst, uint32_t exp, uint32_t src)
 {
-	unsigned int ret = 0;
-
-	asm volatile(
-			"\tlwsync\n"
-			"1:\tlwarx %[ret], 0, %[dst]\n"
-			"cmplw %[exp], %[ret]\n"
-			"bne 2f\n"
-			"stwcx. %[src], 0, %[dst]\n"
-			"bne- 1b\n"
-			"li %[ret], 1\n"
-			"b 3f\n"
-			"2:\n"
-			"stwcx. %[ret], 0, %[dst]\n"
-			"li %[ret], 0\n"
-			"3:\n"
-			"isync\n"
-			: [ret] "=&r" (ret), "=m" (*dst)
-			: [dst] "r" (dst),
-			  [exp] "r" (exp),
-			  [src] "r" (src),
-			  "m" (*dst)
-			: "cc", "memory");
-
-	return ret;
+	return __atomic_compare_exchange(dst, &exp, &src, 0, __ATOMIC_ACQUIRE,
+		__ATOMIC_ACQUIRE) ? 1 : 0;
 }
 
 static inline int rte_atomic32_test_and_set(rte_atomic32_t *v)
@@ -126,67 +103,23 @@ static inline int rte_atomic32_test_and_set(rte_atomic32_t *v)
 static inline void
 rte_atomic32_inc(rte_atomic32_t *v)
 {
-	int t;
-
-	asm volatile(
-			"1: lwarx %[t],0,%[cnt]\n"
-			"addic %[t],%[t],1\n"
-			"stwcx. %[t],0,%[cnt]\n"
-			"bne- 1b\n"
-			: [t] "=&r" (t), "=m" (v->cnt)
-			: [cnt] "r" (&v->cnt), "m" (v->cnt)
-			: "cc", "xer", "memory");
+	__atomic_add_fetch(&v->cnt, 1, __ATOMIC_ACQUIRE);
 }
 
 static inline void
 rte_atomic32_dec(rte_atomic32_t *v)
 {
-	int t;
-
-	asm volatile(
-			"1: lwarx %[t],0,%[cnt]\n"
-			"addic %[t],%[t],-1\n"
-			"stwcx. %[t],0,%[cnt]\n"
-			"bne- 1b\n"
-			: [t] "=&r" (t), "=m" (v->cnt)
-			: [cnt] "r" (&v->cnt), "m" (v->cnt)
-			: "cc", "xer", "memory");
+	__atomic_sub_fetch(&v->cnt, 1, __ATOMIC_ACQUIRE);
 }
 
 static inline int rte_atomic32_inc_and_test(rte_atomic32_t *v)
 {
-	int ret;
-
-	asm volatile(
-			"\n\tlwsync\n"
-			"1: lwarx %[ret],0,%[cnt]\n"
-			"addic	%[ret],%[ret],1\n"
-			"stwcx. %[ret],0,%[cnt]\n"
-			"bne- 1b\n"
-			"isync\n"
-			: [ret] "=&r" (ret)
-			: [cnt] "r" (&v->cnt)
-			: "cc", "xer", "memory");
-
-	return ret == 0;
+	return __atomic_add_fetch(&v->cnt, 1, __ATOMIC_ACQUIRE) == 0;
 }
 
 static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 {
-	int ret;
-
-	asm volatile(
-			"\n\tlwsync\n"
-			"1: lwarx %[ret],0,%[cnt]\n"
-			"addic %[ret],%[ret],-1\n"
-			"stwcx. %[ret],0,%[cnt]\n"
-			"bne- 1b\n"
-			"isync\n"
-			: [ret] "=&r" (ret)
-			: [cnt] "r" (&v->cnt)
-			: "cc", "xer", "memory");
-
-	return ret == 0;
+	return __atomic_sub_fetch(&v->cnt, 1, __ATOMIC_ACQUIRE) == 0;
 }
 
 static inline uint32_t
@@ -200,29 +133,8 @@ rte_atomic32_exchange(volatile uint32_t *dst, uint32_t val)
 static inline int
 rte_atomic64_cmpset(volatile uint64_t *dst, uint64_t exp, uint64_t src)
 {
-	unsigned int ret = 0;
-
-	asm volatile (
-			"\tlwsync\n"
-			"1: ldarx %[ret], 0, %[dst]\n"
-			"cmpld %[exp], %[ret]\n"
-			"bne 2f\n"
-			"stdcx. %[src], 0, %[dst]\n"
-			"bne- 1b\n"
-			"li %[ret], 1\n"
-			"b 3f\n"
-			"2:\n"
-			"stdcx. %[ret], 0, %[dst]\n"
-			"li %[ret], 0\n"
-			"3:\n"
-			"isync\n"
-			: [ret] "=&r" (ret), "=m" (*dst)
-			: [dst] "r" (dst),
-			  [exp] "r" (exp),
-			  [src] "r" (src),
-			  "m" (*dst)
-			: "cc", "memory");
-	return ret;
+	return __atomic_compare_exchange(dst, &exp, &src, 0, __ATOMIC_ACQUIRE,
+		__ATOMIC_ACQUIRE) ? 1 : 0;
 }
 
 static inline void
@@ -234,167 +146,66 @@ rte_atomic64_init(rte_atomic64_t *v)
 static inline int64_t
 rte_atomic64_read(rte_atomic64_t *v)
 {
-	long ret;
-
-	asm volatile("ld%U1%X1 %[ret],%[cnt]"
-		: [ret] "=r"(ret)
-		: [cnt] "m"(v->cnt));
-
-	return ret;
+	return v->cnt;
 }
 
 static inline void
 rte_atomic64_set(rte_atomic64_t *v, int64_t new_value)
 {
-	asm volatile("std%U0%X0 %[new_value],%[cnt]"
-		: [cnt] "=m"(v->cnt)
-		: [new_value] "r"(new_value));
+	v->cnt = new_value;
 }
 
 static inline void
 rte_atomic64_add(rte_atomic64_t *v, int64_t inc)
 {
-	long t;
-
-	asm volatile(
-			"1: ldarx %[t],0,%[cnt]\n"
-			"add %[t],%[inc],%[t]\n"
-			"stdcx. %[t],0,%[cnt]\n"
-			"bne- 1b\n"
-			: [t] "=&r" (t), "=m" (v->cnt)
-			: [cnt] "r" (&v->cnt), [inc] "r" (inc), "m" (v->cnt)
-			: "cc", "memory");
+	__atomic_add_fetch(&v->cnt, inc, __ATOMIC_ACQUIRE);
 }
 
 static inline void
 rte_atomic64_sub(rte_atomic64_t *v, int64_t dec)
 {
-	long t;
-
-	asm volatile(
-			"1: ldarx %[t],0,%[cnt]\n"
-			"subf %[t],%[dec],%[t]\n"
-			"stdcx. %[t],0,%[cnt]\n"
-			"bne- 1b\n"
-			: [t] "=&r" (t), "+m" (v->cnt)
-			: [cnt] "r" (&v->cnt), [dec] "r" (dec), "m" (v->cnt)
-			: "cc", "memory");
+	__atomic_sub_fetch(&v->cnt, dec, __ATOMIC_ACQUIRE);
 }
 
 static inline void
 rte_atomic64_inc(rte_atomic64_t *v)
 {
-	long t;
-
-	asm volatile(
-			"1: ldarx %[t],0,%[cnt]\n"
-			"addic %[t],%[t],1\n"
-			"stdcx. %[t],0,%[cnt]\n"
-			"bne- 1b\n"
-			: [t] "=&r" (t), "+m" (v->cnt)
-			: [cnt] "r" (&v->cnt), "m" (v->cnt)
-			: "cc", "xer", "memory");
+	__atomic_add_fetch(&v->cnt, 1, __ATOMIC_ACQUIRE);
 }
 
 static inline void
 rte_atomic64_dec(rte_atomic64_t *v)
 {
-	long t;
-
-	asm volatile(
-			"1: ldarx %[t],0,%[cnt]\n"
-			"addic %[t],%[t],-1\n"
-			"stdcx. %[t],0,%[cnt]\n"
-			"bne- 1b\n"
-			: [t] "=&r" (t), "+m" (v->cnt)
-			: [cnt] "r" (&v->cnt), "m" (v->cnt)
-			: "cc", "xer", "memory");
+	__atomic_sub_fetch(&v->cnt, 1, __ATOMIC_ACQUIRE);
 }
 
 static inline int64_t
 rte_atomic64_add_return(rte_atomic64_t *v, int64_t inc)
 {
-	long ret;
-
-	asm volatile(
-			"\n\tlwsync\n"
-			"1: ldarx %[ret],0,%[cnt]\n"
-			"add %[ret],%[inc],%[ret]\n"
-			"stdcx. %[ret],0,%[cnt]\n"
-			"bne- 1b\n"
-			"isync\n"
-			: [ret] "=&r" (ret)
-			: [inc] "r" (inc), [cnt] "r" (&v->cnt)
-			: "cc", "memory");
-
-	return ret;
+	return __atomic_add_fetch(&v->cnt, inc, __ATOMIC_ACQUIRE);
 }
 
 static inline int64_t
 rte_atomic64_sub_return(rte_atomic64_t *v, int64_t dec)
 {
-	long ret;
-
-	asm volatile(
-			"\n\tlwsync\n"
-			"1: ldarx %[ret],0,%[cnt]\n"
-			"subf %[ret],%[dec],%[ret]\n"
-			"stdcx. %[ret],0,%[cnt]\n"
-			"bne- 1b\n"
-			"isync\n"
-			: [ret] "=&r" (ret)
-			: [dec] "r" (dec), [cnt] "r" (&v->cnt)
-			: "cc", "memory");
-
-	return ret;
+	return __atomic_sub_fetch(&v->cnt, dec, __ATOMIC_ACQUIRE);
 }
 
 static inline int rte_atomic64_inc_and_test(rte_atomic64_t *v)
 {
-	long ret;
-
-	asm volatile(
-			"\n\tlwsync\n"
-			"1: ldarx %[ret],0,%[cnt]\n"
-			"addic %[ret],%[ret],1\n"
-			"stdcx. %[ret],0,%[cnt]\n"
-			"bne- 1b\n"
-			"isync\n"
-			: [ret] "=&r" (ret)
-			: [cnt] "r" (&v->cnt)
-			: "cc", "xer", "memory");
-
-	return ret == 0;
+	return __atomic_add_fetch(&v->cnt, 1, __ATOMIC_ACQUIRE) == 0;
 }
 
 static inline int rte_atomic64_dec_and_test(rte_atomic64_t *v)
 {
-	long ret;
-
-	asm volatile(
-			"\n\tlwsync\n"
-			"1: ldarx %[ret],0,%[cnt]\n"
-			"addic %[ret],%[ret],-1\n"
-			"stdcx. %[ret],0,%[cnt]\n"
-			"bne- 1b\n"
-			"isync\n"
-			: [ret] "=&r" (ret)
-			: [cnt] "r" (&v->cnt)
-			: "cc", "xer", "memory");
-
-	return ret == 0;
+	return __atomic_sub_fetch(&v->cnt, 1, __ATOMIC_ACQUIRE) == 0;
 }
 
 static inline int rte_atomic64_test_and_set(rte_atomic64_t *v)
 {
 	return rte_atomic64_cmpset((volatile uint64_t *)&v->cnt, 0, 1);
 }
-/**
- * Atomically set a 64-bit counter to 0.
- *
- * @param v
- *   A pointer to the atomic counter.
- */
+
 static inline void rte_atomic64_clear(rte_atomic64_t *v)
 {
 	v->cnt = 0;
