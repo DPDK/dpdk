@@ -42,7 +42,7 @@
 /* busy wait delay in msec */
 #define I40EVF_BUSY_WAIT_DELAY 10
 #define I40EVF_BUSY_WAIT_COUNT 50
-#define MAX_RESET_WAIT_CNT     20
+#define MAX_RESET_WAIT_CNT     100
 
 #define I40EVF_ALARM_INTERVAL 50000 /* us */
 
