@@ -199,6 +199,7 @@ memif_dev_info(struct rte_eth_dev *dev __rte_unused, struct rte_eth_dev_info *de
 	dev_info->max_rx_queues = ETH_MEMIF_MAX_NUM_Q_PAIRS;
 	dev_info->max_tx_queues = ETH_MEMIF_MAX_NUM_Q_PAIRS;
 	dev_info->min_rx_bufsize = 0;
+	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS;
 
 	return 0;
 }
@@ -567,7 +568,7 @@ eth_memif_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		rte_eth_devices[mq->in_port].process_private;
 	memif_ring_t *ring = memif_get_ring_from_queue(proc_private, mq);
 	uint16_t slot, saved_slot, n_free, ring_size, mask, n_tx_pkts = 0;
-	uint16_t src_len, src_off, dst_len, dst_off, cp_len;
+	uint16_t src_len, src_off, dst_len, dst_off, cp_len, nb_segs;
 	memif_ring_type_t type = mq->type;
 	memif_desc_t *d0;
 	struct rte_mbuf *mbuf;
@@ -615,6 +616,7 @@ eth_memif_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	while (n_tx_pkts < nb_pkts && n_free) {
 		mbuf_head = *bufs++;
+		nb_segs = mbuf_head->nb_segs;
 		mbuf = mbuf_head;
 
 		saved_slot = slot;
@@ -659,7 +661,7 @@ next_in_chain:
 			d0->length = dst_off;
 		}
 
-		if (rte_pktmbuf_is_contiguous(mbuf) == 0) {
+		if (--nb_segs > 0) {
 			mbuf = mbuf->next;
 			goto next_in_chain;
 		}
@@ -696,6 +698,7 @@ memif_tx_one_zc(struct pmd_process_private *proc_private, struct memif_queue *mq
 		uint16_t slot, uint16_t n_free)
 {
 	memif_desc_t *d0;
+	uint16_t nb_segs = mbuf->nb_segs;
 	int used_slots = 1;
 
 next_in_chain:
@@ -716,7 +719,7 @@ next_in_chain:
 	d0->flags = 0;
 
 	/* check if buffer is chained */
-	if (rte_pktmbuf_is_contiguous(mbuf) == 0) {
+	if (--nb_segs > 0) {
 		if (n_free < 2)
 			return 0;
 		/* mark buffer as chained */
