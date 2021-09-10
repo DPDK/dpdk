@@ -509,7 +509,7 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 	if (!qv_map) {
 		PMD_DRV_LOG(ERR, "Failed to allocate %d queue-vector map",
 				dev->data->nb_rx_queues);
-		return -1;
+		goto qv_map_alloc_err;
 	}
 
 	if (!dev->data->dev_conf.intr_conf.rxq ||
@@ -594,7 +594,7 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 	if (!vf->lv_enabled) {
 		if (iavf_config_irq_map(adapter)) {
 			PMD_DRV_LOG(ERR, "config interrupt mapping failed");
-			return -1;
+			goto config_irq_map_err;
 		}
 	} else {
 		uint16_t num_qv_maps = dev->data->nb_rx_queues;
@@ -604,7 +604,7 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 			if (iavf_config_irq_map_lv(adapter,
 					IAVF_IRQ_MAP_NUM_PER_BUF, index)) {
 				PMD_DRV_LOG(ERR, "config interrupt mapping for large VF failed");
-				return -1;
+				goto config_irq_map_err;
 			}
 			num_qv_maps -= IAVF_IRQ_MAP_NUM_PER_BUF;
 			index += IAVF_IRQ_MAP_NUM_PER_BUF;
@@ -612,10 +612,20 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 
 		if (iavf_config_irq_map_lv(adapter, num_qv_maps, index)) {
 			PMD_DRV_LOG(ERR, "config interrupt mapping for large VF failed");
-			return -1;
+			goto config_irq_map_err;
 		}
 	}
 	return 0;
+
+config_irq_map_err:
+	rte_free(vf->qv_map);
+	vf->qv_map = NULL;
+
+qv_map_alloc_err:
+	rte_free(intr_handle->intr_vec);
+	intr_handle->intr_vec = NULL;
+
+	return -1;
 }
 
 static int
