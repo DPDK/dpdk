@@ -146,6 +146,12 @@ DPDK_22 {
 	rte_memzone_reserve_aligned;
 	rte_memzone_reserve_bounded;
 	rte_memzone_walk;
+	rte_mp_action_register;
+	rte_mp_action_unregister;
+	rte_mp_reply;
+	rte_mp_request_async;
+	rte_mp_request_sync;
+	rte_mp_sendmsg;
 	rte_openlog_stream;
 	rte_rand;
 	rte_realloc;
@@ -224,12 +230,6 @@ DPDK_22 {
 EXPERIMENTAL {
 	global:
 
-	# added in 18.02
-	rte_mp_action_register;
-	rte_mp_action_unregister;
-	rte_mp_reply;
-	rte_mp_sendmsg;
-
 	# added in 18.05
 	rte_dev_event_callback_register;
 	rte_dev_event_callback_unregister;
@@ -264,8 +264,6 @@ EXPERIMENTAL {
 	rte_memseg_contig_walk;
 	rte_memseg_list_walk;
 	rte_memseg_walk;
-	rte_mp_request_async;
-	rte_mp_request_sync;
 
 	# added in 18.08
 	rte_class_find;

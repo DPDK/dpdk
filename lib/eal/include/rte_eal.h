@@ -209,9 +209,6 @@ typedef int (*rte_mp_async_reply_t)(const struct rte_mp_msg *request,
 		const struct rte_mp_reply *reply);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Register an action function for primary/secondary communication.
  *
  * Call this function to register an action, if the calling component wants
@@ -231,14 +228,10 @@ typedef int (*rte_mp_async_reply_t)(const struct rte_mp_msg *request,
  *  - 0 on success.
  *  - (<0) on failure.
  */
-__rte_experimental
 int
 rte_mp_action_register(const char *name, rte_mp_t action);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Unregister an action function for primary/secondary communication.
  *
  * Call this function to unregister an action  if the calling component does
@@ -252,14 +245,10 @@ rte_mp_action_register(const char *name, rte_mp_t action);
  *   The name argument plays as the nonredundant key to find the action.
  *
  */
-__rte_experimental
 void
 rte_mp_action_unregister(const char *name);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Send a message to the peer process.
  *
  * This function will send a message which will be responded by the action
@@ -272,14 +261,10 @@ rte_mp_action_unregister(const char *name);
  *  - On success, return 0.
  *  - On failure, return -1, and the reason will be stored in rte_errno.
  */
-__rte_experimental
 int
 rte_mp_sendmsg(struct rte_mp_msg *msg);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Send a request to the peer process and expect a reply.
  *
  * This function sends a request message to the peer process, and will
@@ -307,15 +292,11 @@ rte_mp_sendmsg(struct rte_mp_msg *msg);
  *  - On success, return 0.
  *  - On failure, return -1, and the reason will be stored in rte_errno.
  */
-__rte_experimental
 int
 rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	       const struct timespec *ts);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Send a request to the peer process and expect a reply in a separate callback.
  *
  * This function sends a request message to the peer process, and will not
@@ -337,15 +318,11 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
  *  - On success, return 0.
  *  - On failure, return -1, and the reason will be stored in rte_errno.
  */
-__rte_experimental
 int
 rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 		rte_mp_async_reply_t clb);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Send a reply to the peer process.
  *
  * This function will send a reply message in response to a request message
@@ -366,7 +343,6 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
  *  - On success, return 0.
  *  - On failure, return -1, and the reason will be stored in rte_errno.
  */
-__rte_experimental
 int
 rte_mp_reply(struct rte_mp_msg *msg, const char *peer);
 
