@@ -160,6 +160,7 @@ DPDK_22 {
 	rte_malloc_socket;
 	rte_malloc_validate;
 	rte_malloc_virt2iova;
+	rte_mcfg_get_single_file_segments;
 	rte_mcfg_mem_read_lock;
 	rte_mcfg_mem_read_unlock;
 	rte_mcfg_mem_write_lock;
@@ -172,6 +173,8 @@ DPDK_22 {
 	rte_mcfg_tailq_read_unlock;
 	rte_mcfg_tailq_write_lock;
 	rte_mcfg_tailq_write_unlock;
+	rte_mcfg_timer_lock;
+	rte_mcfg_timer_unlock;
 	rte_mem_alloc_validator_register;
 	rte_mem_alloc_validator_unregister;
 	rte_mem_check_dma_mask;
@@ -320,12 +323,7 @@ EXPERIMENTAL {
 	rte_intr_ack;
 	rte_lcore_cpuset;
 	rte_lcore_to_cpu_id;
-	rte_mcfg_timer_lock;
-	rte_mcfg_timer_unlock;
 	rte_rand_max; # WINDOWS_NO_EXPORT
-
-	# added in 19.11
-	rte_mcfg_get_single_file_segments;
 
 	# added in 20.02
 	rte_thread_is_intr;
