@@ -141,8 +141,17 @@ DPDK_22 {
 	rte_log_set_level_pattern;
 	rte_log_set_level_regexp;
 	rte_malloc;
+	rte_malloc_dump_heaps;
 	rte_malloc_dump_stats;
 	rte_malloc_get_socket_stats;
+	rte_malloc_heap_create;
+	rte_malloc_heap_destroy;
+	rte_malloc_heap_get_socket;
+	rte_malloc_heap_memory_add;
+	rte_malloc_heap_memory_attach;
+	rte_malloc_heap_memory_detach;
+	rte_malloc_heap_memory_remove;
+	rte_malloc_heap_socket_is_external;
 	rte_malloc_set_limit;
 	rte_malloc_socket;
 	rte_malloc_validate;
@@ -181,6 +190,7 @@ DPDK_22 {
 	rte_openlog_stream;
 	rte_rand;
 	rte_realloc;
+	rte_realloc_socket;
 	rte_reciprocal_value;
 	rte_reciprocal_value_u64;
 	rte_rtm_supported;
@@ -262,7 +272,6 @@ EXPERIMENTAL {
 	rte_dev_event_monitor_start; # WINDOWS_NO_EXPORT
 	rte_dev_event_monitor_stop; # WINDOWS_NO_EXPORT
 	rte_log_register_type_and_pick_level;
-	rte_malloc_dump_heaps;
 	rte_mem_alloc_validator_register;
 	rte_mem_alloc_validator_unregister;
 	rte_mem_check_dma_mask;
@@ -291,14 +300,6 @@ EXPERIMENTAL {
 	rte_dev_event_callback_process;
 	rte_dev_hotplug_handle_disable; # WINDOWS_NO_EXPORT
 	rte_dev_hotplug_handle_enable; # WINDOWS_NO_EXPORT
-	rte_malloc_heap_create;
-	rte_malloc_heap_destroy;
-	rte_malloc_heap_get_socket;
-	rte_malloc_heap_memory_add;
-	rte_malloc_heap_memory_attach;
-	rte_malloc_heap_memory_detach;
-	rte_malloc_heap_memory_remove;
-	rte_malloc_heap_socket_is_external;
 	rte_mem_check_dma_mask_thread_unsafe;
 	rte_mem_set_dma_mask;
 	rte_memseg_get_fd;
@@ -316,7 +317,6 @@ EXPERIMENTAL {
 	rte_dev_dma_map;
 	rte_dev_dma_unmap;
 	rte_intr_callback_unregister_pending;
-	rte_realloc_socket;
 
 	# added in 19.08
 	rte_intr_ack;
