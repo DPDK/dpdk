@@ -168,12 +168,29 @@ DPDK_22 {
 	rte_mcfg_tailq_read_unlock;
 	rte_mcfg_tailq_write_lock;
 	rte_mcfg_tailq_write_unlock;
+	rte_mem_alloc_validator_register;
+	rte_mem_alloc_validator_unregister;
+	rte_mem_event_callback_register;
+	rte_mem_event_callback_unregister;
+	rte_mem_iova2virt;
 	rte_mem_lock_page;
 	rte_mem_virt2iova;
+	rte_mem_virt2memseg;
+	rte_mem_virt2memseg_list;
 	rte_mem_virt2phy;
 	rte_memdump;
 	rte_memory_get_nchannel;
 	rte_memory_get_nrank;
+	rte_memseg_contig_walk;
+	rte_memseg_contig_walk_thread_unsafe;
+	rte_memseg_get_fd;
+	rte_memseg_get_fd_offset;
+	rte_memseg_get_fd_offset_thread_unsafe;
+	rte_memseg_get_fd_thread_unsafe;
+	rte_memseg_list_walk;
+	rte_memseg_list_walk_thread_unsafe;
+	rte_memseg_walk;
+	rte_memseg_walk_thread_unsafe;
 	rte_memzone_dump;
 	rte_memzone_free;
 	rte_memzone_lookup;
@@ -272,17 +289,7 @@ EXPERIMENTAL {
 	rte_dev_event_monitor_start; # WINDOWS_NO_EXPORT
 	rte_dev_event_monitor_stop; # WINDOWS_NO_EXPORT
 	rte_log_register_type_and_pick_level;
-	rte_mem_alloc_validator_register;
-	rte_mem_alloc_validator_unregister;
 	rte_mem_check_dma_mask;
-	rte_mem_event_callback_register;
-	rte_mem_event_callback_unregister;
-	rte_mem_iova2virt;
-	rte_mem_virt2memseg;
-	rte_mem_virt2memseg_list;
-	rte_memseg_contig_walk;
-	rte_memseg_list_walk;
-	rte_memseg_walk;
 
 	# added in 18.08
 	rte_class_find;
@@ -291,9 +298,6 @@ EXPERIMENTAL {
 	rte_class_unregister;
 	rte_dev_iterator_init;
 	rte_dev_iterator_next;
-	rte_memseg_contig_walk_thread_unsafe;
-	rte_memseg_list_walk_thread_unsafe;
-	rte_memseg_walk_thread_unsafe;
 
 	# added in 18.11
 	rte_delay_us_sleep;
@@ -302,10 +306,6 @@ EXPERIMENTAL {
 	rte_dev_hotplug_handle_enable; # WINDOWS_NO_EXPORT
 	rte_mem_check_dma_mask_thread_unsafe;
 	rte_mem_set_dma_mask;
-	rte_memseg_get_fd;
-	rte_memseg_get_fd_offset;
-	rte_memseg_get_fd_offset_thread_unsafe;
-	rte_memseg_get_fd_thread_unsafe;
 
 	# added in 19.02
 	rte_extmem_attach;
