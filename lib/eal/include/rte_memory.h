@@ -553,22 +553,15 @@ unsigned rte_memory_get_nchannel(void);
 unsigned rte_memory_get_nrank(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Check if all currently allocated memory segments are compliant with
  * supplied DMA address width.
  *
  *  @param maskbits
  *    Address width to check against.
  */
-__rte_experimental
 int rte_mem_check_dma_mask(uint8_t maskbits);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Check if all currently allocated memory segments are compliant with
  * supplied DMA address width. This function will use
  * rte_memseg_walk_thread_unsafe instead of rte_memseg_walk implying
@@ -581,18 +574,13 @@ int rte_mem_check_dma_mask(uint8_t maskbits);
  *  @param maskbits
  *    Address width to check against.
  */
-__rte_experimental
 int rte_mem_check_dma_mask_thread_unsafe(uint8_t maskbits);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  *  Set dma mask to use once memory initialization is done. Previous functions
  *  rte_mem_check_dma_mask and rte_mem_check_dma_mask_thread_unsafe can not be
  *  used safely until memory has been initialized.
  */
-__rte_experimental
 void rte_mem_set_dma_mask(uint8_t maskbits);
 
 /**
