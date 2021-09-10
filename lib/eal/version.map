@@ -70,6 +70,32 @@ DPDK_22 {
 	rte_epoll_ctl;
 	rte_epoll_wait;
 	rte_exit;
+	rte_fbarray_attach;
+	rte_fbarray_destroy;
+	rte_fbarray_detach;
+	rte_fbarray_dump_metadata;
+	rte_fbarray_find_biggest_free;
+	rte_fbarray_find_biggest_used;
+	rte_fbarray_find_contig_free;
+	rte_fbarray_find_contig_used;
+	rte_fbarray_find_idx;
+	rte_fbarray_find_next_free;
+	rte_fbarray_find_next_n_free;
+	rte_fbarray_find_next_n_used;
+	rte_fbarray_find_next_used;
+	rte_fbarray_find_prev_free;
+	rte_fbarray_find_prev_n_free;
+	rte_fbarray_find_prev_n_used;
+	rte_fbarray_find_prev_used;
+	rte_fbarray_find_rev_biggest_free;
+	rte_fbarray_find_rev_biggest_used;
+	rte_fbarray_find_rev_contig_free;
+	rte_fbarray_find_rev_contig_used;
+	rte_fbarray_get;
+	rte_fbarray_init;
+	rte_fbarray_is_used;
+	rte_fbarray_set_free;
+	rte_fbarray_set_used;
 	rte_free;
 	rte_get_hpet_cycles; # WINDOWS_NO_EXPORT
 	rte_get_hpet_hz; # WINDOWS_NO_EXPORT
@@ -235,22 +261,6 @@ EXPERIMENTAL {
 	rte_dev_event_callback_unregister;
 	rte_dev_event_monitor_start; # WINDOWS_NO_EXPORT
 	rte_dev_event_monitor_stop; # WINDOWS_NO_EXPORT
-	rte_fbarray_attach;
-	rte_fbarray_destroy;
-	rte_fbarray_detach;
-	rte_fbarray_dump_metadata;
-	rte_fbarray_find_contig_free;
-	rte_fbarray_find_contig_used;
-	rte_fbarray_find_idx;
-	rte_fbarray_find_next_free;
-	rte_fbarray_find_next_n_free;
-	rte_fbarray_find_next_n_used;
-	rte_fbarray_find_next_used;
-	rte_fbarray_get;
-	rte_fbarray_init;
-	rte_fbarray_is_used;
-	rte_fbarray_set_free;
-	rte_fbarray_set_used;
 	rte_log_register_type_and_pick_level;
 	rte_malloc_dump_heaps;
 	rte_mem_alloc_validator_register;
@@ -272,12 +282,6 @@ EXPERIMENTAL {
 	rte_class_unregister;
 	rte_dev_iterator_init;
 	rte_dev_iterator_next;
-	rte_fbarray_find_prev_free;
-	rte_fbarray_find_prev_n_free;
-	rte_fbarray_find_prev_n_used;
-	rte_fbarray_find_prev_used;
-	rte_fbarray_find_rev_contig_free;
-	rte_fbarray_find_rev_contig_used;
 	rte_memseg_contig_walk_thread_unsafe;
 	rte_memseg_list_walk_thread_unsafe;
 	rte_memseg_walk_thread_unsafe;
@@ -311,10 +315,6 @@ EXPERIMENTAL {
 	# added in 19.05
 	rte_dev_dma_map;
 	rte_dev_dma_unmap;
-	rte_fbarray_find_biggest_free;
-	rte_fbarray_find_biggest_used;
-	rte_fbarray_find_rev_biggest_free;
-	rte_fbarray_find_rev_biggest_used;
 	rte_intr_callback_unregister_pending;
 	rte_realloc_socket;
 
