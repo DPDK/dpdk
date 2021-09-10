@@ -417,7 +417,7 @@ enum iavf_status iavf_init_arq(struct iavf_hw *hw)
 	/* initialize base registers */
 	ret_code = iavf_config_arq_regs(hw);
 	if (ret_code != IAVF_SUCCESS)
-		goto init_adminq_free_rings;
+		goto init_config_regs;
 
 	/* success! */
 	hw->aq.arq.count = hw->aq.num_arq_entries;
@@ -425,6 +425,10 @@ enum iavf_status iavf_init_arq(struct iavf_hw *hw)
 
 init_adminq_free_rings:
 	iavf_free_adminq_arq(hw);
+	return ret_code;
+
+init_config_regs:
+	iavf_free_arq_bufs(hw);
 
 init_adminq_exit:
 	return ret_code;
