@@ -70,6 +70,10 @@ DPDK_22 {
 	rte_epoll_ctl;
 	rte_epoll_wait;
 	rte_exit;
+	rte_extmem_attach;
+	rte_extmem_detach;
+	rte_extmem_register;
+	rte_extmem_unregister;
 	rte_fbarray_attach;
 	rte_fbarray_destroy;
 	rte_fbarray_detach;
@@ -306,12 +310,6 @@ EXPERIMENTAL {
 	rte_dev_hotplug_handle_enable; # WINDOWS_NO_EXPORT
 	rte_mem_check_dma_mask_thread_unsafe;
 	rte_mem_set_dma_mask;
-
-	# added in 19.02
-	rte_extmem_attach;
-	rte_extmem_detach;
-	rte_extmem_register;
-	rte_extmem_unregister;
 
 	# added in 19.05
 	rte_dev_dma_map;

@@ -403,9 +403,6 @@ rte_memseg_get_fd_offset_thread_unsafe(const struct rte_memseg *ms,
 		size_t *offset);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Register external memory chunk with DPDK.
  *
  * @note Using this API is mutually exclusive with ``rte_malloc`` family of
@@ -439,15 +436,11 @@ rte_memseg_get_fd_offset_thread_unsafe(const struct rte_memseg *ms,
  *     EEXIST - memory chunk is already registered
  *     ENOSPC - no more space in internal config to store a new memory chunk
  */
-__rte_experimental
 int
 rte_extmem_register(void *va_addr, size_t len, rte_iova_t iova_addrs[],
 		unsigned int n_pages, size_t page_sz);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Unregister external memory chunk with DPDK.
  *
  * @note Using this API is mutually exclusive with ``rte_malloc`` family of
@@ -470,14 +463,10 @@ rte_extmem_register(void *va_addr, size_t len, rte_iova_t iova_addrs[],
  *     EINVAL - one of the parameters was invalid
  *     ENOENT - memory chunk was not found
  */
-__rte_experimental
 int
 rte_extmem_unregister(void *va_addr, size_t len);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Attach to external memory chunk registered in another process.
  *
  * @note Using this API is mutually exclusive with ``rte_malloc`` family of
@@ -497,14 +486,10 @@ rte_extmem_unregister(void *va_addr, size_t len);
  *     EINVAL - one of the parameters was invalid
  *     ENOENT - memory chunk was not found
  */
-__rte_experimental
 int
 rte_extmem_attach(void *va_addr, size_t len);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Detach from external memory chunk registered in another process.
  *
  * @note Using this API is mutually exclusive with ``rte_malloc`` family of
@@ -524,7 +509,6 @@ rte_extmem_attach(void *va_addr, size_t len);
  *     EINVAL - one of the parameters was invalid
  *     ENOENT - memory chunk was not found
  */
-__rte_experimental
 int
 rte_extmem_detach(void *va_addr, size_t len);
 
