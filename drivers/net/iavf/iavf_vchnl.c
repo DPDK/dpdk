@@ -182,7 +182,7 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 						   args->out_buffer);
 			if (result == IAVF_MSG_CMD)
 				break;
-			rte_delay_ms(ASQ_DELAY_MS);
+			iavf_msec_delay(ASQ_DELAY_MS);
 		} while (i++ < MAX_TRY_TIMES);
 		if (i >= MAX_TRY_TIMES ||
 		    vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
@@ -208,7 +208,7 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 				err = -1;
 				break;
 			}
-			rte_delay_ms(ASQ_DELAY_MS);
+			iavf_msec_delay(ASQ_DELAY_MS);
 			/* If don't read msg or read sys event, continue */
 		} while (i++ < MAX_TRY_TIMES);
 		if (i >= MAX_TRY_TIMES ||
@@ -226,7 +226,7 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 		do {
 			if (vf->pend_cmd == VIRTCHNL_OP_UNKNOWN)
 				break;
-			rte_delay_ms(ASQ_DELAY_MS);
+			iavf_msec_delay(ASQ_DELAY_MS);
 			/* If don't read msg or read sys event, continue */
 		} while (i++ < MAX_TRY_TIMES);
 
