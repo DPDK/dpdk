@@ -1254,6 +1254,8 @@ error:
 	MLX5_ASSERT(sh);
 	if (sh->cnt_id_tbl)
 		mlx5_l3t_destroy(sh->cnt_id_tbl);
+	if (sh->share_cache.cache.table)
+		mlx5_mr_btree_free(&sh->share_cache.cache);
 	if (sh->tis)
 		claim_zero(mlx5_devx_cmd_destroy(sh->tis));
 	if (sh->td)
