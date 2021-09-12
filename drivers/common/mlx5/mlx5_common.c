@@ -317,14 +317,16 @@ mlx5_common_dev_probe(struct rte_device *eal_dev)
 		dev->dev = eal_dev;
 		TAILQ_INSERT_HEAD(&devices_list, dev, next);
 		new_device = true;
-	} else {
-		/* Validate combination here. */
-		ret = is_valid_class_combination(classes |
-						 dev->classes_loaded);
-		if (ret != 0) {
-			DRV_LOG(ERR, "Unsupported mlx5 classes combination.");
-			return ret;
-		}
+	}
+	/*
+	 * Validate combination here.
+	 * For new device, the classes_loaded field is 0 and it check only
+	 * the classes given as user device arguments.
+	 */
+	ret = is_valid_class_combination(classes | dev->classes_loaded);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Unsupported mlx5 classes combination.");
+		goto class_err;
 	}
 	ret = drivers_probe(dev, classes);
 	if (ret)
