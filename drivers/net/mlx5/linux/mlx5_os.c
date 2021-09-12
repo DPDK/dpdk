@@ -2697,9 +2697,20 @@ mlx5_os_pci_probe(struct rte_pci_device *pci_dev)
 
 	if (eth_da.nb_ports > 0) {
 		/* Iterate all port if devargs pf is range: "pf[0-1]vf[...]". */
-		for (p = 0; p < eth_da.nb_ports; p++)
+		for (p = 0; p < eth_da.nb_ports; p++) {
 			ret = mlx5_os_pci_probe_pf(pci_dev, &eth_da,
 						   eth_da.ports[p]);
+			if (ret)
+				break;
+		}
+		if (ret) {
+			DRV_LOG(ERR, "Probe of PCI device " PCI_PRI_FMT " "
+				"aborted due to proding failure of PF %u",
+				pci_dev->addr.domain, pci_dev->addr.bus,
+				pci_dev->addr.devid, pci_dev->addr.function,
+				eth_da.ports[p]);
+			mlx5_net_remove(&pci_dev->device);
+		}
 	} else {
 		ret = mlx5_os_pci_probe_pf(pci_dev, &eth_da, 0);
 	}

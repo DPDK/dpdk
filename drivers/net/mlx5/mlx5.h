@@ -1483,6 +1483,7 @@ int mlx5_udp_tunnel_port_add(struct rte_eth_dev *dev,
 			      struct rte_eth_udp_tunnel *udp_tunnel);
 uint16_t mlx5_eth_find_next(uint16_t port_id, struct rte_device *odev);
 int mlx5_dev_close(struct rte_eth_dev *dev);
+int mlx5_net_remove(struct rte_device *dev);
 bool mlx5_is_hpf(struct rte_eth_dev *dev);
 bool mlx5_is_sf_repr(struct rte_eth_dev *dev);
 void mlx5_age_event_prepare(struct mlx5_dev_ctx_shared *sh);

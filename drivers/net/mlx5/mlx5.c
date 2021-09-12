@@ -2386,7 +2386,7 @@ mlx5_eth_find_next(uint16_t port_id, struct rte_device *odev)
  * @return
  *   0 on success, the function cannot fail.
  */
-static int
+int
 mlx5_net_remove(struct rte_device *dev)
 {
 	uint16_t port_id;
