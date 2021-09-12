@@ -2139,6 +2139,7 @@ mlx5_os_config_default(struct mlx5_dev_config *config)
 	config->dv_flow_en = 1;
 	config->decap_en = 1;
 	config->log_hp_size = MLX5_ARG_UNSET;
+	config->allow_duplicate_pattern = 1;
 }
 
 /**
@@ -2561,7 +2562,6 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 		/* Default configuration. */
 		mlx5_os_config_default(&dev_config);
 		dev_config.vf = dev_config_vf;
-		dev_config.allow_duplicate_pattern = 1;
 		list[i].numa_node = pci_dev->device.numa_node;
 		list[i].eth_dev = mlx5_dev_spawn(&pci_dev->device,
 						 &list[i],
