@@ -354,7 +354,7 @@ mlx5_common_dev_remove(struct rte_device *eal_dev)
 		return -ENODEV;
 	/* Matching device found, cleanup and unload drivers. */
 	ret = drivers_remove(dev, dev->classes_loaded);
-	if (ret != 0)
+	if (ret == 0)
 		dev_release(dev);
 	return ret;
 }
