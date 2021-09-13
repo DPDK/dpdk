@@ -64,9 +64,9 @@ that are most commonly used in IPv6.
 
 The main data structure is built using the following elements:
 
-*   A table with 224 entries
+*   A table with 2^24 entries
 
-*   A number of tables, configurable by the user through the API, with 28 entries
+*   A number of tables, configurable by the user through the API, with 2^8 entries
 
 The first table, called tbl24, is indexed using the first 24 bits of the IP address be looked up,
 while the rest of the tables, called tbl8s,
