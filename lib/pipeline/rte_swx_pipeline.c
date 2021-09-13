@@ -6590,8 +6590,6 @@ error:
 	return err;
 }
 
-typedef void (*instr_exec_t)(struct rte_swx_pipeline *);
-
 static instr_exec_t instruction_table[] = {
 	[INSTR_RX] = instr_rx_exec,
 	[INSTR_TX] = instr_tx_exec,
@@ -6782,12 +6780,41 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_RETURN] = instr_return_exec,
 };
 
+static int
+instruction_table_build(struct rte_swx_pipeline *p)
+{
+	p->instruction_table = calloc(RTE_SWX_PIPELINE_INSTRUCTION_TABLE_SIZE_MAX,
+				      sizeof(struct instr_exec_t *));
+	if (!p->instruction_table)
+		return -EINVAL;
+
+	memcpy(p->instruction_table, instruction_table, sizeof(instruction_table));
+
+	return 0;
+}
+
+static void
+instruction_table_build_free(struct rte_swx_pipeline *p)
+{
+	if (!p->instruction_table)
+		return;
+
+	free(p->instruction_table);
+	p->instruction_table = NULL;
+}
+
+static void
+instruction_table_free(struct rte_swx_pipeline *p)
+{
+	instruction_table_build_free(p);
+}
+
 static inline void
 instr_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	instr_exec_t instr = instruction_table[ip->type];
+	instr_exec_t instr = p->instruction_table[ip->type];
 
 	instr(p);
 }
@@ -8916,6 +8943,7 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 	selector_free(p);
 	table_free(p);
 	action_free(p);
+	instruction_table_free(p);
 	metadata_free(p);
 	header_free(p);
 	extern_func_free(p);
@@ -8985,6 +9013,10 @@ rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 	if (status)
 		goto error;
 
+	status = instruction_table_build(p);
+	if (status)
+		goto error;
+
 	status = action_build(p);
 	if (status)
 		goto error;
@@ -9024,6 +9056,7 @@ error:
 	selector_build_free(p);
 	table_build_free(p);
 	action_build_free(p);
+	instruction_table_build_free(p);
 	metadata_build_free(p);
 	header_build_free(p);
 	extern_func_build_free(p);

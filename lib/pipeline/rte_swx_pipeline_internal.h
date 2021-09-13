@@ -541,6 +541,9 @@ enum instruction_type {
 	 * Return from action
 	 */
 	INSTR_RETURN,
+
+	/* Start of custom instructions. */
+	INSTR_CUSTOM_0,
 };
 
 struct instr_operand {
@@ -685,6 +688,8 @@ struct instruction_data {
 	uint32_t n_users; /* user = jmp instruction to this instruction. */
 	int invalid;
 };
+
+typedef void (*instr_exec_t)(struct rte_swx_pipeline *);
 
 /*
  * Action.
@@ -1363,6 +1368,10 @@ instr_operand_nbo(struct thread *t, const struct instr_operand *x)
 #define RTE_SWX_PIPELINE_THREADS_MAX 16
 #endif
 
+#ifndef RTE_SWX_PIPELINE_INSTRUCTION_TABLE_SIZE_MAX
+#define RTE_SWX_PIPELINE_INSTRUCTION_TABLE_SIZE_MAX 256
+#endif
+
 struct rte_swx_pipeline {
 	struct struct_type_tailq struct_types;
 	struct port_in_type_tailq port_in_types;
@@ -1396,6 +1405,7 @@ struct rte_swx_pipeline {
 	struct metarray_runtime *metarray_runtime;
 	struct instruction *instructions;
 	struct instruction_data *instruction_data;
+	instr_exec_t *instruction_table;
 	struct thread threads[RTE_SWX_PIPELINE_THREADS_MAX];
 
 	uint32_t n_structs;
