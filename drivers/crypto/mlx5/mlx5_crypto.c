@@ -252,11 +252,21 @@ mlx5_crypto_sym_session_clear(struct rte_cryptodev *dev,
 	DRV_LOG(DEBUG, "Session %p was cleared.", spriv);
 }
 
-static int
-mlx5_crypto_queue_pair_release(struct rte_cryptodev *dev, uint16_t qp_id)
+static void
+mlx5_crypto_indirect_mkeys_release(struct mlx5_crypto_qp *qp, uint16_t n)
 {
-	struct mlx5_crypto_qp *qp = dev->data->queue_pairs[qp_id];
+	uint16_t i;
 
+	for (i = 0; i < n; i++)
+		if (qp->mkey[i])
+			claim_zero(mlx5_devx_cmd_destroy(qp->mkey[i]));
+}
+
+static void
+mlx5_crypto_qp_release(struct mlx5_crypto_qp *qp)
+{
+	if (qp == NULL)
+		return;
 	if (qp->qp_obj != NULL)
 		claim_zero(mlx5_devx_cmd_destroy(qp->qp_obj));
 	if (qp->umem_obj != NULL)
@@ -266,6 +276,15 @@ mlx5_crypto_queue_pair_release(struct rte_cryptodev *dev, uint16_t qp_id)
 	mlx5_mr_btree_free(&qp->mr_ctrl.cache_bh);
 	mlx5_devx_cq_destroy(&qp->cq_obj);
 	rte_free(qp);
+}
+
+static int
+mlx5_crypto_queue_pair_release(struct rte_cryptodev *dev, uint16_t qp_id)
+{
+	struct mlx5_crypto_qp *qp = dev->data->queue_pairs[qp_id];
+
+	mlx5_crypto_indirect_mkeys_release(qp, qp->entries_n);
+	mlx5_crypto_qp_release(qp);
 	dev->data->queue_pairs[qp_id] = NULL;
 	return 0;
 }
@@ -634,12 +653,14 @@ mlx5_crypto_indirect_mkeys_prepare(struct mlx5_crypto_priv *priv,
 	   i < qp->entries_n; i++, umr = RTE_PTR_ADD(umr, priv->wqe_set_size)) {
 		attr.klm_array = (struct mlx5_klm *)&umr->kseg[0];
 		qp->mkey[i] = mlx5_devx_cmd_mkey_create(priv->ctx, &attr);
-		if (!qp->mkey[i]) {
-			DRV_LOG(ERR, "Failed to allocate indirect mkey.");
-			return -1;
-		}
+		if (!qp->mkey[i])
+			goto error;
 	}
 	return 0;
+error:
+	DRV_LOG(ERR, "Failed to allocate indirect mkey.");
+	mlx5_crypto_indirect_mkeys_release(qp, i);
+	return -1;
 }
 
 static int
@@ -703,7 +724,7 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	attr.uar_index = mlx5_os_get_devx_uar_page_id(priv->uar);
 	attr.cqn = qp->cq_obj.cq->id;
 	attr.log_page_size = rte_log2_u32(sysconf(_SC_PAGESIZE));
-	attr.rq_size =  0;
+	attr.rq_size = 0;
 	attr.sq_size = RTE_BIT32(log_nb_desc);
 	attr.dbr_umem_valid = 1;
 	attr.wq_umem_id = qp->umem_obj->umem_id;
@@ -733,7 +754,7 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	dev->data->queue_pairs[qp_id] = qp;
 	return 0;
 error:
-	mlx5_crypto_queue_pair_release(dev, qp_id);
+	mlx5_crypto_qp_release(qp);
 	return -1;
 }
 
