@@ -1171,7 +1171,17 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 			if (gtp_psc_spec && gtp_psc_mask) {
 				if (gtp_psc_mask->qfi == UINT8_MAX) {
 					input_set |= IAVF_INSET_GTPU_QFI;
-					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, GTPU_EH, QFI);
+					if (gtp_psc_spec->pdu_type ==
+								IAVF_GTPU_EH_UPLINK)
+						VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr,
+										 GTPU_UP, QFI);
+					else if (gtp_psc_spec->pdu_type ==
+								IAVF_GTPU_EH_DWLINK)
+						VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr,
+										 GTPU_DWN, QFI);
+					else
+						VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr,
+										 GTPU_EH, QFI);
 				}
 
 				rte_memcpy(hdr->buffer, gtp_psc_spec,
