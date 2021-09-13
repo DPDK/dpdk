@@ -69,13 +69,17 @@ def handle_socket(path):
     CMDS = read_socket(sock, output_buf_len, False)["/"]
 
     # interactive prompt
-    text = input('--> ').strip()
-    while text != "quit":
-        if text.startswith('/'):
-            sock.send(text.encode())
-            read_socket(sock, output_buf_len)
+    try:
         text = input('--> ').strip()
-    sock.close()
+        while text != "quit":
+            if text.startswith('/'):
+                sock.send(text.encode())
+                read_socket(sock, output_buf_len)
+            text = input('--> ').strip()
+    except EOFError:
+        pass
+    finally:
+        sock.close()
 
 
 def readline_complete(text, state):
