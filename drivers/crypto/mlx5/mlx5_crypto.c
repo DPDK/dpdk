@@ -494,6 +494,7 @@ mlx5_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	struct rte_crypto_op *op;
 	uint16_t mask = qp->entries_n - 1;
 	uint16_t remain = qp->entries_n - (qp->pi - qp->ci);
+	uint32_t idx;
 
 	if (remain < nb_ops)
 		nb_ops = remain;
@@ -502,8 +503,9 @@ mlx5_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	if (unlikely(remain == 0))
 		return 0;
 	do {
+		idx = qp->pi & mask;
 		op = *ops++;
-		umr = RTE_PTR_ADD(qp->umem_buf, priv->wqe_set_size * qp->pi);
+		umr = RTE_PTR_ADD(qp->umem_buf, priv->wqe_set_size * idx);
 		if (unlikely(mlx5_crypto_wqe_set(priv, qp, op, umr) == 0)) {
 			qp->stats.enqueue_err_count++;
 			if (remain != nb_ops) {
@@ -512,8 +514,8 @@ mlx5_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 			}
 			return 0;
 		}
-		qp->ops[qp->pi] = op;
-		qp->pi = (qp->pi + 1) & mask;
+		qp->ops[idx] = op;
+		qp->pi++;
 	} while (--remain);
 	qp->stats.enqueued_count += nb_ops;
 	rte_io_wmb();
