@@ -1810,82 +1810,12 @@ instr_hdr_emit_translate(struct rte_swx_pipeline *p,
 }
 
 static inline void
-__instr_hdr_emit_exec(struct rte_swx_pipeline *p, uint32_t n_emit);
-
-static inline void
-__instr_hdr_emit_exec(struct rte_swx_pipeline *p, uint32_t n_emit)
+instr_hdr_emit_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t valid_headers = t->valid_headers;
-	uint32_t n_headers_out = t->n_headers_out;
-	struct header_out_runtime *ho = &t->headers_out[n_headers_out - 1];
-	uint8_t *ho_ptr = NULL;
-	uint32_t ho_nbytes = 0, first = 1, i;
 
-	for (i = 0; i < n_emit; i++) {
-		uint32_t header_id = ip->io.hdr.header_id[i];
-		uint32_t struct_id = ip->io.hdr.struct_id[i];
-
-		struct header_runtime *hi = &t->headers[header_id];
-		uint8_t *hi_ptr0 = hi->ptr0;
-		uint32_t n_bytes = hi->n_bytes;
-
-		uint8_t *hi_ptr = t->structs[struct_id];
-
-		if (!MASK64_BIT_GET(valid_headers, header_id))
-			continue;
-
-		TRACE("[Thread %2u]: emit header %u\n",
-		      p->thread_id,
-		      header_id);
-
-		/* Headers. */
-		if (first) {
-			first = 0;
-
-			if (!t->n_headers_out) {
-				ho = &t->headers_out[0];
-
-				ho->ptr0 = hi_ptr0;
-				ho->ptr = hi_ptr;
-
-				ho_ptr = hi_ptr;
-				ho_nbytes = n_bytes;
-
-				n_headers_out = 1;
-
-				continue;
-			} else {
-				ho_ptr = ho->ptr;
-				ho_nbytes = ho->n_bytes;
-			}
-		}
-
-		if (ho_ptr + ho_nbytes == hi_ptr) {
-			ho_nbytes += n_bytes;
-		} else {
-			ho->n_bytes = ho_nbytes;
-
-			ho++;
-			ho->ptr0 = hi_ptr0;
-			ho->ptr = hi_ptr;
-
-			ho_ptr = hi_ptr;
-			ho_nbytes = n_bytes;
-
-			n_headers_out++;
-		}
-	}
-
-	ho->n_bytes = ho_nbytes;
-	t->n_headers_out = n_headers_out;
-}
-
-static inline void
-instr_hdr_emit_exec(struct rte_swx_pipeline *p)
-{
-	__instr_hdr_emit_exec(p, 1);
+	__instr_hdr_emit_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -1894,81 +1824,105 @@ instr_hdr_emit_exec(struct rte_swx_pipeline *p)
 static inline void
 instr_hdr_emit_tx_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 2 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_hdr_emit_exec(p, 1);
-	instr_tx_exec(p);
+	__instr_hdr_emit_tx_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_reset(p, t);
+	instr_rx_exec(p);
 }
 
 static inline void
 instr_hdr_emit2_tx_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 3 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_hdr_emit_exec(p, 2);
-	instr_tx_exec(p);
+	__instr_hdr_emit2_tx_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_reset(p, t);
+	instr_rx_exec(p);
 }
 
 static inline void
 instr_hdr_emit3_tx_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 4 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_hdr_emit_exec(p, 3);
-	instr_tx_exec(p);
+	__instr_hdr_emit3_tx_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_reset(p, t);
+	instr_rx_exec(p);
 }
 
 static inline void
 instr_hdr_emit4_tx_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 5 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_hdr_emit_exec(p, 4);
-	instr_tx_exec(p);
+	__instr_hdr_emit4_tx_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_reset(p, t);
+	instr_rx_exec(p);
 }
 
 static inline void
 instr_hdr_emit5_tx_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 6 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_hdr_emit_exec(p, 5);
-	instr_tx_exec(p);
+	__instr_hdr_emit5_tx_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_reset(p, t);
+	instr_rx_exec(p);
 }
 
 static inline void
 instr_hdr_emit6_tx_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 7 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_hdr_emit_exec(p, 6);
-	instr_tx_exec(p);
+	__instr_hdr_emit6_tx_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_reset(p, t);
+	instr_rx_exec(p);
 }
 
 static inline void
 instr_hdr_emit7_tx_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 8 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_hdr_emit_exec(p, 7);
-	instr_tx_exec(p);
+	__instr_hdr_emit7_tx_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_reset(p, t);
+	instr_rx_exec(p);
 }
 
 static inline void
 instr_hdr_emit8_tx_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 9 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_hdr_emit_exec(p, 8);
-	instr_tx_exec(p);
+	__instr_hdr_emit8_tx_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_reset(p, t);
+	instr_rx_exec(p);
 }
 
 /*
