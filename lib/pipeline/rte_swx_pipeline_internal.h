@@ -1490,4 +1490,94 @@ instr_rx_exec(struct rte_swx_pipeline *p)
 	thread_yield(p);
 }
 
+/*
+ * tx.
+ */
+static inline void
+emit_handler(struct thread *t)
+{
+	struct header_out_runtime *h0 = &t->headers_out[0];
+	struct header_out_runtime *h1 = &t->headers_out[1];
+	uint32_t offset = 0, i;
+
+	/* No header change or header decapsulation. */
+	if ((t->n_headers_out == 1) &&
+	    (h0->ptr + h0->n_bytes == t->ptr)) {
+		TRACE("Emit handler: no header change or header decap.\n");
+
+		t->pkt.offset -= h0->n_bytes;
+		t->pkt.length += h0->n_bytes;
+
+		return;
+	}
+
+	/* Header encapsulation (optionally, with prior header decasulation). */
+	if ((t->n_headers_out == 2) &&
+	    (h1->ptr + h1->n_bytes == t->ptr) &&
+	    (h0->ptr == h0->ptr0)) {
+		uint32_t offset;
+
+		TRACE("Emit handler: header encapsulation.\n");
+
+		offset = h0->n_bytes + h1->n_bytes;
+		memcpy(t->ptr - offset, h0->ptr, h0->n_bytes);
+		t->pkt.offset -= offset;
+		t->pkt.length += offset;
+
+		return;
+	}
+
+	/* For any other case. */
+	TRACE("Emit handler: complex case.\n");
+
+	for (i = 0; i < t->n_headers_out; i++) {
+		struct header_out_runtime *h = &t->headers_out[i];
+
+		memcpy(&t->header_out_storage[offset], h->ptr, h->n_bytes);
+		offset += h->n_bytes;
+	}
+
+	if (offset) {
+		memcpy(t->ptr - offset, t->header_out_storage, offset);
+		t->pkt.offset -= offset;
+		t->pkt.length += offset;
+	}
+}
+
+static inline void
+__instr_tx_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	uint64_t port_id = METADATA_READ(t, ip->io.io.offset, ip->io.io.n_bits);
+	struct port_out_runtime *port = &p->out[port_id];
+	struct rte_swx_pkt *pkt = &t->pkt;
+
+	TRACE("[Thread %2u]: tx 1 pkt to port %u\n",
+	      p->thread_id,
+	      (uint32_t)port_id);
+
+	/* Headers. */
+	emit_handler(t);
+
+	/* Packet. */
+	port->pkt_tx(port->obj, pkt);
+}
+
+static inline void
+__instr_tx_i_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	uint64_t port_id = ip->io.io.val;
+	struct port_out_runtime *port = &p->out[port_id];
+	struct rte_swx_pkt *pkt = &t->pkt;
+
+	TRACE("[Thread %2u]: tx (i) 1 pkt to port %u\n",
+	      p->thread_id,
+	      (uint32_t)port_id);
+
+	/* Headers. */
+	emit_handler(t);
+
+	/* Packet. */
+	port->pkt_tx(port->obj, pkt);
+}
+
 #endif
