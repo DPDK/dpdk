@@ -2015,4 +2015,47 @@ __instr_forget_exec(struct rte_swx_pipeline *p,
 	stats->n_pkts_forget += 1;
 }
 
+/*
+ * extern.
+ */
+static inline uint32_t
+__instr_extern_obj_exec(struct rte_swx_pipeline *p __rte_unused,
+			struct thread *t,
+			const struct instruction *ip)
+{
+	uint32_t obj_id = ip->ext_obj.ext_obj_id;
+	uint32_t func_id = ip->ext_obj.func_id;
+	struct extern_obj_runtime *obj = &t->extern_objs[obj_id];
+	rte_swx_extern_type_member_func_t func = obj->funcs[func_id];
+	uint32_t done;
+
+	TRACE("[Thread %2u] extern obj %u member func %u\n",
+	      p->thread_id,
+	      obj_id,
+	      func_id);
+
+	done = func(obj->obj, obj->mailbox);
+
+	return done;
+}
+
+static inline uint32_t
+__instr_extern_func_exec(struct rte_swx_pipeline *p __rte_unused,
+			 struct thread *t,
+			 const struct instruction *ip)
+{
+	uint32_t ext_func_id = ip->ext_func.ext_func_id;
+	struct extern_func_runtime *ext_func = &t->extern_funcs[ext_func_id];
+	rte_swx_extern_func_t func = ext_func->func;
+	uint32_t done;
+
+	TRACE("[Thread %2u] extern func %u\n",
+	      p->thread_id,
+	      ext_func_id);
+
+	done = func(ext_func->mailbox);
+
+	return done;
+}
+
 #endif

@@ -2317,18 +2317,10 @@ instr_extern_obj_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint32_t obj_id = ip->ext_obj.ext_obj_id;
-	uint32_t func_id = ip->ext_obj.func_id;
-	struct extern_obj_runtime *obj = &t->extern_objs[obj_id];
-	rte_swx_extern_type_member_func_t func = obj->funcs[func_id];
-
-	TRACE("[Thread %2u] extern obj %u member func %u\n",
-	      p->thread_id,
-	      obj_id,
-	      func_id);
+	uint32_t done;
 
 	/* Extern object member function execute. */
-	uint32_t done = func(obj->obj, obj->mailbox);
+	done = __instr_extern_obj_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc_cond(t, done);
@@ -2340,16 +2332,10 @@ instr_extern_func_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint32_t ext_func_id = ip->ext_func.ext_func_id;
-	struct extern_func_runtime *ext_func = &t->extern_funcs[ext_func_id];
-	rte_swx_extern_func_t func = ext_func->func;
-
-	TRACE("[Thread %2u] extern func %u\n",
-	      p->thread_id,
-	      ext_func_id);
+	uint32_t done;
 
 	/* Extern function execute. */
-	uint32_t done = func(ext_func->mailbox);
+	done = __instr_extern_func_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc_cond(t, done);
