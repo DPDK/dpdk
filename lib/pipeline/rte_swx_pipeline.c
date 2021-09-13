@@ -9799,9 +9799,1093 @@ rte_swx_ctl_meter_stats_read(struct rte_swx_pipeline *p,
 /*
  * Pipeline compilation.
  */
+static const char *
+instr_type_to_name(struct instruction *instr)
+{
+	switch (instr->type) {
+	case INSTR_RX: return "INSTR_RX";
+
+	case INSTR_TX: return "INSTR_TX";
+	case INSTR_TX_I: return "INSTR_TX_I";
+
+	case INSTR_HDR_EXTRACT: return "INSTR_HDR_EXTRACT";
+	case INSTR_HDR_EXTRACT2: return "INSTR_HDR_EXTRACT2";
+	case INSTR_HDR_EXTRACT3: return "INSTR_HDR_EXTRACT3";
+	case INSTR_HDR_EXTRACT4: return "INSTR_HDR_EXTRACT4";
+	case INSTR_HDR_EXTRACT5: return "INSTR_HDR_EXTRACT5";
+	case INSTR_HDR_EXTRACT6: return "INSTR_HDR_EXTRACT6";
+	case INSTR_HDR_EXTRACT7: return "INSTR_HDR_EXTRACT7";
+	case INSTR_HDR_EXTRACT8: return "INSTR_HDR_EXTRACT8";
+
+	case INSTR_HDR_EXTRACT_M: return "INSTR_HDR_EXTRACT_M";
+
+	case INSTR_HDR_LOOKAHEAD: return "INSTR_HDR_LOOKAHEAD";
+
+	case INSTR_HDR_EMIT: return "INSTR_HDR_EMIT";
+	case INSTR_HDR_EMIT_TX: return "INSTR_HDR_EMIT_TX";
+	case INSTR_HDR_EMIT2_TX: return "INSTR_HDR_EMIT2_TX";
+	case INSTR_HDR_EMIT3_TX: return "INSTR_HDR_EMIT3_TX";
+	case INSTR_HDR_EMIT4_TX: return "INSTR_HDR_EMIT4_TX";
+	case INSTR_HDR_EMIT5_TX: return "INSTR_HDR_EMIT5_TX";
+	case INSTR_HDR_EMIT6_TX: return "INSTR_HDR_EMIT6_TX";
+	case INSTR_HDR_EMIT7_TX: return "INSTR_HDR_EMIT7_TX";
+	case INSTR_HDR_EMIT8_TX: return "INSTR_HDR_EMIT8_TX";
+
+	case INSTR_HDR_VALIDATE: return "INSTR_HDR_VALIDATE";
+	case INSTR_HDR_INVALIDATE: return "INSTR_HDR_INVALIDATE";
+
+	case INSTR_MOV: return "INSTR_MOV";
+	case INSTR_MOV_MH: return "INSTR_MOV_MH";
+	case INSTR_MOV_HM: return "INSTR_MOV_HM";
+	case INSTR_MOV_HH: return "INSTR_MOV_HH";
+	case INSTR_MOV_I: return "INSTR_MOV_I";
+
+	case INSTR_DMA_HT: return "INSTR_DMA_HT";
+	case INSTR_DMA_HT2: return "INSTR_DMA_HT2";
+	case INSTR_DMA_HT3: return "INSTR_DMA_HT3";
+	case INSTR_DMA_HT4: return "INSTR_DMA_HT4";
+	case INSTR_DMA_HT5: return "INSTR_DMA_HT5";
+	case INSTR_DMA_HT6: return "INSTR_DMA_HT6";
+	case INSTR_DMA_HT7: return "INSTR_DMA_HT7";
+	case INSTR_DMA_HT8: return "INSTR_DMA_HT8";
+
+	case INSTR_ALU_ADD: return "INSTR_ALU_ADD";
+	case INSTR_ALU_ADD_MH: return "INSTR_ALU_ADD_MH";
+	case INSTR_ALU_ADD_HM: return "INSTR_ALU_ADD_HM";
+	case INSTR_ALU_ADD_HH: return "INSTR_ALU_ADD_HH";
+	case INSTR_ALU_ADD_MI: return "INSTR_ALU_ADD_MI";
+	case INSTR_ALU_ADD_HI: return "INSTR_ALU_ADD_HI";
+
+	case INSTR_ALU_SUB: return "INSTR_ALU_SUB";
+	case INSTR_ALU_SUB_MH: return "INSTR_ALU_SUB_MH";
+	case INSTR_ALU_SUB_HM: return "INSTR_ALU_SUB_HM";
+	case INSTR_ALU_SUB_HH: return "INSTR_ALU_SUB_HH";
+	case INSTR_ALU_SUB_MI: return "INSTR_ALU_SUB_MI";
+	case INSTR_ALU_SUB_HI: return "INSTR_ALU_SUB_HI";
+
+	case INSTR_ALU_CKADD_FIELD: return "INSTR_ALU_CKADD_FIELD";
+	case INSTR_ALU_CKADD_STRUCT20: return "INSTR_ALU_CKADD_STRUCT20";
+	case INSTR_ALU_CKADD_STRUCT: return "INSTR_ALU_CKADD_STRUCT";
+	case INSTR_ALU_CKSUB_FIELD: return "INSTR_ALU_CKSUB_FIELD";
+
+	case INSTR_ALU_AND: return "INSTR_ALU_AND";
+	case INSTR_ALU_AND_MH: return "INSTR_ALU_AND_MH";
+	case INSTR_ALU_AND_HM: return "INSTR_ALU_AND_HM";
+	case INSTR_ALU_AND_HH: return "INSTR_ALU_AND_HH";
+	case INSTR_ALU_AND_I: return "INSTR_ALU_AND_I";
+
+	case INSTR_ALU_OR: return "INSTR_ALU_OR";
+	case INSTR_ALU_OR_MH: return "INSTR_ALU_OR_MH";
+	case INSTR_ALU_OR_HM: return "INSTR_ALU_OR_HM";
+	case INSTR_ALU_OR_HH: return "INSTR_ALU_OR_HH";
+	case INSTR_ALU_OR_I: return "INSTR_ALU_OR_I";
+
+	case INSTR_ALU_XOR: return "INSTR_ALU_XOR";
+	case INSTR_ALU_XOR_MH: return "INSTR_ALU_XOR_MH";
+	case INSTR_ALU_XOR_HM: return "INSTR_ALU_XOR_HM";
+	case INSTR_ALU_XOR_HH: return "INSTR_ALU_XOR_HH";
+	case INSTR_ALU_XOR_I: return "INSTR_ALU_XOR_I";
+
+	case INSTR_ALU_SHL: return "INSTR_ALU_SHL";
+	case INSTR_ALU_SHL_MH: return "INSTR_ALU_SHL_MH";
+	case INSTR_ALU_SHL_HM: return "INSTR_ALU_SHL_HM";
+	case INSTR_ALU_SHL_HH: return "INSTR_ALU_SHL_HH";
+	case INSTR_ALU_SHL_MI: return "INSTR_ALU_SHL_MI";
+	case INSTR_ALU_SHL_HI: return "INSTR_ALU_SHL_HI";
+
+	case INSTR_ALU_SHR: return "INSTR_ALU_SHR";
+	case INSTR_ALU_SHR_MH: return "INSTR_ALU_SHR_MH";
+	case INSTR_ALU_SHR_HM: return "INSTR_ALU_SHR_HM";
+	case INSTR_ALU_SHR_HH: return "INSTR_ALU_SHR_HH";
+	case INSTR_ALU_SHR_MI: return "INSTR_ALU_SHR_MI";
+	case INSTR_ALU_SHR_HI: return "INSTR_ALU_SHR_HI";
+
+	case INSTR_REGPREFETCH_RH: return "INSTR_REGPREFETCH_RH";
+	case INSTR_REGPREFETCH_RM: return "INSTR_REGPREFETCH_RM";
+	case INSTR_REGPREFETCH_RI: return "INSTR_REGPREFETCH_RI";
+
+	case INSTR_REGRD_HRH: return "INSTR_REGRD_HRH";
+	case INSTR_REGRD_HRM: return "INSTR_REGRD_HRM";
+	case INSTR_REGRD_HRI: return "INSTR_REGRD_HRI";
+	case INSTR_REGRD_MRH: return "INSTR_REGRD_MRH";
+	case INSTR_REGRD_MRM: return "INSTR_REGRD_MRM";
+	case INSTR_REGRD_MRI: return "INSTR_REGRD_MRI";
+
+	case INSTR_REGWR_RHH: return "INSTR_REGWR_RHH";
+	case INSTR_REGWR_RHM: return "INSTR_REGWR_RHM";
+	case INSTR_REGWR_RHI: return "INSTR_REGWR_RHI";
+	case INSTR_REGWR_RMH: return "INSTR_REGWR_RMH";
+	case INSTR_REGWR_RMM: return "INSTR_REGWR_RMM";
+	case INSTR_REGWR_RMI: return "INSTR_REGWR_RMI";
+	case INSTR_REGWR_RIH: return "INSTR_REGWR_RIH";
+	case INSTR_REGWR_RIM: return "INSTR_REGWR_RIM";
+	case INSTR_REGWR_RII: return "INSTR_REGWR_RII";
+
+	case INSTR_REGADD_RHH: return "INSTR_REGADD_RHH";
+	case INSTR_REGADD_RHM: return "INSTR_REGADD_RHM";
+	case INSTR_REGADD_RHI: return "INSTR_REGADD_RHI";
+	case INSTR_REGADD_RMH: return "INSTR_REGADD_RMH";
+	case INSTR_REGADD_RMM: return "INSTR_REGADD_RMM";
+	case INSTR_REGADD_RMI: return "INSTR_REGADD_RMI";
+	case INSTR_REGADD_RIH: return "INSTR_REGADD_RIH";
+	case INSTR_REGADD_RIM: return "INSTR_REGADD_RIM";
+	case INSTR_REGADD_RII: return "INSTR_REGADD_RII";
+
+	case INSTR_METPREFETCH_H: return "INSTR_METPREFETCH_H";
+	case INSTR_METPREFETCH_M: return "INSTR_METPREFETCH_M";
+	case INSTR_METPREFETCH_I: return "INSTR_METPREFETCH_I";
+
+	case INSTR_METER_HHM: return "INSTR_METER_HHM";
+	case INSTR_METER_HHI: return "INSTR_METER_HHI";
+	case INSTR_METER_HMM: return "INSTR_METER_HMM";
+	case INSTR_METER_HMI: return "INSTR_METER_HMI";
+	case INSTR_METER_MHM: return "INSTR_METER_MHM";
+	case INSTR_METER_MHI: return "INSTR_METER_MHI";
+	case INSTR_METER_MMM: return "INSTR_METER_MMM";
+	case INSTR_METER_MMI: return "INSTR_METER_MMI";
+	case INSTR_METER_IHM: return "INSTR_METER_IHM";
+	case INSTR_METER_IHI: return "INSTR_METER_IHI";
+	case INSTR_METER_IMM: return "INSTR_METER_IMM";
+	case INSTR_METER_IMI: return "INSTR_METER_IMI";
+
+	case INSTR_TABLE: return "INSTR_TABLE";
+	case INSTR_TABLE_AF: return "INSTR_TABLE_AF";
+	case INSTR_SELECTOR: return "INSTR_SELECTOR";
+	case INSTR_LEARNER: return "INSTR_LEARNER";
+	case INSTR_LEARNER_AF: return "INSTR_LEARNER_AF";
+
+	case INSTR_LEARNER_LEARN: return "INSTR_LEARNER_LEARN";
+	case INSTR_LEARNER_FORGET: return "INSTR_LEARNER_FORGET";
+
+	case INSTR_EXTERN_OBJ: return "INSTR_EXTERN_OBJ";
+	case INSTR_EXTERN_FUNC: return "INSTR_EXTERN_FUNC";
+
+	case INSTR_JMP: return "INSTR_JMP";
+	case INSTR_JMP_VALID: return "INSTR_JMP_VALID";
+	case INSTR_JMP_INVALID: return "INSTR_JMP_INVALID";
+	case INSTR_JMP_HIT: return "INSTR_JMP_HIT";
+	case INSTR_JMP_MISS: return "INSTR_JMP_MISS";
+	case INSTR_JMP_ACTION_HIT: return "INSTR_JMP_ACTION_HIT";
+	case INSTR_JMP_ACTION_MISS: return "INSTR_JMP_ACTION_MISS";
+	case INSTR_JMP_EQ: return "INSTR_JMP_EQ";
+	case INSTR_JMP_EQ_MH: return "INSTR_JMP_EQ_MH";
+	case INSTR_JMP_EQ_HM: return "INSTR_JMP_EQ_HM";
+	case INSTR_JMP_EQ_HH: return "INSTR_JMP_EQ_HH";
+	case INSTR_JMP_EQ_I: return "INSTR_JMP_EQ_I";
+	case INSTR_JMP_NEQ: return "INSTR_JMP_NEQ";
+	case INSTR_JMP_NEQ_MH: return "INSTR_JMP_NEQ_MH";
+	case INSTR_JMP_NEQ_HM: return "INSTR_JMP_NEQ_HM";
+	case INSTR_JMP_NEQ_HH: return "INSTR_JMP_NEQ_HH";
+	case INSTR_JMP_NEQ_I: return "INSTR_JMP_NEQ_I";
+	case INSTR_JMP_LT: return "INSTR_JMP_LT";
+	case INSTR_JMP_LT_MH: return "INSTR_JMP_LT_MH";
+	case INSTR_JMP_LT_HM: return "INSTR_JMP_LT_HM";
+	case INSTR_JMP_LT_HH: return "INSTR_JMP_LT_HH";
+	case INSTR_JMP_LT_MI: return "INSTR_JMP_LT_MI";
+	case INSTR_JMP_LT_HI: return "INSTR_JMP_LT_HI";
+	case INSTR_JMP_GT: return "INSTR_JMP_GT";
+	case INSTR_JMP_GT_MH: return "INSTR_JMP_GT_MH";
+	case INSTR_JMP_GT_HM: return "INSTR_JMP_GT_HM";
+	case INSTR_JMP_GT_HH: return "INSTR_JMP_GT_HH";
+	case INSTR_JMP_GT_MI: return "INSTR_JMP_GT_MI";
+	case INSTR_JMP_GT_HI: return "INSTR_JMP_GT_HI";
+
+	case INSTR_RETURN: return "INSTR_RETURN";
+
+	default: return "INSTR_UNKNOWN";
+	}
+}
+
+typedef void
+(*instruction_export_t)(struct instruction *, FILE *);
+
+static void
+instr_io_export(struct instruction *instr, FILE *f)
+{
+	uint32_t n_io = 0, n_io_imm = 0, n_hdrs = 0, i;
+
+	/* n_io, n_io_imm, n_hdrs. */
+	if (instr->type == INSTR_RX ||
+	    instr->type == INSTR_TX ||
+	    instr->type == INSTR_HDR_EXTRACT_M ||
+	    (instr->type >= INSTR_HDR_EMIT_TX && instr->type <= INSTR_HDR_EMIT8_TX))
+		n_io = 1;
+
+	if (instr->type == INSTR_TX_I)
+		n_io_imm = 1;
+
+	if (instr->type >= INSTR_HDR_EXTRACT && instr->type <= INSTR_HDR_EXTRACT8)
+		n_hdrs = 1 + (instr->type - INSTR_HDR_EXTRACT);
+
+	if (instr->type == INSTR_HDR_EXTRACT_M ||
+	    instr->type == INSTR_HDR_LOOKAHEAD ||
+	    instr->type == INSTR_HDR_EMIT)
+		n_hdrs = 1;
+
+	if (instr->type >= INSTR_HDR_EMIT_TX && instr->type <= INSTR_HDR_EMIT8_TX)
+		n_hdrs = 1 + (instr->type - INSTR_HDR_EMIT_TX);
+
+	/* instr. */
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n",
+		instr_type_to_name(instr));
+
+	/* instr.io. */
+	fprintf(f,
+		"\t\t.io = {\n");
+
+	/* instr.io.io. */
+	if (n_io)
+		fprintf(f,
+			"\t\t\t.io = {\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t},\n",
+			instr->io.io.offset,
+			instr->io.io.n_bits);
+
+	if (n_io_imm)
+		fprintf(f,
+			"\t\t\t.io = {\n"
+			"\t\t\t\t.val = %u,\n"
+			"\t\t\t},\n",
+			instr->io.io.val);
+
+	/* instr.io.hdr. */
+	if (n_hdrs) {
+		fprintf(f,
+			"\t\t.hdr = {\n");
+
+		/* instr.io.hdr.header_id. */
+		fprintf(f,
+			"\t\t\t.header_id = {");
+
+		for (i = 0; i < n_hdrs; i++)
+			fprintf(f,
+				"%u, ",
+				instr->io.hdr.header_id[i]);
+
+		fprintf(f,
+			"},\n");
+
+		/* instr.io.hdr.struct_id. */
+		fprintf(f,
+			"\t\t\t.struct_id = {");
+
+		for (i = 0; i < n_hdrs; i++)
+			fprintf(f,
+				"%u, ",
+				instr->io.hdr.struct_id[i]);
+
+		fprintf(f,
+			"},\n");
+
+		/* instr.io.hdr.n_bytes. */
+		fprintf(f,
+			"\t\t\t.n_bytes = {");
+
+		for (i = 0; i < n_hdrs; i++)
+			fprintf(f,
+				"%u, ",
+				instr->io.hdr.n_bytes[i]);
+
+		fprintf(f,
+			"},\n");
+
+		/* instr.io.hdr - closing curly brace. */
+		fprintf(f,
+			"\t\t\t}\n,");
+	}
+
+	/* instr.io - closing curly brace. */
+	fprintf(f,
+		"\t\t},\n");
+
+	/* instr - closing curly brace. */
+	fprintf(f,
+		"\t},\n");
+}
+
+static void
+instr_hdr_validate_export(struct instruction *instr, FILE *f)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t\t.valid = {\n"
+		"\t\t\t.header_id = %u,\n"
+		"\t\t},\n"
+		"\t},\n",
+		instr_type_to_name(instr),
+		instr->valid.header_id);
+}
+
+static void
+instr_mov_export(struct instruction *instr, FILE *f)
+{
+	if (instr->type != INSTR_MOV_I)
+		fprintf(f,
+			"\t{\n"
+			"\t\t.type = %s,\n"
+			"\t\t.mov = {\n"
+			"\t\t\t.dst = {\n"
+			"\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t},\n"
+			"\t\t\t.src = {\n"
+			"\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t},\n"
+			"\t\t},\n"
+			"\t},\n",
+			instr_type_to_name(instr),
+			instr->mov.dst.struct_id,
+			instr->mov.dst.n_bits,
+			instr->mov.dst.offset,
+			instr->mov.src.struct_id,
+			instr->mov.src.n_bits,
+			instr->mov.src.offset);
+	else
+		fprintf(f,
+			"\t{\n"
+			"\t\t.type = %s,\n"
+			"\t\t.mov = {\n"
+			"\t\t\t.dst = {\n"
+			"\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t}\n,"
+			"\t\t\t.src_val = %" PRIu64 ",\n"
+			"\t\t},\n"
+			"\t},\n",
+			instr_type_to_name(instr),
+			instr->mov.dst.struct_id,
+			instr->mov.dst.n_bits,
+			instr->mov.dst.offset,
+			instr->mov.src_val);
+}
+
+static void
+instr_dma_ht_export(struct instruction *instr, FILE *f)
+{
+	uint32_t n_dma = 0, i;
+
+	/* n_dma. */
+	n_dma = 1 + (instr->type - INSTR_DMA_HT);
+
+	/* instr. */
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n",
+		instr_type_to_name(instr));
+
+	/* instr.dma. */
+	fprintf(f,
+		"\t\t.dma = {\n");
+
+	/* instr.dma.dst. */
+	fprintf(f,
+		"\t\t\t.dst = {\n");
+
+	/* instr.dma.dst.header_id. */
+	fprintf(f,
+		"\t\t\t\t.header_id = {");
+
+	for (i = 0; i < n_dma; i++)
+		fprintf(f,
+			"%u, ",
+			instr->dma.dst.header_id[i]);
+
+	fprintf(f,
+		"},\n");
+
+	/* instr.dma.dst.struct_id. */
+	fprintf(f,
+		"\t\t\t\t.struct_id = {");
+
+	for (i = 0; i < n_dma; i++)
+		fprintf(f,
+			"%u, ",
+			instr->dma.dst.struct_id[i]);
+
+	fprintf(f,
+		"},\n");
+
+	/* instr.dma.dst - closing curly brace. */
+	fprintf(f,
+		"\t\t\t},\n");
+
+	/* instr.dma.src. */
+	fprintf(f,
+		"\t\t\t.src = {\n");
+
+	/* instr.dma.src.offset. */
+	fprintf(f,
+		"\t\t\t\t.offset = {");
+
+	for (i = 0; i < n_dma; i++)
+		fprintf(f,
+			"%u, ",
+			instr->dma.src.offset[i]);
+
+	fprintf(f,
+		"},\n");
+
+	/* instr.dma.src - closing curly brace. */
+	fprintf(f,
+		"\t\t\t},\n");
+
+	/* instr.dma.n_bytes. */
+	fprintf(f,
+		"\t\t\t.n_bytes = {");
+
+	for (i = 0; i < n_dma; i++)
+		fprintf(f,
+			"%u, ",
+			instr->dma.n_bytes[i]);
+
+	fprintf(f,
+		"},\n");
+
+	/* instr.dma - closing curly brace. */
+	fprintf(f,
+		"\t\t},\n");
+
+	/* instr - closing curly brace. */
+	fprintf(f,
+		"\t},\n");
+}
+
+static void
+instr_alu_export(struct instruction *instr, FILE *f)
+{
+	int imm = 0;
+
+	if (instr->type == INSTR_ALU_ADD_MI ||
+	    instr->type == INSTR_ALU_ADD_HI ||
+	    instr->type == INSTR_ALU_SUB_MI ||
+	    instr->type == INSTR_ALU_SUB_HI ||
+	    instr->type == INSTR_ALU_SHL_MI ||
+	    instr->type == INSTR_ALU_SHL_HI ||
+	    instr->type == INSTR_ALU_SHR_MI ||
+	    instr->type == INSTR_ALU_SHR_HI ||
+	    instr->type == INSTR_ALU_AND_I ||
+	    instr->type == INSTR_ALU_OR_I ||
+	    instr->type == INSTR_ALU_XOR_I)
+		imm = 1;
+
+	if (!imm)
+		fprintf(f,
+			"\t{\n"
+			"\t\t.type = %s,\n"
+			"\t\t.alu = {\n"
+			"\t\t\t.dst = {\n"
+			"\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t},\n"
+			"\t\t\t.src = {\n"
+			"\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t},\n"
+			"\t\t},\n"
+			"\t},\n",
+			instr_type_to_name(instr),
+			instr->alu.dst.struct_id,
+			instr->alu.dst.n_bits,
+			instr->alu.dst.offset,
+			instr->alu.src.struct_id,
+			instr->alu.src.n_bits,
+			instr->alu.src.offset);
+	else
+		fprintf(f,
+			"\t{\n"
+			"\t\t.type = %s,\n"
+			"\t\t.alu = {\n"
+			"\t\t\t.dst = {\n"
+			"\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t}\n,"
+			"\t\t\t.src_val = %" PRIu64 ",\n"
+			"\t\t},\n"
+			"\t},\n",
+			instr_type_to_name(instr),
+			instr->alu.dst.struct_id,
+			instr->alu.dst.n_bits,
+			instr->alu.dst.offset,
+			instr->alu.src_val);
+}
+
+static void
+instr_reg_export(struct instruction *instr __rte_unused, FILE *f __rte_unused)
+{
+	int prefetch  = 0, idx_imm = 0, src_imm = 0;
+
+	if (instr->type == INSTR_REGPREFETCH_RH ||
+	    instr->type == INSTR_REGPREFETCH_RM ||
+	    instr->type == INSTR_REGPREFETCH_RI)
+		prefetch = 1;
+
+	/* index is the 3rd operand for the regrd instruction and the 2nd
+	 * operand for the regwr and regadd instructions.
+	 */
+	if (instr->type == INSTR_REGPREFETCH_RI ||
+	    instr->type == INSTR_REGRD_HRI ||
+	    instr->type == INSTR_REGRD_MRI ||
+	    instr->type == INSTR_REGWR_RIH ||
+	    instr->type == INSTR_REGWR_RIM ||
+	    instr->type == INSTR_REGWR_RII ||
+	    instr->type == INSTR_REGADD_RIH ||
+	    instr->type == INSTR_REGADD_RIM ||
+	    instr->type == INSTR_REGADD_RII)
+		idx_imm = 1;
+
+	/* src is the 3rd operand for the regwr and regadd instructions. */
+	if (instr->type == INSTR_REGWR_RHI ||
+	    instr->type == INSTR_REGWR_RMI ||
+	    instr->type == INSTR_REGWR_RII ||
+	    instr->type == INSTR_REGADD_RHI ||
+	    instr->type == INSTR_REGADD_RMI ||
+	    instr->type == INSTR_REGADD_RII)
+		src_imm = 1;
+
+	/* instr.regarray.regarray_id. */
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t\t.regarray = {\n"
+		"\t\t\t.regarray_id = %u,\n",
+		instr_type_to_name(instr),
+		instr->regarray.regarray_id);
+
+	/* instr.regarray.idx / instr.regarray.idx_val. */
+	if (!idx_imm)
+		fprintf(f,
+			"\t\t\t\t.idx = {\n"
+			"\t\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t\t.offset = %u,\n"
+			"\t\t\t\t},\n",
+			instr->regarray.idx.struct_id,
+			instr->regarray.idx.n_bits,
+			instr->regarray.idx.offset);
+	else
+		fprintf(f,
+			"\t\t\t\t.idx_val = %u,\n",
+			instr->regarray.idx_val);
+
+	/* instr.regarray.dstsrc / instr.regarray.dstsrc_val. */
+	if (!prefetch) {
+		if (!src_imm)
+			fprintf(f,
+				"\t\t\t\t.dstsrc = {\n"
+				"\t\t\t\t\t.struct_id = %u,\n"
+				"\t\t\t\t\t.n_bits = %u,\n"
+				"\t\t\t\t\t.offset = %u,\n"
+				"\t\t\t\t},\n",
+				instr->regarray.dstsrc.struct_id,
+				instr->regarray.dstsrc.n_bits,
+				instr->regarray.dstsrc.offset);
+		else
+			fprintf(f,
+				"\t\t\t\t.dstsrc_val = %" PRIu64 ",\n",
+				instr->regarray.dstsrc_val);
+	}
+
+	/* instr.regarray and instr - closing curly braces. */
+	fprintf(f,
+		"\t\t},\n"
+		"\t},\n");
+}
+
+static void
+instr_meter_export(struct instruction *instr __rte_unused, FILE *f __rte_unused)
+{
+	int prefetch  = 0, idx_imm = 0, color_in_imm = 0;
+
+	if (instr->type == INSTR_METPREFETCH_H ||
+	    instr->type == INSTR_METPREFETCH_M ||
+	    instr->type == INSTR_METPREFETCH_I)
+		prefetch = 1;
+
+	/* idx_imm. */
+	if (instr->type == INSTR_METPREFETCH_I ||
+	    instr->type == INSTR_METER_IHM ||
+	    instr->type == INSTR_METER_IHI ||
+	    instr->type == INSTR_METER_IMM ||
+	    instr->type == INSTR_METER_IMI)
+		idx_imm = 1;
+
+	/* color_in_imm. */
+	if (instr->type == INSTR_METER_HHI ||
+	    instr->type == INSTR_METER_HMI ||
+	    instr->type == INSTR_METER_MHI ||
+	    instr->type == INSTR_METER_MMI ||
+	    instr->type == INSTR_METER_IHI ||
+	    instr->type == INSTR_METER_IMI)
+		color_in_imm = 1;
+
+	/* instr.meter.metarray_id. */
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t\t.meter = {\n"
+		"\t\t\t.metarray_id = %u,\n",
+		instr_type_to_name(instr),
+		instr->meter.metarray_id);
+
+	/* instr.meter.idx / instr.meter.idx_val. */
+	if (!idx_imm)
+		fprintf(f,
+			"\t\t\t.idx = {\n"
+			"\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t},\n",
+			instr->meter.idx.struct_id,
+			instr->meter.idx.n_bits,
+			instr->meter.idx.offset);
+	else
+		fprintf(f,
+			"\t\t\t.idx_val = %u,\n",
+			instr->meter.idx_val);
+
+	if (!prefetch) {
+		/* instr.meter.length. */
+		fprintf(f,
+			"\t\t\t.length = {\n"
+			"\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t},\n",
+			instr->meter.length.struct_id,
+			instr->meter.length.n_bits,
+			instr->meter.length.offset);
+
+		/* instr.meter.color_in / instr.meter.color_in_val. */
+		if (!color_in_imm)
+			fprintf(f,
+				"\t\t\t.color_in = {\n"
+				"\t\t\t\t.struct_id = %u,\n"
+				"\t\t\t\t.n_bits = %u,\n"
+				"\t\t\t\t.offset = %u,\n"
+				"\t\t\t},\n",
+				instr->meter.color_in.struct_id,
+				instr->meter.color_in.n_bits,
+				instr->meter.color_in.offset);
+		else
+			fprintf(f,
+				"\t\t\t.color_in_val = %u,\n",
+				(uint32_t)instr->meter.color_in_val);
+
+		/* instr.meter.color_out. */
+		fprintf(f,
+			"\t\t\t.color_out = {\n"
+			"\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t},\n",
+			instr->meter.color_out.struct_id,
+			instr->meter.color_out.n_bits,
+			instr->meter.color_out.offset);
+	}
+
+	/* instr.meter and instr - closing curly braces. */
+	fprintf(f,
+		"\t\t},\n"
+		"\t},\n");
+}
+
+static void
+instr_table_export(struct instruction *instr,
+		FILE *f)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t\t.table = {\n"
+		"\t\t\t.table_id = %u,\n"
+		"\t\t},\n"
+		"\t},\n",
+		instr_type_to_name(instr),
+		instr->table.table_id);
+}
+
+static void
+instr_learn_export(struct instruction *instr, FILE *f)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t\t.learn = {\n"
+		"\t\t\t\t.action_id = %u,\n"
+		"\t\t},\n"
+		"\t},\n",
+		instr_type_to_name(instr),
+		instr->learn.action_id);
+}
+
+static void
+instr_forget_export(struct instruction *instr, FILE *f)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t},\n",
+		instr_type_to_name(instr));
+}
+
+static void
+instr_extern_export(struct instruction *instr, FILE *f)
+{
+	if (instr->type == INSTR_EXTERN_OBJ)
+		fprintf(f,
+			"\t{\n"
+			"\t\t.type = %s,\n"
+			"\t\t.ext_obj = {\n"
+			"\t\t\t.ext_obj_id = %u,\n"
+			"\t\t\t.func_id = %u,\n"
+			"\t\t},\n"
+			"\t},\n",
+			instr_type_to_name(instr),
+			instr->ext_obj.ext_obj_id,
+			instr->ext_obj.func_id);
+	else
+		fprintf(f,
+			"\t{\n"
+			"\t\t.type = %s,\n"
+			"\t\t.ext_func = {\n"
+			"\t\t\t.ext_func_id = %u,\n"
+			"\t\t},\n"
+			"\t},\n",
+			instr_type_to_name(instr),
+			instr->ext_func.ext_func_id);
+}
+
+static void
+instr_jmp_export(struct instruction *instr, FILE *f __rte_unused)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t\t.jmp = {\n"
+		"\t\t\t.ip = NULL,\n",
+		instr_type_to_name(instr));
+
+	switch (instr->type) {
+	case INSTR_JMP_VALID:
+	case INSTR_JMP_INVALID:
+		fprintf(f,
+			"\t\t\t.header_id = %u,\n",
+			instr->jmp.header_id);
+		break;
+
+	case INSTR_JMP_ACTION_HIT:
+	case INSTR_JMP_ACTION_MISS:
+		fprintf(f,
+			"\t\t\t.action_id = %u,\n",
+			instr->jmp.action_id);
+		break;
+
+	case INSTR_JMP_EQ:
+	case INSTR_JMP_EQ_MH:
+	case INSTR_JMP_EQ_HM:
+	case INSTR_JMP_EQ_HH:
+	case INSTR_JMP_NEQ:
+	case INSTR_JMP_NEQ_MH:
+	case INSTR_JMP_NEQ_HM:
+	case INSTR_JMP_NEQ_HH:
+	case INSTR_JMP_LT:
+	case INSTR_JMP_LT_MH:
+	case INSTR_JMP_LT_HM:
+	case INSTR_JMP_LT_HH:
+	case INSTR_JMP_GT:
+	case INSTR_JMP_GT_MH:
+	case INSTR_JMP_GT_HM:
+	case INSTR_JMP_GT_HH:
+		fprintf(f,
+			"\t\t\t.a = {\n"
+			"\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t},\n"
+			"\t\t\t.b = {\n"
+			"\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t},\n",
+			instr->jmp.a.struct_id,
+			instr->jmp.a.n_bits,
+			instr->jmp.a.offset,
+			instr->jmp.b.struct_id,
+			instr->jmp.b.n_bits,
+			instr->jmp.b.offset);
+		break;
+
+	case INSTR_JMP_EQ_I:
+	case INSTR_JMP_NEQ_I:
+	case INSTR_JMP_LT_MI:
+	case INSTR_JMP_LT_HI:
+	case INSTR_JMP_GT_MI:
+	case INSTR_JMP_GT_HI:
+		fprintf(f,
+			"\t\t\t.a = {\n"
+			"\t\t\t\t.struct_id = %u,\n"
+			"\t\t\t\t.n_bits = %u,\n"
+			"\t\t\t\t.offset = %u,\n"
+			"\t\t\t}\n,"
+			"\t\t\t.b_val = %" PRIu64 ",\n",
+			instr->jmp.a.struct_id,
+			instr->jmp.a.n_bits,
+			instr->jmp.a.offset,
+			instr->jmp.b_val);
+		break;
+
+	default:
+		break;
+	}
+
+	fprintf(f,
+		"\t\t},\n"
+		"\t},\n");
+}
+
+static void
+instr_return_export(struct instruction *instr,
+		FILE *f)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n",
+		instr_type_to_name(instr));
+
+	fprintf(f,
+		"\t},\n");
+}
+
+static instruction_export_t export_table[] = {
+	[INSTR_RX] = instr_io_export,
+
+	[INSTR_TX] = instr_io_export,
+	[INSTR_TX_I] = instr_io_export,
+
+	[INSTR_HDR_EXTRACT] = instr_io_export,
+	[INSTR_HDR_EXTRACT2] = instr_io_export,
+	[INSTR_HDR_EXTRACT3] = instr_io_export,
+	[INSTR_HDR_EXTRACT4] = instr_io_export,
+	[INSTR_HDR_EXTRACT5] = instr_io_export,
+	[INSTR_HDR_EXTRACT6] = instr_io_export,
+	[INSTR_HDR_EXTRACT7] = instr_io_export,
+	[INSTR_HDR_EXTRACT8] = instr_io_export,
+
+	[INSTR_HDR_EXTRACT_M] = instr_io_export,
+
+	[INSTR_HDR_LOOKAHEAD] = instr_io_export,
+
+	[INSTR_HDR_EMIT] = instr_io_export,
+	[INSTR_HDR_EMIT_TX] = instr_io_export,
+	[INSTR_HDR_EMIT2_TX] = instr_io_export,
+	[INSTR_HDR_EMIT3_TX] = instr_io_export,
+	[INSTR_HDR_EMIT4_TX] = instr_io_export,
+	[INSTR_HDR_EMIT5_TX] = instr_io_export,
+	[INSTR_HDR_EMIT6_TX] = instr_io_export,
+	[INSTR_HDR_EMIT7_TX] = instr_io_export,
+	[INSTR_HDR_EMIT8_TX] = instr_io_export,
+
+	[INSTR_HDR_VALIDATE] = instr_hdr_validate_export,
+	[INSTR_HDR_INVALIDATE] = instr_hdr_validate_export,
+
+	[INSTR_MOV] = instr_mov_export,
+	[INSTR_MOV_MH] = instr_mov_export,
+	[INSTR_MOV_HM] = instr_mov_export,
+	[INSTR_MOV_HH] = instr_mov_export,
+	[INSTR_MOV_I] = instr_mov_export,
+
+	[INSTR_DMA_HT]  = instr_dma_ht_export,
+	[INSTR_DMA_HT2] = instr_dma_ht_export,
+	[INSTR_DMA_HT3] = instr_dma_ht_export,
+	[INSTR_DMA_HT4] = instr_dma_ht_export,
+	[INSTR_DMA_HT5] = instr_dma_ht_export,
+	[INSTR_DMA_HT6] = instr_dma_ht_export,
+	[INSTR_DMA_HT7] = instr_dma_ht_export,
+	[INSTR_DMA_HT8] = instr_dma_ht_export,
+
+	[INSTR_ALU_ADD] = instr_alu_export,
+	[INSTR_ALU_ADD_MH] = instr_alu_export,
+	[INSTR_ALU_ADD_HM] = instr_alu_export,
+	[INSTR_ALU_ADD_HH] = instr_alu_export,
+	[INSTR_ALU_ADD_MI] = instr_alu_export,
+	[INSTR_ALU_ADD_HI] = instr_alu_export,
+
+	[INSTR_ALU_SUB] = instr_alu_export,
+	[INSTR_ALU_SUB_MH] = instr_alu_export,
+	[INSTR_ALU_SUB_HM] = instr_alu_export,
+	[INSTR_ALU_SUB_HH] = instr_alu_export,
+	[INSTR_ALU_SUB_MI] = instr_alu_export,
+	[INSTR_ALU_SUB_HI] = instr_alu_export,
+
+	[INSTR_ALU_CKADD_FIELD] = instr_alu_export,
+	[INSTR_ALU_CKADD_STRUCT] = instr_alu_export,
+	[INSTR_ALU_CKADD_STRUCT20] = instr_alu_export,
+	[INSTR_ALU_CKSUB_FIELD] = instr_alu_export,
+
+	[INSTR_ALU_AND] = instr_alu_export,
+	[INSTR_ALU_AND_MH] = instr_alu_export,
+	[INSTR_ALU_AND_HM] = instr_alu_export,
+	[INSTR_ALU_AND_HH] = instr_alu_export,
+	[INSTR_ALU_AND_I] = instr_alu_export,
+
+	[INSTR_ALU_OR] = instr_alu_export,
+	[INSTR_ALU_OR_MH] = instr_alu_export,
+	[INSTR_ALU_OR_HM] = instr_alu_export,
+	[INSTR_ALU_OR_HH] = instr_alu_export,
+	[INSTR_ALU_OR_I] = instr_alu_export,
+
+	[INSTR_ALU_XOR] = instr_alu_export,
+	[INSTR_ALU_XOR_MH] = instr_alu_export,
+	[INSTR_ALU_XOR_HM] = instr_alu_export,
+	[INSTR_ALU_XOR_HH] = instr_alu_export,
+	[INSTR_ALU_XOR_I] = instr_alu_export,
+
+	[INSTR_ALU_SHL] = instr_alu_export,
+	[INSTR_ALU_SHL_MH] = instr_alu_export,
+	[INSTR_ALU_SHL_HM] = instr_alu_export,
+	[INSTR_ALU_SHL_HH] = instr_alu_export,
+	[INSTR_ALU_SHL_MI] = instr_alu_export,
+	[INSTR_ALU_SHL_HI] = instr_alu_export,
+
+	[INSTR_ALU_SHR] = instr_alu_export,
+	[INSTR_ALU_SHR_MH] = instr_alu_export,
+	[INSTR_ALU_SHR_HM] = instr_alu_export,
+	[INSTR_ALU_SHR_HH] = instr_alu_export,
+	[INSTR_ALU_SHR_MI] = instr_alu_export,
+	[INSTR_ALU_SHR_HI] = instr_alu_export,
+
+	[INSTR_REGPREFETCH_RH] = instr_reg_export,
+	[INSTR_REGPREFETCH_RM] = instr_reg_export,
+	[INSTR_REGPREFETCH_RI] = instr_reg_export,
+
+	[INSTR_REGRD_HRH] = instr_reg_export,
+	[INSTR_REGRD_HRM] = instr_reg_export,
+	[INSTR_REGRD_MRH] = instr_reg_export,
+	[INSTR_REGRD_MRM] = instr_reg_export,
+	[INSTR_REGRD_HRI] = instr_reg_export,
+	[INSTR_REGRD_MRI] = instr_reg_export,
+
+	[INSTR_REGWR_RHH] = instr_reg_export,
+	[INSTR_REGWR_RHM] = instr_reg_export,
+	[INSTR_REGWR_RMH] = instr_reg_export,
+	[INSTR_REGWR_RMM] = instr_reg_export,
+	[INSTR_REGWR_RHI] = instr_reg_export,
+	[INSTR_REGWR_RMI] = instr_reg_export,
+	[INSTR_REGWR_RIH] = instr_reg_export,
+	[INSTR_REGWR_RIM] = instr_reg_export,
+	[INSTR_REGWR_RII] = instr_reg_export,
+
+	[INSTR_REGADD_RHH] = instr_reg_export,
+	[INSTR_REGADD_RHM] = instr_reg_export,
+	[INSTR_REGADD_RMH] = instr_reg_export,
+	[INSTR_REGADD_RMM] = instr_reg_export,
+	[INSTR_REGADD_RHI] = instr_reg_export,
+	[INSTR_REGADD_RMI] = instr_reg_export,
+	[INSTR_REGADD_RIH] = instr_reg_export,
+	[INSTR_REGADD_RIM] = instr_reg_export,
+	[INSTR_REGADD_RII] = instr_reg_export,
+
+	[INSTR_METPREFETCH_H] = instr_meter_export,
+	[INSTR_METPREFETCH_M] = instr_meter_export,
+	[INSTR_METPREFETCH_I] = instr_meter_export,
+
+	[INSTR_METER_HHM] = instr_meter_export,
+	[INSTR_METER_HHI] = instr_meter_export,
+	[INSTR_METER_HMM] = instr_meter_export,
+	[INSTR_METER_HMI] = instr_meter_export,
+	[INSTR_METER_MHM] = instr_meter_export,
+	[INSTR_METER_MHI] = instr_meter_export,
+	[INSTR_METER_MMM] = instr_meter_export,
+	[INSTR_METER_MMI] = instr_meter_export,
+	[INSTR_METER_IHM] = instr_meter_export,
+	[INSTR_METER_IHI] = instr_meter_export,
+	[INSTR_METER_IMM] = instr_meter_export,
+	[INSTR_METER_IMI] = instr_meter_export,
+
+	[INSTR_TABLE] = instr_table_export,
+	[INSTR_TABLE_AF] = instr_table_export,
+	[INSTR_SELECTOR] = instr_table_export,
+	[INSTR_LEARNER] = instr_table_export,
+	[INSTR_LEARNER_AF] = instr_table_export,
+
+	[INSTR_LEARNER_LEARN] = instr_learn_export,
+	[INSTR_LEARNER_FORGET] = instr_forget_export,
+
+	[INSTR_EXTERN_OBJ] = instr_extern_export,
+	[INSTR_EXTERN_FUNC] = instr_extern_export,
+
+	[INSTR_JMP] = instr_jmp_export,
+	[INSTR_JMP_VALID] = instr_jmp_export,
+	[INSTR_JMP_INVALID] = instr_jmp_export,
+	[INSTR_JMP_HIT] = instr_jmp_export,
+	[INSTR_JMP_MISS] = instr_jmp_export,
+	[INSTR_JMP_ACTION_HIT] = instr_jmp_export,
+	[INSTR_JMP_ACTION_MISS] = instr_jmp_export,
+
+	[INSTR_JMP_EQ] = instr_jmp_export,
+	[INSTR_JMP_EQ_MH] = instr_jmp_export,
+	[INSTR_JMP_EQ_HM] = instr_jmp_export,
+	[INSTR_JMP_EQ_HH] = instr_jmp_export,
+	[INSTR_JMP_EQ_I] = instr_jmp_export,
+
+	[INSTR_JMP_NEQ] = instr_jmp_export,
+	[INSTR_JMP_NEQ_MH] = instr_jmp_export,
+	[INSTR_JMP_NEQ_HM] = instr_jmp_export,
+	[INSTR_JMP_NEQ_HH] = instr_jmp_export,
+	[INSTR_JMP_NEQ_I] = instr_jmp_export,
+
+	[INSTR_JMP_LT] = instr_jmp_export,
+	[INSTR_JMP_LT_MH] = instr_jmp_export,
+	[INSTR_JMP_LT_HM] = instr_jmp_export,
+	[INSTR_JMP_LT_HH] = instr_jmp_export,
+	[INSTR_JMP_LT_MI] = instr_jmp_export,
+	[INSTR_JMP_LT_HI] = instr_jmp_export,
+
+	[INSTR_JMP_GT] = instr_jmp_export,
+	[INSTR_JMP_GT_MH] = instr_jmp_export,
+	[INSTR_JMP_GT_HM] = instr_jmp_export,
+	[INSTR_JMP_GT_HH] = instr_jmp_export,
+	[INSTR_JMP_GT_MI] = instr_jmp_export,
+	[INSTR_JMP_GT_HI] = instr_jmp_export,
+
+	[INSTR_RETURN] = instr_return_export,
+};
+
+static void
+action_data_codegen(struct action *a, FILE *f)
+{
+	uint32_t i;
+
+	fprintf(f,
+		"static const struct instruction action_%s_instructions[] = {\n",
+		a->name);
+
+	for (i = 0; i < a->n_instructions; i++) {
+		struct instruction *instr = &a->instructions[i];
+		instruction_export_t func = export_table[instr->type];
+
+		func(instr, f);
+	}
+
+	fprintf(f, "};\n");
+}
+
 static int
 pipeline_codegen(struct rte_swx_pipeline *p)
 {
+	struct action *a;
 	FILE *f = NULL;
 
 	if (!p)
@@ -9814,6 +10898,15 @@ pipeline_codegen(struct rte_swx_pipeline *p)
 
 	/* Include the .h file. */
 	fprintf(f, "#include \"rte_swx_pipeline_internal.h\"\n");
+
+	/* Add the code for each action. */
+	TAILQ_FOREACH(a, &p->actions, node) {
+		fprintf(f, "/**\n * Action %s\n */\n\n", a->name);
+
+		action_data_codegen(a, f);
+
+		fprintf(f, "\n");
+	}
 
 	/* Close the .c file. */
 	fclose(f);
