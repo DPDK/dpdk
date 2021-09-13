@@ -2230,27 +2230,8 @@ instr_learn_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t action_id = ip->learn.action_id;
-	uint32_t learner_id = t->learner_id;
-	struct rte_swx_table_state *ts = &t->table_state[p->n_tables +
-		p->n_selectors + learner_id];
-	struct learner_runtime *l = &t->learners[learner_id];
-	struct learner_statistics *stats = &p->learner_stats[learner_id];
-	uint32_t status;
 
-	/* Table. */
-	status = rte_swx_table_learner_add(ts->obj,
-					   l->mailbox,
-					   t->time,
-					   action_id,
-					   l->action_data[action_id]);
-
-	TRACE("[Thread %2u] learner %u learn %s\n",
-	      p->thread_id,
-	      learner_id,
-	      status ? "ok" : "error");
-
-	stats->n_pkts_learn[status] += 1;
+	__instr_learn_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -2279,20 +2260,9 @@ static inline void
 instr_forget_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
-	uint32_t learner_id = t->learner_id;
-	struct rte_swx_table_state *ts = &t->table_state[p->n_tables +
-		p->n_selectors + learner_id];
-	struct learner_runtime *l = &t->learners[learner_id];
-	struct learner_statistics *stats = &p->learner_stats[learner_id];
+	struct instruction *ip = t->ip;
 
-	/* Table. */
-	rte_swx_table_learner_delete(ts->obj, l->mailbox);
-
-	TRACE("[Thread %2u] learner %u forget\n",
-	      p->thread_id,
-	      learner_id);
-
-	stats->n_pkts_forget += 1;
+	__instr_forget_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
