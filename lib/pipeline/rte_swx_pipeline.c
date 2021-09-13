@@ -12177,6 +12177,26 @@ instruction_group_list_codegen(struct instruction_group_list *igl,
 	}
 }
 
+static uint32_t
+instruction_group_list_custom_instructions_count(struct instruction_group_list *igl)
+{
+	struct instruction_group *g;
+	uint32_t n_custom_instr = 0;
+
+	/* Groups with a single instruction: no function is generated for this group, the group
+	 * keeps its current instruction. Groups with more than two instructions: one function and
+	 * the associated custom instruction get generated for each such group.
+	 */
+	TAILQ_FOREACH(g, igl, node) {
+		if (g->first_instr_id == g->last_instr_id)
+			continue;
+
+		n_custom_instr++;
+	}
+
+	return n_custom_instr;
+}
+
 static int
 pipeline_codegen(struct rte_swx_pipeline *p, struct instruction_group_list *igl)
 {
@@ -12332,6 +12352,73 @@ free:
 }
 
 static int
+pipeline_adjust_check(struct rte_swx_pipeline *p __rte_unused,
+		      struct instruction_group_list *igl)
+{
+	uint32_t n_custom_instr = instruction_group_list_custom_instructions_count(igl);
+
+	/* Check that enough space is available within the pipeline instruction table to store all
+	 * the custom instructions.
+	 */
+	if (INSTR_CUSTOM_0 + n_custom_instr > RTE_SWX_PIPELINE_INSTRUCTION_TABLE_SIZE_MAX)
+		return -ENOSPC;
+
+	return 0;
+}
+
+static void
+pipeline_adjust(struct rte_swx_pipeline *p, struct instruction_group_list *igl)
+{
+	struct instruction_group *g;
+	uint32_t i;
+
+	/* Pipeline table instructions. */
+	for (i = 0; i < p->n_instructions; i++) {
+		struct instruction *instr = &p->instructions[i];
+
+		if (instr->type == INSTR_TABLE)
+			instr->type = INSTR_TABLE_AF;
+
+		if (instr->type == INSTR_LEARNER)
+			instr->type = INSTR_LEARNER_AF;
+	}
+
+	/* Pipeline custom instructions. */
+	i = 0;
+	TAILQ_FOREACH(g, igl, node) {
+		struct instruction *instr = &p->instructions[g->first_instr_id];
+		uint32_t j;
+
+		if (g->first_instr_id == g->last_instr_id)
+			continue;
+
+		/* Install a new custom instruction. */
+		p->instruction_table[INSTR_CUSTOM_0 + i] = g->func;
+
+		/* First instruction of the group: change its type to the new custom instruction. */
+		instr->type = INSTR_CUSTOM_0 + i;
+
+		/* All the subsequent instructions of the group: invalidate. */
+		for (j = g->first_instr_id + 1; j <= g->last_instr_id; j++) {
+			struct instruction_data *data = &p->instruction_data[j];
+
+			data->invalid = 1;
+		}
+
+		i++;
+	}
+
+	/* Remove the invalidated instructions. */
+	p->n_instructions = instr_compact(p->instructions, p->instruction_data, p->n_instructions);
+
+	/* Resolve the jump destination for any "standalone" jump instructions (i.e. those jump
+	 * instructions that are the only instruction within their group, so they were left
+	 * unmodified).
+	 */
+	instr_jmp_resolve(p->instructions, p->instruction_data, p->n_instructions);
+}
+
+static int
 pipeline_compile(struct rte_swx_pipeline *p)
 {
 	struct instruction_group_list *igl = NULL;
@@ -12352,6 +12439,13 @@ pipeline_compile(struct rte_swx_pipeline *p)
 	status = pipeline_libload(p, igl);
 	if (status)
 		goto free;
+
+	/* Adjust instructions. */
+	status = pipeline_adjust_check(p, igl);
+	if (status)
+		goto free;
+
+	pipeline_adjust(p, igl);
 
 free:
 	instruction_group_list_free(igl);
