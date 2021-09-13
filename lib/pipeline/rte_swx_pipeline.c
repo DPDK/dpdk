@@ -2407,10 +2407,7 @@ instr_mov_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] mov\n",
-	      p->thread_id);
-
-	MOV(t, ip);
+	__instr_mov_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -2422,10 +2419,7 @@ instr_mov_mh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] mov (mh)\n",
-	      p->thread_id);
-
-	MOV_MH(t, ip);
+	__instr_mov_mh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -2437,10 +2431,7 @@ instr_mov_hm_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] mov (hm)\n",
-	      p->thread_id);
-
-	MOV_HM(t, ip);
+	__instr_mov_hm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -2452,10 +2443,7 @@ instr_mov_hh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] mov (hh)\n",
-	      p->thread_id);
-
-	MOV_HH(t, ip);
+	__instr_mov_hh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -2467,11 +2455,7 @@ instr_mov_i_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] mov m.f %" PRIx64 "\n",
-	      p->thread_id,
-	      ip->mov.src_val);
-
-	MOV_I(t, ip);
+	__instr_mov_i_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);

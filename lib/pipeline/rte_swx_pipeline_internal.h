@@ -2058,4 +2058,57 @@ __instr_extern_func_exec(struct rte_swx_pipeline *p __rte_unused,
 	return done;
 }
 
+/*
+ * mov.
+ */
+static inline void
+__instr_mov_exec(struct rte_swx_pipeline *p __rte_unused,
+		 struct thread *t,
+		 const struct instruction *ip)
+{
+	TRACE("[Thread %2u] mov\n", p->thread_id);
+
+	MOV(t, ip);
+}
+
+static inline void
+__instr_mov_mh_exec(struct rte_swx_pipeline *p __rte_unused,
+		    struct thread *t,
+		    const struct instruction *ip)
+{
+	TRACE("[Thread %2u] mov (mh)\n", p->thread_id);
+
+	MOV_MH(t, ip);
+}
+
+static inline void
+__instr_mov_hm_exec(struct rte_swx_pipeline *p __rte_unused,
+		    struct thread *t,
+		    const struct instruction *ip)
+{
+	TRACE("[Thread %2u] mov (hm)\n", p->thread_id);
+
+	MOV_HM(t, ip);
+}
+
+static inline void
+__instr_mov_hh_exec(struct rte_swx_pipeline *p __rte_unused,
+		    struct thread *t,
+		    const struct instruction *ip)
+{
+	TRACE("[Thread %2u] mov (hh)\n", p->thread_id);
+
+	MOV_HH(t, ip);
+}
+
+static inline void
+__instr_mov_i_exec(struct rte_swx_pipeline *p __rte_unused,
+		   struct thread *t,
+		   const struct instruction *ip)
+{
+	TRACE("[Thread %2u] mov m.f %" PRIx64 "\n", p->thread_id, ip->mov.src_val);
+
+	MOV_I(t, ip);
+}
+
 #endif
