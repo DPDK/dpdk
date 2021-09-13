@@ -2098,6 +2098,62 @@ instr_table_exec(struct rte_swx_pipeline *p)
 }
 
 static inline void
+instr_table_af_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint32_t table_id = ip->table.table_id;
+	struct rte_swx_table_state *ts = &t->table_state[table_id];
+	struct table_runtime *table = &t->tables[table_id];
+	struct table_statistics *stats = &p->table_stats[table_id];
+	uint64_t action_id, n_pkts_hit, n_pkts_action;
+	uint8_t *action_data;
+	action_func_t action_func;
+	int done, hit;
+
+	/* Table. */
+	done = table->func(ts->obj,
+			   table->mailbox,
+			   table->key,
+			   &action_id,
+			   &action_data,
+			   &hit);
+	if (!done) {
+		/* Thread. */
+		TRACE("[Thread %2u] table %u (not finalized)\n",
+		      p->thread_id,
+		      table_id);
+
+		thread_yield(p);
+		return;
+	}
+
+	action_id = hit ? action_id : ts->default_action_id;
+	action_data = hit ? action_data : ts->default_action_data;
+	action_func = p->action_funcs[action_id];
+	n_pkts_hit = stats->n_pkts_hit[hit];
+	n_pkts_action = stats->n_pkts_action[action_id];
+
+	TRACE("[Thread %2u] table %u (%s, action %u)\n",
+	      p->thread_id,
+	      table_id,
+	      hit ? "hit" : "miss",
+	      (uint32_t)action_id);
+
+	t->action_id = action_id;
+	t->structs[0] = action_data;
+	t->hit = hit;
+	stats->n_pkts_hit[hit] = n_pkts_hit + 1;
+	stats->n_pkts_action[action_id] = n_pkts_action + 1;
+
+	/* Thread. */
+	thread_ip_inc(p);
+
+	/* Action. */
+	action_func(p);
+}
+
+static inline void
 instr_selector_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
@@ -2191,6 +2247,68 @@ instr_learner_exec(struct rte_swx_pipeline *p)
 
 	/* Thread. */
 	thread_ip_action_call(p, t, action_id);
+}
+
+static inline void
+instr_learner_af_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint32_t learner_id = ip->table.table_id;
+	struct rte_swx_table_state *ts = &t->table_state[p->n_tables +
+		p->n_selectors + learner_id];
+	struct learner_runtime *l = &t->learners[learner_id];
+	struct learner_statistics *stats = &p->learner_stats[learner_id];
+	uint64_t action_id, n_pkts_hit, n_pkts_action, time;
+	uint8_t *action_data;
+	action_func_t action_func;
+	int done, hit;
+
+	/* Table. */
+	time = rte_get_tsc_cycles();
+
+	done = rte_swx_table_learner_lookup(ts->obj,
+					    l->mailbox,
+					    time,
+					    l->key,
+					    &action_id,
+					    &action_data,
+					    &hit);
+	if (!done) {
+		/* Thread. */
+		TRACE("[Thread %2u] learner %u (not finalized)\n",
+		      p->thread_id,
+		      learner_id);
+
+		thread_yield(p);
+		return;
+	}
+
+	action_id = hit ? action_id : ts->default_action_id;
+	action_data = hit ? action_data : ts->default_action_data;
+	action_func = p->action_funcs[action_id];
+	n_pkts_hit = stats->n_pkts_hit[hit];
+	n_pkts_action = stats->n_pkts_action[action_id];
+
+	TRACE("[Thread %2u] learner %u (%s, action %u)\n",
+	      p->thread_id,
+	      learner_id,
+	      hit ? "hit" : "miss",
+	      (uint32_t)action_id);
+
+	t->action_id = action_id;
+	t->structs[0] = action_data;
+	t->hit = hit;
+	t->learner_id = learner_id;
+	t->time = time;
+	stats->n_pkts_hit[hit] = n_pkts_hit + 1;
+	stats->n_pkts_action[action_id] = n_pkts_action + 1;
+
+	/* Thread. */
+	thread_ip_action_call(p, t, action_id);
+
+	/* Action */
+	action_func(p);
 }
 
 /*
@@ -6618,8 +6736,10 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_METER_IMI] = instr_meter_imi_exec,
 
 	[INSTR_TABLE] = instr_table_exec,
+	[INSTR_TABLE_AF] = instr_table_af_exec,
 	[INSTR_SELECTOR] = instr_selector_exec,
 	[INSTR_LEARNER] = instr_learner_exec,
+	[INSTR_LEARNER_AF] = instr_learner_af_exec,
 	[INSTR_LEARNER_LEARN] = instr_learn_exec,
 	[INSTR_LEARNER_FORGET] = instr_forget_exec,
 	[INSTR_EXTERN_OBJ] = instr_extern_obj_exec,
@@ -6819,12 +6939,19 @@ action_build(struct rte_swx_pipeline *p)
 	TAILQ_FOREACH(action, &p->actions, node)
 		p->action_instructions[action->id] = action->instructions;
 
+	/* p->action_funcs. */
+	p->action_funcs = calloc(p->n_actions, sizeof(action_func_t));
+	CHECK(p->action_funcs, ENOMEM);
+
 	return 0;
 }
 
 static void
 action_build_free(struct rte_swx_pipeline *p)
 {
+	free(p->action_funcs);
+	p->action_funcs = NULL;
+
 	free(p->action_instructions);
 	p->action_instructions = NULL;
 }

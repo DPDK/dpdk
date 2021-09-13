@@ -443,8 +443,10 @@ enum instruction_type {
 
 	/* table TABLE */
 	INSTR_TABLE,
+	INSTR_TABLE_AF,
 	INSTR_SELECTOR,
 	INSTR_LEARNER,
+	INSTR_LEARNER_AF,
 
 	/* learn LEARNER ACTION_NAME */
 	INSTR_LEARNER_LEARN,
@@ -687,6 +689,9 @@ struct instruction_data {
 /*
  * Action.
  */
+typedef void
+(*action_func_t)(struct rte_swx_pipeline *p);
+
 struct action {
 	TAILQ_ENTRY(action) node;
 	char name[RTE_SWX_NAME_SIZE];
@@ -1382,6 +1387,7 @@ struct rte_swx_pipeline {
 	struct port_in_runtime *in;
 	struct port_out_runtime *out;
 	struct instruction **action_instructions;
+	action_func_t *action_funcs;
 	struct rte_swx_table_state *table_state;
 	struct table_statistics *table_stats;
 	struct selector_statistics *selector_stats;
