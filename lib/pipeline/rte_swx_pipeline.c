@@ -1953,12 +1953,8 @@ instr_hdr_validate_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint32_t header_id = ip->valid.header_id;
 
-	TRACE("[Thread %2u] validate header %u\n", p->thread_id, header_id);
-
-	/* Headers. */
-	t->valid_headers = MASK64_BIT_SET(t->valid_headers, header_id);
+	__instr_hdr_validate_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -1992,12 +1988,8 @@ instr_hdr_invalidate_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint32_t header_id = ip->valid.header_id;
 
-	TRACE("[Thread %2u] invalidate header %u\n", p->thread_id, header_id);
-
-	/* Headers. */
-	t->valid_headers = MASK64_BIT_CLR(t->valid_headers, header_id);
+	__instr_hdr_invalidate_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);

@@ -1928,4 +1928,36 @@ __instr_hdr_emit8_tx_exec(struct rte_swx_pipeline *p,
 	__instr_tx_exec(p, t, ip);
 }
 
+/*
+ * validate.
+ */
+static inline void
+__instr_hdr_validate_exec(struct rte_swx_pipeline *p __rte_unused,
+			  struct thread *t,
+			  const struct instruction *ip)
+{
+	uint32_t header_id = ip->valid.header_id;
+
+	TRACE("[Thread %2u] validate header %u\n", p->thread_id, header_id);
+
+	/* Headers. */
+	t->valid_headers = MASK64_BIT_SET(t->valid_headers, header_id);
+}
+
+/*
+ * invalidate.
+ */
+static inline void
+__instr_hdr_invalidate_exec(struct rte_swx_pipeline *p __rte_unused,
+			    struct thread *t,
+			    const struct instruction *ip)
+{
+	uint32_t header_id = ip->valid.header_id;
+
+	TRACE("[Thread %2u] invalidate header %u\n", p->thread_id, header_id);
+
+	/* Headers. */
+	t->valid_headers = MASK64_BIT_CLR(t->valid_headers, header_id);
+}
+
 #endif
