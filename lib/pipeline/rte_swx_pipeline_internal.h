@@ -1580,4 +1580,182 @@ __instr_tx_i_exec(struct rte_swx_pipeline *p, struct thread *t, const struct ins
 	port->pkt_tx(port->obj, pkt);
 }
 
+/*
+ * extract.
+ */
+static inline void
+__instr_hdr_extract_many_exec(struct rte_swx_pipeline *p __rte_unused,
+			      struct thread *t,
+			      const struct instruction *ip,
+			      uint32_t n_extract)
+{
+	uint64_t valid_headers = t->valid_headers;
+	uint8_t *ptr = t->ptr;
+	uint32_t offset = t->pkt.offset;
+	uint32_t length = t->pkt.length;
+	uint32_t i;
+
+	for (i = 0; i < n_extract; i++) {
+		uint32_t header_id = ip->io.hdr.header_id[i];
+		uint32_t struct_id = ip->io.hdr.struct_id[i];
+		uint32_t n_bytes = ip->io.hdr.n_bytes[i];
+
+		TRACE("[Thread %2u]: extract header %u (%u bytes)\n",
+		      p->thread_id,
+		      header_id,
+		      n_bytes);
+
+		/* Headers. */
+		t->structs[struct_id] = ptr;
+		valid_headers = MASK64_BIT_SET(valid_headers, header_id);
+
+		/* Packet. */
+		offset += n_bytes;
+		length -= n_bytes;
+		ptr += n_bytes;
+	}
+
+	/* Headers. */
+	t->valid_headers = valid_headers;
+
+	/* Packet. */
+	t->pkt.offset = offset;
+	t->pkt.length = length;
+	t->ptr = ptr;
+}
+
+static inline void
+__instr_hdr_extract_exec(struct rte_swx_pipeline *p,
+			 struct thread *t,
+			 const struct instruction *ip)
+{
+	__instr_hdr_extract_many_exec(p, t, ip, 1);
+}
+
+static inline void
+__instr_hdr_extract2_exec(struct rte_swx_pipeline *p,
+			  struct thread *t,
+			  const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 2 instructions are fused. ***\n", p->thread_id);
+
+	__instr_hdr_extract_many_exec(p, t, ip, 2);
+}
+
+static inline void
+__instr_hdr_extract3_exec(struct rte_swx_pipeline *p,
+			  struct thread *t,
+			  const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 3 instructions are fused. ***\n", p->thread_id);
+
+	__instr_hdr_extract_many_exec(p, t, ip, 3);
+}
+
+static inline void
+__instr_hdr_extract4_exec(struct rte_swx_pipeline *p,
+			  struct thread *t,
+			  const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 4 instructions are fused. ***\n", p->thread_id);
+
+	__instr_hdr_extract_many_exec(p, t, ip, 4);
+}
+
+static inline void
+__instr_hdr_extract5_exec(struct rte_swx_pipeline *p,
+			  struct thread *t,
+			  const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 5 instructions are fused. ***\n", p->thread_id);
+
+	__instr_hdr_extract_many_exec(p, t, ip, 5);
+}
+
+static inline void
+__instr_hdr_extract6_exec(struct rte_swx_pipeline *p,
+			  struct thread *t,
+			  const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 6 instructions are fused. ***\n", p->thread_id);
+
+	__instr_hdr_extract_many_exec(p, t, ip, 6);
+}
+
+static inline void
+__instr_hdr_extract7_exec(struct rte_swx_pipeline *p,
+			  struct thread *t,
+			  const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 7 instructions are fused. ***\n", p->thread_id);
+
+	__instr_hdr_extract_many_exec(p, t, ip, 7);
+}
+
+static inline void
+__instr_hdr_extract8_exec(struct rte_swx_pipeline *p,
+			  struct thread *t,
+			  const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 8 instructions are fused. ***\n", p->thread_id);
+
+	__instr_hdr_extract_many_exec(p, t, ip, 8);
+}
+
+static inline void
+__instr_hdr_extract_m_exec(struct rte_swx_pipeline *p __rte_unused,
+			   struct thread *t,
+			   const struct instruction *ip)
+{
+	uint64_t valid_headers = t->valid_headers;
+	uint8_t *ptr = t->ptr;
+	uint32_t offset = t->pkt.offset;
+	uint32_t length = t->pkt.length;
+
+	uint32_t n_bytes_last = METADATA_READ(t, ip->io.io.offset, ip->io.io.n_bits);
+	uint32_t header_id = ip->io.hdr.header_id[0];
+	uint32_t struct_id = ip->io.hdr.struct_id[0];
+	uint32_t n_bytes = ip->io.hdr.n_bytes[0];
+
+	struct header_runtime *h = &t->headers[header_id];
+
+	TRACE("[Thread %2u]: extract header %u (%u + %u bytes)\n",
+	      p->thread_id,
+	      header_id,
+	      n_bytes,
+	      n_bytes_last);
+
+	n_bytes += n_bytes_last;
+
+	/* Headers. */
+	t->structs[struct_id] = ptr;
+	t->valid_headers = MASK64_BIT_SET(valid_headers, header_id);
+	h->n_bytes = n_bytes;
+
+	/* Packet. */
+	t->pkt.offset = offset + n_bytes;
+	t->pkt.length = length - n_bytes;
+	t->ptr = ptr + n_bytes;
+}
+
+static inline void
+__instr_hdr_lookahead_exec(struct rte_swx_pipeline *p __rte_unused,
+			   struct thread *t,
+			   const struct instruction *ip)
+{
+	uint64_t valid_headers = t->valid_headers;
+	uint8_t *ptr = t->ptr;
+
+	uint32_t header_id = ip->io.hdr.header_id[0];
+	uint32_t struct_id = ip->io.hdr.struct_id[0];
+
+	TRACE("[Thread %2u]: lookahead header %u\n",
+	      p->thread_id,
+	      header_id);
+
+	/* Headers. */
+	t->structs[struct_id] = ptr;
+	t->valid_headers = MASK64_BIT_SET(valid_headers, header_id);
+}
+
 #endif
