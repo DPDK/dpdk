@@ -1377,6 +1377,26 @@ instruction_is_tx(enum instruction_type type)
 }
 
 static int
+instruction_does_tx(struct instruction *instr)
+{
+	switch (instr->type) {
+	case INSTR_TX:
+	case INSTR_TX_I:
+	case INSTR_HDR_EMIT_TX:
+	case INSTR_HDR_EMIT2_TX:
+	case INSTR_HDR_EMIT3_TX:
+	case INSTR_HDR_EMIT4_TX:
+	case INSTR_HDR_EMIT5_TX:
+	case INSTR_HDR_EMIT6_TX:
+	case INSTR_HDR_EMIT7_TX:
+	case INSTR_HDR_EMIT8_TX:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+static int
 instruction_is_jmp(struct instruction *instr)
 {
 	switch (instr->type) {
@@ -10882,6 +10902,644 @@ action_data_codegen(struct action *a, FILE *f)
 	fprintf(f, "};\n");
 }
 
+static const char *
+instr_type_to_func(struct instruction *instr)
+{
+	switch (instr->type) {
+	case INSTR_RX: return NULL;
+
+	case INSTR_TX: return "__instr_tx_exec";
+	case INSTR_TX_I: return "__instr_tx_i_exec";
+
+	case INSTR_HDR_EXTRACT: return "__instr_hdr_extract_exec";
+	case INSTR_HDR_EXTRACT2: return "__instr_hdr_extract2_exec";
+	case INSTR_HDR_EXTRACT3: return "__instr_hdr_extract3_exec";
+	case INSTR_HDR_EXTRACT4: return "__instr_hdr_extract4_exec";
+	case INSTR_HDR_EXTRACT5: return "__instr_hdr_extract5_exec";
+	case INSTR_HDR_EXTRACT6: return "__instr_hdr_extract6_exec";
+	case INSTR_HDR_EXTRACT7: return "__instr_hdr_extract7_exec";
+	case INSTR_HDR_EXTRACT8: return "__instr_hdr_extract8_exec";
+
+	case INSTR_HDR_EXTRACT_M: return "__instr_hdr_extract_m_exec";
+
+	case INSTR_HDR_LOOKAHEAD: return "__instr_hdr_lookahead_exec";
+
+	case INSTR_HDR_EMIT: return "__instr_hdr_emit_exec";
+	case INSTR_HDR_EMIT_TX: return "__instr_hdr_emit_tx_exec";
+	case INSTR_HDR_EMIT2_TX: return "__instr_hdr_emit2_tx_exec";
+	case INSTR_HDR_EMIT3_TX: return "__instr_hdr_emit3_tx_exec";
+	case INSTR_HDR_EMIT4_TX: return "__instr_hdr_emit4_tx_exec";
+	case INSTR_HDR_EMIT5_TX: return "__instr_hdr_emit5_tx_exec";
+	case INSTR_HDR_EMIT6_TX: return "__instr_hdr_emit6_tx_exec";
+	case INSTR_HDR_EMIT7_TX: return "__instr_hdr_emit7_tx_exec";
+	case INSTR_HDR_EMIT8_TX: return "__instr_hdr_emit8_tx_exec";
+
+	case INSTR_HDR_VALIDATE: return "__instr_hdr_validate_exec";
+	case INSTR_HDR_INVALIDATE: return "__instr_hdr_invalidate_exec";
+
+	case INSTR_MOV: return "__instr_mov_exec";
+	case INSTR_MOV_MH: return "__instr_mov_mh_exec";
+	case INSTR_MOV_HM: return "__instr_mov_hm_exec";
+	case INSTR_MOV_HH: return "__instr_mov_hh_exec";
+	case INSTR_MOV_I: return "__instr_mov_i_exec";
+
+	case INSTR_DMA_HT: return "__instr_dma_ht_exec";
+	case INSTR_DMA_HT2: return "__instr_dma_ht2_exec";
+	case INSTR_DMA_HT3: return "__instr_dma_ht3_exec";
+	case INSTR_DMA_HT4: return "__instr_dma_ht4_exec";
+	case INSTR_DMA_HT5: return "__instr_dma_ht5_exec";
+	case INSTR_DMA_HT6: return "__instr_dma_ht6_exec";
+	case INSTR_DMA_HT7: return "__instr_dma_ht7_exec";
+	case INSTR_DMA_HT8: return "__instr_dma_ht8_exec";
+
+	case INSTR_ALU_ADD: return "__instr_alu_add_exec";
+	case INSTR_ALU_ADD_MH: return "__instr_alu_add_mh_exec";
+	case INSTR_ALU_ADD_HM: return "__instr_alu_add_hm_exec";
+	case INSTR_ALU_ADD_HH: return "__instr_alu_add_hh_exec";
+	case INSTR_ALU_ADD_MI: return "__instr_alu_add_mi_exec";
+	case INSTR_ALU_ADD_HI: return "__instr_alu_add_hi_exec";
+
+	case INSTR_ALU_SUB: return "__instr_alu_sub_exec";
+	case INSTR_ALU_SUB_MH: return "__instr_alu_sub_mh_exec";
+	case INSTR_ALU_SUB_HM: return "__instr_alu_sub_hm_exec";
+	case INSTR_ALU_SUB_HH: return "__instr_alu_sub_hh_exec";
+	case INSTR_ALU_SUB_MI: return "__instr_alu_sub_mi_exec";
+	case INSTR_ALU_SUB_HI: return "__instr_alu_sub_hi_exec";
+
+	case INSTR_ALU_CKADD_FIELD: return "__instr_alu_ckadd_field_exec";
+	case INSTR_ALU_CKADD_STRUCT20: return "__instr_alu_ckadd_struct20_exec";
+	case INSTR_ALU_CKADD_STRUCT: return "__instr_alu_ckadd_struct_exec";
+	case INSTR_ALU_CKSUB_FIELD: return "__instr_alu_cksub_field_exec";
+
+	case INSTR_ALU_AND: return "__instr_alu_and_exec";
+	case INSTR_ALU_AND_MH: return "__instr_alu_and_mh_exec";
+	case INSTR_ALU_AND_HM: return "__instr_alu_and_hm_exec";
+	case INSTR_ALU_AND_HH: return "__instr_alu_and_hh_exec";
+	case INSTR_ALU_AND_I: return "__instr_alu_and_i_exec";
+
+	case INSTR_ALU_OR: return "__instr_alu_or_exec";
+	case INSTR_ALU_OR_MH: return "__instr_alu_or_mh_exec";
+	case INSTR_ALU_OR_HM: return "__instr_alu_or_hm_exec";
+	case INSTR_ALU_OR_HH: return "__instr_alu_or_hh_exec";
+	case INSTR_ALU_OR_I: return "__instr_alu_or_i_exec";
+
+	case INSTR_ALU_XOR: return "__instr_alu_xor_exec";
+	case INSTR_ALU_XOR_MH: return "__instr_alu_xor_mh_exec";
+	case INSTR_ALU_XOR_HM: return "__instr_alu_xor_hm_exec";
+	case INSTR_ALU_XOR_HH: return "__instr_alu_xor_hh_exec";
+	case INSTR_ALU_XOR_I: return "__instr_alu_xor_i_exec";
+
+	case INSTR_ALU_SHL: return "__instr_alu_shl_exec";
+	case INSTR_ALU_SHL_MH: return "__instr_alu_shl_mh_exec";
+	case INSTR_ALU_SHL_HM: return "__instr_alu_shl_hm_exec";
+	case INSTR_ALU_SHL_HH: return "__instr_alu_shl_hh_exec";
+	case INSTR_ALU_SHL_MI: return "__instr_alu_shl_mi_exec";
+	case INSTR_ALU_SHL_HI: return "__instr_alu_shl_hi_exec";
+
+	case INSTR_ALU_SHR: return "__instr_alu_shr_exec";
+	case INSTR_ALU_SHR_MH: return "__instr_alu_shr_mh_exec";
+	case INSTR_ALU_SHR_HM: return "__instr_alu_shr_hm_exec";
+	case INSTR_ALU_SHR_HH: return "__instr_alu_shr_hh_exec";
+	case INSTR_ALU_SHR_MI: return "__instr_alu_shr_mi_exec";
+	case INSTR_ALU_SHR_HI: return "__instr_alu_shr_hi_exec";
+
+	case INSTR_REGPREFETCH_RH: return "__instr_regprefetch_rh_exec";
+	case INSTR_REGPREFETCH_RM: return "__instr_regprefetch_rm_exec";
+	case INSTR_REGPREFETCH_RI: return "__instr_regprefetch_ri_exec";
+
+	case INSTR_REGRD_HRH: return "__instr_regrd_hrh_exec";
+	case INSTR_REGRD_HRM: return "__instr_regrd_hrm_exec";
+	case INSTR_REGRD_HRI: return "__instr_regrd_hri_exec";
+	case INSTR_REGRD_MRH: return "__instr_regrd_mrh_exec";
+	case INSTR_REGRD_MRM: return "__instr_regrd_mrm_exec";
+	case INSTR_REGRD_MRI: return "__instr_regrd_mri_exec";
+
+	case INSTR_REGWR_RHH: return "__instr_regwr_rhh_exec";
+	case INSTR_REGWR_RHM: return "__instr_regwr_rhm_exec";
+	case INSTR_REGWR_RHI: return "__instr_regwr_rhi_exec";
+	case INSTR_REGWR_RMH: return "__instr_regwr_rmh_exec";
+	case INSTR_REGWR_RMM: return "__instr_regwr_rmm_exec";
+	case INSTR_REGWR_RMI: return "__instr_regwr_rmi_exec";
+	case INSTR_REGWR_RIH: return "__instr_regwr_rih_exec";
+	case INSTR_REGWR_RIM: return "__instr_regwr_rim_exec";
+	case INSTR_REGWR_RII: return "__instr_regwr_rii_exec";
+
+	case INSTR_REGADD_RHH: return "__instr_regadd_rhh_exec";
+	case INSTR_REGADD_RHM: return "__instr_regadd_rhm_exec";
+	case INSTR_REGADD_RHI: return "__instr_regadd_rhi_exec";
+	case INSTR_REGADD_RMH: return "__instr_regadd_rmh_exec";
+	case INSTR_REGADD_RMM: return "__instr_regadd_rmm_exec";
+	case INSTR_REGADD_RMI: return "__instr_regadd_rmi_exec";
+	case INSTR_REGADD_RIH: return "__instr_regadd_rih_exec";
+	case INSTR_REGADD_RIM: return "__instr_regadd_rim_exec";
+	case INSTR_REGADD_RII: return "__instr_regadd_rii_exec";
+
+	case INSTR_METPREFETCH_H: return "__instr_metprefetch_h_exec";
+	case INSTR_METPREFETCH_M: return "__instr_metprefetch_m_exec";
+	case INSTR_METPREFETCH_I: return "__instr_metprefetch_i_exec";
+
+	case INSTR_METER_HHM: return "__instr_meter_hhm_exec";
+	case INSTR_METER_HHI: return "__instr_meter_hhi_exec";
+	case INSTR_METER_HMM: return "__instr_meter_hmm_exec";
+	case INSTR_METER_HMI: return "__instr_meter_hmi_exec";
+	case INSTR_METER_MHM: return "__instr_meter_mhm_exec";
+	case INSTR_METER_MHI: return "__instr_meter_mhi_exec";
+	case INSTR_METER_MMM: return "__instr_meter_mmm_exec";
+	case INSTR_METER_MMI: return "__instr_meter_mmi_exec";
+	case INSTR_METER_IHM: return "__instr_meter_ihm_exec";
+	case INSTR_METER_IHI: return "__instr_meter_ihi_exec";
+	case INSTR_METER_IMM: return "__instr_meter_imm_exec";
+	case INSTR_METER_IMI: return "__instr_meter_imi_exec";
+
+	case INSTR_TABLE: return NULL;
+	case INSTR_TABLE_AF: return NULL;
+	case INSTR_SELECTOR: return NULL;
+	case INSTR_LEARNER: return NULL;
+	case INSTR_LEARNER_AF: return NULL;
+
+	case INSTR_LEARNER_LEARN: return "__instr_learn_exec";
+	case INSTR_LEARNER_FORGET: return "__instr_forget_exec";
+
+	case INSTR_EXTERN_OBJ: return NULL;
+	case INSTR_EXTERN_FUNC: return NULL;
+
+	case INSTR_JMP: return NULL;
+	case INSTR_JMP_VALID: return NULL;
+	case INSTR_JMP_INVALID: return NULL;
+	case INSTR_JMP_HIT: return NULL;
+	case INSTR_JMP_MISS: return NULL;
+	case INSTR_JMP_ACTION_HIT: return NULL;
+	case INSTR_JMP_ACTION_MISS: return NULL;
+	case INSTR_JMP_EQ: return NULL;
+	case INSTR_JMP_EQ_MH: return NULL;
+	case INSTR_JMP_EQ_HM: return NULL;
+	case INSTR_JMP_EQ_HH: return NULL;
+	case INSTR_JMP_EQ_I: return NULL;
+	case INSTR_JMP_NEQ: return NULL;
+	case INSTR_JMP_NEQ_MH: return NULL;
+	case INSTR_JMP_NEQ_HM: return NULL;
+	case INSTR_JMP_NEQ_HH: return NULL;
+	case INSTR_JMP_NEQ_I: return NULL;
+	case INSTR_JMP_LT: return NULL;
+	case INSTR_JMP_LT_MH: return NULL;
+	case INSTR_JMP_LT_HM: return NULL;
+	case INSTR_JMP_LT_HH: return NULL;
+	case INSTR_JMP_LT_MI: return NULL;
+	case INSTR_JMP_LT_HI: return NULL;
+	case INSTR_JMP_GT: return NULL;
+	case INSTR_JMP_GT_MH: return NULL;
+	case INSTR_JMP_GT_HM: return NULL;
+	case INSTR_JMP_GT_HH: return NULL;
+	case INSTR_JMP_GT_MI: return NULL;
+	case INSTR_JMP_GT_HI: return NULL;
+
+	case INSTR_RETURN: return NULL;
+
+	default: return NULL;
+	}
+}
+
+static void
+action_instr_does_tx_codegen(struct action *a,
+			uint32_t instr_pos,
+			struct instruction *instr,
+			FILE *f)
+{
+	fprintf(f,
+		"%s(p, t, &action_%s_instructions[%u]);\n"
+		"\tthread_ip_reset(p, t);\n"
+		"\tinstr_rx_exec(p);\n"
+		"\treturn;\n",
+		instr_type_to_func(instr),
+		a->name,
+		instr_pos);
+}
+
+static void
+action_instr_extern_obj_codegen(struct action *a,
+				uint32_t instr_pos,
+				FILE *f)
+{
+	fprintf(f,
+		"while (!__instr_extern_obj_exec(p, t, &action_%s_instructions[%u]));\n",
+		a->name,
+		instr_pos);
+}
+
+static void
+action_instr_extern_func_codegen(struct action *a,
+				 uint32_t instr_pos,
+				 FILE *f)
+{
+	fprintf(f,
+		"while (!__instr_extern_func_exec(p, t, &action_%s_instructions[%u]));\n",
+		a->name,
+		instr_pos);
+}
+
+static void
+action_instr_jmp_codegen(struct action *a,
+			 uint32_t instr_pos,
+			 struct instruction *instr,
+			 struct instruction_data *data,
+			 FILE *f)
+{
+	switch (instr->type) {
+	case INSTR_JMP:
+		fprintf(f,
+			"goto %s;\n",
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_VALID:
+		fprintf(f,
+			"if (HEADER_VALID(t, action_%s_instructions[%u].jmp.header_id))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_INVALID:
+		fprintf(f,
+			"if (!HEADER_VALID(t, action_%s_instructions[%u].jmp.header_id))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_HIT:
+		fprintf(f,
+			"if (t->hit)\n"
+			"\t\tgoto %s;\n",
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_MISS:
+		fprintf(f,
+			"if (!t->hit)\n"
+			"\t\tgoto %s;\n",
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_ACTION_HIT:
+		fprintf(f,
+			"if (t->action_id == action_%s_instructions[%u].jmp.action_id)\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_ACTION_MISS:
+		fprintf(f,
+			"if (t->action_id != action_%s_instructions[%u].jmp.action_id)\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_EQ:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &action_%s_instructions[%u].jmp.a) == "
+			"instr_operand_hbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_EQ_MH:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &action_%s_instructions[%u].jmp.a) == "
+			"instr_operand_nbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_EQ_HM:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &action_%s_instructions[%u].jmp.a) == "
+			"instr_operand_hbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_EQ_HH:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &action_%s_instructions[%u].jmp.a) == "
+			"instr_operand_nbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_EQ_I:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &action_%s_instructions[%u].jmp.a) == "
+			"action_%s_instructions[%u].jmp.b_val)\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_NEQ:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &action_%s_instructions[%u].jmp.a) != "
+			"instr_operand_hbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_NEQ_MH:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &action_%s_instructions[%u].jmp.a) != "
+			"instr_operand_nbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_NEQ_HM:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &action_%s_instructions[%u].jmp.a) != "
+			"instr_operand_hbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_NEQ_HH:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &action_%s_instructions[%u].jmp.a) != "
+			"instr_operand_nbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_NEQ_I:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &action_%s_instructions[%u].jmp.a) != "
+			"action_%s_instructions[%u].jmp.b_val)\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_LT:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &action_%s_instructions[%u].jmp.a) < "
+			"instr_operand_hbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_LT_MH:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &action_%s_instructions[%u].jmp.a) < "
+			"instr_operand_nbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_LT_HM:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &action_%s_instructions[%u].jmp.a) < "
+			"instr_operand_hbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_LT_HH:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &action_%s_instructions[%u].jmp.a) < "
+			"instr_operand_nbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_LT_MI:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &action_%s_instructions[%u].jmp.a) < "
+			"action_%s_instructions[%u].jmp.b_val)\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_LT_HI:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &action_%s_instructions[%u].jmp.a) < "
+			"action_%s_instructions[%u].jmp.b_val)\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_GT:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &action_%s_instructions[%u].jmp.a) > "
+			"instr_operand_hbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_GT_MH:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &action_%s_instructions[%u].jmp.a) > "
+			"instr_operand_nbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_GT_HM:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &action_%s_instructions[%u].jmp.a) > "
+			"instr_operand_hbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_GT_HH:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &action_%s_instructions[%u].jmp.a) > "
+			"instr_operand_nbo(t, &action_%s_instructions[%u].jmp.b))\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_GT_MI:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &action_%s_instructions[%u].jmp.a) > "
+			"action_%s_instructions[%u].jmp.b_val)\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	case INSTR_JMP_GT_HI:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &action_%s_instructions[%u].jmp.a) > "
+			"action_%s_instructions[%u].jmp.b_val)\n"
+			"\t\tgoto %s;\n",
+			a->name,
+			instr_pos,
+			a->name,
+			instr_pos,
+			data->jmp_label);
+		return;
+
+	default:
+		return;
+	}
+}
+
+static void
+action_instr_return_codegen(FILE *f)
+{
+	fprintf(f,
+		"return;\n");
+}
+
+static void
+action_instr_codegen(struct action *a, FILE *f)
+{
+	uint32_t i;
+
+	fprintf(f,
+		"void\n"
+		"action_%s_run(struct rte_swx_pipeline *p)\n"
+		"{\n"
+		"\tstruct thread *t = &p->threads[p->thread_id];\n"
+		"\n",
+		a->name);
+
+	for (i = 0; i < a->n_instructions; i++) {
+		struct instruction *instr = &a->instructions[i];
+		struct instruction_data *data = &a->instruction_data[i];
+
+		/* Label, if present. */
+		if (data->label[0])
+			fprintf(f, "\n%s : ", data->label);
+		else
+			fprintf(f, "\n\t");
+
+		/* TX instruction type. */
+		if (instruction_does_tx(instr)) {
+			action_instr_does_tx_codegen(a, i, instr, f);
+			continue;
+		}
+
+		/* Extern object/function instruction type. */
+		if (instr->type == INSTR_EXTERN_OBJ) {
+			action_instr_extern_obj_codegen(a, i, f);
+			continue;
+		}
+
+		if (instr->type == INSTR_EXTERN_FUNC) {
+			action_instr_extern_func_codegen(a, i, f);
+			continue;
+		}
+
+		/* Jump instruction type. */
+		if (instruction_is_jmp(instr)) {
+			action_instr_jmp_codegen(a, i, instr, data, f);
+			continue;
+		}
+
+		/* Return instruction type. */
+		if (instr->type == INSTR_RETURN) {
+			action_instr_return_codegen(f);
+			continue;
+		}
+
+		/* Any other instruction type. */
+		fprintf(f,
+			"%s(p, t, &action_%s_instructions[%u]);\n",
+			instr_type_to_func(instr),
+			a->name,
+			i);
+	}
+
+	fprintf(f, "}\n\n");
+}
+
 static int
 pipeline_codegen(struct rte_swx_pipeline *p)
 {
@@ -10904,6 +11562,10 @@ pipeline_codegen(struct rte_swx_pipeline *p)
 		fprintf(f, "/**\n * Action %s\n */\n\n", a->name);
 
 		action_data_codegen(a, f);
+
+		fprintf(f, "\n");
+
+		action_instr_codegen(a, f);
 
 		fprintf(f, "\n");
 	}
