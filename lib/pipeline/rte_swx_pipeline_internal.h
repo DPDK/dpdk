@@ -1380,4 +1380,63 @@ struct rte_swx_pipeline {
 	int numa_node;
 };
 
+/*
+ * Instruction.
+ */
+static inline void
+pipeline_port_inc(struct rte_swx_pipeline *p)
+{
+	p->port_id = (p->port_id + 1) & (p->n_ports_in - 1);
+}
+
+static inline void
+thread_ip_reset(struct rte_swx_pipeline *p, struct thread *t)
+{
+	t->ip = p->instructions;
+}
+
+static inline void
+thread_ip_set(struct thread *t, struct instruction *ip)
+{
+	t->ip = ip;
+}
+
+static inline void
+thread_ip_action_call(struct rte_swx_pipeline *p,
+		      struct thread *t,
+		      uint32_t action_id)
+{
+	t->ret = t->ip + 1;
+	t->ip = p->action_instructions[action_id];
+}
+
+static inline void
+thread_ip_inc(struct rte_swx_pipeline *p);
+
+static inline void
+thread_ip_inc(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+
+	t->ip++;
+}
+
+static inline void
+thread_ip_inc_cond(struct thread *t, int cond)
+{
+	t->ip += cond;
+}
+
+static inline void
+thread_yield(struct rte_swx_pipeline *p)
+{
+	p->thread_id = (p->thread_id + 1) & (RTE_SWX_PIPELINE_THREADS_MAX - 1);
+}
+
+static inline void
+thread_yield_cond(struct rte_swx_pipeline *p, int cond)
+{
+	p->thread_id = (p->thread_id + cond) & (RTE_SWX_PIPELINE_THREADS_MAX - 1);
+}
+
 #endif
