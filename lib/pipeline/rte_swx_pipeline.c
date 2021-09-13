@@ -3901,134 +3901,14 @@ instr_regadd_translate(struct rte_swx_pipeline *p,
 	return 0;
 }
 
-static inline uint64_t *
-instr_regarray_regarray(struct rte_swx_pipeline *p, struct instruction *ip)
-{
-	struct regarray_runtime *r = &p->regarray_runtime[ip->regarray.regarray_id];
-	return r->regarray;
-}
-
-static inline uint64_t
-instr_regarray_idx_hbo(struct rte_swx_pipeline *p, struct thread *t, struct instruction *ip)
-{
-	struct regarray_runtime *r = &p->regarray_runtime[ip->regarray.regarray_id];
-
-	uint8_t *idx_struct = t->structs[ip->regarray.idx.struct_id];
-	uint64_t *idx64_ptr = (uint64_t *)&idx_struct[ip->regarray.idx.offset];
-	uint64_t idx64 = *idx64_ptr;
-	uint64_t idx64_mask = UINT64_MAX >> (64 - ip->regarray.idx.n_bits);
-	uint64_t idx = idx64 & idx64_mask & r->size_mask;
-
-	return idx;
-}
-
-#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
-
-static inline uint64_t
-instr_regarray_idx_nbo(struct rte_swx_pipeline *p, struct thread *t, struct instruction *ip)
-{
-	struct regarray_runtime *r = &p->regarray_runtime[ip->regarray.regarray_id];
-
-	uint8_t *idx_struct = t->structs[ip->regarray.idx.struct_id];
-	uint64_t *idx64_ptr = (uint64_t *)&idx_struct[ip->regarray.idx.offset];
-	uint64_t idx64 = *idx64_ptr;
-	uint64_t idx = (ntoh64(idx64) >> (64 - ip->regarray.idx.n_bits)) & r->size_mask;
-
-	return idx;
-}
-
-#else
-
-#define instr_regarray_idx_nbo instr_regarray_idx_hbo
-
-#endif
-
-static inline uint64_t
-instr_regarray_idx_imm(struct rte_swx_pipeline *p, struct instruction *ip)
-{
-	struct regarray_runtime *r = &p->regarray_runtime[ip->regarray.regarray_id];
-
-	uint64_t idx = ip->regarray.idx_val & r->size_mask;
-
-	return idx;
-}
-
-static inline uint64_t
-instr_regarray_src_hbo(struct thread *t, struct instruction *ip)
-{
-	uint8_t *src_struct = t->structs[ip->regarray.dstsrc.struct_id];
-	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->regarray.dstsrc.offset];
-	uint64_t src64 = *src64_ptr;
-	uint64_t src64_mask = UINT64_MAX >> (64 - ip->regarray.dstsrc.n_bits);
-	uint64_t src = src64 & src64_mask;
-
-	return src;
-}
-
-#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
-
-static inline uint64_t
-instr_regarray_src_nbo(struct thread *t, struct instruction *ip)
-{
-	uint8_t *src_struct = t->structs[ip->regarray.dstsrc.struct_id];
-	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->regarray.dstsrc.offset];
-	uint64_t src64 = *src64_ptr;
-	uint64_t src = ntoh64(src64) >> (64 - ip->regarray.dstsrc.n_bits);
-
-	return src;
-}
-
-#else
-
-#define instr_regarray_src_nbo instr_regarray_src_hbo
-
-#endif
-
-static inline void
-instr_regarray_dst_hbo_src_hbo_set(struct thread *t, struct instruction *ip, uint64_t src)
-{
-	uint8_t *dst_struct = t->structs[ip->regarray.dstsrc.struct_id];
-	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[ip->regarray.dstsrc.offset];
-	uint64_t dst64 = *dst64_ptr;
-	uint64_t dst64_mask = UINT64_MAX >> (64 - ip->regarray.dstsrc.n_bits);
-
-	*dst64_ptr = (dst64 & ~dst64_mask) | (src & dst64_mask);
-
-}
-
-#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
-
-static inline void
-instr_regarray_dst_nbo_src_hbo_set(struct thread *t, struct instruction *ip, uint64_t src)
-{
-	uint8_t *dst_struct = t->structs[ip->regarray.dstsrc.struct_id];
-	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[ip->regarray.dstsrc.offset];
-	uint64_t dst64 = *dst64_ptr;
-	uint64_t dst64_mask = UINT64_MAX >> (64 - ip->regarray.dstsrc.n_bits);
-
-	src = hton64(src) >> (64 - ip->regarray.dstsrc.n_bits);
-	*dst64_ptr = (dst64 & ~dst64_mask) | (src & dst64_mask);
-}
-
-#else
-
-#define instr_regarray_dst_nbo_src_hbo_set instr_regarray_dst_hbo_src_hbo_set
-
-#endif
-
 static inline void
 instr_regprefetch_rh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx;
-
-	TRACE("[Thread %2u] regprefetch (r[h])\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_nbo(p, t, ip);
-	rte_prefetch0(&regarray[idx]);
+	__instr_regprefetch_rh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4039,14 +3919,9 @@ instr_regprefetch_rm_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx;
-
-	TRACE("[Thread %2u] regprefetch (r[m])\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_hbo(p, t, ip);
-	rte_prefetch0(&regarray[idx]);
+	__instr_regprefetch_rm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4057,14 +3932,9 @@ instr_regprefetch_ri_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx;
-
-	TRACE("[Thread %2u] regprefetch (r[i])\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_imm(p, ip);
-	rte_prefetch0(&regarray[idx]);
+	__instr_regprefetch_ri_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4075,14 +3945,9 @@ instr_regrd_hrh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx;
-
-	TRACE("[Thread %2u] regrd (h = r[h])\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_nbo(p, t, ip);
-	instr_regarray_dst_nbo_src_hbo_set(t, ip, regarray[idx]);
+	__instr_regrd_hrh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4093,14 +3958,9 @@ instr_regrd_hrm_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx;
-
-	TRACE("[Thread %2u] regrd (h = r[m])\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_hbo(p, t, ip);
-	instr_regarray_dst_nbo_src_hbo_set(t, ip, regarray[idx]);
+	__instr_regrd_hrm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4111,14 +3971,9 @@ instr_regrd_mrh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx;
-
-	TRACE("[Thread %2u] regrd (m = r[h])\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_nbo(p, t, ip);
-	instr_regarray_dst_hbo_src_hbo_set(t, ip, regarray[idx]);
+	__instr_regrd_mrh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4129,12 +3984,9 @@ instr_regrd_mrm_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx;
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_hbo(p, t, ip);
-	instr_regarray_dst_hbo_src_hbo_set(t, ip, regarray[idx]);
+	__instr_regrd_mrm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4145,14 +3997,9 @@ instr_regrd_hri_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx;
-
-	TRACE("[Thread %2u] regrd (h = r[i])\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_imm(p, ip);
-	instr_regarray_dst_nbo_src_hbo_set(t, ip, regarray[idx]);
+	__instr_regrd_hri_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4163,14 +4010,9 @@ instr_regrd_mri_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx;
-
-	TRACE("[Thread %2u] regrd (m = r[i])\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_imm(p, ip);
-	instr_regarray_dst_hbo_src_hbo_set(t, ip, regarray[idx]);
+	__instr_regrd_mri_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4181,15 +4023,9 @@ instr_regwr_rhh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regwr (r[h] = h)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_nbo(p, t, ip);
-	src = instr_regarray_src_nbo(t, ip);
-	regarray[idx] = src;
+	__instr_regwr_rhh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4200,15 +4036,9 @@ instr_regwr_rhm_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regwr (r[h] = m)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_nbo(p, t, ip);
-	src = instr_regarray_src_hbo(t, ip);
-	regarray[idx] = src;
+	__instr_regwr_rhm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4219,15 +4049,9 @@ instr_regwr_rmh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regwr (r[m] = h)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_hbo(p, t, ip);
-	src = instr_regarray_src_nbo(t, ip);
-	regarray[idx] = src;
+	__instr_regwr_rmh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4238,15 +4062,9 @@ instr_regwr_rmm_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regwr (r[m] = m)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_hbo(p, t, ip);
-	src = instr_regarray_src_hbo(t, ip);
-	regarray[idx] = src;
+	__instr_regwr_rmm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4257,15 +4075,9 @@ instr_regwr_rhi_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regwr (r[h] = i)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_nbo(p, t, ip);
-	src = ip->regarray.dstsrc_val;
-	regarray[idx] = src;
+	__instr_regwr_rhi_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4276,15 +4088,9 @@ instr_regwr_rmi_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regwr (r[m] = i)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_hbo(p, t, ip);
-	src = ip->regarray.dstsrc_val;
-	regarray[idx] = src;
+	__instr_regwr_rmi_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4295,15 +4101,9 @@ instr_regwr_rih_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regwr (r[i] = h)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_imm(p, ip);
-	src = instr_regarray_src_nbo(t, ip);
-	regarray[idx] = src;
+	__instr_regwr_rih_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4314,15 +4114,9 @@ instr_regwr_rim_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regwr (r[i] = m)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_imm(p, ip);
-	src = instr_regarray_src_hbo(t, ip);
-	regarray[idx] = src;
+	__instr_regwr_rim_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4333,15 +4127,9 @@ instr_regwr_rii_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regwr (r[i] = i)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_imm(p, ip);
-	src = ip->regarray.dstsrc_val;
-	regarray[idx] = src;
+	__instr_regwr_rii_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4352,15 +4140,9 @@ instr_regadd_rhh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regadd (r[h] += h)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_nbo(p, t, ip);
-	src = instr_regarray_src_nbo(t, ip);
-	regarray[idx] += src;
+	__instr_regadd_rhh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4371,15 +4153,9 @@ instr_regadd_rhm_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regadd (r[h] += m)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_nbo(p, t, ip);
-	src = instr_regarray_src_hbo(t, ip);
-	regarray[idx] += src;
+	__instr_regadd_rhm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4390,15 +4166,9 @@ instr_regadd_rmh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regadd (r[m] += h)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_hbo(p, t, ip);
-	src = instr_regarray_src_nbo(t, ip);
-	regarray[idx] += src;
+	__instr_regadd_rmh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4409,15 +4179,9 @@ instr_regadd_rmm_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regadd (r[m] += m)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_hbo(p, t, ip);
-	src = instr_regarray_src_hbo(t, ip);
-	regarray[idx] += src;
+	__instr_regadd_rmm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4428,15 +4192,9 @@ instr_regadd_rhi_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regadd (r[h] += i)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_nbo(p, t, ip);
-	src = ip->regarray.dstsrc_val;
-	regarray[idx] += src;
+	__instr_regadd_rhi_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4447,15 +4205,9 @@ instr_regadd_rmi_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regadd (r[m] += i)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_hbo(p, t, ip);
-	src = ip->regarray.dstsrc_val;
-	regarray[idx] += src;
+	__instr_regadd_rmi_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4466,15 +4218,9 @@ instr_regadd_rih_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regadd (r[i] += h)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_imm(p, ip);
-	src = instr_regarray_src_nbo(t, ip);
-	regarray[idx] += src;
+	__instr_regadd_rih_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4485,15 +4231,9 @@ instr_regadd_rim_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regadd (r[i] += m)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_imm(p, ip);
-	src = instr_regarray_src_hbo(t, ip);
-	regarray[idx] += src;
+	__instr_regadd_rim_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4504,15 +4244,9 @@ instr_regadd_rii_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint64_t *regarray, idx, src;
-
-	TRACE("[Thread %2u] regadd (r[i] += i)\n", p->thread_id);
 
 	/* Structs. */
-	regarray = instr_regarray_regarray(p, ip);
-	idx = instr_regarray_idx_imm(p, ip);
-	src = ip->regarray.dstsrc_val;
-	regarray[idx] += src;
+	__instr_regadd_rii_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
