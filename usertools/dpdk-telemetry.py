@@ -9,7 +9,6 @@ Allows the user input commands and read the Telemetry response.
 
 import socket
 import os
-import glob
 import json
 import errno
 import readline
@@ -102,8 +101,8 @@ readline.set_completer(readline_complete)
 readline.set_completer_delims(readline.get_completer_delims().replace('/', ''))
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-f', '--file-prefix', \
-        help='Provide file-prefix for DPDK runtime directory', default='rte')
+parser.add_argument('-f', '--file-prefix', default='rte',
+                    help='Provide file-prefix for DPDK runtime directory')
 args = parser.parse_args()
-rdir = get_dpdk_runtime_dir(args.file_prefix)
-handle_socket(os.path.join(rdir, 'dpdk_telemetry.{}'.format(TELEMETRY_VERSION)))
+rd = get_dpdk_runtime_dir(args.file_prefix)
+handle_socket(os.path.join(rd, 'dpdk_telemetry.{}'.format(TELEMETRY_VERSION)))
