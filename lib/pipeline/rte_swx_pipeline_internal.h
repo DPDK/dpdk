@@ -3302,4 +3302,545 @@ __instr_regadd_rii_exec(struct rte_swx_pipeline *p,
 	regarray[idx] += src;
 }
 
+/*
+ * metarray.
+ */
+static inline struct meter *
+instr_meter_idx_hbo(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct metarray_runtime *r = &p->metarray_runtime[ip->meter.metarray_id];
+
+	uint8_t *idx_struct = t->structs[ip->meter.idx.struct_id];
+	uint64_t *idx64_ptr = (uint64_t *)&idx_struct[ip->meter.idx.offset];
+	uint64_t idx64 = *idx64_ptr;
+	uint64_t idx64_mask = UINT64_MAX >> (64 - (ip)->meter.idx.n_bits);
+	uint64_t idx = idx64 & idx64_mask & r->size_mask;
+
+	return &r->metarray[idx];
+}
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+
+static inline struct meter *
+instr_meter_idx_nbo(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct metarray_runtime *r = &p->metarray_runtime[ip->meter.metarray_id];
+
+	uint8_t *idx_struct = t->structs[ip->meter.idx.struct_id];
+	uint64_t *idx64_ptr = (uint64_t *)&idx_struct[ip->meter.idx.offset];
+	uint64_t idx64 = *idx64_ptr;
+	uint64_t idx = (ntoh64(idx64) >> (64 - ip->meter.idx.n_bits)) & r->size_mask;
+
+	return &r->metarray[idx];
+}
+
+#else
+
+#define instr_meter_idx_nbo instr_meter_idx_hbo
+
+#endif
+
+static inline struct meter *
+instr_meter_idx_imm(struct rte_swx_pipeline *p, const struct instruction *ip)
+{
+	struct metarray_runtime *r = &p->metarray_runtime[ip->meter.metarray_id];
+
+	uint64_t idx =  ip->meter.idx_val & r->size_mask;
+
+	return &r->metarray[idx];
+}
+
+static inline uint32_t
+instr_meter_length_hbo(struct thread *t, const struct instruction *ip)
+{
+	uint8_t *src_struct = t->structs[ip->meter.length.struct_id];
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->meter.length.offset];
+	uint64_t src64 = *src64_ptr;
+	uint64_t src64_mask = UINT64_MAX >> (64 - (ip)->meter.length.n_bits);
+	uint64_t src = src64 & src64_mask;
+
+	return (uint32_t)src;
+}
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+
+static inline uint32_t
+instr_meter_length_nbo(struct thread *t, const struct instruction *ip)
+{
+	uint8_t *src_struct = t->structs[ip->meter.length.struct_id];
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->meter.length.offset];
+	uint64_t src64 = *src64_ptr;
+	uint64_t src = ntoh64(src64) >> (64 - ip->meter.length.n_bits);
+
+	return (uint32_t)src;
+}
+
+#else
+
+#define instr_meter_length_nbo instr_meter_length_hbo
+
+#endif
+
+static inline enum rte_color
+instr_meter_color_in_hbo(struct thread *t, const struct instruction *ip)
+{
+	uint8_t *src_struct = t->structs[ip->meter.color_in.struct_id];
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->meter.color_in.offset];
+	uint64_t src64 = *src64_ptr;
+	uint64_t src64_mask = UINT64_MAX >> (64 - ip->meter.color_in.n_bits);
+	uint64_t src = src64 & src64_mask;
+
+	return (enum rte_color)src;
+}
+
+static inline void
+instr_meter_color_out_hbo_set(struct thread *t,
+			      const struct instruction *ip,
+			      enum rte_color color_out)
+{
+	uint8_t *dst_struct = t->structs[ip->meter.color_out.struct_id];
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[ip->meter.color_out.offset];
+	uint64_t dst64 = *dst64_ptr;
+	uint64_t dst64_mask = UINT64_MAX >> (64 - ip->meter.color_out.n_bits);
+
+	uint64_t src = (uint64_t)color_out;
+
+	*dst64_ptr = (dst64 & ~dst64_mask) | (src & dst64_mask);
+}
+
+static inline void
+__instr_metprefetch_h_exec(struct rte_swx_pipeline *p,
+			   struct thread *t,
+			   const struct instruction *ip)
+{
+	struct meter *m;
+
+	TRACE("[Thread %2u] metprefetch (h)\n", p->thread_id);
+
+	m = instr_meter_idx_nbo(p, t, ip);
+	rte_prefetch0(m);
+}
+
+static inline void
+__instr_metprefetch_m_exec(struct rte_swx_pipeline *p,
+			   struct thread *t,
+			   const struct instruction *ip)
+{
+	struct meter *m;
+
+	TRACE("[Thread %2u] metprefetch (m)\n", p->thread_id);
+
+	m = instr_meter_idx_hbo(p, t, ip);
+	rte_prefetch0(m);
+}
+
+static inline void
+__instr_metprefetch_i_exec(struct rte_swx_pipeline *p,
+			   struct thread *t __rte_unused,
+			   const struct instruction *ip)
+{
+	struct meter *m;
+
+	TRACE("[Thread %2u] metprefetch (i)\n", p->thread_id);
+
+	m = instr_meter_idx_imm(p, ip);
+	rte_prefetch0(m);
+}
+
+static inline void
+__instr_meter_hhm_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (hhm)\n", p->thread_id);
+
+	m = instr_meter_idx_nbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_nbo(t, ip);
+	color_in = instr_meter_color_in_hbo(t, ip);
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+}
+
+static inline void
+__instr_meter_hhi_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (hhi)\n", p->thread_id);
+
+	m = instr_meter_idx_nbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_nbo(t, ip);
+	color_in = (enum rte_color)ip->meter.color_in_val;
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+}
+
+static inline void
+__instr_meter_hmm_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (hmm)\n", p->thread_id);
+
+	m = instr_meter_idx_nbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_hbo(t, ip);
+	color_in = instr_meter_color_in_hbo(t, ip);
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+}
+
+static inline void
+__instr_meter_hmi_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (hmi)\n", p->thread_id);
+
+	m = instr_meter_idx_nbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_hbo(t, ip);
+	color_in = (enum rte_color)ip->meter.color_in_val;
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+}
+
+static inline void
+__instr_meter_mhm_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (mhm)\n", p->thread_id);
+
+	m = instr_meter_idx_hbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_nbo(t, ip);
+	color_in = instr_meter_color_in_hbo(t, ip);
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+}
+
+static inline void
+__instr_meter_mhi_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (mhi)\n", p->thread_id);
+
+	m = instr_meter_idx_hbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_nbo(t, ip);
+	color_in = (enum rte_color)ip->meter.color_in_val;
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+}
+
+static inline void
+__instr_meter_mmm_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (mmm)\n", p->thread_id);
+
+	m = instr_meter_idx_hbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_hbo(t, ip);
+	color_in = instr_meter_color_in_hbo(t, ip);
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+}
+
+static inline void
+__instr_meter_mmi_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (mmi)\n", p->thread_id);
+
+	m = instr_meter_idx_hbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_hbo(t, ip);
+	color_in = (enum rte_color)ip->meter.color_in_val;
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+}
+
+static inline void
+__instr_meter_ihm_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (ihm)\n", p->thread_id);
+
+	m = instr_meter_idx_imm(p, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_nbo(t, ip);
+	color_in = instr_meter_color_in_hbo(t, ip);
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+}
+
+static inline void
+__instr_meter_ihi_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (ihi)\n", p->thread_id);
+
+	m = instr_meter_idx_imm(p, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_nbo(t, ip);
+	color_in = (enum rte_color)ip->meter.color_in_val;
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+}
+
+static inline void
+__instr_meter_imm_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (imm)\n", p->thread_id);
+
+	m = instr_meter_idx_imm(p, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_hbo(t, ip);
+	color_in = instr_meter_color_in_hbo(t, ip);
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+}
+
+static inline void
+__instr_meter_imi_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (imi)\n", p->thread_id);
+
+	m = instr_meter_idx_imm(p, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_hbo(t, ip);
+	color_in = (enum rte_color)ip->meter.color_in_val;
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+}
+
 #endif
