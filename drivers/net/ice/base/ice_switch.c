@@ -3471,6 +3471,10 @@ enum ice_status ice_get_initial_sw_cfg(struct ice_hw *hw)
 					ICE_AQC_GET_SW_CONF_RESP_TYPE_S);
 
 			switch (res_type) {
+			case ICE_AQC_GET_SW_CONF_RESP_VSI:
+				if (hw->dcf_enabled && !is_vf)
+					hw->pf_id = pf_vf_num;
+				break;
 			case ICE_AQC_GET_SW_CONF_RESP_PHYS_PORT:
 			case ICE_AQC_GET_SW_CONF_RESP_VIRT_PORT:
 				if (j == num_total_ports) {
