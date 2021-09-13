@@ -928,6 +928,35 @@ struct thread {
 #define HEADER_VALID(thread, header_id) \
 	MASK64_BIT_GET((thread)->valid_headers, header_id)
 
+static inline uint64_t
+instr_operand_hbo(struct thread *t, const struct instr_operand *x)
+{
+	uint8_t *x_struct = t->structs[x->struct_id];
+	uint64_t *x64_ptr = (uint64_t *)&x_struct[x->offset];
+	uint64_t x64 = *x64_ptr;
+	uint64_t x64_mask = UINT64_MAX >> (64 - x->n_bits);
+
+	return x64 & x64_mask;
+}
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+
+static inline uint64_t
+instr_operand_nbo(struct thread *t, const struct instr_operand *x)
+{
+	uint8_t *x_struct = t->structs[x->struct_id];
+	uint64_t *x64_ptr = (uint64_t *)&x_struct[x->offset];
+	uint64_t x64 = *x64_ptr;
+
+	return ntoh64(x64) >> (64 - x->n_bits);
+}
+
+#else
+
+#define instr_operand_nbo instr_operand_hbo
+
+#endif
+
 #define ALU(thread, ip, operator)  \
 {                                                                              \
 	uint8_t *dst_struct = (thread)->structs[(ip)->alu.dst.struct_id];      \
