@@ -8977,6 +8977,9 @@ rte_swx_pipeline_instructions_config(struct rte_swx_pipeline *p,
 	return 0;
 }
 
+static int
+pipeline_compile(struct rte_swx_pipeline *p);
+
 int
 rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 {
@@ -9046,6 +9049,9 @@ rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 		goto error;
 
 	p->build_done = 1;
+
+	pipeline_compile(p);
+
 	return 0;
 
 error:
@@ -9788,4 +9794,42 @@ rte_swx_ctl_meter_stats_read(struct rte_swx_pipeline *p,
 	memcpy(stats->n_bytes, m->n_bytes, sizeof(m->n_bytes));
 
 	return 0;
+}
+
+/*
+ * Pipeline compilation.
+ */
+static int
+pipeline_codegen(struct rte_swx_pipeline *p)
+{
+	FILE *f = NULL;
+
+	if (!p)
+		return -EINVAL;
+
+	/* Create the .c file. */
+	f = fopen("/tmp/pipeline.c", "w");
+	if (!f)
+		return -EIO;
+
+	/* Include the .h file. */
+	fprintf(f, "#include \"rte_swx_pipeline_internal.h\"\n");
+
+	/* Close the .c file. */
+	fclose(f);
+
+	return 0;
+}
+
+static int
+pipeline_compile(struct rte_swx_pipeline *p)
+{
+	int status = 0;
+
+	/* Code generation. */
+	status = pipeline_codegen(p);
+	if (status)
+		return status;
+
+	return status;
 }
