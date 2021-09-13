@@ -2465,46 +2465,12 @@ instr_mov_i_exec(struct rte_swx_pipeline *p)
  * dma.
  */
 static inline void
-__instr_dma_ht_exec(struct rte_swx_pipeline *p, uint32_t n_dma);
-
-static inline void
-__instr_dma_ht_exec(struct rte_swx_pipeline *p, uint32_t n_dma)
+instr_dma_ht_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint8_t *action_data = t->structs[0];
-	uint64_t valid_headers = t->valid_headers;
-	uint32_t i;
 
-	for (i = 0; i < n_dma; i++) {
-		uint32_t header_id = ip->dma.dst.header_id[i];
-		uint32_t struct_id = ip->dma.dst.struct_id[i];
-		uint32_t offset = ip->dma.src.offset[i];
-		uint32_t n_bytes = ip->dma.n_bytes[i];
-
-		struct header_runtime *h = &t->headers[header_id];
-		uint8_t *h_ptr0 = h->ptr0;
-		uint8_t *h_ptr = t->structs[struct_id];
-
-		void *dst = MASK64_BIT_GET(valid_headers, header_id) ?
-			h_ptr : h_ptr0;
-		void *src = &action_data[offset];
-
-		TRACE("[Thread %2u] dma h.s t.f\n", p->thread_id);
-
-		/* Headers. */
-		memcpy(dst, src, n_bytes);
-		t->structs[struct_id] = dst;
-		valid_headers = MASK64_BIT_SET(valid_headers, header_id);
-	}
-
-	t->valid_headers = valid_headers;
-}
-
-static inline void
-instr_dma_ht_exec(struct rte_swx_pipeline *p)
-{
-	__instr_dma_ht_exec(p, 1);
+	__instr_dma_ht_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -2513,10 +2479,10 @@ instr_dma_ht_exec(struct rte_swx_pipeline *p)
 static inline void
 instr_dma_ht2_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 2 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_dma_ht_exec(p, 2);
+	__instr_dma_ht2_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -2525,10 +2491,10 @@ instr_dma_ht2_exec(struct rte_swx_pipeline *p)
 static inline void
 instr_dma_ht3_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 3 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_dma_ht_exec(p, 3);
+	__instr_dma_ht3_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -2537,10 +2503,10 @@ instr_dma_ht3_exec(struct rte_swx_pipeline *p)
 static inline void
 instr_dma_ht4_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 4 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_dma_ht_exec(p, 4);
+	__instr_dma_ht4_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -2549,10 +2515,10 @@ instr_dma_ht4_exec(struct rte_swx_pipeline *p)
 static inline void
 instr_dma_ht5_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 5 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_dma_ht_exec(p, 5);
+	__instr_dma_ht5_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -2561,10 +2527,10 @@ instr_dma_ht5_exec(struct rte_swx_pipeline *p)
 static inline void
 instr_dma_ht6_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 6 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_dma_ht_exec(p, 6);
+	__instr_dma_ht6_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -2573,10 +2539,10 @@ instr_dma_ht6_exec(struct rte_swx_pipeline *p)
 static inline void
 instr_dma_ht7_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 7 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_dma_ht_exec(p, 7);
+	__instr_dma_ht7_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -2585,10 +2551,10 @@ instr_dma_ht7_exec(struct rte_swx_pipeline *p)
 static inline void
 instr_dma_ht8_exec(struct rte_swx_pipeline *p)
 {
-	TRACE("[Thread %2u] *** The next 8 instructions are fused. ***\n",
-	      p->thread_id);
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
 
-	__instr_dma_ht_exec(p, 8);
+	__instr_dma_ht8_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);

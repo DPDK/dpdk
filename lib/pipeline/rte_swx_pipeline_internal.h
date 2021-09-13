@@ -2111,4 +2111,104 @@ __instr_mov_i_exec(struct rte_swx_pipeline *p __rte_unused,
 	MOV_I(t, ip);
 }
 
+/*
+ * dma.
+ */
+static inline void
+__instr_dma_ht_many_exec(struct rte_swx_pipeline *p __rte_unused,
+			 struct thread *t,
+			 const struct instruction *ip,
+			 uint32_t n_dma)
+{
+	uint8_t *action_data = t->structs[0];
+	uint64_t valid_headers = t->valid_headers;
+	uint32_t i;
+
+	for (i = 0; i < n_dma; i++) {
+		uint32_t header_id = ip->dma.dst.header_id[i];
+		uint32_t struct_id = ip->dma.dst.struct_id[i];
+		uint32_t offset = ip->dma.src.offset[i];
+		uint32_t n_bytes = ip->dma.n_bytes[i];
+
+		struct header_runtime *h = &t->headers[header_id];
+		uint8_t *h_ptr0 = h->ptr0;
+		uint8_t *h_ptr = t->structs[struct_id];
+
+		void *dst = MASK64_BIT_GET(valid_headers, header_id) ?
+			h_ptr : h_ptr0;
+		void *src = &action_data[offset];
+
+		TRACE("[Thread %2u] dma h.s t.f\n", p->thread_id);
+
+		/* Headers. */
+		memcpy(dst, src, n_bytes);
+		t->structs[struct_id] = dst;
+		valid_headers = MASK64_BIT_SET(valid_headers, header_id);
+	}
+
+	t->valid_headers = valid_headers;
+}
+
+static inline void
+__instr_dma_ht_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	__instr_dma_ht_many_exec(p, t, ip, 1);
+}
+
+static inline void
+__instr_dma_ht2_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 2 instructions are fused. ***\n", p->thread_id);
+
+	__instr_dma_ht_many_exec(p, t, ip, 2);
+}
+
+static inline void
+__instr_dma_ht3_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 3 instructions are fused. ***\n", p->thread_id);
+
+	__instr_dma_ht_many_exec(p, t, ip, 3);
+}
+
+static inline void
+__instr_dma_ht4_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 4 instructions are fused. ***\n", p->thread_id);
+
+	__instr_dma_ht_many_exec(p, t, ip, 4);
+}
+
+static inline void
+__instr_dma_ht5_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 5 instructions are fused. ***\n", p->thread_id);
+
+	__instr_dma_ht_many_exec(p, t, ip, 5);
+}
+
+static inline void
+__instr_dma_ht6_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 6 instructions are fused. ***\n", p->thread_id);
+
+	__instr_dma_ht_many_exec(p, t, ip, 6);
+}
+
+static inline void
+__instr_dma_ht7_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 7 instructions are fused. ***\n", p->thread_id);
+
+	__instr_dma_ht_many_exec(p, t, ip, 7);
+}
+
+static inline void
+__instr_dma_ht8_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
+{
+	TRACE("[Thread %2u] *** The next 8 instructions are fused. ***\n", p->thread_id);
+
+	__instr_dma_ht_many_exec(p, t, ip, 8);
+}
+
 #endif
