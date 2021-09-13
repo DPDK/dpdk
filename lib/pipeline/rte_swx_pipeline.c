@@ -3044,10 +3044,8 @@ instr_alu_add_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] add\n", p->thread_id);
-
-	/* Structs. */
-	ALU(t, ip, +);
+	/* Structs */
+	__instr_alu_add_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3059,10 +3057,8 @@ instr_alu_add_mh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] add (mh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_MH(t, ip, +);
+	__instr_alu_add_mh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3074,10 +3070,8 @@ instr_alu_add_hm_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] add (hm)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HM(t, ip, +);
+	__instr_alu_add_hm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3089,10 +3083,8 @@ instr_alu_add_hh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] add (hh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HH(t, ip, +);
+	__instr_alu_add_hh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3104,10 +3096,8 @@ instr_alu_add_mi_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] add (mi)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_MI(t, ip, +);
+	__instr_alu_add_mi_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3119,10 +3109,8 @@ instr_alu_add_hi_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] add (hi)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HI(t, ip, +);
+	__instr_alu_add_hi_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3134,10 +3122,8 @@ instr_alu_sub_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] sub\n", p->thread_id);
-
 	/* Structs. */
-	ALU(t, ip, -);
+	__instr_alu_sub_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3149,10 +3135,8 @@ instr_alu_sub_mh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] sub (mh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_MH(t, ip, -);
+	__instr_alu_sub_mh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3164,10 +3148,8 @@ instr_alu_sub_hm_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] sub (hm)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HM(t, ip, -);
+	__instr_alu_sub_hm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3179,10 +3161,8 @@ instr_alu_sub_hh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] sub (hh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HH(t, ip, -);
+	__instr_alu_sub_hh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3194,10 +3174,8 @@ instr_alu_sub_mi_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] sub (mi)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_MI(t, ip, -);
+	__instr_alu_sub_mi_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3209,10 +3187,8 @@ instr_alu_sub_hi_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] sub (hi)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HI(t, ip, -);
+	__instr_alu_sub_hi_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3224,10 +3200,8 @@ instr_alu_shl_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] shl\n", p->thread_id);
-
 	/* Structs. */
-	ALU(t, ip, <<);
+	__instr_alu_shl_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3239,10 +3213,8 @@ instr_alu_shl_mh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] shl (mh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_MH(t, ip, <<);
+	__instr_alu_shl_mh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3254,10 +3226,8 @@ instr_alu_shl_hm_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] shl (hm)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HM(t, ip, <<);
+	__instr_alu_shl_hm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3269,10 +3239,8 @@ instr_alu_shl_hh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] shl (hh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HH(t, ip, <<);
+	__instr_alu_shl_hh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3284,10 +3252,8 @@ instr_alu_shl_mi_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] shl (mi)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_MI(t, ip, <<);
+	__instr_alu_shl_mi_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3299,10 +3265,8 @@ instr_alu_shl_hi_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] shl (hi)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HI(t, ip, <<);
+	__instr_alu_shl_hi_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3314,10 +3278,8 @@ instr_alu_shr_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] shr\n", p->thread_id);
-
 	/* Structs. */
-	ALU(t, ip, >>);
+	__instr_alu_shr_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3329,10 +3291,8 @@ instr_alu_shr_mh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] shr (mh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_MH(t, ip, >>);
+	__instr_alu_shr_mh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3344,10 +3304,8 @@ instr_alu_shr_hm_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] shr (hm)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HM(t, ip, >>);
+	__instr_alu_shr_hm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3359,10 +3317,8 @@ instr_alu_shr_hh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] shr (hh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HH(t, ip, >>);
+	__instr_alu_shr_hh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3374,10 +3330,8 @@ instr_alu_shr_mi_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] shr (mi)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_MI(t, ip, >>);
+	__instr_alu_shr_mi_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3389,10 +3343,8 @@ instr_alu_shr_hi_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] shr (hi)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HI(t, ip, >>);
+	__instr_alu_shr_hi_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3404,10 +3356,8 @@ instr_alu_and_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] and\n", p->thread_id);
-
 	/* Structs. */
-	ALU(t, ip, &);
+	__instr_alu_and_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3419,10 +3369,8 @@ instr_alu_and_mh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] and (mh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_MH(t, ip, &);
+	__instr_alu_and_mh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3434,10 +3382,8 @@ instr_alu_and_hm_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] and (hm)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HM_FAST(t, ip, &);
+	__instr_alu_and_hm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3449,10 +3395,8 @@ instr_alu_and_hh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] and (hh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HH_FAST(t, ip, &);
+	__instr_alu_and_hh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3464,10 +3408,8 @@ instr_alu_and_i_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] and (i)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_I(t, ip, &);
+	__instr_alu_and_i_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3479,10 +3421,8 @@ instr_alu_or_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] or\n", p->thread_id);
-
 	/* Structs. */
-	ALU(t, ip, |);
+	__instr_alu_or_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3494,10 +3434,8 @@ instr_alu_or_mh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] or (mh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_MH(t, ip, |);
+	__instr_alu_or_mh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3509,10 +3447,8 @@ instr_alu_or_hm_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] or (hm)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HM_FAST(t, ip, |);
+	__instr_alu_or_hm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3524,10 +3460,8 @@ instr_alu_or_hh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] or (hh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HH_FAST(t, ip, |);
+	__instr_alu_or_hh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3539,10 +3473,8 @@ instr_alu_or_i_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] or (i)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_I(t, ip, |);
+	__instr_alu_or_i_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3554,10 +3486,8 @@ instr_alu_xor_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] xor\n", p->thread_id);
-
 	/* Structs. */
-	ALU(t, ip, ^);
+	__instr_alu_xor_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3569,10 +3499,8 @@ instr_alu_xor_mh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] xor (mh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_MH(t, ip, ^);
+	__instr_alu_xor_mh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3584,10 +3512,8 @@ instr_alu_xor_hm_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] xor (hm)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HM_FAST(t, ip, ^);
+	__instr_alu_xor_hm_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3599,10 +3525,8 @@ instr_alu_xor_hh_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] xor (hh)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_HH_FAST(t, ip, ^);
+	__instr_alu_xor_hh_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3614,10 +3538,8 @@ instr_alu_xor_i_exec(struct rte_swx_pipeline *p)
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] xor (i)\n", p->thread_id);
-
 	/* Structs. */
-	ALU_I(t, ip, ^);
+	__instr_alu_xor_i_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3628,55 +3550,9 @@ instr_alu_ckadd_field_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint8_t *dst_struct, *src_struct;
-	uint16_t *dst16_ptr, dst;
-	uint64_t *src64_ptr, src64, src64_mask, src;
-	uint64_t r;
-
-	TRACE("[Thread %2u] ckadd (field)\n", p->thread_id);
 
 	/* Structs. */
-	dst_struct = t->structs[ip->alu.dst.struct_id];
-	dst16_ptr = (uint16_t *)&dst_struct[ip->alu.dst.offset];
-	dst = *dst16_ptr;
-
-	src_struct = t->structs[ip->alu.src.struct_id];
-	src64_ptr = (uint64_t *)&src_struct[ip->alu.src.offset];
-	src64 = *src64_ptr;
-	src64_mask = UINT64_MAX >> (64 - ip->alu.src.n_bits);
-	src = src64 & src64_mask;
-
-	r = dst;
-	r = ~r & 0xFFFF;
-
-	/* The first input (r) is a 16-bit number. The second and the third
-	 * inputs are 32-bit numbers. In the worst case scenario, the sum of the
-	 * three numbers (output r) is a 34-bit number.
-	 */
-	r += (src >> 32) + (src & 0xFFFFFFFF);
-
-	/* The first input is a 16-bit number. The second input is an 18-bit
-	 * number. In the worst case scenario, the sum of the two numbers is a
-	 * 19-bit number.
-	 */
-	r = (r & 0xFFFF) + (r >> 16);
-
-	/* The first input is a 16-bit number (0 .. 0xFFFF). The second input is
-	 * a 3-bit number (0 .. 7). Their sum is a 17-bit number (0 .. 0x10006).
-	 */
-	r = (r & 0xFFFF) + (r >> 16);
-
-	/* When the input r is (0 .. 0xFFFF), the output r is equal to the input
-	 * r, so the output is (0 .. 0xFFFF). When the input r is (0x10000 ..
-	 * 0x10006), the output r is (0 .. 7). So no carry bit can be generated,
-	 * therefore the output r is always a 16-bit number.
-	 */
-	r = (r & 0xFFFF) + (r >> 16);
-
-	r = ~r & 0xFFFF;
-	r = r ? r : 0xFFFF;
-
-	*dst16_ptr = (uint16_t)r;
+	__instr_alu_ckadd_field_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3687,67 +3563,9 @@ instr_alu_cksub_field_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint8_t *dst_struct, *src_struct;
-	uint16_t *dst16_ptr, dst;
-	uint64_t *src64_ptr, src64, src64_mask, src;
-	uint64_t r;
-
-	TRACE("[Thread %2u] cksub (field)\n", p->thread_id);
 
 	/* Structs. */
-	dst_struct = t->structs[ip->alu.dst.struct_id];
-	dst16_ptr = (uint16_t *)&dst_struct[ip->alu.dst.offset];
-	dst = *dst16_ptr;
-
-	src_struct = t->structs[ip->alu.src.struct_id];
-	src64_ptr = (uint64_t *)&src_struct[ip->alu.src.offset];
-	src64 = *src64_ptr;
-	src64_mask = UINT64_MAX >> (64 - ip->alu.src.n_bits);
-	src = src64 & src64_mask;
-
-	r = dst;
-	r = ~r & 0xFFFF;
-
-	/* Subtraction in 1's complement arithmetic (i.e. a '- b) is the same as
-	 * the following sequence of operations in 2's complement arithmetic:
-	 *    a '- b = (a - b) % 0xFFFF.
-	 *
-	 * In order to prevent an underflow for the below subtraction, in which
-	 * a 33-bit number (the subtrahend) is taken out of a 16-bit number (the
-	 * minuend), we first add a multiple of the 0xFFFF modulus to the
-	 * minuend. The number we add to the minuend needs to be a 34-bit number
-	 * or higher, so for readability reasons we picked the 36-bit multiple.
-	 * We are effectively turning the 16-bit minuend into a 36-bit number:
-	 *    (a - b) % 0xFFFF = (a + 0xFFFF00000 - b) % 0xFFFF.
-	 */
-	r += 0xFFFF00000ULL; /* The output r is a 36-bit number. */
-
-	/* A 33-bit number is subtracted from a 36-bit number (the input r). The
-	 * result (the output r) is a 36-bit number.
-	 */
-	r -= (src >> 32) + (src & 0xFFFFFFFF);
-
-	/* The first input is a 16-bit number. The second input is a 20-bit
-	 * number. Their sum is a 21-bit number.
-	 */
-	r = (r & 0xFFFF) + (r >> 16);
-
-	/* The first input is a 16-bit number (0 .. 0xFFFF). The second input is
-	 * a 5-bit number (0 .. 31). The sum is a 17-bit number (0 .. 0x1001E).
-	 */
-	r = (r & 0xFFFF) + (r >> 16);
-
-	/* When the input r is (0 .. 0xFFFF), the output r is equal to the input
-	 * r, so the output is (0 .. 0xFFFF). When the input r is (0x10000 ..
-	 * 0x1001E), the output r is (0 .. 31). So no carry bit can be
-	 * generated, therefore the output r is always a 16-bit number.
-	 */
-	r = (r & 0xFFFF) + (r >> 16);
-
-	r = ~r & 0xFFFF;
-	r = r ? r : 0xFFFF;
-
-	*dst16_ptr = (uint16_t)r;
+	__instr_alu_cksub_field_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3758,47 +3576,9 @@ instr_alu_ckadd_struct20_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint8_t *dst_struct, *src_struct;
-	uint16_t *dst16_ptr;
-	uint32_t *src32_ptr;
-	uint64_t r0, r1;
-
-	TRACE("[Thread %2u] ckadd (struct of 20 bytes)\n", p->thread_id);
 
 	/* Structs. */
-	dst_struct = t->structs[ip->alu.dst.struct_id];
-	dst16_ptr = (uint16_t *)&dst_struct[ip->alu.dst.offset];
-
-	src_struct = t->structs[ip->alu.src.struct_id];
-	src32_ptr = (uint32_t *)&src_struct[0];
-
-	r0 = src32_ptr[0]; /* r0 is a 32-bit number. */
-	r1 = src32_ptr[1]; /* r1 is a 32-bit number. */
-	r0 += src32_ptr[2]; /* The output r0 is a 33-bit number. */
-	r1 += src32_ptr[3]; /* The output r1 is a 33-bit number. */
-	r0 += r1 + src32_ptr[4]; /* The output r0 is a 35-bit number. */
-
-	/* The first input is a 16-bit number. The second input is a 19-bit
-	 * number. Their sum is a 20-bit number.
-	 */
-	r0 = (r0 & 0xFFFF) + (r0 >> 16);
-
-	/* The first input is a 16-bit number (0 .. 0xFFFF). The second input is
-	 * a 4-bit number (0 .. 15). The sum is a 17-bit number (0 .. 0x1000E).
-	 */
-	r0 = (r0 & 0xFFFF) + (r0 >> 16);
-
-	/* When the input r is (0 .. 0xFFFF), the output r is equal to the input
-	 * r, so the output is (0 .. 0xFFFF). When the input r is (0x10000 ..
-	 * 0x1000E), the output r is (0 .. 15). So no carry bit can be
-	 * generated, therefore the output r is always a 16-bit number.
-	 */
-	r0 = (r0 & 0xFFFF) + (r0 >> 16);
-
-	r0 = ~r0 & 0xFFFF;
-	r0 = r0 ? r0 : 0xFFFF;
-
-	*dst16_ptr = (uint16_t)r0;
+	__instr_alu_ckadd_struct20_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3809,49 +3589,9 @@ instr_alu_ckadd_struct_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
-	uint8_t *dst_struct, *src_struct;
-	uint16_t *dst16_ptr;
-	uint32_t *src32_ptr;
-	uint64_t r = 0;
-	uint32_t i;
-
-	TRACE("[Thread %2u] ckadd (struct)\n", p->thread_id);
 
 	/* Structs. */
-	dst_struct = t->structs[ip->alu.dst.struct_id];
-	dst16_ptr = (uint16_t *)&dst_struct[ip->alu.dst.offset];
-
-	src_struct = t->structs[ip->alu.src.struct_id];
-	src32_ptr = (uint32_t *)&src_struct[0];
-
-	/* The max number of 32-bit words in a 256-byte header is 8 = 2^3.
-	 * Therefore, in the worst case scenario, a 35-bit number is added to a
-	 * 16-bit number (the input r), so the output r is 36-bit number.
-	 */
-	for (i = 0; i < ip->alu.src.n_bits / 32; i++, src32_ptr++)
-		r += *src32_ptr;
-
-	/* The first input is a 16-bit number. The second input is a 20-bit
-	 * number. Their sum is a 21-bit number.
-	 */
-	r = (r & 0xFFFF) + (r >> 16);
-
-	/* The first input is a 16-bit number (0 .. 0xFFFF). The second input is
-	 * a 5-bit number (0 .. 31). The sum is a 17-bit number (0 .. 0x1000E).
-	 */
-	r = (r & 0xFFFF) + (r >> 16);
-
-	/* When the input r is (0 .. 0xFFFF), the output r is equal to the input
-	 * r, so the output is (0 .. 0xFFFF). When the input r is (0x10000 ..
-	 * 0x1001E), the output r is (0 .. 31). So no carry bit can be
-	 * generated, therefore the output r is always a 16-bit number.
-	 */
-	r = (r & 0xFFFF) + (r >> 16);
-
-	r = ~r & 0xFFFF;
-	r = r ? r : 0xFFFF;
-
-	*dst16_ptr = (uint16_t)r;
+	__instr_alu_ckadd_struct_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
