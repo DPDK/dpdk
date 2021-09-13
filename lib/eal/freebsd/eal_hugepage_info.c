@@ -90,6 +90,10 @@ eal_hugepage_info_init(void)
 		RTE_LOG(ERR, EAL, "could not open "CONTIGMEM_DEV"\n");
 		return -1;
 	}
+	if (flock(fd, LOCK_EX | LOCK_NB) < 0) {
+		RTE_LOG(ERR, EAL, "could not lock memory. Is another DPDK process running?\n");
+		return -1;
+	}
 
 	if (buffer_size >= 1<<30)
 		RTE_LOG(INFO, EAL, "Contigmem driver has %d buffers, each of size %dGB\n",
