@@ -25,7 +25,7 @@
 #define strncasecmp(s1, s2, count) _strnicmp(s1, s2, count)
 #endif
 
-#define open(path, flags, ...) _open(path, flags, ##__VA_ARGS__)
+#define open(...) _open(__VA_ARGS__)
 #define read(fd, buf, n) _read(fd, buf, n)
 #define write(fd, buf, n) _write(fd, buf, n)
 #define close(fd) _close(fd)
