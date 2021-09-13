@@ -1517,44 +1517,6 @@ instr_rx_translate(struct rte_swx_pipeline *p,
 	return 0;
 }
 
-static inline void
-instr_rx_exec(struct rte_swx_pipeline *p);
-
-static inline void
-instr_rx_exec(struct rte_swx_pipeline *p)
-{
-	struct thread *t = &p->threads[p->thread_id];
-	struct instruction *ip = t->ip;
-	struct port_in_runtime *port = &p->in[p->port_id];
-	struct rte_swx_pkt *pkt = &t->pkt;
-	int pkt_received;
-
-	/* Packet. */
-	pkt_received = port->pkt_rx(port->obj, pkt);
-	t->ptr = &pkt->pkt[pkt->offset];
-	rte_prefetch0(t->ptr);
-
-	TRACE("[Thread %2u] rx %s from port %u\n",
-	      p->thread_id,
-	      pkt_received ? "1 pkt" : "0 pkts",
-	      p->port_id);
-
-	/* Headers. */
-	t->valid_headers = 0;
-	t->n_headers_out = 0;
-
-	/* Meta-data. */
-	METADATA_WRITE(t, ip->io.io.offset, ip->io.io.n_bits, p->port_id);
-
-	/* Tables. */
-	t->table_state = p->table_state;
-
-	/* Thread. */
-	pipeline_port_inc(p);
-	thread_ip_inc_cond(t, pkt_received);
-	thread_yield(p);
-}
-
 /*
  * tx.
  */
