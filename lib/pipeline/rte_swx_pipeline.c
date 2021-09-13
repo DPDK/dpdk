@@ -1436,6 +1436,24 @@ instruction_is_jmp(struct instruction *instr)
 	}
 }
 
+static int
+instruction_does_thread_yield(struct instruction *instr)
+{
+	switch (instr->type) {
+	case INSTR_RX:
+	case INSTR_TABLE:
+	case INSTR_TABLE_AF:
+	case INSTR_SELECTOR:
+	case INSTR_LEARNER:
+	case INSTR_LEARNER_AF:
+	case INSTR_EXTERN_OBJ:
+	case INSTR_EXTERN_FUNC:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 static struct field *
 action_field_parse(struct action *action, const char *name);
 
@@ -11540,14 +11558,622 @@ action_instr_codegen(struct action *a, FILE *f)
 	fprintf(f, "}\n\n");
 }
 
+struct instruction_group {
+	TAILQ_ENTRY(instruction_group) node;
+
+	uint32_t group_id;
+
+	uint32_t first_instr_id;
+
+	uint32_t last_instr_id;
+
+	instr_exec_t func;
+};
+
+TAILQ_HEAD(instruction_group_list, instruction_group);
+
+static struct instruction_group *
+instruction_group_list_group_find(struct instruction_group_list *igl, uint32_t instruction_id)
+{
+	struct instruction_group *g;
+
+	TAILQ_FOREACH(g, igl, node)
+		if ((g->first_instr_id <= instruction_id) && (instruction_id <= g->last_instr_id))
+			return g;
+
+	return NULL;
+}
+
+static void
+instruction_group_list_free(struct instruction_group_list *igl)
+{
+	if (!igl)
+		return;
+
+	for ( ; ; ) {
+		struct instruction_group *g;
+
+		g = TAILQ_FIRST(igl);
+		if (!g)
+			break;
+
+		TAILQ_REMOVE(igl, g, node);
+		free(g);
+	}
+
+	free(igl);
+}
+
+static struct instruction_group_list *
+instruction_group_list_create(struct rte_swx_pipeline *p)
+{
+	struct instruction_group_list *igl = NULL;
+	struct instruction_group *g = NULL;
+	uint32_t n_groups = 0, i;
+
+	if (!p || !p->instructions || !p->instruction_data || !p->n_instructions)
+		goto error;
+
+	/* List init. */
+	igl = calloc(1, sizeof(struct instruction_group_list));
+	if (!igl)
+		goto error;
+
+	TAILQ_INIT(igl);
+
+	/* Allocate the first group. */
+	g = calloc(1, sizeof(struct instruction_group));
+	if (!g)
+		goto error;
+
+	/* Iteration 1: Separate the instructions into groups based on the thread yield
+	 * instructions. Do not worry about the jump instructions at this point.
+	 */
+	for (i = 0; i < p->n_instructions; i++) {
+		struct instruction *instr = &p->instructions[i];
+
+		/* Check for thread yield instructions. */
+		if (!instruction_does_thread_yield(instr))
+			continue;
+
+		/* If the current group contains at least one instruction, then finalize it (with
+		 * the previous instruction), add it to the list and allocate a new group (that
+		 * starts with the current instruction).
+		 */
+		if (i - g->first_instr_id) {
+			/* Finalize the group. */
+			g->last_instr_id = i - 1;
+
+			/* Add the group to the list. Advance the number of groups. */
+			TAILQ_INSERT_TAIL(igl, g, node);
+			n_groups++;
+
+			/* Allocate a new group. */
+			g = calloc(1, sizeof(struct instruction_group));
+			if (!g)
+				goto error;
+
+			/* Initialize the new group. */
+			g->group_id = n_groups;
+			g->first_instr_id = i;
+		}
+
+		/* Finalize the current group (with the current instruction, therefore this group
+		 * contains just the current thread yield instruction), add it to the list and
+		 * allocate a new group (that starts with the next instruction).
+		 */
+
+		/* Finalize the group. */
+		g->last_instr_id = i;
+
+		/* Add the group to the list. Advance the number of groups. */
+		TAILQ_INSERT_TAIL(igl, g, node);
+		n_groups++;
+
+		/* Allocate a new group. */
+		g = calloc(1, sizeof(struct instruction_group));
+		if (!g)
+			goto error;
+
+		/* Initialize the new group. */
+		g->group_id = n_groups;
+		g->first_instr_id = i + 1;
+	}
+
+	/* Handle the last group. */
+	if (i - g->first_instr_id) {
+		/* Finalize the group. */
+		g->last_instr_id = i - 1;
+
+		/* Add the group to the list. Advance the number of groups. */
+		TAILQ_INSERT_TAIL(igl, g, node);
+		n_groups++;
+	} else
+		free(g);
+
+	g = NULL;
+
+	/* Iteration 2: Handle jumps. If the current group contains an instruction which represents
+	 * the destination of a jump instruction located in a different group ("far jump"), then the
+	 * current group has to be split, so that the instruction representing the far jump
+	 * destination is at the start of its group.
+	 */
+	for ( ; ; ) {
+		int is_modified = 0;
+
+		for (i = 0; i < p->n_instructions; i++) {
+			struct instruction_data *data = &p->instruction_data[i];
+			struct instruction_group *g;
+			uint32_t j;
+
+			/* Continue when the current instruction is not a jump destination. */
+			if (!data->n_users)
+				continue;
+
+			g = instruction_group_list_group_find(igl, i);
+			if (!g)
+				goto error;
+
+			/* Find out all the jump instructions with this destination. */
+			for (j = 0; j < p->n_instructions; j++) {
+				struct instruction *jmp_instr = &p->instructions[j];
+				struct instruction_data *jmp_data = &p->instruction_data[j];
+				struct instruction_group *jmp_g, *new_g;
+
+				/* Continue when not a jump instruction. Even when jump instruction,
+				 * continue when the jump destination is not this instruction.
+				 */
+				if (!instruction_is_jmp(jmp_instr) ||
+				    strcmp(jmp_data->jmp_label, data->label))
+					continue;
+
+				jmp_g = instruction_group_list_group_find(igl, j);
+				if (!jmp_g)
+					goto error;
+
+				/* Continue when both the jump instruction and the jump destination
+				 * instruction are in the same group. Even when in different groups,
+				 * still continue if the jump destination instruction is already the
+				 * first instruction of its group.
+				 */
+				if ((jmp_g->group_id == g->group_id) || (g->first_instr_id == i))
+					continue;
+
+				/* Split the group of the current jump destination instruction to
+				 * make this instruction the first instruction of a new group.
+				 */
+				new_g = calloc(1, sizeof(struct instruction_group));
+				if (!new_g)
+					goto error;
+
+				new_g->group_id = n_groups;
+				new_g->first_instr_id = i;
+				new_g->last_instr_id = g->last_instr_id;
+
+				g->last_instr_id = i - 1;
+
+				TAILQ_INSERT_AFTER(igl, g, new_g, node);
+				n_groups++;
+				is_modified = 1;
+
+				/* The decision to split this group (to make the current instruction
+				 * the first instruction of a new group) is already taken and fully
+				 * implemented, so no need to search for more reasons to do it.
+				 */
+				break;
+			}
+		}
+
+		/* Re-evaluate everything, as at least one group got split, so some jumps that were
+		 * previously considered local (i.e. the jump destination is in the same group as
+		 * the jump instruction) can now be "far jumps" (i.e. the jump destination is in a
+		 * different group than the jump instruction). Wost case scenario: each instruction
+		 * that is a jump destination ends up as the first instruction of its group.
+		 */
+		if (!is_modified)
+			break;
+	}
+
+	/* Re-assign the group IDs to be in incremental order. */
+	i = 0;
+	TAILQ_FOREACH(g, igl, node) {
+		g->group_id = i;
+
+		i++;
+	}
+
+	return igl;
+
+error:
+	instruction_group_list_free(igl);
+
+	free(g);
+
+	return NULL;
+}
+
+static void
+pipeline_instr_does_tx_codegen(struct rte_swx_pipeline *p __rte_unused,
+			       uint32_t instr_pos,
+			       struct instruction *instr,
+			       FILE *f)
+{
+	fprintf(f,
+		"%s(p, t, &pipeline_instructions[%u]);\n"
+		"\tthread_ip_reset(p, t);\n"
+		"\tinstr_rx_exec(p);\n"
+		"\treturn;\n",
+		instr_type_to_func(instr),
+		instr_pos);
+}
+
 static int
-pipeline_codegen(struct rte_swx_pipeline *p)
+pipeline_instr_jmp_codegen(struct rte_swx_pipeline *p,
+			   struct instruction_group_list *igl,
+			   uint32_t jmp_instr_id,
+			   struct instruction *jmp_instr,
+			   struct instruction_data *jmp_data,
+			   FILE *f)
+{
+	struct instruction_group *jmp_g, *g;
+	struct instruction_data *data;
+	uint32_t instr_id;
+
+	switch (jmp_instr->type) {
+	case INSTR_JMP:
+		break;
+
+	case INSTR_JMP_VALID:
+		fprintf(f,
+			"if (HEADER_VALID(t, pipeline_instructions[%u].jmp.header_id))",
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_INVALID:
+		fprintf(f,
+			"if (!HEADER_VALID(t, pipeline_instructions[%u].jmp.header_id))",
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_HIT:
+		fprintf(f,
+			"if (t->hit)\n");
+		break;
+
+	case INSTR_JMP_MISS:
+		fprintf(f,
+			"if (!t->hit)\n");
+		break;
+
+	case INSTR_JMP_ACTION_HIT:
+		fprintf(f,
+			"if (t->action_id == pipeline_instructions[%u].jmp.action_id)",
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_ACTION_MISS:
+		fprintf(f,
+			"if (t->action_id != pipeline_instructions[%u].jmp.action_id)",
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_EQ:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &pipeline_instructions[%u].jmp.a) == "
+			"instr_operand_hbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_EQ_MH:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &pipeline_instructions[%u].jmp.a) == "
+			"instr_operand_nbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_EQ_HM:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &pipeline_instructions[%u].jmp.a) == "
+			"instr_operand_hbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_EQ_HH:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &pipeline_instructions[%u].jmp.a) == "
+			"instr_operand_nbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_EQ_I:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &pipeline_instructions[%u].jmp.a) == "
+			"pipeline_instructions[%u].jmp.b_val)",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_NEQ:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &pipeline_instructions[%u].jmp.a) != "
+			"instr_operand_hbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_NEQ_MH:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &pipeline_instructions[%u].jmp.a) != "
+			"instr_operand_nbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_NEQ_HM:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &pipeline_instructions[%u].jmp.a) != "
+			"instr_operand_hbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_NEQ_HH:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &pipeline_instructions[%u].jmp.a) != "
+			"instr_operand_nbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_NEQ_I:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &pipeline_instructions[%u].jmp.a) != "
+			"pipeline_instructions[%u].jmp.b_val)",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_LT:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &pipeline_instructions[%u].jmp.a) < "
+			"instr_operand_hbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_LT_MH:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &pipeline_instructions[%u].jmp.a) < "
+			"instr_operand_nbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_LT_HM:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &pipeline_instructions[%u].jmp.a) < "
+			"instr_operand_hbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_LT_HH:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &pipeline_instructions[%u].jmp.a) < "
+			"instr_operand_nbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_LT_MI:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &pipeline_instructions[%u].jmp.a) < "
+			"pipeline_instructions[%u].jmp.b_val)",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_LT_HI:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &pipeline_instructions[%u].jmp.a) < "
+			"pipeline_instructions[%u].jmp.b_val)",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_GT:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &pipeline_instructions[%u].jmp.a) > "
+			"instr_operand_hbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_GT_MH:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &pipeline_instructions[%u].jmp.a) > "
+			"instr_operand_nbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_GT_HM:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &pipeline_instructions[%u].jmp.a) > "
+			"instr_operand_hbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_GT_HH:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &pipeline_instructions[%u].jmp.a) > "
+			"instr_operand_nbo(t, &pipeline_instructions[%u].jmp.b))",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_GT_MI:
+		fprintf(f,
+			"if (instr_operand_hbo(t, &pipeline_instructions[%u].jmp.a) > "
+			"pipeline_instructions[%u].jmp.b_val)",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	case INSTR_JMP_GT_HI:
+		fprintf(f,
+			"if (instr_operand_nbo(t, &pipeline_instructions[%u].jmp.a) > "
+			"pipeline_instructions[%u].jmp.b_val)",
+			jmp_instr_id,
+			jmp_instr_id);
+		break;
+
+	default:
+		break;
+	}
+
+	/* Find the instruction group of the jump instruction. */
+	jmp_g = instruction_group_list_group_find(igl, jmp_instr_id);
+	if (!jmp_g)
+		return -EINVAL;
+
+	/* Find the instruction group of the jump destination instruction. */
+	data = label_find(p->instruction_data, p->n_instructions, jmp_data->jmp_label);
+	if (!data)
+		return -EINVAL;
+
+	instr_id = data - p->instruction_data;
+
+	g = instruction_group_list_group_find(igl, instr_id);
+	if (!g)
+		return -EINVAL;
+
+	/* Code generation for "near" jump (same instruction group) or "far" jump (different
+	 * instruction group).
+	 */
+	if (g->group_id == jmp_g->group_id)
+		fprintf(f,
+			"\n\t\tgoto %s;\n",
+			jmp_data->jmp_label);
+	else
+		fprintf(f,
+			" {\n"
+			"\t\tthread_ip_set(t, &p->instructions[%u]);\n"
+			"\t\treturn;\n"
+			"\t}\n\n",
+			g->group_id);
+
+	return 0;
+}
+
+static void
+instruction_group_list_codegen(struct instruction_group_list *igl,
+			       struct rte_swx_pipeline *p,
+			       FILE *f)
+{
+	struct instruction_group *g;
+	uint32_t i;
+	int is_required = 0;
+
+	/* Check if code generation is required. */
+	TAILQ_FOREACH(g, igl, node)
+		if (g->first_instr_id < g->last_instr_id)
+			is_required = 1;
+
+	if (!is_required)
+		return;
+
+	/* Generate the code for the pipeline instruction array. */
+	fprintf(f,
+		"static const struct instruction pipeline_instructions[] = {\n");
+
+	for (i = 0; i < p->n_instructions; i++) {
+		struct instruction *instr = &p->instructions[i];
+		instruction_export_t func = export_table[instr->type];
+
+		func(instr, f);
+	}
+
+	fprintf(f, "};\n\n");
+
+	/* Generate the code for the pipeline functions: one function for each instruction group
+	 * that contains more than one instruction.
+	 */
+	TAILQ_FOREACH(g, igl, node) {
+		struct instruction *last_instr;
+		uint32_t j;
+
+		/* Skip if group contains a single instruction. */
+		if (g->last_instr_id == g->first_instr_id)
+			continue;
+
+		/* Generate new pipeline function. */
+		fprintf(f,
+			"void\n"
+			"pipeline_func_%u(struct rte_swx_pipeline *p)\n"
+			"{\n"
+			"\tstruct thread *t = &p->threads[p->thread_id];\n"
+			"\n",
+			g->group_id);
+
+		/* Generate the code for each pipeline instruction. */
+		for (j = g->first_instr_id; j <= g->last_instr_id; j++) {
+			struct instruction *instr = &p->instructions[j];
+			struct instruction_data *data = &p->instruction_data[j];
+
+			/* Label, if present. */
+			if (data->label[0])
+				fprintf(f, "\n%s : ", data->label);
+			else
+				fprintf(f, "\n\t");
+
+			/* TX instruction type. */
+			if (instruction_does_tx(instr)) {
+				pipeline_instr_does_tx_codegen(p, j, instr, f);
+				continue;
+			}
+
+			/* Jump instruction type. */
+			if (instruction_is_jmp(instr)) {
+				pipeline_instr_jmp_codegen(p, igl, j, instr, data, f);
+				continue;
+			}
+
+			/* Any other instruction type. */
+			fprintf(f,
+				"%s(p, t, &pipeline_instructions[%u]);\n",
+				instr_type_to_func(instr),
+				j);
+		}
+
+		/* Finalize the generated pipeline function. For some instructions such as TX,
+		 * emit-many-and-TX and unconditional jump, the next instruction has been already
+		 * decided unconditionally and the instruction pointer of the current thread set
+		 * accordingly; for all the other instructions, the instruction pointer must be
+		 * incremented now.
+		 */
+		last_instr = &p->instructions[g->last_instr_id];
+
+		if (!instruction_does_tx(last_instr) && (last_instr->type != INSTR_JMP))
+			fprintf(f,
+				"thread_ip_inc(p);\n");
+
+		fprintf(f,
+			"}\n"
+			"\n");
+	}
+}
+
+static int
+pipeline_codegen(struct rte_swx_pipeline *p, struct instruction_group_list *igl)
 {
 	struct action *a;
 	FILE *f = NULL;
-
-	if (!p)
-		return -EINVAL;
 
 	/* Create the .c file. */
 	f = fopen("/tmp/pipeline.c", "w");
@@ -11570,6 +12196,9 @@ pipeline_codegen(struct rte_swx_pipeline *p)
 		fprintf(f, "\n");
 	}
 
+	/* Add the pipeline code. */
+	instruction_group_list_codegen(igl, p, f);
+
 	/* Close the .c file. */
 	fclose(f);
 
@@ -11579,12 +12208,22 @@ pipeline_codegen(struct rte_swx_pipeline *p)
 static int
 pipeline_compile(struct rte_swx_pipeline *p)
 {
+	struct instruction_group_list *igl = NULL;
 	int status = 0;
 
+	igl = instruction_group_list_create(p);
+	if (!igl) {
+		status = -ENOMEM;
+		goto free;
+	}
+
 	/* Code generation. */
-	status = pipeline_codegen(p);
+	status = pipeline_codegen(p, igl);
 	if (status)
-		return status;
+		goto free;
+
+free:
+	instruction_group_list_free(igl);
 
 	return status;
 }
