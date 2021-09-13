@@ -693,6 +693,7 @@ struct action {
 	struct struct_type *st;
 	int *args_endianness; /* 0 = Host Byte Order (HBO); 1 = Network Byte Order (NBO). */
 	struct instruction *instructions;
+	struct instruction_data *instruction_data;
 	uint32_t n_instructions;
 	uint32_t id;
 };
@@ -1388,6 +1389,7 @@ struct rte_swx_pipeline {
 	struct regarray_runtime *regarray_runtime;
 	struct metarray_runtime *metarray_runtime;
 	struct instruction *instructions;
+	struct instruction_data *instruction_data;
 	struct thread threads[RTE_SWX_PIPELINE_THREADS_MAX];
 
 	uint32_t n_structs;

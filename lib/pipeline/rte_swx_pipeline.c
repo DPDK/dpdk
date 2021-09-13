@@ -6456,13 +6456,14 @@ instruction_config(struct rte_swx_pipeline *p,
 
 	if (a) {
 		a->instructions = instr;
+		a->instruction_data = data;
 		a->n_instructions = n_instructions;
 	} else {
 		p->instructions = instr;
+		p->instruction_data = data;
 		p->n_instructions = n_instructions;
 	}
 
-	free(data);
 	return 0;
 
 error:
@@ -6811,8 +6812,8 @@ action_build(struct rte_swx_pipeline *p)
 {
 	struct action *action;
 
-	p->action_instructions = calloc(p->n_actions,
-					sizeof(struct instruction *));
+	/* p->action_instructions. */
+	p->action_instructions = calloc(p->n_actions, sizeof(struct instruction *));
 	CHECK(p->action_instructions, ENOMEM);
 
 	TAILQ_FOREACH(action, &p->actions, node)
@@ -6841,6 +6842,7 @@ action_free(struct rte_swx_pipeline *p)
 			break;
 
 		TAILQ_REMOVE(&p->actions, action, node);
+		free(action->instruction_data);
 		free(action->instructions);
 		free(action);
 	}
@@ -8777,6 +8779,7 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 	if (!p)
 		return;
 
+	free(p->instruction_data);
 	free(p->instructions);
 
 	metarray_free(p);
