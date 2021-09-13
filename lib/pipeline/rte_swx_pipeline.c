@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <dlfcn.h>
 
 #include "rte_swx_pipeline_internal.h"
 
@@ -8968,8 +8969,12 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 void
 rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 {
+	void *lib;
+
 	if (!p)
 		return;
+
+	lib = p->lib;
 
 	free(p->instruction_data);
 	free(p->instructions);
@@ -8991,6 +8996,9 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 	struct_free(p);
 
 	free(p);
+
+	if (lib)
+		dlclose(lib);
 }
 
 int
@@ -12205,6 +12213,124 @@ pipeline_codegen(struct rte_swx_pipeline *p, struct instruction_group_list *igl)
 	return 0;
 }
 
+#ifndef RTE_SWX_PIPELINE_CMD_MAX_SIZE
+#define RTE_SWX_PIPELINE_CMD_MAX_SIZE 4096
+#endif
+
+static int
+pipeline_libload(struct rte_swx_pipeline *p, struct instruction_group_list *igl)
+{
+	struct action *a;
+	struct instruction_group *g;
+	char *dir_in, *buffer = NULL;
+	const char *dir_out;
+	int status = 0;
+
+	/* Get the environment variables. */
+	dir_in = getenv("RTE_INSTALL_DIR");
+	if (!dir_in) {
+		status = -EINVAL;
+		goto free;
+	}
+
+	dir_out = "/tmp";
+
+	/* Memory allocation for the command buffer. */
+	buffer = malloc(RTE_SWX_PIPELINE_CMD_MAX_SIZE);
+	if (!buffer) {
+		status = -ENOMEM;
+		goto free;
+	}
+
+	snprintf(buffer,
+		 RTE_SWX_PIPELINE_CMD_MAX_SIZE,
+		 "gcc -c -O3 -fpic -Wno-deprecated-declarations -o %s/pipeline.o %s/pipeline.c "
+		 "-I %s/lib/pipeline "
+		 "-I %s/lib/eal/include "
+		 "-I %s/lib/eal/x86/include "
+		 "-I %s/lib/eal/include/generic "
+		 "-I %s/lib/meter "
+		 "-I %s/lib/port "
+		 "-I %s/lib/table "
+		 "-I %s/lib/pipeline "
+		 "-I %s/config "
+		 "-I %s/build "
+		 "-I %s/lib/eal/linux/include "
+		 ">%s/pipeline.log 2>&1 "
+		 "&& "
+		 "gcc -shared %s/pipeline.o -o %s/libpipeline.so "
+		 ">>%s/pipeline.log 2>&1",
+		 dir_out,
+		 dir_out,
+		 dir_in,
+		 dir_in,
+		 dir_in,
+		 dir_in,
+		 dir_in,
+		 dir_in,
+		 dir_in,
+		 dir_in,
+		 dir_in,
+		 dir_in,
+		 dir_in,
+		 dir_out,
+		 dir_out,
+		 dir_out,
+		 dir_out);
+
+	/* Build the shared object library. */
+	status = system(buffer);
+	if (status)
+		goto free;
+
+	/* Open library. */
+	snprintf(buffer,
+		 RTE_SWX_PIPELINE_CMD_MAX_SIZE,
+		 "%s/libpipeline.so",
+		 dir_out);
+
+	p->lib = dlopen(buffer, RTLD_LAZY);
+	if (!p->lib) {
+		status = -EIO;
+		goto free;
+	}
+
+	/* Get the action function symbols. */
+	TAILQ_FOREACH(a, &p->actions, node) {
+		snprintf(buffer, RTE_SWX_PIPELINE_CMD_MAX_SIZE, "action_%s_run", a->name);
+
+		p->action_funcs[a->id] = dlsym(p->lib, buffer);
+		if (!p->action_funcs[a->id]) {
+			status = -EINVAL;
+			goto free;
+		}
+	}
+
+	/* Get the pipeline function symbols. */
+	TAILQ_FOREACH(g, igl, node) {
+		if (g->first_instr_id == g->last_instr_id)
+			continue;
+
+		snprintf(buffer, RTE_SWX_PIPELINE_CMD_MAX_SIZE, "pipeline_func_%u", g->group_id);
+
+		g->func = dlsym(p->lib, buffer);
+		if (!g->func) {
+			status = -EINVAL;
+			goto free;
+		}
+	}
+
+free:
+	if (status && p->lib) {
+		dlclose(p->lib);
+		p->lib = NULL;
+	}
+
+	free(buffer);
+
+	return status;
+}
+
 static int
 pipeline_compile(struct rte_swx_pipeline *p)
 {
@@ -12219,6 +12345,11 @@ pipeline_compile(struct rte_swx_pipeline *p)
 
 	/* Code generation. */
 	status = pipeline_codegen(p, igl);
+	if (status)
+		goto free;
+
+	/* Build and load the shared object library. */
+	status = pipeline_libload(p, igl);
 	if (status)
 		goto free;
 

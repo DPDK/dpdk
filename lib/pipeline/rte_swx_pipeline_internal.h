@@ -1407,6 +1407,7 @@ struct rte_swx_pipeline {
 	struct instruction_data *instruction_data;
 	instr_exec_t *instruction_table;
 	struct thread threads[RTE_SWX_PIPELINE_THREADS_MAX];
+	void *lib;
 
 	uint32_t n_structs;
 	uint32_t n_ports_in;
