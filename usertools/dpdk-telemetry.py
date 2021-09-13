@@ -9,6 +9,7 @@ Allows the user input commands and read the Telemetry response.
 
 import socket
 import os
+import sys
 import json
 import errno
 import readline
@@ -49,19 +50,23 @@ def get_app_name(pid):
 
 def handle_socket(path):
     """ Connect to socket and handle user input """
+    prompt = ''  # this evaluates to false in conditions
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
     global CMDS
-    print("Connecting to " + path)
+
+    if os.isatty(sys.stdin.fileno()):
+        prompt = '--> '
+        print("Connecting to " + path)
     try:
         sock.connect(path)
     except OSError:
         print("Error connecting to " + path)
         sock.close()
         return
-    json_reply = read_socket(sock, 1024)
+    json_reply = read_socket(sock, 1024, prompt)
     output_buf_len = json_reply["max_output_len"]
     app_name = get_app_name(json_reply["pid"])
-    if app_name:
+    if app_name and prompt:
         print('Connected to application: "%s"' % app_name)
 
     # get list of commands for readline completion
@@ -70,12 +75,12 @@ def handle_socket(path):
 
     # interactive prompt
     try:
-        text = input('--> ').strip()
+        text = input(prompt).strip()
         while text != "quit":
             if text.startswith('/'):
                 sock.send(text.encode())
                 read_socket(sock, output_buf_len)
-            text = input('--> ').strip()
+            text = input(prompt).strip()
     except EOFError:
         pass
     finally:
