@@ -201,6 +201,34 @@ test_dict_with_array_string_values(void)
 }
 
 static int
+test_dict_with_dict_values(void)
+{
+	struct rte_tel_data *dict_of_dicts = rte_tel_data_alloc();
+	rte_tel_data_start_dict(dict_of_dicts);
+
+	struct rte_tel_data *child_data = rte_tel_data_alloc();
+	rte_tel_data_start_array(child_data, RTE_TEL_STRING_VAL);
+
+	struct rte_tel_data *child_data2 = rte_tel_data_alloc();
+	rte_tel_data_start_array(child_data2, RTE_TEL_STRING_VAL);
+
+	memset(&response_data, 0, sizeof(response_data));
+	rte_tel_data_start_dict(&response_data);
+
+	rte_tel_data_add_array_string(child_data, "aaaa");
+	rte_tel_data_add_array_string(child_data2, "bbbb");
+	rte_tel_data_add_dict_container(dict_of_dicts, "dict_0",
+			child_data, 0);
+	rte_tel_data_add_dict_container(dict_of_dicts, "dict_1",
+			child_data2, 0);
+	rte_tel_data_add_dict_container(&response_data, "dict_of_dicts",
+			dict_of_dicts, 0);
+
+	return TEST_OUTPUT("{\"/test\":{\"dict_of_dicts\":{\"dict_0\":"
+			"[\"aaaa\"],\"dict_1\":[\"bbbb\"]}}}");
+}
+
+static int
 test_array_with_array_string_values(void)
 {
 	struct rte_tel_data *child_data = rte_tel_data_alloc();
@@ -355,6 +383,7 @@ test_telemetry_data(void)
 			test_dict_with_array_int_values,
 			test_dict_with_array_u64_values,
 			test_dict_with_array_string_values,
+			test_dict_with_dict_values,
 			test_array_with_array_int_values,
 			test_array_with_array_u64_values,
 			test_array_with_array_string_values };

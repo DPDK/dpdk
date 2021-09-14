@@ -11,7 +11,7 @@
 #define _RTE_TELEMETRY_H_
 
 /** Maximum length for string used in object. */
-#define RTE_TEL_MAX_STRING_LEN 64
+#define RTE_TEL_MAX_STRING_LEN 128
 /** Maximum length of string. */
 #define RTE_TEL_MAX_SINGLE_STRING_LEN 8192
 /** Maximum number of dictionary entries. */

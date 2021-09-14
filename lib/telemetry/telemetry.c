@@ -24,7 +24,6 @@
 #include "telemetry_internal.h"
 
 #define MAX_CMD_LEN 56
-#define MAX_HELP_LEN 64
 #define MAX_OUTPUT_LEN (1024 * 16)
 #define MAX_CONNECTIONS 10
 
@@ -36,7 +35,7 @@ client_handler(void *socket);
 struct cmd_callback {
 	char cmd[MAX_CMD_LEN];
 	telemetry_cb fn;
-	char help[MAX_HELP_LEN];
+	char help[RTE_TEL_MAX_STRING_LEN];
 };
 
 #ifndef RTE_EXEC_ENV_WINDOWS
@@ -75,7 +74,7 @@ rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
 	int i = 0;
 
 	if (strlen(cmd) >= MAX_CMD_LEN || fn == NULL || cmd[0] != '/'
-			|| strlen(help) >= MAX_HELP_LEN)
+			|| strlen(help) >= RTE_TEL_MAX_STRING_LEN)
 		return -EINVAL;
 
 	rte_spinlock_lock(&callback_sl);
@@ -95,7 +94,7 @@ rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
 
 	strlcpy(callbacks[i].cmd, cmd, MAX_CMD_LEN);
 	callbacks[i].fn = fn;
-	strlcpy(callbacks[i].help, help, MAX_HELP_LEN);
+	strlcpy(callbacks[i].help, help, RTE_TEL_MAX_STRING_LEN);
 	num_callbacks++;
 	rte_spinlock_unlock(&callback_sl);
 
@@ -157,8 +156,8 @@ container_to_json(const struct rte_tel_data *d, char *out_buf, size_t buf_len)
 	size_t used = 0;
 	unsigned int i;
 
-	if (d->type != RTE_TEL_ARRAY_U64 && d->type != RTE_TEL_ARRAY_INT
-			&& d->type != RTE_TEL_ARRAY_STRING)
+	if (d->type != RTE_TEL_DICT && d->type != RTE_TEL_ARRAY_U64 &&
+		d->type != RTE_TEL_ARRAY_INT && d->type != RTE_TEL_ARRAY_STRING)
 		return snprintf(out_buf, buf_len, "null");
 
 	used = rte_tel_json_empty_array(out_buf, buf_len, 0);
@@ -177,6 +176,43 @@ container_to_json(const struct rte_tel_data *d, char *out_buf, size_t buf_len)
 			used = rte_tel_json_add_array_string(out_buf,
 				buf_len, used,
 				d->data.array[i].sval);
+	if (d->type == RTE_TEL_DICT)
+		for (i = 0; i < d->data_len; i++) {
+			const struct tel_dict_entry *v = &d->data.dict[i];
+			switch (v->type) {
+			case RTE_TEL_STRING_VAL:
+				used = rte_tel_json_add_obj_str(out_buf,
+						buf_len, used,
+						v->name, v->value.sval);
+				break;
+			case RTE_TEL_INT_VAL:
+				used = rte_tel_json_add_obj_int(out_buf,
+						buf_len, used,
+						v->name, v->value.ival);
+				break;
+			case RTE_TEL_U64_VAL:
+				used = rte_tel_json_add_obj_u64(out_buf,
+						buf_len, used,
+						v->name, v->value.u64val);
+				break;
+			case RTE_TEL_CONTAINER:
+			{
+				char temp[buf_len];
+				const struct container *cont =
+						&v->value.container;
+				if (container_to_json(cont->data,
+						temp, buf_len) != 0)
+					used = rte_tel_json_add_obj_json(
+							out_buf,
+							buf_len, used,
+							v->name, temp);
+				if (!cont->keep)
+					rte_tel_data_free(cont->data);
+				break;
+			}
+			}
+		}
+
 	return used;
 }
 

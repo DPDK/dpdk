@@ -155,7 +155,8 @@ rte_tel_data_add_dict_container(struct rte_tel_data *d, const char *name,
 
 	if (d->type != RTE_TEL_DICT || (val->type != RTE_TEL_ARRAY_U64
 			&& val->type != RTE_TEL_ARRAY_INT
-			&& val->type != RTE_TEL_ARRAY_STRING))
+			&& val->type != RTE_TEL_ARRAY_STRING
+			&& val->type != RTE_TEL_DICT))
 		return -EINVAL;
 	if (d->data_len >= RTE_TEL_MAX_DICT_ENTRIES)
 		return -ENOSPC;
