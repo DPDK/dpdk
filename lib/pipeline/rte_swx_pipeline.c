@@ -2360,6 +2360,9 @@ static int
 action_has_nbo_args(struct action *a);
 
 static int
+learner_action_args_check(struct rte_swx_pipeline *p, struct action *a, const char *mf_name);
+
+static int
 instr_learn_translate(struct rte_swx_pipeline *p,
 		      struct action *action,
 		      char **tokens,
@@ -2368,16 +2371,31 @@ instr_learn_translate(struct rte_swx_pipeline *p,
 		      struct instruction_data *data __rte_unused)
 {
 	struct action *a;
+	const char *mf_name;
+	uint32_t mf_offset = 0;
 
 	CHECK(action, EINVAL);
-	CHECK(n_tokens == 2, EINVAL);
+	CHECK((n_tokens == 2) || (n_tokens == 3), EINVAL);
 
 	a = action_find(p, tokens[1]);
 	CHECK(a, EINVAL);
 	CHECK(!action_has_nbo_args(a), EINVAL);
 
+	mf_name = (n_tokens > 2) ? tokens[2] : NULL;
+	CHECK(!learner_action_args_check(p, a, mf_name), EINVAL);
+
+	if (mf_name) {
+		struct field *mf;
+
+		mf = metadata_field_parse(p, mf_name);
+		CHECK(mf, EINVAL);
+
+		mf_offset = mf->offset / 8;
+	}
+
 	instr->type = INSTR_LEARNER_LEARN;
 	instr->learn.action_id = a->id;
+	instr->learn.mf_offset = mf_offset;
 
 	return 0;
 }
@@ -8165,7 +8183,6 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 	CHECK(params->action_names, EINVAL);
 	for (i = 0; i < params->n_actions; i++) {
 		const char *action_name = params->action_names[i];
-		const char *action_field_name = params->action_field_names[i];
 		struct action *a;
 		uint32_t action_data_size;
 
@@ -8173,10 +8190,6 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 
 		a = action_find(p, action_name);
 		CHECK(a, EINVAL);
-
-		status = learner_action_args_check(p, a, action_field_name);
-		if (status)
-			return status;
 
 		status = learner_action_learning_check(p,
 						       a,
@@ -8218,10 +8231,6 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 	if (!l->actions)
 		goto nomem;
 
-	l->action_arg = calloc(params->n_actions, sizeof(struct field *));
-	if (!l->action_arg)
-		goto nomem;
-
 	if (action_data_size_max) {
 		l->default_action_data = calloc(1, action_data_size_max);
 		if (!l->default_action_data)
@@ -8243,13 +8252,8 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 
 	l->header = header;
 
-	for (i = 0; i < params->n_actions; i++) {
-		const char *mf_name = params->action_field_names[i];
-
+	for (i = 0; i < params->n_actions; i++)
 		l->actions[i] = action_find(p, params->action_names[i]);
-
-		l->action_arg[i] = mf_name ? metadata_field_parse(p, mf_name) : NULL;
-	}
 
 	l->default_action = default_action;
 
@@ -8280,7 +8284,6 @@ nomem:
 	if (!l)
 		return -ENOMEM;
 
-	free(l->action_arg);
 	free(l->actions);
 	free(l->fields);
 	free(l);
@@ -8375,7 +8378,6 @@ learner_build_free(struct rte_swx_pipeline *p)
 			struct learner_runtime *r = &t->learners[j];
 
 			free(r->mailbox);
-			free(r->action_data);
 		}
 
 		free(t->learners);
@@ -8419,7 +8421,6 @@ learner_build(struct rte_swx_pipeline *p)
 		TAILQ_FOREACH(l, &p->learners, node) {
 			struct learner_runtime *r = &t->learners[l->id];
 			uint64_t size;
-			uint32_t j;
 
 			/* r->mailbox. */
 			size = rte_swx_table_learner_mailbox_size_get();
@@ -8435,21 +8436,6 @@ learner_build(struct rte_swx_pipeline *p)
 			r->key = l->header ?
 				&t->structs[l->header->struct_id] :
 				&t->structs[p->metadata_struct_id];
-
-			/* r->action_data. */
-			r->action_data = calloc(p->n_actions, sizeof(uint8_t *));
-			if (!r->action_data) {
-				status = -ENOMEM;
-				goto error;
-			}
-
-			for (j = 0; j < l->n_actions; j++) {
-				struct action *a = l->actions[j];
-				struct field *mf = l->action_arg[j];
-				uint8_t *m = t->structs[p->metadata_struct_id];
-
-				r->action_data[a->id] = mf ? &m[mf->offset / 8] : NULL;
-			}
 		}
 	}
 
@@ -8476,7 +8462,6 @@ learner_free(struct rte_swx_pipeline *p)
 		TAILQ_REMOVE(&p->learners, l, node);
 		free(l->fields);
 		free(l->actions);
-		free(l->action_arg);
 		free(l->default_action_data);
 		free(l);
 	}

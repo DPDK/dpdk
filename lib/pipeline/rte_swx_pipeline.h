@@ -696,16 +696,6 @@ struct rte_swx_pipeline_learner_params {
 	 */
 	uint32_t n_actions;
 
-	/** This table type allows adding the latest lookup key (typically done
-	 * only in the case of lookup miss) to the table with a given action.
-	 * The action arguments are picked up from the packet meta-data: for
-	 * each action, a set of successive meta-data fields (with the name of
-	 * the first such field provided here) is 1:1 mapped to the action
-	 * arguments. These meta-data fields must be set with the actual values
-	 * of the action arguments before the key add operation.
-	 */
-	const char **action_field_names;
-
 	/** The default table action that gets executed on lookup miss. Must be
 	 * one of the table actions included in the *action_names*.
 	 */

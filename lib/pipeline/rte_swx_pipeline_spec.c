@@ -1293,7 +1293,7 @@ selector_block_parse(struct selector_spec *s,
  *		...
  *	}
  *	actions {
- *		ACTION_NAME args METADATA_FIELD_NAME
+ *		ACTION_NAME
  *		...
  *	}
  *	default_action ACTION_NAME args none | ARGS_BYTE_ARRAY [ const ]
@@ -1339,15 +1339,6 @@ learner_spec_free(struct learner_spec *s)
 
 	free(s->params.action_names);
 	s->params.action_names = NULL;
-
-	for (i = 0; i < s->params.n_actions; i++) {
-		uintptr_t name = (uintptr_t)s->params.action_field_names[i];
-
-		free((void *)name);
-	}
-
-	free(s->params.action_field_names);
-	s->params.action_field_names = NULL;
 
 	s->params.n_actions = 0;
 
@@ -1468,9 +1459,7 @@ learner_actions_block_parse(struct learner_spec *s,
 			    const char **err_msg)
 {
 	const char **new_action_names = NULL;
-	const char **new_action_field_names = NULL;
-	char *action_name = NULL, *action_field_name = NULL;
-	int has_args = 1;
+	char *action_name = NULL;
 
 	/* Handle end of block. */
 	if ((n_tokens == 1) && !strcmp(tokens[0], "}")) {
@@ -1479,7 +1468,7 @@ learner_actions_block_parse(struct learner_spec *s,
 	}
 
 	/* Check input arguments. */
-	if ((n_tokens != 3) || strcmp(tokens[1], "args")) {
+	if (n_tokens != 1) {
 		if (err_line)
 			*err_line = n_lines;
 		if (err_msg)
@@ -1487,28 +1476,14 @@ learner_actions_block_parse(struct learner_spec *s,
 		return -EINVAL;
 	}
 
-	if (!strcmp(tokens[2], "none"))
-		has_args = 0;
-
 	action_name = strdup(tokens[0]);
-
-	if (has_args)
-		action_field_name = strdup(tokens[2]);
 
 	new_action_names = realloc(s->params.action_names,
 				   (s->params.n_actions + 1) * sizeof(char *));
 
-	new_action_field_names = realloc(s->params.action_field_names,
-					 (s->params.n_actions + 1) * sizeof(char *));
-
-	if (!action_name ||
-	    (has_args && !action_field_name) ||
-	    !new_action_names ||
-	    !new_action_field_names) {
+	if (!action_name || !new_action_names) {
 		free(action_name);
-		free(action_field_name);
 		free(new_action_names);
-		free(new_action_field_names);
 
 		if (err_line)
 			*err_line = n_lines;
@@ -1519,8 +1494,6 @@ learner_actions_block_parse(struct learner_spec *s,
 
 	s->params.action_names = new_action_names;
 	s->params.action_names[s->params.n_actions] = action_name;
-	s->params.action_field_names = new_action_field_names;
-	s->params.action_field_names[s->params.n_actions] = action_field_name;
 	s->params.n_actions++;
 
 	return 0;

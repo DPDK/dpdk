@@ -84,7 +84,7 @@ action learn_action args none {
 	// Add the current lookup key to the table with fwd_action as the key action. The action
 	// arguments are read from the packet meta-data (the m.fwd_action_arg_port_out field). These
 	// packet meta-data fields have to be written before the "learn" instruction is invoked.
-	learn fwd_action
+	learn fwd_action m.fwd_action_arg_port_out
 
 	// Send the current packet to the same output port.
 	mov m.port_out m.fwd_action_arg_port_out
@@ -101,9 +101,9 @@ learner fwd_table {
 	}
 
 	actions {
-		fwd_action args m.fwd_action_arg_port_out
+		fwd_action
 
-		learn_action args none
+		learn_action
 	}
 
 	default_action learn_action args none

@@ -448,7 +448,7 @@ enum instruction_type {
 	INSTR_LEARNER,
 	INSTR_LEARNER_AF,
 
-	/* learn LEARNER ACTION_NAME */
+	/* learn LEARNER ACTION_NAME [ m.action_first_arg ] */
 	INSTR_LEARNER_LEARN,
 
 	/* forget */
@@ -583,6 +583,7 @@ struct instr_table {
 
 struct instr_learn {
 	uint8_t action_id;
+	uint8_t mf_offset;
 };
 
 struct instr_extern_obj {
@@ -809,7 +810,6 @@ struct learner {
 
 	/* Action. */
 	struct action **actions;
-	struct field **action_arg;
 	struct action *default_action;
 	uint8_t *default_action_data;
 	uint32_t n_actions;
@@ -826,7 +826,6 @@ TAILQ_HEAD(learner_tailq, learner);
 struct learner_runtime {
 	void *mailbox;
 	uint8_t **key;
-	uint8_t **action_data;
 };
 
 struct learner_statistics {
@@ -2017,6 +2016,7 @@ __instr_learn_exec(struct rte_swx_pipeline *p,
 		   const struct instruction *ip)
 {
 	uint64_t action_id = ip->learn.action_id;
+	uint32_t mf_offset = ip->learn.mf_offset;
 	uint32_t learner_id = t->learner_id;
 	struct rte_swx_table_state *ts = &t->table_state[p->n_tables +
 		p->n_selectors + learner_id];
@@ -2029,7 +2029,7 @@ __instr_learn_exec(struct rte_swx_pipeline *p,
 					   l->mailbox,
 					   t->time,
 					   action_id,
-					   l->action_data[action_id]);
+					   &t->metadata[mf_offset]);
 
 	TRACE("[Thread %2u] learner %u learn %s\n",
 	      p->thread_id,
