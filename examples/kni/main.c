@@ -1031,6 +1031,7 @@ kni_free_kni(uint16_t port_id)
 	if (ret != 0)
 		RTE_LOG(ERR, APP, "Failed to stop port %d: %s\n",
 			port_id, rte_strerror(-ret));
+	rte_eth_dev_close(port_id);
 
 	return 0;
 }
