@@ -3,7 +3,7 @@
 
 sources = files(
         'cryptodev_pmd.c',
-	'cryptodev_trace_points.c',
+        'cryptodev_trace_points.c',
         'rte_cryptodev.c',
 )
 headers = files(
