@@ -2582,6 +2582,7 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		 * The Queue Size value does not have to be a power of 2.
 		 */
 		dev_info->rx_desc_lim.nb_max = UINT16_MAX;
+		dev_info->tx_desc_lim.nb_max = UINT16_MAX;
 	} else {
 		/*
 		 * According to 2.6 Split Virtqueues:
@@ -2589,6 +2590,7 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		 * Size value is 32768.
 		 */
 		dev_info->rx_desc_lim.nb_max = 32768;
+		dev_info->tx_desc_lim.nb_max = 32768;
 	}
 	/*
 	 * Actual minimum is not the same for virtqueues of different kinds,
@@ -2597,7 +2599,9 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	 */
 	dev_info->rx_desc_lim.nb_min = RTE_MAX(DEFAULT_RX_FREE_THRESH,
 					       RTE_VIRTIO_VPMD_RX_REARM_THRESH);
+	dev_info->tx_desc_lim.nb_min = DEFAULT_TX_FREE_THRESH;
 	dev_info->rx_desc_lim.nb_align = 1;
+	dev_info->tx_desc_lim.nb_align = 1;
 
 	return 0;
 }
