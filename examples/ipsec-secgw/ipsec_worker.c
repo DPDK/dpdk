@@ -12,6 +12,11 @@
 #include "ipsec-secgw.h"
 #include "ipsec_worker.h"
 
+struct port_drv_mode_data {
+	struct rte_security_session *sess;
+	struct rte_security_ctx *ctx;
+};
+
 static inline enum pkt_type
 process_ipsec_get_pkt_type(struct rte_mbuf *pkt, uint8_t **nlp)
 {
@@ -60,7 +65,8 @@ ipsec_event_pre_forward(struct rte_mbuf *m, unsigned int port_id)
 
 static inline void
 prepare_out_sessions_tbl(struct sa_ctx *sa_out,
-		struct rte_security_session **sess_tbl, uint16_t size)
+			 struct port_drv_mode_data *data,
+			 uint16_t size)
 {
 	struct rte_ipsec_session *pri_sess;
 	struct ipsec_sa *sa;
@@ -95,9 +101,10 @@ prepare_out_sessions_tbl(struct sa_ctx *sa_out,
 		}
 
 		/* Use only first inline session found for a given port */
-		if (sess_tbl[sa->portid])
+		if (data[sa->portid].sess)
 			continue;
-		sess_tbl[sa->portid] = pri_sess->security.ses;
+		data[sa->portid].sess = pri_sess->security.ses;
+		data[sa->portid].ctx = pri_sess->security.ctx;
 	}
 }
 
@@ -356,9 +363,8 @@ process_ipsec_ev_outbound(struct ipsec_ctx *ctx, struct route_table *rt,
 		goto drop_pkt_and_exit;
 	}
 
-	if (sess->security.ol_flags & RTE_SECURITY_TX_OLOAD_NEED_MDATA)
-		*(struct rte_security_session **)rte_security_dynfield(pkt) =
-				sess->security.ses;
+	rte_security_set_pkt_metadata(sess->security.ctx,
+				      sess->security.ses, pkt, NULL);
 
 	/* Mark the packet for Tx security offload */
 	pkt->ol_flags |= PKT_TX_SEC_OFFLOAD;
@@ -367,6 +373,9 @@ process_ipsec_ev_outbound(struct ipsec_ctx *ctx, struct route_table *rt,
 	port_id = sa->portid;
 
 send_pkt:
+	/* Provide L2 len for Outbound processing */
+	pkt->l2_len = RTE_ETHER_HDR_LEN;
+
 	/* Update mac addresses */
 	update_mac_addrs(pkt, port_id);
 
@@ -398,7 +407,7 @@ static void
 ipsec_wrkr_non_burst_int_port_drv_mode(struct eh_event_link_info *links,
 		uint8_t nb_links)
 {
-	struct rte_security_session *sess_tbl[RTE_MAX_ETHPORTS] = { NULL };
+	struct port_drv_mode_data data[RTE_MAX_ETHPORTS];
 	unsigned int nb_rx = 0;
 	struct rte_mbuf *pkt;
 	struct rte_event ev;
@@ -412,6 +421,8 @@ ipsec_wrkr_non_burst_int_port_drv_mode(struct eh_event_link_info *links,
 		return;
 	}
 
+	memset(&data, 0, sizeof(struct port_drv_mode_data));
+
 	/* Get core ID */
 	lcore_id = rte_lcore_id();
 
@@ -422,8 +433,8 @@ ipsec_wrkr_non_burst_int_port_drv_mode(struct eh_event_link_info *links,
 	 * Prepare security sessions table. In outbound driver mode
 	 * we always use first session configured for a given port
 	 */
-	prepare_out_sessions_tbl(socket_ctx[socket_id].sa_out, sess_tbl,
-			RTE_MAX_ETHPORTS);
+	prepare_out_sessions_tbl(socket_ctx[socket_id].sa_out, data,
+				 RTE_MAX_ETHPORTS);
 
 	RTE_LOG(INFO, IPSEC,
 		"Launching event mode worker (non-burst - Tx internal port - "
@@ -460,19 +471,21 @@ ipsec_wrkr_non_burst_int_port_drv_mode(struct eh_event_link_info *links,
 
 		if (!is_unprotected_port(port_id)) {
 
-			if (unlikely(!sess_tbl[port_id])) {
+			if (unlikely(!data[port_id].sess)) {
 				rte_pktmbuf_free(pkt);
 				continue;
 			}
 
 			/* Save security session */
-			if (rte_security_dynfield_is_registered())
-				*(struct rte_security_session **)
-					rte_security_dynfield(pkt) =
-						sess_tbl[port_id];
+			rte_security_set_pkt_metadata(data[port_id].ctx,
+						      data[port_id].sess, pkt,
+						      NULL);
 
 			/* Mark the packet for Tx security offload */
 			pkt->ol_flags |= PKT_TX_SEC_OFFLOAD;
+
+			/* Provide L2 len for Outbound processing */
+			pkt->l2_len = RTE_ETHER_HDR_LEN;
 		}
 
 		/*

@@ -1495,6 +1495,8 @@ parse_portmask(const char *portmask)
 	char *end = NULL;
 	unsigned long pm;
 
+	errno = 0;
+
 	/* parse hexadecimal string */
 	pm = strtoul(portmask, &end, 16);
 	if ((portmask[0] == '\0') || (end == NULL) || (*end != '\0'))
