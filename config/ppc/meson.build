@@ -20,8 +20,8 @@ endif
 
 # Suppress the gcc warning "note: the layout of aggregates containing
 # vectors with 4-byte alignment has changed in GCC 5".
-if cc.get_id() == 'gcc' and cc.version().version_compare('>=10.0') and
-        cc.version().version_compare('<12.0') and cc.has_argument('-Wno-psabi')
+if (cc.get_id() == 'gcc' and cc.version().version_compare('>=10.0') and
+        cc.version().version_compare('<12.0') and cc.has_argument('-Wno-psabi'))
     add_project_arguments('-Wno-psabi', language: 'c')
 endif
 
