@@ -828,25 +828,26 @@ vq_ring_free_id_packed(struct virtqueue *vq, uint16_t id)
 }
 
 static void
-virtio_xmit_cleanup_inorder_packed(struct virtqueue *vq, int num)
+virtio_xmit_cleanup_inorder_packed(struct virtqueue *vq, uint16_t num)
 {
 	uint16_t used_idx, id, curr_id, free_cnt = 0;
 	uint16_t size = vq->vq_nentries;
 	struct vring_packed_desc *desc = vq->vq_packed.ring.desc;
 	struct vq_desc_extra *dxp;
+	int nb = num;
 
 	used_idx = vq->vq_used_cons_idx;
 	/* desc_is_used has a load-acquire or rte_io_rmb inside
 	 * and wait for used desc in virtqueue.
 	 */
-	while (num > 0 && desc_is_used(&desc[used_idx], vq)) {
+	while (nb > 0 && desc_is_used(&desc[used_idx], vq)) {
 		id = desc[used_idx].id;
 		do {
 			curr_id = used_idx;
 			dxp = &vq->vq_descx[used_idx];
 			used_idx += dxp->ndescs;
 			free_cnt += dxp->ndescs;
-			num -= dxp->ndescs;
+			nb -= dxp->ndescs;
 			if (used_idx >= size) {
 				used_idx -= size;
 				vq->vq_packed.used_wrap_counter ^= 1;
@@ -862,7 +863,7 @@ virtio_xmit_cleanup_inorder_packed(struct virtqueue *vq, int num)
 }
 
 static void
-virtio_xmit_cleanup_normal_packed(struct virtqueue *vq, int num)
+virtio_xmit_cleanup_normal_packed(struct virtqueue *vq, uint16_t num)
 {
 	uint16_t used_idx, id;
 	uint16_t size = vq->vq_nentries;
@@ -892,7 +893,7 @@ virtio_xmit_cleanup_normal_packed(struct virtqueue *vq, int num)
 
 /* Cleanup from completed transmits. */
 static inline void
-virtio_xmit_cleanup_packed(struct virtqueue *vq, int num, int in_order)
+virtio_xmit_cleanup_packed(struct virtqueue *vq, uint16_t num, int in_order)
 {
 	if (in_order)
 		virtio_xmit_cleanup_inorder_packed(vq, num);
