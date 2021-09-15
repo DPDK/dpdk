@@ -313,6 +313,7 @@ sfc_sw_xstat_get_values_by_id(struct sfc_adapter *sa,
 	}
 
 	if (count_accum_value) {
+		values[accum_value_idx] = 0;
 		for (qid = 0; qid < nb_queues; ++qid) {
 			if (rte_bitmap_get(bmp, qid) != 0)
 				continue;
