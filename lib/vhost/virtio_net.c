@@ -3136,6 +3136,12 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 			count = 0;
 			goto out;
 		}
+		/*
+		 * Inject it to the head of "pkts" array, so that switch's mac
+		 * learning table will get updated first.
+		 */
+		pkts[0] = rarp_mbuf;
+		pkts++;
 		count -= 1;
 	}
 
@@ -3158,15 +3164,8 @@ out:
 out_access_unlock:
 	rte_spinlock_unlock(&vq->access_lock);
 
-	if (unlikely(rarp_mbuf != NULL)) {
-		/*
-		 * Inject it to the head of "pkts" array, so that switch's mac
-		 * learning table will get updated first.
-		 */
-		memmove(&pkts[1], pkts, count * sizeof(struct rte_mbuf *));
-		pkts[0] = rarp_mbuf;
+	if (unlikely(rarp_mbuf != NULL))
 		count += 1;
-	}
 
 	return count;
 }
