@@ -704,6 +704,12 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			break;
 		}
 
+		/**
+		 * Use acquire fence to ensure that qword1 which includes DD
+		 * bit is loaded before loading of other descriptor words.
+		 */
+		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+
 		rxd = *rxdp;
 		nb_hold++;
 		rxe = &sw_ring[rx_id];
@@ -819,6 +825,12 @@ i40e_recv_scattered_pkts(void *rx_queue,
 			dev->data->rx_mbuf_alloc_failed++;
 			break;
 		}
+
+		/**
+		 * Use acquire fence to ensure that qword1 which includes DD
+		 * bit is loaded before loading of other descriptor words.
+		 */
+		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
 
 		rxd = *rxdp;
 		nb_hold++;
