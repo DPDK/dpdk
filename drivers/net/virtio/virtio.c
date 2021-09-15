@@ -3,7 +3,10 @@
  * Copyright(c) 2020 Red Hat, Inc.
  */
 
+#include <unistd.h>
+
 #include "virtio.h"
+#include "virtio_logs.h"
 
 uint64_t
 virtio_negotiate_features(struct virtio_hw *hw, uint64_t host_features)
@@ -38,9 +41,17 @@ virtio_write_dev_config(struct virtio_hw *hw, size_t offset,
 void
 virtio_reset(struct virtio_hw *hw)
 {
+	uint32_t retry = 0;
+
 	VIRTIO_OPS(hw)->set_status(hw, VIRTIO_CONFIG_STATUS_RESET);
-	/* flush status write */
-	VIRTIO_OPS(hw)->get_status(hw);
+	/* Flush status write and wait device ready max 3 seconds. */
+	while (VIRTIO_OPS(hw)->get_status(hw) != VIRTIO_CONFIG_STATUS_RESET) {
+		if (retry++ > 3000) {
+			PMD_INIT_LOG(WARNING, "port %u device reset timeout", hw->port_id);
+			break;
+		}
+		usleep(1000L);
+	}
 }
 
 void
