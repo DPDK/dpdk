@@ -122,9 +122,9 @@ rte_security_session_destroy(struct rte_security_ctx *instance,
 }
 
 int
-rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
-			      struct rte_security_session *sess,
-			      struct rte_mbuf *m, void *params)
+__rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
+				struct rte_security_session *sess,
+				struct rte_mbuf *m, void *params)
 {
 #ifdef RTE_DEBUG
 	RTE_PTR_OR_ERR_RET(sess, -EINVAL);
@@ -137,7 +137,7 @@ rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
 }
 
 void *
-rte_security_get_userdata(struct rte_security_ctx *instance, uint64_t md)
+__rte_security_get_userdata(struct rte_security_ctx *instance, uint64_t md)
 {
 	void *userdata = NULL;
 

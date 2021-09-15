@@ -71,7 +71,18 @@ struct rte_security_ctx {
 	/**< Pointer to security ops for the device */
 	uint16_t sess_cnt;
 	/**< Number of sessions attached to this context */
+	uint32_t flags;
+	/**< Flags for security context */
 };
+
+#define RTE_SEC_CTX_F_FAST_SET_MDATA 0x00000001
+/**< Driver uses fast metadata update without using driver specific callback */
+
+#define RTE_SEC_CTX_F_FAST_GET_UDATA 0x00000002
+/**< Driver provides udata using fast method without using driver specific
+ * callback. For fast mdata and udata, mbuf dynamic field would be registered
+ * by driver via rte_security_dynfield_register().
+ */
 
 /**
  * IPSEC tunnel parameters
@@ -494,6 +505,12 @@ static inline bool rte_security_dynfield_is_registered(void)
 	return rte_security_dynfield_offset >= 0;
 }
 
+/** Function to call PMD specific function pointer set_pkt_metadata() */
+__rte_experimental
+extern int __rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
+					   struct rte_security_session *sess,
+					   struct rte_mbuf *m, void *params);
+
 /**
  *  Updates the buffer with device-specific defined metadata
  *
@@ -507,10 +524,26 @@ static inline bool rte_security_dynfield_is_registered(void)
  *  - On success, zero.
  *  - On failure, a negative value.
  */
-int
+static inline int
 rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
 			      struct rte_security_session *sess,
-			      struct rte_mbuf *mb, void *params);
+			      struct rte_mbuf *mb, void *params)
+{
+	/* Fast Path */
+	if (instance->flags & RTE_SEC_CTX_F_FAST_SET_MDATA) {
+		*rte_security_dynfield(mb) =
+			(rte_security_dynfield_t)(sess->sess_private_data);
+		return 0;
+	}
+
+	/* Jump to PMD specific function pointer */
+	return __rte_security_set_pkt_metadata(instance, sess, mb, params);
+}
+
+/** Function to call PMD specific function pointer get_userdata() */
+__rte_experimental
+extern void *__rte_security_get_userdata(struct rte_security_ctx *instance,
+					 uint64_t md);
 
 /**
  * Get userdata associated with the security session. Device specific metadata
@@ -530,8 +563,16 @@ rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
  *  - On failure, NULL
  */
 __rte_experimental
-void *
-rte_security_get_userdata(struct rte_security_ctx *instance, uint64_t md);
+static inline void *
+rte_security_get_userdata(struct rte_security_ctx *instance, uint64_t md)
+{
+	/* Fast Path */
+	if (instance->flags & RTE_SEC_CTX_F_FAST_GET_UDATA)
+		return (void *)(uintptr_t)md;
+
+	/* Jump to PMD specific function pointer */
+	return __rte_security_get_userdata(instance, md);
+}
 
 /**
  * Attach a session to a symmetric crypto operation

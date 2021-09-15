@@ -151,6 +151,12 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* security: ``rte_security_set_pkt_metadata`` and ``rte_security_get_userdata``
+  routines used by inline outbound and inline inbound security processing were
+  made inline and enhanced to do simple 64-bit set/get for PMDs that do not
+  have much processing in PMD specific callbacks but just 64-bit set/get.
+  This avoids a per packet function pointer jump overhead for such PMDs.
+
 
 Known Issues
 ------------
