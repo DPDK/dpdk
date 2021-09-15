@@ -195,12 +195,17 @@ The event devices, ethernet device pairs which support the capability
 flow characteristics and generate a ``rte_event`` containing ``rte_event_vector``
 whose event type is either ``RTE_EVENT_TYPE_ETHDEV_VECTOR`` or
 ``RTE_EVENT_TYPE_ETH_RX_ADAPTER_VECTOR``.
-The aggregation size and timeout are configurable at a queue level and the
-maximum, minimum vector sizes and timeouts vary based on the device capability
-and can be queried using ``rte_event_eth_rx_adapter_vector_limits_get``.
+The maximum, minimum vector sizes and timeouts vary based on the device
+capability and can be queried using
+``rte_event_eth_rx_adapter_vector_limits_get``.
 The Rx adapter additionally might include useful data such as ethernet device
 port and queue identifier in the ``rte_event_vector::port`` and
 ``rte_event_vector::queue`` and mark ``rte_event_vector::attr_valid`` as true.
+The aggregation size and timeout are configurable at a queue level by setting
+``rte_event_eth_rx_adapter_queue_conf::vector_sz``,
+``rte_event_eth_rx_adapter_queue_conf::vector_timeout_ns`` and
+``rte_event_eth_rx_adapter_queue_conf::vector_mp`` when adding queues using
+``rte_event_eth_rx_adapter_queue_add``.
 
 A loop processing ``rte_event_vector`` containing mbufs is shown below.
 

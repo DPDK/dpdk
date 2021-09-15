@@ -331,7 +331,6 @@ pipeline_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 	uint16_t prod;
 	struct rte_mempool *vector_pool = NULL;
 	struct rte_event_eth_rx_adapter_queue_conf queue_conf;
-	struct rte_event_eth_rx_adapter_event_vector_config vec_conf;
 
 	memset(&queue_conf, 0,
 			sizeof(struct rte_event_eth_rx_adapter_queue_conf));
@@ -397,8 +396,12 @@ pipeline_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 			}
 
 			if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR) {
+				queue_conf.vector_sz = opt->vector_size;
+				queue_conf.vector_timeout_ns =
+					opt->vector_tmo_nsec;
 				queue_conf.rx_queue_flags |=
 				RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR;
+				queue_conf.vector_mp = vector_pool;
 			} else {
 				evt_err("Rx adapter doesn't support event vector");
 				return -EINVAL;
@@ -416,17 +419,6 @@ pipeline_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 		if (ret) {
 			evt_err("failed to add rx queues to adapter[%d]", prod);
 			return ret;
-		}
-
-		if (opt->ena_vector) {
-			vec_conf.vector_sz = opt->vector_size;
-			vec_conf.vector_timeout_ns = opt->vector_tmo_nsec;
-			vec_conf.vector_mp = vector_pool;
-			if (rte_event_eth_rx_adapter_queue_event_vector_config(
-				    prod, prod, -1, &vec_conf) < 0) {
-				evt_err("Failed to configure event vectorization for Rx adapter");
-				return -EINVAL;
-			}
 		}
 
 		if (!(cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT)) {

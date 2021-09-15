@@ -142,7 +142,6 @@ EXPERIMENTAL {
 	#added in 21.05
 	rte_event_vector_pool_create;
 	rte_event_eth_rx_adapter_vector_limits_get;
-	rte_event_eth_rx_adapter_queue_event_vector_config;
 	__rte_eventdev_trace_crypto_adapter_enqueue;
 };
 

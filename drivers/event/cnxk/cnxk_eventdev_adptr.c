@@ -175,6 +175,35 @@ cnxk_sso_rxq_disable(struct cnxk_eth_dev *cnxk_eth_dev, uint16_t rq_id)
 	return roc_nix_rq_modify(&cnxk_eth_dev->nix, rq, 0);
 }
 
+static int
+cnxk_sso_rx_adapter_vwqe_enable(struct cnxk_eth_dev *cnxk_eth_dev,
+				uint16_t port_id, uint16_t rq_id, uint16_t sz,
+				uint64_t tmo_ns, struct rte_mempool *vmp)
+{
+	struct roc_nix_rq *rq;
+
+	rq = &cnxk_eth_dev->rqs[rq_id];
+
+	if (!rq->sso_ena)
+		return -EINVAL;
+	if (rq->flow_tag_width == 0)
+		return -EINVAL;
+
+	rq->vwqe_ena = 1;
+	rq->vwqe_first_skip = 0;
+	rq->vwqe_aura_handle = roc_npa_aura_handle_to_aura(vmp->pool_id);
+	rq->vwqe_max_sz_exp = rte_log2_u32(sz);
+	rq->vwqe_wait_tmo =
+		tmo_ns /
+		((roc_nix_get_vwqe_interval(&cnxk_eth_dev->nix) + 1) * 100);
+	rq->tag_mask = (port_id & 0xF) << 20;
+	rq->tag_mask |=
+		(((port_id >> 4) & 0xF) | (RTE_EVENT_TYPE_ETHDEV_VECTOR << 4))
+		<< 24;
+
+	return roc_nix_rq_modify(&cnxk_eth_dev->nix, rq, 0);
+}
+
 int
 cnxk_sso_rx_adapter_queue_add(
 	const struct rte_eventdev *event_dev, const struct rte_eth_dev *eth_dev,
@@ -202,6 +231,18 @@ cnxk_sso_rx_adapter_queue_add(
 			&queue_conf->ev,
 			!!(queue_conf->rx_queue_flags &
 			   RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID));
+		if (queue_conf->rx_queue_flags &
+		    RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR) {
+			cnxk_sso_updt_xae_cnt(dev, queue_conf->vector_mp,
+					      RTE_EVENT_TYPE_ETHDEV_VECTOR);
+			rc |= cnxk_sso_xae_reconfigure(
+				(struct rte_eventdev *)(uintptr_t)event_dev);
+			rc |= cnxk_sso_rx_adapter_vwqe_enable(
+				cnxk_eth_dev, port, rx_queue_id,
+				queue_conf->vector_sz,
+				queue_conf->vector_timeout_ns,
+				queue_conf->vector_mp);
+		}
 		rox_nix_fc_npa_bp_cfg(&cnxk_eth_dev->nix,
 				      rxq_sp->qconf.mp->pool_id, true,
 				      dev->force_ena_bp);

@@ -663,32 +663,6 @@ typedef int (*eventdev_eth_rx_adapter_vector_limits_get_t)(
 	const struct rte_eventdev *dev, const struct rte_eth_dev *eth_dev,
 	struct rte_event_eth_rx_adapter_vector_limits *limits);
 
-struct rte_event_eth_rx_adapter_event_vector_config;
-/**
- * Enable event vector on an given Rx queue of a ethernet devices belonging to
- * the Rx adapter.
- *
- * @param dev
- *   Event device pointer
- *
- * @param eth_dev
- *   Ethernet device pointer
- *
- * @param rx_queue_id
- *   The Rx queue identifier
- *
- * @param config
- *   Pointer to the event vector configuration structure.
- *
- * @return
- *   - 0: Success.
- *   - <0: Error code returned by the driver function.
- */
-typedef int (*eventdev_eth_rx_adapter_event_vector_config_t)(
-	const struct rte_eventdev *dev, const struct rte_eth_dev *eth_dev,
-	int32_t rx_queue_id,
-	const struct rte_event_eth_rx_adapter_event_vector_config *config);
-
 typedef uint32_t rte_event_pmd_selftest_seqn_t;
 extern int rte_event_pmd_selftest_seqn_dynfield_offset;
 
@@ -1114,9 +1088,6 @@ struct rte_eventdev_ops {
 	eventdev_eth_rx_adapter_vector_limits_get_t
 		eth_rx_adapter_vector_limits_get;
 	/**< Get event vector limits for the Rx adapter */
-	eventdev_eth_rx_adapter_event_vector_config_t
-		eth_rx_adapter_event_vector_config;
-	/**< Configure Rx adapter with event vector */
 
 	eventdev_timer_adapter_caps_get_t timer_adapter_caps_get;
 	/**< Get timer adapter capabilities */

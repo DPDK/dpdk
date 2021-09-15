@@ -171,9 +171,6 @@ struct rte_event_eth_rx_adapter_queue_conf {
 	 * The event adapter sets ev.event_type to RTE_EVENT_TYPE_ETHDEV in the
 	 * enqueued event.
 	 */
-};
-
-struct rte_event_eth_rx_adapter_event_vector_config {
 	uint16_t vector_sz;
 	/**<
 	 * Indicates the maximum number for mbufs to combine and form a vector.
@@ -547,33 +544,6 @@ __rte_experimental
 int rte_event_eth_rx_adapter_vector_limits_get(
 	uint8_t dev_id, uint16_t eth_port_id,
 	struct rte_event_eth_rx_adapter_vector_limits *limits);
-
-/**
- * Configure event vectorization for a given ethernet device queue, that has
- * been added to a event eth Rx adapter.
- *
- * @param id
- *  The identifier of the ethernet Rx event adapter.
- *
- * @param eth_dev_id
- *  The identifier of the ethernet device.
- *
- * @param rx_queue_id
- *  Ethernet device receive queue index.
- *  If rx_queue_id is -1, then all Rx queues configured for the ethernet device
- *  are configured with event vectorization.
- *
- * @param config
- *  Event vector configuration structure.
- *
- * @return
- *  - 0: Success, Receive queue configured correctly.
- *  - <0: Error code on failure.
- */
-__rte_experimental
-int rte_event_eth_rx_adapter_queue_event_vector_config(
-	uint8_t id, uint16_t eth_dev_id, int32_t rx_queue_id,
-	struct rte_event_eth_rx_adapter_event_vector_config *config);
 
 #ifdef __cplusplus
 }

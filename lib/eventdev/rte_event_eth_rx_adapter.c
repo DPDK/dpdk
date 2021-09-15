@@ -1947,6 +1947,24 @@ rxa_add_queue(struct rte_event_eth_rx_adapter *rx_adapter,
 	} else
 		qi_ev->flow_id = 0;
 
+	if (conf->rx_queue_flags &
+	    RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR) {
+		queue_info->ena_vector = 1;
+		qi_ev->event_type = RTE_EVENT_TYPE_ETH_RX_ADAPTER_VECTOR;
+		rxa_set_vector_data(queue_info, conf->vector_sz,
+				    conf->vector_timeout_ns, conf->vector_mp,
+				    rx_queue_id, dev_info->dev->data->port_id);
+		rx_adapter->ena_vector = 1;
+		rx_adapter->vector_tmo_ticks =
+			rx_adapter->vector_tmo_ticks ?
+				      RTE_MIN(queue_info->vector_data
+							.vector_timeout_ticks >>
+						1,
+					rx_adapter->vector_tmo_ticks) :
+				queue_info->vector_data.vector_timeout_ticks >>
+					1;
+	}
+
 	rxa_update_queue(rx_adapter, dev_info, rx_queue_id, 1);
 	if (rxa_polled_queue(dev_info, rx_queue_id)) {
 		rx_adapter->num_rx_polled += !pollq;
@@ -1970,42 +1988,6 @@ rxa_add_queue(struct rte_event_eth_rx_adapter *rx_adapter,
 				dev_info->next_q_idx = 0;
 		}
 	}
-}
-
-static void
-rxa_sw_event_vector_configure(
-	struct rte_event_eth_rx_adapter *rx_adapter, uint16_t eth_dev_id,
-	int rx_queue_id,
-	const struct rte_event_eth_rx_adapter_event_vector_config *config)
-{
-	struct eth_device_info *dev_info = &rx_adapter->eth_devices[eth_dev_id];
-	struct eth_rx_queue_info *queue_info;
-	struct rte_event *qi_ev;
-
-	if (rx_queue_id == -1) {
-		uint16_t nb_rx_queues;
-		uint16_t i;
-
-		nb_rx_queues = dev_info->dev->data->nb_rx_queues;
-		for (i = 0; i < nb_rx_queues; i++)
-			rxa_sw_event_vector_configure(rx_adapter, eth_dev_id, i,
-						      config);
-		return;
-	}
-
-	queue_info = &dev_info->rx_queue[rx_queue_id];
-	qi_ev = (struct rte_event *)&queue_info->event;
-	queue_info->ena_vector = 1;
-	qi_ev->event_type = RTE_EVENT_TYPE_ETH_RX_ADAPTER_VECTOR;
-	rxa_set_vector_data(queue_info, config->vector_sz,
-			    config->vector_timeout_ns, config->vector_mp,
-			    rx_queue_id, dev_info->dev->data->port_id);
-	rx_adapter->ena_vector = 1;
-	rx_adapter->vector_tmo_ticks =
-		rx_adapter->vector_tmo_ticks ?
-			      RTE_MIN(config->vector_timeout_ns >> 1,
-				rx_adapter->vector_tmo_ticks) :
-			      config->vector_timeout_ns >> 1;
 }
 
 static int rxa_sw_add(struct rte_event_eth_rx_adapter *rx_adapter,
@@ -2322,6 +2304,7 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 	struct rte_event_eth_rx_adapter *rx_adapter;
 	struct rte_eventdev *dev;
 	struct eth_device_info *dev_info;
+	struct rte_event_eth_rx_adapter_vector_limits limits;
 
 	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(eth_dev_id, -EINVAL);
@@ -2349,13 +2332,46 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 		return -EINVAL;
 	}
 
-	if ((cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR) == 0 &&
-	    (queue_conf->rx_queue_flags &
-	     RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR)) {
-		RTE_EDEV_LOG_ERR("Event vectorization is not supported,"
-				 " eth port: %" PRIu16 " adapter id: %" PRIu8,
-				 eth_dev_id, id);
-		return -EINVAL;
+	if (queue_conf->rx_queue_flags &
+	    RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR) {
+
+		if ((cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR) == 0) {
+			RTE_EDEV_LOG_ERR("Event vectorization is not supported,"
+					 " eth port: %" PRIu16
+					 " adapter id: %" PRIu8,
+					 eth_dev_id, id);
+			return -EINVAL;
+		}
+
+		ret = rte_event_eth_rx_adapter_vector_limits_get(
+			rx_adapter->eventdev_id, eth_dev_id, &limits);
+		if (ret < 0) {
+			RTE_EDEV_LOG_ERR("Failed to get event device vector limits,"
+					 " eth port: %" PRIu16
+					 " adapter id: %" PRIu8,
+					 eth_dev_id, id);
+			return -EINVAL;
+		}
+		if (queue_conf->vector_sz < limits.min_sz ||
+		    queue_conf->vector_sz > limits.max_sz ||
+		    queue_conf->vector_timeout_ns < limits.min_timeout_ns ||
+		    queue_conf->vector_timeout_ns > limits.max_timeout_ns ||
+		    queue_conf->vector_mp == NULL) {
+			RTE_EDEV_LOG_ERR("Invalid event vector configuration,"
+					 " eth port: %" PRIu16
+					 " adapter id: %" PRIu8,
+					 eth_dev_id, id);
+			return -EINVAL;
+		}
+		if (queue_conf->vector_mp->elt_size <
+		    (sizeof(struct rte_event_vector) +
+		     (sizeof(uintptr_t) * queue_conf->vector_sz))) {
+			RTE_EDEV_LOG_ERR("Invalid event vector configuration,"
+					 " eth port: %" PRIu16
+					 " adapter id: %" PRIu8,
+					 eth_dev_id, id);
+			return -EINVAL;
+		}
 	}
 
 	if ((cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ) == 0 &&
@@ -2548,83 +2564,6 @@ unlock_ret:
 
 	rte_eventdev_trace_eth_rx_adapter_queue_del(id, eth_dev_id,
 		rx_queue_id, ret);
-	return ret;
-}
-
-int
-rte_event_eth_rx_adapter_queue_event_vector_config(
-	uint8_t id, uint16_t eth_dev_id, int32_t rx_queue_id,
-	struct rte_event_eth_rx_adapter_event_vector_config *config)
-{
-	struct rte_event_eth_rx_adapter_vector_limits limits;
-	struct rte_event_eth_rx_adapter *rx_adapter;
-	struct rte_eventdev *dev;
-	uint32_t cap;
-	int ret;
-
-	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(eth_dev_id, -EINVAL);
-
-	rx_adapter = rxa_id_to_adapter(id);
-	if ((rx_adapter == NULL) || (config == NULL))
-		return -EINVAL;
-
-	dev = &rte_eventdevs[rx_adapter->eventdev_id];
-	ret = rte_event_eth_rx_adapter_caps_get(rx_adapter->eventdev_id,
-						eth_dev_id, &cap);
-	if (ret) {
-		RTE_EDEV_LOG_ERR("Failed to get adapter caps edev %" PRIu8
-				 "eth port %" PRIu16,
-				 id, eth_dev_id);
-		return ret;
-	}
-
-	if (!(cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR)) {
-		RTE_EDEV_LOG_ERR("Event vectorization is not supported,"
-				 " eth port: %" PRIu16 " adapter id: %" PRIu8,
-				 eth_dev_id, id);
-		return -EINVAL;
-	}
-
-	ret = rte_event_eth_rx_adapter_vector_limits_get(
-		rx_adapter->eventdev_id, eth_dev_id, &limits);
-	if (ret) {
-		RTE_EDEV_LOG_ERR("Failed to get vector limits edev %" PRIu8
-				 "eth port %" PRIu16,
-				 rx_adapter->eventdev_id, eth_dev_id);
-		return ret;
-	}
-
-	if (config->vector_sz < limits.min_sz ||
-	    config->vector_sz > limits.max_sz ||
-	    config->vector_timeout_ns < limits.min_timeout_ns ||
-	    config->vector_timeout_ns > limits.max_timeout_ns ||
-	    config->vector_mp == NULL) {
-		RTE_EDEV_LOG_ERR("Invalid event vector configuration,"
-				 " eth port: %" PRIu16 " adapter id: %" PRIu8,
-				 eth_dev_id, id);
-		return -EINVAL;
-	}
-	if (config->vector_mp->elt_size <
-	    (sizeof(struct rte_event_vector) +
-	     (sizeof(uintptr_t) * config->vector_sz))) {
-		RTE_EDEV_LOG_ERR("Invalid event vector configuration,"
-				 " eth port: %" PRIu16 " adapter id: %" PRIu8,
-				 eth_dev_id, id);
-		return -EINVAL;
-	}
-
-	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
-		RTE_FUNC_PTR_OR_ERR_RET(
-			*dev->dev_ops->eth_rx_adapter_event_vector_config,
-			-ENOTSUP);
-		ret = dev->dev_ops->eth_rx_adapter_event_vector_config(
-			dev, &rte_eth_devices[eth_dev_id], rx_queue_id, config);
-	} else {
-		rxa_sw_event_vector_configure(rx_adapter, eth_dev_id,
-					      rx_queue_id, config);
-	}
-
 	return ret;
 }
 
