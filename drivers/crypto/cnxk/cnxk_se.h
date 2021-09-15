@@ -980,7 +980,7 @@ cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	uint8_t pdcp_alg_type;
 	uint32_t encr_offset, auth_offset;
 	uint32_t encr_data_len, auth_data_len;
-	int flags, iv_len = 16;
+	int flags, iv_len;
 	uint64_t offset_ctrl;
 	uint64_t *offset_vaddr;
 	uint8_t *iv_s;
@@ -996,6 +996,9 @@ cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	cpt_inst_w4.s.opcode_minor = se_ctx->template_w4.s.opcode_minor;
 
 	if (flags == 0x1) {
+		iv_s = params->auth_iv_buf;
+		iv_len = params->auth_iv_len;
+
 		/*
 		 * Microcode expects offsets in bytes
 		 * TODO: Rounding off
@@ -1016,9 +1019,10 @@ cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 
 		encr_data_len = 0;
 		encr_offset = 0;
-
-		iv_s = params->auth_iv_buf;
 	} else {
+		iv_s = params->iv_buf;
+		iv_len = params->cipher_iv_len;
+
 		/* EEA3 or UEA2 */
 		/*
 		 * Microcode expects offsets in bytes
@@ -1039,8 +1043,6 @@ cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 
 		auth_data_len = 0;
 		auth_offset = 0;
-
-		iv_s = params->iv_buf;
 	}
 
 	if (unlikely((encr_offset >> 16) || (auth_offset >> 8))) {
@@ -1719,7 +1721,7 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		break;
 	case RTE_CRYPTO_CIPHER_ZUC_EEA3:
 		enc_type = ROC_SE_ZUC_EEA3;
-		cipher_key_len = 16;
+		cipher_key_len = c_form->key.length;
 		zsk_flag = ROC_SE_ZS_EA;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_XTS:
@@ -2069,6 +2071,9 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	uint32_t iv_buf[4];
 	int ret;
 
+	fc_params.cipher_iv_len = sess->iv_length;
+	fc_params.auth_iv_len = sess->auth_iv_length;
+
 	if (likely(sess->iv_length)) {
 		flags |= ROC_SE_VALID_IV_BUF;
 		fc_params.iv_buf = rte_crypto_op_ctod_offset(cop, uint8_t *,
@@ -2379,6 +2384,7 @@ fill_digest_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		 */
 		d_offs = auth_range_off;
 		auth_range_off = 0;
+		params.auth_iv_len = sess->auth_iv_length;
 		params.auth_iv_buf = rte_crypto_op_ctod_offset(
 			cop, uint8_t *, sess->auth_iv_offset);
 		if (sess->zsk_flag == ROC_SE_K_F9) {

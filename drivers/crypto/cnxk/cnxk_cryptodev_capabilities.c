@@ -861,6 +861,38 @@ cpt_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos,
 }
 
 static void
+cn10k_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[])
+{
+
+	struct rte_cryptodev_capabilities *caps;
+	int i = 0;
+
+	while ((caps = &cnxk_caps[i++])->op != RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		if ((caps->op == RTE_CRYPTO_OP_TYPE_SYMMETRIC) &&
+		    (caps->sym.xform_type == RTE_CRYPTO_SYM_XFORM_CIPHER) &&
+		    (caps->sym.cipher.algo == RTE_CRYPTO_CIPHER_ZUC_EEA3)) {
+
+			caps->sym.cipher.key_size.max = 32;
+			caps->sym.cipher.key_size.increment = 16;
+			caps->sym.cipher.iv_size.max = 24;
+			caps->sym.cipher.iv_size.increment = 8;
+		}
+
+		if ((caps->op == RTE_CRYPTO_OP_TYPE_SYMMETRIC) &&
+		    (caps->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AUTH) &&
+		    (caps->sym.auth.algo == RTE_CRYPTO_AUTH_ZUC_EIA3)) {
+
+			caps->sym.auth.key_size.max = 32;
+			caps->sym.auth.key_size.increment = 16;
+			caps->sym.auth.digest_size.max = 16;
+			caps->sym.auth.digest_size.increment = 4;
+			caps->sym.auth.iv_size.max = 24;
+			caps->sym.auth.iv_size.increment = 8;
+		}
+	}
+}
+
+static void
 crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 		     union cpt_eng_caps *hw_caps)
 {
@@ -876,6 +908,9 @@ crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 
 	cpt_caps_add(cnxk_caps, &cur_pos, caps_null, RTE_DIM(caps_null));
 	cpt_caps_add(cnxk_caps, &cur_pos, caps_end, RTE_DIM(caps_end));
+
+	if (roc_model_is_cn10k())
+		cn10k_crypto_caps_update(cnxk_caps);
 }
 
 const struct rte_cryptodev_capabilities *
