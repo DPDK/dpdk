@@ -430,6 +430,7 @@ of protocol operations. See Security library and PMD documentation for more deta
 
 * **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_SECURITY``,
 * **[uses]       rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_SECURITY``.
+* **[uses]       mbuf**: ``mbuf.l2_len``.
 * **[implements] rte_security_ops**: ``session_create``, ``session_update``,
   ``session_stats_get``, ``session_destroy``, ``set_pkt_metadata``, ``capabilities_get``.
 * **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_SECURITY``,
@@ -451,6 +452,7 @@ protocol operations. See security library and PMD documentation for more details
 
 * **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_SECURITY``,
 * **[uses]       rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_SECURITY``.
+* **[uses]       mbuf**: ``mbuf.l2_len``.
 * **[implements] rte_security_ops**: ``session_create``, ``session_update``,
   ``session_stats_get``, ``session_destroy``, ``set_pkt_metadata``, ``get_userdata``,
   ``capabilities_get``.
