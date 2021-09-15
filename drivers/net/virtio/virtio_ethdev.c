@@ -2401,6 +2401,35 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "%d mbufs freed", mbuf_num);
 }
 
+static void
+virtio_tx_completed_cleanup(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	struct virtqueue *vq;
+	int qidx;
+	void (*xmit_cleanup)(struct virtqueue *vq, uint16_t nb_used);
+
+	if (virtio_with_packed_queue(hw)) {
+		if (hw->use_vec_tx)
+			xmit_cleanup = &virtio_xmit_cleanup_inorder_packed;
+		else if (virtio_with_feature(hw, VIRTIO_F_IN_ORDER))
+			xmit_cleanup = &virtio_xmit_cleanup_inorder_packed;
+		else
+			xmit_cleanup = &virtio_xmit_cleanup_normal_packed;
+	} else {
+		if (hw->use_inorder_tx)
+			xmit_cleanup = &virtio_xmit_cleanup_inorder;
+		else
+			xmit_cleanup = &virtio_xmit_cleanup;
+	}
+
+	for (qidx = 0; qidx < hw->max_queue_pairs; qidx++) {
+		vq = hw->vqs[2 * qidx + VTNET_SQ_TQ_QUEUE_IDX];
+		if (vq != NULL)
+			xmit_cleanup(vq, virtqueue_nused(vq));
+	}
+}
+
 /*
  * Stop device: disable interrupt and mark link down
  */
@@ -2418,6 +2447,8 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 	if (!hw->started)
 		goto out_unlock;
 	hw->started = 0;
+
+	virtio_tx_completed_cleanup(dev);
 
 	if (intr_conf->lsc || intr_conf->rxq) {
 		virtio_intr_disable(dev);
