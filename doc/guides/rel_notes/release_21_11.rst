@@ -67,6 +67,10 @@ New Features
   Added macros ETH_RSS_IPV4_CHKSUM and ETH_RSS_L4_CHKSUM, now IPv4 and
   TCP/UDP/SCTP header checksum field can be used as input set for RSS.
 
+* **Updated Intel ice driver.**
+
+  * Added 1PPS out support by a devargs.
+
 * **Updated Marvell cnxk ethdev driver.**
 
   * Added rte_flow support for dual VLAN insert and strip actions.

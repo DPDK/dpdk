@@ -143,11 +143,23 @@
 /* Max number of flexible descriptor rxdid */
 #define ICE_FLEX_DESC_RXDID_MAX_NUM 64
 
+/* Per-channel register definitions */
+#define GLTSYN_AUX_OUT(_chan, _idx)     (GLTSYN_AUX_OUT_0(_idx) + ((_chan) * 8))
+#define GLTSYN_CLKO(_chan, _idx)        (GLTSYN_CLKO_0(_idx) + ((_chan) * 8))
+#define GLTSYN_TGT_L(_chan, _idx)       (GLTSYN_TGT_L_0(_idx) + ((_chan) * 16))
+#define GLTSYN_TGT_H(_chan, _idx)       (GLTSYN_TGT_H_0(_idx) + ((_chan) * 16))
+
 /* DDP package type */
 enum ice_pkg_type {
 	ICE_PKG_TYPE_UNKNOWN,
 	ICE_PKG_TYPE_OS_DEFAULT,
 	ICE_PKG_TYPE_COMMS,
+};
+
+enum pps_type {
+	PPS_NONE,
+	PPS_PIN,
+	PPS_MAX,
 };
 
 struct ice_adapter;
@@ -458,6 +470,7 @@ struct ice_pf {
 };
 
 #define ICE_MAX_QUEUE_NUM  2048
+#define ICE_MAX_PIN_NUM   4
 
 /**
  * Cache devargs parse result.
@@ -467,6 +480,8 @@ struct ice_devargs {
 	uint8_t proto_xtr_dflt;
 	int pipe_mode_support;
 	uint8_t proto_xtr[ICE_MAX_QUEUE_NUM];
+	uint8_t pin_idx;
+	uint8_t pps_out_ena;
 };
 
 /**

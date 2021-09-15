@@ -29,14 +29,19 @@
 #define ICE_PIPELINE_MODE_SUPPORT_ARG  "pipeline-mode-support"
 #define ICE_PROTO_XTR_ARG         "proto_xtr"
 #define ICE_HW_DEBUG_MASK_ARG     "hw_debug_mask"
+#define ICE_ONE_PPS_OUT_ARG       "pps_out"
 
 static const char * const ice_valid_args[] = {
 	ICE_SAFE_MODE_SUPPORT_ARG,
 	ICE_PIPELINE_MODE_SUPPORT_ARG,
 	ICE_PROTO_XTR_ARG,
 	ICE_HW_DEBUG_MASK_ARG,
+	ICE_ONE_PPS_OUT_ARG,
 	NULL
 };
+
+#define NSEC_PER_SEC      1000000000
+#define PPS_OUT_DELAY_NS  1
 
 static const struct rte_mbuf_dynfield ice_proto_xtr_metadata_param = {
 	.name = "intel_pmd_dynfield_proto_xtr_metadata",
@@ -1786,6 +1791,125 @@ parse_u64(const char *key, const char *value, void *args)
 	return 0;
 }
 
+static int
+lookup_pps_type(const char *pps_name)
+{
+	static struct {
+		const char *name;
+		enum pps_type type;
+	} pps_type_map[] = {
+		{ "pin",  PPS_PIN  },
+	};
+
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(pps_type_map); i++) {
+		if (strcmp(pps_name, pps_type_map[i].name) == 0)
+			return pps_type_map[i].type;
+	}
+
+	return -1;
+}
+
+static int
+parse_pin_set(const char *input, int pps_type, struct ice_devargs *devargs)
+{
+	const char *str = input;
+	char *end = NULL;
+	uint32_t idx;
+
+	while (isblank(*str))
+		str++;
+
+	if (!isdigit(*str))
+		return -1;
+
+	if (pps_type == PPS_PIN) {
+		idx = strtoul(str, &end, 10);
+		if (end == NULL || idx >= ICE_MAX_PIN_NUM)
+			return -1;
+
+		devargs->pin_idx = idx;
+		devargs->pps_out_ena = 1;
+	}
+
+	while (isblank(*end))
+		end++;
+
+	if (*end != ']')
+		return -1;
+
+	return 0;
+}
+
+static int
+parse_pps_out_parameter(const char *pins, struct ice_devargs *devargs)
+{
+	const char *pin_start;
+	uint32_t idx;
+	int pps_type;
+	char pps_name[32];
+
+	while (isblank(*pins))
+		pins++;
+
+	pins++;
+	while (isblank(*pins))
+		pins++;
+	if (*pins == '\0')
+		return -1;
+
+	for (idx = 0; ; idx++) {
+		if (isblank(pins[idx]) ||
+		    pins[idx] == ':' ||
+		    pins[idx] == '\0')
+			break;
+
+		pps_name[idx] = pins[idx];
+	}
+	pps_name[idx] = '\0';
+	pps_type = lookup_pps_type(pps_name);
+	if (pps_type < 0)
+		return -1;
+
+	pins += idx;
+
+	pins += strcspn(pins, ":");
+	if (*pins++ != ':')
+		return -1;
+	while (isblank(*pins))
+		pins++;
+
+	pin_start = pins;
+
+	while (isblank(*pins))
+		pins++;
+
+	if (parse_pin_set(pin_start, pps_type, devargs) < 0)
+		return -1;
+
+	return 0;
+}
+
+static int
+handle_pps_out_arg(__rte_unused const char *key, const char *value,
+		   void *extra_args)
+{
+	struct ice_devargs *devargs = extra_args;
+
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
+	if (parse_pps_out_parameter(value, devargs) < 0) {
+		PMD_DRV_LOG(ERR,
+			    "The GPIO pin parameter is wrong : '%s'",
+			    value);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int ice_parse_devargs(struct rte_eth_dev *dev)
 {
 	struct ice_adapter *ad =
@@ -1824,6 +1948,11 @@ static int ice_parse_devargs(struct rte_eth_dev *dev)
 
 	ret = rte_kvargs_process(kvlist, ICE_HW_DEBUG_MASK_ARG,
 				 &parse_u64, &ad->hw.debug_mask);
+	if (ret)
+		goto bail;
+
+	ret = rte_kvargs_process(kvlist, ICE_ONE_PPS_OUT_ARG,
+				 &handle_pps_out_arg, &ad->devargs);
 	if (ret)
 		goto bail;
 
@@ -2286,6 +2415,9 @@ ice_dev_close(struct rte_eth_dev *dev)
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	int ret;
+	uint32_t val;
+	uint8_t timer = hw->func_caps.ts_func_info.tmr_index_owned;
+	uint32_t pin_idx = ad->devargs.pin_idx;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -2314,6 +2446,16 @@ ice_dev_close(struct rte_eth_dev *dev)
 	ice_shutdown_all_ctrlq(hw);
 	rte_free(pf->proto_xtr);
 	pf->proto_xtr = NULL;
+
+	if (ad->devargs.pps_out_ena) {
+		ICE_WRITE_REG(hw, GLTSYN_AUX_OUT(pin_idx, timer), 0);
+		ICE_WRITE_REG(hw, GLTSYN_CLKO(pin_idx, timer), 0);
+		ICE_WRITE_REG(hw, GLTSYN_TGT_L(pin_idx, timer), 0);
+		ICE_WRITE_REG(hw, GLTSYN_TGT_H(pin_idx, timer), 0);
+
+		val = GLGEN_GPIO_CTL_PIN_DIR_M;
+		ICE_WRITE_REG(hw, GLGEN_GPIO_CTL(pin_idx), val);
+	}
 
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
@@ -3318,16 +3460,63 @@ ice_get_init_link_status(struct rte_eth_dev *dev)
 }
 
 static int
+ice_pps_out_cfg(struct ice_hw *hw, int idx, int timer)
+{
+	uint64_t current_time, start_time;
+	uint32_t hi, lo, lo2, func, val;
+
+	lo = ICE_READ_REG(hw, GLTSYN_TIME_L(timer));
+	hi = ICE_READ_REG(hw, GLTSYN_TIME_H(timer));
+	lo2 = ICE_READ_REG(hw, GLTSYN_TIME_L(timer));
+
+	if (lo2 < lo) {
+		lo = ICE_READ_REG(hw, GLTSYN_TIME_L(timer));
+		hi = ICE_READ_REG(hw, GLTSYN_TIME_H(timer));
+	}
+
+	current_time = ((uint64_t)hi << 32) | lo;
+
+	start_time = (current_time + NSEC_PER_SEC) /
+			NSEC_PER_SEC * NSEC_PER_SEC;
+	start_time = start_time - PPS_OUT_DELAY_NS;
+
+	func = 8 + idx + timer * 4;
+	val = GLGEN_GPIO_CTL_PIN_DIR_M |
+		((func << GLGEN_GPIO_CTL_PIN_FUNC_S) &
+		GLGEN_GPIO_CTL_PIN_FUNC_M);
+
+	/* Write clkout with half of period value */
+	ICE_WRITE_REG(hw, GLTSYN_CLKO(idx, timer), NSEC_PER_SEC / 2);
+
+	/* Write TARGET time register */
+	ICE_WRITE_REG(hw, GLTSYN_TGT_L(idx, timer), start_time & 0xffffffff);
+	ICE_WRITE_REG(hw, GLTSYN_TGT_H(idx, timer), start_time >> 32);
+
+	/* Write AUX_OUT register */
+	ICE_WRITE_REG(hw, GLTSYN_AUX_OUT(idx, timer),
+		      GLTSYN_AUX_OUT_0_OUT_ENA_M | GLTSYN_AUX_OUT_0_OUTMOD_M);
+
+	/* Write GPIO CTL register */
+	ICE_WRITE_REG(hw, GLGEN_GPIO_CTL(idx), val);
+
+	return 0;
+}
+
+static int
 ice_dev_start(struct rte_eth_dev *dev)
 {
 	struct rte_eth_dev_data *data = dev->data;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
+	struct ice_adapter *ad =
+			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	uint16_t nb_rxq = 0;
 	uint16_t nb_txq, i;
 	uint16_t max_frame_size;
 	int mask, ret;
+	uint8_t timer = hw->func_caps.ts_func_info.tmr_index_owned;
+	uint32_t pin_idx = ad->devargs.pin_idx;
 
 	/* program Tx queues' context in hardware */
 	for (nb_txq = 0; nb_txq < data->nb_tx_queues; nb_txq++) {
@@ -3397,6 +3586,14 @@ ice_dev_start(struct rte_eth_dev *dev)
 
 	/* Set the max frame size to HW*/
 	ice_aq_set_mac_cfg(hw, max_frame_size, NULL);
+
+	if (ad->devargs.pps_out_ena) {
+		ret = ice_pps_out_cfg(hw, pin_idx, timer);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Fail to configure 1pps out");
+			goto rx_err;
+		}
+	}
 
 	return 0;
 

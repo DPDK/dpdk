@@ -219,6 +219,14 @@ Runtime Config Options
 
   These ICE_DBG_XXX are defined in ``drivers/net/ice/base/ice_type.h``.
 
+- ``1PPS out support``
+
+  The E810 supports four single-ended GPIO signals (SDP[20:23]). The 1PPS
+  signal outputs via SDP[20:23]. User can select GPIO pin index flexibly.
+  Pin index 0 means SDP20, 1 means SDP21 and so on. For example::
+
+    -a af:00.0,pps_out='[pin:0]'
+
 Driver compilation and testing
 ------------------------------
 
