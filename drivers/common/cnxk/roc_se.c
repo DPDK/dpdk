@@ -160,6 +160,13 @@ cpt_pdcp_mac_len_set(struct roc_se_zuc_snow3g_ctx *zs_ctx, uint16_t mac_len)
 {
 	roc_se_pdcp_mac_len_type mac_type = 0;
 
+	if (roc_model_is_cn9k()) {
+		if (mac_len != 4) {
+			plt_err("Only mac len 4 is supported on cn9k");
+			return -ENOTSUP;
+		}
+	}
+
 	switch (mac_len) {
 	case 4:
 		mac_type = ROC_SE_PDCP_MAC_LEN_32_BIT;
@@ -230,6 +237,9 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 		case ROC_SE_ZUC_EIA3:
 			zs_ctx->zuc.otk_ctx.w0.s.alg_type =
 				ROC_SE_PDCP_ALG_TYPE_ZUC;
+			ret = cpt_pdcp_key_type_set(zs_ctx, key_len);
+			if (ret)
+				return ret;
 			ret = cpt_pdcp_mac_len_set(zs_ctx, mac_len);
 			if (ret)
 				return ret;
