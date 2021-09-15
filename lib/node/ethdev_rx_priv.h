@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_ETHDEV_RX_PRIV_H__
 #define __INCLUDE_ETHDEV_RX_PRIV_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_common.h>
 
 struct ethdev_rx_node_elem;
@@ -75,9 +71,5 @@ struct ethdev_rx_node_main *ethdev_rx_get_node_data_get(void);
  *   Pointer to the Ethernet Rx node.
  */
 struct rte_node_register *ethdev_rx_node_get(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __INCLUDE_ETHDEV_RX_PRIV_H__ */

@@ -13,10 +13,6 @@
 #include <rte_prefetch.h>
 #include <rte_branch_prediction.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* @internal Total number of tbl24 entries. */
 #define TRIE_TBL24_NUM_ENT	(1 << 24)
 /* Maximum depth value possible for IPv6 LPM. */
@@ -144,10 +140,5 @@ trie_get_lookup_fn(void *p, enum rte_fib6_lookup_type type);
 int
 trie_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
 	uint8_t depth, uint64_t next_hop, int op);
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _TRIE_H_ */

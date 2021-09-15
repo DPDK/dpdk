@@ -9,10 +9,6 @@
 
 #include "rte_ethdev.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * Convert rte_eth_dev pointer to port id.
  * NULL will be translated to RTE_MAX_ETHPORTS.
@@ -29,9 +25,5 @@ eth_find_device(const struct rte_eth_dev *_start, rte_eth_cmp_t cmp,
 
 /* Parse devargs value for representor parameter. */
 int rte_eth_devargs_parse_representor_ports(char *str, void *data);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _ETH_PRIVATE_H_ */

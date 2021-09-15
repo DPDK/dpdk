@@ -13,10 +13,6 @@
  * one-at-a-time to workers, with dynamic load balancing.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define NO_FLAGS 0
 #define RTE_DISTRIB_PREFIX "DT_"
 
@@ -169,9 +165,5 @@ void
 find_match_vec(struct rte_distributor *d,
 			uint16_t *data_ptr,
 			uint16_t *output_ptr);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _DIST_PRIV_H_ */

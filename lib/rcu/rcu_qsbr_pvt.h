@@ -10,10 +10,6 @@
  * by the user of this library.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_ring.h>
 #include <rte_ring_elem.h>
 
@@ -58,9 +54,5 @@ typedef struct {
 	uint64_t token;  /**< Token */
 	uint8_t elem[0]; /**< Pointer to user element */
 } __attribute__((__may_alias__)) __rte_rcu_qsbr_dq_elem_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_RCU_QSBR_PVT_H_ */

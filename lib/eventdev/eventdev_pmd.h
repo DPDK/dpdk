@@ -13,10 +13,6 @@
  * them directly.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 
 #include <rte_common.h>
@@ -1191,9 +1187,5 @@ rte_event_pmd_allocate(const char *name, int socket_id);
  */
 int
 rte_event_pmd_release(struct rte_eventdev *eventdev);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_EVENTDEV_PMD_H_ */

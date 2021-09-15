@@ -16,10 +16,6 @@
 #include <rte_string_fns.h>
 #include "rte_power.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Check if KVM power management is supported.
  *
@@ -204,7 +200,4 @@ int power_kvm_vm_disable_turbo(unsigned int lcore_id);
 int power_kvm_vm_get_capabilities(unsigned int lcore_id,
 		struct rte_power_core_capabilities *caps);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

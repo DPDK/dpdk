@@ -13,10 +13,6 @@
  * them directly.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 
 #include <rte_config.h>
@@ -100,9 +96,5 @@ rte_event_pmd_vdev_uninit(const char *name)
 
 	return 0;
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_EVENTDEV_PMD_VDEV_H_ */

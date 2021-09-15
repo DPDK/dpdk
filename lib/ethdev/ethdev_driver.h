@@ -17,10 +17,6 @@
 
 #include <rte_ethdev.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**< @internal Declaration of the hairpin peer queue information structure. */
 struct rte_hairpin_peer_info;
 
@@ -1512,9 +1508,5 @@ struct rte_eth_tunnel_filter_conf {
 	uint32_t tenant_id;     /**< Tenant ID to match. VNI, GRE key... */
 	uint16_t queue_id;      /**< Queue assigned to if match. */
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_ETHDEV_DRIVER_H_ */

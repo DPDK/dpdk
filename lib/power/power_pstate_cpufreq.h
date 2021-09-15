@@ -16,10 +16,6 @@
 #include <rte_string_fns.h>
 #include "rte_power.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Check if pstate power management is supported.
  *
@@ -221,8 +217,5 @@ int power_pstate_disable_turbo(unsigned int lcore_id);
  */
 int power_pstate_get_capabilities(unsigned int lcore_id,
 		struct rte_power_core_capabilities *caps);
-#ifdef __cplusplus
-}
-#endif
 
 #endif

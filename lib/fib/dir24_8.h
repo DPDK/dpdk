@@ -14,10 +14,6 @@
  * DIR24_8 algorithm
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define DIR24_8_TBL24_NUM_ENT		(1 << 24)
 #define DIR24_8_TBL8_GRP_NUM_ENT	256U
 #define DIR24_8_EXT_ENT			1
@@ -251,9 +247,5 @@ dir24_8_get_lookup_fn(void *p, enum rte_fib_lookup_type type);
 int
 dir24_8_modify(struct rte_fib *fib, uint32_t ip, uint8_t depth,
 	uint64_t next_hop, int op);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _DIR24_8_H_ */

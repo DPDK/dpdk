@@ -8,10 +8,6 @@
 #include <rte_bpf.h>
 #include <sys/mman.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define MAX_BPF_STACK_SIZE	0x200
 
 struct rte_bpf {
@@ -46,9 +42,5 @@ bpf_size(uint32_t bpf_op_sz)
 		return sizeof(uint64_t);
 	return 0;
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _BPF_H_ */

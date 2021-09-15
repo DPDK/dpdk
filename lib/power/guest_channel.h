@@ -4,10 +4,6 @@
 #ifndef _GUEST_CHANNEL_H
 #define _GUEST_CHANNEL_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Check if any Virtio-Serial VM end-points exist in path.
  *
@@ -85,10 +81,5 @@ int guest_channel_send_msg(struct rte_power_channel_packet *pkt,
 int power_guest_channel_read_msg(void *pkt,
 		size_t pkt_len,
 		unsigned int lcore_id);
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -11,10 +11,6 @@
  * RTE ACL SSE/AVX related header.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 
 /*
  * Takes 2 SIMD registers containing N transitions each (tr0, tr1).
@@ -79,9 +75,5 @@ extern "C" {
 	addr = _##P##_add_epi32(addr, t);			\
 } while (0)
 
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_ACL_VECT_H_ */

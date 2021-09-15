@@ -13,10 +13,6 @@
  * them directly.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 
 #include <rte_config.h>
@@ -560,9 +556,5 @@ set_asym_session_private_data(struct rte_cryptodev_asym_session *sess,
 {
 	sess->sess_private_data[driver_id] = private_data;
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _CRYPTODEV_PMD_H_ */

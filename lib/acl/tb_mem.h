@@ -14,10 +14,6 @@
  * destructed (finish of build phase).
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_acl_osdep.h>
 #include <setjmp.h>
 
@@ -39,9 +35,5 @@ struct tb_mem_pool {
 
 void *tb_alloc(struct tb_mem_pool *pool, size_t size);
 void tb_free_pool(struct tb_mem_pool *pool);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _TB_MEM_H_ */

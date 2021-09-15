@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_IP4_REWRITE_PRIV_H__
 #define __INCLUDE_IP4_REWRITE_PRIV_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_common.h>
 
 #define RTE_GRAPH_IP4_REWRITE_MAX_NH 64
@@ -69,9 +65,5 @@ struct rte_node_register *ip4_rewrite_node_get(void);
  *   Edge index of the Given Tx node.
  */
 int ip4_rewrite_set_next(uint16_t port_id, uint16_t next_index);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __INCLUDE_IP4_REWRITE_PRIV_H__ */

@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_ETHDEV_TX_PRIV_H__
 #define __INCLUDE_ETHDEV_TX_PRIV_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct ethdev_tx_node_ctx;
 typedef struct ethdev_tx_node_ctx ethdev_tx_node_ctx_t;
 
@@ -54,9 +50,5 @@ struct ethdev_tx_node_main *ethdev_tx_node_data_get(void);
  *   Pointer to the Ethernet Tx node.
  */
 struct rte_node_register *ethdev_tx_node_get(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __INCLUDE_ETHDEV_TX_PRIV_H__ */

@@ -13,11 +13,6 @@
  * them directly.
  */
 
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 
 #include <rte_config.h>
@@ -150,9 +145,5 @@ rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev,
 
 	return 0;
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_EVENTDEV_PMD_PCI_H_ */

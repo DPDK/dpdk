@@ -17,10 +17,6 @@
 #include <rte_string_fns.h>
 #include "rte_power.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Check if CPPC power management is supported.
  *
@@ -222,9 +218,5 @@ int power_cppc_disable_turbo(unsigned int lcore_id);
  */
 int power_cppc_get_capabilities(unsigned int lcore_id,
 		struct rte_power_core_capabilities *caps);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _POWER_CPPC_CPUFREQ_H */
