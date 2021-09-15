@@ -4,45 +4,8 @@
 DPDK Release 17.08
 ==================
 
-.. **Read this first.**
-
-   The text in the sections below explains how to update the release notes.
-
-   Use proper spelling, capitalization and punctuation in all sections.
-
-   Variable and config names should be quoted as fixed width text:
-   ``LIKE_THIS``.
-
-   Build the docs and view the output file to ensure the changes are correct::
-
-      make doc-guides-html
-
-      xdg-open build/doc/html/guides/rel_notes/release_17_08.html
-
-
 New Features
 ------------
-
-.. This section should contain new features added in this release. Sample
-   format:
-
-   * **Add a title in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description in the past tense. The description
-     should be enough to allow someone scanning the release notes to
-     understand the new feature.
-
-     If the feature adds a lot of sub-features you can use a bullet list like
-     this:
-
-     * Added feature foo to do something.
-     * Enhanced feature bar to do something else.
-
-     Refer to the previous release notes for examples.
-
-     This section is a comment. do not overwrite or remove it.
-     Also, make sure to start the actual text at the margin.
-     =========================================================
 
 * **Increase minimum x86 ISA version to SSE4.2.**
 
@@ -218,32 +181,11 @@ New Features
 Known Issues
 ------------
 
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue in the present
-     tense. Add information on any known workarounds.
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
 * **Starting with version 17.08, libnuma is required to build DPDK.**
 
 
 API Changes
 -----------
-
-.. This section should contain API changes. Sample format:
-
-   * Add a short 1-2 sentence description of the API change. Use fixed width
-     quotes for ``rte_function_names`` or ``rte_struct_names``. Use the past
-     tense.
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
 
 * **Modified the _rte_eth_dev_callback_process function in the ethdev library.**
 
@@ -307,16 +249,6 @@ API Changes
 ABI Changes
 -----------
 
-.. This section should contain ABI changes. Sample format:
-
-   * Add a short 1-2 sentence description of the ABI change that was announced
-     in the previous releases and made in this release. Use fixed width quotes
-     for ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
 * Changed type of ``domain`` field in ``rte_pci_addr`` to ``uint32_t``
   to follow the PCI standard.
 
@@ -358,17 +290,6 @@ ABI Changes
 
 Shared Library Versions
 -----------------------
-
-.. Update any library version updated in this release and prepend with a ``+``
-   sign, like this:
-
-     librte_acl.so.2
-   + librte_cfgfile.so.2
-     librte_cmdline.so.2
-
-   This section is a comment. do not overwrite or remove it.
-   =========================================================
-
 
 The libraries prepended with a plus sign were incremented in this version.
 
@@ -412,22 +333,6 @@ The libraries prepended with a plus sign were incremented in this version.
 
 Tested Platforms
 ----------------
-
-.. This section should contain a list of platforms that were tested with this
-   release.
-
-   The format is:
-
-   * <vendor> platform with <vendor> <type of devices> combinations
-
-     * List of CPU
-     * List of OS
-     * List of devices
-     * Other relevant details...
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
 
 * Intel(R) platforms with Mellanox(R) NICs combinations
 

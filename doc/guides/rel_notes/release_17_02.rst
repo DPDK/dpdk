@@ -4,42 +4,8 @@
 DPDK Release 17.02
 ==================
 
-.. **Read this first.**
-
-   The text below explains how to update the release notes.
-
-   Use proper spelling, capitalization and punctuation in all sections.
-
-   Variable and config names should be quoted as fixed width text: ``LIKE_THIS``.
-
-   Build the docs and view the output file to ensure the changes are correct::
-
-      make doc-guides-html
-
-      firefox build/doc/html/guides/rel_notes/release_17_02.html
-
-
 New Features
 ------------
-
-.. This section should contain new features added in this release. Sample format:
-
-   * **Add a title in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description in the past tense. The description
-     should be enough to allow someone scanning the release notes to understand
-     the new feature.
-
-     If the feature adds a lot of sub-features you can use a bullet list like this.
-
-     * Added feature foo to do something.
-     * Enhanced feature bar to do something else.
-
-     Refer to the previous release notes for examples.
-
-     This section is a comment. do not overwrite or remove it.
-     Also, make sure to start the actual text at the margin.
-     =========================================================
 
 * **Added support for representing buses in EAL**
 
@@ -256,18 +222,6 @@ New Features
 Resolved Issues
 ---------------
 
-.. This section should contain bug fixes added to the relevant sections. Sample format:
-
-   * **code/section Fixed issue in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description of the resolved issue in the past tense.
-     The title should contain the code/lib section like a commit message.
-     Add the entries in alphabetic order in the relevant sections below.
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
 Drivers
 ~~~~~~~
 
@@ -286,18 +240,8 @@ Examples
   PCI data resulting in a segmentation fault.
 
 
-
 API Changes
 -----------
-
-.. This section should contain API changes. Sample format:
-
-   * Add a short 1-2 sentence description of the API change. Use fixed width
-     quotes for ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
 
 * **Moved five APIs for VF management from the ethdev to the ixgbe PMD.**
 
@@ -321,34 +265,8 @@ API Changes
   The declarations for the API’s can be found in ``rte_pmd_ixgbe.h``.
 
 
-ABI Changes
------------
-
-.. This section should contain ABI changes. Sample format:
-
-   * Add a short 1-2 sentence description of the ABI change that was announced in
-     the previous releases and made in this release. Use fixed width quotes for
-     ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
-
-
 Shared Library Versions
 -----------------------
-
-.. Update any library version updated in this release and prepend with a ``+``
-   sign, like this:
-
-     librte_acl.so.2
-   + librte_cfgfile.so.2
-     librte_cmdline.so.2
-
-   This section is a comment. do not overwrite or remove it.
-   =========================================================
-
 
 The libraries prepended with a plus sign were incremented in this version.
 
@@ -387,21 +305,6 @@ The libraries prepended with a plus sign were incremented in this version.
 
 Tested Platforms
 ----------------
-
-.. This section should contain a list of platforms that were tested with this release.
-
-   The format is:
-
-   * <vendor> platform with <vendor> <type of devices> combinations
-
-     * List of CPU
-     * List of OS
-     * List of devices
-     * Other relevant details...
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
 
 This release has been tested with the below list of CPU/device/firmware/OS.
 Each section describes a different set of combinations.

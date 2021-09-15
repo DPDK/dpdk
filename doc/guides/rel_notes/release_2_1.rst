@@ -4,7 +4,6 @@
 DPDK Release 2.1
 ================
 
-
 New Features
 ------------
 
@@ -385,7 +384,6 @@ New Features
   This allows user application to run as non-root but with higher memory
   allocations, and removes a constraint on ``--no-huge`` mode being limited to
   64M.
-
 
 
 Resolved Issues

@@ -4,38 +4,8 @@
 DPDK Release 16.07
 ==================
 
-.. **Read this first.**
-
-   The text below explains how to update the release notes.
-
-   Use proper spelling, capitalization and punctuation in all sections.
-
-   Variable and config names should be quoted as fixed width text: ``LIKE_THIS``.
-
-   Build the docs and view the output file to ensure the changes are correct::
-
-      make doc-guides-html
-
-      firefox build/doc/html/guides/rel_notes/release_16_07.html
-
-
 New Features
 ------------
-
-.. This section should contain new features added in this release. Sample format:
-
-   * **Add a title in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description in the past tense. The description
-     should be enough to allow someone scanning the release notes to understand
-     the new feature.
-
-     If the feature adds a lot of sub-features you can use a bullet list like this.
-
-     * Added feature foo to do something.
-     * Enhanced feature bar to do something else.
-
-     Refer to the previous release notes for examples.
 
 * **Removed the mempool cache memory if caching is not being used.**
 
@@ -217,15 +187,6 @@ New Features
 Resolved Issues
 ---------------
 
-.. This section should contain bug fixes added to the relevant sections. Sample format:
-
-   * **code/section Fixed issue in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description of the resolved issue in the past tense.
-     The title should contain the code/lib section like a commit message.
-     Add the entries in alphabetic order in the relevant sections below.
-
-
 EAL
 ~~~
 
@@ -289,32 +250,8 @@ Libraries
   counter. This lead to a memory leak of the direct mbuf.
 
 
-Examples
-~~~~~~~~
-
-
-Other
-~~~~~
-
-
-Known Issues
-------------
-
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue in the present
-     tense. Add information on any known workarounds.
-
-
 API Changes
 -----------
-
-.. This section should contain API changes. Sample format:
-
-   * Add a short 1-2 sentence description of the API change. Use fixed width
-     quotes for ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
 
 * The following counters are removed from the ``rte_eth_stats`` structure:
 
@@ -354,10 +291,6 @@ API Changes
 ABI Changes
 -----------
 
-.. * Add a short 1-2 sentence description of the ABI change that was announced in
-     the previous releases and made in this release. Use fixed width quotes for
-     ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
-
 * The ``rte_port_source_params`` structure has new fields to support PCAP files.
   It was already in release 16.04 with ``RTE_NEXT_ABI`` flag.
 
@@ -371,8 +304,6 @@ ABI Changes
 
 Shared Library Versions
 -----------------------
-
-.. Update any library version updated in this release and prepend with a ``+`` sign.
 
 The libraries prepended with a plus sign were incremented in this version.
 
@@ -411,16 +342,6 @@ The libraries prepended with a plus sign were incremented in this version.
 
 Tested Platforms
 ----------------
-
-.. This section should contain a list of platforms that were tested with this
-   release.
-
-   The format is:
-
-   #. Platform name.
-
-      - Platform details.
-      - Platform details.
 
 #. SuperMicro 1U
 
@@ -471,15 +392,6 @@ Tested Platforms
 
 Tested NICs
 -----------
-
-.. This section should contain a list of NICs that were tested with this release.
-
-   The format is:
-
-   #. NIC name.
-
-      - NIC details.
-      - NIC details.
 
 #. Intel(R) Ethernet Controller X540-AT2
 
@@ -538,8 +450,6 @@ Tested NICs
 
 Tested OSes
 -----------
-
-.. This section should contain a list of OSes that were tested with this release.
 
 - CentOS 7.0
 - Fedora 23

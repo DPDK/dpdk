@@ -4,7 +4,6 @@
 DPDK Release 16.04
 ==================
 
-
 New Features
 ------------
 

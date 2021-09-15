@@ -4,55 +4,8 @@
 DPDK Release 19.05
 ==================
 
-.. **Read this first.**
-
-   The text in the sections below explains how to update the release notes.
-
-   Use proper spelling, capitalization and punctuation in all sections.
-
-   Variable and config names should be quoted as fixed width text:
-   ``LIKE_THIS``.
-
-   Build the docs and view the output file to ensure the changes are correct::
-
-      make doc-guides-html
-
-      xdg-open build/doc/html/guides/rel_notes/release_19_05.html
-
-
 New Features
 ------------
-
-.. This section should contain new features added in this release.
-   Sample format:
-
-   * **Add a title in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description in the past tense.
-     The description should be enough to allow someone scanning
-     the release notes to understand the new feature.
-
-     If the feature adds a lot of sub-features you can use a bullet list
-     like this:
-
-     * Added feature foo to do something.
-     * Enhanced feature bar to do something else.
-
-     Refer to the previous release notes for examples.
-
-     Suggested order in release notes items:
-     * Core libs (EAL, mempool, ring, mbuf, buses)
-     * Device abstraction libs and PMDs
-       - ethdev (lib, PMDs)
-       - cryptodev (lib, PMDs)
-       - eventdev (lib, PMDs)
-       - etc
-     * Other libs
-     * Apps, Examples, Tools (if significant)
-
-     This section is a comment. Do not overwrite or remove it.
-     Also, make sure to start the actual text at the margin.
-     =========================================================
 
 * **Added new armv8 machine targets.**
 
@@ -258,18 +211,6 @@ New Features
 API Changes
 -----------
 
-.. This section should contain API changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the API change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
 * eal: the type of the ``attr_value`` parameter of the function
   ``rte_service_attr_get()`` has been changed
   from ``uint32_t *`` to ``uint64_t *``.
@@ -295,18 +236,6 @@ API Changes
 ABI Changes
 -----------
 
-.. This section should contain ABI changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the ABI change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
 * ethdev: Additional fields in rte_eth_dev_info.
 
   The ``rte_eth_dev_info`` structure has had two extra fields
@@ -327,16 +256,6 @@ ABI Changes
 
 Shared Library Versions
 -----------------------
-
-.. Update any library version updated in this release
-   and prepend with a ``+`` sign, like this:
-
-     libfoo.so.1
-   + libupdated.so.2
-     libbar.so.1
-
-   This section is a comment. Do not overwrite or remove it.
-   =========================================================
 
 The libraries prepended with a plus sign were incremented in this version.
 
@@ -406,17 +325,6 @@ The libraries prepended with a plus sign were incremented in this version.
 Known Issues
 ------------
 
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue
-     in the present tense. Add information on any known workarounds.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
 * **On x86 platforms, AVX512 support is disabled with binutils 2.31.**
 
   Due to a defect in binutils 2.31 AVX512 support is disabled.
@@ -432,22 +340,6 @@ Known Issues
 
 Tested Platforms
 ----------------
-
-.. This section should contain a list of platforms that were tested
-   with this release.
-
-   The format is:
-
-   * <vendor> platform with <vendor> <type of devices> combinations
-
-     * List of CPU
-     * List of OS
-     * List of devices
-     * Other relevant details...
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
 
 * Intel(R) platforms with Intel(R) NICs combinations
 

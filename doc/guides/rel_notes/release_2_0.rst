@@ -4,7 +4,6 @@
 DPDK Release 2.0
 ================
 
-
 New Features
 ------------
 
