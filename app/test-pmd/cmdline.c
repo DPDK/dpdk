@@ -2252,6 +2252,8 @@ cmd_config_rss_parsed(void *parsed_result,
 		rss_conf.rss_hf = ETH_RSS_ECPRI;
 	else if (!strcmp(res->value, "mpls"))
 		rss_conf.rss_hf = ETH_RSS_MPLS;
+	else if (!strcmp(res->value, "ipv4-chksum"))
+		rss_conf.rss_hf = ETH_RSS_IPV4_CHKSUM;
 	else if (!strcmp(res->value, "none"))
 		rss_conf.rss_hf = 0;
 	else if (!strcmp(res->value, "level-default")) {
@@ -2323,7 +2325,7 @@ cmdline_parse_inst_t cmd_config_rss = {
 	.help_str = "port config all rss "
 		"all|default|eth|vlan|ip|tcp|udp|sctp|ether|port|vxlan|geneve|"
 		"nvgre|vxlan-gpe|l2tpv3|esp|ah|pfcp|ecpri|mpls|none|level-default|"
-		"level-outer|level-inner|<flowtype_id>",
+		"level-outer|level-inner|ipv4-chksum|<flowtype_id>",
 	.tokens = {
 		(void *)&cmd_config_rss_port,
 		(void *)&cmd_config_rss_keyword,

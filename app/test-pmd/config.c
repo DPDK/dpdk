@@ -140,6 +140,8 @@ const struct rss_type_info rss_type_table[] = {
 	{ "gtpu", ETH_RSS_GTPU },
 	{ "ecpri", ETH_RSS_ECPRI },
 	{ "mpls", ETH_RSS_MPLS },
+	{ "ipv4-chksum", ETH_RSS_IPV4_CHKSUM },
+	{ "l4-chksum", ETH_RSS_L4_CHKSUM },
 	{ NULL, 0 },
 };
 
