@@ -1581,7 +1581,7 @@ M: Reshma Pattan <reshma.pattan@intel.com>
 F: lib/latencystats/
 F: app/test/test_latencystats.c
 
-Telemetry - EXPERIMENTAL
+Telemetry
 M: Ciara Power <ciara.power@intel.com>
 F: lib/telemetry/
 F: app/test/test_telemetry*

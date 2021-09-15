@@ -1,4 +1,4 @@
-EXPERIMENTAL {
+DPDK_22 {
 	global:
 
 	rte_tel_data_add_array_container;

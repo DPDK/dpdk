@@ -9,10 +9,6 @@ The Telemetry library provides users with the ability to query DPDK for
 telemetry information, currently including information such as ethdev stats,
 ethdev port list, and eal parameters.
 
-.. Note::
-
-   This library is experimental and the output format may change in the future.
-
 
 Telemetry Interface
 -------------------
