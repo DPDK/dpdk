@@ -18,8 +18,6 @@ deps = ['bus_vdev', 'gso', 'hash']
 
 cflags += '-DTAP_MAX_QUEUES=16'
 
-# To maintain the compatibility with the make build system
-# tap_autoconf.h file is still generated.
 # input array for meson symbol search:
 # [ "MACRO to define if found", "header for the search",
 #   "enum/define", "symbol to search" ]

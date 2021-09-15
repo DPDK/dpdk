@@ -17,8 +17,8 @@ DPDK Release 21.11
 
    Build the docs and view the output file to ensure the changes are correct::
 
-      make doc-guides-html
-      xdg-open build/doc/html/guides/rel_notes/release_21_11.html
+      ninja -C build doc
+      xdg-open build/doc/guides/html/rel_notes/release_21_11.html
 
 
 New Features

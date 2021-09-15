@@ -417,8 +417,7 @@ versioning, in the ``meson.build`` file we add the following
    use_function_versioning = true
 
 at the start of the head of the file. This will indicate to the tool-chain to
-enable the function version macros when building. There is no corresponding
-directive required for the ``make`` build system.
+enable the function version macros when building.
 
 
 .. _aliasing_experimental_symbols:

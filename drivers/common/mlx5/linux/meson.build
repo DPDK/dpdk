@@ -55,8 +55,6 @@ endif
 
 deps += ['bus_auxiliary']
 
-# To maintain the compatibility with the make build system
-# mlx5_autoconf.h file is still generated.
 # input array for meson member search:
 # [ "MACRO to define if found", "header for the search",
 #   "symbol to search", "struct member to search" ]

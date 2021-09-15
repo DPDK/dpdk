@@ -83,8 +83,6 @@ if get_option('buildtype').contains('debug')
 else
     cflags += [ '-UPEDANTIC' ]
 endif
-# To maintain the compatibility with the make build system
-# mlx4_autoconf.h file is still generated.
 # input array for meson member search:
 # [ "MACRO to define if found", "header for the search",
 #   "symbol to search", "struct member to search" ]
