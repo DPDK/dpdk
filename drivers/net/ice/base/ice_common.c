@@ -208,8 +208,21 @@ bool ice_is_e810(struct ice_hw *hw)
  */
 bool ice_is_e810t(struct ice_hw *hw)
 {
-	return (hw->device_id == ICE_DEV_ID_E810C_SFP &&
-		hw->subsystem_device_id == ICE_SUBDEV_ID_E810T);
+	switch (hw->device_id) {
+	case ICE_DEV_ID_E810C_SFP:
+		if (hw->subsystem_device_id == ICE_SUBDEV_ID_E810T ||
+		    hw->subsystem_device_id == ICE_SUBDEV_ID_E810T2)
+			return true;
+		break;
+	case ICE_DEV_ID_E810C_QSFP:
+		if (hw->subsystem_device_id == ICE_SUBDEV_ID_E810T2)
+			return true;
+		break;
+	default:
+		break;
+	}
+
+	return false;
 }
 
 /**
