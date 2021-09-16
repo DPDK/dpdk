@@ -8913,7 +8913,12 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	s_rule = (struct ice_aqc_sw_rules_elem *)ice_malloc(hw, rule_buf_sz);
 	if (!s_rule)
 		return ICE_ERR_NO_MEMORY;
-	act |= ICE_SINGLE_ACT_LAN_ENABLE;
+	if (!rinfo->flags_info.act_valid)
+		act |= ICE_SINGLE_ACT_LAN_ENABLE;
+	else
+		act |= rinfo->flags_info.act & (ICE_SINGLE_ACT_LAN_ENABLE |
+						ICE_SINGLE_ACT_LB_ENABLE);
+
 	switch (rinfo->sw_act.fltr_act) {
 	case ICE_FWD_TO_VSI:
 		act |= (rinfo->sw_act.fwd_id.hw_vsi_id <<
