@@ -1500,7 +1500,8 @@ rte_vhost_get_vdpa_device(int vid)
 	return dev->vdpa_dev;
 }
 
-int rte_vhost_get_log_base(int vid, uint64_t *log_base,
+int
+rte_vhost_get_log_base(int vid, uint64_t *log_base,
 		uint64_t *log_size)
 {
 	struct virtio_net *dev = get_device(vid);
@@ -1514,7 +1515,8 @@ int rte_vhost_get_log_base(int vid, uint64_t *log_base,
 	return 0;
 }
 
-int rte_vhost_get_vring_base(int vid, uint16_t queue_id,
+int
+rte_vhost_get_vring_base(int vid, uint16_t queue_id,
 		uint16_t *last_avail_idx, uint16_t *last_used_idx)
 {
 	struct vhost_virtqueue *vq;
@@ -1543,7 +1545,8 @@ int rte_vhost_get_vring_base(int vid, uint16_t queue_id,
 	return 0;
 }
 
-int rte_vhost_set_vring_base(int vid, uint16_t queue_id,
+int
+rte_vhost_set_vring_base(int vid, uint16_t queue_id,
 		uint16_t last_avail_idx, uint16_t last_used_idx)
 {
 	struct vhost_virtqueue *vq;
@@ -1606,7 +1609,8 @@ rte_vhost_get_vring_base_from_inflight(int vid,
 	return 0;
 }
 
-int rte_vhost_extern_callback_register(int vid,
+int
+rte_vhost_extern_callback_register(int vid,
 		struct rte_vhost_user_extern_ops const * const ops, void *ctx)
 {
 	struct virtio_net *dev = get_device(vid);
@@ -1852,7 +1856,8 @@ rte_vhost_async_channel_unregister_thread_unsafe(int vid, uint16_t queue_id)
 	return 0;
 }
 
-int rte_vhost_async_get_inflight(int vid, uint16_t queue_id)
+int
+rte_vhost_async_get_inflight(int vid, uint16_t queue_id)
 {
 	struct vhost_virtqueue *vq;
 	struct virtio_net *dev = get_device(vid);
