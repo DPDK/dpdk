@@ -3432,7 +3432,7 @@ static void ice_init_prof_masks(struct ice_hw *hw, enum ice_block blk)
 	per_pf = ICE_PROF_MASK_COUNT / hw->dev_caps.num_funcs;
 
 	hw->blk[blk].masks.count = per_pf;
-	hw->blk[blk].masks.first = hw->pf_id * per_pf;
+	hw->blk[blk].masks.first = hw->logical_pf_id * per_pf;
 
 	ice_memset(hw->blk[blk].masks.masks, 0,
 		   sizeof(hw->blk[blk].masks.masks), ICE_NONDMA_MEM);
