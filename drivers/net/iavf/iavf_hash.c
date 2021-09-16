@@ -623,16 +623,6 @@ iavf_rss_hash_set(struct iavf_adapter *ad, uint64_t rss_hf, bool add)
 		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
 	}
 
-	if (rss_hf & ETH_RSS_FRAG_IPV4) {
-		rss_cfg.proto_hdrs = outer_ipv4_tmplt;
-		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
-	}
-
-	if (rss_hf & ETH_RSS_FRAG_IPV6) {
-		rss_cfg.proto_hdrs = outer_ipv6_tmplt;
-		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
-	}
-
 	vf->rss_hf = rss_hf & IAVF_RSS_HF_ALL;
 	return 0;
 }
