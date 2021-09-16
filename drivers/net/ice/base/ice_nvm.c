@@ -4,6 +4,8 @@
 
 #include "ice_common.h"
 
+#define GL_MNG_DEF_DEVID 0x000B611C
+
 /**
  * ice_aq_read_nvm
  * @hw: pointer to the HW struct
@@ -1203,6 +1205,7 @@ ice_validate_nvm_rw_reg(struct ice_nvm_access_cmd *cmd)
 	case GLGEN_CSR_DEBUG_C:
 	case GLGEN_RSTAT:
 	case GLPCI_LBARCTRL:
+	case GL_MNG_DEF_DEVID:
 	case GLNVM_GENS:
 	case GLNVM_FLA:
 	case PF_FUNC_RID:
