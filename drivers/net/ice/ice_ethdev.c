@@ -2964,9 +2964,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	ETH_RSS_NONFRAG_IPV4_TCP | \
 	ETH_RSS_NONFRAG_IPV6_TCP | \
 	ETH_RSS_NONFRAG_IPV4_SCTP | \
-	ETH_RSS_NONFRAG_IPV6_SCTP | \
-	ETH_RSS_FRAG_IPV4 | \
-	ETH_RSS_FRAG_IPV6)
+	ETH_RSS_NONFRAG_IPV6_SCTP)
 
 	ret = ice_rem_vsi_rss_cfg(hw, vsi->idx);
 	if (ret)
@@ -3118,24 +3116,6 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, &cfg);
 		if (ret)
 			PMD_DRV_LOG(ERR, "%s PPPoE_IPV6_TCP rss flow fail %d",
-				    __func__, ret);
-	}
-
-	if (rss_hf & ETH_RSS_FRAG_IPV4) {
-		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_FRAG;
-		cfg.hash_flds = ICE_FLOW_HASH_IPV4;
-		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, &cfg);
-		if (ret)
-			PMD_DRV_LOG(ERR, "%s IPV4_FRAG rss flow fail %d",
-				    __func__, ret);
-	}
-
-	if (rss_hf & ETH_RSS_FRAG_IPV6) {
-		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_FRAG;
-		cfg.hash_flds = ICE_FLOW_HASH_IPV6;
-		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, &cfg);
-		if (ret)
-			PMD_DRV_LOG(ERR, "%s IPV6_FRAG rss flow fail %d",
 				    __func__, ret);
 	}
 
