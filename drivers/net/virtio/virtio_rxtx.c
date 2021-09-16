@@ -690,16 +690,16 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			RTE_MIN(vq->vq_nentries / 4, DEFAULT_RX_FREE_THRESH);
 
 	if (rx_free_thresh & 0x3) {
-		RTE_LOG(ERR, PMD, "rx_free_thresh must be multiples of four."
-			" (rx_free_thresh=%u port=%u queue=%u)\n",
+		PMD_INIT_LOG(ERR, "rx_free_thresh must be multiples of four."
+			" (rx_free_thresh=%u port=%u queue=%u)",
 			rx_free_thresh, dev->data->port_id, queue_idx);
 		return -EINVAL;
 	}
 
 	if (rx_free_thresh >= vq->vq_nentries) {
-		RTE_LOG(ERR, PMD, "rx_free_thresh must be less than the "
+		PMD_INIT_LOG(ERR, "rx_free_thresh must be less than the "
 			"number of RX entries (%u)."
-			" (rx_free_thresh=%u port=%u queue=%u)\n",
+			" (rx_free_thresh=%u port=%u queue=%u)",
 			vq->vq_nentries,
 			rx_free_thresh, dev->data->port_id, queue_idx);
 		return -EINVAL;
