@@ -171,6 +171,7 @@ The following are the application command-line options:
            aead
            pdcp
            docsis
+           modex
 
         For GCM/CCM algorithms you should use aead flag.
 

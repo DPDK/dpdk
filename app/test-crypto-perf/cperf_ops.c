@@ -8,6 +8,33 @@
 #include "cperf_ops.h"
 #include "cperf_test_vectors.h"
 
+static int
+cperf_set_ops_asym(struct rte_crypto_op **ops,
+		   uint32_t src_buf_offset __rte_unused,
+		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
+		   struct rte_cryptodev_sym_session *sess,
+		   const struct cperf_options *options __rte_unused,
+		   const struct cperf_test_vector *test_vector __rte_unused,
+		   uint16_t iv_offset __rte_unused,
+		   uint32_t *imix_idx __rte_unused)
+{
+	uint16_t i;
+	uint8_t result[sizeof(perf_mod_p)] = { 0 };
+	struct rte_cryptodev_asym_session *asym_sess = (void *)sess;
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_asym_op *asym_op = ops[i]->asym;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		asym_op->modex.base.data = perf_base;
+		asym_op->modex.base.length = sizeof(perf_base);
+		asym_op->modex.result.data = result;
+		asym_op->modex.result.length = sizeof(result);
+		rte_crypto_op_attach_asym_session(ops[i], asym_sess);
+	}
+	return 0;
+}
+
 #ifdef RTE_LIB_SECURITY
 static int
 cperf_set_ops_security(struct rte_crypto_op **ops,
@@ -550,7 +577,32 @@ cperf_create_session(struct rte_mempool *sess_mp,
 	struct rte_crypto_sym_xform auth_xform;
 	struct rte_crypto_sym_xform aead_xform;
 	struct rte_cryptodev_sym_session *sess = NULL;
+	struct rte_crypto_asym_xform xform = {0};
+	int rc;
 
+	if (options->op_type == CPERF_ASYM_MODEX) {
+		xform.next = NULL;
+		xform.xform_type = RTE_CRYPTO_ASYM_XFORM_MODEX;
+		xform.modex.modulus.data = perf_mod_p;
+		xform.modex.modulus.length = sizeof(perf_mod_p);
+		xform.modex.exponent.data = perf_mod_e;
+		xform.modex.exponent.length = sizeof(perf_mod_e);
+
+		sess = (void *)rte_cryptodev_asym_session_create(sess_mp);
+		if (sess == NULL)
+			return NULL;
+		rc = rte_cryptodev_asym_session_init(dev_id, (void *)sess,
+						     &xform, priv_mp);
+		if (rc < 0) {
+			if (sess != NULL) {
+				rte_cryptodev_asym_session_clear(dev_id,
+								 (void *)sess);
+				rte_cryptodev_asym_session_free((void *)sess);
+			}
+			return NULL;
+		}
+		return sess;
+	}
 #ifdef RTE_LIB_SECURITY
 	/*
 	 * security only
@@ -819,6 +871,11 @@ cperf_get_op_functions(const struct cperf_options *options,
 	memset(op_fns, 0, sizeof(struct cperf_op_fns));
 
 	op_fns->sess_create = cperf_create_session;
+
+	if (options->op_type == CPERF_ASYM_MODEX) {
+		op_fns->populate_ops = cperf_set_ops_asym;
+		return 0;
+	}
 
 	if (options->op_type == CPERF_AEAD) {
 		op_fns->populate_ops = cperf_set_ops_aead;

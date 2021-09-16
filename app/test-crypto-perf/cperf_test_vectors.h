@@ -68,6 +68,13 @@ struct cperf_test_vector {
 		uint32_t aead_offset;
 		uint32_t aead_length;
 	} data;
+
+	struct {
+		uint8_t *mod;
+		uint8_t *exp;
+		uint32_t mlen;
+		uint32_t elen;
+	} modex;
 };
 
 struct cperf_test_vector*
@@ -82,5 +89,9 @@ extern uint8_t iv[];
 extern uint8_t aad[];
 
 extern uint8_t digest[2048];
+
+extern uint8_t perf_base[20];
+extern uint8_t perf_mod_p[129];
+extern uint8_t perf_mod_e[3];
 
 #endif

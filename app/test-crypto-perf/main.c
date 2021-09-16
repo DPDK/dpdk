@@ -40,7 +40,8 @@ const char *cperf_op_type_strs[] = {
 	[CPERF_AUTH_THEN_CIPHER] = "auth-then-cipher",
 	[CPERF_AEAD] = "aead",
 	[CPERF_PDCP] = "pdcp",
-	[CPERF_DOCSIS] = "docsis"
+	[CPERF_DOCSIS] = "docsis",
+	[CPERF_ASYM_MODEX] = "modex"
 };
 
 const struct cperf_test cperf_testmap[] = {
@@ -65,6 +66,50 @@ const struct cperf_test cperf_testmap[] = {
 				cperf_pmd_cyclecount_test_destructor
 		}
 };
+
+static int
+create_asym_op_pool_socket(uint8_t dev_id, int32_t socket_id,
+			   uint32_t nb_sessions)
+{
+	char mp_name[RTE_MEMPOOL_NAMESIZE];
+	struct rte_mempool *mpool = NULL;
+	unsigned int session_size =
+		RTE_MAX(rte_cryptodev_asym_get_private_session_size(dev_id),
+			rte_cryptodev_asym_get_header_session_size());
+
+	if (session_pool_socket[socket_id].priv_mp == NULL) {
+		snprintf(mp_name, RTE_MEMPOOL_NAMESIZE, "perf_asym_priv_pool%u",
+			 socket_id);
+
+		mpool = rte_mempool_create(mp_name, nb_sessions, session_size,
+					   0, 0, NULL, NULL, NULL, NULL,
+					   socket_id, 0);
+		if (mpool == NULL) {
+			printf("Cannot create pool \"%s\" on socket %d\n",
+			       mp_name, socket_id);
+			return -ENOMEM;
+		}
+		printf("Allocated pool \"%s\" on socket %d\n", mp_name,
+		       socket_id);
+		session_pool_socket[socket_id].priv_mp = mpool;
+	}
+
+	if (session_pool_socket[socket_id].sess_mp == NULL) {
+
+		snprintf(mp_name, RTE_MEMPOOL_NAMESIZE, "perf_asym_sess_pool%u",
+			 socket_id);
+		mpool = rte_mempool_create(mp_name, nb_sessions,
+					   session_size, 0, 0, NULL, NULL, NULL,
+					   NULL, socket_id, 0);
+		if (mpool == NULL) {
+			printf("Cannot create pool \"%s\" on socket %d\n",
+			       mp_name, socket_id);
+			return -ENOMEM;
+		}
+		session_pool_socket[socket_id].sess_mp = mpool;
+	}
+	return 0;
+}
 
 static int
 fill_session_pool_socket(int32_t socket_id, uint32_t session_priv_size,
@@ -199,6 +244,13 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 			socket_id = 0;
 
 		rte_cryptodev_info_get(cdev_id, &cdev_info);
+
+		if (opts->op_type == CPERF_ASYM_MODEX) {
+			if ((cdev_info.feature_flags &
+			     RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) == 0)
+				continue;
+		}
+
 		if (opts->nb_qps > cdev_info.max_nb_queue_pairs) {
 			printf("Number of needed queue pairs is higher "
 				"than the maximum number of queue pairs "
@@ -210,12 +262,27 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		struct rte_cryptodev_config conf = {
 			.nb_queue_pairs = opts->nb_qps,
 			.socket_id = socket_id,
-			.ff_disable = RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO,
 		};
 
-		if (opts->op_type != CPERF_PDCP &&
-				opts->op_type != CPERF_DOCSIS)
+		switch (opts->op_type) {
+		case CPERF_ASYM_MODEX:
+			conf.ff_disable |= (RTE_CRYPTODEV_FF_SECURITY |
+					    RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO);
+			break;
+		case CPERF_CIPHER_ONLY:
+		case CPERF_AUTH_ONLY:
+		case CPERF_CIPHER_THEN_AUTH:
+		case CPERF_AUTH_THEN_CIPHER:
+		case CPERF_AEAD:
 			conf.ff_disable |= RTE_CRYPTODEV_FF_SECURITY;
+			/* Fall through */
+		case CPERF_PDCP:
+		case CPERF_DOCSIS:
+			/* Fall through */
+		default:
+
+			conf.ff_disable |= RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO;
+		}
 
 		struct rte_cryptodev_qp_conf qp_conf = {
 			.nb_descriptors = opts->nb_descriptors
@@ -267,14 +334,23 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 			return -ENOTSUP;
 		}
 
-		ret = fill_session_pool_socket(socket_id, max_sess_size,
-				sessions_needed);
+		if (opts->op_type == CPERF_ASYM_MODEX)
+			ret = create_asym_op_pool_socket(cdev_id, socket_id,
+							 sessions_needed);
+		else
+			ret = fill_session_pool_socket(socket_id, max_sess_size,
+						       sessions_needed);
 		if (ret < 0)
 			return ret;
 
 		qp_conf.mp_session = session_pool_socket[socket_id].sess_mp;
 		qp_conf.mp_session_private =
 				session_pool_socket[socket_id].priv_mp;
+
+		if (opts->op_type == CPERF_ASYM_MODEX) {
+			qp_conf.mp_session = NULL;
+			qp_conf.mp_session_private = NULL;
+		}
 
 		ret = rte_cryptodev_configure(cdev_id, &conf);
 		if (ret < 0) {
@@ -309,6 +385,9 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 {
 	struct rte_cryptodev_sym_capability_idx cap_idx;
 	const struct rte_cryptodev_symmetric_capability *capability;
+	struct rte_cryptodev_asym_capability_idx asym_cap_idx;
+	const struct rte_cryptodev_asymmetric_xform_capability *asym_capability;
+
 
 	uint8_t i, cdev_id;
 	int ret;
@@ -316,6 +395,20 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 	for (i = 0; i < nb_cryptodevs; i++) {
 
 		cdev_id = enabled_cdevs[i];
+
+		if (opts->op_type == CPERF_ASYM_MODEX) {
+			asym_cap_idx.type = RTE_CRYPTO_ASYM_XFORM_MODEX;
+			asym_capability = rte_cryptodev_asym_capability_get(
+				cdev_id, &asym_cap_idx);
+			if (asym_capability == NULL)
+				return -1;
+
+			ret = rte_cryptodev_asym_xform_capability_check_modlen(
+				asym_capability, sizeof(perf_mod_p));
+			if (ret != 0)
+				return ret;
+
+		}
 
 		if (opts->op_type == CPERF_AUTH_ONLY ||
 				opts->op_type == CPERF_CIPHER_THEN_AUTH ||

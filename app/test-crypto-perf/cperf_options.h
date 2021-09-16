@@ -79,7 +79,8 @@ enum cperf_op_type {
 	CPERF_AUTH_THEN_CIPHER,
 	CPERF_AEAD,
 	CPERF_PDCP,
-	CPERF_DOCSIS
+	CPERF_DOCSIS,
+	CPERF_ASYM_MODEX
 };
 
 extern const char *cperf_op_type_strs[];

@@ -91,6 +91,11 @@ New Features
   Added command-line options to specify total number of processes and
   current process ID. Each process owns subset of Rx and Tx queues.
 
+* **Updated test-crypto-perf application with new cases.**
+
+  * Added support for asymmetric crypto throughput performance measurement.
+    Only modex is supported for now.
+
 
 Removed Items
 -------------

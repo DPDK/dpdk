@@ -35,17 +35,23 @@ cperf_throughput_test_free(struct cperf_throughput_ctx *ctx)
 	if (!ctx)
 		return;
 	if (ctx->sess) {
+		if (ctx->options->op_type == CPERF_ASYM_MODEX) {
+			rte_cryptodev_asym_session_clear(ctx->dev_id,
+							 (void *)ctx->sess);
+			rte_cryptodev_asym_session_free((void *)ctx->sess);
+		}
 #ifdef RTE_LIB_SECURITY
-		if (ctx->options->op_type == CPERF_PDCP ||
-				ctx->options->op_type == CPERF_DOCSIS) {
+		else if (ctx->options->op_type == CPERF_PDCP ||
+			 ctx->options->op_type == CPERF_DOCSIS) {
 			struct rte_security_ctx *sec_ctx =
 				(struct rte_security_ctx *)
-				rte_cryptodev_get_sec_ctx(ctx->dev_id);
-			rte_security_session_destroy(sec_ctx,
+					rte_cryptodev_get_sec_ctx(ctx->dev_id);
+			rte_security_session_destroy(
+				sec_ctx,
 				(struct rte_security_session *)ctx->sess);
-		} else
+		}
 #endif
-		{
+		else {
 			rte_cryptodev_sym_session_clear(ctx->dev_id, ctx->sess);
 			rte_cryptodev_sym_session_free(ctx->sess);
 		}
@@ -119,7 +125,8 @@ cperf_throughput_test_runner(void *test_ctx)
 	int linearize = 0;
 
 	/* Check if source mbufs require coalescing */
-	if (ctx->options->segment_sz < ctx->options->max_buffer_size) {
+	if ((ctx->options->op_type != CPERF_ASYM_MODEX) &&
+	    (ctx->options->segment_sz < ctx->options->max_buffer_size)) {
 		rte_cryptodev_info_get(ctx->dev_id, &dev_info);
 		if ((dev_info.feature_flags &
 				RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER) == 0)
@@ -200,7 +207,8 @@ cperf_throughput_test_runner(void *test_ctx)
 				 * We need to linearize it before enqueuing.
 				 */
 				for (i = 0; i < burst_size; i++)
-					rte_pktmbuf_linearize(ops[i]->sym->m_src);
+					rte_pktmbuf_linearize(
+						ops[i]->sym->m_src);
 			}
 #endif /* CPERF_LINEARIZATION_ENABLE */
 
