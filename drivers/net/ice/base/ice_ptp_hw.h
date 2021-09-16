@@ -222,6 +222,13 @@ enum ice_status ice_phy_exit_bypass_e822(struct ice_hw *hw, u8 port);
 
 /* E810 family functions */
 enum ice_status ice_ptp_init_phy_e810(struct ice_hw *hw);
+enum ice_status
+ice_read_e810t_pca9575_reg(struct ice_hw *hw, u8 offset, u8 *data);
+enum ice_status
+ice_write_e810t_pca9575_reg(struct ice_hw *hw, u8 offset, u8 data);
+enum ice_status ice_read_sma_ctrl_e810t(struct ice_hw *hw, u8 *data);
+enum ice_status ice_write_sma_ctrl_e810t(struct ice_hw *hw, u8 data);
+bool ice_e810t_is_pca9575_present(struct ice_hw *hw);
 
 #define PFTSYN_SEM_BYTES	4
 
@@ -469,5 +476,9 @@ enum ice_status ice_ptp_init_phy_e810(struct ice_hw *hw);
 #define ICE_E810T_P1_SMA2_UFL2_RX_DIS	BIT(3)
 #define ICE_E810T_P1_SMA2_DIR_EN	BIT(6)
 #define ICE_E810T_P1_SMA2_TX_EN		BIT(7)
+
+#define ICE_E810T_SMA_MIN_BIT	3
+#define ICE_E810T_SMA_MAX_BIT	7
+#define ICE_E810T_P1_OFFSET	8
 
 #endif /* _ICE_PTP_HW_H_ */

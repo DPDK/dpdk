@@ -3077,6 +3077,219 @@ ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 	return ICE_SUCCESS;
 }
 
+/* E810T SMA functions
+ *
+ * The following functions operate specifically on E810T hardware and are used
+ * to access the extended GPIOs available.
+ */
+
+/**
+ * ice_get_pca9575_handle
+ * @hw: pointer to the hw struct
+ * @pca9575_handle: GPIO controller's handle
+ *
+ * Find and return the GPIO controller's handle in the netlist.
+ * When found - the value will be cached in the hw structure and following calls
+ * will return cached value
+ */
+static enum ice_status
+ice_get_pca9575_handle(struct ice_hw *hw, __le16 *pca9575_handle)
+{
+	struct ice_aqc_get_link_topo *cmd;
+	struct ice_aq_desc desc;
+	enum ice_status status;
+	u8 idx;
+
+	if (!hw || !pca9575_handle)
+		return ICE_ERR_PARAM;
+
+	/* If handle was read previously return cached value */
+	if (hw->io_expander_handle) {
+		*pca9575_handle = hw->io_expander_handle;
+		return ICE_SUCCESS;
+	}
+
+	/* If handle was not detected read it from the netlist */
+	cmd = &desc.params.get_link_topo;
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_link_topo);
+
+	/* Set node type to GPIO controller */
+	cmd->addr.topo_params.node_type_ctx =
+		(ICE_AQC_LINK_TOPO_NODE_TYPE_M &
+		 ICE_AQC_LINK_TOPO_NODE_TYPE_GPIO_CTRL);
+
+#define SW_PCA9575_SFP_TOPO_IDX		2
+#define SW_PCA9575_QSFP_TOPO_IDX	1
+
+	/* Check if the SW IO expander controlling SMA exists in the netlist. */
+	if (hw->device_id == ICE_DEV_ID_E810C_SFP)
+		idx = SW_PCA9575_SFP_TOPO_IDX;
+	else if (hw->device_id == ICE_DEV_ID_E810C_QSFP)
+		idx = SW_PCA9575_QSFP_TOPO_IDX;
+	else
+		return ICE_ERR_NOT_SUPPORTED;
+
+	cmd->addr.topo_params.index = idx;
+
+	status = ice_aq_send_cmd(hw, &desc, NULL, 0, NULL);
+	if (status)
+		return ICE_ERR_NOT_SUPPORTED;
+
+	/* Verify if we found the right IO expander type */
+	if (desc.params.get_link_topo.node_part_num !=
+		ICE_ACQ_GET_LINK_TOPO_NODE_NR_PCA9575)
+		return ICE_ERR_NOT_SUPPORTED;
+
+	/* If present save the handle and return it */
+	hw->io_expander_handle = desc.params.get_link_topo.addr.handle;
+	*pca9575_handle = hw->io_expander_handle;
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_read_e810t_pca9575_reg
+ * @hw: pointer to the hw struct
+ * @offset: GPIO controller register offset
+ * @data: pointer to data to be read from the GPIO controller
+ *
+ * Read the register from the GPIO controller
+ */
+enum ice_status
+ice_read_e810t_pca9575_reg(struct ice_hw *hw, u8 offset, u8 *data)
+{
+	struct ice_aqc_link_topo_addr link_topo;
+	enum ice_status status;
+	__le16 addr;
+
+	memset(&link_topo, 0, sizeof(link_topo));
+
+	status = ice_get_pca9575_handle(hw, &link_topo.handle);
+	if (status)
+		return status;
+
+	link_topo.topo_params.node_type_ctx =
+		(ICE_AQC_LINK_TOPO_NODE_CTX_PROVIDED <<
+		 ICE_AQC_LINK_TOPO_NODE_CTX_S);
+
+	addr = CPU_TO_LE16((u16)offset);
+
+	return ice_aq_read_i2c(hw, link_topo, 0, addr, 1, data, NULL);
+}
+
+/**
+ * ice_write_e810t_pca9575_reg
+ * @hw: pointer to the hw struct
+ * @offset: GPIO controller register offset
+ * @data: data to be written to the GPIO controller
+ *
+ * Write the data to the GPIO controller register
+ */
+enum ice_status
+ice_write_e810t_pca9575_reg(struct ice_hw *hw, u8 offset, u8 data)
+{
+	struct ice_aqc_link_topo_addr link_topo;
+	enum ice_status status;
+	__le16 addr;
+
+	memset(&link_topo, 0, sizeof(link_topo));
+
+	status = ice_get_pca9575_handle(hw, &link_topo.handle);
+	if (status)
+		return status;
+
+	link_topo.topo_params.node_type_ctx =
+		(ICE_AQC_LINK_TOPO_NODE_CTX_PROVIDED <<
+		 ICE_AQC_LINK_TOPO_NODE_CTX_S);
+
+	addr = CPU_TO_LE16((u16)offset);
+
+	return ice_aq_write_i2c(hw, link_topo, 0, addr, 1, &data, NULL);
+}
+
+/**
+ * ice_read_sma_ctrl_e810t
+ * @hw: pointer to the hw struct
+ * @data: pointer to data to be read from the GPIO controller
+ *
+ * Read the SMA controller state. Only bits 3-7 in data are valid.
+ */
+enum ice_status ice_read_sma_ctrl_e810t(struct ice_hw *hw, u8 *data)
+{
+	enum ice_status status;
+	u16 handle;
+	u8 i;
+
+	status = ice_get_pca9575_handle(hw, &handle);
+	if (status)
+		return status;
+
+	*data = 0;
+
+	for (i = ICE_E810T_SMA_MIN_BIT; i <= ICE_E810T_SMA_MAX_BIT; i++) {
+		bool pin;
+
+		status = ice_aq_get_gpio(hw, handle, i + ICE_E810T_P1_OFFSET,
+					 &pin, NULL);
+		if (status)
+			break;
+		*data |= (u8)(!pin) << i;
+	}
+
+	return status;
+}
+
+/**
+ * ice_write_sma_ctrl_e810t
+ * @hw: pointer to the hw struct
+ * @data: data to be written to the GPIO controller
+ *
+ * Write the data to the SMA controller. Only bits 3-7 in data are valid.
+ */
+enum ice_status ice_write_sma_ctrl_e810t(struct ice_hw *hw, u8 data)
+{
+	enum ice_status status;
+	u16 handle;
+	u8 i;
+
+	status = ice_get_pca9575_handle(hw, &handle);
+	if (status)
+		return status;
+
+	for (i = ICE_E810T_SMA_MIN_BIT; i <= ICE_E810T_SMA_MAX_BIT; i++) {
+		bool pin;
+
+		pin = !(data & (1 << i));
+		status = ice_aq_set_gpio(hw, handle, i + ICE_E810T_P1_OFFSET,
+					 pin, NULL);
+		if (status)
+			break;
+	}
+
+	return status;
+}
+
+/**
+ * ice_e810t_is_pca9575_present
+ * @hw: pointer to the hw struct
+ *
+ * Check if the SW IO expander is present in the netlist
+ */
+bool ice_e810t_is_pca9575_present(struct ice_hw *hw)
+{
+	enum ice_status status;
+	__le16 handle = 0;
+
+	if (!ice_is_e810t(hw))
+		return false;
+
+	status = ice_get_pca9575_handle(hw, &handle);
+	if (!status && handle)
+		return true;
+
+	return false;
+}
+
 /* Device agnostic functions
  *
  * The following functions implement shared behavior common to both E822 and
