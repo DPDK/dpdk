@@ -558,6 +558,32 @@ typedef int (*eventdev_eth_rx_adapter_queue_del_t)
 					int32_t rx_queue_id);
 
 /**
+ * Retrieve Rx adapter queue config information for the specified
+ * rx queue ID.
+ *
+ * @param dev
+ *  Event device pointer
+ *
+ * @param eth_dev
+ *  Ethernet device pointer
+ *
+ * @param rx_queue_id
+ *  Ethernet device receive queue index.
+ *
+ * @param[out] queue_conf
+ *  Pointer to rte_event_eth_rx_adapter_queue_conf structure
+ *
+ * @return
+ *  - 0: Success
+ *  - <0: Error code on failure.
+ */
+typedef int (*eventdev_eth_rx_adapter_queue_conf_get_t)
+			(const struct rte_eventdev *dev,
+			const struct rte_eth_dev *eth_dev,
+			uint16_t rx_queue_id,
+			struct rte_event_eth_rx_adapter_queue_conf *queue_conf);
+
+/**
  * Start ethernet Rx adapter. This callback is invoked if
  * the caps returned from eventdev_eth_rx_adapter_caps_get(.., eth_port_id)
  * has RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT set and Rx queues
@@ -1077,6 +1103,8 @@ struct rte_eventdev_ops {
 	/**< Add Rx queues to ethernet Rx adapter */
 	eventdev_eth_rx_adapter_queue_del_t eth_rx_adapter_queue_del;
 	/**< Delete Rx queues from ethernet Rx adapter */
+	eventdev_eth_rx_adapter_queue_conf_get_t eth_rx_adapter_queue_conf_get;
+	/**< Get Rx adapter queue info */
 	eventdev_eth_rx_adapter_start_t eth_rx_adapter_start;
 	/**< Start ethernet Rx adapter */
 	eventdev_eth_rx_adapter_stop_t eth_rx_adapter_stop;

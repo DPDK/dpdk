@@ -143,6 +143,7 @@ EXPERIMENTAL {
 	rte_event_vector_pool_create;
 	rte_event_eth_rx_adapter_vector_limits_get;
 	__rte_eventdev_trace_crypto_adapter_enqueue;
+	rte_event_eth_rx_adapter_queue_conf_get;
 };
 
 INTERNAL {

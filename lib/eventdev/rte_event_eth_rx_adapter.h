@@ -33,6 +33,7 @@
  *  - rte_event_eth_rx_adapter_stop()
  *  - rte_event_eth_rx_adapter_stats_get()
  *  - rte_event_eth_rx_adapter_stats_reset()
+ *  - rte_event_eth_rx_adapter_queue_conf_get()
  *
  * The application creates an ethernet to event adapter using
  * rte_event_eth_rx_adapter_create_ext() or rte_event_eth_rx_adapter_create()
@@ -544,6 +545,32 @@ __rte_experimental
 int rte_event_eth_rx_adapter_vector_limits_get(
 	uint8_t dev_id, uint16_t eth_port_id,
 	struct rte_event_eth_rx_adapter_vector_limits *limits);
+
+/**
+ * Retrieve Rx queue config information.
+ *
+ * @param id
+ *  Adapter identifier.
+
+ * @param eth_dev_id
+ *  Port identifier of Ethernet device.
+
+ * @param rx_queue_id
+ *  Ethernet device receive queue index.
+
+ * @param[out] queue_conf
+ *  Pointer to struct rte_event_eth_rx_adapter_queue_conf
+
+ * @return
+ *  - 0: Success, Receive queue added correctly.
+ *  - <0: Error code on failure.
+ */
+__rte_experimental
+int rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
+			uint16_t eth_dev_id,
+			uint16_t rx_queue_id,
+			struct rte_event_eth_rx_adapter_queue_conf *queue_conf);
+
 
 #ifdef __cplusplus
 }

@@ -747,6 +747,55 @@ adapter_stats(void)
 	return TEST_SUCCESS;
 }
 
+static int
+adapter_queue_conf(void)
+{
+	int err;
+	struct rte_event_eth_rx_adapter_queue_conf queue_conf = {0};
+
+	/* Case 1: queue conf get without any queues in Rx adapter */
+	err = rte_event_eth_rx_adapter_queue_conf_get(TEST_INST_ID,
+						      TEST_ETHDEV_ID,
+						      0, &queue_conf);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	/* Add queue to Rx adapter */
+	queue_conf.ev.queue_id = 0;
+	queue_conf.ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
+	queue_conf.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+
+	err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
+						 TEST_ETHDEV_ID,
+						 0, &queue_conf);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	/* Case 2: queue conf get with queue added to Rx adapter */
+	err = rte_event_eth_rx_adapter_queue_conf_get(TEST_INST_ID,
+						      TEST_ETHDEV_ID,
+						      0, &queue_conf);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	/* Case 3: queue conf get with invalid rx queue id */
+	err = rte_event_eth_rx_adapter_queue_conf_get(TEST_INST_ID,
+						      TEST_ETHDEV_ID,
+						      -1, &queue_conf);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	/* Case 4: queue conf get with NULL queue conf struct */
+	err = rte_event_eth_rx_adapter_queue_conf_get(TEST_INST_ID,
+						      TEST_ETHDEV_ID,
+						      0, NULL);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	/* Delete queue from the Rx adapter */
+	err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
+						 TEST_ETHDEV_ID,
+						 0);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	return TEST_SUCCESS;
+}
+
 static struct unit_test_suite event_eth_rx_tests = {
 	.suite_name = "rx event eth adapter test suite",
 	.setup = testsuite_setup,
@@ -759,6 +808,7 @@ static struct unit_test_suite event_eth_rx_tests = {
 					adapter_multi_eth_add_del),
 		TEST_CASE_ST(adapter_create, adapter_free, adapter_start_stop),
 		TEST_CASE_ST(adapter_create, adapter_free, adapter_stats),
+		TEST_CASE_ST(adapter_create, adapter_free, adapter_queue_conf),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

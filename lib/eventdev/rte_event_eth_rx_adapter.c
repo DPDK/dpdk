@@ -41,6 +41,8 @@
 /* Sentinel value to detect initialized file handle */
 #define INIT_FD		-1
 
+#define RXA_ADAPTER_ARRAY "rte_event_eth_rx_adapter_array"
+
 /*
  * Used to store port and queue ID of interrupting Rx queue
  */
@@ -1372,7 +1374,7 @@ rxa_service_func(void *args)
 static int
 rte_event_eth_rx_adapter_init(void)
 {
-	const char *name = "rte_event_eth_rx_adapter_array";
+	const char *name = RXA_ADAPTER_ARRAY;
 	const struct rte_memzone *mz;
 	unsigned int sz;
 
@@ -1392,6 +1394,21 @@ rte_event_eth_rx_adapter_init(void)
 	}
 
 	event_eth_rx_adapter = mz->addr;
+	return 0;
+}
+
+static int
+rxa_memzone_lookup(void)
+{
+	const struct rte_memzone *mz;
+
+	if (event_eth_rx_adapter == NULL) {
+		mz = rte_memzone_lookup(RXA_ADAPTER_ARRAY);
+		if (mz == NULL)
+			return -ENOMEM;
+		event_eth_rx_adapter = mz->addr;
+	}
+
 	return 0;
 }
 
@@ -2664,6 +2681,9 @@ rte_event_eth_rx_adapter_stats_get(uint8_t id,
 	uint32_t i;
 	int ret;
 
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
+
 	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
 	rx_adapter = rxa_id_to_adapter(id);
@@ -2702,6 +2722,9 @@ rte_event_eth_rx_adapter_stats_reset(uint8_t id)
 	struct eth_device_info *dev_info;
 	uint32_t i;
 
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
+
 	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
 	rx_adapter = rxa_id_to_adapter(id);
@@ -2726,6 +2749,9 @@ int
 rte_event_eth_rx_adapter_service_id_get(uint8_t id, uint32_t *service_id)
 {
 	struct rte_event_eth_rx_adapter *rx_adapter;
+
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
 
 	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
@@ -2780,6 +2806,70 @@ rte_event_eth_rx_adapter_cb_register(uint8_t id,
 	dev_info->cb_fn = cb_fn;
 	dev_info->cb_arg = cb_arg;
 	rte_spinlock_unlock(&rx_adapter->rx_lock);
+
+	return 0;
+}
+
+int
+rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
+			uint16_t eth_dev_id,
+			uint16_t rx_queue_id,
+			struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
+{
+	struct rte_eventdev *dev;
+	struct rte_event_eth_rx_adapter *rx_adapter;
+	struct eth_device_info *dev_info;
+	struct eth_rx_queue_info *queue_info;
+	struct rte_event *qi_ev;
+	int ret;
+
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
+
+	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(eth_dev_id, -EINVAL);
+
+	if (rx_queue_id >= rte_eth_devices[eth_dev_id].data->nb_rx_queues) {
+		RTE_EDEV_LOG_ERR("Invalid rx queue_id %u", rx_queue_id);
+		return -EINVAL;
+	}
+
+	if (queue_conf == NULL) {
+		RTE_EDEV_LOG_ERR("Rx queue conf struct cannot be NULL");
+		return -EINVAL;
+	}
+
+	rx_adapter = rxa_id_to_adapter(id);
+	if (rx_adapter == NULL)
+		return -EINVAL;
+
+	dev_info = &rx_adapter->eth_devices[eth_dev_id];
+	if (dev_info->rx_queue == NULL ||
+	    !dev_info->rx_queue[rx_queue_id].queue_enabled) {
+		RTE_EDEV_LOG_ERR("Rx queue %u not added", rx_queue_id);
+		return -EINVAL;
+	}
+
+	queue_info = &dev_info->rx_queue[rx_queue_id];
+	qi_ev = (struct rte_event *)&queue_info->event;
+
+	memset(queue_conf, 0, sizeof(*queue_conf));
+	queue_conf->rx_queue_flags = 0;
+	if (queue_info->flow_id_mask != 0)
+		queue_conf->rx_queue_flags |=
+			RTE_EVENT_ETH_RX_ADAPTER_QUEUE_FLOW_ID_VALID;
+	queue_conf->servicing_weight = queue_info->wt;
+
+	memcpy(&queue_conf->ev, qi_ev, sizeof(*qi_ev));
+
+	dev = &rte_eventdevs[rx_adapter->eventdev_id];
+	if (dev->dev_ops->eth_rx_adapter_queue_conf_get != NULL) {
+		ret = (*dev->dev_ops->eth_rx_adapter_queue_conf_get)(dev,
+						&rte_eth_devices[eth_dev_id],
+						rx_queue_id,
+						queue_conf);
+		return ret;
+	}
 
 	return 0;
 }
