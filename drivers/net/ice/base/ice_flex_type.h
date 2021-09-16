@@ -33,7 +33,7 @@ struct ice_pkg_hdr {
 /* generic segment */
 struct ice_generic_seg_hdr {
 #define SEGMENT_TYPE_METADATA	0x00000001
-#define SEGMENT_TYPE_ICE	0x00000010
+#define SEGMENT_TYPE_ICE_E810	0x00000010
 	__le32 seg_type;
 	struct ice_pkg_ver seg_format_ver;
 	__le32 seg_size;
