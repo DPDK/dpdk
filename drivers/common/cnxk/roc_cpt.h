@@ -16,6 +16,7 @@
 #define ROC_CPT_DFLT_ENG_GRP_AE	   2UL
 
 #define ROC_CPT_MAX_LFS 64
+#define ROC_CPT_MAX_BLKS 2
 #define ROC_CN10K_CPT_INST_DW_M1                                               \
 	((uint64_t)(((sizeof(struct cpt_inst_s) / 16) - 1) & 0x7))
 #define ROC_CN10K_TWO_CPT_INST_DW_M1                                           \
@@ -84,6 +85,14 @@
 	 (((ROC_CPT_CCM_ICV_LEN - 2) / 2) << 3) | (ROC_CPT_CCM_MSG_LEN - 1))
 #define ROC_CPT_CCM_SALT_LEN 3
 
+enum {
+	ROC_CPT_REVISION_ID_83XX = 0,
+	ROC_CPT_REVISION_ID_96XX_B0 = 1,
+	ROC_CPT_REVISION_ID_96XX_C0 = 2,
+	ROC_CPT_REVISION_ID_98XX = 3,
+	ROC_CPT_REVISION_ID_106XX = 4,
+};
+
 struct roc_cpt_lmtline {
 	uint64_t io_addr;
 	uint64_t *fc_addr;
@@ -119,6 +128,7 @@ struct roc_cpt {
 	/**< CPT device capabilities */
 	union cpt_eng_caps hw_caps[CPT_MAX_ENG_TYPES];
 	uint8_t eng_grp[CPT_MAX_ENG_TYPES];
+	uint8_t cpt_revision;
 
 #define ROC_CPT_MEM_SZ (6 * 1024)
 	uint8_t reserved[ROC_CPT_MEM_SZ] __plt_cache_aligned;

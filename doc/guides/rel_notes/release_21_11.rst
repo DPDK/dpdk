@@ -108,6 +108,7 @@ New Features
   * Added UDP encapsulation support in lookaside protocol (IPsec) for CN10K.
   * Added support for lookaside protocol (IPsec) offload for CN9K.
   * Added support for ZUC algorithm with 256-bit key length for CN10K.
+  * Added support for CN98xx dual block.
 
 * **Added support for event crypto adapter on Marvell CN10K and CN9K.**
 

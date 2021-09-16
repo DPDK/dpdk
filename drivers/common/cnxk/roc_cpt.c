@@ -370,7 +370,7 @@ cpt_available_lfs_get(struct dev *dev, uint16_t *nb_lf)
 	if (rc)
 		return -EIO;
 
-	*nb_lf = rsp->cpt;
+	*nb_lf = PLT_MAX((uint16_t)rsp->cpt, (uint16_t)rsp->cpt1);
 	return 0;
 }
 
@@ -405,7 +405,7 @@ cpt_lfs_free(struct dev *dev)
 }
 
 static int
-cpt_hardware_caps_get(struct dev *dev, union cpt_eng_caps *hw_caps)
+cpt_hardware_caps_get(struct dev *dev, struct roc_cpt *roc_cpt)
 {
 	struct cpt_caps_rsp_msg *rsp;
 	int ret;
@@ -416,7 +416,8 @@ cpt_hardware_caps_get(struct dev *dev, union cpt_eng_caps *hw_caps)
 	if (ret)
 		return -EIO;
 
-	mbox_memcpy(hw_caps, rsp->eng_caps,
+	roc_cpt->cpt_revision = rsp->cpt_revision;
+	mbox_memcpy(roc_cpt->hw_caps, rsp->eng_caps,
 		    sizeof(union cpt_eng_caps) * CPT_MAX_ENG_TYPES);
 
 	return 0;
@@ -478,21 +479,40 @@ int
 roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf)
 {
 	struct cpt *cpt = roc_cpt_to_cpt_priv(roc_cpt);
-	uint8_t blkaddr = RVU_BLOCK_ADDR_CPT0;
+	uint8_t blkaddr[ROC_CPT_MAX_BLKS];
 	struct msix_offset_rsp *rsp;
 	uint8_t eng_grpmsk;
+	int blknum = 0;
 	int rc, i;
 
+	blkaddr[0] = RVU_BLOCK_ADDR_CPT0;
+	blkaddr[1] = RVU_BLOCK_ADDR_CPT1;
+
+	if ((roc_cpt->cpt_revision == ROC_CPT_REVISION_ID_98XX) &&
+	    (cpt->dev.pf_func & 0x1))
+		blknum = (blknum + 1) % ROC_CPT_MAX_BLKS;
+
 	/* Request LF resources */
-	rc = cpt_lfs_attach(&cpt->dev, blkaddr, true, nb_lf);
-	if (rc)
+	rc = cpt_lfs_attach(&cpt->dev, blkaddr[blknum], true, nb_lf);
+
+	/* Request LFs from another block if current block has less LFs */
+	if (roc_cpt->cpt_revision == ROC_CPT_REVISION_ID_98XX && rc == ENOSPC) {
+		blknum = (blknum + 1) % ROC_CPT_MAX_BLKS;
+		rc = cpt_lfs_attach(&cpt->dev, blkaddr[blknum], true, nb_lf);
+	}
+	if (rc) {
+		plt_err("Could not attach LFs");
 		return rc;
+	}
+
+	for (i = 0; i < nb_lf; i++)
+		cpt->lf_blkaddr[i] = blkaddr[blknum];
 
 	eng_grpmsk = (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_AE]) |
 		     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_SE]) |
 		     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_IE]);
 
-	rc = cpt_lfs_alloc(&cpt->dev, eng_grpmsk, blkaddr, false);
+	rc = cpt_lfs_alloc(&cpt->dev, eng_grpmsk, blkaddr[blknum], false);
 	if (rc)
 		goto lfs_detach;
 
@@ -624,7 +644,7 @@ roc_cpt_dev_init(struct roc_cpt *roc_cpt)
 	cpt->pci_dev = pci_dev;
 	roc_cpt->lmt_base = dev->lmt_base;
 
-	rc = cpt_hardware_caps_get(dev, roc_cpt->hw_caps);
+	rc = cpt_hardware_caps_get(dev, roc_cpt);
 	if (rc) {
 		plt_err("Could not determine hardware capabilities");
 		goto fail;
