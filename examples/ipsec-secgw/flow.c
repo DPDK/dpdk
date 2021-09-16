@@ -188,7 +188,9 @@ parse_flow_tokens(char **tokens, uint32_t n_tokens,
 				return;
 
 			rule->port = atoi(tokens[ti]);
+		}
 
+		if (strcmp(tokens[ti], "queue") == 0) {
 			INCREMENT_TOKEN_INDEX(ti, n_tokens, status);
 			if (status->status < 0)
 				return;
