@@ -1357,6 +1357,7 @@ const struct ice_ctx_ele ice_tlan_ctx_info[] = {
 	ICE_CTX_STORE(ice_tlan_ctx, cache_prof_idx,		2,	166),
 	ICE_CTX_STORE(ice_tlan_ctx, pkt_shaper_prof_idx,	3,	168),
 	ICE_CTX_STORE(ice_tlan_ctx, int_q_state,		122,	171),
+	ICE_CTX_STORE(ice_tlan_ctx, gsc_ena,			1,	172),
 	{ 0 }
 };
 

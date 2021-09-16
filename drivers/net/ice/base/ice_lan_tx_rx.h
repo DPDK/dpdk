@@ -522,6 +522,46 @@ struct ice_32b_rx_flex_desc_nic {
 	} flex_ts;
 };
 
+/* Rx Flex Descriptor NIC Raw CSUM Profile
+ * RxDID Profile ID 9
+ * Flex-field 0: RSS hash lower 16-bits
+ * Flex-field 1: RSS hash upper 16-bits
+ * Flex-field 2: Flow ID lower 16-bits
+ * Flex-field 3: Raw CSUM
+ * Flex-field 4: reserved, VLAN ID taken from L2Tag
+ */
+struct ice_32b_rx_flex_desc_nic_raw_csum {
+	/* Qword 0 */
+	u8 rxdid;
+	u8 mir_id_umb_cast;
+	__le16 ptype_flexi_flags0;
+	__le16 pkt_len;
+	__le16 hdr_len_sph_flex_flags1;
+
+	/* Qword 1 */
+	__le16 status_error0;
+	__le16 l2tag1;
+	__le32 rss_hash;
+
+	/* Qword 2 */
+	__le16 status_error1; /* bit 6 Raw CSUM present */
+	u8 flexi_flags2;
+	u8 ts_low;
+	__le16 l2tag2_1st;
+	__le16 l2tag2_2nd;
+
+	/* Qword 3 */
+	__le16 flow_id;
+	__le16 raw_csum;
+	union {
+		struct {
+			__le16 rsvd;
+			__le16 flow_id_ipv6;
+		} flex;
+		__le32 ts_high;
+	} flex_ts;
+};
+
 /* Rx Flex Descriptor Switch Profile
  * RxDID Profile ID 3
  * Flex-field 0: Source VSI
@@ -708,6 +748,7 @@ enum ice_rxdid {
 	ICE_RXDID_FLEX_NIC		= 2,
 	ICE_RXDID_FLEX_NIC_2		= 6,
 	ICE_RXDID_HW			= 7,
+	ICE_RXDID_GSC			= 9,
 	ICE_RXDID_COMMS_GENERIC		= 16,
 	ICE_RXDID_COMMS_AUX_VLAN	= 17,
 	ICE_RXDID_COMMS_AUX_IPV4	= 18,
@@ -1029,9 +1070,14 @@ enum ice_tx_desc_len_fields {
 struct ice_tx_ctx_desc {
 	__le32 tunneling_params;
 	__le16 l2tag2;
-	__le16 rsvd;
+	__le16 gsc;
 	__le64 qw1;
 };
+
+#define ICE_TX_GSC_DESC_START	0  /* 7 BITS */
+#define ICE_TX_GSC_DESC_OFFSET	7  /* 4 BITS */
+#define ICE_TX_GSC_DESC_TYPE	11 /* 2 BITS */
+#define ICE_TX_GSC_DESC_ENA	13 /* 1 BIT */
 
 #define ICE_TXD_CTX_QW1_DTYPE_S	0
 #define ICE_TXD_CTX_QW1_DTYPE_M	(0xFUL << ICE_TXD_CTX_QW1_DTYPE_S)
@@ -1143,6 +1189,7 @@ struct ice_tlan_ctx {
 	u8 drop_ena;
 	u8 cache_prof_idx;
 	u8 pkt_shaper_prof_idx;
+	u8 gsc_ena;
 	u8 int_q_state;	/* width not needed - internal - DO NOT WRITE!!! */
 };
 
