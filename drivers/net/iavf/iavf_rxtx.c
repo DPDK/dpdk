@@ -245,11 +245,15 @@ alloc_rxq_mbufs(struct iavf_rx_queue *rxq)
 	volatile union iavf_rx_desc *rxd;
 	struct rte_mbuf *mbuf = NULL;
 	uint64_t dma_addr;
-	uint16_t i;
+	uint16_t i, j;
 
 	for (i = 0; i < rxq->nb_rx_desc; i++) {
 		mbuf = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(!mbuf)) {
+			for (j = 0; j < i; j++) {
+				rte_pktmbuf_free_seg(rxq->sw_ring[j]);
+				rxq->sw_ring[j] = NULL;
+			}
 			PMD_DRV_LOG(ERR, "Failed to allocate mbuf for RX");
 			return -ENOMEM;
 		}
@@ -757,12 +761,14 @@ iavf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	else
 		err = iavf_switch_queue_lv(adapter, rx_queue_id, true, true);
 
-	if (err)
+	if (err) {
+		release_rxq_mbufs(rxq);
 		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on",
 			    rx_queue_id);
-	else
+	} else {
 		dev->data->rx_queue_state[rx_queue_id] =
 			RTE_ETH_QUEUE_STATE_STARTED;
+	}
 
 	return err;
 }
