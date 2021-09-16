@@ -709,7 +709,7 @@ ice_clear_phy_tstamp_e822(struct ice_hw *hw, u8 quad, u8 idx)
  * applicable to E822 devices.
  */
 static enum ice_status
-ice_read_cgu_reg_e822(struct ice_hw *hw, u32 addr, u32 *val)
+ice_read_cgu_reg_e822(struct ice_hw *hw, u16 addr, u32 *val)
 {
 	struct ice_sbq_msg_input cgu_msg;
 	enum ice_status status;
@@ -741,7 +741,7 @@ ice_read_cgu_reg_e822(struct ice_hw *hw, u32 addr, u32 *val)
  * applicable to E822 devices.
  */
 static enum ice_status
-ice_write_cgu_reg_e822(struct ice_hw *hw, u32 addr, u32 val)
+ice_write_cgu_reg_e822(struct ice_hw *hw, u16 addr, u32 val)
 {
 	struct ice_sbq_msg_input cgu_msg;
 	enum ice_status status;
