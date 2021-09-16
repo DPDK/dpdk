@@ -854,7 +854,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	if (tx_free_thresh >= (vq->vq_nentries - 3)) {
 		PMD_DRV_LOG(ERR, "tx_free_thresh must be less than the "
 			"number of TX entries minus 3 (%u)."
-			" (tx_free_thresh=%u port=%u queue=%u)\n",
+			" (tx_free_thresh=%u port=%u queue=%u)",
 			vq->vq_nentries - 3,
 			tx_free_thresh, dev->data->port_id, queue_idx);
 		return -EINVAL;

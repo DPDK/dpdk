@@ -528,7 +528,7 @@ vhost_vdpa_setup(struct virtio_user_dev *dev)
 
 	data->vhostfd = open(dev->path, O_RDWR);
 	if (data->vhostfd < 0) {
-		PMD_DRV_LOG(ERR, "Failed to open %s: %s\n",
+		PMD_DRV_LOG(ERR, "Failed to open %s: %s",
 				dev->path, strerror(errno));
 		free(data);
 		return -1;
@@ -536,7 +536,7 @@ vhost_vdpa_setup(struct virtio_user_dev *dev)
 
 	if (ioctl(data->vhostfd, VHOST_VDPA_GET_DEVICE_ID, &did) < 0 ||
 			did != VIRTIO_ID_NETWORK) {
-		PMD_DRV_LOG(ERR, "Invalid vdpa device ID: %u\n", did);
+		PMD_DRV_LOG(ERR, "Invalid vdpa device ID: %u", did);
 		close(data->vhostfd);
 		free(data);
 		return -1;

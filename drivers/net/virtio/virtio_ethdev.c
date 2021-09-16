@@ -213,7 +213,7 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 			"vq->vq_avail_idx=%d\n"
 			"vq->vq_used_cons_idx=%d\n"
 			"vq->vq_packed.cached_flags=0x%x\n"
-			"vq->vq_packed.used_wrap_counter=%d\n",
+			"vq->vq_packed.used_wrap_counter=%d",
 			vq->vq_free_cnt,
 			vq->vq_avail_idx,
 			vq->vq_used_cons_idx,

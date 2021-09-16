@@ -81,7 +81,7 @@ eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 		VTPCI_DEV(hw) = pci_dev;
 		ret = vtpci_init(RTE_ETH_DEV_TO_PCI(eth_dev), dev);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "Failed to init PCI device\n");
+			PMD_INIT_LOG(ERR, "Failed to init PCI device");
 			return -1;
 		}
 	} else {
@@ -93,14 +93,14 @@ eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 
 		ret = virtio_remap_pci(RTE_ETH_DEV_TO_PCI(eth_dev), dev);
 		if (ret < 0) {
-			PMD_INIT_LOG(ERR, "Failed to remap PCI device\n");
+			PMD_INIT_LOG(ERR, "Failed to remap PCI device");
 			return -1;
 		}
 	}
 
 	ret = eth_virtio_dev_init(eth_dev);
 	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "Failed to init virtio device\n");
+		PMD_INIT_LOG(ERR, "Failed to init virtio device");
 		goto err_unmap;
 	}
 

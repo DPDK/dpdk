@@ -44,7 +44,7 @@ virtio_user_create_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	file.fd = dev->callfds[queue_sel];
 	ret = dev->ops->set_vring_call(dev, &file);
 	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "(%s) Failed to create queue %u\n", dev->path, queue_sel);
+		PMD_INIT_LOG(ERR, "(%s) Failed to create queue %u", dev->path, queue_sel);
 		return -1;
 	}
 
@@ -108,7 +108,7 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 
 	return 0;
 err:
-	PMD_INIT_LOG(ERR, "(%s) Failed to kick queue %u\n", dev->path, queue_sel);
+	PMD_INIT_LOG(ERR, "(%s) Failed to kick queue %u", dev->path, queue_sel);
 
 	return -1;
 }
@@ -214,7 +214,7 @@ error:
 	pthread_mutex_unlock(&dev->mutex);
 	rte_mcfg_mem_read_unlock();
 
-	PMD_INIT_LOG(ERR, "(%s) Failed to start device\n", dev->path);
+	PMD_INIT_LOG(ERR, "(%s) Failed to start device", dev->path);
 
 	/* TODO: free resource here or caller to check */
 	return -1;
@@ -255,7 +255,7 @@ out:
 err:
 	pthread_mutex_unlock(&dev->mutex);
 
-	PMD_INIT_LOG(ERR, "(%s) Failed to stop device\n", dev->path);
+	PMD_INIT_LOG(ERR, "(%s) Failed to stop device", dev->path);
 
 	return -1;
 }
@@ -471,7 +471,7 @@ exit:
 	pthread_mutex_unlock(&dev->mutex);
 
 	if (ret < 0)
-		PMD_DRV_LOG(ERR, "(%s) Failed to update memory table\n", dev->path);
+		PMD_DRV_LOG(ERR, "(%s) Failed to update memory table", dev->path);
 }
 
 static int
@@ -500,17 +500,17 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 	}
 
 	if (dev->ops->setup(dev) < 0) {
-		PMD_INIT_LOG(ERR, "(%s) Failed to setup backend\n", dev->path);
+		PMD_INIT_LOG(ERR, "(%s) Failed to setup backend", dev->path);
 		return -1;
 	}
 
 	if (virtio_user_dev_init_notify(dev) < 0) {
-		PMD_INIT_LOG(ERR, "(%s) Failed to init notifiers\n", dev->path);
+		PMD_INIT_LOG(ERR, "(%s) Failed to init notifiers", dev->path);
 		goto destroy;
 	}
 
 	if (virtio_user_fill_intr_handle(dev) < 0) {
-		PMD_INIT_LOG(ERR, "(%s) Failed to init interrupt handler\n", dev->path);
+		PMD_INIT_LOG(ERR, "(%s) Failed to init interrupt handler", dev->path);
 		goto uninit;
 	}
 
@@ -642,7 +642,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	if (rte_mem_event_callback_register(VIRTIO_USER_MEM_EVENT_CLB_NAME,
 				virtio_user_mem_event_cb, dev)) {
 		if (rte_errno != ENOTSUP) {
-			PMD_INIT_LOG(ERR, "(%s) Failed to register mem event callback\n",
+			PMD_INIT_LOG(ERR, "(%s) Failed to register mem event callback",
 					dev->path);
 			return -1;
 		}
@@ -866,7 +866,7 @@ virtio_user_dev_set_status(struct virtio_user_dev *dev, uint8_t status)
 	dev->status = status;
 	ret = dev->ops->set_status(dev, status);
 	if (ret && ret != -ENOTSUP)
-		PMD_INIT_LOG(ERR, "(%s) Failed to set backend status\n", dev->path);
+		PMD_INIT_LOG(ERR, "(%s) Failed to set backend status", dev->path);
 
 	pthread_mutex_unlock(&dev->mutex);
 	return ret;
@@ -890,7 +890,7 @@ virtio_user_dev_update_status(struct virtio_user_dev *dev)
 			"\t-DRIVER_OK: %u\n"
 			"\t-FEATURES_OK: %u\n"
 			"\t-DEVICE_NEED_RESET: %u\n"
-			"\t-FAILED: %u\n",
+			"\t-FAILED: %u",
 			dev->status,
 			(dev->status == VIRTIO_CONFIG_STATUS_RESET),
 			!!(dev->status & VIRTIO_CONFIG_STATUS_ACK),
@@ -900,7 +900,7 @@ virtio_user_dev_update_status(struct virtio_user_dev *dev)
 			!!(dev->status & VIRTIO_CONFIG_STATUS_DEV_NEED_RESET),
 			!!(dev->status & VIRTIO_CONFIG_STATUS_FAILED));
 	} else if (ret != -ENOTSUP) {
-		PMD_INIT_LOG(ERR, "(%s) Failed to get backend status\n", dev->path);
+		PMD_INIT_LOG(ERR, "(%s) Failed to get backend status", dev->path);
 	}
 
 	pthread_mutex_unlock(&dev->mutex);

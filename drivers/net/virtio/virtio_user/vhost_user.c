@@ -167,7 +167,7 @@ vhost_user_read(int fd, struct vhost_user_msg *msg)
 	sz_payload = msg->size;
 
 	if ((size_t)sz_payload > sizeof(msg->payload)) {
-		PMD_DRV_LOG(ERR, "Payload size overflow, header says %d but max %zu\n",
+		PMD_DRV_LOG(ERR, "Payload size overflow, header says %d but max %zu",
 				sz_payload, sizeof(msg->payload));
 		return -1;
 	}
@@ -749,7 +749,7 @@ vhost_user_start_server(struct virtio_user_dev *dev, struct sockaddr_un *un)
 
 	ret = bind(fd, (struct sockaddr *)un, sizeof(*un));
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "failed to bind to %s: %s; remove it and try again\n",
+		PMD_DRV_LOG(ERR, "failed to bind to %s: %s; remove it and try again",
 			    dev->path, strerror(errno));
 		return -1;
 	}
@@ -822,7 +822,7 @@ vhost_user_setup(struct virtio_user_dev *dev)
 
 	data = malloc(sizeof(*data));
 	if (!data) {
-		PMD_DRV_LOG(ERR, "(%s) Failed to allocate Vhost-user data\n", dev->path);
+		PMD_DRV_LOG(ERR, "(%s) Failed to allocate Vhost-user data", dev->path);
 		return -1;
 	}
 

@@ -62,14 +62,14 @@ vhost_kernel_tap_set_offload(int fd, uint64_t features)
 
 	/* Check if our kernel supports TUNSETOFFLOAD */
 	if (ioctl(fd, TUNSETOFFLOAD, 0) != 0 && errno == EINVAL) {
-		PMD_DRV_LOG(ERR, "Kernel doesn't support TUNSETOFFLOAD\n");
+		PMD_DRV_LOG(ERR, "Kernel doesn't support TUNSETOFFLOAD");
 		return -ENOTSUP;
 	}
 
 	if (ioctl(fd, TUNSETOFFLOAD, offload) != 0) {
 		offload &= ~TUN_F_UFO;
 		if (ioctl(fd, TUNSETOFFLOAD, offload) != 0) {
-			PMD_DRV_LOG(ERR, "TUNSETOFFLOAD ioctl() failed: %s\n",
+			PMD_DRV_LOG(ERR, "TUNSETOFFLOAD ioctl() failed: %s",
 				strerror(errno));
 			return -1;
 		}

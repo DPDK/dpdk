@@ -398,7 +398,7 @@ virtio_user_backend_type(const char *path)
 		if (errno == ENOENT)
 			return VIRTIO_USER_BACKEND_VHOST_USER;
 
-		PMD_INIT_LOG(ERR, "Stat fails: %s (%s)\n", path,
+		PMD_INIT_LOG(ERR, "Stat fails: %s (%s)", path,
 			     strerror(errno));
 		return VIRTIO_USER_BACKEND_UNKNOWN;
 	}

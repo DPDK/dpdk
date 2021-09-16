@@ -410,7 +410,7 @@ static int
 modern_features_ok(struct virtio_hw *hw)
 {
 	if (!virtio_with_feature(hw, VIRTIO_F_VERSION_1)) {
-		PMD_INIT_LOG(ERR, "Version 1+ required with modern devices\n");
+		PMD_INIT_LOG(ERR, "Version 1+ required with modern devices");
 		return -1;
 	}
 
