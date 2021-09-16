@@ -1214,11 +1214,11 @@ ice_validate_nvm_rw_reg(struct ice_nvm_access_cmd *cmd)
 		break;
 	}
 
-	for (i = 0; i <= ICE_NVM_ACCESS_GL_HIDA_MAX; i++)
+	for (i = 0; i <= GL_HIDA_MAX_INDEX; i++)
 		if (offset == (u32)GL_HIDA(i))
 			return ICE_SUCCESS;
 
-	for (i = 0; i <= ICE_NVM_ACCESS_GL_HIBA_MAX; i++)
+	for (i = 0; i <= GL_HIBA_MAX_INDEX; i++)
 		if (offset == (u32)GL_HIBA(i))
 			return ICE_SUCCESS;
 
