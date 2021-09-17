@@ -442,3 +442,115 @@ enum ice_status ice_parser_ecpri_tunnel_set(struct ice_parser *psr,
 {
 	return _tunnel_port_set(psr, "TNL_UDP_ECPRI", udp_port, on);
 }
+
+static bool _nearest_proto_id(struct ice_parser_result *rslt, u16 offset,
+			      u8 *proto_id, u16 *proto_off)
+{
+	u16 dist = 0xffff;
+	u8 p = 0;
+	int i;
+
+	for (i = 0; i < rslt->po_num; i++) {
+		if (offset < rslt->po[i].offset)
+			continue;
+		if (offset - rslt->po[i].offset < dist) {
+			p = rslt->po[i].proto_id;
+			dist = offset - rslt->po[i].offset;
+		}
+	}
+
+	if (dist % 2)
+		return false;
+
+	*proto_id = p;
+	*proto_off = dist;
+
+	return true;
+}
+
+/** default flag mask to cover GTP_EH_PDU, GTP_EH_PDU_LINK and TUN2
+ * In future, the flag masks should learn from DDP
+ */
+#define ICE_KEYBUILD_FLAG_MASK_DEFAULT_SW	0x4002
+#define ICE_KEYBUILD_FLAG_MASK_DEFAULT_ACL	0x0000
+#define ICE_KEYBUILD_FLAG_MASK_DEFAULT_FD	0x6080
+#define ICE_KEYBUILD_FLAG_MASK_DEFAULT_RSS	0x6010
+
+/**
+ * ice_parser_profile_init  - initialize a FXP profile base on parser result
+ * @rslt: a instance of a parser result
+ * @pkt_buf: packet data buffer
+ * @pkt_msk: packet mask buffer
+ * @pkt_len: packet length
+ * @blk: FXP pipeline stage
+ * @prefix_match: match protocol stack exactly or only prefix
+ * @prof: input/output parameter to save the profile
+ */
+enum ice_status ice_parser_profile_init(struct ice_parser_result *rslt,
+					const u8 *pkt_buf, const u8 *msk_buf,
+					int buf_len, enum ice_block blk,
+					bool prefix_match,
+					struct ice_parser_profile *prof)
+{
+	u8 proto_id = 0xff;
+	u16 proto_off = 0;
+	u16 off;
+
+	ice_memset(prof, 0, sizeof(*prof), ICE_NONDMA_MEM);
+	ice_set_bit(rslt->ptype, prof->ptypes);
+	if (blk == ICE_BLK_SW) {
+		prof->flags = rslt->flags_sw;
+		prof->flags_msk = ICE_KEYBUILD_FLAG_MASK_DEFAULT_SW;
+	} else if (blk == ICE_BLK_ACL) {
+		prof->flags = rslt->flags_acl;
+		prof->flags_msk = ICE_KEYBUILD_FLAG_MASK_DEFAULT_ACL;
+	} else if (blk == ICE_BLK_FD) {
+		prof->flags = rslt->flags_fd;
+		prof->flags_msk = ICE_KEYBUILD_FLAG_MASK_DEFAULT_FD;
+	} else if (blk == ICE_BLK_RSS) {
+		prof->flags = rslt->flags_rss;
+		prof->flags_msk = ICE_KEYBUILD_FLAG_MASK_DEFAULT_RSS;
+	} else {
+		return ICE_ERR_PARAM;
+	}
+
+	for (off = 0; off < buf_len - 1; off++) {
+		if (msk_buf[off] == 0 && msk_buf[off + 1] == 0)
+			continue;
+		if (!_nearest_proto_id(rslt, off, &proto_id, &proto_off))
+			continue;
+		if (prof->fv_num >= 32)
+			return ICE_ERR_PARAM;
+
+		prof->fv[prof->fv_num].proto_id = proto_id;
+		prof->fv[prof->fv_num].offset = proto_off;
+		prof->fv[prof->fv_num].spec = *(const u16 *)&pkt_buf[off];
+		prof->fv[prof->fv_num].msk = *(const u16 *)&msk_buf[off];
+		prof->fv_num++;
+	}
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_parser_profile_dump - dump an FXP profile info
+ * @hw: pointer to the hardware structure
+ * @prof: profile info to dump
+ */
+void ice_parser_profile_dump(struct ice_hw *hw, struct ice_parser_profile *prof)
+{
+	u16 i;
+
+	ice_info(hw, "ptypes:\n");
+	for (i = 0; i < ICE_FLOW_PTYPE_MAX; i++)
+		if (ice_is_bit_set(prof->ptypes, i))
+			ice_info(hw, "\t%d\n", i);
+
+	for (i = 0; i < prof->fv_num; i++)
+		ice_info(hw, "proto = %d, offset = %d spec = 0x%04x, mask = 0x%04x\n",
+			 prof->fv[i].proto_id, prof->fv[i].offset,
+			 prof->fv[i].spec, prof->fv[i].msk);
+
+	ice_info(hw, "flags = 0x%04x\n", prof->flags);
+	ice_info(hw, "flags_msk = 0x%04x\n", prof->flags_msk);
+}

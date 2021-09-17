@@ -86,4 +86,28 @@ struct ice_parser_result {
 enum ice_status ice_parser_run(struct ice_parser *psr, const u8 *pkt_buf,
 			       int pkt_len, struct ice_parser_result *rslt);
 void ice_parser_result_dump(struct ice_hw *hw, struct ice_parser_result *rslt);
+
+struct ice_parser_fv {
+	u8 proto_id; /* hardware protocol ID */
+	u16 offset; /* offset from the start of the protocol header */
+	u16 spec; /* 16 bits pattern to match */
+	u16 msk; /* 16 bits pattern mask */
+};
+
+struct ice_parser_profile {
+	struct ice_parser_fv fv[48]; /* field vector array */
+	int fv_num; /* field vector number must <= 48 */
+	u16 flags; /* 16 bits key builder flag */
+	u16 flags_msk; /* key builder flag masker */
+	/* 1024 bits PTYPE bitmap */
+	ice_declare_bitmap(ptypes, ICE_FLOW_PTYPE_MAX);
+};
+
+enum ice_status ice_parser_profile_init(struct ice_parser_result *rslt,
+					const u8 *pkt_buf, const u8 *msk_buf,
+					int buf_len, enum ice_block blk,
+					bool prefix_match,
+					struct ice_parser_profile *prof);
+void ice_parser_profile_dump(struct ice_hw *hw,
+			     struct ice_parser_profile *prof);
 #endif /* _ICE_PARSER_H_ */
