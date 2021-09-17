@@ -15,6 +15,7 @@
 #include "ice_flg_rd.h"
 #include "ice_xlt_kb.h"
 #include "ice_parser_rt.h"
+#include "ice_tmatch.h"
 
 struct ice_parser {
 	struct ice_hw *hw; /* pointer to the hardware structure */
