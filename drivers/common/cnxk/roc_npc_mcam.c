@@ -522,7 +522,8 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 
 	entry = npc_check_preallocated_entry_cache(mbox, flow, npc);
 	if (entry < 0) {
-		npc_mcam_free_counter(npc, ctr);
+		if (use_ctr)
+			npc_mcam_free_counter(npc, ctr);
 		return NPC_ERR_MCAM_ALLOC;
 	}
 
