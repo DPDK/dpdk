@@ -214,7 +214,7 @@ roc_npa_aura_batch_alloc_issue(uint64_t aura_handle, uint64_t *buf,
 	cmp.u = 0;
 	cmp.compare_s.aura = roc_npa_aura_handle_to_aura(aura_handle);
 	cmp.compare_s.drop = drop;
-	cmp.compare_s.stype = ALLOC_STYPE_STSTP;
+	cmp.compare_s.stype = ALLOC_STYPE_STF;
 	cmp.compare_s.dis_wait = dis_wait;
 	cmp.compare_s.count = num;
 

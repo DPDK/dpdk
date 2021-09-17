@@ -585,6 +585,10 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 
 	memset(&aura, 0, sizeof(aura));
 	aura.fc_ena = 1;
+	if (roc_model_is_cn9k() || roc_model_is_cn10ka_a0())
+		aura.fc_stype = 0x0; /* STF */
+	else
+		aura.fc_stype = 0x3; /* STSTP */
 	aura.fc_addr = (uint64_t)sq->fc;
 	aura.fc_hyst_bits = 0; /* Store count on all updates */
 	rc = roc_npa_pool_create(&sq->aura_handle, blk_sz, NIX_MAX_SQB, &aura,
