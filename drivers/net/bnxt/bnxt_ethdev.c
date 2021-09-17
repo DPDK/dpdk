@@ -814,6 +814,16 @@ skip_cosq_cfg:
 		}
 	}
 
+	for (j = 0; j < bp->tx_nr_rings; j++) {
+		struct bnxt_tx_queue *txq = bp->tx_queues[j];
+
+		if (!txq->tx_deferred_start) {
+			bp->eth_dev->data->tx_queue_state[j] =
+				RTE_ETH_QUEUE_STATE_STARTED;
+			txq->tx_started = true;
+		}
+	}
+
 	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, &bp->vnic_info[0], 0, NULL);
 	if (rc) {
 		PMD_DRV_LOG(ERR,

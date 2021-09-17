@@ -166,11 +166,6 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	eth_dev->data->tx_queues[queue_idx] = txq;
 
-	if (txq->tx_deferred_start)
-		txq->tx_started = false;
-	else
-		txq->tx_started = true;
-
 	return 0;
 err:
 	bnxt_tx_queue_release_op(txq);
