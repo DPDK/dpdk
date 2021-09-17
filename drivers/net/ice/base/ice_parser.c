@@ -13,6 +13,7 @@
 #define ICE_SID_RXPARSER_NOMATCH_CAM_ENTRY_SIZE		12
 #define ICE_SID_RXPARSER_NOMATCH_SPILL_ENTRY_SIZE	13
 #define ICE_SID_RXPARSER_BOOST_TCAM_ENTRY_SIZE		88
+#define ICE_SID_RXPARSER_MARKER_TYPE_ENTRY_SIZE		24
 
 #define ICE_SEC_LBL_DATA_OFFSET				2
 #define ICE_SID_LBL_ENTRY_SIZE				66
@@ -71,6 +72,9 @@ void *ice_parser_sect_item_get(u32 sect_type, void *section,
 	case ICE_SID_LBL_RXPARSER_TMEM:
 		data_off = ICE_SEC_LBL_DATA_OFFSET;
 		size = ICE_SID_LBL_ENTRY_SIZE;
+		break;
+	case ICE_SID_RXPARSER_MARKER_PTYPE:
+		size = ICE_SID_RXPARSER_MARKER_TYPE_ENTRY_SIZE;
 		break;
 	default:
 		return NULL;
@@ -205,6 +209,12 @@ enum ice_status ice_parser_create(struct ice_hw *hw, struct ice_parser **psr)
 		goto err;
 	}
 
+	p->ptype_mk_tcam_table = ice_ptype_mk_tcam_table_get(hw);
+	if (!p->ptype_mk_tcam_table) {
+		status = ICE_ERR_PARAM;
+		goto err;
+	}
+
 	*psr = p;
 	return ICE_SUCCESS;
 err:
@@ -226,6 +236,7 @@ void ice_parser_destroy(struct ice_parser *psr)
 	ice_free(psr->hw, psr->pg_nm_sp_cam_table);
 	ice_free(psr->hw, psr->bst_tcam_table);
 	ice_free(psr->hw, psr->bst_lbl_table);
+	ice_free(psr->hw, psr->ptype_mk_tcam_table);
 
 	ice_free(psr->hw, psr);
 }
