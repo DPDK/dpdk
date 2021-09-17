@@ -367,3 +367,78 @@ void ice_parser_dvm_set(struct ice_parser *psr, bool on)
 	_bst_vm_set(psr, "BOOST_MAC_VLAN_DVM", on);
 	_bst_vm_set(psr, "BOOST_MAC_VLAN_SVM", !on);
 }
+
+static enum ice_status
+_tunnel_port_set(struct ice_parser *psr, const char *prefix, u16 udp_port,
+		 bool on)
+{
+	u8 *buf = (u8 *)&udp_port;
+	struct ice_bst_tcam_item *item;
+	u16 i = 0;
+
+	while (true) {
+		item = ice_bst_tcam_search(psr->bst_tcam_table,
+					   psr->bst_lbl_table,
+					   prefix, &i);
+		if (!item)
+			break;
+
+		/* found empty slot to add */
+		if (on && item->key[16] == 0xfe && item->key_inv[16] == 0xfe) {
+			item->key_inv[15] = buf[0];
+			item->key_inv[16] = buf[1];
+			item->key[15] = (u8)(0xff - buf[0]);
+			item->key[16] = (u8)(0xff - buf[1]);
+
+			return ICE_SUCCESS;
+		/* found a matched slot to delete */
+		} else if (!on && (item->key_inv[15] == buf[0] ||
+			   item->key_inv[16] == buf[1])) {
+			item->key_inv[15] = 0xff;
+			item->key_inv[16] = 0xfe;
+			item->key[15] = 0xff;
+			item->key[16] = 0xfe;
+
+			return ICE_SUCCESS;
+		}
+		i++;
+	}
+
+	return ICE_ERR_PARAM;
+}
+
+/**
+ * ice_parser_vxlan_tunnel_set - configure vxlan tunnel for parser
+ * @psr: pointer to a parser instance
+ * @udp_port: vxlan tunnel port in UDP header
+ * @on: true to turn on; false to turn off
+ */
+enum ice_status ice_parser_vxlan_tunnel_set(struct ice_parser *psr,
+					    u16 udp_port, bool on)
+{
+	return _tunnel_port_set(psr, "TNL_VXLAN", udp_port, on);
+}
+
+/**
+ * ice_parser_geneve_tunnel_set - configure geneve tunnel for parser
+ * @psr: pointer to a parser instance
+ * @udp_port: geneve tunnel port in UDP header
+ * @on: true to turn on; false to turn off
+ */
+enum ice_status ice_parser_geneve_tunnel_set(struct ice_parser *psr,
+					     u16 udp_port, bool on)
+{
+	return _tunnel_port_set(psr, "TNL_GENEVE", udp_port, on);
+}
+
+/**
+ * ice_parser_ecpri_tunnel_set - configure ecpri tunnel for parser
+ * @psr: pointer to a parser instance
+ * @udp_port: ecpri tunnel port in UDP header
+ * @on: true to turn on; false to turn off
+ */
+enum ice_status ice_parser_ecpri_tunnel_set(struct ice_parser *psr,
+					    u16 udp_port, bool on)
+{
+	return _tunnel_port_set(psr, "TNL_UDP_ECPRI", udp_port, on);
+}

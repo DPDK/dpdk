@@ -58,6 +58,12 @@ struct ice_parser {
 enum ice_status ice_parser_create(struct ice_hw *hw, struct ice_parser **psr);
 void ice_parser_destroy(struct ice_parser *psr);
 void ice_parser_dvm_set(struct ice_parser *psr, bool on);
+enum ice_status ice_parser_vxlan_tunnel_set(struct ice_parser *psr,
+					    u16 udp_port, bool on);
+enum ice_status ice_parser_geneve_tunnel_set(struct ice_parser *psr,
+					     u16 udp_port, bool on);
+enum ice_status ice_parser_ecpri_tunnel_set(struct ice_parser *psr,
+					    u16 udp_port, bool on);
 
 struct ice_parser_proto_off {
 	u8 proto_id; /* hardware protocol ID */
