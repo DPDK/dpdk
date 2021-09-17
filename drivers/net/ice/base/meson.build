@@ -22,6 +22,7 @@ sources = [
         'ice_bst_tcam.c',
         'ice_ptype_mk.c',
         'ice_mk_grp.c',
+        'ice_proto_grp.c',
 ]
 
 error_cflags = [
