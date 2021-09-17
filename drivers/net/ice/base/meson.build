@@ -23,6 +23,7 @@ sources = [
         'ice_ptype_mk.c',
         'ice_mk_grp.c',
         'ice_proto_grp.c',
+        'ice_flg_rd.c',
 ]
 
 error_cflags = [

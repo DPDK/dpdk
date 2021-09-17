@@ -198,6 +198,8 @@ struct ice_buf_hdr {
 #define ICE_SID_CDID_KEY_BUILDER_PE	87
 #define ICE_SID_CDID_REDIR_PE		88
 
+#define ICE_SID_RXPARSER_FLAG_REDIR	97
+
 /* Label Metadata section IDs */
 #define ICE_SID_LBL_FIRST		0x80000010
 #define ICE_SID_LBL_RXPARSER_IMEM	0x80000010
