@@ -1411,7 +1411,6 @@ test_deflate_comp_finalize(const struct interim_data_params *int_data,
 	/* from int_data: */
 	unsigned int num_xforms = int_data->num_xforms;
 	struct rte_comp_xform **compress_xforms = int_data->compress_xforms;
-	uint16_t *buf_idx = int_data->buf_idx;
 	unsigned int num_bufs = int_data->num_bufs;
 
 	/* from test_priv_data: */
@@ -1442,7 +1441,7 @@ test_deflate_comp_finalize(const struct interim_data_params *int_data,
 
 		RTE_LOG(DEBUG, USER1, "Buffer %u compressed by %s from %u to"
 			" %u bytes (level = %d, huffman = %s)\n",
-			buf_idx[priv_data->orig_idx], engine,
+			i, engine,
 			ops_processed[i]->consumed, ops_processed[i]->produced,
 			compress_xform->level,
 			huffman_type_strings[huffman_type]);
@@ -1734,7 +1733,6 @@ test_deflate_decomp_finalize(const struct interim_data_params *int_data,
 	static unsigned int step;
 
 	/* from int_data: */
-	uint16_t *buf_idx = int_data->buf_idx;
 	unsigned int num_bufs = int_data->num_bufs;
 	const char * const *test_bufs = int_data->test_bufs;
 	struct rte_comp_xform **compress_xforms = int_data->compress_xforms;
@@ -1766,7 +1764,7 @@ test_deflate_decomp_finalize(const struct interim_data_params *int_data,
 			strlcpy(engine, "pmd", sizeof(engine));
 		RTE_LOG(DEBUG, USER1,
 			"Buffer %u decompressed by %s from %u to %u bytes\n",
-			buf_idx[priv_data->orig_idx], engine,
+			i, engine,
 			ops_processed[i]->consumed, ops_processed[i]->produced);
 		ops[i] = NULL;
 	}
