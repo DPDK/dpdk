@@ -39,6 +39,7 @@ do {                                                                           \
 struct source {
 	struct {
 		struct rte_mempool *pool;
+		uint64_t n_loops;
 	} params;
 	struct rte_swx_port_in_stats stats;
 	struct rte_mbuf **pkts;
@@ -96,6 +97,8 @@ source_create(void *args)
 	/* Initialization. */
 	p->params.pool = params->pool;
 
+	p->params.n_loops = params->n_loops ? params->n_loops : UINT64_MAX;
+
 	/* PCAP file. */
 	for (i = 0; i < n_pkts_max; i++) {
 		struct pcap_pkthdr pcap_pkthdr;
@@ -142,6 +145,8 @@ source_pkt_rx(void *port, struct rte_swx_pkt *pkt)
 	struct rte_mbuf *m_dst, *m_src;
 	uint8_t *m_dst_data, *m_src_data;
 
+	if (!p->params.n_loops)
+		return 0;
 	/* m_src identification. */
 	m_src = p->pkts[p->pos];
 	m_src_data = rte_pktmbuf_mtod(m_src, uint8_t *);
@@ -177,8 +182,10 @@ source_pkt_rx(void *port, struct rte_swx_pkt *pkt)
 
 	/* m_src next. */
 	p->pos++;
-	if (p->pos == p->n_pkts)
+	if (p->pos == p->n_pkts) {
 		p->pos = 0;
+		p->params.n_loops--;
+	}
 
 	return 1;
 }

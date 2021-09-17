@@ -28,6 +28,11 @@ struct rte_swx_port_source_params {
 	/** Name of a valid PCAP file to read the input packets from. */
 	const char *file_name;
 
+	/** Number of times to loop through the input PCAP file.
+	 * Loop infinite times when set to 0.
+	 */
+	uint64_t n_loops;
+
 	/** Maximum number of packets to read from the PCAP file. When 0, it is
 	 * internally set to RTE_SWX_PORT_SOURCE_PKTS_MAX. Once read from the
 	 * PCAP file, the same packets are looped forever.

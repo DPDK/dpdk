@@ -555,7 +555,7 @@ static const char cmd_pipeline_port_in_help[] =
 "pipeline <pipeline_name> port in <port_id>\n"
 "   link <link_name> rxq <queue_id> bsz <burst_size>\n"
 "   ring <ring_name> bsz <burst_size>\n"
-"   | source <mempool_name> <file_name>\n"
+"   | source <mempool_name> <file_name> loop <n_loops>\n"
 "   | tap <tap_name> mempool <mempool_name> mtu <mtu> bsz <burst_size>\n";
 
 static void
@@ -682,7 +682,7 @@ cmd_pipeline_port_in(char **tokens,
 		struct rte_swx_port_source_params params;
 		struct mempool *mp;
 
-		if (n_tokens < t0 + 3) {
+		if (n_tokens < t0 + 5) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH,
 				"pipeline port in source");
 			return;
@@ -698,7 +698,18 @@ cmd_pipeline_port_in(char **tokens,
 
 		params.file_name = tokens[t0 + 2];
 
-		t0 += 3;
+		if (strcmp(tokens[t0 + 3], "loop") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "loop");
+			return;
+		}
+
+		if (parser_read_uint64(&params.n_loops, tokens[t0 + 4])) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"n_loops");
+			return;
+		}
+
+		t0 += 5;
 
 		status = rte_swx_pipeline_port_in_config(p->p,
 			port_id,
