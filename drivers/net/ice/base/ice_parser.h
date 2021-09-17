@@ -7,6 +7,9 @@
 
 struct ice_parser {
 	struct ice_hw *hw; /* pointer to the hardware structure */
+
+	/* load data from section ICE_SID_RX_PARSER_IMEM */
+	struct ice_imem_item *imem_table;
 };
 
 enum ice_status ice_parser_create(struct ice_hw *hw, struct ice_parser **psr);
