@@ -218,7 +218,7 @@ ice_pkg_advance_sect(struct ice_seg *ice_seg, struct ice_pkg_enum *state)
  * When the function returns a NULL pointer, then the end of the matching
  * sections has been reached.
  */
-static void *
+void *
 ice_pkg_enum_section(struct ice_seg *ice_seg, struct ice_pkg_enum *state,
 		     u32 sect_type)
 {

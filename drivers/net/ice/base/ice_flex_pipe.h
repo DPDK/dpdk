@@ -99,4 +99,7 @@ ice_pkg_enum_entry(struct ice_seg *ice_seg, struct ice_pkg_enum *state,
 		   u32 sect_type, u32 *offset,
 		   void *(*handler)(u32 sect_type, void *section,
 				    u32 index, u32 *offset));
+void *
+ice_pkg_enum_section(struct ice_seg *ice_seg, struct ice_pkg_enum *state,
+		     u32 sect_type);
 #endif /* _ICE_FLEX_PIPE_H_ */

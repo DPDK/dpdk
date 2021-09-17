@@ -245,6 +245,30 @@ enum ice_status ice_parser_create(struct ice_hw *hw, struct ice_parser **psr)
 		goto err;
 	}
 
+	p->xlt_kb_sw = ice_xlt_kb_get_sw(hw);
+	if (!p->xlt_kb_sw) {
+		status = ICE_ERR_PARAM;
+		goto err;
+	}
+
+	p->xlt_kb_acl = ice_xlt_kb_get_acl(hw);
+	if (!p->xlt_kb_acl) {
+		status = ICE_ERR_PARAM;
+		goto err;
+	}
+
+	p->xlt_kb_fd = ice_xlt_kb_get_fd(hw);
+	if (!p->xlt_kb_fd) {
+		status = ICE_ERR_PARAM;
+		goto err;
+	}
+
+	p->xlt_kb_rss = ice_xlt_kb_get_rss(hw);
+	if (!p->xlt_kb_rss) {
+		status = ICE_ERR_PARAM;
+		goto err;
+	}
+
 	*psr = p;
 	return ICE_SUCCESS;
 err:
@@ -270,6 +294,10 @@ void ice_parser_destroy(struct ice_parser *psr)
 	ice_free(psr->hw, psr->mk_grp_table);
 	ice_free(psr->hw, psr->proto_grp_table);
 	ice_free(psr->hw, psr->flg_rd_table);
+	ice_free(psr->hw, psr->xlt_kb_sw);
+	ice_free(psr->hw, psr->xlt_kb_acl);
+	ice_free(psr->hw, psr->xlt_kb_fd);
+	ice_free(psr->hw, psr->xlt_kb_rss);
 
 	ice_free(psr->hw, psr);
 }

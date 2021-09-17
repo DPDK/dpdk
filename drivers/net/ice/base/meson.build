@@ -24,6 +24,7 @@ sources = [
         'ice_mk_grp.c',
         'ice_proto_grp.c',
         'ice_flg_rd.c',
+        'ice_xlt_kb.c',
 ]
 
 error_cflags = [
