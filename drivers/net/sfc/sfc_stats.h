@@ -53,7 +53,7 @@ sfc_pkts_bytes_add(union sfc_pkts_bytes *st, uint64_t pkts, uint64_t bytes)
 	 * core sees both counter updates together.
 	 */
 	__atomic_store_n(&st->pkts_bytes.int128, result.pkts_bytes.int128,
-			 __ATOMIC_RELEASE);
+			 __ATOMIC_RELAXED);
 #else
 	st->pkts += pkts;
 	st->bytes += bytes;
@@ -68,7 +68,7 @@ sfc_pkts_bytes_get(const union sfc_pkts_bytes *st, union sfc_pkts_bytes *result)
 {
 #if SFC_SW_STATS_ATOMIC
 	result->pkts_bytes.int128 = __atomic_load_n(&st->pkts_bytes.int128,
-						    __ATOMIC_ACQUIRE);
+						    __ATOMIC_RELAXED);
 #else
 	*result = *st;
 #endif
