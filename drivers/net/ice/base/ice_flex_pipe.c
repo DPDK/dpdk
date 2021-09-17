@@ -284,7 +284,7 @@ ice_pkg_enum_section(struct ice_seg *ice_seg, struct ice_pkg_enum *state,
  * indicates a base offset of 10, and the index for the entry is 2, then
  * section handler function should set the offset to 10 + 2 = 12.
  */
-static void *
+void *
 ice_pkg_enum_entry(struct ice_seg *ice_seg, struct ice_pkg_enum *state,
 		   u32 sect_type, u32 *offset,
 		   void *(*handler)(u32 sect_type, void *section,

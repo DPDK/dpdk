@@ -94,4 +94,9 @@ void ice_pkg_buf_free(struct ice_hw *hw, struct ice_buf_build *bld);
 enum ice_status
 ice_set_key(u8 *key, u16 size, u8 *val, u8 *upd, u8 *dc, u8 *nm, u16 off,
 	    u16 len);
+void *
+ice_pkg_enum_entry(struct ice_seg *ice_seg, struct ice_pkg_enum *state,
+		   u32 sect_type, u32 *offset,
+		   void *(*handler)(u32 sect_type, void *section,
+				    u32 index, u32 *offset));
 #endif /* _ICE_FLEX_PIPE_H_ */
