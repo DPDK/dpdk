@@ -10,6 +10,8 @@ struct ice_parser {
 
 	/* load data from section ICE_SID_RX_PARSER_IMEM */
 	struct ice_imem_item *imem_table;
+	/* load data from section ICE_SID_RXPARSER_METADATA_INIT */
+	struct ice_metainit_item *mi_table;
 };
 
 enum ice_status ice_parser_create(struct ice_hw *hw, struct ice_parser **psr);

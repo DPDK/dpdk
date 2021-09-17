@@ -17,6 +17,7 @@ sources = [
         'ice_ptp_hw.c',
         'ice_parser.c',
         'ice_imem.c',
+        'ice_metainit.c',
 ]
 
 error_cflags = [

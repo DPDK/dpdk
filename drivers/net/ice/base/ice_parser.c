@@ -5,8 +5,9 @@
 #include "ice_common.h"
 #include "ice_parser_util.h"
 
-#define ICE_SEC_DATA_OFFSET			4
-#define ICE_SID_RXPARSER_IMEM_ENTRY_SIZE	48
+#define ICE_SEC_DATA_OFFSET				4
+#define ICE_SID_RXPARSER_IMEM_ENTRY_SIZE		48
+#define ICE_SID_RXPARSER_METADATA_INIT_ENTRY_SIZE	24
 
 /**
  * ice_parser_sect_item_get - parse a item from a section
@@ -28,6 +29,9 @@ void *ice_parser_sect_item_get(u32 sect_type, void *section,
 	switch (sect_type) {
 	case ICE_SID_RXPARSER_IMEM:
 		size = ICE_SID_RXPARSER_IMEM_ENTRY_SIZE;
+		break;
+	case ICE_SID_RXPARSER_METADATA_INIT:
+		size = ICE_SID_RXPARSER_METADATA_INIT_ENTRY_SIZE;
 		break;
 	default:
 		return NULL;
@@ -115,6 +119,12 @@ enum ice_status ice_parser_create(struct ice_hw *hw, struct ice_parser **psr)
 		goto err;
 	}
 
+	p->mi_table = ice_metainit_table_get(hw);
+	if (!p->mi_table) {
+		status = ICE_ERR_PARAM;
+		goto err;
+	}
+
 	*psr = p;
 	return ICE_SUCCESS;
 err:
@@ -129,6 +139,7 @@ err:
 void ice_parser_destroy(struct ice_parser *psr)
 {
 	ice_free(psr->hw, psr->imem_table);
+	ice_free(psr->hw, psr->mi_table);
 
 	ice_free(psr->hw, psr);
 }
