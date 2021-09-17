@@ -240,5 +240,5 @@ struct ice_imem_item *ice_imem_table_get(struct ice_hw *hw)
 					sizeof(struct ice_imem_item),
 					ICE_IMEM_TABLE_SIZE,
 					ice_parser_sect_item_get,
-					_imem_parse_item);
+					_imem_parse_item, false);
 }

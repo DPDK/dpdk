@@ -139,5 +139,5 @@ struct ice_metainit_item *ice_metainit_table_get(struct ice_hw *hw)
 					sizeof(struct ice_metainit_item),
 					ICE_METAINIT_TABLE_SIZE,
 					ice_parser_sect_item_get,
-					_metainit_parse_item);
+					_metainit_parse_item, false);
 }

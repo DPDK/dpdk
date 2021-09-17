@@ -252,7 +252,7 @@ struct ice_pg_cam_item *ice_pg_cam_table_get(struct ice_hw *hw)
 					sizeof(struct ice_pg_cam_item),
 					ICE_PG_CAM_TABLE_SIZE,
 					ice_parser_sect_item_get,
-					_pg_cam_parse_item);
+					_pg_cam_parse_item, false);
 }
 
 /**
@@ -266,7 +266,7 @@ struct ice_pg_cam_item *ice_pg_sp_cam_table_get(struct ice_hw *hw)
 					sizeof(struct ice_pg_cam_item),
 					ICE_PG_SP_CAM_TABLE_SIZE,
 					ice_parser_sect_item_get,
-					_pg_sp_cam_parse_item);
+					_pg_sp_cam_parse_item, false);
 }
 
 /**
@@ -280,7 +280,7 @@ struct ice_pg_nm_cam_item *ice_pg_nm_cam_table_get(struct ice_hw *hw)
 					sizeof(struct ice_pg_nm_cam_item),
 					ICE_PG_NM_CAM_TABLE_SIZE,
 					ice_parser_sect_item_get,
-					_pg_nm_cam_parse_item);
+					_pg_nm_cam_parse_item, false);
 }
 
 /**
@@ -294,5 +294,5 @@ struct ice_pg_nm_cam_item *ice_pg_nm_sp_cam_table_get(struct ice_hw *hw)
 					sizeof(struct ice_pg_nm_cam_item),
 					ICE_PG_NM_SP_CAM_TABLE_SIZE,
 					ice_parser_sect_item_get,
-					_pg_nm_sp_cam_parse_item);
+					_pg_nm_sp_cam_parse_item, false);
 }

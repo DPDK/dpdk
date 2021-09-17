@@ -12,6 +12,22 @@
 #define ICE_SID_RXPARSER_PG_SPILL_ENTRY_SIZE		17
 #define ICE_SID_RXPARSER_NOMATCH_CAM_ENTRY_SIZE		12
 #define ICE_SID_RXPARSER_NOMATCH_SPILL_ENTRY_SIZE	13
+#define ICE_SID_RXPARSER_BOOST_TCAM_ENTRY_SIZE		88
+
+#define ICE_SEC_LBL_DATA_OFFSET				2
+#define ICE_SID_LBL_ENTRY_SIZE				66
+
+void ice_lbl_dump(struct ice_hw *hw, struct ice_lbl_item *item)
+{
+	ice_info(hw, "index = %d\n", item->idx);
+	ice_info(hw, "label = %s\n", item->label);
+}
+
+void ice_parse_item_dflt(struct ice_hw *hw, u16 idx, void *item,
+			 void *data, int size)
+{
+	ice_memcpy(item, data, size, ICE_DMA_TO_NONDMA);
+}
 
 /**
  * ice_parser_sect_item_get - parse a item from a section
@@ -49,6 +65,13 @@ void *ice_parser_sect_item_get(u32 sect_type, void *section,
 	case ICE_SID_RXPARSER_NOMATCH_SPILL:
 		size = ICE_SID_RXPARSER_NOMATCH_SPILL_ENTRY_SIZE;
 		break;
+	case ICE_SID_RXPARSER_BOOST_TCAM:
+		size = ICE_SID_RXPARSER_BOOST_TCAM_ENTRY_SIZE;
+		break;
+	case ICE_SID_LBL_RXPARSER_TMEM:
+		data_off = ICE_SEC_LBL_DATA_OFFSET;
+		size = ICE_SID_LBL_ENTRY_SIZE;
+		break;
 	default:
 		return NULL;
 	}
@@ -68,6 +91,7 @@ void *ice_parser_sect_item_get(u32 sect_type, void *section,
  * @length: number of items in the table to create
  * @item_get: the function will be parsed to ice_pkg_enum_entry
  * @parser_item: the function to parse the item
+ * @no_offset: ignore header offset, calculate index from 0
  */
 void *ice_parser_create_table(struct ice_hw *hw, u32 sect_type,
 			      u32 item_size, u32 length,
@@ -75,11 +99,12 @@ void *ice_parser_create_table(struct ice_hw *hw, u32 sect_type,
 						u32 index, u32 *offset),
 			      void (*parse_item)(struct ice_hw *hw, u16 idx,
 						 void *item, void *data,
-						 int size))
+						 int size),
+			      bool no_offset)
 {
 	struct ice_seg *seg = hw->seg;
 	struct ice_pkg_enum state;
-	u16 idx = 0;
+	u16 idx = 0xffff;
 	void *table;
 	void *data;
 
@@ -102,7 +127,10 @@ void *ice_parser_create_table(struct ice_hw *hw, u32 sect_type,
 			struct ice_pkg_sect_hdr *hdr =
 				(struct ice_pkg_sect_hdr *)state.sect;
 
-			idx = hdr->offset + state.entry_idx;
+			if (no_offset)
+				idx++;
+			else
+				idx = hdr->offset + state.entry_idx;
 			parse_item(hw, idx,
 				   (void *)((uintptr_t)table + idx * item_size),
 				   data, item_size);
@@ -165,6 +193,18 @@ enum ice_status ice_parser_create(struct ice_hw *hw, struct ice_parser **psr)
 		goto err;
 	}
 
+	p->bst_tcam_table = ice_bst_tcam_table_get(hw);
+	if (!p->bst_tcam_table) {
+		status = ICE_ERR_PARAM;
+		goto err;
+	}
+
+	p->bst_lbl_table = ice_bst_lbl_table_get(hw);
+	if (!p->bst_lbl_table) {
+		status = ICE_ERR_PARAM;
+		goto err;
+	}
+
 	*psr = p;
 	return ICE_SUCCESS;
 err:
@@ -184,6 +224,8 @@ void ice_parser_destroy(struct ice_parser *psr)
 	ice_free(psr->hw, psr->pg_sp_cam_table);
 	ice_free(psr->hw, psr->pg_nm_cam_table);
 	ice_free(psr->hw, psr->pg_nm_sp_cam_table);
+	ice_free(psr->hw, psr->bst_tcam_table);
+	ice_free(psr->hw, psr->bst_lbl_table);
 
 	ice_free(psr->hw, psr);
 }

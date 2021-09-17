@@ -19,6 +19,7 @@ sources = [
         'ice_imem.c',
         'ice_metainit.c',
         'ice_pg_cam.c',
+        'ice_bst_tcam.c',
 ]
 
 error_cflags = [
