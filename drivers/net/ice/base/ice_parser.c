@@ -167,6 +167,8 @@ enum ice_status ice_parser_create(struct ice_hw *hw, struct ice_parser **psr)
 	struct ice_parser *p;
 
 	p = (struct ice_parser *)ice_malloc(hw, sizeof(struct ice_parser));
+	p->hw = hw;
+	p->rt.psr = p;
 
 	if (!p)
 		return ICE_ERR_NO_MEMORY;
@@ -300,4 +302,41 @@ void ice_parser_destroy(struct ice_parser *psr)
 	ice_free(psr->hw, psr->xlt_kb_rss);
 
 	ice_free(psr->hw, psr);
+}
+
+/**
+ * ice_parser_run - parse on a packet in binary and return the result
+ * @psr: pointer to a parser instance
+ * @pkt_buf: packet data
+ * @pkt_len: packet length
+ * @rslt: input/output parameter to save parser result.
+ */
+enum ice_status ice_parser_run(struct ice_parser *psr, const u8 *pkt_buf,
+			       int pkt_len, struct ice_parser_result *rslt)
+{
+	ice_parser_rt_reset(&psr->rt);
+	ice_parser_rt_pktbuf_set(&psr->rt, pkt_buf, pkt_len);
+
+	return ice_parser_rt_execute(&psr->rt, rslt);
+}
+
+/**
+ * ice_parser_result_dump - dump a parser result info
+ * @hw: pointer to the hardware structure
+ * @rslt: parser result info to dump
+ */
+void ice_parser_result_dump(struct ice_hw *hw, struct ice_parser_result *rslt)
+{
+	int i;
+
+	ice_info(hw, "ptype = %d\n", rslt->ptype);
+	for (i = 0; i < rslt->po_num; i++)
+		ice_info(hw, "proto = %d, offset = %d\n",
+			 rslt->po[i].proto_id, rslt->po[i].offset);
+
+	ice_info(hw, "flags_psr = 0x%016" PRIx64 "\n", rslt->flags_psr);
+	ice_info(hw, "flags_pkt = 0x%016" PRIx64 "\n", rslt->flags_pkt);
+	ice_info(hw, "flags_sw = 0x%04x\n", rslt->flags_sw);
+	ice_info(hw, "flags_fd = 0x%04x\n", rslt->flags_fd);
+	ice_info(hw, "flags_rss = 0x%04x\n", rslt->flags_rss);
 }
