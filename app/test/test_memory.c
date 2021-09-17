@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include <rte_eal.h>
+#include <rte_errno.h>
 #include <rte_memory.h>
 #include <rte_common.h>
 #include <rte_memzone.h>
@@ -53,7 +54,7 @@ check_seg_fds(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 		/* ENOTSUP means segment is valid, but there is not support for
 		 * segment fd API (e.g. on FreeBSD).
 		 */
-		if (errno == ENOTSUP)
+		if (rte_errno == ENOTSUP)
 			return 1;
 		/* all other errors are treated as failures */
 		return -1;
