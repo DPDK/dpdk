@@ -8,6 +8,10 @@
 #define ICE_SEC_DATA_OFFSET				4
 #define ICE_SID_RXPARSER_IMEM_ENTRY_SIZE		48
 #define ICE_SID_RXPARSER_METADATA_INIT_ENTRY_SIZE	24
+#define ICE_SID_RXPARSER_CAM_ENTRY_SIZE			16
+#define ICE_SID_RXPARSER_PG_SPILL_ENTRY_SIZE		17
+#define ICE_SID_RXPARSER_NOMATCH_CAM_ENTRY_SIZE		12
+#define ICE_SID_RXPARSER_NOMATCH_SPILL_ENTRY_SIZE	13
 
 /**
  * ice_parser_sect_item_get - parse a item from a section
@@ -32,6 +36,18 @@ void *ice_parser_sect_item_get(u32 sect_type, void *section,
 		break;
 	case ICE_SID_RXPARSER_METADATA_INIT:
 		size = ICE_SID_RXPARSER_METADATA_INIT_ENTRY_SIZE;
+		break;
+	case ICE_SID_RXPARSER_CAM:
+		size = ICE_SID_RXPARSER_CAM_ENTRY_SIZE;
+		break;
+	case ICE_SID_RXPARSER_PG_SPILL:
+		size = ICE_SID_RXPARSER_PG_SPILL_ENTRY_SIZE;
+		break;
+	case ICE_SID_RXPARSER_NOMATCH_CAM:
+		size = ICE_SID_RXPARSER_NOMATCH_CAM_ENTRY_SIZE;
+		break;
+	case ICE_SID_RXPARSER_NOMATCH_SPILL:
+		size = ICE_SID_RXPARSER_NOMATCH_SPILL_ENTRY_SIZE;
 		break;
 	default:
 		return NULL;
@@ -125,6 +141,30 @@ enum ice_status ice_parser_create(struct ice_hw *hw, struct ice_parser **psr)
 		goto err;
 	}
 
+	p->pg_cam_table = ice_pg_cam_table_get(hw);
+	if (!p->pg_cam_table) {
+		status = ICE_ERR_PARAM;
+		goto err;
+	}
+
+	p->pg_sp_cam_table = ice_pg_sp_cam_table_get(hw);
+	if (!p->pg_sp_cam_table) {
+		status = ICE_ERR_PARAM;
+		goto err;
+	}
+
+	p->pg_nm_cam_table = ice_pg_nm_cam_table_get(hw);
+	if (!p->pg_nm_cam_table) {
+		status = ICE_ERR_PARAM;
+		goto err;
+	}
+
+	p->pg_nm_sp_cam_table = ice_pg_nm_sp_cam_table_get(hw);
+	if (!p->pg_nm_sp_cam_table) {
+		status = ICE_ERR_PARAM;
+		goto err;
+	}
+
 	*psr = p;
 	return ICE_SUCCESS;
 err:
@@ -140,6 +180,10 @@ void ice_parser_destroy(struct ice_parser *psr)
 {
 	ice_free(psr->hw, psr->imem_table);
 	ice_free(psr->hw, psr->mi_table);
+	ice_free(psr->hw, psr->pg_cam_table);
+	ice_free(psr->hw, psr->pg_sp_cam_table);
+	ice_free(psr->hw, psr->pg_nm_cam_table);
+	ice_free(psr->hw, psr->pg_nm_sp_cam_table);
 
 	ice_free(psr->hw, psr);
 }
