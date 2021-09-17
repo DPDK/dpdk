@@ -340,3 +340,30 @@ void ice_parser_result_dump(struct ice_hw *hw, struct ice_parser_result *rslt)
 	ice_info(hw, "flags_fd = 0x%04x\n", rslt->flags_fd);
 	ice_info(hw, "flags_rss = 0x%04x\n", rslt->flags_rss);
 }
+
+static void _bst_vm_set(struct ice_parser *psr, const char *prefix, bool on)
+{
+	struct ice_bst_tcam_item *item;
+	u16 i = 0;
+
+	while (true) {
+		item = ice_bst_tcam_search(psr->bst_tcam_table,
+					   psr->bst_lbl_table,
+					   prefix, &i);
+		if (!item)
+			break;
+		item->key[0] = (u8)(on ? 0xff : 0xfe);
+		item->key_inv[0] = (u8)(on ? 0xff : 0xfe);
+		i++;
+	}
+}
+
+/**
+ * ice_parser_dvm_set - configure double vlan mode for parser
+ * @psr: pointer to a parser instance
+ */
+void ice_parser_dvm_set(struct ice_parser *psr, bool on)
+{
+	_bst_vm_set(psr, "BOOST_MAC_VLAN_DVM", on);
+	_bst_vm_set(psr, "BOOST_MAC_VLAN_SVM", !on);
+}

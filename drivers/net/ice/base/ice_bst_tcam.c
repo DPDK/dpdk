@@ -261,3 +261,31 @@ ice_bst_tcam_match(struct ice_bst_tcam_item *tcam_table, u8 *pat)
 
 	return NULL;
 }
+
+static bool _start_with(const char *prefix, const char *string)
+{
+	int len1 = strlen(prefix);
+	int len2 = strlen(string);
+
+	if (len2 < len1)
+		return false;
+
+	return !memcmp(prefix, string, len1);
+}
+
+struct ice_bst_tcam_item *
+ice_bst_tcam_search(struct ice_bst_tcam_item *tcam_table,
+		    struct ice_lbl_item *lbl_table,
+		    const char *prefix, u16 *start)
+{
+	u16 i = *start;
+
+	for (; i < ICE_BST_TCAM_TABLE_SIZE; i++) {
+		if (_start_with(prefix, lbl_table[i].label)) {
+			*start = i;
+			return &tcam_table[lbl_table[i].idx];
+		}
+	}
+
+	return NULL;
+}
