@@ -13,14 +13,14 @@ struct roc_model *roc_model;
 
 #define SOC_PART_CN10K 0xD49
 
-#define PART_106XX  0xB9
-#define PART_105XX  0xBA
-#define PART_105XXN 0xBC
-#define PART_98XX   0xB1
-#define PART_96XX   0xB2
-#define PART_95XX   0xB3
-#define PART_95XXN  0xB4
-#define PART_95XXMM 0xB5
+#define PART_106xx  0xB9
+#define PART_105xx  0xBA
+#define PART_105xxN 0xBC
+#define PART_98xx   0xB1
+#define PART_96xx   0xB2
+#define PART_95xx   0xB3
+#define PART_95xxN  0xB4
+#define PART_95xxMM 0xB5
 #define PART_95O    0xB6
 
 #define MODEL_IMPL_BITS	  8
@@ -44,20 +44,21 @@ static const struct model_db {
 	uint64_t flag;
 	char name[ROC_MODEL_STR_LEN_MAX];
 } model_db[] = {
-	{VENDOR_ARM, PART_106XX, 0, 0, ROC_MODEL_CN106XX, "cn10ka"},
-	{VENDOR_ARM, PART_105XX, 0, 0, ROC_MODEL_CNF105XX, "cnf10ka"},
-	{VENDOR_ARM, PART_105XXN, 0, 0, ROC_MODEL_CNF105XXN, "cnf10kb"},
-	{VENDOR_CAVIUM, PART_98XX, 0, 0, ROC_MODEL_CN98xx_A0, "cn98xx_a0"},
-	{VENDOR_CAVIUM, PART_96XX, 0, 0, ROC_MODEL_CN96xx_A0, "cn96xx_a0"},
-	{VENDOR_CAVIUM, PART_96XX, 0, 1, ROC_MODEL_CN96xx_B0, "cn96xx_b0"},
-	{VENDOR_CAVIUM, PART_96XX, 2, 0, ROC_MODEL_CN96xx_C0, "cn96xx_c0"},
-	{VENDOR_CAVIUM, PART_95XX, 0, 0, ROC_MODEL_CNF95xx_A0, "cnf95xx_a0"},
-	{VENDOR_CAVIUM, PART_95XX, 1, 0, ROC_MODEL_CNF95xx_B0, "cnf95xx_b0"},
-	{VENDOR_CAVIUM, PART_95XXN, 0, 0, ROC_MODEL_CNF95XXN_A0, "cnf95xxn_a0"},
-	{VENDOR_CAVIUM, PART_95O, 0, 0, ROC_MODEL_CNF95XXO_A0, "cnf95O_a0"},
-	{VENDOR_CAVIUM, PART_95XXMM, 0, 0, ROC_MODEL_CNF95XXMM_A0,
-	 "cnf95xxmm_a0"}
-};
+	{VENDOR_ARM, PART_106xx, 0, 0, ROC_MODEL_CN106xx_A0, "cn10ka_a0"},
+	{VENDOR_ARM, PART_105xx, 0, 0, ROC_MODEL_CNF105xx_A0, "cnf10ka_a0"},
+	{VENDOR_ARM, PART_105xxN, 0, 0, ROC_MODEL_CNF105xxN_A0, "cnf10kb_a0"},
+	{VENDOR_CAVIUM, PART_98xx, 0, 0, ROC_MODEL_CN98xx_A0, "cn98xx_a0"},
+	{VENDOR_CAVIUM, PART_96xx, 0, 0, ROC_MODEL_CN96xx_A0, "cn96xx_a0"},
+	{VENDOR_CAVIUM, PART_96xx, 0, 1, ROC_MODEL_CN96xx_B0, "cn96xx_b0"},
+	{VENDOR_CAVIUM, PART_96xx, 2, 0, ROC_MODEL_CN96xx_C0, "cn96xx_c0"},
+	{VENDOR_CAVIUM, PART_96xx, 2, 1, ROC_MODEL_CN96xx_C0, "cn96xx_c1"},
+	{VENDOR_CAVIUM, PART_95xx, 0, 0, ROC_MODEL_CNF95xx_A0, "cnf95xx_a0"},
+	{VENDOR_CAVIUM, PART_95xx, 1, 0, ROC_MODEL_CNF95xx_B0, "cnf95xx_b0"},
+	{VENDOR_CAVIUM, PART_95xxN, 0, 0, ROC_MODEL_CNF95xxN_A0, "cnf95xxn_a0"},
+	{VENDOR_CAVIUM, PART_95xxN, 0, 1, ROC_MODEL_CNF95xxN_A0, "cnf95xxn_a1"},
+	{VENDOR_CAVIUM, PART_95O, 0, 0, ROC_MODEL_CNF95xxO_A0, "cnf95O_a0"},
+	{VENDOR_CAVIUM, PART_95xxMM, 0, 0, ROC_MODEL_CNF95xxMM_A0,
+	 "cnf95xxmm_a0"}};
 
 static uint32_t
 cn10k_part_get(void)
@@ -85,11 +86,11 @@ cn10k_part_get(void)
 	}
 	ptr++;
 	if (strcmp("cn10ka", ptr) == 0) {
-		soc = PART_106XX;
+		soc = PART_106xx;
 	} else if (strcmp("cnf10ka", ptr) == 0) {
-		soc = PART_105XX;
+		soc = PART_105xx;
 	} else if (strcmp("cnf10kb", ptr) == 0) {
-		soc = PART_105XXN;
+		soc = PART_105xxN;
 	} else {
 		plt_err("Unidentified 'CPU compatible': <%s>", ptr);
 		goto fclose;

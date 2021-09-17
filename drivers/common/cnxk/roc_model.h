@@ -15,13 +15,14 @@ struct roc_model {
 #define ROC_MODEL_CN96xx_C0    BIT_ULL(2)
 #define ROC_MODEL_CNF95xx_A0   BIT_ULL(4)
 #define ROC_MODEL_CNF95xx_B0   BIT_ULL(6)
-#define ROC_MODEL_CNF95XXMM_A0 BIT_ULL(8)
-#define ROC_MODEL_CNF95XXN_A0  BIT_ULL(12)
-#define ROC_MODEL_CNF95XXO_A0  BIT_ULL(13)
+#define ROC_MODEL_CNF95xxMM_A0 BIT_ULL(8)
+#define ROC_MODEL_CNF95xxN_A0  BIT_ULL(12)
+#define ROC_MODEL_CNF95xxO_A0  BIT_ULL(13)
+#define ROC_MODEL_CNF95xxN_A1  BIT_ULL(14)
 #define ROC_MODEL_CN98xx_A0    BIT_ULL(16)
-#define ROC_MODEL_CN106XX      BIT_ULL(20)
-#define ROC_MODEL_CNF105XX     BIT_ULL(21)
-#define ROC_MODEL_CNF105XXN    BIT_ULL(22)
+#define ROC_MODEL_CN106xx_A0   BIT_ULL(20)
+#define ROC_MODEL_CNF105xx_A0  BIT_ULL(21)
+#define ROC_MODEL_CNF105xxN_A0 BIT_ULL(22)
 
 	uint64_t flag;
 #define ROC_MODEL_STR_LEN_MAX 128
@@ -31,11 +32,15 @@ struct roc_model {
 #define ROC_MODEL_CN96xx_Ax (ROC_MODEL_CN96xx_A0 | ROC_MODEL_CN96xx_B0)
 #define ROC_MODEL_CN9K                                                         \
 	(ROC_MODEL_CN96xx_Ax | ROC_MODEL_CN96xx_C0 | ROC_MODEL_CNF95xx_A0 |    \
-	 ROC_MODEL_CNF95xx_B0 | ROC_MODEL_CNF95XXMM_A0 |                       \
-	 ROC_MODEL_CNF95XXO_A0 | ROC_MODEL_CNF95XXN_A0 | ROC_MODEL_CN98xx_A0)
+	 ROC_MODEL_CNF95xx_B0 | ROC_MODEL_CNF95xxMM_A0 |                       \
+	 ROC_MODEL_CNF95xxO_A0 | ROC_MODEL_CNF95xxN_A0 | ROC_MODEL_CN98xx_A0 | \
+	 ROC_MODEL_CNF95xxN_A1)
 
+#define ROC_MODEL_CN106xx   (ROC_MODEL_CN106xx_A0)
+#define ROC_MODEL_CNF105xx  (ROC_MODEL_CNF105xx_A0)
+#define ROC_MODEL_CNF105xxN (ROC_MODEL_CNF105xxN_A0)
 #define ROC_MODEL_CN10K                                                        \
-	(ROC_MODEL_CN106XX | ROC_MODEL_CNF105XX | ROC_MODEL_CNF105XXN)
+	(ROC_MODEL_CN106xx | ROC_MODEL_CNF105xx | ROC_MODEL_CNF105xxN)
 
 /* Runtime variants */
 static inline uint64_t
@@ -106,6 +111,12 @@ roc_model_is_cn96_ax(void)
 }
 
 static inline uint64_t
+roc_model_is_cn96_cx(void)
+{
+	return (roc_model->flag & ROC_MODEL_CN96xx_C0);
+}
+
+static inline uint64_t
 roc_model_is_cn95_a0(void)
 {
 	return roc_model->flag & ROC_MODEL_CNF95xx_A0;
@@ -114,19 +125,37 @@ roc_model_is_cn95_a0(void)
 static inline uint64_t
 roc_model_is_cn10ka(void)
 {
-	return roc_model->flag & ROC_MODEL_CN106XX;
+	return roc_model->flag & ROC_MODEL_CN106xx;
 }
 
 static inline uint64_t
 roc_model_is_cnf10ka(void)
 {
-	return roc_model->flag & ROC_MODEL_CNF105XX;
+	return roc_model->flag & ROC_MODEL_CNF105xx;
 }
 
 static inline uint64_t
 roc_model_is_cnf10kb(void)
 {
-	return roc_model->flag & ROC_MODEL_CNF105XXN;
+	return roc_model->flag & ROC_MODEL_CNF105xxN;
+}
+
+static inline uint64_t
+roc_model_is_cn10ka_a0(void)
+{
+	return roc_model->flag & ROC_MODEL_CN106xx_A0;
+}
+
+static inline uint64_t
+roc_model_is_cnf10ka_a0(void)
+{
+	return roc_model->flag & ROC_MODEL_CNF105xx_A0;
+}
+
+static inline uint64_t
+roc_model_is_cnf10kb_a0(void)
+{
+	return roc_model->flag & ROC_MODEL_CNF105xxN_A0;
 }
 
 int roc_model_init(struct roc_model *model);
