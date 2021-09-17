@@ -296,3 +296,79 @@ struct ice_pg_nm_cam_item *ice_pg_nm_sp_cam_table_get(struct ice_hw *hw)
 					ice_parser_sect_item_get,
 					_pg_nm_sp_cam_parse_item, false);
 }
+
+static bool _pg_cam_match(struct ice_pg_cam_item *item,
+			  struct ice_pg_cam_key *key)
+{
+	if (!item->key.valid ||
+	    item->key.node_id != key->node_id ||
+	    item->key.flag0 != key->flag0 ||
+	    item->key.flag1 != key->flag1 ||
+	    item->key.flag2 != key->flag2 ||
+	    item->key.flag3 != key->flag3 ||
+	    item->key.boost_idx != key->boost_idx ||
+	    item->key.alu_reg != key->alu_reg ||
+	    item->key.next_proto != key->next_proto)
+		return false;
+
+	return true;
+}
+
+static bool _pg_nm_cam_match(struct ice_pg_nm_cam_item *item,
+			     struct ice_pg_cam_key *key)
+{
+	if (!item->key.valid ||
+	    item->key.node_id != key->node_id ||
+	    item->key.flag0 != key->flag0 ||
+	    item->key.flag1 != key->flag1 ||
+	    item->key.flag2 != key->flag2 ||
+	    item->key.flag3 != key->flag3 ||
+	    item->key.boost_idx != key->boost_idx ||
+	    item->key.alu_reg != key->alu_reg)
+		return false;
+
+	return true;
+}
+
+/**
+ * ice_pg_cam_match - search parse graph cam table by key
+ * @table: parse graph cam table to search
+ * @size: cam table size
+ * @key: search key
+ */
+struct ice_pg_cam_item *ice_pg_cam_match(struct ice_pg_cam_item *table,
+					 int size, struct ice_pg_cam_key *key)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		struct ice_pg_cam_item *item = &table[i];
+
+		if (_pg_cam_match(item, key))
+			return item;
+	}
+
+	return NULL;
+}
+
+/**
+ * ice_pg_nm_cam_match - search parse graph no match cam table by key
+ * @table: parse graph no match cam table to search
+ * @size: cam table size
+ * @key: search key
+ */
+struct ice_pg_nm_cam_item *
+ice_pg_nm_cam_match(struct ice_pg_nm_cam_item *table, int size,
+		    struct ice_pg_cam_key *key)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		struct ice_pg_nm_cam_item *item = &table[i];
+
+		if (_pg_nm_cam_match(item, key))
+			return item;
+	}
+
+	return NULL;
+}
