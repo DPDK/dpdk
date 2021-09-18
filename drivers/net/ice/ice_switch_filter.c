@@ -31,6 +31,7 @@
 #define ICE_PPP_IPV4_PROTO	0x0021
 #define ICE_PPP_IPV6_PROTO	0x0057
 #define ICE_IPV4_PROTO_NVGRE	0x002F
+#define ICE_SW_PRI_BASE 6
 
 #define ICE_SW_INSET_ETHER ( \
 	ICE_INSET_DMAC | ICE_INSET_SMAC | ICE_INSET_ETHERTYPE)
@@ -1592,7 +1593,10 @@ ice_switch_parse_dcf_action(struct ice_dcf_adapter *ad,
 	rule_info->sw_act.src = rule_info->sw_act.vsi_handle;
 	rule_info->sw_act.flag = ICE_FLTR_RX;
 	rule_info->rx = 1;
-	rule_info->priority = 6 - priority;
+	/* 0 denotes lowest priority of recipe and highest priority
+	 * of rte_flow. Change rte_flow priority into recipe priority.
+	 */
+	rule_info->priority = ICE_SW_PRI_BASE - priority;
 
 	return 0;
 }
@@ -1671,7 +1675,10 @@ ice_switch_parse_action(struct ice_pf *pf,
 	rule_info->sw_act.vsi_handle = vsi->idx;
 	rule_info->rx = 1;
 	rule_info->sw_act.src = vsi->idx;
-	rule_info->priority = priority + 5;
+	/* 0 denotes lowest priority of recipe and highest priority
+	 * of rte_flow. Change rte_flow priority into recipe priority.
+	 */
+	rule_info->priority = ICE_SW_PRI_BASE - priority;
 
 	return 0;
 

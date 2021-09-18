@@ -904,7 +904,7 @@ ice_acl_parse(struct ice_adapter *ad,
 	       uint32_t array_len,
 	       const struct rte_flow_item pattern[],
 	       const struct rte_flow_action actions[],
-	       uint32_t priority __rte_unused,
+	       uint32_t priority,
 	       void **meta,
 	       struct rte_flow_error *error)
 {
@@ -913,6 +913,9 @@ ice_acl_parse(struct ice_adapter *ad,
 	struct ice_pattern_match_item *item = NULL;
 	uint64_t input_set;
 	int ret;
+
+	if (priority >= 1)
+		return -rte_errno;
 
 	memset(filter, 0, sizeof(*filter));
 	item = ice_search_pattern_match_item(ad, pattern, array, array_len,
