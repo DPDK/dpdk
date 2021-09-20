@@ -964,7 +964,10 @@ ulp_blob_append(struct ulp_blob *dst, struct ulp_blob *src,
 		ulp_bs_put_msb(dst->data, dst->write_idx,
 			       ULP_BLOB_BYTE, bluff);
 		dst->write_idx += remaining;
+		src_offset += remaining;
 	}
+
+	src_buf += ULP_BITS_2_BYTE_NR(src_offset);
 
 	/* Push the byte aligned pieces */
 	for (k = 0; k < ULP_BITS_2_BYTE_NR(src_len); k++) {

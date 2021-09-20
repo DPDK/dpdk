@@ -826,12 +826,12 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 	 */
 	ulp_rte_prsr_fld_mask(params, &idx, size,
 			      &priority,
-			      &priority_mask,
+			      (vlan_mask) ? &priority_mask : NULL,
 			      ULP_PRSR_ACT_MASK_IGNORE);
 
 	ulp_rte_prsr_fld_mask(params, &idx, size,
 			      &vlan_tag,
-			      &vlan_tag_mask,
+			      (vlan_mask) ? &vlan_tag_mask : NULL,
 			      ULP_PRSR_ACT_DEFAULT);
 
 	size = sizeof(((struct rte_flow_item_vlan *)NULL)->inner_type);
@@ -859,6 +859,10 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_ONE_VTAG, 1);
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_OO_VLAN);
+		if (vlan_mask && vlan_tag_mask)
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_OO_VLAN_FB_VID, 1);
+
 	} else if (ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_O_ETH) &&
 		   !ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_I_ETH) &&
 		   outer_vtag_num == 1) {
@@ -870,6 +874,10 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_ONE_VTAG, 0);
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_OI_VLAN);
+		if (vlan_mask && vlan_tag_mask)
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_OI_VLAN_FB_VID, 1);
+
 	} else if (ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_O_ETH) &&
 		   ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_I_ETH) &&
 		   !inner_vtag_num) {
@@ -881,6 +889,9 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_ONE_VTAG, 1);
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_IO_VLAN);
+		if (vlan_mask && vlan_tag_mask)
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_IO_VLAN_FB_VID, 1);
 		inner_flag = 1;
 	} else if (ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_O_ETH) &&
 		   ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_I_ETH) &&
@@ -893,6 +904,9 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_ONE_VTAG, 0);
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_II_VLAN);
+		if (vlan_mask && vlan_tag_mask)
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_II_VLAN_FB_VID, 1);
 		inner_flag = 1;
 	} else {
 		BNXT_TF_DBG(ERR, "Error Parsing:Vlan hdr found without eth\n");

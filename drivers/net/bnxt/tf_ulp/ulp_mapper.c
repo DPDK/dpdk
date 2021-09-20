@@ -2212,6 +2212,7 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	int32_t	trc;
 	int32_t rc = 0;
 	int32_t pad = 0;
+	enum bnxt_ulp_byte_order key_order, res_order;
 
 	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx, tbl->shared_session);
 	rc = bnxt_ulp_cntxt_mem_type_get(parms->ulp_ctx, &mtype);
@@ -2226,11 +2227,12 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return -EINVAL;
 	}
 
+	key_order = dparms->em_byte_order;
+	res_order = dparms->em_byte_order;
+
 	/* Initialize the key/result blobs */
-	if (!ulp_blob_init(&key, tbl->blob_key_bit_size,
-			   dparms->key_byte_order) ||
-	    !ulp_blob_init(&data, tbl->result_bit_size,
-			   dparms->result_byte_order)) {
+	if (!ulp_blob_init(&key, tbl->blob_key_bit_size, key_order) ||
+	    !ulp_blob_init(&data, tbl->result_bit_size, res_order)) {
 		BNXT_TF_DBG(ERR, "blob inits failed.\n");
 		return -EINVAL;
 	}

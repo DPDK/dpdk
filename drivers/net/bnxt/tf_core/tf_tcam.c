@@ -323,8 +323,12 @@ tf_tcam_alloc(struct tf *tfp,
 		}
 
 		/* return the start index of each row */
-		if (i == 0)
+		if (parms->priority == 0) {
+			if (i == 0)
+				parms->idx = index;
+		} else {
 			parms->idx = index;
+		}
 	}
 
 	return 0;

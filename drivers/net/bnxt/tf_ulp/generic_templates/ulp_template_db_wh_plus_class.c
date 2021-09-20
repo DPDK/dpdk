@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Fri May 28 16:46:46 2021 */
+/* date: Wed Jun 30 14:36:16 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -1488,7 +1488,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
 		.cond_start_idx = 47,
 		.cond_nums = 0 },
-	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_GLB_REGFILE,
+	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_GLB_REGFILE,
 	.tbl_operand = BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
