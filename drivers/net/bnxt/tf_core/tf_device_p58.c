@@ -17,6 +17,7 @@
 #include "tf_if_tbl.h"
 #include "tfp.h"
 #include "tf_msg_common.h"
+#include "tf_tbl_sram.h"
 
 #define TF_DEV_P58_PARIF_MAX 16
 #define TF_DEV_P58_PF_MASK 0xfUL
@@ -105,14 +106,48 @@ tf_dev_p58_get_resource_str(struct tf *tfp __rte_unused,
 }
 
 /**
- * Device specific function that retrieves the WC TCAM slices the
+ * Device specific function that set the WC TCAM slices the
  * device supports.
  *
  * [in] tfp
  *   Pointer to TF handle
  *
- * [out] slice_size
- *   Pointer to the WC TCAM slice size
+ * [in] num_slices_per_row
+ *   The WC TCAM row slice configuration
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+static int
+tf_dev_p58_set_tcam_slice_info(struct tf *tfp __rte_unused,
+			       enum tf_wc_num_slice num_slices_per_row)
+{
+	switch (num_slices_per_row) {
+	case TF_WC_TCAM_1_SLICE_PER_ROW:
+	case TF_WC_TCAM_2_SLICE_PER_ROW:
+	case TF_WC_TCAM_4_SLICE_PER_ROW:
+		g_wc_num_slices_per_row = num_slices_per_row;
+	break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
+ * Device specific function that retrieves the TCAM slices the
+ * device supports.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] type
+ *   TF TCAM type
+ *
+ * [in] key_sz
+ *   The key size
  *
  * [out] num_slices_per_row
  *   Pointer to the WC TCAM row slice configuration
@@ -123,16 +158,13 @@ tf_dev_p58_get_resource_str(struct tf *tfp __rte_unused,
  */
 static int
 tf_dev_p58_get_tcam_slice_info(struct tf *tfp __rte_unused,
-			      enum tf_tcam_tbl_type type,
-			      uint16_t key_sz,
-			      uint16_t *num_slices_per_row)
+			       enum tf_tcam_tbl_type type,
+			       uint16_t key_sz,
+			       uint16_t *num_slices_per_row)
 {
-#define CFA_P58_WC_TCAM_SLICES_PER_ROW 1
 #define CFA_P58_WC_TCAM_SLICE_SIZE     24
-
 	if (type == TF_TCAM_TBL_TYPE_WC_TCAM) {
-		/* only support single slice key size now */
-		*num_slices_per_row = CFA_P58_WC_TCAM_SLICES_PER_ROW;
+		*num_slices_per_row = g_wc_num_slices_per_row;
 		if (key_sz > *num_slices_per_row * CFA_P58_WC_TCAM_SLICE_SIZE)
 			return -ENOTSUP;
 	} else { /* for other type of tcam */
@@ -192,6 +224,44 @@ static int tf_dev_p58_get_shared_tbl_increment(struct tf *tfp __rte_unused,
 		break;
 	}
 	return 0;
+}
+
+/**
+ * Indicates whether the index table type is SRAM managed
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] type
+ *   Truflow index table type, e.g. TF_TYPE_FULL_ACT_RECORD
+ *
+ * Returns
+ *   - (0) if the table is not managed by the SRAM manager
+ *   - (1) if the table is managed by the SRAM manager
+ */
+static bool tf_dev_p58_is_sram_managed(struct tf *tfp __rte_unused,
+				       enum tf_tbl_type type)
+{
+	switch (type) {
+	case TF_TBL_TYPE_FULL_ACT_RECORD:
+	case TF_TBL_TYPE_COMPACT_ACT_RECORD:
+	case TF_TBL_TYPE_ACT_ENCAP_8B:
+	case TF_TBL_TYPE_ACT_ENCAP_16B:
+	case TF_TBL_TYPE_ACT_ENCAP_32B:
+	case TF_TBL_TYPE_ACT_ENCAP_64B:
+	case TF_TBL_TYPE_ACT_SP_SMAC:
+	case TF_TBL_TYPE_ACT_SP_SMAC_IPV4:
+	case TF_TBL_TYPE_ACT_SP_SMAC_IPV6:
+	case TF_TBL_TYPE_ACT_STATS_64:
+	case TF_TBL_TYPE_ACT_MODIFY_IPV4:
+	case TF_TBL_TYPE_ACT_MODIFY_8B:
+	case TF_TBL_TYPE_ACT_MODIFY_16B:
+	case TF_TBL_TYPE_ACT_MODIFY_32B:
+	case TF_TBL_TYPE_ACT_MODIFY_64B:
+		return true;
+	default:
+		return false;
+	}
 }
 
 #define TF_DEV_P58_BANK_SZ_64B 2048
@@ -265,26 +335,34 @@ static int tf_dev_p58_get_sram_tbl_info(struct tf *tfp __rte_unused,
 	}
 	return 0;
 }
+
 /**
  * Truflow P58 device specific functions
  */
 const struct tf_dev_ops tf_dev_ops_p58_init = {
 	.tf_dev_get_max_types = tf_dev_p58_get_max_types,
 	.tf_dev_get_resource_str = tf_dev_p58_get_resource_str,
+	.tf_dev_set_tcam_slice_info = tf_dev_p58_set_tcam_slice_info,
 	.tf_dev_get_tcam_slice_info = tf_dev_p58_get_tcam_slice_info,
 	.tf_dev_alloc_ident = NULL,
 	.tf_dev_free_ident = NULL,
 	.tf_dev_search_ident = NULL,
 	.tf_dev_get_ident_resc_info = NULL,
 	.tf_dev_get_tbl_info = NULL,
+	.tf_dev_is_sram_managed = tf_dev_p58_is_sram_managed,
 	.tf_dev_alloc_ext_tbl = NULL,
 	.tf_dev_alloc_tbl = NULL,
+	.tf_dev_alloc_sram_tbl = NULL,
 	.tf_dev_free_ext_tbl = NULL,
 	.tf_dev_free_tbl = NULL,
+	.tf_dev_free_sram_tbl = NULL,
 	.tf_dev_set_tbl = NULL,
 	.tf_dev_set_ext_tbl = NULL,
+	.tf_dev_set_sram_tbl = NULL,
 	.tf_dev_get_tbl = NULL,
+	.tf_dev_get_sram_tbl = NULL,
 	.tf_dev_get_bulk_tbl = NULL,
+	.tf_dev_get_bulk_sram_tbl = NULL,
 	.tf_dev_get_shared_tbl_increment = tf_dev_p58_get_shared_tbl_increment,
 	.tf_dev_get_tbl_resc_info = NULL,
 	.tf_dev_alloc_tcam = NULL,
@@ -316,20 +394,27 @@ const struct tf_dev_ops tf_dev_ops_p58_init = {
 const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_get_max_types = tf_dev_p58_get_max_types,
 	.tf_dev_get_resource_str = tf_dev_p58_get_resource_str,
+	.tf_dev_set_tcam_slice_info = tf_dev_p58_set_tcam_slice_info,
 	.tf_dev_get_tcam_slice_info = tf_dev_p58_get_tcam_slice_info,
 	.tf_dev_alloc_ident = tf_ident_alloc,
 	.tf_dev_free_ident = tf_ident_free,
 	.tf_dev_search_ident = tf_ident_search,
 	.tf_dev_get_ident_resc_info = tf_ident_get_resc_info,
+	.tf_dev_is_sram_managed = tf_dev_p58_is_sram_managed,
 	.tf_dev_get_tbl_info = tf_dev_p58_get_sram_tbl_info,
 	.tf_dev_alloc_tbl = tf_tbl_alloc,
+	.tf_dev_alloc_sram_tbl = tf_tbl_sram_alloc,
 	.tf_dev_alloc_ext_tbl = tf_tbl_ext_alloc,
 	.tf_dev_free_tbl = tf_tbl_free,
 	.tf_dev_free_ext_tbl = tf_tbl_ext_free,
+	.tf_dev_free_sram_tbl = tf_tbl_sram_free,
 	.tf_dev_set_tbl = tf_tbl_set,
 	.tf_dev_set_ext_tbl = tf_tbl_ext_common_set,
+	.tf_dev_set_sram_tbl = tf_tbl_sram_set,
 	.tf_dev_get_tbl = tf_tbl_get,
+	.tf_dev_get_sram_tbl = tf_tbl_sram_get,
 	.tf_dev_get_bulk_tbl = tf_tbl_bulk_get,
+	.tf_dev_get_bulk_sram_tbl = tf_tbl_sram_bulk_get,
 	.tf_dev_get_shared_tbl_increment = tf_dev_p58_get_shared_tbl_increment,
 	.tf_dev_get_tbl_resc_info = tf_tbl_get_resc_info,
 #ifdef TF_TCAM_SHARED

@@ -11,9 +11,13 @@
 #include "tf_rm.h"
 #ifdef TF_TCAM_SHARED
 #include "tf_tcam_shared.h"
+#include "tf_tbl_sram.h"
 #endif /* TF_TCAM_SHARED */
 
 struct tf;
+
+/* Number of slices per row for WC TCAM */
+uint16_t g_wc_num_slices_per_row = TF_WC_TCAM_1_SLICE_PER_ROW;
 
 /* Forward declarations */
 static int tf_dev_unbind_p4(struct tf *tfp);
@@ -83,7 +87,8 @@ static int
 tf_dev_bind_p4(struct tf *tfp,
 	       bool shadow_copy,
 	       struct tf_session_resources *resources,
-	       struct tf_dev_info *dev_handle)
+	       struct tf_dev_info *dev_handle,
+	       enum tf_wc_num_slice wc_num_slices)
 {
 	int rc;
 	int frc;
@@ -131,7 +136,6 @@ tf_dev_bind_p4(struct tf *tfp,
 	if (rsv_cnt) {
 		tbl_cfg.num_elements = TF_TBL_TYPE_MAX;
 		tbl_cfg.cfg = tf_tbl_p4;
-		tbl_cfg.shadow_copy = shadow_copy;
 		tbl_cfg.resources = resources;
 		rc = tf_tbl_bind(tfp, &tbl_cfg);
 		if (rc) {
@@ -151,6 +155,7 @@ tf_dev_bind_p4(struct tf *tfp,
 		tcam_cfg.cfg = tf_tcam_p4;
 		tcam_cfg.shadow_copy = shadow_copy;
 		tcam_cfg.resources = resources;
+		tcam_cfg.wc_num_slices = wc_num_slices;
 #ifdef TF_TCAM_SHARED
 		rc = tf_tcam_shared_bind(tfp, &tcam_cfg);
 #else /* !TF_TCAM_SHARED */
@@ -369,7 +374,8 @@ static int
 tf_dev_bind_p58(struct tf *tfp,
 		bool shadow_copy,
 		struct tf_session_resources *resources,
-		struct tf_dev_info *dev_handle)
+		struct tf_dev_info *dev_handle,
+		enum tf_wc_num_slice wc_num_slices)
 {
 	int rc;
 	int frc;
@@ -414,7 +420,6 @@ tf_dev_bind_p58(struct tf *tfp,
 	if (rsv_cnt) {
 		tbl_cfg.num_elements = TF_TBL_TYPE_MAX;
 		tbl_cfg.cfg = tf_tbl_p58;
-		tbl_cfg.shadow_copy = shadow_copy;
 		tbl_cfg.resources = resources;
 		rc = tf_tbl_bind(tfp, &tbl_cfg);
 		if (rc) {
@@ -423,6 +428,13 @@ tf_dev_bind_p58(struct tf *tfp,
 			goto fail;
 		}
 		no_rsv_flag = false;
+
+		rc = tf_tbl_sram_bind(tfp);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "SRAM table initialization failure\n");
+			goto fail;
+		}
 	}
 
 	rsv_cnt = tf_dev_reservation_check(TF_TCAM_TBL_TYPE_MAX,
@@ -433,6 +445,7 @@ tf_dev_bind_p58(struct tf *tfp,
 		tcam_cfg.cfg = tf_tcam_p58;
 		tcam_cfg.shadow_copy = shadow_copy;
 		tcam_cfg.resources = resources;
+		tcam_cfg.wc_num_slices = wc_num_slices;
 #ifdef TF_TCAM_SHARED
 		rc = tf_tcam_shared_bind(tfp, &tcam_cfg);
 #else /* !TF_TCAM_SHARED */
@@ -565,6 +578,18 @@ tf_dev_unbind_p58(struct tf *tfp)
 		fail = true;
 	}
 
+	/* Unbind the SRAM table prior to table as the table manager
+	 * owns and frees the table DB while the SRAM table manager owns
+	 * and manages it's internal data structures.  SRAM table manager
+	 * relies on the table rm_db to exist.
+	 */
+	rc = tf_tbl_sram_unbind(tfp);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Device unbind failed, SRAM table\n");
+		fail = true;
+	}
+
 	rc = tf_tbl_unbind(tfp);
 	if (rc) {
 		TFP_DRV_LOG(INFO,
@@ -606,6 +631,7 @@ tf_dev_bind(struct tf *tfp __rte_unused,
 	    enum tf_device_type type,
 	    bool shadow_copy,
 	    struct tf_session_resources *resources,
+	    uint16_t wc_num_slices,
 	    struct tf_dev_info *dev_handle)
 {
 	switch (type) {
@@ -615,13 +641,15 @@ tf_dev_bind(struct tf *tfp __rte_unused,
 		return tf_dev_bind_p4(tfp,
 				      shadow_copy,
 				      resources,
-				      dev_handle);
+				      dev_handle,
+				      wc_num_slices);
 	case TF_DEVICE_TYPE_THOR:
 		dev_handle->type = type;
 		return tf_dev_bind_p58(tfp,
 				       shadow_copy,
 				       resources,
-				       dev_handle);
+				       dev_handle,
+				       wc_num_slices);
 	default:
 		TFP_DRV_LOG(ERR,
 			    "No such device\n");

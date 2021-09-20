@@ -202,6 +202,7 @@ tf_session_create(struct tf *tfp,
 			 parms->open_cfg->device_type,
 			 session->shadow_copy,
 			 &parms->open_cfg->resources,
+			 parms->open_cfg->wc_num_slices,
 			 &session->dev);
 
 	/* Logging handled by dev_bind */
@@ -705,6 +706,22 @@ tf_session_get_session(struct tf *tfp,
 	return rc;
 }
 
+int tf_session_get(struct tf *tfp,
+		   struct tf_session **tfs,
+		   struct tf_dev_info **tfd)
+{
+	int rc;
+	rc = tf_session_get_session_internal(tfp, tfs);
+
+	/* Logging done by tf_session_get_session_internal */
+	if (rc)
+		return rc;
+
+	rc = tf_session_get_device(*tfs, tfd);
+
+	return rc;
+}
+
 struct tf_session_client *
 tf_session_get_session_client(struct tf_session *tfs,
 			      union tf_session_client_id session_client_id)
@@ -1012,4 +1029,43 @@ tf_session_set_tcam_shared_db(struct tf *tfp,
 	tfs->tcam_shared_db_handle = tcam_shared_db_handle;
 	return rc;
 }
+
+int
+tf_session_get_sram_db(struct tf *tfp,
+		       void **sram_handle)
+{
+	struct tf_session *tfs = NULL;
+	int rc = 0;
+
+	*sram_handle = NULL;
+
+	if (tfp == NULL)
+		return (-EINVAL);
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	*sram_handle = tfs->sram_handle;
+	return rc;
+}
+
+int
+tf_session_set_sram_db(struct tf *tfp,
+		       void *sram_handle)
+{
+	struct tf_session *tfs = NULL;
+	int rc = 0;
+
+	if (tfp == NULL)
+		return (-EINVAL);
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	tfs->sram_handle = sram_handle;
+	return rc;
+}
+
 #endif /* TF_TCAM_SHARED */

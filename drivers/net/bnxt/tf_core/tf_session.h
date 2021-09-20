@@ -166,6 +166,10 @@ struct tf_session {
 	 */
 	void *tcam_shared_db_handle;
 #endif /* TF_TCAM_SHARED */
+	/**
+	 * SRAM db reference for the session
+	 */
+	void *sram_handle;
 };
 
 /**
@@ -278,6 +282,10 @@ struct tf_session_close_session_parms {
  *
  * @ref tf_session_set_tcam_shared_db
  * #endif
+ *
+ * @ref tf_session_get_sram_db
+ *
+ * @ref tf_session_set_sram_db
  */
 
 /**
@@ -435,11 +443,11 @@ tf_session_find_session_client_by_fid(struct tf_session *tfs,
 /**
  * Looks up the device information from the TF Session.
  *
- * [in] tfp
- *   Pointer to TF handle
+ * [in] tfs
+ *   Pointer to session handle
  *
  * [out] tfd
- *   Pointer pointer to the device
+ *   Pointer to the device
  *
  * Returns
  *   - (0) if successful.
@@ -447,6 +455,26 @@ tf_session_find_session_client_by_fid(struct tf_session *tfs,
  */
 int tf_session_get_device(struct tf_session *tfs,
 			  struct tf_dev_info **tfd);
+
+/**
+ * Returns the session and the device from the tfp.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [out] tfs
+ *   Pointer to the session
+ *
+ * [out] tfd
+ *   Pointer to the device
+
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_session_get(struct tf *tfp,
+		   struct tf_session **tfs,
+		   struct tf_dev_info **tfd);
 
 /**
  * Looks up the FW Session id the requested TF handle.
@@ -613,5 +641,29 @@ tf_session_set_tcam_shared_db(struct tf *tfp,
 int
 tf_session_get_tcam_shared_db(struct tf *tfp,
 			      void **tcam_shared_db_handle);
+
+/**
+ * Set the pointer to the SRAM database
+ *
+ * [in] session, pointer to the session
+ *
+ * Returns:
+ *   - the pointer to the parent bnxt struct
+ */
+int
+tf_session_set_sram_db(struct tf *tfp,
+		       void *sram_handle);
+
+/**
+ * Get the pointer to the SRAM database
+ *
+ * [in] session, pointer to the session
+ *
+ * Returns:
+ *   - the pointer to the parent bnxt struct
+ */
+int
+tf_session_get_sram_db(struct tf *tfp,
+		       void **sram_handle);
 
 #endif /* _TF_SESSION_H_ */

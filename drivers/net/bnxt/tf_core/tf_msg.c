@@ -2231,7 +2231,7 @@ tf_msg_get_if_tbl_entry(struct tf *tfp,
 	if (rc != 0)
 		return rc;
 
-	tfp_memcpy(params->data, resp.data, req.size);
+	tfp_memcpy(&params->data[0], resp.data, req.size);
 
 	return 0;
 }

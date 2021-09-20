@@ -76,6 +76,8 @@ tf_tbl_type_2_str(enum tf_tbl_type tbl_type)
 	switch (tbl_type) {
 	case TF_TBL_TYPE_FULL_ACT_RECORD:
 		return "Full Action record";
+	case TF_TBL_TYPE_COMPACT_ACT_RECORD:
+		return "Compact Action record";
 	case TF_TBL_TYPE_MCAST_GROUPS:
 		return "Multicast Groups";
 	case TF_TBL_TYPE_ACT_ENCAP_8B:
@@ -96,6 +98,14 @@ tf_tbl_type_2_str(enum tf_tbl_type tbl_type)
 		return "Stats 64B";
 	case TF_TBL_TYPE_ACT_MODIFY_IPV4:
 		return "Modify IPv4";
+	case TF_TBL_TYPE_ACT_MODIFY_8B:
+		return "Modify 8B";
+	case TF_TBL_TYPE_ACT_MODIFY_16B:
+		return "Modify 16B";
+	case TF_TBL_TYPE_ACT_MODIFY_32B:
+		return "Modify 32B";
+	case TF_TBL_TYPE_ACT_MODIFY_64B:
+		return "Modify 64B";
 	case TF_TBL_TYPE_METER_PROF:
 		return "Meter Profile";
 	case TF_TBL_TYPE_METER_INST:

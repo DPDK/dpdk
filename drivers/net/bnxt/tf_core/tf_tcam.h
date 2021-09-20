@@ -12,6 +12,9 @@
  * The TCAM module provides processing of Internal TCAM types.
  */
 
+/* Number of slices per row for WC TCAM */
+extern uint16_t g_wc_num_slices_per_row;
+
 /**
  * TCAM configuration parameters
  */
@@ -36,6 +39,10 @@ struct tf_tcam_cfg_parms {
 	 * Session resource allocations
 	 */
 	struct tf_session_resources *resources;
+	/**
+	 * WC number of slices per row.
+	 */
+	enum tf_wc_num_slice wc_num_slices;
 };
 
 /**

@@ -66,6 +66,16 @@ enum tf_ext_mem_chan_type {
 };
 
 /**
+ * WC TCAM number of slice per row that devices supported
+ */
+enum tf_wc_num_slice {
+	TF_WC_TCAM_1_SLICE_PER_ROW = 1,
+	TF_WC_TCAM_2_SLICE_PER_ROW = 2,
+	TF_WC_TCAM_4_SLICE_PER_ROW = 4,
+	TF_WC_TCAM_8_SLICE_PER_ROW = 8,
+};
+
+/**
  * EEM record AR helper
  *
  * Helper to handle the Action Record Pointer in the EEM Record Entry.
@@ -671,6 +681,13 @@ struct tf_open_session_parms {
 	void *bp;
 
 	/**
+	 * [in]
+	 *
+	 * The number of slices per row for WC TCAM entry.
+	 */
+	enum tf_wc_num_slice wc_num_slices;
+
+	/**
 	 * [out] shared_session_creator
 	 *
 	 * Indicates whether the application created the session if set.
@@ -734,8 +751,6 @@ int tf_open_session(struct tf *tfp,
 /**
  * General internal resource info
  *
- * TODO: remove tf_rm_new_entry structure and use this structure
- * internally.
  */
 struct tf_resource_info {
 	uint16_t start;
@@ -1656,12 +1671,7 @@ struct tf_alloc_tbl_entry_parms {
  * entry of the indicated type for this TruFlow session.
  *
  * Allocates an index table record. This function will attempt to
- * allocate an entry or search an index table for a matching entry if
- * search is enabled (only the shadow copy of the table is accessed).
- *
- * If search is not enabled, the first available free entry is
- * returned. If search is enabled and a matching entry to entry_data
- * is found hit is set to TRUE and success is returned.
+ * allocate an index table entry.
  *
  * External types:
  *
@@ -1670,8 +1680,8 @@ struct tf_alloc_tbl_entry_parms {
  * Allocates an external index table action record.
  *
  * NOTE:
- * Implementation of the internals of this function will be a stack with push
- * and pop.
+ * Implementation of the internals of the external function will be a stack with
+ * push and pop.
  *
  * Returns success or failure code.
  */
@@ -1707,20 +1717,15 @@ struct tf_free_tbl_entry_parms {
  *
  * Internal types:
  *
- * If session has shadow_copy enabled the shadow DB is searched and if
- * found the element ref_cnt is decremented. If ref_cnt goes to
- * zero then the element is returned to the session pool.
- *
- * If the session does not have a shadow DB the element is free'ed and
- * given back to the session pool.
+ * The element is freed and given back to the session pool.
  *
  * External types:
  *
- * Free's an external index table action record.
+ * Frees an external index table action record.
  *
  * NOTE:
- * Implementation of the internals of this function will be a stack with push
- * and pop.
+ * Implementation of the internals of the external table will be a stack with
+ * push and pop.
  *
  * Returns success or failure code.
  */
@@ -1764,9 +1769,8 @@ struct tf_set_tbl_entry_parms {
 /**
  * set index table entry
  *
- * Used to insert an application programmed index table entry into a
- * previous allocated table location.  A shadow copy of the table
- * is maintained (if enabled) (only for internal objects)
+ * Used to set an application programmed index table entry into a
+ * previous allocated table location.
  *
  * Returns success or failure code.
  */

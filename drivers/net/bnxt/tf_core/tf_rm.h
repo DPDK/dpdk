@@ -43,16 +43,6 @@ struct tf;
  * support module, not called directly.
  */
 
-/**
- * Resource reservation single entry result. Used when accessing HCAPI
- * RM on the firmware.
- */
-struct tf_rm_new_entry {
-	/** Starting index of the allocated resource */
-	uint16_t start;
-	/** Number of allocated elements */
-	uint16_t stride;
-};
 
 /**
  * RM Element configuration enumeration. Used by the Device to
@@ -114,10 +104,6 @@ struct tf_rm_element_cfg {
 	 */
 	enum tf_rm_elem_cfg_type cfg_type;
 
-	/* If a HCAPI to TF type conversion is required then TF type
-	 * can be added here.
-	 */
-
 	/**
 	 * HCAPI RM Type for the element. Used for TF to HCAPI type
 	 * conversion.
@@ -125,28 +111,19 @@ struct tf_rm_element_cfg {
 	uint16_t hcapi_type;
 
 	/**
-	 * if cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_CHILD
+	 * if cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_CHILD/PARENT
 	 *
 	 * Parent Truflow module subtype associated with this resource type.
 	 */
 	uint16_t parent_subtype;
 
 	/**
-	 * if cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_CHILD
+	 * if cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_CHILD/PARENT
 	 *
 	 * Resource slices.  How many slices will fit in the
 	 * resource pool chunk size.
 	 */
 	uint8_t slices;
-
-	/**
-	 * Pool element divider count
-	 * If 0 or 1, there is 1:1 correspondence between the RM
-	 * BA pool resource element and the HCAPI RM firmware
-	 * resource.  If > 1, the RM BA pool element has a 1:n
-	 * correspondence to the HCAPI RM firmware resource.
-	 */
-	uint8_t divider;
 };
 
 /**
@@ -160,7 +137,7 @@ struct tf_rm_alloc_info {
 	 * In case of dynamic allocation support this would have
 	 * to be changed to linked list of tf_rm_entry instead.
 	 */
-	struct tf_rm_new_entry entry;
+	struct tf_resource_info entry;
 };
 
 /**
@@ -331,6 +308,25 @@ struct tf_rm_get_hcapi_parms {
 	 */
 	uint16_t *hcapi_type;
 };
+/**
+ * Get Slices parameters for a single element
+ */
+struct tf_rm_get_slices_parms {
+	/**
+	 * [in] RM DB Handle
+	 */
+	void *rm_db;
+	/**
+	 * [in] TF subtype indicates which DB entry to perform the
+	 * action on. (e.g. TF_TBL_TYPE_FULL_ACTION subtype of module
+	 * TF_MODULE_TYPE_TABLE)
+	 */
+	uint16_t subtype;
+	/**
+	 * [in/out] Pointer to number of slices for the given type
+	 */
+	uint16_t *slices;
+};
 
 /**
  * Get InUse count parameters for single element
@@ -394,6 +390,8 @@ struct tf_rm_check_indexes_in_range_parms {
  * @ref tf_rm_get_hcapi_type
  *
  * @ref tf_rm_get_inuse_count
+ *
+ * @ref tf_rm_get_slice_size
  */
 
 /**
@@ -571,5 +569,17 @@ int tf_rm_get_inuse_count(struct tf_rm_get_inuse_count_parms *parms);
 int
 tf_rm_check_indexes_in_range(struct tf_rm_check_indexes_in_range_parms *parms);
 
+/**
+ * Get the number of slices per resource bit allocator for the resource type
+ *
+ * [in] parms
+ *   Pointer to get inuse parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int
+tf_rm_get_slices(struct tf_rm_get_slices_parms *parms);
 
 #endif /* TF_RM_NEW_H_ */

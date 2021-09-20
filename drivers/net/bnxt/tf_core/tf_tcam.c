@@ -43,7 +43,7 @@ tf_tcam_bind(struct tf *tfp,
 	struct tf_shadow_tcam_free_db_parms fshadow;
 	struct tf_shadow_tcam_cfg_parms shadow_cfg;
 	struct tf_shadow_tcam_create_db_parms shadow_cdb;
-	uint16_t num_slices = 1;
+	uint16_t num_slices = parms->wc_num_slices;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	struct tcam_rm_db *tcam_db;
@@ -61,7 +61,7 @@ tf_tcam_bind(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	if (dev->ops->tf_dev_get_tcam_slice_info == NULL) {
+	if (dev->ops->tf_dev_set_tcam_slice_info == NULL) {
 		rc = -EOPNOTSUPP;
 		TFP_DRV_LOG(ERR,
 			    "Operation not supported, rc:%s\n",
@@ -69,10 +69,8 @@ tf_tcam_bind(struct tf *tfp,
 		return rc;
 	}
 
-	rc = dev->ops->tf_dev_get_tcam_slice_info(tfp,
-						  TF_TCAM_TBL_TYPE_WC_TCAM,
-						  0,
-						  &num_slices);
+	rc = dev->ops->tf_dev_set_tcam_slice_info(tfp,
+						  num_slices);
 	if (rc)
 		return rc;
 

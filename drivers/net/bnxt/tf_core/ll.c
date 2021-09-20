@@ -13,6 +13,7 @@ void ll_init(struct ll *ll)
 {
 	ll->head = NULL;
 	ll->tail = NULL;
+	ll->cnt = 0;
 }
 
 /* insert entry in linked list */
@@ -30,6 +31,7 @@ void ll_insert(struct ll *ll,
 		entry->next->prev = entry;
 		ll->head = entry->next->prev;
 	}
+	ll->cnt++;
 }
 
 /* delete entry from linked list */
@@ -49,4 +51,5 @@ void ll_delete(struct ll *ll,
 		entry->prev->next = entry->next;
 		entry->next->prev = entry->prev;
 	}
+	ll->cnt--;
 }

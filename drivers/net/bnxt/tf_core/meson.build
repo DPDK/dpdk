@@ -16,6 +16,8 @@ sources += files(
         'stack.c',
         'tf_rm.c',
         'tf_tbl.c',
+        'tf_tbl_sram.c',
+        'tf_sram_mgr.c',
         'tf_em_common.c',
         'tf_em_host.c',
         'tf_em_internal.c',

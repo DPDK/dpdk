@@ -1079,17 +1079,16 @@ tf_alloc_tbl_entry(struct tf *tfp,
 				    strerror(-rc));
 			return rc;
 		}
-
-	} else {
-		if (dev->ops->tf_dev_alloc_tbl == NULL) {
-			rc = -EOPNOTSUPP;
+	} else if (dev->ops->tf_dev_is_sram_managed(tfp, parms->type)) {
+		rc = dev->ops->tf_dev_alloc_sram_tbl(tfp, &aparms);
+		if (rc) {
 			TFP_DRV_LOG(ERR,
-				    "%s: Operation not supported, rc:%s\n",
+				    "%s: SRAM table allocation failed, rc:%s\n",
 				    tf_dir_2_str(parms->dir),
 				    strerror(-rc));
-			return -EOPNOTSUPP;
+			return rc;
 		}
-
+	} else {
 		rc = dev->ops->tf_dev_alloc_tbl(tfp, &aparms);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
@@ -1162,15 +1161,16 @@ tf_free_tbl_entry(struct tf *tfp,
 				    strerror(-rc));
 			return rc;
 		}
-	} else {
-		if (dev->ops->tf_dev_free_tbl == NULL) {
-			rc = -EOPNOTSUPP;
+	} else if (dev->ops->tf_dev_is_sram_managed(tfp, parms->type)) {
+		rc = dev->ops->tf_dev_free_sram_tbl(tfp, &fparms);
+		if (rc) {
 			TFP_DRV_LOG(ERR,
-				    "%s: Operation not supported, rc:%s\n",
+				    "%s: SRAM table free failed, rc:%s\n",
 				    tf_dir_2_str(parms->dir),
 				    strerror(-rc));
-			return -EOPNOTSUPP;
+			return rc;
 		}
+	} else {
 
 		rc = dev->ops->tf_dev_free_tbl(tfp, &fparms);
 		if (rc) {
@@ -1181,7 +1181,6 @@ tf_free_tbl_entry(struct tf *tfp,
 			return rc;
 		}
 	}
-
 	return 0;
 }
 
@@ -1244,6 +1243,15 @@ tf_set_tbl_entry(struct tf *tfp,
 				    strerror(-rc));
 			return rc;
 		}
+	}  else if (dev->ops->tf_dev_is_sram_managed(tfp, parms->type)) {
+		rc = dev->ops->tf_dev_set_sram_tbl(tfp, &sparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: SRAM table set failed, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return rc;
+		}
 	} else {
 		if (dev->ops->tf_dev_set_tbl == NULL) {
 			rc = -EOPNOTSUPP;
@@ -1300,28 +1308,39 @@ tf_get_tbl_entry(struct tf *tfp,
 			    strerror(-rc));
 		return rc;
 	}
-
-	if (dev->ops->tf_dev_get_tbl == NULL) {
-		rc = -EOPNOTSUPP;
-		TFP_DRV_LOG(ERR,
-			    "%s: Operation not supported, rc:%s\n",
-			    tf_dir_2_str(parms->dir),
-			    strerror(-rc));
-		return -EOPNOTSUPP;
-	}
-
 	gparms.dir = parms->dir;
 	gparms.type = parms->type;
 	gparms.data = parms->data;
 	gparms.data_sz_in_bytes = parms->data_sz_in_bytes;
 	gparms.idx = parms->idx;
-	rc = dev->ops->tf_dev_get_tbl(tfp, &gparms);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Table get failed, rc:%s\n",
-			    tf_dir_2_str(parms->dir),
-			    strerror(-rc));
-		return rc;
+
+	if (dev->ops->tf_dev_is_sram_managed(tfp, parms->type)) {
+		rc = dev->ops->tf_dev_get_sram_tbl(tfp, &gparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: SRAM table get failed, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return rc;
+		}
+	} else {
+		if (dev->ops->tf_dev_get_tbl == NULL) {
+			rc = -EOPNOTSUPP;
+			TFP_DRV_LOG(ERR,
+				    "%s: Operation not supported, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return -EOPNOTSUPP;
+		}
+
+		rc = dev->ops->tf_dev_get_tbl(tfp, &gparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Table get failed, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return rc;
+		}
 	}
 
 	return rc;
@@ -1361,6 +1380,13 @@ tf_bulk_get_tbl_entry(struct tf *tfp,
 		return rc;
 	}
 
+	bparms.dir = parms->dir;
+	bparms.type = parms->type;
+	bparms.starting_idx = parms->starting_idx;
+	bparms.num_entries = parms->num_entries;
+	bparms.entry_sz_in_bytes = parms->entry_sz_in_bytes;
+	bparms.physical_mem_addr = parms->physical_mem_addr;
+
 	if (parms->type == TF_TBL_TYPE_EXT) {
 		/* Not supported, yet */
 		rc = -EOPNOTSUPP;
@@ -1370,9 +1396,16 @@ tf_bulk_get_tbl_entry(struct tf *tfp,
 			    strerror(-rc));
 
 		return rc;
+	} else if (dev->ops->tf_dev_is_sram_managed(tfp, parms->type)) {
+		rc = dev->ops->tf_dev_get_bulk_sram_tbl(tfp, &bparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: SRAM table bulk get failed, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+		}
+		return rc;
 	}
-
-	/* Internal table type processing */
 
 	if (dev->ops->tf_dev_get_bulk_tbl == NULL) {
 		rc = -EOPNOTSUPP;
@@ -1383,12 +1416,6 @@ tf_bulk_get_tbl_entry(struct tf *tfp,
 		return -EOPNOTSUPP;
 	}
 
-	bparms.dir = parms->dir;
-	bparms.type = parms->type;
-	bparms.starting_idx = parms->starting_idx;
-	bparms.num_entries = parms->num_entries;
-	bparms.entry_sz_in_bytes = parms->entry_sz_in_bytes;
-	bparms.physical_mem_addr = parms->physical_mem_addr;
 	rc = dev->ops->tf_dev_get_bulk_tbl(tfp, &bparms);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
@@ -1397,7 +1424,6 @@ tf_bulk_get_tbl_entry(struct tf *tfp,
 			    strerror(-rc));
 		return rc;
 	}
-
 	return rc;
 }
 

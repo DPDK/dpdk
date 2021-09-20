@@ -279,18 +279,6 @@ tf_tcam_shared_bind(struct tf *tfp,
 		if (rc)
 			return rc;
 
-		rc = tf_tcam_shared_get_slices(tfp,
-					       dev,
-					       &num_slices);
-		if (rc)
-			return rc;
-
-		if (num_slices > 1) {
-			TFP_DRV_LOG(ERR,
-				    "Only single slice supported\n");
-			return -EOPNOTSUPP;
-		}
-
 		tf_tcam_shared_create_db(&tcam_shared_wc);
 
 
@@ -329,6 +317,18 @@ tf_tcam_shared_bind(struct tf *tfp,
 						      tcam_shared_wc);
 
 			tf_session_set_tcam_shared_db(tfp, (void *)tcam_shared_wc);
+		}
+
+		rc = tf_tcam_shared_get_slices(tfp,
+					       dev,
+					       &num_slices);
+		if (rc)
+			return rc;
+
+		if (num_slices > 1) {
+			TFP_DRV_LOG(ERR,
+				    "Only single slice supported\n");
+			return -EOPNOTSUPP;
 		}
 	}
 done:
@@ -972,9 +972,9 @@ tf_tcam_shared_move_entry(struct tf *tfp,
 	sparms.idx = dphy_idx;
 	sparms.key = gparms.key;
 	sparms.mask = gparms.mask;
-	sparms.key_size = gparms.key_size;
+	sparms.key_size = key_sz_bytes;
 	sparms.result = gparms.result;
-	sparms.result_size = gparms.result_size;
+	sparms.result_size = remap_sz_bytes;
 
 	rc = tf_msg_tcam_entry_set(tfp, dev, &sparms);
 	if (rc) {

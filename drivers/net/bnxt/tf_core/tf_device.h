@@ -57,6 +57,9 @@ struct tf_dev_info {
  * [in] resources
  *   Pointer to resource allocation information
  *
+ * [in] wc_num_slices
+ *   Number of slices per row for WC
+ *
  * [out] dev_handle
  *   Device handle
  *
@@ -69,6 +72,7 @@ int tf_dev_bind(struct tf *tfp,
 		enum tf_device_type type,
 		bool shadow_copy,
 		struct tf_session_resources *resources,
+		uint16_t wc_num_slices,
 		struct tf_dev_info *dev_handle);
 
 /**
@@ -138,6 +142,23 @@ struct tf_dev_ops {
 	int (*tf_dev_get_resource_str)(struct tf *tfp,
 				       uint16_t resource_id,
 				       const char **resource_str);
+
+	/**
+	 * Set the WC TCAM slice information that the device
+	 * supports.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] num_slices_per_row
+	 *   Number of slices per row the device supports
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_set_tcam_slice_info)(struct tf *tfp,
+					  enum tf_wc_num_slice num_slices_per_row);
 
 	/**
 	 * Retrieves the WC TCAM slice information that the device
@@ -242,6 +263,22 @@ struct tf_dev_ops {
 					  struct tf_identifier_resource_info *parms);
 
 	/**
+	 * Indicates whether the index table type is SRAM managed
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] type
+	 *   Truflow index table type, e.g. TF_TYPE_FULL_ACT_RECORD
+	 *
+	 * Returns
+	 *   - (0) if the table is not managed by the SRAM manager
+	 *   - (1) if the table is managed by the SRAM manager
+	 */
+	bool (*tf_dev_is_sram_managed)(struct tf *tfp,
+				       enum tf_tbl_type tbl_type);
+
+	/**
 	 * Get SRAM table information.
 	 *
 	 * Converts an internal RM allocated element offset to
@@ -290,6 +327,25 @@ struct tf_dev_ops {
 				struct tf_tbl_alloc_parms *parms);
 
 	/**
+	 * Allocation of an SRAM index table type element.
+	 *
+	 * This API allocates the specified table type element from a
+	 * device specific table type DB. The allocated element is
+	 * returned.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table allocation parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_alloc_sram_tbl)(struct tf *tfp,
+				     struct tf_tbl_alloc_parms *parms);
+	/**
 	 * Allocation of a external table type element.
 	 *
 	 * This API allocates the specified table type element from a
@@ -327,7 +383,24 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_free_tbl)(struct tf *tfp,
 			       struct tf_tbl_free_parms *parms);
-
+	/**
+	 * Free of an SRAM table type element.
+	 *
+	 * This API free's a previous allocated table type element from a
+	 * device specific table type DB.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table free parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_free_sram_tbl)(struct tf *tfp,
+				    struct tf_tbl_free_parms *parms);
 	/**
 	 * Free of a external table type element.
 	 *
@@ -386,6 +459,25 @@ struct tf_dev_ops {
 				  struct tf_tbl_set_parms *parms);
 
 	/**
+	 * Sets the specified SRAM table type element.
+	 *
+	 * This API sets the specified element data by invoking the
+	 * firmware.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table set parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_set_sram_tbl)(struct tf *tfp,
+				   struct tf_tbl_set_parms *parms);
+
+	/**
 	 * Retrieves the specified table type element.
 	 *
 	 * This API retrieves the specified element data by invoking the
@@ -403,6 +495,25 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_get_tbl)(struct tf *tfp,
 			      struct tf_tbl_get_parms *parms);
+
+	/**
+	 * Retrieves the specified SRAM table type element.
+	 *
+	 * This API retrieves the specified element data by invoking the
+	 * firmware.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table get parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_sram_tbl)(struct tf *tfp,
+				   struct tf_tbl_get_parms *parms);
 
 	/**
 	 * Retrieves the specified table type element using 'bulk'
@@ -423,6 +534,26 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_get_bulk_tbl)(struct tf *tfp,
 				   struct tf_tbl_get_bulk_parms *parms);
+
+	/**
+	 * Retrieves the specified SRAM table type element using 'bulk'
+	 * mechanism.
+	 *
+	 * This API retrieves the specified element data by invoking the
+	 * firmware.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table get bulk parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_bulk_sram_tbl)(struct tf *tfp,
+					struct tf_tbl_get_bulk_parms *parms);
 
 	/**
 	 * Gets the increment value to add to the shared session resource

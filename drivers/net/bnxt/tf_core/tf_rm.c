@@ -35,6 +35,12 @@ struct tf_rm_element {
 	uint16_t hcapi_type;
 
 	/**
+	 * Resource slices.  How many slices will fit in the
+	 * resource pool chunk size.
+	 */
+	uint8_t slices;
+
+	/**
 	 * HCAPI RM allocated range information for the element.
 	 */
 	struct tf_rm_alloc_info alloc;
@@ -356,12 +362,15 @@ tf_rm_check_residuals(struct tf_rm_new_db *rm_db,
  *     -          - Failure if negative
  */
 static int
-tf_rm_update_parent_reservations(struct tf_rm_element_cfg *cfg,
+tf_rm_update_parent_reservations(struct tf *tfp,
+				 struct tf_dev_info *dev,
+				 struct tf_rm_element_cfg *cfg,
 				 uint16_t *alloc_cnt,
 				 uint16_t num_elements,
 				 uint16_t *req_cnt)
 {
 	int parent, child;
+	const char *type_str;
 
 	/* Search through all the elements */
 	for (parent = 0; parent < num_elements; parent++) {
@@ -377,15 +386,25 @@ tf_rm_update_parent_reservations(struct tf_rm_element_cfg *cfg,
 			if (alloc_cnt[parent] % cfg[parent].slices)
 				combined_cnt++;
 
+			if (alloc_cnt[parent]) {
+				dev->ops->tf_dev_get_resource_str(tfp,
+							 cfg[parent].hcapi_type,
+							 &type_str);
+			}
+
 			/* Search again through all the elements */
 			for (child = 0; child < num_elements; child++) {
 				/* If this is one of my children */
 				if (cfg[child].cfg_type ==
 				    TF_RM_ELEM_CFG_HCAPI_BA_CHILD &&
-				    cfg[child].parent_subtype == parent) {
+				    cfg[child].parent_subtype == parent &&
+				    alloc_cnt[child]) {
 					uint16_t cnt = 0;
 					RTE_ASSERT(cfg[child].slices);
 
+					dev->ops->tf_dev_get_resource_str(tfp,
+							  cfg[child].hcapi_type,
+							   &type_str);
 					/* Increment the parents combined count
 					 * with each child's count adjusted for
 					 * number of slices per RM allocated item.
@@ -479,7 +498,7 @@ tf_rm_create_db(struct tf *tfp,
 
 	/* Update the req_cnt based upon the element configuration
 	 */
-	tf_rm_update_parent_reservations(parms->cfg,
+	tf_rm_update_parent_reservations(tfp, dev, parms->cfg,
 					 parms->alloc_cnt,
 					 parms->num_elements,
 					 req_cnt);
@@ -594,6 +613,7 @@ tf_rm_create_db(struct tf *tfp,
 
 		db[i].cfg_type = cfg->cfg_type;
 		db[i].hcapi_type = cfg->hcapi_type;
+		db[i].slices = cfg->slices;
 
 		/* Save the parent subtype for later use to find the pool
 		 */
@@ -1268,6 +1288,26 @@ tf_rm_get_hcapi_type(struct tf_rm_get_hcapi_parms *parms)
 		return -ENOTSUP;
 
 	*parms->hcapi_type = rm_db->db[parms->subtype].hcapi_type;
+
+	return 0;
+}
+int
+tf_rm_get_slices(struct tf_rm_get_slices_parms *parms)
+{
+	struct tf_rm_new_db *rm_db;
+	enum tf_rm_elem_cfg_type cfg_type;
+
+	TF_CHECK_PARMS2(parms, parms->rm_db);
+	rm_db = (struct tf_rm_new_db *)parms->rm_db;
+	TF_CHECK_PARMS1(rm_db->db);
+
+	cfg_type = rm_db->db[parms->subtype].cfg_type;
+
+	/* Bail out if not controlled by HCAPI */
+	if (cfg_type == TF_RM_ELEM_CFG_NULL)
+		return -ENOTSUP;
+
+	*parms->slices = rm_db->db[parms->subtype].slices;
 
 	return 0;
 }

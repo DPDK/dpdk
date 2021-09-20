@@ -384,6 +384,7 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 	size_t copy_nbytes;
 	uint32_t ulp_dev_id = BNXT_ULP_DEVICE_ID_LAST;
 	int32_t	rc = 0;
+	uint8_t app_id;
 
 	/* only perform this if shared session is enabled. */
 	if (!bnxt_ulp_cntxt_shared_session_enabled(bp->ulp_ctx))
@@ -422,6 +423,12 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 	if (rc)
 		return rc;
 
+	rc = bnxt_ulp_cntxt_app_id_get(bp->ulp_ctx, &app_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to get the app id from ulp.\n");
+		return -EINVAL;
+	}
+
 	rc = bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &ulp_dev_id);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to get device id from ulp.\n");
@@ -445,6 +452,10 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 
 	parms.shadow_copy = true;
 	parms.bp = bp;
+	if (app_id == 0 || app_id == 3)
+		parms.wc_num_slices = TF_WC_TCAM_2_SLICE_PER_ROW;
+	else
+		parms.wc_num_slices = TF_WC_TCAM_1_SLICE_PER_ROW;
 
 	/*
 	 * Open the session here, but the collect the resources during the
@@ -516,6 +527,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 	struct tf_open_session_parms	params;
 	struct tf_session_resources	*resources;
 	uint32_t ulp_dev_id = BNXT_ULP_DEVICE_ID_LAST;
+	uint8_t app_id;
 
 	memset(&params, 0, sizeof(params));
 
@@ -528,6 +540,12 @@ ulp_ctx_session_open(struct bnxt *bp,
 	}
 
 	params.shadow_copy = true;
+
+	rc = bnxt_ulp_cntxt_app_id_get(bp->ulp_ctx, &app_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to get the app id from ulp.\n");
+		return -EINVAL;
+	}
 
 	rc = bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &ulp_dev_id);
 	if (rc) {
@@ -556,6 +574,11 @@ ulp_ctx_session_open(struct bnxt *bp,
 		return rc;
 
 	params.bp = bp;
+	if (app_id == 0 || app_id == 3)
+		params.wc_num_slices = TF_WC_TCAM_2_SLICE_PER_ROW;
+	else
+		params.wc_num_slices = TF_WC_TCAM_1_SLICE_PER_ROW;
+
 	rc = tf_open_session(&bp->tfp, &params);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to open TF session - %s, rc = %d\n",

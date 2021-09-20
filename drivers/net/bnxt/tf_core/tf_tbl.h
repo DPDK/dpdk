@@ -29,14 +29,6 @@ struct tf_tbl_cfg_parms {
 	 */
 	struct tf_rm_element_cfg *cfg;
 	/**
-	 * Shadow table type configuration array
-	 */
-	struct tf_shadow_tbl_cfg *shadow_cfg;
-	/**
-	 * Boolean controlling the request shadow copy.
-	 */
-	bool shadow_copy;
-	/**
 	 * Session resource allocations
 	 */
 	struct tf_session_resources *resources;
@@ -197,8 +189,6 @@ struct tbl_rm_db {
  *
  * @ref tf_tbl_free
  *
- * @ref tf_tbl_alloc_search
- *
  * @ref tf_tbl_set
  *
  * @ref tf_tbl_get
@@ -255,10 +245,7 @@ int tf_tbl_alloc(struct tf *tfp,
 		 struct tf_tbl_alloc_parms *parms);
 
 /**
- * Free's the requested table type and returns it to the DB. If shadow
- * DB is enabled its searched first and if found the element refcount
- * is decremented. If refcount goes to 0 then its returned to the
- * table type DB.
+ * Frees the requested table type and returns it to the DB.
  *
  * [in] tfp
  *   Pointer to TF handle, used for HCAPI communication
