@@ -1827,6 +1827,104 @@ cmd_pipeline_selector_show(char **tokens,
 		snprintf(out, out_size, MSG_ARG_INVALID, "selector_name");
 }
 
+static int
+pipeline_learner_default_entry_add(struct rte_swx_ctl_pipeline *p,
+				   const char *learner_name,
+				   FILE *file,
+				   uint32_t *file_line_number)
+{
+	char *line = NULL;
+	uint32_t line_id = 0;
+	int status = 0;
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return -ENOMEM;
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		struct rte_swx_table_entry *entry;
+		int is_blank_or_comment;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		entry = rte_swx_ctl_pipeline_learner_default_entry_read(p,
+									learner_name,
+									line,
+									&is_blank_or_comment);
+		if (!entry) {
+			if (is_blank_or_comment)
+				continue;
+
+			status = -EINVAL;
+			goto error;
+		}
+
+		status = rte_swx_ctl_pipeline_learner_default_entry_add(p,
+									learner_name,
+									entry);
+		table_entry_free(entry);
+		if (status)
+			goto error;
+	}
+
+error:
+	*file_line_number = line_id;
+	free(line);
+	return status;
+}
+
+static const char cmd_pipeline_learner_default_help[] =
+"pipeline <pipeline_name> learner <learner_name> default <file_name>\n";
+
+static void
+cmd_pipeline_learner_default(char **tokens,
+			     uint32_t n_tokens,
+			     char *out,
+			     size_t out_size,
+			     void *obj)
+{
+	struct pipeline *p;
+	char *pipeline_name, *learner_name, *file_name;
+	FILE *file = NULL;
+	uint32_t file_line_number = 0;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = pipeline_find(obj, pipeline_name);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	learner_name = tokens[3];
+
+	file_name = tokens[5];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
+		return;
+	}
+
+	status = pipeline_learner_default_entry_add(p->ctl,
+						    learner_name,
+						    file,
+						    &file_line_number);
+	if (status)
+		snprintf(out, out_size, "Invalid entry in file %s at line %u\n",
+			 file_name,
+			 file_line_number);
+
+	fclose(file);
+}
+
 static const char cmd_pipeline_commit_help[] =
 "pipeline <pipeline_name> commit\n";
 
@@ -2501,6 +2599,64 @@ cmd_pipeline_stats(char **tokens,
 			out += strlen(out);
 		}
 	}
+
+	snprintf(out, out_size, "\nLearner tables:\n");
+	out_size -= strlen(out);
+	out += strlen(out);
+
+	for (i = 0; i < info.n_learners; i++) {
+		struct rte_swx_ctl_learner_info learner_info;
+		uint64_t n_pkts_action[info.n_actions];
+		struct rte_swx_learner_stats stats = {
+			.n_pkts_hit = 0,
+			.n_pkts_miss = 0,
+			.n_pkts_action = n_pkts_action,
+		};
+		uint32_t j;
+
+		status = rte_swx_ctl_learner_info_get(p->p, i, &learner_info);
+		if (status) {
+			snprintf(out, out_size, "Learner table info get error.");
+			return;
+		}
+
+		status = rte_swx_ctl_pipeline_learner_stats_read(p->p, learner_info.name, &stats);
+		if (status) {
+			snprintf(out, out_size, "Learner table stats read error.");
+			return;
+		}
+
+		snprintf(out, out_size, "\tLearner table %s:\n"
+			"\t\tHit (packets): %" PRIu64 "\n"
+			"\t\tMiss (packets): %" PRIu64 "\n"
+			"\t\tLearn OK (packets): %" PRIu64 "\n"
+			"\t\tLearn error (packets): %" PRIu64 "\n"
+			"\t\tForget (packets): %" PRIu64 "\n",
+			learner_info.name,
+			stats.n_pkts_hit,
+			stats.n_pkts_miss,
+			stats.n_pkts_learn_ok,
+			stats.n_pkts_learn_err,
+			stats.n_pkts_forget);
+		out_size -= strlen(out);
+		out += strlen(out);
+
+		for (j = 0; j < info.n_actions; j++) {
+			struct rte_swx_ctl_action_info action_info;
+
+			status = rte_swx_ctl_action_info_get(p->p, j, &action_info);
+			if (status) {
+				snprintf(out, out_size, "Action info get error.");
+				return;
+			}
+
+			snprintf(out, out_size, "\t\tAction %s (packets): %" PRIu64 "\n",
+				action_info.name,
+				stats.n_pkts_action[j]);
+			out_size -= strlen(out);
+			out += strlen(out);
+		}
+	}
 }
 
 static const char cmd_thread_pipeline_enable_help[] =
@@ -2632,6 +2788,7 @@ cmd_help(char **tokens,
 			"\tpipeline selector group member add\n"
 			"\tpipeline selector group member delete\n"
 			"\tpipeline selector show\n"
+			"\tpipeline learner default\n"
 			"\tpipeline commit\n"
 			"\tpipeline abort\n"
 			"\tpipeline regrd\n"
@@ -2778,6 +2935,15 @@ cmd_help(char **tokens,
 		(strcmp(tokens[2], "show") == 0)) {
 		snprintf(out, out_size, "\n%s\n",
 			cmd_pipeline_selector_show_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 3) &&
+		(strcmp(tokens[1], "learner") == 0) &&
+		(strcmp(tokens[2], "default") == 0)) {
+		snprintf(out, out_size, "\n%s\n",
+			cmd_pipeline_learner_default_help);
 		return;
 	}
 
@@ -3025,6 +3191,14 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 			(strcmp(tokens[2], "selector") == 0) &&
 			(strcmp(tokens[4], "show") == 0)) {
 			cmd_pipeline_selector_show(tokens, n_tokens, out,
+				out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[2], "learner") == 0) &&
+			(strcmp(tokens[4], "default") == 0)) {
+			cmd_pipeline_learner_default(tokens, n_tokens, out,
 				out_size, obj);
 			return;
 		}
