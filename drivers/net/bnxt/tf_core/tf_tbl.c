@@ -27,11 +27,6 @@
 struct tf;
 
 /**
- * Table Shadow DBs
- */
-static void *shadow_tbl_db[TF_DIR_MAX];
-
-/**
  * Shadow init flag, set on bind and cleared on unbind
  */
 static uint8_t shadow_init;
@@ -325,22 +320,6 @@ tf_tbl_free(struct tf *tfp __rte_unused,
 	}
 
 	return 0;
-}
-
-int
-tf_tbl_alloc_search(struct tf *tfp,
-		    struct tf_tbl_alloc_search_parms *parms)
-{
-	int rc = 0;
-	TF_CHECK_PARMS2(tfp, parms);
-
-	if (!shadow_init || !shadow_tbl_db[parms->dir]) {
-		TFP_DRV_LOG(ERR, "%s: Shadow TBL not initialized.\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
-
-	return rc;
 }
 
 int

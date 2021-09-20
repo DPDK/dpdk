@@ -23,6 +23,10 @@
 
 #include "bnxt.h"
 
+
+/** Invalid table scope id */
+#define TF_TBL_SCOPE_INVALID 0xffffffff
+
 /* Number of pointers per page_size */
 #define MAX_PAGE_PTRS(page_size)  ((page_size) / sizeof(void *))
 

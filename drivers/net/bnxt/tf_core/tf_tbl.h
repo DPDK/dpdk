@@ -15,8 +15,6 @@ struct tf;
  * The Table module provides processing of Internal TF table types.
  */
 
-/** Invalid table scope id */
-#define TF_TBL_SCOPE_INVALID 0xffffffff
 
 /**
  * Table configuration parameters
@@ -84,57 +82,6 @@ struct tf_tbl_free_parms {
 	uint32_t tbl_scope_id;
 	/**
 	 * [in] Index to free
-	 */
-	uint32_t idx;
-	/**
-	 * [out] Reference count after free, only valid if session has been
-	 * created with shadow_copy.
-	 */
-	uint16_t ref_cnt;
-};
-
-/**
- * Table allocate search parameters
- */
-struct tf_tbl_alloc_search_parms {
-	/**
-	 * [in] Receive or transmit direction
-	 */
-	enum tf_dir dir;
-	/**
-	 * [in] Type of the allocation
-	 */
-	enum tf_tbl_type type;
-	/**
-	 * [in] Table scope identifier (ignored unless TF_TBL_TYPE_EXT)
-	 */
-	uint32_t tbl_scope_id;
-	/**
-	 * [in] Result data to search for
-	 */
-	uint8_t *result;
-	/**
-	 * [in] Result data size in bytes
-	 */
-	uint16_t result_sz_in_bytes;
-	/**
-	 * [in] Whether or not to allocate on MISS, 1 is allocate.
-	 */
-	uint8_t alloc;
-	/**
-	 * [out] If search_enable, set if matching entry found
-	 */
-	uint8_t hit;
-	/**
-	 * [out] The status of the search (REJECT, MISS, HIT)
-	 */
-	enum tf_search_status search_status;
-	/**
-	 * [out] Current ref count after allocation
-	 */
-	uint16_t ref_cnt;
-	/**
-	 * [out] Idx of allocated entry or found entry
 	 */
 	uint32_t idx;
 };
@@ -325,25 +272,6 @@ int tf_tbl_alloc(struct tf *tfp,
  */
 int tf_tbl_free(struct tf *tfp,
 		struct tf_tbl_free_parms *parms);
-
-/**
- * Supported if Shadow DB is configured. Searches the Shadow DB for
- * any matching element. If found the refcount in the shadow DB is
- * updated accordingly. If not found a new element is allocated and
- * installed into the shadow DB.
- *
- * [in] tfp
- *   Pointer to TF handle, used for HCAPI communication
- *
- * [in] parms
- *   Pointer to parameters
- *
- * Returns
- *   - (0) if successful.
- *   - (-EINVAL) on failure.
- */
-int tf_tbl_alloc_search(struct tf *tfp,
-			struct tf_tbl_alloc_search_parms *parms);
 
 /**
  * Configures the requested element by sending a firmware request which

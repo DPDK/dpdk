@@ -1625,79 +1625,6 @@ int tf_clear_tcam_shared_entries(struct tf *tfp,
 /**
  * tf_alloc_tbl_entry parameter definition
  */
-struct tf_search_tbl_entry_parms {
-	/**
-	 * [in] Receive or transmit direction
-	 */
-	enum tf_dir dir;
-	/**
-	 * [in] Type of the allocation
-	 */
-	enum tf_tbl_type type;
-	/**
-	 * [in] Table scope identifier (ignored unless TF_TBL_TYPE_EXT)
-	 */
-	uint32_t tbl_scope_id;
-	/**
-	 * [in] Result data to search for
-	 */
-	uint8_t *result;
-	/**
-	 * [in] Result data size in bytes
-	 */
-	uint16_t result_sz_in_bytes;
-	/**
-	 * [in] Allocate on miss.
-	 */
-	uint8_t alloc;
-	/**
-	 * [out] Set if matching entry found
-	 */
-	uint8_t hit;
-	/**
-	 * [out] Search result status (hit, miss, reject)
-	 */
-	enum tf_search_status search_status;
-	/**
-	 * [out] Current ref count after allocation
-	 */
-	uint16_t ref_cnt;
-	/**
-	 * [out] Idx of allocated entry or found entry
-	 */
-	uint32_t idx;
-};
-
-/**
- * search Table Entry (experimental)
- *
- * This function searches the shadow copy of an index table for a matching
- * entry.  The result data must match for hit to be set.  Only TruFlow core
- * data is accessed.  If shadow_copy is not enabled, an error is returned.
- *
- * Implementation:
- *
- * A hash is performed on the result data and mapped to a shadow copy entry
- * where the result is populated.  If the result matches the entry, hit is set,
- * ref_cnt is incremented (if alloc), and the search status indicates what
- * action the caller can take regarding setting the entry.
- *
- * search status should be used as follows:
- * - On MISS, the caller should set the result into the returned index.
- *
- * - On REJECT, the caller should reject the flow since there are no resources.
- *
- * - On Hit, the matching index is returned to the caller.  Additionally, the
- *   ref_cnt is updated.
- *
- * Also returns success or failure code.
- */
-int tf_search_tbl_entry(struct tf *tfp,
-			struct tf_search_tbl_entry_parms *parms);
-
-/**
- * tf_alloc_tbl_entry parameter definition
- */
 struct tf_alloc_tbl_entry_parms {
 	/**
 	 * [in] Receive or transmit direction
@@ -1711,30 +1638,9 @@ struct tf_alloc_tbl_entry_parms {
 	 * [in] Table scope identifier (ignored unless TF_TBL_TYPE_EXT)
 	 */
 	uint32_t tbl_scope_id;
+
 	/**
-	 * [in] Enable search for matching entry. If the table type is
-	 * internal the shadow copy will be searched before
-	 * alloc. Session must be configured with shadow copy enabled.
-	 */
-	uint8_t search_enable;
-	/**
-	 * [in] Result data to search for (if search_enable)
-	 */
-	uint8_t *result;
-	/**
-	 * [in] Result data size in bytes (if search_enable)
-	 */
-	uint16_t result_sz_in_bytes;
-	/**
-	 * [out] If search_enable, set if matching entry found
-	 */
-	uint8_t hit;
-	/**
-	 * [out] Current ref count after allocation (if search_enable)
-	 */
-	uint16_t ref_cnt;
-	/**
-	 * [out] Idx of allocated entry or found entry (if search_enable)
+	 * [out] Idx of allocated entry
 	 */
 	uint32_t idx;
 };
@@ -1790,11 +1696,6 @@ struct tf_free_tbl_entry_parms {
 	 * [in] Index to free
 	 */
 	uint32_t idx;
-	/**
-	 * [out] Reference count after free, only valid if session has been
-	 * created with shadow_copy.
-	 */
-	uint16_t ref_cnt;
 };
 
 /**

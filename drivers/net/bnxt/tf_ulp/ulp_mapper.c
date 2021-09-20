@@ -189,13 +189,12 @@ ulp_mapper_resource_index_tbl_alloc(struct bnxt_ulp_context *ulp_ctx,
 
 	aparms.type = glb_res->resource_type;
 	aparms.dir = glb_res->direction;
-	aparms.search_enable = 0;
 	aparms.tbl_scope_id = tbl_scope_id;
 
 	/* Allocate the index tbl using tf api */
 	rc = tf_alloc_tbl_entry(tfp, &aparms);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to alloc identifier [%s][%d]\n",
+		BNXT_TF_DBG(ERR, "Failed to alloc index table [%s][%d]\n",
 			    tf_dir_2_str(aparms.dir), aparms.type);
 		return rc;
 	}

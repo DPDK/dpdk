@@ -348,28 +348,6 @@ struct tf_dev_ops {
 				   struct tf_tbl_free_parms *parms);
 
 	/**
-	 * Searches for the specified table type element in a shadow DB.
-	 *
-	 * This API searches for the specified table type element in a
-	 * device specific shadow DB. If the element is found the
-	 * reference count for the element is updated. If the element
-	 * is not found a new element is allocated from the table type
-	 * DB and then inserted into the shadow DB.
-	 *
-	 * [in] tfp
-	 *   Pointer to TF handle
-	 *
-	 * [in] parms
-	 *   Pointer to table allocation and search parameters
-	 *
-	 * Returns
-	 *   - (0) if successful.
-	 *   - (-EINVAL) on failure.
-	 */
-	int (*tf_dev_alloc_search_tbl)(struct tf *tfp,
-				       struct tf_tbl_alloc_search_parms *parms);
-
-	/**
 	 * Sets the specified table type element.
 	 *
 	 * This API sets the specified element data by invoking the
