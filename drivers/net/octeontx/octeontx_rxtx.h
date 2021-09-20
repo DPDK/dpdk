@@ -161,7 +161,7 @@ ptype_table[PTYPE_SIZE][PTYPE_SIZE][PTYPE_SIZE] = {
 
 
 static __rte_always_inline uint64_t
-octeontx_pktmbuf_detach(struct rte_mbuf *m)
+octeontx_pktmbuf_detach(struct rte_mbuf *m, struct rte_mbuf **m_tofree)
 {
 	struct rte_mempool *mp = m->pool;
 	uint32_t mbuf_size, buf_len;
@@ -171,6 +171,8 @@ octeontx_pktmbuf_detach(struct rte_mbuf *m)
 
 	/* Update refcount of direct mbuf */
 	md = rte_mbuf_from_indirect(m);
+	/* The real data will be in the direct buffer, inform callers this */
+	*m_tofree = md;
 	refcount = rte_mbuf_refcnt_update(md, -1);
 
 	priv_size = rte_pktmbuf_priv_size(mp);
@@ -203,18 +205,18 @@ octeontx_pktmbuf_detach(struct rte_mbuf *m)
 }
 
 static __rte_always_inline uint64_t
-octeontx_prefree_seg(struct rte_mbuf *m)
+octeontx_prefree_seg(struct rte_mbuf *m, struct rte_mbuf **m_tofree)
 {
 	if (likely(rte_mbuf_refcnt_read(m) == 1)) {
 		if (!RTE_MBUF_DIRECT(m))
-			return octeontx_pktmbuf_detach(m);
+			return octeontx_pktmbuf_detach(m, m_tofree);
 
 		m->next = NULL;
 		m->nb_segs = 1;
 		return 0;
 	} else if (rte_mbuf_refcnt_update(m, -1) == 0) {
 		if (!RTE_MBUF_DIRECT(m))
-			return octeontx_pktmbuf_detach(m);
+			return octeontx_pktmbuf_detach(m, m_tofree);
 
 		rte_mbuf_refcnt_set(m, 1);
 		m->next = NULL;
@@ -315,6 +317,14 @@ __octeontx_xmit_prepare(struct rte_mbuf *tx_pkt, uint64_t *cmd_buf,
 			const uint16_t flag)
 {
 	uint16_t gaura_id, nb_desc = 0;
+	struct rte_mbuf *m_tofree;
+	rte_iova_t iova;
+	uint16_t data_len;
+
+	m_tofree = tx_pkt;
+
+	data_len = tx_pkt->data_len;
+	iova = rte_mbuf_data_iova(tx_pkt);
 
 	/* Setup PKO_SEND_HDR_S */
 	cmd_buf[nb_desc++] = tx_pkt->data_len & 0xffff;
@@ -329,22 +339,23 @@ __octeontx_xmit_prepare(struct rte_mbuf *tx_pkt, uint64_t *cmd_buf,
 	 * not, as SG_DESC[I] and SEND_HDR[II] are clear.
 	 */
 	if (flag & OCCTX_TX_OFFLOAD_MBUF_NOFF_F)
-		cmd_buf[0] |= (octeontx_prefree_seg(tx_pkt) <<
+		cmd_buf[0] |= (octeontx_prefree_seg(tx_pkt, &m_tofree) <<
 			       58);
 
 	/* Mark mempool object as "put" since it is freed by PKO */
 	if (!(cmd_buf[0] & (1ULL << 58)))
-		__mempool_check_cookies(tx_pkt->pool, (void **)&tx_pkt,
+		__mempool_check_cookies(m_tofree->pool, (void **)&m_tofree,
 					1, 0);
 	/* Get the gaura Id */
-	gaura_id = octeontx_fpa_bufpool_gaura((uintptr_t)tx_pkt->pool->pool_id);
+	gaura_id =
+		octeontx_fpa_bufpool_gaura((uintptr_t)m_tofree->pool->pool_id);
 
 	/* Setup PKO_SEND_BUFLINK_S */
 	cmd_buf[nb_desc++] = PKO_SEND_BUFLINK_SUBDC |
 		PKO_SEND_BUFLINK_LDTYPE(0x1ull) |
 		PKO_SEND_BUFLINK_GAUAR((long)gaura_id) |
-		tx_pkt->data_len;
-	cmd_buf[nb_desc++] = rte_mbuf_data_iova(tx_pkt);
+		data_len;
+	cmd_buf[nb_desc++] = iova;
 
 	return nb_desc;
 }
@@ -355,7 +366,9 @@ __octeontx_xmit_mseg_prepare(struct rte_mbuf *tx_pkt, uint64_t *cmd_buf,
 {
 	uint16_t nb_segs, nb_desc = 0;
 	uint16_t gaura_id, len = 0;
-	struct rte_mbuf *m_next = NULL;
+	struct rte_mbuf *m_next = NULL, *m_tofree;
+	rte_iova_t iova;
+	uint16_t data_len;
 
 	nb_segs = tx_pkt->nb_segs;
 	/* Setup PKO_SEND_HDR_S */
@@ -369,40 +382,50 @@ __octeontx_xmit_mseg_prepare(struct rte_mbuf *tx_pkt, uint64_t *cmd_buf,
 
 	do {
 		m_next = tx_pkt->next;
-		/* To handle case where mbufs belong to diff pools, like
-		 * fragmentation
+		/* Get TX parameters up front, octeontx_prefree_seg might change
+		 * them
 		 */
-		gaura_id = octeontx_fpa_bufpool_gaura((uintptr_t)
-						      tx_pkt->pool->pool_id);
+		m_tofree = tx_pkt;
+		data_len = tx_pkt->data_len;
+		iova = rte_mbuf_data_iova(tx_pkt);
 
 		/* Setup PKO_SEND_GATHER_S */
-		cmd_buf[nb_desc] = PKO_SEND_GATHER_SUBDC		 |
-				   PKO_SEND_GATHER_LDTYPE(0x1ull)	 |
-				   PKO_SEND_GATHER_GAUAR((long)gaura_id) |
-				   tx_pkt->data_len;
+		cmd_buf[nb_desc] = 0;
 
 		/* SG_DESC[I] bit controls if buffer is to be freed or
 		 * not, as SEND_HDR[DF] and SEND_HDR[II] are clear.
 		 */
 		if (flag & OCCTX_TX_OFFLOAD_MBUF_NOFF_F) {
 			cmd_buf[nb_desc] |=
-			     (octeontx_prefree_seg(tx_pkt) << 57);
+				(octeontx_prefree_seg(tx_pkt, &m_tofree) << 57);
 		}
+
+		/* To handle case where mbufs belong to diff pools, like
+		 * fragmentation
+		 */
+		gaura_id = octeontx_fpa_bufpool_gaura((uintptr_t)
+					m_tofree->pool->pool_id);
+
+		/* Setup PKO_SEND_GATHER_S */
+		cmd_buf[nb_desc] |= PKO_SEND_GATHER_SUBDC		 |
+				   PKO_SEND_GATHER_LDTYPE(0x1ull)	 |
+				   PKO_SEND_GATHER_GAUAR((long)gaura_id) |
+				   data_len;
 
 		/* Mark mempool object as "put" since it is freed by
 		 * PKO.
 		 */
 		if (!(cmd_buf[nb_desc] & (1ULL << 57))) {
 			tx_pkt->next = NULL;
-			__mempool_check_cookies(tx_pkt->pool,
-						(void **)&tx_pkt, 1, 0);
+			__mempool_check_cookies(m_tofree->pool,
+						(void **)&m_tofree, 1, 0);
 		}
 		nb_desc++;
 
-		cmd_buf[nb_desc++] = rte_mbuf_data_iova(tx_pkt);
+		cmd_buf[nb_desc++] = iova;
 
 		nb_segs--;
-		len += tx_pkt->data_len;
+		len += data_len;
 		tx_pkt = m_next;
 	} while (nb_segs);
 
