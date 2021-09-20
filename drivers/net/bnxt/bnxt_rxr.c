@@ -1134,6 +1134,9 @@ void bnxt_free_rx_rings(struct bnxt *bp)
 		rte_free(rxq->cp_ring->cp_ring_struct);
 		rte_free(rxq->cp_ring);
 
+		rte_memzone_free(rxq->mz);
+		rxq->mz = NULL;
+
 		rte_free(rxq);
 		bp->rx_queues[i] = NULL;
 	}

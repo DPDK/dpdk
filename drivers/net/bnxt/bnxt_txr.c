@@ -37,6 +37,9 @@ void bnxt_free_tx_rings(struct bnxt *bp)
 		rte_free(txq->cp_ring->cp_ring_struct);
 		rte_free(txq->cp_ring);
 
+		rte_memzone_free(txq->mz);
+		txq->mz = NULL;
+
 		rte_free(txq);
 		bp->tx_queues[i] = NULL;
 	}
