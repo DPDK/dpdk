@@ -21,12 +21,14 @@
 #define FLOW_CNTR_BYTES(v, d) (((v) & (d)->byte_count_mask) >> \
 		(d)->byte_count_shift)
 
+#define FLOW_CNTR_PC_FLOW_VALID	0x1000000
+
 struct sw_acc_counter {
 	uint64_t pkt_count;
 	uint64_t byte_count;
 	bool	valid;
 	uint32_t hw_cntr_id;
-	uint32_t parent_flow_id;
+	uint32_t pc_flow_idx;
 };
 
 struct hw_fc_mem_info {
@@ -175,12 +177,12 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ulp_ctx,
  *
  * hw_cntr_id [in] The HW flow counter ID
  *
- * fid [in] parent flow id
+ * pc_idx [in] parent child db index
  *
  */
 int32_t ulp_fc_mgr_cntr_parent_flow_set(struct bnxt_ulp_context *ctxt,
 					enum tf_dir dir,
 					uint32_t hw_cntr_id,
-					uint32_t fid);
+					uint32_t pc_idx);
 
 #endif /* _ULP_FC_MGR_H_ */

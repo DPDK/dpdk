@@ -215,6 +215,21 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 	}
 };
 
+struct bnxt_ulp_rte_act_info ulp_vendor_act_info[] = {
+	[BNXT_RTE_FLOW_ACTION_TYPE_END - BNXT_RTE_FLOW_ACTION_TYPE_END] = {
+	.act_type                = BNXT_ULP_ACT_TYPE_END,
+	.proto_act_func          = NULL
+	},
+	[BNXT_RTE_FLOW_ACTION_TYPE_VXLAN_DECAP - BNXT_RTE_FLOW_ACTION_TYPE_END] = {
+	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+	.proto_act_func          = ulp_vendor_vxlan_decap_act_handler
+	},
+	[BNXT_RTE_FLOW_ACTION_TYPE_LAST - BNXT_RTE_FLOW_ACTION_TYPE_END] = {
+	.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+	.proto_act_func          = NULL
+	}
+};
+
 /*
  * This table has to be indexed based on the rte_flow_item_type that is part of
  * DPDK. The below array is list of parsing functions for each of the flow items
@@ -413,4 +428,20 @@ struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
 	.proto_hdr_func          = NULL
 	}
+};
+
+struct bnxt_ulp_rte_hdr_info ulp_vendor_hdr_info[] = {
+	[BNXT_RTE_FLOW_ITEM_TYPE_END - BNXT_RTE_FLOW_ITEM_TYPE_END] = {
+	.hdr_type                = BNXT_ULP_HDR_TYPE_END,
+	.proto_hdr_func          = NULL
+	},
+	[BNXT_RTE_FLOW_ITEM_TYPE_VXLAN_DECAP - BNXT_RTE_FLOW_ITEM_TYPE_END] = {
+	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+	.proto_hdr_func          = ulp_rte_vendor_vxlan_decap_hdr_handler
+	},
+	[BNXT_RTE_FLOW_ITEM_TYPE_LAST - BNXT_RTE_FLOW_ITEM_TYPE_END] = {
+	.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+	.proto_hdr_func          = NULL
+	},
+
 };

@@ -25,7 +25,8 @@ exclude() # <pattern>
 				$dir/tf_ulp/ulp_rte_handler_tbl.c |
 				grep -wo "$1[[:alnum:]_]*" | sort -u |
 				tr '\n' '|' | sed 's,.$,\n,')
-			grep -vE "$filter";;
+			exceptions='RTE_FLOW_ACTION_TYPE_SHARED'
+			grep -vE "$filter" | grep -vE $exceptions;;
 		*) cat
 	esac
 }

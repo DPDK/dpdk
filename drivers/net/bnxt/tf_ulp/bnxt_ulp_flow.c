@@ -12,6 +12,7 @@
 #include "ulp_fc_mgr.h"
 #include "ulp_port_db.h"
 #include "ulp_ha_mgr.h"
+#include "ulp_tun.h"
 #include <rte_malloc.h>
 #ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
 #include "ulp_template_debug_proto.h"
@@ -101,12 +102,13 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 	mapper_cparms->act_prop = &params->act_prop;
 	mapper_cparms->flow_id = params->fid;
 	mapper_cparms->parent_flow = params->parent_flow;
-	mapper_cparms->parent_fid = params->parent_fid;
+	mapper_cparms->child_flow = params->child_flow;
 	mapper_cparms->fld_bitmap = &params->fld_bitmap;
 	mapper_cparms->flow_pattern_id = params->flow_pattern_id;
 	mapper_cparms->act_pattern_id = params->act_pattern_id;
 	mapper_cparms->app_id = params->app_id;
 	mapper_cparms->port_id = params->port_id;
+	mapper_cparms->tun_idx = params->tun_idx;
 
 	/* update the signature fields into the computed field list */
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_HDR_SIG_ID,
@@ -218,12 +220,14 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	params.func_id = func_id;
 	params.priority = attr->priority;
 	params.port_id = dev->data->port_id;
+
 	/* Perform the rte flow post process */
-	ret = bnxt_ulp_rte_parser_post_process(&params);
+	bnxt_ulp_rte_parser_post_process(&params);
+
+	/* do the tunnel offload process if any */
+	ret = ulp_tunnel_offload_process(&params);
 	if (ret == BNXT_TF_RC_ERROR)
 		goto free_fid;
-	else if (ret == BNXT_TF_RC_FID)
-		goto return_fid;
 
 #ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
 #ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_PARSER
@@ -249,7 +253,6 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	if (ret)
 		goto free_fid;
 
-return_fid:
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 
 	flow_id = (struct rte_flow *)((uintptr_t)fid);
@@ -314,11 +317,12 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev,
 		goto parse_error;
 
 	/* Perform the rte flow post process */
-	ret = bnxt_ulp_rte_parser_post_process(&params);
+	bnxt_ulp_rte_parser_post_process(&params);
+
+	/* do the tunnel offload process if any */
+	ret = ulp_tunnel_offload_process(&params);
 	if (ret == BNXT_TF_RC_ERROR)
 		goto parse_error;
-	else if (ret == BNXT_TF_RC_FID)
-		return 0;
 
 	ret = ulp_matcher_pattern_match(&params, &class_id);
 
@@ -475,11 +479,201 @@ bnxt_ulp_flow_query(struct rte_eth_dev *eth_dev,
 	return rc;
 }
 
+/* Tunnel offload Apis */
+#define BNXT_ULP_TUNNEL_OFFLOAD_NUM_ITEMS	1
+
+static int
+bnxt_ulp_tunnel_decap_set(struct rte_eth_dev *eth_dev,
+			  struct rte_flow_tunnel *tunnel,
+			  struct rte_flow_action **pmd_actions,
+			  uint32_t *num_of_actions,
+			  struct rte_flow_error *error)
+{
+	struct bnxt_ulp_context *ulp_ctx;
+	struct bnxt_flow_app_tun_ent *tun_entry;
+	int32_t rc = 0;
+
+	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
+	if (ulp_ctx == NULL) {
+		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "ULP context uninitialized");
+		return -EINVAL;
+	}
+
+	if (tunnel == NULL) {
+		BNXT_TF_DBG(ERR, "No tunnel specified\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+				   "no tunnel specified");
+		return -EINVAL;
+	}
+
+	if (tunnel->type != RTE_FLOW_ITEM_TYPE_VXLAN) {
+		BNXT_TF_DBG(ERR, "Tunnel type unsupported\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+				   "tunnel type unsupported");
+		return -EINVAL;
+	}
+
+	rc = ulp_app_tun_search_entry(ulp_ctx, tunnel, &tun_entry);
+	if (rc < 0) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+				   "tunnel decap set failed");
+		return -EINVAL;
+	}
+
+	rc = ulp_app_tun_entry_set_decap_action(tun_entry);
+	if (rc < 0) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+				   "tunnel decap set failed");
+		return -EINVAL;
+	}
+
+	*pmd_actions = &tun_entry->action;
+	*num_of_actions = BNXT_ULP_TUNNEL_OFFLOAD_NUM_ITEMS;
+	return 0;
+}
+
+static int
+bnxt_ulp_tunnel_match(struct rte_eth_dev *eth_dev,
+		      struct rte_flow_tunnel *tunnel,
+		      struct rte_flow_item **pmd_items,
+		      uint32_t *num_of_items,
+		      struct rte_flow_error *error)
+{
+	struct bnxt_ulp_context *ulp_ctx;
+	struct bnxt_flow_app_tun_ent *tun_entry;
+	int32_t rc = 0;
+
+	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
+	if (ulp_ctx == NULL) {
+		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "ULP context uninitialized");
+		return -EINVAL;
+	}
+
+	if (tunnel == NULL) {
+		BNXT_TF_DBG(ERR, "No tunnel specified\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "no tunnel specified");
+		return -EINVAL;
+	}
+
+	if (tunnel->type != RTE_FLOW_ITEM_TYPE_VXLAN) {
+		BNXT_TF_DBG(ERR, "Tunnel type unsupported\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "tunnel type unsupported");
+		return -EINVAL;
+	}
+
+	rc = ulp_app_tun_search_entry(ulp_ctx, tunnel, &tun_entry);
+	if (rc < 0) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+				   "tunnel match set failed");
+		return -EINVAL;
+	}
+
+	rc = ulp_app_tun_entry_set_decap_item(tun_entry);
+	if (rc < 0) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+				   "tunnel match set failed");
+		return -EINVAL;
+	}
+
+	*pmd_items = &tun_entry->item;
+	*num_of_items = BNXT_ULP_TUNNEL_OFFLOAD_NUM_ITEMS;
+	return 0;
+}
+
+static int
+bnxt_ulp_tunnel_decap_release(struct rte_eth_dev *eth_dev,
+			      struct rte_flow_action *pmd_actions,
+			      uint32_t num_actions,
+			      struct rte_flow_error *error)
+{
+	struct bnxt_ulp_context *ulp_ctx;
+	struct bnxt_flow_app_tun_ent *tun_entry;
+	const struct rte_flow_action *action_item = pmd_actions;
+
+	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
+	if (ulp_ctx == NULL) {
+		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "ULP context uninitialized");
+		return -EINVAL;
+	}
+	if (num_actions != BNXT_ULP_TUNNEL_OFFLOAD_NUM_ITEMS) {
+		BNXT_TF_DBG(ERR, "num actions is invalid\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+				   "num actions is invalid");
+		return -EINVAL;
+	}
+	while (action_item && action_item->type != RTE_FLOW_ACTION_TYPE_END) {
+		if (action_item->type == (typeof(tun_entry->action.type))
+		    BNXT_RTE_FLOW_ACTION_TYPE_VXLAN_DECAP) {
+			tun_entry = ulp_app_tun_match_entry(ulp_ctx,
+							    action_item->conf);
+			ulp_app_tun_entry_delete(tun_entry);
+		}
+		action_item++;
+	}
+	return 0;
+}
+
+static int
+bnxt_ulp_tunnel_item_release(struct rte_eth_dev *eth_dev,
+			     struct rte_flow_item *pmd_items,
+			     uint32_t num_items,
+			     struct rte_flow_error *error)
+{
+	struct bnxt_ulp_context *ulp_ctx;
+	struct bnxt_flow_app_tun_ent *tun_entry;
+
+	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
+	if (ulp_ctx == NULL) {
+		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "ULP context uninitialized");
+		return -EINVAL;
+	}
+	if (num_items != BNXT_ULP_TUNNEL_OFFLOAD_NUM_ITEMS) {
+		BNXT_TF_DBG(ERR, "num items is invalid\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+				   "num items is invalid");
+		return -EINVAL;
+	}
+
+	tun_entry = ulp_app_tun_match_entry(ulp_ctx, pmd_items->spec);
+	ulp_app_tun_entry_delete(tun_entry);
+	return 0;
+}
+
 const struct rte_flow_ops bnxt_ulp_rte_flow_ops = {
 	.validate = bnxt_ulp_flow_validate,
 	.create = bnxt_ulp_flow_create,
 	.destroy = bnxt_ulp_flow_destroy,
 	.flush = bnxt_ulp_flow_flush,
 	.query = bnxt_ulp_flow_query,
-	.isolate = NULL
+	.isolate = NULL,
+	/* Tunnel offload callbacks */
+	.tunnel_decap_set = bnxt_ulp_tunnel_decap_set,
+	.tunnel_match = bnxt_ulp_tunnel_match,
+	.tunnel_action_decap_release = bnxt_ulp_tunnel_decap_release,
+	.tunnel_item_release = bnxt_ulp_tunnel_item_release,
+	.get_restore_info = NULL
 };

@@ -37,9 +37,7 @@
 enum bnxt_tf_rc {
 	BNXT_TF_RC_PARSE_ERR	= -2,
 	BNXT_TF_RC_ERROR	= -1,
-	BNXT_TF_RC_SUCCESS	= 0,
-	BNXT_TF_RC_NORMAL	= 1,
-	BNXT_TF_RC_FID		= 2,
+	BNXT_TF_RC_SUCCESS	= 0
 };
 
 /* eth IPv4 Type */

@@ -75,7 +75,7 @@ bnxt_ulp_rte_parser_act_parse(const struct rte_flow_action actions[],
 /*
  * Function to handle the post processing of the parsing details
  */
-int32_t
+void
 bnxt_ulp_rte_parser_post_process(struct ulp_rte_parser_params *params);
 
 /* Function to handle the parsing of RTE Flow item PF Header. */
@@ -269,5 +269,13 @@ ulp_rte_sample_act_handler(const struct rte_flow_action *action_item,
 int32_t
 ulp_rte_shared_act_handler(const struct rte_flow_action *action_item,
 			   struct ulp_rte_parser_params *params);
+
+int32_t
+ulp_vendor_vxlan_decap_act_handler(const struct rte_flow_action *action_item,
+				   struct ulp_rte_parser_params *params);
+
+int32_t
+ulp_rte_vendor_vxlan_decap_hdr_handler(const struct rte_flow_item *item,
+				       struct ulp_rte_parser_params *params);
 
 #endif /* _ULP_RTE_PARSER_H_ */

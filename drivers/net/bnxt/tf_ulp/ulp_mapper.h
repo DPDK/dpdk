@@ -53,7 +53,7 @@ struct bnxt_ulp_mapper_parms {
 	enum bnxt_ulp_fdb_type			flow_type;
 	struct bnxt_ulp_mapper_data		*mapper_data;
 	struct bnxt_ulp_device_params		*device_params;
-	uint32_t				parent_fid;
+	uint32_t				child_flow;
 	uint32_t				parent_flow;
 	uint8_t					tun_idx;
 	uint32_t				app_priority;
@@ -79,8 +79,8 @@ struct bnxt_ulp_mapper_create_parms {
 	enum bnxt_ulp_fdb_type		flow_type;
 
 	uint32_t			flow_id;
-	/* if set then create it as a child flow with parent as parent_fid */
-	uint32_t			parent_fid;
+	/* if set then create it as a child flow */
+	uint32_t			child_flow;
 	/* if set then create a parent flow */
 	uint32_t			parent_flow;
 	uint8_t				tun_idx;

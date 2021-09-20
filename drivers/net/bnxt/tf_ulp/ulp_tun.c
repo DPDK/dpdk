@@ -3,225 +3,111 @@
  * All rights reserved.
  */
 
-#include <sys/queue.h>
-
-#include <rte_malloc.h>
-
+#include "bnxt.h"
+#include "bnxt_ulp.h"
 #include "ulp_tun.h"
-#include "ulp_rte_parser.h"
-#include "ulp_template_db_enum.h"
-#include "ulp_template_struct.h"
-#include "ulp_matcher.h"
-#include "ulp_mapper.h"
-#include "ulp_flow_db.h"
+#include "ulp_utils.h"
 
-/* This function programs the outer tunnel flow in the hardware. */
-static int32_t
-ulp_install_outer_tun_flow(struct ulp_rte_parser_params *params,
-			   struct bnxt_tun_cache_entry *tun_entry,
-			   uint16_t tun_idx)
+/* returns negative on error, 1 if new entry is allocated or zero if old */
+int32_t
+ulp_app_tun_search_entry(struct bnxt_ulp_context *ulp_ctx,
+			 struct rte_flow_tunnel *app_tunnel,
+			 struct bnxt_flow_app_tun_ent **tun_entry)
 {
-	struct bnxt_ulp_mapper_create_parms mparms = { 0 };
-	int ret;
+	struct bnxt_flow_app_tun_ent *tun_ent_list;
+	int32_t i, rc = 0, free_entry = -1;
 
-	/* Reset the JUMP action bit in the action bitmap as we don't
-	 * offload this action.
-	 */
-	ULP_BITMAP_RESET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_JUMP);
+	tun_ent_list = bnxt_ulp_cntxt_ptr2_app_tun_list_get(ulp_ctx);
+	if (!tun_ent_list) {
+		BNXT_TF_DBG(ERR, "unable to get the app tunnel list\n");
+		return -EINVAL;
+	}
 
-	ULP_BITMAP_SET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_F1);
+	for (i = 0; i < BNXT_ULP_MAX_TUN_CACHE_ENTRIES; i++) {
+		if (!tun_ent_list[i].ref_cnt) {
+			if (free_entry < 0)
+				free_entry = i;
+		} else {
+			if (!memcmp(&tun_ent_list[i].app_tunnel,
+				    app_tunnel,
+				    sizeof(struct rte_flow_tunnel))) {
+				*tun_entry =  &tun_ent_list[i];
+				tun_ent_list[free_entry].ref_cnt++;
+				return rc;
+			}
+		}
+	}
+	if (free_entry >= 0) {
+		*tun_entry =  &tun_ent_list[free_entry];
+		memcpy(&tun_ent_list[free_entry].app_tunnel, app_tunnel,
+		       sizeof(struct rte_flow_tunnel));
+		tun_ent_list[free_entry].ref_cnt = 1;
+		rc = 1;
+	} else {
+		BNXT_TF_DBG(ERR, "ulp app tunnel list is full\n");
+		return -ENOMEM;
+	}
 
-#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_PARSER
-	/* Dump the rte flow pattern */
-	ulp_parser_hdr_info_dump(params);
-	/* Dump the rte flow action */
-	ulp_parser_act_info_dump(params);
-#endif
-#endif
-
-	ret = ulp_matcher_pattern_match(params, &params->class_id);
-	if (ret != BNXT_TF_RC_SUCCESS)
-		goto err;
-
-	ret = ulp_matcher_action_match(params, &params->act_tmpl);
-	if (ret != BNXT_TF_RC_SUCCESS)
-		goto err;
-
-	params->parent_flow = true;
-	bnxt_ulp_init_mapper_params(&mparms, params,
-				    BNXT_ULP_FDB_TYPE_REGULAR);
-	mparms.tun_idx = tun_idx;
-
-	/* Call the ulp mapper to create the flow in the hardware. */
-	ret = ulp_mapper_flow_create(params->ulp_ctx, &mparms);
-	if (ret)
-		goto err;
-
-	/* Store the tunnel dmac in the tunnel cache table and use it while
-	 * programming tunnel inner flow.
-	 */
-	memcpy(tun_entry->t_dmac,
-	       &params->hdr_field[ULP_TUN_O_DMAC_HDR_FIELD_INDEX].spec,
-	       RTE_ETHER_ADDR_LEN);
-
-	tun_entry->tun_flow_info[params->port_id].state =
-				BNXT_ULP_FLOW_STATE_TUN_O_OFFLD;
-	tun_entry->outer_tun_flow_id = params->fid;
-
-	/* Tunnel outer flow  and it's related inner flows are correlated
-	 * based on Tunnel Destination IP Address.
-	 */
-	if (tun_entry->t_dst_ip_valid)
-		goto done;
-	if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_O_IPV4))
-		memcpy(&tun_entry->t_dst_ip,
-		       &params->hdr_field[ULP_TUN_O_IPV4_DIP_INDEX].spec,
-		       sizeof(rte_be32_t));
-	else
-		memcpy(tun_entry->t_dst_ip6,
-		       &params->hdr_field[ULP_TUN_O_IPV6_DIP_INDEX].spec,
-		       sizeof(tun_entry->t_dst_ip6));
-	tun_entry->t_dst_ip_valid = true;
-
-done:
-	return BNXT_TF_RC_FID;
-
-err:
-	memset(tun_entry, 0, sizeof(struct bnxt_tun_cache_entry));
-	return BNXT_TF_RC_ERROR;
+	return rc;
 }
 
-/* This function programs the inner tunnel flow in the hardware. */
-static void
-ulp_install_inner_tun_flow(struct bnxt_tun_cache_entry *tun_entry,
-			   struct ulp_rte_parser_params *tun_o_params)
+void
+ulp_app_tun_entry_delete(struct bnxt_flow_app_tun_ent *tun_entry)
 {
-	struct bnxt_ulp_mapper_create_parms mparms = { 0 };
-	struct ulp_per_port_flow_info *flow_info;
-	struct ulp_rte_parser_params *inner_params;
-	int ret;
-
-	/* Tunnel inner flow doesn't have tunnel dmac, use the tunnel
-	 * dmac that was stored during F1 programming.
-	 */
-	flow_info = &tun_entry->tun_flow_info[tun_o_params->port_id];
-	STAILQ_FOREACH(inner_params, &flow_info->tun_i_prms_list, next) {
-		memcpy(&inner_params->hdr_field[ULP_TUN_O_DMAC_HDR_FIELD_INDEX],
-		       tun_entry->t_dmac, RTE_ETHER_ADDR_LEN);
-		inner_params->parent_fid = tun_entry->outer_tun_flow_id;
-
-		bnxt_ulp_init_mapper_params(&mparms, inner_params,
-					    BNXT_ULP_FDB_TYPE_REGULAR);
-
-		ret = ulp_mapper_flow_create(inner_params->ulp_ctx, &mparms);
-		if (ret)
-			PMD_DRV_LOG(ERR,
-				    "Failed to create inner tun flow, FID:%u.",
-				    inner_params->fid);
+	if (tun_entry) {
+		if (tun_entry->ref_cnt) {
+			tun_entry->ref_cnt--;
+			if (!tun_entry->ref_cnt)
+				memset(tun_entry, 0,
+				       sizeof(struct bnxt_flow_app_tun_ent));
+		}
 	}
 }
 
-/* This function either install outer tunnel flow & inner tunnel flow
- * or just the outer tunnel flow based on the flow state.
- */
-static int32_t
-ulp_post_process_outer_tun_flow(struct ulp_rte_parser_params *params,
-			     struct bnxt_tun_cache_entry *tun_entry,
-			     uint16_t tun_idx)
+int32_t
+ulp_app_tun_entry_set_decap_action(struct bnxt_flow_app_tun_ent *tun_entry)
 {
-	int ret;
+	if (!tun_entry)
+		return -EINVAL;
 
-	ret = ulp_install_outer_tun_flow(params, tun_entry, tun_idx);
-	if (ret == BNXT_TF_RC_ERROR) {
-		PMD_DRV_LOG(ERR, "Failed to create outer tunnel flow.");
-		return ret;
+	tun_entry->action.type = (typeof(tun_entry->action.type))
+			      BNXT_RTE_FLOW_ACTION_TYPE_VXLAN_DECAP;
+	tun_entry->action.conf = tun_entry;
+	return 0;
+}
+
+int32_t
+ulp_app_tun_entry_set_decap_item(struct bnxt_flow_app_tun_ent *tun_entry)
+{
+	if (!tun_entry)
+		return -EINVAL;
+
+	tun_entry->item.type = (typeof(tun_entry->item.type))
+			      BNXT_RTE_FLOW_ITEM_TYPE_VXLAN_DECAP;
+	tun_entry->item.spec = tun_entry;
+	tun_entry->item.last = NULL;
+	tun_entry->item.mask = NULL;
+	return 0;
+}
+
+struct bnxt_flow_app_tun_ent *
+ulp_app_tun_match_entry(struct bnxt_ulp_context *ulp_ctx,
+			const void *ctx)
+{
+	struct bnxt_flow_app_tun_ent *tun_ent_list;
+	int32_t i;
+
+	tun_ent_list = bnxt_ulp_cntxt_ptr2_app_tun_list_get(ulp_ctx);
+	if (!tun_ent_list) {
+		BNXT_TF_DBG(ERR, "unable to get the app tunnel list\n");
+		return NULL;
 	}
 
-	/* Install any cached tunnel inner flows that came before tunnel
-	 * outer flow.
-	 */
-	ulp_install_inner_tun_flow(tun_entry, params);
-
-	return BNXT_TF_RC_FID;
-}
-
-/* This function will be called if inner tunnel flow request comes before
- * outer tunnel flow request.
- */
-static int32_t
-ulp_post_process_cache_inner_tun_flow(struct ulp_rte_parser_params *params,
-				      struct bnxt_tun_cache_entry *tun_entry)
-{
-	struct ulp_rte_parser_params *inner_tun_params;
-	struct ulp_per_port_flow_info *flow_info;
-	int ret;
-
-#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_PARSER
-	/* Dump the rte flow pattern */
-	ulp_parser_hdr_info_dump(params);
-	/* Dump the rte flow action */
-	ulp_parser_act_info_dump(params);
-#endif
-#endif
-
-	ret = ulp_matcher_pattern_match(params, &params->class_id);
-	if (ret != BNXT_TF_RC_SUCCESS)
-		return BNXT_TF_RC_ERROR;
-
-	ret = ulp_matcher_action_match(params, &params->act_tmpl);
-	if (ret != BNXT_TF_RC_SUCCESS)
-		return BNXT_TF_RC_ERROR;
-
-	/* If Tunnel inner flow comes first then we can't install it in the
-	 * hardware, because, Tunnel inner flow will not have L2 context
-	 * information. So, just cache the Tunnel inner flow information
-	 * and program it in the context of F1 flow installation.
-	 */
-	flow_info = &tun_entry->tun_flow_info[params->port_id];
-	inner_tun_params = rte_zmalloc("ulp_inner_tun_params",
-				       sizeof(struct ulp_rte_parser_params), 0);
-	if (!inner_tun_params)
-		return BNXT_TF_RC_ERROR;
-	memcpy(inner_tun_params, params, sizeof(struct ulp_rte_parser_params));
-	STAILQ_INSERT_TAIL(&flow_info->tun_i_prms_list, inner_tun_params,
-			   next);
-	flow_info->tun_i_cnt++;
-
-	/* F1 and it's related Tunnel inner flows are correlated based on
-	 * Tunnel Destination IP Address. It could be already set, if
-	 * the inner flow got offloaded first.
-	 */
-	if (tun_entry->t_dst_ip_valid)
-		goto done;
-	if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_O_IPV4))
-		memcpy(&tun_entry->t_dst_ip,
-		       &params->hdr_field[ULP_TUN_O_IPV4_DIP_INDEX].spec,
-		       sizeof(rte_be32_t));
-	else
-		memcpy(tun_entry->t_dst_ip6,
-		       &params->hdr_field[ULP_TUN_O_IPV6_DIP_INDEX].spec,
-		       sizeof(tun_entry->t_dst_ip6));
-	tun_entry->t_dst_ip_valid = true;
-
-done:
-	return BNXT_TF_RC_FID;
-}
-
-/* This function will be called if inner tunnel flow request comes after
- * the outer tunnel flow request.
- */
-static int32_t
-ulp_post_process_inner_tun_flow(struct ulp_rte_parser_params *params,
-				struct bnxt_tun_cache_entry *tun_entry)
-{
-	memcpy(&params->hdr_field[ULP_TUN_O_DMAC_HDR_FIELD_INDEX],
-	       tun_entry->t_dmac, RTE_ETHER_ADDR_LEN);
-
-	params->parent_fid = tun_entry->outer_tun_flow_id;
-
-	return BNXT_TF_RC_NORMAL;
+	for (i = 0; i < BNXT_ULP_MAX_TUN_CACHE_ENTRIES; i++) {
+		if (&tun_ent_list[i] == ctx)
+			return &tun_ent_list[i];
+	}
+	return NULL;
 }
 
 static int32_t
@@ -229,203 +115,116 @@ ulp_get_tun_entry(struct ulp_rte_parser_params *params,
 		  struct bnxt_tun_cache_entry **tun_entry,
 		  uint16_t *tun_idx)
 {
-	int i, first_free_entry = BNXT_ULP_TUN_ENTRY_INVALID;
+	int32_t i, first_free_entry = BNXT_ULP_TUN_ENTRY_INVALID;
 	struct bnxt_tun_cache_entry *tun_tbl;
-	bool tun_entry_found = false, free_entry_found = false;
+	uint32_t dip_idx, dmac_idx, use_ipv4 = 0;
 
 	tun_tbl = bnxt_ulp_cntxt_ptr2_tun_tbl_get(params->ulp_ctx);
-	if (!tun_tbl)
+	if (!tun_tbl) {
+		BNXT_TF_DBG(ERR, "Error: could not get Tunnel table\n");
 		return BNXT_TF_RC_ERROR;
+	}
+
+	/* get the outer destination ip field index */
+	dip_idx = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_TUN_OFF_DIP_ID);
+	dmac_idx = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_TUN_OFF_DMAC_ID);
+	if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_O_IPV4))
+		use_ipv4 = 1;
 
 	for (i = 0; i < BNXT_ULP_MAX_TUN_CACHE_ENTRIES; i++) {
-		if (!memcmp(&tun_tbl[i].t_dst_ip,
-			    &params->hdr_field[ULP_TUN_O_IPV4_DIP_INDEX].spec,
-			    sizeof(rte_be32_t)) ||
-		    !memcmp(&tun_tbl[i].t_dst_ip6,
-			    &params->hdr_field[ULP_TUN_O_IPV6_DIP_INDEX].spec,
-			    16)) {
-			tun_entry_found = true;
-			break;
+		if (!tun_tbl[i].t_dst_ip_valid) {
+			if (first_free_entry == BNXT_ULP_TUN_ENTRY_INVALID)
+				first_free_entry = i;
+			continue;
 		}
-
-		if (!tun_tbl[i].t_dst_ip_valid && !free_entry_found) {
-			first_free_entry = i;
-			free_entry_found = true;
+		/* match on the destination ip of the tunnel */
+		if ((use_ipv4 && !memcmp(&tun_tbl[i].t_dst_ip,
+					 params->hdr_field[dip_idx].spec,
+					 sizeof(rte_be32_t))) ||
+		    (!use_ipv4 &&
+		     !memcmp(tun_tbl[i].t_dst_ip6,
+			     params->hdr_field[dip_idx].spec,
+			     sizeof(((struct bnxt_tun_cache_entry *)
+				     NULL)->t_dst_ip6)))) {
+			*tun_entry = &tun_tbl[i];
+			*tun_idx = i;
+			return 0;
 		}
 	}
-
-	if (tun_entry_found) {
-		*tun_entry = &tun_tbl[i];
-		*tun_idx = i;
-	} else {
-		if (first_free_entry == BNXT_ULP_TUN_ENTRY_INVALID)
-			return BNXT_TF_RC_ERROR;
-		*tun_entry = &tun_tbl[first_free_entry];
-		*tun_idx = first_free_entry;
+	if (first_free_entry == BNXT_ULP_TUN_ENTRY_INVALID) {
+		BNXT_TF_DBG(ERR, "Error: No entry available in tunnel table\n");
+		return BNXT_TF_RC_ERROR;
 	}
+
+	*tun_idx = first_free_entry;
+	*tun_entry = &tun_tbl[first_free_entry];
+	tun_tbl[first_free_entry].t_dst_ip_valid = true;
+
+	/* Update the destination ip and mac */
+	if (use_ipv4)
+		memcpy(&tun_tbl[first_free_entry].t_dst_ip,
+		       params->hdr_field[dip_idx].spec, sizeof(rte_be32_t));
+	else
+		memcpy(tun_tbl[first_free_entry].t_dst_ip6,
+		       params->hdr_field[dip_idx].spec,
+		       sizeof(((struct bnxt_tun_cache_entry *)
+				     NULL)->t_dst_ip6));
+	memcpy(tun_tbl[first_free_entry].t_dmac,
+	       params->hdr_field[dmac_idx].spec, RTE_ETHER_ADDR_LEN);
 
 	return 0;
 }
 
-int32_t
-ulp_post_process_tun_flow(struct ulp_rte_parser_params *params)
+/* Tunnel API to delete the tunnel entry */
+void
+ulp_tunnel_offload_entry_clear(struct bnxt_tun_cache_entry *tun_tbl,
+			       uint8_t tun_idx)
 {
-	bool inner_tun_sig, cache_inner_tun_flow;
-	bool outer_tun_reject, outer_tun_flow, inner_tun_flow;
-	enum bnxt_ulp_tun_flow_state flow_state;
+	memset(&tun_tbl[tun_idx], 0, sizeof(struct bnxt_tun_cache_entry));
+}
+
+/* Tunnel API to perform tunnel offload process when there is F1/F2 flows */
+int32_t
+ulp_tunnel_offload_process(struct ulp_rte_parser_params *params)
+{
 	struct bnxt_tun_cache_entry *tun_entry;
-	uint32_t l3_tun, l3_tun_decap;
 	uint16_t tun_idx;
-	int rc;
+	int32_t rc = BNXT_TF_RC_SUCCESS;
 
-	/* Computational fields that indicate it's a TUNNEL DECAP flow */
-	l3_tun = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L3_TUN);
-	l3_tun_decap = ULP_COMP_FLD_IDX_RD(params,
-					   BNXT_ULP_CF_IDX_L3_TUN_DECAP);
-	if (!l3_tun)
-		return BNXT_TF_RC_NORMAL;
+	/* Perform the tunnel offload only for F1 and F2 flows */
+	if (!ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			      BNXT_ULP_HDR_BIT_F1) &&
+	    !ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			      BNXT_ULP_HDR_BIT_F2))
+		return rc;
 
+	/* search for the tunnel entry if not found create one */
 	rc = ulp_get_tun_entry(params, &tun_entry, &tun_idx);
 	if (rc == BNXT_TF_RC_ERROR)
 		return rc;
 
-	if (params->port_id >= RTE_MAX_ETHPORTS)
-		return BNXT_TF_RC_ERROR;
-	flow_state = tun_entry->tun_flow_info[params->port_id].state;
-	/* Outer tunnel flow validation */
-	outer_tun_flow = BNXT_OUTER_TUN_FLOW(l3_tun, params);
-	outer_tun_reject = BNXT_REJECT_OUTER_TUN_FLOW(flow_state,
-						      outer_tun_flow);
-
-	/* Inner tunnel flow validation */
-	inner_tun_sig = BNXT_INNER_TUN_SIGNATURE(l3_tun, l3_tun_decap, params);
-	cache_inner_tun_flow = BNXT_CACHE_INNER_TUN_FLOW(flow_state,
-							 inner_tun_sig);
-	inner_tun_flow = BNXT_INNER_TUN_FLOW(flow_state, inner_tun_sig);
-
-	if (outer_tun_reject) {
-		tun_entry->outer_tun_rej_cnt++;
-		BNXT_TF_DBG(ERR,
-			    "Tunnel F1 flow rejected, COUNT: %d\n",
-			    tun_entry->outer_tun_rej_cnt);
+	/* Tunnel offload for the outer Tunnel flow */
+	if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			     BNXT_ULP_HDR_BIT_F1)) {
+		/* Reset the JUMP action bit in the action bitmap as we don't
+		 * offload this action.
+		 */
+		ULP_BITMAP_RESET(params->act_bitmap.bits,
+				 BNXT_ULP_ACT_BIT_JUMP);
+		params->parent_flow = true;
+		params->tun_idx = tun_idx;
+		tun_entry->outer_tun_flow_id = params->fid;
+	} else if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			     BNXT_ULP_HDR_BIT_F2)) {
+		ULP_BITMAP_RESET(params->hdr_bitmap.bits,
+				 BNXT_ULP_HDR_BIT_F2);
+		/* add the vxlan decap action for F2 flows */
+		ULP_BITMAP_SET(params->act_bitmap.bits,
+			       BNXT_ULP_ACT_BIT_VXLAN_DECAP);
+		params->child_flow = true;
+		params->tun_idx = tun_idx;
+		params->parent_flow = false;
 	}
-
-	if (outer_tun_reject)
-		return BNXT_TF_RC_ERROR;
-	else if (cache_inner_tun_flow)
-		return ulp_post_process_cache_inner_tun_flow(params, tun_entry);
-	else if (outer_tun_flow)
-		return ulp_post_process_outer_tun_flow(params, tun_entry,
-						       tun_idx);
-	else if (inner_tun_flow)
-		return ulp_post_process_inner_tun_flow(params, tun_entry);
-	else
-		return BNXT_TF_RC_NORMAL;
-}
-
-void
-ulp_tun_tbl_init(struct bnxt_tun_cache_entry *tun_tbl)
-{
-	struct ulp_per_port_flow_info *flow_info;
-	int i, j;
-
-	for (i = 0; i < BNXT_ULP_MAX_TUN_CACHE_ENTRIES; i++) {
-		for (j = 0; j < RTE_MAX_ETHPORTS; j++) {
-			flow_info = &tun_tbl[i].tun_flow_info[j];
-			STAILQ_INIT(&flow_info->tun_i_prms_list);
-		}
-	}
-}
-
-void
-ulp_clear_tun_entry(struct bnxt_tun_cache_entry *tun_tbl, uint8_t tun_idx)
-{
-	struct ulp_rte_parser_params *inner_params;
-	struct ulp_per_port_flow_info *flow_info;
-	int j;
-
-	for (j = 0; j < RTE_MAX_ETHPORTS; j++) {
-		flow_info = &tun_tbl[tun_idx].tun_flow_info[j];
-		STAILQ_FOREACH(inner_params,
-			       &flow_info->tun_i_prms_list,
-			       next) {
-			STAILQ_REMOVE(&flow_info->tun_i_prms_list,
-				      inner_params,
-				      ulp_rte_parser_params, next);
-			rte_free(inner_params);
-		}
-	}
-
-	memset(&tun_tbl[tun_idx], 0,
-			sizeof(struct bnxt_tun_cache_entry));
-
-	for (j = 0; j < RTE_MAX_ETHPORTS; j++) {
-		flow_info = &tun_tbl[tun_idx].tun_flow_info[j];
-		STAILQ_INIT(&flow_info->tun_i_prms_list);
-	}
-}
-
-static bool
-ulp_chk_and_rem_tun_i_flow(struct bnxt_tun_cache_entry *tun_entry,
-			   struct ulp_per_port_flow_info *flow_info,
-			   uint32_t fid)
-{
-	struct ulp_rte_parser_params *inner_params;
-	int j;
-
-	STAILQ_FOREACH(inner_params,
-		       &flow_info->tun_i_prms_list,
-		       next) {
-		if (inner_params->fid == fid) {
-			STAILQ_REMOVE(&flow_info->tun_i_prms_list,
-				      inner_params,
-				      ulp_rte_parser_params,
-				      next);
-			rte_free(inner_params);
-			flow_info->tun_i_cnt--;
-			/* When a dpdk application offloads a duplicate
-			 * tunnel inner flow on a port that it is not
-			 * destined to, there won't be a tunnel outer flow
-			 * associated with these duplicate tunnel inner flows.
-			 * So, when the last tunnel inner flow ages out, the
-			 * driver has to clear the tunnel entry, otherwise
-			 * the tunnel entry cannot be reused.
-			 */
-			if (!flow_info->tun_i_cnt &&
-			    flow_info->state != BNXT_ULP_FLOW_STATE_TUN_O_OFFLD) {
-				memset(tun_entry, 0,
-				       sizeof(struct bnxt_tun_cache_entry));
-				for (j = 0; j < RTE_MAX_ETHPORTS; j++)
-					STAILQ_INIT(&flow_info->tun_i_prms_list);
-			}
-			return true;
-		}
-	}
-
-	return false;
-}
-
-/* When a dpdk application offloads the same tunnel inner flow
- * on all the uplink ports, a tunnel inner flow entry is cached
- * even if it is not for the right uplink port. Such tunnel
- * inner flows will eventually get aged out as there won't be
- * any traffic on these ports. When such a flow destroy is
- * called, cleanup the tunnel inner flow entry.
- */
-void
-ulp_clear_tun_inner_entry(struct bnxt_tun_cache_entry *tun_tbl, uint32_t fid)
-{
-	struct ulp_per_port_flow_info *flow_info;
-	int i, j;
-
-	for (i = 0; i < BNXT_ULP_MAX_TUN_CACHE_ENTRIES; i++) {
-		if (!tun_tbl[i].t_dst_ip_valid)
-			continue;
-		for (j = 0; j < RTE_MAX_ETHPORTS; j++) {
-			flow_info = &tun_tbl[i].tun_flow_info[j];
-			if (ulp_chk_and_rem_tun_i_flow(&tun_tbl[i],
-						       flow_info, fid) == true)
-				return;
-		}
-	}
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_TUNNEL_ID, tun_idx);
+	return rc;
 }

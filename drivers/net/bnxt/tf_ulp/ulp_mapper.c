@@ -544,34 +544,14 @@ ulp_mapper_parent_flow_free(struct bnxt_ulp_context *ulp,
 			    uint32_t parent_fid,
 			    struct ulp_flow_db_res_params *res)
 {
-	uint32_t idx, child_fid = 0, parent_idx;
-	struct bnxt_ulp_flow_db *flow_db;
+	uint32_t pc_idx;
 
-	parent_idx = (uint32_t)res->resource_hndl;
+	pc_idx = (uint32_t)res->resource_hndl;
 
-	/* check the validity of the parent fid */
-	if (ulp_flow_db_parent_flow_idx_get(ulp, parent_fid, &idx) ||
-	    idx != parent_idx) {
-		BNXT_TF_DBG(ERR, "invalid parent flow id %x\n", parent_fid);
-		return -EINVAL;
-	}
-
-	/* Clear all the child flows parent index */
-	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp);
-	while (!ulp_flow_db_parent_child_flow_next_entry_get(flow_db, idx,
-							     &child_fid)) {
-		/* update the child flows resource handle */
-		if (ulp_flow_db_child_flow_reset(ulp, BNXT_ULP_FDB_TYPE_REGULAR,
-						 child_fid)) {
-			BNXT_TF_DBG(ERR, "failed to reset child flow %x\n",
-				    child_fid);
-			return -EINVAL;
-		}
-	}
-
-	/* free the parent entry in the parent table flow */
-	if (ulp_flow_db_parent_flow_free(ulp, parent_fid)) {
-		BNXT_TF_DBG(ERR, "failed to free parent flow %x\n", parent_fid);
+	/* reset the child flow bitset*/
+	if (ulp_flow_db_pc_db_parent_flow_set(ulp, pc_idx, parent_fid, 0)) {
+		BNXT_TF_DBG(ERR, "error in reset parent flow bitset %x:%x\n",
+			    pc_idx, parent_fid);
 		return -EINVAL;
 	}
 	return 0;
@@ -582,16 +562,14 @@ ulp_mapper_child_flow_free(struct bnxt_ulp_context *ulp,
 			   uint32_t child_fid,
 			   struct ulp_flow_db_res_params *res)
 {
-	uint32_t parent_fid;
+	uint32_t pc_idx;
 
-	parent_fid = (uint32_t)res->resource_hndl;
-	if (!parent_fid)
-		return 0; /* Already freed - orphan child*/
+	pc_idx = (uint32_t)res->resource_hndl;
 
 	/* reset the child flow bitset*/
-	if (ulp_flow_db_parent_child_flow_set(ulp, parent_fid, child_fid, 0)) {
+	if (ulp_flow_db_pc_db_child_flow_set(ulp, pc_idx, child_fid, 0)) {
 		BNXT_TF_DBG(ERR, "error in resetting child flow bitset %x:%x\n",
-			    parent_fid, child_fid);
+			    pc_idx, child_fid);
 		return -EINVAL;
 	}
 	return 0;
@@ -1942,6 +1920,12 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get truflow pointer\n");
 		return -EINVAL;
+	}
+
+	/* If only allocation of identifier then perform and exit */
+	if (tbl->tbl_opcode == BNXT_ULP_TCAM_TBL_OPC_ALLOC_IDENT) {
+		rc = ulp_mapper_tcam_tbl_scan_ident_alloc(parms, tbl);
+		return rc;
 	}
 
 	kflds = ulp_mapper_key_fields_get(parms, tbl, &num_kflds);
@@ -3889,7 +3873,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	parms.class_tid = cparms->class_tid;
 	parms.flow_type = cparms->flow_type;
 	parms.parent_flow = cparms->parent_flow;
-	parms.parent_fid = cparms->parent_fid;
+	parms.child_flow = cparms->child_flow;
 	parms.fid = cparms->flow_id;
 	parms.tun_idx = cparms->tun_idx;
 	parms.app_priority = cparms->app_priority;
@@ -3954,7 +3938,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 		rc = ulp_flow_db_parent_flow_create(&parms);
 		if (rc)
 			goto flow_error;
-	} else if (parms.parent_fid) {
+	} else if (parms.child_flow) {
 		/* create a child flow details */
 		rc = ulp_flow_db_child_flow_create(&parms);
 		if (rc)

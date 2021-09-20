@@ -58,6 +58,7 @@ struct bnxt_ulp_flow_tbl {
 
 /* Structure to maintain parent-child flow relationships */
 struct ulp_fdb_parent_info {
+	uint32_t	valid;
 	uint32_t	parent_fid;
 	uint32_t	counter_acc;
 	uint64_t	pkt_count;
@@ -259,45 +260,38 @@ int32_t
 ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 				   uint32_t flow_id,
 				   uint16_t *cfa_action);
-/*
- * Allocate the entry in the parent-child database
- *
- * ulp_ctxt [in] Ptr to ulp_context
- * fid [in] The flow id to the flow entry
- *
- * returns index on success and negative on failure.
- */
-int32_t
-ulp_flow_db_parent_flow_alloc(struct bnxt_ulp_context *ulp_ctxt,
-			      uint32_t fid);
 
 /*
- * Free the entry in the parent-child database
+ * Set or reset the parent flow in the parent-child database
  *
  * ulp_ctxt [in] Ptr to ulp_context
- * fid [in] The flow id to the flow entry
+ * pc_idx [in] The index to parent child db
+ * parent_fid [in] The flow id of the parent flow entry
+ * set_flag [in] Use 1 for setting child, 0 to reset
  *
- * returns 0 on success and negative on failure.
+ * returns zero on success and negative on failure.
  */
 int32_t
-ulp_flow_db_parent_flow_free(struct bnxt_ulp_context *ulp_ctxt,
-			     uint32_t fid);
+ulp_flow_db_pc_db_parent_flow_set(struct bnxt_ulp_context *ulp_ctxt,
+				  uint32_t pc_idx,
+				  uint32_t parent_fid,
+				  uint32_t set_flag);
 
 /*
  * Set or reset the child flow in the parent-child database
  *
  * ulp_ctxt [in] Ptr to ulp_context
- * parent_fid [in] The flow id of the parent flow entry
+ * pc_idx [in] The index to parent child db
  * child_fid [in] The flow id of the child flow entry
  * set_flag [in] Use 1 for setting child, 0 to reset
  *
  * returns zero on success and negative on failure.
  */
 int32_t
-ulp_flow_db_parent_child_flow_set(struct bnxt_ulp_context *ulp_ctxt,
-				  uint32_t parent_fid,
-				  uint32_t child_fid,
-				  uint32_t set_flag);
+ulp_flow_db_pc_db_child_flow_set(struct bnxt_ulp_context *ulp_ctxt,
+				 uint32_t pc_idx,
+				 uint32_t child_fid,
+				 uint32_t set_flag);
 
 /*
  * Get the parent index from the parent-child database
@@ -368,7 +362,7 @@ ulp_flow_db_child_flow_create(struct bnxt_ulp_mapper_parms *parms);
  * Update the parent counters
  *
  * ulp_ctxt [in] Ptr to ulp_context
- * parent_fid [in] The flow id of the parent flow entry
+ * pc_idx [in] The parent flow entry idx
  * packet_count [in] - packet count
  * byte_count [in] - byte count
  *
@@ -376,14 +370,14 @@ ulp_flow_db_child_flow_create(struct bnxt_ulp_mapper_parms *parms);
  */
 int32_t
 ulp_flow_db_parent_flow_count_update(struct bnxt_ulp_context *ulp_ctxt,
-				     uint32_t parent_fid,
+				     uint32_t pc_idx,
 				     uint64_t packet_count,
 				     uint64_t byte_count);
 /*
  * Get the parent accumulation counters
  *
  * ulp_ctxt [in] Ptr to ulp_context
- * parent_fid [in] The flow id of the parent flow entry
+ * pc_idx [in] The parent flow entry idx
  * packet_count [out] - packet count
  * byte_count [out] - byte count
  *
@@ -391,7 +385,7 @@ ulp_flow_db_parent_flow_count_update(struct bnxt_ulp_context *ulp_ctxt,
  */
 int32_t
 ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
-				  uint32_t parent_fid,
+				  uint32_t pc_idx,
 				  uint64_t *packet_count,
 				  uint64_t *byte_count,
 				  uint8_t count_reset);

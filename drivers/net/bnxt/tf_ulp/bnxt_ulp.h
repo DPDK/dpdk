@@ -47,6 +47,18 @@ enum bnxt_ulp_flow_mem_type {
 	BNXT_ULP_FLOW_MEM_TYPE_LAST = 3
 };
 
+enum bnxt_rte_flow_item_type {
+	BNXT_RTE_FLOW_ITEM_TYPE_END = (uint32_t)INT_MIN,
+	BNXT_RTE_FLOW_ITEM_TYPE_VXLAN_DECAP,
+	BNXT_RTE_FLOW_ITEM_TYPE_LAST
+};
+
+enum bnxt_rte_flow_action_type {
+	BNXT_RTE_FLOW_ACTION_TYPE_END = (uint32_t)INT_MIN,
+	BNXT_RTE_FLOW_ACTION_TYPE_VXLAN_DECAP,
+	BNXT_RTE_FLOW_ACTION_TYPE_LAST
+};
+
 struct bnxt_ulp_df_rule_info {
 	uint32_t			def_port_flow_id;
 	uint8_t				valid;
@@ -79,6 +91,7 @@ struct bnxt_ulp_data {
 	bool				accum_stats;
 	uint8_t				app_id;
 	uint8_t				num_shared_clients;
+	struct bnxt_flow_app_tun_ent	app_tun[BNXT_ULP_MAX_TUN_CACHE_ENTRIES];
 };
 
 struct bnxt_ulp_context {
@@ -258,9 +271,6 @@ bnxt_ulp_cntxt_acquire_fdb_lock(struct bnxt_ulp_context	*ulp_ctx);
 void
 bnxt_ulp_cntxt_release_fdb_lock(struct bnxt_ulp_context	*ulp_ctx);
 
-int32_t
-ulp_post_process_tun_flow(struct ulp_rte_parser_params *params);
-
 struct bnxt_ulp_glb_resource_info *
 bnxt_ulp_app_glb_resource_info_list_get(uint32_t *num_entries);
 
@@ -301,4 +311,8 @@ bnxt_ulp_cntxt_entry_release(void);
 
 uint8_t
 bnxt_ulp_cntxt_num_shared_clients_get(struct bnxt_ulp_context *ulp_ctx);
+
+struct bnxt_flow_app_tun_ent *
+bnxt_ulp_cntxt_ptr2_app_tun_list_get(struct bnxt_ulp_context *ulp);
+
 #endif /* _BNXT_ULP_H_ */

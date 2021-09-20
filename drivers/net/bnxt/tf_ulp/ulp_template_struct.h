@@ -78,17 +78,19 @@ struct ulp_rte_parser_params {
 	uint32_t			priority;
 	uint32_t			fid;
 	uint32_t			parent_flow;
-	uint32_t			parent_fid;
+	uint32_t			child_flow;
 	uint16_t			func_id;
 	uint16_t			port_id;
 	uint32_t			class_id;
 	uint32_t			act_tmpl;
 	struct bnxt_ulp_context		*ulp_ctx;
 	uint32_t			hdr_sig_id;
-	uint32_t			flow_sig_id;
+	uint64_t			flow_sig_id;
 	uint32_t			flow_pattern_id;
 	uint32_t			act_pattern_id;
 	uint8_t				app_id;
+	uint8_t				tun_idx;
+
 };
 
 /* Flow Parser Header Information Structure */
@@ -101,6 +103,7 @@ struct bnxt_ulp_rte_hdr_info {
 
 /* Flow Parser Header Information Structure Array defined in template source*/
 extern struct bnxt_ulp_rte_hdr_info	ulp_hdr_info[];
+extern struct bnxt_ulp_rte_hdr_info	ulp_vendor_hdr_info[];
 
 /* Flow Parser Action Information Structure */
 struct bnxt_ulp_rte_act_info {
@@ -113,6 +116,7 @@ struct bnxt_ulp_rte_act_info {
 
 /* Flow Parser Action Information Structure Array defined in template source*/
 extern struct bnxt_ulp_rte_act_info	ulp_act_info[];
+extern struct bnxt_ulp_rte_act_info	ulp_vendor_act_info[];
 
 /* Flow Matcher structures */
 struct bnxt_ulp_header_match_info {
@@ -136,7 +140,7 @@ struct bnxt_ulp_class_match_info {
 	uint8_t			wc_pri;
 	uint8_t			app_sig;
 	uint32_t		hdr_sig_id;
-	uint32_t		flow_sig_id;
+	uint64_t		flow_sig_id;
 	uint32_t		flow_pattern_id;
 };
 

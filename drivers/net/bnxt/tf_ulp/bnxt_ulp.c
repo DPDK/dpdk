@@ -860,8 +860,6 @@ ulp_ctx_init(struct bnxt *bp,
 	if (rc)
 		goto error_deinit;
 
-	ulp_tun_tbl_init(ulp_data->tun_tbl);
-
 	bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, &bp->tfp);
 	return rc;
 
@@ -2063,4 +2061,14 @@ void
 bnxt_ulp_cntxt_entry_release(void)
 {
 	rte_spinlock_unlock(&bnxt_ulp_ctxt_lock);
+}
+
+/* Function to get the app tunnel details from the ulp context. */
+struct bnxt_flow_app_tun_ent *
+bnxt_ulp_cntxt_ptr2_app_tun_list_get(struct bnxt_ulp_context *ulp)
+{
+	if (!ulp || !ulp->cfg_data)
+		return NULL;
+
+	return ulp->cfg_data->app_tun;
 }
