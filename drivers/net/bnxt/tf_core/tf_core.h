@@ -283,9 +283,9 @@ enum tf_tbl_type {
 	TF_TBL_TYPE_ACT_MODIFY_32B,
 	/** TH 64B Modify Record */
 	TF_TBL_TYPE_ACT_MODIFY_64B,
-	/** (Future) Meter Profiles */
+	/** Meter Profiles */
 	TF_TBL_TYPE_METER_PROF,
-	/** (Future) Meter Instance */
+	/** Meter Instance */
 	TF_TBL_TYPE_METER_INST,
 	/** Wh+/SR/Th Mirror Config */
 	TF_TBL_TYPE_MIRROR_CONFIG,
@@ -301,6 +301,8 @@ enum tf_tbl_type {
 	TF_TBL_TYPE_EM_FKB,
 	/** TH WC Flexible Key builder */
 	TF_TBL_TYPE_WC_FKB,
+	/** Meter Drop Counter */
+	TF_TBL_TYPE_METER_DROP_CNT,
 
 	/* External */
 
@@ -2194,6 +2196,8 @@ enum tf_global_config_type {
 	TF_TUNNEL_ENCAP,  /**< Tunnel Encap Config(TECT) */
 	TF_ACTION_BLOCK,  /**< Action Block Config(ABCR) */
 	TF_COUNTER_CFG,   /**< Counter Configuration (CNTRS_CTRL) */
+	TF_METER_CFG,     /**< Meter Config(ACTP4_FMTCR) */
+	TF_METER_INTERVAL_CFG, /**< Meter Interval Config(FMTCR_INTERVAL)  */
 	TF_GLOBAL_CFG_TYPE_MAX
 };
 

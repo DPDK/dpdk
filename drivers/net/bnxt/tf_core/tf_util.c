@@ -112,6 +112,8 @@ tf_tbl_type_2_str(enum tf_tbl_type tbl_type)
 		return "WC Flexible Key Builder";
 	case TF_TBL_TYPE_EXT:
 		return "External";
+	case TF_TBL_TYPE_METER_DROP_CNT:
+		return "Meter drop counter";
 	default:
 		return "Invalid tbl type";
 	}

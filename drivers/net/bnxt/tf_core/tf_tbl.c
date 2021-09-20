@@ -374,23 +374,28 @@ tf_tbl_set(struct tf *tfp,
 		}
 	}
 
-	/* Verify that the entry has been previously allocated */
-	aparms.rm_db = tbl_db->tbl_db[parms->dir];
-	aparms.subtype = parms->type;
-	TF_TBL_PTR_TO_RM(&aparms.index, parms->idx, base, shift);
+	/* Do not check meter drop counter because it is not allocated
+	 * resources
+	 */
+	if (parms->type != TF_TBL_TYPE_METER_DROP_CNT) {
+		/* Verify that the entry has been previously allocated */
+		aparms.rm_db = tbl_db->tbl_db[parms->dir];
+		aparms.subtype = parms->type;
+		TF_TBL_PTR_TO_RM(&aparms.index, parms->idx, base, shift);
 
-	aparms.allocated = &allocated;
-	rc = tf_rm_is_allocated(&aparms);
-	if (rc)
-		return rc;
+		aparms.allocated = &allocated;
+		rc = tf_rm_is_allocated(&aparms);
+		if (rc)
+			return rc;
 
-	if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
-		TFP_DRV_LOG(ERR,
-		   "%s, Invalid or not allocated index, type:%d, idx:%d\n",
-		   tf_dir_2_str(parms->dir),
-		   parms->type,
-		   parms->idx);
-		return -EINVAL;
+		if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
+			TFP_DRV_LOG(ERR,
+			   "%s, Invalid or not allocated index, type:%d, idx:%d\n",
+			   tf_dir_2_str(parms->dir),
+			   parms->type,
+			   parms->idx);
+			return -EINVAL;
+		}
 	}
 
 	/* Set the entry */
@@ -477,23 +482,28 @@ tf_tbl_get(struct tf *tfp,
 		}
 	}
 
-	/* Verify that the entry has been previously allocated */
-	aparms.rm_db = tbl_db->tbl_db[parms->dir];
-	aparms.subtype = parms->type;
-	TF_TBL_PTR_TO_RM(&aparms.index, parms->idx, base, shift);
+	/* Do not check meter drop counter because it is not allocated
+	 * resources.
+	 */
+	if (parms->type != TF_TBL_TYPE_METER_DROP_CNT) {
+		/* Verify that the entry has been previously allocated */
+		aparms.rm_db = tbl_db->tbl_db[parms->dir];
+		aparms.subtype = parms->type;
+		TF_TBL_PTR_TO_RM(&aparms.index, parms->idx, base, shift);
 
-	aparms.allocated = &allocated;
-	rc = tf_rm_is_allocated(&aparms);
-	if (rc)
-		return rc;
+		aparms.allocated = &allocated;
+		rc = tf_rm_is_allocated(&aparms);
+		if (rc)
+			return rc;
 
-	if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
-		TFP_DRV_LOG(ERR,
-		   "%s, Invalid or not allocated index, type:%d, idx:%d\n",
-		   tf_dir_2_str(parms->dir),
-		   parms->type,
-		   parms->idx);
-		return -EINVAL;
+		if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
+			TFP_DRV_LOG(ERR,
+			   "%s, Invalid or not allocated index, type:%d, idx:%d\n",
+			   tf_dir_2_str(parms->dir),
+			   parms->type,
+			   parms->idx);
+			return -EINVAL;
+		}
 	}
 
 	/* Set the entry */

@@ -43,6 +43,7 @@ const char *tf_resource_str_p58[CFA_RESOURCE_TYPE_P58_LAST + 1] = {
 	[CFA_RESOURCE_TYPE_P58_EM_FKB]             = "em_fkb  ",
 	[CFA_RESOURCE_TYPE_P58_WC_FKB]             = "wc_fkb  ",
 	[CFA_RESOURCE_TYPE_P58_VEB_TCAM]           = "veb     ",
+	[CFA_RESOURCE_TYPE_P58_METADATA]           = "metadata",
 };
 
 /**
