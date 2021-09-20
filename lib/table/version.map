@@ -36,4 +36,13 @@ EXPERIMENTAL {
 	rte_swx_table_selector_group_set;
 	rte_swx_table_selector_mailbox_size_get;
 	rte_swx_table_selector_select;
+
+	# added in 21.11
+	rte_swx_table_learner_add;
+	rte_swx_table_learner_create;
+	rte_swx_table_learner_delete;
+	rte_swx_table_learner_footprint_get;
+	rte_swx_table_learner_free;
+	rte_swx_table_learner_lookup;
+	rte_swx_table_learner_mailbox_size_get;
 };
