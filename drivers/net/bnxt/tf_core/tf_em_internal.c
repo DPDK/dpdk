@@ -22,145 +22,7 @@
 /**
  * EM Pool
  */
-#if (TF_EM_ALLOC == 1)
 #include "dpool.h"
-#else
-
-/**
- * Create EM Tbl pool of memory indexes.
- *
- * [in] dir
- *   direction
- * [in] num_entries
- *   number of entries to write
- * [in] start
- *   starting offset
- *
- * Return:
- *  0       - Success, entry allocated - no search support
- *  -ENOMEM -EINVAL -EOPNOTSUPP
- *          - Failure, entry not allocated, out of resources
- */
-static int
-tf_create_em_pool(struct tf_session *tfs,
-		  enum tf_dir dir,
-		  uint32_t num_entries,
-		  uint32_t start)
-{
-	struct tfp_calloc_parms parms;
-	uint32_t i, j;
-	int rc = 0;
-	struct stack *pool;
-
-	/*
-	 * Allocate stack pool
-	 */
-	parms.nitems = 1;
-	parms.size = sizeof(struct stack);
-	parms.alignment = 0;
-
-	rc = tfp_calloc(&parms);
-
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s, EM stack allocation failure %s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		return rc;
-	}
-
-	pool = (struct stack *)parms.mem_va;
-	tfs->em_pool[dir] = (void *)pool;
-
-	/* Assumes that num_entries has been checked before we get here */
-	parms.nitems = num_entries / TF_SESSION_EM_ENTRY_SIZE;
-	parms.size = sizeof(uint32_t);
-	parms.alignment = 0;
-
-	rc = tfp_calloc(&parms);
-
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s, EM pool allocation failure %s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		return rc;
-	}
-
-	/* Create empty stack
-	 */
-	rc = stack_init(num_entries / TF_SESSION_EM_ENTRY_SIZE,
-			(uint32_t *)parms.mem_va,
-			pool);
-
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s, EM pool stack init failure %s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		goto cleanup;
-	}
-
-	/* Fill pool with indexes
-	 */
-	j = start + num_entries - TF_SESSION_EM_ENTRY_SIZE;
-
-	for (i = 0; i < (num_entries / TF_SESSION_EM_ENTRY_SIZE); i++) {
-		rc = stack_push(pool, j);
-		if (rc) {
-			TFP_DRV_LOG(ERR,
-				    "%s, EM pool stack push failure %s\n",
-				    tf_dir_2_str(dir),
-				    strerror(-rc));
-			goto cleanup;
-		}
-
-		j -= TF_SESSION_EM_ENTRY_SIZE;
-	}
-
-	if (!stack_is_full(pool)) {
-		rc = -EINVAL;
-		TFP_DRV_LOG(ERR,
-			    "%s, EM pool stack failure %s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		goto cleanup;
-	}
-
-	return 0;
-cleanup:
-	tfp_free((void *)parms.mem_va);
-	tfp_free((void *)tfs->em_pool[dir]);
-	tfs->em_pool[dir] = NULL;
-	return rc;
-}
-
-/**
- * Create EM Tbl pool of memory indexes.
- *
- * [in] dir
- *   direction
- *
- * Return:
- */
-static void
-tf_free_em_pool(struct tf_session *tfs,
-		enum tf_dir dir)
-{
-	struct stack *pool = (struct stack *)tfs->em_pool[dir];
-	uint32_t *ptr;
-
-	if (pool != NULL) {
-		ptr = stack_items(pool);
-
-		if (ptr != NULL)
-			tfp_free(ptr);
-
-		tfp_free(pool);
-		tfs->em_pool[dir] = NULL;
-	}
-}
-#endif /* TF_EM_ALLOC != 1 */
 
 /**
  * Insert EM internal entry API
@@ -178,11 +40,7 @@ tf_em_insert_int_entry(struct tf *tfp,
 	uint8_t rptr_entry = 0;
 	uint8_t num_of_entries = 0;
 	struct tf_session *tfs;
-#if (TF_EM_ALLOC == 1)
 	struct dpool *pool;
-#else
-	struct stack *pool;
-#endif
 	uint32_t index;
 
 	/* Retrieve the session information */
@@ -195,7 +53,6 @@ tf_em_insert_int_entry(struct tf *tfp,
 		return rc;
 	}
 
-#if (TF_EM_ALLOC == 1)
 	pool = (struct dpool *)tfs->em_pool[parms->dir];
 	index = dpool_alloc(pool, TF_SESSION_EM_ENTRY_SIZE, 0);
 	if (index == DP_INVALID_INDEX) {
@@ -204,16 +61,6 @@ tf_em_insert_int_entry(struct tf *tfp,
 			    tf_dir_2_str(parms->dir));
 		return -1;
 	}
-#else
-	pool = (struct stack *)tfs->em_pool[parms->dir];
-	rc = stack_pop(pool, &index);
-	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "%s, EM entry index allocation failed\n",
-			    tf_dir_2_str(parms->dir));
-		return rc;
-	}
-#endif
 
 
 	rptr_index = index;
@@ -224,11 +71,7 @@ tf_em_insert_int_entry(struct tf *tfp,
 					     &num_of_entries);
 	if (rc) {
 		/* Free the allocated index before returning */
-#if (TF_EM_ALLOC == 1)
 		dpool_free(pool, index);
-#else
-		stack_push(pool, index);
-#endif
 		return -1;
 	}
 	TF_SET_GFID(gfid,
@@ -264,11 +107,7 @@ tf_em_delete_int_entry(struct tf *tfp,
 {
 	int rc = 0;
 	struct tf_session *tfs;
-#if (TF_EM_ALLOC == 1)
 	struct dpool *pool;
-#else
-	struct stack *pool;
-#endif
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
 	if (rc) {
@@ -283,19 +122,13 @@ tf_em_delete_int_entry(struct tf *tfp,
 
 	/* Return resource to pool */
 	if (rc == 0) {
-#if (TF_EM_ALLOC == 1)
 		pool = (struct dpool *)tfs->em_pool[parms->dir];
 		dpool_free(pool, parms->index);
-#else
-		pool = (struct stack *)tfs->em_pool[parms->dir];
-		stack_push(pool, parms->index);
-#endif
 	}
 
 	return rc;
 }
 
-#if (TF_EM_ALLOC == 1)
 static int
 tf_em_move_callback(void *user_data,
 		    uint64_t entry_data,
@@ -342,7 +175,6 @@ tf_em_move_callback(void *user_data,
 
 	return rc;
 }
-#endif
 
 int
 tf_em_int_bind(struct tf *tfp,
@@ -434,7 +266,7 @@ tf_em_int_bind(struct tf *tfp,
 					    tf_dir_2_str(i));
 				return rc;
 			}
-#if (TF_EM_ALLOC == 1)
+
 			/*
 			 * Allocate stack pool
 			 */
@@ -460,12 +292,6 @@ tf_em_int_bind(struct tf *tfp,
 					7,
 					(void *)tfp,
 					tf_em_move_callback);
-#else
-			rc = tf_create_em_pool(tfs,
-				       i,
-				       iparms.info->entry.stride,
-				       iparms.info->entry.start);
-#endif
 			/* Logging handled in tf_create_em_pool */
 			if (rc)
 				return rc;
@@ -501,11 +327,7 @@ tf_em_int_unbind(struct tf *tfp)
 
 	if (!tf_session_is_shared_session(tfs)) {
 		for (i = 0; i < TF_DIR_MAX; i++)
-#if (TF_EM_ALLOC == 1)
 			dpool_free_all(tfs->em_pool[i]);
-#else
-		tf_free_em_pool(tfs, i);
-#endif
 	}
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_EM, &em_db_ptr);

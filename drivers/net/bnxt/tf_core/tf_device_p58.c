@@ -348,11 +348,7 @@ const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_get_tcam_resc_info = tf_tcam_get_resc_info,
 	.tf_dev_insert_int_em_entry = tf_em_hash_insert_int_entry,
 	.tf_dev_delete_int_em_entry = tf_em_hash_delete_int_entry,
-#if (TF_EM_ALLOC == 1)
 	.tf_dev_move_int_em_entry = tf_em_move_int_entry,
-#else
-	.tf_dev_move_int_em_entry = NULL,
-#endif
 	.tf_dev_insert_ext_em_entry = NULL,
 	.tf_dev_delete_ext_em_entry = NULL,
 	.tf_dev_get_em_resc_info = tf_em_get_resc_info,

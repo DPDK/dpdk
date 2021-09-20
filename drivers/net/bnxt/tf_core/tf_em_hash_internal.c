@@ -22,9 +22,7 @@
 /**
  * EM Pool
  */
-#if (TF_EM_ALLOC == 1)
 #include "dpool.h"
-#endif
 
 /**
  * Insert EM internal entry API
@@ -41,11 +39,7 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 	uint16_t rptr_index = 0;
 	uint8_t rptr_entry = 0;
 	uint8_t num_of_entries = 0;
-#if (TF_EM_ALLOC == 1)
 	struct dpool *pool;
-#else
-	struct stack *pool;
-#endif
 	uint32_t index;
 	uint32_t key0_hash;
 	uint32_t key1_hash;
@@ -62,7 +56,6 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 	rc = tf_session_get_device(tfs, &dev);
 	if (rc)
 		return rc;
-#if (TF_EM_ALLOC == 1)
 	pool = (struct dpool *)tfs->em_pool[parms->dir];
 	index = dpool_alloc(pool,
 			    parms->em_record_sz_in_bits / 128,
@@ -74,16 +67,6 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 			    tf_dir_2_str(parms->dir));
 		return -1;
 	}
-#else
-	pool = (struct stack *)tfs->em_pool[parms->dir];
-	rc = stack_pop(pool, &index);
-	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "%s, EM entry index allocation failed\n",
-			    tf_dir_2_str(parms->dir));
-		return rc;
-	}
-#endif
 
 	if (dev->ops->tf_dev_cfa_key_hash == NULL)
 		return -EINVAL;
@@ -103,11 +86,7 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 						  &num_of_entries);
 	if (rc) {
 		/* Free the allocated index before returning */
-#if (TF_EM_ALLOC == 1)
 		dpool_free(pool, index);
-#else
-		stack_push(pool, index);
-#endif
 		return -1;
 	}
 
@@ -128,9 +107,7 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 				     rptr_index,
 				     rptr_entry,
 				     0);
-#if (TF_EM_ALLOC == 1)
 	dpool_set_entry_data(pool, index, parms->flow_handle);
-#endif
 	return 0;
 }
 
@@ -146,11 +123,7 @@ tf_em_hash_delete_int_entry(struct tf *tfp,
 {
 	int rc = 0;
 	struct tf_session *tfs;
-#if (TF_EM_ALLOC == 1)
 	struct dpool *pool;
-#else
-	struct stack *pool;
-#endif
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
 	if (rc) {
@@ -165,19 +138,13 @@ tf_em_hash_delete_int_entry(struct tf *tfp,
 
 	/* Return resource to pool */
 	if (rc == 0) {
-#if (TF_EM_ALLOC == 1)
 		pool = (struct dpool *)tfs->em_pool[parms->dir];
 		dpool_free(pool, parms->index);
-#else
-		pool = (struct stack *)tfs->em_pool[parms->dir];
-		stack_push(pool, parms->index);
-#endif
 	}
 
 	return rc;
 }
 
-#if (TF_EM_ALLOC == 1)
 /** Move EM internal entry API
  *
  * returns:
@@ -212,4 +179,3 @@ tf_em_move_int_entry(struct tf *tfp,
 
 	return rc;
 }
-#endif

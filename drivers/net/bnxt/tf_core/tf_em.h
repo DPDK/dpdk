@@ -13,16 +13,6 @@
 
 #include "hcapi_cfa_defs.h"
 
-/**
- * TF_EM_ALLOC
- *
- * 0: Use stack allocator with fixed sized entries
- *    (default).
- * 1: Use dpool allocator with variable size
- *    entries.
- */
-#define TF_EM_ALLOC 0
-
 #define TF_EM_MIN_ENTRIES     (1 << 15) /* 32K */
 #define TF_EM_MAX_ENTRIES     (1 << 27) /* 128M */
 
