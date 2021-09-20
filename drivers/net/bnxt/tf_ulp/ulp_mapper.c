@@ -1953,6 +1953,15 @@ static void ulp_mapper_wc_tcam_tbl_post_process(struct ulp_blob *blob)
 #endif
 }
 
+static int32_t ulp_mapper_tcam_is_wc_tcam(struct bnxt_ulp_mapper_tbl_info *tbl)
+{
+	if (tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM ||
+	    tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM_HIGH ||
+	    tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM_LOW)
+		return 1;
+	return 0;
+}
+
 static int32_t
 ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			    struct bnxt_ulp_mapper_tbl_info *tbl)
@@ -1972,6 +1981,7 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	uint32_t hit = 0;
 	uint16_t tmplen = 0;
 	uint16_t idx;
+	enum bnxt_ulp_byte_order key_byte_order;
 
 	/* Set the key and mask to the original key and mask. */
 	key = &okey;
@@ -2003,10 +2013,13 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return -EINVAL;
 	}
 
-	if (!ulp_blob_init(key, tbl->blob_key_bit_size,
-			   dparms->key_byte_order) ||
-	    !ulp_blob_init(mask, tbl->blob_key_bit_size,
-			   dparms->key_byte_order) ||
+	if (ulp_mapper_tcam_is_wc_tcam(tbl))
+		key_byte_order = dparms->wc_key_byte_order;
+	else
+		key_byte_order = dparms->key_byte_order;
+
+	if (!ulp_blob_init(key, tbl->blob_key_bit_size, key_byte_order) ||
+	    !ulp_blob_init(mask, tbl->blob_key_bit_size, key_byte_order) ||
 	    !ulp_blob_init(&data, tbl->result_bit_size,
 			   dparms->result_byte_order) ||
 	    !ulp_blob_init(&update_data, tbl->result_bit_size,
@@ -2043,9 +2056,7 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	/* For wild card tcam perform the post process to swap the blob */
-	if (tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM ||
-	    tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM_HIGH ||
-	    tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM_LOW) {
+	if (ulp_mapper_tcam_is_wc_tcam(tbl)) {
 		if (dparms->dynamic_pad_en) {
 			/* Sets up the slices for writing to the WC TCAM */
 			rc = ulp_mapper_wc_tcam_tbl_dyn_post_process(dparms,

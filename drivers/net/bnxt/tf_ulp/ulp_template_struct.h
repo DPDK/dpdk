@@ -212,6 +212,7 @@ struct bnxt_ulp_device_params {
 	enum bnxt_ulp_byte_order	key_byte_order;
 	enum bnxt_ulp_byte_order	result_byte_order;
 	enum bnxt_ulp_byte_order	encap_byte_order;
+	enum bnxt_ulp_byte_order	wc_key_byte_order;
 	uint8_t				encap_byte_swap;
 	uint8_t				num_phy_ports;
 	uint32_t			mark_db_lfid_entries;
