@@ -116,7 +116,7 @@ ulp_flow_db_resource_func_get(struct ulp_fdb_resource_info *res_info)
 
 	func = (((res_info->nxt_resource_idx & ULP_FLOW_DB_RES_FUNC_MASK) >>
 		 ULP_FLOW_DB_RES_FUNC_BITS) << ULP_FLOW_DB_RES_FUNC_UPPER);
-	/* The reource func is split into upper and lower */
+	/* The resource func is split into upper and lower */
 	if (func & ULP_FLOW_DB_RES_FUNC_NEED_LOWER)
 		return (func | res_info->resource_func_lower);
 	return func;
@@ -674,7 +674,7 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
  * flow_type [in] Specify it is regular or default flow
  * fid [in] The index to the flow entry
  * params [in/out] The contents to be copied into params.
- * Onlythe critical_resource needs to be set by the caller.
+ * Only the critical_resource needs to be set by the caller.
  *
  * Returns 0 on success and negative on failure.
  */

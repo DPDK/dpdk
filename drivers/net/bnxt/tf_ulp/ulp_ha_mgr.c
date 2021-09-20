@@ -185,7 +185,7 @@ ulp_ha_mgr_timer_cb(void *arg __rte_unused)
 	rc = ulp_ha_mgr_state_get(ulp_ctx, &curr_state);
 	if (rc) {
 		/*
-		 * This shouldn't happen, if it does, resetart the timer
+		 * This shouldn't happen, if it does, reset the timer
 		 * and try again next time.
 		 */
 		BNXT_TF_DBG(ERR, "Failed(%d) to get state.\n",

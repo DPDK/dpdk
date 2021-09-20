@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Thu May 13 18:15:56 2021 */
+/* date: Wed May 26 15:11:34 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -41,7 +41,6 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.tbl_operand = BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
-	.byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	.result_start_idx = 0,
 	.result_bit_size = 64,
 	.result_num_fields = 1
@@ -62,7 +61,6 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
-	.byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	.result_start_idx = 1,
 	.result_bit_size = 128,
 	.result_num_fields = 17

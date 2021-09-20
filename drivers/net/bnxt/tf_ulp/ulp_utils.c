@@ -62,7 +62,7 @@ ulp_regfile_read(struct ulp_regfile *regfile,
  * data [in] The value is written into this variable.  It is going to be in the
  * same byte order as it was written.
  *
- * size [in] The size in bytes of the value beingritten into this
+ * size [in] The size in bytes of the value being written into this
  * variable.
  *
  * returns 0 on success
@@ -295,7 +295,7 @@ ulp_blob_push(struct ulp_blob *blob,
 				     datalen,
 				     data);
 	if (!rc) {
-		BNXT_TF_DBG(ERR, "Failed ro write blob\n");
+		BNXT_TF_DBG(ERR, "Failed to write blob\n");
 		return 0;
 	}
 	blob->write_idx += datalen;
@@ -355,7 +355,7 @@ ulp_blob_insert(struct ulp_blob *blob, uint32_t offset,
 				     datalen,
 				     data);
 	if (!rc) {
-		BNXT_TF_DBG(ERR, "Failed ro write blob\n");
+		BNXT_TF_DBG(ERR, "Failed to write blob\n");
 		return 0;
 	}
 	/* copy the previously stored data */
@@ -409,7 +409,7 @@ ulp_blob_push_64(struct ulp_blob *blob,
  *
  * data [in] 32-bit value to be added to the blob.
  *
- * datalen [in] The number of bits to be added ot the blob.
+ * datalen [in] The number of bits to be added to the blob.
  *
  * The offset of the data is updated after each push of data.
  * NULL returned on error, pointer pushed value otherwise.
@@ -988,6 +988,33 @@ ulp_blob_append(struct ulp_blob *dst, struct ulp_blob *src,
 }
 
 /*
+ * Perform the blob buffer copy.
+ * This api makes the src blob merged to the dst blob.
+ *
+ * dst [in] The destination blob, the blob to be merged.
+ * src [in] The src blob.
+ *
+ * returns 0 on success.
+ */
+int32_t
+ulp_blob_buffer_copy(struct ulp_blob *dst, struct ulp_blob *src)
+{
+	if ((dst->write_idx + src->write_idx) > dst->bitlen) {
+		BNXT_TF_DBG(ERR, "source buffer too large\n");
+		return -EINVAL;
+	}
+	if (ULP_BITS_IS_BYTE_NOT_ALIGNED(dst->write_idx) ||
+	    ULP_BITS_IS_BYTE_NOT_ALIGNED(src->write_idx)) {
+		BNXT_TF_DBG(ERR, "source buffer is not aligned\n");
+		return -EINVAL;
+	}
+	memcpy(&dst->data[ULP_BITS_2_BYTE_NR(dst->write_idx)],
+	       src->data, ULP_BITS_2_BYTE_NR(src->write_idx));
+	dst->write_idx += src->write_idx;
+	return 0;
+}
+
+/*
  * Read data from the operand
  *
  * operand [in] A pointer to a 16 Byte operand
@@ -1010,44 +1037,6 @@ ulp_operand_read(uint8_t *operand,
 	}
 	memcpy(val, operand, bytes);
 	return bytes;
-}
-
-/*
- * copy the buffer in the encap format which is 2 bytes.
- * The MSB of the src is placed at the LSB of dst.
- *
- * dst [out] The destination buffer
- * src [in] The source buffer dst
- * size[in] size of the buffer.
- * align[in] The alignment is either 8 or 16.
- */
-void
-ulp_encap_buffer_copy(uint8_t *dst,
-		      const uint8_t *src,
-		      uint16_t size,
-		      uint16_t align)
-{
-	uint16_t	idx, tmp_size = 0;
-
-	do {
-		dst += tmp_size;
-		src += tmp_size;
-		idx = 0;
-		if (size > align) {
-			tmp_size = align;
-			size -= align;
-		} else {
-			tmp_size = size;
-			size = 0;
-		}
-		/* copy 2 bytes at a time. Write MSB to LSB */
-		while ((idx + sizeof(uint16_t)) <= tmp_size) {
-			memcpy(&dst[idx],
-			       &src[tmp_size - idx - sizeof(uint16_t)],
-			       sizeof(uint16_t));
-			idx += sizeof(uint16_t);
-		}
-	} while (size);
 }
 
 /*

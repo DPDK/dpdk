@@ -1010,7 +1010,7 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
-		if (idx >= BNXT_ULP_CF_IDX_LAST || bytelen > sizeof(uint32_t)) {
+		if (idx >= BNXT_ULP_CF_IDX_LAST || bytelen > sizeof(uint64_t)) {
 			BNXT_TF_DBG(ERR, "comp field [%d] read oob %d\n", idx,
 				    bytelen);
 			return -EINVAL;
@@ -1215,8 +1215,47 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 			BNXT_TF_DBG(ERR, "field port table failed\n");
 			return -EINVAL;
 		}
+		break;
+	case BNXT_ULP_FIELD_SRC_ENC_HDR_BIT:
+		if (!ulp_operand_read(field_opr,
+				      (uint8_t *)&lregval, sizeof(uint64_t))) {
+			BNXT_TF_DBG(ERR, "Header bit read failed\n");
+			return -EINVAL;
+		}
+		lregval = tfp_be_to_cpu_64(lregval);
+		if (ULP_BITMAP_ISSET(parms->enc_hdr_bitmap->bits, lregval)) {
+			*val = mapper_fld_one;
+			*value = 1;
+		} else {
+			*val = mapper_fld_zeros;
+		}
+		break;
+	case BNXT_ULP_FIELD_SRC_ENC_FIELD:
+		if (!ulp_operand_read(field_opr,
+				      (uint8_t *)&idx, sizeof(uint16_t))) {
+			BNXT_TF_DBG(ERR, "Header field read failed\n");
+			return -EINVAL;
+		}
+		idx = tfp_be_to_cpu_16(idx);
+		/* get the index from the global field list */
+		if (idx >= BNXT_ULP_ENC_FIELD_LAST) {
+			BNXT_TF_DBG(ERR, "invalid encap field tbl idx %d\n",
+				    idx);
+			return -EINVAL;
+		}
+		buffer = parms->enc_field[idx].spec;
+		field_size = parms->enc_field[idx].size;
+		if (bytelen > field_size) {
+			BNXT_TF_DBG(ERR, "Encap field[%d] size small %u\n",
+				    idx, field_size);
+			return -EINVAL;
+		}
+		*val = &buffer[field_size - bytelen];
+		break;
 	case BNXT_ULP_FIELD_SRC_SKIP:
 		/* do nothing */
+		*val = mapper_fld_zeros;
+		*val_len = 0;
 		break;
 	case BNXT_ULP_FIELD_SRC_REJECT:
 		return -EINVAL;
@@ -1270,6 +1309,8 @@ static int32_t ulp_mapper_field_blob_write(enum bnxt_ulp_field_src fld_src,
 			BNXT_TF_DBG(ERR, "encap blob push failed\n");
 			return -EINVAL;
 		}
+	} else if (fld_src == BNXT_ULP_FIELD_SRC_SKIP) {
+		/* do nothing */
 	} else {
 		if (!ulp_blob_push(blob, val, val_len)) {
 			BNXT_TF_DBG(ERR, "push of val1 failed\n");
@@ -1465,7 +1506,7 @@ ulp_mapper_field_opc_process(struct bnxt_ulp_mapper_parms *parms,
 	if (!rc) {
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-		if (fld->field_src1 != BNXT_ULP_FIELD_SRC_ZERO)
+		if (fld->field_src1 != BNXT_ULP_FIELD_SRC_ZERO && val_len)
 			ulp_mapper_field_dump(name, fld, blob, write_idx, val,
 					      val_len);
 #endif
@@ -1489,7 +1530,8 @@ ulp_mapper_tbl_result_build(struct bnxt_ulp_mapper_parms *parms,
 			    const char *name)
 {
 	struct bnxt_ulp_mapper_field_info *dflds;
-	uint32_t i, num_flds = 0, encap_flds = 0;
+	uint32_t i = 0, num_flds = 0, encap_flds = 0;
+	struct ulp_blob encap_blob;
 	int32_t rc = 0;
 
 	/* Get the result field list */
@@ -1506,33 +1548,60 @@ ulp_mapper_tbl_result_build(struct bnxt_ulp_mapper_parms *parms,
 		return -EINVAL;
 	}
 
-	/* process the result fields, loop through them */
-	for (i = 0; i < (num_flds + encap_flds); i++) {
-		/* set the swap index if encap swap bit is enabled */
-		if (parms->device_params->encap_byte_swap && encap_flds &&
-		    i == num_flds)
-			ulp_blob_encap_swap_idx_set(data);
-
-		/* Process the result fields */
+	/* process the result fields */
+	for (i = 0; i < num_flds; i++) {
 		rc = ulp_mapper_field_opc_process(parms, tbl->direction,
 						  &dflds[i], data, 0, name);
 		if (rc) {
-			BNXT_TF_DBG(ERR, "data field failed\n");
+			BNXT_TF_DBG(ERR, "result field processing failed\n");
 			return rc;
 		}
 	}
 
-	/* if encap bit swap is enabled perform the bit swap */
-	if (parms->device_params->encap_byte_swap && encap_flds) {
-		ulp_blob_perform_encap_swap(data);
+	/* process encap fields if any */
+	if (encap_flds) {
+		uint32_t pad = 0;
+		/* Initialize the encap blob */
+		if (!tbl->record_size) {
+			BNXT_TF_DBG(ERR, "Encap tbl record size incorrect\n");
+			return -EINVAL;
+		}
+		if (!ulp_blob_init(&encap_blob,
+				   ULP_BYTE_2_BITS(tbl->record_size),
+				   parms->device_params->encap_byte_order)) {
+			BNXT_TF_DBG(ERR, "blob inits failed.\n");
+			return -EINVAL;
+		}
+		for (; i < encap_flds; i++) {
+			rc = ulp_mapper_field_opc_process(parms, tbl->direction,
+							  &dflds[i],
+							  &encap_blob, 0, name);
+			if (rc) {
+				BNXT_TF_DBG(ERR,
+					    "encap field processing failed\n");
+				return rc;
+			}
+		}
+		/* add the dynamic pad push */
+		pad = ULP_BYTE_2_BITS(tbl->record_size) -
+			ulp_blob_data_len_get(&encap_blob);
+		ulp_blob_pad_push(&encap_blob, pad);
+
+		/* perform the 64 bit byte swap */
+		ulp_blob_perform_64B_byte_swap(&encap_blob);
+		/* Append encap blob to the result blob */
+		rc = ulp_blob_buffer_copy(data, &encap_blob);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "encap buffer copy failed\n");
+			return rc;
+		}
+	}
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-		BNXT_TF_DBG(INFO, "Dump after encap swap\n");
-		ulp_mapper_blob_dump(data);
+	BNXT_TF_DBG(DEBUG, "Result dump\n");
+	ulp_mapper_blob_dump(data);
 #endif
 #endif
-	}
-
 	return rc;
 }
 
@@ -1934,11 +2003,14 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return -EINVAL;
 	}
 
-	if (!ulp_blob_init(key, tbl->blob_key_bit_size, tbl->byte_order) ||
-	    !ulp_blob_init(mask, tbl->blob_key_bit_size, tbl->byte_order) ||
-	    !ulp_blob_init(&data, tbl->result_bit_size, dparms->byte_order) ||
+	if (!ulp_blob_init(key, tbl->blob_key_bit_size,
+			   dparms->key_byte_order) ||
+	    !ulp_blob_init(mask, tbl->blob_key_bit_size,
+			   dparms->key_byte_order) ||
+	    !ulp_blob_init(&data, tbl->result_bit_size,
+			   dparms->result_byte_order) ||
 	    !ulp_blob_init(&update_data, tbl->result_bit_size,
-			   dparms->byte_order)) {
+			   dparms->result_byte_order)) {
 		BNXT_TF_DBG(ERR, "blob inits failed.\n");
 		return -EINVAL;
 	}
@@ -2145,9 +2217,9 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* Initialize the key/result blobs */
 	if (!ulp_blob_init(&key, tbl->blob_key_bit_size,
-			   tbl->byte_order) ||
+			   dparms->key_byte_order) ||
 	    !ulp_blob_init(&data, tbl->result_bit_size,
-			   tbl->byte_order)) {
+			   dparms->result_byte_order)) {
 		BNXT_TF_DBG(ERR, "blob inits failed.\n");
 		return -EINVAL;
 	}
@@ -2336,7 +2408,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* Initialize the blob data */
 	if (!ulp_blob_init(&data, bit_size,
-			   parms->device_params->byte_order)) {
+			   parms->device_params->result_byte_order)) {
 		BNXT_TF_DBG(ERR, "Failed to initialize index table blob\n");
 		return -EINVAL;
 	}
@@ -2627,7 +2699,7 @@ ulp_mapper_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx, tbl->shared_session);
 	/* Initialize the blob data */
 	if (!ulp_blob_init(&data, tbl->result_bit_size,
-			   parms->device_params->byte_order)) {
+			   parms->device_params->result_byte_order)) {
 		BNXT_TF_DBG(ERR, "Failed initial index table blob\n");
 		return -EINVAL;
 	}
@@ -2658,7 +2730,7 @@ ulp_mapper_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	case BNXT_ULP_IF_TBL_OPC_RD_COMP_FIELD:
 		/* Initialize the result blob */
 		if (!ulp_blob_init(&res_blob, tbl->result_bit_size,
-				   parms->device_params->byte_order)) {
+				   parms->device_params->result_byte_order)) {
 			BNXT_TF_DBG(ERR, "Failed initial result blob\n");
 			return -EINVAL;
 		}
@@ -2747,7 +2819,7 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	if (!ulp_blob_init(&key, tbl->key_bit_size,
-			   parms->device_params->byte_order)) {
+			   parms->device_params->key_byte_order)) {
 		BNXT_TF_DBG(ERR, "Failed to alloc blob\n");
 		return -EINVAL;
 	}
@@ -3251,6 +3323,26 @@ ulp_mapper_cond_opc_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		*res = (mtype == BNXT_ULP_FLOW_MEM_TYPE_INT) ? 1 : 0;
+		break;
+	case BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET:
+		if (operand < BNXT_ULP_HDR_BIT_LAST) {
+			*res = ULP_BITMAP_ISSET(parms->enc_hdr_bitmap->bits,
+						operand);
+		} else {
+			BNXT_TF_DBG(ERR, "header bit out of bounds %d\n",
+				    operand);
+			rc = -EINVAL;
+		}
+		break;
+	case BNXT_ULP_COND_OPC_ENC_HDR_BIT_NOT_SET:
+		if (operand < BNXT_ULP_HDR_BIT_LAST) {
+			*res = !ULP_BITMAP_ISSET(parms->enc_hdr_bitmap->bits,
+						 operand);
+		} else {
+			BNXT_TF_DBG(ERR, "header bit out of bounds %d\n",
+				    operand);
+			rc = -EINVAL;
+		}
 		break;
 	default:
 		BNXT_TF_DBG(ERR, "Invalid conditional opcode %d\n", opc);
@@ -3864,8 +3956,10 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	parms.act_prop = cparms->act_prop;
 	parms.act_bitmap = cparms->act;
 	parms.hdr_bitmap = cparms->hdr_bitmap;
+	parms.enc_hdr_bitmap = cparms->enc_hdr_bitmap;
 	parms.regfile = &regfile;
 	parms.hdr_field = cparms->hdr_field;
+	parms.enc_field = cparms->enc_field;
 	parms.fld_bitmap = cparms->fld_bitmap;
 	parms.comp_fld = cparms->comp_fld;
 	parms.ulp_ctx = ulp_ctx;

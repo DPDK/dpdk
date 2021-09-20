@@ -30,6 +30,7 @@
 #define BNXT_ULP_PROTO_HDR_GRE_NUM	6
 #define BNXT_ULP_PROTO_HDR_ICMP_NUM	5
 #define BNXT_ULP_PROTO_HDR_MAX		128
+#define BNXT_ULP_PROTO_HDR_ENCAP_MAX	64
 #define BNXT_ULP_PROTO_HDR_FIELD_SVIF_IDX	1
 
 /* Direction attributes */
@@ -64,12 +65,13 @@ struct ulp_rte_act_prop {
 
 /* Structure to be used for passing all the parser functions */
 struct ulp_rte_parser_params {
-	STAILQ_ENTRY(ulp_rte_parser_params)  next;
 	struct ulp_rte_hdr_bitmap	hdr_bitmap;
+	struct ulp_rte_hdr_bitmap	enc_hdr_bitmap;
 	struct ulp_rte_hdr_bitmap	hdr_fp_bit;
 	struct ulp_rte_field_bitmap	fld_bitmap;
 	struct ulp_rte_field_bitmap	fld_s_bitmap;
 	struct ulp_rte_hdr_field	hdr_field[BNXT_ULP_PROTO_HDR_MAX];
+	struct ulp_rte_hdr_field	enc_field[BNXT_ULP_PROTO_HDR_ENCAP_MAX];
 	uint64_t			comp_fld[BNXT_ULP_CF_IDX_LAST];
 	uint32_t			field_idx;
 	struct ulp_rte_act_bitmap	act_bitmap;
@@ -207,7 +209,9 @@ struct bnxt_ulp_template_device_tbls {
 /* Device specific parameters */
 struct bnxt_ulp_device_params {
 	uint8_t				description[16];
-	enum bnxt_ulp_byte_order	byte_order;
+	enum bnxt_ulp_byte_order	key_byte_order;
+	enum bnxt_ulp_byte_order	result_byte_order;
+	enum bnxt_ulp_byte_order	encap_byte_order;
 	uint8_t				encap_byte_swap;
 	uint8_t				num_phy_ports;
 	uint32_t			mark_db_lfid_entries;
@@ -254,7 +258,6 @@ struct bnxt_ulp_mapper_tbl_info {
 	uint8_t				direction;
 	enum bnxt_ulp_pri_opc		pri_opcode;
 	uint32_t			pri_operand;
-	enum bnxt_ulp_byte_order	byte_order;
 
 	/* conflict resolution opcode */
 	enum bnxt_ulp_accept_opc	accept_opcode;
@@ -267,6 +270,7 @@ struct bnxt_ulp_mapper_tbl_info {
 	uint16_t	key_num_fields;
 	/* Size of the blob that holds the key */
 	uint16_t	blob_key_bit_size;
+	uint16_t	record_size;
 
 	/* Information for accessing the ulp_class_result_field_list */
 	uint32_t	result_start_idx;

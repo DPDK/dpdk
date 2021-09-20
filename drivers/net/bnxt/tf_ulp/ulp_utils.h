@@ -476,6 +476,18 @@ ulp_blob_append(struct ulp_blob *dst, struct ulp_blob *src,
 		uint16_t src_offset, uint16_t src_len);
 
 /*
+ * Perform the blob buffer copy.
+ * This api makes the src blob merged to the dst blob.
+ *
+ * dst [in] The destination blob, the blob to be merged.
+ * src [in] The src blob.
+ *
+ * returns 0 on success.
+ */
+int32_t
+ulp_blob_buffer_copy(struct ulp_blob *dst, struct ulp_blob *src);
+
+/*
  * Read data from the operand
  *
  * operand [in] A pointer to a 16 Byte operand
@@ -490,21 +502,6 @@ uint16_t
 ulp_operand_read(uint8_t *operand,
 		 uint8_t *val,
 		 uint16_t bitlen);
-
-/*
- * copy the buffer in the encap format which is 2 bytes.
- * The MSB of the src is placed at the LSB of dst.
- *
- * dst [out] The destination buffer
- * src [in] The source buffer dst
- * size[in] size of the buffer.
- * align[in] The alignment is either 8 or 16.
- */
-void
-ulp_encap_buffer_copy(uint8_t *dst,
-		      const uint8_t *src,
-		      uint16_t size,
-		      uint16_t align);
 
 /*
  * Check the buffer is empty

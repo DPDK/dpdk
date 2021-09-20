@@ -18,7 +18,7 @@
 
 /*
  * Structure for the flow database resource information
- * The below structure is based on the below paritions
+ * The below structure is based on the below partitions
  * nxt_resource_idx = dir[31],resource_func_upper[30:28],nxt_resource_idx[27:0]
  * If resource_func is EM_TBL then use resource_em_handle.
  * Else the other part of the union is used and

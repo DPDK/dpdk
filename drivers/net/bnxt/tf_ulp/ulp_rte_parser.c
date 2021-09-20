@@ -40,6 +40,18 @@ ulp_rte_item_skip_void(const struct rte_flow_item **item, uint32_t increment)
 	return 0;
 }
 
+/* Utility function to copy field spec items */
+static struct ulp_rte_hdr_field *
+ulp_rte_parser_fld_copy(struct ulp_rte_hdr_field *field,
+			const void *buffer,
+			uint32_t size)
+{
+	field->size = size;
+	memcpy(field->spec, buffer, field->size);
+	field++;
+	return field;
+}
+
 /* Utility function to update the field_bitmap */
 static void
 ulp_rte_parser_field_bitmap_update(struct ulp_rte_parser_params *params,
@@ -883,7 +895,7 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 			       BNXT_ULP_HDR_BIT_II_VLAN);
 		inner_flag = 1;
 	} else {
-		BNXT_TF_DBG(ERR, "Error Parsing:Vlan hdr found withtout eth\n");
+		BNXT_TF_DBG(ERR, "Error Parsing:Vlan hdr found without eth\n");
 		return BNXT_TF_RC_ERROR;
 	}
 	/* Update the field protocol hdr bitmap */
@@ -1726,6 +1738,184 @@ ulp_rte_rss_act_handler(const struct rte_flow_action *action_item,
 	return BNXT_TF_RC_SUCCESS;
 }
 
+/* Function to handle the parsing of RTE Flow item eth Header. */
+static void
+ulp_rte_enc_eth_hdr_handler(struct ulp_rte_parser_params *params,
+			    const struct rte_flow_item_eth *eth_spec)
+{
+	struct ulp_rte_hdr_field *field;
+	uint32_t size;
+
+	field = &params->enc_field[BNXT_ULP_ENC_FIELD_ETH_DMAC];
+	size = sizeof(eth_spec->dst.addr_bytes);
+	field = ulp_rte_parser_fld_copy(field, eth_spec->dst.addr_bytes, size);
+
+	size = sizeof(eth_spec->src.addr_bytes);
+	field = ulp_rte_parser_fld_copy(field, eth_spec->src.addr_bytes, size);
+
+	size = sizeof(eth_spec->type);
+	field = ulp_rte_parser_fld_copy(field, &eth_spec->type, size);
+
+	ULP_BITMAP_SET(params->enc_hdr_bitmap.bits, BNXT_ULP_HDR_BIT_O_ETH);
+}
+
+/* Function to handle the parsing of RTE Flow item vlan Header. */
+static void
+ulp_rte_enc_vlan_hdr_handler(struct ulp_rte_parser_params *params,
+			     const struct rte_flow_item_vlan *vlan_spec,
+			     uint32_t inner)
+{
+	struct ulp_rte_hdr_field *field;
+	uint32_t size;
+
+	if (!inner) {
+		field = &params->enc_field[BNXT_ULP_ENC_FIELD_O_VLAN_TCI];
+		ULP_BITMAP_SET(params->enc_hdr_bitmap.bits,
+			       BNXT_ULP_HDR_BIT_OO_VLAN);
+	} else {
+		field = &params->enc_field[BNXT_ULP_ENC_FIELD_I_VLAN_TCI];
+		ULP_BITMAP_SET(params->enc_hdr_bitmap.bits,
+			       BNXT_ULP_HDR_BIT_OI_VLAN);
+	}
+
+	size = sizeof(vlan_spec->tci);
+	field = ulp_rte_parser_fld_copy(field, &vlan_spec->tci, size);
+
+	size = sizeof(vlan_spec->inner_type);
+	field = ulp_rte_parser_fld_copy(field, &vlan_spec->inner_type, size);
+}
+
+/* Function to handle the parsing of RTE Flow item ipv4 Header. */
+static void
+ulp_rte_enc_ipv4_hdr_handler(struct ulp_rte_parser_params *params,
+			     const struct rte_flow_item_ipv4 *ip)
+{
+	struct ulp_rte_hdr_field *field;
+	uint32_t size;
+	uint8_t val8;
+
+	field = &params->enc_field[BNXT_ULP_ENC_FIELD_IPV4_IHL];
+	size = sizeof(ip->hdr.version_ihl);
+	if (!ip->hdr.version_ihl)
+		val8 = RTE_IPV4_VHL_DEF;
+	else
+		val8 = ip->hdr.version_ihl;
+	field = ulp_rte_parser_fld_copy(field, &val8, size);
+
+	size = sizeof(ip->hdr.type_of_service);
+	field = ulp_rte_parser_fld_copy(field, &ip->hdr.type_of_service, size);
+
+	size = sizeof(ip->hdr.packet_id);
+	field = ulp_rte_parser_fld_copy(field, &ip->hdr.packet_id, size);
+
+	size = sizeof(ip->hdr.fragment_offset);
+	field = ulp_rte_parser_fld_copy(field, &ip->hdr.fragment_offset, size);
+
+	size = sizeof(ip->hdr.time_to_live);
+	if (!ip->hdr.time_to_live)
+		val8 = BNXT_ULP_DEFAULT_TTL;
+	else
+		val8 = ip->hdr.time_to_live;
+	field = ulp_rte_parser_fld_copy(field, &val8, size);
+
+	size = sizeof(ip->hdr.next_proto_id);
+	field = ulp_rte_parser_fld_copy(field, &ip->hdr.next_proto_id, size);
+
+	size = sizeof(ip->hdr.src_addr);
+	field = ulp_rte_parser_fld_copy(field, &ip->hdr.src_addr, size);
+
+	size = sizeof(ip->hdr.dst_addr);
+	field = ulp_rte_parser_fld_copy(field, &ip->hdr.dst_addr, size);
+
+	ULP_BITMAP_SET(params->enc_hdr_bitmap.bits, BNXT_ULP_HDR_BIT_O_IPV4);
+}
+
+/* Function to handle the parsing of RTE Flow item ipv6 Header. */
+static void
+ulp_rte_enc_ipv6_hdr_handler(struct ulp_rte_parser_params *params,
+			     const struct rte_flow_item_ipv6 *ip)
+{
+	struct ulp_rte_hdr_field *field;
+	uint32_t size;
+	uint32_t val32;
+	uint8_t val8;
+
+	field = &params->enc_field[BNXT_ULP_ENC_FIELD_IPV6_VTC_FLOW];
+	size = sizeof(ip->hdr.vtc_flow);
+	if (!ip->hdr.vtc_flow)
+		val32 = rte_cpu_to_be_32(BNXT_ULP_IPV6_DFLT_VER);
+	else
+		val32 = ip->hdr.vtc_flow;
+	field = ulp_rte_parser_fld_copy(field, &val32, size);
+
+	size = sizeof(ip->hdr.proto);
+	field = ulp_rte_parser_fld_copy(field, &ip->hdr.proto, size);
+
+	size = sizeof(ip->hdr.hop_limits);
+	if (!ip->hdr.hop_limits)
+		val8 = BNXT_ULP_DEFAULT_TTL;
+	else
+		val8 = ip->hdr.hop_limits;
+	field = ulp_rte_parser_fld_copy(field, &val8, size);
+
+	size = sizeof(ip->hdr.src_addr);
+	field = ulp_rte_parser_fld_copy(field, &ip->hdr.src_addr, size);
+
+	size = sizeof(ip->hdr.dst_addr);
+	field = ulp_rte_parser_fld_copy(field, &ip->hdr.dst_addr, size);
+
+	ULP_BITMAP_SET(params->enc_hdr_bitmap.bits, BNXT_ULP_HDR_BIT_O_IPV6);
+}
+
+/* Function to handle the parsing of RTE Flow item UDP Header. */
+static void
+ulp_rte_enc_udp_hdr_handler(struct ulp_rte_parser_params *params,
+			    const struct rte_flow_item_udp *udp_spec)
+{
+	struct ulp_rte_hdr_field *field;
+	uint32_t size;
+	uint8_t type = IPPROTO_UDP;
+
+	field = &params->enc_field[BNXT_ULP_ENC_FIELD_UDP_SPORT];
+	size = sizeof(udp_spec->hdr.src_port);
+	field = ulp_rte_parser_fld_copy(field, &udp_spec->hdr.src_port, size);
+
+	size = sizeof(udp_spec->hdr.dst_port);
+	field = ulp_rte_parser_fld_copy(field, &udp_spec->hdr.dst_port, size);
+
+	ULP_BITMAP_SET(params->enc_hdr_bitmap.bits, BNXT_ULP_HDR_BIT_O_UDP);
+
+	/* Update thhe ip header protocol */
+	field = &params->enc_field[BNXT_ULP_ENC_FIELD_IPV4_PROTO];
+	ulp_rte_parser_fld_copy(field, &type, sizeof(type));
+	field = &params->enc_field[BNXT_ULP_ENC_FIELD_IPV6_PROTO];
+	ulp_rte_parser_fld_copy(field, &type, sizeof(type));
+}
+
+/* Function to handle the parsing of RTE Flow item vxlan Header. */
+static void
+ulp_rte_enc_vxlan_hdr_handler(struct ulp_rte_parser_params *params,
+			      struct rte_flow_item_vxlan *vxlan_spec)
+{
+	struct ulp_rte_hdr_field *field;
+	uint32_t size;
+
+	field = &params->enc_field[BNXT_ULP_ENC_FIELD_VXLAN_FLAGS];
+	size = sizeof(vxlan_spec->flags);
+	field = ulp_rte_parser_fld_copy(field, &vxlan_spec->flags, size);
+
+	size = sizeof(vxlan_spec->rsvd0);
+	field = ulp_rte_parser_fld_copy(field, &vxlan_spec->rsvd0, size);
+
+	size = sizeof(vxlan_spec->vni);
+	field = ulp_rte_parser_fld_copy(field, &vxlan_spec->vni, size);
+
+	size = sizeof(vxlan_spec->rsvd1);
+	field = ulp_rte_parser_fld_copy(field, &vxlan_spec->rsvd1, size);
+
+	ULP_BITMAP_SET(params->enc_hdr_bitmap.bits, BNXT_ULP_HDR_BIT_T_VXLAN);
+}
+
 /* Function to handle the parsing of RTE Flow action vxlan_encap Header. */
 int32_t
 ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
@@ -1733,23 +1923,14 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 {
 	const struct rte_flow_action_vxlan_encap *vxlan_encap;
 	const struct rte_flow_item *item;
-	const struct rte_flow_item_eth *eth_spec;
 	const struct rte_flow_item_ipv4 *ipv4_spec;
 	const struct rte_flow_item_ipv6 *ipv6_spec;
 	struct rte_flow_item_vxlan vxlan_spec;
 	uint32_t vlan_num = 0, vlan_size = 0;
 	uint32_t ip_size = 0, ip_type = 0;
 	uint32_t vxlan_size = 0;
-	uint8_t *buff;
-	/* IP header per byte - ver/hlen, TOS, ID, ID, FRAG, FRAG, TTL, PROTO */
-	const uint8_t def_ipv4_hdr[] = {0x45, 0x00, 0x00, 0x01, 0x00,
-				    0x00, 0x40, 0x11};
-	/* IPv6 header per byte - vtc-flow,flow,zero,nexthdr-ttl */
-	const uint8_t def_ipv6_hdr[] = {0x60, 0x00, 0x00, 0x01, 0x00,
-				0x00, 0x11, 0xf6};
 	struct ulp_rte_act_bitmap *act = &params->act_bitmap;
 	struct ulp_rte_act_prop *ap = &params->act_prop;
-	const uint8_t *tmp_buff;
 
 	vxlan_encap = action_item->conf;
 	if (!vxlan_encap) {
@@ -1771,18 +1952,10 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		BNXT_TF_DBG(ERR, "Parse Error:vxlan encap does not have eth\n");
 		return BNXT_TF_RC_ERROR;
 	}
-	eth_spec = item->spec;
-	buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_DMAC];
-	ulp_encap_buffer_copy(buff,
-			      eth_spec->dst.addr_bytes,
-			      BNXT_ULP_ACT_PROP_SZ_ENCAP_L2_DMAC,
-			      ULP_BUFFER_ALIGN_8_BYTE);
 
-	buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC];
-	ulp_encap_buffer_copy(buff,
-			      eth_spec->src.addr_bytes,
-			      BNXT_ULP_ACT_PROP_SZ_ENCAP_L2_SMAC,
-			      ULP_BUFFER_ALIGN_8_BYTE);
+	/* Parse the ethernet header */
+	if (item->spec)
+		ulp_rte_enc_eth_hdr_handler(params, item->spec);
 
 	/* Goto the next item */
 	if (!ulp_rte_item_skip_void(&item, 1))
@@ -1791,11 +1964,8 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 	/* May have vlan header */
 	if (item->type == RTE_FLOW_ITEM_TYPE_VLAN) {
 		vlan_num++;
-		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG];
-		ulp_encap_buffer_copy(buff,
-				      item->spec,
-				      sizeof(struct rte_flow_item_vlan),
-				      ULP_BUFFER_ALIGN_8_BYTE);
+		if (item->spec)
+			ulp_rte_enc_vlan_hdr_handler(params, item->spec, 0);
 
 		if (!ulp_rte_item_skip_void(&item, 1))
 			return BNXT_TF_RC_ERROR;
@@ -1804,13 +1974,13 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 	/* may have two vlan headers */
 	if (item->type == RTE_FLOW_ITEM_TYPE_VLAN) {
 		vlan_num++;
-		memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG +
-		       sizeof(struct rte_flow_item_vlan)],
-		       item->spec,
-		       sizeof(struct rte_flow_item_vlan));
+		if (item->spec)
+			ulp_rte_enc_vlan_hdr_handler(params, item->spec, 1);
+
 		if (!ulp_rte_item_skip_void(&item, 1))
 			return BNXT_TF_RC_ERROR;
 	}
+
 	/* Update the vlan count and size of more than one */
 	if (vlan_num) {
 		vlan_size = vlan_num * sizeof(struct rte_flow_item_vlan);
@@ -1829,49 +1999,6 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		ipv4_spec = item->spec;
 		ip_size = BNXT_ULP_ENCAP_IPV4_SIZE;
 
-		/* copy the ipv4 details */
-		if (ulp_buffer_is_empty(&ipv4_spec->hdr.version_ihl,
-					BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS)) {
-			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP];
-			ulp_encap_buffer_copy(buff,
-					      def_ipv4_hdr,
-					      BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS +
-					      BNXT_ULP_ENCAP_IPV4_ID_PROTO,
-					      ULP_BUFFER_ALIGN_8_BYTE);
-		} else {
-			/* Total length being ignored in the ip hdr. */
-			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP];
-			tmp_buff = (const uint8_t *)&ipv4_spec->hdr.packet_id;
-			ulp_encap_buffer_copy(buff,
-					      tmp_buff,
-					      BNXT_ULP_ENCAP_IPV4_ID_PROTO,
-					      ULP_BUFFER_ALIGN_8_BYTE);
-			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP +
-			     BNXT_ULP_ENCAP_IPV4_ID_PROTO];
-			ulp_encap_buffer_copy(buff,
-					      &ipv4_spec->hdr.version_ihl,
-					      BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS,
-					      ULP_BUFFER_ALIGN_8_BYTE);
-		}
-
-		/* Update the dst ip address in ip encap buffer */
-		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP +
-		    BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS +
-		    BNXT_ULP_ENCAP_IPV4_ID_PROTO];
-		ulp_encap_buffer_copy(buff,
-				      (const uint8_t *)&ipv4_spec->hdr.dst_addr,
-				      sizeof(ipv4_spec->hdr.dst_addr),
-				      ULP_BUFFER_ALIGN_8_BYTE);
-
-		/* Update the src ip address */
-		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC +
-			BNXT_ULP_ACT_PROP_SZ_ENCAP_IP_SRC -
-			sizeof(ipv4_spec->hdr.src_addr)];
-		ulp_encap_buffer_copy(buff,
-				      (const uint8_t *)&ipv4_spec->hdr.src_addr,
-				      sizeof(ipv4_spec->hdr.src_addr),
-				      ULP_BUFFER_ALIGN_8_BYTE);
-
 		/* Update the ip size details */
 		ip_size = tfp_cpu_to_be_32(ip_size);
 		memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SZ],
@@ -1885,53 +2012,14 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		/* update the computed field to notify it is ipv4 header */
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_ACT_ENCAP_IPV4_FLAG,
 				    1);
+		if (ipv4_spec)
+			ulp_rte_enc_ipv4_hdr_handler(params, ipv4_spec);
 
 		if (!ulp_rte_item_skip_void(&item, 1))
 			return BNXT_TF_RC_ERROR;
 	} else if (item->type == RTE_FLOW_ITEM_TYPE_IPV6) {
 		ipv6_spec = item->spec;
 		ip_size = BNXT_ULP_ENCAP_IPV6_SIZE;
-
-		/* copy the ipv6 details */
-		tmp_buff = (const uint8_t *)&ipv6_spec->hdr.vtc_flow;
-		if (ulp_buffer_is_empty(tmp_buff,
-					BNXT_ULP_ENCAP_IPV6_VTC_FLOW)) {
-			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP];
-			ulp_encap_buffer_copy(buff,
-					      def_ipv6_hdr,
-					      sizeof(def_ipv6_hdr),
-					      ULP_BUFFER_ALIGN_8_BYTE);
-		} else {
-			/* The payload length being ignored in the ip hdr. */
-			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP];
-			tmp_buff = (const uint8_t *)&ipv6_spec->hdr.proto;
-			ulp_encap_buffer_copy(buff,
-					      tmp_buff,
-					      BNXT_ULP_ENCAP_IPV6_PROTO_TTL,
-					      ULP_BUFFER_ALIGN_8_BYTE);
-			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP +
-				BNXT_ULP_ENCAP_IPV6_PROTO_TTL +
-				BNXT_ULP_ENCAP_IPV6_DO];
-			tmp_buff = (const uint8_t *)&ipv6_spec->hdr.vtc_flow;
-			ulp_encap_buffer_copy(buff,
-					      tmp_buff,
-					      BNXT_ULP_ENCAP_IPV6_VTC_FLOW,
-					      ULP_BUFFER_ALIGN_8_BYTE);
-		}
-		/* Update the dst ip address in ip encap buffer */
-		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP +
-			sizeof(def_ipv6_hdr)];
-		ulp_encap_buffer_copy(buff,
-				      (const uint8_t *)ipv6_spec->hdr.dst_addr,
-				      sizeof(ipv6_spec->hdr.dst_addr),
-				      ULP_BUFFER_ALIGN_8_BYTE);
-
-		/* Update the src ip address */
-		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC];
-		ulp_encap_buffer_copy(buff,
-				      (const uint8_t *)ipv6_spec->hdr.src_addr,
-				      sizeof(ipv6_spec->hdr.src_addr),
-				      ULP_BUFFER_ALIGN_16_BYTE);
 
 		/* Update the ip size details */
 		ip_size = tfp_cpu_to_be_32(ip_size);
@@ -1946,6 +2034,8 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		/* update the computed field to notify it is ipv6 header */
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_ACT_ENCAP_IPV6_FLAG,
 				    1);
+		if (ipv6_spec)
+			ulp_rte_enc_ipv6_hdr_handler(params, ipv6_spec);
 
 		if (!ulp_rte_item_skip_void(&item, 1))
 			return BNXT_TF_RC_ERROR;
@@ -1959,10 +2049,8 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		BNXT_TF_DBG(ERR, "vxlan encap does not have udp\n");
 		return BNXT_TF_RC_ERROR;
 	}
-	/* copy the udp details */
-	ulp_encap_buffer_copy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_UDP],
-			      item->spec, BNXT_ULP_ENCAP_UDP_SIZE,
-			      ULP_BUFFER_ALIGN_8_BYTE);
+	if (item->spec)
+		ulp_rte_enc_udp_hdr_handler(params, item->spec);
 
 	if (!ulp_rte_item_skip_void(&item, 1))
 		return BNXT_TF_RC_ERROR;
@@ -1976,20 +2064,11 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 	/* copy the vxlan details */
 	memcpy(&vxlan_spec, item->spec, vxlan_size);
 	vxlan_spec.flags = 0x08;
-	buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN];
-	if (ip_type == rte_cpu_to_be_32(BNXT_ULP_ETH_IPV4)) {
-		ulp_encap_buffer_copy(buff, (const uint8_t *)&vxlan_spec,
-				      vxlan_size, ULP_BUFFER_ALIGN_8_BYTE);
-	} else {
-		ulp_encap_buffer_copy(buff, (const uint8_t *)&vxlan_spec,
-				      vxlan_size / 2, ULP_BUFFER_ALIGN_8_BYTE);
-		ulp_encap_buffer_copy(buff + (vxlan_size / 2),
-				      (const uint8_t *)&vxlan_spec.vni,
-				      vxlan_size / 2, ULP_BUFFER_ALIGN_8_BYTE);
-	}
 	vxlan_size = tfp_cpu_to_be_32(vxlan_size);
 	memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN_SZ],
 	       &vxlan_size, sizeof(uint32_t));
+
+	ulp_rte_enc_vxlan_hdr_handler(params, &vxlan_spec);
 
 	/* update the hdr_bitmap with vxlan */
 	ULP_BITMAP_SET(act->bits, BNXT_ULP_ACT_BIT_VXLAN_ENCAP);

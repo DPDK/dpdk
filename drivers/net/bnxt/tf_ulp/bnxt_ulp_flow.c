@@ -96,7 +96,9 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 	mapper_cparms->act_tid = params->act_tmpl;
 	mapper_cparms->func_id = params->func_id;
 	mapper_cparms->hdr_bitmap = &params->hdr_bitmap;
+	mapper_cparms->enc_hdr_bitmap = &params->enc_hdr_bitmap;
 	mapper_cparms->hdr_field = params->hdr_field;
+	mapper_cparms->enc_field = params->enc_field;
 	mapper_cparms->comp_fld = params->comp_fld;
 	mapper_cparms->act = &params->act_bitmap;
 	mapper_cparms->act_prop = &params->act_prop;
