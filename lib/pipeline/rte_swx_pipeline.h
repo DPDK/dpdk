@@ -676,6 +676,83 @@ rte_swx_pipeline_selector_config(struct rte_swx_pipeline *p,
 				 const char *name,
 				 struct rte_swx_pipeline_selector_params *params);
 
+/** Pipeline learner table parameters. */
+struct rte_swx_pipeline_learner_params {
+	/** The set of match fields for the current table.
+	 * Restriction: All the match fields of the current table need to be
+	 * part of the same struct, i.e. either all the match fields are part of
+	 * the same header or all the match fields are part of the meta-data.
+	 */
+	const char **field_names;
+
+	/** The number of match fields for the current table. Must be non-zero.
+	 */
+	uint32_t n_fields;
+
+	/** The set of actions for the current table. */
+	const char **action_names;
+
+	/** The number of actions for the current table. Must be at least one.
+	 */
+	uint32_t n_actions;
+
+	/** This table type allows adding the latest lookup key (typically done
+	 * only in the case of lookup miss) to the table with a given action.
+	 * The action arguments are picked up from the packet meta-data: for
+	 * each action, a set of successive meta-data fields (with the name of
+	 * the first such field provided here) is 1:1 mapped to the action
+	 * arguments. These meta-data fields must be set with the actual values
+	 * of the action arguments before the key add operation.
+	 */
+	const char **action_field_names;
+
+	/** The default table action that gets executed on lookup miss. Must be
+	 * one of the table actions included in the *action_names*.
+	 */
+	const char *default_action_name;
+
+	/** Default action data. The size of this array is the action data size
+	 * of the default action. Must be NULL if the default action data size
+	 * is zero.
+	 */
+	uint8_t *default_action_data;
+
+	/** If non-zero (true), then the default action of the current table
+	 * cannot be changed. If zero (false), then the default action can be
+	 * changed in the future with another action from the *action_names*
+	 * list.
+	 */
+	int default_action_is_const;
+};
+
+/**
+ * Pipeline learner table configure
+ *
+ * @param[out] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Learner table name.
+ * @param[in] params
+ *   Learner table parameters.
+ * @param[in] size
+ *   The maximum number of table entries. Must be non-zero.
+ * @param[in] timeout
+ *   Table entry timeout in seconds. Must be non-zero.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Learner table with this name already exists;
+ *   -ENODEV: Learner table creation error.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
+				const char *name,
+				struct rte_swx_pipeline_learner_params *params,
+				uint32_t size,
+				uint32_t timeout);
+
 /**
  * Pipeline register array configure
  *

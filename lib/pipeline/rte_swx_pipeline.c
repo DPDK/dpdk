@@ -16,6 +16,7 @@
 #include <rte_meter.h>
 
 #include <rte_swx_table_selector.h>
+#include <rte_swx_table_learner.h>
 
 #include "rte_swx_pipeline.h"
 #include "rte_swx_ctl.h"
@@ -511,6 +512,13 @@ enum instruction_type {
 	/* table TABLE */
 	INSTR_TABLE,
 	INSTR_SELECTOR,
+	INSTR_LEARNER,
+
+	/* learn LEARNER ACTION_NAME */
+	INSTR_LEARNER_LEARN,
+
+	/* forget */
+	INSTR_LEARNER_FORGET,
 
 	/* extern e.obj.func */
 	INSTR_EXTERN_OBJ,
@@ -636,6 +644,10 @@ struct instr_table {
 	uint8_t table_id;
 };
 
+struct instr_learn {
+	uint8_t action_id;
+};
+
 struct instr_extern_obj {
 	uint8_t ext_obj_id;
 	uint8_t func_id;
@@ -726,6 +738,7 @@ struct instruction {
 		struct instr_dma dma;
 		struct instr_dst_src alu;
 		struct instr_table table;
+		struct instr_learn learn;
 		struct instr_extern_obj ext_obj;
 		struct instr_extern_func ext_func;
 		struct instr_jmp jmp;
@@ -746,7 +759,7 @@ struct action {
 	TAILQ_ENTRY(action) node;
 	char name[RTE_SWX_NAME_SIZE];
 	struct struct_type *st;
-	int *args_endianness; /* 0 = Host Byte Order (HBO). */
+	int *args_endianness; /* 0 = Host Byte Order (HBO); 1 = Network Byte Order (NBO). */
 	struct instruction *instructions;
 	uint32_t n_instructions;
 	uint32_t id;
@@ -840,6 +853,47 @@ struct selector_statistics {
 };
 
 /*
+ * Learner table.
+ */
+struct learner {
+	TAILQ_ENTRY(learner) node;
+	char name[RTE_SWX_NAME_SIZE];
+
+	/* Match. */
+	struct field **fields;
+	uint32_t n_fields;
+	struct header *header;
+
+	/* Action. */
+	struct action **actions;
+	struct field **action_arg;
+	struct action *default_action;
+	uint8_t *default_action_data;
+	uint32_t n_actions;
+	int default_action_is_const;
+	uint32_t action_data_size_max;
+
+	uint32_t size;
+	uint32_t timeout;
+	uint32_t id;
+};
+
+TAILQ_HEAD(learner_tailq, learner);
+
+struct learner_runtime {
+	void *mailbox;
+	uint8_t **key;
+	uint8_t **action_data;
+};
+
+struct learner_statistics {
+	uint64_t n_pkts_hit[2]; /* 0 = Miss, 1 = Hit. */
+	uint64_t n_pkts_learn[2]; /* 0 = Learn OK, 1 = Learn error. */
+	uint64_t n_pkts_forget;
+	uint64_t *n_pkts_action;
+};
+
+/*
  * Register array.
  */
 struct regarray {
@@ -919,9 +973,12 @@ struct thread {
 	/* Tables. */
 	struct table_runtime *tables;
 	struct selector_runtime *selectors;
+	struct learner_runtime *learners;
 	struct rte_swx_table_state *table_state;
 	uint64_t action_id;
 	int hit; /* 0 = Miss, 1 = Hit. */
+	uint32_t learner_id;
+	uint64_t time;
 
 	/* Extern objects and functions. */
 	struct extern_obj_runtime *extern_objs;
@@ -1355,6 +1412,7 @@ struct rte_swx_pipeline {
 	struct table_type_tailq table_types;
 	struct table_tailq tables;
 	struct selector_tailq selectors;
+	struct learner_tailq learners;
 	struct regarray_tailq regarrays;
 	struct meter_profile_tailq meter_profiles;
 	struct metarray_tailq metarrays;
@@ -1365,6 +1423,7 @@ struct rte_swx_pipeline {
 	struct rte_swx_table_state *table_state;
 	struct table_statistics *table_stats;
 	struct selector_statistics *selector_stats;
+	struct learner_statistics *learner_stats;
 	struct regarray_runtime *regarray_runtime;
 	struct metarray_runtime *metarray_runtime;
 	struct instruction *instructions;
@@ -1378,6 +1437,7 @@ struct rte_swx_pipeline {
 	uint32_t n_actions;
 	uint32_t n_tables;
 	uint32_t n_selectors;
+	uint32_t n_learners;
 	uint32_t n_regarrays;
 	uint32_t n_metarrays;
 	uint32_t n_headers;
@@ -3625,6 +3685,9 @@ table_find(struct rte_swx_pipeline *p, const char *name);
 static struct selector *
 selector_find(struct rte_swx_pipeline *p, const char *name);
 
+static struct learner *
+learner_find(struct rte_swx_pipeline *p, const char *name);
+
 static int
 instr_table_translate(struct rte_swx_pipeline *p,
 		      struct action *action,
@@ -3635,6 +3698,7 @@ instr_table_translate(struct rte_swx_pipeline *p,
 {
 	struct table *t;
 	struct selector *s;
+	struct learner *l;
 
 	CHECK(!action, EINVAL);
 	CHECK(n_tokens == 2, EINVAL);
@@ -3650,6 +3714,13 @@ instr_table_translate(struct rte_swx_pipeline *p,
 	if (s) {
 		instr->type = INSTR_SELECTOR;
 		instr->table.table_id = s->id;
+		return 0;
+	}
+
+	l = learner_find(p, tokens[1]);
+	if (l) {
+		instr->type = INSTR_LEARNER;
+		instr->table.table_id = l->id;
 		return 0;
 	}
 
@@ -3741,6 +3812,168 @@ instr_selector_exec(struct rte_swx_pipeline *p)
 	      selector_id);
 
 	stats->n_pkts = n_pkts + 1;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_learner_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint32_t learner_id = ip->table.table_id;
+	struct rte_swx_table_state *ts = &t->table_state[p->n_tables +
+		p->n_selectors + learner_id];
+	struct learner_runtime *l = &t->learners[learner_id];
+	struct learner_statistics *stats = &p->learner_stats[learner_id];
+	uint64_t action_id, n_pkts_hit, n_pkts_action, time;
+	uint8_t *action_data;
+	int done, hit;
+
+	/* Table. */
+	time = rte_get_tsc_cycles();
+
+	done = rte_swx_table_learner_lookup(ts->obj,
+					    l->mailbox,
+					    time,
+					    l->key,
+					    &action_id,
+					    &action_data,
+					    &hit);
+	if (!done) {
+		/* Thread. */
+		TRACE("[Thread %2u] learner %u (not finalized)\n",
+		      p->thread_id,
+		      learner_id);
+
+		thread_yield(p);
+		return;
+	}
+
+	action_id = hit ? action_id : ts->default_action_id;
+	action_data = hit ? action_data : ts->default_action_data;
+	n_pkts_hit = stats->n_pkts_hit[hit];
+	n_pkts_action = stats->n_pkts_action[action_id];
+
+	TRACE("[Thread %2u] learner %u (%s, action %u)\n",
+	      p->thread_id,
+	      learner_id,
+	      hit ? "hit" : "miss",
+	      (uint32_t)action_id);
+
+	t->action_id = action_id;
+	t->structs[0] = action_data;
+	t->hit = hit;
+	t->learner_id = learner_id;
+	t->time = time;
+	stats->n_pkts_hit[hit] = n_pkts_hit + 1;
+	stats->n_pkts_action[action_id] = n_pkts_action + 1;
+
+	/* Thread. */
+	thread_ip_action_call(p, t, action_id);
+}
+
+/*
+ * learn.
+ */
+static struct action *
+action_find(struct rte_swx_pipeline *p, const char *name);
+
+static int
+action_has_nbo_args(struct action *a);
+
+static int
+instr_learn_translate(struct rte_swx_pipeline *p,
+		      struct action *action,
+		      char **tokens,
+		      int n_tokens,
+		      struct instruction *instr,
+		      struct instruction_data *data __rte_unused)
+{
+	struct action *a;
+
+	CHECK(action, EINVAL);
+	CHECK(n_tokens == 2, EINVAL);
+
+	a = action_find(p, tokens[1]);
+	CHECK(a, EINVAL);
+	CHECK(!action_has_nbo_args(a), EINVAL);
+
+	instr->type = INSTR_LEARNER_LEARN;
+	instr->learn.action_id = a->id;
+
+	return 0;
+}
+
+static inline void
+instr_learn_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint64_t action_id = ip->learn.action_id;
+	uint32_t learner_id = t->learner_id;
+	struct rte_swx_table_state *ts = &t->table_state[p->n_tables +
+		p->n_selectors + learner_id];
+	struct learner_runtime *l = &t->learners[learner_id];
+	struct learner_statistics *stats = &p->learner_stats[learner_id];
+	uint32_t status;
+
+	/* Table. */
+	status = rte_swx_table_learner_add(ts->obj,
+					   l->mailbox,
+					   t->time,
+					   action_id,
+					   l->action_data[action_id]);
+
+	TRACE("[Thread %2u] learner %u learn %s\n",
+	      p->thread_id,
+	      learner_id,
+	      status ? "ok" : "error");
+
+	stats->n_pkts_learn[status] += 1;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+/*
+ * forget.
+ */
+static int
+instr_forget_translate(struct rte_swx_pipeline *p __rte_unused,
+		       struct action *action,
+		       char **tokens __rte_unused,
+		       int n_tokens,
+		       struct instruction *instr,
+		       struct instruction_data *data __rte_unused)
+{
+	CHECK(action, EINVAL);
+	CHECK(n_tokens == 1, EINVAL);
+
+	instr->type = INSTR_LEARNER_FORGET;
+
+	return 0;
+}
+
+static inline void
+instr_forget_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	uint32_t learner_id = t->learner_id;
+	struct rte_swx_table_state *ts = &t->table_state[p->n_tables +
+		p->n_selectors + learner_id];
+	struct learner_runtime *l = &t->learners[learner_id];
+	struct learner_statistics *stats = &p->learner_stats[learner_id];
+
+	/* Table. */
+	rte_swx_table_learner_delete(ts->obj, l->mailbox);
+
+	TRACE("[Thread %2u] learner %u forget\n",
+	      p->thread_id,
+	      learner_id);
+
+	stats->n_pkts_forget += 1;
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -7159,9 +7392,6 @@ instr_meter_imi_exec(struct rte_swx_pipeline *p)
 /*
  * jmp.
  */
-static struct action *
-action_find(struct rte_swx_pipeline *p, const char *name);
-
 static int
 instr_jmp_translate(struct rte_swx_pipeline *p __rte_unused,
 		    struct action *action __rte_unused,
@@ -8136,6 +8366,22 @@ instr_translate(struct rte_swx_pipeline *p,
 					     instr,
 					     data);
 
+	if (!strcmp(tokens[tpos], "learn"))
+		return instr_learn_translate(p,
+					     action,
+					     &tokens[tpos],
+					     n_tokens - tpos,
+					     instr,
+					     data);
+
+	if (!strcmp(tokens[tpos], "forget"))
+		return instr_forget_translate(p,
+					      action,
+					      &tokens[tpos],
+					      n_tokens - tpos,
+					      instr,
+					      data);
+
 	if (!strcmp(tokens[tpos], "extern"))
 		return instr_extern_translate(p,
 					      action,
@@ -9096,6 +9342,9 @@ static instr_exec_t instruction_table[] = {
 
 	[INSTR_TABLE] = instr_table_exec,
 	[INSTR_SELECTOR] = instr_selector_exec,
+	[INSTR_LEARNER] = instr_learner_exec,
+	[INSTR_LEARNER_LEARN] = instr_learn_exec,
+	[INSTR_LEARNER_FORGET] = instr_forget_exec,
 	[INSTR_EXTERN_OBJ] = instr_extern_obj_exec,
 	[INSTR_EXTERN_FUNC] = instr_extern_func_exec,
 
@@ -9189,6 +9438,42 @@ action_field_parse(struct action *action, const char *name)
 		return NULL;
 
 	return action_field_find(action, &name[2]);
+}
+
+static int
+action_has_nbo_args(struct action *a)
+{
+	uint32_t i;
+
+	/* Return if the action does not have any args. */
+	if (!a->st)
+		return 0; /* FALSE */
+
+	for (i = 0; i < a->st->n_fields; i++)
+		if (a->args_endianness[i])
+			return 1; /* TRUE */
+
+	return 0; /* FALSE */
+}
+
+static int
+action_does_learning(struct action *a)
+{
+	uint32_t i;
+
+	for (i = 0; i < a->n_instructions; i++)
+		switch (a->instructions[i].type) {
+		case INSTR_LEARNER_LEARN:
+			return 1; /* TRUE */
+
+		case INSTR_LEARNER_FORGET:
+			return 1; /* TRUE */
+
+		default:
+			continue;
+		}
+
+	return 0; /* FALSE */
 }
 
 int
@@ -9546,6 +9831,7 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	CHECK_NAME(name, EINVAL);
 	CHECK(!table_find(p, name), EEXIST);
 	CHECK(!selector_find(p, name), EEXIST);
+	CHECK(!learner_find(p, name), EEXIST);
 
 	CHECK(params, EINVAL);
 
@@ -9566,6 +9852,7 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 
 		a = action_find(p, action_name);
 		CHECK(a, EINVAL);
+		CHECK(!action_does_learning(a), EINVAL);
 
 		action_data_size = a->st ? a->st->n_bits / 8 : 0;
 		if (action_data_size > action_data_size_max)
@@ -9964,6 +10251,7 @@ rte_swx_pipeline_selector_config(struct rte_swx_pipeline *p,
 	CHECK_NAME(name, EINVAL);
 	CHECK(!table_find(p, name), EEXIST);
 	CHECK(!selector_find(p, name), EEXIST);
+	CHECK(!learner_find(p, name), EEXIST);
 
 	CHECK(params, EINVAL);
 
@@ -10221,6 +10509,509 @@ selector_free(struct rte_swx_pipeline *p)
 }
 
 /*
+ * Learner table.
+ */
+static struct learner *
+learner_find(struct rte_swx_pipeline *p, const char *name)
+{
+	struct learner *l;
+
+	TAILQ_FOREACH(l, &p->learners, node)
+		if (!strcmp(l->name, name))
+			return l;
+
+	return NULL;
+}
+
+static struct learner *
+learner_find_by_id(struct rte_swx_pipeline *p, uint32_t id)
+{
+	struct learner *l = NULL;
+
+	TAILQ_FOREACH(l, &p->learners, node)
+		if (l->id == id)
+			return l;
+
+	return NULL;
+}
+
+static int
+learner_match_fields_check(struct rte_swx_pipeline *p,
+			   struct rte_swx_pipeline_learner_params *params,
+			   struct header **header)
+{
+	struct header *h0 = NULL;
+	struct field *hf, *mf;
+	uint32_t i;
+
+	/* Return if no match fields. */
+	if (!params->n_fields || !params->field_names)
+		return -EINVAL;
+
+	/* Check that all the match fields either belong to the same header
+	 * or are all meta-data fields.
+	 */
+	hf = header_field_parse(p, params->field_names[0], &h0);
+	mf = metadata_field_parse(p, params->field_names[0]);
+	if (!hf && !mf)
+		return -EINVAL;
+
+	for (i = 1; i < params->n_fields; i++)
+		if (h0) {
+			struct header *h;
+
+			hf = header_field_parse(p, params->field_names[i], &h);
+			if (!hf || (h->id != h0->id))
+				return -EINVAL;
+		} else {
+			mf = metadata_field_parse(p, params->field_names[i]);
+			if (!mf)
+				return -EINVAL;
+		}
+
+	/* Check that there are no duplicated match fields. */
+	for (i = 0; i < params->n_fields; i++) {
+		const char *field_name = params->field_names[i];
+		uint32_t j;
+
+		for (j = i + 1; j < params->n_fields; j++)
+			if (!strcmp(params->field_names[j], field_name))
+				return -EINVAL;
+	}
+
+	/* Return. */
+	if (header)
+		*header = h0;
+
+	return 0;
+}
+
+static int
+learner_action_args_check(struct rte_swx_pipeline *p, struct action *a, const char *mf_name)
+{
+	struct struct_type *mst = p->metadata_st, *ast = a->st;
+	struct field *mf, *af;
+	uint32_t mf_pos, i;
+
+	if (!ast) {
+		if (mf_name)
+			return -EINVAL;
+
+		return 0;
+	}
+
+	/* Check that mf_name is the name of a valid meta-data field. */
+	CHECK_NAME(mf_name, EINVAL);
+	mf = metadata_field_parse(p, mf_name);
+	CHECK(mf, EINVAL);
+
+	/* Check that there are enough meta-data fields, starting with the mf_name field, to cover
+	 * all the action arguments.
+	 */
+	mf_pos = mf - mst->fields;
+	CHECK(mst->n_fields - mf_pos >= ast->n_fields, EINVAL);
+
+	/* Check that the size of each of the identified meta-data fields matches exactly the size
+	 * of the corresponding action argument.
+	 */
+	for (i = 0; i < ast->n_fields; i++) {
+		mf = &mst->fields[mf_pos + i];
+		af = &ast->fields[i];
+
+		CHECK(mf->n_bits == af->n_bits, EINVAL);
+	}
+
+	return 0;
+}
+
+static int
+learner_action_learning_check(struct rte_swx_pipeline *p,
+			      struct action *action,
+			      const char **action_names,
+			      uint32_t n_actions)
+{
+	uint32_t i;
+
+	/* For each "learn" instruction of the current action, check that the learned action (i.e.
+	 * the action passed as argument to the "learn" instruction) is also enabled for the
+	 * current learner table.
+	 */
+	for (i = 0; i < action->n_instructions; i++) {
+		struct instruction *instr = &action->instructions[i];
+		uint32_t found = 0, j;
+
+		if (instr->type != INSTR_LEARNER_LEARN)
+			continue;
+
+		for (j = 0; j < n_actions; j++) {
+			struct action *a;
+
+			a = action_find(p, action_names[j]);
+			if (!a)
+				return -EINVAL;
+
+			if (a->id == instr->learn.action_id)
+				found = 1;
+		}
+
+		if (!found)
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
+int
+rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
+			      const char *name,
+			      struct rte_swx_pipeline_learner_params *params,
+			      uint32_t size,
+			      uint32_t timeout)
+{
+	struct learner *l = NULL;
+	struct action *default_action;
+	struct header *header = NULL;
+	uint32_t action_data_size_max = 0, i;
+	int status = 0;
+
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(name, EINVAL);
+	CHECK(!table_find(p, name), EEXIST);
+	CHECK(!selector_find(p, name), EEXIST);
+	CHECK(!learner_find(p, name), EEXIST);
+
+	CHECK(params, EINVAL);
+
+	/* Match checks. */
+	status = learner_match_fields_check(p, params, &header);
+	if (status)
+		return status;
+
+	/* Action checks. */
+	CHECK(params->n_actions, EINVAL);
+
+	CHECK(params->action_names, EINVAL);
+	for (i = 0; i < params->n_actions; i++) {
+		const char *action_name = params->action_names[i];
+		const char *action_field_name = params->action_field_names[i];
+		struct action *a;
+		uint32_t action_data_size;
+
+		CHECK_NAME(action_name, EINVAL);
+
+		a = action_find(p, action_name);
+		CHECK(a, EINVAL);
+
+		status = learner_action_args_check(p, a, action_field_name);
+		if (status)
+			return status;
+
+		status = learner_action_learning_check(p,
+						       a,
+						       params->action_names,
+						       params->n_actions);
+		if (status)
+			return status;
+
+		action_data_size = a->st ? a->st->n_bits / 8 : 0;
+		if (action_data_size > action_data_size_max)
+			action_data_size_max = action_data_size;
+	}
+
+	CHECK_NAME(params->default_action_name, EINVAL);
+	for (i = 0; i < p->n_actions; i++)
+		if (!strcmp(params->action_names[i],
+			    params->default_action_name))
+			break;
+	CHECK(i < params->n_actions, EINVAL);
+
+	default_action = action_find(p, params->default_action_name);
+	CHECK((default_action->st && params->default_action_data) ||
+	      !params->default_action_data, EINVAL);
+
+	/* Any other checks. */
+	CHECK(size, EINVAL);
+	CHECK(timeout, EINVAL);
+
+	/* Memory allocation. */
+	l = calloc(1, sizeof(struct learner));
+	if (!l)
+		goto nomem;
+
+	l->fields = calloc(params->n_fields, sizeof(struct field *));
+	if (!l->fields)
+		goto nomem;
+
+	l->actions = calloc(params->n_actions, sizeof(struct action *));
+	if (!l->actions)
+		goto nomem;
+
+	l->action_arg = calloc(params->n_actions, sizeof(struct field *));
+	if (!l->action_arg)
+		goto nomem;
+
+	if (action_data_size_max) {
+		l->default_action_data = calloc(1, action_data_size_max);
+		if (!l->default_action_data)
+			goto nomem;
+	}
+
+	/* Node initialization. */
+	strcpy(l->name, name);
+
+	for (i = 0; i < params->n_fields; i++) {
+		const char *field_name = params->field_names[i];
+
+		l->fields[i] = header ?
+			header_field_parse(p, field_name, NULL) :
+			metadata_field_parse(p, field_name);
+	}
+
+	l->n_fields = params->n_fields;
+
+	l->header = header;
+
+	for (i = 0; i < params->n_actions; i++) {
+		const char *mf_name = params->action_field_names[i];
+
+		l->actions[i] = action_find(p, params->action_names[i]);
+
+		l->action_arg[i] = mf_name ? metadata_field_parse(p, mf_name) : NULL;
+	}
+
+	l->default_action = default_action;
+
+	if (default_action->st)
+		memcpy(l->default_action_data,
+		       params->default_action_data,
+		       default_action->st->n_bits / 8);
+
+	l->n_actions = params->n_actions;
+
+	l->default_action_is_const = params->default_action_is_const;
+
+	l->action_data_size_max = action_data_size_max;
+
+	l->size = size;
+
+	l->timeout = timeout;
+
+	l->id = p->n_learners;
+
+	/* Node add to tailq. */
+	TAILQ_INSERT_TAIL(&p->learners, l, node);
+	p->n_learners++;
+
+	return 0;
+
+nomem:
+	if (!l)
+		return -ENOMEM;
+
+	free(l->action_arg);
+	free(l->actions);
+	free(l->fields);
+	free(l);
+
+	return -ENOMEM;
+}
+
+static void
+learner_params_free(struct rte_swx_table_learner_params *params)
+{
+	if (!params)
+		return;
+
+	free(params->key_mask0);
+
+	free(params);
+}
+
+static struct rte_swx_table_learner_params *
+learner_params_get(struct learner *l)
+{
+	struct rte_swx_table_learner_params *params = NULL;
+	struct field *first, *last;
+	uint32_t i;
+
+	/* Memory allocation. */
+	params = calloc(1, sizeof(struct rte_swx_table_learner_params));
+	if (!params)
+		goto error;
+
+	/* Find first (smallest offset) and last (biggest offset) match fields. */
+	first = l->fields[0];
+	last = l->fields[0];
+
+	for (i = 0; i < l->n_fields; i++) {
+		struct field *f = l->fields[i];
+
+		if (f->offset < first->offset)
+			first = f;
+
+		if (f->offset > last->offset)
+			last = f;
+	}
+
+	/* Key offset and size. */
+	params->key_offset = first->offset / 8;
+	params->key_size = (last->offset + last->n_bits - first->offset) / 8;
+
+	/* Memory allocation. */
+	params->key_mask0 = calloc(1, params->key_size);
+	if (!params->key_mask0)
+		goto error;
+
+	/* Key mask. */
+	for (i = 0; i < l->n_fields; i++) {
+		struct field *f = l->fields[i];
+		uint32_t start = (f->offset - first->offset) / 8;
+		size_t size = f->n_bits / 8;
+
+		memset(&params->key_mask0[start], 0xFF, size);
+	}
+
+	/* Action data size. */
+	params->action_data_size = l->action_data_size_max;
+
+	/* Maximum number of keys. */
+	params->n_keys_max = l->size;
+
+	/* Timeout. */
+	params->key_timeout = l->timeout;
+
+	return params;
+
+error:
+	learner_params_free(params);
+	return NULL;
+}
+
+static void
+learner_build_free(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
+		struct thread *t = &p->threads[i];
+		uint32_t j;
+
+		if (!t->learners)
+			continue;
+
+		for (j = 0; j < p->n_learners; j++) {
+			struct learner_runtime *r = &t->learners[j];
+
+			free(r->mailbox);
+			free(r->action_data);
+		}
+
+		free(t->learners);
+		t->learners = NULL;
+	}
+
+	if (p->learner_stats) {
+		for (i = 0; i < p->n_learners; i++)
+			free(p->learner_stats[i].n_pkts_action);
+
+		free(p->learner_stats);
+	}
+}
+
+static int
+learner_build(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+	int status = 0;
+
+	/* Per pipeline: learner statistics. */
+	p->learner_stats = calloc(p->n_learners, sizeof(struct learner_statistics));
+	CHECK(p->learner_stats, ENOMEM);
+
+	for (i = 0; i < p->n_learners; i++) {
+		p->learner_stats[i].n_pkts_action = calloc(p->n_actions, sizeof(uint64_t));
+		CHECK(p->learner_stats[i].n_pkts_action, ENOMEM);
+	}
+
+	/* Per thread: learner run-time. */
+	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
+		struct thread *t = &p->threads[i];
+		struct learner *l;
+
+		t->learners = calloc(p->n_learners, sizeof(struct learner_runtime));
+		if (!t->learners) {
+			status = -ENOMEM;
+			goto error;
+		}
+
+		TAILQ_FOREACH(l, &p->learners, node) {
+			struct learner_runtime *r = &t->learners[l->id];
+			uint64_t size;
+			uint32_t j;
+
+			/* r->mailbox. */
+			size = rte_swx_table_learner_mailbox_size_get();
+			if (size) {
+				r->mailbox = calloc(1, size);
+				if (!r->mailbox) {
+					status = -ENOMEM;
+					goto error;
+				}
+			}
+
+			/* r->key. */
+			r->key = l->header ?
+				&t->structs[l->header->struct_id] :
+				&t->structs[p->metadata_struct_id];
+
+			/* r->action_data. */
+			r->action_data = calloc(p->n_actions, sizeof(uint8_t *));
+			if (!r->action_data) {
+				status = -ENOMEM;
+				goto error;
+			}
+
+			for (j = 0; j < l->n_actions; j++) {
+				struct action *a = l->actions[j];
+				struct field *mf = l->action_arg[j];
+				uint8_t *m = t->structs[p->metadata_struct_id];
+
+				r->action_data[a->id] = mf ? &m[mf->offset / 8] : NULL;
+			}
+		}
+	}
+
+	return 0;
+
+error:
+	learner_build_free(p);
+	return status;
+}
+
+static void
+learner_free(struct rte_swx_pipeline *p)
+{
+	learner_build_free(p);
+
+	/* Learner tables. */
+	for ( ; ; ) {
+		struct learner *l;
+
+		l = TAILQ_FIRST(&p->learners);
+		if (!l)
+			break;
+
+		TAILQ_REMOVE(&p->learners, l, node);
+		free(l->fields);
+		free(l->actions);
+		free(l->action_arg);
+		free(l->default_action_data);
+		free(l);
+	}
+}
+
+/*
  * Table state.
  */
 static int
@@ -10228,6 +11019,7 @@ table_state_build(struct rte_swx_pipeline *p)
 {
 	struct table *table;
 	struct selector *s;
+	struct learner *l;
 
 	p->table_state = calloc(p->n_tables + p->n_selectors,
 				sizeof(struct rte_swx_table_state));
@@ -10281,6 +11073,33 @@ table_state_build(struct rte_swx_pipeline *p)
 		CHECK(ts->obj, ENODEV);
 	}
 
+	TAILQ_FOREACH(l, &p->learners, node) {
+		struct rte_swx_table_state *ts = &p->table_state[p->n_tables +
+			p->n_selectors + l->id];
+		struct rte_swx_table_learner_params *params;
+
+		/* ts->obj. */
+		params = learner_params_get(l);
+		CHECK(params, ENOMEM);
+
+		ts->obj = rte_swx_table_learner_create(params, p->numa_node);
+		learner_params_free(params);
+		CHECK(ts->obj, ENODEV);
+
+		/* ts->default_action_data. */
+		if (l->action_data_size_max) {
+			ts->default_action_data = malloc(l->action_data_size_max);
+			CHECK(ts->default_action_data, ENOMEM);
+
+			memcpy(ts->default_action_data,
+			       l->default_action_data,
+			       l->action_data_size_max);
+		}
+
+		/* ts->default_action_id. */
+		ts->default_action_id = l->default_action->id;
+	}
+
 	return 0;
 }
 
@@ -10310,6 +11129,17 @@ table_state_build_free(struct rte_swx_pipeline *p)
 		/* ts->obj. */
 		if (ts->obj)
 			rte_swx_table_selector_free(ts->obj);
+	}
+
+	for (i = 0; i < p->n_learners; i++) {
+		struct rte_swx_table_state *ts = &p->table_state[p->n_tables + p->n_selectors + i];
+
+		/* ts->obj. */
+		if (ts->obj)
+			rte_swx_table_learner_free(ts->obj);
+
+		/* ts->default_action_data. */
+		free(ts->default_action_data);
 	}
 
 	free(p->table_state);
@@ -10653,6 +11483,7 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 	TAILQ_INIT(&pipeline->table_types);
 	TAILQ_INIT(&pipeline->tables);
 	TAILQ_INIT(&pipeline->selectors);
+	TAILQ_INIT(&pipeline->learners);
 	TAILQ_INIT(&pipeline->regarrays);
 	TAILQ_INIT(&pipeline->meter_profiles);
 	TAILQ_INIT(&pipeline->metarrays);
@@ -10675,6 +11506,7 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 	metarray_free(p);
 	regarray_free(p);
 	table_state_free(p);
+	learner_free(p);
 	selector_free(p);
 	table_free(p);
 	action_free(p);
@@ -10759,6 +11591,10 @@ rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 	if (status)
 		goto error;
 
+	status = learner_build(p);
+	if (status)
+		goto error;
+
 	status = table_state_build(p);
 	if (status)
 		goto error;
@@ -10778,6 +11614,7 @@ error:
 	metarray_build_free(p);
 	regarray_build_free(p);
 	table_state_build_free(p);
+	learner_build_free(p);
 	selector_build_free(p);
 	table_build_free(p);
 	action_build_free(p);
@@ -10839,6 +11676,7 @@ rte_swx_ctl_pipeline_info_get(struct rte_swx_pipeline *p,
 	pipeline->n_actions = n_actions;
 	pipeline->n_tables = n_tables;
 	pipeline->n_selectors = p->n_selectors;
+	pipeline->n_learners = p->n_learners;
 	pipeline->n_regarrays = p->n_regarrays;
 	pipeline->n_metarrays = p->n_metarrays;
 
@@ -11085,6 +11923,75 @@ rte_swx_ctl_selector_member_id_field_info_get(struct rte_swx_pipeline *p,
 }
 
 int
+rte_swx_ctl_learner_info_get(struct rte_swx_pipeline *p,
+			     uint32_t learner_id,
+			     struct rte_swx_ctl_learner_info *learner)
+{
+	struct learner *l = NULL;
+
+	if (!p || !learner)
+		return -EINVAL;
+
+	l = learner_find_by_id(p, learner_id);
+	if (!l)
+		return -EINVAL;
+
+	strcpy(learner->name, l->name);
+
+	learner->n_match_fields = l->n_fields;
+	learner->n_actions = l->n_actions;
+	learner->default_action_is_const = l->default_action_is_const;
+	learner->size = l->size;
+
+	return 0;
+}
+
+int
+rte_swx_ctl_learner_match_field_info_get(struct rte_swx_pipeline *p,
+					 uint32_t learner_id,
+					 uint32_t match_field_id,
+					 struct rte_swx_ctl_table_match_field_info *match_field)
+{
+	struct learner *l;
+	struct field *f;
+
+	if (!p || (learner_id >= p->n_learners) || !match_field)
+		return -EINVAL;
+
+	l = learner_find_by_id(p, learner_id);
+	if (!l || (match_field_id >= l->n_fields))
+		return -EINVAL;
+
+	f = l->fields[match_field_id];
+	match_field->match_type = RTE_SWX_TABLE_MATCH_EXACT;
+	match_field->is_header = l->header ? 1 : 0;
+	match_field->n_bits = f->n_bits;
+	match_field->offset = f->offset;
+
+	return 0;
+}
+
+int
+rte_swx_ctl_learner_action_info_get(struct rte_swx_pipeline *p,
+				    uint32_t learner_id,
+				    uint32_t learner_action_id,
+				    struct rte_swx_ctl_table_action_info *learner_action)
+{
+	struct learner *l;
+
+	if (!p || (learner_id >= p->n_learners) || !learner_action)
+		return -EINVAL;
+
+	l = learner_find_by_id(p, learner_id);
+	if (!l || (learner_action_id >= l->n_actions))
+		return -EINVAL;
+
+	learner_action->action_id = l->actions[learner_action_id]->id;
+
+	return 0;
+}
+
+int
 rte_swx_pipeline_table_state_get(struct rte_swx_pipeline *p,
 				 struct rte_swx_table_state **table_state)
 {
@@ -11184,6 +12091,38 @@ rte_swx_ctl_pipeline_selector_stats_read(struct rte_swx_pipeline *p,
 		return -EINVAL;
 
 	stats->n_pkts = p->selector_stats[s->id].n_pkts;
+
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_learner_stats_read(struct rte_swx_pipeline *p,
+					const char *learner_name,
+					struct rte_swx_learner_stats *stats)
+{
+	struct learner *l;
+	struct learner_statistics *learner_stats;
+
+	if (!p || !learner_name || !learner_name[0] || !stats || !stats->n_pkts_action)
+		return -EINVAL;
+
+	l = learner_find(p, learner_name);
+	if (!l)
+		return -EINVAL;
+
+	learner_stats = &p->learner_stats[l->id];
+
+	memcpy(stats->n_pkts_action,
+	       learner_stats->n_pkts_action,
+	       p->n_actions * sizeof(uint64_t));
+
+	stats->n_pkts_hit = learner_stats->n_pkts_hit[1];
+	stats->n_pkts_miss = learner_stats->n_pkts_hit[0];
+
+	stats->n_pkts_learn_ok = learner_stats->n_pkts_learn[0];
+	stats->n_pkts_learn_err = learner_stats->n_pkts_learn[1];
+
+	stats->n_pkts_forget = learner_stats->n_pkts_forget;
 
 	return 0;
 }

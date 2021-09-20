@@ -123,12 +123,26 @@ struct selector {
 	struct rte_swx_table_selector_params params;
 };
 
+struct learner {
+	struct rte_swx_ctl_learner_info info;
+	struct rte_swx_ctl_table_match_field_info *mf;
+	struct rte_swx_ctl_table_action_info *actions;
+	uint32_t action_data_size;
+
+	/* The pending default action: this is NOT the current default action;
+	 * this will be the new default action after the next commit, if the
+	 * next commit operation is successful.
+	 */
+	struct rte_swx_table_entry *pending_default;
+};
+
 struct rte_swx_ctl_pipeline {
 	struct rte_swx_ctl_pipeline_info info;
 	struct rte_swx_pipeline *p;
 	struct action *actions;
 	struct table *tables;
 	struct selector *selectors;
+	struct learner *learners;
 	struct rte_swx_table_state *ts;
 	struct rte_swx_table_state *ts_next;
 	int numa_node;
@@ -925,6 +939,70 @@ selector_params_get(struct rte_swx_ctl_pipeline *ctl, uint32_t selector_id)
 }
 
 static void
+learner_pending_default_free(struct learner *l)
+{
+	if (!l->pending_default)
+		return;
+
+	free(l->pending_default->action_data);
+	free(l->pending_default);
+	l->pending_default = NULL;
+}
+
+
+static void
+learner_free(struct rte_swx_ctl_pipeline *ctl)
+{
+	uint32_t i;
+
+	if (!ctl->learners)
+		return;
+
+	for (i = 0; i < ctl->info.n_learners; i++) {
+		struct learner *l = &ctl->learners[i];
+
+		free(l->mf);
+		free(l->actions);
+
+		learner_pending_default_free(l);
+	}
+
+	free(ctl->learners);
+	ctl->learners = NULL;
+}
+
+static struct learner *
+learner_find(struct rte_swx_ctl_pipeline *ctl, const char *learner_name)
+{
+	uint32_t i;
+
+	for (i = 0; i < ctl->info.n_learners; i++) {
+		struct learner *l = &ctl->learners[i];
+
+		if (!strcmp(learner_name, l->info.name))
+			return l;
+	}
+
+	return NULL;
+}
+
+static uint32_t
+learner_action_data_size_get(struct rte_swx_ctl_pipeline *ctl, struct learner *l)
+{
+	uint32_t action_data_size = 0, i;
+
+	for (i = 0; i < l->info.n_actions; i++) {
+		uint32_t action_id = l->actions[i].action_id;
+		struct action *a = &ctl->actions[action_id];
+
+		if (a->data_size > action_data_size)
+			action_data_size = a->data_size;
+	}
+
+	return action_data_size;
+}
+
+static void
 table_state_free(struct rte_swx_ctl_pipeline *ctl)
 {
 	uint32_t i;
@@ -952,6 +1030,14 @@ table_state_free(struct rte_swx_ctl_pipeline *ctl)
 		/* Table object. */
 		if (ts->obj)
 			rte_swx_table_selector_free(ts->obj);
+	}
+
+	/* For each learner table, free its table state. */
+	for (i = 0; i < ctl->info.n_learners; i++) {
+		struct rte_swx_table_state *ts = &ctl->ts_next[i];
+
+		/* Default action data. */
+		free(ts->default_action_data);
 	}
 
 	free(ctl->ts_next);
@@ -1020,6 +1106,29 @@ table_state_create(struct rte_swx_ctl_pipeline *ctl)
 		}
 	}
 
+	/* Learner tables. */
+	for (i = 0; i < ctl->info.n_learners; i++) {
+		struct learner *l = &ctl->learners[i];
+		struct rte_swx_table_state *ts = &ctl->ts[i];
+		struct rte_swx_table_state *ts_next = &ctl->ts_next[i];
+
+		/* Table object: duplicate from the current table state. */
+		ts_next->obj = ts->obj;
+
+		/* Default action data: duplicate from the current table state. */
+		ts_next->default_action_data = malloc(l->action_data_size);
+		if (!ts_next->default_action_data) {
+			status = -ENOMEM;
+			goto error;
+		}
+
+		memcpy(ts_next->default_action_data,
+		       ts->default_action_data,
+		       l->action_data_size);
+
+		ts_next->default_action_id = ts->default_action_id;
+	}
+
 	return 0;
 
 error:
@@ -1036,6 +1145,8 @@ rte_swx_ctl_pipeline_free(struct rte_swx_ctl_pipeline *ctl)
 	action_free(ctl);
 
 	table_state_free(ctl);
+
+	learner_free(ctl);
 
 	selector_free(ctl);
 
@@ -1249,6 +1360,54 @@ rte_swx_ctl_pipeline_create(struct rte_swx_pipeline *p)
 		status = selector_params_get(ctl, i);
 		if (status)
 			goto error;
+	}
+
+	/* learner tables. */
+	ctl->learners = calloc(ctl->info.n_learners, sizeof(struct learner));
+	if (!ctl->learners)
+		goto error;
+
+	for (i = 0; i < ctl->info.n_learners; i++) {
+		struct learner *l = &ctl->learners[i];
+		uint32_t j;
+
+		/* info. */
+		status = rte_swx_ctl_learner_info_get(p, i, &l->info);
+		if (status)
+			goto error;
+
+		/* mf. */
+		l->mf = calloc(l->info.n_match_fields,
+			       sizeof(struct rte_swx_ctl_table_match_field_info));
+		if (!l->mf)
+			goto error;
+
+		for (j = 0; j < l->info.n_match_fields; j++) {
+			status = rte_swx_ctl_learner_match_field_info_get(p,
+				i,
+				j,
+				&l->mf[j]);
+			if (status)
+				goto error;
+		}
+
+		/* actions. */
+		l->actions = calloc(l->info.n_actions,
+			sizeof(struct rte_swx_ctl_table_action_info));
+		if (!l->actions)
+			goto error;
+
+		for (j = 0; j < l->info.n_actions; j++) {
+			status = rte_swx_ctl_learner_action_info_get(p,
+				i,
+				j,
+				&l->actions[j]);
+			if (status || l->actions[j].action_id >= ctl->info.n_actions)
+				goto error;
+		}
+
+		/* action_data_size. */
+		l->action_data_size = learner_action_data_size_get(ctl, l);
 	}
 
 	/* ts. */
@@ -1685,9 +1844,8 @@ table_rollfwd1(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 	action_data = table->pending_default->action_data;
 	a = &ctl->actions[action_id];
 
-	memcpy(ts_next->default_action_data,
-	       action_data,
-	       a->data_size);
+	if (a->data_size)
+		memcpy(ts_next->default_action_data, action_data, a->data_size);
 
 	ts_next->default_action_id = action_id;
 }
@@ -2099,6 +2257,178 @@ selector_abort(struct rte_swx_ctl_pipeline *ctl, uint32_t selector_id)
 	memset(s->groups_pending_delete, 0, s->info.n_groups_max * sizeof(int));
 }
 
+static struct rte_swx_table_entry *
+learner_default_entry_alloc(struct learner *l)
+{
+	struct rte_swx_table_entry *entry;
+
+	entry = calloc(1, sizeof(struct rte_swx_table_entry));
+	if (!entry)
+		goto error;
+
+	/* action_data. */
+	if (l->action_data_size) {
+		entry->action_data = calloc(1, l->action_data_size);
+		if (!entry->action_data)
+			goto error;
+	}
+
+	return entry;
+
+error:
+	table_entry_free(entry);
+	return NULL;
+}
+
+static int
+learner_default_entry_check(struct rte_swx_ctl_pipeline *ctl,
+			    uint32_t learner_id,
+			    struct rte_swx_table_entry *entry)
+{
+	struct learner *l = &ctl->learners[learner_id];
+	struct action *a;
+	uint32_t i;
+
+	CHECK(entry, EINVAL);
+
+	/* action_id. */
+	for (i = 0; i < l->info.n_actions; i++)
+		if (entry->action_id == l->actions[i].action_id)
+			break;
+
+	CHECK(i < l->info.n_actions, EINVAL);
+
+	/* action_data. */
+	a = &ctl->actions[entry->action_id];
+	CHECK(!(a->data_size && !entry->action_data), EINVAL);
+
+	return 0;
+}
+
+static struct rte_swx_table_entry *
+learner_default_entry_duplicate(struct rte_swx_ctl_pipeline *ctl,
+				uint32_t learner_id,
+				struct rte_swx_table_entry *entry)
+{
+	struct learner *l = &ctl->learners[learner_id];
+	struct rte_swx_table_entry *new_entry = NULL;
+	struct action *a;
+	uint32_t i;
+
+	if (!entry)
+		goto error;
+
+	new_entry = calloc(1, sizeof(struct rte_swx_table_entry));
+	if (!new_entry)
+		goto error;
+
+	/* action_id. */
+	for (i = 0; i < l->info.n_actions; i++)
+		if (entry->action_id == l->actions[i].action_id)
+			break;
+
+	if (i >= l->info.n_actions)
+		goto error;
+
+	new_entry->action_id = entry->action_id;
+
+	/* action_data. */
+	a = &ctl->actions[entry->action_id];
+	if (a->data_size && !entry->action_data)
+		goto error;
+
+	/* The table layer provisions a constant action data size per
+	 * entry, which should be the largest data size for all the
+	 * actions enabled for the current table, and attempts to copy
+	 * this many bytes each time a table entry is added, even if the
+	 * specific action requires less data or even no data at all,
+	 * hence we always have to allocate the max.
+	 */
+	new_entry->action_data = calloc(1, l->action_data_size);
+	if (!new_entry->action_data)
+		goto error;
+
+	if (a->data_size)
+		memcpy(new_entry->action_data, entry->action_data, a->data_size);
+
+	return new_entry;
+
+error:
+	table_entry_free(new_entry);
+	return NULL;
+}
+
+int
+rte_swx_ctl_pipeline_learner_default_entry_add(struct rte_swx_ctl_pipeline *ctl,
+					       const char *learner_name,
+					       struct rte_swx_table_entry *entry)
+{
+	struct learner *l;
+	struct rte_swx_table_entry *new_entry;
+	uint32_t learner_id;
+
+	CHECK(ctl, EINVAL);
+
+	CHECK(learner_name && learner_name[0], EINVAL);
+	l = learner_find(ctl, learner_name);
+	CHECK(l, EINVAL);
+	learner_id = l - ctl->learners;
+	CHECK(!l->info.default_action_is_const, EINVAL);
+
+	CHECK(entry, EINVAL);
+	CHECK(!learner_default_entry_check(ctl, learner_id, entry), EINVAL);
+
+	new_entry = learner_default_entry_duplicate(ctl, learner_id, entry);
+	CHECK(new_entry, ENOMEM);
+
+	learner_pending_default_free(l);
+
+	l->pending_default = new_entry;
+	return 0;
+}
+
+static void
+learner_rollfwd(struct rte_swx_ctl_pipeline *ctl, uint32_t learner_id)
+{
+	struct learner *l = &ctl->learners[learner_id];
+	struct rte_swx_table_state *ts_next = &ctl->ts_next[ctl->info.n_tables +
+		ctl->info.n_selectors + learner_id];
+	struct action *a;
+	uint8_t *action_data;
+	uint64_t action_id;
+
+	/* Copy the pending default entry. */
+	if (!l->pending_default)
+		return;
+
+	action_id = l->pending_default->action_id;
+	action_data = l->pending_default->action_data;
+	a = &ctl->actions[action_id];
+
+	if (a->data_size)
+		memcpy(ts_next->default_action_data, action_data, a->data_size);
+
+	ts_next->default_action_id = action_id;
+}
+
+static void
+learner_rollfwd_finalize(struct rte_swx_ctl_pipeline *ctl, uint32_t learner_id)
+{
+	struct learner *l = &ctl->learners[learner_id];
+
+	/* Free up the pending default entry, as it is now part of the table. */
+	learner_pending_default_free(l);
+}
+
+static void
+learner_abort(struct rte_swx_ctl_pipeline *ctl, uint32_t learner_id)
+{
+	struct learner *l = &ctl->learners[learner_id];
+
+	/* Free up the pending default entry, as it is no longer going to be added to the table. */
+	learner_pending_default_free(l);
+}
+
 int
 rte_swx_ctl_pipeline_commit(struct rte_swx_ctl_pipeline *ctl, int abort_on_fail)
 {
@@ -2110,6 +2440,7 @@ rte_swx_ctl_pipeline_commit(struct rte_swx_ctl_pipeline *ctl, int abort_on_fail)
 
 	/* Operate the changes on the current ts_next before it becomes the new ts. First, operate
 	 * all the changes that can fail; if no failure, then operate the changes that cannot fail.
+	 * We must be able to fully revert all the changes that can fail as if they never happened.
 	 */
 	for (i = 0; i < ctl->info.n_tables; i++) {
 		status = table_rollfwd0(ctl, i, 0);
@@ -2123,8 +2454,14 @@ rte_swx_ctl_pipeline_commit(struct rte_swx_ctl_pipeline *ctl, int abort_on_fail)
 			goto rollback;
 	}
 
+	/* Second, operate all the changes that cannot fail. Since nothing can fail from this point
+	 * onwards, the transaction is guaranteed to be successful.
+	 */
 	for (i = 0; i < ctl->info.n_tables; i++)
 		table_rollfwd1(ctl, i);
+
+	for (i = 0; i < ctl->info.n_learners; i++)
+		learner_rollfwd(ctl, i);
 
 	/* Swap the table state for the data plane. The current ts and ts_next
 	 * become the new ts_next and ts, respectively.
@@ -2151,6 +2488,11 @@ rte_swx_ctl_pipeline_commit(struct rte_swx_ctl_pipeline *ctl, int abort_on_fail)
 		selector_rollfwd_finalize(ctl, i);
 	}
 
+	for (i = 0; i < ctl->info.n_learners; i++) {
+		learner_rollfwd(ctl, i);
+		learner_rollfwd_finalize(ctl, i);
+	}
+
 	return 0;
 
 rollback:
@@ -2165,6 +2507,10 @@ rollback:
 		if (abort_on_fail)
 			selector_abort(ctl, i);
 	}
+
+	if (abort_on_fail)
+		for (i = 0; i < ctl->info.n_learners; i++)
+			learner_abort(ctl, i);
 
 	return status;
 }
@@ -2182,6 +2528,9 @@ rte_swx_ctl_pipeline_abort(struct rte_swx_ctl_pipeline *ctl)
 
 	for (i = 0; i < ctl->info.n_selectors; i++)
 		selector_abort(ctl, i);
+
+	for (i = 0; i < ctl->info.n_learners; i++)
+		learner_abort(ctl, i);
 }
 
 static int
@@ -2398,6 +2747,130 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 	 * Action.
 	 */
 action:
+	if (!(n_tokens && !strcmp(tokens[0], "action")))
+		goto other;
+
+	if (n_tokens < 2)
+		goto error;
+
+	action = action_find(ctl, tokens[1]);
+	if (!action)
+		goto error;
+
+	if (n_tokens < 2 + action->info.n_args * 2)
+		goto error;
+
+	/* action_id. */
+	entry->action_id = action - ctl->actions;
+
+	/* action_data. */
+	for (i = 0; i < action->info.n_args; i++) {
+		struct rte_swx_ctl_action_arg_info *arg = &action->args[i];
+		char *arg_name, *arg_val;
+		uint64_t val;
+
+		arg_name = tokens[2 + i * 2];
+		arg_val = tokens[2 + i * 2 + 1];
+
+		if (strcmp(arg_name, arg->name))
+			goto error;
+
+		val = strtoull(arg_val, &arg_val, 0);
+		if (arg_val[0])
+			goto error;
+
+		/* Endianness conversion. */
+		if (arg->is_network_byte_order)
+			val = field_hton(val, arg->n_bits);
+
+		/* Copy to entry. */
+		memcpy(&entry->action_data[arg_offset],
+		       (uint8_t *)&val,
+		       arg->n_bits / 8);
+
+		arg_offset += arg->n_bits / 8;
+	}
+
+	tokens += 2 + action->info.n_args * 2;
+	n_tokens -= 2 + action->info.n_args * 2;
+
+other:
+	if (n_tokens)
+		goto error;
+
+	free(s0);
+	return entry;
+
+error:
+	table_entry_free(entry);
+	free(s0);
+	if (is_blank_or_comment)
+		*is_blank_or_comment = blank_or_comment;
+	return NULL;
+}
+
+struct rte_swx_table_entry *
+rte_swx_ctl_pipeline_learner_default_entry_read(struct rte_swx_ctl_pipeline *ctl,
+						const char *learner_name,
+						const char *string,
+						int *is_blank_or_comment)
+{
+	char *token_array[RTE_SWX_CTL_ENTRY_TOKENS_MAX], **tokens;
+	struct learner *l;
+	struct action *action;
+	struct rte_swx_table_entry *entry = NULL;
+	char *s0 = NULL, *s;
+	uint32_t n_tokens = 0, arg_offset = 0, i;
+	int blank_or_comment = 0;
+
+	/* Check input arguments. */
+	if (!ctl)
+		goto error;
+
+	if (!learner_name || !learner_name[0])
+		goto error;
+
+	l = learner_find(ctl, learner_name);
+	if (!l)
+		goto error;
+
+	if (!string || !string[0])
+		goto error;
+
+	/* Memory allocation. */
+	s0 = strdup(string);
+	if (!s0)
+		goto error;
+
+	entry = learner_default_entry_alloc(l);
+	if (!entry)
+		goto error;
+
+	/* Parse the string into tokens. */
+	for (s = s0; ; ) {
+		char *token;
+
+		token = strtok_r(s, " \f\n\r\t\v", &s);
+		if (!token || token_is_comment(token))
+			break;
+
+		if (n_tokens >= RTE_SWX_CTL_ENTRY_TOKENS_MAX)
+			goto error;
+
+		token_array[n_tokens] = token;
+		n_tokens++;
+	}
+
+	if (!n_tokens) {
+		blank_or_comment = 1;
+		goto error;
+	}
+
+	tokens = token_array;
+
+	/*
+	 * Action.
+	 */
 	if (!(n_tokens && !strcmp(tokens[0], "action")))
 		goto other;
 

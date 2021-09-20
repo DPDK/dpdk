@@ -52,6 +52,9 @@ struct rte_swx_ctl_pipeline_info {
 	/** Number of selector tables. */
 	uint32_t n_selectors;
 
+	/** Number of learner tables. */
+	uint32_t n_learners;
+
 	/** Number of register arrays. */
 	uint32_t n_regarrays;
 
@@ -513,6 +516,142 @@ rte_swx_ctl_pipeline_selector_stats_read(struct rte_swx_pipeline *p,
 					 struct rte_swx_pipeline_selector_stats *stats);
 
 /*
+ * Learner Table Query API.
+ */
+
+/** Learner table info. */
+struct rte_swx_ctl_learner_info {
+	/** Learner table name. */
+	char name[RTE_SWX_CTL_NAME_SIZE];
+
+	/** Number of match fields. */
+	uint32_t n_match_fields;
+
+	/** Number of actions. */
+	uint32_t n_actions;
+
+	/** Non-zero (true) when the default action is constant, therefore it
+	 * cannot be changed; zero (false) when the default action not constant,
+	 * therefore it can be changed.
+	 */
+	int default_action_is_const;
+
+	/** Learner table size parameter. */
+	uint32_t size;
+};
+
+/**
+ * Learner table info get
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] learner_id
+ *   Learner table ID (0 .. *n_learners* - 1).
+ * @param[out] learner
+ *   Learner table info.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_learner_info_get(struct rte_swx_pipeline *p,
+			     uint32_t learner_id,
+			     struct rte_swx_ctl_learner_info *learner);
+
+/**
+ * Learner table match field info get
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] learner_id
+ *   Learner table ID (0 .. *n_learners* - 1).
+ * @param[in] match_field_id
+ *   Match field ID (0 .. *n_match_fields* - 1).
+ * @param[out] match_field
+ *   Learner table match field info.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_learner_match_field_info_get(struct rte_swx_pipeline *p,
+					 uint32_t learner_id,
+					 uint32_t match_field_id,
+					 struct rte_swx_ctl_table_match_field_info *match_field);
+
+/**
+ * Learner table action info get
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] learner_id
+ *   Learner table ID (0 .. *n_learners* - 1).
+ * @param[in] learner_action_id
+ *   Action index within the set of learner table actions (0 .. learner table n_actions - 1). Not
+ *   to be confused with the pipeline-leve action ID (0 .. pipeline n_actions - 1), which is
+ *   precisely what this function returns as part of the *learner_action*.
+ * @param[out] learner_action
+ *   Learner action info.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_learner_action_info_get(struct rte_swx_pipeline *p,
+				    uint32_t learner_id,
+				    uint32_t learner_action_id,
+				    struct rte_swx_ctl_table_action_info *learner_action);
+
+/** Learner table statistics. */
+struct rte_swx_learner_stats {
+	/** Number of packets with lookup hit. */
+	uint64_t n_pkts_hit;
+
+	/** Number of packets with lookup miss. */
+	uint64_t n_pkts_miss;
+
+	/** Number of packets with successful learning. */
+	uint64_t n_pkts_learn_ok;
+
+	/** Number of packets with learning error. */
+	uint64_t n_pkts_learn_err;
+
+	/** Number of packets with forget event. */
+	uint64_t n_pkts_forget;
+
+	/** Number of packets (with either lookup hit or miss) per pipeline action. Array of
+	 * pipeline *n_actions* elements indedex by the pipeline-level *action_id*, therefore this
+	 * array has the same size for all the tables within the same pipeline.
+	 */
+	uint64_t *n_pkts_action;
+};
+
+/**
+ * Learner table statistics counters read
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] learner_name
+ *   Learner table name.
+ * @param[out] stats
+ *   Learner table stats. Must point to a pre-allocated structure. The *n_pkts_action* field also
+ *   needs to be pre-allocated as array of pipeline *n_actions* elements. The pipeline actions that
+ *   are not valid for the current learner table have their associated *n_pkts_action* element
+ *   always set to zero.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_learner_stats_read(struct rte_swx_pipeline *p,
+				      const char *learner_name,
+				      struct rte_swx_learner_stats *stats);
+
+/*
  * Table Update API.
  */
 
@@ -762,6 +901,27 @@ rte_swx_ctl_pipeline_selector_group_member_delete(struct rte_swx_ctl_pipeline *c
 						  uint32_t member_id);
 
 /**
+ * Pipeline learner table default entry add
+ *
+ * Schedule learner table default entry update as part of the next commit operation.
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] learner_name
+ *   Learner table name.
+ * @param[in] entry
+ *   The new table default entry. The *key* and *key_mask* entry fields are ignored.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_learner_default_entry_add(struct rte_swx_ctl_pipeline *ctl,
+					       const char *learner_name,
+					       struct rte_swx_table_entry *entry);
+
+/**
  * Pipeline commit
  *
  * Perform all the scheduled table work.
@@ -818,6 +978,32 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 				      const char *table_name,
 				      const char *string,
 				      int *is_blank_or_comment);
+
+/**
+ * Pipeline learner table default entry read
+ *
+ * Read learner table default entry from string.
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] learner_name
+ *   Learner table name.
+ * @param[in] string
+ *   String containing the learner table default entry.
+ * @param[out] is_blank_or_comment
+ *   On error, this argument provides an indication of whether *string* contains
+ *   an invalid table entry (set to zero) or a blank or comment line that should
+ *   typically be ignored (set to a non-zero value).
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+struct rte_swx_table_entry *
+rte_swx_ctl_pipeline_learner_default_entry_read(struct rte_swx_ctl_pipeline *ctl,
+						const char *learner_name,
+						const char *string,
+						int *is_blank_or_comment);
 
 /**
  * Pipeline table print to file

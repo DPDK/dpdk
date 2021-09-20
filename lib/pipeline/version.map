@@ -129,4 +129,13 @@ EXPERIMENTAL {
 	rte_swx_ctl_selector_field_info_get;
 	rte_swx_ctl_selector_group_id_field_info_get;
 	rte_swx_ctl_selector_member_id_field_info_get;
+
+	#added in 21.11
+	rte_swx_ctl_pipeline_learner_default_entry_add;
+	rte_swx_ctl_pipeline_learner_default_entry_read;
+	rte_swx_ctl_pipeline_learner_stats_read;
+	rte_swx_ctl_learner_action_info_get;
+	rte_swx_ctl_learner_info_get;
+	rte_swx_ctl_learner_match_field_info_get;
+	rte_swx_pipeline_learner_config;
 };
