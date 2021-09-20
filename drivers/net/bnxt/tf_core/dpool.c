@@ -7,9 +7,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <errno.h>
-
-#include <rte_malloc.h>
-
 #include "tfp.h"
 #include "dpool.h"
 
@@ -84,13 +81,13 @@ static int dpool_move(struct dpool *dpool,
 	return 0;
 }
 
-
 int dpool_defrag(struct dpool *dpool,
 		 uint32_t entry_size,
 		 uint8_t defrag)
 {
 	struct dpool_free_list *free_list;
 	struct dpool_adj_list *adj_list;
+	struct tfp_calloc_parms parms;
 	uint32_t count;
 	uint32_t index;
 	uint32_t used;
@@ -103,15 +100,31 @@ int dpool_defrag(struct dpool *dpool,
 	uint32_t max_size = 0;
 	int rc;
 
-	free_list = rte_zmalloc("dpool_free_list",
-				sizeof(struct dpool_free_list), 0);
+	parms.nitems = 1;
+	parms.size = sizeof(struct dpool_free_list);
+	parms.alignment = 0;
+
+	rc = tfp_calloc(&parms);
+
+	if (rc)
+		return rc;
+
+	free_list = (struct dpool_free_list *)parms.mem_va;
 	if (free_list == NULL) {
 		TFP_DRV_LOG(ERR, "dpool free list allocation failed\n");
 		return -ENOMEM;
 	}
 
-	adj_list = rte_zmalloc("dpool_adjacent_list",
-				sizeof(struct dpool_adj_list), 0);
+	parms.nitems = 1;
+	parms.size = sizeof(struct dpool_adj_list);
+	parms.alignment = 0;
+
+	rc = tfp_calloc(&parms);
+
+	if (rc)
+		return rc;
+
+	adj_list = (struct dpool_adj_list *)parms.mem_va;
 	if (adj_list == NULL) {
 		TFP_DRV_LOG(ERR, "dpool adjacent list allocation failed\n");
 		return -ENOMEM;
@@ -239,8 +252,8 @@ int dpool_defrag(struct dpool *dpool,
 					free_list->entry[largest_free_index].index,
 					max_index);
 			if (rc) {
-				rte_free(free_list);
-				rte_free(adj_list);
+				tfp_free(free_list);
+				tfp_free(adj_list);
 				return rc;
 			}
 		} else {
@@ -249,11 +262,10 @@ int dpool_defrag(struct dpool *dpool,
 	}
 
 done:
-	rte_free(free_list);
-	rte_free(adj_list);
+	tfp_free(free_list);
+	tfp_free(adj_list);
 	return largest_free_size;
 }
-
 
 uint32_t dpool_alloc(struct dpool *dpool,
 		     uint32_t size,
