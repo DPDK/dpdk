@@ -130,7 +130,7 @@ static int tf_tbl_sram_get_info(struct tf_tbl_sram_get_info_parms *parms)
 	if (slices)
 		parms->slice_size = tf_tbl_sram_slices_2_size[slices];
 
-	TFP_DRV_LOG(INFO,
+	TFP_DRV_LOG(DEBUG,
 		    "(%s) bank(%s) slice_size(%s)\n",
 		    tf_tbl_type_2_str(parms->tbl_type),
 		    tf_sram_bank_2_str(parms->bank_id),
