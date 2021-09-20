@@ -3,6 +3,8 @@
  * All rights reserved.
  */
 
+#include <sys/queue.h>
+
 #include <rte_malloc.h>
 
 #include "ulp_tun.h"
@@ -28,6 +30,15 @@ ulp_install_outer_tun_flow(struct ulp_rte_parser_params *params,
 	ULP_BITMAP_RESET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_JUMP);
 
 	ULP_BITMAP_SET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_F1);
+
+#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_PARSER
+	/* Dump the rte flow pattern */
+	ulp_parser_hdr_info_dump(params);
+	/* Dump the rte flow action */
+	ulp_parser_act_info_dump(params);
+#endif
+#endif
 
 	ret = ulp_matcher_pattern_match(params, &params->class_id);
 	if (ret != BNXT_TF_RC_SUCCESS)
@@ -145,6 +156,15 @@ ulp_post_process_cache_inner_tun_flow(struct ulp_rte_parser_params *params,
 	struct ulp_rte_parser_params *inner_tun_params;
 	struct ulp_per_port_flow_info *flow_info;
 	int ret;
+
+#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_PARSER
+	/* Dump the rte flow pattern */
+	ulp_parser_hdr_info_dump(params);
+	/* Dump the rte flow action */
+	ulp_parser_act_info_dump(params);
+#endif
+#endif
 
 	ret = ulp_matcher_pattern_match(params, &params->class_id);
 	if (ret != BNXT_TF_RC_SUCCESS)

@@ -7,9 +7,13 @@
 #include "bnxt.h"
 #include "bnxt_vnic.h"
 #include "bnxt_tf_common.h"
+#include "bnxt_tf_pmd_shim.h"
 #include "ulp_port_db.h"
 #include "tfp.h"
-#include "bnxt_tf_pmd_shim.h"
+
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#include "ulp_tf_debug.h"
+#endif
 
 static uint32_t
 ulp_port_db_allocate_ifindex(struct bnxt_ulp_port_db *port_db)
@@ -151,12 +155,12 @@ int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
 
 	intf->type = bnxt_pmd_get_interface_type(port_id);
 	intf->drv_func_id = bnxt_pmd_get_fw_func_id(port_id,
-						    BNXT_ULP_INTF_TYPE_INVALID);
+						BNXT_ULP_INTF_TYPE_INVALID);
 
 	func = &port_db->ulp_func_id_tbl[intf->drv_func_id];
 	if (!func->func_valid) {
 		func->func_svif = bnxt_pmd_get_svif(port_id, true,
-						    BNXT_ULP_INTF_TYPE_INVALID);
+						BNXT_ULP_INTF_TYPE_INVALID);
 		func->func_spif = bnxt_pmd_get_phy_port_id(port_id);
 		func->func_parif =
 			bnxt_pmd_get_parif(port_id, BNXT_ULP_INTF_TYPE_INVALID);
@@ -202,6 +206,11 @@ int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
 		port_data->port_vport = bnxt_pmd_get_vport(port_id);
 		port_data->port_valid = true;
 	}
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_PORT
+	ulp_port_db_dump(port_db, intf, port_id);
+#endif
+#endif
 	return 0;
 }
 

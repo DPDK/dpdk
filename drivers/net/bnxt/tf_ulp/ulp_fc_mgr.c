@@ -35,7 +35,7 @@ ulp_fc_mgr_shadow_mem_alloc(struct hw_fc_mem_info *parms, int size)
 	rte_mem_lock_page(parms->mem_va);
 
 	parms->mem_pa = (void *)(uintptr_t)rte_mem_virt2phy(parms->mem_va);
-	if (parms->mem_pa == (void *)(uintptr_t)RTE_BAD_IOVA) {
+	if (parms->mem_pa == (void *)RTE_BAD_IOVA) {
 		BNXT_TF_DBG(ERR, "Allocate failed mem_pa\n");
 		return -ENOMEM;
 	}

@@ -62,7 +62,7 @@ ulp_regfile_read(struct ulp_regfile *regfile,
  * data [in] The value is written into this variable.  It is going to be in the
  * same byte order as it was written.
  *
- * size [in] The size in bytes of the value being written into this
+ * size [in] The size in bytes of the value beingritten into this
  * variable.
  *
  * returns 0 on success
@@ -295,7 +295,7 @@ ulp_blob_push(struct ulp_blob *blob,
 				     datalen,
 				     data);
 	if (!rc) {
-		BNXT_TF_DBG(ERR, "Failed to write blob\n");
+		BNXT_TF_DBG(ERR, "Failed ro write blob\n");
 		return 0;
 	}
 	blob->write_idx += datalen;
@@ -355,7 +355,7 @@ ulp_blob_insert(struct ulp_blob *blob, uint32_t offset,
 				     datalen,
 				     data);
 	if (!rc) {
-		BNXT_TF_DBG(ERR, "Failed to write blob\n");
+		BNXT_TF_DBG(ERR, "Failed ro write blob\n");
 		return 0;
 	}
 	/* copy the previously stored data */
@@ -409,7 +409,7 @@ ulp_blob_push_64(struct ulp_blob *blob,
  *
  * data [in] 32-bit value to be added to the blob.
  *
- * datalen [in] The number of bits to be added to the blob.
+ * datalen [in] The number of bits to be added ot the blob.
  *
  * The offset of the data is updated after each push of data.
  * NULL returned on error, pointer pushed value otherwise.

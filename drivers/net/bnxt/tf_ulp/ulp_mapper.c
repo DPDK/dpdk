@@ -22,6 +22,11 @@
 #include "ulp_ha_mgr.h"
 #include "bnxt_tf_pmd_shim.h"
 
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#include "ulp_template_debug_proto.h"
+#include "ulp_tf_debug.h"
+#endif
+
 static uint8_t mapper_fld_zeros[16] = { 0 };
 
 static uint8_t mapper_fld_ones[16] = {
@@ -156,6 +161,13 @@ ulp_mapper_resource_ident_allocate(struct bnxt_ulp_context *ulp_ctx,
 		tf_free_identifier(tfp, &fparms);
 		return rc;
 	}
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	BNXT_TF_DBG(DEBUG, "Allocated Glb Res Ident [%s][%d][%d] = 0x%04x\n",
+		    tf_dir_2_str(iparms.dir),
+		    glb_res->glb_regfile_index, iparms.ident_type, iparms.id);
+#endif
+#endif
 	return rc;
 }
 
@@ -216,6 +228,13 @@ ulp_mapper_resource_index_tbl_alloc(struct bnxt_ulp_context *ulp_ctx,
 		tf_free_tbl_entry(tfp, &free_parms);
 		return rc;
 	}
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	BNXT_TF_DBG(DEBUG, "Allocated Glb Res Index [%s][%d][%d] = 0x%04x\n",
+		    tf_dir_2_str(aparms.dir),
+		    glb_res->glb_regfile_index, aparms.type, aparms.idx);
+#endif
+#endif
 	return rc;
 }
 
@@ -784,6 +803,9 @@ ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 			    tf_ident_2_str(iparms.ident_type));
 		return rc;
 	}
+	BNXT_TF_INF("Alloc ident %s:%s.success.\n",
+		    tf_dir_2_str(iparms.dir),
+		    tf_ident_2_str(iparms.ident_type));
 
 	id = (uint64_t)tfp_cpu_to_be_64(iparms.id);
 	if (ulp_regfile_write(parms->regfile, idx, id)) {
@@ -813,6 +835,11 @@ ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 	} else {
 		*val = iparms.id;
 	}
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	ulp_mapper_ident_field_dump("Ident", ident, tbl, iparms.id);
+#endif
+#endif
 	return 0;
 
 error:
@@ -877,6 +904,10 @@ ulp_mapper_ident_extract(struct bnxt_ulp_mapper_parms *parms,
 			    sparms.search_id);
 		return rc;
 	}
+	BNXT_TF_INF("Search ident %s:%s:%x.success.\n",
+		    tf_dir_2_str(sparms.dir),
+		    tf_tbl_type_2_str(sparms.ident_type),
+		    sparms.search_id);
 
 	/* Write it to the regfile */
 	id = (uint64_t)tfp_cpu_to_be_64(sparms.search_id);
@@ -904,6 +935,11 @@ ulp_mapper_ident_extract(struct bnxt_ulp_mapper_parms *parms,
 		goto error;
 	}
 
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	ulp_mapper_ident_field_dump("Ident", ident, tbl, sparms.search_id);
+#endif
+#endif
 	return 0;
 
 error:
@@ -996,7 +1032,7 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
-		if (idx >= BNXT_ULP_CF_IDX_LAST || bytelen > sizeof(uint64_t)) {
+		if (idx >= BNXT_ULP_CF_IDX_LAST || bytelen > sizeof(uint32_t)) {
 			BNXT_TF_DBG(ERR, "comp field [%d] read oob %d\n", idx,
 				    bytelen);
 			return -EINVAL;
@@ -1448,7 +1484,16 @@ ulp_mapper_field_opc_process(struct bnxt_ulp_mapper_parms *parms,
 		break;
 	}
 
-	return rc;
+	if (!rc) {
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+		if (fld->field_src1 != BNXT_ULP_FIELD_SRC_ZERO)
+			ulp_mapper_field_dump(name, fld, blob, write_idx, val,
+					      val_len);
+#endif
+#endif
+		return rc;
+	}
 error:
 	BNXT_TF_DBG(ERR, "Error in %s:%s process %u:%u\n", name,
 		    fld->description, (val) ? write_idx : 0, val_len);
@@ -1500,8 +1545,15 @@ ulp_mapper_tbl_result_build(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	/* if encap bit swap is enabled perform the bit swap */
-	if (parms->device_params->encap_byte_swap && encap_flds)
+	if (parms->device_params->encap_byte_swap && encap_flds) {
 		ulp_blob_perform_encap_swap(data);
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+		BNXT_TF_DBG(INFO, "Dump after encap swap\n");
+		ulp_mapper_blob_dump(data);
+#endif
+#endif
+	}
 
 	return rc;
 }
@@ -1725,6 +1777,9 @@ ulp_mapper_tcam_tbl_entry_write(struct bnxt_ulp_mapper_parms *parms,
 			    tf_dir_2_str(sparms.dir), sparms.idx);
 		return -EIO;
 	}
+	BNXT_TF_INF("tcam[%s][%s][%x] write success.\n",
+		    tf_tcam_tbl_2_str(sparms.tcam_tbl_type),
+		    tf_dir_2_str(sparms.dir), sparms.idx);
 
 	/* Mark action */
 	rc = ulp_mapper_mark_act_ptr_process(parms, tbl);
@@ -1733,6 +1788,11 @@ ulp_mapper_tcam_tbl_entry_write(struct bnxt_ulp_mapper_parms *parms,
 		return rc;
 	}
 
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	ulp_mapper_tcam_entry_dump("TCAM", idx, tbl, key, mask, data);
+#endif
+#endif
 	return rc;
 }
 
@@ -1838,6 +1898,12 @@ static void ulp_mapper_wc_tcam_tbl_post_process(struct ulp_blob *blob)
 {
 	ulp_blob_perform_64B_word_swap(blob);
 	ulp_blob_perform_64B_byte_swap(blob);
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	BNXT_TF_DBG(INFO, "Dump after wc tcam post process\n");
+	ulp_mapper_blob_dump(blob);
+#endif
+#endif
 }
 
 static int32_t
@@ -2134,6 +2200,11 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		BNXT_TF_DBG(ERR, "Failed to build the result blob\n");
 		return rc;
 	}
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	ulp_mapper_result_dump("EM Result", tbl, &data);
+#endif
+#endif
 	if (dparms->dynamic_pad_en) {
 		uint32_t abits = dparms->em_blk_align_bits;
 
@@ -2148,6 +2219,11 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		ulp_blob_pad_align(&data, abits);
 
 		ulp_blob_perform_byte_reverse(&data, ULP_BITS_2_BYTE(abits));
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	ulp_mapper_result_dump("EM Merged Result", tbl, &data);
+#endif
+#endif
 	}
 
 	/* do the transpose for the internal EM keys */
@@ -2160,6 +2236,11 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		tmplen = ulp_blob_data_len_get(&key);
 		ulp_blob_perform_byte_reverse(&key, ULP_BITS_2_BYTE(tmplen));
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	ulp_mapper_result_dump("EM Key Transpose", tbl, &key);
+#endif
+#endif
 	}
 
 	rc = bnxt_ulp_cntxt_tbl_scope_id_get(parms->ulp_ctx,
@@ -2190,6 +2271,12 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return rc;
 	}
 
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	ulp_mapper_em_dump("EM", &key, &data, &iparms);
+	/* tf_dump_tables(tfp, iparms.tbl_scope_id); */
+#endif
+#endif
 	/* Mark action process */
 	if (mtype == BNXT_ULP_FLOW_MEM_TYPE_EXT &&
 	    tbl->resource_type == TF_MEM_EXTERNAL)
@@ -2479,6 +2566,9 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 				    sparms.idx, rc);
 			goto error;
 		}
+		BNXT_TF_INF("Index table[%s][%s][%x] write successful.\n",
+			    tf_tbl_type_2_str(sparms.type),
+			    tf_dir_2_str(sparms.dir), sparms.idx);
 
 		/* Calculate action record size */
 		if (tbl->resource_type == TF_TBL_TYPE_EXT) {
@@ -2635,6 +2725,10 @@ ulp_mapper_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			    iftbl_params.idx, rc);
 		return rc;
 	}
+	BNXT_TF_INF("Set table[%s][%s][%x] success.\n",
+		    tf_if_tbl_2_str(iftbl_params.type),
+		    tf_dir_2_str(iftbl_params.dir),
+		    iftbl_params.idx);
 
 	/*
 	 * TBD: Need to look at the need to store idx in flow db for restore
@@ -2697,6 +2791,12 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* The_key is a byte array convert it to a search index */
 	cache_key = ulp_blob_data_get(&key, &tmplen);
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	BNXT_TF_DBG(DEBUG, "The gen_tbl[%u] key\n", tbl_idx);
+	ulp_mapper_blob_dump(&key);
+#endif
+#endif
 	/* get the generic table  */
 	gen_tbl_list = &parms->mapper_data->gen_tbl_list[tbl_idx];
 
@@ -3495,6 +3595,11 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, uint32_t tid)
 	for (tbl_idx = 0; tbl_idx < num_tbls && cond_goto;) {
 		tbl = &tbls[tbl_idx];
 		cond_goto = tbl->execute_info.cond_true_goto;
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+		ulp_mapper_table_dump(tbl, tbl_idx);
+#endif
+#endif
 		/* Process the conditional func code opcodes */
 		if (ulp_mapper_func_info_process(parms, tbl)) {
 			BNXT_TF_DBG(ERR, "Failed to process cond update\n");

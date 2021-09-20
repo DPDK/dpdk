@@ -6,6 +6,10 @@
 #include "ulp_matcher.h"
 #include "ulp_utils.h"
 
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#include "ulp_template_debug_proto.h"
+#endif
+
 /* Utility function to calculate the class matcher hash */
 static uint32_t
 ulp_matcher_class_hash_calculate(uint64_t hi_sig, uint64_t lo_sig)
@@ -95,6 +99,11 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 
 error:
 	BNXT_TF_DBG(DEBUG, "Did not find any matching template\n");
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+	BNXT_TF_DBG(DEBUG, "class_hid:0x%x, Hdr:%" PRIX64 " Fld:%" PRIX64 "\n",
+		    class_hid, params->hdr_bitmap.bits,
+		    params->fld_bitmap.bits);
+#endif
 	*class_id = 0;
 	return BNXT_TF_RC_ERROR;
 }
@@ -142,6 +151,10 @@ ulp_matcher_action_match(struct ulp_rte_parser_params *params,
 
 error:
 	BNXT_TF_DBG(DEBUG, "Did not find any matching action template\n");
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+	BNXT_TF_DBG(DEBUG, "act_hid:0x%x, Hdr:%" PRIX64 "\n",
+		    act_hid, params->act_bitmap.bits);
+#endif
 	*act_id = 0;
 	return BNXT_TF_RC_ERROR;
 }

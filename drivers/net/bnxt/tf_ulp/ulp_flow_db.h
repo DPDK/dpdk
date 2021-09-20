@@ -18,7 +18,7 @@
 
 /*
  * Structure for the flow database resource information
- * The below structure is based on the below partitions
+ * The below structure is based on the below paritions
  * nxt_resource_idx = dir[31],resource_func_upper[30:28],nxt_resource_idx[27:0]
  * If resource_func is EM_TBL then use resource_em_handle.
  * Else the other part of the union is used and
@@ -416,5 +416,29 @@ ulp_flow_db_parent_flow_count_reset(struct bnxt_ulp_context *ulp_ctxt);
  */
 void ulp_flow_db_shared_session_set(struct ulp_flow_db_res_params *res,
 				    enum bnxt_ulp_shared_session shared);
+
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+/*
+ * Dump the flow entry details
+ *
+ * flow_db [in] Ptr to flow db
+ * fid [in] flow id
+ *
+ * returns none
+ */
+void
+ulp_flow_db_debug_fid_dump(struct bnxt_ulp_flow_db *flow_db, uint32_t fid);
+
+/*
+ * Dump the flow database entry details
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * flow_id [in] if zero then all fids are dumped.
+ *
+ * returns none
+ */
+int32_t	ulp_flow_db_debug_dump(struct bnxt_ulp_context *ulp_ctxt,
+			       uint32_t flow_id);
+#endif
 
 #endif /* _ULP_FLOW_DB_H_ */

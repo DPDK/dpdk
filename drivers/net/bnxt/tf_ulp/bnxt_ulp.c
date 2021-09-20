@@ -698,6 +698,11 @@ ulp_eem_tbl_scope_init(struct bnxt *bp)
 			    rc);
 		return rc;
 	}
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+	BNXT_TF_DBG(DEBUG, "TableScope=0x%0x %d\n",
+		    params.tbl_scope_id,
+		    params.tbl_scope_id);
+#endif
 	rc = bnxt_ulp_cntxt_tbl_scope_id_set(bp->ulp_ctx, params.tbl_scope_id);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to set table scope id\n");
@@ -825,6 +830,8 @@ ulp_ctx_init(struct bnxt *bp,
 		goto error_deinit;
 	}
 
+	/* TODO: For now we are overriding to APP:1 on this branch*/
+	bp->app_id = 1;
 	rc = bnxt_ulp_cntxt_app_id_set(bp->ulp_ctx, bp->app_id);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to set app_id for ULP init.\n");
@@ -836,11 +843,6 @@ ulp_ctx_init(struct bnxt *bp,
 		BNXT_TF_DBG(ERR, "Unable to set caps for app(%x)/dev(%x)\n",
 			    bp->app_id, devid);
 		goto error_deinit;
-	}
-
-	if (devid == BNXT_ULP_DEVICE_ID_THOR) {
-		ulp_data->ulp_flags &= ~BNXT_ULP_VF_REP_ENABLED;
-		BNXT_TF_DBG(ERR, "Enabled non-VFR mode\n");
 	}
 
 	/*
@@ -902,7 +904,7 @@ ulp_dparms_init(struct bnxt *bp, struct bnxt_ulp_context *ulp_ctx)
 	dparms->ext_flow_db_num_entries = bp->max_num_kflows * 1024;
 	/* GFID =  2 * num_flows */
 	dparms->mark_db_gfid_entries = dparms->ext_flow_db_num_entries * 2;
-	BNXT_TF_DBG(DEBUG, "Set the number of flows = %"PRIu64"\n",
+	BNXT_TF_DBG(DEBUG, "Set the number of flows = %" PRIu64 "\n",
 		    dparms->ext_flow_db_num_entries);
 
 	return 0;
@@ -1393,17 +1395,13 @@ bnxt_ulp_port_init(struct bnxt *bp)
 	uint32_t ulp_flags;
 	int32_t rc = 0;
 
+	if (!bp || !BNXT_TRUFLOW_EN(bp))
+		return rc;
+
 	if (!BNXT_PF(bp) && !BNXT_VF_IS_TRUSTED(bp)) {
 		BNXT_TF_DBG(ERR,
 			    "Skip ulp init for port: %d, not a TVF or PF\n",
-			    bp->eth_dev->data->port_id);
-		return rc;
-	}
-
-	if (!BNXT_TRUFLOW_EN(bp)) {
-		BNXT_TF_DBG(DEBUG,
-			    "Skip ulp init for port: %d, truflow is not enabled\n",
-			    bp->eth_dev->data->port_id);
+			bp->eth_dev->data->port_id);
 		return rc;
 	}
 
@@ -1524,16 +1522,12 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 	struct rte_pci_device *pci_dev;
 	struct rte_pci_addr *pci_addr;
 
+	if (!BNXT_TRUFLOW_EN(bp))
+		return;
+
 	if (!BNXT_PF(bp) && !BNXT_VF_IS_TRUSTED(bp)) {
 		BNXT_TF_DBG(ERR,
 			    "Skip ULP deinit port:%d, not a TVF or PF\n",
-			    bp->eth_dev->data->port_id);
-		return;
-	}
-
-	if (!BNXT_TRUFLOW_EN(bp)) {
-		BNXT_TF_DBG(DEBUG,
-			    "Skip ULP deinit for port:%d, truflow is not enabled\n",
 			    bp->eth_dev->data->port_id);
 		return;
 	}

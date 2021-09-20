@@ -8,6 +8,7 @@
 #include "ulp_template_struct.h"
 #include "bnxt_ulp.h"
 #include "bnxt_tf_common.h"
+#include "bnxt_tf_pmd_shim.h"
 #include "ulp_rte_parser.h"
 #include "ulp_matcher.h"
 #include "ulp_utils.h"
@@ -855,7 +856,7 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 			       BNXT_ULP_HDR_BIT_II_VLAN);
 		inner_flag = 1;
 	} else {
-		BNXT_TF_DBG(ERR, "Error Parsing:Vlan hdr found without eth\n");
+		BNXT_TF_DBG(ERR, "Error Parsing:Vlan hdr found withtout eth\n");
 		return BNXT_TF_RC_ERROR;
 	}
 	/* Update the field protocol hdr bitmap */
@@ -1135,8 +1136,8 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 	ulp_rte_prsr_fld_mask(params, &idx, size, &ver_spec, &ver_mask,
 			      ULP_PRSR_ACT_DEFAULT);
 	/*
-	 * The TC and flow label field are ignored since OVS is setting
-	 * it for match and it is not supported.
+	 * The TC and flow label field are ignored since OVS is
+	 * setting it for match and it is not supported.
 	 * This is a work around and
 	 * shall be addressed in the future.
 	 */
@@ -2138,7 +2139,7 @@ ulp_rte_vf_act_handler(const struct rte_flow_action *action_item,
 		return BNXT_TF_RC_PARSE_ERR;
 	}
 
-	bp = bnxt_get_bp(params->port_id);
+	bp = bnxt_pmd_get_bp(params->port_id);
 	if (bp == NULL) {
 		BNXT_TF_DBG(ERR, "Invalid bp\n");
 		return BNXT_TF_RC_ERROR;
