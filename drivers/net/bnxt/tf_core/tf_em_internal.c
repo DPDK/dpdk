@@ -326,8 +326,11 @@ tf_em_int_unbind(struct tf *tfp)
 		return rc;
 
 	if (!tf_session_is_shared_session(tfs)) {
-		for (i = 0; i < TF_DIR_MAX; i++)
+		for (i = 0; i < TF_DIR_MAX; i++) {
+			if (tfs->em_pool[i] == NULL)
+				continue;
 			dpool_free_all(tfs->em_pool[i]);
+		}
 	}
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_EM, &em_db_ptr);

@@ -18,6 +18,9 @@
 #include "tfp.h"
 #include "tf_msg.h"
 
+/* Logging defines */
+#define TF_RM_DEBUG  0
+
 /**
  * Generic RM Element data type that an RM DB is build upon.
  */
@@ -208,6 +211,45 @@ tf_rm_adjust_index(struct tf_rm_element *db,
 }
 
 /**
+ * Logs an array of found residual entries to the console.
+ *
+ * [in] dir
+ *   Receive or transmit direction
+ *
+ * [in] module
+ *   Type of Device Module
+ *
+ * [in] count
+ *   Number of entries in the residual array
+ *
+ * [in] residuals
+ *   Pointer to an array of residual entries. Array is index same as
+ *   the DB in which this function is used. Each entry holds residual
+ *   value for that entry.
+ */
+#if (TF_RM_DEBUG == 1)
+static void
+tf_rm_log_residuals(enum tf_dir dir,
+		    enum tf_module_type module,
+		    uint16_t count,
+		    uint16_t *residuals)
+{
+	int i;
+
+	/* Walk the residual array and log the types that wasn't
+	 * cleaned up to the console.
+	 */
+	for (i = 0; i < count; i++) {
+		if (residuals[i] != 0)
+			TFP_DRV_LOG(INFO,
+				"%s, %s was not cleaned up, %d outstanding\n",
+				tf_dir_2_str(dir),
+				tf_module_subtype_2_str(module, i),
+				residuals[i]);
+	}
+}
+#endif /* TF_RM_DEBUG == 1 */
+/**
  * Performs a check of the passed in DB for any lingering elements. If
  * a resource type was found to not have been cleaned up by the caller
  * then its residual values are recorded, logged and passed back in an
@@ -322,6 +364,12 @@ tf_rm_check_residuals(struct tf_rm_new_db *rm_db,
 		*resv_size = found;
 	}
 
+#if (TF_RM_DEBUG == 1)
+	tf_rm_log_residuals(rm_db->dir,
+			    rm_db->module,
+			    rm_db->num_entries,
+			    residuals);
+#endif
 	tfp_free((void *)residuals);
 	*resv = local_resv;
 
@@ -367,7 +415,8 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 				 struct tf_rm_element_cfg *cfg,
 				 uint16_t *alloc_cnt,
 				 uint16_t num_elements,
-				 uint16_t *req_cnt)
+				 uint16_t *req_cnt,
+				 bool shared_session)
 {
 	int parent, child;
 	const char *type_str;
@@ -378,18 +427,28 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 
 		/* If I am a parent */
 		if (cfg[parent].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_PARENT) {
-			/* start with my own count */
-			RTE_ASSERT(cfg[parent].slices);
-			combined_cnt =
-				alloc_cnt[parent] / cfg[parent].slices;
+			uint8_t p_slices = 1;
 
-			if (alloc_cnt[parent] % cfg[parent].slices)
+			/* Shared session doesn't support slices */
+			if (!shared_session)
+				p_slices = cfg[parent].slices;
+
+			RTE_ASSERT(p_slices);
+
+			combined_cnt = alloc_cnt[parent] / p_slices;
+
+			if (alloc_cnt[parent] % p_slices)
 				combined_cnt++;
 
 			if (alloc_cnt[parent]) {
 				dev->ops->tf_dev_get_resource_str(tfp,
 							 cfg[parent].hcapi_type,
 							 &type_str);
+#if (TF_RM_DEBUG == 1)
+				printf("%s:%s cnt(%d) slices(%d)\n",
+				       type_str, tf_tbl_type_2_str(parent),
+				       alloc_cnt[parent], p_slices);
+#endif /* (TF_RM_DEBUG == 1) */
 			}
 
 			/* Search again through all the elements */
@@ -399,20 +458,31 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 				    TF_RM_ELEM_CFG_HCAPI_BA_CHILD &&
 				    cfg[child].parent_subtype == parent &&
 				    alloc_cnt[child]) {
+					uint8_t c_slices = 1;
 					uint16_t cnt = 0;
-					RTE_ASSERT(cfg[child].slices);
+
+					if (!shared_session)
+						c_slices = cfg[child].slices;
+
+					RTE_ASSERT(c_slices);
 
 					dev->ops->tf_dev_get_resource_str(tfp,
 							  cfg[child].hcapi_type,
 							   &type_str);
+#if (TF_RM_DEBUG == 1)
+					printf("%s:%s cnt(%d) slices(%d)\n",
+					       type_str,
+					       tf_tbl_type_2_str(child),
+					       alloc_cnt[child],
+					       c_slices);
+#endif /* (TF_RM_DEBUG == 1) */
 					/* Increment the parents combined count
 					 * with each child's count adjusted for
-					 * number of slices per RM allocated item.
+					 * number of slices per RM alloc item.
 					 */
-					cnt =
-					 alloc_cnt[child] / cfg[child].slices;
+					cnt = alloc_cnt[child] / c_slices;
 
-					if (alloc_cnt[child] % cfg[child].slices)
+					if (alloc_cnt[child] % c_slices)
 						cnt++;
 
 					combined_cnt += cnt;
@@ -422,6 +492,10 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 			}
 			/* Save the parent count to be requested */
 			req_cnt[parent] = combined_cnt;
+#if (TF_RM_DEBUG == 1)
+			printf("%s calculated total:%d\n\n",
+			       type_str, req_cnt[parent]);
+#endif /* (TF_RM_DEBUG == 1) */
 		}
 	}
 	return 0;
@@ -444,6 +518,7 @@ tf_rm_create_db(struct tf *tfp,
 	struct tf_rm_new_db *rm_db;
 	struct tf_rm_element *db;
 	uint32_t pool_size;
+	bool shared_session = 0;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -459,7 +534,6 @@ tf_rm_create_db(struct tf *tfp,
 
 	/* Need device max number of elements for the RM QCAPS */
 	rc = dev->ops->tf_dev_get_max_types(tfp, &max_types);
-
 
 	/* Allocate memory for RM QCAPS request */
 	cparms.nitems = max_types;
@@ -496,12 +570,15 @@ tf_rm_create_db(struct tf *tfp,
 	tfp_memcpy(req_cnt, parms->alloc_cnt,
 		   parms->num_elements * sizeof(uint16_t));
 
+	shared_session = tf_session_is_shared_session(tfs);
+
 	/* Update the req_cnt based upon the element configuration
 	 */
 	tf_rm_update_parent_reservations(tfp, dev, parms->cfg,
 					 parms->alloc_cnt,
 					 parms->num_elements,
-					 req_cnt);
+					 req_cnt,
+					 shared_session);
 
 	/* Process capabilities against DB requirements. However, as a
 	 * DB can hold elements that are not HCAPI we can reduce the
@@ -517,6 +594,12 @@ tf_rm_create_db(struct tf *tfp,
 				       &hcapi_items);
 
 	if (hcapi_items == 0) {
+#if (TF_RM_DEBUG == 1)
+		TFP_DRV_LOG(INFO,
+			"%s: module: %s Empty RM DB create request\n",
+			tf_dir_2_str(parms->dir),
+			tf_module_2_str(parms->module));
+#endif
 		parms->rm_db = NULL;
 		return -ENOMEM;
 	}
@@ -565,11 +648,11 @@ tf_rm_create_db(struct tf *tfp,
 							      hcapi_type,
 							      &type_str);
 				TFP_DRV_LOG(ERR,
-					    "Failure, %s:%d:%s req:%d avail:%d\n",
-					    tf_dir_2_str(parms->dir),
-					    hcapi_type, type_str,
-					    req_cnt[i],
-					    query[hcapi_type].max);
+					"Failure, %s:%d:%s req:%d avail:%d\n",
+					tf_dir_2_str(parms->dir),
+					hcapi_type, type_str,
+					req_cnt[i],
+					query[hcapi_type].max);
 				return -EINVAL;
 			}
 		}
@@ -688,6 +771,13 @@ tf_rm_create_db(struct tf *tfp,
 	rm_db->dir = parms->dir;
 	rm_db->module = parms->module;
 	*parms->rm_db = (void *)rm_db;
+
+#if (TF_RM_DEBUG == 1)
+
+	printf("%s: module:%s\n",
+	       tf_dir_2_str(parms->dir),
+	       tf_module_2_str(parms->module));
+#endif /* (TF_RM_DEBUG == 1) */
 
 	tfp_free((void *)req);
 	tfp_free((void *)resv);
@@ -921,6 +1011,13 @@ tf_rm_create_db_no_reservation(struct tf *tfp,
 	rm_db->dir = parms->dir;
 	rm_db->module = parms->module;
 	*parms->rm_db = (void *)rm_db;
+
+#if (TF_RM_DEBUG == 1)
+
+	printf("%s: module:%s\n",
+	       tf_dir_2_str(parms->dir),
+	       tf_module_2_str(parms->module));
+#endif /* (TF_RM_DEBUG == 1) */
 
 	tfp_free((void *)req);
 	tfp_free((void *)resv);
@@ -1184,7 +1281,6 @@ tf_rm_is_allocated(struct tf_rm_is_allocated_parms *parms)
 	TF_CHECK_PARMS1(rm_db->db);
 
 	cfg_type = rm_db->db[parms->subtype].cfg_type;
-
 
 	/* Bail out if not controlled by RM */
 	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA &&

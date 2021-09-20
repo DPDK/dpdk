@@ -21,6 +21,10 @@
 
 #define DBG_SRAM 0
 
+#define TF_TBL_PTR_TO_RM(new_idx, idx, base, shift) {		\
+		*(new_idx) = (((idx) >> (shift)) - (base));	\
+}
+
 /**
  * tf_sram_tbl_get_info_parms parameter definition
  */
@@ -394,6 +398,7 @@ tf_tbl_sram_set(struct tf *tfp,
 {
 	int rc;
 	bool allocated = 0;
+	int rallocated = 0;
 	uint16_t hcapi_type;
 	struct tf_rm_get_hcapi_parms hparms = { 0 };
 	struct tf_session *tfs;
@@ -402,7 +407,9 @@ tf_tbl_sram_set(struct tf *tfp,
 	void *tbl_db_ptr = NULL;
 	struct tf_tbl_sram_get_info_parms iparms = { 0 };
 	struct tf_sram_mgr_is_allocated_parms aparms = { 0 };
+	struct tf_rm_is_allocated_parms raparms = { 0 };
 	void *sram_handle = NULL;
+	uint16_t base = 0, shift = 0;
 
 
 	TF_CHECK_PARMS3(tfp, parms, parms->data);
@@ -442,23 +449,57 @@ tf_tbl_sram_set(struct tf *tfp,
 		return rc;
 	}
 
-	aparms.sram_offset = parms->idx;
-	aparms.slice_size = iparms.slice_size;
-	aparms.bank_id = iparms.bank_id;
-	aparms.dir = parms->dir;
-	aparms.is_allocated = &allocated;
-	rc = tf_sram_mgr_is_allocated(sram_handle, &aparms);
-	if (rc || !allocated) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Entry not allocated:%s idx(%d):(%s)\n",
-			    tf_dir_2_str(parms->dir),
-			    tf_tbl_type_2_str(parms->type),
-			    parms->idx,
-			    strerror(-rc));
-		rc = -ENOMEM;
-		return rc;
-	}
+	if (tf_session_is_shared_session(tfs)) {
+		/* Only get table info if required for the device */
+		if (dev->ops->tf_dev_get_tbl_info) {
+			rc = dev->ops->tf_dev_get_tbl_info(tfp,
+							   tbl_db->tbl_db[parms->dir],
+							   parms->type,
+							   &base,
+							   &shift);
+			if (rc) {
+				TFP_DRV_LOG(ERR,
+					    "%s: Failed to get table info:%d\n",
+					    tf_dir_2_str(parms->dir),
+					    parms->type);
+				return rc;
+			}
+		}
+		TF_TBL_PTR_TO_RM(&raparms.index, parms->idx, base, shift);
 
+		raparms.rm_db = tbl_db->tbl_db[parms->dir];
+		raparms.subtype = parms->type;
+		raparms.allocated = &rallocated;
+		rc = tf_rm_is_allocated(&raparms);
+		if (rc)
+			return rc;
+
+		if (rallocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
+			TFP_DRV_LOG(ERR,
+			   "%s, Invalid or not allocated index, type:%s, idx:%d\n",
+			   tf_dir_2_str(parms->dir),
+			   tf_tbl_type_2_str(parms->type),
+			   parms->idx);
+			return -EINVAL;
+		}
+	} else {
+		aparms.sram_offset = parms->idx;
+		aparms.slice_size = iparms.slice_size;
+		aparms.bank_id = iparms.bank_id;
+		aparms.dir = parms->dir;
+		aparms.is_allocated = &allocated;
+		rc = tf_sram_mgr_is_allocated(sram_handle, &aparms);
+		if (rc || !allocated) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Entry not allocated:%s idx(%d):(%s)\n",
+				    tf_dir_2_str(parms->dir),
+				    tf_tbl_type_2_str(parms->type),
+				    parms->idx,
+				    strerror(-rc));
+			rc = -ENOMEM;
+			return rc;
+		}
+	}
 	/* Set the entry */
 	hparms.rm_db = tbl_db->tbl_db[parms->dir];
 	hparms.subtype = parms->type;
