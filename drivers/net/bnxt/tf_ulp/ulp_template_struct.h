@@ -206,6 +206,11 @@ struct bnxt_ulp_template_device_tbls {
 	uint32_t cond_list_size;
 };
 
+struct bnxt_ulp_dyn_size_map {
+	uint32_t		slab_size;
+	enum tf_tbl_type	tbl_type;
+};
+
 /* Device specific parameters */
 struct bnxt_ulp_device_params {
 	uint8_t				description[16];
@@ -229,6 +234,11 @@ struct bnxt_ulp_device_params {
 	uint32_t			byte_count_shift;
 	uint32_t			packet_count_shift;
 	uint32_t			dynamic_pad_en;
+	uint32_t			dynamic_sram_en;
+	uint32_t			dyn_encap_list_size;
+	struct bnxt_ulp_dyn_size_map	dyn_encap_sizes[4];
+	uint32_t			dyn_modify_list_size;
+	struct bnxt_ulp_dyn_size_map	dyn_modify_sizes[4];
 	uint16_t			em_blk_size_bits;
 	uint16_t			em_blk_align_bits;
 	uint16_t			em_key_align_bytes;

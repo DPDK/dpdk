@@ -882,7 +882,8 @@ ulp_blob_msb_block_merge(struct ulp_blob *dst, struct ulp_blob *src,
 
 	for (i = 0; i < num;) {
 		if (((dst->write_idx % block_size)  + (num - i)) > block_size)
-			write_bytes = block_size - dst->write_idx;
+			write_bytes = block_size -
+				(dst->write_idx % block_size);
 		else
 			write_bytes = num - i;
 		for (k = 0; k < ULP_BITS_2_BYTE_NR(write_bytes); k++) {

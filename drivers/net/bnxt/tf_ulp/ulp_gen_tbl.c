@@ -75,9 +75,9 @@ ulp_mapper_generic_tbl_list_init(struct bnxt_ulp_mapper_data *mapper_data)
 			entry->container.byte_data = &entry->mem_data[size];
 			entry->container.byte_order = tbl->result_byte_order;
 		} else {
-			BNXT_TF_DBG(ERR, "%s:Invalid gen table num of ent %d\n",
+			BNXT_TF_DBG(DEBUG, "%s: Unused Gen tbl entry is %d\n",
 				    tbl->name, idx);
-			return -EINVAL;
+			/* return -EINVAL; */
 		}
 		if (tbl->hash_tbl_entries) {
 			cparams.key_size = tbl->key_num_bytes;

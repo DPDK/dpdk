@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Wed Jun 30 14:36:16 2021 */
+/* date: Wed Aug 11 16:00:16 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -16741,27 +16741,27 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	},
 	/* class_tid: 4, , table: l2_cntxt_tcam.ing_0 */
 	{
-	.description = "l2_cntxt_id",
+	.description = "l2_cntxt_id_low",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.ident_type = TF_IDENT_TYPE_L2_CTXT_LOW,
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
 	.ident_bit_pos = 0
 	},
 	/* class_tid: 4, , table: l2_cntxt_tcam.egr_0 */
 	{
-	.description = "l2_cntxt_id",
+	.description = "l2_cntxt_id_low",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.ident_type = TF_IDENT_TYPE_L2_CTXT_LOW,
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
 	.ident_bit_pos = 0
 	},
 	/* class_tid: 5, , table: l2_cntxt_tcam.vf_egr */
 	{
-	.description = "l2_cntxt_id",
+	.description = "l2_cntxt_id_low",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.ident_type = TF_IDENT_TYPE_L2_CTXT_LOW,
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
 	.ident_bit_pos = 0

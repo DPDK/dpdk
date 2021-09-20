@@ -1226,20 +1226,66 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 
 /* Function to handle the update of proto header based on field values */
 static void
-ulp_rte_l4_proto_type_update(struct ulp_rte_parser_params *param,
-			     uint16_t dst_port)
+ulp_rte_l4_proto_type_update(struct ulp_rte_parser_params *params,
+			     uint16_t src_port, uint16_t src_mask,
+			     uint16_t dst_port, uint16_t dst_mask,
+			     enum bnxt_ulp_hdr_bit hdr_bit)
 {
-	if (dst_port == tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN)) {
-		ULP_BITMAP_SET(param->hdr_fp_bit.bits,
-			       BNXT_ULP_HDR_BIT_T_VXLAN);
-		ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_L3_TUN, 1);
+	switch (hdr_bit) {
+	case BNXT_ULP_HDR_BIT_I_UDP:
+	case BNXT_ULP_HDR_BIT_I_TCP:
+		ULP_BITMAP_SET(params->hdr_bitmap.bits, hdr_bit);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4, 1);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_SRC_PORT,
+				    (uint64_t)rte_be_to_cpu_16(src_port));
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_DST_PORT,
+				    (uint64_t)rte_be_to_cpu_16(dst_port));
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_SRC_PORT_MASK,
+				    (uint64_t)rte_be_to_cpu_16(src_mask));
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_DST_PORT_MASK,
+				    (uint64_t)rte_be_to_cpu_16(dst_mask));
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L3_FB_PROTO_ID,
+				    1);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_FB_SRC_PORT,
+				    !!(src_port & src_mask));
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_FB_DST_PORT,
+				    !!(dst_port & dst_mask));
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L3_PROTO_ID,
+				    (hdr_bit == BNXT_ULP_HDR_BIT_I_UDP) ?
+				    IPPROTO_UDP : IPPROTO_TCP);
+		break;
+	case BNXT_ULP_HDR_BIT_O_UDP:
+	case BNXT_ULP_HDR_BIT_O_TCP:
+		ULP_BITMAP_SET(params->hdr_bitmap.bits, hdr_bit);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4, 1);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_SRC_PORT,
+				    (uint64_t)rte_be_to_cpu_16(src_port));
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT,
+				    (uint64_t)rte_be_to_cpu_16(dst_port));
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_SRC_PORT_MASK,
+				    (uint64_t)rte_be_to_cpu_16(src_mask));
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT_MASK,
+				    (uint64_t)rte_be_to_cpu_16(dst_mask));
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3_FB_PROTO_ID,
+				    1);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT,
+				    !!(src_port & src_mask));
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT,
+				    !!(dst_port & dst_mask));
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3_PROTO_ID,
+				    (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP) ?
+				    IPPROTO_UDP : IPPROTO_TCP);
+		break;
+	default:
+		break;
 	}
 
-	if (ULP_BITMAP_ISSET(param->hdr_bitmap.bits,
-			     BNXT_ULP_HDR_BIT_T_VXLAN) ||
-	    ULP_BITMAP_ISSET(param->hdr_bitmap.bits,
-			     BNXT_ULP_HDR_BIT_T_GRE))
-		ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_L3_TUN, 1);
+	if (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP && dst_port ==
+	    tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN)) {
+		ULP_BITMAP_SET(params->hdr_fp_bit.bits,
+			       BNXT_ULP_HDR_BIT_T_VXLAN);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
+	}
 }
 
 /* Function to handle the parsing of RTE Flow item UDP Header. */
@@ -1253,7 +1299,9 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 	uint32_t idx = 0;
 	uint32_t size;
 	uint16_t dport = 0, sport = 0;
+	uint16_t dport_mask = 0, sport_mask = 0;
 	uint32_t cnt;
+	enum bnxt_ulp_hdr_bit out_l4 = BNXT_ULP_HDR_BIT_O_UDP;
 
 	cnt = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L4_HDR_CNT);
 	if (cnt == 2) {
@@ -1264,6 +1312,10 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 	if (udp_spec) {
 		sport = udp_spec->hdr.src_port;
 		dport = udp_spec->hdr.dst_port;
+	}
+	if (udp_mask) {
+		sport_mask = udp_mask->hdr.src_port;
+		dport_mask = udp_mask->hdr.dst_port;
 	}
 
 	if (ulp_rte_prsr_fld_size_validate(params, &idx,
@@ -1302,48 +1354,11 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 
 	/* Set the udp header bitmap and computed l4 header bitmaps */
 	if (ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_UDP) ||
-	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP)) {
-		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_UDP);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4, 1);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_SRC_PORT,
-				    (uint32_t)rte_be_to_cpu_16(sport));
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_DST_PORT,
-				    (uint32_t)rte_be_to_cpu_16(dport));
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L3_FB_PROTO_ID,
-				    1);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L3_PROTO_ID,
-				    IPPROTO_UDP);
-		if (udp_mask && udp_mask->hdr.src_port)
-			ULP_COMP_FLD_IDX_WR(params,
-					    BNXT_ULP_CF_IDX_I_L4_FB_SRC_PORT,
-					    1);
-		if (udp_mask && udp_mask->hdr.dst_port)
-			ULP_COMP_FLD_IDX_WR(params,
-					    BNXT_ULP_CF_IDX_I_L4_FB_DST_PORT,
-					    1);
-	} else {
-		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_UDP);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4, 1);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_SRC_PORT,
-				    (uint32_t)rte_be_to_cpu_16(sport));
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT,
-				    (uint32_t)rte_be_to_cpu_16(dport));
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3_FB_PROTO_ID,
-				    1);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3_PROTO_ID,
-				    IPPROTO_UDP);
-		if (udp_mask && udp_mask->hdr.src_port)
-			ULP_COMP_FLD_IDX_WR(params,
-					    BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT,
-					    1);
-		if (udp_mask && udp_mask->hdr.dst_port)
-			ULP_COMP_FLD_IDX_WR(params,
-					    BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT,
-					    1);
+	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP))
+		out_l4 = BNXT_ULP_HDR_BIT_I_UDP;
 
-		/* Update the field protocol hdr bitmap */
-		ulp_rte_l4_proto_type_update(params, dport);
-	}
+	ulp_rte_l4_proto_type_update(params, sport, sport_mask, dport,
+				     dport_mask, out_l4);
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L4_HDR_CNT, ++cnt);
 	return BNXT_TF_RC_SUCCESS;
 }
@@ -1358,8 +1373,10 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
 	uint32_t idx = 0;
 	uint16_t dport = 0, sport = 0;
+	uint16_t dport_mask = 0, sport_mask = 0;
 	uint32_t size;
 	uint32_t cnt;
+	enum bnxt_ulp_hdr_bit out_l4 = BNXT_ULP_HDR_BIT_O_TCP;
 
 	cnt = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L4_HDR_CNT);
 	if (cnt == 2) {
@@ -1370,6 +1387,10 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 	if (tcp_spec) {
 		sport = tcp_spec->hdr.src_port;
 		dport = tcp_spec->hdr.dst_port;
+	}
+	if (tcp_mask) {
+		sport_mask = tcp_mask->hdr.src_port;
+		dport_mask = tcp_mask->hdr.dst_port;
 	}
 
 	if (ulp_rte_prsr_fld_size_validate(params, &idx,
@@ -1438,45 +1459,11 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 
 	/* Set the udp header bitmap and computed l4 header bitmaps */
 	if (ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_UDP) ||
-	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP)) {
-		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_TCP);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4, 1);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_SRC_PORT,
-				    (uint32_t)rte_be_to_cpu_16(sport));
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4_DST_PORT,
-				    (uint32_t)rte_be_to_cpu_16(dport));
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L3_FB_PROTO_ID,
-				    1);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L3_PROTO_ID,
-				    IPPROTO_TCP);
-		if (tcp_mask && tcp_mask->hdr.src_port)
-			ULP_COMP_FLD_IDX_WR(params,
-					    BNXT_ULP_CF_IDX_I_L4_FB_SRC_PORT,
-					    1);
-		if (tcp_mask && tcp_mask->hdr.dst_port)
-			ULP_COMP_FLD_IDX_WR(params,
-					    BNXT_ULP_CF_IDX_I_L4_FB_DST_PORT,
-					    1);
-	} else {
-		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4, 1);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_SRC_PORT,
-				    (uint32_t)rte_be_to_cpu_16(sport));
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT,
-				    (uint32_t)rte_be_to_cpu_16(dport));
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3_FB_PROTO_ID,
-				    1);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3_PROTO_ID,
-				    IPPROTO_TCP);
-		if (tcp_mask && tcp_mask->hdr.src_port)
-			ULP_COMP_FLD_IDX_WR(params,
-					    BNXT_ULP_CF_IDX_O_L4_FB_SRC_PORT,
-					    1);
-		if (tcp_mask && tcp_mask->hdr.dst_port)
-			ULP_COMP_FLD_IDX_WR(params,
-					    BNXT_ULP_CF_IDX_O_L4_FB_DST_PORT,
-					    1);
-	}
+	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP))
+		out_l4 = BNXT_ULP_HDR_BIT_I_TCP;
+
+	ulp_rte_l4_proto_type_update(params, sport, sport_mask, dport,
+				     dport_mask, out_l4);
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L4_HDR_CNT, ++cnt);
 	return BNXT_TF_RC_SUCCESS;
 }
@@ -1528,7 +1515,7 @@ ulp_rte_vxlan_hdr_handler(const struct rte_flow_item *item,
 
 	/* Update the hdr_bitmap with vxlan */
 	ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_T_VXLAN);
-	ulp_rte_l4_proto_type_update(params, 0);
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -1563,7 +1550,7 @@ ulp_rte_gre_hdr_handler(const struct rte_flow_item *item,
 
 	/* Update the hdr_bitmap with GRE */
 	ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_T_GRE);
-	ulp_rte_l4_proto_type_update(params, 0);
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
 	return BNXT_TF_RC_SUCCESS;
 }
 
