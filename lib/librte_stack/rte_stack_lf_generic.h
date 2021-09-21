@@ -128,8 +128,10 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 		/* If NULL was encountered, the list was modified while
 		 * traversing it. Retry.
 		 */
-		if (i != num)
+		if (i != num) {
+			old_head = list->head;
 			continue;
+		}
 
 		new_head.top = tmp;
 		new_head.cnt = old_head.cnt + 1;
