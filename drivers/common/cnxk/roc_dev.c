@@ -884,6 +884,38 @@ vf_flr_register_irqs(struct plt_pci_device *pci_dev, struct dev *dev)
 	return 0;
 }
 
+static void
+clear_rvum_interrupts(struct dev *dev)
+{
+	uint64_t intr;
+	int i;
+
+	if (dev_is_vf(dev)) {
+		/* Clear VF mbox interrupt */
+		intr = plt_read64(dev->bar2 + RVU_VF_INT);
+		if (intr)
+			plt_write64(intr, dev->bar2 + RVU_VF_INT);
+	} else {
+		/* Clear AF PF interrupt line */
+		intr = plt_read64(dev->bar2 + RVU_PF_INT);
+		if (intr)
+			plt_write64(intr, dev->bar2 + RVU_PF_INT);
+		for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i) {
+			/* Clear MBOX interrupts */
+			intr = plt_read64(dev->bar2 + RVU_PF_VFPF_MBOX_INTX(i));
+			if (intr)
+				plt_write64(intr,
+					    dev->bar2 +
+						    RVU_PF_VFPF_MBOX_INTX(i));
+			/* Clear VF FLR interrupts */
+			intr = plt_read64(dev->bar2 + RVU_PF_VFFLR_INTX(i));
+			if (intr)
+				plt_write64(intr,
+					    dev->bar2 + RVU_PF_VFFLR_INTX(i));
+		}
+	}
+}
+
 int
 dev_active_vfs(struct dev *dev)
 {
@@ -1089,6 +1121,9 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 		up_direction = MBOX_DIR_PFAF_UP;
 		intr_offset = RVU_PF_INT;
 	}
+
+	/* Clear all RVUM interrupts */
+	clear_rvum_interrupts(dev);
 
 	/* Initialize the local mbox */
 	rc = mbox_init(&dev->mbox_local, mbox, bar2, direction, 1, intr_offset);
