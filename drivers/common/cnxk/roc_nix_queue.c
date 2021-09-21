@@ -2,6 +2,8 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <math.h>
+
 #include "roc_api.h"
 #include "roc_priv.h"
 
@@ -435,7 +437,6 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	cq->status = (int64_t *)(nix->base + NIX_LF_CQ_OP_STATUS);
 	cq->wdata = (uint64_t)cq->qid << 32;
 	cq->roc_nix = roc_nix;
-	cq->drop_thresh = NIX_CQ_THRESH_LEVEL;
 
 	/* CQE of W16 */
 	desc_sz = cq->nb_desc * NIX_CQ_ENTRY_SZ;
@@ -476,8 +477,19 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	/* Map CQ0 [RQ0] to CINT0 and so on till max 64 irqs */
 	cq_ctx->cint_idx = cq->qid;
 
-	cq_ctx->drop = cq->drop_thresh;
-	cq_ctx->drop_ena = 1;
+	if (roc_model_is_cn96_a0() || roc_model_is_cn95_a0()) {
+		const float rx_cq_skid = NIX_CQ_FULL_ERRATA_SKID;
+		uint16_t min_rx_drop;
+
+		min_rx_drop = ceil(rx_cq_skid / (float)cq->nb_desc);
+		cq_ctx->drop = min_rx_drop;
+		cq_ctx->drop_ena = 1;
+		cq->drop_thresh = min_rx_drop;
+	} else {
+		cq->drop_thresh = NIX_CQ_THRESH_LEVEL;
+		cq_ctx->drop = cq->drop_thresh;
+		cq_ctx->drop_ena = 1;
+	}
 
 	/* TX pause frames enable flow ctrl on RX side */
 	if (nix->tx_pause) {
