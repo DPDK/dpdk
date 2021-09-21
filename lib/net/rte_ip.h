@@ -372,15 +372,14 @@ __rte_ipv4_udptcp_cksum(const struct rte_ipv4_hdr *ipv4_hdr, const void *l4_hdr)
 /**
  * Process the IPv4 UDP or TCP checksum.
  *
- * The IP and layer 4 checksum must be set to 0 in the packet by
- * the caller.
+ * The layer 4 checksum must be set to 0 in the L4 header by the caller.
  *
  * @param ipv4_hdr
  *   The pointer to the contiguous IPv4 header.
  * @param l4_hdr
  *   The pointer to the beginning of the L4 header.
  * @return
- *   The complemented checksum to set in the IP packet.
+ *   The complemented checksum to set in the L4 header.
  */
 static inline uint16_t
 rte_ipv4_udptcp_cksum(const struct rte_ipv4_hdr *ipv4_hdr, const void *l4_hdr)
@@ -489,7 +488,7 @@ rte_ipv6_phdr_cksum(const struct rte_ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
 }
 
 /**
- * @internal Calculate the non-complemented IPv4 L4 checksum
+ * @internal Calculate the non-complemented IPv6 L4 checksum
  */
 static inline uint16_t
 __rte_ipv6_udptcp_cksum(const struct rte_ipv6_hdr *ipv6_hdr, const void *l4_hdr)
@@ -510,15 +509,15 @@ __rte_ipv6_udptcp_cksum(const struct rte_ipv6_hdr *ipv6_hdr, const void *l4_hdr)
 /**
  * Process the IPv6 UDP or TCP checksum.
  *
- * The IPv4 header should not contains options. The layer 4 checksum
- * must be set to 0 in the packet by the caller.
+ * The IPv6 header must not be followed by extension headers. The layer 4
+ * checksum must be set to 0 in the L4 header by the caller.
  *
  * @param ipv6_hdr
  *   The pointer to the contiguous IPv6 header.
  * @param l4_hdr
  *   The pointer to the beginning of the L4 header.
  * @return
- *   The complemented checksum to set in the IP packet.
+ *   The complemented checksum to set in the L4 header.
  */
 static inline uint16_t
 rte_ipv6_udptcp_cksum(const struct rte_ipv6_hdr *ipv6_hdr, const void *l4_hdr)
