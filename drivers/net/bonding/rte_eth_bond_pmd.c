@@ -1701,14 +1701,11 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 
 	/* If RSS is enabled for bonding, try to enable it for slaves  */
 	if (bonded_eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
-		if (internals->rss_key_len != 0) {
-			slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len =
+		/* rss_key won't be empty if RSS is configured in bonded dev */
+		slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len =
 					internals->rss_key_len;
-			slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key =
+		slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key =
 					internals->rss_key;
-		} else {
-			slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key = NULL;
-		}
 
 		slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf =
 				bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
@@ -2251,6 +2248,7 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->flow_type_rss_offloads = internals->flow_type_rss_offloads;
 
 	dev_info->reta_size = internals->reta_size;
+	dev_info->hash_key_size = internals->rss_key_len;
 
 	return 0;
 }
@@ -3044,13 +3042,15 @@ bond_ethdev_rss_hash_update(struct rte_eth_dev *dev,
 	if (bond_rss_conf.rss_hf != 0)
 		dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf = bond_rss_conf.rss_hf;
 
-	if (bond_rss_conf.rss_key && bond_rss_conf.rss_key_len <
-			sizeof(internals->rss_key)) {
-		if (bond_rss_conf.rss_key_len == 0)
-			bond_rss_conf.rss_key_len = 40;
-		internals->rss_key_len = bond_rss_conf.rss_key_len;
+	if (bond_rss_conf.rss_key) {
+		if (bond_rss_conf.rss_key_len < internals->rss_key_len)
+			return -EINVAL;
+		else if (bond_rss_conf.rss_key_len > internals->rss_key_len)
+			RTE_BOND_LOG(WARNING, "rss_key will be truncated");
+
 		memcpy(internals->rss_key, bond_rss_conf.rss_key,
 				internals->rss_key_len);
+		bond_rss_conf.rss_key_len = internals->rss_key_len;
 	}
 
 	for (i = 0; i < internals->slave_count; i++) {
@@ -3510,14 +3510,24 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 	 * Fall back to default RSS key if the key is not specified
 	 */
 	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) {
-		if (dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key != NULL) {
-			internals->rss_key_len =
-				dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len;
-			memcpy(internals->rss_key,
-			       dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key,
+		struct rte_eth_rss_conf *rss_conf =
+			&dev->data->dev_conf.rx_adv_conf.rss_conf;
+		if (rss_conf->rss_key != NULL) {
+			if (internals->rss_key_len > rss_conf->rss_key_len) {
+				RTE_BOND_LOG(ERR, "Invalid rss key length(%u)",
+						rss_conf->rss_key_len);
+				return -EINVAL;
+			}
+
+			memcpy(internals->rss_key, rss_conf->rss_key,
 			       internals->rss_key_len);
 		} else {
-			internals->rss_key_len = sizeof(default_rss_key);
+			if (internals->rss_key_len > sizeof(default_rss_key)) {
+				RTE_BOND_LOG(ERR,
+				       "There is no suitable default hash key");
+				return -EINVAL;
+			}
+
 			memcpy(internals->rss_key, default_rss_key,
 			       internals->rss_key_len);
 		}

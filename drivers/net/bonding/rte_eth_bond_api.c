@@ -290,6 +290,7 @@ eth_bond_slave_inherit_dev_info_rx_first(struct bond_dev_private *internals,
 	struct rte_eth_rxconf *rxconf_i = &internals->default_rxconf;
 
 	internals->reta_size = di->reta_size;
+	internals->rss_key_len = di->hash_key_size;
 
 	/* Inherit Rx offload capabilities from the first slave device */
 	internals->rx_offload_capa = di->rx_offload_capa;
@@ -385,6 +386,11 @@ eth_bond_slave_inherit_dev_info_rx_next(struct bond_dev_private *internals,
 	 */
 	if (internals->reta_size > di->reta_size)
 		internals->reta_size = di->reta_size;
+	if (internals->rss_key_len > di->hash_key_size) {
+		RTE_BOND_LOG(WARNING, "slave has different rss key size, "
+				"configuring rss may fail");
+		internals->rss_key_len = di->hash_key_size;
+	}
 
 	if (!internals->max_rx_pktlen &&
 	    di->max_rx_pktlen < internals->candidate_max_rx_pktlen)
