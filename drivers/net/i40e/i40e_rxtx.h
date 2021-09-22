@@ -121,6 +121,7 @@ struct i40e_rx_queue {
 	uint16_t rx_using_sse; /**<flag indicate the usage of vPMD for rx */
 	uint8_t dcb_tc;         /**< Traffic class of rx queue */
 	uint64_t offloads; /**< Rx offload flags of DEV_RX_OFFLOAD_* */
+	const struct rte_memzone *mz;
 };
 
 struct i40e_tx_entry {
@@ -162,6 +163,7 @@ struct i40e_tx_queue {
 	bool tx_deferred_start; /**< don't start this queue in dev start */
 	uint8_t dcb_tc;         /**< Traffic class of tx queue */
 	uint64_t offloads; /**< Tx offload flags of DEV_RX_OFFLOAD_* */
+	const struct rte_memzone *mz;
 };
 
 /** Offload features */
