@@ -64,6 +64,9 @@ roc_error_msg_get(int errorcode)
 	case NIX_ERR_TM_INVALID_SHAPER_PROFILE:
 		err_msg = "TM shaper profile invalid";
 		break;
+	case NIX_ERR_TM_PKT_MODE_MISMATCH:
+		err_msg = "shaper profile pkt mode mismatch";
+		break;
 	case NIX_ERR_TM_WEIGHT_EXCEED:
 		err_msg = "TM DWRR weight exceeded";
 		break;
@@ -87,6 +90,9 @@ roc_error_msg_get(int errorcode)
 		break;
 	case NIX_ERR_TM_SHAPER_PROFILE_EXISTS:
 		err_msg = "TM shaper profile exists";
+		break;
+	case NIX_ERR_TM_SHAPER_PKT_LEN_ADJUST:
+		err_msg = "length adjust invalid";
 		break;
 	case NIX_ERR_TM_INVALID_TREE:
 		err_msg = "TM tree invalid";

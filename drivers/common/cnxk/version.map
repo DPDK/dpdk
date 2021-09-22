@@ -172,6 +172,7 @@ INTERNAL {
 	roc_nix_eeprom_info_get;
 	roc_nix_smq_flush;
 	roc_nix_tm_dump;
+	roc_nix_tm_err_to_rte_err;
 	roc_nix_tm_fini;
 	roc_nix_tm_free_resources;
 	roc_nix_tm_hierarchy_disable;
