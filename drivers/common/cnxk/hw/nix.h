@@ -2133,6 +2133,9 @@ struct nix_lso_format {
 	NIX_TM_SHAPER_RATE(NIX_TM_MAX_RATE_EXPONENT, NIX_TM_MAX_RATE_MANTISSA, \
 			   0)
 
+#define NIX_TM_MIN_SHAPER_PPS_RATE 25
+#define NIX_TM_MAX_SHAPER_PPS_RATE (100ul << 20)
+
 /* NIX burst limits */
 #define NIX_TM_MAX_BURST_EXPONENT      0xful
 #define NIX_TM_MAX_BURST_MANTISSA      0x7ffful

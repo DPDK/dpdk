@@ -90,6 +90,7 @@ struct nix_tm_shaper_profile {
 	struct nix_tm_tb commit;
 	struct nix_tm_tb peak;
 	int32_t pkt_len_adj;
+	int32_t pkt_mode_adj;
 	bool pkt_mode;
 	uint32_t id;
 	void (*free_fn)(void *profile);

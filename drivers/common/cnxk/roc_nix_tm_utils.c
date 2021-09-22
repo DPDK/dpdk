@@ -628,8 +628,8 @@ nix_tm_shaper_reg_prep(struct nix_tm_node *node,
 	memset(&pir, 0, sizeof(pir));
 	nix_tm_shaper_conf_get(profile, &cir, &pir);
 
-	if (node->pkt_mode)
-		adjust = 1;
+	if (profile && node->pkt_mode)
+		adjust = profile->pkt_mode_adj;
 	else if (profile)
 		adjust = profile->pkt_len_adj;
 

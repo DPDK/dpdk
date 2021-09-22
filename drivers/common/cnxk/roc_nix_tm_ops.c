@@ -85,6 +85,51 @@ roc_nix_tm_free_resources(struct roc_nix *roc_nix, bool hw_only)
 }
 
 static int
+nix_tm_adjust_shaper_pps_rate(struct nix_tm_shaper_profile *profile)
+{
+	uint64_t min_rate = profile->commit.rate;
+
+	if (!profile->pkt_mode)
+		return 0;
+
+	profile->pkt_mode_adj = 1;
+
+	if (profile->commit.rate &&
+	    (profile->commit.rate < NIX_TM_MIN_SHAPER_PPS_RATE ||
+	     profile->commit.rate > NIX_TM_MAX_SHAPER_PPS_RATE))
+		return NIX_ERR_TM_INVALID_COMMIT_RATE;
+
+	if (profile->peak.rate &&
+	    (profile->peak.rate < NIX_TM_MIN_SHAPER_PPS_RATE ||
+	     profile->peak.rate > NIX_TM_MAX_SHAPER_PPS_RATE))
+		return NIX_ERR_TM_INVALID_PEAK_RATE;
+
+	if (profile->peak.rate && min_rate > profile->peak.rate)
+		min_rate = profile->peak.rate;
+
+	/* Each packet accomulate single count, whereas HW
+	 * considers each unit as Byte, so we need convert
+	 * user pps to bps
+	 */
+	profile->commit.rate = profile->commit.rate * 8;
+	profile->peak.rate = profile->peak.rate * 8;
+	min_rate = min_rate * 8;
+
+	if (min_rate && (min_rate < NIX_TM_MIN_SHAPER_RATE)) {
+		int adjust = NIX_TM_MIN_SHAPER_RATE / min_rate;
+
+		if (adjust > NIX_TM_LENGTH_ADJUST_MAX)
+			return NIX_ERR_TM_SHAPER_PKT_LEN_ADJUST;
+
+		profile->pkt_mode_adj += adjust;
+		profile->commit.rate += (adjust * profile->commit.rate);
+		profile->peak.rate += (adjust * profile->peak.rate);
+	}
+
+	return 0;
+}
+
+static int
 nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
 			  struct nix_tm_shaper_profile *profile, int skip_ins)
 {
@@ -93,8 +138,13 @@ nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
 	uint64_t min_burst, max_burst;
 	uint64_t peak_rate, peak_sz;
 	uint32_t id;
+	int rc;
 
 	id = profile->id;
+	rc = nix_tm_adjust_shaper_pps_rate(profile);
+	if (rc)
+		return rc;
+
 	commit_rate = profile->commit.rate;
 	commit_sz = profile->commit.size;
 	peak_rate = profile->peak.rate;
@@ -164,17 +214,8 @@ roc_nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
 
 	profile->ref_cnt = 0;
 	profile->id = roc_profile->id;
-	if (roc_profile->pkt_mode) {
-		/* Each packet accomulate single count, whereas HW
-		 * considers each unit as Byte, so we need convert
-		 * user pps to bps
-		 */
-		profile->commit.rate = roc_profile->commit_rate * 8;
-		profile->peak.rate = roc_profile->peak_rate * 8;
-	} else {
-		profile->commit.rate = roc_profile->commit_rate;
-		profile->peak.rate = roc_profile->peak_rate;
-	}
+	profile->commit.rate = roc_profile->commit_rate;
+	profile->peak.rate = roc_profile->peak_rate;
 	profile->commit.size = roc_profile->commit_sz;
 	profile->peak.size = roc_profile->peak_sz;
 	profile->pkt_len_adj = roc_profile->pkt_len_adj;
@@ -192,17 +233,8 @@ roc_nix_tm_shaper_profile_update(struct roc_nix *roc_nix,
 
 	profile = (struct nix_tm_shaper_profile *)roc_profile->reserved;
 
-	if (roc_profile->pkt_mode) {
-		/* Each packet accomulate single count, whereas HW
-		 * considers each unit as Byte, so we need convert
-		 * user pps to bps
-		 */
-		profile->commit.rate = roc_profile->commit_rate * 8;
-		profile->peak.rate = roc_profile->peak_rate * 8;
-	} else {
-		profile->commit.rate = roc_profile->commit_rate;
-		profile->peak.rate = roc_profile->peak_rate;
-	}
+	profile->commit.rate = roc_profile->commit_rate;
+	profile->peak.rate = roc_profile->peak_rate;
 	profile->commit.size = roc_profile->commit_sz;
 	profile->peak.size = roc_profile->peak_sz;
 
