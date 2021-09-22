@@ -5792,7 +5792,7 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 		bp->pf->vf_req_buf = NULL;
 	}
 
-	rc = bnxt_hwrm_func_driver_unregister(bp, 0);
+	rc = bnxt_hwrm_func_driver_unregister(bp);
 	bp->flags &= ~BNXT_FLAG_REGISTERED;
 	bnxt_free_ctx_mem(bp);
 	if (!reconfig_dev) {
