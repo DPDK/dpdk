@@ -490,6 +490,16 @@ int __roc_api roc_nix_tm_node_name_get(struct roc_nix *roc_nix,
 				       uint32_t node_id, char *buf,
 				       size_t buflen);
 int __roc_api roc_nix_smq_flush(struct roc_nix *roc_nix);
+int __roc_api roc_nix_tm_max_prio(struct roc_nix *roc_nix, int lvl);
+int __roc_api roc_nix_tm_lvl_is_leaf(struct roc_nix *roc_nix, int lvl);
+void __roc_api
+roc_nix_tm_shaper_default_red_algo(struct roc_nix_tm_node *node,
+				   struct roc_nix_tm_shaper_profile *profile);
+int __roc_api roc_nix_tm_lvl_cnt_get(struct roc_nix *roc_nix);
+int __roc_api roc_nix_tm_lvl_have_link_access(struct roc_nix *roc_nix, int lvl);
+int __roc_api roc_nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix);
+bool __roc_api roc_nix_tm_is_user_hierarchy_enabled(struct roc_nix *nix);
+int __roc_api roc_nix_tm_tree_type_get(struct roc_nix *nix);
 
 /* MAC */
 int __roc_api roc_nix_mac_rxtx_start_stop(struct roc_nix *roc_nix, bool start);

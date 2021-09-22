@@ -235,6 +235,9 @@ nix_tm_shaper_conf_get(struct nix_tm_shaper_profile *profile,
 		       struct nix_tm_shaper_data *cir,
 		       struct nix_tm_shaper_data *pir)
 {
+	memset(cir, 0, sizeof(*cir));
+	memset(pir, 0, sizeof(*pir));
+
 	if (!profile)
 		return;
 
@@ -624,8 +627,6 @@ nix_tm_shaper_reg_prep(struct nix_tm_node *node,
 	uint64_t adjust = 0;
 	uint8_t k = 0;
 
-	memset(&cir, 0, sizeof(cir));
-	memset(&pir, 0, sizeof(pir));
 	nix_tm_shaper_conf_get(profile, &cir, &pir);
 
 	if (profile && node->pkt_mode)
@@ -1043,15 +1044,16 @@ roc_nix_tm_node_stats_get(struct roc_nix *roc_nix, uint32_t node_id, bool clear,
 	if (node->hw_lvl != NIX_TXSCH_LVL_TL1)
 		return NIX_ERR_OP_NOTSUP;
 
+	/* Check if node has HW resource */
+	if (!(node->flags & NIX_TM_NODE_HWRES))
+		return 0;
+
 	schq = node->hw_id;
 	/* Skip fetch if not requested */
 	if (!n_stats)
 		goto clear_stats;
 
 	memset(n_stats, 0, sizeof(struct roc_nix_tm_node_stats));
-	/* Check if node has HW resource */
-	if (!(node->flags & NIX_TM_NODE_HWRES))
-		return 0;
 
 	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
 	req->read = 1;
@@ -1101,4 +1103,78 @@ clear_stats:
 	req->num_regs = i;
 
 	return mbox_process_msg(mbox, (void **)&rsp);
+}
+
+bool
+roc_nix_tm_is_user_hierarchy_enabled(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	if ((nix->tm_flags & NIX_TM_HIERARCHY_ENA) &&
+	    (nix->tm_tree == ROC_NIX_TM_USER))
+		return true;
+	return false;
+}
+
+int
+roc_nix_tm_tree_type_get(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	return nix->tm_tree;
+}
+
+int
+roc_nix_tm_max_prio(struct roc_nix *roc_nix, int lvl)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	int hw_lvl = nix_tm_lvl2nix(nix, lvl);
+
+	return nix_tm_max_prio(nix, hw_lvl);
+}
+
+int
+roc_nix_tm_lvl_is_leaf(struct roc_nix *roc_nix, int lvl)
+{
+	return nix_tm_is_leaf(roc_nix_to_nix_priv(roc_nix), lvl);
+}
+
+void
+roc_nix_tm_shaper_default_red_algo(struct roc_nix_tm_node *node,
+				   struct roc_nix_tm_shaper_profile *roc_prof)
+{
+	struct nix_tm_node *tm_node = (struct nix_tm_node *)node;
+	struct nix_tm_shaper_profile *profile;
+	struct nix_tm_shaper_data cir, pir;
+
+	profile = (struct nix_tm_shaper_profile *)roc_prof->reserved;
+	tm_node->red_algo = NIX_REDALG_STD;
+
+	/* C0 doesn't support STALL when both PIR & CIR are enabled */
+	if (profile && roc_model_is_cn96_cx()) {
+		nix_tm_shaper_conf_get(profile, &cir, &pir);
+
+		if (pir.rate && cir.rate)
+			tm_node->red_algo = NIX_REDALG_DISCARD;
+	}
+}
+
+int
+roc_nix_tm_lvl_cnt_get(struct roc_nix *roc_nix)
+{
+	if (nix_tm_have_tl1_access(roc_nix_to_nix_priv(roc_nix)))
+		return NIX_TXSCH_LVL_CNT;
+
+	return (NIX_TXSCH_LVL_CNT - 1);
+}
+
+int
+roc_nix_tm_lvl_have_link_access(struct roc_nix *roc_nix, int lvl)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	if (nix_tm_lvl2nix(nix, lvl) == NIX_TXSCH_LVL_TL1)
+		return 1;
+
+	return 0;
 }

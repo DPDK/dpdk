@@ -350,7 +350,6 @@ int nix_tm_txsch_reg_config(struct nix *nix, enum roc_nix_tm_tree tree);
 int nix_tm_update_parent_info(struct nix *nix, enum roc_nix_tm_tree tree);
 int nix_tm_sq_sched_conf(struct nix *nix, struct nix_tm_node *node,
 			 bool rr_quantum_only);
-int nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix);
 
 /*
  * TM priv utils.

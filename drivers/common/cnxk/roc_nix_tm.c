@@ -155,6 +155,20 @@ nix_tm_update_parent_info(struct nix *nix, enum roc_nix_tm_tree tree)
 	return 0;
 }
 
+static int
+nix_tm_root_node_get(struct nix *nix, int tree)
+{
+	struct nix_tm_node_list *list = nix_tm_node_list(nix, tree);
+	struct nix_tm_node *tm_node;
+
+	TAILQ_FOREACH(tm_node, list, node) {
+		if (tm_node->hw_lvl == nix->tm_root_lvl)
+			return 1;
+	}
+
+	return 0;
+}
+
 int
 nix_tm_node_add(struct roc_nix *roc_nix, struct nix_tm_node *node)
 {
@@ -205,6 +219,10 @@ nix_tm_node_add(struct roc_nix *roc_nix, struct nix_tm_node *node)
 
 	/* Check if a node already exists */
 	if (nix_tm_node_search(nix, node_id, tree))
+		return NIX_ERR_TM_NODE_EXISTS;
+
+	/* Check if root node exists */
+	if (hw_lvl == nix->tm_root_lvl && nix_tm_root_node_get(nix, tree))
 		return NIX_ERR_TM_NODE_EXISTS;
 
 	profile = nix_tm_shaper_profile_search(nix, profile_id);
@@ -1157,7 +1175,7 @@ error:
 }
 
 int
-nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix)
+roc_nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	uint32_t nonleaf_id = nix->nb_tx_queues;
@@ -1227,7 +1245,7 @@ nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix)
 			goto error;
 
 		node->id = i;
-		node->parent_id = parent;
+		node->parent_id = parent + i;
 		node->priority = 0;
 		node->weight = NIX_TM_DFLT_RR_WT;
 		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;

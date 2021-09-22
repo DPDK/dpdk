@@ -934,13 +934,6 @@ roc_nix_tm_init(struct roc_nix *roc_nix)
 		return rc;
 	}
 
-	/* Prepare rlimit tree */
-	rc = nix_tm_prepare_rate_limited_tree(roc_nix);
-	if (rc) {
-		plt_err("failed to prepare rlimit tm tree, rc=%d", rc);
-		return rc;
-	}
-
 	return rc;
 }
 
@@ -958,11 +951,11 @@ roc_nix_tm_rlimit_sq(struct roc_nix *roc_nix, uint16_t qid, uint64_t rate)
 	uint8_t k = 0;
 	int rc;
 
-	if (nix->tm_tree != ROC_NIX_TM_RLIMIT ||
+	if ((nix->tm_tree == ROC_NIX_TM_USER) ||
 	    !(nix->tm_flags & NIX_TM_HIERARCHY_ENA))
 		return NIX_ERR_TM_INVALID_TREE;
 
-	node = nix_tm_node_search(nix, qid, ROC_NIX_TM_RLIMIT);
+	node = nix_tm_node_search(nix, qid, nix->tm_tree);
 
 	/* check if we found a valid leaf node */
 	if (!node || !nix_tm_is_leaf(nix, node->lvl) || !node->parent ||
