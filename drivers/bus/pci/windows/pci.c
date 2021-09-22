@@ -5,6 +5,7 @@
 #include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_eal.h>
+#include <rte_memory.h>
 
 #include "private.h"
 #include "pci_netuio.h"
@@ -243,7 +244,7 @@ get_device_resource_info(HDEVINFO dev_info,
 		DWORD error = GetLastError();
 		if (error == ERROR_NOT_FOUND) {
 			/* On older CPUs, NUMA is not bound to PCIe locality. */
-			dev->device.numa_node = 0;
+			dev->device.numa_node = SOCKET_ID_ANY;
 			return ERROR_SUCCESS;
 		}
 		RTE_LOG_WIN32_ERR("SetupDiGetDevicePropertyW"
