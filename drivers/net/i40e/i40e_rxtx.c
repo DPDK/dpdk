@@ -2024,6 +2024,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	rxq->mz = rz;
 	/* Zero all the descriptors in the ring. */
 	memset(rz->addr, 0, ring_size);
 
@@ -2115,6 +2116,7 @@ i40e_rx_queue_release(void *rxq)
 
 	i40e_rx_queue_release_mbufs(q);
 	rte_free(q->sw_ring);
+	rte_memzone_free(q->mz);
 	rte_free(q);
 }
 
@@ -2427,6 +2429,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	txq->mz = tz;
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_rs_thresh = tx_rs_thresh;
 	txq->tx_free_thresh = tx_free_thresh;
@@ -2500,6 +2503,7 @@ i40e_tx_queue_release(void *txq)
 
 	i40e_tx_queue_release_mbufs(q);
 	rte_free(q->sw_ring);
+	rte_memzone_free(q->mz);
 	rte_free(q);
 }
 
@@ -3056,7 +3060,6 @@ i40e_dev_free_queues(struct rte_eth_dev *dev)
 			continue;
 		i40e_rx_queue_release(dev->data->rx_queues[i]);
 		dev->data->rx_queues[i] = NULL;
-		rte_eth_dma_zone_free(dev, "rx_ring", i);
 	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
@@ -3064,7 +3067,6 @@ i40e_dev_free_queues(struct rte_eth_dev *dev)
 			continue;
 		i40e_tx_queue_release(dev->data->tx_queues[i]);
 		dev->data->tx_queues[i] = NULL;
-		rte_eth_dma_zone_free(dev, "tx_ring", i);
 	}
 }
 
@@ -3107,6 +3109,7 @@ i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 		return I40E_ERR_NO_MEMORY;
 	}
 
+	txq->mz = tz;
 	txq->nb_tx_desc = I40E_FDIR_NUM_TX_DESC;
 	txq->queue_id = I40E_FDIR_QUEUE_ID;
 	txq->reg_idx = pf->fdir.fdir_vsi->base_queue;
@@ -3165,6 +3168,7 @@ i40e_fdir_setup_rx_resources(struct i40e_pf *pf)
 		return I40E_ERR_NO_MEMORY;
 	}
 
+	rxq->mz = rz;
 	rxq->nb_rx_desc = I40E_FDIR_NUM_RX_DESC;
 	rxq->queue_id = I40E_FDIR_QUEUE_ID;
 	rxq->reg_idx = pf->fdir.fdir_vsi->base_queue;
