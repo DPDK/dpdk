@@ -2189,4 +2189,10 @@ struct nix_lso_format {
 #define NIX_LSO_FORMAT_IDX_TSOV4 0
 #define NIX_LSO_FORMAT_IDX_TSOV6 1
 
+/* [CN10K, .) */
+#define NIX_SENDSTATALG_MASK	  0x7
+#define NIX_SENDSTATALG_SEL_MASK  0x8
+#define NIX_SENDSTAT_IOFFSET_MASK 0xFFF
+#define NIX_SENDSTAT_OOFFSET_MASK 0xFFF
+
 #endif /* __NIX_HW_H__ */

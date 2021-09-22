@@ -170,6 +170,7 @@ INTERNAL {
 	roc_nix_xstats_names_get;
 	roc_nix_switch_hdr_set;
 	roc_nix_eeprom_info_get;
+	roc_nix_smq_flush;
 	roc_nix_tm_dump;
 	roc_nix_tm_fini;
 	roc_nix_tm_free_resources;

@@ -468,6 +468,7 @@ int __roc_api roc_nix_tm_rsrc_count(struct roc_nix *roc_nix,
 int __roc_api roc_nix_tm_node_name_get(struct roc_nix *roc_nix,
 				       uint32_t node_id, char *buf,
 				       size_t buflen);
+int __roc_api roc_nix_smq_flush(struct roc_nix *roc_nix);
 
 /* MAC */
 int __roc_api roc_nix_mac_rxtx_start_stop(struct roc_nix *roc_nix, bool start);

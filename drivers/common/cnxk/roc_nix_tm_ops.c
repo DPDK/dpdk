@@ -318,6 +318,56 @@ roc_nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id, bool free)
 }
 
 int
+roc_nix_smq_flush(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_node_list *list;
+	enum roc_nix_tm_tree tree;
+	struct nix_tm_node *node;
+	int rc = 0;
+
+	if (!(nix->tm_flags & NIX_TM_HIERARCHY_ENA))
+		return 0;
+
+	tree = nix->tm_tree;
+	list = nix_tm_node_list(nix, tree);
+
+	/* XOFF & Flush all SMQ's. HRM mandates
+	 * all SQ's empty before SMQ flush is issued.
+	 */
+	TAILQ_FOREACH(node, list, node) {
+		if (node->hw_lvl != NIX_TXSCH_LVL_SMQ)
+			continue;
+		if (!(node->flags & NIX_TM_NODE_HWRES))
+			continue;
+
+		rc = nix_tm_smq_xoff(nix, node, true);
+		if (rc) {
+			plt_err("Failed to enable smq %u, rc=%d", node->hw_id,
+				rc);
+			goto exit;
+		}
+	}
+
+	/* XON all SMQ's */
+	TAILQ_FOREACH(node, list, node) {
+		if (node->hw_lvl != NIX_TXSCH_LVL_SMQ)
+			continue;
+		if (!(node->flags & NIX_TM_NODE_HWRES))
+			continue;
+
+		rc = nix_tm_smq_xoff(nix, node, false);
+		if (rc) {
+			plt_err("Failed to enable smq %u, rc=%d", node->hw_id,
+				rc);
+			goto exit;
+		}
+	}
+exit:
+	return rc;
+}
+
+int
 roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
