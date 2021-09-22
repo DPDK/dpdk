@@ -104,6 +104,7 @@ struct em_rx_queue {
 	uint8_t             hthresh;    /**< Host threshold register. */
 	uint8_t             wthresh;    /**< Write-back threshold register. */
 	uint8_t             crc_len;    /**< 0 if CRC stripped, 4 otherwise. */
+	const struct rte_memzone *mz;
 };
 
 /**
@@ -173,6 +174,7 @@ struct em_tx_queue {
 	struct em_ctx_info ctx_cache;
 	/**< Hardware context history.*/
 	uint64_t	       offloads; /**< offloads of DEV_TX_OFFLOAD_* */
+	const struct rte_memzone *mz;
 };
 
 #if 1
@@ -1116,6 +1118,7 @@ em_tx_queue_release(struct em_tx_queue *txq)
 	if (txq != NULL) {
 		em_tx_queue_release_mbufs(txq);
 		rte_free(txq->sw_ring);
+		rte_memzone_free(txq->mz);
 		rte_free(txq);
 	}
 }
@@ -1286,6 +1289,7 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 			RTE_CACHE_LINE_SIZE)) == NULL)
 		return -ENOMEM;
 
+	txq->mz = tz;
 	/* Allocate software ring */
 	if ((txq->sw_ring = rte_zmalloc("txq->sw_ring",
 			sizeof(txq->sw_ring[0]) * nb_desc,
@@ -1338,6 +1342,7 @@ em_rx_queue_release(struct em_rx_queue *rxq)
 	if (rxq != NULL) {
 		em_rx_queue_release_mbufs(rxq);
 		rte_free(rxq->sw_ring);
+		rte_memzone_free(rxq->mz);
 		rte_free(rxq);
 	}
 }
@@ -1452,6 +1457,7 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 			RTE_CACHE_LINE_SIZE)) == NULL)
 		return -ENOMEM;
 
+	rxq->mz = rz;
 	/* Allocate software ring. */
 	if ((rxq->sw_ring = rte_zmalloc("rxq->sw_ring",
 			sizeof (rxq->sw_ring[0]) * nb_desc,
@@ -1611,14 +1617,12 @@ em_dev_free_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		eth_em_rx_queue_release(dev, i);
 		dev->data->rx_queues[i] = NULL;
-		rte_eth_dma_zone_free(dev, "rx_ring", i);
 	}
 	dev->data->nb_rx_queues = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		eth_em_tx_queue_release(dev, i);
 		dev->data->tx_queues[i] = NULL;
-		rte_eth_dma_zone_free(dev, "tx_ring", i);
 	}
 	dev->data->nb_tx_queues = 0;
 }
