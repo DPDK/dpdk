@@ -277,6 +277,28 @@ enum roc_nix_lso_tun_type {
 	ROC_NIX_LSO_TUN_MAX,
 };
 
+/* Restrict CN9K sched weight to have a minimum quantum */
+#define ROC_NIX_CN9K_TM_RR_WEIGHT_MAX 255u
+
+/* NIX TM Inlines */
+static inline uint64_t
+roc_nix_tm_max_sched_wt_get(void)
+{
+	if (roc_model_is_cn9k())
+		return ROC_NIX_CN9K_TM_RR_WEIGHT_MAX;
+	else
+		return NIX_TM_RR_WEIGHT_MAX;
+}
+
+static inline uint64_t
+roc_nix_tm_max_shaper_burst_get(void)
+{
+	if (roc_model_is_cn9k())
+		return NIX_CN9K_TM_MAX_SHAPER_BURST;
+	else
+		return NIX_TM_MAX_SHAPER_BURST;
+}
+
 /* Dev */
 int __roc_api roc_nix_dev_init(struct roc_nix *roc_nix);
 int __roc_api roc_nix_dev_fini(struct roc_nix *roc_nix);
@@ -324,7 +346,6 @@ int __roc_api roc_nix_register_cq_irqs(struct roc_nix *roc_nix);
 void __roc_api roc_nix_unregister_cq_irqs(struct roc_nix *roc_nix);
 
 /* Traffic Management */
-#define ROC_NIX_TM_MAX_SCHED_WT	       ((uint8_t)~0)
 #define ROC_NIX_TM_SHAPER_PROFILE_NONE UINT32_MAX
 #define ROC_NIX_TM_NODE_ID_INVALID     UINT32_MAX
 

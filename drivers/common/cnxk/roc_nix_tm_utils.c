@@ -8,9 +8,23 @@
 static inline uint64_t
 nix_tm_shaper2regval(struct nix_tm_shaper_data *shaper)
 {
-	return (shaper->burst_exponent << 37) | (shaper->burst_mantissa << 29) |
-	       (shaper->div_exp << 13) | (shaper->exponent << 9) |
-	       (shaper->mantissa << 1);
+	uint64_t regval;
+
+	if (roc_model_is_cn9k()) {
+		regval = (shaper->burst_exponent << 37);
+		regval |= (shaper->burst_mantissa << 29);
+		regval |= (shaper->div_exp << 13);
+		regval |= (shaper->exponent << 9);
+		regval |= (shaper->mantissa << 1);
+		return regval;
+	}
+
+	regval = (shaper->burst_exponent << 44);
+	regval |= (shaper->burst_mantissa << 29);
+	regval |= (shaper->div_exp << 13);
+	regval |= (shaper->exponent << 9);
+	regval |= (shaper->mantissa << 1);
+	return regval;
 }
 
 uint16_t
@@ -178,20 +192,26 @@ uint64_t
 nix_tm_shaper_burst_conv(uint64_t value, uint64_t *exponent_p,
 			 uint64_t *mantissa_p)
 {
+	uint64_t min_burst, max_burst;
 	uint64_t exponent, mantissa;
+	uint32_t max_mantissa;
 
-	if (value < NIX_TM_MIN_SHAPER_BURST || value > NIX_TM_MAX_SHAPER_BURST)
+	min_burst = NIX_TM_MIN_SHAPER_BURST;
+	max_burst = roc_nix_tm_max_shaper_burst_get();
+
+	if (value < min_burst || value > max_burst)
 		return 0;
 
+	max_mantissa = (roc_model_is_cn9k() ? NIX_CN9K_TM_MAX_BURST_MANTISSA :
+					      NIX_TM_MAX_BURST_MANTISSA);
 	/* Calculate burst exponent and mantissa using
 	 * the following formula:
 	 *
-	 * value = (((256 + mantissa) << (exponent + 1)
-	 / 256)
+	 * value = (((256 + mantissa) << (exponent + 1) / 256)
 	 *
 	 */
 	exponent = NIX_TM_MAX_BURST_EXPONENT;
-	mantissa = NIX_TM_MAX_BURST_MANTISSA;
+	mantissa = max_mantissa;
 
 	while (value < (1ull << (exponent + 1)))
 		exponent -= 1;
@@ -199,8 +219,7 @@ nix_tm_shaper_burst_conv(uint64_t value, uint64_t *exponent_p,
 	while (value < ((256 + mantissa) << (exponent + 1)) / 256)
 		mantissa -= 1;
 
-	if (exponent > NIX_TM_MAX_BURST_EXPONENT ||
-	    mantissa > NIX_TM_MAX_BURST_MANTISSA)
+	if (exponent > NIX_TM_MAX_BURST_EXPONENT || mantissa > max_mantissa)
 		return 0;
 
 	if (exponent_p)
@@ -544,6 +563,7 @@ nix_tm_sched_reg_prep(struct nix *nix, struct nix_tm_node *node,
 	uint64_t rr_quantum;
 	uint8_t k = 0;
 
+	/* For CN9K, weight needs to be converted to quantum */
 	rr_quantum = nix_tm_weight_to_rr_quantum(node->weight);
 
 	/* For children to root, strict prio is default if either
@@ -554,7 +574,7 @@ nix_tm_sched_reg_prep(struct nix *nix, struct nix_tm_node *node,
 		strict_prio = NIX_TM_TL1_DFLT_RR_PRIO;
 
 	plt_tm_dbg("Schedule config node %s(%u) lvl %u id %u, "
-		   "prio 0x%" PRIx64 ", rr_quantum 0x%" PRIx64 " (%p)",
+		   "prio 0x%" PRIx64 ", rr_quantum/rr_wt 0x%" PRIx64 " (%p)",
 		   nix_tm_hwlvl2str(node->hw_lvl), schq, node->lvl, node->id,
 		   strict_prio, rr_quantum, node);
 

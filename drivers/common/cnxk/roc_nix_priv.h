@@ -256,11 +256,14 @@ struct nix_tm_shaper_data {
 static inline uint64_t
 nix_tm_weight_to_rr_quantum(uint64_t weight)
 {
-	uint64_t max = (roc_model_is_cn9k() ? NIX_CN9K_TM_RR_QUANTUM_MAX :
-						    NIX_TM_RR_QUANTUM_MAX);
+	uint64_t max = NIX_CN9K_TM_RR_QUANTUM_MAX;
 
-	weight &= (uint64_t)ROC_NIX_TM_MAX_SCHED_WT;
-	return (weight * max) / ROC_NIX_TM_MAX_SCHED_WT;
+	/* From CN10K onwards, we only configure RR weight */
+	if (!roc_model_is_cn9k())
+		return weight;
+
+	weight &= (uint64_t)max;
+	return (weight * max) / ROC_NIX_CN9K_TM_RR_WEIGHT_MAX;
 }
 
 static inline bool

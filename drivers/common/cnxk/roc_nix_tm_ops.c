@@ -90,6 +90,7 @@ nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	uint64_t commit_rate, commit_sz;
+	uint64_t min_burst, max_burst;
 	uint64_t peak_rate, peak_sz;
 	uint32_t id;
 
@@ -98,6 +99,9 @@ nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
 	commit_sz = profile->commit.size;
 	peak_rate = profile->peak.rate;
 	peak_sz = profile->peak.size;
+
+	min_burst = NIX_TM_MIN_SHAPER_BURST;
+	max_burst = roc_nix_tm_max_shaper_burst_get();
 
 	if (nix_tm_shaper_profile_search(nix, id) && !skip_ins)
 		return NIX_ERR_TM_SHAPER_PROFILE_EXISTS;
@@ -112,8 +116,7 @@ nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
 
 	/* commit rate and burst size can be enabled/disabled */
 	if (commit_rate || commit_sz) {
-		if (commit_sz < NIX_TM_MIN_SHAPER_BURST ||
-		    commit_sz > NIX_TM_MAX_SHAPER_BURST)
+		if (commit_sz < min_burst || commit_sz > max_burst)
 			return NIX_ERR_TM_INVALID_COMMIT_SZ;
 		else if (!nix_tm_shaper_rate_conv(commit_rate, NULL, NULL,
 						  NULL))
@@ -122,8 +125,7 @@ nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
 
 	/* Peak rate and burst size can be enabled/disabled */
 	if (peak_sz || peak_rate) {
-		if (peak_sz < NIX_TM_MIN_SHAPER_BURST ||
-		    peak_sz > NIX_TM_MAX_SHAPER_BURST)
+		if (peak_sz < min_burst || peak_sz > max_burst)
 			return NIX_ERR_TM_INVALID_PEAK_SZ;
 		else if (!nix_tm_shaper_rate_conv(peak_rate, NULL, NULL, NULL))
 			return NIX_ERR_TM_INVALID_PEAK_RATE;

@@ -2134,8 +2134,9 @@ struct nix_lso_format {
 			   0)
 
 /* NIX burst limits */
-#define NIX_TM_MAX_BURST_EXPONENT 0xf
-#define NIX_TM_MAX_BURST_MANTISSA 0xff
+#define NIX_TM_MAX_BURST_EXPONENT      0xful
+#define NIX_TM_MAX_BURST_MANTISSA      0x7ffful
+#define NIX_CN9K_TM_MAX_BURST_MANTISSA 0xfful
 
 /* NIX burst calculation
  *	PIR_BURST = ((256 + NIX_*_PIR[BURST_MANTISSA])
@@ -2147,7 +2148,7 @@ struct nix_lso_format {
  *			/ 256
  */
 #define NIX_TM_SHAPER_BURST(exponent, mantissa)                                \
-	(((256 + (mantissa)) << ((exponent) + 1)) / 256)
+	(((256ul + (mantissa)) << ((exponent) + 1)) / 256ul)
 
 /* Burst limit in Bytes */
 #define NIX_TM_MIN_SHAPER_BURST NIX_TM_SHAPER_BURST(0, 0)
@@ -2156,13 +2157,17 @@ struct nix_lso_format {
 	NIX_TM_SHAPER_BURST(NIX_TM_MAX_BURST_EXPONENT,                         \
 			    NIX_TM_MAX_BURST_MANTISSA)
 
+#define NIX_CN9K_TM_MAX_SHAPER_BURST                                           \
+	NIX_TM_SHAPER_BURST(NIX_TM_MAX_BURST_EXPONENT,                         \
+			    NIX_CN9K_TM_MAX_BURST_MANTISSA)
+
 /* Min is limited so that NIX_AF_SMQX_CFG[MINLEN]+ADJUST is not -ve */
 #define NIX_TM_LENGTH_ADJUST_MIN ((int)-NIX_MIN_HW_FRS + 1)
 #define NIX_TM_LENGTH_ADJUST_MAX 255
 
 #define NIX_TM_TLX_SP_PRIO_MAX	   10
 #define NIX_CN9K_TM_RR_QUANTUM_MAX (BIT_ULL(24) - 1)
-#define NIX_TM_RR_QUANTUM_MAX	   (BIT_ULL(14) - 1)
+#define NIX_TM_RR_WEIGHT_MAX	   (BIT_ULL(14) - 1)
 
 /* [CN9K, CN10K) */
 #define NIX_CN9K_TXSCH_LVL_SMQ_MAX 512

@@ -223,7 +223,7 @@ nix_tm_node_add(struct roc_nix *roc_nix, struct nix_tm_node *node)
 	if (rc)
 		return rc;
 
-	if (node->weight > ROC_NIX_TM_MAX_SCHED_WT)
+	if (node->weight > roc_nix_tm_max_sched_wt_get())
 		return NIX_ERR_TM_WEIGHT_EXCEED;
 
 	/* Maintain minimum weight */
