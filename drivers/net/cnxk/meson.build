@@ -17,6 +17,7 @@ sources = files(
         'cnxk_ptp.c',
         'cnxk_rte_flow.c',
         'cnxk_stats.c',
+        'cnxk_tm.c',
 )
 
 # CN9K
