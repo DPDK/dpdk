@@ -839,6 +839,27 @@ rx_machine_update(struct bond_dev_private *internals, uint16_t slave_id,
 }
 
 static void
+bond_mode_8023ad_dedicated_rxq_process(struct bond_dev_private *internals,
+			uint16_t slave_id)
+{
+#define DEDICATED_QUEUE_BURST_SIZE 32
+	struct rte_mbuf *lacp_pkt[DEDICATED_QUEUE_BURST_SIZE];
+	uint16_t rx_count = rte_eth_rx_burst(slave_id,
+				internals->mode4.dedicated_queues.rx_qid,
+				lacp_pkt, DEDICATED_QUEUE_BURST_SIZE);
+
+	if (rx_count) {
+		uint16_t i;
+
+		for (i = 0; i < rx_count; i++)
+			bond_mode_8023ad_handle_slow_pkt(internals, slave_id,
+					lacp_pkt[i]);
+	} else {
+		rx_machine_update(internals, slave_id, NULL);
+	}
+}
+
+static void
 bond_mode_8023ad_periodic_cb(void *arg)
 {
 	struct rte_eth_dev *bond_dev = arg;
@@ -926,15 +947,8 @@ bond_mode_8023ad_periodic_cb(void *arg)
 
 			rx_machine_update(internals, slave_id, lacp_pkt);
 		} else {
-			uint16_t rx_count = rte_eth_rx_burst(slave_id,
-					internals->mode4.dedicated_queues.rx_qid,
-					&lacp_pkt, 1);
-
-			if (rx_count == 1)
-				bond_mode_8023ad_handle_slow_pkt(internals,
-						slave_id, lacp_pkt);
-			else
-				rx_machine_update(internals, slave_id, NULL);
+			bond_mode_8023ad_dedicated_rxq_process(internals,
+					slave_id);
 		}
 
 		periodic_machine(internals, slave_id);
