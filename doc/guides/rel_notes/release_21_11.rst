@@ -84,6 +84,7 @@ New Features
 * **Updated Marvell cnxk ethdev driver.**
 
   * Added rte_flow support for dual VLAN insert and strip actions.
+  * Added rte_tm support.
 
 * **Updated Marvell cnxk crypto PMD.**
 

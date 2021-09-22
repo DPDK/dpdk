@@ -259,11 +259,364 @@ cnxk_nix_tm_node_capa_get(struct rte_eth_dev *eth_dev, uint32_t node_id,
 	return 0;
 }
 
+static int
+cnxk_nix_tm_shaper_profile_add(struct rte_eth_dev *eth_dev, uint32_t id,
+			       struct rte_tm_shaper_params *params,
+			       struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_nix_tm_shaper_profile *profile;
+	struct roc_nix *nix = &dev->nix;
+	int rc;
+
+	if (roc_nix_tm_shaper_profile_get(nix, id)) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_ID;
+		error->message = "shaper profile ID exist";
+		return -EINVAL;
+	}
+
+	profile = rte_zmalloc("cnxk_nix_tm_shaper_profile",
+			      sizeof(struct cnxk_nix_tm_shaper_profile), 0);
+	if (!profile)
+		return -ENOMEM;
+	profile->profile.id = id;
+	profile->profile.commit_rate = params->committed.rate;
+	profile->profile.peak_rate = params->peak.rate;
+	profile->profile.commit_sz = params->committed.size;
+	profile->profile.peak_sz = params->peak.size;
+	/* If Byte mode, then convert to bps */
+	if (!params->packet_mode) {
+		profile->profile.commit_rate *= 8;
+		profile->profile.peak_rate *= 8;
+		profile->profile.commit_sz *= 8;
+		profile->profile.peak_sz *= 8;
+	}
+	profile->profile.pkt_len_adj = params->pkt_length_adjust;
+	profile->profile.pkt_mode = params->packet_mode;
+	profile->profile.free_fn = rte_free;
+	rte_memcpy(&profile->params, params,
+		   sizeof(struct rte_tm_shaper_params));
+
+	rc = roc_nix_tm_shaper_profile_add(nix, &profile->profile);
+
+	/* fill error information based on return value */
+	if (rc) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+	}
+
+	return rc;
+}
+
+static int
+cnxk_nix_tm_shaper_profile_delete(struct rte_eth_dev *eth_dev,
+				  uint32_t profile_id,
+				  struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	int rc;
+
+	rc = roc_nix_tm_shaper_profile_delete(nix, profile_id);
+	if (rc) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+	}
+
+	return rc;
+}
+
+static int
+cnxk_nix_tm_node_add(struct rte_eth_dev *eth_dev, uint32_t node_id,
+		     uint32_t parent_node_id, uint32_t priority,
+		     uint32_t weight, uint32_t lvl,
+		     struct rte_tm_node_params *params,
+		     struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix_tm_shaper_profile *profile;
+	struct roc_nix_tm_node *parent_node;
+	struct roc_nix *nix = &dev->nix;
+	struct cnxk_nix_tm_node *node;
+	int rc;
+
+	/* we don't support dynamic updates */
+	if (roc_nix_tm_is_user_hierarchy_enabled(nix)) {
+		error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+		error->message = "dynamic update not supported";
+		return -EIO;
+	}
+
+	parent_node = roc_nix_tm_node_get(nix, parent_node_id);
+	/* find the right level */
+	if (lvl == RTE_TM_NODE_LEVEL_ID_ANY) {
+		if (parent_node_id == RTE_TM_NODE_ID_NULL) {
+			lvl = ROC_TM_LVL_ROOT;
+		} else if (parent_node) {
+			lvl = parent_node->lvl + 1;
+		} else {
+			/* Neither proper parent nor proper level id given */
+			error->type = RTE_TM_ERROR_TYPE_NODE_PARENT_NODE_ID;
+			error->message = "invalid parent node id";
+			return -ERANGE;
+		}
+	}
+
+	node = rte_zmalloc("cnxk_nix_tm_node", sizeof(struct cnxk_nix_tm_node),
+			   0);
+	if (!node)
+		return -ENOMEM;
+
+	rte_memcpy(&node->params, params, sizeof(struct rte_tm_node_params));
+
+	node->nix_node.id = node_id;
+	node->nix_node.parent_id = parent_node_id;
+	node->nix_node.priority = priority;
+	node->nix_node.weight = weight;
+	node->nix_node.lvl = lvl;
+	node->nix_node.shaper_profile_id = params->shaper_profile_id;
+
+	profile = roc_nix_tm_shaper_profile_get(nix, params->shaper_profile_id);
+	/* Packet mode */
+	if (!roc_nix_tm_lvl_is_leaf(nix, lvl) &&
+	    ((profile && profile->pkt_mode) ||
+	     (params->nonleaf.wfq_weight_mode &&
+	      params->nonleaf.n_sp_priorities &&
+	      !params->nonleaf.wfq_weight_mode[0])))
+		node->nix_node.pkt_mode = 1;
+
+	rc = roc_nix_tm_node_add(nix, &node->nix_node);
+	if (rc < 0) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+		return rc;
+	}
+	error->type = RTE_TM_ERROR_TYPE_NONE;
+	roc_nix_tm_shaper_default_red_algo(&node->nix_node, profile);
+
+	return 0;
+}
+
+static int
+cnxk_nix_tm_node_delete(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	struct cnxk_nix_tm_node *node;
+	int rc;
+
+	/* we don't support dynamic updates yet */
+	if (roc_nix_tm_is_user_hierarchy_enabled(nix)) {
+		error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+		error->message = "hierarchy exists";
+		return -EIO;
+	}
+
+	if (node_id == RTE_TM_NODE_ID_NULL) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "invalid node id";
+		return -EINVAL;
+	}
+
+	node = (struct cnxk_nix_tm_node *)roc_nix_tm_node_get(nix, node_id);
+
+	rc = roc_nix_tm_node_delete(nix, node_id, 0);
+	if (rc) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+	} else {
+		rte_free(node);
+	}
+
+	return rc;
+}
+
+static int
+cnxk_nix_tm_node_suspend(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			 struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	int rc;
+
+	rc = roc_nix_tm_node_suspend_resume(&dev->nix, node_id, true);
+	if (rc) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+	}
+
+	return rc;
+}
+
+static int
+cnxk_nix_tm_node_resume(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	int rc;
+
+	rc = roc_nix_tm_node_suspend_resume(&dev->nix, node_id, false);
+	if (rc) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+	}
+
+	return rc;
+}
+
+static int
+cnxk_nix_tm_hierarchy_commit(struct rte_eth_dev *eth_dev,
+			     int clear_on_fail __rte_unused,
+			     struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	int rc;
+
+	if (roc_nix_tm_is_user_hierarchy_enabled(nix)) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "hierarchy exists";
+		return -EIO;
+	}
+
+	if (roc_nix_tm_leaf_cnt(nix) < dev->nb_txq) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "incomplete hierarchy";
+		return -EINVAL;
+	}
+
+	rc = roc_nix_tm_hierarchy_disable(nix);
+	if (rc) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+		return -EIO;
+	}
+
+	rc = roc_nix_tm_hierarchy_enable(nix, ROC_NIX_TM_USER, true);
+	if (rc) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+		return -EIO;
+	}
+	error->type = RTE_TM_ERROR_TYPE_NONE;
+
+	return 0;
+}
+
+static int
+cnxk_nix_tm_node_shaper_update(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			       uint32_t profile_id, struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix_tm_shaper_profile *profile;
+	struct roc_nix *nix = &dev->nix;
+	struct roc_nix_tm_node *node;
+	int rc;
+
+	rc = roc_nix_tm_node_shaper_update(nix, node_id, profile_id, false);
+	if (rc) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+		return -EINVAL;
+	}
+	node = roc_nix_tm_node_get(nix, node_id);
+	if (!node)
+		return -EINVAL;
+
+	profile = roc_nix_tm_shaper_profile_get(nix, profile_id);
+	roc_nix_tm_shaper_default_red_algo(node, profile);
+
+	return 0;
+}
+
+static int
+cnxk_nix_tm_node_parent_update(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			       uint32_t new_parent_id, uint32_t priority,
+			       uint32_t weight, struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	int rc;
+
+	rc = roc_nix_tm_node_parent_update(nix, node_id, new_parent_id,
+					   priority, weight);
+	if (rc) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+cnxk_nix_tm_node_stats_read(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			    struct rte_tm_node_stats *stats,
+			    uint64_t *stats_mask, int clear,
+			    struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix_tm_node_stats nix_tm_stats;
+	struct roc_nix *nix = &dev->nix;
+	struct roc_nix_tm_node *node;
+	int rc;
+
+	node = roc_nix_tm_node_get(nix, node_id);
+	if (!node) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "no such node";
+		return -EINVAL;
+	}
+
+	if (roc_nix_tm_lvl_is_leaf(nix, node->lvl)) {
+		struct roc_nix_stats_queue qstats;
+
+		rc = roc_nix_stats_queue_get(nix, node->id, 0, &qstats);
+		if (!rc) {
+			stats->n_pkts = qstats.tx_pkts;
+			stats->n_bytes = qstats.tx_octs;
+			*stats_mask =
+				RTE_TM_STATS_N_PKTS | RTE_TM_STATS_N_BYTES;
+		}
+		goto exit;
+	}
+
+	rc = roc_nix_tm_node_stats_get(nix, node_id, clear, &nix_tm_stats);
+	if (!rc) {
+		stats->leaf.n_pkts_dropped[RTE_COLOR_RED] =
+			nix_tm_stats.stats[ROC_NIX_TM_NODE_PKTS_DROPPED];
+		stats->leaf.n_bytes_dropped[RTE_COLOR_RED] =
+			nix_tm_stats.stats[ROC_NIX_TM_NODE_BYTES_DROPPED];
+		*stats_mask = RTE_TM_STATS_N_PKTS_RED_DROPPED |
+			      RTE_TM_STATS_N_BYTES_RED_DROPPED;
+	}
+
+exit:
+	if (rc) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+	}
+	return rc;
+}
+
 const struct rte_tm_ops cnxk_tm_ops = {
 	.node_type_get = cnxk_nix_tm_node_type_get,
 	.capabilities_get = cnxk_nix_tm_capa_get,
 	.level_capabilities_get = cnxk_nix_tm_level_capa_get,
 	.node_capabilities_get = cnxk_nix_tm_node_capa_get,
+
+	.shaper_profile_add = cnxk_nix_tm_shaper_profile_add,
+	.shaper_profile_delete = cnxk_nix_tm_shaper_profile_delete,
+
+	.node_add = cnxk_nix_tm_node_add,
+	.node_delete = cnxk_nix_tm_node_delete,
+	.node_suspend = cnxk_nix_tm_node_suspend,
+	.node_resume = cnxk_nix_tm_node_resume,
+	.hierarchy_commit = cnxk_nix_tm_hierarchy_commit,
+
+	.node_shaper_update = cnxk_nix_tm_node_shaper_update,
+	.node_parent_update = cnxk_nix_tm_node_parent_update,
+	.node_stats_read = cnxk_nix_tm_node_stats_read,
 };
 
 int
