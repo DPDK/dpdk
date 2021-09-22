@@ -923,7 +923,8 @@ enum hns3_mac_vlan_add_resp_code {
 	HNS3_ADD_MC_OVERFLOW,      /* ADD failed for MC overflow */
 };
 
-#define HNS3_MC_MAC_VLAN_ADD_DESC_NUM	3
+#define HNS3_MC_MAC_VLAN_OPS_DESC_NUM   3
+#define HNS3_UC_MAC_VLAN_OPS_DESC_NUM   1
 
 #define HNS3_MAC_VLAN_BIT0_EN_B		0
 #define HNS3_MAC_VLAN_BIT1_EN_B		1

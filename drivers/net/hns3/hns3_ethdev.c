@@ -1427,28 +1427,31 @@ hns3_get_mac_vlan_cmd_status(struct hns3_hw *hw, uint16_t cmdq_resp,
 static int
 hns3_lookup_mac_vlan_tbl(struct hns3_hw *hw,
 			 struct hns3_mac_vlan_tbl_entry_cmd *req,
-			 struct hns3_cmd_desc *desc, bool is_mc)
+			 struct hns3_cmd_desc *desc, uint8_t desc_num)
 {
 	uint8_t resp_code;
 	uint16_t retval;
 	int ret;
+	int i;
 
-	hns3_cmd_setup_basic_desc(&desc[0], HNS3_OPC_MAC_VLAN_ADD, true);
-	if (is_mc) {
-		desc[0].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
-		memcpy(desc[0].data, req,
-			   sizeof(struct hns3_mac_vlan_tbl_entry_cmd));
-		hns3_cmd_setup_basic_desc(&desc[1], HNS3_OPC_MAC_VLAN_ADD,
+	if (desc_num == HNS3_MC_MAC_VLAN_OPS_DESC_NUM) {
+		for (i = 0; i < desc_num - 1; i++) {
+			hns3_cmd_setup_basic_desc(&desc[i],
+						  HNS3_OPC_MAC_VLAN_ADD, true);
+			desc[i].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+			if (i == 0)
+				memcpy(desc[i].data, req,
+				sizeof(struct hns3_mac_vlan_tbl_entry_cmd));
+		}
+		hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_MAC_VLAN_ADD,
 					  true);
-		desc[1].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
-		hns3_cmd_setup_basic_desc(&desc[2], HNS3_OPC_MAC_VLAN_ADD,
-					  true);
-		ret = hns3_cmd_send(hw, desc, HNS3_MC_MAC_VLAN_ADD_DESC_NUM);
 	} else {
+		hns3_cmd_setup_basic_desc(&desc[0], HNS3_OPC_MAC_VLAN_ADD,
+					  true);
 		memcpy(desc[0].data, req,
 		       sizeof(struct hns3_mac_vlan_tbl_entry_cmd));
-		ret = hns3_cmd_send(hw, desc, 1);
 	}
+	ret = hns3_cmd_send(hw, desc, desc_num);
 	if (ret) {
 		hns3_err(hw, "lookup mac addr failed for cmd_send, ret =%d.",
 			 ret);
@@ -1464,38 +1467,40 @@ hns3_lookup_mac_vlan_tbl(struct hns3_hw *hw,
 static int
 hns3_add_mac_vlan_tbl(struct hns3_hw *hw,
 		      struct hns3_mac_vlan_tbl_entry_cmd *req,
-		      struct hns3_cmd_desc *mc_desc)
+		      struct hns3_cmd_desc *desc, uint8_t desc_num)
 {
 	uint8_t resp_code;
 	uint16_t retval;
 	int cfg_status;
 	int ret;
+	int i;
 
-	if (mc_desc == NULL) {
-		struct hns3_cmd_desc desc;
-
-		hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MAC_VLAN_ADD, false);
-		memcpy(desc.data, req,
+	if (desc_num == HNS3_UC_MAC_VLAN_OPS_DESC_NUM) {
+		hns3_cmd_setup_basic_desc(desc, HNS3_OPC_MAC_VLAN_ADD, false);
+		memcpy(desc->data, req,
 		       sizeof(struct hns3_mac_vlan_tbl_entry_cmd));
-		ret = hns3_cmd_send(hw, &desc, 1);
-		resp_code = (rte_le_to_cpu_32(desc.data[0]) >> 8) & 0xff;
-		retval = rte_le_to_cpu_16(desc.retval);
+		ret = hns3_cmd_send(hw, desc, desc_num);
+		resp_code = (rte_le_to_cpu_32(desc->data[0]) >> 8) & 0xff;
+		retval = rte_le_to_cpu_16(desc->retval);
 
 		cfg_status = hns3_get_mac_vlan_cmd_status(hw, retval, resp_code,
 							  HNS3_MAC_VLAN_ADD);
 	} else {
-		hns3_cmd_reuse_desc(&mc_desc[0], false);
-		mc_desc[0].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
-		hns3_cmd_reuse_desc(&mc_desc[1], false);
-		mc_desc[1].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
-		hns3_cmd_reuse_desc(&mc_desc[2], false);
-		mc_desc[2].flag &= rte_cpu_to_le_16(~HNS3_CMD_FLAG_NEXT);
-		memcpy(mc_desc[0].data, req,
+		for (i = 0; i < desc_num; i++) {
+			hns3_cmd_reuse_desc(&desc[i], false);
+			if (i == desc_num - 1)
+				desc[i].flag &=
+					rte_cpu_to_le_16(~HNS3_CMD_FLAG_NEXT);
+			else
+				desc[i].flag |=
+					rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+		}
+		memcpy(desc[0].data, req,
 		       sizeof(struct hns3_mac_vlan_tbl_entry_cmd));
-		mc_desc[0].retval = 0;
-		ret = hns3_cmd_send(hw, mc_desc, HNS3_MC_MAC_VLAN_ADD_DESC_NUM);
-		resp_code = (rte_le_to_cpu_32(mc_desc[0].data[0]) >> 8) & 0xff;
-		retval = rte_le_to_cpu_16(mc_desc[0].retval);
+		desc[0].retval = 0;
+		ret = hns3_cmd_send(hw, desc, desc_num);
+		resp_code = (rte_le_to_cpu_32(desc[0].data[0]) >> 8) & 0xff;
+		retval = rte_le_to_cpu_16(desc[0].retval);
 
 		cfg_status = hns3_get_mac_vlan_cmd_status(hw, retval, resp_code,
 							  HNS3_MAC_VLAN_ADD);
@@ -1540,7 +1545,7 @@ hns3_add_uc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_mac_vlan_tbl_entry_cmd req;
 	struct hns3_pf *pf = &hns->pf;
-	struct hns3_cmd_desc desc[3];
+	struct hns3_cmd_desc desc;
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 	uint16_t egress_port = 0;
 	uint8_t vf_id;
@@ -1574,10 +1579,12 @@ hns3_add_uc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	 * it if the entry is inexistent. Repeated unicast entry
 	 * is not allowed in the mac vlan table.
 	 */
-	ret = hns3_lookup_mac_vlan_tbl(hw, &req, desc, false);
+	ret = hns3_lookup_mac_vlan_tbl(hw, &req, &desc,
+					HNS3_UC_MAC_VLAN_OPS_DESC_NUM);
 	if (ret == -ENOENT) {
 		if (!hns3_is_umv_space_full(hw)) {
-			ret = hns3_add_mac_vlan_tbl(hw, &req, NULL);
+			ret = hns3_add_mac_vlan_tbl(hw, &req, &desc,
+						HNS3_UC_MAC_VLAN_OPS_DESC_NUM);
 			if (!ret)
 				hns3_update_umv_space(hw, false);
 			return ret;
@@ -1867,8 +1874,8 @@ hns3_update_desc_vfid(struct hns3_cmd_desc *desc, uint8_t vfid, bool clr)
 static int
 hns3_add_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 {
+	struct hns3_cmd_desc desc[HNS3_MC_MAC_VLAN_OPS_DESC_NUM];
 	struct hns3_mac_vlan_tbl_entry_cmd req;
-	struct hns3_cmd_desc desc[3];
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 	uint8_t vf_id;
 	int ret;
@@ -1885,7 +1892,8 @@ hns3_add_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	memset(&req, 0, sizeof(req));
 	hns3_set_bit(req.entry_type, HNS3_MAC_VLAN_BIT0_EN_B, 0);
 	hns3_prepare_mac_addr(&req, mac_addr->addr_bytes, true);
-	ret = hns3_lookup_mac_vlan_tbl(hw, &req, desc, true);
+	ret = hns3_lookup_mac_vlan_tbl(hw, &req, desc,
+					HNS3_MC_MAC_VLAN_OPS_DESC_NUM);
 	if (ret) {
 		/* This mac addr do not exist, add new entry for it */
 		memset(desc[0].data, 0, sizeof(desc[0].data));
@@ -1899,7 +1907,8 @@ hns3_add_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	 */
 	vf_id = HNS3_PF_FUNC_ID;
 	hns3_update_desc_vfid(desc, vf_id, false);
-	ret = hns3_add_mac_vlan_tbl(hw, &req, desc);
+	ret = hns3_add_mac_vlan_tbl(hw, &req, desc,
+					HNS3_MC_MAC_VLAN_OPS_DESC_NUM);
 	if (ret) {
 		if (ret == -ENOSPC)
 			hns3_err(hw, "mc mac vlan table is full");
@@ -1932,7 +1941,8 @@ hns3_remove_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	memset(&req, 0, sizeof(req));
 	hns3_set_bit(req.entry_type, HNS3_MAC_VLAN_BIT0_EN_B, 0);
 	hns3_prepare_mac_addr(&req, mac_addr->addr_bytes, true);
-	ret = hns3_lookup_mac_vlan_tbl(hw, &req, desc, true);
+	ret = hns3_lookup_mac_vlan_tbl(hw, &req, desc,
+					HNS3_MC_MAC_VLAN_OPS_DESC_NUM);
 	if (ret == 0) {
 		/*
 		 * This mac addr exist, remove this handle's VFID for it.
