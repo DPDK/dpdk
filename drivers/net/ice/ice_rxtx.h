@@ -88,6 +88,7 @@ struct ice_rx_queue {
 	uint64_t xtr_ol_flag; /* Protocol extraction offload flag */
 	ice_rxd_to_pkt_fields_t rxd_to_pkt_fields; /* handle FlexiMD by RXDID */
 	ice_rx_release_mbufs_t rx_rel_mbufs;
+	const struct rte_memzone *mz;
 };
 
 struct ice_tx_entry {
@@ -132,6 +133,7 @@ struct ice_tx_queue {
 	bool tx_deferred_start; /* don't start this queue in dev start */
 	bool q_set; /* indicate if tx queue has been configured */
 	ice_tx_release_mbufs_t tx_rel_mbufs;
+	const struct rte_memzone *mz;
 };
 
 /* Offload features */
