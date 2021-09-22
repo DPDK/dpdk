@@ -1059,9 +1059,9 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 	HWRM_PREP(&req, HWRM_FUNC_DRV_RGTR, BNXT_USE_CHIMP_MB);
 	req.enables = rte_cpu_to_le_32(HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_VER |
 			HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_ASYNC_EVENT_FWD);
-	req.ver_maj = RTE_VER_YEAR;
-	req.ver_min = RTE_VER_MONTH;
-	req.ver_upd = RTE_VER_MINOR;
+	req.ver_maj_8b = RTE_VER_YEAR;
+	req.ver_min_8b = RTE_VER_MONTH;
+	req.ver_upd_8b = RTE_VER_MINOR;
 
 	if (BNXT_PF(bp)) {
 		req.enables |= rte_cpu_to_le_32(
@@ -1370,7 +1370,7 @@ error:
 	return rc;
 }
 
-int bnxt_hwrm_func_driver_unregister(struct bnxt *bp, uint32_t flags)
+int bnxt_hwrm_func_driver_unregister(struct bnxt *bp)
 {
 	int rc;
 	struct hwrm_func_drv_unrgtr_input req = {.req_type = 0 };
@@ -1380,7 +1380,6 @@ int bnxt_hwrm_func_driver_unregister(struct bnxt *bp, uint32_t flags)
 		return 0;
 
 	HWRM_PREP(&req, HWRM_FUNC_DRV_UNRGTR, BNXT_USE_CHIMP_MB);
-	req.flags = flags;
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
