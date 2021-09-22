@@ -112,6 +112,7 @@ struct igb_rx_queue {
 	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
 	uint32_t            flags;      /**< RX flags. */
 	uint64_t	    offloads;   /**< offloads of DEV_RX_OFFLOAD_* */
+	const struct rte_memzone *mz;
 };
 
 /**
@@ -186,6 +187,7 @@ struct igb_tx_queue {
 	struct igb_advctx_info ctx_cache[IGB_CTX_NUM];
 	/**< Hardware context history.*/
 	uint64_t	       offloads; /**< offloads of DEV_TX_OFFLOAD_* */
+	const struct rte_memzone *mz;
 };
 
 #if 1
@@ -1276,6 +1278,7 @@ igb_tx_queue_release(struct igb_tx_queue *txq)
 	if (txq != NULL) {
 		igb_tx_queue_release_mbufs(txq);
 		rte_free(txq->sw_ring);
+		rte_memzone_free(txq->mz);
 		rte_free(txq);
 	}
 }
@@ -1545,6 +1548,7 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	txq->mz = tz;
 	txq->nb_tx_desc = nb_desc;
 	txq->pthresh = tx_conf->tx_thresh.pthresh;
 	txq->hthresh = tx_conf->tx_thresh.hthresh;
@@ -1601,6 +1605,7 @@ igb_rx_queue_release(struct igb_rx_queue *rxq)
 	if (rxq != NULL) {
 		igb_rx_queue_release_mbufs(rxq);
 		rte_free(rxq->sw_ring);
+		rte_memzone_free(rxq->mz);
 		rte_free(rxq);
 	}
 }
@@ -1746,6 +1751,8 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 		igb_rx_queue_release(rxq);
 		return -ENOMEM;
 	}
+
+	rxq->mz = rz;
 	rxq->rdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDT(rxq->reg_idx));
 	rxq->rdh_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDH(rxq->reg_idx));
 	rxq->rx_ring_phys_addr = rz->iova;
@@ -1885,14 +1892,12 @@ igb_dev_free_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		eth_igb_rx_queue_release(dev->data->rx_queues[i]);
 		dev->data->rx_queues[i] = NULL;
-		rte_eth_dma_zone_free(dev, "rx_ring", i);
 	}
 	dev->data->nb_rx_queues = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		eth_igb_tx_queue_release(dev->data->tx_queues[i]);
 		dev->data->tx_queues[i] = NULL;
-		rte_eth_dma_zone_free(dev, "tx_ring", i);
 	}
 	dev->data->nb_tx_queues = 0;
 }
