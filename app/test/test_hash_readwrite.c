@@ -45,14 +45,14 @@ struct {
 	struct rte_hash *h;
 } tbl_rw_test_param;
 
-static rte_atomic64_t gcycles;
-static rte_atomic64_t ginsertions;
+static uint64_t gcycles;
+static uint64_t ginsertions;
 
-static rte_atomic64_t gread_cycles;
-static rte_atomic64_t gwrite_cycles;
+static uint64_t gread_cycles;
+static uint64_t gwrite_cycles;
 
-static rte_atomic64_t greads;
-static rte_atomic64_t gwrites;
+static uint64_t greads;
+static uint64_t gwrites;
 
 static int
 test_hash_readwrite_worker(__rte_unused void *arg)
@@ -110,8 +110,8 @@ test_hash_readwrite_worker(__rte_unused void *arg)
 	}
 
 	cycles = rte_rdtsc_precise() - begin;
-	rte_atomic64_add(&gcycles, cycles);
-	rte_atomic64_add(&ginsertions, i - offset);
+	__atomic_fetch_add(&gcycles, cycles, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&ginsertions, i - offset, __ATOMIC_RELAXED);
 
 	for (; i < offset + tbl_rw_test_param.num_insert; i++)
 		tbl_rw_test_param.keys[i] = RTE_RWTEST_FAIL;
@@ -209,11 +209,8 @@ test_hash_readwrite_functional(int use_htm, int use_rw_lf, int use_ext)
 	int worker_cnt = rte_lcore_count() - 1;
 	uint32_t tot_insert = 0;
 
-	rte_atomic64_init(&gcycles);
-	rte_atomic64_clear(&gcycles);
-
-	rte_atomic64_init(&ginsertions);
-	rte_atomic64_clear(&ginsertions);
+	__atomic_store_n(&gcycles, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&ginsertions, 0, __ATOMIC_RELAXED);
 
 	if (init_params(use_ext, use_htm, use_rw_lf, use_jhash) != 0)
 		goto err;
@@ -272,8 +269,8 @@ test_hash_readwrite_functional(int use_htm, int use_rw_lf, int use_ext)
 	printf("No key corrupted during read-write test.\n");
 
 	unsigned long long int cycles_per_insertion =
-		rte_atomic64_read(&gcycles) /
-		rte_atomic64_read(&ginsertions);
+		__atomic_load_n(&gcycles, __ATOMIC_RELAXED) /
+		__atomic_load_n(&ginsertions, __ATOMIC_RELAXED);
 
 	printf("cycles per insertion and lookup: %llu\n", cycles_per_insertion);
 
@@ -313,8 +310,8 @@ test_rw_reader(void *arg)
 	}
 
 	cycles = rte_rdtsc_precise() - begin;
-	rte_atomic64_add(&gread_cycles, cycles);
-	rte_atomic64_add(&greads, i);
+	__atomic_fetch_add(&gread_cycles, cycles, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&greads, i, __ATOMIC_RELAXED);
 	return 0;
 }
 
@@ -347,8 +344,9 @@ test_rw_writer(void *arg)
 	}
 
 	cycles = rte_rdtsc_precise() - begin;
-	rte_atomic64_add(&gwrite_cycles, cycles);
-	rte_atomic64_add(&gwrites, tbl_rw_test_param.num_insert);
+	__atomic_fetch_add(&gwrite_cycles, cycles, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&gwrites, tbl_rw_test_param.num_insert,
+							__ATOMIC_RELAXED);
 	return 0;
 }
 
@@ -371,15 +369,11 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 
 	uint64_t start = 0, end = 0;
 
-	rte_atomic64_init(&greads);
-	rte_atomic64_init(&gwrites);
-	rte_atomic64_clear(&gwrites);
-	rte_atomic64_clear(&greads);
+	__atomic_store_n(&gwrites, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&greads, 0, __ATOMIC_RELAXED);
 
-	rte_atomic64_init(&gread_cycles);
-	rte_atomic64_clear(&gread_cycles);
-	rte_atomic64_init(&gwrite_cycles);
-	rte_atomic64_clear(&gwrite_cycles);
+	__atomic_store_n(&gread_cycles, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&gwrite_cycles, 0, __ATOMIC_RELAXED);
 
 	if (init_params(0, use_htm, 0, use_jhash) != 0)
 		goto err;
@@ -436,10 +430,10 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 		if (tot_worker_lcore < core_cnt[n] * 2)
 			goto finish;
 
-		rte_atomic64_clear(&greads);
-		rte_atomic64_clear(&gread_cycles);
-		rte_atomic64_clear(&gwrites);
-		rte_atomic64_clear(&gwrite_cycles);
+		__atomic_store_n(&greads, 0, __ATOMIC_RELAXED);
+		__atomic_store_n(&gread_cycles, 0, __ATOMIC_RELAXED);
+		__atomic_store_n(&gwrites, 0, __ATOMIC_RELAXED);
+		__atomic_store_n(&gwrite_cycles, 0, __ATOMIC_RELAXED);
 
 		rte_hash_reset(tbl_rw_test_param.h);
 
@@ -481,8 +475,8 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 
 		if (reader_faster) {
 			unsigned long long int cycles_per_insertion =
-				rte_atomic64_read(&gread_cycles) /
-				rte_atomic64_read(&greads);
+				__atomic_load_n(&gread_cycles, __ATOMIC_RELAXED) /
+				__atomic_load_n(&greads, __ATOMIC_RELAXED);
 			perf_results->read_only[n] = cycles_per_insertion;
 			printf("Reader only: cycles per lookup: %llu\n",
 							cycles_per_insertion);
@@ -490,17 +484,17 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 
 		else {
 			unsigned long long int cycles_per_insertion =
-				rte_atomic64_read(&gwrite_cycles) /
-				rte_atomic64_read(&gwrites);
+				__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED) /
+				__atomic_load_n(&gwrites, __ATOMIC_RELAXED);
 			perf_results->write_only[n] = cycles_per_insertion;
 			printf("Writer only: cycles per writes: %llu\n",
 							cycles_per_insertion);
 		}
 
-		rte_atomic64_clear(&greads);
-		rte_atomic64_clear(&gread_cycles);
-		rte_atomic64_clear(&gwrites);
-		rte_atomic64_clear(&gwrite_cycles);
+		__atomic_store_n(&greads, 0, __ATOMIC_RELAXED);
+		__atomic_store_n(&gread_cycles, 0, __ATOMIC_RELAXED);
+		__atomic_store_n(&gwrites, 0, __ATOMIC_RELAXED);
+		__atomic_store_n(&gwrite_cycles, 0, __ATOMIC_RELAXED);
 
 		rte_hash_reset(tbl_rw_test_param.h);
 
@@ -575,8 +569,8 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 
 		if (reader_faster) {
 			unsigned long long int cycles_per_insertion =
-				rte_atomic64_read(&gread_cycles) /
-				rte_atomic64_read(&greads);
+				__atomic_load_n(&gread_cycles, __ATOMIC_RELAXED) /
+				__atomic_load_n(&greads, __ATOMIC_RELAXED);
 			perf_results->read_write_r[n] = cycles_per_insertion;
 			printf("Read-write cycles per lookup: %llu\n",
 							cycles_per_insertion);
@@ -584,8 +578,8 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 
 		else {
 			unsigned long long int cycles_per_insertion =
-				rte_atomic64_read(&gwrite_cycles) /
-				rte_atomic64_read(&gwrites);
+				__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED) /
+				__atomic_load_n(&gwrites, __ATOMIC_RELAXED);
 			perf_results->read_write_w[n] = cycles_per_insertion;
 			printf("Read-write cycles per writes: %llu\n",
 							cycles_per_insertion);
