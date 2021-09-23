@@ -231,7 +231,7 @@ noisy_fwd_end(portid_t pi)
 	rte_free(noisy_cfg[pi]);
 }
 
-static void
+static int
 noisy_fwd_begin(portid_t pi)
 {
 	struct noisy_config *n;
@@ -273,6 +273,8 @@ noisy_fwd_begin(portid_t pi)
 		rte_exit(EXIT_FAILURE,
 			 "--noisy-lkup-memory-size must be > 0\n");
 	}
+
+	return 0;
 }
 
 struct fwd_engine noisy_vnf_engine = {

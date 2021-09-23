@@ -266,7 +266,7 @@ struct fwd_lcore {
  *     Forwards packets unchanged on the same port.
  *     Check that sent IEEE1588 PTP packets are timestamped by the hardware.
  */
-typedef void (*port_fwd_begin_t)(portid_t pi);
+typedef int (*port_fwd_begin_t)(portid_t pi);
 typedef void (*port_fwd_end_t)(portid_t pi);
 typedef void (*packet_fwd_t)(struct fwd_stream *fs);
 
