@@ -51,10 +51,10 @@ rte_min_pos_4_u16(uint16_t *x)
  *    gcd(a, b) = gcd(b, a mod b)
  *
  */
-static inline uint32_t
-rte_get_gcd(uint32_t a, uint32_t b)
+static inline uint64_t
+rte_get_gcd64(uint64_t a, uint64_t b)
 {
-	uint32_t c;
+	uint64_t c;
 
 	if (a == 0)
 		return b;
@@ -74,6 +74,15 @@ rte_get_gcd(uint32_t a, uint32_t b)
 	}
 
 	return a;
+}
+
+/*
+ * 32-bit version of Greatest Common Divisor (GCD).
+ */
+static inline uint32_t
+rte_get_gcd(uint32_t a, uint32_t b)
+{
+	return rte_get_gcd64(a, b);
 }
 
 /*
