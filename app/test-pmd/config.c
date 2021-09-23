@@ -1249,6 +1249,15 @@ port_flow_tunnel_type(struct rte_flow_tunnel *tunnel)
 	case RTE_FLOW_ITEM_TYPE_VXLAN:
 		type = "vxlan";
 		break;
+	case RTE_FLOW_ITEM_TYPE_GRE:
+		type = "gre";
+		break;
+	case RTE_FLOW_ITEM_TYPE_NVGRE:
+		type = "nvgre";
+		break;
+	case RTE_FLOW_ITEM_TYPE_GENEVE:
+		type = "geneve";
+		break;
 	}
 
 	return type;
@@ -1309,6 +1318,12 @@ void port_flow_tunnel_create(portid_t port_id, const struct tunnel_ops *ops)
 
 	if (!strcmp(ops->type, "vxlan"))
 		type = RTE_FLOW_ITEM_TYPE_VXLAN;
+	else if (!strcmp(ops->type, "gre"))
+		type = RTE_FLOW_ITEM_TYPE_GRE;
+	else if (!strcmp(ops->type, "nvgre"))
+		type = RTE_FLOW_ITEM_TYPE_NVGRE;
+	else if (!strcmp(ops->type, "geneve"))
+		type = RTE_FLOW_ITEM_TYPE_GENEVE;
 	else {
 		fprintf(stderr, "cannot offload \"%s\" tunnel type\n",
 			ops->type);
