@@ -103,15 +103,15 @@ mlx5_vdpa_vhost_mem_regions_prepare(int vid, uint8_t *mode, uint64_t *mem_size,
 			size = mem->regions[i].guest_phys_addr -
 				(mem->regions[i - 1].guest_phys_addr +
 				 mem->regions[i - 1].size);
-			*gcd = rte_get_gcd(*gcd, size);
+			*gcd = rte_get_gcd64(*gcd, size);
 			klm_entries_num += KLM_NUM_MAX_ALIGN(size);
 		}
 		size = mem->regions[i].size;
-		*gcd = rte_get_gcd(*gcd, size);
+		*gcd = rte_get_gcd64(*gcd, size);
 		klm_entries_num += KLM_NUM_MAX_ALIGN(size);
 	}
 	if (*gcd > MLX5_MAX_KLM_BYTE_COUNT)
-		*gcd = rte_get_gcd(*gcd, MLX5_MAX_KLM_BYTE_COUNT);
+		*gcd = rte_get_gcd64(*gcd, MLX5_MAX_KLM_BYTE_COUNT);
 	if (!RTE_IS_POWER_OF_2(*gcd)) {
 		uint64_t candidate_gcd = rte_align64prevpow2(*gcd);
 
