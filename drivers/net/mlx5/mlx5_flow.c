@@ -7771,6 +7771,9 @@ mlx5_flow_tunnel_validate(struct rte_eth_dev *dev,
 		err_msg = "unsupported tunnel type";
 		goto out;
 	case RTE_FLOW_ITEM_TYPE_VXLAN:
+	case RTE_FLOW_ITEM_TYPE_GRE:
+	case RTE_FLOW_ITEM_TYPE_NVGRE:
+	case RTE_FLOW_ITEM_TYPE_GENEVE:
 		break;
 	}
 
