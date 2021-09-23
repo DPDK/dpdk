@@ -40,6 +40,13 @@
 
 #include "testpmd.h"
 
+struct tx_timestamp {
+	rte_be32_t signature;
+	rte_be16_t pkt_idx;
+	rte_be16_t queue_idx;
+	rte_be64_t ts;
+};
+
 /* use RFC863 Discard Protocol */
 uint16_t tx_udp_src_port = 9;
 uint16_t tx_udp_dst_port = 9;
@@ -257,12 +264,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 
 	if (unlikely(timestamp_enable)) {
 		uint64_t skew = RTE_PER_LCORE(timestamp_qskew);
-		struct {
-			rte_be32_t signature;
-			rte_be16_t pkt_idx;
-			rte_be16_t queue_idx;
-			rte_be64_t ts;
-		} timestamp_mark;
+		struct tx_timestamp timestamp_mark;
 
 		if (unlikely(timestamp_init_req !=
 				RTE_PER_LCORE(timestamp_idone))) {
@@ -438,13 +440,23 @@ pkt_burst_transmit(struct fwd_stream *fs)
 static int
 tx_only_begin(portid_t pi)
 {
-	uint16_t pkt_data_len;
+	uint16_t pkt_hdr_len, pkt_data_len;
 	int dynf;
 
-	pkt_data_len = (uint16_t) (tx_pkt_length - (
-					sizeof(struct rte_ether_hdr) +
-					sizeof(struct rte_ipv4_hdr) +
-					sizeof(struct rte_udp_hdr)));
+	pkt_hdr_len = (uint16_t)(sizeof(struct rte_ether_hdr) +
+				 sizeof(struct rte_ipv4_hdr) +
+				 sizeof(struct rte_udp_hdr));
+	pkt_data_len = tx_pkt_length - pkt_hdr_len;
+
+	if ((tx_pkt_split == TX_PKT_SPLIT_RND || txonly_multi_flow) &&
+	    tx_pkt_seg_lengths[0] < pkt_hdr_len) {
+		TESTPMD_LOG(ERR,
+			    "Random segment number or multiple flow is enabled, "
+			    "but tx_pkt_seg_lengths[0] %u < %u (needed)\n",
+			    tx_pkt_seg_lengths[0], pkt_hdr_len);
+		return -EINVAL;
+	}
+
 	setup_pkt_udp_ip_headers(&pkt_ip_hdr, &pkt_udp_hdr, pkt_data_len);
 
 	timestamp_enable = false;
@@ -463,8 +475,39 @@ tx_only_begin(portid_t pi)
 			   timestamp_mask &&
 			   timestamp_off >= 0 &&
 			   !rte_eth_read_clock(pi, &timestamp_initial[pi]);
-	if (timestamp_enable)
+
+	if (timestamp_enable) {
+		pkt_hdr_len += sizeof(struct tx_timestamp);
+
+		if (tx_pkt_split == TX_PKT_SPLIT_RND) {
+			if (tx_pkt_seg_lengths[0] < pkt_hdr_len) {
+				TESTPMD_LOG(ERR,
+					    "Time stamp and random segment number are enabled, "
+					    "but tx_pkt_seg_lengths[0] %u < %u (needed)\n",
+					    tx_pkt_seg_lengths[0], pkt_hdr_len);
+				return -EINVAL;
+			}
+		} else {
+			uint16_t total = 0;
+			uint8_t i;
+
+			for (i = 0; i < tx_pkt_nb_segs; i++) {
+				total += tx_pkt_seg_lengths[i];
+				if (total >= pkt_hdr_len)
+					break;
+			}
+
+			if (total < pkt_hdr_len) {
+				TESTPMD_LOG(ERR,
+					    "Not enough Tx segment space for time stamp info, "
+					    "total %u < %u (needed)\n",
+					    total, pkt_hdr_len);
+				return -EINVAL;
+			}
+		}
 		timestamp_init_req++;
+	}
+
 	/* Make sure all settings are visible on forwarding cores.*/
 	rte_wmb();
 	return 0;
