@@ -201,10 +201,11 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	get_end_cycles(fs, start_tsc);
 }
 
-static void
+static int
 flowgen_begin(portid_t pi)
 {
 	printf("  number of flows for port %u: %d\n", pi, nb_flows_flowgen);
+	return 0;
 }
 
 struct fwd_engine flow_gen_engine = {

@@ -198,10 +198,11 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	port_ieee1588_tx_timestamp_check(fs->rx_port);
 }
 
-static void
+static int
 port_ieee1588_fwd_begin(portid_t pi)
 {
 	rte_eth_timesync_enable(pi);
+	return 0;
 }
 
 static void

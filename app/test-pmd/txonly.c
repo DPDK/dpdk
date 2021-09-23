@@ -435,7 +435,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	get_end_cycles(fs, start_tsc);
 }
 
-static void
+static int
 tx_only_begin(portid_t pi)
 {
 	uint16_t pkt_data_len;
@@ -467,6 +467,7 @@ tx_only_begin(portid_t pi)
 		timestamp_init_req++;
 	/* Make sure all settings are visible on forwarding cores.*/
 	rte_wmb();
+	return 0;
 }
 
 struct fwd_engine tx_only_engine = {

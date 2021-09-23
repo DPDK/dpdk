@@ -2172,16 +2172,10 @@ run_one_txonly_burst_on_core(void *fwd_arg)
 static void
 launch_packet_forwarding(lcore_function_t *pkt_fwd_on_lcore)
 {
-	port_fwd_begin_t port_fwd_begin;
 	unsigned int i;
 	unsigned int lc_id;
 	int diag;
 
-	port_fwd_begin = cur_fwd_config.fwd_eng->port_fwd_begin;
-	if (port_fwd_begin != NULL) {
-		for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++)
-			(*port_fwd_begin)(fwd_ports_ids[i]);
-	}
 	for (i = 0; i < cur_fwd_config.nb_fwd_lcores; i++) {
 		lc_id = fwd_lcores_cpuids[i];
 		if ((interactive == 0) || (lc_id != rte_lcore_id())) {
@@ -2227,9 +2221,34 @@ start_packet_forwarding(int with_tx_first)
 		fprintf(stderr, "Packet forwarding already started\n");
 		return;
 	}
-	test_done = 0;
 
 	fwd_config_setup();
+
+	port_fwd_begin = cur_fwd_config.fwd_eng->port_fwd_begin;
+	if (port_fwd_begin != NULL) {
+		for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
+			if (port_fwd_begin(fwd_ports_ids[i])) {
+				fprintf(stderr,
+					"Packet forwarding is not ready\n");
+				return;
+			}
+		}
+	}
+
+	if (with_tx_first) {
+		port_fwd_begin = tx_only_engine.port_fwd_begin;
+		if (port_fwd_begin != NULL) {
+			for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
+				if (port_fwd_begin(fwd_ports_ids[i])) {
+					fprintf(stderr,
+						"Packet forwarding is not ready\n");
+					return;
+				}
+			}
+		}
+	}
+
+	test_done = 0;
 
 	if(!no_flush_rx)
 		flush_fwd_rx_queues();
@@ -2239,11 +2258,6 @@ start_packet_forwarding(int with_tx_first)
 
 	fwd_stats_reset();
 	if (with_tx_first) {
-		port_fwd_begin = tx_only_engine.port_fwd_begin;
-		if (port_fwd_begin != NULL) {
-			for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++)
-				(*port_fwd_begin)(fwd_ports_ids[i]);
-		}
 		while (with_tx_first--) {
 			launch_packet_forwarding(
 					run_one_txonly_burst_on_core);
