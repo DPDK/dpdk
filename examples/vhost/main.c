@@ -914,6 +914,9 @@ drain_vhost_table(void)
 	uint64_t cur_tsc;
 
 	TAILQ_FOREACH(vdev, &vhost_dev_list, global_vdev_entry) {
+		if (unlikely(vdev->remove == 1))
+			continue;
+
 		vhost_txq = vhost_txbuff[lcore_id * MAX_VHOST_DEVICE
 						+ vdev->vid];
 
