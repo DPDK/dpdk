@@ -741,27 +741,6 @@ otx2_eth_sec_session_get_size(void *device __rte_unused)
 	return sizeof(struct otx2_sec_session);
 }
 
-static int
-otx2_eth_sec_set_pkt_mdata(void *device __rte_unused,
-			    struct rte_security_session *session,
-			    struct rte_mbuf *m, void *params __rte_unused)
-{
-	/* Set security session as the pkt metadata */
-	*rte_security_dynfield(m) = (rte_security_dynfield_t)session;
-
-	return 0;
-}
-
-static int
-otx2_eth_sec_get_userdata(void *device __rte_unused, uint64_t md,
-			   void **userdata)
-{
-	/* Retrieve userdata  */
-	*userdata = (void *)md;
-
-	return 0;
-}
-
 static const struct rte_security_capability *
 otx2_eth_sec_capabilities_get(void *device __rte_unused)
 {
@@ -772,8 +751,6 @@ static struct rte_security_ops otx2_eth_sec_ops = {
 	.session_create		= otx2_eth_sec_session_create,
 	.session_destroy	= otx2_eth_sec_session_destroy,
 	.session_get_size	= otx2_eth_sec_session_get_size,
-	.set_pkt_metadata	= otx2_eth_sec_set_pkt_mdata,
-	.get_userdata		= otx2_eth_sec_get_userdata,
 	.capabilities_get	= otx2_eth_sec_capabilities_get
 };
 
@@ -799,6 +776,8 @@ otx2_eth_sec_ctx_create(struct rte_eth_dev *eth_dev)
 	ctx->device = eth_dev;
 	ctx->ops = &otx2_eth_sec_ops;
 	ctx->sess_cnt = 0;
+	ctx->flags =
+		(RTE_SEC_CTX_F_FAST_SET_MDATA | RTE_SEC_CTX_F_FAST_GET_UDATA);
 
 	eth_dev->security_ctx = ctx;
 

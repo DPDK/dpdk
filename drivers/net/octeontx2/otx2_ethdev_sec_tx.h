@@ -54,7 +54,7 @@ otx2_sec_event_tx(uint64_t base, struct rte_event *ev, struct rte_mbuf *m,
 		struct nix_iova_s nix_iova;
 	} *sd;
 
-	priv = get_sec_session_private_data((void *)(*rte_security_dynfield(m)));
+	priv = (struct otx2_sec_session *)(*rte_security_dynfield(m));
 	sess = &priv->ipsec.ip;
 	sa = &sess->out_sa;
 
