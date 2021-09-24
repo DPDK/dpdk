@@ -2605,6 +2605,12 @@ in balance mode with a transmission policy of layer 2+3::
         Active Slaves (3): [1 3 4]
         Primary: [3]
 
+show bonding lacp info
+~~~~~~~~~~~~~~~~~~~~~~
+
+Show information about the Link Bonding device in mode 4 (link-aggregation-802.3ad)::
+
+   testpmd> show bonding lacp info (port_id)
 
 Register Functions
 ------------------

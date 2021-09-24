@@ -613,6 +613,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show bonding config (port_id)\n"
 			"	Show the bonding config for port_id.\n\n"
 
+			"show bonding lacp info (port_id)\n"
+			"	Show the bonding lacp information for port_id.\n\n"
+
 			"set bonding mac_addr (port_id) (address)\n"
 			"	Set the MAC address of a bonded device.\n\n"
 
@@ -6086,6 +6089,186 @@ cmdline_parse_inst_t cmd_set_balance_xmit_policy = {
 				(void *)&cmd_setbonding_balance_xmit_policy_port,
 				(void *)&cmd_setbonding_balance_xmit_policy_policy,
 				NULL
+		}
+};
+
+/* *** SHOW IEEE802.3 BONDING INFORMATION *** */
+struct cmd_show_bonding_lacp_info_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t lacp;
+	cmdline_fixed_string_t info;
+	portid_t port_id;
+};
+
+static void port_param_show(struct port_params *params)
+{
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+
+	printf("\t\tsystem priority: %u\n", params->system_priority);
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, &params->system);
+	printf("\t\tsystem mac address: %s\n", buf);
+	printf("\t\tport key: %u\n", params->key);
+	printf("\t\tport priority: %u\n", params->port_priority);
+	printf("\t\tport number: %u\n", params->port_number);
+}
+
+static void lacp_slave_info_show(struct rte_eth_bond_8023ad_slave_info *info)
+{
+	char a_state[256] = { 0 };
+	char p_state[256] = { 0 };
+	int a_len = 0;
+	int p_len = 0;
+	uint32_t i;
+
+	static const char * const state[] = {
+		"ACTIVE",
+		"TIMEOUT",
+		"AGGREGATION",
+		"SYNCHRONIZATION",
+		"COLLECTING",
+		"DISTRIBUTING",
+		"DEFAULTED",
+		"EXPIRED"
+	};
+	static const char * const selection[] = {
+		"UNSELECTED",
+		"STANDBY",
+		"SELECTED"
+	};
+
+	for (i = 0; i < RTE_DIM(state); i++) {
+		if ((info->actor_state >> i) & 1)
+			a_len += snprintf(&a_state[a_len],
+						RTE_DIM(a_state) - a_len, "%s ",
+						state[i]);
+
+		if ((info->partner_state >> i) & 1)
+			p_len += snprintf(&p_state[p_len],
+						RTE_DIM(p_state) - p_len, "%s ",
+						state[i]);
+	}
+	printf("\tAggregator port id: %u\n", info->agg_port_id);
+	printf("\tselection: %s\n", selection[info->selected]);
+	printf("\tActor detail info:\n");
+	port_param_show(&info->actor);
+	printf("\t\tport state: %s\n", a_state);
+	printf("\tPartner detail info:\n");
+	port_param_show(&info->partner);
+	printf("\t\tport state: %s\n", p_state);
+	printf("\n");
+}
+
+static void lacp_conf_show(struct rte_eth_bond_8023ad_conf *conf)
+{
+	printf("\tfast period: %u ms\n", conf->fast_periodic_ms);
+	printf("\tslow period: %u ms\n", conf->slow_periodic_ms);
+	printf("\tshort timeout: %u ms\n", conf->short_timeout_ms);
+	printf("\tlong timeout: %u ms\n", conf->long_timeout_ms);
+	printf("\taggregate wait timeout: %u ms\n",
+			conf->aggregate_wait_timeout_ms);
+	printf("\ttx period: %u ms\n", conf->tx_period_ms);
+	printf("\trx marker period: %u ms\n", conf->rx_marker_period_ms);
+	printf("\tupdate timeout: %u ms\n", conf->update_timeout_ms);
+	switch (conf->agg_selection) {
+	case AGG_BANDWIDTH:
+		printf("\taggregation mode: bandwidth\n");
+		break;
+	case AGG_STABLE:
+		printf("\taggregation mode: stable\n");
+		break;
+	case AGG_COUNT:
+		printf("\taggregation mode: count\n");
+		break;
+	default:
+		printf("\taggregation mode: invalid\n");
+		break;
+	}
+
+	printf("\n");
+}
+
+static void cmd_show_bonding_lacp_info_parsed(void *parsed_result,
+		__rte_unused  struct cmdline *cl,
+		__rte_unused void *data)
+{
+	struct cmd_show_bonding_lacp_info_result *res = parsed_result;
+	struct rte_eth_bond_8023ad_slave_info slave_info;
+	struct rte_eth_bond_8023ad_conf port_conf;
+	portid_t slaves[RTE_MAX_ETHPORTS];
+	portid_t port_id = res->port_id;
+	int num_active_slaves;
+	int bonding_mode;
+	int i;
+	int ret;
+
+	bonding_mode = rte_eth_bond_mode_get(port_id);
+	if (bonding_mode != BONDING_MODE_8023AD) {
+		fprintf(stderr, "\tBonding mode is not mode 4\n");
+		return;
+	}
+
+	num_active_slaves = rte_eth_bond_active_slaves_get(port_id, slaves,
+			RTE_MAX_ETHPORTS);
+	if (num_active_slaves < 0) {
+		fprintf(stderr, "\tFailed to get active slave list for port = %u\n",
+				port_id);
+		return;
+	}
+	if (num_active_slaves == 0)
+		fprintf(stderr, "\tIEEE802.3 port %u has no active slave\n",
+			port_id);
+
+	printf("\tIEEE802.3 port: %u\n", port_id);
+	ret = rte_eth_bond_8023ad_conf_get(port_id, &port_conf);
+	if (ret) {
+		fprintf(stderr, "\tGet bonded device %u info failed\n",
+			port_id);
+		return;
+	}
+	lacp_conf_show(&port_conf);
+
+	for (i = 0; i < num_active_slaves; i++) {
+		ret = rte_eth_bond_8023ad_slave_info(port_id, slaves[i],
+				&slave_info);
+		if (ret) {
+			fprintf(stderr, "\tGet slave device %u info failed\n",
+				slaves[i]);
+			return;
+		}
+		printf("\tSlave Port: %u\n", slaves[i]);
+		lacp_slave_info_show(&slave_info);
+	}
+}
+
+cmdline_parse_token_string_t cmd_show_bonding_lacp_info_show =
+TOKEN_STRING_INITIALIZER(struct cmd_show_bonding_lacp_info_result,
+		show, "show");
+cmdline_parse_token_string_t cmd_show_bonding_lacp_info_bonding =
+TOKEN_STRING_INITIALIZER(struct cmd_show_bonding_lacp_info_result,
+		bonding, "bonding");
+cmdline_parse_token_string_t cmd_show_bonding_lacp_info_lacp =
+TOKEN_STRING_INITIALIZER(struct cmd_show_bonding_lacp_info_result,
+		bonding, "lacp");
+cmdline_parse_token_string_t cmd_show_bonding_lacp_info_info =
+TOKEN_STRING_INITIALIZER(struct cmd_show_bonding_lacp_info_result,
+		info, "info");
+cmdline_parse_token_num_t cmd_show_bonding_lacp_info_port_id =
+TOKEN_NUM_INITIALIZER(struct cmd_show_bonding_lacp_info_result,
+		port_id, RTE_UINT16);
+
+cmdline_parse_inst_t cmd_show_bonding_lacp_info = {
+		.f = cmd_show_bonding_lacp_info_parsed,
+		.help_str = "show bonding lacp info <port_id> : "
+			"Show bonding IEEE802.3 information for port_id",
+		.data = NULL,
+		.tokens = {
+			(void *)&cmd_show_bonding_lacp_info_show,
+			(void *)&cmd_show_bonding_lacp_info_bonding,
+			(void *)&cmd_show_bonding_lacp_info_lacp,
+			(void *)&cmd_show_bonding_lacp_info_info,
+			(void *)&cmd_show_bonding_lacp_info_port_id,
+			NULL
 		}
 };
 
@@ -17309,6 +17492,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 #ifdef RTE_NET_BOND
 	(cmdline_parse_inst_t *) &cmd_set_bonding_mode,
 	(cmdline_parse_inst_t *) &cmd_show_bonding_config,
+	(cmdline_parse_inst_t *) &cmd_show_bonding_lacp_info,
 	(cmdline_parse_inst_t *) &cmd_set_bonding_primary,
 	(cmdline_parse_inst_t *) &cmd_add_bonding_slave,
 	(cmdline_parse_inst_t *) &cmd_remove_bonding_slave,
