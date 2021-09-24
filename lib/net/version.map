@@ -8,12 +8,7 @@ DPDK_22 {
 	rte_net_crc_set_alg;
 	rte_net_get_ptype;
 	rte_net_make_rarp_packet;
+	rte_net_skip_ip6_ext;
 
 	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	rte_net_skip_ip6_ext;
 };

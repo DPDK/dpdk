@@ -34,9 +34,6 @@ struct rte_net_hdr_lens {
  * This function skips all IPv6 extensions, returning size of
  * complete header including options and final protocol value.
  *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * @param proto
  *   Protocol field of IPv6 header.
  * @param m
@@ -51,7 +48,6 @@ struct rte_net_hdr_lens {
  *   Protocol that follows IPv6 header.
  *   -1 if an error occurs during mbuf parsing.
  */
-__rte_experimental
 int
 rte_net_skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
 	int *frag);
