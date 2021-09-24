@@ -529,15 +529,26 @@ int
 ice_dcf_handle_vsi_update_event(struct ice_dcf_hw *hw)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(hw->eth_dev);
-	int err = 0;
+	int i = 0;
+	int err = -1;
 
 	rte_spinlock_lock(&hw->vc_cmd_send_lock);
 
 	rte_intr_disable(&pci_dev->intr_handle);
 	ice_dcf_disable_irq0(hw);
 
-	if (ice_dcf_get_vf_resource(hw) || ice_dcf_get_vf_vsi_map(hw) < 0)
-		err = -1;
+	for (;;) {
+		if (ice_dcf_get_vf_resource(hw) == 0 &&
+		    ice_dcf_get_vf_vsi_map(hw) >= 0) {
+			err = 0;
+			break;
+		}
+
+		if (++i >= ICE_DCF_ARQ_MAX_RETRIES)
+			break;
+
+		rte_delay_ms(ICE_DCF_ARQ_CHECK_TIME);
+	}
 
 	rte_intr_enable(&pci_dev->intr_handle);
 	ice_dcf_enable_irq0(hw);
