@@ -164,14 +164,6 @@ Deprecation Notices
   consistent with existing outer header checksum status flag naming, which
   should help in reducing confusion about its usage.
 
-* i40e: As there are both i40evf and iavf pmd, the functions of them are
-  duplicated. And now more and more advanced features are developed on iavf.
-  To keep consistent with kernel driver's name
-  (https://patchwork.ozlabs.org/patch/970154/), i40evf is no need to maintain.
-  Starting from 21.05, the default VF driver of i40e will be iavf, but i40evf
-  can still be used if users specify the devarg "driver=i40evf". I40evf will
-  be deleted in DPDK 21.11.
-
 * net: ``s_addr`` and ``d_addr`` fields of ``rte_ether_hdr`` structure
   will be renamed in DPDK 21.11 to avoid conflict with Windows Sockets headers.
 

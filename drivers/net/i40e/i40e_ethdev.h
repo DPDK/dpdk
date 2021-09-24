@@ -1230,55 +1230,6 @@ struct i40e_vsi_vlan_pvid_info {
 	} config;
 };
 
-struct i40e_vf_rx_queues {
-	uint64_t rx_dma_addr;
-	uint32_t rx_ring_len;
-	uint32_t buff_size;
-};
-
-struct i40e_vf_tx_queues {
-	uint64_t tx_dma_addr;
-	uint32_t tx_ring_len;
-};
-
-/*
- * Structure to store private data specific for VF instance.
- */
-struct i40e_vf {
-	struct i40e_adapter *adapter; /* The adapter this VF associate to */
-	struct rte_eth_dev_data *dev_data; /* Pointer to the device data */
-	uint16_t num_queue_pairs;
-	uint16_t max_pkt_len; /* Maximum packet length */
-	bool promisc_unicast_enabled;
-	bool promisc_multicast_enabled;
-
-	rte_spinlock_t cmd_send_lock;
-	uint32_t version_major; /* Major version number */
-	uint32_t version_minor; /* Minor version number */
-	uint16_t promisc_flags; /* Promiscuous setting */
-	uint32_t vlan[I40E_VFTA_SIZE]; /* VLAN bit map */
-
-	/* Multicast addrs */
-	struct rte_ether_addr mc_addrs[I40E_NUM_MACADDR_MAX];
-	uint16_t mc_addrs_num;   /* Multicast mac addresses number */
-
-	/* Event from pf */
-	bool dev_closed;
-	bool link_up;
-	enum virtchnl_link_speed link_speed;
-	bool vf_reset;
-	volatile uint32_t pend_cmd; /* pending command not finished yet */
-	int32_t cmd_retval; /* return value of the cmd response from PF */
-	u16 pend_msg; /* flags indicates events from pf not handled yet */
-	uint8_t *aq_resp; /* buffer to store the adminq response from PF */
-
-	/* VSI info */
-	struct virtchnl_vf_resource *vf_res; /* All VSIs */
-	struct virtchnl_vsi_resource *vsi_res; /* LAN VSI */
-	struct i40e_vsi vsi;
-	uint64_t flags;
-};
-
 #define I40E_MAX_PKT_TYPE  256
 #define I40E_FLOW_TYPE_MAX 64
 
@@ -1289,11 +1240,8 @@ struct i40e_adapter {
 	/* Common for both PF and VF */
 	struct i40e_hw hw;
 
-	/* Specific for PF or VF */
-	union {
-		struct i40e_pf pf;
-		struct i40e_vf vf;
-	};
+	/* Specific for PF */
+	struct i40e_pf pf;
 
 	/* For vector PMD */
 	bool rx_bulk_alloc_allowed;
@@ -1462,7 +1410,6 @@ int i40e_add_macvlan_filters(struct i40e_vsi *vsi,
 			     int total);
 bool is_device_supported(struct rte_eth_dev *dev, struct rte_pci_driver *drv);
 bool is_i40e_supported(struct rte_eth_dev *dev);
-bool is_i40evf_supported(struct rte_eth_dev *dev);
 void i40e_set_symmetric_hash_enable_per_port(struct i40e_hw *hw,
 					     uint8_t enable);
 int i40e_validate_input_set(enum i40e_filter_pctype pctype,
@@ -1508,26 +1455,15 @@ int i40e_vf_representor_uninit(struct rte_eth_dev *ethdev);
 #define I40E_DEV_PRIVATE_TO_ADAPTER(adapter) \
 	((struct i40e_adapter *)adapter)
 
-/* I40EVF_DEV_PRIVATE_TO */
-#define I40EVF_DEV_PRIVATE_TO_VF(adapter) \
-	(&((struct i40e_adapter *)adapter)->vf)
-
 static inline struct i40e_vsi *
 i40e_get_vsi_from_adapter(struct i40e_adapter *adapter)
 {
-	struct i40e_hw *hw;
-
         if (!adapter)
                 return NULL;
 
-	hw = I40E_DEV_PRIVATE_TO_HW(adapter);
-	if (hw->mac.type == I40E_MAC_VF || hw->mac.type == I40E_MAC_X722_VF) {
-		struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(adapter);
-		return &vf->vsi;
-	} else {
-		struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(adapter);
-		return pf->main_vsi;
-	}
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(adapter);
+
+	return pf->main_vsi;
 }
 #define I40E_DEV_PRIVATE_TO_MAIN_VSI(adapter) \
 	i40e_get_vsi_from_adapter((struct i40e_adapter *)adapter)
@@ -1549,10 +1485,6 @@ i40e_get_vsi_from_adapter(struct i40e_adapter *adapter)
 	(&(((struct i40e_pf *)pf)->adapter->hw))
 #define I40E_PF_TO_ADAPTER(pf) \
 	((struct i40e_adapter *)pf->adapter)
-
-/* I40E_VF_TO */
-#define I40E_VF_TO_HW(vf) \
-	(&(((struct i40e_vf *)vf)->adapter->hw))
 
 static inline void
 i40e_init_adminq_parameter(struct i40e_hw *hw)

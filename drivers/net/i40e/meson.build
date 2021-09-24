@@ -12,7 +12,6 @@ objs = [base_objs]
 sources = files(
         'i40e_ethdev.c',
         'i40e_rxtx.c',
-        'i40e_ethdev_vf.c',
         'i40e_pf.c',
         'i40e_fdir.c',
         'i40e_flow.c',
