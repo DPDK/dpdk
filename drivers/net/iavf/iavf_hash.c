@@ -342,23 +342,30 @@ struct virtchnl_proto_hdrs ipv4_ecpri_tmplt = {
 
 /* IPv4 outer */
 #define IAVF_RSS_TYPE_OUTER_IPV4	(ETH_RSS_ETH | ETH_RSS_IPV4 | \
-					 ETH_RSS_FRAG_IPV4)
+					 ETH_RSS_FRAG_IPV4 | \
+					 ETH_RSS_IPV4_CHKSUM)
 #define IAVF_RSS_TYPE_OUTER_IPV4_UDP	(IAVF_RSS_TYPE_OUTER_IPV4 | \
-					 ETH_RSS_NONFRAG_IPV4_UDP)
+					 ETH_RSS_NONFRAG_IPV4_UDP | \
+					 ETH_RSS_L4_CHKSUM)
 #define IAVF_RSS_TYPE_OUTER_IPV4_TCP	(IAVF_RSS_TYPE_OUTER_IPV4 | \
-					 ETH_RSS_NONFRAG_IPV4_TCP)
+					 ETH_RSS_NONFRAG_IPV4_TCP | \
+					 ETH_RSS_L4_CHKSUM)
 #define IAVF_RSS_TYPE_OUTER_IPV4_SCTP	(IAVF_RSS_TYPE_OUTER_IPV4 | \
-					 ETH_RSS_NONFRAG_IPV4_SCTP)
+					 ETH_RSS_NONFRAG_IPV4_SCTP | \
+					 ETH_RSS_L4_CHKSUM)
 /* IPv6 outer */
 #define IAVF_RSS_TYPE_OUTER_IPV6	(ETH_RSS_ETH | ETH_RSS_IPV6)
 #define IAVF_RSS_TYPE_OUTER_IPV6_FRAG	(IAVF_RSS_TYPE_OUTER_IPV6 | \
 					 ETH_RSS_FRAG_IPV6)
 #define IAVF_RSS_TYPE_OUTER_IPV6_UDP	(IAVF_RSS_TYPE_OUTER_IPV6 | \
-					 ETH_RSS_NONFRAG_IPV6_UDP)
+					 ETH_RSS_NONFRAG_IPV6_UDP | \
+					 ETH_RSS_L4_CHKSUM)
 #define IAVF_RSS_TYPE_OUTER_IPV6_TCP	(IAVF_RSS_TYPE_OUTER_IPV6 | \
-					 ETH_RSS_NONFRAG_IPV6_TCP)
+					 ETH_RSS_NONFRAG_IPV6_TCP | \
+					 ETH_RSS_L4_CHKSUM)
 #define IAVF_RSS_TYPE_OUTER_IPV6_SCTP	(IAVF_RSS_TYPE_OUTER_IPV6 | \
-					 ETH_RSS_NONFRAG_IPV6_SCTP)
+					 ETH_RSS_NONFRAG_IPV6_SCTP | \
+					 ETH_RSS_L4_CHKSUM)
 /* VLAN IPV4 */
 #define IAVF_RSS_TYPE_VLAN_IPV4		(IAVF_RSS_TYPE_OUTER_IPV4 | \
 					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
@@ -800,6 +807,10 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			} else {
 				hdr->field_selector = 0;
 			}
+
+			if (rss_type & ETH_RSS_IPV4_CHKSUM)
+				REFINE_PROTO_FLD(ADD, IPV4_CHKSUM);
+
 			break;
 		case VIRTCHNL_PROTO_HDR_IPV4_FRAG:
 			if (rss_type &
@@ -812,6 +823,10 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			} else {
 				hdr->field_selector = 0;
 			}
+
+			if (rss_type & ETH_RSS_IPV4_CHKSUM)
+				REFINE_PROTO_FLD(ADD, IPV4_CHKSUM);
+
 			break;
 		case VIRTCHNL_PROTO_HDR_IPV6:
 			if (rss_type &
@@ -863,6 +878,9 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			} else {
 				hdr->field_selector = 0;
 			}
+
+			if (rss_type & ETH_RSS_L4_CHKSUM)
+				REFINE_PROTO_FLD(ADD, UDP_CHKSUM);
 			break;
 		case VIRTCHNL_PROTO_HDR_TCP:
 			if (rss_type &
@@ -879,6 +897,9 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			} else {
 				hdr->field_selector = 0;
 			}
+
+			if (rss_type & ETH_RSS_L4_CHKSUM)
+				REFINE_PROTO_FLD(ADD, TCP_CHKSUM);
 			break;
 		case VIRTCHNL_PROTO_HDR_SCTP:
 			if (rss_type &
@@ -895,6 +916,9 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			} else {
 				hdr->field_selector = 0;
 			}
+
+			if (rss_type & ETH_RSS_L4_CHKSUM)
+				REFINE_PROTO_FLD(ADD, SCTP_CHKSUM);
 			break;
 		case VIRTCHNL_PROTO_HDR_S_VLAN:
 			if (!(rss_type & ETH_RSS_S_VLAN))
