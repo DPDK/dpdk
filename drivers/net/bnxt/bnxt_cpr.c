@@ -120,6 +120,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 	struct bnxt_error_recovery_info *info;
 	uint32_t event_data;
 	uint32_t data1, data2;
+	uint32_t status;
 
 	data1 = rte_le_to_cpu_32(async_cmp->event_data1);
 	data2 = rte_le_to_cpu_32(async_cmp->event_data2);
@@ -188,24 +189,26 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		if (!info)
 			return;
 
-		PMD_DRV_LOG(INFO, "Port %u: Error recovery async event received\n",
-			    port_id);
-
 		event_data = data1 & EVENT_DATA1_FLAGS_MASK;
 
-		if (event_data & EVENT_DATA1_FLAGS_MASTER_FUNC)
-			info->flags |= BNXT_FLAG_MASTER_FUNC;
-		else
-			info->flags &= ~BNXT_FLAG_MASTER_FUNC;
-
-		if (event_data & EVENT_DATA1_FLAGS_RECOVERY_ENABLED)
+		if (event_data & EVENT_DATA1_FLAGS_RECOVERY_ENABLED) {
 			info->flags |= BNXT_FLAG_RECOVERY_ENABLED;
-		else
+		} else {
 			info->flags &= ~BNXT_FLAG_RECOVERY_ENABLED;
+			PMD_DRV_LOG(INFO, "Driver recovery watchdog is disabled\n");
+			return;
+		}
 
-		PMD_DRV_LOG(INFO, "Port %u: recovery enabled(%d), master function(%d)\n",
-			    port_id, bnxt_is_recovery_enabled(bp),
-			    bnxt_is_master_func(bp));
+		if (event_data & EVENT_DATA1_FLAGS_MASTER_FUNC)
+			info->flags |= BNXT_FLAG_PRIMARY_FUNC;
+		else
+			info->flags &= ~BNXT_FLAG_PRIMARY_FUNC;
+
+		status = bnxt_read_fw_status_reg(bp, BNXT_FW_STATUS_REG);
+		PMD_DRV_LOG(INFO,
+			    "Port: %u Driver recovery watchdog, role: %s, FW status: 0x%x (%s)\n",
+			    port_id, bnxt_is_primary_func(bp) ? "primary" : "backup", status,
+			    (status == BNXT_FW_STATUS_HEALTHY) ? "healthy" : "unhealthy");
 
 		if (bp->flags & BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED)
 			return;
@@ -361,9 +364,9 @@ int bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp)
 	return evt;
 }
 
-bool bnxt_is_master_func(struct bnxt *bp)
+bool bnxt_is_primary_func(struct bnxt *bp)
 {
-	if (bp->recovery_info->flags & BNXT_FLAG_MASTER_FUNC)
+	if (bp->recovery_info->flags & BNXT_FLAG_PRIMARY_FUNC)
 		return true;
 
 	return false;

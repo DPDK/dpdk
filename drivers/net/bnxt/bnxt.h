@@ -501,9 +501,9 @@ struct bnxt_ctx_mem_buf_info {
 struct bnxt_error_recovery_info {
 	/* All units in milliseconds */
 	uint32_t	driver_polling_freq;
-	uint32_t	master_func_wait_period;
+	uint32_t	primary_func_wait_period;
 	uint32_t	normal_func_wait_period;
-	uint32_t	master_func_wait_period_after_reset;
+	uint32_t	primary_func_wait_period_after_reset;
 	uint32_t	max_bailout_time_after_reset;
 #define BNXT_FW_STATUS_REG		0
 #define BNXT_FW_HEARTBEAT_CNT_REG	1
@@ -520,7 +520,7 @@ struct bnxt_error_recovery_info {
 	uint8_t		delay_after_reset[BNXT_NUM_RESET_REG];
 #define BNXT_FLAG_ERROR_RECOVERY_HOST	BIT(0)
 #define BNXT_FLAG_ERROR_RECOVERY_CO_CPU	BIT(1)
-#define BNXT_FLAG_MASTER_FUNC		BIT(2)
+#define BNXT_FLAG_PRIMARY_FUNC		BIT(2)
 #define BNXT_FLAG_RECOVERY_ENABLED	BIT(3)
 	uint32_t	flags;
 

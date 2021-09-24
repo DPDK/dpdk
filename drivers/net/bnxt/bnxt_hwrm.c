@@ -5716,11 +5716,11 @@ int bnxt_hwrm_error_recovery_qcfg(struct bnxt *bp)
 	/* FW returned values are in units of 100msec */
 	info->driver_polling_freq =
 		rte_le_to_cpu_32(resp->driver_polling_freq) * 100;
-	info->master_func_wait_period =
+	info->primary_func_wait_period =
 		rte_le_to_cpu_32(resp->master_func_wait_period) * 100;
 	info->normal_func_wait_period =
 		rte_le_to_cpu_32(resp->normal_func_wait_period) * 100;
-	info->master_func_wait_period_after_reset =
+	info->primary_func_wait_period_after_reset =
 		rte_le_to_cpu_32(resp->master_func_wait_period_after_reset) * 100;
 	info->max_bailout_time_after_reset =
 		rte_le_to_cpu_32(resp->max_bailout_time_after_reset) * 100;

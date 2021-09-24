@@ -115,7 +115,7 @@ void bnxt_wait_for_device_shutdown(struct bnxt *bp);
 	HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_DATA1_FLAGS_RECOVERY_ENABLED
 
 bool bnxt_is_recovery_enabled(struct bnxt *bp);
-bool bnxt_is_master_func(struct bnxt *bp);
+bool bnxt_is_primary_func(struct bnxt *bp);
 
 void bnxt_stop_rxtx(struct bnxt *bp);
 

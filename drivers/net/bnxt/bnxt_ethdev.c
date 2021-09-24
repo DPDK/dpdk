@@ -4453,11 +4453,11 @@ static int bnxt_fw_reset_all(struct bnxt *bp)
 	int rc = 0;
 
 	if (info->flags & BNXT_FLAG_ERROR_RECOVERY_HOST) {
-		/* Reset through master function driver */
+		/* Reset through primary function driver */
 		for (i = 0; i < info->reg_array_cnt; i++)
 			bnxt_write_fw_reset_reg(bp, i);
 		/* Wait for time specified by FW after triggering reset */
-		rte_delay_ms(info->master_func_wait_period_after_reset);
+		rte_delay_ms(info->primary_func_wait_period_after_reset);
 	} else if (info->flags & BNXT_FLAG_ERROR_RECOVERY_CO_CPU) {
 		/* Reset with the help of Kong processor */
 		rc = bnxt_hwrm_fw_reset(bp);
@@ -4474,8 +4474,8 @@ static void bnxt_fw_reset_cb(void *arg)
 	struct bnxt_error_recovery_info *info = bp->recovery_info;
 	int rc = 0;
 
-	/* Only Master function can do FW reset */
-	if (bnxt_is_master_func(bp) &&
+	/* Only Primary function can do FW reset */
+	if (bnxt_is_primary_func(bp) &&
 	    bnxt_is_recovery_enabled(bp)) {
 		rc = bnxt_fw_reset_all(bp);
 		if (rc) {
@@ -4503,8 +4503,8 @@ static void bnxt_fw_reset_cb(void *arg)
  * advertised by FW in HWRM_ERROR_RECOVERY_QCFG.
  * When the driver detects heartbeat stop or change in reset_counter,
  * it has to trigger a reset to recover from the error condition.
- * A “master PF” is the function who will have the privilege to
- * initiate the chimp reset. The master PF will be elected by the
+ * A “primary function” is the function who will have the privilege to
+ * initiate the chimp reset. The primary function will be elected by the
  * firmware and will be notified through async message.
  */
 static void bnxt_check_fw_health(void *arg)
@@ -4542,8 +4542,8 @@ reset:
 
 	PMD_DRV_LOG(ERR, "Detected FW dead condition\n");
 
-	if (bnxt_is_master_func(bp))
-		wait_msec = info->master_func_wait_period;
+	if (bnxt_is_primary_func(bp))
+		wait_msec = info->primary_func_wait_period;
 	else
 		wait_msec = info->normal_func_wait_period;
 
