@@ -49,6 +49,7 @@ otx2_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 {
 	char mempool_name[RTE_MEMPOOL_NAMESIZE];
 	struct cpt_qp_meta_info *meta_info;
+	int lcore_cnt = rte_lcore_count();
 	int ret, max_mlen, mb_pool_sz;
 	struct rte_mempool *pool;
 	int asym_mlen = 0;
@@ -87,7 +88,13 @@ otx2_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 	snprintf(mempool_name, RTE_MEMPOOL_NAMESIZE, "otx2_cpt_mb_%u:%u",
 		 dev->data->dev_id, qp_id);
 
-	mb_pool_sz = RTE_MAX(nb_elements, (METABUF_POOL_CACHE_SIZE * rte_lcore_count()));
+	mb_pool_sz = nb_elements;
+
+	/* For poll mode, core that enqueues and core that dequeues can be
+	 * different. For event mode, all cores are allowed to use same crypto
+	 * queue pair.
+	 */
+	mb_pool_sz += (RTE_MAX(2, lcore_cnt) * METABUF_POOL_CACHE_SIZE);
 
 	pool = rte_mempool_create_empty(mempool_name, mb_pool_sz, max_mlen,
 					METABUF_POOL_CACHE_SIZE, 0,
@@ -187,7 +194,13 @@ otx2_cpt_qp_create(const struct rte_cryptodev *dev, uint16_t qp_id,
 		return NULL;
 	}
 
-	iq_len = OTX2_CPT_IQ_LEN;
+	/*
+	 * Pending queue updates make assumption that queue size is a power
+	 * of 2.
+	 */
+	RTE_BUILD_BUG_ON(!RTE_IS_POWER_OF_2(OTX2_CPT_DEFAULT_CMD_QLEN));
+
+	iq_len = OTX2_CPT_DEFAULT_CMD_QLEN;
 
 	/*
 	 * Queue size must be a multiple of 40 and effective queue size to
@@ -196,7 +209,7 @@ otx2_cpt_qp_create(const struct rte_cryptodev *dev, uint16_t qp_id,
 	size_div40 = (iq_len + 40 - 1) / 40 + 1;
 
 	/* For pending queue */
-	len = iq_len * sizeof(uintptr_t);
+	len = iq_len * RTE_ALIGN(sizeof(qp->pend_q.rid_queue[0]), 8);
 
 	/* Space for instruction group memory */
 	len += size_div40 * 16;
@@ -205,7 +218,7 @@ otx2_cpt_qp_create(const struct rte_cryptodev *dev, uint16_t qp_id,
 	len = RTE_ALIGN(len, pg_sz);
 
 	/* For instruction queues */
-	len += OTX2_CPT_IQ_LEN * sizeof(union cpt_inst_s);
+	len += OTX2_CPT_DEFAULT_CMD_QLEN * sizeof(union cpt_inst_s);
 
 	/* Wastage after instruction queues */
 	len = RTE_ALIGN(len, pg_sz);
@@ -233,12 +246,11 @@ otx2_cpt_qp_create(const struct rte_cryptodev *dev, uint16_t qp_id,
 	}
 
 	/* Initialize pending queue */
-	qp->pend_q.req_queue = (uintptr_t *)va;
-	qp->pend_q.enq_tail = 0;
-	qp->pend_q.deq_head = 0;
-	qp->pend_q.pending_count = 0;
+	qp->pend_q.rid_queue = (void **)va;
+	qp->pend_q.tail = 0;
+	qp->pend_q.head = 0;
 
-	used_len = iq_len * sizeof(uintptr_t);
+	used_len = iq_len * RTE_ALIGN(sizeof(qp->pend_q.rid_queue[0]), 8);
 	used_len += size_div40 * 16;
 	used_len = RTE_ALIGN(used_len, pg_sz);
 	iova += used_len;
@@ -514,7 +526,8 @@ otx2_cpt_enqueue_req(const struct otx2_cpt_qp *qp,
 		     struct pending_queue *pend_q,
 		     struct cpt_request_info *req,
 		     struct rte_crypto_op *op,
-		     uint64_t cpt_inst_w7)
+		     uint64_t cpt_inst_w7,
+		     unsigned int burst_index)
 {
 	void *lmtline = qp->lmtline;
 	union cpt_inst_s inst;
@@ -522,9 +535,6 @@ otx2_cpt_enqueue_req(const struct otx2_cpt_qp *qp,
 
 	if (qp->ca_enable)
 		return otx2_ca_enqueue_req(qp, req, lmtline, op, cpt_inst_w7);
-
-	if (unlikely(pend_q->pending_count >= OTX2_CPT_DEFAULT_CMD_QLEN))
-		return -EAGAIN;
 
 	inst.u[0] = 0;
 	inst.s9x.res_addr = req->comp_baddr;
@@ -553,11 +563,7 @@ otx2_cpt_enqueue_req(const struct otx2_cpt_qp *qp,
 		lmt_status = otx2_lmt_submit(qp->lf_nq_reg);
 	} while (lmt_status == 0);
 
-	pend_q->req_queue[pend_q->enq_tail] = (uintptr_t)req;
-
-	/* We will use soft queue length here to limit requests */
-	MOD_INC(pend_q->enq_tail, OTX2_CPT_DEFAULT_CMD_QLEN);
-	pend_q->pending_count += 1;
+	pending_queue_push(pend_q, req, burst_index, OTX2_CPT_DEFAULT_CMD_QLEN);
 
 	return 0;
 }
@@ -565,7 +571,8 @@ otx2_cpt_enqueue_req(const struct otx2_cpt_qp *qp,
 static __rte_always_inline int32_t __rte_hot
 otx2_cpt_enqueue_asym(struct otx2_cpt_qp *qp,
 		      struct rte_crypto_op *op,
-		      struct pending_queue *pend_q)
+		      struct pending_queue *pend_q,
+		      unsigned int burst_index)
 {
 	struct cpt_qp_meta_info *minfo = &qp->meta_info;
 	struct rte_crypto_asym_op *asym_op = op->asym;
@@ -626,8 +633,7 @@ otx2_cpt_enqueue_asym(struct otx2_cpt_qp *qp,
 	}
 
 	ret = otx2_cpt_enqueue_req(qp, pend_q, params.req, op,
-				   sess->cpt_inst_w7);
-
+				   sess->cpt_inst_w7, burst_index);
 	if (unlikely(ret)) {
 		CPT_LOG_DP_ERR("Could not enqueue crypto req");
 		goto req_fail;
@@ -643,7 +649,7 @@ req_fail:
 
 static __rte_always_inline int __rte_hot
 otx2_cpt_enqueue_sym(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
-		     struct pending_queue *pend_q)
+		     struct pending_queue *pend_q, unsigned int burst_index)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
 	struct cpt_request_info *req;
@@ -670,8 +676,8 @@ otx2_cpt_enqueue_sym(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 		return ret;
 	}
 
-	ret = otx2_cpt_enqueue_req(qp, pend_q, req, op, sess->cpt_inst_w7);
-
+	ret = otx2_cpt_enqueue_req(qp, pend_q, req, op, sess->cpt_inst_w7,
+				    burst_index);
 	if (unlikely(ret)) {
 		/* Free buffer allocated by fill params routines */
 		free_op_meta(mdata, qp->meta_info.pool);
@@ -682,7 +688,8 @@ otx2_cpt_enqueue_sym(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 
 static __rte_always_inline int __rte_hot
 otx2_cpt_enqueue_sec(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
-		     struct pending_queue *pend_q)
+		     struct pending_queue *pend_q,
+		     const unsigned int burst_index)
 {
 	uint32_t winsz, esn_low = 0, esn_hi = 0, seql = 0, seqh = 0;
 	struct rte_mbuf *m_src = op->sym->m_src;
@@ -739,7 +746,8 @@ otx2_cpt_enqueue_sec(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 		return ret;
 	}
 
-	ret = otx2_cpt_enqueue_req(qp, pend_q, req, op, sess->cpt_inst_w7);
+	ret = otx2_cpt_enqueue_req(qp, pend_q, req, op, sess->cpt_inst_w7,
+				    burst_index);
 
 	if (winsz && esn) {
 		seq_in_sa = ((uint64_t)esn_hi << 32) | esn_low;
@@ -754,7 +762,8 @@ otx2_cpt_enqueue_sec(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 
 static __rte_always_inline int __rte_hot
 otx2_cpt_enqueue_sym_sessless(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
-			      struct pending_queue *pend_q)
+			      struct pending_queue *pend_q,
+			      unsigned int burst_index)
 {
 	const int driver_id = otx2_cryptodev_driver_id;
 	struct rte_crypto_sym_op *sym_op = op->sym;
@@ -773,7 +782,7 @@ otx2_cpt_enqueue_sym_sessless(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 
 	sym_op->session = sess;
 
-	ret = otx2_cpt_enqueue_sym(qp, op, pend_q);
+	ret = otx2_cpt_enqueue_sym(qp, op, pend_q, burst_index);
 
 	if (unlikely(ret))
 		goto priv_put;
@@ -798,23 +807,26 @@ otx2_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 
 	pend_q = &qp->pend_q;
 
-	nb_allowed = OTX2_CPT_DEFAULT_CMD_QLEN - pend_q->pending_count;
-	if (nb_ops > nb_allowed)
-		nb_ops = nb_allowed;
+	nb_allowed = pending_queue_free_slots(pend_q,
+				OTX2_CPT_DEFAULT_CMD_QLEN, 0);
+	nb_ops = RTE_MIN(nb_ops, nb_allowed);
 
 	for (count = 0; count < nb_ops; count++) {
 		op = ops[count];
 		if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 			if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
-				ret = otx2_cpt_enqueue_sec(qp, op, pend_q);
+				ret = otx2_cpt_enqueue_sec(qp, op, pend_q,
+							   count);
 			else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-				ret = otx2_cpt_enqueue_sym(qp, op, pend_q);
+				ret = otx2_cpt_enqueue_sym(qp, op, pend_q,
+							   count);
 			else
 				ret = otx2_cpt_enqueue_sym_sessless(qp, op,
-								    pend_q);
+						pend_q, count);
 		} else if (op->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
 			if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-				ret = otx2_cpt_enqueue_asym(qp, op, pend_q);
+				ret = otx2_cpt_enqueue_asym(qp, op, pend_q,
+								count);
 			else
 				break;
 		} else
@@ -823,6 +835,9 @@ otx2_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 		if (unlikely(ret))
 			break;
 	}
+
+	if (unlikely(!qp->ca_enable))
+		pending_queue_commit(pend_q, count, OTX2_CPT_DEFAULT_CMD_QLEN);
 
 	return count;
 }
@@ -1059,14 +1074,16 @@ otx2_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 
 	pend_q = &qp->pend_q;
 
-	nb_pending = pend_q->pending_count;
+	nb_pending = pending_queue_level(pend_q, OTX2_CPT_DEFAULT_CMD_QLEN);
 
-	if (nb_ops > nb_pending)
-		nb_ops = nb_pending;
+	/* Ensure pcount isn't read before data lands */
+	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+
+	nb_ops = RTE_MIN(nb_ops, nb_pending);
 
 	for (i = 0; i < nb_ops; i++) {
-		req = (struct cpt_request_info *)
-				pend_q->req_queue[pend_q->deq_head];
+		pending_queue_peek(pend_q, (void **)&req,
+			OTX2_CPT_DEFAULT_CMD_QLEN, 0);
 
 		cc[i] = otx2_cpt_compcode_get(req);
 
@@ -1075,8 +1092,7 @@ otx2_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 
 		ops[i] = req->op;
 
-		MOD_INC(pend_q->deq_head, OTX2_CPT_DEFAULT_CMD_QLEN);
-		pend_q->pending_count -= 1;
+		pending_queue_pop(pend_q, OTX2_CPT_DEFAULT_CMD_QLEN);
 	}
 
 	nb_completed = i;

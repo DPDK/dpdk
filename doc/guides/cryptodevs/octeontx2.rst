@@ -186,9 +186,3 @@ Features supported
 * AES-128/192/256-GCM
 * AES-128/192/256-CBC-SHA1-HMAC
 * AES-128/192/256-CBC-SHA256-128-HMAC
-
-Limitations
------------
-
-Multiple lcores may not operate on the same crypto queue pair. The lcore that
-enqueues to a queue pair is the one that must dequeue from it.

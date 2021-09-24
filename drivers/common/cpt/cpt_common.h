@@ -5,6 +5,7 @@
 #ifndef _CPT_COMMON_H_
 #define _CPT_COMMON_H_
 
+#include <rte_prefetch.h>
 #include <rte_mempool.h>
 
 /*
@@ -32,14 +33,12 @@ struct cpt_qp_meta_info {
  *
  */
 struct pending_queue {
-	/** Pending requests count */
-	uint64_t pending_count;
 	/** Array of pending requests */
-	uintptr_t *req_queue;
+	void **rid_queue;
 	/** Tail of queue to be used for enqueue */
-	uint16_t enq_tail;
+	unsigned int tail;
 	/** Head of queue to be used for dequeue */
-	uint16_t deq_head;
+	unsigned int head;
 };
 
 struct cpt_request_info {
@@ -60,5 +59,69 @@ struct cpt_request_info {
 	uint64_t time_out;
 	uint8_t extra_time;
 } __rte_aligned(8);
+
+static __rte_always_inline void
+pending_queue_push(struct pending_queue *q, void *rid, unsigned int off,
+			const int qsize)
+{
+	/* NOTE: no free space check, but it is expected that one is made */
+	q->rid_queue[(q->tail + off) & (qsize - 1)] = rid;
+}
+
+static __rte_always_inline void
+pending_queue_commit(struct pending_queue *q, unsigned int cnt,
+			const unsigned int qsize)
+{
+	/* Ensure ordering between setting the entry and updating the tail */
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+
+	q->tail = (q->tail + cnt) & (qsize - 1);
+}
+
+static __rte_always_inline void
+pending_queue_pop(struct pending_queue *q, const int qsize)
+{
+	/* NOTE: no empty check, but it is expected that one is made prior */
+
+	q->head = (q->head + 1) & (qsize - 1);
+}
+
+static __rte_always_inline void
+pending_queue_peek(struct pending_queue *q, void **rid, const int qsize,
+			int prefetch_next)
+{
+	void *next_rid;
+	/* NOTE: no empty check, but it is expected that one is made */
+
+	*rid = q->rid_queue[q->head];
+
+	if (likely(prefetch_next)) {
+		next_rid = q->rid_queue[(q->head + 1) & (qsize - 1)];
+		rte_prefetch_non_temporal((void *)next_rid);
+	}
+}
+
+static __rte_always_inline unsigned int
+pending_queue_level(struct pending_queue *q, const int qsize)
+{
+	return (q->tail - q->head) & (qsize - 1);
+}
+
+static __rte_always_inline unsigned int
+pending_queue_free_slots(struct pending_queue *q, const int qsize,
+		const int reserved_slots)
+{
+	int free_slots;
+
+	free_slots = qsize - pending_queue_level(q, qsize);
+
+	/* Use only use qsize - 1 */
+	free_slots -= 1 + reserved_slots;
+
+	if (unlikely(free_slots < 0))
+		return 0;
+
+	return free_slots;
+}
 
 #endif /* _CPT_COMMON_H_ */

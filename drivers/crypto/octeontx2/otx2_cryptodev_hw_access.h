@@ -17,10 +17,10 @@
 #include "otx2_dev.h"
 #include "otx2_cryptodev_qp.h"
 
-/* CPT instruction queue length */
-#define OTX2_CPT_IQ_LEN			8200
-
-#define OTX2_CPT_DEFAULT_CMD_QLEN	OTX2_CPT_IQ_LEN
+/* CPT instruction queue length.
+ * Use queue size as power of 2 for aiding in pending queue calculations.
+ */
+#define OTX2_CPT_DEFAULT_CMD_QLEN	8192
 
 /* Mask which selects all engine groups */
 #define OTX2_CPT_ENG_GRPS_MASK		0xFF

@@ -527,10 +527,10 @@ otx_cpt_get_resource(const struct rte_cryptodev *dev, uint8_t group,
 	memset(&cptvf->pqueue, 0, sizeof(cptvf->pqueue));
 
 	/* Chunks are of fixed size buffers */
+
+	qlen = DEFAULT_CMD_QLEN;
 	chunks = DEFAULT_CMD_QCHUNKS;
 	chunk_len = DEFAULT_CMD_QCHUNK_SIZE;
-
-	qlen = chunks * chunk_len;
 	/* Chunk size includes 8 bytes of next chunk ptr */
 	chunk_size = chunk_len * CPT_INST_SIZE + CPT_NEXT_CHUNK_PTR_SIZE;
 
@@ -538,7 +538,7 @@ otx_cpt_get_resource(const struct rte_cryptodev *dev, uint8_t group,
 	len = chunks * RTE_ALIGN(sizeof(struct command_chunk), 8);
 
 	/* For pending queue */
-	len += qlen * sizeof(uintptr_t);
+	len += qlen * RTE_ALIGN(sizeof(cptvf->pqueue.rid_queue[0]), 8);
 
 	/* So that instruction queues start as pg size aligned */
 	len = RTE_ALIGN(len, pg_sz);
@@ -573,14 +573,11 @@ otx_cpt_get_resource(const struct rte_cryptodev *dev, uint8_t group,
 	}
 
 	/* Pending queue setup */
-	cptvf->pqueue.req_queue = (uintptr_t *)mem;
-	cptvf->pqueue.enq_tail = 0;
-	cptvf->pqueue.deq_head = 0;
-	cptvf->pqueue.pending_count = 0;
+	cptvf->pqueue.rid_queue = (void **)mem;
 
-	mem +=  qlen * sizeof(uintptr_t);
-	len -=  qlen * sizeof(uintptr_t);
-	dma_addr += qlen * sizeof(uintptr_t);
+	mem +=  qlen * RTE_ALIGN(sizeof(cptvf->pqueue.rid_queue[0]), 8);
+	len -=  qlen * RTE_ALIGN(sizeof(cptvf->pqueue.rid_queue[0]), 8);
+	dma_addr += qlen * RTE_ALIGN(sizeof(cptvf->pqueue.rid_queue[0]), 8);
 
 	/* Alignment wastage */
 	used_len = alloc_len - len;

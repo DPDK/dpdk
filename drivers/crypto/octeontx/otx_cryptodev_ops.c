@@ -431,15 +431,9 @@ otx_cpt_asym_session_clear(struct rte_cryptodev *dev,
 
 static __rte_always_inline void * __rte_hot
 otx_cpt_request_enqueue(struct cpt_instance *instance,
-			struct pending_queue *pqueue,
 			void *req, uint64_t cpt_inst_w7)
 {
 	struct cpt_request_info *user_req = (struct cpt_request_info *)req;
-
-	if (unlikely(pqueue->pending_count >= DEFAULT_CMD_QLEN)) {
-		rte_errno = EAGAIN;
-		return NULL;
-	}
 
 	fill_cpt_inst(instance, req, cpt_inst_w7);
 
@@ -460,8 +454,7 @@ otx_cpt_request_enqueue(struct cpt_instance *instance,
 
 static __rte_always_inline void * __rte_hot
 otx_cpt_enq_single_asym(struct cpt_instance *instance,
-			struct rte_crypto_op *op,
-			struct pending_queue *pqueue)
+			struct rte_crypto_op *op)
 {
 	struct cpt_qp_meta_info *minfo = &instance->meta_info;
 	struct rte_crypto_asym_op *asym_op = op->asym;
@@ -525,8 +518,7 @@ otx_cpt_enq_single_asym(struct cpt_instance *instance,
 		goto req_fail;
 	}
 
-	req = otx_cpt_request_enqueue(instance, pqueue, params.req,
-				      sess->cpt_inst_w7);
+	req = otx_cpt_request_enqueue(instance, params.req, sess->cpt_inst_w7);
 	if (unlikely(req == NULL)) {
 		CPT_LOG_DP_ERR("Could not enqueue crypto req");
 		goto req_fail;
@@ -542,8 +534,7 @@ req_fail:
 
 static __rte_always_inline void * __rte_hot
 otx_cpt_enq_single_sym(struct cpt_instance *instance,
-		       struct rte_crypto_op *op,
-		       struct pending_queue *pqueue)
+		       struct rte_crypto_op *op)
 {
 	struct cpt_sess_misc *sess;
 	struct rte_crypto_sym_op *sym_op = op->sym;
@@ -573,8 +564,7 @@ otx_cpt_enq_single_sym(struct cpt_instance *instance,
 	}
 
 	/* Enqueue prepared instruction to h/w */
-	req = otx_cpt_request_enqueue(instance, pqueue, prep_req,
-				      sess->cpt_inst_w7);
+	req = otx_cpt_request_enqueue(instance, prep_req, sess->cpt_inst_w7);
 	if (unlikely(req == NULL))
 		/* Buffer allocated for request preparation need to be freed */
 		free_op_meta(mdata, instance->meta_info.pool);
@@ -584,8 +574,7 @@ otx_cpt_enq_single_sym(struct cpt_instance *instance,
 
 static __rte_always_inline void * __rte_hot
 otx_cpt_enq_single_sym_sessless(struct cpt_instance *instance,
-				struct rte_crypto_op *op,
-				struct pending_queue *pend_q)
+				struct rte_crypto_op *op)
 {
 	const int driver_id = otx_cryptodev_driver_id;
 	struct rte_crypto_sym_op *sym_op = op->sym;
@@ -607,8 +596,8 @@ otx_cpt_enq_single_sym_sessless(struct cpt_instance *instance,
 
 	sym_op->session = sess;
 
-	req = otx_cpt_enq_single_sym(instance, op, pend_q);
-
+	/* Enqueue op with the tmp session set */
+	req = otx_cpt_enq_single_sym(instance, op);
 	if (unlikely(req == NULL))
 		goto priv_put;
 
@@ -627,22 +616,20 @@ sess_put:
 static __rte_always_inline void *__rte_hot
 otx_cpt_enq_single(struct cpt_instance *inst,
 		   struct rte_crypto_op *op,
-		   struct pending_queue *pqueue,
 		   const uint8_t op_type)
 {
 	/* Check for the type */
 
 	if (op_type == OP_TYPE_SYM) {
 		if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-			return otx_cpt_enq_single_sym(inst, op, pqueue);
+			return otx_cpt_enq_single_sym(inst, op);
 		else
-			return otx_cpt_enq_single_sym_sessless(inst, op,
-							       pqueue);
+			return otx_cpt_enq_single_sym_sessless(inst, op);
 	}
 
 	if (op_type == OP_TYPE_ASYM) {
 		if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-			return otx_cpt_enq_single_asym(inst, op, pqueue);
+			return otx_cpt_enq_single_asym(inst, op);
 	}
 
 	/* Should not reach here */
@@ -655,30 +642,33 @@ otx_cpt_pkt_enqueue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops,
 		    const uint8_t op_type)
 {
 	struct cpt_instance *instance = (struct cpt_instance *)qptr;
-	uint16_t count;
+	uint16_t count, free_slots;
 	void *req;
 	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
 	struct pending_queue *pqueue = &cptvf->pqueue;
 
-	count = DEFAULT_CMD_QLEN - pqueue->pending_count;
-	if (nb_ops > count)
-		nb_ops = count;
+	free_slots = pending_queue_free_slots(pqueue, DEFAULT_CMD_QLEN,
+				DEFAULT_CMD_QRSVD_SLOTS);
+	if (nb_ops > free_slots)
+		nb_ops = free_slots;
 
 	count = 0;
 	while (likely(count < nb_ops)) {
 
 		/* Enqueue single op */
-		req = otx_cpt_enq_single(instance, ops[count], pqueue, op_type);
+		req = otx_cpt_enq_single(instance, ops[count], op_type);
 
 		if (unlikely(req == NULL))
 			break;
 
-		pqueue->req_queue[pqueue->enq_tail] = (uintptr_t)req;
-		MOD_INC(pqueue->enq_tail, DEFAULT_CMD_QLEN);
-		pqueue->pending_count += 1;
+		pending_queue_push(pqueue, req, count, DEFAULT_CMD_QLEN);
 		count++;
 	}
-	otx_cpt_ring_dbell(instance, count);
+
+	if (likely(count)) {
+		pending_queue_commit(pqueue, count, DEFAULT_CMD_QLEN);
+		otx_cpt_ring_dbell(instance, count);
+	}
 	return count;
 }
 
@@ -756,8 +746,7 @@ otx_crypto_adapter_enqueue(void *port, struct rte_crypto_op *op)
 
 	op_type = op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC ? OP_TYPE_SYM :
 							     OP_TYPE_ASYM;
-	req = otx_cpt_enq_single(instance, op,
-				 &((struct cpt_vf *)instance)->pqueue, op_type);
+	req = otx_cpt_enq_single(instance, op, op_type);
 	if (unlikely(req == NULL))
 		return 0;
 
@@ -971,17 +960,16 @@ otx_cpt_pkt_dequeue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops,
 	int nb_completed;
 	struct pending_queue *pqueue = &cptvf->pqueue;
 
-	pcount = pqueue->pending_count;
+	pcount = pending_queue_level(pqueue, DEFAULT_CMD_QLEN);
+
+	/* Ensure pcount isn't read before data lands */
+	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+
 	count = (nb_ops > pcount) ? pcount : nb_ops;
 
 	for (i = 0; i < count; i++) {
-		user_req = (struct cpt_request_info *)
-				pqueue->req_queue[pqueue->deq_head];
-
-		if (likely((i+1) < count)) {
-			rte_prefetch_non_temporal(
-				(void *)pqueue->req_queue[i+1]);
-		}
+		pending_queue_peek(pqueue, (void **) &user_req,
+			DEFAULT_CMD_QLEN, i + 1 < count);
 
 		ret = check_nb_command_id(user_req, instance);
 
@@ -997,8 +985,7 @@ otx_cpt_pkt_dequeue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops,
 		CPT_LOG_DP_DEBUG("Request %p Op %p completed with code %d",
 				 user_req, user_req->op, ret);
 
-		MOD_INC(pqueue->deq_head, DEFAULT_CMD_QLEN);
-		pqueue->pending_count -= 1;
+		pending_queue_pop(pqueue, DEFAULT_CMD_QLEN);
 	}
 
 	nb_completed = i;
