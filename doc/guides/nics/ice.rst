@@ -227,6 +227,18 @@ Runtime Config Options
 
     -a af:00.0,pps_out='[pin:0]'
 
+- ``Low Rx latency`` (default ``0``)
+
+  vRAN workloads require low latency DPDK interface for the front haul
+  interface connection to Radio. By specifying ``1`` for parameter
+  ``rx_low_latency``, each completed Rx descriptor can be written immediately
+  to host memory and the Rx interrupt latency can be reduced to 2us::
+
+    -a 0000:88:00.0,rx_low_latency=1
+
+  As a trade-off, this configuration may cause the packet processing performance
+  degradation due to the PCI bandwidth limitation.
+
 Driver compilation and testing
 ------------------------------
 

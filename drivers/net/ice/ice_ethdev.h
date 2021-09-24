@@ -476,6 +476,7 @@ struct ice_pf {
  * Cache devargs parse result.
  */
 struct ice_devargs {
+	int rx_low_latency;
 	int safe_mode_support;
 	uint8_t proto_xtr_dflt;
 	int pipe_mode_support;

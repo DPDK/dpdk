@@ -30,6 +30,7 @@
 #define ICE_PROTO_XTR_ARG         "proto_xtr"
 #define ICE_HW_DEBUG_MASK_ARG     "hw_debug_mask"
 #define ICE_ONE_PPS_OUT_ARG       "pps_out"
+#define ICE_RX_LOW_LATENCY_ARG    "rx_low_latency"
 
 static const char * const ice_valid_args[] = {
 	ICE_SAFE_MODE_SUPPORT_ARG,
@@ -37,6 +38,7 @@ static const char * const ice_valid_args[] = {
 	ICE_PROTO_XTR_ARG,
 	ICE_HW_DEBUG_MASK_ARG,
 	ICE_ONE_PPS_OUT_ARG,
+	ICE_RX_LOW_LATENCY_ARG,
 	NULL
 };
 
@@ -1956,6 +1958,9 @@ static int ice_parse_devargs(struct rte_eth_dev *dev)
 	if (ret)
 		goto bail;
 
+	ret = rte_kvargs_process(kvlist, ICE_RX_LOW_LATENCY_ARG,
+				 &parse_bool, &ad->devargs.rx_low_latency);
+
 bail:
 	rte_kvargs_free(kvlist);
 	return ret;
@@ -3272,8 +3277,9 @@ __vsi_queues_bind_intr(struct ice_vsi *vsi, uint16_t msix_vect,
 {
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	uint32_t val, val_tx;
-	int i;
+	int rx_low_latency, i;
 
+	rx_low_latency = vsi->adapter->devargs.rx_low_latency;
 	for (i = 0; i < nb_queue; i++) {
 		/*do actual bind*/
 		val = (msix_vect & QINT_RQCTL_MSIX_INDX_M) |
@@ -3283,8 +3289,21 @@ __vsi_queues_bind_intr(struct ice_vsi *vsi, uint16_t msix_vect,
 
 		PMD_DRV_LOG(INFO, "queue %d is binding to vect %d",
 			    base_queue + i, msix_vect);
+
 		/* set ITR0 value */
-		ICE_WRITE_REG(hw, GLINT_ITR(0, msix_vect), 0x2);
+		if (rx_low_latency) {
+			/**
+			 * Empirical configuration for optimal real time
+			 * latency reduced interrupt throttling to 2us
+			 */
+			ICE_WRITE_REG(hw, GLINT_ITR(0, msix_vect), 0x1);
+			ICE_WRITE_REG(hw, QRX_ITR(base_queue + i),
+				      QRX_ITR_NO_EXPR_M);
+		} else {
+			ICE_WRITE_REG(hw, GLINT_ITR(0, msix_vect), 0x2);
+			ICE_WRITE_REG(hw, QRX_ITR(base_queue + i), 0);
+		}
+
 		ICE_WRITE_REG(hw, QINT_RQCTL(base_queue + i), val);
 		ICE_WRITE_REG(hw, QINT_TQCTL(base_queue + i), val_tx);
 	}
@@ -5497,7 +5516,8 @@ RTE_PMD_REGISTER_PARAM_STRING(net_ice,
 			      ICE_HW_DEBUG_MASK_ARG "=0xXXX"
 			      ICE_PROTO_XTR_ARG "=[queue:]<vlan|ipv4|ipv6|ipv6_flow|tcp|ip_offset>"
 			      ICE_SAFE_MODE_SUPPORT_ARG "=<0|1>"
-			      ICE_PIPELINE_MODE_SUPPORT_ARG "=<0|1>");
+			      ICE_PIPELINE_MODE_SUPPORT_ARG "=<0|1>"
+			      ICE_RX_LOW_LATENCY_ARG "=<0|1>");
 
 RTE_LOG_REGISTER_SUFFIX(ice_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(ice_logtype_driver, driver, NOTICE);
