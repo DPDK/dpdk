@@ -2286,7 +2286,6 @@ bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 		}
 		tunnel_type =
 			HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN;
-		bp->vxlan_port_cnt++;
 		break;
 	case RTE_TUNNEL_TYPE_GENEVE:
 		if (bp->geneve_port_cnt) {
@@ -2301,7 +2300,6 @@ bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 		}
 		tunnel_type =
 			HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_GENEVE;
-		bp->geneve_port_cnt++;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Tunnel type is not supported\n");
@@ -2309,6 +2307,18 @@ bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 	}
 	rc = bnxt_hwrm_tunnel_dst_port_alloc(bp, udp_tunnel->udp_port,
 					     tunnel_type);
+
+	if (rc != 0)
+		return rc;
+
+	if (tunnel_type ==
+	    HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN)
+		bp->vxlan_port_cnt++;
+
+	if (tunnel_type ==
+	    HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_GENEVE)
+		bp->geneve_port_cnt++;
+
 	return rc;
 }
 
