@@ -16,6 +16,7 @@
 
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
+#include <rte_ip.h>
 #include <rte_string_fns.h>
 
 #ifdef RTE_CRYPTO_SCHEDULER
@@ -41,6 +42,8 @@
 #include "test_cryptodev_hmac_test_vectors.h"
 #include "test_cryptodev_mixed_test_vectors.h"
 #ifdef RTE_LIB_SECURITY
+#include "test_cryptodev_security_ipsec.h"
+#include "test_cryptodev_security_ipsec_test_vectors.h"
 #include "test_cryptodev_security_pdcp_test_vectors.h"
 #include "test_cryptodev_security_pdcp_sdap_test_vectors.h"
 #include "test_cryptodev_security_pdcp_test_func.h"
@@ -122,6 +125,13 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 		const uint8_t *cipher,
 		const uint8_t *digest,
 		const uint8_t *iv);
+
+static int
+security_proto_supported(enum rte_security_session_action_type action,
+	enum rte_security_session_protocol proto);
+
+static int
+dev_configure_and_start(uint64_t ff_disable);
 
 static struct rte_mbuf *
 setup_test_string(struct rte_mempool *mpool,
@@ -752,6 +762,47 @@ crypto_gen_testsuite_setup(void)
 }
 
 #ifdef RTE_LIB_SECURITY
+static int
+ipsec_proto_testsuite_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	struct rte_cryptodev_info dev_info;
+	int ret = 0;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SECURITY)) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for IPsec Proto "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	/* Reconfigure to enable security */
+	ret = dev_configure_and_start(0);
+	if (ret != TEST_SUCCESS)
+		return ret;
+
+	/* Set action type */
+	ut_params->type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
+
+	if (security_proto_supported(
+			RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			RTE_SECURITY_PROTOCOL_IPSEC) < 0) {
+		RTE_LOG(INFO, USER1, "Capability requirements for IPsec Proto "
+				"test not met\n");
+		ret = TEST_SKIPPED;
+	}
+
+	/*
+	 * Stop the device. Device would be started again by individual test
+	 * case setup routine.
+	 */
+	rte_cryptodev_stop(ts_params->valid_devs[0]);
+
+	return ret;
+}
+
 static int
 pdcp_proto_testsuite_setup(void)
 {
@@ -8854,6 +8905,170 @@ test_PDCP_SDAP_PROTO_decap_all(void)
 }
 
 static int
+test_ipsec_proto_process(const struct ipsec_test_data td[],
+			 struct ipsec_test_data res_d[],
+			 int nb_td,
+			 bool silent)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx sec_cap_idx;
+	const struct rte_security_capability *sec_cap;
+	struct rte_security_ipsec_xform ipsec_xform;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	enum rte_security_ipsec_sa_direction dir;
+	struct ipsec_test_data *res_d_tmp = NULL;
+	uint32_t src = RTE_IPV4(192, 168, 1, 0);
+	uint32_t dst = RTE_IPV4(192, 168, 1, 1);
+	int salt_len, i, ret = TEST_SUCCESS;
+	struct rte_security_ctx *ctx;
+	uint8_t *input_text;
+
+	ut_params->type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
+	gbl_action_type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
+
+	/* Use first test data to create session */
+
+	/* Copy IPsec xform */
+	memcpy(&ipsec_xform, &td[0].ipsec_xform, sizeof(ipsec_xform));
+
+	memcpy(&ipsec_xform.tunnel.ipv4.src_ip, &src, sizeof(src));
+	memcpy(&ipsec_xform.tunnel.ipv4.dst_ip, &dst, sizeof(dst));
+
+	dir = ipsec_xform.direction;
+
+	ctx = rte_cryptodev_get_sec_ctx(dev_id);
+
+	sec_cap_idx.action = ut_params->type;
+	sec_cap_idx.protocol = RTE_SECURITY_PROTOCOL_IPSEC;
+	sec_cap_idx.ipsec.proto = ipsec_xform.proto;
+	sec_cap_idx.ipsec.mode = ipsec_xform.mode;
+	sec_cap_idx.ipsec.direction = ipsec_xform.direction;
+
+	sec_cap = rte_security_capability_get(ctx, &sec_cap_idx);
+	if (sec_cap == NULL)
+		return TEST_SKIPPED;
+
+	/* Copy cipher session parameters */
+	if (td[0].aead) {
+		memcpy(&ut_params->aead_xform, &td[0].xform.aead,
+		       sizeof(ut_params->aead_xform));
+		ut_params->aead_xform.aead.key.data = td[0].key.data;
+		ut_params->aead_xform.aead.iv.offset = IV_OFFSET;
+
+		/* Verify crypto capabilities */
+		if (test_ipsec_crypto_caps_aead_verify(
+				sec_cap,
+				&ut_params->aead_xform) != 0) {
+			if (!silent)
+				RTE_LOG(INFO, USER1,
+					"Crypto capabilities not supported\n");
+			return TEST_SKIPPED;
+		}
+	} else {
+		/* Only AEAD supported now */
+		return TEST_SKIPPED;
+	}
+
+	if (test_ipsec_sec_caps_verify(&ipsec_xform, sec_cap, silent) != 0)
+		return TEST_SKIPPED;
+
+	salt_len = RTE_MIN(sizeof(ipsec_xform.salt), td[0].salt.len);
+	memcpy(&ipsec_xform.salt, td[0].salt.data, salt_len);
+
+	struct rte_security_session_conf sess_conf = {
+		.action_type = ut_params->type,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = ipsec_xform,
+		.crypto_xform = &ut_params->aead_xform,
+	};
+
+	/* Create security session */
+	ut_params->sec_session = rte_security_session_create(ctx, &sess_conf,
+					ts_params->session_mpool,
+					ts_params->session_priv_mpool);
+
+	if (ut_params->sec_session == NULL)
+		return TEST_SKIPPED;
+
+	for (i = 0; i < nb_td; i++) {
+		/* Setup source mbuf payload */
+		ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+		memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+				rte_pktmbuf_tailroom(ut_params->ibuf));
+
+		input_text = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				td[i].input_text.len);
+
+		memcpy(input_text, td[i].input_text.data,
+		       td[i].input_text.len);
+
+		/* Generate crypto op data structure */
+		ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+					RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+		if (!ut_params->op) {
+			printf("TestCase %s line %d: %s\n",
+				__func__, __LINE__,
+				"failed to allocate crypto op");
+			ret = TEST_FAILED;
+			goto crypto_op_free;
+		}
+
+		/* Attach session to operation */
+		rte_security_attach_session(ut_params->op,
+					    ut_params->sec_session);
+
+		/* Set crypto operation mbufs */
+		ut_params->op->sym->m_src = ut_params->ibuf;
+		ut_params->op->sym->m_dst = NULL;
+
+		/* Process crypto operation */
+		process_crypto_request(dev_id, ut_params->op);
+
+		ret = test_ipsec_status_check(ut_params->op, dir);
+		if (ret != TEST_SUCCESS)
+			goto crypto_op_free;
+
+		if (res_d != NULL)
+			res_d_tmp = &res_d[i];
+
+		ret = test_ipsec_post_process(ut_params->ibuf, &td[i],
+					      res_d_tmp, silent);
+		if (ret != TEST_SUCCESS)
+			goto crypto_op_free;
+
+		rte_crypto_op_free(ut_params->op);
+		ut_params->op = NULL;
+
+		rte_pktmbuf_free(ut_params->ibuf);
+		ut_params->ibuf = NULL;
+	}
+
+crypto_op_free:
+	rte_crypto_op_free(ut_params->op);
+	ut_params->op = NULL;
+
+	rte_pktmbuf_free(ut_params->ibuf);
+	ut_params->ibuf = NULL;
+
+	if (ut_params->sec_session)
+		rte_security_session_destroy(ctx, ut_params->sec_session);
+	ut_params->sec_session = NULL;
+
+	return ret;
+}
+
+static int
+test_ipsec_proto_known_vec_inb(const void *td_outb)
+{
+	struct ipsec_test_data td_inb;
+
+	test_ipsec_td_in_from_out(td_outb, &td_inb);
+
+	return test_ipsec_proto_process(&td_inb, NULL, 1, false);
+}
+
+static int
 test_PDCP_PROTO_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -13745,6 +13960,26 @@ static struct unit_test_suite end_testsuite = {
 };
 
 #ifdef RTE_LIB_SECURITY
+static struct unit_test_suite ipsec_proto_testsuite  = {
+	.suite_name = "IPsec Proto Unit Test Suite",
+	.setup = ipsec_proto_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv4 AES-GCM 128)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb, &pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv4 AES-GCM 192)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb, &pkt_aes_192_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv4 AES-GCM 256)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb, &pkt_aes_256_gcm),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
 static struct unit_test_suite pdcp_proto_testsuite  = {
 	.suite_name = "PDCP Proto Unit Test Suite",
 	.setup = pdcp_proto_testsuite_setup,
@@ -14530,6 +14765,7 @@ run_cryptodev_testsuite(const char *pmd_name)
 		&cryptodev_negative_hmac_sha1_testsuite,
 		&cryptodev_gen_testsuite,
 #ifdef RTE_LIB_SECURITY
+		&ipsec_proto_testsuite,
 		&pdcp_proto_testsuite,
 		&docsis_proto_testsuite,
 #endif

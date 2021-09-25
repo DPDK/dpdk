@@ -124,6 +124,12 @@ struct unit_test_case {
 #define TEST_CASE_WITH_DATA(setup, teardown, testcase, data) \
 		{ setup, teardown, NULL, testcase, #testcase, 1, data }
 
+#define TEST_CASE_NAMED_ST(name, setup, teardown, testcase) \
+		{ setup, teardown, NULL, testcase, name, 1, NULL }
+
+#define TEST_CASE_NAMED_WITH_DATA(name, setup, teardown, testcase, data) \
+		{ setup, teardown, NULL, testcase, name, 1, data }
+
 #define TEST_CASE_DISABLED(fn) { NULL, NULL, fn, NULL, #fn, 0, NULL }
 
 #define TEST_CASE_ST_DISABLED(setup, teardown, testcase) \

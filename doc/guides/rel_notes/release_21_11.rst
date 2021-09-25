@@ -96,6 +96,10 @@ New Features
   * Added support for asymmetric crypto throughput performance measurement.
     Only modex is supported for now.
 
+* **Added lookaside protocol (IPsec) tests in dpdk-test.**
+
+  * Added known vector tests (AES-GCM 128, 192, 256).
+
 
 Removed Items
 -------------
