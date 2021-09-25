@@ -10,6 +10,8 @@
 #include "test.h"
 #include "test_cryptodev_security_ipsec.h"
 
+extern struct ipsec_test_data pkt_aes_256_gcm;
+
 int
 test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
 			   const struct rte_security_capability *sec_cap,
@@ -128,6 +130,68 @@ test_ipsec_td_in_from_out(const struct ipsec_test_data *td_out,
 	}
 }
 
+void
+test_ipsec_td_prepare(const struct crypto_param *param1,
+		      const struct crypto_param *param2,
+		      const struct ipsec_test_flags *flags,
+		      struct ipsec_test_data *td_array,
+		      int nb_td)
+
+{
+	struct ipsec_test_data *td;
+	int i;
+
+	memset(td_array, 0, nb_td * sizeof(*td));
+
+	for (i = 0; i < nb_td; i++) {
+		td = &td_array[i];
+		/* Copy template for packet & key fields */
+		memcpy(td, &pkt_aes_256_gcm, sizeof(*td));
+
+		/* Override fields based on param */
+
+		if (param1->type == RTE_CRYPTO_SYM_XFORM_AEAD)
+			td->aead = true;
+		else
+			td->aead = false;
+
+		td->xform.aead.aead.algo = param1->alg.aead;
+		td->xform.aead.aead.key.length = param1->key_length;
+	}
+
+	RTE_SET_USED(flags);
+	RTE_SET_USED(param2);
+}
+
+void
+test_ipsec_td_update(struct ipsec_test_data td_inb[],
+		     const struct ipsec_test_data td_outb[],
+		     int nb_td,
+		     const struct ipsec_test_flags *flags)
+{
+	int i;
+
+	for (i = 0; i < nb_td; i++) {
+		memcpy(td_inb[i].output_text.data, td_outb[i].input_text.data,
+		       td_outb[i].input_text.len);
+		td_inb[i].output_text.len = td_outb->input_text.len;
+	}
+
+	RTE_SET_USED(flags);
+}
+
+void
+test_ipsec_display_alg(const struct crypto_param *param1,
+		       const struct crypto_param *param2)
+{
+	if (param1->type == RTE_CRYPTO_SYM_XFORM_AEAD)
+		printf("\t%s [%d]\n",
+		       rte_crypto_aead_algorithm_strings[param1->alg.aead],
+		       param1->key_length);
+
+	RTE_SET_USED(param2);
+}
+
 static int
 test_ipsec_tunnel_hdr_len_get(const struct ipsec_test_data *td)
 {
@@ -148,7 +212,7 @@ test_ipsec_tunnel_hdr_len_get(const struct ipsec_test_data *td)
 
 static int
 test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
-		     bool silent)
+		     bool silent, const struct ipsec_test_flags *flags)
 {
 	uint8_t *output_text = rte_pktmbuf_mtod(m, uint8_t *);
 	uint32_t skip, len = rte_pktmbuf_pkt_len(m);
@@ -177,12 +241,37 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 		return TEST_FAILED;
 	}
 
+	RTE_SET_USED(flags);
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_ipsec_res_d_prepare(struct rte_mbuf *m, const struct ipsec_test_data *td,
+		   struct ipsec_test_data *res_d)
+{
+	uint8_t *output_text = rte_pktmbuf_mtod(m, uint8_t *);
+	uint32_t len = rte_pktmbuf_pkt_len(m);
+
+	memcpy(res_d, td, sizeof(*res_d));
+	memcpy(res_d->input_text.data, output_text, len);
+	res_d->input_text.len = len;
+
+	res_d->ipsec_xform.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
+	if (res_d->aead) {
+		res_d->xform.aead.aead.op = RTE_CRYPTO_AEAD_OP_DECRYPT;
+	} else {
+		printf("Only AEAD supported\n");
+		return TEST_SKIPPED;
+	}
+
 	return TEST_SUCCESS;
 }
 
 int
 test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
-			struct ipsec_test_data *res_d, bool silent)
+			struct ipsec_test_data *res_d, bool silent,
+			const struct ipsec_test_flags *flags)
 {
 	/*
 	 * In case of known vector tests & all inbound tests, res_d provided
@@ -190,13 +279,22 @@ test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 	 * For inbound, output_text would be plain packet and for outbound
 	 * output_text would IPsec packet. Validate by comparing against
 	 * known vectors.
+	 *
+	 * In case of combined mode tests, the output_text from outbound
+	 * operation (ie, IPsec packet) would need to be inbound processed to
+	 * obtain the plain text. Copy output_text to result data, 'res_d', so
+	 * that inbound processing can be done.
 	 */
-	RTE_SET_USED(res_d);
-	return test_ipsec_td_verify(m, td, silent);
+
+	if (res_d == NULL)
+		return test_ipsec_td_verify(m, td, silent, flags);
+	else
+		return test_ipsec_res_d_prepare(m, td, res_d);
 }
 
 int
 test_ipsec_status_check(struct rte_crypto_op *op,
+			const struct ipsec_test_flags *flags,
 			enum rte_security_ipsec_sa_direction dir)
 {
 	int ret = TEST_SUCCESS;
@@ -206,6 +304,7 @@ test_ipsec_status_check(struct rte_crypto_op *op,
 		ret = TEST_FAILED;
 	}
 
+	RTE_SET_USED(flags);
 	RTE_SET_USED(dir);
 
 	return ret;

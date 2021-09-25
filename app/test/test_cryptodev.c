@@ -8908,7 +8908,8 @@ static int
 test_ipsec_proto_process(const struct ipsec_test_data td[],
 			 struct ipsec_test_data res_d[],
 			 int nb_td,
-			 bool silent)
+			 bool silent,
+			 const struct ipsec_test_flags *flags)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -9025,7 +9026,7 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 		/* Process crypto operation */
 		process_crypto_request(dev_id, ut_params->op);
 
-		ret = test_ipsec_status_check(ut_params->op, dir);
+		ret = test_ipsec_status_check(ut_params->op, flags, dir);
 		if (ret != TEST_SUCCESS)
 			goto crypto_op_free;
 
@@ -9033,7 +9034,7 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 			res_d_tmp = &res_d[i];
 
 		ret = test_ipsec_post_process(ut_params->ibuf, &td[i],
-					      res_d_tmp, silent);
+					      res_d_tmp, silent, flags);
 		if (ret != TEST_SUCCESS)
 			goto crypto_op_free;
 
@@ -9061,11 +9062,71 @@ crypto_op_free:
 static int
 test_ipsec_proto_known_vec_inb(const void *td_outb)
 {
+	struct ipsec_test_flags flags;
 	struct ipsec_test_data td_inb;
+
+	memset(&flags, 0, sizeof(flags));
 
 	test_ipsec_td_in_from_out(td_outb, &td_inb);
 
-	return test_ipsec_proto_process(&td_inb, NULL, 1, false);
+	return test_ipsec_proto_process(&td_inb, NULL, 1, false, &flags);
+}
+
+static int
+test_ipsec_proto_all(const struct ipsec_test_flags *flags)
+{
+	struct ipsec_test_data td_outb[IPSEC_TEST_PACKETS_MAX];
+	struct ipsec_test_data td_inb[IPSEC_TEST_PACKETS_MAX];
+	unsigned int i, nb_pkts = 1, pass_cnt = 0;
+	int ret;
+
+	for (i = 0; i < RTE_DIM(aead_list); i++) {
+		test_ipsec_td_prepare(&aead_list[i],
+				      NULL,
+				      flags,
+				      td_outb,
+				      nb_pkts);
+
+		ret = test_ipsec_proto_process(td_outb, td_inb, nb_pkts, true,
+					       flags);
+		if (ret == TEST_SKIPPED)
+			continue;
+
+		if (ret == TEST_FAILED)
+			return TEST_FAILED;
+
+		test_ipsec_td_update(td_inb, td_outb, nb_pkts, flags);
+
+		ret = test_ipsec_proto_process(td_inb, NULL, nb_pkts, true,
+					       flags);
+		if (ret == TEST_SKIPPED)
+			continue;
+
+		if (ret == TEST_FAILED)
+			return TEST_FAILED;
+
+		if (flags->display_alg)
+			test_ipsec_display_alg(&aead_list[i], NULL);
+
+		pass_cnt++;
+	}
+
+	if (pass_cnt > 0)
+		return TEST_SUCCESS;
+	else
+		return TEST_SKIPPED;
+}
+
+static int
+test_ipsec_proto_display_list(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.display_alg = true;
+
+	return test_ipsec_proto_all(&flags);
 }
 
 static int
@@ -13976,6 +14037,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Inbound known vector (ESP tunnel mode IPv4 AES-GCM 256)",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_inb, &pkt_aes_256_gcm),
+		TEST_CASE_NAMED_ST(
+			"Combined test alg list",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_display_list),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
