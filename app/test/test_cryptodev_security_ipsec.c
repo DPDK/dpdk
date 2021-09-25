@@ -4,11 +4,14 @@
 
 #include <rte_common.h>
 #include <rte_cryptodev.h>
+#include <rte_esp.h>
 #include <rte_ip.h>
 #include <rte_security.h>
 
 #include "test.h"
 #include "test_cryptodev_security_ipsec.h"
+
+#define IV_LEN_MAX 16
 
 extern struct ipsec_test_data pkt_aes_256_gcm;
 
@@ -214,6 +217,46 @@ test_ipsec_tunnel_hdr_len_get(const struct ipsec_test_data *td)
 }
 
 static int
+test_ipsec_iv_verify_push(struct rte_mbuf *m, const struct ipsec_test_data *td)
+{
+	static uint8_t iv_queue[IV_LEN_MAX * IPSEC_TEST_PACKETS_MAX];
+	uint8_t *iv_tmp, *output_text = rte_pktmbuf_mtod(m, uint8_t *);
+	int i, iv_pos, iv_len;
+	static int index;
+
+	if (td->aead)
+		iv_len = td->xform.aead.aead.iv.length - td->salt.len;
+	else
+		iv_len = td->xform.chain.cipher.cipher.iv.length;
+
+	iv_pos = test_ipsec_tunnel_hdr_len_get(td) + sizeof(struct rte_esp_hdr);
+	output_text += iv_pos;
+
+	TEST_ASSERT(iv_len <= IV_LEN_MAX, "IV length greater than supported");
+
+	/* Compare against previous values */
+	for (i = 0; i < index; i++) {
+		iv_tmp = &iv_queue[i * IV_LEN_MAX];
+
+		if (memcmp(output_text, iv_tmp, iv_len) == 0) {
+			printf("IV repeated");
+			return TEST_FAILED;
+		}
+	}
+
+	/* Save IV for future comparisons */
+
+	iv_tmp = &iv_queue[index * IV_LEN_MAX];
+	memcpy(iv_tmp, output_text, iv_len);
+	index++;
+
+	if (index == IPSEC_TEST_PACKETS_MAX)
+		index = 0;
+
+	return TEST_SUCCESS;
+}
+
+static int
 test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 		     bool silent, const struct ipsec_test_flags *flags)
 {
@@ -279,6 +322,15 @@ test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 			struct ipsec_test_data *res_d, bool silent,
 			const struct ipsec_test_flags *flags)
 {
+	int ret;
+
+	if (flags->iv_gen &&
+	    td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+		ret = test_ipsec_iv_verify_push(m, td);
+		if (ret != TEST_SUCCESS)
+			return ret;
+	}
+
 	/*
 	 * In case of known vector tests & all inbound tests, res_d provided
 	 * would be NULL and output data need to be validated against expected.

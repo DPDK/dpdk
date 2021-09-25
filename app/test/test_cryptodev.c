@@ -9080,6 +9080,9 @@ test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 	unsigned int i, nb_pkts = 1, pass_cnt = 0;
 	int ret;
 
+	if (flags->iv_gen)
+		nb_pkts = IPSEC_TEST_PACKETS_MAX;
+
 	for (i = 0; i < RTE_DIM(aead_list); i++) {
 		test_ipsec_td_prepare(&aead_list[i],
 				      NULL,
@@ -9125,6 +9128,18 @@ test_ipsec_proto_display_list(const void *data __rte_unused)
 	memset(&flags, 0, sizeof(flags));
 
 	flags.display_alg = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_iv_gen(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.iv_gen = true;
 
 	return test_ipsec_proto_all(&flags);
 }
@@ -14053,6 +14068,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_display_list),
+		TEST_CASE_NAMED_ST(
+			"IV generation",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_iv_gen),
 		TEST_CASE_NAMED_ST(
 			"Negative test: ICV corruption",
 			ut_setup_security, ut_teardown,
