@@ -51,6 +51,7 @@ struct ipsec_test_flags {
 	bool display_alg;
 	bool icv_corrupt;
 	bool iv_gen;
+	bool udp_encap;
 };
 
 struct crypto_param {

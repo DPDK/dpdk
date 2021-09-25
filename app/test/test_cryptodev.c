@@ -8946,6 +8946,9 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 	sec_cap_idx.ipsec.mode = ipsec_xform.mode;
 	sec_cap_idx.ipsec.direction = ipsec_xform.direction;
 
+	if (flags->udp_encap)
+		ipsec_xform.options.udp_encap = 1;
+
 	sec_cap = rte_security_capability_get(ctx, &sec_cap_idx);
 	if (sec_cap == NULL)
 		return TEST_SKIPPED;
@@ -9152,6 +9155,18 @@ test_ipsec_proto_err_icv_corrupt(const void *data __rte_unused)
 	memset(&flags, 0, sizeof(flags));
 
 	flags.icv_corrupt = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_udp_encap(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.udp_encap = true;
 
 	return test_ipsec_proto_all(&flags);
 }
@@ -14072,6 +14087,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"IV generation",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_iv_gen),
+		TEST_CASE_NAMED_ST(
+			"UDP encapsulation",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_udp_encap),
 		TEST_CASE_NAMED_ST(
 			"Negative test: ICV corruption",
 			ut_setup_security, ut_teardown,

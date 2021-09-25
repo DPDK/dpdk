@@ -7,6 +7,7 @@
 #include <rte_esp.h>
 #include <rte_ip.h>
 #include <rte_security.h>
+#include <rte_udp.h>
 
 #include "test.h"
 #include "test_cryptodev_security_ipsec.h"
@@ -183,6 +184,9 @@ test_ipsec_td_update(struct ipsec_test_data td_inb[],
 			int icv_pos = td_inb[i].input_text.len - 4;
 			td_inb[i].input_text.data[icv_pos] += 1;
 		}
+
+		if (flags->udp_encap)
+			td_inb[i].ipsec_xform.options.udp_encap = 1;
 	}
 }
 
@@ -267,6 +271,30 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 	if (flags->icv_corrupt &&
 	    td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
 		return TEST_SUCCESS;
+
+	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS &&
+	   flags->udp_encap) {
+		const struct rte_ipv4_hdr *iph4;
+		const struct rte_ipv6_hdr *iph6;
+
+		if (td->ipsec_xform.tunnel.type ==
+				RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+			iph4 = (const struct rte_ipv4_hdr *)output_text;
+			if (iph4->next_proto_id != IPPROTO_UDP) {
+				printf("UDP header is not found\n");
+				return TEST_FAILED;
+			}
+		} else {
+			iph6 = (const struct rte_ipv6_hdr *)output_text;
+			if (iph6->proto != IPPROTO_UDP) {
+				printf("UDP header is not found\n");
+				return TEST_FAILED;
+			}
+		}
+
+		len -= sizeof(struct rte_udp_hdr);
+		output_text += sizeof(struct rte_udp_hdr);
+	}
 
 	if (len != td->output_text.len) {
 		printf("Output length (%d) not matching with expected (%d)\n",

@@ -101,6 +101,7 @@ New Features
   * Added known vector tests (AES-GCM 128, 192, 256).
   * Added tests to verify error reporting with ICV corruption.
   * Added tests to verify IV generation.
+  * Added tests to verify UDP encapsulation.
 
 
 Removed Items
