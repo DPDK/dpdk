@@ -99,6 +99,7 @@ New Features
 * **Added lookaside protocol (IPsec) tests in dpdk-test.**
 
   * Added known vector tests (AES-GCM 128, 192, 256).
+  * Added tests to verify error reporting with ICV corruption.
 
 
 Removed Items

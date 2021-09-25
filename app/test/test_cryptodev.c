@@ -9130,6 +9130,18 @@ test_ipsec_proto_display_list(const void *data __rte_unused)
 }
 
 static int
+test_ipsec_proto_err_icv_corrupt(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.icv_corrupt = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
 test_PDCP_PROTO_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -14041,6 +14053,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_display_list),
+		TEST_CASE_NAMED_ST(
+			"Negative test: ICV corruption",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_err_icv_corrupt),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

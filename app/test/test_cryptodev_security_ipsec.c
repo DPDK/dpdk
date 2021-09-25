@@ -175,9 +175,12 @@ test_ipsec_td_update(struct ipsec_test_data td_inb[],
 		memcpy(td_inb[i].output_text.data, td_outb[i].input_text.data,
 		       td_outb[i].input_text.len);
 		td_inb[i].output_text.len = td_outb->input_text.len;
-	}
 
-	RTE_SET_USED(flags);
+		if (flags->icv_corrupt) {
+			int icv_pos = td_inb[i].input_text.len - 4;
+			td_inb[i].input_text.data[icv_pos] += 1;
+		}
+	}
 }
 
 void
@@ -217,6 +220,11 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 	uint8_t *output_text = rte_pktmbuf_mtod(m, uint8_t *);
 	uint32_t skip, len = rte_pktmbuf_pkt_len(m);
 
+	/* For negative tests, no need to do verification */
+	if (flags->icv_corrupt &&
+	    td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
+		return TEST_SUCCESS;
+
 	if (len != td->output_text.len) {
 		printf("Output length (%d) not matching with expected (%d)\n",
 			len, td->output_text.len);
@@ -240,8 +248,6 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 		rte_hexdump(stdout, "actual", output_text, len);
 		return TEST_FAILED;
 	}
-
-	RTE_SET_USED(flags);
 
 	return TEST_SUCCESS;
 }
@@ -299,13 +305,17 @@ test_ipsec_status_check(struct rte_crypto_op *op,
 {
 	int ret = TEST_SUCCESS;
 
-	if (op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
-		printf("Security op processing failed\n");
-		ret = TEST_FAILED;
+	if (dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS && flags->icv_corrupt) {
+		if (op->status != RTE_CRYPTO_OP_STATUS_ERROR) {
+			printf("ICV corruption test case failed\n");
+			ret = TEST_FAILED;
+		}
+	} else {
+		if (op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+			printf("Security op processing failed\n");
+			ret = TEST_FAILED;
+		}
 	}
-
-	RTE_SET_USED(flags);
-	RTE_SET_USED(dir);
 
 	return ret;
 }
