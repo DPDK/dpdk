@@ -95,11 +95,13 @@ virtio_recv_pkts_packed_vec(void *rx_queue,
 		num = num - ((vq->vq_used_cons_idx + num) % PACKED_BATCH_SIZE);
 
 	while (num) {
-		if (!virtqueue_dequeue_batch_packed_vec(rxvq,
-					&rx_pkts[nb_rx])) {
-			nb_rx += PACKED_BATCH_SIZE;
-			num -= PACKED_BATCH_SIZE;
-			continue;
+		if (num >= PACKED_BATCH_SIZE) {
+			if (!virtqueue_dequeue_batch_packed_vec(rxvq,
+						&rx_pkts[nb_rx])) {
+				nb_rx += PACKED_BATCH_SIZE;
+				num -= PACKED_BATCH_SIZE;
+				continue;
+			}
 		}
 		if (!virtqueue_dequeue_single_packed_vec(rxvq,
 					&rx_pkts[nb_rx])) {
