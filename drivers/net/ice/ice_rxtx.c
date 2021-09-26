@@ -302,6 +302,18 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 		}
 	}
 
+	if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
+		/* Register mbuf field and flag for Rx timestamp */
+		err = rte_mbuf_dyn_rx_timestamp_register(
+				&ice_timestamp_dynfield_offset,
+				&ice_timestamp_dynflag);
+		if (err) {
+			PMD_DRV_LOG(ERR,
+				"Cannot register mbuf field/flag for timestamp");
+			return -EINVAL;
+		}
+	}
+
 	memset(&rx_ctx, 0, sizeof(rx_ctx));
 
 	rx_ctx.base = rxq->rx_ring_dma / ICE_QUEUE_BASE_ADDR_UNIT;
@@ -353,6 +365,9 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 	 */
 	regval |= (0x03 << QRXFLXP_CNTXT_RXDID_PRIO_S) &
 		QRXFLXP_CNTXT_RXDID_PRIO_M;
+
+	if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP)
+		regval |= QRXFLXP_CNTXT_TS_M;
 
 	ICE_WRITE_REG(hw, QRXFLXP_CNTXT(rxq->reg_idx), regval);
 
@@ -1546,6 +1561,9 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 	int32_t i, j, nb_rx = 0;
 	uint64_t pkt_flags = 0;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	struct ice_vsi *vsi = rxq->vsi;
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	uint64_t ts_ns;
 
 	rxdp = &rxq->rx_ring[rxq->rx_tail];
 	rxep = &rxq->sw_ring[rxq->rx_tail];
@@ -1588,6 +1606,17 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
 			ice_rxd_to_vlan_tci(mb, &rxdp[j]);
 			rxq->rxd_to_pkt_fields(rxq, mb, &rxdp[j]);
+
+			if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
+				ts_ns = ice_tstamp_convert_32b_64b(hw,
+					rte_le_to_cpu_32(rxdp[j].wb.flex_ts.ts_high));
+				if (ice_timestamp_dynflag > 0) {
+					*RTE_MBUF_DYNFIELD(mb,
+						ice_timestamp_dynfield_offset,
+						rte_mbuf_timestamp_t *) = ts_ns;
+					mb->ol_flags |= ice_timestamp_dynflag;
+				}
+			}
 
 			mb->ol_flags |= pkt_flags;
 		}
@@ -1772,6 +1801,9 @@ ice_recv_scattered_pkts(void *rx_queue,
 	uint64_t dma_addr;
 	uint64_t pkt_flags;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	struct ice_vsi *vsi = rxq->vsi;
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	uint64_t ts_ns;
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -1882,6 +1914,18 @@ ice_recv_scattered_pkts(void *rx_queue,
 		ice_rxd_to_vlan_tci(first_seg, &rxd);
 		rxq->rxd_to_pkt_fields(rxq, first_seg, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
+
+		if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
+			ts_ns = ice_tstamp_convert_32b_64b(hw,
+				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
+			if (ice_timestamp_dynflag > 0) {
+				*RTE_MBUF_DYNFIELD(first_seg,
+					ice_timestamp_dynfield_offset,
+					rte_mbuf_timestamp_t *) = ts_ns;
+				first_seg->ol_flags |= ice_timestamp_dynflag;
+			}
+		}
+
 		first_seg->ol_flags |= pkt_flags;
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr,
@@ -2237,6 +2281,9 @@ ice_recv_pkts(void *rx_queue,
 	uint64_t dma_addr;
 	uint64_t pkt_flags;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	struct ice_vsi *vsi = rxq->vsi;
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	uint64_t ts_ns;
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -2288,6 +2335,18 @@ ice_recv_pkts(void *rx_queue,
 		ice_rxd_to_vlan_tci(rxm, &rxd);
 		rxq->rxd_to_pkt_fields(rxq, rxm, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
+
+		if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
+			ts_ns = ice_tstamp_convert_32b_64b(hw,
+				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
+			if (ice_timestamp_dynflag > 0) {
+				*RTE_MBUF_DYNFIELD(rxm,
+					ice_timestamp_dynfield_offset,
+					rte_mbuf_timestamp_t *) = ts_ns;
+				rxm->ol_flags |= ice_timestamp_dynflag;
+			}
+		}
+
 		rxm->ol_flags |= pkt_flags;
 		/* copy old mbuf to rx_pkts */
 		rx_pkts[nb_rx++] = rxm;

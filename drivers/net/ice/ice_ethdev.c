@@ -32,6 +32,9 @@
 #define ICE_ONE_PPS_OUT_ARG       "pps_out"
 #define ICE_RX_LOW_LATENCY_ARG    "rx_low_latency"
 
+uint64_t ice_timestamp_dynflag;
+int ice_timestamp_dynfield_offset = -1;
+
 static const char * const ice_valid_args[] = {
 	ICE_SAFE_MODE_SUPPORT_ARG,
 	ICE_PIPELINE_MODE_SUPPORT_ARG,
@@ -3671,7 +3674,8 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			DEV_RX_OFFLOAD_QINQ_STRIP |
 			DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
 			DEV_RX_OFFLOAD_VLAN_EXTEND |
-			DEV_RX_OFFLOAD_RSS_HASH;
+			DEV_RX_OFFLOAD_RSS_HASH |
+			DEV_RX_OFFLOAD_TIMESTAMP;
 		dev_info->tx_offload_capa |=
 			DEV_TX_OFFLOAD_QINQ_INSERT |
 			DEV_TX_OFFLOAD_IPV4_CKSUM |

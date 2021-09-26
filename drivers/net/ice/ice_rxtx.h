@@ -40,6 +40,9 @@
 
 #define ICE_RXDID_COMMS_OVS	22
 
+extern uint64_t ice_timestamp_dynflag;
+extern int ice_timestamp_dynfield_offset;
+
 typedef void (*ice_rx_release_mbufs_t)(struct ice_rx_queue *rxq);
 typedef void (*ice_tx_release_mbufs_t)(struct ice_tx_queue *txq);
 typedef void (*ice_rxd_to_pkt_fields_t)(struct ice_rx_queue *rxq,
@@ -309,6 +312,36 @@ void ice_fdir_rx_parsing_enable(struct ice_adapter *ad, bool on)
 				FDIR_PARSING_ENABLE_PER_QUEUE(ad, on);
 		}
 	}
+}
+
+/* Helper function to convert a 32b nanoseconds timestamp to 64b. */
+static inline
+uint64_t ice_tstamp_convert_32b_64b(struct ice_hw *hw, uint32_t in_timestamp)
+{
+	const uint64_t mask = 0xFFFFFFFF;
+	uint32_t hi, lo, lo2, delta;
+	uint64_t time, ns;
+
+	lo = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
+	hi = ICE_READ_REG(hw, GLTSYN_TIME_H(0));
+	lo2 = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
+
+	if (lo2 < lo) {
+		lo = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
+		hi = ICE_READ_REG(hw, GLTSYN_TIME_H(0));
+	}
+
+	time = ((uint64_t)hi << 32) | lo;
+
+	delta = (in_timestamp - (uint32_t)(time & mask));
+	if (delta > (mask / 2)) {
+		delta = ((uint32_t)(time & mask) - in_timestamp);
+		ns = time - delta;
+	} else {
+		ns = time + delta;
+	}
+
+	return ns;
 }
 
 #endif /* _ICE_RXTX_H_ */

@@ -82,6 +82,7 @@ New Features
 
   * Added 1PPS out support by a devargs.
   * Added IPv4 and L4 (TCP/UDP/SCTP) checksum hash support in RSS flow.
+  * Added DEV_RX_OFFLOAD_TIMESTAMP support.
 
 * **Updated Marvell cnxk ethdev driver.**
 

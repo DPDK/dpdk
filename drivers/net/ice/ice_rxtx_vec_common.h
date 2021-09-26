@@ -287,6 +287,9 @@ ice_rx_vec_queue_default(struct ice_rx_queue *rxq)
 	if (rxq->proto_xtr != PROTO_XTR_NONE)
 		return -1;
 
+	if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP)
+		return -1;
+
 	if (rxq->offloads & ICE_RX_VECTOR_OFFLOAD)
 		return ICE_VECTOR_OFFLOAD_PATH;
 
