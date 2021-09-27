@@ -953,7 +953,8 @@ mlx5_tx_eseg_none(struct mlx5_txq_data *__rte_restrict txq __rte_unused,
 	/* Fill metadata field if needed. */
 	es->metadata = MLX5_TXOFF_CONFIG(METADATA) ?
 		       loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
-		       *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0 : 0;
+		       rte_cpu_to_be_32(*RTE_FLOW_DYNF_METADATA(loc->mbuf)) :
+		       0 : 0;
 	/* Engage VLAN tag insertion feature if requested. */
 	if (MLX5_TXOFF_CONFIG(VLAN) &&
 	    loc->mbuf->ol_flags & PKT_TX_VLAN_PKT) {
@@ -1013,7 +1014,8 @@ mlx5_tx_eseg_dmin(struct mlx5_txq_data *__rte_restrict txq __rte_unused,
 	/* Fill metadata field if needed. */
 	es->metadata = MLX5_TXOFF_CONFIG(METADATA) ?
 		       loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
-		       *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0 : 0;
+		       rte_cpu_to_be_32(*RTE_FLOW_DYNF_METADATA(loc->mbuf)) :
+		       0 : 0;
 	psrc = rte_pktmbuf_mtod(loc->mbuf, uint8_t *);
 	es->inline_hdr_sz = RTE_BE16(MLX5_ESEG_MIN_INLINE_SIZE);
 	es->inline_data = *(unaligned_uint16_t *)psrc;
@@ -1096,7 +1098,8 @@ mlx5_tx_eseg_data(struct mlx5_txq_data *__rte_restrict txq,
 	/* Fill metadata field if needed. */
 	es->metadata = MLX5_TXOFF_CONFIG(METADATA) ?
 		       loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
-		       *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0 : 0;
+		       rte_cpu_to_be_32(*RTE_FLOW_DYNF_METADATA(loc->mbuf)) :
+		       0 : 0;
 	psrc = rte_pktmbuf_mtod(loc->mbuf, uint8_t *);
 	es->inline_hdr_sz = rte_cpu_to_be_16(inlen);
 	es->inline_data = *(unaligned_uint16_t *)psrc;
@@ -1308,7 +1311,8 @@ mlx5_tx_eseg_mdat(struct mlx5_txq_data *__rte_restrict txq,
 	/* Fill metadata field if needed. */
 	es->metadata = MLX5_TXOFF_CONFIG(METADATA) ?
 		       loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
-		       *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0 : 0;
+		       rte_cpu_to_be_32(*RTE_FLOW_DYNF_METADATA(loc->mbuf)) :
+		       0 : 0;
 	MLX5_ASSERT(inlen >= MLX5_ESEG_MIN_INLINE_SIZE);
 	pdst = (uint8_t *)&es->inline_data;
 	if (MLX5_TXOFF_CONFIG(VLAN) && vlan) {
@@ -2470,7 +2474,7 @@ mlx5_tx_match_empw(struct mlx5_txq_data *__rte_restrict txq,
 	/* Fill metadata field if needed. */
 	if (MLX5_TXOFF_CONFIG(METADATA) &&
 		es->metadata != (loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
-				 *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0))
+		rte_cpu_to_be_32(*RTE_FLOW_DYNF_METADATA(loc->mbuf)) : 0))
 		return false;
 	/* Legacy MPW can send packets with the same length only. */
 	if (MLX5_TXOFF_CONFIG(MPW) &&
