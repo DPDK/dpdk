@@ -208,10 +208,10 @@ test_op_forward_mode(uint8_t session_less)
 
 		if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA) {
 			/* Fill in private user data information */
-			rte_memcpy(&m_data.response_info, &response_info,
-				sizeof(response_info));
-			rte_memcpy(&m_data.request_info, &request_info,
-				sizeof(request_info));
+			m_data.request_info.cdev_id = request_info.cdev_id;
+			m_data.request_info.queue_pair_id =
+				request_info.queue_pair_id;
+			m_data.response_info.event = response_info.event;
 			rte_cryptodev_sym_session_set_user_data(sess,
 						&m_data, sizeof(m_data));
 		}
@@ -227,10 +227,9 @@ test_op_forward_mode(uint8_t session_less)
 		uint32_t len = IV_OFFSET + MAXIMUM_IV_LENGTH;
 		op->private_data_offset = len;
 		/* Fill in private data information */
-		rte_memcpy(&m_data.response_info, &response_info,
-			   sizeof(response_info));
-		rte_memcpy(&m_data.request_info, &request_info,
-			   sizeof(request_info));
+		m_data.request_info.cdev_id = request_info.cdev_id;
+		m_data.request_info.queue_pair_id = request_info.queue_pair_id;
+		m_data.response_info.event = response_info.event;
 		rte_memcpy((uint8_t *)op + len, &m_data, sizeof(m_data));
 	}
 
@@ -401,8 +400,7 @@ test_op_new_mode(uint8_t session_less)
 
 		if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA) {
 			/* Fill in private user data information */
-			rte_memcpy(&m_data.response_info, &response_info,
-				   sizeof(m_data));
+			m_data.response_info.event = response_info.event;
 			rte_cryptodev_sym_session_set_user_data(sess,
 						&m_data, sizeof(m_data));
 		}
@@ -421,8 +419,7 @@ test_op_new_mode(uint8_t session_less)
 		uint32_t len = IV_OFFSET + MAXIMUM_IV_LENGTH;
 		op->private_data_offset = len;
 		/* Fill in private data information */
-		rte_memcpy(&m_data.response_info, &response_info,
-			   sizeof(m_data));
+		m_data.response_info.event = response_info.event;
 		rte_memcpy((uint8_t *)op + len, &m_data, sizeof(m_data));
 	}
 
