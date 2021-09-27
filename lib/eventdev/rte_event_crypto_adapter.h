@@ -227,6 +227,7 @@ union rte_event_crypto_metadata {
 	struct rte_event_crypto_request request_info;
 	/**< Request information to be filled in by application
 	 * for RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD mode.
+	 * First 8 bytes of request_info is reserved for response_info.
 	 */
 	struct rte_event response_info;
 	/**< Response information to be filled in by application
