@@ -74,6 +74,7 @@ The application has a number of command line options::
                              [--mode]
                              [--eventq-sched]
                              [--event-eth-rxqs]
+                             [--event-vector [--event-vector-size SIZE] [--event-vector-tmo NS]]
                              [-E]
                              [-L]
 
@@ -112,6 +113,12 @@ Where,
 * ``--eventq-sched:`` Optional, Event queue synchronization method, Ordered, Atomic or Parallel. Only valid if --mode=eventdev.
 
 * ``--event-eth-rxqs:`` Optional, Number of ethernet RX queues per device. Only valid if --mode=eventdev.
+
+* ``--event-vector:`` Optional, Enable event vectorization. Only valid if --mode=eventdev.
+
+* ``--event-vector-size:`` Optional, Max vector size if event vectorization is enabled.
+
+* ``--event-vector-tmo:`` Optional, Max timeout to form vector in nanoseconds if event vectorization is enabled.
 
 * ``-E:`` Optional, enable exact match,
   legacy flag, please use ``--lookup=em`` instead.

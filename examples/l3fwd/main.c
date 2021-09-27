@@ -137,6 +137,7 @@ static struct rte_eth_conf port_conf = {
 static uint32_t max_pkt_len;
 
 static struct rte_mempool *pktmbuf_pool[RTE_MAX_ETHPORTS][NB_SOCKETS];
+static struct rte_mempool *vector_pool[RTE_MAX_ETHPORTS];
 static uint8_t lkp_per_socket[NB_SOCKETS];
 
 struct l3fwd_lkp_mode {
@@ -334,6 +335,7 @@ print_usage(const char *prgname)
 		" [--per-port-pool]"
 		" [--mode]"
 		" [--eventq-sched]"
+		" [--event-vector [--event-vector-size SIZE] [--event-vector-tmo NS]]"
 		" [-E]"
 		" [-L]\n\n"
 
@@ -359,6 +361,9 @@ print_usage(const char *prgname)
 		"  --event-eth-rxqs: Number of ethernet RX queues per device.\n"
 		"                    Default: 1\n"
 		"                    Valid only if --mode=eventdev\n"
+		"  --event-vector:  Enable event vectorization.\n"
+		"  --event-vector-size: Max vector size if event vectorization is enabled.\n"
+		"  --event-vector-tmo: Max timeout to form vector in nanoseconds if event vectorization is enabled\n"
 		"  -E : Enable exact match, legacy flag please use --lookup=em instead\n"
 		"  -L : Enable longest prefix match, legacy flag please use --lookup=lpm instead\n\n",
 		prgname);
@@ -572,6 +577,10 @@ static const char short_options[] =
 #define CMD_LINE_OPT_EVENTQ_SYNC "eventq-sched"
 #define CMD_LINE_OPT_EVENT_ETH_RX_QUEUES "event-eth-rxqs"
 #define CMD_LINE_OPT_LOOKUP "lookup"
+#define CMD_LINE_OPT_ENABLE_VECTOR "event-vector"
+#define CMD_LINE_OPT_VECTOR_SIZE "event-vector-size"
+#define CMD_LINE_OPT_VECTOR_TMO_NS "event-vector-tmo"
+
 enum {
 	/* long options mapped to a short option */
 
@@ -590,6 +599,9 @@ enum {
 	CMD_LINE_OPT_EVENTQ_SYNC_NUM,
 	CMD_LINE_OPT_EVENT_ETH_RX_QUEUES_NUM,
 	CMD_LINE_OPT_LOOKUP_NUM,
+	CMD_LINE_OPT_ENABLE_VECTOR_NUM,
+	CMD_LINE_OPT_VECTOR_SIZE_NUM,
+	CMD_LINE_OPT_VECTOR_TMO_NS_NUM
 };
 
 static const struct option lgopts[] = {
@@ -606,6 +618,9 @@ static const struct option lgopts[] = {
 	{CMD_LINE_OPT_EVENT_ETH_RX_QUEUES, 1, 0,
 					CMD_LINE_OPT_EVENT_ETH_RX_QUEUES_NUM},
 	{CMD_LINE_OPT_LOOKUP, 1, 0, CMD_LINE_OPT_LOOKUP_NUM},
+	{CMD_LINE_OPT_ENABLE_VECTOR, 0, 0, CMD_LINE_OPT_ENABLE_VECTOR_NUM},
+	{CMD_LINE_OPT_VECTOR_SIZE, 1, 0, CMD_LINE_OPT_VECTOR_SIZE_NUM},
+	{CMD_LINE_OPT_VECTOR_TMO_NS, 1, 0, CMD_LINE_OPT_VECTOR_TMO_NS_NUM},
 	{NULL, 0, 0, 0}
 };
 
@@ -750,6 +765,16 @@ parse_args(int argc, char **argv)
 				return -1;
 			break;
 
+		case CMD_LINE_OPT_ENABLE_VECTOR_NUM:
+			printf("event vectorization is enabled\n");
+			evt_rsrc->vector_enabled = 1;
+			break;
+		case CMD_LINE_OPT_VECTOR_SIZE_NUM:
+			evt_rsrc->vector_size = strtol(optarg, NULL, 10);
+			break;
+		case CMD_LINE_OPT_VECTOR_TMO_NS_NUM:
+			evt_rsrc->vector_tmo_ns = strtoull(optarg, NULL, 10);
+			break;
 		default:
 			print_usage(prgname);
 			return -1;
@@ -769,6 +794,19 @@ parse_args(int argc, char **argv)
 	if (!evt_rsrc->enabled && eventq_sched) {
 		fprintf(stderr, "eventq_sched is valid only when event mode is selected\n");
 		return -1;
+	}
+
+	if (evt_rsrc->vector_enabled && !evt_rsrc->vector_size) {
+		evt_rsrc->vector_size = VECTOR_SIZE_DEFAULT;
+		fprintf(stderr, "vector size set to default (%" PRIu16 ")\n",
+			evt_rsrc->vector_size);
+	}
+
+	if (evt_rsrc->vector_enabled && !evt_rsrc->vector_tmo_ns) {
+		evt_rsrc->vector_tmo_ns = VECTOR_TMO_NS_DEFAULT;
+		fprintf(stderr,
+			"vector timeout set to default (%" PRIu64 " ns)\n",
+			evt_rsrc->vector_tmo_ns);
 	}
 
 	/*
@@ -809,6 +847,7 @@ print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 int
 init_mem(uint16_t portid, unsigned int nb_mbuf)
 {
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
 	struct lcore_conf *qconf;
 	int socketid;
 	unsigned lcore_id;
@@ -852,6 +891,24 @@ init_mem(uint16_t portid, unsigned int nb_mbuf)
 				lkp_per_socket[socketid] = 1;
 			}
 		}
+
+		if (evt_rsrc->vector_enabled && vector_pool[portid] == NULL) {
+			unsigned int nb_vec;
+
+			nb_vec = (nb_mbuf + evt_rsrc->vector_size - 1) /
+				 evt_rsrc->vector_size;
+			snprintf(s, sizeof(s), "vector_pool_%d", portid);
+			vector_pool[portid] = rte_event_vector_pool_create(
+				s, nb_vec, 0, evt_rsrc->vector_size, socketid);
+			if (vector_pool[portid] == NULL)
+				rte_exit(EXIT_FAILURE,
+					 "Failed to create vector pool for port %d\n",
+					 portid);
+			else
+				printf("Allocated vector pool for port %d\n",
+				       portid);
+		}
+
 		qconf = &lcore_conf[lcore_id];
 		qconf->ipv4_lookup_struct =
 			l3fwd_lkp.get_ipv4_lookup_struct(socketid);
@@ -1324,6 +1381,7 @@ main(int argc, char **argv)
 
 	evt_rsrc->per_port_pool = per_port_pool;
 	evt_rsrc->pkt_pool = pktmbuf_pool;
+	evt_rsrc->vec_pool = vector_pool;
 	evt_rsrc->port_mask = enabled_port_mask;
 	/* Configure eventdev parameters if user has requested */
 	if (evt_rsrc->enabled) {

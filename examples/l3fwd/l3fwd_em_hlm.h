@@ -318,4 +318,73 @@ l3fwd_em_process_events(int nb_rx, struct rte_event **ev,
 		process_packet(pkts_burst[j], &pkts_burst[j]->port);
 	}
 }
+
+static inline void
+l3fwd_em_process_event_vector(struct rte_event_vector *vec,
+			      struct lcore_conf *qconf)
+{
+	struct rte_mbuf **mbufs = vec->mbufs;
+	uint16_t dst_port[MAX_PKT_BURST];
+	int32_t i, j, n, pos;
+
+	for (j = 0; j < EM_HASH_LOOKUP_COUNT && j < vec->nb_elem; j++)
+		rte_prefetch0(
+			rte_pktmbuf_mtod(mbufs[j], struct rte_ether_hdr *) + 1);
+
+	if (vec->attr_valid)
+		vec->port = em_get_dst_port(qconf, mbufs[0], mbufs[0]->port);
+
+	n = RTE_ALIGN_FLOOR(vec->nb_elem, EM_HASH_LOOKUP_COUNT);
+	for (j = 0; j < n; j += EM_HASH_LOOKUP_COUNT) {
+		uint32_t pkt_type =
+			RTE_PTYPE_L3_MASK | RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP;
+		uint32_t l3_type, tcp_or_udp;
+
+		for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++)
+			pkt_type &= mbufs[j + i]->packet_type;
+
+		l3_type = pkt_type & RTE_PTYPE_L3_MASK;
+		tcp_or_udp = pkt_type & (RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP);
+
+		for (i = 0, pos = j + EM_HASH_LOOKUP_COUNT;
+		     i < EM_HASH_LOOKUP_COUNT && pos < vec->nb_elem;
+		     i++, pos++) {
+			rte_prefetch0(rte_pktmbuf_mtod(mbufs[pos],
+						       struct rte_ether_hdr *) +
+				      1);
+		}
+
+		if (tcp_or_udp && (l3_type == RTE_PTYPE_L3_IPV4)) {
+			em_get_dst_port_ipv4xN_events(qconf, &mbufs[j],
+						      &dst_port[j]);
+		} else if (tcp_or_udp && (l3_type == RTE_PTYPE_L3_IPV6)) {
+			em_get_dst_port_ipv6xN_events(qconf, &mbufs[j],
+						      &dst_port[j]);
+		} else {
+			for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++) {
+				mbufs[j + i]->port =
+					em_get_dst_port(qconf, mbufs[j + i],
+							mbufs[j + i]->port);
+				process_packet(mbufs[j + i],
+					       &mbufs[j + i]->port);
+				event_vector_attr_validate(vec, mbufs[j + i]);
+			}
+			continue;
+		}
+		processx4_step3(&mbufs[j], &dst_port[j]);
+
+		for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++) {
+			mbufs[j + i]->port = dst_port[j + i];
+			event_vector_attr_validate(vec, mbufs[j + i]);
+		}
+	}
+
+	for (; j < vec->nb_elem; j++) {
+		mbufs[j]->port =
+			em_get_dst_port(qconf, mbufs[j], mbufs[j]->port);
+		process_packet(mbufs[j], &mbufs[j]->port);
+		event_vector_attr_validate(vec, mbufs[j]);
+	}
+}
+
 #endif /* __L3FWD_EM_HLM_H__ */

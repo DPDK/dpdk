@@ -878,6 +878,110 @@ em_event_main_loop_tx_q_burst(__rte_unused void *dummy)
 	return 0;
 }
 
+/* Same eventdev loop for single and burst of vector */
+static __rte_always_inline void
+em_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
+		     const uint8_t flags)
+{
+	const int event_p_id = l3fwd_get_free_event_port(evt_rsrc);
+	const uint8_t tx_q_id =
+		evt_rsrc->evq.event_q_id[evt_rsrc->evq.nb_queues - 1];
+	const uint8_t event_d_id = evt_rsrc->event_d_id;
+	const uint16_t deq_len = evt_rsrc->deq_depth;
+	struct rte_event events[MAX_PKT_BURST];
+	struct lcore_conf *lconf;
+	unsigned int lcore_id;
+	int i, nb_enq, nb_deq;
+
+	if (event_p_id < 0)
+		return;
+
+	lcore_id = rte_lcore_id();
+	lconf = &lcore_conf[lcore_id];
+
+	RTE_LOG(INFO, L3FWD, "entering %s on lcore %u\n", __func__, lcore_id);
+
+	while (!force_quit) {
+		/* Read events from RX queues */
+		nb_deq = rte_event_dequeue_burst(event_d_id, event_p_id, events,
+						 deq_len, 0);
+		if (nb_deq == 0) {
+			rte_pause();
+			continue;
+		}
+
+		for (i = 0; i < nb_deq; i++) {
+			if (flags & L3FWD_EVENT_TX_ENQ) {
+				events[i].queue_id = tx_q_id;
+				events[i].op = RTE_EVENT_OP_FORWARD;
+			}
+
+#if defined RTE_ARCH_X86 || defined __ARM_NEON
+			l3fwd_em_process_event_vector(events[i].vec, lconf);
+#else
+			l3fwd_em_no_opt_process_event_vector(events[i].vec,
+							     lconf);
+#endif
+			if (flags & L3FWD_EVENT_TX_DIRECT)
+				event_vector_txq_set(events[i].vec, 0);
+		}
+
+		if (flags & L3FWD_EVENT_TX_ENQ) {
+			nb_enq = rte_event_enqueue_burst(event_d_id, event_p_id,
+							 events, nb_deq);
+			while (nb_enq < nb_deq && !force_quit)
+				nb_enq += rte_event_enqueue_burst(
+					event_d_id, event_p_id, events + nb_enq,
+					nb_deq - nb_enq);
+		}
+
+		if (flags & L3FWD_EVENT_TX_DIRECT) {
+			nb_enq = rte_event_eth_tx_adapter_enqueue(
+				event_d_id, event_p_id, events, nb_deq, 0);
+			while (nb_enq < nb_deq && !force_quit)
+				nb_enq += rte_event_eth_tx_adapter_enqueue(
+					event_d_id, event_p_id, events + nb_enq,
+					nb_deq - nb_enq, 0);
+		}
+	}
+}
+
+int __rte_noinline
+em_event_main_loop_tx_d_vector(__rte_unused void *dummy)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+
+	em_event_loop_vector(evt_rsrc, L3FWD_EVENT_TX_DIRECT);
+	return 0;
+}
+
+int __rte_noinline
+em_event_main_loop_tx_d_burst_vector(__rte_unused void *dummy)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+
+	em_event_loop_vector(evt_rsrc, L3FWD_EVENT_TX_DIRECT);
+	return 0;
+}
+
+int __rte_noinline
+em_event_main_loop_tx_q_vector(__rte_unused void *dummy)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+
+	em_event_loop_vector(evt_rsrc, L3FWD_EVENT_TX_ENQ);
+	return 0;
+}
+
+int __rte_noinline
+em_event_main_loop_tx_q_burst_vector(__rte_unused void *dummy)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+
+	em_event_loop_vector(evt_rsrc, L3FWD_EVENT_TX_ENQ);
+	return 0;
+}
+
 /* Initialize exact match (hash) parameters. 8< */
 void
 setup_hash(const int socketid)

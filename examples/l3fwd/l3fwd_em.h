@@ -175,4 +175,41 @@ l3fwd_em_no_opt_process_events(int nb_rx, struct rte_event **events,
 		l3fwd_em_simple_process(events[j]->mbuf, qconf);
 }
 
+static inline void
+l3fwd_em_no_opt_process_event_vector(struct rte_event_vector *vec,
+				     struct lcore_conf *qconf)
+{
+	struct rte_mbuf **mbufs = vec->mbufs;
+	int32_t i;
+
+	/* Prefetch first packets */
+	for (i = 0; i < PREFETCH_OFFSET && i < vec->nb_elem; i++)
+		rte_prefetch0(rte_pktmbuf_mtod(mbufs[i], void *));
+
+	/* Process first packet to init vector attributes */
+	l3fwd_em_simple_process(mbufs[0], qconf);
+	if (vec->attr_valid) {
+		if (mbufs[0]->port != BAD_PORT)
+			vec->port = mbufs[0]->port;
+		else
+			vec->attr_valid = 0;
+	}
+
+	/*
+	 * Prefetch and forward already prefetched packets.
+	 */
+	for (i = 1; i < (vec->nb_elem - PREFETCH_OFFSET); i++) {
+		rte_prefetch0(
+			rte_pktmbuf_mtod(mbufs[i + PREFETCH_OFFSET], void *));
+		l3fwd_em_simple_process(mbufs[i], qconf);
+		event_vector_attr_validate(vec, mbufs[i]);
+	}
+
+	/* Forward remaining prefetched packets */
+	for (; i < vec->nb_elem; i++) {
+		l3fwd_em_simple_process(mbufs[i], qconf);
+		event_vector_attr_validate(vec, mbufs[i]);
+	}
+}
+
 #endif /* __L3FWD_EM_H__ */

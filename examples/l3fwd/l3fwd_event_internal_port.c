@@ -215,12 +215,36 @@ l3fwd_rx_tx_adapter_setup_internal_port(void)
 		rte_panic("Failed to allocate memory for Rx adapter\n");
 	}
 
-
 	RTE_ETH_FOREACH_DEV(port_id) {
 		if ((evt_rsrc->port_mask & (1 << port_id)) == 0)
 			continue;
+
+		if (evt_rsrc->vector_enabled) {
+			uint32_t cap;
+
+			if (rte_event_eth_rx_adapter_caps_get(event_d_id,
+							      port_id, &cap))
+				rte_panic(
+					"Failed to get event rx adapter capability");
+
+			if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR) {
+				eth_q_conf.vector_sz = evt_rsrc->vector_size;
+				eth_q_conf.vector_timeout_ns =
+					evt_rsrc->vector_tmo_ns;
+				eth_q_conf.vector_mp =
+					evt_rsrc->per_port_pool ?
+						evt_rsrc->vec_pool[port_id] :
+						evt_rsrc->vec_pool[0];
+				eth_q_conf.rx_queue_flags |=
+				RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR;
+			} else {
+				rte_panic(
+					"Rx adapter doesn't support event vector");
+			}
+		}
+
 		ret = rte_event_eth_rx_adapter_create(adapter_id, event_d_id,
-						&evt_rsrc->def_p_conf);
+						      &evt_rsrc->def_p_conf);
 		if (ret)
 			rte_panic("Failed to create rx adapter[%d]\n",
 				  adapter_id);

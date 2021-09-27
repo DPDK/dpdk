@@ -65,6 +65,7 @@ struct l3fwd_event_resources {
 	uint8_t disable_implicit_release;
 	struct l3fwd_event_setup_ops ops;
 	struct rte_mempool * (*pkt_pool)[NB_SOCKETS];
+	struct rte_mempool **vec_pool;
 	struct l3fwd_event_queues evq;
 	struct l3fwd_event_ports evp;
 	uint32_t port_mask;
@@ -76,7 +77,31 @@ struct l3fwd_event_resources {
 	uint8_t has_burst;
 	uint8_t enabled;
 	uint8_t eth_rx_queues;
+	uint8_t vector_enabled;
+	uint16_t vector_size;
+	uint64_t vector_tmo_ns;
 };
+
+static inline void
+event_vector_attr_validate(struct rte_event_vector *vec, struct rte_mbuf *mbuf)
+{
+	/* l3fwd application only changes mbuf port while processing */
+	if (vec->attr_valid && (vec->port != mbuf->port))
+		vec->attr_valid = 0;
+}
+
+static inline void
+event_vector_txq_set(struct rte_event_vector *vec, uint16_t txq)
+{
+	if (vec->attr_valid) {
+		vec->queue = txq;
+	} else {
+		int i;
+
+		for (i = 0; i < vec->nb_elem; i++)
+			rte_event_eth_tx_adapter_txq_set(vec->mbufs[i], txq);
+	}
+}
 
 struct l3fwd_event_resources *l3fwd_get_eventdev_rsrc(void);
 void l3fwd_event_resource_setup(struct rte_eth_conf *port_conf);

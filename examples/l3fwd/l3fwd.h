@@ -28,6 +28,8 @@
 #define MEMPOOL_CACHE_SIZE 256
 #define MAX_RX_QUEUE_PER_LCORE 16
 
+#define VECTOR_SIZE_DEFAULT   MAX_PKT_BURST
+#define VECTOR_TMO_NS_DEFAULT 1E6 /* 1ms */
 /*
  * Try to avoid TX buffering if we have at least MAX_TX_BURST packets to send.
  */
@@ -221,6 +223,14 @@ int
 lpm_event_main_loop_tx_q(__rte_unused void *dummy);
 int
 lpm_event_main_loop_tx_q_burst(__rte_unused void *dummy);
+int
+lpm_event_main_loop_tx_d_vector(__rte_unused void *dummy);
+int
+lpm_event_main_loop_tx_d_burst_vector(__rte_unused void *dummy);
+int
+lpm_event_main_loop_tx_q_vector(__rte_unused void *dummy);
+int
+lpm_event_main_loop_tx_q_burst_vector(__rte_unused void *dummy);
 
 int
 em_event_main_loop_tx_d(__rte_unused void *dummy);
@@ -230,6 +240,14 @@ int
 em_event_main_loop_tx_q(__rte_unused void *dummy);
 int
 em_event_main_loop_tx_q_burst(__rte_unused void *dummy);
+int
+em_event_main_loop_tx_d_vector(__rte_unused void *dummy);
+int
+em_event_main_loop_tx_d_burst_vector(__rte_unused void *dummy);
+int
+em_event_main_loop_tx_q_vector(__rte_unused void *dummy);
+int
+em_event_main_loop_tx_q_burst_vector(__rte_unused void *dummy);
 
 int
 fib_event_main_loop_tx_d(__rte_unused void *dummy);
@@ -239,6 +257,14 @@ int
 fib_event_main_loop_tx_q(__rte_unused void *dummy);
 int
 fib_event_main_loop_tx_q_burst(__rte_unused void *dummy);
+int
+fib_event_main_loop_tx_d_vector(__rte_unused void *dummy);
+int
+fib_event_main_loop_tx_d_burst_vector(__rte_unused void *dummy);
+int
+fib_event_main_loop_tx_q_vector(__rte_unused void *dummy);
+int
+fib_event_main_loop_tx_q_burst_vector(__rte_unused void *dummy);
 
 
 /* Return ipv4/ipv6 fwd lookup struct for LPM, EM or FIB. */

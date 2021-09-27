@@ -215,23 +215,35 @@ void
 l3fwd_event_resource_setup(struct rte_eth_conf *port_conf)
 {
 	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
-	const event_loop_cb lpm_event_loop[2][2] = {
-		[0][0] = lpm_event_main_loop_tx_d,
-		[0][1] = lpm_event_main_loop_tx_d_burst,
-		[1][0] = lpm_event_main_loop_tx_q,
-		[1][1] = lpm_event_main_loop_tx_q_burst,
+	const event_loop_cb lpm_event_loop[2][2][2] = {
+		[0][0][0] = lpm_event_main_loop_tx_d,
+		[0][0][1] = lpm_event_main_loop_tx_d_burst,
+		[0][1][0] = lpm_event_main_loop_tx_q,
+		[0][1][1] = lpm_event_main_loop_tx_q_burst,
+		[1][0][0] = lpm_event_main_loop_tx_d_vector,
+		[1][0][1] = lpm_event_main_loop_tx_d_burst_vector,
+		[1][1][0] = lpm_event_main_loop_tx_q_vector,
+		[1][1][1] = lpm_event_main_loop_tx_q_burst_vector,
 	};
-	const event_loop_cb em_event_loop[2][2] = {
-		[0][0] = em_event_main_loop_tx_d,
-		[0][1] = em_event_main_loop_tx_d_burst,
-		[1][0] = em_event_main_loop_tx_q,
-		[1][1] = em_event_main_loop_tx_q_burst,
+	const event_loop_cb em_event_loop[2][2][2] = {
+		[0][0][0] = em_event_main_loop_tx_d,
+		[0][0][1] = em_event_main_loop_tx_d_burst,
+		[0][1][0] = em_event_main_loop_tx_q,
+		[0][1][1] = em_event_main_loop_tx_q_burst,
+		[1][0][0] = em_event_main_loop_tx_d_vector,
+		[1][0][1] = em_event_main_loop_tx_d_burst_vector,
+		[1][1][0] = em_event_main_loop_tx_q_vector,
+		[1][1][1] = em_event_main_loop_tx_q_burst_vector,
 	};
-	const event_loop_cb fib_event_loop[2][2] = {
-		[0][0] = fib_event_main_loop_tx_d,
-		[0][1] = fib_event_main_loop_tx_d_burst,
-		[1][0] = fib_event_main_loop_tx_q,
-		[1][1] = fib_event_main_loop_tx_q_burst,
+	const event_loop_cb fib_event_loop[2][2][2] = {
+		[0][0][0] = fib_event_main_loop_tx_d,
+		[0][0][1] = fib_event_main_loop_tx_d_burst,
+		[0][1][0] = fib_event_main_loop_tx_q,
+		[0][1][1] = fib_event_main_loop_tx_q_burst,
+		[1][0][0] = fib_event_main_loop_tx_d_vector,
+		[1][0][1] = fib_event_main_loop_tx_d_burst_vector,
+		[1][1][0] = fib_event_main_loop_tx_q_vector,
+		[1][1][1] = fib_event_main_loop_tx_q_burst_vector,
 	};
 	uint32_t event_queue_cfg;
 	int ret;
@@ -265,12 +277,15 @@ l3fwd_event_resource_setup(struct rte_eth_conf *port_conf)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Error in starting eventdev");
 
-	evt_rsrc->ops.lpm_event_loop = lpm_event_loop[evt_rsrc->tx_mode_q]
-						       [evt_rsrc->has_burst];
+	evt_rsrc->ops.lpm_event_loop =
+		lpm_event_loop[evt_rsrc->vector_enabled][evt_rsrc->tx_mode_q]
+			      [evt_rsrc->has_burst];
 
-	evt_rsrc->ops.em_event_loop = em_event_loop[evt_rsrc->tx_mode_q]
-						       [evt_rsrc->has_burst];
+	evt_rsrc->ops.em_event_loop =
+		em_event_loop[evt_rsrc->vector_enabled][evt_rsrc->tx_mode_q]
+			     [evt_rsrc->has_burst];
 
-	evt_rsrc->ops.fib_event_loop = fib_event_loop[evt_rsrc->tx_mode_q]
-						       [evt_rsrc->has_burst];
+	evt_rsrc->ops.fib_event_loop =
+		fib_event_loop[evt_rsrc->vector_enabled][evt_rsrc->tx_mode_q]
+			      [evt_rsrc->has_burst];
 }

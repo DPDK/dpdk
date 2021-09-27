@@ -412,6 +412,170 @@ fib_event_main_loop_tx_q_burst(__rte_unused void *dummy)
 	return 0;
 }
 
+static __rte_always_inline void
+fib_process_event_vector(struct rte_event_vector *vec)
+{
+	uint8_t ipv6_arr[MAX_PKT_BURST][RTE_FIB6_IPV6_ADDR_SIZE];
+	uint64_t hopsv4[MAX_PKT_BURST], hopsv6[MAX_PKT_BURST];
+	uint32_t ipv4_arr_assem, ipv6_arr_assem;
+	struct rte_mbuf **mbufs = vec->mbufs;
+	uint32_t ipv4_arr[MAX_PKT_BURST];
+	uint8_t type_arr[MAX_PKT_BURST];
+	uint32_t ipv4_cnt, ipv6_cnt;
+	struct lcore_conf *lconf;
+	uint16_t nh;
+	int i;
+
+	lconf = &lcore_conf[rte_lcore_id()];
+
+	/* Reset counters. */
+	ipv4_cnt = 0;
+	ipv6_cnt = 0;
+	ipv4_arr_assem = 0;
+	ipv6_arr_assem = 0;
+
+	/* Prefetch first packets. */
+	for (i = 0; i < FIB_PREFETCH_OFFSET && i < vec->nb_elem; i++)
+		rte_prefetch0(rte_pktmbuf_mtod(mbufs[i], void *));
+
+	/* Parse packet info and prefetch. */
+	for (i = 0; i < (vec->nb_elem - FIB_PREFETCH_OFFSET); i++) {
+		rte_prefetch0(rte_pktmbuf_mtod(mbufs[i + FIB_PREFETCH_OFFSET],
+					       void *));
+		fib_parse_packet(mbufs[i], &ipv4_arr[ipv4_cnt], &ipv4_cnt,
+				 ipv6_arr[ipv6_cnt], &ipv6_cnt, &type_arr[i]);
+	}
+
+	/* Parse remaining packet info. */
+	for (; i < vec->nb_elem; i++)
+		fib_parse_packet(mbufs[i], &ipv4_arr[ipv4_cnt], &ipv4_cnt,
+				 ipv6_arr[ipv6_cnt], &ipv6_cnt, &type_arr[i]);
+
+	/* Lookup IPv4 hops if IPv4 packets are present. */
+	if (likely(ipv4_cnt > 0))
+		rte_fib_lookup_bulk(lconf->ipv4_lookup_struct, ipv4_arr, hopsv4,
+				    ipv4_cnt);
+
+	/* Lookup IPv6 hops if IPv6 packets are present. */
+	if (ipv6_cnt > 0)
+		rte_fib6_lookup_bulk(lconf->ipv6_lookup_struct, ipv6_arr,
+				     hopsv6, ipv6_cnt);
+
+	if (vec->attr_valid) {
+		nh = type_arr[0] ? (uint16_t)hopsv4[0] : (uint16_t)hopsv6[0];
+		if (nh != FIB_DEFAULT_HOP)
+			vec->port = nh;
+		else
+			vec->attr_valid = 0;
+	}
+
+	/* Assign ports looked up in fib depending on IPv4 or IPv6 */
+	for (i = 0; i < vec->nb_elem; i++) {
+		if (type_arr[i])
+			nh = (uint16_t)hopsv4[ipv4_arr_assem++];
+		else
+			nh = (uint16_t)hopsv6[ipv6_arr_assem++];
+		if (nh != FIB_DEFAULT_HOP)
+			mbufs[i]->port = nh;
+		event_vector_attr_validate(vec, mbufs[i]);
+	}
+}
+
+static __rte_always_inline void
+fib_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
+		      const uint8_t flags)
+{
+	const int event_p_id = l3fwd_get_free_event_port(evt_rsrc);
+	const uint8_t tx_q_id =
+		evt_rsrc->evq.event_q_id[evt_rsrc->evq.nb_queues - 1];
+	const uint8_t event_d_id = evt_rsrc->event_d_id;
+	const uint16_t deq_len = evt_rsrc->deq_depth;
+	struct rte_event events[MAX_PKT_BURST];
+	int nb_enq, nb_deq, i;
+
+	if (event_p_id < 0)
+		return;
+
+	RTE_LOG(INFO, L3FWD, "entering %s on lcore %u\n", __func__,
+		rte_lcore_id());
+
+	while (!force_quit) {
+		/* Read events from RX queues. */
+		nb_deq = rte_event_dequeue_burst(event_d_id, event_p_id, events,
+						 deq_len, 0);
+		if (nb_deq == 0) {
+			rte_pause();
+			continue;
+		}
+
+		for (i = 0; i < nb_deq; i++) {
+			if (flags & L3FWD_EVENT_TX_ENQ) {
+				events[i].queue_id = tx_q_id;
+				events[i].op = RTE_EVENT_OP_FORWARD;
+			}
+
+			fib_process_event_vector(events[i].vec);
+
+			if (flags & L3FWD_EVENT_TX_DIRECT)
+				event_vector_txq_set(events[i].vec, 0);
+		}
+
+		if (flags & L3FWD_EVENT_TX_ENQ) {
+			nb_enq = rte_event_enqueue_burst(event_d_id, event_p_id,
+							 events, nb_deq);
+			while (nb_enq < nb_deq && !force_quit)
+				nb_enq += rte_event_enqueue_burst(
+					event_d_id, event_p_id, events + nb_enq,
+					nb_deq - nb_enq);
+		}
+
+		if (flags & L3FWD_EVENT_TX_DIRECT) {
+			nb_enq = rte_event_eth_tx_adapter_enqueue(
+				event_d_id, event_p_id, events, nb_deq, 0);
+			while (nb_enq < nb_deq && !force_quit)
+				nb_enq += rte_event_eth_tx_adapter_enqueue(
+					event_d_id, event_p_id, events + nb_enq,
+					nb_deq - nb_enq, 0);
+		}
+	}
+}
+
+int __rte_noinline
+fib_event_main_loop_tx_d_vector(__rte_unused void *dummy)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+
+	fib_event_loop_vector(evt_rsrc, L3FWD_EVENT_TX_DIRECT);
+	return 0;
+}
+
+int __rte_noinline
+fib_event_main_loop_tx_d_burst_vector(__rte_unused void *dummy)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+
+	fib_event_loop_vector(evt_rsrc, L3FWD_EVENT_TX_DIRECT);
+	return 0;
+}
+
+int __rte_noinline
+fib_event_main_loop_tx_q_vector(__rte_unused void *dummy)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+
+	fib_event_loop_vector(evt_rsrc, L3FWD_EVENT_TX_ENQ);
+	return 0;
+}
+
+int __rte_noinline
+fib_event_main_loop_tx_q_burst_vector(__rte_unused void *dummy)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+
+	fib_event_loop_vector(evt_rsrc, L3FWD_EVENT_TX_ENQ);
+	return 0;
+}
+
 /* Function to setup fib. 8< */
 void
 setup_fib(const int socketid)
