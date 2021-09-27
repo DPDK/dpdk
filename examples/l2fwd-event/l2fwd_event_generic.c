@@ -245,6 +245,27 @@ l2fwd_rx_tx_adapter_setup_generic(struct l2fwd_resources *rsrc)
 		if ((rsrc->enabled_port_mask & (1 << port_id)) == 0)
 			continue;
 		eth_q_conf.ev.queue_id = evt_rsrc->evq.event_q_id[i];
+		if (rsrc->evt_vec.enabled) {
+			uint32_t cap;
+
+			if (rte_event_eth_rx_adapter_caps_get(event_d_id,
+							      port_id, &cap))
+				rte_panic(
+					"Failed to get event rx adapter capability");
+
+			if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR) {
+				eth_q_conf.vector_sz = rsrc->evt_vec.size;
+				eth_q_conf.vector_timeout_ns =
+					rsrc->evt_vec.timeout_ns;
+				eth_q_conf.vector_mp = rsrc->evt_vec_pool;
+				eth_q_conf.rx_queue_flags |=
+				RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR;
+			} else {
+				rte_panic(
+					"Rx adapter doesn't support event vector");
+			}
+		}
+
 		ret = rte_event_eth_rx_adapter_queue_add(rx_adptr_id, port_id,
 							 -1, &eth_q_conf);
 		if (ret)

@@ -55,12 +55,22 @@
 #define DEFAULT_TIMER_PERIOD	10 /* default period is 10 seconds */
 #define MAX_TIMER_PERIOD	86400 /* 1 day max */
 
+#define VECTOR_SIZE_DEFAULT   MAX_PKT_BURST
+#define VECTOR_TMO_NS_DEFAULT 1E6 /* 1ms */
+
 /* Per-port statistics struct */
 struct l2fwd_port_statistics {
 	uint64_t dropped;
 	uint64_t tx;
 	uint64_t rx;
 } __rte_cache_aligned;
+
+/* Event vector attributes */
+struct l2fwd_event_vector_params {
+	uint8_t enabled;
+	uint16_t size;
+	uint64_t timeout_ns;
+};
 
 struct l2fwd_resources {
 	volatile uint8_t force_quit;
@@ -74,9 +84,11 @@ struct l2fwd_resources {
 	uint32_t enabled_port_mask;
 	uint64_t timer_period;
 	struct rte_mempool *pktmbuf_pool;
+	struct rte_mempool *evt_vec_pool;
 	uint32_t dst_ports[RTE_MAX_ETHPORTS];
 	struct rte_ether_addr eth_addr[RTE_MAX_ETHPORTS];
 	struct l2fwd_port_statistics port_stats[RTE_MAX_ETHPORTS];
+	struct l2fwd_event_vector_params evt_vec;
 	void *evt_rsrc;
 	void *poll_rsrc;
 } __rte_cache_aligned;
