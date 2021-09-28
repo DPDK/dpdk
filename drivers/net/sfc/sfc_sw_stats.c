@@ -566,8 +566,7 @@ sfc_sw_xstats_init(struct sfc_adapter *sa)
 void
 sfc_sw_xstats_close(struct sfc_adapter *sa)
 {
+	sfc_sw_xstats_free_queues_bitmap(sa);
 	rte_free(sa->sw_stats.reset_vals);
 	sa->sw_stats.reset_vals = NULL;
-
-	sfc_sw_xstats_free_queues_bitmap(sa);
 }
