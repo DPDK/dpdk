@@ -152,7 +152,7 @@ _ixgbe_tx_queue_release_mbufs_vec(struct ixgbe_tx_queue *txq)
 	/* release the used mbufs in sw_ring */
 	for (i = txq->tx_next_dd - (txq->tx_rs_thresh - 1);
 	     i != txq->tx_tail;
-	     i = (i + 1) & max_desc) {
+	     i = (i + 1) % txq->nb_tx_desc) {
 		txe = &txq->sw_ring_v[i];
 		rte_pktmbuf_free_seg(txe->mbuf);
 	}
@@ -168,7 +168,6 @@ _ixgbe_tx_queue_release_mbufs_vec(struct ixgbe_tx_queue *txq)
 static inline void
 _ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq)
 {
-	const unsigned int mask = rxq->nb_rx_desc - 1;
 	unsigned int i;
 
 	if (rxq->sw_ring == NULL || rxq->rxrearm_nb >= rxq->nb_rx_desc)
@@ -183,7 +182,7 @@ _ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq)
 	} else {
 		for (i = rxq->rx_tail;
 		     i != rxq->rxrearm_start;
-		     i = (i + 1) & mask) {
+		     i = (i + 1) % rxq->nb_rx_desc) {
 			if (rxq->sw_ring[i].mbuf != NULL)
 				rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
 		}
