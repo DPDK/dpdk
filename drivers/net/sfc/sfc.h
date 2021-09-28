@@ -217,7 +217,7 @@ struct sfc_counter_rxq {
 	struct rte_mempool		*mp;
 };
 
-struct sfc_sw_xstats {
+struct sfc_sw_stats {
 	uint64_t			*reset_vals;
 
 	rte_spinlock_t			queues_bitmap_lock;
@@ -257,7 +257,7 @@ struct sfc_adapter {
 	struct sfc_sriov		sriov;
 	struct sfc_intr			intr;
 	struct sfc_port			port;
-	struct sfc_sw_xstats		sw_xstats;
+	struct sfc_sw_stats		sw_stats;
 	struct sfc_filter		filter;
 	struct sfc_mae			mae;
 
