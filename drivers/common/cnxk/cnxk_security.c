@@ -199,6 +199,62 @@ ot_ipsec_inb_ctx_size(struct roc_ot_ipsec_inb_sa *sa)
 	return size;
 }
 
+static int
+ot_ipsec_inb_tunnel_hdr_fill(struct roc_ot_ipsec_inb_sa *sa,
+			     struct rte_security_ipsec_xform *ipsec_xfrm)
+{
+	struct rte_security_ipsec_tunnel_param *tunnel;
+
+	if (ipsec_xfrm->mode != RTE_SECURITY_IPSEC_SA_MODE_TUNNEL)
+		return 0;
+
+	if (ipsec_xfrm->options.tunnel_hdr_verify == 0)
+		return 0;
+
+	tunnel = &ipsec_xfrm->tunnel;
+
+	switch (tunnel->type) {
+	case RTE_SECURITY_IPSEC_TUNNEL_IPV4:
+		sa->w2.s.outer_ip_ver = ROC_IE_SA_IP_VERSION_4;
+		memcpy(&sa->outer_hdr.ipv4.src_addr, &tunnel->ipv4.src_ip,
+		       sizeof(struct in_addr));
+		memcpy(&sa->outer_hdr.ipv4.dst_addr, &tunnel->ipv4.dst_ip,
+		       sizeof(struct in_addr));
+
+		/* IP Source and Dest are in LE/CPU endian */
+		sa->outer_hdr.ipv4.src_addr =
+			rte_be_to_cpu_32(sa->outer_hdr.ipv4.src_addr);
+		sa->outer_hdr.ipv4.dst_addr =
+			rte_be_to_cpu_32(sa->outer_hdr.ipv4.dst_addr);
+
+		break;
+	case RTE_SECURITY_IPSEC_TUNNEL_IPV6:
+		sa->w2.s.outer_ip_ver = ROC_IE_SA_IP_VERSION_6;
+		memcpy(&sa->outer_hdr.ipv6.src_addr, &tunnel->ipv6.src_addr,
+		       sizeof(struct in6_addr));
+		memcpy(&sa->outer_hdr.ipv6.dst_addr, &tunnel->ipv6.dst_addr,
+		       sizeof(struct in6_addr));
+
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	switch (ipsec_xfrm->options.tunnel_hdr_verify) {
+	case RTE_SECURITY_IPSEC_TUNNEL_VERIFY_DST_ADDR:
+		sa->w2.s.ip_hdr_verify = ROC_IE_OT_SA_IP_HDR_VERIFY_DST_ADDR;
+		break;
+	case RTE_SECURITY_IPSEC_TUNNEL_VERIFY_SRC_DST_ADDR:
+		sa->w2.s.ip_hdr_verify =
+			ROC_IE_OT_SA_IP_HDR_VERIFY_SRC_DST_ADDR;
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
 int
 cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 			  struct rte_security_ipsec_xform *ipsec_xfrm,
@@ -228,6 +284,10 @@ cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 
 		sa->w0.s.ar_win = rte_log2_u32(replay_win_sz) - 5;
 	}
+
+	rc = ot_ipsec_inb_tunnel_hdr_fill(sa, ipsec_xfrm);
+	if (rc)
+		return rc;
 
 	/* Default options for pkt_out and pkt_fmt are with
 	 * second pass meta and no defrag.

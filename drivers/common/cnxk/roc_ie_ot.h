@@ -180,7 +180,11 @@ union roc_ot_ipsec_sa_word2 {
 		uint64_t auth_type : 4;
 
 		uint64_t encap_type : 2;
-		uint64_t rsvd1 : 6;
+		uint64_t et_ovrwr_ddr_en : 1;
+		uint64_t esn_en : 1;
+		uint64_t tport_l4_incr_csum : 1;
+		uint64_t ip_hdr_verify : 2;
+		uint64_t rsvd5 : 1;
 
 		uint64_t rsvd2 : 7;
 		uint64_t async_mode : 1;

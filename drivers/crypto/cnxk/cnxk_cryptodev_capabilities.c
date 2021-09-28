@@ -920,6 +920,10 @@ cn10k_sec_caps_update(struct rte_security_capability *sec_cap)
 #ifdef LA_IPSEC_DEBUG
 		sec_cap->ipsec.options.iv_gen_disable = 1;
 #endif
+	} else {
+		if (sec_cap->ipsec.mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL)
+			sec_cap->ipsec.options.tunnel_hdr_verify =
+				RTE_SECURITY_IPSEC_TUNNEL_VERIFY_SRC_DST_ADDR;
 	}
 }
 
