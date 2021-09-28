@@ -239,6 +239,8 @@ struct sfc_sw_stats {
 	/* Location of per-queue reset values for packets/bytes in reset_vals */
 	uint64_t			*reset_rx_pkts;
 	uint64_t			*reset_rx_bytes;
+	uint64_t			*reset_tx_pkts;
+	uint64_t			*reset_tx_bytes;
 
 	rte_spinlock_t			queues_bitmap_lock;
 	void				*queues_bitmap_mem;

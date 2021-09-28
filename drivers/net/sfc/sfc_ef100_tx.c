@@ -710,6 +710,9 @@ sfc_ef100_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		dma_desc_space -= (added - pkt_start);
+
+		sfc_pkts_bytes_add(&txq->dp.dpq.stats, 1,
+				   rte_pktmbuf_pkt_len(*pktp));
 	}
 
 	if (likely(added != txq->added)) {
@@ -940,7 +943,8 @@ struct sfc_dp_tx sfc_ef100_tx = {
 		.type		= SFC_DP_TX,
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF100,
 	},
-	.features		= SFC_DP_TX_FEAT_MULTI_PROCESS,
+	.features		= SFC_DP_TX_FEAT_MULTI_PROCESS |
+				  SFC_DP_TX_FEAT_STATS,
 	.dev_offload_capa	= 0,
 	.queue_offload_capa	= DEV_TX_OFFLOAD_VLAN_INSERT |
 				  DEV_TX_OFFLOAD_IPV4_CKSUM |

@@ -613,6 +613,33 @@ sfc_stats_get_dp_rx(struct sfc_adapter *sa, uint64_t *pkts, uint64_t *bytes)
 	*bytes = bytes_sum;
 }
 
+static void
+sfc_stats_get_dp_tx(struct sfc_adapter *sa, uint64_t *pkts, uint64_t *bytes)
+{
+	struct sfc_adapter_shared *sas = sfc_sa2shared(sa);
+	uint64_t pkts_sum = 0;
+	uint64_t bytes_sum = 0;
+	unsigned int i;
+
+	for (i = 0; i < sas->ethdev_txq_count; ++i) {
+		struct sfc_txq_info *txq_info;
+
+		txq_info = sfc_txq_info_by_ethdev_qid(sas, i);
+		if (txq_info->state & SFC_TXQ_INITIALIZED) {
+			union sfc_pkts_bytes qstats;
+
+			sfc_pkts_bytes_get(&txq_info->dp->dpq.stats, &qstats);
+			pkts_sum += qstats.pkts -
+					sa->sw_stats.reset_tx_pkts[i];
+			bytes_sum += qstats.bytes -
+					sa->sw_stats.reset_tx_bytes[i];
+		}
+	}
+
+	*pkts = pkts_sum;
+	*bytes = bytes_sum;
+}
+
 /*
  * Some statistics are computed as A - B where A and B each increase
  * monotonically with some hardware counter(s) and the counters are read
@@ -641,6 +668,7 @@ sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
 	bool have_dp_rx_stats = sap->dp_rx->features & SFC_DP_RX_FEAT_STATS;
+	bool have_dp_tx_stats = sap->dp_tx->features & SFC_DP_TX_FEAT_STATS;
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct sfc_port *port = &sa->port;
 	uint64_t *mac_stats;
@@ -650,6 +678,8 @@ sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	if (have_dp_rx_stats)
 		sfc_stats_get_dp_rx(sa, &stats->ipackets, &stats->ibytes);
+	if (have_dp_tx_stats)
+		sfc_stats_get_dp_tx(sa, &stats->opackets, &stats->obytes);
 
 	ret = sfc_port_update_mac_stats(sa, B_FALSE);
 	if (ret != 0)
@@ -672,25 +702,27 @@ sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			/* CRC is included in these stats, but shouldn't be */
 			stats->ibytes -= stats->ipackets * RTE_ETHER_CRC_LEN;
 		}
-		stats->opackets =
-			mac_stats[EFX_MAC_VADAPTER_TX_UNICAST_PACKETS] +
-			mac_stats[EFX_MAC_VADAPTER_TX_MULTICAST_PACKETS] +
-			mac_stats[EFX_MAC_VADAPTER_TX_BROADCAST_PACKETS];
-		stats->obytes =
-			mac_stats[EFX_MAC_VADAPTER_TX_UNICAST_BYTES] +
-			mac_stats[EFX_MAC_VADAPTER_TX_MULTICAST_BYTES] +
-			mac_stats[EFX_MAC_VADAPTER_TX_BROADCAST_BYTES];
+		if (!have_dp_tx_stats) {
+			stats->opackets =
+				mac_stats[EFX_MAC_VADAPTER_TX_UNICAST_PACKETS] +
+				mac_stats[EFX_MAC_VADAPTER_TX_MULTICAST_PACKETS] +
+				mac_stats[EFX_MAC_VADAPTER_TX_BROADCAST_PACKETS];
+			stats->obytes =
+				mac_stats[EFX_MAC_VADAPTER_TX_UNICAST_BYTES] +
+				mac_stats[EFX_MAC_VADAPTER_TX_MULTICAST_BYTES] +
+				mac_stats[EFX_MAC_VADAPTER_TX_BROADCAST_BYTES];
+
+			/* CRC is included in these stats, but shouldn't be */
+			stats->obytes -= stats->opackets * RTE_ETHER_CRC_LEN;
+		}
 		stats->imissed = mac_stats[EFX_MAC_VADAPTER_RX_BAD_PACKETS];
 		stats->oerrors = mac_stats[EFX_MAC_VADAPTER_TX_BAD_PACKETS];
-
-		/* CRC is included in these stats, but shouldn't be */
-		stats->obytes -= stats->opackets * RTE_ETHER_CRC_LEN;
 	} else {
-		stats->opackets = mac_stats[EFX_MAC_TX_PKTS];
-		stats->obytes = mac_stats[EFX_MAC_TX_OCTETS];
-
-		/* CRC is included in these stats, but shouldn't be */
-		stats->obytes -= mac_stats[EFX_MAC_TX_PKTS] * RTE_ETHER_CRC_LEN;
+		if (!have_dp_tx_stats) {
+			stats->opackets = mac_stats[EFX_MAC_TX_PKTS];
+			stats->obytes = mac_stats[EFX_MAC_TX_OCTETS] -
+				mac_stats[EFX_MAC_TX_PKTS] * RTE_ETHER_CRC_LEN;
+		}
 
 		/*
 		 * Take into account stats which are whenever supported

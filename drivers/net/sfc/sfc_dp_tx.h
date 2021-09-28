@@ -168,6 +168,7 @@ struct sfc_dp_tx {
 
 	unsigned int			features;
 #define SFC_DP_TX_FEAT_MULTI_PROCESS	0x1
+#define SFC_DP_TX_FEAT_STATS		0x2
 	/**
 	 * Tx offload capabilities supported by the datapath on device
 	 * level only if HW/FW supports it.

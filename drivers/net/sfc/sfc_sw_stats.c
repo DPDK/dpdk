@@ -60,6 +60,29 @@ sfc_sw_stat_get_rx_good_pkts_bytes(struct sfc_adapter *sa, uint16_t qid,
 	}
 }
 
+static sfc_get_sw_stat_val_t sfc_sw_stat_get_tx_good_pkts_bytes;
+static void
+sfc_sw_stat_get_tx_good_pkts_bytes(struct sfc_adapter *sa, uint16_t qid,
+				   uint64_t *values,
+				   unsigned int values_count)
+{
+	struct sfc_adapter_shared *sas = sfc_sa2shared(sa);
+	struct sfc_txq_info *txq_info;
+	union sfc_pkts_bytes qstats;
+
+	RTE_SET_USED(values_count);
+	SFC_ASSERT(values_count == SFX_SW_STATS_GROUP_BASIC_MAX);
+	txq_info = sfc_txq_info_by_ethdev_qid(sas, qid);
+	if (txq_info->state & SFC_TXQ_INITIALIZED) {
+		sfc_pkts_bytes_get(&txq_info->dp->dpq.stats, &qstats);
+		values[SFC_SW_STATS_GROUP_BASIC_PKTS] = qstats.pkts;
+		values[SFC_SW_STATS_GROUP_BASIC_BYTES] = qstats.bytes;
+	} else {
+		values[SFC_SW_STATS_GROUP_BASIC_PKTS] = 0;
+		values[SFC_SW_STATS_GROUP_BASIC_BYTES] = 0;
+	}
+}
+
 static sfc_get_sw_stat_val_t sfc_get_sw_stat_val_rx_dbells;
 static void
 sfc_get_sw_stat_val_rx_dbells(struct sfc_adapter *sa, uint16_t qid,
@@ -107,6 +130,19 @@ const struct sfc_sw_stat_descr sfc_sw_stats_descr[] = {
 	{
 		.name = SFC_SW_STAT_GOOD_BYTES,
 		.type = SFC_SW_STATS_RX,
+		.get_val  = NULL,
+		.provide_total = false,
+	},
+	/* Group of Tx packets/bytes stats */
+	{
+		.name = SFC_SW_STAT_GOOD_PACKETS,
+		.type = SFC_SW_STATS_TX,
+		.get_val  = sfc_sw_stat_get_tx_good_pkts_bytes,
+		.provide_total = false,
+	},
+	{
+		.name = SFC_SW_STAT_GOOD_BYTES,
+		.type = SFC_SW_STATS_TX,
 		.get_val  = NULL,
 		.provide_total = false,
 	},
@@ -641,6 +677,7 @@ sfc_sw_stats_fill_available_descr(struct sfc_adapter *sa)
 {
 	const struct sfc_adapter_priv *sap = &sa->priv;
 	bool have_dp_rx_stats = sap->dp_rx->features & SFC_DP_RX_FEAT_STATS;
+	bool have_dp_tx_stats = sap->dp_tx->features & SFC_DP_TX_FEAT_STATS;
 	struct sfc_sw_stats *sw_stats = &sa->sw_stats;
 	const struct sfc_sw_stat_descr *sw_stat_descr;
 	unsigned int i;
@@ -650,6 +687,10 @@ sfc_sw_stats_fill_available_descr(struct sfc_adapter *sa)
 		sw_stat_descr = &sfc_sw_stats_descr[i];
 		if (!have_dp_rx_stats &&
 		    sw_stat_descr->type == SFC_SW_STATS_RX &&
+		    sfc_sw_stats_is_packets_or_bytes(sw_stat_descr->name))
+			continue;
+		if (!have_dp_tx_stats &&
+		    sw_stat_descr->type == SFC_SW_STATS_TX &&
 		    sfc_sw_stats_is_packets_or_bytes(sw_stat_descr->name))
 			continue;
 		sw_stats->supp[sw_stats->supp_count].descr = sw_stat_descr;
@@ -678,6 +719,13 @@ sfc_sw_stats_set_reset_basic_stats(struct sfc_adapter *sa)
 				sa->sw_stats.reset_rx_bytes = reset_vals;
 			break;
 		case SFC_SW_STATS_TX:
+			if (strcmp(sw_stat->name,
+				   SFC_SW_STAT_GOOD_PACKETS) == 0)
+				sa->sw_stats.reset_tx_pkts = reset_vals;
+			else if (strcmp(sw_stat->name,
+					SFC_SW_STAT_GOOD_BYTES) == 0)
+				sa->sw_stats.reset_tx_bytes = reset_vals;
+			break;
 		default:
 			SFC_GENERIC_LOG(ERR, "Unknown SW stat type");
 			return -EINVAL;
