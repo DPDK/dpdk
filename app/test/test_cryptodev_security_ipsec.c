@@ -173,6 +173,10 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 
 		if (flags->iv_gen)
 			td->ipsec_xform.options.iv_gen_disable = 0;
+
+		if (flags->sa_expiry_pkts_soft)
+			td->ipsec_xform.life.packets_soft_limit =
+					IPSEC_TEST_PACKETS_MAX - 1;
 	}
 
 	RTE_SET_USED(param2);
@@ -395,7 +399,8 @@ test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 int
 test_ipsec_status_check(struct rte_crypto_op *op,
 			const struct ipsec_test_flags *flags,
-			enum rte_security_ipsec_sa_direction dir)
+			enum rte_security_ipsec_sa_direction dir,
+			int pkt_num)
 {
 	int ret = TEST_SUCCESS;
 
@@ -406,7 +411,16 @@ test_ipsec_status_check(struct rte_crypto_op *op,
 		}
 	} else {
 		if (op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
-			printf("Security op processing failed\n");
+			printf("Security op processing failed [pkt_num: %d]\n",
+			       pkt_num);
+			ret = TEST_FAILED;
+		}
+	}
+
+	if (flags->sa_expiry_pkts_soft && pkt_num == IPSEC_TEST_PACKETS_MAX) {
+		if (!(op->aux_flags &
+		      RTE_CRYPTO_OP_AUX_FLAGS_IPSEC_SOFT_EXPIRY)) {
+			printf("SA soft expiry (pkts) test failed\n");
 			ret = TEST_FAILED;
 		}
 	}

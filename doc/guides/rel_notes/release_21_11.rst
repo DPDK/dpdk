@@ -102,6 +102,7 @@ New Features
   * Added tests to verify error reporting with ICV corruption.
   * Added tests to verify IV generation.
   * Added tests to verify UDP encapsulation.
+  * Added tests to validate packets soft expiry.
 
 
 Removed Items

@@ -49,6 +49,7 @@ struct ipsec_test_data {
 
 struct ipsec_test_flags {
 	bool display_alg;
+	bool sa_expiry_pkts_soft;
 	bool icv_corrupt;
 	bool iv_gen;
 	bool udp_encap;
@@ -114,6 +115,7 @@ int test_ipsec_post_process(struct rte_mbuf *m,
 
 int test_ipsec_status_check(struct rte_crypto_op *op,
 			    const struct ipsec_test_flags *flags,
-			    enum rte_security_ipsec_sa_direction dir);
+			    enum rte_security_ipsec_sa_direction dir,
+			    int pkt_num);
 
 #endif

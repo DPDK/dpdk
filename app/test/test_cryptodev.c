@@ -9045,7 +9045,7 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 		/* Process crypto operation */
 		process_crypto_request(dev_id, ut_params->op);
 
-		ret = test_ipsec_status_check(ut_params->op, flags, dir);
+		ret = test_ipsec_status_check(ut_params->op, flags, dir, i + 1);
 		if (ret != TEST_SUCCESS)
 			goto crypto_op_free;
 
@@ -9115,7 +9115,8 @@ test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 	unsigned int i, nb_pkts = 1, pass_cnt = 0;
 	int ret;
 
-	if (flags->iv_gen)
+	if (flags->iv_gen ||
+	    flags->sa_expiry_pkts_soft)
 		nb_pkts = IPSEC_TEST_PACKETS_MAX;
 
 	for (i = 0; i < RTE_DIM(aead_list); i++) {
@@ -9175,6 +9176,18 @@ test_ipsec_proto_iv_gen(const void *data __rte_unused)
 	memset(&flags, 0, sizeof(flags));
 
 	flags.iv_gen = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_sa_exp_pkts_soft(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.sa_expiry_pkts_soft = true;
 
 	return test_ipsec_proto_all(&flags);
 }
@@ -14135,6 +14148,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"UDP encapsulation",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_udp_encap),
+		TEST_CASE_NAMED_ST(
+			"SA expiry packets soft",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_sa_exp_pkts_soft),
 		TEST_CASE_NAMED_ST(
 			"Negative test: ICV corruption",
 			ut_setup_security, ut_teardown,
