@@ -10,12 +10,17 @@
 #include "sfc_tx.h"
 #include "sfc_sw_stats.h"
 
+#define SFC_SW_STAT_INVALID		UINT64_MAX
+
+#define SFC_SW_STATS_GROUP_SIZE_MAX	1U
+
 enum sfc_sw_stats_type {
 	SFC_SW_STATS_RX,
 	SFC_SW_STATS_TX,
 };
 
-typedef uint64_t sfc_get_sw_stat_val_t(struct sfc_adapter *sa, uint16_t qid);
+typedef void sfc_get_sw_stat_val_t(struct sfc_adapter *sa, uint16_t qid,
+				   uint64_t *values, unsigned int values_count);
 
 struct sfc_sw_stat_descr {
 	const char *name;
@@ -25,31 +30,41 @@ struct sfc_sw_stat_descr {
 };
 
 static sfc_get_sw_stat_val_t sfc_get_sw_stat_val_rx_dbells;
-static uint64_t
-sfc_get_sw_stat_val_rx_dbells(struct sfc_adapter *sa, uint16_t qid)
+static void
+sfc_get_sw_stat_val_rx_dbells(struct sfc_adapter *sa, uint16_t qid,
+			       uint64_t *values, unsigned int values_count)
 {
 	struct sfc_adapter_shared *sas = sfc_sa2shared(sa);
 	struct sfc_rxq_info *rxq_info;
 
+	RTE_SET_USED(values_count);
+	SFC_ASSERT(values_count == 1);
 	rxq_info = sfc_rxq_info_by_ethdev_qid(sas, qid);
-	if (rxq_info->state & SFC_RXQ_INITIALIZED)
-		return rxq_info->dp->dpq.rx_dbells;
-	return 0;
+	values[0] = rxq_info->state & SFC_RXQ_INITIALIZED ?
+		    rxq_info->dp->dpq.rx_dbells : 0;
 }
 
 static sfc_get_sw_stat_val_t sfc_get_sw_stat_val_tx_dbells;
-static uint64_t
-sfc_get_sw_stat_val_tx_dbells(struct sfc_adapter *sa, uint16_t qid)
+static void
+sfc_get_sw_stat_val_tx_dbells(struct sfc_adapter *sa, uint16_t qid,
+			       uint64_t *values, unsigned int values_count)
 {
 	struct sfc_adapter_shared *sas = sfc_sa2shared(sa);
 	struct sfc_txq_info *txq_info;
 
+	RTE_SET_USED(values_count);
+	SFC_ASSERT(values_count == 1);
 	txq_info = sfc_txq_info_by_ethdev_qid(sas, qid);
-	if (txq_info->state & SFC_TXQ_INITIALIZED)
-		return txq_info->dp->dpq.tx_dbells;
-	return 0;
+	values[0] = txq_info->state & SFC_TXQ_INITIALIZED ?
+		    txq_info->dp->dpq.tx_dbells : 0;
 }
 
+/*
+ * SW stats can be grouped together. When stats are grouped the corresponding
+ * stats values for each queue are obtained during calling one get value
+ * callback. Stats of the same group are contiguous in the structure below.
+ * The start of the group is denoted by stat implementing get value callback.
+ */
 const struct sfc_sw_stat_descr sfc_sw_stats_descr[] = {
 	{
 		.name = "dbells",
@@ -228,9 +243,53 @@ sfc_sw_xstat_get_names_by_id(struct sfc_adapter *sa,
 	return 0;
 }
 
+static uint64_t
+sfc_sw_stat_get_val(struct sfc_adapter *sa,
+		    unsigned int sw_stat_idx, uint16_t qid)
+{
+	struct sfc_sw_stats *sw_stats = &sa->sw_stats;
+	uint64_t *res = &sw_stats->supp[sw_stat_idx].cache[qid];
+	uint64_t values[SFC_SW_STATS_GROUP_SIZE_MAX];
+	unsigned int group_start_idx;
+	unsigned int group_size;
+	unsigned int i;
+
+	if (*res != SFC_SW_STAT_INVALID)
+		return *res;
+
+	/*
+	 * Search for the group start, i.e. the stat that implements
+	 * get value callback.
+	 */
+	group_start_idx = sw_stat_idx;
+	while (sw_stats->supp[group_start_idx].descr->get_val == NULL)
+		group_start_idx--;
+
+	/*
+	 * Calculate number of elements in the group with loop till the next
+	 * group start or the list end.
+	 */
+	group_size = 1;
+	for (i = sw_stat_idx + 1; i < sw_stats->supp_count; i++) {
+		if (sw_stats->supp[i].descr->get_val != NULL)
+			break;
+		group_size++;
+	}
+	group_size += sw_stat_idx - group_start_idx;
+
+	SFC_ASSERT(group_size <= SFC_SW_STATS_GROUP_SIZE_MAX);
+	sw_stats->supp[group_start_idx].descr->get_val(sa, qid, values,
+						       group_size);
+	for (i = group_start_idx; i < (group_start_idx + group_size); i++)
+		sw_stats->supp[i].cache[qid] = values[i - group_start_idx];
+
+	return *res;
+}
+
 static void
 sfc_sw_xstat_get_values(struct sfc_adapter *sa,
 			const struct sfc_sw_stat_descr *sw_stat,
+			unsigned int sw_stat_idx,
 			struct rte_eth_xstat *xstats,
 			unsigned int xstats_size,
 			unsigned int *nb_written,
@@ -260,7 +319,7 @@ sfc_sw_xstat_get_values(struct sfc_adapter *sa,
 	}
 
 	for (qid = 0; qid < nb_queues; ++qid) {
-		value = sw_stat->get_val(sa, qid);
+		value = sfc_sw_stat_get_val(sa, sw_stat_idx, qid);
 
 		if (*nb_written < xstats_size) {
 			xstats[*nb_written].id = *nb_written;
@@ -276,6 +335,7 @@ sfc_sw_xstat_get_values(struct sfc_adapter *sa,
 static void
 sfc_sw_xstat_get_values_by_id(struct sfc_adapter *sa,
 			      const struct sfc_sw_stat_descr *sw_stat,
+			      unsigned int sw_stat_idx,
 			      const uint64_t *ids,
 			      uint64_t *values,
 			      unsigned int ids_size,
@@ -316,7 +376,7 @@ sfc_sw_xstat_get_values_by_id(struct sfc_adapter *sa,
 			}
 			id_base_q = id_base + sw_stat->provide_total;
 			qid = ids[i] - id_base_q;
-			values[i] = sw_stat->get_val(sa, qid);
+			values[i] = sfc_sw_stat_get_val(sa, sw_stat_idx, qid);
 			total_value += values[i];
 
 			rte_bitmap_set(bmp, qid);
@@ -328,7 +388,9 @@ sfc_sw_xstat_get_values_by_id(struct sfc_adapter *sa,
 		for (qid = 0; qid < nb_queues; ++qid) {
 			if (rte_bitmap_get(bmp, qid) != 0)
 				continue;
-			values[total_value_idx] += sw_stat->get_val(sa, qid);
+			values[total_value_idx] += sfc_sw_stat_get_val(sa,
+								    sw_stat_idx,
+								    qid);
 		}
 		values[total_value_idx] += total_value;
 	}
@@ -342,6 +404,16 @@ sfc_sw_xstats_get_nb_supported(struct sfc_adapter *sa)
 {
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 	return sa->sw_stats.xstats_count;
+}
+
+static void
+sfc_sw_stats_clear_cache(struct sfc_adapter *sa)
+{
+	unsigned int cache_count = sa->sw_stats.cache_count;
+	uint64_t *cache = sa->sw_stats.cache;
+
+	RTE_BUILD_BUG_ON(UINT64_C(0xffffffffffffffff) != SFC_SW_STAT_INVALID);
+	memset(cache, 0xff, cache_count * sizeof(*cache));
 }
 
 void
@@ -358,11 +430,13 @@ sfc_sw_xstats_get_vals(struct sfc_adapter *sa,
 
 	sfc_adapter_lock(sa);
 
+	sfc_sw_stats_clear_cache(sa);
+
 	sw_xstats_offset = *nb_supported;
 
-	for (i = 0; i < sw_stats->xstats_count; i++) {
-		sfc_sw_xstat_get_values(sa, sw_stats->supp[i].descr, xstats,
-					xstats_count, nb_written, nb_supported);
+	for (i = 0; i < sw_stats->supp_count; i++) {
+		sfc_sw_xstat_get_values(sa, sw_stats->supp[i].descr, i,
+				xstats, xstats_count, nb_written, nb_supported);
 	}
 
 	for (i = sw_xstats_offset; i < *nb_written; i++)
@@ -413,11 +487,13 @@ sfc_sw_xstats_get_vals_by_id(struct sfc_adapter *sa,
 
 	sfc_adapter_lock(sa);
 
+	sfc_sw_stats_clear_cache(sa);
+
 	sw_xstats_offset = *nb_supported;
 
 	for (i = 0; i < sw_stats->supp_count; i++) {
-		sfc_sw_xstat_get_values_by_id(sa, sw_stats->supp[i].descr, ids,
-					      values, n, nb_supported);
+		sfc_sw_xstat_get_values_by_id(sa, sw_stats->supp[i].descr, i,
+					      ids, values, n, nb_supported);
 	}
 
 	for (i = 0; i < n; i++) {
@@ -460,6 +536,7 @@ sfc_sw_xstats_get_names_by_id(struct sfc_adapter *sa,
 static void
 sfc_sw_xstat_reset(struct sfc_adapter *sa,
 		   const struct sfc_sw_stat_descr *sw_stat,
+		   unsigned int sw_stat_idx,
 		   uint64_t *reset_vals)
 {
 	unsigned int nb_queues;
@@ -483,7 +560,7 @@ sfc_sw_xstat_reset(struct sfc_adapter *sa,
 	}
 
 	for (qid = 0; qid < nb_queues; ++qid) {
-		reset_vals[qid] = sw_stat->get_val(sa, qid);
+		reset_vals[qid] = sfc_sw_stat_get_val(sa, sw_stat_idx, qid);
 		if (sw_stat->provide_total)
 			*total_xstat_reset += reset_vals[qid];
 	}
@@ -498,8 +575,10 @@ sfc_sw_xstats_reset(struct sfc_adapter *sa)
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
+	sfc_sw_stats_clear_cache(sa);
+
 	for (i = 0; i < sw_stats->supp_count; i++) {
-		sfc_sw_xstat_reset(sa, sw_stats->supp[i].descr, reset_vals);
+		sfc_sw_xstat_reset(sa, sw_stats->supp[i].descr, i, reset_vals);
 		reset_vals += sfc_sw_xstat_get_nb_supported(sa,
 						       sw_stats->supp[i].descr);
 	}
@@ -510,6 +589,9 @@ sfc_sw_xstats_configure(struct sfc_adapter *sa)
 {
 	uint64_t **reset_vals = &sa->sw_stats.reset_vals;
 	struct sfc_sw_stats *sw_stats = &sa->sw_stats;
+	unsigned int cache_count = 0;
+	uint64_t **cache =  &sa->sw_stats.cache;
+	uint64_t *stat_cache;
 	size_t nb_supported = 0;
 	unsigned int i;
 	int rc;
@@ -524,9 +606,12 @@ sfc_sw_xstats_configure(struct sfc_adapter *sa)
 	for (i = 0; i < sw_stats->supp_count; i++)
 		sw_stats->supp[i].descr = &sfc_sw_stats_descr[i];
 
-	for (i = 0; i < sw_stats->supp_count; i++)
+	for (i = 0; i < sw_stats->supp_count; i++) {
 		nb_supported += sfc_sw_xstat_get_nb_supported(sa,
 						       sw_stats->supp[i].descr);
+		cache_count += sfc_sw_stat_get_queue_count(sa,
+						       sw_stats->supp[i].descr);
+	}
 	sa->sw_stats.xstats_count = nb_supported;
 
 	*reset_vals = rte_realloc(*reset_vals,
@@ -538,8 +623,25 @@ sfc_sw_xstats_configure(struct sfc_adapter *sa)
 
 	memset(*reset_vals, 0, nb_supported * sizeof(**reset_vals));
 
+	*cache = rte_realloc(*cache, cache_count * sizeof(*cache), 0);
+	if (*cache == NULL) {
+		rc = ENOMEM;
+		goto fail_cache;
+	}
+	sa->sw_stats.cache_count = cache_count;
+	stat_cache = *cache;
+
+	for (i = 0; i < sw_stats->supp_count; i++) {
+		sw_stats->supp[i].cache = stat_cache;
+		stat_cache += sfc_sw_stat_get_queue_count(sa,
+						       sw_stats->supp[i].descr);
+	}
+
 	return 0;
 
+fail_cache:
+	rte_free(*reset_vals);
+	*reset_vals = NULL;
 fail_reset_vals:
 	sa->sw_stats.xstats_count = 0;
 	rte_free(sw_stats->supp);
@@ -594,6 +696,8 @@ sfc_sw_xstats_init(struct sfc_adapter *sa)
 	sa->sw_stats.xstats_count = 0;
 	sa->sw_stats.supp = NULL;
 	sa->sw_stats.supp_count = 0;
+	sa->sw_stats.cache = NULL;
+	sa->sw_stats.cache_count = 0;
 	sa->sw_stats.reset_vals = NULL;
 
 	return sfc_sw_xstats_alloc_queues_bitmap(sa);
@@ -603,8 +707,11 @@ void
 sfc_sw_xstats_close(struct sfc_adapter *sa)
 {
 	sfc_sw_xstats_free_queues_bitmap(sa);
-	rte_free(sa->sw_stats.reset_vals);
 	sa->sw_stats.reset_vals = NULL;
+	rte_free(sa->sw_stats.cache);
+	sa->sw_stats.cache = NULL;
+	sa->sw_stats.cache_count = 0;
+	rte_free(sa->sw_stats.reset_vals);
 	rte_free(sa->sw_stats.supp);
 	sa->sw_stats.supp = NULL;
 	sa->sw_stats.supp_count = 0;

@@ -30,6 +30,7 @@
 #include "sfc_sriov.h"
 #include "sfc_mae.h"
 #include "sfc_dp.h"
+#include "sfc_sw_stats.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -219,6 +220,8 @@ struct sfc_counter_rxq {
 
 struct sfc_sw_stat_data {
 	const struct sfc_sw_stat_descr *descr;
+	/* Cache fragment */
+	uint64_t			*cache;
 };
 
 struct sfc_sw_stats {
@@ -227,6 +230,11 @@ struct sfc_sw_stats {
 	/* Supported SW statistics */
 	struct sfc_sw_stat_data		*supp;
 	unsigned int			supp_count;
+
+	/* Cache for all supported SW statistics */
+	uint64_t			*cache;
+	unsigned int			cache_count;
+
 	uint64_t			*reset_vals;
 
 	rte_spinlock_t			queues_bitmap_lock;
