@@ -218,6 +218,8 @@ struct sfc_counter_rxq {
 };
 
 struct sfc_sw_stats {
+	/* Number extended statistics provided by SW stats */
+	unsigned int			xstats_count;
 	uint64_t			*reset_vals;
 
 	rte_spinlock_t			queues_bitmap_lock;

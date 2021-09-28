@@ -329,17 +329,8 @@ unlock:
 unsigned int
 sfc_sw_xstats_get_nb_supported(struct sfc_adapter *sa)
 {
-	unsigned int nb_supported = 0;
-	unsigned int i;
-
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
-
-	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
-		nb_supported += sfc_sw_xstat_get_nb_supported(sa,
-							&sfc_sw_stats_descr[i]);
-	}
-
-	return nb_supported;
+	return sa->sw_stats.xstats_count;
 }
 
 void
@@ -506,6 +497,7 @@ sfc_sw_xstats_configure(struct sfc_adapter *sa)
 	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++)
 		nb_supported += sfc_sw_xstat_get_nb_supported(sa,
 							&sfc_sw_stats_descr[i]);
+	sa->sw_stats.xstats_count = nb_supported;
 
 	*reset_vals = rte_realloc(*reset_vals,
 				  nb_supported * sizeof(**reset_vals), 0);
@@ -559,6 +551,7 @@ fail:
 int
 sfc_sw_xstats_init(struct sfc_adapter *sa)
 {
+	sa->sw_stats.xstats_count = 0;
 	sa->sw_stats.reset_vals = NULL;
 
 	return sfc_sw_xstats_alloc_queues_bitmap(sa);
@@ -570,4 +563,5 @@ sfc_sw_xstats_close(struct sfc_adapter *sa)
 	sfc_sw_xstats_free_queues_bitmap(sa);
 	rte_free(sa->sw_stats.reset_vals);
 	sa->sw_stats.reset_vals = NULL;
+	sa->sw_stats.xstats_count = 0;
 }
