@@ -6,6 +6,7 @@
 #define _ICE_ETHDEV_H_
 
 #include <rte_kvargs.h>
+#include <rte_time.h>
 
 #include <ethdev_driver.h>
 
@@ -502,6 +503,11 @@ struct ice_adapter {
 	struct ice_devargs devargs;
 	enum ice_pkg_type active_pkg_type; /* loaded ddp package type */
 	uint16_t fdir_ref_cnt;
+	/* For PTP */
+	struct rte_timecounter systime_tc;
+	struct rte_timecounter rx_tstamp_tc;
+	struct rte_timecounter tx_tstamp_tc;
+	bool ptp_ena;
 #ifdef RTE_ARCH_X86
 	bool rx_use_avx2;
 	bool rx_use_avx512;

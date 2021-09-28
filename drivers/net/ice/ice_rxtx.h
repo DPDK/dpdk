@@ -92,6 +92,7 @@ struct ice_rx_queue {
 	ice_rxd_to_pkt_fields_t rxd_to_pkt_fields; /* handle FlexiMD by RXDID */
 	ice_rx_release_mbufs_t rx_rel_mbufs;
 	uint64_t offloads;
+	uint32_t time_high;
 };
 
 struct ice_tx_entry {

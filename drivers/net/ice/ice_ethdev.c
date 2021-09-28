@@ -18,6 +18,7 @@
 #include "base/ice_flow.h"
 #include "base/ice_dcb.h"
 #include "base/ice_common.h"
+#include "base/ice_ptp_hw.h"
 
 #include "rte_pmd_ice.h"
 #include "ice_ethdev.h"
@@ -32,6 +33,8 @@
 #define ICE_ONE_PPS_OUT_ARG       "pps_out"
 #define ICE_RX_LOW_LATENCY_ARG    "rx_low_latency"
 
+#define ICE_CYCLECOUNTER_MASK  0xffffffffffffffffULL
+
 uint64_t ice_timestamp_dynflag;
 int ice_timestamp_dynfield_offset = -1;
 
@@ -45,7 +48,6 @@ static const char * const ice_valid_args[] = {
 	NULL
 };
 
-#define NSEC_PER_SEC      1000000000
 #define PPS_OUT_DELAY_NS  1
 
 static const struct rte_mbuf_dynfield ice_proto_xtr_metadata_param = {
@@ -151,6 +153,18 @@ static int ice_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 			struct rte_eth_udp_tunnel *udp_tunnel);
 static int ice_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 			struct rte_eth_udp_tunnel *udp_tunnel);
+static int ice_timesync_enable(struct rte_eth_dev *dev);
+static int ice_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+					  struct timespec *timestamp,
+					  uint32_t flags);
+static int ice_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+					  struct timespec *timestamp);
+static int ice_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta);
+static int ice_timesync_read_time(struct rte_eth_dev *dev,
+				  struct timespec *timestamp);
+static int ice_timesync_write_time(struct rte_eth_dev *dev,
+				   const struct timespec *timestamp);
+static int ice_timesync_disable(struct rte_eth_dev *dev);
 
 static const struct rte_pci_id pci_id_ice_map[] = {
 	{ RTE_PCI_DEVICE(ICE_INTEL_VENDOR_ID, ICE_DEV_ID_E823L_BACKPLANE) },
@@ -234,6 +248,13 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.udp_tunnel_port_del          = ice_dev_udp_tunnel_port_del,
 	.tx_done_cleanup              = ice_tx_done_cleanup,
 	.get_monitor_addr             = ice_get_monitor_addr,
+	.timesync_enable              = ice_timesync_enable,
+	.timesync_read_rx_timestamp   = ice_timesync_read_rx_timestamp,
+	.timesync_read_tx_timestamp   = ice_timesync_read_tx_timestamp,
+	.timesync_adjust_time         = ice_timesync_adjust_time,
+	.timesync_read_time           = ice_timesync_read_time,
+	.timesync_write_time          = ice_timesync_write_time,
+	.timesync_disable             = ice_timesync_disable,
 };
 
 /* store statistics names and its offset in stats structure */
@@ -5484,6 +5505,184 @@ ice_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 	}
 
 	return ret;
+}
+
+static int
+ice_timesync_enable(struct rte_eth_dev *dev)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_adapter *ad =
+			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	int ret;
+
+	if (dev->data->dev_started && !(dev->data->dev_conf.rxmode.offloads &
+	    DEV_RX_OFFLOAD_TIMESTAMP)) {
+		PMD_DRV_LOG(ERR, "Rx timestamp offload not configured");
+		return -1;
+	}
+
+	if (hw->func_caps.ts_func_info.src_tmr_owned) {
+		ret = ice_ptp_init_phc(hw);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to initialize PHC");
+			return -1;
+		}
+
+		ret = ice_ptp_write_incval(hw, ICE_PTP_NOMINAL_INCVAL_E810);
+		if (ret) {
+			PMD_DRV_LOG(ERR,
+				"Failed to write PHC increment time value");
+			return -1;
+		}
+	}
+
+	/* Initialize cycle counters for system time/RX/TX timestamp */
+	memset(&ad->systime_tc, 0, sizeof(struct rte_timecounter));
+	memset(&ad->rx_tstamp_tc, 0, sizeof(struct rte_timecounter));
+	memset(&ad->tx_tstamp_tc, 0, sizeof(struct rte_timecounter));
+
+	ad->systime_tc.cc_mask = ICE_CYCLECOUNTER_MASK;
+	ad->systime_tc.cc_shift = 0;
+	ad->systime_tc.nsec_mask = 0;
+
+	ad->rx_tstamp_tc.cc_mask = ICE_CYCLECOUNTER_MASK;
+	ad->rx_tstamp_tc.cc_shift = 0;
+	ad->rx_tstamp_tc.nsec_mask = 0;
+
+	ad->tx_tstamp_tc.cc_mask = ICE_CYCLECOUNTER_MASK;
+	ad->tx_tstamp_tc.cc_shift = 0;
+	ad->tx_tstamp_tc.nsec_mask = 0;
+
+	ad->ptp_ena = 1;
+
+	return 0;
+}
+
+static int
+ice_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+			       struct timespec *timestamp, uint32_t flags)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_adapter *ad =
+			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct ice_rx_queue *rxq;
+	uint32_t ts_high;
+	uint64_t ts_ns, ns;
+
+	rxq = dev->data->rx_queues[flags];
+
+	ts_high = rxq->time_high;
+	ts_ns = ice_tstamp_convert_32b_64b(hw, ts_high);
+	ns = rte_timecounter_update(&ad->rx_tstamp_tc, ts_ns);
+	*timestamp = rte_ns_to_timespec(ns);
+
+	return 0;
+}
+
+static int
+ice_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+			       struct timespec *timestamp)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_adapter *ad =
+			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	uint8_t lport;
+	uint64_t ts_ns, ns, tstamp;
+	const uint64_t mask = 0xFFFFFFFF;
+	int ret;
+
+	lport = hw->port_info->lport;
+
+	ret = ice_read_phy_tstamp(hw, lport, 0, &tstamp);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to read phy timestamp");
+		return -1;
+	}
+
+	ts_ns = ice_tstamp_convert_32b_64b(hw, (tstamp >> 8) & mask);
+	ns = rte_timecounter_update(&ad->tx_tstamp_tc, ts_ns);
+	*timestamp = rte_ns_to_timespec(ns);
+
+	return 0;
+}
+
+static int
+ice_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
+{
+	struct ice_adapter *ad =
+			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	ad->systime_tc.nsec += delta;
+	ad->rx_tstamp_tc.nsec += delta;
+	ad->tx_tstamp_tc.nsec += delta;
+
+	return 0;
+}
+
+static int
+ice_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
+{
+	struct ice_adapter *ad =
+			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	uint64_t ns;
+
+	ns = rte_timespec_to_ns(ts);
+
+	ad->systime_tc.nsec = ns;
+	ad->rx_tstamp_tc.nsec = ns;
+	ad->tx_tstamp_tc.nsec = ns;
+
+	return 0;
+}
+
+static int
+ice_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_adapter *ad =
+			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	uint32_t hi, lo, lo2;
+	uint64_t time, ns;
+
+	lo = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
+	hi = ICE_READ_REG(hw, GLTSYN_TIME_H(0));
+	lo2 = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
+
+	if (lo2 < lo) {
+		lo = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
+		hi = ICE_READ_REG(hw, GLTSYN_TIME_H(0));
+	}
+
+	time = ((uint64_t)hi << 32) | lo;
+	ns = rte_timecounter_update(&ad->systime_tc, time);
+	*ts = rte_ns_to_timespec(ns);
+
+	return 0;
+}
+
+static int
+ice_timesync_disable(struct rte_eth_dev *dev)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_adapter *ad =
+			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	uint64_t val;
+	uint8_t lport;
+
+	lport = hw->port_info->lport;
+
+	ice_clear_phy_tstamp(hw, lport, 0);
+
+	val = ICE_READ_REG(hw, GLTSYN_ENA(0));
+	val &= ~GLTSYN_ENA_TSYN_ENA_M;
+	ICE_WRITE_REG(hw, GLTSYN_ENA(0), val);
+
+	ICE_WRITE_REG(hw, GLTSYN_INCVAL_L(0), 0);
+	ICE_WRITE_REG(hw, GLTSYN_INCVAL_H(0), 0);
+
+	ad->ptp_ena = 0;
+
+	return 0;
 }
 
 static int
