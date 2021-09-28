@@ -293,6 +293,12 @@ ipsec_po_xform_verify(struct rte_security_ipsec_xform *ipsec,
 	struct rte_crypto_sym_xform *auth_xform, *cipher_xform;
 	int ret;
 
+	if (ipsec->life.bytes_hard_limit != 0 ||
+	    ipsec->life.bytes_soft_limit != 0 ||
+	    ipsec->life.packets_hard_limit != 0 ||
+	    ipsec->life.packets_soft_limit != 0)
+		return -ENOTSUP;
+
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD)
 		return ipsec_po_xform_aead_verify(ipsec, xform);
 
