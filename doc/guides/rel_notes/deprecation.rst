@@ -233,7 +233,7 @@ Deprecation Notices
 
 * security: The IPsec SA config options ``struct rte_security_ipsec_sa_options``
   will be updated with new fields to support new features like IPsec inner
-  checksum, tunnel header verification, TSO in case of protocol offload.
+  checksum, TSO in case of protocol offload.
 
 * ipsec: The structure ``rte_ipsec_sa_prm`` will be extended with a new field
   ``hdr_l3_len`` to configure tunnel L3 header length.

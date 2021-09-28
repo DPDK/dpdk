@@ -180,6 +180,10 @@ ABI Changes
   ``rte_security_ipsec_sa_options`` to disable IV generation inside PMD,
   so that application can provide its own IV and test known test vectors.
 
+* security: A new option ``tunnel_hdr_verify`` was added in structure
+  ``rte_security_ipsec_sa_options`` to indicate whether outer header
+  verification need to be done as part of inbound IPsec processing.
+
 * security: A new structure ``rte_security_ipsec_lifetime`` was added to
   replace ``esn_soft_limit`` in IPsec configuration structure
   ``rte_security_ipsec_xform`` to allow applications to configure SA soft

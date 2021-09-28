@@ -56,6 +56,14 @@ enum rte_security_ipsec_tunnel_type {
 };
 
 /**
+ * IPSEC tunnel header verification mode
+ *
+ * Controls how outer IP header is verified in inbound.
+ */
+#define RTE_SECURITY_IPSEC_TUNNEL_VERIFY_DST_ADDR     0x1
+#define RTE_SECURITY_IPSEC_TUNNEL_VERIFY_SRC_DST_ADDR 0x2
+
+/**
  * Security context for crypto/eth devices
  *
  * Security instance for each driver to register security operations.
@@ -206,6 +214,15 @@ struct rte_security_ipsec_sa_options {
 	 * by the PMD.
 	 */
 	uint32_t iv_gen_disable : 1;
+
+	/** Verify tunnel header in inbound
+	 * * ``RTE_SECURITY_IPSEC_TUNNEL_VERIFY_DST_ADDR``: Verify destination
+	 *   IP address.
+	 *
+	 * * ``RTE_SECURITY_IPSEC_TUNNEL_VERIFY_SRC_DST_ADDR``: Verify both
+	 *   source and destination IP addresses.
+	 */
+	uint32_t tunnel_hdr_verify : 2;
 };
 
 /** IPSec security association direction */
