@@ -86,6 +86,15 @@ test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
 		return -ENOTSUP;
 	}
 
+	if ((ipsec_xform->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) &&
+	    (ipsec_xform->options.tunnel_hdr_verify >
+	    sec_cap->ipsec.options.tunnel_hdr_verify)) {
+		if (!silent)
+			RTE_LOG(INFO, USER1,
+				"Tunnel header verify is not supported\n");
+		return -ENOTSUP;
+	}
+
 	return 0;
 }
 
@@ -207,6 +216,9 @@ test_ipsec_td_update(struct ipsec_test_data td_inb[],
 		if (flags->udp_encap)
 			td_inb[i].ipsec_xform.options.udp_encap = 1;
 
+		td_inb[i].ipsec_xform.options.tunnel_hdr_verify =
+			flags->tunnel_hdr_verify;
+
 		/* Clear outbound specific flags */
 		td_inb[i].ipsec_xform.options.iv_gen_disable = 0;
 	}
@@ -292,7 +304,8 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 	/* For tests with status as error for test success, skip verification */
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS &&
 	    (flags->icv_corrupt ||
-	     flags->sa_expiry_pkts_hard))
+	     flags->sa_expiry_pkts_hard ||
+	     flags->tunnel_hdr_verify))
 		return TEST_SUCCESS;
 
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS &&
@@ -414,6 +427,16 @@ test_ipsec_status_check(struct rte_crypto_op *op,
 	    pkt_num == IPSEC_TEST_PACKETS_MAX) {
 		if (op->status != RTE_CRYPTO_OP_STATUS_ERROR) {
 			printf("SA hard expiry (pkts) test failed\n");
+			return TEST_FAILED;
+		} else {
+			return TEST_SUCCESS;
+		}
+	}
+
+	if ((dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) &&
+	    flags->tunnel_hdr_verify) {
+		if (op->status != RTE_CRYPTO_OP_STATUS_ERROR) {
+			printf("Tunnel header verify test case failed\n");
 			return TEST_FAILED;
 		} else {
 			return TEST_SUCCESS;

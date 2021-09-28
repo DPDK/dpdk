@@ -8924,6 +8924,7 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 	int salt_len, i, ret = TEST_SUCCESS;
 	struct rte_security_ctx *ctx;
 	uint8_t *input_text;
+	uint32_t verify;
 
 	ut_params->type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
 	gbl_action_type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
@@ -8933,10 +8934,18 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 	/* Copy IPsec xform */
 	memcpy(&ipsec_xform, &td[0].ipsec_xform, sizeof(ipsec_xform));
 
+	dir = ipsec_xform.direction;
+	verify = flags->tunnel_hdr_verify;
+
+	if ((dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) && verify) {
+		if (verify == RTE_SECURITY_IPSEC_TUNNEL_VERIFY_SRC_DST_ADDR)
+			src += 1;
+		else if (verify == RTE_SECURITY_IPSEC_TUNNEL_VERIFY_DST_ADDR)
+			dst += 1;
+	}
+
 	memcpy(&ipsec_xform.tunnel.ipv4.src_ip, &src, sizeof(src));
 	memcpy(&ipsec_xform.tunnel.ipv4.dst_ip, &dst, sizeof(dst));
-
-	dir = ipsec_xform.direction;
 
 	ctx = rte_cryptodev_get_sec_ctx(dev_id);
 
@@ -9225,6 +9234,30 @@ test_ipsec_proto_udp_encap(const void *data __rte_unused)
 	memset(&flags, 0, sizeof(flags));
 
 	flags.udp_encap = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_tunnel_src_dst_addr_verify(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.tunnel_hdr_verify = RTE_SECURITY_IPSEC_TUNNEL_VERIFY_SRC_DST_ADDR;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_tunnel_dst_addr_verify(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.tunnel_hdr_verify = RTE_SECURITY_IPSEC_TUNNEL_VERIFY_DST_ADDR;
 
 	return test_ipsec_proto_all(&flags);
 }
@@ -14173,6 +14206,14 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Negative test: ICV corruption",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_err_icv_corrupt),
+		TEST_CASE_NAMED_ST(
+			"Tunnel dst addr verification",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_tunnel_dst_addr_verify),
+		TEST_CASE_NAMED_ST(
+			"Tunnel src and dst addr verification",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_tunnel_src_dst_addr_verify),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

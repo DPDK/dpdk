@@ -53,6 +53,7 @@ struct ipsec_test_flags {
 	bool sa_expiry_pkts_hard;
 	bool icv_corrupt;
 	bool iv_gen;
+	uint32_t tunnel_hdr_verify;
 	bool udp_encap;
 };
 
