@@ -525,10 +525,13 @@ sfc_ef100_rx_process_ready_pkts(struct sfc_ef100_rxq *rxq,
 			lastseg = seg;
 		}
 
-		if (likely(deliver))
+		if (likely(deliver)) {
 			*rx_pkts++ = pkt;
-		else
+			sfc_pkts_bytes_add(&rxq->dp.dpq.stats, 1,
+					   rte_pktmbuf_pkt_len(pkt));
+		} else {
 			rte_pktmbuf_free(pkt);
+		}
 	}
 
 	return rx_pkts;
@@ -914,7 +917,8 @@ struct sfc_dp_rx sfc_ef100_rx = {
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF100,
 	},
 	.features		= SFC_DP_RX_FEAT_MULTI_PROCESS |
-				  SFC_DP_RX_FEAT_INTR,
+				  SFC_DP_RX_FEAT_INTR |
+				  SFC_DP_RX_FEAT_STATS,
 	.dev_offload_capa	= 0,
 	.queue_offload_capa	= DEV_RX_OFFLOAD_CHECKSUM |
 				  DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |

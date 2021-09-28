@@ -12,11 +12,19 @@
 
 #define SFC_SW_STAT_INVALID		UINT64_MAX
 
-#define SFC_SW_STATS_GROUP_SIZE_MAX	1U
+#define SFC_SW_STATS_GROUP_SIZE_MAX	2U
+#define SFC_SW_STAT_GOOD_PACKETS	"packets"
+#define SFC_SW_STAT_GOOD_BYTES		"bytes"
 
 enum sfc_sw_stats_type {
 	SFC_SW_STATS_RX,
 	SFC_SW_STATS_TX,
+};
+
+enum sfc_sw_stats_group_basic {
+	SFC_SW_STATS_GROUP_BASIC_PKTS = 0,
+	SFC_SW_STATS_GROUP_BASIC_BYTES,
+	SFX_SW_STATS_GROUP_BASIC_MAX
 };
 
 typedef void sfc_get_sw_stat_val_t(struct sfc_adapter *sa, uint16_t qid,
@@ -28,6 +36,29 @@ struct sfc_sw_stat_descr {
 	sfc_get_sw_stat_val_t *get_val;
 	bool provide_total;
 };
+
+static sfc_get_sw_stat_val_t sfc_sw_stat_get_rx_good_pkts_bytes;
+static void
+sfc_sw_stat_get_rx_good_pkts_bytes(struct sfc_adapter *sa, uint16_t qid,
+				   uint64_t *values,
+				   unsigned int values_count)
+{
+	struct sfc_adapter_shared *sas = sfc_sa2shared(sa);
+	struct sfc_rxq_info *rxq_info;
+	union sfc_pkts_bytes qstats;
+
+	RTE_SET_USED(values_count);
+	SFC_ASSERT(values_count == SFX_SW_STATS_GROUP_BASIC_MAX);
+	rxq_info = sfc_rxq_info_by_ethdev_qid(sas, qid);
+	if (rxq_info->state & SFC_RXQ_INITIALIZED) {
+		sfc_pkts_bytes_get(&rxq_info->dp->dpq.stats, &qstats);
+		values[SFC_SW_STATS_GROUP_BASIC_PKTS] = qstats.pkts;
+		values[SFC_SW_STATS_GROUP_BASIC_BYTES] = qstats.bytes;
+	} else {
+		values[SFC_SW_STATS_GROUP_BASIC_PKTS] = 0;
+		values[SFC_SW_STATS_GROUP_BASIC_BYTES] = 0;
+	}
+}
 
 static sfc_get_sw_stat_val_t sfc_get_sw_stat_val_rx_dbells;
 static void
@@ -66,6 +97,20 @@ sfc_get_sw_stat_val_tx_dbells(struct sfc_adapter *sa, uint16_t qid,
  * The start of the group is denoted by stat implementing get value callback.
  */
 const struct sfc_sw_stat_descr sfc_sw_stats_descr[] = {
+	/* Group of Rx packets/bytes stats */
+	{
+		.name = SFC_SW_STAT_GOOD_PACKETS,
+		.type = SFC_SW_STATS_RX,
+		.get_val  = sfc_sw_stat_get_rx_good_pkts_bytes,
+		.provide_total = false,
+	},
+	{
+		.name = SFC_SW_STAT_GOOD_BYTES,
+		.type = SFC_SW_STATS_RX,
+		.get_val  = NULL,
+		.provide_total = false,
+	},
+	/* End of basic stats */
 	{
 		.name = "dbells",
 		.type = SFC_SW_STATS_RX,
@@ -584,6 +629,66 @@ sfc_sw_xstats_reset(struct sfc_adapter *sa)
 	}
 }
 
+static bool
+sfc_sw_stats_is_packets_or_bytes(const char *xstat_name)
+{
+	return strcmp(xstat_name, SFC_SW_STAT_GOOD_PACKETS) == 0 ||
+	       strcmp(xstat_name, SFC_SW_STAT_GOOD_BYTES) == 0;
+}
+
+static void
+sfc_sw_stats_fill_available_descr(struct sfc_adapter *sa)
+{
+	const struct sfc_adapter_priv *sap = &sa->priv;
+	bool have_dp_rx_stats = sap->dp_rx->features & SFC_DP_RX_FEAT_STATS;
+	struct sfc_sw_stats *sw_stats = &sa->sw_stats;
+	const struct sfc_sw_stat_descr *sw_stat_descr;
+	unsigned int i;
+
+	sw_stats->supp_count = 0;
+	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
+		sw_stat_descr = &sfc_sw_stats_descr[i];
+		if (!have_dp_rx_stats &&
+		    sw_stat_descr->type == SFC_SW_STATS_RX &&
+		    sfc_sw_stats_is_packets_or_bytes(sw_stat_descr->name))
+			continue;
+		sw_stats->supp[sw_stats->supp_count].descr = sw_stat_descr;
+		sw_stats->supp_count++;
+	}
+}
+
+static int
+sfc_sw_stats_set_reset_basic_stats(struct sfc_adapter *sa)
+{
+	uint64_t *reset_vals = sa->sw_stats.reset_vals;
+	struct sfc_sw_stats *sw_stats = &sa->sw_stats;
+	const struct sfc_sw_stat_descr *sw_stat;
+	unsigned int i;
+
+	for (i = 0; i < sw_stats->supp_count; i++) {
+		sw_stat = sw_stats->supp[i].descr;
+
+		switch (sw_stat->type) {
+		case SFC_SW_STATS_RX:
+			if (strcmp(sw_stat->name,
+				   SFC_SW_STAT_GOOD_PACKETS) == 0)
+				sa->sw_stats.reset_rx_pkts = reset_vals;
+			else if (strcmp(sw_stat->name,
+					SFC_SW_STAT_GOOD_BYTES) == 0)
+				sa->sw_stats.reset_rx_bytes = reset_vals;
+			break;
+		case SFC_SW_STATS_TX:
+		default:
+			SFC_GENERIC_LOG(ERR, "Unknown SW stat type");
+			return -EINVAL;
+		}
+
+		reset_vals += sfc_sw_xstat_get_nb_supported(sa, sw_stat);
+	}
+
+	return 0;
+}
+
 int
 sfc_sw_xstats_configure(struct sfc_adapter *sa)
 {
@@ -605,6 +710,7 @@ sfc_sw_xstats_configure(struct sfc_adapter *sa)
 	}
 	for (i = 0; i < sw_stats->supp_count; i++)
 		sw_stats->supp[i].descr = &sfc_sw_stats_descr[i];
+	sfc_sw_stats_fill_available_descr(sa);
 
 	for (i = 0; i < sw_stats->supp_count; i++) {
 		nb_supported += sfc_sw_xstat_get_nb_supported(sa,
@@ -630,6 +736,9 @@ sfc_sw_xstats_configure(struct sfc_adapter *sa)
 	}
 	sa->sw_stats.cache_count = cache_count;
 	stat_cache = *cache;
+	rc = sfc_sw_stats_set_reset_basic_stats(sa);
+	if (rc != 0)
+		goto fail_reset_basic_stats;
 
 	for (i = 0; i < sw_stats->supp_count; i++) {
 		sw_stats->supp[i].cache = stat_cache;
@@ -639,6 +748,10 @@ sfc_sw_xstats_configure(struct sfc_adapter *sa)
 
 	return 0;
 
+fail_reset_basic_stats:
+	rte_free(*cache);
+	*cache = NULL;
+	sa->sw_stats.cache_count = 0;
 fail_cache:
 	rte_free(*reset_vals);
 	*reset_vals = NULL;

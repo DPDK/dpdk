@@ -216,6 +216,7 @@ struct sfc_dp_rx {
 #define SFC_DP_RX_FEAT_FLOW_FLAG		0x2
 #define SFC_DP_RX_FEAT_FLOW_MARK		0x4
 #define SFC_DP_RX_FEAT_INTR			0x8
+#define SFC_DP_RX_FEAT_STATS			0x10
 	/**
 	 * Rx offload capabilities supported by the datapath on device
 	 * level only if HW/FW supports it.

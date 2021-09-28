@@ -16,6 +16,7 @@
 #include <rte_pci.h>
 
 #include "sfc_log.h"
+#include "sfc_stats.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,6 +50,7 @@ struct sfc_dp_queue {
 	 * put stats at top of the structure to be closer to fields
 	 * used on datapath or reap to have more chances to be cache-hot.
 	 */
+	union sfc_pkts_bytes		stats;
 	uint32_t			rx_dbells;
 	uint32_t			tx_dbells;
 

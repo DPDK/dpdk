@@ -236,6 +236,9 @@ struct sfc_sw_stats {
 	unsigned int			cache_count;
 
 	uint64_t			*reset_vals;
+	/* Location of per-queue reset values for packets/bytes in reset_vals */
+	uint64_t			*reset_rx_pkts;
+	uint64_t			*reset_rx_bytes;
 
 	rte_spinlock_t			queues_bitmap_lock;
 	void				*queues_bitmap_mem;
