@@ -42,6 +42,91 @@ tap_support_features(unsigned int *tap_features)
 }
 
 int
+tap_open(const char *ifname, bool multi_queue)
+{
+	struct ifreq ifr;
+	int tapfd;
+
+	tapfd = open(PATH_NET_TUN, O_RDWR);
+	if (tapfd < 0) {
+		PMD_DRV_LOG(ERR, "fail to open %s: %s", PATH_NET_TUN, strerror(errno));
+		return -1;
+	}
+	if (fcntl(tapfd, F_SETFL, O_NONBLOCK) < 0) {
+		PMD_DRV_LOG(ERR, "fcntl tapfd failed: %s", strerror(errno));
+		close(tapfd);
+		return -1;
+	}
+
+retry_mono_q:
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
+	ifr.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_VNET_HDR;
+	if (multi_queue)
+		ifr.ifr_flags |= IFF_MULTI_QUEUE;
+	if (ioctl(tapfd, TUNSETIFF, (void *)&ifr) == -1) {
+		if (multi_queue) {
+			PMD_DRV_LOG(DEBUG,
+				"TUNSETIFF failed (will retry without IFF_MULTI_QUEUE): %s",
+				strerror(errno));
+			multi_queue = false;
+			goto retry_mono_q;
+		}
+
+		PMD_DRV_LOG(ERR, "TUNSETIFF failed: %s", strerror(errno));
+		close(tapfd);
+		tapfd = -1;
+	}
+	return tapfd;
+}
+
+int
+tap_get_name(int tapfd, char **name)
+{
+	struct ifreq ifr;
+	int ret;
+
+	memset(&ifr, 0, sizeof(ifr));
+	if (ioctl(tapfd, TUNGETIFF, (void *)&ifr) == -1) {
+		PMD_DRV_LOG(ERR, "TUNGETIFF failed: %s", strerror(errno));
+		return -1;
+	}
+	ret = asprintf(name, "%s", ifr.ifr_name);
+	if (ret != -1)
+		ret = 0;
+	return ret;
+}
+
+int
+tap_get_flags(int tapfd, unsigned int *tap_flags)
+{
+	struct ifreq ifr;
+
+	memset(&ifr, 0, sizeof(ifr));
+	if (ioctl(tapfd, TUNGETIFF, (void *)&ifr) == -1) {
+		PMD_DRV_LOG(ERR, "TUNGETIFF failed: %s", strerror(errno));
+		return -1;
+	}
+	*tap_flags = ifr.ifr_flags;
+	return 0;
+}
+
+int
+tap_set_mac(int tapfd, uint8_t *mac)
+{
+	struct ifreq ifr;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
+	memcpy(ifr.ifr_hwaddr.sa_data, mac, RTE_ETHER_ADDR_LEN);
+	if (ioctl(tapfd, SIOCSIFHWADDR, (void *)&ifr) == -1) {
+		PMD_DRV_LOG(ERR, "SIOCSIFHWADDR failed: %s", strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+
+static int
 vhost_kernel_tap_set_offload(int fd, uint64_t features)
 {
 	unsigned int offload = 0;
@@ -79,24 +164,9 @@ vhost_kernel_tap_set_offload(int fd, uint64_t features)
 }
 
 int
-vhost_kernel_tap_set_queue(int fd, bool attach)
+vhost_kernel_tap_setup(int tapfd, int hdr_size, uint64_t features)
 {
-	struct ifreq ifr = {
-		.ifr_flags = attach ? IFF_ATTACH_QUEUE : IFF_DETACH_QUEUE,
-	};
-
-	return ioctl(fd, TUNSETQUEUE, &ifr);
-}
-
-int
-vhost_kernel_open_tap(char **p_ifname, int hdr_size, int req_mq,
-			 const char *mac, uint64_t features)
-{
-	unsigned int tap_features;
-	char *tap_name = NULL;
 	int sndbuf = INT_MAX;
-	struct ifreq ifr;
-	int tapfd;
 	int ret;
 
 	/* TODO:
@@ -104,86 +174,18 @@ vhost_kernel_open_tap(char **p_ifname, int hdr_size, int req_mq,
 	 * 2. get number of memory regions from vhost module parameter
 	 * max_mem_regions, supported in newer version linux kernel
 	 */
-	tapfd = open(PATH_NET_TUN, O_RDWR);
-	if (tapfd < 0) {
-		PMD_DRV_LOG(ERR, "fail to open %s: %s",
-			    PATH_NET_TUN, strerror(errno));
-		return -1;
-	}
-
-	/* Construct ifr */
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
-
-	if (ioctl(tapfd, TUNGETFEATURES, &tap_features) == -1) {
-		PMD_DRV_LOG(ERR, "TUNGETFEATURES failed: %s", strerror(errno));
-		goto error;
-	}
-	if (tap_features & IFF_ONE_QUEUE)
-		ifr.ifr_flags |= IFF_ONE_QUEUE;
-
-	/* Let tap instead of vhost-net handle vnet header, as the latter does
-	 * not support offloading. And in this case, we should not set feature
-	 * bit VHOST_NET_F_VIRTIO_NET_HDR.
-	 */
-	if (tap_features & IFF_VNET_HDR) {
-		ifr.ifr_flags |= IFF_VNET_HDR;
-	} else {
-		PMD_DRV_LOG(ERR, "TAP does not support IFF_VNET_HDR");
-		goto error;
-	}
-
-	if (req_mq)
-		ifr.ifr_flags |= IFF_MULTI_QUEUE;
-
-	if (*p_ifname)
-		strncpy(ifr.ifr_name, *p_ifname, IFNAMSIZ - 1);
-	else
-		strncpy(ifr.ifr_name, "tap%d", IFNAMSIZ - 1);
-	if (ioctl(tapfd, TUNSETIFF, (void *)&ifr) == -1) {
-		PMD_DRV_LOG(ERR, "TUNSETIFF failed: %s", strerror(errno));
-		goto error;
-	}
-
-	tap_name = strdup(ifr.ifr_name);
-	if (!tap_name) {
-		PMD_DRV_LOG(ERR, "strdup ifname failed: %s", strerror(errno));
-		goto error;
-	}
-
-	if (fcntl(tapfd, F_SETFL, O_NONBLOCK) < 0) {
-		PMD_DRV_LOG(ERR, "fcntl tapfd failed: %s", strerror(errno));
-		goto error;
-	}
-
 	if (ioctl(tapfd, TUNSETVNETHDRSZ, &hdr_size) < 0) {
 		PMD_DRV_LOG(ERR, "TUNSETVNETHDRSZ failed: %s", strerror(errno));
-		goto error;
+		return -1;
 	}
 
 	if (ioctl(tapfd, TUNSETSNDBUF, &sndbuf) < 0) {
 		PMD_DRV_LOG(ERR, "TUNSETSNDBUF failed: %s", strerror(errno));
-		goto error;
+		return -1;
 	}
 
 	ret = vhost_kernel_tap_set_offload(tapfd, features);
-	if (ret < 0 && ret != -ENOTSUP)
-		goto error;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
-	memcpy(ifr.ifr_hwaddr.sa_data, mac, RTE_ETHER_ADDR_LEN);
-	if (ioctl(tapfd, SIOCSIFHWADDR, (void *)&ifr) == -1) {
-		PMD_DRV_LOG(ERR, "SIOCSIFHWADDR failed: %s", strerror(errno));
-		goto error;
-	}
-
-	free(*p_ifname);
-	*p_ifname = tap_name;
-
-	return tapfd;
-error:
-	free(tap_name);
-	close(tapfd);
-	return -1;
+	if (ret == -ENOTSUP)
+		ret = 0;
+	return ret;
 }

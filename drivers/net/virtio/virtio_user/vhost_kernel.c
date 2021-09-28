@@ -120,9 +120,9 @@ vhost_kernel_set_owner(struct virtio_user_dev *dev)
 static int
 vhost_kernel_get_features(struct virtio_user_dev *dev, uint64_t *features)
 {
-	int ret;
-	unsigned int tap_features;
 	struct vhost_kernel_data *data = dev->backend_data;
+	unsigned int tap_flags;
+	int ret;
 
 	ret = vhost_kernel_ioctl(data->vhostfds[0], VHOST_GET_FEATURES, features);
 	if (ret < 0) {
@@ -130,7 +130,7 @@ vhost_kernel_get_features(struct virtio_user_dev *dev, uint64_t *features)
 		return -1;
 	}
 
-	ret = tap_support_features(&tap_features);
+	ret = tap_get_flags(data->tapfds[0], &tap_flags);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to get TAP features");
 		return -1;
@@ -140,7 +140,7 @@ vhost_kernel_get_features(struct virtio_user_dev *dev, uint64_t *features)
 	 * but not claimed by vhost-net, so we add them back when
 	 * reporting to upper layer.
 	 */
-	if (tap_features & IFF_VNET_HDR) {
+	if (tap_flags & IFF_VNET_HDR) {
 		*features |= VHOST_KERNEL_GUEST_OFFLOADS_MASK;
 		*features |= VHOST_KERNEL_HOST_OFFLOADS_MASK;
 	}
@@ -148,7 +148,7 @@ vhost_kernel_get_features(struct virtio_user_dev *dev, uint64_t *features)
 	/* vhost_kernel will not declare this feature, but it does
 	 * support multi-queue.
 	 */
-	if (tap_features & IFF_MULTI_QUEUE)
+	if (tap_flags & IFF_MULTI_QUEUE)
 		*features |= (1ull << VIRTIO_NET_F_MQ);
 
 	return 0;
@@ -380,9 +380,20 @@ vhost_kernel_set_status(struct virtio_user_dev *dev __rte_unused, uint8_t status
 static int
 vhost_kernel_setup(struct virtio_user_dev *dev)
 {
-	int vhostfd;
-	uint32_t q, i;
 	struct vhost_kernel_data *data;
+	unsigned int tap_features;
+	unsigned int tap_flags;
+	const char *ifname;
+	uint32_t q, i;
+	int vhostfd;
+
+	if (tap_support_features(&tap_features) < 0)
+		return -1;
+
+	if ((tap_features & IFF_VNET_HDR) == 0) {
+		PMD_INIT_LOG(ERR, "TAP does not support IFF_VNET_HDR");
+		return -1;
+	}
 
 	data = malloc(sizeof(*data));
 	if (!data) {
@@ -414,8 +425,30 @@ vhost_kernel_setup(struct virtio_user_dev *dev)
 			PMD_DRV_LOG(ERR, "fail to open %s, %s", dev->path, strerror(errno));
 			goto err_tapfds;
 		}
-
 		data->vhostfds[i] = vhostfd;
+	}
+
+	ifname = dev->ifname != NULL ? dev->ifname : "tap%d";
+	data->tapfds[0] = tap_open(ifname, (tap_features & IFF_MULTI_QUEUE) != 0);
+	if (data->tapfds[0] < 0)
+		goto err_tapfds;
+	if (dev->ifname == NULL && tap_get_name(data->tapfds[0], &dev->ifname) < 0) {
+		PMD_DRV_LOG(ERR, "fail to get tap name (%d)", data->tapfds[0]);
+		goto err_tapfds;
+	}
+	if (tap_get_flags(data->tapfds[0], &tap_flags) < 0) {
+		PMD_DRV_LOG(ERR, "fail to get tap flags for tap %s", dev->ifname);
+		goto err_tapfds;
+	}
+	if ((tap_flags & IFF_MULTI_QUEUE) == 0 && dev->max_queue_pairs > 1) {
+		PMD_DRV_LOG(ERR, "tap %s does not support multi queue", dev->ifname);
+		goto err_tapfds;
+	}
+
+	for (i = 1; i < dev->max_queue_pairs; i++) {
+		data->tapfds[i] = tap_open(dev->ifname, true);
+		if (data->tapfds[i] < 0)
+			goto err_tapfds;
 	}
 
 	dev->backend_data = data;
@@ -423,9 +456,12 @@ vhost_kernel_setup(struct virtio_user_dev *dev)
 	return 0;
 
 err_tapfds:
-	for (i = 0; i < dev->max_queue_pairs; i++)
+	for (i = 0; i < dev->max_queue_pairs; i++) {
 		if (data->vhostfds[i] >= 0)
 			close(data->vhostfds[i]);
+		if (data->tapfds[i] >= 0)
+			close(data->tapfds[i]);
+	}
 
 	free(data->tapfds);
 err_vhostfds:
@@ -488,40 +524,24 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 			       uint16_t pair_idx,
 			       int enable)
 {
+	struct vhost_kernel_data *data = dev->backend_data;
 	int hdr_size;
 	int vhostfd;
 	int tapfd;
-	int req_mq = (dev->max_queue_pairs > 1);
-	struct vhost_kernel_data *data = dev->backend_data;
-
-	vhostfd = data->vhostfds[pair_idx];
 
 	if (dev->qp_enabled[pair_idx] == enable)
 		return 0;
 
+	vhostfd = data->vhostfds[pair_idx];
+	tapfd = data->tapfds[pair_idx];
+
 	if (!enable) {
-		tapfd = data->tapfds[pair_idx];
 		if (vhost_kernel_set_backend(vhostfd, -1) < 0) {
 			PMD_DRV_LOG(ERR, "fail to set backend for vhost kernel");
 			return -1;
 		}
-		if (req_mq && vhost_kernel_tap_set_queue(tapfd, false) < 0) {
-			PMD_DRV_LOG(ERR, "fail to disable tap for vhost kernel");
-			return -1;
-		}
 		dev->qp_enabled[pair_idx] = false;
 		return 0;
-	}
-
-	if (data->tapfds[pair_idx] >= 0) {
-		tapfd = data->tapfds[pair_idx];
-		if (vhost_kernel_tap_set_offload(tapfd, dev->features) == -1)
-			return -1;
-		if (req_mq && vhost_kernel_tap_set_queue(tapfd, true) < 0) {
-			PMD_DRV_LOG(ERR, "fail to enable tap for vhost kernel");
-			return -1;
-		}
-		goto set_backend;
 	}
 
 	if ((dev->features & (1ULL << VIRTIO_NET_F_MRG_RXBUF)) ||
@@ -530,16 +550,16 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 	else
 		hdr_size = sizeof(struct virtio_net_hdr);
 
-	tapfd = vhost_kernel_open_tap(&dev->ifname, hdr_size, req_mq,
-			 (char *)dev->mac_addr, dev->features);
-	if (tapfd < 0) {
-		PMD_DRV_LOG(ERR, "fail to open tap for vhost kernel");
+	/* Set mac on tap only once when starting */
+	if (!dev->started && pair_idx == 0 &&
+			tap_set_mac(data->tapfds[pair_idx], dev->mac_addr) < 0)
+		return -1;
+
+	if (vhost_kernel_tap_setup(tapfd, hdr_size, dev->features) < 0) {
+		PMD_DRV_LOG(ERR, "fail to setup tap for vhost kernel");
 		return -1;
 	}
 
-	data->tapfds[pair_idx] = tapfd;
-
-set_backend:
 	if (vhost_kernel_set_backend(vhostfd, tapfd) < 0) {
 		PMD_DRV_LOG(ERR, "fail to set backend for vhost kernel");
 		return -1;
