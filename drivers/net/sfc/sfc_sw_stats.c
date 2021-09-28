@@ -49,7 +49,7 @@ sfc_get_sw_stat_val_tx_dbells(struct sfc_adapter *sa, uint16_t qid)
 	return 0;
 }
 
-struct sfc_sw_stat_descr sfc_sw_stats_descr[] = {
+const struct sfc_sw_stat_descr sfc_sw_stats_descr[] = {
 	{
 		.name = "dbells",
 		.type = SFC_SW_STATS_RX,
@@ -452,7 +452,8 @@ sfc_sw_xstats_get_names_by_id(struct sfc_adapter *sa,
 }
 
 static void
-sfc_sw_xstat_reset(struct sfc_adapter *sa, struct sfc_sw_stat_descr *sw_stat,
+sfc_sw_xstat_reset(struct sfc_adapter *sa,
+		   const struct sfc_sw_stat_descr *sw_stat,
 		   uint64_t *reset_vals)
 {
 	unsigned int nb_queues;
@@ -483,7 +484,7 @@ void
 sfc_sw_xstats_reset(struct sfc_adapter *sa)
 {
 	uint64_t *reset_vals = sa->sw_stats.reset_vals;
-	struct sfc_sw_stat_descr *sw_stat;
+	const struct sfc_sw_stat_descr *sw_stat;
 	unsigned int i;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
