@@ -1372,6 +1372,7 @@ mlx5_free_table_hash_list(struct mlx5_priv *priv)
 	if (!sh->flow_tbls)
 		return;
 	mlx5_hlist_destroy(sh->flow_tbls);
+	sh->flow_tbls = NULL;
 }
 
 /**
