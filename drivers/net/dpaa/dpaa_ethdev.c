@@ -2231,8 +2231,6 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 	if (dpaa_drv->drv_flags & RTE_DPAA_DRV_INTR_LSC)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
-
 	/* Invoke PMD device initialization function */
 	diag = dpaa_dev_init(eth_dev);
 	if (diag == 0) {

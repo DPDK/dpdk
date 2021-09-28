@@ -885,8 +885,6 @@ enetc_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = &enetc_recv_pkts;
 	eth_dev->tx_pkt_burst = &enetc_xmit_pkts;
 
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
-
 	/* Retrieving and storing the HW base address of device */
 	hw->hw.reg = (void *)pci_dev->mem_resource[0].addr;
 	hw->device_id = pci_dev->id.device_id;

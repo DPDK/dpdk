@@ -1374,7 +1374,6 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	data->promiscuous = 0;
 	data->all_multicast = 0;
 	data->scattered_rx = 0;
-	data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	/* Get maximum number of supported MAC entries */
 	max_entries = octeontx_bgx_port_mac_entries_get(nic->port_id);
