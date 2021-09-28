@@ -21,6 +21,7 @@ struct sfc_sw_stat_descr {
 	const char *name;
 	enum sfc_sw_stats_type type;
 	sfc_get_sw_stat_val_t *get_val;
+	bool provide_total;
 };
 
 static sfc_get_sw_stat_val_t sfc_get_sw_stat_val_rx_dbells;
@@ -54,11 +55,13 @@ const struct sfc_sw_stat_descr sfc_sw_stats_descr[] = {
 		.name = "dbells",
 		.type = SFC_SW_STATS_RX,
 		.get_val  = sfc_get_sw_stat_val_rx_dbells,
+		.provide_total = true,
 	},
 	{
 		.name = "dbells",
 		.type = SFC_SW_STATS_TX,
 		.get_val  = sfc_get_sw_stat_val_tx_dbells,
+		.provide_total = true,
 	}
 };
 
@@ -83,7 +86,7 @@ sfc_sw_stat_get_name(struct sfc_adapter *sa,
 		return -EINVAL;
 	}
 
-	if (id_off == 0) {
+	if (sw_stat->provide_total && id_off == 0) {
 		ret = snprintf(name, name_size, "%s_%s", prefix,
 							 sw_stat->name);
 		if (ret < 0 || ret >= (int)name_size) {
@@ -92,7 +95,7 @@ sfc_sw_stat_get_name(struct sfc_adapter *sa,
 			return ret > 0 ? -EINVAL : ret;
 		}
 	} else {
-		uint16_t qid = id_off - 1;
+		uint16_t qid = id_off - sw_stat->provide_total;
 		ret = snprintf(name, name_size, "%s_q%u_%s", prefix, qid,
 							sw_stat->name);
 		if (ret < 0 || ret >= (int)name_size) {
@@ -124,10 +127,11 @@ sfc_sw_stat_get_queue_count(struct sfc_adapter *sa,
 }
 
 static unsigned int
-sfc_sw_xstat_per_queue_get_count(unsigned int nb_queues)
+sfc_sw_xstat_per_queue_get_count(const struct sfc_sw_stat_descr *sw_stat,
+				 unsigned int nb_queues)
 {
 	/* Take into account the total xstat of all queues */
-	return nb_queues > 0 ? 1 + nb_queues : 0;
+	return nb_queues > 0 ? sw_stat->provide_total + nb_queues : 0;
 }
 
 static unsigned int
@@ -137,7 +141,7 @@ sfc_sw_xstat_get_nb_supported(struct sfc_adapter *sa,
 	unsigned int nb_queues;
 
 	nb_queues = sfc_sw_stat_get_queue_count(sa, sw_stat);
-	return sfc_sw_xstat_per_queue_get_count(nb_queues);
+	return sfc_sw_xstat_per_queue_get_count(sw_stat, nb_queues);
 }
 
 static int
@@ -157,13 +161,13 @@ sfc_sw_stat_get_names(struct sfc_adapter *sa,
 	nb_queues = sfc_sw_stat_get_queue_count(sa, sw_stat);
 	if (nb_queues == 0)
 		return 0;
-	*nb_supported += sfc_sw_xstat_per_queue_get_count(nb_queues);
+	*nb_supported += sfc_sw_xstat_per_queue_get_count(sw_stat, nb_queues);
 
 	/*
 	 * The order of each software xstat type is the total xstat
 	 * followed by per-queue xstats.
 	 */
-	if (*nb_written < xstats_names_sz) {
+	if (*nb_written < xstats_names_sz && sw_stat->provide_total) {
 		rc = sfc_sw_stat_get_name(sa, sw_stat,
 					  xstats_names[*nb_written].name,
 					  name_size, *nb_written - id_base);
@@ -196,6 +200,7 @@ sfc_sw_xstat_get_names_by_id(struct sfc_adapter *sa,
 {
 	const size_t name_size = sizeof(xstats_names[0].name);
 	unsigned int id_base = *nb_supported;
+	unsigned int id_end;
 	unsigned int nb_queues;
 	unsigned int i;
 	int rc;
@@ -203,14 +208,15 @@ sfc_sw_xstat_get_names_by_id(struct sfc_adapter *sa,
 	nb_queues = sfc_sw_stat_get_queue_count(sa, sw_stat);
 	if (nb_queues == 0)
 		return 0;
-	*nb_supported += sfc_sw_xstat_per_queue_get_count(nb_queues);
+	*nb_supported += sfc_sw_xstat_per_queue_get_count(sw_stat, nb_queues);
 
 	/*
 	 * The order of each software xstat type is the total xstat
 	 * followed by per-queue xstats.
 	 */
+	id_end = id_base + sw_stat->provide_total + nb_queues;
 	for (i = 0; i < size; i++) {
-		if (id_base <= ids[i] && ids[i] <= id_base + nb_queues) {
+		if (id_base <= ids[i] && ids[i] < id_end) {
 			rc = sfc_sw_stat_get_name(sa, sw_stat,
 						  xstats_names[i].name,
 						  name_size, ids[i] - id_base);
@@ -239,13 +245,13 @@ sfc_sw_xstat_get_values(struct sfc_adapter *sa,
 	nb_queues = sfc_sw_stat_get_queue_count(sa, sw_stat);
 	if (nb_queues == 0)
 		return;
-	*nb_supported += sfc_sw_xstat_per_queue_get_count(nb_queues);
+	*nb_supported += sfc_sw_xstat_per_queue_get_count(sw_stat, nb_queues);
 
 	/*
 	 * The order of each software xstat type is the total xstat
 	 * followed by per-queue xstats.
 	 */
-	if (*nb_written < xstats_size) {
+	if (*nb_written < xstats_size && sw_stat->provide_total) {
 		count_total_value = true;
 		total_xstat = &xstats[*nb_written];
 		xstats[*nb_written].id = *nb_written;
@@ -278,6 +284,8 @@ sfc_sw_xstat_get_values_by_id(struct sfc_adapter *sa,
 	rte_spinlock_t *bmp_lock = &sa->sw_stats.queues_bitmap_lock;
 	struct rte_bitmap *bmp = sa->sw_stats.queues_bitmap;
 	unsigned int id_base = *nb_supported;
+	unsigned int id_base_q;
+	unsigned int id_end;
 	bool count_total_value = false;
 	unsigned int total_value_idx;
 	uint64_t total_value = 0;
@@ -291,20 +299,23 @@ sfc_sw_xstat_get_values_by_id(struct sfc_adapter *sa,
 	nb_queues = sfc_sw_stat_get_queue_count(sa, sw_stat);
 	if (nb_queues == 0)
 		goto unlock;
-	*nb_supported += sfc_sw_xstat_per_queue_get_count(nb_queues);
+	*nb_supported += sfc_sw_xstat_per_queue_get_count(sw_stat, nb_queues);
 
 	/*
 	 * The order of each software xstat type is the total xstat
 	 * followed by per-queue xstats.
 	 */
+	id_end = id_base + sw_stat->provide_total + nb_queues;
 	for (i = 0; i < ids_size; i++) {
-		if (id_base <= ids[i] && ids[i] <= (id_base + nb_queues)) {
-			if (ids[i] == id_base) { /* Accumulative value */
+		if (id_base <= ids[i] && ids[i] < id_end) {
+			if (sw_stat->provide_total && ids[i] == id_base) {
+				/* Accumulative value */
 				count_total_value = true;
 				total_value_idx = i;
 				continue;
 			}
-			qid = ids[i] - id_base - 1;
+			id_base_q = id_base + sw_stat->provide_total;
+			qid = ids[i] - id_base_q;
 			values[i] = sw_stat->get_val(sa, qid);
 			total_value += values[i];
 
@@ -453,7 +464,7 @@ sfc_sw_xstat_reset(struct sfc_adapter *sa,
 {
 	unsigned int nb_queues;
 	unsigned int qid;
-	uint64_t *total_xstat_reset;
+	uint64_t *total_xstat_reset = NULL;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
@@ -465,13 +476,16 @@ sfc_sw_xstat_reset(struct sfc_adapter *sa,
 	 * The order of each software xstat type is the total xstat
 	 * followed by per-queue xstats.
 	 */
-	total_xstat_reset = reset_vals;
-	*total_xstat_reset = 0;
-	reset_vals++;
+	if (sw_stat->provide_total) {
+		total_xstat_reset = reset_vals;
+		*total_xstat_reset = 0;
+		reset_vals++;
+	}
 
 	for (qid = 0; qid < nb_queues; ++qid) {
 		reset_vals[qid] = sw_stat->get_val(sa, qid);
-		*total_xstat_reset += reset_vals[qid];
+		if (sw_stat->provide_total)
+			*total_xstat_reset += reset_vals[qid];
 	}
 }
 
