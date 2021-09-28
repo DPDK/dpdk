@@ -17,6 +17,7 @@
 #include <rte_service_component.h>
 #include <rte_thash.h>
 #include <rte_interrupts.h>
+#include <rte_mbuf_dyn.h>
 
 #include "rte_eventdev.h"
 #include "eventdev_pmd.h"
@@ -239,6 +240,17 @@ struct eth_rx_queue_info {
 };
 
 static struct rte_event_eth_rx_adapter **event_eth_rx_adapter;
+
+/* Enable dynamic timestamp field in mbuf */
+static uint64_t event_eth_rx_timestamp_dynflag;
+static int event_eth_rx_timestamp_dynfield_offset = -1;
+
+static inline rte_mbuf_timestamp_t *
+rxa_timestamp_dynfield(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf,
+		event_eth_rx_timestamp_dynfield_offset, rte_mbuf_timestamp_t *);
+}
 
 static inline int
 rxa_validate_id(uint8_t id)
@@ -890,8 +902,18 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 	int do_rss;
 	uint16_t nb_cb;
 	uint16_t dropped;
+	uint64_t ts, ts_mask;
 
 	if (!eth_rx_queue_info->ena_vector) {
+		ts = m->ol_flags & event_eth_rx_timestamp_dynflag ?
+						0 : rte_get_tsc_cycles();
+
+		/* 0xffff ffff ffff ffff if PKT_RX_TIMESTAMP is set,
+		 * otherwise 0
+		 */
+		ts_mask = (uint64_t)(!(m->ol_flags &
+				       event_eth_rx_timestamp_dynflag)) - 1ULL;
+
 		/* 0xffff ffff if PKT_RX_RSS_HASH is set, otherwise 0 */
 		rss_mask = ~(((m->ol_flags & PKT_RX_RSS_HASH) != 0) - 1);
 		do_rss = !rss_mask && !eth_rx_queue_info->flow_id_mask;
@@ -899,6 +921,9 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 			struct rte_event *ev;
 
 			m = mbufs[i];
+			*rxa_timestamp_dynfield(m) = ts |
+					(*rxa_timestamp_dynfield(m) & ts_mask);
+
 			ev = &buf->events[new_tail];
 
 			rss = do_rss ? rxa_do_softrss(m, rx_adapter->rss_key_be)
@@ -2238,6 +2263,14 @@ rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
 	event_eth_rx_adapter[id] = rx_adapter;
 	if (conf_cb == rxa_default_conf_cb)
 		rx_adapter->default_cb_arg = 1;
+
+	if (rte_mbuf_dyn_rx_timestamp_register(
+			&event_eth_rx_timestamp_dynfield_offset,
+			&event_eth_rx_timestamp_dynflag) != 0) {
+		RTE_EDEV_LOG_ERR("Error registering timestamp field in mbuf\n");
+		return -rte_errno;
+	}
+
 	rte_eventdev_trace_eth_rx_adapter_create(id, dev_id, conf_cb,
 		conf_arg);
 	return 0;
