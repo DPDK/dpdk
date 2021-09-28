@@ -946,6 +946,7 @@ memif_create_socket_hash(void)
 	params.key_len = MEMIF_SOCKET_UN_SIZE;
 	params.hash_func = rte_jhash;
 	params.hash_func_init_val = 0;
+	params.socket_id = SOCKET_ID_ANY;
 	return rte_hash_create(&params);
 }
 
