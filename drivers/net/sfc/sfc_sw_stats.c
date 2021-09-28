@@ -126,7 +126,7 @@ sfc_sw_stat_get_queue_count(struct sfc_adapter *sa,
 static unsigned int
 sfc_sw_xstat_per_queue_get_count(unsigned int nb_queues)
 {
-	/* Take into account the accumulative xstat of all queues */
+	/* Take into account the total xstat of all queues */
 	return nb_queues > 0 ? 1 + nb_queues : 0;
 }
 
@@ -160,7 +160,7 @@ sfc_sw_stat_get_names(struct sfc_adapter *sa,
 	*nb_supported += sfc_sw_xstat_per_queue_get_count(nb_queues);
 
 	/*
-	 * The order of each software xstat type is the accumulative xstat
+	 * The order of each software xstat type is the total xstat
 	 * followed by per-queue xstats.
 	 */
 	if (*nb_written < xstats_names_sz) {
@@ -206,7 +206,7 @@ sfc_sw_xstat_get_names_by_id(struct sfc_adapter *sa,
 	*nb_supported += sfc_sw_xstat_per_queue_get_count(nb_queues);
 
 	/*
-	 * The order of each software xstat type is the accumulative xstat
+	 * The order of each software xstat type is the total xstat
 	 * followed by per-queue xstats.
 	 */
 	for (i = 0; i < size; i++) {
@@ -232,8 +232,8 @@ sfc_sw_xstat_get_values(struct sfc_adapter *sa,
 {
 	unsigned int qid;
 	uint64_t value;
-	struct rte_eth_xstat *accum_xstat;
-	bool count_accum_value = false;
+	struct rte_eth_xstat *total_xstat;
+	bool count_total_value = false;
 	unsigned int nb_queues;
 
 	nb_queues = sfc_sw_stat_get_queue_count(sa, sw_xstat);
@@ -242,12 +242,12 @@ sfc_sw_xstat_get_values(struct sfc_adapter *sa,
 	*nb_supported += sfc_sw_xstat_per_queue_get_count(nb_queues);
 
 	/*
-	 * The order of each software xstat type is the accumulative xstat
+	 * The order of each software xstat type is the total xstat
 	 * followed by per-queue xstats.
 	 */
 	if (*nb_written < xstats_size) {
-		count_accum_value = true;
-		accum_xstat = &xstats[*nb_written];
+		count_total_value = true;
+		total_xstat = &xstats[*nb_written];
 		xstats[*nb_written].id = *nb_written;
 		xstats[*nb_written].value = 0;
 		(*nb_written)++;
@@ -262,8 +262,8 @@ sfc_sw_xstat_get_values(struct sfc_adapter *sa,
 			(*nb_written)++;
 		}
 
-		if (count_accum_value)
-			accum_xstat->value += value;
+		if (count_total_value)
+			total_xstat->value += value;
 	}
 }
 
@@ -278,9 +278,9 @@ sfc_sw_xstat_get_values_by_id(struct sfc_adapter *sa,
 	rte_spinlock_t *bmp_lock = &sa->sw_xstats.queues_bitmap_lock;
 	struct rte_bitmap *bmp = sa->sw_xstats.queues_bitmap;
 	unsigned int id_base = *nb_supported;
-	bool count_accum_value = false;
-	unsigned int accum_value_idx;
-	uint64_t accum_value = 0;
+	bool count_total_value = false;
+	unsigned int total_value_idx;
+	uint64_t total_value = 0;
 	unsigned int i, qid;
 	unsigned int nb_queues;
 
@@ -294,32 +294,32 @@ sfc_sw_xstat_get_values_by_id(struct sfc_adapter *sa,
 	*nb_supported += sfc_sw_xstat_per_queue_get_count(nb_queues);
 
 	/*
-	 * The order of each software xstat type is the accumulative xstat
+	 * The order of each software xstat type is the total xstat
 	 * followed by per-queue xstats.
 	 */
 	for (i = 0; i < ids_size; i++) {
 		if (id_base <= ids[i] && ids[i] <= (id_base + nb_queues)) {
 			if (ids[i] == id_base) { /* Accumulative value */
-				count_accum_value = true;
-				accum_value_idx = i;
+				count_total_value = true;
+				total_value_idx = i;
 				continue;
 			}
 			qid = ids[i] - id_base - 1;
 			values[i] = sw_xstat->get_val(sa, qid);
-			accum_value += values[i];
+			total_value += values[i];
 
 			rte_bitmap_set(bmp, qid);
 		}
 	}
 
-	if (count_accum_value) {
-		values[accum_value_idx] = 0;
+	if (count_total_value) {
+		values[total_value_idx] = 0;
 		for (qid = 0; qid < nb_queues; ++qid) {
 			if (rte_bitmap_get(bmp, qid) != 0)
 				continue;
-			values[accum_value_idx] += sw_xstat->get_val(sa, qid);
+			values[total_value_idx] += sw_xstat->get_val(sa, qid);
 		}
-		values[accum_value_idx] += accum_value;
+		values[total_value_idx] += total_value;
 	}
 
 unlock:
@@ -457,7 +457,7 @@ sfc_sw_xstat_reset(struct sfc_adapter *sa, struct sfc_sw_xstat_descr *sw_xstat,
 {
 	unsigned int nb_queues;
 	unsigned int qid;
-	uint64_t *accum_xstat_reset;
+	uint64_t *total_xstat_reset;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
@@ -466,16 +466,16 @@ sfc_sw_xstat_reset(struct sfc_adapter *sa, struct sfc_sw_xstat_descr *sw_xstat,
 		return;
 
 	/*
-	 * The order of each software xstat type is the accumulative xstat
+	 * The order of each software xstat type is the total xstat
 	 * followed by per-queue xstats.
 	 */
-	accum_xstat_reset = reset_vals;
-	*accum_xstat_reset = 0;
+	total_xstat_reset = reset_vals;
+	*total_xstat_reset = 0;
 	reset_vals++;
 
 	for (qid = 0; qid < nb_queues; ++qid) {
 		reset_vals[qid] = sw_xstat->get_val(sa, qid);
-		*accum_xstat_reset += reset_vals[qid];
+		*total_xstat_reset += reset_vals[qid];
 	}
 }
 
