@@ -485,7 +485,11 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 static inline int
 cn9k_ipsec_xform_verify(struct rte_security_ipsec_xform *ipsec)
 {
-	RTE_SET_USED(ipsec);
+	if (ipsec->life.bytes_hard_limit != 0 ||
+	    ipsec->life.bytes_soft_limit != 0 ||
+	    ipsec->life.packets_hard_limit != 0 ||
+	    ipsec->life.packets_soft_limit != 0)
+		return -ENOTSUP;
 
 	return 0;
 }

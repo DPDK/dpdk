@@ -348,12 +348,44 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 			       struct cpt_inflight_req *infl_req)
 {
 	struct cpt_cn10k_res_s *res = (struct cpt_cn10k_res_s *)&infl_req->res;
+	const uint8_t uc_compcode = res->uc_compcode;
+	const uint8_t compcode = res->compcode;
 	unsigned int sz;
 
-	if (likely(res->compcode == CPT_COMP_GOOD ||
-		   res->compcode == CPT_COMP_WARN)) {
-		if (unlikely(res->uc_compcode)) {
-			if (res->uc_compcode == ROC_SE_ERR_GC_ICV_MISCOMPARE)
+	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+
+	if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC &&
+	    cop->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+		if (likely(compcode == CPT_COMP_WARN)) {
+			if (unlikely(uc_compcode != ROC_IE_OT_UCC_SUCCESS)) {
+				/* Success with additional info */
+				switch (uc_compcode) {
+				case ROC_IE_OT_UCC_SUCCESS_SA_SOFTEXP_FIRST:
+					cop->aux_flags =
+						RTE_CRYPTO_OP_AUX_FLAGS_IPSEC_SOFT_EXPIRY;
+					break;
+				default:
+					break;
+				}
+			}
+			cn10k_cpt_sec_post_process(cop, res);
+		} else {
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			plt_dp_info("HW completion code 0x%x", res->compcode);
+			if (compcode == CPT_COMP_GOOD) {
+				plt_dp_info(
+					"Request failed with microcode error");
+				plt_dp_info("MC completion code 0x%x",
+					    uc_compcode);
+			}
+		}
+
+		return;
+	}
+
+	if (likely(compcode == CPT_COMP_GOOD || compcode == CPT_COMP_WARN)) {
+		if (unlikely(uc_compcode)) {
+			if (uc_compcode == ROC_SE_ERR_GC_ICV_MISCOMPARE)
 				cop->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 			else
 				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
@@ -364,13 +396,7 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 			goto temp_sess_free;
 		}
 
-		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
-			if (cop->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-				cn10k_cpt_sec_post_process(cop, res);
-				return;
-			}
-
 			/* Verify authentication data if required */
 			if (unlikely(infl_req->op_flags &
 				     CPT_OP_FLAGS_AUTH_VERIFY)) {
@@ -392,7 +418,7 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		plt_dp_info("HW completion code 0x%x", res->compcode);
 
-		switch (res->compcode) {
+		switch (compcode) {
 		case CPT_COMP_INSTERR:
 			plt_dp_err("Request failed with instruction error");
 			break;

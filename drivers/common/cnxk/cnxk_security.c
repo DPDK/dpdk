@@ -161,6 +161,26 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 		return -EINVAL;
 	}
 
+	if (ipsec_xfrm->life.packets_soft_limit != 0 ||
+	    ipsec_xfrm->life.packets_hard_limit != 0) {
+		if (ipsec_xfrm->life.bytes_soft_limit != 0 ||
+		    ipsec_xfrm->life.bytes_hard_limit != 0) {
+			plt_err("Expiry tracking with both packets & bytes is not supported");
+			return -EINVAL;
+		}
+		w2->s.life_unit = ROC_IE_OT_SA_LIFE_UNIT_PKTS;
+	}
+
+	if (ipsec_xfrm->life.bytes_soft_limit != 0 ||
+	    ipsec_xfrm->life.bytes_hard_limit != 0) {
+		if (ipsec_xfrm->life.packets_soft_limit != 0 ||
+		    ipsec_xfrm->life.packets_hard_limit != 0) {
+			plt_err("Expiry tracking with both packets & bytes is not supported");
+			return -EINVAL;
+		}
+		w2->s.life_unit = ROC_IE_OT_SA_LIFE_UNIT_OCTETS;
+	}
+
 	return 0;
 }
 
@@ -235,6 +255,31 @@ cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 		(PLT_ALIGN_CEIL(ot_ipsec_inb_ctx_size(sa), ROC_CTX_UNIT_128B) /
 		 ROC_CTX_UNIT_128B) -
 		1;
+
+	/**
+	 * CPT MC triggers expiry when counter value changes from 2 to 1. To
+	 * mitigate this behaviour add 1 to the life counter values provided.
+	 */
+
+	if (ipsec_xfrm->life.bytes_soft_limit) {
+		sa->ctx.soft_life = ipsec_xfrm->life.bytes_soft_limit + 1;
+		sa->w0.s.soft_life_dec = 1;
+	}
+
+	if (ipsec_xfrm->life.packets_soft_limit) {
+		sa->ctx.soft_life = ipsec_xfrm->life.packets_soft_limit + 1;
+		sa->w0.s.soft_life_dec = 1;
+	}
+
+	if (ipsec_xfrm->life.bytes_hard_limit) {
+		sa->ctx.hard_life = ipsec_xfrm->life.bytes_hard_limit + 1;
+		sa->w0.s.hard_life_dec = 1;
+	}
+
+	if (ipsec_xfrm->life.packets_hard_limit) {
+		sa->ctx.hard_life = ipsec_xfrm->life.packets_hard_limit + 1;
+		sa->w0.s.hard_life_dec = 1;
+	}
 
 	/* There are two words of CPT_CTX_HW_S for ucode to skip */
 	sa->w0.s.ctx_hdr_size = 1;
@@ -359,6 +404,31 @@ skip_tunnel_info:
 
 	/* IPID gen */
 	sa->w2.s.ipid_gen = 1;
+
+	/**
+	 * CPT MC triggers expiry when counter value changes from 2 to 1. To
+	 * mitigate this behaviour add 1 to the life counter values provided.
+	 */
+
+	if (ipsec_xfrm->life.bytes_soft_limit) {
+		sa->ctx.soft_life = ipsec_xfrm->life.bytes_soft_limit + 1;
+		sa->w0.s.soft_life_dec = 1;
+	}
+
+	if (ipsec_xfrm->life.packets_soft_limit) {
+		sa->ctx.soft_life = ipsec_xfrm->life.packets_soft_limit + 1;
+		sa->w0.s.soft_life_dec = 1;
+	}
+
+	if (ipsec_xfrm->life.bytes_hard_limit) {
+		sa->ctx.hard_life = ipsec_xfrm->life.bytes_hard_limit + 1;
+		sa->w0.s.hard_life_dec = 1;
+	}
+
+	if (ipsec_xfrm->life.packets_hard_limit) {
+		sa->ctx.hard_life = ipsec_xfrm->life.packets_hard_limit + 1;
+		sa->w0.s.hard_life_dec = 1;
+	}
 
 	/* There are two words of CPT_CTX_HW_S for ucode to skip */
 	sa->w0.s.ctx_hdr_size = 1;
