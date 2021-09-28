@@ -27,7 +27,7 @@ sources = [
 
 rtdep = dependency('librt', required: false)
 if not rtdep.found()
-    rtdep = cc.find_library('librt', required: false)
+    rtdep = cc.find_library('rt', required: false)
 endif
 if not rtdep.found()
     build = false
