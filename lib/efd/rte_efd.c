@@ -495,7 +495,7 @@ efd_search_hash(struct rte_efd_table * const table,
 
 struct rte_efd_table *
 rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
-		uint8_t online_cpu_socket_bitmask, uint8_t offline_cpu_socket)
+		uint64_t online_cpu_socket_bitmask, uint8_t offline_cpu_socket)
 {
 	struct rte_efd_table *table = NULL;
 	uint8_t *key_array = NULL;

@@ -139,7 +139,7 @@ typedef uint16_t efd_hashfunc_t;
  */
 struct rte_efd_table *
 rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
-	uint8_t online_cpu_socket_bitmask, uint8_t offline_cpu_socket);
+	uint64_t online_cpu_socket_bitmask, uint8_t offline_cpu_socket);
 
 /**
  * Releases the resources from an EFD table
