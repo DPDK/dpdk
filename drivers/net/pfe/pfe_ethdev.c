@@ -836,8 +836,6 @@ pfe_eth_init(struct rte_vdev_device *vdev, struct pfe *pfe, int id)
 	eth_dev->data->nb_rx_queues = 1;
 	eth_dev->data->nb_tx_queues = 1;
 
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
-
 	/* For link status, open the PFE CDEV; Error from this function
 	 * is silently ignored; In case of error, the link status will not
 	 * be available.

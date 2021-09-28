@@ -511,8 +511,7 @@ i40e_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params)
 		return -ENODEV;
 	}
 
-	ethdev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR |
-					RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
+	ethdev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
 	ethdev->data->representor_id = representor->vf_id;
 	ethdev->data->backer_port_id = pf->dev_data->port_id;
 

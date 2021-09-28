@@ -1092,8 +1092,6 @@ ice_dcf_dev_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
-
 	adapter->real_hw.vc_event_msg_cb = ice_dcf_handle_pf_event_msg;
 	if (ice_dcf_init_hw(eth_dev, &adapter->real_hw) != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init DCF hardware");

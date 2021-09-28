@@ -1264,7 +1264,6 @@ static int eth_enic_dev_init(struct rte_eth_dev *eth_dev,
 
 	pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	rte_eth_copy_pci_info(eth_dev, pdev);
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 	enic->pdev = pdev;
 	addr = &pdev->addr;
 
