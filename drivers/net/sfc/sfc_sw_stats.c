@@ -49,7 +49,7 @@ sfc_get_sw_xstat_val_tx_dbells(struct sfc_adapter *sa, uint16_t qid)
 	return 0;
 }
 
-struct sfc_sw_xstat_descr sfc_sw_xstats[] = {
+struct sfc_sw_xstat_descr sfc_sw_stats_descr[] = {
 	{
 		.name = "dbells",
 		.type = SFC_SW_STATS_RX,
@@ -334,9 +334,9 @@ sfc_sw_xstats_get_nb_supported(struct sfc_adapter *sa)
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
-	for (i = 0; i < RTE_DIM(sfc_sw_xstats); i++) {
+	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
 		nb_supported += sfc_sw_xstat_get_nb_supported(sa,
-							     &sfc_sw_xstats[i]);
+							&sfc_sw_stats_descr[i]);
 	}
 
 	return nb_supported;
@@ -357,8 +357,8 @@ sfc_sw_xstats_get_vals(struct sfc_adapter *sa,
 
 	sw_xstats_offset = *nb_supported;
 
-	for (i = 0; i < RTE_DIM(sfc_sw_xstats); i++) {
-		sfc_sw_xstat_get_values(sa, &sfc_sw_xstats[i], xstats,
+	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
+		sfc_sw_xstat_get_values(sa, &sfc_sw_stats_descr[i], xstats,
 					xstats_count, nb_written, nb_supported);
 	}
 
@@ -380,8 +380,8 @@ sfc_sw_xstats_get_names(struct sfc_adapter *sa,
 
 	sfc_adapter_lock(sa);
 
-	for (i = 0; i < RTE_DIM(sfc_sw_xstats); i++) {
-		ret = sfc_sw_stat_get_names(sa, &sfc_sw_xstats[i],
+	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
+		ret = sfc_sw_stat_get_names(sa, &sfc_sw_stats_descr[i],
 					    xstats_names, xstats_count,
 					    nb_written, nb_supported);
 		if (ret != 0) {
@@ -410,8 +410,8 @@ sfc_sw_xstats_get_vals_by_id(struct sfc_adapter *sa,
 
 	sw_xstats_offset = *nb_supported;
 
-	for (i = 0; i < RTE_DIM(sfc_sw_xstats); i++) {
-		sfc_sw_xstat_get_values_by_id(sa, &sfc_sw_xstats[i], ids,
+	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
+		sfc_sw_xstat_get_values_by_id(sa, &sfc_sw_stats_descr[i], ids,
 					      values, n, nb_supported);
 	}
 
@@ -435,9 +435,9 @@ sfc_sw_xstats_get_names_by_id(struct sfc_adapter *sa,
 
 	sfc_adapter_lock(sa);
 
-	for (i = 0; i < RTE_DIM(sfc_sw_xstats); i++) {
-		ret = sfc_sw_xstat_get_names_by_id(sa, &sfc_sw_xstats[i], ids,
-						   xstats_names, size,
+	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
+		ret = sfc_sw_xstat_get_names_by_id(sa, &sfc_sw_stats_descr[i],
+						   ids, xstats_names, size,
 						   nb_supported);
 		if (ret != 0) {
 			sfc_adapter_unlock(sa);
@@ -488,8 +488,8 @@ sfc_sw_xstats_reset(struct sfc_adapter *sa)
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
-	for (i = 0; i < RTE_DIM(sfc_sw_xstats); i++) {
-		sw_xstat = &sfc_sw_xstats[i];
+	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
+		sw_xstat = &sfc_sw_stats_descr[i];
 		sfc_sw_xstat_reset(sa, sw_xstat, reset_vals);
 		reset_vals += sfc_sw_xstat_get_nb_supported(sa, sw_xstat);
 	}
@@ -502,9 +502,9 @@ sfc_sw_xstats_configure(struct sfc_adapter *sa)
 	size_t nb_supported = 0;
 	unsigned int i;
 
-	for (i = 0; i < RTE_DIM(sfc_sw_xstats); i++)
+	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++)
 		nb_supported += sfc_sw_xstat_get_nb_supported(sa,
-							&sfc_sw_xstats[i]);
+							&sfc_sw_stats_descr[i]);
 
 	*reset_vals = rte_realloc(*reset_vals,
 				  nb_supported * sizeof(**reset_vals), 0);
