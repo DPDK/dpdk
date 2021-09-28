@@ -217,9 +217,16 @@ struct sfc_counter_rxq {
 	struct rte_mempool		*mp;
 };
 
+struct sfc_sw_stat_data {
+	const struct sfc_sw_stat_descr *descr;
+};
+
 struct sfc_sw_stats {
 	/* Number extended statistics provided by SW stats */
 	unsigned int			xstats_count;
+	/* Supported SW statistics */
+	struct sfc_sw_stat_data		*supp;
+	unsigned int			supp_count;
 	uint64_t			*reset_vals;
 
 	rte_spinlock_t			queues_bitmap_lock;

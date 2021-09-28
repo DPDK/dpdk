@@ -341,6 +341,7 @@ sfc_sw_xstats_get_vals(struct sfc_adapter *sa,
 		       unsigned int *nb_supported)
 {
 	uint64_t *reset_vals = sa->sw_stats.reset_vals;
+	struct sfc_sw_stats *sw_stats = &sa->sw_stats;
 	unsigned int sw_xstats_offset;
 	unsigned int i;
 
@@ -348,8 +349,8 @@ sfc_sw_xstats_get_vals(struct sfc_adapter *sa,
 
 	sw_xstats_offset = *nb_supported;
 
-	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
-		sfc_sw_xstat_get_values(sa, &sfc_sw_stats_descr[i], xstats,
+	for (i = 0; i < sw_stats->xstats_count; i++) {
+		sfc_sw_xstat_get_values(sa, sw_stats->supp[i].descr, xstats,
 					xstats_count, nb_written, nb_supported);
 	}
 
@@ -366,13 +367,14 @@ sfc_sw_xstats_get_names(struct sfc_adapter *sa,
 			unsigned int *nb_written,
 			unsigned int *nb_supported)
 {
+	struct sfc_sw_stats *sw_stats = &sa->sw_stats;
 	unsigned int i;
 	int ret;
 
 	sfc_adapter_lock(sa);
 
-	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
-		ret = sfc_sw_stat_get_names(sa, &sfc_sw_stats_descr[i],
+	for (i = 0; i < sw_stats->supp_count; i++) {
+		ret = sfc_sw_stat_get_names(sa, sw_stats->supp[i].descr,
 					    xstats_names, xstats_count,
 					    nb_written, nb_supported);
 		if (ret != 0) {
@@ -394,6 +396,7 @@ sfc_sw_xstats_get_vals_by_id(struct sfc_adapter *sa,
 			     unsigned int *nb_supported)
 {
 	uint64_t *reset_vals = sa->sw_stats.reset_vals;
+	struct sfc_sw_stats *sw_stats = &sa->sw_stats;
 	unsigned int sw_xstats_offset;
 	unsigned int i;
 
@@ -401,8 +404,8 @@ sfc_sw_xstats_get_vals_by_id(struct sfc_adapter *sa,
 
 	sw_xstats_offset = *nb_supported;
 
-	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
-		sfc_sw_xstat_get_values_by_id(sa, &sfc_sw_stats_descr[i], ids,
+	for (i = 0; i < sw_stats->supp_count; i++) {
+		sfc_sw_xstat_get_values_by_id(sa, sw_stats->supp[i].descr, ids,
 					      values, n, nb_supported);
 	}
 
@@ -421,13 +424,14 @@ sfc_sw_xstats_get_names_by_id(struct sfc_adapter *sa,
 			      unsigned int size,
 			      unsigned int *nb_supported)
 {
+	struct sfc_sw_stats *sw_stats = &sa->sw_stats;
 	unsigned int i;
 	int ret;
 
 	sfc_adapter_lock(sa);
 
-	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
-		ret = sfc_sw_xstat_get_names_by_id(sa, &sfc_sw_stats_descr[i],
+	for (i = 0; i < sw_stats->supp_count; i++) {
+		ret = sfc_sw_xstat_get_names_by_id(sa, sw_stats->supp[i].descr,
 						   ids, xstats_names, size,
 						   nb_supported);
 		if (ret != 0) {
@@ -475,15 +479,15 @@ void
 sfc_sw_xstats_reset(struct sfc_adapter *sa)
 {
 	uint64_t *reset_vals = sa->sw_stats.reset_vals;
-	const struct sfc_sw_stat_descr *sw_stat;
+	struct sfc_sw_stats *sw_stats = &sa->sw_stats;
 	unsigned int i;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
-	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++) {
-		sw_stat = &sfc_sw_stats_descr[i];
-		sfc_sw_xstat_reset(sa, sw_stat, reset_vals);
-		reset_vals += sfc_sw_xstat_get_nb_supported(sa, sw_stat);
+	for (i = 0; i < sw_stats->supp_count; i++) {
+		sfc_sw_xstat_reset(sa, sw_stats->supp[i].descr, reset_vals);
+		reset_vals += sfc_sw_xstat_get_nb_supported(sa,
+						       sw_stats->supp[i].descr);
 	}
 }
 
@@ -491,22 +495,44 @@ int
 sfc_sw_xstats_configure(struct sfc_adapter *sa)
 {
 	uint64_t **reset_vals = &sa->sw_stats.reset_vals;
+	struct sfc_sw_stats *sw_stats = &sa->sw_stats;
 	size_t nb_supported = 0;
 	unsigned int i;
+	int rc;
 
-	for (i = 0; i < RTE_DIM(sfc_sw_stats_descr); i++)
+	sw_stats->supp_count = RTE_DIM(sfc_sw_stats_descr);
+	if (sw_stats->supp == NULL) {
+		sw_stats->supp = rte_malloc(NULL, sw_stats->supp_count *
+					    sizeof(*sw_stats->supp), 0);
+		if (sw_stats->supp == NULL)
+			return -ENOMEM;
+	}
+	for (i = 0; i < sw_stats->supp_count; i++)
+		sw_stats->supp[i].descr = &sfc_sw_stats_descr[i];
+
+	for (i = 0; i < sw_stats->supp_count; i++)
 		nb_supported += sfc_sw_xstat_get_nb_supported(sa,
-							&sfc_sw_stats_descr[i]);
+						       sw_stats->supp[i].descr);
 	sa->sw_stats.xstats_count = nb_supported;
 
 	*reset_vals = rte_realloc(*reset_vals,
 				  nb_supported * sizeof(**reset_vals), 0);
-	if (*reset_vals == NULL)
-		return ENOMEM;
+	if (*reset_vals == NULL) {
+		rc = -ENOMEM;
+		goto fail_reset_vals;
+	}
 
 	memset(*reset_vals, 0, nb_supported * sizeof(**reset_vals));
 
 	return 0;
+
+fail_reset_vals:
+	sa->sw_stats.xstats_count = 0;
+	rte_free(sw_stats->supp);
+	sw_stats->supp = NULL;
+	sw_stats->supp_count = 0;
+
+	return rc;
 }
 
 static void
@@ -552,6 +578,8 @@ int
 sfc_sw_xstats_init(struct sfc_adapter *sa)
 {
 	sa->sw_stats.xstats_count = 0;
+	sa->sw_stats.supp = NULL;
+	sa->sw_stats.supp_count = 0;
 	sa->sw_stats.reset_vals = NULL;
 
 	return sfc_sw_xstats_alloc_queues_bitmap(sa);
@@ -563,5 +591,8 @@ sfc_sw_xstats_close(struct sfc_adapter *sa)
 	sfc_sw_xstats_free_queues_bitmap(sa);
 	rte_free(sa->sw_stats.reset_vals);
 	sa->sw_stats.reset_vals = NULL;
+	rte_free(sa->sw_stats.supp);
+	sa->sw_stats.supp = NULL;
+	sa->sw_stats.supp_count = 0;
 	sa->sw_stats.xstats_count = 0;
 }
