@@ -200,6 +200,10 @@ test_ipsec_td_update(struct ipsec_test_data td_inb[],
 			td_inb[i].input_text.data[icv_pos] += 1;
 		}
 
+		if (flags->sa_expiry_pkts_hard)
+			td_inb[i].ipsec_xform.life.packets_hard_limit =
+					IPSEC_TEST_PACKETS_MAX - 1;
+
 		if (flags->udp_encap)
 			td_inb[i].ipsec_xform.options.udp_encap = 1;
 
@@ -285,9 +289,10 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 	uint8_t *output_text = rte_pktmbuf_mtod(m, uint8_t *);
 	uint32_t skip, len = rte_pktmbuf_pkt_len(m);
 
-	/* For negative tests, no need to do verification */
-	if (flags->icv_corrupt &&
-	    td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
+	/* For tests with status as error for test success, skip verification */
+	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS &&
+	    (flags->icv_corrupt ||
+	     flags->sa_expiry_pkts_hard))
 		return TEST_SUCCESS;
 
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS &&
@@ -403,6 +408,17 @@ test_ipsec_status_check(struct rte_crypto_op *op,
 			int pkt_num)
 {
 	int ret = TEST_SUCCESS;
+
+	if (dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS &&
+	    flags->sa_expiry_pkts_hard &&
+	    pkt_num == IPSEC_TEST_PACKETS_MAX) {
+		if (op->status != RTE_CRYPTO_OP_STATUS_ERROR) {
+			printf("SA hard expiry (pkts) test failed\n");
+			return TEST_FAILED;
+		} else {
+			return TEST_SUCCESS;
+		}
+	}
 
 	if (dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS && flags->icv_corrupt) {
 		if (op->status != RTE_CRYPTO_OP_STATUS_ERROR) {

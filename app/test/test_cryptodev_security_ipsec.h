@@ -50,6 +50,7 @@ struct ipsec_test_data {
 struct ipsec_test_flags {
 	bool display_alg;
 	bool sa_expiry_pkts_soft;
+	bool sa_expiry_pkts_hard;
 	bool icv_corrupt;
 	bool iv_gen;
 	bool udp_encap;

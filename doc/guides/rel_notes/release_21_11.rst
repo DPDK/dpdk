@@ -103,6 +103,7 @@ New Features
   * Added tests to verify IV generation.
   * Added tests to verify UDP encapsulation.
   * Added tests to validate packets soft expiry.
+  * Added tests to validate packets hard expiry.
 
 
 Removed Items

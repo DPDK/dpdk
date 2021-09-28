@@ -9116,7 +9116,8 @@ test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 	int ret;
 
 	if (flags->iv_gen ||
-	    flags->sa_expiry_pkts_soft)
+	    flags->sa_expiry_pkts_soft ||
+	    flags->sa_expiry_pkts_hard)
 		nb_pkts = IPSEC_TEST_PACKETS_MAX;
 
 	for (i = 0; i < RTE_DIM(aead_list); i++) {
@@ -9188,6 +9189,18 @@ test_ipsec_proto_sa_exp_pkts_soft(const void *data __rte_unused)
 	memset(&flags, 0, sizeof(flags));
 
 	flags.sa_expiry_pkts_soft = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_sa_exp_pkts_hard(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.sa_expiry_pkts_hard = true;
 
 	return test_ipsec_proto_all(&flags);
 }
@@ -14152,6 +14165,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"SA expiry packets soft",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_sa_exp_pkts_soft),
+		TEST_CASE_NAMED_ST(
+			"SA expiry packets hard",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_sa_exp_pkts_hard),
 		TEST_CASE_NAMED_ST(
 			"Negative test: ICV corruption",
 			ut_setup_security, ut_teardown,
