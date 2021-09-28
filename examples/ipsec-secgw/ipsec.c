@@ -49,7 +49,7 @@ set_ipsec_conf(struct ipsec_sa *sa, struct rte_security_ipsec_xform *ipsec)
 		}
 		/* TODO support for Transport */
 	}
-	ipsec->esn_soft_limit = IPSEC_OFFLOAD_ESN_SOFTLIMIT;
+	ipsec->life.packets_soft_limit = IPSEC_OFFLOAD_PKTS_SOFTLIMIT;
 	ipsec->replay_win_sz = app_sa_prm.window_size;
 	ipsec->options.esn = app_sa_prm.enable_esn;
 	ipsec->options.udp_encap = sa->udp_encap;

@@ -98,7 +98,6 @@ struct ipsec_test_data pkt_aes_128_gcm = {
 		.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 		.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 		.tunnel.type = RTE_SECURITY_IPSEC_TUNNEL_IPV4,
-		.esn_soft_limit = 0,
 		.replay_win_sz = 0,
 	},
 
@@ -195,7 +194,6 @@ struct ipsec_test_data pkt_aes_192_gcm = {
 		.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 		.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 		.tunnel.type = RTE_SECURITY_IPSEC_TUNNEL_IPV4,
-		.esn_soft_limit = 0,
 		.replay_win_sz = 0,
 	},
 
@@ -295,7 +293,6 @@ struct ipsec_test_data pkt_aes_256_gcm = {
 		.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 		.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 		.tunnel.type = RTE_SECURITY_IPSEC_TUNNEL_IPV4,
-		.esn_soft_limit = 0,
 		.replay_win_sz = 0,
 	},
 

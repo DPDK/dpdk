@@ -65,6 +65,11 @@ enum rte_crypto_op_sess_type {
 	RTE_CRYPTO_OP_SECURITY_SESSION	/**< Security session crypto operation */
 };
 
+/* Auxiliary flags related to IPsec offload with RTE_SECURITY */
+
+#define RTE_CRYPTO_OP_AUX_FLAGS_IPSEC_SOFT_EXPIRY (1 << 0)
+/**< SA soft expiry limit has been reached */
+
 /**
  * Cryptographic Operation.
  *
@@ -93,7 +98,12 @@ struct rte_crypto_op {
 			 */
 			uint8_t sess_type;
 			/**< operation session type */
-			uint8_t reserved[3];
+			uint8_t aux_flags;
+			/**< Operation specific auxiliary/additional flags.
+			 * These flags carry additional information from the
+			 * operation. Processing of the same is optional.
+			 */
+			uint8_t reserved[2];
 			/**< Reserved bytes to fill 64 bits for
 			 * future additions
 			 */

@@ -147,6 +147,11 @@ API Changes
   as it is for drivers only and should be private to DPDK, and not
   installed for app use.
 
+* cryptodev: A ``reserved`` byte from structure ``rte_crypto_op`` was
+  renamed to ``aux_flags`` to indicate warnings and other information from
+  the crypto/security operation. This field will be used to communicate
+  events such as soft expiry with IPsec in lookaside mode.
+
 
 ABI Changes
 -----------
@@ -172,6 +177,11 @@ ABI Changes
 * security: A new option ``iv_gen_disable`` was added in structure
   ``rte_security_ipsec_sa_options`` to disable IV generation inside PMD,
   so that application can provide its own IV and test known test vectors.
+
+* security: A new structure ``rte_security_ipsec_lifetime`` was added to
+  replace ``esn_soft_limit`` in IPsec configuration structure
+  ``rte_security_ipsec_xform`` to allow applications to configure SA soft
+  and hard expiry limits. Limits can be either in number of packets or bytes.
 
 
 Known Issues

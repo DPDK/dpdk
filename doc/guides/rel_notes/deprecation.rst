@@ -227,11 +227,6 @@ Deprecation Notices
   pointer for the private data to the application which can be attached
   to the packet while enqueuing.
 
-* security: The IPsec configuration structure
-  ``struct rte_security_ipsec_xform`` will be updated with new members to allow
-  SA lifetime configuration. A new structure would be introduced to replace the
-  current member, ``esn_soft_limit``.
-
 * security: The structure ``rte_security_ipsec_xform`` will be extended with
   multiple fields: source and destination port of UDP encapsulation,
   IPsec payload MSS (Maximum Segment Size), and ESN (Extended Sequence Number).
@@ -275,8 +270,3 @@ Deprecation Notices
 * cmdline: ``cmdline`` structure will be made opaque to hide platform-specific
   content. On Linux and FreeBSD, supported prior to DPDK 20.11,
   original structure will be kept until DPDK 21.11.
-
-* cryptodev: The structure ``rte_crypto_op`` would be updated to reduce
-  reserved bytes to 2 (from 3), and use 1 byte to indicate warnings and other
-  information from the crypto/security operation. This field will be used to
-  communicate events such as soft expiry with IPsec in lookaside mode.

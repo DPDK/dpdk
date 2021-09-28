@@ -217,6 +217,30 @@ enum rte_security_ipsec_sa_direction {
 };
 
 /**
+ * Configure soft and hard lifetime of an IPsec SA
+ *
+ * Lifetime of an IPsec SA would specify the maximum number of packets or bytes
+ * that can be processed. IPsec operations would start failing once any hard
+ * limit is reached.
+ *
+ * Soft limits can be specified to generate notification when the SA is
+ * approaching hard limits for lifetime. For inline operations, reaching soft
+ * expiry limit would result in raising an eth event for the same. For lookaside
+ * operations, this would result in a warning returned in
+ * ``rte_crypto_op.aux_flags``.
+ */
+struct rte_security_ipsec_lifetime {
+	uint64_t packets_soft_limit;
+	/**< Soft expiry limit in number of packets */
+	uint64_t bytes_soft_limit;
+	/**< Soft expiry limit in bytes */
+	uint64_t packets_hard_limit;
+	/**< Soft expiry limit in number of packets */
+	uint64_t bytes_hard_limit;
+	/**< Soft expiry limit in bytes */
+};
+
+/**
  * IPsec security association configuration data.
  *
  * This structure contains data required to create an IPsec SA security session.
@@ -236,8 +260,8 @@ struct rte_security_ipsec_xform {
 	/**< IPsec SA Mode - transport/tunnel */
 	struct rte_security_ipsec_tunnel_param tunnel;
 	/**< Tunnel parameters, NULL for transport mode */
-	uint64_t esn_soft_limit;
-	/**< ESN for which the overflow event need to be raised */
+	struct rte_security_ipsec_lifetime life;
+	/**< IPsec SA lifetime */
 	uint32_t replay_win_sz;
 	/**< Anti replay window size to enable sequence replay attack handling.
 	 * replay checking is disabled if the window size is 0.

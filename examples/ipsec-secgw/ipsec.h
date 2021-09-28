@@ -23,7 +23,7 @@
 
 #define MAX_DIGEST_SIZE 32 /* Bytes -- 256 bits */
 
-#define IPSEC_OFFLOAD_ESN_SOFTLIMIT 0xffffff00
+#define IPSEC_OFFLOAD_PKTS_SOFTLIMIT 0xffffff00
 
 #define IV_OFFSET		(sizeof(struct rte_crypto_op) + \
 				sizeof(struct rte_crypto_sym_op))
