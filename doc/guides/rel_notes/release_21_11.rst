@@ -238,6 +238,10 @@ ABI Changes
   ``rte_security_ipsec_sa_options`` to indicate whether outer header
   verification need to be done as part of inbound IPsec processing.
 
+* security: A new option ``udp_ports_verify`` was added in structure
+  ``rte_security_ipsec_sa_options`` to indicate whether UDP ports
+  verification need to be done as part of inbound IPsec processing.
+
 * security: A new structure ``rte_security_ipsec_lifetime`` was added to
   replace ``esn_soft_limit`` in IPsec configuration structure
   ``rte_security_ipsec_xform`` to allow applications to configure SA soft

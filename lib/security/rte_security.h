@@ -220,6 +220,13 @@ struct rte_security_ipsec_sa_options {
 	 *   source and destination IP addresses.
 	 */
 	uint32_t tunnel_hdr_verify : 2;
+
+	/** Verify UDP encapsulation ports in inbound
+	 *
+	 * * 1: Match UDP source and destination ports
+	 * * 0: Do not match UDP ports
+	 */
+	uint32_t udp_ports_verify : 1;
 };
 
 /** IPSec security association direction */
