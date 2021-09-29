@@ -3,6 +3,7 @@ DPDK_22 {
 
 	rte_kvargs_count;
 	rte_kvargs_free;
+	rte_kvargs_get;
 	rte_kvargs_parse;
 	rte_kvargs_parse_delim;
 	rte_kvargs_process;
@@ -15,6 +16,4 @@ EXPERIMENTAL {
 
 	rte_kvargs_strcmp;
 
-	# added in 21.05
-	rte_kvargs_get;
 };

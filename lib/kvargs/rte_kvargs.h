@@ -130,7 +130,6 @@ void rte_kvargs_free(struct rte_kvargs *kvlist);
  *   NULL if no key matches the input,
  *   a value associated with a matching key otherwise.
  */
-__rte_experimental
 const char *rte_kvargs_get(const struct rte_kvargs *kvlist, const char *key);
 
 /**
