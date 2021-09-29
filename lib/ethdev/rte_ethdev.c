@@ -6185,6 +6185,96 @@ eth_dev_handle_port_link_status(const char *cmd __rte_unused,
 	return 0;
 }
 
+static int
+eth_dev_handle_port_info(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	struct rte_tel_data *rxq_state, *txq_state;
+	char mac_addr[RTE_ETHER_ADDR_LEN];
+	struct rte_eth_dev *eth_dev;
+	char *end_param;
+	int port_id, i;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -1;
+
+	port_id = strtoul(params, &end_param, 0);
+	if (*end_param != '\0')
+		RTE_ETHDEV_LOG(NOTICE,
+			"Extra parameters passed to ethdev telemetry command, ignoring");
+
+	if (!rte_eth_dev_is_valid_port(port_id))
+		return -EINVAL;
+
+	eth_dev = &rte_eth_devices[port_id];
+	if (!eth_dev)
+		return -EINVAL;
+
+	rxq_state = rte_tel_data_alloc();
+	if (!rxq_state)
+		return -ENOMEM;
+
+	txq_state = rte_tel_data_alloc();
+	if (!txq_state)
+		return -ENOMEM;
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_string(d, "name", eth_dev->data->name);
+	rte_tel_data_add_dict_int(d, "state", eth_dev->state);
+	rte_tel_data_add_dict_int(d, "nb_rx_queues",
+			eth_dev->data->nb_rx_queues);
+	rte_tel_data_add_dict_int(d, "nb_tx_queues",
+			eth_dev->data->nb_tx_queues);
+	rte_tel_data_add_dict_int(d, "port_id", eth_dev->data->port_id);
+	rte_tel_data_add_dict_int(d, "mtu", eth_dev->data->mtu);
+	rte_tel_data_add_dict_int(d, "rx_mbuf_size_min",
+			eth_dev->data->min_rx_buf_size);
+	rte_tel_data_add_dict_int(d, "rx_mbuf_alloc_fail",
+			eth_dev->data->rx_mbuf_alloc_failed);
+	snprintf(mac_addr, RTE_ETHER_ADDR_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
+			 eth_dev->data->mac_addrs->addr_bytes[0],
+			 eth_dev->data->mac_addrs->addr_bytes[1],
+			 eth_dev->data->mac_addrs->addr_bytes[2],
+			 eth_dev->data->mac_addrs->addr_bytes[3],
+			 eth_dev->data->mac_addrs->addr_bytes[4],
+			 eth_dev->data->mac_addrs->addr_bytes[5]);
+	rte_tel_data_add_dict_string(d, "mac_addr", mac_addr);
+	rte_tel_data_add_dict_int(d, "promiscuous",
+			eth_dev->data->promiscuous);
+	rte_tel_data_add_dict_int(d, "scattered_rx",
+			eth_dev->data->scattered_rx);
+	rte_tel_data_add_dict_int(d, "all_multicast",
+			eth_dev->data->all_multicast);
+	rte_tel_data_add_dict_int(d, "dev_started", eth_dev->data->dev_started);
+	rte_tel_data_add_dict_int(d, "lro", eth_dev->data->lro);
+	rte_tel_data_add_dict_int(d, "dev_configured",
+			eth_dev->data->dev_configured);
+
+	rte_tel_data_start_array(rxq_state, RTE_TEL_INT_VAL);
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		rte_tel_data_add_array_int(rxq_state,
+				eth_dev->data->rx_queue_state[i]);
+
+	rte_tel_data_start_array(txq_state, RTE_TEL_INT_VAL);
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		rte_tel_data_add_array_int(txq_state,
+				eth_dev->data->tx_queue_state[i]);
+
+	rte_tel_data_add_dict_container(d, "rxq_state", rxq_state, 0);
+	rte_tel_data_add_dict_container(d, "txq_state", txq_state, 0);
+	rte_tel_data_add_dict_int(d, "numa_node", eth_dev->data->numa_node);
+	rte_tel_data_add_dict_int(d, "dev_flags", eth_dev->data->dev_flags);
+	rte_tel_data_add_dict_int(d, "rx_offloads",
+			eth_dev->data->dev_conf.rxmode.offloads);
+	rte_tel_data_add_dict_int(d, "tx_offloads",
+			eth_dev->data->dev_conf.txmode.offloads);
+	rte_tel_data_add_dict_int(d, "ethdev_rss_hf",
+			eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf);
+
+	return 0;
+}
+
 int
 rte_eth_hairpin_queue_peer_update(uint16_t peer_port, uint16_t peer_queue,
 				  struct rte_hairpin_peer_info *cur_info,
@@ -6291,4 +6381,6 @@ RTE_INIT(ethdev_init_telemetry)
 	rte_telemetry_register_cmd("/ethdev/link_status",
 			eth_dev_handle_port_link_status,
 			"Returns the link status for a port. Parameters: int port_id");
+	rte_telemetry_register_cmd("/ethdev/info", eth_dev_handle_port_info,
+			"Returns the device info for a port. Parameters: int port_id");
 }
