@@ -125,7 +125,7 @@ void rte_kvargs_free(struct rte_kvargs *kvlist);
  *   A list of rte_kvargs pair of 'key=value'.
  * @param key
  *   The matching key.
-
+ *
  * @return
  *   NULL if no key matches the input,
  *   a value associated with a matching key otherwise.
@@ -190,7 +190,7 @@ int rte_kvargs_process(const struct rte_kvargs *kvlist,
  *   The rte_kvargs structure
  * @param key_match
  *   The key that should match, or NULL to count all associations
-
+ *
  * @return
  *   The number of entries
  */
