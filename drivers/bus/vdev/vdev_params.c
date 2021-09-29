@@ -26,19 +26,10 @@ static int
 vdev_dev_match(const struct rte_device *dev,
 	       const void *_kvlist)
 {
-	int ret;
 	const struct rte_kvargs *kvlist = _kvlist;
-	char *name;
+	const char *key = vdev_params_keys[RTE_VDEV_PARAM_NAME];
 
-	/* cannot pass const dev->name to rte_kvargs_process() */
-	name = strdup(dev->name);
-	if (name == NULL)
-		return -1;
-	ret = rte_kvargs_process(kvlist,
-		vdev_params_keys[RTE_VDEV_PARAM_NAME],
-		rte_kvargs_strcmp, name);
-	free(name);
-	if (ret != 0)
+	if (rte_kvargs_get_with_value(kvlist, key, dev->name) == NULL)
 		return -1;
 
 	return 0;

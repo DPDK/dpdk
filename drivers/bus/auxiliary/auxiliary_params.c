@@ -25,13 +25,12 @@ auxiliary_dev_match(const struct rte_device *dev,
 	      const void *_kvlist)
 {
 	const struct rte_kvargs *kvlist = _kvlist;
-	int ret;
+	const char *key = auxiliary_params_keys[RTE_AUXILIARY_PARAM_NAME];
 
-	ret = rte_kvargs_process(kvlist,
-			auxiliary_params_keys[RTE_AUXILIARY_PARAM_NAME],
-			rte_kvargs_strcmp, (void *)(uintptr_t)dev->name);
+	if (rte_kvargs_get_with_value(kvlist, key, dev->name) == NULL)
+		return -1;
 
-	return ret != 0 ? -1 : 0;
+	return 0;
 }
 
 void *

@@ -157,6 +157,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* kvargs: The experimental function ``rte_kvargs_strcmp()`` has been
+  removed. Its usages have been replaced by a new function
+  ``rte_kvargs_get_with_value()``.
+
 * cryptodev: The API rte_cryptodev_pmd_is_valid_dev is modified to
   rte_cryptodev_is_valid_dev as it can be used by the application as
   well as PMD to check whether the device is valid or not.
