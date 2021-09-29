@@ -98,7 +98,6 @@ struct rte_kvargs *rte_kvargs_parse(const char *args,
  *   - A pointer to an allocated rte_kvargs structure on success
  *   - NULL on error
  */
-__rte_experimental
 struct rte_kvargs *rte_kvargs_parse_delim(const char *args,
 		const char *const valid_keys[],
 		const char *valid_ends);

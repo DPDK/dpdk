@@ -4,6 +4,7 @@ DPDK_22 {
 	rte_kvargs_count;
 	rte_kvargs_free;
 	rte_kvargs_parse;
+	rte_kvargs_parse_delim;
 	rte_kvargs_process;
 
 	local: *;
@@ -12,7 +13,6 @@ DPDK_22 {
 EXPERIMENTAL {
 	global:
 
-	rte_kvargs_parse_delim;
 	rte_kvargs_strcmp;
 
 	# added in 21.05
