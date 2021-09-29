@@ -351,10 +351,8 @@ int rte_vmbus_chan_open(struct rte_vmbus_device *device,
 
 	err = vmbus_chan_create(device, device->relid, 0,
 				device->monitor_id, new_chan);
-	if (!err) {
+	if (!err)
 		device->primary = *new_chan;
-		uio_res->primary = *new_chan;
-	}
 
 	return err;
 }
