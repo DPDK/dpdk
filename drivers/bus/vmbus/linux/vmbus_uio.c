@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
+#include <rte_eal.h>
 #include <rte_log.h>
 #include <rte_bus.h>
 #include <rte_memory.h>
@@ -203,6 +204,37 @@ static int vmbus_uio_map_subchan(const struct rte_vmbus_device *dev,
 	struct stat sb;
 	void *mapaddr;
 	int fd;
+	struct mapped_vmbus_resource *uio_res;
+	int channel_idx;
+
+	uio_res = vmbus_uio_find_resource(dev);
+	if (!uio_res) {
+		VMBUS_LOG(ERR, "can not find resources for mapping subchan");
+		return -ENOMEM;
+	}
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		if (uio_res->nb_subchannels >= UIO_MAX_SUBCHANNEL) {
+			VMBUS_LOG(ERR,
+				"exceeding max subchannels UIO_MAX_SUBCHANNEL(%d)",
+				UIO_MAX_SUBCHANNEL);
+			VMBUS_LOG(ERR, "Change UIO_MAX_SUBCHANNEL and recompile");
+			return -ENOMEM;
+		}
+	} else {
+		for (channel_idx = 0; channel_idx < uio_res->nb_subchannels;
+		     channel_idx++)
+			if (uio_res->subchannel_maps[channel_idx].relid ==
+					chan->relid)
+				break;
+		if (channel_idx == uio_res->nb_subchannels) {
+			VMBUS_LOG(ERR,
+				"couldn't find sub channel %d from shared mapping in primary",
+				chan->relid);
+			return -ENOMEM;
+		}
+		vmbus_map_addr = uio_res->subchannel_maps[channel_idx].addr;
+	}
 
 	snprintf(ring_path, sizeof(ring_path),
 		 "%s/%s/channels/%u/ring",
@@ -239,56 +271,31 @@ static int vmbus_uio_map_subchan(const struct rte_vmbus_device *dev,
 	if (mapaddr == MAP_FAILED)
 		return -EIO;
 
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+
+		/* Add this mapping to uio_res for use by secondary */
+		uio_res->subchannel_maps[uio_res->nb_subchannels].relid =
+			chan->relid;
+		uio_res->subchannel_maps[uio_res->nb_subchannels].addr =
+			mapaddr;
+		uio_res->subchannel_maps[uio_res->nb_subchannels].size =
+			file_size;
+		uio_res->nb_subchannels++;
+
+		vmbus_map_addr = RTE_PTR_ADD(mapaddr, file_size);
+	} else {
+		if (mapaddr != vmbus_map_addr) {
+			VMBUS_LOG(ERR, "failed to map channel %d to addr %p",
+					chan->relid, mapaddr);
+			vmbus_unmap_resource(mapaddr, file_size);
+			return -EIO;
+		}
+	}
+
 	*ring_size = file_size / 2;
 	*ring_buf = mapaddr;
 
-	vmbus_map_addr = RTE_PTR_ADD(mapaddr, file_size);
 	return 0;
-}
-
-int
-vmbus_uio_map_secondary_subchan(const struct rte_vmbus_device *dev,
-				const struct vmbus_channel *chan)
-{
-	const struct vmbus_br *br = &chan->txbr;
-	char ring_path[PATH_MAX];
-	void *mapaddr, *ring_buf;
-	uint32_t ring_size;
-	int fd;
-
-	snprintf(ring_path, sizeof(ring_path),
-		 "%s/%s/channels/%u/ring",
-		 SYSFS_VMBUS_DEVICES, dev->device.name,
-		 chan->relid);
-
-	ring_buf = br->vbr;
-	ring_size = br->dsize + sizeof(struct vmbus_bufring);
-	VMBUS_LOG(INFO, "secondary ring_buf %p size %u",
-		  ring_buf, ring_size);
-
-	fd = open(ring_path, O_RDWR);
-	if (fd < 0) {
-		VMBUS_LOG(ERR, "Cannot open %s: %s",
-			  ring_path, strerror(errno));
-		return -errno;
-	}
-
-	mapaddr = vmbus_map_resource(ring_buf, fd, 0, 2 * ring_size, 0);
-	close(fd);
-
-	if (mapaddr == ring_buf)
-		return 0;
-
-	if (mapaddr == MAP_FAILED)
-		VMBUS_LOG(ERR,
-			  "mmap subchan %u in secondary failed", chan->relid);
-	else {
-		VMBUS_LOG(ERR,
-			  "mmap subchan %u in secondary address mismatch",
-			  chan->relid);
-		vmbus_unmap_resource(mapaddr, 2 * ring_size);
-	}
-	return -1;
 }
 
 int vmbus_uio_map_rings(struct vmbus_channel *chan)

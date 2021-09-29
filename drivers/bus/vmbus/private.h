@@ -33,6 +33,13 @@ struct vmbus_map {
 	uint64_t size;	/* length */
 };
 
+#define UIO_MAX_SUBCHANNEL 128
+struct subchannel_map {
+	uint16_t relid;
+	void *addr;
+	uint64_t size;
+};
+
 /*
  * For multi-process we need to reproduce all vmbus mappings in secondary
  * processes, so save them in a tailq.
@@ -41,10 +48,14 @@ struct mapped_vmbus_resource {
 	TAILQ_ENTRY(mapped_vmbus_resource) next;
 
 	rte_uuid_t id;
+
 	int nb_maps;
-	struct vmbus_channel *primary;
 	struct vmbus_map maps[VMBUS_MAX_RESOURCE];
+
 	char path[PATH_MAX];
+
+	int nb_subchannels;
+	struct subchannel_map subchannel_maps[UIO_MAX_SUBCHANNEL];
 };
 
 TAILQ_HEAD(mapped_vmbus_res_list, mapped_vmbus_resource);
@@ -105,8 +116,6 @@ bool vmbus_uio_subchannels_supported(const struct rte_vmbus_device *dev,
 int vmbus_uio_get_subchan(struct vmbus_channel *primary,
 			  struct vmbus_channel **subchan);
 int vmbus_uio_map_rings(struct vmbus_channel *chan);
-int vmbus_uio_map_secondary_subchan(const struct rte_vmbus_device *dev,
-				    const struct vmbus_channel *chan);
 
 void vmbus_br_setup(struct vmbus_br *br, void *buf, unsigned int blen);
 
