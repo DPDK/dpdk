@@ -55,6 +55,7 @@ struct ipsec_test_flags {
 	bool iv_gen;
 	uint32_t tunnel_hdr_verify;
 	bool udp_encap;
+	bool udp_ports_verify;
 };
 
 struct crypto_param {

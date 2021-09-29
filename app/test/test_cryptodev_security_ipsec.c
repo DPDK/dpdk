@@ -36,6 +36,14 @@ test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
 		return -ENOTSUP;
 	}
 
+	if (ipsec_xform->options.udp_ports_verify == 1 &&
+	    sec_cap->ipsec.options.udp_ports_verify == 0) {
+		if (!silent)
+			RTE_LOG(INFO, USER1, "UDP encapsulation ports "
+				"verification is not supported\n");
+		return -ENOTSUP;
+	}
+
 	if (ipsec_xform->options.copy_dscp == 1 &&
 	    sec_cap->ipsec.options.copy_dscp == 0) {
 		if (!silent)
@@ -215,6 +223,9 @@ test_ipsec_td_update(struct ipsec_test_data td_inb[],
 
 		if (flags->udp_encap)
 			td_inb[i].ipsec_xform.options.udp_encap = 1;
+
+		if (flags->udp_ports_verify)
+			td_inb[i].ipsec_xform.options.udp_ports_verify = 1;
 
 		td_inb[i].ipsec_xform.options.tunnel_hdr_verify =
 			flags->tunnel_hdr_verify;

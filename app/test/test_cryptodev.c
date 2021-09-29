@@ -9263,6 +9263,19 @@ test_ipsec_proto_tunnel_dst_addr_verify(const void *data __rte_unused)
 }
 
 static int
+test_ipsec_proto_udp_ports_verify(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.udp_encap = true;
+	flags.udp_ports_verify = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
 test_PDCP_PROTO_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -14194,6 +14207,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"UDP encapsulation",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_udp_encap),
+		TEST_CASE_NAMED_ST(
+			"UDP encapsulation ports verification test",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_udp_ports_verify),
 		TEST_CASE_NAMED_ST(
 			"SA expiry packets soft",
 			ut_setup_security, ut_teardown,
