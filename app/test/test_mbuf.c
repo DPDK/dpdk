@@ -2702,6 +2702,70 @@ fail:
 	return -1;
 }
 
+/* check that m->nb_segs and m->next are reset on mbuf free */
+static int
+test_nb_segs_and_next_reset(void)
+{
+	struct rte_mbuf *m0 = NULL, *m1 = NULL, *m2 = NULL;
+	struct rte_mempool *pool = NULL;
+
+	pool = rte_pktmbuf_pool_create("test_mbuf_reset",
+			3, 0, 0, MBUF_DATA_SIZE, SOCKET_ID_ANY);
+	if (pool == NULL)
+		GOTO_FAIL("Failed to create mbuf pool");
+
+	/* alloc mbufs */
+	m0 = rte_pktmbuf_alloc(pool);
+	m1 = rte_pktmbuf_alloc(pool);
+	m2 = rte_pktmbuf_alloc(pool);
+	if (m0 == NULL || m1 == NULL || m2 == NULL)
+		GOTO_FAIL("Failed to allocate mbuf");
+
+	/* append data in all of them */
+	if (rte_pktmbuf_append(m0, 500) == NULL ||
+			rte_pktmbuf_append(m1, 500) == NULL ||
+			rte_pktmbuf_append(m2, 500) == NULL)
+		GOTO_FAIL("Failed to append data in mbuf");
+
+	/* chain them in one mbuf m0 */
+	rte_pktmbuf_chain(m1, m2);
+	rte_pktmbuf_chain(m0, m1);
+	if (m0->nb_segs != 3 || m0->next != m1 || m1->next != m2 ||
+			m2->next != NULL) {
+		m1 = m2 = NULL;
+		GOTO_FAIL("Failed to chain mbufs");
+	}
+
+	/* split m0 chain in two, between m1 and m2 */
+	m0->nb_segs = 2;
+	m1->next = NULL;
+	m2->nb_segs = 1;
+
+	/* free the 2 mbuf chains m0 and m2  */
+	rte_pktmbuf_free(m0);
+	rte_pktmbuf_free(m2);
+
+	/* realloc the 3 mbufs */
+	m0 = rte_mbuf_raw_alloc(pool);
+	m1 = rte_mbuf_raw_alloc(pool);
+	m2 = rte_mbuf_raw_alloc(pool);
+	if (m0 == NULL || m1 == NULL || m2 == NULL)
+		GOTO_FAIL("Failed to reallocate mbuf");
+
+	/* ensure that m->next and m->nb_segs are reset allocated mbufs */
+	if (m0->nb_segs != 1 || m0->next != NULL ||
+			m1->nb_segs != 1 || m1->next != NULL ||
+			m2->nb_segs != 1 || m2->next != NULL)
+		GOTO_FAIL("nb_segs or next was not reset properly");
+
+	return 0;
+
+fail:
+	if (pool != NULL)
+		rte_mempool_free(pool);
+	return -1;
+}
+
 static int
 test_mbuf(void)
 {
@@ -2892,6 +2956,11 @@ test_mbuf(void)
 		goto err;
 	}
 
+	/* test reset of m->nb_segs and m->next on mbuf free */
+	if (test_nb_segs_and_next_reset() < 0) {
+		printf("test_nb_segs_and_next_reset() failed\n");
+		goto err;
+	}
 
 	ret = 0;
 err:
