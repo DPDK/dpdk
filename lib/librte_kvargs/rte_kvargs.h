@@ -145,7 +145,7 @@ int rte_kvargs_process(const struct rte_kvargs *kvlist,
  *   The rte_kvargs structure
  * @param key_match
  *   The key that should match, or NULL to count all associations
-
+ *
  * @return
  *   The number of entries
  */
