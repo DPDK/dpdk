@@ -844,39 +844,6 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 #define ETH_VMDQ_ACCEPT_MULTICAST   0x0010 /**< multicast promiscuous. */
 /**@}*/
 
-/** Maximum nb. of vlan per mirror rule */
-#define ETH_MIRROR_MAX_VLANS       64
-
-/**@{@name Mirroring type
- * @see rte_eth_mirror_conf.rule_type
- */
-#define ETH_MIRROR_VIRTUAL_POOL_UP     0x01  /**< Virtual Pool uplink Mirroring. */
-#define ETH_MIRROR_UPLINK_PORT         0x02  /**< Uplink Port Mirroring. */
-#define ETH_MIRROR_DOWNLINK_PORT       0x04  /**< Downlink Port Mirroring. */
-#define ETH_MIRROR_VLAN                0x08  /**< VLAN Mirroring. */
-#define ETH_MIRROR_VIRTUAL_POOL_DOWN   0x10  /**< Virtual Pool downlink Mirroring. */
-/**@}*/
-
-/**
- * A structure used to configure VLAN traffic mirror of an Ethernet port.
- */
-struct rte_eth_vlan_mirror {
-	uint64_t vlan_mask; /**< mask for valid VLAN ID. */
-	/** VLAN ID list for vlan mirroring. */
-	uint16_t vlan_id[ETH_MIRROR_MAX_VLANS];
-};
-
-/**
- * A structure used to configure traffic mirror of an Ethernet port.
- */
-struct rte_eth_mirror_conf {
-	uint8_t rule_type; /**< Mirroring rule type */
-	uint8_t dst_pool;  /**< Destination pool for this mirror rule. */
-	uint64_t pool_mask; /**< Bitmap of pool for pool mirroring */
-	/** VLAN ID setting for VLAN mirroring. */
-	struct rte_eth_vlan_mirror vlan;
-};
-
 /**
  * A structure used to configure 64 entries of Redirection Table of the
  * Receive Side Scaling (RSS) feature of an Ethernet port. To configure
@@ -3988,50 +3955,6 @@ int rte_eth_dev_uc_hash_table_set(uint16_t port_id, struct rte_ether_addr *addr,
  *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_uc_all_hash_table_set(uint16_t port_id, uint8_t on);
-
-/**
- * Set a traffic mirroring rule on an Ethernet device
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param mirror_conf
- *   The pointer to the traffic mirroring structure describing the mirroring rule.
- *   The *rte_eth_vm_mirror_conf* structure includes the type of mirroring rule,
- *   destination pool and the value of rule if enable vlan or pool mirroring.
- *
- * @param rule_id
- *   The index of traffic mirroring rule, we support four separated rules.
- * @param on
- *   1 - Enable a mirroring rule.
- *   0 - Disable a mirroring rule.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support this feature.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EIO) if device is removed.
- *   - (-EINVAL) if the mr_conf information is not correct.
- */
-int rte_eth_mirror_rule_set(uint16_t port_id,
-			struct rte_eth_mirror_conf *mirror_conf,
-			uint8_t rule_id,
-			uint8_t on);
-
-/**
- * Reset a traffic mirroring rule on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param rule_id
- *   The index of traffic mirroring rule, we support four separated rules.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support this feature.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EIO) if device is removed.
- *   - (-EINVAL) if bad parameter.
- */
-int rte_eth_mirror_rule_reset(uint16_t port_id,
-					 uint8_t rule_id);
 
 /**
  * Set the rate limitation for a queue on an Ethernet device.

@@ -70,8 +70,6 @@ int ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 {
 	struct ixgbe_vf_info **vfinfo =
 		IXGBE_DEV_PRIVATE_TO_P_VFDATA(eth_dev->data->dev_private);
-	struct ixgbe_mirror_info *mirror_info =
-	IXGBE_DEV_PRIVATE_TO_PFDATA(eth_dev->data->dev_private);
 	struct ixgbe_uta_info *uta_info =
 	IXGBE_DEV_PRIVATE_TO_UTA(eth_dev->data->dev_private);
 	struct ixgbe_hw *hw =
@@ -103,7 +101,6 @@ int ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 		return ret;
 	}
 
-	memset(mirror_info, 0, sizeof(struct ixgbe_mirror_info));
 	memset(uta_info, 0, sizeof(struct ixgbe_uta_info));
 	hw->mac.mc_filter_type = 0;
 

@@ -245,20 +245,12 @@ struct ixgbe_hwstrip {
  * VF data which used by PF host only
  */
 #define IXGBE_MAX_VF_MC_ENTRIES		30
-#define IXGBE_MAX_MR_RULE_ENTRIES	4 /* number of mirroring rules supported */
 #define IXGBE_MAX_UTA                   128
 
 struct ixgbe_uta_info {
 	uint8_t  uc_filter_type;
 	uint16_t uta_in_use;
 	uint32_t uta_shadow[IXGBE_MAX_UTA];
-};
-
-#define IXGBE_MAX_MIRROR_RULES 4  /* Maximum nb. of mirror rules. */
-
-struct ixgbe_mirror_info {
-	struct rte_eth_mirror_conf mr_conf[IXGBE_MAX_MIRROR_RULES];
-	/**< store PF mirror rules configuration*/
 };
 
 struct ixgbe_vf_info {
@@ -489,7 +481,6 @@ struct ixgbe_adapter {
 	struct ixgbe_vfta           shadow_vfta;
 	struct ixgbe_hwstrip		hwstrip;
 	struct ixgbe_dcb_config     dcb_config;
-	struct ixgbe_mirror_info    mr_data;
 	struct ixgbe_vf_info        *vfdata;
 	struct ixgbe_uta_info       uta_info;
 #ifdef RTE_LIBRTE_IXGBE_BYPASS

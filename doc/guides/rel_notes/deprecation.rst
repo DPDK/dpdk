@@ -111,12 +111,6 @@ Deprecation Notices
   Existing ``rte_eth_rx_descriptor_status`` and ``rte_eth_tx_descriptor_status``
   APIs can be used as replacement.
 
-* ethdev: The port mirroring API can be replaced with a more fine grain flow API.
-  The structs ``rte_eth_mirror_conf``, ``rte_eth_vlan_mirror`` and the functions
-  ``rte_eth_mirror_rule_set``, ``rte_eth_mirror_rule_reset`` will be marked
-  as deprecated in DPDK 20.11, along with the associated macros ``ETH_MIRROR_*``.
-  This API will be fully removed in DPDK 21.11.
-
 * ethdev: Announce moving from dedicated modify function for each field,
   to using the general ``rte_flow_modify_field`` action.
 

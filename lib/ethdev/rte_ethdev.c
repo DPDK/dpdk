@@ -4505,67 +4505,6 @@ int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
 							queue_idx, tx_rate));
 }
 
-int
-rte_eth_mirror_rule_set(uint16_t port_id,
-			struct rte_eth_mirror_conf *mirror_conf,
-			uint8_t rule_id, uint8_t on)
-{
-	struct rte_eth_dev *dev;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	dev = &rte_eth_devices[port_id];
-
-	if (mirror_conf == NULL) {
-		RTE_ETHDEV_LOG(ERR,
-			"Cannot set ethdev port %u mirror rule from NULL config\n",
-			port_id);
-		return -EINVAL;
-	}
-
-	if (mirror_conf->rule_type == 0) {
-		RTE_ETHDEV_LOG(ERR, "Mirror rule type can not be 0\n");
-		return -EINVAL;
-	}
-
-	if (mirror_conf->dst_pool >= ETH_64_POOLS) {
-		RTE_ETHDEV_LOG(ERR, "Invalid dst pool, pool id must be 0-%d\n",
-			ETH_64_POOLS - 1);
-		return -EINVAL;
-	}
-
-	if ((mirror_conf->rule_type & (ETH_MIRROR_VIRTUAL_POOL_UP |
-	     ETH_MIRROR_VIRTUAL_POOL_DOWN)) &&
-	    (mirror_conf->pool_mask == 0)) {
-		RTE_ETHDEV_LOG(ERR,
-			"Invalid mirror pool, pool mask can not be 0\n");
-		return -EINVAL;
-	}
-
-	if ((mirror_conf->rule_type & ETH_MIRROR_VLAN) &&
-	    mirror_conf->vlan.vlan_mask == 0) {
-		RTE_ETHDEV_LOG(ERR,
-			"Invalid vlan mask, vlan mask can not be 0\n");
-		return -EINVAL;
-	}
-
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->mirror_rule_set, -ENOTSUP);
-
-	return eth_err(port_id, (*dev->dev_ops->mirror_rule_set)(dev,
-						mirror_conf, rule_id, on));
-}
-
-int
-rte_eth_mirror_rule_reset(uint16_t port_id, uint8_t rule_id)
-{
-	struct rte_eth_dev *dev;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	dev = &rte_eth_devices[port_id];
-
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->mirror_rule_reset, -ENOTSUP);
-	return eth_err(port_id, (*dev->dev_ops->mirror_rule_reset)(dev, rule_id));
-}
-
 RTE_INIT(eth_dev_init_cb_lists)
 {
 	uint16_t i;

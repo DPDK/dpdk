@@ -964,27 +964,6 @@ struct i40e_tunnel_filter_conf {
 	uint16_t vf_id;         /**< VF id, avaiblable when is_to_vf is 1. */
 };
 
-#define I40E_MIRROR_MAX_ENTRIES_PER_RULE   64
-#define I40E_MAX_MIRROR_RULES           64
-/*
- * Mirror rule structure
- */
-struct i40e_mirror_rule {
-	TAILQ_ENTRY(i40e_mirror_rule) rules;
-	uint8_t rule_type;
-	uint16_t index;          /* the sw index of mirror rule */
-	uint16_t id;             /* the rule id assigned by firmware */
-	uint16_t dst_vsi_seid;   /* destination vsi for this mirror rule. */
-	uint16_t num_entries;
-	/* the info stores depend on the rule type.
-	    If type is I40E_MIRROR_TYPE_VLAN, vlan ids are stored here.
-	    If type is I40E_MIRROR_TYPE_VPORT_*, vsi's seid are stored.
-	 */
-	uint16_t entries[I40E_MIRROR_MAX_ENTRIES_PER_RULE];
-};
-
-TAILQ_HEAD(i40e_mirror_rule_list, i40e_mirror_rule);
-
 TAILQ_HEAD(i40e_flow_list, rte_flow);
 
 /* Struct to store Traffic Manager shaper profile. */
@@ -1180,8 +1159,6 @@ struct i40e_pf {
 	struct i40e_rss_conf_list rss_config_list; /* RSS rule list */
 	struct i40e_queue_regions queue_region; /* queue region info */
 	struct i40e_fc_conf fc_conf; /* Flow control conf */
-	struct i40e_mirror_rule_list mirror_list;
-	uint16_t nb_mirror_rule;   /* The number of mirror rules */
 	bool floating_veb; /* The flag to use the floating VEB */
 	/* The floating enable flag for the specific VF */
 	bool floating_veb_list[I40E_MAX_VF];

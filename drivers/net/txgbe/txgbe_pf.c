@@ -68,7 +68,6 @@ txgbe_mb_intr_setup(struct rte_eth_dev *dev)
 int txgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 {
 	struct txgbe_vf_info **vfinfo = TXGBE_DEV_VFDATA(eth_dev);
-	struct txgbe_mirror_info *mirror_info = TXGBE_DEV_MR_INFO(eth_dev);
 	struct txgbe_uta_info *uta_info = TXGBE_DEV_UTA_INFO(eth_dev);
 	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
 	uint16_t vf_num;
@@ -99,7 +98,6 @@ int txgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 		return ret;
 	}
 
-	memset(mirror_info, 0, sizeof(struct txgbe_mirror_info));
 	memset(uta_info, 0, sizeof(struct txgbe_uta_info));
 	hw->mac.mc_filter_type = 0;
 

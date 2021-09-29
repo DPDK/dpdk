@@ -408,17 +408,6 @@ Supports Tx rate limitation for a queue.
 * **[related]    API**: ``rte_eth_set_queue_rate_limit()``.
 
 
-.. _nic_features_traffic_mirroring:
-
-Traffic mirroring
------------------
-
-Supports adding traffic mirroring rules.
-
-* **[implements] eth_dev_ops**: ``mirror_rule_set``, ``mirror_rule_reset``.
-* **[related]    API**: ``rte_eth_mirror_rule_set()``, ``rte_eth_mirror_rule_reset()``.
-
-
 .. _nic_features_inline_crypto_doc:
 
 Inline crypto

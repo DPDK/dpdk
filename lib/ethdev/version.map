@@ -84,8 +84,6 @@ DPDK_22 {
 	rte_eth_link_get;
 	rte_eth_link_get_nowait;
 	rte_eth_macaddr_get;
-	rte_eth_mirror_rule_reset;
-	rte_eth_mirror_rule_set;
 	rte_eth_promiscuous_disable;
 	rte_eth_promiscuous_enable;
 	rte_eth_promiscuous_get;

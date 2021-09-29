@@ -420,16 +420,6 @@ typedef int (*eth_set_queue_rate_limit_t)(struct rte_eth_dev *dev,
 				uint16_t tx_rate);
 /**< @internal Set queue TX rate */
 
-typedef int (*eth_mirror_rule_set_t)(struct rte_eth_dev *dev,
-				  struct rte_eth_mirror_conf *mirror_conf,
-				  uint8_t rule_id,
-				  uint8_t on);
-/**< @internal Add a traffic mirroring rule on an Ethernet device */
-
-typedef int (*eth_mirror_rule_reset_t)(struct rte_eth_dev *dev,
-				  uint8_t rule_id);
-/**< @internal Remove a traffic mirroring rule on an Ethernet device */
-
 typedef int (*eth_udp_tunnel_port_add_t)(struct rte_eth_dev *dev,
 					 struct rte_eth_udp_tunnel *tunnel_udp);
 /**< @internal Add tunneling UDP port */
@@ -893,9 +883,6 @@ struct eth_dev_ops {
 
 	eth_uc_hash_table_set_t    uc_hash_table_set; /**< Set Unicast Table Array. */
 	eth_uc_all_hash_table_set_t uc_all_hash_table_set; /**< Set Unicast hash bitmap. */
-
-	eth_mirror_rule_set_t	   mirror_rule_set; /**< Add a traffic mirror rule. */
-	eth_mirror_rule_reset_t	   mirror_rule_reset; /**< reset a traffic mirror rule. */
 
 	eth_udp_tunnel_port_add_t  udp_tunnel_port_add; /** Add UDP tunnel port. */
 	eth_udp_tunnel_port_del_t  udp_tunnel_port_del; /** Del UDP tunnel port. */

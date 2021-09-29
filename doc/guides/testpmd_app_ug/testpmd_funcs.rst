@@ -1610,31 +1610,6 @@ Set TX rate limitation for queues in VF on a port::
 
    testpmd> set port (port_id) vf (vf_id) rate (rate_value) queue_mask (queue_mask)
 
-set port - mirror rule
-~~~~~~~~~~~~~~~~~~~~~~
-
-Set pool or vlan type mirror rule for a port::
-
-   testpmd> set port (port_id) mirror-rule (rule_id) \
-            (pool-mirror-up|pool-mirror-down|vlan-mirror) \
-            (poolmask|vlanid[,vlanid]*) dst-pool (pool_id) (on|off)
-
-Set link mirror rule for a port::
-
-   testpmd> set port (port_id) mirror-rule (rule_id) \
-           (uplink-mirror|downlink-mirror) dst-pool (pool_id) (on|off)
-
-For example to enable mirror traffic with vlan 0,1 to pool 0::
-
-   set port 0 mirror-rule 0 vlan-mirror 0,1 dst-pool 0 on
-
-reset port - mirror rule
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Reset a mirror rule for a port::
-
-   testpmd> reset port (port_id) mirror-rule (rule_id)
-
 set flush_rx
 ~~~~~~~~~~~~
 

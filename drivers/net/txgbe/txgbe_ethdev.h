@@ -173,13 +173,6 @@ struct txgbe_uta_info {
 	uint32_t uta_shadow[TXGBE_MAX_UTA];
 };
 
-#define TXGBE_MAX_MIRROR_RULES 4  /* Maximum nb. of mirror rules. */
-
-struct txgbe_mirror_info {
-	struct rte_eth_mirror_conf mr_conf[TXGBE_MAX_MIRROR_RULES];
-	/* store PF mirror rules configuration */
-};
-
 struct txgbe_vf_info {
 	uint8_t vf_mac_addresses[RTE_ETHER_ADDR_LEN];
 	uint16_t vf_mc_hashes[TXGBE_MAX_VF_MC_ENTRIES];
@@ -356,7 +349,6 @@ struct txgbe_adapter {
 	struct txgbe_vfta           shadow_vfta;
 	struct txgbe_hwstrip        hwstrip;
 	struct txgbe_dcb_config     dcb_config;
-	struct txgbe_mirror_info    mr_data;
 	struct txgbe_vf_info        *vfdata;
 	struct txgbe_uta_info       uta_info;
 	struct txgbe_filter_info    filter;

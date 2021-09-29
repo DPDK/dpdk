@@ -161,6 +161,13 @@ Removed Items
   blacklist/whitelist are removed. Users must use the new
   block/allow list arguments.
 
+* ethdev: Removed the port mirroring API. A more fine-grain flow API
+  action ``RTE_FLOW_ACTION_TYPE_SAMPLE`` should be used instead.
+  The structures ``rte_eth_mirror_conf`` and ``rte_eth_vlan_mirror`` and
+  the functions ``rte_eth_mirror_rule_set`` and
+  ``rte_eth_mirror_rule_reset`` along with the associated macros
+  ``ETH_MIRROR_*`` are removed.
+
 * i40e: Removed i40evf driver.
   iavf already became the default VF driver for i40e devices,
   so there is no need to maintain i40evf.
