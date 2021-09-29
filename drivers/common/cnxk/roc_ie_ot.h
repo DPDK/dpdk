@@ -184,7 +184,7 @@ union roc_ot_ipsec_sa_word2 {
 		uint64_t esn_en : 1;
 		uint64_t tport_l4_incr_csum : 1;
 		uint64_t ip_hdr_verify : 2;
-		uint64_t rsvd5 : 1;
+		uint64_t udp_ports_verify : 1;
 
 		uint64_t rsvd2 : 7;
 		uint64_t async_mode : 1;
@@ -329,7 +329,7 @@ struct roc_ot_ipsec_inb_sa {
 			uint64_t esn_en : 1;
 			uint64_t tport_l4_incr_csum : 1;
 			uint64_t ip_hdr_verify : 2;
-			uint64_t rsvd5 : 1;
+			uint64_t udp_ports_verify : 1;
 
 			uint64_t rsvd6 : 7;
 			uint64_t async_mode : 1;

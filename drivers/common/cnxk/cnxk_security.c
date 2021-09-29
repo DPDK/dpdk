@@ -303,6 +303,9 @@ cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 		sa->w10.s.udp_dst_port = 4500;
 	}
 
+	if (ipsec_xfrm->options.udp_ports_verify)
+		sa->w2.s.udp_ports_verify = 1;
+
 	offset = offsetof(struct roc_ot_ipsec_inb_sa, ctx);
 	/* Word offset for HW managed SA field */
 	sa->w0.s.hw_ctx_off = offset / 8;
