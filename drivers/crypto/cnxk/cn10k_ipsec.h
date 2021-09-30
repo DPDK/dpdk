@@ -23,6 +23,7 @@ struct cn10k_ipsec_sa {
 	uint16_t max_extended_len;
 	uint16_t iv_offset;
 	uint8_t iv_length;
+	bool ip_csum_enable;
 };
 
 struct cn10k_sec_session {

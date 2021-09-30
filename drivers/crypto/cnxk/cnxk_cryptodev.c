@@ -24,6 +24,9 @@ cnxk_cpt_default_ff_get(void)
 		      RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED |
 		      RTE_CRYPTODEV_FF_SECURITY;
 
+	if (roc_model_is_cn10k())
+		ff |= RTE_CRYPTODEV_FF_SECURITY_INNER_CSUM;
+
 	return ff;
 }
 

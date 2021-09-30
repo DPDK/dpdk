@@ -53,6 +53,7 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn10k_ipsec_sa *sess,
 {
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct rte_mbuf *m_src = sym_op->m_src;
+	uint64_t inst_w4_u64 = sess->inst.w4;
 
 	if (unlikely(rte_pktmbuf_tailroom(m_src) < sess->max_extended_len)) {
 		plt_dp_err("Not enough tail room");
@@ -68,8 +69,14 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn10k_ipsec_sa *sess,
 	}
 #endif
 
+	if (m_src->ol_flags & PKT_TX_IP_CKSUM)
+		inst_w4_u64 &= ~BIT_ULL(33);
+
+	if (m_src->ol_flags & PKT_TX_L4_MASK)
+		inst_w4_u64 &= ~BIT_ULL(32);
+
 	/* Prepare CPT instruction */
-	inst->w4.u64 = sess->inst.w4;
+	inst->w4.u64 = inst_w4_u64;
 	inst->w4.s.dlen = rte_pktmbuf_pkt_len(m_src);
 	inst->dptr = rte_pktmbuf_iova(m_src);
 	inst->rptr = inst->dptr;

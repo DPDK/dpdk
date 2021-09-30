@@ -37,6 +37,7 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt,
 			   struct rte_crypto_sym_xform *crypto_xfrm,
 			   struct rte_security_session *sec_sess)
 {
+	union roc_ot_ipsec_outb_param1 param1;
 	struct roc_ot_ipsec_outb_sa *out_sa;
 	struct cnxk_ipsec_outb_rlens rlens;
 	struct cn10k_sec_session *sess;
@@ -83,7 +84,27 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt,
 	/* pre-populate CPT INST word 4 */
 	inst_w4.u64 = 0;
 	inst_w4.s.opcode_major = ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC;
-	inst_w4.s.param1 = 0;
+
+	param1.u16 = 0;
+
+	/* Disable IP checksum computation by default */
+	param1.s.ip_csum_disable = ROC_IE_OT_SA_INNER_PKT_IP_CSUM_DISABLE;
+
+	if (ipsec_xfrm->options.ip_csum_enable) {
+		param1.s.ip_csum_disable =
+			ROC_IE_OT_SA_INNER_PKT_IP_CSUM_ENABLE;
+	}
+
+	/* Disable L4 checksum computation by default */
+	param1.s.l4_csum_disable = ROC_IE_OT_SA_INNER_PKT_L4_CSUM_DISABLE;
+
+	if (ipsec_xfrm->options.l4_csum_enable) {
+		param1.s.l4_csum_disable =
+			ROC_IE_OT_SA_INNER_PKT_L4_CSUM_ENABLE;
+	}
+
+	inst_w4.s.param1 = param1.u16;
+
 	sa->inst.w4 = inst_w4.u64;
 
 	return 0;
@@ -95,6 +116,7 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt,
 			  struct rte_crypto_sym_xform *crypto_xfrm,
 			  struct rte_security_session *sec_sess)
 {
+	union roc_ot_ipsec_inb_param1 param1;
 	struct roc_ot_ipsec_inb_sa *in_sa;
 	struct cn10k_sec_session *sess;
 	struct cn10k_ipsec_sa *sa;
@@ -121,8 +143,29 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt,
 	inst_w4.u64 = 0;
 	inst_w4.s.opcode_major = ROC_IE_OT_MAJOR_OP_PROCESS_INBOUND_IPSEC;
 
-	/* Disable checksum verification for now */
-	inst_w4.s.param1 = 7;
+	param1.u16 = 0;
+
+	/* Disable IP checksum verification by default */
+	param1.s.ip_csum_disable = ROC_IE_OT_SA_INNER_PKT_IP_CSUM_DISABLE;
+
+	if (ipsec_xfrm->options.ip_csum_enable) {
+		param1.s.ip_csum_disable =
+			ROC_IE_OT_SA_INNER_PKT_IP_CSUM_ENABLE;
+		sa->ip_csum_enable = true;
+	}
+
+	/* Disable L4 checksum verification by default */
+	param1.s.l4_csum_disable = ROC_IE_OT_SA_INNER_PKT_L4_CSUM_DISABLE;
+
+	if (ipsec_xfrm->options.l4_csum_enable) {
+		param1.s.l4_csum_disable =
+			ROC_IE_OT_SA_INNER_PKT_L4_CSUM_ENABLE;
+	}
+
+	param1.s.esp_trailer_disable = 1;
+
+	inst_w4.s.param1 = param1.u16;
+
 	sa->inst.w4 = inst_w4.u64;
 
 	return 0;

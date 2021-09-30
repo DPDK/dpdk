@@ -50,7 +50,7 @@ sess_put:
 
 static __rte_always_inline int __rte_hot
 cpt_sec_inst_fill(struct rte_crypto_op *op, struct cn10k_sec_session *sess,
-		  struct cpt_inst_s *inst)
+		  struct cpt_inflight_req *infl_req, struct cpt_inst_s *inst)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
 	union roc_ot_ipsec_sa_word2 *w2;
@@ -72,8 +72,10 @@ cpt_sec_inst_fill(struct rte_crypto_op *op, struct cn10k_sec_session *sess,
 
 	if (w2->s.dir == ROC_IE_SA_DIR_OUTBOUND)
 		ret = process_outb_sa(op, sa, inst);
-	else
+	else {
+		infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_DIR_INBOUND;
 		ret = process_inb_sa(op, sa, inst);
+	}
 
 	return ret;
 }
@@ -122,7 +124,8 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[],
 		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 			sec_sess = get_sec_session_private_data(
 				sym_op->sec_session);
-			ret = cpt_sec_inst_fill(op, sec_sess, &inst[0]);
+			ret = cpt_sec_inst_fill(op, sec_sess, infl_req,
+						&inst[0]);
 			if (unlikely(ret))
 				return 0;
 			w7 = sec_sess->sa.inst.w7;
@@ -343,6 +346,49 @@ cn10k_cpt_sec_post_process(struct rte_crypto_op *cop,
 }
 
 static inline void
+cn10k_cpt_sec_ucc_process(struct rte_crypto_op *cop,
+			  struct cpt_inflight_req *infl_req,
+			  const uint8_t uc_compcode)
+{
+	struct cn10k_sec_session *sess;
+	struct cn10k_ipsec_sa *sa;
+	struct rte_mbuf *mbuf;
+
+	if (uc_compcode == ROC_IE_OT_UCC_SUCCESS_SA_SOFTEXP_FIRST)
+		cop->aux_flags = RTE_CRYPTO_OP_AUX_FLAGS_IPSEC_SOFT_EXPIRY;
+
+	if (!(infl_req->op_flags & CPT_OP_FLAGS_IPSEC_DIR_INBOUND))
+		return;
+
+	sess = get_sec_session_private_data(cop->sym->sec_session);
+	sa = &sess->sa;
+
+	mbuf = cop->sym->m_src;
+
+	switch (uc_compcode) {
+	case ROC_IE_OT_UCC_SUCCESS:
+		if (sa->ip_csum_enable)
+			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+		break;
+	case ROC_IE_OT_UCC_SUCCESS_PKT_IP_BADCSUM:
+		mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		break;
+	case ROC_IE_OT_UCC_SUCCESS_PKT_L4_GOODCSUM:
+		mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+		if (sa->ip_csum_enable)
+			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+		break;
+	case ROC_IE_OT_UCC_SUCCESS_PKT_L4_BADCSUM:
+		mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+		if (sa->ip_csum_enable)
+			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+		break;
+	default:
+		break;
+	}
+}
+
+static inline void
 cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 			       struct rte_crypto_op *cop,
 			       struct cpt_inflight_req *infl_req)
@@ -357,17 +403,8 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 	if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC &&
 	    cop->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 		if (likely(compcode == CPT_COMP_WARN)) {
-			if (unlikely(uc_compcode != ROC_IE_OT_UCC_SUCCESS)) {
-				/* Success with additional info */
-				switch (uc_compcode) {
-				case ROC_IE_OT_UCC_SUCCESS_SA_SOFTEXP_FIRST:
-					cop->aux_flags =
-						RTE_CRYPTO_OP_AUX_FLAGS_IPSEC_SOFT_EXPIRY;
-					break;
-				default:
-					break;
-				}
-			}
+			/* Success with additional info */
+			cn10k_cpt_sec_ucc_process(cop, infl_req, uc_compcode);
 			cn10k_cpt_sec_post_process(cop, res);
 		} else {
 			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
