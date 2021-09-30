@@ -92,6 +92,7 @@ static const struct eth_dev_ops cxgbevf_eth_dev_ops = {
 	.xstats_get_names       = cxgbe_dev_xstats_get_names,
 	.xstats_get_names_by_id = cxgbe_dev_xstats_get_names_by_id,
 	.mac_addr_set		= cxgbe_mac_addr_set,
+	.fw_version_get         = cxgbe_fw_version_get,
 };
 
 /*

@@ -1620,6 +1620,31 @@ set_fec:
 	return ret;
 }
 
+int cxgbe_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
+			 size_t fw_size)
+{
+	struct port_info *pi = dev->data->dev_private;
+	struct adapter *adapter = pi->adapter;
+	int ret;
+
+	if (adapter->params.fw_vers == 0)
+		return -EIO;
+
+	ret = snprintf(fw_version, fw_size, "%u.%u.%u.%u",
+		       G_FW_HDR_FW_VER_MAJOR(adapter->params.fw_vers),
+		       G_FW_HDR_FW_VER_MINOR(adapter->params.fw_vers),
+		       G_FW_HDR_FW_VER_MICRO(adapter->params.fw_vers),
+		       G_FW_HDR_FW_VER_BUILD(adapter->params.fw_vers));
+	if (ret < 0)
+		return -EINVAL;
+
+	ret += 1;
+	if (fw_size < (size_t)ret)
+		return ret;
+
+	return 0;
+}
+
 static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.dev_start		= cxgbe_dev_start,
 	.dev_stop		= cxgbe_dev_stop,
@@ -1665,6 +1690,7 @@ static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.fec_get_capability     = cxgbe_fec_get_capability,
 	.fec_get                = cxgbe_fec_get,
 	.fec_set                = cxgbe_fec_set,
+	.fw_version_get         = cxgbe_fw_version_get,
 };
 
 /*

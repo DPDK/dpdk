@@ -63,4 +63,6 @@ int cxgbe_dev_xstats_get_names(struct rte_eth_dev *dev,
 			       unsigned int n);
 int cxgbe_dev_xstats_get(struct rte_eth_dev *dev,
 			 struct rte_eth_xstat *xstats, unsigned int n);
+int cxgbe_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
+			 size_t fw_size);
 #endif /* _CXGBE_PFVF_H_ */
