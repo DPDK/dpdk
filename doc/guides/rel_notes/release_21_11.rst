@@ -152,6 +152,7 @@ New Features
   * Added tests to validate packets soft expiry.
   * Added tests to validate packets hard expiry.
   * Added tests to verify tunnel header verification in IPsec inbound.
+  * Added tests to verify inner checksum.
 
 
 Removed Items

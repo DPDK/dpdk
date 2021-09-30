@@ -7,6 +7,7 @@
 #include <rte_esp.h>
 #include <rte_ip.h>
 #include <rte_security.h>
+#include <rte_tcp.h>
 #include <rte_udp.h>
 
 #include "test.h"
@@ -103,6 +104,22 @@ test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
 		return -ENOTSUP;
 	}
 
+	if (ipsec_xform->options.ip_csum_enable == 1 &&
+	    sec_cap->ipsec.options.ip_csum_enable == 0) {
+		if (!silent)
+			RTE_LOG(INFO, USER1,
+				"Inner IP checksum is not supported\n");
+		return -ENOTSUP;
+	}
+
+	if (ipsec_xform->options.l4_csum_enable == 1 &&
+	    sec_cap->ipsec.options.l4_csum_enable == 0) {
+		if (!silent)
+			RTE_LOG(INFO, USER1,
+				"Inner L4 checksum is not supported\n");
+		return -ENOTSUP;
+	}
+
 	return 0;
 }
 
@@ -160,6 +177,56 @@ test_ipsec_td_in_from_out(const struct ipsec_test_data *td_out,
 	}
 }
 
+static bool
+is_ipv4(void *ip)
+{
+	struct rte_ipv4_hdr *ipv4 = ip;
+	uint8_t ip_ver;
+
+	ip_ver = (ipv4->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER;
+	if (ip_ver == IPVERSION)
+		return true;
+	else
+		return false;
+}
+
+static void
+test_ipsec_csum_init(void *ip, bool l3, bool l4)
+{
+	struct rte_ipv4_hdr *ipv4;
+	struct rte_tcp_hdr *tcp;
+	struct rte_udp_hdr *udp;
+	uint8_t next_proto;
+	uint8_t size;
+
+	if (is_ipv4(ip)) {
+		ipv4 = ip;
+		size = sizeof(struct rte_ipv4_hdr);
+		next_proto = ipv4->next_proto_id;
+
+		if (l3)
+			ipv4->hdr_checksum = 0;
+	} else {
+		size = sizeof(struct rte_ipv6_hdr);
+		next_proto = ((struct rte_ipv6_hdr *)ip)->proto;
+	}
+
+	if (l4) {
+		switch (next_proto) {
+		case IPPROTO_TCP:
+			tcp = (struct rte_tcp_hdr *)RTE_PTR_ADD(ip, size);
+			tcp->cksum = 0;
+			break;
+		case IPPROTO_UDP:
+			udp = (struct rte_udp_hdr *)RTE_PTR_ADD(ip, size);
+			udp->dgram_cksum = 0;
+			break;
+		default:
+			return;
+		}
+	}
+}
+
 void
 test_ipsec_td_prepare(const struct crypto_param *param1,
 		      const struct crypto_param *param2,
@@ -194,6 +261,17 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 		if (flags->sa_expiry_pkts_soft)
 			td->ipsec_xform.life.packets_soft_limit =
 					IPSEC_TEST_PACKETS_MAX - 1;
+
+		if (flags->ip_csum) {
+			td->ipsec_xform.options.ip_csum_enable = 1;
+			test_ipsec_csum_init(&td->input_text.data, true, false);
+		}
+
+		if (flags->l4_csum) {
+			td->ipsec_xform.options.l4_csum_enable = 1;
+			test_ipsec_csum_init(&td->input_text.data, false, true);
+		}
+
 	}
 
 	RTE_SET_USED(param2);
@@ -229,6 +307,12 @@ test_ipsec_td_update(struct ipsec_test_data td_inb[],
 
 		td_inb[i].ipsec_xform.options.tunnel_hdr_verify =
 			flags->tunnel_hdr_verify;
+
+		if (flags->ip_csum)
+			td_inb[i].ipsec_xform.options.ip_csum_enable = 1;
+
+		if (flags->l4_csum)
+			td_inb[i].ipsec_xform.options.l4_csum_enable = 1;
 
 		/* Clear outbound specific flags */
 		td_inb[i].ipsec_xform.options.iv_gen_disable = 0;
@@ -306,11 +390,95 @@ test_ipsec_iv_verify_push(struct rte_mbuf *m, const struct ipsec_test_data *td)
 }
 
 static int
+test_ipsec_l3_csum_verify(struct rte_mbuf *m)
+{
+	uint16_t actual_cksum, expected_cksum;
+	struct rte_ipv4_hdr *ip;
+
+	ip = rte_pktmbuf_mtod(m, struct rte_ipv4_hdr *);
+
+	if (!is_ipv4((void *)ip))
+		return TEST_SKIPPED;
+
+	actual_cksum = ip->hdr_checksum;
+
+	ip->hdr_checksum = 0;
+
+	expected_cksum = rte_ipv4_cksum(ip);
+
+	if (actual_cksum != expected_cksum)
+		return TEST_FAILED;
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_ipsec_l4_csum_verify(struct rte_mbuf *m)
+{
+	uint16_t actual_cksum = 0, expected_cksum = 0;
+	struct rte_ipv4_hdr *ipv4;
+	struct rte_ipv6_hdr *ipv6;
+	struct rte_tcp_hdr *tcp;
+	struct rte_udp_hdr *udp;
+	void *ip, *l4;
+
+	ip = rte_pktmbuf_mtod(m, void *);
+
+	if (is_ipv4(ip)) {
+		ipv4 = ip;
+		l4 = RTE_PTR_ADD(ipv4, sizeof(struct rte_ipv4_hdr));
+
+		switch (ipv4->next_proto_id) {
+		case IPPROTO_TCP:
+			tcp = (struct rte_tcp_hdr *)l4;
+			actual_cksum = tcp->cksum;
+			tcp->cksum = 0;
+			expected_cksum = rte_ipv4_udptcp_cksum(ipv4, l4);
+			break;
+		case IPPROTO_UDP:
+			udp = (struct rte_udp_hdr *)l4;
+			actual_cksum = udp->dgram_cksum;
+			udp->dgram_cksum = 0;
+			expected_cksum = rte_ipv4_udptcp_cksum(ipv4, l4);
+			break;
+		default:
+			break;
+		}
+	} else {
+		ipv6 = ip;
+		l4 = RTE_PTR_ADD(ipv6, sizeof(struct rte_ipv6_hdr));
+
+		switch (ipv6->proto) {
+		case IPPROTO_TCP:
+			tcp = (struct rte_tcp_hdr *)l4;
+			actual_cksum = tcp->cksum;
+			tcp->cksum = 0;
+			expected_cksum = rte_ipv6_udptcp_cksum(ipv6, l4);
+			break;
+		case IPPROTO_UDP:
+			udp = (struct rte_udp_hdr *)l4;
+			actual_cksum = udp->dgram_cksum;
+			udp->dgram_cksum = 0;
+			expected_cksum = rte_ipv6_udptcp_cksum(ipv6, l4);
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (actual_cksum != expected_cksum)
+		return TEST_FAILED;
+
+	return TEST_SUCCESS;
+}
+
+static int
 test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 		     bool silent, const struct ipsec_test_flags *flags)
 {
 	uint8_t *output_text = rte_pktmbuf_mtod(m, uint8_t *);
 	uint32_t skip, len = rte_pktmbuf_pkt_len(m);
+	int ret;
 
 	/* For tests with status as error for test success, skip verification */
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS &&
@@ -353,6 +521,33 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 
 	len -= skip;
 	output_text += skip;
+
+	if ((td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) &&
+				flags->ip_csum) {
+		if (m->ol_flags & PKT_RX_IP_CKSUM_GOOD)
+			ret = test_ipsec_l3_csum_verify(m);
+		else
+			ret = TEST_FAILED;
+
+		if (ret == TEST_FAILED)
+			printf("Inner IP checksum test failed\n");
+
+		return ret;
+	}
+
+	if ((td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) &&
+				flags->l4_csum) {
+		if (m->ol_flags & PKT_RX_L4_CKSUM_GOOD)
+			ret = test_ipsec_l4_csum_verify(m);
+		else
+			ret = TEST_FAILED;
+
+		if (ret == TEST_FAILED)
+			printf("Inner L4 checksum test failed\n");
+
+		return ret;
+	}
+
 
 	if (memcmp(output_text, td->output_text.data + skip, len)) {
 		if (silent)

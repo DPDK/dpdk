@@ -18,6 +18,8 @@
 #include <rte_cryptodev.h>
 #include <rte_ip.h>
 #include <rte_string_fns.h>
+#include <rte_tcp.h>
+#include <rte_udp.h>
 
 #ifdef RTE_CRYPTO_SCHEDULER
 #include <rte_cryptodev_scheduler.h>
@@ -9300,6 +9302,30 @@ test_ipsec_proto_udp_ports_verify(const void *data __rte_unused)
 }
 
 static int
+test_ipsec_proto_inner_ip_csum(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ip_csum = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_inner_l4_csum(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.l4_csum = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
 test_PDCP_PROTO_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -14255,6 +14281,14 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Tunnel src and dst addr verification",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_tunnel_src_dst_addr_verify),
+		TEST_CASE_NAMED_ST(
+			"Inner IP checksum",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_inner_ip_csum),
+		TEST_CASE_NAMED_ST(
+			"Inner L4 checksum",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_inner_l4_csum),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
