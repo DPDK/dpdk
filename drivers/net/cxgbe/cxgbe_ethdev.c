@@ -881,15 +881,37 @@ static const struct cxgbe_dev_xstats_name_off cxgbe_dev_port_stats_strings[] = {
 	{"rx_bg3_truncated_packets", offsetof(struct port_stats, rx_trunc3)},
 };
 
+static const struct cxgbe_dev_xstats_name_off
+cxgbevf_dev_port_stats_strings[] = {
+	{"tx_bytes", offsetof(struct port_stats, tx_octets)},
+	{"tx_broadcast_packets", offsetof(struct port_stats, tx_bcast_frames)},
+	{"tx_multicast_packets", offsetof(struct port_stats, tx_mcast_frames)},
+	{"tx_unicast_packets", offsetof(struct port_stats, tx_ucast_frames)},
+	{"tx_drop_packets", offsetof(struct port_stats, tx_drop)},
+	{"rx_broadcast_packets", offsetof(struct port_stats, rx_bcast_frames)},
+	{"rx_multicast_packets", offsetof(struct port_stats, rx_mcast_frames)},
+	{"rx_unicast_packets", offsetof(struct port_stats, rx_ucast_frames)},
+	{"rx_length_error_packets", offsetof(struct port_stats, rx_len_err)},
+};
+
 #define CXGBE_NB_RXQ_STATS RTE_DIM(cxgbe_dev_rxq_stats_strings)
 #define CXGBE_NB_TXQ_STATS RTE_DIM(cxgbe_dev_txq_stats_strings)
 #define CXGBE_NB_PORT_STATS RTE_DIM(cxgbe_dev_port_stats_strings)
+#define CXGBEVF_NB_PORT_STATS RTE_DIM(cxgbevf_dev_port_stats_strings)
 
 static u16 cxgbe_dev_xstats_count(struct port_info *pi)
 {
-	return CXGBE_NB_PORT_STATS +
-	       (pi->n_tx_qsets * CXGBE_NB_TXQ_STATS) +
-	       (pi->n_rx_qsets * CXGBE_NB_RXQ_STATS);
+	u16 count;
+
+	count = (pi->n_tx_qsets * CXGBE_NB_TXQ_STATS) +
+		(pi->n_rx_qsets * CXGBE_NB_RXQ_STATS);
+
+	if (is_pf4(pi->adapter) != 0)
+		count += CXGBE_NB_PORT_STATS;
+	else
+		count += CXGBEVF_NB_PORT_STATS;
+
+	return count;
 }
 
 static int cxgbe_dev_xstats(struct rte_eth_dev *dev,
@@ -900,20 +922,28 @@ static int cxgbe_dev_xstats(struct rte_eth_dev *dev,
 	struct port_info *pi = dev->data->dev_private;
 	struct adapter *adap = pi->adapter;
 	struct sge *s = &adap->sge;
+	u16 count, i, qid, nstats;
 	struct port_stats ps;
-	u16 count, i, qid;
 	u64 *stats_ptr;
 
 	count = cxgbe_dev_xstats_count(pi);
 	if (size < count)
 		return count;
 
-	/* port stats */
-	cxgbe_stats_get(pi, &ps);
+	if (is_pf4(adap) != 0) {
+		/* port stats for PF*/
+		cxgbe_stats_get(pi, &ps);
+		xstats_str = cxgbe_dev_port_stats_strings;
+		nstats = CXGBE_NB_PORT_STATS;
+	} else {
+		/* port stats for VF*/
+		cxgbevf_stats_get(pi, &ps);
+		xstats_str = cxgbevf_dev_port_stats_strings;
+		nstats = CXGBEVF_NB_PORT_STATS;
+	}
 
 	count = 0;
-	xstats_str = cxgbe_dev_port_stats_strings;
-	for (i = 0; i < CXGBE_NB_PORT_STATS; i++, count++) {
+	for (i = 0; i < nstats; i++, count++) {
 		if (xstats_names != NULL)
 			snprintf(xstats_names[count].name,
 				 sizeof(xstats_names[count].name),
@@ -970,9 +1000,9 @@ static int cxgbe_dev_xstats(struct rte_eth_dev *dev,
 }
 
 /* Get port extended statistics by ID. */
-static int cxgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev,
-				      const uint64_t *ids, uint64_t *values,
-				      unsigned int n)
+int cxgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev,
+			       const uint64_t *ids, uint64_t *values,
+			       unsigned int n)
 {
 	struct port_info *pi = dev->data->dev_private;
 	struct rte_eth_xstat *xstats_copy;
@@ -1005,9 +1035,9 @@ out_err:
 }
 
 /* Get names of port extended statistics by ID. */
-static int cxgbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
-					    struct rte_eth_xstat_name *xnames,
-					    const uint64_t *ids, unsigned int n)
+int cxgbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
+				     struct rte_eth_xstat_name *xnames,
+				     const uint64_t *ids, unsigned int n)
 {
 	struct port_info *pi = dev->data->dev_private;
 	struct rte_eth_xstat_name *xnames_copy;
@@ -1041,16 +1071,16 @@ out_err:
 }
 
 /* Get port extended statistics. */
-static int cxgbe_dev_xstats_get(struct rte_eth_dev *dev,
-				struct rte_eth_xstat *xstats, unsigned int n)
+int cxgbe_dev_xstats_get(struct rte_eth_dev *dev,
+			 struct rte_eth_xstat *xstats, unsigned int n)
 {
 	return cxgbe_dev_xstats(dev, NULL, xstats, n);
 }
 
 /* Get names of port extended statistics. */
-static int cxgbe_dev_xstats_get_names(struct rte_eth_dev *dev,
-				      struct rte_eth_xstat_name *xstats_names,
-				      unsigned int n)
+int cxgbe_dev_xstats_get_names(struct rte_eth_dev *dev,
+			       struct rte_eth_xstat_name *xstats_names,
+			       unsigned int n)
 {
 	return cxgbe_dev_xstats(dev, xstats_names, NULL, n);
 }

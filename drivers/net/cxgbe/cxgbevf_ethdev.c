@@ -54,22 +54,12 @@ static int cxgbevf_dev_stats_get(struct rte_eth_dev *eth_dev,
 	eth_stats->oerrors  = ps.tx_drop;
 
 	for (i = 0; i < pi->n_rx_qsets; i++) {
-		struct sge_eth_rxq *rxq =
-			&s->ethrxq[pi->first_rxqset + i];
+		struct sge_eth_rxq *rxq = &s->ethrxq[pi->first_rxqset + i];
 
-		eth_stats->q_ipackets[i] = rxq->stats.pkts;
-		eth_stats->q_ibytes[i] = rxq->stats.rx_bytes;
-		eth_stats->ipackets += eth_stats->q_ipackets[i];
-		eth_stats->ibytes += eth_stats->q_ibytes[i];
+		eth_stats->ipackets += rxq->stats.pkts;
+		eth_stats->ibytes += rxq->stats.rx_bytes;
 	}
 
-	for (i = 0; i < pi->n_tx_qsets; i++) {
-		struct sge_eth_txq *txq =
-			&s->ethtxq[pi->first_txqset + i];
-
-		eth_stats->q_opackets[i] = txq->stats.pkts;
-		eth_stats->q_obytes[i] = txq->stats.tx_bytes;
-	}
 	return 0;
 }
 
@@ -97,6 +87,10 @@ static const struct eth_dev_ops cxgbevf_eth_dev_ops = {
 	.rx_queue_stop          = cxgbe_dev_rx_queue_stop,
 	.rx_queue_release       = cxgbe_dev_rx_queue_release,
 	.stats_get		= cxgbevf_dev_stats_get,
+	.xstats_get             = cxgbe_dev_xstats_get,
+	.xstats_get_by_id       = cxgbe_dev_xstats_get_by_id,
+	.xstats_get_names       = cxgbe_dev_xstats_get_names,
+	.xstats_get_names_by_id = cxgbe_dev_xstats_get_names_by_id,
 	.mac_addr_set		= cxgbe_mac_addr_set,
 };
 
