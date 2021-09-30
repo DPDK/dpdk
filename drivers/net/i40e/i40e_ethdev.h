@@ -17,6 +17,13 @@
 
 #include "base/i40e_register.h"
 
+/**
+ * _i=0...143,
+ * counters 0-127 are for the 128 VFs,
+ * counters 128-143 are for the 16 PFs
+ */
+#define I40E_GL_RXERR1_H(_i)	(0x00318004 + ((_i) * 8))
+
 #define I40E_VLAN_TAG_SIZE        4
 
 #define I40E_AQ_LEN               32
@@ -1114,6 +1121,9 @@ struct i40e_pf {
 
 	struct i40e_hw_port_stats stats_offset;
 	struct i40e_hw_port_stats stats;
+	u64 rx_err1;	/* rxerr1 */
+	u64 rx_err1_offset;
+
 	/* internal packet statistics, it should be excluded from the total */
 	struct i40e_eth_stats internal_stats_offset;
 	struct i40e_eth_stats internal_stats;
