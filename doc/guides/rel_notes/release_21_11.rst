@@ -258,6 +258,11 @@ ABI Changes
   ``rte_security_ipsec_xform`` to allow applications to configure SA soft
   and hard expiry limits. Limits can be either in number of packets or bytes.
 
+* security: The new options ``ip_csum_enable`` and ``l4_csum_enable`` were added
+  in structure ``rte_security_ipsec_sa_options`` to indicate whether inner
+  packet IPv4 header checksum and L4 checksum need to be offloaded to
+  security device.
+
 * bbdev: Added capability related to more comprehensive CRC options,
   shifting values of the ``enum rte_bbdev_op_ldpcdec_flag_bitmasks``.
 

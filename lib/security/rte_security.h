@@ -227,6 +227,37 @@ struct rte_security_ipsec_sa_options {
 	 * * 0: Do not match UDP ports
 	 */
 	uint32_t udp_ports_verify : 1;
+
+	/** Compute/verify inner packet IPv4 header checksum in tunnel mode
+	 *
+	 * * 1: For outbound, compute inner packet IPv4 header checksum
+	 *      before tunnel encapsulation and for inbound, verify after
+	 *      tunnel decapsulation.
+	 * * 0: Inner packet IP header checksum is not computed/verified.
+	 *
+	 * The checksum verification status would be set in mbuf using
+	 * PKT_RX_IP_CKSUM_xxx flags.
+	 *
+	 * Inner IP checksum computation can also be enabled(per operation)
+	 * by setting the flag PKT_TX_IP_CKSUM in mbuf.
+	 */
+	uint32_t ip_csum_enable : 1;
+
+	/** Compute/verify inner packet L4 checksum in tunnel mode
+	 *
+	 * * 1: For outbound, compute inner packet L4 checksum before
+	 *      tunnel encapsulation and for inbound, verify after
+	 *      tunnel decapsulation.
+	 * * 0: Inner packet L4 checksum is not computed/verified.
+	 *
+	 * The checksum verification status would be set in mbuf using
+	 * PKT_RX_L4_CKSUM_xxx flags.
+	 *
+	 * Inner L4 checksum computation can also be enabled(per operation)
+	 * by setting the flags PKT_TX_TCP_CKSUM or PKT_TX_SCTP_CKSUM or
+	 * PKT_TX_UDP_CKSUM or PKT_TX_L4_MASK in mbuf.
+	 */
+	uint32_t l4_csum_enable : 1;
 };
 
 /** IPSec security association direction */
