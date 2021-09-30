@@ -515,12 +515,14 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 
 	memset(mz->addr, 0, mz->len);
 
-	vq->vq_ring_mem = mz->iova;
+	if (hw->use_va)
+		vq->vq_ring_mem = (uintptr_t)mz->addr;
+	else
+		vq->vq_ring_mem = mz->iova;
+
 	vq->vq_ring_virt_mem = mz->addr;
-	PMD_INIT_LOG(DEBUG, "vq->vq_ring_mem:      0x%" PRIx64,
-		     (uint64_t)mz->iova);
-	PMD_INIT_LOG(DEBUG, "vq->vq_ring_virt_mem: 0x%" PRIx64,
-		     (uint64_t)(uintptr_t)mz->addr);
+	PMD_INIT_LOG(DEBUG, "vq->vq_ring_mem: 0x%" PRIx64, vq->vq_ring_mem);
+	PMD_INIT_LOG(DEBUG, "vq->vq_ring_virt_mem: %p", vq->vq_ring_virt_mem);
 
 	virtio_init_vring(vq);
 
@@ -570,16 +572,27 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 		txvq->port_id = dev->data->port_id;
 		txvq->mz = mz;
 		txvq->virtio_net_hdr_mz = hdr_mz;
-		txvq->virtio_net_hdr_mem = hdr_mz->iova;
+		if (hw->use_va)
+			txvq->virtio_net_hdr_mem = (uintptr_t)hdr_mz->addr;
+		else
+			txvq->virtio_net_hdr_mem = hdr_mz->iova;
 	} else if (queue_type == VTNET_CQ) {
 		cvq = &vq->cq;
 		cvq->mz = mz;
 		cvq->virtio_net_hdr_mz = hdr_mz;
-		cvq->virtio_net_hdr_mem = hdr_mz->iova;
+		if (hw->use_va)
+			cvq->virtio_net_hdr_mem = (uintptr_t)hdr_mz->addr;
+		else
+			cvq->virtio_net_hdr_mem = hdr_mz->iova;
 		memset(cvq->virtio_net_hdr_mz->addr, 0, rte_mem_page_size());
 
 		hw->cvq = cvq;
 	}
+
+	if (hw->use_va)
+		vq->mbuf_addr_offset = offsetof(struct rte_mbuf, buf_addr);
+	else
+		vq->mbuf_addr_offset = offsetof(struct rte_mbuf, buf_iova);
 
 	if (queue_type == VTNET_TQ) {
 		struct virtio_tx_region *txr;

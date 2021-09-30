@@ -657,6 +657,12 @@ virtio_user_pmd_probe(struct rte_vdev_device *vdev)
 		goto end;
 	}
 
+	/*
+	 * Virtio-user requires using virtual addresses for the descriptors
+	 * buffers, whatever other devices require
+	 */
+	hw->use_va = true;
+
 	/* previously called by pci probing for physical dev */
 	if (eth_virtio_dev_init(eth_dev) < 0) {
 		PMD_INIT_LOG(ERR, "eth_virtio_dev_init fails");
@@ -769,7 +775,6 @@ static struct rte_vdev_driver virtio_user_driver = {
 	.remove = virtio_user_pmd_remove,
 	.dma_map = virtio_user_pmd_dma_map,
 	.dma_unmap = virtio_user_pmd_dma_unmap,
-	.drv_flags = RTE_VDEV_DRV_NEED_IOVA_AS_VA,
 };
 
 RTE_PMD_REGISTER_VDEV(net_virtio_user, virtio_user_driver);

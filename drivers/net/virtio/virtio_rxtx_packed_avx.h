@@ -71,13 +71,13 @@ virtqueue_enqueue_batch_packed_vec(struct virtnet_tx *txvq,
 	}
 
 	__m512i descs_base = _mm512_set_epi64(tx_pkts[3]->data_len,
-			tx_pkts[3]->buf_iova,
+			VIRTIO_MBUF_ADDR(tx_pkts[3], vq),
 			tx_pkts[2]->data_len,
-			tx_pkts[2]->buf_iova,
+			VIRTIO_MBUF_ADDR(tx_pkts[2], vq),
 			tx_pkts[1]->data_len,
-			tx_pkts[1]->buf_iova,
+			VIRTIO_MBUF_ADDR(tx_pkts[1], vq),
 			tx_pkts[0]->data_len,
-			tx_pkts[0]->buf_iova);
+			VIRTIO_MBUF_ADDR(tx_pkts[0], vq));
 
 	/* id offset and data offset */
 	__m512i data_offsets = _mm512_set_epi64((uint64_t)3 << ID_BITS_OFFSET,

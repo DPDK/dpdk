@@ -288,7 +288,7 @@ virtio_recv_refill_packed_vec(struct virtnet_rx *rxvq,
 			dxp = &vq->vq_descx[idx + i];
 			dxp->cookie = (void *)cookie[total_num + i];
 
-			addr = cookie[total_num + i]->buf_iova +
+			addr = VIRTIO_MBUF_ADDR(cookie[total_num + i], vq) +
 				RTE_PKTMBUF_HEADROOM - hw->vtnet_hdr_size;
 			start_dp[idx + i].addr = addr;
 			start_dp[idx + i].len = cookie[total_num + i]->buf_len

@@ -192,6 +192,7 @@ struct virtio_hw {
 	uint16_t max_queue_pairs;
 	uint64_t req_guest_features;
 	struct virtnet_ctl *cvq;
+	bool use_va;
 };
 
 struct virtio_ops {
