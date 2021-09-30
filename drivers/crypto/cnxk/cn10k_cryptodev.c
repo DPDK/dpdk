@@ -68,6 +68,13 @@ cn10k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		roc_cpt->pci_dev = pci_dev;
+
+		rc = cnxk_cpt_parse_devargs(dev->device->devargs, vf);
+		if (rc) {
+			plt_err("Failed to parse devargs rc=%d", rc);
+			goto pmd_destroy;
+		}
+
 		rc = roc_cpt_dev_init(roc_cpt);
 		if (rc) {
 			plt_err("Failed to initialize roc cpt rc=%d", rc);

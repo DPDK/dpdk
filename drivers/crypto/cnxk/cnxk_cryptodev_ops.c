@@ -150,7 +150,10 @@ cnxk_cpt_dev_info_get(struct rte_cryptodev *dev,
 	struct cnxk_cpt_vf *vf = dev->data->dev_private;
 	struct roc_cpt *roc_cpt = &vf->cpt;
 
-	info->max_nb_queue_pairs = roc_cpt->nb_lf_avail;
+	info->max_nb_queue_pairs =
+		RTE_MIN(roc_cpt->nb_lf_avail, vf->max_qps_limit);
+	plt_cpt_dbg("max_nb_queue_pairs %u", info->max_nb_queue_pairs);
+
 	info->feature_flags = cnxk_cpt_default_ff_get();
 	info->capabilities = cnxk_crypto_capabilities_get(vf);
 	info->sym.max_nb_sessions = 0;

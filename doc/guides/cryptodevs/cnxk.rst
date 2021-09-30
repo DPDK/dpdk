@@ -158,6 +158,21 @@ Bind the CPT VF device to the vfio_pci driver:
     ./usertools/dpdk-devbind.py -u 0002:20:00.1
     ./usertools/dpdk-devbind.py -b vfio-pci 0002:20:00.1
 
+Runtime Config Options
+----------------------
+
+- ``Maximum queue pairs limit`` (default ``63``)
+
+   The number of maximum queue pairs supported by the device, can be limited
+   during runtime by using ``max_qps_limit`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:20:00.1,max_qps_limit=4
+
+   With the above configuration, the number of maximum queue pairs supported
+   by the device is limited to 4.
+
 Debugging Options
 -----------------
 

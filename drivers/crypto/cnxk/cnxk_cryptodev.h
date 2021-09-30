@@ -25,9 +25,11 @@ struct cnxk_cpt_vf {
 	struct rte_security_capability sec_caps[CNXK_SEC_MAX_CAPS];
 	uint64_t cnxk_fpm_iova[CNXK_AE_EC_ID_MAX];
 	struct roc_ae_ec_group *ec_grp[CNXK_AE_EC_ID_MAX];
+	uint16_t max_qps_limit;
 };
 
 uint64_t cnxk_cpt_default_ff_get(void);
 int cnxk_cpt_eng_grp_add(struct roc_cpt *roc_cpt);
+int cnxk_cpt_parse_devargs(struct rte_devargs *devargs, struct cnxk_cpt_vf *vf);
 
 #endif /* _CNXK_CRYPTODEV_H_ */
