@@ -478,6 +478,145 @@ cn9k_sso_hws_prepare_pkt(const struct cn9k_eth_txq *txq, struct rte_mbuf *m,
 	cn9k_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt);
 }
 
+#if defined(RTE_ARCH_ARM64)
+
+static __rte_always_inline void
+cn9k_sso_hws_xmit_sec_one(const struct cn9k_eth_txq *txq, uint64_t base,
+			  struct rte_mbuf *m, uint64_t *cmd,
+			  uint32_t flags)
+{
+	struct cn9k_outb_priv_data *outb_priv;
+	rte_iova_t io_addr = txq->cpt_io_addr;
+	uint64_t *lmt_addr = txq->lmt_addr;
+	struct cn9k_sec_sess_priv mdata;
+	struct nix_send_hdr_s *send_hdr;
+	uint64_t sa_base = txq->sa_base;
+	uint32_t pkt_len, dlen_adj, rlen;
+	uint64x2_t cmd01, cmd23;
+	uint64_t lmt_status, sa;
+	union nix_send_sg_s *sg;
+	uintptr_t dptr, nixtx;
+	uint64_t ucode_cmd[4];
+	uint64_t esn, *iv;
+	uint8_t l2_len;
+
+	mdata.u64 = *rte_security_dynfield(m);
+	send_hdr = (struct nix_send_hdr_s *)cmd;
+	if (flags & NIX_TX_NEED_EXT_HDR)
+		sg = (union nix_send_sg_s *)&cmd[4];
+	else
+		sg = (union nix_send_sg_s *)&cmd[2];
+
+	if (flags & NIX_TX_NEED_SEND_HDR_W1)
+		l2_len = cmd[1] & 0xFF;
+	else
+		l2_len = m->l2_len;
+
+	/* Retrieve DPTR */
+	dptr = *(uint64_t *)(sg + 1);
+	pkt_len = send_hdr->w0.total;
+
+	/* Calculate rlen */
+	rlen = pkt_len - l2_len;
+	rlen = (rlen + mdata.roundup_len) + (mdata.roundup_byte - 1);
+	rlen &= ~(uint64_t)(mdata.roundup_byte - 1);
+	rlen += mdata.partial_len;
+	dlen_adj = rlen - pkt_len + l2_len;
+
+	/* Update send descriptors. Security is single segment only */
+	send_hdr->w0.total = pkt_len + dlen_adj;
+	sg->seg1_size = pkt_len + dlen_adj;
+
+	/* Get area where NIX descriptor needs to be stored */
+	nixtx = dptr + pkt_len + dlen_adj;
+	nixtx += BIT_ULL(7);
+	nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
+
+	roc_lmt_mov((void *)(nixtx + 16), cmd, cn9k_nix_tx_ext_subs(flags));
+
+	/* Load opcode and cptr already prepared at pkt metadata set */
+	pkt_len -= l2_len;
+	pkt_len += sizeof(struct roc_onf_ipsec_outb_hdr) +
+		    ROC_ONF_IPSEC_OUTB_MAX_L2_INFO_SZ;
+	sa_base &= ~(ROC_NIX_INL_SA_BASE_ALIGN - 1);
+
+	sa = (uintptr_t)roc_nix_inl_onf_ipsec_outb_sa(sa_base, mdata.sa_idx);
+	ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | sa);
+	ucode_cmd[0] = (ROC_IE_ONF_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 |
+			0x40UL << 48 | pkt_len);
+
+	/* CPT Word 0 and Word 1 */
+	cmd01 = vdupq_n_u64((nixtx + 16) | (cn9k_nix_tx_ext_subs(flags) + 1));
+	/* CPT_RES_S is 16B above NIXTX */
+	cmd01 = vsetq_lane_u8(nixtx & BIT_ULL(7), cmd01, 8);
+
+	/* CPT word 2 and 3 */
+	cmd23 = vdupq_n_u64(0);
+	cmd23 = vsetq_lane_u64((((uint64_t)RTE_EVENT_TYPE_CPU << 28) |
+				CNXK_ETHDEV_SEC_OUTB_EV_SUB << 20), cmd23, 0);
+	cmd23 = vsetq_lane_u64((uintptr_t)m | 1, cmd23, 1);
+
+	dptr += l2_len - ROC_ONF_IPSEC_OUTB_MAX_L2_INFO_SZ -
+		sizeof(struct roc_onf_ipsec_outb_hdr);
+	ucode_cmd[1] = dptr;
+	ucode_cmd[2] = dptr;
+
+	/* Update IV to zero and l2 sz */
+	*(uint16_t *)(dptr + sizeof(struct roc_onf_ipsec_outb_hdr)) =
+		rte_cpu_to_be_16(ROC_ONF_IPSEC_OUTB_MAX_L2_INFO_SZ);
+	iv = (uint64_t *)(dptr + 8);
+	iv[0] = 0;
+	iv[1] = 0;
+
+	/* Head wait if needed */
+	if (base)
+		roc_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
+
+	/* ESN */
+	outb_priv = roc_nix_inl_onf_ipsec_outb_sa_sw_rsvd((void *)sa);
+	esn = outb_priv->esn;
+	outb_priv->esn = esn + 1;
+
+	ucode_cmd[0] |= (esn >> 32) << 16;
+	esn = rte_cpu_to_be_32(esn & (BIT_ULL(32) - 1));
+
+	/* Update ESN and IPID and IV */
+	*(uint64_t *)dptr = esn << 32 | esn;
+
+	rte_io_wmb();
+	cn9k_sso_txq_fc_wait(txq);
+
+	/* Write CPT instruction to lmt line */
+	vst1q_u64(lmt_addr, cmd01);
+	vst1q_u64(lmt_addr + 2, cmd23);
+
+	roc_lmt_mov_seg(lmt_addr + 4, ucode_cmd, 2);
+
+	if (roc_lmt_submit_ldeor(io_addr) == 0) {
+		do {
+			vst1q_u64(lmt_addr, cmd01);
+			vst1q_u64(lmt_addr + 2, cmd23);
+			roc_lmt_mov_seg(lmt_addr + 4, ucode_cmd, 2);
+
+			lmt_status = roc_lmt_submit_ldeor(io_addr);
+		} while (lmt_status == 0);
+	}
+}
+#else
+
+static inline void
+cn9k_sso_hws_xmit_sec_one(const struct cn9k_eth_txq *txq, uint64_t base,
+			  struct rte_mbuf *m, uint64_t *cmd,
+			  uint32_t flags)
+{
+	RTE_SET_USED(txq);
+	RTE_SET_USED(base);
+	RTE_SET_USED(m);
+	RTE_SET_USED(cmd);
+	RTE_SET_USED(flags);
+}
+#endif
+
 static __rte_always_inline uint16_t
 cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 		      const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT],
@@ -494,10 +633,29 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 	 * In case of fast free is not set, both cn9k_nix_prepare_mseg()
 	 * and cn9k_nix_xmit_prepare() has a barrier after refcnt update.
 	 */
-	if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+	if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) &&
+	    !(flags & NIX_TX_OFFLOAD_SECURITY_F))
 		rte_io_wmb();
 	txq = cn9k_sso_hws_xtract_meta(m, txq_data);
 	cn9k_sso_hws_prepare_pkt(txq, m, cmd, flags);
+
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+		uint64_t ol_flags = m->ol_flags;
+
+		if (ol_flags & PKT_TX_SEC_OFFLOAD) {
+			uintptr_t ssow_base = base;
+
+			if (ev->sched_type)
+				ssow_base = 0;
+
+			cn9k_sso_hws_xmit_sec_one(txq, ssow_base, m, cmd,
+						  flags);
+			goto done;
+		}
+
+		if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+			rte_io_wmb();
+	}
 
 	if (flags & NIX_TX_MULTI_SEG_F) {
 		const uint16_t segdw = cn9k_nix_prepare_mseg(m, cmd, flags);
@@ -526,6 +684,7 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 		}
 	}
 
+done:
 	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
 		if (ref_cnt > 1)
 			return 1;
@@ -537,7 +696,7 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 	return 1;
 }
 
-#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)                             \
+#define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)                         \
 	uint16_t __rte_hot cn9k_sso_hws_tx_adptr_enq_##name(                   \
 		void *port, struct rte_event ev[], uint16_t nb_events);        \
 	uint16_t __rte_hot cn9k_sso_hws_tx_adptr_enq_seg_##name(               \
