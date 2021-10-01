@@ -172,6 +172,13 @@ static const struct rte_pci_id npa_pci_map[] = {
 	{
 		.class_id = RTE_CLASS_ANY_ID,
 		.vendor_id = PCI_VENDOR_ID_CAVIUM,
+		.device_id = PCI_DEVID_CNXK_RVU_NPA_PF,
+		.subsystem_vendor_id = PCI_VENDOR_ID_CAVIUM,
+		.subsystem_device_id = PCI_SUBSYSTEM_DEVID_CNF10KA,
+	},
+	{
+		.class_id = RTE_CLASS_ANY_ID,
+		.vendor_id = PCI_VENDOR_ID_CAVIUM,
 		.device_id = PCI_DEVID_CNXK_RVU_NPA_VF,
 		.subsystem_vendor_id = PCI_VENDOR_ID_CAVIUM,
 		.subsystem_device_id = PCI_SUBSYSTEM_DEVID_CN10KA,
@@ -182,6 +189,13 @@ static const struct rte_pci_id npa_pci_map[] = {
 		.device_id = PCI_DEVID_CNXK_RVU_NPA_VF,
 		.subsystem_vendor_id = PCI_VENDOR_ID_CAVIUM,
 		.subsystem_device_id = PCI_SUBSYSTEM_DEVID_CN10KAS,
+	},
+	{
+		.class_id = RTE_CLASS_ANY_ID,
+		.vendor_id = PCI_VENDOR_ID_CAVIUM,
+		.device_id = PCI_DEVID_CNXK_RVU_NPA_VF,
+		.subsystem_vendor_id = PCI_VENDOR_ID_CAVIUM,
+		.subsystem_device_id = PCI_SUBSYSTEM_DEVID_CNF10KA,
 	},
 	{
 		.vendor_id = 0,
