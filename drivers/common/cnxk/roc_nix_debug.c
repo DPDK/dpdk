@@ -1213,3 +1213,38 @@ roc_nix_dump(struct roc_nix *roc_nix)
 	nix_dump("  \trss_alg_idx = %d", nix->rss_alg_idx);
 	nix_dump("  \ttx_pause = %d", nix->tx_pause);
 }
+
+void
+roc_nix_inl_dev_dump(struct roc_nix_inl_dev *roc_inl_dev)
+{
+	struct nix_inl_dev *inl_dev =
+		(struct nix_inl_dev *)&roc_inl_dev->reserved;
+	struct dev *dev = &inl_dev->dev;
+
+	nix_dump("nix_inl_dev@%p", inl_dev);
+	nix_dump("  pf = %d", dev_get_pf(dev->pf_func));
+	nix_dump("  vf = %d", dev_get_vf(dev->pf_func));
+	nix_dump("  bar2 = 0x%" PRIx64, dev->bar2);
+	nix_dump("  bar4 = 0x%" PRIx64, dev->bar4);
+
+	nix_dump("  \tpci_dev = %p", inl_dev->pci_dev);
+	nix_dump("  \tnix_base = 0x%" PRIxPTR "", inl_dev->nix_base);
+	nix_dump("  \tsso_base = 0x%" PRIxPTR "", inl_dev->sso_base);
+	nix_dump("  \tssow_base = 0x%" PRIxPTR "", inl_dev->ssow_base);
+	nix_dump("  \tnix_msixoff = %d", inl_dev->nix_msixoff);
+	nix_dump("  \tsso_msixoff = %d", inl_dev->sso_msixoff);
+	nix_dump("  \tssow_msixoff = %d", inl_dev->ssow_msixoff);
+	nix_dump("  \tnix_cints = %d", inl_dev->cints);
+	nix_dump("  \tnix_qints = %d", inl_dev->qints);
+	nix_dump("  \trq_refs = %d", inl_dev->rq_refs);
+	nix_dump("  \tinb_sa_base = 0x%p", inl_dev->inb_sa_base);
+	nix_dump("  \tinb_sa_sz = %d", inl_dev->inb_sa_sz);
+	nix_dump("  \txaq_buf_size = %u", inl_dev->xaq_buf_size);
+	nix_dump("  \txae_waes = %u", inl_dev->xae_waes);
+	nix_dump("  \tiue = %u", inl_dev->iue);
+	nix_dump("  \txaq_aura = 0x%" PRIx64, inl_dev->xaq_aura);
+	nix_dump("  \txaq_mem = 0x%p", inl_dev->xaq_mem);
+
+	nix_dump("  \tinl_dev_rq:");
+	roc_nix_rq_dump(&inl_dev->rq);
+}

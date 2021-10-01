@@ -38,6 +38,8 @@ idev_set_defaults(struct idev_cfg *idev)
 	idev->num_lmtlines = 0;
 	idev->bphy = NULL;
 	idev->cpt = NULL;
+	idev->nix_inl_dev = NULL;
+	plt_spinlock_init(&idev->nix_inl_dev_lock);
 	__atomic_store_n(&idev->npa_refcnt, 0, __ATOMIC_RELEASE);
 }
 

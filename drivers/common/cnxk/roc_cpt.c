@@ -381,11 +381,12 @@ cpt_lfs_alloc(struct dev *dev, uint8_t eng_grpmsk, uint8_t blkaddr,
 	if (blkaddr != RVU_BLOCK_ADDR_CPT0 && blkaddr != RVU_BLOCK_ADDR_CPT1)
 		return -EINVAL;
 
-	PLT_SET_USED(inl_dev_sso);
-
 	req = mbox_alloc_msg_cpt_lf_alloc(mbox);
 	req->nix_pf_func = 0;
-	req->sso_pf_func = idev_sso_pffunc_get();
+	if (inl_dev_sso && nix_inl_dev_pffunc_get())
+		req->sso_pf_func = nix_inl_dev_pffunc_get();
+	else
+		req->sso_pf_func = idev_sso_pffunc_get();
 	req->eng_grpmsk = eng_grpmsk;
 	req->blkaddr = blkaddr;
 

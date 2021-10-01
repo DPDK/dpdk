@@ -37,6 +37,7 @@
 #define PLT_MEMZONE_NAMESIZE	 RTE_MEMZONE_NAMESIZE
 #define PLT_STD_C11		 RTE_STD_C11
 #define PLT_PTR_ADD		 RTE_PTR_ADD
+#define PLT_PTR_DIFF		 RTE_PTR_DIFF
 #define PLT_MAX_RXTX_INTR_VEC_ID RTE_MAX_RXTX_INTR_VEC_ID
 #define PLT_INTR_VEC_RXTX_OFFSET RTE_INTR_VEC_RXTX_OFFSET
 #define PLT_MIN			 RTE_MIN
@@ -77,6 +78,7 @@
 #define plt_cpu_to_be_64 rte_cpu_to_be_64
 #define plt_be_to_cpu_64 rte_be_to_cpu_64
 
+#define plt_align32pow2	    rte_align32pow2
 #define plt_align32prevpow2 rte_align32prevpow2
 
 #define plt_bitmap			rte_bitmap

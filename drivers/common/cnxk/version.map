@@ -99,6 +99,9 @@ INTERNAL {
 	roc_nix_get_pf_func;
 	roc_nix_get_vf;
 	roc_nix_get_vwqe_interval;
+	roc_nix_inl_dev_dump;
+	roc_nix_inl_dev_fini;
+	roc_nix_inl_dev_init;
 	roc_nix_is_lbk;
 	roc_nix_is_pf;
 	roc_nix_is_sdp;

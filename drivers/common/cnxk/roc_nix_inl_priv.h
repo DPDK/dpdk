@@ -15,11 +15,13 @@ struct nix_inl_dev {
 	uintptr_t nix_base;
 	uintptr_t ssow_base;
 	uintptr_t sso_base;
+	uintptr_t cpt_base;
 
 	/* MSIX vector offsets */
 	uint16_t nix_msixoff;
 	uint16_t ssow_msixoff;
 	uint16_t sso_msixoff;
+	uint16_t cpt_msixoff;
 
 	/* SSO data */
 	uint32_t xaq_buf_size;
@@ -43,9 +45,13 @@ struct nix_inl_dev {
 	void *inb_sa_base;
 	uint16_t inb_sa_sz;
 
+	/* CPT data */
+	struct roc_cpt_lf cpt_lf;
+
 	/* Device arguments */
 	uint8_t selftest;
 	uint16_t ipsec_in_max_spi;
+	bool attach_cptlf;
 };
 
 int nix_inl_sso_register_irqs(struct nix_inl_dev *inl_dev);
@@ -53,5 +59,7 @@ void nix_inl_sso_unregister_irqs(struct nix_inl_dev *inl_dev);
 
 int nix_inl_nix_register_irqs(struct nix_inl_dev *inl_dev);
 void nix_inl_nix_unregister_irqs(struct nix_inl_dev *inl_dev);
+
+uint16_t nix_inl_dev_pffunc_get(void);
 
 #endif /* _ROC_NIX_INL_PRIV_H_ */

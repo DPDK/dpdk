@@ -28,6 +28,7 @@ sources = files(
         'roc_nix_debug.c',
         'roc_nix_fc.c',
         'roc_nix_irq.c',
+        'roc_nix_inl_dev.c',
         'roc_nix_inl_dev_irq.c',
         'roc_nix_mac.c',
         'roc_nix_mcast.c',
