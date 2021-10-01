@@ -31,6 +31,9 @@
 #define CQE_CAST(x)	     ((struct nix_cqe_hdr_s *)(x))
 #define CQE_SZ(x)	     ((x) * CNXK_NIX_CQ_ENTRY_SZ)
 
+#define IPSEC_SQ_LO_IDX 4
+#define IPSEC_SQ_HI_IDX 8
+
 union mbuf_initializer {
 	struct {
 		uint16_t data_off;
@@ -166,6 +169,48 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 	mbuf->next = NULL;
 }
 
+static inline int
+ipsec_antireplay_check(struct roc_onf_ipsec_inb_sa *sa,
+		       struct cn9k_inb_priv_data *priv, uintptr_t data,
+		       uint32_t win_sz)
+{
+	struct cnxk_on_ipsec_ar *ar = &priv->ar;
+	uint64_t seq_in_sa;
+	uint32_t seqh = 0;
+	uint32_t seql;
+	uint64_t seq;
+	uint8_t esn;
+	int rc;
+
+	esn = sa->ctl.esn_en;
+	seql = rte_be_to_cpu_32(*((uint32_t *)(data + IPSEC_SQ_LO_IDX)));
+
+	if (!esn) {
+		seq = (uint64_t)seql;
+	} else {
+		seqh = rte_be_to_cpu_32(*((uint32_t *)(data +
+					IPSEC_SQ_HI_IDX)));
+		seq = ((uint64_t)seqh << 32) | seql;
+	}
+
+	if (unlikely(seq == 0))
+		return -1;
+
+	rte_spinlock_lock(&ar->lock);
+	rc = cnxk_on_anti_replay_check(seq, ar, win_sz);
+	if (esn && !rc) {
+		seq_in_sa = ((uint64_t)rte_be_to_cpu_32(sa->esn_hi) << 32) |
+			    rte_be_to_cpu_32(sa->esn_low);
+		if (seq > seq_in_sa) {
+			sa->esn_low = rte_cpu_to_be_32(seql);
+			sa->esn_hi = rte_cpu_to_be_32(seqh);
+		}
+	}
+	rte_spinlock_unlock(&ar->lock);
+
+	return rc;
+}
+
 static __rte_always_inline uint64_t
 nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 		       uintptr_t sa_base, uint64_t *rearm_val, uint16_t *len)
@@ -178,8 +223,8 @@ nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 	uint8_t lcptr = rx->lcptr;
 	struct rte_ipv4_hdr *ipv4;
 	uint16_t data_off, res;
+	uint32_t spi, win_sz;
 	uint32_t spi_mask;
-	uint32_t spi;
 	uintptr_t data;
 	__uint128_t dw;
 	uint8_t sa_w;
@@ -208,6 +253,13 @@ nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 	sa_priv = roc_nix_inl_onf_ipsec_inb_sa_sw_rsvd(sa);
 	dw = *(__uint128_t *)sa_priv;
 	*rte_security_dynfield(m) = (uint64_t)dw;
+
+	/* Check if anti-replay is enabled */
+	win_sz = (uint32_t)(dw >> 64);
+	if (win_sz) {
+		if (ipsec_antireplay_check(sa, sa_priv, data, win_sz) < 0)
+			return PKT_RX_SEC_OFFLOAD | PKT_RX_SEC_OFFLOAD_FAILED;
+	}
 
 	/* Get total length from IPv4 header. We can assume only IPv4 */
 	ipv4 = (struct rte_ipv4_hdr *)(data + ROC_ONF_IPSEC_INB_SPI_SEQ_SZ +

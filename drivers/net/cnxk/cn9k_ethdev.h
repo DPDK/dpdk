@@ -6,6 +6,7 @@
 
 #include <cnxk_ethdev.h>
 #include <cnxk_security.h>
+#include <cnxk_security_ar.h>
 
 struct cn9k_eth_txq {
 	uint64_t cmd[8];
@@ -40,6 +41,8 @@ struct cn9k_eth_rxq {
 /* Private data in sw rsvd area of struct roc_onf_ipsec_inb_sa */
 struct cn9k_inb_priv_data {
 	void *userdata;
+	uint32_t replay_win_sz;
+	struct cnxk_on_ipsec_ar ar;
 	struct cnxk_eth_sec_sess *eth_sec;
 };
 

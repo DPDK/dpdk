@@ -73,6 +73,27 @@ static const struct rte_security_capability cn9k_eth_sec_capabilities[] = {
 	}
 };
 
+static inline int
+ar_window_init(struct cn9k_inb_priv_data *inb_priv)
+{
+	if (inb_priv->replay_win_sz > CNXK_ON_AR_WIN_SIZE_MAX) {
+		plt_err("Replay window size:%u is not supported",
+			inb_priv->replay_win_sz);
+		return -ENOTSUP;
+	}
+
+	rte_spinlock_init(&inb_priv->ar.lock);
+	/*
+	 * Set window bottom to 1, base and top to size of
+	 * window
+	 */
+	inb_priv->ar.winb = 1;
+	inb_priv->ar.wint = inb_priv->replay_win_sz;
+	inb_priv->ar.base = inb_priv->replay_win_sz;
+
+	return 0;
+}
+
 static int
 cn9k_eth_sec_session_create(void *device,
 			    struct rte_security_session_conf *conf,
@@ -158,6 +179,14 @@ cn9k_eth_sec_session_create(void *device,
 		/* Save userdata in inb private area */
 		inb_priv->userdata = conf->userdata;
 
+		inb_priv->replay_win_sz = ipsec->replay_win_sz;
+		if (inb_priv->replay_win_sz) {
+			rc = ar_window_init(inb_priv);
+			if (rc)
+				goto mempool_put;
+		}
+
+		/* Prepare session priv */
 		sess_priv.inb_sa = 1;
 		sess_priv.sa_idx = ipsec->spi;
 
