@@ -6,11 +6,10 @@
 #include "roc_priv.h"
 
 /* Private functions. */
-static int
-sso_lf_alloc(struct roc_sso *roc_sso, enum sso_lf_type lf_type, uint16_t nb_lf,
+int
+sso_lf_alloc(struct dev *dev, enum sso_lf_type lf_type, uint16_t nb_lf,
 	     void **rsp)
 {
-	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
 	int rc = -ENOSPC;
 
 	switch (lf_type) {
@@ -41,10 +40,9 @@ sso_lf_alloc(struct roc_sso *roc_sso, enum sso_lf_type lf_type, uint16_t nb_lf,
 	return 0;
 }
 
-static int
-sso_lf_free(struct roc_sso *roc_sso, enum sso_lf_type lf_type, uint16_t nb_lf)
+int
+sso_lf_free(struct dev *dev, enum sso_lf_type lf_type, uint16_t nb_lf)
 {
-	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
 	int rc = -ENOSPC;
 
 	switch (lf_type) {
@@ -152,7 +150,7 @@ sso_rsrc_get(struct roc_sso *roc_sso)
 	return 0;
 }
 
-static void
+void
 sso_hws_link_modify(uint8_t hws, uintptr_t base, struct plt_bitmap *bmp,
 		    uint16_t hwgrp[], uint16_t n, uint16_t enable)
 {
@@ -172,8 +170,10 @@ sso_hws_link_modify(uint8_t hws, uintptr_t base, struct plt_bitmap *bmp,
 		k = k ? k : 4;
 		for (j = 0; j < k; j++) {
 			mask[j] = hwgrp[i + j] | enable << 14;
-			enable ? plt_bitmap_set(bmp, hwgrp[i + j]) :
-				 plt_bitmap_clear(bmp, hwgrp[i + j]);
+			if (bmp) {
+				enable ? plt_bitmap_set(bmp, hwgrp[i + j]) :
+					 plt_bitmap_clear(bmp, hwgrp[i + j]);
+			}
 			plt_sso_dbg("HWS %d Linked to HWGRP %d", hws,
 				    hwgrp[i + j]);
 		}
@@ -388,10 +388,8 @@ roc_sso_hwgrp_qos_config(struct roc_sso *roc_sso, struct roc_sso_hwgrp_qos *qos,
 }
 
 int
-roc_sso_hwgrp_alloc_xaq(struct roc_sso *roc_sso, uint32_t npa_aura_id,
-			uint16_t hwgrps)
+sso_hwgrp_alloc_xaq(struct dev *dev, uint32_t npa_aura_id, uint16_t hwgrps)
 {
-	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
 	struct sso_hw_setconfig *req;
 	int rc = -ENOSPC;
 
@@ -406,9 +404,17 @@ roc_sso_hwgrp_alloc_xaq(struct roc_sso *roc_sso, uint32_t npa_aura_id,
 }
 
 int
-roc_sso_hwgrp_release_xaq(struct roc_sso *roc_sso, uint16_t hwgrps)
+roc_sso_hwgrp_alloc_xaq(struct roc_sso *roc_sso, uint32_t npa_aura_id,
+			uint16_t hwgrps)
 {
 	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+
+	return sso_hwgrp_alloc_xaq(dev, npa_aura_id, hwgrps);
+}
+
+int
+sso_hwgrp_release_xaq(struct dev *dev, uint16_t hwgrps)
+{
 	struct sso_hw_xaq_release *req;
 
 	req = mbox_alloc_msg_sso_hw_release_xaq_aura(dev->mbox);
@@ -417,6 +423,14 @@ roc_sso_hwgrp_release_xaq(struct roc_sso *roc_sso, uint16_t hwgrps)
 	req->hwgrps = hwgrps;
 
 	return mbox_process(dev->mbox);
+}
+
+int
+roc_sso_hwgrp_release_xaq(struct roc_sso *roc_sso, uint16_t hwgrps)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+
+	return sso_hwgrp_release_xaq(dev, hwgrps);
 }
 
 int
@@ -468,13 +482,13 @@ roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp)
 		goto hwgrp_atch_fail;
 	}
 
-	rc = sso_lf_alloc(roc_sso, SSO_LF_TYPE_HWS, nb_hws, NULL);
+	rc = sso_lf_alloc(&sso->dev, SSO_LF_TYPE_HWS, nb_hws, NULL);
 	if (rc < 0) {
 		plt_err("Unable to alloc SSO HWS LFs");
 		goto hws_alloc_fail;
 	}
 
-	rc = sso_lf_alloc(roc_sso, SSO_LF_TYPE_HWGRP, nb_hwgrp,
+	rc = sso_lf_alloc(&sso->dev, SSO_LF_TYPE_HWGRP, nb_hwgrp,
 			  (void **)&rsp_hwgrp);
 	if (rc < 0) {
 		plt_err("Unable to alloc SSO HWGRP Lfs");
@@ -503,9 +517,9 @@ roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp)
 
 	return 0;
 sso_msix_fail:
-	sso_lf_free(roc_sso, SSO_LF_TYPE_HWGRP, nb_hwgrp);
+	sso_lf_free(&sso->dev, SSO_LF_TYPE_HWGRP, nb_hwgrp);
 hwgrp_alloc_fail:
-	sso_lf_free(roc_sso, SSO_LF_TYPE_HWS, nb_hws);
+	sso_lf_free(&sso->dev, SSO_LF_TYPE_HWS, nb_hws);
 hws_alloc_fail:
 	sso_rsrc_detach(roc_sso, SSO_LF_TYPE_HWGRP);
 hwgrp_atch_fail:
@@ -523,8 +537,8 @@ roc_sso_rsrc_fini(struct roc_sso *roc_sso)
 
 	sso_unregister_irqs_priv(roc_sso, &sso->pci_dev->intr_handle,
 				 roc_sso->nb_hws, roc_sso->nb_hwgrp);
-	sso_lf_free(roc_sso, SSO_LF_TYPE_HWS, roc_sso->nb_hws);
-	sso_lf_free(roc_sso, SSO_LF_TYPE_HWGRP, roc_sso->nb_hwgrp);
+	sso_lf_free(&sso->dev, SSO_LF_TYPE_HWS, roc_sso->nb_hws);
+	sso_lf_free(&sso->dev, SSO_LF_TYPE_HWGRP, roc_sso->nb_hwgrp);
 
 	sso_rsrc_detach(roc_sso, SSO_LF_TYPE_HWS);
 	sso_rsrc_detach(roc_sso, SSO_LF_TYPE_HWGRP);

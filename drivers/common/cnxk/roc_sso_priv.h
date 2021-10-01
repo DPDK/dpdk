@@ -39,6 +39,15 @@ roc_sso_to_sso_priv(struct roc_sso *roc_sso)
 	return (struct sso *)&roc_sso->reserved[0];
 }
 
+/* SSO LF ops */
+int sso_lf_alloc(struct dev *dev, enum sso_lf_type lf_type, uint16_t nb_lf,
+		 void **rsp);
+int sso_lf_free(struct dev *dev, enum sso_lf_type lf_type, uint16_t nb_lf);
+void sso_hws_link_modify(uint8_t hws, uintptr_t base, struct plt_bitmap *bmp,
+			 uint16_t hwgrp[], uint16_t n, uint16_t enable);
+int sso_hwgrp_alloc_xaq(struct dev *dev, uint32_t npa_aura_id, uint16_t hwgrps);
+int sso_hwgrp_release_xaq(struct dev *dev, uint16_t hwgrps);
+
 /* SSO IRQ */
 int sso_register_irqs_priv(struct roc_sso *roc_sso,
 			   struct plt_intr_handle *handle, uint16_t nb_hws,
