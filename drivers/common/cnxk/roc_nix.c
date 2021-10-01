@@ -306,7 +306,7 @@ sdp_lbk_id_update(struct plt_pci_device *pci_dev, struct nix *nix)
 	}
 }
 
-static inline uint64_t
+uint64_t
 nix_get_blkaddr(struct dev *dev)
 {
 	uint64_t reg;

@@ -29,11 +29,9 @@ nix_qsize_clampup(uint32_t val)
 }
 
 int
-roc_nix_rq_ena_dis(struct roc_nix_rq *rq, bool enable)
+nix_rq_ena_dis(struct dev *dev, struct roc_nix_rq *rq, bool enable)
 {
-	struct nix *nix = roc_nix_to_nix_priv(rq->roc_nix);
-	struct mbox *mbox = (&nix->dev)->mbox;
-	int rc;
+	struct mbox *mbox = dev->mbox;
 
 	/* Pkts will be dropped silently if RQ is disabled */
 	if (roc_model_is_cn9k()) {
@@ -58,17 +56,27 @@ roc_nix_rq_ena_dis(struct roc_nix_rq *rq, bool enable)
 		aq->rq_mask.ena = ~(aq->rq_mask.ena);
 	}
 
-	rc = mbox_process(mbox);
+	return mbox_process(mbox);
+}
+
+int
+roc_nix_rq_ena_dis(struct roc_nix_rq *rq, bool enable)
+{
+	struct nix *nix = roc_nix_to_nix_priv(rq->roc_nix);
+	int rc;
+
+	rc = nix_rq_ena_dis(&nix->dev, rq, enable);
 
 	if (roc_model_is_cn10k())
 		plt_write64(rq->qid, nix->base + NIX_LF_OP_VWQE_FLUSH);
 	return rc;
 }
 
-static int
-rq_cn9k_cfg(struct nix *nix, struct roc_nix_rq *rq, bool cfg, bool ena)
+int
+nix_rq_cn9k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints,
+		bool cfg, bool ena)
 {
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = dev->mbox;
 	struct nix_aq_enq_req *aq;
 
 	aq = mbox_alloc_msg_nix_aq_enq(mbox);
@@ -118,7 +126,7 @@ rq_cn9k_cfg(struct nix *nix, struct roc_nix_rq *rq, bool cfg, bool ena)
 	aq->rq.xqe_imm_size = 0; /* No pkt data copy to CQE */
 	aq->rq.rq_int_ena = 0;
 	/* Many to one reduction */
-	aq->rq.qint_idx = rq->qid % nix->qints;
+	aq->rq.qint_idx = rq->qid % qints;
 	aq->rq.xqe_drop_ena = 1;
 
 	/* If RED enabled, then fill enable for all cases */
@@ -179,11 +187,12 @@ rq_cn9k_cfg(struct nix *nix, struct roc_nix_rq *rq, bool cfg, bool ena)
 	return 0;
 }
 
-static int
-rq_cfg(struct nix *nix, struct roc_nix_rq *rq, bool cfg, bool ena)
+int
+nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg,
+	   bool ena)
 {
-	struct mbox *mbox = (&nix->dev)->mbox;
 	struct nix_cn10k_aq_enq_req *aq;
+	struct mbox *mbox = dev->mbox;
 
 	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
 	aq->qidx = rq->qid;
@@ -220,8 +229,10 @@ rq_cfg(struct nix *nix, struct roc_nix_rq *rq, bool cfg, bool ena)
 		aq->rq.cq = rq->qid;
 	}
 
-	if (rq->ipsech_ena)
+	if (rq->ipsech_ena) {
 		aq->rq.ipsech_ena = 1;
+		aq->rq.ipsecd_drop_en = 1;
+	}
 
 	aq->rq.lpb_aura = roc_npa_aura_handle_to_aura(rq->aura_handle);
 
@@ -260,7 +271,7 @@ rq_cfg(struct nix *nix, struct roc_nix_rq *rq, bool cfg, bool ena)
 	aq->rq.xqe_imm_size = 0; /* No pkt data copy to CQE */
 	aq->rq.rq_int_ena = 0;
 	/* Many to one reduction */
-	aq->rq.qint_idx = rq->qid % nix->qints;
+	aq->rq.qint_idx = rq->qid % qints;
 	aq->rq.xqe_drop_ena = 1;
 
 	/* If RED enabled, then fill enable for all cases */
@@ -359,6 +370,7 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct mbox *mbox = (&nix->dev)->mbox;
 	bool is_cn9k = roc_model_is_cn9k();
+	struct dev *dev = &nix->dev;
 	int rc;
 
 	if (roc_nix == NULL || rq == NULL)
@@ -370,9 +382,9 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	rq->roc_nix = roc_nix;
 
 	if (is_cn9k)
-		rc = rq_cn9k_cfg(nix, rq, false, ena);
+		rc = nix_rq_cn9k_cfg(dev, rq, nix->qints, false, ena);
 	else
-		rc = rq_cfg(nix, rq, false, ena);
+		rc = nix_rq_cfg(dev, rq, nix->qints, false, ena);
 
 	if (rc)
 		return rc;
@@ -386,6 +398,7 @@ roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct mbox *mbox = (&nix->dev)->mbox;
 	bool is_cn9k = roc_model_is_cn9k();
+	struct dev *dev = &nix->dev;
 	int rc;
 
 	if (roc_nix == NULL || rq == NULL)
@@ -397,9 +410,9 @@ roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	rq->roc_nix = roc_nix;
 
 	if (is_cn9k)
-		rc = rq_cn9k_cfg(nix, rq, true, ena);
+		rc = nix_rq_cn9k_cfg(dev, rq, nix->qints, true, ena);
 	else
-		rc = rq_cfg(nix, rq, true, ena);
+		rc = nix_rq_cfg(dev, rq, nix->qints, true, ena);
 
 	if (rc)
 		return rc;

@@ -110,16 +110,11 @@ roc_nix_lf_get_reg_count(struct roc_nix *roc_nix)
 }
 
 int
-roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
+nix_lf_gen_reg_dump(uintptr_t nix_lf_base, uint64_t *data)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	uintptr_t nix_lf_base = nix->base;
 	bool dump_stdout;
 	uint64_t reg;
 	uint32_t i;
-
-	if (roc_nix == NULL)
-		return NIX_ERR_PARAM;
 
 	dump_stdout = data ? 0 : 1;
 
@@ -131,8 +126,21 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 			*data++ = reg;
 	}
 
+	return i;
+}
+
+int
+nix_lf_stat_reg_dump(uintptr_t nix_lf_base, uint64_t *data, uint8_t lf_tx_stats,
+		     uint8_t lf_rx_stats)
+{
+	uint32_t i, count = 0;
+	bool dump_stdout;
+	uint64_t reg;
+
+	dump_stdout = data ? 0 : 1;
+
 	/* NIX_LF_TX_STATX */
-	for (i = 0; i < nix->lf_tx_stats; i++) {
+	for (i = 0; i < lf_tx_stats; i++) {
 		reg = plt_read64(nix_lf_base + NIX_LF_TX_STATX(i));
 		if (dump_stdout && reg)
 			nix_dump("%32s_%d = 0x%" PRIx64, "NIX_LF_TX_STATX", i,
@@ -140,9 +148,10 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 		if (data)
 			*data++ = reg;
 	}
+	count += i;
 
 	/* NIX_LF_RX_STATX */
-	for (i = 0; i < nix->lf_rx_stats; i++) {
+	for (i = 0; i < lf_rx_stats; i++) {
 		reg = plt_read64(nix_lf_base + NIX_LF_RX_STATX(i));
 		if (dump_stdout && reg)
 			nix_dump("%32s_%d = 0x%" PRIx64, "NIX_LF_RX_STATX", i,
@@ -151,8 +160,21 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 			*data++ = reg;
 	}
 
+	return count + i;
+}
+
+int
+nix_lf_int_reg_dump(uintptr_t nix_lf_base, uint64_t *data, uint16_t qints,
+		    uint16_t cints)
+{
+	uint32_t i, count = 0;
+	bool dump_stdout;
+	uint64_t reg;
+
+	dump_stdout = data ? 0 : 1;
+
 	/* NIX_LF_QINTX_CNT*/
-	for (i = 0; i < nix->qints; i++) {
+	for (i = 0; i < qints; i++) {
 		reg = plt_read64(nix_lf_base + NIX_LF_QINTX_CNT(i));
 		if (dump_stdout && reg)
 			nix_dump("%32s_%d = 0x%" PRIx64, "NIX_LF_QINTX_CNT", i,
@@ -160,9 +182,10 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 		if (data)
 			*data++ = reg;
 	}
+	count += i;
 
 	/* NIX_LF_QINTX_INT */
-	for (i = 0; i < nix->qints; i++) {
+	for (i = 0; i < qints; i++) {
 		reg = plt_read64(nix_lf_base + NIX_LF_QINTX_INT(i));
 		if (dump_stdout && reg)
 			nix_dump("%32s_%d = 0x%" PRIx64, "NIX_LF_QINTX_INT", i,
@@ -170,9 +193,10 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 		if (data)
 			*data++ = reg;
 	}
+	count += i;
 
 	/* NIX_LF_QINTX_ENA_W1S */
-	for (i = 0; i < nix->qints; i++) {
+	for (i = 0; i < qints; i++) {
 		reg = plt_read64(nix_lf_base + NIX_LF_QINTX_ENA_W1S(i));
 		if (dump_stdout && reg)
 			nix_dump("%32s_%d = 0x%" PRIx64, "NIX_LF_QINTX_ENA_W1S",
@@ -180,9 +204,10 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 		if (data)
 			*data++ = reg;
 	}
+	count += i;
 
 	/* NIX_LF_QINTX_ENA_W1C */
-	for (i = 0; i < nix->qints; i++) {
+	for (i = 0; i < qints; i++) {
 		reg = plt_read64(nix_lf_base + NIX_LF_QINTX_ENA_W1C(i));
 		if (dump_stdout && reg)
 			nix_dump("%32s_%d = 0x%" PRIx64, "NIX_LF_QINTX_ENA_W1C",
@@ -190,9 +215,10 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 		if (data)
 			*data++ = reg;
 	}
+	count += i;
 
 	/* NIX_LF_CINTX_CNT */
-	for (i = 0; i < nix->cints; i++) {
+	for (i = 0; i < cints; i++) {
 		reg = plt_read64(nix_lf_base + NIX_LF_CINTX_CNT(i));
 		if (dump_stdout && reg)
 			nix_dump("%32s_%d = 0x%" PRIx64, "NIX_LF_CINTX_CNT", i,
@@ -200,9 +226,10 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 		if (data)
 			*data++ = reg;
 	}
+	count += i;
 
 	/* NIX_LF_CINTX_WAIT */
-	for (i = 0; i < nix->cints; i++) {
+	for (i = 0; i < cints; i++) {
 		reg = plt_read64(nix_lf_base + NIX_LF_CINTX_WAIT(i));
 		if (dump_stdout && reg)
 			nix_dump("%32s_%d = 0x%" PRIx64, "NIX_LF_CINTX_WAIT", i,
@@ -210,9 +237,10 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 		if (data)
 			*data++ = reg;
 	}
+	count += i;
 
 	/* NIX_LF_CINTX_INT */
-	for (i = 0; i < nix->cints; i++) {
+	for (i = 0; i < cints; i++) {
 		reg = plt_read64(nix_lf_base + NIX_LF_CINTX_INT(i));
 		if (dump_stdout && reg)
 			nix_dump("%32s_%d = 0x%" PRIx64, "NIX_LF_CINTX_INT", i,
@@ -220,9 +248,10 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 		if (data)
 			*data++ = reg;
 	}
+	count += i;
 
 	/* NIX_LF_CINTX_INT_W1S */
-	for (i = 0; i < nix->cints; i++) {
+	for (i = 0; i < cints; i++) {
 		reg = plt_read64(nix_lf_base + NIX_LF_CINTX_INT_W1S(i));
 		if (dump_stdout && reg)
 			nix_dump("%32s_%d = 0x%" PRIx64, "NIX_LF_CINTX_INT_W1S",
@@ -230,9 +259,10 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 		if (data)
 			*data++ = reg;
 	}
+	count += i;
 
 	/* NIX_LF_CINTX_ENA_W1S */
-	for (i = 0; i < nix->cints; i++) {
+	for (i = 0; i < cints; i++) {
 		reg = plt_read64(nix_lf_base + NIX_LF_CINTX_ENA_W1S(i));
 		if (dump_stdout && reg)
 			nix_dump("%32s_%d = 0x%" PRIx64, "NIX_LF_CINTX_ENA_W1S",
@@ -240,9 +270,10 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 		if (data)
 			*data++ = reg;
 	}
+	count += i;
 
 	/* NIX_LF_CINTX_ENA_W1C */
-	for (i = 0; i < nix->cints; i++) {
+	for (i = 0; i < cints; i++) {
 		reg = plt_read64(nix_lf_base + NIX_LF_CINTX_ENA_W1C(i));
 		if (dump_stdout && reg)
 			nix_dump("%32s_%d = 0x%" PRIx64, "NIX_LF_CINTX_ENA_W1C",
@@ -250,12 +281,40 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 		if (data)
 			*data++ = reg;
 	}
+
+	return count + i;
+}
+
+int
+roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	bool dump_stdout = data ? 0 : 1;
+	uintptr_t nix_base;
+	uint32_t i;
+
+	if (roc_nix == NULL)
+		return NIX_ERR_PARAM;
+
+	nix_base = nix->base;
+	/* General registers */
+	i = nix_lf_gen_reg_dump(nix_base, data);
+
+	/* Rx, Tx stat registers */
+	i += nix_lf_stat_reg_dump(nix_base, dump_stdout ? NULL : &data[i],
+				  nix->lf_tx_stats, nix->lf_rx_stats);
+
+	/* Intr registers */
+	i += nix_lf_int_reg_dump(nix_base, dump_stdout ? NULL : &data[i],
+				 nix->qints, nix->cints);
+
 	return 0;
 }
 
-static int
-nix_q_ctx_get(struct mbox *mbox, uint8_t ctype, uint16_t qid, __io void **ctx_p)
+int
+nix_q_ctx_get(struct dev *dev, uint8_t ctype, uint16_t qid, __io void **ctx_p)
 {
+	struct mbox *mbox = dev->mbox;
 	int rc;
 
 	if (roc_model_is_cn9k()) {
@@ -485,7 +544,7 @@ nix_cn9k_lf_rq_dump(__io struct nix_rq_ctx_s *ctx)
 	nix_dump("W10: re_pkts \t\t\t0x%" PRIx64 "\n", (uint64_t)ctx->re_pkts);
 }
 
-static inline void
+void
 nix_lf_rq_dump(__io struct nix_cn10k_rq_ctx_s *ctx)
 {
 	nix_dump("W0: wqe_aura \t\t\t%d\nW0: len_ol3_dis \t\t\t%d",
@@ -595,12 +654,12 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	int rc = -1, q, rq = nix->nb_rx_queues;
-	struct mbox *mbox = (&nix->dev)->mbox;
 	struct npa_aq_enq_rsp *npa_rsp;
 	struct npa_aq_enq_req *npa_aq;
-	volatile void *ctx;
+	struct dev *dev = &nix->dev;
 	int sq = nix->nb_tx_queues;
 	struct npa_lf *npa_lf;
+	volatile void *ctx;
 	uint32_t sqb_aura;
 
 	npa_lf = idev_npa_obj_get();
@@ -608,7 +667,7 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix)
 		return NPA_ERR_DEVICE_NOT_BOUNDED;
 
 	for (q = 0; q < rq; q++) {
-		rc = nix_q_ctx_get(mbox, NIX_AQ_CTYPE_CQ, q, &ctx);
+		rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_CQ, q, &ctx);
 		if (rc) {
 			plt_err("Failed to get cq context");
 			goto fail;
@@ -619,7 +678,7 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix)
 	}
 
 	for (q = 0; q < rq; q++) {
-		rc = nix_q_ctx_get(mbox, NIX_AQ_CTYPE_RQ, q, &ctx);
+		rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_RQ, q, &ctx);
 		if (rc) {
 			plt_err("Failed to get rq context");
 			goto fail;
@@ -633,7 +692,7 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix)
 	}
 
 	for (q = 0; q < sq; q++) {
-		rc = nix_q_ctx_get(mbox, NIX_AQ_CTYPE_SQ, q, &ctx);
+		rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_SQ, q, &ctx);
 		if (rc) {
 			plt_err("Failed to get sq context");
 			goto fail;
@@ -686,11 +745,13 @@ roc_nix_cqe_dump(const struct nix_cqe_hdr_s *cq)
 {
 	const union nix_rx_parse_u *rx =
 		(const union nix_rx_parse_u *)((const uint64_t *)cq + 1);
+	const uint64_t *sgs = (const uint64_t *)(rx + 1);
+	int i;
 
 	nix_dump("tag \t\t0x%x\tq \t\t%d\t\tnode \t\t%d\tcqe_type \t%d",
 		 cq->tag, cq->q, cq->node, cq->cqe_type);
 
-	nix_dump("W0: chan \t%d\t\tdesc_sizem1 \t%d", rx->chan,
+	nix_dump("W0: chan \t0x%x\t\tdesc_sizem1 \t%d", rx->chan,
 		 rx->desc_sizem1);
 	nix_dump("W0: imm_copy \t%d\t\texpress \t%d", rx->imm_copy,
 		 rx->express);
@@ -731,6 +792,9 @@ roc_nix_cqe_dump(const struct nix_cqe_hdr_s *cq)
 
 	nix_dump("W5: vtag0_ptr \t%d\t\tvtag1_ptr \t%d\t\tflow_key_alg \t%d",
 		 rx->vtag0_ptr, rx->vtag1_ptr, rx->flow_key_alg);
+
+	for (i = 0; i < (rx->desc_sizem1 + 1) << 1; i++)
+		nix_dump("sg[%u] = %p", i, (void *)sgs[i]);
 }
 
 void
