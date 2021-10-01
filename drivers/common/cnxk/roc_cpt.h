@@ -155,4 +155,6 @@ void __roc_api roc_cpt_iq_enable(struct roc_cpt_lf *lf);
 int __roc_api roc_cpt_lmtline_init(struct roc_cpt *roc_cpt,
 				   struct roc_cpt_lmtline *lmtline, int lf_id);
 
+void __roc_api roc_cpt_parse_hdr_dump(const struct cpt_parse_hdr_s *cpth);
+
 #endif /* _ROC_CPT_H_ */

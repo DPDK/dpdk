@@ -65,6 +65,7 @@ INTERNAL {
 	roc_cpt_lf_fini;
 	roc_cpt_lfs_print;
 	roc_cpt_lmtline_init;
+	roc_cpt_parse_hdr_dump;
 	roc_cpt_rxc_time_cfg;
 	roc_error_msg_get;
 	roc_hash_sha1_gen;

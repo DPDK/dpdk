@@ -5,6 +5,37 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+void
+roc_cpt_parse_hdr_dump(const struct cpt_parse_hdr_s *cpth)
+{
+	plt_print("CPT_PARSE \t0x%p:", cpth);
+
+	/* W0 */
+	plt_print("W0: cookie \t0x%x\t\tmatch_id \t0x%04x\t\terr_sum \t%u \t",
+		  cpth->w0.cookie, cpth->w0.match_id, cpth->w0.err_sum);
+	plt_print("W0: reas_sts \t0x%x\t\tet_owr \t%u\t\tpkt_fmt \t%u \t",
+		  cpth->w0.reas_sts, cpth->w0.et_owr, cpth->w0.pkt_fmt);
+	plt_print("W0: pad_len \t%u\t\tnum_frags \t%u\t\tpkt_out \t%u \t",
+		  cpth->w0.pad_len, cpth->w0.num_frags, cpth->w0.pkt_out);
+
+	/* W1 */
+	plt_print("W1: wqe_ptr \t0x%016lx\t", cpth->wqe_ptr);
+
+	/* W2 */
+	plt_print("W2: frag_age \t0x%x\t\torig_pf_func \t0x%04x",
+		  cpth->w2.frag_age, cpth->w2.orig_pf_func);
+	plt_print("W2: il3_off \t0x%x\t\tfi_pad \t0x%x\t\tfi_offset \t0x%x \t",
+		  cpth->w2.il3_off, cpth->w2.fi_pad, cpth->w2.fi_offset);
+
+	/* W3 */
+	plt_print("W3: hw_ccode \t0x%x\t\tuc_ccode \t0x%x\t\tspi \t0x%08x",
+		  cpth->w3.hw_ccode, cpth->w3.uc_ccode, cpth->w3.spi);
+
+	/* W4 */
+	plt_print("W4: esn \t%" PRIx64 " \t OR frag1_wqe_ptr \t0x%" PRIx64,
+		  cpth->esn, cpth->frag1_wqe_ptr);
+}
+
 static int
 cpt_af_reg_read(struct roc_cpt *roc_cpt, uint64_t reg, uint64_t *val)
 {
