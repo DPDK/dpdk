@@ -107,6 +107,9 @@ struct roc_nix_inl_dev {
 	struct plt_pci_device *pci_dev;
 	uint16_t ipsec_in_max_spi;
 	bool selftest;
+	bool is_multi_channel;
+	uint16_t channel;
+	uint16_t chan_mask;
 	bool attach_cptlf;
 	/* End of input parameters */
 

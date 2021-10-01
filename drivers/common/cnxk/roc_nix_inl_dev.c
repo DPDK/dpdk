@@ -543,6 +543,9 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev->pci_dev = pci_dev;
 	inl_dev->ipsec_in_max_spi = roc_inl_dev->ipsec_in_max_spi;
 	inl_dev->selftest = roc_inl_dev->selftest;
+	inl_dev->is_multi_channel = roc_inl_dev->is_multi_channel;
+	inl_dev->channel = roc_inl_dev->channel;
+	inl_dev->chan_mask = roc_inl_dev->chan_mask;
 	inl_dev->attach_cptlf = roc_inl_dev->attach_cptlf;
 
 	/* Initialize base device */

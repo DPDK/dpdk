@@ -503,8 +503,11 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 {
 	int use_ctr = (flow->ctr_id == NPC_COUNTER_NONE ? 0 : 1);
 	struct npc_mcam_write_entry_req *req;
+	struct nix_inl_dev *inl_dev = NULL;
 	struct mbox *mbox = npc->mbox;
 	struct mbox_msghdr *rsp;
+	struct idev_cfg *idev;
+	uint16_t pf_func = 0;
 	uint16_t ctr = ~(0);
 	int rc, idx;
 	int entry;
@@ -553,9 +556,30 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 		req->entry_data.kw_mask[idx] = flow->mcam_mask[idx];
 	}
 
+	idev = idev_get_cfg();
+	if (idev)
+		inl_dev = idev->nix_inl_dev;
+
 	if (flow->nix_intf == NIX_INTF_RX) {
-		req->entry_data.kw[0] |= (uint64_t)npc->channel;
-		req->entry_data.kw_mask[0] |= (BIT_ULL(12) - 1);
+		if (inl_dev && inl_dev->is_multi_channel &&
+		    (flow->npc_action & NIX_RX_ACTIONOP_UCAST_IPSEC)) {
+			req->entry_data.kw[0] |= (uint64_t)inl_dev->channel;
+			req->entry_data.kw_mask[0] |=
+				(uint64_t)inl_dev->chan_mask;
+			pf_func = nix_inl_dev_pffunc_get();
+			req->entry_data.action &= ~(GENMASK(19, 4));
+			req->entry_data.action |= (uint64_t)pf_func << 4;
+
+			flow->npc_action &= ~(GENMASK(19, 4));
+			flow->npc_action |= (uint64_t)pf_func << 4;
+			flow->mcam_data[0] |= (uint64_t)inl_dev->channel;
+			flow->mcam_mask[0] |= (uint64_t)inl_dev->chan_mask;
+		} else {
+			req->entry_data.kw[0] |= (uint64_t)npc->channel;
+			req->entry_data.kw_mask[0] |= (BIT_ULL(12) - 1);
+			flow->mcam_data[0] |= (uint64_t)npc->channel;
+			flow->mcam_mask[0] |= (BIT_ULL(12) - 1);
+		}
 	} else {
 		uint16_t pf_func = (flow->npc_action >> 4) & 0xffff;
 
