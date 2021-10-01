@@ -2866,12 +2866,6 @@ eth_dev_get_xstats_count(uint16_t port_id)
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
-	if (dev->dev_ops->xstats_get_names_by_id != NULL) {
-		count = (*dev->dev_ops->xstats_get_names_by_id)(dev, NULL,
-				NULL, 0);
-		if (count < 0)
-			return eth_err(port_id, count);
-	}
 	if (dev->dev_ops->xstats_get_names != NULL) {
 		count = (*dev->dev_ops->xstats_get_names)(dev, NULL, 0);
 		if (count < 0)
