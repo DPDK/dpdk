@@ -1365,12 +1365,12 @@ hns3_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param ids
+ *   IDs array given by app to retrieve specific statistics
  * @param xstats_names
  *   An rte_eth_xstat_name array of at least *size* elements to
  *   be filled. If set to NULL, the function returns the required number
  *   of elements.
- * @param ids
- *   IDs array given by app to retrieve specific statistics
  * @param size
  *   The size of the xstats_names array (number of elements).
  * @return
@@ -1383,8 +1383,9 @@ hns3_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
  */
 int
 hns3_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
+				const uint64_t *ids,
 				struct rte_eth_xstat_name *xstats_names,
-				const uint64_t *ids, uint32_t size)
+				uint32_t size)
 {
 	const uint32_t cnt_stats = hns3_xstats_calc_num(dev);
 	struct hns3_adapter *hns = dev->data->dev_private;

@@ -2451,8 +2451,8 @@ static int txgbe_dev_xstats_get_names(struct rte_eth_dev *dev,
 }
 
 static int txgbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
-	struct rte_eth_xstat_name *xstats_names,
 	const uint64_t *ids,
+	struct rte_eth_xstat_name *xstats_names,
 	unsigned int limit)
 {
 	unsigned int i;

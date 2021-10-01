@@ -56,8 +56,9 @@ int cxgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev,
 			       const uint64_t *ids, uint64_t *values,
 			       unsigned int n);
 int cxgbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
+				     const uint64_t *ids,
 				     struct rte_eth_xstat_name *xnames,
-				     const uint64_t *ids, unsigned int n);
+				     unsigned int n);
 int cxgbe_dev_xstats_get_names(struct rte_eth_dev *dev,
 			       struct rte_eth_xstat_name *xstats_names,
 			       unsigned int n);

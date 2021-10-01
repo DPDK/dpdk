@@ -227,8 +227,9 @@ cnxk_nix_xstats_get_names(struct rte_eth_dev *eth_dev,
 
 int
 cnxk_nix_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
+				const uint64_t *ids,
 				struct rte_eth_xstat_name *xstats_names,
-				const uint64_t *ids, unsigned int limit)
+				unsigned int limit)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	uint32_t nix_cnt = roc_nix_num_xstats_get(&dev->nix);

@@ -96,7 +96,7 @@ static int eth_igb_xstats_get_names(struct rte_eth_dev *dev,
 				    struct rte_eth_xstat_name *xstats_names,
 				    unsigned int size);
 static int eth_igb_xstats_get_names_by_id(struct rte_eth_dev *dev,
-		struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
+		const uint64_t *ids, struct rte_eth_xstat_name *xstats_names,
 		unsigned int limit);
 static int eth_igb_stats_reset(struct rte_eth_dev *dev);
 static int eth_igb_xstats_reset(struct rte_eth_dev *dev);
@@ -1883,7 +1883,7 @@ static int eth_igb_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 }
 
 static int eth_igb_xstats_get_names_by_id(struct rte_eth_dev *dev,
-		struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
+		const uint64_t *ids, struct rte_eth_xstat_name *xstats_names,
 		unsigned int limit)
 {
 	unsigned int i;
@@ -1902,7 +1902,7 @@ static int eth_igb_xstats_get_names_by_id(struct rte_eth_dev *dev,
 	} else {
 		struct rte_eth_xstat_name xstats_names_copy[IGB_NB_XSTATS];
 
-		eth_igb_xstats_get_names_by_id(dev, xstats_names_copy, NULL,
+		eth_igb_xstats_get_names_by_id(dev, NULL, xstats_names_copy,
 				IGB_NB_XSTATS);
 
 		for (i = 0; i < limit; i++) {

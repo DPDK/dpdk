@@ -514,8 +514,9 @@ int otx2_nix_xstats_get_by_id(struct rte_eth_dev *eth_dev,
 			      const uint64_t *ids,
 			      uint64_t *values, unsigned int n);
 int otx2_nix_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
+				    const uint64_t *ids,
 				    struct rte_eth_xstat_name *xstats_names,
-				    const uint64_t *ids, unsigned int limit);
+				    unsigned int limit);
 
 /* RSS */
 void otx2_nix_rss_set_key(struct otx2_eth_dev *dev,

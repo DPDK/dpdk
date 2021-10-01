@@ -240,8 +240,9 @@ otx2_nix_xstats_get_names(struct rte_eth_dev *eth_dev,
 
 int
 otx2_nix_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
+				const uint64_t *ids,
 				struct rte_eth_xstat_name *xstats_names,
-				const uint64_t *ids, unsigned int limit)
+				unsigned int limit)
 {
 	struct rte_eth_xstat_name xstats_names_copy[OTX2_NIX_NUM_XSTATS_REG];
 	uint16_t i;

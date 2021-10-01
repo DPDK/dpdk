@@ -3023,7 +3023,7 @@ rte_eth_xstats_get_names_by_id(uint16_t port_id,
 
 		if (no_basic_stat_requested)
 			return (*dev->dev_ops->xstats_get_names_by_id)(dev,
-					xstats_names, ids_copy, size);
+					ids_copy, xstats_names, size);
 	}
 
 	/* Retrieve all stats */

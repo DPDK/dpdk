@@ -838,8 +838,9 @@ sfc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 
 static int
 sfc_xstats_get_names_by_id(struct rte_eth_dev *dev,
+			   const uint64_t *ids,
 			   struct rte_eth_xstat_name *xstats_names,
-			   const uint64_t *ids, unsigned int size)
+			   unsigned int size)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct sfc_port *port = &sa->port;

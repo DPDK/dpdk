@@ -1797,8 +1797,8 @@ dpaa2_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 static int
 dpaa2_xstats_get_names_by_id(
 	struct rte_eth_dev *dev,
-	struct rte_eth_xstat_name *xstats_names,
 	const uint64_t *ids,
+	struct rte_eth_xstat_name *xstats_names,
 	unsigned int limit)
 {
 	unsigned int i, stat_cnt = RTE_DIM(dpaa2_xstats_strings);

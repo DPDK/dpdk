@@ -237,11 +237,11 @@ typedef int (*eth_xstats_get_names_t)(struct rte_eth_dev *dev,
  *
  * @param dev
  *   ethdev handle of port.
+ * @param ids
+ *   IDs array to retrieve specific statistics. Must not be NULL.
  * @param xstats_names
  *   An rte_eth_xstat_name array of at least @p size elements to be filled.
  *   Must not be NULL.
- * @param ids
- *   IDs array to retrieve specific statistics. Must not be NULL.
  * @param size
  *   Element count in @p ids and @p xstats_names.
  *
@@ -250,7 +250,7 @@ typedef int (*eth_xstats_get_names_t)(struct rte_eth_dev *dev,
  *   - A negative value on error.
  */
 typedef int (*eth_xstats_get_names_by_id_t)(struct rte_eth_dev *dev,
-	struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
+	const uint64_t *ids, struct rte_eth_xstat_name *xstats_names,
 	unsigned int size);
 
 typedef int (*eth_queue_stats_mapping_set_t)(struct rte_eth_dev *dev,

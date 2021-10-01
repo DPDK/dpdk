@@ -365,8 +365,9 @@ int cnxk_nix_xstats_get_names(struct rte_eth_dev *eth_dev,
 			      struct rte_eth_xstat_name *xstats_names,
 			      unsigned int limit);
 int cnxk_nix_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
+				    const uint64_t *ids,
 				    struct rte_eth_xstat_name *xstats_names,
-				    const uint64_t *ids, unsigned int limit);
+				    unsigned int limit);
 int cnxk_nix_xstats_get_by_id(struct rte_eth_dev *eth_dev, const uint64_t *ids,
 			      uint64_t *values, unsigned int n);
 int cnxk_nix_xstats_reset(struct rte_eth_dev *eth_dev);

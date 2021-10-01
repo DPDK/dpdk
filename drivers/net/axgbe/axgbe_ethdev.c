@@ -57,8 +57,8 @@ axgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev,
 			   unsigned int n);
 static int
 axgbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
-				 struct rte_eth_xstat_name *xstats_names,
 				 const uint64_t *ids,
+				 struct rte_eth_xstat_name *xstats_names,
 				 unsigned int size);
 static int axgbe_dev_xstats_reset(struct rte_eth_dev *dev);
 static int axgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
@@ -1076,8 +1076,8 @@ axgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 
 static int
 axgbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
-				 struct rte_eth_xstat_name *xstats_names,
 				 const uint64_t *ids,
+				 struct rte_eth_xstat_name *xstats_names,
 				 unsigned int size)
 {
 	struct rte_eth_xstat_name xstats_names_copy[AXGBE_XSTATS_COUNT];

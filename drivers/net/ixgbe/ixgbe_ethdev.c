@@ -173,8 +173,8 @@ static int ixgbevf_dev_xstats_get_names(struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names, unsigned limit);
 static int ixgbe_dev_xstats_get_names_by_id(
 	struct rte_eth_dev *dev,
-	struct rte_eth_xstat_name *xstats_names,
 	const uint64_t *ids,
+	struct rte_eth_xstat_name *xstats_names,
 	unsigned int limit);
 static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 					     uint16_t queue_id,
@@ -3437,8 +3437,8 @@ static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 
 static int ixgbe_dev_xstats_get_names_by_id(
 	struct rte_eth_dev *dev,
-	struct rte_eth_xstat_name *xstats_names,
 	const uint64_t *ids,
+	struct rte_eth_xstat_name *xstats_names,
 	unsigned int limit)
 {
 	if (!ids) {
@@ -3497,7 +3497,7 @@ static int ixgbe_dev_xstats_get_names_by_id(
 	uint16_t size = ixgbe_xstats_calc_num();
 	struct rte_eth_xstat_name xstats_names_copy[size];
 
-	ixgbe_dev_xstats_get_names_by_id(dev, xstats_names_copy, NULL,
+	ixgbe_dev_xstats_get_names_by_id(dev, NULL, xstats_names_copy,
 			size);
 
 	for (i = 0; i < limit; i++) {

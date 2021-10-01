@@ -52,7 +52,7 @@ static int  ionic_dev_xstats_reset(struct rte_eth_dev *dev);
 static int  ionic_dev_xstats_get_names(struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names, unsigned int size);
 static int  ionic_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
-	struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
+	const uint64_t *ids, struct rte_eth_xstat_name *xstats_names,
 	unsigned int limit);
 static int  ionic_dev_fw_version_get(struct rte_eth_dev *eth_dev,
 	char *fw_version, size_t fw_size);
@@ -733,7 +733,7 @@ ionic_dev_xstats_get_names(__rte_unused struct rte_eth_dev *eth_dev,
 
 static int
 ionic_dev_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
-		struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
+		const uint64_t *ids, struct rte_eth_xstat_name *xstats_names,
 		unsigned int limit)
 {
 	struct rte_eth_xstat_name xstats_names_copy[IONIC_NB_HW_STATS];
@@ -751,7 +751,7 @@ ionic_dev_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
 		return IONIC_NB_HW_STATS;
 	}
 
-	ionic_dev_xstats_get_names_by_id(eth_dev, xstats_names_copy, NULL,
+	ionic_dev_xstats_get_names_by_id(eth_dev, NULL, xstats_names_copy,
 		IONIC_NB_HW_STATS);
 
 	for (i = 0; i < limit; i++) {
