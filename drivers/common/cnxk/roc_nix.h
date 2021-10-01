@@ -194,7 +194,9 @@ struct roc_nix_sq {
 	enum roc_nix_sq_max_sqe_sz max_sqe_sz;
 	uint32_t nb_desc;
 	uint16_t qid;
+	uint16_t cqid;
 	bool sso_ena;
+	bool cq_ena;
 	/* End of Input parameters */
 	uint16_t sqes_per_sqb_log2;
 	struct roc_nix *roc_nix;
