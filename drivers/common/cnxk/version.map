@@ -46,6 +46,7 @@ INTERNAL {
 	roc_bphy_intr_fini;
 	roc_bphy_intr_handler;
 	roc_bphy_intr_init;
+	roc_bphy_intr_max_get;
 	roc_bphy_intr_register;
 	roc_bphy_npa_pf_func_get;
 	roc_bphy_sso_pf_func_get;

@@ -32,7 +32,7 @@ cnxk_bphy_irq_max_get(uint16_t dev_id)
 	bphy_dev = cnxk_bphy_get_bphy_dev_by_dev_id(dev_id);
 	irq_chip = bphy_dev->irq_chip;
 
-	return irq_chip->max_irq;
+	return roc_bphy_intr_max_get(irq_chip);
 }
 
 int

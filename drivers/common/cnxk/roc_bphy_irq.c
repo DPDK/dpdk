@@ -318,6 +318,12 @@ roc_bphy_intr_available(struct roc_bphy_irq_chip *irq_chip, int irq_num)
 	return irq_chip->avail_irq_bmask & BIT(irq_num);
 }
 
+uint64_t
+roc_bphy_intr_max_get(struct roc_bphy_irq_chip *irq_chip)
+{
+	return irq_chip->max_irq;
+}
+
 int
 roc_bphy_intr_clear(struct roc_bphy_irq_chip *chip, int irq_num)
 {
