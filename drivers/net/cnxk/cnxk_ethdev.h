@@ -269,6 +269,7 @@ struct cnxk_eth_dev {
 	union {
 		struct {
 			uint64_t cq_min_4k : 1;
+			uint64_t ipsecd_drop_re_dis : 1;
 		};
 		uint64_t hwcap;
 	};

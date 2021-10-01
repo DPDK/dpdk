@@ -1021,6 +1021,15 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		   ROC_NIX_LF_RX_CFG_LEN_IL4 | ROC_NIX_LF_RX_CFG_LEN_IL3 |
 		   ROC_NIX_LF_RX_CFG_LEN_OL4 | ROC_NIX_LF_RX_CFG_LEN_OL3);
 
+	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+		rx_cfg |= ROC_NIX_LF_RX_CFG_IP6_UDP_OPT;
+		/* Disable drop re if rx offload security is enabled and
+		 * platform does not support it.
+		 */
+		if (dev->ipsecd_drop_re_dis)
+			rx_cfg &= ~(ROC_NIX_LF_RX_CFG_DROP_RE);
+	}
+
 	nb_rxq = RTE_MAX(data->nb_rx_queues, 1);
 	nb_txq = RTE_MAX(data->nb_tx_queues, 1);
 
