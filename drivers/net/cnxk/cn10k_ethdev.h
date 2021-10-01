@@ -64,7 +64,8 @@ struct cn10k_sec_sess_priv {
 		struct {
 			uint32_t sa_idx;
 			uint8_t inb_sa : 1;
-			uint8_t rsvd1 : 2;
+			uint8_t outer_ip_ver : 1;
+			uint8_t mode : 1;
 			uint8_t roundup_byte : 5;
 			uint8_t roundup_len;
 			uint16_t partial_len;

@@ -341,6 +341,8 @@ cn10k_eth_sec_session_create(void *device,
 		sess_priv.roundup_byte = rlens->roundup_byte;
 		sess_priv.roundup_len = rlens->roundup_len;
 		sess_priv.partial_len = rlens->partial_len;
+		sess_priv.mode = outb_sa->w2.s.ipsec_mode;
+		sess_priv.outer_ip_ver = outb_sa->w2.s.outer_ip_ver;
 
 		/* Pointer from eth_sec -> outb_sa */
 		eth_sec->sa = outb_sa;

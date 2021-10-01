@@ -344,6 +344,7 @@ cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 	/* There are two words of CPT_CTX_HW_S for ucode to skip */
 	sa->w0.s.ctx_hdr_size = 1;
 	sa->w0.s.aop_valid = 1;
+	sa->w0.s.et_ovrwr = 1;
 
 	rte_wmb();
 
