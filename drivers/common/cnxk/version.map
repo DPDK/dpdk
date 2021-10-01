@@ -14,6 +14,10 @@ INTERNAL {
 	cnxk_logtype_sso;
 	cnxk_logtype_tim;
 	cnxk_logtype_tm;
+	cnxk_onf_ipsec_inb_sa_fill;
+	cnxk_onf_ipsec_outb_sa_fill;
+	cnxk_onf_ipsec_inb_sa_valid;
+	cnxk_onf_ipsec_outb_sa_valid;
 	cnxk_ot_ipsec_inb_sa_fill;
 	cnxk_ot_ipsec_outb_sa_fill;
 	cnxk_ot_ipsec_inb_sa_valid;

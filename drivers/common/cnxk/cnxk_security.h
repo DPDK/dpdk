@@ -46,4 +46,16 @@ cnxk_ot_ipsec_outb_sa_fill(struct roc_ot_ipsec_outb_sa *sa,
 bool __roc_api cnxk_ot_ipsec_inb_sa_valid(struct roc_ot_ipsec_inb_sa *sa);
 bool __roc_api cnxk_ot_ipsec_outb_sa_valid(struct roc_ot_ipsec_outb_sa *sa);
 
+/* [CN9K, CN10K) */
+int __roc_api
+cnxk_onf_ipsec_inb_sa_fill(struct roc_onf_ipsec_inb_sa *sa,
+			   struct rte_security_ipsec_xform *ipsec_xfrm,
+			   struct rte_crypto_sym_xform *crypto_xfrm);
+int __roc_api
+cnxk_onf_ipsec_outb_sa_fill(struct roc_onf_ipsec_outb_sa *sa,
+			    struct rte_security_ipsec_xform *ipsec_xfrm,
+			    struct rte_crypto_sym_xform *crypto_xfrm);
+bool __roc_api cnxk_onf_ipsec_inb_sa_valid(struct roc_onf_ipsec_inb_sa *sa);
+bool __roc_api cnxk_onf_ipsec_outb_sa_valid(struct roc_onf_ipsec_outb_sa *sa);
+
 #endif /* _CNXK_SECURITY_H__ */
