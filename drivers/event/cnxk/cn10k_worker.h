@@ -423,7 +423,11 @@ cn10k_sso_vwqe_split_tx(struct rte_mbuf **mbufs, uint16_t nb_mbufs,
 		    ((queue[0] ^ queue[1]) & (queue[2] ^ queue[3]))) {
 
 			for (j = 0; j < 4; j++) {
+				uint8_t lnum = 0, loff = 0, shft = 0;
 				struct rte_mbuf *m = mbufs[i + j];
+				uintptr_t laddr;
+				uint16_t segdw;
+				bool sec;
 
 				txq = (struct cn10k_eth_txq *)
 					txq_data[port[j]][queue[j]];
@@ -434,19 +438,35 @@ cn10k_sso_vwqe_split_tx(struct rte_mbuf **mbufs, uint16_t nb_mbufs,
 				if (flags & NIX_TX_OFFLOAD_TSO_F)
 					cn10k_nix_xmit_prepare_tso(m, flags);
 
-				cn10k_nix_xmit_prepare(m, cmd, lmt_addr, flags,
-						       txq->lso_tun_fmt);
+				cn10k_nix_xmit_prepare(m, cmd, flags,
+						       txq->lso_tun_fmt, &sec);
+
+				laddr = lmt_addr;
+				/* Prepare CPT instruction and get nixtx addr if
+				 * it is for CPT on same lmtline.
+				 */
+				if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
+					cn10k_nix_prep_sec(m, cmd, &laddr,
+							   lmt_addr, &lnum,
+							   &loff, &shft,
+							   txq->sa_base, flags);
+
+				/* Move NIX desc to LMT/NIXTX area */
+				cn10k_nix_xmit_mv_lmt_base(laddr, cmd, flags);
+
 				if (flags & NIX_TX_MULTI_SEG_F) {
-					const uint16_t segdw =
-						cn10k_nix_prepare_mseg(
-							m, (uint64_t *)lmt_addr,
-							flags);
-					pa = txq->io_addr | ((segdw - 1) << 4);
+					segdw = cn10k_nix_prepare_mseg(m,
+						(uint64_t *)laddr, flags);
 				} else {
-					pa = txq->io_addr |
-					     (cn10k_nix_tx_ext_subs(flags) + 1)
-						     << 4;
+					segdw = cn10k_nix_tx_ext_subs(flags) +
+						2;
 				}
+
+				if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
+					pa = txq->cpt_io_addr | 3 << 4;
+				else
+					pa = txq->io_addr | ((segdw - 1) << 4);
+
 				if (!sched_type)
 					roc_sso_hws_head_wait(base +
 							      SSOW_LF_GWS_TAG);
@@ -469,15 +489,19 @@ cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
 		       const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT],
 		       const uint32_t flags)
 {
+	uint8_t lnum = 0, loff = 0, shft = 0;
 	struct cn10k_eth_txq *txq;
+	uint16_t ref_cnt, segdw;
 	struct rte_mbuf *m;
 	uintptr_t lmt_addr;
-	uint16_t ref_cnt;
+	uintptr_t c_laddr;
 	uint16_t lmt_id;
 	uintptr_t pa;
+	bool sec;
 
 	lmt_addr = ws->lmt_base;
 	ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id);
+	c_laddr = lmt_addr;
 
 	if (ev->event_type & RTE_EVENT_TYPE_VECTOR) {
 		struct rte_mbuf **mbufs = ev->vec->mbufs;
@@ -508,14 +532,28 @@ cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
 	if (flags & NIX_TX_OFFLOAD_TSO_F)
 		cn10k_nix_xmit_prepare_tso(m, flags);
 
-	cn10k_nix_xmit_prepare(m, cmd, lmt_addr, flags, txq->lso_tun_fmt);
+	cn10k_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt, &sec);
+
+	/* Prepare CPT instruction and get nixtx addr if
+	 * it is for CPT on same lmtline.
+	 */
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
+		cn10k_nix_prep_sec(m, cmd, &lmt_addr, c_laddr, &lnum, &loff,
+				   &shft, txq->sa_base, flags);
+
+	/* Move NIX desc to LMT/NIXTX area */
+	cn10k_nix_xmit_mv_lmt_base(lmt_addr, cmd, flags);
 	if (flags & NIX_TX_MULTI_SEG_F) {
-		const uint16_t segdw =
-			cn10k_nix_prepare_mseg(m, (uint64_t *)lmt_addr, flags);
-		pa = txq->io_addr | ((segdw - 1) << 4);
+		segdw = cn10k_nix_prepare_mseg(m, (uint64_t *)lmt_addr, flags);
 	} else {
-		pa = txq->io_addr | (cn10k_nix_tx_ext_subs(flags) + 1) << 4;
+		segdw = cn10k_nix_tx_ext_subs(flags) + 2;
 	}
+
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
+		pa = txq->cpt_io_addr | 3 << 4;
+	else
+		pa = txq->io_addr | ((segdw - 1) << 4);
+
 	if (!ev->sched_type)
 		roc_sso_hws_head_wait(ws->tx_base + SSOW_LF_GWS_TAG);
 
@@ -531,7 +569,7 @@ cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
 	return 1;
 }
 
-#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)                             \
+#define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)                         \
 	uint16_t __rte_hot cn10k_sso_hws_tx_adptr_enq_##name(                  \
 		void *port, struct rte_event ev[], uint16_t nb_events);        \
 	uint16_t __rte_hot cn10k_sso_hws_tx_adptr_enq_seg_##name(              \

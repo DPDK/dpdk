@@ -5,7 +5,7 @@
 #include "cn10k_ethdev.h"
 #include "cn10k_tx.h"
 
-#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)			       \
+#define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			       \
 	uint16_t __rte_noinline __rte_hot				       \
 		cn10k_nix_xmit_pkts_vec_##name(void *tx_queue,                 \
 					       struct rte_mbuf **tx_pkts,      \

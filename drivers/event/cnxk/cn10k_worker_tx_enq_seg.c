@@ -4,7 +4,7 @@
 
 #include "cn10k_worker.h"
 
-#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)                             \
+#define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)                         \
 	uint16_t __rte_hot cn10k_sso_hws_tx_adptr_enq_seg_##name(              \
 		void *port, struct rte_event ev[], uint16_t nb_events)         \
 	{                                                                      \
