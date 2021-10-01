@@ -48,6 +48,7 @@ struct pkt_rx_queue {
 
 	struct rte_mempool *mb_pool;
 	uint16_t in_port;
+	uint8_t vlan_strip;
 
 	volatile unsigned long rx_pkts;
 	volatile unsigned long rx_bytes;
@@ -78,6 +79,7 @@ struct pmd_internals {
 
 	struct pkt_rx_queue *rx_queue;
 	struct pkt_tx_queue *tx_queue;
+	uint8_t vlan_strip;
 };
 
 static const char *valid_arguments[] = {
@@ -148,6 +150,9 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		if (ppd->tp_status & TP_STATUS_VLAN_VALID) {
 			mbuf->vlan_tci = ppd->tp_vlan_tci;
 			mbuf->ol_flags |= (PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
+
+			if (!pkt_q->vlan_strip && rte_vlan_insert(&mbuf))
+				PMD_LOG(ERR, "Failed to reinsert VLAN tag");
 		}
 
 		/* release incoming frame and advance ring buffer */
@@ -322,6 +327,11 @@ eth_dev_stop(struct rte_eth_dev *dev)
 static int
 eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
 {
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	const struct rte_eth_rxmode *rxmode = &dev_conf->rxmode;
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	internals->vlan_strip = !!(rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
 	return 0;
 }
 
@@ -338,6 +348,7 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 0;
 	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS |
 		DEV_TX_OFFLOAD_VLAN_INSERT;
+	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
 
 	return 0;
 }
@@ -468,6 +479,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 
 	dev->data->rx_queues[rx_queue_id] = pkt_q;
 	pkt_q->in_port = dev->data->port_id;
+	pkt_q->vlan_strip = internals->vlan_strip;
 
 	return 0;
 }

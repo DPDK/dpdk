@@ -65,3 +65,10 @@ framecnt=512):
 .. code-block:: console
 
     --vdev=eth_af_packet0,iface=tap0,blocksz=4096,framesz=2048,framecnt=512,qpairs=1,qdisc_bypass=0
+
+Features and Limitations
+------------------------
+
+The PMD will re-insert the VLAN tag transparently to the packet if the kernel
+strips it, as long as the ``DEV_RX_OFFLOAD_VLAN_STRIP`` is not enabled by the
+application.
