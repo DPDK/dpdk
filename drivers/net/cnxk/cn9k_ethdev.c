@@ -36,6 +36,9 @@ nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
 	if (!dev->ptype_disable)
 		flags |= NIX_RX_OFFLOAD_PTYPE_F;
 
+	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY)
+		flags |= NIX_RX_OFFLOAD_SECURITY_F;
+
 	return flags;
 }
 
@@ -100,6 +103,9 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 
 	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP))
 		flags |= NIX_TX_OFFLOAD_TSTAMP_F;
+
+	if (dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY)
+		flags |= NIX_TX_OFFLOAD_SECURITY_F;
 
 	return flags;
 }
@@ -179,8 +185,10 @@ cn9k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			const struct rte_eth_txconf *tx_conf)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_cpt_lf *inl_lf;
 	struct cn9k_eth_txq *txq;
 	struct roc_nix_sq *sq;
+	uint16_t crypto_qid;
 	int rc;
 
 	RTE_SET_USED(socket);
@@ -199,6 +207,19 @@ cn9k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	txq->io_addr = sq->io_addr;
 	txq->nb_sqb_bufs_adj = sq->nb_sqb_bufs_adj;
 	txq->sqes_per_sqb_log2 = sq->sqes_per_sqb_log2;
+
+	/* Fetch CPT LF info for outbound if present */
+	if (dev->outb.lf_base) {
+		crypto_qid = qid % dev->outb.nb_crypto_qs;
+		inl_lf = dev->outb.lf_base + crypto_qid;
+
+		txq->cpt_io_addr = inl_lf->io_addr;
+		txq->cpt_fc = inl_lf->fc_addr;
+		txq->cpt_desc = inl_lf->nb_desc * 0.7;
+		txq->sa_base = (uint64_t)dev->outb.sa_base;
+		txq->sa_base |= eth_dev->data->port_id;
+		PLT_STATIC_ASSERT(BIT_ULL(16) == ROC_NIX_INL_SA_BASE_ALIGN);
+	}
 
 	nix_form_default_desc(dev, txq, qid);
 	txq->lso_tun_fmt = dev->lso_tun_fmt;
@@ -507,6 +528,8 @@ cn9k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	nix_eth_dev_ops_override();
 	npc_flow_ops_override();
+
+	cn9k_eth_sec_ops_override();
 
 	/* Common probe */
 	rc = cnxk_nix_probe(pci_drv, pci_dev);

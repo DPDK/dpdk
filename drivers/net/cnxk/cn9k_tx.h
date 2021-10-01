@@ -13,6 +13,7 @@
 #define NIX_TX_OFFLOAD_MBUF_NOFF_F    BIT(3)
 #define NIX_TX_OFFLOAD_TSO_F	      BIT(4)
 #define NIX_TX_OFFLOAD_TSTAMP_F	      BIT(5)
+#define NIX_TX_OFFLOAD_SECURITY_F     BIT(6)
 
 /* Flags to control xmit_prepare function.
  * Defining it from backwards to denote its been

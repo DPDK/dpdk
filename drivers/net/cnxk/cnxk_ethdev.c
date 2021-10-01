@@ -38,6 +38,162 @@ nix_get_speed_capa(struct cnxk_eth_dev *dev)
 	return speed_capa;
 }
 
+int
+cnxk_nix_inb_mode_set(struct cnxk_eth_dev *dev, bool use_inl_dev)
+{
+	struct roc_nix *nix = &dev->nix;
+
+	if (dev->inb.inl_dev == use_inl_dev)
+		return 0;
+
+	plt_nix_dbg("Security sessions(%u) still active, inl=%u!!!",
+		    dev->inb.nb_sess, !!dev->inb.inl_dev);
+
+	/* Change the mode */
+	dev->inb.inl_dev = use_inl_dev;
+
+	/* Update RoC for NPC rule insertion */
+	roc_nix_inb_mode_set(nix, use_inl_dev);
+
+	/* Setup lookup mem */
+	return cnxk_nix_lookup_mem_sa_base_set(dev);
+}
+
+static int
+nix_security_setup(struct cnxk_eth_dev *dev)
+{
+	struct roc_nix *nix = &dev->nix;
+	int i, rc = 0;
+
+	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+		/* Setup Inline Inbound */
+		rc = roc_nix_inl_inb_init(nix);
+		if (rc) {
+			plt_err("Failed to initialize nix inline inb, rc=%d",
+				rc);
+			return rc;
+		}
+
+		/* By default pick using inline device for poll mode.
+		 * Will be overridden when event mode rq's are setup.
+		 */
+		cnxk_nix_inb_mode_set(dev, true);
+	}
+
+	if (dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY ||
+	    dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+		struct plt_bitmap *bmap;
+		size_t bmap_sz;
+		void *mem;
+
+		/* Setup enough descriptors for all tx queues */
+		nix->outb_nb_desc = dev->outb.nb_desc;
+		nix->outb_nb_crypto_qs = dev->outb.nb_crypto_qs;
+
+		/* Setup Inline Outbound */
+		rc = roc_nix_inl_outb_init(nix);
+		if (rc) {
+			plt_err("Failed to initialize nix inline outb, rc=%d",
+				rc);
+			goto cleanup;
+		}
+
+		dev->outb.lf_base = roc_nix_inl_outb_lf_base_get(nix);
+
+		/* Skip the rest if DEV_TX_OFFLOAD_SECURITY is not enabled */
+		if (!(dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY))
+			goto done;
+
+		rc = -ENOMEM;
+		/* Allocate a bitmap to alloc and free sa indexes */
+		bmap_sz = plt_bitmap_get_memory_footprint(dev->outb.max_sa);
+		mem = plt_zmalloc(bmap_sz, PLT_CACHE_LINE_SIZE);
+		if (mem == NULL) {
+			plt_err("Outbound SA bmap alloc failed");
+
+			rc |= roc_nix_inl_outb_fini(nix);
+			goto cleanup;
+		}
+
+		rc = -EIO;
+		bmap = plt_bitmap_init(dev->outb.max_sa, mem, bmap_sz);
+		if (!bmap) {
+			plt_err("Outbound SA bmap init failed");
+
+			rc |= roc_nix_inl_outb_fini(nix);
+			plt_free(mem);
+			goto cleanup;
+		}
+
+		for (i = 0; i < dev->outb.max_sa; i++)
+			plt_bitmap_set(bmap, i);
+
+		dev->outb.sa_base = roc_nix_inl_outb_sa_base_get(nix);
+		dev->outb.sa_bmap_mem = mem;
+		dev->outb.sa_bmap = bmap;
+	}
+
+done:
+	return 0;
+cleanup:
+	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY)
+		rc |= roc_nix_inl_inb_fini(nix);
+	return rc;
+}
+
+static int
+nix_security_release(struct cnxk_eth_dev *dev)
+{
+	struct rte_eth_dev *eth_dev = dev->eth_dev;
+	struct cnxk_eth_sec_sess *eth_sec, *tvar;
+	struct roc_nix *nix = &dev->nix;
+	int rc, ret = 0;
+
+	/* Cleanup Inline inbound */
+	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+		/* Destroy inbound sessions */
+		tvar = NULL;
+		RTE_TAILQ_FOREACH_SAFE(eth_sec, &dev->inb.list, entry, tvar)
+			cnxk_eth_sec_ops.session_destroy(eth_dev,
+							 eth_sec->sess);
+
+		/* Clear lookup mem */
+		cnxk_nix_lookup_mem_sa_base_clear(dev);
+
+		rc = roc_nix_inl_inb_fini(nix);
+		if (rc)
+			plt_err("Failed to cleanup nix inline inb, rc=%d", rc);
+		ret |= rc;
+	}
+
+	/* Cleanup Inline outbound */
+	if (dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY ||
+	    dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+		/* Destroy outbound sessions */
+		tvar = NULL;
+		RTE_TAILQ_FOREACH_SAFE(eth_sec, &dev->outb.list, entry, tvar)
+			cnxk_eth_sec_ops.session_destroy(eth_dev,
+							 eth_sec->sess);
+
+		rc = roc_nix_inl_outb_fini(nix);
+		if (rc)
+			plt_err("Failed to cleanup nix inline outb, rc=%d", rc);
+		ret |= rc;
+
+		plt_bitmap_free(dev->outb.sa_bmap);
+		plt_free(dev->outb.sa_bmap_mem);
+		dev->outb.sa_bmap = NULL;
+		dev->outb.sa_bmap_mem = NULL;
+	}
+
+	dev->inb.inl_dev = false;
+	roc_nix_inb_mode_set(nix, false);
+	dev->nb_rxq_sso = 0;
+	dev->inb.nb_sess = 0;
+	dev->outb.nb_sess = 0;
+	return ret;
+}
+
 static void
 nix_enable_mseg_on_jumbo(struct cnxk_eth_rxq_sp *rxq)
 {
@@ -194,6 +350,12 @@ cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 		eth_dev->data->tx_queues[qid] = NULL;
 	}
 
+	/* When Tx Security offload is enabled, increase tx desc count by
+	 * max possible outbound desc count.
+	 */
+	if (dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY)
+		nb_desc += dev->outb.nb_desc;
+
 	/* Setup ROC SQ */
 	sq = &dev->sqs[qid];
 	sq->qid = qid;
@@ -266,6 +428,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			struct rte_mempool *mp)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
 	struct cnxk_eth_rxq_sp *rxq_sp;
 	struct rte_mempool_ops *ops;
 	const char *platform_ops;
@@ -303,6 +466,19 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 		eth_dev->data->rx_queues[qid] = NULL;
 	}
 
+	/* Clam up cq limit to size of packet pool aura for LBK
+	 * to avoid meta packet drop as LBK does not currently support
+	 * backpressure.
+	 */
+	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY && roc_nix_is_lbk(nix)) {
+		uint64_t pkt_pool_limit = roc_nix_inl_dev_rq_limit_get();
+
+		/* Use current RQ's aura limit if inl rq is not available */
+		if (!pkt_pool_limit)
+			pkt_pool_limit = roc_npa_aura_op_limit_get(mp->pool_id);
+		nb_desc = RTE_MAX(nb_desc, pkt_pool_limit);
+	}
+
 	/* Setup ROC CQ */
 	cq = &dev->cqs[qid];
 	cq->qid = qid;
@@ -328,6 +504,10 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	rq->later_skip = sizeof(struct rte_mbuf);
 	rq->lpb_size = mp->elt_size;
 
+	/* Enable Inline IPSec on RQ, will not be used for Poll mode */
+	if (roc_nix_inl_inb_is_enabled(nix))
+		rq->ipsech_ena = true;
+
 	rc = roc_nix_rq_init(&dev->nix, rq, !!eth_dev->data->dev_started);
 	if (rc) {
 		plt_err("Failed to init roc rq for rq=%d, rc=%d", qid, rc);
@@ -350,6 +530,13 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	rxq_sp->qconf.nb_desc = nb_desc;
 	rxq_sp->qconf.mp = mp;
 
+	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+		/* Setup rq reference for inline dev if present */
+		rc = roc_nix_inl_dev_rq_get(rq);
+		if (rc)
+			goto free_mem;
+	}
+
 	plt_nix_dbg("rq=%d pool=%s nb_desc=%d->%d", qid, mp->name, nb_desc,
 		    cq->nb_desc);
 
@@ -370,6 +557,8 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	}
 
 	return 0;
+free_mem:
+	plt_free(rxq_sp);
 rq_fini:
 	rc |= roc_nix_rq_fini(rq);
 cq_fini:
@@ -394,11 +583,15 @@ cnxk_nix_rx_queue_release(void *rxq)
 	rxq_sp = cnxk_eth_rxq_to_sp(rxq);
 	dev = rxq_sp->dev;
 	qid = rxq_sp->qid;
+	rq = &dev->rqs[qid];
 
 	plt_nix_dbg("Releasing rxq %u", qid);
 
+	/* Release rq reference for inline dev if present */
+	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY)
+		roc_nix_inl_dev_rq_put(rq);
+
 	/* Cleanup ROC RQ */
-	rq = &dev->rqs[qid];
 	rc = roc_nix_rq_fini(rq);
 	if (rc)
 		plt_err("Failed to cleanup rq, rc=%d", rc);
@@ -804,6 +997,12 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		rc = nix_store_queue_cfg_and_then_release(eth_dev);
 		if (rc)
 			goto fail_configure;
+
+		/* Cleanup security support */
+		rc = nix_security_release(dev);
+		if (rc)
+			goto fail_configure;
+
 		roc_nix_tm_fini(nix);
 		roc_nix_lf_free(nix);
 	}
@@ -958,6 +1157,12 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		plt_err("Failed to initialize flow control rc=%d", rc);
 		goto cq_fini;
 	}
+
+	/* Setup Inline security support */
+	rc = nix_security_setup(dev);
+	if (rc)
+		goto cq_fini;
+
 	/*
 	 * Restore queue config when reconfigure followed by
 	 * reconfigure and no queue configure invoked from application case.
@@ -965,7 +1170,7 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	if (dev->configured == 1) {
 		rc = nix_restore_queue_cfg(eth_dev);
 		if (rc)
-			goto cq_fini;
+			goto sec_release;
 	}
 
 	/* Update the mac address */
@@ -987,6 +1192,8 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	dev->nb_txq = data->nb_tx_queues;
 	return 0;
 
+sec_release:
+	rc |= nix_security_release(dev);
 cq_fini:
 	roc_nix_unregister_cq_irqs(nix);
 q_irq_fini:
@@ -1284,11 +1491,24 @@ static int
 cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct rte_security_ctx *sec_ctx;
 	struct roc_nix *nix = &dev->nix;
 	struct rte_pci_device *pci_dev;
 	int rc, max_entries;
 
 	eth_dev->dev_ops = &cnxk_eth_dev_ops;
+
+	/* Alloc security context */
+	sec_ctx = plt_zmalloc(sizeof(struct rte_security_ctx), 0);
+	if (!sec_ctx)
+		return -ENOMEM;
+	sec_ctx->device = eth_dev;
+	sec_ctx->ops = &cnxk_eth_sec_ops;
+	sec_ctx->flags =
+		(RTE_SEC_CTX_F_FAST_SET_MDATA | RTE_SEC_CTX_F_FAST_GET_UDATA);
+	eth_dev->security_ctx = sec_ctx;
+	TAILQ_INIT(&dev->inb.list);
+	TAILQ_INIT(&dev->outb.list);
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -1406,6 +1626,9 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 	struct roc_nix *nix = &dev->nix;
 	int rc, i;
 
+	plt_free(eth_dev->security_ctx);
+	eth_dev->security_ctx = NULL;
+
 	/* Nothing to be done for secondary processes */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -1439,6 +1662,9 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 		eth_dev->data->rx_queues[i] = NULL;
 	}
 	eth_dev->data->nb_rx_queues = 0;
+
+	/* Free security resources */
+	nix_security_release(dev);
 
 	/* Free tm resources */
 	roc_nix_tm_fini(nix);

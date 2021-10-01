@@ -13,6 +13,9 @@
 #include <rte_mbuf.h>
 #include <rte_mbuf_pool_ops.h>
 #include <rte_mempool.h>
+#include <rte_security.h>
+#include <rte_security_driver.h>
+#include <rte_tailq.h>
 #include <rte_time.h>
 
 #include "roc_api.h"
@@ -70,14 +73,14 @@
 	 DEV_TX_OFFLOAD_SCTP_CKSUM | DEV_TX_OFFLOAD_TCP_TSO |                  \
 	 DEV_TX_OFFLOAD_VXLAN_TNL_TSO | DEV_TX_OFFLOAD_GENEVE_TNL_TSO |        \
 	 DEV_TX_OFFLOAD_GRE_TNL_TSO | DEV_TX_OFFLOAD_MULTI_SEGS |              \
-	 DEV_TX_OFFLOAD_IPV4_CKSUM)
+	 DEV_TX_OFFLOAD_IPV4_CKSUM | DEV_TX_OFFLOAD_SECURITY)
 
 #define CNXK_NIX_RX_OFFLOAD_CAPA                                               \
 	(DEV_RX_OFFLOAD_CHECKSUM | DEV_RX_OFFLOAD_SCTP_CKSUM |                 \
 	 DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM | DEV_RX_OFFLOAD_SCATTER |            \
 	 DEV_RX_OFFLOAD_JUMBO_FRAME | DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |         \
 	 DEV_RX_OFFLOAD_RSS_HASH | DEV_RX_OFFLOAD_TIMESTAMP |                  \
-	 DEV_RX_OFFLOAD_VLAN_STRIP)
+	 DEV_RX_OFFLOAD_VLAN_STRIP | DEV_RX_OFFLOAD_SECURITY)
 
 #define RSS_IPV4_ENABLE                                                        \
 	(ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 | ETH_RSS_NONFRAG_IPV4_UDP |         \
@@ -112,12 +115,20 @@
 #define PTYPE_TUNNEL_ARRAY_SZ	  BIT(PTYPE_TUNNEL_WIDTH)
 #define PTYPE_ARRAY_SZ                                                         \
 	((PTYPE_NON_TUNNEL_ARRAY_SZ + PTYPE_TUNNEL_ARRAY_SZ) * sizeof(uint16_t))
+
+/* NIX_RX_PARSE_S's ERRCODE + ERRLEV (12 bits) */
+#define ERRCODE_ERRLEN_WIDTH 12
+#define ERR_ARRAY_SZ	     ((BIT(ERRCODE_ERRLEN_WIDTH)) * sizeof(uint32_t))
+
 /* Fastpath lookup */
 #define CNXK_NIX_FASTPATH_LOOKUP_MEM "cnxk_nix_fastpath_lookup_mem"
 
 #define CNXK_NIX_UDP_TUN_BITMASK                                               \
 	((1ull << (PKT_TX_TUNNEL_VXLAN >> 45)) |                               \
 	 (1ull << (PKT_TX_TUNNEL_GENEVE >> 45)))
+
+/* Subtype from inline outbound error event */
+#define CNXK_ETHDEV_SEC_OUTB_EV_SUB 0xFFUL
 
 struct cnxk_fc_cfg {
 	enum rte_eth_fc_mode mode;
@@ -144,6 +155,82 @@ struct cnxk_timesync_info {
 	uint64_t *tx_tstamp;
 } __plt_cache_aligned;
 
+/* Security session private data */
+struct cnxk_eth_sec_sess {
+	/* List entry */
+	TAILQ_ENTRY(cnxk_eth_sec_sess) entry;
+
+	/* Inbound SA is from NIX_RX_IPSEC_SA_BASE or
+	 * Outbound SA from roc_nix_inl_outb_sa_base_get()
+	 */
+	void *sa;
+
+	/* SA index */
+	uint32_t sa_idx;
+
+	/* SPI */
+	uint32_t spi;
+
+	/* Back pointer to session */
+	struct rte_security_session *sess;
+
+	/* Inbound */
+	bool inb;
+
+	/* Inbound session on inl dev */
+	bool inl_dev;
+};
+
+TAILQ_HEAD(cnxk_eth_sec_sess_list, cnxk_eth_sec_sess);
+
+/* Inbound security data */
+struct cnxk_eth_dev_sec_inb {
+	/* IPSec inbound max SPI */
+	uint16_t max_spi;
+
+	/* Using inbound with inline device */
+	bool inl_dev;
+
+	/* Device argument to force inline device for inb */
+	bool force_inl_dev;
+
+	/* Active sessions */
+	uint16_t nb_sess;
+
+	/* List of sessions */
+	struct cnxk_eth_sec_sess_list list;
+};
+
+/* Outbound security data */
+struct cnxk_eth_dev_sec_outb {
+	/* IPSec outbound max SA */
+	uint16_t max_sa;
+
+	/* Per CPT LF descriptor count */
+	uint32_t nb_desc;
+
+	/* SA Bitmap */
+	struct plt_bitmap *sa_bmap;
+
+	/* SA bitmap memory */
+	void *sa_bmap_mem;
+
+	/* SA base */
+	uint64_t sa_base;
+
+	/* CPT LF base */
+	struct roc_cpt_lf *lf_base;
+
+	/* Crypto queues => CPT lf count */
+	uint16_t nb_crypto_qs;
+
+	/* Active sessions */
+	uint16_t nb_sess;
+
+	/* List of sessions */
+	struct cnxk_eth_sec_sess_list list;
+};
+
 struct cnxk_eth_dev {
 	/* ROC NIX */
 	struct roc_nix nix;
@@ -159,6 +246,7 @@ struct cnxk_eth_dev {
 	/* Configured queue count */
 	uint16_t nb_rxq;
 	uint16_t nb_txq;
+	uint16_t nb_rxq_sso;
 	uint8_t configured;
 
 	/* Max macfilter entries */
@@ -223,6 +311,10 @@ struct cnxk_eth_dev {
 	/* Per queue statistics counters */
 	uint32_t txq_stat_map[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	uint32_t rxq_stat_map[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+
+	/* Security data */
+	struct cnxk_eth_dev_sec_inb inb;
+	struct cnxk_eth_dev_sec_outb outb;
 };
 
 struct cnxk_eth_rxq_sp {
@@ -260,6 +352,9 @@ extern struct eth_dev_ops cnxk_eth_dev_ops;
 
 /* Common flow ops */
 extern struct rte_flow_ops cnxk_flow_ops;
+
+/* Common security ops */
+extern struct rte_security_ops cnxk_eth_sec_ops;
 
 /* Ops */
 int cnxk_nix_probe(struct rte_pci_driver *pci_drv,
@@ -389,6 +484,18 @@ int cnxk_ethdev_parse_devargs(struct rte_devargs *devargs,
 /* Debug */
 int cnxk_nix_dev_get_reg(struct rte_eth_dev *eth_dev,
 			 struct rte_dev_reg_info *regs);
+/* Security */
+int cnxk_eth_outb_sa_idx_get(struct cnxk_eth_dev *dev, uint32_t *idx_p);
+int cnxk_eth_outb_sa_idx_put(struct cnxk_eth_dev *dev, uint32_t idx);
+int cnxk_nix_lookup_mem_sa_base_set(struct cnxk_eth_dev *dev);
+int cnxk_nix_lookup_mem_sa_base_clear(struct cnxk_eth_dev *dev);
+__rte_internal
+int cnxk_nix_inb_mode_set(struct cnxk_eth_dev *dev, bool use_inl_dev);
+struct cnxk_eth_sec_sess *cnxk_eth_sec_sess_get_by_spi(struct cnxk_eth_dev *dev,
+						       uint32_t spi, bool inb);
+struct cnxk_eth_sec_sess *
+cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
+			      struct rte_security_session *sess);
 
 /* Other private functions */
 int nix_recalc_mtu(struct rte_eth_dev *eth_dev);
@@ -497,6 +604,16 @@ cnxk_nix_mbuf_to_tstamp(struct rte_mbuf *mbuf,
 					  tstamp->rx_tstamp_dynflag;
 		}
 	}
+}
+
+static __rte_always_inline uintptr_t
+cnxk_nix_sa_base_get(uint16_t port, const void *lookup_mem)
+{
+	uintptr_t sa_base_tbl;
+
+	sa_base_tbl = (uintptr_t)lookup_mem;
+	sa_base_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
+	return *((const uintptr_t *)sa_base_tbl + port);
 }
 
 #endif /* __CNXK_ETHDEV_H__ */

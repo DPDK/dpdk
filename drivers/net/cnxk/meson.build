@@ -12,6 +12,7 @@ sources = files(
         'cnxk_ethdev.c',
         'cnxk_ethdev_devargs.c',
         'cnxk_ethdev_ops.c',
+        'cnxk_ethdev_sec.c',
         'cnxk_link.c',
         'cnxk_lookup.c',
         'cnxk_ptp.c',
@@ -23,6 +24,7 @@ sources = files(
 # CN9K
 sources += files(
         'cn9k_ethdev.c',
+        'cn9k_ethdev_sec.c',
         'cn9k_rte_flow.c',
         'cn9k_rx.c',
         'cn9k_rx_mseg.c',

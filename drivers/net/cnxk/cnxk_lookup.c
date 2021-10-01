@@ -7,12 +7,8 @@
 
 #include "cnxk_ethdev.h"
 
-/* NIX_RX_PARSE_S's ERRCODE + ERRLEV (12 bits) */
-#define ERRCODE_ERRLEN_WIDTH 12
-#define ERR_ARRAY_SZ	     ((BIT(ERRCODE_ERRLEN_WIDTH)) * sizeof(uint32_t))
-
-#define SA_TBL_SZ	(RTE_MAX_ETHPORTS * sizeof(uint64_t))
-#define LOOKUP_ARRAY_SZ (PTYPE_ARRAY_SZ + ERR_ARRAY_SZ + SA_TBL_SZ)
+#define SA_BASE_TBL_SZ	(RTE_MAX_ETHPORTS * sizeof(uintptr_t))
+#define LOOKUP_ARRAY_SZ (PTYPE_ARRAY_SZ + ERR_ARRAY_SZ + SA_BASE_TBL_SZ)
 const uint32_t *
 cnxk_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 {
@@ -323,4 +319,46 @@ cnxk_nix_fastpath_lookup_mem_get(void)
 		return mem;
 	}
 	return NULL;
+}
+
+int
+cnxk_nix_lookup_mem_sa_base_set(struct cnxk_eth_dev *dev)
+{
+	void *lookup_mem = cnxk_nix_fastpath_lookup_mem_get();
+	uint16_t port = dev->eth_dev->data->port_id;
+	uintptr_t sa_base_tbl;
+	uintptr_t sa_base;
+	uint8_t sa_w;
+
+	if (!lookup_mem)
+		return -EIO;
+
+	sa_base = roc_nix_inl_inb_sa_base_get(&dev->nix, dev->inb.inl_dev);
+	if (!sa_base)
+		return -ENOTSUP;
+
+	sa_w = plt_log2_u32(dev->nix.ipsec_in_max_spi + 1);
+
+	/* Set SA Base in lookup mem */
+	sa_base_tbl = (uintptr_t)lookup_mem;
+	sa_base_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
+	*((uintptr_t *)sa_base_tbl + port) = sa_base | sa_w;
+	return 0;
+}
+
+int
+cnxk_nix_lookup_mem_sa_base_clear(struct cnxk_eth_dev *dev)
+{
+	void *lookup_mem = cnxk_nix_fastpath_lookup_mem_get();
+	uint16_t port = dev->eth_dev->data->port_id;
+	uintptr_t sa_base_tbl;
+
+	if (!lookup_mem)
+		return -EIO;
+
+	/* Set SA Base in lookup mem */
+	sa_base_tbl = (uintptr_t)lookup_mem;
+	sa_base_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
+	*((uintptr_t *)sa_base_tbl + port) = 0;
+	return 0;
 }
