@@ -380,6 +380,8 @@ cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	txq_sp->dev = dev;
 	txq_sp->qid = qid;
 	txq_sp->qconf.conf.tx = *tx_conf;
+	/* Queue config should reflect global offloads */
+	txq_sp->qconf.conf.tx.offloads = dev->tx_offloads;
 	txq_sp->qconf.nb_desc = nb_desc;
 
 	plt_nix_dbg("sq=%d fc=%p offload=0x%" PRIx64 " lmt_addr=%p"
@@ -527,6 +529,8 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	rxq_sp->dev = dev;
 	rxq_sp->qid = qid;
 	rxq_sp->qconf.conf.rx = *rx_conf;
+	/* Queue config should reflect global offloads */
+	rxq_sp->qconf.conf.rx.offloads = dev->rx_offloads;
 	rxq_sp->qconf.nb_desc = nb_desc;
 	rxq_sp->qconf.mp = mp;
 

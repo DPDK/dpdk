@@ -1280,7 +1280,7 @@ cn10k_nix_prep_lmt_mseg_vector(struct rte_mbuf **mbufs, uint64x2_t *cmd0,
 			vst1q_u64(lmt_addr + 14, cmd1[3]);
 
 			*data128 |= ((__uint128_t)7) << *shift;
-			shift += 3;
+			*shift += 3;
 
 			return 1;
 		}
