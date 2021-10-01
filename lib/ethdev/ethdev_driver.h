@@ -183,11 +183,28 @@ typedef int (*eth_xstats_get_t)(struct rte_eth_dev *dev,
 	struct rte_eth_xstat *stats, unsigned int n);
 /**< @internal Get extended stats of an Ethernet device. */
 
+/**
+ * @internal
+ * Get extended stats of an Ethernet device.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ * @param ids
+ *   IDs array to retrieve specific statistics. Must not be NULL.
+ * @param values
+ *   A pointer to a table to be filled with device statistics values.
+ *   Must not be NULL.
+ * @param n
+ *   Element count in @p ids and @p values.
+ *
+ * @return
+ *   - A number of filled in stats.
+ *   - A negative value on error.
+ */
 typedef int (*eth_xstats_get_by_id_t)(struct rte_eth_dev *dev,
 				      const uint64_t *ids,
 				      uint64_t *values,
 				      unsigned int n);
-/**< @internal Get extended stats of an Ethernet device. */
 
 /**
  * @internal
@@ -214,10 +231,27 @@ typedef int (*eth_xstats_get_names_t)(struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names, unsigned int size);
 /**< @internal Get names of extended stats of an Ethernet device. */
 
+/**
+ * @internal
+ * Get names of extended stats of an Ethernet device.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ * @param xstats_names
+ *   An rte_eth_xstat_name array of at least @p size elements to be filled.
+ *   Must not be NULL.
+ * @param ids
+ *   IDs array to retrieve specific statistics. Must not be NULL.
+ * @param size
+ *   Element count in @p ids and @p xstats_names.
+ *
+ * @return
+ *   - A number of filled in stats.
+ *   - A negative value on error.
+ */
 typedef int (*eth_xstats_get_names_by_id_t)(struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
 	unsigned int size);
-/**< @internal Get names of extended stats of an Ethernet device. */
 
 typedef int (*eth_queue_stats_mapping_set_t)(struct rte_eth_dev *dev,
 					     uint16_t queue_id,
