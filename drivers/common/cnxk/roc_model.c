@@ -178,6 +178,55 @@ detect_invalid_config(void)
 #endif
 }
 
+static uint64_t
+env_lookup_flag(const char *name)
+{
+	unsigned int i;
+	struct {
+		const char *name;
+		uint64_t flag;
+	} envs[] = {
+		{"HW_PLATFORM", ROC_ENV_HW},
+		{"EMUL_PLATFORM", ROC_ENV_EMUL},
+		{"ASIM_PLATFORM", ROC_ENV_ASIM},
+	};
+
+	for (i = 0; i < PLT_DIM(envs); i++)
+		if (!strncmp(envs[i].name, name, strlen(envs[i].name)))
+			return envs[i].flag;
+
+	return 0;
+}
+
+static void
+of_env_get(struct roc_model *model)
+{
+	const char *const path = "/proc/device-tree/soc@0/runplatform";
+	uint64_t flag;
+	FILE *fp;
+
+	fp = fopen(path, "r");
+	if (!fp) {
+		plt_err("Failed to open %s", path);
+		return;
+	}
+
+	if (!fgets(model->env, sizeof(model->env), fp)) {
+		plt_err("Failed to read %s", path);
+		goto err;
+	}
+
+	flag = env_lookup_flag(model->env);
+	if (flag == 0) {
+		plt_err("Unknown platform: %s", model->env);
+		goto err;
+	}
+
+	model->flag |= flag;
+err:
+	fclose(fp);
+}
+
 int
 roc_model_init(struct roc_model *model)
 {
@@ -197,8 +246,10 @@ roc_model_init(struct roc_model *model)
 	if (!populate_model(model, midr))
 		goto err;
 
+	of_env_get(model);
+
 	rc = 0;
-	plt_info("RoC Model: %s", model->name);
+	plt_info("RoC Model: %s (%s)", model->name, model->env);
 	roc_model = model;
 err:
 	return rc;

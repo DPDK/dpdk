@@ -23,10 +23,15 @@ struct roc_model {
 #define ROC_MODEL_CN106xx_A0   BIT_ULL(20)
 #define ROC_MODEL_CNF105xx_A0  BIT_ULL(21)
 #define ROC_MODEL_CNF105xxN_A0 BIT_ULL(22)
+/* Following flags describe platform code is running on */
+#define ROC_ENV_HW   BIT_ULL(61)
+#define ROC_ENV_EMUL BIT_ULL(62)
+#define ROC_ENV_ASIM BIT_ULL(63)
 
 	uint64_t flag;
 #define ROC_MODEL_STR_LEN_MAX 128
 	char name[ROC_MODEL_STR_LEN_MAX];
+	char env[ROC_MODEL_STR_LEN_MAX];
 } __plt_cache_aligned;
 
 #define ROC_MODEL_CN96xx_Ax (ROC_MODEL_CN96xx_A0 | ROC_MODEL_CN96xx_B0)
@@ -156,6 +161,30 @@ static inline uint64_t
 roc_model_is_cnf10kb_a0(void)
 {
 	return roc_model->flag & ROC_MODEL_CNF105xxN_A0;
+}
+
+static inline bool
+roc_env_is_hw(void)
+{
+	return roc_model->flag & ROC_ENV_HW;
+}
+
+static inline bool
+roc_env_is_emulator(void)
+{
+	return roc_model->flag & ROC_ENV_EMUL;
+}
+
+static inline bool
+roc_env_is_asim(void)
+{
+	return roc_model->flag & ROC_ENV_ASIM;
+}
+
+static inline const char *
+roc_env_get(void)
+{
+	return roc_model->env;
 }
 
 int roc_model_init(struct roc_model *model);
