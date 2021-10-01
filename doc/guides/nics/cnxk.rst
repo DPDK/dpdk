@@ -34,6 +34,7 @@ Features of the CNXK Ethdev PMD are:
 - Vector Poll mode driver
 - Debug utilities - Context dump and error interrupt support
 - Support Rx interrupt
+- Inline IPsec processing support
 
 Prerequisites
 -------------
@@ -185,6 +186,74 @@ Runtime Config Options
 
       -a 0002:02:00.0,tag_as_xor=1
 
+- ``Max SPI for inbound inline IPsec`` (default ``255``)
+
+   Max SPI supported for inbound inline IPsec processing can be specified by
+   ``ipsec_in_max_spi`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:02:00.0,ipsec_in_max_spi=128
+
+   With the above configuration, application can enable inline IPsec processing
+   for 128 inbound SAs (SPI 0-127).
+
+- ``Max SA's for outbound inline IPsec`` (default ``4096``)
+
+   Max number of SA's supported for outbound inline IPsec processing can be
+   specified by ``ipsec_out_max_sa`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:02:00.0,ipsec_out_max_sa=128
+
+   With the above configuration, application can enable inline IPsec processing
+   for 128 outbound SAs.
+
+- ``Outbound CPT LF queue size`` (default ``8200``)
+
+   Size of Outbound CPT LF queue in number of descriptors can be specified by
+   ``outb_nb_desc`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:02:00.0,outb_nb_desc=16384
+
+    With the above configuration, Outbound CPT LF will be created to accommodate
+    at max 16384 descriptors at any given time.
+
+- ``Outbound CPT LF count`` (default ``1``)
+
+   Number of CPT LF's to attach for Outbound processing can be specified by
+   ``outb_nb_crypto_qs`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:02:00.0,outb_nb_crypto_qs=2
+
+   With the above confiuration, two CPT LF's are setup and distributed among
+   all the Tx queues for outbound processing.
+
+- ``Force using inline ipsec device for inbound`` (default ``0``)
+
+   In CN10K, in event mode, driver can work in two modes,
+
+   1. Inbound encrypted traffic received by probed ipsec inline device while
+      plain traffic post decryption is received by ethdev.
+
+   2. Both Inbound encrypted traffic and plain traffic post decryption are
+      received by ethdev.
+
+   By default event mode works without using inline device i.e mode ``2``.
+   This behaviour can be changed to pick mode ``1`` by using
+   ``force_inb_inl_dev`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:02:00.0,force_inb_inl_dev=1 -a 0002:03:00.0,force_inb_inl_dev=1
+
+   With the above configuration, inbound encrypted traffic from both the ports
+   is received by ipsec inline device.
 
 .. note::
 
@@ -249,6 +318,39 @@ Example usage in testpmd::
                   --rx-offloads=0x00080000 --rxq 8 --txq 8
    testpmd> flow create 0 ingress pattern eth / raw relative is 0 pattern \
           spec ab pattern mask ab offset is 4 / end actions queue index 1 / end
+
+Inline device support for CN10K
+-------------------------------
+
+CN10K HW provides a misc device Inline device that supports ethernet devices in
+providing following features.
+
+  - Aggregate all the inline IPsec inbound traffic from all the CN10K ethernet
+    devices to be processed by the single inline IPSec device. This allows
+    single rte security session to accept traffic from multiple ports.
+
+  - Support for event generation on outbound inline IPsec processing errors.
+
+  - Support CN106xx poll mode of operation for inline IPSec inbound processing.
+
+Inline IPsec device is identified by PCI PF vendid:devid ``177D:A0F0`` or
+VF ``177D:A0F1``.
+
+Runtime Config Options for inline device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- ``Max SPI for inbound inline IPsec`` (default ``255``)
+
+   Max SPI supported for inbound inline IPsec processing can be specified by
+   ``ipsec_in_max_spi`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:1d:00.0,ipsec_in_max_spi=128
+
+   With the above configuration, application can enable inline IPsec processing
+   for 128 inbound SAs (SPI 0-127) for traffic aggregated on inline device.
+
 
 Debugging Options
 -----------------

@@ -38,6 +38,7 @@ sources += files(
 # CN10K
 sources += files(
         'cn10k_ethdev.c',
+        'cn10k_ethdev_sec.c',
         'cn10k_rte_flow.c',
         'cn10k_rx.c',
         'cn10k_rx_mseg.c',

@@ -123,7 +123,9 @@ cnxk_sso_rxq_enable(struct cnxk_eth_dev *cnxk_eth_dev, uint16_t rq_id,
 		    uint16_t port_id, const struct rte_event *ev,
 		    uint8_t custom_flowid)
 {
+	struct roc_nix *nix = &cnxk_eth_dev->nix;
 	struct roc_nix_rq *rq;
+	int rc;
 
 	rq = &cnxk_eth_dev->rqs[rq_id];
 	rq->sso_ena = 1;
@@ -140,7 +142,24 @@ cnxk_sso_rxq_enable(struct cnxk_eth_dev *cnxk_eth_dev, uint16_t rq_id,
 		rq->tag_mask |= ev->flow_id;
 	}
 
-	return roc_nix_rq_modify(&cnxk_eth_dev->nix, rq, 0);
+	rc = roc_nix_rq_modify(&cnxk_eth_dev->nix, rq, 0);
+	if (rc)
+		return rc;
+
+	if (rq_id == 0 && roc_nix_inl_inb_is_enabled(nix)) {
+		uint32_t sec_tag_const;
+
+		/* IPSec tag const is 8-bit left shifted value of tag_mask
+		 * as it applies to bit 32:8 of tag only.
+		 */
+		sec_tag_const = rq->tag_mask >> 8;
+		rc = roc_nix_inl_inb_tag_update(nix, sec_tag_const,
+						ev->sched_type);
+		if (rc)
+			plt_err("Failed to set tag conf for ipsec, rc=%d", rc);
+	}
+
+	return rc;
 }
 
 static int
@@ -186,6 +205,7 @@ cnxk_sso_rx_adapter_queue_add(
 		rox_nix_fc_npa_bp_cfg(&cnxk_eth_dev->nix,
 				      rxq_sp->qconf.mp->pool_id, true,
 				      dev->force_ena_bp);
+		cnxk_eth_dev->nb_rxq_sso++;
 	}
 
 	if (rc < 0) {
@@ -195,6 +215,14 @@ cnxk_sso_rx_adapter_queue_add(
 	}
 
 	dev->rx_offloads |= cnxk_eth_dev->rx_offload_flags;
+
+	/* Switch to use PF/VF's NIX LF instead of inline device for inbound
+	 * when all the RQ's are switched to event dev mode. We do this only
+	 * when using inline device is not forced by dev args.
+	 */
+	if (!cnxk_eth_dev->inb.force_inl_dev &&
+	    cnxk_eth_dev->nb_rxq_sso == cnxk_eth_dev->nb_rxq)
+		cnxk_nix_inb_mode_set(cnxk_eth_dev, false);
 
 	return 0;
 }
@@ -220,11 +248,17 @@ cnxk_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
 		rox_nix_fc_npa_bp_cfg(&cnxk_eth_dev->nix,
 				      rxq_sp->qconf.mp->pool_id, false,
 				      dev->force_ena_bp);
+		cnxk_eth_dev->nb_rxq_sso--;
 	}
 
 	if (rc < 0)
 		plt_err("Failed to clear Rx adapter config port=%d, q=%d",
 			eth_dev->data->port_id, rx_queue_id);
+
+	/* Removing RQ from Rx adapter implies need to use
+	 * inline device for CQ/Poll mode.
+	 */
+	cnxk_nix_inb_mode_set(cnxk_eth_dev, true);
 
 	return rc;
 }

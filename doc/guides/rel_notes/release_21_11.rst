@@ -98,6 +98,8 @@ New Features
 
   * Added rte_flow support for dual VLAN insert and strip actions.
   * Added rte_tm support.
+  * Added support for Inline IPsec for CN9K event mode and CN10K
+    poll mode and event mode.
 
 * **Updated Marvell cnxk crypto PMD.**
 
