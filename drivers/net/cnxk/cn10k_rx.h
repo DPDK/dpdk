@@ -65,6 +65,130 @@ nix_get_mbuf_from_cqe(void *cq, const uint64_t data_off)
 	return (struct rte_mbuf *)(buff - data_off);
 }
 
+static __rte_always_inline void
+nix_sec_flush_meta(uintptr_t laddr, uint16_t lmt_id, uint8_t loff,
+		   uintptr_t aura_handle)
+{
+	uint64_t pa;
+
+	/* laddr is pointing to first pointer */
+	laddr -= 8;
+
+	/* Trigger free either on lmtline full or different aura handle */
+	pa = roc_npa_aura_handle_to_base(aura_handle) + NPA_LF_AURA_BATCH_FREE0;
+
+	/* Update aura handle */
+	*(uint64_t *)laddr = (((uint64_t)(loff & 0x1) << 32) |
+			      roc_npa_aura_handle_to_aura(aura_handle));
+
+	pa |= ((loff >> 1) << 4);
+	roc_lmt_submit_steorl(lmt_id, pa);
+}
+
+static __rte_always_inline struct rte_mbuf *
+nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, const uint64_t sa_base, uintptr_t laddr,
+			uint8_t *loff, struct rte_mbuf *mbuf, uint16_t data_off)
+{
+	const void *__p = (void *)((uintptr_t)mbuf + (uint16_t)data_off);
+	const struct cpt_parse_hdr_s *hdr = (const struct cpt_parse_hdr_s *)__p;
+	struct cn10k_inb_priv_data *inb_priv;
+	struct rte_mbuf *inner;
+	uint32_t sa_idx;
+	void *inb_sa;
+	uint64_t w0;
+
+	if (cq_w1 & BIT(11)) {
+		inner = (struct rte_mbuf *)(rte_be_to_cpu_64(hdr->wqe_ptr) -
+					    sizeof(struct rte_mbuf));
+
+		/* Get SPI from CPT_PARSE_S's cookie(already swapped) */
+		w0 = hdr->w0.u64;
+		sa_idx = w0 >> 32;
+
+		inb_sa = roc_nix_inl_ot_ipsec_inb_sa(sa_base, sa_idx);
+		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
+
+		/* Update dynamic field with userdata */
+		*rte_security_dynfield(inner) = (uint64_t)inb_priv->userdata;
+
+		/* Update l2 hdr length first */
+		inner->pkt_len = (hdr->w2.il3_off -
+				  sizeof(struct cpt_parse_hdr_s) - (w0 & 0x7));
+
+		/* Store meta in lmtline to free
+		 * Assume all meta's from same aura.
+		 */
+		*(uint64_t *)(laddr + (*loff << 3)) = (uint64_t)mbuf;
+		*loff = *loff + 1;
+
+		return inner;
+	}
+	return mbuf;
+}
+
+#if defined(RTE_ARCH_ARM64)
+
+static __rte_always_inline struct rte_mbuf *
+nix_sec_meta_to_mbuf(uint64_t cq_w1, uintptr_t sa_base, uintptr_t laddr,
+		     uint8_t *loff, struct rte_mbuf *mbuf, uint16_t data_off,
+		     uint8x16_t *rx_desc_field1, uint64_t *ol_flags)
+{
+	const void *__p = (void *)((uintptr_t)mbuf + (uint16_t)data_off);
+	const struct cpt_parse_hdr_s *hdr = (const struct cpt_parse_hdr_s *)__p;
+	struct cn10k_inb_priv_data *inb_priv;
+	struct rte_mbuf *inner;
+	uint64_t *sg, res_w1;
+	uint32_t sa_idx;
+	void *inb_sa;
+	uint16_t len;
+	uint64_t w0;
+
+	if (cq_w1 & BIT(11)) {
+		inner = (struct rte_mbuf *)(rte_be_to_cpu_64(hdr->wqe_ptr) -
+					    sizeof(struct rte_mbuf));
+		/* Get SPI from CPT_PARSE_S's cookie(already swapped) */
+		w0 = hdr->w0.u64;
+		sa_idx = w0 >> 32;
+
+		inb_sa = roc_nix_inl_ot_ipsec_inb_sa(sa_base, sa_idx);
+		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
+
+		/* Update dynamic field with userdata */
+		*rte_security_dynfield(inner) = (uint64_t)inb_priv->userdata;
+
+		/* CPT result(struct cpt_cn10k_res_s) is at
+		 * after first IOVA in meta
+		 */
+		sg = (uint64_t *)(inner + 1);
+		res_w1 = sg[10];
+
+		/* Clear checksum flags and update security flag */
+		*ol_flags &= ~(PKT_RX_L4_CKSUM_MASK | PKT_RX_IP_CKSUM_MASK);
+		*ol_flags |= (((res_w1 & 0xFF) == CPT_COMP_WARN) ?
+			      PKT_RX_SEC_OFFLOAD :
+			      (PKT_RX_SEC_OFFLOAD | PKT_RX_SEC_OFFLOAD_FAILED));
+		/* Calculate inner packet length */
+		len = ((res_w1 >> 16) & 0xFFFF) + hdr->w2.il3_off -
+			sizeof(struct cpt_parse_hdr_s) - (w0 & 0x7);
+		/* Update pkt_len and data_len */
+		*rx_desc_field1 = vsetq_lane_u16(len, *rx_desc_field1, 2);
+		*rx_desc_field1 = vsetq_lane_u16(len, *rx_desc_field1, 4);
+
+		/* Store meta in lmtline to free
+		 * Assume all meta's from same aura.
+		 */
+		*(uint64_t *)(laddr + (*loff << 3)) = (uint64_t)mbuf;
+		*loff = *loff + 1;
+
+		/* Return inner mbuf */
+		return inner;
+	}
+
+	/* Return same mbuf as it is not a decrypted pkt */
+	return mbuf;
+}
+#endif
+
 static __rte_always_inline uint32_t
 nix_ptype_get(const void *const lookup_mem, const uint64_t in)
 {
@@ -177,8 +301,8 @@ cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 {
 	const union nix_rx_parse_u *rx =
 		(const union nix_rx_parse_u *)((const uint64_t *)cq + 1);
-	const uint16_t len = rx->pkt_lenm1 + 1;
 	const uint64_t w1 = *(const uint64_t *)rx;
+	uint16_t len = rx->pkt_lenm1 + 1;
 	uint64_t ol_flags = 0;
 
 	/* Mark mempool obj as "get" as it is alloc'ed by NIX */
@@ -194,8 +318,30 @@ cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 		ol_flags |= PKT_RX_RSS_HASH;
 	}
 
-	if (flag & NIX_RX_OFFLOAD_CHECKSUM_F)
-		ol_flags |= nix_rx_olflags_get(lookup_mem, w1);
+	/* Process Security packets */
+	if (flag & NIX_RX_OFFLOAD_SECURITY_F) {
+		if (w1 & BIT(11)) {
+			/* CPT result(struct cpt_cn10k_res_s) is at
+			 * after first IOVA in meta
+			 */
+			const uint64_t *sg = (const uint64_t *)(mbuf + 1);
+			const uint64_t res_w1 = sg[10];
+			const uint16_t uc_cc = res_w1 & 0xFF;
+
+			/* Rlen */
+			len = ((res_w1 >> 16) & 0xFFFF) + mbuf->pkt_len;
+			ol_flags |= ((uc_cc == CPT_COMP_WARN) ?
+						   PKT_RX_SEC_OFFLOAD :
+						   (PKT_RX_SEC_OFFLOAD |
+					      PKT_RX_SEC_OFFLOAD_FAILED));
+		} else {
+			if (flag & NIX_RX_OFFLOAD_CHECKSUM_F)
+				ol_flags |= nix_rx_olflags_get(lookup_mem, w1);
+		}
+	} else {
+		if (flag & NIX_RX_OFFLOAD_CHECKSUM_F)
+			ol_flags |= nix_rx_olflags_get(lookup_mem, w1);
+	}
 
 	if (flag & NIX_RX_OFFLOAD_VLAN_STRIP_F) {
 		if (rx->vtag0_gone) {
@@ -263,12 +409,27 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 	const uintptr_t desc = rxq->desc;
 	const uint64_t wdata = rxq->wdata;
 	const uint32_t qmask = rxq->qmask;
+	uint64_t lbase = rxq->lmt_base;
 	uint16_t packets = 0, nb_pkts;
+	uint8_t loff = 0, lnum = 0;
 	uint32_t head = rxq->head;
 	struct nix_cqe_hdr_s *cq;
 	struct rte_mbuf *mbuf;
+	uint64_t aura_handle;
+	uint64_t sa_base;
+	uint16_t lmt_id;
+	uint64_t laddr;
 
 	nb_pkts = nix_rx_nb_pkts(rxq, wdata, pkts, qmask);
+
+	if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+		aura_handle = rxq->aura_handle;
+		sa_base = rxq->sa_base;
+		sa_base &= ~(ROC_NIX_INL_SA_BASE_ALIGN - 1);
+		ROC_LMT_BASE_ID_GET(lbase, lmt_id);
+		laddr = lbase;
+		laddr += 8;
+	}
 
 	while (packets < nb_pkts) {
 		/* Prefetch N desc ahead */
@@ -277,6 +438,14 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 		cq = (struct nix_cqe_hdr_s *)(desc + CQE_SZ(head));
 
 		mbuf = nix_get_mbuf_from_cqe(cq, data_off);
+
+		/* Translate meta to mbuf */
+		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+			const uint64_t cq_w1 = *((const uint64_t *)cq + 1);
+
+			mbuf = nix_sec_meta_to_mbuf_sc(cq_w1, sa_base, laddr,
+						       &loff, mbuf, data_off);
+		}
 
 		cn10k_nix_cqe_to_mbuf(cq, cq->tag, mbuf, lookup_mem, mbuf_init,
 				      flags);
@@ -289,6 +458,20 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 		roc_prefetch_store_keep(mbuf);
 		head++;
 		head &= qmask;
+
+		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+			/* Flush when we don't have space for 4 meta */
+			if ((15 - loff) < 1) {
+				nix_sec_flush_meta(laddr, lmt_id + lnum, loff,
+						   aura_handle);
+				lnum++;
+				lnum &= BIT_ULL(ROC_LMT_LINES_PER_CORE_LOG2) -
+					1;
+				/* First pointer starts at 8B offset */
+				laddr = (uintptr_t)LMT_OFF(lbase, lnum, 8);
+				loff = 0;
+			}
+		}
 	}
 
 	rxq->head = head;
@@ -296,6 +479,12 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 
 	/* Free all the CQs that we've processed */
 	plt_write64((wdata | nb_pkts), rxq->cq_door);
+
+	/* Free remaining meta buffers if any */
+	if (flags & NIX_RX_OFFLOAD_SECURITY_F && loff) {
+		nix_sec_flush_meta(laddr, lmt_id + lnum, loff, aura_handle);
+		plt_io_wmb();
+	}
 
 	return nb_pkts;
 }
@@ -327,7 +516,8 @@ nix_qinq_update(const uint64_t w2, uint64_t ol_flags, struct rte_mbuf *mbuf)
 static __rte_always_inline uint16_t
 cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			   const uint16_t flags, void *lookup_mem,
-			   struct cnxk_timesync_info *tstamp)
+			   struct cnxk_timesync_info *tstamp,
+			   uintptr_t lmt_base)
 {
 	struct cn10k_eth_rxq *rxq = args;
 	const uint64_t mbuf_initializer = (flags & NIX_RX_VWQE_F) ?
@@ -346,9 +536,13 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 	uint64x2_t rearm2 = vdupq_n_u64(mbuf_initializer);
 	uint64x2_t rearm3 = vdupq_n_u64(mbuf_initializer);
 	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3;
+	uint64_t aura_handle, lbase, laddr;
+	uint8_t loff = 0, lnum = 0;
 	uint8x16_t f0, f1, f2, f3;
+	uint16_t lmt_id, d_off;
 	uint16_t packets = 0;
 	uint16_t pkts_left;
+	uintptr_t sa_base;
 	uint32_t head;
 	uintptr_t cq0;
 
@@ -364,6 +558,38 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			tstamp = rxq->tstamp;
 	} else {
 		RTE_SET_USED(head);
+	}
+
+	if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+		if (flags & NIX_RX_VWQE_F) {
+			uint16_t port;
+
+			mbuf0 = (struct rte_mbuf *)((uintptr_t)mbufs[0] -
+						    sizeof(struct rte_mbuf));
+			/* Pick first mbuf's aura handle assuming all
+			 * mbufs are from a vec and are from same RQ.
+			 */
+			aura_handle = mbuf0->pool->pool_id;
+			/* Calculate offset from mbuf to actual data area */
+			d_off = ((uintptr_t)mbuf0->buf_addr - (uintptr_t)mbuf0);
+			d_off += (mbuf_initializer & 0xFFFF);
+
+			/* Get SA Base from lookup tbl using port_id */
+			port = mbuf_initializer >> 48;
+			sa_base = cnxk_nix_sa_base_get(port, lookup_mem);
+
+			lbase = lmt_base;
+		} else {
+			aura_handle = rxq->aura_handle;
+			d_off = rxq->data_off;
+			sa_base = rxq->sa_base;
+			lbase = rxq->lmt_base;
+		}
+		sa_base &= ~(ROC_NIX_INL_SA_BASE_ALIGN - 1);
+		ROC_LMT_BASE_ID_GET(lbase, lmt_id);
+		lnum = 0;
+		laddr = lbase;
+		laddr += 8;
 	}
 
 	while (packets < pkts) {
@@ -428,6 +654,14 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 		f2 = vqtbl1q_u8(cq2_w8, shuf_msk);
 		f3 = vqtbl1q_u8(cq3_w8, shuf_msk);
 
+		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+			/* Prefetch probable CPT parse header area */
+			rte_prefetch_non_temporal(RTE_PTR_ADD(mbuf0, d_off));
+			rte_prefetch_non_temporal(RTE_PTR_ADD(mbuf1, d_off));
+			rte_prefetch_non_temporal(RTE_PTR_ADD(mbuf2, d_off));
+			rte_prefetch_non_temporal(RTE_PTR_ADD(mbuf3, d_off));
+		}
+
 		/* Load CQE word0 and word 1 */
 		const uint64_t cq0_w0 = *CQE_PTR_OFF(cq0, 0, 0, flags);
 		const uint64_t cq0_w1 = *CQE_PTR_OFF(cq0, 0, 8, flags);
@@ -472,6 +706,30 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			ol_flags1 |= nix_rx_olflags_get(lookup_mem, cq1_w1);
 			ol_flags2 |= nix_rx_olflags_get(lookup_mem, cq2_w1);
 			ol_flags3 |= nix_rx_olflags_get(lookup_mem, cq3_w1);
+		}
+
+		/* Translate meta to mbuf */
+		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+			/* Checksum ol_flags will be cleared if mbuf is meta */
+			mbuf0 = nix_sec_meta_to_mbuf(cq0_w1, sa_base, laddr,
+						     &loff, mbuf0, d_off, &f0,
+						     &ol_flags0);
+			mbuf01 = vsetq_lane_u64((uint64_t)mbuf0, mbuf01, 0);
+
+			mbuf1 = nix_sec_meta_to_mbuf(cq1_w1, sa_base, laddr,
+						     &loff, mbuf1, d_off, &f1,
+						     &ol_flags1);
+			mbuf01 = vsetq_lane_u64((uint64_t)mbuf1, mbuf01, 1);
+
+			mbuf2 = nix_sec_meta_to_mbuf(cq2_w1, sa_base, laddr,
+						     &loff, mbuf2, d_off, &f2,
+						     &ol_flags2);
+			mbuf23 = vsetq_lane_u64((uint64_t)mbuf2, mbuf23, 0);
+
+			mbuf3 = nix_sec_meta_to_mbuf(cq3_w1, sa_base, laddr,
+						     &loff, mbuf3, d_off, &f3,
+						     &ol_flags3);
+			mbuf23 = vsetq_lane_u64((uint64_t)mbuf3, mbuf23, 1);
 		}
 
 		if (flags & NIX_RX_OFFLOAD_VLAN_STRIP_F) {
@@ -659,6 +917,26 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			head += NIX_DESCS_PER_LOOP;
 			head &= qmask;
 		}
+
+		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+			/* Flush when we don't have space for 4 meta */
+			if ((15 - loff) < 4) {
+				nix_sec_flush_meta(laddr, lmt_id + lnum, loff,
+						   aura_handle);
+				lnum++;
+				lnum &= BIT_ULL(ROC_LMT_LINES_PER_CORE_LOG2) -
+					1;
+				/* First pointer starts at 8B offset */
+				laddr = (uintptr_t)LMT_OFF(lbase, lnum, 8);
+				loff = 0;
+			}
+		}
+	}
+
+	if (flags & NIX_RX_OFFLOAD_SECURITY_F && loff) {
+		nix_sec_flush_meta(laddr, lmt_id + lnum, loff, aura_handle);
+		if (flags & NIX_RX_VWQE_F)
+			plt_io_wmb();
 	}
 
 	if (flags & NIX_RX_VWQE_F)
@@ -681,16 +959,18 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 #else
 
 static inline uint16_t
-cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
-			   uint16_t pkts, const uint16_t flags,
-			   void *lookup_mem, void *tstamp)
+cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
+			   const uint16_t flags, void *lookup_mem,
+			   struct cnxk_timesync_info *tstamp,
+			   uintptr_t lmt_base)
 {
-	RTE_SET_USED(lookup_mem);
-	RTE_SET_USED(rx_queue);
-	RTE_SET_USED(rx_pkts);
+	RTE_SET_USED(args);
+	RTE_SET_USED(mbufs);
 	RTE_SET_USED(pkts);
 	RTE_SET_USED(flags);
+	RTE_SET_USED(lookup_mem);
 	RTE_SET_USED(tstamp);
+	RTE_SET_USED(lmt_base);
 
 	return 0;
 }
@@ -704,98 +984,268 @@ cn10k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 #define MARK_F	  NIX_RX_OFFLOAD_MARK_UPDATE_F
 #define TS_F      NIX_RX_OFFLOAD_TSTAMP_F
 #define RX_VLAN_F NIX_RX_OFFLOAD_VLAN_STRIP_F
+#define R_SEC_F   NIX_RX_OFFLOAD_SECURITY_F
 
-/* [RX_VLAN_F] [TS] [MARK] [CKSUM] [PTYPE] [RSS] */
+/* [R_SEC_F] [RX_VLAN_F] [TS] [MARK] [CKSUM] [PTYPE] [RSS] */
 #define NIX_RX_FASTPATH_MODES						       \
-R(no_offload,			0, 0, 0, 0, 0, 0, NIX_RX_OFFLOAD_NONE)	       \
-R(rss,				0, 0, 0, 0, 0, 1, RSS_F)		       \
-R(ptype,			0, 0, 0, 0, 1, 0, PTYPE_F)		       \
-R(ptype_rss,			0, 0, 0, 0, 1, 1, PTYPE_F | RSS_F)	       \
-R(cksum,			0, 0, 0, 1, 0, 0, CKSUM_F)		       \
-R(cksum_rss,			0, 0, 0, 1, 0, 1, CKSUM_F | RSS_F)	       \
-R(cksum_ptype,			0, 0, 0, 1, 1, 0, CKSUM_F | PTYPE_F)	       \
-R(cksum_ptype_rss,		0, 0, 0, 1, 1, 1, CKSUM_F | PTYPE_F | RSS_F)   \
-R(mark,				0, 0, 1, 0, 0, 0, MARK_F)		       \
-R(mark_rss,			0, 0, 1, 0, 0, 1, MARK_F | RSS_F)	       \
-R(mark_ptype,			0, 0, 1, 0, 1, 0, MARK_F | PTYPE_F)	       \
-R(mark_ptype_rss,		0, 0, 1, 0, 1, 1, MARK_F | PTYPE_F | RSS_F)    \
-R(mark_cksum,			0, 0, 1, 1, 0, 0, MARK_F | CKSUM_F)	       \
-R(mark_cksum_rss,		0, 0, 1, 1, 0, 1, MARK_F | CKSUM_F | RSS_F)    \
-R(mark_cksum_ptype,		0, 0, 1, 1, 1, 0, MARK_F | CKSUM_F | PTYPE_F)  \
-R(mark_cksum_ptype_rss,		0, 0, 1, 1, 1, 1,			       \
-			MARK_F | CKSUM_F | PTYPE_F | RSS_F)		       \
-R(ts,				0, 1, 0, 0, 0, 0, TS_F)			       \
-R(ts_rss,			0, 1, 0, 0, 0, 1, TS_F | RSS_F)		       \
-R(ts_ptype,			0, 1, 0, 0, 1, 0, TS_F | PTYPE_F)	       \
-R(ts_ptype_rss,			0, 1, 0, 0, 1, 1, TS_F | PTYPE_F | RSS_F)      \
-R(ts_cksum,			0, 1, 0, 1, 0, 0, TS_F | CKSUM_F)	       \
-R(ts_cksum_rss,			0, 1, 0, 1, 0, 1, TS_F | CKSUM_F | RSS_F)      \
-R(ts_cksum_ptype,		0, 1, 0, 1, 1, 0, TS_F | CKSUM_F | PTYPE_F)    \
-R(ts_cksum_ptype_rss,		0, 1, 0, 1, 1, 1,			       \
-			TS_F | CKSUM_F | PTYPE_F | RSS_F)		       \
-R(ts_mark,			0, 1, 1, 0, 0, 0, TS_F | MARK_F)	       \
-R(ts_mark_rss,			0, 1, 1, 0, 0, 1, TS_F | MARK_F | RSS_F)       \
-R(ts_mark_ptype,		0, 1, 1, 0, 1, 0, TS_F | MARK_F | PTYPE_F)     \
-R(ts_mark_ptype_rss,		0, 1, 1, 0, 1, 1,			       \
-			TS_F | MARK_F | PTYPE_F | RSS_F)		       \
-R(ts_mark_cksum,		0, 1, 1, 1, 0, 0, TS_F | MARK_F | CKSUM_F)     \
-R(ts_mark_cksum_rss,		0, 1, 1, 1, 0, 1,			       \
-			TS_F | MARK_F | CKSUM_F | RSS_F)		       \
-R(ts_mark_cksum_ptype,		0, 1, 1, 1, 1, 0,			       \
-			TS_F | MARK_F | CKSUM_F | PTYPE_F)		       \
-R(ts_mark_cksum_ptype_rss,	0, 1, 1, 1, 1, 1,			       \
-			TS_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)	       \
-R(vlan,				1, 0, 0, 0, 0, 0, RX_VLAN_F)		       \
-R(vlan_rss,			1, 0, 0, 0, 0, 1, RX_VLAN_F | RSS_F)	       \
-R(vlan_ptype,			1, 0, 0, 0, 1, 0, RX_VLAN_F | PTYPE_F)	       \
-R(vlan_ptype_rss,		1, 0, 0, 0, 1, 1, RX_VLAN_F | PTYPE_F | RSS_F) \
-R(vlan_cksum,			1, 0, 0, 1, 0, 0, RX_VLAN_F | CKSUM_F)	       \
-R(vlan_cksum_rss,		1, 0, 0, 1, 0, 1, RX_VLAN_F | CKSUM_F | RSS_F) \
-R(vlan_cksum_ptype,		1, 0, 0, 1, 1, 0,			       \
-			RX_VLAN_F | CKSUM_F | PTYPE_F)			       \
-R(vlan_cksum_ptype_rss,		1, 0, 0, 1, 1, 1,			       \
-			RX_VLAN_F | CKSUM_F | PTYPE_F | RSS_F)		       \
-R(vlan_mark,			1, 0, 1, 0, 0, 0, RX_VLAN_F | MARK_F)	       \
-R(vlan_mark_rss,		1, 0, 1, 0, 0, 1, RX_VLAN_F | MARK_F | RSS_F)  \
-R(vlan_mark_ptype,		1, 0, 1, 0, 1, 0, RX_VLAN_F | MARK_F | PTYPE_F)\
-R(vlan_mark_ptype_rss,		1, 0, 1, 0, 1, 1,			       \
-			RX_VLAN_F | MARK_F | PTYPE_F | RSS_F)		       \
-R(vlan_mark_cksum,		1, 0, 1, 1, 0, 0, RX_VLAN_F | MARK_F | CKSUM_F)\
-R(vlan_mark_cksum_rss,		1, 0, 1, 1, 0, 1,			       \
-			RX_VLAN_F | MARK_F | CKSUM_F | RSS_F)		       \
-R(vlan_mark_cksum_ptype,	1, 0, 1, 1, 1, 0,			       \
-			RX_VLAN_F | MARK_F | CKSUM_F | PTYPE_F)		       \
-R(vlan_mark_cksum_ptype_rss,	1, 0, 1, 1, 1, 1,			       \
-			RX_VLAN_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)	       \
-R(vlan_ts,			1, 1, 0, 0, 0, 0, RX_VLAN_F | TS_F)	       \
-R(vlan_ts_rss,			1, 1, 0, 0, 0, 1, RX_VLAN_F | TS_F | RSS_F)    \
-R(vlan_ts_ptype,		1, 1, 0, 0, 1, 0, RX_VLAN_F | TS_F | PTYPE_F)  \
-R(vlan_ts_ptype_rss,		1, 1, 0, 0, 1, 1,			       \
-			RX_VLAN_F | TS_F | PTYPE_F | RSS_F)		       \
-R(vlan_ts_cksum,		1, 1, 0, 1, 0, 0, RX_VLAN_F | TS_F | CKSUM_F)  \
-R(vlan_ts_cksum_rss,		1, 1, 0, 1, 0, 1,			       \
-			RX_VLAN_F | TS_F | CKSUM_F | RSS_F)		       \
-R(vlan_ts_cksum_ptype,		1, 1, 0, 1, 1, 0,			       \
-			RX_VLAN_F | TS_F | CKSUM_F | PTYPE_F)		       \
-R(vlan_ts_cksum_ptype_rss,	1, 1, 0, 1, 1, 1,			       \
-			RX_VLAN_F | TS_F | CKSUM_F | PTYPE_F | RSS_F)	       \
-R(vlan_ts_mark,			1, 1, 1, 0, 0, 0, RX_VLAN_F | TS_F | MARK_F)   \
-R(vlan_ts_mark_rss,		1, 1, 1, 0, 0, 1,			       \
-			RX_VLAN_F | TS_F | MARK_F | RSS_F)		       \
-R(vlan_ts_mark_ptype,		1, 1, 1, 0, 1, 0,			       \
-			RX_VLAN_F | TS_F | MARK_F | PTYPE_F)		       \
-R(vlan_ts_mark_ptype_rss,	1, 1, 1, 0, 1, 1,			       \
-			RX_VLAN_F | TS_F | MARK_F | PTYPE_F | RSS_F)	       \
-R(vlan_ts_mark_cksum,		1, 1, 1, 1, 0, 0,			       \
-			RX_VLAN_F | TS_F | MARK_F | CKSUM_F)		       \
-R(vlan_ts_mark_cksum_rss,	1, 1, 1, 1, 0, 1,			       \
-			RX_VLAN_F | TS_F | MARK_F | CKSUM_F | RSS_F)	       \
-R(vlan_ts_mark_cksum_ptype,	1, 1, 1, 1, 1, 0,			       \
-			RX_VLAN_F | TS_F | MARK_F | CKSUM_F | PTYPE_F)	       \
-R(vlan_ts_mark_cksum_ptype_rss,	1, 1, 1, 1, 1, 1,			       \
-			RX_VLAN_F | TS_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)
+R(no_offload,			0, 0, 0, 0, 0, 0, 0,			       \
+		NIX_RX_OFFLOAD_NONE)					       \
+R(rss,				0, 0, 0, 0, 0, 0, 1,			       \
+		RSS_F)							       \
+R(ptype,			0, 0, 0, 0, 0, 1, 0,			       \
+		PTYPE_F)						       \
+R(ptype_rss,			0, 0, 0, 0, 0, 1, 1,			       \
+		PTYPE_F | RSS_F)					       \
+R(cksum,			0, 0, 0, 0, 1, 0, 0,			       \
+		CKSUM_F)						       \
+R(cksum_rss,			0, 0, 0, 0, 1, 0, 1,			       \
+		CKSUM_F | RSS_F)					       \
+R(cksum_ptype,			0, 0, 0, 0, 1, 1, 0,			       \
+		CKSUM_F | PTYPE_F)					       \
+R(cksum_ptype_rss,		0, 0, 0, 0, 1, 1, 1,			       \
+		CKSUM_F | PTYPE_F | RSS_F)				       \
+R(mark,				0, 0, 0, 1, 0, 0, 0,			       \
+		MARK_F)							       \
+R(mark_rss,			0, 0, 0, 1, 0, 0, 1,			       \
+		MARK_F | RSS_F)						       \
+R(mark_ptype,			0, 0, 0, 1, 0, 1, 0,			       \
+		MARK_F | PTYPE_F)					       \
+R(mark_ptype_rss,		0, 0, 0, 1, 0, 1, 1,			       \
+		MARK_F | PTYPE_F | RSS_F)				       \
+R(mark_cksum,			0, 0, 0, 1, 1, 0, 0,			       \
+		MARK_F | CKSUM_F)					       \
+R(mark_cksum_rss,		0, 0, 0, 1, 1, 0, 1,			       \
+		MARK_F | CKSUM_F | RSS_F)				       \
+R(mark_cksum_ptype,		0, 0, 0, 1, 1, 1, 0,			       \
+		MARK_F | CKSUM_F | PTYPE_F)				       \
+R(mark_cksum_ptype_rss,		0, 0, 0, 1, 1, 1, 1,			       \
+		MARK_F | CKSUM_F | PTYPE_F | RSS_F)			       \
+R(ts,				0, 0, 1, 0, 0, 0, 0,			       \
+		TS_F)							       \
+R(ts_rss,			0, 0, 1, 0, 0, 0, 1,			       \
+		TS_F | RSS_F)						       \
+R(ts_ptype,			0, 0, 1, 0, 0, 1, 0,			       \
+		TS_F | PTYPE_F)						       \
+R(ts_ptype_rss,			0, 0, 1, 0, 0, 1, 1,			       \
+		TS_F | PTYPE_F | RSS_F)					       \
+R(ts_cksum,			0, 0, 1, 0, 1, 0, 0,			       \
+		TS_F | CKSUM_F)						       \
+R(ts_cksum_rss,			0, 0, 1, 0, 1, 0, 1,			       \
+		TS_F | CKSUM_F | RSS_F)					       \
+R(ts_cksum_ptype,		0, 0, 1, 0, 1, 1, 0,			       \
+		TS_F | CKSUM_F | PTYPE_F)				       \
+R(ts_cksum_ptype_rss,		0, 0, 1, 0, 1, 1, 1,			       \
+		TS_F | CKSUM_F | PTYPE_F | RSS_F)			       \
+R(ts_mark,			0, 0, 1, 1, 0, 0, 0,			       \
+		TS_F | MARK_F)						       \
+R(ts_mark_rss,			0, 0, 1, 1, 0, 0, 1,			       \
+		TS_F | MARK_F | RSS_F)					       \
+R(ts_mark_ptype,		0, 0, 1, 1, 0, 1, 0,			       \
+		TS_F | MARK_F | PTYPE_F)				       \
+R(ts_mark_ptype_rss,		0, 0, 1, 1, 0, 1, 1,			       \
+		TS_F | MARK_F | PTYPE_F | RSS_F)			       \
+R(ts_mark_cksum,		0, 0, 1, 1, 1, 0, 0,			       \
+		TS_F | MARK_F | CKSUM_F)				       \
+R(ts_mark_cksum_rss,		0, 0, 1, 1, 1, 0, 1,			       \
+		TS_F | MARK_F | CKSUM_F | RSS_F)			       \
+R(ts_mark_cksum_ptype,		0, 0, 1, 1, 1, 1, 0,			       \
+		TS_F | MARK_F | CKSUM_F | PTYPE_F)			       \
+R(ts_mark_cksum_ptype_rss,	0, 0, 1, 1, 1, 1, 1,			       \
+		TS_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)		       \
+R(vlan,				0, 1, 0, 0, 0, 0, 0,			       \
+		RX_VLAN_F)						       \
+R(vlan_rss,			0, 1, 0, 0, 0, 0, 1,			       \
+		RX_VLAN_F | RSS_F)					       \
+R(vlan_ptype,			0, 1, 0, 0, 0, 1, 0,			       \
+		RX_VLAN_F | PTYPE_F)					       \
+R(vlan_ptype_rss,		0, 1, 0, 0, 0, 1, 1,			       \
+		RX_VLAN_F | PTYPE_F | RSS_F)				       \
+R(vlan_cksum,			0, 1, 0, 0, 1, 0, 0,			       \
+		RX_VLAN_F | CKSUM_F)					       \
+R(vlan_cksum_rss,		0, 1, 0, 0, 1, 0, 1,			       \
+		RX_VLAN_F | CKSUM_F | RSS_F)				       \
+R(vlan_cksum_ptype,		0, 1, 0, 0, 1, 1, 0,			       \
+		RX_VLAN_F | CKSUM_F | PTYPE_F)				       \
+R(vlan_cksum_ptype_rss,		0, 1, 0, 0, 1, 1, 1,			       \
+		RX_VLAN_F | CKSUM_F | PTYPE_F | RSS_F)			       \
+R(vlan_mark,			0, 1, 0, 1, 0, 0, 0,			       \
+		RX_VLAN_F | MARK_F)					       \
+R(vlan_mark_rss,		0, 1, 0, 1, 0, 0, 1,			       \
+		RX_VLAN_F | MARK_F | RSS_F)				       \
+R(vlan_mark_ptype,		0, 1, 0, 1, 0, 1, 0,			       \
+		RX_VLAN_F | MARK_F | PTYPE_F)				       \
+R(vlan_mark_ptype_rss,		0, 1, 0, 1, 0, 1, 1,			       \
+		RX_VLAN_F | MARK_F | PTYPE_F | RSS_F)			       \
+R(vlan_mark_cksum,		0, 1, 0, 1, 1, 0, 0,			       \
+		RX_VLAN_F | MARK_F | CKSUM_F)				       \
+R(vlan_mark_cksum_rss,		0, 1, 0, 1, 1, 0, 1,			       \
+		RX_VLAN_F | MARK_F | CKSUM_F | RSS_F)			       \
+R(vlan_mark_cksum_ptype,	0, 1, 0, 1, 1, 1, 0,			       \
+		RX_VLAN_F | MARK_F | CKSUM_F | PTYPE_F)			       \
+R(vlan_mark_cksum_ptype_rss,	0, 1, 0, 1, 1, 1, 1,			       \
+		RX_VLAN_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)		       \
+R(vlan_ts,			0, 1, 1, 0, 0, 0, 0,			       \
+		RX_VLAN_F | TS_F)					       \
+R(vlan_ts_rss,			0, 1, 1, 0, 0, 0, 1,			       \
+		RX_VLAN_F | TS_F | RSS_F)				       \
+R(vlan_ts_ptype,		0, 1, 1, 0, 0, 1, 0,			       \
+		RX_VLAN_F | TS_F | PTYPE_F)				       \
+R(vlan_ts_ptype_rss,		0, 1, 1, 0, 0, 1, 1,			       \
+		RX_VLAN_F | TS_F | PTYPE_F | RSS_F)			       \
+R(vlan_ts_cksum,		0, 1, 1, 0, 1, 0, 0,			       \
+		RX_VLAN_F | TS_F | CKSUM_F)				       \
+R(vlan_ts_cksum_rss,		0, 1, 1, 0, 1, 0, 1,			       \
+		RX_VLAN_F | TS_F | CKSUM_F | RSS_F)			       \
+R(vlan_ts_cksum_ptype,		0, 1, 1, 0, 1, 1, 0,			       \
+		RX_VLAN_F | TS_F | CKSUM_F | PTYPE_F)			       \
+R(vlan_ts_cksum_ptype_rss,	0, 1, 1, 0, 1, 1, 1,			       \
+		RX_VLAN_F | TS_F | CKSUM_F | PTYPE_F | RSS_F)		       \
+R(vlan_ts_mark,			0, 1, 1, 1, 0, 0, 0,			       \
+		RX_VLAN_F | TS_F | MARK_F)				       \
+R(vlan_ts_mark_rss,		0, 1, 1, 1, 0, 0, 1,			       \
+		RX_VLAN_F | TS_F | MARK_F | RSS_F)			       \
+R(vlan_ts_mark_ptype,		0, 1, 1, 1, 0, 1, 0,			       \
+		RX_VLAN_F | TS_F | MARK_F | PTYPE_F)			       \
+R(vlan_ts_mark_ptype_rss,	0, 1, 1, 1, 0, 1, 1,			       \
+		RX_VLAN_F | TS_F | MARK_F | PTYPE_F | RSS_F)		       \
+R(vlan_ts_mark_cksum,		0, 1, 1, 1, 1, 0, 0,			       \
+		RX_VLAN_F | TS_F | MARK_F | CKSUM_F)			       \
+R(vlan_ts_mark_cksum_rss,	0, 1, 1, 1, 1, 0, 1,			       \
+		RX_VLAN_F | TS_F | MARK_F | CKSUM_F | RSS_F)		       \
+R(vlan_ts_mark_cksum_ptype,	0, 1, 1, 1, 1, 1, 0,			       \
+		RX_VLAN_F | TS_F | MARK_F | CKSUM_F | PTYPE_F)		       \
+R(vlan_ts_mark_cksum_ptype_rss,	0, 1, 1, 1, 1, 1, 1,			       \
+		RX_VLAN_F | TS_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)	       \
+R(sec,				1, 0, 0, 0, 0, 0, 0,			       \
+		R_SEC_F)						       \
+R(sec_rss,			1, 0, 0, 0, 0, 0, 1,			       \
+		RSS_F)							       \
+R(sec_ptype,			1, 0, 0, 0, 0, 1, 0,			       \
+		R_SEC_F | PTYPE_F)					       \
+R(sec_ptype_rss,		1, 0, 0, 0, 0, 1, 1,			       \
+		R_SEC_F | PTYPE_F | RSS_F)				       \
+R(sec_cksum,			1, 0, 0, 0, 1, 0, 0,			       \
+		R_SEC_F | CKSUM_F)					       \
+R(sec_cksum_rss,		1, 0, 0, 0, 1, 0, 1,			       \
+		R_SEC_F | CKSUM_F | RSS_F)				       \
+R(sec_cksum_ptype,		1, 0, 0, 0, 1, 1, 0,			       \
+		R_SEC_F | CKSUM_F | PTYPE_F)				       \
+R(sec_cksum_ptype_rss,		1, 0, 0, 0, 1, 1, 1,			       \
+		R_SEC_F | CKSUM_F | PTYPE_F | RSS_F)			       \
+R(sec_mark,			1, 0, 0, 1, 0, 0, 0,			       \
+		R_SEC_F | MARK_F)					       \
+R(sec_mark_rss,			1, 0, 0, 1, 0, 0, 1,			       \
+		R_SEC_F | MARK_F | RSS_F)				       \
+R(sec_mark_ptype,		1, 0, 0, 1, 0, 1, 0,			       \
+		R_SEC_F | MARK_F | PTYPE_F)				       \
+R(sec_mark_ptype_rss,		1, 0, 0, 1, 0, 1, 1,			       \
+		R_SEC_F | MARK_F | PTYPE_F | RSS_F)			       \
+R(sec_mark_cksum,		1, 0, 0, 1, 1, 0, 0,			       \
+		R_SEC_F | MARK_F | CKSUM_F)				       \
+R(sec_mark_cksum_rss,		1, 0, 0, 1, 1, 0, 1,			       \
+		R_SEC_F | MARK_F | CKSUM_F | RSS_F)			       \
+R(sec_mark_cksum_ptype,		1, 0, 0, 1, 1, 1, 0,			       \
+		R_SEC_F | MARK_F | CKSUM_F | PTYPE_F)			       \
+R(sec_mark_cksum_ptype_rss,	1, 0, 0, 1, 1, 1, 1,			       \
+		R_SEC_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)		       \
+R(sec_ts,			1, 0, 1, 0, 0, 0, 0,			       \
+		R_SEC_F | TS_F)						       \
+R(sec_ts_rss,			1, 0, 1, 0, 0, 0, 1,			       \
+		R_SEC_F | TS_F | RSS_F)					       \
+R(sec_ts_ptype,			1, 0, 1, 0, 0, 1, 0,			       \
+		R_SEC_F | TS_F | PTYPE_F)				       \
+R(sec_ts_ptype_rss,		1, 0, 1, 0, 0, 1, 1,			       \
+		R_SEC_F | TS_F | PTYPE_F | RSS_F)			       \
+R(sec_ts_cksum,			1, 0, 1, 0, 1, 0, 0,			       \
+		R_SEC_F | TS_F | CKSUM_F)				       \
+R(sec_ts_cksum_rss,		1, 0, 1, 0, 1, 0, 1,			       \
+		R_SEC_F | TS_F | CKSUM_F | RSS_F)			       \
+R(sec_ts_cksum_ptype,		1, 0, 1, 0, 1, 1, 0,			       \
+		R_SEC_F | TS_F | CKSUM_F | PTYPE_F)			       \
+R(sec_ts_cksum_ptype_rss,	1, 0, 1, 0, 1, 1, 1,			       \
+		R_SEC_F | TS_F | CKSUM_F | PTYPE_F | RSS_F)		       \
+R(sec_ts_mark,			1, 0, 1, 1, 0, 0, 0,			       \
+		R_SEC_F | TS_F | MARK_F)				       \
+R(sec_ts_mark_rss,		1, 0, 1, 1, 0, 0, 1,			       \
+		R_SEC_F | TS_F | MARK_F | RSS_F)			       \
+R(sec_ts_mark_ptype,		1, 0, 1, 1, 0, 1, 0,			       \
+		R_SEC_F | TS_F | MARK_F | PTYPE_F)			       \
+R(sec_ts_mark_ptype_rss,	1, 0, 1, 1, 0, 1, 1,			       \
+		R_SEC_F | TS_F | MARK_F | PTYPE_F | RSS_F)		       \
+R(sec_ts_mark_cksum,		1, 0, 1, 1, 1, 0, 0,			       \
+		R_SEC_F | TS_F | MARK_F | CKSUM_F)			       \
+R(sec_ts_mark_cksum_rss,	1, 0, 1, 1, 1, 0, 1,			       \
+		R_SEC_F | TS_F | MARK_F | CKSUM_F | RSS_F)		       \
+R(sec_ts_mark_cksum_ptype,	1, 0, 1, 1, 1, 1, 0,			       \
+		R_SEC_F | TS_F | MARK_F | CKSUM_F | PTYPE_F)		       \
+R(sec_ts_mark_cksum_ptype_rss,	1, 0, 1, 1, 1, 1, 1,			       \
+		R_SEC_F | TS_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)	       \
+R(sec_vlan,			1, 1, 0, 0, 0, 0, 0,			       \
+		R_SEC_F | RX_VLAN_F)					       \
+R(sec_vlan_rss,			1, 1, 0, 0, 0, 0, 1,			       \
+		R_SEC_F | RX_VLAN_F | RSS_F)				       \
+R(sec_vlan_ptype,		1, 1, 0, 0, 0, 1, 0,			       \
+		R_SEC_F | RX_VLAN_F | PTYPE_F)				       \
+R(sec_vlan_ptype_rss,		1, 1, 0, 0, 0, 1, 1,			       \
+		R_SEC_F | RX_VLAN_F | PTYPE_F | RSS_F)			       \
+R(sec_vlan_cksum,		1, 1, 0, 0, 1, 0, 0,			       \
+		R_SEC_F | RX_VLAN_F | CKSUM_F)				       \
+R(sec_vlan_cksum_rss,		1, 1, 0, 0, 1, 0, 1,			       \
+		R_SEC_F | RX_VLAN_F | CKSUM_F | RSS_F)			       \
+R(sec_vlan_cksum_ptype,		1, 1, 0, 0, 1, 1, 0,			       \
+		R_SEC_F | RX_VLAN_F | CKSUM_F | PTYPE_F)		       \
+R(sec_vlan_cksum_ptype_rss,	1, 1, 0, 0, 1, 1, 1,			       \
+		R_SEC_F | RX_VLAN_F | CKSUM_F | PTYPE_F | RSS_F)	       \
+R(sec_vlan_mark,		1, 1, 0, 1, 0, 0, 0,			       \
+		R_SEC_F | RX_VLAN_F | MARK_F)				       \
+R(sec_vlan_mark_rss,		1, 1, 0, 1, 0, 0, 1,			       \
+		R_SEC_F | RX_VLAN_F | MARK_F | RSS_F)			       \
+R(sec_vlan_mark_ptype,		1, 1, 0, 1, 0, 1, 0,			       \
+		R_SEC_F | RX_VLAN_F | MARK_F | PTYPE_F)			       \
+R(sec_vlan_mark_ptype_rss,	1, 1, 0, 1, 0, 1, 1,			       \
+		R_SEC_F | RX_VLAN_F | MARK_F | PTYPE_F | RSS_F)		       \
+R(sec_vlan_mark_cksum,		1, 1, 0, 1, 1, 0, 0,			       \
+		R_SEC_F | RX_VLAN_F | MARK_F | CKSUM_F)			       \
+R(sec_vlan_mark_cksum_rss,	1, 1, 0, 1, 1, 0, 1,			       \
+		R_SEC_F | RX_VLAN_F | MARK_F | CKSUM_F | RSS_F)		       \
+R(sec_vlan_mark_cksum_ptype,	1, 1, 0, 1, 1, 1, 0,			       \
+		R_SEC_F | RX_VLAN_F | MARK_F | CKSUM_F | PTYPE_F)	       \
+R(sec_vlan_mark_cksum_ptype_rss, 1, 1, 0, 1, 1, 1, 1,			       \
+		R_SEC_F | RX_VLAN_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)      \
+R(sec_vlan_ts,			1, 1, 1, 0, 0, 0, 0,			       \
+		R_SEC_F | RX_VLAN_F | TS_F)				       \
+R(sec_vlan_ts_rss,		1, 1, 1, 0, 0, 0, 1,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | RSS_F)			       \
+R(sec_vlan_ts_ptype,		1, 1, 1, 0, 0, 1, 0,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | PTYPE_F)			       \
+R(sec_vlan_ts_ptype_rss,	1, 1, 1, 0, 0, 1, 1,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | PTYPE_F | RSS_F)		       \
+R(sec_vlan_ts_cksum,		1, 1, 1, 0, 1, 0, 0,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | CKSUM_F)			       \
+R(sec_vlan_ts_cksum_rss,	1, 1, 1, 0, 1, 0, 1,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | CKSUM_F | RSS_F)		       \
+R(sec_vlan_ts_cksum_ptype,	1, 1, 1, 0, 1, 1, 0,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | CKSUM_F | PTYPE_F)		       \
+R(sec_vlan_ts_cksum_ptype_rss,	1, 1, 1, 0, 1, 1, 1,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | CKSUM_F | PTYPE_F | RSS_F)	       \
+R(sec_vlan_ts_mark,		1, 1, 1, 1, 0, 0, 0,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | MARK_F)			       \
+R(sec_vlan_ts_mark_rss,		1, 1, 1, 1, 0, 0, 1,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | MARK_F | RSS_F)		       \
+R(sec_vlan_ts_mark_ptype,	1, 1, 1, 1, 0, 1, 0,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | MARK_F | PTYPE_F)		       \
+R(sec_vlan_ts_mark_ptype_rss,	1, 1, 1, 1, 0, 1, 1,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | MARK_F | PTYPE_F | RSS_F)	       \
+R(sec_vlan_ts_mark_cksum,	1, 1, 1, 1, 1, 0, 0,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | MARK_F | CKSUM_F)		       \
+R(sec_vlan_ts_mark_cksum_rss,	1, 1, 1, 1, 1, 0, 1,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | MARK_F | CKSUM_F | RSS_F)	       \
+R(sec_vlan_ts_mark_cksum_ptype,	1, 1, 1, 1, 1, 1, 0,			       \
+		R_SEC_F | RX_VLAN_F | TS_F | MARK_F | CKSUM_F | PTYPE_F)       \
+R(sec_vlan_ts_mark_cksum_ptype_rss,	1, 1, 1, 1, 1, 1, 1,		       \
+		R_SEC_F | RX_VLAN_F | TS_F | MARK_F | CKSUM_F | PTYPE_F | RSS_F)
 
-#define R(name, f5, f4, f3, f2, f1, f0, flags)				       \
+#define R(name, f6, f5, f4, f3, f2, f1, f0, flags)			       \
 	uint16_t __rte_noinline __rte_hot cn10k_nix_recv_pkts_##name(          \
 		void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts);     \
 									       \

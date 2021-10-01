@@ -106,12 +106,17 @@ cn10k_wqe_to_mbuf(uint64_t wqe, const uint64_t mbuf, uint8_t port_id,
 
 static __rte_always_inline void
 cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
-		   void *lookup_mem, void *tstamp)
+		   void *lookup_mem, void *tstamp, uintptr_t lbase)
 {
 	uint64_t mbuf_init = 0x100010000ULL | RTE_PKTMBUF_HEADROOM |
 			     (flags & NIX_RX_OFFLOAD_TSTAMP_F ? 8 : 0);
 	struct rte_event_vector *vec;
+	uint64_t aura_handle, laddr;
 	uint16_t nb_mbufs, non_vec;
+	uint16_t lmt_id, d_off;
+	struct rte_mbuf *mbuf;
+	uint8_t loff = 0;
+	uint64_t sa_base;
 	uint64_t **wqe;
 
 	mbuf_init |= ((uint64_t)port_id) << 48;
@@ -121,17 +126,41 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 	nb_mbufs = RTE_ALIGN_FLOOR(vec->nb_elem, NIX_DESCS_PER_LOOP);
 	nb_mbufs = cn10k_nix_recv_pkts_vector(&mbuf_init, vec->mbufs, nb_mbufs,
 					      flags | NIX_RX_VWQE_F, lookup_mem,
-					      tstamp);
+					      tstamp, lbase);
 	wqe += nb_mbufs;
 	non_vec = vec->nb_elem - nb_mbufs;
 
+	if (flags & NIX_RX_OFFLOAD_SECURITY_F && non_vec) {
+		mbuf = (struct rte_mbuf *)((uintptr_t)wqe[0] -
+					   sizeof(struct rte_mbuf));
+		/* Pick first mbuf's aura handle assuming all
+		 * mbufs are from a vec and are from same RQ.
+		 */
+		aura_handle = mbuf->pool->pool_id;
+		ROC_LMT_BASE_ID_GET(lbase, lmt_id);
+		laddr = lbase;
+		laddr += 8;
+		d_off = ((uintptr_t)mbuf->buf_addr - (uintptr_t)mbuf);
+		d_off += (mbuf_init & 0xFFFF);
+		sa_base = cnxk_nix_sa_base_get(mbuf_init >> 48, lookup_mem);
+		sa_base &= ~(ROC_NIX_INL_SA_BASE_ALIGN - 1);
+	}
+
 	while (non_vec) {
 		struct nix_cqe_hdr_s *cqe = (struct nix_cqe_hdr_s *)wqe[0];
-		struct rte_mbuf *mbuf;
 		uint64_t tstamp_ptr;
 
 		mbuf = (struct rte_mbuf *)((char *)cqe -
 					   sizeof(struct rte_mbuf));
+
+		/* Translate meta to mbuf */
+		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+			const uint64_t cq_w1 = *((const uint64_t *)cqe + 1);
+
+			mbuf = nix_sec_meta_to_mbuf_sc(cq_w1, sa_base, laddr,
+						       &loff, mbuf, d_off);
+		}
+
 		cn10k_nix_cqe_to_mbuf(cqe, cqe->tag, mbuf, lookup_mem,
 				      mbuf_init, flags);
 		/* Extracting tstamp, if PTP enabled*/
@@ -144,6 +173,12 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 		wqe[0] = (uint64_t *)mbuf;
 		non_vec--;
 		wqe++;
+	}
+
+	/* Free remaining meta buffers if any */
+	if (flags & NIX_RX_OFFLOAD_SECURITY_F && loff) {
+		nix_sec_flush_meta(laddr, lmt_id, loff, aura_handle);
+		plt_io_wmb();
 	}
 }
 
@@ -188,6 +223,34 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 			   RTE_EVENT_TYPE_ETHDEV) {
 			uint8_t port = CNXK_SUB_EVENT_FROM_TAG(gw.u64[0]);
 
+			if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+				struct rte_mbuf *m;
+				uintptr_t sa_base;
+				uint64_t iova = 0;
+				uint8_t loff = 0;
+				uint16_t d_off;
+				uint64_t cq_w1;
+
+				m = (struct rte_mbuf *)mbuf;
+				d_off = (uintptr_t)(m->buf_addr) - (uintptr_t)m;
+				d_off += RTE_PKTMBUF_HEADROOM;
+
+				cq_w1 = *(uint64_t *)(gw.u64[1] + 8);
+
+				sa_base = cnxk_nix_sa_base_get(port,
+							       lookup_mem);
+				sa_base &= ~(ROC_NIX_INL_SA_BASE_ALIGN - 1);
+
+				mbuf = (uint64_t)nix_sec_meta_to_mbuf_sc(cq_w1,
+						sa_base, (uintptr_t)&iova,
+						&loff, (struct rte_mbuf *)mbuf,
+						d_off);
+				if (loff)
+					roc_npa_aura_op_free(m->pool->pool_id,
+							     0, iova);
+
+			}
+
 			gw.u64[0] = CNXK_CLR_SUB_EVENT(gw.u64[0]);
 			cn10k_wqe_to_mbuf(gw.u64[1], mbuf, port,
 					  gw.u64[0] & 0xFFFFF, flags,
@@ -212,7 +275,7 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 				   ((uint64_t)port << 32);
 			*(uint64_t *)gw.u64[1] = (uint64_t)vwqe_hdr;
 			cn10k_process_vwqe(gw.u64[1], port, flags, lookup_mem,
-					   ws->tstamp);
+					   ws->tstamp, ws->lmt_base);
 		}
 	}
 
@@ -290,7 +353,7 @@ uint16_t __rte_hot cn10k_sso_hws_enq_fwd_burst(void *port,
 uint16_t __rte_hot cn10k_sso_hws_ca_enq(void *port, struct rte_event ev[],
 					uint16_t nb_events);
 
-#define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
+#define R(name, f6, f5, f4, f3, f2, f1, f0, flags)                             \
 	uint16_t __rte_hot cn10k_sso_hws_deq_##name(                           \
 		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
 	uint16_t __rte_hot cn10k_sso_hws_deq_burst_##name(                     \

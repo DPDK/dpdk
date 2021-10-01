@@ -51,9 +51,6 @@
 
 #define NIX_NB_SEGS_TO_SEGDW(x) ((NIX_SEGDW_MAGIC >> ((x) << 2)) & 0xF)
 
-#define LMT_OFF(lmt_addr, lmt_num, offset)                                     \
-	(void *)((lmt_addr) + ((lmt_num) << ROC_LMT_LINE_SIZE_LOG2) + (offset))
-
 /* Function to determine no of tx subdesc required in case ext
  * sub desc is enabled.
  */
