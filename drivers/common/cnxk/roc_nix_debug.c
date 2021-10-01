@@ -818,6 +818,7 @@ roc_nix_rq_dump(struct roc_nix_rq *rq)
 	nix_dump("  vwqe_wait_tmo = %ld", rq->vwqe_wait_tmo);
 	nix_dump("  vwqe_aura_handle = %ld", rq->vwqe_aura_handle);
 	nix_dump("  roc_nix = %p", rq->roc_nix);
+	nix_dump("  inl_dev_ref = %d", rq->inl_dev_ref);
 }
 
 void
@@ -1160,6 +1161,7 @@ roc_nix_dump(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct dev *dev = &nix->dev;
+	int i;
 
 	nix_dump("nix@%p", nix);
 	nix_dump("  pf = %d", dev_get_pf(dev->pf_func));
@@ -1169,6 +1171,7 @@ roc_nix_dump(struct roc_nix *roc_nix)
 	nix_dump("  port_id = %d", roc_nix->port_id);
 	nix_dump("  rss_tag_as_xor = %d", roc_nix->rss_tag_as_xor);
 	nix_dump("  rss_tag_as_xor = %d", roc_nix->max_sqb_count);
+	nix_dump("  outb_nb_desc = %u", roc_nix->outb_nb_desc);
 
 	nix_dump("  \tpci_dev = %p", nix->pci_dev);
 	nix_dump("  \tbase = 0x%" PRIxPTR "", nix->base);
@@ -1206,12 +1209,24 @@ roc_nix_dump(struct roc_nix *roc_nix)
 	nix_dump("  \ttx_link = %d", nix->tx_link);
 	nix_dump("  \tsqb_size = %d", nix->sqb_size);
 	nix_dump("  \tmsixoff = %d", nix->msixoff);
+	for (i = 0; i < nix->nb_cpt_lf; i++)
+		nix_dump("  \tcpt_msixoff[%d] = %d", i, nix->cpt_msixoff[i]);
 	nix_dump("  \tcints = %d", nix->cints);
 	nix_dump("  \tqints = %d", nix->qints);
 	nix_dump("  \tsdp_link = %d", nix->sdp_link);
 	nix_dump("  \tptp_en = %d", nix->ptp_en);
 	nix_dump("  \trss_alg_idx = %d", nix->rss_alg_idx);
 	nix_dump("  \ttx_pause = %d", nix->tx_pause);
+	nix_dump("  \tinl_inb_ena = %d", nix->inl_inb_ena);
+	nix_dump("  \tinl_outb_ena = %d", nix->inl_outb_ena);
+	nix_dump("  \tinb_sa_base = 0x%p", nix->inb_sa_base);
+	nix_dump("  \tinb_sa_sz = %" PRIu64, nix->inb_sa_sz);
+	nix_dump("  \toutb_sa_base = 0x%p", nix->outb_sa_base);
+	nix_dump("  \toutb_sa_sz = %" PRIu64, nix->outb_sa_sz);
+	nix_dump("  \toutb_err_sso_pffunc = 0x%x", nix->outb_err_sso_pffunc);
+	nix_dump("  \tcpt_lf_base = 0x%p", nix->cpt_lf_base);
+	nix_dump("  \tnb_cpt_lf = %d", nix->nb_cpt_lf);
+	nix_dump("  \tinb_inl_dev = %d", nix->inb_inl_dev);
 }
 
 void

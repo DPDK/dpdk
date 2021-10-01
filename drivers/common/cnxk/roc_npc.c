@@ -342,10 +342,11 @@ roc_npc_fini(struct roc_npc *roc_npc)
 }
 
 static int
-npc_parse_actions(struct npc *npc, const struct roc_npc_attr *attr,
+npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		  const struct roc_npc_action actions[],
 		  struct roc_npc_flow *flow)
 {
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	const struct roc_npc_action_mark *act_mark;
 	const struct roc_npc_action_queue *act_q;
 	const struct roc_npc_action_vf *vf_act;
@@ -427,15 +428,16 @@ npc_parse_actions(struct npc *npc, const struct roc_npc_attr *attr,
 			 *    NPC_SECURITY_ACTION_TYPE_INLINE_PROTOCOL &&
 			 *  session_protocol ==
 			 *    NPC_SECURITY_PROTOCOL_IPSEC
-			 *
-			 * RSS is not supported with inline ipsec. Get the
-			 * rq from associated conf, or make
-			 * ROC_NPC_ACTION_TYPE_QUEUE compulsory with this
-			 * action.
-			 * Currently, rq = 0 is assumed.
 			 */
 			req_act |= ROC_NPC_ACTION_TYPE_SEC;
 			rq = 0;
+
+			/* Special processing when with inline device */
+			if (roc_nix_inb_is_with_inl_dev(roc_npc->roc_nix) &&
+			    roc_nix_inl_dev_is_probed()) {
+				rq = 0;
+				pf_func = nix_inl_dev_pffunc_get();
+			}
 			break;
 		case ROC_NPC_ACTION_TYPE_VLAN_STRIP:
 			req_act |= ROC_NPC_ACTION_TYPE_VLAN_STRIP;
@@ -679,11 +681,12 @@ npc_parse_attr(struct npc *npc, const struct roc_npc_attr *attr,
 }
 
 static int
-npc_parse_rule(struct npc *npc, const struct roc_npc_attr *attr,
+npc_parse_rule(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	       const struct roc_npc_item_info pattern[],
 	       const struct roc_npc_action actions[], struct roc_npc_flow *flow,
 	       struct npc_parse_state *pst)
 {
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	int err;
 
 	/* Check attr */
@@ -697,7 +700,7 @@ npc_parse_rule(struct npc *npc, const struct roc_npc_attr *attr,
 		return err;
 
 	/* Check action */
-	err = npc_parse_actions(npc, attr, actions, flow);
+	err = npc_parse_actions(roc_npc, attr, actions, flow);
 	if (err)
 		return err;
 	return 0;
@@ -713,7 +716,8 @@ roc_npc_flow_parse(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	struct npc_parse_state parse_state = {0};
 	int rc;
 
-	rc = npc_parse_rule(npc, attr, pattern, actions, flow, &parse_state);
+	rc = npc_parse_rule(roc_npc, attr, pattern, actions, flow,
+			    &parse_state);
 	if (rc)
 		return rc;
 
@@ -1193,7 +1197,8 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	}
 	memset(flow, 0, sizeof(*flow));
 
-	rc = npc_parse_rule(npc, attr, pattern, actions, flow, &parse_state);
+	rc = npc_parse_rule(roc_npc, attr, pattern, actions, flow,
+			    &parse_state);
 	if (rc != 0) {
 		*errcode = rc;
 		goto err_exit;

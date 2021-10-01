@@ -43,6 +43,62 @@
 /* Alignment of SA Base */
 #define ROC_NIX_INL_SA_BASE_ALIGN BIT_ULL(16)
 
+static inline struct roc_onf_ipsec_inb_sa *
+roc_nix_inl_onf_ipsec_inb_sa(uintptr_t base, uint64_t idx)
+{
+	uint64_t off = idx << ROC_NIX_INL_ONF_IPSEC_INB_SA_SZ_LOG2;
+
+	return PLT_PTR_ADD(base, off);
+}
+
+static inline struct roc_onf_ipsec_outb_sa *
+roc_nix_inl_onf_ipsec_outb_sa(uintptr_t base, uint64_t idx)
+{
+	uint64_t off = idx << ROC_NIX_INL_ONF_IPSEC_OUTB_SA_SZ_LOG2;
+
+	return PLT_PTR_ADD(base, off);
+}
+
+static inline void *
+roc_nix_inl_onf_ipsec_inb_sa_sw_rsvd(void *sa)
+{
+	return PLT_PTR_ADD(sa, ROC_NIX_INL_ONF_IPSEC_INB_HW_SZ);
+}
+
+static inline void *
+roc_nix_inl_onf_ipsec_outb_sa_sw_rsvd(void *sa)
+{
+	return PLT_PTR_ADD(sa, ROC_NIX_INL_ONF_IPSEC_OUTB_HW_SZ);
+}
+
+static inline struct roc_ot_ipsec_inb_sa *
+roc_nix_inl_ot_ipsec_inb_sa(uintptr_t base, uint64_t idx)
+{
+	uint64_t off = idx << ROC_NIX_INL_OT_IPSEC_INB_SA_SZ_LOG2;
+
+	return PLT_PTR_ADD(base, off);
+}
+
+static inline struct roc_ot_ipsec_outb_sa *
+roc_nix_inl_ot_ipsec_outb_sa(uintptr_t base, uint64_t idx)
+{
+	uint64_t off = idx << ROC_NIX_INL_OT_IPSEC_OUTB_SA_SZ_LOG2;
+
+	return PLT_PTR_ADD(base, off);
+}
+
+static inline void *
+roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(void *sa)
+{
+	return PLT_PTR_ADD(sa, ROC_NIX_INL_OT_IPSEC_INB_HW_SZ);
+}
+
+static inline void *
+roc_nix_inl_ot_ipsec_outb_sa_sw_rsvd(void *sa)
+{
+	return PLT_PTR_ADD(sa, ROC_NIX_INL_OT_IPSEC_OUTB_HW_SZ);
+}
+
 /* Inline device SSO Work callback */
 typedef void (*roc_nix_inl_sso_work_cb_t)(uint64_t *gw, void *args);
 
@@ -62,5 +118,50 @@ struct roc_nix_inl_dev {
 int __roc_api roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev);
 int __roc_api roc_nix_inl_dev_fini(struct roc_nix_inl_dev *roc_inl_dev);
 void __roc_api roc_nix_inl_dev_dump(struct roc_nix_inl_dev *roc_inl_dev);
+bool __roc_api roc_nix_inl_dev_is_probed(void);
+void __roc_api roc_nix_inl_dev_lock(void);
+void __roc_api roc_nix_inl_dev_unlock(void);
+
+/* NIX Inline Inbound API */
+int __roc_api roc_nix_inl_inb_init(struct roc_nix *roc_nix);
+int __roc_api roc_nix_inl_inb_fini(struct roc_nix *roc_nix);
+bool __roc_api roc_nix_inl_inb_is_enabled(struct roc_nix *roc_nix);
+uintptr_t __roc_api roc_nix_inl_inb_sa_base_get(struct roc_nix *roc_nix,
+						bool inl_dev_sa);
+uint32_t __roc_api roc_nix_inl_inb_sa_max_spi(struct roc_nix *roc_nix,
+					      bool inl_dev_sa);
+uint32_t __roc_api roc_nix_inl_inb_sa_sz(struct roc_nix *roc_nix,
+					 bool inl_dev_sa);
+uintptr_t __roc_api roc_nix_inl_inb_sa_get(struct roc_nix *roc_nix,
+					   bool inl_dev_sa, uint32_t spi);
+void __roc_api roc_nix_inb_mode_set(struct roc_nix *roc_nix, bool use_inl_dev);
+int __roc_api roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq);
+int __roc_api roc_nix_inl_dev_rq_put(struct roc_nix_rq *rq);
+bool __roc_api roc_nix_inb_is_with_inl_dev(struct roc_nix *roc_nix);
+struct roc_nix_rq *__roc_api roc_nix_inl_dev_rq(void);
+int __roc_api roc_nix_inl_inb_tag_update(struct roc_nix *roc_nix,
+					 uint32_t tag_const, uint8_t tt);
+uint64_t __roc_api roc_nix_inl_dev_rq_limit_get(void);
+
+/* NIX Inline Outbound API */
+int __roc_api roc_nix_inl_outb_init(struct roc_nix *roc_nix);
+int __roc_api roc_nix_inl_outb_fini(struct roc_nix *roc_nix);
+bool __roc_api roc_nix_inl_outb_is_enabled(struct roc_nix *roc_nix);
+uintptr_t __roc_api roc_nix_inl_outb_sa_base_get(struct roc_nix *roc_nix);
+struct roc_cpt_lf *__roc_api
+roc_nix_inl_outb_lf_base_get(struct roc_nix *roc_nix);
+uint16_t __roc_api roc_nix_inl_outb_sso_pffunc_get(struct roc_nix *roc_nix);
+int __roc_api roc_nix_inl_cb_register(roc_nix_inl_sso_work_cb_t cb, void *args);
+int __roc_api roc_nix_inl_cb_unregister(roc_nix_inl_sso_work_cb_t cb,
+					void *args);
+/* NIX Inline/Outbound API */
+enum roc_nix_inl_sa_sync_op {
+	ROC_NIX_INL_SA_OP_FLUSH,
+	ROC_NIX_INL_SA_OP_FLUSH_INVAL,
+	ROC_NIX_INL_SA_OP_RELOAD,
+};
+
+int __roc_api roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
+				  enum roc_nix_inl_sa_sync_op op);
 
 #endif /* _ROC_NIX_INL_H_ */

@@ -164,6 +164,21 @@ struct nix {
 	uint16_t tm_link_cfg_lvl;
 	uint16_t contig_rsvd[NIX_TXSCH_LVL_CNT];
 	uint16_t discontig_rsvd[NIX_TXSCH_LVL_CNT];
+
+	/* Ipsec info */
+	uint16_t cpt_msixoff[MAX_RVU_BLKLF_CNT];
+	bool inl_inb_ena;
+	bool inl_outb_ena;
+	void *inb_sa_base;
+	size_t inb_sa_sz;
+	void *outb_sa_base;
+	size_t outb_sa_sz;
+	uint16_t outb_err_sso_pffunc;
+	struct roc_cpt_lf *cpt_lf_base;
+	uint16_t nb_cpt_lf;
+	/* Mode provided by driver */
+	bool inb_inl_dev;
+
 } __plt_cache_aligned;
 
 enum nix_err_status {

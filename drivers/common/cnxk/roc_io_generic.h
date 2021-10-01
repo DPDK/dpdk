@@ -5,7 +5,8 @@
 #ifndef _ROC_IO_GENERIC_H_
 #define _ROC_IO_GENERIC_H_
 
-#define ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id) (lmt_id = 0)
+#define ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id)	  (lmt_id = 0)
+#define ROC_LMT_CPT_BASE_ID_GET(lmt_addr, lmt_id) (lmt_id = 0)
 
 #define roc_load_pair(val0, val1, addr)                                        \
 	do {                                                                   \

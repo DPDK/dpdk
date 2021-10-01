@@ -171,6 +171,7 @@ struct roc_nix_rq {
 	uint8_t spb_red_pass;
 	/* End of Input parameters */
 	struct roc_nix *roc_nix;
+	bool inl_dev_ref;
 };
 
 struct roc_nix_cq {
@@ -258,6 +259,10 @@ struct roc_nix {
 	bool enable_loop;
 	bool hw_vlan_ins;
 	uint8_t lock_rx_ctx;
+	uint32_t outb_nb_desc;
+	uint16_t outb_nb_crypto_qs;
+	uint16_t ipsec_in_max_spi;
+	uint16_t ipsec_out_max_sa;
 	/* End of input parameters */
 	/* LMT line base for "Per Core Tx LMT line" mode*/
 	uintptr_t lmt_base;

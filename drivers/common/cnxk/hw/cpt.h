@@ -40,6 +40,7 @@
 #define CPT_LF_CTX_ENC_PKT_CNT	(0x540ull)
 #define CPT_LF_CTX_DEC_BYTE_CNT (0x550ull)
 #define CPT_LF_CTX_DEC_PKT_CNT	(0x560ull)
+#define CPT_LF_CTX_RELOAD	(0x570ull)
 
 #define CPT_AF_LFX_CTL(a)  (0x27000ull | (uint64_t)(a) << 3)
 #define CPT_AF_LFX_CTL2(a) (0x29000ull | (uint64_t)(a) << 3)
@@ -65,6 +66,13 @@ union cpt_lf_ctx_flush {
 		uint64_t inval : 1;
 		uint64_t res : 1;
 		uint64_t pf_func : 16;
+	} s;
+};
+
+union cpt_lf_ctx_reload {
+	uint64_t u;
+	struct {
+		uint64_t cptr : 46;
 	} s;
 };
 
