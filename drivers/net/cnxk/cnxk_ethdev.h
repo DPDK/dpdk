@@ -130,6 +130,9 @@
 /* Subtype from inline outbound error event */
 #define CNXK_ETHDEV_SEC_OUTB_EV_SUB 0xFFUL
 
+/* SPI will be in 20 bits of tag */
+#define CNXK_ETHDEV_SPI_TAG_MASK 0xFFFFFUL
+
 struct cnxk_fc_cfg {
 	enum rte_eth_fc_mode mode;
 	uint8_t rx_pause;

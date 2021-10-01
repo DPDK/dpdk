@@ -6,7 +6,7 @@
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
 
-#define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
+#define R(name, f6, f5, f4, f3, f2, f1, f0, flags)                             \
 	uint16_t __rte_hot cn9k_sso_hws_deq_##name(                            \
 		void *port, struct rte_event *ev, uint64_t timeout_ticks)      \
 	{                                                                      \

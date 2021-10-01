@@ -5,6 +5,9 @@
 #ifndef __CN9K_WORKER_H__
 #define __CN9K_WORKER_H__
 
+#include <rte_eventdev.h>
+#include <rte_vect.h>
+
 #include "cnxk_ethdev.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
@@ -380,7 +383,7 @@ uint16_t __rte_hot cn9k_sso_hws_ca_enq(void *port, struct rte_event ev[],
 uint16_t __rte_hot cn9k_sso_hws_dual_ca_enq(void *port, struct rte_event ev[],
 					    uint16_t nb_events);
 
-#define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
+#define R(name, f6, f5, f4, f3, f2, f1, f0, flags)                             \
 	uint16_t __rte_hot cn9k_sso_hws_deq_##name(                            \
 		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
 	uint16_t __rte_hot cn9k_sso_hws_deq_burst_##name(                      \
@@ -415,7 +418,7 @@ uint16_t __rte_hot cn9k_sso_hws_dual_ca_enq(void *port, struct rte_event ev[],
 NIX_RX_FASTPATH_MODES
 #undef R
 
-#define R(name, f5, f4, f3, f2, f1, f0, flags)                                 \
+#define R(name, f6, f5, f4, f3, f2, f1, f0, flags)                             \
 	uint16_t __rte_hot cn9k_sso_hws_dual_deq_##name(                       \
 		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
 	uint16_t __rte_hot cn9k_sso_hws_dual_deq_burst_##name(                 \
