@@ -5,6 +5,8 @@
 #ifndef _CNXK_BPHY_H_
 #define _CNXK_BPHY_H_
 
+#include <rte_memcpy.h>
+
 #include "cnxk_bphy_irq.h"
 
 enum cnxk_bphy_cgx_msg_type {
@@ -138,33 +140,59 @@ struct cnxk_bphy_irq_info {
 };
 
 static __rte_always_inline int
+__rte_pmd_bphy_enq_deq(uint16_t dev_id, unsigned int queue, void *req,
+		       void *rsp, size_t rsp_size)
+{
+	struct rte_rawdev_buf *bufs[1];
+	struct rte_rawdev_buf buf;
+	void *q;
+	int ret;
+
+	q = (void *)(size_t)queue;
+	buf.buf_addr = req;
+	bufs[0] = &buf;
+
+	ret = rte_rawdev_enqueue_buffers(dev_id, bufs, RTE_DIM(bufs), q);
+	if (ret < 0)
+		return ret;
+	if (ret != RTE_DIM(bufs))
+		return -EIO;
+
+	if (!rsp)
+		return 0;
+
+	ret = rte_rawdev_dequeue_buffers(dev_id, bufs, RTE_DIM(bufs), q);
+	if (ret < 0)
+		return ret;
+	if (ret != RTE_DIM(bufs))
+		return -EIO;
+
+	rte_memcpy(rsp, buf.buf_addr, rsp_size);
+	rte_free(buf.buf_addr);
+
+	return 0;
+}
+
+static __rte_always_inline int
 rte_pmd_bphy_intr_init(uint16_t dev_id)
 {
 	struct cnxk_bphy_irq_msg msg = {
 		.type = CNXK_BPHY_IRQ_MSG_TYPE_INIT,
 	};
-	struct rte_rawdev_buf *bufs[1];
-	struct rte_rawdev_buf buf;
 
-	buf.buf_addr = &msg;
-	bufs[0] = &buf;
-
-	return rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+	return __rte_pmd_bphy_enq_deq(dev_id, CNXK_BPHY_DEF_QUEUE, &msg,
+				      NULL, 0);
 }
 
-static __rte_always_inline void
+static __rte_always_inline int
 rte_pmd_bphy_intr_fini(uint16_t dev_id)
 {
 	struct cnxk_bphy_irq_msg msg = {
 		.type = CNXK_BPHY_IRQ_MSG_TYPE_FINI,
 	};
-	struct rte_rawdev_buf *bufs[1];
-	struct rte_rawdev_buf buf;
 
-	buf.buf_addr = &msg;
-	bufs[0] = &buf;
-
-	rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+	return __rte_pmd_bphy_enq_deq(dev_id, CNXK_BPHY_DEF_QUEUE, &msg,
+				      NULL, 0);
 }
 
 static __rte_always_inline int
@@ -182,16 +210,12 @@ rte_pmd_bphy_intr_register(uint16_t dev_id, int irq_num,
 		.type = CNXK_BPHY_IRQ_MSG_TYPE_REGISTER,
 		.data = &info
 	};
-	struct rte_rawdev_buf *bufs[1];
-	struct rte_rawdev_buf buf;
 
-	buf.buf_addr = &msg;
-	bufs[0] = &buf;
-
-	return rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
+	return __rte_pmd_bphy_enq_deq(dev_id, CNXK_BPHY_DEF_QUEUE, &msg,
+				      NULL, 0);
 }
 
-static __rte_always_inline void
+static __rte_always_inline int
 rte_pmd_bphy_intr_unregister(uint16_t dev_id, int irq_num)
 {
 	struct cnxk_bphy_irq_info info = {
@@ -201,85 +225,162 @@ rte_pmd_bphy_intr_unregister(uint16_t dev_id, int irq_num)
 		.type = CNXK_BPHY_IRQ_MSG_TYPE_UNREGISTER,
 		.data = &info
 	};
-	struct rte_rawdev_buf *bufs[1];
-	struct rte_rawdev_buf buf;
 
-	buf.buf_addr = &msg;
-	bufs[0] = &buf;
-
-	rte_rawdev_enqueue_buffers(dev_id, bufs, 1, 0);
+	return __rte_pmd_bphy_enq_deq(dev_id, CNXK_BPHY_DEF_QUEUE, &msg,
+				      NULL, 0);
 }
 
-static __rte_always_inline struct cnxk_bphy_mem *
-rte_pmd_bphy_intr_mem_get(uint16_t dev_id)
+static __rte_always_inline int
+rte_pmd_bphy_intr_mem_get(uint16_t dev_id, struct cnxk_bphy_mem *mem)
 {
 	struct cnxk_bphy_irq_msg msg = {
 		.type = CNXK_BPHY_IRQ_MSG_TYPE_MEM_GET,
 	};
-	struct rte_rawdev_buf *bufs[1];
-	struct rte_rawdev_buf buf;
-	int ret;
 
-	buf.buf_addr = &msg;
-	bufs[0] = &buf;
-
-	ret = rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
-	if (ret)
-		return NULL;
-
-	ret = rte_rawdev_dequeue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
-	if (ret)
-		return NULL;
-
-	return buf.buf_addr;
+	return __rte_pmd_bphy_enq_deq(dev_id, CNXK_BPHY_DEF_QUEUE, &msg,
+				      mem, sizeof(*mem));
 }
 
-static __rte_always_inline uint16_t
-rte_pmd_bphy_npa_pf_func_get(uint16_t dev_id)
+static __rte_always_inline int
+rte_pmd_bphy_npa_pf_func_get(uint16_t dev_id, uint16_t *pf_func)
 {
 	struct cnxk_bphy_irq_msg msg = {
 		.type = CNXK_BPHY_MSG_TYPE_NPA_PF_FUNC,
 	};
-	struct rte_rawdev_buf *bufs[1];
-	struct rte_rawdev_buf buf;
-	int ret;
 
-	buf.buf_addr = &msg;
-	bufs[0] = &buf;
-
-	ret = rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
-	if (ret)
-		return 0;
-
-	ret = rte_rawdev_dequeue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
-	if (ret)
-		return 0;
-
-	return (uint16_t)(size_t)buf.buf_addr;
+	return __rte_pmd_bphy_enq_deq(dev_id, CNXK_BPHY_DEF_QUEUE, &msg,
+				      pf_func, sizeof(*pf_func));
 }
 
-static __rte_always_inline uint16_t
-rte_pmd_bphy_sso_pf_func_get(uint16_t dev_id)
+static __rte_always_inline int
+rte_pmd_bphy_sso_pf_func_get(uint16_t dev_id, uint16_t *pf_func)
 {
 	struct cnxk_bphy_irq_msg msg = {
 		.type = CNXK_BPHY_MSG_TYPE_SSO_PF_FUNC,
 	};
-	struct rte_rawdev_buf *bufs[1];
-	struct rte_rawdev_buf buf;
-	int ret;
 
-	buf.buf_addr = &msg;
-	bufs[0] = &buf;
+	return __rte_pmd_bphy_enq_deq(dev_id, CNXK_BPHY_DEF_QUEUE, &msg,
+				      pf_func, sizeof(*pf_func));
+}
 
-	ret = rte_rawdev_enqueue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
-	if (ret)
-		return 0;
+static __rte_always_inline int
+rte_pmd_bphy_cgx_get_link_info(uint16_t dev_id, uint16_t lmac,
+			       struct cnxk_bphy_cgx_msg_link_info *info)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_GET_LINKINFO,
+	};
 
-	ret = rte_rawdev_dequeue_buffers(dev_id, bufs, 1, CNXK_BPHY_DEF_QUEUE);
-	if (ret)
-		return 0;
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, info, sizeof(*info));
+}
 
-	return (uint16_t)(size_t)buf.buf_addr;
+static __rte_always_inline int
+rte_pmd_bphy_cgx_intlbk_disable(uint16_t dev_id, uint16_t lmac)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_INTLBK_DISABLE,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
+}
+
+static __rte_always_inline int
+rte_pmd_bphy_cgx_intlbk_enable(uint16_t dev_id, uint16_t lmac)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_INTLBK_ENABLE,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
+}
+
+static __rte_always_inline int
+rte_pmd_bphy_cgx_ptp_rx_disable(uint16_t dev_id, uint16_t lmac)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_PTP_RX_DISABLE,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
+}
+
+static __rte_always_inline int
+rte_pmd_bphy_cgx_ptp_rx_enable(uint16_t dev_id, uint16_t lmac)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_PTP_RX_ENABLE,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
+}
+
+static __rte_always_inline int
+rte_pmd_bphy_cgx_set_link_mode(uint16_t dev_id, uint16_t lmac,
+			       struct cnxk_bphy_cgx_msg_link_mode *mode)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_SET_LINK_MODE,
+		.data = mode,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
+}
+
+static __rte_always_inline int
+rte_pmd_bphy_cgx_set_link_state(uint16_t dev_id, uint16_t lmac, bool up)
+{
+	struct cnxk_bphy_cgx_msg_set_link_state state = {
+		.state = up,
+	};
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_SET_LINK_STATE,
+		.data = &state,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
+}
+
+static __rte_always_inline int
+rte_pmd_bphy_cgx_start_rxtx(uint16_t dev_id, uint16_t lmac)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_START_RXTX,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
+}
+
+static __rte_always_inline int
+rte_pmd_bphy_cgx_stop_rxtx(uint16_t dev_id, uint16_t lmac)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_STOP_RXTX,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
+}
+
+static __rte_always_inline int
+rte_pmd_bphy_cgx_get_supported_fec(uint16_t dev_id, uint16_t lmac,
+				   enum cnxk_bphy_cgx_eth_link_fec *fec)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_GET_SUPPORTED_FEC,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, fec, sizeof(*fec));
+}
+
+static __rte_always_inline int
+rte_pmd_bphy_cgx_set_fec(uint16_t dev_id, uint16_t lmac,
+			 enum cnxk_bphy_cgx_eth_link_fec fec)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_SET_FEC,
+		.data = &fec,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
 }
 
 #endif /* _CNXK_BPHY_H_ */

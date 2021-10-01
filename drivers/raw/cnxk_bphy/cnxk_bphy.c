@@ -45,6 +45,7 @@ static int
 bphy_rawdev_selftest(uint16_t dev_id)
 {
 	unsigned int i, queues, descs;
+	uint16_t pf_func;
 	uint64_t max_irq;
 	int ret;
 
@@ -68,12 +69,12 @@ bphy_rawdev_selftest(uint16_t dev_id)
 		goto err_desc;
 	}
 
-	ret = rte_pmd_bphy_npa_pf_func_get(dev_id);
-	if (ret == 0)
+	ret = rte_pmd_bphy_npa_pf_func_get(dev_id, &pf_func);
+	if (ret || pf_func == 0)
 		plt_warn("NPA pf_func is invalid");
 
-	ret = rte_pmd_bphy_sso_pf_func_get(dev_id);
-	if (ret == 0)
+	ret = rte_pmd_bphy_sso_pf_func_get(dev_id, &pf_func);
+	if (ret || pf_func == 0)
 		plt_warn("SSO pf_func is invalid");
 
 	ret = rte_pmd_bphy_intr_init(dev_id);
@@ -169,9 +170,13 @@ cnxk_bphy_irq_enqueue_bufs(struct rte_rawdev *dev,
 {
 	struct bphy_device *bphy_dev = (struct bphy_device *)dev->dev_private;
 	struct cnxk_bphy_irq_msg *msg = buffers[0]->buf_addr;
+	struct bphy_irq_queue *qp = &bphy_dev->queues[0];
 	unsigned int queue = (size_t)context;
 	struct cnxk_bphy_irq_info *info;
-	int ret = 0;
+	struct cnxk_bphy_mem *mem;
+	uint16_t *pf_func;
+	void *rsp = NULL;
+	int ret;
 
 	if (queue >= RTE_DIM(bphy_dev->queues))
 		return -EINVAL;
@@ -182,6 +187,8 @@ cnxk_bphy_irq_enqueue_bufs(struct rte_rawdev *dev,
 	switch (msg->type) {
 	case CNXK_BPHY_IRQ_MSG_TYPE_INIT:
 		ret = cnxk_bphy_intr_init(dev->dev_id);
+		if (ret)
+			return ret;
 		break;
 	case CNXK_BPHY_IRQ_MSG_TYPE_FINI:
 		cnxk_bphy_intr_fini(dev->dev_id);
@@ -191,27 +198,49 @@ cnxk_bphy_irq_enqueue_bufs(struct rte_rawdev *dev,
 		ret = cnxk_bphy_intr_register(dev->dev_id, info->irq_num,
 					      info->handler, info->data,
 					      info->cpu);
+		if (ret)
+			return ret;
 		break;
 	case CNXK_BPHY_IRQ_MSG_TYPE_UNREGISTER:
 		info = (struct cnxk_bphy_irq_info *)msg->data;
 		cnxk_bphy_intr_unregister(dev->dev_id, info->irq_num);
 		break;
 	case CNXK_BPHY_IRQ_MSG_TYPE_MEM_GET:
-		bphy_dev->queues[queue].rsp = &bphy_dev->mem;
+		mem = rte_zmalloc(NULL, sizeof(*mem), 0);
+		if (!mem)
+			return -ENOMEM;
+
+		*mem = bphy_dev->mem;
+		rsp = mem;
 		break;
 	case CNXK_BPHY_MSG_TYPE_NPA_PF_FUNC:
-		bphy_dev->queues[queue].rsp =
-			(void *)(size_t)roc_bphy_npa_pf_func_get();
+		pf_func = rte_malloc(NULL, sizeof(*pf_func), 0);
+		if (!pf_func)
+			return -ENOMEM;
+
+		*pf_func = roc_bphy_npa_pf_func_get();
+		rsp = pf_func;
 		break;
 	case CNXK_BPHY_MSG_TYPE_SSO_PF_FUNC:
-		bphy_dev->queues[queue].rsp =
-			(void *)(size_t)roc_bphy_sso_pf_func_get();
+		pf_func = rte_malloc(NULL, sizeof(*pf_func), 0);
+		if (!pf_func)
+			return -ENOMEM;
+
+		*pf_func = roc_bphy_sso_pf_func_get();
+		rsp = pf_func;
 		break;
 	default:
-		ret = -EINVAL;
+		return -EINVAL;
 	}
 
-	return ret;
+	/* get rid of last response if any */
+	if (qp->rsp) {
+		RTE_LOG(WARNING, PMD, "Previous response got overwritten\n");
+		rte_free(qp->rsp);
+	}
+	qp->rsp = rsp;
+
+	return 1;
 }
 
 static int
@@ -221,6 +250,7 @@ cnxk_bphy_irq_dequeue_bufs(struct rte_rawdev *dev,
 {
 	struct bphy_device *bphy_dev = (struct bphy_device *)dev->dev_private;
 	unsigned int queue = (size_t)context;
+	struct bphy_irq_queue *qp;
 
 	if (queue >= RTE_DIM(bphy_dev->queues))
 		return -EINVAL;
@@ -228,7 +258,13 @@ cnxk_bphy_irq_dequeue_bufs(struct rte_rawdev *dev,
 	if (count == 0)
 		return 0;
 
-	buffers[0]->buf_addr = bphy_dev->queues[queue].rsp;
+	qp = &bphy_dev->queues[queue];
+	if (qp->rsp) {
+		buffers[0]->buf_addr = qp->rsp;
+		qp->rsp = NULL;
+
+		return 1;
+	}
 
 	return 0;
 }
