@@ -124,6 +124,17 @@ union cpt_lf_misc_int {
 	} s;
 };
 
+union cpt_lf_q_grp_ptr {
+	uint64_t u;
+	struct {
+		uint64_t dq_ptr : 15;
+		uint64_t reserved_31_15 : 17;
+		uint64_t nq_ptr : 15;
+		uint64_t reserved_47_62 : 16;
+		uint64_t xq_xor : 1;
+	} s;
+};
+
 union cpt_inst_w4 {
 	uint64_t u64;
 	struct {

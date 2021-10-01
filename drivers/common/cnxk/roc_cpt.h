@@ -76,6 +76,14 @@
 #define ROC_CPT_TUNNEL_IPV4_HDR_LEN 20
 #define ROC_CPT_TUNNEL_IPV6_HDR_LEN 40
 
+#define ROC_CPT_CCM_AAD_DATA 1
+#define ROC_CPT_CCM_MSG_LEN  4
+#define ROC_CPT_CCM_ICV_LEN  16
+#define ROC_CPT_CCM_FLAGS                                                      \
+	((ROC_CPT_CCM_AAD_DATA << 6) |                                         \
+	 (((ROC_CPT_CCM_ICV_LEN - 2) / 2) << 3) | (ROC_CPT_CCM_MSG_LEN - 1))
+#define ROC_CPT_CCM_SALT_LEN 3
+
 struct roc_cpt_lmtline {
 	uint64_t io_addr;
 	uint64_t *fc_addr;
