@@ -284,8 +284,18 @@ rox_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
 	limit = rsp->aura.limit;
 	/* BP is already enabled. */
 	if (rsp->aura.bp_ena) {
+		uint16_t bpid;
+		bool nix1;
+
+		nix1 = !!(rsp->aura.bp_ena & 0x2);
+		if (nix1)
+			bpid = rsp->aura.nix1_bpid;
+		else
+			bpid = rsp->aura.nix0_bpid;
+
 		/* If BP ids don't match disable BP. */
-		if ((rsp->aura.nix0_bpid != nix->bpid[0]) && !force) {
+		if (((nix1 != nix->is_nix1) || (bpid != nix->bpid[0])) &&
+		    !force) {
 			req = mbox_alloc_msg_npa_aq_enq(mbox);
 			if (req == NULL)
 				return;
@@ -315,14 +325,19 @@ rox_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
 	req->op = NPA_AQ_INSTOP_WRITE;
 
 	if (ena) {
-		req->aura.nix0_bpid = nix->bpid[0];
-		req->aura_mask.nix0_bpid = ~(req->aura_mask.nix0_bpid);
+		if (nix->is_nix1) {
+			req->aura.nix1_bpid = nix->bpid[0];
+			req->aura_mask.nix1_bpid = ~(req->aura_mask.nix1_bpid);
+		} else {
+			req->aura.nix0_bpid = nix->bpid[0];
+			req->aura_mask.nix0_bpid = ~(req->aura_mask.nix0_bpid);
+		}
 		req->aura.bp = NIX_RQ_AURA_THRESH(
 			limit > 128 ? 256 : limit); /* 95% of size*/
 		req->aura_mask.bp = ~(req->aura_mask.bp);
 	}
 
-	req->aura.bp_ena = !!ena;
+	req->aura.bp_ena = (!!ena << nix->is_nix1);
 	req->aura_mask.bp_ena = ~(req->aura_mask.bp_ena);
 
 	mbox_process(mbox);
