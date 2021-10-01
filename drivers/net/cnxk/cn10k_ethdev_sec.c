@@ -69,6 +69,30 @@ static const struct rte_security_capability cn10k_eth_sec_capabilities[] = {
 		.crypto_capabilities = cn10k_eth_sec_crypto_caps,
 		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 	},
+	{	/* IPsec Inline Protocol ESP Transport Egress */
+		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
+			.options = { 0 }
+		},
+		.crypto_capabilities = cn10k_eth_sec_crypto_caps,
+		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
+	},
+	{	/* IPsec Inline Protocol ESP Transport Ingress */
+		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
+			.options = { 0 }
+		},
+		.crypto_capabilities = cn10k_eth_sec_crypto_caps,
+		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
+	},
 	{
 		.action = RTE_SECURITY_ACTION_TYPE_NONE
 	}
