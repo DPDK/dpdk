@@ -31,5 +31,6 @@ int cpt_lf_outb_cfg(struct dev *dev, uint16_t sso_pf_func, uint16_t nix_pf_func,
 		    uint8_t lf_id, bool ena);
 int cpt_get_msix_offset(struct dev *dev, struct msix_offset_rsp **msix_rsp);
 uint64_t cpt_get_blkaddr(struct dev *dev);
+void cpt_lf_print(struct roc_cpt_lf *lf);
 
 #endif /* _ROC_CPT_PRIV_H_ */

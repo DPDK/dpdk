@@ -51,6 +51,9 @@ cpt_lf_misc_irq(void *param)
 
 	plt_err("Err_irq=0x%" PRIx64 " pf=%d, vf=%d", intr, dev->pf, dev->vf);
 
+	/* Dump lf registers */
+	cpt_lf_print(lf);
+
 	/* Clear interrupt */
 	plt_write64(intr, lf->rbase + CPT_LF_MISC_INT);
 }
@@ -203,7 +206,7 @@ cpt_lf_dump(struct roc_cpt_lf *lf)
 	plt_cpt_dbg("CPT LF REG:");
 	plt_cpt_dbg("LF_CTL[0x%016llx]: 0x%016" PRIx64, CPT_LF_CTL,
 		    plt_read64(lf->rbase + CPT_LF_CTL));
-	plt_cpt_dbg("Q_SIZE[0x%016llx]: 0x%016" PRIx64, CPT_LF_INPROG,
+	plt_cpt_dbg("LF_INPROG[0x%016llx]: 0x%016" PRIx64, CPT_LF_INPROG,
 		    plt_read64(lf->rbase + CPT_LF_INPROG));
 
 	plt_cpt_dbg("Q_BASE[0x%016llx]: 0x%016" PRIx64, CPT_LF_Q_BASE,

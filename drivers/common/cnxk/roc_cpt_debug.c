@@ -157,10 +157,39 @@ roc_cpt_afs_print(struct roc_cpt *roc_cpt)
 	return 0;
 }
 
-static void
+void
 cpt_lf_print(struct roc_cpt_lf *lf)
 {
 	uint64_t reg_val;
+
+	reg_val = plt_read64(lf->rbase + CPT_LF_Q_BASE);
+	plt_print("    CPT_LF_Q_BASE:\t%016lx", reg_val);
+
+	reg_val = plt_read64(lf->rbase + CPT_LF_Q_SIZE);
+	plt_print("    CPT_LF_Q_SIZE:\t%016lx", reg_val);
+
+	reg_val = plt_read64(lf->rbase + CPT_LF_Q_INST_PTR);
+	plt_print("    CPT_LF_Q_INST_PTR:\t%016lx", reg_val);
+
+	reg_val = plt_read64(lf->rbase + CPT_LF_Q_GRP_PTR);
+	plt_print("    CPT_LF_Q_GRP_PTR:\t%016lx", reg_val);
+
+	reg_val = plt_read64(lf->rbase + CPT_LF_CTL);
+	plt_print("    CPT_LF_CTL:\t%016lx", reg_val);
+
+	reg_val = plt_read64(lf->rbase + CPT_LF_MISC_INT_ENA_W1S);
+	plt_print("    CPT_LF_MISC_INT_ENA_W1S:\t%016lx", reg_val);
+
+	reg_val = plt_read64(lf->rbase + CPT_LF_MISC_INT);
+	plt_print("    CPT_LF_MISC_INT:\t%016lx", reg_val);
+
+	reg_val = plt_read64(lf->rbase + CPT_LF_INPROG);
+	plt_print("    CPT_LF_INPROG:\t%016lx", reg_val);
+
+	if (roc_model_is_cn9k())
+		return;
+
+	plt_print("Count registers for CPT LF%d:", lf->lf_id);
 
 	reg_val = plt_read64(lf->rbase + CPT_LF_CTX_ENC_BYTE_CNT);
 	plt_print("    Encrypted byte count:\t%" PRIu64, reg_val);
@@ -190,7 +219,6 @@ roc_cpt_lfs_print(struct roc_cpt *roc_cpt)
 		if (lf == NULL)
 			continue;
 
-		plt_print("Count registers for CPT LF%d:", lf_id);
 		cpt_lf_print(lf);
 	}
 
