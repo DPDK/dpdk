@@ -6,11 +6,6 @@ if not get_option('check_includes')
     subdir_done()
 endif
 
-if is_windows
-    # for windows, the shebang line in the script won't work.
-    error('option "check_includes" is not supported on windows')
-endif
-
 gen_c_file_for_header = find_program('gen_c_file_for_header.py')
 gen_c_files = generator(gen_c_file_for_header,
         output: '@BASENAME@.c',
