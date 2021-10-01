@@ -492,15 +492,20 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 		cq->drop_thresh = min_rx_drop;
 	} else {
 		cq->drop_thresh = NIX_CQ_THRESH_LEVEL;
-		cq_ctx->drop = cq->drop_thresh;
-		cq_ctx->drop_ena = 1;
+		/* Drop processing or red drop cannot be enabled due to
+		 * due to packets coming for second pass from CPT.
+		 */
+		if (!roc_nix_inl_inb_is_enabled(roc_nix)) {
+			cq_ctx->drop = cq->drop_thresh;
+			cq_ctx->drop_ena = 1;
+		}
 	}
 
 	/* TX pause frames enable flow ctrl on RX side */
 	if (nix->tx_pause) {
 		/* Single BPID is allocated for all rx channels for now */
 		cq_ctx->bpid = nix->bpid[0];
-		cq_ctx->bp = cq_ctx->drop;
+		cq_ctx->bp = cq->drop_thresh;
 		cq_ctx->bp_ena = 1;
 	}
 
