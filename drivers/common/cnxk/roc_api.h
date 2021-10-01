@@ -129,4 +129,7 @@
 /* HASH computation */
 #include "roc_hash.h"
 
+/* NIX Inline dev */
+#include "roc_nix_inl.h"
+
 #endif /* _ROC_API_H_ */

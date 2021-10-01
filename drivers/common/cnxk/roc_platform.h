@@ -113,10 +113,11 @@
 #define plt_write64(val, addr)                                                 \
 	rte_write64_relaxed((val), (volatile void *)(addr))
 
-#define plt_wmb() rte_wmb()
-#define plt_rmb() rte_rmb()
-#define plt_io_wmb() rte_io_wmb()
-#define plt_io_rmb() rte_io_rmb()
+#define plt_wmb()		rte_wmb()
+#define plt_rmb()		rte_rmb()
+#define plt_io_wmb()		rte_io_wmb()
+#define plt_io_rmb()		rte_io_rmb()
+#define plt_atomic_thread_fence rte_atomic_thread_fence
 
 #define plt_mmap       mmap
 #define PLT_PROT_READ  PROT_READ

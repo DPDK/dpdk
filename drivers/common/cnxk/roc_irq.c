@@ -138,9 +138,10 @@ dev_irq_register(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb,
 		irq_init(intr_handle);
 	}
 
-	if (vec > intr_handle->max_intr) {
-		plt_err("Vector=%d greater than max_intr=%d", vec,
-			intr_handle->max_intr);
+	if (vec > intr_handle->max_intr || vec >= PLT_DIM(intr_handle->efds)) {
+		plt_err("Vector=%d greater than max_intr=%d or "
+			"max_efd=%" PRIu64,
+			vec, intr_handle->max_intr, PLT_DIM(intr_handle->efds));
 		return -EINVAL;
 	}
 

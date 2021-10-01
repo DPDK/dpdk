@@ -38,4 +38,7 @@
 /* CPT */
 #include "roc_cpt_priv.h"
 
+/* NIX Inline dev */
+#include "roc_nix_inl_priv.h"
+
 #endif /* _ROC_PRIV_H_ */
