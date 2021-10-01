@@ -255,6 +255,26 @@ Runtime Config Options
    With the above configuration, inbound encrypted traffic from both the ports
    is received by ipsec inline device.
 
+- ``Inline IPsec device channel and mask`` (default ``none``)
+
+   Set channel and channel mask configuration for the inline IPSec device. This
+   will be used when creating flow rules with RTE_FLOW_ACTION_TYPE_SECURITY
+   action.
+
+   By default, RTE Flow API sets the channel number of the port on which the
+   rule is created in the MCAM entry and matches it exactly. This behaviour can
+   be modified using the ``inl_cpt_channel`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:1d:00.0,inl_cpt_channel=0x100/0xf00
+
+   With the above configuration, RTE Flow rules API will set the channel
+   and channel mask as 0x100 and 0xF00 in the MCAM entries of the  flow rules
+   created with RTE_FLOW_ACTION_TYPE_SECURITY action. Since channel number is
+   set with this custom mask, inbound encrypted traffic from all ports with
+   matching channel number pattern will be directed to the inline IPSec device.
+
 .. note::
 
    Above devarg parameters are configurable per device, user needs to pass the

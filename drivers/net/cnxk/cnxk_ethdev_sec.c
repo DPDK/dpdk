@@ -6,6 +6,13 @@
 
 #define CNXK_NIX_INL_SELFTEST	      "selftest"
 #define CNXK_NIX_INL_IPSEC_IN_MAX_SPI "ipsec_in_max_spi"
+#define CNXK_INL_CPT_CHANNEL	      "inl_cpt_channel"
+
+struct inl_cpt_channel {
+	bool is_multi_channel;
+	uint16_t channel;
+	uint16_t mask;
+};
 
 #define CNXK_NIX_INL_DEV_NAME RTE_STR(cnxk_nix_inl_dev_)
 #define CNXK_NIX_INL_DEV_NAME_LEN                                              \
@@ -137,12 +144,36 @@ parse_selftest(const char *key, const char *value, void *extra_args)
 }
 
 static int
+parse_inl_cpt_channel(const char *key, const char *value, void *extra_args)
+{
+	RTE_SET_USED(key);
+	uint16_t chan = 0, mask = 0;
+	char *next = 0;
+
+	/* next will point to the separator '/' */
+	chan = strtol(value, &next, 16);
+	mask = strtol(++next, 0, 16);
+
+	if (chan > GENMASK(12, 0) || mask > GENMASK(12, 0))
+		return -EINVAL;
+
+	((struct inl_cpt_channel *)extra_args)->channel = chan;
+	((struct inl_cpt_channel *)extra_args)->mask = mask;
+	((struct inl_cpt_channel *)extra_args)->is_multi_channel = true;
+
+	return 0;
+}
+
+static int
 nix_inl_parse_devargs(struct rte_devargs *devargs,
 		      struct roc_nix_inl_dev *inl_dev)
 {
 	uint32_t ipsec_in_max_spi = BIT(8) - 1;
+	struct inl_cpt_channel cpt_channel;
 	struct rte_kvargs *kvlist;
 	uint8_t selftest = 0;
+
+	memset(&cpt_channel, 0, sizeof(cpt_channel));
 
 	if (devargs == NULL)
 		goto null_devargs;
@@ -155,11 +186,16 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 			   &selftest);
 	rte_kvargs_process(kvlist, CNXK_NIX_INL_IPSEC_IN_MAX_SPI,
 			   &parse_ipsec_in_max_spi, &ipsec_in_max_spi);
+	rte_kvargs_process(kvlist, CNXK_INL_CPT_CHANNEL, &parse_inl_cpt_channel,
+			   &cpt_channel);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
 	inl_dev->ipsec_in_max_spi = ipsec_in_max_spi;
 	inl_dev->selftest = selftest;
+	inl_dev->channel = cpt_channel.channel;
+	inl_dev->chan_mask = cpt_channel.mask;
+	inl_dev->is_multi_channel = cpt_channel.is_multi_channel;
 	return 0;
 exit:
 	return -EINVAL;
@@ -275,4 +311,5 @@ RTE_PMD_REGISTER_KMOD_DEP(cnxk_nix_inl, "vfio-pci");
 
 RTE_PMD_REGISTER_PARAM_STRING(cnxk_nix_inl,
 			      CNXK_NIX_INL_SELFTEST "=1"
-			      CNXK_NIX_INL_IPSEC_IN_MAX_SPI "=<1-65535>");
+			      CNXK_NIX_INL_IPSEC_IN_MAX_SPI "=<1-65535>"
+			      CNXK_INL_CPT_CHANNEL "=<1-4095>/<1-4095>");
