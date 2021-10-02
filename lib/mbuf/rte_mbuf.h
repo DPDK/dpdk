@@ -191,11 +191,6 @@ rte_mbuf_from_indirect(struct rte_mbuf *mi)
  * mbuf is already known because it doesn't need to access mbuf contents in
  * order to get the mempool pointer.
  *
- * @warning
- * @b EXPERIMENTAL: This API may change without prior notice.
- * This will be used by rte_mbuf_to_baddr() which has redundant code once
- * experimental tag is removed.
- *
  * @param mb
  *   The pointer to the mbuf.
  * @param mp
@@ -203,7 +198,6 @@ rte_mbuf_from_indirect(struct rte_mbuf *mi)
  * @return
  *   The pointer of the mbuf buffer.
  */
-__rte_experimental
 static inline char *
 rte_mbuf_buf_addr(struct rte_mbuf *mb, struct rte_mempool *mp)
 {
@@ -213,26 +207,15 @@ rte_mbuf_buf_addr(struct rte_mbuf *mb, struct rte_mempool *mp)
 /**
  * Return the default address of the beginning of the mbuf data.
  *
- * @warning
- * @b EXPERIMENTAL: This API may change without prior notice.
- *
  * @param mb
  *   The pointer to the mbuf.
  * @return
  *   The pointer of the beginning of the mbuf data.
  */
-__rte_experimental
 static inline char *
-rte_mbuf_data_addr_default(__rte_unused struct rte_mbuf *mb)
+rte_mbuf_data_addr_default(struct rte_mbuf *mb)
 {
-	/* gcc complains about calling this experimental function even
-	 * when not using it. Hide it with ALLOW_EXPERIMENTAL_API.
-	 */
-#ifdef ALLOW_EXPERIMENTAL_API
 	return rte_mbuf_buf_addr(mb, mb->pool) + RTE_PKTMBUF_HEADROOM;
-#else
-	return NULL;
-#endif
 }
 
 /**
@@ -251,13 +234,7 @@ rte_mbuf_data_addr_default(__rte_unused struct rte_mbuf *mb)
 static inline char *
 rte_mbuf_to_baddr(struct rte_mbuf *md)
 {
-#ifdef ALLOW_EXPERIMENTAL_API
 	return rte_mbuf_buf_addr(md, md->pool);
-#else
-	char *buffer_addr;
-	buffer_addr = (char *)md + sizeof(*md) + rte_pktmbuf_priv_size(md->pool);
-	return buffer_addr;
-#endif
 }
 
 /**
@@ -272,7 +249,6 @@ rte_mbuf_to_baddr(struct rte_mbuf *md)
  * @return
  *   The starting address of the private data area of the given mbuf.
  */
-__rte_experimental
 static inline void *
 rte_mbuf_to_priv(struct rte_mbuf *m)
 {
