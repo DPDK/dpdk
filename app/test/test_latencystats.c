@@ -80,7 +80,7 @@ static int test_latencystats_get_names(void)
 	/* Success Test: Valid names and size */
 	size = NUM_STATS;
 	ret = rte_latencystats_get_names(names, size);
-	for (i = 0; i <= NUM_STATS; i++) {
+	for (i = 0; i < NUM_STATS; i++) {
 		if (strcmp(lat_stats_strings[i].name, names[i].name) == 0)
 			printf(" %s\n", names[i].name);
 		else
