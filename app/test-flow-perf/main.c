@@ -63,6 +63,14 @@ static bool dump_socket_mem_flag;
 static bool enable_fwd;
 static bool unique_data;
 
+static uint8_t rx_queues_count;
+static uint8_t tx_queues_count;
+static uint8_t rxd_count;
+static uint8_t txd_count;
+static uint32_t mbuf_size;
+static uint32_t mbuf_cache_size;
+static uint32_t total_mbuf_num;
+
 static struct rte_mempool *mbuf_mp;
 static uint32_t nb_lcores;
 static uint32_t rules_count;
@@ -143,6 +151,14 @@ usage(char *progname)
 		" default is %d\n", DEFAULT_GROUP);
 	printf("  --cores=N: to set the number of needed "
 		"cores to insert rte_flow rules, default is 1\n");
+	printf("  --rxq=N: to set the count of receive queues\n");
+	printf("  --txq=N: to set the count of send queues\n");
+	printf("  --rxd=N: to set the count of rxd\n");
+	printf("  --txd=N: to set the count of txd\n");
+	printf("  --mbuf-size=N: to set the size of mbuf\n");
+	printf("  --mbuf-cache-size=N: to set the size of mbuf cache\n");
+	printf("  --total-mbuf-count=N: to set the count of total mbuf count\n");
+
 
 	printf("To set flow items:\n");
 	printf("  --ether: add ether layer in flow items\n");
@@ -573,6 +589,14 @@ args_parse(int argc, char **argv)
 		{ "unique-data",                0, 0, 0 },
 		{ "portmask",                   1, 0, 0 },
 		{ "cores",                      1, 0, 0 },
+		{ "meter-profile-alg",          1, 0, 0 },
+		{ "rxq",                        1, 0, 0 },
+		{ "txq",                        1, 0, 0 },
+		{ "rxd",                        1, 0, 0 },
+		{ "txd",                        1, 0, 0 },
+		{ "mbuf-size",                  1, 0, 0 },
+		{ "mbuf-cache-size",            1, 0, 0 },
+		{ "total-mbuf-count",           1, 0, 0 },
 		/* Attributes */
 		{ "ingress",                    0, 0, 0 },
 		{ "egress",                     0, 0, 0 },
@@ -623,7 +647,7 @@ args_parse(int argc, char **argv)
 		{ "set-ipv4-dscp",              0, 0, 0 },
 		{ "set-ipv6-dscp",              0, 0, 0 },
 		{ "flag",                       0, 0, 0 },
-		{ "meter",		        0, 0, 0 },
+		{ "meter",                      0, 0, 0 },
 		{ "raw-encap",                  1, 0, 0 },
 		{ "raw-decap",                  1, 0, 0 },
 		{ "vxlan-encap",                0, 0, 0 },
@@ -786,6 +810,34 @@ args_parse(int argc, char **argv)
 				if ((optarg[0] == '\0') || (end == NULL) || (*end != '\0'))
 					rte_exit(EXIT_FAILURE, "Invalid fwd port mask\n");
 				ports_mask = pm;
+			}
+			if (strcmp(lgopts[opt_idx].name, "rxq") == 0) {
+				n = atoi(optarg);
+				rx_queues_count = (uint8_t) n;
+			}
+			if (strcmp(lgopts[opt_idx].name, "txq") == 0) {
+				n = atoi(optarg);
+				tx_queues_count = (uint8_t) n;
+			}
+			if (strcmp(lgopts[opt_idx].name, "rxd") == 0) {
+				n = atoi(optarg);
+				rxd_count = (uint8_t) n;
+			}
+			if (strcmp(lgopts[opt_idx].name, "txd") == 0) {
+				n = atoi(optarg);
+				txd_count = (uint8_t) n;
+			}
+			if (strcmp(lgopts[opt_idx].name, "mbuf-size") == 0) {
+				n = atoi(optarg);
+				mbuf_size = (uint32_t) n;
+			}
+			if (strcmp(lgopts[opt_idx].name, "mbuf-cache-size") == 0) {
+				n = atoi(optarg);
+				mbuf_cache_size = (uint32_t) n;
+			}
+			if (strcmp(lgopts[opt_idx].name, "total-mbuf-count") == 0) {
+				n = atoi(optarg);
+				total_mbuf_num = (uint32_t) n;
 			}
 			if (strcmp(lgopts[opt_idx].name, "cores") == 0) {
 				n = atoi(optarg);
@@ -1174,7 +1226,8 @@ insert_flows(int port_id, uint8_t core_id)
 		 */
 		flow = generate_flow(port_id, 0, flow_attrs,
 			global_items, global_actions,
-			flow_group, 0, 0, 0, 0, core_id, unique_data, &error);
+			flow_group, 0, 0, 0, 0, core_id, rx_queues_count,
+			unique_data, &error);
 
 		if (flow == NULL) {
 			print_flow_error(error);
@@ -1190,7 +1243,8 @@ insert_flows(int port_id, uint8_t core_id)
 			JUMP_ACTION_TABLE, counter,
 			hairpin_queues_num,
 			encap_data, decap_data,
-			core_id, unique_data, &error);
+			core_id, rx_queues_count,
+			unique_data, &error);
 
 		if (!counter) {
 			first_flow_latency = (double) (rte_get_timer_cycles() - start_batch);
@@ -1661,7 +1715,7 @@ init_lcore_info(void)
 	 * logical cores except first core, since it's reserved for
 	 * stats prints.
 	 */
-	nb_fwd_streams = nr_port * RXQ_NUM;
+	nb_fwd_streams = nr_port * rx_queues_count;
 	if ((int)(nb_lcores - 1) >= nb_fwd_streams)
 		for (i = 0; i < (int)(nb_lcores - 1); i++) {
 			lcore = rte_get_next_lcore(lcore, 0, 0);
@@ -1691,7 +1745,7 @@ init_lcore_info(void)
 	lcore = rte_get_next_lcore(-1, 0, 0);
 	for (port = 0; port < nr_port; port++) {
 		/* Create FWD stream */
-		for (queue = 0; queue < RXQ_NUM; queue++) {
+		for (queue = 0; queue < rx_queues_count; queue++) {
 			if (!lcore_infos[lcore].streams_nb ||
 				!(stream_id % lcore_infos[lcore].streams_nb)) {
 				lcore = rte_get_next_lcore(lcore, 0, 0);
@@ -1744,17 +1798,17 @@ init_port(void)
 	struct rte_eth_rxconf rxq_conf;
 	struct rte_eth_dev_info dev_info;
 
-	nr_queues = RXQ_NUM;
+	nr_queues = rx_queues_count;
 	if (hairpin_queues_num != 0)
-		nr_queues = RXQ_NUM + hairpin_queues_num;
+		nr_queues = rx_queues_count + hairpin_queues_num;
 
 	nr_ports = rte_eth_dev_count_avail();
 	if (nr_ports == 0)
 		rte_exit(EXIT_FAILURE, "Error: no port detected\n");
 
 	mbuf_mp = rte_pktmbuf_pool_create("mbuf_pool",
-					TOTAL_MBUF_NUM, MBUF_CACHE_SIZE,
-					0, MBUF_SIZE,
+					total_mbuf_num, mbuf_cache_size,
+					0, mbuf_size,
 					rte_socket_id());
 	if (mbuf_mp == NULL)
 		rte_exit(EXIT_FAILURE, "Error: can't init mbuf pool\n");
@@ -1801,8 +1855,8 @@ init_port(void)
 				ret, port_id);
 
 		rxq_conf = dev_info.default_rxconf;
-		for (std_queue = 0; std_queue < RXQ_NUM; std_queue++) {
-			ret = rte_eth_rx_queue_setup(port_id, std_queue, NR_RXD,
+		for (std_queue = 0; std_queue < rx_queues_count; std_queue++) {
+			ret = rte_eth_rx_queue_setup(port_id, std_queue, rxd_count,
 					rte_eth_dev_socket_id(port_id),
 					&rxq_conf,
 					mbuf_mp);
@@ -1813,8 +1867,8 @@ init_port(void)
 		}
 
 		txq_conf = dev_info.default_txconf;
-		for (std_queue = 0; std_queue < TXQ_NUM; std_queue++) {
-			ret = rte_eth_tx_queue_setup(port_id, std_queue, NR_TXD,
+		for (std_queue = 0; std_queue < tx_queues_count; std_queue++) {
+			ret = rte_eth_tx_queue_setup(port_id, std_queue, txd_count,
 					rte_eth_dev_socket_id(port_id),
 					&txq_conf);
 			if (ret < 0)
@@ -1834,32 +1888,32 @@ init_port(void)
 			/*
 			 * Configure peer which represents hairpin Tx.
 			 * Hairpin queue numbers start after standard queues
-			 * (RXQ_NUM and TXQ_NUM).
+			 * (rx_queues_count and tx_queues_count).
 			 */
-			for (hairpin_queue = RXQ_NUM, std_queue = 0;
+			for (hairpin_queue = rx_queues_count, std_queue = 0;
 					hairpin_queue < nr_queues;
 					hairpin_queue++, std_queue++) {
 				hairpin_conf.peers[0].port = port_id;
 				hairpin_conf.peers[0].queue =
-					std_queue + TXQ_NUM;
+					std_queue + tx_queues_count;
 				ret = rte_eth_rx_hairpin_queue_setup(
 						port_id, hairpin_queue,
-						NR_RXD, &hairpin_conf);
+						rxd_count, &hairpin_conf);
 				if (ret != 0)
 					rte_exit(EXIT_FAILURE,
 						":: Hairpin rx queue setup failed: err=%d, port=%u\n",
 						ret, port_id);
 			}
 
-			for (hairpin_queue = TXQ_NUM, std_queue = 0;
+			for (hairpin_queue = tx_queues_count, std_queue = 0;
 					hairpin_queue < nr_queues;
 					hairpin_queue++, std_queue++) {
 				hairpin_conf.peers[0].port = port_id;
 				hairpin_conf.peers[0].queue =
-					std_queue + RXQ_NUM;
+					std_queue + rx_queues_count;
 				ret = rte_eth_tx_hairpin_queue_setup(
 						port_id, hairpin_queue,
-						NR_TXD, &hairpin_conf);
+						txd_count, &hairpin_conf);
 				if (ret != 0)
 					rte_exit(EXIT_FAILURE,
 						":: Hairpin tx queue setup failed: err=%d, port=%u\n",
@@ -1896,6 +1950,14 @@ main(int argc, char **argv)
 	dump_socket_mem_flag = false;
 	flow_group = DEFAULT_GROUP;
 	unique_data = false;
+
+	rx_queues_count = (uint8_t) RXQ_NUM;
+	tx_queues_count = (uint8_t) TXQ_NUM;
+	rxd_count = (uint8_t) NR_RXD;
+	txd_count = (uint8_t) NR_TXD;
+	mbuf_size = (uint32_t) MBUF_SIZE;
+	mbuf_cache_size = (uint32_t) MBUF_CACHE_SIZE;
+	total_mbuf_num = (uint32_t) TOTAL_MBUF_NUM;
 
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);

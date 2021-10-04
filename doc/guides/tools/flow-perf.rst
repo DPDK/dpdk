@@ -100,10 +100,35 @@ The command line options are:
 	Set the number of needed cores to insert/delete rte_flow rules.
 	Default cores count is 1.
 
-*       ``--unique-data``
-        Flag to set using unique data for all actions that support data,
-        Such as header modify and encap actions. Default is using fixed
-        data for any action that support data for all flows.
+*	``--meter-profile-alg``
+	Set the traffic metering algorithm.
+	Example: meter-profile-alg=srtcmp, default algorithm is srtcm_rfc2697
+
+*	``--unique-data``
+	Flag to set using unique data for all actions that support data,
+	Such as header modify and encap actions. Default is using fixed
+	data for any action that support data for all flows.
+
+*	``--rxq=N``
+	Set the count of receive queues, default is 1.
+
+*	``--txq=N``
+	Set the count of send queues, default is 1.
+
+*	``--rxd=N``
+	Set the count of rxd, default is 256.
+
+*	``--txd=N``
+	Set the count of txd, default is 256.
+
+*	``--mbuf-size=N``
+	Set the size of mbuf, default size is 2048.
+
+*	``--mbuf-cache-size=N``
+	Set the size of mbuf cache, default size is 512.
+
+*	``--total-mbuf-count=N``
+	Set the count of total mbuf number, default count is 32000.
 
 Attributes:
 

@@ -46,6 +46,7 @@ generate_flow(uint16_t port_id,
 	uint64_t encap_data,
 	uint64_t decap_data,
 	uint8_t core_idx,
+	uint8_t rx_queues_count,
 	bool unique_data,
 	struct rte_flow_error *error)
 {
@@ -63,7 +64,7 @@ generate_flow(uint16_t port_id,
 	fill_actions(actions, flow_actions,
 		outer_ip_src, next_table, hairpinq,
 		encap_data, decap_data, core_idx,
-		unique_data);
+		unique_data, rx_queues_count);
 
 	fill_items(items, flow_items, outer_ip_src, core_idx);
 

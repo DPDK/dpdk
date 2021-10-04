@@ -35,6 +35,7 @@ generate_flow(uint16_t port_id,
 	uint64_t encap_data,
 	uint64_t decap_data,
 	uint8_t core_idx,
+	uint8_t rx_queues_count,
 	bool unique_data,
 	struct rte_flow_error *error);
 

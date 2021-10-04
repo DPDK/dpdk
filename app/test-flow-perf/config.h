@@ -8,8 +8,8 @@
 #define GET_RSS_HF() (RTE_ETH_RSS_IP)
 
 /* Configuration */
-#define RXQ_NUM 4
-#define TXQ_NUM 4
+#define RXQ_NUM 1
+#define TXQ_NUM 1
 #define TOTAL_MBUF_NUM 32000
 #define MBUF_SIZE 2048
 #define MBUF_CACHE_SIZE 512

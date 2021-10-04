@@ -909,25 +909,25 @@ void
 fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 	uint32_t counter, uint16_t next_table, uint16_t hairpinq,
 	uint64_t encap_data, uint64_t decap_data, uint8_t core_idx,
-	bool unique_data)
+	bool unique_data, uint8_t rx_queues_count)
 {
 	struct additional_para additional_para_data;
 	uint8_t actions_counter = 0;
 	uint16_t hairpin_queues[hairpinq];
-	uint16_t queues[RXQ_NUM];
+	uint16_t queues[rx_queues_count];
 	uint16_t i, j;
 
-	for (i = 0; i < RXQ_NUM; i++)
+	for (i = 0; i < rx_queues_count; i++)
 		queues[i] = i;
 
 	for (i = 0; i < hairpinq; i++)
-		hairpin_queues[i] = i + RXQ_NUM;
+		hairpin_queues[i] = i + rx_queues_count;
 
 	additional_para_data = (struct additional_para){
-		.queue = counter % RXQ_NUM,
+		.queue = counter % rx_queues_count,
 		.next_table = next_table,
 		.queues = queues,
-		.queues_number = RXQ_NUM,
+		.queues_number = rx_queues_count,
 		.counter = counter,
 		.encap_data = encap_data,
 		.decap_data = decap_data,
@@ -938,7 +938,7 @@ fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 	if (hairpinq != 0) {
 		additional_para_data.queues = hairpin_queues;
 		additional_para_data.queues_number = hairpinq;
-		additional_para_data.queue = (counter % hairpinq) + RXQ_NUM;
+		additional_para_data.queue = (counter % hairpinq) + rx_queues_count;
 	}
 
 	static const struct actions_dict {
