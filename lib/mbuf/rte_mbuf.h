@@ -1402,7 +1402,6 @@ static inline void rte_pktmbuf_free(struct rte_mbuf *m)
  *  @param count
  *    Array size.
  */
-__rte_experimental
 void rte_pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int count);
 
 /**
@@ -1446,7 +1445,6 @@ rte_pktmbuf_clone(struct rte_mbuf *md, struct rte_mempool *mp);
  *   - The pointer to the new "clone" mbuf on success.
  *   - NULL if allocation fails.
  */
-__rte_experimental
 struct rte_mbuf *
 rte_pktmbuf_copy(const struct rte_mbuf *m, struct rte_mempool *mp,
 		 uint32_t offset, uint32_t length);

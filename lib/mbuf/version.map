@@ -22,7 +22,9 @@ DPDK_22 {
 	rte_mbuf_set_user_mempool_ops;
 	rte_mbuf_user_mempool_ops;
 	rte_pktmbuf_clone;
+	rte_pktmbuf_copy;
 	rte_pktmbuf_dump;
+	rte_pktmbuf_free_bulk;
 	rte_pktmbuf_init;
 	rte_pktmbuf_pool_create;
 	rte_pktmbuf_pool_create_by_ops;
@@ -44,8 +46,6 @@ EXPERIMENTAL {
 	rte_mbuf_dyn_dump;
 	rte_mbuf_dyn_rx_timestamp_register;
 	rte_mbuf_dyn_tx_timestamp_register;
-	rte_pktmbuf_copy;
-	rte_pktmbuf_free_bulk;
 	rte_pktmbuf_pool_create_extbuf;
 
 };
