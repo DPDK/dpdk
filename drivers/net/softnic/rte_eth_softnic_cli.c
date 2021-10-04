@@ -631,7 +631,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[0],
 			.shared_shaper_id = &shared_shaper_id[0],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[0]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[0]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
@@ -641,7 +641,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[1],
 			.shared_shaper_id = &shared_shaper_id[1],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[1]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[1]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
@@ -651,7 +651,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[2],
 			.shared_shaper_id = &shared_shaper_id[2],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[2]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[2]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
@@ -661,7 +661,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[3],
 			.shared_shaper_id = &shared_shaper_id[3],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[3]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[3]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
@@ -671,7 +671,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[4],
 			.shared_shaper_id = &shared_shaper_id[4],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[4]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[4]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
@@ -681,7 +681,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[5],
 			.shared_shaper_id = &shared_shaper_id[5],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[5]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[5]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
@@ -691,7 +691,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[6],
 			.shared_shaper_id = &shared_shaper_id[6],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[6]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[6]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
@@ -701,7 +701,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[7],
 			.shared_shaper_id = &shared_shaper_id[7],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[7]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[7]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
@@ -711,7 +711,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[8],
 			.shared_shaper_id = &shared_shaper_id[8],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[8]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[8]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
@@ -721,7 +721,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[9],
 			.shared_shaper_id = &shared_shaper_id[9],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[9]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[9]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
@@ -731,7 +731,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[10],
 			.shared_shaper_id = &shared_shaper_id[10],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[10]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[10]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
@@ -741,7 +741,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[11],
 			.shared_shaper_id = &shared_shaper_id[11],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[11]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[11]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
@@ -751,7 +751,7 @@ tmgr_hierarchy_default(struct pmd_internals *softnic,
 			.shaper_profile_id = params->shaper_profile_id.tc[12],
 			.shared_shaper_id = &shared_shaper_id[12],
 			.n_shared_shapers =
-				(&params->shared_shaper_id.tc_valid[12]) ? 1 : 0,
+				(params->shared_shaper_id.tc_valid[12]) ? 1 : 0,
 			.nonleaf = {
 				.n_sp_priorities = 1,
 			},
