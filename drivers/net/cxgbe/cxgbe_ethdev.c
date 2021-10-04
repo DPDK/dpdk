@@ -665,8 +665,7 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	}
 
 	rxq->rspq.size = temp_nb_desc;
-	if ((&rxq->fl) != NULL)
-		rxq->fl.size = temp_nb_desc;
+	rxq->fl.size = temp_nb_desc;
 
 	/* Set to jumbo mode if necessary */
 	if (pkt_len > CXGBE_ETH_MAX_LEN)
