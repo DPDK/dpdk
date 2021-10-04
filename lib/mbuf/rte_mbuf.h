@@ -512,7 +512,6 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header);
  *   - -1 if a problem is detected, reason then points to a string describing
  *     the reason why the mbuf is deemed invalid.
  */
-__rte_experimental
 int rte_mbuf_check(const struct rte_mbuf *m, int is_header,
 		   const char **reason);
 

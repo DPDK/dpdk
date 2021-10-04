@@ -16,6 +16,7 @@ DPDK_22 {
 	rte_get_tx_ol_flag_list;
 	rte_get_tx_ol_flag_name;
 	rte_mbuf_best_mempool_ops;
+	rte_mbuf_check;
 	rte_mbuf_dyn_dump;
 	rte_mbuf_dyn_rx_timestamp_register;
 	rte_mbuf_dyn_tx_timestamp_register;
@@ -45,7 +46,6 @@ DPDK_22 {
 EXPERIMENTAL {
 	global:
 
-	rte_mbuf_check;
 	rte_pktmbuf_pool_create_extbuf;
 
 };
