@@ -19,6 +19,7 @@ static inline int
 cn9k_cpt_enq_sa_write(struct cn9k_ipsec_sa *sa, struct cnxk_cpt_qp *qp,
 		      uint8_t opcode, size_t ctx_len)
 {
+	struct roc_cpt *roc_cpt = qp->lf.roc_cpt;
 	uint64_t lmtline = qp->lmtline.lmt_base;
 	uint64_t io_addr = qp->lmtline.io_addr;
 	uint64_t lmt_status, time_out;
@@ -41,7 +42,7 @@ cn9k_cpt_enq_sa_write(struct cn9k_ipsec_sa *sa, struct cnxk_cpt_qp *qp,
 	inst.dptr = rte_mempool_virt2iova(sa);
 	inst.rptr = 0;
 	inst.w7.s.cptr = rte_mempool_virt2iova(sa);
-	inst.w7.s.egrp = ROC_CPT_DFLT_ENG_GRP_SE;
+	inst.w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
 
 	inst.w0.u64 = 0;
 	inst.w2.u64 = 0;
@@ -278,6 +279,7 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 {
 	struct rte_crypto_sym_xform *auth_xform = crypto_xform->next;
 	struct roc_ie_on_ip_template *template = NULL;
+	struct roc_cpt *roc_cpt = qp->lf.roc_cpt;
 	struct cnxk_cpt_inst_tmpl *inst_tmpl;
 	struct roc_ie_on_outb_sa *out_sa;
 	struct cn9k_sec_session *sess;
@@ -408,7 +410,7 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 	inst_tmpl->w4 = w4.u64;
 
 	w7.u64 = 0;
-	w7.s.egrp = ROC_CPT_DFLT_ENG_GRP_SE;
+	w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
 	w7.s.cptr = rte_mempool_virt2iova(out_sa);
 	inst_tmpl->w7 = w7.u64;
 
@@ -423,6 +425,7 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 			 struct rte_security_session *sec_sess)
 {
 	struct rte_crypto_sym_xform *auth_xform = crypto_xform;
+	struct roc_cpt *roc_cpt = qp->lf.roc_cpt;
 	struct cnxk_cpt_inst_tmpl *inst_tmpl;
 	struct roc_ie_on_inb_sa *in_sa;
 	struct cn9k_sec_session *sess;
@@ -474,7 +477,7 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 	inst_tmpl->w4 = w4.u64;
 
 	w7.u64 = 0;
-	w7.s.egrp = ROC_CPT_DFLT_ENG_GRP_SE;
+	w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
 	w7.s.cptr = rte_mempool_virt2iova(in_sa);
 	inst_tmpl->w7 = w7.u64;
 
