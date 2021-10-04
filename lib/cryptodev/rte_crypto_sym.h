@@ -195,9 +195,6 @@ struct rte_crypto_cipher_xform {
 	enum rte_crypto_cipher_algorithm algo;
 	/**< Cipher algorithm */
 
-	RTE_STD_C11
-	union { /* temporary anonymous union for ABI compatibility */
-
 	struct {
 		const uint8_t *data;	/**< pointer to key data */
 		uint16_t length;	/**< key length in bytes */
@@ -233,27 +230,6 @@ struct rte_crypto_cipher_xform {
 	 *  - Each key can be either 128 bits (16 bytes) or 256 bits (32 bytes).
 	 *  - Both keys must have the same size.
 	 **/
-
-	RTE_STD_C11
-	struct { /* temporary anonymous struct for ABI compatibility */
-		const uint8_t *_key_data; /* reserved for key.data union */
-		uint16_t _key_length;     /* reserved for key.length union */
-		/* next field can fill the padding hole */
-
-	uint16_t dataunit_len;
-	/**< When RTE_CRYPTODEV_FF_CIPHER_MULTIPLE_DATA_UNITS is enabled,
-	 * this is the data-unit length of the algorithm,
-	 * otherwise or when the value is 0, use the operation length.
-	 * The value should be in the range defined by the dataunit_set field
-	 * in the cipher capability.
-	 *
-	 * - For AES-XTS it is the size of data-unit, from IEEE Std 1619-2007.
-	 * For-each data-unit in the operation, the tweak (IV) value is
-	 * assigned consecutively starting from the operation assigned IV.
-	 */
-
-	}; }; /* temporary struct nested in union for ABI compatibility */
-
 	struct {
 		uint16_t offset;
 		/**< Starting point for Initialisation Vector or Counter,
@@ -297,6 +273,18 @@ struct rte_crypto_cipher_xform {
 		 * which can be in the range 7 to 13 inclusive.
 		 */
 	} iv;	/**< Initialisation vector parameters */
+
+	uint32_t dataunit_len;
+	/**< When RTE_CRYPTODEV_FF_CIPHER_MULTIPLE_DATA_UNITS is enabled,
+	 * this is the data-unit length of the algorithm,
+	 * otherwise or when the value is 0, use the operation length.
+	 * The value should be in the range defined by the dataunit_set field
+	 * in the cipher capability.
+	 *
+	 * - For AES-XTS it is the size of data-unit, from IEEE Std 1619-2007.
+	 * For-each data-unit in the operation, the tweak (IV) value is
+	 * assigned consecutively starting from the operation assigned IV.
+	 */
 };
 
 /** Symmetric Authentication / Hash Algorithms

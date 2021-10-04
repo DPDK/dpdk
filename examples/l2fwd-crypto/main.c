@@ -181,7 +181,7 @@ struct l2fwd_crypto_params {
 	unsigned digest_length;
 	unsigned block_size;
 
-	uint16_t cipher_dataunit_len;
+	uint32_t cipher_dataunit_len;
 
 	struct l2fwd_iv cipher_iv;
 	struct l2fwd_iv auth_iv;
@@ -1268,9 +1268,9 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 
 	else if (strcmp(lgopts[option_index].name, "cipher_dataunit_len") == 0) {
 		retval = parse_size(&val, optarg);
-		if (retval == 0 && val >= 0 && val <= UINT16_MAX) {
+		if (retval == 0 && val >= 0) {
 			options->cipher_xform.cipher.dataunit_len =
-								(uint16_t)val;
+								(uint32_t)val;
 			return 0;
 		} else
 			return -1;

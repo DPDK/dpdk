@@ -258,6 +258,9 @@ API Changes
   the crypto/security operation. This field will be used to communicate
   events such as soft expiry with IPsec in lookaside mode.
 
+* cryptodev: The field ``dataunit_len`` of the ``struct rte_crypto_cipher_xform``
+  moved to the end of the structure and extended to ``uint32_t``.
+
 
 ABI Changes
 -----------

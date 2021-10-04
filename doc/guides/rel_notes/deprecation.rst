@@ -185,10 +185,6 @@ Deprecation Notices
   and ``rte_vhost_driver_set_protocol_features`` functions will be removed
   and the API functions will be made stable in DPDK 21.11.
 
-* cryptodev: The field ``dataunit_len`` of the ``struct rte_crypto_cipher_xform``
-  has a limited size ``uint16_t``.
-  It will be moved and extended as ``uint32_t`` in DPDK 21.11.
-
 * cryptodev: The structure ``rte_crypto_sym_vec`` would be updated to add
   ``dest_sgl`` to support out of place processing.
   This field will be null for inplace processing.
