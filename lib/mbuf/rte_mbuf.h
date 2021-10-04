@@ -1748,10 +1748,7 @@ static inline int rte_pktmbuf_chain(struct rte_mbuf *head, struct rte_mbuf *tail
 	return 0;
 }
 
-/*
- * @warning
- * @b EXPERIMENTAL: This API may change without prior notice.
- *
+/**
  * For given input values generate raw tx_offload value.
  * Note that it is caller responsibility to make sure that input parameters
  * don't exceed maximum bit-field values.
