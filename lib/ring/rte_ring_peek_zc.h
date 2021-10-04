@@ -12,7 +12,6 @@
 
 /**
  * @file
- * @b EXPERIMENTAL: this API may change without prior notice
  * It is not recommended to include this file directly.
  * Please include <rte_ring_elem.h> instead.
  *
@@ -177,7 +176,6 @@ __rte_ring_do_enqueue_zc_elem_start(struct rte_ring *r, unsigned int esize,
  * @return
  *   The number of objects that can be enqueued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_enqueue_zc_bulk_elem_start(struct rte_ring *r, unsigned int esize,
 	unsigned int n, struct rte_ring_zc_data *zcd, unsigned int *free_space)
@@ -208,7 +206,6 @@ rte_ring_enqueue_zc_bulk_elem_start(struct rte_ring *r, unsigned int esize,
  * @return
  *   The number of objects that can be enqueued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_enqueue_zc_bulk_start(struct rte_ring *r, unsigned int n,
 	struct rte_ring_zc_data *zcd, unsigned int *free_space)
@@ -240,7 +237,6 @@ rte_ring_enqueue_zc_bulk_start(struct rte_ring *r, unsigned int n,
  * @return
  *   The number of objects that can be enqueued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_enqueue_zc_burst_elem_start(struct rte_ring *r, unsigned int esize,
 	unsigned int n, struct rte_ring_zc_data *zcd, unsigned int *free_space)
@@ -271,7 +267,6 @@ rte_ring_enqueue_zc_burst_elem_start(struct rte_ring *r, unsigned int esize,
  * @return
  *   The number of objects that can be enqueued, either 0 or n.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_enqueue_zc_burst_start(struct rte_ring *r, unsigned int n,
 	struct rte_ring_zc_data *zcd, unsigned int *free_space)
@@ -290,7 +285,6 @@ rte_ring_enqueue_zc_burst_start(struct rte_ring *r, unsigned int n,
  * @param n
  *   The number of objects to add to the ring.
  */
-__rte_experimental
 static __rte_always_inline void
 rte_ring_enqueue_zc_elem_finish(struct rte_ring *r, unsigned int n)
 {
@@ -323,7 +317,6 @@ rte_ring_enqueue_zc_elem_finish(struct rte_ring *r, unsigned int n)
  * @param n
  *   The number of pointers to objects to add to the ring.
  */
-__rte_experimental
 static __rte_always_inline void
 rte_ring_enqueue_zc_finish(struct rte_ring *r, unsigned int n)
 {
@@ -390,7 +383,6 @@ __rte_ring_do_dequeue_zc_elem_start(struct rte_ring *r,
  * @return
  *   The number of objects that can be dequeued, either 0 or n.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_dequeue_zc_bulk_elem_start(struct rte_ring *r, unsigned int esize,
 	unsigned int n, struct rte_ring_zc_data *zcd, unsigned int *available)
@@ -420,7 +412,6 @@ rte_ring_dequeue_zc_bulk_elem_start(struct rte_ring *r, unsigned int esize,
  * @return
  *   The number of objects that can be dequeued, either 0 or n.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_dequeue_zc_bulk_start(struct rte_ring *r, unsigned int n,
 	struct rte_ring_zc_data *zcd, unsigned int *available)
@@ -453,7 +444,6 @@ rte_ring_dequeue_zc_bulk_start(struct rte_ring *r, unsigned int n,
  * @return
  *   The number of objects that can be dequeued, either 0 or n.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_dequeue_zc_burst_elem_start(struct rte_ring *r, unsigned int esize,
 	unsigned int n, struct rte_ring_zc_data *zcd, unsigned int *available)
@@ -483,7 +473,6 @@ rte_ring_dequeue_zc_burst_elem_start(struct rte_ring *r, unsigned int esize,
  * @return
  *   The number of objects that can be dequeued, either 0 or n.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_dequeue_zc_burst_start(struct rte_ring *r, unsigned int n,
 		struct rte_ring_zc_data *zcd, unsigned int *available)
@@ -502,7 +491,6 @@ rte_ring_dequeue_zc_burst_start(struct rte_ring *r, unsigned int n,
  * @param n
  *   The number of objects to remove from the ring.
  */
-__rte_experimental
 static __rte_always_inline void
 rte_ring_dequeue_zc_elem_finish(struct rte_ring *r, unsigned int n)
 {
@@ -535,7 +523,6 @@ rte_ring_dequeue_zc_elem_finish(struct rte_ring *r, unsigned int n)
  * @param n
  *   The number of objects to remove from the ring.
  */
-__rte_experimental
 static __rte_always_inline void
 rte_ring_dequeue_zc_finish(struct rte_ring *r, unsigned int n)
 {

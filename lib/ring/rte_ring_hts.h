@@ -12,7 +12,6 @@
 
 /**
  * @file rte_ring_hts.h
- * @b EXPERIMENTAL: this API may change without prior notice
  * It is not recommended to include this file directly.
  * Please include <rte_ring.h> instead.
  *
@@ -50,7 +49,6 @@ extern "C" {
  * @return
  *   The number of objects enqueued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mp_hts_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
 	unsigned int esize, unsigned int n, unsigned int *free_space)
@@ -78,7 +76,6 @@ rte_ring_mp_hts_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
  * @return
  *   The number of objects dequeued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mc_hts_dequeue_bulk_elem(struct rte_ring *r, void *obj_table,
 	unsigned int esize, unsigned int n, unsigned int *available)
@@ -106,7 +103,6 @@ rte_ring_mc_hts_dequeue_bulk_elem(struct rte_ring *r, void *obj_table,
  * @return
  *   - n: Actual number of objects enqueued.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mp_hts_enqueue_burst_elem(struct rte_ring *r, const void *obj_table,
 	unsigned int esize, unsigned int n, unsigned int *free_space)
@@ -136,7 +132,6 @@ rte_ring_mp_hts_enqueue_burst_elem(struct rte_ring *r, const void *obj_table,
  * @return
  *   - n: Actual number of objects dequeued, 0 if ring is empty
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mc_hts_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
 	unsigned int esize, unsigned int n, unsigned int *available)
@@ -160,7 +155,6 @@ rte_ring_mc_hts_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
  * @return
  *   The number of objects enqueued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mp_hts_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
 			 unsigned int n, unsigned int *free_space)
@@ -184,7 +178,6 @@ rte_ring_mp_hts_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
  * @return
  *   The number of objects dequeued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mc_hts_dequeue_bulk(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)
@@ -208,7 +201,6 @@ rte_ring_mc_hts_dequeue_bulk(struct rte_ring *r, void **obj_table,
  * @return
  *   - n: Actual number of objects enqueued.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mp_hts_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned int n, unsigned int *free_space)
@@ -234,7 +226,6 @@ rte_ring_mp_hts_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects dequeued, 0 if ring is empty
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mc_hts_dequeue_burst(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)

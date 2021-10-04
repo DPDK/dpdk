@@ -12,7 +12,6 @@
 
 /**
  * @file
- * @b EXPERIMENTAL: this API may change without prior notice
  * It is not recommended to include this file directly.
  * Please include <rte_ring_elem.h> instead.
  *
@@ -67,7 +66,6 @@ extern "C" {
  * @return
  *   The number of objects that can be enqueued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_enqueue_bulk_elem_start(struct rte_ring *r, unsigned int n,
 		unsigned int *free_space)
@@ -93,7 +91,6 @@ rte_ring_enqueue_bulk_elem_start(struct rte_ring *r, unsigned int n,
  * @return
  *   The number of objects that can be enqueued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_enqueue_bulk_start(struct rte_ring *r, unsigned int n,
 		unsigned int *free_space)
@@ -118,7 +115,6 @@ rte_ring_enqueue_bulk_start(struct rte_ring *r, unsigned int n,
  * @return
  *   Actual number of objects that can be enqueued.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_enqueue_burst_elem_start(struct rte_ring *r, unsigned int n,
 		unsigned int *free_space)
@@ -144,7 +140,6 @@ rte_ring_enqueue_burst_elem_start(struct rte_ring *r, unsigned int n,
  * @return
  *   Actual number of objects that can be enqueued.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_enqueue_burst_start(struct rte_ring *r, unsigned int n,
 		unsigned int *free_space)
@@ -168,7 +163,6 @@ rte_ring_enqueue_burst_start(struct rte_ring *r, unsigned int n,
  * @param n
  *   The number of objects to add to the ring from the obj_table.
  */
-__rte_experimental
 static __rte_always_inline void
 rte_ring_enqueue_elem_finish(struct rte_ring *r, const void *obj_table,
 		unsigned int esize, unsigned int n)
@@ -208,7 +202,6 @@ rte_ring_enqueue_elem_finish(struct rte_ring *r, const void *obj_table,
  * @param n
  *   The number of objects to add to the ring from the obj_table.
  */
-__rte_experimental
 static __rte_always_inline void
 rte_ring_enqueue_finish(struct rte_ring *r, void * const *obj_table,
 		unsigned int n)
@@ -237,7 +230,6 @@ rte_ring_enqueue_finish(struct rte_ring *r, void * const *obj_table,
  * @return
  *   The number of objects dequeued, either 0 or n.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_dequeue_bulk_elem_start(struct rte_ring *r, void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *available)
@@ -263,7 +255,6 @@ rte_ring_dequeue_bulk_elem_start(struct rte_ring *r, void *obj_table,
  * @return
  *   Actual number of objects dequeued.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_dequeue_bulk_start(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)
@@ -293,7 +284,6 @@ rte_ring_dequeue_bulk_start(struct rte_ring *r, void **obj_table,
  * @return
  *   The actual number of objects dequeued.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_dequeue_burst_elem_start(struct rte_ring *r, void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *available)
@@ -319,7 +309,6 @@ rte_ring_dequeue_burst_elem_start(struct rte_ring *r, void *obj_table,
  * @return
  *   The actual number of objects dequeued.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_dequeue_burst_start(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)
@@ -338,7 +327,6 @@ rte_ring_dequeue_burst_start(struct rte_ring *r, void **obj_table,
  * @param n
  *   The number of objects to remove from the ring.
  */
-__rte_experimental
 static __rte_always_inline void
 rte_ring_dequeue_elem_finish(struct rte_ring *r, unsigned int n)
 {
@@ -371,7 +359,6 @@ rte_ring_dequeue_elem_finish(struct rte_ring *r, unsigned int n)
  * @param n
  *   The number of objects to remove from the ring.
  */
-__rte_experimental
 static __rte_always_inline void
 rte_ring_dequeue_finish(struct rte_ring *r, unsigned int n)
 {

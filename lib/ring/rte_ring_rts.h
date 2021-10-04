@@ -12,7 +12,6 @@
 
 /**
  * @file rte_ring_rts.h
- * @b EXPERIMENTAL: this API may change without prior notice
  * It is not recommended to include this file directly.
  * Please include <rte_ring.h> instead.
  *
@@ -77,7 +76,6 @@ extern "C" {
  * @return
  *   The number of objects enqueued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mp_rts_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
 	unsigned int esize, unsigned int n, unsigned int *free_space)
@@ -105,7 +103,6 @@ rte_ring_mp_rts_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
  * @return
  *   The number of objects dequeued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mc_rts_dequeue_bulk_elem(struct rte_ring *r, void *obj_table,
 	unsigned int esize, unsigned int n, unsigned int *available)
@@ -133,7 +130,6 @@ rte_ring_mc_rts_dequeue_bulk_elem(struct rte_ring *r, void *obj_table,
  * @return
  *   - n: Actual number of objects enqueued.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mp_rts_enqueue_burst_elem(struct rte_ring *r, const void *obj_table,
 	unsigned int esize, unsigned int n, unsigned int *free_space)
@@ -163,7 +159,6 @@ rte_ring_mp_rts_enqueue_burst_elem(struct rte_ring *r, const void *obj_table,
  * @return
  *   - n: Actual number of objects dequeued, 0 if ring is empty
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mc_rts_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
 	unsigned int esize, unsigned int n, unsigned int *available)
@@ -187,7 +182,6 @@ rte_ring_mc_rts_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
  * @return
  *   The number of objects enqueued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mp_rts_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
 			 unsigned int n, unsigned int *free_space)
@@ -211,7 +205,6 @@ rte_ring_mp_rts_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
  * @return
  *   The number of objects dequeued, either 0 or n
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mc_rts_dequeue_bulk(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)
@@ -235,7 +228,6 @@ rte_ring_mc_rts_dequeue_bulk(struct rte_ring *r, void **obj_table,
  * @return
  *   - n: Actual number of objects enqueued.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mp_rts_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned int n, unsigned int *free_space)
@@ -261,7 +253,6 @@ rte_ring_mp_rts_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects dequeued, 0 if ring is empty
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 rte_ring_mc_rts_dequeue_burst(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)
@@ -279,7 +270,6 @@ rte_ring_mc_rts_dequeue_burst(struct rte_ring *r, void **obj_table,
  *   Producer HTD value, if producer is set in appropriate sync mode,
  *   or UINT32_MAX otherwise.
  */
-__rte_experimental
 static inline uint32_t
 rte_ring_get_prod_htd_max(const struct rte_ring *r)
 {
@@ -299,7 +289,6 @@ rte_ring_get_prod_htd_max(const struct rte_ring *r)
  * @return
  *   Zero on success, or negative error code otherwise.
  */
-__rte_experimental
 static inline int
 rte_ring_set_prod_htd_max(struct rte_ring *r, uint32_t v)
 {
@@ -319,7 +308,6 @@ rte_ring_set_prod_htd_max(struct rte_ring *r, uint32_t v)
  *   Consumer HTD value, if consumer is set in appropriate sync mode,
  *   or UINT32_MAX otherwise.
  */
-__rte_experimental
 static inline uint32_t
 rte_ring_get_cons_htd_max(const struct rte_ring *r)
 {
@@ -339,7 +327,6 @@ rte_ring_get_cons_htd_max(const struct rte_ring *r)
  * @return
  *   Zero on success, or negative error code otherwise.
  */
-__rte_experimental
 static inline int
 rte_ring_set_cons_htd_max(struct rte_ring *r, uint32_t v)
 {

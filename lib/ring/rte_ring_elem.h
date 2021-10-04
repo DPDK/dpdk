@@ -165,10 +165,8 @@ rte_ring_sp_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
 			RTE_RING_QUEUE_FIXED, RTE_RING_SYNC_ST, free_space);
 }
 
-#ifdef ALLOW_EXPERIMENTAL_API
 #include <rte_ring_hts.h>
 #include <rte_ring_rts.h>
-#endif
 
 /**
  * Enqueue several objects on a ring.
@@ -204,14 +202,12 @@ rte_ring_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
 	case RTE_RING_SYNC_ST:
 		return rte_ring_sp_enqueue_bulk_elem(r, obj_table, esize, n,
 			free_space);
-#ifdef ALLOW_EXPERIMENTAL_API
 	case RTE_RING_SYNC_MT_RTS:
 		return rte_ring_mp_rts_enqueue_bulk_elem(r, obj_table, esize, n,
 			free_space);
 	case RTE_RING_SYNC_MT_HTS:
 		return rte_ring_mp_hts_enqueue_bulk_elem(r, obj_table, esize, n,
 			free_space);
-#endif
 	}
 
 	/* valid ring should never reach this point */
@@ -388,14 +384,12 @@ rte_ring_dequeue_bulk_elem(struct rte_ring *r, void *obj_table,
 	case RTE_RING_SYNC_ST:
 		return rte_ring_sc_dequeue_bulk_elem(r, obj_table, esize, n,
 			available);
-#ifdef ALLOW_EXPERIMENTAL_API
 	case RTE_RING_SYNC_MT_RTS:
 		return rte_ring_mc_rts_dequeue_bulk_elem(r, obj_table, esize,
 			n, available);
 	case RTE_RING_SYNC_MT_HTS:
 		return rte_ring_mc_hts_dequeue_bulk_elem(r, obj_table, esize,
 			n, available);
-#endif
 	}
 
 	/* valid ring should never reach this point */
@@ -576,14 +570,12 @@ rte_ring_enqueue_burst_elem(struct rte_ring *r, const void *obj_table,
 	case RTE_RING_SYNC_ST:
 		return rte_ring_sp_enqueue_burst_elem(r, obj_table, esize, n,
 			free_space);
-#ifdef ALLOW_EXPERIMENTAL_API
 	case RTE_RING_SYNC_MT_RTS:
 		return rte_ring_mp_rts_enqueue_burst_elem(r, obj_table, esize,
 			n, free_space);
 	case RTE_RING_SYNC_MT_HTS:
 		return rte_ring_mp_hts_enqueue_burst_elem(r, obj_table, esize,
 			n, free_space);
-#endif
 	}
 
 	/* valid ring should never reach this point */
@@ -688,14 +680,12 @@ rte_ring_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
 	case RTE_RING_SYNC_ST:
 		return rte_ring_sc_dequeue_burst_elem(r, obj_table, esize, n,
 			available);
-#ifdef ALLOW_EXPERIMENTAL_API
 	case RTE_RING_SYNC_MT_RTS:
 		return rte_ring_mc_rts_dequeue_burst_elem(r, obj_table, esize,
 			n, available);
 	case RTE_RING_SYNC_MT_HTS:
 		return rte_ring_mc_hts_dequeue_burst_elem(r, obj_table, esize,
 			n, available);
-#endif
 	}
 
 	/* valid ring should never reach this point */
@@ -705,10 +695,8 @@ rte_ring_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
 	return 0;
 }
 
-#ifdef ALLOW_EXPERIMENTAL_API
 #include <rte_ring_peek.h>
 #include <rte_ring_peek_zc.h>
-#endif
 
 #include <rte_ring.h>
 
