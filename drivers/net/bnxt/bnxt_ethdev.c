@@ -482,12 +482,6 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 			rxq->vnic->fw_grp_ids[j] = INVALID_HW_RING_ID;
 		else
 			vnic->rx_queue_cnt++;
-
-		if (!rxq->rx_deferred_start) {
-			bp->eth_dev->data->rx_queue_state[j] =
-				RTE_ETH_QUEUE_STATE_STARTED;
-			rxq->rx_started = true;
-		}
 	}
 
 	PMD_DRV_LOG(DEBUG, "vnic->rx_queue_cnt = %d\n", vnic->rx_queue_cnt);
@@ -821,6 +815,16 @@ skip_cosq_cfg:
 			bp->eth_dev->data->tx_queue_state[j] =
 				RTE_ETH_QUEUE_STATE_STARTED;
 			txq->tx_started = true;
+		}
+	}
+
+	for (j = 0; j < bp->rx_nr_rings; j++) {
+		struct bnxt_rx_queue *rxq = bp->rx_queues[j];
+
+		if (!rxq->rx_deferred_start) {
+			bp->eth_dev->data->rx_queue_state[j] =
+				RTE_ETH_QUEUE_STATE_STARTED;
+			rxq->rx_started = true;
 		}
 	}
 
