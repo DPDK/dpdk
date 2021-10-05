@@ -403,6 +403,7 @@ struct mlx5_devx_qp_attr {
 	uint32_t wq_umem_id;
 	uint64_t wq_umem_offset;
 	uint32_t user_index:24;
+	uint32_t mmo:1;
 };
 
 struct mlx5_devx_virtio_q_couners_attr {

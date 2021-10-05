@@ -2032,6 +2032,13 @@ mlx5_devx_cmd_create_qp(void *ctx,
 	MLX5_SET(qpc, qpc, ts_format, attr->ts_format);
 	MLX5_SET(qpc, qpc, user_index, attr->user_index);
 	if (attr->uar_index) {
+		if (attr->mmo) {
+			void *qpc_ext_and_pas_list = MLX5_ADDR_OF(create_qp_in,
+				in, qpc_extension_and_pas_list);
+			void *qpc_ext = MLX5_ADDR_OF(qpc_extension_and_pas_list,
+				qpc_ext_and_pas_list, qpc_data_extension);
+			MLX5_SET(qpc_extension, qpc_ext, mmo, 1);
+		}
 		MLX5_SET(qpc, qpc, pm_state, MLX5_QP_PM_MIGRATED);
 		MLX5_SET(qpc, qpc, uar_page, attr->uar_index);
 		if (attr->log_page_size > MLX5_ADAPTER_PAGE_SHIFT)

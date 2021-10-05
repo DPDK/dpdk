@@ -3243,6 +3243,28 @@ struct mlx5_ifc_create_qp_out_bits {
 	u8 reserved_at_60[0x20];
 };
 
+struct mlx5_ifc_qpc_extension_bits {
+	u8 reserved_at_0[0x2];
+	u8 mmo[0x1];
+	u8 reserved_at_3[0x5fd];
+};
+
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+struct mlx5_ifc_qpc_pas_list_bits {
+	u8 pas[0][0x40];
+};
+
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+struct mlx5_ifc_qpc_extension_and_pas_list_bits {
+	struct mlx5_ifc_qpc_extension_bits qpc_data_extension;
+	u8 pas[0][0x40];
+};
+
+
 #ifdef PEDANTIC
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
@@ -3260,7 +3282,11 @@ struct mlx5_ifc_create_qp_in_bits {
 	u8 wq_umem_id[0x20];
 	u8 wq_umem_valid[0x1];
 	u8 reserved_at_861[0x1f];
-	u8 pas[0][0x40];
+	union {
+		struct mlx5_ifc_qpc_pas_list_bits qpc_pas_list;
+		struct mlx5_ifc_qpc_extension_and_pas_list_bits
+					qpc_extension_and_pas_list;
+	};
 };
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
