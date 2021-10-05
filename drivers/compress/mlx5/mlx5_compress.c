@@ -813,8 +813,8 @@ mlx5_compress_dev_probe(struct rte_device *dev)
 		return -rte_errno;
 	}
 	if (mlx5_devx_cmd_query_hca_attr(ctx, &att) != 0 ||
-	    att.mmo_compress_en == 0 || att.mmo_decompress_en == 0 ||
-	    att.mmo_dma_en == 0) {
+	    att.mmo_compress_sq_en == 0 || att.mmo_decompress_sq_en == 0 ||
+	    att.mmo_dma_sq_en == 0) {
 		DRV_LOG(ERR, "Not enough capabilities to support compress "
 			"operations, maybe old FW/OFED version?");
 		claim_zero(mlx5_glue->close_device(ctx));

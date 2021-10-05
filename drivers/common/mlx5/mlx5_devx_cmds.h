@@ -173,9 +173,14 @@ struct mlx5_hca_attr {
 	uint32_t log_max_srq;
 	uint32_t log_max_srq_sz;
 	uint32_t rss_ind_tbl_cap;
-	uint32_t mmo_dma_en:1;
-	uint32_t mmo_compress_en:1;
-	uint32_t mmo_decompress_en:1;
+	uint32_t mmo_dma_sq_en:1;
+	uint32_t mmo_compress_sq_en:1;
+	uint32_t mmo_decompress_sq_en:1;
+	uint32_t mmo_dma_qp_en:1;
+	uint32_t mmo_compress_qp_en:1;
+	uint32_t mmo_decompress_qp_en:1;
+	uint32_t mmo_regex_qp_en:1;
+	uint32_t mmo_regex_sq_en:1;
 	uint32_t compress_min_block_size:4;
 	uint32_t log_max_mmo_dma:5;
 	uint32_t log_max_mmo_compress:5;
