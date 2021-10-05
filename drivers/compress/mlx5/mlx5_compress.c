@@ -40,7 +40,7 @@ struct mlx5_compress_priv {
 	void *uar;
 	uint32_t pdn; /* Protection Domain number. */
 	uint8_t min_block_size;
-	uint8_t sq_ts_format; /* Whether SQ supports timestamp formats. */
+	uint8_t qp_ts_format; /* Whether SQ supports timestamp formats. */
 	/* Minimum huffman block size supported by the device. */
 	struct ibv_pd *pd;
 	struct rte_compressdev_config dev_config;
@@ -48,6 +48,13 @@ struct mlx5_compress_priv {
 	rte_spinlock_t xform_sl;
 	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 	volatile uint64_t *uar_addr;
+	/* HCA caps*/
+	uint32_t mmo_decomp_sq:1;
+	uint32_t mmo_decomp_qp:1;
+	uint32_t mmo_comp_sq:1;
+	uint32_t mmo_comp_qp:1;
+	uint32_t mmo_dma_sq:1;
+	uint32_t mmo_dma_qp:1;
 #ifndef RTE_ARCH_64
 	rte_spinlock_t uar32_sl;
 #endif /* RTE_ARCH_64 */
@@ -61,7 +68,7 @@ struct mlx5_compress_qp {
 	struct mlx5_mr_ctrl mr_ctrl;
 	int socket_id;
 	struct mlx5_devx_cq cq;
-	struct mlx5_devx_sq sq;
+	struct mlx5_devx_qp qp;
 	struct mlx5_pmd_mr opaque_mr;
 	struct rte_comp_op **ops;
 	struct mlx5_compress_priv *priv;
@@ -134,8 +141,8 @@ mlx5_compress_qp_release(struct rte_compressdev *dev, uint16_t qp_id)
 {
 	struct mlx5_compress_qp *qp = dev->data->queue_pairs[qp_id];
 
-	if (qp->sq.sq != NULL)
-		mlx5_devx_sq_destroy(&qp->sq);
+	if (qp->qp.qp != NULL)
+		mlx5_devx_qp_destroy(&qp->qp);
 	if (qp->cq.cq != NULL)
 		mlx5_devx_cq_destroy(&qp->cq);
 	if (qp->opaque_mr.obj != NULL) {
@@ -152,12 +159,12 @@ mlx5_compress_qp_release(struct rte_compressdev *dev, uint16_t qp_id)
 }
 
 static void
-mlx5_compress_init_sq(struct mlx5_compress_qp *qp)
+mlx5_compress_init_qp(struct mlx5_compress_qp *qp)
 {
 	volatile struct mlx5_gga_wqe *restrict wqe =
-				    (volatile struct mlx5_gga_wqe *)qp->sq.wqes;
+				    (volatile struct mlx5_gga_wqe *)qp->qp.wqes;
 	volatile struct mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
-	const uint32_t sq_ds = rte_cpu_to_be_32((qp->sq.sq->id << 8) | 4u);
+	const uint32_t sq_ds = rte_cpu_to_be_32((qp->qp.qp->id << 8) | 4u);
 	const uint32_t flags = RTE_BE32(MLX5_COMP_ALWAYS <<
 					MLX5_COMP_MODE_OFFSET);
 	const uint32_t opaq_lkey = rte_cpu_to_be_32(qp->opaque_mr.lkey);
@@ -182,15 +189,10 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	struct mlx5_devx_cq_attr cq_attr = {
 		.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->uar),
 	};
-	struct mlx5_devx_create_sq_attr sq_attr = {
+	struct mlx5_devx_qp_attr qp_attr = {
+		.pd = priv->pdn,
+		.uar_index = mlx5_os_get_devx_uar_page_id(priv->uar),
 		.user_index = qp_id,
-		.wq_attr = (struct mlx5_devx_wq_attr){
-			.pd = priv->pdn,
-			.uar_page = mlx5_os_get_devx_uar_page_id(priv->uar),
-		},
-	};
-	struct mlx5_devx_modify_sq_attr modify_attr = {
-		.state = MLX5_SQC_STATE_RDY,
 	};
 	uint32_t log_ops_n = rte_log2_u32(max_inflight_ops);
 	uint32_t alloc_size = sizeof(*qp);
@@ -242,24 +244,26 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		DRV_LOG(ERR, "Failed to create CQ.");
 		goto err;
 	}
-	sq_attr.cqn = qp->cq.cq->id;
-	sq_attr.ts_format = mlx5_ts_format_conv(priv->sq_ts_format);
-	ret = mlx5_devx_sq_create(priv->ctx, &qp->sq, log_ops_n, &sq_attr,
+	qp_attr.cqn = qp->cq.cq->id;
+	qp_attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
+	qp_attr.rq_size = 0;
+	qp_attr.sq_size = RTE_BIT32(log_ops_n);
+	qp_attr.mmo = priv->mmo_decomp_qp && priv->mmo_comp_qp
+			&& priv->mmo_dma_qp;
+	ret = mlx5_devx_qp_create(priv->ctx, &qp->qp, log_ops_n, &qp_attr,
 				  socket_id);
 	if (ret != 0) {
-		DRV_LOG(ERR, "Failed to create SQ.");
+		DRV_LOG(ERR, "Failed to create QP.");
 		goto err;
 	}
-	mlx5_compress_init_sq(qp);
-	ret = mlx5_devx_cmd_modify_sq(qp->sq.sq, &modify_attr);
-	if (ret != 0) {
-		DRV_LOG(ERR, "Can't change SQ state to ready.");
+	mlx5_compress_init_qp(qp);
+	ret = mlx5_devx_qp2rts(&qp->qp, 0);
+	if (ret)
 		goto err;
-	}
 	/* Save pointer of global generation number to check memory event. */
 	qp->mr_ctrl.dev_gen_ptr = &priv->mr_scache.dev_gen;
 	DRV_LOG(INFO, "QP %u: SQN=0x%X CQN=0x%X entries num = %u",
-		(uint32_t)qp_id, qp->sq.sq->id, qp->cq.cq->id, qp->entries_n);
+		(uint32_t)qp_id, qp->qp.qp->id, qp->cq.cq->id, qp->entries_n);
 	return 0;
 err:
 	mlx5_compress_qp_release(dev, qp_id);
@@ -508,7 +512,7 @@ mlx5_compress_enqueue_burst(void *queue_pair, struct rte_comp_op **ops,
 {
 	struct mlx5_compress_qp *qp = queue_pair;
 	volatile struct mlx5_gga_wqe *wqes = (volatile struct mlx5_gga_wqe *)
-							      qp->sq.wqes, *wqe;
+							      qp->qp.wqes, *wqe;
 	struct mlx5_compress_xform *xform;
 	struct rte_comp_op *op;
 	uint16_t mask = qp->entries_n - 1;
@@ -563,7 +567,7 @@ mlx5_compress_enqueue_burst(void *queue_pair, struct rte_comp_op **ops,
 	} while (--remain);
 	qp->stats.enqueued_count += nb_ops;
 	rte_io_wmb();
-	qp->sq.db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(qp->pi);
+	qp->qp.db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(qp->pi);
 	rte_wmb();
 	mlx5_compress_uar_write(*(volatile uint64_t *)wqe, qp->priv);
 	rte_wmb();
@@ -598,7 +602,7 @@ mlx5_compress_cqe_err_handle(struct mlx5_compress_qp *qp,
 	volatile struct mlx5_err_cqe *cqe = (volatile struct mlx5_err_cqe *)
 							      &qp->cq.cqes[idx];
 	volatile struct mlx5_gga_wqe *wqes = (volatile struct mlx5_gga_wqe *)
-								    qp->sq.wqes;
+								    qp->qp.wqes;
 	volatile struct mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
 
 	op->status = RTE_COMP_OP_STATUS_ERROR;
@@ -813,8 +817,9 @@ mlx5_compress_dev_probe(struct rte_device *dev)
 		return -rte_errno;
 	}
 	if (mlx5_devx_cmd_query_hca_attr(ctx, &att) != 0 ||
-	    att.mmo_compress_sq_en == 0 || att.mmo_decompress_sq_en == 0 ||
-	    att.mmo_dma_sq_en == 0) {
+	    ((att.mmo_compress_sq_en == 0 || att.mmo_decompress_sq_en == 0 ||
+		att.mmo_dma_sq_en == 0) && (att.mmo_compress_qp_en == 0 ||
+		att.mmo_decompress_qp_en == 0 || att.mmo_dma_qp_en == 0))) {
 		DRV_LOG(ERR, "Not enough capabilities to support compress "
 			"operations, maybe old FW/OFED version?");
 		claim_zero(mlx5_glue->close_device(ctx));
@@ -835,10 +840,16 @@ mlx5_compress_dev_probe(struct rte_device *dev)
 	cdev->enqueue_burst = mlx5_compress_enqueue_burst;
 	cdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 	priv = cdev->data->dev_private;
+	priv->mmo_decomp_sq = att.mmo_decompress_sq_en;
+	priv->mmo_decomp_qp = att.mmo_decompress_qp_en;
+	priv->mmo_comp_sq = att.mmo_compress_sq_en;
+	priv->mmo_comp_qp = att.mmo_compress_qp_en;
+	priv->mmo_dma_sq = att.mmo_dma_sq_en;
+	priv->mmo_dma_qp = att.mmo_dma_qp_en;
 	priv->ctx = ctx;
 	priv->cdev = cdev;
 	priv->min_block_size = att.compress_min_block_size;
-	priv->sq_ts_format = att.sq_ts_format;
+	priv->qp_ts_format = att.qp_ts_format;
 	if (mlx5_compress_hw_global_prepare(priv) != 0) {
 		rte_compressdev_pmd_destroy(priv->cdev);
 		claim_zero(mlx5_glue->close_device(priv->ctx));
