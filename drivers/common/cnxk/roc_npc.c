@@ -179,46 +179,6 @@ roc_npc_init(struct roc_npc *roc_npc)
 		return rc;
 	}
 
-	sz = npc->flow_max_priority * sizeof(struct npc_mcam_ents_info);
-	npc->flow_entry_info = plt_zmalloc(sz, 0);
-	if (npc->flow_entry_info == NULL) {
-		plt_err("flow_entry_info alloc failed");
-		rc = NPC_ERR_NO_MEM;
-		goto done;
-	}
-
-	sz = npc->flow_max_priority * sizeof(struct plt_bitmap *);
-	npc->free_entries = plt_zmalloc(sz, 0);
-	if (npc->free_entries == NULL) {
-		plt_err("free_entries alloc failed");
-		rc = NPC_ERR_NO_MEM;
-		goto done;
-	}
-
-	sz = npc->flow_max_priority * sizeof(struct plt_bitmap *);
-	npc->free_entries_rev = plt_zmalloc(sz, 0);
-	if (npc->free_entries_rev == NULL) {
-		plt_err("free_entries_rev alloc failed");
-		rc = NPC_ERR_NO_MEM;
-		goto done;
-	}
-
-	sz = npc->flow_max_priority * sizeof(struct plt_bitmap *);
-	npc->live_entries = plt_zmalloc(sz, 0);
-	if (npc->live_entries == NULL) {
-		plt_err("live_entries alloc failed");
-		rc = NPC_ERR_NO_MEM;
-		goto done;
-	}
-
-	sz = npc->flow_max_priority * sizeof(struct plt_bitmap *);
-	npc->live_entries_rev = plt_zmalloc(sz, 0);
-	if (npc->live_entries_rev == NULL) {
-		plt_err("live_entries_rev alloc failed");
-		rc = NPC_ERR_NO_MEM;
-		goto done;
-	}
-
 	sz = npc->flow_max_priority * sizeof(struct npc_flow_list);
 	npc->flow_list = plt_zmalloc(sz, 0);
 	if (npc->flow_list == NULL) {
@@ -227,30 +187,18 @@ roc_npc_init(struct roc_npc *roc_npc)
 		goto done;
 	}
 
+	sz = npc->flow_max_priority * sizeof(struct npc_prio_flow_list_head);
+	npc->prio_flow_list = plt_zmalloc(sz, 0);
+	if (npc->prio_flow_list == NULL) {
+		plt_err("prio_flow_list alloc failed");
+		rc = NPC_ERR_NO_MEM;
+		goto done;
+	}
+
 	npc_mem = mem;
 	for (idx = 0; idx < npc->flow_max_priority; idx++) {
 		TAILQ_INIT(&npc->flow_list[idx]);
-
-		npc->free_entries[idx] =
-			plt_bitmap_init(npc->mcam_entries, mem, bmap_sz);
-		mem += bmap_sz;
-
-		npc->free_entries_rev[idx] =
-			plt_bitmap_init(npc->mcam_entries, mem, bmap_sz);
-		mem += bmap_sz;
-
-		npc->live_entries[idx] =
-			plt_bitmap_init(npc->mcam_entries, mem, bmap_sz);
-		mem += bmap_sz;
-
-		npc->live_entries_rev[idx] =
-			plt_bitmap_init(npc->mcam_entries, mem, bmap_sz);
-		mem += bmap_sz;
-
-		npc->flow_entry_info[idx].free_ent = 0;
-		npc->flow_entry_info[idx].live_ent = 0;
-		npc->flow_entry_info[idx].max_id = 0;
-		npc->flow_entry_info[idx].min_id = ~(0);
+		TAILQ_INIT(&npc->prio_flow_list[idx]);
 	}
 
 	npc->rss_grps = NPC_RSS_GRPS;
@@ -281,16 +229,8 @@ roc_npc_init(struct roc_npc *roc_npc)
 done:
 	if (npc->flow_list)
 		plt_free(npc->flow_list);
-	if (npc->live_entries_rev)
-		plt_free(npc->live_entries_rev);
-	if (npc->live_entries)
-		plt_free(npc->live_entries);
-	if (npc->free_entries_rev)
-		plt_free(npc->free_entries_rev);
-	if (npc->free_entries)
-		plt_free(npc->free_entries);
-	if (npc->flow_entry_info)
-		plt_free(npc->flow_entry_info);
+	if (npc->prio_flow_list)
+		plt_free(npc->prio_flow_list);
 	if (npc_mem)
 		plt_free(npc_mem);
 	return rc;
@@ -313,29 +253,9 @@ roc_npc_fini(struct roc_npc *roc_npc)
 		npc->flow_list = NULL;
 	}
 
-	if (npc->live_entries_rev) {
-		plt_free(npc->live_entries_rev);
-		npc->live_entries_rev = NULL;
-	}
-
-	if (npc->live_entries) {
-		plt_free(npc->live_entries);
-		npc->live_entries = NULL;
-	}
-
-	if (npc->free_entries_rev) {
-		plt_free(npc->free_entries_rev);
-		npc->free_entries_rev = NULL;
-	}
-
-	if (npc->free_entries) {
-		plt_free(npc->free_entries);
-		npc->free_entries = NULL;
-	}
-
-	if (npc->flow_entry_info) {
-		plt_free(npc->flow_entry_info);
-		npc->flow_entry_info = NULL;
+	if (npc->prio_flow_list) {
+		plt_free(npc->prio_flow_list);
+		npc->prio_flow_list = NULL;
 	}
 
 	return 0;
@@ -1276,7 +1196,6 @@ int
 roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
-	struct plt_bitmap *bmap;
 	int rc;
 
 	rc = npc_rss_group_free(npc, flow);
@@ -1297,8 +1216,7 @@ roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 
 	TAILQ_REMOVE(&npc->flow_list[flow->priority], flow, next);
 
-	bmap = npc->live_entries[flow->priority];
-	plt_bitmap_clear(bmap, flow->mcam_id);
+	npc_delete_prio_list_entry(npc, flow);
 
 	plt_free(flow);
 	return 0;

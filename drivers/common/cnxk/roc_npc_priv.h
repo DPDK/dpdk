@@ -344,13 +344,12 @@ struct npc_get_datax_cfg {
 
 TAILQ_HEAD(npc_flow_list, roc_npc_flow);
 
-struct npc_mcam_ents_info {
-	/* Current max & min values of mcam index */
-	uint32_t max_id;
-	uint32_t min_id;
-	uint32_t free_ent;
-	uint32_t live_ent;
+struct npc_prio_flow_entry {
+	struct roc_npc_flow *flow;
+	TAILQ_ENTRY(npc_prio_flow_entry) next;
 };
+
+TAILQ_HEAD(npc_prio_flow_list_head, npc_prio_flow_entry);
 
 struct npc {
 	struct mbox *mbox;			/* Mbox */
@@ -371,22 +370,8 @@ struct npc {
 	npc_dxcfg_t prx_dxcfg;	     /* intf, lid, lt, extract */
 	npc_fxcfg_t prx_fxcfg;	     /* Flag extract */
 	npc_ld_flags_t prx_lfcfg;    /* KEX LD_Flags CFG */
-	/* mcam entry info per priority level: both free & in-use */
-	struct npc_mcam_ents_info *flow_entry_info;
-	/* Bitmap of free preallocated entries in ascending index &
-	 * descending priority
-	 */
-	struct plt_bitmap **free_entries;
-	/* Bitmap of free preallocated entries in descending index &
-	 * ascending priority
-	 */
-	struct plt_bitmap **free_entries_rev;
-	/* Bitmap of live entries in ascending index & descending priority */
-	struct plt_bitmap **live_entries;
-	/* Bitmap of live entries in descending index & ascending priority */
-	struct plt_bitmap **live_entries_rev;
-	/* Priority bucket wise tail queue of all npc_flow resources */
 	struct npc_flow_list *flow_list;
+	struct npc_prio_flow_list_head *prio_flow_list;
 	struct plt_bitmap *rss_grp_entries;
 };
 
@@ -431,9 +416,9 @@ int npc_parse_lf(struct npc_parse_state *pst);
 int npc_parse_lg(struct npc_parse_state *pst);
 int npc_parse_lh(struct npc_parse_state *pst);
 int npc_mcam_fetch_kex_cfg(struct npc *npc);
-int npc_check_preallocated_entry_cache(struct mbox *mbox,
-				       struct roc_npc_flow *flow,
-				       struct npc *npc);
+int npc_get_free_mcam_entry(struct mbox *mbox, struct roc_npc_flow *flow,
+			    struct npc *npc);
+void npc_delete_prio_list_entry(struct npc *npc, struct roc_npc_flow *flow);
 int npc_flow_free_all_resources(struct npc *npc);
 const struct roc_npc_item_info *
 npc_parse_skip_void_and_any_items(const struct roc_npc_item_info *pattern);

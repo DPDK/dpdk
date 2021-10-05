@@ -520,7 +520,7 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 			return rc;
 	}
 
-	entry = npc_check_preallocated_entry_cache(mbox, flow, npc);
+	entry = npc_get_free_mcam_entry(mbox, flow, npc);
 	if (entry < 0) {
 		if (use_ctr)
 			npc_mcam_free_counter(npc, ctr);
@@ -587,6 +587,9 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 		pf_func = plt_cpu_to_be_16(pf_func);
 		req->entry_data.kw[0] |= ((uint64_t)pf_func << 32);
 		req->entry_data.kw_mask[0] |= ((uint64_t)0xffff << 32);
+
+		flow->mcam_data[0] |= ((uint64_t)pf_func << 32);
+		flow->mcam_mask[0] |= ((uint64_t)0xffff << 32);
 	}
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
@@ -594,6 +597,7 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 		return rc;
 
 	flow->mcam_id = entry;
+
 	if (use_ctr)
 		flow->ctr_id = ctr;
 	return 0;
@@ -697,19 +701,8 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 int
 npc_flow_free_all_resources(struct npc *npc)
 {
-	struct npc_mcam_ents_info *info;
 	struct roc_npc_flow *flow;
-	struct plt_bitmap *bmap;
-	int entry_count = 0;
 	int rc, idx;
-
-	for (idx = 0; idx < npc->flow_max_priority; idx++) {
-		info = &npc->flow_entry_info[idx];
-		entry_count += info->live_ent;
-	}
-
-	if (entry_count == 0)
-		return 0;
 
 	/* Free all MCAM entries allocated */
 	rc = npc_mcam_free_all_entries(npc);
@@ -721,14 +714,11 @@ npc_flow_free_all_resources(struct npc *npc)
 			if (flow->ctr_id != NPC_COUNTER_NONE)
 				rc |= npc_mcam_free_counter(npc, flow->ctr_id);
 
+			npc_delete_prio_list_entry(npc, flow);
+
 			TAILQ_REMOVE(&npc->flow_list[idx], flow, next);
 			plt_free(flow);
-			bmap = npc->live_entries[flow->priority];
-			plt_bitmap_clear(bmap, flow->mcam_id);
 		}
-		info = &npc->flow_entry_info[idx];
-		info->free_ent = 0;
-		info->live_ent = 0;
 	}
 	return rc;
 }
