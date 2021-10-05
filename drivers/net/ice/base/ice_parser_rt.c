@@ -187,21 +187,23 @@ static u32 _bit_rev_u32(u32 v, int len)
 
 static u32 _hv_bit_sel(struct ice_parser_rt *rt, int start, int len)
 {
-	u64 d64, msk;
-	u8 b[8];
+	u64 msk;
+	union {
+		u64 d64;
+		u8 b[8];
+	} bit_sel;
 	int i;
 
 	int offset = GPR_HB_IDX + start / 16;
 
-	ice_memcpy(b, &rt->gpr[offset], 8, ICE_NONDMA_TO_NONDMA);
+	ice_memcpy(bit_sel.b, &rt->gpr[offset], 8, ICE_NONDMA_TO_NONDMA);
 
 	for (i = 0; i < 8; i++)
-		b[i] = _bit_rev_u8(b[i]);
+		bit_sel.b[i] = _bit_rev_u8(bit_sel.b[i]);
 
-	d64 = *(u64 *)&b[0];
 	msk = (1ul << len) - 1;
 
-	return _bit_rev_u32((u32)((d64 >> (start % 16)) & msk), len);
+	return _bit_rev_u32((u32)((bit_sel.d64 >> (start % 16)) & msk), len);
 }
 
 static u32 _pk_build(struct ice_parser_rt *rt, struct ice_np_keybuilder *kb)
@@ -444,21 +446,23 @@ static void _po_update(struct ice_parser_rt *rt, struct ice_alu *alu)
 static u16 _reg_bit_sel(struct ice_parser_rt *rt, int reg_idx,
 			int start, int len)
 {
-	u32 d32, msk;
-	u8 b[4];
-	u8 v[4];
+	u32 msk;
+	union {
+		u32 d32;
+		u8 b[4];
+	} bit_sel;
 
-	ice_memcpy(b, &rt->gpr[reg_idx + start / 16], 4, ICE_NONDMA_TO_NONDMA);
+	ice_memcpy(bit_sel.b, &rt->gpr[reg_idx + start / 16], 4,
+		   ICE_NONDMA_TO_NONDMA);
 
-	v[0] = _bit_rev_u8(b[0]);
-	v[1] = _bit_rev_u8(b[1]);
-	v[2] = _bit_rev_u8(b[2]);
-	v[3] = _bit_rev_u8(b[3]);
+	bit_sel.b[0] = _bit_rev_u8(bit_sel.b[0]);
+	bit_sel.b[1] = _bit_rev_u8(bit_sel.b[1]);
+	bit_sel.b[2] = _bit_rev_u8(bit_sel.b[2]);
+	bit_sel.b[3] = _bit_rev_u8(bit_sel.b[3]);
 
-	d32 = *(u32 *)&v[0];
 	msk = (1u << len) - 1;
 
-	return _bit_rev_u16((u16)((d32 >> (start % 16)) & msk), len);
+	return _bit_rev_u16((u16)((bit_sel.d32 >> (start % 16)) & msk), len);
 }
 
 static void _err_add(struct ice_parser_rt *rt, int idx, bool val)
