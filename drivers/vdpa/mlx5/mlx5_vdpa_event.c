@@ -179,7 +179,7 @@ mlx5_vdpa_cq_poll(struct mlx5_vdpa_cq *cq)
 		cq->cq_obj.db_rec[0] = rte_cpu_to_be_32(cq->cq_ci);
 		rte_io_wmb();
 		/* Ring SW QP doorbell record. */
-		eqp->db_rec[0] = rte_cpu_to_be_32(cq->cq_ci + cq_size);
+		eqp->sw_qp.db_rec[0] = rte_cpu_to_be_32(cq->cq_ci + cq_size);
 	}
 	return comp;
 }
@@ -531,12 +531,7 @@ mlx5_vdpa_cqe_event_unset(struct mlx5_vdpa_priv *priv)
 void
 mlx5_vdpa_event_qp_destroy(struct mlx5_vdpa_event_qp *eqp)
 {
-	if (eqp->sw_qp)
-		claim_zero(mlx5_devx_cmd_destroy(eqp->sw_qp));
-	if (eqp->umem_obj)
-		claim_zero(mlx5_glue->devx_umem_dereg(eqp->umem_obj));
-	if (eqp->umem_buf)
-		rte_free(eqp->umem_buf);
+	mlx5_devx_qp_destroy(&eqp->sw_qp);
 	if (eqp->fw_qp)
 		claim_zero(mlx5_devx_cmd_destroy(eqp->fw_qp));
 	mlx5_vdpa_cq_destroy(&eqp->cq);
@@ -547,36 +542,36 @@ static int
 mlx5_vdpa_qps2rts(struct mlx5_vdpa_event_qp *eqp)
 {
 	if (mlx5_devx_cmd_modify_qp_state(eqp->fw_qp, MLX5_CMD_OP_RST2INIT_QP,
-					  eqp->sw_qp->id)) {
+					  eqp->sw_qp.qp->id)) {
 		DRV_LOG(ERR, "Failed to modify FW QP to INIT state(%u).",
 			rte_errno);
 		return -1;
 	}
-	if (mlx5_devx_cmd_modify_qp_state(eqp->sw_qp, MLX5_CMD_OP_RST2INIT_QP,
-					  eqp->fw_qp->id)) {
+	if (mlx5_devx_cmd_modify_qp_state(eqp->sw_qp.qp,
+			MLX5_CMD_OP_RST2INIT_QP, eqp->fw_qp->id)) {
 		DRV_LOG(ERR, "Failed to modify SW QP to INIT state(%u).",
 			rte_errno);
 		return -1;
 	}
 	if (mlx5_devx_cmd_modify_qp_state(eqp->fw_qp, MLX5_CMD_OP_INIT2RTR_QP,
-					  eqp->sw_qp->id)) {
+					  eqp->sw_qp.qp->id)) {
 		DRV_LOG(ERR, "Failed to modify FW QP to RTR state(%u).",
 			rte_errno);
 		return -1;
 	}
-	if (mlx5_devx_cmd_modify_qp_state(eqp->sw_qp, MLX5_CMD_OP_INIT2RTR_QP,
-					  eqp->fw_qp->id)) {
+	if (mlx5_devx_cmd_modify_qp_state(eqp->sw_qp.qp,
+			MLX5_CMD_OP_INIT2RTR_QP, eqp->fw_qp->id)) {
 		DRV_LOG(ERR, "Failed to modify SW QP to RTR state(%u).",
 			rte_errno);
 		return -1;
 	}
 	if (mlx5_devx_cmd_modify_qp_state(eqp->fw_qp, MLX5_CMD_OP_RTR2RTS_QP,
-					  eqp->sw_qp->id)) {
+					  eqp->sw_qp.qp->id)) {
 		DRV_LOG(ERR, "Failed to modify FW QP to RTS state(%u).",
 			rte_errno);
 		return -1;
 	}
-	if (mlx5_devx_cmd_modify_qp_state(eqp->sw_qp, MLX5_CMD_OP_RTR2RTS_QP,
+	if (mlx5_devx_cmd_modify_qp_state(eqp->sw_qp.qp, MLX5_CMD_OP_RTR2RTS_QP,
 					  eqp->fw_qp->id)) {
 		DRV_LOG(ERR, "Failed to modify SW QP to RTS state(%u).",
 			rte_errno);
@@ -591,8 +586,7 @@ mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 {
 	struct mlx5_devx_qp_attr attr = {0};
 	uint16_t log_desc_n = rte_log2_u32(desc_n);
-	uint32_t umem_size = (1 << log_desc_n) * MLX5_WSEG_SIZE +
-						       sizeof(*eqp->db_rec) * 2;
+	uint32_t ret;
 
 	if (mlx5_vdpa_event_qp_global_prepare(priv))
 		return -1;
@@ -605,42 +599,23 @@ mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 		DRV_LOG(ERR, "Failed to create FW QP(%u).", rte_errno);
 		goto error;
 	}
-	eqp->umem_buf = rte_zmalloc(__func__, umem_size, 4096);
-	if (!eqp->umem_buf) {
-		DRV_LOG(ERR, "Failed to allocate memory for SW QP.");
-		rte_errno = ENOMEM;
-		goto error;
-	}
-	eqp->umem_obj = mlx5_glue->devx_umem_reg(priv->ctx,
-					       (void *)(uintptr_t)eqp->umem_buf,
-					       umem_size,
-					       IBV_ACCESS_LOCAL_WRITE);
-	if (!eqp->umem_obj) {
-		DRV_LOG(ERR, "Failed to register umem for SW QP.");
-		goto error;
-	}
 	attr.uar_index = priv->uar->page_id;
 	attr.cqn = eqp->cq.cq_obj.cq->id;
-	attr.log_page_size = rte_log2_u32(sysconf(_SC_PAGESIZE));
-	attr.rq_size = 1 << log_desc_n;
+	attr.rq_size = RTE_BIT32(log_desc_n);
 	attr.log_rq_stride = rte_log2_u32(MLX5_WSEG_SIZE);
 	attr.sq_size = 0; /* No need SQ. */
-	attr.dbr_umem_valid = 1;
-	attr.wq_umem_id = eqp->umem_obj->umem_id;
-	attr.wq_umem_offset = 0;
-	attr.dbr_umem_id = eqp->umem_obj->umem_id;
 	attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
-	attr.dbr_address = RTE_BIT64(log_desc_n) * MLX5_WSEG_SIZE;
-	eqp->sw_qp = mlx5_devx_cmd_create_qp(priv->ctx, &attr);
-	if (!eqp->sw_qp) {
+	ret = mlx5_devx_qp_create(priv->ctx, &(eqp->sw_qp), log_desc_n, &attr,
+			SOCKET_ID_ANY);
+	if (ret) {
 		DRV_LOG(ERR, "Failed to create SW QP(%u).", rte_errno);
 		goto error;
 	}
-	eqp->db_rec = RTE_PTR_ADD(eqp->umem_buf, (uintptr_t)attr.dbr_address);
 	if (mlx5_vdpa_qps2rts(eqp))
 		goto error;
 	/* First ringing. */
-	rte_write32(rte_cpu_to_be_32(1 << log_desc_n), &eqp->db_rec[0]);
+	rte_write32(rte_cpu_to_be_32(RTE_BIT32(log_desc_n)),
+			&eqp->sw_qp.db_rec[0]);
 	return 0;
 error:
 	mlx5_vdpa_event_qp_destroy(eqp);

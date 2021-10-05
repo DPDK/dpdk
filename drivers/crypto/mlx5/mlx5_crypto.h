@@ -44,11 +44,8 @@ struct mlx5_crypto_priv {
 struct mlx5_crypto_qp {
 	struct mlx5_crypto_priv *priv;
 	struct mlx5_devx_cq cq_obj;
-	struct mlx5_devx_obj *qp_obj;
+	struct mlx5_devx_qp qp_obj;
 	struct rte_cryptodev_stats stats;
-	struct mlx5dv_devx_umem *umem_obj;
-	void *umem_buf;
-	volatile uint32_t *db_rec;
 	struct rte_crypto_op **ops;
 	struct mlx5_devx_obj **mkey; /* WQE's indirect mekys. */
 	struct mlx5_mr_ctrl mr_ctrl;

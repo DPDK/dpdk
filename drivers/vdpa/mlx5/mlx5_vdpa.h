@@ -54,10 +54,7 @@ struct mlx5_vdpa_cq {
 struct mlx5_vdpa_event_qp {
 	struct mlx5_vdpa_cq cq;
 	struct mlx5_devx_obj *fw_qp;
-	struct mlx5_devx_obj *sw_qp;
-	struct mlx5dv_devx_umem *umem_obj;
-	void *umem_buf;
-	volatile uint32_t *db_rec;
+	struct mlx5_devx_qp sw_qp;
 };
 
 struct mlx5_vdpa_query_mr {

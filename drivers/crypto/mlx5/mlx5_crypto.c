@@ -267,12 +267,7 @@ mlx5_crypto_qp_release(struct mlx5_crypto_qp *qp)
 {
 	if (qp == NULL)
 		return;
-	if (qp->qp_obj != NULL)
-		claim_zero(mlx5_devx_cmd_destroy(qp->qp_obj));
-	if (qp->umem_obj != NULL)
-		claim_zero(mlx5_glue->devx_umem_dereg(qp->umem_obj));
-	if (qp->umem_buf != NULL)
-		rte_free(qp->umem_buf);
+	mlx5_devx_qp_destroy(&qp->qp_obj);
 	mlx5_mr_btree_free(&qp->mr_ctrl.cache_bh);
 	mlx5_devx_cq_destroy(&qp->cq_obj);
 	rte_free(qp);
@@ -286,34 +281,6 @@ mlx5_crypto_queue_pair_release(struct rte_cryptodev *dev, uint16_t qp_id)
 	mlx5_crypto_indirect_mkeys_release(qp, qp->entries_n);
 	mlx5_crypto_qp_release(qp);
 	dev->data->queue_pairs[qp_id] = NULL;
-	return 0;
-}
-
-static int
-mlx5_crypto_qp2rts(struct mlx5_crypto_qp *qp)
-{
-	/*
-	 * In Order to configure self loopback, when calling these functions the
-	 * remote QP id that is used is the id of the same QP.
-	 */
-	if (mlx5_devx_cmd_modify_qp_state(qp->qp_obj, MLX5_CMD_OP_RST2INIT_QP,
-					  qp->qp_obj->id)) {
-		DRV_LOG(ERR, "Failed to modify QP to INIT state(%u).",
-			rte_errno);
-		return -1;
-	}
-	if (mlx5_devx_cmd_modify_qp_state(qp->qp_obj, MLX5_CMD_OP_INIT2RTR_QP,
-					  qp->qp_obj->id)) {
-		DRV_LOG(ERR, "Failed to modify QP to RTR state(%u).",
-			rte_errno);
-		return -1;
-	}
-	if (mlx5_devx_cmd_modify_qp_state(qp->qp_obj, MLX5_CMD_OP_RTR2RTS_QP,
-					  qp->qp_obj->id)) {
-		DRV_LOG(ERR, "Failed to modify QP to RTS state(%u).",
-			rte_errno);
-		return -1;
-	}
 	return 0;
 }
 
@@ -471,7 +438,7 @@ mlx5_crypto_wqe_set(struct mlx5_crypto_priv *priv,
 		memcpy(klms, &umr->kseg[0], sizeof(*klms) * klm_n);
 	}
 	ds = 2 + klm_n;
-	cseg->sq_ds = rte_cpu_to_be_32((qp->qp_obj->id << 8) | ds);
+	cseg->sq_ds = rte_cpu_to_be_32((qp->qp_obj.qp->id << 8) | ds);
 	cseg->opcode = rte_cpu_to_be_32((qp->db_pi << 8) |
 							MLX5_OPCODE_RDMA_WRITE);
 	ds = RTE_ALIGN(ds, 4);
@@ -480,7 +447,7 @@ mlx5_crypto_wqe_set(struct mlx5_crypto_priv *priv,
 	if (priv->max_rdmar_ds > ds) {
 		cseg += ds;
 		ds = priv->max_rdmar_ds - ds;
-		cseg->sq_ds = rte_cpu_to_be_32((qp->qp_obj->id << 8) | ds);
+		cseg->sq_ds = rte_cpu_to_be_32((qp->qp_obj.qp->id << 8) | ds);
 		cseg->opcode = rte_cpu_to_be_32((qp->db_pi << 8) |
 							       MLX5_OPCODE_NOP);
 		qp->db_pi += ds >> 2; /* Here, DS is 4 aligned for sure. */
@@ -524,7 +491,8 @@ mlx5_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	do {
 		idx = qp->pi & mask;
 		op = *ops++;
-		umr = RTE_PTR_ADD(qp->umem_buf, priv->wqe_set_size * idx);
+		umr = RTE_PTR_ADD(qp->qp_obj.umem_buf,
+			priv->wqe_set_size * idx);
 		if (unlikely(mlx5_crypto_wqe_set(priv, qp, op, umr) == 0)) {
 			qp->stats.enqueue_err_count++;
 			if (remain != nb_ops) {
@@ -538,7 +506,7 @@ mlx5_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	} while (--remain);
 	qp->stats.enqueued_count += nb_ops;
 	rte_io_wmb();
-	qp->db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(qp->db_pi);
+	qp->qp_obj.db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(qp->db_pi);
 	rte_wmb();
 	mlx5_crypto_uar_write(*(volatile uint64_t *)qp->wqe, qp->priv);
 	rte_wmb();
@@ -604,8 +572,8 @@ mlx5_crypto_qp_init(struct mlx5_crypto_priv *priv, struct mlx5_crypto_qp *qp)
 	uint32_t i;
 
 	for (i = 0 ; i < qp->entries_n; i++) {
-		struct mlx5_wqe_cseg *cseg = RTE_PTR_ADD(qp->umem_buf, i *
-							 priv->wqe_set_size);
+		struct mlx5_wqe_cseg *cseg = RTE_PTR_ADD(qp->qp_obj.umem_buf,
+			i * priv->wqe_set_size);
 		struct mlx5_wqe_umr_cseg *ucseg = (struct mlx5_wqe_umr_cseg *)
 								     (cseg + 1);
 		struct mlx5_wqe_umr_bsf_seg *bsf =
@@ -614,7 +582,7 @@ mlx5_crypto_qp_init(struct mlx5_crypto_priv *priv, struct mlx5_crypto_qp *qp)
 		struct mlx5_wqe_rseg *rseg;
 
 		/* Init UMR WQE. */
-		cseg->sq_ds = rte_cpu_to_be_32((qp->qp_obj->id << 8) |
+		cseg->sq_ds = rte_cpu_to_be_32((qp->qp_obj.qp->id << 8) |
 					 (priv->umr_wqe_size / MLX5_WSEG_SIZE));
 		cseg->flags = RTE_BE32(MLX5_COMP_ONLY_FIRST_ERR <<
 				       MLX5_COMP_MODE_OFFSET);
@@ -649,7 +617,7 @@ mlx5_crypto_indirect_mkeys_prepare(struct mlx5_crypto_priv *priv,
 		.klm_num = RTE_ALIGN(priv->max_segs_num, 4),
 	};
 
-	for (umr = (struct mlx5_umr_wqe *)qp->umem_buf, i = 0;
+	for (umr = (struct mlx5_umr_wqe *)qp->qp_obj.umem_buf, i = 0;
 	   i < qp->entries_n; i++, umr = RTE_PTR_ADD(umr, priv->wqe_set_size)) {
 		attr.klm_array = (struct mlx5_klm *)&umr->kseg[0];
 		qp->mkey[i] = mlx5_devx_cmd_mkey_create(priv->ctx, &attr);
@@ -672,9 +640,7 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	struct mlx5_devx_qp_attr attr = {0};
 	struct mlx5_crypto_qp *qp;
 	uint16_t log_nb_desc = rte_log2_u32(qp_conf->nb_descriptors);
-	uint32_t umem_size = RTE_BIT32(log_nb_desc) *
-			      priv->wqe_set_size +
-			      sizeof(*qp->db_rec) * 2;
+	uint32_t ret;
 	uint32_t alloc_size = sizeof(*qp);
 	struct mlx5_devx_cq_attr cq_attr = {
 		.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->uar),
@@ -698,18 +664,16 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		DRV_LOG(ERR, "Failed to create CQ.");
 		goto error;
 	}
-	qp->umem_buf = rte_zmalloc_socket(__func__, umem_size, 4096, socket_id);
-	if (qp->umem_buf == NULL) {
-		DRV_LOG(ERR, "Failed to allocate QP umem.");
-		rte_errno = ENOMEM;
-		goto error;
-	}
-	qp->umem_obj = mlx5_glue->devx_umem_reg(priv->ctx,
-					       (void *)(uintptr_t)qp->umem_buf,
-					       umem_size,
-					       IBV_ACCESS_LOCAL_WRITE);
-	if (qp->umem_obj == NULL) {
-		DRV_LOG(ERR, "Failed to register QP umem.");
+	attr.pd = priv->pdn;
+	attr.uar_index = mlx5_os_get_devx_uar_page_id(priv->uar);
+	attr.cqn = qp->cq_obj.cq->id;
+	attr.rq_size = 0;
+	attr.sq_size = RTE_BIT32(log_nb_desc);
+	attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
+	ret = mlx5_devx_qp_create(priv->ctx, &qp->qp_obj, log_nb_desc, &attr,
+		socket_id);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to create QP.");
 		goto error;
 	}
 	if (mlx5_mr_btree_init(&qp->mr_ctrl.cache_bh, MLX5_MR_BTREE_CACHE_N,
@@ -720,25 +684,11 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		goto error;
 	}
 	qp->mr_ctrl.dev_gen_ptr = &priv->mr_scache.dev_gen;
-	attr.pd = priv->pdn;
-	attr.uar_index = mlx5_os_get_devx_uar_page_id(priv->uar);
-	attr.cqn = qp->cq_obj.cq->id;
-	attr.log_page_size = rte_log2_u32(sysconf(_SC_PAGESIZE));
-	attr.rq_size = 0;
-	attr.sq_size = RTE_BIT32(log_nb_desc);
-	attr.dbr_umem_valid = 1;
-	attr.wq_umem_id = qp->umem_obj->umem_id;
-	attr.wq_umem_offset = 0;
-	attr.dbr_umem_id = qp->umem_obj->umem_id;
-	attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
-	attr.dbr_address = RTE_BIT64(log_nb_desc) * priv->wqe_set_size;
-	qp->qp_obj = mlx5_devx_cmd_create_qp(priv->ctx, &attr);
-	if (qp->qp_obj == NULL) {
-		DRV_LOG(ERR, "Failed to create QP(%u).", rte_errno);
-		goto error;
-	}
-	qp->db_rec = RTE_PTR_ADD(qp->umem_buf, (uintptr_t)attr.dbr_address);
-	if (mlx5_crypto_qp2rts(qp))
+	/*
+	 * In Order to configure self loopback, when calling devx qp2rts the
+	 * remote QP id that is used is the id of the same QP.
+	 */
+	if (mlx5_devx_qp2rts(&qp->qp_obj, qp->qp_obj.qp->id))
 		goto error;
 	qp->mkey = (struct mlx5_devx_obj **)RTE_ALIGN((uintptr_t)(qp + 1),
 							   RTE_CACHE_LINE_SIZE);

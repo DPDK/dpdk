@@ -2021,6 +2021,7 @@ mlx5_devx_cmd_create_qp(void *ctx,
 	MLX5_SET(qpc, qpc, st, MLX5_QP_ST_RC);
 	MLX5_SET(qpc, qpc, pd, attr->pd);
 	MLX5_SET(qpc, qpc, ts_format, attr->ts_format);
+	MLX5_SET(qpc, qpc, user_index, attr->user_index);
 	if (attr->uar_index) {
 		MLX5_SET(qpc, qpc, pm_state, MLX5_QP_PM_MIGRATED);
 		MLX5_SET(qpc, qpc, uar_page, attr->uar_index);

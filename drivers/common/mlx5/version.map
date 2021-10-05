@@ -67,6 +67,9 @@ INTERNAL {
 
 	mlx5_devx_get_out_command_status;
 
+	mlx5_devx_qp2rts;
+	mlx5_devx_qp_create;
+	mlx5_devx_qp_destroy;
 	mlx5_devx_rq_create;
 	mlx5_devx_rq_destroy;
 	mlx5_devx_sq_create;
