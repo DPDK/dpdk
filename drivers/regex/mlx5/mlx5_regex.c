@@ -146,7 +146,8 @@ mlx5_regex_dev_probe(struct rte_device *rte_dev)
 		DRV_LOG(ERR, "Unable to read HCA capabilities.");
 		rte_errno = ENOTSUP;
 		goto dev_error;
-	} else if (!attr.regex || attr.regexp_num_of_engines == 0) {
+	} else if (((!attr.regex) && (!attr.mmo_regex_sq_en) &&
+		(!attr.mmo_regex_qp_en)) || attr.regexp_num_of_engines == 0) {
 		DRV_LOG(ERR, "Not enough capabilities to support RegEx, maybe "
 			"old FW/OFED version?");
 		rte_errno = ENOTSUP;
@@ -164,7 +165,9 @@ mlx5_regex_dev_probe(struct rte_device *rte_dev)
 		rte_errno = ENOMEM;
 		goto dev_error;
 	}
-	priv->sq_ts_format = attr.sq_ts_format;
+	priv->mmo_regex_qp_cap = attr.mmo_regex_qp_en;
+	priv->mmo_regex_sq_cap = attr.mmo_regex_sq_en;
+	priv->qp_ts_format = attr.qp_ts_format;
 	priv->ctx = ctx;
 	priv->nb_engines = 2; /* attr.regexp_num_of_engines */
 	ret = mlx5_devx_regex_register_read(priv->ctx, 0,

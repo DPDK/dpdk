@@ -17,12 +17,12 @@
 #include "mlx5_rxp.h"
 #include "mlx5_regex_utils.h"
 
-struct mlx5_regex_sq {
+struct mlx5_regex_hw_qp {
 	uint16_t log_nb_desc; /* Log 2 number of desc for this object. */
-	struct mlx5_devx_sq sq_obj; /* The SQ DevX object. */
+	struct mlx5_devx_qp qp_obj; /* The QP DevX object. */
 	size_t pi, db_pi;
 	size_t ci;
-	uint32_t sqn;
+	uint32_t qpn;
 };
 
 struct mlx5_regex_cq {
@@ -34,10 +34,10 @@ struct mlx5_regex_cq {
 struct mlx5_regex_qp {
 	uint32_t flags; /* QP user flags. */
 	uint32_t nb_desc; /* Total number of desc for this qp. */
-	struct mlx5_regex_sq *sqs; /* Pointer to sq array. */
-	uint16_t nb_obj; /* Number of sq objects. */
+	struct mlx5_regex_hw_qp *qps; /* Pointer to qp array. */
+	uint16_t nb_obj; /* Number of qp objects. */
 	struct mlx5_regex_cq cq; /* CQ struct. */
-	uint32_t free_sqs;
+	uint32_t free_qps;
 	struct mlx5_regex_job *jobs;
 	struct ibv_mr *metadata;
 	struct ibv_mr *outputs;
@@ -73,8 +73,10 @@ struct mlx5_regex_priv {
 	/**< Called by memory event callback. */
 	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 	uint8_t is_bf2; /* The device is BF2 device. */
-	uint8_t sq_ts_format; /* Whether SQ supports timestamp formats. */
+	uint8_t qp_ts_format; /* Whether SQ supports timestamp formats. */
 	uint8_t has_umr; /* The device supports UMR. */
+	uint32_t mmo_regex_qp_cap:1;
+	uint32_t mmo_regex_sq_cap:1;
 };
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT

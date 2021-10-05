@@ -106,12 +106,12 @@ regex_ctrl_create_cq(struct mlx5_regex_priv *priv, struct mlx5_regex_cq *cq)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-regex_ctrl_destroy_sq(struct mlx5_regex_qp *qp, uint16_t q_ind)
+regex_ctrl_destroy_hw_qp(struct mlx5_regex_qp *qp, uint16_t q_ind)
 {
-	struct mlx5_regex_sq *sq = &qp->sqs[q_ind];
+	struct mlx5_regex_hw_qp *qp_obj = &qp->qps[q_ind];
 
-	mlx5_devx_sq_destroy(&sq->sq_obj);
-	memset(sq, 0, sizeof(*sq));
+	mlx5_devx_qp_destroy(&qp_obj->qp_obj);
+	memset(qp, 0, sizeof(*qp));
 	return 0;
 }
 
@@ -131,45 +131,44 @@ regex_ctrl_destroy_sq(struct mlx5_regex_qp *qp, uint16_t q_ind)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-regex_ctrl_create_sq(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
+regex_ctrl_create_hw_qp(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 		     uint16_t q_ind, uint16_t log_nb_desc)
 {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	struct mlx5_devx_create_sq_attr attr = {
-		.user_index = q_ind,
+	struct mlx5_devx_qp_attr attr = {
 		.cqn = qp->cq.cq_obj.cq->id,
-		.wq_attr = (struct mlx5_devx_wq_attr){
-			.uar_page = priv->uar->page_id,
-		},
-		.ts_format = mlx5_ts_format_conv(priv->sq_ts_format),
+		.uar_index = priv->uar->page_id,
+		.ts_format = mlx5_ts_format_conv(priv->qp_ts_format),
+		.user_index = q_ind,
 	};
-	struct mlx5_devx_modify_sq_attr modify_attr = {
-		.state = MLX5_SQC_STATE_RDY,
-	};
-	struct mlx5_regex_sq *sq = &qp->sqs[q_ind];
+	struct mlx5_regex_hw_qp *qp_obj = &qp->qps[q_ind];
 	uint32_t pd_num = 0;
 	int ret;
 
-	sq->log_nb_desc = log_nb_desc;
-	sq->sqn = q_ind;
-	sq->ci = 0;
-	sq->pi = 0;
+	qp_obj->log_nb_desc = log_nb_desc;
+	qp_obj->qpn = q_ind;
+	qp_obj->ci = 0;
+	qp_obj->pi = 0;
 	ret = regex_get_pdn(priv->pd, &pd_num);
 	if (ret)
 		return ret;
-	attr.wq_attr.pd = pd_num;
-	ret = mlx5_devx_sq_create(priv->ctx, &sq->sq_obj,
+	attr.pd = pd_num;
+	attr.rq_size = 0;
+	attr.sq_size = RTE_BIT32(MLX5_REGEX_WQE_LOG_NUM(priv->has_umr,
+			log_nb_desc));
+	attr.mmo = priv->mmo_regex_qp_cap;
+	ret = mlx5_devx_qp_create(priv->ctx, &qp_obj->qp_obj,
 			MLX5_REGEX_WQE_LOG_NUM(priv->has_umr, log_nb_desc),
 			&attr, SOCKET_ID_ANY);
 	if (ret) {
-		DRV_LOG(ERR, "Can't create SQ object.");
+		DRV_LOG(ERR, "Can't create QP object.");
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
-	ret = mlx5_devx_cmd_modify_sq(sq->sq_obj.sq, &modify_attr);
+	ret = mlx5_devx_qp2rts(&qp_obj->qp_obj, 0);
 	if (ret) {
-		DRV_LOG(ERR, "Can't change SQ state to ready.");
-		regex_ctrl_destroy_sq(qp, q_ind);
+		DRV_LOG(ERR, "Can't change QP state to RTS.");
+		regex_ctrl_destroy_hw_qp(qp, q_ind);
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
@@ -224,10 +223,10 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 			(1 << MLX5_REGEX_WQE_LOG_NUM(priv->has_umr, log_desc));
 	else
 		qp->nb_obj = 1;
-	qp->sqs = rte_malloc(NULL,
-			     qp->nb_obj * sizeof(struct mlx5_regex_sq), 64);
-	if (!qp->sqs) {
-		DRV_LOG(ERR, "Can't allocate sq array memory.");
+	qp->qps = rte_malloc(NULL,
+			     qp->nb_obj * sizeof(struct mlx5_regex_hw_qp), 64);
+	if (!qp->qps) {
+		DRV_LOG(ERR, "Can't allocate qp array memory.");
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
@@ -238,9 +237,9 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 		goto err_cq;
 	}
 	for (i = 0; i < qp->nb_obj; i++) {
-		ret = regex_ctrl_create_sq(priv, qp, i, log_desc);
+		ret = regex_ctrl_create_hw_qp(priv, qp, i, log_desc);
 		if (ret) {
-			DRV_LOG(ERR, "Can't create sq.");
+			DRV_LOG(ERR, "Can't create qp object.");
 			goto err_btree;
 		}
 		nb_sq_config++;
@@ -266,9 +265,9 @@ err_fp:
 	mlx5_mr_btree_free(&qp->mr_ctrl.cache_bh);
 err_btree:
 	for (i = 0; i < nb_sq_config; i++)
-		regex_ctrl_destroy_sq(qp, i);
+		regex_ctrl_destroy_hw_qp(qp, i);
 	regex_ctrl_destroy_cq(&qp->cq);
 err_cq:
-	rte_free(qp->sqs);
+	rte_free(qp->qps);
 	return ret;
 }
