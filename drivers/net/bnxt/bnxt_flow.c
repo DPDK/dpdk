@@ -738,6 +738,10 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	filter->enables = en;
 	filter->valid_flags = valid_flags;
 
+	/* Items parsed but no filter to create in HW. */
+	if (filter->enables == 0 && filter->valid_flags == 0)
+		filter->filter_type = HWRM_CFA_CONFIG;
+
 	return 0;
 }
 
@@ -1070,6 +1074,167 @@ bnxt_update_filter_flags_en(struct bnxt_filter_info *filter,
 		filter1, filter->fw_l2_filter_id, filter->l2_ref_cnt);
 }
 
+/* Valid actions supported along with RSS are count and mark. */
+static int
+bnxt_validate_rss_action(const struct rte_flow_action actions[])
+{
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			break;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			break;
+		default:
+			return -ENOTSUP;
+		}
+	}
+
+	return 0;
+}
+
+static int
+bnxt_get_vnic(struct bnxt *bp, uint32_t group)
+{
+	int vnic_id = 0;
+
+	/* For legacy NS3 based implementations,
+	 * group_id will be mapped to a VNIC ID.
+	 */
+	if (BNXT_STINGRAY(bp))
+		vnic_id = group;
+
+	/* Non NS3 cases, group_id will be ignored.
+	 * Setting will be configured on default VNIC.
+	 */
+	return vnic_id;
+}
+
+static int
+bnxt_vnic_rss_cfg_update(struct bnxt *bp,
+			 struct bnxt_vnic_info *vnic,
+			 const struct rte_flow_action *act,
+			 struct rte_flow_error *error)
+{
+	const struct rte_flow_action_rss *rss;
+	unsigned int rss_idx, i;
+	uint16_t hash_type;
+	uint64_t types;
+	int rc;
+
+	rss = (const struct rte_flow_action_rss *)act->conf;
+
+	/* Currently only Toeplitz hash is supported. */
+	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT &&
+	    rss->func != RTE_ETH_HASH_FUNCTION_TOEPLITZ) {
+		rte_flow_error_set(error,
+				   ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "Unsupported RSS hash function");
+		rc = -rte_errno;
+		goto ret;
+	}
+
+	/* key_len should match the hash key supported by hardware */
+	if (rss->key_len != 0 && rss->key_len != HW_HASH_KEY_SIZE) {
+		rte_flow_error_set(error,
+				   EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "Incorrect hash key parameters");
+		rc = -rte_errno;
+		goto ret;
+	}
+
+	/* Currently RSS hash on inner and outer headers are supported.
+	 * 0 => Default setting
+	 * 1 => Inner
+	 * 2 => Outer
+	 */
+	if (rss->level > 2) {
+		rte_flow_error_set(error,
+				   ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "Unsupported hash level");
+		rc = -rte_errno;
+		goto ret;
+	}
+
+	if ((rss->queue_num == 0 && rss->queue != NULL) ||
+	    (rss->queue_num != 0 && rss->queue == NULL)) {
+		rte_flow_error_set(error,
+				   EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "Invalid queue config specified");
+		rc = -rte_errno;
+		goto ret;
+	}
+
+	/* If RSS types is 0, use a best effort configuration */
+	types = rss->types ? rss->types : ETH_RSS_IPV4;
+
+	hash_type = bnxt_rte_to_hwrm_hash_types(types);
+
+	/* If requested types can't be supported, leave existing settings */
+	if (hash_type)
+		vnic->hash_type = hash_type;
+
+	vnic->hash_mode =
+		bnxt_rte_to_hwrm_hash_level(bp, rss->types, rss->level);
+
+	/* Update RSS key only if key_len != 0 */
+	if (rss->key_len != 0)
+		memcpy(vnic->rss_hash_key, rss->key, rss->key_len);
+
+	if (rss->queue_num == 0)
+		goto skip_rss_table;
+
+	/* Validate Rx queues */
+	for (i = 0; i < rss->queue_num; i++) {
+		PMD_DRV_LOG(DEBUG, "RSS action Queue %d\n", rss->queue[i]);
+
+		if (rss->queue[i] >= bp->rx_nr_rings ||
+		    !bp->rx_queues[rss->queue[i]]) {
+			rte_flow_error_set(error,
+					   EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   act,
+					   "Invalid queue ID for RSS");
+			rc = -rte_errno;
+			goto ret;
+		}
+	}
+
+	/* Prepare the indirection table */
+	for (rss_idx = 0; rss_idx < HW_HASH_INDEX_SIZE; rss_idx++) {
+		struct bnxt_rx_queue *rxq;
+		uint32_t idx;
+
+		idx = rss->queue[rss_idx % rss->queue_num];
+
+		if (BNXT_CHIP_P5(bp)) {
+			rxq = bp->rx_queues[idx];
+			vnic->rss_table[rss_idx * 2] =
+				rxq->rx_ring->rx_ring_struct->fw_ring_id;
+			vnic->rss_table[rss_idx * 2 + 1] =
+				rxq->cp_ring->cp_ring_struct->fw_ring_id;
+		} else {
+			vnic->rss_table[rss_idx] = vnic->fw_grp_ids[idx];
+		}
+	}
+
+skip_rss_table:
+	rc = bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+ret:
+	return rc;
+}
+
 static int
 bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 			     const struct rte_flow_item pattern[],
@@ -1329,12 +1494,37 @@ skip_vnic_alloc:
 		filter->flow_id = filter1->flow_id;
 		break;
 	case RTE_FLOW_ACTION_TYPE_RSS:
+		rc = bnxt_validate_rss_action(actions);
+		if (rc != 0) {
+			rte_flow_error_set(error,
+					   EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   act,
+					   "Invalid actions specified with RSS");
+			rc = -rte_errno;
+			goto ret;
+		}
+
 		rss = (const struct rte_flow_action_rss *)act->conf;
 
-		vnic_id = attr->group;
+		vnic_id = bnxt_get_vnic(bp, attr->group);
 
 		BNXT_VALID_VNIC_OR_RET(bp, vnic_id);
 		vnic = &bp->vnic_info[vnic_id];
+
+		/*
+		 * For non NS3 cases, rte_flow_items will not be considered
+		 * for RSS updates.
+		 */
+		if (filter->filter_type == HWRM_CFA_CONFIG) {
+			/* RSS config update requested */
+			rc = bnxt_vnic_rss_cfg_update(bp, vnic, act, error);
+			if (rc != 0)
+				return -rte_errno;
+
+			filter->dst_id = vnic->fw_vnic_id;
+			break;
+		}
 
 		/* Check if requested RSS config matches RSS config of VNIC
 		 * only if it is not a fresh VNIC configuration.
@@ -2005,6 +2195,10 @@ _bnxt_flow_destroy(struct bnxt *bp,
 		else
 			return ret;
 	}
+
+	/* For config type, there is no filter in HW. Finish cleanup here */
+	if (filter->filter_type == HWRM_CFA_CONFIG)
+		goto done;
 
 	ret = bnxt_match_filter(bp, filter);
 	if (ret == 0)
