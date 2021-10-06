@@ -794,25 +794,22 @@ mlx5_rx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 /**
  * DPDK callback to release a RX queue.
  *
- * @param dpdk_rxq
- *   Generic RX queue pointer.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param qid
+ *   Receive queue index.
  */
 void
-mlx5_rx_queue_release(void *dpdk_rxq)
+mlx5_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct mlx5_rxq_data *rxq = (struct mlx5_rxq_data *)dpdk_rxq;
-	struct mlx5_rxq_ctrl *rxq_ctrl;
-	struct mlx5_priv *priv;
+	struct mlx5_rxq_data *rxq = dev->data->rx_queues[qid];
 
 	if (rxq == NULL)
 		return;
-	rxq_ctrl = container_of(rxq, struct mlx5_rxq_ctrl, rxq);
-	priv = rxq_ctrl->priv;
-	if (!mlx5_rxq_releasable(ETH_DEV(priv), rxq_ctrl->rxq.idx))
+	if (!mlx5_rxq_releasable(dev, qid))
 		rte_panic("port %u Rx queue %u is still used by a flow and"
-			  " cannot be removed\n",
-			  PORT_ID(priv), rxq->idx);
-	mlx5_rxq_release(ETH_DEV(priv), rxq_ctrl->rxq.idx);
+			  " cannot be removed\n", dev->data->port_id, qid);
+	mlx5_rxq_release(dev, qid);
 }
 
 /**

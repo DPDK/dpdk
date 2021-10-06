@@ -386,8 +386,8 @@ extern const struct rte_flow_ops igb_flow_ops;
 /*
  * RX/TX IGB function prototypes
  */
-void eth_igb_tx_queue_release(void *txq);
-void eth_igb_rx_queue_release(void *rxq);
+void eth_igb_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
+void eth_igb_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 void igb_dev_clear_queues(struct rte_eth_dev *dev);
 void igb_dev_free_queues(struct rte_eth_dev *dev);
 
@@ -462,8 +462,8 @@ uint32_t em_get_max_pktlen(struct rte_eth_dev *dev);
 /*
  * RX/TX EM function prototypes
  */
-void eth_em_tx_queue_release(void *txq);
-void eth_em_rx_queue_release(void *rxq);
+void eth_em_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
+void eth_em_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 void em_dev_clear_queues(struct rte_eth_dev *dev);
 void em_dev_free_queues(struct rte_eth_dev *dev);

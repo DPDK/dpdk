@@ -70,8 +70,10 @@ static int enic_vf_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-static void enic_vf_dev_tx_queue_release(void *txq)
+static void enic_vf_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
+	void *txq = dev->data->tx_queues[qid];
+
 	ENICPMD_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return;
@@ -108,8 +110,10 @@ static int enic_vf_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-static void enic_vf_dev_rx_queue_release(void *rxq)
+static void enic_vf_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
+	void *rxq = dev->data->rx_queues[qid];
+
 	ENICPMD_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return;

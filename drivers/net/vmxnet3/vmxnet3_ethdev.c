@@ -1058,18 +1058,12 @@ vmxnet3_free_queues(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		void *rxq = dev->data->rx_queues[i];
-
-		vmxnet3_dev_rx_queue_release(rxq);
-	}
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		vmxnet3_dev_rx_queue_release(dev, i);
 	dev->data->nb_rx_queues = 0;
 
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		void *txq = dev->data->tx_queues[i];
-
-		vmxnet3_dev_tx_queue_release(txq);
-	}
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		vmxnet3_dev_tx_queue_release(dev, i);
 	dev->data->nb_tx_queues = 0;
 }
 

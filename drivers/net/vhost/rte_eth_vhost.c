@@ -1346,9 +1346,15 @@ eth_stats_reset(struct rte_eth_dev *dev)
 }
 
 static void
-eth_queue_release(void *q)
+eth_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	rte_free(q);
+	rte_free(dev->data->rx_queues[qid]);
+}
+
+static void
+eth_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	rte_free(dev->data->tx_queues[qid]);
 }
 
 static int
@@ -1388,8 +1394,8 @@ static const struct eth_dev_ops ops = {
 	.dev_infos_get = eth_dev_info,
 	.rx_queue_setup = eth_rx_queue_setup,
 	.tx_queue_setup = eth_tx_queue_setup,
-	.rx_queue_release = eth_queue_release,
-	.tx_queue_release = eth_queue_release,
+	.rx_queue_release = eth_rx_queue_release,
+	.tx_queue_release = eth_tx_queue_release,
 	.tx_done_cleanup = eth_tx_done_cleanup,
 	.link_update = eth_link_update,
 	.stats_get = eth_stats_get,

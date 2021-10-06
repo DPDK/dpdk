@@ -325,8 +325,10 @@ fail:
 }
 
 static void
-enetc_tx_queue_release(void *txq)
+enetc_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
+	void *txq = dev->data->tx_queues[qid];
+
 	if (txq == NULL)
 		return;
 
@@ -473,8 +475,10 @@ fail:
 }
 
 static void
-enetc_rx_queue_release(void *rxq)
+enetc_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
+	void *rxq = dev->data->rx_queues[qid];
+
 	if (rxq == NULL)
 		return;
 
@@ -561,13 +565,13 @@ enetc_dev_close(struct rte_eth_dev *dev)
 	ret = enetc_dev_stop(dev);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		enetc_rx_queue_release(dev->data->rx_queues[i]);
+		enetc_rx_queue_release(dev, i);
 		dev->data->rx_queues[i] = NULL;
 	}
 	dev->data->nb_rx_queues = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		enetc_tx_queue_release(dev->data->tx_queues[i]);
+		enetc_tx_queue_release(dev, i);
 		dev->data->tx_queues[i] = NULL;
 	}
 	dev->data->nb_tx_queues = 0;

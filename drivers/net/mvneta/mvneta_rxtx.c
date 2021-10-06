@@ -796,13 +796,15 @@ mvneta_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 /**
  * DPDK callback to release the transmit queue.
  *
- * @param txq
- *   Generic transmit queue pointer.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param qid
+ *   Transmit queue index.
  */
 void
-mvneta_tx_queue_release(void *txq)
+mvneta_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct mvneta_txq *q = txq;
+	struct mvneta_txq *q = dev->data->tx_queues[qid];
 
 	if (!q)
 		return;
@@ -959,13 +961,15 @@ mvneta_flush_queues(struct rte_eth_dev *dev)
 /**
  * DPDK callback to release the receive queue.
  *
- * @param rxq
- *   Generic receive queue pointer.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param qid
+ *   Receive queue index.
  */
 void
-mvneta_rx_queue_release(void *rxq)
+mvneta_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct mvneta_rxq *q = rxq;
+	struct mvneta_rxq *q = dev->data->rx_queues[qid];
 
 	if (!q)
 		return;
@@ -978,7 +982,7 @@ mvneta_rx_queue_release(void *rxq)
 	if (q->priv->ppio)
 		mvneta_rx_queue_flush(q);
 
-	rte_free(rxq);
+	rte_free(q);
 }
 
 /**

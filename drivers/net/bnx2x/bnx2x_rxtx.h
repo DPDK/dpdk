@@ -72,8 +72,8 @@ int bnx2x_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 			      uint16_t nb_tx_desc, unsigned int socket_id,
 			      const struct rte_eth_txconf *tx_conf);
 
-void bnx2x_dev_rx_queue_release(void *rxq);
-void bnx2x_dev_tx_queue_release(void *txq);
+void bnx2x_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx);
+void bnx2x_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx);
 void bnx2x_dev_rxtx_init(struct rte_eth_dev *dev);
 void bnx2x_dev_rxtx_init_dummy(struct rte_eth_dev *dev);
 void bnx2x_dev_clear_queues(struct rte_eth_dev *dev);

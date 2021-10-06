@@ -51,8 +51,8 @@ static int
 fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
 static void fm10k_MAC_filter_set(struct rte_eth_dev *dev,
 	const u8 *mac, bool add, uint32_t pool);
-static void fm10k_tx_queue_release(void *queue);
-static void fm10k_rx_queue_release(void *queue);
+static void fm10k_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
+static void fm10k_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 static void fm10k_set_rx_function(struct rte_eth_dev *dev);
 static void fm10k_set_tx_function(struct rte_eth_dev *dev);
 static int fm10k_check_ftag(struct rte_devargs *devargs);
@@ -1210,7 +1210,7 @@ fm10k_dev_queue_release(struct rte_eth_dev *dev)
 
 	if (dev->data->rx_queues) {
 		for (i = 0; i < dev->data->nb_rx_queues; i++)
-			fm10k_rx_queue_release(dev->data->rx_queues[i]);
+			fm10k_rx_queue_release(dev, i);
 	}
 }
 
@@ -1891,11 +1891,11 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 }
 
 static void
-fm10k_rx_queue_release(void *queue)
+fm10k_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
 	PMD_INIT_FUNC_TRACE();
 
-	rx_queue_free(queue);
+	rx_queue_free(dev->data->rx_queues[qid]);
 }
 
 static inline int
@@ -2080,9 +2080,9 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 }
 
 static void
-fm10k_tx_queue_release(void *queue)
+fm10k_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct fm10k_tx_queue *q = queue;
+	struct fm10k_tx_queue *q = dev->data->tx_queues[qid];
 	PMD_INIT_FUNC_TRACE();
 
 	tx_queue_free(q);

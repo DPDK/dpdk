@@ -213,6 +213,8 @@ int ice_fdir_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int ice_fdir_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 void ice_rx_queue_release(void *rxq);
 void ice_tx_queue_release(void *txq);
+void ice_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
+void ice_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 void ice_free_queues(struct rte_eth_dev *dev);
 int ice_fdir_setup_tx_resources(struct ice_pf *pf);
 int ice_fdir_setup_rx_resources(struct ice_pf *pf);

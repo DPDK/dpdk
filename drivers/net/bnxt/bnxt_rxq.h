@@ -46,7 +46,7 @@ struct bnxt_rx_queue {
 
 void bnxt_free_rxq_stats(struct bnxt_rx_queue *rxq);
 int bnxt_mq_rx_configure(struct bnxt *bp);
-void bnxt_rx_queue_release_op(void *rx_queue);
+void bnxt_rx_queue_release_op(struct rte_eth_dev *dev, uint16_t queue_idx);
 int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 			       uint16_t queue_idx,
 			       uint16_t nb_desc,

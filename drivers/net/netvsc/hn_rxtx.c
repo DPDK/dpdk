@@ -356,9 +356,9 @@ static void hn_txd_put(struct hn_tx_queue *txq, struct hn_txdesc *txd)
 }
 
 void
-hn_dev_tx_queue_release(void *arg)
+hn_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct hn_tx_queue *txq = arg;
+	struct hn_tx_queue *txq = dev->data->tx_queues[qid];
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1004,9 +1004,9 @@ hn_rx_queue_free(struct hn_rx_queue *rxq, bool keep_primary)
 }
 
 void
-hn_dev_rx_queue_release(void *arg)
+hn_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct hn_rx_queue *rxq = arg;
+	struct hn_rx_queue *rxq = dev->data->rx_queues[qid];
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1648,7 +1648,7 @@ hn_dev_free_queues(struct rte_eth_dev *dev)
 	dev->data->nb_rx_queues = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		hn_dev_tx_queue_release(dev->data->tx_queues[i]);
+		hn_dev_tx_queue_release(dev, i);
 		dev->data->tx_queues[i] = NULL;
 	}
 	dev->data->nb_tx_queues = 0;

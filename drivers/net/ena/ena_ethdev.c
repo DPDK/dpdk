@@ -192,8 +192,8 @@ static int ena_dev_reset(struct rte_eth_dev *dev);
 static int ena_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 static void ena_rx_queue_release_all(struct rte_eth_dev *dev);
 static void ena_tx_queue_release_all(struct rte_eth_dev *dev);
-static void ena_rx_queue_release(void *queue);
-static void ena_tx_queue_release(void *queue);
+static void ena_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
+static void ena_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 static void ena_rx_queue_release_bufs(struct ena_ring *ring);
 static void ena_tx_queue_release_bufs(struct ena_ring *ring);
 static int ena_link_update(struct rte_eth_dev *dev,
@@ -525,27 +525,25 @@ ena_dev_reset(struct rte_eth_dev *dev)
 
 static void ena_rx_queue_release_all(struct rte_eth_dev *dev)
 {
-	struct ena_ring **queues = (struct ena_ring **)dev->data->rx_queues;
 	int nb_queues = dev->data->nb_rx_queues;
 	int i;
 
 	for (i = 0; i < nb_queues; i++)
-		ena_rx_queue_release(queues[i]);
+		ena_rx_queue_release(dev, i);
 }
 
 static void ena_tx_queue_release_all(struct rte_eth_dev *dev)
 {
-	struct ena_ring **queues = (struct ena_ring **)dev->data->tx_queues;
 	int nb_queues = dev->data->nb_tx_queues;
 	int i;
 
 	for (i = 0; i < nb_queues; i++)
-		ena_tx_queue_release(queues[i]);
+		ena_tx_queue_release(dev, i);
 }
 
-static void ena_rx_queue_release(void *queue)
+static void ena_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct ena_ring *ring = (struct ena_ring *)queue;
+	struct ena_ring *ring = dev->data->rx_queues[qid];
 
 	/* Free ring resources */
 	if (ring->rx_buffer_info)
@@ -566,9 +564,9 @@ static void ena_rx_queue_release(void *queue)
 		ring->port_id, ring->id);
 }
 
-static void ena_tx_queue_release(void *queue)
+static void ena_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct ena_ring *ring = (struct ena_ring *)queue;
+	struct ena_ring *ring = dev->data->tx_queues[qid];
 
 	/* Free ring resources */
 	if (ring->push_buf_intermediate_buf)

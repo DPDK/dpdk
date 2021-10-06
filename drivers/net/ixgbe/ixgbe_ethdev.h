@@ -590,9 +590,9 @@ void ixgbe_dev_clear_queues(struct rte_eth_dev *dev);
 
 void ixgbe_dev_free_queues(struct rte_eth_dev *dev);
 
-void ixgbe_dev_rx_queue_release(void *rxq);
+void ixgbe_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
-void ixgbe_dev_tx_queue_release(void *txq);
+void ixgbe_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 int  ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, unsigned int socket_id,

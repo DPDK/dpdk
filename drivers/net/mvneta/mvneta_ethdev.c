@@ -446,12 +446,12 @@ mvneta_dev_close(struct rte_eth_dev *dev)
 		ret = mvneta_dev_stop(dev);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		mvneta_rx_queue_release(dev->data->rx_queues[i]);
+		mvneta_rx_queue_release(dev, i);
 		dev->data->rx_queues[i] = NULL;
 	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		mvneta_tx_queue_release(dev->data->tx_queues[i]);
+		mvneta_tx_queue_release(dev, i);
 		dev->data->tx_queues[i] = NULL;
 	}
 

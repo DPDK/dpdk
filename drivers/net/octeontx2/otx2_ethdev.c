@@ -555,16 +555,17 @@ otx2_nix_rxq_mbuf_setup(struct otx2_eth_dev *dev, uint16_t port_id)
 }
 
 static void
-otx2_nix_rx_queue_release(void *rx_queue)
+otx2_nix_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct otx2_eth_rxq *rxq = rx_queue;
+	struct otx2_eth_rxq *rxq = dev->data->rx_queues[qid];
 
 	if (!rxq)
 		return;
 
 	otx2_nix_dbg("Releasing rxq %u", rxq->rq);
 	nix_cq_rq_uninit(rxq->eth_dev, rxq);
-	rte_free(rx_queue);
+	rte_free(rxq);
+	dev->data->rx_queues[qid] = NULL;
 }
 
 static int
@@ -608,9 +609,8 @@ otx2_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t rq,
 	/* Free memory prior to re-allocation if needed */
 	if (eth_dev->data->rx_queues[rq] != NULL) {
 		otx2_nix_dbg("Freeing memory prior to re-allocation %d", rq);
-		otx2_nix_rx_queue_release(eth_dev->data->rx_queues[rq]);
+		otx2_nix_rx_queue_release(eth_dev, rq);
 		rte_eth_dma_zone_free(eth_dev, "cq", rq);
-		eth_dev->data->rx_queues[rq] = NULL;
 	}
 
 	offloads = rx_conf->offloads | eth_dev->data->dev_conf.rxmode.offloads;
@@ -641,6 +641,8 @@ otx2_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t rq,
 	rxq->lookup_mem = otx2_nix_fastpath_lookup_mem_get();
 	rxq->tstamp = &dev->tstamp;
 
+	eth_dev->data->rx_queues[rq] = rxq;
+
 	/* Alloc completion queue */
 	rc = nix_cq_rq_init(eth_dev, dev, rq, rxq, mp);
 	if (rc) {
@@ -657,7 +659,6 @@ otx2_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t rq,
 	otx2_nix_dbg("rq=%d pool=%s qsize=%d nb_desc=%d->%d",
 		     rq, mp->name, qsize, nb_desc, rxq->qlen);
 
-	eth_dev->data->rx_queues[rq] = rxq;
 	eth_dev->data->rx_queue_state[rq] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	/* Calculating delta and freq mult between PTP HI clock and tsc.
@@ -679,7 +680,7 @@ otx2_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t rq,
 	return 0;
 
 free_rxq:
-	otx2_nix_rx_queue_release(rxq);
+	otx2_nix_rx_queue_release(eth_dev, rq);
 fail:
 	return rc;
 }
@@ -1217,15 +1218,12 @@ otx2_nix_form_default_desc(struct otx2_eth_txq *txq)
 }
 
 static void
-otx2_nix_tx_queue_release(void *_txq)
+otx2_nix_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
 {
-	struct otx2_eth_txq *txq = _txq;
-	struct rte_eth_dev *eth_dev;
+	struct otx2_eth_txq *txq = eth_dev->data->tx_queues[qid];
 
 	if (!txq)
 		return;
-
-	eth_dev = txq->dev->eth_dev;
 
 	otx2_nix_dbg("Releasing txq %u", txq->sq);
 
@@ -1241,6 +1239,7 @@ otx2_nix_tx_queue_release(void *_txq)
 	}
 	otx2_nix_sq_flush_post(txq);
 	rte_free(txq);
+	eth_dev->data->tx_queues[qid] = NULL;
 }
 
 
@@ -1268,8 +1267,7 @@ otx2_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t sq,
 	/* Free memory prior to re-allocation if needed. */
 	if (eth_dev->data->tx_queues[sq] != NULL) {
 		otx2_nix_dbg("Freeing memory prior to re-allocation %d", sq);
-		otx2_nix_tx_queue_release(eth_dev->data->tx_queues[sq]);
-		eth_dev->data->tx_queues[sq] = NULL;
+		otx2_nix_tx_queue_release(eth_dev, sq);
 	}
 
 	/* Find the expected offloads for this queue */
@@ -1288,6 +1286,7 @@ otx2_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t sq,
 	txq->sqb_pool = NULL;
 	txq->offloads = offloads;
 	dev->tx_offloads |= offloads;
+	eth_dev->data->tx_queues[sq] = txq;
 
 	/*
 	 * Allocate memory for flow control updates from HW.
@@ -1334,12 +1333,11 @@ otx2_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t sq,
 		     " lmt_addr=%p nb_sqb_bufs=%d sqes_per_sqb_log2=%d", sq,
 		     fc->addr, offloads, txq->sqb_pool->pool_id, txq->lmt_addr,
 		     txq->nb_sqb_bufs, txq->sqes_per_sqb_log2);
-	eth_dev->data->tx_queues[sq] = txq;
 	eth_dev->data->tx_queue_state[sq] = RTE_ETH_QUEUE_STATE_STOPPED;
 	return 0;
 
 free_txq:
-	otx2_nix_tx_queue_release(txq);
+	otx2_nix_tx_queue_release(eth_dev, sq);
 fail:
 	return rc;
 }
@@ -1378,8 +1376,7 @@ nix_store_queue_cfg_and_then_release(struct rte_eth_dev *eth_dev)
 		}
 		memcpy(&tx_qconf[i], &txq[i]->qconf, sizeof(*tx_qconf));
 		tx_qconf[i].valid = true;
-		otx2_nix_tx_queue_release(txq[i]);
-		eth_dev->data->tx_queues[i] = NULL;
+		otx2_nix_tx_queue_release(eth_dev, i);
 	}
 
 	rxq = (struct otx2_eth_rxq **)eth_dev->data->rx_queues;
@@ -1391,8 +1388,7 @@ nix_store_queue_cfg_and_then_release(struct rte_eth_dev *eth_dev)
 		}
 		memcpy(&rx_qconf[i], &rxq[i]->qconf, sizeof(*rx_qconf));
 		rx_qconf[i].valid = true;
-		otx2_nix_rx_queue_release(rxq[i]);
-		eth_dev->data->rx_queues[i] = NULL;
+		otx2_nix_rx_queue_release(eth_dev, i);
 	}
 
 	dev->tx_qconf = tx_qconf;
@@ -1412,8 +1408,6 @@ nix_restore_queue_cfg(struct rte_eth_dev *eth_dev)
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct otx2_eth_qconf *tx_qconf = dev->tx_qconf;
 	struct otx2_eth_qconf *rx_qconf = dev->rx_qconf;
-	struct otx2_eth_txq **txq;
-	struct otx2_eth_rxq **rxq;
 	int rc, i, nb_rxq, nb_txq;
 
 	nb_rxq = RTE_MIN(dev->configured_nb_rx_qs, eth_dev->data->nb_rx_queues);
@@ -1450,9 +1444,8 @@ nix_restore_queue_cfg(struct rte_eth_dev *eth_dev)
 					     &tx_qconf[i].conf.tx);
 		if (rc) {
 			otx2_err("Failed to setup tx queue rc=%d", rc);
-			txq = (struct otx2_eth_txq **)eth_dev->data->tx_queues;
 			for (i -= 1; i >= 0; i--)
-				otx2_nix_tx_queue_release(txq[i]);
+				otx2_nix_tx_queue_release(eth_dev, i);
 			goto fail;
 		}
 	}
@@ -1468,9 +1461,8 @@ nix_restore_queue_cfg(struct rte_eth_dev *eth_dev)
 					     rx_qconf[i].mempool);
 		if (rc) {
 			otx2_err("Failed to setup rx queue rc=%d", rc);
-			rxq = (struct otx2_eth_rxq **)eth_dev->data->rx_queues;
 			for (i -= 1; i >= 0; i--)
-				otx2_nix_rx_queue_release(rxq[i]);
+				otx2_nix_rx_queue_release(eth_dev, i);
 			goto release_tx_queues;
 		}
 	}
@@ -1480,9 +1472,8 @@ nix_restore_queue_cfg(struct rte_eth_dev *eth_dev)
 	return 0;
 
 release_tx_queues:
-	txq = (struct otx2_eth_txq **)eth_dev->data->tx_queues;
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
-		otx2_nix_tx_queue_release(txq[i]);
+		otx2_nix_tx_queue_release(eth_dev, i);
 fail:
 	if (tx_qconf)
 		free(tx_qconf);
@@ -2647,17 +2638,13 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 	dev->ops = NULL;
 
 	/* Free up SQs */
-	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
-		otx2_nix_tx_queue_release(eth_dev->data->tx_queues[i]);
-		eth_dev->data->tx_queues[i] = NULL;
-	}
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		otx2_nix_tx_queue_release(eth_dev, i);
 	eth_dev->data->nb_tx_queues = 0;
 
 	/* Free up RQ's and CQ's */
-	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
-		otx2_nix_rx_queue_release(eth_dev->data->rx_queues[i]);
-		eth_dev->data->rx_queues[i] = NULL;
-	}
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		otx2_nix_rx_queue_release(eth_dev, i);
 	eth_dev->data->nb_rx_queues = 0;
 
 	/* Free tm resources */

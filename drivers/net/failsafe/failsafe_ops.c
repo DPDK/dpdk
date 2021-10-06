@@ -358,26 +358,21 @@ fs_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 }
 
 static void
-fs_rx_queue_release(void *queue)
+fs_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct rte_eth_dev *dev;
 	struct sub_device *sdev;
 	uint8_t i;
-	struct rxq *rxq;
+	struct rxq *rxq = dev->data->rx_queues[qid];
 
-	if (queue == NULL)
+	if (rxq == NULL)
 		return;
-	rxq = queue;
-	dev = &rte_eth_devices[rxq->priv->data->port_id];
 	fs_lock(dev, 0);
 	if (rxq->event_fd >= 0)
 		close(rxq->event_fd);
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		if (ETH(sdev)->data->rx_queues != NULL &&
-		    ETH(sdev)->data->rx_queues[rxq->qid] != NULL) {
-			SUBOPS(sdev, rx_queue_release)
-				(ETH(sdev)->data->rx_queues[rxq->qid]);
-		}
+		    ETH(sdev)->data->rx_queues[rxq->qid] != NULL)
+			SUBOPS(sdev, rx_queue_release)(ETH(sdev), rxq->qid);
 	}
 	dev->data->rx_queues[rxq->qid] = NULL;
 	rte_free(rxq);
@@ -420,7 +415,7 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 	rxq = dev->data->rx_queues[rx_queue_id];
 	if (rxq != NULL) {
-		fs_rx_queue_release(rxq);
+		fs_rx_queue_release(dev, rx_queue_id);
 		dev->data->rx_queues[rx_queue_id] = NULL;
 	}
 	rxq = rte_zmalloc(NULL,
@@ -460,7 +455,7 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 	fs_unlock(dev, 0);
 	return 0;
 free_rxq:
-	fs_rx_queue_release(rxq);
+	fs_rx_queue_release(dev, rx_queue_id);
 	fs_unlock(dev, 0);
 	return ret;
 }
@@ -542,24 +537,19 @@ unlock:
 }
 
 static void
-fs_tx_queue_release(void *queue)
+fs_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct rte_eth_dev *dev;
 	struct sub_device *sdev;
 	uint8_t i;
-	struct txq *txq;
+	struct txq *txq = dev->data->tx_queues[qid];
 
-	if (queue == NULL)
+	if (txq == NULL)
 		return;
-	txq = queue;
-	dev = &rte_eth_devices[txq->priv->data->port_id];
 	fs_lock(dev, 0);
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		if (ETH(sdev)->data->tx_queues != NULL &&
-		    ETH(sdev)->data->tx_queues[txq->qid] != NULL) {
-			SUBOPS(sdev, tx_queue_release)
-				(ETH(sdev)->data->tx_queues[txq->qid]);
-		}
+		    ETH(sdev)->data->tx_queues[txq->qid] != NULL)
+			SUBOPS(sdev, tx_queue_release)(ETH(sdev), txq->qid);
 	}
 	dev->data->tx_queues[txq->qid] = NULL;
 	rte_free(txq);
@@ -591,7 +581,7 @@ fs_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 	txq = dev->data->tx_queues[tx_queue_id];
 	if (txq != NULL) {
-		fs_tx_queue_release(txq);
+		fs_tx_queue_release(dev, tx_queue_id);
 		dev->data->tx_queues[tx_queue_id] = NULL;
 	}
 	txq = rte_zmalloc("ethdev TX queue",
@@ -623,7 +613,7 @@ fs_tx_queue_setup(struct rte_eth_dev *dev,
 	fs_unlock(dev, 0);
 	return 0;
 free_txq:
-	fs_tx_queue_release(txq);
+	fs_tx_queue_release(dev, tx_queue_id);
 	fs_unlock(dev, 0);
 	return ret;
 }
@@ -634,12 +624,12 @@ fs_dev_free_queues(struct rte_eth_dev *dev)
 	uint16_t i;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		fs_rx_queue_release(dev->data->rx_queues[i]);
+		fs_rx_queue_release(dev, i);
 		dev->data->rx_queues[i] = NULL;
 	}
 	dev->data->nb_rx_queues = 0;
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		fs_tx_queue_release(dev->data->tx_queues[i]);
+		fs_tx_queue_release(dev, i);
 		dev->data->tx_queues[i] = NULL;
 	}
 	dev->data->nb_tx_queues = 0;

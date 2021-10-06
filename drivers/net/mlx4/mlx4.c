@@ -391,9 +391,9 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	mlx4_flow_clean(priv);
 	mlx4_rss_deinit(priv);
 	for (i = 0; i != dev->data->nb_rx_queues; ++i)
-		mlx4_rx_queue_release(dev->data->rx_queues[i]);
+		mlx4_rx_queue_release(dev, i);
 	for (i = 0; i != dev->data->nb_tx_queues; ++i)
-		mlx4_tx_queue_release(dev->data->tx_queues[i]);
+		mlx4_tx_queue_release(dev, i);
 	mlx4_proc_priv_uninit(dev);
 	mlx4_mr_release(dev);
 	if (priv->pd != NULL) {

@@ -231,12 +231,12 @@ nfb_eth_dev_close(struct rte_eth_dev *dev)
 	nfb_nc_txmac_deinit(internals->txmac, internals->max_txmac);
 
 	for (i = 0; i < nb_rx; i++) {
-		nfb_eth_rx_queue_release(dev->data->rx_queues[i]);
+		nfb_eth_rx_queue_release(dev, i);
 		dev->data->rx_queues[i] = NULL;
 	}
 	dev->data->nb_rx_queues = 0;
 	for (i = 0; i < nb_tx; i++) {
-		nfb_eth_tx_queue_release(dev->data->tx_queues[i]);
+		nfb_eth_tx_queue_release(dev, i);
 		dev->data->tx_queues[i] = NULL;
 	}
 	dev->data->nb_tx_queues = 0;

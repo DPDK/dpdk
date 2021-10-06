@@ -716,10 +716,10 @@ igc_rx_queue_release(struct igc_rx_queue *rxq)
 	rte_free(rxq);
 }
 
-void eth_igc_rx_queue_release(void *rxq)
+void eth_igc_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	if (rxq)
-		igc_rx_queue_release(rxq);
+	if (dev->data->rx_queues[qid])
+		igc_rx_queue_release(dev->data->rx_queues[qid]);
 }
 
 uint32_t eth_igc_rx_queue_count(struct rte_eth_dev *dev,
@@ -1899,10 +1899,10 @@ igc_tx_queue_release(struct igc_tx_queue *txq)
 	rte_free(txq);
 }
 
-void eth_igc_tx_queue_release(void *txq)
+void eth_igc_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	if (txq)
-		igc_tx_queue_release(txq);
+	if (dev->data->tx_queues[qid])
+		igc_tx_queue_release(dev->data->tx_queues[qid]);
 }
 
 static void

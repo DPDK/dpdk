@@ -504,9 +504,9 @@ fail_rx_qinit:
 }
 
 static void
-sfc_rx_queue_release(void *queue)
+sfc_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct sfc_dp_rxq *dp_rxq = queue;
+	struct sfc_dp_rxq *dp_rxq = dev->data->rx_queues[qid];
 	struct sfc_rxq *rxq;
 	struct sfc_adapter *sa;
 	sfc_sw_index_t sw_index;
@@ -561,9 +561,9 @@ fail_tx_qinit:
 }
 
 static void
-sfc_tx_queue_release(void *queue)
+sfc_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct sfc_dp_txq *dp_txq = queue;
+	struct sfc_dp_txq *dp_txq = dev->data->tx_queues[qid];
 	struct sfc_txq *txq;
 	sfc_sw_index_t sw_index;
 	struct sfc_adapter *sa;

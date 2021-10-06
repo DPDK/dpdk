@@ -37,9 +37,9 @@ bnx2x_rx_queue_release(struct bnx2x_rx_queue *rx_queue)
 }
 
 void
-bnx2x_dev_rx_queue_release(void *rxq)
+bnx2x_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
-	bnx2x_rx_queue_release(rxq);
+	bnx2x_rx_queue_release(dev->data->rx_queues[queue_idx]);
 }
 
 int
@@ -182,9 +182,9 @@ bnx2x_tx_queue_release(struct bnx2x_tx_queue *tx_queue)
 }
 
 void
-bnx2x_dev_tx_queue_release(void *txq)
+bnx2x_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
-	bnx2x_tx_queue_release(txq);
+	bnx2x_tx_queue_release(dev->data->tx_queues[queue_idx]);
 }
 
 static uint16_t

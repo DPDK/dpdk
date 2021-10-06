@@ -1121,9 +1121,9 @@ em_tx_queue_release(struct em_tx_queue *txq)
 }
 
 void
-eth_em_tx_queue_release(void *txq)
+eth_em_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	em_tx_queue_release(txq);
+	em_tx_queue_release(dev->data->tx_queues[qid]);
 }
 
 /* (Re)set dynamic em_tx_queue fields to defaults */
@@ -1343,9 +1343,9 @@ em_rx_queue_release(struct em_rx_queue *rxq)
 }
 
 void
-eth_em_rx_queue_release(void *rxq)
+eth_em_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	em_rx_queue_release(rxq);
+	em_rx_queue_release(dev->data->rx_queues[qid]);
 }
 
 /* Reset dynamic em_rx_queue fields back to defaults */
@@ -1609,14 +1609,14 @@ em_dev_free_queues(struct rte_eth_dev *dev)
 	uint16_t i;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		eth_em_rx_queue_release(dev->data->rx_queues[i]);
+		eth_em_rx_queue_release(dev, i);
 		dev->data->rx_queues[i] = NULL;
 		rte_eth_dma_zone_free(dev, "rx_ring", i);
 	}
 	dev->data->nb_rx_queues = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		eth_em_tx_queue_release(dev->data->tx_queues[i]);
+		eth_em_tx_queue_release(dev, i);
 		dev->data->tx_queues[i] = NULL;
 		rte_eth_dma_zone_free(dev, "tx_ring", i);
 	}

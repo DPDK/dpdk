@@ -31,9 +31,9 @@ axgbe_rx_queue_release(struct axgbe_rx_queue *rx_queue)
 	}
 }
 
-void axgbe_dev_rx_queue_release(void *rxq)
+void axgbe_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
-	axgbe_rx_queue_release(rxq);
+	axgbe_rx_queue_release(dev->data->rx_queues[queue_idx]);
 }
 
 int axgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
@@ -517,9 +517,9 @@ static void axgbe_tx_queue_release(struct axgbe_tx_queue *tx_queue)
 	}
 }
 
-void axgbe_dev_tx_queue_release(void *txq)
+void axgbe_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
-	axgbe_tx_queue_release(txq);
+	axgbe_tx_queue_release(dev->data->tx_queues[queue_idx]);
 }
 
 int axgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,

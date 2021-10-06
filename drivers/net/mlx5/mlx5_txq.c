@@ -470,28 +470,21 @@ mlx5_tx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 /**
  * DPDK callback to release a TX queue.
  *
- * @param dpdk_txq
- *   Generic TX queue pointer.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param qid
+ *   Transmit queue index.
  */
 void
-mlx5_tx_queue_release(void *dpdk_txq)
+mlx5_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct mlx5_txq_data *txq = (struct mlx5_txq_data *)dpdk_txq;
-	struct mlx5_txq_ctrl *txq_ctrl;
-	struct mlx5_priv *priv;
-	unsigned int i;
+	struct mlx5_txq_data *txq = dev->data->tx_queues[qid];
 
 	if (txq == NULL)
 		return;
-	txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
-	priv = txq_ctrl->priv;
-	for (i = 0; (i != priv->txqs_n); ++i)
-		if ((*priv->txqs)[i] == txq) {
-			DRV_LOG(DEBUG, "port %u removing Tx queue %u from list",
-				PORT_ID(priv), txq->idx);
-			mlx5_txq_release(ETH_DEV(priv), i);
-			break;
-		}
+	DRV_LOG(DEBUG, "port %u removing Tx queue %u from list",
+		dev->data->port_id, qid);
+	mlx5_txq_release(dev, qid);
 }
 
 /**

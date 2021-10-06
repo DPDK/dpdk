@@ -2396,13 +2396,25 @@ qede_dev_reset(struct rte_eth_dev *dev)
 	return qede_eth_dev_init(dev);
 }
 
+static void
+qede_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	qede_rx_queue_release(dev->data->rx_queues[qid]);
+}
+
+static void
+qede_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	qede_tx_queue_release(dev->data->tx_queues[qid]);
+}
+
 static const struct eth_dev_ops qede_eth_dev_ops = {
 	.dev_configure = qede_dev_configure,
 	.dev_infos_get = qede_dev_info_get,
 	.rx_queue_setup = qede_rx_queue_setup,
-	.rx_queue_release = qede_rx_queue_release,
+	.rx_queue_release = qede_dev_rx_queue_release,
 	.tx_queue_setup = qede_tx_queue_setup,
-	.tx_queue_release = qede_tx_queue_release,
+	.tx_queue_release = qede_dev_tx_queue_release,
 	.dev_start = qede_dev_start,
 	.dev_reset = qede_dev_reset,
 	.dev_set_link_up = qede_dev_set_link_up,
@@ -2444,9 +2456,9 @@ static const struct eth_dev_ops qede_eth_vf_dev_ops = {
 	.dev_configure = qede_dev_configure,
 	.dev_infos_get = qede_dev_info_get,
 	.rx_queue_setup = qede_rx_queue_setup,
-	.rx_queue_release = qede_rx_queue_release,
+	.rx_queue_release = qede_dev_rx_queue_release,
 	.tx_queue_setup = qede_tx_queue_setup,
-	.tx_queue_release = qede_tx_queue_release,
+	.tx_queue_release = qede_dev_tx_queue_release,
 	.dev_start = qede_dev_start,
 	.dev_reset = qede_dev_reset,
 	.dev_set_link_up = qede_dev_set_link_up,

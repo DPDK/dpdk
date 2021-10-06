@@ -2109,9 +2109,9 @@ txgbe_tx_queue_release(struct txgbe_tx_queue *txq)
 }
 
 void __rte_cold
-txgbe_dev_tx_queue_release(void *txq)
+txgbe_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	txgbe_tx_queue_release(txq);
+	txgbe_tx_queue_release(dev->data->tx_queues[qid]);
 }
 
 /* (Re)set dynamic txgbe_tx_queue fields to defaults */
@@ -2437,9 +2437,9 @@ txgbe_rx_queue_release(struct txgbe_rx_queue *rxq)
 }
 
 void __rte_cold
-txgbe_dev_rx_queue_release(void *rxq)
+txgbe_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	txgbe_rx_queue_release(rxq);
+	txgbe_rx_queue_release(dev->data->rx_queues[qid]);
 }
 
 /*
@@ -2795,13 +2795,13 @@ txgbe_dev_free_queues(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		txgbe_dev_rx_queue_release(dev->data->rx_queues[i]);
+		txgbe_dev_rx_queue_release(dev, i);
 		dev->data->rx_queues[i] = NULL;
 	}
 	dev->data->nb_rx_queues = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		txgbe_dev_tx_queue_release(dev->data->tx_queues[i]);
+		txgbe_dev_tx_queue_release(dev, i);
 		dev->data->tx_queues[i] = NULL;
 	}
 	dev->data->nb_tx_queues = 0;

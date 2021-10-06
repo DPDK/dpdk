@@ -562,7 +562,7 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	/* Free memory if needed */
 	if (dev->data->rx_queues[queue_idx]) {
-		iavf_dev_rx_queue_release(dev->data->rx_queues[queue_idx]);
+		iavf_dev_rx_queue_release(dev, queue_idx);
 		dev->data->rx_queues[queue_idx] = NULL;
 	}
 
@@ -721,7 +721,7 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Free memory if needed. */
 	if (dev->data->tx_queues[queue_idx]) {
-		iavf_dev_tx_queue_release(dev->data->tx_queues[queue_idx]);
+		iavf_dev_tx_queue_release(dev, queue_idx);
 		dev->data->tx_queues[queue_idx] = NULL;
 	}
 
@@ -962,9 +962,9 @@ iavf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 }
 
 void
-iavf_dev_rx_queue_release(void *rxq)
+iavf_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct iavf_rx_queue *q = (struct iavf_rx_queue *)rxq;
+	struct iavf_rx_queue *q = dev->data->rx_queues[qid];
 
 	if (!q)
 		return;
@@ -976,9 +976,9 @@ iavf_dev_rx_queue_release(void *rxq)
 }
 
 void
-iavf_dev_tx_queue_release(void *txq)
+iavf_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct iavf_tx_queue *q = (struct iavf_tx_queue *)txq;
+	struct iavf_tx_queue *q = dev->data->tx_queues[qid];
 
 	if (!q)
 		return;

@@ -102,9 +102,10 @@ nfb_eth_tx_queue_init(struct nfb_device *nfb,
 }
 
 void
-nfb_eth_tx_queue_release(void *q)
+nfb_eth_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct ndp_tx_queue *txq = (struct ndp_tx_queue *)q;
+	struct ndp_tx_queue *txq = dev->data->tx_queues[qid];
+
 	if (txq->queue != NULL) {
 		ndp_close_tx_queue(txq->queue);
 		rte_free(txq);

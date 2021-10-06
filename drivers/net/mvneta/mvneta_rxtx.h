@@ -32,7 +32,7 @@ int
 mvneta_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      unsigned int socket, const struct rte_eth_txconf *conf);
 
-void mvneta_rx_queue_release(void *rxq);
-void mvneta_tx_queue_release(void *txq);
+void mvneta_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
+void mvneta_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 #endif /* _MVNETA_RXTX_H_ */

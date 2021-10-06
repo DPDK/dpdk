@@ -971,20 +971,18 @@ octeontx_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
 }
 
 static void
-octeontx_dev_tx_queue_release(void *tx_queue)
+octeontx_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct octeontx_txq *txq = tx_queue;
 	int res;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (txq) {
-		res = octeontx_dev_tx_queue_stop(txq->eth_dev, txq->queue_id);
+	if (dev->data->tx_queues[qid]) {
+		res = octeontx_dev_tx_queue_stop(dev, qid);
 		if (res < 0)
-			octeontx_log_err("failed stop tx_queue(%d)\n",
-				   txq->queue_id);
+			octeontx_log_err("failed stop tx_queue(%d)\n", qid);
 
-		rte_free(txq);
+		rte_free(dev->data->tx_queues[qid]);
 	}
 }
 
@@ -1013,7 +1011,7 @@ octeontx_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	if (dev->data->tx_queues[qidx] != NULL) {
 		PMD_TX_LOG(DEBUG, "freeing memory prior to re-allocation %d",
 				qidx);
-		octeontx_dev_tx_queue_release(dev->data->tx_queues[qidx]);
+		octeontx_dev_tx_queue_release(dev, qidx);
 		dev->data->tx_queues[qidx] = NULL;
 	}
 
@@ -1221,9 +1219,9 @@ octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 }
 
 static void
-octeontx_dev_rx_queue_release(void *rxq)
+octeontx_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	rte_free(rxq);
+	rte_free(dev->data->rx_queues[qid]);
 }
 
 static const uint32_t *

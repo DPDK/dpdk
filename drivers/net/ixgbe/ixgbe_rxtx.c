@@ -2487,9 +2487,9 @@ ixgbe_tx_queue_release(struct ixgbe_tx_queue *txq)
 }
 
 void __rte_cold
-ixgbe_dev_tx_queue_release(void *txq)
+ixgbe_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	ixgbe_tx_queue_release(txq);
+	ixgbe_tx_queue_release(dev->data->tx_queues[qid]);
 }
 
 /* (Re)set dynamic ixgbe_tx_queue fields to defaults */
@@ -2892,9 +2892,9 @@ ixgbe_rx_queue_release(struct ixgbe_rx_queue *rxq)
 }
 
 void __rte_cold
-ixgbe_dev_rx_queue_release(void *rxq)
+ixgbe_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	ixgbe_rx_queue_release(rxq);
+	ixgbe_rx_queue_release(dev->data->rx_queues[qid]);
 }
 
 /*
@@ -3431,14 +3431,14 @@ ixgbe_dev_free_queues(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		ixgbe_dev_rx_queue_release(dev->data->rx_queues[i]);
+		ixgbe_dev_rx_queue_release(dev, i);
 		dev->data->rx_queues[i] = NULL;
 		rte_eth_dma_zone_free(dev, "rx_ring", i);
 	}
 	dev->data->nb_rx_queues = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		ixgbe_dev_tx_queue_release(dev->data->tx_queues[i]);
+		ixgbe_dev_tx_queue_release(dev, i);
 		dev->data->tx_queues[i] = NULL;
 		rte_eth_dma_zone_free(dev, "tx_ring", i);
 	}

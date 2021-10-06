@@ -464,9 +464,9 @@ nfp_net_rx_queue_release_mbufs(struct nfp_net_rxq *rxq)
 }
 
 void
-nfp_net_rx_queue_release(void *rx_queue)
+nfp_net_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
-	struct nfp_net_rxq *rxq = rx_queue;
+	struct nfp_net_rxq *rxq = dev->data->rx_queues[queue_idx];
 
 	if (rxq) {
 		nfp_net_rx_queue_release_mbufs(rxq);
@@ -513,7 +513,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	 * calling nfp_net_stop
 	 */
 	if (dev->data->rx_queues[queue_idx]) {
-		nfp_net_rx_queue_release(dev->data->rx_queues[queue_idx]);
+		nfp_net_rx_queue_release(dev, queue_idx);
 		dev->data->rx_queues[queue_idx] = NULL;
 	}
 
@@ -522,6 +522,8 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq == NULL)
 		return -ENOMEM;
+
+	dev->data->rx_queues[queue_idx] = rxq;
 
 	/* Hw queues mapping based on firmware configuration */
 	rxq->qidx = queue_idx;
@@ -556,7 +558,8 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 
 	if (tz == NULL) {
 		PMD_DRV_LOG(ERR, "Error allocating rx dma");
-		nfp_net_rx_queue_release(rxq);
+		nfp_net_rx_queue_release(dev, queue_idx);
+		dev->data->rx_queues[queue_idx] = NULL;
 		return -ENOMEM;
 	}
 
@@ -569,7 +572,8 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 					 sizeof(*rxq->rxbufs) * nb_desc,
 					 RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq->rxbufs == NULL) {
-		nfp_net_rx_queue_release(rxq);
+		nfp_net_rx_queue_release(dev, queue_idx);
+		dev->data->rx_queues[queue_idx] = NULL;
 		return -ENOMEM;
 	}
 
@@ -578,7 +582,6 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 
 	nfp_net_reset_rx_queue(rxq);
 
-	dev->data->rx_queues[queue_idx] = rxq;
 	rxq->hw = hw;
 
 	/*
@@ -651,9 +654,9 @@ nfp_net_tx_queue_release_mbufs(struct nfp_net_txq *txq)
 }
 
 void
-nfp_net_tx_queue_release(void *tx_queue)
+nfp_net_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
-	struct nfp_net_txq *txq = tx_queue;
+	struct nfp_net_txq *txq = dev->data->tx_queues[queue_idx];
 
 	if (txq) {
 		nfp_net_tx_queue_release_mbufs(txq);
@@ -714,7 +717,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (dev->data->tx_queues[queue_idx]) {
 		PMD_TX_LOG(DEBUG, "Freeing memory prior to re-allocation %d",
 			   queue_idx);
-		nfp_net_tx_queue_release(dev->data->tx_queues[queue_idx]);
+		nfp_net_tx_queue_release(dev, queue_idx);
 		dev->data->tx_queues[queue_idx] = NULL;
 	}
 
@@ -725,6 +728,8 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		PMD_DRV_LOG(ERR, "Error allocating tx dma");
 		return -ENOMEM;
 	}
+
+	dev->data->tx_queues[queue_idx] = txq;
 
 	/*
 	 * Allocate TX ring hardware descriptors. A memzone large enough to
@@ -737,7 +742,8 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				   socket_id);
 	if (tz == NULL) {
 		PMD_DRV_LOG(ERR, "Error allocating tx dma");
-		nfp_net_tx_queue_release(txq);
+		nfp_net_tx_queue_release(dev, queue_idx);
+		dev->data->tx_queues[queue_idx] = NULL;
 		return -ENOMEM;
 	}
 
@@ -763,7 +769,8 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 					 sizeof(*txq->txbufs) * nb_desc,
 					 RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq->txbufs == NULL) {
-		nfp_net_tx_queue_release(txq);
+		nfp_net_tx_queue_release(dev, queue_idx);
+		dev->data->tx_queues[queue_idx] = NULL;
 		return -ENOMEM;
 	}
 	PMD_TX_LOG(DEBUG, "txbufs=%p hw_ring=%p dma_addr=0x%" PRIx64,
@@ -771,7 +778,6 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	nfp_net_reset_tx_queue(txq);
 
-	dev->data->tx_queues[queue_idx] = txq;
 	txq->hw = hw;
 
 	/*

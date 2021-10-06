@@ -978,9 +978,9 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 }
 
 static void
-dpaa2_dev_rx_queue_release(void *q __rte_unused)
+dpaa2_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)q;
+	struct dpaa2_queue *dpaa2_q = dev->data->rx_queues[rx_queue_id];
 	struct dpaa2_dev_priv *priv = dpaa2_q->eth_data->dev_private;
 	struct fsl_mc_io *dpni =
 		(struct fsl_mc_io *)priv->eth_dev->process_private;

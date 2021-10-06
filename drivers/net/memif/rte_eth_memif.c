@@ -1258,9 +1258,9 @@ memif_dev_close(struct rte_eth_dev *dev)
 		memif_disconnect(dev);
 
 		for (i = 0; i < dev->data->nb_rx_queues; i++)
-			(*dev->dev_ops->rx_queue_release)(dev->data->rx_queues[i]);
+			(*dev->dev_ops->rx_queue_release)(dev, i);
 		for (i = 0; i < dev->data->nb_tx_queues; i++)
-			(*dev->dev_ops->tx_queue_release)(dev->data->tx_queues[i]);
+			(*dev->dev_ops->tx_queue_release)(dev, i);
 
 		memif_socket_remove_device(dev);
 	} else {
@@ -1352,9 +1352,20 @@ memif_rx_queue_setup(struct rte_eth_dev *dev,
 }
 
 static void
-memif_queue_release(void *queue)
+memif_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct memif_queue *mq = (struct memif_queue *)queue;
+	struct memif_queue *mq = dev->data->rx_queues[qid];
+
+	if (!mq)
+		return;
+
+	rte_free(mq);
+}
+
+static void
+memif_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	struct memif_queue *mq = dev->data->tx_queues[qid];
 
 	if (!mq)
 		return;
@@ -1471,8 +1482,8 @@ static const struct eth_dev_ops ops = {
 	.dev_configure = memif_dev_configure,
 	.tx_queue_setup = memif_tx_queue_setup,
 	.rx_queue_setup = memif_rx_queue_setup,
-	.rx_queue_release = memif_queue_release,
-	.tx_queue_release = memif_queue_release,
+	.rx_queue_release = memif_rx_queue_release,
+	.tx_queue_release = memif_tx_queue_release,
 	.rx_queue_intr_enable = memif_rx_queue_intr_enable,
 	.rx_queue_intr_disable = memif_rx_queue_intr_disable,
 	.link_update = memif_link_update,

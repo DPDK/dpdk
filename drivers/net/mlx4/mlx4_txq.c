@@ -404,6 +404,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.lb = !!priv->vf,
 		.bounce_buf = bounce_buf,
 	};
+	dev->data->tx_queues[idx] = txq;
 	priv->verbs_alloc_ctx.type = MLX4_VERBS_ALLOC_TYPE_TX_QUEUE;
 	priv->verbs_alloc_ctx.obj = txq;
 	txq->cq = mlx4_glue->create_cq(priv->ctx, desc, NULL, NULL, 0);
@@ -507,13 +508,11 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	/* Save pointer of global generation number to check memory event. */
 	txq->mr_ctrl.dev_gen_ptr = &priv->mr.dev_gen;
 	DEBUG("%p: adding Tx queue %p to list", (void *)dev, (void *)txq);
-	dev->data->tx_queues[idx] = txq;
 	priv->verbs_alloc_ctx.type = MLX4_VERBS_ALLOC_TYPE_NONE;
 	return 0;
 error:
-	dev->data->tx_queues[idx] = NULL;
 	ret = rte_errno;
-	mlx4_tx_queue_release(txq);
+	mlx4_tx_queue_release(dev, idx);
 	rte_errno = ret;
 	MLX4_ASSERT(rte_errno > 0);
 	priv->verbs_alloc_ctx.type = MLX4_VERBS_ALLOC_TYPE_NONE;
@@ -523,26 +522,20 @@ error:
 /**
  * DPDK callback to release a Tx queue.
  *
- * @param dpdk_txq
- *   Generic Tx queue pointer.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   Transmit queue index.
  */
 void
-mlx4_tx_queue_release(void *dpdk_txq)
+mlx4_tx_queue_release(struct rte_eth_dev *dev, uint16_t idx)
 {
-	struct txq *txq = (struct txq *)dpdk_txq;
-	struct mlx4_priv *priv;
-	unsigned int i;
+	struct txq *txq = dev->data->tx_queues[idx];
 
 	if (txq == NULL)
 		return;
-	priv = txq->priv;
-	for (i = 0; i != ETH_DEV(priv)->data->nb_tx_queues; ++i)
-		if (ETH_DEV(priv)->data->tx_queues[i] == txq) {
-			DEBUG("%p: removing Tx queue %p from list",
-			      (void *)ETH_DEV(priv), (void *)txq);
-			ETH_DEV(priv)->data->tx_queues[i] = NULL;
-			break;
-		}
+	DEBUG("%p: removing Tx queue %hu from list", (void *)dev, idx);
+	dev->data->tx_queues[idx] = NULL;
 	mlx4_txq_free_elts(txq);
 	if (txq->qp)
 		claim_zero(mlx4_glue->destroy_qp(txq->qp));

@@ -182,8 +182,8 @@ vmxnet3_rx_data_ring(struct vmxnet3_hw *hw, uint32 rqID)
 
 void vmxnet3_dev_clear_queues(struct rte_eth_dev *dev);
 
-void vmxnet3_dev_rx_queue_release(void *rxq);
-void vmxnet3_dev_tx_queue_release(void *txq);
+void vmxnet3_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
+void vmxnet3_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 int vmxnet3_v4_rss_configure(struct rte_eth_dev *dev);
 

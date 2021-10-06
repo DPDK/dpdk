@@ -1182,7 +1182,7 @@ lio_dev_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
 
 	/* Free previous allocation if any */
 	if (eth_dev->data->rx_queues[q_no] != NULL) {
-		lio_dev_rx_queue_release(eth_dev->data->rx_queues[q_no]);
+		lio_dev_rx_queue_release(eth_dev, q_no);
 		eth_dev->data->rx_queues[q_no] = NULL;
 	}
 
@@ -1204,16 +1204,18 @@ lio_dev_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
  * Release the receive queue/ringbuffer. Called by
  * the upper layers.
  *
- * @param rxq
- *    Opaque pointer to the receive queue to release
+ * @param eth_dev
+ *    Pointer to Ethernet device structure.
+ * @param q_no
+ *    Receive queue index.
  *
  * @return
  *    - nothing
  */
 void
-lio_dev_rx_queue_release(void *rxq)
+lio_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t q_no)
 {
-	struct lio_droq *droq = rxq;
+	struct lio_droq *droq = dev->data->rx_queues[q_no];
 	int oq_no;
 
 	if (droq) {
@@ -1262,7 +1264,7 @@ lio_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
 
 	/* Free previous allocation if any */
 	if (eth_dev->data->tx_queues[q_no] != NULL) {
-		lio_dev_tx_queue_release(eth_dev->data->tx_queues[q_no]);
+		lio_dev_tx_queue_release(eth_dev, q_no);
 		eth_dev->data->tx_queues[q_no] = NULL;
 	}
 
@@ -1292,16 +1294,18 @@ lio_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
  * Release the transmit queue/ringbuffer. Called by
  * the upper layers.
  *
- * @param txq
- *    Opaque pointer to the transmit queue to release
+ * @param eth_dev
+ *    Pointer to Ethernet device structure.
+ * @param q_no
+ *   Transmit queue index.
  *
  * @return
  *    - nothing
  */
 void
-lio_dev_tx_queue_release(void *txq)
+lio_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t q_no)
 {
-	struct lio_instr_queue *tq = txq;
+	struct lio_instr_queue *tq = dev->data->tx_queues[q_no];
 	uint32_t fw_mapped_iq_no;
 
 

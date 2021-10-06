@@ -172,8 +172,8 @@ struct lio_rss_set {
 	uint8_t key[LIO_RSS_MAX_KEY_SZ];
 };
 
-void lio_dev_rx_queue_release(void *rxq);
+void lio_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t q_no);
 
-void lio_dev_tx_queue_release(void *txq);
+void lio_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t q_no);
 
 #endif	/* _LIO_ETHDEV_H_ */

@@ -1151,9 +1151,9 @@ tap_dev_close(struct rte_eth_dev *dev)
 }
 
 static void
-tap_rx_queue_release(void *queue)
+tap_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct rx_queue *rxq = queue;
+	struct rx_queue *rxq = dev->data->rx_queues[qid];
 	struct pmd_process_private *process_private;
 
 	if (!rxq)
@@ -1170,9 +1170,9 @@ tap_rx_queue_release(void *queue)
 }
 
 static void
-tap_tx_queue_release(void *queue)
+tap_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct tx_queue *txq = queue;
+	struct tx_queue *txq = dev->data->tx_queues[qid];
 	struct pmd_process_private *process_private;
 
 	if (!txq)

@@ -197,8 +197,10 @@ int i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			    uint16_t nb_desc,
 			    unsigned int socket_id,
 			    const struct rte_eth_txconf *tx_conf);
-void i40e_dev_rx_queue_release(void *rxq);
-void i40e_dev_tx_queue_release(void *txq);
+void i40e_rx_queue_release(void *rxq);
+void i40e_tx_queue_release(void *txq);
+void i40e_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
+void i40e_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 uint16_t i40e_recv_pkts(void *rx_queue,
 			struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);

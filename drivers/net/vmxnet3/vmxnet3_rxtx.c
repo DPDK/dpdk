@@ -165,9 +165,9 @@ vmxnet3_cmd_ring_release(vmxnet3_cmd_ring_t *ring)
 }
 
 void
-vmxnet3_dev_tx_queue_release(void *txq)
+vmxnet3_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	vmxnet3_tx_queue_t *tq = txq;
+	vmxnet3_tx_queue_t *tq = dev->data->tx_queues[qid];
 
 	if (tq != NULL) {
 		/* Release mbufs */
@@ -182,10 +182,10 @@ vmxnet3_dev_tx_queue_release(void *txq)
 }
 
 void
-vmxnet3_dev_rx_queue_release(void *rxq)
+vmxnet3_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
 	int i;
-	vmxnet3_rx_queue_t *rq = rxq;
+	vmxnet3_rx_queue_t *rq = dev->data->rx_queues[qid];
 
 	if (rq != NULL) {
 		/* Release mbufs */

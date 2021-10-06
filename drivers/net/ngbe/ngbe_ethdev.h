@@ -69,9 +69,9 @@ void ngbe_dev_clear_queues(struct rte_eth_dev *dev);
 
 void ngbe_dev_free_queues(struct rte_eth_dev *dev);
 
-void ngbe_dev_rx_queue_release(void *rxq);
+void ngbe_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
-void ngbe_dev_tx_queue_release(void *txq);
+void ngbe_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 int  ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, unsigned int socket_id,

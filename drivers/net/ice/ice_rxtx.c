@@ -1392,6 +1392,18 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 }
 
 void
+ice_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	ice_rx_queue_release(dev->data->rx_queues[qid]);
+}
+
+void
+ice_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	ice_tx_queue_release(dev->data->tx_queues[qid]);
+}
+
+void
 ice_tx_queue_release(void *txq)
 {
 	struct ice_tx_queue *q = (struct ice_tx_queue *)txq;

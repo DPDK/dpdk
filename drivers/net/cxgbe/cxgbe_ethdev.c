@@ -532,7 +532,7 @@ int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 
 	/*  Free up the existing queue  */
 	if (eth_dev->data->tx_queues[queue_idx]) {
-		cxgbe_dev_tx_queue_release(eth_dev->data->tx_queues[queue_idx]);
+		cxgbe_dev_tx_queue_release(eth_dev, queue_idx);
 		eth_dev->data->tx_queues[queue_idx] = NULL;
 	}
 
@@ -565,9 +565,9 @@ int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 	return err;
 }
 
-void cxgbe_dev_tx_queue_release(void *q)
+void cxgbe_dev_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
 {
-	struct sge_eth_txq *txq = (struct sge_eth_txq *)q;
+	struct sge_eth_txq *txq = eth_dev->data->tx_queues[qid];
 
 	if (txq) {
 		struct port_info *pi = (struct port_info *)
@@ -655,7 +655,7 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 
 	/*  Free up the existing queue  */
 	if (eth_dev->data->rx_queues[queue_idx]) {
-		cxgbe_dev_rx_queue_release(eth_dev->data->rx_queues[queue_idx]);
+		cxgbe_dev_rx_queue_release(eth_dev, queue_idx);
 		eth_dev->data->rx_queues[queue_idx] = NULL;
 	}
 
@@ -701,9 +701,9 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	return err;
 }
 
-void cxgbe_dev_rx_queue_release(void *q)
+void cxgbe_dev_rx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
 {
-	struct sge_eth_rxq *rxq = (struct sge_eth_rxq *)q;
+	struct sge_eth_rxq *rxq = eth_dev->data->rx_queues[qid];
 
 	if (rxq) {
 		struct port_info *pi = (struct port_info *)

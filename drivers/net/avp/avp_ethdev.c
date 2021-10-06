@@ -75,8 +75,8 @@ static uint16_t avp_xmit_pkts(void *tx_queue,
 			      struct rte_mbuf **tx_pkts,
 			      uint16_t nb_pkts);
 
-static void avp_dev_rx_queue_release(void *rxq);
-static void avp_dev_tx_queue_release(void *txq);
+static void avp_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
+static void avp_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 static int avp_dev_stats_get(struct rte_eth_dev *dev,
 			      struct rte_eth_stats *stats);
@@ -1926,18 +1926,11 @@ avp_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 }
 
 static void
-avp_dev_rx_queue_release(void *rx_queue)
+avp_dev_rx_queue_release(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
-	struct avp_queue *rxq = (struct avp_queue *)rx_queue;
-	struct avp_dev *avp = rxq->avp;
-	struct rte_eth_dev_data *data = avp->dev_data;
-	unsigned int i;
-
-	for (i = 0; i < avp->num_rx_queues; i++) {
-		if (data->rx_queues[i] == rxq) {
-			rte_free(data->rx_queues[i]);
-			data->rx_queues[i] = NULL;
-		}
+	if (eth_dev->data->rx_queues[rx_queue_id] != NULL) {
+		rte_free(eth_dev->data->rx_queues[rx_queue_id]);
+		eth_dev->data->rx_queues[rx_queue_id] = NULL;
 	}
 }
 
@@ -1957,18 +1950,11 @@ avp_dev_rx_queue_release_all(struct rte_eth_dev *eth_dev)
 }
 
 static void
-avp_dev_tx_queue_release(void *tx_queue)
+avp_dev_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 {
-	struct avp_queue *txq = (struct avp_queue *)tx_queue;
-	struct avp_dev *avp = txq->avp;
-	struct rte_eth_dev_data *data = avp->dev_data;
-	unsigned int i;
-
-	for (i = 0; i < avp->num_tx_queues; i++) {
-		if (data->tx_queues[i] == txq) {
-			rte_free(data->tx_queues[i]);
-			data->tx_queues[i] = NULL;
-		}
+	if (eth_dev->data->tx_queues[tx_queue_id] != NULL) {
+		rte_free(eth_dev->data->tx_queues[tx_queue_id]);
+		eth_dev->data->tx_queues[tx_queue_id] = NULL;
 	}
 }
 

@@ -88,8 +88,10 @@ enicpmd_dev_flow_ops_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void enicpmd_dev_tx_queue_release(void *txq)
+static void enicpmd_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
+	void *txq = dev->data->tx_queues[qid];
+
 	ENICPMD_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -223,8 +225,10 @@ static int enicpmd_dev_rx_queue_stop(struct rte_eth_dev *eth_dev,
 	return ret;
 }
 
-static void enicpmd_dev_rx_queue_release(void *rxq)
+static void enicpmd_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
+	void *rxq = dev->data->rx_queues[qid];
+
 	ENICPMD_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

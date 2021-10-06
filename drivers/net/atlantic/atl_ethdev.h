@@ -54,8 +54,8 @@ struct atl_adapter {
 /*
  * RX/TX function prototypes
  */
-void atl_rx_queue_release(void *rxq);
-void atl_tx_queue_release(void *txq);
+void atl_rx_queue_release(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+void atl_tx_queue_release(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
 int atl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, unsigned int socket_id,

@@ -70,11 +70,13 @@ nfb_eth_tx_queue_init(struct nfb_device *nfb,
 /**
  * DPDK callback to release a RX queue.
  *
- * @param dpdk_rxq
- *   Generic RX queue pointer.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param qid
+ *   Receive queue index.
  */
 void
-nfb_eth_tx_queue_release(void *q);
+nfb_eth_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 /**
  * Start traffic on Tx queue.

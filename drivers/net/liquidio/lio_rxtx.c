@@ -1791,7 +1791,7 @@ lio_dev_clear_queues(struct rte_eth_dev *eth_dev)
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
 		txq = eth_dev->data->tx_queues[i];
 		if (txq != NULL) {
-			lio_dev_tx_queue_release(txq);
+			lio_dev_tx_queue_release(eth_dev, i);
 			eth_dev->data->tx_queues[i] = NULL;
 		}
 	}
@@ -1799,7 +1799,7 @@ lio_dev_clear_queues(struct rte_eth_dev *eth_dev)
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		rxq = eth_dev->data->rx_queues[i];
 		if (rxq != NULL) {
-			lio_dev_rx_queue_release(rxq);
+			lio_dev_rx_queue_release(eth_dev, i);
 			eth_dev->data->rx_queues[i] = NULL;
 		}
 	}

@@ -353,14 +353,24 @@ eth_stats_reset(struct rte_eth_dev *dev)
 }
 
 static void
-eth_queue_release(void *q)
+eth_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct null_queue *nq;
+	struct null_queue *nq = dev->data->rx_queues[qid];
 
-	if (q == NULL)
+	if (nq == NULL)
 		return;
 
-	nq = q;
+	rte_free(nq->dummy_packet);
+}
+
+static void
+eth_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	struct null_queue *nq = dev->data->tx_queues[qid];
+
+	if (nq == NULL)
+		return;
+
 	rte_free(nq->dummy_packet);
 }
 
@@ -483,8 +493,8 @@ static const struct eth_dev_ops ops = {
 	.dev_infos_get = eth_dev_info,
 	.rx_queue_setup = eth_rx_queue_setup,
 	.tx_queue_setup = eth_tx_queue_setup,
-	.rx_queue_release = eth_queue_release,
-	.tx_queue_release = eth_queue_release,
+	.rx_queue_release = eth_rx_queue_release,
+	.tx_queue_release = eth_tx_queue_release,
 	.mtu_set = eth_mtu_set,
 	.link_update = eth_link_update,
 	.mac_addr_set = eth_mac_address_set,

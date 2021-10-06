@@ -191,7 +191,7 @@ int mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 int mlx5_rx_hairpin_queue_setup
 	(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 const struct rte_eth_hairpin_conf *hairpin_conf);
-void mlx5_rx_queue_release(void *dpdk_rxq);
+void mlx5_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 int mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev);
 void mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev);
 int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);

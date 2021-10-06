@@ -1075,12 +1075,14 @@ init_qp_fail:
 /**
  * DPDK callback to release the receive queue.
  *
- * @param queue
- *   Generic receive queue pointer.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param qid
+ *   Receive queue index.
  */
-static void hinic_rx_queue_release(void *queue)
+static void hinic_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct hinic_rxq *rxq = queue;
+	struct hinic_rxq *rxq = dev->data->rx_queues[qid];
 	struct hinic_nic_dev *nic_dev;
 
 	if (!rxq) {
@@ -1107,12 +1109,14 @@ static void hinic_rx_queue_release(void *queue)
 /**
  * DPDK callback to release the transmit queue.
  *
- * @param queue
- *   Generic transmit queue pointer.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param qid
+ *   Transmit queue index.
  */
-static void hinic_tx_queue_release(void *queue)
+static void hinic_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct hinic_txq *txq = queue;
+	struct hinic_txq *txq = dev->data->tx_queues[qid];
 	struct hinic_nic_dev *nic_dev;
 
 	if (!txq) {

@@ -16,8 +16,8 @@
 	 V_FW_PARAMS_PARAM_Y(0) | \
 	 V_FW_PARAMS_PARAM_Z(0))
 
-void cxgbe_dev_rx_queue_release(void *q);
-void cxgbe_dev_tx_queue_release(void *q);
+void cxgbe_dev_rx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid);
+void cxgbe_dev_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid);
 int cxgbe_dev_stop(struct rte_eth_dev *eth_dev);
 int cxgbe_dev_close(struct rte_eth_dev *eth_dev);
 int cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,

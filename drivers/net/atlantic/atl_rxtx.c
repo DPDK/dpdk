@@ -125,7 +125,7 @@ atl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	 * different socket than was previously used.
 	 */
 	if (dev->data->rx_queues[rx_queue_id] != NULL) {
-		atl_rx_queue_release(dev->data->rx_queues[rx_queue_id]);
+		atl_rx_queue_release(dev, rx_queue_id);
 		dev->data->rx_queues[rx_queue_id] = NULL;
 	}
 
@@ -247,7 +247,7 @@ atl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	 * different socket than was previously used.
 	 */
 	if (dev->data->tx_queues[tx_queue_id] != NULL) {
-		atl_tx_queue_release(dev->data->tx_queues[tx_queue_id]);
+		atl_tx_queue_release(dev, tx_queue_id);
 		dev->data->tx_queues[tx_queue_id] = NULL;
 	}
 
@@ -498,13 +498,13 @@ atl_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 }
 
 void
-atl_rx_queue_release(void *rx_queue)
+atl_rx_queue_release(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
+	struct atl_rx_queue *rxq = dev->data->rx_queues[rx_queue_id];
+
 	PMD_INIT_FUNC_TRACE();
 
-	if (rx_queue != NULL) {
-		struct atl_rx_queue *rxq = (struct atl_rx_queue *)rx_queue;
-
+	if (rxq != NULL) {
 		atl_rx_queue_release_mbufs(rxq);
 		rte_free(rxq->sw_ring);
 		rte_free(rxq);
@@ -569,13 +569,13 @@ atl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 }
 
 void
-atl_tx_queue_release(void *tx_queue)
+atl_tx_queue_release(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
+	struct atl_tx_queue *txq = dev->data->tx_queues[tx_queue_id];
+
 	PMD_INIT_FUNC_TRACE();
 
-	if (tx_queue != NULL) {
-		struct atl_tx_queue *txq = (struct atl_tx_queue *)tx_queue;
-
+	if (txq != NULL) {
 		atl_tx_queue_release_mbufs(txq);
 		rte_free(txq->sw_ring);
 		rte_free(txq);
@@ -590,13 +590,13 @@ atl_free_queues(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		atl_rx_queue_release(dev->data->rx_queues[i]);
+		atl_rx_queue_release(dev, i);
 		dev->data->rx_queues[i] = 0;
 	}
 	dev->data->nb_rx_queues = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		atl_tx_queue_release(dev->data->tx_queues[i]);
+		atl_tx_queue_release(dev, i);
 		dev->data->tx_queues[i] = 0;
 	}
 	dev->data->nb_tx_queues = 0;

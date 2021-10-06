@@ -640,7 +640,7 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	if (rxq->rx_started) {
 		if (bnxt_init_one_rx_ring(rxq)) {
 			PMD_DRV_LOG(ERR, "bnxt_init_one_rx_ring failed!\n");
-			bnxt_rx_queue_release_op(rxq);
+			bnxt_rx_queue_release_op(bp->eth_dev, queue_index);
 			rc = -ENOMEM;
 			goto err_out;
 		}

@@ -858,13 +858,12 @@ nicvf_configure_rss_reta(struct rte_eth_dev *dev)
 }
 
 static void
-nicvf_dev_tx_queue_release(void *sq)
+nicvf_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct nicvf_txq *txq;
+	struct nicvf_txq *txq = dev->data->tx_queues[qid];
 
 	PMD_INIT_FUNC_TRACE();
 
-	txq = (struct nicvf_txq *)sq;
 	if (txq) {
 		if (txq->txbuffs != NULL) {
 			nicvf_tx_queue_release_mbufs(txq);
@@ -872,6 +871,7 @@ nicvf_dev_tx_queue_release(void *sq)
 			txq->txbuffs = NULL;
 		}
 		rte_free(txq);
+		dev->data->tx_queues[qid] = NULL;
 	}
 }
 
@@ -985,8 +985,7 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	if (dev->data->tx_queues[nicvf_netdev_qidx(nic, qidx)] != NULL) {
 		PMD_TX_LOG(DEBUG, "Freeing memory prior to re-allocation %d",
 				nicvf_netdev_qidx(nic, qidx));
-		nicvf_dev_tx_queue_release(
-			dev->data->tx_queues[nicvf_netdev_qidx(nic, qidx)]);
+		nicvf_dev_tx_queue_release(dev, nicvf_netdev_qidx(nic, qidx));
 		dev->data->tx_queues[nicvf_netdev_qidx(nic, qidx)] = NULL;
 	}
 
@@ -1020,19 +1019,21 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 		txq->pool_free = nicvf_single_pool_free_xmited_buffers;
 	}
 
+	dev->data->tx_queues[nicvf_netdev_qidx(nic, qidx)] = txq;
+
 	/* Allocate software ring */
 	txq->txbuffs = rte_zmalloc_socket("txq->txbuffs",
 				nb_desc * sizeof(struct rte_mbuf *),
 				RTE_CACHE_LINE_SIZE, nic->node);
 
 	if (txq->txbuffs == NULL) {
-		nicvf_dev_tx_queue_release(txq);
+		nicvf_dev_tx_queue_release(dev, nicvf_netdev_qidx(nic, qidx));
 		return -ENOMEM;
 	}
 
 	if (nicvf_qset_sq_alloc(dev, nic, txq, qidx, nb_desc)) {
 		PMD_INIT_LOG(ERR, "Failed to allocate mem for sq %d", qidx);
-		nicvf_dev_tx_queue_release(txq);
+		nicvf_dev_tx_queue_release(dev, nicvf_netdev_qidx(nic, qidx));
 		return -ENOMEM;
 	}
 
@@ -1043,7 +1044,6 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 			nicvf_netdev_qidx(nic, qidx), txq, nb_desc, txq->desc,
 			txq->phys, txq->offloads);
 
-	dev->data->tx_queues[nicvf_netdev_qidx(nic, qidx)] = txq;
 	dev->data->tx_queue_state[nicvf_netdev_qidx(nic, qidx)] =
 		RTE_ETH_QUEUE_STATE_STOPPED;
 	return 0;
@@ -1161,11 +1161,11 @@ nicvf_vf_stop_rx_queue(struct rte_eth_dev *dev, struct nicvf *nic,
 }
 
 static void
-nicvf_dev_rx_queue_release(void *rx_queue)
+nicvf_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
 	PMD_INIT_FUNC_TRACE();
 
-	rte_free(rx_queue);
+	rte_free(dev->data->rx_queues[qid]);
 }
 
 static int
@@ -1336,8 +1336,7 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	if (dev->data->rx_queues[nicvf_netdev_qidx(nic, qidx)] != NULL) {
 		PMD_RX_LOG(DEBUG, "Freeing memory prior to re-allocation %d",
 				nicvf_netdev_qidx(nic, qidx));
-		nicvf_dev_rx_queue_release(
-			dev->data->rx_queues[nicvf_netdev_qidx(nic, qidx)]);
+		nicvf_dev_rx_queue_release(dev, nicvf_netdev_qidx(nic, qidx));
 		dev->data->rx_queues[nicvf_netdev_qidx(nic, qidx)] = NULL;
 	}
 
@@ -1365,12 +1364,14 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	else
 		rxq->rbptr_offset = NICVF_CQE_RBPTR_WORD;
 
+	dev->data->rx_queues[nicvf_netdev_qidx(nic, qidx)] = rxq;
+
 	nicvf_rxq_mbuf_setup(rxq);
 
 	/* Alloc completion queue */
 	if (nicvf_qset_cq_alloc(dev, nic, rxq, rxq->queue_id, nb_desc)) {
 		PMD_INIT_LOG(ERR, "failed to allocate cq %u", rxq->queue_id);
-		nicvf_dev_rx_queue_release(rxq);
+		nicvf_dev_rx_queue_release(dev, nicvf_netdev_qidx(nic, qidx));
 		return -ENOMEM;
 	}
 
@@ -1382,7 +1383,6 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 			nicvf_netdev_qidx(nic, qidx), rxq, mp->name, nb_desc,
 			rte_mempool_avail_count(mp), rxq->phys, offloads);
 
-	dev->data->rx_queues[nicvf_netdev_qidx(nic, qidx)] = rxq;
 	dev->data->rx_queue_state[nicvf_netdev_qidx(nic, qidx)] =
 		RTE_ETH_QUEUE_STATE_STOPPED;
 	return 0;

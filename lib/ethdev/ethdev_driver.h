@@ -312,7 +312,8 @@ typedef int (*eth_rx_disable_intr_t)(struct rte_eth_dev *dev,
 				    uint16_t rx_queue_id);
 /**< @internal Disable interrupt of a receive queue of an Ethernet device. */
 
-typedef void (*eth_queue_release_t)(void *queue);
+typedef void (*eth_queue_release_t)(struct rte_eth_dev *dev,
+				    uint16_t queue_id);
 /**< @internal Release memory resources allocated by given RX/TX queue. */
 
 typedef int (*eth_fw_version_get_t)(struct rte_eth_dev *dev,

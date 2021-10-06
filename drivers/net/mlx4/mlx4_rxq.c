@@ -826,6 +826,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		},
 		.socket = socket,
 	};
+	dev->data->rx_queues[idx] = rxq;
 	/* Enable scattered packets support for this queue if necessary. */
 	MLX4_ASSERT(mb_len >= RTE_PKTMBUF_HEADROOM);
 	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
@@ -896,12 +897,10 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		}
 	}
 	DEBUG("%p: adding Rx queue %p to list", (void *)dev, (void *)rxq);
-	dev->data->rx_queues[idx] = rxq;
 	return 0;
 error:
-	dev->data->rx_queues[idx] = NULL;
 	ret = rte_errno;
-	mlx4_rx_queue_release(rxq);
+	mlx4_rx_queue_release(dev, idx);
 	rte_errno = ret;
 	MLX4_ASSERT(rte_errno > 0);
 	return -rte_errno;
@@ -910,26 +909,20 @@ error:
 /**
  * DPDK callback to release a Rx queue.
  *
- * @param dpdk_rxq
- *   Generic Rx queue pointer.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   Receive queue index.
  */
 void
-mlx4_rx_queue_release(void *dpdk_rxq)
+mlx4_rx_queue_release(struct rte_eth_dev *dev, uint16_t idx)
 {
-	struct rxq *rxq = (struct rxq *)dpdk_rxq;
-	struct mlx4_priv *priv;
-	unsigned int i;
+	struct rxq *rxq = dev->data->rx_queues[idx];
 
 	if (rxq == NULL)
 		return;
-	priv = rxq->priv;
-	for (i = 0; i != ETH_DEV(priv)->data->nb_rx_queues; ++i)
-		if (ETH_DEV(priv)->data->rx_queues[i] == rxq) {
-			DEBUG("%p: removing Rx queue %p from list",
-			      (void *)ETH_DEV(priv), (void *)rxq);
-			ETH_DEV(priv)->data->rx_queues[i] = NULL;
-			break;
-		}
+	dev->data->rx_queues[idx] = NULL;
+	DEBUG("%p: removing Rx queue %hu from list", (void *)dev, idx);
 	MLX4_ASSERT(!rxq->cq);
 	MLX4_ASSERT(!rxq->wq);
 	MLX4_ASSERT(!rxq->wqes);

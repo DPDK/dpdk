@@ -453,9 +453,9 @@ ngbe_tx_queue_release(struct ngbe_tx_queue *txq)
 }
 
 void
-ngbe_dev_tx_queue_release(void *txq)
+ngbe_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	ngbe_tx_queue_release(txq);
+	ngbe_tx_queue_release(dev->data->tx_queues[qid]);
 }
 
 /* (Re)set dynamic ngbe_tx_queue fields to defaults */
@@ -673,9 +673,9 @@ ngbe_rx_queue_release(struct ngbe_rx_queue *rxq)
 }
 
 void
-ngbe_dev_rx_queue_release(void *rxq)
+ngbe_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	ngbe_rx_queue_release(rxq);
+	ngbe_rx_queue_release(dev->data->rx_queues[qid]);
 }
 
 /*
@@ -916,13 +916,13 @@ ngbe_dev_free_queues(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		ngbe_dev_rx_queue_release(dev->data->rx_queues[i]);
+		ngbe_dev_rx_queue_release(dev, i);
 		dev->data->rx_queues[i] = NULL;
 	}
 	dev->data->nb_rx_queues = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		ngbe_dev_tx_queue_release(dev->data->tx_queues[i]);
+		ngbe_dev_tx_queue_release(dev, i);
 		dev->data->tx_queues[i] = NULL;
 	}
 	dev->data->nb_tx_queues = 0;

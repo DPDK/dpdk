@@ -2059,13 +2059,15 @@ mrvl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 /**
  * DPDK callback to release the receive queue.
  *
- * @param rxq
- *   Generic receive queue pointer.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param qid
+ *   Receive queue index.
  */
 static void
-mrvl_rx_queue_release(void *rxq)
+mrvl_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct mrvl_rxq *q = rxq;
+	struct mrvl_rxq *q = dev->data->rx_queues[qid];
 	struct pp2_ppio_tc_params *tc_params;
 	int i, num, tc, inq;
 	struct pp2_hif *hif;
@@ -2146,13 +2148,15 @@ mrvl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 /**
  * DPDK callback to release the transmit queue.
  *
- * @param txq
- *   Generic transmit queue pointer.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param qid
+ *   Transmit queue index.
  */
 static void
-mrvl_tx_queue_release(void *txq)
+mrvl_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct mrvl_txq *q = txq;
+	struct mrvl_txq *q = dev->data->tx_queues[qid];
 
 	if (!q)
 		return;

@@ -1056,11 +1056,11 @@ ionic_lif_free_queues(struct ionic_lif *lif)
 	uint32_t i;
 
 	for (i = 0; i < lif->ntxqcqs; i++) {
-		ionic_dev_tx_queue_release(lif->eth_dev->data->tx_queues[i]);
+		ionic_dev_tx_queue_release(lif->eth_dev, i);
 		lif->eth_dev->data->tx_queues[i] = NULL;
 	}
 	for (i = 0; i < lif->nrxqcqs; i++) {
-		ionic_dev_rx_queue_release(lif->eth_dev->data->rx_queues[i]);
+		ionic_dev_rx_queue_release(lif->eth_dev, i);
 		lif->eth_dev->data->rx_queues[i] = NULL;
 	}
 }

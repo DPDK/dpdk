@@ -677,8 +677,8 @@ hns3_write_txq_tail_reg(struct hns3_tx_queue *txq, uint32_t value)
 		rte_write32_relaxed(rte_cpu_to_le_32(value), txq->io_tail_reg);
 }
 
-void hns3_dev_rx_queue_release(void *queue);
-void hns3_dev_tx_queue_release(void *queue);
+void hns3_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_id);
+void hns3_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_id);
 void hns3_free_all_queues(struct rte_eth_dev *dev);
 int hns3_reset_all_tqps(struct hns3_adapter *hns);
 void hns3_dev_all_rx_queue_intr_enable(struct hns3_hw *hw, bool en);

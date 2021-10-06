@@ -240,9 +240,9 @@ void bnxt_free_rx_mbufs(struct bnxt *bp)
 	}
 }
 
-void bnxt_rx_queue_release_op(void *rx_queue)
+void bnxt_rx_queue_release_op(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
-	struct bnxt_rx_queue *rxq = (struct bnxt_rx_queue *)rx_queue;
+	struct bnxt_rx_queue *rxq = dev->data->rx_queues[queue_idx];
 
 	if (rxq) {
 		if (is_bnxt_in_error(rxq->bp))
@@ -273,6 +273,7 @@ void bnxt_rx_queue_release_op(void *rx_queue)
 		rxq->mz = NULL;
 
 		rte_free(rxq);
+		dev->data->rx_queues[queue_idx] = NULL;
 	}
 }
 
@@ -307,7 +308,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	if (eth_dev->data->rx_queues) {
 		rxq = eth_dev->data->rx_queues[queue_idx];
 		if (rxq)
-			bnxt_rx_queue_release_op(rxq);
+			bnxt_rx_queue_release_op(eth_dev, queue_idx);
 	}
 	rxq = rte_zmalloc_socket("bnxt_rx_queue", sizeof(struct bnxt_rx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
@@ -328,6 +329,8 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	PMD_DRV_LOG(DEBUG, "RX Buf MTU %d\n", eth_dev->data->mtu);
 
+	eth_dev->data->rx_queues[queue_idx] = rxq;
+
 	rc = bnxt_init_rx_ring_struct(rxq, socket_id);
 	if (rc) {
 		PMD_DRV_LOG(ERR,
@@ -343,7 +346,6 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	else
 		rxq->crc_len = 0;
 
-	eth_dev->data->rx_queues[queue_idx] = rxq;
 	/* Allocate RX ring hardware descriptors */
 	rc = bnxt_alloc_rings(bp, socket_id, queue_idx, NULL, rxq, rxq->cp_ring,
 			      NULL, "rxr");
@@ -369,7 +371,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	return 0;
 err:
-	bnxt_rx_queue_release_op(rxq);
+	bnxt_rx_queue_release_op(eth_dev, queue_idx);
 	return rc;
 }
 

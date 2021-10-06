@@ -248,16 +248,18 @@ otx_ep_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
  * Release the receive queue/ringbuffer. Called by
  * the upper layers.
  *
- * @param rxq
- *    Opaque pointer to the receive queue to release
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param q_no
+ *   Receive queue index.
  *
  * @return
  *    - nothing
  */
 static void
-otx_ep_rx_queue_release(void *rxq)
+otx_ep_rx_queue_release(struct rte_eth_dev *dev, uint16_t q_no)
 {
-	struct otx_ep_droq *rq = (struct otx_ep_droq *)rxq;
+	struct otx_ep_droq *rq = dev->data->rx_queues[q_no];
 	struct otx_ep_device *otx_epvf = rq->otx_ep_dev;
 	int q_id = rq->q_no;
 
@@ -321,16 +323,18 @@ otx_ep_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
  * Release the transmit queue/ringbuffer. Called by
  * the upper layers.
  *
- * @param txq
- *    Opaque pointer to the transmit queue to release
+ * @param dev
+ *    Pointer to Ethernet device structure.
+ * @param q_no
+ *    Transmit queue index.
  *
  * @return
  *    - nothing
  */
 static void
-otx_ep_tx_queue_release(void *txq)
+otx_ep_tx_queue_release(struct rte_eth_dev *dev, uint16_t q_no)
 {
-	struct otx_ep_instr_queue *tq = (struct otx_ep_instr_queue *)txq;
+	struct otx_ep_instr_queue *tq = dev->data->tx_queues[q_no];
 
 	otx_ep_delete_iqs(tq->otx_ep_dev, tq->q_no);
 }

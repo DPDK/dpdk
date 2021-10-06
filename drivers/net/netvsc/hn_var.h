@@ -198,7 +198,7 @@ int	hn_dev_link_update(struct rte_eth_dev *dev, int wait);
 int	hn_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			      uint16_t nb_desc, unsigned int socket_id,
 			      const struct rte_eth_txconf *tx_conf);
-void	hn_dev_tx_queue_release(void *arg);
+void	hn_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 void	hn_dev_tx_queue_info(struct rte_eth_dev *dev, uint16_t queue_idx,
 			     struct rte_eth_txq_info *qinfo);
 int	hn_dev_tx_done_cleanup(void *arg, uint32_t free_cnt);
@@ -214,7 +214,7 @@ int	hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			      struct rte_mempool *mp);
 void	hn_dev_rx_queue_info(struct rte_eth_dev *dev, uint16_t queue_id,
 			     struct rte_eth_rxq_info *qinfo);
-void	hn_dev_rx_queue_release(void *arg);
+void	hn_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 uint32_t hn_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_id);
 int	hn_dev_rx_queue_status(void *rxq, uint16_t offset);
 void	hn_dev_free_queues(struct rte_eth_dev *dev);

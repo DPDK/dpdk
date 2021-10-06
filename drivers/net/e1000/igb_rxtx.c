@@ -1281,9 +1281,9 @@ igb_tx_queue_release(struct igb_tx_queue *txq)
 }
 
 void
-eth_igb_tx_queue_release(void *txq)
+eth_igb_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	igb_tx_queue_release(txq);
+	igb_tx_queue_release(dev->data->tx_queues[qid]);
 }
 
 static int
@@ -1606,9 +1606,9 @@ igb_rx_queue_release(struct igb_rx_queue *rxq)
 }
 
 void
-eth_igb_rx_queue_release(void *rxq)
+eth_igb_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	igb_rx_queue_release(rxq);
+	igb_rx_queue_release(dev->data->rx_queues[qid]);
 }
 
 static void
@@ -1883,14 +1883,14 @@ igb_dev_free_queues(struct rte_eth_dev *dev)
 	uint16_t i;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		eth_igb_rx_queue_release(dev->data->rx_queues[i]);
+		eth_igb_rx_queue_release(dev, i);
 		dev->data->rx_queues[i] = NULL;
 		rte_eth_dma_zone_free(dev, "rx_ring", i);
 	}
 	dev->data->nb_rx_queues = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		eth_igb_tx_queue_release(dev->data->tx_queues[i]);
+		eth_igb_tx_queue_release(dev, i);
 		dev->data->tx_queues[i] = NULL;
 		rte_eth_dma_zone_free(dev, "tx_ring", i);
 	}

@@ -118,9 +118,9 @@ ionic_tx_flush(struct ionic_tx_qcq *txq)
 }
 
 void __rte_cold
-ionic_dev_tx_queue_release(void *tx_queue)
+ionic_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct ionic_tx_qcq *txq = tx_queue;
+	struct ionic_tx_qcq *txq = dev->data->tx_queues[qid];
 	struct ionic_tx_stats *stats = &txq->stats;
 
 	IONIC_PRINT_CALL();
@@ -185,8 +185,7 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 
 	/* Free memory prior to re-allocation if needed... */
 	if (eth_dev->data->tx_queues[tx_queue_id] != NULL) {
-		void *tx_queue = eth_dev->data->tx_queues[tx_queue_id];
-		ionic_dev_tx_queue_release(tx_queue);
+		ionic_dev_tx_queue_release(eth_dev, tx_queue_id);
 		eth_dev->data->tx_queues[tx_queue_id] = NULL;
 	}
 
@@ -664,9 +663,9 @@ ionic_rx_empty(struct ionic_rx_qcq *rxq)
 }
 
 void __rte_cold
-ionic_dev_rx_queue_release(void *rx_queue)
+ionic_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct ionic_rx_qcq *rxq = rx_queue;
+	struct ionic_rx_qcq *rxq = dev->data->rx_queues[qid];
 	struct ionic_rx_stats *stats;
 
 	if (!rxq)
@@ -726,8 +725,7 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 
 	/* Free memory prior to re-allocation if needed... */
 	if (eth_dev->data->rx_queues[rx_queue_id] != NULL) {
-		void *rx_queue = eth_dev->data->rx_queues[rx_queue_id];
-		ionic_dev_rx_queue_release(rx_queue);
+		ionic_dev_rx_queue_release(eth_dev, rx_queue_id);
 		eth_dev->data->rx_queues[rx_queue_id] = NULL;
 	}
 

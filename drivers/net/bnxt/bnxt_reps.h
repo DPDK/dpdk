@@ -42,8 +42,8 @@ int bnxt_rep_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 				  __rte_unused unsigned int socket_id,
 				  __rte_unused const struct rte_eth_txconf *
 				  tx_conf);
-void bnxt_rep_rx_queue_release_op(void *rx_queue);
-void bnxt_rep_tx_queue_release_op(void *tx_queue);
+void bnxt_rep_rx_queue_release_op(struct rte_eth_dev *dev, uint16_t queue_idx);
+void bnxt_rep_tx_queue_release_op(struct rte_eth_dev *dev, uint16_t queue_idx);
 int  bnxt_rep_dev_stop_op(struct rte_eth_dev *eth_dev);
 int bnxt_rep_dev_close_op(struct rte_eth_dev *eth_dev);
 int bnxt_rep_stats_get_op(struct rte_eth_dev *eth_dev,
