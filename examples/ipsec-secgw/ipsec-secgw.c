@@ -847,16 +847,6 @@ process_pkts_inbound_nosp(struct ipsec_ctx *ipsec_ctx,
 	struct rte_mbuf *m;
 	uint32_t nb_pkts_in, i, idx;
 
-	/* Drop any IPv4 traffic from unprotected ports */
-	free_pkts(traffic->ip4.pkts, traffic->ip4.num);
-
-	traffic->ip4.num = 0;
-
-	/* Drop any IPv6 traffic from unprotected ports */
-	free_pkts(traffic->ip6.pkts, traffic->ip6.num);
-
-	traffic->ip6.num = 0;
-
 	if (app_sa_prm.enable == 0) {
 
 		nb_pkts_in = ipsec_inbound(ipsec_ctx, traffic->ipsec.pkts,
