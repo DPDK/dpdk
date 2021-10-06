@@ -19,13 +19,10 @@ extern "C" {
 
 #include <sys/types.h>
 
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
-
 #include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_crypto.h>
+#include <rte_ip.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
 #include <rte_memory.h>
