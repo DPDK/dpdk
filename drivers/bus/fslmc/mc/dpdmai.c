@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018 NXP
+ * Copyright 2018-2021 NXP
  */
 
 #include <fsl_mc_sys.h>
@@ -116,6 +116,7 @@ int dpdmai_create(struct fsl_mc_io *mc_io,
 	cmd_params->num_queues = cfg->num_queues;
 	cmd_params->priorities[0] = cfg->priorities[0];
 	cmd_params->priorities[1] = cfg->priorities[1];
+	cmd_params->options = cpu_to_le32(cfg->adv.options);
 
 	/* send command to mc*/
 	err = mc_send_command(mc_io, &cmd);
@@ -299,6 +300,7 @@ int dpdmai_get_attributes(struct fsl_mc_io *mc_io,
 	attr->id = le32_to_cpu(rsp_params->id);
 	attr->num_of_priorities = rsp_params->num_of_priorities;
 	attr->num_of_queues = rsp_params->num_of_queues;
+	attr->options = le32_to_cpu(rsp_params->options);
 
 	return 0;
 }

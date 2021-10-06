@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2020 NXP
+ * Copyright 2016-2021 NXP
  *
  */
 #include <fsl_mc_sys.h>
@@ -126,6 +126,8 @@ int dpni_create(struct fsl_mc_io *mc_io,
 	cmd_params->qos_entries = cfg->qos_entries;
 	cmd_params->fs_entries = cpu_to_le16(cfg->fs_entries);
 	cmd_params->num_cgs = cfg->num_cgs;
+	cmd_params->num_opr = cfg->num_opr;
+	cmd_params->dist_key_size = cfg->dist_key_size;
 
 	/* send command to mc*/
 	err = mc_send_command(mc_io, &cmd);
@@ -1829,6 +1831,7 @@ int dpni_add_fs_entry(struct fsl_mc_io *mc_io,
 	cmd_params->options = cpu_to_le16(action->options);
 	cmd_params->flow_id = cpu_to_le16(action->flow_id);
 	cmd_params->flc = cpu_to_le64(action->flc);
+	cmd_params->redir_token = cpu_to_le16(action->redirect_obj_token);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -2442,7 +2445,7 @@ int dpni_reset_statistics(struct fsl_mc_io *mc_io,
 }
 
 /**
- * dpni_set_taildrop() - Set taildrop per queue or TC
+ * dpni_set_taildrop() - Set taildrop per congestion group
  *
  * Setting a per-TC taildrop (cg_point = DPNI_CP_GROUP) will reset any current
  * congestion notification or early drop (WRED) configuration previously applied
@@ -2451,13 +2454,14 @@ int dpni_reset_statistics(struct fsl_mc_io *mc_io,
  * @mc_io:	Pointer to MC portal's I/O object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPNI object
- * @cg_point:	Congestion point, DPNI_CP_QUEUE is only supported in
+ * @cg_point:	Congestion group identifier DPNI_CP_QUEUE is only supported in
  *		combination with DPNI_QUEUE_RX.
  * @q_type:	Queue type, can be DPNI_QUEUE_RX or DPNI_QUEUE_TX.
  * @tc:		Traffic class to apply this taildrop to
- * @q_index:	Index of the queue if the DPNI supports multiple queues for
+ * @index/cgid:	Index of the queue if the DPNI supports multiple queues for
  *		traffic distribution.
- *		Ignored if CONGESTION_POINT is not DPNI_CP_QUEUE.
+ *		If CONGESTION_POINT is DPNI_CP_CONGESTION_GROUP then it
+ *		represent the cgid of the congestion point
  * @taildrop:	Taildrop structure
  *
  * Return:	'0' on Success; Error code otherwise.
@@ -2577,7 +2581,8 @@ int dpni_set_opr(struct fsl_mc_io *mc_io,
 		 uint8_t tc,
 		 uint8_t index,
 		 uint8_t options,
-		 struct opr_cfg *cfg)
+		 struct opr_cfg *cfg,
+		 uint8_t opr_id)
 {
 	struct dpni_cmd_set_opr *cmd_params;
 	struct mc_command cmd = { 0 };
@@ -2591,6 +2596,7 @@ int dpni_set_opr(struct fsl_mc_io *mc_io,
 	cmd_params->tc_id = tc;
 	cmd_params->index = index;
 	cmd_params->options = options;
+	cmd_params->opr_id = opr_id;
 	cmd_params->oloe = cfg->oloe;
 	cmd_params->oeane = cfg->oeane;
 	cmd_params->olws = cfg->olws;
@@ -2621,7 +2627,9 @@ int dpni_get_opr(struct fsl_mc_io *mc_io,
 		 uint8_t tc,
 		 uint8_t index,
 		 struct opr_cfg *cfg,
-		 struct opr_qry *qry)
+		 struct opr_qry *qry,
+		 uint8_t flags,
+		 uint8_t opr_id)
 {
 	struct dpni_rsp_get_opr *rsp_params;
 	struct dpni_cmd_get_opr *cmd_params;
@@ -2635,6 +2643,8 @@ int dpni_get_opr(struct fsl_mc_io *mc_io,
 	cmd_params = (struct dpni_cmd_get_opr *)cmd.params;
 	cmd_params->index = index;
 	cmd_params->tc_id = tc;
+	cmd_params->flags = flags;
+	cmd_params->opr_id = opr_id;
 
 	/* send command to mc*/
 	err = mc_send_command(mc_io, &cmd);
@@ -2673,7 +2683,7 @@ int dpni_get_opr(struct fsl_mc_io *mc_io,
  * If the FS is already enabled with a previous call the classification
  *		key will be changed but all the table rules are kept. If the
  *		existing rules do not match the key the results will not be
- *		predictable. It is the user responsibility to keep key integrity
+ *		predictable. It is the user responsibility to keep keyintegrity.
  * If cfg.enable is set to 1 the command will create a flow steering table
  *		and will classify packets according to this table. The packets
  *		that miss all the table rules will be classified according to
@@ -2695,7 +2705,7 @@ int dpni_set_rx_fs_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 	cmd_params = (struct dpni_cmd_set_rx_fs_dist *)cmd.params;
 	cmd_params->dist_size	= cpu_to_le16(cfg->dist_size);
 	dpni_set_field(cmd_params->enable, RX_FS_DIST_ENABLE, cfg->enable);
-	cmd_params->tc = cfg->tc;
+	cmd_params->tc			= cfg->tc;
 	cmd_params->miss_flow_id = cpu_to_le16(cfg->fs_miss_flow_id);
 	cmd_params->key_cfg_iova = cpu_to_le64(cfg->key_cfg_iova);
 
@@ -2710,9 +2720,9 @@ int dpni_set_rx_fs_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
  * @token:	Token of DPNI object
  * @cfg: Distribution configuration
  * If cfg.enable is set to 1 the packets will be classified using a hash
- *		function based on the key received in cfg.key_cfg_iova parameter
+ *	function based on the key received in cfg.key_cfg_iova parameter.
  * If cfg.enable is set to 0 the packets will be sent to the queue configured in
- *		dpni_set_rx_dist_default_queue() call
+ *	dpni_set_rx_dist_default_queue() call
  */
 int dpni_set_rx_hash_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 		uint16_t token, const struct dpni_rx_dist_cfg *cfg)
@@ -2735,9 +2745,9 @@ int dpni_set_rx_hash_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 }
 
 /**
- * dpni_add_custom_tpid() - Configures a distinct Ethertype value
- *		(or TPID value) to indicate VLAN tag in addition to the common
- *		TPID values 0x8100 and 0x88A8
+ * dpni_add_custom_tpid() - Configures a distinct Ethertype value (or TPID
+ *		value) to indicate VLAN tag in adition to the common TPID values
+ *		0x81000 and 0x88A8
  * @mc_io:	Pointer to MC portal's I/O object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPNI object
@@ -2745,8 +2755,8 @@ int dpni_set_rx_hash_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
  *
  * Only two custom values are accepted. If the function is called for the third
  * time it will return error.
- * To replace an existing value use dpni_remove_custom_tpid() to remove
- * a previous TPID and after that use again the function.
+ * To replace an existing value use dpni_remove_custom_tpid() to remove a
+ * previous TPID and after that use again the function.
  *
  * Return:	'0' on Success; Error code otherwise.
  */
@@ -2769,7 +2779,7 @@ int dpni_add_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 
 /**
  * dpni_remove_custom_tpid() - Removes a distinct Ethertype value added
- *		previously with dpni_add_custom_tpid()
+ * previously with dpni_add_custom_tpid()
  * @mc_io:	Pointer to MC portal's I/O object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPNI object
@@ -2798,8 +2808,8 @@ int dpni_remove_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 }
 
 /**
- * dpni_get_custom_tpid() - Returns custom TPID (vlan tags) values configured
- *				to detect 802.1q frames
+ * dpni_get_custom_tpid() - Returns custom TPID (vlan tags) values configured to
+ * detect 802.1q frames
  * @mc_io:	Pointer to MC portal's I/O object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPNI object

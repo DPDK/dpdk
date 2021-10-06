@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright 2019 NXP
+ * Copyright 2019-2021 NXP
  */
 #ifndef __FSL_DPRTC_H
 #define __FSL_DPRTC_H
@@ -85,6 +85,23 @@ int dprtc_set_alarm(struct fsl_mc_io *mc_io,
 		    uint32_t cmd_flags,
 		    uint16_t token,
 		    uint64_t time);
+
+struct dprtc_ext_trigger_status {
+			uint64_t timestamp;
+			uint8_t unread_valid_timestamp;
+};
+
+int dprtc_get_ext_trigger_timestamp(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			uint8_t id,
+			struct dprtc_ext_trigger_status *status);
+
+int dprtc_set_fiper_loopback(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			uint8_t id,
+			uint8_t fiper_as_input);
 
 /**
  * struct dprtc_attr - Structure representing DPRTC attributes

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright 2019 NXP
+ * Copyright 2019-2021 NXP
  */
 #include <fsl_mc_sys.h>
 #ifndef _FSL_DPRTC_CMD_H
@@ -7,13 +7,15 @@
 
 /* DPRTC Version */
 #define DPRTC_VER_MAJOR			2
-#define DPRTC_VER_MINOR			1
+#define DPRTC_VER_MINOR			3
 
 /* Command versioning */
 #define DPRTC_CMD_BASE_VERSION		1
+#define DPRTC_CMD_VERSION_2		2
 #define DPRTC_CMD_ID_OFFSET		4
 
 #define DPRTC_CMD(id)	(((id) << DPRTC_CMD_ID_OFFSET) | DPRTC_CMD_BASE_VERSION)
+#define DPRTC_CMD_V2(id) (((id) << DPRTC_CMD_ID_OFFSET) | DPRTC_CMD_VERSION_2)
 
 /* Command IDs */
 #define DPRTC_CMDID_CLOSE			DPRTC_CMD(0x800)
@@ -39,6 +41,7 @@
 #define DPRTC_CMDID_SET_EXT_TRIGGER		DPRTC_CMD(0x1d8)
 #define DPRTC_CMDID_CLEAR_EXT_TRIGGER		DPRTC_CMD(0x1d9)
 #define DPRTC_CMDID_GET_EXT_TRIGGER_TIMESTAMP	DPRTC_CMD(0x1dA)
+#define DPRTC_CMDID_SET_FIPER_LOOPBACK	DPRTC_CMD(0x1dB)
 
 /* Macros for accessing command fields smaller than 1byte */
 #define DPRTC_MASK(field)        \
@@ -86,6 +89,24 @@ struct dprtc_time {
 struct dprtc_rsp_get_api_version {
 	uint16_t major;
 	uint16_t minor;
+};
+
+struct dprtc_cmd_ext_trigger_timestamp {
+	uint32_t pad;
+	uint8_t id;
+};
+
+struct dprtc_rsp_ext_trigger_timestamp {
+	uint8_t unread_valid_timestamp;
+	uint8_t pad1;
+	uint16_t pad2;
+	uint32_t pad3;
+	uint64_t timestamp;
+};
+
+struct dprtc_ext_trigger_cfg {
+	uint8_t id;
+	uint8_t fiper_as_input;
 };
 #pragma pack(pop)
 #endif /* _FSL_DPRTC_CMD_H */

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2020 NXP
+ * Copyright 2016-2021 NXP
  *
  */
 #ifndef __FSL_DPNI_H
@@ -18,6 +18,11 @@ struct fsl_mc_io;
  */
 
 /** General DPNI macros */
+
+/**
+ * Maximum size of a key
+ */
+#define DPNI_MAX_KEY_SIZE		56
 
 /**
  * Maximum number of traffic classes
@@ -95,8 +100,18 @@ struct fsl_mc_io;
  * Define a custom number of congestion groups
  */
 #define DPNI_OPT_CUSTOM_CG				0x000200
-
-
+/**
+ * Define a custom number of order point records
+ */
+#define DPNI_OPT_CUSTOM_OPR				0x000400
+/**
+ * Hash key is shared between all traffic classes
+ */
+#define DPNI_OPT_SHARED_HASH_KEY		0x000800
+/**
+ * Flow steering table is shared between all traffic classes
+ */
+#define DPNI_OPT_SHARED_FS				0x001000
 /**
  * Software sequence maximum layout size
  */
@@ -183,6 +198,8 @@ struct dpni_cfg {
 	uint8_t  num_rx_tcs;
 	uint8_t  qos_entries;
 	uint8_t  num_cgs;
+	uint16_t num_opr;
+	uint8_t  dist_key_size;
 };
 
 int dpni_create(struct fsl_mc_io *mc_io,
@@ -366,28 +383,45 @@ int dpni_get_attributes(struct fsl_mc_io *mc_io,
 /**
  * Extract out of frame header error
  */
-#define DPNI_ERROR_EOFHE	0x00020000
+#define DPNI_ERROR_MS			0x40000000
+#define DPNI_ERROR_PTP			0x08000000
+/* Ethernet multicast frame */
+#define DPNI_ERROR_MC			0x04000000
+/* Ethernet broadcast frame */
+#define DPNI_ERROR_BC			0x02000000
+#define DPNI_ERROR_KSE			0x00040000
+#define DPNI_ERROR_EOFHE		0x00020000
+#define DPNI_ERROR_MNLE			0x00010000
+#define DPNI_ERROR_TIDE			0x00008000
+#define DPNI_ERROR_PIEE			0x00004000
 /**
  * Frame length error
  */
-#define DPNI_ERROR_FLE		0x00002000
+#define DPNI_ERROR_FLE			0x00002000
 /**
  * Frame physical error
  */
-#define DPNI_ERROR_FPE		0x00001000
+#define DPNI_ERROR_FPE			0x00001000
+#define DPNI_ERROR_PTE			0x00000080
+#define DPNI_ERROR_ISP			0x00000040
 /**
  * Parsing header error
  */
-#define DPNI_ERROR_PHE		0x00000020
-/**
- * Parser L3 checksum error
- */
-#define DPNI_ERROR_L3CE		0x00000004
-/**
- * Parser L3 checksum error
- */
-#define DPNI_ERROR_L4CE		0x00000001
+#define DPNI_ERROR_PHE			0x00000020
 
+#define DPNI_ERROR_BLE			0x00000010
+/**
+ * Parser L3 checksum error
+ */
+#define DPNI_ERROR_L3CV			0x00000008
+
+#define DPNI_ERROR_L3CE			0x00000004
+/**
+ * Parser L4 checksum error
+ */
+#define DPNI_ERROR_L4CV			0x00000002
+
+#define DPNI_ERROR_L4CE			0x00000001
 /**
  * enum dpni_error_action - Defines DPNI behavior for errors
  * @DPNI_ERROR_ACTION_DISCARD: Discard the frame
@@ -455,6 +489,10 @@ int dpni_set_errors_behavior(struct fsl_mc_io *mc_io,
  * Select to modify the sw-opaque value setting
  */
 #define DPNI_BUF_LAYOUT_OPT_SW_OPAQUE		0x00000080
+/**
+ * Select to disable Scatter Gather and use single buffer
+ */
+#define DPNI_BUF_LAYOUT_OPT_NO_SG		0x00000100
 
 /**
  * struct dpni_buffer_layout - Structure representing DPNI buffer layout
@@ -733,7 +771,7 @@ int dpni_get_link_state(struct fsl_mc_io *mc_io,
 
 /**
  * struct dpni_tx_shaping - Structure representing DPNI tx shaping configuration
- * @rate_limit:		Rate in Mbps
+ * @rate_limit:		Rate in Mbits/s
  * @max_burst_size:	Burst size in bytes (up to 64KB)
  */
 struct dpni_tx_shaping_cfg {
@@ -797,6 +835,11 @@ int dpni_get_primary_mac_addr(struct fsl_mc_io *mc_io,
 			      uint32_t cmd_flags,
 			      uint16_t token,
 			      uint8_t mac_addr[6]);
+
+/**
+ * Set mac addr queue action
+ */
+#define DPNI_MAC_SET_QUEUE_ACTION 1
 
 int dpni_add_mac_addr(struct fsl_mc_io *mc_io,
 		      uint32_t cmd_flags,
@@ -1464,6 +1507,7 @@ int dpni_clear_qos_table(struct fsl_mc_io *mc_io,
 struct dpni_fs_action_cfg {
 	uint64_t flc;
 	uint16_t flow_id;
+	uint16_t redirect_obj_token;
 	uint16_t options;
 };
 
@@ -1595,7 +1639,8 @@ int dpni_set_opr(struct fsl_mc_io *mc_io,
 		 uint8_t tc,
 		 uint8_t index,
 		 uint8_t options,
-		 struct opr_cfg *cfg);
+		 struct opr_cfg *cfg,
+		 uint8_t opr_id);
 
 int dpni_get_opr(struct fsl_mc_io *mc_io,
 		 uint32_t cmd_flags,
@@ -1603,7 +1648,9 @@ int dpni_get_opr(struct fsl_mc_io *mc_io,
 		 uint8_t tc,
 		 uint8_t index,
 		 struct opr_cfg *cfg,
-		 struct opr_qry *qry);
+		 struct opr_qry *qry,
+		 uint8_t flags,
+		 uint8_t opr_id);
 
 /**
  * When used for queue_idx in function dpni_set_rx_dist_default_queue will
@@ -1779,14 +1826,57 @@ int dpni_get_sw_sequence_layout(struct fsl_mc_io *mc_io,
 
 /**
  * dpni_extract_sw_sequence_layout() - extract the software sequence layout
- * @layout:		software sequence layout
- * @sw_sequence_layout_buf:	Zeroed 264 bytes of memory before mapping it
- *				to DMA
+ * @layout:	software sequence layout
+ * @sw_sequence_layout_buf:Zeroed 264 bytes of memory before mapping it to DMA
  *
  * This function has to be called after dpni_get_sw_sequence_layout
- *
  */
 void dpni_extract_sw_sequence_layout(struct dpni_sw_sequence_layout *layout,
 				     const uint8_t *sw_sequence_layout_buf);
+
+/**
+ * struct dpni_ptp_cfg - configure single step PTP (IEEE 1588)
+ *	@en: enable single step PTP. When enabled the PTPv1 functionality will
+ *		not work. If the field is zero, offset and ch_update parameters
+ *		will be ignored
+ *	@offset: start offset from the beginning of the frame where timestamp
+ *		field is found. The offset must respect all MAC headers, VLAN
+ *	tags and other protocol headers
+ *	@ch_update: when set UDP checksum will be updated inside packet
+ *	@peer_delay: For peer-to-peer transparent clocks add this value to the
+ *		correction field in addition to the transient time update. The
+ *		value expresses nanoseconds.
+ */
+struct dpni_single_step_cfg {
+	uint8_t en;
+	uint8_t ch_update;
+	uint16_t offset;
+	uint32_t peer_delay;
+};
+
+int dpni_set_single_step_cfg(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, struct dpni_single_step_cfg *ptp_cfg);
+
+int dpni_get_single_step_cfg(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, struct dpni_single_step_cfg *ptp_cfg);
+
+/**
+ * loopback_en field is valid when calling function dpni_set_port_cfg
+ */
+#define DPNI_PORT_CFG_LOOPBACK		0x01
+
+/**
+ * struct dpni_port_cfg - custom configuration for dpni physical port
+ *	@loopback_en: port loopback enabled
+ */
+struct dpni_port_cfg {
+	int loopback_en;
+};
+
+int dpni_set_port_cfg(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, uint32_t flags, struct dpni_port_cfg *port_cfg);
+
+int dpni_get_port_cfg(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, struct dpni_port_cfg *port_cfg);
 
 #endif /* __FSL_DPNI_H */

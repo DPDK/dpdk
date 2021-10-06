@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright 2019 NXP
+ * Copyright 2019-2021 NXP
  */
 #include <fsl_mc_sys.h>
 #include <fsl_mc_cmd.h>
@@ -520,4 +520,80 @@ int dprtc_get_api_version(struct fsl_mc_io *mc_io,
 	*minor_ver = le16_to_cpu(rsp_params->minor);
 
 	return 0;
+}
+
+/**
+ * dprtc_get_ext_trigger_timestamp - Retrieve the Ext trigger timestamp status
+ * (timestamp + flag for unread timestamp in FIFO).
+ *
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPRTC object
+ * @id:     External trigger id.
+ * @status:	Returned object's external trigger status
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dprtc_get_ext_trigger_timestamp(struct fsl_mc_io *mc_io,
+		uint32_t cmd_flags,
+		uint16_t token,
+		uint8_t id,
+		struct dprtc_ext_trigger_status *status)
+{
+	struct dprtc_rsp_ext_trigger_timestamp *rsp_params;
+	struct dprtc_cmd_ext_trigger_timestamp *cmd_params;
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPRTC_CMDID_GET_EXT_TRIGGER_TIMESTAMP,
+					  cmd_flags,
+					  token);
+
+	cmd_params = (struct dprtc_cmd_ext_trigger_timestamp *)cmd.params;
+	cmd_params->id = id;
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	rsp_params = (struct dprtc_rsp_ext_trigger_timestamp *)cmd.params;
+	status->timestamp = le64_to_cpu(rsp_params->timestamp);
+	status->unread_valid_timestamp = rsp_params->unread_valid_timestamp;
+
+	return 0;
+}
+
+/**
+ * dprtc_set_fiper_loopback() - Set the fiper pulse as source of interrupt for
+ * External Trigger stamps
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPRTC object
+ * @id:     External trigger id.
+ * @fiper_as_input:	Bit used to control interrupt signal source:
+ *                  0 = Normal operation, interrupt external source
+ *                  1 = Fiper pulse is looped back into Trigger input
+ *
+ * Return:  '0' on Success; Error code otherwise.
+ */
+int dprtc_set_fiper_loopback(struct fsl_mc_io *mc_io,
+		uint32_t cmd_flags,
+		uint16_t token,
+		uint8_t id,
+		uint8_t fiper_as_input)
+{
+	struct  dprtc_ext_trigger_cfg *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	cmd.header = mc_encode_cmd_header(DPRTC_CMDID_SET_FIPER_LOOPBACK,
+					cmd_flags,
+					token);
+
+	cmd_params = (struct dprtc_ext_trigger_cfg *)cmd.params;
+	cmd_params->id = id;
+	cmd_params->fiper_as_input = fiper_as_input;
+
+	return mc_send_command(mc_io, &cmd);
 }

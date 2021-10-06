@@ -492,6 +492,49 @@ int dpdmux_set_max_frame_length(struct fsl_mc_io *mc_io,
 }
 
 /**
+ * dpdmux_get_max_frame_length() - Return the maximum frame length for DPDMUX
+ * interface
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:		Token of DPDMUX object
+ * @if_id:		Interface id
+ * @max_frame_length:	maximum frame length
+ *
+ * When dpdmux object is in VEPA mode this function will ignore if_id parameter
+ * and will return maximum frame length for uplink interface (if_id==0).
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpdmux_get_max_frame_length(struct fsl_mc_io *mc_io,
+				uint32_t cmd_flags,
+				uint16_t token,
+				uint16_t if_id,
+				uint16_t *max_frame_length)
+{
+	struct mc_command cmd = { 0 };
+	struct dpdmux_cmd_get_max_frame_len *cmd_params;
+	struct dpdmux_rsp_get_max_frame_len *rsp_params;
+	int err = 0;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_GET_MAX_FRAME_LENGTH,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpdmux_cmd_get_max_frame_len *)cmd.params;
+	cmd_params->if_id = cpu_to_le16(if_id);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	rsp_params = (struct dpdmux_rsp_get_max_frame_len *)cmd.params;
+	*max_frame_length = le16_to_cpu(rsp_params->max_len);
+
+	/* send command to mc*/
+	return err;
+}
+
+/**
  * dpdmux_ul_reset_counters() - Function resets the uplink counter
  * @mc_io:	Pointer to MC portal's I/O object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'

@@ -39,6 +39,7 @@
 #define DPDMUX_CMDID_RESET			DPDMUX_CMD(0x005)
 #define DPDMUX_CMDID_IS_ENABLED			DPDMUX_CMD(0x006)
 #define DPDMUX_CMDID_SET_MAX_FRAME_LENGTH	DPDMUX_CMD(0x0a1)
+#define DPDMUX_CMDID_GET_MAX_FRAME_LENGTH	DPDMUX_CMD(0x0a2)
 
 #define DPDMUX_CMDID_UL_RESET_COUNTERS		DPDMUX_CMD(0x0a3)
 
@@ -122,6 +123,14 @@ struct dpdmux_rsp_get_attr {
 
 struct dpdmux_cmd_set_max_frame_length {
 	uint16_t max_frame_length;
+};
+
+struct dpdmux_cmd_get_max_frame_len {
+	uint16_t if_id;
+};
+
+struct dpdmux_rsp_get_max_frame_len {
+	uint16_t max_len;
 };
 
 #define DPDMUX_ACCEPTED_FRAMES_TYPE_SHIFT	0

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2015 Freescale Semiconductor Inc.
- * Copyright 2018 NXP
+ * Copyright 2018-2021 NXP
  *
  */
 #ifndef __FSL_DPOPR_H_
@@ -22,7 +22,10 @@
  * Retire an existing Order Point Record option
  */
 #define OPR_OPT_RETIRE 0x2
-
+/**
+ * Assign an existing Order Point Record to a queue
+ */
+#define OPR_OPT_ASSIGN 0x4
 /**
  * struct opr_cfg - Structure representing OPR configuration
  * @oprrws: Order point record (OPR) restoration window size (0 to 5)

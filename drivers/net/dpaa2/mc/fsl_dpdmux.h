@@ -196,6 +196,12 @@ int dpdmux_set_max_frame_length(struct fsl_mc_io *mc_io,
 				uint16_t token,
 				uint16_t max_frame_length);
 
+int dpdmux_get_max_frame_length(struct fsl_mc_io *mc_io,
+				uint32_t cmd_flags,
+				uint16_t token,
+				uint16_t if_id,
+				uint16_t *max_frame_length);
+
 /**
  * enum dpdmux_counter_type - Counter types
  * @DPDMUX_CNT_ING_FRAME: Counts ingress frames

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2020 NXP
+ * Copyright 2016-2021 NXP
  *
  */
 #ifndef _FSL_DPNI_CMD_H
@@ -9,21 +9,25 @@
 
 /* DPNI Version */
 #define DPNI_VER_MAJOR				7
-#define DPNI_VER_MINOR				13
+#define DPNI_VER_MINOR				17
 
 #define DPNI_CMD_BASE_VERSION			1
 #define DPNI_CMD_VERSION_2			2
 #define DPNI_CMD_VERSION_3			3
+#define DPNI_CMD_VERSION_4			4
+#define DPNI_CMD_VERSION_5			5
 #define DPNI_CMD_ID_OFFSET			4
 
 #define DPNI_CMD(id)	(((id) << DPNI_CMD_ID_OFFSET) | DPNI_CMD_BASE_VERSION)
 #define DPNI_CMD_V2(id)	(((id) << DPNI_CMD_ID_OFFSET) | DPNI_CMD_VERSION_2)
 #define DPNI_CMD_V3(id)	(((id) << DPNI_CMD_ID_OFFSET) | DPNI_CMD_VERSION_3)
+#define DPNI_CMD_V4(id)	(((id) << DPNI_CMD_ID_OFFSET) | DPNI_CMD_VERSION_4)
+#define DPNI_CMD_V5(id)	(((id) << DPNI_CMD_ID_OFFSET) | DPNI_CMD_VERSION_5)
 
 /* Command IDs */
 #define DPNI_CMDID_OPEN				DPNI_CMD(0x801)
 #define DPNI_CMDID_CLOSE			DPNI_CMD(0x800)
-#define DPNI_CMDID_CREATE			DPNI_CMD_V3(0x901)
+#define DPNI_CMDID_CREATE			DPNI_CMD_V5(0x901)
 #define DPNI_CMDID_DESTROY			DPNI_CMD(0x981)
 #define DPNI_CMDID_GET_API_VERSION		DPNI_CMD(0xa01)
 
@@ -67,7 +71,7 @@
 #define DPNI_CMDID_REMOVE_VLAN_ID		DPNI_CMD(0x232)
 #define DPNI_CMDID_CLR_VLAN_FILTERS		DPNI_CMD(0x233)
 
-#define DPNI_CMDID_SET_RX_TC_DIST		DPNI_CMD_V3(0x235)
+#define DPNI_CMDID_SET_RX_TC_DIST		DPNI_CMD_V4(0x235)
 
 #define DPNI_CMDID_SET_RX_TC_POLICING		DPNI_CMD(0x23E)
 
@@ -75,7 +79,7 @@
 #define DPNI_CMDID_ADD_QOS_ENT			DPNI_CMD_V2(0x241)
 #define DPNI_CMDID_REMOVE_QOS_ENT		DPNI_CMD(0x242)
 #define DPNI_CMDID_CLR_QOS_TBL			DPNI_CMD(0x243)
-#define DPNI_CMDID_ADD_FS_ENT			DPNI_CMD(0x244)
+#define DPNI_CMDID_ADD_FS_ENT			DPNI_CMD_V2(0x244)
 #define DPNI_CMDID_REMOVE_FS_ENT		DPNI_CMD(0x245)
 #define DPNI_CMDID_CLR_FS_ENT			DPNI_CMD(0x246)
 
@@ -140,7 +144,9 @@ struct dpni_cmd_create {
 	uint16_t fs_entries;
 	uint8_t num_rx_tcs;
 	uint8_t pad4;
-	uint8_t num_cgs;
+	uint8_t  num_cgs;
+	uint16_t num_opr;
+	uint8_t dist_key_size;
 };
 
 struct dpni_cmd_destroy {
@@ -411,8 +417,6 @@ struct dpni_rsp_get_port_mac_addr {
 	uint8_t mac_addr[6];
 };
 
-#define DPNI_MAC_SET_QUEUE_ACTION 1
-
 struct dpni_cmd_add_mac_addr {
 	uint8_t flags;
 	uint8_t pad;
@@ -594,6 +598,7 @@ struct dpni_cmd_add_fs_entry {
 	uint64_t key_iova;
 	uint64_t mask_iova;
 	uint64_t flc;
+	uint16_t redir_token;
 };
 
 struct dpni_cmd_remove_fs_entry {
@@ -779,7 +784,7 @@ struct dpni_rsp_get_congestion_notification {
 };
 
 struct dpni_cmd_set_opr {
-	uint8_t pad0;
+	uint8_t opr_id;
 	uint8_t tc_id;
 	uint8_t index;
 	uint8_t options;
@@ -792,9 +797,10 @@ struct dpni_cmd_set_opr {
 };
 
 struct dpni_cmd_get_opr {
-	uint8_t pad;
+	uint8_t flags;
 	uint8_t tc_id;
 	uint8_t index;
+	uint8_t opr_id;
 };
 
 #define DPNI_RIP_SHIFT	0
@@ -909,6 +915,35 @@ struct dpni_sw_sequence_layout_entry {
 	uint8_t param_offset;
 	uint8_t param_size;
 	uint16_t pad;
+};
+
+#define DPNI_PTP_ENABLE_SHIFT			0
+#define DPNI_PTP_ENABLE_SIZE			1
+#define DPNI_PTP_CH_UPDATE_SHIFT		1
+#define DPNI_PTP_CH_UPDATE_SIZE			1
+struct dpni_cmd_single_step_cfg {
+	uint16_t	flags;
+	uint16_t	offset;
+	uint32_t	peer_delay;
+};
+
+struct dpni_rsp_single_step_cfg {
+	uint16_t	flags;
+	uint16_t	offset;
+	uint32_t	peer_delay;
+};
+
+#define DPNI_PORT_LOOPBACK_EN_SHIFT	0
+#define DPNI_PORT_LOOPBACK_EN_SIZE	1
+
+struct dpni_cmd_set_port_cfg {
+	uint32_t	flags;
+	uint32_t	bit_params;
+};
+
+struct dpni_rsp_get_port_cfg {
+	uint32_t	flags;
+	uint32_t	bit_params;
 };
 
 #pragma pack(pop)
