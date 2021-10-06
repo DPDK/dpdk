@@ -573,6 +573,8 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 				dev->data->dev_conf.rxmode.max_rx_pkt_len -
 				RTE_ETHER_HDR_LEN - RTE_ETHER_CRC_LEN -
 				VLAN_TAG_SIZE;
+				DPAA2_PMD_INFO("MTU configured for the device: %d",
+						dev->data->mtu);
 		} else {
 			return -1;
 		}
