@@ -1391,13 +1391,6 @@ dpaa2_qdma_enqueue(struct rte_rawdev *rawdev,
 		&dpdmai_dev->qdma_dev->vqs[e_context->vq_id];
 	int ret;
 
-	/* Return error in case of wrong lcore_id */
-	if (rte_lcore_id() != qdma_vq->lcore_id) {
-		DPAA2_QDMA_ERR("QDMA enqueue for vqid %d on wrong core",
-				e_context->vq_id);
-		return -EINVAL;
-	}
-
 	ret = qdma_vq->enqueue_job(qdma_vq, e_context->job, nb_jobs);
 	if (ret < 0) {
 		DPAA2_QDMA_ERR("DPDMAI device enqueue failed: %d", ret);
@@ -1428,13 +1421,6 @@ dpaa2_qdma_dequeue(struct rte_rawdev *rawdev,
 		/** Make sure there are enough space to get jobs.*/
 		if (unlikely(nb_jobs < DPAA2_QDMA_MAX_SG_NB))
 			return -EINVAL;
-	}
-
-	/* Return error in case of wrong lcore_id */
-	if (rte_lcore_id() != (unsigned int)(qdma_vq->lcore_id)) {
-		DPAA2_QDMA_WARN("QDMA dequeue for vqid %d on wrong core",
-				context->vq_id);
-		return -1;
 	}
 
 	/* Only dequeue when there are pending jobs on VQ */
