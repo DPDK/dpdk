@@ -210,6 +210,10 @@ dpaa2_distset_to_dpkg_profile_cfg(
 	int l2_configured = 0, l3_configured = 0;
 	int l4_configured = 0, sctp_configured = 0;
 	int mpls_configured = 0;
+	int vlan_configured = 0;
+	int esp_configured = 0;
+	int ah_configured = 0;
+	int pppoe_configured = 0;
 
 	memset(kg_cfg, 0, sizeof(struct dpkg_profile_cfg));
 	while (req_dist_set) {
@@ -217,6 +221,7 @@ dpaa2_distset_to_dpkg_profile_cfg(
 			dist_field = 1ULL << loop;
 			switch (dist_field) {
 			case ETH_RSS_L2_PAYLOAD:
+			case ETH_RSS_ETH:
 
 				if (l2_configured)
 					break;
@@ -231,7 +236,70 @@ dpaa2_distset_to_dpkg_profile_cfg(
 				kg_cfg->extracts[i].extract.from_hdr.type =
 					DPKG_FULL_FIELD;
 				i++;
-			break;
+				break;
+
+			case ETH_RSS_PPPOE:
+				if (pppoe_configured)
+					break;
+				kg_cfg->extracts[i].extract.from_hdr.prot =
+					NET_PROT_PPPOE;
+				kg_cfg->extracts[i].extract.from_hdr.field =
+					NH_FLD_PPPOE_SID;
+				kg_cfg->extracts[i].type =
+					DPKG_EXTRACT_FROM_HDR;
+				kg_cfg->extracts[i].extract.from_hdr.type =
+					DPKG_FULL_FIELD;
+				i++;
+				break;
+
+			case ETH_RSS_ESP:
+				if (esp_configured)
+					break;
+				esp_configured = 1;
+
+				kg_cfg->extracts[i].extract.from_hdr.prot =
+					NET_PROT_IPSEC_ESP;
+				kg_cfg->extracts[i].extract.from_hdr.field =
+					NH_FLD_IPSEC_ESP_SPI;
+				kg_cfg->extracts[i].type =
+					DPKG_EXTRACT_FROM_HDR;
+				kg_cfg->extracts[i].extract.from_hdr.type =
+					DPKG_FULL_FIELD;
+				i++;
+				break;
+
+			case ETH_RSS_AH:
+				if (ah_configured)
+					break;
+				ah_configured = 1;
+
+				kg_cfg->extracts[i].extract.from_hdr.prot =
+					NET_PROT_IPSEC_AH;
+				kg_cfg->extracts[i].extract.from_hdr.field =
+					NH_FLD_IPSEC_AH_SPI;
+				kg_cfg->extracts[i].type =
+					DPKG_EXTRACT_FROM_HDR;
+				kg_cfg->extracts[i].extract.from_hdr.type =
+					DPKG_FULL_FIELD;
+				i++;
+				break;
+
+			case ETH_RSS_C_VLAN:
+			case ETH_RSS_S_VLAN:
+				if (vlan_configured)
+					break;
+				vlan_configured = 1;
+
+				kg_cfg->extracts[i].extract.from_hdr.prot =
+					NET_PROT_VLAN;
+				kg_cfg->extracts[i].extract.from_hdr.field =
+					NH_FLD_VLAN_TCI;
+				kg_cfg->extracts[i].type =
+					DPKG_EXTRACT_FROM_HDR;
+				kg_cfg->extracts[i].extract.from_hdr.type =
+					DPKG_FULL_FIELD;
+				i++;
+				break;
 
 			case ETH_RSS_MPLS:
 
