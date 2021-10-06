@@ -2,6 +2,8 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
+#include <sys/queue.h>
+
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
 

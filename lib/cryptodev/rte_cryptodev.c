@@ -12,7 +12,6 @@
 #include <errno.h>
 #include <stdint.h>
 #include <inttypes.h>
-#include <netinet/in.h>
 
 #include <rte_byteorder.h>
 #include <rte_log.h>

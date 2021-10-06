@@ -80,6 +80,7 @@ if is_windows
             'hash',
             'timer',
             'bitratestats',
+            'cryptodev',
             'cfgfile',
             'gro',
             'gso',
