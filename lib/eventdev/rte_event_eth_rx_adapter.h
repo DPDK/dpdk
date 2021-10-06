@@ -200,6 +200,8 @@ struct rte_event_eth_rx_adapter_queue_conf {
 	 * Valid when RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR flag is set in
 	 * @see rte_event_eth_rx_adapter_queue_conf::rx_queue_flags.
 	 */
+	uint16_t event_buf_size;
+	/**< event buffer size for this queue */
 };
 
 /**
@@ -267,6 +269,8 @@ struct rte_event_eth_rx_adapter_params {
 	 * This value is rounded up for better buffer utilization
 	 * and performance.
 	 */
+	bool use_queue_event_buf;
+	/**< flag to indicate that event buffer is separate for each queue */
 };
 
 /**

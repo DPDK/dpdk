@@ -62,12 +62,14 @@ service function and needs to create an event port for it. The callback is
 expected to fill the ``struct rte_event_eth_rx_adapter_conf structure``
 passed to it.
 
-If the application desires to control the event buffer size, it can use the
-``rte_event_eth_rx_adapter_create_with_params()`` api. The event buffer size is
-specified using ``struct rte_event_eth_rx_adapter_params::event_buf_size``.
-The function is passed the event device to be associated with the adapter
-and port configuration for the adapter to setup an event port if the
-adapter needs to use a service function.
+If the application desires to control the event buffer size at adapter level,
+it can use the ``rte_event_eth_rx_adapter_create_with_params()`` api. The event
+buffer size is specified using ``struct rte_event_eth_rx_adapter_params::
+event_buf_size``. To configure the event buffer size at queue level, the boolean
+flag ``struct rte_event_eth_rx_adapter_params::use_queue_event_buf`` need to be
+set to true. The function is passed the event device to be associated with
+the adapter and port configuration for the adapter to setup an event port
+if the adapter needs to use a service function.
 
 Adding Rx Queues to the Adapter Instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -79,7 +81,9 @@ parameter. Event information for packets from this Rx queue is encoded in the
 ``ev`` field of ``struct rte_event_eth_rx_adapter_queue_conf``. The
 servicing_weight member of the struct  rte_event_eth_rx_adapter_queue_conf
 is the relative polling frequency of the Rx queue and is applicable when the
-adapter uses a service core function.
+adapter uses a service core function. The applications can configure queue
+event buffer size in ``struct rte_event_eth_rx_adapter_queue_conf::event_buf_size``
+parameter.
 
 .. code-block:: c
 
@@ -90,6 +94,7 @@ adapter uses a service core function.
         queue_config.rx_queue_flags = 0;
         queue_config.ev = ev;
         queue_config.servicing_weight = 1;
+        queue_config.event_buf_size = 1024;
 
         err = rte_event_eth_rx_adapter_queue_add(id,
                                                 eth_dev_id,
