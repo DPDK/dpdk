@@ -1865,6 +1865,12 @@ void qbman_pull_desc_set_channel(struct qbman_pull_desc *d, uint32_t chid,
 	d->pull.dq_src = chid;
 }
 
+/**
+ * qbman_pull_desc_set_rad() - Decide whether reschedule the fq after dequeue
+ *
+ * @rad: 1 = Reschedule the FQ after dequeue.
+ *	 0 = Allow the FQ to remain active after dequeue.
+ */
 void qbman_pull_desc_set_rad(struct qbman_pull_desc *d, int rad)
 {
 	if (d->pull.verb & (1 << QB_VDQCR_VERB_RLS_SHIFT)) {
