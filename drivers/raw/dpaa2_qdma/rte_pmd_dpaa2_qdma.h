@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2020 NXP
+ * Copyright 2018-2021 NXP
  */
 
 #ifndef __RTE_PMD_DPAA2_QDMA_H__
@@ -177,13 +177,13 @@ struct rte_qdma_queue_config {
 #define rte_qdma_info rte_rawdev_info
 #define rte_qdma_start(id) rte_rawdev_start(id)
 #define rte_qdma_reset(id) rte_rawdev_reset(id)
-#define rte_qdma_configure(id, cf) rte_rawdev_configure(id, cf)
+#define rte_qdma_configure(id, cf, sz) rte_rawdev_configure(id, cf, sz)
 #define rte_qdma_dequeue_buffers(id, buf, num, ctxt) \
 	rte_rawdev_dequeue_buffers(id, buf, num, ctxt)
 #define rte_qdma_enqueue_buffers(id, buf, num, ctxt) \
 	rte_rawdev_enqueue_buffers(id, buf, num, ctxt)
-#define rte_qdma_queue_setup(id, qid, cfg) \
-	rte_rawdev_queue_setup(id, qid, cfg)
+#define rte_qdma_queue_setup(id, qid, cfg, sz) \
+	rte_rawdev_queue_setup(id, qid, cfg, sz)
 
 /*TODO introduce per queue stats API in rawdew */
 /**

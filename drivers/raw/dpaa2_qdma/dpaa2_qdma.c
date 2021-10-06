@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2020 NXP
+ * Copyright 2018-2021 NXP
  */
 
 #include <string.h>
@@ -1146,8 +1146,12 @@ dpaa2_qdma_configure(const struct rte_rawdev *rawdev,
 
 	DPAA2_QDMA_FUNC_TRACE();
 
-	if (config_size != sizeof(*qdma_config))
+	if (config_size != sizeof(*qdma_config)) {
+		DPAA2_QDMA_ERR("Config size mismatch. Expected %" PRIu64
+			", Got: %" PRIu64, (uint64_t)(sizeof(*qdma_config)),
+			(uint64_t)config_size);
 		return -EINVAL;
+	}
 
 	/* In case QDMA device is not in stopped state, return -EBUSY */
 	if (qdma_dev->state == 1) {
@@ -1247,8 +1251,12 @@ dpaa2_qdma_queue_setup(struct rte_rawdev *rawdev,
 
 	DPAA2_QDMA_FUNC_TRACE();
 
-	if (conf_size != sizeof(*q_config))
+	if (conf_size != sizeof(*q_config)) {
+		DPAA2_QDMA_ERR("Config size mismatch. Expected %" PRIu64
+			", Got: %" PRIu64, (uint64_t)(sizeof(*q_config)),
+			(uint64_t)conf_size);
 		return -EINVAL;
+	}
 
 	rte_spinlock_lock(&qdma_dev->lock);
 
