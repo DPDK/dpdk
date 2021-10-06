@@ -225,8 +225,6 @@ eth_mac_addr_add(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
-static void
-eth_queue_release(void *q __rte_unused) { ; }
 static int
 eth_link_update(struct rte_eth_dev *dev __rte_unused,
 		int wait_to_complete __rte_unused) { return 0; }
@@ -272,8 +270,6 @@ static const struct eth_dev_ops ops = {
 	.dev_infos_get = eth_dev_info,
 	.rx_queue_setup = eth_rx_queue_setup,
 	.tx_queue_setup = eth_tx_queue_setup,
-	.rx_queue_release = eth_queue_release,
-	.tx_queue_release = eth_queue_release,
 	.link_update = eth_link_update,
 	.stats_get = eth_stats_get,
 	.stats_reset = eth_stats_reset,

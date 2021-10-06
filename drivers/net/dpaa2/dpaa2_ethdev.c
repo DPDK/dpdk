@@ -1006,12 +1006,6 @@ dpaa2_dev_rx_queue_release(void *q __rte_unused)
 	}
 }
 
-static void
-dpaa2_dev_tx_queue_release(void *q __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-}
-
 static uint32_t
 dpaa2_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
@@ -2429,7 +2423,6 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.rx_queue_setup    = dpaa2_dev_rx_queue_setup,
 	.rx_queue_release  = dpaa2_dev_rx_queue_release,
 	.tx_queue_setup    = dpaa2_dev_tx_queue_setup,
-	.tx_queue_release  = dpaa2_dev_tx_queue_release,
 	.rx_burst_mode_get = dpaa2_dev_rx_burst_mode_get,
 	.tx_burst_mode_get = dpaa2_dev_tx_burst_mode_get,
 	.flow_ctrl_get	      = dpaa2_flow_ctrl_get,

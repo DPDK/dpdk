@@ -494,18 +494,6 @@ pfe_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 }
 
-static void
-pfe_rx_queue_release(void *q __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-}
-
-static void
-pfe_tx_queue_release(void *q __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-}
-
 static int
 pfe_tx_queue_setup(struct rte_eth_dev *dev,
 		   uint16_t queue_idx,
@@ -759,9 +747,7 @@ static const struct eth_dev_ops ops = {
 	.dev_configure = pfe_eth_configure,
 	.dev_infos_get = pfe_eth_info,
 	.rx_queue_setup = pfe_rx_queue_setup,
-	.rx_queue_release  = pfe_rx_queue_release,
 	.tx_queue_setup = pfe_tx_queue_setup,
-	.tx_queue_release  = pfe_tx_queue_release,
 	.dev_supported_ptypes_get = pfe_supported_ptypes_get,
 	.link_update  = pfe_eth_link_update,
 	.promiscuous_enable   = pfe_promiscuous_enable,

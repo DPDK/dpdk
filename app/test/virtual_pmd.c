@@ -163,16 +163,6 @@ virtual_ethdev_tx_queue_setup_fail(struct rte_eth_dev *dev __rte_unused,
 	return -1;
 }
 
-static void
-virtual_ethdev_rx_queue_release(void *q __rte_unused)
-{
-}
-
-static void
-virtual_ethdev_tx_queue_release(void *q __rte_unused)
-{
-}
-
 static int
 virtual_ethdev_link_update_success(struct rte_eth_dev *bonded_eth_dev,
 		int wait_to_complete __rte_unused)
@@ -243,8 +233,6 @@ static const struct eth_dev_ops virtual_ethdev_default_dev_ops = {
 	.dev_infos_get = virtual_ethdev_info_get,
 	.rx_queue_setup = virtual_ethdev_rx_queue_setup_success,
 	.tx_queue_setup = virtual_ethdev_tx_queue_setup_success,
-	.rx_queue_release = virtual_ethdev_rx_queue_release,
-	.tx_queue_release = virtual_ethdev_tx_queue_release,
 	.link_update = virtual_ethdev_link_update_success,
 	.mac_addr_set = virtual_ethdev_mac_address_set,
 	.stats_get = virtual_ethdev_stats_get,

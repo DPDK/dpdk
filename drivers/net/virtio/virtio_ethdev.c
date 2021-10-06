@@ -370,12 +370,6 @@ virtio_set_multiple_queues(struct rte_eth_dev *dev, uint16_t nb_queues)
 	return 0;
 }
 
-static void
-virtio_dev_queue_release(void *queue __rte_unused)
-{
-	/* do nothing */
-}
-
 static uint16_t
 virtio_get_nr_vq(struct virtio_hw *hw)
 {
@@ -981,9 +975,7 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.rx_queue_setup          = virtio_dev_rx_queue_setup,
 	.rx_queue_intr_enable    = virtio_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable   = virtio_dev_rx_queue_intr_disable,
-	.rx_queue_release        = virtio_dev_queue_release,
 	.tx_queue_setup          = virtio_dev_tx_queue_setup,
-	.tx_queue_release        = virtio_dev_queue_release,
 	/* collect stats per queue */
 	.queue_stats_mapping_set = virtio_dev_queue_stats_mapping_set,
 	.vlan_filter_set         = virtio_vlan_filter_set,

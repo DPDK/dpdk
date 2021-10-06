@@ -1234,12 +1234,6 @@ dpaa_eth_eventq_detach(const struct rte_eth_dev *dev,
 }
 
 static
-void dpaa_eth_rx_queue_release(void *rxq __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-}
-
-static
 int dpaa_eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			    uint16_t nb_desc __rte_unused,
 		unsigned int socket_id __rte_unused,
@@ -1270,11 +1264,6 @@ int dpaa_eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	dev->data->tx_queues[queue_idx] = txq;
 
 	return 0;
-}
-
-static void dpaa_eth_tx_queue_release(void *txq __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
 }
 
 static uint32_t
@@ -1571,8 +1560,6 @@ static struct eth_dev_ops dpaa_devops = {
 
 	.rx_queue_setup		  = dpaa_eth_rx_queue_setup,
 	.tx_queue_setup		  = dpaa_eth_tx_queue_setup,
-	.rx_queue_release	  = dpaa_eth_rx_queue_release,
-	.tx_queue_release	  = dpaa_eth_tx_queue_release,
 	.rx_burst_mode_get	  = dpaa_dev_rx_burst_mode_get,
 	.tx_burst_mode_get	  = dpaa_dev_tx_burst_mode_get,
 	.rxq_info_get		  = dpaa_rxq_info_get,

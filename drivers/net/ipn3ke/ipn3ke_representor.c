@@ -288,11 +288,6 @@ ipn3ke_rpst_rx_queue_setup(__rte_unused struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void
-ipn3ke_rpst_rx_queue_release(__rte_unused void *rxq)
-{
-}
-
 static int
 ipn3ke_rpst_tx_queue_setup(__rte_unused struct rte_eth_dev *dev,
 	__rte_unused uint16_t queue_idx, __rte_unused uint16_t nb_desc,
@@ -300,11 +295,6 @@ ipn3ke_rpst_tx_queue_setup(__rte_unused struct rte_eth_dev *dev,
 	__rte_unused const struct rte_eth_txconf *tx_conf)
 {
 	return 0;
-}
-
-static void
-ipn3ke_rpst_tx_queue_release(__rte_unused void *txq)
-{
 }
 
 /* Statistics collected by each port, VSI, VEB, and S-channel */
@@ -2865,9 +2855,7 @@ static const struct eth_dev_ops ipn3ke_rpst_dev_ops = {
 	.tx_queue_start       = ipn3ke_rpst_tx_queue_start,
 	.tx_queue_stop        = ipn3ke_rpst_tx_queue_stop,
 	.rx_queue_setup       = ipn3ke_rpst_rx_queue_setup,
-	.rx_queue_release     = ipn3ke_rpst_rx_queue_release,
 	.tx_queue_setup       = ipn3ke_rpst_tx_queue_setup,
-	.tx_queue_release     = ipn3ke_rpst_tx_queue_release,
 
 	.dev_set_link_up      = ipn3ke_rpst_dev_set_link_up,
 	.dev_set_link_down    = ipn3ke_rpst_dev_set_link_down,
