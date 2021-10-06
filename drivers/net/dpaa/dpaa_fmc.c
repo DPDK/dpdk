@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2017-2020 NXP
+ * Copyright 2017-2021 NXP
  */
 
 /* System headers */
@@ -338,6 +338,12 @@ static int dpaa_port_fmc_ccnode_parse(struct fman_if *fif,
 		fqid = keys_params->key_params[j].cc_next_engine_params
 			.params.enqueue_params.new_fqid;
 
+		/* We read DPDK queue from last classification rule present in
+		 * FMC policy file. Hence, this check is required here.
+		 * Also, the last classification rule in FMC policy file must
+		 * have userspace queue so that it can be used by DPDK
+		 * application.
+		 */
 		if (keys_params->key_params[j].cc_next_engine_params
 			.next_engine != e_IOC_FM_PCD_DONE) {
 			DPAA_PMD_WARN("FMC CC next engine not support");
