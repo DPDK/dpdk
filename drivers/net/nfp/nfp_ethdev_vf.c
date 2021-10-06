@@ -13,6 +13,8 @@
  * Netronome vNIC  VF DPDK Poll-Mode Driver: Main entry point
  */
 
+#include <rte_alarm.h>
+
 #include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_rtsym.h"
 
@@ -229,6 +231,10 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 	rte_intr_callback_unregister(&pci_dev->intr_handle,
 				     nfp_net_dev_interrupt_handler,
 				     (void *)dev);
+
+	/* Cancel possible impending LSC work here before releasing the port*/
+	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler,
+			     (void *)dev);
 
 	/*
 	 * The ixgbe PMD driver disables the pcie master on the

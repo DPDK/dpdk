@@ -22,6 +22,7 @@
 #include <rte_memzone.h>
 #include <rte_mempool.h>
 #include <rte_service_component.h>
+#include <rte_alarm.h>
 #include "eal_firmware.h"
 
 #include "nfpcore/nfp_cpp.h"
@@ -306,6 +307,10 @@ nfp_net_close(struct rte_eth_dev *dev)
 		this_rx_q = (struct nfp_net_rxq *)dev->data->rx_queues[i];
 		nfp_net_reset_rx_queue(this_rx_q);
 	}
+
+	/* Cancel possible impending LSC work here before releasing the port*/
+	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler,
+			     (void *)dev);
 
 	/* Only free PF resources after all physical ports have been closed */
 	/* Mark this port as unused and free device priv resources*/

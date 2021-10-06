@@ -898,7 +898,7 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
  *
  * @return  void
  */
-static void
+void
 nfp_net_dev_interrupt_delayed_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
