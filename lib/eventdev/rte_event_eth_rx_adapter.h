@@ -26,6 +26,7 @@
  * The ethernet Rx event adapter's functions are:
  *  - rte_event_eth_rx_adapter_create_ext()
  *  - rte_event_eth_rx_adapter_create()
+ *  - rte_event_eth_rx_adapter_create_with_params()
  *  - rte_event_eth_rx_adapter_free()
  *  - rte_event_eth_rx_adapter_queue_add()
  *  - rte_event_eth_rx_adapter_queue_del()
@@ -37,7 +38,7 @@
  *
  * The application creates an ethernet to event adapter using
  * rte_event_eth_rx_adapter_create_ext() or rte_event_eth_rx_adapter_create()
- * functions.
+ * or rte_event_eth_rx_adapter_create_with_params() functions.
  * The adapter needs to know which ethernet rx queues to poll for mbufs as well
  * as event device parameters such as the event queue identifier, event
  * priority and scheduling type that the adapter should use when constructing
@@ -258,6 +259,17 @@ struct rte_event_eth_rx_adapter_vector_limits {
 };
 
 /**
+ * A structure to hold adapter config params
+ */
+struct rte_event_eth_rx_adapter_params {
+	uint16_t event_buf_size;
+	/**< size of event buffer for the adapter.
+	 * This value is rounded up for better buffer utilization
+	 * and performance.
+	 */
+};
+
+/**
  *
  * Callback function invoked by the SW adapter before it continues
  * to process events. The callback is passed the size of the enqueue
@@ -356,6 +368,33 @@ int rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
  */
 int rte_event_eth_rx_adapter_create(uint8_t id, uint8_t dev_id,
 				struct rte_event_port_conf *port_config);
+
+/**
+ * This is a variant of rte_event_eth_rx_adapter_create() with additional
+ * adapter params specified in ``struct rte_event_eth_rx_adapter_params``.
+ *
+ * @param id
+ *  The identifier of the ethernet Rx event adapter.
+ *
+ * @param dev_id
+ *  The identifier of the event device to configure.
+ *
+ * @param port_config
+ *  Argument of type *rte_event_port_conf* that is passed to the conf_cb
+ *  function.
+ *
+ * @param rxa_params
+ *  Pointer to struct rte_event_eth_rx_adapter_params.
+ *  In case of NULL, default values are used.
+ *
+ * @return
+ *   - 0: Success
+ *   - <0: Error code on failure
+ */
+__rte_experimental
+int rte_event_eth_rx_adapter_create_with_params(uint8_t id, uint8_t dev_id,
+			struct rte_event_port_conf *port_config,
+			struct rte_event_eth_rx_adapter_params *rxa_params);
 
 /**
  * Free an event adapter

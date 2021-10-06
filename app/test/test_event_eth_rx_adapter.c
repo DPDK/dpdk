@@ -429,13 +429,57 @@ adapter_create_free(void)
 }
 
 static int
+adapter_create_free_with_params(void)
+{
+	int err;
+
+	struct rte_event_port_conf rx_p_conf = {
+			.dequeue_depth = 8,
+			.enqueue_depth = 8,
+			.new_event_threshold = 1200,
+	};
+
+	struct rte_event_eth_rx_adapter_params rxa_params = {
+			.event_buf_size = 1024
+	};
+
+	err = rte_event_eth_rx_adapter_create_with_params(TEST_INST_ID,
+				TEST_DEV_ID, NULL, NULL);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	err = rte_event_eth_rx_adapter_create_with_params(TEST_INST_ID,
+				TEST_DEV_ID, &rx_p_conf, &rxa_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_rx_adapter_create_with_params(TEST_INST_ID,
+				TEST_DEV_ID, &rx_p_conf, &rxa_params);
+	TEST_ASSERT(err == -EEXIST, "Expected -EEXIST %d got %d", -EEXIST, err);
+
+	rxa_params.event_buf_size = 0;
+	err = rte_event_eth_rx_adapter_create_with_params(TEST_INST_ID,
+				TEST_DEV_ID, &rx_p_conf, &rxa_params);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	err = rte_event_eth_rx_adapter_free(TEST_INST_ID);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_rx_adapter_free(TEST_INST_ID);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL %d got %d", -EINVAL, err);
+
+	err = rte_event_eth_rx_adapter_free(1);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL %d got %d", -EINVAL, err);
+
+	return TEST_SUCCESS;
+}
+
+static int
 adapter_queue_add_del(void)
 {
 	int err;
 	struct rte_event ev;
 	uint32_t cap;
 
-	struct rte_event_eth_rx_adapter_queue_conf queue_config;
+	struct rte_event_eth_rx_adapter_queue_conf queue_config = {0};
 
 	err = rte_event_eth_rx_adapter_caps_get(TEST_DEV_ID, TEST_ETHDEV_ID,
 					 &cap);
@@ -523,7 +567,7 @@ adapter_multi_eth_add_del(void)
 	uint16_t port_index, port_index_base, drv_id = 0;
 	char driver_name[50];
 
-	struct rte_event_eth_rx_adapter_queue_conf queue_config;
+	struct rte_event_eth_rx_adapter_queue_conf queue_config = {0};
 
 	ev.queue_id = 0;
 	ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
@@ -594,7 +638,7 @@ adapter_intr_queue_add_del(void)
 	struct rte_event ev;
 	uint32_t cap;
 	uint16_t eth_port;
-	struct rte_event_eth_rx_adapter_queue_conf queue_config;
+	struct rte_event_eth_rx_adapter_queue_conf queue_config = {0};
 
 	if (!default_params.rx_intr_port_inited)
 		return 0;
@@ -687,7 +731,7 @@ adapter_start_stop(void)
 	ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
 	ev.priority = 0;
 
-	struct rte_event_eth_rx_adapter_queue_conf queue_config;
+	struct rte_event_eth_rx_adapter_queue_conf queue_config = {0};
 
 	queue_config.rx_queue_flags = 0;
 	if (default_params.caps &
@@ -802,6 +846,7 @@ static struct unit_test_suite event_eth_rx_tests = {
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
 		TEST_CASE_ST(NULL, NULL, adapter_create_free),
+		TEST_CASE_ST(NULL, NULL, adapter_create_free_with_params),
 		TEST_CASE_ST(adapter_create, adapter_free,
 					adapter_queue_add_del),
 		TEST_CASE_ST(adapter_create, adapter_free,

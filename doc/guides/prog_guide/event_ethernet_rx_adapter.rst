@@ -62,6 +62,13 @@ service function and needs to create an event port for it. The callback is
 expected to fill the ``struct rte_event_eth_rx_adapter_conf structure``
 passed to it.
 
+If the application desires to control the event buffer size, it can use the
+``rte_event_eth_rx_adapter_create_with_params()`` api. The event buffer size is
+specified using ``struct rte_event_eth_rx_adapter_params::event_buf_size``.
+The function is passed the event device to be associated with the adapter
+and port configuration for the adapter to setup an event port if the
+adapter needs to use a service function.
+
 Adding Rx Queues to the Adapter Instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

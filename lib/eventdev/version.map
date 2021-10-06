@@ -138,6 +138,8 @@ EXPERIMENTAL {
 	__rte_eventdev_trace_port_setup;
 	# added in 20.11
 	rte_event_pmd_pci_probe_named;
+	# added in 21.11
+	rte_event_eth_rx_adapter_create_with_params;
 
 	#added in 21.05
 	rte_event_vector_pool_create;

@@ -85,7 +85,9 @@ struct rte_eth_event_enqueue_buffer {
 	/* Count of events in this buffer */
 	uint16_t count;
 	/* Array of events in this buffer */
-	struct rte_event events[ETH_EVENT_BUFFER_SIZE];
+	struct rte_event *events;
+	/* size of event buffer */
+	uint16_t events_size;
 	/* Event enqueue happens from head */
 	uint16_t head;
 	/* New packets from rte_eth_rx_burst is enqued from tail */
@@ -946,7 +948,7 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 		dropped = 0;
 		nb_cb = dev_info->cb_fn(eth_dev_id, rx_queue_id,
 				       buf->last |
-				       (RTE_DIM(buf->events) & ~buf->last_mask),
+				       (buf->events_size & ~buf->last_mask),
 				       buf->count >= BATCH_SIZE ?
 						buf->count - BATCH_SIZE : 0,
 				       &buf->events[buf->tail],
@@ -972,7 +974,7 @@ rxa_pkt_buf_available(struct rte_eth_event_enqueue_buffer *buf)
 	uint32_t nb_req = buf->tail + BATCH_SIZE;
 
 	if (!buf->last) {
-		if (nb_req <= RTE_DIM(buf->events))
+		if (nb_req <= buf->events_size)
 			return true;
 
 		if (buf->head >= BATCH_SIZE) {
@@ -2206,12 +2208,15 @@ rxa_ctrl(uint8_t id, int start)
 	return 0;
 }
 
-int
-rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
-				rte_event_eth_rx_adapter_conf_cb conf_cb,
-				void *conf_arg)
+static int
+rxa_create(uint8_t id, uint8_t dev_id,
+	   struct rte_event_eth_rx_adapter_params *rxa_params,
+	   rte_event_eth_rx_adapter_conf_cb conf_cb,
+	   void *conf_arg)
 {
 	struct rte_event_eth_rx_adapter *rx_adapter;
+	struct rte_eth_event_enqueue_buffer *buf;
+	struct rte_event *events;
 	int ret;
 	int socket_id;
 	uint16_t i;
@@ -2226,6 +2231,7 @@ rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
 
 	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+
 	if (conf_cb == NULL)
 		return -EINVAL;
 
@@ -2273,11 +2279,30 @@ rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
 		rte_free(rx_adapter);
 		return -ENOMEM;
 	}
+
 	rte_spinlock_init(&rx_adapter->rx_lock);
+
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
 		rx_adapter->eth_devices[i].dev = &rte_eth_devices[i];
 
+	/* Rx adapter event buffer allocation */
+	buf = &rx_adapter->event_enqueue_buffer;
+	buf->events_size = rxa_params->event_buf_size;
+
+	events = rte_zmalloc_socket(rx_adapter->mem_name,
+				    buf->events_size * sizeof(*events),
+				    0, socket_id);
+	if (events == NULL) {
+		RTE_EDEV_LOG_ERR("Failed to allocate mem for event buffer\n");
+		rte_free(rx_adapter->eth_devices);
+		rte_free(rx_adapter);
+		return -ENOMEM;
+	}
+
+	rx_adapter->event_enqueue_buffer.events = events;
+
 	event_eth_rx_adapter[id] = rx_adapter;
+
 	if (conf_cb == rxa_default_conf_cb)
 		rx_adapter->default_cb_arg = 1;
 
@@ -2294,6 +2319,61 @@ rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
 }
 
 int
+rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
+				rte_event_eth_rx_adapter_conf_cb conf_cb,
+				void *conf_arg)
+{
+	struct rte_event_eth_rx_adapter_params rxa_params = {0};
+
+	/* use default values for adapter params */
+	rxa_params.event_buf_size = ETH_EVENT_BUFFER_SIZE;
+
+	return rxa_create(id, dev_id, &rxa_params, conf_cb, conf_arg);
+}
+
+int
+rte_event_eth_rx_adapter_create_with_params(uint8_t id, uint8_t dev_id,
+			struct rte_event_port_conf *port_config,
+			struct rte_event_eth_rx_adapter_params *rxa_params)
+{
+	struct rte_event_port_conf *pc;
+	int ret;
+	struct rte_event_eth_rx_adapter_params temp_params = {0};
+
+	if (port_config == NULL)
+		return -EINVAL;
+
+	/* use default values if rxa_params is NULL */
+	if (rxa_params == NULL) {
+		rxa_params = &temp_params;
+		rxa_params->event_buf_size = ETH_EVENT_BUFFER_SIZE;
+	}
+
+	if (rxa_params->event_buf_size == 0)
+		return -EINVAL;
+
+	pc = rte_malloc(NULL, sizeof(*pc), 0);
+	if (pc == NULL)
+		return -ENOMEM;
+
+	*pc = *port_config;
+
+	/* adjust event buff size with BATCH_SIZE used for fetching packets
+	 * from NIC rx queues to get full buffer utilization and prevent
+	 * unnecessary rollovers.
+	 */
+	rxa_params->event_buf_size = RTE_ALIGN(rxa_params->event_buf_size,
+					       BATCH_SIZE);
+	rxa_params->event_buf_size += (BATCH_SIZE + BATCH_SIZE);
+
+	ret = rxa_create(id, dev_id, rxa_params, rxa_default_conf_cb, pc);
+	if (ret)
+		rte_free(pc);
+
+	return ret;
+}
+
+int
 rte_event_eth_rx_adapter_create(uint8_t id, uint8_t dev_id,
 		struct rte_event_port_conf *port_config)
 {
@@ -2302,12 +2382,14 @@ rte_event_eth_rx_adapter_create(uint8_t id, uint8_t dev_id,
 
 	if (port_config == NULL)
 		return -EINVAL;
+
 	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
 	pc = rte_malloc(NULL, sizeof(*pc), 0);
 	if (pc == NULL)
 		return -ENOMEM;
 	*pc = *port_config;
+
 	ret = rte_event_eth_rx_adapter_create_ext(id, dev_id,
 					rxa_default_conf_cb,
 					pc);
@@ -2336,6 +2418,7 @@ rte_event_eth_rx_adapter_free(uint8_t id)
 	if (rx_adapter->default_cb_arg)
 		rte_free(rx_adapter->conf_arg);
 	rte_free(rx_adapter->eth_devices);
+	rte_free(rx_adapter->event_enqueue_buffer.events);
 	rte_free(rx_adapter);
 	event_eth_rx_adapter[id] = NULL;
 
@@ -2711,6 +2794,7 @@ rte_event_eth_rx_adapter_stats_get(uint8_t id,
 
 	stats->rx_packets += dev_stats_sum.rx_packets;
 	stats->rx_enq_count += dev_stats_sum.rx_enq_count;
+
 	return 0;
 }
 
