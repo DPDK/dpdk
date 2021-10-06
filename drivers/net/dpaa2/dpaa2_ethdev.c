@@ -2822,6 +2822,11 @@ init_err:
 	return ret;
 }
 
+int dpaa2_dev_is_dpaa2(struct rte_eth_dev *dev)
+{
+	return dev->device->driver == &rte_dpaa2_pmd.driver;
+}
+
 static int
 rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 		struct rte_dpaa2_device *dpaa2_dev)

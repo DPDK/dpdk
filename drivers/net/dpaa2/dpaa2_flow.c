@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2020 NXP
+ * Copyright 2018-2021 NXP
  */
 
 #include <sys/queue.h>
@@ -30,10 +30,10 @@
 int mc_l4_port_identification;
 
 static char *dpaa2_flow_control_log;
-static int dpaa2_flow_miss_flow_id =
+static uint16_t dpaa2_flow_miss_flow_id =
 	DPNI_FS_MISS_DROP;
 
-#define FIXED_ENTRY_SIZE 54
+#define FIXED_ENTRY_SIZE DPNI_MAX_KEY_SIZE
 
 enum flow_rule_ipaddr_type {
 	FLOW_NONE_IPADDR,
@@ -83,7 +83,16 @@ static const
 enum rte_flow_action_type dpaa2_supported_action_type[] = {
 	RTE_FLOW_ACTION_TYPE_END,
 	RTE_FLOW_ACTION_TYPE_QUEUE,
+	RTE_FLOW_ACTION_TYPE_PHY_PORT,
+	RTE_FLOW_ACTION_TYPE_PORT_ID,
 	RTE_FLOW_ACTION_TYPE_RSS
+};
+
+static const
+enum rte_flow_action_type dpaa2_supported_fs_action_type[] = {
+	RTE_FLOW_ACTION_TYPE_QUEUE,
+	RTE_FLOW_ACTION_TYPE_PHY_PORT,
+	RTE_FLOW_ACTION_TYPE_PORT_ID
 };
 
 /* Max of enum rte_flow_item_type + 1, for both IPv4 and IPv6*/
@@ -2937,6 +2946,19 @@ dpaa2_configure_flow_raw(struct rte_flow *flow,
 	return 0;
 }
 
+static inline int
+dpaa2_fs_action_supported(enum rte_flow_action_type action)
+{
+	int i;
+
+	for (i = 0; i < (int)(sizeof(dpaa2_supported_fs_action_type) /
+					sizeof(enum rte_flow_action_type)); i++) {
+		if (action == dpaa2_supported_fs_action_type[i])
+			return 1;
+	}
+
+	return 0;
+}
 /* The existing QoS/FS entry with IP address(es)
  * needs update after
  * new extract(s) are inserted before IP
@@ -3115,7 +3137,7 @@ dpaa2_flow_entry_update(
 			}
 		}
 
-		if (curr->action != RTE_FLOW_ACTION_TYPE_QUEUE) {
+		if (!dpaa2_fs_action_supported(curr->action)) {
 			curr = LIST_NEXT(curr, next);
 			continue;
 		}
@@ -3253,6 +3275,43 @@ dpaa2_flow_verify_attr(
 	return 0;
 }
 
+static inline struct rte_eth_dev *
+dpaa2_flow_redirect_dev(struct dpaa2_dev_priv *priv,
+	const struct rte_flow_action *action)
+{
+	const struct rte_flow_action_phy_port *phy_port;
+	const struct rte_flow_action_port_id *port_id;
+	int idx = -1;
+	struct rte_eth_dev *dest_dev;
+
+	if (action->type == RTE_FLOW_ACTION_TYPE_PHY_PORT) {
+		phy_port = (const struct rte_flow_action_phy_port *)
+					action->conf;
+		if (!phy_port->original)
+			idx = phy_port->index;
+	} else if (action->type == RTE_FLOW_ACTION_TYPE_PORT_ID) {
+		port_id = (const struct rte_flow_action_port_id *)
+					action->conf;
+		if (!port_id->original)
+			idx = port_id->id;
+	} else {
+		return NULL;
+	}
+
+	if (idx >= 0) {
+		if (!rte_eth_dev_is_valid_port(idx))
+			return NULL;
+		dest_dev = &rte_eth_devices[idx];
+	} else {
+		dest_dev = priv->eth_dev;
+	}
+
+	if (!dpaa2_dev_is_dpaa2(dest_dev))
+		return NULL;
+
+	return dest_dev;
+}
+
 static inline int
 dpaa2_flow_verify_action(
 	struct dpaa2_dev_priv *priv,
@@ -3276,6 +3335,13 @@ dpaa2_flow_verify_action(
 					dest_queue->index, attr->group);
 
 				return -1;
+			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_PHY_PORT:
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			if (!dpaa2_flow_redirect_dev(priv, &actions[j])) {
+				DPAA2_PMD_ERR("Invalid port id of action");
+				return -ENOTSUP;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
@@ -3330,11 +3396,13 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 	struct dpni_qos_tbl_cfg qos_cfg;
 	struct dpni_fs_action_cfg action;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
-	struct dpaa2_queue *rxq;
+	struct dpaa2_queue *dest_q;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
 	size_t param;
 	struct rte_flow *curr = LIST_FIRST(&priv->flows);
 	uint16_t qos_index;
+	struct rte_eth_dev *dest_dev;
+	struct dpaa2_dev_priv *dest_priv;
 
 	ret = dpaa2_flow_verify_attr(priv, attr);
 	if (ret)
@@ -3446,12 +3514,31 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 	while (!end_of_list) {
 		switch (actions[j].type) {
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			dest_queue =
-				(const struct rte_flow_action_queue *)(actions[j].conf);
-			rxq = priv->rx_vq[dest_queue->index];
-			flow->action = RTE_FLOW_ACTION_TYPE_QUEUE;
+		case RTE_FLOW_ACTION_TYPE_PHY_PORT:
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
 			memset(&action, 0, sizeof(struct dpni_fs_action_cfg));
-			action.flow_id = rxq->flow_id;
+			flow->action = actions[j].type;
+
+			if (actions[j].type == RTE_FLOW_ACTION_TYPE_QUEUE) {
+				dest_queue = (const struct rte_flow_action_queue *)
+								(actions[j].conf);
+				dest_q = priv->rx_vq[dest_queue->index];
+				action.flow_id = dest_q->flow_id;
+			} else {
+				dest_dev = dpaa2_flow_redirect_dev(priv,
+								   &actions[j]);
+				if (!dest_dev) {
+					DPAA2_PMD_ERR("Invalid destination device to redirect!");
+					return -1;
+				}
+
+				dest_priv = dest_dev->data->dev_private;
+				dest_q = dest_priv->tx_vq[0];
+				action.options =
+						DPNI_FS_OPT_REDIRECT_TO_DPNI_TX;
+				action.redirect_obj_token = dest_priv->token;
+				action.flow_id = dest_q->flow_id;
+			}
 
 			/* Configure FS table first*/
 			if (is_keycfg_configured & DPAA2_FS_TABLE_RECONFIGURE) {
@@ -3481,8 +3568,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 					return -1;
 				}
 				tc_cfg.enable = true;
-				tc_cfg.fs_miss_flow_id =
-					dpaa2_flow_miss_flow_id;
+				tc_cfg.fs_miss_flow_id = dpaa2_flow_miss_flow_id;
 				ret = dpni_set_rx_fs_dist(dpni, CMD_PRI_LOW,
 							 priv->token, &tc_cfg);
 				if (ret < 0) {
@@ -3970,7 +4056,7 @@ struct rte_flow *dpaa2_flow_create(struct rte_eth_dev *dev,
 	ret = dpaa2_generic_flow_set(flow, dev, attr, pattern,
 			actions, error);
 	if (ret < 0) {
-		if (error->type > RTE_FLOW_ERROR_TYPE_ACTION)
+		if (error && error->type > RTE_FLOW_ERROR_TYPE_ACTION)
 			rte_flow_error_set(error, EPERM,
 					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					attr, "unknown");
@@ -4002,6 +4088,8 @@ int dpaa2_flow_destroy(struct rte_eth_dev *dev,
 
 	switch (flow->action) {
 	case RTE_FLOW_ACTION_TYPE_QUEUE:
+	case RTE_FLOW_ACTION_TYPE_PHY_PORT:
+	case RTE_FLOW_ACTION_TYPE_PORT_ID:
 		if (priv->num_rx_tc > 1) {
 			/* Remove entry from QoS table first */
 			ret = dpni_remove_qos_entry(dpni, CMD_PRI_LOW, priv->token,

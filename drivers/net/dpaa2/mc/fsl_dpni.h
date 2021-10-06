@@ -1497,11 +1497,34 @@ int dpni_clear_qos_table(struct fsl_mc_io *mc_io,
 #define DPNI_FS_OPT_SET_STASH_CONTROL  0x4
 
 /**
+ * Redirect matching traffic to Rx part of another dpni object. The frame
+ * will be classified according to new qos and flow steering rules from
+ * target dpni object.
+ */
+#define DPNI_FS_OPT_REDIRECT_TO_DPNI_RX		0x08
+
+/**
+ * Redirect matching traffic into Tx queue of another dpni object. The
+ * frame will be transmitted directly
+ */
+#define DPNI_FS_OPT_REDIRECT_TO_DPNI_TX		0x10
+
+/**
  * struct dpni_fs_action_cfg - Action configuration for table look-up
  * @flc: FLC value for traffic matching this rule.  Please check the Frame
  * Descriptor section in the hardware documentation for more information.
  * @flow_id: Identifies the Rx queue used for matching traffic.  Supported
  *     values are in range 0 to num_queue-1.
+ * @redirect_obj_token: token that identifies the object where frame is
+ * redirected when this rule is hit. This paraneter is used only when one of the
+ * flags DPNI_FS_OPT_REDIRECT_TO_DPNI_RX or DPNI_FS_OPT_REDIRECT_TO_DPNI_TX is
+ * set.
+ * The token is obtained using dpni_open() API call. The object must stay
+ * open during the operation to ensure the fact that application has access
+ * on it. If the object is destroyed of closed next actions will take place:
+ * - if DPNI_FS_OPT_DISCARD is set the frame will be discarded by current dpni
+ * - if DPNI_FS_OPT_DISCARD is cleared the frame will be enqueued in queue with
+ *   index provided in flow_id parameter.
  * @options: Any combination of DPNI_FS_OPT_ values.
  */
 struct dpni_fs_action_cfg {
