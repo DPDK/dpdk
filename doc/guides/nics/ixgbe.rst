@@ -1,6 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2016 Intel Corporation.
 
+.. include:: <isonum.txt>
+
 IXGBE Driver
 ============
 
@@ -22,8 +24,8 @@ The following sections explain RX and TX constraints in the vPMD.
 RX Constraints
 ~~~~~~~~~~~~~~
 
-Prerequisites and Pre-conditions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Linux Prerequisites and Pre-conditions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following prerequisites apply:
 
@@ -46,6 +48,24 @@ If an incoming packet is greater than the maximum acceptable length of one "mbuf
 vPMD for RX would be disabled.
 
 By default, IXGBE_MAX_RING_DESC is set to 4096 and RTE_PMD_IXGBE_RX_MAX_BURST is set to 32.
+
+Windows Prerequisites and Pre-conditions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Follow the :doc:`guide for Windows <../windows_gsg/run_apps>`
+  to setup the basic DPDK environment.
+
+- Identify the Intel\ |reg| Ethernet adapter and get the latest NVM/FW version.
+
+- To access any Intel\ |reg| Ethernet hardware,
+  load the NetUIO driver in place of existing built-in (inbox) driver.
+
+- To load NetUIO driver, follow the steps mentioned in `dpdk-kmods repository
+  <https://git.dpdk.org/dpdk-kmods/tree/windows/netuio/README.rst>`_.
+
+- Loading of private Dynamic Device Personalization (DDP) package
+  is not supported on Windows.
+
 
 Feature not Supported by RX Vector PMD
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

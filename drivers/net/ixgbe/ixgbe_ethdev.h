@@ -6,6 +6,7 @@
 #define _IXGBE_ETHDEV_H_
 
 #include <stdint.h>
+#include <sys/queue.h>
 
 #include "base/ixgbe_type.h"
 #include "base/ixgbe_dcb.h"

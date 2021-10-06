@@ -85,6 +85,10 @@ New Features
   * Added DEV_RX_OFFLOAD_TIMESTAMP support.
   * Added timesync API support under scalar path.
 
+* **Updated Intel ixgbe driver.**
+
+  * Added Intel ixgbe support on Windows.
+
 * **Updated Marvell cnxk ethdev driver.**
 
   * Added rte_flow support for dual VLAN insert and strip actions.

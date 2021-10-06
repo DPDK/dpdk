@@ -29,6 +29,6 @@ foreach flag: error_cflags
 endforeach
 
 base_lib = static_library('ixgbe_base', sources,
-    dependencies: static_rte_eal,
+    dependencies: [static_rte_eal, static_rte_net],
     c_args: c_args)
 base_objs = base_lib.extract_all_objects(recursive: true)

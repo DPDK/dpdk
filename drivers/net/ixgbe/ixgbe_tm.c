@@ -665,7 +665,7 @@ ixgbe_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	}
 	/* check level */
 	if (level_id != RTE_TM_NODE_LEVEL_ID_ANY &&
-	    level_id != parent_node_type + 1) {
+	    level_id != (uint32_t)parent_node_type + 1) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_PARAMS;
 		error->message = "Wrong level";
 		return -EINVAL;

@@ -1,12 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-if is_windows
-    build = false
-    reason = 'not supported on Windows'
-    subdir_done()
-endif
-
 cflags += ['-DRTE_LIBRTE_IXGBE_BYPASS']
 
 subdir('base')
@@ -30,6 +24,9 @@ deps += ['hash', 'security']
 
 if arch_subdir == 'x86'
     sources += files('ixgbe_rxtx_vec_sse.c')
+    if is_windows and cc.get_id() != 'clang'
+        cflags += ['-fno-asynchronous-unwind-tables']
+    endif
 elif arch_subdir == 'arm'
     sources += files('ixgbe_rxtx_vec_neon.c')
 endif

@@ -4,6 +4,7 @@
 
 #include "ixgbe_vf.h"
 #include "ixgbe_hv_vf.h"
+#include "ixgbe_osdep.h"
 
 /**
  * Hyper-V variant - just a stub.

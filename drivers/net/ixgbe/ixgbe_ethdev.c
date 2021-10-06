@@ -10,7 +10,6 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <inttypes.h>
-#include <netinet/in.h>
 #include <rte_string_fns.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
@@ -46,6 +45,7 @@
 #include "ixgbe_rxtx.h"
 #include "base/ixgbe_type.h"
 #include "base/ixgbe_phy.h"
+#include "base/ixgbe_osdep.h"
 #include "ixgbe_regs.h"
 
 /*
