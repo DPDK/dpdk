@@ -1,13 +1,11 @@
 DPDK_22 {
 	global:
 
-	rte_security_attach_session;
 	rte_security_capabilities_get;
 	rte_security_capability_get;
 	rte_security_session_create;
 	rte_security_session_destroy;
 	rte_security_session_get_size;
-	rte_security_set_pkt_metadata;
 
 	local: *;
 };
@@ -19,7 +17,6 @@ EXPERIMENTAL {
 	__rte_security_set_pkt_metadata;
 	rte_security_dynfield_offset;
 	rte_security_dynfield_register;
-	rte_security_get_userdata;
 	rte_security_session_stats_get;
 	rte_security_session_update;
 };
