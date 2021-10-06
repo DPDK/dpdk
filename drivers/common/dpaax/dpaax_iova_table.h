@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018 NXP
+ * Copyright 2018-2021 NXP
  */
 
 #ifndef _DPAAX_IOVA_TABLE_H_
@@ -101,6 +101,12 @@ dpaax_iova_table_get_va(phys_addr_t paddr) {
 
 		/* paddr > entry->start && paddr <= entry->(start+len) */
 		index = (paddr_align - entry[i].start)/DPAAX_MEM_SPLIT;
+		/* paddr is within range, but no vaddr entry ever written
+		 * at index
+		 */
+		if ((void *)(uintptr_t)entry[i].pages[index] == NULL)
+			return NULL;
+
 		vaddr = (void *)((uintptr_t)entry[i].pages[index] + offset);
 		break;
 	} while (1);
