@@ -82,4 +82,23 @@ __rte_experimental
 void
 rte_pmd_dpaa2_thread_init(void);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Generate the DPAA2 WRIOP based hash value
+ *
+ * @param key
+ *    Array of key data
+ * @param size
+ *    Size of the hash input key in bytes
+ *
+ * @return
+ *   - 0 if successful.
+ *   - Negative in case of failure.
+ */
+
+__rte_experimental
+uint32_t
+rte_pmd_dpaa2_get_tlu_hash(uint8_t *key, int size);
 #endif /* _RTE_PMD_DPAA2_H */
