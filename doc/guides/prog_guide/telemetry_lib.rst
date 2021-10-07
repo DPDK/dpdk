@@ -140,7 +140,7 @@ Giving the following response to the client::
     {"/example_lib/string_example": "This is an example string"}
 
 For more information on the range of data functions available in the API,
-please refer to the `API doc <https://doc.dpdk.org/api-20.05/rte__telemetry_8h.html>`_
+please refer to the `API doc <https://doc.dpdk.org/api/rte__telemetry_8h.html>`_
 
 
 Registering Commands
