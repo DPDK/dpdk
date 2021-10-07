@@ -17,6 +17,49 @@
 
 #include <cmdline.h>
 
+#define RDLINE_BUF_SIZE 512
+#define RDLINE_PROMPT_SIZE  32
+#define RDLINE_VT100_BUF_SIZE  8
+#define RDLINE_HISTORY_BUF_SIZE BUFSIZ
+#define RDLINE_HISTORY_MAX_LINE 64
+
+enum rdline_status {
+	RDLINE_INIT,
+	RDLINE_RUNNING,
+	RDLINE_EXITED
+};
+
+struct rdline {
+	enum rdline_status status;
+	/* rdline bufs */
+	struct cirbuf left;
+	struct cirbuf right;
+	char left_buf[RDLINE_BUF_SIZE+2]; /* reserve 2 chars for the \n\0 */
+	char right_buf[RDLINE_BUF_SIZE];
+
+	char prompt[RDLINE_PROMPT_SIZE];
+	unsigned int prompt_size;
+
+	char kill_buf[RDLINE_BUF_SIZE];
+	unsigned int kill_size;
+
+	/* history */
+	struct cirbuf history;
+	char history_buf[RDLINE_HISTORY_BUF_SIZE];
+	int history_cur_line;
+
+	/* callbacks and func pointers */
+	rdline_write_char_t *write_char;
+	rdline_validate_t *validate;
+	rdline_complete_t *complete;
+
+	/* vt100 parser */
+	struct cmdline_vt100 vt100;
+
+	/* opaque pointer */
+	void *opaque;
+};
+
 #ifdef RTE_EXEC_ENV_WINDOWS
 struct terminal {
 	DWORD input_mode;
@@ -56,5 +99,11 @@ ssize_t cmdline_read_char(struct cmdline *cl, char *c);
 /* vdprintf(3) */
 __rte_format_printf(2, 0)
 int cmdline_vdprintf(int fd, const char *format, va_list op);
+
+int rdline_init(struct rdline *rdl,
+		rdline_write_char_t *write_char,
+		rdline_validate_t *validate,
+		rdline_complete_t *complete,
+		void *opaque);
 
 #endif

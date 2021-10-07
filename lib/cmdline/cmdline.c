@@ -85,13 +85,12 @@ cmdline_new(cmdline_parse_ctx_t *ctx, const char *prompt, int s_in, int s_out)
 	cl->ctx = ctx;
 
 	ret = rdline_init(&cl->rdl, cmdline_write_char, cmdline_valid_buffer,
-			cmdline_complete_buffer);
+			cmdline_complete_buffer, cl);
 	if (ret != 0) {
 		free(cl);
 		return NULL;
 	}
 
-	cl->rdl.opaque = cl;
 	cmdline_set_prompt(cl, prompt);
 	rdline_newline(&cl->rdl, cl->prompt);
 

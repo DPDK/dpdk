@@ -297,7 +297,7 @@ cmd_get_history_bufsize_parsed(__rte_unused void *parsed_result,
 	struct rdline *rdl = cmdline_get_rdline(cl);
 
 	cmdline_printf(cl, "History buffer size: %zu\n",
-			sizeof(rdl->history_buf));
+			rdline_get_history_buffer_size(rdl));
 }
 
 cmdline_parse_token_string_t cmd_get_history_bufsize_tok =

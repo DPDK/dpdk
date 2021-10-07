@@ -10,9 +10,7 @@
 /**
  * This file is a small equivalent to the GNU readline library, but it
  * was originally designed for small systems, like Atmel AVR
- * microcontrollers (8 bits). Indeed, we don't use any malloc that is
- * sometimes not implemented (or just not recommended) on such
- * systems.
+ * microcontrollers (8 bits). It only uses malloc() on object creation.
  *
  * Obviously, it does not support as many things as the GNU readline,
  * but at least it supports some interesting features like a kill
@@ -31,25 +29,13 @@
  */
 
 #include <stdio.h>
+#include <rte_compat.h>
 #include <cmdline_cirbuf.h>
 #include <cmdline_vt100.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* configuration */
-#define RDLINE_BUF_SIZE 512
-#define RDLINE_PROMPT_SIZE  32
-#define RDLINE_VT100_BUF_SIZE  8
-#define RDLINE_HISTORY_BUF_SIZE BUFSIZ
-#define RDLINE_HISTORY_MAX_LINE 64
-
-enum rdline_status {
-	RDLINE_INIT,
-	RDLINE_RUNNING,
-	RDLINE_EXITED
-};
 
 struct rdline;
 
@@ -60,52 +46,32 @@ typedef int (rdline_complete_t)(struct rdline *rdl, const char *buf,
 				char *dstbuf, unsigned int dstsize,
 				int *state);
 
-struct rdline {
-	enum rdline_status status;
-	/* rdline bufs */
-	struct cirbuf left;
-	struct cirbuf right;
-	char left_buf[RDLINE_BUF_SIZE+2]; /* reserve 2 chars for the \n\0 */
-	char right_buf[RDLINE_BUF_SIZE];
-
-	char prompt[RDLINE_PROMPT_SIZE];
-	unsigned int prompt_size;
-
-	char kill_buf[RDLINE_BUF_SIZE];
-	unsigned int kill_size;
-
-	/* history */
-	struct cirbuf history;
-	char history_buf[RDLINE_HISTORY_BUF_SIZE];
-	int history_cur_line;
-
-	/* callbacks and func pointers */
-	rdline_write_char_t *write_char;
-	rdline_validate_t *validate;
-	rdline_complete_t *complete;
-
-	/* vt100 parser */
-	struct cmdline_vt100 vt100;
-
-	/* opaque pointer */
-	void *opaque;
-};
-
 /**
- * Init fields for a struct rdline. Call this only once at the beginning
- * of your program.
- * \param rdl A pointer to an uninitialized struct rdline
+ * Allocate and initialize a new rdline instance.
+ *
  * \param write_char The function used by the function to write a character
  * \param validate A pointer to the function to execute when the
  *                 user validates the buffer.
  * \param complete A pointer to the function to execute when the
  *                 user completes the buffer.
+ * \param opaque User data for use in the callbacks.
+ *
+ * \return New rdline object on success, NULL on failure.
  */
-int rdline_init(struct rdline *rdl,
-		 rdline_write_char_t *write_char,
-		 rdline_validate_t *validate,
-		 rdline_complete_t *complete);
+__rte_experimental
+struct rdline *rdline_new(rdline_write_char_t *write_char,
+			  rdline_validate_t *validate,
+			  rdline_complete_t *complete,
+			  void *opaque);
 
+/**
+ * Free an rdline instance.
+ *
+ * \param rdl A pointer to an initialized struct rdline.
+ *            If NULL, this function is a no-op.
+ */
+__rte_experimental
+void rdline_free(struct rdline *rdl);
 
 /**
  * Init the current buffer, and display a prompt.
@@ -193,6 +159,18 @@ void rdline_clear_history(struct rdline *rdl);
  * Get the i-th history item
  */
 char *rdline_get_history_item(struct rdline *rdl, unsigned int i);
+
+/**
+ * Get maximum history buffer size.
+ */
+__rte_experimental
+size_t rdline_get_history_buffer_size(struct rdline *rdl);
+
+/**
+ * Get the opaque pointer supplied on struct rdline creation.
+ */
+__rte_experimental
+void *rdline_get_opaque(struct rdline *rdl);
 
 #ifdef __cplusplus
 }

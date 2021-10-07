@@ -57,7 +57,6 @@ DPDK_22 {
 	rdline_clear_history;
 	rdline_get_buffer;
 	rdline_get_history_item;
-	rdline_init;
 	rdline_newline;
 	rdline_quit;
 	rdline_redisplay;
@@ -73,7 +72,14 @@ DPDK_22 {
 EXPERIMENTAL {
 	global:
 
+	# added in 20.11
 	cmdline_get_rdline;
+
+	# added in 21.11
+	rdline_new;
+	rdline_free;
+	rdline_get_history_buffer_size;
+	rdline_get_opaque;
 
 	local: *;
 };

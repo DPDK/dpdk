@@ -327,6 +327,9 @@ API Changes
 
 * cmdline: Made ``cmdline`` structure definition hidden on Linux and FreeBSD.
 
+* cmdline: Made ``rdline`` structure definition hidden. Functions are added
+  to dynamically allocate and free it, and to access user data in callbacks.
+
 * mempool: Added ``RTE_MEMPOOL_F_NON_IO`` flag to give a hint to DPDK components
   that objects from this pool will not be used for device IO (e.g. DMA).
 

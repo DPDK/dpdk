@@ -13,6 +13,7 @@
 #include <ctype.h>
 
 #include "cmdline_cirbuf.h"
+#include "cmdline_private.h"
 #include "cmdline_rdline.h"
 
 static void rdline_puts(struct rdline *rdl, const char *buf);
@@ -37,9 +38,10 @@ isblank2(char c)
 
 int
 rdline_init(struct rdline *rdl,
-		 rdline_write_char_t *write_char,
-		 rdline_validate_t *validate,
-		 rdline_complete_t *complete)
+	    rdline_write_char_t *write_char,
+	    rdline_validate_t *validate,
+	    rdline_complete_t *complete,
+	    void *opaque)
 {
 	if (!rdl || !write_char || !validate || !complete)
 		return -EINVAL;
@@ -47,8 +49,31 @@ rdline_init(struct rdline *rdl,
 	rdl->validate = validate;
 	rdl->complete = complete;
 	rdl->write_char = write_char;
+	rdl->opaque = opaque;
 	rdl->status = RDLINE_INIT;
 	return cirbuf_init(&rdl->history, rdl->history_buf, 0, RDLINE_HISTORY_BUF_SIZE);
+}
+
+struct rdline *
+rdline_new(rdline_write_char_t *write_char,
+	   rdline_validate_t *validate,
+	   rdline_complete_t *complete,
+	   void *opaque)
+{
+	struct rdline *rdl;
+
+	rdl = malloc(sizeof(*rdl));
+	if (rdline_init(rdl, write_char, validate, complete, opaque) < 0) {
+		free(rdl);
+		rdl = NULL;
+	}
+	return rdl;
+}
+
+void
+rdline_free(struct rdline *rdl)
+{
+	free(rdl);
 }
 
 void
@@ -562,6 +587,18 @@ rdline_get_history_item(struct rdline * rdl, unsigned int idx)
 	}
 
 	return NULL;
+}
+
+size_t
+rdline_get_history_buffer_size(struct rdline *rdl)
+{
+	return sizeof(rdl->history_buf);
+}
+
+void *
+rdline_get_opaque(struct rdline *rdl)
+{
+	return rdl != NULL ? rdl->opaque : NULL;
 }
 
 int
