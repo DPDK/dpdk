@@ -413,11 +413,11 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 	/* if packet wasn't IPv4 or IPv6, it's forwarded to the port it came from */
 
 	/* 02:00:00:00:00:xx */
-	d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
+	d_addr_bytes = &eth_hdr->dst_addr.addr_bytes[0];
 	*((uint64_t *)d_addr_bytes) = 0x000000000002 + ((uint64_t)dst_port << 40);
 
 	/* src addr */
-	rte_ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->src_addr);
 
 	send_single_packet(m, dst_port);
 }

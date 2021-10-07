@@ -342,11 +342,11 @@ rx_burst_8023ad(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
 						 bufs[j])) ||
 				!collecting ||
 				(!promisc &&
-				 ((rte_is_unicast_ether_addr(&hdr->d_addr) &&
+				 ((rte_is_unicast_ether_addr(&hdr->dst_addr) &&
 				   !rte_is_same_ether_addr(bond_mac,
-						       &hdr->d_addr)) ||
+						       &hdr->dst_addr)) ||
 				  (!allmulti &&
-				   rte_is_multicast_ether_addr(&hdr->d_addr)))))) {
+				   rte_is_multicast_ether_addr(&hdr->dst_addr)))))) {
 
 				if (hdr->ether_type == ether_type_slow_be) {
 					bond_mode_8023ad_handle_slow_pkt(
@@ -477,9 +477,9 @@ update_client_stats(uint32_t addr, uint16_t port, uint32_t *TXorRXindicator)
 		"DstMAC:" RTE_ETHER_ADDR_PRT_FMT " DstIP:%s %s %d\n", \
 		info,							\
 		port,							\
-		RTE_ETHER_ADDR_BYTES(&eth_h->s_addr),                  \
+		RTE_ETHER_ADDR_BYTES(&eth_h->src_addr),                  \
 		src_ip,							\
-		RTE_ETHER_ADDR_BYTES(&eth_h->d_addr),                  \
+		RTE_ETHER_ADDR_BYTES(&eth_h->dst_addr),                  \
 		dst_ip,							\
 		arp_op, ++burstnumber)
 #endif
@@ -643,9 +643,9 @@ static inline uint16_t
 ether_hash(struct rte_ether_hdr *eth_hdr)
 {
 	unaligned_uint16_t *word_src_addr =
-		(unaligned_uint16_t *)eth_hdr->s_addr.addr_bytes;
+		(unaligned_uint16_t *)eth_hdr->src_addr.addr_bytes;
 	unaligned_uint16_t *word_dst_addr =
-		(unaligned_uint16_t *)eth_hdr->d_addr.addr_bytes;
+		(unaligned_uint16_t *)eth_hdr->dst_addr.addr_bytes;
 
 	return (word_src_addr[0] ^ word_dst_addr[0]) ^
 			(word_src_addr[1] ^ word_dst_addr[1]) ^
@@ -942,10 +942,10 @@ bond_ethdev_tx_burst_tlb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 			ether_hdr = rte_pktmbuf_mtod(bufs[j],
 						struct rte_ether_hdr *);
-			if (rte_is_same_ether_addr(&ether_hdr->s_addr,
+			if (rte_is_same_ether_addr(&ether_hdr->src_addr,
 							&primary_slave_addr))
 				rte_ether_addr_copy(&active_slave_addr,
-						&ether_hdr->s_addr);
+						&ether_hdr->src_addr);
 #if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
 					mode6_debug("TX IPv4:", ether_hdr, slaves[i], &burstnumberTX);
 #endif
@@ -1017,7 +1017,7 @@ bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			slave_idx = bond_mode_alb_arp_xmit(eth_h, offset, internals);
 
 			/* Change src mac in eth header */
-			rte_eth_macaddr_get(slave_idx, &eth_h->s_addr);
+			rte_eth_macaddr_get(slave_idx, &eth_h->src_addr);
 
 			/* Add packet to slave tx buffer */
 			slave_bufs[slave_idx][slave_bufs_pkts[slave_idx]] = bufs[i];

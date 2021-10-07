@@ -587,8 +587,8 @@ tx_machine(struct bond_dev_private *internals, uint16_t slave_id)
 	hdr = rte_pktmbuf_mtod(lacp_pkt, struct lacpdu_header *);
 
 	/* Source and destination MAC */
-	rte_ether_addr_copy(&lacp_mac_addr, &hdr->eth_hdr.d_addr);
-	rte_eth_macaddr_get(slave_id, &hdr->eth_hdr.s_addr);
+	rte_ether_addr_copy(&lacp_mac_addr, &hdr->eth_hdr.dst_addr);
+	rte_eth_macaddr_get(slave_id, &hdr->eth_hdr.src_addr);
 	hdr->eth_hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_SLOW);
 
 	lacpdu = &hdr->lacpdu;
@@ -1346,7 +1346,7 @@ bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
 		} while (unlikely(retval == 0));
 
 		m_hdr->marker.tlv_type_marker = MARKER_TLV_TYPE_RESP;
-		rte_eth_macaddr_get(slave_id, &m_hdr->eth_hdr.s_addr);
+		rte_eth_macaddr_get(slave_id, &m_hdr->eth_hdr.src_addr);
 
 		if (internals->mode4.dedicated_queues.enabled == 0) {
 			if (rte_ring_enqueue(port->tx_ring, pkt) != 0) {

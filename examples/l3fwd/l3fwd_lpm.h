@@ -40,11 +40,11 @@ l3fwd_lpm_simple_forward(struct rte_mbuf *m, uint16_t portid,
 		++(ipv4_hdr->hdr_checksum);
 #endif
 		/* dst addr */
-		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[dst_port];
+		*(uint64_t *)&eth_hdr->dst_addr = dest_eth_addr[dst_port];
 
 		/* src addr */
 		rte_ether_addr_copy(&ports_eth_addr[dst_port],
-				&eth_hdr->s_addr);
+				&eth_hdr->src_addr);
 
 		send_single_packet(qconf, m, dst_port);
 	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
@@ -62,11 +62,11 @@ l3fwd_lpm_simple_forward(struct rte_mbuf *m, uint16_t portid,
 			dst_port = portid;
 
 		/* dst addr */
-		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[dst_port];
+		*(uint64_t *)&eth_hdr->dst_addr = dest_eth_addr[dst_port];
 
 		/* src addr */
 		rte_ether_addr_copy(&ports_eth_addr[dst_port],
-				&eth_hdr->s_addr);
+				&eth_hdr->src_addr);
 
 		send_single_packet(qconf, m, dst_port);
 	} else {

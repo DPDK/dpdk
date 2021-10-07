@@ -213,8 +213,8 @@ bond_mode_alb_arp_upd(struct client_data *client_info,
 	rte_spinlock_lock(&internals->mode6.lock);
 	eth_h = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 
-	rte_ether_addr_copy(&client_info->app_mac, &eth_h->s_addr);
-	rte_ether_addr_copy(&client_info->cli_mac, &eth_h->d_addr);
+	rte_ether_addr_copy(&client_info->app_mac, &eth_h->src_addr);
+	rte_ether_addr_copy(&client_info->cli_mac, &eth_h->dst_addr);
 	if (client_info->vlan_count > 0)
 		eth_h->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
 	else

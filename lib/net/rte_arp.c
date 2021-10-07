@@ -29,8 +29,8 @@ rte_net_make_rarp_packet(struct rte_mempool *mpool,
 	}
 
 	/* Ethernet header. */
-	memset(eth_hdr->d_addr.addr_bytes, 0xff, RTE_ETHER_ADDR_LEN);
-	rte_ether_addr_copy(mac, &eth_hdr->s_addr);
+	memset(eth_hdr->dst_addr.addr_bytes, 0xff, RTE_ETHER_ADDR_LEN);
+	rte_ether_addr_copy(mac, &eth_hdr->src_addr);
 	eth_hdr->ether_type = RTE_BE16(RTE_ETHER_TYPE_RARP);
 
 	/* RARP header. */

@@ -178,9 +178,9 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	port_ieee1588_rx_timestamp_check(fs->rx_port, timesync_index);
 
 	/* Swap dest and src mac addresses. */
-	rte_ether_addr_copy(&eth_hdr->d_addr, &addr);
-	rte_ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
-	rte_ether_addr_copy(&addr, &eth_hdr->s_addr);
+	rte_ether_addr_copy(&eth_hdr->dst_addr, &addr);
+	rte_ether_addr_copy(&eth_hdr->src_addr, &eth_hdr->dst_addr);
+	rte_ether_addr_copy(&addr, &eth_hdr->src_addr);
 
 	/* Forward PTP packet with hardware TX timestamp */
 	mb->ol_flags |= PKT_TX_IEEE1588_TMST;

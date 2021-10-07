@@ -238,8 +238,8 @@ gro_udp4_reassemble(struct rte_mbuf *pkt,
 	is_last_frag = ((frag_offset & RTE_IPV4_HDR_MF_FLAG) == 0) ? 1 : 0;
 	frag_offset = (uint16_t)(frag_offset & RTE_IPV4_HDR_OFFSET_MASK) << 3;
 
-	rte_ether_addr_copy(&(eth_hdr->s_addr), &(key.eth_saddr));
-	rte_ether_addr_copy(&(eth_hdr->d_addr), &(key.eth_daddr));
+	rte_ether_addr_copy(&(eth_hdr->src_addr), &(key.eth_saddr));
+	rte_ether_addr_copy(&(eth_hdr->dst_addr), &(key.eth_daddr));
 	key.ip_src_addr = ipv4_hdr->src_addr;
 	key.ip_dst_addr = ipv4_hdr->dst_addr;
 	key.ip_id = ip_id;

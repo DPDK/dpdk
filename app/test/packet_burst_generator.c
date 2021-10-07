@@ -56,8 +56,8 @@ initialize_eth_header(struct rte_ether_hdr *eth_hdr,
 		struct rte_ether_addr *dst_mac, uint16_t ether_type,
 		uint8_t vlan_enabled, uint16_t van_id)
 {
-	rte_ether_addr_copy(dst_mac, &eth_hdr->d_addr);
-	rte_ether_addr_copy(src_mac, &eth_hdr->s_addr);
+	rte_ether_addr_copy(dst_mac, &eth_hdr->dst_addr);
+	rte_ether_addr_copy(src_mac, &eth_hdr->src_addr);
 
 	if (vlan_enabled) {
 		struct rte_vlan_hdr *vhdr = (struct rte_vlan_hdr *)(

@@ -27,9 +27,9 @@ swap_mac(struct rte_ether_hdr *eth_hdr)
 	struct rte_ether_addr addr;
 
 	/* Swap dest and src mac addresses. */
-	rte_ether_addr_copy(&eth_hdr->d_addr, &addr);
-	rte_ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
-	rte_ether_addr_copy(&addr, &eth_hdr->s_addr);
+	rte_ether_addr_copy(&eth_hdr->dst_addr, &addr);
+	rte_ether_addr_copy(&eth_hdr->src_addr, &eth_hdr->dst_addr);
+	rte_ether_addr_copy(&addr, &eth_hdr->src_addr);
 }
 
 static inline void

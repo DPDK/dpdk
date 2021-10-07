@@ -1375,7 +1375,8 @@ send_single_packet(struct rte_mbuf *m, uint16_t port)
 
 	/* update src and dst mac*/
 	eh = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
-	memcpy(eh, &port_l2hdr[port], sizeof(eh->d_addr) + sizeof(eh->s_addr));
+	memcpy(eh, &port_l2hdr[port],
+			sizeof(eh->dst_addr) + sizeof(eh->src_addr));
 
 	qconf = &lcore_conf[lcore_id];
 	rte_eth_tx_buffer(port, qconf->tx_queue_id[port],
@@ -1743,8 +1744,9 @@ parse_eth_dest(const char *optarg)
 		return "port value exceeds RTE_MAX_ETHPORTS("
 			RTE_STR(RTE_MAX_ETHPORTS) ")";
 
-	if (cmdline_parse_etheraddr(NULL, port_end, &port_l2hdr[portid].d_addr,
-			sizeof(port_l2hdr[portid].d_addr)) < 0)
+	if (cmdline_parse_etheraddr(NULL, port_end,
+			&port_l2hdr[portid].dst_addr,
+			sizeof(port_l2hdr[portid].dst_addr)) < 0)
 		return "Invalid ethernet address";
 	return NULL;
 }
@@ -2002,8 +2004,9 @@ set_default_dest_mac(void)
 	uint32_t i;
 
 	for (i = 0; i != RTE_DIM(port_l2hdr); i++) {
-		port_l2hdr[i].d_addr.addr_bytes[0] = RTE_ETHER_LOCAL_ADMIN_ADDR;
-		port_l2hdr[i].d_addr.addr_bytes[5] = i;
+		port_l2hdr[i].dst_addr.addr_bytes[0] =
+				RTE_ETHER_LOCAL_ADMIN_ADDR;
+		port_l2hdr[i].dst_addr.addr_bytes[5] = i;
 	}
 }
 
@@ -2109,14 +2112,14 @@ main(int argc, char **argv)
 				"rte_eth_dev_adjust_nb_rx_tx_desc: err=%d, port=%d\n",
 				ret, portid);
 
-		ret = rte_eth_macaddr_get(portid, &port_l2hdr[portid].s_addr);
+		ret = rte_eth_macaddr_get(portid, &port_l2hdr[portid].src_addr);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE,
 				"rte_eth_macaddr_get: err=%d, port=%d\n",
 				ret, portid);
 
-		print_ethaddr("Dst MAC:", &port_l2hdr[portid].d_addr);
-		print_ethaddr(", Src MAC:", &port_l2hdr[portid].s_addr);
+		print_ethaddr("Dst MAC:", &port_l2hdr[portid].dst_addr);
+		print_ethaddr(", Src MAC:", &port_l2hdr[portid].src_addr);
 		printf(", ");
 
 		/* init memory */

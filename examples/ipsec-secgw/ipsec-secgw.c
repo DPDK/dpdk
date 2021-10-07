@@ -545,9 +545,9 @@ prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port,
 		ethhdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
 	}
 
-	memcpy(&ethhdr->s_addr, &ethaddr_tbl[port].src,
+	memcpy(&ethhdr->src_addr, &ethaddr_tbl[port].src,
 			sizeof(struct rte_ether_addr));
-	memcpy(&ethhdr->d_addr, &ethaddr_tbl[port].dst,
+	memcpy(&ethhdr->dst_addr, &ethaddr_tbl[port].dst,
 			sizeof(struct rte_ether_addr));
 }
 

@@ -1068,24 +1068,24 @@ simple_ipv4_fwd_8pkts(struct rte_mbuf *m[8], uint16_t portid)
 #endif
 
 	/* dst addr */
-	*(uint64_t *)&eth_hdr[0]->d_addr = dest_eth_addr[dst_port[0]];
-	*(uint64_t *)&eth_hdr[1]->d_addr = dest_eth_addr[dst_port[1]];
-	*(uint64_t *)&eth_hdr[2]->d_addr = dest_eth_addr[dst_port[2]];
-	*(uint64_t *)&eth_hdr[3]->d_addr = dest_eth_addr[dst_port[3]];
-	*(uint64_t *)&eth_hdr[4]->d_addr = dest_eth_addr[dst_port[4]];
-	*(uint64_t *)&eth_hdr[5]->d_addr = dest_eth_addr[dst_port[5]];
-	*(uint64_t *)&eth_hdr[6]->d_addr = dest_eth_addr[dst_port[6]];
-	*(uint64_t *)&eth_hdr[7]->d_addr = dest_eth_addr[dst_port[7]];
+	*(uint64_t *)&eth_hdr[0]->dst_addr = dest_eth_addr[dst_port[0]];
+	*(uint64_t *)&eth_hdr[1]->dst_addr = dest_eth_addr[dst_port[1]];
+	*(uint64_t *)&eth_hdr[2]->dst_addr = dest_eth_addr[dst_port[2]];
+	*(uint64_t *)&eth_hdr[3]->dst_addr = dest_eth_addr[dst_port[3]];
+	*(uint64_t *)&eth_hdr[4]->dst_addr = dest_eth_addr[dst_port[4]];
+	*(uint64_t *)&eth_hdr[5]->dst_addr = dest_eth_addr[dst_port[5]];
+	*(uint64_t *)&eth_hdr[6]->dst_addr = dest_eth_addr[dst_port[6]];
+	*(uint64_t *)&eth_hdr[7]->dst_addr = dest_eth_addr[dst_port[7]];
 
 	/* src addr */
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[0]], &eth_hdr[0]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[1]], &eth_hdr[1]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[2]], &eth_hdr[2]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[3]], &eth_hdr[3]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[4]], &eth_hdr[4]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[5]], &eth_hdr[5]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[6]], &eth_hdr[6]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[7]], &eth_hdr[7]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[0]], &eth_hdr[0]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[1]], &eth_hdr[1]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[2]], &eth_hdr[2]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[3]], &eth_hdr[3]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[4]], &eth_hdr[4]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[5]], &eth_hdr[5]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[6]], &eth_hdr[6]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[7]], &eth_hdr[7]->src_addr);
 
 	send_single_packet(m[0], (uint8_t)dst_port[0]);
 	send_single_packet(m[1], (uint8_t)dst_port[1]);
@@ -1203,24 +1203,24 @@ simple_ipv6_fwd_8pkts(struct rte_mbuf *m[8], uint16_t portid)
 		dst_port[7] = portid;
 
 	/* dst addr */
-	*(uint64_t *)&eth_hdr[0]->d_addr = dest_eth_addr[dst_port[0]];
-	*(uint64_t *)&eth_hdr[1]->d_addr = dest_eth_addr[dst_port[1]];
-	*(uint64_t *)&eth_hdr[2]->d_addr = dest_eth_addr[dst_port[2]];
-	*(uint64_t *)&eth_hdr[3]->d_addr = dest_eth_addr[dst_port[3]];
-	*(uint64_t *)&eth_hdr[4]->d_addr = dest_eth_addr[dst_port[4]];
-	*(uint64_t *)&eth_hdr[5]->d_addr = dest_eth_addr[dst_port[5]];
-	*(uint64_t *)&eth_hdr[6]->d_addr = dest_eth_addr[dst_port[6]];
-	*(uint64_t *)&eth_hdr[7]->d_addr = dest_eth_addr[dst_port[7]];
+	*(uint64_t *)&eth_hdr[0]->dst_addr = dest_eth_addr[dst_port[0]];
+	*(uint64_t *)&eth_hdr[1]->dst_addr = dest_eth_addr[dst_port[1]];
+	*(uint64_t *)&eth_hdr[2]->dst_addr = dest_eth_addr[dst_port[2]];
+	*(uint64_t *)&eth_hdr[3]->dst_addr = dest_eth_addr[dst_port[3]];
+	*(uint64_t *)&eth_hdr[4]->dst_addr = dest_eth_addr[dst_port[4]];
+	*(uint64_t *)&eth_hdr[5]->dst_addr = dest_eth_addr[dst_port[5]];
+	*(uint64_t *)&eth_hdr[6]->dst_addr = dest_eth_addr[dst_port[6]];
+	*(uint64_t *)&eth_hdr[7]->dst_addr = dest_eth_addr[dst_port[7]];
 
 	/* src addr */
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[0]], &eth_hdr[0]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[1]], &eth_hdr[1]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[2]], &eth_hdr[2]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[3]], &eth_hdr[3]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[4]], &eth_hdr[4]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[5]], &eth_hdr[5]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[6]], &eth_hdr[6]->s_addr);
-	rte_ether_addr_copy(&ports_eth_addr[dst_port[7]], &eth_hdr[7]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[0]], &eth_hdr[0]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[1]], &eth_hdr[1]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[2]], &eth_hdr[2]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[3]], &eth_hdr[3]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[4]], &eth_hdr[4]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[5]], &eth_hdr[5]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[6]], &eth_hdr[6]->src_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[7]], &eth_hdr[7]->src_addr);
 
 	send_single_packet(m[0], dst_port[0]);
 	send_single_packet(m[1], dst_port[1]);
@@ -1268,11 +1268,11 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid)
 		++(ipv4_hdr->hdr_checksum);
 #endif
 		/* dst addr */
-		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[dst_port];
+		*(uint64_t *)&eth_hdr->dst_addr = dest_eth_addr[dst_port];
 
 		/* src addr */
 		rte_ether_addr_copy(&ports_eth_addr[dst_port],
-				&eth_hdr->s_addr);
+				&eth_hdr->src_addr);
 
 		send_single_packet(m, dst_port);
 	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
@@ -1290,11 +1290,11 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid)
 			dst_port = portid;
 
 		/* dst addr */
-		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[dst_port];
+		*(uint64_t *)&eth_hdr->dst_addr = dest_eth_addr[dst_port];
 
 		/* src addr */
 		rte_ether_addr_copy(&ports_eth_addr[dst_port],
-				&eth_hdr->s_addr);
+				&eth_hdr->src_addr);
 
 		send_single_packet(m, dst_port);
 	} else

@@ -75,9 +75,9 @@ main_loop(void)
 					eth_hdr = rte_pktmbuf_mtod(m,
 							struct rte_ether_hdr *);
 					print_ether_addr("src=",
-							&eth_hdr->s_addr);
+							&eth_hdr->src_addr);
 					print_ether_addr(" - dst=",
-							&eth_hdr->d_addr);
+							&eth_hdr->dst_addr);
 					printf(" - queue=0x%x",
 							(unsigned int)i);
 					printf("\n");

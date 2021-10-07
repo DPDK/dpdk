@@ -757,7 +757,7 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 	/* Learn MAC address of guest device from packet */
 	pkt_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
-	if (find_vhost_dev(&pkt_hdr->s_addr)) {
+	if (find_vhost_dev(&pkt_hdr->src_addr)) {
 		RTE_LOG(ERR, VHOST_DATA,
 			"(%d) device is using a registered MAC!\n",
 			vdev->vid);
@@ -765,7 +765,8 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 	}
 
 	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
-		vdev->mac_address.addr_bytes[i] = pkt_hdr->s_addr.addr_bytes[i];
+		vdev->mac_address.addr_bytes[i] =
+			pkt_hdr->src_addr.addr_bytes[i];
 
 	/* vlan_tag currently uses the device_id. */
 	vdev->vlan_tag = vlan_tags[vdev->vid];
@@ -945,7 +946,7 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 	uint16_t lcore_id = rte_lcore_id();
 	pkt_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
-	dst_vdev = find_vhost_dev(&pkt_hdr->d_addr);
+	dst_vdev = find_vhost_dev(&pkt_hdr->dst_addr);
 	if (!dst_vdev)
 		return -1;
 
@@ -993,7 +994,7 @@ find_local_dest(struct vhost_dev *vdev, struct rte_mbuf *m,
 	struct rte_ether_hdr *pkt_hdr =
 		rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
-	dst_vdev = find_vhost_dev(&pkt_hdr->d_addr);
+	dst_vdev = find_vhost_dev(&pkt_hdr->dst_addr);
 	if (!dst_vdev)
 		return 0;
 
@@ -1076,7 +1077,7 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 
 
 	nh = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
-	if (unlikely(rte_is_broadcast_ether_addr(&nh->d_addr))) {
+	if (unlikely(rte_is_broadcast_ether_addr(&nh->dst_addr))) {
 		struct vhost_dev *vdev2;
 
 		TAILQ_FOREACH(vdev2, &vhost_dev_list, global_vdev_entry) {

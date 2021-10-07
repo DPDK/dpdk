@@ -142,9 +142,9 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 					  " - no miss group");
 			MKDUMPSTR(print_buf, buf_size, cur_len, "\n");
 		}
-		print_ether_addr("  src=", &eth_hdr->s_addr,
+		print_ether_addr("  src=", &eth_hdr->src_addr,
 				 print_buf, buf_size, &cur_len);
-		print_ether_addr(" - dst=", &eth_hdr->d_addr,
+		print_ether_addr(" - dst=", &eth_hdr->dst_addr,
 				 print_buf, buf_size, &cur_len);
 		MKDUMPSTR(print_buf, buf_size, cur_len,
 			  " - type=0x%04x - length=%u - nb_segs=%d",

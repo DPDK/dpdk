@@ -333,8 +333,8 @@ mlx5_txpp_fill_wqe_clock_queue(struct mlx5_dev_ctx_shared *sh)
 		/* Build test packet L2 header (Ethernet). */
 		dst = (uint8_t *)&es->inline_data;
 		eth_hdr = (struct rte_ether_hdr *)dst;
-		rte_eth_random_addr(&eth_hdr->d_addr.addr_bytes[0]);
-		rte_eth_random_addr(&eth_hdr->s_addr.addr_bytes[0]);
+		rte_eth_random_addr(&eth_hdr->dst_addr.addr_bytes[0]);
+		rte_eth_random_addr(&eth_hdr->src_addr.addr_bytes[0]);
 		eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 		/* Build test packet L3 header (IP v4). */
 		dst += sizeof(struct rte_ether_hdr);

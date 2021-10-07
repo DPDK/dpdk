@@ -1008,9 +1008,9 @@ test_jump2_prepare(void *arg)
 	 * Initialize ether header.
 	 */
 	rte_ether_addr_copy((struct rte_ether_addr *)dst_mac,
-			    &dn->eth_hdr.d_addr);
+			    &dn->eth_hdr.dst_addr);
 	rte_ether_addr_copy((struct rte_ether_addr *)src_mac,
-			    &dn->eth_hdr.s_addr);
+			    &dn->eth_hdr.src_addr);
 	dn->eth_hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
 
 	/*

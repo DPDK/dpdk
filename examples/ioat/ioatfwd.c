@@ -322,11 +322,11 @@ update_mac_addrs(struct rte_mbuf *m, uint32_t dest_portid)
 	/* 02:00:00:00:00:xx - overwriting 2 bytes of source address but
 	 * it's acceptable cause it gets overwritten by rte_ether_addr_copy
 	 */
-	tmp = &eth->d_addr.addr_bytes[0];
+	tmp = &eth->dst_addr.addr_bytes[0];
 	*((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)dest_portid << 40);
 
 	/* src addr */
-	rte_ether_addr_copy(&ioat_ports_eth_addr[dest_portid], &eth->s_addr);
+	rte_ether_addr_copy(&ioat_ports_eth_addr[dest_portid], &eth->src_addr);
 }
 
 /* Perform packet copy there is a user-defined function. 8< */

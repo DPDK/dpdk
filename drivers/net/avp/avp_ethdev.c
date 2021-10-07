@@ -1205,17 +1205,17 @@ _avp_mac_filter(struct avp_dev *avp, struct rte_mbuf *m)
 {
 	struct rte_ether_hdr *eth = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
-	if (likely(_avp_cmp_ether_addr(&avp->ethaddr, &eth->d_addr) == 0)) {
+	if (likely(_avp_cmp_ether_addr(&avp->ethaddr, &eth->dst_addr) == 0)) {
 		/* allow all packets destined to our address */
 		return 0;
 	}
 
-	if (likely(rte_is_broadcast_ether_addr(&eth->d_addr))) {
+	if (likely(rte_is_broadcast_ether_addr(&eth->dst_addr))) {
 		/* allow all broadcast packets */
 		return 0;
 	}
 
-	if (likely(rte_is_multicast_ether_addr(&eth->d_addr))) {
+	if (likely(rte_is_multicast_ether_addr(&eth->dst_addr))) {
 		/* allow all multicast packets */
 		return 0;
 	}

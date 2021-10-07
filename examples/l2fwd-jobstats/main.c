@@ -351,11 +351,11 @@ l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 	eth = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
 	/* 02:00:00:00:00:xx */
-	tmp = &eth->d_addr.addr_bytes[0];
+	tmp = &eth->dst_addr.addr_bytes[0];
 	*((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)dst_port << 40);
 
 	/* src addr */
-	rte_ether_addr_copy(&l2fwd_ports_eth_addr[dst_port], &eth->s_addr);
+	rte_ether_addr_copy(&l2fwd_ports_eth_addr[dst_port], &eth->src_addr);
 
 	buffer = tx_buffer[dst_port];
 	sent = rte_eth_tx_buffer(dst_port, 0, buffer, m);

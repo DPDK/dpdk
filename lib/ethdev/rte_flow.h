@@ -785,8 +785,8 @@ struct rte_flow_item_eth {
 /** Default mask for RTE_FLOW_ITEM_TYPE_ETH. */
 #ifndef __cplusplus
 static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
-	.hdr.d_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-	.hdr.s_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.src_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 	.hdr.ether_type = RTE_BE16(0x0000),
 };
 #endif

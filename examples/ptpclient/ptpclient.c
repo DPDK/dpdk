@@ -426,10 +426,10 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 		created_pkt->data_len = pkt_size;
 		created_pkt->pkt_len = pkt_size;
 		eth_hdr = rte_pktmbuf_mtod(created_pkt, struct rte_ether_hdr *);
-		rte_ether_addr_copy(&eth_addr, &eth_hdr->s_addr);
+		rte_ether_addr_copy(&eth_addr, &eth_hdr->src_addr);
 
 		/* Set multicast address 01-1B-19-00-00-00. */
-		rte_ether_addr_copy(&eth_multicast, &eth_hdr->d_addr);
+		rte_ether_addr_copy(&eth_multicast, &eth_hdr->dst_addr);
 
 		eth_hdr->ether_type = htons(PTP_PROTOCOL);
 		ptp_msg = (struct ptp_message *)
@@ -449,14 +449,14 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 		client_clkid =
 			&ptp_msg->delay_req.hdr.source_port_id.clock_id;
 
-		client_clkid->id[0] = eth_hdr->s_addr.addr_bytes[0];
-		client_clkid->id[1] = eth_hdr->s_addr.addr_bytes[1];
-		client_clkid->id[2] = eth_hdr->s_addr.addr_bytes[2];
+		client_clkid->id[0] = eth_hdr->src_addr.addr_bytes[0];
+		client_clkid->id[1] = eth_hdr->src_addr.addr_bytes[1];
+		client_clkid->id[2] = eth_hdr->src_addr.addr_bytes[2];
 		client_clkid->id[3] = 0xFF;
 		client_clkid->id[4] = 0xFE;
-		client_clkid->id[5] = eth_hdr->s_addr.addr_bytes[3];
-		client_clkid->id[6] = eth_hdr->s_addr.addr_bytes[4];
-		client_clkid->id[7] = eth_hdr->s_addr.addr_bytes[5];
+		client_clkid->id[5] = eth_hdr->src_addr.addr_bytes[3];
+		client_clkid->id[6] = eth_hdr->src_addr.addr_bytes[4];
+		client_clkid->id[7] = eth_hdr->src_addr.addr_bytes[5];
 
 		rte_memcpy(&ptp_data->client_clock_id,
 			   client_clkid,

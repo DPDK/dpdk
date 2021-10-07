@@ -266,33 +266,15 @@ rte_ether_format_addr(char *buf, uint16_t size,
 int
 rte_ether_unformat_addr(const char *str, struct rte_ether_addr *eth_addr);
 
-/* Windows Sockets headers contain `#define s_addr S_un.S_addr`.
- * Temporarily disable this macro to avoid conflict at definition.
- * Place source MAC address in both `s_addr` and `S_un.S_addr` fields,
- * so that access works either directly or through the macro.
- */
-#pragma push_macro("s_addr")
-#ifdef s_addr
-#undef s_addr
-#endif
-
 /**
  * Ethernet header: Contains the destination address, source address
  * and frame type.
  */
 struct rte_ether_hdr {
-	struct rte_ether_addr d_addr; /**< Destination address. */
-	RTE_STD_C11
-	union {
-		struct rte_ether_addr s_addr; /**< Source address. */
-		struct {
-			struct rte_ether_addr S_addr;
-		} S_un; /**< Do not use directly; use s_addr instead.*/
-	};
+	struct rte_ether_addr dst_addr; /**< Destination address. */
+	struct rte_ether_addr src_addr; /**< Source address. */
 	rte_be16_t ether_type; /**< Frame type. */
 } __rte_aligned(2);
-
-#pragma pop_macro("s_addr")
 
 /**
  * Ethernet VLAN Header.

@@ -362,13 +362,13 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		m->l2_len = sizeof(struct rte_ether_hdr);
 
 		/* 02:00:00:00:00:xx */
-		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
+		d_addr_bytes = &eth_hdr->dst_addr.addr_bytes[0];
 		*((uint64_t *)d_addr_bytes) = 0x000000000002 +
 			((uint64_t)port_out << 40);
 
 		/* src addr */
 		rte_ether_addr_copy(&ports_eth_addr[port_out],
-				&eth_hdr->s_addr);
+				&eth_hdr->src_addr);
 		eth_hdr->ether_type = ether_type;
 	}
 

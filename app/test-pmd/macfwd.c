@@ -85,9 +85,9 @@ pkt_burst_mac_forward(struct fwd_stream *fs)
 		mb = pkts_burst[i];
 		eth_hdr = rte_pktmbuf_mtod(mb, struct rte_ether_hdr *);
 		rte_ether_addr_copy(&peer_eth_addrs[fs->peer_addr],
-				&eth_hdr->d_addr);
+				&eth_hdr->dst_addr);
 		rte_ether_addr_copy(&ports[fs->tx_port].eth_addr,
-				&eth_hdr->s_addr);
+				&eth_hdr->src_addr);
 		mb->ol_flags &= IND_ATTACHED_MBUF | EXT_ATTACHED_MBUF;
 		mb->ol_flags |= ol_flags;
 		mb->l2_len = sizeof(struct rte_ether_hdr);

@@ -319,8 +319,8 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 		if (verbose_level > 0) {
 			printf("\nPort %d pkt-len=%u nb-segs=%u\n",
 			       fs->rx_port, pkt->pkt_len, pkt->nb_segs);
-			ether_addr_dump("  ETH:  src=", &eth_h->s_addr);
-			ether_addr_dump(" dst=", &eth_h->d_addr);
+			ether_addr_dump("  ETH:  src=", &eth_h->src_addr);
+			ether_addr_dump(" dst=", &eth_h->dst_addr);
 		}
 		if (eth_type == RTE_ETHER_TYPE_VLAN) {
 			vlan_h = (struct rte_vlan_hdr *)
@@ -385,17 +385,17 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			 */
 
 			/* Use source MAC address as destination MAC address. */
-			rte_ether_addr_copy(&eth_h->s_addr, &eth_h->d_addr);
+			rte_ether_addr_copy(&eth_h->src_addr, &eth_h->dst_addr);
 			/* Set source MAC address with MAC address of TX port */
 			rte_ether_addr_copy(&ports[fs->tx_port].eth_addr,
-					&eth_h->s_addr);
+					&eth_h->src_addr);
 
 			arp_h->arp_opcode = rte_cpu_to_be_16(RTE_ARP_OP_REPLY);
 			rte_ether_addr_copy(&arp_h->arp_data.arp_tha,
 					&eth_addr);
 			rte_ether_addr_copy(&arp_h->arp_data.arp_sha,
 					&arp_h->arp_data.arp_tha);
-			rte_ether_addr_copy(&eth_h->s_addr,
+			rte_ether_addr_copy(&eth_h->src_addr,
 					&arp_h->arp_data.arp_sha);
 
 			/* Swap IP addresses in ARP payload */
@@ -453,9 +453,9 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 		 * ICMP checksum is computed by assuming it is valid in the
 		 * echo request and not verified.
 		 */
-		rte_ether_addr_copy(&eth_h->s_addr, &eth_addr);
-		rte_ether_addr_copy(&eth_h->d_addr, &eth_h->s_addr);
-		rte_ether_addr_copy(&eth_addr, &eth_h->d_addr);
+		rte_ether_addr_copy(&eth_h->src_addr, &eth_addr);
+		rte_ether_addr_copy(&eth_h->dst_addr, &eth_h->src_addr);
+		rte_ether_addr_copy(&eth_addr, &eth_h->dst_addr);
 		ip_addr = ip_h->src_addr;
 		if (is_multicast_ipv4_addr(ip_h->dst_addr)) {
 			uint32_t ip_src;

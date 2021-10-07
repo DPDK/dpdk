@@ -92,11 +92,11 @@ l2fwd_mac_updating(struct rte_mbuf *m, uint32_t dest_port_id,
 	eth = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
 	/* 02:00:00:00:00:xx */
-	tmp = &eth->d_addr.addr_bytes[0];
+	tmp = &eth->dst_addr.addr_bytes[0];
 	*((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)dest_port_id << 40);
 
 	/* src addr */
-	rte_ether_addr_copy(addr, &eth->s_addr);
+	rte_ether_addr_copy(addr, &eth->src_addr);
 }
 
 static __rte_always_inline struct l2fwd_resources *

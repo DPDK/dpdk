@@ -29,9 +29,9 @@ do_macswap(struct rte_mbuf *pkts[], uint16_t nb,
 		eth_hdr = rte_pktmbuf_mtod(mb, struct rte_ether_hdr *);
 
 		/* Swap dest and src mac addresses. */
-		rte_ether_addr_copy(&eth_hdr->d_addr, &addr);
-		rte_ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
-		rte_ether_addr_copy(&addr, &eth_hdr->s_addr);
+		rte_ether_addr_copy(&eth_hdr->dst_addr, &addr);
+		rte_ether_addr_copy(&eth_hdr->src_addr, &eth_hdr->dst_addr);
+		rte_ether_addr_copy(&addr, &eth_hdr->src_addr);
 
 		mbuf_field_set(mb, ol_flags);
 	}

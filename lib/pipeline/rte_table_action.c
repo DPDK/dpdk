@@ -615,8 +615,8 @@ encap_ether_apply(void *data,
 		RTE_ETHER_TYPE_IPV6;
 
 	/* Ethernet */
-	rte_ether_addr_copy(&p->ether.ether.da, &d->ether.d_addr);
-	rte_ether_addr_copy(&p->ether.ether.sa, &d->ether.s_addr);
+	rte_ether_addr_copy(&p->ether.ether.da, &d->ether.dst_addr);
+	rte_ether_addr_copy(&p->ether.ether.sa, &d->ether.src_addr);
 	d->ether.ether_type = rte_htons(ethertype);
 
 	return 0;
@@ -633,8 +633,8 @@ encap_vlan_apply(void *data,
 		RTE_ETHER_TYPE_IPV6;
 
 	/* Ethernet */
-	rte_ether_addr_copy(&p->vlan.ether.da, &d->ether.d_addr);
-	rte_ether_addr_copy(&p->vlan.ether.sa, &d->ether.s_addr);
+	rte_ether_addr_copy(&p->vlan.ether.da, &d->ether.dst_addr);
+	rte_ether_addr_copy(&p->vlan.ether.sa, &d->ether.src_addr);
 	d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_VLAN);
 
 	/* VLAN */
@@ -657,8 +657,8 @@ encap_qinq_apply(void *data,
 		RTE_ETHER_TYPE_IPV6;
 
 	/* Ethernet */
-	rte_ether_addr_copy(&p->qinq.ether.da, &d->ether.d_addr);
-	rte_ether_addr_copy(&p->qinq.ether.sa, &d->ether.s_addr);
+	rte_ether_addr_copy(&p->qinq.ether.da, &d->ether.dst_addr);
+	rte_ether_addr_copy(&p->qinq.ether.sa, &d->ether.src_addr);
 	d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_QINQ);
 
 	/* SVLAN */
@@ -683,8 +683,8 @@ encap_qinq_pppoe_apply(void *data,
 	struct encap_qinq_pppoe_data *d = data;
 
 	/* Ethernet */
-	rte_ether_addr_copy(&p->qinq.ether.da, &d->ether.d_addr);
-	rte_ether_addr_copy(&p->qinq.ether.sa, &d->ether.s_addr);
+	rte_ether_addr_copy(&p->qinq.ether.da, &d->ether.dst_addr);
+	rte_ether_addr_copy(&p->qinq.ether.sa, &d->ether.src_addr);
 	d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_VLAN);
 
 	/* SVLAN */
@@ -719,8 +719,8 @@ encap_mpls_apply(void *data,
 	uint32_t i;
 
 	/* Ethernet */
-	rte_ether_addr_copy(&p->mpls.ether.da, &d->ether.d_addr);
-	rte_ether_addr_copy(&p->mpls.ether.sa, &d->ether.s_addr);
+	rte_ether_addr_copy(&p->mpls.ether.da, &d->ether.dst_addr);
+	rte_ether_addr_copy(&p->mpls.ether.sa, &d->ether.src_addr);
 	d->ether.ether_type = rte_htons(ethertype);
 
 	/* MPLS */
@@ -746,8 +746,8 @@ encap_pppoe_apply(void *data,
 	struct encap_pppoe_data *d = data;
 
 	/* Ethernet */
-	rte_ether_addr_copy(&p->pppoe.ether.da, &d->ether.d_addr);
-	rte_ether_addr_copy(&p->pppoe.ether.sa, &d->ether.s_addr);
+	rte_ether_addr_copy(&p->pppoe.ether.da, &d->ether.dst_addr);
+	rte_ether_addr_copy(&p->pppoe.ether.sa, &d->ether.src_addr);
 	d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_PPPOE_SESSION);
 
 	/* PPPoE and PPP*/
@@ -777,9 +777,9 @@ encap_vxlan_apply(void *data,
 
 			/* Ethernet */
 			rte_ether_addr_copy(&p->vxlan.ether.da,
-					&d->ether.d_addr);
+					&d->ether.dst_addr);
 			rte_ether_addr_copy(&p->vxlan.ether.sa,
-					&d->ether.s_addr);
+					&d->ether.src_addr);
 			d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_VLAN);
 
 			/* VLAN */
@@ -818,9 +818,9 @@ encap_vxlan_apply(void *data,
 
 			/* Ethernet */
 			rte_ether_addr_copy(&p->vxlan.ether.da,
-					&d->ether.d_addr);
+					&d->ether.dst_addr);
 			rte_ether_addr_copy(&p->vxlan.ether.sa,
-					&d->ether.s_addr);
+					&d->ether.src_addr);
 			d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_IPV4);
 
 			/* IPv4*/
@@ -855,9 +855,9 @@ encap_vxlan_apply(void *data,
 
 			/* Ethernet */
 			rte_ether_addr_copy(&p->vxlan.ether.da,
-					&d->ether.d_addr);
+					&d->ether.dst_addr);
 			rte_ether_addr_copy(&p->vxlan.ether.sa,
-					&d->ether.s_addr);
+					&d->ether.src_addr);
 			d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_VLAN);
 
 			/* VLAN */
@@ -896,9 +896,9 @@ encap_vxlan_apply(void *data,
 
 			/* Ethernet */
 			rte_ether_addr_copy(&p->vxlan.ether.da,
-					&d->ether.d_addr);
+					&d->ether.dst_addr);
 			rte_ether_addr_copy(&p->vxlan.ether.sa,
-					&d->ether.s_addr);
+					&d->ether.src_addr);
 			d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_IPV6);
 
 			/* IPv6*/

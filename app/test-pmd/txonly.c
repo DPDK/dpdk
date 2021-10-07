@@ -362,8 +362,8 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	/*
 	 * Initialize Ethernet header.
 	 */
-	rte_ether_addr_copy(&peer_eth_addrs[fs->peer_addr], &eth_hdr.d_addr);
-	rte_ether_addr_copy(&ports[fs->tx_port].eth_addr, &eth_hdr.s_addr);
+	rte_ether_addr_copy(&peer_eth_addrs[fs->peer_addr], &eth_hdr.dst_addr);
+	rte_ether_addr_copy(&ports[fs->tx_port].eth_addr, &eth_hdr.src_addr);
 	eth_hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 
 	if (rte_mempool_get_bulk(mbp, (void **)pkts_burst,

@@ -656,14 +656,14 @@ enic_copy_item_eth_v2(struct copy_item_args *arg)
 	if (!mask)
 		mask = &rte_flow_item_eth_mask;
 
-	memcpy(enic_spec.d_addr.addr_bytes, spec->dst.addr_bytes,
+	memcpy(enic_spec.dst_addr.addr_bytes, spec->dst.addr_bytes,
 	       RTE_ETHER_ADDR_LEN);
-	memcpy(enic_spec.s_addr.addr_bytes, spec->src.addr_bytes,
+	memcpy(enic_spec.src_addr.addr_bytes, spec->src.addr_bytes,
 	       RTE_ETHER_ADDR_LEN);
 
-	memcpy(enic_mask.d_addr.addr_bytes, mask->dst.addr_bytes,
+	memcpy(enic_mask.dst_addr.addr_bytes, mask->dst.addr_bytes,
 	       RTE_ETHER_ADDR_LEN);
-	memcpy(enic_mask.s_addr.addr_bytes, mask->src.addr_bytes,
+	memcpy(enic_mask.src_addr.addr_bytes, mask->src.addr_bytes,
 	       RTE_ETHER_ADDR_LEN);
 	enic_spec.ether_type = spec->type;
 	enic_mask.ether_type = mask->type;

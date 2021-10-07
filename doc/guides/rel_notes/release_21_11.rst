@@ -178,6 +178,9 @@ API Changes
   removed. Its usages have been replaced by a new function
   ``rte_kvargs_get_with_value()``.
 
+* net: Renamed ``s_addr`` and ``d_addr`` fields of ``rte_ether_hdr`` structure
+  to ``src_addr`` and ``dst_addr``, respectively.
+
 * cryptodev: The API rte_cryptodev_pmd_is_valid_dev is modified to
   rte_cryptodev_is_valid_dev as it can be used by the application as
   well as PMD to check whether the device is valid or not.

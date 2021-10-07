@@ -49,8 +49,8 @@ update_mac_addrs(struct rte_mbuf *pkt, uint16_t portid)
 	struct rte_ether_hdr *ethhdr;
 
 	ethhdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	memcpy(&ethhdr->s_addr, &ethaddr_tbl[portid].src, RTE_ETHER_ADDR_LEN);
-	memcpy(&ethhdr->d_addr, &ethaddr_tbl[portid].dst, RTE_ETHER_ADDR_LEN);
+	memcpy(&ethhdr->src_addr, &ethaddr_tbl[portid].src, RTE_ETHER_ADDR_LEN);
+	memcpy(&ethhdr->dst_addr, &ethaddr_tbl[portid].dst, RTE_ETHER_ADDR_LEN);
 }
 
 static inline void

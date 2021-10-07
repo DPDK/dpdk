@@ -2233,8 +2233,8 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0)
 
 		tx_parse_bd =
 		    &txq->tx_ring[TX_BD(bd_prod, txq)].parse_bd_e2;
-		if (rte_is_multicast_ether_addr(&eh->d_addr)) {
-			if (rte_is_broadcast_ether_addr(&eh->d_addr))
+		if (rte_is_multicast_ether_addr(&eh->dst_addr)) {
+			if (rte_is_broadcast_ether_addr(&eh->dst_addr))
 				mac_type = BROADCAST_ADDRESS;
 			else
 				mac_type = MULTICAST_ADDRESS;
@@ -2243,17 +2243,17 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0)
 		    (mac_type << ETH_TX_PARSE_BD_E2_ETH_ADDR_TYPE_SHIFT);
 
 		rte_memcpy(&tx_parse_bd->data.mac_addr.dst_hi,
-			   &eh->d_addr.addr_bytes[0], 2);
+			   &eh->dst_addr.addr_bytes[0], 2);
 		rte_memcpy(&tx_parse_bd->data.mac_addr.dst_mid,
-			   &eh->d_addr.addr_bytes[2], 2);
+			   &eh->dst_addr.addr_bytes[2], 2);
 		rte_memcpy(&tx_parse_bd->data.mac_addr.dst_lo,
-			   &eh->d_addr.addr_bytes[4], 2);
+			   &eh->dst_addr.addr_bytes[4], 2);
 		rte_memcpy(&tx_parse_bd->data.mac_addr.src_hi,
-			   &eh->s_addr.addr_bytes[0], 2);
+			   &eh->src_addr.addr_bytes[0], 2);
 		rte_memcpy(&tx_parse_bd->data.mac_addr.src_mid,
-			   &eh->s_addr.addr_bytes[2], 2);
+			   &eh->src_addr.addr_bytes[2], 2);
 		rte_memcpy(&tx_parse_bd->data.mac_addr.src_lo,
-			   &eh->s_addr.addr_bytes[4], 2);
+			   &eh->src_addr.addr_bytes[4], 2);
 
 		tx_parse_bd->data.mac_addr.dst_hi =
 		    rte_cpu_to_be_16(tx_parse_bd->data.mac_addr.dst_hi);

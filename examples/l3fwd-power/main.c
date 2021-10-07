@@ -717,7 +717,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid,
 			dst_port = portid;
 
 		/* 02:00:00:00:00:xx */
-		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
+		d_addr_bytes = &eth_hdr->dst_addr.addr_bytes[0];
 		*((uint64_t *)d_addr_bytes) =
 			0x000000000002 + ((uint64_t)dst_port << 40);
 
@@ -729,7 +729,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid,
 
 		/* src addr */
 		rte_ether_addr_copy(&ports_eth_addr[dst_port],
-				&eth_hdr->s_addr);
+				&eth_hdr->src_addr);
 
 		send_single_packet(m, dst_port);
 	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
@@ -749,13 +749,13 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid,
 			dst_port = portid;
 
 		/* 02:00:00:00:00:xx */
-		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
+		d_addr_bytes = &eth_hdr->dst_addr.addr_bytes[0];
 		*((uint64_t *)d_addr_bytes) =
 			0x000000000002 + ((uint64_t)dst_port << 40);
 
 		/* src addr */
 		rte_ether_addr_copy(&ports_eth_addr[dst_port],
-				&eth_hdr->s_addr);
+				&eth_hdr->src_addr);
 
 		send_single_packet(m, dst_port);
 #else

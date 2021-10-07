@@ -358,7 +358,7 @@ struct global_flag_stru_t *global_flag_stru_p = &global_flag_stru;
 static int lcore_main(__rte_unused void *arg1)
 {
 	struct rte_mbuf *pkts[MAX_PKT_BURST] __rte_cache_aligned;
-	struct rte_ether_addr d_addr;
+	struct rte_ether_addr dst_addr;
 
 	struct rte_ether_addr bond_mac_addr;
 	struct rte_ether_hdr *eth_hdr;
@@ -422,13 +422,13 @@ static int lcore_main(__rte_unused void *arg1)
 					if (arp_hdr->arp_opcode == rte_cpu_to_be_16(RTE_ARP_OP_REQUEST)) {
 						arp_hdr->arp_opcode = rte_cpu_to_be_16(RTE_ARP_OP_REPLY);
 						/* Switch src and dst data and set bonding MAC */
-						rte_ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
-						rte_ether_addr_copy(&bond_mac_addr, &eth_hdr->s_addr);
+						rte_ether_addr_copy(&eth_hdr->src_addr, &eth_hdr->dst_addr);
+						rte_ether_addr_copy(&bond_mac_addr, &eth_hdr->src_addr);
 						rte_ether_addr_copy(&arp_hdr->arp_data.arp_sha,
 								&arp_hdr->arp_data.arp_tha);
 						arp_hdr->arp_data.arp_tip = arp_hdr->arp_data.arp_sip;
-						rte_ether_addr_copy(&bond_mac_addr, &d_addr);
-						rte_ether_addr_copy(&d_addr, &arp_hdr->arp_data.arp_sha);
+						rte_ether_addr_copy(&bond_mac_addr, &dst_addr);
+						rte_ether_addr_copy(&dst_addr, &arp_hdr->arp_data.arp_sha);
 						arp_hdr->arp_data.arp_sip = bond_ip;
 						rte_eth_tx_burst(BOND_PORT, 0, &pkts[i], 1);
 						is_free = 1;
@@ -443,8 +443,10 @@ static int lcore_main(__rte_unused void *arg1)
 				 }
 				ipv4_hdr = (struct rte_ipv4_hdr *)((char *)(eth_hdr + 1) + offset);
 				if (ipv4_hdr->dst_addr == bond_ip) {
-					rte_ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
-					rte_ether_addr_copy(&bond_mac_addr, &eth_hdr->s_addr);
+					rte_ether_addr_copy(&eth_hdr->src_addr,
+							&eth_hdr->dst_addr);
+					rte_ether_addr_copy(&bond_mac_addr,
+							&eth_hdr->src_addr);
 					ipv4_hdr->dst_addr = ipv4_hdr->src_addr;
 					ipv4_hdr->src_addr = bond_ip;
 					rte_eth_tx_burst(BOND_PORT, 0, &pkts[i], 1);
@@ -519,8 +521,8 @@ static void cmd_obj_send_parsed(void *parsed_result,
 	created_pkt->pkt_len = pkt_size;
 
 	eth_hdr = rte_pktmbuf_mtod(created_pkt, struct rte_ether_hdr *);
-	rte_ether_addr_copy(&bond_mac_addr, &eth_hdr->s_addr);
-	memset(&eth_hdr->d_addr, 0xFF, RTE_ETHER_ADDR_LEN);
+	rte_ether_addr_copy(&bond_mac_addr, &eth_hdr->src_addr);
+	memset(&eth_hdr->dst_addr, 0xFF, RTE_ETHER_ADDR_LEN);
 	eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP);
 
 	arp_hdr = (struct rte_arp_hdr *)(

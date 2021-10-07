@@ -92,9 +92,9 @@ fib_send_single(int nb_tx, struct lcore_conf *qconf,
 		/* Set MAC addresses. */
 		eth_hdr = rte_pktmbuf_mtod(pkts_burst[j],
 				struct rte_ether_hdr *);
-		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[hops[j]];
+		*(uint64_t *)&eth_hdr->dst_addr = dest_eth_addr[hops[j]];
 		rte_ether_addr_copy(&ports_eth_addr[hops[j]],
-				&eth_hdr->s_addr);
+				&eth_hdr->src_addr);
 
 		/* Send single packet. */
 		send_single_packet(qconf, pkts_burst[j], hops[j]);

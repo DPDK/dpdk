@@ -256,11 +256,11 @@ lpm_process_event_pkt(const struct lcore_conf *lconf, struct rte_mbuf *mbuf)
 	}
 #endif
 	/* dst addr */
-	*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[mbuf->port];
+	*(uint64_t *)&eth_hdr->dst_addr = dest_eth_addr[mbuf->port];
 
 	/* src addr */
 	rte_ether_addr_copy(&ports_eth_addr[mbuf->port],
-			&eth_hdr->s_addr);
+			&eth_hdr->src_addr);
 #endif
 	return mbuf->port;
 }
