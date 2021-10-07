@@ -11,6 +11,8 @@
 #include <rte_os_shim.h>
 #ifdef RTE_EXEC_ENV_WINDOWS
 #include <rte_windows.h>
+#else
+#include <termios.h>
 #endif
 
 #include <cmdline.h>
@@ -22,6 +24,7 @@ struct terminal {
 	int is_console_input;
 	int is_console_output;
 };
+#endif
 
 struct cmdline {
 	int s_in;
@@ -29,11 +32,14 @@ struct cmdline {
 	cmdline_parse_ctx_t *ctx;
 	struct rdline rdl;
 	char prompt[RDLINE_PROMPT_SIZE];
+#ifdef RTE_EXEC_ENV_WINDOWS
 	struct terminal oldterm;
 	char repeated_char;
 	WORD repeat_count;
-};
+#else
+	struct termios oldterm;
 #endif
+};
 
 /* Disable buffering and echoing, save previous settings to oldterm. */
 void terminal_adjust(struct cmdline *cl);

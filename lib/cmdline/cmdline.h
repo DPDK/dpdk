@@ -7,10 +7,6 @@
 #ifndef _CMDLINE_H_
 #define _CMDLINE_H_
 
-#ifndef RTE_EXEC_ENV_WINDOWS
-#include <termios.h>
-#endif
-
 #include <rte_common.h>
 #include <rte_compat.h>
 
@@ -27,22 +23,7 @@
 extern "C" {
 #endif
 
-#ifndef RTE_EXEC_ENV_WINDOWS
-
-struct cmdline {
-	int s_in;
-	int s_out;
-	cmdline_parse_ctx_t *ctx;
-	struct rdline rdl;
-	char prompt[RDLINE_PROMPT_SIZE];
-	struct termios oldterm;
-};
-
-#else
-
 struct cmdline;
-
-#endif /* RTE_EXEC_ENV_WINDOWS */
 
 struct cmdline *cmdline_new(cmdline_parse_ctx_t *ctx, const char *prompt, int s_in, int s_out);
 void cmdline_set_prompt(struct cmdline *cl, const char *prompt);

@@ -325,6 +325,8 @@ API Changes
   removed. Its usages have been replaced by a new function
   ``rte_kvargs_get_with_value()``.
 
+* cmdline: Made ``cmdline`` structure definition hidden on Linux and FreeBSD.
+
 * mempool: Added ``RTE_MEMPOOL_F_NON_IO`` flag to give a hint to DPDK components
   that objects from this pool will not be used for device IO (e.g. DMA).
 
