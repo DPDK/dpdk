@@ -178,6 +178,10 @@ post_process_raw_dp_op(void *user_data,	uint32_t index __rte_unused,
 			RTE_CRYPTO_OP_STATUS_ERROR;
 }
 
+static struct crypto_testsuite_params testsuite_params = { NULL };
+struct crypto_testsuite_params *p_testsuite_params = &testsuite_params;
+static struct crypto_unittest_params unittest_params;
+
 void
 process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 		struct rte_crypto_op *op, uint8_t is_cipher, uint8_t is_auth,
@@ -192,6 +196,7 @@ process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 	struct rte_crypto_sgl sgl;
 	uint32_t max_len;
 	union rte_cryptodev_session_ctx sess;
+	uint64_t auth_end_iova;
 	uint32_t count = 0;
 	struct rte_crypto_raw_dp_ctx *ctx;
 	uint32_t cipher_offset = 0, cipher_len = 0, auth_offset = 0,
@@ -201,6 +206,8 @@ process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 	int ctx_service_size;
 	int32_t status = 0;
 	int enqueue_status, dequeue_status;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	int is_sgl = sop->m_src->nb_segs > 1;
 
 	ctx_service_size = rte_cryptodev_get_raw_dp_ctx_size(dev_id);
 	if (ctx_service_size < 0) {
@@ -265,6 +272,28 @@ process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 				cipher_iv_len);
 		digest.va = (void *)sop->auth.digest.data;
 		digest.iova = sop->auth.digest.phys_addr;
+
+		if (is_sgl) {
+			uint32_t remaining_off = auth_offset + auth_len;
+			struct rte_mbuf *sgl_buf = sop->m_src;
+
+			while (remaining_off >= rte_pktmbuf_data_len(sgl_buf)
+					&& sgl_buf->next != NULL) {
+				remaining_off -= rte_pktmbuf_data_len(sgl_buf);
+				sgl_buf = sgl_buf->next;
+			}
+
+			auth_end_iova = (uint64_t)rte_pktmbuf_iova_offset(
+				sgl_buf, remaining_off);
+		} else {
+			auth_end_iova = rte_pktmbuf_iova(op->sym->m_src) +
+							 auth_offset + auth_len;
+		}
+		/* Then check if digest-encrypted conditions are met */
+		if ((auth_offset + auth_len < cipher_offset + cipher_len) &&
+				(digest.iova == auth_end_iova) && is_sgl)
+			max_len = RTE_MAX(max_len, auth_offset + auth_len +
+				ut_params->auth_xform.auth.digest_length);
 
 	} else if (is_cipher) {
 		cipher_offset = sop->cipher.data.offset;
@@ -487,9 +516,6 @@ process_crypto_request(uint8_t dev_id, struct rte_crypto_op *op)
 
 	return op;
 }
-
-static struct crypto_testsuite_params testsuite_params = { NULL };
-static struct crypto_unittest_params unittest_params;
 
 static int
 testsuite_setup(void)
