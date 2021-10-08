@@ -1615,7 +1615,6 @@ Test Applications
 -----------------
 
 Unit tests framework
-F: app/test/autotest*
 F: app/test/commands.c
 F: app/test/get-coremask.sh
 F: app/test/has-hugepage.sh
