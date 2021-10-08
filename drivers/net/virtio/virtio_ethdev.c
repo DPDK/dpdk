@@ -882,8 +882,11 @@ virtio_check_scatter_on_all_rx_queues(struct rte_eth_dev *dev,
 	if (hw->vqs == NULL)
 		return true;
 
-	for (qidx = 0; (vq = hw->vqs[2 * qidx + VTNET_SQ_RQ_QUEUE_IDX]) != NULL;
-	     qidx++) {
+	for (qidx = 0; qidx < hw->max_queue_pairs; qidx++) {
+		vq = hw->vqs[2 * qidx + VTNET_SQ_RQ_QUEUE_IDX];
+		if (vq == NULL)
+			continue;
+
 		rxvq = &vq->rxq;
 		if (rxvq->mpool == NULL)
 			continue;
