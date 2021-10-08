@@ -1172,7 +1172,10 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 			if (gtp_psc_spec && gtp_psc_mask) {
 				if (gtp_psc_mask->hdr.qfi == 0x3F) {
 					input_set |= IAVF_INSET_GTPU_QFI;
-					if (gtp_psc_spec->hdr.type ==
+					if (!gtp_psc_mask->hdr.type)
+						VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr,
+										 GTPU_EH, QFI);
+					else if (gtp_psc_spec->hdr.type ==
 								IAVF_GTPU_EH_UPLINK)
 						VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr,
 										 GTPU_UP, QFI);
@@ -1180,9 +1183,6 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 								IAVF_GTPU_EH_DWLINK)
 						VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr,
 										 GTPU_DWN, QFI);
-					else
-						VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr,
-										 GTPU_EH, QFI);
 				}
 
 				rte_memcpy(hdr->buffer, gtp_psc_spec,
