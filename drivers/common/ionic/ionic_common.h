@@ -6,6 +6,7 @@
 #define _IONIC_COMMON_H_
 
 #include <stdint.h>
+#include <assert.h>
 
 #include <rte_common.h>
 #include <rte_byteorder.h>
