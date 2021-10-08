@@ -27,40 +27,27 @@ See `Large-Page Support`_ in MSDN for details.
 .. _Large-Page Support: https://docs.microsoft.com/en-us/windows/win32/memory/large-page-support
 
 
-Load virt2phys Driver
----------------------
+Install Drivers
+---------------
 
-Access to physical addresses is provided by a kernel-mode driver, virt2phys.
-It is mandatory at least for using hardware PMDs, but may also be required
-for mempools.
-
-Refer to documentation in ``dpdk-kmods`` repository for details on system
-setup, driver build and installation. This driver is not signed, so signature
-checking must be disabled to load it.
+Certain kernel-mode drivers are required to run DPDK applications.
+Refer to `Windows documentation <https://git.dpdk.org/dpdk-kmods/tree/windows>`_
+in ``dpdk-kmods`` repository for common instructions on system setup,
+driver build and installation.
+The drivers are not signed, so signature enforcement has to be disabled.
 
 .. warning::
 
     Disabling driver signature enforcement weakens OS security.
     It is discouraged in production environments.
 
-Compiled package consists of ``virt2phys.inf``, ``virt2phys.cat``,
-and ``virt2phys.sys``. It can be installed as follows
-from Elevated Command Prompt:
 
-.. code-block:: console
+virt2phys
+~~~~~~~~~
 
-    pnputil /add-driver Z:\path\to\virt2phys.inf /install
-
-On Windows Server additional steps are required:
-
-1. From Device Manager, Action menu, select "Add legacy hardware".
-2. It will launch the "Add Hardware Wizard". Click "Next".
-3. Select second option "Install the hardware that I manually select
-   from a list (Advanced)".
-4. On the next screen, "Kernel bypass" will be shown as a device class.
-5. Select it, and click "Next".
-6. The previously installed drivers will now be installed for the
-   "Virtual to physical address translator" device.
+Access to physical addresses is provided by a kernel-mode driver, virt2phys.
+It is mandatory for allocating physically-contiguous memory which is required
+by hardware PMDs.
 
 When loaded successfully, the driver is shown in *Device Manager* as *Virtual
 to physical address translator* device under *Kernel bypass* category.
@@ -73,6 +60,17 @@ on initialization (debug-level logs provide more details):
 
     EAL: Cannot open virt2phys driver interface
 
+
+NetUIO
+~~~~~~
+
+NetUIO kernel-mode driver provides access to the device hardware resources.
+It is mandatory for all hardware PMDs, except for mlx5 PMD.
+
+Refer to `NetUIO documentation <https://git.dpdk.org/dpdk-kmods/tree/windows/netuio/README.rst>`_
+in ``dpdk-kmods`` repository for instructions to build and set up the driver.
+Devices supported by NetUIO are listed in ``netuio.inf``.
+The list can be extended in order to try running DPDK with new devices.
 
 
 Run the ``helloworld`` Example
