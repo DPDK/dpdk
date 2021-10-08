@@ -1448,13 +1448,6 @@ flow_rule_action_get(struct pmd_internals *softnic,
 					action,
 					"COUNT: Null configuration");
 
-			if (conf->shared)
-				return rte_flow_error_set(error,
-					ENOTSUP,
-					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
-					conf,
-					"COUNT: Shared counters not supported");
-
 			if (n_count)
 				return rte_flow_error_set(error,
 					ENOTSUP,

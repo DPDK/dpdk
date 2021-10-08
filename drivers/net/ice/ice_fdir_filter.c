@@ -1337,9 +1337,7 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 	if (filter->input.cnt_ena) {
 		struct rte_flow_action_count *act_count = &filter->act_count;
 
-		filter->counter = ice_fdir_counter_alloc(pf,
-							 act_count->shared,
-							 act_count->id);
+		filter->counter = ice_fdir_counter_alloc(pf, 0, act_count->id);
 		if (!filter->counter) {
 			rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, NULL,

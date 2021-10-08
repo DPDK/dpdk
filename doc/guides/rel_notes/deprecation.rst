@@ -124,10 +124,6 @@ Deprecation Notices
   to support modifying fields larger than 64 bits.
   In addition, documentation will be updated to clarify byte order.
 
-* ethdev: Attribute ``shared`` of the ``struct rte_flow_action_count``
-  is deprecated and will be removed in DPDK 21.11. Shared counters should
-  be managed using shared actions API (``rte_flow_shared_action_create`` etc).
-
 * ethdev: Definition of the flow API action ``RTE_FLOW_ACTION_TYPE_PORT_ID``
   is ambiguous and needs clarification.
   Structure ``rte_flow_action_port_id`` will be extended to specify

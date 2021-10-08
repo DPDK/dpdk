@@ -1782,8 +1782,7 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		goto out;
 
 	if (fdir_rule.flags & HNS3_RULE_FLAG_COUNTER) {
-		ret = hns3_counter_new(dev, fdir_rule.act_cnt.shared,
-				       fdir_rule.act_cnt.id, error);
+		ret = hns3_counter_new(dev, 0, fdir_rule.act_cnt.id, error);
 		if (ret)
 			goto out;
 

@@ -333,7 +333,6 @@ struct mlx5_lb_ctx {
 #define MLX5_MAX_PENDING_QUERIES 4
 #define MLX5_CNT_CONTAINER_RESIZE 64
 #define MLX5_CNT_SHARED_OFFSET 0x80000000
-#define IS_LEGACY_SHARED_CNT(cnt) (!!((cnt) & MLX5_CNT_SHARED_OFFSET))
 #define IS_BATCH_CNT(cnt) (((cnt) & (MLX5_CNT_SHARED_OFFSET - 1)) >= \
 			   MLX5_CNT_BATCH_OFFSET)
 #define MLX5_CNT_SIZE (sizeof(struct mlx5_flow_counter))
@@ -399,12 +398,6 @@ struct mlx5_flow_counter_shared {
 		uint32_t refcnt; /* Only for shared action management. */
 		uint32_t id; /* User counter ID for legacy sharing. */
 	};
-};
-
-/* Shared counter configuration. */
-struct mlx5_shared_counter_conf {
-	struct rte_eth_dev *dev; /* The device shared counter belongs to. */
-	uint32_t id; /* The shared counter ID. */
 };
 
 struct mlx5_flow_counter_pool;
@@ -1190,8 +1183,6 @@ struct mlx5_dev_ctx_shared {
 	void *default_miss_action; /* Default miss action. */
 	struct mlx5_indexed_pool *ipool[MLX5_IPOOL_MAX];
 	struct mlx5_indexed_pool *mdh_ipools[MLX5_MAX_MODIFY_NUM];
-	/* Memory Pool for mlx5 flow resources. */
-	struct mlx5_l3t_tbl *cnt_id_tbl; /* Shared counter lookup table. */
 	/* Shared interrupt handler section. */
 	struct rte_intr_handle intr_handle; /* Interrupt handler for device. */
 	struct rte_intr_handle intr_handle_devx; /* DEVX interrupt handler. */

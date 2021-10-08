@@ -158,7 +158,7 @@ Several pattern items and actions are valid and can be used in both
 directions. At least one direction must be specified.
 
 Specifying both directions at once for a given rule is not recommended but
-may be valid in a few cases (e.g. shared counters).
+may be valid in a few cases.
 
 Attribute: Transfer
 ^^^^^^^^^^^^^^^^^^^
@@ -1491,9 +1491,7 @@ Actions are performed in list order:
    +=======+========+============+=======+
    | 0     | MARK   | ``mark``   | 0x2a  |
    +-------+--------+------------+-------+
-   | 1     | COUNT  | ``shared`` | 0     |
-   |       |        +------------+-------+
-   |       |        | ``id``     | 0     |
+   | 1     | COUNT  | ``id``     | 0     |
    +-------+--------+------------+-------+
    | 2     | QUEUE  | ``queue``  | 10    |
    +-------+--------+------------+-------+
@@ -1734,19 +1732,8 @@ action must specify a unique id.
 Counters can be retrieved and reset through ``rte_flow_query()``, see
 ``struct rte_flow_query_count``.
 
-The shared flag indicates whether the counter is unique to the flow rule the
-action is specified with, or whether it is a shared counter.
-
-For a count action with the shared flag set, then a global device
-namespace is assumed for the counter id, so that any matched flow rules using
-a count action with the same counter id on the same port will contribute to
-that counter.
-
 For ports within the same switch domain then the counter id namespace extends
 to all ports within that switch domain.
-
-The shared flag is DEPRECATED and ``INDIRECT`` ``COUNT`` action should be used
-to make shared counters.
 
 .. _table_rte_flow_action_count:
 
@@ -1755,8 +1742,6 @@ to make shared counters.
    +------------+---------------------------------+
    | Field      | Value                           |
    +============+=================================+
-   | ``shared`` | DEPRECATED, shared counter flag |
-   +------------+---------------------------------+
    | ``id``     | counter id                      |
    +------------+---------------------------------+
 

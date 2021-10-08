@@ -75,7 +75,7 @@ extern "C" {
  * At least one direction must be specified.
  *
  * Specifying both directions at once for a given rule is not recommended
- * but may be valid in a few cases (e.g. shared counter).
+ * but may be valid in a few cases.
  */
 struct rte_flow_attr {
 	uint32_t group; /**< Priority group. */
@@ -2498,24 +2498,10 @@ struct rte_flow_query_age {
  * Counters can be retrieved and reset through ``rte_flow_query()``, see
  * ``struct rte_flow_query_count``.
  *
- * @deprecated Shared attribute is deprecated, use generic
- * RTE_FLOW_ACTION_TYPE_INDIRECT action.
- *
- * The shared flag indicates whether the counter is unique to the flow rule the
- * action is specified with, or whether it is a shared counter.
- *
- * For a count action with the shared flag set, then then a global device
- * namespace is assumed for the counter id, so that any matched flow rules using
- * a count action with the same counter id on the same port will contribute to
- * that counter.
- *
  * For ports within the same switch domain then the counter id namespace extends
  * to all ports within that switch domain.
  */
 struct rte_flow_action_count {
-	/** @deprecated Share counter ID with other flow rules. */
-	uint32_t shared:1;
-	uint32_t reserved:31; /**< Reserved, must be zero. */
 	uint32_t id; /**< Counter ID. */
 };
 

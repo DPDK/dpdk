@@ -233,6 +233,10 @@ Removed Items
   driver callback. It is replaced by the more complete function
   ``rte_eth_rx_descriptor_status``.
 
+* ethdev: Removed deprecated ``shared`` attribute of the
+  ``struct rte_flow_action_count``. Shared counters should be managed
+  using indirect actions API (``rte_flow_action_handle_create`` etc).
+
 * i40e: Removed i40evf driver.
   iavf already became the default VF driver for i40e devices,
   so there is no need to maintain i40evf.

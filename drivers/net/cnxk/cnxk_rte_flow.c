@@ -110,7 +110,6 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		 struct roc_npc_action in_actions[], uint32_t *flowkey_cfg)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	const struct rte_flow_action_count *act_count;
 	const struct rte_flow_action_queue *act_q;
 	int i = 0, rc = 0;
 	int rq;
@@ -131,13 +130,6 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			act_count = (const struct rte_flow_action_count *)
-					    actions->conf;
-
-			if (act_count->shared == 1) {
-				plt_npc_dbg("Shared counter is not supported");
-				goto err_exit;
-			}
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_COUNT;
 			break;
 

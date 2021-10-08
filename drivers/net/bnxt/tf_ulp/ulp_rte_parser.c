@@ -2111,11 +2111,6 @@ ulp_rte_count_act_handler(const struct rte_flow_action *action_item,
 
 	act_count = action_item->conf;
 	if (act_count) {
-		if (act_count->shared) {
-			BNXT_TF_DBG(ERR,
-				    "Parse Error:Shared count not supported\n");
-			return BNXT_TF_RC_PARSE_ERR;
-		}
 		memcpy(&act_prop->act_details[BNXT_ULP_ACT_PROP_IDX_COUNT],
 		       &act_count->id,
 		       BNXT_ULP_ACT_PROP_SZ_COUNT);

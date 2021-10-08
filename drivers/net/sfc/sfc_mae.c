@@ -2932,15 +2932,11 @@ sfc_mae_rule_parse_action_mark(struct sfc_adapter *sa,
 
 static int
 sfc_mae_rule_parse_action_count(struct sfc_adapter *sa,
-				const struct rte_flow_action_count *conf,
+				const struct rte_flow_action_count *conf
+					__rte_unused,
 				efx_mae_actions_t *spec)
 {
 	int rc;
-
-	if (conf->shared) {
-		rc = ENOTSUP;
-		goto fail_counter_shared;
-	}
 
 	if ((sa->counter_rxq.state & SFC_COUNTER_RXQ_INITIALIZED) == 0) {
 		sfc_err(sa,
@@ -2967,7 +2963,6 @@ sfc_mae_rule_parse_action_count(struct sfc_adapter *sa,
 fail_populate_count:
 fail_no_service_core:
 fail_counter_queue_uninit:
-fail_counter_shared:
 
 	return rc;
 }

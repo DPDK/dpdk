@@ -250,8 +250,6 @@ flow_verbs_counter_create(struct rte_eth_dev *dev,
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
- * @param[in] shared
- *   Indicate if this counter is shared with other flows.
  * @param[in] id
  *   Counter identifier.
  *
@@ -259,21 +257,17 @@ flow_verbs_counter_create(struct rte_eth_dev *dev,
  *   Index to the counter, 0 otherwise and rte_errno is set.
  */
 static uint32_t
-flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
+flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t id __rte_unused)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_mng *cmng = &priv->sh->cmng;
 	struct mlx5_flow_counter_pool *pool = NULL;
 	struct mlx5_flow_counter *cnt = NULL;
-	union mlx5_l3t_data data;
 	uint32_t n_valid = cmng->n_valid;
 	uint32_t pool_idx, cnt_idx;
 	uint32_t i;
 	int ret;
 
-	if (shared && !mlx5_l3t_get_entry(priv->sh->cnt_id_tbl, id, &data) &&
-	    data.dword)
-		return data.dword;
 	for (pool_idx = 0; pool_idx < n_valid; ++pool_idx) {
 		pool = cmng->pools[pool_idx];
 		if (!pool)
@@ -320,13 +314,6 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 	TAILQ_REMOVE(&pool->counters[0], cnt, next);
 	i = MLX5_CNT_ARRAY_IDX(pool, cnt);
 	cnt_idx = MLX5_MAKE_CNT_IDX(pool_idx, i);
-	if (shared) {
-		data.dword = cnt_idx;
-		if (mlx5_l3t_set_entry(priv->sh->cnt_id_tbl, id, &data))
-			return 0;
-		cnt->shared_info.id = id;
-		cnt_idx |= MLX5_CNT_SHARED_OFFSET;
-	}
 	/* Create counter with Verbs. */
 	ret = flow_verbs_counter_create(dev, cnt);
 	if (!ret) {
@@ -352,14 +339,10 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 static void
 flow_verbs_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool;
 	struct mlx5_flow_counter *cnt;
 
 	cnt = flow_verbs_counter_get_by_idx(dev, counter, &pool);
-	if (IS_LEGACY_SHARED_CNT(counter) &&
-	    mlx5_l3t_clear_entry(priv->sh->cnt_id_tbl, cnt->shared_info.id))
-		return;
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 	claim_zero(mlx5_glue->destroy_counter_set
 			((struct ibv_counter_set *)cnt->dcs_when_active));
@@ -1198,8 +1181,7 @@ flow_verbs_translate_action_count(struct mlx5_flow *dev_flow,
 #endif
 
 	if (!flow->counter) {
-		flow->counter = flow_verbs_counter_new(dev, count->shared,
-						       count->id);
+		flow->counter = flow_verbs_counter_new(dev, count->id);
 		if (!flow->counter)
 			return rte_flow_error_set(error, rte_errno,
 						  RTE_FLOW_ERROR_TYPE_ACTION,

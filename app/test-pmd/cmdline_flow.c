@@ -322,7 +322,6 @@ enum index {
 	ACTION_QUEUE_INDEX,
 	ACTION_DROP,
 	ACTION_COUNT,
-	ACTION_COUNT_SHARED,
 	ACTION_COUNT_ID,
 	ACTION_RSS,
 	ACTION_RSS_FUNC,
@@ -1451,7 +1450,6 @@ static const enum index action_queue[] = {
 
 static const enum index action_count[] = {
 	ACTION_COUNT_ID,
-	ACTION_COUNT_SHARED,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -3710,14 +3708,6 @@ static const struct token token_list[] = {
 		.help = "counter identifier to use",
 		.next = NEXT(action_count, NEXT_ENTRY(COMMON_UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_count, id)),
-		.call = parse_vc_conf,
-	},
-	[ACTION_COUNT_SHARED] = {
-		.name = "shared",
-		.help = "shared counter",
-		.next = NEXT(action_count, NEXT_ENTRY(COMMON_BOOLEAN)),
-		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_action_count,
-					   shared, 1)),
 		.call = parse_vc_conf,
 	},
 	[ACTION_RSS] = {

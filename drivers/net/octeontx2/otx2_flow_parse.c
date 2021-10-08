@@ -901,7 +901,6 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 	struct otx2_eth_dev *hw = dev->data->dev_private;
 	struct otx2_npc_flow_info *npc = &hw->npc_flow;
 	const struct rte_flow_action_port_id *port_act;
-	const struct rte_flow_action_count *act_count;
 	const struct rte_flow_action_mark *act_mark;
 	const struct rte_flow_action_queue *act_q;
 	const struct rte_flow_action_vf *vf_act;
@@ -947,15 +946,6 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			act_count =
-				(const struct rte_flow_action_count *)
-				actions->conf;
-
-			if (act_count->shared == 1) {
-				errmsg = "Shared Counters not supported";
-				errcode = ENOTSUP;
-				goto err_exit;
-			}
 			/* Indicates, need a counter */
 			flow->ctr_id = 1;
 			req_act |= OTX2_FLOW_ACT_COUNT;
