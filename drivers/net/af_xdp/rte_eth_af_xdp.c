@@ -1783,16 +1783,11 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 		rte_vdev_device_name(dev));
 
 	name = rte_vdev_device_name(dev);
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
-		strlen(rte_vdev_device_args(dev)) == 0) {
-		eth_dev = rte_eth_dev_attach_secondary(name);
-		if (eth_dev == NULL) {
-			AF_XDP_LOG(ERR, "Failed to probe %s\n", name);
-			return -EINVAL;
-		}
-		eth_dev->dev_ops = &ops;
-		rte_eth_dev_probing_finish(eth_dev);
-		return 0;
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		AF_XDP_LOG(ERR, "Failed to probe %s. "
+				"AF_XDP PMD does not support secondary processes.\n",
+				name);
+		return -ENOTSUP;
 	}
 
 	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_arguments);

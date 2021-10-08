@@ -85,6 +85,10 @@ New Features
   * Default VLAN strip behavior was changed. VLAN tag won't be stripped
     unless ``DEV_RX_OFFLOAD_VLAN_STRIP`` offload is enabled.
 
+* **Updated AF_XDP PMD.**
+
+  * Disabled secondary process support.
+
 * **Updated Broadcom bnxt PMD.**
 
   * Added flow offload support for Thor.
