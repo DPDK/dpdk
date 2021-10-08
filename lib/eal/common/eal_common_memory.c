@@ -20,6 +20,9 @@
 #include <rte_eal_paging.h>
 #include <rte_errno.h>
 #include <rte_log.h>
+#ifndef RTE_EXEC_ENV_WINDOWS
+#include <rte_telemetry.h>
+#endif
 
 #include "eal_memalloc.h"
 #include "eal_private.h"
@@ -1102,3 +1105,173 @@ fail:
 	rte_mcfg_mem_read_unlock();
 	return -1;
 }
+
+#ifndef RTE_EXEC_ENV_WINDOWS
+#define EAL_MEMZONE_LIST_REQ	"/eal/memzone_list"
+#define EAL_MEMZONE_INFO_REQ	"/eal/memzone_info"
+#define EAL_HEAP_LIST_REQ	"/eal/heap_list"
+#define EAL_HEAP_INFO_REQ	"/eal/heap_info"
+#define ADDR_STR		15
+
+/* Telemetry callback handler to return heap stats for requested heap id. */
+static int
+handle_eal_heap_info_request(const char *cmd __rte_unused, const char *params,
+			     struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct rte_malloc_socket_stats sock_stats;
+	struct malloc_heap *heap;
+	unsigned int heap_id;
+
+	if (params == NULL || strlen(params) == 0)
+		return -1;
+
+	heap_id = (unsigned int)strtoul(params, NULL, 10);
+
+	/* Get the heap stats of user provided heap id */
+	heap = &mcfg->malloc_heaps[heap_id];
+	malloc_heap_get_stats(heap, &sock_stats);
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_int(d, "Head id", heap_id);
+	rte_tel_data_add_dict_string(d, "Name", heap->name);
+	rte_tel_data_add_dict_u64(d, "Heap_size",
+				  sock_stats.heap_totalsz_bytes);
+	rte_tel_data_add_dict_u64(d, "Free_size", sock_stats.heap_freesz_bytes);
+	rte_tel_data_add_dict_u64(d, "Alloc_size",
+				  sock_stats.heap_allocsz_bytes);
+	rte_tel_data_add_dict_u64(d, "Greatest_free_size",
+				  sock_stats.greatest_free_size);
+	rte_tel_data_add_dict_u64(d, "Alloc_count", sock_stats.alloc_count);
+	rte_tel_data_add_dict_u64(d, "Free_count", sock_stats.free_count);
+
+	return 0;
+}
+
+/* Telemetry callback handler to list the heap ids setup. */
+static int
+handle_eal_heap_list_request(const char *cmd __rte_unused,
+				const char *params __rte_unused,
+				struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct rte_malloc_socket_stats sock_stats;
+	unsigned int heap_id;
+
+	rte_tel_data_start_array(d, RTE_TEL_INT_VAL);
+	/* Iterate through all initialised heaps */
+	for (heap_id = 0; heap_id < RTE_MAX_HEAPS; heap_id++) {
+		struct malloc_heap *heap = &mcfg->malloc_heaps[heap_id];
+
+		malloc_heap_get_stats(heap, &sock_stats);
+		if (sock_stats.heap_totalsz_bytes != 0)
+			rte_tel_data_add_array_int(d, heap_id);
+	}
+
+	return 0;
+}
+
+/* Telemetry callback handler to return memzone info for requested index. */
+static int
+handle_eal_memzone_info_request(const char *cmd __rte_unused,
+				const char *params, struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct rte_memseg_list *msl = NULL;
+	int ms_idx, ms_count = 0;
+	void *cur_addr, *mz_end;
+	struct rte_memzone *mz;
+	struct rte_memseg *ms;
+	char addr[ADDR_STR];
+	unsigned int mz_idx;
+	size_t page_sz;
+
+	if (params == NULL || strlen(params) == 0)
+		return -1;
+
+	mz_idx = strtoul(params, NULL, 10);
+
+	/* Get the memzone handle using index */
+	mz = rte_fbarray_get(&mcfg->memzones, mz_idx);
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_int(d, "Zone", mz_idx);
+	rte_tel_data_add_dict_string(d, "Name", mz->name);
+	rte_tel_data_add_dict_int(d, "Length", mz->len);
+	snprintf(addr, ADDR_STR, "%p", mz->addr);
+	rte_tel_data_add_dict_string(d, "Address", addr);
+	rte_tel_data_add_dict_int(d, "Socket", mz->socket_id);
+	rte_tel_data_add_dict_int(d, "Flags", mz->flags);
+
+	/* go through each page occupied by this memzone */
+	msl = rte_mem_virt2memseg_list(mz->addr);
+	if (!msl) {
+		RTE_LOG(DEBUG, EAL, "Skipping bad memzone\n");
+		return -1;
+	}
+	page_sz = (size_t)mz->hugepage_sz;
+	cur_addr = RTE_PTR_ALIGN_FLOOR(mz->addr, page_sz);
+	mz_end = RTE_PTR_ADD(cur_addr, mz->len);
+
+	ms_idx = RTE_PTR_DIFF(mz->addr, msl->base_va) / page_sz;
+	ms = rte_fbarray_get(&msl->memseg_arr, ms_idx);
+
+	rte_tel_data_add_dict_int(d, "Hugepage_size", page_sz);
+	snprintf(addr, ADDR_STR, "%p", ms->addr);
+	rte_tel_data_add_dict_string(d, "Hugepage_base", addr);
+
+	do {
+		/* advance VA to next page */
+		cur_addr = RTE_PTR_ADD(cur_addr, page_sz);
+
+		/* memzones occupy contiguous segments */
+		++ms;
+		ms_count++;
+	} while (cur_addr < mz_end);
+
+	rte_tel_data_add_dict_int(d, "Hugepage_used", ms_count);
+
+	return 0;
+}
+
+static void
+memzone_list_cb(const struct rte_memzone *mz __rte_unused,
+		 void *arg __rte_unused)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct rte_tel_data *d = arg;
+	int mz_idx;
+
+	mz_idx = rte_fbarray_find_idx(&mcfg->memzones, mz);
+	rte_tel_data_add_array_int(d, mz_idx);
+}
+
+
+/* Telemetry callback handler to list the memzones reserved. */
+static int
+handle_eal_memzone_list_request(const char *cmd __rte_unused,
+				const char *params __rte_unused,
+				struct rte_tel_data *d)
+{
+	rte_tel_data_start_array(d, RTE_TEL_INT_VAL);
+	rte_memzone_walk(memzone_list_cb, d);
+
+	return 0;
+}
+
+RTE_INIT(memory_telemetry)
+{
+	rte_telemetry_register_cmd(
+			EAL_MEMZONE_LIST_REQ, handle_eal_memzone_list_request,
+			"List of memzone index reserved. Takes no parameters");
+	rte_telemetry_register_cmd(
+			EAL_MEMZONE_INFO_REQ, handle_eal_memzone_info_request,
+			"Returns memzone info. Parameters: int mz_id");
+	rte_telemetry_register_cmd(
+			EAL_HEAP_LIST_REQ, handle_eal_heap_list_request,
+			"List of heap index setup. Takes no parameters");
+	rte_telemetry_register_cmd(
+			EAL_HEAP_INFO_REQ, handle_eal_heap_info_request,
+			"Returns malloc heap stats. Parameters: int heap_id");
+}
+#endif
