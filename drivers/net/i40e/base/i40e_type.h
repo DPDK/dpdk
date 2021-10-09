@@ -1988,6 +1988,8 @@ struct i40e_metadata_segment {
 	struct i40e_ddp_version version;
 #define I40E_DDP_TRACKID_RDONLY		0
 #define I40E_DDP_TRACKID_INVALID	0xFFFFFFFF
+#define I40E_DDP_TRACKID_GRP_MSK	0x00FF0000
+#define I40E_DDP_TRACKID_GRP_COMP_ALL	0xFF
 	u32 track_id;
 	char name[I40E_DDP_NAME_SIZE];
 };
