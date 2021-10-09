@@ -1341,7 +1341,7 @@ STATIC enum i40e_status_code i40e_poll_globr(struct i40e_hw *hw,
 	return I40E_ERR_RESET_FAILED;
 }
 
-#define I40E_PF_RESET_WAIT_COUNT	200
+#define I40E_PF_RESET_WAIT_COUNT	1000
 /**
  * i40e_pf_reset - Reset the PF
  * @hw: pointer to the hardware structure
