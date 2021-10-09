@@ -2078,6 +2078,9 @@ enum i40e_status_code i40e_aq_get_link_info(struct i40e_hw *hw,
 	     hw->aq.fw_min_ver < 40)) && hw_link_info->phy_type == 0xE)
 		hw_link_info->phy_type = I40E_PHY_TYPE_10GBASE_SFPP_CU;
 
+	/* 'Get Link Status' response data structure from X722 FW has
+	 * different format and does not contain this information
+	 */
 	if (hw->flags & I40E_HW_FLAG_AQ_PHY_ACCESS_CAPABLE &&
 	    hw->mac.type != I40E_MAC_X722) {
 		__le32 tmp;
@@ -2948,10 +2951,13 @@ enum i40e_status_code i40e_update_link_info(struct i40e_hw *hw)
 		return status;
 
 	/* extra checking needed to ensure link info to user is timely */
-	if ((hw->phy.link_info.link_info & I40E_AQ_MEDIA_AVAILABLE) &&
-	    ((hw->phy.link_info.link_info & I40E_AQ_LINK_UP) ||
-	     !(hw->phy.link_info_old.link_info & I40E_AQ_LINK_UP))) {
-		status = i40e_aq_get_phy_capabilities(hw, false, false,
+	if (((hw->phy.link_info.link_info & I40E_AQ_MEDIA_AVAILABLE) &&
+	     ((hw->phy.link_info.link_info & I40E_AQ_LINK_UP) ||
+	      !(hw->phy.link_info_old.link_info & I40E_AQ_LINK_UP))) ||
+		hw->mac.type == I40E_MAC_X722) {
+		status = i40e_aq_get_phy_capabilities(hw, false,
+						      hw->mac.type ==
+						      I40E_MAC_X722,
 						      &abilities, NULL);
 		if (status)
 			return status;
