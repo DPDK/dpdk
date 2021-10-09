@@ -75,7 +75,7 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 	uint32_t out_pkt_pos, in_seg_data_pos;
 	uint32_t more_in_segs;
 	uint16_t fragment_offset, flag_offset, frag_size, header_len;
-	uint16_t frag_bytes_remaining;
+	uint16_t frag_bytes_remaining, not_last_frag;
 
 	/*
 	 * Formal parameter checking.
@@ -116,7 +116,9 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 	in_seg = pkt_in;
 	in_seg_data_pos = header_len;
 	out_pkt_pos = 0;
-	fragment_offset = 0;
+	fragment_offset = (uint16_t)((flag_offset &
+	    RTE_IPV4_HDR_OFFSET_MASK) << RTE_IPV4_HDR_FO_SHIFT);
+	not_last_frag = (uint16_t)(flag_offset & IPV4_HDR_MF_MASK);
 
 	more_in_segs = 1;
 	while (likely(more_in_segs)) {
@@ -186,7 +188,8 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 
 		__fill_ipv4hdr_frag(out_hdr, in_hdr, header_len,
 		    (uint16_t)out_pkt->pkt_len,
-		    flag_offset, fragment_offset, more_in_segs);
+		    flag_offset, fragment_offset,
+		    not_last_frag || more_in_segs);
 
 		fragment_offset = (uint16_t)(fragment_offset +
 		    out_pkt->pkt_len - header_len);
