@@ -393,7 +393,7 @@ hns3_enable_all_queues(struct hns3_hw *hw, bool en)
 	int i;
 
 	for (i = 0; i < hw->cfg_max_queues; i++) {
-		if (hns3_dev_indep_txrx_supported(hw)) {
+		if (hns3_dev_get_support(hw, INDEP_TXRX)) {
 			rxq = i < nb_rx_q ? hw->data->rx_queues[i] : NULL;
 			txq = i < nb_tx_q ? hw->data->tx_queues[i] : NULL;
 
@@ -438,7 +438,7 @@ hns3_enable_txq(struct hns3_tx_queue *txq, bool en)
 	struct hns3_hw *hw = &txq->hns->hw;
 	uint32_t reg;
 
-	if (hns3_dev_indep_txrx_supported(hw)) {
+	if (hns3_dev_get_support(hw, INDEP_TXRX)) {
 		reg = hns3_read_dev(txq, HNS3_RING_TX_EN_REG);
 		if (en)
 			reg |= BIT(HNS3_RING_EN_B);
@@ -455,7 +455,7 @@ hns3_enable_rxq(struct hns3_rx_queue *rxq, bool en)
 	struct hns3_hw *hw = &rxq->hns->hw;
 	uint32_t reg;
 
-	if (hns3_dev_indep_txrx_supported(hw)) {
+	if (hns3_dev_get_support(hw, INDEP_TXRX)) {
 		reg = hns3_read_dev(rxq, HNS3_RING_RX_EN_REG);
 		if (en)
 			reg |= BIT(HNS3_RING_EN_B);
@@ -1630,7 +1630,7 @@ hns3_set_fake_rx_or_tx_queues(struct rte_eth_dev *dev, uint16_t nb_rx_q,
 	uint16_t q;
 	int ret;
 
-	if (hns3_dev_indep_txrx_supported(hw))
+	if (hns3_dev_get_support(hw, INDEP_TXRX))
 		return 0;
 
 	/* Setup new number of fake RX/TX queues and reconfigure device. */
@@ -1874,7 +1874,7 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		conf->rx_free_thresh : HNS3_DEFAULT_RX_FREE_THRESH;
 
 	rxq->rx_deferred_start = conf->rx_deferred_start;
-	if (rxq->rx_deferred_start && !hns3_dev_indep_txrx_supported(hw)) {
+	if (rxq->rx_deferred_start && !hns3_dev_get_support(hw, INDEP_TXRX)) {
 		hns3_warn(hw, "deferred start is not supported.");
 		rxq->rx_deferred_start = false;
 	}
@@ -1910,7 +1910,7 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 				       HNS3_PORT_BASE_VLAN_ENABLE;
 	else
 		rxq->pvid_sw_discard_en = false;
-	rxq->ptype_en = hns3_dev_rxd_adv_layout_supported(hw) ? true : false;
+	rxq->ptype_en = hns3_dev_get_support(hw, RXD_ADV_LAYOUT) ? true : false;
 	rxq->configured = true;
 	rxq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
@@ -2038,7 +2038,7 @@ hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	    dev->rx_pkt_burst == hns3_recv_scattered_pkts ||
 	    dev->rx_pkt_burst == hns3_recv_pkts_vec ||
 	    dev->rx_pkt_burst == hns3_recv_pkts_vec_sve) {
-		if (hns3_dev_rxd_adv_layout_supported(hw))
+		if (hns3_dev_get_support(hw, RXD_ADV_LAYOUT))
 			return adv_layout_ptypes;
 		else
 			return ptypes;
@@ -2940,7 +2940,7 @@ hns3_tx_push_init(struct rte_eth_dev *dev)
 	volatile uint32_t *reg;
 	uint32_t val;
 
-	if (!hns3_dev_tx_push_supported(hw))
+	if (!hns3_dev_get_support(hw, TX_PUSH))
 		return;
 
 	reg = (volatile uint32_t *)hns3_tx_push_get_queue_tail_reg(dev, 0);
@@ -2961,7 +2961,7 @@ hns3_tx_push_queue_init(struct rte_eth_dev *dev,
 			struct hns3_tx_queue *txq)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if (!hns3_dev_tx_push_supported(hw)) {
+	if (!hns3_dev_get_support(hw, TX_PUSH)) {
 		txq->tx_push_enable = false;
 		return;
 	}
@@ -3006,7 +3006,7 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	}
 
 	txq->tx_deferred_start = conf->tx_deferred_start;
-	if (txq->tx_deferred_start && !hns3_dev_indep_txrx_supported(hw)) {
+	if (txq->tx_deferred_start && !hns3_dev_get_support(hw, INDEP_TXRX)) {
 		hns3_warn(hw, "deferred start is not supported.");
 		txq->tx_deferred_start = false;
 	}
@@ -4288,7 +4288,7 @@ hns3_tx_check_simple_support(struct rte_eth_dev *dev)
 	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
 
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if (hns3_dev_ptp_supported(hw))
+	if (hns3_dev_get_support(hw, PTP))
 		return false;
 
 	return (offloads == (offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE));
@@ -4449,7 +4449,7 @@ hns3_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	int ret;
 
-	if (!hns3_dev_indep_txrx_supported(hw))
+	if (!hns3_dev_get_support(hw, INDEP_TXRX))
 		return -ENOTSUP;
 
 	rte_spinlock_lock(&hw->lock);
@@ -4495,7 +4495,7 @@ hns3_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_rx_queue *rxq = dev->data->rx_queues[rx_queue_id];
 
-	if (!hns3_dev_indep_txrx_supported(hw))
+	if (!hns3_dev_get_support(hw, INDEP_TXRX))
 		return -ENOTSUP;
 
 	rte_spinlock_lock(&hw->lock);
@@ -4517,7 +4517,7 @@ hns3_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	struct hns3_tx_queue *txq = dev->data->tx_queues[tx_queue_id];
 	int ret;
 
-	if (!hns3_dev_indep_txrx_supported(hw))
+	if (!hns3_dev_get_support(hw, INDEP_TXRX))
 		return -ENOTSUP;
 
 	rte_spinlock_lock(&hw->lock);
@@ -4543,7 +4543,7 @@ hns3_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_tx_queue *txq = dev->data->tx_queues[tx_queue_id];
 
-	if (!hns3_dev_indep_txrx_supported(hw))
+	if (!hns3_dev_get_support(hw, INDEP_TXRX))
 		return -ENOTSUP;
 
 	rte_spinlock_lock(&hw->lock);
@@ -4716,7 +4716,7 @@ hns3_enable_rxd_adv_layout(struct hns3_hw *hw)
 	 * If the hardware support rxd advanced layout, then driver enable it
 	 * default.
 	 */
-	if (hns3_dev_rxd_adv_layout_supported(hw))
+	if (hns3_dev_get_support(hw, RXD_ADV_LAYOUT))
 		hns3_write_dev(hw, HNS3_RXD_ADV_LAYOUT_EN_REG, 1);
 }
 

@@ -61,7 +61,7 @@ hns3_ptp_init(struct hns3_hw *hw)
 {
 	int ret;
 
-	if (!hns3_dev_ptp_supported(hw))
+	if (!hns3_dev_get_support(hw, PTP))
 		return 0;
 
 	ret = hns3_ptp_int_en(hw, true);
@@ -120,7 +120,7 @@ hns3_timesync_enable(struct rte_eth_dev *dev)
 	struct hns3_pf *pf = &hns->pf;
 	int ret;
 
-	if (!hns3_dev_ptp_supported(hw))
+	if (!hns3_dev_get_support(hw, PTP))
 		return -ENOTSUP;
 
 	if (pf->ptp_enable)
@@ -140,7 +140,7 @@ hns3_timesync_disable(struct rte_eth_dev *dev)
 	struct hns3_pf *pf = &hns->pf;
 	int ret;
 
-	if (!hns3_dev_ptp_supported(hw))
+	if (!hns3_dev_get_support(hw, PTP))
 		return -ENOTSUP;
 
 	if (!pf->ptp_enable)
@@ -164,7 +164,7 @@ hns3_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 	struct hns3_pf *pf = &hns->pf;
 	uint64_t ns, sec;
 
-	if (!hns3_dev_ptp_supported(hw))
+	if (!hns3_dev_get_support(hw, PTP))
 		return -ENOTSUP;
 
 	ns = pf->rx_timestamp & TIME_RX_STAMP_NS_MASK;
@@ -190,7 +190,7 @@ hns3_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 	uint64_t ns;
 	int ts_cnt;
 
-	if (!hns3_dev_ptp_supported(hw))
+	if (!hns3_dev_get_support(hw, PTP))
 		return -ENOTSUP;
 
 	ts_cnt = hns3_read_dev(hw, HNS3_TX_1588_BACK_TSP_CNT) &
@@ -219,7 +219,7 @@ hns3_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint64_t ns, sec;
 
-	if (!hns3_dev_ptp_supported(hw))
+	if (!hns3_dev_get_support(hw, PTP))
 		return -ENOTSUP;
 
 	sec = hns3_read_dev(hw, HNS3_CURR_TIME_OUT_L);
@@ -240,7 +240,7 @@ hns3_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
 	uint64_t sec = ts->tv_sec;
 	uint64_t ns = ts->tv_nsec;
 
-	if (!hns3_dev_ptp_supported(hw))
+	if (!hns3_dev_get_support(hw, PTP))
 		return -ENOTSUP;
 
 	/* Set the timecounters to a new value. */
@@ -261,7 +261,7 @@ hns3_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
 	struct timespec cur_time;
 	uint64_t ns;
 
-	if (!hns3_dev_ptp_supported(hw))
+	if (!hns3_dev_get_support(hw, PTP))
 		return -ENOTSUP;
 
 	(void)hns3_timesync_read_time(dev, &cur_time);
@@ -280,7 +280,7 @@ hns3_restore_ptp(struct hns3_adapter *hns)
 	bool en = pf->ptp_enable;
 	int ret;
 
-	if (!hns3_dev_ptp_supported(hw))
+	if (!hns3_dev_get_support(hw, PTP))
 		return 0;
 
 	ret = hns3_timesync_configure(hns, en);

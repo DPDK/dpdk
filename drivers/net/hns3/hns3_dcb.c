@@ -918,7 +918,7 @@ hns3_dcb_pri_dwrr_cfg(struct hns3_hw *hw)
 	if (ret)
 		return ret;
 
-	if (!hns3_dev_dcb_supported(hw))
+	if (!hns3_dev_get_support(hw, DCB))
 		return 0;
 
 	ret = hns3_dcb_ets_tc_dwrr_cfg(hw);
@@ -1368,7 +1368,7 @@ hns3_dcb_pause_setup_hw(struct hns3_hw *hw)
 	}
 
 	/* Only DCB-supported dev supports qset back pressure and pfc cmd */
-	if (!hns3_dev_dcb_supported(hw))
+	if (!hns3_dev_get_support(hw, DCB))
 		return 0;
 
 	ret = hns3_pfc_setup_hw(hw);

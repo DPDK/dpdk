@@ -2408,7 +2408,7 @@ hns3_setup_dcb(struct rte_eth_dev *dev)
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
-	if (!hns3_dev_dcb_supported(hw)) {
+	if (!hns3_dev_get_support(hw, DCB)) {
 		hns3_err(hw, "this port does not support dcb configurations.");
 		return -EOPNOTSUPP;
 	}
@@ -2746,14 +2746,14 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 DEV_TX_OFFLOAD_MBUF_FAST_FREE |
 				 hns3_txvlan_cap_get(hw));
 
-	if (hns3_dev_outer_udp_cksum_supported(hw))
+	if (hns3_dev_get_support(hw, OUTER_UDP_CKSUM))
 		info->tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
 
-	if (hns3_dev_indep_txrx_supported(hw))
+	if (hns3_dev_get_support(hw, INDEP_TXRX))
 		info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
 				 RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
 
-	if (hns3_dev_ptp_supported(hw))
+	if (hns3_dev_get_support(hw, PTP))
 		info->rx_offload_capa |= DEV_RX_OFFLOAD_TIMESTAMP;
 
 	info->rx_desc_lim = (struct rte_eth_desc_lim) {
@@ -3421,7 +3421,7 @@ hns3_check_media_type(struct hns3_hw *hw, uint8_t media_type)
 
 	switch (media_type) {
 	case HNS3_MEDIA_TYPE_COPPER:
-		if (!hns3_dev_copper_supported(hw)) {
+		if (!hns3_dev_get_support(hw, COPPER)) {
 			PMD_INIT_LOG(ERR,
 				     "Media type is copper, not supported.");
 			ret = -EOPNOTSUPP;
@@ -3489,7 +3489,7 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 	}
 
 	/* Dev does not support DCB */
-	if (!hns3_dev_dcb_supported(hw)) {
+	if (!hns3_dev_get_support(hw, DCB)) {
 		pf->tc_max = 1;
 		pf->pfc_max = 0;
 	} else
@@ -3802,7 +3802,7 @@ hns3_is_rx_buf_ok(struct hns3_hw *hw, struct hns3_pkt_buf_alloc *buf_alloc,
 	tc_num = hns3_get_tc_num(hw);
 	aligned_mps = roundup(pf->mps, HNS3_BUF_SIZE_UNIT);
 
-	if (hns3_dev_dcb_supported(hw))
+	if (hns3_dev_get_support(hw, DCB))
 		shared_buf_min = HNS3_BUF_MUL_BY * aligned_mps +
 					pf->dv_buf_size;
 	else
@@ -3819,7 +3819,7 @@ hns3_is_rx_buf_ok(struct hns3_hw *hw, struct hns3_pkt_buf_alloc *buf_alloc,
 
 	shared_buf = rounddown(rx_all - rx_priv, HNS3_BUF_SIZE_UNIT);
 	buf_alloc->s_buf.buf_size = shared_buf;
-	if (hns3_dev_dcb_supported(hw)) {
+	if (hns3_dev_get_support(hw, DCB)) {
 		buf_alloc->s_buf.self.high = shared_buf - pf->dv_buf_size;
 		buf_alloc->s_buf.self.low = buf_alloc->s_buf.self.high
 			- roundup(aligned_mps / HNS3_BUF_DIV_BY,
@@ -3830,7 +3830,7 @@ hns3_is_rx_buf_ok(struct hns3_hw *hw, struct hns3_pkt_buf_alloc *buf_alloc,
 		buf_alloc->s_buf.self.low = aligned_mps;
 	}
 
-	if (hns3_dev_dcb_supported(hw)) {
+	if (hns3_dev_get_support(hw, DCB)) {
 		hi_thrd = shared_buf - pf->dv_buf_size;
 
 		if (tc_num <= NEED_RESERVE_TC_NUM)
@@ -4036,7 +4036,7 @@ static int
 hns3_rx_buffer_calc(struct hns3_hw *hw, struct hns3_pkt_buf_alloc *buf_alloc)
 {
 	/* When DCB is not supported, rx private buffer is not allocated. */
-	if (!hns3_dev_dcb_supported(hw)) {
+	if (!hns3_dev_get_support(hw, DCB)) {
 		struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 		struct hns3_pf *pf = &hns->pf;
 		uint32_t rx_all = pf->pkt_buf_size;
@@ -4264,7 +4264,7 @@ hns3_buffer_alloc(struct hns3_hw *hw)
 		return ret;
 	}
 
-	if (hns3_dev_dcb_supported(hw)) {
+	if (hns3_dev_get_support(hw, DCB)) {
 		ret = hns3_rx_priv_wl_config(hw, &pkt_buf);
 		if (ret) {
 			PMD_INIT_LOG(ERR,
@@ -6233,7 +6233,7 @@ hns3_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret;
 
-	if (!hns3_dev_dcb_supported(hw)) {
+	if (!hns3_dev_get_support(hw, DCB)) {
 		hns3_err(hw, "This port does not support dcb configurations.");
 		return -EOPNOTSUPP;
 	}

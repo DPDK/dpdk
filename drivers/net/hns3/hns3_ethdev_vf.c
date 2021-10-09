@@ -988,10 +988,10 @@ hns3vf_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 DEV_TX_OFFLOAD_MBUF_FAST_FREE |
 				 hns3_txvlan_cap_get(hw));
 
-	if (hns3_dev_outer_udp_cksum_supported(hw))
+	if (hns3_dev_get_support(hw, OUTER_UDP_CKSUM))
 		info->tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
 
-	if (hns3_dev_indep_txrx_supported(hw))
+	if (hns3_dev_get_support(hw, INDEP_TXRX))
 		info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
 				 RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
 
@@ -1623,7 +1623,7 @@ hns3vf_en_vlan_filter(struct hns3_hw *hw, bool enable)
 	uint8_t msg_data;
 	int ret;
 
-	if (!hns3_dev_vf_vlan_flt_supported(hw))
+	if (!hns3_dev_get_support(hw, VF_VLAN_FLT_MOD))
 		return 0;
 
 	msg_data = enable ? 1 : 0;

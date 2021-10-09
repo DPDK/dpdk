@@ -31,7 +31,7 @@ hns3_tm_conf_init(struct rte_eth_dev *dev)
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t max_tx_queues = hns3_tm_max_tx_queues_get(dev);
 
-	if (!hns3_dev_tm_supported(hw))
+	if (!hns3_dev_get_support(hw, TM))
 		return;
 
 	pf->tm_conf.nb_leaf_nodes_max = max_tx_queues;
@@ -58,7 +58,7 @@ hns3_tm_conf_uninit(struct rte_eth_dev *dev)
 	struct hns3_tm_shaper_profile *shaper_profile;
 	struct hns3_tm_node *tm_node;
 
-	if (!hns3_dev_tm_supported(hw))
+	if (!hns3_dev_get_support(hw, TM))
 		return;
 
 	if (pf->tm_conf.nb_queue_node > 0) {
@@ -1233,7 +1233,7 @@ hns3_tm_ops_get(struct rte_eth_dev *dev, void *arg)
 	if (arg == NULL)
 		return -EINVAL;
 
-	if (!hns3_dev_tm_supported(hw))
+	if (!hns3_dev_get_support(hw, TM))
 		return -EOPNOTSUPP;
 
 	*(const void **)arg = &hns3_tm_ops;
@@ -1246,7 +1246,7 @@ hns3_tm_dev_start_proc(struct hns3_hw *hw)
 {
 	struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
 
-	if (!hns3_dev_tm_supported(hw))
+	if (!hns3_dev_get_support(hw, TM))
 		return;
 
 	if (pf->tm_conf.root && !pf->tm_conf.committed)
@@ -1295,7 +1295,7 @@ hns3_tm_conf_update(struct hns3_hw *hw)
 	struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
 	struct rte_tm_error error;
 
-	if (!hns3_dev_tm_supported(hw))
+	if (!hns3_dev_get_support(hw, TM))
 		return 0;
 
 	if (pf->tm_conf.root == NULL || !pf->tm_conf.committed)

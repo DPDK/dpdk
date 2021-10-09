@@ -19,7 +19,7 @@ hns3_tx_check_vec_support(struct rte_eth_dev *dev)
 	struct rte_eth_txmode *txmode = &dev->data->dev_conf.txmode;
 
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if (hns3_dev_ptp_supported(hw))
+	if (hns3_dev_get_support(hw, PTP))
 		return -ENOTSUP;
 
 	/* Only support DEV_TX_OFFLOAD_MBUF_FAST_FREE */
@@ -234,7 +234,7 @@ hns3_rx_check_vec_support(struct rte_eth_dev *dev)
 				 DEV_RX_OFFLOAD_VLAN;
 
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if (hns3_dev_ptp_supported(hw))
+	if (hns3_dev_get_support(hw, PTP))
 		return -ENOTSUP;
 
 	if (dev->data->scattered_rx)

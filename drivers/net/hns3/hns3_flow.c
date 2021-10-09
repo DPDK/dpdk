@@ -301,7 +301,7 @@ hns3_handle_action_queue_region(struct rte_eth_dev *dev,
 	struct hns3_hw *hw = &hns->hw;
 	uint16_t idx;
 
-	if (!hns3_dev_fd_queue_region_supported(hw))
+	if (!hns3_dev_get_support(hw, FD_QUEUE_REGION))
 		return rte_flow_error_set(error, ENOTSUP,
 			RTE_FLOW_ERROR_TYPE_ACTION, action,
 			"Not support config queue region!");

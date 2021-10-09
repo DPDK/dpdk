@@ -883,45 +883,8 @@ enum {
 	HNS3_DEV_SUPPORT_VF_VLAN_FLT_MOD_B,
 };
 
-#define hns3_dev_dcb_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_DCB_B)
-
-/* Support copper media type */
-#define hns3_dev_copper_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_COPPER_B)
-
-/* Support the queue region action rule of flow directory */
-#define hns3_dev_fd_queue_region_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B)
-
-/* Support PTP timestamp offload */
-#define hns3_dev_ptp_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_PTP_B)
-
-/* Support to Independently enable/disable/reset Tx or Rx queues */
-#define hns3_dev_indep_txrx_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_INDEP_TXRX_B)
-
-#define hns3_dev_stash_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_STASH_B)
-
-#define hns3_dev_rxd_adv_layout_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_RXD_ADV_LAYOUT_B)
-
-#define hns3_dev_outer_udp_cksum_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_OUTER_UDP_CKSUM_B)
-
-#define hns3_dev_ras_imp_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_RAS_IMP_B)
-
-#define hns3_dev_tx_push_supported(hw) \
-		hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_TX_PUSH_B)
-
-#define hns3_dev_tm_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_TM_B)
-
-#define hns3_dev_vf_vlan_flt_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_VF_VLAN_FLT_MOD_B)
+#define hns3_dev_get_support(hw, _name) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_##_name##_B)
 
 #define HNS3_DEV_PRIVATE_TO_HW(adapter) \
 	(&((struct hns3_adapter *)adapter)->hw)

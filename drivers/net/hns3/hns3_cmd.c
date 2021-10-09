@@ -617,7 +617,7 @@ hns3_update_dev_lsc_cap(struct hns3_hw *hw, int fw_compact_cmd_result)
 static int
 hns3_apply_fw_compat_cmd_result(struct hns3_hw *hw, int result)
 {
-	if (result != 0 && hns3_dev_copper_supported(hw)) {
+	if (result != 0 && hns3_dev_get_support(hw, COPPER)) {
 		hns3_err(hw, "firmware fails to initialize the PHY, ret = %d.",
 			 result);
 		return result;
@@ -656,7 +656,7 @@ hns3_firmware_compat_config(struct hns3_hw *hw, bool is_init)
 	}
 	if (revision == PCI_REVISION_ID_HIP09_A) {
 		struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
-		if (hns3_dev_copper_supported(hw) == 0 || pf->is_tmp_phy) {
+		if (hns3_dev_get_support(hw, COPPER) == 0 || pf->is_tmp_phy) {
 			PMD_INIT_LOG(ERR, "***use temp phy driver in dpdk***");
 			pf->is_tmp_phy = true;
 			hns3_set_bit(hw->capability,
@@ -674,7 +674,7 @@ hns3_firmware_compat_config(struct hns3_hw *hw, bool is_init)
 	if (is_init) {
 		hns3_set_bit(compat, HNS3_LINK_EVENT_REPORT_EN_B, 1);
 		hns3_set_bit(compat, HNS3_NCSI_ERROR_REPORT_EN_B, 0);
-		if (hns3_dev_copper_supported(hw))
+		if (hns3_dev_get_support(hw, COPPER))
 			hns3_set_bit(compat, HNS3_FIRMWARE_PHY_DRIVER_EN_B, 1);
 	}
 	req->compat = rte_cpu_to_le_32(compat);

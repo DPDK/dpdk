@@ -2368,7 +2368,7 @@ hns3_handle_error(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
 
-	if (hns3_dev_ras_imp_supported(hw)) {
+	if (hns3_dev_get_support(hw, RAS_IMP)) {
 		hns3_handle_hw_error_v2(hw);
 		hns3_schedule_reset(hns);
 	} else {
