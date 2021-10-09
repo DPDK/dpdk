@@ -768,6 +768,7 @@ struct i40e_aqc_set_switch_config {
 #define I40E_AQ_SET_SWITCH_CFG_PROMISC		0x0001
 #define I40E_AQ_SET_SWITCH_CFG_L2_FILTER	0x0002
 #define I40E_AQ_SET_SWITCH_CFG_HW_ATR_EVICT	0x0004
+#define I40E_AQ_SET_SWITCH_CFG_OUTER_VLAN	0x0008
 	__le16	valid_flags;
 	/* The ethertype in switch_tag is dropped on ingress and used
 	 * internally by the switch. Set this to zero for the default
@@ -904,7 +905,7 @@ struct i40e_aqc_vsi_properties_data {
 	u8	sec_reserved;
 	/* VLAN section */
 	__le16	pvid; /* VLANS include priority bits */
-	__le16	fcoe_pvid;
+	__le16	outer_vlan;
 	u8	port_vlan_flags;
 #define I40E_AQ_VSI_PVLAN_MODE_SHIFT	0x00
 #define I40E_AQ_VSI_PVLAN_MODE_MASK	(0x03 << \
@@ -920,7 +921,24 @@ struct i40e_aqc_vsi_properties_data {
 #define I40E_AQ_VSI_PVLAN_EMOD_STR_UP	0x08
 #define I40E_AQ_VSI_PVLAN_EMOD_STR	0x10
 #define I40E_AQ_VSI_PVLAN_EMOD_NOTHING	0x18
-	u8	pvlan_reserved[3];
+	u8	outer_vlan_flags;
+#define I40E_AQ_VSI_OVLAN_MODE_SHIFT	0x00
+#define I40E_AQ_VSI_OVLAN_MODE_MASK	(0x03 << \
+					 I40E_AQ_VSI_OVLAN_MODE_SHIFT)
+#define I40E_AQ_VSI_OVLAN_MODE_UNTAGGED	0x01
+#define I40E_AQ_VSI_OVLAN_MODE_TAGGED	0x02
+#define I40E_AQ_VSI_OVLAN_MODE_ALL	0x03
+#define I40E_AQ_VSI_OVLAN_INSERT_PVID	0x04
+#define I40E_AQ_VSI_OVLAN_EMOD_SHIFT	0x03
+#define I40E_AQ_VSI_OVLAN_EMOD_MASK	(0x03 <<\
+					 I40E_AQ_VSI_OVLAN_EMOD_SHIFT)
+#define I40E_AQ_VSI_OVLAN_EMOD_SHOW_ALL	0x00
+#define I40E_AQ_VSI_OVLAN_EMOD_SHOW_UP	0x01
+#define I40E_AQ_VSI_OVLAN_EMOD_HIDE_ALL	0x02
+#define I40E_AQ_VSI_OVLAN_EMOD_NOTHING	0x03
+#define I40E_AQ_VSI_OVLAN_CTRL_ENA	0x04
+
+	u8	pvlan_reserved[2];
 	/* ingress egress up sections */
 	__le32	ingress_table; /* bitmap, 3 bits per up */
 #define I40E_AQ_VSI_UP_TABLE_UP0_SHIFT	0
