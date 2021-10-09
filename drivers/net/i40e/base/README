@@ -6,7 +6,7 @@ Intel® I40E driver
 ==================
 
 This directory contains source code of FreeBSD i40e driver of version
-cid-i40e.2020.08.27.tar.gz released by the team which develops
+cid-i40e.2021.08.16.tar.gz released by the team which develops
 basic drivers for any i40e NIC. The directory of base/ contains the
 original source package.
 This driver is valid for the product(s) listed below
