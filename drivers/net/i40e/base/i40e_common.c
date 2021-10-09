@@ -2677,7 +2677,7 @@ enum i40e_status_code i40e_aq_set_vsi_vlan_promisc(struct i40e_hw *hw,
 }
 
 /**
- * i40e_get_vsi_params - get VSI configuration info
+ * i40e_aq_get_vsi_params - get VSI configuration info
  * @hw: pointer to the hw struct
  * @vsi_ctx: pointer to a vsi context struct
  * @cmd_details: pointer to command details structure or NULL
@@ -2938,7 +2938,7 @@ enum i40e_status_code i40e_get_link_status(struct i40e_hw *hw, bool *link_up)
 }
 
 /**
- * i40e_updatelink_status - update status of the HW network link
+ * i40e_update_link_info - update status of the HW network link
  * @hw: pointer to the hw struct
  **/
 enum i40e_status_code i40e_update_link_info(struct i40e_hw *hw)
@@ -4830,7 +4830,7 @@ enum i40e_status_code i40e_aq_del_udp_tunnel(struct i40e_hw *hw, u8 index,
 }
 
 /**
- * i40e_aq_get_switch_resource_alloc (0x0204)
+ * i40e_aq_get_switch_resource_alloc - command (0x0204) to get allocations
  * @hw: pointer to the hw struct
  * @num_entries: pointer to u8 to store the number of resource entries returned
  * @buf: pointer to a user supplied buffer.  This buffer must be large enough
@@ -6977,7 +6977,7 @@ u8 i40e_get_phy_address(struct i40e_hw *hw, u8 dev_num)
 }
 
 /**
- * i40e_blink_phy_led
+ * i40e_blink_phy_link_led
  * @hw: pointer to the HW structure
  * @time: time how long led will blinks in secs
  * @interval: gap between LED on and off in msecs
@@ -7824,7 +7824,7 @@ enum i40e_status_code i40e_aq_set_arp_proxy_config(struct i40e_hw *hw,
 }
 
 /**
- * i40e_aq_opc_set_ns_proxy_table_entry
+ * i40e_aq_set_ns_proxy_table_entry
  * @hw: pointer to the HW structure
  * @ns_proxy_table_entry: pointer to NS table entry command struct
  * @cmd_details: pointer to command details
