@@ -236,6 +236,14 @@ enum i40e_queue_type {
 	I40E_QUEUE_TYPE_UNKNOWN
 };
 
+enum i40e_prt_mac_link_speed {
+	I40E_PRT_MAC_LINK_SPEED_100MB = 0,
+	I40E_PRT_MAC_LINK_SPEED_1GB,
+	I40E_PRT_MAC_LINK_SPEED_10GB,
+	I40E_PRT_MAC_LINK_SPEED_40GB,
+	I40E_PRT_MAC_LINK_SPEED_20GB
+};
+
 struct i40e_link_status {
 	enum i40e_aq_phy_type phy_type;
 	enum i40e_aq_link_speed link_speed;

@@ -2854,7 +2854,6 @@ static __rte_always_inline void
 update_link_reg(struct i40e_hw *hw, struct rte_eth_link *link)
 {
 /* Link status registers and values*/
-#define I40E_PRTMAC_LINKSTA		0x001E2420
 #define I40E_REG_LINK_UP		0x40000080
 #define I40E_PRTMAC_MACC		0x001E24E0
 #define I40E_REG_MACC_25GB		0x00020000
@@ -2867,7 +2866,7 @@ update_link_reg(struct i40e_hw *hw, struct rte_eth_link *link)
 	uint32_t link_speed;
 	uint32_t reg_val;
 
-	reg_val = I40E_READ_REG(hw, I40E_PRTMAC_LINKSTA);
+	reg_val = I40E_READ_REG(hw, I40E_PRTMAC_LINKSTA(0));
 	link_speed = reg_val & I40E_REG_SPEED_MASK;
 	reg_val &= I40E_REG_LINK_UP;
 	link->link_status = (reg_val == I40E_REG_LINK_UP) ? 1 : 0;
