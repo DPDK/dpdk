@@ -33,61 +33,11 @@
 #include "sfc_sw_stats.h"
 #include "sfc_repr_proxy.h"
 #include "sfc_service.h"
+#include "sfc_ethdev_state.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/*
- * +---------------+
- * | UNINITIALIZED |<-----------+
- * +---------------+		|
- *	|.eth_dev_init		|.eth_dev_uninit
- *	V			|
- * +---------------+------------+
- * |  INITIALIZED  |
- * +---------------+<-----------<---------------+
- *	|.dev_configure		|		|
- *	V			|failed		|
- * +---------------+------------+		|
- * |  CONFIGURING  |				|
- * +---------------+----+			|
- *	|success	|			|
- *	|		|		+---------------+
- *	|		|		|    CLOSING    |
- *	|		|		+---------------+
- *	|		|			^
- *	V		|.dev_configure		|
- * +---------------+----+			|.dev_close
- * |  CONFIGURED   |----------------------------+
- * +---------------+<-----------+
- *	|.dev_start		|
- *	V			|
- * +---------------+		|
- * |   STARTING    |------------^
- * +---------------+ failed	|
- *	|success		|
- *	|		+---------------+
- *	|		|   STOPPING    |
- *	|		+---------------+
- *	|			^
- *	V			|.dev_stop
- * +---------------+------------+
- * |    STARTED    |
- * +---------------+
- */
-enum sfc_adapter_state {
-	SFC_ADAPTER_UNINITIALIZED = 0,
-	SFC_ADAPTER_INITIALIZED,
-	SFC_ADAPTER_CONFIGURING,
-	SFC_ADAPTER_CONFIGURED,
-	SFC_ADAPTER_CLOSING,
-	SFC_ADAPTER_STARTING,
-	SFC_ADAPTER_STARTED,
-	SFC_ADAPTER_STOPPING,
-
-	SFC_ADAPTER_NSTATES
-};
 
 enum sfc_dev_filter_mode {
 	SFC_DEV_FILTER_MODE_PROMISC = 0,
@@ -267,7 +217,7 @@ struct sfc_adapter {
 	 * change its state should acquire the lock.
 	 */
 	rte_spinlock_t			lock;
-	enum sfc_adapter_state		state;
+	enum sfc_ethdev_state		state;
 	struct rte_eth_dev		*eth_dev;
 	struct rte_kvargs		*kvargs;
 	int				socket_id;

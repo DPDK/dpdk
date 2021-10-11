@@ -48,7 +48,7 @@ sfc_port_update_mac_stats(struct sfc_adapter *sa, boolean_t force_upload)
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
-	if (sa->state != SFC_ADAPTER_STARTED)
+	if (sa->state != SFC_ETHDEV_STARTED)
 		return 0;
 
 	/*

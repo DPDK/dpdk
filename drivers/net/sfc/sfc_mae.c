@@ -3414,7 +3414,7 @@ sfc_mae_flow_verify(struct sfc_adapter *sa,
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
-	if (sa->state != SFC_ADAPTER_STARTED)
+	if (sa->state != SFC_ETHDEV_STARTED)
 		return EAGAIN;
 
 	if (outer_rule != NULL) {

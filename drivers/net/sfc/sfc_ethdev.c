@@ -213,9 +213,9 @@ sfc_dev_configure(struct rte_eth_dev *dev)
 
 	sfc_adapter_lock(sa);
 	switch (sa->state) {
-	case SFC_ADAPTER_CONFIGURED:
+	case SFC_ETHDEV_CONFIGURED:
 		/* FALLTHROUGH */
-	case SFC_ADAPTER_INITIALIZED:
+	case SFC_ETHDEV_INITIALIZED:
 		rc = sfc_configure(sa);
 		break;
 	default:
@@ -257,7 +257,7 @@ sfc_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 
 	sfc_log_init(sa, "entry");
 
-	if (sa->state != SFC_ADAPTER_STARTED) {
+	if (sa->state != SFC_ETHDEV_STARTED) {
 		sfc_port_link_mode_to_info(EFX_LINK_UNKNOWN, &current_link);
 	} else if (wait_to_complete) {
 		efx_link_mode_t link_mode;
@@ -346,15 +346,15 @@ sfc_dev_close(struct rte_eth_dev *dev)
 
 	sfc_adapter_lock(sa);
 	switch (sa->state) {
-	case SFC_ADAPTER_STARTED:
+	case SFC_ETHDEV_STARTED:
 		sfc_stop(sa);
-		SFC_ASSERT(sa->state == SFC_ADAPTER_CONFIGURED);
+		SFC_ASSERT(sa->state == SFC_ETHDEV_CONFIGURED);
 		/* FALLTHROUGH */
-	case SFC_ADAPTER_CONFIGURED:
+	case SFC_ETHDEV_CONFIGURED:
 		sfc_close(sa);
-		SFC_ASSERT(sa->state == SFC_ADAPTER_INITIALIZED);
+		SFC_ASSERT(sa->state == SFC_ETHDEV_INITIALIZED);
 		/* FALLTHROUGH */
-	case SFC_ADAPTER_INITIALIZED:
+	case SFC_ETHDEV_INITIALIZED:
 		break;
 	default:
 		sfc_err(sa, "unexpected adapter state %u on close", sa->state);
@@ -410,7 +410,7 @@ sfc_dev_filter_set(struct rte_eth_dev *dev, enum sfc_dev_filter_mode mode,
 			sfc_warn(sa, "the change is to be applied on the next "
 				     "start provided that isolated mode is "
 				     "disabled prior the next start");
-		} else if ((sa->state == SFC_ADAPTER_STARTED) &&
+		} else if ((sa->state == SFC_ETHDEV_STARTED) &&
 			   ((rc = sfc_set_rx_mode(sa)) != 0)) {
 			*toggle = !(enabled);
 			sfc_warn(sa, "Failed to %s %s mode, rc = %d",
@@ -774,7 +774,7 @@ sfc_stats_reset(struct rte_eth_dev *dev)
 
 	sfc_adapter_lock(sa);
 
-	if (sa->state != SFC_ADAPTER_STARTED) {
+	if (sa->state != SFC_ETHDEV_STARTED) {
 		/*
 		 * The operation cannot be done if port is not started; it
 		 * will be scheduled to be done during the next port start
@@ -976,7 +976,7 @@ sfc_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	sfc_adapter_lock(sa);
 
-	if (sa->state == SFC_ADAPTER_STARTED)
+	if (sa->state == SFC_ETHDEV_STARTED)
 		efx_mac_fcntl_get(sa->nic, &wanted_fc, &link_fc);
 	else
 		link_fc = sa->port.flow_ctrl;
@@ -1042,7 +1042,7 @@ sfc_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	sfc_adapter_lock(sa);
 
-	if (sa->state == SFC_ADAPTER_STARTED) {
+	if (sa->state == SFC_ETHDEV_STARTED) {
 		rc = efx_mac_fcntl_set(sa->nic, fcntl, fc_conf->autoneg);
 		if (rc != 0)
 			goto fail_mac_fcntl_set;
@@ -1122,7 +1122,7 @@ sfc_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		goto fail_check_scatter;
 
 	if (pdu != sa->port.pdu) {
-		if (sa->state == SFC_ADAPTER_STARTED) {
+		if (sa->state == SFC_ETHDEV_STARTED) {
 			sfc_stop(sa);
 
 			old_pdu = sa->port.pdu;
@@ -1199,7 +1199,7 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 		goto unlock;
 	}
 
-	if (sa->state != SFC_ADAPTER_STARTED) {
+	if (sa->state != SFC_ETHDEV_STARTED) {
 		sfc_notice(sa, "the port is not started");
 		sfc_notice(sa, "the new MAC address will be set on port start");
 
@@ -1286,7 +1286,7 @@ sfc_set_mc_addr_list(struct rte_eth_dev *dev,
 
 	port->nb_mcast_addrs = nb_mc_addr;
 
-	if (sa->state != SFC_ADAPTER_STARTED)
+	if (sa->state != SFC_ETHDEV_STARTED)
 		return 0;
 
 	rc = efx_mac_multicast_list_set(sa->nic, port->mcast_addrs,
@@ -1412,7 +1412,7 @@ sfc_rx_queue_start(struct rte_eth_dev *dev, uint16_t ethdev_qid)
 	sfc_adapter_lock(sa);
 
 	rc = EINVAL;
-	if (sa->state != SFC_ADAPTER_STARTED)
+	if (sa->state != SFC_ETHDEV_STARTED)
 		goto fail_not_started;
 
 	rxq_info = sfc_rxq_info_by_ethdev_qid(sas, sfc_ethdev_qid);
@@ -1476,7 +1476,7 @@ sfc_tx_queue_start(struct rte_eth_dev *dev, uint16_t ethdev_qid)
 	sfc_adapter_lock(sa);
 
 	rc = EINVAL;
-	if (sa->state != SFC_ADAPTER_STARTED)
+	if (sa->state != SFC_ETHDEV_STARTED)
 		goto fail_not_started;
 
 	txq_info = sfc_txq_info_by_ethdev_qid(sas, ethdev_qid);
@@ -1584,7 +1584,7 @@ sfc_dev_udp_tunnel_op(struct rte_eth_dev *dev,
 	if (rc != 0)
 		goto fail_op;
 
-	if (sa->state == SFC_ADAPTER_STARTED) {
+	if (sa->state == SFC_ETHDEV_STARTED) {
 		rc = efx_tunnel_reconfigure(sa->nic);
 		if (rc == EAGAIN) {
 			/*
@@ -1720,7 +1720,7 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 	}
 
 	if (rss_conf->rss_key != NULL) {
-		if (sa->state == SFC_ADAPTER_STARTED) {
+		if (sa->state == SFC_ETHDEV_STARTED) {
 			for (key_i = 0; key_i < n_contexts; key_i++) {
 				rc = efx_rx_scale_key_set(sa->nic,
 							  contexts[key_i],
@@ -1847,7 +1847,7 @@ sfc_dev_rss_reta_update(struct rte_eth_dev *dev,
 		}
 	}
 
-	if (sa->state == SFC_ADAPTER_STARTED) {
+	if (sa->state == SFC_ETHDEV_STARTED) {
 		rc = efx_rx_scale_tbl_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
 					  rss_tbl_new, EFX_RSS_TBL_SIZE);
 		if (rc != 0)

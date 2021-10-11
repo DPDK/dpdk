@@ -60,9 +60,9 @@ sfc_intr_line_handler(void *cb_arg)
 
 	sfc_log_init(sa, "entry");
 
-	if (sa->state != SFC_ADAPTER_STARTED &&
-	    sa->state != SFC_ADAPTER_STARTING &&
-	    sa->state != SFC_ADAPTER_STOPPING) {
+	if (sa->state != SFC_ETHDEV_STARTED &&
+	    sa->state != SFC_ETHDEV_STARTING &&
+	    sa->state != SFC_ETHDEV_STOPPING) {
 		sfc_log_init(sa,
 			     "interrupt on stopped adapter, don't reenable");
 		goto exit;
@@ -106,9 +106,9 @@ sfc_intr_message_handler(void *cb_arg)
 
 	sfc_log_init(sa, "entry");
 
-	if (sa->state != SFC_ADAPTER_STARTED &&
-	    sa->state != SFC_ADAPTER_STARTING &&
-	    sa->state != SFC_ADAPTER_STOPPING) {
+	if (sa->state != SFC_ETHDEV_STARTED &&
+	    sa->state != SFC_ETHDEV_STARTING &&
+	    sa->state != SFC_ETHDEV_STOPPING) {
 		sfc_log_init(sa, "adapter not-started, don't reenable");
 		goto exit;
 	}
