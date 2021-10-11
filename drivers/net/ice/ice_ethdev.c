@@ -1854,18 +1854,18 @@ parse_pin_set(const char *input, int pps_type, struct ice_devargs *devargs)
 		idx = strtoul(str, &end, 10);
 		if (end == NULL || idx >= ICE_MAX_PIN_NUM)
 			return -1;
+		while (isblank(*end))
+			end++;
+		if (*end != ']')
+			return -1;
 
 		devargs->pin_idx = idx;
 		devargs->pps_out_ena = 1;
+
+		return 0;
 	}
 
-	while (isblank(*end))
-		end++;
-
-	if (*end != ']')
-		return -1;
-
-	return 0;
+	return -1;
 }
 
 static int
