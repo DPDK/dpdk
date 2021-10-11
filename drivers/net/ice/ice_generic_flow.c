@@ -2542,7 +2542,7 @@ ice_flow_redirect(struct ice_adapter *ad,
 	struct ice_pf *pf = &ad->pf;
 	struct rte_flow *p_flow;
 	void *temp;
-	int ret;
+	int ret = 0;
 
 	rte_spinlock_lock(&pf->flow_ops_lock);
 
@@ -2552,11 +2552,11 @@ ice_flow_redirect(struct ice_adapter *ad,
 		ret = p_flow->engine->redirect(ad, p_flow, rd);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to redirect flows");
-			return ret;
+			break;
 		}
 	}
 
 	rte_spinlock_unlock(&pf->flow_ops_lock);
 
-	return 0;
+	return ret;
 }
