@@ -128,6 +128,31 @@ struct sfc_dp *sfc_dp_find_by_caps(struct sfc_dp_list *head,
 				   unsigned int avail_caps);
 int sfc_dp_register(struct sfc_dp_list *head, struct sfc_dp *entry);
 
+/**
+ * Dynamically registered mbuf flag "mport_override" (as a bitmask).
+ *
+ * If this flag is set in an mbuf then the dynamically registered
+ * mbuf field "mport" holds a valid value. This is used to direct
+ * port representor transmit traffic to the correct target port.
+ */
+extern uint64_t sfc_dp_mport_override;
+
+/**
+ * Dynamically registered mbuf field "mport" (mbuf byte offset).
+ *
+ * If the dynamically registered "mport_override" flag is set in
+ * an mbuf then the mbuf "mport" field holds a valid value. This
+ * is used to direct port representor transmit traffic to the
+ * correct target port.
+ */
+extern int sfc_dp_mport_offset;
+
+/**
+ * Register dynamic mbuf flag and field which can be used to require Tx override
+ * prefix descriptor with egress mport set.
+ */
+int sfc_dp_mport_register(void);
+
 #ifdef __cplusplus
 }
 #endif

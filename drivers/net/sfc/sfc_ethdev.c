@@ -2301,6 +2301,10 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 		return 1;
 	}
 
+	rc = sfc_dp_mport_register();
+	if (rc != 0)
+		return rc;
+
 	sfc_register_dp();
 
 	logtype_main = sfc_register_logtype(&pci_dev->addr,

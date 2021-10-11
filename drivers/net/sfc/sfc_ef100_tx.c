@@ -10,6 +10,7 @@
 #include <stdbool.h>
 
 #include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 #include <rte_io.h>
 #include <rte_net.h>
 
@@ -309,6 +310,19 @@ sfc_ef100_tx_reap(struct sfc_ef100_txq *txq)
 	sfc_ef100_tx_reap_num_descs(txq, sfc_ef100_tx_process_events(txq));
 }
 
+static void
+sfc_ef100_tx_qdesc_prefix_create(const struct rte_mbuf *m, efx_oword_t *tx_desc)
+{
+	efx_mport_id_t *mport_id =
+		RTE_MBUF_DYNFIELD(m, sfc_dp_mport_offset, efx_mport_id_t *);
+
+	EFX_POPULATE_OWORD_3(*tx_desc,
+			ESF_GZ_TX_PREFIX_EGRESS_MPORT,
+			mport_id->id,
+			ESF_GZ_TX_PREFIX_EGRESS_MPORT_EN, 1,
+			ESF_GZ_TX_DESC_TYPE, ESE_GZ_TX_DESC_TYPE_PREFIX);
+}
+
 static uint8_t
 sfc_ef100_tx_qdesc_cso_inner_l3(uint64_t tx_tunnel)
 {
@@ -525,6 +539,11 @@ sfc_ef100_tx_pkt_descs_max(const struct rte_mbuf *m)
 				 SFC_MBUF_SEG_LEN_MAX));
 	}
 
+	if (m->ol_flags & sfc_dp_mport_override) {
+		/* Tx override prefix descriptor will be used */
+		extra_descs++;
+	}
+
 	/*
 	 * Any segment of scattered packet cannot be bigger than maximum
 	 * segment length. Make sure that subsequent segments do not need
@@ -669,6 +688,12 @@ sfc_ef100_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				(added - txq->completed);
 			if (sfc_ef100_tx_pkt_descs_max(m_seg) > dma_desc_space)
 				break;
+		}
+
+		if (m_seg->ol_flags & sfc_dp_mport_override) {
+			id = added++ & txq->ptr_mask;
+			sfc_ef100_tx_qdesc_prefix_create(m_seg,
+							 &txq->txq_hw_ring[id]);
 		}
 
 		if (m_seg->ol_flags & PKT_TX_TCP_SEG) {

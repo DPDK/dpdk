@@ -12,6 +12,9 @@
 #include <errno.h>
 
 #include <rte_log.h>
+#include <rte_mbuf_dyn.h>
+
+#include "efx.h"
 
 #include "sfc_dp.h"
 #include "sfc_log.h"
@@ -74,6 +77,49 @@ sfc_dp_register(struct sfc_dp_list *head, struct sfc_dp *entry)
 	}
 
 	TAILQ_INSERT_TAIL(head, entry, links);
+
+	return 0;
+}
+
+uint64_t sfc_dp_mport_override;
+int sfc_dp_mport_offset = -1;
+
+int
+sfc_dp_mport_register(void)
+{
+	static const struct rte_mbuf_dynfield mport = {
+		.name = "rte_net_sfc_dynfield_mport",
+		.size = sizeof(efx_mport_id_t),
+		.align = __alignof__(efx_mport_id_t),
+	};
+	static const struct rte_mbuf_dynflag mport_override = {
+		.name = "rte_net_sfc_dynflag_mport_override",
+	};
+
+	int field_offset;
+	int flag;
+
+	if (sfc_dp_mport_override != 0) {
+		SFC_GENERIC_LOG(INFO, "%s() already registered", __func__);
+		return 0;
+	}
+
+	field_offset = rte_mbuf_dynfield_register(&mport);
+	if (field_offset < 0) {
+		SFC_GENERIC_LOG(ERR, "%s() failed to register mport dynfield",
+				__func__);
+		return -1;
+	}
+
+	flag = rte_mbuf_dynflag_register(&mport_override);
+	if (flag < 0) {
+		SFC_GENERIC_LOG(ERR, "%s() failed to register mport dynflag",
+				__func__);
+		return -1;
+	}
+
+	sfc_dp_mport_offset = field_offset;
+	sfc_dp_mport_override = UINT64_C(1) << flag;
 
 	return 0;
 }
