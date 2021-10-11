@@ -1579,11 +1579,12 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 	int32_t i, j, nb_rx = 0;
 	uint64_t pkt_flags = 0;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 	struct ice_vsi *vsi = rxq->vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	uint64_t ts_ns;
 	struct ice_adapter *ad = rxq->vsi->adapter;
-
+#endif
 	rxdp = &rxq->rx_ring[rxq->rx_tail];
 	rxep = &rxq->sw_ring[rxq->rx_tail];
 
@@ -1625,7 +1626,7 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
 			ice_rxd_to_vlan_tci(mb, &rxdp[j]);
 			rxq->rxd_to_pkt_fields(rxq, mb, &rxdp[j]);
-
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 			if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
 				ts_ns = ice_tstamp_convert_32b_64b(hw,
 					rte_le_to_cpu_32(rxdp[j].wb.flex_ts.ts_high));
@@ -1644,7 +1645,7 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 				mb->timesync = rxq->queue_id;
 				pkt_flags |= PKT_RX_IEEE1588_PTP;
 			}
-
+#endif
 			mb->ol_flags |= pkt_flags;
 		}
 
@@ -1828,11 +1829,12 @@ ice_recv_scattered_pkts(void *rx_queue,
 	uint64_t dma_addr;
 	uint64_t pkt_flags;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 	struct ice_vsi *vsi = rxq->vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	uint64_t ts_ns;
 	struct ice_adapter *ad = rxq->vsi->adapter;
-
+#endif
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
 		rx_stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
@@ -1942,7 +1944,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 		ice_rxd_to_vlan_tci(first_seg, &rxd);
 		rxq->rxd_to_pkt_fields(rxq, first_seg, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
-
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 		if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
 			ts_ns = ice_tstamp_convert_32b_64b(hw,
 				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
@@ -1961,7 +1963,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 			first_seg->timesync = rxq->queue_id;
 			pkt_flags |= PKT_RX_IEEE1588_PTP;
 		}
-
+#endif
 		first_seg->ol_flags |= pkt_flags;
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr,
@@ -2317,11 +2319,12 @@ ice_recv_pkts(void *rx_queue,
 	uint64_t dma_addr;
 	uint64_t pkt_flags;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 	struct ice_vsi *vsi = rxq->vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	uint64_t ts_ns;
 	struct ice_adapter *ad = rxq->vsi->adapter;
-
+#endif
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
 		rx_stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
@@ -2372,7 +2375,7 @@ ice_recv_pkts(void *rx_queue,
 		ice_rxd_to_vlan_tci(rxm, &rxd);
 		rxq->rxd_to_pkt_fields(rxq, rxm, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
-
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 		if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
 			ts_ns = ice_tstamp_convert_32b_64b(hw,
 				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
@@ -2391,7 +2394,7 @@ ice_recv_pkts(void *rx_queue,
 			rxm->timesync = rxq->queue_id;
 			pkt_flags |= PKT_RX_IEEE1588_PTP;
 		}
-
+#endif
 		rxm->ol_flags |= pkt_flags;
 		/* copy old mbuf to rx_pkts */
 		rx_pkts[nb_rx++] = rxm;
