@@ -19,6 +19,8 @@
 
 #include "sfc_repr.h"
 #include "sfc_dp.h"
+#include "sfc_flow.h"
+#include "sfc_mae.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,6 +51,14 @@ struct sfc_repr_proxy_txq {
 	struct rte_ring			*ring;
 };
 
+struct sfc_repr_proxy_filter {
+	/*
+	 * 2 filters are required to match all incoming traffic, unknown
+	 * unicast and unknown multicast.
+	 */
+	efx_filter_spec_t specs[2];
+};
+
 struct sfc_repr_proxy_port {
 	TAILQ_ENTRY(sfc_repr_proxy_port)	entries;
 	uint16_t				repr_id;
@@ -56,6 +66,9 @@ struct sfc_repr_proxy_port {
 	efx_mport_id_t				egress_mport;
 	struct sfc_repr_proxy_rxq		rxq[SFC_REPR_RXQ_MAX];
 	struct sfc_repr_proxy_txq		txq[SFC_REPR_TXQ_MAX];
+	struct sfc_mae_rule			*mae_rule;
+	bool					enabled;
+	bool					started;
 };
 
 struct sfc_repr_proxy_dp_rxq {
@@ -72,6 +85,8 @@ struct sfc_repr_proxy_dp_txq {
 enum sfc_repr_proxy_mbox_op {
 	SFC_REPR_PROXY_MBOX_ADD_PORT,
 	SFC_REPR_PROXY_MBOX_DEL_PORT,
+	SFC_REPR_PROXY_MBOX_START_PORT,
+	SFC_REPR_PROXY_MBOX_STOP_PORT,
 };
 
 struct sfc_repr_proxy_mbox {
@@ -92,6 +107,7 @@ struct sfc_repr_proxy {
 	bool				started;
 	struct sfc_repr_proxy_dp_rxq	dp_rxq[SFC_REPR_PROXY_NB_RXQ_MAX];
 	struct sfc_repr_proxy_dp_txq	dp_txq[SFC_REPR_PROXY_NB_TXQ_MAX];
+	struct sfc_repr_proxy_filter	mport_filter;
 
 	struct sfc_repr_proxy_mbox	mbox;
 };

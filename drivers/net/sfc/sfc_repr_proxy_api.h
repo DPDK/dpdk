@@ -38,6 +38,9 @@ int sfc_repr_proxy_add_txq(uint16_t pf_port_id, uint16_t repr_id,
 void sfc_repr_proxy_del_txq(uint16_t pf_port_id, uint16_t repr_id,
 			    uint16_t queue_id);
 
+int sfc_repr_proxy_start_repr(uint16_t pf_port_id, uint16_t repr_id);
+int sfc_repr_proxy_stop_repr(uint16_t pf_port_id, uint16_t repr_id);
+
 #ifdef __cplusplus
 }
 #endif
