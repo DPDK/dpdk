@@ -31,9 +31,10 @@
  */
 #define VFIO_MAX_USER_MEM_MAPS 256
 struct user_mem_map {
-	uint64_t addr;
-	uint64_t iova;
-	uint64_t len;
+	uint64_t addr;  /**< start VA */
+	uint64_t iova;  /**< start IOVA */
+	uint64_t len;   /**< total length of the mapping */
+	uint64_t chunk; /**< this mapping can be split in chunks of this size */
 };
 
 struct user_mem_maps {
@@ -95,7 +96,8 @@ static const struct vfio_iommu_type iommu_types[] = {
 static int
 is_null_map(const struct user_mem_map *map)
 {
-	return map->addr == 0 && map->iova == 0 && map->len == 0;
+	return map->addr == 0 && map->iova == 0 &&
+			map->len == 0 && map->chunk == 0;
 }
 
 /* we may need to merge user mem maps together in case of user mapping/unmapping
@@ -129,41 +131,90 @@ user_mem_map_cmp(const void *a, const void *b)
 	if (umm_a->len > umm_b->len)
 		return 1;
 
+	if (umm_a->chunk < umm_b->chunk)
+		return -1;
+	if (umm_a->chunk > umm_b->chunk)
+		return 1;
+
 	return 0;
 }
 
-/* adjust user map entry. this may result in shortening of existing map, or in
- * splitting existing map in two pieces.
+/*
+ * Take in an address range and list of current mappings, and produce a list of
+ * mappings that will be kept.
  */
-static void
-adjust_map(struct user_mem_map *src, struct user_mem_map *end,
-		uint64_t remove_va_start, uint64_t remove_len)
+static int
+process_maps(struct user_mem_map *src, size_t src_len,
+		struct user_mem_map newmap[2], uint64_t vaddr, uint64_t len)
 {
-	/* if va start is same as start address, we're simply moving start */
-	if (remove_va_start == src->addr) {
-		src->addr += remove_len;
-		src->iova += remove_len;
-		src->len -= remove_len;
-	} else if (remove_va_start + remove_len == src->addr + src->len) {
-		/* we're shrinking mapping from the end */
-		src->len -= remove_len;
-	} else {
-		/* we're blowing a hole in the middle */
-		struct user_mem_map tmp;
-		uint64_t total_len = src->len;
+	struct user_mem_map *src_first = &src[0];
+	struct user_mem_map *src_last = &src[src_len - 1];
+	struct user_mem_map *dst_first = &newmap[0];
+	/* we can get at most two new segments */
+	struct user_mem_map *dst_last = &newmap[1];
+	uint64_t first_off = vaddr - src_first->addr;
+	uint64_t last_off = (src_last->addr + src_last->len) - (vaddr + len);
+	int newmap_len = 0;
 
-		/* adjust source segment length */
-		src->len = remove_va_start - src->addr;
+	if (first_off != 0) {
+		dst_first->addr = src_first->addr;
+		dst_first->iova = src_first->iova;
+		dst_first->len = first_off;
+		dst_first->chunk = src_first->chunk;
 
-		/* create temporary segment in the middle */
-		tmp.addr = src->addr + src->len;
-		tmp.iova = src->iova + src->len;
-		tmp.len = remove_len;
+		newmap_len++;
+	}
+	if (last_off != 0) {
+		/* if we had start offset, we have two segments */
+		struct user_mem_map *last =
+				first_off == 0 ? dst_first : dst_last;
+		last->addr = (src_last->addr + src_last->len) - last_off;
+		last->iova = (src_last->iova + src_last->len) - last_off;
+		last->len = last_off;
+		last->chunk = src_last->chunk;
 
-		/* populate end segment - this one we will be keeping */
-		end->addr = tmp.addr + tmp.len;
-		end->iova = tmp.iova + tmp.len;
-		end->len = total_len - src->len - tmp.len;
+		newmap_len++;
+	}
+	return newmap_len;
+}
+
+/* erase certain maps from the list */
+static void
+delete_maps(struct user_mem_maps *user_mem_maps, struct user_mem_map *del_maps,
+		size_t n_del)
+{
+	int i;
+	size_t j;
+
+	for (i = 0, j = 0; i < VFIO_MAX_USER_MEM_MAPS && j < n_del; i++) {
+		struct user_mem_map *left = &user_mem_maps->maps[i];
+		struct user_mem_map *right = &del_maps[j];
+
+		if (user_mem_map_cmp(left, right) == 0) {
+			memset(left, 0, sizeof(*left));
+			j++;
+			user_mem_maps->n_maps--;
+		}
+	}
+}
+
+static void
+copy_maps(struct user_mem_maps *user_mem_maps, struct user_mem_map *add_maps,
+		size_t n_add)
+{
+	int i;
+	size_t j;
+
+	for (i = 0, j = 0; i < VFIO_MAX_USER_MEM_MAPS && j < n_add; i++) {
+		struct user_mem_map *left = &user_mem_maps->maps[i];
+		struct user_mem_map *right = &add_maps[j];
+
+		/* insert into empty space */
+		if (is_null_map(left)) {
+			memcpy(left, right, sizeof(*left));
+			j++;
+			user_mem_maps->n_maps++;
+		}
 	}
 }
 
@@ -179,7 +230,8 @@ merge_map(struct user_mem_map *left, struct user_mem_map *right)
 		return 0;
 	if (left->iova + left->len != right->iova)
 		return 0;
-
+	if (left->chunk != right->chunk)
+		return 0;
 	left->len += right->len;
 
 out:
@@ -188,51 +240,94 @@ out:
 	return 1;
 }
 
-static struct user_mem_map *
-find_user_mem_map(struct user_mem_maps *user_mem_maps, uint64_t addr,
-		uint64_t iova, uint64_t len)
+static bool
+addr_is_chunk_aligned(struct user_mem_map *maps, size_t n_maps,
+		uint64_t vaddr, uint64_t iova)
+{
+	unsigned int i;
+
+	for (i = 0; i < n_maps; i++) {
+		struct user_mem_map *map = &maps[i];
+		uint64_t map_va_end = map->addr + map->len;
+		uint64_t map_iova_end = map->iova + map->len;
+		uint64_t map_va_off = vaddr - map->addr;
+		uint64_t map_iova_off = iova - map->iova;
+
+		/* we include end of the segment in comparison as well */
+		bool addr_in_map = (vaddr >= map->addr) && (vaddr <= map_va_end);
+		bool iova_in_map = (iova >= map->iova) && (iova <= map_iova_end);
+		/* chunk may not be power of two, so use modulo */
+		bool addr_is_aligned = (map_va_off % map->chunk) == 0;
+		bool iova_is_aligned = (map_iova_off % map->chunk) == 0;
+
+		if (addr_in_map && iova_in_map &&
+				addr_is_aligned && iova_is_aligned)
+			return true;
+	}
+	return false;
+}
+
+static int
+find_user_mem_maps(struct user_mem_maps *user_mem_maps, uint64_t addr,
+		uint64_t iova, uint64_t len, struct user_mem_map *dst,
+		size_t dst_len)
 {
 	uint64_t va_end = addr + len;
 	uint64_t iova_end = iova + len;
-	int i;
+	bool found = false;
+	size_t j;
+	int i, ret;
 
-	for (i = 0; i < user_mem_maps->n_maps; i++) {
+	for (i = 0, j = 0; i < user_mem_maps->n_maps; i++) {
 		struct user_mem_map *map = &user_mem_maps->maps[i];
 		uint64_t map_va_end = map->addr + map->len;
 		uint64_t map_iova_end = map->iova + map->len;
 
-		/* check start VA */
-		if (addr < map->addr || addr >= map_va_end)
-			continue;
-		/* check if VA end is within boundaries */
-		if (va_end <= map->addr || va_end > map_va_end)
-			continue;
+		bool start_addr_in_map = (addr >= map->addr) &&
+				(addr < map_va_end);
+		bool end_addr_in_map = (va_end > map->addr) &&
+				(va_end <= map_va_end);
+		bool start_iova_in_map = (iova >= map->iova) &&
+				(iova < map_iova_end);
+		bool end_iova_in_map = (iova_end > map->iova) &&
+				(iova_end <= map_iova_end);
 
-		/* check start IOVA */
-		if (iova < map->iova || iova >= map_iova_end)
-			continue;
-		/* check if IOVA end is within boundaries */
-		if (iova_end <= map->iova || iova_end > map_iova_end)
-			continue;
+		/* do we have space in temporary map? */
+		if (j == dst_len) {
+			ret = -ENOSPC;
+			goto err;
+		}
+		/* check if current map is start of our segment */
+		if (!found && start_addr_in_map && start_iova_in_map)
+			found = true;
+		/* if we have previously found a segment, add it to the map */
+		if (found) {
+			/* copy the segment into our temporary map */
+			memcpy(&dst[j++], map, sizeof(*map));
 
-		/* we've found our map */
-		return map;
+			/* if we match end of segment, quit */
+			if (end_addr_in_map && end_iova_in_map)
+				return j;
+		}
 	}
-	return NULL;
+	/* we didn't find anything */
+	ret = -ENOENT;
+err:
+	memset(dst, 0, sizeof(*dst) * dst_len);
+	return ret;
 }
 
 /* this will sort all user maps, and merge/compact any adjacent maps */
 static void
 compact_user_maps(struct user_mem_maps *user_mem_maps)
 {
-	int i, n_merged, cur_idx;
+	int i;
 
-	qsort(user_mem_maps->maps, user_mem_maps->n_maps,
+	qsort(user_mem_maps->maps, VFIO_MAX_USER_MEM_MAPS,
 			sizeof(user_mem_maps->maps[0]), user_mem_map_cmp);
 
 	/* we'll go over the list backwards when merging */
-	n_merged = 0;
-	for (i = user_mem_maps->n_maps - 2; i >= 0; i--) {
+	for (i = VFIO_MAX_USER_MEM_MAPS - 2; i >= 0; i--) {
 		struct user_mem_map *l, *r;
 
 		l = &user_mem_maps->maps[i];
@@ -241,30 +336,16 @@ compact_user_maps(struct user_mem_maps *user_mem_maps)
 		if (is_null_map(l) || is_null_map(r))
 			continue;
 
+		/* try and merge the maps */
 		if (merge_map(l, r))
-			n_merged++;
+			user_mem_maps->n_maps--;
 	}
 
 	/* the entries are still sorted, but now they have holes in them, so
-	 * walk through the list and remove the holes
+	 * sort the list again.
 	 */
-	if (n_merged > 0) {
-		cur_idx = 0;
-		for (i = 0; i < user_mem_maps->n_maps; i++) {
-			if (!is_null_map(&user_mem_maps->maps[i])) {
-				struct user_mem_map *src, *dst;
-
-				src = &user_mem_maps->maps[i];
-				dst = &user_mem_maps->maps[cur_idx++];
-
-				if (src != dst) {
-					memcpy(dst, src, sizeof(*src));
-					memset(src, 0, sizeof(*src));
-				}
-			}
-		}
-		user_mem_maps->n_maps = cur_idx;
-	}
+	qsort(user_mem_maps->maps, VFIO_MAX_USER_MEM_MAPS,
+			sizeof(user_mem_maps->maps[0]), user_mem_map_cmp);
 }
 
 static int
@@ -1795,6 +1876,7 @@ container_dma_map(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 {
 	struct user_mem_map *new_map;
 	struct user_mem_maps *user_mem_maps;
+	bool has_partial_unmap;
 	int ret = 0;
 
 	user_mem_maps = &vfio_cfg->mem_maps;
@@ -1818,11 +1900,16 @@ container_dma_map(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 		ret = -1;
 		goto out;
 	}
+	/* do we have partial unmap support? */
+	has_partial_unmap = vfio_cfg->vfio_iommu_type->partial_unmap;
+
 	/* create new user mem map entry */
 	new_map = &user_mem_maps->maps[user_mem_maps->n_maps++];
 	new_map->addr = vaddr;
 	new_map->iova = iova;
 	new_map->len = len;
+	/* for IOMMU types supporting partial unmap, we don't need chunking */
+	new_map->chunk = has_partial_unmap ? 0 : len;
 
 	compact_user_maps(user_mem_maps);
 out:
@@ -1834,38 +1921,81 @@ static int
 container_dma_unmap(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 		uint64_t len)
 {
-	struct user_mem_map *map, *new_map = NULL;
+	struct user_mem_map orig_maps[VFIO_MAX_USER_MEM_MAPS];
+	struct user_mem_map new_maps[2]; /* can be at most 2 */
 	struct user_mem_maps *user_mem_maps;
-	int ret = 0;
+	int n_orig, n_new, newlen, ret = 0;
+	bool has_partial_unmap;
 
 	user_mem_maps = &vfio_cfg->mem_maps;
 	rte_spinlock_recursive_lock(&user_mem_maps->lock);
 
-	/* find our mapping */
-	map = find_user_mem_map(user_mem_maps, vaddr, iova, len);
-	if (!map) {
+	/*
+	 * Previously, we had adjacent mappings entirely contained within one
+	 * mapping entry. Since we now store original mapping length in some
+	 * cases, this is no longer the case, so unmapping can potentially go
+	 * over multiple segments and split them in any number of ways.
+	 *
+	 * To complicate things further, some IOMMU types support arbitrary
+	 * partial unmapping, while others will only support unmapping along the
+	 * chunk size, so there are a lot of cases we need to handle. To make
+	 * things easier code wise, instead of trying to adjust existing
+	 * mappings, let's just rebuild them using information we have.
+	 */
+
+	/* do we have partial unmap capability? */
+	has_partial_unmap = vfio_cfg->vfio_iommu_type->partial_unmap;
+
+	/*
+	 * first thing to do is check if there exists a mapping that includes
+	 * the start and the end of our requested unmap. We need to collect all
+	 * maps that include our unmapped region.
+	 */
+	n_orig = find_user_mem_maps(user_mem_maps, vaddr, iova, len,
+			orig_maps, RTE_DIM(orig_maps));
+	/* did we find anything? */
+	if (n_orig < 0) {
 		RTE_LOG(ERR, EAL, "Couldn't find previously mapped region\n");
 		rte_errno = EINVAL;
 		ret = -1;
 		goto out;
 	}
-	if (map->addr != vaddr || map->iova != iova || map->len != len) {
-		/* we're partially unmapping a previously mapped region, so we
-		 * need to split entry into two.
-		 */
-		if (!vfio_cfg->vfio_iommu_type->partial_unmap) {
+
+	/*
+	 * if we don't support partial unmap, we must check if start and end of
+	 * current unmap region are chunk-aligned.
+	 */
+	if (!has_partial_unmap) {
+		bool start_aligned, end_aligned;
+
+		start_aligned = addr_is_chunk_aligned(orig_maps, n_orig,
+				vaddr, iova);
+		end_aligned = addr_is_chunk_aligned(orig_maps, n_orig,
+				vaddr + len, iova + len);
+
+		if (!start_aligned || !end_aligned) {
 			RTE_LOG(DEBUG, EAL, "DMA partial unmap unsupported\n");
 			rte_errno = ENOTSUP;
 			ret = -1;
 			goto out;
 		}
-		if (user_mem_maps->n_maps == VFIO_MAX_USER_MEM_MAPS) {
-			RTE_LOG(ERR, EAL, "Not enough space to store partial mapping\n");
-			rte_errno = ENOMEM;
-			ret = -1;
-			goto out;
-		}
-		new_map = &user_mem_maps->maps[user_mem_maps->n_maps++];
+	}
+
+	/*
+	 * now we know we can potentially unmap the region, but we still have to
+	 * figure out if there is enough space in our list to store remaining
+	 * maps. for this, we will figure out how many segments we are going to
+	 * remove, and how many new segments we are going to create.
+	 */
+	n_new = process_maps(orig_maps, n_orig, new_maps, vaddr, len);
+
+	/* can we store the new maps in our list? */
+	newlen = (user_mem_maps->n_maps - n_orig) + n_new;
+	if (newlen >= VFIO_MAX_USER_MEM_MAPS) {
+		RTE_LOG(ERR, EAL, "Not enough space to store partial mapping\n");
+		rte_errno = ENOMEM;
+		ret = -1;
+		goto out;
 	}
 
 	/* unmap the entry */
@@ -1886,23 +2016,11 @@ container_dma_unmap(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 			RTE_LOG(DEBUG, EAL, "DMA unmapping failed, but removing mappings anyway\n");
 		}
 	}
-	/* remove map from the list of active mappings */
-	if (new_map != NULL) {
-		adjust_map(map, new_map, vaddr, len);
 
-		/* if we've created a new map by splitting, sort everything */
-		if (!is_null_map(new_map)) {
-			compact_user_maps(user_mem_maps);
-		} else {
-			/* we've created a new mapping, but it was unused */
-			user_mem_maps->n_maps--;
-		}
-	} else {
-		memset(map, 0, sizeof(*map));
-		compact_user_maps(user_mem_maps);
-		user_mem_maps->n_maps--;
-	}
-
+	/* we have unmapped the region, so now update the maps */
+	delete_maps(user_mem_maps, orig_maps, n_orig);
+	copy_maps(user_mem_maps, new_maps, n_new);
+	compact_user_maps(user_mem_maps);
 out:
 	rte_spinlock_recursive_unlock(&user_mem_maps->lock);
 	return ret;
