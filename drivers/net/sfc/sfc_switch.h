@@ -52,6 +52,19 @@ struct sfc_mae_switch_port_request {
 	union sfc_mae_switch_port_data		port_data;
 };
 
+typedef void (sfc_mae_switch_port_iterator_cb)(
+		enum sfc_mae_switch_port_type type,
+		const efx_mport_sel_t *ethdev_mportp,
+		uint16_t ethdev_port_id,
+		const efx_mport_sel_t *entity_mportp,
+		uint16_t switch_port_id,
+		union sfc_mae_switch_port_data *port_datap,
+		void *user_datap);
+
+int sfc_mae_switch_ports_iterate(uint16_t switch_domain_id,
+				 sfc_mae_switch_port_iterator_cb *cb,
+				 void *data);
+
 int sfc_mae_assign_switch_domain(struct sfc_adapter *sa,
 				 uint16_t *switch_domain_id);
 
@@ -62,6 +75,12 @@ int sfc_mae_switch_domain_controllers(uint16_t switch_domain_id,
 int sfc_mae_switch_domain_map_controllers(uint16_t switch_domain_id,
 					  efx_pcie_interface_t *controllers,
 					  size_t nb_controllers);
+
+int sfc_mae_switch_controller_from_mapping(
+		const efx_pcie_interface_t *controllers,
+		size_t nb_controllers,
+		efx_pcie_interface_t intf,
+		int *controller);
 
 int sfc_mae_switch_domain_get_controller(uint16_t switch_domain_id,
 				   efx_pcie_interface_t intf,
@@ -78,6 +97,11 @@ int sfc_mae_assign_switch_port(uint16_t switch_domain_id,
 int sfc_mae_switch_port_by_ethdev(uint16_t switch_domain_id,
 				  uint16_t ethdev_port_id,
 				  efx_mport_sel_t *mport_sel);
+
+int sfc_mae_switch_port_id_by_entity(uint16_t switch_domain_id,
+				     const efx_mport_sel_t *entity_mportp,
+				     enum sfc_mae_switch_port_type type,
+				     uint16_t *switch_port_id);
 
 #ifdef __cplusplus
 }

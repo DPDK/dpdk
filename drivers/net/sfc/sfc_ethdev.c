@@ -1978,7 +1978,11 @@ static efx_rc_t
 sfc_process_mport_journal_entry(struct sfc_mport_journal_ctx *ctx,
 				efx_mport_desc_t *mport)
 {
+	struct sfc_mae_switch_port_request req;
+	efx_mport_sel_t entity_selector;
 	efx_mport_sel_t ethdev_mport;
+	uint16_t switch_port_id;
+	efx_rc_t efx_rc;
 	int rc;
 
 	sfc_dbg(ctx->sa,
@@ -1992,6 +1996,63 @@ sfc_process_mport_journal_entry(struct sfc_mport_journal_ctx *ctx,
 						    mport->emd_vnic.ev_intf);
 		if (rc != 0)
 			return rc;
+	}
+
+	/* Build Mport selector */
+	efx_rc = efx_mae_mport_by_pcie_mh_function(mport->emd_vnic.ev_intf,
+						mport->emd_vnic.ev_pf,
+						mport->emd_vnic.ev_vf,
+						&entity_selector);
+	if (efx_rc != 0) {
+		sfc_err(ctx->sa, "failed to build entity mport selector for c%upf%uvf%u",
+			mport->emd_vnic.ev_intf,
+			mport->emd_vnic.ev_pf,
+			mport->emd_vnic.ev_vf);
+		return efx_rc;
+	}
+
+	rc = sfc_mae_switch_port_id_by_entity(ctx->switch_domain_id,
+					      &entity_selector,
+					      SFC_MAE_SWITCH_PORT_REPRESENTOR,
+					      &switch_port_id);
+	switch (rc) {
+	case 0:
+		/* Already registered */
+		break;
+	case ENOENT:
+		/*
+		 * No representor has been created for this entity.
+		 * Create a dummy switch registry entry with an invalid ethdev
+		 * mport selector. When a corresponding representor is created,
+		 * this entry will be updated.
+		 */
+		req.type = SFC_MAE_SWITCH_PORT_REPRESENTOR;
+		req.entity_mportp = &entity_selector;
+		req.ethdev_mportp = &ethdev_mport;
+		req.ethdev_port_id = RTE_MAX_ETHPORTS;
+		req.port_data.repr.intf = mport->emd_vnic.ev_intf;
+		req.port_data.repr.pf = mport->emd_vnic.ev_pf;
+		req.port_data.repr.vf = mport->emd_vnic.ev_vf;
+
+		rc = sfc_mae_assign_switch_port(ctx->switch_domain_id,
+						&req, &switch_port_id);
+		if (rc != 0) {
+			sfc_err(ctx->sa,
+				"failed to assign MAE switch port for c%upf%uvf%u: %s",
+				mport->emd_vnic.ev_intf,
+				mport->emd_vnic.ev_pf,
+				mport->emd_vnic.ev_vf,
+				rte_strerror(rc));
+			return rc;
+		}
+		break;
+	default:
+		sfc_err(ctx->sa, "failed to find MAE switch port for c%upf%uvf%u: %s",
+			mport->emd_vnic.ev_intf,
+			mport->emd_vnic.ev_pf,
+			mport->emd_vnic.ev_vf,
+			rte_strerror(rc));
+		return rc;
 	}
 
 	return 0;
@@ -2090,6 +2151,173 @@ sfc_process_mport_journal(struct sfc_adapter *sa)
 	return 0;
 }
 
+static void
+sfc_count_representors_cb(enum sfc_mae_switch_port_type type,
+			  const efx_mport_sel_t *ethdev_mportp __rte_unused,
+			  uint16_t ethdev_port_id __rte_unused,
+			  const efx_mport_sel_t *entity_mportp __rte_unused,
+			  uint16_t switch_port_id __rte_unused,
+			  union sfc_mae_switch_port_data *port_datap
+				__rte_unused,
+			  void *user_datap)
+{
+	int *counter = user_datap;
+
+	SFC_ASSERT(counter != NULL);
+
+	if (type == SFC_MAE_SWITCH_PORT_REPRESENTOR)
+		(*counter)++;
+}
+
+struct sfc_get_representors_ctx {
+	struct rte_eth_representor_info	*info;
+	struct sfc_adapter		*sa;
+	uint16_t			switch_domain_id;
+	const efx_pcie_interface_t	*controllers;
+	size_t				nb_controllers;
+};
+
+static void
+sfc_get_representors_cb(enum sfc_mae_switch_port_type type,
+			const efx_mport_sel_t *ethdev_mportp __rte_unused,
+			uint16_t ethdev_port_id __rte_unused,
+			const efx_mport_sel_t *entity_mportp __rte_unused,
+			uint16_t switch_port_id,
+			union sfc_mae_switch_port_data *port_datap,
+			void *user_datap)
+{
+	struct sfc_get_representors_ctx *ctx = user_datap;
+	struct rte_eth_representor_range *range;
+	int ret;
+	int rc;
+
+	SFC_ASSERT(ctx != NULL);
+	SFC_ASSERT(ctx->info != NULL);
+	SFC_ASSERT(ctx->sa != NULL);
+
+	if (type != SFC_MAE_SWITCH_PORT_REPRESENTOR) {
+		sfc_dbg(ctx->sa, "not a representor, skipping");
+		return;
+	}
+	if (ctx->info->nb_ranges >= ctx->info->nb_ranges_alloc) {
+		sfc_dbg(ctx->sa, "info structure is full already");
+		return;
+	}
+
+	range = &ctx->info->ranges[ctx->info->nb_ranges];
+	rc = sfc_mae_switch_controller_from_mapping(ctx->controllers,
+						    ctx->nb_controllers,
+						    port_datap->repr.intf,
+						    &range->controller);
+	if (rc != 0) {
+		sfc_err(ctx->sa, "invalid representor controller: %d",
+			port_datap->repr.intf);
+		range->controller = -1;
+	}
+	range->pf = port_datap->repr.pf;
+	range->id_base = switch_port_id;
+	range->id_end = switch_port_id;
+
+	if (port_datap->repr.vf != EFX_PCI_VF_INVALID) {
+		range->type = RTE_ETH_REPRESENTOR_VF;
+		range->vf = port_datap->repr.vf;
+		ret = snprintf(range->name, RTE_DEV_NAME_MAX_LEN,
+			       "c%dpf%dvf%d", range->controller, range->pf,
+			       range->vf);
+	} else {
+		range->type = RTE_ETH_REPRESENTOR_PF;
+		ret = snprintf(range->name, RTE_DEV_NAME_MAX_LEN,
+			 "c%dpf%d", range->controller, range->pf);
+	}
+	if (ret >= RTE_DEV_NAME_MAX_LEN) {
+		sfc_err(ctx->sa, "representor name has been truncated: %s",
+			range->name);
+	}
+
+	ctx->info->nb_ranges++;
+}
+
+static int
+sfc_representor_info_get(struct rte_eth_dev *dev,
+			 struct rte_eth_representor_info *info)
+{
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	struct sfc_get_representors_ctx get_repr_ctx;
+	const efx_nic_cfg_t *nic_cfg;
+	uint16_t switch_domain_id;
+	uint32_t nb_repr;
+	int controller;
+	int rc;
+
+	sfc_adapter_lock(sa);
+
+	if (sa->mae.status != SFC_MAE_STATUS_SUPPORTED) {
+		sfc_adapter_unlock(sa);
+		return -ENOTSUP;
+	}
+
+	rc = sfc_process_mport_journal(sa);
+	if (rc != 0) {
+		sfc_adapter_unlock(sa);
+		SFC_ASSERT(rc > 0);
+		return -rc;
+	}
+
+	switch_domain_id = sa->mae.switch_domain_id;
+
+	nb_repr = 0;
+	rc = sfc_mae_switch_ports_iterate(switch_domain_id,
+					  sfc_count_representors_cb,
+					  &nb_repr);
+	if (rc != 0) {
+		sfc_adapter_unlock(sa);
+		SFC_ASSERT(rc > 0);
+		return -rc;
+	}
+
+	if (info == NULL) {
+		sfc_adapter_unlock(sa);
+		return nb_repr;
+	}
+
+	rc = sfc_mae_switch_domain_controllers(switch_domain_id,
+					       &get_repr_ctx.controllers,
+					       &get_repr_ctx.nb_controllers);
+	if (rc != 0) {
+		sfc_adapter_unlock(sa);
+		SFC_ASSERT(rc > 0);
+		return -rc;
+	}
+
+	nic_cfg = efx_nic_cfg_get(sa->nic);
+
+	rc = sfc_mae_switch_domain_get_controller(switch_domain_id,
+						  nic_cfg->enc_intf,
+						  &controller);
+	if (rc != 0) {
+		sfc_err(sa, "invalid controller: %d", nic_cfg->enc_intf);
+		controller = -1;
+	}
+
+	info->controller = controller;
+	info->pf = nic_cfg->enc_pf;
+
+	get_repr_ctx.info = info;
+	get_repr_ctx.sa = sa;
+	get_repr_ctx.switch_domain_id = switch_domain_id;
+	rc = sfc_mae_switch_ports_iterate(switch_domain_id,
+					  sfc_get_representors_cb,
+					  &get_repr_ctx);
+	if (rc != 0) {
+		sfc_adapter_unlock(sa);
+		SFC_ASSERT(rc > 0);
+		return -rc;
+	}
+
+	sfc_adapter_unlock(sa);
+	return nb_repr;
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -2137,6 +2365,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.xstats_get_by_id		= sfc_xstats_get_by_id,
 	.xstats_get_names_by_id		= sfc_xstats_get_names_by_id,
 	.pool_ops_supported		= sfc_pool_ops_supported,
+	.representor_info_get		= sfc_representor_info_get,
 };
 
 struct sfc_ethdev_init_data {

@@ -151,6 +151,34 @@ sfc_mae_find_switch_domain_by_id(uint16_t switch_domain_id)
 	return NULL;
 }
 
+int
+sfc_mae_switch_ports_iterate(uint16_t switch_domain_id,
+			     sfc_mae_switch_port_iterator_cb *cb,
+			     void *data)
+{
+	struct sfc_mae_switch_domain *domain;
+	struct sfc_mae_switch_port *port;
+
+	if (cb == NULL)
+		return EINVAL;
+
+	rte_spinlock_lock(&sfc_mae_switch.lock);
+
+	domain = sfc_mae_find_switch_domain_by_id(switch_domain_id);
+	if (domain == NULL) {
+		rte_spinlock_unlock(&sfc_mae_switch.lock);
+		return EINVAL;
+	}
+
+	TAILQ_FOREACH(port, &domain->ports, switch_domain_ports) {
+		cb(port->type, &port->ethdev_mport, port->ethdev_port_id,
+		   &port->entity_mport, port->id, &port->data, data);
+	}
+
+	rte_spinlock_unlock(&sfc_mae_switch.lock);
+	return 0;
+}
+
 /* This function expects to be called only when the lock is held */
 static struct sfc_mae_switch_domain *
 sfc_mae_find_switch_domain_by_hw_switch_id(const struct sfc_hw_switch_id *id)
@@ -280,19 +308,12 @@ sfc_mae_switch_domain_map_controllers(uint16_t switch_domain_id,
 }
 
 int
-sfc_mae_switch_domain_get_controller(uint16_t switch_domain_id,
-				     efx_pcie_interface_t intf,
-				     int *controller)
+sfc_mae_switch_controller_from_mapping(const efx_pcie_interface_t *controllers,
+				       size_t nb_controllers,
+				       efx_pcie_interface_t intf,
+				       int *controller)
 {
-	const efx_pcie_interface_t *controllers;
-	size_t nb_controllers;
 	size_t i;
-	int rc;
-
-	rc = sfc_mae_switch_domain_controllers(switch_domain_id, &controllers,
-					       &nb_controllers);
-	if (rc != 0)
-		return rc;
 
 	if (controllers == NULL)
 		return ENOENT;
@@ -305,6 +326,26 @@ sfc_mae_switch_domain_get_controller(uint16_t switch_domain_id,
 	}
 
 	return ENOENT;
+}
+
+int
+sfc_mae_switch_domain_get_controller(uint16_t switch_domain_id,
+				     efx_pcie_interface_t intf,
+				     int *controller)
+{
+	const efx_pcie_interface_t *controllers;
+	size_t nb_controllers;
+	int rc;
+
+	rc = sfc_mae_switch_domain_controllers(switch_domain_id, &controllers,
+					       &nb_controllers);
+	if (rc != 0)
+		return rc;
+
+	return sfc_mae_switch_controller_from_mapping(controllers,
+						      nb_controllers,
+						      intf,
+						      controller);
 }
 
 int sfc_mae_switch_domain_get_intf(uint16_t switch_domain_id,
@@ -348,6 +389,30 @@ sfc_mae_find_switch_port_by_entity(const struct sfc_mae_switch_domain *domain,
 	}
 
 	return NULL;
+}
+
+/* This function expects to be called only when the lock is held */
+static int
+sfc_mae_find_switch_port_id_by_entity(uint16_t switch_domain_id,
+				      const efx_mport_sel_t *entity_mportp,
+				      enum sfc_mae_switch_port_type type,
+				      uint16_t *switch_port_id)
+{
+	struct sfc_mae_switch_domain *domain;
+	struct sfc_mae_switch_port *port;
+
+	SFC_ASSERT(rte_spinlock_is_locked(&sfc_mae_switch.lock));
+
+	domain = sfc_mae_find_switch_domain_by_id(switch_domain_id);
+	if (domain == NULL)
+		return EINVAL;
+
+	port = sfc_mae_find_switch_port_by_entity(domain, entity_mportp, type);
+	if (port == NULL)
+		return ENOENT;
+
+	*switch_port_id = port->id;
+	return 0;
 }
 
 int
@@ -451,6 +516,23 @@ sfc_mae_switch_port_by_ethdev(uint16_t switch_domain_id,
 	rte_spinlock_lock(&sfc_mae_switch.lock);
 	rc = sfc_mae_find_switch_port_by_ethdev(switch_domain_id,
 						ethdev_port_id, mport_sel);
+	rte_spinlock_unlock(&sfc_mae_switch.lock);
+
+	return rc;
+}
+
+int
+sfc_mae_switch_port_id_by_entity(uint16_t switch_domain_id,
+				 const efx_mport_sel_t *entity_mportp,
+				 enum sfc_mae_switch_port_type type,
+				 uint16_t *switch_port_id)
+{
+	int rc;
+
+	rte_spinlock_lock(&sfc_mae_switch.lock);
+	rc = sfc_mae_find_switch_port_id_by_entity(switch_domain_id,
+						   entity_mportp, type,
+						   switch_port_id);
 	rte_spinlock_unlock(&sfc_mae_switch.lock);
 
 	return rc;
