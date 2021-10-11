@@ -379,7 +379,7 @@ static const efx_rx_prefix_layout_t sfc_ef100_rx_prefix_layout = {
 
 static bool
 sfc_ef100_rx_prefix_to_offloads(const struct sfc_ef100_rxq *rxq,
-				const efx_oword_t *rx_prefix,
+				const efx_xword_t *rx_prefix,
 				struct rte_mbuf *m)
 {
 	const efx_word_t *class;
@@ -399,19 +399,19 @@ sfc_ef100_rx_prefix_to_offloads(const struct sfc_ef100_rxq *rxq,
 	m->packet_type = sfc_ef100_rx_class_decode(*class, &ol_flags);
 
 	if ((rxq->flags & SFC_EF100_RXQ_RSS_HASH) &&
-	    EFX_TEST_OWORD_BIT(rx_prefix[0],
+	    EFX_TEST_XWORD_BIT(rx_prefix[0],
 			       ESF_GZ_RX_PREFIX_RSS_HASH_VALID_LBN)) {
 		ol_flags |= PKT_RX_RSS_HASH;
-		/* EFX_OWORD_FIELD converts little-endian to CPU */
-		m->hash.rss = EFX_OWORD_FIELD(rx_prefix[0],
+		/* EFX_XWORD_FIELD converts little-endian to CPU */
+		m->hash.rss = EFX_XWORD_FIELD(rx_prefix[0],
 					      ESF_GZ_RX_PREFIX_RSS_HASH);
 	}
 
 	if (rxq->flags & SFC_EF100_RXQ_USER_MARK) {
 		uint32_t user_mark;
 
-		/* EFX_OWORD_FIELD converts little-endian to CPU */
-		user_mark = EFX_OWORD_FIELD(rx_prefix[0],
+		/* EFX_XWORD_FIELD converts little-endian to CPU */
+		user_mark = EFX_XWORD_FIELD(rx_prefix[0],
 					    ESF_GZ_RX_PREFIX_USER_MARK);
 		if (user_mark != SFC_EF100_USER_MARK_INVALID) {
 			ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
@@ -480,7 +480,7 @@ sfc_ef100_rx_process_ready_pkts(struct sfc_ef100_rxq *rxq,
 	while (rxq->ready_pkts > 0 && rx_pkts != rx_pkts_end) {
 		struct rte_mbuf *pkt;
 		struct rte_mbuf *lastseg;
-		const efx_oword_t *rx_prefix;
+		const efx_xword_t *rx_prefix;
 		uint16_t pkt_len;
 		uint16_t seg_len;
 		bool deliver;
@@ -495,9 +495,9 @@ sfc_ef100_rx_process_ready_pkts(struct sfc_ef100_rxq *rxq,
 		pkt->rearm_data[0] = rxq->rearm_data;
 
 		/* data_off already moved past Rx prefix */
-		rx_prefix = (const efx_oword_t *)sfc_ef100_rx_pkt_prefix(pkt);
+		rx_prefix = (const efx_xword_t *)sfc_ef100_rx_pkt_prefix(pkt);
 
-		pkt_len = EFX_OWORD_FIELD(rx_prefix[0],
+		pkt_len = EFX_XWORD_FIELD(rx_prefix[0],
 					  ESF_GZ_RX_PREFIX_LENGTH);
 		SFC_ASSERT(pkt_len > 0);
 		rte_pktmbuf_pkt_len(pkt) = pkt_len;
