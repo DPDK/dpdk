@@ -908,6 +908,7 @@ sfc_repr_create(struct rte_eth_dev *parent, uint16_t representor_id,
 	struct sfc_repr_init_data repr_data;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int ret;
+	struct rte_eth_dev *dev;
 
 	if (snprintf(name, sizeof(name), "net_%s_representor_%u",
 		     parent->device->name, representor_id) >=
@@ -916,20 +917,24 @@ sfc_repr_create(struct rte_eth_dev *parent, uint16_t representor_id,
 		return -ENAMETOOLONG;
 	}
 
-	memset(&repr_data, 0, sizeof(repr_data));
-	repr_data.pf_port_id = parent->data->port_id;
-	repr_data.repr_id = representor_id;
-	repr_data.switch_domain_id = switch_domain_id;
-	repr_data.mport_sel = *mport_sel;
+	dev = rte_eth_dev_allocated(name);
+	if (dev == NULL) {
+		memset(&repr_data, 0, sizeof(repr_data));
+		repr_data.pf_port_id = parent->data->port_id;
+		repr_data.repr_id = representor_id;
+		repr_data.switch_domain_id = switch_domain_id;
+		repr_data.mport_sel = *mport_sel;
 
-	ret = rte_eth_dev_create(parent->device, name,
-				  sizeof(struct sfc_repr_shared),
-				  NULL, NULL,
-				  sfc_repr_eth_dev_init, &repr_data);
-	if (ret != 0)
-		SFC_GENERIC_LOG(ERR, "%s() failed to create device", __func__);
+		ret = rte_eth_dev_create(parent->device, name,
+					 sizeof(struct sfc_repr_shared),
+					 NULL, NULL,
+					 sfc_repr_eth_dev_init, &repr_data);
+		if (ret != 0) {
+			SFC_GENERIC_LOG(ERR, "%s() failed to create device",
+					__func__);
+			return ret;
+		}
+	}
 
-	SFC_GENERIC_LOG(INFO, "%s() done: %s", __func__, rte_strerror(-ret));
-
-	return ret;
+	return 0;
 }

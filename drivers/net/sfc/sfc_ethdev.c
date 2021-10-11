@@ -2493,31 +2493,40 @@ sfc_parse_rte_devargs(const char *args, struct rte_eth_devargs *devargs)
 }
 
 static int
-sfc_eth_dev_create(struct rte_pci_device *pci_dev,
-		   struct sfc_ethdev_init_data *init_data,
-		   struct rte_eth_dev **devp)
+sfc_eth_dev_find_or_create(struct rte_pci_device *pci_dev,
+			   struct sfc_ethdev_init_data *init_data,
+			   struct rte_eth_dev **devp,
+			   bool *dev_created)
 {
 	struct rte_eth_dev *dev;
+	bool created = false;
 	int rc;
-
-	rc = rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
-				sizeof(struct sfc_adapter_shared),
-				eth_dev_pci_specific_init, pci_dev,
-				sfc_eth_dev_init, init_data);
-	if (rc != 0) {
-		SFC_GENERIC_LOG(ERR, "Failed to create sfc ethdev '%s'",
-				pci_dev->device.name);
-		return rc;
-	}
 
 	dev = rte_eth_dev_allocated(pci_dev->device.name);
 	if (dev == NULL) {
-		SFC_GENERIC_LOG(ERR, "Failed to find allocated sfc ethdev '%s'",
+		rc = rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
+					sizeof(struct sfc_adapter_shared),
+					eth_dev_pci_specific_init, pci_dev,
+					sfc_eth_dev_init, init_data);
+		if (rc != 0) {
+			SFC_GENERIC_LOG(ERR, "Failed to create sfc ethdev '%s'",
+					pci_dev->device.name);
+			return rc;
+		}
+
+		created = true;
+
+		dev = rte_eth_dev_allocated(pci_dev->device.name);
+		if (dev == NULL) {
+			SFC_GENERIC_LOG(ERR,
+				"Failed to find allocated sfc ethdev '%s'",
 				pci_dev->device.name);
-		return -ENODEV;
+			return -ENODEV;
+		}
 	}
 
 	*devp = dev;
+	*dev_created = created;
 
 	return 0;
 }
@@ -2578,6 +2587,7 @@ static int sfc_eth_dev_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct sfc_ethdev_init_data init_data;
 	struct rte_eth_devargs eth_da;
 	struct rte_eth_dev *dev;
+	bool dev_created;
 	int rc;
 
 	if (pci_dev->device.devargs != NULL) {
@@ -2599,13 +2609,21 @@ static int sfc_eth_dev_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		return -ENOTSUP;
 	}
 
-	rc = sfc_eth_dev_create(pci_dev, &init_data, &dev);
+	/*
+	 * Driver supports RTE_PCI_DRV_PROBE_AGAIN. Hence create device only
+	 * if it does not already exist. Re-probing an existing device is
+	 * expected to allow additional representors to be configured.
+	 */
+	rc = sfc_eth_dev_find_or_create(pci_dev, &init_data, &dev,
+					&dev_created);
 	if (rc != 0)
 		return rc;
 
 	rc = sfc_eth_dev_create_representors(dev, &eth_da);
 	if (rc != 0) {
-		(void)rte_eth_dev_destroy(dev, sfc_eth_dev_uninit);
+		if (dev_created)
+			(void)rte_eth_dev_destroy(dev, sfc_eth_dev_uninit);
+
 		return rc;
 	}
 
@@ -2621,7 +2639,8 @@ static struct rte_pci_driver sfc_efx_pmd = {
 	.id_table = pci_id_sfc_efx_map,
 	.drv_flags =
 		RTE_PCI_DRV_INTR_LSC |
-		RTE_PCI_DRV_NEED_MAPPING,
+		RTE_PCI_DRV_NEED_MAPPING |
+		RTE_PCI_DRV_PROBE_AGAIN,
 	.probe = sfc_eth_dev_pci_probe,
 	.remove = sfc_eth_dev_pci_remove,
 };
