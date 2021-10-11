@@ -1266,8 +1266,8 @@ struct rte_eth_devargs {
  * For backward compatibility, if no representor info, direct
  * map legacy VF (no controller and pf).
  *
- * @param ethdev
- *  Handle of ethdev port.
+ * @param port_id
+ *  Port ID of the backing device.
  * @param type
  *  Representor type.
  * @param controller
@@ -1284,7 +1284,7 @@ struct rte_eth_devargs {
  */
 __rte_internal
 int
-rte_eth_representor_id_get(const struct rte_eth_dev *ethdev,
+rte_eth_representor_id_get(uint16_t port_id,
 			   enum rte_eth_representor_type type,
 			   int controller, int pf, int representor_port,
 			   uint16_t *repr_id);

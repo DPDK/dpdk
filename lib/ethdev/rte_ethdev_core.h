@@ -181,6 +181,12 @@ struct rte_eth_dev_data {
 			/**< Switch-specific identifier.
 			 *   Valid if RTE_ETH_DEV_REPRESENTOR in dev_flags.
 			 */
+	uint16_t backer_port_id;
+			/**< Port ID of the backing device.
+			 *   This device will be used to query representor
+			 *   info and calculate representor IDs.
+			 *   Valid if RTE_ETH_DEV_REPRESENTOR in dev_flags.
+			 */
 
 	pthread_mutex_t flow_ops_mutex; /**< rte_flow ops mutex. */
 	uint64_t reserved_64s[4]; /**< Reserved for future fields */

@@ -514,6 +514,7 @@ i40e_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params)
 	ethdev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR |
 					RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 	ethdev->data->representor_id = representor->vf_id;
+	ethdev->data->backer_port_id = pf->dev_data->port_id;
 
 	/* Setting the number queues allocated to the VF */
 	ethdev->data->nb_rx_queues = vf->vsi->nb_qps;

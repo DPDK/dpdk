@@ -95,7 +95,7 @@ eth_representor_cmp(const char *key __rte_unused,
 		c = i / (np * nf);
 		p = (i / nf) % np;
 		f = i % nf;
-		if (rte_eth_representor_id_get(edev,
+		if (rte_eth_representor_id_get(edev->data->backer_port_id,
 			eth_da.type,
 			eth_da.nb_mh_controllers == 0 ? -1 :
 					eth_da.mh_controllers[c],

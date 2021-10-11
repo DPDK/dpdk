@@ -426,6 +426,7 @@ ice_dcf_vf_repr_init(struct rte_eth_dev *vf_rep_eth_dev, void *init_param)
 
 	vf_rep_eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
 	vf_rep_eth_dev->data->representor_id = repr->vf_id;
+	vf_rep_eth_dev->data->backer_port_id = repr->dcf_eth_dev->data->port_id;
 
 	vf_rep_eth_dev->data->mac_addrs = &repr->mac_addr;
 

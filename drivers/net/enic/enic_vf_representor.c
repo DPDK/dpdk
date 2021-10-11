@@ -666,6 +666,7 @@ int enic_vf_representor_init(struct rte_eth_dev *eth_dev, void *init_params)
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR |
 					RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 	eth_dev->data->representor_id = vf->vf_id;
+	eth_dev->data->backer_port_id = pf->port_id;
 	eth_dev->data->mac_addrs = rte_zmalloc("enic_mac_addr_vf",
 		sizeof(struct rte_ether_addr) *
 		ENIC_UNICAST_PERFECT_FILTERS, 0);
