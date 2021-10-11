@@ -30,6 +30,7 @@
 #include "sfc_dp_rx.h"
 #include "sfc_repr.h"
 #include "sfc_sw_stats.h"
+#include "sfc_switch.h"
 
 #define SFC_XSTAT_ID_INVALID_VAL  UINT64_MAX
 #define SFC_XSTAT_ID_INVALID_NAME '\0'
@@ -1918,6 +1919,177 @@ sfc_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t ethdev_qid)
 	return sap->dp_rx->intr_disable(rxq_info->dp);
 }
 
+struct sfc_mport_journal_ctx {
+	struct sfc_adapter		*sa;
+	uint16_t			switch_domain_id;
+	uint32_t			mcdi_handle;
+	bool				controllers_assigned;
+	efx_pcie_interface_t		*controllers;
+	size_t				nb_controllers;
+};
+
+static int
+sfc_journal_ctx_add_controller(struct sfc_mport_journal_ctx *ctx,
+			       efx_pcie_interface_t intf)
+{
+	efx_pcie_interface_t *new_controllers;
+	size_t i, target;
+	size_t new_size;
+
+	if (ctx->controllers == NULL) {
+		ctx->controllers = rte_malloc("sfc_controller_mapping",
+					      sizeof(ctx->controllers[0]), 0);
+		if (ctx->controllers == NULL)
+			return ENOMEM;
+
+		ctx->controllers[0] = intf;
+		ctx->nb_controllers = 1;
+
+		return 0;
+	}
+
+	for (i = 0; i < ctx->nb_controllers; i++) {
+		if (ctx->controllers[i] == intf)
+			return 0;
+		if (ctx->controllers[i] > intf)
+			break;
+	}
+	target = i;
+
+	ctx->nb_controllers += 1;
+	new_size = ctx->nb_controllers * sizeof(ctx->controllers[0]);
+
+	new_controllers = rte_realloc(ctx->controllers, new_size, 0);
+	if (new_controllers == NULL) {
+		rte_free(ctx->controllers);
+		return ENOMEM;
+	}
+	ctx->controllers = new_controllers;
+
+	for (i = target + 1; i < ctx->nb_controllers; i++)
+		ctx->controllers[i] = ctx->controllers[i - 1];
+
+	ctx->controllers[target] = intf;
+
+	return 0;
+}
+
+static efx_rc_t
+sfc_process_mport_journal_entry(struct sfc_mport_journal_ctx *ctx,
+				efx_mport_desc_t *mport)
+{
+	efx_mport_sel_t ethdev_mport;
+	int rc;
+
+	sfc_dbg(ctx->sa,
+		"processing mport id %u (controller %u pf %u vf %u)",
+		mport->emd_id.id, mport->emd_vnic.ev_intf,
+		mport->emd_vnic.ev_pf, mport->emd_vnic.ev_vf);
+	efx_mae_mport_invalid(&ethdev_mport);
+
+	if (!ctx->controllers_assigned) {
+		rc = sfc_journal_ctx_add_controller(ctx,
+						    mport->emd_vnic.ev_intf);
+		if (rc != 0)
+			return rc;
+	}
+
+	return 0;
+}
+
+static efx_rc_t
+sfc_process_mport_journal_cb(void *data, efx_mport_desc_t *mport,
+			     size_t mport_len)
+{
+	struct sfc_mport_journal_ctx *ctx = data;
+
+	if (ctx == NULL || ctx->sa == NULL) {
+		sfc_err(ctx->sa, "received NULL context or SFC adapter");
+		return EINVAL;
+	}
+
+	if (mport_len != sizeof(*mport)) {
+		sfc_err(ctx->sa, "actual and expected mport buffer sizes differ");
+		return EINVAL;
+	}
+
+	SFC_ASSERT(sfc_adapter_is_locked(ctx->sa));
+
+	/*
+	 * If a zombie flag is set, it means the mport has been marked for
+	 * deletion and cannot be used for any new operations. The mport will
+	 * be destroyed completely once all references to it are released.
+	 */
+	if (mport->emd_zombie) {
+		sfc_dbg(ctx->sa, "mport is a zombie, skipping");
+		return 0;
+	}
+	if (mport->emd_type != EFX_MPORT_TYPE_VNIC) {
+		sfc_dbg(ctx->sa, "mport is not a VNIC, skipping");
+		return 0;
+	}
+	if (mport->emd_vnic.ev_client_type != EFX_MPORT_VNIC_CLIENT_FUNCTION) {
+		sfc_dbg(ctx->sa, "mport is not a function, skipping");
+		return 0;
+	}
+	if (mport->emd_vnic.ev_handle == ctx->mcdi_handle) {
+		sfc_dbg(ctx->sa, "mport is this driver instance, skipping");
+		return 0;
+	}
+
+	return sfc_process_mport_journal_entry(ctx, mport);
+}
+
+static int
+sfc_process_mport_journal(struct sfc_adapter *sa)
+{
+	struct sfc_mport_journal_ctx ctx;
+	const efx_pcie_interface_t *controllers;
+	size_t nb_controllers;
+	efx_rc_t efx_rc;
+	int rc;
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.sa = sa;
+	ctx.switch_domain_id = sa->mae.switch_domain_id;
+
+	efx_rc = efx_mcdi_get_own_client_handle(sa->nic, &ctx.mcdi_handle);
+	if (efx_rc != 0) {
+		sfc_err(sa, "failed to get own MCDI handle");
+		SFC_ASSERT(efx_rc > 0);
+		return efx_rc;
+	}
+
+	rc = sfc_mae_switch_domain_controllers(ctx.switch_domain_id,
+					       &controllers, &nb_controllers);
+	if (rc != 0) {
+		sfc_err(sa, "failed to get controller mapping");
+		return rc;
+	}
+
+	ctx.controllers_assigned = controllers != NULL;
+	ctx.controllers = NULL;
+	ctx.nb_controllers = 0;
+
+	efx_rc = efx_mae_read_mport_journal(sa->nic,
+					    sfc_process_mport_journal_cb, &ctx);
+	if (efx_rc != 0) {
+		sfc_err(sa, "failed to process MAE mport journal");
+		SFC_ASSERT(efx_rc > 0);
+		return efx_rc;
+	}
+
+	if (controllers == NULL) {
+		rc = sfc_mae_switch_domain_map_controllers(ctx.switch_domain_id,
+							   ctx.controllers,
+							   ctx.nb_controllers);
+		if (rc != 0)
+			return rc;
+	}
+
+	return 0;
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -2553,6 +2725,18 @@ sfc_eth_dev_create_representors(struct rte_eth_dev *dev,
 		sfc_err(sa, "cannot create representors: unsupported");
 
 		return -ENOTSUP;
+	}
+
+	/*
+	 * This is needed to construct the DPDK controller -> EFX interface
+	 * mapping.
+	 */
+	sfc_adapter_lock(sa);
+	rc = sfc_process_mport_journal(sa);
+	sfc_adapter_unlock(sa);
+	if (rc != 0) {
+		SFC_ASSERT(rc > 0);
+		return -rc;
 	}
 
 	for (i = 0; i < eth_da->nb_representor_ports; ++i) {

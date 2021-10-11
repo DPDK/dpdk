@@ -87,6 +87,10 @@ struct sfc_mae_switch_domain {
 	struct sfc_mae_switch_ports		ports;
 	/** RTE switch domain ID allocated for a group of devices */
 	uint16_t				id;
+	/** DPDK controller -> EFX interface mapping */
+	efx_pcie_interface_t			*controllers;
+	/** Number of DPDK controllers and EFX interfaces */
+	size_t					nb_controllers;
 };
 
 TAILQ_HEAD(sfc_mae_switch_domains, sfc_mae_switch_domain);
@@ -218,6 +222,59 @@ fail_mem_alloc:
 fail_hw_switch_id_init:
 	rte_spinlock_unlock(&sfc_mae_switch.lock);
 	return rc;
+}
+
+int
+sfc_mae_switch_domain_controllers(uint16_t switch_domain_id,
+				  const efx_pcie_interface_t **controllers,
+				  size_t *nb_controllers)
+{
+	struct sfc_mae_switch_domain *domain;
+
+	if (controllers == NULL || nb_controllers == NULL)
+		return EINVAL;
+
+	rte_spinlock_lock(&sfc_mae_switch.lock);
+
+	domain = sfc_mae_find_switch_domain_by_id(switch_domain_id);
+	if (domain == NULL) {
+		rte_spinlock_unlock(&sfc_mae_switch.lock);
+		return EINVAL;
+	}
+
+	*controllers = domain->controllers;
+	*nb_controllers = domain->nb_controllers;
+
+	rte_spinlock_unlock(&sfc_mae_switch.lock);
+	return 0;
+}
+
+int
+sfc_mae_switch_domain_map_controllers(uint16_t switch_domain_id,
+				      efx_pcie_interface_t *controllers,
+				      size_t nb_controllers)
+{
+	struct sfc_mae_switch_domain *domain;
+
+	rte_spinlock_lock(&sfc_mae_switch.lock);
+
+	domain = sfc_mae_find_switch_domain_by_id(switch_domain_id);
+	if (domain == NULL) {
+		rte_spinlock_unlock(&sfc_mae_switch.lock);
+		return EINVAL;
+	}
+
+	/* Controller mapping may be set only once */
+	if (domain->controllers != NULL) {
+		rte_spinlock_unlock(&sfc_mae_switch.lock);
+		return EINVAL;
+	}
+
+	domain->controllers = controllers;
+	domain->nb_controllers = nb_controllers;
+
+	rte_spinlock_unlock(&sfc_mae_switch.lock);
+	return 0;
 }
 
 /* This function expects to be called only when the lock is held */
