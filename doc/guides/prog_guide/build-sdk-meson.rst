@@ -91,7 +91,7 @@ Project-specific options are passed used -Doption=value::
 
 	meson -Denable_docs=true fullbuild  # build and install docs
 
-	meson -Dmachine=generic  # use builder-independent baseline -march
+	meson -Dcpu_instruction_set=generic  # use builder-independent baseline -march
 
 	meson -Ddisable_drivers=event/*,net/tap  # disable tap driver and all
 					# eventdev PMDs for a smaller build
@@ -120,8 +120,16 @@ Examples of setting some of the same options using meson configure::
         re-scan from meson.
 
 .. note::
-        machine=generic uses a config that works on all supported architectures
-        regardless of the capabilities of the machine where the build is happening.
+
+   cpu_instruction_set=generic uses an instruction set that works on
+   all supported architectures regardless of the capabilities of the machine
+   where the build is happening.
+
+.. note::
+
+   cpu_instruction_set is not used in Arm builds, as setting the instruction set
+   without other parameters leads to inferior builds.
+   The way to tailor Arm builds is to build for a SoC using -Dplatform=<SoC>.
 
 As well as those settings taken from ``meson configure``, other options
 such as the compiler to use can be passed via environment variables. For
