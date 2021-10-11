@@ -17756,18 +17756,23 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					"Doesn't support optional action");
 			}
 		}
-		if (action_flags[i] & MLX5_FLOW_ACTION_PORT_ID)
+		if (action_flags[i] & MLX5_FLOW_ACTION_PORT_ID) {
 			domain_color[i] = MLX5_MTR_DOMAIN_TRANSFER_BIT;
-		else if ((action_flags[i] &
+		} else if ((action_flags[i] &
 			  (MLX5_FLOW_ACTION_RSS | MLX5_FLOW_ACTION_QUEUE)) ||
-			 (action_flags[i] & MLX5_FLOW_ACTION_MARK))
+			  (action_flags[i] & MLX5_FLOW_ACTION_MARK)) {
 			/*
 			 * Only support MLX5_XMETA_MODE_LEGACY
 			 * so MARK action is only in ingress domain.
 			 */
 			domain_color[i] = MLX5_MTR_DOMAIN_INGRESS_BIT;
-		else
+		} else {
 			domain_color[i] = def_domain;
+			if (action_flags[i] &&
+			    !(action_flags[i] & MLX5_FLOW_FATE_ESWITCH_ACTIONS))
+				domain_color[i] &=
+				~MLX5_MTR_DOMAIN_TRANSFER_BIT;
+		}
 		if (action_flags[i] &
 		    MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY)
 			domain_color[i] &= hierarchy_domain;
