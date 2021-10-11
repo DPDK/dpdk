@@ -462,6 +462,60 @@ efx_mcdi_phy_module_get_info(
 	EFX_DWORD_FIELD(*(MCDI_OUT2(_emr, efx_dword_t, _ofst) +		\
 			(_idx)), _field)
 
+#define	MCDI_OUT_INDEXED_STRUCT_MEMBER(_emr, _type, _arr_ofst, _idx,	\
+		_member_ofst)						\
+	((_type *)(MCDI_OUT2(_emr, uint8_t, _arr_ofst) +		\
+		   _idx * MC_CMD_ ## _arr_ofst ## _LEN +		\
+		   _member_ofst ## _OFST))
+
+#define	MCDI_OUT_INDEXED_MEMBER_DWORD(_emr, _arr_ofst, _idx,		\
+		_member_ofst)						\
+	EFX_DWORD_FIELD(						\
+		*(MCDI_OUT_INDEXED_STRUCT_MEMBER(_emr, efx_dword_t,	\
+						 _arr_ofst, _idx,	\
+						 _member_ofst)),	\
+		EFX_DWORD_0)
+
+#define	MCDI_OUT_INDEXED_MEMBER_QWORD(_emr, _arr_ofst, _idx,		\
+		_member_ofst)						\
+	((uint64_t)EFX_QWORD_FIELD(					\
+		*(MCDI_OUT_INDEXED_STRUCT_MEMBER(_emr, efx_qword_t,	\
+						 _arr_ofst, _idx,	\
+						 _member_ofst)),	\
+		EFX_DWORD_0) |						\
+	(uint64_t)EFX_QWORD_FIELD(					\
+		*(MCDI_OUT_INDEXED_STRUCT_MEMBER(_emr, efx_qword_t,	\
+						 _arr_ofst, _idx,	\
+						 _member_ofst)),	\
+		EFX_DWORD_1) << 32)
+
+#define MCDI_STRUCT_MEMBER(_buf, _type, _ofst)				\
+	((_type *)((char *)_buf + _ofst ## _OFST))	\
+
+#define MCDI_STRUCT_BYTE(_buf, _ofst)					\
+	EFX_BYTE_FIELD(*MCDI_STRUCT_MEMBER(_buf, efx_byte_t, _ofst),	\
+		       EFX_BYTE_0)
+
+#define MCDI_STRUCT_BYTE_FIELD(_buf, _ofst, _field)			\
+	EFX_BYTE_FIELD(*MCDI_STRUCT_MEMBER(_buf, efx_byte_t, _ofst),	\
+		       _field)
+
+#define MCDI_STRUCT_WORD(_buf, _ofst)					\
+	EFX_WORD_FIELD(*MCDI_STRUCT_MEMBER(_buf, efx_word_t, _ofst),	\
+		       EFX_WORD_0)
+
+#define MCDI_STRUCT_WORD_FIELD(_buf, _ofst, _field)			\
+	EFX_WORD_FIELD(*MCDI_STRUCT_MEMBER(_buf, efx_word_t, _ofst),	\
+		       _field)
+
+#define MCDI_STRUCT_DWORD(_buf, _ofst)					\
+	EFX_DWORD_FIELD(*MCDI_STRUCT_MEMBER(_buf, efx_dword_t, _ofst),	\
+			EFX_DWORD_0)
+
+#define MCDI_STRUCT_DWORD_FIELD(_buf, _ofst, _field)			\
+	EFX_DWORD_FIELD(*MCDI_STRUCT_MEMBER(_buf, efx_dword_t, _ofst),	\
+			_field)
+
 #define	MCDI_EV_FIELD(_eqp, _field)					\
 	EFX_QWORD_FIELD(*_eqp, MCDI_EVENT_ ## _field)
 

@@ -4205,6 +4205,42 @@ typedef struct efx_mport_id_s {
 	uint32_t id;
 } efx_mport_id_t;
 
+typedef enum efx_mport_type_e {
+	EFX_MPORT_TYPE_NET_PORT = 0,
+	EFX_MPORT_TYPE_ALIAS,
+	EFX_MPORT_TYPE_VNIC,
+} efx_mport_type_t;
+
+typedef enum efx_mport_vnic_client_type_e {
+	EFX_MPORT_VNIC_CLIENT_FUNCTION = 1,
+	EFX_MPORT_VNIC_CLIENT_PLUGIN,
+} efx_mport_vnic_client_type_t;
+
+typedef struct efx_mport_desc_s {
+	efx_mport_id_t			emd_id;
+	boolean_t			emd_can_receive_on;
+	boolean_t			emd_can_deliver_to;
+	boolean_t			emd_can_delete;
+	boolean_t			emd_zombie;
+	efx_mport_type_t		emd_type;
+	union {
+		struct {
+			uint32_t	ep_index;
+		} emd_net_port;
+		struct {
+			efx_mport_id_t	ea_target_mport_id;
+		} emd_alias;
+		struct {
+			efx_mport_vnic_client_type_t	ev_client_type;
+			efx_pcie_interface_t		ev_intf;
+			uint16_t			ev_pf;
+			uint16_t			ev_vf;
+			/* MCDI client handle for this VNIC. */
+			uint32_t			ev_handle;
+		} emd_vnic;
+	};
+} efx_mport_desc_t;
+
 #define	EFX_MPORT_NULL			(0U)
 
 /*
@@ -4634,6 +4670,26 @@ extern	__checkReturn			efx_rc_t
 efx_mae_mport_free(
 	__in				efx_nic_t *enp,
 	__in				const efx_mport_id_t *mportp);
+
+typedef __checkReturn	efx_rc_t
+(efx_mae_read_mport_journal_cb)(
+	__in		void *cb_datap,
+	__in		efx_mport_desc_t *mportp,
+	__in		size_t mport_len);
+
+/*
+ * Read mport descriptions from the MAE journal (which describes added and
+ * removed mports) and pass them to a user-supplied callback. The user gets
+ * only one chance to process the data it's given. Once the callback function
+ * finishes, that particular mport description will be gone.
+ * The journal will be fully repopulated on PCI reset (efx_nic_reset function).
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_read_mport_journal(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_read_mport_journal_cb *cbp,
+	__in				void *cb_datap);
 
 #endif /* EFSYS_OPT_MAE */
 

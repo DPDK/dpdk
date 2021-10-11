@@ -133,6 +133,7 @@ INTERNAL {
 	efx_mae_mport_invalid;
 	efx_mae_outer_rule_insert;
 	efx_mae_outer_rule_remove;
+	efx_mae_read_mport_journal;
 
 	efx_mcdi_fini;
 	efx_mcdi_get_proxy_handle;
