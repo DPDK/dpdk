@@ -4197,6 +4197,17 @@ typedef struct efx_mport_id_s {
 #define	EFX_MPORT_NULL			(0U)
 
 /*
+ * Generate an invalid MPORT selector.
+ *
+ * The resulting MPORT selector is opaque to the caller. Requests
+ * that attempt to use it will be rejected.
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_mport_invalid(
+	__out				efx_mport_sel_t *mportp);
+
+/*
  * Get MPORT selector of a physical port.
  *
  * The resulting MPORT selector is opaque to the caller and can be

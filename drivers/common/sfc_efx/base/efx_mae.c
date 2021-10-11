@@ -661,6 +661,31 @@ static const efx_mae_mv_bit_desc_t __efx_mae_action_rule_mv_bit_desc_set[] = {
 };
 
 	__checkReturn			efx_rc_t
+efx_mae_mport_invalid(
+	__out				efx_mport_sel_t *mportp)
+{
+	efx_dword_t dword;
+	efx_rc_t rc;
+
+	if (mportp == NULL) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	EFX_POPULATE_DWORD_1(dword,
+	    MAE_MPORT_SELECTOR_TYPE, MAE_MPORT_SELECTOR_TYPE_INVALID);
+
+	memset(mportp, 0, sizeof (*mportp));
+	mportp->sel = dword.ed_u32[0];
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
 efx_mae_mport_by_phy_port(
 	__in				uint32_t phy_port,
 	__out				efx_mport_sel_t *mportp)
