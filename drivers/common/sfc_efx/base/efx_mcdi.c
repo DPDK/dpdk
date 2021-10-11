@@ -647,6 +647,79 @@ efx_mcdi_request_abort(
 	return (aborted);
 }
 
+	__checkReturn	efx_rc_t
+efx_mcdi_get_client_handle(
+	__in		efx_nic_t *enp,
+	__in		efx_pcie_interface_t intf,
+	__in		uint16_t pf,
+	__in		uint16_t vf,
+	__out		uint32_t *handle)
+{
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_GET_CLIENT_HANDLE_IN_LEN,
+	    MC_CMD_GET_CLIENT_HANDLE_OUT_LEN);
+	efx_rc_t rc;
+
+	if (handle == NULL) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	req.emr_cmd = MC_CMD_GET_CLIENT_HANDLE;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_GET_CLIENT_HANDLE_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_GET_CLIENT_HANDLE_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req, GET_CLIENT_HANDLE_IN_TYPE,
+	    MC_CMD_GET_CLIENT_HANDLE_IN_TYPE_FUNC);
+	MCDI_IN_SET_WORD(req, GET_CLIENT_HANDLE_IN_FUNC_PF, pf);
+	MCDI_IN_SET_WORD(req, GET_CLIENT_HANDLE_IN_FUNC_VF, vf);
+	MCDI_IN_SET_DWORD(req, GET_CLIENT_HANDLE_IN_FUNC_INTF, intf);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail2;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_GET_CLIENT_HANDLE_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail3;
+	}
+
+	*handle = MCDI_OUT_DWORD(req, GET_CLIENT_HANDLE_OUT_HANDLE);
+
+	return 0;
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_mcdi_get_own_client_handle(
+	__in		efx_nic_t *enp,
+	__out		uint32_t *handle)
+{
+	efx_rc_t rc;
+
+	rc = efx_mcdi_get_client_handle(enp, PCIE_INTERFACE_CALLER,
+	    PCIE_FUNCTION_PF_NULL, PCIE_FUNCTION_VF_NULL, handle);
+	if (rc != 0)
+		goto fail1;
+
+	return (0);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 			void
 efx_mcdi_get_timeout(
 	__in		efx_nic_t *enp,

@@ -392,6 +392,21 @@ efx_mcdi_request_abort(
 	__in		efx_nic_t *enp);
 
 LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_mcdi_get_client_handle(
+	__in		efx_nic_t *enp,
+	__in		efx_pcie_interface_t intf,
+	__in		uint16_t pf,
+	__in		uint16_t vf,
+	__out		uint32_t *handle);
+
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_mcdi_get_own_client_handle(
+	__in		efx_nic_t *enp,
+	__out		uint32_t *handle);
+
+LIBEFX_API
 extern			void
 efx_mcdi_fini(
 	__in		efx_nic_t *enp);

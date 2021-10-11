@@ -136,6 +136,8 @@ INTERNAL {
 	efx_mae_read_mport_journal;
 
 	efx_mcdi_fini;
+	efx_mcdi_get_client_handle;
+	efx_mcdi_get_own_client_handle;
 	efx_mcdi_get_proxy_handle;
 	efx_mcdi_get_timeout;
 	efx_mcdi_init;
