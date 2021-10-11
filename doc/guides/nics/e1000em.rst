@@ -8,9 +8,9 @@ The DPDK EM poll mode driver supports the following emulated devices:
 
 *   qemu-kvm emulated Intel® 82540EM Gigabit Ethernet Controller (qemu e1000 device)
 
-*   VMware* emulated Intel® 82545EM Gigabit Ethernet Controller
+*   VMware emulated Intel® 82545EM Gigabit Ethernet Controller
 
-*   VMware emulated Intel® 8274L Gigabit Ethernet Controller.
+*   VMware emulated Intel® 82574L Gigabit Ethernet Controller.
 
 Validated Hypervisors
 ---------------------
