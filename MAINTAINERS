@@ -1207,7 +1207,7 @@ RegEx Drivers
 -------------
 
 Marvell OCTEON TX2 regex
-M: Guy Kaneti <guyk@marvell.com>
+M: Liron Himi <lironh@marvell.com>
 F: drivers/regex/octeontx2/
 F: doc/guides/regexdevs/octeontx2.rst
 F: doc/guides/regexdevs/features/octeontx2.ini
