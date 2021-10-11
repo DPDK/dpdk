@@ -45,6 +45,8 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
+#include <rte_vfio.h>
+#include <rte_errno.h>
 
 #include "iotlb.h"
 #include "vhost.h"
@@ -141,6 +143,63 @@ get_blk_size(int fd)
 	return ret == -1 ? (uint64_t)-1 : (uint64_t)stat.st_blksize;
 }
 
+static int
+async_dma_map(struct rte_vhost_mem_region *region, bool *dma_map_success, bool do_map)
+{
+	uint64_t host_iova;
+	int ret = 0;
+
+	host_iova = rte_mem_virt2iova((void *)(uintptr_t)region->host_user_addr);
+	if (do_map) {
+		/* Add mapped region into the default container of DPDK. */
+		ret = rte_vfio_container_dma_map(RTE_VFIO_DEFAULT_CONTAINER_FD,
+						 region->host_user_addr,
+						 host_iova,
+						 region->size);
+		*dma_map_success = ret == 0;
+
+		if (ret) {
+			/*
+			 * DMA device may bind with kernel driver, in this case,
+			 * we don't need to program IOMMU manually. However, if no
+			 * device is bound with vfio/uio in DPDK, and vfio kernel
+			 * module is loaded, the API will still be called and return
+			 * with ENODEV/ENOSUP.
+			 *
+			 * DPDK vfio only returns ENODEV/ENOSUP in very similar
+			 * situations(vfio either unsupported, or supported
+			 * but no devices found). Either way, no mappings could be
+			 * performed. We treat it as normal case in async path.
+			 */
+			if (rte_errno == ENODEV || rte_errno == ENOTSUP)
+				return 0;
+
+			VHOST_LOG_CONFIG(ERR, "DMA engine map failed\n");
+			return ret;
+
+		}
+
+	} else {
+		/* No need to do vfio unmap if the map failed. */
+		if (!*dma_map_success)
+			return 0;
+
+		/* Remove mapped region from the default container of DPDK. */
+		ret = rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD,
+						   region->host_user_addr,
+						   host_iova,
+						   region->size);
+		if (ret) {
+			VHOST_LOG_CONFIG(ERR, "DMA engine unmap failed\n");
+			return ret;
+		}
+		/* Clear the flag once the unmap succeeds. */
+		*dma_map_success = 0;
+	}
+
+	return ret;
+}
+
 static void
 free_mem_region(struct virtio_net *dev)
 {
@@ -153,6 +212,9 @@ free_mem_region(struct virtio_net *dev)
 	for (i = 0; i < dev->mem->nregions; i++) {
 		reg = &dev->mem->regions[i];
 		if (reg->host_user_addr) {
+			if (dev->async_copy && rte_vfio_is_enabled("vfio"))
+				async_dma_map(reg, &dev->async_map_status[i], false);
+
 			munmap(reg->mmap_addr, reg->mmap_size);
 			close(reg->fd);
 		}
@@ -166,6 +228,11 @@ vhost_backend_cleanup(struct virtio_net *dev)
 		free_mem_region(dev);
 		rte_free(dev->mem);
 		dev->mem = NULL;
+
+		if (dev->async_map_status) {
+			rte_free(dev->async_map_status);
+			dev->async_map_status = NULL;
+		}
 	}
 
 	rte_free(dev->guest_pages);
@@ -620,6 +687,19 @@ out_dev_realloc:
 		return dev;
 	}
 	dev->mem = mem;
+
+	if (dev->async_copy && rte_vfio_is_enabled("vfio")) {
+		if (dev->async_map_status == NULL) {
+			dev->async_map_status = rte_zmalloc_socket("async-dma-map-status",
+					sizeof(bool) * dev->mem->nregions, 0, node);
+			if (!dev->async_map_status) {
+				VHOST_LOG_CONFIG(ERR,
+					"(%d) failed to realloc dma mapping status on node\n",
+					dev->vid);
+				return dev;
+			}
+		}
+	}
 
 	gp = rte_realloc_socket(dev->guest_pages, dev->max_guest_pages * sizeof(*gp),
 			RTE_CACHE_LINE_SIZE, node);
@@ -1151,12 +1231,14 @@ vhost_user_postcopy_register(struct virtio_net *dev, int main_fd,
 static int
 vhost_user_mmap_region(struct virtio_net *dev,
 		struct rte_vhost_mem_region *region,
+		uint32_t region_index,
 		uint64_t mmap_offset)
 {
 	void *mmap_addr;
 	uint64_t mmap_size;
 	uint64_t alignment;
 	int populate;
+	int ret;
 
 	/* Check for memory_size + mmap_offset overflow */
 	if (mmap_offset >= -region->size) {
@@ -1210,12 +1292,22 @@ vhost_user_mmap_region(struct virtio_net *dev,
 	region->mmap_size = mmap_size;
 	region->host_user_addr = (uint64_t)(uintptr_t)mmap_addr + mmap_offset;
 
-	if (dev->async_copy)
+	if (dev->async_copy) {
 		if (add_guest_pages(dev, region, alignment) < 0) {
 			VHOST_LOG_CONFIG(ERR,
 					"adding guest pages to region failed.\n");
 			return -1;
 		}
+
+		if (rte_vfio_is_enabled("vfio")) {
+			ret = async_dma_map(region, &dev->async_map_status[region_index], true);
+			if (ret) {
+				VHOST_LOG_CONFIG(ERR, "Configure IOMMU for DMA "
+							"engine failed\n");
+				return -1;
+			}
+		}
+	}
 
 	VHOST_LOG_CONFIG(INFO,
 			"guest memory region size: 0x%" PRIx64 "\n"
@@ -1289,6 +1381,11 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		free_mem_region(dev);
 		rte_free(dev->mem);
 		dev->mem = NULL;
+
+		if (dev->async_map_status) {
+			rte_free(dev->async_map_status);
+			dev->async_map_status = NULL;
+		}
 	}
 
 	/* Flush IOTLB cache as previous HVAs are now invalid */
@@ -1329,6 +1426,17 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		goto free_guest_pages;
 	}
 
+	if (dev->async_copy) {
+		dev->async_map_status = rte_zmalloc_socket("async-dma-map-status",
+					sizeof(bool) * memory->nregions, 0, numa_node);
+		if (!dev->async_map_status) {
+			VHOST_LOG_CONFIG(ERR,
+				"(%d) failed to allocate memory for dma mapping status\n",
+				dev->vid);
+			goto free_mem_table;
+		}
+	}
+
 	for (i = 0; i < memory->nregions; i++) {
 		reg = &dev->mem->regions[i];
 
@@ -1345,7 +1453,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 
 		mmap_offset = memory->regions[i].mmap_offset;
 
-		if (vhost_user_mmap_region(dev, reg, mmap_offset) < 0) {
+		if (vhost_user_mmap_region(dev, reg, i, mmap_offset) < 0) {
 			VHOST_LOG_CONFIG(ERR, "Failed to mmap region %u\n", i);
 			goto free_mem_table;
 		}
@@ -1393,6 +1501,10 @@ free_mem_table:
 	free_mem_region(dev);
 	rte_free(dev->mem);
 	dev->mem = NULL;
+	if (dev->async_map_status) {
+		rte_free(dev->async_map_status);
+		dev->async_map_status = NULL;
+	}
 free_guest_pages:
 	rte_free(dev->guest_pages);
 	dev->guest_pages = NULL;
