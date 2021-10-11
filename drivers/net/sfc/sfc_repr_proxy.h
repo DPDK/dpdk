@@ -18,6 +18,7 @@
 #include "efx.h"
 
 #include "sfc_repr.h"
+#include "sfc_dp.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +31,10 @@ extern "C" {
 /* One TxQ is required and sufficient for port representors support */
 #define SFC_REPR_PROXY_NB_TXQ_MIN	(1)
 #define SFC_REPR_PROXY_NB_TXQ_MAX	(1)
+
+#define SFC_REPR_PROXY_RX_DESC_COUNT	256
+#define SFC_REPR_PROXY_RXQ_REFILL_LEVEL	(SFC_REPR_PROXY_RX_DESC_COUNT / 4)
+#define SFC_REPR_PROXY_RX_BURST		32
 
 struct sfc_repr_proxy_rxq {
 	struct rte_ring			*ring;
@@ -52,6 +57,8 @@ struct sfc_repr_proxy_port {
 struct sfc_repr_proxy_dp_rxq {
 	struct rte_mempool		*mp;
 	unsigned int			ref_count;
+
+	sfc_sw_index_t			sw_index;
 };
 
 enum sfc_repr_proxy_mbox_op {

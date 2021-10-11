@@ -110,6 +110,14 @@ sfc_counters_rxq_sw_index(const struct sfc_adapter_shared *sas)
 	return sas->counters_rxq_allocated ? 0 : SFC_SW_INDEX_INVALID;
 }
 
+static inline sfc_sw_index_t
+sfc_repr_rxq_sw_index(const struct sfc_adapter_shared *sas,
+		      unsigned int repr_queue_id)
+{
+	return sfc_counters_rxq_sw_index(sas) + sfc_repr_nb_rxq(sas) +
+		repr_queue_id;
+}
+
 /*
  * Functions below define event queue to transmit/receive queue and vice
  * versa mapping.
