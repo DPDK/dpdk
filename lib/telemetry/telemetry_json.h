@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <rte_common.h>
+#include <rte_telemetry.h>
 
 /**
  * @file
@@ -23,13 +24,13 @@
  * @internal
  * Copies a value into a buffer if the buffer has enough available space.
  * Nothing written to buffer if an overflow ocurs.
- * This function is not for use for values larger than 1k.
+ * This function is not for use for values larger than given buffer length.
  */
 __rte_format_printf(3, 4)
 static inline int
 __json_snprintf(char *buf, const int len, const char *format, ...)
 {
-	char tmp[1024];
+	char tmp[len];
 	va_list ap;
 	int ret;
 
