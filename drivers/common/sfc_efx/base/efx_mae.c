@@ -727,35 +727,95 @@ efx_mae_mport_by_pcie_function(
 	efx_dword_t dword;
 	efx_rc_t rc;
 
-	EFX_STATIC_ASSERT(EFX_PCI_VF_INVALID ==
-	    MAE_MPORT_SELECTOR_FUNC_VF_ID_NULL);
+	rc = efx_mae_mport_by_pcie_mh_function(EFX_PCIE_INTERFACE_CALLER,
+					       pf, vf, mportp);
+	if (rc != 0)
+		goto fail1;
 
-	if (pf > EFX_MASK32(MAE_MPORT_SELECTOR_FUNC_PF_ID)) {
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+static	__checkReturn			efx_rc_t
+efx_mae_intf_to_selector(
+	__in				efx_pcie_interface_t intf,
+	__out				uint32_t *selector_intfp)
+{
+	efx_rc_t rc;
+
+	switch (intf) {
+	case EFX_PCIE_INTERFACE_HOST_PRIMARY:
+		EFX_STATIC_ASSERT(MAE_MPORT_SELECTOR_HOST_PRIMARY <=
+		    EFX_MASK32(MAE_MPORT_SELECTOR_FUNC_INTF_ID));
+		*selector_intfp = MAE_MPORT_SELECTOR_HOST_PRIMARY;
+		break;
+	case EFX_PCIE_INTERFACE_NIC_EMBEDDED:
+		EFX_STATIC_ASSERT(MAE_MPORT_SELECTOR_NIC_EMBEDDED <=
+		    EFX_MASK32(MAE_MPORT_SELECTOR_FUNC_INTF_ID));
+		*selector_intfp = MAE_MPORT_SELECTOR_NIC_EMBEDDED;
+		break;
+	case EFX_PCIE_INTERFACE_CALLER:
+		EFX_STATIC_ASSERT(MAE_MPORT_SELECTOR_CALLER_INTF <=
+		    EFX_MASK32(MAE_MPORT_SELECTOR_FUNC_INTF_ID));
+		*selector_intfp = MAE_MPORT_SELECTOR_CALLER_INTF;
+		break;
+	default:
 		rc = EINVAL;
 		goto fail1;
 	}
 
-	if (vf > EFX_MASK32(MAE_MPORT_SELECTOR_FUNC_VF_ID)) {
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_mport_by_pcie_mh_function(
+	__in				efx_pcie_interface_t intf,
+	__in				uint32_t pf,
+	__in				uint32_t vf,
+	__out				efx_mport_sel_t *mportp)
+{
+	uint32_t selector_intf;
+	efx_dword_t dword;
+	efx_rc_t rc;
+
+	EFX_STATIC_ASSERT(EFX_PCI_VF_INVALID ==
+	    MAE_MPORT_SELECTOR_FUNC_VF_ID_NULL);
+
+	rc = efx_mae_intf_to_selector(intf, &selector_intf);
+	if (rc != 0)
+		goto fail1;
+
+	if (pf > EFX_MASK32(MAE_MPORT_SELECTOR_FUNC_MH_PF_ID)) {
 		rc = EINVAL;
 		goto fail2;
 	}
 
-	EFX_POPULATE_DWORD_3(dword,
-	    MAE_MPORT_SELECTOR_TYPE, MAE_MPORT_SELECTOR_TYPE_FUNC,
-	    MAE_MPORT_SELECTOR_FUNC_PF_ID, pf,
+	if (vf > EFX_MASK32(MAE_MPORT_SELECTOR_FUNC_VF_ID)) {
+		rc = EINVAL;
+		goto fail3;
+	}
+
+
+	EFX_POPULATE_DWORD_4(dword,
+	    MAE_MPORT_SELECTOR_TYPE, MAE_MPORT_SELECTOR_TYPE_MH_FUNC,
+	    MAE_MPORT_SELECTOR_FUNC_INTF_ID, selector_intf,
+	    MAE_MPORT_SELECTOR_FUNC_MH_PF_ID, pf,
 	    MAE_MPORT_SELECTOR_FUNC_VF_ID, vf);
 
 	memset(mportp, 0, sizeof (*mportp));
-	/*
-	 * The constructed DWORD is little-endian,
-	 * but the resulting value is meant to be
-	 * passed to MCDIs, where it will undergo
-	 * host-order to little endian conversion.
-	 */
-	mportp->sel = EFX_DWORD_FIELD(dword, EFX_DWORD_0);
+	mportp->sel = dword.ed_u32[0];
 
 	return (0);
 
+fail3:
+	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:

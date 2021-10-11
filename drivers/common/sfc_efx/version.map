@@ -125,6 +125,7 @@ INTERNAL {
 	efx_mae_match_specs_class_cmp;
 	efx_mae_match_specs_equal;
 	efx_mae_mport_by_pcie_function;
+	efx_mae_mport_by_pcie_mh_function;
 	efx_mae_mport_by_phy_port;
 	efx_mae_mport_by_id;
 	efx_mae_mport_free;
