@@ -4181,6 +4181,19 @@ typedef struct efx_mport_sel_s {
 	uint32_t sel;
 } efx_mport_sel_t;
 
+/*
+ * MPORT ID. Used to refer dynamically to a specific MPORT.
+ * The difference between MPORT selector and MPORT ID is that
+ * selector can specify an exact MPORT ID or it can specify a
+ * pattern by which an exact MPORT ID can be selected. For example,
+ * static MPORT selector can specify MPORT of a current PF, which
+ * will be translated to the dynamic MPORT ID based on which PF is
+ * using that MPORT selector.
+ */
+typedef struct efx_mport_id_s {
+	uint32_t id;
+} efx_mport_id_t;
+
 #define	EFX_MPORT_NULL			(0U)
 
 /*
@@ -4209,6 +4222,14 @@ efx_mae_mport_by_pcie_function(
 	__in				uint32_t pf,
 	__in				uint32_t vf,
 	__out				efx_mport_sel_t *mportp);
+
+/* Get MPORT ID by an MPORT selector */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_mport_id_by_selector(
+	__in				efx_nic_t *enp,
+	__in				const efx_mport_sel_t *mport_selectorp,
+	__out				efx_mport_id_t *mport_idp);
 
 /*
  * Fields which have BE postfix in their named constants are expected

@@ -738,6 +738,70 @@ fail1:
 	return (rc);
 }
 
+static	__checkReturn			efx_rc_t
+efx_mcdi_mae_mport_lookup(
+	__in				efx_nic_t *enp,
+	__in				const efx_mport_sel_t *mport_selectorp,
+	__out				efx_mport_id_t *mport_idp)
+{
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_MPORT_LOOKUP_IN_LEN,
+	    MC_CMD_MAE_MPORT_LOOKUP_OUT_LEN);
+	efx_rc_t rc;
+
+	req.emr_cmd = MC_CMD_MAE_MPORT_LOOKUP;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_MPORT_LOOKUP_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_MPORT_LOOKUP_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req, MAE_MPORT_LOOKUP_IN_MPORT_SELECTOR,
+	    mport_selectorp->sel);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	mport_idp->id = MCDI_OUT_DWORD(req, MAE_MPORT_LOOKUP_OUT_MPORT_ID);
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_mport_id_by_selector(
+	__in				efx_nic_t *enp,
+	__in				const efx_mport_sel_t *mport_selectorp,
+	__out				efx_mport_id_t *mport_idp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_rc_t rc;
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	rc = efx_mcdi_mae_mport_lookup(enp, mport_selectorp, mport_idp);
+	if (rc != 0)
+		goto fail2;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 	__checkReturn			efx_rc_t
 efx_mae_match_spec_field_set(
 	__in				efx_mae_match_spec_t *spec,
