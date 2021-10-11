@@ -139,6 +139,26 @@ struct sfc_mae_counter_registry {
 	uint32_t			service_id;
 };
 
+/** Rules to forward traffic from PHY port to PF and from PF to PHY port */
+#define SFC_MAE_NB_SWITCHDEV_RULES	(2)
+/** Maximum required internal MAE rules */
+#define SFC_MAE_NB_RULES_MAX		(SFC_MAE_NB_SWITCHDEV_RULES)
+
+struct sfc_mae_rule {
+	efx_mae_match_spec_t		*spec;
+	efx_mae_actions_t		*actions;
+	efx_mae_aset_id_t		action_set;
+	efx_mae_rule_id_t		rule_id;
+};
+
+struct sfc_mae_internal_rules {
+	/*
+	 * Rules required to sustain switchdev mode or to provide
+	 * port representor functionality.
+	 */
+	struct sfc_mae_rule		rules[SFC_MAE_NB_RULES_MAX];
+};
+
 struct sfc_mae {
 	/** Assigned switch domain identifier */
 	uint16_t			switch_domain_id;
@@ -164,6 +184,14 @@ struct sfc_mae {
 	bool				counter_rxq_running;
 	/** Counter registry */
 	struct sfc_mae_counter_registry	counter_registry;
+	/** Driver-internal flow rules */
+	struct sfc_mae_internal_rules	internal_rules;
+	/**
+	 * Switchdev default rules. They forward traffic from PHY port
+	 * to PF and vice versa.
+	 */
+	struct sfc_mae_rule		*switchdev_rule_pf_to_ext;
+	struct sfc_mae_rule		*switchdev_rule_ext_to_pf;
 };
 
 struct sfc_adapter;
@@ -305,6 +333,27 @@ sfc_flow_verify_cb_t sfc_mae_flow_verify;
 sfc_flow_insert_cb_t sfc_mae_flow_insert;
 sfc_flow_remove_cb_t sfc_mae_flow_remove;
 sfc_flow_query_cb_t sfc_mae_flow_query;
+
+/**
+ * The value used to represent the lowest priority.
+ * Used in MAE rule API.
+ */
+#define SFC_MAE_RULE_PRIO_LOWEST	(-1)
+
+/**
+ * Insert a driver-internal flow rule that matches traffic originating from
+ * some m-port selector and redirects it to another one
+ * (eg. PF --> PHY, PHY --> PF).
+ *
+ * If requested priority is negative, use the lowest priority.
+ */
+int sfc_mae_rule_add_mport_match_deliver(struct sfc_adapter *sa,
+					 const efx_mport_sel_t *mport_match,
+					 const efx_mport_sel_t *mport_deliver,
+					 int prio, struct sfc_mae_rule **rulep);
+void sfc_mae_rule_del(struct sfc_adapter *sa, struct sfc_mae_rule *rule);
+int sfc_mae_switchdev_init(struct sfc_adapter *sa);
+void sfc_mae_switchdev_fini(struct sfc_adapter *sa);
 
 #ifdef __cplusplus
 }
