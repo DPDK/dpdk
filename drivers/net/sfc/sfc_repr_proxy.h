@@ -12,7 +12,12 @@
 
 #include <stdint.h>
 
+#include <rte_ring.h>
+#include <rte_mempool.h>
+
 #include "efx.h"
+
+#include "sfc_repr.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,11 +31,27 @@ extern "C" {
 #define SFC_REPR_PROXY_NB_TXQ_MIN	(1)
 #define SFC_REPR_PROXY_NB_TXQ_MAX	(1)
 
+struct sfc_repr_proxy_rxq {
+	struct rte_ring			*ring;
+	struct rte_mempool		*mb_pool;
+};
+
+struct sfc_repr_proxy_txq {
+	struct rte_ring			*ring;
+};
+
 struct sfc_repr_proxy_port {
 	TAILQ_ENTRY(sfc_repr_proxy_port)	entries;
 	uint16_t				repr_id;
 	uint16_t				rte_port_id;
 	efx_mport_id_t				egress_mport;
+	struct sfc_repr_proxy_rxq		rxq[SFC_REPR_RXQ_MAX];
+	struct sfc_repr_proxy_txq		txq[SFC_REPR_TXQ_MAX];
+};
+
+struct sfc_repr_proxy_dp_rxq {
+	struct rte_mempool		*mp;
+	unsigned int			ref_count;
 };
 
 enum sfc_repr_proxy_mbox_op {
@@ -54,6 +75,7 @@ struct sfc_repr_proxy {
 	efx_mport_id_t			mport_alias;
 	struct sfc_repr_proxy_ports	ports;
 	bool				started;
+	struct sfc_repr_proxy_dp_rxq	dp_rxq[SFC_REPR_PROXY_NB_RXQ_MAX];
 
 	struct sfc_repr_proxy_mbox	mbox;
 };

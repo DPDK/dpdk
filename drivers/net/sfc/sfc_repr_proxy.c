@@ -528,3 +528,135 @@ fail_no_port:
 
 	return rc;
 }
+
+int
+sfc_repr_proxy_add_rxq(uint16_t pf_port_id, uint16_t repr_id,
+		       uint16_t queue_id, struct rte_ring *rx_ring,
+		       struct rte_mempool *mp)
+{
+	struct sfc_repr_proxy_port *port;
+	struct sfc_repr_proxy_rxq *rxq;
+	struct sfc_repr_proxy *rp;
+	struct sfc_adapter *sa;
+
+	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	rp = sfc_repr_proxy_by_adapter(sa);
+
+	sfc_log_init(sa, "entry");
+
+	port = sfc_repr_proxy_find_port(rp, repr_id);
+	if (port == NULL) {
+		sfc_err(sa, "%s() failed: no such port", __func__);
+		return ENOENT;
+	}
+
+	rxq = &port->rxq[queue_id];
+	if (rp->dp_rxq[queue_id].mp != NULL && rp->dp_rxq[queue_id].mp != mp) {
+		sfc_err(sa, "multiple mempools per queue are not supported");
+		sfc_put_adapter(sa);
+		return ENOTSUP;
+	}
+
+	rxq->ring = rx_ring;
+	rxq->mb_pool = mp;
+	rp->dp_rxq[queue_id].mp = mp;
+	rp->dp_rxq[queue_id].ref_count++;
+
+	sfc_log_init(sa, "done");
+	sfc_put_adapter(sa);
+
+	return 0;
+}
+
+void
+sfc_repr_proxy_del_rxq(uint16_t pf_port_id, uint16_t repr_id,
+		       uint16_t queue_id)
+{
+	struct sfc_repr_proxy_port *port;
+	struct sfc_repr_proxy_rxq *rxq;
+	struct sfc_repr_proxy *rp;
+	struct sfc_adapter *sa;
+
+	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	rp = sfc_repr_proxy_by_adapter(sa);
+
+	sfc_log_init(sa, "entry");
+
+	port = sfc_repr_proxy_find_port(rp, repr_id);
+	if (port == NULL) {
+		sfc_err(sa, "%s() failed: no such port", __func__);
+		return;
+	}
+
+	rxq = &port->rxq[queue_id];
+
+	rxq->ring = NULL;
+	rxq->mb_pool = NULL;
+	rp->dp_rxq[queue_id].ref_count--;
+	if (rp->dp_rxq[queue_id].ref_count == 0)
+		rp->dp_rxq[queue_id].mp = NULL;
+
+	sfc_log_init(sa, "done");
+	sfc_put_adapter(sa);
+}
+
+int
+sfc_repr_proxy_add_txq(uint16_t pf_port_id, uint16_t repr_id,
+		       uint16_t queue_id, struct rte_ring *tx_ring,
+		       efx_mport_id_t *egress_mport)
+{
+	struct sfc_repr_proxy_port *port;
+	struct sfc_repr_proxy_txq *txq;
+	struct sfc_repr_proxy *rp;
+	struct sfc_adapter *sa;
+
+	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	rp = sfc_repr_proxy_by_adapter(sa);
+
+	sfc_log_init(sa, "entry");
+
+	port = sfc_repr_proxy_find_port(rp, repr_id);
+	if (port == NULL) {
+		sfc_err(sa, "%s() failed: no such port", __func__);
+		return ENOENT;
+	}
+
+	txq = &port->txq[queue_id];
+
+	txq->ring = tx_ring;
+
+	*egress_mport = port->egress_mport;
+
+	sfc_log_init(sa, "done");
+	sfc_put_adapter(sa);
+
+	return 0;
+}
+
+void
+sfc_repr_proxy_del_txq(uint16_t pf_port_id, uint16_t repr_id,
+		       uint16_t queue_id)
+{
+	struct sfc_repr_proxy_port *port;
+	struct sfc_repr_proxy_txq *txq;
+	struct sfc_repr_proxy *rp;
+	struct sfc_adapter *sa;
+
+	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	rp = sfc_repr_proxy_by_adapter(sa);
+
+	sfc_log_init(sa, "entry");
+
+	port = sfc_repr_proxy_find_port(rp, repr_id);
+	if (port == NULL) {
+		sfc_err(sa, "%s() failed: no such port", __func__);
+		return;
+	}
+
+	txq = &port->txq[queue_id];
+
+	txq->ring = NULL;
+
+	sfc_log_init(sa, "done");
+	sfc_put_adapter(sa);
+}

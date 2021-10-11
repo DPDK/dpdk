@@ -30,6 +30,17 @@ struct sfc_repr_shared {
 	uint16_t		switch_port_id;
 };
 
+struct sfc_repr_rxq {
+	/* Datapath members */
+	struct rte_ring			*ring;
+};
+
+struct sfc_repr_txq {
+	/* Datapath members */
+	struct rte_ring			*ring;
+	efx_mport_id_t			egress_mport;
+};
+
 /** Primary process representor private data */
 struct sfc_repr {
 	/**
@@ -48,6 +59,14 @@ struct sfc_repr {
 									\
 		(void)_sr;						\
 		SFC_GENERIC_LOG(ERR, __VA_ARGS__);			\
+	} while (0)
+
+#define sfcr_warn(sr, ...) \
+	do {								\
+		const struct sfc_repr *_sr = (sr);			\
+									\
+		(void)_sr;						\
+		SFC_GENERIC_LOG(WARNING, __VA_ARGS__);			\
 	} while (0)
 
 #define sfcr_info(sr, ...) \
@@ -269,6 +288,229 @@ sfc_repr_dev_infos_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+sfc_repr_ring_create(uint16_t pf_port_id, uint16_t repr_id,
+		     const char *type_name, uint16_t qid, uint16_t nb_desc,
+		     unsigned int socket_id, struct rte_ring **ring)
+{
+	char ring_name[RTE_RING_NAMESIZE];
+	int ret;
+
+	ret = snprintf(ring_name, sizeof(ring_name), "sfc_%u_repr_%u_%sq%u",
+		       pf_port_id, repr_id, type_name, qid);
+	if (ret >= (int)sizeof(ring_name))
+		return -ENAMETOOLONG;
+
+	/*
+	 * Single producer/consumer rings are used since the API for Tx/Rx
+	 * packet burst for representors are guaranteed to be called from
+	 * a single thread, and the user of the other end (representor proxy)
+	 * is also single-threaded.
+	 */
+	*ring = rte_ring_create(ring_name, nb_desc, socket_id,
+			       RING_F_SP_ENQ | RING_F_SC_DEQ);
+	if (*ring == NULL)
+		return -rte_errno;
+
+	return 0;
+}
+
+static int
+sfc_repr_rx_qcheck_conf(struct sfc_repr *sr,
+			const struct rte_eth_rxconf *rx_conf)
+{
+	int ret = 0;
+
+	sfcr_info(sr, "entry");
+
+	if (rx_conf->rx_thresh.pthresh != 0 ||
+	    rx_conf->rx_thresh.hthresh != 0 ||
+	    rx_conf->rx_thresh.wthresh != 0) {
+		sfcr_warn(sr,
+			"RxQ prefetch/host/writeback thresholds are not supported");
+	}
+
+	if (rx_conf->rx_free_thresh != 0)
+		sfcr_warn(sr, "RxQ free threshold is not supported");
+
+	if (rx_conf->rx_drop_en == 0)
+		sfcr_warn(sr, "RxQ drop disable is not supported");
+
+	if (rx_conf->rx_deferred_start) {
+		sfcr_err(sr, "Deferred start is not supported");
+		ret = -EINVAL;
+	}
+
+	sfcr_info(sr, "done: %s", rte_strerror(-ret));
+
+	return ret;
+}
+
+static int
+sfc_repr_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
+			uint16_t nb_rx_desc, unsigned int socket_id,
+			__rte_unused const struct rte_eth_rxconf *rx_conf,
+			struct rte_mempool *mb_pool)
+{
+	struct sfc_repr_shared *srs = sfc_repr_shared_by_eth_dev(dev);
+	struct sfc_repr *sr = sfc_repr_by_eth_dev(dev);
+	struct sfc_repr_rxq *rxq;
+	int ret;
+
+	sfcr_info(sr, "entry");
+
+	ret = sfc_repr_rx_qcheck_conf(sr, rx_conf);
+	if (ret != 0)
+		goto fail_check_conf;
+
+	ret = -ENOMEM;
+	rxq = rte_zmalloc_socket("sfc-repr-rxq", sizeof(*rxq),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (rxq == NULL) {
+		sfcr_err(sr, "%s() failed to alloc RxQ", __func__);
+		goto fail_rxq_alloc;
+	}
+
+	ret = sfc_repr_ring_create(srs->pf_port_id, srs->repr_id,
+				   "rx", rx_queue_id, nb_rx_desc,
+				   socket_id, &rxq->ring);
+	if (ret != 0) {
+		sfcr_err(sr, "%s() failed to create ring", __func__);
+		goto fail_ring_create;
+	}
+
+	ret = sfc_repr_proxy_add_rxq(srs->pf_port_id, srs->repr_id,
+				     rx_queue_id, rxq->ring, mb_pool);
+	if (ret != 0) {
+		SFC_ASSERT(ret > 0);
+		ret = -ret;
+		sfcr_err(sr, "%s() failed to add proxy RxQ", __func__);
+		goto fail_proxy_add_rxq;
+	}
+
+	dev->data->rx_queues[rx_queue_id] = rxq;
+
+	sfcr_info(sr, "done");
+
+	return 0;
+
+fail_proxy_add_rxq:
+	rte_ring_free(rxq->ring);
+
+fail_ring_create:
+	rte_free(rxq);
+
+fail_rxq_alloc:
+fail_check_conf:
+	sfcr_err(sr, "%s() failed: %s", __func__, rte_strerror(-ret));
+	return ret;
+}
+
+static void
+sfc_repr_rx_queue_release(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct sfc_repr_shared *srs = sfc_repr_shared_by_eth_dev(dev);
+	struct sfc_repr_rxq *rxq = dev->data->rx_queues[rx_queue_id];
+
+	sfc_repr_proxy_del_rxq(srs->pf_port_id, srs->repr_id, rx_queue_id);
+	rte_ring_free(rxq->ring);
+	rte_free(rxq);
+}
+
+static int
+sfc_repr_tx_qcheck_conf(struct sfc_repr *sr,
+			const struct rte_eth_txconf *tx_conf)
+{
+	int ret = 0;
+
+	sfcr_info(sr, "entry");
+
+	if (tx_conf->tx_rs_thresh != 0)
+		sfcr_warn(sr, "RS bit in transmit descriptor is not supported");
+
+	if (tx_conf->tx_free_thresh != 0)
+		sfcr_warn(sr, "TxQ free threshold is not supported");
+
+	if (tx_conf->tx_thresh.pthresh != 0 ||
+	    tx_conf->tx_thresh.hthresh != 0 ||
+	    tx_conf->tx_thresh.wthresh != 0) {
+		sfcr_warn(sr,
+			"prefetch/host/writeback thresholds are not supported");
+	}
+
+	if (tx_conf->tx_deferred_start) {
+		sfcr_err(sr, "Deferred start is not supported");
+		ret = -EINVAL;
+	}
+
+	sfcr_info(sr, "done: %s", rte_strerror(-ret));
+
+	return ret;
+}
+
+static int
+sfc_repr_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+			uint16_t nb_tx_desc, unsigned int socket_id,
+			const struct rte_eth_txconf *tx_conf)
+{
+	struct sfc_repr_shared *srs = sfc_repr_shared_by_eth_dev(dev);
+	struct sfc_repr *sr = sfc_repr_by_eth_dev(dev);
+	struct sfc_repr_txq *txq;
+	int ret;
+
+	sfcr_info(sr, "entry");
+
+	ret = sfc_repr_tx_qcheck_conf(sr, tx_conf);
+	if (ret != 0)
+		goto fail_check_conf;
+
+	ret = -ENOMEM;
+	txq = rte_zmalloc_socket("sfc-repr-txq", sizeof(*txq),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (txq == NULL)
+		goto fail_txq_alloc;
+
+	ret = sfc_repr_ring_create(srs->pf_port_id, srs->repr_id,
+				   "tx", tx_queue_id, nb_tx_desc,
+				   socket_id, &txq->ring);
+	if (ret != 0)
+		goto fail_ring_create;
+
+	ret = sfc_repr_proxy_add_txq(srs->pf_port_id, srs->repr_id,
+				     tx_queue_id, txq->ring,
+				     &txq->egress_mport);
+	if (ret != 0)
+		goto fail_proxy_add_txq;
+
+	dev->data->tx_queues[tx_queue_id] = txq;
+
+	sfcr_info(sr, "done");
+
+	return 0;
+
+fail_proxy_add_txq:
+	rte_ring_free(txq->ring);
+
+fail_ring_create:
+	rte_free(txq);
+
+fail_txq_alloc:
+fail_check_conf:
+	sfcr_err(sr, "%s() failed: %s", __func__, rte_strerror(-ret));
+	return ret;
+}
+
+static void
+sfc_repr_tx_queue_release(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct sfc_repr_shared *srs = sfc_repr_shared_by_eth_dev(dev);
+	struct sfc_repr_txq *txq = dev->data->tx_queues[tx_queue_id];
+
+	sfc_repr_proxy_del_txq(srs->pf_port_id, srs->repr_id, tx_queue_id);
+	rte_ring_free(txq->ring);
+	rte_free(txq);
+}
+
 static void
 sfc_repr_close(struct sfc_repr *sr)
 {
@@ -287,6 +529,7 @@ sfc_repr_dev_close(struct rte_eth_dev *dev)
 {
 	struct sfc_repr *sr = sfc_repr_by_eth_dev(dev);
 	struct sfc_repr_shared *srs = sfc_repr_shared_by_eth_dev(dev);
+	unsigned int i;
 
 	sfcr_info(sr, "entry");
 
@@ -301,6 +544,16 @@ sfc_repr_dev_close(struct rte_eth_dev *dev)
 	default:
 		sfcr_err(sr, "unexpected adapter state %u on close", sr->state);
 		break;
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		sfc_repr_rx_queue_release(dev, i);
+		dev->data->rx_queues[i] = NULL;
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		sfc_repr_tx_queue_release(dev, i);
+		dev->data->tx_queues[i] = NULL;
 	}
 
 	/*
@@ -326,6 +579,10 @@ static const struct eth_dev_ops sfc_repr_dev_ops = {
 	.dev_configure			= sfc_repr_dev_configure,
 	.dev_close			= sfc_repr_dev_close,
 	.dev_infos_get			= sfc_repr_dev_infos_get,
+	.rx_queue_setup			= sfc_repr_rx_queue_setup,
+	.rx_queue_release		= sfc_repr_rx_queue_release,
+	.tx_queue_setup			= sfc_repr_tx_queue_setup,
+	.tx_queue_release		= sfc_repr_tx_queue_release,
 };
 
 

@@ -12,6 +12,9 @@
 
 #include <stdint.h>
 
+#include <rte_ring.h>
+#include <rte_mempool.h>
+
 #include "efx.h"
 
 #ifdef __cplusplus
@@ -22,6 +25,18 @@ int sfc_repr_proxy_add_port(uint16_t pf_port_id, uint16_t repr_id,
 			    uint16_t rte_port_id,
 			    const efx_mport_sel_t *mport_set);
 int sfc_repr_proxy_del_port(uint16_t pf_port_id, uint16_t repr_id);
+
+int sfc_repr_proxy_add_rxq(uint16_t pf_port_id, uint16_t repr_id,
+			   uint16_t queue_id, struct rte_ring *rx_ring,
+			   struct rte_mempool *mp);
+void sfc_repr_proxy_del_rxq(uint16_t pf_port_id, uint16_t repr_id,
+			    uint16_t queue_id);
+
+int sfc_repr_proxy_add_txq(uint16_t pf_port_id, uint16_t repr_id,
+			   uint16_t queue_id, struct rte_ring *tx_ring,
+			   efx_mport_id_t *egress_mport);
+void sfc_repr_proxy_del_txq(uint16_t pf_port_id, uint16_t repr_id,
+			    uint16_t queue_id);
 
 #ifdef __cplusplus
 }
