@@ -318,9 +318,15 @@ service_attr_get(void)
 	TEST_ASSERT_EQUAL(1, cycles_gt_zero,
 			"attr_get() failed to get cycles (expected > zero)");
 
-	rte_service_lcore_stop(slcore_id);
+	TEST_ASSERT_EQUAL(0, rte_service_map_lcore_set(id, slcore_id, 0),
+			"Disabling valid service and core failed");
+	TEST_ASSERT_EQUAL(0, rte_service_lcore_stop(slcore_id),
+			"Failed to stop service lcore");
 
 	wait_slcore_inactive(slcore_id);
+
+	TEST_ASSERT_EQUAL(0, rte_service_lcore_may_be_active(slcore_id),
+			  "Service lcore not stopped after waiting.");
 
 	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_calls, &attr_value),
 			"Valid attr_get() call didn't return success");
