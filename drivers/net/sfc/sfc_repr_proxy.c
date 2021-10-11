@@ -18,6 +18,7 @@
 #include "sfc_ev.h"
 #include "sfc_rx.h"
 #include "sfc_tx.h"
+#include "sfc_dp_rx.h"
 
 /**
  * Amount of time to wait for the representor proxy routine (which is
@@ -30,6 +31,8 @@
  * running on a service core) to terminate after service core is stopped.
  */
 #define SFC_REPR_PROXY_ROUTINE_TERMINATE_TIMEOUT_MS	10000
+
+#define SFC_REPR_INVALID_ROUTE_PORT_ID  (UINT16_MAX)
 
 static struct sfc_repr_proxy *
 sfc_repr_proxy_by_adapter(struct sfc_adapter *sa)
@@ -187,6 +190,113 @@ sfc_repr_proxy_handle_tx(struct sfc_repr_proxy_dp_txq *rp_txq,
 	}
 }
 
+static struct sfc_repr_proxy_port *
+sfc_repr_proxy_rx_route_mbuf(struct sfc_repr_proxy *rp, struct rte_mbuf *m)
+{
+	struct sfc_repr_proxy_port *port;
+	efx_mport_id_t mport_id;
+
+	mport_id.id = *RTE_MBUF_DYNFIELD(m, sfc_dp_mport_offset,
+					 typeof(&((efx_mport_id_t *)0)->id));
+
+	TAILQ_FOREACH(port, &rp->ports, entries) {
+		if (port->egress_mport.id == mport_id.id) {
+			m->port = port->rte_port_id;
+			m->ol_flags &= ~sfc_dp_mport_override;
+			return port;
+		}
+	}
+
+	return NULL;
+}
+
+/*
+ * Returns true if a packet is encountered which should be forwarded to a
+ * port which is different from the one that is currently routed.
+ */
+static bool
+sfc_repr_proxy_rx_route(struct sfc_repr_proxy *rp,
+			struct sfc_repr_proxy_dp_rxq *rp_rxq)
+{
+	unsigned int i;
+
+	for (i = rp_rxq->routed;
+	     i < rp_rxq->available && !rp_rxq->stop_route;
+	     i++, rp_rxq->routed++) {
+		struct sfc_repr_proxy_port *port;
+		struct rte_mbuf *m = rp_rxq->pkts[i];
+
+		port = sfc_repr_proxy_rx_route_mbuf(rp, m);
+		/* Cannot find destination representor */
+		if (port == NULL) {
+			/* Effectively drop the packet */
+			rp_rxq->forwarded++;
+			continue;
+		}
+
+		/* Currently routed packets are mapped to a different port */
+		if (port->repr_id != rp_rxq->route_port_id &&
+		    rp_rxq->route_port_id != SFC_REPR_INVALID_ROUTE_PORT_ID)
+			return true;
+
+		rp_rxq->route_port_id = port->repr_id;
+	}
+
+	return false;
+}
+
+static void
+sfc_repr_proxy_rx_forward(struct sfc_repr_proxy *rp,
+			  struct sfc_repr_proxy_dp_rxq *rp_rxq)
+{
+	struct sfc_repr_proxy_port *port;
+
+	if (rp_rxq->route_port_id != SFC_REPR_INVALID_ROUTE_PORT_ID) {
+		port = sfc_repr_proxy_find_port(rp, rp_rxq->route_port_id);
+
+		if (port != NULL && port->started) {
+			rp_rxq->forwarded +=
+			    rte_ring_sp_enqueue_burst(port->rxq[0].ring,
+				(void **)(&rp_rxq->pkts[rp_rxq->forwarded]),
+				rp_rxq->routed - rp_rxq->forwarded, NULL);
+		} else {
+			/* Drop all routed packets if the port is not started */
+			rp_rxq->forwarded = rp_rxq->routed;
+		}
+	}
+
+	if (rp_rxq->forwarded == rp_rxq->routed) {
+		rp_rxq->route_port_id = SFC_REPR_INVALID_ROUTE_PORT_ID;
+		rp_rxq->stop_route = false;
+	} else {
+		/* Stall packet routing if not all packets were forwarded */
+		rp_rxq->stop_route = true;
+	}
+
+	if (rp_rxq->available == rp_rxq->forwarded)
+		rp_rxq->available = rp_rxq->forwarded = rp_rxq->routed = 0;
+}
+
+static void
+sfc_repr_proxy_handle_rx(struct sfc_repr_proxy *rp,
+			 struct sfc_repr_proxy_dp_rxq *rp_rxq)
+{
+	bool route_again;
+
+	if (rp_rxq->available < RTE_DIM(rp_rxq->pkts)) {
+		rp_rxq->available += rp_rxq->pkt_burst(rp_rxq->dp,
+				&rp_rxq->pkts[rp_rxq->available],
+				RTE_DIM(rp_rxq->pkts) - rp_rxq->available);
+		if (rp_rxq->available == rp_rxq->forwarded)
+			return;
+	}
+
+	do {
+		route_again = sfc_repr_proxy_rx_route(rp, rp_rxq);
+		sfc_repr_proxy_rx_forward(rp, rp_rxq);
+	} while (route_again && !rp_rxq->stop_route);
+}
+
 static int32_t
 sfc_repr_proxy_routine(void *arg)
 {
@@ -203,6 +313,9 @@ sfc_repr_proxy_routine(void *arg)
 		for (i = 0; i < rp->nb_txq; i++)
 			sfc_repr_proxy_handle_tx(&rp->dp_txq[i], &port->txq[i]);
 	}
+
+	for (i = 0; i < rp->nb_rxq; i++)
+		sfc_repr_proxy_handle_rx(rp, &rp->dp_rxq[i]);
 
 	return 0;
 }
@@ -412,6 +525,18 @@ sfc_repr_proxy_rxq_detach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "done");
 }
 
+static struct sfc_rxq_info *
+sfc_repr_proxy_rxq_info_get(struct sfc_adapter *sa, unsigned int repr_queue_id)
+{
+	struct sfc_adapter_shared *sas = sfc_sa2shared(sa);
+	struct sfc_repr_proxy_dp_rxq *dp_rxq;
+
+	SFC_ASSERT(repr_queue_id < sfc_repr_nb_rxq(sas));
+	dp_rxq = &sa->repr_proxy.dp_rxq[repr_queue_id];
+
+	return &sas->rxq_info[dp_rxq->sw_index];
+}
+
 static int
 sfc_repr_proxy_rxq_init(struct sfc_adapter *sa,
 			struct sfc_repr_proxy_dp_rxq *rxq)
@@ -539,6 +664,14 @@ sfc_repr_proxy_rxq_start(struct sfc_adapter *sa)
 				i);
 			goto fail_start;
 		}
+
+		rxq->dp = sfc_repr_proxy_rxq_info_get(sa, i)->dp;
+		rxq->pkt_burst = sa->eth_dev->rx_pkt_burst;
+		rxq->available = 0;
+		rxq->routed = 0;
+		rxq->forwarded = 0;
+		rxq->stop_route = false;
+		rxq->route_port_id = SFC_REPR_INVALID_ROUTE_PORT_ID;
 	}
 
 	sfc_log_init(sa, "done");
@@ -993,6 +1126,7 @@ sfc_repr_proxy_start(struct sfc_adapter *sa)
 		goto fail_txq_start;
 
 	rp->nb_txq = sfc_repr_nb_txq(sas);
+	rp->nb_rxq = sfc_repr_nb_rxq(sas);
 
 	/* Service core may be in "stopped" state, start it */
 	rc = rte_service_lcore_start(rp->service_core_id);
