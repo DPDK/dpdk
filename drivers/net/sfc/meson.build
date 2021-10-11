@@ -98,4 +98,5 @@ sources = files(
         'sfc_ef100_tx.c',
         'sfc_service.c',
         'sfc_repr_proxy.c',
+        'sfc_repr.c',
 )

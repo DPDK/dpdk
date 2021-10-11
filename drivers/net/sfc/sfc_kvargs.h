@@ -26,6 +26,8 @@ extern "C" {
 	"[" SFC_KVARG_SWITCH_MODE_LEGACY "|" \
 	    SFC_KVARG_SWITCH_MODE_SWITCHDEV "]"
 
+#define SFC_KVARG_REPRESENTOR		"representor"
+
 #define SFC_KVARG_PERF_PROFILE		"perf_profile"
 
 #define SFC_KVARG_PERF_PROFILE_AUTO		"auto"
