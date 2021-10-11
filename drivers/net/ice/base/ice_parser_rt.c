@@ -87,12 +87,12 @@ void ice_parser_rt_reset(struct ice_parser_rt *rt)
 	_rt_np_set(rt, mi->pc);
 	_rt_nn_set(rt, mi->pg_rn);
 
+	rt->psr = psr;
+
 	for (i = 0; i < 64; i++) {
 		if ((mi->flags & (1ul << i)) != 0ul)
 			_rt_flag_set(rt, i, true);
 	}
-
-	rt->psr = psr;
 }
 
 /**
