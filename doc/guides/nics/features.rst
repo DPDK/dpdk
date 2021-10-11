@@ -651,14 +651,10 @@ Rx descriptor status
 --------------------
 
 Supports check the status of a Rx descriptor. When ``rx_descriptor_status`` is
-used, status can be "Available", "Done" or "Unavailable". When
-``rx_descriptor_done`` is used, status can be "DD bit is set" or "DD bit is
-not set".
+used, status can be "Available", "Done" or "Unavailable".
 
 * **[implements] rte_eth_dev**: ``rx_descriptor_status``.
 * **[related]    API**: ``rte_eth_rx_descriptor_status()``.
-* **[implements] rte_eth_dev**: ``rx_descriptor_done``.
-* **[related]    API**: ``rte_eth_rx_descriptor_done()``.
 
 
 .. _nic_features_tx_descriptor_status:

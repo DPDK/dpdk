@@ -1302,21 +1302,6 @@ sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t ethdev_qid)
  * use any process-local pointers from the adapter data.
  */
 static int
-sfc_rx_descriptor_done(void *queue, uint16_t offset)
-{
-	struct sfc_dp_rxq *dp_rxq = queue;
-	const struct sfc_dp_rx *dp_rx;
-
-	dp_rx = sfc_dp_rx_by_dp_rxq(dp_rxq);
-
-	return offset < dp_rx->qdesc_npending(dp_rxq);
-}
-
-/*
- * The function is used by the secondary process as well. It must not
- * use any process-local pointers from the adapter data.
- */
-static int
 sfc_rx_descriptor_status(void *queue, uint16_t offset)
 {
 	struct sfc_dp_rxq *dp_rxq = queue;
@@ -2046,7 +2031,6 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 	dev->tx_pkt_burst = dp_tx->pkt_burst;
 
 	dev->rx_queue_count = sfc_rx_queue_count;
-	dev->rx_descriptor_done = sfc_rx_descriptor_done;
 	dev->rx_descriptor_status = sfc_rx_descriptor_status;
 	dev->tx_descriptor_status = sfc_tx_descriptor_status;
 	dev->dev_ops = &sfc_eth_dev_ops;
@@ -2154,7 +2138,6 @@ sfc_eth_dev_secondary_init(struct rte_eth_dev *dev, uint32_t logtype_main)
 	dev->tx_pkt_prepare = dp_tx->pkt_prepare;
 	dev->tx_pkt_burst = dp_tx->pkt_burst;
 	dev->rx_queue_count = sfc_rx_queue_count;
-	dev->rx_descriptor_done = sfc_rx_descriptor_done;
 	dev->rx_descriptor_status = sfc_rx_descriptor_status;
 	dev->tx_descriptor_status = sfc_tx_descriptor_status;
 	dev->dev_ops = &sfc_eth_dev_secondary_ops;

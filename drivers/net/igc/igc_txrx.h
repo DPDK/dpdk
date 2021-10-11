@@ -25,8 +25,6 @@ int eth_igc_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 uint32_t eth_igc_rx_queue_count(struct rte_eth_dev *dev,
 		uint16_t rx_queue_id);
 
-int eth_igc_rx_descriptor_done(void *rx_queue, uint16_t offset);
-
 int eth_igc_rx_descriptor_status(void *rx_queue, uint16_t offset);
 
 int eth_igc_tx_descriptor_status(void *tx_queue, uint16_t offset);

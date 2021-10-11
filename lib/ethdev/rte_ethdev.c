@@ -588,7 +588,6 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->tx_pkt_prepare = NULL;
 	eth_dev->rx_queue_count = NULL;
-	eth_dev->rx_descriptor_done = NULL;
 	eth_dev->rx_descriptor_status = NULL;
 	eth_dev->tx_descriptor_status = NULL;
 	eth_dev->dev_ops = NULL;

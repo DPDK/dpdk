@@ -117,11 +117,6 @@ Deprecation Notices
   the device packet overhead can be calculated as:
   ``(struct rte_eth_dev_info).max_rx_pktlen - (struct rte_eth_dev_info).max_mtu``
 
-* ethdev: ``rx_descriptor_done`` dev_ops and ``rte_eth_rx_descriptor_done``
-  will be removed in 21.11.
-  Existing ``rte_eth_rx_descriptor_status`` and ``rte_eth_tx_descriptor_status``
-  APIs can be used as replacement.
-
 * ethdev: Announce moving from dedicated modify function for each field,
   to using the general ``rte_flow_modify_field`` action.
 

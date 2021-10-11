@@ -1227,7 +1227,6 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 	dev->dev_ops = &eth_igc_ops;
-	dev->rx_descriptor_done	= eth_igc_rx_descriptor_done;
 	dev->rx_queue_count = eth_igc_rx_queue_count;
 	dev->rx_descriptor_status = eth_igc_rx_descriptor_status;
 	dev->tx_descriptor_status = eth_igc_tx_descriptor_status;

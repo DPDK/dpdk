@@ -2150,32 +2150,6 @@ i40e_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 }
 
 int
-i40e_dev_rx_descriptor_done(void *rx_queue, uint16_t offset)
-{
-	volatile union i40e_rx_desc *rxdp;
-	struct i40e_rx_queue *rxq = rx_queue;
-	uint16_t desc;
-	int ret;
-
-	if (unlikely(offset >= rxq->nb_rx_desc)) {
-		PMD_DRV_LOG(ERR, "Invalid RX descriptor id %u", offset);
-		return 0;
-	}
-
-	desc = rxq->rx_tail + offset;
-	if (desc >= rxq->nb_rx_desc)
-		desc -= rxq->nb_rx_desc;
-
-	rxdp = &(rxq->rx_ring[desc]);
-
-	ret = !!(((rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
-		I40E_RXD_QW1_STATUS_MASK) >> I40E_RXD_QW1_STATUS_SHIFT) &
-				(1 << I40E_RX_DESC_STATUS_DD_SHIFT));
-
-	return ret;
-}
-
-int
 i40e_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 {
 	struct i40e_rx_queue *rxq = rx_queue;

@@ -3286,24 +3286,6 @@ ixgbe_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 }
 
 int
-ixgbe_dev_rx_descriptor_done(void *rx_queue, uint16_t offset)
-{
-	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct ixgbe_rx_queue *rxq = rx_queue;
-	uint32_t desc;
-
-	if (unlikely(offset >= rxq->nb_rx_desc))
-		return 0;
-	desc = rxq->rx_tail + offset;
-	if (desc >= rxq->nb_rx_desc)
-		desc -= rxq->nb_rx_desc;
-
-	rxdp = &rxq->rx_ring[desc];
-	return !!(rxdp->wb.upper.status_error &
-			rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD));
-}
-
-int
 ixgbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 {
 	struct ixgbe_rx_queue *rxq = rx_queue;

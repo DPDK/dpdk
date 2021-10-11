@@ -223,6 +223,10 @@ Removed Items
   ``rte_eth_mirror_rule_reset`` along with the associated macros
   ``ETH_MIRROR_*`` are removed.
 
+* ethdev: Removed ``rte_eth_rx_descriptor_done`` API function and its
+  driver callback. It is replaced by the more complete function
+  ``rte_eth_rx_descriptor_status``.
+
 * i40e: Removed i40evf driver.
   iavf already became the default VF driver for i40e devices,
   so there is no need to maintain i40evf.

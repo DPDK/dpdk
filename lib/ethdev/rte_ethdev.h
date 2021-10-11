@@ -4989,31 +4989,6 @@ rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
 	return (int)(*dev->rx_queue_count)(dev, queue_id);
 }
 
-/**
- * Check if the DD bit of the specific RX descriptor in the queue has been set
- *
- * @param port_id
- *  The port identifier of the Ethernet device.
- * @param queue_id
- *  The queue id on the specific port.
- * @param offset
- *  The offset of the descriptor ID from tail.
- * @return
- *  - (1) if the specific DD bit is set.
- *  - (0) if the specific DD bit is not set.
- *  - (-ENODEV) if *port_id* invalid.
- *  - (-ENOTSUP) if the device does not support this function
- */
-__rte_deprecated
-static inline int
-rte_eth_rx_descriptor_done(uint16_t port_id, uint16_t queue_id, uint16_t offset)
-{
-	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_descriptor_done, -ENOTSUP);
-	return (*dev->rx_descriptor_done)(dev->data->rx_queues[queue_id], offset);
-}
-
 /**@{@name Rx hardware descriptor states
  * @see rte_eth_rx_descriptor_status
  */

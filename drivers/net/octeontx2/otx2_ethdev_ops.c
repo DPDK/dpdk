@@ -366,18 +366,6 @@ nix_offset_has_packet(uint32_t head, uint32_t tail, uint16_t offset)
 }
 
 int
-otx2_nix_rx_descriptor_done(void *rx_queue, uint16_t offset)
-{
-	struct otx2_eth_rxq *rxq = rx_queue;
-	uint32_t head, tail;
-
-	nix_rx_head_tail_get(otx2_eth_pmd_priv(rxq->eth_dev),
-			     &head, &tail, rxq->rq);
-
-	return nix_offset_has_packet(head, tail, offset);
-}
-
-int
 otx2_nix_rx_descriptor_status(void *rx_queue, uint16_t offset)
 {
 	struct otx2_eth_rxq *rxq = rx_queue;

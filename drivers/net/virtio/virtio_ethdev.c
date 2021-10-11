@@ -1899,7 +1899,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	eth_dev->dev_ops = &virtio_eth_dev_ops;
-	eth_dev->rx_descriptor_done = virtio_dev_rx_queue_done;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		set_rxtx_funcs(eth_dev);

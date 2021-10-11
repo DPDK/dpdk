@@ -247,7 +247,6 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 
 	eth_dev->dev_ops = &eth_em_ops;
 	eth_dev->rx_queue_count = eth_em_rx_queue_count;
-	eth_dev->rx_descriptor_done   = eth_em_rx_descriptor_done;
 	eth_dev->rx_descriptor_status = eth_em_rx_descriptor_status;
 	eth_dev->tx_descriptor_status = eth_em_tx_descriptor_status;
 	eth_dev->rx_pkt_burst = (eth_rx_burst_t)&eth_em_recv_pkts;

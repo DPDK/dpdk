@@ -1050,7 +1050,6 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	eth_dev->dev_ops = &ixgbe_eth_dev_ops;
 	eth_dev->rx_queue_count       = ixgbe_dev_rx_queue_count;
-	eth_dev->rx_descriptor_done   = ixgbe_dev_rx_descriptor_done;
 	eth_dev->rx_descriptor_status = ixgbe_dev_rx_descriptor_status;
 	eth_dev->tx_descriptor_status = ixgbe_dev_tx_descriptor_status;
 	eth_dev->rx_pkt_burst = &ixgbe_recv_pkts;
@@ -1539,7 +1538,6 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &ixgbevf_eth_dev_ops;
-	eth_dev->rx_descriptor_done   = ixgbe_dev_rx_descriptor_done;
 	eth_dev->rx_descriptor_status = ixgbe_dev_rx_descriptor_status;
 	eth_dev->tx_descriptor_status = ixgbe_dev_tx_descriptor_status;
 	eth_dev->rx_pkt_burst = &ixgbe_recv_pkts;

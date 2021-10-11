@@ -2440,7 +2440,6 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 	int rc, max_entries;
 
 	eth_dev->dev_ops = &otx2_eth_dev_ops;
-	eth_dev->rx_descriptor_done = otx2_nix_rx_descriptor_done;
 	eth_dev->rx_queue_count = otx2_nix_rx_queue_count;
 	eth_dev->rx_descriptor_status = otx2_nix_rx_descriptor_status;
 	eth_dev->tx_descriptor_status = otx2_nix_tx_descriptor_status;

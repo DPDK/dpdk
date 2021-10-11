@@ -39,15 +39,6 @@
 #define  VIRTIO_DUMP_PACKET(m, len) do { } while (0)
 #endif
 
-int
-virtio_dev_rx_queue_done(void *rxq, uint16_t offset)
-{
-	struct virtnet_rx *rxvq = rxq;
-	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
-
-	return virtqueue_nused(vq) >= offset;
-}
-
 void
 vq_ring_free_inorder(struct virtqueue *vq, uint16_t desc_idx, uint16_t num)
 {
