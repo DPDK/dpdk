@@ -492,6 +492,24 @@
  */
 #define	MAE_FIELD_SUPPORTED_MATCH_MASK 0x5
 
+/* MAE_CT_VNI_MODE enum: Controls the layout of the VNI input to the conntrack
+ * lookup. (Values are not arbitrary - constrained by table access ABI.)
+ */
+/* enum: The VNI input to the conntrack lookup will be zero. */
+#define	MAE_CT_VNI_MODE_ZERO 0x0
+/* enum: The VNI input to the conntrack lookup will be the VNI (VXLAN/Geneve)
+ * or VSID (NVGRE) field from the packet.
+ */
+#define	MAE_CT_VNI_MODE_VNI 0x1
+/* enum: The VNI input to the conntrack lookup will be the VLAN ID from the
+ * outermost VLAN tag (in bottom 12 bits; top 12 bits zero).
+ */
+#define	MAE_CT_VNI_MODE_1VLAN 0x2
+/* enum: The VNI input to the conntrack lookup will be the VLAN IDs from both
+ * VLAN tags (outermost in bottom 12 bits, innermost in top 12 bits).
+ */
+#define	MAE_CT_VNI_MODE_2VLAN 0x3
+
 /* MAE_FIELD enum: NB: this enum shares namespace with the support status enum.
  */
 /* enum: Source mport upon entering the MAE. */
@@ -617,7 +635,8 @@
 
 /* MAE_MCDI_ENCAP_TYPE enum: Encapsulation type. Defines how the payload will
  * be parsed to an inner frame. Other values are reserved. Unknown values
- * should be treated same as NONE.
+ * should be treated same as NONE. (Values are not arbitrary - constrained by
+ * table access ABI.)
  */
 #define	MAE_MCDI_ENCAP_TYPE_NONE 0x0 /* enum */
 /* enum: Don't assume enum aligns with support bitmask... */
@@ -633,6 +652,18 @@
 #define	MAE_MPORT_END_MAE 0x1
 /* enum: Selects the virtual NIC plugged into the MAE switch */
 #define	MAE_MPORT_END_VNIC 0x2
+
+/* MAE_COUNTER_TYPE enum: The datapath maintains several sets of counters, each
+ * being associated with a different table. Note that the same counter ID may
+ * be allocated by different counter blocks, so e.g. AR counter 42 is different
+ * from CT counter 42. Generation counts are also type-specific. This value is
+ * also present in the header of streaming counter packets, in the IDENTIFIER
+ * field (see packetiser packet format definitions).
+ */
+/* enum: Action Rule counters - can be referenced in AR response. */
+#define	MAE_COUNTER_TYPE_AR 0x0
+/* enum: Conntrack counters - can be referenced in CT response. */
+#define	MAE_COUNTER_TYPE_CT 0x1
 
 /* MCDI_EVENT structuredef: The structure of an MCDI_EVENT on Siena/EF10/EF100
  * platforms
@@ -4547,6 +4578,8 @@
 #define	MC_CMD_MEDIA_BASE_T 0x6
 /* enum: QSFP+. */
 #define	MC_CMD_MEDIA_QSFP_PLUS 0x7
+/* enum: DSFP. */
+#define	MC_CMD_MEDIA_DSFP 0x8
 #define	MC_CMD_GET_PHY_CFG_OUT_MMD_MASK_OFST 48
 #define	MC_CMD_GET_PHY_CFG_OUT_MMD_MASK_LEN 4
 /* enum: Native clause 22 */
@@ -7823,11 +7856,16 @@
 /***********************************/
 /* MC_CMD_GET_PHY_MEDIA_INFO
  * Read media-specific data from PHY (e.g. SFP/SFP+ module ID information for
- * SFP+ PHYs). The 'media type' can be found via GET_PHY_CFG
- * (GET_PHY_CFG_OUT_MEDIA_TYPE); the valid 'page number' input values, and the
- * output data, are interpreted on a per-type basis. For SFP+: PAGE=0 or 1
+ * SFP+ PHYs). The "media type" can be found via GET_PHY_CFG
+ * (GET_PHY_CFG_OUT_MEDIA_TYPE); the valid "page number" input values, and the
+ * output data, are interpreted on a per-type basis. For SFP+, PAGE=0 or 1
  * returns a 128-byte block read from module I2C address 0xA0 offset 0 or 0x80.
- * Anything else: currently undefined. Locks required: None. Return code: 0.
+ * For QSFP, PAGE=-1 is the lower (unbanked) page. PAGE=2 is the EEPROM and
+ * PAGE=3 is the module limits. For DSFP, module addressing requires a
+ * "BANK:PAGE". Not every bank has the same number of pages. See the Common
+ * Management Interface Specification (CMIS) for further details. A BANK:PAGE
+ * of "0xffff:0xffff" retrieves the lower (unbanked) page. Locks required -
+ * None. Return code - 0.
  */
 #define	MC_CMD_GET_PHY_MEDIA_INFO 0x4b
 #define	MC_CMD_GET_PHY_MEDIA_INFO_MSGSET 0x4b
@@ -7839,6 +7877,12 @@
 #define	MC_CMD_GET_PHY_MEDIA_INFO_IN_LEN 4
 #define	MC_CMD_GET_PHY_MEDIA_INFO_IN_PAGE_OFST 0
 #define	MC_CMD_GET_PHY_MEDIA_INFO_IN_PAGE_LEN 4
+#define	MC_CMD_GET_PHY_MEDIA_INFO_IN_DSFP_PAGE_OFST 0
+#define	MC_CMD_GET_PHY_MEDIA_INFO_IN_DSFP_PAGE_LBN 0
+#define	MC_CMD_GET_PHY_MEDIA_INFO_IN_DSFP_PAGE_WIDTH 16
+#define	MC_CMD_GET_PHY_MEDIA_INFO_IN_DSFP_BANK_OFST 0
+#define	MC_CMD_GET_PHY_MEDIA_INFO_IN_DSFP_BANK_LBN 16
+#define	MC_CMD_GET_PHY_MEDIA_INFO_IN_DSFP_BANK_WIDTH 16
 
 /* MC_CMD_GET_PHY_MEDIA_INFO_OUT msgresponse */
 #define	MC_CMD_GET_PHY_MEDIA_INFO_OUT_LENMIN 5
@@ -9350,6 +9394,8 @@
 #define	NVRAM_PARTITION_TYPE_FPGA_JUMP 0xb08
 /* enum: FPGA Validate XCLBIN */
 #define	NVRAM_PARTITION_TYPE_FPGA_XCLBIN_VALIDATE 0xb09
+/* enum: FPGA XOCL Configuration information */
+#define	NVRAM_PARTITION_TYPE_FPGA_XOCL_CONFIG 0xb0a
 /* enum: MUM firmware partition */
 #define	NVRAM_PARTITION_TYPE_MUM_FIRMWARE 0xc00
 /* enum: SUC firmware partition (this is intentionally an alias of
@@ -9427,6 +9473,8 @@
 #define	NVRAM_PARTITION_TYPE_BUNDLE_LOG 0x1e02
 /* enum: Partition for Solarflare gPXE bootrom installed via Bundle update. */
 #define	NVRAM_PARTITION_TYPE_EXPANSION_ROM_INTERNAL 0x1e03
+/* enum: Partition to store ASN.1 format Bundle Signature for checking. */
+#define	NVRAM_PARTITION_TYPE_BUNDLE_SIGNATURE 0x1e04
 /* enum: Test partition on SmartNIC system microcontroller (SUC) */
 #define	NVRAM_PARTITION_TYPE_SUC_TEST 0x1f00
 /* enum: System microcontroller access to primary FPGA flash. */
@@ -10051,6 +10099,158 @@
 #define	MC_CMD_INIT_EVQ_V2_OUT_FLAG_RXQ_FORCE_EV_MERGING_LBN 3
 #define	MC_CMD_INIT_EVQ_V2_OUT_FLAG_RXQ_FORCE_EV_MERGING_WIDTH 1
 
+/* MC_CMD_INIT_EVQ_V3_IN msgrequest: Extended request to specify per-queue
+ * event merge timeouts.
+ */
+#define	MC_CMD_INIT_EVQ_V3_IN_LEN 556
+/* Size, in entries */
+#define	MC_CMD_INIT_EVQ_V3_IN_SIZE_OFST 0
+#define	MC_CMD_INIT_EVQ_V3_IN_SIZE_LEN 4
+/* Desired instance. Must be set to a specific instance, which is a function
+ * local queue index. The calling client must be the currently-assigned user of
+ * this VI (see MC_CMD_SET_VI_USER).
+ */
+#define	MC_CMD_INIT_EVQ_V3_IN_INSTANCE_OFST 4
+#define	MC_CMD_INIT_EVQ_V3_IN_INSTANCE_LEN 4
+/* The initial timer value. The load value is ignored if the timer mode is DIS.
+ */
+#define	MC_CMD_INIT_EVQ_V3_IN_TMR_LOAD_OFST 8
+#define	MC_CMD_INIT_EVQ_V3_IN_TMR_LOAD_LEN 4
+/* The reload value is ignored in one-shot modes */
+#define	MC_CMD_INIT_EVQ_V3_IN_TMR_RELOAD_OFST 12
+#define	MC_CMD_INIT_EVQ_V3_IN_TMR_RELOAD_LEN 4
+/* tbd */
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAGS_OFST 16
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAGS_LEN 4
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_INTERRUPTING_OFST 16
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_INTERRUPTING_LBN 0
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_INTERRUPTING_WIDTH 1
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_RPTR_DOS_OFST 16
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_RPTR_DOS_LBN 1
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_RPTR_DOS_WIDTH 1
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_INT_ARMD_OFST 16
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_INT_ARMD_LBN 2
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_INT_ARMD_WIDTH 1
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_CUT_THRU_OFST 16
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_CUT_THRU_LBN 3
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_CUT_THRU_WIDTH 1
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_RX_MERGE_OFST 16
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_RX_MERGE_LBN 4
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_RX_MERGE_WIDTH 1
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_TX_MERGE_OFST 16
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_TX_MERGE_LBN 5
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_TX_MERGE_WIDTH 1
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_USE_TIMER_OFST 16
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_USE_TIMER_LBN 6
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_USE_TIMER_WIDTH 1
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_TYPE_OFST 16
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_TYPE_LBN 7
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_TYPE_WIDTH 4
+/* enum: All initialisation flags specified by host. */
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_TYPE_MANUAL 0x0
+/* enum: MEDFORD only. Certain initialisation flags specified by host may be
+ * over-ridden by firmware based on licenses and firmware variant in order to
+ * provide the lowest latency achievable. See
+ * MC_CMD_INIT_EVQ_V2/MC_CMD_INIT_EVQ_V2_OUT/FLAGS for list of affected flags.
+ */
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_TYPE_LOW_LATENCY 0x1
+/* enum: MEDFORD only. Certain initialisation flags specified by host may be
+ * over-ridden by firmware based on licenses and firmware variant in order to
+ * provide the best throughput achievable. See
+ * MC_CMD_INIT_EVQ_V2/MC_CMD_INIT_EVQ_V2_OUT/FLAGS for list of affected flags.
+ */
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_TYPE_THROUGHPUT 0x2
+/* enum: MEDFORD only. Certain initialisation flags may be over-ridden by
+ * firmware based on licenses and firmware variant. See
+ * MC_CMD_INIT_EVQ_V2/MC_CMD_INIT_EVQ_V2_OUT/FLAGS for list of affected flags.
+ */
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_TYPE_AUTO 0x3
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_EXT_WIDTH_OFST 16
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_EXT_WIDTH_LBN 11
+#define	MC_CMD_INIT_EVQ_V3_IN_FLAG_EXT_WIDTH_WIDTH 1
+#define	MC_CMD_INIT_EVQ_V3_IN_TMR_MODE_OFST 20
+#define	MC_CMD_INIT_EVQ_V3_IN_TMR_MODE_LEN 4
+/* enum: Disabled */
+#define	MC_CMD_INIT_EVQ_V3_IN_TMR_MODE_DIS 0x0
+/* enum: Immediate */
+#define	MC_CMD_INIT_EVQ_V3_IN_TMR_IMMED_START 0x1
+/* enum: Triggered */
+#define	MC_CMD_INIT_EVQ_V3_IN_TMR_TRIG_START 0x2
+/* enum: Hold-off */
+#define	MC_CMD_INIT_EVQ_V3_IN_TMR_INT_HLDOFF 0x3
+/* Target EVQ for wakeups if in wakeup mode. */
+#define	MC_CMD_INIT_EVQ_V3_IN_TARGET_EVQ_OFST 24
+#define	MC_CMD_INIT_EVQ_V3_IN_TARGET_EVQ_LEN 4
+/* Target interrupt if in interrupting mode (note union with target EVQ). Use
+ * MC_CMD_RESOURCE_INSTANCE_ANY unless a specific one required for test
+ * purposes.
+ */
+#define	MC_CMD_INIT_EVQ_V3_IN_IRQ_NUM_OFST 24
+#define	MC_CMD_INIT_EVQ_V3_IN_IRQ_NUM_LEN 4
+/* Event Counter Mode. */
+#define	MC_CMD_INIT_EVQ_V3_IN_COUNT_MODE_OFST 28
+#define	MC_CMD_INIT_EVQ_V3_IN_COUNT_MODE_LEN 4
+/* enum: Disabled */
+#define	MC_CMD_INIT_EVQ_V3_IN_COUNT_MODE_DIS 0x0
+/* enum: Disabled */
+#define	MC_CMD_INIT_EVQ_V3_IN_COUNT_MODE_RX 0x1
+/* enum: Disabled */
+#define	MC_CMD_INIT_EVQ_V3_IN_COUNT_MODE_TX 0x2
+/* enum: Disabled */
+#define	MC_CMD_INIT_EVQ_V3_IN_COUNT_MODE_RXTX 0x3
+/* Event queue packet count threshold. */
+#define	MC_CMD_INIT_EVQ_V3_IN_COUNT_THRSHLD_OFST 32
+#define	MC_CMD_INIT_EVQ_V3_IN_COUNT_THRSHLD_LEN 4
+/* 64-bit address of 4k of 4k-aligned host memory buffer */
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_OFST 36
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_LEN 8
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_LO_OFST 36
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_LO_LEN 4
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_LO_LBN 288
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_LO_WIDTH 32
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_HI_OFST 40
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_HI_LEN 4
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_HI_LBN 320
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_HI_WIDTH 32
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_MINNUM 1
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_MAXNUM 64
+#define	MC_CMD_INIT_EVQ_V3_IN_DMA_ADDR_MAXNUM_MCDI2 64
+/* Receive event merge timeout to configure, in nanoseconds. The valid range
+ * and granularity are device specific. Specify 0 to use the firmware's default
+ * value. This field is ignored and per-queue merging is disabled if
+ * MC_CMD_INIT_EVQ/MC_CMD_INIT_EVQ_IN/FLAG_RX_MERGE is not set.
+ */
+#define	MC_CMD_INIT_EVQ_V3_IN_RX_MERGE_TIMEOUT_NS_OFST 548
+#define	MC_CMD_INIT_EVQ_V3_IN_RX_MERGE_TIMEOUT_NS_LEN 4
+/* Transmit event merge timeout to configure, in nanoseconds. The valid range
+ * and granularity are device specific. Specify 0 to use the firmware's default
+ * value. This field is ignored and per-queue merging is disabled if
+ * MC_CMD_INIT_EVQ/MC_CMD_INIT_EVQ_IN/FLAG_TX_MERGE is not set.
+ */
+#define	MC_CMD_INIT_EVQ_V3_IN_TX_MERGE_TIMEOUT_NS_OFST 552
+#define	MC_CMD_INIT_EVQ_V3_IN_TX_MERGE_TIMEOUT_NS_LEN 4
+
+/* MC_CMD_INIT_EVQ_V3_OUT msgresponse */
+#define	MC_CMD_INIT_EVQ_V3_OUT_LEN 8
+/* Only valid if INTRFLAG was true */
+#define	MC_CMD_INIT_EVQ_V3_OUT_IRQ_OFST 0
+#define	MC_CMD_INIT_EVQ_V3_OUT_IRQ_LEN 4
+/* Actual configuration applied on the card */
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAGS_OFST 4
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAGS_LEN 4
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAG_CUT_THRU_OFST 4
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAG_CUT_THRU_LBN 0
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAG_CUT_THRU_WIDTH 1
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAG_RX_MERGE_OFST 4
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAG_RX_MERGE_LBN 1
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAG_RX_MERGE_WIDTH 1
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAG_TX_MERGE_OFST 4
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAG_TX_MERGE_LBN 2
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAG_TX_MERGE_WIDTH 1
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAG_RXQ_FORCE_EV_MERGING_OFST 4
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAG_RXQ_FORCE_EV_MERGING_LBN 3
+#define	MC_CMD_INIT_EVQ_V3_OUT_FLAG_RXQ_FORCE_EV_MERGING_WIDTH 1
+
 /* QUEUE_CRC_MODE structuredef */
 #define	QUEUE_CRC_MODE_LEN 1
 #define	QUEUE_CRC_MODE_MODE_LBN 0
@@ -10256,7 +10456,9 @@
 #define	MC_CMD_INIT_RXQ_EXT_IN_DMA_ADDR_HI_LEN 4
 #define	MC_CMD_INIT_RXQ_EXT_IN_DMA_ADDR_HI_LBN 256
 #define	MC_CMD_INIT_RXQ_EXT_IN_DMA_ADDR_HI_WIDTH 32
-#define	MC_CMD_INIT_RXQ_EXT_IN_DMA_ADDR_NUM 64
+#define	MC_CMD_INIT_RXQ_EXT_IN_DMA_ADDR_MINNUM 0
+#define	MC_CMD_INIT_RXQ_EXT_IN_DMA_ADDR_MAXNUM 64
+#define	MC_CMD_INIT_RXQ_EXT_IN_DMA_ADDR_MAXNUM_MCDI2 64
 /* Maximum length of packet to receive, if SNAPSHOT_MODE flag is set */
 #define	MC_CMD_INIT_RXQ_EXT_IN_SNAPSHOT_LENGTH_OFST 540
 #define	MC_CMD_INIT_RXQ_EXT_IN_SNAPSHOT_LENGTH_LEN 4
@@ -10360,7 +10562,9 @@
 #define	MC_CMD_INIT_RXQ_V3_IN_DMA_ADDR_HI_LEN 4
 #define	MC_CMD_INIT_RXQ_V3_IN_DMA_ADDR_HI_LBN 256
 #define	MC_CMD_INIT_RXQ_V3_IN_DMA_ADDR_HI_WIDTH 32
-#define	MC_CMD_INIT_RXQ_V3_IN_DMA_ADDR_NUM 64
+#define	MC_CMD_INIT_RXQ_V3_IN_DMA_ADDR_MINNUM 0
+#define	MC_CMD_INIT_RXQ_V3_IN_DMA_ADDR_MAXNUM 64
+#define	MC_CMD_INIT_RXQ_V3_IN_DMA_ADDR_MAXNUM_MCDI2 64
 /* Maximum length of packet to receive, if SNAPSHOT_MODE flag is set */
 #define	MC_CMD_INIT_RXQ_V3_IN_SNAPSHOT_LENGTH_OFST 540
 #define	MC_CMD_INIT_RXQ_V3_IN_SNAPSHOT_LENGTH_LEN 4
@@ -10493,7 +10697,9 @@
 #define	MC_CMD_INIT_RXQ_V4_IN_DMA_ADDR_HI_LEN 4
 #define	MC_CMD_INIT_RXQ_V4_IN_DMA_ADDR_HI_LBN 256
 #define	MC_CMD_INIT_RXQ_V4_IN_DMA_ADDR_HI_WIDTH 32
-#define	MC_CMD_INIT_RXQ_V4_IN_DMA_ADDR_NUM 64
+#define	MC_CMD_INIT_RXQ_V4_IN_DMA_ADDR_MINNUM 0
+#define	MC_CMD_INIT_RXQ_V4_IN_DMA_ADDR_MAXNUM 64
+#define	MC_CMD_INIT_RXQ_V4_IN_DMA_ADDR_MAXNUM_MCDI2 64
 /* Maximum length of packet to receive, if SNAPSHOT_MODE flag is set */
 #define	MC_CMD_INIT_RXQ_V4_IN_SNAPSHOT_LENGTH_OFST 540
 #define	MC_CMD_INIT_RXQ_V4_IN_SNAPSHOT_LENGTH_LEN 4
@@ -10639,7 +10845,9 @@
 #define	MC_CMD_INIT_RXQ_V5_IN_DMA_ADDR_HI_LEN 4
 #define	MC_CMD_INIT_RXQ_V5_IN_DMA_ADDR_HI_LBN 256
 #define	MC_CMD_INIT_RXQ_V5_IN_DMA_ADDR_HI_WIDTH 32
-#define	MC_CMD_INIT_RXQ_V5_IN_DMA_ADDR_NUM 64
+#define	MC_CMD_INIT_RXQ_V5_IN_DMA_ADDR_MINNUM 0
+#define	MC_CMD_INIT_RXQ_V5_IN_DMA_ADDR_MAXNUM 64
+#define	MC_CMD_INIT_RXQ_V5_IN_DMA_ADDR_MAXNUM_MCDI2 64
 /* Maximum length of packet to receive, if SNAPSHOT_MODE flag is set */
 #define	MC_CMD_INIT_RXQ_V5_IN_SNAPSHOT_LENGTH_OFST 540
 #define	MC_CMD_INIT_RXQ_V5_IN_SNAPSHOT_LENGTH_LEN 4
@@ -10878,7 +11086,7 @@
 #define	MC_CMD_INIT_TXQ_EXT_IN_DMA_ADDR_HI_LEN 4
 #define	MC_CMD_INIT_TXQ_EXT_IN_DMA_ADDR_HI_LBN 256
 #define	MC_CMD_INIT_TXQ_EXT_IN_DMA_ADDR_HI_WIDTH 32
-#define	MC_CMD_INIT_TXQ_EXT_IN_DMA_ADDR_MINNUM 1
+#define	MC_CMD_INIT_TXQ_EXT_IN_DMA_ADDR_MINNUM 0
 #define	MC_CMD_INIT_TXQ_EXT_IN_DMA_ADDR_MAXNUM 64
 #define	MC_CMD_INIT_TXQ_EXT_IN_DMA_ADDR_MAXNUM_MCDI2 64
 /* Flags related to Qbb flow control mode. */
@@ -12228,6 +12436,8 @@
  * rules inserted by MC_CMD_VNIC_ENCAP_RULE_ADD. (ef100 and later)
  */
 #define	MC_CMD_GET_PARSER_DISP_INFO_IN_OP_GET_SUPPORTED_VNIC_ENCAP_MATCHES 0x5
+/* enum: read the supported encapsulation types for the VNIC */
+#define	MC_CMD_GET_PARSER_DISP_INFO_IN_OP_GET_SUPPORTED_VNIC_ENCAP_TYPES 0x6
 
 /* MC_CMD_GET_PARSER_DISP_INFO_OUT msgresponse */
 #define	MC_CMD_GET_PARSER_DISP_INFO_OUT_LENMIN 8
@@ -12335,6 +12545,30 @@
 #define	MC_CMD_GET_PARSER_DISP_VNIC_ENCAP_MATCHES_OUT_SUPPORTED_MATCHES_MINNUM 0
 #define	MC_CMD_GET_PARSER_DISP_VNIC_ENCAP_MATCHES_OUT_SUPPORTED_MATCHES_MAXNUM 61
 #define	MC_CMD_GET_PARSER_DISP_VNIC_ENCAP_MATCHES_OUT_SUPPORTED_MATCHES_MAXNUM_MCDI2 253
+
+/* MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT msgresponse: Returns
+ * the supported encapsulation types for the VNIC
+ */
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_LEN 8
+/* The op code OP_GET_SUPPORTED_VNIC_ENCAP_TYPES is returned */
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_OP_OFST 0
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_OP_LEN 4
+/*            Enum values, see field(s): */
+/*               MC_CMD_GET_PARSER_DISP_INFO_IN/OP */
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPES_SUPPORTED_OFST 4
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPES_SUPPORTED_LEN 4
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPE_VXLAN_OFST 4
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPE_VXLAN_LBN 0
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPE_VXLAN_WIDTH 1
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPE_NVGRE_OFST 4
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPE_NVGRE_LBN 1
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPE_NVGRE_WIDTH 1
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPE_GENEVE_OFST 4
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPE_GENEVE_LBN 2
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPE_GENEVE_WIDTH 1
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPE_L2GRE_OFST 4
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPE_L2GRE_LBN 3
+#define	MC_CMD_GET_PARSER_DISP_SUPPORTED_VNIC_ENCAP_TYPES_OUT_ENCAP_TYPE_L2GRE_WIDTH 1
 
 
 /***********************************/
@@ -16236,6 +16470,9 @@
 #define	MC_CMD_GET_CAPABILITIES_V7_OUT_MAE_ACTION_SET_ALLOC_V2_SUPPORTED_OFST 148
 #define	MC_CMD_GET_CAPABILITIES_V7_OUT_MAE_ACTION_SET_ALLOC_V2_SUPPORTED_LBN 11
 #define	MC_CMD_GET_CAPABILITIES_V7_OUT_MAE_ACTION_SET_ALLOC_V2_SUPPORTED_WIDTH 1
+#define	MC_CMD_GET_CAPABILITIES_V7_OUT_RSS_STEER_ON_OUTER_SUPPORTED_OFST 148
+#define	MC_CMD_GET_CAPABILITIES_V7_OUT_RSS_STEER_ON_OUTER_SUPPORTED_LBN 12
+#define	MC_CMD_GET_CAPABILITIES_V7_OUT_RSS_STEER_ON_OUTER_SUPPORTED_WIDTH 1
 
 /* MC_CMD_GET_CAPABILITIES_V8_OUT msgresponse */
 #define	MC_CMD_GET_CAPABILITIES_V8_OUT_LEN 160
@@ -16734,6 +16971,9 @@
 #define	MC_CMD_GET_CAPABILITIES_V8_OUT_MAE_ACTION_SET_ALLOC_V2_SUPPORTED_OFST 148
 #define	MC_CMD_GET_CAPABILITIES_V8_OUT_MAE_ACTION_SET_ALLOC_V2_SUPPORTED_LBN 11
 #define	MC_CMD_GET_CAPABILITIES_V8_OUT_MAE_ACTION_SET_ALLOC_V2_SUPPORTED_WIDTH 1
+#define	MC_CMD_GET_CAPABILITIES_V8_OUT_RSS_STEER_ON_OUTER_SUPPORTED_OFST 148
+#define	MC_CMD_GET_CAPABILITIES_V8_OUT_RSS_STEER_ON_OUTER_SUPPORTED_LBN 12
+#define	MC_CMD_GET_CAPABILITIES_V8_OUT_RSS_STEER_ON_OUTER_SUPPORTED_WIDTH 1
 /* These bits are reserved for communicating test-specific capabilities to
  * host-side test software. All production drivers should treat this field as
  * opaque.
@@ -17246,6 +17486,9 @@
 #define	MC_CMD_GET_CAPABILITIES_V9_OUT_MAE_ACTION_SET_ALLOC_V2_SUPPORTED_OFST 148
 #define	MC_CMD_GET_CAPABILITIES_V9_OUT_MAE_ACTION_SET_ALLOC_V2_SUPPORTED_LBN 11
 #define	MC_CMD_GET_CAPABILITIES_V9_OUT_MAE_ACTION_SET_ALLOC_V2_SUPPORTED_WIDTH 1
+#define	MC_CMD_GET_CAPABILITIES_V9_OUT_RSS_STEER_ON_OUTER_SUPPORTED_OFST 148
+#define	MC_CMD_GET_CAPABILITIES_V9_OUT_RSS_STEER_ON_OUTER_SUPPORTED_LBN 12
+#define	MC_CMD_GET_CAPABILITIES_V9_OUT_RSS_STEER_ON_OUTER_SUPPORTED_WIDTH 1
 /* These bits are reserved for communicating test-specific capabilities to
  * host-side test software. All production drivers should treat this field as
  * opaque.
@@ -17793,6 +18036,9 @@
 #define	MC_CMD_GET_CAPABILITIES_V10_OUT_MAE_ACTION_SET_ALLOC_V2_SUPPORTED_OFST 148
 #define	MC_CMD_GET_CAPABILITIES_V10_OUT_MAE_ACTION_SET_ALLOC_V2_SUPPORTED_LBN 11
 #define	MC_CMD_GET_CAPABILITIES_V10_OUT_MAE_ACTION_SET_ALLOC_V2_SUPPORTED_WIDTH 1
+#define	MC_CMD_GET_CAPABILITIES_V10_OUT_RSS_STEER_ON_OUTER_SUPPORTED_OFST 148
+#define	MC_CMD_GET_CAPABILITIES_V10_OUT_RSS_STEER_ON_OUTER_SUPPORTED_LBN 12
+#define	MC_CMD_GET_CAPABILITIES_V10_OUT_RSS_STEER_ON_OUTER_SUPPORTED_WIDTH 1
 /* These bits are reserved for communicating test-specific capabilities to
  * host-side test software. All production drivers should treat this field as
  * opaque.
@@ -19899,6 +20145,18 @@
 #define	MC_CMD_GET_FUNCTION_INFO_OUT_PF_LEN 4
 #define	MC_CMD_GET_FUNCTION_INFO_OUT_VF_OFST 4
 #define	MC_CMD_GET_FUNCTION_INFO_OUT_VF_LEN 4
+
+/* MC_CMD_GET_FUNCTION_INFO_OUT_V2 msgresponse */
+#define	MC_CMD_GET_FUNCTION_INFO_OUT_V2_LEN 12
+#define	MC_CMD_GET_FUNCTION_INFO_OUT_V2_PF_OFST 0
+#define	MC_CMD_GET_FUNCTION_INFO_OUT_V2_PF_LEN 4
+#define	MC_CMD_GET_FUNCTION_INFO_OUT_V2_VF_OFST 4
+#define	MC_CMD_GET_FUNCTION_INFO_OUT_V2_VF_LEN 4
+/* Values from PCIE_INTERFACE enumeration. For NICs with a single interface, or
+ * in the case of a V1 response, this should be HOST_PRIMARY.
+ */
+#define	MC_CMD_GET_FUNCTION_INFO_OUT_V2_INTF_OFST 8
+#define	MC_CMD_GET_FUNCTION_INFO_OUT_V2_INTF_LEN 4
 
 
 /***********************************/
@@ -25682,6 +25940,9 @@
 #define	MC_CMD_GET_RX_PREFIX_ID_IN_USER_MARK_OFST 0
 #define	MC_CMD_GET_RX_PREFIX_ID_IN_USER_MARK_LBN 6
 #define	MC_CMD_GET_RX_PREFIX_ID_IN_USER_MARK_WIDTH 1
+#define	MC_CMD_GET_RX_PREFIX_ID_IN_INGRESS_MPORT_OFST 0
+#define	MC_CMD_GET_RX_PREFIX_ID_IN_INGRESS_MPORT_LBN 7
+#define	MC_CMD_GET_RX_PREFIX_ID_IN_INGRESS_MPORT_WIDTH 1
 #define	MC_CMD_GET_RX_PREFIX_ID_IN_INGRESS_VPORT_OFST 0
 #define	MC_CMD_GET_RX_PREFIX_ID_IN_INGRESS_VPORT_LBN 7
 #define	MC_CMD_GET_RX_PREFIX_ID_IN_INGRESS_VPORT_WIDTH 1
@@ -25691,6 +25952,12 @@
 #define	MC_CMD_GET_RX_PREFIX_ID_IN_VLAN_STRIP_TCI_OFST 0
 #define	MC_CMD_GET_RX_PREFIX_ID_IN_VLAN_STRIP_TCI_LBN 9
 #define	MC_CMD_GET_RX_PREFIX_ID_IN_VLAN_STRIP_TCI_WIDTH 1
+#define	MC_CMD_GET_RX_PREFIX_ID_IN_VLAN_STRIPPED_OFST 0
+#define	MC_CMD_GET_RX_PREFIX_ID_IN_VLAN_STRIPPED_LBN 10
+#define	MC_CMD_GET_RX_PREFIX_ID_IN_VLAN_STRIPPED_WIDTH 1
+#define	MC_CMD_GET_RX_PREFIX_ID_IN_VSWITCH_STATUS_OFST 0
+#define	MC_CMD_GET_RX_PREFIX_ID_IN_VSWITCH_STATUS_LBN 11
+#define	MC_CMD_GET_RX_PREFIX_ID_IN_VSWITCH_STATUS_WIDTH 1
 
 /* MC_CMD_GET_RX_PREFIX_ID_OUT msgresponse */
 #define	MC_CMD_GET_RX_PREFIX_ID_OUT_LENMIN 8
@@ -25736,9 +26003,12 @@
 #define	RX_PREFIX_FIELD_INFO_PARTIAL_TSTAMP 0x4 /* enum */
 #define	RX_PREFIX_FIELD_INFO_RSS_HASH 0x5 /* enum */
 #define	RX_PREFIX_FIELD_INFO_USER_MARK 0x6 /* enum */
+#define	RX_PREFIX_FIELD_INFO_INGRESS_MPORT 0x7 /* enum */
 #define	RX_PREFIX_FIELD_INFO_INGRESS_VPORT 0x7 /* enum */
 #define	RX_PREFIX_FIELD_INFO_CSUM_FRAME 0x8 /* enum */
 #define	RX_PREFIX_FIELD_INFO_VLAN_STRIP_TCI 0x9 /* enum */
+#define	RX_PREFIX_FIELD_INFO_VLAN_STRIPPED 0xa /* enum */
+#define	RX_PREFIX_FIELD_INFO_VSWITCH_STATUS 0xb /* enum */
 #define	RX_PREFIX_FIELD_INFO_TYPE_LBN 24
 #define	RX_PREFIX_FIELD_INFO_TYPE_WIDTH 8
 
@@ -26063,6 +26333,10 @@
 #define	MC_CMD_FPGA_IN_OP_SET_INTERNAL_LINK 0x5
 /* enum: Read internal link configuration. */
 #define	MC_CMD_FPGA_IN_OP_GET_INTERNAL_LINK 0x6
+/* enum: Get MAC statistics of FPGA external port. */
+#define	MC_CMD_FPGA_IN_OP_GET_MAC_STATS 0x7
+/* enum: Set configuration on internal FPGA MAC. */
+#define	MC_CMD_FPGA_IN_OP_SET_INTERNAL_MAC 0x8
 
 /* MC_CMD_FPGA_OP_GET_VERSION_IN msgrequest: Get the FPGA version string. A
  * free-format string is returned in response to this command. Any checks on
@@ -26205,6 +26479,87 @@
 /* Link speed set on FPGA internal port MAC. */
 #define	MC_CMD_FPGA_OP_GET_INTERNAL_LINK_OUT_SPEED_OFST 4
 #define	MC_CMD_FPGA_OP_GET_INTERNAL_LINK_OUT_SPEED_LEN 4
+
+/* MC_CMD_FPGA_OP_GET_MAC_STATS_IN msgrequest: Get FPGA external port MAC
+ * statistics.
+ */
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_IN_LEN 4
+/* Sub-command code. Must be OP_GET_MAC_STATS. */
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_IN_OP_OFST 0
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_IN_OP_LEN 4
+
+/* MC_CMD_FPGA_OP_GET_MAC_STATS_OUT msgresponse */
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_LENMIN 4
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_LENMAX 252
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_LENMAX_MCDI2 1020
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_LEN(num) (4+8*(num))
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_NUM(len) (((len)-4)/8)
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_NUM_STATS_OFST 0
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_NUM_STATS_LEN 4
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_OFST 4
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_LEN 8
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_LO_OFST 4
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_LO_LEN 4
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_LO_LBN 32
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_LO_WIDTH 32
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_HI_OFST 8
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_HI_LEN 4
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_HI_LBN 64
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_HI_WIDTH 32
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_MINNUM 0
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_MAXNUM 31
+#define	MC_CMD_FPGA_OP_GET_MAC_STATS_OUT_STATISTICS_MAXNUM_MCDI2 127
+#define	MC_CMD_FPGA_MAC_TX_TOTAL_PACKETS 0x0 /* enum */
+#define	MC_CMD_FPGA_MAC_TX_TOTAL_BYTES 0x1 /* enum */
+#define	MC_CMD_FPGA_MAC_TX_TOTAL_GOOD_PACKETS 0x2 /* enum */
+#define	MC_CMD_FPGA_MAC_TX_TOTAL_GOOD_BYTES 0x3 /* enum */
+#define	MC_CMD_FPGA_MAC_TX_BAD_FCS 0x4 /* enum */
+#define	MC_CMD_FPGA_MAC_TX_PAUSE 0x5 /* enum */
+#define	MC_CMD_FPGA_MAC_TX_USER_PAUSE 0x6 /* enum */
+#define	MC_CMD_FPGA_MAC_RX_TOTAL_PACKETS 0x7 /* enum */
+#define	MC_CMD_FPGA_MAC_RX_TOTAL_BYTES 0x8 /* enum */
+#define	MC_CMD_FPGA_MAC_RX_TOTAL_GOOD_PACKETS 0x9 /* enum */
+#define	MC_CMD_FPGA_MAC_RX_TOTAL_GOOD_BYTES 0xa /* enum */
+#define	MC_CMD_FPGA_MAC_RX_BAD_FCS 0xb /* enum */
+#define	MC_CMD_FPGA_MAC_RX_PAUSE 0xc /* enum */
+#define	MC_CMD_FPGA_MAC_RX_USER_PAUSE 0xd /* enum */
+#define	MC_CMD_FPGA_MAC_RX_UNDERSIZE 0xe /* enum */
+#define	MC_CMD_FPGA_MAC_RX_OVERSIZE 0xf /* enum */
+#define	MC_CMD_FPGA_MAC_RX_FRAMING_ERR 0x10 /* enum */
+#define	MC_CMD_FPGA_MAC_FEC_UNCORRECTED_ERRORS 0x11 /* enum */
+#define	MC_CMD_FPGA_MAC_FEC_CORRECTED_ERRORS 0x12 /* enum */
+
+/* MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN msgrequest: Configures the internal port
+ * MAC on the FPGA.
+ */
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_LEN 20
+/* Sub-command code. Must be OP_SET_INTERNAL_MAC. */
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_OP_OFST 0
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_OP_LEN 4
+/* Select which parameters to configure. */
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_CONTROL_OFST 4
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_CONTROL_LEN 4
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_CFG_MTU_OFST 4
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_CFG_MTU_LBN 0
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_CFG_MTU_WIDTH 1
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_CFG_DRAIN_OFST 4
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_CFG_DRAIN_LBN 1
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_CFG_DRAIN_WIDTH 1
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_CFG_FCNTL_OFST 4
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_CFG_FCNTL_LBN 2
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_CFG_FCNTL_WIDTH 1
+/* The MTU to be programmed into the MAC. */
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_MTU_OFST 8
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_MTU_LEN 4
+/* Drain Tx FIFO */
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_DRAIN_OFST 12
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_DRAIN_LEN 4
+/* flow control configuration. See MC_CMD_SET_MAC/MC_CMD_SET_MAC_IN/FCNTL. */
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_FCNTL_OFST 16
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_IN_FCNTL_LEN 4
+
+/* MC_CMD_FPGA_OP_SET_INTERNAL_MAC_OUT msgresponse */
+#define	MC_CMD_FPGA_OP_SET_INTERNAL_MAC_OUT_LEN 0
 
 
 /***********************************/
@@ -26483,6 +26838,12 @@
 #define	MC_CMD_VNIC_ENCAP_RULE_ADD_IN_STRIP_OUTER_VLAN_OFST 29
 #define	MC_CMD_VNIC_ENCAP_RULE_ADD_IN_STRIP_OUTER_VLAN_LBN 0
 #define	MC_CMD_VNIC_ENCAP_RULE_ADD_IN_STRIP_OUTER_VLAN_WIDTH 1
+#define	MC_CMD_VNIC_ENCAP_RULE_ADD_IN_RSS_ON_OUTER_OFST 29
+#define	MC_CMD_VNIC_ENCAP_RULE_ADD_IN_RSS_ON_OUTER_LBN 1
+#define	MC_CMD_VNIC_ENCAP_RULE_ADD_IN_RSS_ON_OUTER_WIDTH 1
+#define	MC_CMD_VNIC_ENCAP_RULE_ADD_IN_STEER_ON_OUTER_OFST 29
+#define	MC_CMD_VNIC_ENCAP_RULE_ADD_IN_STEER_ON_OUTER_LBN 2
+#define	MC_CMD_VNIC_ENCAP_RULE_ADD_IN_STEER_ON_OUTER_WIDTH 1
 /* Only if MATCH_DST_PORT is set. Port number as bytes in network order. */
 #define	MC_CMD_VNIC_ENCAP_RULE_ADD_IN_DST_PORT_OFST 30
 #define	MC_CMD_VNIC_ENCAP_RULE_ADD_IN_DST_PORT_LEN 2
@@ -26544,6 +26905,257 @@
 #define	UUID_NODE_LBN 80
 #define	UUID_NODE_WIDTH 48
 
+
+/***********************************/
+/* MC_CMD_PLUGIN_ALLOC
+ * Create a handle to a datapath plugin's extension. This involves finding a
+ * currently-loaded plugin offering the given functionality (as identified by
+ * the UUID) and allocating a handle to track the usage of it. Plugin
+ * functionality is identified by 'extension' rather than any other identifier
+ * so that a single plugin bitfile may offer more than one piece of independent
+ * functionality. If two bitfiles are loaded which both offer the same
+ * extension, then the metadata is interrogated further to determine which is
+ * the newest and that is the one opened. See SF-123625-SW for architectural
+ * detail on datapath plugins.
+ */
+#define	MC_CMD_PLUGIN_ALLOC 0x1ad
+#define	MC_CMD_PLUGIN_ALLOC_MSGSET 0x1ad
+#undef	MC_CMD_0x1ad_PRIVILEGE_CTG
+
+#define	MC_CMD_0x1ad_PRIVILEGE_CTG SRIOV_CTG_GENERAL
+
+/* MC_CMD_PLUGIN_ALLOC_IN msgrequest */
+#define	MC_CMD_PLUGIN_ALLOC_IN_LEN 24
+/* The functionality requested of the plugin, as a UUID structure */
+#define	MC_CMD_PLUGIN_ALLOC_IN_UUID_OFST 0
+#define	MC_CMD_PLUGIN_ALLOC_IN_UUID_LEN 16
+/* Additional options for opening the handle */
+#define	MC_CMD_PLUGIN_ALLOC_IN_FLAGS_OFST 16
+#define	MC_CMD_PLUGIN_ALLOC_IN_FLAGS_LEN 4
+#define	MC_CMD_PLUGIN_ALLOC_IN_FLAG_INFO_ONLY_OFST 16
+#define	MC_CMD_PLUGIN_ALLOC_IN_FLAG_INFO_ONLY_LBN 0
+#define	MC_CMD_PLUGIN_ALLOC_IN_FLAG_INFO_ONLY_WIDTH 1
+#define	MC_CMD_PLUGIN_ALLOC_IN_FLAG_ALLOW_DISABLED_OFST 16
+#define	MC_CMD_PLUGIN_ALLOC_IN_FLAG_ALLOW_DISABLED_LBN 1
+#define	MC_CMD_PLUGIN_ALLOC_IN_FLAG_ALLOW_DISABLED_WIDTH 1
+/* Load the extension only if it is in the specified administrative group.
+ * Specify ANY to load the extension wherever it is found (if there are
+ * multiple choices then the extension with the highest MINOR_VER/PATCH_VER
+ * will be loaded). See MC_CMD_PLUGIN_GET_META_GLOBAL for a description of
+ * administrative groups.
+ */
+#define	MC_CMD_PLUGIN_ALLOC_IN_ADMIN_GROUP_OFST 20
+#define	MC_CMD_PLUGIN_ALLOC_IN_ADMIN_GROUP_LEN 2
+/* enum: Load the extension from any ADMIN_GROUP. */
+#define	MC_CMD_PLUGIN_ALLOC_IN_ANY 0xffff
+/* Reserved */
+#define	MC_CMD_PLUGIN_ALLOC_IN_RESERVED_OFST 22
+#define	MC_CMD_PLUGIN_ALLOC_IN_RESERVED_LEN 2
+
+/* MC_CMD_PLUGIN_ALLOC_OUT msgresponse */
+#define	MC_CMD_PLUGIN_ALLOC_OUT_LEN 4
+/* Unique identifier of this usage */
+#define	MC_CMD_PLUGIN_ALLOC_OUT_HANDLE_OFST 0
+#define	MC_CMD_PLUGIN_ALLOC_OUT_HANDLE_LEN 4
+
+
+/***********************************/
+/* MC_CMD_PLUGIN_FREE
+ * Delete a handle to a plugin's extension.
+ */
+#define	MC_CMD_PLUGIN_FREE 0x1ae
+#define	MC_CMD_PLUGIN_FREE_MSGSET 0x1ae
+#undef	MC_CMD_0x1ae_PRIVILEGE_CTG
+
+#define	MC_CMD_0x1ae_PRIVILEGE_CTG SRIOV_CTG_GENERAL
+
+/* MC_CMD_PLUGIN_FREE_IN msgrequest */
+#define	MC_CMD_PLUGIN_FREE_IN_LEN 4
+/* Handle returned by MC_CMD_PLUGIN_ALLOC_OUT */
+#define	MC_CMD_PLUGIN_FREE_IN_HANDLE_OFST 0
+#define	MC_CMD_PLUGIN_FREE_IN_HANDLE_LEN 4
+
+/* MC_CMD_PLUGIN_FREE_OUT msgresponse */
+#define	MC_CMD_PLUGIN_FREE_OUT_LEN 0
+
+
+/***********************************/
+/* MC_CMD_PLUGIN_GET_META_GLOBAL
+ * Returns the global metadata applying to the whole plugin extension. See the
+ * other metadata calls for subtypes of data.
+ */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL 0x1af
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_MSGSET 0x1af
+#undef	MC_CMD_0x1af_PRIVILEGE_CTG
+
+#define	MC_CMD_0x1af_PRIVILEGE_CTG SRIOV_CTG_GENERAL
+
+/* MC_CMD_PLUGIN_GET_META_GLOBAL_IN msgrequest */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_IN_LEN 4
+/* Handle returned by MC_CMD_PLUGIN_ALLOC_OUT */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_IN_HANDLE_OFST 0
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_IN_HANDLE_LEN 4
+
+/* MC_CMD_PLUGIN_GET_META_GLOBAL_OUT msgresponse */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_LEN 36
+/* Unique identifier of this plugin extension. This is identical to the value
+ * which was requested when the handle was allocated.
+ */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_UUID_OFST 0
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_UUID_LEN 16
+/* semver sub-version of this plugin extension */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MINOR_VER_OFST 16
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MINOR_VER_LEN 2
+/* semver micro-version of this plugin extension */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_PATCH_VER_OFST 18
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_PATCH_VER_LEN 2
+/* Number of different messages which can be sent to this extension */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_NUM_MSGS_OFST 20
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_NUM_MSGS_LEN 4
+/* Byte offset within the VI window of the plugin's mapped CSR window. */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MAPPED_CSR_OFFSET_OFST 24
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MAPPED_CSR_OFFSET_LEN 2
+/* Number of bytes mapped through to the plugin's CSRs. 0 if that feature was
+ * not requested by the plugin (in which case MAPPED_CSR_OFFSET and
+ * MAPPED_CSR_FLAGS are ignored).
+ */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MAPPED_CSR_SIZE_OFST 26
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MAPPED_CSR_SIZE_LEN 2
+/* Flags indicating how to perform the CSR window mapping. */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MAPPED_CSR_FLAGS_OFST 28
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MAPPED_CSR_FLAGS_LEN 4
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MAPPED_CSR_FLAG_READ_OFST 28
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MAPPED_CSR_FLAG_READ_LBN 0
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MAPPED_CSR_FLAG_READ_WIDTH 1
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MAPPED_CSR_FLAG_WRITE_OFST 28
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MAPPED_CSR_FLAG_WRITE_LBN 1
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_MAPPED_CSR_FLAG_WRITE_WIDTH 1
+/* Identifier of the set of extensions which all change state together.
+ * Extensions having the same ADMIN_GROUP will always load and unload at the
+ * same time. ADMIN_GROUP values themselves are arbitrary (but they contain a
+ * generation number as an implementation detail to ensure that they're not
+ * reused rapidly).
+ */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_ADMIN_GROUP_OFST 32
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_ADMIN_GROUP_LEN 1
+/* Bitshift in MC_CMD_DEVEL_CLIENT_PRIVILEGE_MODIFY's MASK parameters
+ * corresponding to this extension, i.e. set the bit 1<<PRIVILEGE_BIT to permit
+ * access to this extension.
+ */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_PRIVILEGE_BIT_OFST 33
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_PRIVILEGE_BIT_LEN 1
+/* Reserved */
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_RESERVED_OFST 34
+#define	MC_CMD_PLUGIN_GET_META_GLOBAL_OUT_RESERVED_LEN 2
+
+
+/***********************************/
+/* MC_CMD_PLUGIN_GET_META_PUBLISHER
+ * Returns metadata supplied by the plugin author which describes this
+ * extension in a human-readable way. Contrast with
+ * MC_CMD_PLUGIN_GET_META_GLOBAL, which returns information needed for software
+ * to operate.
+ */
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER 0x1b0
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_MSGSET 0x1b0
+#undef	MC_CMD_0x1b0_PRIVILEGE_CTG
+
+#define	MC_CMD_0x1b0_PRIVILEGE_CTG SRIOV_CTG_GENERAL
+
+/* MC_CMD_PLUGIN_GET_META_PUBLISHER_IN msgrequest */
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_IN_LEN 12
+/* Handle returned by MC_CMD_PLUGIN_ALLOC_OUT */
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_IN_HANDLE_OFST 0
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_IN_HANDLE_LEN 4
+/* Category of data to return */
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_IN_SUBTYPE_OFST 4
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_IN_SUBTYPE_LEN 4
+/* enum: Top-level information about the extension. The returned data is an
+ * array of key/value pairs using the keys in RFC5013 (Dublin Core) to describe
+ * the extension. The data is a back-to-back list of zero-terminated strings;
+ * the even-numbered fields (0,2,4,...) are keys and their following odd-
+ * numbered fields are the corresponding values. Both keys and values are
+ * nominally UTF-8. Per RFC5013, the same key may be repeated any number of
+ * times. Note that all information (including the key/value structure itself
+ * and the UTF-8 encoding) may have been provided by the plugin author, so
+ * callers must be cautious about parsing it. Callers should parse only the
+ * top-level structure to separate out the keys and values; the contents of the
+ * values is not expected to be machine-readable.
+ */
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_IN_EXTENSION_KVS 0x0
+/* Byte position of the data to be returned within the full data block of the
+ * given SUBTYPE.
+ */
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_IN_OFFSET_OFST 8
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_IN_OFFSET_LEN 4
+
+/* MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT msgresponse */
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT_LENMIN 4
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT_LENMAX 252
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT_LENMAX_MCDI2 1020
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT_LEN(num) (4+1*(num))
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT_DATA_NUM(len) (((len)-4)/1)
+/* Full length of the data block of the requested SUBTYPE, in bytes. */
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT_TOTAL_SIZE_OFST 0
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT_TOTAL_SIZE_LEN 4
+/* The information requested by SUBTYPE. */
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT_DATA_OFST 4
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT_DATA_LEN 1
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT_DATA_MINNUM 0
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT_DATA_MAXNUM 248
+#define	MC_CMD_PLUGIN_GET_META_PUBLISHER_OUT_DATA_MAXNUM_MCDI2 1016
+
+
+/***********************************/
+/* MC_CMD_PLUGIN_GET_META_MSG
+ * Returns the simple metadata for a specific plugin request message. This
+ * supplies information necessary for the host to know how to build an
+ * MC_CMD_PLUGIN_REQ request.
+ */
+#define	MC_CMD_PLUGIN_GET_META_MSG 0x1b1
+#define	MC_CMD_PLUGIN_GET_META_MSG_MSGSET 0x1b1
+#undef	MC_CMD_0x1b1_PRIVILEGE_CTG
+
+#define	MC_CMD_0x1b1_PRIVILEGE_CTG SRIOV_CTG_GENERAL
+
+/* MC_CMD_PLUGIN_GET_META_MSG_IN msgrequest */
+#define	MC_CMD_PLUGIN_GET_META_MSG_IN_LEN 8
+/* Handle returned by MC_CMD_PLUGIN_ALLOC_OUT */
+#define	MC_CMD_PLUGIN_GET_META_MSG_IN_HANDLE_OFST 0
+#define	MC_CMD_PLUGIN_GET_META_MSG_IN_HANDLE_LEN 4
+/* Unique message ID to obtain */
+#define	MC_CMD_PLUGIN_GET_META_MSG_IN_ID_OFST 4
+#define	MC_CMD_PLUGIN_GET_META_MSG_IN_ID_LEN 4
+
+/* MC_CMD_PLUGIN_GET_META_MSG_OUT msgresponse */
+#define	MC_CMD_PLUGIN_GET_META_MSG_OUT_LEN 44
+/* Unique message ID. This is the same value as the input parameter; it exists
+ * to allow future MCDI extensions which enumerate all messages.
+ */
+#define	MC_CMD_PLUGIN_GET_META_MSG_OUT_ID_OFST 0
+#define	MC_CMD_PLUGIN_GET_META_MSG_OUT_ID_LEN 4
+/* Packed index number of this message, assigned by the MC to give each message
+ * a unique ID in an array to allow for more efficient storage/management.
+ */
+#define	MC_CMD_PLUGIN_GET_META_MSG_OUT_INDEX_OFST 4
+#define	MC_CMD_PLUGIN_GET_META_MSG_OUT_INDEX_LEN 4
+/* Short human-readable codename for this message. This is conventionally
+ * formatted as a C identifier in the basic ASCII character set with any spare
+ * bytes at the end set to 0, however this convention is not enforced by the MC
+ * so consumers must check for all potential malformations before using it for
+ * a trusted purpose.
+ */
+#define	MC_CMD_PLUGIN_GET_META_MSG_OUT_NAME_OFST 8
+#define	MC_CMD_PLUGIN_GET_META_MSG_OUT_NAME_LEN 32
+/* Number of bytes of data which must be passed from the host kernel to the MC
+ * for this message's payload, and which are passed back again in the response.
+ * The MC's plugin metadata loader will have validated that the number of bytes
+ * specified here will fit in to MC_CMD_PLUGIN_REQ_IN_DATA in a single MCDI
+ * message.
+ */
+#define	MC_CMD_PLUGIN_GET_META_MSG_OUT_DATA_SIZE_OFST 40
+#define	MC_CMD_PLUGIN_GET_META_MSG_OUT_DATA_SIZE_LEN 4
+
 /* PLUGIN_EXTENSION structuredef: Used within MC_CMD_PLUGIN_GET_ALL to describe
  * an individual extension.
  */
@@ -26560,6 +27172,100 @@
 #define	PLUGIN_EXTENSION_FLAG_ENABLED_WIDTH 1
 #define	PLUGIN_EXTENSION_RESERVED_LBN 137
 #define	PLUGIN_EXTENSION_RESERVED_WIDTH 23
+
+
+/***********************************/
+/* MC_CMD_PLUGIN_GET_ALL
+ * Returns a list of all plugin extensions currently loaded and available. The
+ * UUIDs returned can be passed to MC_CMD_PLUGIN_ALLOC in order to obtain more
+ * detailed metadata via the MC_CMD_PLUGIN_GET_META_* family of requests. The
+ * ADMIN_GROUP field collects how extensions are grouped in to units which are
+ * loaded/unloaded together; extensions with the same value are in the same
+ * group.
+ */
+#define	MC_CMD_PLUGIN_GET_ALL 0x1b2
+#define	MC_CMD_PLUGIN_GET_ALL_MSGSET 0x1b2
+#undef	MC_CMD_0x1b2_PRIVILEGE_CTG
+
+#define	MC_CMD_0x1b2_PRIVILEGE_CTG SRIOV_CTG_GENERAL
+
+/* MC_CMD_PLUGIN_GET_ALL_IN msgrequest */
+#define	MC_CMD_PLUGIN_GET_ALL_IN_LEN 4
+/* Additional options for querying. Note that if neither FLAG_INCLUDE_ENABLED
+ * nor FLAG_INCLUDE_DISABLED are specified then the result set will be empty.
+ */
+#define	MC_CMD_PLUGIN_GET_ALL_IN_FLAGS_OFST 0
+#define	MC_CMD_PLUGIN_GET_ALL_IN_FLAGS_LEN 4
+#define	MC_CMD_PLUGIN_GET_ALL_IN_FLAG_INCLUDE_ENABLED_OFST 0
+#define	MC_CMD_PLUGIN_GET_ALL_IN_FLAG_INCLUDE_ENABLED_LBN 0
+#define	MC_CMD_PLUGIN_GET_ALL_IN_FLAG_INCLUDE_ENABLED_WIDTH 1
+#define	MC_CMD_PLUGIN_GET_ALL_IN_FLAG_INCLUDE_DISABLED_OFST 0
+#define	MC_CMD_PLUGIN_GET_ALL_IN_FLAG_INCLUDE_DISABLED_LBN 1
+#define	MC_CMD_PLUGIN_GET_ALL_IN_FLAG_INCLUDE_DISABLED_WIDTH 1
+
+/* MC_CMD_PLUGIN_GET_ALL_OUT msgresponse */
+#define	MC_CMD_PLUGIN_GET_ALL_OUT_LENMIN 0
+#define	MC_CMD_PLUGIN_GET_ALL_OUT_LENMAX 240
+#define	MC_CMD_PLUGIN_GET_ALL_OUT_LENMAX_MCDI2 1020
+#define	MC_CMD_PLUGIN_GET_ALL_OUT_LEN(num) (0+20*(num))
+#define	MC_CMD_PLUGIN_GET_ALL_OUT_EXTENSIONS_NUM(len) (((len)-0)/20)
+/* The list of available plugin extensions, as an array of PLUGIN_EXTENSION
+ * structs.
+ */
+#define	MC_CMD_PLUGIN_GET_ALL_OUT_EXTENSIONS_OFST 0
+#define	MC_CMD_PLUGIN_GET_ALL_OUT_EXTENSIONS_LEN 20
+#define	MC_CMD_PLUGIN_GET_ALL_OUT_EXTENSIONS_MINNUM 0
+#define	MC_CMD_PLUGIN_GET_ALL_OUT_EXTENSIONS_MAXNUM 12
+#define	MC_CMD_PLUGIN_GET_ALL_OUT_EXTENSIONS_MAXNUM_MCDI2 51
+
+
+/***********************************/
+/* MC_CMD_PLUGIN_REQ
+ * Send a command to a plugin. A plugin may define an arbitrary number of
+ * 'messages' which it allows applications on the host system to send, each
+ * identified by a 32-bit ID.
+ */
+#define	MC_CMD_PLUGIN_REQ 0x1b3
+#define	MC_CMD_PLUGIN_REQ_MSGSET 0x1b3
+#undef	MC_CMD_0x1b3_PRIVILEGE_CTG
+
+#define	MC_CMD_0x1b3_PRIVILEGE_CTG SRIOV_CTG_GENERAL
+
+/* MC_CMD_PLUGIN_REQ_IN msgrequest */
+#define	MC_CMD_PLUGIN_REQ_IN_LENMIN 8
+#define	MC_CMD_PLUGIN_REQ_IN_LENMAX 252
+#define	MC_CMD_PLUGIN_REQ_IN_LENMAX_MCDI2 1020
+#define	MC_CMD_PLUGIN_REQ_IN_LEN(num) (8+1*(num))
+#define	MC_CMD_PLUGIN_REQ_IN_DATA_NUM(len) (((len)-8)/1)
+/* Handle returned by MC_CMD_PLUGIN_ALLOC_OUT */
+#define	MC_CMD_PLUGIN_REQ_IN_HANDLE_OFST 0
+#define	MC_CMD_PLUGIN_REQ_IN_HANDLE_LEN 4
+/* Message ID defined by the plugin author */
+#define	MC_CMD_PLUGIN_REQ_IN_ID_OFST 4
+#define	MC_CMD_PLUGIN_REQ_IN_ID_LEN 4
+/* Data blob being the parameter to the message. This must be of the length
+ * specified by MC_CMD_PLUGIN_GET_META_MSG_IN_MCDI_PARAM_SIZE.
+ */
+#define	MC_CMD_PLUGIN_REQ_IN_DATA_OFST 8
+#define	MC_CMD_PLUGIN_REQ_IN_DATA_LEN 1
+#define	MC_CMD_PLUGIN_REQ_IN_DATA_MINNUM 0
+#define	MC_CMD_PLUGIN_REQ_IN_DATA_MAXNUM 244
+#define	MC_CMD_PLUGIN_REQ_IN_DATA_MAXNUM_MCDI2 1012
+
+/* MC_CMD_PLUGIN_REQ_OUT msgresponse */
+#define	MC_CMD_PLUGIN_REQ_OUT_LENMIN 0
+#define	MC_CMD_PLUGIN_REQ_OUT_LENMAX 252
+#define	MC_CMD_PLUGIN_REQ_OUT_LENMAX_MCDI2 1020
+#define	MC_CMD_PLUGIN_REQ_OUT_LEN(num) (0+1*(num))
+#define	MC_CMD_PLUGIN_REQ_OUT_DATA_NUM(len) (((len)-0)/1)
+/* The input data, as transformed and/or updated by the plugin's eBPF. Will be
+ * the same size as the input DATA parameter.
+ */
+#define	MC_CMD_PLUGIN_REQ_OUT_DATA_OFST 0
+#define	MC_CMD_PLUGIN_REQ_OUT_DATA_LEN 1
+#define	MC_CMD_PLUGIN_REQ_OUT_DATA_MINNUM 0
+#define	MC_CMD_PLUGIN_REQ_OUT_DATA_MAXNUM 252
+#define	MC_CMD_PLUGIN_REQ_OUT_DATA_MAXNUM_MCDI2 1020
 
 /* DESC_ADDR_REGION structuredef: Describes a contiguous region of DESC_ADDR
  * space that maps to a contiguous region of TRGT_ADDR space. Addresses
@@ -27220,6 +27926,38 @@
 
 
 /***********************************/
+/* MC_CMD_VIRTIO_GET_CAPABILITIES
+ * Get virtio capabilities supported by the device. Returns general virtio
+ * capabilities and limitations of the hardware / firmware implementation
+ * (hardware device as a whole), rather than that of individual configured
+ * virtio devices. At present, only the absolute maximum number of queues
+ * allowed on multi-queue devices is returned. Response is expected to be
+ * extended as necessary in the future.
+ */
+#define	MC_CMD_VIRTIO_GET_CAPABILITIES 0x1d3
+#define	MC_CMD_VIRTIO_GET_CAPABILITIES_MSGSET 0x1d3
+#undef	MC_CMD_0x1d3_PRIVILEGE_CTG
+
+#define	MC_CMD_0x1d3_PRIVILEGE_CTG SRIOV_CTG_GENERAL
+
+/* MC_CMD_VIRTIO_GET_CAPABILITIES_IN msgrequest */
+#define	MC_CMD_VIRTIO_GET_CAPABILITIES_IN_LEN 4
+/* Type of device to get capabilities for. Matches the device id as defined by
+ * the virtio spec.
+ */
+#define	MC_CMD_VIRTIO_GET_CAPABILITIES_IN_DEVICE_ID_OFST 0
+#define	MC_CMD_VIRTIO_GET_CAPABILITIES_IN_DEVICE_ID_LEN 4
+/*            Enum values, see field(s): */
+/*               MC_CMD_VIRTIO_GET_FEATURES/MC_CMD_VIRTIO_GET_FEATURES_IN/DEVICE_ID */
+
+/* MC_CMD_VIRTIO_GET_CAPABILITIES_OUT msgresponse */
+#define	MC_CMD_VIRTIO_GET_CAPABILITIES_OUT_LEN 4
+/* Maximum number of queues supported for a single device instance */
+#define	MC_CMD_VIRTIO_GET_CAPABILITIES_OUT_MAX_QUEUES_OFST 0
+#define	MC_CMD_VIRTIO_GET_CAPABILITIES_OUT_MAX_QUEUES_LEN 4
+
+
+/***********************************/
 /* MC_CMD_VIRTIO_INIT_QUEUE
  * Create a virtio virtqueue. Fails with EALREADY if the queue already exists.
  * Fails with ENOSUP if a feature is requested that isn't supported. Fails with
@@ -27489,6 +28227,24 @@
 #define	PCIE_FUNCTION_INTF_AP 0x1
 #define	PCIE_FUNCTION_INTF_LBN 32
 #define	PCIE_FUNCTION_INTF_WIDTH 32
+
+/* QUEUE_ID structuredef: Structure representing an absolute queue identifier
+ * (absolute VI number + VI relative queue number). On Keystone, a VI can
+ * contain multiple queues (at present, up to 2), each with separate controls
+ * for direction. This structure is required to uniquely identify the absolute
+ * source queue for descriptor proxy functions.
+ */
+#define	QUEUE_ID_LEN 4
+/* Absolute VI number */
+#define	QUEUE_ID_ABS_VI_OFST 0
+#define	QUEUE_ID_ABS_VI_LEN 2
+#define	QUEUE_ID_ABS_VI_LBN 0
+#define	QUEUE_ID_ABS_VI_WIDTH 16
+/* Relative queue number within the VI */
+#define	QUEUE_ID_REL_QUEUE_LBN 16
+#define	QUEUE_ID_REL_QUEUE_WIDTH 1
+#define	QUEUE_ID_RESERVED_LBN 17
+#define	QUEUE_ID_RESERVED_WIDTH 15
 
 
 /***********************************/
@@ -28088,7 +28844,11 @@
  * Enable descriptor proxying for function into target event queue. Returns VI
  * allocation info for the proxy source function, so that the caller can map
  * absolute VI IDs from descriptor proxy events back to the originating
- * function.
+ * function. This is a legacy function that only supports single queue proxy
+ * devices. It is also limited in that it can only be called after host driver
+ * attach (once VI allocation is known) and will return MC_CMD_ERR_ENOTCONN
+ * otherwise. For new code, see MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE which
+ * supports multi-queue devices and has no dependency on host driver attach.
  */
 #define	MC_CMD_DESC_PROXY_FUNC_ENABLE 0x178
 #define	MC_CMD_DESC_PROXY_FUNC_ENABLE_MSGSET 0x178
@@ -28120,8 +28880,45 @@
 
 
 /***********************************/
+/* MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE
+ * Enable descriptor proxying for a source queue on a host function into target
+ * event queue. Source queue number is a relative virtqueue number on the
+ * source function (0 to max_virtqueues-1). For a multi-queue device, the
+ * caller must enable all source queues individually. To retrieve absolute VI
+ * information for the source function (so that VI IDs from descriptor proxy
+ * events can be mapped back to source function / queue) see
+ * MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO
+ */
+#define	MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE 0x1d0
+#define	MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE_MSGSET 0x1d0
+#undef	MC_CMD_0x1d0_PRIVILEGE_CTG
+
+#define	MC_CMD_0x1d0_PRIVILEGE_CTG SRIOV_CTG_ADMIN
+
+/* MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE_IN msgrequest */
+#define	MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE_IN_LEN 12
+/* Handle to descriptor proxy function (as returned by
+ * MC_CMD_DESC_PROXY_FUNC_OPEN)
+ */
+#define	MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE_IN_HANDLE_OFST 0
+#define	MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE_IN_HANDLE_LEN 4
+/* Source relative queue number to enable proxying on */
+#define	MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE_IN_SOURCE_QUEUE_OFST 4
+#define	MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE_IN_SOURCE_QUEUE_LEN 4
+/* Descriptor proxy sink queue (caller function relative). Must be extended
+ * width event queue
+ */
+#define	MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE_IN_TARGET_EVQ_OFST 8
+#define	MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE_IN_TARGET_EVQ_LEN 4
+
+/* MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE_OUT msgresponse */
+#define	MC_CMD_DESC_PROXY_FUNC_ENABLE_QUEUE_OUT_LEN 0
+
+
+/***********************************/
 /* MC_CMD_DESC_PROXY_FUNC_DISABLE
- * Disable descriptor proxying for function
+ * Disable descriptor proxying for function. For multi-queue functions,
+ * disables all queues.
  */
 #define	MC_CMD_DESC_PROXY_FUNC_DISABLE 0x179
 #define	MC_CMD_DESC_PROXY_FUNC_DISABLE_MSGSET 0x179
@@ -28139,6 +28936,77 @@
 
 /* MC_CMD_DESC_PROXY_FUNC_DISABLE_OUT msgresponse */
 #define	MC_CMD_DESC_PROXY_FUNC_DISABLE_OUT_LEN 0
+
+
+/***********************************/
+/* MC_CMD_DESC_PROXY_FUNC_DISABLE_QUEUE
+ * Disable descriptor proxying for a specific source queue on a function.
+ */
+#define	MC_CMD_DESC_PROXY_FUNC_DISABLE_QUEUE 0x1d1
+#define	MC_CMD_DESC_PROXY_FUNC_DISABLE_QUEUE_MSGSET 0x1d1
+#undef	MC_CMD_0x1d1_PRIVILEGE_CTG
+
+#define	MC_CMD_0x1d1_PRIVILEGE_CTG SRIOV_CTG_ADMIN
+
+/* MC_CMD_DESC_PROXY_FUNC_DISABLE_QUEUE_IN msgrequest */
+#define	MC_CMD_DESC_PROXY_FUNC_DISABLE_QUEUE_IN_LEN 8
+/* Handle to descriptor proxy function (as returned by
+ * MC_CMD_DESC_PROXY_FUNC_OPEN)
+ */
+#define	MC_CMD_DESC_PROXY_FUNC_DISABLE_QUEUE_IN_HANDLE_OFST 0
+#define	MC_CMD_DESC_PROXY_FUNC_DISABLE_QUEUE_IN_HANDLE_LEN 4
+/* Source relative queue number to disable proxying on */
+#define	MC_CMD_DESC_PROXY_FUNC_DISABLE_QUEUE_IN_SOURCE_QUEUE_OFST 4
+#define	MC_CMD_DESC_PROXY_FUNC_DISABLE_QUEUE_IN_SOURCE_QUEUE_LEN 4
+
+/* MC_CMD_DESC_PROXY_FUNC_DISABLE_QUEUE_OUT msgresponse */
+#define	MC_CMD_DESC_PROXY_FUNC_DISABLE_QUEUE_OUT_LEN 0
+
+
+/***********************************/
+/* MC_CMD_DESC_PROXY_GET_VI_INFO
+ * Returns absolute VI allocation information for the descriptor proxy source
+ * function referenced by HANDLE, so that the caller can map absolute VI IDs
+ * from descriptor proxy events back to the originating function and queue. The
+ * call is only valid after the host driver for the source function has
+ * attached (after receiving a driver attach event for the descriptor proxy
+ * function) and will fail with ENOTCONN otherwise.
+ */
+#define	MC_CMD_DESC_PROXY_GET_VI_INFO 0x1d2
+#define	MC_CMD_DESC_PROXY_GET_VI_INFO_MSGSET 0x1d2
+#undef	MC_CMD_0x1d2_PRIVILEGE_CTG
+
+#define	MC_CMD_0x1d2_PRIVILEGE_CTG SRIOV_CTG_ADMIN
+
+/* MC_CMD_DESC_PROXY_GET_VI_INFO_IN msgrequest */
+#define	MC_CMD_DESC_PROXY_GET_VI_INFO_IN_LEN 4
+/* Handle to descriptor proxy function (as returned by
+ * MC_CMD_DESC_PROXY_FUNC_OPEN)
+ */
+#define	MC_CMD_DESC_PROXY_GET_VI_INFO_IN_HANDLE_OFST 0
+#define	MC_CMD_DESC_PROXY_GET_VI_INFO_IN_HANDLE_LEN 4
+
+/* MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT msgresponse */
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_LENMIN 0
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_LENMAX 252
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_LENMAX_MCDI2 1020
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_LEN(num) (0+4*(num))
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_VI_MAP_NUM(len) (((len)-0)/4)
+/* VI information (VI ID + VI relative queue number) for each of the source
+ * queues (in order from 0 to max_virtqueues-1), as array of QUEUE_ID
+ * structures.
+ */
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_VI_MAP_OFST 0
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_VI_MAP_LEN 4
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_VI_MAP_MINNUM 0
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_VI_MAP_MAXNUM 63
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_VI_MAP_MAXNUM_MCDI2 255
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_VI_MAP_ABS_VI_OFST 0
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_VI_MAP_ABS_VI_LEN 2
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_VI_MAP_REL_QUEUE_LBN 16
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_VI_MAP_REL_QUEUE_WIDTH 1
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_VI_MAP_RESERVED_LBN 17
+#define	MC_CMD_DESC_PROXY_FUNC_GET_VI_INFO_OUT_VI_MAP_RESERVED_WIDTH 15
 
 
 /***********************************/
@@ -29384,9 +30252,12 @@
 #define	MC_CMD_MAE_GET_CAPS_OUT_ENCAP_TYPE_L2GRE_OFST 4
 #define	MC_CMD_MAE_GET_CAPS_OUT_ENCAP_TYPE_L2GRE_LBN 3
 #define	MC_CMD_MAE_GET_CAPS_OUT_ENCAP_TYPE_L2GRE_WIDTH 1
-/* The total number of counters available to allocate. */
+/* Deprecated alias for AR_COUNTERS. */
 #define	MC_CMD_MAE_GET_CAPS_OUT_COUNTERS_OFST 8
 #define	MC_CMD_MAE_GET_CAPS_OUT_COUNTERS_LEN 4
+/* The total number of AR counters available to allocate. */
+#define	MC_CMD_MAE_GET_CAPS_OUT_AR_COUNTERS_OFST 8
+#define	MC_CMD_MAE_GET_CAPS_OUT_AR_COUNTERS_LEN 4
 /* The total number of counters lists available to allocate. A value of zero
  * indicates that counter lists are not supported by the NIC. (But single
  * counters may still be.)
@@ -29428,6 +30299,87 @@
  */
 #define	MC_CMD_MAE_GET_CAPS_OUT_API_VER_OFST 48
 #define	MC_CMD_MAE_GET_CAPS_OUT_API_VER_LEN 4
+
+/* MC_CMD_MAE_GET_CAPS_V2_OUT msgresponse */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_LEN 60
+/* The number of field IDs that the NIC supports. Any field with a ID greater
+ * than or equal to the value returned in this field must be treated as having
+ * a support level of MAE_FIELD_UNSUPPORTED in all requests.
+ */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_MATCH_FIELD_COUNT_OFST 0
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_MATCH_FIELD_COUNT_LEN 4
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPES_SUPPORTED_OFST 4
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPES_SUPPORTED_LEN 4
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPE_VXLAN_OFST 4
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPE_VXLAN_LBN 0
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPE_VXLAN_WIDTH 1
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPE_NVGRE_OFST 4
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPE_NVGRE_LBN 1
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPE_NVGRE_WIDTH 1
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPE_GENEVE_OFST 4
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPE_GENEVE_LBN 2
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPE_GENEVE_WIDTH 1
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPE_L2GRE_OFST 4
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPE_L2GRE_LBN 3
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_TYPE_L2GRE_WIDTH 1
+/* Deprecated alias for AR_COUNTERS. */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_COUNTERS_OFST 8
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_COUNTERS_LEN 4
+/* The total number of AR counters available to allocate. */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_AR_COUNTERS_OFST 8
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_AR_COUNTERS_LEN 4
+/* The total number of counters lists available to allocate. A value of zero
+ * indicates that counter lists are not supported by the NIC. (But single
+ * counters may still be.)
+ */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_COUNTER_LISTS_OFST 12
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_COUNTER_LISTS_LEN 4
+/* The total number of encap header structures available to allocate. */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_HEADER_LIMIT_OFST 16
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ENCAP_HEADER_LIMIT_LEN 4
+/* Reserved. Should be zero. */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_RSVD_OFST 20
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_RSVD_LEN 4
+/* The total number of action sets available to allocate. */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ACTION_SETS_OFST 24
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ACTION_SETS_LEN 4
+/* The total number of action set lists available to allocate. */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ACTION_SET_LISTS_OFST 28
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ACTION_SET_LISTS_LEN 4
+/* The total number of outer rules available to allocate. */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_OUTER_RULES_OFST 32
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_OUTER_RULES_LEN 4
+/* The total number of action rules available to allocate. */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ACTION_RULES_OFST 36
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ACTION_RULES_LEN 4
+/* The number of priorities available for ACTION_RULE filters. It is invalid to
+ * install a MATCH_ACTION filter with a priority number >= ACTION_PRIOS.
+ */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ACTION_PRIOS_OFST 40
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_ACTION_PRIOS_LEN 4
+/* The number of priorities available for OUTER_RULE filters. It is invalid to
+ * install an OUTER_RULE filter with a priority number >= OUTER_PRIOS.
+ */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_OUTER_PRIOS_OFST 44
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_OUTER_PRIOS_LEN 4
+/* MAE API major version. Currently 1. If this field is not present in the
+ * response (i.e. response shorter than 384 bits), then its value is zero. If
+ * the value does not match the client's expectations, the client should raise
+ * a fatal error.
+ */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_API_VER_OFST 48
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_API_VER_LEN 4
+/* Mask of supported counter types. Each bit position corresponds to a value of
+ * the MAE_COUNTER_TYPE enum. If this field is missing (i.e. V1 response),
+ * clients must assume that only AR counters are supported (i.e.
+ * COUNTER_TYPES_SUPPORTED==0x1). See also
+ * MC_CMD_MAE_COUNTERS_STREAM_START/COUNTER_TYPES_MASK.
+ */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_COUNTER_TYPES_SUPPORTED_OFST 52
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_COUNTER_TYPES_SUPPORTED_LEN 4
+/* The total number of conntrack counters available to allocate. */
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_CT_COUNTERS_OFST 56
+#define	MC_CMD_MAE_GET_CAPS_V2_OUT_CT_COUNTERS_LEN 4
 
 
 /***********************************/
@@ -29495,8 +30447,8 @@
 
 /***********************************/
 /* MC_CMD_MAE_COUNTER_ALLOC
- * Allocate match-action-engine counters, which can be referenced in Action
- * Rules.
+ * Allocate match-action-engine counters, which can be referenced in various
+ * tables.
  */
 #define	MC_CMD_MAE_COUNTER_ALLOC 0x143
 #define	MC_CMD_MAE_COUNTER_ALLOC_MSGSET 0x143
@@ -29504,11 +30456,24 @@
 
 #define	MC_CMD_0x143_PRIVILEGE_CTG SRIOV_CTG_MAE
 
-/* MC_CMD_MAE_COUNTER_ALLOC_IN msgrequest */
+/* MC_CMD_MAE_COUNTER_ALLOC_IN msgrequest: Using this is equivalent to using V2
+ * with COUNTER_TYPE=AR.
+ */
 #define	MC_CMD_MAE_COUNTER_ALLOC_IN_LEN 4
 /* The number of counters that the driver would like allocated */
 #define	MC_CMD_MAE_COUNTER_ALLOC_IN_REQUESTED_COUNT_OFST 0
 #define	MC_CMD_MAE_COUNTER_ALLOC_IN_REQUESTED_COUNT_LEN 4
+
+/* MC_CMD_MAE_COUNTER_ALLOC_V2_IN msgrequest */
+#define	MC_CMD_MAE_COUNTER_ALLOC_V2_IN_LEN 8
+/* The number of counters that the driver would like allocated */
+#define	MC_CMD_MAE_COUNTER_ALLOC_V2_IN_REQUESTED_COUNT_OFST 0
+#define	MC_CMD_MAE_COUNTER_ALLOC_V2_IN_REQUESTED_COUNT_LEN 4
+/* Which type of counter to allocate. */
+#define	MC_CMD_MAE_COUNTER_ALLOC_V2_IN_COUNTER_TYPE_OFST 4
+#define	MC_CMD_MAE_COUNTER_ALLOC_V2_IN_COUNTER_TYPE_LEN 4
+/*            Enum values, see field(s): */
+/*               MAE_COUNTER_TYPE */
 
 /* MC_CMD_MAE_COUNTER_ALLOC_OUT msgresponse */
 #define	MC_CMD_MAE_COUNTER_ALLOC_OUT_LENMIN 12
@@ -29518,7 +30483,8 @@
 #define	MC_CMD_MAE_COUNTER_ALLOC_OUT_COUNTER_ID_NUM(len) (((len)-8)/4)
 /* Generation count. Packets with generation count >= GENERATION_COUNT will
  * contain valid counter values for counter IDs allocated in this call, unless
- * the counter values are zero and zero squash is enabled.
+ * the counter values are zero and zero squash is enabled. Note that there is
+ * an independent GENERATION_COUNT object per counter type.
  */
 #define	MC_CMD_MAE_COUNTER_ALLOC_OUT_GENERATION_COUNT_OFST 0
 #define	MC_CMD_MAE_COUNTER_ALLOC_OUT_GENERATION_COUNT_LEN 4
@@ -29548,7 +30514,9 @@
 
 #define	MC_CMD_0x144_PRIVILEGE_CTG SRIOV_CTG_MAE
 
-/* MC_CMD_MAE_COUNTER_FREE_IN msgrequest */
+/* MC_CMD_MAE_COUNTER_FREE_IN msgrequest: Using this is equivalent to using V2
+ * with COUNTER_TYPE=AR.
+ */
 #define	MC_CMD_MAE_COUNTER_FREE_IN_LENMIN 8
 #define	MC_CMD_MAE_COUNTER_FREE_IN_LENMAX 132
 #define	MC_CMD_MAE_COUNTER_FREE_IN_LENMAX_MCDI2 132
@@ -29564,6 +30532,23 @@
 #define	MC_CMD_MAE_COUNTER_FREE_IN_FREE_COUNTER_ID_MAXNUM 32
 #define	MC_CMD_MAE_COUNTER_FREE_IN_FREE_COUNTER_ID_MAXNUM_MCDI2 32
 
+/* MC_CMD_MAE_COUNTER_FREE_V2_IN msgrequest */
+#define	MC_CMD_MAE_COUNTER_FREE_V2_IN_LEN 136
+/* The number of counter IDs to be freed. */
+#define	MC_CMD_MAE_COUNTER_FREE_V2_IN_COUNTER_ID_COUNT_OFST 0
+#define	MC_CMD_MAE_COUNTER_FREE_V2_IN_COUNTER_ID_COUNT_LEN 4
+/* An array containing the counter IDs to be freed. */
+#define	MC_CMD_MAE_COUNTER_FREE_V2_IN_FREE_COUNTER_ID_OFST 4
+#define	MC_CMD_MAE_COUNTER_FREE_V2_IN_FREE_COUNTER_ID_LEN 4
+#define	MC_CMD_MAE_COUNTER_FREE_V2_IN_FREE_COUNTER_ID_MINNUM 1
+#define	MC_CMD_MAE_COUNTER_FREE_V2_IN_FREE_COUNTER_ID_MAXNUM 32
+#define	MC_CMD_MAE_COUNTER_FREE_V2_IN_FREE_COUNTER_ID_MAXNUM_MCDI2 32
+/* Which type of counter to free. */
+#define	MC_CMD_MAE_COUNTER_FREE_V2_IN_COUNTER_TYPE_OFST 132
+#define	MC_CMD_MAE_COUNTER_FREE_V2_IN_COUNTER_TYPE_LEN 4
+/*            Enum values, see field(s): */
+/*               MAE_COUNTER_TYPE */
+
 /* MC_CMD_MAE_COUNTER_FREE_OUT msgresponse */
 #define	MC_CMD_MAE_COUNTER_FREE_OUT_LENMIN 12
 #define	MC_CMD_MAE_COUNTER_FREE_OUT_LENMAX 136
@@ -29572,11 +30557,13 @@
 #define	MC_CMD_MAE_COUNTER_FREE_OUT_FREED_COUNTER_ID_NUM(len) (((len)-8)/4)
 /* Generation count. A packet with generation count == GENERATION_COUNT will
  * contain the final values for these counter IDs, unless the counter values
- * are zero and zero squash is enabled. Receiving a packet with generation
- * count > GENERATION_COUNT guarantees that no more values will be written for
- * these counters. If values for these counter IDs are present, the counter ID
- * has been reallocated. A counter ID will not be reallocated within a single
- * read cycle as this would merge increments from the 'old' and 'new' counters.
+ * are zero and zero squash is enabled. Note that the GENERATION_COUNT value is
+ * specific to the COUNTER_TYPE (IDENTIFIER field in packet header). Receiving
+ * a packet with generation count > GENERATION_COUNT guarantees that no more
+ * values will be written for these counters. If values for these counter IDs
+ * are present, the counter ID has been reallocated. A counter ID will not be
+ * reallocated within a single read cycle as this would merge increments from
+ * the 'old' and 'new' counters.
  */
 #define	MC_CMD_MAE_COUNTER_FREE_OUT_GENERATION_COUNT_OFST 0
 #define	MC_CMD_MAE_COUNTER_FREE_OUT_GENERATION_COUNT_LEN 4
@@ -29616,7 +30603,9 @@
 
 #define	MC_CMD_0x151_PRIVILEGE_CTG SRIOV_CTG_MAE
 
-/* MC_CMD_MAE_COUNTERS_STREAM_START_IN msgrequest */
+/* MC_CMD_MAE_COUNTERS_STREAM_START_IN msgrequest: Using V1 is equivalent to V2
+ * with COUNTER_TYPES_MASK=0x1 (i.e. AR counters only).
+ */
 #define	MC_CMD_MAE_COUNTERS_STREAM_START_IN_LEN 8
 /* The RxQ to write packets to. */
 #define	MC_CMD_MAE_COUNTERS_STREAM_START_IN_QID_OFST 0
@@ -29633,6 +30622,35 @@
 #define	MC_CMD_MAE_COUNTERS_STREAM_START_IN_COUNTER_STALL_EN_OFST 4
 #define	MC_CMD_MAE_COUNTERS_STREAM_START_IN_COUNTER_STALL_EN_LBN 1
 #define	MC_CMD_MAE_COUNTERS_STREAM_START_IN_COUNTER_STALL_EN_WIDTH 1
+
+/* MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN msgrequest */
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_LEN 12
+/* The RxQ to write packets to. */
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_QID_OFST 0
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_QID_LEN 2
+/* Maximum size in bytes of packets that may be written to the RxQ. */
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_PACKET_SIZE_OFST 2
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_PACKET_SIZE_LEN 2
+/* Optional flags. */
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_FLAGS_OFST 4
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_FLAGS_LEN 4
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_ZERO_SQUASH_DISABLE_OFST 4
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_ZERO_SQUASH_DISABLE_LBN 0
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_ZERO_SQUASH_DISABLE_WIDTH 1
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_COUNTER_STALL_EN_OFST 4
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_COUNTER_STALL_EN_LBN 1
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_COUNTER_STALL_EN_WIDTH 1
+/* Mask of which counter types should be reported. Each bit position
+ * corresponds to a value of the MAE_COUNTER_TYPE enum. For example a value of
+ * 0x3 requests both AR and CT counters. A value of zero is invalid. Counter
+ * types not selected by the mask value won't be included in the stream. If a
+ * client wishes to change which counter types are reported, it must first call
+ * MAE_COUNTERS_STREAM_STOP, then restart it with the new mask value.
+ * Requesting a counter type which isn't supported by firmware (reported in
+ * MC_CMD_MAE_GET_CAPS/COUNTER_TYPES_SUPPORTED) will result in ENOTSUP.
+ */
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_COUNTER_TYPES_MASK_OFST 8
+#define	MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_COUNTER_TYPES_MASK_LEN 4
 
 /* MC_CMD_MAE_COUNTERS_STREAM_START_OUT msgresponse */
 #define	MC_CMD_MAE_COUNTERS_STREAM_START_OUT_LEN 4
@@ -29661,13 +30679,31 @@
 
 /* MC_CMD_MAE_COUNTERS_STREAM_STOP_OUT msgresponse */
 #define	MC_CMD_MAE_COUNTERS_STREAM_STOP_OUT_LEN 4
-/* Generation count. The final set of counter values will be written out in
- * packets with count == GENERATION_COUNT. An empty packet with count >
- * GENERATION_COUNT indicates that no more counter values will be written to
- * this stream.
+/* Generation count for AR counters. The final set of AR counter values will be
+ * written out in packets with count == GENERATION_COUNT. An empty packet with
+ * count > GENERATION_COUNT indicates that no more counter values of this type
+ * will be written to this stream.
  */
 #define	MC_CMD_MAE_COUNTERS_STREAM_STOP_OUT_GENERATION_COUNT_OFST 0
 #define	MC_CMD_MAE_COUNTERS_STREAM_STOP_OUT_GENERATION_COUNT_LEN 4
+
+/* MC_CMD_MAE_COUNTERS_STREAM_STOP_V2_OUT msgresponse */
+#define	MC_CMD_MAE_COUNTERS_STREAM_STOP_V2_OUT_LENMIN 4
+#define	MC_CMD_MAE_COUNTERS_STREAM_STOP_V2_OUT_LENMAX 32
+#define	MC_CMD_MAE_COUNTERS_STREAM_STOP_V2_OUT_LENMAX_MCDI2 32
+#define	MC_CMD_MAE_COUNTERS_STREAM_STOP_V2_OUT_LEN(num) (0+4*(num))
+#define	MC_CMD_MAE_COUNTERS_STREAM_STOP_V2_OUT_GENERATION_COUNT_NUM(len) (((len)-0)/4)
+/* Array of generation counts, indexed by MAE_COUNTER_TYPE. Note that since
+ * MAE_COUNTER_TYPE_AR==0, this response is backwards-compatible with V1. The
+ * final set of counter values will be written out in packets with count ==
+ * GENERATION_COUNT. An empty packet with count > GENERATION_COUNT indicates
+ * that no more counter values of this type will be written to this stream.
+ */
+#define	MC_CMD_MAE_COUNTERS_STREAM_STOP_V2_OUT_GENERATION_COUNT_OFST 0
+#define	MC_CMD_MAE_COUNTERS_STREAM_STOP_V2_OUT_GENERATION_COUNT_LEN 4
+#define	MC_CMD_MAE_COUNTERS_STREAM_STOP_V2_OUT_GENERATION_COUNT_MINNUM 1
+#define	MC_CMD_MAE_COUNTERS_STREAM_STOP_V2_OUT_GENERATION_COUNT_MAXNUM 8
+#define	MC_CMD_MAE_COUNTERS_STREAM_STOP_V2_OUT_GENERATION_COUNT_MAXNUM_MCDI2 8
 
 
 /***********************************/
@@ -29941,9 +30977,10 @@
 #define	MC_CMD_MAE_ACTION_SET_ALLOC_IN_COUNTER_LIST_ID_LEN 4
 /* If a driver only wished to update one counter within this action set, then
  * it can supply a COUNTER_ID instead of allocating a single-element counter
- * list. This field should be set to COUNTER_ID_NULL if this behaviour is not
- * required. It is not valid to supply a non-NULL value for both
- * COUNTER_LIST_ID and COUNTER_ID.
+ * list. The ID must have been allocated with COUNTER_TYPE=AR. This field
+ * should be set to COUNTER_ID_NULL if this behaviour is not required. It is
+ * not valid to supply a non-NULL value for both COUNTER_LIST_ID and
+ * COUNTER_ID.
  */
 #define	MC_CMD_MAE_ACTION_SET_ALLOC_IN_COUNTER_ID_OFST 28
 #define	MC_CMD_MAE_ACTION_SET_ALLOC_IN_COUNTER_ID_LEN 4
@@ -30021,9 +31058,10 @@
 #define	MC_CMD_MAE_ACTION_SET_ALLOC_V2_IN_COUNTER_LIST_ID_LEN 4
 /* If a driver only wished to update one counter within this action set, then
  * it can supply a COUNTER_ID instead of allocating a single-element counter
- * list. This field should be set to COUNTER_ID_NULL if this behaviour is not
- * required. It is not valid to supply a non-NULL value for both
- * COUNTER_LIST_ID and COUNTER_ID.
+ * list. The ID must have been allocated with COUNTER_TYPE=AR. This field
+ * should be set to COUNTER_ID_NULL if this behaviour is not required. It is
+ * not valid to supply a non-NULL value for both COUNTER_LIST_ID and
+ * COUNTER_ID.
  */
 #define	MC_CMD_MAE_ACTION_SET_ALLOC_V2_IN_COUNTER_ID_OFST 28
 #define	MC_CMD_MAE_ACTION_SET_ALLOC_V2_IN_COUNTER_ID_LEN 4
@@ -30352,7 +31390,8 @@
 #define	MAE_ACTION_RULE_RESPONSE_LOOKUP_CONTROL_LBN 64
 #define	MAE_ACTION_RULE_RESPONSE_LOOKUP_CONTROL_WIDTH 32
 /* Counter ID to increment if DO_CT or DO_RECIRC is set. Must be set to
- * COUNTER_ID_NULL otherwise.
+ * COUNTER_ID_NULL otherwise. Counter ID must have been allocated with
+ * COUNTER_TYPE=AR.
  */
 #define	MAE_ACTION_RULE_RESPONSE_COUNTER_ID_OFST 12
 #define	MAE_ACTION_RULE_RESPONSE_COUNTER_ID_LEN 4
@@ -30709,6 +31748,108 @@
 #define	MAE_MPORT_DESC_VNIC_PLUGIN_TBD_LEN 4
 #define	MAE_MPORT_DESC_VNIC_PLUGIN_TBD_LBN 352
 #define	MAE_MPORT_DESC_VNIC_PLUGIN_TBD_WIDTH 32
+
+/* MAE_MPORT_DESC_V2 structuredef */
+#define	MAE_MPORT_DESC_V2_LEN 56
+#define	MAE_MPORT_DESC_V2_MPORT_ID_OFST 0
+#define	MAE_MPORT_DESC_V2_MPORT_ID_LEN 4
+#define	MAE_MPORT_DESC_V2_MPORT_ID_LBN 0
+#define	MAE_MPORT_DESC_V2_MPORT_ID_WIDTH 32
+/* Reserved for future purposes, contains information independent of caller */
+#define	MAE_MPORT_DESC_V2_FLAGS_OFST 4
+#define	MAE_MPORT_DESC_V2_FLAGS_LEN 4
+#define	MAE_MPORT_DESC_V2_FLAGS_LBN 32
+#define	MAE_MPORT_DESC_V2_FLAGS_WIDTH 32
+#define	MAE_MPORT_DESC_V2_CALLER_FLAGS_OFST 8
+#define	MAE_MPORT_DESC_V2_CALLER_FLAGS_LEN 4
+#define	MAE_MPORT_DESC_V2_CAN_RECEIVE_ON_OFST 8
+#define	MAE_MPORT_DESC_V2_CAN_RECEIVE_ON_LBN 0
+#define	MAE_MPORT_DESC_V2_CAN_RECEIVE_ON_WIDTH 1
+#define	MAE_MPORT_DESC_V2_CAN_DELIVER_TO_OFST 8
+#define	MAE_MPORT_DESC_V2_CAN_DELIVER_TO_LBN 1
+#define	MAE_MPORT_DESC_V2_CAN_DELIVER_TO_WIDTH 1
+#define	MAE_MPORT_DESC_V2_CAN_DELETE_OFST 8
+#define	MAE_MPORT_DESC_V2_CAN_DELETE_LBN 2
+#define	MAE_MPORT_DESC_V2_CAN_DELETE_WIDTH 1
+#define	MAE_MPORT_DESC_V2_IS_ZOMBIE_OFST 8
+#define	MAE_MPORT_DESC_V2_IS_ZOMBIE_LBN 3
+#define	MAE_MPORT_DESC_V2_IS_ZOMBIE_WIDTH 1
+#define	MAE_MPORT_DESC_V2_CALLER_FLAGS_LBN 64
+#define	MAE_MPORT_DESC_V2_CALLER_FLAGS_WIDTH 32
+/* Not the ideal name; it's really the type of thing connected to the m-port */
+#define	MAE_MPORT_DESC_V2_MPORT_TYPE_OFST 12
+#define	MAE_MPORT_DESC_V2_MPORT_TYPE_LEN 4
+/* enum: Connected to a MAC... */
+#define	MAE_MPORT_DESC_V2_MPORT_TYPE_NET_PORT 0x0
+/* enum: Adds metadata and delivers to another m-port */
+#define	MAE_MPORT_DESC_V2_MPORT_TYPE_ALIAS 0x1
+/* enum: Connected to a VNIC. */
+#define	MAE_MPORT_DESC_V2_MPORT_TYPE_VNIC 0x2
+#define	MAE_MPORT_DESC_V2_MPORT_TYPE_LBN 96
+#define	MAE_MPORT_DESC_V2_MPORT_TYPE_WIDTH 32
+/* 128-bit value available to drivers for m-port identification. */
+#define	MAE_MPORT_DESC_V2_UUID_OFST 16
+#define	MAE_MPORT_DESC_V2_UUID_LEN 16
+#define	MAE_MPORT_DESC_V2_UUID_LBN 128
+#define	MAE_MPORT_DESC_V2_UUID_WIDTH 128
+/* Big wadge of space reserved for other common properties */
+#define	MAE_MPORT_DESC_V2_RESERVED_OFST 32
+#define	MAE_MPORT_DESC_V2_RESERVED_LEN 8
+#define	MAE_MPORT_DESC_V2_RESERVED_LO_OFST 32
+#define	MAE_MPORT_DESC_V2_RESERVED_LO_LEN 4
+#define	MAE_MPORT_DESC_V2_RESERVED_LO_LBN 256
+#define	MAE_MPORT_DESC_V2_RESERVED_LO_WIDTH 32
+#define	MAE_MPORT_DESC_V2_RESERVED_HI_OFST 36
+#define	MAE_MPORT_DESC_V2_RESERVED_HI_LEN 4
+#define	MAE_MPORT_DESC_V2_RESERVED_HI_LBN 288
+#define	MAE_MPORT_DESC_V2_RESERVED_HI_WIDTH 32
+#define	MAE_MPORT_DESC_V2_RESERVED_LBN 256
+#define	MAE_MPORT_DESC_V2_RESERVED_WIDTH 64
+/* Logical port index. Only valid when type NET Port. */
+#define	MAE_MPORT_DESC_V2_NET_PORT_IDX_OFST 40
+#define	MAE_MPORT_DESC_V2_NET_PORT_IDX_LEN 4
+#define	MAE_MPORT_DESC_V2_NET_PORT_IDX_LBN 320
+#define	MAE_MPORT_DESC_V2_NET_PORT_IDX_WIDTH 32
+/* The m-port delivered to */
+#define	MAE_MPORT_DESC_V2_ALIAS_DELIVER_MPORT_ID_OFST 40
+#define	MAE_MPORT_DESC_V2_ALIAS_DELIVER_MPORT_ID_LEN 4
+#define	MAE_MPORT_DESC_V2_ALIAS_DELIVER_MPORT_ID_LBN 320
+#define	MAE_MPORT_DESC_V2_ALIAS_DELIVER_MPORT_ID_WIDTH 32
+/* The type of thing that owns the VNIC */
+#define	MAE_MPORT_DESC_V2_VNIC_CLIENT_TYPE_OFST 40
+#define	MAE_MPORT_DESC_V2_VNIC_CLIENT_TYPE_LEN 4
+#define	MAE_MPORT_DESC_V2_VNIC_CLIENT_TYPE_FUNCTION 0x1 /* enum */
+#define	MAE_MPORT_DESC_V2_VNIC_CLIENT_TYPE_PLUGIN 0x2 /* enum */
+#define	MAE_MPORT_DESC_V2_VNIC_CLIENT_TYPE_LBN 320
+#define	MAE_MPORT_DESC_V2_VNIC_CLIENT_TYPE_WIDTH 32
+/* The PCIe interface on which the function lives. CJK: We need an enumeration
+ * of interfaces that we extend as new interface (types) appear. This belongs
+ * elsewhere and should be referenced from here
+ */
+#define	MAE_MPORT_DESC_V2_VNIC_FUNCTION_INTERFACE_OFST 44
+#define	MAE_MPORT_DESC_V2_VNIC_FUNCTION_INTERFACE_LEN 4
+#define	MAE_MPORT_DESC_V2_VNIC_FUNCTION_INTERFACE_LBN 352
+#define	MAE_MPORT_DESC_V2_VNIC_FUNCTION_INTERFACE_WIDTH 32
+#define	MAE_MPORT_DESC_V2_VNIC_FUNCTION_PF_IDX_OFST 48
+#define	MAE_MPORT_DESC_V2_VNIC_FUNCTION_PF_IDX_LEN 2
+#define	MAE_MPORT_DESC_V2_VNIC_FUNCTION_PF_IDX_LBN 384
+#define	MAE_MPORT_DESC_V2_VNIC_FUNCTION_PF_IDX_WIDTH 16
+#define	MAE_MPORT_DESC_V2_VNIC_FUNCTION_VF_IDX_OFST 50
+#define	MAE_MPORT_DESC_V2_VNIC_FUNCTION_VF_IDX_LEN 2
+/* enum: Indicates that the function is a PF */
+#define	MAE_MPORT_DESC_V2_VF_IDX_NULL 0xffff
+#define	MAE_MPORT_DESC_V2_VNIC_FUNCTION_VF_IDX_LBN 400
+#define	MAE_MPORT_DESC_V2_VNIC_FUNCTION_VF_IDX_WIDTH 16
+/* Reserved. Should be ignored for now. */
+#define	MAE_MPORT_DESC_V2_VNIC_PLUGIN_TBD_OFST 44
+#define	MAE_MPORT_DESC_V2_VNIC_PLUGIN_TBD_LEN 4
+#define	MAE_MPORT_DESC_V2_VNIC_PLUGIN_TBD_LBN 352
+#define	MAE_MPORT_DESC_V2_VNIC_PLUGIN_TBD_WIDTH 32
+/* A client handle for the VNIC's owner. Only valid for type VNIC. */
+#define	MAE_MPORT_DESC_V2_VNIC_CLIENT_HANDLE_OFST 52
+#define	MAE_MPORT_DESC_V2_VNIC_CLIENT_HANDLE_LEN 4
+#define	MAE_MPORT_DESC_V2_VNIC_CLIENT_HANDLE_LBN 416
+#define	MAE_MPORT_DESC_V2_VNIC_CLIENT_HANDLE_WIDTH 32
 
 
 /***********************************/
