@@ -25,6 +25,12 @@
  */
 #define SFC_REPR_PROXY_MBOX_POLL_TIMEOUT_MS	1000
 
+/**
+ * Amount of time to wait for the representor proxy routine (which is
+ * running on a service core) to terminate after service core is stopped.
+ */
+#define SFC_REPR_PROXY_ROUTINE_TERMINATE_TIMEOUT_MS	10000
+
 static struct sfc_repr_proxy *
 sfc_repr_proxy_by_adapter(struct sfc_adapter *sa)
 {
@@ -148,14 +154,69 @@ sfc_repr_proxy_mbox_handle(struct sfc_repr_proxy *rp)
 	__atomic_store_n(&mbox->ack, true, __ATOMIC_RELEASE);
 }
 
+static void
+sfc_repr_proxy_handle_tx(struct sfc_repr_proxy_dp_txq *rp_txq,
+			 struct sfc_repr_proxy_txq *repr_txq)
+{
+	/*
+	 * With multiple representor proxy queues configured it is
+	 * possible that not all of the corresponding representor
+	 * queues were created. Skip the queues that do not exist.
+	 */
+	if (repr_txq->ring == NULL)
+		return;
+
+	if (rp_txq->available < RTE_DIM(rp_txq->tx_pkts)) {
+		rp_txq->available +=
+			rte_ring_sc_dequeue_burst(repr_txq->ring,
+				(void **)(&rp_txq->tx_pkts[rp_txq->available]),
+				RTE_DIM(rp_txq->tx_pkts) - rp_txq->available,
+				NULL);
+
+		if (rp_txq->available == rp_txq->transmitted)
+			return;
+	}
+
+	rp_txq->transmitted += rp_txq->pkt_burst(rp_txq->dp,
+				&rp_txq->tx_pkts[rp_txq->transmitted],
+				rp_txq->available - rp_txq->transmitted);
+
+	if (rp_txq->available == rp_txq->transmitted) {
+		rp_txq->available = 0;
+		rp_txq->transmitted = 0;
+	}
+}
+
 static int32_t
 sfc_repr_proxy_routine(void *arg)
 {
+	struct sfc_repr_proxy_port *port;
 	struct sfc_repr_proxy *rp = arg;
+	unsigned int i;
 
 	sfc_repr_proxy_mbox_handle(rp);
 
+	TAILQ_FOREACH(port, &rp->ports, entries) {
+		if (!port->started)
+			continue;
+
+		for (i = 0; i < rp->nb_txq; i++)
+			sfc_repr_proxy_handle_tx(&rp->dp_txq[i], &port->txq[i]);
+	}
+
 	return 0;
+}
+
+static struct sfc_txq_info *
+sfc_repr_proxy_txq_info_get(struct sfc_adapter *sa, unsigned int repr_queue_id)
+{
+	struct sfc_adapter_shared *sas = sfc_sa2shared(sa);
+	struct sfc_repr_proxy_dp_txq *dp_txq;
+
+	SFC_ASSERT(repr_queue_id < sfc_repr_nb_txq(sas));
+	dp_txq = &sa->repr_proxy.dp_txq[repr_queue_id];
+
+	return &sas->txq_info[dp_txq->sw_index];
 }
 
 static int
@@ -289,11 +350,20 @@ sfc_repr_proxy_txq_fini(struct sfc_adapter *sa)
 static int
 sfc_repr_proxy_txq_start(struct sfc_adapter *sa)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct sfc_repr_proxy *rp = &sa->repr_proxy;
+	unsigned int i;
 
 	sfc_log_init(sa, "entry");
 
-	RTE_SET_USED(rp);
+	for (i = 0; i < sfc_repr_nb_txq(sas); i++) {
+		struct sfc_repr_proxy_dp_txq *txq = &rp->dp_txq[i];
+
+		txq->dp = sfc_repr_proxy_txq_info_get(sa, i)->dp;
+		txq->pkt_burst = sa->eth_dev->tx_pkt_burst;
+		txq->available = 0;
+		txq->transmitted = 0;
+	}
 
 	sfc_log_init(sa, "done");
 
@@ -922,6 +992,8 @@ sfc_repr_proxy_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_txq_start;
 
+	rp->nb_txq = sfc_repr_nb_txq(sas);
+
 	/* Service core may be in "stopped" state, start it */
 	rc = rte_service_lcore_start(rp->service_core_id);
 	if (rc != 0 && rc != -EALREADY) {
@@ -1007,6 +1079,9 @@ sfc_repr_proxy_stop(struct sfc_adapter *sa)
 	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct sfc_repr_proxy *rp = &sa->repr_proxy;
 	struct sfc_repr_proxy_port *port;
+	const unsigned int wait_ms_total =
+		SFC_REPR_PROXY_ROUTINE_TERMINATE_TIMEOUT_MS;
+	unsigned int i;
 	int rc;
 
 	sfc_log_init(sa, "entry");
@@ -1049,6 +1124,17 @@ sfc_repr_proxy_stop(struct sfc_adapter *sa)
 	}
 
 	/* Service lcore may be shared and we never stop it */
+
+	/*
+	 * Wait for the representor proxy routine to finish the last iteration.
+	 * Give up on timeout.
+	 */
+	for (i = 0; i < wait_ms_total; i++) {
+		if (rte_service_may_be_active(rp->service_id) == 0)
+			break;
+
+		rte_delay_ms(1);
+	}
 
 	sfc_repr_proxy_rxq_stop(sa);
 	sfc_repr_proxy_txq_stop(sa);
