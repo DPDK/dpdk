@@ -31,6 +31,8 @@
 #include "sfc_mae.h"
 #include "sfc_dp.h"
 #include "sfc_sw_stats.h"
+#include "sfc_repr_proxy.h"
+#include "sfc_service.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -282,6 +284,7 @@ struct sfc_adapter {
 	struct sfc_sw_stats		sw_stats;
 	struct sfc_filter		filter;
 	struct sfc_mae			mae;
+	struct sfc_repr_proxy		repr_proxy;
 
 	struct sfc_flow_list		flow_list;
 
@@ -409,6 +412,8 @@ sfc_nb_counter_rxq(const struct sfc_adapter_shared *sas)
 {
 	return sas->counters_rxq_allocated ? 1 : 0;
 }
+
+bool sfc_repr_supported(const struct sfc_adapter *sa);
 
 /** Get the number of milliseconds since boot from the default timer */
 static inline uint64_t
