@@ -7010,6 +7010,7 @@ i40e_remove_macvlan_filters(struct i40e_vsi *vsi,
 	int ret = I40E_SUCCESS;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	struct i40e_aqc_remove_macvlan_element_data *req_list;
+	enum i40e_admin_queue_err aq_status;
 
 	if (filter == NULL  || total == 0)
 		return I40E_ERR_PARAM;
@@ -7057,11 +7058,17 @@ i40e_remove_macvlan_filters(struct i40e_vsi *vsi,
 			req_list[i].flags = rte_cpu_to_le_16(flags);
 		}
 
-		ret = i40e_aq_remove_macvlan(hw, vsi->seid, req_list,
-						actual_num, NULL);
+		ret = i40e_aq_remove_macvlan_v2(hw, vsi->seid, req_list,
+						actual_num, NULL, &aq_status);
+
 		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Failed to remove macvlan filter");
-			goto DONE;
+			/* Do not report as an error when firmware returns ENOENT */
+			if (aq_status == I40E_AQ_RC_ENOENT) {
+				ret = I40E_SUCCESS;
+			} else {
+				PMD_DRV_LOG(ERR, "Failed to remove macvlan filter");
+				goto DONE;
+			}
 		}
 		num += actual_num;
 	} while (num < total);
