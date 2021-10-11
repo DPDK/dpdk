@@ -2243,6 +2243,46 @@ sfc_register_dp(void)
 }
 
 static int
+sfc_parse_switch_mode(struct sfc_adapter *sa)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	const char *switch_mode = NULL;
+	int rc;
+
+	sfc_log_init(sa, "entry");
+
+	rc = sfc_kvargs_process(sa, SFC_KVARG_SWITCH_MODE,
+				sfc_kvarg_string_handler, &switch_mode);
+	if (rc != 0)
+		goto fail_kvargs;
+
+	if (switch_mode == NULL) {
+		sa->switchdev = encp->enc_mae_supported &&
+				!encp->enc_datapath_cap_evb;
+	} else if (strcasecmp(switch_mode, SFC_KVARG_SWITCH_MODE_LEGACY) == 0) {
+		sa->switchdev = false;
+	} else if (strcasecmp(switch_mode,
+			      SFC_KVARG_SWITCH_MODE_SWITCHDEV) == 0) {
+		sa->switchdev = true;
+	} else {
+		sfc_err(sa, "invalid switch mode device argument '%s'",
+			switch_mode);
+		rc = EINVAL;
+		goto fail_mode;
+	}
+
+	sfc_log_init(sa, "done");
+
+	return 0;
+
+fail_mode:
+fail_kvargs:
+	sfc_log_init(sa, "failed: %s", rte_strerror(rc));
+
+	return rc;
+}
+
+static int
 sfc_eth_dev_init(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
@@ -2329,6 +2369,14 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	if (rc != 0)
 		goto fail_probe;
 
+	/*
+	 * Selecting a default switch mode requires the NIC to be probed and
+	 * to have its capabilities filled in.
+	 */
+	rc = sfc_parse_switch_mode(sa);
+	if (rc != 0)
+		goto fail_switch_mode;
+
 	sfc_log_init(sa, "set device ops");
 	rc = sfc_eth_dev_set_ops(dev);
 	if (rc != 0)
@@ -2338,6 +2386,13 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	rc = sfc_attach(sa);
 	if (rc != 0)
 		goto fail_attach;
+
+	if (sa->switchdev && sa->mae.status != SFC_MAE_STATUS_SUPPORTED) {
+		sfc_err(sa,
+			"failed to enable switchdev mode without MAE support");
+		rc = ENOTSUP;
+		goto fail_switchdev_no_mae;
+	}
 
 	encp = efx_nic_cfg_get(sa->nic);
 
@@ -2353,10 +2408,14 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	sfc_log_init(sa, "done");
 	return 0;
 
+fail_switchdev_no_mae:
+	sfc_detach(sa);
+
 fail_attach:
 	sfc_eth_dev_clear_ops(dev);
 
 fail_set_ops:
+fail_switch_mode:
 	sfc_unprobe(sa);
 
 fail_probe:
@@ -2424,6 +2483,7 @@ RTE_PMD_REGISTER_PCI(net_sfc_efx, sfc_efx_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_sfc_efx, pci_id_sfc_efx_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_sfc_efx, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_sfc_efx,
+	SFC_KVARG_SWITCH_MODE "=" SFC_KVARG_VALUES_SWITCH_MODE " "
 	SFC_KVARG_RX_DATAPATH "=" SFC_KVARG_VALUES_RX_DATAPATH " "
 	SFC_KVARG_TX_DATAPATH "=" SFC_KVARG_VALUES_TX_DATAPATH " "
 	SFC_KVARG_PERF_PROFILE "=" SFC_KVARG_VALUES_PERF_PROFILE " "

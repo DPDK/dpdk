@@ -335,6 +335,8 @@ struct sfc_adapter {
 	boolean_t			tso_encap;
 
 	uint32_t			rxd_wait_timeout_ns;
+
+	bool				switchdev;
 };
 
 static inline struct sfc_adapter_shared *

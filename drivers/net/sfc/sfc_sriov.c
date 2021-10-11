@@ -53,7 +53,7 @@ sfc_sriov_attach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "entry");
 
 	sriov->num_vfs = pci_dev->max_vfs;
-	if (sriov->num_vfs == 0)
+	if (sa->switchdev || sriov->num_vfs == 0)
 		goto done;
 
 	vport_config = calloc(sriov->num_vfs + 1, sizeof(*vport_config));
@@ -110,6 +110,11 @@ sfc_sriov_vswitch_create(struct sfc_adapter *sa)
 
 	sfc_log_init(sa, "entry");
 
+	if (sa->switchdev) {
+		sfc_log_init(sa, "don't create vswitch in switchdev mode");
+		goto done;
+	}
+
 	if (sriov->num_vfs == 0) {
 		sfc_log_init(sa, "no VFs enabled");
 		goto done;
@@ -152,7 +157,7 @@ sfc_sriov_vswitch_destroy(struct sfc_adapter *sa)
 
 	sfc_log_init(sa, "entry");
 
-	if (sriov->num_vfs == 0)
+	if (sa->switchdev || sriov->num_vfs == 0)
 		goto done;
 
 	rc = efx_evb_vswitch_destroy(sa->nic, sriov->vswitch);

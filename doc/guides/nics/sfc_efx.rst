@@ -371,6 +371,19 @@ boolean parameters value.
   If this parameter is not specified then ef100 device will operate as
   network device.
 
+- ``switch_mode`` [legacy|switchdev] (see below for default)
+
+  In legacy mode, NIC firmware provides Ethernet virtual bridging (EVB) API
+  to configure switching inside NIC to deliver traffic to physical (PF) and
+  virtual (VF) PCI functions. PF driver is responsible to build the
+  infrastructure for VFs, and traffic goes to/from VF by default in accordance
+  with MAC address assigned, permissions and filters installed by VF drivers.
+  In switchdev mode VF traffic goes via port representor (if any) on PF, and
+  software virtual switch (for example, Open vSwitch) makes the decision.
+  Software virtual switch may install MAE rules to pass established traffic
+  flows via hardware and offload software datapath as the result.
+  Default is legacy.
+
 - ``rx_datapath`` [auto|efx|ef10|ef10_essb] (default **auto**)
 
   Choose receive datapath implementation.

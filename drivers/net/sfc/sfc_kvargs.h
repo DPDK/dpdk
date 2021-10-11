@@ -18,6 +18,14 @@ extern "C" {
 
 #define SFC_KVARG_VALUES_BOOL		"[1|y|yes|on|0|n|no|off]"
 
+#define SFC_KVARG_SWITCH_MODE_LEGACY	"legacy"
+#define SFC_KVARG_SWITCH_MODE_SWITCHDEV	"switchdev"
+
+#define SFC_KVARG_SWITCH_MODE		"switch_mode"
+#define SFC_KVARG_VALUES_SWITCH_MODE \
+	"[" SFC_KVARG_SWITCH_MODE_LEGACY "|" \
+	    SFC_KVARG_SWITCH_MODE_SWITCHDEV "]"
+
 #define SFC_KVARG_PERF_PROFILE		"perf_profile"
 
 #define SFC_KVARG_PERF_PROFILE_AUTO		"auto"
