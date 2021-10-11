@@ -171,6 +171,7 @@ efx_mcdi_filter_op_add(
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_FILTER_OP_V3_IN_LEN,
 		MC_CMD_FILTER_OP_EXT_OUT_LEN);
 	efx_filter_match_flags_t match_flags;
+	uint32_t port_id;
 	efx_rc_t rc;
 
 	req.emr_cmd = MC_CMD_FILTER_OP;
@@ -180,10 +181,11 @@ efx_mcdi_filter_op_add(
 	req.emr_out_length = MC_CMD_FILTER_OP_EXT_OUT_LEN;
 
 	/*
-	 * Remove match flag for encapsulated filters that does not correspond
+	 * Remove EFX match flags that do not correspond
 	 * to the MCDI match flags
 	 */
 	match_flags = spec->efs_match_flags & ~EFX_FILTER_MATCH_ENCAP_TYPE;
+	match_flags &= ~EFX_FILTER_MATCH_MPORT;
 
 	switch (filter_op) {
 	case MC_CMD_FILTER_OP_IN_OP_REPLACE:
@@ -202,7 +204,12 @@ efx_mcdi_filter_op_add(
 		goto fail1;
 	}
 
-	MCDI_IN_SET_DWORD(req, FILTER_OP_EXT_IN_PORT_ID, enp->en_vport_id);
+	if (spec->efs_match_flags & EFX_FILTER_MATCH_MPORT)
+		port_id = spec->efs_ingress_mport;
+	else
+		port_id = enp->en_vport_id;
+
+	MCDI_IN_SET_DWORD(req, FILTER_OP_EXT_IN_PORT_ID, port_id);
 	MCDI_IN_SET_DWORD(req, FILTER_OP_EXT_IN_MATCH_FIELDS,
 	    match_flags);
 	if (spec->efs_dmaq_id == EFX_FILTER_SPEC_RX_DMAQ_ID_DROP) {

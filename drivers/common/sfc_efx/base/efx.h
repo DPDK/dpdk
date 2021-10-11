@@ -3389,6 +3389,8 @@ typedef uint8_t efx_filter_flags_t;
 #define	EFX_FILTER_MATCH_OUTER_VID		0x00000100
 /* Match by IP transport protocol */
 #define	EFX_FILTER_MATCH_IP_PROTO		0x00000200
+/* Match by ingress MPORT */
+#define	EFX_FILTER_MATCH_MPORT			0x00000400
 /* Match by VNI or VSID */
 #define	EFX_FILTER_MATCH_VNI_OR_VSID		0x00000800
 /* For encapsulated packets, match by inner frame local MAC address */
@@ -3451,6 +3453,7 @@ typedef struct efx_filter_spec_s {
 	efx_oword_t			efs_loc_host;
 	uint8_t				efs_vni_or_vsid[EFX_VNI_OR_VSID_LEN];
 	uint8_t				efs_ifrm_loc_mac[EFX_MAC_ADDR_LEN];
+	uint32_t			efs_ingress_mport;
 } efx_filter_spec_t;
 
 
