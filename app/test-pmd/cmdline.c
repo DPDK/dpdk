@@ -162,6 +162,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show port (info|stats|summary|xstats|fdir|dcb_tc) (port_id|all)\n"
 			"    Display information for port_id, or all.\n\n"
 
+			"show port info (port_id) representor\n"
+			"    Show supported representors for a specific port\n\n"
+
 			"show port port_id (module_eeprom|eeprom)\n"
 			"    Display the module EEPROM or EEPROM information for port_id.\n\n"
 
@@ -8070,6 +8073,137 @@ cmdline_parse_inst_t cmd_showport = {
 		NULL,
 	},
 };
+
+/* *** show port representors information *** */
+struct cmd_representor_info_result {
+	cmdline_fixed_string_t cmd_show;
+	cmdline_fixed_string_t cmd_port;
+	cmdline_fixed_string_t cmd_info;
+	cmdline_fixed_string_t cmd_keyword;
+	portid_t cmd_pid;
+};
+
+static void
+cmd_representor_info_parsed(void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
+{
+	struct cmd_representor_info_result *res = parsed_result;
+	struct rte_eth_representor_info *info;
+	struct rte_eth_representor_range *range;
+	uint32_t range_diff;
+	uint32_t i;
+	int ret;
+	int num;
+
+	if (!rte_eth_dev_is_valid_port(res->cmd_pid)) {
+		fprintf(stderr, "Invalid port id %u\n", res->cmd_pid);
+		return;
+	}
+
+	ret = rte_eth_representor_info_get(res->cmd_pid, NULL);
+	if (ret < 0) {
+		fprintf(stderr,
+			"Failed to get the number of representor info ranges for port %hu: %s\n",
+			res->cmd_pid, rte_strerror(-ret));
+		return;
+	}
+	num = ret;
+
+	info = calloc(1, sizeof(*info) + num * sizeof(info->ranges[0]));
+	if (info == NULL) {
+		fprintf(stderr,
+			"Failed to allocate memory for representor info for port %hu\n",
+			res->cmd_pid);
+		return;
+	}
+	info->nb_ranges_alloc = num;
+
+	ret = rte_eth_representor_info_get(res->cmd_pid, info);
+	if (ret < 0) {
+		fprintf(stderr,
+			"Failed to get the representor info for port %hu: %s\n",
+			res->cmd_pid, rte_strerror(-ret));
+		free(info);
+		return;
+	}
+
+	printf("Port controller: %hu\n", info->controller);
+	printf("Port PF: %hu\n", info->pf);
+
+	printf("Ranges: %u\n", info->nb_ranges);
+	for (i = 0; i < info->nb_ranges; i++) {
+		range = &info->ranges[i];
+		range_diff = range->id_end - range->id_base;
+
+		printf("%u. ", i + 1);
+		printf("'%s' ", range->name);
+		if (range_diff > 0)
+			printf("[%u-%u]: ", range->id_base, range->id_end);
+		else
+			printf("[%u]: ", range->id_base);
+
+		printf("Controller %d, PF %d", range->controller, range->pf);
+
+		switch (range->type) {
+		case RTE_ETH_REPRESENTOR_NONE:
+			printf(", NONE\n");
+			break;
+		case RTE_ETH_REPRESENTOR_VF:
+			if (range_diff > 0)
+				printf(", VF %d..%d\n", range->vf,
+				       range->vf + range_diff);
+			else
+				printf(", VF %d\n", range->vf);
+			break;
+		case RTE_ETH_REPRESENTOR_SF:
+			printf(", SF %d\n", range->sf);
+			break;
+		case RTE_ETH_REPRESENTOR_PF:
+			if (range_diff > 0)
+				printf("..%d\n", range->pf + range_diff);
+			else
+				printf("\n");
+			break;
+		default:
+			printf(", UNKNOWN TYPE %d\n", range->type);
+			break;
+		}
+	}
+
+	free(info);
+}
+
+cmdline_parse_token_string_t cmd_representor_info_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_representor_info_result,
+			cmd_show, "show");
+cmdline_parse_token_string_t cmd_representor_info_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_representor_info_result,
+			cmd_port, "port");
+cmdline_parse_token_string_t cmd_representor_info_info =
+	TOKEN_STRING_INITIALIZER(struct cmd_representor_info_result,
+			cmd_info, "info");
+cmdline_parse_token_num_t cmd_representor_info_pid =
+	TOKEN_NUM_INITIALIZER(struct cmd_representor_info_result,
+			cmd_pid, RTE_UINT16);
+cmdline_parse_token_string_t cmd_representor_info_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_representor_info_result,
+			cmd_keyword, "representor");
+
+cmdline_parse_inst_t cmd_representor_info = {
+	.f = cmd_representor_info_parsed,
+	.data = NULL,
+	.help_str = "show port info <port_id> representor",
+	.tokens = {
+		(void *)&cmd_representor_info_show,
+		(void *)&cmd_representor_info_port,
+		(void *)&cmd_representor_info_info,
+		(void *)&cmd_representor_info_pid,
+		(void *)&cmd_representor_info_keyword,
+		NULL,
+	},
+};
+
 
 /* *** SHOW DEVICE INFO *** */
 struct cmd_showdevice_result {
@@ -17458,6 +17592,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_showqueue,
 	(cmdline_parse_inst_t *)&cmd_showeeprom,
 	(cmdline_parse_inst_t *)&cmd_showportall,
+	(cmdline_parse_inst_t *)&cmd_representor_info,
 	(cmdline_parse_inst_t *)&cmd_showdevice,
 	(cmdline_parse_inst_t *)&cmd_showcfg,
 	(cmdline_parse_inst_t *)&cmd_showfwdall,
