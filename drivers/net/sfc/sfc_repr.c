@@ -902,6 +902,9 @@ struct sfc_repr_init_data {
 	uint16_t		repr_id;
 	uint16_t		switch_domain_id;
 	efx_mport_sel_t		mport_sel;
+	efx_pcie_interface_t	intf;
+	uint16_t		pf;
+	uint16_t		vf;
 };
 
 static int
@@ -939,6 +942,9 @@ sfc_repr_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 	switch_port_request.ethdev_mportp = &ethdev_mport_sel;
 	switch_port_request.entity_mportp = &repr_data->mport_sel;
 	switch_port_request.ethdev_port_id = dev->data->port_id;
+	switch_port_request.port_data.repr.intf = repr_data->intf;
+	switch_port_request.port_data.repr.pf = repr_data->pf;
+	switch_port_request.port_data.repr.vf = repr_data->vf;
 
 	ret = sfc_repr_assign_mae_switch_port(repr_data->switch_domain_id,
 					      &switch_port_request,
@@ -1015,8 +1021,10 @@ fail_mae_assign_switch_port:
 }
 
 int
-sfc_repr_create(struct rte_eth_dev *parent, uint16_t representor_id,
-		uint16_t switch_domain_id, const efx_mport_sel_t *mport_sel)
+sfc_repr_create(struct rte_eth_dev *parent,
+		struct sfc_repr_entity_info *entity,
+		uint16_t switch_domain_id,
+		const efx_mport_sel_t *mport_sel)
 {
 	struct sfc_repr_init_data repr_data;
 	char name[RTE_ETH_NAME_MAX_LEN];
@@ -1024,8 +1032,7 @@ sfc_repr_create(struct rte_eth_dev *parent, uint16_t representor_id,
 	struct rte_eth_dev *dev;
 
 	if (snprintf(name, sizeof(name), "net_%s_representor_%u",
-		     parent->device->name, representor_id) >=
-			(int)sizeof(name)) {
+		     parent->device->name, entity->vf) >= (int)sizeof(name)) {
 		SFC_GENERIC_LOG(ERR, "%s() failed name too long", __func__);
 		return -ENAMETOOLONG;
 	}
@@ -1034,9 +1041,12 @@ sfc_repr_create(struct rte_eth_dev *parent, uint16_t representor_id,
 	if (dev == NULL) {
 		memset(&repr_data, 0, sizeof(repr_data));
 		repr_data.pf_port_id = parent->data->port_id;
-		repr_data.repr_id = representor_id;
+		repr_data.repr_id = entity->vf;
 		repr_data.switch_domain_id = switch_domain_id;
 		repr_data.mport_sel = *mport_sel;
+		repr_data.intf = entity->intf;
+		repr_data.pf = entity->pf;
+		repr_data.vf = entity->vf;
 
 		ret = rte_eth_dev_create(parent->device, name,
 					 sizeof(struct sfc_repr_shared),

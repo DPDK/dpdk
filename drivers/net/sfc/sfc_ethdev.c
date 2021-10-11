@@ -2741,6 +2741,7 @@ sfc_eth_dev_create_representors(struct rte_eth_dev *dev,
 
 	for (i = 0; i < eth_da->nb_representor_ports; ++i) {
 		const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+		struct sfc_repr_entity_info entity;
 		efx_mport_sel_t mport_sel;
 
 		rc = efx_mae_mport_by_pcie_function(encp->enc_pf,
@@ -2753,8 +2754,14 @@ sfc_eth_dev_create_representors(struct rte_eth_dev *dev,
 			continue;
 		}
 
-		rc = sfc_repr_create(dev, eth_da->representor_ports[i],
-				     sa->mae.switch_domain_id, &mport_sel);
+		memset(&entity, 0, sizeof(entity));
+		entity.type = eth_da->type;
+		entity.intf = encp->enc_intf;
+		entity.pf = encp->enc_pf;
+		entity.vf = eth_da->representor_ports[i];
+
+		rc = sfc_repr_create(dev, &entity, sa->mae.switch_domain_id,
+				     &mport_sel);
 		if (rc != 0) {
 			sfc_err(sa, "cannot create representor %u: %s - ignore",
 				eth_da->representor_ports[i],

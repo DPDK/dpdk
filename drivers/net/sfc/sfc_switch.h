@@ -34,11 +34,22 @@ enum sfc_mae_switch_port_type {
 	SFC_MAE_SWITCH_PORT_REPRESENTOR,
 };
 
+struct sfc_mae_switch_port_repr_data {
+	efx_pcie_interface_t			intf;
+	uint16_t				pf;
+	uint16_t				vf;
+};
+
+union sfc_mae_switch_port_data {
+	struct sfc_mae_switch_port_repr_data	repr;
+};
+
 struct sfc_mae_switch_port_request {
 	enum sfc_mae_switch_port_type		type;
 	const efx_mport_sel_t			*entity_mportp;
 	const efx_mport_sel_t			*ethdev_mportp;
 	uint16_t				ethdev_port_id;
+	union sfc_mae_switch_port_data		port_data;
 };
 
 int sfc_mae_assign_switch_domain(struct sfc_adapter *sa,

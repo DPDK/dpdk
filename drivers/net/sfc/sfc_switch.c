@@ -63,6 +63,8 @@ struct sfc_mae_switch_port {
 	enum sfc_mae_switch_port_type		type;
 	/** RTE switch port ID */
 	uint16_t				id;
+
+	union sfc_mae_switch_port_data		data;
 };
 
 TAILQ_HEAD(sfc_mae_switch_ports, sfc_mae_switch_port);
@@ -334,6 +336,18 @@ sfc_mae_assign_switch_port(uint16_t switch_domain_id,
 done:
 	port->ethdev_mport = *req->ethdev_mportp;
 	port->ethdev_port_id = req->ethdev_port_id;
+
+	switch (req->type) {
+	case SFC_MAE_SWITCH_PORT_INDEPENDENT:
+		/* No data */
+		break;
+	case SFC_MAE_SWITCH_PORT_REPRESENTOR:
+		memcpy(&port->data.repr, &req->port_data,
+		       sizeof(port->data.repr));
+		break;
+	default:
+		SFC_ASSERT(B_FALSE);
+	}
 
 	*switch_port_id = port->id;
 
