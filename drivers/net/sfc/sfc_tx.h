@@ -108,6 +108,7 @@ struct sfc_txq_info *sfc_txq_info_by_dp_txq(const struct sfc_dp_txq *dp_txq);
 int sfc_tx_configure(struct sfc_adapter *sa);
 void sfc_tx_close(struct sfc_adapter *sa);
 
+int sfc_tx_qinit_info(struct sfc_adapter *sa, sfc_sw_index_t sw_index);
 int sfc_tx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 		 uint16_t nb_tx_desc, unsigned int socket_id,
 		 const struct rte_eth_txconf *tx_conf);

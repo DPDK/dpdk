@@ -17,6 +17,7 @@
 #include "sfc.h"
 #include "sfc_ev.h"
 #include "sfc_rx.h"
+#include "sfc_tx.h"
 
 /**
  * Amount of time to wait for the representor proxy routine (which is
@@ -136,6 +137,155 @@ sfc_repr_proxy_routine(void *arg)
 	sfc_repr_proxy_mbox_handle(rp);
 
 	return 0;
+}
+
+static int
+sfc_repr_proxy_txq_attach(struct sfc_adapter *sa)
+{
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+	struct sfc_repr_proxy *rp = &sa->repr_proxy;
+	unsigned int i;
+
+	sfc_log_init(sa, "entry");
+
+	for (i = 0; i < sfc_repr_nb_txq(sas); i++) {
+		sfc_sw_index_t sw_index = sfc_repr_txq_sw_index(sas, i);
+
+		rp->dp_txq[i].sw_index = sw_index;
+	}
+
+	sfc_log_init(sa, "done");
+
+	return 0;
+}
+
+static void
+sfc_repr_proxy_txq_detach(struct sfc_adapter *sa)
+{
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+	struct sfc_repr_proxy *rp = &sa->repr_proxy;
+	unsigned int i;
+
+	sfc_log_init(sa, "entry");
+
+	for (i = 0; i < sfc_repr_nb_txq(sas); i++)
+		rp->dp_txq[i].sw_index = 0;
+
+	sfc_log_init(sa, "done");
+}
+
+int
+sfc_repr_proxy_txq_init(struct sfc_adapter *sa)
+{
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+	struct sfc_repr_proxy *rp = &sa->repr_proxy;
+	const struct rte_eth_txconf tx_conf = {
+		.tx_free_thresh = SFC_REPR_PROXY_TXQ_FREE_THRESH,
+	};
+	struct sfc_txq_info *txq_info;
+	unsigned int init_i;
+	unsigned int i;
+	int rc;
+
+	sfc_log_init(sa, "entry");
+
+	if (!sfc_repr_available(sas)) {
+		sfc_log_init(sa, "representors not supported - skip");
+		return 0;
+	}
+
+	for (init_i = 0; init_i < sfc_repr_nb_txq(sas); init_i++) {
+		struct sfc_repr_proxy_dp_txq *txq = &rp->dp_txq[init_i];
+
+		txq_info = &sfc_sa2shared(sa)->txq_info[txq->sw_index];
+		if (txq_info->state == SFC_TXQ_INITIALIZED) {
+			sfc_log_init(sa,
+				"representor proxy TxQ %u is already initialized - skip",
+				init_i);
+			continue;
+		}
+
+		sfc_tx_qinit_info(sa, txq->sw_index);
+
+		rc = sfc_tx_qinit(sa, txq->sw_index,
+				  SFC_REPR_PROXY_TX_DESC_COUNT, sa->socket_id,
+				  &tx_conf);
+
+		if (rc != 0) {
+			sfc_err(sa, "failed to init representor proxy TxQ %u",
+				init_i);
+			goto fail_init;
+		}
+	}
+
+	sfc_log_init(sa, "done");
+
+	return 0;
+
+fail_init:
+	for (i = 0; i < init_i; i++) {
+		struct sfc_repr_proxy_dp_txq *txq = &rp->dp_txq[i];
+
+		txq_info = &sfc_sa2shared(sa)->txq_info[txq->sw_index];
+		if (txq_info->state == SFC_TXQ_INITIALIZED)
+			sfc_tx_qfini(sa, txq->sw_index);
+	}
+	sfc_log_init(sa, "failed: %s", rte_strerror(rc));
+
+	return rc;
+}
+
+void
+sfc_repr_proxy_txq_fini(struct sfc_adapter *sa)
+{
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+	struct sfc_repr_proxy *rp = &sa->repr_proxy;
+	struct sfc_txq_info *txq_info;
+	unsigned int i;
+
+	sfc_log_init(sa, "entry");
+
+	if (!sfc_repr_available(sas)) {
+		sfc_log_init(sa, "representors not supported - skip");
+		return;
+	}
+
+	for (i = 0; i < sfc_repr_nb_txq(sas); i++) {
+		struct sfc_repr_proxy_dp_txq *txq = &rp->dp_txq[i];
+
+		txq_info = &sfc_sa2shared(sa)->txq_info[txq->sw_index];
+		if (txq_info->state != SFC_TXQ_INITIALIZED) {
+			sfc_log_init(sa,
+				"representor proxy TxQ %u is already finalized - skip",
+				i);
+			continue;
+		}
+
+		sfc_tx_qfini(sa, txq->sw_index);
+	}
+
+	sfc_log_init(sa, "done");
+}
+
+static int
+sfc_repr_proxy_txq_start(struct sfc_adapter *sa)
+{
+	struct sfc_repr_proxy *rp = &sa->repr_proxy;
+
+	sfc_log_init(sa, "entry");
+
+	RTE_SET_USED(rp);
+
+	sfc_log_init(sa, "done");
+
+	return 0;
+}
+
+static void
+sfc_repr_proxy_txq_stop(struct sfc_adapter *sa)
+{
+	sfc_log_init(sa, "entry");
+	sfc_log_init(sa, "done");
 }
 
 static int
@@ -398,6 +548,10 @@ sfc_repr_proxy_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_rxq_attach;
 
+	rc = sfc_repr_proxy_txq_attach(sa);
+	if (rc != 0)
+		goto fail_txq_attach;
+
 	rc = sfc_repr_proxy_ports_init(sa);
 	if (rc != 0)
 		goto fail_ports_init;
@@ -458,6 +612,9 @@ fail_get_service_lcore:
 	sfc_repr_proxy_ports_fini(sa);
 
 fail_ports_init:
+	sfc_repr_proxy_txq_detach(sa);
+
+fail_txq_attach:
 	sfc_repr_proxy_rxq_detach(sa);
 
 fail_rxq_attach:
@@ -482,6 +639,7 @@ sfc_repr_proxy_detach(struct sfc_adapter *sa)
 	rte_service_component_unregister(rp->service_id);
 	sfc_repr_proxy_ports_fini(sa);
 	sfc_repr_proxy_rxq_detach(sa);
+	sfc_repr_proxy_txq_detach(sa);
 
 	sfc_log_init(sa, "done");
 }
@@ -507,6 +665,10 @@ sfc_repr_proxy_start(struct sfc_adapter *sa)
 	rc = sfc_repr_proxy_rxq_start(sa);
 	if (rc != 0)
 		goto fail_rxq_start;
+
+	rc = sfc_repr_proxy_txq_start(sa);
+	if (rc != 0)
+		goto fail_txq_start;
 
 	/* Service core may be in "stopped" state, start it */
 	rc = rte_service_lcore_start(rp->service_core_id);
@@ -549,6 +711,9 @@ fail_component_runstate_set:
 	/* Service lcore may be shared and we never stop it */
 
 fail_start_core:
+	sfc_repr_proxy_txq_stop(sa);
+
+fail_txq_start:
 	sfc_repr_proxy_rxq_stop(sa);
 
 fail_rxq_start:
@@ -587,6 +752,7 @@ sfc_repr_proxy_stop(struct sfc_adapter *sa)
 	/* Service lcore may be shared and we never stop it */
 
 	sfc_repr_proxy_rxq_stop(sa);
+	sfc_repr_proxy_txq_stop(sa);
 
 	rp->started = false;
 

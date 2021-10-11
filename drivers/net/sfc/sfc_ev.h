@@ -118,6 +118,14 @@ sfc_repr_rxq_sw_index(const struct sfc_adapter_shared *sas,
 		repr_queue_id;
 }
 
+static inline sfc_sw_index_t
+sfc_repr_txq_sw_index(const struct sfc_adapter_shared *sas,
+		      unsigned int repr_queue_id)
+{
+	/* Reserved TxQ for representors is the first reserved TxQ */
+	return sfc_repr_available(sas) ? repr_queue_id : SFC_SW_INDEX_INVALID;
+}
+
 /*
  * Functions below define event queue to transmit/receive queue and vice
  * versa mapping.
