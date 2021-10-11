@@ -32,15 +32,21 @@ struct sfc_repr_shared {
 	uint16_t		switch_port_id;
 };
 
+struct sfc_repr_queue_stats {
+	union sfc_pkts_bytes		packets_bytes;
+};
+
 struct sfc_repr_rxq {
 	/* Datapath members */
 	struct rte_ring			*ring;
+	struct sfc_repr_queue_stats	stats;
 };
 
 struct sfc_repr_txq {
 	/* Datapath members */
 	struct rte_ring			*ring;
 	efx_mport_id_t			egress_mport;
+	struct sfc_repr_queue_stats	stats;
 };
 
 /** Primary process representor private data */
@@ -165,15 +171,30 @@ sfc_repr_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	struct sfc_repr_rxq *rxq = rx_queue;
 	void **objs = (void *)&rx_pkts[0];
+	unsigned int n_rx;
 
 	/* mbufs port is already filled correctly by representors proxy */
-	return rte_ring_sc_dequeue_burst(rxq->ring, objs, nb_pkts, NULL);
+	n_rx = rte_ring_sc_dequeue_burst(rxq->ring, objs, nb_pkts, NULL);
+
+	if (n_rx > 0) {
+		unsigned int n_bytes = 0;
+		unsigned int i = 0;
+
+		do {
+			n_bytes += rx_pkts[i]->pkt_len;
+		} while (++i < n_rx);
+
+		sfc_pkts_bytes_add(&rxq->stats.packets_bytes, n_rx, n_bytes);
+	}
+
+	return n_rx;
 }
 
 static uint16_t
 sfc_repr_tx_burst(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct sfc_repr_txq *txq = tx_queue;
+	unsigned int n_bytes = 0;
 	unsigned int n_tx;
 	void **objs;
 	uint16_t i;
@@ -193,6 +214,7 @@ sfc_repr_tx_burst(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		m->ol_flags |= sfc_dp_mport_override;
 		*RTE_MBUF_DYNFIELD(m, sfc_dp_mport_offset,
 				   efx_mport_id_t *) = txq->egress_mport;
+		n_bytes += tx_pkts[i]->pkt_len;
 	}
 
 	objs = (void *)&tx_pkts[0];
@@ -202,13 +224,17 @@ sfc_repr_tx_burst(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	 * Remove m-port override flag from packets that were not enqueued
 	 * Setting the flag only for enqueued packets after the burst is
 	 * not possible since the ownership of enqueued packets is
-	 * transferred to representor proxy.
+	 * transferred to representor proxy. The same logic applies to
+	 * counting the enqueued packets' bytes.
 	 */
 	for (i = n_tx; i < nb_pkts; ++i) {
 		struct rte_mbuf *m = tx_pkts[i];
 
 		m->ol_flags &= ~sfc_dp_mport_override;
+		n_bytes -= m->pkt_len;
 	}
+
+	sfc_pkts_bytes_add(&txq->stats.packets_bytes, n_tx, n_bytes);
 
 	return n_tx;
 }
@@ -827,6 +853,35 @@ sfc_repr_dev_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+sfc_repr_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	union sfc_pkts_bytes queue_stats;
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct sfc_repr_rxq *rxq = dev->data->rx_queues[i];
+
+		sfc_pkts_bytes_get(&rxq->stats.packets_bytes,
+				   &queue_stats);
+
+		stats->ipackets += queue_stats.pkts;
+		stats->ibytes += queue_stats.bytes;
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct sfc_repr_txq *txq = dev->data->tx_queues[i];
+
+		sfc_pkts_bytes_get(&txq->stats.packets_bytes,
+				   &queue_stats);
+
+		stats->opackets += queue_stats.pkts;
+		stats->obytes += queue_stats.bytes;
+	}
+
+	return 0;
+}
+
 static const struct eth_dev_ops sfc_repr_dev_ops = {
 	.dev_configure			= sfc_repr_dev_configure,
 	.dev_start			= sfc_repr_dev_start,
@@ -834,6 +889,7 @@ static const struct eth_dev_ops sfc_repr_dev_ops = {
 	.dev_close			= sfc_repr_dev_close,
 	.dev_infos_get			= sfc_repr_dev_infos_get,
 	.link_update			= sfc_repr_dev_link_update,
+	.stats_get			= sfc_repr_stats_get,
 	.rx_queue_setup			= sfc_repr_rx_queue_setup,
 	.rx_queue_release		= sfc_repr_rx_queue_release,
 	.tx_queue_setup			= sfc_repr_tx_queue_setup,
