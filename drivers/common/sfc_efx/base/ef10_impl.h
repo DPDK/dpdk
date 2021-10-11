@@ -1372,7 +1372,8 @@ extern	__checkReturn			efx_rc_t
 efx_mcdi_get_function_info(
 	__in				efx_nic_t *enp,
 	__out				uint32_t *pfp,
-	__out_opt			uint32_t *vfp);
+	__out_opt			uint32_t *vfp,
+	__out_opt			efx_pcie_interface_t *intfp);
 
 LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t

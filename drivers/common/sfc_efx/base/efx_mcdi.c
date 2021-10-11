@@ -2130,6 +2130,36 @@ fail1:
 
 #if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
 
+	__checkReturn		efx_rc_t
+efx_mcdi_intf_from_pcie(
+	__in			uint32_t pcie_intf,
+	__out			efx_pcie_interface_t *efx_intf)
+{
+	efx_rc_t rc;
+
+	switch (pcie_intf) {
+	case PCIE_INTERFACE_CALLER:
+		*efx_intf = EFX_PCIE_INTERFACE_CALLER;
+		break;
+	case PCIE_INTERFACE_HOST_PRIMARY:
+		*efx_intf = EFX_PCIE_INTERFACE_HOST_PRIMARY;
+		break;
+	case PCIE_INTERFACE_NIC_EMBEDDED:
+		*efx_intf = EFX_PCIE_INTERFACE_NIC_EMBEDDED;
+		break;
+	default:
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 /*
  * This function returns the pf and vf number of a function.  If it is a pf the
  * vf number is 0xffff.  The vf number is the index of the vf on that
@@ -2140,18 +2170,21 @@ fail1:
 efx_mcdi_get_function_info(
 	__in			efx_nic_t *enp,
 	__out			uint32_t *pfp,
-	__out_opt		uint32_t *vfp)
+	__out_opt		uint32_t *vfp,
+	__out_opt		efx_pcie_interface_t *intfp)
 {
+	efx_pcie_interface_t intf;
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_GET_FUNCTION_INFO_IN_LEN,
-		MC_CMD_GET_FUNCTION_INFO_OUT_LEN);
+		MC_CMD_GET_FUNCTION_INFO_OUT_V2_LEN);
+	uint32_t pcie_intf;
 	efx_rc_t rc;
 
 	req.emr_cmd = MC_CMD_GET_FUNCTION_INFO;
 	req.emr_in_buf = payload;
 	req.emr_in_length = MC_CMD_GET_FUNCTION_INFO_IN_LEN;
 	req.emr_out_buf = payload;
-	req.emr_out_length = MC_CMD_GET_FUNCTION_INFO_OUT_LEN;
+	req.emr_out_length = MC_CMD_GET_FUNCTION_INFO_OUT_V2_LEN;
 
 	efx_mcdi_execute(enp, &req);
 
@@ -2169,8 +2202,24 @@ efx_mcdi_get_function_info(
 	if (vfp != NULL)
 		*vfp = MCDI_OUT_DWORD(req, GET_FUNCTION_INFO_OUT_VF);
 
+	if (req.emr_out_length < MC_CMD_GET_FUNCTION_INFO_OUT_V2_LEN) {
+		intf = EFX_PCIE_INTERFACE_HOST_PRIMARY;
+	} else {
+		pcie_intf = MCDI_OUT_DWORD(req,
+		    GET_FUNCTION_INFO_OUT_V2_INTF);
+
+		rc = efx_mcdi_intf_from_pcie(pcie_intf, &intf);
+		if (rc != 0)
+			goto fail3;
+	}
+
+	if (intfp != NULL)
+		*intfp = intf;
+
 	return (0);
 
+fail3:
+	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:

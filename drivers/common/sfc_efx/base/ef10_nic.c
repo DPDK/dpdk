@@ -1847,6 +1847,7 @@ efx_mcdi_nic_board_cfg(
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	ef10_link_state_t els;
 	efx_port_t *epp = &(enp->en_port);
+	efx_pcie_interface_t intf;
 	uint32_t board_type = 0;
 	uint32_t base, nvec;
 	uint32_t port;
@@ -1875,11 +1876,12 @@ efx_mcdi_nic_board_cfg(
 	 *  - PCIe PF: pf = PF number, vf = 0xffff.
 	 *  - PCIe VF: pf = parent PF, vf = VF number.
 	 */
-	if ((rc = efx_mcdi_get_function_info(enp, &pf, &vf)) != 0)
+	if ((rc = efx_mcdi_get_function_info(enp, &pf, &vf, &intf)) != 0)
 		goto fail3;
 
 	encp->enc_pf = pf;
 	encp->enc_vf = vf;
+	encp->enc_intf = intf;
 
 	if ((rc = ef10_mcdi_get_pf_count(enp, &encp->enc_hw_pf_count)) != 0)
 		goto fail4;

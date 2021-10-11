@@ -1511,6 +1511,7 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_bist_mask;
 #endif	/* EFSYS_OPT_BIST */
 #if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
+	efx_pcie_interface_t	enc_intf;
 	uint32_t		enc_pf;
 	uint32_t		enc_vf;
 	uint32_t		enc_privilege_mask;
