@@ -126,6 +126,7 @@ INTERNAL {
 	efx_mae_match_specs_equal;
 	efx_mae_mport_by_pcie_function;
 	efx_mae_mport_by_phy_port;
+	efx_mae_mport_by_id;
 	efx_mae_mport_id_by_selector;
 	efx_mae_mport_invalid;
 	efx_mae_outer_rule_insert;

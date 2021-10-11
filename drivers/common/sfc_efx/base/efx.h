@@ -4237,6 +4237,19 @@ efx_mae_mport_by_pcie_function(
 	__in				uint32_t vf,
 	__out				efx_mport_sel_t *mportp);
 
+/*
+ * Get MPORT selector by an MPORT ID
+ *
+ * The resulting MPORT selector is opaque to the caller and can be
+ * passed as an argument to efx_mae_match_spec_mport_set()
+ * and efx_mae_action_set_populate_deliver().
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_mport_by_id(
+	__in				const efx_mport_id_t *mport_idp,
+	__out				efx_mport_sel_t *mportp);
+
 /* Get MPORT ID by an MPORT selector */
 LIBEFX_API
 extern	__checkReturn			efx_rc_t

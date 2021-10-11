@@ -828,6 +828,23 @@ fail1:
 }
 
 	__checkReturn			efx_rc_t
+efx_mae_mport_by_id(
+	__in				const efx_mport_id_t *mport_idp,
+	__out				efx_mport_sel_t *mportp)
+{
+	efx_dword_t dword;
+
+	EFX_POPULATE_DWORD_2(dword,
+	    MAE_MPORT_SELECTOR_TYPE, MAE_MPORT_SELECTOR_TYPE_MPORT_ID,
+	    MAE_MPORT_SELECTOR_MPORT_ID, mport_idp->id);
+
+	memset(mportp, 0, sizeof (*mportp));
+	mportp->sel = __LE_TO_CPU_32(dword.ed_u32[0]);
+
+	return (0);
+}
+
+	__checkReturn			efx_rc_t
 efx_mae_match_spec_field_set(
 	__in				efx_mae_match_spec_t *spec,
 	__in				efx_mae_field_id_t field_id,
