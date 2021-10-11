@@ -3142,4 +3142,94 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn			efx_rc_t
+efx_mcdi_mport_alloc_alias(
+	__in				efx_nic_t *enp,
+	__out				efx_mport_id_t *mportp,
+	__out_opt			uint32_t *labelp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_MPORT_ALLOC_ALIAS_IN_LEN,
+	    MC_CMD_MAE_MPORT_ALLOC_ALIAS_OUT_LEN);
+	efx_rc_t rc;
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_MPORT_ALLOC;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_MPORT_ALLOC_ALIAS_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_MPORT_ALLOC_ALIAS_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req, MAE_MPORT_ALLOC_IN_TYPE,
+			  MC_CMD_MAE_MPORT_ALLOC_IN_MPORT_TYPE_ALIAS);
+	MCDI_IN_SET_DWORD(req, MAE_MPORT_ALLOC_ALIAS_IN_DELIVER_MPORT,
+			  MAE_MPORT_SELECTOR_ASSIGNED);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail2;
+	}
+
+	mportp->id = MCDI_OUT_DWORD(req, MAE_MPORT_ALLOC_OUT_MPORT_ID);
+	if (labelp != NULL)
+		*labelp = MCDI_OUT_DWORD(req, MAE_MPORT_ALLOC_ALIAS_OUT_LABEL);
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_mport_free(
+	__in				efx_nic_t *enp,
+	__in				const efx_mport_id_t *mportp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_MPORT_FREE_IN_LEN,
+	    MC_CMD_MAE_MPORT_FREE_OUT_LEN);
+	efx_rc_t rc;
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_MPORT_FREE;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_MPORT_FREE_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_MPORT_FREE_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req, MAE_MPORT_FREE_IN_MPORT_ID, mportp->id);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail2;
+	}
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 #endif /* EFSYS_OPT_MAE */

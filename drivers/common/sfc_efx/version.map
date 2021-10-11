@@ -127,6 +127,7 @@ INTERNAL {
 	efx_mae_mport_by_pcie_function;
 	efx_mae_mport_by_phy_port;
 	efx_mae_mport_by_id;
+	efx_mae_mport_free;
 	efx_mae_mport_id_by_selector;
 	efx_mae_mport_invalid;
 	efx_mae_outer_rule_insert;
@@ -136,6 +137,7 @@ INTERNAL {
 	efx_mcdi_get_proxy_handle;
 	efx_mcdi_get_timeout;
 	efx_mcdi_init;
+	efx_mcdi_mport_alloc_alias;
 	efx_mcdi_new_epoch;
 	efx_mcdi_reboot;
 	efx_mcdi_request_abort;

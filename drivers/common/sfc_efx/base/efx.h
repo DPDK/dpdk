@@ -4599,6 +4599,19 @@ efx_mae_action_rule_remove(
 	__in				efx_nic_t *enp,
 	__in				const efx_mae_rule_id_t *ar_idp);
 
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mcdi_mport_alloc_alias(
+	__in				efx_nic_t *enp,
+	__out				efx_mport_id_t *mportp,
+	__out_opt			uint32_t *labelp);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_mport_free(
+	__in				efx_nic_t *enp,
+	__in				const efx_mport_id_t *mportp);
+
 #endif /* EFSYS_OPT_MAE */
 
 #if EFSYS_OPT_VIRTIO
