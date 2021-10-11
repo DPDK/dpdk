@@ -431,7 +431,7 @@ iavf_fdir_parse_action_qregion(struct iavf_adapter *ad,
 		}
 	}
 
-	if (rss->queue[rss->queue_num - 1] >= ad->eth_dev->data->nb_rx_queues) {
+	if (rss->queue[rss->queue_num - 1] >= ad->dev_data->nb_rx_queues) {
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, act,
 				"Invalid queue region indexes.");
@@ -511,7 +511,7 @@ iavf_fdir_parse_action(struct iavf_adapter *ad,
 			filter_action->act_conf.queue.index = act_q->index;
 
 			if (filter_action->act_conf.queue.index >=
-				ad->eth_dev->data->nb_rx_queues) {
+				ad->dev_data->nb_rx_queues) {
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION,
 					actions, "Invalid queue for FDIR.");

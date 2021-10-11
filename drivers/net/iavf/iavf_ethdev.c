@@ -383,8 +383,8 @@ iavf_init_rss(struct iavf_adapter *adapter)
 	uint16_t i, j, nb_q;
 	int ret;
 
-	rss_conf = &adapter->eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
-	nb_q = RTE_MIN(adapter->eth_dev->data->nb_rx_queues,
+	rss_conf = &adapter->dev_data->dev_conf.rx_adv_conf.rss_conf;
+	nb_q = RTE_MIN(adapter->dev_data->nb_rx_queues,
 		       vf->max_rss_qregion);
 
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF)) {
@@ -438,7 +438,7 @@ iavf_queues_req_reset(struct rte_eth_dev *dev, uint16_t num)
 	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(ad);
 	int ret;
 
-	ret = iavf_request_queues(ad, num);
+	ret = iavf_request_queues(dev, num);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "request queues from PF failed");
 		return ret;
@@ -1388,7 +1388,7 @@ iavf_dev_rss_hash_update(struct rte_eth_dev *dev,
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	int ret;
 
-	adapter->eth_dev->data->dev_conf.rx_adv_conf.rss_conf = *rss_conf;
+	adapter->dev_data->dev_conf.rx_adv_conf.rss_conf = *rss_conf;
 
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
 		return -ENOTSUP;
@@ -2087,6 +2087,8 @@ iavf_init_vf(struct rte_eth_dev *dev)
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
+	vf->eth_dev = dev;
+
 	err = iavf_parse_devargs(dev);
 	if (err) {
 		PMD_INIT_LOG(ERR, "Failed to parse devargs");
@@ -2352,7 +2354,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	hw->bus.func = pci_dev->addr.function;
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->back = IAVF_DEV_PRIVATE_TO_ADAPTER(eth_dev->data->dev_private);
-	adapter->eth_dev = eth_dev;
+	adapter->dev_data = eth_dev->data;
 	adapter->stopped = 1;
 
 	if (iavf_init_vf(eth_dev) != 0) {
