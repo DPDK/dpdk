@@ -23,7 +23,6 @@ mlx5_list_init(struct mlx5_list_inconst *l_inconst,
 		l_inconst->cache[MLX5_LIST_GLOBAL] = gc;
 		LIST_INIT(&l_inconst->cache[MLX5_LIST_GLOBAL]->h);
 	}
-	DRV_LOG(DEBUG, "mlx5 list %s initialized.", l_const->name);
 	return 0;
 }
 
@@ -66,6 +65,7 @@ mlx5_list_create(const char *name, void *ctx, bool lcores_share,
 		mlx5_free(list);
 		return NULL;
 	}
+	DRV_LOG(DEBUG, "mlx5 list %s was created.", name);
 	return list;
 }
 
