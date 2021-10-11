@@ -63,6 +63,10 @@ int sfc_mae_switch_domain_map_controllers(uint16_t switch_domain_id,
 					  efx_pcie_interface_t *controllers,
 					  size_t nb_controllers);
 
+int sfc_mae_switch_domain_get_controller(uint16_t switch_domain_id,
+				   efx_pcie_interface_t intf,
+				   int *controller);
+
 int sfc_mae_assign_switch_port(uint16_t switch_domain_id,
 			       const struct sfc_mae_switch_port_request *req,
 			       uint16_t *switch_port_id);

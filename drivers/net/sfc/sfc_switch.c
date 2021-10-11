@@ -279,6 +279,34 @@ sfc_mae_switch_domain_map_controllers(uint16_t switch_domain_id,
 	return 0;
 }
 
+int
+sfc_mae_switch_domain_get_controller(uint16_t switch_domain_id,
+				     efx_pcie_interface_t intf,
+				     int *controller)
+{
+	const efx_pcie_interface_t *controllers;
+	size_t nb_controllers;
+	size_t i;
+	int rc;
+
+	rc = sfc_mae_switch_domain_controllers(switch_domain_id, &controllers,
+					       &nb_controllers);
+	if (rc != 0)
+		return rc;
+
+	if (controllers == NULL)
+		return ENOENT;
+
+	for (i = 0; i < nb_controllers; i++) {
+		if (controllers[i] == intf) {
+			*controller = i;
+			return 0;
+		}
+	}
+
+	return ENOENT;
+}
+
 /* This function expects to be called only when the lock is held */
 static struct sfc_mae_switch_port *
 sfc_mae_find_switch_port_by_entity(const struct sfc_mae_switch_domain *domain,

@@ -1028,11 +1028,35 @@ sfc_repr_create(struct rte_eth_dev *parent,
 {
 	struct sfc_repr_init_data repr_data;
 	char name[RTE_ETH_NAME_MAX_LEN];
+	int controller;
 	int ret;
+	int rc;
 	struct rte_eth_dev *dev;
 
-	if (snprintf(name, sizeof(name), "net_%s_representor_%u",
-		     parent->device->name, entity->vf) >= (int)sizeof(name)) {
+	controller = -1;
+	rc = sfc_mae_switch_domain_get_controller(switch_domain_id,
+						  entity->intf, &controller);
+	if (rc != 0) {
+		SFC_GENERIC_LOG(ERR, "%s() failed to get DPDK controller for %d",
+				__func__, entity->intf);
+		return -rc;
+	}
+
+	switch (entity->type) {
+	case RTE_ETH_REPRESENTOR_VF:
+		ret = snprintf(name, sizeof(name), "net_%s_representor_c%upf%uvf%u",
+			       parent->device->name, controller, entity->pf,
+			       entity->vf);
+		break;
+	case RTE_ETH_REPRESENTOR_PF:
+		ret = snprintf(name, sizeof(name), "net_%s_representor_c%upf%u",
+			       parent->device->name, controller, entity->pf);
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	if (ret >= (int)sizeof(name)) {
 		SFC_GENERIC_LOG(ERR, "%s() failed name too long", __func__);
 		return -ENAMETOOLONG;
 	}
