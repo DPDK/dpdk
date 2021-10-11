@@ -153,11 +153,6 @@ Deprecation Notices
   will be limited to maximum 256 queues.
   Also compile time flag ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` will be removed.
 
-* ethdev: The offload flag ``PKT_RX_EIP_CKSUM_BAD`` will be removed and
-  replaced by the new flag ``PKT_RX_OUTER_IP_CKSUM_BAD``. The new name is more
-  consistent with existing outer header checksum status flag naming, which
-  should help in reducing confusion about its usage.
-
 * net: The structure ``rte_ipv4_hdr`` will have two unions.
   The first union is for existing ``version_ihl`` byte
   and new bitfield for version and IHL.

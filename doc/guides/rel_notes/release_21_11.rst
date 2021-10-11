@@ -179,6 +179,9 @@ Removed Items
   blacklist/whitelist are removed. Users must use the new
   block/allow list arguments.
 
+* mbuf: Removed offload flag ``PKT_RX_EIP_CKSUM_BAD``.
+  ``PKT_RX_OUTER_IP_CKSUM_BAD`` should be used as a replacement.
+
 * ethdev: Removed the port mirroring API. A more fine-grain flow API
   action ``RTE_FLOW_ACTION_TYPE_SAMPLE`` should be used instead.
   The structures ``rte_eth_mirror_conf`` and ``rte_eth_vlan_mirror`` and
