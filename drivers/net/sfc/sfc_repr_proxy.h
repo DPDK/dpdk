@@ -16,6 +16,14 @@
 extern "C" {
 #endif
 
+/* Number of supported RxQs with different mbuf memory pools */
+#define SFC_REPR_PROXY_NB_RXQ_MIN	(1)
+#define SFC_REPR_PROXY_NB_RXQ_MAX	(1)
+
+/* One TxQ is required and sufficient for port representors support */
+#define SFC_REPR_PROXY_NB_TXQ_MIN	(1)
+#define SFC_REPR_PROXY_NB_TXQ_MAX	(1)
+
 struct sfc_repr_proxy {
 	uint32_t			service_core_id;
 	uint32_t			service_id;

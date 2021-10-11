@@ -29,6 +29,7 @@ sfc_repr_proxy_routine(void *arg)
 int
 sfc_repr_proxy_attach(struct sfc_adapter *sa)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct sfc_repr_proxy *rp = &sa->repr_proxy;
 	struct rte_service_spec service;
 	uint32_t cid;
@@ -37,7 +38,7 @@ sfc_repr_proxy_attach(struct sfc_adapter *sa)
 
 	sfc_log_init(sa, "entry");
 
-	if (!sfc_repr_supported(sa)) {
+	if (!sfc_repr_available(sas)) {
 		sfc_log_init(sa, "representors not supported - skip");
 		return 0;
 	}
@@ -102,11 +103,12 @@ fail_get_service_lcore:
 void
 sfc_repr_proxy_detach(struct sfc_adapter *sa)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct sfc_repr_proxy *rp = &sa->repr_proxy;
 
 	sfc_log_init(sa, "entry");
 
-	if (!sfc_repr_supported(sa)) {
+	if (!sfc_repr_available(sas)) {
 		sfc_log_init(sa, "representors not supported - skip");
 		return;
 	}
@@ -120,6 +122,7 @@ sfc_repr_proxy_detach(struct sfc_adapter *sa)
 int
 sfc_repr_proxy_start(struct sfc_adapter *sa)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct sfc_repr_proxy *rp = &sa->repr_proxy;
 	int rc;
 
@@ -129,7 +132,7 @@ sfc_repr_proxy_start(struct sfc_adapter *sa)
 	 * The condition to start the proxy is insufficient. It will be
 	 * complemented with representor port start/stop support.
 	 */
-	if (!sfc_repr_supported(sa)) {
+	if (!sfc_repr_available(sas)) {
 		sfc_log_init(sa, "representors not supported - skip");
 		return 0;
 	}
@@ -180,12 +183,13 @@ fail_start_core:
 void
 sfc_repr_proxy_stop(struct sfc_adapter *sa)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct sfc_repr_proxy *rp = &sa->repr_proxy;
 	int rc;
 
 	sfc_log_init(sa, "entry");
 
-	if (!sfc_repr_supported(sa)) {
+	if (!sfc_repr_available(sas)) {
 		sfc_log_init(sa, "representors not supported - skip");
 		return;
 	}

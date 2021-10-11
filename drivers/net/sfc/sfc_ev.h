@@ -70,14 +70,21 @@ sfc_mgmt_evq_sw_index(__rte_unused const struct sfc_adapter_shared *sas)
 static inline unsigned int
 sfc_nb_reserved_rxq(const struct sfc_adapter_shared *sas)
 {
-	return sfc_nb_counter_rxq(sas);
+	return sfc_nb_counter_rxq(sas) + sfc_repr_nb_rxq(sas);
+}
+
+/* Return the number of Tx queues reserved for driver's internal use */
+static inline unsigned int
+sfc_nb_txq_reserved(const struct sfc_adapter_shared *sas)
+{
+	return sfc_repr_nb_txq(sas);
 }
 
 static inline unsigned int
 sfc_nb_reserved_evq(const struct sfc_adapter_shared *sas)
 {
-	/* An EvQ is required for each reserved RxQ */
-	return 1 + sfc_nb_reserved_rxq(sas);
+	/* An EvQ is required for each reserved Rx/Tx queue */
+	return 1 + sfc_nb_reserved_rxq(sas) + sfc_nb_txq_reserved(sas);
 }
 
 /*
@@ -112,6 +119,7 @@ sfc_counters_rxq_sw_index(const struct sfc_adapter_shared *sas)
  * Own event queue is allocated for management, each Rx and each Tx queue.
  * Zero event queue is used for management events.
  * When counters are supported, one Rx event queue is reserved.
+ * When representors are supported, Rx and Tx event queues are reserved.
  * Rx event queues follow reserved event queues.
  * Tx event queues follow Rx event queues.
  */
@@ -150,27 +158,37 @@ sfc_evq_sw_index_by_rxq_sw_index(struct sfc_adapter *sa,
 }
 
 static inline sfc_ethdev_qid_t
-sfc_ethdev_tx_qid_by_txq_sw_index(__rte_unused struct sfc_adapter_shared *sas,
+sfc_ethdev_tx_qid_by_txq_sw_index(struct sfc_adapter_shared *sas,
 				  sfc_sw_index_t txq_sw_index)
 {
-	/* Only ethdev queues are present for now */
-	return txq_sw_index;
+	if (txq_sw_index < sfc_nb_txq_reserved(sas))
+		return SFC_ETHDEV_QID_INVALID;
+
+	return txq_sw_index - sfc_nb_txq_reserved(sas);
 }
 
 static inline sfc_sw_index_t
-sfc_txq_sw_index_by_ethdev_tx_qid(__rte_unused struct sfc_adapter_shared *sas,
+sfc_txq_sw_index_by_ethdev_tx_qid(struct sfc_adapter_shared *sas,
 				  sfc_ethdev_qid_t ethdev_qid)
 {
-	/* Only ethdev queues are present for now */
-	return ethdev_qid;
+	return sfc_nb_txq_reserved(sas) + ethdev_qid;
 }
 
 static inline sfc_sw_index_t
 sfc_evq_sw_index_by_txq_sw_index(struct sfc_adapter *sa,
 				 sfc_sw_index_t txq_sw_index)
 {
-	return sfc_nb_reserved_evq(sfc_sa2shared(sa)) +
-		sa->eth_dev->data->nb_rx_queues + txq_sw_index;
+	struct sfc_adapter_shared *sas = sfc_sa2shared(sa);
+	sfc_ethdev_qid_t ethdev_qid;
+
+	ethdev_qid = sfc_ethdev_tx_qid_by_txq_sw_index(sas, txq_sw_index);
+	if (ethdev_qid == SFC_ETHDEV_QID_INVALID) {
+		return sfc_nb_reserved_evq(sas) - sfc_nb_txq_reserved(sas) +
+			txq_sw_index;
+	}
+
+	return sfc_nb_reserved_evq(sas) + sa->eth_dev->data->nb_rx_queues +
+		ethdev_qid;
 }
 
 int sfc_ev_attach(struct sfc_adapter *sa);

@@ -192,6 +192,8 @@ struct sfc_adapter_shared {
 	char				*dp_tx_name;
 
 	bool				counters_rxq_allocated;
+	unsigned int			nb_repr_rxq;
+	unsigned int			nb_repr_txq;
 };
 
 /* Adapter process private data */
@@ -414,6 +416,19 @@ sfc_nb_counter_rxq(const struct sfc_adapter_shared *sas)
 }
 
 bool sfc_repr_supported(const struct sfc_adapter *sa);
+bool sfc_repr_available(const struct sfc_adapter_shared *sas);
+
+static inline unsigned int
+sfc_repr_nb_rxq(const struct sfc_adapter_shared *sas)
+{
+	return sas->nb_repr_rxq;
+}
+
+static inline unsigned int
+sfc_repr_nb_txq(const struct sfc_adapter_shared *sas)
+{
+	return sas->nb_repr_txq;
+}
 
 /** Get the number of milliseconds since boot from the default timer */
 static inline uint64_t
