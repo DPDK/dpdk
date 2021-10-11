@@ -214,9 +214,9 @@ fail_domain_alloc:
 
 fail_mem_alloc:
 	sfc_hw_switch_id_fini(sa, hw_switch_id);
-	rte_spinlock_unlock(&sfc_mae_switch.lock);
 
 fail_hw_switch_id_init:
+	rte_spinlock_unlock(&sfc_mae_switch.lock);
 	return rc;
 }
 
