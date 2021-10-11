@@ -3574,10 +3574,8 @@ init_port_dcb_config(portid_t pid,
 
 	rte_port = &ports[pid];
 
-	memset(&port_conf, 0, sizeof(struct rte_eth_conf));
-
-	port_conf.rxmode = rte_port->dev_conf.rxmode;
-	port_conf.txmode = rte_port->dev_conf.txmode;
+	/* retain the original device configuration. */
+	memcpy(&port_conf, &rte_port->dev_conf, sizeof(struct rte_eth_conf));
 
 	/*set configuration of DCB in vt mode and DCB in non-vt mode*/
 	retval = get_eth_dcb_conf(pid, &port_conf, dcb_mode, num_tcs, pfc_en);
