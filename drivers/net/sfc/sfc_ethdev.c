@@ -345,6 +345,8 @@ sfc_dev_close(struct rte_eth_dev *dev)
 		return 0;
 	}
 
+	sfc_pre_detach(sa);
+
 	sfc_adapter_lock(sa);
 	switch (sa->state) {
 	case SFC_ETHDEV_STARTED:

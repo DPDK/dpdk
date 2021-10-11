@@ -1044,6 +1044,18 @@ fail_nic_reset:
 }
 
 void
+sfc_pre_detach(struct sfc_adapter *sa)
+{
+	sfc_log_init(sa, "entry");
+
+	SFC_ASSERT(!sfc_adapter_is_locked(sa));
+
+	sfc_repr_proxy_pre_detach(sa);
+
+	sfc_log_init(sa, "done");
+}
+
+void
 sfc_detach(struct sfc_adapter *sa)
 {
 	sfc_log_init(sa, "entry");

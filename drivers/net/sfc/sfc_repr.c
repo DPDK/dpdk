@@ -19,6 +19,7 @@
 #include "sfc_debug.h"
 #include "sfc_repr.h"
 #include "sfc_ethdev_state.h"
+#include "sfc_repr_proxy_api.h"
 #include "sfc_switch.h"
 
 /** Multi-process shared representor private data */
@@ -285,6 +286,7 @@ static int
 sfc_repr_dev_close(struct rte_eth_dev *dev)
 {
 	struct sfc_repr *sr = sfc_repr_by_eth_dev(dev);
+	struct sfc_repr_shared *srs = sfc_repr_shared_by_eth_dev(dev);
 
 	sfcr_info(sr, "entry");
 
@@ -305,6 +307,8 @@ sfc_repr_dev_close(struct rte_eth_dev *dev)
 	 * Cleanup all resources.
 	 * Rollback primary process sfc_repr_eth_dev_init() below.
 	 */
+
+	(void)sfc_repr_proxy_del_port(srs->pf_port_id, srs->repr_id);
 
 	dev->dev_ops = NULL;
 
@@ -378,6 +382,18 @@ sfc_repr_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 		goto fail_mae_assign_switch_port;
 	}
 
+	ret = sfc_repr_proxy_add_port(repr_data->pf_port_id,
+				      repr_data->repr_id,
+				      dev->data->port_id,
+				      &repr_data->mport_sel);
+	if (ret != 0) {
+		SFC_GENERIC_LOG(ERR, "%s() failed to add repr proxy port",
+				__func__);
+		SFC_ASSERT(ret > 0);
+		ret = -ret;
+		goto fail_create_port;
+	}
+
 	/*
 	 * Allocate process private data from heap, since it should not
 	 * be located in shared memory allocated using rte_malloc() API.
@@ -419,6 +435,10 @@ fail_mac_addrs:
 	free(sr);
 
 fail_alloc_sr:
+	(void)sfc_repr_proxy_del_port(repr_data->pf_port_id,
+				      repr_data->repr_id);
+
+fail_create_port:
 fail_mae_assign_switch_port:
 	SFC_GENERIC_LOG(ERR, "%s() failed: %s", __func__, rte_strerror(-ret));
 	return ret;

@@ -398,6 +398,7 @@ uint32_t sfc_register_logtype(const struct rte_pci_addr *pci_addr,
 int sfc_probe(struct sfc_adapter *sa);
 void sfc_unprobe(struct sfc_adapter *sa);
 int sfc_attach(struct sfc_adapter *sa);
+void sfc_pre_detach(struct sfc_adapter *sa);
 void sfc_detach(struct sfc_adapter *sa);
 int sfc_start(struct sfc_adapter *sa);
 void sfc_stop(struct sfc_adapter *sa);
