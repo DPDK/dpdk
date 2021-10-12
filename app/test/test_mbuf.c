@@ -2577,6 +2577,16 @@ test_mbuf_dyn(struct rte_mempool *pktmbuf_pool)
 		.align = 3,
 		.flags = 0,
 	};
+	const struct rte_mbuf_dynfield dynfield_fail_flag = {
+		.name = "test-dynfield",
+		.size = sizeof(uint8_t),
+		.align = __alignof__(uint8_t),
+		.flags = 1,
+	};
+	const struct rte_mbuf_dynflag dynflag_fail_flag = {
+		.name = "test-dynflag",
+		.flags = 1,
+	};
 	const struct rte_mbuf_dynflag dynflag = {
 		.name = "test-dynflag",
 		.flags = 0,
@@ -2637,6 +2647,14 @@ test_mbuf_dyn(struct rte_mempool *pktmbuf_pool)
 				offsetof(struct rte_mbuf, ol_flags));
 	if (ret != -1)
 		GOTO_FAIL("dynamic field creation should fail (not avail)");
+
+	ret = rte_mbuf_dynfield_register(&dynfield_fail_flag);
+	if (ret != -1)
+		GOTO_FAIL("dynamic field creation should fail (invalid flag)");
+
+	ret = rte_mbuf_dynflag_register(&dynflag_fail_flag);
+	if (ret != -1)
+		GOTO_FAIL("dynamic flag creation should fail (invalid flag)");
 
 	flag = rte_mbuf_dynflag_register(&dynflag);
 	if (flag == -1)
