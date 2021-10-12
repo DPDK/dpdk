@@ -171,6 +171,8 @@ mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *device_attr)
 	}
 	device_attr->sw_parsing_offloads =
 		mlx5_get_supported_sw_parsing_offloads(&hca_attr);
+	device_attr->tunnel_offloads_caps =
+		mlx5_get_supported_tunneling_offloads(&hca_attr);
 	pv_iseg = mlx5_glue->query_hca_iseg(mlx5_ctx, &cb_iseg);
 	if (pv_iseg == NULL) {
 		DRV_LOG(ERR, "Failed to get device hca_iseg");
@@ -402,8 +404,22 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		sh->device_attr.max_rwq_indirection_table_size;
 	cqe_comp = 0;
 	config->cqe_comp = cqe_comp;
-	DRV_LOG(DEBUG, "tunnel offloading is not supported");
-	config->tunnel_en = 0;
+	config->tunnel_en = device_attr.tunnel_offloads_caps &
+		(MLX5_TUNNELED_OFFLOADS_VXLAN_CAP |
+		 MLX5_TUNNELED_OFFLOADS_GRE_CAP |
+		 MLX5_TUNNELED_OFFLOADS_GENEVE_CAP);
+	if (config->tunnel_en) {
+		DRV_LOG(DEBUG, "tunnel offloading is supported for %s%s%s",
+		config->tunnel_en &
+		MLX5_TUNNELED_OFFLOADS_VXLAN_CAP ? "[VXLAN]" : "",
+		config->tunnel_en &
+		MLX5_TUNNELED_OFFLOADS_GRE_CAP ? "[GRE]" : "",
+		config->tunnel_en &
+		MLX5_TUNNELED_OFFLOADS_GENEVE_CAP ? "[GENEVE]" : ""
+		);
+	} else {
+		DRV_LOG(DEBUG, "tunnel offloading is not supported");
+	}
 	DRV_LOG(DEBUG, "MPLS over GRE/UDP tunnel offloading is no supported");
 	config->mpls_en = 0;
 	/* Allocate private eth device data. */

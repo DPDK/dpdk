@@ -1831,5 +1831,7 @@ int mlx5_aso_ct_available(struct mlx5_dev_ctx_shared *sh,
 			  struct mlx5_aso_ct_action *ct);
 uint32_t
 mlx5_get_supported_sw_parsing_offloads(const struct mlx5_hca_attr *attr);
+uint32_t
+mlx5_get_supported_tunneling_offloads(const struct mlx5_hca_attr *attr);
 
 #endif /* RTE_PMD_MLX5_H_ */

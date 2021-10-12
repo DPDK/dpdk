@@ -969,6 +969,20 @@ mlx5_get_supported_sw_parsing_offloads(const struct mlx5_hca_attr *attr)
 	return sw_parsing_offloads;
 }
 
+uint32_t
+mlx5_get_supported_tunneling_offloads(const struct mlx5_hca_attr *attr)
+{
+	uint32_t tn_offloads = 0;
+
+	if (attr->tunnel_stateless_vxlan)
+		tn_offloads |= MLX5_TUNNELED_OFFLOADS_VXLAN_CAP;
+	if (attr->tunnel_stateless_gre)
+		tn_offloads |= MLX5_TUNNELED_OFFLOADS_GRE_CAP;
+	if (attr->tunnel_stateless_geneve_rx)
+		tn_offloads |= MLX5_TUNNELED_OFFLOADS_GENEVE_CAP;
+	return tn_offloads;
+}
+
 /*
  * Allocate Rx and Tx UARs in robust fashion.
  * This routine handles the following UAR allocation issues:
