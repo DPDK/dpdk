@@ -125,6 +125,60 @@ meter_burst_to_nix(uint64_t value, uint64_t *exponent_p, uint64_t *mantissa_p)
 	return NIX_BPF_BURST(exponent, mantissa);
 }
 
+static inline void
+nix_lf_bpf_dump(__io struct nix_band_prof_s *bpf)
+{
+	plt_dump("W0: cir_mantissa  \t\t\t%d\nW0: pebs_mantissa \t\t\t0x%03x",
+		 bpf->cir_mantissa, bpf->pebs_mantissa);
+	plt_dump("W0: peir_matissa \t\t\t\t%d\nW0: cbs_exponent \t\t\t%d",
+		 bpf->peir_mantissa, bpf->cbs_exponent);
+	plt_dump("W0: cir_exponent \t\t\t%d\nW0: pebs_exponent \t\t\t%d",
+		 bpf->cir_exponent, bpf->pebs_exponent);
+	plt_dump("W0: peir_exponent \t\t\t%d\n", bpf->peir_exponent);
+	plt_dump("W0: tnl_ena \t\t\t%d\n", bpf->tnl_ena);
+	plt_dump("W0: icolor \t\t\t%d\n", bpf->icolor);
+	plt_dump("W0: pc_mode \t\t\t%d\n", bpf->pc_mode);
+	plt_dump("W1: hl_en \t\t%d\nW1: band_prof_id \t\t%d", bpf->hl_en,
+		 bpf->band_prof_id);
+	plt_dump("W1: meter_algo \t\t%d\nW1: rc_action \t\t%d", bpf->meter_algo,
+		 bpf->rc_action);
+	plt_dump("W1: yc_action \t\t\t%d\nW1: gc_action \t\t\t%d",
+		 bpf->yc_action, bpf->gc_action);
+	plt_dump("W1: adjust_mantissa\t\t\t%d\nW1: adjust_exponent \t\t\t%d",
+		 bpf->adjust_mantissa, bpf->adjust_exponent);
+	plt_dump("W1: rdiv \t\t\t%d\n", bpf->rdiv);
+	plt_dump("W1: l_select \t\t%d\nW2: lmode \t\t%d", bpf->l_sellect,
+		 bpf->lmode);
+	plt_dump("W1: cbs_mantissa \t\t\t%d\n", bpf->cbs_mantissa);
+	plt_dump("W2: tsa \t\t\t0x%" PRIx64 "\n", (uint64_t)bpf->ts);
+	plt_dump("W3: c_accum \t\t%d\nW3: pe_accum \t\t%d", bpf->c_accum,
+		 bpf->pe_accum);
+	plt_dump("W4: green_pkt_pass \t\t\t0x%" PRIx64 "",
+		 (uint64_t)bpf->green_pkt_pass);
+	plt_dump("W5: yellow_pkt_pass \t\t\t0x%" PRIx64 "",
+		 (uint64_t)bpf->yellow_pkt_pass);
+	plt_dump("W6: red_pkt_pass \t\t\t0x%" PRIx64 "",
+		 (uint64_t)bpf->red_pkt_pass);
+	plt_dump("W7: green_octs_pass \t\t\t0x%" PRIx64 "",
+		 (uint64_t)bpf->green_octs_pass);
+	plt_dump("W8: yellow_octs_pass \t\t\t0x%" PRIx64 "",
+		 (uint64_t)bpf->yellow_octs_pass);
+	plt_dump("W9: red_octs_pass \t\t\t0x%" PRIx64 "",
+		 (uint64_t)bpf->red_octs_pass);
+	plt_dump("W10: green_pkt_drop \t\t\t0x%" PRIx64 "",
+		 (uint64_t)bpf->green_pkt_drop);
+	plt_dump("W11: yellow_pkt_drop \t\t\t0x%" PRIx64 "",
+		 (uint64_t)bpf->yellow_pkt_drop);
+	plt_dump("W12: red_pkt_drop \t\t\t0x%" PRIx64 "",
+		 (uint64_t)bpf->red_pkt_drop);
+	plt_dump("W13: green_octs_drop \t\t\t0x%" PRIx64 "",
+		 (uint64_t)bpf->green_octs_drop);
+	plt_dump("W14: yellow_octs_drop \t\t\t0x%" PRIx64 "",
+		 (uint64_t)bpf->yellow_octs_drop);
+	plt_dump("W15: red_octs_drop \t\t\t0x%" PRIx64 "",
+		 (uint64_t)bpf->red_octs_drop);
+}
+
 uint8_t
 roc_nix_bpf_level_to_idx(enum roc_nix_bpf_level_flag level_f)
 {
@@ -486,5 +540,37 @@ roc_nix_bpf_ena_dis(struct roc_nix *roc_nix, uint16_t id, struct roc_nix_rq *rq,
 	rq->bpf_id = id;
 
 exit:
+	return rc;
+}
+
+int
+roc_nix_bpf_dump(struct roc_nix *roc_nix, uint16_t id,
+		 enum roc_nix_bpf_level_flag lvl_flag)
+{
+	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix_cn10k_aq_enq_rsp *rsp;
+	struct nix_cn10k_aq_enq_req *aq;
+	uint8_t level_idx;
+	int rc;
+
+	if (roc_model_is_cn9k())
+		return NIX_ERR_HW_NOTSUP;
+
+	level_idx = roc_nix_bpf_level_to_idx(lvl_flag);
+	if (level_idx == ROC_NIX_BPF_LEVEL_IDX_INVALID)
+		return NIX_ERR_PARAM;
+
+	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (aq == NULL)
+		return -ENOSPC;
+	aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14 | id);
+	aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+	aq->op = NIX_AQ_INSTOP_READ;
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (!rc) {
+		plt_dump("============= band prof id =%d ===============", id);
+		nix_lf_bpf_dump(&rsp->prof);
+	}
+
 	return rc;
 }

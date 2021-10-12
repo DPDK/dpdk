@@ -158,6 +158,7 @@ extern int cnxk_logtype_tm;
 #define plt_info(fmt, args...) RTE_LOG(INFO, PMD, fmt "\n", ##args)
 #define plt_warn(fmt, args...) RTE_LOG(WARNING, PMD, fmt "\n", ##args)
 #define plt_print(fmt, args...) RTE_LOG(INFO, PMD, fmt "\n", ##args)
+#define plt_dump(fmt, ...)      fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 
 /**
  * Log debug message if given subsystem logging is enabled.

@@ -615,6 +615,9 @@ int __roc_api roc_nix_bpf_config(struct roc_nix *roc_nix, uint16_t id,
 int __roc_api roc_nix_bpf_ena_dis(struct roc_nix *roc_nix, uint16_t id,
 				  struct roc_nix_rq *rq, bool enable);
 
+int __roc_api roc_nix_bpf_dump(struct roc_nix *roc_nix, uint16_t id,
+			       enum roc_nix_bpf_level_flag lvl_flag);
+
 uint8_t __roc_api
 roc_nix_bpf_level_to_idx(enum roc_nix_bpf_level_flag lvl_flag);
 
