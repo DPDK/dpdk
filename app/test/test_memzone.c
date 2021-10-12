@@ -83,6 +83,26 @@ test_memzone_invalid_alignment(void)
 }
 
 static int
+test_memzone_invalid_flags(void)
+{
+	const struct rte_memzone *mz;
+
+	mz = rte_memzone_lookup(TEST_MEMZONE_NAME("invalid_flags"));
+	if (mz != NULL) {
+		printf("Zone with invalid flags has been reserved\n");
+		return -1;
+	}
+
+	mz = rte_memzone_reserve(TEST_MEMZONE_NAME("invalid_flags"),
+		100, SOCKET_ID_ANY, RTE_MEMZONE_IOVA_CONTIG << 1);
+	if (mz != NULL) {
+		printf("Zone with invalid flags has been reserved\n");
+		return -1;
+	}
+	return 0;
+}
+
+static int
 test_memzone_reserving_zone_size_bigger_than_the_maximum(void)
 {
 	const struct rte_memzone * mz;
@@ -1104,6 +1124,10 @@ test_memzone(void)
 
 	printf("test invalid alignment for memzone_reserve\n");
 	if (test_memzone_invalid_alignment() < 0)
+		return -1;
+
+	printf("test invalid flags for memzone_reserve\n");
+	if (test_memzone_invalid_flags() < 0)
 		return -1;
 
 	printf("test reserving the largest size memzone possible\n");

@@ -53,6 +53,18 @@ memzone_lookup_thread_unsafe(const char *name)
 	return NULL;
 }
 
+#define MEMZONE_KNOWN_FLAGS (RTE_MEMZONE_2MB \
+	| RTE_MEMZONE_1GB \
+	| RTE_MEMZONE_16MB \
+	| RTE_MEMZONE_16GB \
+	| RTE_MEMZONE_256KB \
+	| RTE_MEMZONE_256MB \
+	| RTE_MEMZONE_512MB \
+	| RTE_MEMZONE_4GB \
+	| RTE_MEMZONE_SIZE_HINT_ONLY \
+	| RTE_MEMZONE_IOVA_CONTIG \
+	)
+
 static const struct rte_memzone *
 memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		int socket_id, unsigned int flags, unsigned int align,
@@ -124,6 +136,11 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	}
 
 	if ((socket_id != SOCKET_ID_ANY) && socket_id < 0) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	if ((flags & ~MEMZONE_KNOWN_FLAGS) != 0) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
