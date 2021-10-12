@@ -62,6 +62,11 @@ New Features
   * Added bus-level parsing of the devargs syntax.
   * Kept compatibility with the legacy syntax as parsing fallback.
 
+* **Updated EAL hugetlbfs mount handling for Linux.**
+
+  * Modified to allow ``--huge-dir`` option to specify a sub-directory
+    within a hugetlbfs mountpoint.
+
 * **Added new RSS offload types for IPv4/L4 checksum in RSS flow.**
 
   Added macros ETH_RSS_IPV4_CHKSUM and ETH_RSS_L4_CHKSUM, now IPv4 and

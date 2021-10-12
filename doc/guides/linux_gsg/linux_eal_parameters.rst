@@ -81,7 +81,8 @@ Memory-related options
 
 *   ``--huge-dir <path to hugetlbfs directory>``
 
-    Use specified hugetlbfs directory instead of autodetected ones.
+    Use specified hugetlbfs directory instead of autodetected ones. This can be
+    a sub-directory within a hugetlbfs mountpoint.
 
 *   ``--huge-unlink``
 

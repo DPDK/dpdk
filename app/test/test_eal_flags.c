@@ -14,8 +14,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <sys/wait.h>
 #include <sys/file.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
 #include <limits.h>
 #include <fcntl.h>
 
@@ -800,6 +801,9 @@ static int
 test_misc_flags(void)
 {
 	char hugepath[PATH_MAX] = {0};
+	char hugepath_dir[PATH_MAX] = {0};
+	char hugepath_dir2[PATH_MAX] = {0};
+	char hugepath_dir3[PATH_MAX] = {0};
 #ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point */
 	const char * prefix = "";
@@ -810,6 +814,7 @@ test_misc_flags(void)
 	FILE * hugedir_handle = NULL;
 	char line[PATH_MAX] = {0};
 	unsigned i, isempty = 1;
+
 	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
 		printf("Error - unable to get current prefix!\n");
 		return -1;
@@ -849,6 +854,20 @@ test_misc_flags(void)
 	}
 #endif
 
+	snprintf(hugepath_dir, sizeof(hugepath_dir), "%s/dpdk.missing", hugepath);
+	snprintf(hugepath_dir2, sizeof(hugepath_dir2), "%s/dpdk.dir", hugepath);
+
+	if (mkdir(hugepath_dir2, 0700) != 0 && errno != EEXIST) {
+		printf("Error - failed to mkdir(%s)\n", hugepath_dir2);
+		return -1;
+	}
+
+	snprintf(hugepath_dir3, sizeof(hugepath_dir3), "%s/dpdk.dir/sub", hugepath);
+
+	if (mkdir(hugepath_dir3, 0700) != 0 && errno != EEXIST) {
+		printf("Error - failed to mkdir(%s)\n", hugepath_dir3);
+		goto fail;
+	}
 
 	/* check that some general flags don't prevent things from working.
 	 * All cases, apart from the first, app should run.
@@ -881,60 +900,66 @@ test_misc_flags(void)
 	/* With invalid --huge-dir */
 	const char *argv9[] = {prgname, "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir", "invalid"};
+	/* With invalid --huge-dir sub-directory */
+	const char *argv10[] = {prgname, "-m", DEFAULT_MEM_SIZE,
+			"--file-prefix=hugedir", "--huge-dir", hugepath_dir};
+	/* With valid --huge-dir sub-directory */
+	const char *argv11[] = {prgname, "-m", DEFAULT_MEM_SIZE,
+			"--file-prefix=hugedir", "--huge-dir", hugepath_dir2};
 	/* Secondary process with invalid --huge-dir (should run as flag has no
 	 * effect on secondary processes) */
-	const char *argv10[] = {prgname, prefix, mp_flag,
+	const char *argv12[] = {prgname, prefix, mp_flag,
 			"--huge-dir", "invalid"};
 
 	/* try running with base-virtaddr param */
-	const char *argv11[] = {prgname, "--file-prefix=virtaddr",
+	const char *argv13[] = {prgname, "--file-prefix=virtaddr",
 			"--base-virtaddr=0x12345678"};
 
 	/* try running with --vfio-intr INTx flag */
-	const char *argv12[] = {prgname, "--file-prefix=intr",
+	const char *argv14[] = {prgname, "--file-prefix=intr",
 			"--vfio-intr=legacy"};
 
 	/* try running with --vfio-intr MSI flag */
-	const char *argv13[] = {prgname, "--file-prefix=intr",
+	const char *argv15[] = {prgname, "--file-prefix=intr",
 			"--vfio-intr=msi"};
 
 	/* try running with --vfio-intr MSI-X flag */
-	const char *argv14[] = {prgname, "--file-prefix=intr",
+	const char *argv16[] = {prgname, "--file-prefix=intr",
 			"--vfio-intr=msix"};
 
 	/* try running with --vfio-intr invalid flag */
-	const char *argv15[] = {prgname, "--file-prefix=intr",
+	const char *argv17[] = {prgname, "--file-prefix=intr",
 			"--vfio-intr=invalid"};
 
 	/* With process type as auto-detect */
-	const char * const argv16[] = {prgname, "--file-prefix=auto",
+	const char * const argv18[] = {prgname, "--file-prefix=auto",
 			"--proc-type=auto"};
 
 	/* With process type as auto-detect with no-shconf */
-	const char * const argv17[] = {prgname, "--proc-type=auto",
+	const char * const argv19[] = {prgname, "--proc-type=auto",
 			no_shconf, nosh_prefix, no_huge};
 
 	/* With process type as --create-uio-dev flag */
-	const char * const argv18[] = {prgname, "--file-prefix=uiodev",
+	const char * const argv20[] = {prgname, "--file-prefix=uiodev",
 			"--create-uio-dev"};
 
 	/* run all tests also applicable to FreeBSD first */
 
 	if (launch_proc(argv0) == 0) {
 		printf("Error - process ran ok with invalid flag\n");
-		return -1;
+		goto fail;
 	}
 	if (launch_proc(argv1) != 0) {
 		printf("Error - process did not run ok with --no-pci flag\n");
-		return -1;
+		goto fail;
 	}
 	if (launch_proc(argv2) != 0) {
 		printf("Error - process did not run ok with -v flag\n");
-		return -1;
+		goto fail;
 	}
 	if (launch_proc(argv6) != 0) {
 		printf("Error - process did not run ok with --no-shconf flag\n");
-		return -1;
+		goto fail;
 	}
 
 #ifdef RTE_EXEC_ENV_FREEBSD
@@ -944,73 +969,88 @@ test_misc_flags(void)
 
 	if (launch_proc(argv3) != 0) {
 		printf("Error - process did not run ok with --syslog flag\n");
-		return -1;
+		goto fail;
 	}
 	if (launch_proc(argv4) == 0) {
 		printf("Error - process run ok with empty --syslog flag\n");
-		return -1;
+		goto fail;
 	}
 	if (launch_proc(argv5) == 0) {
 		printf("Error - process run ok with invalid --syslog flag\n");
-		return -1;
+		goto fail;
 	}
 	if (launch_proc(argv7) != 0) {
 		printf("Error - process did not run ok with --huge-dir flag\n");
-		return -1;
+		goto fail;
 	}
 	if (launch_proc(argv8) == 0) {
 		printf("Error - process run ok with empty --huge-dir flag\n");
-		return -1;
+		goto fail;
 	}
 	if (launch_proc(argv9) == 0) {
 		printf("Error - process run ok with invalid --huge-dir flag\n");
-		return -1;
+		goto fail;
 	}
-	if (launch_proc(argv10) != 0) {
-		printf("Error - secondary process did not run ok with invalid --huge-dir flag\n");
-		return -1;
+	if (launch_proc(argv10) == 0) {
+		printf("Error - process run ok with invalid --huge-dir sub-dir flag\n");
+		goto fail;
 	}
 	if (launch_proc(argv11) != 0) {
-		printf("Error - process did not run ok with --base-virtaddr parameter\n");
-		return -1;
+		printf("Error - process did not run ok with --huge-dir subdir flag\n");
+		goto fail;
 	}
 	if (launch_proc(argv12) != 0) {
-		printf("Error - process did not run ok with "
-				"--vfio-intr INTx parameter\n");
-		return -1;
+		printf("Error - secondary process did not run ok with invalid --huge-dir flag\n");
+		goto fail;
 	}
 	if (launch_proc(argv13) != 0) {
-		printf("Error - process did not run ok with "
-				"--vfio-intr MSI parameter\n");
-		return -1;
+		printf("Error - process did not run ok with --base-virtaddr parameter\n");
+		goto fail;
 	}
 	if (launch_proc(argv14) != 0) {
 		printf("Error - process did not run ok with "
-				"--vfio-intr MSI-X parameter\n");
-		return -1;
+				"--vfio-intr INTx parameter\n");
+		goto fail;
 	}
-	if (launch_proc(argv15) == 0) {
-		printf("Error - process run ok with "
-				"--vfio-intr invalid parameter\n");
-		return -1;
+	if (launch_proc(argv15) != 0) {
+		printf("Error - process did not run ok with "
+				"--vfio-intr MSI parameter\n");
+		goto fail;
 	}
 	if (launch_proc(argv16) != 0) {
 		printf("Error - process did not run ok with "
-				"--proc-type as auto parameter\n");
-		return -1;
+				"--vfio-intr MSI-X parameter\n");
+		goto fail;
 	}
-	if (launch_proc(argv17) != 0) {
-		printf("Error - process did not run ok with "
-				"--proc-type and --no-shconf parameter\n");
-		return -1;
+	if (launch_proc(argv17) == 0) {
+		printf("Error - process run ok with "
+				"--vfio-intr invalid parameter\n");
+		goto fail;
 	}
 	if (launch_proc(argv18) != 0) {
 		printf("Error - process did not run ok with "
+				"--proc-type as auto parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv19) != 0) {
+		printf("Error - process did not run ok with "
+				"--proc-type and --no-shconf parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv20) != 0) {
+		printf("Error - process did not run ok with "
 				"--create-uio-dev parameter\n");
-		return -1;
+		goto fail;
 	}
 
+	rmdir(hugepath_dir3);
+	rmdir(hugepath_dir2);
 	return 0;
+
+fail:
+	rmdir(hugepath_dir3);
+	rmdir(hugepath_dir2);
+	return -1;
 }
 
 static int

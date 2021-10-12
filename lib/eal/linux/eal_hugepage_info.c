@@ -213,10 +213,19 @@ get_hugepage_dir(uint64_t hugepage_sz, char *hugedir, int len)
 	const size_t pagesize_opt_len = sizeof(pagesize_opt) - 1;
 	const char split_tok = ' ';
 	char *splitstr[_FIELDNAME_MAX];
+	char found[PATH_MAX] = "";
 	char buf[BUFSIZ];
-	int retval = -1;
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
+	struct stat st;
+
+	/*
+	 * If the specified dir doesn't exist, we can't match it.
+	 */
+	if (internal_conf->hugepage_dir != NULL &&
+		stat(internal_conf->hugepage_dir, &st) != 0) {
+		return -1;
+	}
 
 	FILE *fd = fopen(proc_mounts, "r");
 	if (fd == NULL)
@@ -226,42 +235,66 @@ get_hugepage_dir(uint64_t hugepage_sz, char *hugedir, int len)
 		default_size = get_default_hp_size();
 
 	while (fgets(buf, sizeof(buf), fd)){
+		const char *pagesz_str;
+
 		if (rte_strsplit(buf, sizeof(buf), splitstr, _FIELDNAME_MAX,
 				split_tok) != _FIELDNAME_MAX) {
 			RTE_LOG(ERR, EAL, "Error parsing %s\n", proc_mounts);
 			break; /* return NULL */
 		}
 
-		/* we have a specified --huge-dir option, only examine that dir */
-		if (internal_conf->hugepage_dir != NULL &&
-				strcmp(splitstr[MOUNTPT], internal_conf->hugepage_dir) != 0)
+		if (strncmp(splitstr[FSTYPE], hugetlbfs_str, htlbfs_str_len) != 0)
 			continue;
 
-		if (strncmp(splitstr[FSTYPE], hugetlbfs_str, htlbfs_str_len) == 0){
-			const char *pagesz_str = strstr(splitstr[OPTIONS], pagesize_opt);
+		pagesz_str = strstr(splitstr[OPTIONS], pagesize_opt);
 
-			/* if no explicit page size, the default page size is compared */
-			if (pagesz_str == NULL){
-				if (hugepage_sz == default_size){
-					strlcpy(hugedir, splitstr[MOUNTPT], len);
-					retval = 0;
-					break;
-				}
-			}
-			/* there is an explicit page size, so check it */
-			else {
-				uint64_t pagesz = rte_str_to_size(&pagesz_str[pagesize_opt_len]);
-				if (pagesz == hugepage_sz) {
-					strlcpy(hugedir, splitstr[MOUNTPT], len);
-					retval = 0;
-					break;
-				}
-			}
-		} /* end if strncmp hugetlbfs */
+		/* if no explicit page size, the default page size is compared */
+		if (pagesz_str == NULL) {
+			if (hugepage_sz != default_size)
+				continue;
+		}
+		/* there is an explicit page size, so check it */
+		else {
+			uint64_t pagesz = rte_str_to_size(&pagesz_str[pagesize_opt_len]);
+			if (pagesz != hugepage_sz)
+				continue;
+		}
+
+		/*
+		 * If no --huge-dir option has been given, we're done.
+		 */
+		if (internal_conf->hugepage_dir == NULL) {
+			strlcpy(found, splitstr[MOUNTPT], len);
+			break;
+		}
+
+		/*
+		 * Ignore any mount that doesn't contain the --huge-dir
+		 * directory.
+		 */
+		if (strncmp(internal_conf->hugepage_dir, splitstr[MOUNTPT],
+			strlen(splitstr[MOUNTPT])) != 0) {
+			continue;
+		}
+
+		/*
+		 * We found a match, but only prefer it if it's a longer match
+		 * (so /mnt/1 is preferred over /mnt for matching /mnt/1/2)).
+		 */
+		if (strlen(splitstr[MOUNTPT]) > strlen(found))
+			strlcpy(found, splitstr[MOUNTPT], len);
 	} /* end while fgets */
 
 	fclose(fd);
-	return retval;
+
+	if (found[0] != '\0') {
+		/* If needed, return the requested dir, not the mount point. */
+		strlcpy(hugedir, internal_conf->hugepage_dir != NULL ?
+			internal_conf->hugepage_dir : found, len);
+		return 0;
+	}
+
+	return -1;
 }
 
 /*
