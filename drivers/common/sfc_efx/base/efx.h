@@ -3030,6 +3030,10 @@ typedef enum efx_rxq_type_e {
  * Request user mark field in the Rx prefix of a queue.
  */
 #define	EFX_RXQ_FLAG_USER_MARK		0x10
+/*
+ * Request user flag field in the Rx prefix of a queue.
+ */
+#define	EFX_RXQ_FLAG_USER_FLAG		0x20
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
