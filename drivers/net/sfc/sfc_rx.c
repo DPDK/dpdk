@@ -1178,6 +1178,9 @@ sfc_rx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 	if (offloads & DEV_RX_OFFLOAD_RSS_HASH)
 		rxq_info->type_flags |= EFX_RXQ_FLAG_RSS_HASH;
 
+	if ((sa->negotiated_rx_metadata & RTE_ETH_RX_METADATA_USER_MARK) != 0)
+		rxq_info->type_flags |= EFX_RXQ_FLAG_USER_MARK;
+
 	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_RX, sw_index,
 			  evq_entries, socket_id, &evq);
 	if (rc != 0)

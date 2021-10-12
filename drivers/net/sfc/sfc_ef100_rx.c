@@ -935,6 +935,7 @@ struct sfc_dp_rx sfc_ef100_rx = {
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF100,
 	},
 	.features		= SFC_DP_RX_FEAT_MULTI_PROCESS |
+				  SFC_DP_RX_FEAT_FLOW_MARK |
 				  SFC_DP_RX_FEAT_INTR |
 				  SFC_DP_RX_FEAT_STATS,
 	.dev_offload_capa	= 0,
