@@ -218,10 +218,59 @@ cnxk_nix_mtr_profile_delete(struct rte_eth_dev *eth_dev, uint32_t profile_id,
 	return 0;
 }
 
+static int
+cnxk_nix_mtr_policy_validate(struct rte_eth_dev *dev,
+			     struct rte_mtr_meter_policy_params *policy,
+			     struct rte_mtr_error *error)
+{
+	static const char *const action_color[] = {"Green", "Yellow", "Red"};
+	bool supported[RTE_COLORS] = {false, false, false};
+	const struct rte_flow_action *action;
+	char message[1024];
+	uint32_t i;
+
+	RTE_SET_USED(dev);
+
+	if (!policy)
+		return 0; /* Nothing to be validated */
+
+	for (i = 0; i < RTE_COLORS; i++) {
+		if (policy->actions[i]) {
+			for (action = policy->actions[i];
+			     action->type != RTE_FLOW_ACTION_TYPE_END;
+			     action++) {
+				if (action->type == RTE_FLOW_ACTION_TYPE_METER)
+					supported[i] = true;
+
+				if (action->type == RTE_FLOW_ACTION_TYPE_DROP)
+					supported[i] = true;
+
+				if (!supported[i]) {
+					sprintf(message,
+						"%s action is not valid",
+						action_color[i]);
+					return -rte_mtr_error_set(error,
+					  ENOTSUP,
+					  RTE_MTR_ERROR_TYPE_METER_POLICY, NULL,
+					  message);
+				}
+			}
+		} else {
+			sprintf(message, "%s action is null", action_color[i]);
+			return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_POLICY, NULL,
+				message);
+		}
+	}
+
+	return 0;
+}
+
 const struct rte_mtr_ops nix_mtr_ops = {
 	.capabilities_get = cnxk_nix_mtr_capabilities_get,
 	.meter_profile_add = cnxk_nix_mtr_profile_add,
 	.meter_profile_delete = cnxk_nix_mtr_profile_delete,
+	.meter_policy_validate = cnxk_nix_mtr_policy_validate,
 };
 
 int
