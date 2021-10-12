@@ -7,6 +7,7 @@
 
 /* Constants */
 #define ROC_NIX_BPF_LEVEL_IDX_INVALID 0xFF
+#define ROC_NIX_BPF_LEVEL_MAX	      3
 
 enum roc_nix_rss_reta_sz {
 	ROC_NIX_RSS_RETA_SZ_64 = 64,
@@ -517,6 +518,10 @@ bool __roc_api roc_nix_tm_is_user_hierarchy_enabled(struct roc_nix *nix);
 int __roc_api roc_nix_tm_tree_type_get(struct roc_nix *nix);
 
 /* Ingress Policer API */
+int __roc_api
+roc_nix_bpf_count_get(struct roc_nix *roc_nix, uint8_t lvl_mask,
+		      uint16_t count[ROC_NIX_BPF_LEVEL_MAX] /* Out */);
+
 uint8_t __roc_api
 roc_nix_bpf_level_to_idx(enum roc_nix_bpf_level_flag lvl_flag);
 
