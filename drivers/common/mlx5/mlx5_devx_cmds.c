@@ -1000,6 +1000,12 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					hcattr, tunnel_lro_gre);
 	attr->tunnel_lro_vxlan = MLX5_GET(per_protocol_networking_offload_caps,
 					  hcattr, tunnel_lro_vxlan);
+	attr->swp = MLX5_GET(per_protocol_networking_offload_caps,
+					  hcattr, swp);
+	attr->swp_csum = MLX5_GET(per_protocol_networking_offload_caps,
+					  hcattr, swp_csum);
+	attr->swp_lso = MLX5_GET(per_protocol_networking_offload_caps,
+					  hcattr, swp_lso);
 	attr->lro_max_msg_sz_mode = MLX5_GET
 					(per_protocol_networking_offload_caps,
 					 hcattr, lro_max_msg_sz_mode);
