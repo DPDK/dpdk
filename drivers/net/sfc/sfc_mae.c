@@ -3088,6 +3088,7 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			  efx_mae_actions_t *spec,
 			  struct rte_flow_error *error)
 {
+	const uint64_t rx_metadata = sa->negotiated_rx_metadata;
 	bool custom_error = B_FALSE;
 	int rc = 0;
 
@@ -3137,12 +3138,29 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 	case RTE_FLOW_ACTION_TYPE_FLAG:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_FLAG,
 				       bundle->actions_mask);
-		rc = efx_mae_action_set_populate_flag(spec);
+		if ((rx_metadata & RTE_ETH_RX_METADATA_USER_FLAG) != 0) {
+			rc = efx_mae_action_set_populate_flag(spec);
+		} else {
+			rc = rte_flow_error_set(error, ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						action,
+						"flag delivery has not been negotiated");
+			custom_error = B_TRUE;
+		}
 		break;
 	case RTE_FLOW_ACTION_TYPE_MARK:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_MARK,
 				       bundle->actions_mask);
-		rc = sfc_mae_rule_parse_action_mark(sa, action->conf, spec);
+		if ((rx_metadata & RTE_ETH_RX_METADATA_USER_MARK) != 0) {
+			rc = sfc_mae_rule_parse_action_mark(sa, action->conf,
+							    spec);
+		} else {
+			rc = rte_flow_error_set(error, ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						action,
+						"mark delivery has not been negotiated");
+			custom_error = B_TRUE;
+		}
 		break;
 	case RTE_FLOW_ACTION_TYPE_PHY_PORT:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PHY_PORT,

@@ -1760,6 +1760,7 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 	struct sfc_flow_spec *spec = &flow->spec;
 	struct sfc_flow_spec_filter *spec_filter = &spec->filter;
 	const unsigned int dp_rx_features = sa->priv.dp_rx->features;
+	const uint64_t rx_metadata = sa->negotiated_rx_metadata;
 	uint32_t actions_set = 0;
 	const uint32_t fate_actions_mask = (1UL << RTE_FLOW_ACTION_TYPE_QUEUE) |
 					   (1UL << RTE_FLOW_ACTION_TYPE_RSS) |
@@ -1832,6 +1833,12 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					"FLAG action is not supported on the current Rx datapath");
 				return -rte_errno;
+			} else if ((rx_metadata &
+				    RTE_ETH_RX_METADATA_USER_FLAG) == 0) {
+				rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"flag delivery has not been negotiated");
+				return -rte_errno;
 			}
 
 			spec_filter->template.efs_flags |=
@@ -1848,6 +1855,12 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 				rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					"MARK action is not supported on the current Rx datapath");
+				return -rte_errno;
+			} else if ((rx_metadata &
+				    RTE_ETH_RX_METADATA_USER_MARK) == 0) {
+				rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"mark delivery has not been negotiated");
 				return -rte_errno;
 			}
 

@@ -2318,6 +2318,28 @@ sfc_representor_info_get(struct rte_eth_dev *dev,
 	return nb_repr;
 }
 
+static int
+sfc_rx_metadata_negotiate(struct rte_eth_dev *dev, uint64_t *features)
+{
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	uint64_t supported = 0;
+
+	sfc_adapter_lock(sa);
+
+	if ((sa->priv.dp_rx->features & SFC_DP_RX_FEAT_FLOW_FLAG) != 0)
+		supported |= RTE_ETH_RX_METADATA_USER_FLAG;
+
+	if ((sa->priv.dp_rx->features & SFC_DP_RX_FEAT_FLOW_MARK) != 0)
+		supported |= RTE_ETH_RX_METADATA_USER_MARK;
+
+	sa->negotiated_rx_metadata = supported & *features;
+	*features = sa->negotiated_rx_metadata;
+
+	sfc_adapter_unlock(sa);
+
+	return 0;
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -2366,6 +2388,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.xstats_get_names_by_id		= sfc_xstats_get_names_by_id,
 	.pool_ops_supported		= sfc_pool_ops_supported,
 	.representor_info_get		= sfc_representor_info_get,
+	.rx_metadata_negotiate		= sfc_rx_metadata_negotiate,
 };
 
 struct sfc_ethdev_init_data {
@@ -2460,6 +2483,12 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 	if (sas->dp_rx_name == NULL) {
 		rc = ENOMEM;
 		goto fail_dp_rx_name;
+	}
+
+	if (strcmp(dp_rx->dp.name, SFC_KVARG_DATAPATH_EF10_ESSB) == 0) {
+		/* FLAG and MARK are always available from Rx prefix. */
+		sa->negotiated_rx_metadata |= RTE_ETH_RX_METADATA_USER_FLAG;
+		sa->negotiated_rx_metadata |= RTE_ETH_RX_METADATA_USER_MARK;
 	}
 
 	sfc_notice(sa, "use %s Rx datapath", sas->dp_rx_name);

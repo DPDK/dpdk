@@ -289,6 +289,8 @@ struct sfc_adapter {
 	boolean_t			tso;
 	boolean_t			tso_encap;
 
+	uint64_t			negotiated_rx_metadata;
+
 	uint32_t			rxd_wait_timeout_ns;
 
 	bool				switchdev;
