@@ -226,6 +226,7 @@ struct roc_nix_stats_queue {
 struct roc_nix_rq {
 	/* Input parameters */
 	uint16_t qid;
+	uint16_t bpf_id;
 	uint64_t aura_handle;
 	bool ipsech_ena;
 	uint16_t first_skip;
@@ -610,6 +611,9 @@ int __roc_api roc_nix_bpf_free_all(struct roc_nix *roc_nix);
 int __roc_api roc_nix_bpf_config(struct roc_nix *roc_nix, uint16_t id,
 				 enum roc_nix_bpf_level_flag lvl_flag,
 				 struct roc_nix_bpf_cfg *cfg);
+
+int __roc_api roc_nix_bpf_ena_dis(struct roc_nix *roc_nix, uint16_t id,
+				  struct roc_nix_rq *rq, bool enable);
 
 uint8_t __roc_api
 roc_nix_bpf_level_to_idx(enum roc_nix_bpf_level_flag lvl_flag);

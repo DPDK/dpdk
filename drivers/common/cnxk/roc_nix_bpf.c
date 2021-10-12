@@ -449,3 +449,42 @@ roc_nix_bpf_config(struct roc_nix *roc_nix, uint16_t id,
 
 	return mbox_process(mbox);
 }
+
+int
+roc_nix_bpf_ena_dis(struct roc_nix *roc_nix, uint16_t id, struct roc_nix_rq *rq,
+		    bool enable)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix_cn10k_aq_enq_req *aq;
+	int rc;
+
+	if (roc_model_is_cn9k())
+		return NIX_ERR_HW_NOTSUP;
+
+	if (rq->qid >= nix->nb_rx_queues)
+		return NIX_ERR_QUEUE_INVALID_RANGE;
+
+	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (aq == NULL)
+		return -ENOSPC;
+	aq->qidx = rq->qid;
+	aq->ctype = NIX_AQ_CTYPE_RQ;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+
+	aq->rq.policer_ena = enable;
+	aq->rq_mask.policer_ena = ~(aq->rq_mask.policer_ena);
+	if (enable) {
+		aq->rq.band_prof_id = id;
+		aq->rq_mask.band_prof_id = ~(aq->rq_mask.band_prof_id);
+	}
+
+	rc = mbox_process(mbox);
+	if (rc)
+		goto exit;
+
+	rq->bpf_id = id;
+
+exit:
+	return rc;
+}

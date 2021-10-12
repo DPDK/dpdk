@@ -85,6 +85,7 @@ INTERNAL {
 	roc_nix_bpf_alloc;
 	roc_nix_bpf_config;
 	roc_nix_bpf_count_get;
+	roc_nix_bpf_ena_dis;
 	roc_nix_bpf_free;
 	roc_nix_bpf_free_all;
 	roc_nix_bpf_level_to_idx;
