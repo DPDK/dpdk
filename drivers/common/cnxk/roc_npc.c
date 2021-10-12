@@ -348,6 +348,7 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	const struct roc_npc_action_mark *act_mark;
+	const struct roc_npc_action_meter *act_mtr;
 	const struct roc_npc_action_queue *act_q;
 	const struct roc_npc_action_vf *vf_act;
 	bool vlan_insert_action = false;
@@ -450,6 +451,12 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			break;
 		case ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT:
 			req_act |= ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT;
+			break;
+		case ROC_NPC_ACTION_TYPE_METER:
+			act_mtr = (const struct roc_npc_action_meter *)
+					  actions->conf;
+			flow->mtr_id = act_mtr->mtr_id;
+			req_act |= ROC_NPC_ACTION_TYPE_METER;
 			break;
 		default:
 			errcode = NPC_ERR_ACTION_NOTSUP;
