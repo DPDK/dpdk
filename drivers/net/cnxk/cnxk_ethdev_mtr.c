@@ -189,9 +189,39 @@ cnxk_nix_mtr_profile_add(struct rte_eth_dev *eth_dev, uint32_t profile_id,
 	return 0;
 }
 
+static int
+cnxk_nix_mtr_profile_delete(struct rte_eth_dev *eth_dev, uint32_t profile_id,
+			    struct rte_mtr_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_mtr_profile_node *fmp;
+
+	if (profile_id == UINT32_MAX)
+		return -rte_mtr_error_set(error, EINVAL,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+					  NULL, "Meter profile id not valid.");
+
+	fmp = nix_mtr_profile_find(dev, profile_id);
+	if (fmp == NULL)
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+					  &profile_id,
+					  "Meter profile is invalid.");
+
+	if (fmp->ref_cnt)
+		return -rte_mtr_error_set(error, EBUSY,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+					  NULL, "Meter profile is in use.");
+
+	TAILQ_REMOVE(&dev->mtr_profiles, fmp, next);
+	plt_free(fmp);
+	return 0;
+}
+
 const struct rte_mtr_ops nix_mtr_ops = {
 	.capabilities_get = cnxk_nix_mtr_capabilities_get,
 	.meter_profile_add = cnxk_nix_mtr_profile_add,
+	.meter_profile_delete = cnxk_nix_mtr_profile_delete,
 };
 
 int
