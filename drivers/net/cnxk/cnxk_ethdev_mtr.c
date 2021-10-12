@@ -349,12 +349,38 @@ exit:
 	return rc;
 }
 
+static int
+cnxk_nix_mtr_policy_delete(struct rte_eth_dev *eth_dev, uint32_t policy_id,
+			   struct rte_mtr_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_mtr_policy_node *fmp;
+
+	fmp = nix_mtr_policy_find(dev, policy_id);
+	if (fmp == NULL) {
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+					  NULL, "No policy found");
+	}
+
+	if (fmp->ref_cnt)
+		return -rte_mtr_error_set(error, EBUSY,
+					  RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+					  NULL, "Meter policy is in use.");
+
+	TAILQ_REMOVE(&dev->mtr_policy, fmp, next);
+	plt_free(fmp);
+
+	return 0;
+}
+
 const struct rte_mtr_ops nix_mtr_ops = {
 	.capabilities_get = cnxk_nix_mtr_capabilities_get,
 	.meter_profile_add = cnxk_nix_mtr_profile_add,
 	.meter_profile_delete = cnxk_nix_mtr_profile_delete,
 	.meter_policy_validate = cnxk_nix_mtr_policy_validate,
 	.meter_policy_add = cnxk_nix_mtr_policy_add,
+	.meter_policy_delete = cnxk_nix_mtr_policy_delete,
 };
 
 int
