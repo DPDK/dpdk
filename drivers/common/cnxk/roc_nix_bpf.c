@@ -13,6 +13,19 @@
 	(ROC_NIX_BPF_LEVEL_F_LEAF | ROC_NIX_BPF_LEVEL_F_MID |                  \
 	 ROC_NIX_BPF_LEVEL_F_TOP)
 
+static uint8_t sw_to_hw_lvl_map[] = {NIX_RX_BAND_PROF_LAYER_LEAF,
+				     NIX_RX_BAND_PROF_LAYER_MIDDLE,
+				     NIX_RX_BAND_PROF_LAYER_TOP};
+
+static inline struct mbox *
+get_mbox(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+
+	return dev->mbox;
+}
+
 uint8_t
 roc_nix_bpf_level_to_idx(enum roc_nix_bpf_level_flag level_f)
 {
@@ -65,4 +78,95 @@ roc_nix_bpf_count_get(struct roc_nix *roc_nix, uint8_t lvl_mask,
 		count[top_idx] = NIX_MAX_BPF_COUNT_TOP_LAYER;
 
 	return 0;
+}
+
+int
+roc_nix_bpf_alloc(struct roc_nix *roc_nix, uint8_t lvl_mask,
+		  uint16_t per_lvl_cnt[ROC_NIX_BPF_LEVEL_MAX],
+		  struct roc_nix_bpf_objs *profs)
+{
+	uint8_t mask = lvl_mask & NIX_BPF_LEVEL_F_MASK;
+	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix_bandprof_alloc_req *req;
+	struct nix_bandprof_alloc_rsp *rsp;
+	uint8_t leaf_idx, mid_idx, top_idx;
+	int rc = -ENOSPC, i;
+
+	if (roc_model_is_cn9k())
+		return NIX_ERR_HW_NOTSUP;
+
+	if (!mask)
+		return NIX_ERR_PARAM;
+
+	leaf_idx = roc_nix_bpf_level_to_idx(mask & ROC_NIX_BPF_LEVEL_F_LEAF);
+	mid_idx = roc_nix_bpf_level_to_idx(mask & ROC_NIX_BPF_LEVEL_F_MID);
+	top_idx = roc_nix_bpf_level_to_idx(mask & ROC_NIX_BPF_LEVEL_F_TOP);
+
+	if ((leaf_idx != ROC_NIX_BPF_LEVEL_IDX_INVALID) &&
+	    (per_lvl_cnt[leaf_idx] > NIX_MAX_BPF_COUNT_LEAF_LAYER))
+		return NIX_ERR_INVALID_RANGE;
+
+	if ((mid_idx != ROC_NIX_BPF_LEVEL_IDX_INVALID) &&
+	    (per_lvl_cnt[mid_idx] > NIX_MAX_BPF_COUNT_MID_LAYER))
+		return NIX_ERR_INVALID_RANGE;
+
+	if ((top_idx != ROC_NIX_BPF_LEVEL_IDX_INVALID) &&
+	    (per_lvl_cnt[top_idx] > NIX_MAX_BPF_COUNT_TOP_LAYER))
+		return NIX_ERR_INVALID_RANGE;
+
+	req = mbox_alloc_msg_nix_bandprof_alloc(mbox);
+	if (req == NULL)
+		goto exit;
+
+	if (leaf_idx != ROC_NIX_BPF_LEVEL_IDX_INVALID) {
+		req->prof_count[sw_to_hw_lvl_map[leaf_idx]] =
+			per_lvl_cnt[leaf_idx];
+	}
+
+	if (mid_idx != ROC_NIX_BPF_LEVEL_IDX_INVALID) {
+		req->prof_count[sw_to_hw_lvl_map[mid_idx]] =
+			per_lvl_cnt[mid_idx];
+	}
+
+	if (top_idx != ROC_NIX_BPF_LEVEL_IDX_INVALID) {
+		req->prof_count[sw_to_hw_lvl_map[top_idx]] =
+			per_lvl_cnt[top_idx];
+	}
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+
+	if (leaf_idx != ROC_NIX_BPF_LEVEL_IDX_INVALID) {
+		profs[leaf_idx].level = leaf_idx;
+		profs[leaf_idx].count =
+			rsp->prof_count[sw_to_hw_lvl_map[leaf_idx]];
+		for (i = 0; i < profs[leaf_idx].count; i++) {
+			profs[leaf_idx].ids[i] =
+				rsp->prof_idx[sw_to_hw_lvl_map[leaf_idx]][i];
+		}
+	}
+
+	if (mid_idx != ROC_NIX_BPF_LEVEL_IDX_INVALID) {
+		profs[mid_idx].level = mid_idx;
+		profs[mid_idx].count =
+			rsp->prof_count[sw_to_hw_lvl_map[mid_idx]];
+		for (i = 0; i < profs[mid_idx].count; i++) {
+			profs[mid_idx].ids[i] =
+				rsp->prof_idx[sw_to_hw_lvl_map[mid_idx]][i];
+		}
+	}
+
+	if (top_idx != ROC_NIX_BPF_LEVEL_IDX_INVALID) {
+		profs[top_idx].level = top_idx;
+		profs[top_idx].count =
+			rsp->prof_count[sw_to_hw_lvl_map[top_idx]];
+		for (i = 0; i < profs[top_idx].count; i++) {
+			profs[top_idx].ids[i] =
+				rsp->prof_idx[sw_to_hw_lvl_map[top_idx]][i];
+		}
+	}
+
+exit:
+	return rc;
 }

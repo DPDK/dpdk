@@ -6,6 +6,7 @@
 #define _ROC_NIX_H_
 
 /* Constants */
+#define ROC_NIX_BPF_PER_PFFUNC	      64
 #define ROC_NIX_BPF_LEVEL_IDX_INVALID 0xFF
 #define ROC_NIX_BPF_LEVEL_MAX	      3
 
@@ -36,6 +37,12 @@ enum roc_nix_bpf_level_flag {
 	ROC_NIX_BPF_LEVEL_F_LEAF = BIT(0),
 	ROC_NIX_BPF_LEVEL_F_MID = BIT(1),
 	ROC_NIX_BPF_LEVEL_F_TOP = BIT(2),
+};
+
+struct roc_nix_bpf_objs {
+	uint16_t level;
+	uint16_t count;
+	uint16_t ids[ROC_NIX_BPF_PER_PFFUNC];
 };
 
 struct roc_nix_vlan_config {
@@ -521,6 +528,10 @@ int __roc_api roc_nix_tm_tree_type_get(struct roc_nix *nix);
 int __roc_api
 roc_nix_bpf_count_get(struct roc_nix *roc_nix, uint8_t lvl_mask,
 		      uint16_t count[ROC_NIX_BPF_LEVEL_MAX] /* Out */);
+
+int __roc_api roc_nix_bpf_alloc(struct roc_nix *roc_nix, uint8_t lvl_mask,
+				uint16_t per_lvl_cnt[ROC_NIX_BPF_LEVEL_MAX],
+				struct roc_nix_bpf_objs *profs /* Out */);
 
 uint8_t __roc_api
 roc_nix_bpf_level_to_idx(enum roc_nix_bpf_level_flag lvl_flag);
