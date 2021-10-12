@@ -1055,6 +1055,13 @@ nix_dscp_table_map(struct cnxk_meter_node *mtr,
 }
 
 int
+nix_mtr_destroy(struct rte_eth_dev *eth_dev, uint32_t id,
+		struct rte_mtr_error *error)
+{
+	return cnxk_nix_mtr_destroy(eth_dev, id, error);
+}
+
+int
 nix_mtr_connect(struct rte_eth_dev *eth_dev, uint32_t id)
 {
 	enum roc_nix_bpf_level_flag lvl_flag = ROC_NIX_BPF_LEVEL_IDX_INVALID;

@@ -13,6 +13,14 @@ cn10k_mtr_connect(struct rte_eth_dev *eth_dev, uint32_t mtr_id)
 }
 
 static int
+cn10k_mtr_destroy(struct rte_eth_dev *eth_dev, uint32_t mtr_id)
+{
+	struct rte_mtr_error mtr_error;
+
+	return nix_mtr_destroy(eth_dev, mtr_id, &mtr_error);
+}
+
+static int
 cn10k_mtr_configure(struct rte_eth_dev *eth_dev,
 		    const struct rte_flow_action actions[])
 {
@@ -215,6 +223,8 @@ cn10k_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *rte_flow,
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	int mark_actions = 0, vtag_actions = 0;
 	struct roc_npc *npc = &dev->npc;
+	uint32_t mtr_id;
+	int rc;
 
 	mark_actions = roc_npc_mark_actions_get(npc);
 	if (mark_actions) {
@@ -237,5 +247,15 @@ cn10k_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *rte_flow,
 		}
 	}
 
-	return cnxk_flow_destroy(eth_dev, flow, error);
+	mtr_id = flow->mtr_id;
+	rc = cnxk_flow_destroy(eth_dev, flow, error);
+	if (!rc) {
+		rc = cn10k_mtr_destroy(eth_dev, mtr_id);
+		if (rc) {
+			rte_flow_error_set(error, ENXIO,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"Meter attached to this flow does not exist");
+		}
+	}
+	return rc;
 }

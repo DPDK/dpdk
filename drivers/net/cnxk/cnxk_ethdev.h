@@ -589,6 +589,8 @@ int nix_mtr_level_update(struct rte_eth_dev *eth_dev, uint32_t id,
 			 uint32_t level);
 int nix_mtr_configure(struct rte_eth_dev *eth_dev, uint32_t id);
 int nix_mtr_connect(struct rte_eth_dev *eth_dev, uint32_t id);
+int nix_mtr_destroy(struct rte_eth_dev *eth_dev, uint32_t id,
+		    struct rte_mtr_error *error);
 int nix_mtr_color_action_validate(struct rte_eth_dev *eth_dev, uint32_t id,
 				  uint32_t *prev_id, uint32_t *next_id,
 				  struct cnxk_mtr_policy_node *policy,

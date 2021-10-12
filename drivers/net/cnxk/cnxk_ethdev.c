@@ -142,6 +142,38 @@ cleanup:
 }
 
 static int
+nix_meter_fini(struct cnxk_eth_dev *dev)
+{
+	struct cnxk_meter_node *next_mtr = NULL;
+	struct roc_nix_bpf_objs profs = {0};
+	struct cnxk_meter_node *mtr = NULL;
+	struct cnxk_mtr *fms = &dev->mtr;
+	struct roc_nix *nix = &dev->nix;
+	struct roc_nix_rq *rq;
+	uint32_t i;
+	int rc;
+
+	RTE_TAILQ_FOREACH_SAFE(mtr, fms, next, next_mtr) {
+		for (i = 0; i < mtr->rq_num; i++) {
+			rq = &dev->rqs[mtr->rq_id[i]];
+			rc |= roc_nix_bpf_ena_dis(nix, mtr->bpf_id, rq, false);
+		}
+
+		profs.level = mtr->level;
+		profs.count = 1;
+		profs.ids[0] = mtr->bpf_id;
+		rc = roc_nix_bpf_free(nix, &profs, 1);
+
+		if (rc)
+			return rc;
+
+		TAILQ_REMOVE(fms, mtr, next);
+		plt_free(mtr);
+	}
+	return 0;
+}
+
+static int
 nix_security_release(struct cnxk_eth_dev *dev)
 {
 	struct rte_eth_dev *eth_dev = dev->eth_dev;
@@ -1002,6 +1034,11 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		if (rc)
 			goto fail_configure;
 
+		/* Disable and free rte_meter entries */
+		rc = nix_meter_fini(dev);
+		if (rc)
+			goto fail_configure;
+
 		/* Cleanup security support */
 		rc = nix_security_release(dev);
 		if (rc)
@@ -1657,6 +1694,9 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 	dev->configured = 0;
 
 	roc_nix_npc_rx_ena_dis(nix, false);
+
+	/* Disable and free rte_meter entries */
+	nix_meter_fini(dev);
 
 	/* Disable and free rte_flow entries */
 	roc_npc_fini(&dev->npc);
