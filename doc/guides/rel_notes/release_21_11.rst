@@ -123,7 +123,7 @@ New Features
   Updated the Mellanox mlx5 driver with new features and improvements, including:
 
   * Added implicit mempool registration to avoid data path hiccups (opt-out).
-  * Added NIC offloads for the PMD on Windows (TSO).
+  * Added NIC offloads for the PMD on Windows (TSO, VLAN strip).
 
 * **Updated Solarflare network PMD.**
 

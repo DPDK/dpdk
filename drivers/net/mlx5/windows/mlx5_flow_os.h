@@ -44,6 +44,7 @@ mlx5_flow_os_item_supported(int item)
 	case RTE_FLOW_ITEM_TYPE_UDP:
 	case RTE_FLOW_ITEM_TYPE_TCP:
 	case RTE_FLOW_ITEM_TYPE_IPV6:
+	case RTE_FLOW_ITEM_TYPE_VLAN:
 		return true;
 	default:
 		return false;

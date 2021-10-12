@@ -489,8 +489,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		config->ind_table_max_size = ETH_RSS_RETA_SIZE_512;
 	DRV_LOG(DEBUG, "maximum Rx indirection table size is %u",
 		config->ind_table_max_size);
-	DRV_LOG(DEBUG, "VLAN stripping is %ssupported",
-		(config->hw_vlan_strip ? "" : "not "));
 	if (config->hw_padding) {
 		DRV_LOG(DEBUG, "Rx end alignment padding isn't supported");
 		config->hw_padding = 0;
@@ -524,6 +522,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		config->hw_csum = config->hca_attr.csum_cap;
 		DRV_LOG(DEBUG, "checksum offloading is %ssupported",
 		    (config->hw_csum ? "" : "not "));
+		config->hw_vlan_strip = config->hca_attr.vlan_cap;
+		DRV_LOG(DEBUG, "VLAN stripping is %ssupported",
+			(config->hw_vlan_strip ? "" : "not "));
 	}
 	if (config->devx) {
 		uint32_t reg[MLX5_ST_SZ_DW(register_mtutc)];
