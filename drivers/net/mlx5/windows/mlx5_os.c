@@ -165,6 +165,7 @@ mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *device_attr)
 	device_attr->max_pd = 1 << hca_attr.log_max_pd;
 	device_attr->max_srq = 1 << hca_attr.log_max_srq;
 	device_attr->max_srq_wr = 1 << hca_attr.log_max_srq_sz;
+	device_attr->max_tso = 1 << hca_attr.max_lso_cap;
 	if (hca_attr.rss_ind_tbl_cap) {
 		device_attr->max_rwq_indirection_table_size =
 			1 << hca_attr.rss_ind_tbl_cap;
@@ -494,6 +495,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DRV_LOG(DEBUG, "Rx end alignment padding isn't supported");
 		config->hw_padding = 0;
 	}
+	config->tso = (sh->device_attr.max_tso > 0);
 	if (config->tso)
 		config->tso_max_payload_sz = sh->device_attr.max_tso;
 	DRV_LOG(DEBUG, "%sMPS is %s.",
