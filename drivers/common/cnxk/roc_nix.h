@@ -6,6 +6,8 @@
 #define _ROC_NIX_H_
 
 /* Constants */
+#define ROC_NIX_BPF_LEVEL_IDX_INVALID 0xFF
+
 enum roc_nix_rss_reta_sz {
 	ROC_NIX_RSS_RETA_SZ_64 = 64,
 	ROC_NIX_RSS_RETA_SZ_128 = 128,
@@ -27,6 +29,12 @@ enum roc_nix_fc_mode {
 enum roc_nix_vlan_type {
 	ROC_NIX_VLAN_TYPE_INNER = 0x01,
 	ROC_NIX_VLAN_TYPE_OUTER = 0x02,
+};
+
+enum roc_nix_bpf_level_flag {
+	ROC_NIX_BPF_LEVEL_F_LEAF = BIT(0),
+	ROC_NIX_BPF_LEVEL_F_MID = BIT(1),
+	ROC_NIX_BPF_LEVEL_F_TOP = BIT(2),
 };
 
 struct roc_nix_vlan_config {
@@ -507,6 +515,10 @@ int __roc_api roc_nix_tm_lvl_have_link_access(struct roc_nix *roc_nix, int lvl);
 int __roc_api roc_nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix);
 bool __roc_api roc_nix_tm_is_user_hierarchy_enabled(struct roc_nix *nix);
 int __roc_api roc_nix_tm_tree_type_get(struct roc_nix *nix);
+
+/* Ingress Policer API */
+uint8_t __roc_api
+roc_nix_bpf_level_to_idx(enum roc_nix_bpf_level_flag lvl_flag);
 
 /* MAC */
 int __roc_api roc_nix_mac_rxtx_start_stop(struct roc_nix *roc_nix, bool start);

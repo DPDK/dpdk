@@ -34,6 +34,9 @@ roc_error_msg_get(int errorcode)
 	case NIX_ERR_OP_NOTSUP:
 		err_msg = "Operation not supported";
 		break;
+	case NIX_ERR_HW_NOTSUP:
+		err_msg = "Hardware does not support";
+		break;
 	case NIX_ERR_QUEUE_INVALID_RANGE:
 		err_msg = "Invalid Queue range";
 		break;
