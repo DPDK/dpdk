@@ -996,6 +996,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					 hcattr, csum_cap);
 	attr->lro_cap = MLX5_GET(per_protocol_networking_offload_caps, hcattr,
 				 lro_cap);
+	attr->max_lso_cap = MLX5_GET(per_protocol_networking_offload_caps,
+				 hcattr, max_lso_cap);
 	attr->tunnel_lro_gre = MLX5_GET(per_protocol_networking_offload_caps,
 					hcattr, tunnel_lro_gre);
 	attr->tunnel_lro_vxlan = MLX5_GET(per_protocol_networking_offload_caps,
