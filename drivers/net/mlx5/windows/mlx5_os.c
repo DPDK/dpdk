@@ -525,6 +525,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		config->hw_vlan_strip = config->hca_attr.vlan_cap;
 		DRV_LOG(DEBUG, "VLAN stripping is %ssupported",
 			(config->hw_vlan_strip ? "" : "not "));
+		config->hw_fcs_strip = config->hca_attr.scatter_fcs;
 	}
 	if (config->devx) {
 		uint32_t reg[MLX5_ST_SZ_DW(register_mtutc)];
