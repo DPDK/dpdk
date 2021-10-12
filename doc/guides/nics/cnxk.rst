@@ -35,6 +35,7 @@ Features of the CNXK Ethdev PMD are:
 - Debug utilities - Context dump and error interrupt support
 - Support Rx interrupt
 - Inline IPsec processing support
+- Ingress meter support
 
 Prerequisites
 -------------

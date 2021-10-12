@@ -826,3 +826,509 @@ cnxk_nix_mtr_ops_get(struct rte_eth_dev *dev, void *ops)
 	*(const void **)ops = &nix_mtr_ops;
 	return 0;
 }
+
+int
+nix_mtr_validate(struct rte_eth_dev *eth_dev, uint32_t id)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_mtr_profile_node *profile;
+	struct cnxk_mtr_policy_node *policy;
+	struct cnxk_meter_node *mtr;
+
+	mtr = nix_mtr_find(dev, id);
+	if (mtr == NULL)
+		return -EINVAL;
+
+	profile = nix_mtr_profile_find(dev, mtr->params.meter_profile_id);
+	if (profile == NULL)
+		return -EINVAL;
+
+	policy = nix_mtr_policy_find(dev, mtr->params.meter_policy_id);
+	if (policy == NULL)
+		return -EINVAL;
+
+	return 0;
+}
+
+int
+nix_mtr_policy_act_get(struct rte_eth_dev *eth_dev, uint32_t id,
+		       struct cnxk_mtr_policy_node **policy_act)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_mtr_policy_node *policy;
+	struct cnxk_meter_node *mtr;
+
+	mtr = nix_mtr_find(dev, id);
+	if (mtr == NULL)
+		return -EINVAL;
+
+	policy = nix_mtr_policy_find(dev, mtr->params.meter_policy_id);
+	if (policy == NULL)
+		return -EINVAL;
+
+	*policy_act = policy;
+
+	return 0;
+}
+
+int
+nix_mtr_rq_update(struct rte_eth_dev *eth_dev, uint32_t id, uint32_t queue_num,
+		  const uint16_t *queue)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_meter_node *mtr;
+	uint32_t i;
+
+	mtr = nix_mtr_find(dev, id);
+	if (mtr == NULL)
+		return -EINVAL;
+
+	mtr->rq_id = plt_zmalloc(queue_num * sizeof(uint32_t), ROC_ALIGN);
+	if (mtr->rq_id == NULL)
+		return -ENOMEM;
+
+	mtr->rq_num = queue_num;
+	for (i = 0; i < queue_num; i++)
+		mtr->rq_id[i] = queue[i];
+
+	return 0;
+}
+
+int
+nix_mtr_chain_reset(struct rte_eth_dev *eth_dev, uint32_t cur_id)
+{
+	struct cnxk_meter_node *mtr[ROC_NIX_BPF_LEVEL_MAX] = {0};
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	uint32_t mtr_id = cur_id;
+	int i = 0, j = 0;
+
+	for (i = 0; i < ROC_NIX_BPF_LEVEL_MAX; i++) {
+		mtr[i] = nix_mtr_find(dev, mtr_id);
+		if (mtr[i])
+			mtr_id = mtr[i]->next_id;
+	}
+	for (i = 0; i < ROC_NIX_BPF_LEVEL_MAX; i++) {
+		if (mtr[i]) {
+			for (j = 0; j < MAX_PRV_MTR_NODES; j++)
+				mtr[i]->prev_id[i] = ROC_NIX_BPF_ID_INVALID;
+			mtr[i]->level = ROC_NIX_BPF_LEVEL_IDX_INVALID;
+			mtr[i]->next_id = ROC_NIX_BPF_ID_INVALID;
+			mtr[i]->is_next = false;
+			mtr[i]->prev_cnt = 0;
+		}
+	}
+	return 0;
+}
+
+int
+nix_mtr_chain_update(struct rte_eth_dev *eth_dev, uint32_t cur_id,
+		     uint32_t prev_id, uint32_t next_id)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_meter_node *mtr;
+
+	mtr = nix_mtr_find(dev, cur_id);
+	if (mtr == NULL)
+		return -EINVAL;
+
+	switch (lvl_map[mtr->level]) {
+	case ROC_NIX_BPF_LEVEL_F_LEAF:
+		mtr->prev_id[mtr->prev_cnt] = ROC_NIX_BPF_ID_INVALID;
+		mtr->next_id = next_id;
+		mtr->is_next = true;
+		break;
+	case ROC_NIX_BPF_LEVEL_F_MID:
+		mtr->prev_id[mtr->prev_cnt] = prev_id;
+		mtr->next_id = next_id;
+		mtr->is_next = true;
+		break;
+	case ROC_NIX_BPF_LEVEL_F_TOP:
+		mtr->prev_id[mtr->prev_cnt] = prev_id;
+		mtr->next_id = ROC_NIX_BPF_ID_INVALID;
+		mtr->is_next = false;
+		break;
+	default:
+		plt_err("Invalid meter level");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+struct cnxk_meter_node *
+nix_get_mtr(struct rte_eth_dev *eth_dev, uint32_t id)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_meter_node *mtr;
+
+	mtr = nix_mtr_find(dev, id);
+	if (mtr == NULL)
+		return NULL;
+
+	return mtr;
+}
+
+int
+nix_mtr_level_update(struct rte_eth_dev *eth_dev, uint32_t id, uint32_t level)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_meter_node *mtr;
+
+	mtr = nix_mtr_find(dev, id);
+	if (mtr == NULL)
+		return -EINVAL;
+
+	mtr->level = level;
+	return 0;
+}
+
+static void
+nix_mtr_config_map(struct cnxk_meter_node *mtr, struct roc_nix_bpf_cfg *cfg)
+{
+	enum roc_nix_bpf_algo alg_map[] = {
+		ROC_NIX_BPF_ALGO_NONE, ROC_NIX_BPF_ALGO_2697,
+		ROC_NIX_BPF_ALGO_2698, ROC_NIX_BPF_ALGO_4115};
+	struct cnxk_mtr_profile_node *profile = mtr->profile;
+	struct cnxk_mtr_policy_node *policy = mtr->policy;
+
+	cfg->alg = alg_map[profile->profile.alg];
+	cfg->lmode = profile->profile.packet_mode;
+
+	switch (cfg->alg) {
+	case ROC_NIX_BPF_ALGO_2697:
+		cfg->algo2697.cir = profile->profile.srtcm_rfc2697.cir * 8;
+		cfg->algo2697.cbs = profile->profile.srtcm_rfc2697.cbs;
+		cfg->algo2697.ebs = profile->profile.srtcm_rfc2697.ebs;
+		break;
+	case ROC_NIX_BPF_ALGO_2698:
+		cfg->algo2698.cir = profile->profile.trtcm_rfc2698.cir * 8;
+		cfg->algo2698.pir = profile->profile.trtcm_rfc2698.pir * 8;
+		cfg->algo2698.cbs = profile->profile.trtcm_rfc2698.cbs;
+		cfg->algo2698.pbs = profile->profile.trtcm_rfc2698.pbs;
+		break;
+	case ROC_NIX_BPF_ALGO_4115:
+		cfg->algo4115.cir = profile->profile.trtcm_rfc4115.cir * 8;
+		cfg->algo4115.eir = profile->profile.trtcm_rfc4115.eir * 8;
+		cfg->algo4115.cbs = profile->profile.trtcm_rfc4115.cbs;
+		cfg->algo4115.ebs = profile->profile.trtcm_rfc4115.ebs;
+		break;
+	default:
+		break;
+	}
+
+	cfg->action[ROC_NIX_BPF_COLOR_GREEN] = ROC_NIX_BPF_ACTION_PASS;
+	cfg->action[ROC_NIX_BPF_COLOR_YELLOW] = ROC_NIX_BPF_ACTION_PASS;
+	cfg->action[ROC_NIX_BPF_COLOR_RED] = ROC_NIX_BPF_ACTION_PASS;
+
+	if (policy->actions[RTE_COLOR_GREEN].action_fate ==
+	    RTE_FLOW_ACTION_TYPE_DROP)
+		cfg->action[ROC_NIX_BPF_COLOR_GREEN] = ROC_NIX_BPF_ACTION_DROP;
+
+	if (policy->actions[RTE_COLOR_YELLOW].action_fate ==
+	    RTE_FLOW_ACTION_TYPE_DROP)
+		cfg->action[ROC_NIX_BPF_COLOR_YELLOW] = ROC_NIX_BPF_ACTION_DROP;
+
+	if (policy->actions[RTE_COLOR_RED].action_fate ==
+	    RTE_FLOW_ACTION_TYPE_DROP)
+		cfg->action[ROC_NIX_BPF_COLOR_RED] = ROC_NIX_BPF_ACTION_DROP;
+}
+
+static void
+nix_dscp_table_map(struct cnxk_meter_node *mtr,
+		   struct roc_nix_bpf_precolor *tbl)
+{
+	enum roc_nix_bpf_color color_map[] = {ROC_NIX_BPF_COLOR_GREEN,
+					      ROC_NIX_BPF_COLOR_YELLOW,
+					      ROC_NIX_BPF_COLOR_RED};
+	int i;
+
+	tbl->count = ROC_NIX_BPF_PRE_COLOR_MAX;
+	tbl->mode = ROC_NIX_BPF_PC_MODE_DSCP_OUTER;
+
+	for (i = 0; i < ROC_NIX_BPF_PRE_COLOR_MAX; i++)
+		tbl->color[i] = ROC_NIX_BPF_COLOR_GREEN;
+
+	if (mtr->params.dscp_table) {
+		for (i = 0; i < ROC_NIX_BPF_PRE_COLOR_MAX; i++)
+			tbl->color[i] = color_map[mtr->params.dscp_table[i]];
+	}
+}
+
+int
+nix_mtr_connect(struct rte_eth_dev *eth_dev, uint32_t id)
+{
+	enum roc_nix_bpf_level_flag lvl_flag = ROC_NIX_BPF_LEVEL_IDX_INVALID;
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_meter_node *base_mtr, *next_mtr;
+	struct roc_nix *nix = &dev->nix;
+	uint32_t cur_mtr_id = id;
+	int rc, i;
+
+	for (i = 0; i < ROC_NIX_BPF_LEVEL_MAX; i++) {
+		base_mtr = nix_mtr_find(dev, cur_mtr_id);
+		if (base_mtr) {
+			lvl_flag = lvl_map[base_mtr->level];
+			if (base_mtr->is_next) {
+				next_mtr = nix_mtr_find(dev, base_mtr->next_id);
+				if (next_mtr) {
+					if (!base_mtr->is_used) {
+						rc = roc_nix_bpf_connect(nix,
+							lvl_flag,
+							base_mtr->bpf_id,
+							next_mtr->bpf_id);
+						if (rc)
+							return rc;
+					}
+				}
+				cur_mtr_id = base_mtr->next_id;
+			}
+		}
+	}
+	return 0;
+}
+
+int
+nix_mtr_configure(struct rte_eth_dev *eth_dev, uint32_t id)
+{
+	struct cnxk_meter_node *mtr[ROC_NIX_BPF_LEVEL_MAX] = {0};
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix_bpf_objs profs[ROC_NIX_BPF_LEVEL_MAX];
+	uint8_t idx0 = ROC_NIX_BPF_LEVEL_IDX_INVALID;
+	uint8_t idx1 = ROC_NIX_BPF_LEVEL_IDX_INVALID;
+	uint8_t idx2 = ROC_NIX_BPF_LEVEL_IDX_INVALID;
+	uint16_t per_lvl_cnt[ROC_NIX_BPF_LEVEL_MAX];
+	int num_mtr[ROC_NIX_BPF_LEVEL_MAX] = {0};
+	struct roc_nix *nix = &dev->nix;
+	struct roc_nix_bpf_precolor tbl;
+	struct roc_nix_bpf_cfg cfg;
+	struct roc_nix_rq *rq;
+	uint8_t lvl_mask;
+	uint32_t i;
+	uint32_t j;
+	int rc;
+
+	mtr[0] = nix_mtr_find(dev, id);
+	if (mtr[0] == NULL)
+		return -EINVAL;
+
+	num_mtr[0] = 1;
+	idx0 = roc_nix_bpf_level_to_idx(lvl_map[mtr[0]->level]);
+	if (idx0 == ROC_NIX_BPF_LEVEL_IDX_INVALID)
+		return -EINVAL;
+
+	lvl_mask = ROC_NIX_BPF_LEVEL_F_LEAF;
+	if (mtr[0]->is_used)
+		per_lvl_cnt[idx0] = 0;
+	else
+		per_lvl_cnt[idx0] = 1;
+
+	if (mtr[0]->is_next) {
+		mtr[1] = nix_mtr_find(dev, mtr[0]->next_id);
+		if (mtr[1] == NULL)
+			return -EINVAL;
+		num_mtr[1] = 1;
+		idx1 = roc_nix_bpf_level_to_idx(lvl_map[mtr[1]->level]);
+		if (idx1 == ROC_NIX_BPF_LEVEL_IDX_INVALID)
+			return -EINVAL;
+
+		lvl_mask |= ROC_NIX_BPF_LEVEL_F_MID;
+		if (mtr[1]->is_used)
+			per_lvl_cnt[idx1] = 0;
+		else
+			per_lvl_cnt[idx1] = 1;
+	}
+
+	if (mtr[1] && mtr[1]->is_next) {
+		mtr[2] = nix_mtr_find(dev, mtr[1]->next_id);
+		if (mtr[2] == NULL)
+			return -EINVAL;
+
+		num_mtr[2] = 1;
+		idx2 = roc_nix_bpf_level_to_idx(lvl_map[mtr[2]->level]);
+		if (idx2 == ROC_NIX_BPF_LEVEL_IDX_INVALID)
+			return -EINVAL;
+
+		lvl_mask |= ROC_NIX_BPF_LEVEL_F_TOP;
+		if (mtr[2]->is_used)
+			per_lvl_cnt[idx2] = 0;
+		else
+			per_lvl_cnt[idx2] = 1;
+	}
+
+	rc = roc_nix_bpf_alloc(nix, lvl_mask, per_lvl_cnt, profs);
+	if (rc)
+		return rc;
+	if (mtr[0]->bpf_id == ROC_NIX_BPF_ID_INVALID)
+		mtr[0]->bpf_id = profs[idx0].ids[0];
+
+	if (num_mtr[0])
+		if (mtr[0]->is_next && idx1 != ROC_NIX_BPF_LEVEL_IDX_INVALID)
+			if (mtr[1]->bpf_id == ROC_NIX_BPF_ID_INVALID)
+				mtr[1]->bpf_id = profs[idx1].ids[0];
+
+	if (num_mtr[1])
+		if (mtr[1]->is_next && idx2 != ROC_NIX_BPF_LEVEL_IDX_INVALID)
+			if (mtr[2]->bpf_id == ROC_NIX_BPF_ID_INVALID)
+				mtr[2]->bpf_id = profs[idx2].ids[0];
+
+	for (i = 0; i < ROC_NIX_BPF_LEVEL_MAX; i++) {
+		if (num_mtr[i]) {
+			if (!mtr[i]->is_used) {
+				memset(&cfg, 0, sizeof(struct roc_nix_bpf_cfg));
+				nix_mtr_config_map(mtr[i], &cfg);
+				rc = roc_nix_bpf_config(nix, mtr[i]->bpf_id,
+							lvl_map[mtr[i]->level],
+							&cfg);
+
+				memset(&tbl, 0,
+				       sizeof(struct roc_nix_bpf_precolor));
+				nix_dscp_table_map(mtr[i], &tbl);
+				rc = roc_nix_bpf_pre_color_tbl_setup(nix,
+					mtr[i]->bpf_id, lvl_map[mtr[i]->level],
+					&tbl);
+
+				if (mtr[i]->params.meter_enable) {
+					for (j = 0; j < mtr[i]->rq_num; j++) {
+						rq = &dev->rqs[mtr[i]->rq_id
+								       [j]];
+						rc = roc_nix_bpf_ena_dis(nix,
+							mtr[i]->bpf_id, rq,
+							true);
+					}
+				}
+			}
+		}
+	}
+
+	return rc;
+}
+
+int
+nix_mtr_color_action_validate(struct rte_eth_dev *eth_dev, uint32_t id,
+			      uint32_t *prev_id, uint32_t *next_id,
+			      struct cnxk_mtr_policy_node *policy,
+			      int *tree_level)
+{
+	uint32_t action_fate_red = policy->actions[RTE_COLOR_RED].action_fate;
+	uint32_t action_fate_green =
+		policy->actions[RTE_COLOR_GREEN].action_fate;
+	uint32_t action_fate_yellow =
+		policy->actions[RTE_COLOR_YELLOW].action_fate;
+	uint32_t cur_mtr_id = *next_id;
+	uint32_t next_mtr_id = 0xffff;
+	uint32_t prev_mtr_id = 0xffff;
+	struct cnxk_meter_node *mtr;
+
+	if (action_fate_green == RTE_FLOW_ACTION_TYPE_METER)
+		next_mtr_id = policy->actions[RTE_COLOR_GREEN].mtr_id;
+
+	if (action_fate_yellow == RTE_FLOW_ACTION_TYPE_METER)
+		next_mtr_id = policy->actions[RTE_COLOR_YELLOW].mtr_id;
+
+	if (action_fate_red == RTE_FLOW_ACTION_TYPE_METER)
+		next_mtr_id = policy->actions[RTE_COLOR_RED].mtr_id;
+
+	if (next_mtr_id != 0xffff) {
+		switch (*tree_level) {
+		case 0:
+			mtr = nix_get_mtr(eth_dev, cur_mtr_id);
+			if (mtr->level == ROC_NIX_BPF_LEVEL_IDX_INVALID) {
+				nix_mtr_level_update(eth_dev, cur_mtr_id, 0);
+				nix_mtr_chain_update(eth_dev, cur_mtr_id, -1,
+						     next_mtr_id);
+			} else {
+				if (mtr->level == 0)
+					mtr->is_used = true;
+				else
+					return -EINVAL;
+			}
+			(*tree_level)++;
+			*next_id = next_mtr_id;
+			break;
+		case 1:
+			mtr = nix_get_mtr(eth_dev, cur_mtr_id);
+			if (mtr->level == ROC_NIX_BPF_LEVEL_IDX_INVALID) {
+				nix_mtr_level_update(eth_dev, cur_mtr_id, 1);
+				prev_mtr_id = id;
+				nix_mtr_chain_update(eth_dev, cur_mtr_id,
+						     prev_mtr_id, next_mtr_id);
+			} else {
+				if (mtr->level == 1) {
+					mtr->prev_cnt++;
+					prev_mtr_id = id;
+					nix_mtr_chain_update(eth_dev,
+						cur_mtr_id, prev_mtr_id,
+						next_mtr_id);
+
+					mtr->is_used = true;
+				} else {
+					return -EINVAL;
+				}
+			}
+			(*tree_level)++;
+			*next_id = next_mtr_id;
+			*prev_id = cur_mtr_id;
+			break;
+		case 2:
+			nix_mtr_chain_reset(eth_dev, id);
+			return -EINVAL;
+		}
+	} else {
+		switch (*tree_level) {
+		case 0:
+			mtr = nix_get_mtr(eth_dev, cur_mtr_id);
+			if (mtr->level == ROC_NIX_BPF_LEVEL_IDX_INVALID) {
+				nix_mtr_level_update(eth_dev, cur_mtr_id, 0);
+			} else {
+				if (mtr->level == 0)
+					mtr->is_used = true;
+				else
+					return -EINVAL;
+			}
+			break;
+		case 1:
+			mtr = nix_get_mtr(eth_dev, cur_mtr_id);
+			if (mtr->level == ROC_NIX_BPF_LEVEL_IDX_INVALID) {
+				nix_mtr_level_update(eth_dev, cur_mtr_id, 1);
+				prev_mtr_id = id;
+				nix_mtr_chain_update(eth_dev, cur_mtr_id,
+						     prev_mtr_id, -1);
+			} else {
+				if (mtr->level == 1) {
+					mtr->prev_cnt++;
+					prev_mtr_id = id;
+					nix_mtr_chain_update(eth_dev,
+							     cur_mtr_id,
+							     prev_mtr_id, -1);
+					mtr->is_used = true;
+				} else {
+					return -EINVAL;
+				}
+			}
+			break;
+		case 2:
+			mtr = nix_get_mtr(eth_dev, cur_mtr_id);
+			if (mtr->level == ROC_NIX_BPF_LEVEL_IDX_INVALID) {
+				nix_mtr_level_update(eth_dev, cur_mtr_id, 2);
+				prev_mtr_id = *prev_id;
+				nix_mtr_chain_update(eth_dev, cur_mtr_id,
+						     prev_mtr_id, -1);
+			} else {
+				if (mtr->level == 2) {
+					mtr->prev_cnt++;
+					prev_mtr_id = *prev_id;
+					nix_mtr_chain_update(eth_dev,
+							     cur_mtr_id,
+							     prev_mtr_id, -1);
+					mtr->is_used = true;
+				} else {
+					return -EINVAL;
+				}
+			}
+			break;
+		}
+		*next_id = 0xffff;
+	}
+
+	return 0;
+}

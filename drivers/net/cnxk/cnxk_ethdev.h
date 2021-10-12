@@ -575,6 +575,24 @@ cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
 
 /* Other private functions */
 int nix_recalc_mtu(struct rte_eth_dev *eth_dev);
+int nix_mtr_validate(struct rte_eth_dev *dev, uint32_t id);
+int nix_mtr_policy_act_get(struct rte_eth_dev *eth_dev, uint32_t id,
+			   struct cnxk_mtr_policy_node **policy);
+int nix_mtr_rq_update(struct rte_eth_dev *eth_dev, uint32_t id,
+		      uint32_t queue_num, const uint16_t *queue);
+int nix_mtr_chain_update(struct rte_eth_dev *eth_dev, uint32_t cur_id,
+			 uint32_t prev_id, uint32_t next_id);
+int nix_mtr_chain_reset(struct rte_eth_dev *eth_dev, uint32_t cur_id);
+struct cnxk_meter_node *nix_get_mtr(struct rte_eth_dev *eth_dev,
+				    uint32_t cur_id);
+int nix_mtr_level_update(struct rte_eth_dev *eth_dev, uint32_t id,
+			 uint32_t level);
+int nix_mtr_configure(struct rte_eth_dev *eth_dev, uint32_t id);
+int nix_mtr_connect(struct rte_eth_dev *eth_dev, uint32_t id);
+int nix_mtr_color_action_validate(struct rte_eth_dev *eth_dev, uint32_t id,
+				  uint32_t *prev_id, uint32_t *next_id,
+				  struct cnxk_mtr_policy_node *policy,
+				  int *tree_level);
 
 /* Inlines */
 static __rte_always_inline uint64_t

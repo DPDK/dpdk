@@ -148,6 +148,7 @@ New Features
   * Added rte_tm support.
   * Added support for Inline IPsec for CN9K event mode and CN10K
     poll mode and event mode.
+  * Added support for ingress meter for CN10K platform.
 
 * **Updated Mellanox mlx5 driver.**
 
