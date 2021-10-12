@@ -692,9 +692,16 @@
 #define NIX_RX_BAND_PROF_ACTIONRESULT_DROP (0x1ull) /* [CN10K, .) */
 #define NIX_RX_BAND_PROF_ACTIONRESULT_RED  (0x2ull) /* [CN10K, .) */
 
-#define NIX_RX_BAND_PROF_LAYER_LEAF   (0x0ull) /* [CN10K, .) */
-#define NIX_RX_BAND_PROF_LAYER_MIDDLE (0x1ull) /* [CN10K, .) */
-#define NIX_RX_BAND_PROF_LAYER_TOP    (0x2ull) /* [CN10K, .) */
+#define NIX_RX_BAND_PROF_LAYER_LEAF    (0x0ull) /* [CN10K, .) */
+#define NIX_RX_BAND_PROF_LAYER_INVALID (0x1ull) /* [CN10K, .) */
+#define NIX_RX_BAND_PROF_LAYER_MIDDLE  (0x2ull) /* [CN10K, .) */
+#define NIX_RX_BAND_PROF_LAYER_TOP     (0x3ull) /* [CN10K, .) */
+#define NIX_RX_BAND_PROF_LAYER_MAX     (0x4ull) /* [CN10K, .) */
+
+#define NIX_RX_BAND_PROF_PC_MODE_VLAN (0x0ull) /* [CN10K, .) */
+#define NIX_RX_BAND_PROF_PC_MODE_DSCP (0x1ull) /* [CN10K, .) */
+#define NIX_RX_BAND_PROF_PC_MODE_GEN  (0x2ull) /* [CN10K, .) */
+#define NIX_RX_BAND_PROF_PC_MODE_RSVD (0x3ull) /* [CN10K, .) */
 
 #define NIX_RX_COLORRESULT_GREEN  (0x0ull) /* [CN10K, .) */
 #define NIX_RX_COLORRESULT_YELLOW (0x1ull) /* [CN10K, .) */

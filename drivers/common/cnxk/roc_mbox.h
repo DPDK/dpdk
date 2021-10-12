@@ -234,7 +234,11 @@ struct mbox_msghdr {
 	  nix_inline_ipsec_lf_cfg, msg_rsp)                                    \
 	M(NIX_CN10K_AQ_ENQ, 0x801b, nix_cn10k_aq_enq, nix_cn10k_aq_enq_req,    \
 	  nix_cn10k_aq_enq_rsp)                                                \
-	M(NIX_GET_HW_INFO, 0x801c, nix_get_hw_info, msg_req, nix_hw_info)
+	M(NIX_GET_HW_INFO, 0x801c, nix_get_hw_info, msg_req, nix_hw_info)      \
+	M(NIX_BANDPROF_ALLOC, 0x801d, nix_bandprof_alloc,                      \
+	  nix_bandprof_alloc_req, nix_bandprof_alloc_rsp)                      \
+	M(NIX_BANDPROF_FREE, 0x801e, nix_bandprof_free, nix_bandprof_free_req, \
+	  msg_rsp)
 
 /* Messages initiated by AF (range 0xC00 - 0xDFF) */
 #define MBOX_UP_CGX_MESSAGES                                                   \
@@ -772,6 +776,10 @@ struct nix_cn10k_aq_enq_req {
 		__io struct nix_rsse_s rss;
 		/* Valid when op == WRITE/INIT and ctype == NIX_AQ_CTYPE_MCE */
 		__io struct nix_rx_mce_s mce;
+		/* Valid when op == WRITE/INIT and
+		 * ctype == NIX_AQ_CTYPE_BAND_PROF
+		 */
+		__io struct nix_band_prof_s prof;
 	};
 	/* Mask data when op == WRITE (1=write, 0=don't write) */
 	union {
@@ -785,6 +793,8 @@ struct nix_cn10k_aq_enq_req {
 		__io struct nix_rsse_s rss_mask;
 		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_MCE */
 		__io struct nix_rx_mce_s mce_mask;
+		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_BAND_PROF */
+		__io struct nix_band_prof_s prof_mask;
 	};
 };
 
@@ -796,6 +806,7 @@ struct nix_cn10k_aq_enq_rsp {
 		struct nix_cq_ctx_s cq;
 		struct nix_rsse_s rss;
 		struct nix_rx_mce_s mce;
+		struct nix_band_prof_s prof;
 	};
 };
 
@@ -1128,6 +1139,27 @@ struct nix_hw_info {
 	struct mbox_msghdr hdr;
 	uint16_t __io vwqe_delay;
 	uint16_t __io rsvd[15];
+};
+
+struct nix_bandprof_alloc_req {
+	struct mbox_msghdr hdr;
+	/* Count of profiles needed per layer */
+	uint16_t __io prof_count[NIX_RX_BAND_PROF_LAYER_MAX];
+};
+
+struct nix_bandprof_alloc_rsp {
+	struct mbox_msghdr hdr;
+	uint16_t __io prof_count[NIX_RX_BAND_PROF_LAYER_MAX];
+
+#define BANDPROF_PER_PFFUNC 64
+	uint16_t __io prof_idx[NIX_RX_BAND_PROF_LAYER_MAX][BANDPROF_PER_PFFUNC];
+};
+
+struct nix_bandprof_free_req {
+	struct mbox_msghdr hdr;
+	uint8_t __io free_all;
+	uint16_t __io prof_count[NIX_RX_BAND_PROF_LAYER_MAX];
+	uint16_t __io prof_idx[NIX_RX_BAND_PROF_LAYER_MAX][BANDPROF_PER_PFFUNC];
 };
 
 /* SSO mailbox error codes
