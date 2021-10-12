@@ -170,3 +170,43 @@ roc_nix_bpf_alloc(struct roc_nix *roc_nix, uint8_t lvl_mask,
 exit:
 	return rc;
 }
+
+int
+roc_nix_bpf_free(struct roc_nix *roc_nix, struct roc_nix_bpf_objs *profs,
+		 uint8_t num_prof)
+{
+	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix_bandprof_free_req *req;
+	uint8_t level;
+	int i, j;
+
+	if (num_prof >= NIX_RX_BAND_PROF_LAYER_MAX)
+		return NIX_ERR_INVALID_RANGE;
+
+	req = mbox_alloc_msg_nix_bandprof_free(mbox);
+	if (req == NULL)
+		return -ENOSPC;
+
+	for (i = 0; i < num_prof; i++) {
+		level = sw_to_hw_lvl_map[profs[i].level];
+		req->prof_count[level] = profs[i].count;
+		for (j = 0; j < profs[i].count; j++)
+			req->prof_idx[level][j] = profs[i].ids[j];
+	}
+
+	return mbox_process(mbox);
+}
+
+int
+roc_nix_bpf_free_all(struct roc_nix *roc_nix)
+{
+	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix_bandprof_free_req *req;
+
+	req = mbox_alloc_msg_nix_bandprof_free(mbox);
+	if (req == NULL)
+		return -ENOSPC;
+
+	req->free_all = true;
+	return mbox_process(mbox);
+}

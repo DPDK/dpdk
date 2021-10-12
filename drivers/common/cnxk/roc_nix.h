@@ -533,6 +533,12 @@ int __roc_api roc_nix_bpf_alloc(struct roc_nix *roc_nix, uint8_t lvl_mask,
 				uint16_t per_lvl_cnt[ROC_NIX_BPF_LEVEL_MAX],
 				struct roc_nix_bpf_objs *profs /* Out */);
 
+int __roc_api roc_nix_bpf_free(struct roc_nix *roc_nix,
+			       struct roc_nix_bpf_objs *profs,
+			       uint8_t num_prof);
+
+int __roc_api roc_nix_bpf_free_all(struct roc_nix *roc_nix);
+
 uint8_t __roc_api
 roc_nix_bpf_level_to_idx(enum roc_nix_bpf_level_flag lvl_flag);
 
