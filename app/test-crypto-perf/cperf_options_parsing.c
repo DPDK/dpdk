@@ -459,6 +459,10 @@ parse_op_type(struct cperf_options *opts, const char *arg)
 			CPERF_DOCSIS
 		},
 		{
+			cperf_op_type_strs[CPERF_IPSEC],
+			CPERF_IPSEC
+		},
+		{
 			cperf_op_type_strs[CPERF_ASYM_MODEX],
 			CPERF_ASYM_MODEX
 		}

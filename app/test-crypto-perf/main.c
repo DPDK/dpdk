@@ -41,6 +41,7 @@ const char *cperf_op_type_strs[] = {
 	[CPERF_AEAD] = "aead",
 	[CPERF_PDCP] = "pdcp",
 	[CPERF_DOCSIS] = "docsis",
+	[CPERF_IPSEC] = "ipsec",
 	[CPERF_ASYM_MODEX] = "modex"
 };
 
@@ -278,9 +279,9 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 			/* Fall through */
 		case CPERF_PDCP:
 		case CPERF_DOCSIS:
+		case CPERF_IPSEC:
 			/* Fall through */
 		default:
-
 			conf.ff_disable |= RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO;
 		}
 

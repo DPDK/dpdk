@@ -42,7 +42,8 @@ cperf_throughput_test_free(struct cperf_throughput_ctx *ctx)
 		}
 #ifdef RTE_LIB_SECURITY
 		else if (ctx->options->op_type == CPERF_PDCP ||
-			 ctx->options->op_type == CPERF_DOCSIS) {
+			 ctx->options->op_type == CPERF_DOCSIS ||
+			 ctx->options->op_type == CPERF_IPSEC) {
 			struct rte_security_ctx *sec_ctx =
 				(struct rte_security_ctx *)
 					rte_cryptodev_get_sec_ctx(ctx->dev_id);
@@ -185,7 +186,7 @@ cperf_throughput_test_runner(void *test_ctx)
 					ctx->dst_buf_offset,
 					ops_needed, ctx->sess,
 					ctx->options, ctx->test_vector,
-					iv_offset, &imix_idx);
+					iv_offset, &imix_idx, &tsc_start);
 
 			/**
 			 * When ops_needed is smaller than ops_enqd, the

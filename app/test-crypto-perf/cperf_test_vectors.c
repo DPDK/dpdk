@@ -428,6 +428,18 @@ uint8_t aead_key[] = {
 /* Digests */
 uint8_t digest[2048] = { 0x00 };
 
+uint8_t ipsec_plaintext[2048] = {
+		/* IP */
+		0x45, 0x00, 0x00, 0x28, 0xa4, 0xad, 0x40, 0x00,
+		0x40, 0x06, 0x78, 0x80, 0x0a, 0x01, 0x03, 0x8f,
+		0x0a, 0x01, 0x06, 0x12,
+
+		/* TCP */
+		0x80, 0x23, 0x06, 0xb8, 0xcb, 0x71, 0x26, 0x02,
+		0xdd, 0x6b, 0xb0, 0x3e, 0x50, 0x10, 0x16, 0xd0,
+		0x75, 0x67, 0x00, 0x01
+};
+
 struct cperf_test_vector*
 cperf_test_vector_get_dummy(struct cperf_options *options)
 {
@@ -448,7 +460,8 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 		t_vec->modex.elen = sizeof(perf_mod_e);
 	}
 
-	if (options->op_type ==	CPERF_PDCP) {
+	if (options->op_type ==	CPERF_PDCP ||
+			options->op_type == CPERF_IPSEC) {
 		if (options->cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
 			t_vec->cipher_key.length = 0;
 			t_vec->ciphertext.data = plaintext;
@@ -458,6 +471,9 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 			t_vec->ciphertext.data = ciphertext;
 			t_vec->cipher_key.data = cipher_key;
 		}
+
+		if (options->op_type == CPERF_IPSEC)
+			t_vec->plaintext.data = ipsec_plaintext;
 
 		/* Init IV data ptr */
 		t_vec->cipher_iv.data = NULL;
@@ -579,7 +595,8 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 		t_vec->auth_iv.length = options->auth_iv_sz;
 	}
 
-	if (options->op_type == CPERF_AEAD) {
+	if (options->op_type == CPERF_AEAD ||
+			options->op_type == CPERF_IPSEC) {
 		t_vec->aead_key.length = options->aead_key_sz;
 		t_vec->aead_key.data = aead_key;
 

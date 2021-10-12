@@ -299,7 +299,7 @@ cperf_verify_test_runner(void *test_ctx)
 		(ctx->populate_ops)(ops, ctx->src_buf_offset,
 				ctx->dst_buf_offset,
 				ops_needed, ctx->sess, ctx->options,
-				ctx->test_vector, iv_offset, &imix_idx);
+				ctx->test_vector, iv_offset, &imix_idx, NULL);
 
 
 		/* Populate the mbuf with the test vector, for verification */

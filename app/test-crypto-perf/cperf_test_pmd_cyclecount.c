@@ -181,7 +181,7 @@ pmd_cyclecount_bench_ops(struct pmd_cyclecount_state *state, uint32_t cur_op,
 				burst_size,
 				state->ctx->sess, state->opts,
 				state->ctx->test_vector, iv_offset,
-				&imix_idx);
+				&imix_idx, NULL);
 
 #ifdef CPERF_LINEARIZATION_ENABLE
 		/* Check if source mbufs require coalescing */
@@ -232,7 +232,7 @@ pmd_cyclecount_build_ops(struct pmd_cyclecount_state *state,
 				burst_size,
 				state->ctx->sess, state->opts,
 				state->ctx->test_vector, iv_offset,
-				&imix_idx);
+				&imix_idx, NULL);
 	}
 	return 0;
 }

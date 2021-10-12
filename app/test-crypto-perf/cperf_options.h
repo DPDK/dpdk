@@ -80,6 +80,7 @@ enum cperf_op_type {
 	CPERF_AEAD,
 	CPERF_PDCP,
 	CPERF_DOCSIS,
+	CPERF_IPSEC,
 	CPERF_ASYM_MODEX
 };
 

@@ -200,7 +200,7 @@ cperf_latency_test_runner(void *arg)
 					ctx->dst_buf_offset,
 					burst_size, ctx->sess, ctx->options,
 					ctx->test_vector, iv_offset,
-					&imix_idx);
+					&imix_idx, NULL);
 
 			tsc_start = rte_rdtsc_precise();
 

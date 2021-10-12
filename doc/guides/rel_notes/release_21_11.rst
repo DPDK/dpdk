@@ -175,6 +175,7 @@ New Features
 
   * Added support for asymmetric crypto throughput performance measurement.
     Only modex is supported for now.
+  * Added support for lookaside IPsec protocol offload throughput measurement.
 
 * **Added lookaside protocol (IPsec) tests in dpdk-test.**
 
