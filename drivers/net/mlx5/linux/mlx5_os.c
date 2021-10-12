@@ -755,7 +755,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	int err = 0;
 	unsigned int hw_padding = 0;
 	unsigned int mps;
-	unsigned int tunnel_en = 0;
 	unsigned int mpls_en = 0;
 	unsigned int swp = 0;
 	unsigned int mprq = 0;
@@ -949,20 +948,27 @@ err_secondary:
 	config->cqe_comp = 1;
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
-		tunnel_en = ((dv_attr.tunnel_offloads_caps &
-			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_VXLAN) &&
-			     (dv_attr.tunnel_offloads_caps &
-			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GRE) &&
-			     (dv_attr.tunnel_offloads_caps &
-			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GENEVE));
+		config->tunnel_en = dv_attr.tunnel_offloads_caps &
+			     (MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_VXLAN |
+			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GRE |
+			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GENEVE);
 	}
-	DRV_LOG(DEBUG, "tunnel offloading is %ssupported",
-		tunnel_en ? "" : "not ");
+	if (config->tunnel_en) {
+		DRV_LOG(DEBUG, "tunnel offloading is supported for %s%s%s",
+		config->tunnel_en &
+		MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_VXLAN ? "[VXLAN]" : "",
+		config->tunnel_en &
+		MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GRE ? "[GRE]" : "",
+		config->tunnel_en &
+		MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GENEVE ? "[GENEVE]" : ""
+		);
+	} else {
+		DRV_LOG(DEBUG, "tunnel offloading is not supported");
+	}
 #else
 	DRV_LOG(WARNING,
 		"tunnel offloading disabled due to old OFED/rdma-core version");
 #endif
-	config->tunnel_en = tunnel_en;
 #ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
 	mpls_en = ((dv_attr.tunnel_offloads_caps &
 		    MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_GRE) &&
