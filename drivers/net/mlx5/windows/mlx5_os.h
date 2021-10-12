@@ -22,4 +22,10 @@ enum mlx5_sw_parsing_offloads {
 	MLX5_SW_PARSING_TSO_CAP =  1 << 2,
 };
 
+enum mlx5_tunnel_offloads {
+	MLX5_TUNNELED_OFFLOADS_VXLAN_CAP  = 1 << 0,
+	MLX5_TUNNELED_OFFLOADS_GRE_CAP	  = 1 << 1,
+	MLX5_TUNNELED_OFFLOADS_GENEVE_CAP = 1 << 2,
+};
+
 #endif /* RTE_PMD_MLX5_OS_H_ */

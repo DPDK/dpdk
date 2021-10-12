@@ -251,7 +251,7 @@ struct mlx5_dev_config {
 	unsigned int hw_padding:1; /* End alignment padding is supported. */
 	unsigned int vf:1; /* This is a VF. */
 	unsigned int sf:1; /* This is a SF. */
-	unsigned int tunnel_en:1;
+	unsigned int tunnel_en:3;
 	/* Whether tunnel stateless offloads are supported. */
 	unsigned int mpls_en:1; /* MPLS over GRE/UDP is enabled. */
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */

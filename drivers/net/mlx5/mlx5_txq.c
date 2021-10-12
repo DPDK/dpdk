@@ -120,10 +120,17 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 	if (config->tunnel_en) {
 		if (config->hw_csum)
 			offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
-		if (config->tso)
-			offloads |= (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-				     DEV_TX_OFFLOAD_GRE_TNL_TSO |
-				     DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
+		if (config->tso) {
+			if (config->tunnel_en &
+				MLX5_TUNNELED_OFFLOADS_VXLAN_CAP)
+				offloads |= DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
+			if (config->tunnel_en &
+				MLX5_TUNNELED_OFFLOADS_GRE_CAP)
+				offloads |= DEV_TX_OFFLOAD_GRE_TNL_TSO;
+			if (config->tunnel_en &
+				MLX5_TUNNELED_OFFLOADS_GENEVE_CAP)
+				offloads |= DEV_TX_OFFLOAD_GENEVE_TNL_TSO;
+		}
 	}
 	if (!config->mprq.enabled)
 		offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
@@ -971,7 +978,14 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 						    MLX5_MAX_TSO_HEADER);
 		txq_ctrl->txq.tso_en = 1;
 	}
-	txq_ctrl->txq.tunnel_en = config->tunnel_en | config->swp;
+	if (((DEV_TX_OFFLOAD_VXLAN_TNL_TSO & txq_ctrl->txq.offloads) &&
+	    (config->tunnel_en & MLX5_TUNNELED_OFFLOADS_VXLAN_CAP)) |
+	   ((DEV_TX_OFFLOAD_GRE_TNL_TSO & txq_ctrl->txq.offloads) &&
+	    (config->tunnel_en & MLX5_TUNNELED_OFFLOADS_GRE_CAP)) |
+	   ((DEV_TX_OFFLOAD_GENEVE_TNL_TSO & txq_ctrl->txq.offloads) &&
+	    (config->tunnel_en & MLX5_TUNNELED_OFFLOADS_GENEVE_CAP)) |
+	   (config->swp  & MLX5_SW_PARSING_TSO_CAP))
+		txq_ctrl->txq.tunnel_en = 1;
 	txq_ctrl->txq.swp_en = (((DEV_TX_OFFLOAD_IP_TNL_TSO |
 				  DEV_TX_OFFLOAD_UDP_TNL_TSO) &
 				  txq_ctrl->txq.offloads) && (config->swp &
