@@ -767,3 +767,39 @@ roc_nix_bpf_pre_color_tbl_setup(struct roc_nix *roc_nix, uint16_t id,
 exit:
 	return rc;
 }
+
+int
+roc_nix_bpf_connect(struct roc_nix *roc_nix,
+		    enum roc_nix_bpf_level_flag lvl_flag, uint16_t src_id,
+		    uint16_t dst_id)
+{
+	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix_cn10k_aq_enq_req *aq;
+	uint8_t level_idx;
+
+	if (roc_model_is_cn9k())
+		return NIX_ERR_HW_NOTSUP;
+
+	level_idx = roc_nix_bpf_level_to_idx(lvl_flag);
+	if (level_idx == ROC_NIX_BPF_LEVEL_IDX_INVALID)
+		return NIX_ERR_PARAM;
+
+	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (aq == NULL)
+		return -ENOSPC;
+	aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14) | src_id;
+	aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+
+	if (dst_id == ROC_NIX_BPF_ID_INVALID) {
+		aq->prof.hl_en = false;
+		aq->prof_mask.hl_en = ~(aq->prof_mask.hl_en);
+	} else {
+		aq->prof.hl_en = true;
+		aq->prof.band_prof_id = dst_id;
+		aq->prof_mask.hl_en = ~(aq->prof_mask.hl_en);
+		aq->prof_mask.band_prof_id = ~(aq->prof_mask.band_prof_id);
+	}
+
+	return mbox_process(mbox);
+}

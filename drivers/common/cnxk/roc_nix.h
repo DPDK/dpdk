@@ -7,6 +7,7 @@
 
 /* Constants */
 #define ROC_NIX_BPF_PER_PFFUNC	      64
+#define ROC_NIX_BPF_ID_INVALID	      0xFFFF
 #define ROC_NIX_BPF_LEVEL_IDX_INVALID 0xFF
 #define ROC_NIX_BPF_LEVEL_MAX	      3
 
@@ -628,6 +629,11 @@ int __roc_api roc_nix_bpf_dump(struct roc_nix *roc_nix, uint16_t id,
 int __roc_api roc_nix_bpf_pre_color_tbl_setup(
 	struct roc_nix *roc_nix, uint16_t id,
 	enum roc_nix_bpf_level_flag lvl_flag, struct roc_nix_bpf_precolor *tbl);
+
+/* Use ROC_NIX_BPF_ID_INVALID as dst_id to disconnect */
+int __roc_api roc_nix_bpf_connect(struct roc_nix *roc_nix,
+				  enum roc_nix_bpf_level_flag lvl_flag,
+				  uint16_t src_id, uint16_t dst_id);
 
 uint8_t __roc_api
 roc_nix_bpf_level_to_idx(enum roc_nix_bpf_level_flag lvl_flag);

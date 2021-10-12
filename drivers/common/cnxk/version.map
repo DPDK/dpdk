@@ -84,6 +84,7 @@ INTERNAL {
 	roc_se_ciph_key_set;
 	roc_nix_bpf_alloc;
 	roc_nix_bpf_config;
+	roc_nix_bpf_connect;
 	roc_nix_bpf_count_get;
 	roc_nix_bpf_dump;
 	roc_nix_bpf_ena_dis;
