@@ -953,6 +953,22 @@ mlx5_flex_parser_ecpri_release(struct rte_eth_dev *dev)
 	prf->obj = NULL;
 }
 
+uint32_t
+mlx5_get_supported_sw_parsing_offloads(const struct mlx5_hca_attr *attr)
+{
+	uint32_t sw_parsing_offloads = 0;
+
+	if (attr->swp) {
+		sw_parsing_offloads |= MLX5_SW_PARSING_CAP;
+		if (attr->swp_csum)
+			sw_parsing_offloads |= MLX5_SW_PARSING_CSUM_CAP;
+
+		if (attr->swp_lso)
+			sw_parsing_offloads |= MLX5_SW_PARSING_TSO_CAP;
+	}
+	return sw_parsing_offloads;
+}
+
 /*
  * Allocate Rx and Tx UARs in robust fashion.
  * This routine handles the following UAR allocation issues:

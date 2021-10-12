@@ -169,6 +169,8 @@ mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *device_attr)
 		device_attr->max_rwq_indirection_table_size =
 			1 << hca_attr.rss_ind_tbl_cap;
 	}
+	device_attr->sw_parsing_offloads =
+		mlx5_get_supported_sw_parsing_offloads(&hca_attr);
 	pv_iseg = mlx5_glue->query_hca_iseg(mlx5_ctx, &cb_iseg);
 	if (pv_iseg == NULL) {
 		DRV_LOG(ERR, "Failed to get device hca_iseg");
@@ -393,7 +395,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	DRV_LOG(DEBUG, "MPW isn't supported");
 	mlx5_os_get_dev_attr(sh->ctx, &device_attr);
-	config->swp = 0;
+	config->swp = device_attr.sw_parsing_offloads &
+		(MLX5_SW_PARSING_CAP | MLX5_SW_PARSING_CSUM_CAP |
+		 MLX5_SW_PARSING_TSO_CAP);
 	config->ind_table_max_size =
 		sh->device_attr.max_rwq_indirection_table_size;
 	cqe_comp = 0;
