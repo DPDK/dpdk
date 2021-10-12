@@ -11,6 +11,7 @@ endif
 sources = files(
         'cnxk_ethdev.c',
         'cnxk_ethdev_devargs.c',
+        'cnxk_ethdev_mtr.c',
         'cnxk_ethdev_ops.c',
         'cnxk_ethdev_sec.c',
         'cnxk_link.c',

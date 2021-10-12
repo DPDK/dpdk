@@ -433,6 +433,9 @@ int cnxk_nix_tm_ops_get(struct rte_eth_dev *eth_dev, void *ops);
 int cnxk_nix_tm_set_queue_rate_limit(struct rte_eth_dev *eth_dev,
 				     uint16_t queue_idx, uint16_t tx_rate);
 
+/* MTR */
+int cnxk_nix_mtr_ops_get(struct rte_eth_dev *dev, void *ops);
+
 /* RSS */
 uint32_t cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
 				uint8_t rss_level);

@@ -1488,6 +1488,7 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.set_mc_addr_list = cnxk_nix_mc_addr_list_configure,
 	.set_queue_rate_limit = cnxk_nix_tm_set_queue_rate_limit,
 	.tm_ops_get = cnxk_nix_tm_ops_get,
+	.mtr_ops_get = cnxk_nix_mtr_ops_get,
 };
 
 static int
