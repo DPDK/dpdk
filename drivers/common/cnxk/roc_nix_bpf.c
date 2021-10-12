@@ -938,6 +938,86 @@ roc_nix_bpf_stats_read(struct roc_nix *roc_nix, uint16_t id, uint64_t mask,
 }
 
 int
+roc_nix_bpf_stats_reset(struct roc_nix *roc_nix, uint16_t id, uint64_t mask,
+			enum roc_nix_bpf_level_flag lvl_flag)
+{
+	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix_cn10k_aq_enq_req *aq;
+	uint8_t level_idx;
+
+	if (roc_model_is_cn9k())
+		return NIX_ERR_HW_NOTSUP;
+
+	level_idx = roc_nix_bpf_level_to_idx(lvl_flag);
+	if (level_idx == ROC_NIX_BPF_LEVEL_IDX_INVALID)
+		return NIX_ERR_PARAM;
+
+	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (aq == NULL)
+		return -ENOSPC;
+	aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14 | id);
+	aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+
+	if (mask & ROC_NIX_BPF_GREEN_PKT_F_PASS) {
+		aq->prof.green_pkt_pass = 0;
+		aq->prof_mask.green_pkt_pass = ~(aq->prof_mask.green_pkt_pass);
+	}
+	if (mask & ROC_NIX_BPF_GREEN_OCTS_F_PASS) {
+		aq->prof.green_octs_pass = 0;
+		aq->prof_mask.green_octs_pass =
+			~(aq->prof_mask.green_octs_pass);
+	}
+	if (mask & ROC_NIX_BPF_GREEN_PKT_F_DROP) {
+		aq->prof.green_pkt_drop = 0;
+		aq->prof_mask.green_pkt_drop = ~(aq->prof_mask.green_pkt_drop);
+	}
+	if (mask & ROC_NIX_BPF_GREEN_OCTS_F_DROP) {
+		aq->prof.green_octs_drop = 0;
+		aq->prof_mask.green_octs_drop =
+			~(aq->prof_mask.green_octs_drop);
+	}
+	if (mask & ROC_NIX_BPF_YELLOW_PKT_F_PASS) {
+		aq->prof.yellow_pkt_pass = 0;
+		aq->prof_mask.yellow_pkt_pass =
+			~(aq->prof_mask.yellow_pkt_pass);
+	}
+	if (mask & ROC_NIX_BPF_YELLOW_OCTS_F_PASS) {
+		aq->prof.yellow_octs_pass = 0;
+		aq->prof_mask.yellow_octs_pass =
+			~(aq->prof_mask.yellow_octs_pass);
+	}
+	if (mask & ROC_NIX_BPF_YELLOW_PKT_F_DROP) {
+		aq->prof.yellow_pkt_drop = 0;
+		aq->prof_mask.yellow_pkt_drop =
+			~(aq->prof_mask.yellow_pkt_drop);
+	}
+	if (mask & ROC_NIX_BPF_YELLOW_OCTS_F_DROP) {
+		aq->prof.yellow_octs_drop = 0;
+		aq->prof_mask.yellow_octs_drop =
+			~(aq->prof_mask.yellow_octs_drop);
+	}
+	if (mask & ROC_NIX_BPF_RED_PKT_F_PASS) {
+		aq->prof.red_pkt_pass = 0;
+		aq->prof_mask.red_pkt_pass = ~(aq->prof_mask.red_pkt_pass);
+	}
+	if (mask & ROC_NIX_BPF_RED_OCTS_F_PASS) {
+		aq->prof.red_octs_pass = 0;
+		aq->prof_mask.red_octs_pass = ~(aq->prof_mask.red_octs_pass);
+	}
+	if (mask & ROC_NIX_BPF_RED_PKT_F_DROP) {
+		aq->prof.red_pkt_drop = 0;
+		aq->prof_mask.red_pkt_drop = ~(aq->prof_mask.red_pkt_drop);
+	}
+	if (mask & ROC_NIX_BPF_RED_OCTS_F_DROP) {
+		aq->prof.red_octs_drop = 0;
+		aq->prof_mask.red_octs_drop = ~(aq->prof_mask.red_octs_drop);
+	}
+
+	return mbox_process(mbox);
+}
+
+int
 roc_nix_bpf_lf_stats_read(struct roc_nix *roc_nix, uint64_t mask,
 			  uint64_t stats[ROC_NIX_BPF_STATS_MAX])
 {
@@ -1031,6 +1111,39 @@ roc_nix_bpf_lf_stats_read(struct roc_nix *roc_nix, uint64_t mask,
 		stats[red_octs_drop] =
 			NIX_RD_STATS(NIX_STAT_LF_RX_RX_RC_PKTS_DROP);
 	}
+
+	return 0;
+}
+
+int
+roc_nix_bpf_lf_stats_reset(struct roc_nix *roc_nix, uint64_t mask)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	if (mask & ROC_NIX_BPF_GREEN_PKT_F_PASS)
+		NIX_RST_STATS(ROC_NIX_BPF_GREEN_PKT_F_PASS);
+	if (mask & ROC_NIX_BPF_GREEN_OCTS_F_PASS)
+		NIX_RST_STATS(ROC_NIX_BPF_GREEN_OCTS_F_PASS);
+	if (mask & ROC_NIX_BPF_GREEN_PKT_F_DROP)
+		NIX_RST_STATS(ROC_NIX_BPF_GREEN_PKT_F_DROP);
+	if (mask & ROC_NIX_BPF_GREEN_OCTS_F_DROP)
+		NIX_RST_STATS(ROC_NIX_BPF_GREEN_OCTS_F_DROP);
+	if (mask & ROC_NIX_BPF_YELLOW_PKT_F_PASS)
+		NIX_RST_STATS(ROC_NIX_BPF_YELLOW_PKT_F_PASS);
+	if (mask & ROC_NIX_BPF_YELLOW_OCTS_F_PASS)
+		NIX_RST_STATS(ROC_NIX_BPF_YELLOW_OCTS_F_PASS);
+	if (mask & ROC_NIX_BPF_YELLOW_PKT_F_DROP)
+		NIX_RST_STATS(ROC_NIX_BPF_YELLOW_PKT_F_DROP);
+	if (mask & ROC_NIX_BPF_YELLOW_OCTS_F_DROP)
+		NIX_RST_STATS(ROC_NIX_BPF_YELLOW_OCTS_F_DROP);
+	if (mask & ROC_NIX_BPF_RED_PKT_F_PASS)
+		NIX_RST_STATS(ROC_NIX_BPF_RED_PKT_F_PASS);
+	if (mask & ROC_NIX_BPF_RED_OCTS_F_PASS)
+		NIX_RST_STATS(ROC_NIX_BPF_RED_OCTS_F_PASS);
+	if (mask & ROC_NIX_BPF_RED_PKT_F_DROP)
+		NIX_RST_STATS(ROC_NIX_BPF_RED_PKT_F_DROP);
+	if (mask & ROC_NIX_BPF_RED_OCTS_F_DROP)
+		NIX_RST_STATS(ROC_NIX_BPF_RED_OCTS_F_DROP);
 
 	return 0;
 }

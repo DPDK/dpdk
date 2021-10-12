@@ -656,9 +656,16 @@ roc_nix_bpf_stats_read(struct roc_nix *roc_nix, uint16_t id, uint64_t mask,
 		       enum roc_nix_bpf_level_flag lvl_flag,
 		       uint64_t stats[ROC_NIX_BPF_STATS_MAX] /* Out */);
 
+int __roc_api roc_nix_bpf_stats_reset(struct roc_nix *roc_nix, uint16_t id,
+				      uint64_t mask,
+				      enum roc_nix_bpf_level_flag lvl_flag);
+
 int __roc_api
 roc_nix_bpf_lf_stats_read(struct roc_nix *roc_nix, uint64_t mask,
 			  uint64_t stats[ROC_NIX_BPF_STATS_MAX] /* Out */);
+
+int __roc_api roc_nix_bpf_lf_stats_reset(struct roc_nix *roc_nix,
+					 uint64_t mask);
 
 uint8_t __roc_api
 roc_nix_bpf_level_to_idx(enum roc_nix_bpf_level_flag lvl_flag);
