@@ -300,6 +300,40 @@ roc_nix_bpf_level_to_idx(enum roc_nix_bpf_level_flag level_f)
 	return idx;
 }
 
+uint8_t
+roc_nix_bpf_stats_to_idx(enum roc_nix_bpf_stats level_f)
+{
+	uint8_t idx;
+
+	if (level_f & ROC_NIX_BPF_GREEN_PKT_F_PASS)
+		idx = 0;
+	else if (level_f & ROC_NIX_BPF_GREEN_OCTS_F_PASS)
+		idx = 1;
+	else if (level_f & ROC_NIX_BPF_GREEN_PKT_F_DROP)
+		idx = 2;
+	else if (level_f & ROC_NIX_BPF_GREEN_OCTS_F_DROP)
+		idx = 3;
+	else if (level_f & ROC_NIX_BPF_YELLOW_PKT_F_PASS)
+		idx = 4;
+	else if (level_f & ROC_NIX_BPF_YELLOW_OCTS_F_PASS)
+		idx = 5;
+	else if (level_f & ROC_NIX_BPF_YELLOW_PKT_F_DROP)
+		idx = 6;
+	else if (level_f & ROC_NIX_BPF_YELLOW_OCTS_F_DROP)
+		idx = 7;
+	else if (level_f & ROC_NIX_BPF_RED_PKT_F_PASS)
+		idx = 8;
+	else if (level_f & ROC_NIX_BPF_RED_OCTS_F_PASS)
+		idx = 9;
+	else if (level_f & ROC_NIX_BPF_RED_PKT_F_DROP)
+		idx = 10;
+	else if (level_f & ROC_NIX_BPF_RED_OCTS_F_DROP)
+		idx = 11;
+	else
+		idx = ROC_NIX_BPF_STATS_MAX;
+	return idx;
+}
+
 int
 roc_nix_bpf_count_get(struct roc_nix *roc_nix, uint8_t lvl_mask,
 		      uint16_t count[ROC_NIX_BPF_LEVEL_MAX])

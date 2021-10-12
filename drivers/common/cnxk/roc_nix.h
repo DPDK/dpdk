@@ -10,6 +10,7 @@
 #define ROC_NIX_BPF_ID_INVALID	      0xFFFF
 #define ROC_NIX_BPF_LEVEL_IDX_INVALID 0xFF
 #define ROC_NIX_BPF_LEVEL_MAX	      3
+#define ROC_NIX_BPF_STATS_MAX	      12
 
 enum roc_nix_rss_reta_sz {
 	ROC_NIX_RSS_RETA_SZ_64 = 64,
@@ -69,6 +70,21 @@ enum roc_nix_bpf_action {
 	ROC_NIX_BPF_ACTION_PASS,
 	ROC_NIX_BPF_ACTION_DROP,
 	ROC_NIX_BPF_ACTION_RED
+};
+
+enum roc_nix_bpf_stats {
+	ROC_NIX_BPF_GREEN_PKT_F_PASS = BIT_ULL(0),
+	ROC_NIX_BPF_GREEN_OCTS_F_PASS = BIT_ULL(1),
+	ROC_NIX_BPF_GREEN_PKT_F_DROP = BIT_ULL(2),
+	ROC_NIX_BPF_GREEN_OCTS_F_DROP = BIT_ULL(3),
+	ROC_NIX_BPF_YELLOW_PKT_F_PASS = BIT_ULL(4),
+	ROC_NIX_BPF_YELLOW_OCTS_F_PASS = BIT_ULL(5),
+	ROC_NIX_BPF_YELLOW_PKT_F_DROP = BIT_ULL(6),
+	ROC_NIX_BPF_YELLOW_OCTS_F_DROP = BIT_ULL(7),
+	ROC_NIX_BPF_RED_PKT_F_PASS = BIT_ULL(8),
+	ROC_NIX_BPF_RED_OCTS_F_PASS = BIT_ULL(9),
+	ROC_NIX_BPF_RED_PKT_F_DROP = BIT_ULL(10),
+	ROC_NIX_BPF_RED_OCTS_F_DROP = BIT_ULL(11),
 };
 
 struct roc_nix_bpf_cfg {
@@ -637,6 +653,8 @@ int __roc_api roc_nix_bpf_connect(struct roc_nix *roc_nix,
 
 uint8_t __roc_api
 roc_nix_bpf_level_to_idx(enum roc_nix_bpf_level_flag lvl_flag);
+
+uint8_t __roc_api roc_nix_bpf_stats_to_idx(enum roc_nix_bpf_stats lvl_flag);
 
 /* MAC */
 int __roc_api roc_nix_mac_rxtx_start_stop(struct roc_nix *roc_nix, bool start);
