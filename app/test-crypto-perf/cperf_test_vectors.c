@@ -554,6 +554,10 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 				rte_free(t_vec);
 				return NULL;
 			}
+
+			if (options->aead_aad_sz > sizeof(aad))
+				options->aead_aad_sz = sizeof(aad);
+
 			memcpy(t_vec->aad.data, aad, options->aead_aad_sz);
 			t_vec->aad.phys_addr = rte_malloc_virt2iova(t_vec->aad.data);
 			t_vec->aad.length = options->aead_aad_sz;
