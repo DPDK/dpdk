@@ -17,6 +17,9 @@
 	(ROC_NIX_BPF_LEVEL_F_LEAF | ROC_NIX_BPF_LEVEL_F_MID |                  \
 	 ROC_NIX_BPF_LEVEL_F_TOP)
 
+#define NIX_RD_STATS(val)  plt_read64(nix->base + NIX_LF_RX_STATX(val))
+#define NIX_RST_STATS(val) plt_write64(0, nix->base + NIX_LF_RX_STATX(val))
+
 static uint8_t sw_to_hw_lvl_map[] = {NIX_RX_BAND_PROF_LAYER_LEAF,
 				     NIX_RX_BAND_PROF_LAYER_MIDDLE,
 				     NIX_RX_BAND_PROF_LAYER_TOP};
@@ -836,4 +839,198 @@ roc_nix_bpf_connect(struct roc_nix *roc_nix,
 	}
 
 	return mbox_process(mbox);
+}
+
+int
+roc_nix_bpf_stats_read(struct roc_nix *roc_nix, uint16_t id, uint64_t mask,
+		       enum roc_nix_bpf_level_flag lvl_flag,
+		       uint64_t stats[ROC_NIX_BPF_STATS_MAX])
+{
+	uint8_t yellow_pkt_pass, yellow_octs_pass, yellow_pkt_drop;
+	uint8_t green_octs_drop, yellow_octs_drop, red_octs_drop;
+	uint8_t green_pkt_pass, green_octs_pass, green_pkt_drop;
+	uint8_t red_pkt_pass, red_octs_pass, red_pkt_drop;
+	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix_cn10k_aq_enq_rsp *rsp;
+	struct nix_cn10k_aq_enq_req *aq;
+	uint8_t level_idx;
+	int rc;
+
+	if (roc_model_is_cn9k())
+		return NIX_ERR_HW_NOTSUP;
+
+	level_idx = roc_nix_bpf_level_to_idx(lvl_flag);
+	if (level_idx == ROC_NIX_BPF_LEVEL_IDX_INVALID)
+		return NIX_ERR_PARAM;
+
+	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (aq == NULL)
+		return -ENOSPC;
+	aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14 | id);
+	aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+	aq->op = NIX_AQ_INSTOP_READ;
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	green_pkt_pass =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_GREEN_PKT_F_PASS);
+	green_octs_pass =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_GREEN_OCTS_F_PASS);
+	green_pkt_drop =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_GREEN_PKT_F_DROP);
+	green_octs_drop =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_GREEN_OCTS_F_DROP);
+	yellow_pkt_pass =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_YELLOW_PKT_F_PASS);
+	yellow_octs_pass =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_YELLOW_OCTS_F_PASS);
+	yellow_pkt_drop =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_YELLOW_PKT_F_DROP);
+	yellow_octs_drop =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_YELLOW_OCTS_F_DROP);
+	red_pkt_pass =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_RED_PKT_F_PASS);
+	red_octs_pass =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_RED_OCTS_F_PASS);
+	red_pkt_drop =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_RED_PKT_F_DROP);
+	red_octs_drop =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_RED_OCTS_F_DROP);
+
+	if (green_pkt_pass != ROC_NIX_BPF_STATS_MAX)
+		stats[green_pkt_pass] = rsp->prof.green_pkt_pass;
+
+	if (green_octs_pass != ROC_NIX_BPF_STATS_MAX)
+		stats[green_octs_pass] = rsp->prof.green_octs_pass;
+
+	if (green_pkt_drop != ROC_NIX_BPF_STATS_MAX)
+		stats[green_pkt_drop] = rsp->prof.green_pkt_drop;
+
+	if (green_octs_drop != ROC_NIX_BPF_STATS_MAX)
+		stats[green_octs_drop] = rsp->prof.green_octs_pass;
+
+	if (yellow_pkt_pass != ROC_NIX_BPF_STATS_MAX)
+		stats[yellow_pkt_pass] = rsp->prof.yellow_pkt_pass;
+
+	if (yellow_octs_pass != ROC_NIX_BPF_STATS_MAX)
+		stats[yellow_octs_pass] = rsp->prof.yellow_octs_pass;
+
+	if (yellow_pkt_drop != ROC_NIX_BPF_STATS_MAX)
+		stats[yellow_pkt_drop] = rsp->prof.yellow_pkt_drop;
+
+	if (yellow_octs_drop != ROC_NIX_BPF_STATS_MAX)
+		stats[yellow_octs_drop] = rsp->prof.yellow_octs_drop;
+
+	if (red_pkt_pass != ROC_NIX_BPF_STATS_MAX)
+		stats[red_pkt_pass] = rsp->prof.red_pkt_pass;
+
+	if (red_octs_pass != ROC_NIX_BPF_STATS_MAX)
+		stats[red_octs_pass] = rsp->prof.red_octs_pass;
+
+	if (red_pkt_drop != ROC_NIX_BPF_STATS_MAX)
+		stats[red_pkt_drop] = rsp->prof.red_pkt_drop;
+
+	if (red_octs_drop != ROC_NIX_BPF_STATS_MAX)
+		stats[red_octs_drop] = rsp->prof.red_octs_drop;
+
+	return 0;
+}
+
+int
+roc_nix_bpf_lf_stats_read(struct roc_nix *roc_nix, uint64_t mask,
+			  uint64_t stats[ROC_NIX_BPF_STATS_MAX])
+{
+	uint8_t yellow_pkt_pass, yellow_octs_pass, yellow_pkt_drop;
+	uint8_t green_octs_drop, yellow_octs_drop, red_octs_drop;
+	uint8_t green_pkt_pass, green_octs_pass, green_pkt_drop;
+	uint8_t red_pkt_pass, red_octs_pass, red_pkt_drop;
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	green_pkt_pass =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_GREEN_PKT_F_PASS);
+	green_octs_pass =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_GREEN_OCTS_F_PASS);
+	green_pkt_drop =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_GREEN_PKT_F_DROP);
+	green_octs_drop =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_GREEN_OCTS_F_DROP);
+	yellow_pkt_pass =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_YELLOW_PKT_F_PASS);
+	yellow_octs_pass =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_YELLOW_OCTS_F_PASS);
+	yellow_pkt_drop =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_YELLOW_PKT_F_DROP);
+	yellow_octs_drop =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_YELLOW_OCTS_F_DROP);
+	red_pkt_pass =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_RED_PKT_F_PASS);
+	red_octs_pass =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_RED_OCTS_F_PASS);
+	red_pkt_drop =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_RED_PKT_F_DROP);
+	red_octs_drop =
+		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_RED_OCTS_F_DROP);
+
+	if (green_pkt_pass != ROC_NIX_BPF_STATS_MAX) {
+		stats[green_pkt_pass] =
+			NIX_RD_STATS(NIX_STAT_LF_RX_RX_GC_OCTS_PASSED);
+	}
+
+	if (green_octs_pass != ROC_NIX_BPF_STATS_MAX) {
+		stats[green_octs_pass] =
+			NIX_RD_STATS(NIX_STAT_LF_RX_RX_YC_PKTS_PASSED);
+	}
+
+	if (green_pkt_drop != ROC_NIX_BPF_STATS_MAX) {
+		stats[green_pkt_drop] =
+			NIX_RD_STATS(NIX_STAT_LF_RX_RX_GC_OCTS_DROP);
+	}
+
+	if (green_octs_drop != ROC_NIX_BPF_STATS_MAX) {
+		stats[green_octs_drop] =
+			NIX_RD_STATS(NIX_STAT_LF_RX_RX_YC_PKTS_DROP);
+	}
+
+	if (yellow_pkt_pass != ROC_NIX_BPF_STATS_MAX) {
+		stats[yellow_pkt_pass] =
+			NIX_RD_STATS(NIX_STAT_LF_RX_RX_GC_PKTS_PASSED);
+	}
+
+	if (yellow_octs_pass != ROC_NIX_BPF_STATS_MAX) {
+		stats[yellow_octs_pass] =
+			NIX_RD_STATS(NIX_STAT_LF_RX_RX_RC_OCTS_PASSED);
+	}
+
+	if (yellow_pkt_drop != ROC_NIX_BPF_STATS_MAX) {
+		stats[yellow_pkt_drop] =
+			NIX_RD_STATS(NIX_STAT_LF_RX_RX_GC_PKTS_DROP);
+	}
+
+	if (yellow_octs_drop != ROC_NIX_BPF_STATS_MAX) {
+		stats[yellow_octs_drop] =
+			NIX_RD_STATS(NIX_STAT_LF_RX_RX_RC_OCTS_DROP);
+	}
+
+	if (red_pkt_pass != ROC_NIX_BPF_STATS_MAX) {
+		stats[red_pkt_pass] =
+			NIX_RD_STATS(NIX_STAT_LF_RX_RX_YC_OCTS_PASSED);
+	}
+
+	if (red_octs_pass != ROC_NIX_BPF_STATS_MAX) {
+		stats[red_octs_pass] =
+			NIX_RD_STATS(NIX_STAT_LF_RX_RX_RC_PKTS_PASSED);
+	}
+
+	if (red_pkt_drop != ROC_NIX_BPF_STATS_MAX) {
+		stats[red_pkt_drop] =
+			NIX_RD_STATS(NIX_STAT_LF_RX_RX_YC_OCTS_DROP);
+	}
+
+	if (red_octs_drop != ROC_NIX_BPF_STATS_MAX) {
+		stats[red_octs_drop] =
+			NIX_RD_STATS(NIX_STAT_LF_RX_RX_RC_PKTS_DROP);
+	}
+
+	return 0;
 }

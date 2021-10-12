@@ -91,7 +91,9 @@ INTERNAL {
 	roc_nix_bpf_free;
 	roc_nix_bpf_free_all;
 	roc_nix_bpf_level_to_idx;
+	roc_nix_bpf_lf_stats_read;
 	roc_nix_bpf_pre_color_tbl_setup;
+	roc_nix_bpf_stats_read;
 	roc_nix_bpf_stats_to_idx;
 	roc_nix_cq_dump;
 	roc_nix_cq_fini;
