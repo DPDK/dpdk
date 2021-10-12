@@ -267,7 +267,7 @@ struct mlx5_dev_config {
 	unsigned int dv_xmeta_en:2; /* Enable extensive flow metadata. */
 	unsigned int lacp_by_user:1;
 	/* Enable user to manage LACP traffic. */
-	unsigned int swp:1; /* Tx generic tunnel checksum and TSO offload. */
+	unsigned int swp:3; /* Tx generic tunnel checksum and TSO offload. */
 	unsigned int devx:1; /* Whether devx interface is available or not. */
 	unsigned int dest_tir:1; /* Whether advanced DR API is available. */
 	unsigned int reclaim_mode:2; /* Memory reclaim mode. */

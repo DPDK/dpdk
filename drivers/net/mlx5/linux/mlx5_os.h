@@ -21,4 +21,16 @@ enum {
 
 int mlx5_auxiliary_get_ifindex(const char *sf_name);
 
+
+enum mlx5_sw_parsing_offloads {
+#ifdef HAVE_IBV_MLX5_MOD_SWP
+	MLX5_SW_PARSING_CAP      = MLX5DV_SW_PARSING,
+	MLX5_SW_PARSING_CSUM_CAP = MLX5DV_SW_PARSING_CSUM,
+	MLX5_SW_PARSING_TSO_CAP  = MLX5DV_SW_PARSING_LSO,
+#else
+	MLX5_SW_PARSING_CAP      = 0,
+	MLX5_SW_PARSING_CSUM_CAP = 0,
+	MLX5_SW_PARSING_TSO_CAP  = 0,
+#endif
+};
 #endif /* RTE_PMD_MLX5_OS_H_ */

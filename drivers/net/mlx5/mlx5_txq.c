@@ -111,9 +111,9 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 	if (config->tx_pp)
 		offloads |= DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP;
 	if (config->swp) {
-		if (config->hw_csum)
+		if (config->swp & MLX5_SW_PARSING_CSUM_CAP)
 			offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
-		if (config->tso)
+		if (config->swp & MLX5_SW_PARSING_TSO_CAP)
 			offloads |= (DEV_TX_OFFLOAD_IP_TNL_TSO |
 				     DEV_TX_OFFLOAD_UDP_TNL_TSO);
 	}
@@ -972,10 +972,13 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 		txq_ctrl->txq.tso_en = 1;
 	}
 	txq_ctrl->txq.tunnel_en = config->tunnel_en | config->swp;
-	txq_ctrl->txq.swp_en = ((DEV_TX_OFFLOAD_IP_TNL_TSO |
-				 DEV_TX_OFFLOAD_UDP_TNL_TSO |
-				 DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) &
-				txq_ctrl->txq.offloads) && config->swp;
+	txq_ctrl->txq.swp_en = (((DEV_TX_OFFLOAD_IP_TNL_TSO |
+				  DEV_TX_OFFLOAD_UDP_TNL_TSO) &
+				  txq_ctrl->txq.offloads) && (config->swp &
+				  MLX5_SW_PARSING_TSO_CAP)) |
+				((DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM &
+				 txq_ctrl->txq.offloads) && (config->swp &
+				 MLX5_SW_PARSING_CSUM_CAP));
 }
 
 /**

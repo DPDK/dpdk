@@ -1111,7 +1111,8 @@ err_secondary:
 		swp = dv_attr.sw_parsing_caps.sw_parsing_offloads;
 	DRV_LOG(DEBUG, "SWP support: %u", swp);
 #endif
-	config->swp = !!swp;
+	config->swp = swp & (MLX5_SW_PARSING_CAP | MLX5_SW_PARSING_CSUM_CAP |
+		MLX5_SW_PARSING_TSO_CAP);
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
 	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_STRIDING_RQ) {
 		struct mlx5dv_striding_rq_caps mprq_caps =
