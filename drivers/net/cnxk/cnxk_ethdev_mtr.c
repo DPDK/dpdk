@@ -8,6 +8,21 @@
 #define NIX_MTR_COUNT_MAX      73 /* 64(leaf) + 8(mid) + 1(top) */
 #define NIX_MTR_COUNT_PER_FLOW 3  /* 1(leaf) + 1(mid) + 1(top) */
 
+#define NIX_BPF_STATS_MASK_ALL                                                 \
+	{                                                                      \
+		ROC_NIX_BPF_GREEN_PKT_F_PASS | ROC_NIX_BPF_GREEN_OCTS_F_PASS | \
+			ROC_NIX_BPF_GREEN_PKT_F_DROP |                         \
+			ROC_NIX_BPF_GREEN_OCTS_F_DROP |                        \
+			ROC_NIX_BPF_YELLOW_PKT_F_PASS |                        \
+			ROC_NIX_BPF_YELLOW_OCTS_F_PASS |                       \
+			ROC_NIX_BPF_YELLOW_PKT_F_DROP |                        \
+			ROC_NIX_BPF_YELLOW_OCTS_F_DROP |                       \
+			ROC_NIX_BPF_RED_PKT_F_PASS |                           \
+			ROC_NIX_BPF_RED_OCTS_F_PASS |                          \
+			ROC_NIX_BPF_RED_PKT_F_DROP |                           \
+			ROC_NIX_BPF_RED_OCTS_F_DROP                            \
+	}
+
 static const enum roc_nix_bpf_level_flag lvl_map[] = {ROC_NIX_BPF_LEVEL_F_LEAF,
 						      ROC_NIX_BPF_LEVEL_F_MID,
 						      ROC_NIX_BPF_LEVEL_F_TOP};
@@ -663,6 +678,130 @@ exit:
 	return rc;
 }
 
+static int
+cnxk_nix_mtr_stats_update(struct rte_eth_dev *eth_dev, uint32_t mtr_id,
+			  uint64_t stats_mask, struct rte_mtr_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_meter_node *mtr;
+
+	if (!stats_mask)
+		return -rte_mtr_error_set(error, EINVAL,
+					  RTE_MTR_ERROR_TYPE_MTR_PARAMS, NULL,
+					  "no bit is set to stats mask");
+
+	mtr = nix_mtr_find(dev, mtr_id);
+	if (mtr == NULL) {
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_MTR_ID, NULL,
+					  "Meter object not found");
+	}
+
+	mtr->params.stats_mask = stats_mask;
+	return 0;
+}
+
+static int
+cnxk_nix_mtr_stats_read(struct rte_eth_dev *eth_dev, uint32_t mtr_id,
+			struct rte_mtr_stats *stats, uint64_t *stats_mask,
+			int clear, struct rte_mtr_error *error)
+{
+	uint8_t yellow_pkt_pass, yellow_octs_pass, yellow_pkt_drop;
+	uint8_t green_octs_drop, yellow_octs_drop, red_octs_drop;
+	uint8_t green_pkt_pass, green_octs_pass, green_pkt_drop;
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	uint8_t red_pkt_pass, red_octs_pass, red_pkt_drop;
+	uint64_t bpf_stats[ROC_NIX_BPF_STATS_MAX] = {0};
+	uint64_t mask = NIX_BPF_STATS_MASK_ALL;
+	struct roc_nix *nix = &dev->nix;
+	struct cnxk_meter_node *mtr;
+	int rc;
+
+	if (!stats)
+		return -rte_mtr_error_set(error, EINVAL,
+					  RTE_MTR_ERROR_TYPE_MTR_PARAMS, NULL,
+					  "stats pointer is NULL");
+
+	mtr = nix_mtr_find(dev, mtr_id);
+	if (mtr == NULL) {
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_MTR_ID, NULL,
+					  "Meter object not found");
+	}
+
+	rc = roc_nix_bpf_stats_read(nix, mtr->bpf_id, mask, lvl_map[mtr->level],
+				    bpf_stats);
+	if (rc) {
+		rte_mtr_error_set(error, rc, RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+				  NULL, NULL);
+		goto exit;
+	}
+
+	green_pkt_pass = roc_nix_bpf_stats_to_idx(ROC_NIX_BPF_GREEN_PKT_F_PASS);
+	green_octs_pass =
+		roc_nix_bpf_stats_to_idx(ROC_NIX_BPF_GREEN_OCTS_F_PASS);
+	green_pkt_drop = roc_nix_bpf_stats_to_idx(ROC_NIX_BPF_GREEN_PKT_F_DROP);
+	green_octs_drop =
+		roc_nix_bpf_stats_to_idx(ROC_NIX_BPF_GREEN_OCTS_F_DROP);
+	yellow_pkt_pass =
+		roc_nix_bpf_stats_to_idx(ROC_NIX_BPF_YELLOW_PKT_F_PASS);
+	yellow_octs_pass =
+		roc_nix_bpf_stats_to_idx(ROC_NIX_BPF_YELLOW_OCTS_F_PASS);
+	yellow_pkt_drop =
+		roc_nix_bpf_stats_to_idx(ROC_NIX_BPF_YELLOW_PKT_F_DROP);
+	yellow_octs_drop =
+		roc_nix_bpf_stats_to_idx(ROC_NIX_BPF_YELLOW_OCTS_F_DROP);
+	red_pkt_pass = roc_nix_bpf_stats_to_idx(ROC_NIX_BPF_RED_PKT_F_PASS);
+	red_octs_pass = roc_nix_bpf_stats_to_idx(ROC_NIX_BPF_RED_OCTS_F_PASS);
+	red_pkt_drop = roc_nix_bpf_stats_to_idx(ROC_NIX_BPF_RED_PKT_F_DROP);
+	red_octs_drop = roc_nix_bpf_stats_to_idx(ROC_NIX_BPF_RED_OCTS_F_DROP);
+
+	if (mtr->params.stats_mask & RTE_MTR_STATS_N_PKTS_GREEN)
+		stats->n_pkts[RTE_COLOR_GREEN] = bpf_stats[green_pkt_pass];
+
+	if (mtr->params.stats_mask & RTE_MTR_STATS_N_PKTS_YELLOW)
+		stats->n_pkts[RTE_COLOR_YELLOW] = bpf_stats[yellow_pkt_pass];
+
+	if (mtr->params.stats_mask & RTE_MTR_STATS_N_PKTS_RED)
+		stats->n_pkts[RTE_COLOR_RED] = bpf_stats[red_pkt_pass];
+
+	if (mtr->params.stats_mask & RTE_MTR_STATS_N_BYTES_GREEN)
+		stats->n_bytes[RTE_COLOR_GREEN] = bpf_stats[green_octs_pass];
+
+	if (mtr->params.stats_mask & RTE_MTR_STATS_N_BYTES_YELLOW)
+		stats->n_bytes[RTE_COLOR_YELLOW] = bpf_stats[yellow_octs_pass];
+
+	if (mtr->params.stats_mask & RTE_MTR_STATS_N_BYTES_RED)
+		stats->n_bytes[RTE_COLOR_RED] = bpf_stats[red_octs_pass];
+
+	if (mtr->params.stats_mask & RTE_MTR_STATS_N_PKTS_DROPPED)
+		stats->n_pkts_dropped = bpf_stats[green_pkt_drop] +
+					bpf_stats[yellow_pkt_drop] +
+					bpf_stats[red_pkt_drop];
+
+	if (mtr->params.stats_mask & RTE_MTR_STATS_N_BYTES_DROPPED)
+		stats->n_bytes_dropped = bpf_stats[green_octs_drop] +
+					 bpf_stats[yellow_octs_drop] +
+					 bpf_stats[red_octs_drop];
+
+	if (stats_mask)
+		*stats_mask = mtr->params.stats_mask;
+
+	if (clear) {
+		rc = roc_nix_bpf_stats_reset(nix, mtr->bpf_id, mask,
+					     lvl_map[mtr->level]);
+		if (rc) {
+			rte_mtr_error_set(error, rc,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  NULL);
+			goto exit;
+		}
+	}
+
+exit:
+	return rc;
+}
+
 const struct rte_mtr_ops nix_mtr_ops = {
 	.capabilities_get = cnxk_nix_mtr_capabilities_get,
 	.meter_profile_add = cnxk_nix_mtr_profile_add,
@@ -675,6 +814,8 @@ const struct rte_mtr_ops nix_mtr_ops = {
 	.meter_enable = cnxk_nix_mtr_enable,
 	.meter_disable = cnxk_nix_mtr_disable,
 	.meter_dscp_table_update = cnxk_nix_mtr_dscp_table_update,
+	.stats_update = cnxk_nix_mtr_stats_update,
+	.stats_read = cnxk_nix_mtr_stats_read,
 };
 
 int
