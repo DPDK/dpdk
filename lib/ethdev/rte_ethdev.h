@@ -4828,6 +4828,60 @@ __rte_experimental
 int rte_eth_representor_info_get(uint16_t port_id,
 				 struct rte_eth_representor_info *info);
 
+/** The NIC is able to deliver flag (if set) with packets to the PMD. */
+#define RTE_ETH_RX_METADATA_USER_FLAG (UINT64_C(1) << 0)
+
+/** The NIC is able to deliver mark ID with packets to the PMD. */
+#define RTE_ETH_RX_METADATA_USER_MARK (UINT64_C(1) << 1)
+
+/** The NIC is able to deliver tunnel ID with packets to the PMD. */
+#define RTE_ETH_RX_METADATA_TUNNEL_ID (UINT64_C(1) << 2)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Negotiate the NIC's ability to deliver specific kinds of metadata to the PMD.
+ *
+ * Invoke this API before the first rte_eth_dev_configure() invocation
+ * to let the PMD make preparations that are inconvenient to do later.
+ *
+ * The negotiation process is as follows:
+ *
+ * - the application requests features intending to use at least some of them;
+ * - the PMD responds with the guaranteed subset of the requested feature set;
+ * - the application can retry negotiation with another set of features;
+ * - the application can pass zero to clear the negotiation result;
+ * - the last negotiated result takes effect upon
+ *   the ethdev configure and start.
+ *
+ * @note
+ *   The PMD is supposed to first consider enabling the requested feature set
+ *   in its entirety. Only if it fails to do so, does it have the right to
+ *   respond with a smaller set of the originally requested features.
+ *
+ * @note
+ *   Return code (-ENOTSUP) does not necessarily mean that the requested
+ *   features are unsupported. In this case, the application should just
+ *   assume that these features can be used without prior negotiations.
+ *
+ * @param port_id
+ *   Port (ethdev) identifier
+ *
+ * @param[inout] features
+ *   Feature selection buffer
+ *
+ * @return
+ *   - (-EBUSY) if the port can't handle this in its current state;
+ *   - (-ENOTSUP) if the method itself is not supported by the PMD;
+ *   - (-ENODEV) if *port_id* is invalid;
+ *   - (-EINVAL) if *features* is NULL;
+ *   - (-EIO) if the device is removed;
+ *   - (0) on success
+ */
+__rte_experimental
+int rte_eth_rx_metadata_negotiate(uint16_t port_id, uint64_t *features);
+
 #include <rte_ethdev_core.h>
 
 /**

@@ -6229,6 +6229,31 @@ rte_eth_representor_info_get(uint16_t port_id,
 	return eth_err(port_id, (*dev->dev_ops->representor_info_get)(dev, info));
 }
 
+int
+rte_eth_rx_metadata_negotiate(uint16_t port_id, uint64_t *features)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (dev->data->dev_configured != 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"The port (id=%"PRIu16") is already configured\n",
+			port_id);
+		return -EBUSY;
+	}
+
+	if (features == NULL) {
+		RTE_ETHDEV_LOG(ERR, "Invalid features (NULL)\n");
+		return -EINVAL;
+	}
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_metadata_negotiate, -ENOTSUP);
+	return eth_err(port_id,
+		       (*dev->dev_ops->rx_metadata_negotiate)(dev, features));
+}
+
 RTE_LOG_REGISTER_DEFAULT(rte_eth_dev_logtype, INFO);
 
 RTE_INIT(ethdev_init_telemetry)

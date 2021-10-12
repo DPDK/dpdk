@@ -80,6 +80,15 @@ New Features
   Added macros ETH_RSS_IPV4_CHKSUM and ETH_RSS_L4_CHKSUM, now IPv4 and
   TCP/UDP/SCTP header checksum field can be used as input set for RSS.
 
+* **Added ethdev support to control delivery of Rx metadata from the HW to the PMD.**
+
+  A new API, ``rte_eth_rx_metadata_negotiate()``, was added.
+  The following parts of Rx metadata were defined:
+
+  * ``RTE_ETH_RX_METADATA_USER_FLAG``
+  * ``RTE_ETH_RX_METADATA_USER_MARK``
+  * ``RTE_ETH_RX_METADATA_TUNNEL_ID``
+
 * **Updated af_packet ethdev driver.**
 
   * Default VLAN strip behavior was changed. VLAN tag won't be stripped

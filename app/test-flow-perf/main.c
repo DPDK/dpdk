@@ -1760,6 +1760,27 @@ init_port(void)
 		rte_exit(EXIT_FAILURE, "Error: can't init mbuf pool\n");
 
 	for (port_id = 0; port_id < nr_ports; port_id++) {
+		uint64_t rx_metadata = 0;
+
+		rx_metadata |= RTE_ETH_RX_METADATA_USER_FLAG;
+		rx_metadata |= RTE_ETH_RX_METADATA_USER_MARK;
+
+		ret = rte_eth_rx_metadata_negotiate(port_id, &rx_metadata);
+		if (ret == 0) {
+			if (!(rx_metadata & RTE_ETH_RX_METADATA_USER_FLAG)) {
+				printf(":: flow action FLAG will not affect Rx mbufs on port=%u\n",
+				       port_id);
+			}
+
+			if (!(rx_metadata & RTE_ETH_RX_METADATA_USER_MARK)) {
+				printf(":: flow action MARK will not affect Rx mbufs on port=%u\n",
+				       port_id);
+			}
+		} else if (ret != -ENOTSUP) {
+			rte_exit(EXIT_FAILURE, "Error when negotiating Rx meta features on port=%u: %s\n",
+				 port_id, rte_strerror(-ret));
+		}
+
 		ret = rte_eth_dev_info_get(port_id, &dev_info);
 		if (ret != 0)
 			rte_exit(EXIT_FAILURE,

@@ -533,6 +533,41 @@ int proc_id;
  */
 unsigned int num_procs = 1;
 
+static void
+eth_rx_metadata_negotiate_mp(uint16_t port_id)
+{
+	uint64_t rx_meta_features = 0;
+	int ret;
+
+	if (!is_proc_primary())
+		return;
+
+	rx_meta_features |= RTE_ETH_RX_METADATA_USER_FLAG;
+	rx_meta_features |= RTE_ETH_RX_METADATA_USER_MARK;
+	rx_meta_features |= RTE_ETH_RX_METADATA_TUNNEL_ID;
+
+	ret = rte_eth_rx_metadata_negotiate(port_id, &rx_meta_features);
+	if (ret == 0) {
+		if (!(rx_meta_features & RTE_ETH_RX_METADATA_USER_FLAG)) {
+			TESTPMD_LOG(DEBUG, "Flow action FLAG will not affect Rx mbufs on port %u\n",
+				    port_id);
+		}
+
+		if (!(rx_meta_features & RTE_ETH_RX_METADATA_USER_MARK)) {
+			TESTPMD_LOG(DEBUG, "Flow action MARK will not affect Rx mbufs on port %u\n",
+				    port_id);
+		}
+
+		if (!(rx_meta_features & RTE_ETH_RX_METADATA_TUNNEL_ID)) {
+			TESTPMD_LOG(DEBUG, "Flow tunnel offload support might be limited or unavailable on port %u\n",
+				    port_id);
+		}
+	} else if (ret != -ENOTSUP) {
+		rte_exit(EXIT_FAILURE, "Error when negotiating Rx meta features on port %u: %s\n",
+			 port_id, rte_strerror(-ret));
+	}
+}
+
 static int
 eth_dev_configure_mp(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		      const struct rte_eth_conf *dev_conf)
@@ -1488,6 +1523,8 @@ init_config_port_offloads(portid_t pid, uint32_t socket_id)
 	uint16_t data_size;
 	int ret;
 	int i;
+
+	eth_rx_metadata_negotiate_mp(pid);
 
 	port->dev_conf.txmode = tx_mode;
 	port->dev_conf.rxmode = rx_mode;
