@@ -159,6 +159,28 @@ struct cnxk_timesync_info {
 	uint64_t *tx_tstamp;
 } __plt_cache_aligned;
 
+struct cnxk_meter_node {
+#define MAX_PRV_MTR_NODES 10
+	TAILQ_ENTRY(cnxk_meter_node) next;
+	/**< Pointer to the next flow meter structure. */
+	uint32_t id; /**< Usr mtr id. */
+	struct cnxk_mtr_profile_node *profile;
+	struct cnxk_mtr_policy_node *policy;
+	uint32_t bpf_id; /**< Hw mtr id. */
+	uint32_t rq_num;
+	uint32_t *rq_id;
+	uint16_t level;
+	uint32_t prev_id[MAX_PRV_MTR_NODES]; /**< Prev mtr id for chaining */
+	uint32_t prev_cnt;
+	uint32_t next_id; /**< Next mtr id for chaining */
+	bool is_prev;
+	bool is_next;
+	struct rte_mtr_params params;
+	struct roc_nix_bpf_objs profs;
+	bool is_used;
+	uint32_t ref_cnt;
+};
+
 struct action_rss {
 	enum rte_eth_hash_function func;
 	uint32_t level;
@@ -197,6 +219,7 @@ struct cnxk_mtr_profile_node {
 
 TAILQ_HEAD(cnxk_mtr_profiles, cnxk_mtr_profile_node);
 TAILQ_HEAD(cnxk_mtr_policy, cnxk_mtr_policy_node);
+TAILQ_HEAD(cnxk_mtr, cnxk_meter_node);
 
 /* Security session private data */
 struct cnxk_eth_sec_sess {
@@ -344,8 +367,10 @@ struct cnxk_eth_dev {
 	uint64_t clk_delta;
 
 	/* Ingress policer */
+	enum roc_nix_bpf_color precolor_tbl[ROC_NIX_BPF_PRE_COLOR_MAX];
 	struct cnxk_mtr_profiles mtr_profiles;
 	struct cnxk_mtr_policy mtr_policy;
+	struct cnxk_mtr mtr;
 
 	/* Rx burst for cleanup(Only Primary) */
 	eth_rx_burst_t rx_pkt_burst_no_offload;

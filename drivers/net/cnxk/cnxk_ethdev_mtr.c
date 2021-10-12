@@ -37,6 +37,18 @@ static struct rte_mtr_capabilities mtr_capa = {
 		      RTE_MTR_STATS_N_BYTES_YELLOW | RTE_MTR_STATS_N_BYTES_RED |
 		      RTE_MTR_STATS_N_BYTES_DROPPED};
 
+static struct cnxk_meter_node *
+nix_mtr_find(struct cnxk_eth_dev *dev, uint32_t meter_id)
+{
+	struct cnxk_mtr *fms = &dev->mtr;
+	struct cnxk_meter_node *fm;
+
+	TAILQ_FOREACH(fm, fms, next)
+		if (meter_id == fm->id)
+			return fm;
+	return NULL;
+}
+
 static struct cnxk_mtr_profile_node *
 nix_mtr_profile_find(struct cnxk_eth_dev *dev, uint32_t profile_id)
 {
@@ -374,6 +386,86 @@ cnxk_nix_mtr_policy_delete(struct rte_eth_dev *eth_dev, uint32_t policy_id,
 	return 0;
 }
 
+static int
+cnxk_nix_mtr_create(struct rte_eth_dev *eth_dev, uint32_t mtr_id,
+		    struct rte_mtr_params *params, int shared,
+		    struct rte_mtr_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_mtr_profile_node *profile;
+	struct cnxk_mtr_policy_node *policy;
+	struct cnxk_mtr *fm = &dev->mtr;
+	struct cnxk_meter_node *mtr;
+	int i;
+
+	RTE_SET_USED(shared);
+
+	if (params == NULL)
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_MTR_PARAMS, NULL,
+					  "Meter params are invalid.");
+
+	profile = nix_mtr_profile_find(dev, params->meter_profile_id);
+	if (profile == NULL)
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+					  &params->meter_profile_id,
+					  "Meter profile is invalid.");
+
+	policy = nix_mtr_policy_find(dev, params->meter_policy_id);
+	if (policy == NULL)
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+					  &params->meter_policy_id,
+					  "Meter policy is invalid.");
+
+	mtr = nix_mtr_find(dev, mtr_id);
+	if (mtr) {
+		return -rte_mtr_error_set(error, EEXIST,
+					  RTE_MTR_ERROR_TYPE_MTR_ID, NULL,
+					  "Meter already exist");
+	}
+
+	mtr = plt_zmalloc(sizeof(struct cnxk_meter_node), ROC_ALIGN);
+	if (mtr == NULL) {
+		return -rte_mtr_error_set(error, ENOMEM,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Meter memory alloc failed.");
+	}
+
+	mtr->id = mtr_id;
+	mtr->profile = profile;
+	mtr->policy = policy;
+	mtr->params = *params;
+	mtr->bpf_id = ROC_NIX_BPF_ID_INVALID;
+	mtr->prev_cnt = 0;
+	for (i = 0; i < MAX_PRV_MTR_NODES; i++)
+		mtr->prev_id[i] = ROC_NIX_BPF_ID_INVALID;
+
+	mtr->next_id = ROC_NIX_BPF_ID_INVALID;
+	mtr->is_next = false;
+	mtr->level = ROC_NIX_BPF_LEVEL_IDX_INVALID;
+
+	if (params->dscp_table) {
+		mtr->params.dscp_table =
+			plt_zmalloc(ROC_NIX_BPF_PRE_COLOR_MAX, ROC_ALIGN);
+		if (mtr->params.dscp_table == NULL) {
+			plt_free(mtr);
+			return -rte_mtr_error_set(error, ENOMEM,
+					RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+					NULL, "Memory alloc failed.");
+		}
+
+		for (i = 0; i < ROC_NIX_BPF_PRE_COLOR_MAX; i++)
+			mtr->params.dscp_table[i] = params->dscp_table[i];
+	}
+
+	profile->ref_cnt++;
+	policy->ref_cnt++;
+	TAILQ_INSERT_TAIL(fm, mtr, next);
+	return 0;
+}
+
 const struct rte_mtr_ops nix_mtr_ops = {
 	.capabilities_get = cnxk_nix_mtr_capabilities_get,
 	.meter_profile_add = cnxk_nix_mtr_profile_add,
@@ -381,6 +473,7 @@ const struct rte_mtr_ops nix_mtr_ops = {
 	.meter_policy_validate = cnxk_nix_mtr_policy_validate,
 	.meter_policy_add = cnxk_nix_mtr_policy_add,
 	.meter_policy_delete = cnxk_nix_mtr_policy_delete,
+	.create = cnxk_nix_mtr_create,
 };
 
 int

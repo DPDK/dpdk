@@ -700,6 +700,7 @@ nix_ingress_policer_setup(struct cnxk_eth_dev *dev)
 {
 	TAILQ_INIT(&dev->mtr_profiles);
 	TAILQ_INIT(&dev->mtr_policy);
+	TAILQ_INIT(&dev->mtr);
 
 	return 0;
 }
