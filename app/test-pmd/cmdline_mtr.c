@@ -92,13 +92,13 @@ parse_dscp_table_entries(char *str, enum rte_color **dscp_table)
 	while (1) {
 		if (strcmp(token, "G") == 0 ||
 			strcmp(token, "g") == 0)
-			*dscp_table[i++] = RTE_COLOR_GREEN;
+			(*dscp_table)[i++] = RTE_COLOR_GREEN;
 		else if (strcmp(token, "Y") == 0 ||
 			strcmp(token, "y") == 0)
-			*dscp_table[i++] = RTE_COLOR_YELLOW;
+			(*dscp_table)[i++] = RTE_COLOR_YELLOW;
 		else if (strcmp(token, "R") == 0 ||
 			strcmp(token, "r") == 0)
-			*dscp_table[i++] = RTE_COLOR_RED;
+			(*dscp_table)[i++] = RTE_COLOR_RED;
 		else {
 			free(*dscp_table);
 			return -1;
