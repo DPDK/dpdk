@@ -159,6 +159,35 @@ struct cnxk_timesync_info {
 	uint64_t *tx_tstamp;
 } __plt_cache_aligned;
 
+struct action_rss {
+	enum rte_eth_hash_function func;
+	uint32_t level;
+	uint64_t types;
+	uint32_t key_len;
+	uint32_t queue_num;
+	uint8_t *key;
+	uint16_t *queue;
+};
+
+struct policy_actions {
+	uint32_t action_fate;
+	union {
+		uint16_t queue;
+		uint32_t mtr_id;
+		struct action_rss *rss_desc;
+	};
+};
+
+struct cnxk_mtr_policy_node {
+	TAILQ_ENTRY(cnxk_mtr_policy_node) next;
+	/**< Pointer to the next flow meter structure. */
+	uint32_t id;	 /**< Policy id */
+	uint32_t mtr_id; /** Meter id */
+	struct rte_mtr_meter_policy_params policy;
+	struct policy_actions actions[RTE_COLORS];
+	uint32_t ref_cnt;
+};
+
 struct cnxk_mtr_profile_node {
 	TAILQ_ENTRY(cnxk_mtr_profile_node) next;
 	struct rte_mtr_meter_profile profile; /**< Profile detail. */
@@ -167,6 +196,7 @@ struct cnxk_mtr_profile_node {
 };
 
 TAILQ_HEAD(cnxk_mtr_profiles, cnxk_mtr_profile_node);
+TAILQ_HEAD(cnxk_mtr_policy, cnxk_mtr_policy_node);
 
 /* Security session private data */
 struct cnxk_eth_sec_sess {
@@ -315,6 +345,7 @@ struct cnxk_eth_dev {
 
 	/* Ingress policer */
 	struct cnxk_mtr_profiles mtr_profiles;
+	struct cnxk_mtr_policy mtr_policy;
 
 	/* Rx burst for cleanup(Only Primary) */
 	eth_rx_burst_t rx_pkt_burst_no_offload;

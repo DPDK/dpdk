@@ -50,6 +50,18 @@ nix_mtr_profile_find(struct cnxk_eth_dev *dev, uint32_t profile_id)
 	return NULL;
 }
 
+static struct cnxk_mtr_policy_node *
+nix_mtr_policy_find(struct cnxk_eth_dev *dev, uint32_t meter_policy_id)
+{
+	struct cnxk_mtr_policy *fmps = &dev->mtr_policy;
+	struct cnxk_mtr_policy_node *fmp;
+
+	TAILQ_FOREACH(fmp, fmps, next)
+		if (meter_policy_id == fmp->id)
+			return fmp;
+	return NULL;
+}
+
 static int
 nix_mtr_profile_validate(struct cnxk_eth_dev *dev, uint32_t profile_id,
 			 struct rte_mtr_meter_profile *profile,
@@ -266,11 +278,83 @@ cnxk_nix_mtr_policy_validate(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void
+cnxk_fill_policy_actions(struct cnxk_mtr_policy_node *fmp,
+			 struct rte_mtr_meter_policy_params *policy)
+
+{
+	const struct rte_flow_action_meter *mtr;
+	const struct rte_flow_action *action;
+	int i;
+
+	for (i = 0; i < RTE_COLORS; i++) {
+		if (policy->actions[i]) {
+			for (action = policy->actions[i];
+			     action->type != RTE_FLOW_ACTION_TYPE_END;
+			     action++) {
+				if (action->type ==
+				    RTE_FLOW_ACTION_TYPE_METER) {
+					fmp->actions[i].action_fate =
+						action->type;
+					mtr = (const struct
+					       rte_flow_action_meter *)
+						      action->conf;
+					fmp->actions[i].mtr_id = mtr->mtr_id;
+				}
+
+				if (action->type == RTE_FLOW_ACTION_TYPE_DROP) {
+					fmp->actions[i].action_fate =
+						action->type;
+				}
+			}
+		}
+	}
+}
+
+static int
+cnxk_nix_mtr_policy_add(struct rte_eth_dev *eth_dev, uint32_t policy_id,
+			struct rte_mtr_meter_policy_params *policy,
+			struct rte_mtr_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_mtr_policy *fmps = &dev->mtr_policy;
+	struct cnxk_mtr_policy_node *fmp;
+	int rc;
+
+	fmp = nix_mtr_policy_find(dev, policy_id);
+	if (fmp) {
+		return -rte_mtr_error_set(error, EEXIST,
+					  RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+					  NULL, "Policy already exist");
+	}
+
+	fmp = plt_zmalloc(sizeof(struct cnxk_mtr_policy_node), ROC_ALIGN);
+	if (fmp == NULL) {
+		return -rte_mtr_error_set(error, ENOMEM,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Memory allocation failure");
+	} else {
+		rc = cnxk_nix_mtr_policy_validate(eth_dev, policy, error);
+		if (rc)
+			goto exit;
+	}
+
+	fmp->id = policy_id;
+	cnxk_fill_policy_actions(fmp, policy);
+	TAILQ_INSERT_TAIL(fmps, fmp, next);
+	return 0;
+
+exit:
+	plt_free(fmp);
+	return rc;
+}
+
 const struct rte_mtr_ops nix_mtr_ops = {
 	.capabilities_get = cnxk_nix_mtr_capabilities_get,
 	.meter_profile_add = cnxk_nix_mtr_profile_add,
 	.meter_profile_delete = cnxk_nix_mtr_profile_delete,
 	.meter_policy_validate = cnxk_nix_mtr_policy_validate,
+	.meter_policy_add = cnxk_nix_mtr_policy_add,
 };
 
 int
