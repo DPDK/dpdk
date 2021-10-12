@@ -696,6 +696,14 @@ nix_free_queue_mem(struct cnxk_eth_dev *dev)
 }
 
 static int
+nix_ingress_policer_setup(struct cnxk_eth_dev *dev)
+{
+	TAILQ_INIT(&dev->mtr_profiles);
+
+	return 0;
+}
+
+static int
 nix_rss_default_setup(struct cnxk_eth_dev *dev)
 {
 	struct rte_eth_dev *eth_dev = dev->eth_dev;
@@ -1100,6 +1108,12 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	rc = roc_nix_tm_init(nix);
 	if (rc) {
 		plt_err("Failed to init traffic manager, rc=%d", rc);
+		goto free_nix_lf;
+	}
+
+	rc = nix_ingress_policer_setup(dev);
+	if (rc) {
+		plt_err("Failed to setup ingress policer rc=%d", rc);
 		goto free_nix_lf;
 	}
 

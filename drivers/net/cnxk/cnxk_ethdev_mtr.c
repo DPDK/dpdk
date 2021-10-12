@@ -37,6 +37,106 @@ static struct rte_mtr_capabilities mtr_capa = {
 		      RTE_MTR_STATS_N_BYTES_YELLOW | RTE_MTR_STATS_N_BYTES_RED |
 		      RTE_MTR_STATS_N_BYTES_DROPPED};
 
+static struct cnxk_mtr_profile_node *
+nix_mtr_profile_find(struct cnxk_eth_dev *dev, uint32_t profile_id)
+{
+	struct cnxk_mtr_profiles *fmps = &dev->mtr_profiles;
+	struct cnxk_mtr_profile_node *fmp;
+
+	TAILQ_FOREACH(fmp, fmps, next)
+		if (profile_id == fmp->id)
+			return fmp;
+
+	return NULL;
+}
+
+static int
+nix_mtr_profile_validate(struct cnxk_eth_dev *dev, uint32_t profile_id,
+			 struct rte_mtr_meter_profile *profile,
+			 struct rte_mtr_error *error)
+{
+	int rc = 0;
+
+	PLT_SET_USED(dev);
+
+	if (profile == NULL)
+		return -rte_mtr_error_set(error, EINVAL,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE,
+					  NULL, "Meter profile is null.");
+
+	if (profile_id == UINT32_MAX)
+		return -rte_mtr_error_set(error, EINVAL,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+					  NULL, "Meter profile id not valid.");
+
+	switch (profile->alg) {
+	case RTE_MTR_SRTCM_RFC2697:
+		if (profile->srtcm_rfc2697.cir > mtr_capa.meter_rate_max)
+			rc = -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE, NULL,
+				"CIR exceeds max meter rate");
+
+		if (profile->srtcm_rfc2697.cbs > NIX_BPF_BURST_MAX)
+			rc = -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE, NULL,
+				"CBS exceeds max meter burst size");
+
+		if (profile->srtcm_rfc2697.ebs > NIX_BPF_BURST_MAX)
+			rc = -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE, NULL,
+				"EBS exceeds max meter burst size");
+		break;
+
+	case RTE_MTR_TRTCM_RFC2698:
+		if (profile->trtcm_rfc2698.cir > mtr_capa.meter_rate_max)
+			rc = -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE, NULL,
+				"CIR exceeds max meter rate");
+
+		if (profile->trtcm_rfc2698.pir > mtr_capa.meter_rate_max)
+			rc = -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE, NULL,
+				"PIR exceeds max meter rate");
+
+		if (profile->trtcm_rfc2698.cbs > NIX_BPF_BURST_MAX)
+			rc = -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE, NULL,
+				"CBS exceeds max meter burst size");
+
+		if (profile->trtcm_rfc2698.pbs > NIX_BPF_BURST_MAX)
+			rc = -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE, NULL,
+				"PBS exceeds max meter burst size");
+		break;
+
+	case RTE_MTR_TRTCM_RFC4115:
+		if ((profile->trtcm_rfc4115.cir + profile->trtcm_rfc4115.eir) >
+		    mtr_capa.meter_rate_max)
+			rc = -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE, NULL,
+				"PIR + EIR exceeds max rate");
+
+		if (profile->trtcm_rfc4115.cbs > NIX_BPF_BURST_MAX)
+			rc = -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE, NULL,
+				"CBS exceeds max meter burst size");
+
+		if (profile->trtcm_rfc4115.ebs > NIX_BPF_BURST_MAX)
+			rc = -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE, NULL,
+				"PBS exceeds max meter burst size");
+		break;
+
+	default:
+		rc = -rte_mtr_error_set(error, EINVAL,
+					RTE_MTR_ERROR_TYPE_METER_PROFILE, NULL,
+					"alg is invalid");
+		break;
+	}
+
+	return rc;
+}
+
 static int
 cnxk_nix_mtr_capabilities_get(struct rte_eth_dev *dev,
 			      struct rte_mtr_capabilities *capa,
@@ -52,8 +152,46 @@ cnxk_nix_mtr_capabilities_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+cnxk_nix_mtr_profile_add(struct rte_eth_dev *eth_dev, uint32_t profile_id,
+			 struct rte_mtr_meter_profile *profile,
+			 struct rte_mtr_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_mtr_profiles *fmps = &dev->mtr_profiles;
+	struct cnxk_mtr_profile_node *fmp;
+	int ret;
+
+	/* Check input params. */
+	ret = nix_mtr_profile_validate(dev, profile_id, profile, error);
+	if (ret)
+		return ret;
+
+	fmp = nix_mtr_profile_find(dev, profile_id);
+	if (fmp) {
+		return -rte_mtr_error_set(error, EEXIST,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+					  NULL, "Profile already exist");
+	}
+
+	fmp = plt_zmalloc(sizeof(struct cnxk_mtr_profile_node), ROC_ALIGN);
+	if (fmp == NULL)
+		return -rte_mtr_error_set(error, ENOMEM,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Meter profile memory "
+					  "alloc failed.");
+
+	fmp->id = profile_id;
+	fmp->profile = *profile;
+
+	TAILQ_INSERT_TAIL(fmps, fmp, next);
+
+	return 0;
+}
+
 const struct rte_mtr_ops nix_mtr_ops = {
 	.capabilities_get = cnxk_nix_mtr_capabilities_get,
+	.meter_profile_add = cnxk_nix_mtr_profile_add,
 };
 
 int

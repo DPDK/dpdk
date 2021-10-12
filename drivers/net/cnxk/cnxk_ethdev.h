@@ -13,6 +13,7 @@
 #include <rte_mbuf.h>
 #include <rte_mbuf_pool_ops.h>
 #include <rte_mempool.h>
+#include <rte_mtr_driver.h>
 #include <rte_security.h>
 #include <rte_security_driver.h>
 #include <rte_tailq.h>
@@ -158,6 +159,15 @@ struct cnxk_timesync_info {
 	uint64_t *tx_tstamp;
 } __plt_cache_aligned;
 
+struct cnxk_mtr_profile_node {
+	TAILQ_ENTRY(cnxk_mtr_profile_node) next;
+	struct rte_mtr_meter_profile profile; /**< Profile detail. */
+	uint32_t ref_cnt;		      /**< Use count. */
+	uint32_t id;			      /**< Profile id. */
+};
+
+TAILQ_HEAD(cnxk_mtr_profiles, cnxk_mtr_profile_node);
+
 /* Security session private data */
 struct cnxk_eth_sec_sess {
 	/* List entry */
@@ -302,6 +312,9 @@ struct cnxk_eth_dev {
 	struct rte_timecounter tx_tstamp_tc;
 	double clk_freq_mult;
 	uint64_t clk_delta;
+
+	/* Ingress policer */
+	struct cnxk_mtr_profiles mtr_profiles;
 
 	/* Rx burst for cleanup(Only Primary) */
 	eth_rx_burst_t rx_pkt_burst_no_offload;
