@@ -9,6 +9,10 @@
 #define NIX_MAX_BPF_COUNT_MID_LAYER  8
 #define NIX_MAX_BPF_COUNT_TOP_LAYER  1
 
+#define NIX_BPF_PRECOLOR_GEN_TABLE_SIZE	 16
+#define NIX_BPF_PRECOLOR_VLAN_TABLE_SIZE 16
+#define NIX_BPF_PRECOLOR_DSCP_TABLE_SIZE 64
+
 #define NIX_BPF_LEVEL_F_MASK                                                   \
 	(ROC_NIX_BPF_LEVEL_F_LEAF | ROC_NIX_BPF_LEVEL_F_MID |                  \
 	 ROC_NIX_BPF_LEVEL_F_TOP)
@@ -177,6 +181,107 @@ nix_lf_bpf_dump(__io struct nix_band_prof_s *bpf)
 		 (uint64_t)bpf->yellow_octs_drop);
 	plt_dump("W15: red_octs_drop \t\t\t0x%" PRIx64 "",
 		 (uint64_t)bpf->red_octs_drop);
+}
+
+static inline void
+nix_precolor_conv_table_write(struct roc_nix *roc_nix, uint64_t val,
+			      uint32_t off)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	int64_t *addr;
+
+	addr = PLT_PTR_ADD(nix->base, off);
+	/* FIXME: Currently writing to this register throwing kernel dump.
+	 * plt_write64(val, addr);
+	 */
+	PLT_SET_USED(val);
+	PLT_SET_USED(addr);
+}
+
+static uint8_t
+nix_precolor_vlan_table_update(struct roc_nix *roc_nix,
+			       struct roc_nix_bpf_precolor *tbl)
+{
+	uint64_t val = 0, i;
+	uint8_t tn_ena;
+	uint32_t off;
+
+	for (i = 0; i < tbl->count; i++)
+		val |= (((uint64_t)tbl->color[i]) << (2 * i));
+
+	if (tbl->mode == ROC_NIX_BPF_PC_MODE_VLAN_INNER) {
+		off = NIX_LF_RX_VLAN1_COLOR_CONV;
+		tn_ena = true;
+	} else {
+		off = NIX_LF_RX_VLAN0_COLOR_CONV;
+		tn_ena = false;
+	}
+
+	nix_precolor_conv_table_write(roc_nix, val, off);
+	return tn_ena;
+}
+
+static uint8_t
+nix_precolor_inner_dscp_table_update(struct roc_nix *roc_nix,
+				     struct roc_nix_bpf_precolor *tbl)
+{
+	uint64_t val_lo = 0, val_hi = 0, i, j;
+
+	for (i = 0, j = 0; i < (tbl->count / 2); i++, j++)
+		val_lo |= (((uint64_t)tbl->color[i]) << (2 * j));
+
+	for (j = 0; i < tbl->count; i++, j++)
+		val_hi |= (((uint64_t)tbl->color[i]) << (2 * j));
+
+	nix_precolor_conv_table_write(roc_nix, val_lo,
+				      NIX_LF_RX_IIP_COLOR_CONV_LO);
+	nix_precolor_conv_table_write(roc_nix, val_hi,
+				      NIX_LF_RX_IIP_COLOR_CONV_HI);
+
+	return true;
+}
+
+static uint8_t
+nix_precolor_outer_dscp_table_update(struct roc_nix *roc_nix,
+				     struct roc_nix_bpf_precolor *tbl)
+{
+	uint64_t val_lo = 0, val_hi = 0, i, j;
+
+	for (i = 0, j = 0; i < (tbl->count / 2); i++, j++)
+		val_lo |= (((uint64_t)tbl->color[i]) << (2 * j));
+
+	for (j = 0; i < tbl->count; i++, j++)
+		val_hi |= (((uint64_t)tbl->color[i]) << (2 * j));
+
+	nix_precolor_conv_table_write(roc_nix, val_lo,
+				      NIX_LF_RX_OIP_COLOR_CONV_LO);
+	nix_precolor_conv_table_write(roc_nix, val_hi,
+				      NIX_LF_RX_OIP_COLOR_CONV_HI);
+
+	return false;
+}
+
+static uint8_t
+nix_precolor_gen_table_update(struct roc_nix *roc_nix,
+			      struct roc_nix_bpf_precolor *tbl)
+{
+	uint64_t val = 0, i;
+	uint8_t tn_ena;
+	uint32_t off;
+
+	for (i = 0; i < tbl->count; i++)
+		val |= (((uint64_t)tbl->color[i]) << (2 * i));
+
+	if (tbl->mode == ROC_NIX_BPF_PC_MODE_GEN_INNER) {
+		off = NIX_LF_RX_GEN_COLOR_CONVX(1);
+		tn_ena = true;
+	} else {
+		off = NIX_LF_RX_GEN_COLOR_CONVX(0);
+		tn_ena = false;
+	}
+
+	nix_precolor_conv_table_write(roc_nix, val, off);
+	return tn_ena;
 }
 
 uint8_t
@@ -572,5 +677,93 @@ roc_nix_bpf_dump(struct roc_nix *roc_nix, uint16_t id,
 		nix_lf_bpf_dump(&rsp->prof);
 	}
 
+	return rc;
+}
+
+int
+roc_nix_bpf_pre_color_tbl_setup(struct roc_nix *roc_nix, uint16_t id,
+				enum roc_nix_bpf_level_flag lvl_flag,
+				struct roc_nix_bpf_precolor *tbl)
+{
+	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix_cn10k_aq_enq_req *aq;
+	uint8_t pc_mode, tn_ena;
+	uint8_t level_idx;
+	int rc;
+
+	if (!tbl || !tbl->count)
+		return NIX_ERR_PARAM;
+
+	if (roc_model_is_cn9k())
+		return NIX_ERR_HW_NOTSUP;
+
+	level_idx = roc_nix_bpf_level_to_idx(lvl_flag);
+	if (level_idx == ROC_NIX_BPF_LEVEL_IDX_INVALID)
+		return NIX_ERR_PARAM;
+
+	switch (tbl->mode) {
+	case ROC_NIX_BPF_PC_MODE_VLAN_INNER:
+	case ROC_NIX_BPF_PC_MODE_VLAN_OUTER:
+		if (tbl->count != NIX_BPF_PRECOLOR_VLAN_TABLE_SIZE) {
+			plt_err("Table size must be %d",
+				NIX_BPF_PRECOLOR_VLAN_TABLE_SIZE);
+			rc = NIX_ERR_PARAM;
+			goto exit;
+		}
+		tn_ena = nix_precolor_vlan_table_update(roc_nix, tbl);
+		pc_mode = NIX_RX_BAND_PROF_PC_MODE_VLAN;
+		break;
+	case ROC_NIX_BPF_PC_MODE_DSCP_INNER:
+		if (tbl->count != NIX_BPF_PRECOLOR_DSCP_TABLE_SIZE) {
+			plt_err("Table size must be %d",
+				NIX_BPF_PRECOLOR_DSCP_TABLE_SIZE);
+			rc = NIX_ERR_PARAM;
+			goto exit;
+		}
+		tn_ena = nix_precolor_inner_dscp_table_update(roc_nix, tbl);
+		pc_mode = NIX_RX_BAND_PROF_PC_MODE_DSCP;
+		break;
+	case ROC_NIX_BPF_PC_MODE_DSCP_OUTER:
+		if (tbl->count != NIX_BPF_PRECOLOR_DSCP_TABLE_SIZE) {
+			plt_err("Table size must be %d",
+				NIX_BPF_PRECOLOR_DSCP_TABLE_SIZE);
+			rc = NIX_ERR_PARAM;
+			goto exit;
+		}
+		tn_ena = nix_precolor_outer_dscp_table_update(roc_nix, tbl);
+		pc_mode = NIX_RX_BAND_PROF_PC_MODE_DSCP;
+		break;
+	case ROC_NIX_BPF_PC_MODE_GEN_INNER:
+	case ROC_NIX_BPF_PC_MODE_GEN_OUTER:
+		if (tbl->count != NIX_BPF_PRECOLOR_GEN_TABLE_SIZE) {
+			plt_err("Table size must be %d",
+				NIX_BPF_PRECOLOR_GEN_TABLE_SIZE);
+			rc = NIX_ERR_PARAM;
+			goto exit;
+		}
+
+		tn_ena = nix_precolor_gen_table_update(roc_nix, tbl);
+		pc_mode = NIX_RX_BAND_PROF_PC_MODE_GEN;
+		break;
+	default:
+		rc = NIX_ERR_PARAM;
+		goto exit;
+	}
+
+	/* Update corresponding bandwidth profile too */
+	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (aq == NULL)
+		return -ENOSPC;
+	aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14) | id;
+	aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+	aq->prof.pc_mode = pc_mode;
+	aq->prof.tnl_ena = tn_ena;
+	aq->prof_mask.pc_mode = ~(aq->prof_mask.pc_mode);
+	aq->prof_mask.tnl_ena = ~(aq->prof_mask.tnl_ena);
+
+	return mbox_process(mbox);
+
+exit:
 	return rc;
 }
