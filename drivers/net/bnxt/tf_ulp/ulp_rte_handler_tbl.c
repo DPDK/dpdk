@@ -266,7 +266,7 @@ struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
 	},
 	[RTE_FLOW_ITEM_TYPE_PORT_ID] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
-	.proto_hdr_func          = ulp_rte_port_id_hdr_handler
+	.proto_hdr_func          = ulp_rte_port_hdr_handler
 	},
 	[RTE_FLOW_ITEM_TYPE_RAW] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
@@ -427,6 +427,14 @@ struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
 	[RTE_FLOW_ITEM_TYPE_HIGIG2] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
 	.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR] = {
+	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+	.proto_hdr_func          = ulp_rte_port_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT] = {
+	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+	.proto_hdr_func          = ulp_rte_port_hdr_handler
 	}
 };
 
