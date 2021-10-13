@@ -3358,10 +3358,18 @@ struct rte_flow_action_modify_data {
 			uint32_t offset;
 		};
 		/**
-		 * Immediate value for RTE_FLOW_FIELD_VALUE or
-		 * memory address for RTE_FLOW_FIELD_POINTER.
+		 * Immediate value for RTE_FLOW_FIELD_VALUE, presented in the
+		 * same byte order and length as in relevant rte_flow_item_xxx.
+		 * The immediate source bitfield offset is inherited from
+		 * the destination's one.
 		 */
-		uint64_t value;
+		uint8_t value[16];
+		/**
+		 * Memory address for RTE_FLOW_FIELD_POINTER, memory layout
+		 * should be the same as for relevant field in the
+		 * rte_flow_item_xxx structure.
+		 */
+		void *pvalue;
 	};
 };
 
@@ -3381,7 +3389,7 @@ enum rte_flow_modify_op {
  * RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
  *
  * Modify a destination header field according to the specified
- * operation. Another packet field can be used as a source as well
+ * operation. Another field of the packet can be used as a source as well
  * as tag, mark, metadata, immediate value or a pointer to it.
  */
 struct rte_flow_action_modify_field {

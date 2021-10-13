@@ -2959,6 +2959,22 @@ a packet to any other part of it.
 ``value`` sets an immediate value to be used as a source or points to a
 location of the value in memory. It is used instead of ``level`` and ``offset``
 for ``RTE_FLOW_FIELD_VALUE`` and ``RTE_FLOW_FIELD_POINTER`` respectively.
+The data in memory should be presented exactly in the same byte order and
+length as in the relevant flow item, i.e. data for field with type
+``RTE_FLOW_FIELD_MAC_DST`` should follow the conventions of ``dst`` field
+in ``rte_flow_item_eth`` structure, with type ``RTE_FLOW_FIELD_IPV6_SRC`` -
+``rte_flow_item_ipv6`` conventions, and so on. If the field size is larger than
+16 bytes the pattern can be provided as pointer only.
+
+The bitfield extracted from the memory being applied as second operation
+parameter is defined by action width and by the destination field offset.
+Application should provide the data in immediate value memory (either as
+buffer or by pointer) exactly as item field without any applied explicit offset,
+and destination packet field (with specified width and bit offset) will be
+replaced by immediate source bits from the same bit offset. For example,
+to replace the third byte of MAC address with value 0x85, application should
+specify destination width as 8, destination offset as 16, and provide immediate
+value as sequence of bytes {xxx, xxx, 0x85, xxx, xxx, xxx}.
 
 .. _table_rte_flow_action_modify_field:
 
@@ -2989,7 +3005,13 @@ for ``RTE_FLOW_FIELD_VALUE`` and ``RTE_FLOW_FIELD_POINTER`` respectively.
    +---------------+----------------------------------------------------------+
    | ``offset``    | number of bits to skip at the beginning                  |
    +---------------+----------------------------------------------------------+
-   | ``value``     | immediate value or a pointer to this value               |
+   | ``value``     | immediate value buffer (source field only, not           |
+   |               | applicable to destination) for RTE_FLOW_FIELD_VALUE      |
+   |               | field type                                               |
+   +---------------+----------------------------------------------------------+
+   | ``pvalue``    | pointer to immediate value data (source field only, not  |
+   |               | applicable to destination) for RTE_FLOW_FIELD_POINTER    |
+   |               | field type                                               |
    +---------------+----------------------------------------------------------+
 
 Action: ``CONNTRACK``

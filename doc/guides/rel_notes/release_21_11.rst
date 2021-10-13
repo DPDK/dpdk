@@ -307,6 +307,13 @@ API Changes
 * ethdev: Deprecated the use of attributes ``ingress`` / ``egress`` combined
   with ``transfer``. See items ``PORT_REPRESENTOR``, ``REPRESENTED_PORT``.
 
+* ethdev: ``rte_flow_action_modify_data`` structure updated, immediate data
+  array is extended, data pointer field is explicitly added to union, the
+  action behavior is defined in more strict fashion and documentation updated.
+  The immediate value behavior has been changed, the entire immediate field
+  should be provided, and offset for immediate source bitfield is assigned
+  from destination one.
+
 * cryptodev: The API rte_cryptodev_pmd_is_valid_dev is modified to
   rte_cryptodev_is_valid_dev as it can be used by the application as
   well as PMD to check whether the device is valid or not.

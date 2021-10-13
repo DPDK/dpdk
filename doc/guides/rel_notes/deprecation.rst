@@ -120,10 +120,6 @@ Deprecation Notices
 * ethdev: Announce moving from dedicated modify function for each field,
   to using the general ``rte_flow_modify_field`` action.
 
-* ethdev: The struct ``rte_flow_action_modify_data`` will be modified
-  to support modifying fields larger than 64 bits.
-  In addition, documentation will be updated to clarify byte order.
-
 * ethdev: The flow API matching pattern structures, ``struct rte_flow_item_*``,
   should start with relevant protocol header.
   Some matching pattern structures implements this by duplicating protocol header
