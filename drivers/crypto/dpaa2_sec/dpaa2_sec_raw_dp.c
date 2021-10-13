@@ -167,14 +167,126 @@ build_raw_dp_aead_fd(uint8_t *drv_ctx,
 		       void *userdata,
 		       struct qbman_fd *fd)
 {
-	RTE_SET_USED(drv_ctx);
-	RTE_SET_USED(sgl);
-	RTE_SET_USED(iv);
-	RTE_SET_USED(digest);
-	RTE_SET_USED(auth_iv);
-	RTE_SET_USED(ofs);
-	RTE_SET_USED(userdata);
-	RTE_SET_USED(fd);
+	dpaa2_sec_session *sess =
+		((struct dpaa2_sec_raw_dp_ctx *)drv_ctx)->session;
+	struct ctxt_priv *priv = sess->ctxt;
+	struct qbman_fle *fle, *sge, *ip_fle, *op_fle;
+	struct sec_flow_context *flc;
+	uint32_t auth_only_len = sess->ext_params.aead_ctxt.auth_only_len;
+	int icv_len = sess->digest_length;
+	uint8_t *old_icv;
+	uint8_t *IV_ptr = iv->va;
+	unsigned int i = 0;
+	int data_len = 0, aead_len = 0;
+
+	for (i = 0; i < sgl->num; i++)
+		data_len += sgl->vec[i].len;
+
+	aead_len = data_len - ofs.ofs.cipher.head - ofs.ofs.cipher.tail;
+
+	/* first FLE entry used to store mbuf and session ctxt */
+	fle = (struct qbman_fle *)rte_malloc(NULL,
+			FLE_SG_MEM_SIZE(2 * sgl->num),
+			RTE_CACHE_LINE_SIZE);
+	if (unlikely(!fle)) {
+		DPAA2_SEC_ERR("GCM SG: Memory alloc failed for SGE");
+		return -ENOMEM;
+	}
+	memset(fle, 0, FLE_SG_MEM_SIZE(2 * sgl->num));
+	DPAA2_SET_FLE_ADDR(fle, (size_t)userdata);
+	DPAA2_FLE_SAVE_CTXT(fle, (ptrdiff_t)priv);
+
+	op_fle = fle + 1;
+	ip_fle = fle + 2;
+	sge = fle + 3;
+
+	/* Save the shared descriptor */
+	flc = &priv->flc_desc[0].flc;
+
+	/* Configure FD as a FRAME LIST */
+	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(op_fle));
+	DPAA2_SET_FD_COMPOUND_FMT(fd);
+	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
+
+	/* Configure Output FLE with Scatter/Gather Entry */
+	DPAA2_SET_FLE_SG_EXT(op_fle);
+	DPAA2_SET_FLE_ADDR(op_fle, DPAA2_VADDR_TO_IOVA(sge));
+
+	if (auth_only_len)
+		DPAA2_SET_FLE_INTERNAL_JD(op_fle, auth_only_len);
+
+	op_fle->length = (sess->dir == DIR_ENC) ?
+			(aead_len + icv_len) :
+			aead_len;
+
+	/* Configure Output SGE for Encap/Decap */
+	DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
+	DPAA2_SET_FLE_OFFSET(sge, ofs.ofs.cipher.head);
+	sge->length = sgl->vec[0].len - ofs.ofs.cipher.head;
+
+	/* o/p segs */
+	for (i = 1; i < sgl->num; i++) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
+		DPAA2_SET_FLE_OFFSET(sge, 0);
+		sge->length = sgl->vec[i].len;
+	}
+
+	if (sess->dir == DIR_ENC) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, digest->iova);
+		sge->length = icv_len;
+	}
+	DPAA2_SET_FLE_FIN(sge);
+
+	sge++;
+
+	/* Configure Input FLE with Scatter/Gather Entry */
+	DPAA2_SET_FLE_ADDR(ip_fle, DPAA2_VADDR_TO_IOVA(sge));
+	DPAA2_SET_FLE_SG_EXT(ip_fle);
+	DPAA2_SET_FLE_FIN(ip_fle);
+	ip_fle->length = (sess->dir == DIR_ENC) ?
+		(aead_len + sess->iv.length + auth_only_len) :
+		(aead_len + sess->iv.length + auth_only_len +
+		icv_len);
+
+	/* Configure Input SGE for Encap/Decap */
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(IV_ptr));
+	sge->length = sess->iv.length;
+
+	sge++;
+	if (auth_only_len) {
+		DPAA2_SET_FLE_ADDR(sge, auth_iv->iova);
+		sge->length = auth_only_len;
+		sge++;
+	}
+
+	DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
+	DPAA2_SET_FLE_OFFSET(sge, ofs.ofs.cipher.head);
+	sge->length = sgl->vec[0].len - ofs.ofs.cipher.head;
+
+	/* i/p segs */
+	for (i = 1; i < sgl->num; i++) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
+		DPAA2_SET_FLE_OFFSET(sge, 0);
+		sge->length = sgl->vec[i].len;
+	}
+
+	if (sess->dir == DIR_DEC) {
+		sge++;
+		old_icv = (uint8_t *)(sge + 1);
+		memcpy(old_icv,  digest->va, icv_len);
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(old_icv));
+		sge->length = icv_len;
+	}
+
+	DPAA2_SET_FLE_FIN(sge);
+	if (auth_only_len) {
+		DPAA2_SET_FLE_INTERNAL_JD(ip_fle, auth_only_len);
+		DPAA2_SET_FD_INTERNAL_JD(fd, auth_only_len);
+	}
+	DPAA2_SET_FD_LEN(fd, ip_fle->length);
 
 	return 0;
 }
@@ -311,36 +423,104 @@ build_raw_dp_proto_fd(uint8_t *drv_ctx,
 		       void *userdata,
 		       struct qbman_fd *fd)
 {
-	RTE_SET_USED(drv_ctx);
-	RTE_SET_USED(sgl);
 	RTE_SET_USED(iv);
 	RTE_SET_USED(digest);
 	RTE_SET_USED(auth_iv);
 	RTE_SET_USED(ofs);
-	RTE_SET_USED(userdata);
-	RTE_SET_USED(fd);
 
-	return 0;
-}
+	dpaa2_sec_session *sess =
+		((struct dpaa2_sec_raw_dp_ctx *)drv_ctx)->session;
+	struct ctxt_priv *priv = sess->ctxt;
+	struct qbman_fle *fle, *sge, *ip_fle, *op_fle;
+	struct sec_flow_context *flc;
+	uint32_t in_len = 0, out_len = 0, i;
 
-static int
-build_raw_dp_proto_compound_fd(uint8_t *drv_ctx,
-		       struct rte_crypto_sgl *sgl,
-		       struct rte_crypto_va_iova_ptr *iv,
-		       struct rte_crypto_va_iova_ptr *digest,
-		       struct rte_crypto_va_iova_ptr *auth_iv,
-		       union rte_crypto_sym_ofs ofs,
-		       void *userdata,
-		       struct qbman_fd *fd)
-{
-	RTE_SET_USED(drv_ctx);
-	RTE_SET_USED(sgl);
-	RTE_SET_USED(iv);
-	RTE_SET_USED(digest);
-	RTE_SET_USED(auth_iv);
-	RTE_SET_USED(ofs);
-	RTE_SET_USED(userdata);
-	RTE_SET_USED(fd);
+	/* first FLE entry used to store mbuf and session ctxt */
+	fle = (struct qbman_fle *)rte_malloc(NULL,
+			FLE_SG_MEM_SIZE(2 * sgl->num),
+			RTE_CACHE_LINE_SIZE);
+	if (unlikely(!fle)) {
+		DPAA2_SEC_DP_ERR("Proto:SG: Memory alloc failed for SGE");
+		return -ENOMEM;
+	}
+	memset(fle, 0, FLE_SG_MEM_SIZE(2 * sgl->num));
+	DPAA2_SET_FLE_ADDR(fle, (size_t)userdata);
+	DPAA2_FLE_SAVE_CTXT(fle, (ptrdiff_t)priv);
+
+	/* Save the shared descriptor */
+	flc = &priv->flc_desc[0].flc;
+	op_fle = fle + 1;
+	ip_fle = fle + 2;
+	sge = fle + 3;
+
+	DPAA2_SET_FD_IVP(fd);
+	DPAA2_SET_FLE_IVP(op_fle);
+	DPAA2_SET_FLE_IVP(ip_fle);
+
+	/* Configure FD as a FRAME LIST */
+	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(op_fle));
+	DPAA2_SET_FD_COMPOUND_FMT(fd);
+	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
+
+	/* Configure Output FLE with Scatter/Gather Entry */
+	DPAA2_SET_FLE_SG_EXT(op_fle);
+	DPAA2_SET_FLE_ADDR(op_fle, DPAA2_VADDR_TO_IOVA(sge));
+
+	/* Configure Output SGE for Encap/Decap */
+	DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
+	DPAA2_SET_FLE_OFFSET(sge, 0);
+	sge->length = sgl->vec[0].len;
+	out_len += sge->length;
+	/* o/p segs */
+	for (i = 1; i < sgl->num; i++) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
+		DPAA2_SET_FLE_OFFSET(sge, 0);
+		sge->length = sgl->vec[i].len;
+		out_len += sge->length;
+	}
+	sge->length = sgl->vec[i - 1].tot_len;
+	out_len += sge->length;
+
+	DPAA2_SET_FLE_FIN(sge);
+	op_fle->length = out_len;
+
+	sge++;
+
+	/* Configure Input FLE with Scatter/Gather Entry */
+	DPAA2_SET_FLE_ADDR(ip_fle, DPAA2_VADDR_TO_IOVA(sge));
+	DPAA2_SET_FLE_SG_EXT(ip_fle);
+	DPAA2_SET_FLE_FIN(ip_fle);
+
+	/* Configure input SGE for Encap/Decap */
+	DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
+	DPAA2_SET_FLE_OFFSET(sge, 0);
+	sge->length = sgl->vec[0].len;
+	in_len += sge->length;
+	/* i/p segs */
+	for (i = 1; i < sgl->num; i++) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
+		DPAA2_SET_FLE_OFFSET(sge, 0);
+		sge->length = sgl->vec[i].len;
+		in_len += sge->length;
+	}
+
+	ip_fle->length = in_len;
+	DPAA2_SET_FLE_FIN(sge);
+
+	/* In case of PDCP, per packet HFN is stored in
+	 * mbuf priv after sym_op.
+	 */
+	if (sess->ctxt_type == DPAA2_SEC_PDCP && sess->pdcp.hfn_ovd) {
+		uint32_t hfn_ovd = *(uint32_t *)((uint8_t *)userdata +
+				sess->pdcp.hfn_ovd_offset);
+		/* enable HFN override */
+		DPAA2_SET_FLE_INTERNAL_JD(ip_fle, hfn_ovd);
+		DPAA2_SET_FLE_INTERNAL_JD(op_fle, hfn_ovd);
+		DPAA2_SET_FD_INTERNAL_JD(fd, hfn_ovd);
+	}
+	DPAA2_SET_FD_LEN(fd, ip_fle->length);
 
 	return 0;
 }
@@ -792,10 +972,9 @@ dpaa2_sec_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 		sess->build_raw_dp_fd = build_raw_dp_auth_fd;
 	else if (sess->ctxt_type == DPAA2_SEC_CIPHER)
 		sess->build_raw_dp_fd = build_raw_dp_cipher_fd;
-	else if (sess->ctxt_type == DPAA2_SEC_IPSEC)
+	else if (sess->ctxt_type == DPAA2_SEC_IPSEC ||
+		sess->ctxt_type == DPAA2_SEC_PDCP)
 		sess->build_raw_dp_fd = build_raw_dp_proto_fd;
-	else if (sess->ctxt_type == DPAA2_SEC_PDCP)
-		sess->build_raw_dp_fd = build_raw_dp_proto_compound_fd;
 	else
 		return -ENOTSUP;
 	dp_ctx = (struct dpaa2_sec_raw_dp_ctx *)raw_dp_ctx->drv_ctx_data;
