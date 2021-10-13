@@ -457,6 +457,7 @@ F: doc/guides/regexdevs/features/default.ini
 DMA device API - EXPERIMENTAL
 M: Chengwen Feng <fengchengwen@huawei.com>
 F: lib/dmadev/
+F: drivers/dma/skeleton/
 F: doc/guides/prog_guide/dmadev.rst
 
 Eventdev API
