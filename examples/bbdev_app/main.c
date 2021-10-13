@@ -18,7 +18,6 @@
 #include <getopt.h>
 #include <signal.h>
 
-#include <rte_atomic.h>
 #include <rte_common.h>
 #include <rte_eal.h>
 #include <rte_cycles.h>
@@ -167,7 +166,7 @@ static const struct app_config_params def_app_config = {
 	.num_dec_cores = 1,
 };
 
-static rte_atomic16_t global_exit_flag;
+static uint16_t global_exit_flag;
 
 /* display usage */
 static inline void
@@ -279,7 +278,7 @@ static void
 signal_handler(int signum)
 {
 	printf("\nSignal %d received\n", signum);
-	rte_atomic16_set(&global_exit_flag, 1);
+	__atomic_store_n(&global_exit_flag, 1, __ATOMIC_RELAXED);
 }
 
 static void
@@ -323,7 +322,7 @@ check_port_link_status(uint16_t port_id)
 	fflush(stdout);
 
 	for (count = 0; count <= MAX_CHECK_TIME &&
-			!rte_atomic16_read(&global_exit_flag); count++) {
+			!__atomic_load_n(&global_exit_flag, __ATOMIC_RELAXED); count++) {
 		memset(&link, 0, sizeof(link));
 		link_get_err = rte_eth_link_get_nowait(port_id, &link);
 
@@ -677,7 +676,7 @@ stats_loop(void *arg)
 {
 	struct stats_lcore_params *stats_lcore = arg;
 
-	while (!rte_atomic16_read(&global_exit_flag)) {
+	while (!__atomic_load_n(&global_exit_flag, __ATOMIC_RELAXED)) {
 		print_stats(stats_lcore);
 		rte_delay_ms(500);
 	}
@@ -923,7 +922,7 @@ processing_loop(void *arg)
 	const bool run_decoder = (lcore_conf->core_type &
 			(1 << RTE_BBDEV_OP_TURBO_DEC));
 
-	while (!rte_atomic16_read(&global_exit_flag)) {
+	while (!__atomic_load_n(&global_exit_flag, __ATOMIC_RELAXED)) {
 		if (run_encoder)
 			run_encoding(lcore_conf);
 		if (run_decoder)
@@ -1057,7 +1056,7 @@ main(int argc, char **argv)
 		.align = __alignof__(struct rte_mbuf *),
 	};
 
-	rte_atomic16_init(&global_exit_flag);
+	__atomic_store_n(&global_exit_flag, 0, __ATOMIC_RELAXED);
 
 	sigret = signal(SIGTERM, signal_handler);
 	if (sigret == SIG_ERR)
