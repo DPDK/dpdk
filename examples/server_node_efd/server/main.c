@@ -22,7 +22,6 @@
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_branch_prediction.h>
-#include <rte_atomic.h>
 #include <rte_ring.h>
 #include <rte_log.h>
 #include <rte_debug.h>
@@ -178,10 +177,12 @@ static int
 sleep_lcore(__rte_unused void *dummy)
 {
 	/* Used to pick a display thread - static, so zero-initialised */
-	static rte_atomic32_t display_stats;
+	static uint32_t display_stats;
 
 	/* Only one core should display stats */
-	if (rte_atomic32_test_and_set(&display_stats)) {
+	uint32_t display_init = 0;
+	if (__atomic_compare_exchange_n(&display_stats, &display_init, 1, 0,
+			__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
 		const unsigned int sleeptime = 1;
 
 		printf("Core %u displaying statistics\n", rte_lcore_id());
