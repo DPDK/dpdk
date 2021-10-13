@@ -50,7 +50,6 @@
 
 /* mbuf defines */
 #define RTE_MBUF_DEFAULT_MEMPOOL_OPS "ring_mp_mc"
-#define RTE_MBUF_REFCNT_ATOMIC 1
 #define RTE_PKTMBUF_HEADROOM 128
 
 /* ether defines */

@@ -299,7 +299,9 @@ if dpdk_conf.get('RTE_ARCH_64')
 else # for 32-bit we need smaller reserved memory areas
     dpdk_conf.set('RTE_MAX_MEM_MB', 2048)
 endif
-
+if get_option('mbuf_refcnt_atomic')
+    dpdk_conf.set('RTE_MBUF_REFCNT_ATOMIC', true)
+endif
 
 compile_time_cpuflags = []
 subdir(arch_subdir)
