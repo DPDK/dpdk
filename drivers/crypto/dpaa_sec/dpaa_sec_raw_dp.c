@@ -219,6 +219,163 @@ build_dpaa_raw_dp_auth_fd(uint8_t *drv_ctx,
 }
 
 static inline struct dpaa_sec_job *
+build_raw_cipher_auth_gcm_sg(uint8_t *drv_ctx,
+			struct rte_crypto_sgl *sgl,
+			struct rte_crypto_sgl *dest_sgl,
+			struct rte_crypto_va_iova_ptr *iv,
+			struct rte_crypto_va_iova_ptr *digest,
+			struct rte_crypto_va_iova_ptr *auth_iv,
+			union rte_crypto_sym_ofs ofs,
+			void *userdata,
+			struct qm_fd *fd)
+{
+	dpaa_sec_session *ses =
+		((struct dpaa_sec_raw_dp_ctx *)drv_ctx)->session;
+	struct dpaa_sec_job *cf;
+	struct dpaa_sec_op_ctx *ctx;
+	struct qm_sg_entry *sg, *out_sg, *in_sg;
+	uint8_t extra_req_segs;
+	uint8_t *IV_ptr = iv->va;
+	int data_len = 0, aead_len = 0;
+	unsigned int i;
+
+	for (i = 0; i < sgl->num; i++)
+		data_len += sgl->vec[i].len;
+
+	extra_req_segs = 4;
+	aead_len = data_len - ofs.ofs.cipher.head - ofs.ofs.cipher.tail;
+
+	if (ses->auth_only_len)
+		extra_req_segs++;
+
+	if (sgl->num > MAX_SG_ENTRIES) {
+		DPAA_SEC_DP_ERR("AEAD: Max sec segs supported is %d",
+				MAX_SG_ENTRIES);
+		return NULL;
+	}
+
+	ctx = dpaa_sec_alloc_raw_ctx(ses,  sgl->num * 2 + extra_req_segs);
+	if (!ctx)
+		return NULL;
+
+	cf = &ctx->job;
+	ctx->userdata = (void *)userdata;
+
+	rte_prefetch0(cf->sg);
+
+	/* output */
+	out_sg = &cf->sg[0];
+	out_sg->extension = 1;
+	if (is_encode(ses))
+		out_sg->length = aead_len + ses->digest_length;
+	else
+		out_sg->length = aead_len;
+
+	/* output sg entries */
+	sg = &cf->sg[2];
+	qm_sg_entry_set64(out_sg, rte_dpaa_mem_vtop(sg));
+	cpu_to_hw_sg(out_sg);
+
+	if (dest_sgl) {
+		/* 1st seg */
+		qm_sg_entry_set64(sg, dest_sgl->vec[0].iova);
+		sg->length = dest_sgl->vec[0].len - ofs.ofs.cipher.head;
+		sg->offset = ofs.ofs.cipher.head;
+
+		/* Successive segs */
+		for (i = 1; i < dest_sgl->num; i++) {
+			cpu_to_hw_sg(sg);
+			sg++;
+			qm_sg_entry_set64(sg, dest_sgl->vec[i].iova);
+			sg->length = dest_sgl->vec[i].len;
+		}
+	} else {
+		/* 1st seg */
+		qm_sg_entry_set64(sg, sgl->vec[0].iova);
+		sg->length = sgl->vec[0].len - ofs.ofs.cipher.head;
+		sg->offset = ofs.ofs.cipher.head;
+
+		/* Successive segs */
+		for (i = 1; i < sgl->num; i++) {
+			cpu_to_hw_sg(sg);
+			sg++;
+			qm_sg_entry_set64(sg, sgl->vec[i].iova);
+			sg->length = sgl->vec[i].len;
+		}
+
+	}
+
+	if (is_encode(ses)) {
+		cpu_to_hw_sg(sg);
+		/* set auth output */
+		sg++;
+		qm_sg_entry_set64(sg, digest->iova);
+		sg->length = ses->digest_length;
+	}
+	sg->final = 1;
+	cpu_to_hw_sg(sg);
+
+	/* input */
+	in_sg = &cf->sg[1];
+	in_sg->extension = 1;
+	in_sg->final = 1;
+	if (is_encode(ses))
+		in_sg->length = ses->iv.length + aead_len
+						+ ses->auth_only_len;
+	else
+		in_sg->length = ses->iv.length + aead_len
+				+ ses->auth_only_len + ses->digest_length;
+
+	/* input sg entries */
+	sg++;
+	qm_sg_entry_set64(in_sg, rte_dpaa_mem_vtop(sg));
+	cpu_to_hw_sg(in_sg);
+
+	/* 1st seg IV */
+	qm_sg_entry_set64(sg, rte_dpaa_mem_vtop(IV_ptr));
+	sg->length = ses->iv.length;
+	cpu_to_hw_sg(sg);
+
+	/* 2 seg auth only */
+	if (ses->auth_only_len) {
+		sg++;
+		qm_sg_entry_set64(sg, auth_iv->iova);
+		sg->length = ses->auth_only_len;
+		cpu_to_hw_sg(sg);
+	}
+
+	/* 3rd seg */
+	sg++;
+	qm_sg_entry_set64(sg, sgl->vec[0].iova);
+	sg->length = sgl->vec[0].len - ofs.ofs.cipher.head;
+	sg->offset = ofs.ofs.cipher.head;
+
+	/* Successive segs */
+	for (i = 1; i < sgl->num; i++) {
+		cpu_to_hw_sg(sg);
+		sg++;
+		qm_sg_entry_set64(sg, sgl->vec[i].iova);
+		sg->length =  sgl->vec[i].len;
+	}
+
+	if (is_decode(ses)) {
+		cpu_to_hw_sg(sg);
+		sg++;
+		memcpy(ctx->digest, digest->va,
+			ses->digest_length);
+		qm_sg_entry_set64(sg, rte_dpaa_mem_vtop(ctx->digest));
+		sg->length = ses->digest_length;
+	}
+	sg->final = 1;
+	cpu_to_hw_sg(sg);
+
+	if (ses->auth_only_len)
+		fd->cmd = 0x80000000 | ses->auth_only_len;
+
+	return cf;
+}
+
+static inline struct dpaa_sec_job *
 build_dpaa_raw_dp_chain_fd(uint8_t *drv_ctx,
 			struct rte_crypto_sgl *sgl,
 			struct rte_crypto_sgl *dest_sgl,
@@ -484,6 +641,135 @@ build_dpaa_raw_dp_cipher_fd(uint8_t *drv_ctx,
 	return cf;
 }
 
+#ifdef RTE_LIBRTE_SECURITY
+static inline struct dpaa_sec_job *
+build_dpaa_raw_proto_sg(uint8_t *drv_ctx,
+			struct rte_crypto_sgl *sgl,
+			struct rte_crypto_sgl *dest_sgl,
+			struct rte_crypto_va_iova_ptr *iv,
+			struct rte_crypto_va_iova_ptr *digest,
+			struct rte_crypto_va_iova_ptr *auth_iv,
+			union rte_crypto_sym_ofs ofs,
+			void *userdata,
+			struct qm_fd *fd)
+{
+	RTE_SET_USED(iv);
+	RTE_SET_USED(digest);
+	RTE_SET_USED(auth_iv);
+	RTE_SET_USED(ofs);
+
+	dpaa_sec_session *ses =
+		((struct dpaa_sec_raw_dp_ctx *)drv_ctx)->session;
+	struct dpaa_sec_job *cf;
+	struct dpaa_sec_op_ctx *ctx;
+	struct qm_sg_entry *sg, *out_sg, *in_sg;
+	uint32_t in_len = 0, out_len = 0;
+	unsigned int i;
+
+	if (sgl->num > MAX_SG_ENTRIES) {
+		DPAA_SEC_DP_ERR("Proto: Max sec segs supported is %d",
+				MAX_SG_ENTRIES);
+		return NULL;
+	}
+
+	ctx = dpaa_sec_alloc_raw_ctx(ses, sgl->num * 2 + 4);
+	if (!ctx)
+		return NULL;
+	cf = &ctx->job;
+	ctx->userdata = (void *)userdata;
+	/* output */
+	out_sg = &cf->sg[0];
+	out_sg->extension = 1;
+	qm_sg_entry_set64(out_sg, rte_dpaa_mem_vtop(&cf->sg[2]));
+
+	if (dest_sgl) {
+		/* 1st seg */
+		sg = &cf->sg[2];
+		qm_sg_entry_set64(sg, dest_sgl->vec[0].iova);
+		sg->offset = 0;
+		sg->length = dest_sgl->vec[0].len;
+		out_len += sg->length;
+
+		for (i = 1; i < dest_sgl->num; i++) {
+		/* Successive segs */
+			cpu_to_hw_sg(sg);
+			sg++;
+			qm_sg_entry_set64(sg, dest_sgl->vec[i].iova);
+			sg->offset = 0;
+			sg->length = dest_sgl->vec[i].len;
+			out_len += sg->length;
+		}
+		sg->length = dest_sgl->vec[i - 1].tot_len;
+	} else {
+		/* 1st seg */
+		sg = &cf->sg[2];
+		qm_sg_entry_set64(sg, sgl->vec[0].iova);
+		sg->offset = 0;
+		sg->length = sgl->vec[0].len;
+		out_len += sg->length;
+
+		for (i = 1; i < sgl->num; i++) {
+		/* Successive segs */
+			cpu_to_hw_sg(sg);
+			sg++;
+			qm_sg_entry_set64(sg, sgl->vec[i].iova);
+			sg->offset = 0;
+			sg->length = sgl->vec[i].len;
+			out_len += sg->length;
+		}
+		sg->length = sgl->vec[i - 1].tot_len;
+
+	}
+	out_len += sg->length;
+	sg->final = 1;
+	cpu_to_hw_sg(sg);
+
+	out_sg->length = out_len;
+	cpu_to_hw_sg(out_sg);
+
+	/* input */
+	in_sg = &cf->sg[1];
+	in_sg->extension = 1;
+	in_sg->final = 1;
+	in_len = sgl->vec[0].len;
+
+	sg++;
+	qm_sg_entry_set64(in_sg, rte_dpaa_mem_vtop(sg));
+
+	/* 1st seg */
+	qm_sg_entry_set64(sg, sgl->vec[0].iova);
+	sg->length = sgl->vec[0].len;
+	sg->offset = 0;
+
+	/* Successive segs */
+	for (i = 1; i < sgl->num; i++) {
+		cpu_to_hw_sg(sg);
+		sg++;
+		qm_sg_entry_set64(sg, sgl->vec[i].iova);
+		sg->length = sgl->vec[i].len;
+		sg->offset = 0;
+		in_len += sg->length;
+	}
+	sg->final = 1;
+	cpu_to_hw_sg(sg);
+
+	in_sg->length = in_len;
+	cpu_to_hw_sg(in_sg);
+
+	if ((ses->ctxt == DPAA_SEC_PDCP) && ses->pdcp.hfn_ovd) {
+		fd->cmd = 0x80000000 |
+			*((uint32_t *)((uint8_t *)userdata +
+			ses->pdcp.hfn_ovd_offset));
+		DPAA_SEC_DP_DEBUG("Per packet HFN: %x, ovd:%u\n",
+			*((uint32_t *)((uint8_t *)userdata +
+			ses->pdcp.hfn_ovd_offset)),
+			ses->pdcp.hfn_ovd);
+	}
+
+	return cf;
+}
+#endif
+
 static uint32_t
 dpaa_sec_raw_enqueue_burst(void *qp_data, uint8_t *drv_ctx,
 	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
@@ -744,6 +1030,13 @@ dpaa_sec_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 		sess->build_raw_dp_fd = build_dpaa_raw_dp_auth_fd;
 	else if (sess->ctxt == DPAA_SEC_CIPHER_HASH)
 		sess->build_raw_dp_fd = build_dpaa_raw_dp_chain_fd;
+	else if (sess->ctxt == DPAA_SEC_AEAD)
+		sess->build_raw_dp_fd = build_raw_cipher_auth_gcm_sg;
+#ifdef RTE_LIBRTE_SECURITY
+	else if (sess->ctxt == DPAA_SEC_IPSEC ||
+			sess->ctxt == DPAA_SEC_PDCP)
+		sess->build_raw_dp_fd = build_dpaa_raw_proto_sg;
+#endif
 	else
 		return -ENOTSUP;
 	dp_ctx = (struct dpaa_sec_raw_dp_ctx *)raw_dp_ctx->drv_ctx_data;
