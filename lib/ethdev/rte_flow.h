@@ -574,6 +574,15 @@ enum rte_flow_item_type {
 	 * @see struct rte_flow_item_conntrack.
 	 */
 	RTE_FLOW_ITEM_TYPE_CONNTRACK,
+
+	/**
+	 * [META]
+	 *
+	 * Matches traffic entering the embedded switch from the given ethdev.
+	 *
+	 * @see struct rte_flow_item_ethdev
+	 */
+	RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR,
 };
 
 /**
@@ -1796,6 +1805,24 @@ struct rte_flow_item_conntrack {
 #ifndef __cplusplus
 static const struct rte_flow_item_conntrack rte_flow_item_conntrack_mask = {
 	.flags = 0xffffffff,
+};
+#endif
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * Provides an ethdev port ID for use with the following items:
+ * RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR.
+ */
+struct rte_flow_item_ethdev {
+	uint16_t port_id; /**< ethdev port ID */
+};
+
+/** Default mask for items based on struct rte_flow_item_ethdev */
+#ifndef __cplusplus
+static const struct rte_flow_item_ethdev rte_flow_item_ethdev_mask = {
+	.port_id = 0xffff,
 };
 #endif
 

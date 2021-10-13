@@ -1425,6 +1425,65 @@ Matches a conntrack state after conntrack action.
 - ``flags``: conntrack packet state flags.
 - Default ``mask`` matches all state bits.
 
+Item: ``PORT_REPRESENTOR``
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches traffic entering the embedded switch from the given ethdev.
+
+Term **ethdev** and the concept of **port representor** are synonymous.
+The **represented port** is an *entity* plugged to the embedded switch
+at the opposite end of the "wire" leading to the ethdev.
+
+::
+
+    .--------------------.
+    |  PORT_REPRESENTOR  |  Ethdev (Application Port Referred to by its ID)
+    '--------------------'
+              ||
+              \/
+      .----------------.
+      |  Logical Port  |
+      '----------------'
+              ||
+              ||
+              ||
+              \/
+         .----------.
+         |  Switch  |
+         '----------'
+              :
+               :
+              :
+               :
+      .----------------.
+      |  Logical Port  |
+      '----------------'
+              :
+               :
+    .--------------------.
+    |  REPRESENTED_PORT  |  Net / Guest / Another Ethdev (Same Application)
+    '--------------------'
+
+
+- Incompatible with `Attribute: Traffic direction`_.
+- Requires `Attribute: Transfer`_.
+
+.. _table_rte_flow_item_ethdev:
+
+.. table:: ``struct rte_flow_item_ethdev``
+
+   +----------+-------------+---------------------------+
+   | Field    | Subfield    | Value                     |
+   +==========+=============+===========================+
+   | ``spec`` | ``port_id`` | ethdev port ID            |
+   +----------+-------------+---------------------------+
+   | ``last`` | ``port_id`` | upper range value         |
+   +----------+-------------+---------------------------+
+   | ``mask`` | ``port_id`` | zeroed for wildcard match |
+   +----------+-------------+---------------------------+
+
+- Default ``mask`` provides exact match behaviour.
+
 Actions
 ~~~~~~~
 

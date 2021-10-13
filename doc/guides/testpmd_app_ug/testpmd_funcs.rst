@@ -3801,6 +3801,10 @@ This section lists supported pattern items and their attributes, if any.
 
 - ``conntrack``: match conntrack state.
 
+- ``port_representor``: match traffic entering the embedded switch from the given ethdev
+
+  - ``port_id {unsigned}``: ethdev port ID
+
 Actions list
 ^^^^^^^^^^^^
 
