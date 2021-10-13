@@ -135,7 +135,8 @@ typedef struct dpaa_sec_job* (*dpaa_sec_build_raw_dp_fd_t)(uint8_t *drv_ctx,
 			struct rte_crypto_va_iova_ptr *digest,
 			struct rte_crypto_va_iova_ptr *auth_iv,
 			union rte_crypto_sym_ofs ofs,
-			void *userdata);
+			void *userdata,
+			struct qm_fd *fd);
 
 typedef struct dpaa_sec_session_entry {
 	struct sec_cdb cdb;	/**< cmd block associated with qp */
