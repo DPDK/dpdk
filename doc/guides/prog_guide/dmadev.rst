@@ -66,3 +66,25 @@ can be used to get the device info and supported features.
 
 Silent mode is a special device capability which does not require the
 application to invoke dequeue APIs.
+
+
+Enqueue / Dequeue APIs
+~~~~~~~~~~~~~~~~~~~~~~
+
+Enqueue APIs such as ``rte_dma_copy`` and ``rte_dma_fill`` can be used to
+enqueue operations to hardware. If an enqueue is successful, a ``ring_idx`` is
+returned. This ``ring_idx`` can be used by applications to track per operation
+metadata in an application-defined circular ring.
+
+The ``rte_dma_submit`` API is used to issue doorbell to hardware.
+Alternatively the ``RTE_DMA_OP_FLAG_SUBMIT`` flag can be passed to the enqueue
+APIs to also issue the doorbell to hardware.
+
+There are two dequeue APIs ``rte_dma_completed`` and
+``rte_dma_completed_status``, these are used to obtain the results of the
+enqueue requests. ``rte_dma_completed`` will return the number of successfully
+completed operations. ``rte_dma_completed_status`` will return the number of
+completed operations along with the status of each operation (filled into the
+``status`` array passed by user). These two APIs can also return the last
+completed operation's ``ring_idx`` which could help user track operations within
+their own application-defined rings.

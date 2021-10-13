@@ -100,6 +100,8 @@ struct rte_dma_dev {
 	void *dev_private; /**< PMD-specific private data. */
 	/** Device info which supplied during device initialization. */
 	struct rte_device *device;
+	/**< Fast-path functions and related data. */
+	struct rte_dma_fp_object *fp_obj;
 	/** Functions implemented by PMD. */
 	const struct rte_dma_dev_ops *dev_ops;
 	struct rte_dma_conf dev_conf; /**< DMA device configuration. */

@@ -65,6 +65,77 @@
  * Finally, an application can close a dmadev by invoking the rte_dma_close()
  * function.
  *
+ * The dataplane APIs include two parts:
+ * The first part is the submission of operation requests:
+ *     - rte_dma_copy()
+ *     - rte_dma_copy_sg()
+ *     - rte_dma_fill()
+ *     - rte_dma_submit()
+ *
+ * These APIs could work with different virtual DMA channels which have
+ * different contexts.
+ *
+ * The first three APIs are used to submit the operation request to the virtual
+ * DMA channel, if the submission is successful, a positive
+ * ring_idx <= UINT16_MAX is returned, otherwise a negative number is returned.
+ *
+ * The last API is used to issue doorbell to hardware, and also there are flags
+ * (@see RTE_DMA_OP_FLAG_SUBMIT) parameter of the first three APIs could do the
+ * same work.
+ * @note When enqueuing a set of jobs to the device, having a separate submit
+ * outside a loop makes for clearer code than having a check for the last
+ * iteration inside the loop to set a special submit flag.  However, for cases
+ * where one item alone is to be submitted or there is a small set of jobs to
+ * be submitted sequentially, having a submit flag provides a lower-overhead
+ * way of doing the submission while still keeping the code clean.
+ *
+ * The second part is to obtain the result of requests:
+ *     - rte_dma_completed()
+ *         - return the number of operation requests completed successfully.
+ *     - rte_dma_completed_status()
+ *         - return the number of operation requests completed.
+ *
+ * @note If the dmadev works in silent mode (@see RTE_DMA_CAPA_SILENT),
+ * application does not invoke the above two completed APIs.
+ *
+ * About the ring_idx which enqueue APIs (e.g. rte_dma_copy(), rte_dma_fill())
+ * return, the rules are as follows:
+ *     - ring_idx for each virtual DMA channel are independent.
+ *     - For a virtual DMA channel, the ring_idx is monotonically incremented,
+ *       when it reach UINT16_MAX, it wraps back to zero.
+ *     - This ring_idx can be used by applications to track per-operation
+ *       metadata in an application-defined circular ring.
+ *     - The initial ring_idx of a virtual DMA channel is zero, after the
+ *       device is stopped, the ring_idx needs to be reset to zero.
+ *
+ * One example:
+ *     - step-1: start one dmadev
+ *     - step-2: enqueue a copy operation, the ring_idx return is 0
+ *     - step-3: enqueue a copy operation again, the ring_idx return is 1
+ *     - ...
+ *     - step-101: stop the dmadev
+ *     - step-102: start the dmadev
+ *     - step-103: enqueue a copy operation, the ring_idx return is 0
+ *     - ...
+ *     - step-x+0: enqueue a fill operation, the ring_idx return is 65535
+ *     - step-x+1: enqueue a copy operation, the ring_idx return is 0
+ *     - ...
+ *
+ * The DMA operation address used in enqueue APIs (i.e. rte_dma_copy(),
+ * rte_dma_copy_sg(), rte_dma_fill()) is defined as rte_iova_t type.
+ *
+ * The dmadev supports two types of address: memory address and device address.
+ *
+ * - memory address: the source and destination address of the memory-to-memory
+ * transfer type, or the source address of the memory-to-device transfer type,
+ * or the destination address of the device-to-memory transfer type.
+ * @note If the device support SVA (@see RTE_DMA_CAPA_SVA), the memory address
+ * can be any VA address, otherwise it must be an IOVA address.
+ *
+ * - device address: the source and destination address of the device-to-device
+ * transfer type, or the source address of the device-to-memory transfer type,
+ * or the destination address of the memory-to-device transfer type.
+ *
  * About MT-safe, all the functions of the dmadev API implemented by a PMD are
  * lock-free functions which assume to not be invoked in parallel on different
  * logical cores to work on the same target dmadev object.
@@ -590,6 +661,386 @@ int rte_dma_stats_reset(int16_t dev_id, uint16_t vchan);
  */
 __rte_experimental
 int rte_dma_dump(int16_t dev_id, FILE *f);
+
+/**
+ * DMA transfer result status code defines.
+ *
+ * @see rte_dma_completed_status
+ */
+enum rte_dma_status_code {
+	/** The operation completed successfully. */
+	RTE_DMA_STATUS_SUCCESSFUL,
+	/** The operation failed to complete due abort by user.
+	 * This is mainly used when processing dev_stop, user could modidy the
+	 * descriptors (e.g. change one bit to tell hardware abort this job),
+	 * it allows outstanding requests to be complete as much as possible,
+	 * so reduce the time to stop the device.
+	 */
+	RTE_DMA_STATUS_USER_ABORT,
+	/** The operation failed to complete due to following scenarios:
+	 * The jobs in a particular batch are not attempted because they
+	 * appeared after a fence where a previous job failed. In some HW
+	 * implementation it's possible for jobs from later batches would be
+	 * completed, though, so report the status from the not attempted jobs
+	 * before reporting those newer completed jobs.
+	 */
+	RTE_DMA_STATUS_NOT_ATTEMPTED,
+	/** The operation failed to complete due invalid source address. */
+	RTE_DMA_STATUS_INVALID_SRC_ADDR,
+	/** The operation failed to complete due invalid destination address. */
+	RTE_DMA_STATUS_INVALID_DST_ADDR,
+	/** The operation failed to complete due invalid source or destination
+	 * address, cover the case that only knows the address error, but not
+	 * sure which address error.
+	 */
+	RTE_DMA_STATUS_INVALID_ADDR,
+	/** The operation failed to complete due invalid length. */
+	RTE_DMA_STATUS_INVALID_LENGTH,
+	/** The operation failed to complete due invalid opcode.
+	 * The DMA descriptor could have multiple format, which are
+	 * distinguished by the opcode field.
+	 */
+	RTE_DMA_STATUS_INVALID_OPCODE,
+	/** The operation failed to complete due bus read error. */
+	RTE_DMA_STATUS_BUS_READ_ERROR,
+	/** The operation failed to complete due bus write error. */
+	RTE_DMA_STATUS_BUS_WRITE_ERROR,
+	/** The operation failed to complete due bus error, cover the case that
+	 * only knows the bus error, but not sure which direction error.
+	 */
+	RTE_DMA_STATUS_BUS_ERROR,
+	/** The operation failed to complete due data poison. */
+	RTE_DMA_STATUS_DATA_POISION,
+	/** The operation failed to complete due descriptor read error. */
+	RTE_DMA_STATUS_DESCRIPTOR_READ_ERROR,
+	/** The operation failed to complete due device link error.
+	 * Used to indicates that the link error in the memory-to-device/
+	 * device-to-memory/device-to-device transfer scenario.
+	 */
+	RTE_DMA_STATUS_DEV_LINK_ERROR,
+	/** The operation failed to complete due lookup page fault. */
+	RTE_DMA_STATUS_PAGE_FAULT,
+	/** The operation failed to complete due unknown reason.
+	 * The initial value is 256, which reserves space for future errors.
+	 */
+	RTE_DMA_STATUS_ERROR_UNKNOWN = 0x100,
+};
+
+/**
+ * A structure used to hold scatter-gather DMA operation request entry.
+ *
+ * @see rte_dma_copy_sg
+ */
+struct rte_dma_sge {
+	rte_iova_t addr; /**< The DMA operation address. */
+	uint32_t length; /**< The DMA operation length. */
+};
+
+#include "rte_dmadev_core.h"
+
+/**@{@name DMA operation flag
+ * @see rte_dma_copy()
+ * @see rte_dma_copy_sg()
+ * @see rte_dma_fill()
+ */
+/** Fence flag.
+ * It means the operation with this flag must be processed only after all
+ * previous operations are completed.
+ * If the specify DMA HW works in-order (it means it has default fence between
+ * operations), this flag could be NOP.
+ */
+#define RTE_DMA_OP_FLAG_FENCE   RTE_BIT64(0)
+/** Submit flag.
+ * It means the operation with this flag must issue doorbell to hardware after
+ * enqueued jobs.
+ */
+#define RTE_DMA_OP_FLAG_SUBMIT  RTE_BIT64(1)
+/** Write data to low level cache hint.
+ * Used for performance optimization, this is just a hint, and there is no
+ * capability bit for this, driver should not return error if this flag was set.
+ */
+#define RTE_DMA_OP_FLAG_LLC     RTE_BIT64(2)
+/**@}*/
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enqueue a copy operation onto the virtual DMA channel.
+ *
+ * This queues up a copy operation to be performed by hardware, if the 'flags'
+ * parameter contains RTE_DMA_OP_FLAG_SUBMIT then trigger doorbell to begin
+ * this operation, otherwise do not trigger doorbell.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param vchan
+ *   The identifier of virtual DMA channel.
+ * @param src
+ *   The address of the source buffer.
+ * @param dst
+ *   The address of the destination buffer.
+ * @param length
+ *   The length of the data to be copied.
+ * @param flags
+ *   An flags for this operation.
+ *   @see RTE_DMA_OP_FLAG_*
+ *
+ * @return
+ *   - 0..UINT16_MAX: index of enqueued job.
+ *   - -ENOSPC: if no space left to enqueue.
+ *   - other values < 0 on failure.
+ */
+__rte_experimental
+static inline int
+rte_dma_copy(int16_t dev_id, uint16_t vchan, rte_iova_t src, rte_iova_t dst,
+	     uint32_t length, uint64_t flags)
+{
+	struct rte_dma_fp_object *obj = &rte_dma_fp_objs[dev_id];
+
+#ifdef RTE_DMADEV_DEBUG
+	if (!rte_dma_is_valid(dev_id) || length == 0)
+		return -EINVAL;
+	RTE_FUNC_PTR_OR_ERR_RET(*obj->copy, -ENOTSUP);
+#endif
+
+	return (*obj->copy)(obj->dev_private, vchan, src, dst, length, flags);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enqueue a scatter-gather list copy operation onto the virtual DMA channel.
+ *
+ * This queues up a scatter-gather list copy operation to be performed by
+ * hardware, if the 'flags' parameter contains RTE_DMA_OP_FLAG_SUBMIT then
+ * trigger doorbell to begin this operation, otherwise do not trigger doorbell.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param vchan
+ *   The identifier of virtual DMA channel.
+ * @param src
+ *   The pointer of source scatter-gather entry array.
+ * @param dst
+ *   The pointer of destination scatter-gather entry array.
+ * @param nb_src
+ *   The number of source scatter-gather entry.
+ *   @see struct rte_dma_info::max_sges
+ * @param nb_dst
+ *   The number of destination scatter-gather entry.
+ *   @see struct rte_dma_info::max_sges
+ * @param flags
+ *   An flags for this operation.
+ *   @see RTE_DMA_OP_FLAG_*
+ *
+ * @return
+ *   - 0..UINT16_MAX: index of enqueued job.
+ *   - -ENOSPC: if no space left to enqueue.
+ *   - other values < 0 on failure.
+ */
+__rte_experimental
+static inline int
+rte_dma_copy_sg(int16_t dev_id, uint16_t vchan, struct rte_dma_sge *src,
+		struct rte_dma_sge *dst, uint16_t nb_src, uint16_t nb_dst,
+		uint64_t flags)
+{
+	struct rte_dma_fp_object *obj = &rte_dma_fp_objs[dev_id];
+
+#ifdef RTE_DMADEV_DEBUG
+	if (!rte_dma_is_valid(dev_id) || src == NULL || dst == NULL ||
+	    nb_src == 0 || nb_dst == 0)
+		return -EINVAL;
+	RTE_FUNC_PTR_OR_ERR_RET(*obj->copy_sg, -ENOTSUP);
+#endif
+
+	return (*obj->copy_sg)(obj->dev_private, vchan, src, dst, nb_src,
+			       nb_dst, flags);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enqueue a fill operation onto the virtual DMA channel.
+ *
+ * This queues up a fill operation to be performed by hardware, if the 'flags'
+ * parameter contains RTE_DMA_OP_FLAG_SUBMIT then trigger doorbell to begin
+ * this operation, otherwise do not trigger doorbell.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param vchan
+ *   The identifier of virtual DMA channel.
+ * @param pattern
+ *   The pattern to populate the destination buffer with.
+ * @param dst
+ *   The address of the destination buffer.
+ * @param length
+ *   The length of the destination buffer.
+ * @param flags
+ *   An flags for this operation.
+ *   @see RTE_DMA_OP_FLAG_*
+ *
+ * @return
+ *   - 0..UINT16_MAX: index of enqueued job.
+ *   - -ENOSPC: if no space left to enqueue.
+ *   - other values < 0 on failure.
+ */
+__rte_experimental
+static inline int
+rte_dma_fill(int16_t dev_id, uint16_t vchan, uint64_t pattern,
+	     rte_iova_t dst, uint32_t length, uint64_t flags)
+{
+	struct rte_dma_fp_object *obj = &rte_dma_fp_objs[dev_id];
+
+#ifdef RTE_DMADEV_DEBUG
+	if (!rte_dma_is_valid(dev_id) || length == 0)
+		return -EINVAL;
+	RTE_FUNC_PTR_OR_ERR_RET(*obj->fill, -ENOTSUP);
+#endif
+
+	return (*obj->fill)(obj->dev_private, vchan, pattern, dst, length,
+			    flags);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Trigger hardware to begin performing enqueued operations.
+ *
+ * This API is used to write the "doorbell" to the hardware to trigger it
+ * to begin the operations previously enqueued by rte_dma_copy/fill().
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param vchan
+ *   The identifier of virtual DMA channel.
+ *
+ * @return
+ *   0 on success. Otherwise negative value is returned.
+ */
+__rte_experimental
+static inline int
+rte_dma_submit(int16_t dev_id, uint16_t vchan)
+{
+	struct rte_dma_fp_object *obj = &rte_dma_fp_objs[dev_id];
+
+#ifdef RTE_DMADEV_DEBUG
+	if (!rte_dma_is_valid(dev_id))
+		return -EINVAL;
+	RTE_FUNC_PTR_OR_ERR_RET(*obj->submit, -ENOTSUP);
+#endif
+
+	return (*obj->submit)(obj->dev_private, vchan);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Return the number of operations that have been successfully completed.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param vchan
+ *   The identifier of virtual DMA channel.
+ * @param nb_cpls
+ *   The maximum number of completed operations that can be processed.
+ * @param[out] last_idx
+ *   The last completed operation's ring_idx.
+ *   If not required, NULL can be passed in.
+ * @param[out] has_error
+ *   Indicates if there are transfer error.
+ *   If not required, NULL can be passed in.
+ *
+ * @return
+ *   The number of operations that successfully completed. This return value
+ *   must be less than or equal to the value of nb_cpls.
+ */
+__rte_experimental
+static inline uint16_t
+rte_dma_completed(int16_t dev_id, uint16_t vchan, const uint16_t nb_cpls,
+		  uint16_t *last_idx, bool *has_error)
+{
+	struct rte_dma_fp_object *obj = &rte_dma_fp_objs[dev_id];
+	uint16_t idx;
+	bool err;
+
+#ifdef RTE_DMADEV_DEBUG
+	if (!rte_dma_is_valid(dev_id) || nb_cpls == 0)
+		return 0;
+	RTE_FUNC_PTR_OR_ERR_RET(*obj->completed, 0);
+#endif
+
+	/* Ensure the pointer values are non-null to simplify drivers.
+	 * In most cases these should be compile time evaluated, since this is
+	 * an inline function.
+	 * - If NULL is explicitly passed as parameter, then compiler knows the
+	 *   value is NULL
+	 * - If address of local variable is passed as parameter, then compiler
+	 *   can know it's non-NULL.
+	 */
+	if (last_idx == NULL)
+		last_idx = &idx;
+	if (has_error == NULL)
+		has_error = &err;
+
+	*has_error = false;
+	return (*obj->completed)(obj->dev_private, vchan, nb_cpls, last_idx,
+				 has_error);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Return the number of operations that have been completed, and the operations
+ * result may succeed or fail.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param vchan
+ *   The identifier of virtual DMA channel.
+ * @param nb_cpls
+ *   Indicates the size of status array.
+ * @param[out] last_idx
+ *   The last completed operation's ring_idx.
+ *   If not required, NULL can be passed in.
+ * @param[out] status
+ *   This is a pointer to an array of length 'nb_cpls' that holds the completion
+ *   status code of each operation.
+ *   @see enum rte_dma_status_code
+ *
+ * @return
+ *   The number of operations that completed. This return value must be less
+ *   than or equal to the value of nb_cpls.
+ *   If this number is greater than zero (assuming n), then n values in the
+ *   status array are also set.
+ */
+__rte_experimental
+static inline uint16_t
+rte_dma_completed_status(int16_t dev_id, uint16_t vchan,
+			 const uint16_t nb_cpls, uint16_t *last_idx,
+			 enum rte_dma_status_code *status)
+{
+	struct rte_dma_fp_object *obj = &rte_dma_fp_objs[dev_id];
+	uint16_t idx;
+
+#ifdef RTE_DMADEV_DEBUG
+	if (!rte_dma_is_valid(dev_id) || nb_cpls == 0 || status == NULL)
+		return 0;
+	RTE_FUNC_PTR_OR_ERR_RET(*obj->completed_status, 0);
+#endif
+
+	if (last_idx == NULL)
+		last_idx = &idx;
+
+	return (*obj->completed_status)(obj->dev_private, vchan, nb_cpls,
+					last_idx, status);
+}
 
 #ifdef __cplusplus
 }

@@ -2,10 +2,15 @@ EXPERIMENTAL {
 	global:
 
 	rte_dma_close;
+	rte_dma_completed;
+	rte_dma_completed_status;
 	rte_dma_configure;
+	rte_dma_copy;
+	rte_dma_copy_sg;
 	rte_dma_count_avail;
 	rte_dma_dev_max;
 	rte_dma_dump;
+	rte_dma_fill;
 	rte_dma_get_dev_id_by_name;
 	rte_dma_info_get;
 	rte_dma_is_valid;
@@ -13,6 +18,7 @@ EXPERIMENTAL {
 	rte_dma_stats_get;
 	rte_dma_stats_reset;
 	rte_dma_stop;
+	rte_dma_submit;
 	rte_dma_vchan_setup;
 
 	local: *;
@@ -22,6 +28,7 @@ INTERNAL {
 	global:
 
 	rte_dma_devices;
+	rte_dma_fp_objs;
 	rte_dma_pmd_allocate;
 	rte_dma_pmd_release;
 
