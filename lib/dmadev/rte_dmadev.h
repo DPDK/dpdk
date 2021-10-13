@@ -220,6 +220,24 @@ bool rte_dma_is_valid(int16_t dev_id);
 __rte_experimental
 uint16_t rte_dma_count_avail(void);
 
+/**
+ * Iterates over valid dmadev instances.
+ *
+ * @param start_dev_id
+ *   The id of the next possible dmadev.
+ * @return
+ *   Next valid dmadev, UINT16_MAX if there is none.
+ */
+__rte_experimental
+int16_t rte_dma_next_dev(int16_t start_dev_id);
+
+/** Utility macro to iterate over all available dmadevs */
+#define RTE_DMA_FOREACH_DEV(p) \
+	for (p = rte_dma_next_dev(0); \
+	     p != -1; \
+	     p = rte_dma_next_dev(p + 1))
+
+
 /**@{@name DMA capability
  * @see struct rte_dma_info::dev_capa
  */

@@ -49,6 +49,19 @@ rte_dma_dev_max(size_t dev_max)
 	return 0;
 }
 
+int16_t
+rte_dma_next_dev(int16_t start_dev_id)
+{
+	int16_t dev_id = start_dev_id;
+	while (dev_id < dma_devices_max && rte_dma_devices[dev_id].state == RTE_DMA_DEV_UNUSED)
+		dev_id++;
+
+	if (dev_id < dma_devices_max)
+		return dev_id;
+
+	return -1;
+}
+
 static int
 dma_check_name(const char *name)
 {

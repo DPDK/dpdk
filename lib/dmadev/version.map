@@ -15,6 +15,7 @@ EXPERIMENTAL {
 	rte_dma_get_dev_id_by_name;
 	rte_dma_info_get;
 	rte_dma_is_valid;
+	rte_dma_next_dev;
 	rte_dma_start;
 	rte_dma_stats_get;
 	rte_dma_stats_reset;
