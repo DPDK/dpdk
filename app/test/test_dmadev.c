@@ -82,6 +82,98 @@ await_hw(int16_t dev_id, uint16_t vchan)
 	}
 }
 
+/* run a series of copy tests just using some different options for enqueues and completions */
+static int
+do_multi_copies(int16_t dev_id, uint16_t vchan,
+		int split_batches,     /* submit 2 x 16 or 1 x 32 burst */
+		int split_completions, /* gather 2 x 16 or 1 x 32 completions */
+		int use_completed_status) /* use completed or completed_status function */
+{
+	struct rte_mbuf *srcs[32], *dsts[32];
+	enum rte_dma_status_code sc[32];
+	unsigned int i, j;
+	bool dma_err = false;
+
+	/* Enqueue burst of copies and hit doorbell */
+	for (i = 0; i < RTE_DIM(srcs); i++) {
+		uint64_t *src_data;
+
+		if (split_batches && i == RTE_DIM(srcs) / 2)
+			rte_dma_submit(dev_id, vchan);
+
+		srcs[i] = rte_pktmbuf_alloc(pool);
+		dsts[i] = rte_pktmbuf_alloc(pool);
+		if (srcs[i] == NULL || dsts[i] == NULL)
+			ERR_RETURN("Error allocating buffers\n");
+
+		src_data = rte_pktmbuf_mtod(srcs[i], uint64_t *);
+		for (j = 0; j < COPY_LEN/sizeof(uint64_t); j++)
+			src_data[j] = rte_rand();
+
+		if (rte_dma_copy(dev_id, vchan, srcs[i]->buf_iova + srcs[i]->data_off,
+				dsts[i]->buf_iova + dsts[i]->data_off, COPY_LEN, 0) != id_count++)
+			ERR_RETURN("Error with rte_dma_copy for buffer %u\n", i);
+	}
+	rte_dma_submit(dev_id, vchan);
+
+	await_hw(dev_id, vchan);
+
+	if (split_completions) {
+		/* gather completions in two halves */
+		uint16_t half_len = RTE_DIM(srcs) / 2;
+		int ret = rte_dma_completed(dev_id, vchan, half_len, NULL, &dma_err);
+		if (ret != half_len || dma_err)
+			ERR_RETURN("Error with rte_dma_completed - first half. ret = %d, expected ret = %u, dma_err = %d\n",
+					ret, half_len, dma_err);
+
+		ret = rte_dma_completed(dev_id, vchan, half_len, NULL, &dma_err);
+		if (ret != half_len || dma_err)
+			ERR_RETURN("Error with rte_dma_completed - second half. ret = %d, expected ret = %u, dma_err = %d\n",
+					ret, half_len, dma_err);
+	} else {
+		/* gather all completions in one go, using either
+		 * completed or completed_status fns
+		 */
+		if (!use_completed_status) {
+			int n = rte_dma_completed(dev_id, vchan, RTE_DIM(srcs), NULL, &dma_err);
+			if (n != RTE_DIM(srcs) || dma_err)
+				ERR_RETURN("Error with rte_dma_completed, %u [expected: %zu], dma_err = %d\n",
+						n, RTE_DIM(srcs), dma_err);
+		} else {
+			int n = rte_dma_completed_status(dev_id, vchan, RTE_DIM(srcs), NULL, sc);
+			if (n != RTE_DIM(srcs))
+				ERR_RETURN("Error with rte_dma_completed_status, %u [expected: %zu]\n",
+						n, RTE_DIM(srcs));
+
+			for (j = 0; j < (uint16_t)n; j++)
+				if (sc[j] != RTE_DMA_STATUS_SUCCESSFUL)
+					ERR_RETURN("Error with rte_dma_completed_status, job %u reports failure [code %u]\n",
+							j, sc[j]);
+		}
+	}
+
+	/* check for empty */
+	int ret = use_completed_status ?
+			rte_dma_completed_status(dev_id, vchan, RTE_DIM(srcs), NULL, sc) :
+			rte_dma_completed(dev_id, vchan, RTE_DIM(srcs), NULL, &dma_err);
+	if (ret != 0)
+		ERR_RETURN("Error with completion check - ops unexpectedly returned\n");
+
+	for (i = 0; i < RTE_DIM(srcs); i++) {
+		char *src_data, *dst_data;
+
+		src_data = rte_pktmbuf_mtod(srcs[i], char *);
+		dst_data = rte_pktmbuf_mtod(dsts[i], char *);
+		for (j = 0; j < COPY_LEN; j++)
+			if (src_data[j] != dst_data[j])
+				ERR_RETURN("Error with copy of packet %u, byte %u\n", i, j);
+
+		rte_pktmbuf_free(srcs[i]);
+		rte_pktmbuf_free(dsts[i]);
+	}
+	return 0;
+}
+
 static int
 test_enqueue_copies(int16_t dev_id, uint16_t vchan)
 {
@@ -176,7 +268,14 @@ test_enqueue_copies(int16_t dev_id, uint16_t vchan)
 		rte_pktmbuf_free(dst);
 	} while (0);
 
-	return 0;
+	/* test doing multiple copies */
+	return do_multi_copies(dev_id, vchan, 0, 0, 0) /* enqueue and complete 1 batch at a time */
+			/* enqueue 2 batches and then complete both */
+			|| do_multi_copies(dev_id, vchan, 1, 0, 0)
+			/* enqueue 1 batch, then complete in two halves */
+			|| do_multi_copies(dev_id, vchan, 0, 1, 0)
+			/* test using completed_status in place of regular completed API */
+			|| do_multi_copies(dev_id, vchan, 0, 0, 1);
 }
 
 static int
