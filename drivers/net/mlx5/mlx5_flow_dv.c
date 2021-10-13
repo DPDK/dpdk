@@ -5028,14 +5028,14 @@ flow_dv_validate_action_jump(struct rte_eth_dev *dev,
 }
 
 /*
- * Validate the port_id action.
+ * Validate action PORT_ID / REPRESENTED_PORT.
  *
  * @param[in] dev
  *   Pointer to rte_eth_dev structure.
  * @param[in] action_flags
  *   Bit-fields that holds the actions detected until now.
  * @param[in] action
- *   Port_id RTE action structure.
+ *   PORT_ID / REPRESENTED_PORT action structure.
  * @param[in] attr
  *   Attributes of flow that includes this action.
  * @param[out] error
@@ -5052,6 +5052,7 @@ flow_dv_validate_action_port_id(struct rte_eth_dev *dev,
 				struct rte_flow_error *error)
 {
 	const struct rte_flow_action_port_id *port_id;
+	const struct rte_flow_action_ethdev *ethdev;
 	struct mlx5_priv *act_priv;
 	struct mlx5_priv *dev_priv;
 	uint16_t port;
@@ -5060,13 +5061,13 @@ flow_dv_validate_action_port_id(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
-					  "port id action is valid in transfer"
+					  "port action is valid in transfer"
 					  " mode only");
 	if (!action || !action->conf)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  NULL,
-					  "port id action parameters must be"
+					  "port action parameters must be"
 					  " specified");
 	if (action_flags & (MLX5_FLOW_FATE_ACTIONS |
 			    MLX5_FLOW_FATE_ESWITCH_ACTIONS))
@@ -5080,13 +5081,27 @@ flow_dv_validate_action_port_id(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
 					  "failed to obtain E-Switch info");
-	port_id = action->conf;
-	port = port_id->original ? dev->data->port_id : port_id->id;
+	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_PORT_ID:
+		port_id = action->conf;
+		port = port_id->original ? dev->data->port_id : port_id->id;
+		break;
+	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+		ethdev = action->conf;
+		port = ethdev->port_id;
+		break;
+	default:
+		MLX5_ASSERT(false);
+		return rte_flow_error_set
+				(error, EINVAL,
+				 RTE_FLOW_ERROR_TYPE_ACTION, action,
+				 "unknown E-Switch action");
+	}
 	act_priv = mlx5_port_to_eswitch_info(port, false);
 	if (!act_priv)
 		return rte_flow_error_set
 				(error, rte_errno,
-				 RTE_FLOW_ERROR_TYPE_ACTION_CONF, port_id,
+				 RTE_FLOW_ERROR_TYPE_ACTION_CONF, action->conf,
 				 "failed to obtain E-Switch port id for port");
 	if (act_priv->domain_id != dev_priv->domain_id)
 		return rte_flow_error_set
@@ -5648,6 +5663,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 			ret = flow_dv_validate_action_port_id(dev,
 							      sub_action_flags,
 							      act,
@@ -7210,6 +7226,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 			ret = flow_dv_validate_action_port_id(dev,
 							      action_flags,
 							      actions,
@@ -10685,12 +10702,12 @@ flow_dv_tag_release(struct rte_eth_dev *dev,
 }
 
 /**
- * Translate port ID action to vport.
+ * Translate action PORT_ID / REPRESENTED_PORT to vport.
  *
  * @param[in] dev
  *   Pointer to rte_eth_dev structure.
  * @param[in] action
- *   Pointer to the port ID action.
+ *   Pointer to action PORT_ID / REPRESENTED_PORT.
  * @param[out] dst_port_id
  *   The target port ID.
  * @param[out] error
@@ -10707,10 +10724,29 @@ flow_dv_translate_action_port_id(struct rte_eth_dev *dev,
 {
 	uint32_t port;
 	struct mlx5_priv *priv;
-	const struct rte_flow_action_port_id *conf =
-			(const struct rte_flow_action_port_id *)action->conf;
 
-	port = conf->original ? dev->data->port_id : conf->id;
+	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_PORT_ID: {
+		const struct rte_flow_action_port_id *conf;
+
+		conf = (const struct rte_flow_action_port_id *)action->conf;
+		port = conf->original ? dev->data->port_id : conf->id;
+		break;
+	}
+	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT: {
+		const struct rte_flow_action_ethdev *ethdev;
+
+		ethdev = (const struct rte_flow_action_ethdev *)action->conf;
+		port = ethdev->port_id;
+		break;
+	}
+	default:
+		MLX5_ASSERT(false);
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "unknown E-Switch action");
+	}
+
 	priv = mlx5_port_to_eswitch_info(port, false);
 	if (!priv)
 		return rte_flow_error_set(error, -rte_errno,
@@ -11547,6 +11583,7 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 			break;
 		}
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 		{
 			struct mlx5_flow_dv_port_id_action_resource
 					port_id_resource;
@@ -12627,6 +12664,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 			if (flow_dv_translate_action_port_id(dev, action,
 							     &port_id, error))
 				return -rte_errno;
@@ -15387,6 +15425,7 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 				break;
 			}
 			case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 			{
 				struct mlx5_flow_dv_port_id_action_resource
 					port_id_resource;
@@ -17583,6 +17622,7 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 					  NULL, "too many actions");
 			switch (act->type) {
 			case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 				if (!priv->config.dv_esw_en)
 					return -rte_mtr_error_set(error,
 					ENOTSUP,
