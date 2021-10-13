@@ -27,7 +27,6 @@
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_launch.h>
-#include <rte_atomic.h>
 #include <rte_lcore.h>
 #include <rte_branch_prediction.h>
 #include <rte_interrupts.h>
@@ -131,8 +130,8 @@ static int kni_change_mtu(uint16_t port_id, unsigned int new_mtu);
 static int kni_config_network_interface(uint16_t port_id, uint8_t if_up);
 static int kni_config_mac_address(uint16_t port_id, uint8_t mac_addr[]);
 
-static rte_atomic32_t kni_stop = RTE_ATOMIC32_INIT(0);
-static rte_atomic32_t kni_pause = RTE_ATOMIC32_INIT(0);
+static uint32_t kni_stop;
+static uint32_t kni_pause;
 
 /* Print out statistics on packets handled */
 static void
@@ -185,7 +184,7 @@ signal_handler(int signum)
 	if (signum == SIGRTMIN || signum == SIGINT || signum == SIGTERM) {
 		printf("\nSIGRTMIN/SIGINT/SIGTERM received. "
 			"KNI processing stopping.\n");
-		rte_atomic32_inc(&kni_stop);
+		__atomic_fetch_add(&kni_stop, 1, __ATOMIC_RELAXED);
 		return;
         }
 }
@@ -311,8 +310,8 @@ main_loop(__rte_unused void *arg)
 					kni_port_params_array[i]->lcore_rx,
 					kni_port_params_array[i]->port_id);
 		while (1) {
-			f_stop = rte_atomic32_read(&kni_stop);
-			f_pause = rte_atomic32_read(&kni_pause);
+			f_stop = __atomic_load_n(&kni_stop, __ATOMIC_RELAXED);
+			f_pause = __atomic_load_n(&kni_pause, __ATOMIC_RELAXED);
 			if (f_stop)
 				break;
 			if (f_pause)
@@ -324,8 +323,8 @@ main_loop(__rte_unused void *arg)
 					kni_port_params_array[i]->lcore_tx,
 					kni_port_params_array[i]->port_id);
 		while (1) {
-			f_stop = rte_atomic32_read(&kni_stop);
-			f_pause = rte_atomic32_read(&kni_pause);
+			f_stop = __atomic_load_n(&kni_stop, __ATOMIC_RELAXED);
+			f_pause = __atomic_load_n(&kni_pause, __ATOMIC_RELAXED);
 			if (f_stop)
 				break;
 			if (f_pause)
@@ -856,9 +855,9 @@ kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 {
 	int ret;
 
-	rte_atomic32_inc(&kni_pause);
+	__atomic_fetch_add(&kni_pause, 1, __ATOMIC_RELAXED);
 	ret =  kni_change_mtu_(port_id, new_mtu);
-	rte_atomic32_dec(&kni_pause);
+	__atomic_fetch_sub(&kni_pause, 1, __ATOMIC_RELAXED);
 
 	return ret;
 }
@@ -877,14 +876,14 @@ kni_config_network_interface(uint16_t port_id, uint8_t if_up)
 	RTE_LOG(INFO, APP, "Configure network interface of %d %s\n",
 					port_id, if_up ? "up" : "down");
 
-	rte_atomic32_inc(&kni_pause);
+	__atomic_fetch_add(&kni_pause, 1, __ATOMIC_RELAXED);
 
 	if (if_up != 0) { /* Configure network interface up */
 		ret = rte_eth_dev_stop(port_id);
 		if (ret != 0) {
 			RTE_LOG(ERR, APP, "Failed to stop port %d: %s\n",
 				port_id, rte_strerror(-ret));
-			rte_atomic32_dec(&kni_pause);
+			__atomic_fetch_sub(&kni_pause, 1, __ATOMIC_RELAXED);
 			return ret;
 		}
 		ret = rte_eth_dev_start(port_id);
@@ -893,12 +892,12 @@ kni_config_network_interface(uint16_t port_id, uint8_t if_up)
 		if (ret != 0) {
 			RTE_LOG(ERR, APP, "Failed to stop port %d: %s\n",
 				port_id, rte_strerror(-ret));
-			rte_atomic32_dec(&kni_pause);
+			__atomic_fetch_sub(&kni_pause, 1, __ATOMIC_RELAXED);
 			return ret;
 		}
 	}
 
-	rte_atomic32_dec(&kni_pause);
+	__atomic_fetch_sub(&kni_pause, 1, __ATOMIC_RELAXED);
 
 	if (ret < 0)
 		RTE_LOG(ERR, APP, "Failed to start port %d\n", port_id);
