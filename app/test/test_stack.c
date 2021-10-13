@@ -4,7 +4,6 @@
 
 #include <string.h>
 
-#include <rte_atomic.h>
 #include <rte_lcore.h>
 #include <rte_malloc.h>
 #include <rte_random.h>
