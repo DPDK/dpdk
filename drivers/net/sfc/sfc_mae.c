@@ -399,6 +399,9 @@ sfc_mae_outer_rule_enable(struct sfc_adapter *sa,
 		}
 	}
 
+	if (match_spec_action == NULL)
+		goto skip_action_rule;
+
 	rc = efx_mae_match_spec_outer_rule_id_set(match_spec_action,
 						  &fw_rsrc->rule_id);
 	if (rc != 0) {
@@ -413,6 +416,7 @@ sfc_mae_outer_rule_enable(struct sfc_adapter *sa,
 		return rc;
 	}
 
+skip_action_rule:
 	if (fw_rsrc->refcnt == 0) {
 		sfc_dbg(sa, "enabled outer_rule=%p: OR_ID=0x%08x",
 			rule, fw_rsrc->rule_id.id);
@@ -935,6 +939,14 @@ sfc_mae_flow_cleanup(struct sfc_adapter *sa,
 		return;
 
 	spec_mae = &spec->mae;
+
+	if (spec_mae->ft != NULL) {
+		if (spec_mae->ft_rule_type == SFC_FT_RULE_JUMP)
+			spec_mae->ft->jump_rule_is_set = B_FALSE;
+
+		SFC_ASSERT(spec_mae->ft->refcnt != 0);
+		--(spec_mae->ft->refcnt);
+	}
 
 	SFC_ASSERT(spec_mae->rule_id.id == EFX_MAE_RSRC_ID_INVALID);
 
@@ -2276,6 +2288,16 @@ sfc_mae_rule_process_outer(struct sfc_adapter *sa,
 	ctx->match_spec_outer = NULL;
 
 no_or_id:
+	switch (ctx->ft_rule_type) {
+	case SFC_FT_RULE_NONE:
+		break;
+	case SFC_FT_RULE_JUMP:
+		/* No action rule */
+		return 0;
+	default:
+		SFC_ASSERT(B_FALSE);
+	}
+
 	/*
 	 * In MAE, lookup sequence comprises outer parse, outer rule lookup,
 	 * inner parse (when some outer rule is hit) and action rule lookup.
@@ -2313,6 +2335,7 @@ sfc_mae_rule_encap_parse_init(struct sfc_adapter *sa,
 			      struct rte_flow_error *error)
 {
 	struct sfc_mae *mae = &sa->mae;
+	uint8_t recirc_id = 0;
 	int rc;
 
 	if (pattern == NULL) {
@@ -2352,34 +2375,71 @@ sfc_mae_rule_encap_parse_init(struct sfc_adapter *sa,
 		break;
 	}
 
-	if (pattern->type == RTE_FLOW_ITEM_TYPE_END)
-		return 0;
+	switch (ctx->ft_rule_type) {
+	case SFC_FT_RULE_NONE:
+		if (pattern->type == RTE_FLOW_ITEM_TYPE_END)
+			return 0;
+		break;
+	case SFC_FT_RULE_JUMP:
+		if (pattern->type != RTE_FLOW_ITEM_TYPE_END) {
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  pattern, "tunnel offload: JUMP: invalid item");
+		}
+		ctx->encap_type = ctx->ft->encap_type;
+		break;
+	default:
+		SFC_ASSERT(B_FALSE);
+		break;
+	}
 
 	if ((mae->encap_types_supported & (1U << ctx->encap_type)) == 0) {
 		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM,
-					  pattern, "Unsupported tunnel item");
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "OR: unsupported tunnel type");
 	}
 
-	if (ctx->priority >= mae->nb_outer_rule_prios_max) {
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
-					  NULL, "Unsupported priority level");
+	switch (ctx->ft_rule_type) {
+	case SFC_FT_RULE_JUMP:
+		recirc_id = SFC_FT_ID_TO_TUNNEL_MARK(ctx->ft->id);
+		/* FALLTHROUGH */
+	case SFC_FT_RULE_NONE:
+		if (ctx->priority >= mae->nb_outer_rule_prios_max) {
+			return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+					NULL, "OR: unsupported priority level");
+		}
+
+		rc = efx_mae_match_spec_init(sa->nic,
+					     EFX_MAE_RULE_OUTER, ctx->priority,
+					     &ctx->match_spec_outer);
+		if (rc != 0) {
+			return rte_flow_error_set(error, rc,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"OR: failed to initialise the match specification");
+		}
+
+		/*
+		 * Outermost items comprise a match
+		 * specification of type OUTER.
+		 */
+		ctx->match_spec = ctx->match_spec_outer;
+
+		/* Outermost items use "ENC" EFX MAE field IDs. */
+		ctx->field_ids_remap = field_ids_remap_to_encap;
+
+		rc = efx_mae_outer_rule_recirc_id_set(ctx->match_spec,
+						      recirc_id);
+		if (rc != 0) {
+			return rte_flow_error_set(error, rc,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					"OR: failed to initialise RECIRC_ID");
+		}
+		break;
+	default:
+		SFC_ASSERT(B_FALSE);
+		break;
 	}
-
-	rc = efx_mae_match_spec_init(sa->nic, EFX_MAE_RULE_OUTER, ctx->priority,
-				     &ctx->match_spec_outer);
-	if (rc != 0) {
-		return rte_flow_error_set(error, rc,
-			RTE_FLOW_ERROR_TYPE_ITEM, pattern,
-			"Failed to initialise outer rule match specification");
-	}
-
-	/* Outermost items comprise a match specification of type OUTER. */
-	ctx->match_spec = ctx->match_spec_outer;
-
-	/* Outermost items use "ENC" EFX MAE field IDs. */
-	ctx->field_ids_remap = field_ids_remap_to_encap;
 
 	return 0;
 }
@@ -2406,17 +2466,29 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 	int rc;
 
 	memset(&ctx_mae, 0, sizeof(ctx_mae));
+	ctx_mae.ft_rule_type = spec->ft_rule_type;
 	ctx_mae.priority = spec->priority;
+	ctx_mae.ft = spec->ft;
 	ctx_mae.sa = sa;
 
-	rc = efx_mae_match_spec_init(sa->nic, EFX_MAE_RULE_ACTION,
-				     spec->priority,
-				     &ctx_mae.match_spec_action);
-	if (rc != 0) {
-		rc = rte_flow_error_set(error, rc,
-			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-			"Failed to initialise action rule match specification");
-		goto fail_init_match_spec_action;
+	switch (ctx_mae.ft_rule_type) {
+	case SFC_FT_RULE_JUMP:
+		/* No action rule */
+		break;
+	case SFC_FT_RULE_NONE:
+		rc = efx_mae_match_spec_init(sa->nic, EFX_MAE_RULE_ACTION,
+					     spec->priority,
+					     &ctx_mae.match_spec_action);
+		if (rc != 0) {
+			rc = rte_flow_error_set(error, rc,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"AR: failed to initialise the match specification");
+			goto fail_init_match_spec_action;
+		}
+		break;
+	default:
+		SFC_ASSERT(B_FALSE);
+		break;
 	}
 
 	/*
@@ -2450,7 +2522,8 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_process_outer;
 
-	if (!efx_mae_match_spec_is_valid(sa->nic, ctx_mae.match_spec_action)) {
+	if (ctx_mae.match_spec_action != NULL &&
+	    !efx_mae_match_spec_is_valid(sa->nic, ctx_mae.match_spec_action)) {
 		rc = rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ITEM, NULL,
 					"Inconsistent pattern");
@@ -2468,7 +2541,8 @@ fail_parse_pattern:
 	sfc_mae_rule_encap_parse_fini(sa, &ctx_mae);
 
 fail_encap_parse_init:
-	efx_mae_match_spec_fini(sa->nic, ctx_mae.match_spec_action);
+	if (ctx_mae.match_spec_action != NULL)
+		efx_mae_match_spec_fini(sa->nic, ctx_mae.match_spec_action);
 
 fail_init_match_spec_action:
 	return rc;
@@ -3379,6 +3453,9 @@ sfc_mae_action_rule_class_verify(struct sfc_adapter *sa,
 {
 	const struct rte_flow *entry;
 
+	if (spec->match_spec == NULL)
+		return 0;
+
 	TAILQ_FOREACH_REVERSE(entry, &sa->flow_list, sfc_flow_list, entries) {
 		const struct sfc_flow_spec *entry_spec = &entry->spec;
 		const struct sfc_flow_spec_mae *es_mae = &entry_spec->mae;
@@ -3450,17 +3527,21 @@ sfc_mae_flow_insert(struct sfc_adapter *sa,
 	struct sfc_flow_spec_mae *spec_mae = &spec->mae;
 	struct sfc_mae_outer_rule *outer_rule = spec_mae->outer_rule;
 	struct sfc_mae_action_set *action_set = spec_mae->action_set;
-	struct sfc_mae_fw_rsrc *fw_rsrc = &action_set->fw_rsrc;
+	struct sfc_mae_fw_rsrc *fw_rsrc;
 	int rc;
 
 	SFC_ASSERT(spec_mae->rule_id.id == EFX_MAE_RSRC_ID_INVALID);
-	SFC_ASSERT(action_set != NULL);
 
 	if (outer_rule != NULL) {
 		rc = sfc_mae_outer_rule_enable(sa, outer_rule,
 					       spec_mae->match_spec);
 		if (rc != 0)
 			goto fail_outer_rule_enable;
+	}
+
+	if (action_set == NULL) {
+		sfc_dbg(sa, "enabled flow=%p (no AR)", flow);
+		return 0;
 	}
 
 	rc = sfc_mae_action_set_enable(sa, action_set);
@@ -3475,6 +3556,8 @@ sfc_mae_flow_insert(struct sfc_adapter *sa,
 			goto fail_mae_counter_start;
 		}
 	}
+
+	fw_rsrc = &action_set->fw_rsrc;
 
 	rc = efx_mae_action_rule_insert(sa->nic, spec_mae->match_spec,
 					NULL, &fw_rsrc->aset_id,
@@ -3509,8 +3592,12 @@ sfc_mae_flow_remove(struct sfc_adapter *sa,
 	struct sfc_mae_outer_rule *outer_rule = spec_mae->outer_rule;
 	int rc;
 
+	if (action_set == NULL) {
+		sfc_dbg(sa, "disabled flow=%p (no AR)", flow);
+		goto skip_action_rule;
+	}
+
 	SFC_ASSERT(spec_mae->rule_id.id != EFX_MAE_RSRC_ID_INVALID);
-	SFC_ASSERT(action_set != NULL);
 
 	rc = efx_mae_action_rule_remove(sa->nic, &spec_mae->rule_id);
 	if (rc != 0) {
@@ -3523,6 +3610,7 @@ sfc_mae_flow_remove(struct sfc_adapter *sa,
 
 	sfc_mae_action_set_disable(sa, action_set);
 
+skip_action_rule:
 	if (outer_rule != NULL)
 		sfc_mae_outer_rule_disable(sa, outer_rule);
 
@@ -3541,7 +3629,7 @@ sfc_mae_query_counter(struct sfc_adapter *sa,
 	unsigned int i;
 	int rc;
 
-	if (action_set->n_counters == 0) {
+	if (action_set == NULL || action_set->n_counters == 0) {
 		return rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION, action,
 			"Queried flow rule does not have count actions");

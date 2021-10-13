@@ -63,8 +63,20 @@ struct sfc_flow_spec_filter {
 	struct sfc_flow_rss rss_conf;
 };
 
+/* Indicates the role of a given flow in tunnel offload */
+enum sfc_flow_tunnel_rule_type {
+	/* The flow has nothing to do with tunnel offload */
+	SFC_FT_RULE_NONE = 0,
+	/* The flow represents a JUMP rule */
+	SFC_FT_RULE_JUMP,
+};
+
 /* MAE-specific flow specification */
 struct sfc_flow_spec_mae {
+	/* FLow Tunnel (FT) rule type (or NONE) */
+	enum sfc_flow_tunnel_rule_type	ft_rule_type;
+	/* Flow Tunnel (FT) context (or NULL) */
+	struct sfc_flow_tunnel		*ft;
 	/* Desired priority level */
 	unsigned int			priority;
 	/* Outer rule registry entry */

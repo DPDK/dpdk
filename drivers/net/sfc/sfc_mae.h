@@ -320,9 +320,11 @@ struct sfc_mae_parse_ctx {
 	size_t				tunnel_def_mask_size;
 	const void			*tunnel_def_mask;
 	bool				match_mport_set;
+	enum sfc_flow_tunnel_rule_type	ft_rule_type;
 	struct sfc_mae_pattern_data	pattern_data;
 	efx_tunnel_protocol_t		encap_type;
 	unsigned int			priority;
+	struct sfc_flow_tunnel		*ft;
 };
 
 int sfc_mae_attach(struct sfc_adapter *sa);

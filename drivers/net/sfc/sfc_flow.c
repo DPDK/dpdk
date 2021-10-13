@@ -2549,15 +2549,46 @@ sfc_flow_parse_rte_to_mae(struct rte_eth_dev *dev,
 	struct sfc_flow_spec_mae *spec_mae = &spec->mae;
 	int rc;
 
+	/*
+	 * If the flow is meant to be a JUMP rule in tunnel offload,
+	 * preparse its actions and save its properties in spec_mae.
+	 */
+	rc = sfc_flow_tunnel_detect_jump_rule(sa, actions, spec_mae, error);
+	if (rc != 0)
+		goto fail;
+
 	rc = sfc_mae_rule_parse_pattern(sa, pattern, spec_mae, error);
 	if (rc != 0)
-		return rc;
+		goto fail;
+
+	if (spec_mae->ft_rule_type == SFC_FT_RULE_JUMP) {
+		/*
+		 * This flow is represented solely by the outer rule.
+		 * It is supposed to mark and count matching packets.
+		 */
+		goto skip_action_rule;
+	}
 
 	rc = sfc_mae_rule_parse_actions(sa, actions, spec_mae, error);
 	if (rc != 0)
-		return rc;
+		goto fail;
+
+skip_action_rule:
+	if (spec_mae->ft != NULL) {
+		if (spec_mae->ft_rule_type == SFC_FT_RULE_JUMP)
+			spec_mae->ft->jump_rule_is_set = B_TRUE;
+
+		++(spec_mae->ft->refcnt);
+	}
 
 	return 0;
+
+fail:
+	/* Reset these values to avoid confusing sfc_mae_flow_cleanup(). */
+	spec_mae->ft_rule_type = SFC_FT_RULE_NONE;
+	spec_mae->ft = NULL;
+
+	return rc;
 }
 
 static int
