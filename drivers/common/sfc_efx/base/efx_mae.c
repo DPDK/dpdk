@@ -473,6 +473,7 @@ typedef enum efx_mae_field_cap_id_e {
 	EFX_MAE_FIELD_ID_HAS_IVLAN = MAE_FIELD_HAS_IVLAN,
 	EFX_MAE_FIELD_ID_ENC_HAS_OVLAN = MAE_FIELD_ENC_HAS_OVLAN,
 	EFX_MAE_FIELD_ID_ENC_HAS_IVLAN = MAE_FIELD_ENC_HAS_IVLAN,
+	EFX_MAE_FIELD_ID_RECIRC_ID = MAE_FIELD_RECIRC_ID,
 
 	EFX_MAE_FIELD_CAP_NIDS
 } efx_mae_field_cap_id_t;
@@ -519,10 +520,10 @@ static const efx_mae_mv_desc_t __efx_mae_action_rule_mv_desc_set[] = {
 	[EFX_MAE_FIELD_##_name] =					\
 	{								\
 		EFX_MAE_FIELD_ID_##_name,				\
-		MAE_FIELD_MASK_VALUE_PAIRS_##_name##_LEN,		\
-		MAE_FIELD_MASK_VALUE_PAIRS_##_name##_OFST,		\
-		MAE_FIELD_MASK_VALUE_PAIRS_##_name##_MASK_LEN,		\
-		MAE_FIELD_MASK_VALUE_PAIRS_##_name##_MASK_OFST,		\
+		MAE_FIELD_MASK_VALUE_PAIRS_V2_##_name##_LEN,		\
+		MAE_FIELD_MASK_VALUE_PAIRS_V2_##_name##_OFST,		\
+		MAE_FIELD_MASK_VALUE_PAIRS_V2_##_name##_MASK_LEN,	\
+		MAE_FIELD_MASK_VALUE_PAIRS_V2_##_name##_MASK_OFST,	\
 		0, 0 /* no alternative field */,			\
 		_endianness						\
 	}
@@ -547,6 +548,7 @@ static const efx_mae_mv_desc_t __efx_mae_action_rule_mv_desc_set[] = {
 	EFX_MAE_MV_DESC(TCP_FLAGS_BE, EFX_MAE_FIELD_BE),
 	EFX_MAE_MV_DESC(ENC_VNET_ID_BE, EFX_MAE_FIELD_BE),
 	EFX_MAE_MV_DESC(OUTER_RULE_ID, EFX_MAE_FIELD_LE),
+	EFX_MAE_MV_DESC(RECIRC_ID, EFX_MAE_FIELD_LE),
 
 #undef EFX_MAE_MV_DESC
 };
@@ -882,6 +884,32 @@ efx_mae_mport_id_by_selector(
 
 fail2:
 	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_match_spec_recirc_id_set(
+	__in				efx_mae_match_spec_t *spec,
+	__in				uint8_t recirc_id)
+{
+	uint8_t full_mask = UINT8_MAX;
+	const uint8_t *vp;
+	const uint8_t *mp;
+	efx_rc_t rc;
+
+	vp = (const uint8_t *)&recirc_id;
+	mp = (const uint8_t *)&full_mask;
+
+	rc = efx_mae_match_spec_field_set(spec, EFX_MAE_FIELD_RECIRC_ID,
+					  sizeof (recirc_id), vp,
+					  sizeof (full_mask), mp);
+	if (rc != 0)
+		goto fail1;
+
+	return (0);
+
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
