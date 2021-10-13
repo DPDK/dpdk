@@ -190,13 +190,6 @@ Deprecation Notices
   This field will be null for inplace processing.
   This change is targeted for DPDK 21.11.
 
-* cryptodev: The structure ``rte_crypto_vec`` would be updated to add
-  ``tot_len`` to support total buffer length.
-  This is required for security cases like IPsec and PDCP encryption offload
-  to know how much additional memory space is available in buffer other than
-  data length so that driver/HW can write expanded size data after encryption.
-  This change is targeted for DPDK 21.11.
-
 * cryptodev: Hide structures ``rte_cryptodev_sym_session`` and
   ``rte_cryptodev_asym_session`` to remove unnecessary indirection between
   session and the private data of session. An opaque pointer can be exposed

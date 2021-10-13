@@ -269,6 +269,9 @@ API Changes
 * cryptodev: The field ``dataunit_len`` of the ``struct rte_crypto_cipher_xform``
   moved to the end of the structure and extended to ``uint32_t``.
 
+* cryptodev: The structure ``rte_crypto_vec`` was updated to add ``tot_len``
+  field to support total buffer length to facilitate protocol offload case.
+
 
 ABI Changes
 -----------
