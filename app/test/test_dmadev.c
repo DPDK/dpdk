@@ -671,6 +671,69 @@ test_enqueue_fill(int16_t dev_id, uint16_t vchan)
 }
 
 static int
+test_burst_capacity(int16_t dev_id, uint16_t vchan)
+{
+#define CAP_TEST_BURST_SIZE	64
+	const int ring_space = rte_dma_burst_capacity(dev_id, vchan);
+	struct rte_mbuf *src, *dst;
+	int i, j, iter;
+	int cap, ret;
+	bool dma_err;
+
+	src = rte_pktmbuf_alloc(pool);
+	dst = rte_pktmbuf_alloc(pool);
+
+	/* to test capacity, we enqueue elements and check capacity is reduced
+	 * by one each time - rebaselining the expected value after each burst
+	 * as the capacity is only for a burst. We enqueue multiple bursts to
+	 * fill up half the ring, before emptying it again. We do this twice to
+	 * ensure that we get to test scenarios where we get ring wrap-around
+	 */
+	for (iter = 0; iter < 2; iter++) {
+		for (i = 0; i < (ring_space / (2 * CAP_TEST_BURST_SIZE)) + 1; i++) {
+			cap = rte_dma_burst_capacity(dev_id, vchan);
+
+			for (j = 0; j < CAP_TEST_BURST_SIZE; j++) {
+				ret = rte_dma_copy(dev_id, vchan, rte_pktmbuf_iova(src),
+						rte_pktmbuf_iova(dst), COPY_LEN, 0);
+				if (ret < 0)
+					ERR_RETURN("Error with rte_dmadev_copy\n");
+
+				if (rte_dma_burst_capacity(dev_id, vchan) != cap - (j + 1))
+					ERR_RETURN("Error, ring capacity did not change as expected\n");
+			}
+			if (rte_dma_submit(dev_id, vchan) < 0)
+				ERR_RETURN("Error, failed to submit burst\n");
+
+			if (cap < rte_dma_burst_capacity(dev_id, vchan))
+				ERR_RETURN("Error, avail ring capacity has gone up, not down\n");
+		}
+		await_hw(dev_id, vchan);
+
+		for (i = 0; i < (ring_space / (2 * CAP_TEST_BURST_SIZE)) + 1; i++) {
+			ret = rte_dma_completed(dev_id, vchan,
+					CAP_TEST_BURST_SIZE, NULL, &dma_err);
+			if (ret != CAP_TEST_BURST_SIZE || dma_err) {
+				enum rte_dma_status_code status;
+
+				rte_dma_completed_status(dev_id, vchan, 1, NULL, &status);
+				ERR_RETURN("Error with rte_dmadev_completed, %u [expected: %u], dma_err = %d, i = %u, iter = %u, status = %u\n",
+						ret, CAP_TEST_BURST_SIZE, dma_err, i, iter, status);
+			}
+		}
+		cap = rte_dma_burst_capacity(dev_id, vchan);
+		if (cap != ring_space)
+			ERR_RETURN("Error, ring capacity has not reset to original value, got %u, expected %u\n",
+					cap, ring_space);
+	}
+
+	rte_pktmbuf_free(src);
+	rte_pktmbuf_free(dst);
+
+	return 0;
+}
+
+static int
 test_dmadev_instance(int16_t dev_id)
 {
 #define TEST_RINGSIZE 512
@@ -725,6 +788,10 @@ test_dmadev_instance(int16_t dev_id)
 
 	/* run the test cases, use many iterations to ensure UINT16_MAX id wraparound */
 	if (runtest("copy", test_enqueue_copies, 640, dev_id, vchan, CHECK_ERRS) < 0)
+		goto err;
+
+	/* run some burst capacity tests */
+	if (runtest("burst capacity", test_burst_capacity, 1, dev_id, vchan, CHECK_ERRS) < 0)
 		goto err;
 
 	/* to test error handling we can provide null pointers for source or dest in copies. This
