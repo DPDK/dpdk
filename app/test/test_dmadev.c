@@ -278,6 +278,354 @@ test_enqueue_copies(int16_t dev_id, uint16_t vchan)
 			|| do_multi_copies(dev_id, vchan, 0, 0, 1);
 }
 
+/* Failure handling test cases - global macros and variables for those tests*/
+#define COMP_BURST_SZ	16
+#define OPT_FENCE(idx) ((fence && idx == 8) ? RTE_DMA_OP_FLAG_FENCE : 0)
+
+static int
+test_failure_in_full_burst(int16_t dev_id, uint16_t vchan, bool fence,
+		struct rte_mbuf **srcs, struct rte_mbuf **dsts, unsigned int fail_idx)
+{
+	/* Test single full batch statuses with failures */
+	enum rte_dma_status_code status[COMP_BURST_SZ];
+	struct rte_dma_stats baseline, stats;
+	uint16_t invalid_addr_id = 0;
+	uint16_t idx;
+	uint16_t count, status_count;
+	unsigned int i;
+	bool error = false;
+	int err_count = 0;
+
+	rte_dma_stats_get(dev_id, vchan, &baseline); /* get a baseline set of stats */
+	for (i = 0; i < COMP_BURST_SZ; i++) {
+		int id = rte_dma_copy(dev_id, vchan,
+				(i == fail_idx ? 0 : (srcs[i]->buf_iova + srcs[i]->data_off)),
+				dsts[i]->buf_iova + dsts[i]->data_off,
+				COPY_LEN, OPT_FENCE(i));
+		if (id < 0)
+			ERR_RETURN("Error with rte_dma_copy for buffer %u\n", i);
+		if (i == fail_idx)
+			invalid_addr_id = id;
+	}
+	rte_dma_submit(dev_id, vchan);
+	rte_dma_stats_get(dev_id, vchan, &stats);
+	if (stats.submitted != baseline.submitted + COMP_BURST_SZ)
+		ERR_RETURN("Submitted stats value not as expected, %"PRIu64" not %"PRIu64"\n",
+				stats.submitted, baseline.submitted + COMP_BURST_SZ);
+
+	await_hw(dev_id, vchan);
+
+	count = rte_dma_completed(dev_id, vchan, COMP_BURST_SZ, &idx, &error);
+	if (count != fail_idx)
+		ERR_RETURN("Error with rte_dma_completed for failure test. Got returned %u not %u.\n",
+				count, fail_idx);
+	if (!error)
+		ERR_RETURN("Error, missing expected failed copy, %u. has_error is not set\n",
+				fail_idx);
+	if (idx != invalid_addr_id - 1)
+		ERR_RETURN("Error, missing expected failed copy, %u. Got last idx %u, not %u\n",
+				fail_idx, idx, invalid_addr_id - 1);
+
+	/* all checks ok, now verify calling completed() again always returns 0 */
+	for (i = 0; i < 10; i++)
+		if (rte_dma_completed(dev_id, vchan, COMP_BURST_SZ, &idx, &error) != 0
+				|| error == false || idx != (invalid_addr_id - 1))
+			ERR_RETURN("Error with follow-up completed calls for fail idx %u\n",
+					fail_idx);
+
+	status_count = rte_dma_completed_status(dev_id, vchan, COMP_BURST_SZ,
+			&idx, status);
+	/* some HW may stop on error and be restarted after getting error status for single value
+	 * To handle this case, if we get just one error back, wait for more completions and get
+	 * status for rest of the burst
+	 */
+	if (status_count == 1) {
+		await_hw(dev_id, vchan);
+		status_count += rte_dma_completed_status(dev_id, vchan, COMP_BURST_SZ - 1,
+					&idx, &status[1]);
+	}
+	/* check that at this point we have all status values */
+	if (status_count != COMP_BURST_SZ - count)
+		ERR_RETURN("Error with completed_status calls for fail idx %u. Got %u not %u\n",
+				fail_idx, status_count, COMP_BURST_SZ - count);
+	/* now verify just one failure followed by multiple successful or skipped entries */
+	if (status[0] == RTE_DMA_STATUS_SUCCESSFUL)
+		ERR_RETURN("Error with status returned for fail idx %u. First status was not failure\n",
+				fail_idx);
+	for (i = 1; i < status_count; i++)
+		/* after a failure in a burst, depending on ordering/fencing,
+		 * operations may be successful or skipped because of previous error.
+		 */
+		if (status[i] != RTE_DMA_STATUS_SUCCESSFUL
+				&& status[i] != RTE_DMA_STATUS_NOT_ATTEMPTED)
+			ERR_RETURN("Error with status calls for fail idx %u. Status for job %u (of %u) is not successful\n",
+					fail_idx, count + i, COMP_BURST_SZ);
+
+	/* check the completed + errors stats are as expected */
+	rte_dma_stats_get(dev_id, vchan, &stats);
+	if (stats.completed != baseline.completed + COMP_BURST_SZ)
+		ERR_RETURN("Completed stats value not as expected, %"PRIu64" not %"PRIu64"\n",
+				stats.completed, baseline.completed + COMP_BURST_SZ);
+	for (i = 0; i < status_count; i++)
+		err_count += (status[i] != RTE_DMA_STATUS_SUCCESSFUL);
+	if (stats.errors != baseline.errors + err_count)
+		ERR_RETURN("'Errors' stats value not as expected, %"PRIu64" not %"PRIu64"\n",
+				stats.errors, baseline.errors + err_count);
+
+	return 0;
+}
+
+static int
+test_individual_status_query_with_failure(int16_t dev_id, uint16_t vchan, bool fence,
+		struct rte_mbuf **srcs, struct rte_mbuf **dsts, unsigned int fail_idx)
+{
+	/* Test gathering batch statuses one at a time */
+	enum rte_dma_status_code status[COMP_BURST_SZ];
+	uint16_t invalid_addr_id = 0;
+	uint16_t idx;
+	uint16_t count = 0, status_count = 0;
+	unsigned int j;
+	bool error = false;
+
+	for (j = 0; j < COMP_BURST_SZ; j++) {
+		int id = rte_dma_copy(dev_id, vchan,
+				(j == fail_idx ? 0 : (srcs[j]->buf_iova + srcs[j]->data_off)),
+				dsts[j]->buf_iova + dsts[j]->data_off,
+				COPY_LEN, OPT_FENCE(j));
+		if (id < 0)
+			ERR_RETURN("Error with rte_dma_copy for buffer %u\n", j);
+		if (j == fail_idx)
+			invalid_addr_id = id;
+	}
+	rte_dma_submit(dev_id, vchan);
+	await_hw(dev_id, vchan);
+
+	/* use regular "completed" until we hit error */
+	while (!error) {
+		uint16_t n = rte_dma_completed(dev_id, vchan, 1, &idx, &error);
+		count += n;
+		if (n > 1 || count >= COMP_BURST_SZ)
+			ERR_RETURN("Error - too many completions got\n");
+		if (n == 0 && !error)
+			ERR_RETURN("Error, unexpectedly got zero completions after %u completed\n",
+					count);
+	}
+	if (idx != invalid_addr_id - 1)
+		ERR_RETURN("Error, last successful index not as expected, got %u, expected %u\n",
+				idx, invalid_addr_id - 1);
+
+	/* use completed_status until we hit end of burst */
+	while (count + status_count < COMP_BURST_SZ) {
+		uint16_t n = rte_dma_completed_status(dev_id, vchan, 1, &idx,
+				&status[status_count]);
+		await_hw(dev_id, vchan); /* allow delay to ensure jobs are completed */
+		status_count += n;
+		if (n != 1)
+			ERR_RETURN("Error: unexpected number of completions received, %u, not 1\n",
+					n);
+	}
+
+	/* check for single failure */
+	if (status[0] == RTE_DMA_STATUS_SUCCESSFUL)
+		ERR_RETURN("Error, unexpected successful DMA transaction\n");
+	for (j = 1; j < status_count; j++)
+		if (status[j] != RTE_DMA_STATUS_SUCCESSFUL
+				&& status[j] != RTE_DMA_STATUS_NOT_ATTEMPTED)
+			ERR_RETURN("Error, unexpected DMA error reported\n");
+
+	return 0;
+}
+
+static int
+test_single_item_status_query_with_failure(int16_t dev_id, uint16_t vchan,
+		struct rte_mbuf **srcs, struct rte_mbuf **dsts, unsigned int fail_idx)
+{
+	/* When error occurs just collect a single error using "completed_status()"
+	 * before going to back to completed() calls
+	 */
+	enum rte_dma_status_code status;
+	uint16_t invalid_addr_id = 0;
+	uint16_t idx;
+	uint16_t count, status_count, count2;
+	unsigned int j;
+	bool error = false;
+
+	for (j = 0; j < COMP_BURST_SZ; j++) {
+		int id = rte_dma_copy(dev_id, vchan,
+				(j == fail_idx ? 0 : (srcs[j]->buf_iova + srcs[j]->data_off)),
+				dsts[j]->buf_iova + dsts[j]->data_off,
+				COPY_LEN, 0);
+		if (id < 0)
+			ERR_RETURN("Error with rte_dma_copy for buffer %u\n", j);
+		if (j == fail_idx)
+			invalid_addr_id = id;
+	}
+	rte_dma_submit(dev_id, vchan);
+	await_hw(dev_id, vchan);
+
+	/* get up to the error point */
+	count = rte_dma_completed(dev_id, vchan, COMP_BURST_SZ, &idx, &error);
+	if (count != fail_idx)
+		ERR_RETURN("Error with rte_dma_completed for failure test. Got returned %u not %u.\n",
+				count, fail_idx);
+	if (!error)
+		ERR_RETURN("Error, missing expected failed copy, %u. has_error is not set\n",
+				fail_idx);
+	if (idx != invalid_addr_id - 1)
+		ERR_RETURN("Error, missing expected failed copy, %u. Got last idx %u, not %u\n",
+				fail_idx, idx, invalid_addr_id - 1);
+
+	/* get the error code */
+	status_count = rte_dma_completed_status(dev_id, vchan, 1, &idx, &status);
+	if (status_count != 1)
+		ERR_RETURN("Error with completed_status calls for fail idx %u. Got %u not %u\n",
+				fail_idx, status_count, COMP_BURST_SZ - count);
+	if (status == RTE_DMA_STATUS_SUCCESSFUL)
+		ERR_RETURN("Error with status returned for fail idx %u. First status was not failure\n",
+				fail_idx);
+
+	/* delay in case time needed after err handled to complete other jobs */
+	await_hw(dev_id, vchan);
+
+	/* get the rest of the completions without status */
+	count2 = rte_dma_completed(dev_id, vchan, COMP_BURST_SZ, &idx, &error);
+	if (error == true)
+		ERR_RETURN("Error, got further errors post completed_status() call, for failure case %u.\n",
+				fail_idx);
+	if (count + status_count + count2 != COMP_BURST_SZ)
+		ERR_RETURN("Error, incorrect number of completions received, got %u not %u\n",
+				count + status_count + count2, COMP_BURST_SZ);
+
+	return 0;
+}
+
+static int
+test_multi_failure(int16_t dev_id, uint16_t vchan, struct rte_mbuf **srcs, struct rte_mbuf **dsts,
+		const unsigned int *fail, size_t num_fail)
+{
+	/* test having multiple errors in one go */
+	enum rte_dma_status_code status[COMP_BURST_SZ];
+	unsigned int i, j;
+	uint16_t count, err_count = 0;
+	bool error = false;
+
+	/* enqueue and gather completions in one go */
+	for (j = 0; j < COMP_BURST_SZ; j++) {
+		uintptr_t src = srcs[j]->buf_iova + srcs[j]->data_off;
+		/* set up for failure if the current index is anywhere is the fails array */
+		for (i = 0; i < num_fail; i++)
+			if (j == fail[i])
+				src = 0;
+
+		int id = rte_dma_copy(dev_id, vchan,
+				src, dsts[j]->buf_iova + dsts[j]->data_off,
+				COPY_LEN, 0);
+		if (id < 0)
+			ERR_RETURN("Error with rte_dma_copy for buffer %u\n", j);
+	}
+	rte_dma_submit(dev_id, vchan);
+	await_hw(dev_id, vchan);
+
+	count = rte_dma_completed_status(dev_id, vchan, COMP_BURST_SZ, NULL, status);
+	while (count < COMP_BURST_SZ) {
+		await_hw(dev_id, vchan);
+
+		uint16_t ret = rte_dma_completed_status(dev_id, vchan, COMP_BURST_SZ - count,
+				NULL, &status[count]);
+		if (ret == 0)
+			ERR_RETURN("Error getting all completions for jobs. Got %u of %u\n",
+					count, COMP_BURST_SZ);
+		count += ret;
+	}
+	for (i = 0; i < count; i++)
+		if (status[i] != RTE_DMA_STATUS_SUCCESSFUL)
+			err_count++;
+
+	if (err_count != num_fail)
+		ERR_RETURN("Error: Invalid number of failed completions returned, %u; expected %zu\n",
+			err_count, num_fail);
+
+	/* enqueue and gather completions in bursts, but getting errors one at a time */
+	for (j = 0; j < COMP_BURST_SZ; j++) {
+		uintptr_t src = srcs[j]->buf_iova + srcs[j]->data_off;
+		/* set up for failure if the current index is anywhere is the fails array */
+		for (i = 0; i < num_fail; i++)
+			if (j == fail[i])
+				src = 0;
+
+		int id = rte_dma_copy(dev_id, vchan,
+				src, dsts[j]->buf_iova + dsts[j]->data_off,
+				COPY_LEN, 0);
+		if (id < 0)
+			ERR_RETURN("Error with rte_dma_copy for buffer %u\n", j);
+	}
+	rte_dma_submit(dev_id, vchan);
+	await_hw(dev_id, vchan);
+
+	count = 0;
+	err_count = 0;
+	while (count + err_count < COMP_BURST_SZ) {
+		count += rte_dma_completed(dev_id, vchan, COMP_BURST_SZ, NULL, &error);
+		if (error) {
+			uint16_t ret = rte_dma_completed_status(dev_id, vchan, 1,
+					NULL, status);
+			if (ret != 1)
+				ERR_RETURN("Error getting error-status for completions\n");
+			err_count += ret;
+			await_hw(dev_id, vchan);
+		}
+	}
+	if (err_count != num_fail)
+		ERR_RETURN("Error: Incorrect number of failed completions received, got %u not %zu\n",
+				err_count, num_fail);
+
+	return 0;
+}
+
+static int
+test_completion_status(int16_t dev_id, uint16_t vchan, bool fence)
+{
+	const unsigned int fail[] = {0, 7, 14, 15};
+	struct rte_mbuf *srcs[COMP_BURST_SZ], *dsts[COMP_BURST_SZ];
+	unsigned int i;
+
+	for (i = 0; i < COMP_BURST_SZ; i++) {
+		srcs[i] = rte_pktmbuf_alloc(pool);
+		dsts[i] = rte_pktmbuf_alloc(pool);
+	}
+
+	for (i = 0; i < RTE_DIM(fail); i++) {
+		if (test_failure_in_full_burst(dev_id, vchan, fence, srcs, dsts, fail[i]) < 0)
+			return -1;
+
+		if (test_individual_status_query_with_failure(dev_id, vchan, fence,
+				srcs, dsts, fail[i]) < 0)
+			return -1;
+
+		/* test is run the same fenced, or unfenced, but no harm in running it twice */
+		if (test_single_item_status_query_with_failure(dev_id, vchan,
+				srcs, dsts, fail[i]) < 0)
+			return -1;
+	}
+
+	if (test_multi_failure(dev_id, vchan, srcs, dsts, fail, RTE_DIM(fail)) < 0)
+		return -1;
+
+	for (i = 0; i < COMP_BURST_SZ; i++) {
+		rte_pktmbuf_free(srcs[i]);
+		rte_pktmbuf_free(dsts[i]);
+	}
+	return 0;
+}
+
+static int
+test_completion_handling(int16_t dev_id, uint16_t vchan)
+{
+	return test_completion_status(dev_id, vchan, false)              /* without fences */
+			|| test_completion_status(dev_id, vchan, true);  /* with fences */
+
+}
+
 static int
 test_dmadev_instance(int16_t dev_id)
 {
@@ -333,6 +681,19 @@ test_dmadev_instance(int16_t dev_id)
 
 	/* run the test cases, use many iterations to ensure UINT16_MAX id wraparound */
 	if (runtest("copy", test_enqueue_copies, 640, dev_id, vchan, CHECK_ERRS) < 0)
+		goto err;
+
+	/* to test error handling we can provide null pointers for source or dest in copies. This
+	 * requires VA mode in DPDK, since NULL(0) is a valid physical address.
+	 * We also need hardware that can report errors back.
+	 */
+	if (rte_eal_iova_mode() != RTE_IOVA_VA)
+		printf("DMA Dev %u: DPDK not in VA mode, skipping error handling tests\n", dev_id);
+	else if ((info.dev_capa & RTE_DMA_CAPA_HANDLES_ERRORS) == 0)
+		printf("DMA Dev %u: device does not report errors, skipping error handling tests\n",
+				dev_id);
+	else if (runtest("error handling", test_completion_handling, 1,
+			dev_id, vchan, !CHECK_ERRS) < 0)
 		goto err;
 
 	rte_mempool_free(pool);
