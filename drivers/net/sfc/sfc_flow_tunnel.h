@@ -63,6 +63,9 @@ struct sfc_flow_tunnel {
 	struct rte_flow_item_mark	item_mark_v;
 	struct rte_flow_item_mark	item_mark_m;
 	struct rte_flow_item		item;
+
+	uint64_t			reset_jump_hit_counter;
+	uint64_t			group_hit_counter;
 };
 
 struct sfc_adapter;
@@ -105,6 +108,8 @@ int sfc_flow_tunnel_get_restore_info(struct rte_eth_dev *dev,
 				     struct rte_mbuf *m,
 				     struct rte_flow_restore_info *info,
 				     struct rte_flow_error *err);
+
+void sfc_flow_tunnel_reset_hit_counters(struct sfc_adapter *sa);
 
 #ifdef __cplusplus
 }

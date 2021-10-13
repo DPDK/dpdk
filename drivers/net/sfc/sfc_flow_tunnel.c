@@ -88,6 +88,8 @@ sfc_flow_tunnel_detect_jump_rule(struct sfc_adapter *sa,
 		}
 
 		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			if (action_mark == NULL) {
 				action_mark = actions->conf;
@@ -459,4 +461,20 @@ fail:
 	return rte_flow_error_set(err, rc,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				  "tunnel offload: get_restore_info failed");
+}
+
+void
+sfc_flow_tunnel_reset_hit_counters(struct sfc_adapter *sa)
+{
+	unsigned int i;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+	SFC_ASSERT(sa->state != SFC_ETHDEV_STARTED);
+
+	for (i = 0; i < RTE_DIM(sa->flow_tunnels); ++i) {
+		struct sfc_flow_tunnel *ft = &sa->flow_tunnels[i];
+
+		ft->reset_jump_hit_counter = 0;
+		ft->group_hit_counter = 0;
+	}
 }

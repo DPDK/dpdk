@@ -52,6 +52,9 @@ int sfc_mae_counter_get(struct sfc_mae_counters *counters,
 int sfc_mae_counter_start(struct sfc_adapter *sa);
 void sfc_mae_counter_stop(struct sfc_adapter *sa);
 
+/* Check whether MAE Counter-on-Queue (CoQ) prerequisites are satisfied */
+bool sfc_mae_counter_stream_enabled(struct sfc_adapter *sa);
+
 #ifdef __cplusplus
 }
 #endif

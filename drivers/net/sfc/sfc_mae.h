@@ -62,6 +62,13 @@ struct sfc_mae_counter_id {
 	efx_counter_t			mae_id;
 	/* ID of a counter in RTE */
 	uint32_t			rte_id;
+	/* RTE counter ID validity status */
+	bool				rte_id_valid;
+
+	/* Flow Tunnel (FT) GROUP hit counter (or NULL) */
+	uint64_t			*ft_group_hit_counter;
+	/* Flow Tunnel (FT) context (for JUMP rules; otherwise, NULL) */
+	struct sfc_flow_tunnel		*ft;
 };
 
 /** Action set registry entry */
@@ -101,6 +108,8 @@ struct sfc_mae_counter {
 	uint32_t			generation_count;
 	union sfc_pkts_bytes		value;
 	union sfc_pkts_bytes		reset;
+
+	uint64_t			*ft_group_hit_counter;
 };
 
 struct sfc_mae_counters_xstats {

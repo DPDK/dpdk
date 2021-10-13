@@ -2993,6 +2993,8 @@ sfc_flow_start(struct sfc_adapter *sa)
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
+	sfc_flow_tunnel_reset_hit_counters(sa);
+
 	TAILQ_FOREACH(flow, &sa->flow_list, entries) {
 		rc = sfc_flow_insert(sa, flow, NULL);
 		if (rc != 0)
