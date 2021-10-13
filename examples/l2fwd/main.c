@@ -43,6 +43,9 @@ static volatile bool force_quit;
 /* MAC updating enabled by default */
 static int mac_updating = 1;
 
+/* Ports set in promiscuous mode off by default. */
+static int promiscuous_on;
+
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
 #define MAX_PKT_BURST 32
@@ -306,8 +309,9 @@ l2fwd_launch_one_lcore(__rte_unused void *dummy)
 static void
 l2fwd_usage(const char *prgname)
 {
-	printf("%s [EAL options] -- -p PORTMASK [-q NQ]\n"
+	printf("%s [EAL options] -- -p PORTMASK [-P] [-q NQ]\n"
 	       "  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
+	       "  -P : Enable promiscuous mode\n"
 	       "  -q NQ: number of queue (=ports) per lcore (default is 1)\n"
 	       "  -T PERIOD: statistics will be refreshed each PERIOD seconds (0 to disable, 10 default, 86400 maximum)\n"
 	       "  --no-mac-updating: Disable MAC addresses updating (enabled by default)\n"
@@ -424,6 +428,7 @@ l2fwd_parse_timer_period(const char *q_arg)
 
 static const char short_options[] =
 	"p:"  /* portmask */
+	"P"   /* promiscuous */
 	"q:"  /* number of queues */
 	"T:"  /* timer period */
 	;
@@ -471,6 +476,9 @@ l2fwd_parse_args(int argc, char **argv)
 				l2fwd_usage(prgname);
 				return -1;
 			}
+			break;
+		case 'P':
+			promiscuous_on = 1;
 			break;
 
 		/* nqueue */
@@ -871,12 +879,13 @@ main(int argc, char **argv)
 				  ret, portid);
 
 		printf("done: \n");
-
-		ret = rte_eth_promiscuous_enable(portid);
-		if (ret != 0)
-			rte_exit(EXIT_FAILURE,
-				 "rte_eth_promiscuous_enable:err=%s, port=%u\n",
-				 rte_strerror(-ret), portid);
+		if (promiscuous_on) {
+			ret = rte_eth_promiscuous_enable(portid);
+			if (ret != 0)
+				rte_exit(EXIT_FAILURE,
+					"rte_eth_promiscuous_enable:err=%s, port=%u\n",
+					rte_strerror(-ret), portid);
+		}
 
 		printf("Port %u, MAC address: " RTE_ETHER_ADDR_PRT_FMT "\n\n",
 			portid,

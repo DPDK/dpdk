@@ -92,6 +92,7 @@ The application requires a number of command line options:
 .. code-block:: console
 
     ./<build_dir>/examples/dpdk-l2fwd [EAL options] -- -p PORTMASK
+                                   [-P]
                                    [-q NQ]
                                    --[no-]mac-updating
                                    [--portmap="(port, port)[,(port, port)]"]
@@ -99,6 +100,11 @@ The application requires a number of command line options:
 where,
 
 *   p PORTMASK: A hexadecimal bitmask of the ports to configure
+
+*   P: Optional, set all ports to promiscuous mode
+    so that packets are accepted regardless of the MAC destination address.
+    Without this option, only packets with the MAC destination address
+    set to the Ethernet address of the port are accepted.
 
 *   q NQ: A number of queues (=ports) per lcore (default is 1)
 
