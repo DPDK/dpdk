@@ -4090,6 +4090,11 @@ This section lists supported actions and their attributes, if any.
 
   - ``port_id {unsigned}``: ethdev port ID
 
+- ``represented_port``: at embedded switch level, send matching traffic to
+  the entity represented by the given ethdev
+
+  - ``ethdev_port_id {unsigned}``: ethdev port ID
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 

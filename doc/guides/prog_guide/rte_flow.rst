@@ -1532,6 +1532,8 @@ at the opposite end of the "wire" leading to the ethdev.
 
 This item is meant to use the same structure as `Item: PORT_REPRESENTOR`_.
 
+See also `Action: REPRESENTED_PORT`_.
+
 Actions
 ~~~~~~~
 
@@ -3144,6 +3146,53 @@ at the opposite end of the "wire" leading to the ethdev.
    +-------------+----------------+
 
 See also `Item: PORT_REPRESENTOR`_.
+
+Action: ``REPRESENTED_PORT``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+At embedded switch level, send matching traffic to
+the entity represented by the given ethdev.
+
+Term **ethdev** and the concept of **port representor** are synonymous.
+The **represented port** is an *entity* plugged to the embedded switch
+at the opposite end of the "wire" leading to the ethdev.
+
+::
+
+    .--------------------.
+    |  PORT_REPRESENTOR  |  Ethdev (Application Port Referred to by its ID)
+    '--------------------'
+              :
+               :
+      .----------------.
+      |  Logical Port  |
+      '----------------'
+              :
+               :
+              :
+               :
+         .----------.       .--------------------.
+         |  Switch  |  <==  |  Matching Traffic  |
+         '----------'       '--------------------'
+              ||
+              ||
+              ||
+              \/
+      .----------------.
+      |  Logical Port  |
+      '----------------'
+              ||
+              \/
+    .--------------------.
+    |  REPRESENTED_PORT  |  Net / Guest / Another Ethdev (Same Application)
+    '--------------------'
+
+
+- Requires `Attribute: Transfer`_.
+
+This action is meant to use the same structure as `Action: PORT_REPRESENTOR`_.
+
+See also `Item: REPRESENTED_PORT`_.
 
 Negative types
 ~~~~~~~~~~~~~~
