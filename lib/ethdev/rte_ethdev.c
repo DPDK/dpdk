@@ -44,6 +44,9 @@
 static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";
 struct rte_eth_dev rte_eth_devices[RTE_MAX_ETHPORTS];
 
+/* public fast-path API */
+struct rte_eth_fp_ops rte_eth_fp_ops[RTE_MAX_ETHPORTS];
+
 /* spinlock for eth device callbacks */
 static rte_spinlock_t eth_dev_cb_lock = RTE_SPINLOCK_INITIALIZER;
 
@@ -578,6 +581,8 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 	if (eth_dev->state != RTE_ETH_DEV_UNUSED)
 		rte_eth_dev_callback_process(eth_dev,
 				RTE_ETH_EVENT_DESTROY, NULL);
+
+	eth_dev_fp_ops_reset(rte_eth_fp_ops + eth_dev->data->port_id);
 
 	rte_spinlock_lock(&eth_dev_shared_data->ownership_lock);
 
@@ -1792,6 +1797,9 @@ rte_eth_dev_start(uint16_t port_id)
 		(*dev->dev_ops->link_update)(dev, 0);
 	}
 
+	/* expose selection of PMD fast-path functions */
+	eth_dev_fp_ops_setup(rte_eth_fp_ops + port_id, dev);
+
 	rte_ethdev_trace_start(port_id);
 	return 0;
 }
@@ -1813,6 +1821,9 @@ rte_eth_dev_stop(uint16_t port_id)
 			port_id);
 		return 0;
 	}
+
+	/* point fast-path functions to dummy ones */
+	eth_dev_fp_ops_reset(rte_eth_fp_ops + port_id);
 
 	dev->data->dev_started = 0;
 	ret = (*dev->dev_ops->dev_stop)(dev);
@@ -4477,6 +4488,14 @@ int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
 							queue_idx, tx_rate));
 }
 
+RTE_INIT(eth_dev_init_fp_ops)
+{
+	uint32_t i;
+
+	for (i = 0; i != RTE_DIM(rte_eth_fp_ops); i++)
+		eth_dev_fp_ops_reset(rte_eth_fp_ops + i);
+}
+
 RTE_INIT(eth_dev_init_cb_lists)
 {
 	uint16_t i;
@@ -4644,6 +4663,14 @@ rte_eth_dev_probing_finish(struct rte_eth_dev *dev)
 {
 	if (dev == NULL)
 		return;
+
+	/*
+	 * for secondary process, at that point we expect device
+	 * to be already 'usable', so shared data and all function pointers
+	 * for fast-path devops have to be setup properly inside rte_eth_dev.
+	 */
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		eth_dev_fp_ops_setup(rte_eth_fp_ops + dev->data->port_id, dev);
 
 	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_NEW, NULL);
 
