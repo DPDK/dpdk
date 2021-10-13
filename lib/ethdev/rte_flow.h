@@ -67,7 +67,10 @@ extern "C" {
  * Note that support for more than a single group and priority level is not
  * guaranteed.
  *
- * Flow rules can apply to inbound and/or outbound traffic (ingress/egress).
+ * At vNIC / ethdev level, flow rules can apply to inbound and / or outbound
+ * traffic (ingress / egress), with respect to the vNIC / ethdev in question.
+ * At embedded switch level, flow rules apply to all traffic seen by it
+ * unless fitting meta items are used to set concrete traffic source(s).
  *
  * Several pattern items and actions are valid and can be used in both
  * directions. Those valid for only one direction are described as such.
@@ -80,8 +83,32 @@ extern "C" {
 struct rte_flow_attr {
 	uint32_t group; /**< Priority group. */
 	uint32_t priority; /**< Rule priority level within group. */
-	uint32_t ingress:1; /**< Rule applies to ingress traffic. */
-	uint32_t egress:1; /**< Rule applies to egress traffic. */
+	/**
+	 * The rule in question applies to ingress traffic (non-"transfer").
+	 *
+	 * @deprecated
+	 * It has been possible to combine this attribute with "transfer".
+	 * Doing so has been assumed to restrict the scope of matching
+	 * to traffic going from within the embedded switch toward the
+	 * ethdev the flow rule being created through. This behaviour
+	 * is deprecated. During the transition period, one may still
+	 * rely on it, but PMDs and applications are encouraged to
+	 * gradually move away from this approach.
+	 */
+	uint32_t ingress:1;
+	/**
+	 * The rule in question applies to egress traffic (non-"transfer").
+	 *
+	 * @deprecated
+	 * It has been possible to combine this attribute with "transfer".
+	 * Doing so has been assumed to restrict the scope of matching
+	 * to traffic sent by the application by virtue of the ethdev
+	 * the flow rule being created through. This behaviour is now
+	 * deprecated. During the transition period, one may still
+	 * rely on it, but PMDs and applications are encouraged to
+	 * gradually move away from this approach.
+	 */
+	uint32_t egress:1;
 	/**
 	 * Instead of simply matching the properties of traffic as it would
 	 * appear on a given DPDK port ID, enabling this attribute transfers
@@ -93,12 +120,8 @@ struct rte_flow_attr {
 	 * from or addressed to different physical ports, VFs or
 	 * applications) at the device level.
 	 *
-	 * It complements the behavior of some pattern items such as
-	 * RTE_FLOW_ITEM_TYPE_PHY_PORT and is meaningless without them.
-	 *
-	 * When transferring flow rules, ingress and egress attributes keep
-	 * their original meaning, as if processing traffic emitted or
-	 * received by the application.
+	 * The application should match traffic originating from precise
+	 * locations. See items PORT_REPRESENTOR and REPRESENTED_PORT.
 	 */
 	uint32_t transfer:1;
 	uint32_t reserved:29; /**< Reserved, must be zero. */

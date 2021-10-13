@@ -124,11 +124,6 @@ Deprecation Notices
   to support modifying fields larger than 64 bits.
   In addition, documentation will be updated to clarify byte order.
 
-* ethdev: Flow API documentation is unclear if ethdev port used to create
-  a flow rule adds any implicit match criteria in the case of transfer rules.
-  The semantics will be clarified in DPDK 21.11 and it will require fixes in
-  drivers and applications which interpret it in a different way.
-
 * ethdev: The flow API matching pattern structures, ``struct rte_flow_item_*``,
   should start with relevant protocol header.
   Some matching pattern structures implements this by duplicating protocol header
@@ -151,6 +146,10 @@ Deprecation Notices
 
 * ethdev: Items and actions ``PF``, ``VF``, ``PHY_PORT``, ``PORT_ID`` are
   deprecated as hard-to-use / ambiguous and will be removed in DPDK 22.11.
+
+* ethdev: The use of attributes ``ingress`` / ``egress`` in "transfer" flows
+  is deprecated as ambiguous with respect to the embedded switch. The use of
+  these attributes will become invalid starting from DPDK 22.11.
 
 * net: The structure ``rte_ipv4_hdr`` will have two unions.
   The first union is for existing ``version_ihl`` byte

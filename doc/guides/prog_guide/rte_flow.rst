@@ -9,8 +9,8 @@ Overview
 --------
 
 This API provides a generic means to configure hardware to match specific
-ingress or egress traffic, alter its fate and query related counters
-according to any number of user-defined rules.
+traffic, alter its fate and query related counters according to any
+number of user-defined rules.
 
 It is named *rte_flow* after the prefix used for all its symbols, and is
 defined in ``rte_flow.h``.
@@ -146,13 +146,10 @@ Note that support for more than a single priority level is not guaranteed.
 Attribute: Traffic direction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Flow rule patterns apply to inbound and/or outbound traffic.
-
-In the context of this API, **ingress** and **egress** respectively stand
-for **inbound** and **outbound** based on the standpoint of the application
-creating a flow rule.
-
-There are no exceptions to this definition.
+Unless `Attribute: Transfer`_ is specified, flow rule patterns apply
+to inbound and / or outbound traffic. With this respect, ``ingress``
+and ``egress`` respectively stand for **inbound** and **outbound**
+based on the standpoint of the application creating a flow rule.
 
 Several pattern items and actions are valid and can be used in both
 directions. At least one direction must be specified.
@@ -171,12 +168,13 @@ When supported, this effectively enables an application to reroute traffic
 not necessarily intended for it (e.g. coming from or addressed to different
 physical ports, VFs or applications) at the device level.
 
-It complements the behavior of some pattern items such as `Item: PHY_PORT`_
-and is meaningless without them.
-
-When transferring flow rules, **ingress** and **egress** attributes
-(`Attribute: Traffic direction`_) keep their original meaning, as if
-processing traffic emitted or received by the application.
+In "transfer" flows, the use of `Attribute: Traffic direction`_ in the sense of
+implicitly matching packets going to or going from the ethdev used to create
+flow rules is **deprecated**. `Attribute: Transfer`_ shifts the viewpoint to
+the embedded switch. In it, `Attribute: Traffic direction`_ is ambiguous as
+the switch serves many different endpoints. The application should match
+traffic originating from precise locations. To do so, it should
+use `Item: PORT_REPRESENTOR`_ and `Item: REPRESENTED_PORT`_.
 
 Pattern item
 ~~~~~~~~~~~~
