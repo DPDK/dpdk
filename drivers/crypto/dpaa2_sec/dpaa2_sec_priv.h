@@ -231,27 +231,6 @@ typedef struct dpaa2_sec_session_entry {
 
 static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 	/* Symmetric capabilities */
-	{	/* NULL (AUTH) */
-		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-		{.sym = {
-			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
-			{.auth = {
-				.algo = RTE_CRYPTO_AUTH_NULL,
-				.block_size = 1,
-				.key_size = {
-					.min = 0,
-					.max = 0,
-					.increment = 0
-				},
-				.digest_size = {
-					.min = 0,
-					.max = 0,
-					.increment = 0
-				},
-				.iv_size = { 0 }
-			}, },
-		}, },
-	},
 	{	/* MD5 */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {

@@ -11,6 +11,8 @@
 #include "dpaa2_sec_priv.h"
 #include "dpaa2_sec_logs.h"
 
+#include <desc/algo.h>
+
 struct dpaa2_sec_raw_dp_ctx {
 	dpaa2_sec_session *session;
 	uint32_t tail;
@@ -73,14 +75,114 @@ build_raw_dp_auth_fd(uint8_t *drv_ctx,
 		       void *userdata,
 		       struct qbman_fd *fd)
 {
-	RTE_SET_USED(drv_ctx);
-	RTE_SET_USED(sgl);
 	RTE_SET_USED(iv);
-	RTE_SET_USED(digest);
 	RTE_SET_USED(auth_iv);
-	RTE_SET_USED(ofs);
-	RTE_SET_USED(userdata);
-	RTE_SET_USED(fd);
+
+	dpaa2_sec_session *sess =
+		((struct dpaa2_sec_raw_dp_ctx *)drv_ctx)->session;
+	struct qbman_fle *fle, *sge, *ip_fle, *op_fle;
+	struct sec_flow_context *flc;
+	int total_len = 0, data_len = 0, data_offset;
+	uint8_t *old_digest;
+	struct ctxt_priv *priv = sess->ctxt;
+	unsigned int i;
+
+	for (i = 0; i < sgl->num; i++)
+		total_len += sgl->vec[i].len;
+
+	data_len = total_len - ofs.ofs.auth.head - ofs.ofs.auth.tail;
+	data_offset = ofs.ofs.auth.head;
+
+	if (sess->auth_alg == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
+		sess->auth_alg == RTE_CRYPTO_AUTH_ZUC_EIA3) {
+		if ((data_len & 7) || (data_offset & 7)) {
+			DPAA2_SEC_ERR("AUTH: len/offset must be full bytes");
+			return -ENOTSUP;
+		}
+
+		data_len = data_len >> 3;
+		data_offset = data_offset >> 3;
+	}
+	fle = (struct qbman_fle *)rte_malloc(NULL,
+		FLE_SG_MEM_SIZE(2 * sgl->num),
+			RTE_CACHE_LINE_SIZE);
+	if (unlikely(!fle)) {
+		DPAA2_SEC_ERR("AUTH SG: Memory alloc failed for SGE");
+		return -ENOMEM;
+	}
+	memset(fle, 0, FLE_SG_MEM_SIZE(2*sgl->num));
+	/* first FLE entry used to store mbuf and session ctxt */
+	DPAA2_SET_FLE_ADDR(fle, (size_t)userdata);
+	DPAA2_FLE_SAVE_CTXT(fle, (ptrdiff_t)priv);
+	op_fle = fle + 1;
+	ip_fle = fle + 2;
+	sge = fle + 3;
+
+	flc = &priv->flc_desc[DESC_INITFINAL].flc;
+
+	/* sg FD */
+	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
+	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(op_fle));
+	DPAA2_SET_FD_COMPOUND_FMT(fd);
+
+	/* o/p fle */
+	DPAA2_SET_FLE_ADDR(op_fle,
+			DPAA2_VADDR_TO_IOVA(digest->va));
+	op_fle->length = sess->digest_length;
+
+	/* i/p fle */
+	DPAA2_SET_FLE_SG_EXT(ip_fle);
+	DPAA2_SET_FLE_ADDR(ip_fle, DPAA2_VADDR_TO_IOVA(sge));
+	ip_fle->length = data_len;
+
+	if (sess->iv.length) {
+		uint8_t *iv_ptr;
+
+		iv_ptr = rte_crypto_op_ctod_offset(userdata, uint8_t *,
+						sess->iv.offset);
+
+		if (sess->auth_alg == RTE_CRYPTO_AUTH_SNOW3G_UIA2) {
+			iv_ptr = conv_to_snow_f9_iv(iv_ptr);
+			sge->length = 12;
+		} else if (sess->auth_alg == RTE_CRYPTO_AUTH_ZUC_EIA3) {
+			iv_ptr = conv_to_zuc_eia_iv(iv_ptr);
+			sge->length = 8;
+		} else {
+			sge->length = sess->iv.length;
+		}
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(iv_ptr));
+		ip_fle->length += sge->length;
+		sge++;
+	}
+	/* i/p 1st seg */
+	DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
+	DPAA2_SET_FLE_OFFSET(sge, data_offset);
+
+	if (data_len <= (int)(sgl->vec[0].len - data_offset)) {
+		sge->length = data_len;
+		data_len = 0;
+	} else {
+		sge->length = sgl->vec[0].len - data_offset;
+		for (i = 1; i < sgl->num; i++) {
+			sge++;
+			DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
+			DPAA2_SET_FLE_OFFSET(sge, 0);
+			sge->length = sgl->vec[i].len;
+		}
+	}
+	if (sess->dir == DIR_DEC) {
+		/* Digest verification case */
+		sge++;
+		old_digest = (uint8_t *)(sge + 1);
+		rte_memcpy(old_digest, digest->va,
+			sess->digest_length);
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(old_digest));
+		sge->length = sess->digest_length;
+		ip_fle->length += sess->digest_length;
+	}
+	DPAA2_SET_FLE_FIN(sge);
+	DPAA2_SET_FLE_FIN(ip_fle);
+	DPAA2_SET_FD_LEN(fd, ip_fle->length);
 
 	return 0;
 }
