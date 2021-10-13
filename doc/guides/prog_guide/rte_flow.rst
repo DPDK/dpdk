@@ -1484,6 +1484,52 @@ at the opposite end of the "wire" leading to the ethdev.
 
 - Default ``mask`` provides exact match behaviour.
 
+Item: ``REPRESENTED_PORT``
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches traffic entering the embedded switch from
+the entity represented by the given ethdev.
+
+Term **ethdev** and the concept of **port representor** are synonymous.
+The **represented port** is an *entity* plugged to the embedded switch
+at the opposite end of the "wire" leading to the ethdev.
+
+::
+
+    .--------------------.
+    |  PORT_REPRESENTOR  |  Ethdev (Application Port Referred to by its ID)
+    '--------------------'
+              :
+               :
+      .----------------.
+      |  Logical Port  |
+      '----------------'
+              :
+               :
+              :
+               :
+         .----------.
+         |  Switch  |
+         '----------'
+              /\
+              ||
+              ||
+              ||
+      .----------------.
+      |  Logical Port  |
+      '----------------'
+              /\
+              ||
+    .--------------------.
+    |  REPRESENTED_PORT  |  Net / Guest / Another Ethdev (Same Application)
+    '--------------------'
+
+
+- Incompatible with `Attribute: Traffic direction`_.
+- Requires `Attribute: Transfer`_.
+
+This item is meant to use the same structure as `Item: PORT_REPRESENTOR`_.
+
 Actions
 ~~~~~~~
 

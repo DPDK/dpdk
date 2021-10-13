@@ -308,6 +308,8 @@ enum index {
 	ITEM_POL_POLICY,
 	ITEM_PORT_REPRESENTOR,
 	ITEM_PORT_REPRESENTOR_PORT_ID,
+	ITEM_REPRESENTED_PORT,
+	ITEM_REPRESENTED_PORT_ETHDEV_PORT_ID,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -1002,6 +1004,7 @@ static const enum index next_item[] = {
 	ITEM_INTEGRITY,
 	ITEM_CONNTRACK,
 	ITEM_PORT_REPRESENTOR,
+	ITEM_REPRESENTED_PORT,
 	END_SET,
 	ZERO,
 };
@@ -1372,6 +1375,12 @@ static const enum index item_integrity_lv[] = {
 
 static const enum index item_port_representor[] = {
 	ITEM_PORT_REPRESENTOR_PORT_ID,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_represented_port[] = {
+	ITEM_REPRESENTED_PORT_ETHDEV_PORT_ID,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -3627,6 +3636,21 @@ static const struct token token_list[] = {
 		.name = "port_id",
 		.help = "ethdev port ID",
 		.next = NEXT(item_port_representor, NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_ethdev, port_id)),
+	},
+	[ITEM_REPRESENTED_PORT] = {
+		.name = "represented_port",
+		.help = "match traffic entering the embedded switch from the entity represented by the given ethdev",
+		.priv = PRIV_ITEM(REPRESENTED_PORT,
+				  sizeof(struct rte_flow_item_ethdev)),
+		.next = NEXT(item_represented_port),
+		.call = parse_vc,
+	},
+	[ITEM_REPRESENTED_PORT_ETHDEV_PORT_ID] = {
+		.name = "ethdev_port_id",
+		.help = "ethdev port ID",
+		.next = NEXT(item_represented_port, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_ethdev, port_id)),
 	},
@@ -8358,6 +8382,7 @@ flow_item_default_mask(const struct rte_flow_item *item)
 		mask = &rte_flow_item_pfcp_mask;
 		break;
 	case RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR:
+	case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
 		mask = &rte_flow_item_ethdev_mask;
 		break;
 	default:
