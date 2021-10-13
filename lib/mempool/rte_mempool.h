@@ -209,12 +209,7 @@ struct rte_mempool_info {
  * The RTE mempool structure.
  */
 struct rte_mempool {
-	/*
-	 * Note: this field kept the RTE_MEMZONE_NAMESIZE size due to ABI
-	 * compatibility requirements, it could be changed to
-	 * RTE_MEMPOOL_NAMESIZE next time the ABI changes
-	 */
-	char name[RTE_MEMZONE_NAMESIZE]; /**< Name of mempool. */
+	char name[RTE_MEMPOOL_NAMESIZE]; /**< Name of mempool. */
 	RTE_STD_C11
 	union {
 		void *pool_data;         /**< Ring or pool to store objects. */
