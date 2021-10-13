@@ -1076,6 +1076,35 @@ rte_dma_completed_status(int16_t dev_id, uint16_t vchan,
 					last_idx, status);
 }
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Check remaining capacity in descriptor ring for the current burst.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param vchan
+ *   The identifier of virtual DMA channel.
+ *
+ * @return
+ *   - Remaining space in the descriptor ring for the current burst.
+ *   - 0 on error
+ */
+__rte_experimental
+static inline uint16_t
+rte_dma_burst_capacity(int16_t dev_id, uint16_t vchan)
+{
+	struct rte_dma_fp_object *obj = &rte_dma_fp_objs[dev_id];
+
+#ifdef RTE_DMADEV_DEBUG
+	if (!rte_dma_is_valid(dev_id))
+		return 0;
+	RTE_FUNC_PTR_OR_ERR_RET(*obbj->burst_capacity, 0);
+#endif
+	return (*obj->burst_capacity)(obj->dev_private, vchan);
+}
+
 #ifdef __cplusplus
 }
 #endif

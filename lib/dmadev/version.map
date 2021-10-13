@@ -1,6 +1,7 @@
 EXPERIMENTAL {
 	global:
 
+	rte_dma_burst_capacity;
 	rte_dma_close;
 	rte_dma_completed;
 	rte_dma_completed_status;

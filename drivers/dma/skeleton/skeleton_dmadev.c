@@ -431,6 +431,15 @@ skeldma_completed_status(void *dev_private,
 	return count;
 }
 
+static uint16_t
+skeldma_burst_capacity(const void *dev_private, uint16_t vchan)
+{
+	const struct skeldma_hw *hw = dev_private;
+
+	RTE_SET_USED(vchan);
+	return rte_ring_count(hw->desc_empty);
+}
+
 static const struct rte_dma_dev_ops skeldma_ops = {
 	.dev_info_get     = skeldma_info_get,
 	.dev_configure    = skeldma_configure,
@@ -469,6 +478,7 @@ skeldma_create(const char *name, struct rte_vdev_device *vdev, int lcore_id)
 	dev->fp_obj->submit = skeldma_submit;
 	dev->fp_obj->completed = skeldma_completed;
 	dev->fp_obj->completed_status = skeldma_completed_status;
+	dev->fp_obj->burst_capacity = skeldma_burst_capacity;
 
 	hw = dev->data->dev_private;
 	hw->lcore_id = lcore_id;

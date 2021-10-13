@@ -830,6 +830,14 @@ dummy_completed_status(__rte_unused void *dev_private,
 	return 0;
 }
 
+static uint16_t
+dummy_burst_capacity(__rte_unused const void *dev_private,
+		     __rte_unused uint16_t vchan)
+{
+	RTE_DMA_LOG(ERR, "burst_capacity is not configured or not supported.");
+	return 0;
+}
+
 static void
 dma_fp_object_dummy(struct rte_dma_fp_object *obj)
 {
@@ -840,4 +848,5 @@ dma_fp_object_dummy(struct rte_dma_fp_object *obj)
 	obj->submit           = dummy_submit;
 	obj->completed        = dummy_completed;
 	obj->completed_status = dummy_completed_status;
+	obj->burst_capacity   = dummy_burst_capacity;
 }

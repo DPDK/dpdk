@@ -47,6 +47,9 @@ typedef uint16_t (*rte_dma_completed_status_t)(void *dev_private,
 			uint16_t vchan, const uint16_t nb_cpls,
 			uint16_t *last_idx, enum rte_dma_status_code *status);
 
+/** @internal Used to check the remaining space in descriptor ring. */
+typedef uint16_t (*rte_dma_burst_capacity_t)(const void *dev_private, uint16_t vchan);
+
 /**
  * @internal
  * Fast-path dmadev functions and related data are hold in a flat array.
@@ -69,6 +72,7 @@ struct rte_dma_fp_object {
 	rte_dma_submit_t           submit;
 	rte_dma_completed_t        completed;
 	rte_dma_completed_status_t completed_status;
+	rte_dma_burst_capacity_t   burst_capacity;
 } __rte_aligned(128);
 
 extern struct rte_dma_fp_object *rte_dma_fp_objs;
