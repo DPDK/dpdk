@@ -2358,7 +2358,7 @@ hns3vf_map_rx_interrupt(struct rte_eth_dev *dev)
 	return 0;
 
 vf_bind_vector_error:
-	free(intr_handle->intr_vec);
+	rte_free(intr_handle->intr_vec);
 	intr_handle->intr_vec = NULL;
 vf_alloc_intr_vec_error:
 	rte_intr_efd_disable(intr_handle);
