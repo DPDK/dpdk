@@ -900,7 +900,6 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 {
 	struct otx2_eth_dev *hw = dev->data->dev_private;
 	struct otx2_npc_flow_info *npc = &hw->npc_flow;
-	const struct rte_flow_action_port_id *port_act;
 	const struct rte_flow_action_mark *act_mark;
 	const struct rte_flow_action_queue *act_q;
 	const struct rte_flow_action_vf *vf_act;
@@ -977,9 +976,18 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
-			port_act = (const struct rte_flow_action_port_id *)
-				actions->conf;
-			port_id = port_act->id;
+		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+			if (actions->type == RTE_FLOW_ACTION_TYPE_PORT_ID) {
+				const struct rte_flow_action_port_id *port_act;
+
+				port_act = actions->conf;
+				port_id = port_act->id;
+			} else {
+				const struct rte_flow_action_ethdev *ethdev_act;
+
+				ethdev_act = actions->conf;
+				port_id = ethdev_act->port_id;
+			}
 			if (rte_eth_dev_get_name_by_port(port_id, if_name)) {
 				errmsg = "Name not found for output port id";
 				errcode = EINVAL;
