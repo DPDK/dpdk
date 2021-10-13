@@ -2121,14 +2121,21 @@ sfc_mae_rule_parse_item_tunnel(const struct rte_flow_item *item,
 	const uint8_t *mask = NULL;
 	int rc;
 
-	/*
-	 * We're about to start processing inner frame items.
-	 * Process pattern data that has been deferred so far
-	 * and reset pattern data storage.
-	 */
-	rc = sfc_mae_rule_process_pattern_data(ctx_mae, error);
-	if (rc != 0)
-		return rc;
+	if (ctx_mae->ft_rule_type == SFC_FT_RULE_GROUP) {
+		/*
+		 * As a workaround, pattern processing has started from
+		 * this (tunnel) item. No pattern data to process yet.
+		 */
+	} else {
+		/*
+		 * We're about to start processing inner frame items.
+		 * Process pattern data that has been deferred so far
+		 * and reset pattern data storage.
+		 */
+		rc = sfc_mae_rule_process_pattern_data(ctx_mae, error);
+		if (rc != 0)
+			return rc;
+	}
 
 	memset(&ctx_mae->pattern_data, 0, sizeof(ctx_mae->pattern_data));
 
@@ -2447,10 +2454,10 @@ sfc_mae_rule_preparse_item_mark(const struct rte_flow_item_mark *spec,
 
 static int
 sfc_mae_rule_encap_parse_init(struct sfc_adapter *sa,
-			      const struct rte_flow_item pattern[],
 			      struct sfc_mae_parse_ctx *ctx,
 			      struct rte_flow_error *error)
 {
+	const struct rte_flow_item *pattern = ctx->pattern;
 	struct sfc_mae *mae = &sa->mae;
 	uint8_t recirc_id = 0;
 	int rc;
@@ -2525,6 +2532,13 @@ sfc_mae_rule_encap_parse_init(struct sfc_adapter *sa,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  pattern, "tunnel offload: GROUP: tunnel type mismatch");
 		}
+
+		/*
+		 * The HW/FW hasn't got support for the use of "ENC" fields in
+		 * action rules (except the VNET_ID one) yet. As a workaround,
+		 * start parsing the pattern from the tunnel item.
+		 */
+		ctx->pattern = pattern;
 		break;
 	default:
 		SFC_ASSERT(B_FALSE);
@@ -2669,11 +2683,12 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 	ctx_mae.encap_type = EFX_TUNNEL_PROTOCOL_NONE;
 	ctx_mae.match_spec = ctx_mae.match_spec_action;
 	ctx_mae.field_ids_remap = field_ids_no_remap;
+	ctx_mae.pattern = pattern;
 
 	ctx.type = SFC_FLOW_PARSE_CTX_MAE;
 	ctx.mae = &ctx_mae;
 
-	rc = sfc_mae_rule_encap_parse_init(sa, pattern, &ctx_mae, error);
+	rc = sfc_mae_rule_encap_parse_init(sa, &ctx_mae, error);
 	if (rc != 0)
 		goto fail_encap_parse_init;
 
@@ -2685,7 +2700,7 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 	spec->ft = ctx_mae.ft;
 
 	rc = sfc_flow_parse_pattern(sa, sfc_flow_items, RTE_DIM(sfc_flow_items),
-				    pattern, &ctx, error);
+				    ctx_mae.pattern, &ctx, error);
 	if (rc != 0)
 		goto fail_parse_pattern;
 

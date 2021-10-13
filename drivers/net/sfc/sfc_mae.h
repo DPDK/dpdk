@@ -332,6 +332,7 @@ struct sfc_mae_parse_ctx {
 	enum sfc_flow_tunnel_rule_type	ft_rule_type;
 	struct sfc_mae_pattern_data	pattern_data;
 	efx_tunnel_protocol_t		encap_type;
+	const struct rte_flow_item	*pattern;
 	unsigned int			priority;
 	struct sfc_flow_tunnel		*ft;
 };
