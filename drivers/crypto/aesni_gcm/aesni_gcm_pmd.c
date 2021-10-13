@@ -535,7 +535,7 @@ aesni_gcm_sgl_encrypt(struct aesni_gcm_session *s,
 	processed = 0;
 	for (i = 0; i < vec->num; ++i) {
 		aesni_gcm_process_gcm_sgl_op(s, gdata_ctx,
-			&vec->sgl[i], vec->iv[i].va,
+			&vec->src_sgl[i], vec->iv[i].va,
 			vec->aad[i].va);
 		vec->status[i] = aesni_gcm_sgl_op_finalize_encryption(s,
 			gdata_ctx, vec->digest[i].va);
@@ -554,7 +554,7 @@ aesni_gcm_sgl_decrypt(struct aesni_gcm_session *s,
 	processed = 0;
 	for (i = 0; i < vec->num; ++i) {
 		aesni_gcm_process_gcm_sgl_op(s, gdata_ctx,
-			&vec->sgl[i], vec->iv[i].va,
+			&vec->src_sgl[i], vec->iv[i].va,
 			vec->aad[i].va);
 		 vec->status[i] = aesni_gcm_sgl_op_finalize_decryption(s,
 			gdata_ctx, vec->digest[i].va);
@@ -572,13 +572,13 @@ aesni_gmac_sgl_generate(struct aesni_gcm_session *s,
 
 	processed = 0;
 	for (i = 0; i < vec->num; ++i) {
-		if (vec->sgl[i].num != 1) {
+		if (vec->src_sgl[i].num != 1) {
 			vec->status[i] = ENOTSUP;
 			continue;
 		}
 
 		aesni_gcm_process_gmac_sgl_op(s, gdata_ctx,
-			&vec->sgl[i], vec->iv[i].va);
+			&vec->src_sgl[i], vec->iv[i].va);
 		vec->status[i] = aesni_gcm_sgl_op_finalize_encryption(s,
 			gdata_ctx, vec->digest[i].va);
 		processed += (vec->status[i] == 0);
@@ -595,13 +595,13 @@ aesni_gmac_sgl_verify(struct aesni_gcm_session *s,
 
 	processed = 0;
 	for (i = 0; i < vec->num; ++i) {
-		if (vec->sgl[i].num != 1) {
+		if (vec->src_sgl[i].num != 1) {
 			vec->status[i] = ENOTSUP;
 			continue;
 		}
 
 		aesni_gcm_process_gmac_sgl_op(s, gdata_ctx,
-			&vec->sgl[i], vec->iv[i].va);
+			&vec->src_sgl[i], vec->iv[i].va);
 		vec->status[i] = aesni_gcm_sgl_op_finalize_decryption(s,
 			gdata_ctx, vec->digest[i].va);
 		processed += (vec->status[i] == 0);

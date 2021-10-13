@@ -2002,14 +2002,14 @@ aesni_mb_cpu_crypto_process_bulk(struct rte_cryptodev *dev,
 	for (i = 0, j = 0, k = 0; i != vec->num; i++) {
 
 
-		ret = check_crypto_sgl(sofs, vec->sgl + i);
+		ret = check_crypto_sgl(sofs, vec->src_sgl + i);
 		if (ret != 0) {
 			vec->status[i] = ret;
 			continue;
 		}
 
-		buf = vec->sgl[i].vec[0].base;
-		len = vec->sgl[i].vec[0].len;
+		buf = vec->src_sgl[i].vec[0].base;
+		len = vec->src_sgl[i].vec[0].len;
 
 		job = IMB_GET_NEXT_JOB(mb_mgr);
 		if (job == NULL) {

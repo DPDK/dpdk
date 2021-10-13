@@ -69,7 +69,7 @@ struct rte_crypto_sym_vec {
 	/** number of operations to perform */
 	uint32_t num;
 	/** array of SGL vectors */
-	struct rte_crypto_sgl *sgl;
+	struct rte_crypto_sgl *src_sgl;
 	/** array of pointers to cipher IV */
 	struct rte_crypto_va_iova_ptr *iv;
 	/** array of pointers to digest */

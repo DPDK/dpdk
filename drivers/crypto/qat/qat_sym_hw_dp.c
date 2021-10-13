@@ -181,8 +181,9 @@ qat_sym_dp_enqueue_cipher_jobs(void *qp_data, uint8_t *drv_ctx,
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
-		data_len = qat_sym_dp_parse_data_vec(qp, req, vec->sgl[i].vec,
-			vec->sgl[i].num);
+		data_len = qat_sym_dp_parse_data_vec(qp, req,
+			vec->src_sgl[i].vec,
+			vec->src_sgl[i].num);
 		if (unlikely(data_len < 0))
 			break;
 		req->comn_mid.opaque_data = (uint64_t)(uintptr_t)user_data[i];
@@ -302,8 +303,9 @@ qat_sym_dp_enqueue_auth_jobs(void *qp_data, uint8_t *drv_ctx,
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
-		data_len = qat_sym_dp_parse_data_vec(qp, req, vec->sgl[i].vec,
-			vec->sgl[i].num);
+		data_len = qat_sym_dp_parse_data_vec(qp, req,
+			vec->src_sgl[i].vec,
+			vec->src_sgl[i].num);
 		if (unlikely(data_len < 0))
 			break;
 		req->comn_mid.opaque_data = (uint64_t)(uintptr_t)user_data[i];
@@ -484,14 +486,16 @@ qat_sym_dp_enqueue_chain_jobs(void *qp_data, uint8_t *drv_ctx,
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
-		data_len = qat_sym_dp_parse_data_vec(qp, req, vec->sgl[i].vec,
-			vec->sgl[i].num);
+		data_len = qat_sym_dp_parse_data_vec(qp, req,
+			vec->src_sgl[i].vec,
+			vec->src_sgl[i].num);
 		if (unlikely(data_len < 0))
 			break;
 		req->comn_mid.opaque_data = (uint64_t)(uintptr_t)user_data[i];
-		if (unlikely(enqueue_one_chain_job(ctx, req, vec->sgl[i].vec,
-			vec->sgl[i].num, &vec->iv[i], &vec->digest[i],
-				&vec->auth_iv[i], ofs, (uint32_t)data_len)))
+		if (unlikely(enqueue_one_chain_job(ctx, req,
+			vec->src_sgl[i].vec, vec->src_sgl[i].num,
+			&vec->iv[i], &vec->digest[i],
+			&vec->auth_iv[i], ofs, (uint32_t)data_len)))
 			break;
 
 		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
@@ -688,8 +692,9 @@ qat_sym_dp_enqueue_aead_jobs(void *qp_data, uint8_t *drv_ctx,
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
-		data_len = qat_sym_dp_parse_data_vec(qp, req, vec->sgl[i].vec,
-			vec->sgl[i].num);
+		data_len = qat_sym_dp_parse_data_vec(qp, req,
+			vec->src_sgl[i].vec,
+			vec->src_sgl[i].num);
 		if (unlikely(data_len < 0))
 			break;
 		req->comn_mid.opaque_data = (uint64_t)(uintptr_t)user_data[i];

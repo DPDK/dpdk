@@ -136,7 +136,7 @@ cpu_crypto_bulk(const struct rte_ipsec_session *ss,
 		/* not enough space in vec[] to hold all segments */
 		if (vcnt < 0) {
 			/* fill the request structure */
-			symvec.sgl = &vecpkt[j];
+			symvec.src_sgl = &vecpkt[j];
 			symvec.iv = &iv[j];
 			symvec.digest = &dgst[j];
 			symvec.aad = &aad[j];
@@ -160,7 +160,7 @@ cpu_crypto_bulk(const struct rte_ipsec_session *ss,
 	}
 
 	/* fill the request structure */
-	symvec.sgl = &vecpkt[j];
+	symvec.src_sgl = &vecpkt[j];
 	symvec.iv = &iv[j];
 	symvec.aad = &aad[j];
 	symvec.digest = &dgst[j];
