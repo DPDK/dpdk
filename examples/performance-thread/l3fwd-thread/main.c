@@ -26,7 +26,6 @@
 #include <rte_memcpy.h>
 #include <rte_eal.h>
 #include <rte_launch.h>
-#include <rte_atomic.h>
 #include <rte_cycles.h>
 #include <rte_prefetch.h>
 #include <rte_lcore.h>
@@ -570,8 +569,8 @@ RTE_DEFINE_PER_LCORE(struct lcore_conf *, lcore_conf);
  */
 static int lthreads_on = 1; /**< Use lthreads for processing*/
 
-rte_atomic16_t rx_counter;  /**< Number of spawned rx threads */
-rte_atomic16_t tx_counter;  /**< Number of spawned tx threads */
+uint16_t rx_counter;  /**< Number of spawned rx threads */
+uint16_t tx_counter;  /**< Number of spawned tx threads */
 
 struct thread_conf {
 	uint16_t lcore_id;      /**< Initial lcore for rx thread */
@@ -1910,11 +1909,8 @@ cpu_load_collector(__rte_unused void *arg) {
 	printf("Waiting for %d rx threads and %d tx threads\n", n_rx_thread,
 			n_tx_thread);
 
-	while (rte_atomic16_read(&rx_counter) < n_rx_thread)
-		rte_pause();
-
-	while (rte_atomic16_read(&tx_counter) < n_tx_thread)
-		rte_pause();
+	rte_wait_until_equal_16(&rx_counter, n_rx_thread, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16(&tx_counter, n_tx_thread, __ATOMIC_RELAXED);
 
 	for (i = 0; i < n_rx_thread; i++) {
 
@@ -2036,7 +2032,7 @@ lthread_tx_per_ring(void *dummy)
 	RTE_LOG(INFO, L3FWD, "entering main tx loop on lcore %u\n", rte_lcore_id());
 
 	nb_rx = 0;
-	rte_atomic16_inc(&tx_counter);
+	__atomic_fetch_add(&tx_counter, 1, __ATOMIC_RELAXED);
 	while (1) {
 
 		/*
@@ -2161,7 +2157,7 @@ lthread_rx(void *dummy)
 	worker_id = 0;
 
 	rx_conf->conf.cpu_id = sched_getcpu();
-	rte_atomic16_inc(&rx_counter);
+	__atomic_fetch_add(&rx_counter, 1, __ATOMIC_RELAXED);
 	while (1) {
 
 		/*
@@ -2243,7 +2239,7 @@ lthread_spawner(__rte_unused void *arg)
 	 * scheduler as this lthread, yielding is required to let them to run and
 	 * prevent deadlock here.
 	 */
-	while (rte_atomic16_read(&rx_counter) < n_rx_thread)
+	while (__atomic_load_n(&rx_counter, __ATOMIC_RELAXED) < n_rx_thread)
 		lthread_sleep(100000);
 
 	/*
@@ -2323,7 +2319,7 @@ pthread_tx(void *dummy)
 	RTE_LOG(INFO, L3FWD, "Entering main Tx loop on lcore %u\n", rte_lcore_id());
 
 	tx_conf->conf.cpu_id = sched_getcpu();
-	rte_atomic16_inc(&tx_counter);
+	__atomic_fetch_add(&tx_counter, 1, __ATOMIC_RELAXED);
 	while (1) {
 
 		cur_tsc = rte_rdtsc();
@@ -2406,7 +2402,7 @@ pthread_rx(void *dummy)
 
 	worker_id = 0;
 	rx_conf->conf.cpu_id = sched_getcpu();
-	rte_atomic16_inc(&rx_counter);
+	__atomic_fetch_add(&rx_counter, 1, __ATOMIC_RELAXED);
 	while (1) {
 
 		/*

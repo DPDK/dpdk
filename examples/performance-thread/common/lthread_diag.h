@@ -78,11 +78,11 @@ extern uint64_t diag_mask;
 	}								\
 } while (0)
 
-#define DIAG_COUNT_DEFINE(x) rte_atomic64_t count_##x
-#define DIAG_COUNT_INIT(o, x) rte_atomic64_init(&((o)->count_##x))
-#define DIAG_COUNT_INC(o, x) rte_atomic64_inc(&((o)->count_##x))
-#define DIAG_COUNT_DEC(o, x) rte_atomic64_dec(&((o)->count_##x))
-#define DIAG_COUNT(o, x) rte_atomic64_read(&((o)->count_##x))
+#define DIAG_COUNT_DEFINE(x) uint64_t count_##x
+#define DIAG_COUNT_INIT(o, x) __atomic_store_n(&((o)->count_##x), 0, __ATOMIC_RELAXED)
+#define DIAG_COUNT_INC(o, x) __atomic_fetch_add(&((o)->count_##x), 1, __ATOMIC_RELAXED)
+#define DIAG_COUNT_DEC(o, x) __atomic_fetch_sub(&((o)->count_##x), 1, __ATOMIC_RELAXED)
+#define DIAG_COUNT(o, x) __atomic_load_n(&((o)->count_##x), __ATOMIC_RELAXED)
 
 #define DIAG_USED
 

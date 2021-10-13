@@ -21,7 +21,6 @@ extern "C" {
 #include <rte_cycles.h>
 #include <rte_per_lcore.h>
 #include <rte_timer.h>
-#include <rte_atomic_64.h>
 #include <rte_spinlock.h>
 #include <ctx.h>
 

@@ -18,7 +18,6 @@
 #include <rte_malloc.h>
 #include <rte_log.h>
 #include <rte_ring.h>
-#include <rte_atomic_64.h>
 
 #include "lthread_tls.h"
 #include "lthread_queue.h"
@@ -52,8 +51,10 @@ void _lthread_key_pool_init(void)
 
 	bzero(key_table, sizeof(key_table));
 
+	uint64_t pool_init = 0;
 	/* only one lcore should do this */
-	if (rte_atomic64_cmpset(&key_pool_init, 0, 1)) {
+	if (__atomic_compare_exchange_n(&key_pool_init, &pool_init, 1, 0,
+			__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
 
 		snprintf(name,
 			MAX_LTHREAD_NAME_SIZE,

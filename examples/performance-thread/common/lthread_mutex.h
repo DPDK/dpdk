@@ -17,7 +17,7 @@ extern "C" {
 
 struct lthread_mutex {
 	struct lthread *owner;
-	rte_atomic64_t	count;
+	uint64_t count;
 	struct lthread_queue *blocked __rte_cache_aligned;
 	struct lthread_sched *root_sched;
 	char			name[MAX_MUTEX_NAME_SIZE];

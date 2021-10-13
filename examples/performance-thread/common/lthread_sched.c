@@ -22,8 +22,6 @@
 
 #include <rte_prefetch.h>
 #include <rte_per_lcore.h>
-#include <rte_atomic.h>
-#include <rte_atomic_64.h>
 #include <rte_log.h>
 #include <rte_common.h>
 #include <rte_branch_prediction.h>
@@ -47,8 +45,8 @@
  * When a scheduler shuts down it is assumed that the application is terminating
  */
 
-static rte_atomic16_t num_schedulers;
-static rte_atomic16_t active_schedulers;
+static uint16_t num_schedulers;
+static uint16_t active_schedulers;
 
 /* one scheduler per lcore */
 RTE_DEFINE_PER_LCORE(struct lthread_sched *, this_sched) = NULL;
@@ -64,10 +62,8 @@ uint64_t diag_mask;
 RTE_INIT(lthread_sched_ctor)
 {
 	memset(schedcore, 0, sizeof(schedcore));
-	rte_atomic16_init(&num_schedulers);
-	rte_atomic16_set(&num_schedulers, 1);
-	rte_atomic16_init(&active_schedulers);
-	rte_atomic16_set(&active_schedulers, 0);
+	__atomic_store_n(&num_schedulers, 1, __ATOMIC_RELAXED);
+	__atomic_store_n(&active_schedulers, 0, __ATOMIC_RELAXED);
 	diag_cb = NULL;
 }
 
@@ -260,8 +256,8 @@ struct lthread_sched *_lthread_sched_create(size_t stack_size)
  */
 int lthread_num_schedulers_set(int num)
 {
-	rte_atomic16_set(&num_schedulers, num);
-	return (int)rte_atomic16_read(&num_schedulers);
+	__atomic_store_n(&num_schedulers, num, __ATOMIC_RELAXED);
+	return (int)__atomic_load_n(&num_schedulers, __ATOMIC_RELAXED);
 }
 
 /*
@@ -269,7 +265,7 @@ int lthread_num_schedulers_set(int num)
  */
 int lthread_active_schedulers(void)
 {
-	return (int)rte_atomic16_read(&active_schedulers);
+	return (int)__atomic_load_n(&active_schedulers, __ATOMIC_RELAXED);
 }
 
 
@@ -299,8 +295,8 @@ void lthread_scheduler_shutdown_all(void)
 	 * for the possibility of a pthread wrapper on lthread_yield(),
 	 * something that is not possible unless the scheduler is running.
 	 */
-	while (rte_atomic16_read(&active_schedulers) <
-	       rte_atomic16_read(&num_schedulers))
+	while (__atomic_load_n(&active_schedulers, __ATOMIC_RELAXED) <
+	       __atomic_load_n(&num_schedulers, __ATOMIC_RELAXED))
 		sched_yield();
 
 	for (i = 0; i < LTHREAD_MAX_LCORES; i++) {
@@ -415,15 +411,15 @@ static inline int _lthread_sched_isdone(struct lthread_sched *sched)
  */
 static inline void _lthread_schedulers_sync_start(void)
 {
-	rte_atomic16_inc(&active_schedulers);
+	__atomic_fetch_add(&active_schedulers, 1, __ATOMIC_RELAXED);
 
 	/* wait for lthread schedulers
 	 * Note we use sched_yield() rather than pthread_yield() to allow
 	 * for the possibility of a pthread wrapper on lthread_yield(),
 	 * something that is not possible unless the scheduler is running.
 	 */
-	while (rte_atomic16_read(&active_schedulers) <
-	       rte_atomic16_read(&num_schedulers))
+	while (__atomic_load_n(&active_schedulers, __ATOMIC_RELAXED) <
+	       __atomic_load_n(&num_schedulers, __ATOMIC_RELAXED))
 		sched_yield();
 
 }
@@ -433,15 +429,15 @@ static inline void _lthread_schedulers_sync_start(void)
  */
 static inline void _lthread_schedulers_sync_stop(void)
 {
-	rte_atomic16_dec(&active_schedulers);
-	rte_atomic16_dec(&num_schedulers);
+	__atomic_fetch_sub(&active_schedulers, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_sub(&num_schedulers, 1, __ATOMIC_RELAXED);
 
 	/* wait for schedulers
 	 * Note we use sched_yield() rather than pthread_yield() to allow
 	 * for the possibility of a pthread wrapper on lthread_yield(),
 	 * something that is not possible unless the scheduler is running.
 	 */
-	while (rte_atomic16_read(&active_schedulers) > 0)
+	while (__atomic_load_n(&active_schedulers, __ATOMIC_RELAXED) > 0)
 		sched_yield();
 
 }

@@ -357,9 +357,10 @@ void lthread_exit(void *ptr)
 	 *  - if exit before join then we suspend and resume on join
 	 *  - if join before exit then we resume the joining thread
 	 */
+	uint64_t join_initial = LT_JOIN_INITIAL;
 	if ((lt->join == LT_JOIN_INITIAL)
-	    && rte_atomic64_cmpset(&lt->join, LT_JOIN_INITIAL,
-				   LT_JOIN_EXITING)) {
+	    && __atomic_compare_exchange_n(&lt->join, &join_initial,
+		LT_JOIN_EXITING, 0, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
 
 		DIAG_EVENT(lt, LT_DIAG_LTHREAD_EXIT, 1, 0);
 		_suspend();
@@ -415,9 +416,10 @@ int lthread_join(struct lthread *lt, void **ptr)
 	 *  - if join before exit we suspend and will resume when exit is called
 	 *  - if exit before join we resume the exiting thread
 	 */
+	uint64_t join_initial = LT_JOIN_INITIAL;
 	if ((lt->join == LT_JOIN_INITIAL)
-	    && rte_atomic64_cmpset(&lt->join, LT_JOIN_INITIAL,
-				   LT_JOIN_THREAD_SET)) {
+	    && __atomic_compare_exchange_n(&lt->join, &join_initial,
+		LT_JOIN_THREAD_SET, 0, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
 
 		DIAG_EVENT(current, LT_DIAG_LTHREAD_JOIN, lt, 1);
 		_suspend();

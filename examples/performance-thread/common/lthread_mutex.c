@@ -60,7 +60,7 @@ lthread_mutex_init(char *name, struct lthread_mutex **mutex,
 	m->root_sched = THIS_SCHED;
 	m->owner = NULL;
 
-	rte_atomic64_init(&m->count);
+	__atomic_store_n(&m->count, 0, __ATOMIC_RELAXED);
 
 	DIAG_CREATE_EVENT(m, LT_DIAG_MUTEX_CREATE);
 	/* success */
@@ -115,10 +115,11 @@ int lthread_mutex_lock(struct lthread_mutex *m)
 	}
 
 	for (;;) {
-		rte_atomic64_inc(&m->count);
+		__atomic_fetch_add(&m->count, 1, __ATOMIC_RELAXED);
 		do {
-			if (rte_atomic64_cmpset
-			    ((uint64_t *) &m->owner, 0, (uint64_t) lt)) {
+			uint64_t lt_init = 0;
+			if (__atomic_compare_exchange_n((uint64_t *) &m->owner, &lt_init,
+				(uint64_t) lt, 0, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
 				/* happy days, we got the lock */
 				DIAG_EVENT(m, LT_DIAG_MUTEX_LOCK, m, 0);
 				return 0;
@@ -126,7 +127,7 @@ int lthread_mutex_lock(struct lthread_mutex *m)
 			/* spin due to race with unlock when
 			* nothing was blocked
 			*/
-		} while ((rte_atomic64_read(&m->count) == 1) &&
+		} while ((__atomic_load_n(&m->count, __ATOMIC_RELAXED) == 1) &&
 				(m->owner == NULL));
 
 		/* queue the current thread in the blocked queue
@@ -160,16 +161,17 @@ int lthread_mutex_trylock(struct lthread_mutex *m)
 		return POSIX_ERRNO(EDEADLK);
 	}
 
-	rte_atomic64_inc(&m->count);
-	if (rte_atomic64_cmpset
-	    ((uint64_t *) &m->owner, (uint64_t) NULL, (uint64_t) lt)) {
+	__atomic_fetch_add(&m->count, 1, __ATOMIC_RELAXED);
+	uint64_t lt_init = 0;
+	if (__atomic_compare_exchange_n((uint64_t *) &m->owner, &lt_init,
+		(uint64_t) lt, 0, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
 		/* got the lock */
 		DIAG_EVENT(m, LT_DIAG_MUTEX_TRYLOCK, m, 0);
 		return 0;
 	}
 
 	/* failed so return busy */
-	rte_atomic64_dec(&m->count);
+	__atomic_fetch_sub(&m->count, 1, __ATOMIC_RELAXED);
 	DIAG_EVENT(m, LT_DIAG_MUTEX_TRYLOCK, m, POSIX_ERRNO(EBUSY));
 	return POSIX_ERRNO(EBUSY);
 }
@@ -193,13 +195,13 @@ int lthread_mutex_unlock(struct lthread_mutex *m)
 		return POSIX_ERRNO(EPERM);
 	}
 
-	rte_atomic64_dec(&m->count);
+	__atomic_fetch_sub(&m->count, 1, __ATOMIC_RELAXED);
 	/* if there are blocked threads then make one ready */
-	while (rte_atomic64_read(&m->count) > 0) {
+	while (__atomic_load_n(&m->count, __ATOMIC_RELAXED) > 0) {
 		unblocked = _lthread_queue_remove(m->blocked);
 
 		if (unblocked != NULL) {
-			rte_atomic64_dec(&m->count);
+			__atomic_fetch_sub(&m->count, 1, __ATOMIC_RELAXED);
 			DIAG_EVENT(m, LT_DIAG_MUTEX_UNLOCKED, m, unblocked);
 			RTE_ASSERT(unblocked->sched != NULL);
 			_ready_queue_insert((struct lthread_sched *)
