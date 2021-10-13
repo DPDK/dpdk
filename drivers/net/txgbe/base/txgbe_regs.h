@@ -1219,6 +1219,7 @@ enum txgbe_5tuple_protocol {
 #define TXGBE_IVARMISC                  0x0004FC
 #define   TXGBE_IVARMISC_VEC(v)         LS(v, 0, 0x7)
 #define   TXGBE_IVARMISC_VLD            MS(7, 0x1)
+#define TXGBE_PX_INTA			0x000110
 #define TXGBE_ICR(i)                    (0x000120 + (i) * 4) /* 0-1 */
 #define   TXGBE_ICR_MASK                MS(0, 0xFFFFFFFF)
 #define TXGBE_ICS(i)                    (0x000130 + (i) * 4) /* 0-1 */

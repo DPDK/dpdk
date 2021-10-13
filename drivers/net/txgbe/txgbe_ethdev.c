@@ -109,7 +109,8 @@ static int txgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on);
 static int txgbe_dev_macsec_interrupt_setup(struct rte_eth_dev *dev);
 static int txgbe_dev_misc_interrupt_setup(struct rte_eth_dev *dev);
 static int txgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev);
-static int txgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
+static int txgbe_dev_interrupt_get_status(struct rte_eth_dev *dev,
+				      struct rte_intr_handle *handle);
 static int txgbe_dev_interrupt_action(struct rte_eth_dev *dev,
 				      struct rte_intr_handle *handle);
 static void txgbe_dev_interrupt_handler(void *param);
@@ -2938,11 +2939,16 @@ txgbe_dev_macsec_interrupt_setup(struct rte_eth_dev *dev)
  *  - On failure, a negative value.
  */
 static int
-txgbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
+txgbe_dev_interrupt_get_status(struct rte_eth_dev *dev,
+				struct rte_intr_handle *intr_handle)
 {
 	uint32_t eicr;
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+
+	if (intr_handle->type != RTE_INTR_HANDLE_UIO &&
+			intr_handle->type != RTE_INTR_HANDLE_VFIO_MSIX)
+		wr32(hw, TXGBE_PX_INTA, 1);
 
 	/* clear all cause mask */
 	txgbe_disable_intr(hw);
@@ -3165,7 +3171,7 @@ txgbe_dev_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 
-	txgbe_dev_interrupt_get_status(dev);
+	txgbe_dev_interrupt_get_status(dev, dev->intr_handle);
 	txgbe_dev_interrupt_action(dev, dev->intr_handle);
 }
 
