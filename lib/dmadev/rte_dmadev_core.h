@@ -60,7 +60,7 @@ typedef uint16_t (*rte_dma_completed_status_t)(void *dev_private,
  */
 struct rte_dma_fp_object {
 	/** PMD-specific private data. The driver should copy
-	 * rte_dma_dev.dev_private to this field during initialization.
+	 * rte_dma_dev.data->dev_private to this field during initialization.
 	 */
 	void *dev_private;
 	rte_dma_copy_t             copy;
