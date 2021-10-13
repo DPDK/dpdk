@@ -67,7 +67,7 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 	},
 	[RTE_FLOW_ACTION_TYPE_PORT_ID] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
-	.proto_act_func          = ulp_rte_port_id_act_handler
+	.proto_act_func          = ulp_rte_port_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_METER] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
@@ -212,7 +212,15 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 	[RTE_FLOW_ACTION_TYPE_SAMPLE] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
 	.proto_act_func          = ulp_rte_sample_act_handler
-	}
+	},
+	[RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR] = {
+	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+	.proto_act_func          = ulp_rte_port_act_handler
+	},
+	[RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT] = {
+	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+	.proto_act_func          = ulp_rte_port_act_handler
+	},
 };
 
 struct bnxt_ulp_rte_act_info ulp_vendor_act_info[] = {

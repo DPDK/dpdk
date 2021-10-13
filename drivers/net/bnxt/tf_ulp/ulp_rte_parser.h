@@ -204,10 +204,10 @@ int32_t
 ulp_rte_vf_act_handler(const struct rte_flow_action *action_item,
 		       struct ulp_rte_parser_params *params);
 
-/* Function to handle the parsing of RTE Flow action port_id. */
+/* Parse actions PORT_ID, PORT_REPRESENTOR and REPRESENTED_PORT. */
 int32_t
-ulp_rte_port_id_act_handler(const struct rte_flow_action *act_item,
-			    struct ulp_rte_parser_params *params);
+ulp_rte_port_act_handler(const struct rte_flow_action *act_item,
+			 struct ulp_rte_parser_params *params);
 
 /* Function to handle the parsing of RTE Flow action phy_port. */
 int32_t
