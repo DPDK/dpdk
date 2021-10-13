@@ -15,7 +15,6 @@
 #include <string.h>
 #include <stddef.h>
 
-#include <rte_atomic.h>
 #include <rte_cycles.h>
 #include <rte_log.h>
 #include <rte_malloc.h>

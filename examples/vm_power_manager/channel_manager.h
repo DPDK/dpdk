@@ -11,7 +11,6 @@ extern "C" {
 
 #include <linux/limits.h>
 #include <linux/un.h>
-#include <rte_atomic.h>
 #include <stdbool.h>
 
 /* Maximum name length including '\0' terminator */

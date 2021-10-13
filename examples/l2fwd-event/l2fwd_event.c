@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <getopt.h>
 
-#include <rte_atomic.h>
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
 #include <rte_eventdev.h>

@@ -20,7 +20,6 @@
 #include <unistd.h>
 
 #include <rte_string_fns.h>
-#include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
 #include <rte_cryptodev.h>

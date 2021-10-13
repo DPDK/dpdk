@@ -14,7 +14,6 @@
 #include <rte_common.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
-#include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_launch.h>
 #include <rte_log.h>

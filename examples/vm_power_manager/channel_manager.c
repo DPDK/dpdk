@@ -21,7 +21,6 @@
 #include <rte_memory.h>
 #include <rte_mempool.h>
 #include <rte_log.h>
-#include <rte_atomic.h>
 #include <rte_spinlock.h>
 
 #include <libvirt/libvirt.h>
