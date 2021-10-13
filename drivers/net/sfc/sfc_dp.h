@@ -153,6 +153,15 @@ extern int sfc_dp_mport_offset;
  */
 int sfc_dp_mport_register(void);
 
+/** Dynamically registered mbuf "ft_id" validity flag (as a bitmask). */
+extern uint64_t sfc_dp_ft_id_valid;
+
+/** Dynamically registered mbuf field "ft_id" (mbuf byte offset). */
+extern int sfc_dp_ft_id_offset;
+
+/** Register dynamic mbuf field "ft_id" and its validity flag. */
+int sfc_dp_ft_id_register(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -2928,6 +2928,11 @@ const struct rte_flow_ops sfc_flow_ops = {
 	.flush = sfc_flow_flush,
 	.query = sfc_flow_query,
 	.isolate = sfc_flow_isolate,
+	.tunnel_decap_set = sfc_flow_tunnel_decap_set,
+	.tunnel_match = sfc_flow_tunnel_match,
+	.tunnel_action_decap_release = sfc_flow_tunnel_action_decap_release,
+	.tunnel_item_release = sfc_flow_tunnel_item_release,
+	.get_restore_info = sfc_flow_tunnel_get_restore_info,
 };
 
 void

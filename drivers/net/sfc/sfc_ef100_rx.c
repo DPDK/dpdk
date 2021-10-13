@@ -425,6 +425,7 @@ sfc_ef100_rx_prefix_to_offloads(const struct sfc_ef100_rxq *rxq,
 	}
 
 	if (rxq->flags & SFC_EF100_RXQ_USER_MARK) {
+		uint8_t tunnel_mark;
 		uint32_t user_mark;
 		uint32_t mark;
 
@@ -436,6 +437,17 @@ sfc_ef100_rx_prefix_to_offloads(const struct sfc_ef100_rxq *rxq,
 		if (user_mark != SFC_EF100_USER_MARK_INVALID) {
 			ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 			m->hash.fdir.hi = user_mark;
+		}
+
+		tunnel_mark = SFC_FT_GET_TUNNEL_MARK(mark);
+		if (tunnel_mark != SFC_FT_TUNNEL_MARK_INVALID) {
+			sfc_ft_id_t ft_id;
+
+			ft_id = SFC_FT_TUNNEL_MARK_TO_ID(tunnel_mark);
+
+			ol_flags |= sfc_dp_ft_id_valid;
+			*RTE_MBUF_DYNFIELD(m, sfc_dp_ft_id_offset,
+					   sfc_ft_id_t *) = ft_id;
 		}
 	}
 
