@@ -2563,17 +2563,20 @@ sfc_flow_parse_rte_to_mae(struct rte_eth_dev *dev,
 
 	if (spec_mae->ft_rule_type == SFC_FT_RULE_JUMP) {
 		/*
-		 * This flow is represented solely by the outer rule.
-		 * It is supposed to mark and count matching packets.
+		 * By design, this flow should be represented solely by the
+		 * outer rule. But the HW/FW hasn't got support for setting
+		 * Rx mark from RECIRC_ID on outer rule lookup yet. Neither
+		 * does it support outer rule counters. As a workaround, an
+		 * action rule of lower priority is used to do the job.
+		 *
+		 * So don't skip sfc_mae_rule_parse_actions() below.
 		 */
-		goto skip_action_rule;
 	}
 
 	rc = sfc_mae_rule_parse_actions(sa, actions, spec_mae, error);
 	if (rc != 0)
 		goto fail;
 
-skip_action_rule:
 	if (spec_mae->ft != NULL) {
 		if (spec_mae->ft_rule_type == SFC_FT_RULE_JUMP)
 			spec_mae->ft->jump_rule_is_set = B_TRUE;
