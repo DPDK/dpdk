@@ -124,12 +124,6 @@ Deprecation Notices
   to support modifying fields larger than 64 bits.
   In addition, documentation will be updated to clarify byte order.
 
-* ethdev: Definition of the flow API action ``RTE_FLOW_ACTION_TYPE_PORT_ID``
-  is ambiguous and needs clarification.
-  Structure ``rte_flow_action_port_id`` will be extended to specify
-  traffic direction to the represented entity or ethdev port itself
-  in DPDK 21.11.
-
 * ethdev: Flow API documentation is unclear if ethdev port used to create
   a flow rule adds any implicit match criteria in the case of transfer rules.
   The semantics will be clarified in DPDK 21.11 and it will require fixes in
@@ -154,6 +148,9 @@ Deprecation Notices
   Instead queue stats will be received via xstats API. Current method support
   will be limited to maximum 256 queues.
   Also compile time flag ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` will be removed.
+
+* ethdev: Items and actions ``PF``, ``VF``, ``PHY_PORT``, ``PORT_ID`` are
+  deprecated as hard-to-use / ambiguous and will be removed in DPDK 22.11.
 
 * net: The structure ``rte_ipv4_hdr`` will have two unions.
   The first union is for existing ``version_ihl`` byte

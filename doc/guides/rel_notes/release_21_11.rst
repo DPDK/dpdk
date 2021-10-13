@@ -297,6 +297,9 @@ API Changes
 * ethdev: Added items and actions ``PORT_REPRESENTOR``, ``REPRESENTED_PORT`` to
   flow API.
 
+* ethdev: Deprecated items and actions ``PF``, ``VF``, ``PHY_PORT``, ``PORT_ID``.
+  Suggested items and actions ``PORT_REPRESENTOR``, ``REPRESENTED_PORT`` instead.
+
 * cryptodev: The API rte_cryptodev_pmd_is_valid_dev is modified to
   rte_cryptodev_is_valid_dev as it can be used by the application as
   well as PMD to check whether the device is valid or not.
