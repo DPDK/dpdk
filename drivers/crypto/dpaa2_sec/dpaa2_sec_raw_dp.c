@@ -355,16 +355,7 @@ build_raw_dp_auth_fd(uint8_t *drv_ctx,
 	data_len = total_len - ofs.ofs.auth.head - ofs.ofs.auth.tail;
 	data_offset = ofs.ofs.auth.head;
 
-	if (sess->auth_alg == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
-		sess->auth_alg == RTE_CRYPTO_AUTH_ZUC_EIA3) {
-		if ((data_len & 7) || (data_offset & 7)) {
-			DPAA2_SEC_ERR("AUTH: len/offset must be full bytes");
-			return -ENOTSUP;
-		}
-
-		data_len = data_len >> 3;
-		data_offset = data_offset >> 3;
-	}
+	/* For SNOW3G and ZUC, lengths in bits only supported */
 	fle = (struct qbman_fle *)rte_malloc(NULL,
 		FLE_SG_MEM_SIZE(2 * sgl->num),
 			RTE_CACHE_LINE_SIZE);
@@ -609,17 +600,7 @@ build_raw_dp_cipher_fd(uint8_t *drv_ctx,
 	data_len = total_len - ofs.ofs.cipher.head - ofs.ofs.cipher.tail;
 	data_offset = ofs.ofs.cipher.head;
 
-	if (sess->cipher_alg == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
-		sess->cipher_alg == RTE_CRYPTO_CIPHER_ZUC_EEA3) {
-		if ((data_len & 7) || (data_offset & 7)) {
-			DPAA2_SEC_ERR("CIPHER: len/offset must be full bytes");
-			return -ENOTSUP;
-		}
-
-		data_len = data_len >> 3;
-		data_offset = data_offset >> 3;
-	}
-
+	/* For SNOW3G and ZUC, lengths in bits only supported */
 	/* first FLE entry used to store mbuf and session ctxt */
 	fle = (struct qbman_fle *)rte_malloc(NULL,
 			FLE_SG_MEM_SIZE(2*sgl->num),
@@ -878,7 +859,7 @@ dpaa2_sec_raw_dequeue_burst(void *qp_data, uint8_t *drv_ctx,
 	struct qbman_result *dq_storage;
 	uint32_t fqid = dpaa2_qp->rx_vq.fqid;
 	int ret, num_rx = 0;
-	uint8_t is_last = 0, status;
+	uint8_t is_last = 0, status, is_success = 0;
 	struct qbman_swp *swp;
 	const struct qbman_fd *fd;
 	struct qbman_pull_desc pulldesc;
@@ -957,11 +938,11 @@ dpaa2_sec_raw_dequeue_burst(void *qp_data, uint8_t *drv_ctx,
 			/* TODO Parse SEC errors */
 			DPAA2_SEC_ERR("SEC returned Error - %x",
 				      fd->simple.frc);
-			status = RTE_CRYPTO_OP_STATUS_ERROR;
+			is_success = false;
 		} else {
-			status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+			is_success = true;
 		}
-		post_dequeue(user_data, num_rx, status);
+		post_dequeue(user_data, num_rx, is_success);
 
 		num_rx++;
 		dq_storage++;
