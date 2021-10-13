@@ -7,6 +7,8 @@ DPDK_22 {
 	rte_eth_allmulticast_disable;
 	rte_eth_allmulticast_enable;
 	rte_eth_allmulticast_get;
+	rte_eth_call_rx_callbacks;
+	rte_eth_call_tx_callbacks;
 	rte_eth_dev_adjust_nb_rx_tx_desc;
 	rte_eth_dev_callback_register;
 	rte_eth_dev_callback_unregister;
@@ -76,6 +78,7 @@ DPDK_22 {
 	rte_eth_find_next_of;
 	rte_eth_find_next_owned_by;
 	rte_eth_find_next_sibling;
+	rte_eth_fp_ops;
 	rte_eth_iterator_cleanup;
 	rte_eth_iterator_init;
 	rte_eth_iterator_next;

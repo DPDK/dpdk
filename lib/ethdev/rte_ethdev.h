@@ -4885,6 +4885,33 @@ int rte_eth_rx_metadata_negotiate(uint16_t port_id, uint64_t *features);
 #include <rte_ethdev_core.h>
 
 /**
+ * @internal
+ * Helper routine for rte_eth_rx_burst().
+ * Should be called at exit from PMD's rte_eth_rx_bulk implementation.
+ * Does necessary post-processing - invokes Rx callbacks if any, etc.
+ *
+ * @param port_id
+ *  The port identifier of the Ethernet device.
+ * @param queue_id
+ *  The index of the receive queue from which to retrieve input packets.
+ * @param rx_pkts
+ *   The address of an array of pointers to *rte_mbuf* structures that
+ *   have been retrieved from the device.
+ * @param nb_rx
+ *   The number of packets that were retrieved from the device.
+ * @param nb_pkts
+ *   The number of elements in @p rx_pkts array.
+ * @param opaque
+ *   Opaque pointer of Rx queue callback related data.
+ *
+ * @return
+ *  The number of packets effectively supplied to the @p rx_pkts array.
+ */
+uint16_t rte_eth_call_rx_callbacks(uint16_t port_id, uint16_t queue_id,
+		struct rte_mbuf **rx_pkts, uint16_t nb_rx, uint16_t nb_pkts,
+		void *opaque);
+
+/**
  *
  * Retrieve a burst of input packets from a receive queue of an Ethernet
  * device. The retrieved packets are stored in *rte_mbuf* structures whose
@@ -4975,39 +5002,51 @@ static inline uint16_t
 rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
 		 struct rte_mbuf **rx_pkts, const uint16_t nb_pkts)
 {
-	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	uint16_t nb_rx;
+	struct rte_eth_fp_ops *p;
+	void *qd;
 
 #ifdef RTE_ETHDEV_DEBUG_RX
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_pkt_burst, 0);
-
-	if (queue_id >= dev->data->nb_rx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid RX queue_id=%u\n", queue_id);
+	if (port_id >= RTE_MAX_ETHPORTS ||
+			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
+		RTE_ETHDEV_LOG(ERR,
+			"Invalid port_id=%u or queue_id=%u\n",
+			port_id, queue_id);
 		return 0;
 	}
 #endif
-	nb_rx = (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id],
-				     rx_pkts, nb_pkts);
+
+	/* fetch pointer to queue data */
+	p = &rte_eth_fp_ops[port_id];
+	qd = p->rxq.data[queue_id];
+
+#ifdef RTE_ETHDEV_DEBUG_RX
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
+
+	if (qd == NULL) {
+		RTE_ETHDEV_LOG(ERR, "Invalid RX queue_id=%u for port_id=%u\n",
+			queue_id, port_id);
+		return 0;
+	}
+#endif
+
+	nb_rx = p->rx_pkt_burst(qd, rx_pkts, nb_pkts);
 
 #ifdef RTE_ETHDEV_RXTX_CALLBACKS
-	struct rte_eth_rxtx_callback *cb;
+	{
+		void *cb;
 
-	/* __ATOMIC_RELEASE memory order was used when the
-	 * call back was inserted into the list.
-	 * Since there is a clear dependency between loading
-	 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
-	 * not required.
-	 */
-	cb = __atomic_load_n(&dev->post_rx_burst_cbs[queue_id],
+		/* __ATOMIC_RELEASE memory order was used when the
+		 * call back was inserted into the list.
+		 * Since there is a clear dependency between loading
+		 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
+		 * not required.
+		 */
+		cb = __atomic_load_n((void **)&p->rxq.clbk[queue_id],
 				__ATOMIC_RELAXED);
-
-	if (unlikely(cb != NULL)) {
-		do {
-			nb_rx = cb->fn.rx(port_id, queue_id, rx_pkts, nb_rx,
-						nb_pkts, cb->param);
-			cb = cb->next;
-		} while (cb != NULL);
+		if (unlikely(cb != NULL))
+			nb_rx = rte_eth_call_rx_callbacks(port_id, queue_id,
+					rx_pkts, nb_rx, nb_pkts, cb);
 	}
 #endif
 
@@ -5031,16 +5070,27 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
 static inline int
 rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
 {
-	struct rte_eth_dev *dev;
+	struct rte_eth_fp_ops *p;
+	void *qd;
+
+	if (port_id >= RTE_MAX_ETHPORTS ||
+			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
+		RTE_ETHDEV_LOG(ERR,
+			"Invalid port_id=%u or queue_id=%u\n",
+			port_id, queue_id);
+		return -EINVAL;
+	}
+
+	/* fetch pointer to queue data */
+	p = &rte_eth_fp_ops[port_id];
+	qd = p->rxq.data[queue_id];
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	dev = &rte_eth_devices[port_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_queue_count, -ENOTSUP);
-	if (queue_id >= dev->data->nb_rx_queues ||
-	    dev->data->rx_queues[queue_id] == NULL)
+	RTE_FUNC_PTR_OR_ERR_RET(*p->rx_queue_count, -ENOTSUP);
+	if (qd == NULL)
 		return -EINVAL;
 
-	return (int)(*dev->rx_queue_count)(dev->data->rx_queues[queue_id]);
+	return (int)(*p->rx_queue_count)(qd);
 }
 
 /**@{@name Rx hardware descriptor states
@@ -5088,21 +5138,30 @@ static inline int
 rte_eth_rx_descriptor_status(uint16_t port_id, uint16_t queue_id,
 	uint16_t offset)
 {
-	struct rte_eth_dev *dev;
-	void *rxq;
+	struct rte_eth_fp_ops *p;
+	void *qd;
+
+#ifdef RTE_ETHDEV_DEBUG_RX
+	if (port_id >= RTE_MAX_ETHPORTS ||
+			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
+		RTE_ETHDEV_LOG(ERR,
+			"Invalid port_id=%u or queue_id=%u\n",
+			port_id, queue_id);
+		return -EINVAL;
+	}
+#endif
+
+	/* fetch pointer to queue data */
+	p = &rte_eth_fp_ops[port_id];
+	qd = p->rxq.data[queue_id];
 
 #ifdef RTE_ETHDEV_DEBUG_RX
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-#endif
-	dev = &rte_eth_devices[port_id];
-#ifdef RTE_ETHDEV_DEBUG_RX
-	if (queue_id >= dev->data->nb_rx_queues)
+	if (qd == NULL)
 		return -ENODEV;
 #endif
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_descriptor_status, -ENOTSUP);
-	rxq = dev->data->rx_queues[queue_id];
-
-	return (*dev->rx_descriptor_status)(rxq, offset);
+	RTE_FUNC_PTR_OR_ERR_RET(*p->rx_descriptor_status, -ENOTSUP);
+	return (*p->rx_descriptor_status)(qd, offset);
 }
 
 /**@{@name Tx hardware descriptor states
@@ -5149,22 +5208,53 @@ rte_eth_rx_descriptor_status(uint16_t port_id, uint16_t queue_id,
 static inline int rte_eth_tx_descriptor_status(uint16_t port_id,
 	uint16_t queue_id, uint16_t offset)
 {
-	struct rte_eth_dev *dev;
-	void *txq;
+	struct rte_eth_fp_ops *p;
+	void *qd;
+
+#ifdef RTE_ETHDEV_DEBUG_TX
+	if (port_id >= RTE_MAX_ETHPORTS ||
+			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
+		RTE_ETHDEV_LOG(ERR,
+			"Invalid port_id=%u or queue_id=%u\n",
+			port_id, queue_id);
+		return -EINVAL;
+	}
+#endif
+
+	/* fetch pointer to queue data */
+	p = &rte_eth_fp_ops[port_id];
+	qd = p->txq.data[queue_id];
 
 #ifdef RTE_ETHDEV_DEBUG_TX
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-#endif
-	dev = &rte_eth_devices[port_id];
-#ifdef RTE_ETHDEV_DEBUG_TX
-	if (queue_id >= dev->data->nb_tx_queues)
+	if (qd == NULL)
 		return -ENODEV;
 #endif
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->tx_descriptor_status, -ENOTSUP);
-	txq = dev->data->tx_queues[queue_id];
-
-	return (*dev->tx_descriptor_status)(txq, offset);
+	RTE_FUNC_PTR_OR_ERR_RET(*p->tx_descriptor_status, -ENOTSUP);
+	return (*p->tx_descriptor_status)(qd, offset);
 }
+
+/**
+ * @internal
+ * Helper routine for rte_eth_tx_burst().
+ * Should be called before entry PMD's rte_eth_tx_bulk implementation.
+ * Does necessary pre-processing - invokes Tx callbacks if any, etc.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The index of the transmit queue through which output packets must be
+ *   sent.
+ * @param tx_pkts
+ *   The address of an array of *nb_pkts* pointers to *rte_mbuf* structures
+ *   which contain the output packets.
+ * @param nb_pkts
+ *   The maximum number of packets to transmit.
+ * @return
+ *   The number of output packets to transmit.
+ */
+uint16_t rte_eth_call_tx_callbacks(uint16_t port_id, uint16_t queue_id,
+	struct rte_mbuf **tx_pkts, uint16_t nb_pkts, void *opaque);
 
 /**
  * Send a burst of output packets on a transmit queue of an Ethernet device.
@@ -5236,42 +5326,55 @@ static inline uint16_t
 rte_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
 		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
-	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct rte_eth_fp_ops *p;
+	void *qd;
+
+#ifdef RTE_ETHDEV_DEBUG_TX
+	if (port_id >= RTE_MAX_ETHPORTS ||
+			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
+		RTE_ETHDEV_LOG(ERR,
+			"Invalid port_id=%u or queue_id=%u\n",
+			port_id, queue_id);
+		return 0;
+	}
+#endif
+
+	/* fetch pointer to queue data */
+	p = &rte_eth_fp_ops[port_id];
+	qd = p->txq.data[queue_id];
 
 #ifdef RTE_ETHDEV_DEBUG_TX
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->tx_pkt_burst, 0);
 
-	if (queue_id >= dev->data->nb_tx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u\n", queue_id);
+	if (qd == NULL) {
+		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u for port_id=%u\n",
+			queue_id, port_id);
 		return 0;
 	}
 #endif
 
 #ifdef RTE_ETHDEV_RXTX_CALLBACKS
-	struct rte_eth_rxtx_callback *cb;
+	{
+		void *cb;
 
-	/* __ATOMIC_RELEASE memory order was used when the
-	 * call back was inserted into the list.
-	 * Since there is a clear dependency between loading
-	 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
-	 * not required.
-	 */
-	cb = __atomic_load_n(&dev->pre_tx_burst_cbs[queue_id],
+		/* __ATOMIC_RELEASE memory order was used when the
+		 * call back was inserted into the list.
+		 * Since there is a clear dependency between loading
+		 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
+		 * not required.
+		 */
+		cb = __atomic_load_n((void **)&p->txq.clbk[queue_id],
 				__ATOMIC_RELAXED);
-
-	if (unlikely(cb != NULL)) {
-		do {
-			nb_pkts = cb->fn.tx(port_id, queue_id, tx_pkts, nb_pkts,
-					cb->param);
-			cb = cb->next;
-		} while (cb != NULL);
+		if (unlikely(cb != NULL))
+			nb_pkts = rte_eth_call_tx_callbacks(port_id, queue_id,
+					tx_pkts, nb_pkts, cb);
 	}
 #endif
 
-	rte_ethdev_trace_tx_burst(port_id, queue_id, (void **)tx_pkts,
-		nb_pkts);
-	return (*dev->tx_pkt_burst)(dev->data->tx_queues[queue_id], tx_pkts, nb_pkts);
+	nb_pkts = p->tx_pkt_burst(qd, tx_pkts, nb_pkts);
+
+	rte_ethdev_trace_tx_burst(port_id, queue_id, (void **)tx_pkts, nb_pkts);
+	return nb_pkts;
 }
 
 /**
@@ -5334,7 +5437,23 @@ static inline uint16_t
 rte_eth_tx_prepare(uint16_t port_id, uint16_t queue_id,
 		struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
-	struct rte_eth_dev *dev;
+	struct rte_eth_fp_ops *p;
+	void *qd;
+
+#ifdef RTE_ETHDEV_DEBUG_TX
+	if (port_id >= RTE_MAX_ETHPORTS ||
+			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
+		RTE_ETHDEV_LOG(ERR,
+			"Invalid port_id=%u or queue_id=%u\n",
+			port_id, queue_id);
+		rte_errno = ENODEV;
+		return 0;
+	}
+#endif
+
+	/* fetch pointer to queue data */
+	p = &rte_eth_fp_ops[port_id];
+	qd = p->txq.data[queue_id];
 
 #ifdef RTE_ETHDEV_DEBUG_TX
 	if (!rte_eth_dev_is_valid_port(port_id)) {
@@ -5342,23 +5461,18 @@ rte_eth_tx_prepare(uint16_t port_id, uint16_t queue_id,
 		rte_errno = ENODEV;
 		return 0;
 	}
-#endif
-
-	dev = &rte_eth_devices[port_id];
-
-#ifdef RTE_ETHDEV_DEBUG_TX
-	if (queue_id >= dev->data->nb_tx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u\n", queue_id);
+	if (qd == NULL) {
+		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u for port_id=%u\n",
+			queue_id, port_id);
 		rte_errno = EINVAL;
 		return 0;
 	}
 #endif
 
-	if (!dev->tx_pkt_prepare)
+	if (!p->tx_pkt_prepare)
 		return nb_pkts;
 
-	return (*dev->tx_pkt_prepare)(dev->data->tx_queues[queue_id],
-			tx_pkts, nb_pkts);
+	return p->tx_pkt_prepare(qd, tx_pkts, nb_pkts);
 }
 
 #else

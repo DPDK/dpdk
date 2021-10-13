@@ -226,3 +226,34 @@ eth_dev_fp_ops_setup(struct rte_eth_fp_ops *fpo,
 	fpo->txq.data = dev->data->tx_queues;
 	fpo->txq.clbk = (void **)(uintptr_t)dev->pre_tx_burst_cbs;
 }
+
+uint16_t
+rte_eth_call_rx_callbacks(uint16_t port_id, uint16_t queue_id,
+	struct rte_mbuf **rx_pkts, uint16_t nb_rx, uint16_t nb_pkts,
+	void *opaque)
+{
+	const struct rte_eth_rxtx_callback *cb = opaque;
+
+	while (cb != NULL) {
+		nb_rx = cb->fn.rx(port_id, queue_id, rx_pkts, nb_rx,
+				nb_pkts, cb->param);
+		cb = cb->next;
+	}
+
+	return nb_rx;
+}
+
+uint16_t
+rte_eth_call_tx_callbacks(uint16_t port_id, uint16_t queue_id,
+	struct rte_mbuf **tx_pkts, uint16_t nb_pkts, void *opaque)
+{
+	const struct rte_eth_rxtx_callback *cb = opaque;
+
+	while (cb != NULL) {
+		nb_pkts = cb->fn.tx(port_id, queue_id, tx_pkts, nb_pkts,
+				cb->param);
+		cb = cb->next;
+	}
+
+	return nb_pkts;
+}
