@@ -185,11 +185,6 @@ Deprecation Notices
   and ``rte_vhost_driver_set_protocol_features`` functions will be removed
   and the API functions will be made stable in DPDK 21.11.
 
-* cryptodev: The structure ``rte_crypto_sym_vec`` would be updated to add
-  ``dest_sgl`` to support out of place processing.
-  This field will be null for inplace processing.
-  This change is targeted for DPDK 21.11.
-
 * cryptodev: Hide structures ``rte_cryptodev_sym_session`` and
   ``rte_cryptodev_asym_session`` to remove unnecessary indirection between
   session and the private data of session. An opaque pointer can be exposed

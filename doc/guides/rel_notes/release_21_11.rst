@@ -272,6 +272,9 @@ API Changes
 * cryptodev: The structure ``rte_crypto_vec`` was updated to add ``tot_len``
   field to support total buffer length to facilitate protocol offload case.
 
+* cryptodev: The structure ``rte_crypto_sym_vec`` was updated to add
+  ``dest_sgl`` to support out of place processing.
+
 
 ABI Changes
 -----------
