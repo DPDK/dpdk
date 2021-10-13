@@ -559,9 +559,6 @@ ulp_flow_db_fid_alloc(struct bnxt_ulp_context *ulp_ctxt,
 	if (flow_type == BNXT_ULP_FDB_TYPE_REGULAR)
 		ulp_flow_db_func_id_set(flow_db, *fid, func_id);
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-	BNXT_TF_DBG(ERR, "flow_id = %u:%u allocated\n", flow_type, *fid);
-#endif
 	/* return success */
 	return 0;
 }
@@ -823,9 +820,6 @@ ulp_flow_db_fid_free(struct bnxt_ulp_context *ulp_ctxt,
 	if (flow_type == BNXT_ULP_FDB_TYPE_REGULAR)
 		ulp_flow_db_func_id_set(flow_db, fid, 0);
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-	BNXT_TF_DBG(ERR, "flow_id = %u:%u freed\n", flow_type, fid);
-#endif
 	/* all good, return success */
 	return 0;
 }
@@ -1835,113 +1829,3 @@ void ulp_flow_db_shared_session_set(struct ulp_flow_db_res_params *res,
 	if (res && (shared & BNXT_ULP_SHARED_SESSION_YES))
 		res->fdb_flags |= ULP_FDB_FLAG_SHARED_SESSION;
 }
-
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-/*
- * Dump the entry details
- *
- * ulp_ctxt [in] Ptr to ulp_context
- *
- * returns none
- */
-static void ulp_flow_db_res_dump(struct ulp_fdb_resource_info *r,
-				 uint32_t *nxt_res)
-{
-	uint8_t res_func = ulp_flow_db_resource_func_get(r);
-
-	BNXT_TF_DBG(DEBUG, "Resource func = %x, nxt_resource_idx = %x\n",
-		    res_func, (ULP_FLOW_DB_RES_NXT_MASK & r->nxt_resource_idx));
-	if (res_func == BNXT_ULP_RESOURCE_FUNC_EM_TABLE)
-		BNXT_TF_DBG(DEBUG, "EM Handle = 0x%016" PRIX64 "\n",
-			    r->resource_em_handle);
-	else
-		BNXT_TF_DBG(DEBUG, "Handle = 0x%08x\n", r->resource_hndl);
-
-	*nxt_res = 0;
-	ULP_FLOW_DB_RES_NXT_SET(*nxt_res,
-				r->nxt_resource_idx);
-}
-
-/*
- * Dump the flow entry details
- *
- * flow_db [in] Ptr to flow db
- * fid [in] flow id
- *
- * returns none
- */
-void
-ulp_flow_db_debug_fid_dump(struct bnxt_ulp_flow_db *flow_db, uint32_t fid)
-{
-	struct ulp_fdb_resource_info *r;
-	struct bnxt_ulp_flow_tbl *flow_tbl;
-	uint32_t nxt_res = 0;
-	uint32_t def_flag = 0, reg_flag = 0;
-
-	flow_tbl = &flow_db->flow_tbl;
-	if (ulp_flow_db_active_flows_bit_is_set(flow_db,
-						BNXT_ULP_FDB_TYPE_REGULAR, fid))
-		reg_flag = 1;
-	if (ulp_flow_db_active_flows_bit_is_set(flow_db,
-						BNXT_ULP_FDB_TYPE_DEFAULT, fid))
-		def_flag = 1;
-
-	if (reg_flag && def_flag)
-		BNXT_TF_DBG(DEBUG, "RID = %u\n", fid);
-	else if (reg_flag)
-		BNXT_TF_DBG(DEBUG, "Regular fid = %u and func id = %u\n",
-			    fid, flow_db->func_id_tbl[fid]);
-	else if (def_flag)
-		BNXT_TF_DBG(DEBUG, "Default fid = %u\n", fid);
-	else
-		return;
-	/* iterate the resource */
-	nxt_res = fid;
-	do {
-		r = &flow_tbl->flow_resources[nxt_res];
-		ulp_flow_db_res_dump(r, &nxt_res);
-	} while (nxt_res);
-}
-
-/*
- * Dump the flow database entry details
- *
- * ulp_ctxt [in] Ptr to ulp_context
- * flow_id [in] if zero then all fids are dumped.
- *
- * returns none
- */
-int32_t	ulp_flow_db_debug_dump(struct bnxt_ulp_context *ulp_ctxt,
-			       uint32_t flow_id)
-{
-	struct bnxt_ulp_flow_db *flow_db;
-	struct bnxt_ulp_flow_tbl *flow_tbl;
-	uint32_t fid;
-
-	if (!ulp_ctxt || !ulp_ctxt->cfg_data) {
-		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
-		return -EINVAL;
-	}
-	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
-	if (!flow_db) {
-		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
-		return -EINVAL;
-	}
-
-	flow_tbl = &flow_db->flow_tbl;
-	if (flow_id) {
-		ulp_flow_db_debug_fid_dump(flow_db, flow_id);
-		return 0;
-	}
-
-	BNXT_TF_DBG(DEBUG, "Dump flows = %u:%u\n",
-		    flow_tbl->num_flows,
-		    flow_tbl->num_resources);
-	BNXT_TF_DBG(DEBUG, "Head_index = %u, Tail_index = %u\n",
-		    flow_tbl->head_index, flow_tbl->tail_index);
-	for (fid = 1; fid < flow_tbl->num_flows; fid++)
-		ulp_flow_db_debug_fid_dump(flow_db, fid);
-	BNXT_TF_DBG(DEBUG, "Done.\n");
-	return 0;
-}
-#endif

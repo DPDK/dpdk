@@ -13,11 +13,7 @@
 
 #define BNXT_TF_DBG(lvl, fmt, args...)	PMD_DRV_LOG(lvl, fmt, ## args)
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#define BNXT_TF_INF(fmt, args...)	PMD_DRV_LOG(INFO, fmt, ## args)
-#else
 #define BNXT_TF_INF(fmt, args...)
-#endif
 
 #define BNXT_ULP_EM_FLOWS			8192
 #define BNXT_ULP_1M_FLOWS			1000000

@@ -411,28 +411,4 @@ ulp_flow_db_parent_flow_count_reset(struct bnxt_ulp_context *ulp_ctxt);
 void ulp_flow_db_shared_session_set(struct ulp_flow_db_res_params *res,
 				    enum bnxt_ulp_shared_session shared);
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-/*
- * Dump the flow entry details
- *
- * flow_db [in] Ptr to flow db
- * fid [in] flow id
- *
- * returns none
- */
-void
-ulp_flow_db_debug_fid_dump(struct bnxt_ulp_flow_db *flow_db, uint32_t fid);
-
-/*
- * Dump the flow database entry details
- *
- * ulp_ctxt [in] Ptr to ulp_context
- * flow_id [in] if zero then all fids are dumped.
- *
- * returns none
- */
-int32_t	ulp_flow_db_debug_dump(struct bnxt_ulp_context *ulp_ctxt,
-			       uint32_t flow_id);
-#endif
-
 #endif /* _ULP_FLOW_DB_H_ */

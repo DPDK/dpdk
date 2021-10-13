@@ -11,10 +11,6 @@
 #include "ulp_port_db.h"
 #include "tfp.h"
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#include "ulp_tf_debug.h"
-#endif
-
 static uint32_t
 ulp_port_db_allocate_ifindex(struct bnxt_ulp_port_db *port_db)
 {
@@ -206,11 +202,6 @@ int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
 		port_data->port_vport = bnxt_pmd_get_vport(port_id);
 		port_data->port_valid = true;
 	}
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_PORT
-	ulp_port_db_dump(port_db, intf, port_id);
-#endif
-#endif
 	return 0;
 }
 

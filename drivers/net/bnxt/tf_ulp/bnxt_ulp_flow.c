@@ -14,9 +14,6 @@
 #include "ulp_ha_mgr.h"
 #include "ulp_tun.h"
 #include <rte_malloc.h>
-#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#include "ulp_template_debug_proto.h"
-#endif
 
 static int32_t
 bnxt_ulp_flow_validate_args(const struct rte_flow_attr *attr,
@@ -230,15 +227,6 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	ret = ulp_tunnel_offload_process(&params);
 	if (ret == BNXT_TF_RC_ERROR)
 		goto free_fid;
-
-#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_PARSER
-	/* Dump the rte flow pattern */
-	ulp_parser_hdr_info_dump(&params);
-	/* Dump the rte flow action */
-	ulp_parser_act_info_dump(&params);
-#endif
-#endif
 
 	ret = ulp_matcher_pattern_match(&params, &params.class_id);
 	if (ret != BNXT_TF_RC_SUCCESS)

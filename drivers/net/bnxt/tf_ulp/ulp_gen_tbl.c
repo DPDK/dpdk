@@ -10,11 +10,6 @@
 #include "ulp_mapper.h"
 #include "ulp_flow_db.h"
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#include "ulp_template_debug_proto.h"
-#include "ulp_tf_debug.h"
-#endif
-
 /* Retrieve the generic table  initialization parameters for the tbl_idx */
 static struct bnxt_ulp_generic_tbl_params*
 ulp_mapper_gen_tbl_params_get(uint32_t tbl_idx)
