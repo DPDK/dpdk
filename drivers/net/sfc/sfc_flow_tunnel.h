@@ -39,6 +39,12 @@ typedef uint8_t sfc_ft_id_t;
 #define SFC_FT_ID_TO_TUNNEL_MARK(_id) \
 	((_id) + 1)
 
+#define SFC_FT_ID_TO_MARK(_id) \
+	(SFC_FT_ID_TO_TUNNEL_MARK(_id) << SFC_FT_USER_MARK_BITS)
+
+#define SFC_FT_GET_USER_MARK(_mark) \
+	((_mark) & SFC_FT_USER_MARK_MASK)
+
 #define SFC_FT_MAX_NTUNNELS \
 	(RTE_LEN2MASK(SFC_FT_TUNNEL_MARK_BITS, uint8_t) - 1)
 

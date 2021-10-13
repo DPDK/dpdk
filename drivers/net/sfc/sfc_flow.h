@@ -69,6 +69,8 @@ enum sfc_flow_tunnel_rule_type {
 	SFC_FT_RULE_NONE = 0,
 	/* The flow represents a JUMP rule */
 	SFC_FT_RULE_JUMP,
+	/* The flow represents a GROUP rule */
+	SFC_FT_RULE_GROUP,
 };
 
 /* MAE-specific flow specification */

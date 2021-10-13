@@ -1179,6 +1179,36 @@ fail:
 }
 
 static int
+sfc_mae_rule_parse_item_mark(const struct rte_flow_item *item,
+			     struct sfc_flow_parse_ctx *ctx,
+			     struct rte_flow_error *error)
+{
+	const struct rte_flow_item_mark *spec = item->spec;
+	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
+
+	if (spec == NULL) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"NULL spec in item MARK");
+	}
+
+	/*
+	 * This item is used in tunnel offload support only.
+	 * It must go before any network header items. This
+	 * way, sfc_mae_rule_preparse_item_mark() must have
+	 * already parsed it. Only one item MARK is allowed.
+	 */
+	if (ctx_mae->ft_rule_type != SFC_FT_RULE_GROUP ||
+	    spec->id != (uint32_t)SFC_FT_ID_TO_MARK(ctx_mae->ft->id)) {
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item, "invalid item MARK");
+	}
+
+	return 0;
+}
+
+static int
 sfc_mae_rule_parse_item_port_id(const struct rte_flow_item *item,
 				struct sfc_flow_parse_ctx *ctx,
 				struct rte_flow_error *error)
@@ -2127,6 +2157,14 @@ sfc_mae_rule_parse_item_tunnel(const struct rte_flow_item *item,
 
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
+		.type = RTE_FLOW_ITEM_TYPE_MARK,
+		.name = "MARK",
+		.prev_layer = SFC_FLOW_ITEM_ANY_LAYER,
+		.layer = SFC_FLOW_ITEM_ANY_LAYER,
+		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
+		.parse = sfc_mae_rule_parse_item_mark,
+	},
+	{
 		.type = RTE_FLOW_ITEM_TYPE_PORT_ID,
 		.name = "PORT_ID",
 		/*
@@ -2294,6 +2332,19 @@ no_or_id:
 	case SFC_FT_RULE_JUMP:
 		/* No action rule */
 		return 0;
+	case SFC_FT_RULE_GROUP:
+		/*
+		 * Match on recirculation ID rather than
+		 * on the outer rule allocation handle.
+		 */
+		rc = efx_mae_match_spec_recirc_id_set(ctx->match_spec_action,
+					SFC_FT_ID_TO_TUNNEL_MARK(ctx->ft->id));
+		if (rc != 0) {
+			return rte_flow_error_set(error, rc,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					"tunnel offload: GROUP: AR: failed to request match on RECIRC_ID");
+		}
+		return 0;
 	default:
 		SFC_ASSERT(B_FALSE);
 	}
@@ -2329,6 +2380,44 @@ no_or_id:
 }
 
 static int
+sfc_mae_rule_preparse_item_mark(const struct rte_flow_item_mark *spec,
+				struct sfc_mae_parse_ctx *ctx)
+{
+	struct sfc_flow_tunnel *ft;
+	uint32_t user_mark;
+
+	if (spec == NULL) {
+		sfc_err(ctx->sa, "tunnel offload: GROUP: NULL spec in item MARK");
+		return EINVAL;
+	}
+
+	ft = sfc_flow_tunnel_pick(ctx->sa, spec->id);
+	if (ft == NULL) {
+		sfc_err(ctx->sa, "tunnel offload: GROUP: invalid tunnel");
+		return EINVAL;
+	}
+
+	if (ft->refcnt == 0) {
+		sfc_err(ctx->sa, "tunnel offload: GROUP: tunnel=%u does not exist",
+			ft->id);
+		return ENOENT;
+	}
+
+	user_mark = SFC_FT_GET_USER_MARK(spec->id);
+	if (user_mark != 0) {
+		sfc_err(ctx->sa, "tunnel offload: GROUP: invalid item MARK");
+		return EINVAL;
+	}
+
+	sfc_dbg(ctx->sa, "tunnel offload: GROUP: detected");
+
+	ctx->ft_rule_type = SFC_FT_RULE_GROUP;
+	ctx->ft = ft;
+
+	return 0;
+}
+
+static int
 sfc_mae_rule_encap_parse_init(struct sfc_adapter *sa,
 			      const struct rte_flow_item pattern[],
 			      struct sfc_mae_parse_ctx *ctx,
@@ -2347,6 +2436,16 @@ sfc_mae_rule_encap_parse_init(struct sfc_adapter *sa,
 
 	for (;;) {
 		switch (pattern->type) {
+		case RTE_FLOW_ITEM_TYPE_MARK:
+			rc = sfc_mae_rule_preparse_item_mark(pattern->spec,
+							     ctx);
+			if (rc != 0) {
+				return rte_flow_error_set(error, rc,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  pattern, "tunnel offload: GROUP: invalid item MARK");
+			}
+			++pattern;
+			continue;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			ctx->encap_type = EFX_TUNNEL_PROTOCOL_VXLAN;
 			ctx->tunnel_def_mask = &rte_flow_item_vxlan_mask;
@@ -2387,6 +2486,17 @@ sfc_mae_rule_encap_parse_init(struct sfc_adapter *sa,
 						  pattern, "tunnel offload: JUMP: invalid item");
 		}
 		ctx->encap_type = ctx->ft->encap_type;
+		break;
+	case SFC_FT_RULE_GROUP:
+		if (pattern->type == RTE_FLOW_ITEM_TYPE_END) {
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  NULL, "tunnel offload: GROUP: missing tunnel item");
+		} else if (ctx->encap_type != ctx->ft->encap_type) {
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  pattern, "tunnel offload: GROUP: tunnel type mismatch");
+		}
 		break;
 	default:
 		SFC_ASSERT(B_FALSE);
@@ -2436,6 +2546,14 @@ sfc_mae_rule_encap_parse_init(struct sfc_adapter *sa,
 					"OR: failed to initialise RECIRC_ID");
 		}
 		break;
+	case SFC_FT_RULE_GROUP:
+		/* Outermost items -> "ENC" match fields in the action rule. */
+		ctx->field_ids_remap = field_ids_remap_to_encap;
+		ctx->match_spec = ctx->match_spec_action;
+
+		/* No own outer rule; match on JUMP OR's RECIRC_ID is used. */
+		ctx->encap_type = EFX_TUNNEL_PROTOCOL_NONE;
+		break;
 	default:
 		SFC_ASSERT(B_FALSE);
 		break;
@@ -2475,6 +2593,8 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 	case SFC_FT_RULE_JUMP:
 		/* No action rule */
 		break;
+	case SFC_FT_RULE_GROUP:
+		/* FALLTHROUGH */
 	case SFC_FT_RULE_NONE:
 		rc = efx_mae_match_spec_init(sa->nic, EFX_MAE_RULE_ACTION,
 					     spec->priority,
@@ -2508,6 +2628,13 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 	rc = sfc_mae_rule_encap_parse_init(sa, pattern, &ctx_mae, error);
 	if (rc != 0)
 		goto fail_encap_parse_init;
+
+	/*
+	 * sfc_mae_rule_encap_parse_init() may have detected tunnel offload
+	 * GROUP rule. Remember its properties for later use.
+	 */
+	spec->ft_rule_type = ctx_mae.ft_rule_type;
+	spec->ft = ctx_mae.ft;
 
 	rc = sfc_flow_parse_pattern(sa, sfc_flow_items, RTE_DIM(sfc_flow_items),
 				    pattern, &ctx, error);
@@ -3340,6 +3467,13 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_action_set_spec_init;
 
+	if (spec_mae->ft_rule_type == SFC_FT_RULE_GROUP) {
+		/* JUMP rules don't decapsulate packets. GROUP rules do. */
+		rc = efx_mae_action_set_populate_decap(spec);
+		if (rc != 0)
+			goto fail_enforce_ft_decap;
+	}
+
 	/* Cleanup after previous encap. header bounce buffer usage. */
 	sfc_mae_bounce_eh_invalidate(&mae->bounce_eh);
 
@@ -3370,6 +3504,22 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		goto fail_nb_count;
 	}
 
+	switch (spec_mae->ft_rule_type) {
+	case SFC_FT_RULE_NONE:
+		break;
+	case SFC_FT_RULE_GROUP:
+		/*
+		 * Packets that go to the rule's AR have FT mark set (from the
+		 * JUMP rule OR's RECIRC_ID). Remove this mark in matching
+		 * packets. The user may have provided their own action
+		 * MARK above, so don't check the return value here.
+		 */
+		(void)efx_mae_action_set_populate_mark(spec, 0);
+		break;
+	default:
+		SFC_ASSERT(B_FALSE);
+	}
+
 	spec_mae->action_set = sfc_mae_action_set_attach(sa, encap_header,
 							 n_count, spec);
 	if (spec_mae->action_set != NULL) {
@@ -3393,6 +3543,7 @@ fail_process_encap_header:
 fail_rule_parse_action:
 	efx_mae_action_set_spec_fini(sa->nic, spec);
 
+fail_enforce_ft_decap:
 fail_action_set_spec_init:
 	if (rc > 0 && rte_errno == 0) {
 		rc = rte_flow_error_set(error, rc,
