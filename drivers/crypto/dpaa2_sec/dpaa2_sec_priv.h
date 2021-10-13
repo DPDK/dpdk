@@ -15,6 +15,16 @@
 #define CRYPTODEV_NAME_DPAA2_SEC_PMD	crypto_dpaa2_sec
 /**< NXP DPAA2 - SEC PMD device name */
 
+extern uint8_t cryptodev_driver_id;
+
+/* FLE_POOL_NUM_BUFS is set as per the ipsec-secgw application */
+#define FLE_POOL_NUM_BUFS	32000
+#define FLE_POOL_BUF_SIZE	256
+#define FLE_POOL_CACHE_SIZE	512
+#define FLE_SG_MEM_SIZE(num)	(FLE_POOL_BUF_SIZE + ((num) * 32))
+#define SEC_FLC_DHR_OUTBOUND	-114
+#define SEC_FLC_DHR_INBOUND	0
+
 #define MAX_QUEUES		64
 #define MAX_DESC_SIZE		64
 /** private data structure for each DPAA2_SEC device */
@@ -158,6 +168,24 @@ struct dpaa2_pdcp_ctxt {
 	uint32_t hfn_threshold;	/*!< HFN Threashold for key renegotiation */
 };
 #endif
+
+typedef int (*dpaa2_sec_build_fd_t)(
+	void *qp, uint8_t *drv_ctx, struct rte_crypto_vec *data_vec,
+	uint16_t n_data_vecs, union rte_crypto_sym_ofs ofs,
+	struct rte_crypto_va_iova_ptr *iv,
+	struct rte_crypto_va_iova_ptr *digest,
+	struct rte_crypto_va_iova_ptr *aad_or_auth_iv,
+	void *user_data);
+
+typedef int (*dpaa2_sec_build_raw_dp_fd_t)(uint8_t *drv_ctx,
+		       struct rte_crypto_sgl *sgl,
+		       struct rte_crypto_va_iova_ptr *iv,
+		       struct rte_crypto_va_iova_ptr *digest,
+		       struct rte_crypto_va_iova_ptr *auth_iv,
+		       union rte_crypto_sym_ofs ofs,
+		       void *userdata,
+		       struct qbman_fd *fd);
+
 typedef struct dpaa2_sec_session_entry {
 	void *ctxt;
 	uint8_t ctxt_type;
@@ -165,6 +193,8 @@ typedef struct dpaa2_sec_session_entry {
 	enum rte_crypto_cipher_algorithm cipher_alg; /*!< Cipher Algorithm*/
 	enum rte_crypto_auth_algorithm auth_alg; /*!< Authentication Algorithm*/
 	enum rte_crypto_aead_algorithm aead_alg; /*!< AEAD Algorithm*/
+	dpaa2_sec_build_fd_t build_fd;
+	dpaa2_sec_build_raw_dp_fd_t build_raw_dp_fd;
 	union {
 		struct {
 			uint8_t *data;	/**< pointer to key data */
@@ -545,26 +575,6 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 				},
 				.aad_size = { 0 }
 			}, }
-		}, }
-	},
-	{	/* NULL (CIPHER) */
-		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-		{.sym = {
-			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
-			{.cipher = {
-				.algo = RTE_CRYPTO_CIPHER_NULL,
-				.block_size = 1,
-				.key_size = {
-					.min = 0,
-					.max = 0,
-					.increment = 0
-				},
-				.iv_size = {
-					.min = 0,
-					.max = 0,
-					.increment = 0
-				}
-			}, },
 		}, }
 	},
 	{	/* AES CBC */
@@ -982,5 +992,15 @@ calc_chksum(void *buffer, int len)
 
 	return  result;
 }
+
+int
+dpaa2_sec_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
+	struct rte_crypto_raw_dp_ctx *raw_dp_ctx,
+	enum rte_crypto_op_sess_type sess_type,
+	union rte_cryptodev_session_ctx session_ctx, uint8_t is_update);
+
+int
+dpaa2_sec_get_dp_ctx_size(struct rte_cryptodev *dev);
+
 
 #endif /* _DPAA2_SEC_PMD_PRIVATE_H_ */

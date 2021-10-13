@@ -49,15 +49,8 @@
 #define FSL_MC_DPSECI_DEVID     3
 
 #define NO_PREFETCH 0
-/* FLE_POOL_NUM_BUFS is set as per the ipsec-secgw application */
-#define FLE_POOL_NUM_BUFS	32000
-#define FLE_POOL_BUF_SIZE	256
-#define FLE_POOL_CACHE_SIZE	512
-#define FLE_SG_MEM_SIZE(num)	(FLE_POOL_BUF_SIZE + ((num) * 32))
-#define SEC_FLC_DHR_OUTBOUND	-114
-#define SEC_FLC_DHR_INBOUND	0
 
-static uint8_t cryptodev_driver_id;
+uint8_t cryptodev_driver_id;
 
 #ifdef RTE_LIB_SECURITY
 static inline int
@@ -3828,6 +3821,9 @@ static struct rte_cryptodev_ops crypto_ops = {
 	.sym_session_get_size     = dpaa2_sec_sym_session_get_size,
 	.sym_session_configure    = dpaa2_sec_sym_session_configure,
 	.sym_session_clear        = dpaa2_sec_sym_session_clear,
+	/* Raw data-path API related operations */
+	.sym_get_raw_dp_ctx_size = dpaa2_sec_get_dp_ctx_size,
+	.sym_configure_raw_dp_ctx = dpaa2_sec_configure_raw_dp_ctx,
 };
 
 #ifdef RTE_LIB_SECURITY
@@ -3910,6 +3906,7 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 			RTE_CRYPTODEV_FF_HW_ACCELERATED |
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
 			RTE_CRYPTODEV_FF_SECURITY |
+			RTE_CRYPTODEV_FF_SYM_RAW_DP |
 			RTE_CRYPTODEV_FF_IN_PLACE_SGL |
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT |
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |

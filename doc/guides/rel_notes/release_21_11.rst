@@ -142,6 +142,7 @@ New Features
 * **Updated NXP dpaa2_sec crypto PMD.**
 
   * Added PDCP short MAC-I support.
+  * Added raw vector datapath API support.
 
 * **Updated the ACC100 bbdev PMD.**
 
