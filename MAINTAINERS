@@ -458,6 +458,7 @@ DMA device API - EXPERIMENTAL
 M: Chengwen Feng <fengchengwen@huawei.com>
 F: lib/dmadev/
 F: drivers/dma/skeleton/
+F: app/test/test_dmadev*
 F: doc/guides/prog_guide/dmadev.rst
 
 Eventdev API
