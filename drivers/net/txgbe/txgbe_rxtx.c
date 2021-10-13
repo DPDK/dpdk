@@ -562,10 +562,10 @@ tx_desc_ol_flags_to_ptid(uint64_t oflags, uint32_t ptype)
 	/* Tunnel */
 	switch (oflags & PKT_TX_TUNNEL_MASK) {
 	case PKT_TX_TUNNEL_VXLAN:
+	case PKT_TX_TUNNEL_VXLAN_GPE:
 		ptype |= RTE_PTYPE_L2_ETHER |
 			 RTE_PTYPE_L3_IPV4 |
-			 RTE_PTYPE_TUNNEL_VXLAN;
-		ptype |= RTE_PTYPE_INNER_L2_ETHER;
+			 RTE_PTYPE_TUNNEL_GRENAT;
 		break;
 	case PKT_TX_TUNNEL_GRE:
 		ptype |= RTE_PTYPE_L2_ETHER |
@@ -578,11 +578,6 @@ tx_desc_ol_flags_to_ptid(uint64_t oflags, uint32_t ptype)
 			 RTE_PTYPE_L3_IPV4 |
 			 RTE_PTYPE_TUNNEL_GENEVE;
 		ptype |= RTE_PTYPE_INNER_L2_ETHER;
-		break;
-	case PKT_TX_TUNNEL_VXLAN_GPE:
-		ptype |= RTE_PTYPE_L2_ETHER |
-			 RTE_PTYPE_L3_IPV4 |
-			 RTE_PTYPE_TUNNEL_VXLAN_GPE;
 		break;
 	case PKT_TX_TUNNEL_IPIP:
 	case PKT_TX_TUNNEL_IP:
@@ -696,6 +691,30 @@ txgbe_get_tun_len(struct rte_mbuf *mbuf)
 	return tun_len;
 }
 
+static inline uint8_t
+txgbe_parse_tun_ptid(struct rte_mbuf *tx_pkt)
+{
+	uint64_t l2_none, l2_mac, l2_mac_vlan;
+	uint8_t ptid = 0;
+
+	if ((tx_pkt->ol_flags & (PKT_TX_TUNNEL_VXLAN |
+				PKT_TX_TUNNEL_VXLAN_GPE)) == 0)
+		return ptid;
+
+	l2_none = sizeof(struct txgbe_udphdr) + sizeof(struct txgbe_vxlanhdr);
+	l2_mac = l2_none + sizeof(struct rte_ether_hdr);
+	l2_mac_vlan = l2_mac + sizeof(struct rte_vlan_hdr);
+
+	if (tx_pkt->l2_len == l2_none)
+		ptid = TXGBE_PTID_TUN_EIG;
+	else if (tx_pkt->l2_len == l2_mac)
+		ptid = TXGBE_PTID_TUN_EIGM;
+	else if (tx_pkt->l2_len == l2_mac_vlan)
+		ptid = TXGBE_PTID_TUN_EIGMV;
+
+	return ptid;
+}
+
 uint16_t
 txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
@@ -759,6 +778,8 @@ txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		if (tx_ol_req) {
 			tx_offload.ptid = tx_desc_ol_flags_to_ptid(tx_ol_req,
 					tx_pkt->packet_type);
+			if (tx_offload.ptid & TXGBE_PTID_PKT_TUN)
+				tx_offload.ptid |= txgbe_parse_tun_ptid(tx_pkt);
 			tx_offload.l2_len = tx_pkt->l2_len;
 			tx_offload.l3_len = tx_pkt->l3_len;
 			tx_offload.l4_len = tx_pkt->l4_len;
