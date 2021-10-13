@@ -7381,9 +7381,12 @@ parse_hex(struct context *ctx, const struct token *token,
 		hexlen -= 2;
 	}
 	if (hexlen > length)
-		return -1;
+		goto error;
 	ret = parse_hex_string(str, hex_tmp, &hexlen);
 	if (ret < 0)
+		goto error;
+	/* Check the converted binary fits into data buffer. */
+	if (hexlen > size)
 		goto error;
 	/* Let parse_int() fill length information first. */
 	ret = snprintf(tmp, sizeof(tmp), "%u", hexlen);
