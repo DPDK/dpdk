@@ -3545,6 +3545,31 @@ ptype_unknown:
 }
 
 int
+rte_eth_macaddrs_get(uint16_t port_id, struct rte_ether_addr *ma,
+	unsigned int num)
+{
+	int32_t ret;
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+
+	if (ma == NULL) {
+		RTE_ETHDEV_LOG(ERR, "%s: invalid parameters\n", __func__);
+		return -EINVAL;
+	}
+
+	/* will check for us that port_id is a valid one */
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
+
+	dev = &rte_eth_devices[port_id];
+	num = RTE_MIN(dev_info.max_mac_addrs, num);
+	memcpy(ma, dev->data->mac_addrs, num * sizeof(ma[0]));
+
+	return num;
+}
+
+int
 rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr)
 {
 	struct rte_eth_dev *dev;

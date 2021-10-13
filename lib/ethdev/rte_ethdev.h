@@ -3008,6 +3008,30 @@ int rte_eth_dev_set_rx_queue_stats_mapping(uint16_t port_id,
 int rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Retrieve the Ethernet addresses of an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param ma
+ *   A pointer to an array of structures of type *ether_addr* to be filled with
+ *   the Ethernet addresses of the Ethernet device.
+ * @param num
+ *   Number of elements in the @p ma array.
+ *   Note that  rte_eth_dev_info::max_mac_addrs can be used to retrieve
+ *   max number of Ethernet addresses for given port.
+ * @return
+ *   - number of retrieved addresses if successful
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+__rte_experimental
+int rte_eth_macaddrs_get(uint16_t port_id, struct rte_ether_addr *ma,
+	unsigned int num);
+
+/**
  * Retrieve the contextual information of an Ethernet device.
  *
  * As part of this function, a number of of fields in dev_info will be

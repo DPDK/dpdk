@@ -5215,20 +5215,20 @@ show_macs(portid_t port_id)
 {
 	char buf[RTE_ETHER_ADDR_FMT_SIZE];
 	struct rte_eth_dev_info dev_info;
-	struct rte_ether_addr *addr;
-	uint32_t i, num_macs = 0;
-	struct rte_eth_dev *dev;
-
-	dev = &rte_eth_devices[port_id];
+	int32_t i, rc, num_macs = 0;
 
 	if (eth_dev_info_get_print_err(port_id, &dev_info))
 		return;
 
-	for (i = 0; i < dev_info.max_mac_addrs; i++) {
-		addr = &dev->data->mac_addrs[i];
+	struct rte_ether_addr addr[dev_info.max_mac_addrs];
+	rc = rte_eth_macaddrs_get(port_id, addr, dev_info.max_mac_addrs);
+	if (rc < 0)
+		return;
+
+	for (i = 0; i < rc; i++) {
 
 		/* skip zero address */
-		if (rte_is_zero_ether_addr(addr))
+		if (rte_is_zero_ether_addr(&addr[i]))
 			continue;
 
 		num_macs++;
@@ -5236,14 +5236,13 @@ show_macs(portid_t port_id)
 
 	printf("Number of MAC address added: %d\n", num_macs);
 
-	for (i = 0; i < dev_info.max_mac_addrs; i++) {
-		addr = &dev->data->mac_addrs[i];
+	for (i = 0; i < rc; i++) {
 
 		/* skip zero address */
-		if (rte_is_zero_ether_addr(addr))
+		if (rte_is_zero_ether_addr(&addr[i]))
 			continue;
 
-		rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, addr);
+		rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, &addr[i]);
 		printf("  %s\n", buf);
 	}
 }
