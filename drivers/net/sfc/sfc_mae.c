@@ -16,6 +16,7 @@
 #include "efx.h"
 
 #include "sfc.h"
+#include "sfc_flow_tunnel.h"
 #include "sfc_mae_counter.h"
 #include "sfc_log.h"
 #include "sfc_switch.h"
@@ -2922,6 +2923,11 @@ sfc_mae_rule_parse_action_mark(struct sfc_adapter *sa,
 			       efx_mae_actions_t *spec)
 {
 	int rc;
+
+	if (conf->id > SFC_FT_USER_MARK_MASK) {
+		sfc_err(sa, "the mark value is too large");
+		return EINVAL;
+	}
 
 	rc = efx_mae_action_set_populate_mark(spec, conf->id);
 	if (rc != 0)

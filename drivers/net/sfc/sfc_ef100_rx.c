@@ -20,7 +20,9 @@
 #include "efx_regs_ef100.h"
 #include "efx.h"
 
+#include "sfc.h"
 #include "sfc_debug.h"
+#include "sfc_flow_tunnel.h"
 #include "sfc_tweak.h"
 #include "sfc_dp_rx.h"
 #include "sfc_kvargs.h"
@@ -75,6 +77,7 @@ struct sfc_ef100_rxq {
 	uint64_t			rearm_data;
 	uint16_t			buf_size;
 	uint16_t			prefix_size;
+	uint32_t			user_mark_mask;
 
 	unsigned int			evq_hw_index;
 	volatile void			*evq_prime;
@@ -423,10 +426,13 @@ sfc_ef100_rx_prefix_to_offloads(const struct sfc_ef100_rxq *rxq,
 
 	if (rxq->flags & SFC_EF100_RXQ_USER_MARK) {
 		uint32_t user_mark;
+		uint32_t mark;
 
 		/* EFX_XWORD_FIELD converts little-endian to CPU */
-		user_mark = EFX_XWORD_FIELD(rx_prefix[0],
-					    ESF_GZ_RX_PREFIX_USER_MARK);
+		mark = EFX_XWORD_FIELD(rx_prefix[0],
+				       ESF_GZ_RX_PREFIX_USER_MARK);
+
+		user_mark = mark & rxq->user_mark_mask;
 		if (user_mark != SFC_EF100_USER_MARK_INVALID) {
 			ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 			m->hash.fdir.hi = user_mark;
@@ -760,6 +766,10 @@ sfc_ef100_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 	rxq->max_fill_level = info->max_fill_level;
 	rxq->refill_threshold = info->refill_threshold;
 	rxq->prefix_size = info->prefix_size;
+
+	SFC_ASSERT(info->user_mark_mask != 0);
+	rxq->user_mark_mask = info->user_mark_mask;
+
 	rxq->buf_size = info->buf_size;
 	rxq->refill_mb_pool = info->refill_mb_pool;
 	rxq->rxq_hw_ring = info->rxq_hw_ring;

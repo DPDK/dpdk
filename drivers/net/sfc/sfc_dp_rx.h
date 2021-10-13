@@ -92,6 +92,9 @@ struct sfc_dp_rx_qcreate_info {
 	efsys_dma_addr_t	fcw_offset;
 	/** VI window size shift */
 	unsigned int		vi_window_shift;
+
+	/** Mask to extract user bits from Rx prefix mark field */
+	uint32_t		user_mark_mask;
 };
 
 /**

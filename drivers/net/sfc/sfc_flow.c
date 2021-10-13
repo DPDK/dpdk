@@ -22,6 +22,7 @@
 #include "sfc_rx.h"
 #include "sfc_filter.h"
 #include "sfc_flow.h"
+#include "sfc_flow_tunnel.h"
 #include "sfc_log.h"
 #include "sfc_dp_rx.h"
 #include "sfc_mae_counter.h"
@@ -1740,8 +1741,13 @@ sfc_flow_parse_mark(struct sfc_adapter *sa,
 	struct sfc_flow_spec *spec = &flow->spec;
 	struct sfc_flow_spec_filter *spec_filter = &spec->filter;
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	uint32_t mark_max;
 
-	if (mark == NULL || mark->id > encp->enc_filter_action_mark_max)
+	mark_max = encp->enc_filter_action_mark_max;
+	if (sfc_flow_tunnel_is_active(sa))
+		mark_max = RTE_MIN(mark_max, SFC_FT_USER_MARK_MASK);
+
+	if (mark == NULL || mark->id > mark_max)
 		return EINVAL;
 
 	spec_filter->template.efs_flags |= EFX_FILTER_FLAG_ACTION_MARK;
