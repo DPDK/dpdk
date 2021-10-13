@@ -1,0 +1,20 @@
+EXPERIMENTAL {
+	global:
+
+	rte_dma_count_avail;
+	rte_dma_dev_max;
+	rte_dma_get_dev_id_by_name;
+	rte_dma_is_valid;
+
+	local: *;
+};
+
+INTERNAL {
+	global:
+
+	rte_dma_devices;
+	rte_dma_pmd_allocate;
+	rte_dma_pmd_release;
+
+	local: *;
+};

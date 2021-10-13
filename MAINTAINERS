@@ -454,6 +454,11 @@ F: app/test-regex/
 F: doc/guides/prog_guide/regexdev.rst
 F: doc/guides/regexdevs/features/default.ini
 
+DMA device API - EXPERIMENTAL
+M: Chengwen Feng <fengchengwen@huawei.com>
+F: lib/dmadev/
+F: doc/guides/prog_guide/dmadev.rst
+
 Eventdev API
 M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev

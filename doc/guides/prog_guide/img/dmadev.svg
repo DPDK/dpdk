@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright(c) 2021 HiSilicon Limited -->
+
+<svg
+   width="128.64288mm"
+   height="95.477707mm"
+   viewBox="0 0 192.96433 143.21656"
+   version="1.1"
+   id="svg934"
+   inkscape:version="1.1 (c68e22c387, 2021-05-23)"
+   sodipodi:docname="dmadev.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview936"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="false"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:showpageshadow="false"
+     inkscape:zoom="1.332716"
+     inkscape:cx="335.03011"
+     inkscape:cy="143.69152"
+     inkscape:window-width="1920"
+     inkscape:window-height="976"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1"
+     scale-x="1.5"
+     units="mm" />
+  <defs
+     id="defs931">
+    <rect
+       x="342.43954"
+       y="106.56832"
+       width="58.257381"
+       height="137.82834"
+       id="rect17873" />
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-0.13857517,-21.527306)">
+    <rect
+       style="fill:#c9c9ff;fill-opacity:1;stroke-width:0.296755"
+       id="rect31-9"
+       width="50"
+       height="28"
+       x="0.13857517"
+       y="21.527306"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:7.05556px;line-height:1.25;font-family:sans-serif;white-space:pre;inline-size:70.1114;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="54.136707"
+       y="18.045568"
+       id="text803-1"
+       transform="translate(-49.110795,15.205683)"><tspan
+         x="54.136707"
+         y="18.045568"
+         id="tspan1045">virtual DMA </tspan><tspan
+         x="54.136707"
+         y="26.865018"
+         id="tspan1047">channel</tspan></text>
+    <rect
+       style="fill:#c9c9ff;fill-opacity:1;stroke-width:0.296755"
+       id="rect31-9-5"
+       width="50"
+       height="28"
+       x="60.138577"
+       y="21.527306"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:7.05556px;line-height:1.25;font-family:sans-serif;white-space:pre;inline-size:70.1114;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="54.136707"
+       y="18.045568"
+       id="text803-1-4"
+       transform="translate(10.512565,15.373298)"><tspan
+         x="54.136707"
+         y="18.045568"
+         id="tspan1049">virtual DMA </tspan><tspan
+         x="54.136707"
+         y="26.865018"
+         id="tspan1051">channel</tspan></text>
+    <rect
+       style="fill:#c9c9ff;fill-opacity:1;stroke-width:0.296755"
+       id="rect31-9-5-3"
+       width="50"
+       height="28"
+       x="137.43863"
+       y="21.527306"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:7.05556px;line-height:1.25;font-family:sans-serif;white-space:pre;inline-size:70.1114;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="54.136707"
+       y="18.045568"
+       id="text803-1-4-8"
+       transform="translate(88.79231,15.373299)"><tspan
+         x="54.136707"
+         y="18.045568"
+         id="tspan1053">virtual DMA </tspan><tspan
+         x="54.136707"
+         y="26.865018"
+         id="tspan1055">channel</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26458333,0,0,0.26458333,-0.04940429,21.408845)"
+       id="text17871"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;font-family:sans-serif;white-space:pre;shape-inside:url(#rect17873);fill:#000000;fill-opacity:1;stroke:none" />
+    <rect
+       style="fill:#c9c9ff;fill-opacity:1;stroke-width:0.218145"
+       id="rect31-9-5-8"
+       width="38.34557"
+       height="19.729115"
+       x="36.138577"
+       y="64.827354"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:7.05556px;line-height:1.25;font-family:sans-serif;white-space:pre;inline-size:70.1114;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="54.136707"
+       y="18.045568"
+       id="text803-1-4-3"
+       transform="translate(-13.394978,59.135217)"><tspan
+         x="54.136707"
+         y="18.045568"
+         id="tspan1057">dmadev</tspan></text>
+    <rect
+       style="fill:#c9c9ff;fill-opacity:1;stroke-width:0.307089"
+       id="rect31-9-5-8-0"
+       width="60.902534"
+       height="24.616455"
+       x="25.196909"
+       y="98.47744"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:7.05556px;line-height:1.25;font-family:sans-serif;white-space:pre;inline-size:70.1114;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="54.136707"
+       y="18.045568"
+       id="text803-1-4-3-76"
+       transform="translate(-24.485484,90.97883)"><tspan
+         x="54.136707"
+         y="18.045568"
+         id="tspan1059">hardware DMA </tspan><tspan
+         x="54.136707"
+         y="26.865018"
+         id="tspan1061">channel</tspan></text>
+    <rect
+       style="fill:#c9c9ff;fill-opacity:1;stroke-width:0.307089"
+       id="rect31-9-5-8-0-6"
+       width="60.902534"
+       height="24.616455"
+       x="132.20036"
+       y="98.47744"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:7.05556px;line-height:1.25;font-family:sans-serif;white-space:pre;inline-size:70.1114;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="54.136707"
+       y="18.045568"
+       id="text803-1-4-3-76-7"
+       transform="translate(82.950904,90.79085)"><tspan
+         x="54.136707"
+         y="18.045568"
+         id="tspan1063">hardware DMA </tspan><tspan
+         x="54.136707"
+         y="26.865018"
+         id="tspan1065">channel</tspan></text>
+    <rect
+       style="fill:#c9c9ff;fill-opacity:1;stroke-width:0.307089"
+       id="rect31-9-5-8-0-4"
+       width="60.902534"
+       height="24.616455"
+       x="76.810928"
+       y="140.12741"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:7.05556px;line-height:1.25;font-family:sans-serif;white-space:pre;inline-size:70.1114;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="54.136707"
+       y="18.045568"
+       id="text803-1-4-3-76-4"
+       transform="translate(27.032341,133.10574)"><tspan
+         x="54.136707"
+         y="18.045568"
+         id="tspan1067">hardware DMA </tspan><tspan
+         x="54.136707"
+         y="26.865018"
+         id="tspan1069">controller</tspan></text>
+    <rect
+       style="fill:#c9c9ff;fill-opacity:1;stroke-width:0.218145"
+       id="rect31-9-5-8-5"
+       width="38.34557"
+       height="19.729115"
+       x="143.43863"
+       y="64.827354"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:7.05556px;line-height:1.25;font-family:sans-serif;white-space:pre;inline-size:70.1114;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="54.136707"
+       y="18.045568"
+       id="text803-1-4-3-7"
+       transform="translate(94.92597,59.664385)"><tspan
+         x="54.136707"
+         y="18.045568"
+         id="tspan1071">dmadev</tspan></text>
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 74.476373,49.527306 62.82407,64.827354"
+       id="path45308"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect31-9-5"
+       inkscape:connection-end="#rect31-9-5-8" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 35.924309,49.527306 47.711612,64.827354"
+       id="path45310"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect31-9"
+       inkscape:connection-end="#rect31-9-5-8" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 55.403414,84.556469 55.53332,98.47744"
+       id="path45312"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect31-9-5-8"
+       inkscape:connection-end="#rect31-9-5-8-0" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 162.62241,84.556469 0.0155,13.920971"
+       id="path45320"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect31-9-5-8-5"
+       inkscape:connection-end="#rect31-9-5-8-0-6" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 146.28317,123.09389 -22.65252,17.03352"
+       id="path45586"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect31-9-5-8-0-6"
+       inkscape:connection-end="#rect31-9-5-8-0-4" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 70.900938,123.09389 21.108496,17.03352"
+       id="path45588"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect31-9-5-8-0"
+       inkscape:connection-end="#rect31-9-5-8-0-4" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 162.50039,49.527306 0.0675,15.300048"
+       id="path45956"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect31-9-5-3"
+       inkscape:connection-end="#rect31-9-5-8-5" />
+  </g>
+</svg>

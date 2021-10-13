@@ -67,6 +67,11 @@ New Features
   * Modified to allow ``--huge-dir`` option to specify a sub-directory
     within a hugetlbfs mountpoint.
 
+* **Added dmadev library.**
+
+  * Added a DMA device framework for management and provision of
+    hardware and software DMA devices.
+
 * **Added new RSS offload types for IPv4/L4 checksum in RSS flow.**
 
   Added macros ETH_RSS_IPV4_CHKSUM and ETH_RSS_L4_CHKSUM, now IPv4 and

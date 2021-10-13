@@ -27,6 +27,7 @@ Programmer's Guide
     cryptodev_lib
     compressdev
     regexdev
+    dmadev
     rte_security
     rawdev
     link_bonding_poll_mode_drv_lib

@@ -21,6 +21,7 @@ DPDK documentation
    compressdevs/index
    vdpadevs/index
    regexdevs/index
+   dmadevs/index
    eventdevs/index
    rawdevs/index
    mempool/index
