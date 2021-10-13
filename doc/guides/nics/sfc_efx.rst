@@ -192,6 +192,8 @@ Supported actions (***non-transfer*** rules):
 
 Supported pattern items (***transfer*** rules):
 
+- PORT_REPRESENTOR (cannot repeat; conflicts with other traffic source items)
+
 - PORT_ID (cannot repeat; conflicts with other traffic source items)
 
 - PHY_PORT (cannot repeat; conflicts with other traffic source items)

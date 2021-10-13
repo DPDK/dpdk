@@ -1285,6 +1285,66 @@ sfc_mae_rule_parse_item_port_id(const struct rte_flow_item *item,
 }
 
 static int
+sfc_mae_rule_parse_item_port_representor(const struct rte_flow_item *item,
+					 struct sfc_flow_parse_ctx *ctx,
+					 struct rte_flow_error *error)
+{
+	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
+	const struct rte_flow_item_ethdev supp_mask = {
+		.port_id = 0xffff,
+	};
+	const void *def_mask = &rte_flow_item_ethdev_mask;
+	const struct rte_flow_item_ethdev *spec = NULL;
+	const struct rte_flow_item_ethdev *mask = NULL;
+	efx_mport_sel_t mport_sel;
+	int rc;
+
+	if (ctx_mae->match_mport_set) {
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Can't handle multiple traffic source items");
+	}
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec, (const void **)&mask,
+				 (const void *)&supp_mask, def_mask,
+				 sizeof(struct rte_flow_item_ethdev), error);
+	if (rc != 0)
+		return rc;
+
+	if (mask->port_id != supp_mask.port_id) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Bad mask in the PORT_REPRESENTOR pattern item");
+	}
+
+	/* If "spec" is not set, could be any port ID */
+	if (spec == NULL)
+		return 0;
+
+	rc = sfc_mae_switch_port_by_ethdev(
+			ctx_mae->sa->mae.switch_domain_id,
+			spec->port_id, &mport_sel);
+	if (rc != 0) {
+		return rte_flow_error_set(error, rc,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Can't find RTE ethdev by the port ID");
+	}
+
+	rc = efx_mae_match_spec_mport_set(ctx_mae->match_spec,
+					  &mport_sel, NULL);
+	if (rc != 0) {
+		return rte_flow_error_set(error, rc,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Failed to set MPORT for the port ID");
+	}
+
+	ctx_mae->match_mport_set = B_TRUE;
+
+	return 0;
+}
+
+static int
 sfc_mae_rule_parse_item_phy_port(const struct rte_flow_item *item,
 				 struct sfc_flow_parse_ctx *ctx,
 				 struct rte_flow_error *error)
@@ -2210,6 +2270,18 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.layer = SFC_FLOW_ITEM_ANY_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
 		.parse = sfc_mae_rule_parse_item_port_id,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR,
+		.name = "PORT_REPRESENTOR",
+		/*
+		 * In terms of RTE flow, this item is a META one,
+		 * and its position in the pattern is don't care.
+		 */
+		.prev_layer = SFC_FLOW_ITEM_ANY_LAYER,
+		.layer = SFC_FLOW_ITEM_ANY_LAYER,
+		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
+		.parse = sfc_mae_rule_parse_item_port_representor,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_PHY_PORT,
