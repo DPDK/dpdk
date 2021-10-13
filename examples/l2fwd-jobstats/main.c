@@ -16,7 +16,6 @@
 #include <rte_memcpy.h>
 #include <rte_eal.h>
 #include <rte_launch.h>
-#include <rte_atomic.h>
 #include <rte_cycles.h>
 #include <rte_prefetch.h>
 #include <rte_lcore.h>
@@ -81,7 +80,7 @@ struct lcore_queue_conf {
 	struct rte_jobstats idle_job;
 	struct rte_jobstats_context jobs_context;
 
-	rte_atomic16_t stats_read_pending;
+	uint16_t stats_read_pending;
 	rte_spinlock_t lock;
 } __rte_cache_aligned;
 /* >8 End of list of queues to be polled for given lcore. */
@@ -155,9 +154,9 @@ show_lcore_stats(unsigned lcore_id)
 	uint64_t collection_time = rte_get_timer_cycles();
 
 	/* Ask forwarding thread to give us stats. */
-	rte_atomic16_set(&qconf->stats_read_pending, 1);
+	__atomic_store_n(&qconf->stats_read_pending, 1, __ATOMIC_RELAXED);
 	rte_spinlock_lock(&qconf->lock);
-	rte_atomic16_set(&qconf->stats_read_pending, 0);
+	__atomic_store_n(&qconf->stats_read_pending, 0, __ATOMIC_RELAXED);
 
 	/* Collect context statistics. */
 	stats_period = ctx->state_time - ctx->start_time;
@@ -526,8 +525,8 @@ l2fwd_main_loop(void)
 				repeats++;
 				need_manage = qconf->flush_timer.expire < now;
 				/* Check if we was esked to give a stats. */
-				stats_read_pending =
-						rte_atomic16_read(&qconf->stats_read_pending);
+				stats_read_pending = __atomic_load_n(&qconf->stats_read_pending,
+						__ATOMIC_RELAXED);
 				need_manage |= stats_read_pending;
 
 				for (i = 0; i < qconf->n_rx_port && !need_manage; i++)
