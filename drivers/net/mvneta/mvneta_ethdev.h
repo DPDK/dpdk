@@ -7,7 +7,7 @@
 #ifndef _MVNETA_ETHDEV_H_
 #define _MVNETA_ETHDEV_H_
 
-#include <rte_ethdev.h>
+#include <ethdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
 

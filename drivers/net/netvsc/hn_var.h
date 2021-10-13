@@ -7,6 +7,7 @@
  */
 
 #include <rte_eal_paging.h>
+#include <ethdev_driver.h>
 
 /*
  * Tunable ethdev params

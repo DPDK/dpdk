@@ -73,7 +73,6 @@ DPDK_22 {
 	rte_eth_dev_udp_tunnel_port_add;
 	rte_eth_dev_udp_tunnel_port_delete;
 	rte_eth_dev_vlan_filter;
-	rte_eth_devices;
 	rte_eth_find_next;
 	rte_eth_find_next_of;
 	rte_eth_find_next_owned_by;
@@ -269,6 +268,7 @@ INTERNAL {
 	rte_eth_dev_release_port;
 	rte_eth_dev_internal_reset;
 	rte_eth_devargs_parse;
+	rte_eth_devices;
 	rte_eth_dma_zone_free;
 	rte_eth_dma_zone_reserve;
 	rte_eth_hairpin_queue_peer_bind;

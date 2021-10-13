@@ -11,7 +11,7 @@
 #include <rte_common.h>
 #include <rte_dev.h>
 #include <rte_errno.h>
-#include <rte_ethdev.h>
+#include <ethdev_driver.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_service_component.h>

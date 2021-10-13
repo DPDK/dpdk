@@ -12,7 +12,7 @@
 #include <rte_mbuf.h>
 #include <rte_io.h>
 #include <rte_rwlock.h>
-#include <rte_ethdev.h>
+#include <ethdev_driver.h>
 
 #include "../cxgbe_compat.h"
 #include "../cxgbe_ofld.h"

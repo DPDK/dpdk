@@ -340,6 +340,12 @@ ABI Changes
   to user, it still counts as an ABI change, as ``eth_rx_queue_count_t``
   is used by  public inline function ``rte_eth_rx_queue_count``.
 
+* ethdev: Made ``rte_eth_dev``, ``rte_eth_dev_data``, ``rte_eth_rxtx_callback``
+  private data structures. ``rte_eth_devices[]`` can't be accessed directly
+  by user any more. While it is an ABI breakage, this change is intended
+  to be transparent for both users (no changes in user app is required) and
+  PMD developers (no changes in PMD is required).
+
 * security: ``rte_security_set_pkt_metadata`` and ``rte_security_get_userdata``
   routines used by inline outbound and inline inbound security processing were
   made inline and enhanced to do simple 64-bit set/get for PMDs that do not

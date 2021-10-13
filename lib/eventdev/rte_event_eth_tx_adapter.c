@@ -3,7 +3,7 @@
  */
 #include <rte_spinlock.h>
 #include <rte_service_component.h>
-#include <rte_ethdev.h>
+#include <ethdev_driver.h>
 
 #include "eventdev_pmd.h"
 #include "rte_eventdev_trace.h"

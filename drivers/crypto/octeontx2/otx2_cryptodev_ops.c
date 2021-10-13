@@ -6,7 +6,7 @@
 
 #include <cryptodev_pmd.h>
 #include <rte_errno.h>
-#include <rte_ethdev.h>
+#include <ethdev_driver.h>
 #include <rte_event_crypto_adapter.h>
 
 #include "otx2_cryptodev.h"

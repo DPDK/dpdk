@@ -2,7 +2,7 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
-#include <rte_ethdev.h>
+#include <ethdev_driver.h>
 #include <rte_string_fns.h>
 #ifdef RTE_LIB_TELEMETRY
 #include <telemetry_internal.h>

@@ -29,7 +29,7 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_errno.h>
-#include <rte_ethdev.h>
+#include <ethdev_driver.h>
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
 #include <rte_telemetry.h>

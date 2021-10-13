@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 
-#include <rte_ethdev.h>
+#include <ethdev_driver.h>
 #include <rte_log.h>
 #include <rte_eth_ctrl.h>
 #include <rte_malloc.h>

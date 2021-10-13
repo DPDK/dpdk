@@ -17,6 +17,160 @@
 
 #include <rte_ethdev.h>
 
+/**
+ * @internal
+ * Structure used to hold information about the callbacks to be called for a
+ * queue on RX and TX.
+ */
+struct rte_eth_rxtx_callback {
+	struct rte_eth_rxtx_callback *next;
+	union{
+		rte_rx_callback_fn rx;
+		rte_tx_callback_fn tx;
+	} fn;
+	void *param;
+};
+
+/**
+ * @internal
+ * The generic data structure associated with each ethernet device.
+ *
+ * Pointers to burst-oriented packet receive and transmit functions are
+ * located at the beginning of the structure, along with the pointer to
+ * where all the data elements for the particular device are stored in shared
+ * memory. This split allows the function pointer and driver data to be per-
+ * process, while the actual configuration data for the device is shared.
+ */
+struct rte_eth_dev {
+	eth_rx_burst_t rx_pkt_burst; /**< Pointer to PMD receive function. */
+	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function. */
+	eth_tx_prep_t tx_pkt_prepare;
+	/**< Pointer to PMD transmit prepare function. */
+	eth_rx_queue_count_t rx_queue_count;
+	/**< Get the number of used RX descriptors. */
+	eth_rx_descriptor_status_t rx_descriptor_status;
+	/**< Check the status of a Rx descriptor. */
+	eth_tx_descriptor_status_t tx_descriptor_status;
+	/**< Check the status of a Tx descriptor. */
+
+	/**
+	 * points to device data that is shared between
+	 * primary and secondary processes.
+	 */
+	struct rte_eth_dev_data *data;
+	void *process_private; /**< Pointer to per-process device data. */
+	const struct eth_dev_ops *dev_ops; /**< Functions exported by PMD */
+	struct rte_device *device; /**< Backing device */
+	struct rte_intr_handle *intr_handle; /**< Device interrupt handle */
+	/** User application callbacks for NIC interrupts */
+	struct rte_eth_dev_cb_list link_intr_cbs;
+	/**
+	 * User-supplied functions called from rx_burst to post-process
+	 * received packets before passing them to the user
+	 */
+	struct rte_eth_rxtx_callback *post_rx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
+	/**
+	 * User-supplied functions called from tx_burst to pre-process
+	 * received packets before passing them to the driver for transmission.
+	 */
+	struct rte_eth_rxtx_callback *pre_tx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
+	enum rte_eth_dev_state state; /**< Flag indicating the port state */
+	void *security_ctx; /**< Context for security ops */
+
+	uint64_t reserved_64s[4]; /**< Reserved for future fields */
+	void *reserved_ptrs[4];   /**< Reserved for future fields */
+} __rte_cache_aligned;
+
+struct rte_eth_dev_sriov;
+struct rte_eth_dev_owner;
+
+/**
+ * @internal
+ * The data part, with no function pointers, associated with each ethernet
+ * device. This structure is safe to place in shared memory to be common
+ * among different processes in a multi-process configuration.
+ */
+struct rte_eth_dev_data {
+	char name[RTE_ETH_NAME_MAX_LEN]; /**< Unique identifier name */
+
+	void **rx_queues; /**< Array of pointers to RX queues. */
+	void **tx_queues; /**< Array of pointers to TX queues. */
+	uint16_t nb_rx_queues; /**< Number of RX queues. */
+	uint16_t nb_tx_queues; /**< Number of TX queues. */
+
+	struct rte_eth_dev_sriov sriov;    /**< SRIOV data */
+
+	void *dev_private;
+			/**< PMD-specific private data.
+			 *   @see rte_eth_dev_release_port()
+			 */
+
+	struct rte_eth_link dev_link;   /**< Link-level information & status. */
+	struct rte_eth_conf dev_conf;   /**< Configuration applied to device. */
+	uint16_t mtu;                   /**< Maximum Transmission Unit. */
+	uint32_t min_rx_buf_size;
+			/**< Common RX buffer size handled by all queues. */
+
+	uint64_t rx_mbuf_alloc_failed; /**< RX ring mbuf allocation failures. */
+	struct rte_ether_addr *mac_addrs;
+			/**< Device Ethernet link address.
+			 *   @see rte_eth_dev_release_port()
+			 */
+	uint64_t mac_pool_sel[ETH_NUM_RECEIVE_MAC_ADDR];
+			/**< Bitmap associating MAC addresses to pools. */
+	struct rte_ether_addr *hash_mac_addrs;
+			/**< Device Ethernet MAC addresses of hash filtering.
+			 *   @see rte_eth_dev_release_port()
+			 */
+	uint16_t port_id;           /**< Device [external] port identifier. */
+
+	__extension__
+	uint8_t promiscuous   : 1,
+		/**< RX promiscuous mode ON(1) / OFF(0). */
+		scattered_rx : 1,
+		/**< RX of scattered packets is ON(1) / OFF(0) */
+		all_multicast : 1,
+		/**< RX all multicast mode ON(1) / OFF(0). */
+		dev_started : 1,
+		/**< Device state: STARTED(1) / STOPPED(0). */
+		lro         : 1,
+		/**< RX LRO is ON(1) / OFF(0) */
+		dev_configured : 1;
+		/**< Indicates whether the device is configured.
+		 *   CONFIGURED(1) / NOT CONFIGURED(0).
+		 */
+	uint8_t rx_queue_state[RTE_MAX_QUEUES_PER_PORT];
+		/**< Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0). */
+	uint8_t tx_queue_state[RTE_MAX_QUEUES_PER_PORT];
+		/**< Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0). */
+	uint32_t dev_flags;             /**< Capabilities. */
+	int numa_node;                  /**< NUMA node connection. */
+	struct rte_vlan_filter_conf vlan_filter_conf;
+			/**< VLAN filter configuration. */
+	struct rte_eth_dev_owner owner; /**< The port owner. */
+	uint16_t representor_id;
+			/**< Switch-specific identifier.
+			 *   Valid if RTE_ETH_DEV_REPRESENTOR in dev_flags.
+			 */
+	uint16_t backer_port_id;
+			/**< Port ID of the backing device.
+			 *   This device will be used to query representor
+			 *   info and calculate representor IDs.
+			 *   Valid if RTE_ETH_DEV_REPRESENTOR in dev_flags.
+			 */
+
+	pthread_mutex_t flow_ops_mutex; /**< rte_flow ops mutex. */
+	uint64_t reserved_64s[4]; /**< Reserved for future fields */
+	void *reserved_ptrs[4];   /**< Reserved for future fields */
+} __rte_cache_aligned;
+
+/**
+ * @internal
+ * The pool of *rte_eth_dev* structures. The size of the pool
+ * is configured at compile-time in the <rte_ethdev.c> file.
+ */
+extern struct rte_eth_dev rte_eth_devices[];
+
 /**< @internal Declaration of the hairpin peer queue information structure. */
 struct rte_hairpin_peer_info;
 
