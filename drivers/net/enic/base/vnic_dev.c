@@ -644,8 +644,8 @@ static int vnic_dev_flowman_enable(struct vnic_dev *vdev, uint32_t *mode,
 	return 1;
 }
 
-/*  Determine the "best" filtering mode VIC is capaible of. Returns one of 4
- *  value or 0 on error:
+/*  Determine the "best" filtering mode VIC is capable of. Returns one of 4
+ *  value or 0 if filtering is unavailble:
  *	FILTER_FLOWMAN- flowman api capable
  *	FILTER_DPDK_1- advanced filters availabile
  *	FILTER_USNIC_IP_FLAG - advanced filters but with the restriction that
@@ -680,6 +680,14 @@ int vnic_dev_capable_filter_mode(struct vnic_dev *vdev, uint32_t *mode,
 		args[0] = CMD_ADD_FILTER;
 		args[1] = 0;
 		err = vnic_dev_cmd_args(vdev, CMD_CAPABILITY, args, 2, 1000);
+		/*
+		 * ERR_EPERM may be returned if, for example, vNIC is
+		 * on a VF. It simply means no filtering is available
+		 */
+		if (err == -ERR_EPERM) {
+			*mode = 0;
+			return 0;
+		}
 		if (err)
 			return err;
 		max_level = args[1];
