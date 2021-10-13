@@ -254,14 +254,13 @@ test_apis(void)
 	int id;
 	int ret;
 
-	if (rte_vdev_init(pmd, NULL) < 0)
-		return TEST_SKIPPED;
+	/* attempt to create skeleton instance - ignore errors due to one being already present */
+	rte_vdev_init(pmd, NULL);
 	id = rte_dma_get_dev_id_by_name(pmd);
 	if (id < 0)
 		return TEST_SKIPPED;
 	printf("\n### Test dmadev infrastructure using skeleton driver\n");
 	ret = test_dma_api(id);
-	rte_vdev_uninit(pmd);
 
 	return ret;
 }
