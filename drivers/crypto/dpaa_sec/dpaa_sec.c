@@ -45,10 +45,7 @@
 #include <dpaa_sec_log.h>
 #include <dpaax_iova_table.h>
 
-static uint8_t cryptodev_driver_id;
-
-static int
-dpaa_sec_attach_sess_q(struct dpaa_sec_qp *qp, dpaa_sec_session *sess);
+uint8_t dpaa_cryptodev_driver_id;
 
 static inline void
 dpaa_sec_op_ending(struct dpaa_sec_op_ctx *ctx)
@@ -1787,8 +1784,8 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 			case RTE_CRYPTO_OP_WITH_SESSION:
 				ses = (dpaa_sec_session *)
 					get_sym_session_private_data(
-							op->sym->session,
-							cryptodev_driver_id);
+						op->sym->session,
+						dpaa_cryptodev_driver_id);
 				break;
 #ifdef RTE_LIB_SECURITY
 			case RTE_CRYPTO_OP_SECURITY_SESSION:
@@ -2400,7 +2397,7 @@ dpaa_sec_detach_rxq(struct dpaa_sec_dev_private *qi, struct qman_fq *fq)
 	return -1;
 }
 
-static int
+int
 dpaa_sec_attach_sess_q(struct dpaa_sec_qp *qp, dpaa_sec_session *sess)
 {
 	int ret;
@@ -3216,7 +3213,7 @@ dpaa_sec_dev_infos_get(struct rte_cryptodev *dev,
 		info->feature_flags = dev->feature_flags;
 		info->capabilities = dpaa_sec_capabilities;
 		info->sym.max_nb_sessions = internals->max_nb_sessions;
-		info->driver_id = cryptodev_driver_id;
+		info->driver_id = dpaa_cryptodev_driver_id;
 	}
 }
 
@@ -3412,7 +3409,10 @@ static struct rte_cryptodev_ops crypto_ops = {
 	.queue_pair_release   = dpaa_sec_queue_pair_release,
 	.sym_session_get_size     = dpaa_sec_sym_session_get_size,
 	.sym_session_configure    = dpaa_sec_sym_session_configure,
-	.sym_session_clear        = dpaa_sec_sym_session_clear
+	.sym_session_clear        = dpaa_sec_sym_session_clear,
+	/* Raw data-path API related operations */
+	.sym_get_raw_dp_ctx_size = dpaa_sec_get_dp_ctx_size,
+	.sym_configure_raw_dp_ctx = dpaa_sec_configure_raw_dp_ctx,
 };
 
 #ifdef RTE_LIB_SECURITY
@@ -3463,7 +3463,7 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	cryptodev->driver_id = cryptodev_driver_id;
+	cryptodev->driver_id = dpaa_cryptodev_driver_id;
 	cryptodev->dev_ops = &crypto_ops;
 
 	cryptodev->enqueue_burst = dpaa_sec_enqueue_burst;
@@ -3472,6 +3472,7 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 			RTE_CRYPTODEV_FF_HW_ACCELERATED |
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
 			RTE_CRYPTODEV_FF_SECURITY |
+			RTE_CRYPTODEV_FF_SYM_RAW_DP |
 			RTE_CRYPTODEV_FF_IN_PLACE_SGL |
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT |
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
@@ -3637,5 +3638,5 @@ static struct cryptodev_driver dpaa_sec_crypto_drv;
 
 RTE_PMD_REGISTER_DPAA(CRYPTODEV_NAME_DPAA_SEC_PMD, rte_dpaa_sec_driver);
 RTE_PMD_REGISTER_CRYPTO_DRIVER(dpaa_sec_crypto_drv, rte_dpaa_sec_driver.driver,
-		cryptodev_driver_id);
+		dpaa_cryptodev_driver_id);
 RTE_LOG_REGISTER(dpaa_logtype_sec, pmd.crypto.dpaa, NOTICE);

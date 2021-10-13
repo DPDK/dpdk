@@ -19,6 +19,8 @@
 #define AES_CTR_IV_LEN		16
 #define AES_GCM_IV_LEN		12
 
+extern uint8_t dpaa_cryptodev_driver_id;
+
 #define DPAA_IPv6_DEFAULT_VTC_FLOW	0x60000000
 
 /* Minimum job descriptor consists of a oneword job descriptor HEADER and
@@ -117,6 +119,24 @@ struct sec_pdcp_ctxt {
 	uint32_t hfn_threshold;	/*!< HFN Threashold for key renegotiation */
 };
 #endif
+
+typedef int (*dpaa_sec_build_fd_t)(
+	void *qp, uint8_t *drv_ctx, struct rte_crypto_vec *data_vec,
+	uint16_t n_data_vecs, union rte_crypto_sym_ofs ofs,
+	struct rte_crypto_va_iova_ptr *iv,
+	struct rte_crypto_va_iova_ptr *digest,
+	struct rte_crypto_va_iova_ptr *aad_or_auth_iv,
+	void *user_data);
+
+typedef struct dpaa_sec_job* (*dpaa_sec_build_raw_dp_fd_t)(uint8_t *drv_ctx,
+			struct rte_crypto_sgl *sgl,
+			struct rte_crypto_sgl *dest_sgl,
+			struct rte_crypto_va_iova_ptr *iv,
+			struct rte_crypto_va_iova_ptr *digest,
+			struct rte_crypto_va_iova_ptr *auth_iv,
+			union rte_crypto_sym_ofs ofs,
+			void *userdata);
+
 typedef struct dpaa_sec_session_entry {
 	struct sec_cdb cdb;	/**< cmd block associated with qp */
 	struct dpaa_sec_qp *qp[MAX_DPAA_CORES];
@@ -129,6 +149,8 @@ typedef struct dpaa_sec_session_entry {
 #ifdef RTE_LIB_SECURITY
 	enum rte_security_session_protocol proto_alg; /*!< Security Algorithm*/
 #endif
+	dpaa_sec_build_fd_t build_fd;
+	dpaa_sec_build_raw_dp_fd_t build_raw_dp_fd;
 	union {
 		struct {
 			uint8_t *data;	/**< pointer to key data */
@@ -211,7 +233,10 @@ struct dpaa_sec_job {
 #define DPAA_MAX_NB_MAX_DIGEST	32
 struct dpaa_sec_op_ctx {
 	struct dpaa_sec_job job;
-	struct rte_crypto_op *op;
+	union {
+		struct rte_crypto_op *op;
+		void *userdata;
+	};
 	struct rte_mempool *ctx_pool; /* mempool pointer for dpaa_sec_op_ctx */
 	uint32_t fd_status;
 	int64_t vtop_offset;
@@ -1000,5 +1025,17 @@ calc_chksum(void *buffer, int len)
 
 	return  result;
 }
+
+int
+dpaa_sec_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
+	struct rte_crypto_raw_dp_ctx *raw_dp_ctx,
+	enum rte_crypto_op_sess_type sess_type,
+	union rte_cryptodev_session_ctx session_ctx, uint8_t is_update);
+
+int
+dpaa_sec_get_dp_ctx_size(struct rte_cryptodev *dev);
+
+int
+dpaa_sec_attach_sess_q(struct dpaa_sec_qp *qp, dpaa_sec_session *sess);
 
 #endif /* _DPAA_SEC_H_ */
