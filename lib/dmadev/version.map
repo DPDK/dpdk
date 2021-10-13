@@ -20,6 +20,7 @@ EXPERIMENTAL {
 	rte_dma_stop;
 	rte_dma_submit;
 	rte_dma_vchan_setup;
+	rte_dma_vchan_status;
 
 	local: *;
 };

@@ -54,7 +54,7 @@ struct skeldma_hw {
 
 	/* Cache delimiter for cpucopy thread's operation data */
 	char cache2 __rte_cache_aligned;
-	uint32_t zero_req_count;
+	volatile uint32_t zero_req_count;
 	uint64_t completed_count;
 };
 

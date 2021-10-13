@@ -79,7 +79,7 @@ cpucopy_thread(void *param)
 
 		hw->zero_req_count = 0;
 		rte_memcpy(desc->dst, desc->src, desc->len);
-		hw->completed_count++;
+		__atomic_add_fetch(&hw->completed_count, 1, __ATOMIC_RELEASE);
 		(void)rte_ring_enqueue(hw->desc_completed, (void *)desc);
 	}
 
@@ -258,6 +258,21 @@ skeldma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 }
 
 static int
+skeldma_vchan_status(const struct rte_dma_dev *dev,
+		uint16_t vchan, enum rte_dma_vchan_status *status)
+{
+	struct skeldma_hw *hw = dev->data->dev_private;
+
+	RTE_SET_USED(vchan);
+
+	*status = RTE_DMA_VCHAN_IDLE;
+	if (hw->submitted_count != __atomic_load_n(&hw->completed_count, __ATOMIC_ACQUIRE)
+			|| hw->zero_req_count == 0)
+		*status = RTE_DMA_VCHAN_ACTIVE;
+	return 0;
+}
+
+static int
 skeldma_stats_get(const struct rte_dma_dev *dev, uint16_t vchan,
 		  struct rte_dma_stats *stats, uint32_t stats_sz)
 {
@@ -424,6 +439,7 @@ static const struct rte_dma_dev_ops skeldma_ops = {
 	.dev_close        = skeldma_close,
 
 	.vchan_setup      = skeldma_vchan_setup,
+	.vchan_status     = skeldma_vchan_status,
 
 	.stats_get        = skeldma_stats_get,
 	.stats_reset      = skeldma_stats_reset,

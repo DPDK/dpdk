@@ -54,6 +54,10 @@ typedef int (*rte_dma_stats_get_t)(const struct rte_dma_dev *dev,
 /** @internal Used to reset basic statistics. */
 typedef int (*rte_dma_stats_reset_t)(struct rte_dma_dev *dev, uint16_t vchan);
 
+/** @internal Used to check if a virtual channel has finished all jobs. */
+typedef int (*rte_dma_vchan_status_t)(const struct rte_dma_dev *dev, uint16_t vchan,
+		enum rte_dma_vchan_status *status);
+
 /** @internal Used to dump internal information. */
 typedef int (*rte_dma_dump_t)(const struct rte_dma_dev *dev, FILE *f);
 
@@ -74,6 +78,7 @@ struct rte_dma_dev_ops {
 	rte_dma_stats_get_t        stats_get;
 	rte_dma_stats_reset_t      stats_reset;
 
+	rte_dma_vchan_status_t     vchan_status;
 	rte_dma_dump_t             dev_dump;
 };
 

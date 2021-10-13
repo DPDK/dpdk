@@ -679,6 +679,23 @@ rte_dma_stats_reset(int16_t dev_id, uint16_t vchan)
 	return (*dev->dev_ops->stats_reset)(dev, vchan);
 }
 
+int
+rte_dma_vchan_status(int16_t dev_id, uint16_t vchan, enum rte_dma_vchan_status *status)
+{
+	struct rte_dma_dev *dev = &rte_dma_devices[dev_id];
+
+	if (!rte_dma_is_valid(dev_id))
+		return -EINVAL;
+
+	if (vchan >= dev->data->dev_conf.nb_vchans) {
+		RTE_DMA_LOG(ERR, "Device %u vchan %u out of range\n", dev_id, vchan);
+		return -EINVAL;
+	}
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vchan_status, -ENOTSUP);
+	return (*dev->dev_ops->vchan_status)(dev, vchan, status);
+}
+
 static const char *
 dma_capability_name(uint64_t capability)
 {

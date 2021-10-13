@@ -646,6 +646,40 @@ __rte_experimental
 int rte_dma_stats_reset(int16_t dev_id, uint16_t vchan);
 
 /**
+ * device vchannel status
+ *
+ * Enum with the options for the channel status, either idle, active or halted due to error
+ * @see rte_dma_vchan_status
+ */
+enum rte_dma_vchan_status {
+	RTE_DMA_VCHAN_IDLE,          /**< not processing, awaiting ops */
+	RTE_DMA_VCHAN_ACTIVE,        /**< currently processing jobs */
+	RTE_DMA_VCHAN_HALTED_ERROR,  /**< not processing due to error, cannot accept new ops */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Determine if all jobs have completed on a device channel.
+ * This function is primarily designed for testing use, as it allows a process to check if
+ * all jobs are completed, without actually gathering completions from those jobs.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param vchan
+ *   The identifier of virtual DMA channel.
+ * @param[out] status
+ *   The vchan status
+ * @return
+ *   0 - call completed successfully
+ *   < 0 - error code indicating there was a problem calling the API
+ */
+__rte_experimental
+int
+rte_dma_vchan_status(int16_t dev_id, uint16_t vchan, enum rte_dma_vchan_status *status);
+
+/**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
