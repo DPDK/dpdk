@@ -186,6 +186,8 @@ virtqueue_txvq_reset_packed(struct virtqueue *vq)
 	struct vq_desc_extra *dxp;
 	struct virtnet_tx *txvq;
 	uint16_t desc_idx;
+	struct virtio_tx_region *txr;
+	struct vring_packed_desc *start_dp;
 
 	vq->vq_used_cons_idx = 0;
 	vq->vq_desc_head_idx = 0;
@@ -198,6 +200,7 @@ virtqueue_txvq_reset_packed(struct virtqueue *vq)
 	vq->vq_packed.event_flags_shadow = 0;
 
 	txvq = &vq->txq;
+	txr = txvq->virtio_net_hdr_mz->addr;
 	memset(txvq->mz->addr, 0, txvq->mz->len);
 	memset(txvq->virtio_net_hdr_mz->addr, 0,
 		txvq->virtio_net_hdr_mz->len);
@@ -207,6 +210,17 @@ virtqueue_txvq_reset_packed(struct virtqueue *vq)
 		if (dxp->cookie != NULL) {
 			rte_pktmbuf_free(dxp->cookie);
 			dxp->cookie = NULL;
+		}
+
+		if (virtio_with_feature(vq->hw, VIRTIO_RING_F_INDIRECT_DESC)) {
+			/* first indirect descriptor is always the tx header */
+			start_dp = txr[desc_idx].tx_packed_indir;
+			vring_desc_init_indirect_packed(start_dp,
+							RTE_DIM(txr[desc_idx].tx_packed_indir));
+			start_dp->addr = txvq->virtio_net_hdr_mem
+					 + desc_idx * sizeof(*txr)
+					 + offsetof(struct virtio_tx_region, tx_hdr);
+			start_dp->len = vq->hw->vtnet_hdr_size;
 		}
 	}
 
