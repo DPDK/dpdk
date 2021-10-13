@@ -1733,6 +1733,7 @@ struct efx_mae_match_spec_s {
 					    MAE_FIELD_MASK_VALUE_PAIRS_V2_LEN];
 		uint8_t			outer[MAE_ENC_FIELD_PAIRS_LEN];
 	} emms_mask_value_pairs;
+	uint8_t				emms_outer_rule_recirc_id;
 };
 
 typedef enum efx_mae_action_e {

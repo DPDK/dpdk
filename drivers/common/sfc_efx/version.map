@@ -132,6 +132,7 @@ INTERNAL {
 	efx_mae_mport_id_by_selector;
 	efx_mae_mport_invalid;
 	efx_mae_outer_rule_insert;
+	efx_mae_outer_rule_recirc_id_set;
 	efx_mae_outer_rule_remove;
 	efx_mae_read_mport_journal;
 

@@ -2116,6 +2116,27 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn			efx_rc_t
+efx_mae_outer_rule_recirc_id_set(
+	__in				efx_mae_match_spec_t *spec,
+	__in				uint8_t recirc_id)
+{
+	efx_rc_t rc;
+
+	if (spec->emms_type != EFX_MAE_RULE_OUTER) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	spec->emms_outer_rule_recirc_id = recirc_id;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 	__checkReturn		efx_rc_t
 efx_mae_outer_rule_insert(
 	__in			efx_nic_t *enp,
@@ -2188,6 +2209,9 @@ efx_mae_outer_rule_insert(
 	offset = MC_CMD_MAE_OUTER_RULE_INSERT_IN_FIELD_MATCH_CRITERIA_OFST;
 	memcpy(payload + offset, spec->emms_mask_value_pairs.outer,
 	    MAE_ENC_FIELD_PAIRS_LEN);
+
+	MCDI_IN_SET_BYTE(req, MAE_OUTER_RULE_INSERT_IN_RECIRC_ID,
+	    spec->emms_outer_rule_recirc_id);
 
 	efx_mcdi_execute(enp, &req);
 

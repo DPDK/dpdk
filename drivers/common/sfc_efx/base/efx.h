@@ -4507,6 +4507,15 @@ typedef struct efx_mae_rule_id_s {
 	uint32_t id;
 } efx_mae_rule_id_t;
 
+/*
+ * Set the initial recirculation ID. It goes to action rule (AR) lookup.
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_outer_rule_recirc_id_set(
+	__in				efx_mae_match_spec_t *spec,
+	__in				uint8_t recirc_id);
+
 LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_mae_outer_rule_insert(
