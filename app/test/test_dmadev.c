@@ -623,7 +623,51 @@ test_completion_handling(int16_t dev_id, uint16_t vchan)
 {
 	return test_completion_status(dev_id, vchan, false)              /* without fences */
 			|| test_completion_status(dev_id, vchan, true);  /* with fences */
+}
 
+static int
+test_enqueue_fill(int16_t dev_id, uint16_t vchan)
+{
+	const unsigned int lengths[] = {8, 64, 1024, 50, 100, 89};
+	struct rte_mbuf *dst;
+	char *dst_data;
+	uint64_t pattern = 0xfedcba9876543210;
+	unsigned int i, j;
+
+	dst = rte_pktmbuf_alloc(pool);
+	if (dst == NULL)
+		ERR_RETURN("Failed to allocate mbuf\n");
+	dst_data = rte_pktmbuf_mtod(dst, char *);
+
+	for (i = 0; i < RTE_DIM(lengths); i++) {
+		/* reset dst_data */
+		memset(dst_data, 0, rte_pktmbuf_data_len(dst));
+
+		/* perform the fill operation */
+		int id = rte_dma_fill(dev_id, vchan, pattern,
+				rte_pktmbuf_iova(dst), lengths[i], RTE_DMA_OP_FLAG_SUBMIT);
+		if (id < 0)
+			ERR_RETURN("Error with rte_dma_fill\n");
+		await_hw(dev_id, vchan);
+
+		if (rte_dma_completed(dev_id, vchan, 1, NULL, NULL) != 1)
+			ERR_RETURN("Error: fill operation failed (length: %u)\n", lengths[i]);
+		/* check the data from the fill operation is correct */
+		for (j = 0; j < lengths[i]; j++) {
+			char pat_byte = ((char *)&pattern)[j % 8];
+			if (dst_data[j] != pat_byte)
+				ERR_RETURN("Error with fill operation (lengths = %u): got (%x), not (%x)\n",
+						lengths[i], dst_data[j], pat_byte);
+		}
+		/* check that the data after the fill operation was not written to */
+		for (; j < rte_pktmbuf_data_len(dst); j++)
+			if (dst_data[j] != 0)
+				ERR_RETURN("Error, fill operation wrote too far (lengths = %u): got (%x), not (%x)\n",
+						lengths[i], dst_data[j], 0);
+	}
+
+	rte_pktmbuf_free(dst);
+	return 0;
 }
 
 static int
@@ -694,6 +738,11 @@ test_dmadev_instance(int16_t dev_id)
 				dev_id);
 	else if (runtest("error handling", test_completion_handling, 1,
 			dev_id, vchan, !CHECK_ERRS) < 0)
+		goto err;
+
+	if ((info.dev_capa & RTE_DMA_CAPA_OPS_FILL) == 0)
+		printf("DMA Dev %u: No device fill support, skipping fill tests\n", dev_id);
+	else if (runtest("fill", test_enqueue_fill, 1, dev_id, vchan, CHECK_ERRS) < 0)
 		goto err;
 
 	rte_mempool_free(pool);
