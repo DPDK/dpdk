@@ -167,13 +167,11 @@ enum ice_status ice_parser_create(struct ice_hw *hw, struct ice_parser **psr)
 	struct ice_parser *p;
 
 	p = (struct ice_parser *)ice_malloc(hw, sizeof(struct ice_parser));
-	p->hw = hw;
-	p->rt.psr = p;
-
 	if (!p)
 		return ICE_ERR_NO_MEMORY;
 
 	p->hw = hw;
+	p->rt.psr = p;
 
 	p->imem_table = ice_imem_table_get(hw);
 	if (!p->imem_table) {
