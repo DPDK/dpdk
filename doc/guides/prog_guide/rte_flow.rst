@@ -1484,6 +1484,8 @@ at the opposite end of the "wire" leading to the ethdev.
 
 - Default ``mask`` provides exact match behaviour.
 
+See also `Action: PORT_REPRESENTOR`_.
+
 Item: ``REPRESENTED_PORT``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -3088,6 +3090,60 @@ which is set in the packet meta-data (i.e. struct ``rte_mbuf::sched::color``)
    +=================+==============+
    | ``meter_color`` | Packet color |
    +-----------------+--------------+
+
+Action: ``PORT_REPRESENTOR``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+At embedded switch level, send matching traffic to the given ethdev.
+
+Term **ethdev** and the concept of **port representor** are synonymous.
+The **represented port** is an *entity* plugged to the embedded switch
+at the opposite end of the "wire" leading to the ethdev.
+
+::
+
+    .--------------------.
+    |  PORT_REPRESENTOR  |  Ethdev (Application Port Referred to by its ID)
+    '--------------------'
+              /\
+              ||
+      .----------------.
+      |  Logical Port  |
+      '----------------'
+              /\
+              ||
+              ||
+              ||
+         .----------.       .--------------------.
+         |  Switch  |  <==  |  Matching Traffic  |
+         '----------'       '--------------------'
+              :
+               :
+              :
+               :
+      .----------------.
+      |  Logical Port  |
+      '----------------'
+              :
+               :
+    .--------------------.
+    |  REPRESENTED_PORT  |  Net / Guest / Another Ethdev (Same Application)
+    '--------------------'
+
+
+- Requires `Attribute: Transfer`_.
+
+.. _table_rte_flow_action_ethdev:
+
+.. table:: ``struct rte_flow_action_ethdev``
+
+   +-------------+----------------+
+   | Field       | Value          |
+   +=============+================+
+   | ``port_id`` | ethdev port ID |
+   +-------------+----------------+
+
+See also `Item: PORT_REPRESENTOR`_.
 
 Negative types
 ~~~~~~~~~~~~~~

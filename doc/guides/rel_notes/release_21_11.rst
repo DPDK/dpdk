@@ -294,7 +294,8 @@ API Changes
 * net: Renamed ``s_addr`` and ``d_addr`` fields of ``rte_ether_hdr`` structure
   to ``src_addr`` and ``dst_addr``, respectively.
 
-* ethdev: Added items ``PORT_REPRESENTOR``, ``REPRESENTED_PORT`` to flow API.
+* ethdev: Added items ``PORT_REPRESENTOR``, ``REPRESENTED_PORT`` and action
+  ``PORT_REPRESENTOR`` to flow API.
 
 * cryptodev: The API rte_cryptodev_pmd_is_valid_dev is modified to
   rte_cryptodev_is_valid_dev as it can be used by the application as

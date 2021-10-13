@@ -4085,6 +4085,11 @@ This section lists supported actions and their attributes, if any.
 
   - ``type {value}``: Set color type with specified value(green/yellow/red)
 
+- ``port_representor``: at embedded switch level, send matching traffic to
+  the given ethdev
+
+  - ``port_id {unsigned}``: ethdev port ID
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 
