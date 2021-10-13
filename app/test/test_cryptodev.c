@@ -379,6 +379,7 @@ process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 	}
 
 	op->status = (count == MAX_RAW_DEQUEUE_COUNT + 1 || ret_op != op ||
+			ret_op->status == RTE_CRYPTO_OP_STATUS_ERROR ||
 			n_success < 1) ? RTE_CRYPTO_OP_STATUS_ERROR :
 					RTE_CRYPTO_OP_STATUS_SUCCESS;
 
@@ -4210,6 +4211,16 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	int retval;
 	unsigned plaintext_pad_len;
 	unsigned plaintext_len;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		printf("Device does not support RAW data-path APIs.\n");
+		return -ENOTSUP;
+	}
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -4265,7 +4276,11 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	if (retval < 0)
 		return retval;
 
-	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
+		process_sym_raw_dp_op(ts_params->valid_devs[0], 0,
+			ut_params->op, 1, 0, 1, tdata->cipher_iv.len);
+	else
+		ut_params->op = process_crypto_request(ts_params->valid_devs[0],
 						ut_params->op);
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 
@@ -4325,6 +4340,12 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 		return TEST_SKIPPED;
 	}
 
+	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		printf("Device does not support RAW data-path APIs.\n");
+		return -ENOTSUP;
+	}
+
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
@@ -4359,7 +4380,11 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 	if (retval < 0)
 		return retval;
 
-	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
+		process_sym_raw_dp_op(ts_params->valid_devs[0], 0,
+			ut_params->op, 1, 0, 1, tdata->cipher_iv.len);
+	else
+		ut_params->op = process_crypto_request(ts_params->valid_devs[0],
 						ut_params->op);
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 
@@ -4486,7 +4511,11 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	if (retval < 0)
 		return retval;
 
-	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
+		process_sym_raw_dp_op(ts_params->valid_devs[0], 0,
+			ut_params->op, 1, 0, 1, tdata->cipher_iv.len);
+	else
+		ut_params->op = process_crypto_request(ts_params->valid_devs[0],
 						ut_params->op);
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 
@@ -4617,7 +4646,16 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	uint8_t *plaintext, *ciphertext;
 	unsigned ciphertext_pad_len;
 	unsigned ciphertext_len;
+	struct rte_cryptodev_info dev_info;
 
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		printf("Device does not support RAW data-path APIs.\n");
+		return -ENOTSUP;
+	}
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -4675,7 +4713,11 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	if (retval < 0)
 		return retval;
 
-	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
+		process_sym_raw_dp_op(ts_params->valid_devs[0], 0,
+			ut_params->op, 1, 0, 1, tdata->cipher_iv.len);
+	else
+		ut_params->op = process_crypto_request(ts_params->valid_devs[0],
 						ut_params->op);
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->obuf = ut_params->op->sym->m_dst;
@@ -12997,10 +13039,13 @@ test_authentication_verify_fail_when_data_corruption(
 	else {
 		ut_params->op = process_crypto_request(ts_params->valid_devs[0],
 			ut_params->op);
-		TEST_ASSERT_NULL(ut_params->op, "authentication not failed");
 	}
+	if (ut_params->op == NULL)
+		return 0;
+	else if (ut_params->op->status != RTE_CRYPTO_OP_STATUS_SUCCESS)
+		return 0;
 
-	return 0;
+	return -1;
 }
 
 static int
