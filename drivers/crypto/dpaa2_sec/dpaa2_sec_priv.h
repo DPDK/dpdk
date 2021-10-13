@@ -179,6 +179,7 @@ typedef int (*dpaa2_sec_build_fd_t)(
 
 typedef int (*dpaa2_sec_build_raw_dp_fd_t)(uint8_t *drv_ctx,
 		       struct rte_crypto_sgl *sgl,
+		       struct rte_crypto_sgl *dest_sgl,
 		       struct rte_crypto_va_iova_ptr *iv,
 		       struct rte_crypto_va_iova_ptr *digest,
 		       struct rte_crypto_va_iova_ptr *auth_iv,

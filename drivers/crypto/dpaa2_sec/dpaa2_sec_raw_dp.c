@@ -24,6 +24,7 @@ struct dpaa2_sec_raw_dp_ctx {
 static int
 build_raw_dp_chain_fd(uint8_t *drv_ctx,
 		       struct rte_crypto_sgl *sgl,
+		       struct rte_crypto_sgl *dest_sgl,
 		       struct rte_crypto_va_iova_ptr *iv,
 		       struct rte_crypto_va_iova_ptr *digest,
 		       struct rte_crypto_va_iova_ptr *auth_iv,
@@ -89,17 +90,33 @@ build_raw_dp_chain_fd(uint8_t *drv_ctx,
 			(cipher_len + icv_len) :
 			cipher_len;
 
-	/* Configure Output SGE for Encap/Decap */
-	DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
-	DPAA2_SET_FLE_OFFSET(sge, ofs.ofs.auth.head);
-	sge->length = sgl->vec[0].len - ofs.ofs.auth.head;
+	/* OOP */
+	if (dest_sgl) {
+		/* Configure Output SGE for Encap/Decap */
+		DPAA2_SET_FLE_ADDR(sge, dest_sgl->vec[0].iova);
+		DPAA2_SET_FLE_OFFSET(sge, ofs.ofs.cipher.head);
+		sge->length = dest_sgl->vec[0].len - ofs.ofs.cipher.head;
 
-	/* o/p segs */
-	for (i = 1; i < sgl->num; i++) {
-		sge++;
-		DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
-		DPAA2_SET_FLE_OFFSET(sge, 0);
-		sge->length = sgl->vec[i].len;
+		/* o/p segs */
+		for (i = 1; i < dest_sgl->num; i++) {
+			sge++;
+			DPAA2_SET_FLE_ADDR(sge, dest_sgl->vec[i].iova);
+			DPAA2_SET_FLE_OFFSET(sge, 0);
+			sge->length = dest_sgl->vec[i].len;
+		}
+	} else {
+		/* Configure Output SGE for Encap/Decap */
+		DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
+		DPAA2_SET_FLE_OFFSET(sge, ofs.ofs.cipher.head);
+		sge->length = sgl->vec[0].len - ofs.ofs.cipher.head;
+
+		/* o/p segs */
+		for (i = 1; i < sgl->num; i++) {
+			sge++;
+			DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
+			DPAA2_SET_FLE_OFFSET(sge, 0);
+			sge->length = sgl->vec[i].len;
+		}
 	}
 
 	if (sess->dir == DIR_ENC) {
@@ -160,6 +177,7 @@ build_raw_dp_chain_fd(uint8_t *drv_ctx,
 static int
 build_raw_dp_aead_fd(uint8_t *drv_ctx,
 		       struct rte_crypto_sgl *sgl,
+		       struct rte_crypto_sgl *dest_sgl,
 		       struct rte_crypto_va_iova_ptr *iv,
 		       struct rte_crypto_va_iova_ptr *digest,
 		       struct rte_crypto_va_iova_ptr *auth_iv,
@@ -219,17 +237,33 @@ build_raw_dp_aead_fd(uint8_t *drv_ctx,
 			(aead_len + icv_len) :
 			aead_len;
 
-	/* Configure Output SGE for Encap/Decap */
-	DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
-	DPAA2_SET_FLE_OFFSET(sge, ofs.ofs.cipher.head);
-	sge->length = sgl->vec[0].len - ofs.ofs.cipher.head;
+	/* OOP */
+	if (dest_sgl) {
+		/* Configure Output SGE for Encap/Decap */
+		DPAA2_SET_FLE_ADDR(sge, dest_sgl->vec[0].iova);
+		DPAA2_SET_FLE_OFFSET(sge, ofs.ofs.cipher.head);
+		sge->length = dest_sgl->vec[0].len - ofs.ofs.cipher.head;
 
-	/* o/p segs */
-	for (i = 1; i < sgl->num; i++) {
-		sge++;
-		DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
-		DPAA2_SET_FLE_OFFSET(sge, 0);
-		sge->length = sgl->vec[i].len;
+		/* o/p segs */
+		for (i = 1; i < dest_sgl->num; i++) {
+			sge++;
+			DPAA2_SET_FLE_ADDR(sge, dest_sgl->vec[i].iova);
+			DPAA2_SET_FLE_OFFSET(sge, 0);
+			sge->length = dest_sgl->vec[i].len;
+		}
+	} else {
+		/* Configure Output SGE for Encap/Decap */
+		DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
+		DPAA2_SET_FLE_OFFSET(sge, ofs.ofs.cipher.head);
+		sge->length = sgl->vec[0].len - ofs.ofs.cipher.head;
+
+		/* o/p segs */
+		for (i = 1; i < sgl->num; i++) {
+			sge++;
+			DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
+			DPAA2_SET_FLE_OFFSET(sge, 0);
+			sge->length = sgl->vec[i].len;
+		}
 	}
 
 	if (sess->dir == DIR_ENC) {
@@ -294,6 +328,7 @@ build_raw_dp_aead_fd(uint8_t *drv_ctx,
 static int
 build_raw_dp_auth_fd(uint8_t *drv_ctx,
 		       struct rte_crypto_sgl *sgl,
+		       struct rte_crypto_sgl *dest_sgl,
 		       struct rte_crypto_va_iova_ptr *iv,
 		       struct rte_crypto_va_iova_ptr *digest,
 		       struct rte_crypto_va_iova_ptr *auth_iv,
@@ -303,6 +338,7 @@ build_raw_dp_auth_fd(uint8_t *drv_ctx,
 {
 	RTE_SET_USED(iv);
 	RTE_SET_USED(auth_iv);
+	RTE_SET_USED(dest_sgl);
 
 	dpaa2_sec_session *sess =
 		((struct dpaa2_sec_raw_dp_ctx *)drv_ctx)->session;
@@ -416,6 +452,7 @@ build_raw_dp_auth_fd(uint8_t *drv_ctx,
 static int
 build_raw_dp_proto_fd(uint8_t *drv_ctx,
 		       struct rte_crypto_sgl *sgl,
+		       struct rte_crypto_sgl *dest_sgl,
 		       struct rte_crypto_va_iova_ptr *iv,
 		       struct rte_crypto_va_iova_ptr *digest,
 		       struct rte_crypto_va_iova_ptr *auth_iv,
@@ -466,20 +503,39 @@ build_raw_dp_proto_fd(uint8_t *drv_ctx,
 	DPAA2_SET_FLE_SG_EXT(op_fle);
 	DPAA2_SET_FLE_ADDR(op_fle, DPAA2_VADDR_TO_IOVA(sge));
 
-	/* Configure Output SGE for Encap/Decap */
-	DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
-	DPAA2_SET_FLE_OFFSET(sge, 0);
-	sge->length = sgl->vec[0].len;
-	out_len += sge->length;
-	/* o/p segs */
-	for (i = 1; i < sgl->num; i++) {
-		sge++;
-		DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
+	/* OOP */
+	if (dest_sgl) {
+		/* Configure Output SGE for Encap/Decap */
+		DPAA2_SET_FLE_ADDR(sge, dest_sgl->vec[0].iova);
 		DPAA2_SET_FLE_OFFSET(sge, 0);
-		sge->length = sgl->vec[i].len;
+		sge->length = dest_sgl->vec[0].len;
 		out_len += sge->length;
+		/* o/p segs */
+		for (i = 1; i < dest_sgl->num; i++) {
+			sge++;
+			DPAA2_SET_FLE_ADDR(sge, dest_sgl->vec[i].iova);
+			DPAA2_SET_FLE_OFFSET(sge, 0);
+			sge->length = dest_sgl->vec[i].len;
+			out_len += sge->length;
+		}
+		sge->length = dest_sgl->vec[i - 1].tot_len;
+
+	} else {
+		/* Configure Output SGE for Encap/Decap */
+		DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
+		DPAA2_SET_FLE_OFFSET(sge, 0);
+		sge->length = sgl->vec[0].len;
+		out_len += sge->length;
+		/* o/p segs */
+		for (i = 1; i < sgl->num; i++) {
+			sge++;
+			DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
+			DPAA2_SET_FLE_OFFSET(sge, 0);
+			sge->length = sgl->vec[i].len;
+			out_len += sge->length;
+		}
+		sge->length = sgl->vec[i - 1].tot_len;
 	}
-	sge->length = sgl->vec[i - 1].tot_len;
 	out_len += sge->length;
 
 	DPAA2_SET_FLE_FIN(sge);
@@ -528,6 +584,7 @@ build_raw_dp_proto_fd(uint8_t *drv_ctx,
 static int
 build_raw_dp_cipher_fd(uint8_t *drv_ctx,
 		       struct rte_crypto_sgl *sgl,
+		       struct rte_crypto_sgl *dest_sgl,
 		       struct rte_crypto_va_iova_ptr *iv,
 		       struct rte_crypto_va_iova_ptr *digest,
 		       struct rte_crypto_va_iova_ptr *auth_iv,
@@ -593,17 +650,33 @@ build_raw_dp_cipher_fd(uint8_t *drv_ctx,
 	op_fle->length = data_len;
 	DPAA2_SET_FLE_SG_EXT(op_fle);
 
-	/* o/p 1st seg */
-	DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
-	DPAA2_SET_FLE_OFFSET(sge, data_offset);
-	sge->length = sgl->vec[0].len - data_offset;
+	/* OOP */
+	if (dest_sgl) {
+		/* o/p 1st seg */
+		DPAA2_SET_FLE_ADDR(sge, dest_sgl->vec[0].iova);
+		DPAA2_SET_FLE_OFFSET(sge, data_offset);
+		sge->length = dest_sgl->vec[0].len - data_offset;
 
-	/* o/p segs */
-	for (i = 1; i < sgl->num; i++) {
-		sge++;
-		DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
-		DPAA2_SET_FLE_OFFSET(sge, 0);
-		sge->length = sgl->vec[i].len;
+		/* o/p segs */
+		for (i = 1; i < dest_sgl->num; i++) {
+			sge++;
+			DPAA2_SET_FLE_ADDR(sge, dest_sgl->vec[i].iova);
+			DPAA2_SET_FLE_OFFSET(sge, 0);
+			sge->length = dest_sgl->vec[i].len;
+		}
+	} else {
+		/* o/p 1st seg */
+		DPAA2_SET_FLE_ADDR(sge, sgl->vec[0].iova);
+		DPAA2_SET_FLE_OFFSET(sge, data_offset);
+		sge->length = sgl->vec[0].len - data_offset;
+
+		/* o/p segs */
+		for (i = 1; i < sgl->num; i++) {
+			sge++;
+			DPAA2_SET_FLE_ADDR(sge, sgl->vec[i].iova);
+			DPAA2_SET_FLE_OFFSET(sge, 0);
+			sge->length = sgl->vec[i].len;
+		}
 	}
 	DPAA2_SET_FLE_FIN(sge);
 
@@ -706,6 +779,7 @@ dpaa2_sec_raw_enqueue_burst(void *qp_data, uint8_t *drv_ctx,
 			memset(&fd_arr[loop], 0, sizeof(struct qbman_fd));
 			ret = sess->build_raw_dp_fd(drv_ctx,
 						    &vec->src_sgl[loop],
+						    &vec->dest_sgl[loop],
 						    &vec->iv[loop],
 						    &vec->digest[loop],
 						    &vec->auth_iv[loop],
