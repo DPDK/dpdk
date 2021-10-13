@@ -1391,7 +1391,7 @@ flow_dv_convert_action_modify_ipv6_dscp
 
 static int
 mlx5_flow_item_field_width(struct mlx5_priv *priv,
-			   enum rte_flow_field_id field)
+			   enum rte_flow_field_id field, int inherit)
 {
 	switch (field) {
 	case RTE_FLOW_FIELD_START:
@@ -1442,7 +1442,7 @@ mlx5_flow_item_field_width(struct mlx5_priv *priv,
 		return __builtin_popcount(priv->sh->dv_meta_mask);
 	case RTE_FLOW_FIELD_POINTER:
 	case RTE_FLOW_FIELD_VALUE:
-		return 64;
+		return inherit < 0 ? 0 : inherit;
 	default:
 		MLX5_ASSERT(false);
 	}
@@ -1452,17 +1452,14 @@ mlx5_flow_item_field_width(struct mlx5_priv *priv,
 static void
 mlx5_flow_field_id_to_modify_info
 		(const struct rte_flow_action_modify_data *data,
-		 struct field_modify_info *info,
-		 uint32_t *mask, uint32_t *value,
-		 uint32_t width, uint32_t dst_width,
-		 uint32_t *shift, struct rte_eth_dev *dev,
-		 const struct rte_flow_attr *attr,
-		 struct rte_flow_error *error)
+		 struct field_modify_info *info, uint32_t *mask,
+		 uint32_t width, uint32_t *shift, struct rte_eth_dev *dev,
+		 const struct rte_flow_attr *attr, struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t idx = 0;
 	uint32_t off = 0;
-	uint64_t val = 0;
+
 	switch (data->field) {
 	case RTE_FLOW_FIELD_START:
 		/* not supported yet */
@@ -1472,7 +1469,7 @@ mlx5_flow_field_id_to_modify_info
 		off = data->offset > 16 ? data->offset - 16 : 0;
 		if (mask) {
 			if (data->offset < 16) {
-				info[idx] = (struct field_modify_info){2, 0,
+				info[idx] = (struct field_modify_info){2, 4,
 						MLX5_MODI_OUT_DMAC_15_0};
 				if (width < 16) {
 					mask[idx] = rte_cpu_to_be_16(0xffff >>
@@ -1486,15 +1483,15 @@ mlx5_flow_field_id_to_modify_info
 					break;
 				++idx;
 			}
-			info[idx] = (struct field_modify_info){4, 4 * idx,
+			info[idx] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_DMAC_47_16};
 			mask[idx] = rte_cpu_to_be_32((0xffffffff >>
 						      (32 - width)) << off);
 		} else {
 			if (data->offset < 16)
-				info[idx++] = (struct field_modify_info){2, 0,
+				info[idx++] = (struct field_modify_info){2, 4,
 						MLX5_MODI_OUT_DMAC_15_0};
-			info[idx] = (struct field_modify_info){4, off,
+			info[idx] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_DMAC_47_16};
 		}
 		break;
@@ -1502,7 +1499,7 @@ mlx5_flow_field_id_to_modify_info
 		off = data->offset > 16 ? data->offset - 16 : 0;
 		if (mask) {
 			if (data->offset < 16) {
-				info[idx] = (struct field_modify_info){2, 0,
+				info[idx] = (struct field_modify_info){2, 4,
 						MLX5_MODI_OUT_SMAC_15_0};
 				if (width < 16) {
 					mask[idx] = rte_cpu_to_be_16(0xffff >>
@@ -1516,15 +1513,15 @@ mlx5_flow_field_id_to_modify_info
 					break;
 				++idx;
 			}
-			info[idx] = (struct field_modify_info){4, 4 * idx,
+			info[idx] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_SMAC_47_16};
 			mask[idx] = rte_cpu_to_be_32((0xffffffff >>
 						      (32 - width)) << off);
 		} else {
 			if (data->offset < 16)
-				info[idx++] = (struct field_modify_info){2, 0,
+				info[idx++] = (struct field_modify_info){2, 4,
 						MLX5_MODI_OUT_SMAC_15_0};
-			info[idx] = (struct field_modify_info){4, off,
+			info[idx] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_SMAC_47_16};
 		}
 		break;
@@ -1584,8 +1581,7 @@ mlx5_flow_field_id_to_modify_info
 	case RTE_FLOW_FIELD_IPV6_SRC:
 		if (mask) {
 			if (data->offset < 32) {
-				info[idx] = (struct field_modify_info){4,
-						4 * idx,
+				info[idx] = (struct field_modify_info){4, 12,
 						MLX5_MODI_OUT_SIPV6_31_0};
 				if (width < 32) {
 					mask[idx] =
@@ -1601,8 +1597,7 @@ mlx5_flow_field_id_to_modify_info
 				++idx;
 			}
 			if (data->offset < 64) {
-				info[idx] = (struct field_modify_info){4,
-						4 * idx,
+				info[idx] = (struct field_modify_info){4, 8,
 						MLX5_MODI_OUT_SIPV6_63_32};
 				if (width < 32) {
 					mask[idx] =
@@ -1618,8 +1613,7 @@ mlx5_flow_field_id_to_modify_info
 				++idx;
 			}
 			if (data->offset < 96) {
-				info[idx] = (struct field_modify_info){4,
-						4 * idx,
+				info[idx] = (struct field_modify_info){4, 4,
 						MLX5_MODI_OUT_SIPV6_95_64};
 				if (width < 32) {
 					mask[idx] =
@@ -1634,19 +1628,19 @@ mlx5_flow_field_id_to_modify_info
 					break;
 				++idx;
 			}
-			info[idx] = (struct field_modify_info){4, 4 * idx,
+			info[idx] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_SIPV6_127_96};
 			mask[idx] = rte_cpu_to_be_32(0xffffffff >>
 						     (32 - width));
 		} else {
 			if (data->offset < 32)
-				info[idx++] = (struct field_modify_info){4, 0,
+				info[idx++] = (struct field_modify_info){4, 12,
 						MLX5_MODI_OUT_SIPV6_31_0};
 			if (data->offset < 64)
-				info[idx++] = (struct field_modify_info){4, 0,
+				info[idx++] = (struct field_modify_info){4, 8,
 						MLX5_MODI_OUT_SIPV6_63_32};
 			if (data->offset < 96)
-				info[idx++] = (struct field_modify_info){4, 0,
+				info[idx++] = (struct field_modify_info){4, 4,
 						MLX5_MODI_OUT_SIPV6_95_64};
 			if (data->offset < 128)
 				info[idx++] = (struct field_modify_info){4, 0,
@@ -1656,8 +1650,7 @@ mlx5_flow_field_id_to_modify_info
 	case RTE_FLOW_FIELD_IPV6_DST:
 		if (mask) {
 			if (data->offset < 32) {
-				info[idx] = (struct field_modify_info){4,
-						4 * idx,
+				info[idx] = (struct field_modify_info){4, 12,
 						MLX5_MODI_OUT_DIPV6_31_0};
 				if (width < 32) {
 					mask[idx] =
@@ -1673,8 +1666,7 @@ mlx5_flow_field_id_to_modify_info
 				++idx;
 			}
 			if (data->offset < 64) {
-				info[idx] = (struct field_modify_info){4,
-						4 * idx,
+				info[idx] = (struct field_modify_info){4, 8,
 						MLX5_MODI_OUT_DIPV6_63_32};
 				if (width < 32) {
 					mask[idx] =
@@ -1690,8 +1682,7 @@ mlx5_flow_field_id_to_modify_info
 				++idx;
 			}
 			if (data->offset < 96) {
-				info[idx] = (struct field_modify_info){4,
-						4 * idx,
+				info[idx] = (struct field_modify_info){4, 4,
 						MLX5_MODI_OUT_DIPV6_95_64};
 				if (width < 32) {
 					mask[idx] =
@@ -1706,19 +1697,19 @@ mlx5_flow_field_id_to_modify_info
 					break;
 				++idx;
 			}
-			info[idx] = (struct field_modify_info){4, 4 * idx,
+			info[idx] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_DIPV6_127_96};
 			mask[idx] = rte_cpu_to_be_32(0xffffffff >>
 						     (32 - width));
 		} else {
 			if (data->offset < 32)
-				info[idx++] = (struct field_modify_info){4, 0,
+				info[idx++] = (struct field_modify_info){4, 12,
 						MLX5_MODI_OUT_DIPV6_31_0};
 			if (data->offset < 64)
-				info[idx++] = (struct field_modify_info){4, 0,
+				info[idx++] = (struct field_modify_info){4, 8,
 						MLX5_MODI_OUT_DIPV6_63_32};
 			if (data->offset < 96)
-				info[idx++] = (struct field_modify_info){4, 0,
+				info[idx++] = (struct field_modify_info){4, 4,
 						MLX5_MODI_OUT_DIPV6_95_64};
 			if (data->offset < 128)
 				info[idx++] = (struct field_modify_info){4, 0,
@@ -1838,35 +1829,6 @@ mlx5_flow_field_id_to_modify_info
 		break;
 	case RTE_FLOW_FIELD_POINTER:
 	case RTE_FLOW_FIELD_VALUE:
-		if (data->field == RTE_FLOW_FIELD_POINTER)
-			memcpy(&val, (void *)(uintptr_t)data->value,
-			       sizeof(uint64_t));
-		else
-			val = data->value;
-		for (idx = 0; idx < MLX5_ACT_MAX_MOD_FIELDS; idx++) {
-			if (mask[idx]) {
-				if (dst_width == 48) {
-					/*special case for MAC addresses */
-					value[idx] = rte_cpu_to_be_16(val);
-					val >>= 16;
-					dst_width -= 16;
-				} else if (dst_width > 16) {
-					value[idx] = rte_cpu_to_be_32(val);
-					val >>= 32;
-				} else if (dst_width > 8) {
-					value[idx] = rte_cpu_to_be_16(val);
-					val >>= 16;
-				} else {
-					value[idx] = (uint8_t)val;
-					val >>= 8;
-				}
-				if (*shift)
-					value[idx] <<= *shift;
-				if (!val)
-					break;
-			}
-		}
-		break;
 	default:
 		MLX5_ASSERT(false);
 		break;
@@ -1898,42 +1860,40 @@ flow_dv_convert_action_modify_field
 			 const struct rte_flow_attr *attr,
 			 struct rte_flow_error *error)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_modify_field *conf =
 		(const struct rte_flow_action_modify_field *)(action->conf);
-	struct rte_flow_item item;
+	struct rte_flow_item item = {
+		.spec = NULL,
+		.mask = NULL
+	};
 	struct field_modify_info field[MLX5_ACT_MAX_MOD_FIELDS] = {
 								{0, 0, 0} };
 	struct field_modify_info dcopy[MLX5_ACT_MAX_MOD_FIELDS] = {
 								{0, 0, 0} };
 	uint32_t mask[MLX5_ACT_MAX_MOD_FIELDS] = {0, 0, 0, 0, 0};
-	uint32_t value[MLX5_ACT_MAX_MOD_FIELDS] = {0, 0, 0, 0, 0};
 	uint32_t type;
 	uint32_t shift = 0;
-	uint32_t dst_width = mlx5_flow_item_field_width(priv, conf->dst.field);
 
 	if (conf->src.field == RTE_FLOW_FIELD_POINTER ||
-		conf->src.field == RTE_FLOW_FIELD_VALUE) {
+	    conf->src.field == RTE_FLOW_FIELD_VALUE) {
 		type = MLX5_MODIFICATION_TYPE_SET;
 		/** For SET fill the destination field (field) first. */
 		mlx5_flow_field_id_to_modify_info(&conf->dst, field, mask,
-						  value, conf->width, dst_width,
-						  &shift, dev, attr, error);
-		/** Then copy immediate value from source as per mask. */
-		mlx5_flow_field_id_to_modify_info(&conf->src, dcopy, mask,
-						  value, conf->width, dst_width,
-						  &shift, dev, attr, error);
-		item.spec = &value;
+						  conf->width, &shift, dev,
+						  attr, error);
+		item.spec = conf->src.field == RTE_FLOW_FIELD_POINTER ?
+					(void *)(uintptr_t)conf->src.pvalue :
+					(void *)(uintptr_t)&conf->src.value;
 	} else {
 		type = MLX5_MODIFICATION_TYPE_COPY;
 		/** For COPY fill the destination field (dcopy) without mask. */
 		mlx5_flow_field_id_to_modify_info(&conf->dst, dcopy, NULL,
-						  value, conf->width, dst_width,
-						  &shift, dev, attr, error);
+						  conf->width, &shift, dev,
+						  attr, error);
 		/** Then construct the source field (field) with mask. */
 		mlx5_flow_field_id_to_modify_info(&conf->src, field, mask,
-						  value, conf->width, dst_width,
-						  &shift, dev, attr, error);
+						  conf->width, &shift,
+						  dev, attr, error);
 	}
 	item.mask = &mask;
 	return flow_dv_convert_modify_action(&item,
@@ -4854,9 +4814,9 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 	const struct rte_flow_action_modify_field *action_modify_field =
 		action->conf;
 	uint32_t dst_width = mlx5_flow_item_field_width(priv,
-				action_modify_field->dst.field);
+				action_modify_field->dst.field, -1);
 	uint32_t src_width = mlx5_flow_item_field_width(priv,
-				action_modify_field->src.field);
+				action_modify_field->src.field, dst_width);
 
 	ret = flow_dv_validate_action_modify_hdr(action_flags, action, error);
 	if (ret)
