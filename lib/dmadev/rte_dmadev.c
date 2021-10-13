@@ -722,6 +722,7 @@ dma_capability_name(uint64_t capability)
 		{ RTE_DMA_CAPA_DEV_TO_DEV,  "dev2dev" },
 		{ RTE_DMA_CAPA_SVA,         "sva"     },
 		{ RTE_DMA_CAPA_SILENT,      "silent"  },
+		{ RTE_DMA_CAPA_HANDLES_ERRORS, "handles_errors" },
 		{ RTE_DMA_CAPA_OPS_COPY,    "copy"    },
 		{ RTE_DMA_CAPA_OPS_COPY_SG, "copy_sg" },
 		{ RTE_DMA_CAPA_OPS_FILL,    "fill"    },

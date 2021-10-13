@@ -262,6 +262,14 @@ int16_t rte_dma_next_dev(int16_t start_dev_id);
  * @see struct rte_dma_conf::silent_mode
  */
 #define RTE_DMA_CAPA_SILENT             RTE_BIT64(5)
+/** Supports error handling
+ *
+ * With this bit set, invalid input addresses will be reported as operation failures
+ * to the user but other operations can continue.
+ * Without this bit set, invalid data is not handled by either HW or driver, so user
+ * must ensure that all memory addresses are valid and accessible by HW.
+ */
+#define RTE_DMA_CAPA_HANDLES_ERRORS	RTE_BIT64(6)
 /** Support copy operation.
  * This capability start with index of 32, so that it could leave gap between
  * normal capability and ops capability.
