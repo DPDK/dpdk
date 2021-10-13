@@ -431,6 +431,10 @@ ABI Changes
 * bbdev: Added capability related to more comprehensive CRC options,
   shifting values of the ``enum rte_bbdev_op_ldpcdec_flag_bitmasks``.
 
+* eventdev: New variables ``rx_event_buf_count`` and ``rx_event_buf_size``
+  were added in structure ``rte_event_eth_rx_adapter_stats`` to get additional
+  status.
+
 
 Known Issues
 ------------

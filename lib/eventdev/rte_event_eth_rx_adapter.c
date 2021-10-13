@@ -18,6 +18,7 @@
 #include <rte_thash.h>
 #include <rte_interrupts.h>
 #include <rte_mbuf_dyn.h>
+#include <rte_telemetry.h>
 
 #include "rte_eventdev.h"
 #include "eventdev_pmd.h"
@@ -2852,6 +2853,7 @@ rte_event_eth_rx_adapter_stats_get(uint8_t id,
 			       struct rte_event_eth_rx_adapter_stats *stats)
 {
 	struct rte_event_eth_rx_adapter *rx_adapter;
+	struct rte_eth_event_enqueue_buffer *buf;
 	struct rte_event_eth_rx_adapter_stats dev_stats_sum = { 0 };
 	struct rte_event_eth_rx_adapter_stats dev_stats;
 	struct rte_eventdev *dev;
@@ -2889,6 +2891,15 @@ rte_event_eth_rx_adapter_stats_get(uint8_t id,
 
 	stats->rx_packets += dev_stats_sum.rx_packets;
 	stats->rx_enq_count += dev_stats_sum.rx_enq_count;
+
+	if (!rx_adapter->use_queue_event_buf) {
+		buf = &rx_adapter->event_enqueue_buffer;
+		stats->rx_event_buf_count = buf->count;
+		stats->rx_event_buf_size = buf->events_size;
+	} else {
+		stats->rx_event_buf_count = 0;
+		stats->rx_event_buf_size = 0;
+	}
 
 	return 0;
 }
@@ -3051,4 +3062,147 @@ rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
 	}
 
 	return 0;
+}
+
+#define RXA_ADD_DICT(stats, s) rte_tel_data_add_dict_u64(d, #s, stats.s)
+
+static int
+handle_rxa_stats(const char *cmd __rte_unused,
+		 const char *params,
+		 struct rte_tel_data *d)
+{
+	uint8_t rx_adapter_id;
+	struct rte_event_eth_rx_adapter_stats rx_adptr_stats;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -1;
+
+	/* Get Rx adapter ID from parameter string */
+	rx_adapter_id = atoi(params);
+	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(rx_adapter_id, -EINVAL);
+
+	/* Get Rx adapter stats */
+	if (rte_event_eth_rx_adapter_stats_get(rx_adapter_id,
+					       &rx_adptr_stats)) {
+		RTE_EDEV_LOG_ERR("Failed to get Rx adapter stats\n");
+		return -1;
+	}
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_u64(d, "rx_adapter_id", rx_adapter_id);
+	RXA_ADD_DICT(rx_adptr_stats, rx_packets);
+	RXA_ADD_DICT(rx_adptr_stats, rx_poll_count);
+	RXA_ADD_DICT(rx_adptr_stats, rx_dropped);
+	RXA_ADD_DICT(rx_adptr_stats, rx_enq_retry);
+	RXA_ADD_DICT(rx_adptr_stats, rx_event_buf_count);
+	RXA_ADD_DICT(rx_adptr_stats, rx_event_buf_size);
+	RXA_ADD_DICT(rx_adptr_stats, rx_enq_count);
+	RXA_ADD_DICT(rx_adptr_stats, rx_enq_start_ts);
+	RXA_ADD_DICT(rx_adptr_stats, rx_enq_block_cycles);
+	RXA_ADD_DICT(rx_adptr_stats, rx_enq_end_ts);
+	RXA_ADD_DICT(rx_adptr_stats, rx_intr_packets);
+
+	return 0;
+}
+
+static int
+handle_rxa_stats_reset(const char *cmd __rte_unused,
+		       const char *params,
+		       struct rte_tel_data *d __rte_unused)
+{
+	uint8_t rx_adapter_id;
+
+	if (params == NULL || strlen(params) == 0 || ~isdigit(*params))
+		return -1;
+
+	/* Get Rx adapter ID from parameter string */
+	rx_adapter_id = atoi(params);
+	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(rx_adapter_id, -EINVAL);
+
+	/* Reset Rx adapter stats */
+	if (rte_event_eth_rx_adapter_stats_reset(rx_adapter_id)) {
+		RTE_EDEV_LOG_ERR("Failed to reset Rx adapter stats\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+handle_rxa_get_queue_conf(const char *cmd __rte_unused,
+			  const char *params,
+			  struct rte_tel_data *d)
+{
+	uint8_t rx_adapter_id;
+	uint16_t rx_queue_id;
+	int eth_dev_id;
+	char *token, *l_params;
+	struct rte_event_eth_rx_adapter_queue_conf queue_conf;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -1;
+
+	/* Get Rx adapter ID from parameter string */
+	l_params = strdup(params);
+	token = strtok(l_params, ",");
+	rx_adapter_id = strtoul(token, NULL, 10);
+	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(rx_adapter_id, -EINVAL);
+
+	token = strtok(NULL, ",");
+	if (token == NULL || strlen(token) == 0 || !isdigit(*token))
+		return -1;
+
+	/* Get device ID from parameter string */
+	eth_dev_id = strtoul(token, NULL, 10);
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(eth_dev_id, -EINVAL);
+
+	token = strtok(NULL, ",");
+	if (token == NULL || strlen(token) == 0 || !isdigit(*token))
+		return -1;
+
+	/* Get Rx queue ID from parameter string */
+	rx_queue_id = strtoul(token, NULL, 10);
+	if (rx_queue_id >= rte_eth_devices[eth_dev_id].data->nb_rx_queues) {
+		RTE_EDEV_LOG_ERR("Invalid rx queue_id %u", rx_queue_id);
+		return -EINVAL;
+	}
+
+	token = strtok(NULL, "\0");
+	if (token != NULL)
+		RTE_EDEV_LOG_ERR("Extra parameters passed to eventdev"
+				 " telemetry command, igrnoring");
+
+	if (rte_event_eth_rx_adapter_queue_conf_get(rx_adapter_id, eth_dev_id,
+						    rx_queue_id, &queue_conf)) {
+		RTE_EDEV_LOG_ERR("Failed to get Rx adapter queue config");
+		return -1;
+	}
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_u64(d, "rx_adapter_id", rx_adapter_id);
+	rte_tel_data_add_dict_u64(d, "eth_dev_id", eth_dev_id);
+	rte_tel_data_add_dict_u64(d, "rx_queue_id", rx_queue_id);
+	RXA_ADD_DICT(queue_conf, rx_queue_flags);
+	RXA_ADD_DICT(queue_conf, servicing_weight);
+	RXA_ADD_DICT(queue_conf.ev, queue_id);
+	RXA_ADD_DICT(queue_conf.ev, sched_type);
+	RXA_ADD_DICT(queue_conf.ev, priority);
+	RXA_ADD_DICT(queue_conf.ev, flow_id);
+
+	return 0;
+}
+
+RTE_INIT(rxa_init_telemetry)
+{
+	rte_telemetry_register_cmd("/eventdev/rxa_stats",
+		handle_rxa_stats,
+		"Returns Rx adapter stats. Parameter: rxa_id");
+
+	rte_telemetry_register_cmd("/eventdev/rxa_stats_reset",
+		handle_rxa_stats_reset,
+		"Reset Rx adapter stats. Parameter: rxa_id");
+
+	rte_telemetry_register_cmd("/eventdev/rxa_queue_conf",
+		handle_rxa_get_queue_conf,
+		"Returns Rx queue config. Parameter: rxa_id, dev_id, queue_id");
 }

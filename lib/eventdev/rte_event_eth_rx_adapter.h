@@ -232,6 +232,10 @@ struct rte_event_eth_rx_adapter_stats {
 	 */
 	uint64_t rx_intr_packets;
 	/**< Received packet count for interrupt mode Rx queues */
+	uint64_t rx_event_buf_count;
+	/**< Rx event buffered count */
+	uint64_t rx_event_buf_size;
+	/**< Rx event buffer size */
 };
 
 /**
