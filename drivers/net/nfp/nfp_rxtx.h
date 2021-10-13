@@ -275,8 +275,7 @@ struct nfp_net_rxq {
 } __rte_aligned(64);
 
 int nfp_net_rx_freelist_setup(struct rte_eth_dev *dev);
-uint32_t nfp_net_rx_queue_count(struct rte_eth_dev *dev,
-				       uint16_t queue_idx);
+uint32_t nfp_net_rx_queue_count(void *rx_queue);
 uint16_t nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				  uint16_t nb_pkts);
 void nfp_net_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx);

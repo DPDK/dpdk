@@ -1460,14 +1460,14 @@ ice_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 }
 
 uint32_t
-ice_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+ice_rx_queue_count(void *rx_queue)
 {
 #define ICE_RXQ_SCAN_INTERVAL 4
 	volatile union ice_rx_flex_desc *rxdp;
 	struct ice_rx_queue *rxq;
 	uint16_t desc = 0;
 
-	rxq = dev->data->rx_queues[rx_queue_id];
+	rxq = rx_queue;
 	rxdp = &rxq->rx_ring[rxq->rx_tail];
 	while ((desc < rxq->nb_rx_desc) &&
 	       rte_le_to_cpu_16(rxdp->wb.status_error0) &

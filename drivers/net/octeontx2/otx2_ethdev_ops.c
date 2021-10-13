@@ -342,13 +342,13 @@ nix_rx_head_tail_get(struct otx2_eth_dev *dev,
 }
 
 uint32_t
-otx2_nix_rx_queue_count(struct rte_eth_dev *eth_dev, uint16_t queue_idx)
+otx2_nix_rx_queue_count(void *rx_queue)
 {
-	struct otx2_eth_rxq *rxq = eth_dev->data->rx_queues[queue_idx];
-	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_eth_rxq *rxq = rx_queue;
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(rxq->eth_dev);
 	uint32_t head, tail;
 
-	nix_rx_head_tail_get(dev, &head, &tail, queue_idx);
+	nix_rx_head_tail_get(dev, &head, &tail, rxq->rq);
 	return (tail - head) % rxq->qlen;
 }
 

@@ -3154,20 +3154,22 @@ bnxt_dev_led_off_op(struct rte_eth_dev *dev)
 }
 
 static uint32_t
-bnxt_rx_queue_count_op(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+bnxt_rx_queue_count_op(void *rx_queue)
 {
-	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt *bp;
 	struct bnxt_cp_ring_info *cpr;
 	uint32_t desc = 0, raw_cons, cp_ring_size;
 	struct bnxt_rx_queue *rxq;
 	struct rx_pkt_cmpl *rxcmp;
 	int rc;
 
+	rxq = rx_queue;
+	bp = rxq->bp;
+
 	rc = is_bnxt_in_error(bp);
 	if (rc)
 		return rc;
 
-	rxq = dev->data->rx_queues[rx_queue_id];
 	cpr = rxq->cp_ring;
 	raw_cons = cpr->cp_raw_cons;
 	cp_ring_size = cpr->cp_ring_struct->ring_size;

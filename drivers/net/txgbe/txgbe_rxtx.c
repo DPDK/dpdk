@@ -2688,14 +2688,14 @@ txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 }
 
 uint32_t
-txgbe_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+txgbe_dev_rx_queue_count(void *rx_queue)
 {
 #define TXGBE_RXQ_SCAN_INTERVAL 4
 	volatile struct txgbe_rx_desc *rxdp;
 	struct txgbe_rx_queue *rxq;
 	uint32_t desc = 0;
 
-	rxq = dev->data->rx_queues[rx_queue_id];
+	rxq = rx_queue;
 	rxdp = &rxq->rx_ring[rxq->rx_tail];
 
 	while ((desc < rxq->nb_rx_desc) &&

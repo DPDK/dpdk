@@ -722,8 +722,7 @@ void eth_igc_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 		igc_rx_queue_release(dev->data->rx_queues[qid]);
 }
 
-uint32_t eth_igc_rx_queue_count(struct rte_eth_dev *dev,
-		uint16_t rx_queue_id)
+uint32_t eth_igc_rx_queue_count(void *rx_queue)
 {
 	/**
 	 * Check the DD bit of a rx descriptor of each 4 in a group,
@@ -736,7 +735,7 @@ uint32_t eth_igc_rx_queue_count(struct rte_eth_dev *dev,
 	struct igc_rx_queue *rxq;
 	uint16_t desc = 0;
 
-	rxq = dev->data->rx_queues[rx_queue_id];
+	rxq = rx_queue;
 	rxdp = &rxq->rx_ring[rxq->rx_tail];
 
 	while (desc < rxq->nb_rx_desc - rxq->rx_tail) {

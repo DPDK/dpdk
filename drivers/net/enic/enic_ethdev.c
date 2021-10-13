@@ -237,18 +237,18 @@ static void enicpmd_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	enic_free_rq(rxq);
 }
 
-static uint32_t enicpmd_dev_rx_queue_count(struct rte_eth_dev *dev,
-					   uint16_t rx_queue_id)
+static uint32_t enicpmd_dev_rx_queue_count(void *rx_queue)
 {
-	struct enic *enic = pmd_priv(dev);
+	struct enic *enic;
+	struct vnic_rq *sop_rq;
 	uint32_t queue_count = 0;
 	struct vnic_cq *cq;
 	uint32_t cq_tail;
 	uint16_t cq_idx;
-	int rq_num;
 
-	rq_num = enic_rte_rq_idx_to_sop_idx(rx_queue_id);
-	cq = &enic->cq[enic_cq_rq(enic, rq_num)];
+	sop_rq = rx_queue;
+	enic = vnic_dev_priv(sop_rq->vdev);
+	cq = &enic->cq[enic_cq_rq(enic, sop_rq->index)];
 	cq_idx = cq->to_clean;
 
 	cq_tail = ioread32(&cq->ctrl->cq_tail);

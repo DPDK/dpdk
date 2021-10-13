@@ -649,11 +649,11 @@ nicvf_recv_pkts_multiseg_cksum_vlan_strip(void *rx_queue,
 }
 
 uint32_t
-nicvf_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
+nicvf_dev_rx_queue_count(void *rx_queue)
 {
 	struct nicvf_rxq *rxq;
 
-	rxq = dev->data->rx_queues[queue_idx];
+	rxq = rx_queue;
 	return nicvf_addr_read(rxq->cq_status) & NICVF_CQ_CQE_COUNT_MASK;
 }
 

@@ -1018,9 +1018,9 @@ hn_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
  * For this device that means how many packets are pending in the ring.
  */
 uint32_t
-hn_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_id)
+hn_dev_rx_queue_count(void *rx_queue)
 {
-	struct hn_rx_queue *rxq = dev->data->rx_queues[queue_id];
+	struct hn_rx_queue *rxq = rx_queue;
 
 	return rte_ring_count(rxq->rx_ring);
 }

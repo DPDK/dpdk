@@ -1357,19 +1357,19 @@ sfc_tx_queue_info_get(struct rte_eth_dev *dev, uint16_t ethdev_qid,
  * use any process-local pointers from the adapter data.
  */
 static uint32_t
-sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t ethdev_qid)
+sfc_rx_queue_count(void *rx_queue)
 {
-	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
-	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
-	sfc_ethdev_qid_t sfc_ethdev_qid = ethdev_qid;
+	struct sfc_dp_rxq *dp_rxq = rx_queue;
+	const struct sfc_dp_rx *dp_rx;
 	struct sfc_rxq_info *rxq_info;
 
-	rxq_info = sfc_rxq_info_by_ethdev_qid(sas, sfc_ethdev_qid);
+	dp_rx = sfc_dp_rx_by_dp_rxq(dp_rxq);
+	rxq_info = sfc_rxq_info_by_dp_rxq(dp_rxq);
 
 	if ((rxq_info->state & SFC_RXQ_STARTED) == 0)
 		return 0;
 
-	return sap->dp_rx->qdesc_npending(rxq_info->dp);
+	return dp_rx->qdesc_npending(dp_rxq);
 }
 
 /*

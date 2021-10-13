@@ -1776,14 +1776,14 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 }
 
 uint32_t
-eth_igb_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+eth_igb_rx_queue_count(void *rx_queue)
 {
 #define IGB_RXQ_SCAN_INTERVAL 4
 	volatile union e1000_adv_rx_desc *rxdp;
 	struct igb_rx_queue *rxq;
 	uint32_t desc = 0;
 
-	rxq = dev->data->rx_queues[rx_queue_id];
+	rxq = rx_queue;
 	rxdp = &(rxq->rx_ring[rxq->rx_tail]);
 
 	while ((desc < rxq->nb_rx_desc) &&

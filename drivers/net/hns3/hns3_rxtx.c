@@ -4685,7 +4685,7 @@ hns3_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 }
 
 uint32_t
-hns3_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+hns3_rx_queue_count(void *rx_queue)
 {
 	/*
 	 * Number of BDs that have been processed by the driver
@@ -4693,9 +4693,12 @@ hns3_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	 */
 	uint32_t driver_hold_bd_num;
 	struct hns3_rx_queue *rxq;
+	const struct rte_eth_dev *dev;
 	uint32_t fbd_num;
 
-	rxq = dev->data->rx_queues[rx_queue_id];
+	rxq = rx_queue;
+	dev = &rte_eth_devices[rxq->port_id];
+
 	fbd_num = hns3_read_dev(rxq, HNS3_RING_RX_FBDNUM_REG);
 	if (dev->rx_pkt_burst == hns3_recv_pkts_vec ||
 	    dev->rx_pkt_burst == hns3_recv_pkts_vec_sve)

@@ -388,11 +388,11 @@ eth_ark_rx_queue_drain(struct ark_rx_queue *queue)
 }
 
 uint32_t
-eth_ark_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_id)
+eth_ark_dev_rx_queue_count(void *rx_queue)
 {
 	struct ark_rx_queue *queue;
 
-	queue = dev->data->rx_queues[queue_id];
+	queue = rx_queue;
 	return (queue->prod_index - queue->cons_index);	/* mod arith */
 }
 

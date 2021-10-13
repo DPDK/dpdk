@@ -324,7 +324,7 @@ uint16_t fm10k_recv_scattered_pkts(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
 uint32_t
-fm10k_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+fm10k_dev_rx_queue_count(void *rx_queue);
 
 int
 fm10k_dev_rx_descriptor_status(void *rx_queue, uint16_t offset);

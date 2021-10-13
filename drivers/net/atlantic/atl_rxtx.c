@@ -689,18 +689,13 @@ atl_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 /* Return Rx queue avail count */
 
 uint32_t
-atl_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+atl_rx_queue_count(void *rx_queue)
 {
 	struct atl_rx_queue *rxq;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (rx_queue_id >= dev->data->nb_rx_queues) {
-		PMD_DRV_LOG(ERR, "Invalid RX queue id=%d", rx_queue_id);
-		return 0;
-	}
-
-	rxq = dev->data->rx_queues[rx_queue_id];
+	rxq = rx_queue;
 
 	if (rxq == NULL)
 		return 0;

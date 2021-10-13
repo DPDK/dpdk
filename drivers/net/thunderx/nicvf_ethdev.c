@@ -1060,8 +1060,7 @@ nicvf_rx_queue_release_mbufs(struct rte_eth_dev *dev, struct nicvf_rxq *rxq)
 	if (dev->rx_pkt_burst == NULL)
 		return;
 
-	while ((rxq_cnt = nicvf_dev_rx_queue_count(dev,
-				nicvf_netdev_qidx(rxq->nic, rxq->queue_id)))) {
+	while ((rxq_cnt = nicvf_dev_rx_queue_count(rxq))) {
 		nb_pkts = dev->rx_pkt_burst(rxq, rx_pkts,
 					NICVF_MAX_RX_FREE_THRESH);
 		PMD_DRV_LOG(INFO, "nb_pkts=%d  rxq_cnt=%d", nb_pkts, rxq_cnt);

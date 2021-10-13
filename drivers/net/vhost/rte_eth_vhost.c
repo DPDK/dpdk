@@ -1375,11 +1375,11 @@ eth_link_update(struct rte_eth_dev *dev __rte_unused,
 }
 
 static uint32_t
-eth_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+eth_rx_queue_count(void *rx_queue)
 {
 	struct vhost_queue *vq;
 
-	vq = dev->data->rx_queues[rx_queue_id];
+	vq = rx_queue;
 	if (vq == NULL)
 		return 0;
 

@@ -367,14 +367,14 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 }
 
 uint32_t
-fm10k_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+fm10k_dev_rx_queue_count(void *rx_queue)
 {
 #define FM10K_RXQ_SCAN_INTERVAL 4
 	volatile union fm10k_rx_desc *rxdp;
 	struct fm10k_rx_queue *rxq;
 	uint16_t desc = 0;
 
-	rxq = dev->data->rx_queues[rx_queue_id];
+	rxq = rx_queue;
 	rxdp = &rxq->hw_ring[rxq->next_dd];
 	while ((desc < rxq->nb_desc) &&
 		rxdp->w.status & rte_cpu_to_le_16(FM10K_RXD_STATUS_DD)) {

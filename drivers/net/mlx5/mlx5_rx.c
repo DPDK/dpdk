@@ -240,32 +240,32 @@ mlx5_rx_burst_mode_get(struct rte_eth_dev *dev,
 /**
  * DPDK callback to get the number of used descriptors in a RX queue.
  *
- * @param dev
- *   Pointer to the device structure.
- *
- * @param rx_queue_id
- *   The Rx queue.
+ * @param rx_queue
+ *   The Rx queue pointer.
  *
  * @return
  *   The number of used rx descriptor.
  *   -EINVAL if the queue is invalid
  */
 uint32_t
-mlx5_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+mlx5_rx_queue_count(void *rx_queue)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq;
+	struct mlx5_rxq_data *rxq = rx_queue;
+	struct rte_eth_dev *dev;
+
+	if (!rxq) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	dev = &rte_eth_devices[rxq->port_id];
 
 	if (dev->rx_pkt_burst == NULL ||
 	    dev->rx_pkt_burst == removed_rx_burst) {
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	rxq = (*priv->rxqs)[rx_queue_id];
-	if (!rxq) {
-		rte_errno = EINVAL;
-		return -rte_errno;
-	}
+
 	return rx_queue_count(rxq);
 }
 

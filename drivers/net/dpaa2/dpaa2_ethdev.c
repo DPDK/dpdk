@@ -1007,10 +1007,9 @@ dpaa2_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 }
 
 static uint32_t
-dpaa2_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+dpaa2_dev_rx_queue_count(void *rx_queue)
 {
 	int32_t ret;
-	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct dpaa2_queue *dpaa2_q;
 	struct qbman_swp *swp;
 	struct qbman_fq_query_np_rslt state;
@@ -1027,12 +1026,12 @@ dpaa2_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 	swp = DPAA2_PER_LCORE_PORTAL;
 
-	dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[rx_queue_id];
+	dpaa2_q = rx_queue;
 
 	if (qbman_fq_query_state(swp, dpaa2_q->fqid, &state) == 0) {
 		frame_cnt = qbman_fq_state_frame_count(&state);
-		DPAA2_PMD_DP_DEBUG("RX frame count for q(%d) is %u",
-				rx_queue_id, frame_cnt);
+		DPAA2_PMD_DP_DEBUG("RX frame count for q(%p) is %u",
+				rx_queue, frame_cnt);
 	}
 	return frame_cnt;
 }

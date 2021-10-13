@@ -41,8 +41,7 @@ typedef uint16_t (*eth_tx_prep_t)(void *txq,
 /**< @internal Prepare output packets on a transmit queue of an Ethernet device. */
 
 
-typedef uint32_t (*eth_rx_queue_count_t)(struct rte_eth_dev *dev,
-					 uint16_t rx_queue_id);
+typedef uint32_t (*eth_rx_queue_count_t)(void *rxq);
 /**< @internal Get number of used descriptors on a receive queue. */
 
 typedef int (*eth_rx_descriptor_status_t)(void *rxq, uint16_t offset);

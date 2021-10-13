@@ -329,6 +329,12 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* ethdev: Input parameters for ``eth_rx_queue_count_t`` was changed.
+  Instead of pointer to ``rte_eth_dev`` and queue index, now it accepts pointer
+  to internal queue data as input parameter. While this change is transparent
+  to user, it still counts as an ABI change, as ``eth_rx_queue_count_t``
+  is used by  public inline function ``rte_eth_rx_queue_count``.
+
 * security: ``rte_security_set_pkt_metadata`` and ``rte_security_get_userdata``
   routines used by inline outbound and inline inbound security processing were
   made inline and enhanced to do simple 64-bit set/get for PMDs that do not

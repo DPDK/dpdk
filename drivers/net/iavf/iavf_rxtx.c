@@ -2799,14 +2799,14 @@ iavf_dev_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 /* Get the number of used descriptors of a rx queue */
 uint32_t
-iavf_dev_rxq_count(struct rte_eth_dev *dev, uint16_t queue_id)
+iavf_dev_rxq_count(void *rx_queue)
 {
 #define IAVF_RXQ_SCAN_INTERVAL 4
 	volatile union iavf_rx_desc *rxdp;
 	struct iavf_rx_queue *rxq;
 	uint16_t desc = 0;
 
-	rxq = dev->data->rx_queues[queue_id];
+	rxq = rx_queue;
 	rxdp = &rxq->rx_ring[rxq->rx_tail];
 
 	while ((desc < rxq->nb_rx_desc) &&

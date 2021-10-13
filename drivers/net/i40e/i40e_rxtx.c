@@ -2121,14 +2121,14 @@ i40e_rx_queue_release(void *rxq)
 }
 
 uint32_t
-i40e_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+i40e_dev_rx_queue_count(void *rx_queue)
 {
 #define I40E_RXQ_SCAN_INTERVAL 4
 	volatile union i40e_rx_desc *rxdp;
 	struct i40e_rx_queue *rxq;
 	uint16_t desc = 0;
 
-	rxq = dev->data->rx_queues[rx_queue_id];
+	rxq = rx_queue;
 	rxdp = &(rxq->rx_ring[rxq->rx_tail]);
 	while ((desc < rxq->nb_rx_desc) &&
 		((rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &

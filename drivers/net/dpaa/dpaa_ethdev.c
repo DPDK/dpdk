@@ -1267,17 +1267,16 @@ int dpaa_eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 }
 
 static uint32_t
-dpaa_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+dpaa_dev_rx_queue_count(void *rx_queue)
 {
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
-	struct qman_fq *rxq = &dpaa_intf->rx_queues[rx_queue_id];
+	struct qman_fq *rxq = rx_queue;
 	u32 frm_cnt = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (qman_query_fq_frm_cnt(rxq, &frm_cnt) == 0) {
-		DPAA_PMD_DEBUG("RX frame count for q(%d) is %u",
-			       rx_queue_id, frm_cnt);
+		DPAA_PMD_DEBUG("RX frame count for q(%p) is %u",
+			       rx_queue, frm_cnt);
 	}
 	return frm_cnt;
 }

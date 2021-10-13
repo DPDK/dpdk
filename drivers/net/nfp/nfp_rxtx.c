@@ -97,14 +97,14 @@ nfp_net_rx_freelist_setup(struct rte_eth_dev *dev)
 }
 
 uint32_t
-nfp_net_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
+nfp_net_rx_queue_count(void *rx_queue)
 {
 	struct nfp_net_rxq *rxq;
 	struct nfp_net_rx_desc *rxds;
 	uint32_t idx;
 	uint32_t count;
 
-	rxq = (struct nfp_net_rxq *)dev->data->rx_queues[queue_idx];
+	rxq = rx_queue;
 
 	idx = rxq->rd_p;
 
