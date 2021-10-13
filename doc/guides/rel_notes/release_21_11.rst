@@ -71,6 +71,8 @@ New Features
 
   * Added a DMA device framework for management and provision of
     hardware and software DMA devices.
+  * Added generic API which support a number of different DMA
+    operations.
 
 * **Added new RSS offload types for IPv4/L4 checksum in RSS flow.**
 

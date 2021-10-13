@@ -56,3 +56,13 @@ identifiers:
 
 - A device name used to designate the DMA device in console messages, for
   administration or debugging purposes.
+
+
+Device Features and Capabilities
+--------------------------------
+
+DMA devices may support different feature sets. The ``rte_dma_info_get`` API
+can be used to get the device info and supported features.
+
+Silent mode is a special device capability which does not require the
+application to invoke dequeue APIs.
