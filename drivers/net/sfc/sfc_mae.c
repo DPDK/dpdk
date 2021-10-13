@@ -1525,6 +1525,7 @@ sfc_mae_rule_parse_item_eth(const struct rte_flow_item *item,
 			    struct rte_flow_error *error)
 {
 	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
+	struct rte_flow_item_eth override_mask;
 	struct rte_flow_item_eth supp_mask;
 	const uint8_t *spec = NULL;
 	const uint8_t *mask = NULL;
@@ -1541,6 +1542,22 @@ sfc_mae_rule_parse_item_eth(const struct rte_flow_item *item,
 				 sizeof(struct rte_flow_item_eth), error);
 	if (rc != 0)
 		return rc;
+
+	if (ctx_mae->ft_rule_type == SFC_FT_RULE_JUMP && mask != NULL) {
+		/*
+		 * The HW/FW hasn't got support for match on MAC addresses in
+		 * outer rules yet (this will change). Match on VLAN presence
+		 * isn't supported either. Ignore these match criteria.
+		 */
+		memcpy(&override_mask, mask, sizeof(override_mask));
+		memset(&override_mask.hdr.dst_addr, 0,
+		       sizeof(override_mask.hdr.dst_addr));
+		memset(&override_mask.hdr.src_addr, 0,
+		       sizeof(override_mask.hdr.src_addr));
+		override_mask.has_vlan = 0;
+
+		mask = (const uint8_t *)&override_mask;
+	}
 
 	if (spec != NULL) {
 		struct sfc_mae_pattern_data *pdata = &ctx_mae->pattern_data;
