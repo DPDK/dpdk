@@ -1634,17 +1634,6 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	/* TXGBE devices don't support:
-	 *    - half duplex (checked afterwards for valid speeds)
-	 *    - fixed speed: TODO implement
-	 */
-	if (dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED) {
-		PMD_INIT_LOG(ERR,
-		"Invalid link_speeds for port %u, fix speed not supported",
-				dev->data->port_id);
-		return -EINVAL;
-	}
-
 	/* Stop the link setup handler before resetting the HW. */
 	rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler, dev);
 
@@ -1778,7 +1767,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 			ETH_LINK_SPEED_10G;
 
 	link_speeds = &dev->data->dev_conf.link_speeds;
-	if (*link_speeds & ~allowed_speeds) {
+	if (((*link_speeds) >> 1) & ~(allowed_speeds >> 1)) {
 		PMD_INIT_LOG(ERR, "Invalid link setting");
 		goto error;
 	}
@@ -2709,7 +2698,8 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	link.link_status = ETH_LINK_DOWN;
 	link.link_speed = ETH_SPEED_NUM_NONE;
 	link.link_duplex = ETH_LINK_HALF_DUPLEX;
-	link.link_autoneg = ETH_LINK_AUTONEG;
+	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+			ETH_LINK_SPEED_FIXED);
 
 	hw->mac.get_link_status = true;
 
