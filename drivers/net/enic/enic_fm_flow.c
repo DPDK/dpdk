@@ -1242,6 +1242,35 @@ vf_egress_port_id_action(struct enic_flowman *fm,
 	return 0;
 }
 
+static int
+enic_fm_check_transfer_dst(struct enic *enic, uint16_t dst_port_id,
+			   struct rte_eth_dev **dst_dev,
+			   struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev;
+
+	ENICPMD_LOG(DEBUG, "port id %u", dst_port_id);
+	if (!rte_eth_dev_is_valid_port(dst_port_id)) {
+		return rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			NULL, "invalid port_id");
+	}
+	dev = &rte_eth_devices[dst_port_id];
+	if (!dev_is_enic(dev)) {
+		return rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			NULL, "port_id is not enic");
+	}
+	if (enic->switch_domain_id != pmd_priv(dev)->switch_domain_id) {
+		return rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			NULL, "destination and source ports are not in the same switch domain");
+	}
+
+	*dst_dev = dev;
+	return 0;
+}
+
 /* Translate flow actions to flowman TCAM entry actions */
 static int
 enic_fm_copy_action(struct enic_flowman *fm,
@@ -1446,24 +1475,10 @@ enic_fm_copy_action(struct enic_flowman *fm,
 				vnic_h = enic->fm_vnic_handle; /* This port */
 				break;
 			}
-			ENICPMD_LOG(DEBUG, "port id %u", port->id);
-			if (!rte_eth_dev_is_valid_port(port->id)) {
-				return rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ACTION,
-					NULL, "invalid port_id");
-			}
-			dev = &rte_eth_devices[port->id];
-			if (!dev_is_enic(dev)) {
-				return rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ACTION,
-					NULL, "port_id is not enic");
-			}
-			if (enic->switch_domain_id !=
-			    pmd_priv(dev)->switch_domain_id) {
-				return rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ACTION,
-					NULL, "destination and source ports are not in the same switch domain");
-			}
+			ret = enic_fm_check_transfer_dst(enic, port->id, &dev,
+							 error);
+			if (ret)
+				return ret;
 			vnic_h = pmd_priv(dev)->fm_vnic_handle;
 			overlap |= PORT_ID;
 			/*
@@ -1558,6 +1573,48 @@ enic_fm_copy_action(struct enic_flowman *fm,
 			vid = actions->conf;
 			need_ovlan_action = true;
 			ovlan |= rte_be_to_cpu_16(vid->vlan_vid);
+			break;
+		}
+		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR: {
+			const struct rte_flow_action_ethdev *ethdev;
+			struct rte_eth_dev *dev;
+
+			ethdev = actions->conf;
+			ret = enic_fm_check_transfer_dst(enic, ethdev->port_id,
+							 &dev, error);
+			if (ret)
+				return ret;
+			vnic_h = pmd_priv(dev)->fm_vnic_handle;
+			overlap |= PORT_ID;
+			/*
+			 * Action PORT_REPRESENTOR implies ingress destination.
+			 * Noting to do. We add an implicit stree at the
+			 * end if needed.
+			 */
+			ingress = 1;
+			break;
+		}
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT: {
+			const struct rte_flow_action_ethdev *ethdev;
+			struct rte_eth_dev *dev;
+
+			if (overlap & PORT_ID) {
+				ENICPMD_LOG(DEBUG, "cannot have multiple egress PORT_ID actions");
+				goto unsupported;
+			}
+			ethdev = actions->conf;
+			ret = enic_fm_check_transfer_dst(enic, ethdev->port_id,
+							 &dev, error);
+			if (ret)
+				return ret;
+			vnic_h = pmd_priv(dev)->fm_vnic_handle;
+			overlap |= PORT_ID;
+			/* Action REPRESENTED_PORT: always egress destination */
+			ingress = 0;
+			ret = vf_egress_port_id_action(fm, dev, vnic_h, &fm_op,
+				error);
+			if (ret)
+				return ret;
 			break;
 		}
 		default:
