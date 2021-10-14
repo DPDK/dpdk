@@ -709,6 +709,38 @@ rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
  *
  *  @see rte_event_port_setup(), rte_event_port_link()
  */
+#define RTE_EVENT_PORT_CFG_HINT_PRODUCER       (1ULL << 2)
+/**< Hint that this event port will primarily enqueue events to the system.
+ * A PMD can optimize its internal workings by assuming that this port is
+ * primarily going to enqueue NEW events.
+ *
+ * Note that this flag is only a hint, so PMDs must operate under the
+ * assumption that any port can enqueue an event with any type of op.
+ *
+ *  @see rte_event_port_setup()
+ */
+#define RTE_EVENT_PORT_CFG_HINT_CONSUMER       (1ULL << 3)
+/**< Hint that this event port will primarily dequeue events from the system.
+ * A PMD can optimize its internal workings by assuming that this port is
+ * primarily going to consume events, and not enqueue FORWARD or RELEASE
+ * events.
+ *
+ * Note that this flag is only a hint, so PMDs must operate under the
+ * assumption that any port can enqueue an event with any type of op.
+ *
+ *  @see rte_event_port_setup()
+ */
+#define RTE_EVENT_PORT_CFG_HINT_WORKER         (1ULL << 4)
+/**< Hint that this event port will primarily pass existing events through.
+ * A PMD can optimize its internal workings by assuming that this port is
+ * primarily going to FORWARD events, and not enqueue NEW or RELEASE events
+ * often.
+ *
+ * Note that this flag is only a hint, so PMDs must operate under the
+ * assumption that any port can enqueue an event with any type of op.
+ *
+ *  @see rte_event_port_setup()
+ */
 
 /** Event port configuration structure */
 struct rte_event_port_conf {
