@@ -557,7 +557,10 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 		w->processed_pkts = 0;
 		w->latency = 0;
 
-		ret = rte_event_port_setup(opt->dev_id, port, port_conf);
+		struct rte_event_port_conf conf = *port_conf;
+		conf.event_port_cfg |= RTE_EVENT_PORT_CFG_HINT_WORKER;
+
+		ret = rte_event_port_setup(opt->dev_id, port, &conf);
 		if (ret) {
 			evt_err("failed to setup port %d", port);
 			return ret;
@@ -577,7 +580,10 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 			p->t = t;
 		}
 
-		ret = perf_event_rx_adapter_setup(opt, stride, *port_conf);
+		struct rte_event_port_conf conf = *port_conf;
+		conf.event_port_cfg |= RTE_EVENT_PORT_CFG_HINT_PRODUCER;
+
+		ret = perf_event_rx_adapter_setup(opt, stride, conf);
 		if (ret)
 			return ret;
 	} else if (opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR) {
@@ -602,8 +608,12 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 			p->queue_id = prod * stride;
 			p->t = t;
 
-			ret = rte_event_port_setup(opt->dev_id, port,
-					port_conf);
+			struct rte_event_port_conf conf = *port_conf;
+			conf.event_port_cfg |=
+				RTE_EVENT_PORT_CFG_HINT_PRODUCER |
+				RTE_EVENT_PORT_CFG_HINT_CONSUMER;
+
+			ret = rte_event_port_setup(opt->dev_id, port, &conf);
 			if (ret) {
 				evt_err("failed to setup port %d", port);
 				return ret;
