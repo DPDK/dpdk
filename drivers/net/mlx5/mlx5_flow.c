@@ -132,6 +132,12 @@ struct mlx5_flow_expand_rss {
 static void
 mlx5_dbg__print_pattern(const struct rte_flow_item *item);
 
+static const struct mlx5_flow_expand_node *
+mlx5_flow_expand_rss_adjust_node(const struct rte_flow_item *pattern,
+		unsigned int item_idx,
+		const struct mlx5_flow_expand_node graph[],
+		const struct mlx5_flow_expand_node *node);
+
 static bool
 mlx5_flow_is_rss_expandable_item(const struct rte_flow_item *item)
 {
@@ -318,7 +324,7 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 	const int *stack[MLX5_RSS_EXP_ELT_N];
 	int stack_pos = 0;
 	struct rte_flow_item flow_items[MLX5_RSS_EXP_ELT_N];
-	unsigned int i;
+	unsigned int i, item_idx, last_expand_item_idx = 0;
 	size_t lsize;
 	size_t user_pattern_size = 0;
 	void *addr = NULL;
@@ -326,7 +332,7 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 	struct rte_flow_item missed_item;
 	int missed = 0;
 	int elt = 0;
-	const struct rte_flow_item *last_item = NULL;
+	const struct rte_flow_item *last_expand_item = NULL;
 
 	memset(&missed_item, 0, sizeof(missed_item));
 	lsize = offsetof(struct mlx5_flow_expand_rss, entry) +
@@ -337,12 +343,15 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 	buf->entry[0].pattern = (void *)&buf->entry[MLX5_RSS_EXP_ELT_N];
 	buf->entries = 0;
 	addr = buf->entry[0].pattern;
-	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+	for (item = pattern, item_idx = 0;
+			item->type != RTE_FLOW_ITEM_TYPE_END;
+			item++, item_idx++) {
 		if (!mlx5_flow_is_rss_expandable_item(item)) {
 			user_pattern_size += sizeof(*item);
 			continue;
 		}
-		last_item = item;
+		last_expand_item = item;
+		last_expand_item_idx = item_idx;
 		i = 0;
 		while (node->next && node->next[i]) {
 			next = &graph[node->next[i]];
@@ -374,7 +383,7 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 	 * Check if the last valid item has spec set, need complete pattern,
 	 * and the pattern can be used for expansion.
 	 */
-	missed_item.type = mlx5_flow_expand_rss_item_complete(last_item);
+	missed_item.type = mlx5_flow_expand_rss_item_complete(last_expand_item);
 	if (missed_item.type == RTE_FLOW_ITEM_TYPE_END) {
 		/* Item type END indicates expansion is not required. */
 		return lsize;
@@ -409,6 +418,9 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 			addr = (void *)(((uintptr_t)addr) +
 					elt * sizeof(*item));
 		}
+	} else if (last_expand_item != NULL) {
+		node = mlx5_flow_expand_rss_adjust_node(pattern,
+				last_expand_item_idx, graph, node);
 	}
 	memset(flow_items, 0, sizeof(flow_items));
 	next_node = mlx5_flow_expand_rss_skip_explicit(graph,
@@ -495,6 +507,8 @@ enum mlx5_expansion {
 	MLX5_EXPANSION_OUTER_IPV6_UDP,
 	MLX5_EXPANSION_OUTER_IPV6_TCP,
 	MLX5_EXPANSION_VXLAN,
+	MLX5_EXPANSION_STD_VXLAN,
+	MLX5_EXPANSION_L3_VXLAN,
 	MLX5_EXPANSION_VXLAN_GPE,
 	MLX5_EXPANSION_GRE,
 	MLX5_EXPANSION_NVGRE,
@@ -590,6 +604,15 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 						  MLX5_EXPANSION_IPV4,
 						  MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_VXLAN,
+	},
+	[MLX5_EXPANSION_STD_VXLAN] = {
+			.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH),
+					.type = RTE_FLOW_ITEM_TYPE_VXLAN,
+	},
+	[MLX5_EXPANSION_L3_VXLAN] = {
+			.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
+					MLX5_EXPANSION_IPV6),
+					.type = RTE_FLOW_ITEM_TYPE_VXLAN,
 	},
 	[MLX5_EXPANSION_VXLAN_GPE] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
@@ -9418,4 +9441,42 @@ mlx5_dbg__print_pattern(const struct rte_flow_item *item)
 			printf("%d\n", (int)item->type);
 	}
 	printf("END\n");
+}
+
+static int
+mlx5_flow_is_std_vxlan_port(const struct rte_flow_item *udp_item)
+{
+	const struct rte_flow_item_udp *spec = udp_item->spec;
+	const struct rte_flow_item_udp *mask = udp_item->mask;
+	uint16_t udp_dport = 0;
+
+	if (spec != NULL) {
+		if (!mask)
+			mask = &rte_flow_item_udp_mask;
+		udp_dport = rte_be_to_cpu_16(spec->hdr.dst_port &
+				mask->hdr.dst_port);
+	}
+	return (!udp_dport || udp_dport == MLX5_UDP_PORT_VXLAN);
+}
+
+static const struct mlx5_flow_expand_node *
+mlx5_flow_expand_rss_adjust_node(const struct rte_flow_item *pattern,
+		unsigned int item_idx,
+		const struct mlx5_flow_expand_node graph[],
+		const struct mlx5_flow_expand_node *node)
+{
+	const struct rte_flow_item *item = pattern + item_idx, *prev_item;
+	switch (item->type) {
+	case RTE_FLOW_ITEM_TYPE_VXLAN:
+		MLX5_ASSERT(item_idx > 0);
+		prev_item = pattern + item_idx - 1;
+		MLX5_ASSERT(prev_item->type == RTE_FLOW_ITEM_TYPE_UDP);
+		if (mlx5_flow_is_std_vxlan_port(prev_item))
+			return &graph[MLX5_EXPANSION_STD_VXLAN];
+		else
+			return &graph[MLX5_EXPANSION_L3_VXLAN];
+		break;
+	default:
+		return node;
+	}
 }
