@@ -2711,6 +2711,9 @@ start_port(portid_t pid)
 		}
 
 		if (port->need_reconfig > 0) {
+			struct rte_eth_conf dev_conf;
+			int k;
+
 			port->need_reconfig = 0;
 
 			if (flow_isolate_all) {
@@ -2747,6 +2750,36 @@ start_port(portid_t pid)
 				/* try to reconfigure port next time */
 				port->need_reconfig = 1;
 				return -1;
+			}
+			/* get device configuration*/
+			if (0 !=
+				eth_dev_conf_get_print_err(pi, &dev_conf)) {
+				fprintf(stderr,
+					"port %d can not get device configuration\n",
+					pi);
+				return -1;
+			}
+			/* Apply Rx offloads configuration */
+			if (dev_conf.rxmode.offloads !=
+			    port->dev_conf.rxmode.offloads) {
+				port->dev_conf.rxmode.offloads |=
+					dev_conf.rxmode.offloads;
+				for (k = 0;
+				     k < port->dev_info.max_rx_queues;
+				     k++)
+					port->rx_conf[k].offloads |=
+						dev_conf.rxmode.offloads;
+			}
+			/* Apply Tx offloads configuration */
+			if (dev_conf.txmode.offloads !=
+			    port->dev_conf.txmode.offloads) {
+				port->dev_conf.txmode.offloads |=
+					dev_conf.txmode.offloads;
+				for (k = 0;
+				     k < port->dev_info.max_tx_queues;
+				     k++)
+					port->tx_conf[k].offloads |=
+						dev_conf.txmode.offloads;
 			}
 		}
 		if (port->need_reconfig_queues > 0 && is_proc_primary()) {
@@ -3715,7 +3748,7 @@ init_port_config(void)
 {
 	portid_t pid;
 	struct rte_port *port;
-	int ret;
+	int ret, i;
 
 	RTE_ETH_FOREACH_DEV(pid) {
 		port = &ports[pid];
@@ -3735,12 +3768,21 @@ init_port_config(void)
 		}
 
 		if (port->dcb_flag == 0) {
-			if( port->dev_conf.rx_adv_conf.rss_conf.rss_hf != 0)
+			if (port->dev_conf.rx_adv_conf.rss_conf.rss_hf != 0) {
 				port->dev_conf.rxmode.mq_mode =
 					(enum rte_eth_rx_mq_mode)
 						(rx_mq_mode & ETH_MQ_RX_RSS);
-			else
+			} else {
 				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
+				port->dev_conf.rxmode.offloads &=
+						~DEV_RX_OFFLOAD_RSS_HASH;
+
+				for (i = 0;
+				     i < port->dev_info.nb_rx_queues;
+				     i++)
+					port->rx_conf[i].offloads &=
+						~DEV_RX_OFFLOAD_RSS_HASH;
+			}
 		}
 
 		rxtx_port_config(port);
