@@ -140,10 +140,7 @@ mlx5_pmd_interrupt_handler_uninstall(void)
 }
 
 /**
- * Initialise the socket to communicate with the secondary process
- *
- * @param[in] dev
- *   Pointer to Ethernet device.
+ * Initialise the socket to communicate with external tools.
  *
  * @return
  *   0 on success, a negative value otherwise.
@@ -160,10 +157,6 @@ mlx5_pmd_socket_init(void)
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	if (server_socket)
 		return 0;
-	/*
-	 * Initialize the socket to communicate with the secondary
-	 * process.
-	 */
 	ret = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (ret < 0) {
 		DRV_LOG(WARNING, "Failed to open mlx5 socket: %s",
@@ -210,7 +203,8 @@ error:
 /**
  * Un-Initialize the pmd socket
  */
-RTE_FINI(mlx5_pmd_socket_uninit)
+void
+mlx5_pmd_socket_uninit(void)
 {
 	if (!server_socket)
 		return;

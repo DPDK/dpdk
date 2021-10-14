@@ -1261,6 +1261,7 @@ int mlx5_mp_os_req_queue_control(struct rte_eth_dev *dev, uint16_t queue_id,
 /* mlx5_socket.c */
 
 int mlx5_pmd_socket_init(void);
+void mlx5_pmd_socket_uninit(void);
 
 /* mlx5_flow_meter.c */
 
@@ -1298,6 +1299,7 @@ int mlx5_os_set_promisc(struct rte_eth_dev *dev, int enable);
 int mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable);
 int mlx5_os_set_nonblock_channel_fd(int fd);
 void mlx5_os_mac_addr_flush(struct rte_eth_dev *dev);
+void mlx5_os_net_cleanup(void);
 
 /* mlx5_txpp.c */
 
