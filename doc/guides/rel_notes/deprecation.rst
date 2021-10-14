@@ -213,9 +213,6 @@ Deprecation Notices
   will be updated with new fields to support new features like TSO in case of
   protocol offload.
 
-* ipsec: The structure ``rte_ipsec_sa_prm`` will be extended with a new field
-  ``hdr_l3_len`` to configure tunnel L3 header length.
-
 * eventdev: The file ``rte_eventdev_pmd.h`` will be renamed to ``eventdev_driver.h``
   to make the driver interface as internal and the structures ``rte_eventdev_data``,
   ``rte_eventdev`` and ``rte_eventdevs`` will be moved to a new file named
