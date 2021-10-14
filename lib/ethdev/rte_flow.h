@@ -122,6 +122,9 @@ struct rte_flow_attr {
 	 *
 	 * The application should match traffic originating from precise
 	 * locations. See items PORT_REPRESENTOR and REPRESENTED_PORT.
+	 *
+	 * Managing "transfer" flows requires that the user communicate them
+	 * through a suitable port. @see rte_flow_pick_transfer_proxy().
 	 */
 	uint32_t transfer:1;
 	uint32_t reserved:29; /**< Reserved, must be zero. */
@@ -4429,6 +4432,39 @@ int
 rte_flow_tunnel_item_release(uint16_t port_id,
 			     struct rte_flow_item *items,
 			     uint32_t num_of_items,
+			     struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Get a proxy port to manage "transfer" flows.
+ *
+ * Managing "transfer" flows requires that the user communicate them
+ * via a port which has the privilege to control the embedded switch.
+ * For some vendors, all ports in a given switching domain have
+ * this privilege. For other vendors, it's only one port.
+ *
+ * This API indicates such a privileged port (a "proxy")
+ * for a given port in the same switching domain.
+ *
+ * @note
+ *   If the PMD serving @p port_id doesn't have the corresponding method
+ *   implemented, the API will return @p port_id via @p proxy_port_id.
+ *
+ * @param port_id
+ *   Indicates the port to get a "proxy" for
+ * @param[out] proxy_port_id
+ *   Indicates the "proxy" port
+ * @param[out] error
+ *   If not NULL, allows the PMD to provide verbose report in case of error
+ *
+ * @return
+ *   0 on success, a negative error code otherwise
+ */
+__rte_experimental
+int
+rte_flow_pick_transfer_proxy(uint16_t port_id, uint16_t *proxy_port_id,
 			     struct rte_flow_error *error);
 #ifdef __cplusplus
 }

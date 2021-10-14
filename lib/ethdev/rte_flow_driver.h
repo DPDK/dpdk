@@ -139,6 +139,11 @@ struct rte_flow_ops {
 		 struct rte_flow_item *pmd_items,
 		 uint32_t num_of_items,
 		 struct rte_flow_error *err);
+	/** See rte_flow_pick_transfer_proxy() */
+	int (*pick_transfer_proxy)
+		(struct rte_eth_dev *dev,
+		 uint16_t *proxy_port_id,
+		 struct rte_flow_error *error);
 };
 
 /**

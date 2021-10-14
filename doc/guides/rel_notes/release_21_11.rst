@@ -94,6 +94,10 @@ New Features
   * ``RTE_ETH_RX_METADATA_USER_MARK``
   * ``RTE_ETH_RX_METADATA_TUNNEL_ID``
 
+* **Added an API to get a proxy port to manage "transfer" flows.**
+
+  A new API, ``rte_flow_pick_transfer_proxy()``, was added.
+
 * **Updated af_packet ethdev driver.**
 
   * Default VLAN strip behavior was changed. VLAN tag won't be stripped

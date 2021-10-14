@@ -568,6 +568,25 @@ eth_rx_metadata_negotiate_mp(uint16_t port_id)
 	}
 }
 
+static void
+flow_pick_transfer_proxy_mp(uint16_t port_id)
+{
+	struct rte_port *port = &ports[port_id];
+	int ret;
+
+	port->flow_transfer_proxy = port_id;
+
+	if (!is_proc_primary())
+		return;
+
+	ret = rte_flow_pick_transfer_proxy(port_id, &port->flow_transfer_proxy,
+					   NULL);
+	if (ret != 0) {
+		fprintf(stderr, "Error picking flow transfer proxy for port %u: %s - ignore\n",
+			port_id, rte_strerror(-ret));
+	}
+}
+
 static int
 eth_dev_configure_mp(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		      const struct rte_eth_conf *dev_conf)
@@ -1525,6 +1544,7 @@ init_config_port_offloads(portid_t pid, uint32_t socket_id)
 	int i;
 
 	eth_rx_metadata_negotiate_mp(pid);
+	flow_pick_transfer_proxy_mp(pid);
 
 	port->dev_conf.txmode = tx_mode;
 	port->dev_conf.rxmode = rx_mode;

@@ -1270,3 +1270,25 @@ rte_flow_tunnel_item_release(uint16_t port_id,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, rte_strerror(ENOTSUP));
 }
+
+int
+rte_flow_pick_transfer_proxy(uint16_t port_id, uint16_t *proxy_port_id,
+			     struct rte_flow_error *error)
+{
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+	struct rte_eth_dev *dev;
+
+	if (unlikely(ops == NULL))
+		return -rte_errno;
+
+	if (ops->pick_transfer_proxy == NULL) {
+		*proxy_port_id = port_id;
+		return 0;
+	}
+
+	dev = &rte_eth_devices[port_id];
+
+	return flow_err(port_id,
+			ops->pick_transfer_proxy(dev, proxy_port_id, error),
+			error);
+}
