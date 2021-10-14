@@ -1226,6 +1226,9 @@ rte_vhost_set_last_inflight_io_split(int vid, uint16_t vring_idx,
 	if (unlikely(!vq->inflight_split))
 		return -1;
 
+	if (unlikely(idx >= vq->size))
+		return -1;
+
 	vq->inflight_split->last_inflight_io = idx;
 	return 0;
 }
