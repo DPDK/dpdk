@@ -175,6 +175,65 @@ print_ethaddr(const char *name, struct rte_ether_addr *eth_addr)
 	printf("%s%s", name, buf);
 }
 
+static void
+nic_xstats_display_periodic(portid_t port_id)
+{
+	struct xstat_display_info *xstats_info;
+	uint64_t *prev_values, *curr_values;
+	uint64_t diff_value, value_rate;
+	struct timespec cur_time;
+	uint64_t *ids_supp;
+	size_t ids_supp_sz;
+	uint64_t diff_ns;
+	unsigned int i;
+	int rc;
+
+	xstats_info = &ports[port_id].xstats_info;
+
+	ids_supp_sz = xstats_info->ids_supp_sz;
+	if (ids_supp_sz == 0)
+		return;
+
+	printf("\n");
+
+	ids_supp = xstats_info->ids_supp;
+	prev_values = xstats_info->prev_values;
+	curr_values = xstats_info->curr_values;
+
+	rc = rte_eth_xstats_get_by_id(port_id, ids_supp, curr_values,
+				      ids_supp_sz);
+	if (rc != (int)ids_supp_sz) {
+		fprintf(stderr,
+			"Failed to get values of %zu xstats for port %u - return code %d\n",
+			ids_supp_sz, port_id, rc);
+		return;
+	}
+
+	diff_ns = 0;
+	if (clock_gettime(CLOCK_TYPE_ID, &cur_time) == 0) {
+		uint64_t ns;
+
+		ns = cur_time.tv_sec * NS_PER_SEC;
+		ns += cur_time.tv_nsec;
+
+		if (xstats_info->prev_ns != 0)
+			diff_ns = ns - xstats_info->prev_ns;
+		xstats_info->prev_ns = ns;
+	}
+
+	printf("%-31s%-17s%s\n", " ", "Value", "Rate (since last show)");
+	for (i = 0; i < ids_supp_sz; i++) {
+		diff_value = (curr_values[i] > prev_values[i]) ?
+			     (curr_values[i] - prev_values[i]) : 0;
+		prev_values[i] = curr_values[i];
+		value_rate = diff_ns > 0 ?
+				(double)diff_value / diff_ns * NS_PER_SEC : 0;
+
+		printf("  %-25s%12"PRIu64" %15"PRIu64"\n",
+		       xstats_display[i].name, curr_values[i], value_rate);
+	}
+}
+
 void
 nic_stats_display(portid_t port_id)
 {
@@ -244,6 +303,9 @@ nic_stats_display(portid_t port_id)
 	printf("  Rx-pps: %12"PRIu64"          Rx-bps: %12"PRIu64"\n  Tx-pps: %12"
 	       PRIu64"          Tx-bps: %12"PRIu64"\n", mpps_rx, mbps_rx * 8,
 	       mpps_tx, mbps_tx * 8);
+
+	if (xstats_display_num > 0)
+		nic_xstats_display_periodic(port_id);
 
 	printf("  %s############################%s\n",
 	       nic_stats_border, nic_stats_border);

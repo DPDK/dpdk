@@ -208,6 +208,11 @@ uint32_t param_total_num_mbufs = 0;  /**< number of mbufs in all pools - if
                                       * specified on command-line. */
 uint16_t stats_period; /**< Period to show statistics (disabled by default) */
 
+/** Extended statistics to show. */
+struct rte_eth_xstat_name *xstats_display;
+
+unsigned int xstats_display_num; /**< Size of extended statistics to show */
+
 /*
  * In container, it cannot terminate the process which running with 'stats-period'
  * option. Set flag to exit stats period loop after received SIGINT/SIGTERM.
@@ -640,6 +645,7 @@ static int eth_event_callback(portid_t port_id,
 static void dev_event_callback(const char *device_name,
 				enum rte_dev_event_type type,
 				void *param);
+static void fill_xstats_display_info(void);
 
 /*
  * Check if all the ports are started.
@@ -652,6 +658,7 @@ uint16_t gso_max_segment_size = RTE_ETHER_MAX_LEN - RTE_ETHER_CRC_LEN;
 
 /* Holds the registered mbuf dynamic flags names. */
 char dynf_names[64][RTE_MBUF_DYN_NAMESIZE];
+
 
 /*
  * Helper function to check if socket is already discovered.
@@ -2571,6 +2578,108 @@ rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	return ret;
 }
 
+static int
+alloc_xstats_display_info(portid_t pi)
+{
+	uint64_t **ids_supp = &ports[pi].xstats_info.ids_supp;
+	uint64_t **prev_values = &ports[pi].xstats_info.prev_values;
+	uint64_t **curr_values = &ports[pi].xstats_info.curr_values;
+
+	if (xstats_display_num == 0)
+		return 0;
+
+	*ids_supp = calloc(xstats_display_num, sizeof(**ids_supp));
+	if (*ids_supp == NULL)
+		goto fail_ids_supp;
+
+	*prev_values = calloc(xstats_display_num,
+			      sizeof(**prev_values));
+	if (*prev_values == NULL)
+		goto fail_prev_values;
+
+	*curr_values = calloc(xstats_display_num,
+			      sizeof(**curr_values));
+	if (*curr_values == NULL)
+		goto fail_curr_values;
+
+	ports[pi].xstats_info.allocated = true;
+
+	return 0;
+
+fail_curr_values:
+	free(*prev_values);
+fail_prev_values:
+	free(*ids_supp);
+fail_ids_supp:
+	return -ENOMEM;
+}
+
+static void
+free_xstats_display_info(portid_t pi)
+{
+	if (!ports[pi].xstats_info.allocated)
+		return;
+	free(ports[pi].xstats_info.ids_supp);
+	free(ports[pi].xstats_info.prev_values);
+	free(ports[pi].xstats_info.curr_values);
+	ports[pi].xstats_info.allocated = false;
+}
+
+/** Fill helper structures for specified port to show extended statistics. */
+static void
+fill_xstats_display_info_for_port(portid_t pi)
+{
+	unsigned int stat, stat_supp;
+	const char *xstat_name;
+	struct rte_port *port;
+	uint64_t *ids_supp;
+	int rc;
+
+	if (xstats_display_num == 0)
+		return;
+
+	if (pi == (portid_t)RTE_PORT_ALL) {
+		fill_xstats_display_info();
+		return;
+	}
+
+	port = &ports[pi];
+	if (port->port_status != RTE_PORT_STARTED)
+		return;
+
+	if (!port->xstats_info.allocated && alloc_xstats_display_info(pi) != 0)
+		rte_exit(EXIT_FAILURE,
+			 "Failed to allocate xstats display memory\n");
+
+	ids_supp = port->xstats_info.ids_supp;
+	for (stat = stat_supp = 0; stat < xstats_display_num; stat++) {
+		xstat_name = xstats_display[stat].name;
+		rc = rte_eth_xstats_get_id_by_name(pi, xstat_name,
+						   ids_supp + stat_supp);
+		if (rc != 0) {
+			fprintf(stderr, "No xstat '%s' on port %u - skip it %u\n",
+				xstat_name, pi, stat);
+			continue;
+		}
+		stat_supp++;
+	}
+
+	port->xstats_info.ids_supp_sz = stat_supp;
+}
+
+/** Fill helper structures for all ports to show extended statistics. */
+static void
+fill_xstats_display_info(void)
+{
+	portid_t pi;
+
+	if (xstats_display_num == 0)
+		return;
+
+	RTE_ETH_FOREACH_DEV(pi)
+		fill_xstats_display_info_for_port(pi);
+}
+
 int
 start_port(portid_t pid)
 {
@@ -2821,6 +2930,8 @@ start_port(portid_t pid)
 		}
 	}
 
+	fill_xstats_display_info_for_port(pid);
+
 	printf("Done\n");
 	return 0;
 }
@@ -2959,6 +3070,8 @@ close_port(portid_t pid)
 			port_flow_flush(pi);
 			rte_eth_dev_close(pi);
 		}
+
+		free_xstats_display_info(pi);
 	}
 
 	remove_invalid_ports();
@@ -3245,6 +3358,7 @@ pmd_test_exit(void)
 		if (mempools[i])
 			mempool_free_mp(mempools[i]);
 	}
+	free(xstats_display);
 
 	printf("\nBye...\n");
 }
@@ -3873,6 +3987,8 @@ init_port(void)
 				"rte_zmalloc(%d struct rte_port) failed\n",
 				RTE_MAX_ETHPORTS);
 	}
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
+		ports[i].xstats_info.allocated = false;
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
 		LIST_INIT(&ports[i].flow_tunnel_list);
 	/* Initialize ports NUMA structures */

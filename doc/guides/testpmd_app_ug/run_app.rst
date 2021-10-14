@@ -56,6 +56,12 @@ The command line options are:
     Display statistics every PERIOD seconds, if interactive mode is disabled.
     The default value is 0, which means that the statistics will not be displayed.
 
+*   ``--display-xstats xstat_name1[,...]``
+
+    Display comma-separated list of extended statistics every PERIOD seconds
+    as specified in ``--stats-period`` or when used with interactive commands
+    that show Rx/Tx statistics (i.e. 'show port stats').
+
 *   ``--nb-cores=N``
 
     Set the number of forwarding cores,
