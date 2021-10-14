@@ -1320,7 +1320,7 @@ rte_eal_init(int argc, char **argv)
 		rte_eal_init_alert("Cannot clear runtime directory");
 		return -1;
 	}
-	if (!internal_conf->no_telemetry) {
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY && !internal_conf->no_telemetry) {
 		int tlog = rte_log_register_type_and_pick_level(
 				"lib.telemetry", RTE_LOG_WARNING);
 		if (tlog < 0)
