@@ -318,6 +318,14 @@ struct rte_security_ipsec_xform {
 	/**< Anti replay window size to enable sequence replay attack handling.
 	 * replay checking is disabled if the window size is 0.
 	 */
+	union {
+		uint64_t value;
+		struct {
+			uint32_t low;
+			uint32_t hi;
+		};
+	} esn;
+	/**< Extended Sequence Number */
 };
 
 /**

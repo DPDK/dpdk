@@ -208,7 +208,7 @@ Deprecation Notices
 
 * security: The structure ``rte_security_ipsec_xform`` will be extended with
   multiple fields: source and destination port of UDP encapsulation,
-  IPsec payload MSS (Maximum Segment Size), and ESN (Extended Sequence Number).
+  IPsec payload MSS (Maximum Segment Size).
 
 * security: The IPsec SA config options ``struct rte_security_ipsec_sa_options``
   will be updated with new fields to support new features like TSO in case of

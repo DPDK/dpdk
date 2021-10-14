@@ -305,6 +305,11 @@ ABI Changes
   packet IPv4 header checksum and L4 checksum need to be offloaded to
   security device.
 
+* security: A new structure ``esn`` was added in structure
+  ``rte_security_ipsec_xform`` to set an initial ESN value. This permits
+  application to start from an arbitrary ESN value for debug and SA lifetime
+  enforcement purposes.
+
 * bbdev: Added capability related to more comprehensive CRC options,
   shifting values of the ``enum rte_bbdev_op_ldpcdec_flag_bitmasks``.
 
