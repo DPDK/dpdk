@@ -157,6 +157,7 @@ New Features
     and AES_GMAC.
   * Added support for NAT-T / UDP encapsulated ESP.
   * Added support for SA telemetry.
+  * Added support for setting a non default starting ESN value.
 
 * **Added multi-process support for testpmd.**
 

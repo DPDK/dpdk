@@ -294,11 +294,11 @@ esp_inb_tun_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm)
  * Init ESP outbound specific things.
  */
 static void
-esp_outb_init(struct rte_ipsec_sa *sa, uint32_t hlen)
+esp_outb_init(struct rte_ipsec_sa *sa, uint32_t hlen, uint64_t sqn)
 {
 	uint8_t algo_type;
 
-	sa->sqn.outb = 1;
+	sa->sqn.outb = sqn > 1 ? sqn : 1;
 
 	algo_type = sa->algo_type;
 
@@ -376,7 +376,7 @@ esp_outb_tun_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm)
 	sa->tx_offload.val = rte_mbuf_tx_offload(sa->hdr_l3_off,
 		sa->hdr_len - sa->hdr_l3_off, 0, 0, 0, 0, 0);
 
-	esp_outb_init(sa, sa->hdr_len);
+	esp_outb_init(sa, sa->hdr_len, prm->ipsec_xform.esn.value);
 }
 
 /*
@@ -502,7 +502,7 @@ esp_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TRANS |
 			RTE_IPSEC_SATP_NATT_ENABLE):
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TRANS):
-		esp_outb_init(sa, 0);
+		esp_outb_init(sa, 0, prm->ipsec_xform.esn.value);
 		break;
 	}
 
@@ -513,15 +513,19 @@ esp_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
  * helper function, init SA replay structure.
  */
 static void
-fill_sa_replay(struct rte_ipsec_sa *sa, uint32_t wnd_sz, uint32_t nb_bucket)
+fill_sa_replay(struct rte_ipsec_sa *sa, uint32_t wnd_sz, uint32_t nb_bucket,
+	uint64_t sqn)
 {
 	sa->replay.win_sz = wnd_sz;
 	sa->replay.nb_bucket = nb_bucket;
 	sa->replay.bucket_index_mask = nb_bucket - 1;
 	sa->sqn.inb.rsn[0] = (struct replay_sqn *)(sa + 1);
-	if ((sa->type & RTE_IPSEC_SATP_SQN_MASK) == RTE_IPSEC_SATP_SQN_ATOM)
+	sa->sqn.inb.rsn[0]->sqn = sqn;
+	if ((sa->type & RTE_IPSEC_SATP_SQN_MASK) == RTE_IPSEC_SATP_SQN_ATOM) {
 		sa->sqn.inb.rsn[1] = (struct replay_sqn *)
 			((uintptr_t)sa->sqn.inb.rsn[0] + rsn_size(nb_bucket));
+		sa->sqn.inb.rsn[1]->sqn = sqn;
+	}
 }
 
 int
@@ -601,7 +605,7 @@ rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 
 	/* fill replay window related fields */
 	if (nb != 0)
-		fill_sa_replay(sa, wsz, nb);
+		fill_sa_replay(sa, wsz, nb, prm->ipsec_xform.esn.value);
 
 	return sz;
 }
