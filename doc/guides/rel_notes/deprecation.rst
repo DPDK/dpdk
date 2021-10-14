@@ -206,9 +206,8 @@ Deprecation Notices
   pointer for the private data to the application which can be attached
   to the packet while enqueuing.
 
-* security: The structure ``rte_security_ipsec_xform`` will be extended with
-  multiple fields: source and destination port of UDP encapsulation,
-  IPsec payload MSS (Maximum Segment Size).
+* security: The structure ``rte_security_ipsec_xform`` will be extended with:
+  new field: IPsec payload MSS (Maximum Segment Size).
 
 * security: The IPsec SA config options ``struct rte_security_ipsec_sa_options``
   will be updated with new fields to support new features like TSO in case of
