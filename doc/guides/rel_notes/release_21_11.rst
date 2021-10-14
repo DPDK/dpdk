@@ -298,6 +298,9 @@ API Changes
 * net: Renamed ``s_addr`` and ``d_addr`` fields of ``rte_ether_hdr`` structure
   to ``src_addr`` and ``dst_addr``, respectively.
 
+* net: Added ``version`` and ``ihl`` bit-fields to ``struct rte_ipv4_hdr``.
+  Existing ``version_ihl`` field is kept for backward compatibility.
+
 * ethdev: Added items and actions ``PORT_REPRESENTOR``, ``REPRESENTED_PORT`` to
   flow API.
 

@@ -147,9 +147,6 @@ Deprecation Notices
   is deprecated as ambiguous with respect to the embedded switch. The use of
   these attributes will become invalid starting from DPDK 22.11.
 
-* net: The structure ``rte_ipv4_hdr`` will have a union for
-  existing ``version_ihl`` byte and new bitfield for ``version`` and ``ihl``.
-
 * vhost: ``rte_vdpa_register_device``, ``rte_vdpa_unregister_device``,
   ``rte_vhost_host_notifier_ctrl`` and ``rte_vdpa_relay_vring_used`` vDPA
   driver interface will be marked as internal in DPDK v21.11.

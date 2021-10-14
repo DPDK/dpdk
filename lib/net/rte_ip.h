@@ -39,7 +39,19 @@ extern "C" {
  * IPv4 Header
  */
 struct rte_ipv4_hdr {
-	uint8_t  version_ihl;		/**< version and header length */
+	__extension__
+	union {
+		uint8_t version_ihl;    /**< version and header length */
+		struct {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+			uint8_t ihl:4;     /**< header length */
+			uint8_t version:4; /**< version */
+#elif RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+			uint8_t version:4; /**< version */
+			uint8_t ihl:4;     /**< header length */
+#endif
+		};
+	};
 	uint8_t  type_of_service;	/**< type of service */
 	rte_be16_t total_length;	/**< length of packet */
 	rte_be16_t packet_id;		/**< packet ID */
