@@ -5,6 +5,7 @@
 #include <rte_ipsec.h>
 #include <rte_esp.h>
 #include <rte_ip.h>
+#include <rte_udp.h>
 #include <rte_errno.h>
 #include <rte_cryptodev.h>
 
@@ -217,6 +218,10 @@ fill_sa_type(const struct rte_ipsec_sa_prm *prm, uint64_t *type)
 	} else
 		return -EINVAL;
 
+	/* check for UDP encapsulation flag */
+	if (prm->ipsec_xform.options.udp_encap == 1)
+		tp |= RTE_IPSEC_SATP_NATT_ENABLE;
+
 	/* check for ESN flag */
 	if (prm->ipsec_xform.options.esn == 0)
 		tp |= RTE_IPSEC_SATP_ESN_DISABLE;
@@ -355,11 +360,21 @@ esp_outb_tun_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm)
 	sa->hdr_len = prm->tun.hdr_len;
 	sa->hdr_l3_off = prm->tun.hdr_l3_off;
 
+	memcpy(sa->hdr, prm->tun.hdr, prm->tun.hdr_len);
+
+	/* insert UDP header if UDP encapsulation is inabled */
+	if (sa->type & RTE_IPSEC_SATP_NATT_ENABLE) {
+		struct rte_udp_hdr *udph = (struct rte_udp_hdr *)
+				&sa->hdr[prm->tun.hdr_len];
+		sa->hdr_len += sizeof(struct rte_udp_hdr);
+		udph->src_port = prm->ipsec_xform.udp.sport;
+		udph->dst_port = prm->ipsec_xform.udp.dport;
+		udph->dgram_cksum = 0;
+	}
+
 	/* update l2_len and l3_len fields for outbound mbuf */
 	sa->tx_offload.val = rte_mbuf_tx_offload(sa->hdr_l3_off,
 		sa->hdr_len - sa->hdr_l3_off, 0, 0, 0, 0, 0);
-
-	memcpy(sa->hdr, prm->tun.hdr, sa->hdr_len);
 
 	esp_outb_init(sa, sa->hdr_len);
 }
@@ -372,7 +387,8 @@ esp_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 	const struct crypto_xform *cxf)
 {
 	static const uint64_t msk = RTE_IPSEC_SATP_DIR_MASK |
-				RTE_IPSEC_SATP_MODE_MASK;
+				RTE_IPSEC_SATP_MODE_MASK |
+				RTE_IPSEC_SATP_NATT_MASK;
 
 	if (prm->ipsec_xform.options.ecn)
 		sa->tos_mask |= RTE_IPV4_HDR_ECN_MASK;
@@ -475,10 +491,16 @@ esp_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 	case (RTE_IPSEC_SATP_DIR_IB | RTE_IPSEC_SATP_MODE_TRANS):
 		esp_inb_init(sa);
 		break;
+	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV4 |
+			RTE_IPSEC_SATP_NATT_ENABLE):
+	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV6 |
+			RTE_IPSEC_SATP_NATT_ENABLE):
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV4):
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV6):
 		esp_outb_tun_init(sa, prm);
 		break;
+	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TRANS |
+			RTE_IPSEC_SATP_NATT_ENABLE):
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TRANS):
 		esp_outb_init(sa, 0);
 		break;
@@ -551,9 +573,13 @@ rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 	if (prm->ipsec_xform.proto != RTE_SECURITY_IPSEC_SA_PROTO_ESP)
 		return -EINVAL;
 
-	if (prm->ipsec_xform.mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL &&
-			prm->tun.hdr_len > sizeof(sa->hdr))
-		return -EINVAL;
+	if (prm->ipsec_xform.mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) {
+		uint32_t hlen = prm->tun.hdr_len;
+		if (sa->type & RTE_IPSEC_SATP_NATT_ENABLE)
+			hlen += sizeof(struct rte_udp_hdr);
+		if (hlen > sizeof(sa->hdr))
+			return -EINVAL;
+	}
 
 	rc = fill_crypto_xform(&cxf, type, prm);
 	if (rc != 0)

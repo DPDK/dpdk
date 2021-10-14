@@ -78,6 +78,7 @@ struct rte_ipsec_sa_prm {
  * - for TUNNEL outer IP version (IPv4/IPv6)
  * - are SA SQN operations 'atomic'
  * - ESN enabled/disabled
+ * - NAT-T UDP encapsulated (TUNNEL mode only)
  * ...
  */
 
@@ -89,7 +90,8 @@ enum {
 	RTE_SATP_LOG2_SQN = RTE_SATP_LOG2_MODE + 2,
 	RTE_SATP_LOG2_ESN,
 	RTE_SATP_LOG2_ECN,
-	RTE_SATP_LOG2_DSCP
+	RTE_SATP_LOG2_DSCP,
+	RTE_SATP_LOG2_NATT
 };
 
 #define RTE_IPSEC_SATP_IPV_MASK		(1ULL << RTE_SATP_LOG2_IPV)
@@ -124,6 +126,11 @@ enum {
 #define RTE_IPSEC_SATP_DSCP_MASK	(1ULL << RTE_SATP_LOG2_DSCP)
 #define RTE_IPSEC_SATP_DSCP_DISABLE	(0ULL << RTE_SATP_LOG2_DSCP)
 #define RTE_IPSEC_SATP_DSCP_ENABLE	(1ULL << RTE_SATP_LOG2_DSCP)
+
+#define RTE_IPSEC_SATP_NATT_MASK	(1ULL << RTE_SATP_LOG2_NATT)
+#define RTE_IPSEC_SATP_NATT_DISABLE	(0ULL << RTE_SATP_LOG2_NATT)
+#define RTE_IPSEC_SATP_NATT_ENABLE	(1ULL << RTE_SATP_LOG2_NATT)
+
 
 /**
  * get type of given SA

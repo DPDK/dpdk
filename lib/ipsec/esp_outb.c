@@ -5,6 +5,7 @@
 #include <rte_ipsec.h>
 #include <rte_esp.h>
 #include <rte_ip.h>
+#include <rte_udp.h>
 #include <rte_errno.h>
 #include <rte_cryptodev.h>
 
@@ -184,6 +185,14 @@ outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 
 	/* copy tunnel pkt header */
 	rte_memcpy(ph, sa->hdr, sa->hdr_len);
+
+	/* if UDP encap is enabled update the dgram_len */
+	if (sa->type & RTE_IPSEC_SATP_NATT_ENABLE) {
+		struct rte_udp_hdr *udph = (struct rte_udp_hdr *)
+				(ph - sizeof(struct rte_udp_hdr));
+		udph->dgram_len = rte_cpu_to_be_16(mb->pkt_len - sqh_len -
+				sa->hdr_l3_off - sa->hdr_len);
+	}
 
 	/* update original and new ip header fields */
 	update_tun_outb_l3hdr(sa, ph + sa->hdr_l3_off, ph + hlen,
