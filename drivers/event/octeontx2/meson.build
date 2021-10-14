@@ -2,9 +2,9 @@
 # Copyright(C) 2019 Marvell International Ltd.
 #
 
-if not dpdk_conf.get('RTE_ARCH_64')
+if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
     build = false
-    reason = 'only supported on 64-bit'
+    reason = 'only supported on 64-bit Linux'
     subdir_done()
 endif
 
