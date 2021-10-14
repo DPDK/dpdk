@@ -103,6 +103,10 @@ New Features
   * Default VLAN strip behavior was changed. VLAN tag won't be stripped
     unless ``DEV_RX_OFFLOAD_VLAN_STRIP`` offload is enabled.
 
+* **Added API to get device configuration in ethdev.**
+
+  Added an ethdev API which can help users get device configuration.
+
 * **Updated AF_XDP PMD.**
 
   * Disabled secondary process support.

@@ -3077,6 +3077,24 @@ int rte_eth_macaddrs_get(uint16_t port_id, struct rte_ether_addr *ma,
 int rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Retrieve the configuration of an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param dev_conf
+ *   Location for Ethernet device configuration to be filled in.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+__rte_experimental
+int rte_eth_dev_conf_get(uint16_t port_id, struct rte_eth_conf *dev_conf);
+
+/**
  * Retrieve the firmware version of a device.
  *
  * @param port_id

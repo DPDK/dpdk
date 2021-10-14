@@ -249,6 +249,7 @@ EXPERIMENTAL {
 	rte_mtr_meter_policy_validate;
 
 	# added in 21.11
+	rte_eth_dev_conf_get;
 	rte_eth_macaddrs_get;
 	rte_eth_rx_metadata_negotiate;
 	rte_flow_pick_transfer_proxy;
