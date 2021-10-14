@@ -52,6 +52,18 @@ softnic_mtr_free(struct pmd_internals *p)
 		TAILQ_REMOVE(&p->mtr.meter_profiles, mp, node);
 		free(mp);
 	}
+
+	/* Remove meter policies */
+	for ( ; ; ) {
+		struct softnic_mtr_meter_policy *mp;
+
+		mp = TAILQ_FIRST(&p->mtr.meter_policies);
+		if (mp == NULL)
+			break;
+
+		TAILQ_REMOVE(&p->mtr.meter_policies, mp, node);
+		free(mp);
+	}
 }
 
 struct softnic_mtr_meter_profile *
