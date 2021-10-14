@@ -205,6 +205,24 @@ static int test_mempool_creation_with_exceeded_cache_size(void)
 	return 0;
 }
 
+static int test_mempool_creation_with_unknown_flag(void)
+{
+	struct rte_mempool *mp_cov;
+
+	mp_cov = rte_mempool_create("test_mempool_unknown_flag", MEMPOOL_SIZE,
+		MEMPOOL_ELT_SIZE, 0, 0,
+		NULL, NULL,
+		NULL, NULL,
+		SOCKET_ID_ANY, MEMPOOL_F_NO_IOVA_CONTIG << 1);
+
+	if (mp_cov != NULL) {
+		rte_mempool_free(mp_cov);
+		RET_ERR();
+	}
+
+	return 0;
+}
+
 static struct rte_mempool *mp_spsc;
 static rte_spinlock_t scsp_spinlock;
 static void *scsp_obj_table[MAX_KEEP];
@@ -633,6 +651,9 @@ test_mempool(void)
 		GOTO_ERR(ret, err);
 
 	if (test_mempool_creation_with_exceeded_cache_size() < 0)
+		GOTO_ERR(ret, err);
+
+	if (test_mempool_creation_with_unknown_flag() < 0)
 		GOTO_ERR(ret, err);
 
 	if (test_mempool_same_name_twice_creation() < 0)
