@@ -2667,6 +2667,15 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 }
 
 /**
+ * Cleanup resources when the last device is closed.
+ */
+void
+mlx5_os_net_cleanup(void)
+{
+	mlx5_pmd_socket_uninit();
+}
+
+/**
  * Install shared asynchronous device events handler.
  * This function is implemented to support event sharing
  * between multiple ports of single IB device.

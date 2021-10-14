@@ -949,4 +949,12 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 	return 0;
 }
 
+/**
+ * Cleanup resources when the last device is closed.
+ */
+void
+mlx5_os_net_cleanup(void)
+{
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops = {0};

@@ -1363,9 +1363,11 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	}
 	/* Remove context from the global device list. */
 	LIST_REMOVE(sh, next);
-	/* Release flow workspaces objects on the last device. */
-	if (LIST_EMPTY(&mlx5_dev_ctx_list))
+	/* Release resources on the last device removal. */
+	if (LIST_EMPTY(&mlx5_dev_ctx_list)) {
+		mlx5_os_net_cleanup();
 		mlx5_flow_os_release_workspace();
+	}
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	/*
 	 *  Ensure there is no async event handler installed.
