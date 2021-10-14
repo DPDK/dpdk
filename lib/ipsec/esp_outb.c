@@ -606,7 +606,7 @@ uint16_t
 esp_outb_sqh_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	uint16_t num)
 {
-	uint32_t i, k, icv_len, *icv;
+	uint32_t i, k, icv_len, *icv, bytes;
 	struct rte_mbuf *ml;
 	struct rte_ipsec_sa *sa;
 	uint32_t dr[num];
@@ -615,6 +615,7 @@ esp_outb_sqh_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 
 	k = 0;
 	icv_len = sa->icv_len;
+	bytes = 0;
 
 	for (i = 0; i != num; i++) {
 		if ((mb[i]->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED) == 0) {
@@ -625,10 +626,13 @@ esp_outb_sqh_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 			icv = rte_pktmbuf_mtod_offset(ml, void *,
 				ml->data_len - icv_len);
 			remove_sqh(icv, icv_len);
+			bytes += mb[i]->pkt_len;
 			k++;
 		} else
 			dr[i - k] = i;
 	}
+	sa->statistics.count += k;
+	sa->statistics.bytes += bytes;
 
 	/* handle unprocessed mbufs */
 	if (k != num) {
@@ -648,16 +652,20 @@ static inline void
 inline_outb_mbuf_prepare(const struct rte_ipsec_session *ss,
 	struct rte_mbuf *mb[], uint16_t num)
 {
-	uint32_t i, ol_flags;
+	uint32_t i, ol_flags, bytes;
 
 	ol_flags = ss->security.ol_flags & RTE_SECURITY_TX_OLOAD_NEED_MDATA;
+	bytes = 0;
 	for (i = 0; i != num; i++) {
 
 		mb[i]->ol_flags |= PKT_TX_SEC_OFFLOAD;
+		bytes += mb[i]->pkt_len;
 		if (ol_flags != 0)
 			rte_security_set_pkt_metadata(ss->security.ctx,
 				ss->security.ses, mb[i], NULL);
 	}
+	ss->sa->statistics.count += num;
+	ss->sa->statistics.bytes += bytes;
 }
 
 /*

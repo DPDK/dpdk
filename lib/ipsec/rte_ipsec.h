@@ -158,6 +158,29 @@ rte_ipsec_pkt_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	return ss->pkt_func.process(ss, mb, num);
 }
 
+
+/**
+ * Enable per SA telemetry for a specific SA.
+ * Note that this function is not thread safe
+ * @param sa
+ *   Pointer to the *rte_ipsec_sa* object that will have telemetry enabled.
+ * @return
+ *   0 on success, negative value otherwise.
+ */
+__rte_experimental
+int
+rte_ipsec_telemetry_sa_add(const struct rte_ipsec_sa *sa);
+
+/**
+ * Disable per SA telemetry for a specific SA.
+ * Note that this function is not thread safe
+ * @param sa
+ *   Pointer to the *rte_ipsec_sa* object that will have telemetry disabled.
+ */
+__rte_experimental
+void
+rte_ipsec_telemetry_sa_del(const struct rte_ipsec_sa *sa);
+
 #include <rte_ipsec_group.h>
 
 #ifdef __cplusplus

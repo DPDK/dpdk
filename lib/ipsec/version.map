@@ -19,3 +19,12 @@ DPDK_22 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	# added in 21.11
+	rte_ipsec_telemetry_sa_add;
+	rte_ipsec_telemetry_sa_del;
+
+};

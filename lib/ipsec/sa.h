@@ -132,6 +132,15 @@ struct rte_ipsec_sa {
 			struct replay_sqn *rsn[REPLAY_SQN_NUM];
 		} inb;
 	} sqn;
+	/* Statistics */
+	struct {
+		uint64_t count;
+		uint64_t bytes;
+		struct {
+			uint64_t count;
+			uint64_t authentication_failed;
+		} errors;
+	} statistics;
 
 } __rte_cache_aligned;
 

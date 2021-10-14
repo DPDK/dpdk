@@ -15,7 +15,7 @@
 #include "misc.h"
 #include "pad.h"
 
-typedef uint16_t (*esp_inb_process_t)(const struct rte_ipsec_sa *sa,
+typedef uint16_t (*esp_inb_process_t)(struct rte_ipsec_sa *sa,
 	struct rte_mbuf *mb[], uint32_t sqn[], uint32_t dr[], uint16_t num,
 	uint8_t sqh_len);
 
@@ -573,10 +573,10 @@ tun_process_step3(struct rte_mbuf *mb, uint64_t txof_msk, uint64_t txof_val)
  * *process* function for tunnel packets
  */
 static inline uint16_t
-tun_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
+tun_process(struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 	    uint32_t sqn[], uint32_t dr[], uint16_t num, uint8_t sqh_len)
 {
-	uint32_t adj, i, k, tl;
+	uint32_t adj, i, k, tl, bytes;
 	uint32_t hl[num], to[num];
 	struct rte_esp_tail espt[num];
 	struct rte_mbuf *ml[num];
@@ -598,6 +598,7 @@ tun_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 		process_step1(mb[i], tlen, &ml[i], &espt[i], &hl[i], &to[i]);
 
 	k = 0;
+	bytes = 0;
 	for (i = 0; i != num; i++) {
 
 		adj = hl[i] + cofs;
@@ -621,10 +622,13 @@ tun_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 			tun_process_step3(mb[i], sa->tx_offload.msk,
 				sa->tx_offload.val);
 			k++;
+			bytes += mb[i]->pkt_len;
 		} else
 			dr[i - k] = i;
 	}
 
+	sa->statistics.count += k;
+	sa->statistics.bytes += bytes;
 	return k;
 }
 
@@ -632,11 +636,11 @@ tun_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
  * *process* function for tunnel packets
  */
 static inline uint16_t
-trs_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
+trs_process(struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 	uint32_t sqn[], uint32_t dr[], uint16_t num, uint8_t sqh_len)
 {
 	char *np;
-	uint32_t i, k, l2, tl;
+	uint32_t i, k, l2, tl, bytes;
 	uint32_t hl[num], to[num];
 	struct rte_esp_tail espt[num];
 	struct rte_mbuf *ml[num];
@@ -656,6 +660,7 @@ trs_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 		process_step1(mb[i], tlen, &ml[i], &espt[i], &hl[i], &to[i]);
 
 	k = 0;
+	bytes = 0;
 	for (i = 0; i != num; i++) {
 
 		tl = tlen + espt[i].pad_len;
@@ -674,10 +679,13 @@ trs_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 			/* update mbuf's metadata */
 			trs_process_step3(mb[i]);
 			k++;
+			bytes += mb[i]->pkt_len;
 		} else
 			dr[i - k] = i;
 	}
 
+	sa->statistics.count += k;
+	sa->statistics.bytes += bytes;
 	return k;
 }
 

@@ -319,6 +319,14 @@ Supported features
    AES_GMAC, HMAC-SHA1, NULL.
 
 
+Telemetry support
+------------------
+Telemetry support implements SA details and IPsec packet add data counters
+statistics. Per SA telemetry statistics can be enabled using
+``rte_ipsec_telemetry_sa_add`` and disabled using
+``rte_ipsec_telemetry_sa_del``. Note that these calls are not thread safe.
+
+
 Limitations
 -----------
 

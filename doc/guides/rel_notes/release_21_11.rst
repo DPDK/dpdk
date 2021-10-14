@@ -156,6 +156,7 @@ New Features
   * Added support for more AEAD algorithms AES_CCM, CHACHA20_POLY1305
     and AES_GMAC.
   * Added support for NAT-T / UDP encapsulated ESP.
+  * Added support for SA telemetry.
 
 * **Added multi-process support for testpmd.**
 

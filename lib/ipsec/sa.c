@@ -653,18 +653,24 @@ uint16_t
 pkt_flag_process(const struct rte_ipsec_session *ss,
 		struct rte_mbuf *mb[], uint16_t num)
 {
-	uint32_t i, k;
+	uint32_t i, k, bytes;
 	uint32_t dr[num];
 
 	RTE_SET_USED(ss);
 
 	k = 0;
+	bytes = 0;
 	for (i = 0; i != num; i++) {
-		if ((mb[i]->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED) == 0)
+		if ((mb[i]->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED) == 0) {
 			k++;
+			bytes += mb[i]->pkt_len;
+		}
 		else
 			dr[i - k] = i;
 	}
+
+	ss->sa->statistics.count += k;
+	ss->sa->statistics.bytes += bytes;
 
 	/* handle unprocessed mbufs */
 	if (k != num) {
