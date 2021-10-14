@@ -10,6 +10,7 @@ Allows the user input commands and read the Telemetry response.
 import socket
 import os
 import sys
+import glob
 import json
 import errno
 import readline
@@ -17,6 +18,8 @@ import argparse
 
 # global vars
 TELEMETRY_VERSION = "v2"
+SOCKET_NAME = 'dpdk_telemetry.{}'.format(TELEMETRY_VERSION)
+DEFAULT_PREFIX = 'rte'
 CMDS = []
 
 
@@ -48,7 +51,28 @@ def get_app_name(pid):
     return None
 
 
-def handle_socket(path):
+def find_sockets(path):
+    """ Find any possible sockets to connect to and return them """
+    return glob.glob(os.path.join(path, SOCKET_NAME + '*'))
+
+
+def print_socket_options(prefix, paths):
+    """ Given a set of socket paths, give the commands needed to connect """
+    cmd = sys.argv[0]
+    if prefix != DEFAULT_PREFIX:
+        cmd += " -f " + prefix
+    for s in sorted(paths):
+        sock_name = os.path.basename(s)
+        if sock_name.endswith(TELEMETRY_VERSION):
+            print("- {}  # Connect with '{}'".format(os.path.basename(s),
+                                                     cmd))
+        else:
+            print("- {}  # Connect with '{} -i {}'".format(os.path.basename(s),
+                                                           cmd,
+                                                           s.split(':')[-1]))
+
+
+def handle_socket(args, path):
     """ Connect to socket and handle user input """
     prompt = ''  # this evaluates to false in conditions
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
@@ -62,6 +86,15 @@ def handle_socket(path):
     except OSError:
         print("Error connecting to " + path)
         sock.close()
+        # if socket exists but is bad, or if non-interactive just return
+        if os.path.exists(path) or not prompt:
+            return
+        # if user didn't give a valid socket path, but there are
+        # some sockets, help the user out by printing how to connect
+        socks = find_sockets(os.path.dirname(path))
+        if socks:
+            print("\nOther DPDK telemetry sockets found:")
+            print_socket_options(args.file_prefix, socks)
         return
     json_reply = read_socket(sock, 1024, prompt)
     output_buf_len = json_reply["max_output_len"]
@@ -110,13 +143,12 @@ readline.set_completer(readline_complete)
 readline.set_completer_delims(readline.get_completer_delims().replace('/', ''))
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-f', '--file-prefix', default='rte',
+parser.add_argument('-f', '--file-prefix', default=DEFAULT_PREFIX,
                     help='Provide file-prefix for DPDK runtime directory')
 parser.add_argument('-i', '--instance', default='0', type=int,
                     help='Provide file-prefix for DPDK runtime directory')
 args = parser.parse_args()
-rd = get_dpdk_runtime_dir(args.file_prefix)
-sock_path = os.path.join(rd, 'dpdk_telemetry.{}'.format(TELEMETRY_VERSION))
+sock_path = os.path.join(get_dpdk_runtime_dir(args.file_prefix), SOCKET_NAME)
 if args.instance > 0:
     sock_path += ":{}".format(args.instance)
-handle_socket(sock_path)
+handle_socket(args, sock_path)
