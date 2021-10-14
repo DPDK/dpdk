@@ -446,6 +446,7 @@ setup_eventdev_worker_tx_enq(struct worker_data *worker_data)
 			.dequeue_depth = cdata.worker_cq_depth,
 			.enqueue_depth = 64,
 			.new_event_threshold = 4096,
+			.event_port_cfg = RTE_EVENT_PORT_CFG_HINT_WORKER,
 	};
 	struct rte_event_queue_conf wkr_q_conf = {
 			.schedule_type = cdata.queue_type,
@@ -743,6 +744,7 @@ init_adapters(uint16_t nb_ports)
 		.dequeue_depth = cdata.worker_cq_depth,
 		.enqueue_depth = 64,
 		.new_event_threshold = 4096,
+		.event_port_cfg = RTE_EVENT_PORT_CFG_HINT_PRODUCER,
 	};
 
 	init_ports(nb_ports);
