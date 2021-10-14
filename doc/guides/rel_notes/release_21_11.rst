@@ -151,6 +151,11 @@ New Features
 
   Added support for more comprehensive CRC options.
 
+* **Updated IPsec library.**
+
+  * Added support for more AEAD algorithms AES_CCM, CHACHA20_POLY1305
+    and AES_GMAC.
+
 * **Added multi-process support for testpmd.**
 
   Added command-line options to specify total number of processes and

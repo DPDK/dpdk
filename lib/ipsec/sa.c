@@ -47,6 +47,15 @@ fill_crypto_xform(struct crypto_xform *xform, uint64_t type,
 		if (xfn != NULL)
 			return -EINVAL;
 		xform->aead = &xf->aead;
+
+	/* GMAC has only auth */
+	} else if (xf->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+			xf->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
+		if (xfn != NULL)
+			return -EINVAL;
+		xform->auth = &xf->auth;
+		xform->cipher = &xfn->cipher;
+
 	/*
 	 * CIPHER+AUTH xforms are expected in strict order,
 	 * depending on SA direction:
@@ -247,12 +256,13 @@ esp_inb_init(struct rte_ipsec_sa *sa)
 	sa->ctp.cipher.length = sa->icv_len + sa->ctp.cipher.offset;
 
 	/*
-	 * for AEAD and NULL algorithms we can assume that
+	 * for AEAD algorithms we can assume that
 	 * auth and cipher offsets would be equal.
 	 */
 	switch (sa->algo_type) {
 	case ALGO_TYPE_AES_GCM:
-	case ALGO_TYPE_NULL:
+	case ALGO_TYPE_AES_CCM:
+	case ALGO_TYPE_CHACHA20_POLY1305:
 		sa->ctp.auth.raw = sa->ctp.cipher.raw;
 		break;
 	default:
@@ -294,6 +304,8 @@ esp_outb_init(struct rte_ipsec_sa *sa, uint32_t hlen)
 
 	switch (algo_type) {
 	case ALGO_TYPE_AES_GCM:
+	case ALGO_TYPE_AES_CCM:
+	case ALGO_TYPE_CHACHA20_POLY1305:
 	case ALGO_TYPE_AES_CTR:
 	case ALGO_TYPE_NULL:
 		sa->ctp.cipher.offset = hlen + sizeof(struct rte_esp_hdr) +
@@ -305,15 +317,20 @@ esp_outb_init(struct rte_ipsec_sa *sa, uint32_t hlen)
 		sa->ctp.cipher.offset = hlen + sizeof(struct rte_esp_hdr);
 		sa->ctp.cipher.length = sa->iv_len;
 		break;
+	case ALGO_TYPE_AES_GMAC:
+		sa->ctp.cipher.offset = 0;
+		sa->ctp.cipher.length = 0;
+		break;
 	}
 
 	/*
-	 * for AEAD and NULL algorithms we can assume that
+	 * for AEAD algorithms we can assume that
 	 * auth and cipher offsets would be equal.
 	 */
 	switch (algo_type) {
 	case ALGO_TYPE_AES_GCM:
-	case ALGO_TYPE_NULL:
+	case ALGO_TYPE_AES_CCM:
+	case ALGO_TYPE_CHACHA20_POLY1305:
 		sa->ctp.auth.raw = sa->ctp.cipher.raw;
 		break;
 	default:
@@ -374,13 +391,39 @@ esp_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 			sa->pad_align = IPSEC_PAD_AES_GCM;
 			sa->algo_type = ALGO_TYPE_AES_GCM;
 			break;
+		case RTE_CRYPTO_AEAD_AES_CCM:
+			/* RFC 4309 */
+			sa->aad_len = sizeof(struct aead_ccm_aad);
+			sa->icv_len = cxf->aead->digest_length;
+			sa->iv_ofs = cxf->aead->iv.offset;
+			sa->iv_len = sizeof(uint64_t);
+			sa->pad_align = IPSEC_PAD_AES_CCM;
+			sa->algo_type = ALGO_TYPE_AES_CCM;
+			break;
+		case RTE_CRYPTO_AEAD_CHACHA20_POLY1305:
+			/* RFC 7634 & 8439*/
+			sa->aad_len = sizeof(struct aead_chacha20_poly1305_aad);
+			sa->icv_len = cxf->aead->digest_length;
+			sa->iv_ofs = cxf->aead->iv.offset;
+			sa->iv_len = sizeof(uint64_t);
+			sa->pad_align = IPSEC_PAD_CHACHA20_POLY1305;
+			sa->algo_type = ALGO_TYPE_CHACHA20_POLY1305;
+			break;
 		default:
 			return -EINVAL;
 		}
+	} else if (cxf->auth->algo == RTE_CRYPTO_AUTH_AES_GMAC) {
+		/* RFC 4543 */
+		/* AES-GMAC is a special case of auth that needs IV */
+		sa->pad_align = IPSEC_PAD_AES_GMAC;
+		sa->iv_len = sizeof(uint64_t);
+		sa->icv_len = cxf->auth->digest_length;
+		sa->iv_ofs = cxf->auth->iv.offset;
+		sa->algo_type = ALGO_TYPE_AES_GMAC;
+
 	} else {
 		sa->icv_len = cxf->auth->digest_length;
 		sa->iv_ofs = cxf->cipher->iv.offset;
-		sa->sqh_len = IS_ESN(sa) ? sizeof(uint32_t) : 0;
 
 		switch (cxf->cipher->algo) {
 		case RTE_CRYPTO_CIPHER_NULL:
@@ -414,6 +457,7 @@ esp_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 		}
 	}
 
+	sa->sqh_len = IS_ESN(sa) ? sizeof(uint32_t) : 0;
 	sa->udata = prm->userdata;
 	sa->spi = rte_cpu_to_be_32(prm->ipsec_xform.spi);
 	sa->salt = prm->ipsec_xform.salt;

@@ -63,6 +63,8 @@ inb_cop_prepare(struct rte_crypto_op *cop,
 {
 	struct rte_crypto_sym_op *sop;
 	struct aead_gcm_iv *gcm;
+	struct aead_ccm_iv *ccm;
+	struct aead_chacha20_poly1305_iv *chacha20_poly1305;
 	struct aesctr_cnt_blk *ctr;
 	uint64_t *ivc, *ivp;
 	uint32_t algo;
@@ -83,6 +85,24 @@ inb_cop_prepare(struct rte_crypto_op *cop,
 			sa->iv_ofs);
 		aead_gcm_iv_fill(gcm, ivp[0], sa->salt);
 		break;
+	case ALGO_TYPE_AES_CCM:
+		sop_aead_prepare(sop, sa, icv, pofs, plen);
+
+		/* fill AAD IV (located inside crypto op) */
+		ccm = rte_crypto_op_ctod_offset(cop, struct aead_ccm_iv *,
+			sa->iv_ofs);
+		aead_ccm_iv_fill(ccm, ivp[0], sa->salt);
+		break;
+	case ALGO_TYPE_CHACHA20_POLY1305:
+		sop_aead_prepare(sop, sa, icv, pofs, plen);
+
+		/* fill AAD IV (located inside crypto op) */
+		chacha20_poly1305 = rte_crypto_op_ctod_offset(cop,
+				struct aead_chacha20_poly1305_iv *,
+				sa->iv_ofs);
+		aead_chacha20_poly1305_iv_fill(chacha20_poly1305,
+					       ivp[0], sa->salt);
+		break;
 	case ALGO_TYPE_AES_CBC:
 	case ALGO_TYPE_3DES_CBC:
 		sop_ciph_auth_prepare(sop, sa, icv, pofs, plen);
@@ -90,6 +110,14 @@ inb_cop_prepare(struct rte_crypto_op *cop,
 		/* copy iv from the input packet to the cop */
 		ivc = rte_crypto_op_ctod_offset(cop, uint64_t *, sa->iv_ofs);
 		copy_iv(ivc, ivp, sa->iv_len);
+		break;
+	case ALGO_TYPE_AES_GMAC:
+		sop_ciph_auth_prepare(sop, sa, icv, pofs, plen);
+
+		/* fill AAD IV (located inside crypto op) */
+		gcm = rte_crypto_op_ctod_offset(cop, struct aead_gcm_iv *,
+			sa->iv_ofs);
+		aead_gcm_iv_fill(gcm, ivp[0], sa->salt);
 		break;
 	case ALGO_TYPE_AES_CTR:
 		sop_ciph_auth_prepare(sop, sa, icv, pofs, plen);
@@ -110,6 +138,8 @@ inb_cpu_crypto_prepare(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb,
 	uint32_t *pofs, uint32_t plen, void *iv)
 {
 	struct aead_gcm_iv *gcm;
+	struct aead_ccm_iv *ccm;
+	struct aead_chacha20_poly1305_iv *chacha20_poly1305;
 	struct aesctr_cnt_blk *ctr;
 	uint64_t *ivp;
 	uint32_t clen;
@@ -120,8 +150,18 @@ inb_cpu_crypto_prepare(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb,
 
 	switch (sa->algo_type) {
 	case ALGO_TYPE_AES_GCM:
+	case ALGO_TYPE_AES_GMAC:
 		gcm = (struct aead_gcm_iv *)iv;
 		aead_gcm_iv_fill(gcm, ivp[0], sa->salt);
+		break;
+	case ALGO_TYPE_AES_CCM:
+		ccm = (struct aead_ccm_iv *)iv;
+		aead_ccm_iv_fill(ccm, ivp[0], sa->salt);
+		break;
+	case ALGO_TYPE_CHACHA20_POLY1305:
+		chacha20_poly1305 = (struct aead_chacha20_poly1305_iv *)iv;
+		aead_chacha20_poly1305_iv_fill(chacha20_poly1305,
+					       ivp[0], sa->salt);
 		break;
 	case ALGO_TYPE_AES_CBC:
 	case ALGO_TYPE_3DES_CBC:
@@ -175,6 +215,8 @@ inb_pkt_xprepare(const struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	const union sym_op_data *icv)
 {
 	struct aead_gcm_aad *aad;
+	struct aead_ccm_aad *caad;
+	struct aead_chacha20_poly1305_aad *chacha_aad;
 
 	/* insert SQN.hi between ESP trailer and ICV */
 	if (sa->sqh_len != 0)
@@ -184,9 +226,27 @@ inb_pkt_xprepare(const struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	 * fill AAD fields, if any (aad fields are placed after icv),
 	 * right now we support only one AEAD algorithm: AES-GCM.
 	 */
-	if (sa->aad_len != 0) {
-		aad = (struct aead_gcm_aad *)(icv->va + sa->icv_len);
-		aead_gcm_aad_fill(aad, sa->spi, sqc, IS_ESN(sa));
+	switch (sa->algo_type) {
+	case ALGO_TYPE_AES_GCM:
+		if (sa->aad_len != 0) {
+			aad = (struct aead_gcm_aad *)(icv->va + sa->icv_len);
+			aead_gcm_aad_fill(aad, sa->spi, sqc, IS_ESN(sa));
+		}
+		break;
+	case ALGO_TYPE_AES_CCM:
+		if (sa->aad_len != 0) {
+			caad = (struct aead_ccm_aad *)(icv->va + sa->icv_len);
+			aead_ccm_aad_fill(caad, sa->spi, sqc, IS_ESN(sa));
+		}
+		break;
+	case ALGO_TYPE_CHACHA20_POLY1305:
+		if (sa->aad_len != 0) {
+			chacha_aad = (struct aead_chacha20_poly1305_aad *)
+			    (icv->va + sa->icv_len);
+			aead_chacha20_poly1305_aad_fill(chacha_aad,
+						sa->spi, sqc, IS_ESN(sa));
+		}
+		break;
 	}
 }
 
