@@ -19,7 +19,7 @@ perf_test_result(struct evt_test *test, struct evt_options *opt)
 		total += t->worker[i].processed_pkts;
 	for (i = 0; i < t->nb_workers; i++)
 		printf("Worker %d packets: "CLGRN"%"PRIx64" "CLNRM"percentage:"
-				CLGRN" %3.2f\n"CLNRM, i,
+				CLGRN" %3.2f"CLNRM"\n", i,
 				t->worker[i].processed_pkts,
 				(((double)t->worker[i].processed_pkts)/total)
 				* 100);
