@@ -356,6 +356,26 @@ set_sw_credit_quanta(const char *key __rte_unused,
 }
 
 static int
+set_hw_credit_quanta(const char *key __rte_unused,
+	const char *value,
+	void *opaque)
+{
+	int *hw_credit_quanta = opaque;
+	int ret;
+
+	if (value == NULL || opaque == NULL) {
+		DLB2_LOG_ERR("NULL pointer\n");
+		return -EINVAL;
+	}
+
+	ret = dlb2_string_to_int(hw_credit_quanta, value);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
+static int
 set_default_depth_thresh(const char *key __rte_unused,
 	const char *value,
 	void *opaque)
@@ -769,7 +789,7 @@ dlb2_eventdev_configure(const struct rte_eventdev *dev)
 		if (rsrcs->num_ldb_queues)
 			rsrcs->num_ldb_credits = config->nb_events_limit;
 		if (rsrcs->num_dir_ports)
-			rsrcs->num_dir_credits = config->nb_events_limit / 4;
+			rsrcs->num_dir_credits = config->nb_events_limit / 2;
 		if (dlb2->num_dir_credits_override != -1)
 			rsrcs->num_dir_credits = dlb2->num_dir_credits_override;
 	}
@@ -1693,6 +1713,7 @@ dlb2_eventdev_port_setup(struct rte_eventdev *dev,
 	struct dlb2_eventdev *dlb2;
 	struct dlb2_eventdev_port *ev_port;
 	int ret;
+	uint32_t hw_credit_quanta, sw_credit_quanta;
 
 	if (dev == NULL || port_conf == NULL) {
 		DLB2_LOG_ERR("Null parameter\n");
@@ -1753,8 +1774,24 @@ dlb2_eventdev_port_setup(struct rte_eventdev *dev,
 		  RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL);
 	ev_port->outstanding_releases = 0;
 	ev_port->inflight_credits = 0;
-	ev_port->credit_update_quanta = dlb2->sw_credit_quanta;
 	ev_port->dlb2 = dlb2; /* reverse link */
+
+	/* Default for worker ports */
+	sw_credit_quanta = dlb2->sw_credit_quanta;
+	hw_credit_quanta = dlb2->hw_credit_quanta;
+
+	if (port_conf->event_port_cfg & RTE_EVENT_PORT_CFG_HINT_PRODUCER) {
+		/* Producer type ports. Mostly enqueue */
+		sw_credit_quanta = DLB2_SW_CREDIT_P_QUANTA_DEFAULT;
+		hw_credit_quanta = DLB2_SW_CREDIT_P_BATCH_SZ;
+	}
+	if (port_conf->event_port_cfg & RTE_EVENT_PORT_CFG_HINT_CONSUMER) {
+		/* Consumer type ports. Mostly dequeue */
+		sw_credit_quanta = DLB2_SW_CREDIT_C_QUANTA_DEFAULT;
+		hw_credit_quanta = DLB2_SW_CREDIT_C_BATCH_SZ;
+	}
+	ev_port->credit_update_quanta = sw_credit_quanta;
+	ev_port->qm_port.hw_credit_quanta = hw_credit_quanta;
 
 	/* Tear down pre-existing port->queue links */
 	if (dlb2->run_state == DLB2_RUN_STATE_STOPPED)
@@ -2378,7 +2415,8 @@ dlb2_port_credits_get(struct dlb2_port *qm_port,
 		      enum dlb2_hw_queue_types type)
 {
 	uint32_t credits = *qm_port->credit_pool[type];
-	uint32_t batch_size = DLB2_SW_CREDIT_BATCH_SZ;
+	/* By default hw_credit_quanta is DLB2_SW_CREDIT_BATCH_SZ */
+	uint32_t batch_size = qm_port->hw_credit_quanta;
 
 	if (unlikely(credits < batch_size))
 		batch_size = credits;
@@ -3112,7 +3150,7 @@ sw_credit_update:
 static inline void
 dlb2_port_credits_inc(struct dlb2_port *qm_port, int num)
 {
-	uint32_t batch_size = DLB2_SW_CREDIT_BATCH_SZ;
+	uint32_t batch_size = qm_port->hw_credit_quanta;
 
 	/* increment port credits, and return to pool if exceeds threshold */
 	if (!qm_port->is_directed) {
@@ -4446,6 +4484,7 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 	dlb2->qm_instance.cos_id = dlb2_args->cos_id;
 	dlb2->poll_interval = dlb2_args->poll_interval;
 	dlb2->sw_credit_quanta = dlb2_args->sw_credit_quanta;
+	dlb2->hw_credit_quanta = dlb2_args->hw_credit_quanta;
 	dlb2->default_depth_thresh = dlb2_args->default_depth_thresh;
 	dlb2->vector_opts_enabled = dlb2_args->vector_opts_enabled;
 
@@ -4550,6 +4589,7 @@ dlb2_parse_params(const char *params,
 					     DLB2_COS_ARG,
 					     DLB2_POLL_INTERVAL_ARG,
 					     DLB2_SW_CREDIT_QUANTA_ARG,
+					     DLB2_HW_CREDIT_QUANTA_ARG,
 					     DLB2_DEPTH_THRESH_ARG,
 					     DLB2_VECTOR_OPTS_ENAB_ARG,
 					     NULL };
@@ -4649,7 +4689,18 @@ dlb2_parse_params(const char *params,
 						 set_sw_credit_quanta,
 						 &dlb2_args->sw_credit_quanta);
 			if (ret != 0) {
-				DLB2_LOG_ERR("%s: Error parsing sw xredit quanta parameter",
+				DLB2_LOG_ERR("%s: Error parsing sw credit quanta parameter",
+					     name);
+				rte_kvargs_free(kvlist);
+				return ret;
+			}
+
+			ret = rte_kvargs_process(kvlist,
+						 DLB2_HW_CREDIT_QUANTA_ARG,
+						 set_hw_credit_quanta,
+						 &dlb2_args->hw_credit_quanta);
+			if (ret != 0) {
+				DLB2_LOG_ERR("%s: Error parsing hw credit quanta parameter",
 					     name);
 				rte_kvargs_free(kvlist);
 				return ret;

@@ -24,7 +24,9 @@
 
 /* Default values for command line devargs */
 #define DLB2_POLL_INTERVAL_DEFAULT 1000
-#define DLB2_SW_CREDIT_QUANTA_DEFAULT 32
+#define DLB2_SW_CREDIT_QUANTA_DEFAULT 32 /* Default = Worker */
+#define DLB2_SW_CREDIT_P_QUANTA_DEFAULT 256 /* Producer */
+#define DLB2_SW_CREDIT_C_QUANTA_DEFAULT 256 /* Consumer */
 #define DLB2_DEPTH_THRESH_DEFAULT 256
 
 /*  command line arg strings */
@@ -36,6 +38,7 @@
 #define DLB2_COS_ARG "cos"
 #define DLB2_POLL_INTERVAL_ARG "poll_interval"
 #define DLB2_SW_CREDIT_QUANTA_ARG "sw_credit_quanta"
+#define DLB2_HW_CREDIT_QUANTA_ARG "hw_credit_quanta"
 #define DLB2_DEPTH_THRESH_ARG "default_depth_thresh"
 #define DLB2_VECTOR_OPTS_ENAB_ARG "vector_opts_enable"
 
@@ -72,7 +75,9 @@
 #define DLB2_MIN_DEQUEUE_TIMEOUT_NS 1
 /* Note: "- 1" here to support the timeout range check in eventdev_autotest */
 #define DLB2_MAX_DEQUEUE_TIMEOUT_NS (UINT32_MAX - 1)
-#define DLB2_SW_CREDIT_BATCH_SZ 32
+#define DLB2_SW_CREDIT_BATCH_SZ 32 /* Default - Worker */
+#define DLB2_SW_CREDIT_P_BATCH_SZ 256 /* Producer */
+#define DLB2_SW_CREDIT_C_BATCH_SZ 256 /* Consumer */
 #define DLB2_NUM_SN_GROUPS 2
 #define DLB2_MAX_LDB_SN_ALLOC 1024
 #define DLB2_MAX_QUEUE_DEPTH_THRESHOLD 8191
@@ -367,6 +372,7 @@ struct dlb2_port {
 	struct dlb2_eventdev *dlb2; /* back ptr */
 	struct dlb2_eventdev_port *ev_port; /* back ptr */
 	bool use_scalar; /* force usage of scalar code */
+	uint16_t hw_credit_quanta;
 };
 
 /* Per-process per-port mmio and memory pointers */
@@ -587,6 +593,7 @@ struct dlb2_eventdev {
 	enum dlb2_cq_poll_modes poll_mode;
 	int poll_interval;
 	int sw_credit_quanta;
+	int hw_credit_quanta;
 	int default_depth_thresh;
 	uint8_t revision;
 	uint8_t version;
@@ -622,6 +629,7 @@ struct dlb2_devargs {
 	enum dlb2_cos cos_id;
 	int poll_interval;
 	int sw_credit_quanta;
+	int hw_credit_quanta;
 	int default_depth_thresh;
 	bool vector_opts_enabled;
 };

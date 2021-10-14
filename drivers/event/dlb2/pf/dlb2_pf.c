@@ -618,6 +618,7 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 		.cos_id = DLB2_COS_DEFAULT,
 		.poll_interval = DLB2_POLL_INTERVAL_DEFAULT,
 		.sw_credit_quanta = DLB2_SW_CREDIT_QUANTA_DEFAULT,
+		.hw_credit_quanta = DLB2_SW_CREDIT_BATCH_SZ,
 		.default_depth_thresh = DLB2_DEPTH_THRESH_DEFAULT
 	};
 	struct dlb2_eventdev *dlb2;
