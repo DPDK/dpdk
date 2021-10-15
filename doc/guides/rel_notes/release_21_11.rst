@@ -291,6 +291,7 @@ New Features
   * Added tests to validate packets hard expiry.
   * Added tests to verify tunnel header verification in IPsec inbound.
   * Added tests to verify inner checksum.
+  * Added tests for CHACHA20_POLY1305 PMD, including a new testcase for SGL OOP.
 
 * **Revised packet capture framework.**
 

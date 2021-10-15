@@ -14105,6 +14105,14 @@ test_chacha20_poly1305_decrypt_test_case_rfc8439(void)
 	return test_authenticated_decryption(&chacha20_poly1305_case_rfc8439);
 }
 
+static int
+test_chacha20_poly1305_encrypt_SGL_out_of_place(void)
+{
+	return test_authenticated_encryption_SGL(
+		&chacha20_poly1305_case_2, OUT_OF_PLACE, 32,
+		chacha20_poly1305_case_2.plaintext.len);
+}
+
 #ifdef RTE_CRYPTO_SCHEDULER
 
 /* global AESNI worker IDs for the scheduler test */
@@ -14789,6 +14797,8 @@ static struct unit_test_suite cryptodev_chacha20_poly1305_testsuite  = {
 			test_chacha20_poly1305_encrypt_test_case_rfc8439),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_chacha20_poly1305_decrypt_test_case_rfc8439),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_chacha20_poly1305_encrypt_SGL_out_of_place),
 		TEST_CASES_END()
 	}
 };
@@ -15372,6 +15382,17 @@ test_cryptodev_cpu_aesni_mb(void)
 }
 
 static int
+test_cryptodev_chacha_poly_mb(void)
+{
+	int32_t rc;
+	enum rte_security_session_action_type at = gbl_action_type;
+	rc = run_cryptodev_testsuite(
+			RTE_STR(CRYPTODEV_NAME_CHACHA20_POLY1305_PMD));
+	gbl_action_type = at;
+	return rc;
+}
+
+static int
 test_cryptodev_openssl(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
@@ -15670,6 +15691,8 @@ REGISTER_TEST_COMMAND(cryptodev_qat_autotest, test_cryptodev_qat);
 REGISTER_TEST_COMMAND(cryptodev_aesni_mb_autotest, test_cryptodev_aesni_mb);
 REGISTER_TEST_COMMAND(cryptodev_cpu_aesni_mb_autotest,
 	test_cryptodev_cpu_aesni_mb);
+REGISTER_TEST_COMMAND(cryptodev_chacha_poly_mb_autotest,
+	test_cryptodev_chacha_poly_mb);
 REGISTER_TEST_COMMAND(cryptodev_openssl_autotest, test_cryptodev_openssl);
 REGISTER_TEST_COMMAND(cryptodev_aesni_gcm_autotest, test_cryptodev_aesni_gcm);
 REGISTER_TEST_COMMAND(cryptodev_cpu_aesni_gcm_autotest,
