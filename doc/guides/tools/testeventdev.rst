@@ -155,8 +155,14 @@ The following are the application command-line options:
 
 * ``--max_pkt_sz``
 
-       Set max packet mbuf size. Can be used configure Rx/Tx scatter gather.
+       Set max packet mbuf size. Can be used to configure Rx/Tx scatter gather.
        Only applicable for `pipeline_atq` and `pipeline_queue` tests.
+
+* ``--prod_enq_burst_sz``
+
+       Set producer enqueue burst size. Can be used to configure the number of
+       events the producer(s) will enqueue as a burst to the event device.
+       Only applicable for `perf_queue` test.
 
 * ``--nb_eth_queues``
 
@@ -374,8 +380,9 @@ The user can choose the number of workers, the number of producers and number of
 stages through the ``--wlcores``, ``--plcores`` and the ``--stlist`` application
 command line arguments respectively.
 
-The producer(s) injects the events to eventdev based the first stage sched type
-list requested by the user through ``--stlist`` the command line argument.
+The producer(s) injects the events to eventdev based on the first stage sched type
+list requested by the user through ``--stlist`` command line argument. It can
+inject a burst of events using ``--prod_enq_burst_sz`` command line argument.
 
 Based on the number of stages to process(selected through ``--stlist``),
 The application forwards the event to next upstream queue and terminates when it
@@ -413,6 +420,7 @@ Supported application command line options are following::
         --prod_type_ethdev
         --prod_type_timerdev_burst
         --prod_type_timerdev
+        --prod_enq_burst_sz
         --timer_tick_nsec
         --max_tmo_nsec
         --expiry_nsec
@@ -429,6 +437,14 @@ Example command to run perf queue test:
 
    sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x1 --vdev=event_sw0 -- \
         --test=perf_queue --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0
+
+Example command to run perf queue test with producer enqueuing a burst of events:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x1 --vdev=event_sw0 -- \
+        --test=perf_queue --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0 \
+        --prod_enq_burst_sz=32
 
 Example command to run perf queue test with ethernet ports:
 

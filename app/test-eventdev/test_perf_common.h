@@ -71,6 +71,7 @@ struct perf_elt {
 } __rte_cache_aligned;
 
 #define BURST_SIZE 16
+#define MAX_PROD_ENQ_BURST_SIZE 128
 
 #define PERF_WORKER_INIT\
 	struct worker_data *w  = arg;\

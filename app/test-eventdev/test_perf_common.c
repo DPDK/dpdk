@@ -78,6 +78,71 @@ perf_producer(void *arg)
 }
 
 static inline int
+perf_producer_burst(void *arg)
+{
+	uint32_t i;
+	uint64_t timestamp;
+	struct rte_event_dev_info dev_info;
+	struct prod_data *p  = arg;
+	struct test_perf *t = p->t;
+	struct evt_options *opt = t->opt;
+	const uint8_t dev_id = p->dev_id;
+	const uint8_t port = p->port_id;
+	struct rte_mempool *pool = t->pool;
+	const uint64_t nb_pkts = t->nb_pkts;
+	const uint32_t nb_flows = t->nb_flows;
+	uint32_t flow_counter = 0;
+	uint16_t enq = 0;
+	uint64_t count = 0;
+	struct perf_elt *m[MAX_PROD_ENQ_BURST_SIZE + 1];
+	struct rte_event ev[MAX_PROD_ENQ_BURST_SIZE + 1];
+	uint32_t burst_size = opt->prod_enq_burst_sz;
+
+	memset(m, 0, sizeof(*m) * (MAX_PROD_ENQ_BURST_SIZE + 1));
+	rte_event_dev_info_get(dev_id, &dev_info);
+	if (dev_info.max_event_port_enqueue_depth < burst_size)
+		burst_size = dev_info.max_event_port_enqueue_depth;
+
+	if (opt->verbose_level > 1)
+		printf("%s(): lcore %d dev_id %d port=%d queue %d\n", __func__,
+				rte_lcore_id(), dev_id, port, p->queue_id);
+
+	for (i = 0; i < burst_size; i++) {
+		ev[i].op = RTE_EVENT_OP_NEW;
+		ev[i].queue_id = p->queue_id;
+		ev[i].sched_type = t->opt->sched_type_list[0];
+		ev[i].priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+		ev[i].event_type =  RTE_EVENT_TYPE_CPU;
+		ev[i].sub_event_type = 0; /* stage 0 */
+	}
+
+	while (count < nb_pkts && t->done == false) {
+		if (rte_mempool_get_bulk(pool, (void **)m, burst_size) < 0)
+			continue;
+		timestamp = rte_get_timer_cycles();
+		for (i = 0; i < burst_size; i++) {
+			ev[i].flow_id = flow_counter++ % nb_flows;
+			ev[i].event_ptr = m[i];
+			m[i]->timestamp = timestamp;
+		}
+		enq = rte_event_enqueue_burst(dev_id, port, ev, burst_size);
+		while (enq < burst_size) {
+			enq += rte_event_enqueue_burst(dev_id, port,
+							ev + enq,
+							burst_size - enq);
+			if (t->done)
+				break;
+			rte_pause();
+			timestamp = rte_get_timer_cycles();
+			for (i = enq; i < burst_size; i++)
+				m[i]->timestamp = timestamp;
+		}
+		count += burst_size;
+	}
+	return 0;
+}
+
+static inline int
 perf_event_timer_producer(void *arg)
 {
 	int i;
@@ -212,9 +277,21 @@ perf_producer_wrapper(void *arg)
 {
 	struct prod_data *p  = arg;
 	struct test_perf *t = p->t;
-	/* Launch the producer function only in case of synthetic producer. */
-	if (t->opt->prod_type == EVT_PROD_TYPE_SYNT)
+	bool burst = evt_has_burst_mode(p->dev_id);
+
+	/* In case of synthetic producer, launch perf_producer or
+	 * perf_producer_burst depending on producer enqueue burst size
+	 */
+	if (t->opt->prod_type == EVT_PROD_TYPE_SYNT &&
+			t->opt->prod_enq_burst_sz == 1)
 		return perf_producer(arg);
+	else if (t->opt->prod_type == EVT_PROD_TYPE_SYNT &&
+			t->opt->prod_enq_burst_sz > 1) {
+		if (!burst)
+			evt_err("This event device does not support burst mode");
+		else
+			return perf_producer_burst(arg);
+	}
 	else if (t->opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR &&
 			!t->opt->timdev_use_burst)
 		return perf_event_timer_producer(arg);
@@ -635,6 +712,7 @@ perf_opt_dump(struct evt_options *opt, uint8_t nb_queues)
 	evt_dump_queue_priority(opt);
 	evt_dump_sched_type_list(opt);
 	evt_dump_producer_type(opt);
+	evt_dump("prod_enq_burst_sz", "%d", opt->prod_enq_burst_sz);
 }
 
 void

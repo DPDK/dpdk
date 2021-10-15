@@ -95,7 +95,7 @@ main(int argc, char **argv)
 	/* Parse the command line arguments */
 	ret = evt_options_parse(&opt, argc, argv);
 	if (ret) {
-		evt_err("parsing on or more user options failed");
+		evt_err("parsing one or more user options failed");
 		goto error;
 	}
 
