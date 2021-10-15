@@ -506,6 +506,7 @@ mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev)
 {
 	struct mlx5_vdpa_priv *priv = NULL;
 	struct mlx5_hca_attr *attr = &cdev->config.hca_attr;
+	int retry;
 
 	if (!attr->vdpa.valid || !attr->vdpa.max_num_virtio_queues) {
 		DRV_LOG(ERR, "Not enough capabilities to support vdpa, maybe "
@@ -530,7 +531,14 @@ mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev)
 	if (attr->num_lag_ports == 0)
 		priv->num_lag_ports = 1;
 	priv->cdev = cdev;
-	priv->var = mlx5_glue->dv_alloc_var(priv->cdev->ctx, 0);
+	for (retry = 0; retry < 7; retry++) {
+		priv->var = mlx5_glue->dv_alloc_var(priv->cdev->ctx, 0);
+		if (priv->var != NULL)
+			break;
+		DRV_LOG(WARNING, "Failed to allocate VAR, retry %d.\n", retry);
+		/* Wait Qemu release VAR during vdpa restart, 0.1 sec based. */
+		usleep(100000U << retry);
+	}
 	if (!priv->var) {
 		DRV_LOG(ERR, "Failed to allocate VAR %u.", errno);
 		goto error;
