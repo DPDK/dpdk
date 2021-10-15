@@ -2343,7 +2343,7 @@ bond_ethdev_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_id)
 static void
 bond_ethdev_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_id)
 {
-	void *queue = dev->data->rx_queues[queue_id];
+	void *queue = dev->data->tx_queues[queue_id];
 
 	if (queue == NULL)
 		return;
