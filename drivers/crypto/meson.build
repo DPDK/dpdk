@@ -6,7 +6,6 @@ if is_windows
 endif
 
 drivers = [
-        'aesni_gcm',
         'armv8',
         'bcmfs',
         'caam_jr',

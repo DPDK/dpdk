@@ -23,6 +23,7 @@ endif
 
 sources = files('ipsec_mb_private.c',
 		'ipsec_mb_ops.c',
-		'pmd_aesni_mb.c'
+		'pmd_aesni_mb.c',
+		'pmd_aesni_gcm.c'
 		)
 deps += ['bus_vdev', 'net', 'security']

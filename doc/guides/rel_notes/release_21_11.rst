@@ -231,6 +231,7 @@ New Features
   * The following PMDs were moved into a single source folder,
     however their usage and EAL options remain unchanged.
     * AESNI_MB PMD.
+    * AESNI_GCM PMD.
 
 * **Updated the aesni_mb crypto PMD.**
 

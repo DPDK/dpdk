@@ -37,6 +37,9 @@ extern RTE_DEFINE_PER_LCORE(IMB_MGR *, mb_mgr);
 #define CRYPTODEV_NAME_AESNI_MB_PMD crypto_aesni_mb
 /**< IPSEC Multi buffer aesni_mb PMD device name */
 
+#define CRYPTODEV_NAME_AESNI_GCM_PMD crypto_aesni_gcm
+/**< IPSEC Multi buffer PMD aesni_gcm device name */
+
 /** PMD LOGTYPE DRIVER, common to all PMDs */
 extern int ipsec_mb_logtype_driver;
 #define IPSEC_MB_LOG(level, fmt, ...)                                         \
@@ -46,6 +49,7 @@ extern int ipsec_mb_logtype_driver;
 /** All supported device types */
 enum ipsec_mb_pmd_types {
 	IPSEC_MB_PMD_TYPE_AESNI_MB = 0,
+	IPSEC_MB_PMD_TYPE_AESNI_GCM,
 	IPSEC_MB_N_PMD_TYPES
 };
 
@@ -65,6 +69,7 @@ enum ipsec_mb_operation {
 };
 
 extern uint8_t pmd_driver_id_aesni_mb;
+extern uint8_t pmd_driver_id_aesni_gcm;
 
 /** Helper function. Gets driver ID based on PMD type */
 static __rte_always_inline uint8_t
@@ -73,6 +78,8 @@ ipsec_mb_get_driver_id(enum ipsec_mb_pmd_types pmd_type)
 	switch (pmd_type) {
 	case IPSEC_MB_PMD_TYPE_AESNI_MB:
 		return pmd_driver_id_aesni_mb;
+	case IPSEC_MB_PMD_TYPE_AESNI_GCM:
+		return pmd_driver_id_aesni_gcm;
 	default:
 		break;
 	}

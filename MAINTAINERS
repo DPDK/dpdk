@@ -1052,13 +1052,6 @@ M: Fan Zhang <roy.fan.zhang@intel.com>
 F: drivers/crypto/scheduler/
 F: doc/guides/cryptodevs/scheduler.rst
 
-Intel AES-NI GCM
-M: Declan Doherty <declan.doherty@intel.com>
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
-F: drivers/crypto/aesni_gcm/
-F: doc/guides/cryptodevs/aesni_gcm.rst
-F: doc/guides/cryptodevs/features/aesni_gcm.ini
-
 Intel QuickAssist
 M: John Griffin <john.griffin@intel.com>
 M: Fiona Trahe <fiona.trahe@intel.com>
@@ -1072,7 +1065,9 @@ IPsec MB
 M: Fan Zhang <roy.fan.zhang@intel.com>
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/crypto/ipsec_mb/
+F: doc/guides/cryptodevs/aesni_gcm.rst
 F: doc/guides/cryptodevs/aesni_mb.rst
+F: doc/guides/cryptodevs/features/aesni_gcm.ini
 F: doc/guides/cryptodevs/features/aesni_mb.ini
 
 KASUMI
