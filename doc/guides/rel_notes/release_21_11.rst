@@ -232,6 +232,10 @@ New Features
     however their usage and EAL options remain unchanged.
     * AESNI_MB PMD.
 
+* **Updated the aesni_mb crypto PMD.**
+
+  * Added support for ZUC-EEA3-256 and ZUC-EIA3-256.
+
 * **Updated the ACC100 bbdev PMD.**
 
   Added support for more comprehensive CRC options.

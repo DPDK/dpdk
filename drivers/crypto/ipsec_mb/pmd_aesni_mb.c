@@ -179,7 +179,15 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 	}
 
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_ZUC_EIA3) {
-		sess->auth.algo = IMB_AUTH_ZUC_EIA3_BITLEN;
+		if (xform->auth.key.length == 16) {
+			sess->auth.algo = IMB_AUTH_ZUC_EIA3_BITLEN;
+		} else if (xform->auth.key.length == 32) {
+			sess->auth.algo = IMB_AUTH_ZUC256_EIA3_BITLEN;
+		} else {
+			IPSEC_MB_LOG(ERR, "Invalid authentication key length\n");
+			return -EINVAL;
+		}
+
 		uint16_t zuc_eia3_digest_len =
 			get_truncated_digest_byte_length(
 						IMB_AUTH_ZUC_EIA3_BITLEN);
@@ -189,7 +197,8 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		}
 		sess->auth.gen_digest_len = sess->auth.req_digest_len;
 
-		memcpy(sess->auth.zuc_auth_key, xform->auth.key.data, 16);
+		memcpy(sess->auth.zuc_auth_key, xform->auth.key.data,
+			xform->auth.key.length);
 		return 0;
 	} else if (xform->auth.algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2) {
 		sess->auth.algo = IMB_AUTH_SNOW3G_UIA2_BITLEN;
@@ -522,13 +531,14 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 
 		sess->cipher.key_length_in_bytes = 24;
 	} else if (is_zuc) {
-		if (xform->cipher.key.length != 16) {
+		if (xform->cipher.key.length != 16 &&
+				xform->cipher.key.length != 32) {
 			IPSEC_MB_LOG(ERR, "Invalid cipher key length");
 			return -EINVAL;
 		}
-		sess->cipher.key_length_in_bytes = 16;
+		sess->cipher.key_length_in_bytes = xform->cipher.key.length;
 		memcpy(sess->cipher.zuc_cipher_key, xform->cipher.key.data,
-			16);
+			xform->cipher.key.length);
 	} else if (is_snow3g) {
 		if (xform->cipher.key.length != 16) {
 			IPSEC_MB_LOG(ERR, "Invalid cipher key length");
@@ -1150,6 +1160,7 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->dec_keys = &session->cipher.gcm_key;
 		break;
 	case IMB_AUTH_ZUC_EIA3_BITLEN:
+	case IMB_AUTH_ZUC256_EIA3_BITLEN:
 		job->u.ZUC_EIA3._key = session->auth.zuc_auth_key;
 		job->u.ZUC_EIA3._iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 						session->auth_iv.offset);
