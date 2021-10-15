@@ -1,0 +1,447 @@
+//
+// Rename mbuf offload flags (and some other defines) to have
+// an RTE_ prefix.
+// This only replaces usages in C code, so it is advised to
+// replace missing occurrences with:
+// for f in $(git ls-tree --full-tree -r --name-only HEAD); do
+//         if [ "$(file -b --mime-encoding $f)" = "binary" ]; then
+//                 continue
+//         fi
+//         sed -i \
+//             -e 's,EXT_ATTACHED_MBUF,RTE_MBUF_F_EXTERNAL,g' \
+//             -e 's,IND_ATTACHED_MBUF,RTE_MBUF_F_INDIRECT,g' \
+//             -e 's,EXT_ATTACHED_MBUF,RTE_MBUF_F_EXTERNAL,g' \
+//             -e 's,PKT_FIRST_FREE,RTE_MBUF_F_FIRST_FREE,g' \
+//             -e 's,PKT_LAST_FREE,RTE_MBUF_F_LAST_FREE,g' \
+//             -e 's,PKT_TX_DYNF_METADATA,RTE_MBUF_DYNFLAG_TX_METADATA,g' \
+//             -e 's,PKT_RX_DYNF_METADATA,RTE_MBUF_DYNFLAG_RX_METADATA,g' \
+//             -e 's,\<PKT_RX_,RTE_MBUF_F_RX_,g' \
+//             -e 's,\<PKT_TX_,RTE_MBUF_F_TX_,g' \
+//             $f
+// done
+//
+@@
+@@
+
+- PKT_RX_VLAN
++ RTE_MBUF_F_RX_VLAN
+
+@@
+@@
+
+- PKT_RX_RSS_HASH
++ RTE_MBUF_F_RX_RSS_HASH
+
+@@
+@@
+
+- PKT_RX_FDIR
++ RTE_MBUF_F_RX_FDIR
+
+@@
+@@
+
+- PKT_RX_L4_CKSUM_BAD
++ RTE_MBUF_F_RX_L4_CKSUM_BAD
+
+@@
+@@
+
+- PKT_RX_IP_CKSUM_BAD
++ RTE_MBUF_F_RX_IP_CKSUM_BAD
+
+@@
+@@
+
+- PKT_RX_OUTER_IP_CKSUM_BAD
++ RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD
+
+@@
+@@
+
+- PKT_RX_EIP_CKSUM_BAD
++ RTE_MBUF_F_RX_EIP_CKSUM_BAD
+
+@@
+@@
+
+- PKT_RX_VLAN_STRIPPED
++ RTE_MBUF_F_RX_VLAN_STRIPPED
+
+@@
+@@
+
+- PKT_RX_IP_CKSUM_MASK
++ RTE_MBUF_F_RX_IP_CKSUM_MASK
+
+@@
+@@
+
+- PKT_RX_IP_CKSUM_UNKNOWN
++ RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN
+
+@@
+@@
+
+- PKT_RX_IP_CKSUM_BAD
++ RTE_MBUF_F_RX_IP_CKSUM_BAD
+
+@@
+@@
+
+- PKT_RX_IP_CKSUM_GOOD
++ RTE_MBUF_F_RX_IP_CKSUM_GOOD
+
+@@
+@@
+
+- PKT_RX_IP_CKSUM_NONE
++ RTE_MBUF_F_RX_IP_CKSUM_NONE
+
+@@
+@@
+
+- PKT_RX_L4_CKSUM_MASK
++ RTE_MBUF_F_RX_L4_CKSUM_MASK
+
+@@
+@@
+
+- PKT_RX_L4_CKSUM_UNKNOWN
++ RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN
+
+@@
+@@
+
+- PKT_RX_L4_CKSUM_BAD
++ RTE_MBUF_F_RX_L4_CKSUM_BAD
+
+@@
+@@
+
+- PKT_RX_L4_CKSUM_GOOD
++ RTE_MBUF_F_RX_L4_CKSUM_GOOD
+
+@@
+@@
+
+- PKT_RX_L4_CKSUM_NONE
++ RTE_MBUF_F_RX_L4_CKSUM_NONE
+
+@@
+@@
+
+- PKT_RX_IEEE1588_PTP
++ RTE_MBUF_F_RX_IEEE1588_PTP
+
+@@
+@@
+
+- PKT_RX_IEEE1588_TMST
++ RTE_MBUF_F_RX_IEEE1588_TMST
+
+@@
+@@
+
+- PKT_RX_FDIR_ID
++ RTE_MBUF_F_RX_FDIR_ID
+
+@@
+@@
+
+- PKT_RX_FDIR_FLX
++ RTE_MBUF_F_RX_FDIR_FLX
+
+@@
+@@
+
+- PKT_RX_QINQ_STRIPPED
++ RTE_MBUF_F_RX_QINQ_STRIPPED
+
+@@
+@@
+
+- PKT_RX_LRO
++ RTE_MBUF_F_RX_LRO
+
+@@
+@@
+
+- PKT_RX_SEC_OFFLOAD
++ RTE_MBUF_F_RX_SEC_OFFLOAD
+
+@@
+@@
+
+- PKT_RX_SEC_OFFLOAD_FAILED
++ RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED
+
+@@
+@@
+
+- PKT_RX_QINQ
++ RTE_MBUF_F_RX_QINQ
+
+@@
+@@
+
+- PKT_RX_OUTER_L4_CKSUM_MASK
++ RTE_MBUF_F_RX_OUTER_L4_CKSUM_MASK
+
+@@
+@@
+
+- PKT_RX_OUTER_L4_CKSUM_UNKNOWN
++ RTE_MBUF_F_RX_OUTER_L4_CKSUM_UNKNOWN
+
+@@
+@@
+
+- PKT_RX_OUTER_L4_CKSUM_BAD
++ RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD
+
+@@
+@@
+
+- PKT_RX_OUTER_L4_CKSUM_GOOD
++ RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD
+
+@@
+@@
+
+- PKT_RX_OUTER_L4_CKSUM_INVALID
++ RTE_MBUF_F_RX_OUTER_L4_CKSUM_INVALID
+
+@@
+@@
+
+- PKT_FIRST_FREE
++ RTE_MBUF_F_FIRST_FREE
+
+@@
+@@
+
+- PKT_LAST_FREE
++ RTE_MBUF_F_LAST_FREE
+
+@@
+@@
+
+- PKT_TX_OUTER_UDP_CKSUM
++ RTE_MBUF_F_TX_OUTER_UDP_CKSUM
+
+@@
+@@
+
+- PKT_TX_UDP_SEG
++ RTE_MBUF_F_TX_UDP_SEG
+
+@@
+@@
+
+- PKT_TX_SEC_OFFLOAD
++ RTE_MBUF_F_TX_SEC_OFFLOAD
+
+@@
+@@
+
+- PKT_TX_MACSEC
++ RTE_MBUF_F_TX_MACSEC
+
+@@
+@@
+
+- PKT_TX_TUNNEL_VXLAN
++ RTE_MBUF_F_TX_TUNNEL_VXLAN
+
+@@
+@@
+
+- PKT_TX_TUNNEL_GRE
++ RTE_MBUF_F_TX_TUNNEL_GRE
+
+@@
+@@
+
+- PKT_TX_TUNNEL_IPIP
++ RTE_MBUF_F_TX_TUNNEL_IPIP
+
+@@
+@@
+
+- PKT_TX_TUNNEL_GENEVE
++ RTE_MBUF_F_TX_TUNNEL_GENEVE
+
+@@
+@@
+
+- PKT_TX_TUNNEL_MPLSINUDP
++ RTE_MBUF_F_TX_TUNNEL_MPLSINUDP
+
+@@
+@@
+
+- PKT_TX_TUNNEL_VXLAN_GPE
++ RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE
+
+@@
+@@
+
+- PKT_TX_TUNNEL_GTP
++ RTE_MBUF_F_TX_TUNNEL_GTP
+
+@@
+@@
+
+- PKT_TX_TUNNEL_ESP
++ RTE_MBUF_F_TX_TUNNEL_ESP
+
+@@
+@@
+
+- PKT_TX_TUNNEL_IP
++ RTE_MBUF_F_TX_TUNNEL_IP
+
+@@
+@@
+
+- PKT_TX_TUNNEL_UDP
++ RTE_MBUF_F_TX_TUNNEL_UDP
+
+@@
+@@
+
+- PKT_TX_TUNNEL_MASK
++ RTE_MBUF_F_TX_TUNNEL_MASK
+
+@@
+@@
+
+- PKT_TX_QINQ
++ RTE_MBUF_F_TX_QINQ
+
+@@
+@@
+
+- PKT_TX_QINQ_PKT
++ RTE_MBUF_F_TX_QINQ_PKT
+
+@@
+@@
+
+- PKT_TX_TCP_SEG
++ RTE_MBUF_F_TX_TCP_SEG
+
+@@
+@@
+
+- PKT_TX_IEEE1588_TMST
++ RTE_MBUF_F_TX_IEEE1588_TMST
+
+@@
+@@
+
+- PKT_TX_L4_NO_CKSUM
++ RTE_MBUF_F_TX_L4_NO_CKSUM
+
+@@
+@@
+
+- PKT_TX_TCP_CKSUM
++ RTE_MBUF_F_TX_TCP_CKSUM
+
+@@
+@@
+
+- PKT_TX_SCTP_CKSUM
++ RTE_MBUF_F_TX_SCTP_CKSUM
+
+@@
+@@
+
+- PKT_TX_UDP_CKSUM
++ RTE_MBUF_F_TX_UDP_CKSUM
+
+@@
+@@
+
+- PKT_TX_L4_MASK
++ RTE_MBUF_F_TX_L4_MASK
+
+@@
+@@
+
+- PKT_TX_IP_CKSUM
++ RTE_MBUF_F_TX_IP_CKSUM
+
+@@
+@@
+
+- PKT_TX_IPV4
++ RTE_MBUF_F_TX_IPV4
+
+@@
+@@
+
+- PKT_TX_IPV6
++ RTE_MBUF_F_TX_IPV6
+
+@@
+@@
+
+- PKT_TX_VLAN
++ RTE_MBUF_F_TX_VLAN
+
+@@
+@@
+
+- PKT_TX_VLAN_PKT
++ RTE_MBUF_F_TX_VLAN_PKT
+
+@@
+@@
+
+- PKT_TX_OUTER_IP_CKSUM
++ RTE_MBUF_F_TX_OUTER_IP_CKSUM
+
+@@
+@@
+
+- PKT_TX_OUTER_IPV4
++ RTE_MBUF_F_TX_OUTER_IPV4
+
+@@
+@@
+
+- PKT_TX_OUTER_IPV6
++ RTE_MBUF_F_TX_OUTER_IPV6
+
+@@
+@@
+
+- PKT_TX_OFFLOAD_MASK
++ RTE_MBUF_F_TX_OFFLOAD_MASK
+
+@@
+@@
+
+- EXT_ATTACHED_MBUF
++ RTE_MBUF_F_EXTERNAL
+
+@@
+@@
+
+- IND_ATTACHED_MBUF
++ RTE_MBUF_F_INDIRECT
+
+@@
+@@
+
+- PKT_TX_DYNF_METADATA
++ RTE_MBUF_DYNFLAG_TX_METADATA
+
+@@
+@@
+
+- PKT_RX_DYNF_METADATA
++ RTE_MBUF_DYNFLAG_RX_METADATA
