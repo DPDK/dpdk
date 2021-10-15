@@ -7251,6 +7251,30 @@ test_zuc_auth_cipher_verify_test_case_1_oop_sgl(void)
 }
 
 static int
+test_zuc256_encryption_test_case_1(void)
+{
+	return test_zuc_encryption(&zuc256_test_case_cipher_1);
+}
+
+static int
+test_zuc256_encryption_test_case_2(void)
+{
+	return test_zuc_encryption(&zuc256_test_case_cipher_2);
+}
+
+static int
+test_zuc256_authentication_test_case_1(void)
+{
+	return test_zuc_authentication(&zuc256_test_case_auth_1);
+}
+
+static int
+test_zuc256_authentication_test_case_2(void)
+{
+	return test_zuc_authentication(&zuc256_test_case_auth_2);
+}
+
+static int
 test_mixed_check_if_unsupported(const struct mixed_cipher_auth_test_data *tdata)
 {
 	uint8_t dev_id = testsuite_params.valid_devs[0];
@@ -14951,6 +14975,19 @@ static struct unit_test_suite cryptodev_zuc_testsuite  = {
 			test_zuc_auth_cipher_verify_test_case_1_sgl),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc_auth_cipher_verify_test_case_1_oop_sgl),
+
+		/** ZUC-256 encrypt only **/
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_encryption_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_encryption_test_case_2),
+
+		/** ZUC-256 authentication only **/
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_authentication_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_authentication_test_case_2),
+
 		TEST_CASES_END()
 	}
 };
