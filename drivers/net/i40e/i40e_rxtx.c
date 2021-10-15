@@ -64,8 +64,8 @@
 		PKT_TX_L4_MASK |        \
 		PKT_TX_OUTER_IP_CKSUM | \
 		PKT_TX_TCP_SEG |        \
-		PKT_TX_QINQ_PKT |       \
-		PKT_TX_VLAN_PKT |	\
+		PKT_TX_QINQ |       \
+		PKT_TX_VLAN |	\
 		PKT_TX_TUNNEL_MASK |	\
 		I40E_TX_IEEE1588_TMST)
 
@@ -1006,7 +1006,7 @@ i40e_calc_context_desc(uint64_t flags)
 {
 	static uint64_t mask = PKT_TX_OUTER_IP_CKSUM |
 		PKT_TX_TCP_SEG |
-		PKT_TX_QINQ_PKT |
+		PKT_TX_QINQ |
 		PKT_TX_TUNNEL_MASK;
 
 #ifdef RTE_LIBRTE_IEEE1588
@@ -1151,7 +1151,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Descriptor based VLAN insertion */
-		if (ol_flags & (PKT_TX_VLAN_PKT | PKT_TX_QINQ_PKT)) {
+		if (ol_flags & (PKT_TX_VLAN | PKT_TX_QINQ)) {
 			td_cmd |= I40E_TX_DESC_CMD_IL2TAG1;
 			td_tag = tx_pkt->vlan_tci;
 		}
@@ -1200,7 +1200,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			ctx_txd->tunneling_params =
 				rte_cpu_to_le_32(cd_tunneling_params);
-			if (ol_flags & PKT_TX_QINQ_PKT) {
+			if (ol_flags & PKT_TX_QINQ) {
 				cd_l2tag2 = tx_pkt->vlan_tci_outer;
 				cd_type_cmd_tso_mss |=
 					((uint64_t)I40E_TX_CTX_DESC_IL2TAG2 <<

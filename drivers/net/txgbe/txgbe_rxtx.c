@@ -54,7 +54,7 @@ static const u64 TXGBE_TX_OFFLOAD_MASK = (PKT_TX_IP_CKSUM |
 		PKT_TX_OUTER_IPV4 |
 		PKT_TX_IPV6 |
 		PKT_TX_IPV4 |
-		PKT_TX_VLAN_PKT |
+		PKT_TX_VLAN |
 		PKT_TX_L4_MASK |
 		PKT_TX_TCP_SEG |
 		PKT_TX_TUNNEL_MASK |
@@ -408,7 +408,7 @@ txgbe_set_xmit_ctx(struct txgbe_tx_queue *txq,
 		vlan_macip_lens |= TXGBE_TXD_MACLEN(tx_offload.l2_len);
 	}
 
-	if (ol_flags & PKT_TX_VLAN_PKT) {
+	if (ol_flags & PKT_TX_VLAN) {
 		tx_offload_mask.vlan_tci |= ~0;
 		vlan_macip_lens |= TXGBE_TXD_VLAN(tx_offload.vlan_tci);
 	}
@@ -496,7 +496,7 @@ tx_desc_cksum_flags_to_olinfo(uint64_t ol_flags)
 			tmp |= TXGBE_TXD_IPCS;
 		tmp |= TXGBE_TXD_L4CS;
 	}
-	if (ol_flags & PKT_TX_VLAN_PKT)
+	if (ol_flags & PKT_TX_VLAN)
 		tmp |= TXGBE_TXD_CC;
 
 	return tmp;
@@ -507,7 +507,7 @@ tx_desc_ol_flags_to_cmdtype(uint64_t ol_flags)
 {
 	uint32_t cmdtype = 0;
 
-	if (ol_flags & PKT_TX_VLAN_PKT)
+	if (ol_flags & PKT_TX_VLAN)
 		cmdtype |= TXGBE_TXD_VLE;
 	if (ol_flags & PKT_TX_TCP_SEG)
 		cmdtype |= TXGBE_TXD_TSE;

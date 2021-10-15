@@ -811,7 +811,7 @@ static int axgbe_xmit_hw(struct axgbe_tx_queue *txq,
 		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CIC, 0x1);
 	rte_wmb();
 
-	if (mbuf->ol_flags & (PKT_TX_VLAN_PKT | PKT_TX_QINQ_PKT)) {
+	if (mbuf->ol_flags & (PKT_TX_VLAN | PKT_TX_QINQ)) {
 		/* Mark it as a CONTEXT descriptor */
 		AXGMAC_SET_BITS_LE(desc->desc3, TX_CONTEXT_DESC3,
 				  CTXT, 1);

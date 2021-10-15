@@ -1034,7 +1034,7 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
 		cntrl = F_TXPKT_L4CSUM_DIS | F_TXPKT_IPCSUM_DIS;
 	}
 
-	if (mbuf->ol_flags & PKT_TX_VLAN_PKT) {
+	if (mbuf->ol_flags & PKT_TX_VLAN) {
 		txq->stats.vlan_ins++;
 		cntrl |= F_TXPKT_VLAN_VLD | V_TXPKT_VLAN(mbuf->vlan_tci);
 	}
@@ -1256,7 +1256,7 @@ out_free:
 		txq->stats.tx_cso += m->tso_segsz;
 	}
 
-	if (m->ol_flags & PKT_TX_VLAN_PKT) {
+	if (m->ol_flags & PKT_TX_VLAN) {
 		txq->stats.vlan_ins++;
 		cntrl |= F_TXPKT_VLAN_VLD | V_TXPKT_VLAN(m->vlan_tci);
 	}

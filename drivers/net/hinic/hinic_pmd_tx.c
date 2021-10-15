@@ -592,7 +592,7 @@ hinic_fill_tx_offload_info(struct rte_mbuf *mbuf,
 	task->pkt_info2 = 0;
 
 	/* Base VLAN */
-	if (unlikely(ol_flags & PKT_TX_VLAN_PKT)) {
+	if (unlikely(ol_flags & PKT_TX_VLAN)) {
 		vlan_tag = mbuf->vlan_tci;
 		hinic_set_vlan_tx_offload(task, queue_info, vlan_tag,
 					  vlan_tag >> VLAN_PRIO_SHIFT);

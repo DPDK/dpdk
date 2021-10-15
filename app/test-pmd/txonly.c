@@ -355,9 +355,9 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	vlan_tci = txp->tx_vlan_id;
 	vlan_tci_outer = txp->tx_vlan_id_outer;
 	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
-		ol_flags = PKT_TX_VLAN_PKT;
+		ol_flags = PKT_TX_VLAN;
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT)
-		ol_flags |= PKT_TX_QINQ_PKT;
+		ol_flags |= PKT_TX_QINQ;
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_MACSEC_INSERT)
 		ol_flags |= PKT_TX_MACSEC;
 

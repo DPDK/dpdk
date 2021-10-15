@@ -54,7 +54,7 @@
 		PKT_TX_OUTER_IPV4 |	 \
 		PKT_TX_IPV6 |		 \
 		PKT_TX_IPV4 |		 \
-		PKT_TX_VLAN_PKT |		 \
+		PKT_TX_VLAN |		 \
 		PKT_TX_IP_CKSUM |		 \
 		PKT_TX_L4_MASK |		 \
 		PKT_TX_TCP_SEG |		 \
@@ -262,7 +262,7 @@ igbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	/* Specify which HW CTX to upload. */
 	mss_l4len_idx = (ctx_idx << E1000_ADVTXD_IDX_SHIFT);
 
-	if (ol_flags & PKT_TX_VLAN_PKT)
+	if (ol_flags & PKT_TX_VLAN)
 		tx_offload_mask.data |= TX_VLAN_CMP_MASK;
 
 	/* check if TCP segmentation required for this packet */
@@ -371,7 +371,7 @@ tx_desc_vlan_flags_to_cmdtype(uint64_t ol_flags)
 	uint32_t cmdtype;
 	static uint32_t vlan_cmd[2] = {0, E1000_ADVTXD_DCMD_VLE};
 	static uint32_t tso_cmd[2] = {0, E1000_ADVTXD_DCMD_TSE};
-	cmdtype = vlan_cmd[(ol_flags & PKT_TX_VLAN_PKT) != 0];
+	cmdtype = vlan_cmd[(ol_flags & PKT_TX_VLAN) != 0];
 	cmdtype |= tso_cmd[(ol_flags & PKT_TX_TCP_SEG) != 0];
 	return cmdtype;
 }

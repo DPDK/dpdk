@@ -153,7 +153,7 @@
 				   PKT_TX_IPV6)
 
 #define QEDE_TX_OFFLOAD_MASK (QEDE_TX_CSUM_OFFLOAD_MASK | \
-			      PKT_TX_VLAN_PKT		| \
+			      PKT_TX_VLAN		| \
 			      PKT_TX_TUNNEL_MASK)
 
 #define QEDE_TX_OFFLOAD_NOTSUP_MASK \

@@ -1228,7 +1228,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				    (*bufs)->nb_segs == 1 &&
 				    rte_mbuf_refcnt_read((*bufs)) == 1)) {
 					if (unlikely(((*bufs)->ol_flags
-						& PKT_TX_VLAN_PKT) ||
+						& PKT_TX_VLAN) ||
 						(eth_data->dev_conf.txmode.offloads
 						& RTE_ETH_TX_OFFLOAD_VLAN_INSERT))) {
 						ret = rte_vlan_insert(bufs);
@@ -1271,7 +1271,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				goto send_n_return;
 			}
 
-			if (unlikely(((*bufs)->ol_flags & PKT_TX_VLAN_PKT) ||
+			if (unlikely(((*bufs)->ol_flags & PKT_TX_VLAN) ||
 				(eth_data->dev_conf.txmode.offloads
 				& RTE_ETH_TX_OFFLOAD_VLAN_INSERT))) {
 				int ret = rte_vlan_insert(bufs);
@@ -1532,7 +1532,7 @@ dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				    (*bufs)->nb_segs == 1 &&
 				    rte_mbuf_refcnt_read((*bufs)) == 1)) {
 					if (unlikely((*bufs)->ol_flags
-						& PKT_TX_VLAN_PKT)) {
+						& PKT_TX_VLAN)) {
 					  ret = rte_vlan_insert(bufs);
 					  if (ret)
 						goto send_n_return;

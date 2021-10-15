@@ -38,7 +38,7 @@ static inline void dump_rxd(union fm10k_rx_desc *rxd)
 #endif
 
 #define FM10K_TX_OFFLOAD_MASK (  \
-		PKT_TX_VLAN_PKT |        \
+		PKT_TX_VLAN |        \
 		PKT_TX_IPV6 |            \
 		PKT_TX_IPV4 |            \
 		PKT_TX_IP_CKSUM |        \
@@ -584,7 +584,7 @@ static inline void tx_xmit_pkt(struct fm10k_tx_queue *q, struct rte_mbuf *mb)
 		q->hw_ring[q->next_free].flags |= FM10K_TXD_FLAG_CSUM;
 
 	/* set vlan if requested */
-	if (mb->ol_flags & PKT_TX_VLAN_PKT)
+	if (mb->ol_flags & PKT_TX_VLAN)
 		q->hw_ring[q->next_free].vlan = mb->vlan_tci;
 	else
 		q->hw_ring[q->next_free].vlan = 0;

@@ -2074,7 +2074,7 @@ iavf_calc_context_desc(uint64_t flags, uint8_t vlan_flag)
 {
 	if (flags & PKT_TX_TCP_SEG)
 		return 1;
-	if (flags & PKT_TX_VLAN_PKT &&
+	if (flags & PKT_TX_VLAN &&
 	    vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
 		return 1;
 	return 0;
@@ -2260,7 +2260,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Descriptor based VLAN insertion */
-		if (ol_flags & PKT_TX_VLAN_PKT &&
+		if (ol_flags & PKT_TX_VLAN &&
 		    txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1) {
 			td_cmd |= IAVF_TX_DESC_CMD_IL2TAG1;
 			td_tag = tx_pkt->vlan_tci;
@@ -2301,7 +2301,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				cd_type_cmd_tso_mss |=
 					iavf_set_tso_ctx(tx_pkt, tx_offload);
 
-			if (ol_flags & PKT_TX_VLAN_PKT &&
+			if (ol_flags & PKT_TX_VLAN &&
 			   txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
 				cd_type_cmd_tso_mss |= IAVF_TX_CTX_DESC_IL2TAG2
 					<< IAVF_TXD_CTX_QW1_CMD_SHIFT;

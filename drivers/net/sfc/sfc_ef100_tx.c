@@ -396,7 +396,7 @@ sfc_ef100_tx_qdesc_send_create(const struct rte_mbuf *m, efx_oword_t *tx_desc)
 			ESF_GZ_TX_SEND_CSO_OUTER_L4, outer_l4,
 			ESF_GZ_TX_DESC_TYPE, ESE_GZ_TX_DESC_TYPE_SEND);
 
-	if (m->ol_flags & PKT_TX_VLAN_PKT) {
+	if (m->ol_flags & PKT_TX_VLAN) {
 		efx_oword_t tx_desc_extra_fields;
 
 		EFX_POPULATE_OWORD_2(tx_desc_extra_fields,
@@ -478,7 +478,7 @@ sfc_ef100_tx_qdesc_tso_create(const struct rte_mbuf *m,
 
 	EFX_OR_OWORD(*tx_desc, tx_desc_extra_fields);
 
-	if (m->ol_flags & PKT_TX_VLAN_PKT) {
+	if (m->ol_flags & PKT_TX_VLAN) {
 		EFX_POPULATE_OWORD_2(tx_desc_extra_fields,
 				ESF_GZ_TX_TSO_VLAN_INSERT_EN, 1,
 				ESF_GZ_TX_TSO_VLAN_INSERT_TCI, m->vlan_tci);

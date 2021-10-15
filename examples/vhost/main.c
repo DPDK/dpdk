@@ -1116,7 +1116,7 @@ queue2nic:
 			(vh->vlan_tci != vlan_tag_be))
 			vh->vlan_tci = vlan_tag_be;
 	} else {
-		m->ol_flags |= PKT_TX_VLAN_PKT;
+		m->ol_flags |= PKT_TX_VLAN;
 
 		/*
 		 * Find the right seg to adjust the data len when offset is

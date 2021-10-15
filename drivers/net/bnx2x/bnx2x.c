@@ -2189,7 +2189,7 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0)
 
 	tx_start_bd->nbd = rte_cpu_to_le_16(2);
 
-	if (m0->ol_flags & PKT_TX_VLAN_PKT) {
+	if (m0->ol_flags & PKT_TX_VLAN) {
 		tx_start_bd->vlan_or_ethertype =
 		    rte_cpu_to_le_16(m0->vlan_tci);
 		tx_start_bd->bd_flags.as_bitfield |=

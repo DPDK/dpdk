@@ -49,7 +49,7 @@
 #include "vmxnet3_ethdev.h"
 
 #define	VMXNET3_TX_OFFLOAD_MASK	( \
-		PKT_TX_VLAN_PKT | \
+		PKT_TX_VLAN | \
 		PKT_TX_IPV6 |     \
 		PKT_TX_IPV4 |     \
 		PKT_TX_L4_MASK |  \
@@ -520,7 +520,7 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		/* Add VLAN tag if present */
 		gdesc = txq->cmd_ring.base + first2fill;
-		if (txm->ol_flags & PKT_TX_VLAN_PKT) {
+		if (txm->ol_flags & PKT_TX_VLAN) {
 			gdesc->txd.ti = 1;
 			gdesc->txd.tci = txm->vlan_tci;
 		}

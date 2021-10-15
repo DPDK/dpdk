@@ -266,7 +266,7 @@ extern "C" {
  */
 #define PKT_TX_QINQ        (1ULL << 49)
 /** This old name is deprecated. */
-#define PKT_TX_QINQ_PKT    PKT_TX_QINQ
+#define PKT_TX_QINQ_PKT RTE_DEPRECATED(PKT_TX_QINQ_PKT) PKT_TX_QINQ
 
 /**
  * TCP segmentation offload. To enable this offload feature for a
@@ -335,7 +335,7 @@ extern "C" {
  */
 #define PKT_TX_VLAN          (1ULL << 57)
 /* this old name is deprecated */
-#define PKT_TX_VLAN_PKT      PKT_TX_VLAN
+#define PKT_TX_VLAN_PKT RTE_DEPRECATED(PKT_TX_VLAN_PKT) PKT_TX_VLAN
 
 /**
  * Offload the IP checksum of an external header in the hardware. The
@@ -367,14 +367,14 @@ extern "C" {
 		PKT_TX_OUTER_IPV6 |	 \
 		PKT_TX_OUTER_IPV4 |	 \
 		PKT_TX_OUTER_IP_CKSUM |  \
-		PKT_TX_VLAN_PKT |        \
+		PKT_TX_VLAN |        \
 		PKT_TX_IPV6 |		 \
 		PKT_TX_IPV4 |		 \
 		PKT_TX_IP_CKSUM |        \
 		PKT_TX_L4_MASK |         \
 		PKT_TX_IEEE1588_TMST |	 \
 		PKT_TX_TCP_SEG |         \
-		PKT_TX_QINQ_PKT |        \
+		PKT_TX_QINQ |        \
 		PKT_TX_TUNNEL_MASK |	 \
 		PKT_TX_MACSEC |		 \
 		PKT_TX_SEC_OFFLOAD |	 \

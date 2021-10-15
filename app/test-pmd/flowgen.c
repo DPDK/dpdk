@@ -100,9 +100,9 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 
 	tx_offloads = ports[fs->tx_port].dev_conf.txmode.offloads;
 	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
-		ol_flags |= PKT_TX_VLAN_PKT;
+		ol_flags |= PKT_TX_VLAN;
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT)
-		ol_flags |= PKT_TX_QINQ_PKT;
+		ol_flags |= PKT_TX_QINQ;
 	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_MACSEC_INSERT)
 		ol_flags |= PKT_TX_MACSEC;
 

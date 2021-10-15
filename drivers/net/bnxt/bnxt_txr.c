@@ -113,10 +113,10 @@ bnxt_xmit_need_long_bd(struct rte_mbuf *tx_pkt, struct bnxt_tx_queue *txq)
 {
 	if (tx_pkt->ol_flags & (PKT_TX_TCP_SEG | PKT_TX_TCP_CKSUM |
 				PKT_TX_UDP_CKSUM | PKT_TX_IP_CKSUM |
-				PKT_TX_VLAN_PKT | PKT_TX_OUTER_IP_CKSUM |
+				PKT_TX_VLAN | PKT_TX_OUTER_IP_CKSUM |
 				PKT_TX_TUNNEL_GRE | PKT_TX_TUNNEL_VXLAN |
 				PKT_TX_TUNNEL_GENEVE | PKT_TX_IEEE1588_TMST |
-				PKT_TX_QINQ_PKT) ||
+				PKT_TX_QINQ) ||
 	     (BNXT_TRUFLOW_EN(txq->bp) &&
 	      (txq->bp->tx_cfa_action || txq->vfr_tx_cfa_action)))
 		return true;
@@ -203,13 +203,13 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		vlan_tag_flags = 0;
 
 		/* HW can accelerate only outer vlan in QinQ mode */
-		if (tx_pkt->ol_flags & PKT_TX_QINQ_PKT) {
+		if (tx_pkt->ol_flags & PKT_TX_QINQ) {
 			vlan_tag_flags = TX_BD_LONG_CFA_META_KEY_VLAN_TAG |
 				tx_pkt->vlan_tci_outer;
 			outer_tpid_bd = txq->bp->outer_tpid_bd &
 				BNXT_OUTER_TPID_BD_MASK;
 			vlan_tag_flags |= outer_tpid_bd;
-		} else if (tx_pkt->ol_flags & PKT_TX_VLAN_PKT) {
+		} else if (tx_pkt->ol_flags & PKT_TX_VLAN) {
 			/* shurd: Should this mask at
 			 * TX_BD_LONG_CFA_META_VLAN_VID_MASK?
 			 */

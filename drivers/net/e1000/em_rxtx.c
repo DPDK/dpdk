@@ -55,7 +55,7 @@
 		PKT_TX_IPV4 |           \
 		PKT_TX_IP_CKSUM |       \
 		PKT_TX_L4_MASK |        \
-		PKT_TX_VLAN_PKT)
+		PKT_TX_VLAN)
 
 #define E1000_TX_OFFLOAD_NOTSUP_MASK \
 		(PKT_TX_OFFLOAD_MASK ^ E1000_TX_OFFLOAD_MASK)
@@ -508,7 +508,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		popts_spec = 0;
 
 		/* Set VLAN Tag offload fields. */
-		if (ol_flags & PKT_TX_VLAN_PKT) {
+		if (ol_flags & PKT_TX_VLAN) {
 			cmd_type_len |= E1000_TXD_CMD_VLE;
 			popts_spec = tx_pkt->vlan_tci << E1000_TXD_VLAN_SHIFT;
 		}

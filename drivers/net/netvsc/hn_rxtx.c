@@ -1331,7 +1331,7 @@ static void hn_encap(struct rndis_packet_msg *pkt,
 					  NDIS_PKTINFO_TYPE_HASHVAL);
 	*pi_data = queue_id;
 
-	if (m->ol_flags & PKT_TX_VLAN_PKT) {
+	if (m->ol_flags & PKT_TX_VLAN) {
 		pi_data = hn_rndis_pktinfo_append(pkt, NDIS_VLAN_INFO_SIZE,
 						  NDIS_PKTINFO_TYPE_VLAN);
 		*pi_data = m->vlan_tci;

@@ -935,7 +935,7 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		nfp_net_tx_tso(txq, &txd, pkt);
 		nfp_net_tx_cksum(txq, &txd, pkt);
 
-		if ((pkt->ol_flags & PKT_TX_VLAN_PKT) &&
+		if ((pkt->ol_flags & PKT_TX_VLAN) &&
 		    (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)) {
 			txd.flags |= PCIE_DESC_TX_VLAN;
 			txd.vlan = pkt->vlan_tci;

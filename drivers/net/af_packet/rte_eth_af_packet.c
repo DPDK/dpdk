@@ -229,7 +229,7 @@ eth_af_packet_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 
 		/* insert vlan info if necessary */
-		if (mbuf->ol_flags & PKT_TX_VLAN_PKT) {
+		if (mbuf->ol_flags & PKT_TX_VLAN) {
 			if (rte_vlan_insert(&mbuf)) {
 				rte_pktmbuf_free(mbuf);
 				continue;

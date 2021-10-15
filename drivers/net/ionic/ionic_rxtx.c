@@ -355,7 +355,7 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	uint32_t offset = 0;
 	bool start, done;
 	bool encap;
-	bool has_vlan = !!(txm->ol_flags & PKT_TX_VLAN_PKT);
+	bool has_vlan = !!(txm->ol_flags & PKT_TX_VLAN);
 	uint16_t vlan_tci = txm->vlan_tci;
 	uint64_t ol_flags = txm->ol_flags;
 
@@ -494,7 +494,7 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	if (opcode == IONIC_TXQ_DESC_OPCODE_CSUM_NONE)
 		stats->no_csum++;
 
-	has_vlan = (ol_flags & PKT_TX_VLAN_PKT);
+	has_vlan = (ol_flags & PKT_TX_VLAN);
 	encap = ((ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
 			(ol_flags & PKT_TX_OUTER_UDP_CKSUM)) &&
 			((ol_flags & PKT_TX_OUTER_IPV4) ||

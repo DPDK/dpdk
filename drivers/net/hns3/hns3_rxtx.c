@@ -3202,11 +3202,11 @@ hns3_fill_first_desc(struct hns3_tx_queue *txq, struct hns3_desc *desc,
 	 * To avoid the VLAN of Tx descriptor is overwritten by PVID, it should
 	 * be added to the position close to the IP header when PVID is enabled.
 	 */
-	if (!txq->pvid_sw_shift_en && ol_flags & (PKT_TX_VLAN_PKT |
-				PKT_TX_QINQ_PKT)) {
+	if (!txq->pvid_sw_shift_en && ol_flags & (PKT_TX_VLAN |
+				PKT_TX_QINQ)) {
 		desc->tx.ol_type_vlan_len_msec |=
 				rte_cpu_to_le_32(BIT(HNS3_TXD_OVLAN_B));
-		if (ol_flags & PKT_TX_QINQ_PKT)
+		if (ol_flags & PKT_TX_QINQ)
 			desc->tx.outer_vlan_tag =
 					rte_cpu_to_le_16(rxm->vlan_tci_outer);
 		else
@@ -3214,8 +3214,8 @@ hns3_fill_first_desc(struct hns3_tx_queue *txq, struct hns3_desc *desc,
 					rte_cpu_to_le_16(rxm->vlan_tci);
 	}
 
-	if (ol_flags & PKT_TX_QINQ_PKT ||
-	    ((ol_flags & PKT_TX_VLAN_PKT) && txq->pvid_sw_shift_en)) {
+	if (ol_flags & PKT_TX_QINQ ||
+	    ((ol_flags & PKT_TX_VLAN) && txq->pvid_sw_shift_en)) {
 		desc->tx.type_cs_vlan_tso_len |=
 					rte_cpu_to_le_32(BIT(HNS3_TXD_VLAN_B));
 		desc->tx.vlan_tag = rte_cpu_to_le_16(rxm->vlan_tci);
@@ -3754,12 +3754,12 @@ hns3_vld_vlan_chk(struct hns3_tx_queue *txq, struct rte_mbuf *m)
 	 * implementation function named hns3_prep_pkts to inform users that
 	 * these packets will be discarded.
 	 */
-	if (m->ol_flags & PKT_TX_QINQ_PKT)
+	if (m->ol_flags & PKT_TX_QINQ)
 		return -EINVAL;
 
 	eh = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	if (eh->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN)) {
-		if (m->ol_flags & PKT_TX_VLAN_PKT)
+		if (m->ol_flags & PKT_TX_VLAN)
 			return -EINVAL;
 
 		/* Ensure the incoming packet is not a QinQ packet */

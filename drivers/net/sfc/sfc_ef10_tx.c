@@ -805,7 +805,7 @@ sfc_ef10_simple_prepare_pkts(__rte_unused void *tx_queue,
 
 		/* ef10_simple does not support TSO and VLAN insertion */
 		if (unlikely(m->ol_flags &
-			     (PKT_TX_TCP_SEG | PKT_TX_VLAN_PKT))) {
+			     (PKT_TX_TCP_SEG | PKT_TX_VLAN))) {
 			rte_errno = ENOTSUP;
 			break;
 		}
