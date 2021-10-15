@@ -152,6 +152,7 @@ New Features
   Updated the Solarflare ``sfc_efx`` driver with changes including:
 
   * Added port representors support on SN1000 SmartNICs
+  * Added flow API transfer proxy support
 
 * **Updated Marvell cnxk crypto PMD.**
 

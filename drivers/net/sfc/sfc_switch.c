@@ -93,6 +93,8 @@ struct sfc_mae_switch_domain {
 	efx_pcie_interface_t			*controllers;
 	/** Number of DPDK controllers and EFX interfaces */
 	size_t					nb_controllers;
+	/** MAE admin port */
+	struct sfc_mae_switch_port		*mae_admin_port;
 };
 
 TAILQ_HEAD(sfc_mae_switch_domains, sfc_mae_switch_domain);
@@ -454,13 +456,17 @@ done:
 	port->ethdev_mport = *req->ethdev_mportp;
 	port->ethdev_port_id = req->ethdev_port_id;
 
+	memcpy(&port->data, &req->port_data,
+	       sizeof(port->data));
+
 	switch (req->type) {
 	case SFC_MAE_SWITCH_PORT_INDEPENDENT:
-		/* No data */
+		if (port->data.indep.mae_admin) {
+			SFC_ASSERT(domain->mae_admin_port == NULL);
+			domain->mae_admin_port = port;
+		}
 		break;
 	case SFC_MAE_SWITCH_PORT_REPRESENTOR:
-		memcpy(&port->data.repr, &req->port_data,
-		       sizeof(port->data.repr));
 		break;
 	default:
 		SFC_ASSERT(B_FALSE);
@@ -476,6 +482,30 @@ fail_mem_alloc:
 fail_find_switch_domain_by_id:
 	rte_spinlock_unlock(&sfc_mae_switch.lock);
 	return rc;
+}
+
+int
+sfc_mae_clear_switch_port(uint16_t switch_domain_id,
+			  uint16_t switch_port_id)
+{
+	struct sfc_mae_switch_domain *domain;
+
+	rte_spinlock_lock(&sfc_mae_switch.lock);
+
+	domain = sfc_mae_find_switch_domain_by_id(switch_domain_id);
+	if (domain == NULL) {
+		rte_spinlock_unlock(&sfc_mae_switch.lock);
+		return EINVAL;
+	}
+
+	if (domain->mae_admin_port != NULL &&
+	    domain->mae_admin_port->id == switch_port_id) {
+		domain->mae_admin_port->data.indep.mae_admin = B_FALSE;
+		domain->mae_admin_port = NULL;
+	}
+
+	rte_spinlock_unlock(&sfc_mae_switch.lock);
+	return 0;
 }
 
 /* This function expects to be called only when the lock is held */
@@ -535,5 +565,37 @@ sfc_mae_switch_port_id_by_entity(uint16_t switch_domain_id,
 						   switch_port_id);
 	rte_spinlock_unlock(&sfc_mae_switch.lock);
 
+	return rc;
+}
+
+static int
+sfc_mae_get_switch_domain_admin_locked(uint16_t switch_domain_id,
+				       uint16_t *port_id)
+{
+	struct sfc_mae_switch_domain *domain;
+
+	SFC_ASSERT(rte_spinlock_is_locked(&sfc_mae_switch.lock));
+
+	domain = sfc_mae_find_switch_domain_by_id(switch_domain_id);
+	if (domain == NULL)
+		return EINVAL;
+
+	if (domain->mae_admin_port != NULL) {
+		*port_id = domain->mae_admin_port->ethdev_port_id;
+		return 0;
+	}
+
+	return ENOENT;
+}
+
+int
+sfc_mae_get_switch_domain_admin(uint16_t switch_domain_id,
+				uint16_t *port_id)
+{
+	int rc;
+
+	rte_spinlock_lock(&sfc_mae_switch.lock);
+	rc = sfc_mae_get_switch_domain_admin_locked(switch_domain_id, port_id);
+	rte_spinlock_unlock(&sfc_mae_switch.lock);
 	return rc;
 }

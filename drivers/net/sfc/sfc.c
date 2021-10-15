@@ -25,6 +25,7 @@
 #include "sfc_kvargs.h"
 #include "sfc_tweak.h"
 #include "sfc_sw_stats.h"
+#include "sfc_switch.h"
 
 bool
 sfc_repr_supported(const struct sfc_adapter *sa)
@@ -1328,6 +1329,9 @@ sfc_unprobe(struct sfc_adapter *sa)
 	 * shut down.
 	 */
 	rte_eal_alarm_cancel(sfc_restart_if_required, sa);
+
+	sfc_mae_clear_switch_port(sa->mae.switch_domain_id,
+				  sa->mae.switch_port_id);
 
 	sfc_log_init(sa, "destroy nic");
 	sa->nic = NULL;
