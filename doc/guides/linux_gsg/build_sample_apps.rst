@@ -82,7 +82,7 @@ The EAL options are as follows:
 * ``--huge-dir``:
   The directory where hugetlbfs is mounted.
 
-* ``mbuf-pool-ops-name``:
+* ``--mbuf-pool-ops-name``:
   Pool ops name for mbuf to use.
 
 * ``--file-prefix``:

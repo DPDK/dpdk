@@ -199,7 +199,7 @@ Other options
 
     Display the version information on startup.
 
-*   ``mbuf-pool-ops-name``:
+*   ``--mbuf-pool-ops-name``:
 
     Pool ops name for mbuf to use.
 
