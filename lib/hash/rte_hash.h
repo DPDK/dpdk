@@ -205,9 +205,6 @@ int32_t
 rte_hash_count(const struct rte_hash *h);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Return the maximum key value ID that could possibly be returned by
  * rte_hash_add_key function.
  *
@@ -217,7 +214,6 @@ rte_hash_count(const struct rte_hash *h);
  *   - -EINVAL if parameters are invalid
  *   - A value indicating the max key ID of key slots present in the table.
  */
-__rte_experimental
 int32_t
 rte_hash_max_key_id(const struct rte_hash *h);
 
@@ -406,9 +402,6 @@ rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
 			       void **key);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Free a hash key in the hash table given the position
  * of the key. This operation is not multi-thread safe and should
  * only be called from one thread by default. Thread safety
@@ -430,7 +423,6 @@ rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
  *   - 0 if freed successfully
  *   - -EINVAL if the parameters are invalid.
  */
-__rte_experimental
 int
 rte_hash_free_key_with_position(const struct rte_hash *h,
 				const int32_t position);
@@ -564,9 +556,6 @@ rte_hash_lookup_bulk_data(const struct rte_hash *h, const void **keys,
 		      uint32_t num_keys, uint64_t *hit_mask, void *data[]);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Find multiple keys in the hash table with precomputed hash value array.
  * This operation is multi-thread safe with regarding to other lookup threads.
  * Read-write concurrency can be enabled by setting flag during
@@ -589,15 +578,11 @@ rte_hash_lookup_bulk_data(const struct rte_hash *h, const void **keys,
  * @return
  *   -EINVAL if there's an error, otherwise 0.
  */
-__rte_experimental
 int
 rte_hash_lookup_with_hash_bulk(const struct rte_hash *h, const void **keys,
 		hash_sig_t *sig, uint32_t num_keys, int32_t *positions);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Find multiple keys in the hash table with precomputed hash value array.
  * This operation is multi-thread safe with regarding to other lookup threads.
  * Read-write concurrency can be enabled by setting flag during
@@ -618,7 +603,6 @@ rte_hash_lookup_with_hash_bulk(const struct rte_hash *h, const void **keys,
  * @return
  *   -EINVAL if there's an error, otherwise number of successful lookups.
  */
-__rte_experimental
 int
 rte_hash_lookup_with_hash_bulk_data(const struct rte_hash *h,
 		const void **keys, hash_sig_t *sig,
@@ -672,9 +656,6 @@ int32_t
 rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32_t *next);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Associate RCU QSBR variable with a Hash object.
  * This API should be called to enable the integrated RCU QSBR support and
  * should be called immediately after creating the Hash object.
@@ -691,7 +672,6 @@ rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32
  *   - EEXIST - already added QSBR
  *   - ENOMEM - memory allocation failure
  */
-__rte_experimental
 int rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg);
 
 #ifdef __cplusplus

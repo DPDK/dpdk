@@ -14,6 +14,7 @@ DPDK_22 {
 	rte_hash_del_key_with_hash;
 	rte_hash_find_existing;
 	rte_hash_free;
+	rte_hash_free_key_with_position;
 	rte_hash_get_key_with_position;
 	rte_hash_hash;
 	rte_hash_iterate;
@@ -22,7 +23,11 @@ DPDK_22 {
 	rte_hash_lookup_bulk_data;
 	rte_hash_lookup_data;
 	rte_hash_lookup_with_hash;
+	rte_hash_lookup_with_hash_bulk;
+	rte_hash_lookup_with_hash_bulk_data;
 	rte_hash_lookup_with_hash_data;
+	rte_hash_max_key_id;
+	rte_hash_rcu_qsbr_add;
 	rte_hash_reset;
 	rte_hash_set_cmp_func;
 
@@ -32,11 +37,6 @@ DPDK_22 {
 EXPERIMENTAL {
 	global:
 
-	rte_hash_free_key_with_position;
-	rte_hash_lookup_with_hash_bulk;
-	rte_hash_lookup_with_hash_bulk_data;
-	rte_hash_max_key_id;
-	rte_hash_rcu_qsbr_add;
 	rte_thash_add_helper;
 	rte_thash_adjust_tuple;
 	rte_thash_find_existing;
