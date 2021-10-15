@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/eventfd.h>
 
 #include <rte_malloc.h>
 #include <rte_errno.h>
@@ -367,6 +368,9 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 		goto error;
 	}
 	virtq->stopped = false;
+	/* Initial notification to ask Qemu handling completed buffers. */
+	if (virtq->eqp.cq.callfd != -1)
+		eventfd_write(virtq->eqp.cq.callfd, (eventfd_t)1);
 	DRV_LOG(DEBUG, "vid %u virtq %u was created successfully.", priv->vid,
 		index);
 	return 0;
