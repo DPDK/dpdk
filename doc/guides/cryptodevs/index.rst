@@ -16,6 +16,7 @@ Crypto Device Drivers
     bcmfs
     caam_jr
     ccp
+    chacha20_poly1305
     cnxk
     dpaa2_sec
     dpaa_sec

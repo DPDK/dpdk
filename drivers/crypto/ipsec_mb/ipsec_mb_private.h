@@ -49,6 +49,9 @@ extern RTE_DEFINE_PER_LCORE(IMB_MGR *, mb_mgr);
 #define CRYPTODEV_NAME_ZUC_PMD crypto_zuc
 /**< IPSEC Multi buffer PMD zuc device name */
 
+#define CRYPTODEV_NAME_CHACHA20_POLY1305_PMD crypto_chacha20_poly1305
+/**< IPSEC Multi buffer PMD chacha20_poly1305 device name */
+
 /** PMD LOGTYPE DRIVER, common to all PMDs */
 extern int ipsec_mb_logtype_driver;
 #define IPSEC_MB_LOG(level, fmt, ...)                                         \
@@ -62,6 +65,7 @@ enum ipsec_mb_pmd_types {
 	IPSEC_MB_PMD_TYPE_KASUMI,
 	IPSEC_MB_PMD_TYPE_SNOW3G,
 	IPSEC_MB_PMD_TYPE_ZUC,
+	IPSEC_MB_PMD_TYPE_CHACHA20_POLY1305,
 	IPSEC_MB_N_PMD_TYPES
 };
 
@@ -85,6 +89,7 @@ extern uint8_t pmd_driver_id_aesni_gcm;
 extern uint8_t pmd_driver_id_kasumi;
 extern uint8_t pmd_driver_id_snow3g;
 extern uint8_t pmd_driver_id_zuc;
+extern uint8_t pmd_driver_id_chacha20_poly1305;
 
 /** Helper function. Gets driver ID based on PMD type */
 static __rte_always_inline uint8_t
@@ -101,6 +106,8 @@ ipsec_mb_get_driver_id(enum ipsec_mb_pmd_types pmd_type)
 		return pmd_driver_id_snow3g;
 	case IPSEC_MB_PMD_TYPE_ZUC:
 		return pmd_driver_id_zuc;
+	case IPSEC_MB_PMD_TYPE_CHACHA20_POLY1305:
+		return pmd_driver_id_chacha20_poly1305;
 	default:
 		break;
 	}
