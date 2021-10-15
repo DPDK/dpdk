@@ -226,6 +226,8 @@ New Features
 
   * The IPsec_MB framework was added to share common code between Intel
     SW Crypto PMDs that depend on the intel-ipsec-mb library.
+  * Multiprocess support was added for the consolidated PMDs,
+    which requires v1.1 of the intel-ipsec-mb library.
 
 * **Updated the ACC100 bbdev PMD.**
 

@@ -18,6 +18,9 @@
 /* Maximum length for digest */
 #define DIGEST_LENGTH_MAX 64
 
+/* Maximum length for memzone name */
+#define IPSEC_MB_MAX_MZ_NAME 32
+
 enum ipsec_mb_vector_mode {
 	IPSEC_MB_NOT_SUPPORTED = 0,
 	IPSEC_MB_SSE,
@@ -95,6 +98,8 @@ struct ipsec_mb_qp {
 	 */
 	IMB_MGR *mb_mgr;
 	/* Multi buffer manager */
+	const struct rte_memzone *mb_mgr_mz;
+	/* Shared memzone for storing mb_mgr */
 	__extension__ uint8_t additional_data[0];
 	/**< Storing PMD specific additional data */
 };
