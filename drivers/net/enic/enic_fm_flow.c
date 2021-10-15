@@ -1464,7 +1464,7 @@ enic_fm_copy_action(struct enic_flowman *fm,
 		}
 		case RTE_FLOW_ACTION_TYPE_PORT_ID: {
 			const struct rte_flow_action_port_id *port;
-			struct rte_eth_dev *dev;
+			struct rte_eth_dev *dev = NULL;
 
 			if (!ingress && (overlap & PORT_ID)) {
 				ENICPMD_LOG(DEBUG, "cannot have multiple egress PORT_ID actions");
@@ -1577,7 +1577,7 @@ enic_fm_copy_action(struct enic_flowman *fm,
 		}
 		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR: {
 			const struct rte_flow_action_ethdev *ethdev;
-			struct rte_eth_dev *dev;
+			struct rte_eth_dev *dev = NULL;
 
 			ethdev = actions->conf;
 			ret = enic_fm_check_transfer_dst(enic, ethdev->port_id,
@@ -1596,7 +1596,7 @@ enic_fm_copy_action(struct enic_flowman *fm,
 		}
 		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT: {
 			const struct rte_flow_action_ethdev *ethdev;
-			struct rte_eth_dev *dev;
+			struct rte_eth_dev *dev = NULL;
 
 			if (overlap & PORT_ID) {
 				ENICPMD_LOG(DEBUG, "cannot have multiple egress PORT_ID actions");
