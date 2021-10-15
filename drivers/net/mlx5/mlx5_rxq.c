@@ -181,7 +181,7 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 		mbuf_init->nb_segs = 1;
 		mbuf_init->port = rxq->port_id;
 		if (priv->flags & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF)
-			mbuf_init->ol_flags = EXT_ATTACHED_MBUF;
+			mbuf_init->ol_flags = RTE_MBUF_F_EXTERNAL;
 		/*
 		 * prevent compiler reordering:
 		 * rearm_data covers previous fields.

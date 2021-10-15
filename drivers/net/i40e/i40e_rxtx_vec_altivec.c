@@ -117,26 +117,26 @@ desc_to_olflags_v(vector unsigned long descs[4], struct rte_mbuf **rx_pkts)
 	/* map rss and vlan type to rss hash and vlan flag */
 	const vector unsigned char vlan_flags = (vector unsigned char){
 			0, 0, 0, 0,
-			PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED, 0, 0, 0,
+			RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED, 0, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 0};
 
 	const vector unsigned char rss_flags = (vector unsigned char){
-			0, PKT_RX_FDIR, 0, 0,
-			0, 0, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH | PKT_RX_FDIR,
+			0, RTE_MBUF_F_RX_FDIR, 0, 0,
+			0, 0, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH | RTE_MBUF_F_RX_FDIR,
 			0, 0, 0, 0,
 			0, 0, 0, 0};
 
 	const vector unsigned char l3_l4e_flags = (vector unsigned char){
 			0,
-			PKT_RX_IP_CKSUM_BAD,
-			PKT_RX_L4_CKSUM_BAD,
-			PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD,
-			PKT_RX_OUTER_IP_CKSUM_BAD,
-			PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD,
-			PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
-			PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD
-					     | PKT_RX_IP_CKSUM_BAD,
+			RTE_MBUF_F_RX_IP_CKSUM_BAD,
+			RTE_MBUF_F_RX_L4_CKSUM_BAD,
+			RTE_MBUF_F_RX_L4_CKSUM_BAD | RTE_MBUF_F_RX_IP_CKSUM_BAD,
+			RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD,
+			RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD | RTE_MBUF_F_RX_IP_CKSUM_BAD,
+			RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+			RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD
+					     | RTE_MBUF_F_RX_IP_CKSUM_BAD,
 			0, 0, 0, 0, 0, 0, 0, 0};
 
 	vlan0 = (vector unsigned int)vec_mergel(descs[0], descs[1]);

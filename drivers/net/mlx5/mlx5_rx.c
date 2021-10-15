@@ -692,10 +692,10 @@ rxq_cq_to_ol_flags(volatile struct mlx5_cqe *cqe)
 	ol_flags =
 		TRANSPOSE(flags,
 			  MLX5_CQE_RX_L3_HDR_VALID,
-			  PKT_RX_IP_CKSUM_GOOD) |
+			  RTE_MBUF_F_RX_IP_CKSUM_GOOD) |
 		TRANSPOSE(flags,
 			  MLX5_CQE_RX_L4_HDR_VALID,
-			  PKT_RX_L4_CKSUM_GOOD);
+			  RTE_MBUF_F_RX_L4_CKSUM_GOOD);
 	return ol_flags;
 }
 
@@ -731,7 +731,7 @@ rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 			rss_hash_res = rte_be_to_cpu_32(mcqe->rx_hash_result);
 		if (rss_hash_res) {
 			pkt->hash.rss = rss_hash_res;
-			pkt->ol_flags |= PKT_RX_RSS_HASH;
+			pkt->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 		}
 	}
 	if (rxq->mark) {
@@ -745,9 +745,9 @@ rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 			mark = ((mcqe->byte_cnt_flow & 0xff) << 8) |
 				(mcqe->flow_tag_high << 16);
 		if (MLX5_FLOW_MARK_IS_VALID(mark)) {
-			pkt->ol_flags |= PKT_RX_FDIR;
+			pkt->ol_flags |= RTE_MBUF_F_RX_FDIR;
 			if (mark != RTE_BE32(MLX5_FLOW_MARK_DEFAULT)) {
-				pkt->ol_flags |= PKT_RX_FDIR_ID;
+				pkt->ol_flags |= RTE_MBUF_F_RX_FDIR_ID;
 				pkt->hash.fdir.hi = mlx5_flow_mark_get(mark);
 			}
 		}
@@ -775,7 +775,7 @@ rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 			vlan_strip = mcqe->hdr_type &
 				     RTE_BE16(MLX5_CQE_VLAN_STRIPPED);
 		if (vlan_strip) {
-			pkt->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+			pkt->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 			pkt->vlan_tci = rte_be_to_cpu_16(cqe->vlan_info);
 		}
 	}
@@ -863,7 +863,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			}
 			pkt = seg;
 			MLX5_ASSERT(len >= (rxq->crc_present << 2));
-			pkt->ol_flags &= EXT_ATTACHED_MBUF;
+			pkt->ol_flags &= RTE_MBUF_F_EXTERNAL;
 			rxq_cq_to_mbuf(rxq, pkt, cqe, mcqe);
 			if (rxq->crc_present)
 				len -= RTE_ETHER_CRC_LEN;
@@ -872,7 +872,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				mlx5_lro_update_hdr
 					(rte_pktmbuf_mtod(pkt, uint8_t *), cqe,
 					 mcqe, rxq, len);
-				pkt->ol_flags |= PKT_RX_LRO;
+				pkt->ol_flags |= RTE_MBUF_F_RX_LRO;
 				pkt->tso_segsz = len / cqe->lro_num_seg;
 			}
 		}
@@ -1130,7 +1130,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (cqe->lro_num_seg > 1) {
 			mlx5_lro_update_hdr(rte_pktmbuf_mtod(pkt, uint8_t *),
 					    cqe, mcqe, rxq, len);
-			pkt->ol_flags |= PKT_RX_LRO;
+			pkt->ol_flags |= RTE_MBUF_F_RX_LRO;
 			pkt->tso_segsz = len / cqe->lro_num_seg;
 		}
 		PKT_LEN(pkt) = len;

@@ -802,7 +802,7 @@ static inline uint64_t hinic_rx_rss_hash(uint32_t offload_type,
 	rss_type = HINIC_GET_RSS_TYPES(offload_type);
 	if (likely(rss_type != 0)) {
 		*rss_hash = cqe_hass_val;
-		return PKT_RX_RSS_HASH;
+		return RTE_MBUF_F_RX_RSS_HASH;
 	}
 
 	return 0;
@@ -815,33 +815,33 @@ static inline uint64_t hinic_rx_csum(uint32_t status, struct hinic_rxq *rxq)
 	struct hinic_nic_dev *nic_dev = rxq->nic_dev;
 
 	if (unlikely(!(nic_dev->rx_csum_en & HINIC_RX_CSUM_OFFLOAD_EN)))
-		return PKT_RX_IP_CKSUM_UNKNOWN;
+		return RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN;
 
 	/* most case checksum is ok */
 	checksum_err = HINIC_GET_RX_CSUM_ERR(status);
 	if (likely(checksum_err == 0))
-		return (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
+		return (RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD);
 
 	/* If BYPASS bit set, all other status indications should be ignored */
 	if (unlikely(HINIC_CSUM_ERR_BYPASSED(checksum_err)))
-		return PKT_RX_IP_CKSUM_UNKNOWN;
+		return RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN;
 
 	flags = 0;
 
 	/* IP checksum error */
 	if (HINIC_CSUM_ERR_IP(checksum_err))
-		flags |= PKT_RX_IP_CKSUM_BAD;
+		flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 	else
-		flags |= PKT_RX_IP_CKSUM_GOOD;
+		flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 	/* L4 checksum error */
 	if (HINIC_CSUM_ERR_L4(checksum_err))
-		flags |= PKT_RX_L4_CKSUM_BAD;
+		flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 	else
-		flags |= PKT_RX_L4_CKSUM_GOOD;
+		flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 
 	if (unlikely(HINIC_CSUM_ERR_OTHER(checksum_err)))
-		flags = PKT_RX_L4_CKSUM_NONE;
+		flags = RTE_MBUF_F_RX_L4_CKSUM_NONE;
 
 	rxq->rxq_stats.errors++;
 
@@ -861,7 +861,7 @@ static inline uint64_t hinic_rx_vlan(uint32_t offload_type, uint32_t vlan_len,
 
 	*vlan_tci = vlan_tag;
 
-	return PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+	return RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 }
 
 static inline u32 hinic_rx_alloc_mbuf_bulk(struct hinic_rxq *rxq,
@@ -1061,7 +1061,7 @@ u16 hinic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts)
 		/* lro offload */
 		lro_num = HINIC_GET_RX_NUM_LRO(cqe.status);
 		if (unlikely(lro_num != 0)) {
-			rxm->ol_flags |= PKT_RX_LRO;
+			rxm->ol_flags |= RTE_MBUF_F_RX_LRO;
 			rxm->tso_segsz = pkt_len / lro_num;
 		}
 

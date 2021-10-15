@@ -283,20 +283,20 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 				const vector unsigned char fdir_flags =
 					(vector unsigned char)
 					(vector unsigned int){
-					PKT_RX_FDIR, PKT_RX_FDIR,
-					PKT_RX_FDIR, PKT_RX_FDIR};
+					RTE_MBUF_F_RX_FDIR, RTE_MBUF_F_RX_FDIR,
+					RTE_MBUF_F_RX_FDIR, RTE_MBUF_F_RX_FDIR};
 				const vector unsigned char fdir_all_flags =
 					(vector unsigned char)
 					(vector unsigned int){
-					PKT_RX_FDIR | PKT_RX_FDIR_ID,
-					PKT_RX_FDIR | PKT_RX_FDIR_ID,
-					PKT_RX_FDIR | PKT_RX_FDIR_ID,
-					PKT_RX_FDIR | PKT_RX_FDIR_ID};
+					RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID,
+					RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID,
+					RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID,
+					RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID};
 				vector unsigned char fdir_id_flags =
 					(vector unsigned char)
 					(vector unsigned int){
-					PKT_RX_FDIR_ID, PKT_RX_FDIR_ID,
-					PKT_RX_FDIR_ID, PKT_RX_FDIR_ID};
+					RTE_MBUF_F_RX_FDIR_ID, RTE_MBUF_F_RX_FDIR_ID,
+					RTE_MBUF_F_RX_FDIR_ID, RTE_MBUF_F_RX_FDIR_ID};
 				/* Extract flow_tag field. */
 				vector unsigned char ftag0 = vec_perm(mcqe1,
 							zero, flow_mark_shuf);
@@ -316,7 +316,7 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 					ol_flags_mask,
 					(vector unsigned long)fdir_all_flags);
 
-				/* Set PKT_RX_FDIR if flow tag is non-zero. */
+				/* Set RTE_MBUF_F_RX_FDIR if flow tag is non-zero. */
 				invalid_mask = (vector unsigned char)
 					vec_cmpeq((vector unsigned int)ftag,
 					(vector unsigned int)zero);
@@ -376,10 +376,10 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 				const vector unsigned char vlan_mask =
 					(vector unsigned char)
 					(vector unsigned int) {
-					(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED),
-					(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED),
-					(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED),
-					(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED)};
+					(RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED),
+					(RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED),
+					(RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED),
+					(RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED)};
 				const vector unsigned char cv_mask =
 					(vector unsigned char)
 					(vector unsigned int) {
@@ -433,10 +433,10 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			}
 			const vector unsigned char hash_mask =
 				(vector unsigned char)(vector unsigned int) {
-					PKT_RX_RSS_HASH,
-					PKT_RX_RSS_HASH,
-					PKT_RX_RSS_HASH,
-					PKT_RX_RSS_HASH};
+					RTE_MBUF_F_RX_RSS_HASH,
+					RTE_MBUF_F_RX_RSS_HASH,
+					RTE_MBUF_F_RX_RSS_HASH,
+					RTE_MBUF_F_RX_RSS_HASH};
 			const vector unsigned char rearm_flags =
 				(vector unsigned char)(vector unsigned int) {
 				(uint32_t)t_pkt->ol_flags,
@@ -531,13 +531,13 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 	vector unsigned char pinfo, ptype;
 	vector unsigned char ol_flags = (vector unsigned char)
 		(vector unsigned int){
-			rxq->rss_hash * PKT_RX_RSS_HASH |
+			rxq->rss_hash * RTE_MBUF_F_RX_RSS_HASH |
 				rxq->hw_timestamp * rxq->timestamp_rx_flag,
-			rxq->rss_hash * PKT_RX_RSS_HASH |
+			rxq->rss_hash * RTE_MBUF_F_RX_RSS_HASH |
 				rxq->hw_timestamp * rxq->timestamp_rx_flag,
-			rxq->rss_hash * PKT_RX_RSS_HASH |
+			rxq->rss_hash * RTE_MBUF_F_RX_RSS_HASH |
 				rxq->hw_timestamp * rxq->timestamp_rx_flag,
-			rxq->rss_hash * PKT_RX_RSS_HASH |
+			rxq->rss_hash * RTE_MBUF_F_RX_RSS_HASH |
 				rxq->hw_timestamp * rxq->timestamp_rx_flag};
 	vector unsigned char cv_flags;
 	const vector unsigned char zero = (vector unsigned char){0};
@@ -551,21 +551,21 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 		(vector unsigned char)(vector unsigned int){
 		0x00000003, 0x00000003, 0x00000003, 0x00000003};
 	const vector unsigned char cv_flag_sel = (vector unsigned char){
-		0, (uint8_t)(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED),
-		(uint8_t)(PKT_RX_IP_CKSUM_GOOD >> 1), 0,
-		(uint8_t)(PKT_RX_L4_CKSUM_GOOD >> 1), 0,
-		(uint8_t)((PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD) >> 1),
+		0, (uint8_t)(RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED),
+		(uint8_t)(RTE_MBUF_F_RX_IP_CKSUM_GOOD >> 1), 0,
+		(uint8_t)(RTE_MBUF_F_RX_L4_CKSUM_GOOD >> 1), 0,
+		(uint8_t)((RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD) >> 1),
 		0, 0, 0, 0, 0, 0, 0, 0, 0};
 	const vector unsigned char cv_mask =
 		(vector unsigned char)(vector unsigned int){
-		PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
-		PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-		PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
-		PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-		PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
-		PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-		PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
-		PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED};
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD |
+		RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED,
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD |
+		RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED,
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD |
+		RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED,
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD |
+		RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED};
 	const vector unsigned char mbuf_init =
 		(vector unsigned char)vec_vsx_ld
 			(0, (vector unsigned char *)&rxq->mbuf_initializer);
@@ -602,19 +602,19 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 			0xffffff00, 0xffffff00, 0xffffff00, 0xffffff00};
 		const vector unsigned char fdir_flags =
 			(vector unsigned char)(vector unsigned int){
-			PKT_RX_FDIR, PKT_RX_FDIR,
-			PKT_RX_FDIR, PKT_RX_FDIR};
+			RTE_MBUF_F_RX_FDIR, RTE_MBUF_F_RX_FDIR,
+			RTE_MBUF_F_RX_FDIR, RTE_MBUF_F_RX_FDIR};
 		vector unsigned char fdir_id_flags =
 			(vector unsigned char)(vector unsigned int){
-			PKT_RX_FDIR_ID, PKT_RX_FDIR_ID,
-			PKT_RX_FDIR_ID, PKT_RX_FDIR_ID};
+			RTE_MBUF_F_RX_FDIR_ID, RTE_MBUF_F_RX_FDIR_ID,
+			RTE_MBUF_F_RX_FDIR_ID, RTE_MBUF_F_RX_FDIR_ID};
 		vector unsigned char flow_tag, invalid_mask;
 
 		flow_tag = (vector unsigned char)
 			vec_and((vector unsigned long)pinfo,
 			(vector unsigned long)pinfo_ft_mask);
 
-		/* Check if flow tag is non-zero then set PKT_RX_FDIR. */
+		/* Check if flow tag is non-zero then set RTE_MBUF_F_RX_FDIR. */
 		invalid_mask = (vector unsigned char)
 			vec_cmpeq((vector unsigned int)flow_tag,
 			(vector unsigned int)zero);

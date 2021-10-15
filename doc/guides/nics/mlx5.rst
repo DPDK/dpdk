@@ -255,7 +255,7 @@ Limitations
   no MPRQ feature or vectorized code can be engaged.
 
 - When Multi-Packet Rx queue is configured (``mprq_en``), a Rx packet can be
-  externally attached to a user-provided mbuf with having EXT_ATTACHED_MBUF in
+  externally attached to a user-provided mbuf with having RTE_MBUF_F_EXTERNAL in
   ol_flags. As the mempool for the external buffer is managed by PMD, all the
   Rx mbufs must be freed before the device is closed. Otherwise, the mempool of
   the external buffers will be freed by PMD and the application which still
@@ -263,7 +263,7 @@ Limitations
 
 - If Multi-Packet Rx queue is configured (``mprq_en``) and Rx CQE compression is
   enabled (``rxq_cqe_comp_en``) at the same time, RSS hash result is not fully
-  supported. Some Rx packets may not have PKT_RX_RSS_HASH.
+  supported. Some Rx packets may not have RTE_MBUF_F_RX_RSS_HASH.
 
 - IPv6 Multicast messages are not supported on VM, while promiscuous mode
   and allmulticast mode are both set to off.
@@ -648,7 +648,7 @@ Driver options
   the mbuf by external buffer attachment - ``rte_pktmbuf_attach_extbuf()``.
   A mempool for external buffers will be allocated and managed by PMD. If Rx
   packet is externally attached, ol_flags field of the mbuf will have
-  EXT_ATTACHED_MBUF and this flag must be preserved. ``RTE_MBUF_HAS_EXTBUF()``
+  RTE_MBUF_F_EXTERNAL and this flag must be preserved. ``RTE_MBUF_HAS_EXTBUF()``
   checks the flag. The default value is 128, valid only if ``mprq_en`` is set.
 
 - ``rxqs_min_mprq`` parameter [int]

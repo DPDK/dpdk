@@ -100,11 +100,11 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 
 	tx_offloads = ports[fs->tx_port].dev_conf.txmode.offloads;
 	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
-		ol_flags |= PKT_TX_VLAN;
+		ol_flags |= RTE_MBUF_F_TX_VLAN;
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT)
-		ol_flags |= PKT_TX_QINQ;
+		ol_flags |= RTE_MBUF_F_TX_QINQ;
 	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_MACSEC_INSERT)
-		ol_flags |= PKT_TX_MACSEC;
+		ol_flags |= RTE_MBUF_F_TX_MACSEC;
 
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
 		if (!nb_pkt || !nb_clones) {
@@ -152,7 +152,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 								   sizeof(*ip_hdr));
 			pkt->nb_segs		= 1;
 			pkt->pkt_len		= pkt_size;
-			pkt->ol_flags		&= EXT_ATTACHED_MBUF;
+			pkt->ol_flags		&= RTE_MBUF_F_EXTERNAL;
 			pkt->ol_flags		|= ol_flags;
 			pkt->vlan_tci		= vlan_tci;
 			pkt->vlan_tci_outer	= vlan_tci_outer;

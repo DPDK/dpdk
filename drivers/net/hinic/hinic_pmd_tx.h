@@ -13,13 +13,12 @@
 #define HINIC_GET_WQ_TAIL(txq)		\
 		((txq)->wq->queue_buf_vaddr + (txq)->wq->wq_buf_size)
 
-#define HINIC_TX_CKSUM_OFFLOAD_MASK (	\
-		PKT_TX_IP_CKSUM |	\
-		PKT_TX_TCP_CKSUM |	\
-		PKT_TX_UDP_CKSUM |      \
-		PKT_TX_SCTP_CKSUM |	\
-		PKT_TX_OUTER_IP_CKSUM |	\
-		PKT_TX_TCP_SEG)
+#define HINIC_TX_CKSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM |	\
+		RTE_MBUF_F_TX_TCP_CKSUM |	\
+		RTE_MBUF_F_TX_UDP_CKSUM |      \
+		RTE_MBUF_F_TX_SCTP_CKSUM |	\
+		RTE_MBUF_F_TX_OUTER_IP_CKSUM |	\
+		RTE_MBUF_F_TX_TCP_SEG)
 
 enum sq_wqe_type {
 	SQ_NORMAL_WQE = 0,

@@ -424,7 +424,7 @@ uint16_t enic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	for (i = 0; i != nb_pkts; i++) {
 		m = tx_pkts[i];
 		ol_flags = m->ol_flags;
-		if (!(ol_flags & PKT_TX_TCP_SEG)) {
+		if (!(ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 			if (unlikely(m->pkt_len > ENIC_TX_MAX_PKT_SIZE)) {
 				rte_errno = EINVAL;
 				return i;
@@ -489,7 +489,7 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	wq_desc_avail = vnic_wq_desc_avail(wq);
 	head_idx = wq->head_idx;
 	desc_count = wq->ring.desc_count;
-	ol_flags_mask = PKT_TX_VLAN | PKT_TX_IP_CKSUM | PKT_TX_L4_MASK;
+	ol_flags_mask = RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_L4_MASK;
 	tx_oversized = &enic->soft_stats.tx_oversized;
 
 	nb_pkts = RTE_MIN(nb_pkts, ENIC_TX_XMIT_MAX);
@@ -500,7 +500,7 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		data_len = tx_pkt->data_len;
 		ol_flags = tx_pkt->ol_flags;
 		nb_segs = tx_pkt->nb_segs;
-		tso = ol_flags & PKT_TX_TCP_SEG;
+		tso = ol_flags & RTE_MBUF_F_TX_TCP_SEG;
 
 		/* drop packet if it's too big to send */
 		if (unlikely(!tso && pkt_len > ENIC_TX_MAX_PKT_SIZE)) {
@@ -517,7 +517,7 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		mss = 0;
 		vlan_id = tx_pkt->vlan_tci;
-		vlan_tag_insert = !!(ol_flags & PKT_TX_VLAN);
+		vlan_tag_insert = !!(ol_flags & RTE_MBUF_F_TX_VLAN);
 		bus_addr = (dma_addr_t)
 			   (tx_pkt->buf_iova + tx_pkt->data_off);
 
@@ -543,20 +543,20 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			offload_mode = WQ_ENET_OFFLOAD_MODE_TSO;
 			mss = tx_pkt->tso_segsz;
 			/* For tunnel, need the size of outer+inner headers */
-			if (ol_flags & PKT_TX_TUNNEL_MASK) {
+			if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
 				header_len += tx_pkt->outer_l2_len +
 					tx_pkt->outer_l3_len;
 			}
 		}
 
 		if ((ol_flags & ol_flags_mask) && (header_len == 0)) {
-			if (ol_flags & PKT_TX_IP_CKSUM)
+			if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 				mss |= ENIC_CALC_IP_CKSUM;
 
 			/* Nic uses just 1 bit for UDP and TCP */
-			switch (ol_flags & PKT_TX_L4_MASK) {
-			case PKT_TX_TCP_CKSUM:
-			case PKT_TX_UDP_CKSUM:
+			switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+			case RTE_MBUF_F_TX_TCP_CKSUM:
+			case RTE_MBUF_F_TX_UDP_CKSUM:
 				mss |= ENIC_CALC_TCP_UDP_CKSUM;
 				break;
 			}
@@ -634,7 +634,7 @@ static void enqueue_simple_pkts(struct rte_mbuf **pkts,
 		desc->header_length_flags &=
 			((1 << WQ_ENET_FLAGS_EOP_SHIFT) |
 			 (1 << WQ_ENET_FLAGS_CQ_ENTRY_SHIFT));
-		if (p->ol_flags & PKT_TX_VLAN) {
+		if (p->ol_flags & RTE_MBUF_F_TX_VLAN) {
 			desc->header_length_flags |=
 				1 << WQ_ENET_FLAGS_VLAN_TAG_INSERT_SHIFT;
 		}
@@ -643,9 +643,9 @@ static void enqueue_simple_pkts(struct rte_mbuf **pkts,
 		 * is 0, so no need to set offload_mode.
 		 */
 		mss = 0;
-		if (p->ol_flags & PKT_TX_IP_CKSUM)
+		if (p->ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 			mss |= ENIC_CALC_IP_CKSUM << WQ_ENET_MSS_SHIFT;
-		if (p->ol_flags & PKT_TX_L4_MASK)
+		if (p->ol_flags & RTE_MBUF_F_TX_L4_MASK)
 			mss |= ENIC_CALC_TCP_UDP_CKSUM << WQ_ENET_MSS_SHIFT;
 		desc->mss_loopback = mss;
 

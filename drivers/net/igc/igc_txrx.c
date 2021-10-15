@@ -74,17 +74,16 @@
 #define IGC_TSO_MAX_MSS			9216
 
 /* Bit Mask to indicate what bits required for building TX context */
-#define IGC_TX_OFFLOAD_MASK (		\
-		PKT_TX_OUTER_IPV4 |	\
-		PKT_TX_IPV6 |		\
-		PKT_TX_IPV4 |		\
-		PKT_TX_VLAN |	\
-		PKT_TX_IP_CKSUM |	\
-		PKT_TX_L4_MASK |	\
-		PKT_TX_TCP_SEG |	\
-		PKT_TX_UDP_SEG)
+#define IGC_TX_OFFLOAD_MASK (RTE_MBUF_F_TX_OUTER_IPV4 |	\
+		RTE_MBUF_F_TX_IPV6 |		\
+		RTE_MBUF_F_TX_IPV4 |		\
+		RTE_MBUF_F_TX_VLAN |	\
+		RTE_MBUF_F_TX_IP_CKSUM |	\
+		RTE_MBUF_F_TX_L4_MASK |	\
+		RTE_MBUF_F_TX_TCP_SEG |	\
+		RTE_MBUF_F_TX_UDP_SEG)
 
-#define IGC_TX_OFFLOAD_SEG	(PKT_TX_TCP_SEG | PKT_TX_UDP_SEG)
+#define IGC_TX_OFFLOAD_SEG	(RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)
 
 #define IGC_ADVTXD_POPTS_TXSM	0x00000200 /* L4 Checksum offload request */
 #define IGC_ADVTXD_POPTS_IXSM	0x00000100 /* IP Checksum offload request */
@@ -92,7 +91,7 @@
 /* L4 Packet TYPE of Reserved */
 #define IGC_ADVTXD_TUCMD_L4T_RSV	0x00001800
 
-#define IGC_TX_OFFLOAD_NOTSUP_MASK (PKT_TX_OFFLOAD_MASK ^ IGC_TX_OFFLOAD_MASK)
+#define IGC_TX_OFFLOAD_NOTSUP_MASK (RTE_MBUF_F_TX_OFFLOAD_MASK ^ IGC_TX_OFFLOAD_MASK)
 
 /**
  * Structure associated with each descriptor of the RX ring of a RX queue.
@@ -215,16 +214,18 @@ struct igc_tx_queue {
 static inline uint64_t
 rx_desc_statuserr_to_pkt_flags(uint32_t statuserr)
 {
-	static uint64_t l4_chksum_flags[] = {0, 0, PKT_RX_L4_CKSUM_GOOD,
-			PKT_RX_L4_CKSUM_BAD};
+	static uint64_t l4_chksum_flags[] = {0, 0,
+			RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+			RTE_MBUF_F_RX_L4_CKSUM_BAD};
 
-	static uint64_t l3_chksum_flags[] = {0, 0, PKT_RX_IP_CKSUM_GOOD,
-			PKT_RX_IP_CKSUM_BAD};
+	static uint64_t l3_chksum_flags[] = {0, 0,
+			RTE_MBUF_F_RX_IP_CKSUM_GOOD,
+			RTE_MBUF_F_RX_IP_CKSUM_BAD};
 	uint64_t pkt_flags = 0;
 	uint32_t tmp;
 
 	if (statuserr & IGC_RXD_STAT_VP)
-		pkt_flags |= PKT_RX_VLAN_STRIPPED;
+		pkt_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED;
 
 	tmp = !!(statuserr & (IGC_RXD_STAT_L4CS | IGC_RXD_STAT_UDPCS));
 	tmp = (tmp << 1) | (uint32_t)!!(statuserr & IGC_RXD_EXT_ERR_L4E);
@@ -332,10 +333,10 @@ rx_desc_get_pkt_info(struct igc_rx_queue *rxq, struct rte_mbuf *rxm,
 	rxm->vlan_tci = rte_le_to_cpu_16(rxd->wb.upper.vlan);
 
 	pkt_flags = (hlen_type_rss & IGC_RXD_RSS_TYPE_MASK) ?
-			PKT_RX_RSS_HASH : 0;
+			RTE_MBUF_F_RX_RSS_HASH : 0;
 
 	if (hlen_type_rss & IGC_RXD_VPKT)
-		pkt_flags |= PKT_RX_VLAN;
+		pkt_flags |= RTE_MBUF_F_RX_VLAN;
 
 	pkt_flags |= rx_desc_statuserr_to_pkt_flags(staterr);
 
@@ -1449,7 +1450,7 @@ check_tso_para(uint64_t ol_req, union igc_tx_offload ol_para)
 	if (ol_para.tso_segsz > IGC_TSO_MAX_MSS || ol_para.l2_len +
 		ol_para.l3_len + ol_para.l4_len > IGC_TSO_MAX_HDRLEN) {
 		ol_req &= ~IGC_TX_OFFLOAD_SEG;
-		ol_req |= PKT_TX_TCP_CKSUM;
+		ol_req |= RTE_MBUF_F_TX_TCP_CKSUM;
 	}
 	return ol_req;
 }
@@ -1511,20 +1512,20 @@ igc_set_xmit_ctx(struct igc_tx_queue *txq,
 	/* Specify which HW CTX to upload. */
 	mss_l4len_idx = (ctx_curr << IGC_ADVTXD_IDX_SHIFT);
 
-	if (ol_flags & PKT_TX_VLAN)
+	if (ol_flags & RTE_MBUF_F_TX_VLAN)
 		tx_offload_mask.vlan_tci = 0xffff;
 
 	/* check if TCP segmentation required for this packet */
 	if (ol_flags & IGC_TX_OFFLOAD_SEG) {
 		/* implies IP cksum in IPv4 */
-		if (ol_flags & PKT_TX_IP_CKSUM)
+		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 			type_tucmd_mlhl = IGC_ADVTXD_TUCMD_IPV4 |
 				IGC_ADVTXD_DTYP_CTXT | IGC_ADVTXD_DCMD_DEXT;
 		else
 			type_tucmd_mlhl = IGC_ADVTXD_TUCMD_IPV6 |
 				IGC_ADVTXD_DTYP_CTXT | IGC_ADVTXD_DCMD_DEXT;
 
-		if (ol_flags & PKT_TX_TCP_SEG)
+		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 			type_tucmd_mlhl |= IGC_ADVTXD_TUCMD_L4T_TCP;
 		else
 			type_tucmd_mlhl |= IGC_ADVTXD_TUCMD_L4T_UDP;
@@ -1535,26 +1536,26 @@ igc_set_xmit_ctx(struct igc_tx_queue *txq,
 		mss_l4len_idx |= (uint32_t)tx_offload.l4_len <<
 				IGC_ADVTXD_L4LEN_SHIFT;
 	} else { /* no TSO, check if hardware checksum is needed */
-		if (ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK))
+		if (ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_L4_MASK))
 			tx_offload_mask.data |= TX_MACIP_LEN_CMP_MASK;
 
-		if (ol_flags & PKT_TX_IP_CKSUM)
+		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 			type_tucmd_mlhl = IGC_ADVTXD_TUCMD_IPV4;
 
-		switch (ol_flags & PKT_TX_L4_MASK) {
-		case PKT_TX_TCP_CKSUM:
+		switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+		case RTE_MBUF_F_TX_TCP_CKSUM:
 			type_tucmd_mlhl |= IGC_ADVTXD_TUCMD_L4T_TCP |
 				IGC_ADVTXD_DTYP_CTXT | IGC_ADVTXD_DCMD_DEXT;
 			mss_l4len_idx |= (uint32_t)sizeof(struct rte_tcp_hdr)
 				<< IGC_ADVTXD_L4LEN_SHIFT;
 			break;
-		case PKT_TX_UDP_CKSUM:
+		case RTE_MBUF_F_TX_UDP_CKSUM:
 			type_tucmd_mlhl |= IGC_ADVTXD_TUCMD_L4T_UDP |
 				IGC_ADVTXD_DTYP_CTXT | IGC_ADVTXD_DCMD_DEXT;
 			mss_l4len_idx |= (uint32_t)sizeof(struct rte_udp_hdr)
 				<< IGC_ADVTXD_L4LEN_SHIFT;
 			break;
-		case PKT_TX_SCTP_CKSUM:
+		case RTE_MBUF_F_TX_SCTP_CKSUM:
 			type_tucmd_mlhl |= IGC_ADVTXD_TUCMD_L4T_SCTP |
 				IGC_ADVTXD_DTYP_CTXT | IGC_ADVTXD_DCMD_DEXT;
 			mss_l4len_idx |= (uint32_t)sizeof(struct rte_sctp_hdr)
@@ -1585,7 +1586,7 @@ tx_desc_vlan_flags_to_cmdtype(uint64_t ol_flags)
 	uint32_t cmdtype;
 	static uint32_t vlan_cmd[2] = {0, IGC_ADVTXD_DCMD_VLE};
 	static uint32_t tso_cmd[2] = {0, IGC_ADVTXD_DCMD_TSE};
-	cmdtype = vlan_cmd[(ol_flags & PKT_TX_VLAN) != 0];
+	cmdtype = vlan_cmd[(ol_flags & RTE_MBUF_F_TX_VLAN) != 0];
 	cmdtype |= tso_cmd[(ol_flags & IGC_TX_OFFLOAD_SEG) != 0];
 	return cmdtype;
 }
@@ -1597,8 +1598,8 @@ tx_desc_cksum_flags_to_olinfo(uint64_t ol_flags)
 	static const uint32_t l3_olinfo[2] = {0, IGC_ADVTXD_POPTS_IXSM};
 	uint32_t tmp;
 
-	tmp  = l4_olinfo[(ol_flags & PKT_TX_L4_MASK)  != PKT_TX_L4_NO_CKSUM];
-	tmp |= l3_olinfo[(ol_flags & PKT_TX_IP_CKSUM) != 0];
+	tmp  = l4_olinfo[(ol_flags & RTE_MBUF_F_TX_L4_MASK)  != RTE_MBUF_F_TX_L4_NO_CKSUM];
+	tmp |= l3_olinfo[(ol_flags & RTE_MBUF_F_TX_IP_CKSUM) != 0];
 	tmp |= l4_olinfo[(ol_flags & IGC_TX_OFFLOAD_SEG) != 0];
 	return tmp;
 }
@@ -1755,7 +1756,7 @@ igc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * Timer 0 should be used to for packet timestamping,
 		 * sample the packet timestamp to reg 0
 		 */
-		if (ol_flags & PKT_TX_IEEE1588_TMST)
+		if (ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
 			cmd_type_len |= IGC_ADVTXD_MAC_TSTAMP;
 
 		if (tx_ol_req) {

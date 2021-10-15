@@ -373,20 +373,20 @@ cn10k_cpt_sec_ucc_process(struct rte_crypto_op *cop,
 	switch (uc_compcode) {
 	case ROC_IE_OT_UCC_SUCCESS:
 		if (sa->ip_csum_enable)
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		break;
 	case ROC_IE_OT_UCC_SUCCESS_PKT_IP_BADCSUM:
-		mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		break;
 	case ROC_IE_OT_UCC_SUCCESS_PKT_L4_GOODCSUM:
-		mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 		if (sa->ip_csum_enable)
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		break;
 	case ROC_IE_OT_UCC_SUCCESS_PKT_L4_BADCSUM:
-		mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		if (sa->ip_csum_enable)
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		break;
 	default:
 		break;

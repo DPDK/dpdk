@@ -250,7 +250,7 @@ void enic_init_vnic_resources(struct enic *enic)
 			error_interrupt_offset);
 		/* Compute unsupported ol flags for enic_prep_pkts() */
 		enic->wq[index].tx_offload_notsup_mask =
-			PKT_TX_OFFLOAD_MASK ^ enic->tx_offload_mask;
+			RTE_MBUF_F_TX_OFFLOAD_MASK ^ enic->tx_offload_mask;
 
 		cq_idx = enic_cq_wq(enic, index);
 		vnic_cq_init(&enic->cq[cq_idx],
@@ -1749,10 +1749,10 @@ enic_enable_overlay_offload(struct enic *enic)
 		(enic->geneve ? RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO : 0) |
 		(enic->vxlan ? RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO : 0);
 	enic->tx_offload_mask |=
-		PKT_TX_OUTER_IPV6 |
-		PKT_TX_OUTER_IPV4 |
-		PKT_TX_OUTER_IP_CKSUM |
-		PKT_TX_TUNNEL_MASK;
+		RTE_MBUF_F_TX_OUTER_IPV6 |
+		RTE_MBUF_F_TX_OUTER_IPV4 |
+		RTE_MBUF_F_TX_OUTER_IP_CKSUM |
+		RTE_MBUF_F_TX_TUNNEL_MASK;
 	enic->overlay_offload = true;
 
 	if (enic->vxlan && enic->geneve)

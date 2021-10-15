@@ -43,7 +43,7 @@ rte_gso_segment(struct rte_mbuf *pkt,
 		return -EINVAL;
 
 	if (gso_ctx->gso_size >= pkt->pkt_len) {
-		pkt->ol_flags &= (~(PKT_TX_TCP_SEG | PKT_TX_UDP_SEG));
+		pkt->ol_flags &= (~(RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG));
 		return 0;
 	}
 
@@ -57,26 +57,26 @@ rte_gso_segment(struct rte_mbuf *pkt,
 			(gso_ctx->gso_types & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO)) ||
 			((IS_IPV4_GRE_TCP4(pkt->ol_flags) &&
 			 (gso_ctx->gso_types & RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO)))) {
-		pkt->ol_flags &= (~PKT_TX_TCP_SEG);
+		pkt->ol_flags &= (~RTE_MBUF_F_TX_TCP_SEG);
 		ret = gso_tunnel_tcp4_segment(pkt, gso_size, ipid_delta,
 				direct_pool, indirect_pool,
 				pkts_out, nb_pkts_out);
 	} else if (IS_IPV4_VXLAN_UDP4(pkt->ol_flags) &&
 			(gso_ctx->gso_types & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) &&
 			(gso_ctx->gso_types & RTE_ETH_TX_OFFLOAD_UDP_TSO)) {
-		pkt->ol_flags &= (~PKT_TX_UDP_SEG);
+		pkt->ol_flags &= (~RTE_MBUF_F_TX_UDP_SEG);
 		ret = gso_tunnel_udp4_segment(pkt, gso_size,
 				direct_pool, indirect_pool,
 				pkts_out, nb_pkts_out);
 	} else if (IS_IPV4_TCP(pkt->ol_flags) &&
 			(gso_ctx->gso_types & RTE_ETH_TX_OFFLOAD_TCP_TSO)) {
-		pkt->ol_flags &= (~PKT_TX_TCP_SEG);
+		pkt->ol_flags &= (~RTE_MBUF_F_TX_TCP_SEG);
 		ret = gso_tcp4_segment(pkt, gso_size, ipid_delta,
 				direct_pool, indirect_pool,
 				pkts_out, nb_pkts_out);
 	} else if (IS_IPV4_UDP(pkt->ol_flags) &&
 			(gso_ctx->gso_types & RTE_ETH_TX_OFFLOAD_UDP_TSO)) {
-		pkt->ol_flags &= (~PKT_TX_UDP_SEG);
+		pkt->ol_flags &= (~RTE_MBUF_F_TX_UDP_SEG);
 		ret = gso_udp4_segment(pkt, gso_size, direct_pool,
 				indirect_pool, pkts_out, nb_pkts_out);
 	} else {

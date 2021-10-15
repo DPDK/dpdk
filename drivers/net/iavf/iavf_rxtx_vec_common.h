@@ -326,33 +326,33 @@ iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
 		     IAVF_TX_DESC_LENGTH_MACLEN_SHIFT;
 
 	/* Enable L3 checksum offloads */
-	if (ol_flags & PKT_TX_IP_CKSUM) {
+	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 		td_cmd |= IAVF_TX_DESC_CMD_IIPT_IPV4_CSUM;
 		td_offset |= (tx_pkt->l3_len >> 2) <<
 			     IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
-	} else if (ol_flags & PKT_TX_IPV4) {
+	} else if (ol_flags & RTE_MBUF_F_TX_IPV4) {
 		td_cmd |= IAVF_TX_DESC_CMD_IIPT_IPV4;
 		td_offset |= (tx_pkt->l3_len >> 2) <<
 			     IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
-	} else if (ol_flags & PKT_TX_IPV6) {
+	} else if (ol_flags & RTE_MBUF_F_TX_IPV6) {
 		td_cmd |= IAVF_TX_DESC_CMD_IIPT_IPV6;
 		td_offset |= (tx_pkt->l3_len >> 2) <<
 			     IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
 	}
 
 	/* Enable L4 checksum offloads */
-	switch (ol_flags & PKT_TX_L4_MASK) {
-	case PKT_TX_TCP_CKSUM:
+	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+	case RTE_MBUF_F_TX_TCP_CKSUM:
 		td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_TCP;
 		td_offset |= (sizeof(struct rte_tcp_hdr) >> 2) <<
 			     IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
 		break;
-	case PKT_TX_SCTP_CKSUM:
+	case RTE_MBUF_F_TX_SCTP_CKSUM:
 		td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_SCTP;
 		td_offset |= (sizeof(struct rte_sctp_hdr) >> 2) <<
 			     IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
 		break;
-	case PKT_TX_UDP_CKSUM:
+	case RTE_MBUF_F_TX_UDP_CKSUM:
 		td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_UDP;
 		td_offset |= (sizeof(struct rte_udp_hdr) >> 2) <<
 			     IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
@@ -365,7 +365,7 @@ iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
 #endif
 
 #ifdef IAVF_TX_VLAN_QINQ_OFFLOAD
-	if (ol_flags & (PKT_TX_VLAN | PKT_TX_QINQ)) {
+	if (ol_flags & (RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_QINQ)) {
 		td_cmd |= IAVF_TX_DESC_CMD_IL2TAG1;
 		*txd_hi |= ((uint64_t)tx_pkt->vlan_tci <<
 			    IAVF_TXD_QW1_L2TAG1_SHIFT);

@@ -536,7 +536,7 @@ static inline unsigned int flits_to_desc(unsigned int n)
  */
 static inline int is_eth_imm(const struct rte_mbuf *m)
 {
-	unsigned int hdrlen = (m->ol_flags & PKT_TX_TCP_SEG) ?
+	unsigned int hdrlen = (m->ol_flags & RTE_MBUF_F_TX_TCP_SEG) ?
 			      sizeof(struct cpl_tx_pkt_lso_core) : 0;
 
 	hdrlen += sizeof(struct cpl_tx_pkt);
@@ -746,12 +746,12 @@ static u64 hwcsum(enum chip_type chip, const struct rte_mbuf *m)
 {
 	int csum_type;
 
-	if (m->ol_flags & PKT_TX_IP_CKSUM) {
-		switch (m->ol_flags & PKT_TX_L4_MASK) {
-		case PKT_TX_TCP_CKSUM:
+	if (m->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
+		switch (m->ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+		case RTE_MBUF_F_TX_TCP_CKSUM:
 			csum_type = TX_CSUM_TCPIP;
 			break;
-		case PKT_TX_UDP_CKSUM:
+		case RTE_MBUF_F_TX_UDP_CKSUM:
 			csum_type = TX_CSUM_UDPIP;
 			break;
 		default:
@@ -1026,7 +1026,7 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
 	/* fill the cpl message, same as in t4_eth_xmit, this should be kept
 	 * similar to t4_eth_xmit
 	 */
-	if (mbuf->ol_flags & PKT_TX_IP_CKSUM) {
+	if (mbuf->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 		cntrl = hwcsum(adap->params.chip, mbuf) |
 			       F_TXPKT_IPCSUM_DIS;
 		txq->stats.tx_cso++;
@@ -1034,7 +1034,7 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
 		cntrl = F_TXPKT_L4CSUM_DIS | F_TXPKT_IPCSUM_DIS;
 	}
 
-	if (mbuf->ol_flags & PKT_TX_VLAN) {
+	if (mbuf->ol_flags & RTE_MBUF_F_TX_VLAN) {
 		txq->stats.vlan_ins++;
 		cntrl |= F_TXPKT_VLAN_VLD | V_TXPKT_VLAN(mbuf->vlan_tci);
 	}
@@ -1127,7 +1127,7 @@ out_free:
 	}
 
 	max_pkt_len = txq->data->mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
-	if ((!(m->ol_flags & PKT_TX_TCP_SEG)) &&
+	if ((!(m->ol_flags & RTE_MBUF_F_TX_TCP_SEG)) &&
 	    (unlikely(m->pkt_len > max_pkt_len)))
 		goto out_free;
 
@@ -1138,7 +1138,7 @@ out_free:
 	/* align the end of coalesce WR to a 512 byte boundary */
 	txq->q.coalesce.max = (8 - (txq->q.pidx & 7)) * 8;
 
-	if (!((m->ol_flags & PKT_TX_TCP_SEG) ||
+	if (!((m->ol_flags & RTE_MBUF_F_TX_TCP_SEG) ||
 			m->pkt_len > RTE_ETHER_MAX_LEN)) {
 		if (should_tx_packet_coalesce(txq, mbuf, &cflits, adap)) {
 			if (unlikely(map_mbuf(mbuf, addr) < 0)) {
@@ -1201,7 +1201,7 @@ out_free:
 	len += sizeof(*cpl);
 
 	/* Coalescing skipped and we send through normal path */
-	if (!(m->ol_flags & PKT_TX_TCP_SEG)) {
+	if (!(m->ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 		wr->op_immdlen = htonl(V_FW_WR_OP(is_pf4(adap) ?
 						  FW_ETH_TX_PKT_WR :
 						  FW_ETH_TX_PKT_VM_WR) |
@@ -1210,7 +1210,7 @@ out_free:
 			cpl = (void *)(wr + 1);
 		else
 			cpl = (void *)(vmwr + 1);
-		if (m->ol_flags & PKT_TX_IP_CKSUM) {
+		if (m->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 			cntrl = hwcsum(adap->params.chip, m) |
 				F_TXPKT_IPCSUM_DIS;
 			txq->stats.tx_cso++;
@@ -1220,7 +1220,7 @@ out_free:
 			lso = (void *)(wr + 1);
 		else
 			lso = (void *)(vmwr + 1);
-		v6 = (m->ol_flags & PKT_TX_IPV6) != 0;
+		v6 = (m->ol_flags & RTE_MBUF_F_TX_IPV6) != 0;
 		l3hdr_len = m->l3_len;
 		l4hdr_len = m->l4_len;
 		eth_xtra_len = m->l2_len - RTE_ETHER_HDR_LEN;
@@ -1256,7 +1256,7 @@ out_free:
 		txq->stats.tx_cso += m->tso_segsz;
 	}
 
-	if (m->ol_flags & PKT_TX_VLAN) {
+	if (m->ol_flags & RTE_MBUF_F_TX_VLAN) {
 		txq->stats.vlan_ins++;
 		cntrl |= F_TXPKT_VLAN_VLD | V_TXPKT_VLAN(m->vlan_tci);
 	}
@@ -1526,27 +1526,27 @@ static inline void cxgbe_fill_mbuf_info(struct adapter *adap,
 
 	if (cpl->vlan_ex)
 		cxgbe_set_mbuf_info(pkt, RTE_PTYPE_L2_ETHER_VLAN,
-				    PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
+				    RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED);
 	else
 		cxgbe_set_mbuf_info(pkt, RTE_PTYPE_L2_ETHER, 0);
 
 	if (cpl->l2info & htonl(F_RXF_IP))
 		cxgbe_set_mbuf_info(pkt, RTE_PTYPE_L3_IPV4,
-				    csum_ok ? PKT_RX_IP_CKSUM_GOOD :
-					      PKT_RX_IP_CKSUM_BAD);
+				    csum_ok ? RTE_MBUF_F_RX_IP_CKSUM_GOOD :
+				    RTE_MBUF_F_RX_IP_CKSUM_BAD);
 	else if (cpl->l2info & htonl(F_RXF_IP6))
 		cxgbe_set_mbuf_info(pkt, RTE_PTYPE_L3_IPV6,
-				    csum_ok ? PKT_RX_IP_CKSUM_GOOD :
-					      PKT_RX_IP_CKSUM_BAD);
+				    csum_ok ? RTE_MBUF_F_RX_IP_CKSUM_GOOD :
+				    RTE_MBUF_F_RX_IP_CKSUM_BAD);
 
 	if (cpl->l2info & htonl(F_RXF_TCP))
 		cxgbe_set_mbuf_info(pkt, RTE_PTYPE_L4_TCP,
-				    csum_ok ? PKT_RX_L4_CKSUM_GOOD :
-					      PKT_RX_L4_CKSUM_BAD);
+				    csum_ok ? RTE_MBUF_F_RX_L4_CKSUM_GOOD :
+				    RTE_MBUF_F_RX_L4_CKSUM_BAD);
 	else if (cpl->l2info & htonl(F_RXF_UDP))
 		cxgbe_set_mbuf_info(pkt, RTE_PTYPE_L4_UDP,
-				    csum_ok ? PKT_RX_L4_CKSUM_GOOD :
-					      PKT_RX_L4_CKSUM_BAD);
+				    csum_ok ? RTE_MBUF_F_RX_L4_CKSUM_GOOD :
+				    RTE_MBUF_F_RX_L4_CKSUM_BAD);
 }
 
 /**
@@ -1637,7 +1637,7 @@ static int process_responses(struct sge_rspq *q, int budget,
 
 				if (!rss_hdr->filter_tid &&
 				    rss_hdr->hash_type) {
-					pkt->ol_flags |= PKT_RX_RSS_HASH;
+					pkt->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 					pkt->hash.rss =
 						ntohl(rss_hdr->hash_val);
 				}

@@ -32,7 +32,7 @@
 
 #define IP6_FULL_MASK (sizeof(((struct ip_addr *)NULL)->ip.ip6.ip6) * CHAR_BIT)
 
-#define MBUF_NO_SEC_OFFLOAD(m) ((m->ol_flags & PKT_RX_SEC_OFFLOAD) == 0)
+#define MBUF_NO_SEC_OFFLOAD(m) ((m->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD) == 0)
 
 struct supported_cipher_algo {
 	const char *keyword;

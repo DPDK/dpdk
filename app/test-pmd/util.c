@@ -157,20 +157,20 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 			  eth_type, (unsigned int) mb->pkt_len,
 			  (int)mb->nb_segs);
 		ol_flags = mb->ol_flags;
-		if (ol_flags & PKT_RX_RSS_HASH) {
+		if (ol_flags & RTE_MBUF_F_RX_RSS_HASH) {
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - RSS hash=0x%x",
 				  (unsigned int) mb->hash.rss);
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - RSS queue=0x%x", (unsigned int) queue);
 		}
-		if (ol_flags & PKT_RX_FDIR) {
+		if (ol_flags & RTE_MBUF_F_RX_FDIR) {
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - FDIR matched ");
-			if (ol_flags & PKT_RX_FDIR_ID)
+			if (ol_flags & RTE_MBUF_F_RX_FDIR_ID)
 				MKDUMPSTR(print_buf, buf_size, cur_len,
 					  "ID=0x%x", mb->hash.fdir.hi);
-			else if (ol_flags & PKT_RX_FDIR_FLX)
+			else if (ol_flags & RTE_MBUF_F_RX_FDIR_FLX)
 				MKDUMPSTR(print_buf, buf_size, cur_len,
 					  "flex bytes=0x%08x %08x",
 					  mb->hash.fdir.hi, mb->hash.fdir.lo);
@@ -182,18 +182,18 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		if (is_timestamp_enabled(mb))
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - timestamp %"PRIu64" ", get_timestamp(mb));
-		if (ol_flags & PKT_RX_QINQ)
+		if (ol_flags & RTE_MBUF_F_RX_QINQ)
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - QinQ VLAN tci=0x%x, VLAN tci outer=0x%x",
 				  mb->vlan_tci, mb->vlan_tci_outer);
-		else if (ol_flags & PKT_RX_VLAN)
+		else if (ol_flags & RTE_MBUF_F_RX_VLAN)
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - VLAN tci=0x%x", mb->vlan_tci);
-		if (!is_rx && (ol_flags & PKT_TX_DYNF_METADATA))
+		if (!is_rx && (ol_flags & RTE_MBUF_DYNFLAG_TX_METADATA))
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - Tx metadata: 0x%x",
 				  *RTE_FLOW_DYNF_METADATA(mb));
-		if (is_rx && (ol_flags & PKT_RX_DYNF_METADATA))
+		if (is_rx && (ol_flags & RTE_MBUF_DYNFLAG_RX_METADATA))
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - Rx metadata: 0x%x",
 				  *RTE_FLOW_DYNF_METADATA(mb));
@@ -331,7 +331,7 @@ tx_pkt_set_md(uint16_t port_id, __rte_unused uint16_t queue,
 		for (i = 0; i < nb_pkts; i++) {
 			*RTE_FLOW_DYNF_METADATA(pkts[i]) =
 						ports[port_id].tx_metadata;
-			pkts[i]->ol_flags |= PKT_TX_DYNF_METADATA;
+			pkts[i]->ol_flags |= RTE_MBUF_DYNFLAG_TX_METADATA;
 		}
 	return nb_pkts;
 }

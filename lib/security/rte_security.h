@@ -241,10 +241,10 @@ struct rte_security_ipsec_sa_options {
 	 * * 0: Inner packet IP header checksum is not computed/verified.
 	 *
 	 * The checksum verification status would be set in mbuf using
-	 * PKT_RX_IP_CKSUM_xxx flags.
+	 * RTE_MBUF_F_RX_IP_CKSUM_xxx flags.
 	 *
 	 * Inner IP checksum computation can also be enabled(per operation)
-	 * by setting the flag PKT_TX_IP_CKSUM in mbuf.
+	 * by setting the flag RTE_MBUF_F_TX_IP_CKSUM in mbuf.
 	 */
 	uint32_t ip_csum_enable : 1;
 
@@ -256,11 +256,11 @@ struct rte_security_ipsec_sa_options {
 	 * * 0: Inner packet L4 checksum is not computed/verified.
 	 *
 	 * The checksum verification status would be set in mbuf using
-	 * PKT_RX_L4_CKSUM_xxx flags.
+	 * RTE_MBUF_F_RX_L4_CKSUM_xxx flags.
 	 *
 	 * Inner L4 checksum computation can also be enabled(per operation)
-	 * by setting the flags PKT_TX_TCP_CKSUM or PKT_TX_SCTP_CKSUM or
-	 * PKT_TX_UDP_CKSUM or PKT_TX_L4_MASK in mbuf.
+	 * by setting the flags RTE_MBUF_F_TX_TCP_CKSUM or RTE_MBUF_F_TX_SCTP_CKSUM or
+	 * RTE_MBUF_F_TX_UDP_CKSUM or RTE_MBUF_F_TX_L4_MASK in mbuf.
 	 */
 	uint32_t l4_csum_enable : 1;
 

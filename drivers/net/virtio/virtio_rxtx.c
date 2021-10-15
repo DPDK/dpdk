@@ -917,7 +917,7 @@ virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
 	if (hdr->flags == 0 && hdr->gso_type == VIRTIO_NET_HDR_GSO_NONE)
 		return 0;
 
-	m->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
+	m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN;
 
 	ptype = rte_net_get_ptype(m, &hdr_lens, RTE_PTYPE_ALL_MASK);
 	m->packet_type = ptype;
@@ -929,7 +929,7 @@ virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
 	if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM) {
 		hdrlen = hdr_lens.l2_len + hdr_lens.l3_len + hdr_lens.l4_len;
 		if (hdr->csum_start <= hdrlen && l4_supported) {
-			m->ol_flags |= PKT_RX_L4_CKSUM_NONE;
+			m->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_NONE;
 		} else {
 			/* Unknown proto or tunnel, do sw cksum. We can assume
 			 * the cksum field is in the first segment since the
@@ -951,7 +951,7 @@ virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
 					off) = csum;
 		}
 	} else if (hdr->flags & VIRTIO_NET_HDR_F_DATA_VALID && l4_supported) {
-		m->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+		m->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 	}
 
 	/* GSO request, save required information in mbuf */
@@ -967,8 +967,8 @@ virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
 		switch (hdr->gso_type & ~VIRTIO_NET_HDR_GSO_ECN) {
 			case VIRTIO_NET_HDR_GSO_TCPV4:
 			case VIRTIO_NET_HDR_GSO_TCPV6:
-				m->ol_flags |= PKT_RX_LRO | \
-					PKT_RX_L4_CKSUM_NONE;
+				m->ol_flags |= RTE_MBUF_F_RX_LRO |
+					RTE_MBUF_F_RX_L4_CKSUM_NONE;
 				break;
 			default:
 				return -EINVAL;
@@ -1735,7 +1735,7 @@ virtio_xmit_pkts_prepare(void *tx_queue __rte_unused, struct rte_mbuf **tx_pkts,
 #endif
 
 		/* Do VLAN tag insertion */
-		if (unlikely(m->ol_flags & PKT_TX_VLAN)) {
+		if (unlikely(m->ol_flags & RTE_MBUF_F_TX_VLAN)) {
 			error = rte_vlan_insert(&m);
 			/* rte_vlan_insert() may change pointer
 			 * even in the case of failure
@@ -1754,7 +1754,7 @@ virtio_xmit_pkts_prepare(void *tx_queue __rte_unused, struct rte_mbuf **tx_pkts,
 			break;
 		}
 
-		if (m->ol_flags & PKT_TX_TCP_SEG)
+		if (m->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 			virtio_tso_fix_cksum(m);
 	}
 

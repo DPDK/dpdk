@@ -77,7 +77,7 @@ int rte_get_rx_ol_flag_list(uint64_t mask, char *buf, size_t buflen);
  * @param mask
  *   The mask describing the flag. Usually only one bit must be set.
  *   Several bits can be given if they belong to the same mask.
- *   Ex: PKT_TX_L4_MASK.
+ *   Ex: RTE_MBUF_F_TX_L4_MASK.
  * @return
  *   The name of this flag, or NULL if it's not a valid TX flag.
  */
@@ -849,7 +849,7 @@ static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 	m->nb_segs = 1;
 	m->port = RTE_MBUF_PORT_INVALID;
 
-	m->ol_flags &= EXT_ATTACHED_MBUF;
+	m->ol_flags &= RTE_MBUF_F_EXTERNAL;
 	m->packet_type = 0;
 	rte_pktmbuf_reset_headroom(m);
 
@@ -1064,7 +1064,7 @@ rte_pktmbuf_attach_extbuf(struct rte_mbuf *m, void *buf_addr,
 	m->data_len = 0;
 	m->data_off = 0;
 
-	m->ol_flags |= EXT_ATTACHED_MBUF;
+	m->ol_flags |= RTE_MBUF_F_EXTERNAL;
 	m->shinfo = shinfo;
 }
 
@@ -1138,7 +1138,7 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *m)
 		/* if m is not direct, get the mbuf that embeds the data */
 		rte_mbuf_refcnt_update(rte_mbuf_from_indirect(m), 1);
 		mi->priv_size = m->priv_size;
-		mi->ol_flags = m->ol_flags | IND_ATTACHED_MBUF;
+		mi->ol_flags = m->ol_flags | RTE_MBUF_F_INDIRECT;
 	}
 
 	__rte_pktmbuf_copy_hdr(mi, m);
@@ -1272,7 +1272,7 @@ static inline int __rte_pktmbuf_pinned_extbuf_decref(struct rte_mbuf *m)
 	struct rte_mbuf_ext_shared_info *shinfo;
 
 	/* Clear flags, mbuf is being freed. */
-	m->ol_flags = EXT_ATTACHED_MBUF;
+	m->ol_flags = RTE_MBUF_F_EXTERNAL;
 	shinfo = m->shinfo;
 
 	/* Optimize for performance - do not dec/reinit */
@@ -1798,28 +1798,28 @@ rte_validate_tx_offload(const struct rte_mbuf *m)
 	uint64_t ol_flags = m->ol_flags;
 
 	/* Does packet set any of available offloads? */
-	if (!(ol_flags & PKT_TX_OFFLOAD_MASK))
+	if (!(ol_flags & RTE_MBUF_F_TX_OFFLOAD_MASK))
 		return 0;
 
 	/* IP checksum can be counted only for IPv4 packet */
-	if ((ol_flags & PKT_TX_IP_CKSUM) && (ol_flags & PKT_TX_IPV6))
+	if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM) && (ol_flags & RTE_MBUF_F_TX_IPV6))
 		return -EINVAL;
 
 	/* IP type not set when required */
-	if (ol_flags & (PKT_TX_L4_MASK | PKT_TX_TCP_SEG))
-		if (!(ol_flags & (PKT_TX_IPV4 | PKT_TX_IPV6)))
+	if (ol_flags & (RTE_MBUF_F_TX_L4_MASK | RTE_MBUF_F_TX_TCP_SEG))
+		if (!(ol_flags & (RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IPV6)))
 			return -EINVAL;
 
 	/* Check requirements for TSO packet */
-	if (ol_flags & PKT_TX_TCP_SEG)
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 		if ((m->tso_segsz == 0) ||
-				((ol_flags & PKT_TX_IPV4) &&
-				!(ol_flags & PKT_TX_IP_CKSUM)))
+				((ol_flags & RTE_MBUF_F_TX_IPV4) &&
+				 !(ol_flags & RTE_MBUF_F_TX_IP_CKSUM)))
 			return -EINVAL;
 
-	/* PKT_TX_OUTER_IP_CKSUM set for non outer IPv4 packet. */
-	if ((ol_flags & PKT_TX_OUTER_IP_CKSUM) &&
-			!(ol_flags & PKT_TX_OUTER_IPV4))
+	/* RTE_MBUF_F_TX_OUTER_IP_CKSUM set for non outer IPv4 packet. */
+	if ((ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) &&
+			!(ol_flags & RTE_MBUF_F_TX_OUTER_IPV4))
 		return -EINVAL;
 
 	return 0;

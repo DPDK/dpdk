@@ -69,10 +69,10 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn10k_ipsec_sa *sess,
 	}
 #endif
 
-	if (m_src->ol_flags & PKT_TX_IP_CKSUM)
+	if (m_src->ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 		inst_w4_u64 &= ~BIT_ULL(33);
 
-	if (m_src->ol_flags & PKT_TX_L4_MASK)
+	if (m_src->ol_flags & RTE_MBUF_F_TX_L4_MASK)
 		inst_w4_u64 &= ~BIT_ULL(32);
 
 	/* Prepare CPT instruction */

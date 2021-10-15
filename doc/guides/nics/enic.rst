@@ -279,9 +279,9 @@ inner and outer packets can be IPv4 or IPv6.
 - Rx checksum offloads.
 
   The NIC validates IPv4/UDP/TCP checksums of both inner and outer packets.
-  Good checksum flags (e.g. ``PKT_RX_L4_CKSUM_GOOD``) indicate that the inner
+  Good checksum flags (e.g. ``RTE_MBUF_F_RX_L4_CKSUM_GOOD``) indicate that the inner
   packet has the correct checksum, and if applicable, the outer packet also
-  has the correct checksum. Bad checksum flags (e.g. ``PKT_RX_L4_CKSUM_BAD``)
+  has the correct checksum. Bad checksum flags (e.g. ``RTE_MBUF_F_RX_L4_CKSUM_BAD``)
   indicate that the inner and/or outer packets have invalid checksum values.
 
 - Inner Rx packet type classification
@@ -437,8 +437,8 @@ Limitations
 
 Another alternative is modify the adapter's ingress VLAN rewrite mode so that
 packets with the default VLAN tag are stripped by the adapter and presented to
-DPDK as untagged packets. In this case mbuf->vlan_tci and the PKT_RX_VLAN and
-PKT_RX_VLAN_STRIPPED mbuf flags would not be set. This mode is enabled with the
+DPDK as untagged packets. In this case mbuf->vlan_tci and the RTE_MBUF_F_RX_VLAN and
+RTE_MBUF_F_RX_VLAN_STRIPPED mbuf flags would not be set. This mode is enabled with the
 ``devargs`` parameter ``ig-vlan-rewrite=untag``. For example::
 
     -a 12:00.0,ig-vlan-rewrite=untag

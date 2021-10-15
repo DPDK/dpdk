@@ -68,9 +68,9 @@
 #define MRVL_TX_OFFLOADS (MRVL_TX_OFFLOAD_CHECKSUM | \
 			  RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 
-#define MRVL_TX_PKT_OFFLOADS (PKT_TX_IP_CKSUM | \
-			      PKT_TX_TCP_CKSUM | \
-			      PKT_TX_UDP_CKSUM)
+#define MRVL_TX_PKT_OFFLOADS (RTE_MBUF_F_TX_IP_CKSUM | \
+			      RTE_MBUF_F_TX_TCP_CKSUM | \
+			      RTE_MBUF_F_TX_UDP_CKSUM)
 
 static const char * const valid_args[] = {
 	MRVL_IFACE_NAME_ARG,
@@ -2538,18 +2538,18 @@ mrvl_desc_to_ol_flags(struct pp2_ppio_desc *desc, uint64_t packet_type)
 	if (RTE_ETH_IS_IPV4_HDR(packet_type)) {
 		status = pp2_ppio_inq_desc_get_l3_pkt_error(desc);
 		if (unlikely(status != PP2_DESC_ERR_OK))
-			flags |= PKT_RX_IP_CKSUM_BAD;
+			flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		else
-			flags |= PKT_RX_IP_CKSUM_GOOD;
+			flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 	}
 
 	if (((packet_type & RTE_PTYPE_L4_UDP) == RTE_PTYPE_L4_UDP) ||
 	    ((packet_type & RTE_PTYPE_L4_TCP) == RTE_PTYPE_L4_TCP)) {
 		status = pp2_ppio_inq_desc_get_l4_pkt_error(desc);
 		if (unlikely(status != PP2_DESC_ERR_OK))
-			flags |= PKT_RX_L4_CKSUM_BAD;
+			flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		else
-			flags |= PKT_RX_L4_CKSUM_GOOD;
+			flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 	}
 
 	return flags;
@@ -2709,18 +2709,18 @@ mrvl_prepare_proto_info(uint64_t ol_flags,
 	 * default value
 	 */
 	*l3_type = PP2_OUTQ_L3_TYPE_IPV4;
-	*gen_l3_cksum = ol_flags & PKT_TX_IP_CKSUM ? 1 : 0;
+	*gen_l3_cksum = ol_flags & RTE_MBUF_F_TX_IP_CKSUM ? 1 : 0;
 
-	if (ol_flags & PKT_TX_IPV6) {
+	if (ol_flags & RTE_MBUF_F_TX_IPV6) {
 		*l3_type = PP2_OUTQ_L3_TYPE_IPV6;
 		/* no checksum for ipv6 header */
 		*gen_l3_cksum = 0;
 	}
 
-	if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM) {
+	if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_TCP_CKSUM) {
 		*l4_type = PP2_OUTQ_L4_TYPE_TCP;
 		*gen_l4_cksum = 1;
-	} else if ((ol_flags & PKT_TX_L4_MASK) ==  PKT_TX_UDP_CKSUM) {
+	} else if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) ==  RTE_MBUF_F_TX_UDP_CKSUM) {
 		*l4_type = PP2_OUTQ_L4_TYPE_UDP;
 		*gen_l4_cksum = 1;
 	} else {

@@ -459,7 +459,7 @@ static inline int32_t
 trs_process_check(struct rte_mbuf *mb, struct rte_mbuf **ml,
 	uint32_t *tofs, struct rte_esp_tail espt, uint32_t hlen, uint32_t tlen)
 {
-	if ((mb->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED) != 0 ||
+	if ((mb->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED) != 0 ||
 			tlen + hlen > mb->pkt_len)
 		return -EBADMSG;
 
@@ -547,8 +547,8 @@ trs_process_step3(struct rte_mbuf *mb)
 	/* reset mbuf packet type */
 	mb->packet_type &= (RTE_PTYPE_L2_MASK | RTE_PTYPE_L3_MASK);
 
-	/* clear the PKT_RX_SEC_OFFLOAD flag if set */
-	mb->ol_flags &= ~PKT_RX_SEC_OFFLOAD;
+	/* clear the RTE_MBUF_F_RX_SEC_OFFLOAD flag if set */
+	mb->ol_flags &= ~RTE_MBUF_F_RX_SEC_OFFLOAD;
 }
 
 /*
@@ -565,8 +565,8 @@ tun_process_step3(struct rte_mbuf *mb, uint64_t txof_msk, uint64_t txof_val)
 	mb->packet_type = RTE_PTYPE_UNKNOWN;
 	mb->tx_offload = (mb->tx_offload & txof_msk) | txof_val;
 
-	/* clear the PKT_RX_SEC_OFFLOAD flag if set */
-	mb->ol_flags &= ~PKT_RX_SEC_OFFLOAD;
+	/* clear the RTE_MBUF_F_RX_SEC_OFFLOAD flag if set */
+	mb->ol_flags &= ~RTE_MBUF_F_RX_SEC_OFFLOAD;
 }
 
 /*

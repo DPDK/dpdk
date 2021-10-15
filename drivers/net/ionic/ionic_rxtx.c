@@ -257,7 +257,7 @@ ionic_tx_tcp_pseudo_csum(struct rte_mbuf *txm)
 	struct rte_tcp_hdr *tcp_hdr = (struct rte_tcp_hdr *)
 		(l3_hdr + txm->l3_len);
 
-	if (txm->ol_flags & PKT_TX_IP_CKSUM) {
+	if (txm->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 		struct rte_ipv4_hdr *ipv4_hdr = (struct rte_ipv4_hdr *)l3_hdr;
 		ipv4_hdr->hdr_checksum = 0;
 		tcp_hdr->cksum = 0;
@@ -278,7 +278,7 @@ ionic_tx_tcp_inner_pseudo_csum(struct rte_mbuf *txm)
 	struct rte_tcp_hdr *tcp_hdr = (struct rte_tcp_hdr *)
 		(l3_hdr + txm->l3_len);
 
-	if (txm->ol_flags & PKT_TX_IPV4) {
+	if (txm->ol_flags & RTE_MBUF_F_TX_IPV4) {
 		struct rte_ipv4_hdr *ipv4_hdr = (struct rte_ipv4_hdr *)l3_hdr;
 		ipv4_hdr->hdr_checksum = 0;
 		tcp_hdr->cksum = 0;
@@ -355,14 +355,14 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	uint32_t offset = 0;
 	bool start, done;
 	bool encap;
-	bool has_vlan = !!(txm->ol_flags & PKT_TX_VLAN);
+	bool has_vlan = !!(txm->ol_flags & RTE_MBUF_F_TX_VLAN);
 	uint16_t vlan_tci = txm->vlan_tci;
 	uint64_t ol_flags = txm->ol_flags;
 
-	encap = ((ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
-		(ol_flags & PKT_TX_OUTER_UDP_CKSUM)) &&
-		((ol_flags & PKT_TX_OUTER_IPV4) ||
-		(ol_flags & PKT_TX_OUTER_IPV6));
+	encap = ((ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) ||
+		 (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM)) &&
+		((ol_flags & RTE_MBUF_F_TX_OUTER_IPV4) ||
+		 (ol_flags & RTE_MBUF_F_TX_OUTER_IPV6));
 
 	/* Preload inner-most TCP csum field with IP pseudo hdr
 	 * calculated with IP length set to zero.  HW will later
@@ -477,15 +477,15 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	desc = &desc_base[q->head_idx];
 	info = IONIC_INFO_PTR(q, q->head_idx);
 
-	if ((ol_flags & PKT_TX_IP_CKSUM) &&
+	if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM) &&
 	    (txq->flags & IONIC_QCQ_F_CSUM_L3)) {
 		opcode = IONIC_TXQ_DESC_OPCODE_CSUM_HW;
 		flags |= IONIC_TXQ_DESC_FLAG_CSUM_L3;
 	}
 
-	if (((ol_flags & PKT_TX_TCP_CKSUM) &&
+	if (((ol_flags & RTE_MBUF_F_TX_TCP_CKSUM) &&
 	     (txq->flags & IONIC_QCQ_F_CSUM_TCP)) ||
-	    ((ol_flags & PKT_TX_UDP_CKSUM) &&
+	    ((ol_flags & RTE_MBUF_F_TX_UDP_CKSUM) &&
 	     (txq->flags & IONIC_QCQ_F_CSUM_UDP))) {
 		opcode = IONIC_TXQ_DESC_OPCODE_CSUM_HW;
 		flags |= IONIC_TXQ_DESC_FLAG_CSUM_L4;
@@ -494,11 +494,11 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	if (opcode == IONIC_TXQ_DESC_OPCODE_CSUM_NONE)
 		stats->no_csum++;
 
-	has_vlan = (ol_flags & PKT_TX_VLAN);
-	encap = ((ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
-			(ol_flags & PKT_TX_OUTER_UDP_CKSUM)) &&
-			((ol_flags & PKT_TX_OUTER_IPV4) ||
-			(ol_flags & PKT_TX_OUTER_IPV6));
+	has_vlan = (ol_flags & RTE_MBUF_F_TX_VLAN);
+	encap = ((ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) ||
+			(ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM)) &&
+			((ol_flags & RTE_MBUF_F_TX_OUTER_IPV4) ||
+			 (ol_flags & RTE_MBUF_F_TX_OUTER_IPV6));
 
 	flags |= has_vlan ? IONIC_TXQ_DESC_FLAG_VLAN : 0;
 	flags |= encap ? IONIC_TXQ_DESC_FLAG_ENCAP : 0;
@@ -555,7 +555,7 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			rte_prefetch0(&q->info[next_q_head_idx]);
 		}
 
-		if (tx_pkts[nb_tx]->ol_flags & PKT_TX_TCP_SEG)
+		if (tx_pkts[nb_tx]->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 			err = ionic_tx_tso(txq, tx_pkts[nb_tx]);
 		else
 			err = ionic_tx(txq, tx_pkts[nb_tx]);
@@ -585,16 +585,15 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
  *
  **********************************************************************/
 
-#define IONIC_TX_OFFLOAD_MASK (	\
-	PKT_TX_IPV4 |		\
-	PKT_TX_IPV6 |		\
-	PKT_TX_VLAN |		\
-	PKT_TX_IP_CKSUM |	\
-	PKT_TX_TCP_SEG |	\
-	PKT_TX_L4_MASK)
+#define IONIC_TX_OFFLOAD_MASK (RTE_MBUF_F_TX_IPV4 |		\
+	RTE_MBUF_F_TX_IPV6 |		\
+	RTE_MBUF_F_TX_VLAN |		\
+	RTE_MBUF_F_TX_IP_CKSUM |	\
+	RTE_MBUF_F_TX_TCP_SEG |	\
+	RTE_MBUF_F_TX_L4_MASK)
 
 #define IONIC_TX_OFFLOAD_NOTSUP_MASK \
-	(PKT_TX_OFFLOAD_MASK ^ IONIC_TX_OFFLOAD_MASK)
+	(RTE_MBUF_F_TX_OFFLOAD_MASK ^ IONIC_TX_OFFLOAD_MASK)
 
 uint16_t
 ionic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
@@ -840,30 +839,30 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 	}
 
 	/* RSS */
-	pkt_flags |= PKT_RX_RSS_HASH;
+	pkt_flags |= RTE_MBUF_F_RX_RSS_HASH;
 	rxm->hash.rss = cq_desc->rss_hash;
 
 	/* Vlan Strip */
 	if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_VLAN) {
-		pkt_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		pkt_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		rxm->vlan_tci = cq_desc->vlan_tci;
 	}
 
 	/* Checksum */
 	if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_CALC) {
 		if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_IP_OK)
-			pkt_flags |= PKT_RX_IP_CKSUM_GOOD;
+			pkt_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		else if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_IP_BAD)
-			pkt_flags |= PKT_RX_IP_CKSUM_BAD;
+			pkt_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 
 		if ((cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_TCP_OK) ||
 			(cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_UDP_OK))
-			pkt_flags |= PKT_RX_L4_CKSUM_GOOD;
+			pkt_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 		else if ((cq_desc->csum_flags &
 				IONIC_RXQ_COMP_CSUM_F_TCP_BAD) ||
 				(cq_desc->csum_flags &
 				IONIC_RXQ_COMP_CSUM_F_UDP_BAD))
-			pkt_flags |= PKT_RX_L4_CKSUM_BAD;
+			pkt_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 	}
 
 	rxm->ol_flags = pkt_flags;

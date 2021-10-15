@@ -260,17 +260,17 @@ axgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 		if (rxq->pdata->rx_csum_enable) {
 			mbuf->ol_flags = 0;
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 			if (unlikely(error_status == AXGBE_L3_CSUM_ERR)) {
-				mbuf->ol_flags &= ~PKT_RX_IP_CKSUM_GOOD;
-				mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-				mbuf->ol_flags &= ~PKT_RX_L4_CKSUM_GOOD;
-				mbuf->ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
+				mbuf->ol_flags &= ~RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+				mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+				mbuf->ol_flags &= ~RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+				mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
 			} else if (
 				unlikely(error_status == AXGBE_L4_CSUM_ERR)) {
-				mbuf->ol_flags &= ~PKT_RX_L4_CKSUM_GOOD;
-				mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+				mbuf->ol_flags &= ~RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+				mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 			}
 		}
 		rte_prefetch1(rte_pktmbuf_mtod(mbuf, void *));
@@ -282,25 +282,24 @@ axgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		offloads = rxq->pdata->eth_dev->data->dev_conf.rxmode.offloads;
 		if (!err || !etlt) {
 			if (etlt == RX_CVLAN_TAG_PRESENT) {
-				mbuf->ol_flags |= PKT_RX_VLAN;
+				mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN;
 				mbuf->vlan_tci =
 					AXGMAC_GET_BITS_LE(desc->write.desc0,
 							RX_NORMAL_DESC0, OVT);
 				if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
-					mbuf->ol_flags |= PKT_RX_VLAN_STRIPPED;
+					mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED;
 				else
-					mbuf->ol_flags &= ~PKT_RX_VLAN_STRIPPED;
-				} else {
-					mbuf->ol_flags &=
-						~(PKT_RX_VLAN
-							| PKT_RX_VLAN_STRIPPED);
-					mbuf->vlan_tci = 0;
-				}
+					mbuf->ol_flags &= ~RTE_MBUF_F_RX_VLAN_STRIPPED;
+			} else {
+				mbuf->ol_flags &=
+					~(RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED);
+				mbuf->vlan_tci = 0;
+			}
 		}
 		/* Indicate if a Context Descriptor is next */
 		if (AXGMAC_GET_BITS_LE(desc->write.desc3, RX_NORMAL_DESC3, CDA))
-			mbuf->ol_flags |= PKT_RX_IEEE1588_PTP
-					| PKT_RX_IEEE1588_TMST;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP
+					| RTE_MBUF_F_RX_IEEE1588_TMST;
 		pkt_len = AXGMAC_GET_BITS_LE(desc->write.desc3, RX_NORMAL_DESC3,
 					     PL) - rxq->crc_len;
 		/* Mbuf populate */
@@ -426,17 +425,17 @@ next_desc:
 		offloads = rxq->pdata->eth_dev->data->dev_conf.rxmode.offloads;
 		if (!err || !etlt) {
 			if (etlt == RX_CVLAN_TAG_PRESENT) {
-				mbuf->ol_flags |= PKT_RX_VLAN;
+				mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN;
 				mbuf->vlan_tci =
 					AXGMAC_GET_BITS_LE(desc->write.desc0,
 							RX_NORMAL_DESC0, OVT);
 				if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
-					mbuf->ol_flags |= PKT_RX_VLAN_STRIPPED;
+					mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED;
 				else
-					mbuf->ol_flags &= ~PKT_RX_VLAN_STRIPPED;
+					mbuf->ol_flags &= ~RTE_MBUF_F_RX_VLAN_STRIPPED;
 			} else {
 				mbuf->ol_flags &=
-					~(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
+					~(RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED);
 				mbuf->vlan_tci = 0;
 			}
 		}
@@ -465,17 +464,17 @@ err_set:
 		first_seg->port = rxq->port_id;
 		if (rxq->pdata->rx_csum_enable) {
 			mbuf->ol_flags = 0;
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 			if (unlikely(error_status == AXGBE_L3_CSUM_ERR)) {
-				mbuf->ol_flags &= ~PKT_RX_IP_CKSUM_GOOD;
-				mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-				mbuf->ol_flags &= ~PKT_RX_L4_CKSUM_GOOD;
-				mbuf->ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
+				mbuf->ol_flags &= ~RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+				mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+				mbuf->ol_flags &= ~RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+				mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
 			} else if (unlikely(error_status
 						== AXGBE_L4_CSUM_ERR)) {
-				mbuf->ol_flags &= ~PKT_RX_L4_CKSUM_GOOD;
-				mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+				mbuf->ol_flags &= ~RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+				mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 			}
 		}
 
@@ -795,7 +794,7 @@ static int axgbe_xmit_hw(struct axgbe_tx_queue *txq,
 	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, FL,
 			   mbuf->pkt_len);
 	/* Timestamp enablement check */
-	if (mbuf->ol_flags & PKT_TX_IEEE1588_TMST)
+	if (mbuf->ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
 		AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, TTSE, 1);
 	rte_wmb();
 	/* Mark it as First and Last Descriptor */
@@ -804,14 +803,14 @@ static int axgbe_xmit_hw(struct axgbe_tx_queue *txq,
 	/* Mark it as a NORMAL descriptor */
 	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CTXT, 0);
 	/* configure h/w Offload */
-	mask = mbuf->ol_flags & PKT_TX_L4_MASK;
-	if ((mask == PKT_TX_TCP_CKSUM) || (mask == PKT_TX_UDP_CKSUM))
+	mask = mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK;
+	if (mask == RTE_MBUF_F_TX_TCP_CKSUM || mask == RTE_MBUF_F_TX_UDP_CKSUM)
 		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CIC, 0x3);
-	else if (mbuf->ol_flags & PKT_TX_IP_CKSUM)
+	else if (mbuf->ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CIC, 0x1);
 	rte_wmb();
 
-	if (mbuf->ol_flags & (PKT_TX_VLAN | PKT_TX_QINQ)) {
+	if (mbuf->ol_flags & (RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_QINQ)) {
 		/* Mark it as a CONTEXT descriptor */
 		AXGMAC_SET_BITS_LE(desc->desc3, TX_CONTEXT_DESC3,
 				  CTXT, 1);

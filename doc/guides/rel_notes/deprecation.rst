@@ -50,11 +50,6 @@ Deprecation Notices
 * mempool: The mempool API macros ``MEMPOOL_PG_*`` are deprecated and
   will be removed in DPDK 22.11.
 
-* mbuf: The mbuf offload flags ``PKT_*`` will be renamed as ``RTE_MBUF_F_*``.
-  A compatibility layer will be kept until DPDK 22.11, except for the flags
-  that are already deprecated (``PKT_RX_L4_CKSUM_BAD``, ``PKT_RX_IP_CKSUM_BAD``,
-  ``PKT_RX_EIP_CKSUM_BAD``, ``PKT_TX_QINQ_PKT``) which will be removed.
-
 * pci: To reduce unnecessary ABIs exposed by DPDK bus driver, "rte_bus_pci.h"
   will be made internal in 21.11 and macros/data structures/functions defined
   in the header will not be considered as ABI anymore. This change is inspired

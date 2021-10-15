@@ -211,9 +211,9 @@ process_ipsec_ev_inbound(struct ipsec_ctx *ctx, struct route_table *rt,
 
 	switch (type) {
 	case PKT_TYPE_PLAIN_IPV4:
-		if (pkt->ol_flags & PKT_RX_SEC_OFFLOAD) {
+		if (pkt->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD) {
 			if (unlikely(pkt->ol_flags &
-				     PKT_RX_SEC_OFFLOAD_FAILED)) {
+				     RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED)) {
 				RTE_LOG(ERR, IPSEC,
 					"Inbound security offload failed\n");
 				goto drop_pkt_and_exit;
@@ -229,9 +229,9 @@ process_ipsec_ev_inbound(struct ipsec_ctx *ctx, struct route_table *rt,
 		break;
 
 	case PKT_TYPE_PLAIN_IPV6:
-		if (pkt->ol_flags & PKT_RX_SEC_OFFLOAD) {
+		if (pkt->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD) {
 			if (unlikely(pkt->ol_flags &
-				     PKT_RX_SEC_OFFLOAD_FAILED)) {
+				     RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED)) {
 				RTE_LOG(ERR, IPSEC,
 					"Inbound security offload failed\n");
 				goto drop_pkt_and_exit;
@@ -370,7 +370,7 @@ process_ipsec_ev_outbound(struct ipsec_ctx *ctx, struct route_table *rt,
 				      sess->security.ses, pkt, NULL);
 
 	/* Mark the packet for Tx security offload */
-	pkt->ol_flags |= PKT_TX_SEC_OFFLOAD;
+	pkt->ol_flags |= RTE_MBUF_F_TX_SEC_OFFLOAD;
 
 	/* Get the port to which this pkt need to be submitted */
 	port_id = sa->portid;
@@ -485,7 +485,7 @@ ipsec_wrkr_non_burst_int_port_drv_mode(struct eh_event_link_info *links,
 						      NULL);
 
 			/* Mark the packet for Tx security offload */
-			pkt->ol_flags |= PKT_TX_SEC_OFFLOAD;
+			pkt->ol_flags |= RTE_MBUF_F_TX_SEC_OFFLOAD;
 
 			/* Provide L2 len for Outbound processing */
 			pkt->l2_len = RTE_ETHER_HDR_LEN;

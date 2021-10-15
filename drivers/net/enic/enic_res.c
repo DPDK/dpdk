@@ -215,12 +215,12 @@ int enic_get_vnic_config(struct enic *enic)
 		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
 		RTE_ETH_RX_OFFLOAD_RSS_HASH;
 	enic->tx_offload_mask =
-		PKT_TX_IPV6 |
-		PKT_TX_IPV4 |
-		PKT_TX_VLAN |
-		PKT_TX_IP_CKSUM |
-		PKT_TX_L4_MASK |
-		PKT_TX_TCP_SEG;
+		RTE_MBUF_F_TX_IPV6 |
+		RTE_MBUF_F_TX_IPV4 |
+		RTE_MBUF_F_TX_VLAN |
+		RTE_MBUF_F_TX_IP_CKSUM |
+		RTE_MBUF_F_TX_L4_MASK |
+		RTE_MBUF_F_TX_TCP_SEG;
 
 	return 0;
 }

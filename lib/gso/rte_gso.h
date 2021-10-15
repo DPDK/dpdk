@@ -77,8 +77,8 @@ struct rte_gso_ctx {
  *
  * Before calling rte_gso_segment(), applications must set proper ol_flags
  * for the packet. The GSO library uses the same macros as that of TSO.
- * For example, set PKT_TX_TCP_SEG and PKT_TX_IPV4 in ol_flags to segment
- * a TCP/IPv4 packet. If rte_gso_segment() succeeds, the PKT_TX_TCP_SEG
+ * For example, set RTE_MBUF_F_TX_TCP_SEG and RTE_MBUF_F_TX_IPV4 in ol_flags to segment
+ * a TCP/IPv4 packet. If rte_gso_segment() succeeds, the RTE_MBUF_F_TX_TCP_SEG
  * flag is removed for all GSO segments and the input packet.
  *
  * Each of the newly-created GSO segments is organized as a two-segment

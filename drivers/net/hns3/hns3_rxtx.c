@@ -2341,11 +2341,11 @@ hns3_rxd_to_vlan_tci(struct hns3_rx_queue *rxq, struct rte_mbuf *mb,
 		mb->vlan_tci = 0;
 		return;
 	case HNS3_INNER_STRP_VLAN_VLD:
-		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		mb->vlan_tci = rte_le_to_cpu_16(rxd->rx.vlan_tag);
 		return;
 	case HNS3_OUTER_STRP_VLAN_VLD:
-		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		mb->vlan_tci = rte_le_to_cpu_16(rxd->rx.ot_vlan_tag);
 		return;
 	default:
@@ -2395,7 +2395,7 @@ hns3_rx_ptp_timestamp_handle(struct hns3_rx_queue *rxq, struct rte_mbuf *mbuf,
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(rxq->hns);
 	uint64_t timestamp = rte_le_to_cpu_64(rxd->timestamp);
 
-	mbuf->ol_flags |= PKT_RX_IEEE1588_PTP | PKT_RX_IEEE1588_TMST;
+	mbuf->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP | RTE_MBUF_F_RX_IEEE1588_TMST;
 	if (hns3_timestamp_rx_dynflag > 0) {
 		*RTE_MBUF_DYNFIELD(mbuf, hns3_timestamp_dynfield_offset,
 			rte_mbuf_timestamp_t *) = timestamp;
@@ -2481,11 +2481,11 @@ hns3_recv_pkts_simple(void *rx_queue,
 		rxm->data_len = rxm->pkt_len;
 		rxm->port = rxq->port_id;
 		rxm->hash.rss = rte_le_to_cpu_32(rxd.rx.rss_hash);
-		rxm->ol_flags |= PKT_RX_RSS_HASH;
+		rxm->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 		if (unlikely(bd_base_info & BIT(HNS3_RXD_LUM_B))) {
 			rxm->hash.fdir.hi =
 				rte_le_to_cpu_16(rxd.rx.fd_id);
-			rxm->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+			rxm->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 		}
 		rxm->nb_segs = 1;
 		rxm->next = NULL;
@@ -2500,7 +2500,7 @@ hns3_recv_pkts_simple(void *rx_queue,
 		rxm->packet_type = hns3_rx_calc_ptype(rxq, l234_info, ol_info);
 
 		if (rxm->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC)
-			rxm->ol_flags |= PKT_RX_IEEE1588_PTP;
+			rxm->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP;
 
 		hns3_rxd_to_vlan_tci(rxq, rxm, l234_info, &rxd);
 
@@ -2699,17 +2699,17 @@ hns3_recv_scattered_pkts(void *rx_queue,
 
 		first_seg->port = rxq->port_id;
 		first_seg->hash.rss = rte_le_to_cpu_32(rxd.rx.rss_hash);
-		first_seg->ol_flags = PKT_RX_RSS_HASH;
+		first_seg->ol_flags = RTE_MBUF_F_RX_RSS_HASH;
 		if (unlikely(bd_base_info & BIT(HNS3_RXD_LUM_B))) {
 			first_seg->hash.fdir.hi =
 				rte_le_to_cpu_16(rxd.rx.fd_id);
-			first_seg->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+			first_seg->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 		}
 
 		gro_size = hns3_get_field(bd_base_info, HNS3_RXD_GRO_SIZE_M,
 					  HNS3_RXD_GRO_SIZE_S);
 		if (gro_size != 0) {
-			first_seg->ol_flags |= PKT_RX_LRO;
+			first_seg->ol_flags |= RTE_MBUF_F_RX_LRO;
 			first_seg->tso_segsz = gro_size;
 		}
 
@@ -2724,7 +2724,7 @@ hns3_recv_scattered_pkts(void *rx_queue,
 						l234_info, ol_info);
 
 		if (first_seg->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC)
-			rxm->ol_flags |= PKT_RX_IEEE1588_PTP;
+			rxm->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP;
 
 		hns3_rxd_to_vlan_tci(rxq, first_seg, l234_info, &rxd);
 
@@ -3151,7 +3151,7 @@ hns3_restore_gro_conf(struct hns3_hw *hw)
 static inline bool
 hns3_pkt_is_tso(struct rte_mbuf *m)
 {
-	return (m->tso_segsz != 0 && m->ol_flags & PKT_TX_TCP_SEG);
+	return (m->tso_segsz != 0 && m->ol_flags & RTE_MBUF_F_TX_TCP_SEG);
 }
 
 static void
@@ -3184,7 +3184,7 @@ hns3_fill_first_desc(struct hns3_tx_queue *txq, struct hns3_desc *desc,
 	uint32_t paylen;
 
 	hdr_len = rxm->l2_len + rxm->l3_len + rxm->l4_len;
-	hdr_len += (ol_flags & PKT_TX_TUNNEL_MASK) ?
+	hdr_len += (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) ?
 			   rxm->outer_l2_len + rxm->outer_l3_len : 0;
 	paylen = rxm->pkt_len - hdr_len;
 	desc->tx.paylen_fd_dop_ol4cs |= rte_cpu_to_le_32(paylen);
@@ -3202,11 +3202,11 @@ hns3_fill_first_desc(struct hns3_tx_queue *txq, struct hns3_desc *desc,
 	 * To avoid the VLAN of Tx descriptor is overwritten by PVID, it should
 	 * be added to the position close to the IP header when PVID is enabled.
 	 */
-	if (!txq->pvid_sw_shift_en && ol_flags & (PKT_TX_VLAN |
-				PKT_TX_QINQ)) {
+	if (!txq->pvid_sw_shift_en &&
+	    ol_flags & (RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_QINQ)) {
 		desc->tx.ol_type_vlan_len_msec |=
 				rte_cpu_to_le_32(BIT(HNS3_TXD_OVLAN_B));
-		if (ol_flags & PKT_TX_QINQ)
+		if (ol_flags & RTE_MBUF_F_TX_QINQ)
 			desc->tx.outer_vlan_tag =
 					rte_cpu_to_le_16(rxm->vlan_tci_outer);
 		else
@@ -3214,14 +3214,14 @@ hns3_fill_first_desc(struct hns3_tx_queue *txq, struct hns3_desc *desc,
 					rte_cpu_to_le_16(rxm->vlan_tci);
 	}
 
-	if (ol_flags & PKT_TX_QINQ ||
-	    ((ol_flags & PKT_TX_VLAN) && txq->pvid_sw_shift_en)) {
+	if (ol_flags & RTE_MBUF_F_TX_QINQ ||
+	    ((ol_flags & RTE_MBUF_F_TX_VLAN) && txq->pvid_sw_shift_en)) {
 		desc->tx.type_cs_vlan_tso_len |=
 					rte_cpu_to_le_32(BIT(HNS3_TXD_VLAN_B));
 		desc->tx.vlan_tag = rte_cpu_to_le_16(rxm->vlan_tci);
 	}
 
-	if (ol_flags & PKT_TX_IEEE1588_TMST)
+	if (ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
 		desc->tx.tp_fe_sc_vld_ra_ri |=
 				rte_cpu_to_le_16(BIT(HNS3_TXD_TSYN_B));
 }
@@ -3343,14 +3343,14 @@ hns3_parse_outer_params(struct rte_mbuf *m, uint32_t *ol_type_vlan_len_msec)
 	uint64_t ol_flags = m->ol_flags;
 
 	/* (outer) IP header type */
-	if (ol_flags & PKT_TX_OUTER_IPV4) {
-		if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
+	if (ol_flags & RTE_MBUF_F_TX_OUTER_IPV4) {
+		if (ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM)
 			tmp |= hns3_gen_field_val(HNS3_TXD_OL3T_M,
 					HNS3_TXD_OL3T_S, HNS3_OL3T_IPV4_CSUM);
 		else
 			tmp |= hns3_gen_field_val(HNS3_TXD_OL3T_M,
 				HNS3_TXD_OL3T_S, HNS3_OL3T_IPV4_NO_CSUM);
-	} else if (ol_flags & PKT_TX_OUTER_IPV6) {
+	} else if (ol_flags & RTE_MBUF_F_TX_OUTER_IPV6) {
 		tmp |= hns3_gen_field_val(HNS3_TXD_OL3T_M, HNS3_TXD_OL3T_S,
 					HNS3_OL3T_IPV6);
 	}
@@ -3370,10 +3370,10 @@ hns3_parse_inner_params(struct rte_mbuf *m, uint32_t *ol_type_vlan_len_msec,
 	uint64_t ol_flags = m->ol_flags;
 	uint16_t inner_l2_len;
 
-	switch (ol_flags & PKT_TX_TUNNEL_MASK) {
-	case PKT_TX_TUNNEL_VXLAN_GPE:
-	case PKT_TX_TUNNEL_GENEVE:
-	case PKT_TX_TUNNEL_VXLAN:
+	switch (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+	case RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE:
+	case RTE_MBUF_F_TX_TUNNEL_GENEVE:
+	case RTE_MBUF_F_TX_TUNNEL_VXLAN:
 		/* MAC in UDP tunnelling packet, include VxLAN and GENEVE */
 		tmp_outer |= hns3_gen_field_val(HNS3_TXD_TUNTYPE_M,
 				HNS3_TXD_TUNTYPE_S, HNS3_TUN_MAC_IN_UDP);
@@ -3392,7 +3392,7 @@ hns3_parse_inner_params(struct rte_mbuf *m, uint32_t *ol_type_vlan_len_msec,
 
 		inner_l2_len = m->l2_len - RTE_ETHER_VXLAN_HLEN;
 		break;
-	case PKT_TX_TUNNEL_GRE:
+	case RTE_MBUF_F_TX_TUNNEL_GRE:
 		tmp_outer |= hns3_gen_field_val(HNS3_TXD_TUNTYPE_M,
 					HNS3_TXD_TUNTYPE_S, HNS3_TUN_NVGRE);
 		/*
@@ -3441,7 +3441,7 @@ hns3_parse_tunneling_params(struct hns3_tx_queue *txq, struct rte_mbuf *m,
 	 * calculations, the length of the L2 header include the outer and
 	 * inner, will be filled during the parsing of tunnel packects.
 	 */
-	if (!(ol_flags & PKT_TX_TUNNEL_MASK)) {
+	if (!(ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)) {
 		/*
 		 * For non tunnel type the tunnel type id is 0, so no need to
 		 * assign a value to it. Only the inner(normal) L2 header length
@@ -3457,7 +3457,7 @@ hns3_parse_tunneling_params(struct hns3_tx_queue *txq, struct rte_mbuf *m,
 		 * calculate the header length.
 		 */
 		if (unlikely(!(ol_flags &
-			(PKT_TX_OUTER_IP_CKSUM | PKT_TX_OUTER_UDP_CKSUM)) &&
+			(RTE_MBUF_F_TX_OUTER_IP_CKSUM | RTE_MBUF_F_TX_OUTER_UDP_CKSUM)) &&
 					m->outer_l2_len == 0)) {
 			struct rte_net_hdr_lens hdr_len;
 			(void)rte_net_get_ptype(m, &hdr_len,
@@ -3474,7 +3474,7 @@ hns3_parse_tunneling_params(struct hns3_tx_queue *txq, struct rte_mbuf *m,
 
 	desc->tx.ol_type_vlan_len_msec = rte_cpu_to_le_32(tmp_outer);
 	desc->tx.type_cs_vlan_tso_len = rte_cpu_to_le_32(tmp_inner);
-	tmp_ol4cs = ol_flags & PKT_TX_OUTER_UDP_CKSUM ?
+	tmp_ol4cs = ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM ?
 			BIT(HNS3_TXD_OL4CS_B) : 0;
 	desc->tx.paylen_fd_dop_ol4cs = rte_cpu_to_le_32(tmp_ol4cs);
 
@@ -3489,9 +3489,9 @@ hns3_parse_l3_cksum_params(struct rte_mbuf *m, uint32_t *type_cs_vlan_tso_len)
 	uint32_t tmp;
 
 	tmp = *type_cs_vlan_tso_len;
-	if (ol_flags & PKT_TX_IPV4)
+	if (ol_flags & RTE_MBUF_F_TX_IPV4)
 		l3_type = HNS3_L3T_IPV4;
-	else if (ol_flags & PKT_TX_IPV6)
+	else if (ol_flags & RTE_MBUF_F_TX_IPV6)
 		l3_type = HNS3_L3T_IPV6;
 	else
 		l3_type = HNS3_L3T_NONE;
@@ -3503,7 +3503,7 @@ hns3_parse_l3_cksum_params(struct rte_mbuf *m, uint32_t *type_cs_vlan_tso_len)
 	tmp |= hns3_gen_field_val(HNS3_TXD_L3T_M, HNS3_TXD_L3T_S, l3_type);
 
 	/* Enable L3 checksum offloads */
-	if (ol_flags & PKT_TX_IP_CKSUM)
+	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 		tmp |= BIT(HNS3_TXD_L3CS_B);
 	*type_cs_vlan_tso_len = tmp;
 }
@@ -3514,20 +3514,20 @@ hns3_parse_l4_cksum_params(struct rte_mbuf *m, uint32_t *type_cs_vlan_tso_len)
 	uint64_t ol_flags = m->ol_flags;
 	uint32_t tmp;
 	/* Enable L4 checksum offloads */
-	switch (ol_flags & (PKT_TX_L4_MASK | PKT_TX_TCP_SEG)) {
-	case PKT_TX_TCP_CKSUM | PKT_TX_TCP_SEG:
-	case PKT_TX_TCP_CKSUM:
-	case PKT_TX_TCP_SEG:
+	switch (ol_flags & (RTE_MBUF_F_TX_L4_MASK | RTE_MBUF_F_TX_TCP_SEG)) {
+	case RTE_MBUF_F_TX_TCP_CKSUM | RTE_MBUF_F_TX_TCP_SEG:
+	case RTE_MBUF_F_TX_TCP_CKSUM:
+	case RTE_MBUF_F_TX_TCP_SEG:
 		tmp = *type_cs_vlan_tso_len;
 		tmp |= hns3_gen_field_val(HNS3_TXD_L4T_M, HNS3_TXD_L4T_S,
 					HNS3_L4T_TCP);
 		break;
-	case PKT_TX_UDP_CKSUM:
+	case RTE_MBUF_F_TX_UDP_CKSUM:
 		tmp = *type_cs_vlan_tso_len;
 		tmp |= hns3_gen_field_val(HNS3_TXD_L4T_M, HNS3_TXD_L4T_S,
 					HNS3_L4T_UDP);
 		break;
-	case PKT_TX_SCTP_CKSUM:
+	case RTE_MBUF_F_TX_SCTP_CKSUM:
 		tmp = *type_cs_vlan_tso_len;
 		tmp |= hns3_gen_field_val(HNS3_TXD_L4T_M, HNS3_TXD_L4T_S,
 					HNS3_L4T_SCTP);
@@ -3584,7 +3584,7 @@ hns3_pkt_need_linearized(struct rte_mbuf *tx_pkts, uint32_t bd_num,
 
 	/* ensure the first 8 frags is greater than mss + header */
 	hdr_len = tx_pkts->l2_len + tx_pkts->l3_len + tx_pkts->l4_len;
-	hdr_len += (tx_pkts->ol_flags & PKT_TX_TUNNEL_MASK) ?
+	hdr_len += (tx_pkts->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) ?
 		   tx_pkts->outer_l2_len + tx_pkts->outer_l3_len : 0;
 	if (tot_len + m_last->data_len < tx_pkts->tso_segsz + hdr_len)
 		return true;
@@ -3614,15 +3614,15 @@ hns3_outer_ipv4_cksum_prepared(struct rte_mbuf *m, uint64_t ol_flags,
 	struct rte_ipv4_hdr *ipv4_hdr;
 	ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
 					   m->outer_l2_len);
-	if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
+	if (ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM)
 		ipv4_hdr->hdr_checksum = 0;
-	if (ol_flags & PKT_TX_OUTER_UDP_CKSUM) {
+	if (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM) {
 		struct rte_udp_hdr *udp_hdr;
 		/*
 		 * If OUTER_UDP_CKSUM is support, HW can caclulate the pseudo
 		 * header for TSO packets
 		 */
-		if (ol_flags & PKT_TX_TCP_SEG)
+		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 			return true;
 		udp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
 				m->outer_l2_len + m->outer_l3_len);
@@ -3641,13 +3641,13 @@ hns3_outer_ipv6_cksum_prepared(struct rte_mbuf *m, uint64_t ol_flags,
 	struct rte_ipv6_hdr *ipv6_hdr;
 	ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
 					   m->outer_l2_len);
-	if (ol_flags & PKT_TX_OUTER_UDP_CKSUM) {
+	if (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM) {
 		struct rte_udp_hdr *udp_hdr;
 		/*
 		 * If OUTER_UDP_CKSUM is support, HW can caclulate the pseudo
 		 * header for TSO packets
 		 */
-		if (ol_flags & PKT_TX_TCP_SEG)
+		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 			return true;
 		udp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
 				m->outer_l2_len + m->outer_l3_len);
@@ -3666,10 +3666,10 @@ hns3_outer_header_cksum_prepare(struct rte_mbuf *m)
 	uint32_t paylen, hdr_len, l4_proto;
 	struct rte_udp_hdr *udp_hdr;
 
-	if (!(ol_flags & (PKT_TX_OUTER_IPV4 | PKT_TX_OUTER_IPV6)))
+	if (!(ol_flags & (RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IPV6)))
 		return;
 
-	if (ol_flags & PKT_TX_OUTER_IPV4) {
+	if (ol_flags & RTE_MBUF_F_TX_OUTER_IPV4) {
 		if (hns3_outer_ipv4_cksum_prepared(m, ol_flags, &l4_proto))
 			return;
 	} else {
@@ -3678,7 +3678,7 @@ hns3_outer_header_cksum_prepare(struct rte_mbuf *m)
 	}
 
 	/* driver should ensure the outer udp cksum is 0 for TUNNEL TSO */
-	if (l4_proto == IPPROTO_UDP && (ol_flags & PKT_TX_TCP_SEG)) {
+	if (l4_proto == IPPROTO_UDP && (ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 		hdr_len = m->l2_len + m->l3_len + m->l4_len;
 		hdr_len += m->outer_l2_len + m->outer_l3_len;
 		paylen = m->pkt_len - hdr_len;
@@ -3704,7 +3704,7 @@ hns3_check_tso_pkt_valid(struct rte_mbuf *m)
 		return -EINVAL;
 
 	hdr_len = m->l2_len + m->l3_len + m->l4_len;
-	hdr_len += (m->ol_flags & PKT_TX_TUNNEL_MASK) ?
+	hdr_len += (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) ?
 			m->outer_l2_len + m->outer_l3_len : 0;
 	if (hdr_len > HNS3_MAX_TSO_HDR_SIZE)
 		return -EINVAL;
@@ -3754,12 +3754,12 @@ hns3_vld_vlan_chk(struct hns3_tx_queue *txq, struct rte_mbuf *m)
 	 * implementation function named hns3_prep_pkts to inform users that
 	 * these packets will be discarded.
 	 */
-	if (m->ol_flags & PKT_TX_QINQ)
+	if (m->ol_flags & RTE_MBUF_F_TX_QINQ)
 		return -EINVAL;
 
 	eh = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	if (eh->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN)) {
-		if (m->ol_flags & PKT_TX_VLAN)
+		if (m->ol_flags & RTE_MBUF_F_TX_VLAN)
 			return -EINVAL;
 
 		/* Ensure the incoming packet is not a QinQ packet */
@@ -3779,7 +3779,7 @@ hns3_udp_cksum_help(struct rte_mbuf *m)
 	uint16_t cksum = 0;
 	uint32_t l4_len;
 
-	if (ol_flags & PKT_TX_IPV4) {
+	if (ol_flags & RTE_MBUF_F_TX_IPV4) {
 		struct rte_ipv4_hdr *ipv4_hdr = rte_pktmbuf_mtod_offset(m,
 				struct rte_ipv4_hdr *, m->l2_len);
 		l4_len = rte_be_to_cpu_16(ipv4_hdr->total_length) - m->l3_len;
@@ -3810,8 +3810,8 @@ hns3_validate_tunnel_cksum(struct hns3_tx_queue *tx_queue, struct rte_mbuf *m)
 	uint16_t dst_port;
 
 	if (tx_queue->udp_cksum_mode == HNS3_SPECIAL_PORT_HW_CKSUM_MODE ||
-	    ol_flags & PKT_TX_TUNNEL_MASK ||
-	    (ol_flags & PKT_TX_L4_MASK) != PKT_TX_UDP_CKSUM)
+	    ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK ||
+	    (ol_flags & RTE_MBUF_F_TX_L4_MASK) != RTE_MBUF_F_TX_UDP_CKSUM)
 		return true;
 	/*
 	 * A UDP packet with the same dst_port as VXLAN\VXLAN_GPE\GENEVE will
@@ -3828,7 +3828,7 @@ hns3_validate_tunnel_cksum(struct hns3_tx_queue *tx_queue, struct rte_mbuf *m)
 	case RTE_VXLAN_GPE_DEFAULT_PORT:
 	case RTE_GENEVE_DEFAULT_PORT:
 		udp_hdr->dgram_cksum = hns3_udp_cksum_help(m);
-		m->ol_flags = ol_flags & ~PKT_TX_L4_MASK;
+		m->ol_flags = ol_flags & ~RTE_MBUF_F_TX_L4_MASK;
 		return false;
 	default:
 		return true;

@@ -471,7 +471,7 @@ struct hns3_tx_queue {
 	 *  - HNS3_SPECIAL_PORT_SW_CKSUM_MODE
 	 *     In this mode, HW can not do checksum for special UDP port like
 	 *     4789, 4790, 6081 for non-tunnel UDP packets and UDP tunnel
-	 *     packets without the PKT_TX_TUNEL_MASK in the mbuf. So, PMD need
+	 *     packets without the RTE_MBUF_F_TX_TUNEL_MASK in the mbuf. So, PMD need
 	 *     do the checksum for these packets to avoid a checksum error.
 	 *
 	 *  - HNS3_SPECIAL_PORT_HW_CKSUM_MODE
@@ -545,12 +545,11 @@ struct hns3_queue_info {
 	unsigned int socket_id;
 };
 
-#define HNS3_TX_CKSUM_OFFLOAD_MASK ( \
-	PKT_TX_OUTER_UDP_CKSUM | \
-	PKT_TX_OUTER_IP_CKSUM | \
-	PKT_TX_IP_CKSUM | \
-	PKT_TX_TCP_SEG | \
-	PKT_TX_L4_MASK)
+#define HNS3_TX_CKSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_OUTER_UDP_CKSUM | \
+	RTE_MBUF_F_TX_OUTER_IP_CKSUM | \
+	RTE_MBUF_F_TX_IP_CKSUM | \
+	RTE_MBUF_F_TX_TCP_SEG | \
+	RTE_MBUF_F_TX_L4_MASK)
 
 enum hns3_cksum_status {
 	HNS3_CKSUM_NONE = 0,
@@ -574,29 +573,29 @@ hns3_rx_set_cksum_flag(struct hns3_rx_queue *rxq,
 				 BIT(HNS3_RXD_OL4E_B))
 
 	if (likely((l234_info & HNS3_RXD_CKSUM_ERR_MASK) == 0)) {
-		rxm->ol_flags |= (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
+		rxm->ol_flags |= (RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD);
 		return;
 	}
 
 	if (unlikely(l234_info & BIT(HNS3_RXD_L3E_B))) {
-		rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		rxm->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		rxq->dfx_stats.l3_csum_errors++;
 	} else {
-		rxm->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+		rxm->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 	}
 
 	if (unlikely(l234_info & BIT(HNS3_RXD_L4E_B))) {
-		rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+		rxm->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		rxq->dfx_stats.l4_csum_errors++;
 	} else {
-		rxm->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+		rxm->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 	}
 
 	if (unlikely(l234_info & BIT(HNS3_RXD_OL3E_B)))
 		rxq->dfx_stats.ol3_csum_errors++;
 
 	if (unlikely(l234_info & BIT(HNS3_RXD_OL4E_B))) {
-		rxm->ol_flags |= PKT_RX_OUTER_L4_CKSUM_BAD;
+		rxm->ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD;
 		rxq->dfx_stats.ol4_csum_errors++;
 	}
 }

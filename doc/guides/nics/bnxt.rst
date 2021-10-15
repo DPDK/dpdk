@@ -512,9 +512,9 @@ configured TPID.
     // enable VLAN insert offload
     testpmd> port config (port_id) rx_offload vlan_insert|qinq_insert (on|off)
 
-    if (mbuf->ol_flags && PKT_TX_QINQ)       // case-1: insert VLAN to single-tagged packet
+    if (mbuf->ol_flags && RTE_MBUF_F_TX_QINQ)       // case-1: insert VLAN to single-tagged packet
         tci_value = mbuf->vlan_tci_outer
-    else if (mbuf->ol_flags && PKT_TX_VLAN)  // case-2: insert VLAN to untagged packet
+    else if (mbuf->ol_flags && RTE_MBUF_F_TX_VLAN)  // case-2: insert VLAN to untagged packet
         tci_value = mbuf->vlan_tci
 
 VLAN Strip
@@ -528,7 +528,7 @@ The application configures the per-port VLAN strip offload.
     testpmd> port config (port_id) tx_offload vlan_strip (on|off)
 
     // notify application VLAN strip via mbuf
-    mbuf->ol_flags |= PKT_RX_VLAN | PKT_RX_STRIPPED // outer VLAN is found and stripped
+    mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_STRIPPED // outer VLAN is found and stripped
     mbuf->vlan_tci = tci_value                      // TCI of the stripped VLAN
 
 Time Synchronization
@@ -552,7 +552,7 @@ packets to application via mbuf.
 .. code-block:: console
 
     // RX packet completion will indicate whether the packet is PTP
-    mbuf->ol_flags |= PKT_RX_IEEE1588_PTP
+    mbuf->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP
 
 Statistics Collection
 ~~~~~~~~~~~~~~~~~~~~~

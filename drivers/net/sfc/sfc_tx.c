@@ -780,7 +780,7 @@ static unsigned int
 sfc_efx_tx_maybe_insert_tag(struct sfc_efx_txq *txq, struct rte_mbuf *m,
 			    efx_desc_t **pend)
 {
-	uint16_t this_tag = ((m->ol_flags & PKT_TX_VLAN) ?
+	uint16_t this_tag = ((m->ol_flags & RTE_MBUF_F_TX_VLAN) ?
 			     m->vlan_tci : 0);
 
 	if (this_tag == txq->hw_vlan_tci)
@@ -883,7 +883,7 @@ sfc_efx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 */
 		pkt_descs += sfc_efx_tx_maybe_insert_tag(txq, m_seg, &pend);
 
-		if (m_seg->ol_flags & PKT_TX_TCP_SEG) {
+		if (m_seg->ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 			/*
 			 * We expect correct 'pkt->l[2, 3, 4]_len' values
 			 * to be set correctly by the caller

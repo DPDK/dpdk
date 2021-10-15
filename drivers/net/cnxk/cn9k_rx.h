@@ -103,9 +103,9 @@ nix_update_match_id(const uint16_t match_id, uint64_t ol_flags,
 	 * 0 to CNXK_FLOW_ACTION_FLAG_DEFAULT - 2
 	 */
 	if (likely(match_id)) {
-		ol_flags |= PKT_RX_FDIR;
+		ol_flags |= RTE_MBUF_F_RX_FDIR;
 		if (match_id != CNXK_FLOW_ACTION_FLAG_DEFAULT) {
-			ol_flags |= PKT_RX_FDIR_ID;
+			ol_flags |= RTE_MBUF_F_RX_FDIR_ID;
 			mbuf->hash.fdir.hi = match_id - 1;
 		}
 	}
@@ -237,7 +237,7 @@ nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 	rte_prefetch0((void *)data);
 
 	if (unlikely(res != (CPT_COMP_GOOD | ROC_IE_ONF_UCC_SUCCESS << 8)))
-		return PKT_RX_SEC_OFFLOAD | PKT_RX_SEC_OFFLOAD_FAILED;
+		return RTE_MBUF_F_RX_SEC_OFFLOAD | RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
 
 	data += lcptr;
 	/* 20 bits of tag would have the SPI */
@@ -258,7 +258,7 @@ nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 	win_sz = (uint32_t)(dw >> 64);
 	if (win_sz) {
 		if (ipsec_antireplay_check(sa, sa_priv, data, win_sz) < 0)
-			return PKT_RX_SEC_OFFLOAD | PKT_RX_SEC_OFFLOAD_FAILED;
+			return RTE_MBUF_F_RX_SEC_OFFLOAD | RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
 	}
 
 	/* Get total length from IPv4 header. We can assume only IPv4 */
@@ -272,7 +272,7 @@ nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 	*rearm_val |= data_off;
 
 	*len = rte_be_to_cpu_16(ipv4->total_length) + lcptr;
-	return PKT_RX_SEC_OFFLOAD;
+	return RTE_MBUF_F_RX_SEC_OFFLOAD;
 }
 
 static __rte_always_inline void
@@ -319,7 +319,7 @@ cn9k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 
 	if (flag & NIX_RX_OFFLOAD_RSS_F) {
 		mbuf->hash.rss = tag;
-		ol_flags |= PKT_RX_RSS_HASH;
+		ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 	}
 
 	if (flag & NIX_RX_OFFLOAD_CHECKSUM_F)
@@ -328,11 +328,11 @@ cn9k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 skip_parse:
 	if (flag & NIX_RX_OFFLOAD_VLAN_STRIP_F) {
 		if (rx->cn9k.vtag0_gone) {
-			ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+			ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 			mbuf->vlan_tci = rx->cn9k.vtag0_tci;
 		}
 		if (rx->cn9k.vtag1_gone) {
-			ol_flags |= PKT_RX_QINQ | PKT_RX_QINQ_STRIPPED;
+			ol_flags |= RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_RX_QINQ_STRIPPED;
 			mbuf->vlan_tci_outer = rx->cn9k.vtag1_tci;
 		}
 	}
@@ -437,7 +437,7 @@ static __rte_always_inline uint64_t
 nix_vlan_update(const uint64_t w2, uint64_t ol_flags, uint8x16_t *f)
 {
 	if (w2 & BIT_ULL(21) /* vtag0_gone */) {
-		ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		*f = vsetq_lane_u16((uint16_t)(w2 >> 32), *f, 5);
 	}
 
@@ -448,7 +448,7 @@ static __rte_always_inline uint64_t
 nix_qinq_update(const uint64_t w2, uint64_t ol_flags, struct rte_mbuf *mbuf)
 {
 	if (w2 & BIT_ULL(23) /* vtag1_gone */) {
-		ol_flags |= PKT_RX_QINQ | PKT_RX_QINQ_STRIPPED;
+		ol_flags |= RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_RX_QINQ_STRIPPED;
 		mbuf->vlan_tci_outer = (uint16_t)(w2 >> 48);
 	}
 
@@ -549,10 +549,10 @@ cn9k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 			f1 = vsetq_lane_u32(cq1_w0, f1, 3);
 			f2 = vsetq_lane_u32(cq2_w0, f2, 3);
 			f3 = vsetq_lane_u32(cq3_w0, f3, 3);
-			ol_flags0 = PKT_RX_RSS_HASH;
-			ol_flags1 = PKT_RX_RSS_HASH;
-			ol_flags2 = PKT_RX_RSS_HASH;
-			ol_flags3 = PKT_RX_RSS_HASH;
+			ol_flags0 = RTE_MBUF_F_RX_RSS_HASH;
+			ol_flags1 = RTE_MBUF_F_RX_RSS_HASH;
+			ol_flags2 = RTE_MBUF_F_RX_RSS_HASH;
+			ol_flags3 = RTE_MBUF_F_RX_RSS_HASH;
 		} else {
 			ol_flags0 = 0;
 			ol_flags1 = 0;
@@ -625,8 +625,8 @@ cn9k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 						  RTE_PTYPE_L2_ETHER_TIMESYNC,
 						  RTE_PTYPE_L2_ETHER_TIMESYNC,
 						  RTE_PTYPE_L2_ETHER_TIMESYNC};
-			const uint64_t ts_olf = PKT_RX_IEEE1588_PTP |
-						PKT_RX_IEEE1588_TMST |
+			const uint64_t ts_olf = RTE_MBUF_F_RX_IEEE1588_PTP |
+						RTE_MBUF_F_RX_IEEE1588_TMST |
 						rxq->tstamp->rx_tstamp_dynflag;
 			const uint32x4_t and_mask = {0x1, 0x2, 0x4, 0x8};
 			uint64x2_t ts01, ts23, mask;

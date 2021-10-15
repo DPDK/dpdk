@@ -15,20 +15,20 @@
 #include "hw_atl/hw_atl_b0_internal.h"
 
 #define ATL_TX_CKSUM_OFFLOAD_MASK (			 \
-	PKT_TX_IP_CKSUM |				 \
-	PKT_TX_L4_MASK |				 \
-	PKT_TX_TCP_SEG)
+	RTE_MBUF_F_TX_IP_CKSUM |				 \
+	RTE_MBUF_F_TX_L4_MASK |				 \
+	RTE_MBUF_F_TX_TCP_SEG)
 
 #define ATL_TX_OFFLOAD_MASK (				 \
-	PKT_TX_VLAN |					 \
-	PKT_TX_IPV6 |					 \
-	PKT_TX_IPV4 |					 \
-	PKT_TX_IP_CKSUM |				 \
-	PKT_TX_L4_MASK |				 \
-	PKT_TX_TCP_SEG)
+	RTE_MBUF_F_TX_VLAN |					 \
+	RTE_MBUF_F_TX_IPV6 |					 \
+	RTE_MBUF_F_TX_IPV4 |					 \
+	RTE_MBUF_F_TX_IP_CKSUM |				 \
+	RTE_MBUF_F_TX_L4_MASK |				 \
+	RTE_MBUF_F_TX_TCP_SEG)
 
 #define ATL_TX_OFFLOAD_NOTSUP_MASK \
-	(PKT_TX_OFFLOAD_MASK ^ ATL_TX_OFFLOAD_MASK)
+	(RTE_MBUF_F_TX_OFFLOAD_MASK ^ ATL_TX_OFFLOAD_MASK)
 
 /**
  * Structure associated with each descriptor of the RX ring of a RX queue.
@@ -845,21 +845,21 @@ atl_desc_to_offload_flags(struct atl_rx_queue *rxq,
 	if (rxq->l3_csum_enabled && ((rxd_wb->pkt_type & 0x3) == 0)) {
 		/* IPv4 csum error ? */
 		if (rxd_wb->rx_stat & BIT(1))
-			mbuf_flags |= PKT_RX_IP_CKSUM_BAD;
+			mbuf_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		else
-			mbuf_flags |= PKT_RX_IP_CKSUM_GOOD;
+			mbuf_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 	} else {
-		mbuf_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
+		mbuf_flags |= RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN;
 	}
 
 	/* CSUM calculated ? */
 	if (rxq->l4_csum_enabled && (rxd_wb->rx_stat & BIT(3))) {
 		if (rxd_wb->rx_stat & BIT(2))
-			mbuf_flags |= PKT_RX_L4_CKSUM_BAD;
+			mbuf_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		else
-			mbuf_flags |= PKT_RX_L4_CKSUM_GOOD;
+			mbuf_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 	} else {
-		mbuf_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
+		mbuf_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
 	}
 
 	return mbuf_flags;
@@ -1039,12 +1039,12 @@ atl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rx_mbuf->packet_type = atl_desc_to_pkt_type(&rxd_wb);
 
 			if (rx_mbuf->packet_type & RTE_PTYPE_L2_ETHER_VLAN) {
-				rx_mbuf->ol_flags |= PKT_RX_VLAN;
+				rx_mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN;
 				rx_mbuf->vlan_tci = rxd_wb.vlan;
 
 				if (cfg->vlan_strip)
 					rx_mbuf->ol_flags |=
-						PKT_RX_VLAN_STRIPPED;
+						RTE_MBUF_F_RX_VLAN_STRIPPED;
 			}
 
 			if (!rx_mbuf_first)
@@ -1174,12 +1174,12 @@ atl_tso_setup(struct rte_mbuf *tx_pkt, union hw_atl_txc_s *txc)
 	uint32_t tx_cmd = 0;
 	uint64_t ol_flags = tx_pkt->ol_flags;
 
-	if (ol_flags & PKT_TX_TCP_SEG) {
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 		tx_cmd |= tx_desc_cmd_lso | tx_desc_cmd_l4cs;
 
 		txc->cmd = 0x4;
 
-		if (ol_flags & PKT_TX_IPV6)
+		if (ol_flags & RTE_MBUF_F_TX_IPV6)
 			txc->cmd |= 0x2;
 
 		txc->l2_len = tx_pkt->l2_len;
@@ -1189,7 +1189,7 @@ atl_tso_setup(struct rte_mbuf *tx_pkt, union hw_atl_txc_s *txc)
 		txc->mss_len = tx_pkt->tso_segsz;
 	}
 
-	if (ol_flags & PKT_TX_VLAN) {
+	if (ol_flags & RTE_MBUF_F_TX_VLAN) {
 		tx_cmd |= tx_desc_cmd_vlan;
 		txc->vlan_tag = tx_pkt->vlan_tci;
 	}
@@ -1207,9 +1207,9 @@ atl_setup_csum_offload(struct rte_mbuf *mbuf, struct hw_atl_txd_s *txd,
 		       uint32_t tx_cmd)
 {
 	txd->cmd |= tx_desc_cmd_fcs;
-	txd->cmd |= (mbuf->ol_flags & PKT_TX_IP_CKSUM) ? tx_desc_cmd_ipv4 : 0;
+	txd->cmd |= (mbuf->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) ? tx_desc_cmd_ipv4 : 0;
 	/* L4 csum requested */
-	txd->cmd |= (mbuf->ol_flags & PKT_TX_L4_MASK) ? tx_desc_cmd_l4cs : 0;
+	txd->cmd |= (mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) ? tx_desc_cmd_l4cs : 0;
 	txd->cmd |= tx_cmd;
 }
 

@@ -37,7 +37,7 @@ update_tunnel_ipv4_tcp_headers(struct rte_mbuf *pkt, uint8_t ipid_delta,
 	tail_idx = nb_segs - 1;
 
 	/* Only update UDP header for VxLAN packets. */
-	update_udp_hdr = (pkt->ol_flags & PKT_TX_TUNNEL_VXLAN) ? 1 : 0;
+	update_udp_hdr = (pkt->ol_flags & RTE_MBUF_F_TX_TUNNEL_VXLAN) ? 1 : 0;
 
 	for (i = 0; i < nb_segs; i++) {
 		update_ipv4_header(segs[i], outer_ipv4_offset, outer_id);

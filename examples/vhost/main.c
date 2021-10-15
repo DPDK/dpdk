@@ -1037,15 +1037,15 @@ static void virtio_tx_offload(struct rte_mbuf *m)
 	tcp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_tcp_hdr *,
 		m->l2_len + m->l3_len);
 
-	m->ol_flags |= PKT_TX_TCP_SEG;
+	m->ol_flags |= RTE_MBUF_F_TX_TCP_SEG;
 	if ((ptype & RTE_PTYPE_L3_MASK) == RTE_PTYPE_L3_IPV4) {
-		m->ol_flags |= PKT_TX_IPV4;
-		m->ol_flags |= PKT_TX_IP_CKSUM;
+		m->ol_flags |= RTE_MBUF_F_TX_IPV4;
+		m->ol_flags |= RTE_MBUF_F_TX_IP_CKSUM;
 		ipv4_hdr = l3_hdr;
 		ipv4_hdr->hdr_checksum = 0;
 		tcp_hdr->cksum = rte_ipv4_phdr_cksum(l3_hdr, m->ol_flags);
 	} else { /* assume ethertype == RTE_ETHER_TYPE_IPV6 */
-		m->ol_flags |= PKT_TX_IPV6;
+		m->ol_flags |= RTE_MBUF_F_TX_IPV6;
 		tcp_hdr->cksum = rte_ipv6_phdr_cksum(l3_hdr, m->ol_flags);
 	}
 }
@@ -1116,7 +1116,7 @@ queue2nic:
 			(vh->vlan_tci != vlan_tag_be))
 			vh->vlan_tci = vlan_tag_be;
 	} else {
-		m->ol_flags |= PKT_TX_VLAN;
+		m->ol_flags |= RTE_MBUF_F_TX_VLAN;
 
 		/*
 		 * Find the right seg to adjust the data len when offset is
@@ -1140,7 +1140,7 @@ queue2nic:
 		m->vlan_tci = vlan_tag;
 	}
 
-	if (m->ol_flags & PKT_RX_LRO)
+	if (m->ol_flags & RTE_MBUF_F_RX_LRO)
 		virtio_tx_offload(m);
 
 	tx_q->m_table[tx_q->len++] = m;

@@ -330,7 +330,7 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 	/* Mask RSS hash offload flag if RSS is not enabled */
 	sfc_ef10_rx_ev_to_offloads(rx_ev, m,
 				   (rxq->flags & SFC_EF10_RXQ_RSS_HASH) ?
-				   ~0ull : ~PKT_RX_RSS_HASH);
+				   ~0ull : ~RTE_MBUF_F_RX_RSS_HASH);
 
 	/* data_off already moved past pseudo header */
 	pseudo_hdr = (uint8_t *)m->buf_addr + RTE_PKTMBUF_HEADROOM;
@@ -338,7 +338,7 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 	/*
 	 * Always get RSS hash from pseudo header to avoid
 	 * condition/branching. If it is valid or not depends on
-	 * PKT_RX_RSS_HASH in m->ol_flags.
+	 * RTE_MBUF_F_RX_RSS_HASH in m->ol_flags.
 	 */
 	m->hash.rss = sfc_ef10_rx_pseudo_hdr_get_hash(pseudo_hdr);
 
@@ -392,7 +392,7 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 		/*
 		 * Always get RSS hash from pseudo header to avoid
 		 * condition/branching. If it is valid or not depends on
-		 * PKT_RX_RSS_HASH in m->ol_flags.
+		 * RTE_MBUF_F_RX_RSS_HASH in m->ol_flags.
 		 */
 		m->hash.rss = sfc_ef10_rx_pseudo_hdr_get_hash(pseudo_hdr);
 

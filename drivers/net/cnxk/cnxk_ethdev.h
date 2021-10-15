@@ -128,8 +128,8 @@
 #define CNXK_NIX_FASTPATH_LOOKUP_MEM "cnxk_nix_fastpath_lookup_mem"
 
 #define CNXK_NIX_UDP_TUN_BITMASK                                               \
-	((1ull << (PKT_TX_TUNNEL_VXLAN >> 45)) |                               \
-	 (1ull << (PKT_TX_TUNNEL_GENEVE >> 45)))
+	((1ull << (RTE_MBUF_F_TX_TUNNEL_VXLAN >> 45)) |                               \
+	 (1ull << (RTE_MBUF_F_TX_TUNNEL_GENEVE >> 45)))
 
 /* Subtype from inline outbound error event */
 #define CNXK_ETHDEV_SEC_OUTB_EV_SUB 0xFFUL
@@ -691,15 +691,15 @@ cnxk_nix_mbuf_to_tstamp(struct rte_mbuf *mbuf,
 		 */
 		*cnxk_nix_timestamp_dynfield(mbuf, tstamp) =
 			rte_be_to_cpu_64(*tstamp_ptr);
-		/* PKT_RX_IEEE1588_TMST flag needs to be set only in case
+		/* RTE_MBUF_F_RX_IEEE1588_TMST flag needs to be set only in case
 		 * PTP packets are received.
 		 */
 		if (mbuf->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC) {
 			tstamp->rx_tstamp =
 				*cnxk_nix_timestamp_dynfield(mbuf, tstamp);
 			tstamp->rx_ready = 1;
-			mbuf->ol_flags |= PKT_RX_IEEE1588_PTP |
-					  PKT_RX_IEEE1588_TMST |
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP |
+					  RTE_MBUF_F_RX_IEEE1588_TMST |
 					  tstamp->rx_tstamp_dynflag;
 		}
 	}

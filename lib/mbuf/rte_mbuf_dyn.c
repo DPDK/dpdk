@@ -130,7 +130,7 @@ init_shared_mem(void)
 		mark_free(dynfield1);
 
 		/* init free_flags */
-		for (mask = PKT_FIRST_FREE; mask <= PKT_LAST_FREE; mask <<= 1)
+		for (mask = RTE_MBUF_F_FIRST_FREE; mask <= RTE_MBUF_F_LAST_FREE; mask <<= 1)
 			shm->free_flags |= mask;
 
 		process_score();

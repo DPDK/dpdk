@@ -298,7 +298,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 			rte_pktmbuf_free(m);
 
 			/* request HW to regenerate IPv4 cksum */
-			ol_flags |= (PKT_TX_IPV4 | PKT_TX_IP_CKSUM);
+			ol_flags |= (RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM);
 
 			/* If we fail to fragment the packet */
 			if (unlikely (len2 < 0))

@@ -44,24 +44,23 @@
 #include "e1000_ethdev.h"
 
 #ifdef RTE_LIBRTE_IEEE1588
-#define IGB_TX_IEEE1588_TMST PKT_TX_IEEE1588_TMST
+#define IGB_TX_IEEE1588_TMST RTE_MBUF_F_TX_IEEE1588_TMST
 #else
 #define IGB_TX_IEEE1588_TMST 0
 #endif
 /* Bit Mask to indicate what bits required for building TX context */
-#define IGB_TX_OFFLOAD_MASK (			 \
-		PKT_TX_OUTER_IPV6 |	 \
-		PKT_TX_OUTER_IPV4 |	 \
-		PKT_TX_IPV6 |		 \
-		PKT_TX_IPV4 |		 \
-		PKT_TX_VLAN |		 \
-		PKT_TX_IP_CKSUM |		 \
-		PKT_TX_L4_MASK |		 \
-		PKT_TX_TCP_SEG |		 \
+#define IGB_TX_OFFLOAD_MASK (RTE_MBUF_F_TX_OUTER_IPV6 |	 \
+		RTE_MBUF_F_TX_OUTER_IPV4 |	 \
+		RTE_MBUF_F_TX_IPV6 |		 \
+		RTE_MBUF_F_TX_IPV4 |		 \
+		RTE_MBUF_F_TX_VLAN |		 \
+		RTE_MBUF_F_TX_IP_CKSUM |		 \
+		RTE_MBUF_F_TX_L4_MASK |		 \
+		RTE_MBUF_F_TX_TCP_SEG |		 \
 		IGB_TX_IEEE1588_TMST)
 
 #define IGB_TX_OFFLOAD_NOTSUP_MASK \
-		(PKT_TX_OFFLOAD_MASK ^ IGB_TX_OFFLOAD_MASK)
+		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ IGB_TX_OFFLOAD_MASK)
 
 /**
  * Structure associated with each descriptor of the RX ring of a RX queue.
@@ -226,12 +225,12 @@ struct igb_tx_queue {
 static inline uint64_t
 check_tso_para(uint64_t ol_req, union igb_tx_offload ol_para)
 {
-	if (!(ol_req & PKT_TX_TCP_SEG))
+	if (!(ol_req & RTE_MBUF_F_TX_TCP_SEG))
 		return ol_req;
 	if ((ol_para.tso_segsz > IGB_TSO_MAX_MSS) || (ol_para.l2_len +
 			ol_para.l3_len + ol_para.l4_len > IGB_TSO_MAX_HDRLEN)) {
-		ol_req &= ~PKT_TX_TCP_SEG;
-		ol_req |= PKT_TX_TCP_CKSUM;
+		ol_req &= ~RTE_MBUF_F_TX_TCP_SEG;
+		ol_req |= RTE_MBUF_F_TX_TCP_CKSUM;
 	}
 	return ol_req;
 }
@@ -262,13 +261,13 @@ igbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	/* Specify which HW CTX to upload. */
 	mss_l4len_idx = (ctx_idx << E1000_ADVTXD_IDX_SHIFT);
 
-	if (ol_flags & PKT_TX_VLAN)
+	if (ol_flags & RTE_MBUF_F_TX_VLAN)
 		tx_offload_mask.data |= TX_VLAN_CMP_MASK;
 
 	/* check if TCP segmentation required for this packet */
-	if (ol_flags & PKT_TX_TCP_SEG) {
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 		/* implies IP cksum in IPv4 */
-		if (ol_flags & PKT_TX_IP_CKSUM)
+		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 			type_tucmd_mlhl = E1000_ADVTXD_TUCMD_IPV4 |
 				E1000_ADVTXD_TUCMD_L4T_TCP |
 				E1000_ADVTXD_DTYP_CTXT | E1000_ADVTXD_DCMD_DEXT;
@@ -281,26 +280,26 @@ igbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		mss_l4len_idx |= tx_offload.tso_segsz << E1000_ADVTXD_MSS_SHIFT;
 		mss_l4len_idx |= tx_offload.l4_len << E1000_ADVTXD_L4LEN_SHIFT;
 	} else { /* no TSO, check if hardware checksum is needed */
-		if (ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK))
+		if (ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_L4_MASK))
 			tx_offload_mask.data |= TX_MACIP_LEN_CMP_MASK;
 
-		if (ol_flags & PKT_TX_IP_CKSUM)
+		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 			type_tucmd_mlhl = E1000_ADVTXD_TUCMD_IPV4;
 
-		switch (ol_flags & PKT_TX_L4_MASK) {
-		case PKT_TX_UDP_CKSUM:
+		switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+		case RTE_MBUF_F_TX_UDP_CKSUM:
 			type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_UDP |
 				E1000_ADVTXD_DTYP_CTXT | E1000_ADVTXD_DCMD_DEXT;
 			mss_l4len_idx |= sizeof(struct rte_udp_hdr)
 				<< E1000_ADVTXD_L4LEN_SHIFT;
 			break;
-		case PKT_TX_TCP_CKSUM:
+		case RTE_MBUF_F_TX_TCP_CKSUM:
 			type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_TCP |
 				E1000_ADVTXD_DTYP_CTXT | E1000_ADVTXD_DCMD_DEXT;
 			mss_l4len_idx |= sizeof(struct rte_tcp_hdr)
 				<< E1000_ADVTXD_L4LEN_SHIFT;
 			break;
-		case PKT_TX_SCTP_CKSUM:
+		case RTE_MBUF_F_TX_SCTP_CKSUM:
 			type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_SCTP |
 				E1000_ADVTXD_DTYP_CTXT | E1000_ADVTXD_DCMD_DEXT;
 			mss_l4len_idx |= sizeof(struct rte_sctp_hdr)
@@ -359,9 +358,9 @@ tx_desc_cksum_flags_to_olinfo(uint64_t ol_flags)
 	static const uint32_t l3_olinfo[2] = {0, E1000_ADVTXD_POPTS_IXSM};
 	uint32_t tmp;
 
-	tmp  = l4_olinfo[(ol_flags & PKT_TX_L4_MASK)  != PKT_TX_L4_NO_CKSUM];
-	tmp |= l3_olinfo[(ol_flags & PKT_TX_IP_CKSUM) != 0];
-	tmp |= l4_olinfo[(ol_flags & PKT_TX_TCP_SEG) != 0];
+	tmp  = l4_olinfo[(ol_flags & RTE_MBUF_F_TX_L4_MASK)  != RTE_MBUF_F_TX_L4_NO_CKSUM];
+	tmp |= l3_olinfo[(ol_flags & RTE_MBUF_F_TX_IP_CKSUM) != 0];
+	tmp |= l4_olinfo[(ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0];
 	return tmp;
 }
 
@@ -371,8 +370,8 @@ tx_desc_vlan_flags_to_cmdtype(uint64_t ol_flags)
 	uint32_t cmdtype;
 	static uint32_t vlan_cmd[2] = {0, E1000_ADVTXD_DCMD_VLE};
 	static uint32_t tso_cmd[2] = {0, E1000_ADVTXD_DCMD_TSE};
-	cmdtype = vlan_cmd[(ol_flags & PKT_TX_VLAN) != 0];
-	cmdtype |= tso_cmd[(ol_flags & PKT_TX_TCP_SEG) != 0];
+	cmdtype = vlan_cmd[(ol_flags & RTE_MBUF_F_TX_VLAN) != 0];
+	cmdtype |= tso_cmd[(ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0];
 	return cmdtype;
 }
 
@@ -528,11 +527,11 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 */
 		cmd_type_len = txq->txd_type |
 			E1000_ADVTXD_DCMD_IFCS | E1000_ADVTXD_DCMD_DEXT;
-		if (tx_ol_req & PKT_TX_TCP_SEG)
+		if (tx_ol_req & RTE_MBUF_F_TX_TCP_SEG)
 			pkt_len -= (tx_pkt->l2_len + tx_pkt->l3_len + tx_pkt->l4_len);
 		olinfo_status = (pkt_len << E1000_ADVTXD_PAYLEN_SHIFT);
 #if defined(RTE_LIBRTE_IEEE1588)
-		if (ol_flags & PKT_TX_IEEE1588_TMST)
+		if (ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
 			cmd_type_len |= E1000_ADVTXD_MAC_TSTAMP;
 #endif
 		if (tx_ol_req) {
@@ -630,7 +629,7 @@ eth_igb_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		m = tx_pkts[i];
 
 		/* Check some limitations for TSO in hardware */
-		if (m->ol_flags & PKT_TX_TCP_SEG)
+		if (m->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 			if ((m->tso_segsz > IGB_TSO_MAX_MSS) ||
 					(m->l2_len + m->l3_len + m->l4_len >
 					IGB_TSO_MAX_HDRLEN)) {
@@ -745,11 +744,11 @@ igb_rxd_pkt_info_to_pkt_type(uint16_t pkt_info)
 static inline uint64_t
 rx_desc_hlen_type_rss_to_pkt_flags(struct igb_rx_queue *rxq, uint32_t hl_tp_rs)
 {
-	uint64_t pkt_flags = ((hl_tp_rs & 0x0F) == 0) ?  0 : PKT_RX_RSS_HASH;
+	uint64_t pkt_flags = ((hl_tp_rs & 0x0F) == 0) ?  0 : RTE_MBUF_F_RX_RSS_HASH;
 
 #if defined(RTE_LIBRTE_IEEE1588)
 	static uint32_t ip_pkt_etqf_map[8] = {
-		0, 0, 0, PKT_RX_IEEE1588_PTP,
+		0, 0, 0, RTE_MBUF_F_RX_IEEE1588_PTP,
 		0, 0, 0, 0,
 	};
 
@@ -775,11 +774,11 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status)
 
 	/* Check if VLAN present */
 	pkt_flags = ((rx_status & E1000_RXD_STAT_VP) ?
-		PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED : 0);
+		RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED : 0);
 
 #if defined(RTE_LIBRTE_IEEE1588)
 	if (rx_status & E1000_RXD_STAT_TMST)
-		pkt_flags = pkt_flags | PKT_RX_IEEE1588_TMST;
+		pkt_flags = pkt_flags | RTE_MBUF_F_RX_IEEE1588_TMST;
 #endif
 	return pkt_flags;
 }
@@ -793,10 +792,10 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status)
 	 */
 
 	static uint64_t error_to_pkt_flags_map[4] = {
-		PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD,
-		PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
-		PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD,
-		PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+		RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+		RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD
 	};
 	return error_to_pkt_flags_map[(rx_status >>
 		E1000_RXD_ERR_CKSUM_BIT) & E1000_RXD_ERR_CKSUM_MSK];
@@ -938,7 +937,7 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 
 		/*
-		 * The vlan_tci field is only valid when PKT_RX_VLAN is
+		 * The vlan_tci field is only valid when RTE_MBUF_F_RX_VLAN is
 		 * set in the pkt_flags field and must be in CPU byte order.
 		 */
 		if ((staterr & rte_cpu_to_le_32(E1000_RXDEXT_STATERR_LB)) &&
@@ -1178,7 +1177,7 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->hash.rss = rxd.wb.lower.hi_dword.rss;
 
 		/*
-		 * The vlan_tci field is only valid when PKT_RX_VLAN is
+		 * The vlan_tci field is only valid when RTE_MBUF_F_RX_VLAN is
 		 * set in the pkt_flags field and must be in CPU byte order.
 		 */
 		if ((staterr & rte_cpu_to_le_32(E1000_RXDEXT_STATERR_LB)) &&

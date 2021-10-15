@@ -411,25 +411,25 @@ vhost_shadow_enqueue_single_packed(struct virtio_net *dev,
 static __rte_always_inline void
 virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 {
-	uint64_t csum_l4 = m_buf->ol_flags & PKT_TX_L4_MASK;
+	uint64_t csum_l4 = m_buf->ol_flags & RTE_MBUF_F_TX_L4_MASK;
 
-	if (m_buf->ol_flags & PKT_TX_TCP_SEG)
-		csum_l4 |= PKT_TX_TCP_CKSUM;
+	if (m_buf->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
+		csum_l4 |= RTE_MBUF_F_TX_TCP_CKSUM;
 
 	if (csum_l4) {
 		net_hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
 		net_hdr->csum_start = m_buf->l2_len + m_buf->l3_len;
 
 		switch (csum_l4) {
-		case PKT_TX_TCP_CKSUM:
+		case RTE_MBUF_F_TX_TCP_CKSUM:
 			net_hdr->csum_offset = (offsetof(struct rte_tcp_hdr,
 						cksum));
 			break;
-		case PKT_TX_UDP_CKSUM:
+		case RTE_MBUF_F_TX_UDP_CKSUM:
 			net_hdr->csum_offset = (offsetof(struct rte_udp_hdr,
 						dgram_cksum));
 			break;
-		case PKT_TX_SCTP_CKSUM:
+		case RTE_MBUF_F_TX_SCTP_CKSUM:
 			net_hdr->csum_offset = (offsetof(struct rte_sctp_hdr,
 						cksum));
 			break;
@@ -441,7 +441,7 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 	}
 
 	/* IP cksum verification cannot be bypassed, then calculate here */
-	if (m_buf->ol_flags & PKT_TX_IP_CKSUM) {
+	if (m_buf->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 		struct rte_ipv4_hdr *ipv4_hdr;
 
 		ipv4_hdr = rte_pktmbuf_mtod_offset(m_buf, struct rte_ipv4_hdr *,
@@ -450,15 +450,15 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 		ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
 	}
 
-	if (m_buf->ol_flags & PKT_TX_TCP_SEG) {
-		if (m_buf->ol_flags & PKT_TX_IPV4)
+	if (m_buf->ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
+		if (m_buf->ol_flags & RTE_MBUF_F_TX_IPV4)
 			net_hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
 		else
 			net_hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV6;
 		net_hdr->gso_size = m_buf->tso_segsz;
 		net_hdr->hdr_len = m_buf->l2_len + m_buf->l3_len
 					+ m_buf->l4_len;
-	} else if (m_buf->ol_flags & PKT_TX_UDP_SEG) {
+	} else if (m_buf->ol_flags & RTE_MBUF_F_TX_UDP_SEG) {
 		net_hdr->gso_type = VIRTIO_NET_HDR_GSO_UDP;
 		net_hdr->gso_size = m_buf->tso_segsz;
 		net_hdr->hdr_len = m_buf->l2_len + m_buf->l3_len +
@@ -2259,7 +2259,7 @@ parse_headers(struct rte_mbuf *m, uint8_t *l4_proto)
 		m->l3_len = rte_ipv4_hdr_len(ipv4_hdr);
 		if (data_len < m->l2_len + m->l3_len)
 			goto error;
-		m->ol_flags |= PKT_TX_IPV4;
+		m->ol_flags |= RTE_MBUF_F_TX_IPV4;
 		*l4_proto = ipv4_hdr->next_proto_id;
 		break;
 	case RTE_ETHER_TYPE_IPV6:
@@ -2268,7 +2268,7 @@ parse_headers(struct rte_mbuf *m, uint8_t *l4_proto)
 		ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
 				m->l2_len);
 		m->l3_len = sizeof(struct rte_ipv6_hdr);
-		m->ol_flags |= PKT_TX_IPV6;
+		m->ol_flags |= RTE_MBUF_F_TX_IPV6;
 		*l4_proto = ipv6_hdr->proto;
 		break;
 	default:
@@ -2323,17 +2323,17 @@ vhost_dequeue_offload_legacy(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 			case (offsetof(struct rte_tcp_hdr, cksum)):
 				if (l4_proto != IPPROTO_TCP)
 					goto error;
-				m->ol_flags |= PKT_TX_TCP_CKSUM;
+				m->ol_flags |= RTE_MBUF_F_TX_TCP_CKSUM;
 				break;
 			case (offsetof(struct rte_udp_hdr, dgram_cksum)):
 				if (l4_proto != IPPROTO_UDP)
 					goto error;
-				m->ol_flags |= PKT_TX_UDP_CKSUM;
+				m->ol_flags |= RTE_MBUF_F_TX_UDP_CKSUM;
 				break;
 			case (offsetof(struct rte_sctp_hdr, cksum)):
 				if (l4_proto != IPPROTO_SCTP)
 					goto error;
-				m->ol_flags |= PKT_TX_SCTP_CKSUM;
+				m->ol_flags |= RTE_MBUF_F_TX_SCTP_CKSUM;
 				break;
 			default:
 				goto error;
@@ -2355,14 +2355,14 @@ vhost_dequeue_offload_legacy(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 			tcp_len = (tcp_hdr->data_off & 0xf0) >> 2;
 			if (data_len < m->l2_len + m->l3_len + tcp_len)
 				goto error;
-			m->ol_flags |= PKT_TX_TCP_SEG;
+			m->ol_flags |= RTE_MBUF_F_TX_TCP_SEG;
 			m->tso_segsz = hdr->gso_size;
 			m->l4_len = tcp_len;
 			break;
 		case VIRTIO_NET_HDR_GSO_UDP:
 			if (l4_proto != IPPROTO_UDP)
 				goto error;
-			m->ol_flags |= PKT_TX_UDP_SEG;
+			m->ol_flags |= RTE_MBUF_F_TX_UDP_SEG;
 			m->tso_segsz = hdr->gso_size;
 			m->l4_len = sizeof(struct rte_udp_hdr);
 			break;
@@ -2396,7 +2396,7 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m,
 		return;
 	}
 
-	m->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
+	m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN;
 
 	ptype = rte_net_get_ptype(m, &hdr_lens, RTE_PTYPE_ALL_MASK);
 	m->packet_type = ptype;
@@ -2423,7 +2423,7 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m,
 
 		hdrlen = hdr_lens.l2_len + hdr_lens.l3_len + hdr_lens.l4_len;
 		if (hdr->csum_start <= hdrlen && l4_supported != 0) {
-			m->ol_flags |= PKT_RX_L4_CKSUM_NONE;
+			m->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_NONE;
 		} else {
 			/* Unknown proto or tunnel, do sw cksum. We can assume
 			 * the cksum field is in the first segment since the
@@ -2453,13 +2453,13 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m,
 		case VIRTIO_NET_HDR_GSO_TCPV6:
 			if ((ptype & RTE_PTYPE_L4_MASK) != RTE_PTYPE_L4_TCP)
 				break;
-			m->ol_flags |= PKT_RX_LRO | PKT_RX_L4_CKSUM_NONE;
+			m->ol_flags |= RTE_MBUF_F_RX_LRO | RTE_MBUF_F_RX_L4_CKSUM_NONE;
 			m->tso_segsz = hdr->gso_size;
 			break;
 		case VIRTIO_NET_HDR_GSO_UDP:
 			if ((ptype & RTE_PTYPE_L4_MASK) != RTE_PTYPE_L4_UDP)
 				break;
-			m->ol_flags |= PKT_RX_LRO | PKT_RX_L4_CKSUM_NONE;
+			m->ol_flags |= RTE_MBUF_F_RX_LRO | RTE_MBUF_F_RX_L4_CKSUM_NONE;
 			m->tso_segsz = hdr->gso_size;
 			break;
 		default:

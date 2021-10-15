@@ -284,7 +284,7 @@ Intel 82599 10 Gigabit Ethernet Controller Specification Update (Revision 2.87)
 Errata: 44 Integrity Error Reported for IPv4/UDP Packets With Zero Checksum
 
 To support UDP zero checksum, the zero and bad UDP checksum packet is marked as
-PKT_RX_L4_CKSUM_UNKNOWN, so the application needs to recompute the checksum to
+RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN, so the application needs to recompute the checksum to
 validate it.
 
 Inline crypto processing support

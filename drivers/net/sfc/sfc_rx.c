@@ -149,15 +149,15 @@ sfc_efx_rx_desc_flags_to_offload_flags(const unsigned int desc_flags)
 
 	switch (desc_flags & (EFX_PKT_IPV4 | EFX_CKSUM_IPV4)) {
 	case (EFX_PKT_IPV4 | EFX_CKSUM_IPV4):
-		mbuf_flags |= PKT_RX_IP_CKSUM_GOOD;
+		mbuf_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		break;
 	case EFX_PKT_IPV4:
-		mbuf_flags |= PKT_RX_IP_CKSUM_BAD;
+		mbuf_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		break;
 	default:
-		RTE_BUILD_BUG_ON(PKT_RX_IP_CKSUM_UNKNOWN != 0);
-		SFC_ASSERT((mbuf_flags & PKT_RX_IP_CKSUM_MASK) ==
-			   PKT_RX_IP_CKSUM_UNKNOWN);
+		RTE_BUILD_BUG_ON(RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN != 0);
+		SFC_ASSERT((mbuf_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK) ==
+			   RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN);
 		break;
 	}
 
@@ -165,16 +165,16 @@ sfc_efx_rx_desc_flags_to_offload_flags(const unsigned int desc_flags)
 		 (EFX_PKT_TCP | EFX_PKT_UDP | EFX_CKSUM_TCPUDP))) {
 	case (EFX_PKT_TCP | EFX_CKSUM_TCPUDP):
 	case (EFX_PKT_UDP | EFX_CKSUM_TCPUDP):
-		mbuf_flags |= PKT_RX_L4_CKSUM_GOOD;
+		mbuf_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 		break;
 	case EFX_PKT_TCP:
 	case EFX_PKT_UDP:
-		mbuf_flags |= PKT_RX_L4_CKSUM_BAD;
+		mbuf_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		break;
 	default:
-		RTE_BUILD_BUG_ON(PKT_RX_L4_CKSUM_UNKNOWN != 0);
-		SFC_ASSERT((mbuf_flags & PKT_RX_L4_CKSUM_MASK) ==
-			   PKT_RX_L4_CKSUM_UNKNOWN);
+		RTE_BUILD_BUG_ON(RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN != 0);
+		SFC_ASSERT((mbuf_flags & RTE_MBUF_F_RX_L4_CKSUM_MASK) ==
+			   RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN);
 		break;
 	}
 
@@ -225,7 +225,7 @@ sfc_efx_rx_set_rss_hash(struct sfc_efx_rxq *rxq, unsigned int flags,
 						      EFX_RX_HASHALG_TOEPLITZ,
 						      mbuf_data);
 
-		m->ol_flags |= PKT_RX_RSS_HASH;
+		m->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 	}
 }
 

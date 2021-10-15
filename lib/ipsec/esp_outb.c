@@ -618,7 +618,7 @@ esp_outb_sqh_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	bytes = 0;
 
 	for (i = 0; i != num; i++) {
-		if ((mb[i]->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED) == 0) {
+		if ((mb[i]->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED) == 0) {
 			ml = rte_pktmbuf_lastseg(mb[i]);
 			/* remove high-order 32 bits of esn from packet len */
 			mb[i]->pkt_len -= sa->sqh_len;
@@ -658,7 +658,7 @@ inline_outb_mbuf_prepare(const struct rte_ipsec_session *ss,
 	bytes = 0;
 	for (i = 0; i != num; i++) {
 
-		mb[i]->ol_flags |= PKT_TX_SEC_OFFLOAD;
+		mb[i]->ol_flags |= RTE_MBUF_F_TX_SEC_OFFLOAD;
 		bytes += mb[i]->pkt_len;
 		if (ol_flags != 0)
 			rte_security_set_pkt_metadata(ss->security.ctx,

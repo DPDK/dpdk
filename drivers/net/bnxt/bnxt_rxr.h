@@ -212,7 +212,7 @@ static inline void bnxt_rx_vlan_v2(struct rte_mbuf *mbuf,
 {
 	if (RX_CMP_VLAN_VALID(rxcmp)) {
 		mbuf->vlan_tci = RX_CMP_METADATA0_VID(rxcmp1);
-		mbuf->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 	}
 }
 
@@ -276,47 +276,47 @@ static inline void bnxt_parse_csum_v2(struct rte_mbuf *mbuf,
 			t_pkt = 1;
 
 		if (unlikely(RX_CMP_V2_L4_CS_ERR(error_v2)))
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		else if (flags2 & RX_CMP_FLAGS2_L4_CSUM_ALL_OK_MASK)
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 		else
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
 
 		if (unlikely(RX_CMP_V2_L3_CS_ERR(error_v2)))
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		else if (flags2 & RX_CMP_FLAGS2_IP_CSUM_ALL_OK_MASK)
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		else
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN;
 	} else {
 		hdr_cnt = RX_CMP_V2_L4_CS_OK(flags2);
 		if (hdr_cnt > 1)
 			t_pkt = 1;
 
 		if (RX_CMP_V2_L4_CS_OK(flags2))
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 		else if (RX_CMP_V2_L4_CS_ERR(error_v2))
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		else
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
 
 		if (RX_CMP_V2_L3_CS_OK(flags2))
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		else if (RX_CMP_V2_L3_CS_ERR(error_v2))
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		else
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN;
 	}
 
 	if (t_pkt) {
 		if (unlikely(RX_CMP_V2_OT_L4_CS_ERR(error_v2) ||
 					RX_CMP_V2_T_L4_CS_ERR(error_v2)))
-			mbuf->ol_flags |= PKT_RX_OUTER_L4_CKSUM_BAD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD;
 		else
-			mbuf->ol_flags |= PKT_RX_OUTER_L4_CKSUM_GOOD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD;
 
 		if (unlikely(RX_CMP_V2_T_IP_CS_ERR(error_v2)))
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 	}
 }
 

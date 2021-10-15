@@ -43,30 +43,30 @@
 #include "txgbe_rxtx.h"
 
 #ifdef RTE_LIBRTE_IEEE1588
-#define TXGBE_TX_IEEE1588_TMST PKT_TX_IEEE1588_TMST
+#define TXGBE_TX_IEEE1588_TMST RTE_MBUF_F_TX_IEEE1588_TMST
 #else
 #define TXGBE_TX_IEEE1588_TMST 0
 #endif
 
 /* Bit Mask to indicate what bits required for building TX context */
-static const u64 TXGBE_TX_OFFLOAD_MASK = (PKT_TX_IP_CKSUM |
-		PKT_TX_OUTER_IPV6 |
-		PKT_TX_OUTER_IPV4 |
-		PKT_TX_IPV6 |
-		PKT_TX_IPV4 |
-		PKT_TX_VLAN |
-		PKT_TX_L4_MASK |
-		PKT_TX_TCP_SEG |
-		PKT_TX_TUNNEL_MASK |
-		PKT_TX_OUTER_IP_CKSUM |
-		PKT_TX_OUTER_UDP_CKSUM |
+static const u64 TXGBE_TX_OFFLOAD_MASK = (RTE_MBUF_F_TX_IP_CKSUM |
+		RTE_MBUF_F_TX_OUTER_IPV6 |
+		RTE_MBUF_F_TX_OUTER_IPV4 |
+		RTE_MBUF_F_TX_IPV6 |
+		RTE_MBUF_F_TX_IPV4 |
+		RTE_MBUF_F_TX_VLAN |
+		RTE_MBUF_F_TX_L4_MASK |
+		RTE_MBUF_F_TX_TCP_SEG |
+		RTE_MBUF_F_TX_TUNNEL_MASK |
+		RTE_MBUF_F_TX_OUTER_IP_CKSUM |
+		RTE_MBUF_F_TX_OUTER_UDP_CKSUM |
 #ifdef RTE_LIB_SECURITY
-		PKT_TX_SEC_OFFLOAD |
+		RTE_MBUF_F_TX_SEC_OFFLOAD |
 #endif
 		TXGBE_TX_IEEE1588_TMST);
 
 #define TXGBE_TX_OFFLOAD_NOTSUP_MASK \
-		(PKT_TX_OFFLOAD_MASK ^ TXGBE_TX_OFFLOAD_MASK)
+		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ TXGBE_TX_OFFLOAD_MASK)
 
 /*
  * Prefetch a cache line into all cache levels.
@@ -339,7 +339,7 @@ txgbe_set_xmit_ctx(struct txgbe_tx_queue *txq,
 	type_tucmd_mlhl |= TXGBE_TXD_PTID(tx_offload.ptid);
 
 	/* check if TCP segmentation required for this packet */
-	if (ol_flags & PKT_TX_TCP_SEG) {
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 		tx_offload_mask.l2_len |= ~0;
 		tx_offload_mask.l3_len |= ~0;
 		tx_offload_mask.l4_len |= ~0;
@@ -347,25 +347,25 @@ txgbe_set_xmit_ctx(struct txgbe_tx_queue *txq,
 		mss_l4len_idx |= TXGBE_TXD_MSS(tx_offload.tso_segsz);
 		mss_l4len_idx |= TXGBE_TXD_L4LEN(tx_offload.l4_len);
 	} else { /* no TSO, check if hardware checksum is needed */
-		if (ol_flags & PKT_TX_IP_CKSUM) {
+		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 			tx_offload_mask.l2_len |= ~0;
 			tx_offload_mask.l3_len |= ~0;
 		}
 
-		switch (ol_flags & PKT_TX_L4_MASK) {
-		case PKT_TX_UDP_CKSUM:
+		switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+		case RTE_MBUF_F_TX_UDP_CKSUM:
 			mss_l4len_idx |=
 				TXGBE_TXD_L4LEN(sizeof(struct rte_udp_hdr));
 			tx_offload_mask.l2_len |= ~0;
 			tx_offload_mask.l3_len |= ~0;
 			break;
-		case PKT_TX_TCP_CKSUM:
+		case RTE_MBUF_F_TX_TCP_CKSUM:
 			mss_l4len_idx |=
 				TXGBE_TXD_L4LEN(sizeof(struct rte_tcp_hdr));
 			tx_offload_mask.l2_len |= ~0;
 			tx_offload_mask.l3_len |= ~0;
 			break;
-		case PKT_TX_SCTP_CKSUM:
+		case RTE_MBUF_F_TX_SCTP_CKSUM:
 			mss_l4len_idx |=
 				TXGBE_TXD_L4LEN(sizeof(struct rte_sctp_hdr));
 			tx_offload_mask.l2_len |= ~0;
@@ -378,7 +378,7 @@ txgbe_set_xmit_ctx(struct txgbe_tx_queue *txq,
 
 	vlan_macip_lens = TXGBE_TXD_IPLEN(tx_offload.l3_len >> 1);
 
-	if (ol_flags & PKT_TX_TUNNEL_MASK) {
+	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
 		tx_offload_mask.outer_tun_len |= ~0;
 		tx_offload_mask.outer_l2_len |= ~0;
 		tx_offload_mask.outer_l3_len |= ~0;
@@ -386,16 +386,16 @@ txgbe_set_xmit_ctx(struct txgbe_tx_queue *txq,
 		tunnel_seed = TXGBE_TXD_ETUNLEN(tx_offload.outer_tun_len >> 1);
 		tunnel_seed |= TXGBE_TXD_EIPLEN(tx_offload.outer_l3_len >> 2);
 
-		switch (ol_flags & PKT_TX_TUNNEL_MASK) {
-		case PKT_TX_TUNNEL_IPIP:
+		switch (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+		case RTE_MBUF_F_TX_TUNNEL_IPIP:
 			/* for non UDP / GRE tunneling, set to 0b */
 			break;
-		case PKT_TX_TUNNEL_VXLAN:
-		case PKT_TX_TUNNEL_VXLAN_GPE:
-		case PKT_TX_TUNNEL_GENEVE:
+		case RTE_MBUF_F_TX_TUNNEL_VXLAN:
+		case RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE:
+		case RTE_MBUF_F_TX_TUNNEL_GENEVE:
 			tunnel_seed |= TXGBE_TXD_ETYPE_UDP;
 			break;
-		case PKT_TX_TUNNEL_GRE:
+		case RTE_MBUF_F_TX_TUNNEL_GRE:
 			tunnel_seed |= TXGBE_TXD_ETYPE_GRE;
 			break;
 		default:
@@ -408,13 +408,13 @@ txgbe_set_xmit_ctx(struct txgbe_tx_queue *txq,
 		vlan_macip_lens |= TXGBE_TXD_MACLEN(tx_offload.l2_len);
 	}
 
-	if (ol_flags & PKT_TX_VLAN) {
+	if (ol_flags & RTE_MBUF_F_TX_VLAN) {
 		tx_offload_mask.vlan_tci |= ~0;
 		vlan_macip_lens |= TXGBE_TXD_VLAN(tx_offload.vlan_tci);
 	}
 
 #ifdef RTE_LIB_SECURITY
-	if (ol_flags & PKT_TX_SEC_OFFLOAD) {
+	if (ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
 		union txgbe_crypto_tx_desc_md *md =
 				(union txgbe_crypto_tx_desc_md *)mdata;
 		tunnel_seed |= TXGBE_TXD_IPSEC_SAIDX(md->sa_idx);
@@ -477,26 +477,26 @@ tx_desc_cksum_flags_to_olinfo(uint64_t ol_flags)
 {
 	uint32_t tmp = 0;
 
-	if ((ol_flags & PKT_TX_L4_MASK) != PKT_TX_L4_NO_CKSUM) {
+	if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) != RTE_MBUF_F_TX_L4_NO_CKSUM) {
 		tmp |= TXGBE_TXD_CC;
 		tmp |= TXGBE_TXD_L4CS;
 	}
-	if (ol_flags & PKT_TX_IP_CKSUM) {
+	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 		tmp |= TXGBE_TXD_CC;
 		tmp |= TXGBE_TXD_IPCS;
 	}
-	if (ol_flags & PKT_TX_OUTER_IP_CKSUM) {
+	if (ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) {
 		tmp |= TXGBE_TXD_CC;
 		tmp |= TXGBE_TXD_EIPCS;
 	}
-	if (ol_flags & PKT_TX_TCP_SEG) {
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 		tmp |= TXGBE_TXD_CC;
 		/* implies IPv4 cksum */
-		if (ol_flags & PKT_TX_IPV4)
+		if (ol_flags & RTE_MBUF_F_TX_IPV4)
 			tmp |= TXGBE_TXD_IPCS;
 		tmp |= TXGBE_TXD_L4CS;
 	}
-	if (ol_flags & PKT_TX_VLAN)
+	if (ol_flags & RTE_MBUF_F_TX_VLAN)
 		tmp |= TXGBE_TXD_CC;
 
 	return tmp;
@@ -507,11 +507,11 @@ tx_desc_ol_flags_to_cmdtype(uint64_t ol_flags)
 {
 	uint32_t cmdtype = 0;
 
-	if (ol_flags & PKT_TX_VLAN)
+	if (ol_flags & RTE_MBUF_F_TX_VLAN)
 		cmdtype |= TXGBE_TXD_VLE;
-	if (ol_flags & PKT_TX_TCP_SEG)
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 		cmdtype |= TXGBE_TXD_TSE;
-	if (ol_flags & PKT_TX_MACSEC)
+	if (ol_flags & RTE_MBUF_F_TX_MACSEC)
 		cmdtype |= TXGBE_TXD_LINKSEC;
 	return cmdtype;
 }
@@ -525,62 +525,62 @@ tx_desc_ol_flags_to_ptid(uint64_t oflags, uint32_t ptype)
 		return txgbe_encode_ptype(ptype);
 
 	/* Only support flags in TXGBE_TX_OFFLOAD_MASK */
-	tun = !!(oflags & PKT_TX_TUNNEL_MASK);
+	tun = !!(oflags & RTE_MBUF_F_TX_TUNNEL_MASK);
 
 	/* L2 level */
 	ptype = RTE_PTYPE_L2_ETHER;
-	if (oflags & PKT_TX_VLAN)
+	if (oflags & RTE_MBUF_F_TX_VLAN)
 		ptype |= RTE_PTYPE_L2_ETHER_VLAN;
 
 	/* L3 level */
-	if (oflags & (PKT_TX_OUTER_IPV4 | PKT_TX_OUTER_IP_CKSUM))
+	if (oflags & (RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IP_CKSUM))
 		ptype |= RTE_PTYPE_L3_IPV4;
-	else if (oflags & (PKT_TX_OUTER_IPV6))
+	else if (oflags & (RTE_MBUF_F_TX_OUTER_IPV6))
 		ptype |= RTE_PTYPE_L3_IPV6;
 
-	if (oflags & (PKT_TX_IPV4 | PKT_TX_IP_CKSUM))
+	if (oflags & (RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM))
 		ptype |= (tun ? RTE_PTYPE_INNER_L3_IPV4 : RTE_PTYPE_L3_IPV4);
-	else if (oflags & (PKT_TX_IPV6))
+	else if (oflags & (RTE_MBUF_F_TX_IPV6))
 		ptype |= (tun ? RTE_PTYPE_INNER_L3_IPV6 : RTE_PTYPE_L3_IPV6);
 
 	/* L4 level */
-	switch (oflags & (PKT_TX_L4_MASK)) {
-	case PKT_TX_TCP_CKSUM:
+	switch (oflags & (RTE_MBUF_F_TX_L4_MASK)) {
+	case RTE_MBUF_F_TX_TCP_CKSUM:
 		ptype |= (tun ? RTE_PTYPE_INNER_L4_TCP : RTE_PTYPE_L4_TCP);
 		break;
-	case PKT_TX_UDP_CKSUM:
+	case RTE_MBUF_F_TX_UDP_CKSUM:
 		ptype |= (tun ? RTE_PTYPE_INNER_L4_UDP : RTE_PTYPE_L4_UDP);
 		break;
-	case PKT_TX_SCTP_CKSUM:
+	case RTE_MBUF_F_TX_SCTP_CKSUM:
 		ptype |= (tun ? RTE_PTYPE_INNER_L4_SCTP : RTE_PTYPE_L4_SCTP);
 		break;
 	}
 
-	if (oflags & PKT_TX_TCP_SEG)
+	if (oflags & RTE_MBUF_F_TX_TCP_SEG)
 		ptype |= (tun ? RTE_PTYPE_INNER_L4_TCP : RTE_PTYPE_L4_TCP);
 
 	/* Tunnel */
-	switch (oflags & PKT_TX_TUNNEL_MASK) {
-	case PKT_TX_TUNNEL_VXLAN:
-	case PKT_TX_TUNNEL_VXLAN_GPE:
+	switch (oflags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+	case RTE_MBUF_F_TX_TUNNEL_VXLAN:
+	case RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE:
 		ptype |= RTE_PTYPE_L2_ETHER |
 			 RTE_PTYPE_L3_IPV4 |
 			 RTE_PTYPE_TUNNEL_GRENAT;
 		break;
-	case PKT_TX_TUNNEL_GRE:
+	case RTE_MBUF_F_TX_TUNNEL_GRE:
 		ptype |= RTE_PTYPE_L2_ETHER |
 			 RTE_PTYPE_L3_IPV4 |
 			 RTE_PTYPE_TUNNEL_GRE;
 		ptype |= RTE_PTYPE_INNER_L2_ETHER;
 		break;
-	case PKT_TX_TUNNEL_GENEVE:
+	case RTE_MBUF_F_TX_TUNNEL_GENEVE:
 		ptype |= RTE_PTYPE_L2_ETHER |
 			 RTE_PTYPE_L3_IPV4 |
 			 RTE_PTYPE_TUNNEL_GENEVE;
 		ptype |= RTE_PTYPE_INNER_L2_ETHER;
 		break;
-	case PKT_TX_TUNNEL_IPIP:
-	case PKT_TX_TUNNEL_IP:
+	case RTE_MBUF_F_TX_TUNNEL_IPIP:
+	case RTE_MBUF_F_TX_TUNNEL_IP:
 		ptype |= RTE_PTYPE_L2_ETHER |
 			 RTE_PTYPE_L3_IPV4 |
 			 RTE_PTYPE_TUNNEL_IP;
@@ -664,19 +664,19 @@ txgbe_get_tun_len(struct rte_mbuf *mbuf)
 	const struct txgbe_genevehdr *gh;
 	uint8_t tun_len;
 
-	switch (mbuf->ol_flags & PKT_TX_TUNNEL_MASK) {
-	case PKT_TX_TUNNEL_IPIP:
+	switch (mbuf->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+	case RTE_MBUF_F_TX_TUNNEL_IPIP:
 		tun_len = 0;
 		break;
-	case PKT_TX_TUNNEL_VXLAN:
-	case PKT_TX_TUNNEL_VXLAN_GPE:
+	case RTE_MBUF_F_TX_TUNNEL_VXLAN:
+	case RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE:
 		tun_len = sizeof(struct txgbe_udphdr)
 			+ sizeof(struct txgbe_vxlanhdr);
 		break;
-	case PKT_TX_TUNNEL_GRE:
+	case RTE_MBUF_F_TX_TUNNEL_GRE:
 		tun_len = sizeof(struct txgbe_nvgrehdr);
 		break;
-	case PKT_TX_TUNNEL_GENEVE:
+	case RTE_MBUF_F_TX_TUNNEL_GENEVE:
 		gh = rte_pktmbuf_read(mbuf,
 			mbuf->outer_l2_len + mbuf->outer_l3_len,
 			sizeof(genevehdr), &genevehdr);
@@ -697,8 +697,8 @@ txgbe_parse_tun_ptid(struct rte_mbuf *tx_pkt)
 	uint64_t l2_none, l2_mac, l2_mac_vlan;
 	uint8_t ptid = 0;
 
-	if ((tx_pkt->ol_flags & (PKT_TX_TUNNEL_VXLAN |
-				PKT_TX_TUNNEL_VXLAN_GPE)) == 0)
+	if ((tx_pkt->ol_flags & (RTE_MBUF_F_TX_TUNNEL_VXLAN |
+				RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE)) == 0)
 		return ptid;
 
 	l2_none = sizeof(struct txgbe_udphdr) + sizeof(struct txgbe_vxlanhdr);
@@ -770,7 +770,7 @@ txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 */
 		ol_flags = tx_pkt->ol_flags;
 #ifdef RTE_LIB_SECURITY
-		use_ipsec = txq->using_ipsec && (ol_flags & PKT_TX_SEC_OFFLOAD);
+		use_ipsec = txq->using_ipsec && (ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD);
 #endif
 
 		/* If hardware offload required */
@@ -916,20 +916,20 @@ txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		cmd_type_len = TXGBE_TXD_FCS;
 
 #ifdef RTE_LIBRTE_IEEE1588
-		if (ol_flags & PKT_TX_IEEE1588_TMST)
+		if (ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
 			cmd_type_len |= TXGBE_TXD_1588;
 #endif
 
 		olinfo_status = 0;
 		if (tx_ol_req) {
-			if (ol_flags & PKT_TX_TCP_SEG) {
+			if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 				/* when TSO is on, paylen in descriptor is the
 				 * not the packet len but the tcp payload len
 				 */
 				pkt_len -= (tx_offload.l2_len +
 					tx_offload.l3_len + tx_offload.l4_len);
 				pkt_len -=
-					(tx_pkt->ol_flags & PKT_TX_TUNNEL_MASK)
+					(tx_pkt->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
 					? tx_offload.outer_l2_len +
 					  tx_offload.outer_l3_len : 0;
 			}
@@ -1097,14 +1097,14 @@ static inline uint64_t
 txgbe_rxd_pkt_info_to_pkt_flags(uint32_t pkt_info)
 {
 	static uint64_t ip_rss_types_map[16] __rte_cache_aligned = {
-		0, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
-		0, PKT_RX_RSS_HASH, 0, PKT_RX_RSS_HASH,
-		PKT_RX_RSS_HASH, 0, 0, 0,
-		0, 0, 0,  PKT_RX_FDIR,
+		0, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
+		0, RTE_MBUF_F_RX_RSS_HASH, 0, RTE_MBUF_F_RX_RSS_HASH,
+		RTE_MBUF_F_RX_RSS_HASH, 0, 0, 0,
+		0, 0, 0,  RTE_MBUF_F_RX_FDIR,
 	};
 #ifdef RTE_LIBRTE_IEEE1588
 	static uint64_t ip_pkt_etqf_map[8] = {
-		0, 0, 0, PKT_RX_IEEE1588_PTP,
+		0, 0, 0, RTE_MBUF_F_RX_IEEE1588_PTP,
 		0, 0, 0, 0,
 	};
 	int etfid = txgbe_etflt_id(TXGBE_RXD_PTID(pkt_info));
@@ -1129,12 +1129,12 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status, uint64_t vlan_flags)
 	 * That can be found from rte_eth_rxmode.offloads flag
 	 */
 	pkt_flags = (rx_status & TXGBE_RXD_STAT_VLAN &&
-		     vlan_flags & PKT_RX_VLAN_STRIPPED)
+		     vlan_flags & RTE_MBUF_F_RX_VLAN_STRIPPED)
 		    ? vlan_flags : 0;
 
 #ifdef RTE_LIBRTE_IEEE1588
 	if (rx_status & TXGBE_RXD_STAT_1588)
-		pkt_flags = pkt_flags | PKT_RX_IEEE1588_TMST;
+		pkt_flags = pkt_flags | RTE_MBUF_F_RX_IEEE1588_TMST;
 #endif
 	return pkt_flags;
 }
@@ -1147,24 +1147,24 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status)
 	/* checksum offload can't be disabled */
 	if (rx_status & TXGBE_RXD_STAT_IPCS) {
 		pkt_flags |= (rx_status & TXGBE_RXD_ERR_IPCS
-				? PKT_RX_IP_CKSUM_BAD : PKT_RX_IP_CKSUM_GOOD);
+				? RTE_MBUF_F_RX_IP_CKSUM_BAD : RTE_MBUF_F_RX_IP_CKSUM_GOOD);
 	}
 
 	if (rx_status & TXGBE_RXD_STAT_L4CS) {
 		pkt_flags |= (rx_status & TXGBE_RXD_ERR_L4CS
-				? PKT_RX_L4_CKSUM_BAD : PKT_RX_L4_CKSUM_GOOD);
+				? RTE_MBUF_F_RX_L4_CKSUM_BAD : RTE_MBUF_F_RX_L4_CKSUM_GOOD);
 	}
 
 	if (rx_status & TXGBE_RXD_STAT_EIPCS &&
 	    rx_status & TXGBE_RXD_ERR_EIPCS) {
-		pkt_flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
+		pkt_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
 	}
 
 #ifdef RTE_LIB_SECURITY
 	if (rx_status & TXGBE_RXD_STAT_SECP) {
-		pkt_flags |= PKT_RX_SEC_OFFLOAD;
+		pkt_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD;
 		if (rx_status & TXGBE_RXD_ERR_SECERR)
-			pkt_flags |= PKT_RX_SEC_OFFLOAD_FAILED;
+			pkt_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
 	}
 #endif
 
@@ -1247,10 +1247,10 @@ txgbe_rx_scan_hw_ring(struct txgbe_rx_queue *rxq)
 				txgbe_rxd_pkt_info_to_pkt_type(pkt_info[j],
 				rxq->pkt_type_mask);
 
-			if (likely(pkt_flags & PKT_RX_RSS_HASH))
+			if (likely(pkt_flags & RTE_MBUF_F_RX_RSS_HASH))
 				mb->hash.rss =
 					rte_le_to_cpu_32(rxdp[j].qw0.dw1);
-			else if (pkt_flags & PKT_RX_FDIR) {
+			else if (pkt_flags & RTE_MBUF_F_RX_FDIR) {
 				mb->hash.fdir.hash =
 					rte_le_to_cpu_16(rxdp[j].qw0.hi.csum) &
 					TXGBE_ATR_HASH_MASK;
@@ -1562,7 +1562,7 @@ txgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->port = rxq->port_id;
 
 		pkt_info = rte_le_to_cpu_32(rxd.qw0.dw0);
-		/* Only valid if PKT_RX_VLAN set in pkt_flags */
+		/* Only valid if RTE_MBUF_F_RX_VLAN set in pkt_flags */
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.qw1.hi.tag);
 
 		pkt_flags = rx_desc_status_to_pkt_flags(staterr,
@@ -1573,9 +1573,9 @@ txgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->packet_type = txgbe_rxd_pkt_info_to_pkt_type(pkt_info,
 						       rxq->pkt_type_mask);
 
-		if (likely(pkt_flags & PKT_RX_RSS_HASH)) {
+		if (likely(pkt_flags & RTE_MBUF_F_RX_RSS_HASH)) {
 			rxm->hash.rss = rte_le_to_cpu_32(rxd.qw0.dw1);
-		} else if (pkt_flags & PKT_RX_FDIR) {
+		} else if (pkt_flags & RTE_MBUF_F_RX_FDIR) {
 			rxm->hash.fdir.hash =
 				rte_le_to_cpu_16(rxd.qw0.hi.csum) &
 				TXGBE_ATR_HASH_MASK;
@@ -1637,7 +1637,7 @@ txgbe_fill_cluster_head_buf(struct rte_mbuf *head, struct txgbe_rx_desc *desc,
 
 	head->port = rxq->port_id;
 
-	/* The vlan_tci field is only valid when PKT_RX_VLAN is
+	/* The vlan_tci field is only valid when RTE_MBUF_F_RX_VLAN is
 	 * set in the pkt_flags field.
 	 */
 	head->vlan_tci = rte_le_to_cpu_16(desc->qw1.hi.tag);
@@ -1649,9 +1649,9 @@ txgbe_fill_cluster_head_buf(struct rte_mbuf *head, struct txgbe_rx_desc *desc,
 	head->packet_type = txgbe_rxd_pkt_info_to_pkt_type(pkt_info,
 						rxq->pkt_type_mask);
 
-	if (likely(pkt_flags & PKT_RX_RSS_HASH)) {
+	if (likely(pkt_flags & RTE_MBUF_F_RX_RSS_HASH)) {
 		head->hash.rss = rte_le_to_cpu_32(desc->qw0.dw1);
-	} else if (pkt_flags & PKT_RX_FDIR) {
+	} else if (pkt_flags & RTE_MBUF_F_RX_FDIR) {
 		head->hash.fdir.hash = rte_le_to_cpu_16(desc->qw0.hi.csum)
 				& TXGBE_ATR_HASH_MASK;
 		head->hash.fdir.id = rte_le_to_cpu_16(desc->qw0.hi.ipid);

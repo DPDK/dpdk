@@ -592,7 +592,7 @@ hinic_fill_tx_offload_info(struct rte_mbuf *mbuf,
 	task->pkt_info2 = 0;
 
 	/* Base VLAN */
-	if (unlikely(ol_flags & PKT_TX_VLAN)) {
+	if (unlikely(ol_flags & RTE_MBUF_F_TX_VLAN)) {
 		vlan_tag = mbuf->vlan_tci;
 		hinic_set_vlan_tx_offload(task, queue_info, vlan_tag,
 					  vlan_tag >> VLAN_PRIO_SHIFT);
@@ -602,7 +602,7 @@ hinic_fill_tx_offload_info(struct rte_mbuf *mbuf,
 	if (unlikely(!(ol_flags & HINIC_TX_CKSUM_OFFLOAD_MASK)))
 		return;
 
-	if ((ol_flags & PKT_TX_TCP_SEG))
+	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG))
 		/* set tso info for task and qsf */
 		hinic_set_tso_info(task, queue_info, mbuf, tx_off_info);
 	else /* just support l4 checksum offload */
@@ -718,7 +718,7 @@ hinic_ipv4_phdr_cksum(const struct rte_ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
 	psd_hdr.dst_addr = ipv4_hdr->dst_addr;
 	psd_hdr.zero = 0;
 	psd_hdr.proto = ipv4_hdr->next_proto_id;
-	if (ol_flags & PKT_TX_TCP_SEG) {
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 		psd_hdr.len = 0;
 	} else {
 		psd_hdr.len =
@@ -738,7 +738,7 @@ hinic_ipv6_phdr_cksum(const struct rte_ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
 	} psd_hdr;
 
 	psd_hdr.proto = (ipv6_hdr->proto << 24);
-	if (ol_flags & PKT_TX_TCP_SEG)
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 		psd_hdr.len = 0;
 	else
 		psd_hdr.len = ipv6_hdr->payload_len;
@@ -754,10 +754,10 @@ static inline void hinic_get_outer_cs_pld_offset(struct rte_mbuf *m,
 {
 	uint64_t ol_flags = m->ol_flags;
 
-	if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM)
+	if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_UDP_CKSUM)
 		off_info->payload_offset = m->outer_l2_len + m->outer_l3_len +
 					   m->l2_len + m->l3_len;
-	else if ((ol_flags & PKT_TX_TCP_CKSUM) || (ol_flags & PKT_TX_TCP_SEG))
+	else if ((ol_flags & RTE_MBUF_F_TX_TCP_CKSUM) || (ol_flags & RTE_MBUF_F_TX_TCP_SEG))
 		off_info->payload_offset = m->outer_l2_len + m->outer_l3_len +
 					   m->l2_len + m->l3_len + m->l4_len;
 }
@@ -767,10 +767,10 @@ static inline void hinic_get_pld_offset(struct rte_mbuf *m,
 {
 	uint64_t ol_flags = m->ol_flags;
 
-	if (((ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM) ||
-	    ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_SCTP_CKSUM))
+	if (((ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_UDP_CKSUM) ||
+	    ((ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_SCTP_CKSUM))
 		off_info->payload_offset = m->l2_len + m->l3_len;
-	else if ((ol_flags & PKT_TX_TCP_CKSUM) || (ol_flags & PKT_TX_TCP_SEG))
+	else if ((ol_flags & RTE_MBUF_F_TX_TCP_CKSUM) || (ol_flags & RTE_MBUF_F_TX_TCP_SEG))
 		off_info->payload_offset = m->l2_len + m->l3_len +
 					   m->l4_len;
 }
@@ -845,11 +845,11 @@ static inline uint8_t hinic_analyze_l3_type(struct rte_mbuf *mbuf)
 	uint8_t l3_type;
 	uint64_t ol_flags = mbuf->ol_flags;
 
-	if (ol_flags & PKT_TX_IPV4)
-		l3_type = (ol_flags & PKT_TX_IP_CKSUM) ?
+	if (ol_flags & RTE_MBUF_F_TX_IPV4)
+		l3_type = (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) ?
 			  IPV4_PKT_WITH_CHKSUM_OFFLOAD :
 			  IPV4_PKT_NO_CHKSUM_OFFLOAD;
-	else if (ol_flags & PKT_TX_IPV6)
+	else if (ol_flags & RTE_MBUF_F_TX_IPV6)
 		l3_type = IPV6_PKT;
 	else
 		l3_type = UNKNOWN_L3TYPE;
@@ -866,11 +866,11 @@ static inline void hinic_calculate_tcp_checksum(struct rte_mbuf *mbuf,
 	struct rte_tcp_hdr *tcp_hdr;
 	uint64_t ol_flags = mbuf->ol_flags;
 
-	if (ol_flags & PKT_TX_IPV4) {
+	if (ol_flags & RTE_MBUF_F_TX_IPV4) {
 		ipv4_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_ipv4_hdr *,
 						   inner_l3_offset);
 
-		if (ol_flags & PKT_TX_IP_CKSUM)
+		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 			ipv4_hdr->hdr_checksum = 0;
 
 		tcp_hdr = (struct rte_tcp_hdr *)((char *)ipv4_hdr +
@@ -898,11 +898,11 @@ static inline void hinic_calculate_udp_checksum(struct rte_mbuf *mbuf,
 	struct rte_udp_hdr *udp_hdr;
 	uint64_t ol_flags = mbuf->ol_flags;
 
-	if (ol_flags & PKT_TX_IPV4) {
+	if (ol_flags & RTE_MBUF_F_TX_IPV4) {
 		ipv4_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_ipv4_hdr *,
 						   inner_l3_offset);
 
-		if (ol_flags & PKT_TX_IP_CKSUM)
+		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 			ipv4_hdr->hdr_checksum = 0;
 
 		udp_hdr = (struct rte_udp_hdr *)((char *)ipv4_hdr +
@@ -938,21 +938,21 @@ static inline void hinic_calculate_checksum(struct rte_mbuf *mbuf,
 {
 	uint64_t ol_flags = mbuf->ol_flags;
 
-	switch (ol_flags & PKT_TX_L4_MASK) {
-	case PKT_TX_UDP_CKSUM:
+	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+	case RTE_MBUF_F_TX_UDP_CKSUM:
 		hinic_calculate_udp_checksum(mbuf, off_info, inner_l3_offset);
 		break;
 
-	case PKT_TX_TCP_CKSUM:
+	case RTE_MBUF_F_TX_TCP_CKSUM:
 		hinic_calculate_tcp_checksum(mbuf, off_info, inner_l3_offset);
 		break;
 
-	case PKT_TX_SCTP_CKSUM:
+	case RTE_MBUF_F_TX_SCTP_CKSUM:
 		hinic_calculate_sctp_checksum(off_info);
 		break;
 
 	default:
-		if (ol_flags & PKT_TX_TCP_SEG)
+		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 			hinic_calculate_tcp_checksum(mbuf, off_info,
 						     inner_l3_offset);
 		break;
@@ -970,8 +970,8 @@ static inline int hinic_tx_offload_pkt_prepare(struct rte_mbuf *m,
 		return 0;
 
 	/* Support only vxlan offload */
-	if (unlikely((ol_flags & PKT_TX_TUNNEL_MASK) &&
-	    !(ol_flags & PKT_TX_TUNNEL_VXLAN)))
+	if (unlikely((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) &&
+		     !(ol_flags & RTE_MBUF_F_TX_TUNNEL_VXLAN)))
 		return -ENOTSUP;
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
@@ -979,7 +979,7 @@ static inline int hinic_tx_offload_pkt_prepare(struct rte_mbuf *m,
 		return -EINVAL;
 #endif
 
-	if (ol_flags & PKT_TX_TUNNEL_VXLAN) {
+	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_VXLAN) {
 		off_info->tunnel_type = TUNNEL_UDP_NO_CSUM;
 
 		/* inner_l4_tcp_udp csum should be set to calculate outer
@@ -987,9 +987,9 @@ static inline int hinic_tx_offload_pkt_prepare(struct rte_mbuf *m,
 		 */
 		off_info->inner_l4_tcp_udp = 1;
 
-		if ((ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
-		    (ol_flags & PKT_TX_OUTER_IPV6) ||
-		    (ol_flags & PKT_TX_TCP_SEG)) {
+		if ((ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) ||
+		    (ol_flags & RTE_MBUF_F_TX_OUTER_IPV6) ||
+		    (ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 			inner_l3_offset = m->l2_len + m->outer_l2_len +
 					  m->outer_l3_len;
 			off_info->outer_l2_len = m->outer_l2_len;
@@ -1057,7 +1057,7 @@ static inline bool hinic_get_sge_txoff_info(struct rte_mbuf *mbuf_pkt,
 	sqe_info->cpy_mbuf_cnt = 0;
 
 	/* non tso mbuf */
-	if (likely(!(mbuf_pkt->ol_flags & PKT_TX_TCP_SEG))) {
+	if (likely(!(mbuf_pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG))) {
 		if (unlikely(mbuf_pkt->pkt_len > MAX_SINGLE_SGE_SIZE)) {
 			/* non tso packet len must less than 64KB */
 			return false;

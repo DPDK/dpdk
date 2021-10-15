@@ -437,7 +437,7 @@ lio_droq_fast_process_packet(struct lio_device *lio_dev,
 				if (rh->r_dh.has_hash) {
 					uint64_t *hash_ptr;
 
-					nicbuf->ol_flags |= PKT_RX_RSS_HASH;
+					nicbuf->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 					hash_ptr = rte_pktmbuf_mtod(nicbuf,
 								    uint64_t *);
 					lio_swap_8B_data(hash_ptr, 1);
@@ -494,7 +494,7 @@ lio_droq_fast_process_packet(struct lio_device *lio_dev,
 						uint64_t *hash_ptr;
 
 						nicbuf->ol_flags |=
-						    PKT_RX_RSS_HASH;
+						    RTE_MBUF_F_RX_RSS_HASH;
 						hash_ptr = rte_pktmbuf_mtod(
 						    nicbuf, uint64_t *);
 						lio_swap_8B_data(hash_ptr, 1);
@@ -547,10 +547,10 @@ lio_droq_fast_process_packet(struct lio_device *lio_dev,
 		struct rte_mbuf *m = rx_pkts[data_pkts - 1];
 
 		if (rh->r_dh.csum_verified & LIO_IP_CSUM_VERIFIED)
-			m->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 		if (rh->r_dh.csum_verified & LIO_L4_CSUM_VERIFIED)
-			m->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+			m->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 	}
 
 	if (droq->refill_count >= droq->refill_threshold) {
@@ -1675,13 +1675,13 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 		cmdsetup.s.iq_no = iq_no;
 
 		/* check checksum offload flags to form cmd */
-		if (m->ol_flags & PKT_TX_IP_CKSUM)
+		if (m->ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 			cmdsetup.s.ip_csum = 1;
 
-		if (m->ol_flags & PKT_TX_OUTER_IP_CKSUM)
+		if (m->ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM)
 			cmdsetup.s.tnl_csum = 1;
-		else if ((m->ol_flags & PKT_TX_TCP_CKSUM) ||
-				(m->ol_flags & PKT_TX_UDP_CKSUM))
+		else if ((m->ol_flags & RTE_MBUF_F_TX_TCP_CKSUM) ||
+				(m->ol_flags & RTE_MBUF_F_TX_UDP_CKSUM))
 			cmdsetup.s.transport_csum = 1;
 
 		if (m->nb_segs == 1) {

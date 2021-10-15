@@ -54,27 +54,26 @@
 #include "ixgbe_rxtx.h"
 
 #ifdef RTE_LIBRTE_IEEE1588
-#define IXGBE_TX_IEEE1588_TMST PKT_TX_IEEE1588_TMST
+#define IXGBE_TX_IEEE1588_TMST RTE_MBUF_F_TX_IEEE1588_TMST
 #else
 #define IXGBE_TX_IEEE1588_TMST 0
 #endif
 /* Bit Mask to indicate what bits required for building TX context */
-#define IXGBE_TX_OFFLOAD_MASK (			 \
-		PKT_TX_OUTER_IPV6 |		 \
-		PKT_TX_OUTER_IPV4 |		 \
-		PKT_TX_IPV6 |			 \
-		PKT_TX_IPV4 |			 \
-		PKT_TX_VLAN |		 \
-		PKT_TX_IP_CKSUM |		 \
-		PKT_TX_L4_MASK |		 \
-		PKT_TX_TCP_SEG |		 \
-		PKT_TX_MACSEC |			 \
-		PKT_TX_OUTER_IP_CKSUM |		 \
-		PKT_TX_SEC_OFFLOAD |	 \
+#define IXGBE_TX_OFFLOAD_MASK (RTE_MBUF_F_TX_OUTER_IPV6 |		 \
+		RTE_MBUF_F_TX_OUTER_IPV4 |		 \
+		RTE_MBUF_F_TX_IPV6 |			 \
+		RTE_MBUF_F_TX_IPV4 |			 \
+		RTE_MBUF_F_TX_VLAN |		 \
+		RTE_MBUF_F_TX_IP_CKSUM |		 \
+		RTE_MBUF_F_TX_L4_MASK |		 \
+		RTE_MBUF_F_TX_TCP_SEG |		 \
+		RTE_MBUF_F_TX_MACSEC |			 \
+		RTE_MBUF_F_TX_OUTER_IP_CKSUM |		 \
+		RTE_MBUF_F_TX_SEC_OFFLOAD |	 \
 		IXGBE_TX_IEEE1588_TMST)
 
 #define IXGBE_TX_OFFLOAD_NOTSUP_MASK \
-		(PKT_TX_OFFLOAD_MASK ^ IXGBE_TX_OFFLOAD_MASK)
+		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ IXGBE_TX_OFFLOAD_MASK)
 
 #if 1
 #define RTE_PMD_USE_PREFETCH
@@ -384,13 +383,13 @@ ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
 	/* Specify which HW CTX to upload. */
 	mss_l4len_idx |= (ctx_idx << IXGBE_ADVTXD_IDX_SHIFT);
 
-	if (ol_flags & PKT_TX_VLAN)
+	if (ol_flags & RTE_MBUF_F_TX_VLAN)
 		tx_offload_mask.vlan_tci |= ~0;
 
 	/* check if TCP segmentation required for this packet */
-	if (ol_flags & PKT_TX_TCP_SEG) {
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 		/* implies IP cksum in IPv4 */
-		if (ol_flags & PKT_TX_IP_CKSUM)
+		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 			type_tucmd_mlhl = IXGBE_ADVTXD_TUCMD_IPV4 |
 				IXGBE_ADVTXD_TUCMD_L4T_TCP |
 				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
@@ -406,14 +405,14 @@ ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
 		mss_l4len_idx |= tx_offload.tso_segsz << IXGBE_ADVTXD_MSS_SHIFT;
 		mss_l4len_idx |= tx_offload.l4_len << IXGBE_ADVTXD_L4LEN_SHIFT;
 	} else { /* no TSO, check if hardware checksum is needed */
-		if (ol_flags & PKT_TX_IP_CKSUM) {
+		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 			type_tucmd_mlhl = IXGBE_ADVTXD_TUCMD_IPV4;
 			tx_offload_mask.l2_len |= ~0;
 			tx_offload_mask.l3_len |= ~0;
 		}
 
-		switch (ol_flags & PKT_TX_L4_MASK) {
-		case PKT_TX_UDP_CKSUM:
+		switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+		case RTE_MBUF_F_TX_UDP_CKSUM:
 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_UDP |
 				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
 			mss_l4len_idx |= sizeof(struct rte_udp_hdr)
@@ -421,7 +420,7 @@ ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
 			tx_offload_mask.l2_len |= ~0;
 			tx_offload_mask.l3_len |= ~0;
 			break;
-		case PKT_TX_TCP_CKSUM:
+		case RTE_MBUF_F_TX_TCP_CKSUM:
 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_TCP |
 				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
 			mss_l4len_idx |= sizeof(struct rte_tcp_hdr)
@@ -429,7 +428,7 @@ ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
 			tx_offload_mask.l2_len |= ~0;
 			tx_offload_mask.l3_len |= ~0;
 			break;
-		case PKT_TX_SCTP_CKSUM:
+		case RTE_MBUF_F_TX_SCTP_CKSUM:
 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_SCTP |
 				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
 			mss_l4len_idx |= sizeof(struct rte_sctp_hdr)
@@ -444,7 +443,7 @@ ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
 		}
 	}
 
-	if (ol_flags & PKT_TX_OUTER_IP_CKSUM) {
+	if (ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) {
 		tx_offload_mask.outer_l2_len |= ~0;
 		tx_offload_mask.outer_l3_len |= ~0;
 		tx_offload_mask.l2_len |= ~0;
@@ -454,7 +453,7 @@ ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
 			       << IXGBE_ADVTXD_TUNNEL_LEN;
 	}
 #ifdef RTE_LIB_SECURITY
-	if (ol_flags & PKT_TX_SEC_OFFLOAD) {
+	if (ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
 		union ixgbe_crypto_tx_desc_md *md =
 				(union ixgbe_crypto_tx_desc_md *)mdata;
 		seqnum_seed |=
@@ -478,7 +477,7 @@ ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
 
 	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
 	vlan_macip_lens = tx_offload.l3_len;
-	if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
+	if (ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM)
 		vlan_macip_lens |= (tx_offload.outer_l2_len <<
 				    IXGBE_ADVTXD_MACLEN_SHIFT);
 	else
@@ -528,11 +527,11 @@ tx_desc_cksum_flags_to_olinfo(uint64_t ol_flags)
 {
 	uint32_t tmp = 0;
 
-	if ((ol_flags & PKT_TX_L4_MASK) != PKT_TX_L4_NO_CKSUM)
+	if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) != RTE_MBUF_F_TX_L4_NO_CKSUM)
 		tmp |= IXGBE_ADVTXD_POPTS_TXSM;
-	if (ol_flags & PKT_TX_IP_CKSUM)
+	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 		tmp |= IXGBE_ADVTXD_POPTS_IXSM;
-	if (ol_flags & PKT_TX_TCP_SEG)
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 		tmp |= IXGBE_ADVTXD_POPTS_TXSM;
 	return tmp;
 }
@@ -542,13 +541,13 @@ tx_desc_ol_flags_to_cmdtype(uint64_t ol_flags)
 {
 	uint32_t cmdtype = 0;
 
-	if (ol_flags & PKT_TX_VLAN)
+	if (ol_flags & RTE_MBUF_F_TX_VLAN)
 		cmdtype |= IXGBE_ADVTXD_DCMD_VLE;
-	if (ol_flags & PKT_TX_TCP_SEG)
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 		cmdtype |= IXGBE_ADVTXD_DCMD_TSE;
-	if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
+	if (ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM)
 		cmdtype |= (1 << IXGBE_ADVTXD_OUTERIPCS_SHIFT);
-	if (ol_flags & PKT_TX_MACSEC)
+	if (ol_flags & RTE_MBUF_F_TX_MACSEC)
 		cmdtype |= IXGBE_ADVTXD_MAC_LINKSEC;
 	return cmdtype;
 }
@@ -677,7 +676,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 */
 		ol_flags = tx_pkt->ol_flags;
 #ifdef RTE_LIB_SECURITY
-		use_ipsec = txq->using_ipsec && (ol_flags & PKT_TX_SEC_OFFLOAD);
+		use_ipsec = txq->using_ipsec && (ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD);
 #endif
 
 		/* If hardware offload required */
@@ -825,14 +824,14 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			IXGBE_ADVTXD_DCMD_IFCS | IXGBE_ADVTXD_DCMD_DEXT;
 
 #ifdef RTE_LIBRTE_IEEE1588
-		if (ol_flags & PKT_TX_IEEE1588_TMST)
+		if (ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
 			cmd_type_len |= IXGBE_ADVTXD_MAC_1588;
 #endif
 
 		olinfo_status = 0;
 		if (tx_ol_req) {
 
-			if (ol_flags & PKT_TX_TCP_SEG) {
+			if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 				/* when TSO is on, paylen in descriptor is the
 				 * not the packet len but the tcp payload len */
 				pkt_len -= (tx_offload.l2_len +
@@ -1432,14 +1431,14 @@ static inline uint64_t
 ixgbe_rxd_pkt_info_to_pkt_flags(uint16_t pkt_info)
 {
 	static uint64_t ip_rss_types_map[16] __rte_cache_aligned = {
-		0, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
-		0, PKT_RX_RSS_HASH, 0, PKT_RX_RSS_HASH,
-		PKT_RX_RSS_HASH, 0, 0, 0,
-		0, 0, 0,  PKT_RX_FDIR,
+		0, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
+		0, RTE_MBUF_F_RX_RSS_HASH, 0, RTE_MBUF_F_RX_RSS_HASH,
+		RTE_MBUF_F_RX_RSS_HASH, 0, 0, 0,
+		0, 0, 0,  RTE_MBUF_F_RX_FDIR,
 	};
 #ifdef RTE_LIBRTE_IEEE1588
 	static uint64_t ip_pkt_etqf_map[8] = {
-		0, 0, 0, PKT_RX_IEEE1588_PTP,
+		0, 0, 0, RTE_MBUF_F_RX_IEEE1588_PTP,
 		0, 0, 0, 0,
 	};
 
@@ -1467,7 +1466,7 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status, uint64_t vlan_flags)
 
 #ifdef RTE_LIBRTE_IEEE1588
 	if (rx_status & IXGBE_RXD_STAT_TMST)
-		pkt_flags = pkt_flags | PKT_RX_IEEE1588_TMST;
+		pkt_flags = pkt_flags | RTE_MBUF_F_RX_IEEE1588_TMST;
 #endif
 	return pkt_flags;
 }
@@ -1483,10 +1482,10 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status, uint16_t pkt_info,
 	 * Bit 30: L4I, L4I integrity error
 	 */
 	static uint64_t error_to_pkt_flags_map[4] = {
-		PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD,
-		PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
-		PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD,
-		PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+		RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+		RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD
 	};
 	pkt_flags = error_to_pkt_flags_map[(rx_status >>
 		IXGBE_RXDADV_ERR_CKSUM_BIT) & IXGBE_RXDADV_ERR_CKSUM_MSK];
@@ -1498,18 +1497,18 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status, uint16_t pkt_info,
 	if ((rx_status & IXGBE_RXDADV_ERR_TCPE) &&
 	    (pkt_info & IXGBE_RXDADV_PKTTYPE_UDP) &&
 	    rx_udp_csum_zero_err)
-		pkt_flags &= ~PKT_RX_L4_CKSUM_BAD;
+		pkt_flags &= ~RTE_MBUF_F_RX_L4_CKSUM_BAD;
 
 	if ((rx_status & IXGBE_RXD_STAT_OUTERIPCS) &&
 	    (rx_status & IXGBE_RXDADV_ERR_OUTERIPER)) {
-		pkt_flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
+		pkt_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
 	}
 
 #ifdef RTE_LIB_SECURITY
 	if (rx_status & IXGBE_RXD_STAT_SECP) {
-		pkt_flags |= PKT_RX_SEC_OFFLOAD;
+		pkt_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD;
 		if (rx_status & IXGBE_RXDADV_LNKSEC_ERROR_BAD_SIG)
-			pkt_flags |= PKT_RX_SEC_OFFLOAD_FAILED;
+			pkt_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
 	}
 #endif
 
@@ -1596,10 +1595,10 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 				ixgbe_rxd_pkt_info_to_pkt_type
 					(pkt_info[j], rxq->pkt_type_mask);
 
-			if (likely(pkt_flags & PKT_RX_RSS_HASH))
+			if (likely(pkt_flags & RTE_MBUF_F_RX_RSS_HASH))
 				mb->hash.rss = rte_le_to_cpu_32(
 				    rxdp[j].wb.lower.hi_dword.rss);
-			else if (pkt_flags & PKT_RX_FDIR) {
+			else if (pkt_flags & RTE_MBUF_F_RX_FDIR) {
 				mb->hash.fdir.hash = rte_le_to_cpu_16(
 				    rxdp[j].wb.lower.hi_dword.csum_ip.csum) &
 				    IXGBE_ATR_HASH_MASK;
@@ -1917,7 +1916,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->port = rxq->port_id;
 
 		pkt_info = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
-		/* Only valid if PKT_RX_VLAN set in pkt_flags */
+		/* Only valid if RTE_MBUF_F_RX_VLAN set in pkt_flags */
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
 
 		pkt_flags = rx_desc_status_to_pkt_flags(staterr, vlan_flags);
@@ -1931,10 +1930,10 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			ixgbe_rxd_pkt_info_to_pkt_type(pkt_info,
 						       rxq->pkt_type_mask);
 
-		if (likely(pkt_flags & PKT_RX_RSS_HASH))
+		if (likely(pkt_flags & RTE_MBUF_F_RX_RSS_HASH))
 			rxm->hash.rss = rte_le_to_cpu_32(
 						rxd.wb.lower.hi_dword.rss);
-		else if (pkt_flags & PKT_RX_FDIR) {
+		else if (pkt_flags & RTE_MBUF_F_RX_FDIR) {
 			rxm->hash.fdir.hash = rte_le_to_cpu_16(
 					rxd.wb.lower.hi_dword.csum_ip.csum) &
 					IXGBE_ATR_HASH_MASK;
@@ -2010,7 +2009,7 @@ ixgbe_fill_cluster_head_buf(
 
 	head->port = rxq->port_id;
 
-	/* The vlan_tci field is only valid when PKT_RX_VLAN is
+	/* The vlan_tci field is only valid when RTE_MBUF_F_RX_VLAN is
 	 * set in the pkt_flags field.
 	 */
 	head->vlan_tci = rte_le_to_cpu_16(desc->wb.upper.vlan);
@@ -2023,9 +2022,9 @@ ixgbe_fill_cluster_head_buf(
 	head->packet_type =
 		ixgbe_rxd_pkt_info_to_pkt_type(pkt_info, rxq->pkt_type_mask);
 
-	if (likely(pkt_flags & PKT_RX_RSS_HASH))
+	if (likely(pkt_flags & RTE_MBUF_F_RX_RSS_HASH))
 		head->hash.rss = rte_le_to_cpu_32(desc->wb.lower.hi_dword.rss);
-	else if (pkt_flags & PKT_RX_FDIR) {
+	else if (pkt_flags & RTE_MBUF_F_RX_FDIR) {
 		head->hash.fdir.hash =
 			rte_le_to_cpu_16(desc->wb.lower.hi_dword.csum_ip.csum)
 							  & IXGBE_ATR_HASH_MASK;

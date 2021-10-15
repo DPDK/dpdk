@@ -105,10 +105,10 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 			0x00, 0x00, 0x00, 0x00};
 
 	const uint8x16_t rss_flags = {
-			0, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
-			0, PKT_RX_RSS_HASH, 0, PKT_RX_RSS_HASH,
-			PKT_RX_RSS_HASH, 0, 0, 0,
-			0, 0, 0, PKT_RX_FDIR};
+			0, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
+			0, RTE_MBUF_F_RX_RSS_HASH, 0, RTE_MBUF_F_RX_RSS_HASH,
+			RTE_MBUF_F_RX_RSS_HASH, 0, 0, 0,
+			0, 0, 0, RTE_MBUF_F_RX_FDIR};
 
 	/* mask everything except vlan present and l4/ip csum error */
 	const uint8x16_t vlan_csum_msk = {
@@ -123,23 +123,23 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 
 	/* map vlan present (0x8), IPE (0x2), L4E (0x1) to ol_flags */
 	const uint8x16_t vlan_csum_map_lo = {
-			PKT_RX_IP_CKSUM_GOOD,
-			PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
-			PKT_RX_IP_CKSUM_BAD,
-			PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
+			RTE_MBUF_F_RX_IP_CKSUM_GOOD,
+			RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+			RTE_MBUF_F_RX_IP_CKSUM_BAD,
+			RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
 			0, 0, 0, 0,
-			vlan_flags | PKT_RX_IP_CKSUM_GOOD,
-			vlan_flags | PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
-			vlan_flags | PKT_RX_IP_CKSUM_BAD,
-			vlan_flags | PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
+			vlan_flags | RTE_MBUF_F_RX_IP_CKSUM_GOOD,
+			vlan_flags | RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+			vlan_flags | RTE_MBUF_F_RX_IP_CKSUM_BAD,
+			vlan_flags | RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
 			0, 0, 0, 0};
 
 	const uint8x16_t vlan_csum_map_hi = {
-			PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
-			PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
+			RTE_MBUF_F_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
+			RTE_MBUF_F_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
 			0, 0, 0, 0,
-			PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
-			PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
+			RTE_MBUF_F_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
+			RTE_MBUF_F_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
 			0, 0, 0, 0};
 
 	/* change mask from 0x200(IXGBE_RXDADV_PKTTYPE_UDP) to 0x2 */
@@ -153,7 +153,7 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 			0, 0, 0, 0};
 
 	const uint8x16_t udp_csum_bad_shuf = {
-			0xFF, ~(uint8_t)PKT_RX_L4_CKSUM_BAD, 0, 0,
+			0xFF, ~(uint8_t)RTE_MBUF_F_RX_L4_CKSUM_BAD, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 0};
@@ -194,7 +194,7 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 	vtag_lo = vorrq_u8(ptype, vtag_lo);
 
 	/* convert the UDP header present 0x2 to 0x1 for aligning with each
-	 * PKT_RX_L4_CKSUM_BAD value in low byte of 8 bits word ol_flag in
+	 * RTE_MBUF_F_RX_L4_CKSUM_BAD value in low byte of 8 bits word ol_flag in
 	 * vtag_lo (4x8). Then mask out the bad checksum value by shuffle and
 	 * bit-mask.
 	 */
@@ -337,7 +337,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	sw_ring = &rxq->sw_ring[rxq->rx_tail];
 
 	/* ensure these 2 flags are in the lower 8 bits */
-	RTE_BUILD_BUG_ON((PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED) > UINT8_MAX);
+	RTE_BUILD_BUG_ON((RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED) > UINT8_MAX);
 	vlan_flags = rxq->vlan_flags & UINT8_MAX;
 
 	/* A. load 4 packet in one loop

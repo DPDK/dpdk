@@ -211,11 +211,11 @@ To segment an outgoing packet, an application must:
      responsibility to ensure that these flags are set.
 
    - For example, in order to segment TCP/IPv4 packets, the application should
-     add the ``PKT_TX_IPV4`` and ``PKT_TX_TCP_SEG`` flags to the mbuf's
+     add the ``RTE_MBUF_F_TX_IPV4`` and ``RTE_MBUF_F_TX_TCP_SEG`` flags to the mbuf's
      ol_flags.
 
    - If checksum calculation in hardware is required, the application should
-     also add the ``PKT_TX_TCP_CKSUM`` and ``PKT_TX_IP_CKSUM`` flags.
+     also add the ``RTE_MBUF_F_TX_TCP_CKSUM`` and ``RTE_MBUF_F_TX_IP_CKSUM`` flags.
 
 #. Check if the packet should be processed. Packets with one of the
    following properties are not processed and are returned immediately:

@@ -173,7 +173,7 @@ cpu_crypto_bulk(const struct rte_ipsec_session *ss,
 	j = num - n;
 	for (i = 0; j != 0 && i != num; i++) {
 		if (st[i] != 0) {
-			mb[i]->ol_flags |= PKT_RX_SEC_OFFLOAD_FAILED;
+			mb[i]->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
 			j--;
 		}
 	}

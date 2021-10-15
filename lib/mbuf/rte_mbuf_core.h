@@ -43,274 +43,379 @@ extern "C" {
 /**
  * The RX packet is a 802.1q VLAN packet, and the tci has been
  * saved in in mbuf->vlan_tci.
- * If the flag PKT_RX_VLAN_STRIPPED is also present, the VLAN
+ * If the flag RTE_MBUF_F_RX_VLAN_STRIPPED is also present, the VLAN
  * header has been stripped from mbuf data, else it is still
  * present.
  */
-#define PKT_RX_VLAN          (1ULL << 0)
+#define RTE_MBUF_F_RX_VLAN          (1ULL << 0)
+#define PKT_RX_VLAN RTE_DEPRECATED(PKT_RX_VLAN) RTE_MBUF_F_RX_VLAN
 
 /** RX packet with RSS hash result. */
-#define PKT_RX_RSS_HASH      (1ULL << 1)
+#define RTE_MBUF_F_RX_RSS_HASH      (1ULL << 1)
+#define PKT_RX_RSS_HASH RTE_DEPRECATED(PKT_RX_RSS_HASH) RTE_MBUF_F_RX_RSS_HASH
 
  /** RX packet with FDIR match indicate. */
-#define PKT_RX_FDIR          (1ULL << 2)
+#define RTE_MBUF_F_RX_FDIR          (1ULL << 2)
+#define PKT_RX_FDIR RTE_DEPRECATED(PKT_RX_FDIR) RTE_MBUF_F_RX_FDIR
 
 /**
  * This flag is set when the outermost IP header checksum is detected as
  * wrong by the hardware.
  */
-#define PKT_RX_OUTER_IP_CKSUM_BAD (1ULL << 5)
+#define RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD (1ULL << 5)
+#define PKT_RX_OUTER_IP_CKSUM_BAD RTE_DEPRECATED(PKT_RX_OUTER_IP_CKSUM_BAD) \
+		RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD
 
 /**
  * A vlan has been stripped by the hardware and its tci is saved in
  * mbuf->vlan_tci. This can only happen if vlan stripping is enabled
  * in the RX configuration of the PMD.
- * When PKT_RX_VLAN_STRIPPED is set, PKT_RX_VLAN must also be set.
+ * When RTE_MBUF_F_RX_VLAN_STRIPPED is set, RTE_MBUF_F_RX_VLAN must also be set.
  */
-#define PKT_RX_VLAN_STRIPPED (1ULL << 6)
+#define RTE_MBUF_F_RX_VLAN_STRIPPED (1ULL << 6)
+#define PKT_RX_VLAN_STRIPPED RTE_DEPRECATED(PKT_RX_VLAN_STRIPPED) \
+		RTE_MBUF_F_RX_VLAN_STRIPPED
 
 /**
  * Mask of bits used to determine the status of RX IP checksum.
- * - PKT_RX_IP_CKSUM_UNKNOWN: no information about the RX IP checksum
- * - PKT_RX_IP_CKSUM_BAD: the IP checksum in the packet is wrong
- * - PKT_RX_IP_CKSUM_GOOD: the IP checksum in the packet is valid
- * - PKT_RX_IP_CKSUM_NONE: the IP checksum is not correct in the packet
+ * - RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN: no information about the RX IP checksum
+ * - RTE_MBUF_F_RX_IP_CKSUM_BAD: the IP checksum in the packet is wrong
+ * - RTE_MBUF_F_RX_IP_CKSUM_GOOD: the IP checksum in the packet is valid
+ * - RTE_MBUF_F_RX_IP_CKSUM_NONE: the IP checksum is not correct in the packet
  *   data, but the integrity of the IP header is verified.
  */
-#define PKT_RX_IP_CKSUM_MASK ((1ULL << 4) | (1ULL << 7))
+#define RTE_MBUF_F_RX_IP_CKSUM_MASK ((1ULL << 4) | (1ULL << 7))
+#define PKT_RX_IP_CKSUM_MASK RTE_DEPRECATED(PKT_RX_IP_CKSUM_MASK) \
+		RTE_MBUF_F_RX_IP_CKSUM_MASK
 
-#define PKT_RX_IP_CKSUM_UNKNOWN 0
-#define PKT_RX_IP_CKSUM_BAD     (1ULL << 4)
-#define PKT_RX_IP_CKSUM_GOOD    (1ULL << 7)
-#define PKT_RX_IP_CKSUM_NONE    ((1ULL << 4) | (1ULL << 7))
+#define RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN 0
+#define RTE_MBUF_F_RX_IP_CKSUM_BAD     (1ULL << 4)
+#define RTE_MBUF_F_RX_IP_CKSUM_GOOD    (1ULL << 7)
+#define RTE_MBUF_F_RX_IP_CKSUM_NONE    ((1ULL << 4) | (1ULL << 7))
+#define PKT_RX_IP_CKSUM_UNKNOWN RTE_DEPRECATED(PKT_RX_IP_CKSUM_UNKNOWN) \
+		RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN
+#define PKT_RX_IP_CKSUM_BAD RTE_DEPRECATED(PKT_RX_IP_CKSUM_BAD) \
+		RTE_MBUF_F_RX_IP_CKSUM_BAD
+#define PKT_RX_IP_CKSUM_GOOD RTE_DEPRECATED(PKT_RX_IP_CKSUM_GOOD) \
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD
+#define PKT_RX_IP_CKSUM_NONE RTE_DEPRECATED(PKT_RX_IP_CKSUM_NONE) \
+		RTE_MBUF_F_RX_IP_CKSUM_NONE
 
 /**
  * Mask of bits used to determine the status of RX L4 checksum.
- * - PKT_RX_L4_CKSUM_UNKNOWN: no information about the RX L4 checksum
- * - PKT_RX_L4_CKSUM_BAD: the L4 checksum in the packet is wrong
- * - PKT_RX_L4_CKSUM_GOOD: the L4 checksum in the packet is valid
- * - PKT_RX_L4_CKSUM_NONE: the L4 checksum is not correct in the packet
+ * - RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN: no information about the RX L4 checksum
+ * - RTE_MBUF_F_RX_L4_CKSUM_BAD: the L4 checksum in the packet is wrong
+ * - RTE_MBUF_F_RX_L4_CKSUM_GOOD: the L4 checksum in the packet is valid
+ * - RTE_MBUF_F_RX_L4_CKSUM_NONE: the L4 checksum is not correct in the packet
  *   data, but the integrity of the L4 data is verified.
  */
-#define PKT_RX_L4_CKSUM_MASK ((1ULL << 3) | (1ULL << 8))
+#define RTE_MBUF_F_RX_L4_CKSUM_MASK ((1ULL << 3) | (1ULL << 8))
+#define PKT_RX_L4_CKSUM_MASK RTE_DEPRECATED(PKT_RX_L4_CKSUM_MASK) \
+		RTE_MBUF_F_RX_L4_CKSUM_MASK
 
-#define PKT_RX_L4_CKSUM_UNKNOWN 0
-#define PKT_RX_L4_CKSUM_BAD     (1ULL << 3)
-#define PKT_RX_L4_CKSUM_GOOD    (1ULL << 8)
-#define PKT_RX_L4_CKSUM_NONE    ((1ULL << 3) | (1ULL << 8))
+#define RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN 0
+#define RTE_MBUF_F_RX_L4_CKSUM_BAD     (1ULL << 3)
+#define RTE_MBUF_F_RX_L4_CKSUM_GOOD    (1ULL << 8)
+#define RTE_MBUF_F_RX_L4_CKSUM_NONE    ((1ULL << 3) | (1ULL << 8))
+#define PKT_RX_L4_CKSUM_UNKNOWN RTE_DEPRECATED(PKT_RX_L4_CKSUM_UNKNOWN) \
+		RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN
+#define PKT_RX_L4_CKSUM_BAD RTE_DEPRECATED(PKT_RX_L4_CKSUM_BAD) \
+		RTE_MBUF_F_RX_L4_CKSUM_BAD
+#define PKT_RX_L4_CKSUM_GOOD RTE_DEPRECATED(PKT_RX_L4_CKSUM_GOOD) \
+		RTE_MBUF_F_RX_L4_CKSUM_GOOD
+#define PKT_RX_L4_CKSUM_NONE RTE_DEPRECATED(PKT_RX_L4_CKSUM_NONE) \
+		RTE_MBUF_F_RX_L4_CKSUM_NONE
 
 /** RX IEEE1588 L2 Ethernet PT Packet. */
-#define PKT_RX_IEEE1588_PTP  (1ULL << 9)
+#define RTE_MBUF_F_RX_IEEE1588_PTP  (1ULL << 9)
+#define PKT_RX_IEEE1588_PTP RTE_DEPRECATED(PKT_RX_IEEE1588_PTP) \
+		RTE_MBUF_F_RX_IEEE1588_PTP
 
 /** RX IEEE1588 L2/L4 timestamped packet.*/
-#define PKT_RX_IEEE1588_TMST (1ULL << 10)
+#define RTE_MBUF_F_RX_IEEE1588_TMST (1ULL << 10)
+#define PKT_RX_IEEE1588_TMST RTE_DEPRECATED(PKT_RX_IEEE1588_TMST) \
+		RTE_MBUF_F_RX_IEEE1588_TMST
 
 /** FD id reported if FDIR match. */
-#define PKT_RX_FDIR_ID       (1ULL << 13)
+#define RTE_MBUF_F_RX_FDIR_ID       (1ULL << 13)
+#define PKT_RX_FDIR_ID RTE_DEPRECATED(PKT_RX_FDIR_ID) \
+		RTE_MBUF_F_RX_FDIR_ID
 
 /** Flexible bytes reported if FDIR match. */
-#define PKT_RX_FDIR_FLX      (1ULL << 14)
+#define RTE_MBUF_F_RX_FDIR_FLX      (1ULL << 14)
+#define PKT_RX_FDIR_FLX RTE_DEPRECATED(PKT_RX_FDIR_FLX) \
+		RTE_MBUF_F_RX_FDIR_FLX
 
 /**
  * The outer VLAN has been stripped by the hardware and its TCI is
  * saved in mbuf->vlan_tci_outer.
  * This can only happen if VLAN stripping is enabled in the Rx
  * configuration of the PMD.
- * When PKT_RX_QINQ_STRIPPED is set, the flags PKT_RX_VLAN and PKT_RX_QINQ
- * must also be set.
+ * When RTE_MBUF_F_RX_QINQ_STRIPPED is set, the flags RTE_MBUF_F_RX_VLAN
+ * and RTE_MBUF_F_RX_QINQ must also be set.
  *
- * - If both PKT_RX_QINQ_STRIPPED and PKT_RX_VLAN_STRIPPED are set, the 2 VLANs
- *   have been stripped by the hardware and their TCIs are saved in
- *   mbuf->vlan_tci (inner) and mbuf->vlan_tci_outer (outer).
- * - If PKT_RX_QINQ_STRIPPED is set and PKT_RX_VLAN_STRIPPED is unset, only the
- *   outer VLAN is removed from packet data, but both tci are saved in
- *   mbuf->vlan_tci (inner) and mbuf->vlan_tci_outer (outer).
+ * - If both RTE_MBUF_F_RX_QINQ_STRIPPED and RTE_MBUF_F_RX_VLAN_STRIPPED are
+ *   set, the 2 VLANs have been stripped by the hardware and their TCIs are
+ *   saved in mbuf->vlan_tci (inner) and mbuf->vlan_tci_outer (outer).
+ * - If RTE_MBUF_F_RX_QINQ_STRIPPED is set and RTE_MBUF_F_RX_VLAN_STRIPPED
+ *   is unset, only the outer VLAN is removed from packet data, but both tci
+ *   are saved in mbuf->vlan_tci (inner) and mbuf->vlan_tci_outer (outer).
  */
-#define PKT_RX_QINQ_STRIPPED (1ULL << 15)
+#define RTE_MBUF_F_RX_QINQ_STRIPPED (1ULL << 15)
+#define PKT_RX_QINQ_STRIPPED RTE_DEPRECATED(PKT_RX_QINQ_STRIPPED) \
+		RTE_MBUF_F_RX_QINQ_STRIPPED
 
 /**
  * When packets are coalesced by a hardware or virtual driver, this flag
  * can be set in the RX mbuf, meaning that the m->tso_segsz field is
  * valid and is set to the segment size of original packets.
  */
-#define PKT_RX_LRO           (1ULL << 16)
+#define RTE_MBUF_F_RX_LRO           (1ULL << 16)
+#define PKT_RX_LRO RTE_DEPRECATED(PKT_RX_LRO) RTE_MBUF_F_RX_LRO
 
 /* There is no flag defined at offset 17. It is free for any future use. */
 
 /**
  * Indicate that security offload processing was applied on the RX packet.
  */
-#define PKT_RX_SEC_OFFLOAD	(1ULL << 18)
+#define RTE_MBUF_F_RX_SEC_OFFLOAD	(1ULL << 18)
+#define PKT_RX_SEC_OFFLOAD RTE_DEPRECATED(PKT_RX_SEC_OFFLOAD) \
+		RTE_MBUF_F_RX_SEC_OFFLOAD
 
 /**
  * Indicate that security offload processing failed on the RX packet.
  */
-#define PKT_RX_SEC_OFFLOAD_FAILED	(1ULL << 19)
+#define RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED	(1ULL << 19)
+#define PKT_RX_SEC_OFFLOAD_FAILED RTE_DEPRECATED(PKT_RX_SEC_OFFLOAD_FAILED) \
+		RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED
 
 /**
  * The RX packet is a double VLAN, and the outer tci has been
- * saved in mbuf->vlan_tci_outer. If this flag is set, PKT_RX_VLAN
+ * saved in mbuf->vlan_tci_outer. If this flag is set, RTE_MBUF_F_RX_VLAN
  * must also be set and the inner tci is saved in mbuf->vlan_tci.
- * If the flag PKT_RX_QINQ_STRIPPED is also present, both VLANs
+ * If the flag RTE_MBUF_F_RX_QINQ_STRIPPED is also present, both VLANs
  * headers have been stripped from mbuf data, else they are still
  * present.
  */
-#define PKT_RX_QINQ          (1ULL << 20)
+#define RTE_MBUF_F_RX_QINQ          (1ULL << 20)
+#define PKT_RX_QINQ RTE_DEPRECATED(PKT_RX_QINQ) RTE_MBUF_F_RX_QINQ
 
 /**
  * Mask of bits used to determine the status of outer RX L4 checksum.
- * - PKT_RX_OUTER_L4_CKSUM_UNKNOWN: no info about the outer RX L4 checksum
- * - PKT_RX_OUTER_L4_CKSUM_BAD: the outer L4 checksum in the packet is wrong
- * - PKT_RX_OUTER_L4_CKSUM_GOOD: the outer L4 checksum in the packet is valid
- * - PKT_RX_OUTER_L4_CKSUM_INVALID: invalid outer L4 checksum state.
+ * - RTE_MBUF_F_RX_OUTER_L4_CKSUM_UNKNOWN: no info about the outer RX L4
+ *   checksum
+ * - RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD: the outer L4 checksum in the packet
+ *   is wrong
+ * - RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD: the outer L4 checksum in the packet
+ *   is valid
+ * - RTE_MBUF_F_RX_OUTER_L4_CKSUM_INVALID: invalid outer L4 checksum state.
  *
- * The detection of PKT_RX_OUTER_L4_CKSUM_GOOD shall be based on the given
- * HW capability, At minimum, the PMD should support
- * PKT_RX_OUTER_L4_CKSUM_UNKNOWN and PKT_RX_OUTER_L4_CKSUM_BAD states
- * if the RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM offload is available.
+ * The detection of RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD shall be based on the
+ * given HW capability, At minimum, the PMD should support
+ * RTE_MBUF_F_RX_OUTER_L4_CKSUM_UNKNOWN and RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD
+ * states if the RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM offload is available.
  */
-#define PKT_RX_OUTER_L4_CKSUM_MASK	((1ULL << 21) | (1ULL << 22))
+#define RTE_MBUF_F_RX_OUTER_L4_CKSUM_MASK	((1ULL << 21) | (1ULL << 22))
+#define PKT_RX_OUTER_L4_CKSUM_MASK RTE_DEPRECATED(PKT_RX_OUTER_L4_CKSUM_MASK) \
+		RTE_MBUF_F_RX_OUTER_L4_CKSUM_MASK
 
-#define PKT_RX_OUTER_L4_CKSUM_UNKNOWN	0
-#define PKT_RX_OUTER_L4_CKSUM_BAD	(1ULL << 21)
-#define PKT_RX_OUTER_L4_CKSUM_GOOD	(1ULL << 22)
-#define PKT_RX_OUTER_L4_CKSUM_INVALID	((1ULL << 21) | (1ULL << 22))
+#define RTE_MBUF_F_RX_OUTER_L4_CKSUM_UNKNOWN	0
+#define RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD	(1ULL << 21)
+#define RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD	(1ULL << 22)
+#define RTE_MBUF_F_RX_OUTER_L4_CKSUM_INVALID	((1ULL << 21) | (1ULL << 22))
+#define PKT_RX_OUTER_L4_CKSUM_UNKNOWN \
+	RTE_DEPRECATED(PKT_RX_OUTER_L4_CKSUM_UNKNOWN) \
+	RTE_MBUF_F_RX_OUTER_L4_CKSUM_UNKNOWN
+#define PKT_RX_OUTER_L4_CKSUM_BAD RTE_DEPRECATED(PKT_RX_OUTER_L4_CKSUM_BAD) \
+		RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD
+#define PKT_RX_OUTER_L4_CKSUM_GOOD RTE_DEPRECATED(PKT_RX_OUTER_L4_CKSUM_GOOD) \
+		RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD
+#define PKT_RX_OUTER_L4_CKSUM_INVALID \
+	RTE_DEPRECATED(PKT_RX_OUTER_L4_CKSUM_INVALID) \
+	RTE_MBUF_F_RX_OUTER_L4_CKSUM_INVALID
 
-/* add new RX flags here, don't forget to update PKT_FIRST_FREE */
+/* add new RX flags here, don't forget to update RTE_MBUF_F_FIRST_FREE */
 
-#define PKT_FIRST_FREE (1ULL << 23)
-#define PKT_LAST_FREE (1ULL << 40)
+#define RTE_MBUF_F_FIRST_FREE (1ULL << 23)
+#define PKT_FIRST_FREE RTE_DEPRECATED(PKT_FIRST_FREE) RTE_MBUF_F_FIRST_FREE
+#define RTE_MBUF_F_LAST_FREE (1ULL << 40)
+#define PKT_LAST_FREE RTE_DEPRECATED(PKT_LAST_FREE) RTE_MBUF_F_LAST_FREE
 
-/* add new TX flags here, don't forget to update PKT_LAST_FREE  */
+/* add new TX flags here, don't forget to update RTE_MBUF_F_LAST_FREE  */
 
 /**
  * Outer UDP checksum offload flag. This flag is used for enabling
  * outer UDP checksum in PMD. To use outer UDP checksum, the user needs to
  * 1) Enable the following in mbuf,
  * a) Fill outer_l2_len and outer_l3_len in mbuf.
- * b) Set the PKT_TX_OUTER_UDP_CKSUM flag.
- * c) Set the PKT_TX_OUTER_IPV4 or PKT_TX_OUTER_IPV6 flag.
+ * b) Set the RTE_MBUF_F_TX_OUTER_UDP_CKSUM flag.
+ * c) Set the RTE_MBUF_F_TX_OUTER_IPV4 or RTE_MBUF_F_TX_OUTER_IPV6 flag.
  * 2) Configure RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM offload flag.
  */
-#define PKT_TX_OUTER_UDP_CKSUM     (1ULL << 41)
+#define RTE_MBUF_F_TX_OUTER_UDP_CKSUM     (1ULL << 41)
+#define PKT_TX_OUTER_UDP_CKSUM RTE_DEPRECATED(PKT_TX_OUTER_UDP_CKSUM) \
+		RTE_MBUF_F_TX_OUTER_UDP_CKSUM
 
 /**
  * UDP Fragmentation Offload flag. This flag is used for enabling UDP
  * fragmentation in SW or in HW. When use UFO, mbuf->tso_segsz is used
  * to store the MSS of UDP fragments.
  */
-#define PKT_TX_UDP_SEG	(1ULL << 42)
+#define RTE_MBUF_F_TX_UDP_SEG	(1ULL << 42)
+#define PKT_TX_UDP_SEG RTE_DEPRECATED(PKT_TX_UDP_SEG) RTE_MBUF_F_TX_UDP_SEG
 
 /**
  * Request security offload processing on the TX packet.
  * To use Tx security offload, the user needs to fill l2_len in mbuf
  * indicating L2 header size and where L3 header starts.
  */
-#define PKT_TX_SEC_OFFLOAD	(1ULL << 43)
+#define RTE_MBUF_F_TX_SEC_OFFLOAD	(1ULL << 43)
+#define PKT_TX_SEC_OFFLOAD RTE_DEPRECATED(PKT_TX_SEC_OFFLOAD) \
+		RTE_MBUF_F_TX_SEC_OFFLOAD
 
 /**
  * Offload the MACsec. This flag must be set by the application to enable
  * this offload feature for a packet to be transmitted.
  */
-#define PKT_TX_MACSEC        (1ULL << 44)
+#define RTE_MBUF_F_TX_MACSEC        (1ULL << 44)
+#define PKT_TX_MACSEC RTE_DEPRECATED(PKT_TX_MACSEC) RTE_MBUF_F_TX_MACSEC
 
 /**
  * Bits 45:48 used for the tunnel type.
  * The tunnel type must be specified for TSO or checksum on the inner part
  * of tunnel packets.
- * These flags can be used with PKT_TX_TCP_SEG for TSO, or PKT_TX_xxx_CKSUM.
+ * These flags can be used with RTE_MBUF_F_TX_TCP_SEG for TSO, or
+ * RTE_MBUF_F_TX_xxx_CKSUM.
  * The mbuf fields for inner and outer header lengths are required:
  * outer_l2_len, outer_l3_len, l2_len, l3_len, l4_len and tso_segsz for TSO.
  */
-#define PKT_TX_TUNNEL_VXLAN   (0x1ULL << 45)
-#define PKT_TX_TUNNEL_GRE     (0x2ULL << 45)
-#define PKT_TX_TUNNEL_IPIP    (0x3ULL << 45)
-#define PKT_TX_TUNNEL_GENEVE  (0x4ULL << 45)
+#define RTE_MBUF_F_TX_TUNNEL_VXLAN   (0x1ULL << 45)
+#define RTE_MBUF_F_TX_TUNNEL_GRE     (0x2ULL << 45)
+#define RTE_MBUF_F_TX_TUNNEL_IPIP    (0x3ULL << 45)
+#define RTE_MBUF_F_TX_TUNNEL_GENEVE  (0x4ULL << 45)
 /** TX packet with MPLS-in-UDP RFC 7510 header. */
-#define PKT_TX_TUNNEL_MPLSINUDP (0x5ULL << 45)
-#define PKT_TX_TUNNEL_VXLAN_GPE (0x6ULL << 45)
-#define PKT_TX_TUNNEL_GTP       (0x7ULL << 45)
-#define PKT_TX_TUNNEL_ESP       (0x8ULL << 45)
+#define RTE_MBUF_F_TX_TUNNEL_MPLSINUDP (0x5ULL << 45)
+#define RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE (0x6ULL << 45)
+#define RTE_MBUF_F_TX_TUNNEL_GTP       (0x7ULL << 45)
+#define RTE_MBUF_F_TX_TUNNEL_ESP       (0x8ULL << 45)
 /**
  * Generic IP encapsulated tunnel type, used for TSO and checksum offload.
  * It can be used for tunnels which are not standards or listed above.
- * It is preferred to use specific tunnel flags like PKT_TX_TUNNEL_GRE
- * or PKT_TX_TUNNEL_IPIP if possible.
+ * It is preferred to use specific tunnel flags like RTE_MBUF_F_TX_TUNNEL_GRE
+ * or RTE_MBUF_F_TX_TUNNEL_IPIP if possible.
  * The ethdev must be configured with RTE_ETH_TX_OFFLOAD_IP_TNL_TSO.
  * Outer and inner checksums are done according to the existing flags like
- * PKT_TX_xxx_CKSUM.
+ * RTE_MBUF_F_TX_xxx_CKSUM.
  * Specific tunnel headers that contain payload length, sequence id
  * or checksum are not expected to be updated.
  */
-#define PKT_TX_TUNNEL_IP (0xDULL << 45)
+#define RTE_MBUF_F_TX_TUNNEL_IP (0xDULL << 45)
 /**
  * Generic UDP encapsulated tunnel type, used for TSO and checksum offload.
  * UDP tunnel type implies outer IP layer.
  * It can be used for tunnels which are not standards or listed above.
- * It is preferred to use specific tunnel flags like PKT_TX_TUNNEL_VXLAN
+ * It is preferred to use specific tunnel flags like RTE_MBUF_F_TX_TUNNEL_VXLAN
  * if possible.
  * The ethdev must be configured with RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO.
  * Outer and inner checksums are done according to the existing flags like
- * PKT_TX_xxx_CKSUM.
+ * RTE_MBUF_F_TX_xxx_CKSUM.
  * Specific tunnel headers that contain payload length, sequence id
  * or checksum are not expected to be updated.
  */
-#define PKT_TX_TUNNEL_UDP (0xEULL << 45)
+#define RTE_MBUF_F_TX_TUNNEL_UDP (0xEULL << 45)
 /* add new TX TUNNEL type here */
-#define PKT_TX_TUNNEL_MASK    (0xFULL << 45)
+#define RTE_MBUF_F_TX_TUNNEL_MASK    (0xFULL << 45)
+
+#define PKT_TX_TUNNEL_VXLAN RTE_DEPRECATED(PKT_TX_TUNNEL_VXLAN) \
+		RTE_MBUF_F_TX_TUNNEL_VXLAN
+#define PKT_TX_TUNNEL_GRE RTE_DEPRECATED(PKT_TX_TUNNEL_GRE) \
+		RTE_MBUF_F_TX_TUNNEL_GRE
+#define PKT_TX_TUNNEL_IPIP RTE_DEPRECATED(PKT_TX_TUNNEL_IPIP) \
+		RTE_MBUF_F_TX_TUNNEL_IPIP
+#define PKT_TX_TUNNEL_GENEVE RTE_DEPRECATED(PKT_TX_TUNNEL_GENEVE) \
+		RTE_MBUF_F_TX_TUNNEL_GENEVE
+#define PKT_TX_TUNNEL_MPLSINUDP RTE_DEPRECATED(PKT_TX_TUNNEL_MPLSINUDP) \
+		RTE_MBUF_F_TX_TUNNEL_MPLSINUDP
+#define PKT_TX_TUNNEL_VXLAN_GPE RTE_DEPRECATED(PKT_TX_TUNNEL_VXLAN_GPE) \
+		RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE
+#define PKT_TX_TUNNEL_GTP RTE_DEPRECATED(PKT_TX_TUNNEL_GTP) \
+		RTE_MBUF_F_TX_TUNNEL_GTP
+#define PKT_TX_TUNNEL_IP RTE_DEPRECATED(PKT_TX_TUNNEL_IP) \
+		RTE_MBUF_F_TX_TUNNEL_IP
+#define PKT_TX_TUNNEL_UDP RTE_DEPRECATED(PKT_TX_TUNNEL_UDP) \
+		RTE_MBUF_F_TX_TUNNEL_UDP
+#define PKT_TX_TUNNEL_MASK RTE_DEPRECATED(PKT_TX_TUNNEL_MASK) \
+		RTE_MBUF_F_TX_TUNNEL_MASK
 
 /**
  * Double VLAN insertion (QinQ) request to driver, driver may offload the
  * insertion based on device capability.
  * mbuf 'vlan_tci' & 'vlan_tci_outer' must be valid when this flag is set.
  */
-#define PKT_TX_QINQ        (1ULL << 49)
-/** This old name is deprecated. */
-#define PKT_TX_QINQ_PKT RTE_DEPRECATED(PKT_TX_QINQ_PKT) PKT_TX_QINQ
+#define RTE_MBUF_F_TX_QINQ        (1ULL << 49)
+#define PKT_TX_QINQ RTE_DEPRECATED(PKT_TX_QINQ) RTE_MBUF_F_TX_QINQ
+#define PKT_TX_QINQ_PKT RTE_DEPRECATED(PKT_TX_QINQ_PKT) RTE_MBUF_F_TX_QINQ
 
 /**
  * TCP segmentation offload. To enable this offload feature for a
  * packet to be transmitted on hardware supporting TSO:
- *  - set the PKT_TX_TCP_SEG flag in mbuf->ol_flags (this flag implies
- *    PKT_TX_TCP_CKSUM)
- *  - set the flag PKT_TX_IPV4 or PKT_TX_IPV6
- *  - if it's IPv4, set the PKT_TX_IP_CKSUM flag
+ *  - set the RTE_MBUF_F_TX_TCP_SEG flag in mbuf->ol_flags (this flag implies
+ *    RTE_MBUF_F_TX_TCP_CKSUM)
+ *  - set the flag RTE_MBUF_F_TX_IPV4 or RTE_MBUF_F_TX_IPV6
+ *  - if it's IPv4, set the RTE_MBUF_F_TX_IP_CKSUM flag
  *  - fill the mbuf offload information: l2_len, l3_len, l4_len, tso_segsz
  */
-#define PKT_TX_TCP_SEG       (1ULL << 50)
+#define RTE_MBUF_F_TX_TCP_SEG       (1ULL << 50)
+#define PKT_TX_TCP_SEG RTE_DEPRECATED(PKT_TX_TCP_SEG) RTE_MBUF_F_TX_TCP_SEG
 
 /** TX IEEE1588 packet to timestamp. */
-#define PKT_TX_IEEE1588_TMST (1ULL << 51)
+#define RTE_MBUF_F_TX_IEEE1588_TMST (1ULL << 51)
+#define PKT_TX_IEEE1588_TMST RTE_DEPRECATED(PKT_TX_IEEE1588_TMST) \
+		RTE_MBUF_F_TX_IEEE1588_TMST
 
-/**
+/*
  * Bits 52+53 used for L4 packet type with checksum enabled: 00: Reserved,
  * 01: TCP checksum, 10: SCTP checksum, 11: UDP checksum. To use hardware
  * L4 checksum offload, the user needs to:
  *  - fill l2_len and l3_len in mbuf
- *  - set the flags PKT_TX_TCP_CKSUM, PKT_TX_SCTP_CKSUM or PKT_TX_UDP_CKSUM
- *  - set the flag PKT_TX_IPV4 or PKT_TX_IPV6
+ *  - set the flags RTE_MBUF_F_TX_TCP_CKSUM, RTE_MBUF_F_TX_SCTP_CKSUM or
+ *    RTE_MBUF_F_TX_UDP_CKSUM
+ *  - set the flag RTE_MBUF_F_TX_IPV4 or RTE_MBUF_F_TX_IPV6
  */
-#define PKT_TX_L4_NO_CKSUM   (0ULL << 52) /**< Disable L4 cksum of TX pkt. */
+
+/** Disable L4 cksum of TX pkt. */
+#define RTE_MBUF_F_TX_L4_NO_CKSUM   (0ULL << 52)
 
 /** TCP cksum of TX pkt. computed by NIC. */
-#define PKT_TX_TCP_CKSUM     (1ULL << 52)
+#define RTE_MBUF_F_TX_TCP_CKSUM     (1ULL << 52)
 
 /** SCTP cksum of TX pkt. computed by NIC. */
-#define PKT_TX_SCTP_CKSUM    (2ULL << 52)
+#define RTE_MBUF_F_TX_SCTP_CKSUM    (2ULL << 52)
 
 /** UDP cksum of TX pkt. computed by NIC. */
-#define PKT_TX_UDP_CKSUM     (3ULL << 52)
+#define RTE_MBUF_F_TX_UDP_CKSUM     (3ULL << 52)
 
 /** Mask for L4 cksum offload request. */
-#define PKT_TX_L4_MASK       (3ULL << 52)
+#define RTE_MBUF_F_TX_L4_MASK       (3ULL << 52)
+
+#define PKT_TX_L4_NO_CKSUM RTE_DEPRECATED(PKT_TX_L4_NO_CKSUM) \
+		RTE_MBUF_F_TX_L4_NO_CKSUM
+#define PKT_TX_TCP_CKSUM RTE_DEPRECATED(PKT_TX_TCP_CKSUM) \
+		RTE_MBUF_F_TX_TCP_CKSUM
+#define PKT_TX_SCTP_CKSUM RTE_DEPRECATED(PKT_TX_SCTP_CKSUM) \
+		RTE_MBUF_F_TX_SCTP_CKSUM
+#define PKT_TX_UDP_CKSUM RTE_DEPRECATED(PKT_TX_UDP_CKSUM) \
+		RTE_MBUF_F_TX_UDP_CKSUM
+#define PKT_TX_L4_MASK RTE_DEPRECATED(PKT_TX_L4_MASK) RTE_MBUF_F_TX_L4_MASK
 
 /**
- * Offload the IP checksum in the hardware. The flag PKT_TX_IPV4 should
+ * Offload the IP checksum in the hardware. The flag RTE_MBUF_F_TX_IPV4 should
  * also be set by the application, although a PMD will only check
- * PKT_TX_IP_CKSUM.
+ * RTE_MBUF_F_TX_IP_CKSUM.
  *  - fill the mbuf offload information: l2_len, l3_len
  */
-#define PKT_TX_IP_CKSUM      (1ULL << 54)
+#define RTE_MBUF_F_TX_IP_CKSUM      (1ULL << 54)
+#define PKT_TX_IP_CKSUM RTE_DEPRECATED(PKT_TX_IP_CKSUM) RTE_MBUF_F_TX_IP_CKSUM
 
 /**
  * Packet is IPv4. This flag must be set when using any offload feature
@@ -318,7 +423,8 @@ extern "C" {
  * packet. If the packet is a tunneled packet, this flag is related to
  * the inner headers.
  */
-#define PKT_TX_IPV4          (1ULL << 55)
+#define RTE_MBUF_F_TX_IPV4          (1ULL << 55)
+#define PKT_TX_IPV4 RTE_DEPRECATED(PKT_TX_IPV4) RTE_MBUF_F_TX_IPV4
 
 /**
  * Packet is IPv6. This flag must be set when using an offload feature
@@ -326,67 +432,77 @@ extern "C" {
  * packet. If the packet is a tunneled packet, this flag is related to
  * the inner headers.
  */
-#define PKT_TX_IPV6          (1ULL << 56)
+#define RTE_MBUF_F_TX_IPV6          (1ULL << 56)
+#define PKT_TX_IPV6 RTE_DEPRECATED(PKT_TX_IPV6) RTE_MBUF_F_TX_IPV6
 
 /**
  * VLAN tag insertion request to driver, driver may offload the insertion
  * based on the device capability.
  * mbuf 'vlan_tci' field must be valid when this flag is set.
  */
-#define PKT_TX_VLAN          (1ULL << 57)
-/* this old name is deprecated */
-#define PKT_TX_VLAN_PKT RTE_DEPRECATED(PKT_TX_VLAN_PKT) PKT_TX_VLAN
+#define RTE_MBUF_F_TX_VLAN          (1ULL << 57)
+#define PKT_TX_VLAN RTE_DEPRECATED(PKT_TX_VLAN) RTE_MBUF_F_TX_VLAN
+#define PKT_TX_VLAN_PKT RTE_DEPRECATED(PKT_TX_VLAN_PKT) RTE_MBUF_F_TX_VLAN
 
 /**
  * Offload the IP checksum of an external header in the hardware. The
- * flag PKT_TX_OUTER_IPV4 should also be set by the application, although
- * a PMD will only check PKT_TX_OUTER_IP_CKSUM.
+ * flag RTE_MBUF_F_TX_OUTER_IPV4 should also be set by the application, although
+ * a PMD will only check RTE_MBUF_F_TX_OUTER_IP_CKSUM.
  *  - fill the mbuf offload information: outer_l2_len, outer_l3_len
  */
-#define PKT_TX_OUTER_IP_CKSUM   (1ULL << 58)
+#define RTE_MBUF_F_TX_OUTER_IP_CKSUM   (1ULL << 58)
+#define PKT_TX_OUTER_IP_CKSUM RTE_DEPRECATED(PKT_TX_OUTER_IP_CKSUM) \
+		RTE_MBUF_F_TX_OUTER_IP_CKSUM
 
 /**
  * Packet outer header is IPv4. This flag must be set when using any
  * outer offload feature (L3 or L4 checksum) to tell the NIC that the
  * outer header of the tunneled packet is an IPv4 packet.
  */
-#define PKT_TX_OUTER_IPV4   (1ULL << 59)
+#define RTE_MBUF_F_TX_OUTER_IPV4   (1ULL << 59)
+#define PKT_TX_OUTER_IPV4 RTE_DEPRECATED(PKT_TX_OUTER_IPV4) \
+		RTE_MBUF_F_TX_OUTER_IPV4
 
 /**
  * Packet outer header is IPv6. This flag must be set when using any
  * outer offload feature (L4 checksum) to tell the NIC that the outer
  * header of the tunneled packet is an IPv6 packet.
  */
-#define PKT_TX_OUTER_IPV6    (1ULL << 60)
+#define RTE_MBUF_F_TX_OUTER_IPV6    (1ULL << 60)
+#define PKT_TX_OUTER_IPV6 RTE_DEPRECATED(PKT_TX_OUTER_IPV6) \
+		RTE_MBUF_F_TX_OUTER_IPV6
 
 /**
  * Bitmask of all supported packet Tx offload features flags,
  * which can be set for packet.
  */
-#define PKT_TX_OFFLOAD_MASK (    \
-		PKT_TX_OUTER_IPV6 |	 \
-		PKT_TX_OUTER_IPV4 |	 \
-		PKT_TX_OUTER_IP_CKSUM |  \
-		PKT_TX_VLAN |        \
-		PKT_TX_IPV6 |		 \
-		PKT_TX_IPV4 |		 \
-		PKT_TX_IP_CKSUM |        \
-		PKT_TX_L4_MASK |         \
-		PKT_TX_IEEE1588_TMST |	 \
-		PKT_TX_TCP_SEG |         \
-		PKT_TX_QINQ |        \
-		PKT_TX_TUNNEL_MASK |	 \
-		PKT_TX_MACSEC |		 \
-		PKT_TX_SEC_OFFLOAD |	 \
-		PKT_TX_UDP_SEG |	 \
-		PKT_TX_OUTER_UDP_CKSUM)
+#define RTE_MBUF_F_TX_OFFLOAD_MASK (    \
+		RTE_MBUF_F_TX_OUTER_IPV6 |	 \
+		RTE_MBUF_F_TX_OUTER_IPV4 |	 \
+		RTE_MBUF_F_TX_OUTER_IP_CKSUM |  \
+		RTE_MBUF_F_TX_VLAN |        \
+		RTE_MBUF_F_TX_IPV6 |		 \
+		RTE_MBUF_F_TX_IPV4 |		 \
+		RTE_MBUF_F_TX_IP_CKSUM |        \
+		RTE_MBUF_F_TX_L4_MASK |         \
+		RTE_MBUF_F_TX_IEEE1588_TMST |	 \
+		RTE_MBUF_F_TX_TCP_SEG |         \
+		RTE_MBUF_F_TX_QINQ |        \
+		RTE_MBUF_F_TX_TUNNEL_MASK |	 \
+		RTE_MBUF_F_TX_MACSEC |		 \
+		RTE_MBUF_F_TX_SEC_OFFLOAD |	 \
+		RTE_MBUF_F_TX_UDP_SEG |	 \
+		RTE_MBUF_F_TX_OUTER_UDP_CKSUM)
+#define PKT_TX_OFFLOAD_MASK RTE_DEPRECATED(PKT_TX_OFFLOAD_MASK) RTE_MBUF_F_TX_OFFLOAD_MASK
 
 /**
  * Mbuf having an external buffer attached. shinfo in mbuf must be filled.
  */
-#define EXT_ATTACHED_MBUF    (1ULL << 61)
+#define RTE_MBUF_F_EXTERNAL    (1ULL << 61)
+#define EXT_ATTACHED_MBUF RTE_DEPRECATED(EXT_ATTACHED_MBUF) RTE_MBUF_F_EXTERNAL
 
-#define IND_ATTACHED_MBUF    (1ULL << 62) /**< Indirect attached mbuf */
+#define RTE_MBUF_F_INDIRECT    (1ULL << 62) /**< Indirect attached mbuf */
+#define IND_ATTACHED_MBUF RTE_DEPRECATED(IND_ATTACHED_MBUF) RTE_MBUF_F_INDIRECT
 
 /** Alignment constraint of mbuf private area. */
 #define RTE_MBUF_PRIV_ALIGN 8
@@ -538,7 +654,7 @@ struct rte_mbuf {
 
 	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
 	uint16_t data_len;        /**< Amount of data in segment buffer. */
-	/** VLAN TCI (CPU order), valid if PKT_RX_VLAN is set. */
+	/** VLAN TCI (CPU order), valid if RTE_MBUF_F_RX_VLAN is set. */
 	uint16_t vlan_tci;
 
 	RTE_STD_C11
@@ -556,7 +672,7 @@ struct rte_mbuf {
 				};
 				uint32_t hi;
 				/**< First 4 flexible bytes or FD ID, dependent
-				 * on PKT_RX_FDIR_* flag in ol_flags.
+				 * on RTE_MBUF_F_RX_FDIR_* flag in ol_flags.
 				 */
 			} fdir;	/**< Filter identifier if FDIR enabled */
 			struct rte_mbuf_sched sched;
@@ -575,7 +691,7 @@ struct rte_mbuf {
 		} hash;                   /**< hash information */
 	};
 
-	/** Outer VLAN TCI (CPU order), valid if PKT_RX_QINQ is set. */
+	/** Outer VLAN TCI (CPU order), valid if RTE_MBUF_F_RX_QINQ is set. */
 	uint16_t vlan_tci_outer;
 
 	uint16_t buf_len;         /**< Length of segment buffer. */
@@ -669,14 +785,14 @@ struct rte_mbuf_ext_shared_info {
  * If a mbuf has its data in another mbuf and references it by mbuf
  * indirection, this mbuf can be defined as a cloned mbuf.
  */
-#define RTE_MBUF_CLONED(mb)     ((mb)->ol_flags & IND_ATTACHED_MBUF)
+#define RTE_MBUF_CLONED(mb)     ((mb)->ol_flags & RTE_MBUF_F_INDIRECT)
 
 /**
  * Returns TRUE if given mbuf has an external buffer, or FALSE otherwise.
  *
  * External buffer is a user-provided anonymous buffer.
  */
-#define RTE_MBUF_HAS_EXTBUF(mb) ((mb)->ol_flags & EXT_ATTACHED_MBUF)
+#define RTE_MBUF_HAS_EXTBUF(mb) ((mb)->ol_flags & RTE_MBUF_F_EXTERNAL)
 
 /**
  * Returns TRUE if given mbuf is direct, or FALSE otherwise.
@@ -685,7 +801,7 @@ struct rte_mbuf_ext_shared_info {
  * can be defined as a direct mbuf.
  */
 #define RTE_MBUF_DIRECT(mb) \
-	(!((mb)->ol_flags & (IND_ATTACHED_MBUF | EXT_ATTACHED_MBUF)))
+	(!((mb)->ol_flags & (RTE_MBUF_F_INDIRECT | RTE_MBUF_F_EXTERNAL)))
 
 /** Uninitialized or unspecified port. */
 #define RTE_MBUF_PORT_INVALID UINT16_MAX

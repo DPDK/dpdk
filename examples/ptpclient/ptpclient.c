@@ -464,7 +464,7 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 			   sizeof(struct clock_id));
 
 		/* Enable flag for hardware timestamping. */
-		created_pkt->ol_flags |= PKT_TX_IEEE1588_TMST;
+		created_pkt->ol_flags |= RTE_MBUF_F_TX_IEEE1588_TMST;
 
 		/*Read value from NIC to prevent latching with old value. */
 		rte_eth_timesync_read_tx_timestamp(ptp_data->portid,
@@ -626,7 +626,7 @@ lcore_main(void)
 				continue;
 
 			/* Packet is parsed to determine which type. 8< */
-			if (m->ol_flags & PKT_RX_IEEE1588_PTP)
+			if (m->ol_flags & RTE_MBUF_F_RX_IEEE1588_PTP)
 				parse_ptp_frames(portid, m);
 			/* >8 End of packet is parsed to determine which type. */
 

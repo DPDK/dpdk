@@ -167,21 +167,21 @@ enic_noscatter_vec_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			0x80, 0x80, 11, 10,
 			0x80, 0x80, 11, 10,
 			0x80, 0x80, 11, 10);
-	/* PKT_RX_RSS_HASH is 1<<1 so fits in 8-bit integer */
+	/* RTE_MBUF_F_RX_RSS_HASH is 1<<1 so fits in 8-bit integer */
 	const __m256i rss_shuffle =
 		_mm256_set_epi8(/* second 128 bits */
-			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
-			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
-			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
-			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
-			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
+			RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
+			RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
+			RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
+			RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
+			RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
 			0, /* rss_types = 0 */
 			/* first 128 bits */
-			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
-			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
-			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
-			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
-			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
+			RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
+			RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
+			RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
+			RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
+			RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
 			0 /* rss_types = 0 */);
 	/*
 	 * VLAN offload flags.
@@ -191,8 +191,8 @@ enic_noscatter_vec_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	 */
 	const __m256i vlan_shuffle =
 		_mm256_set_epi32(0, 0, 0, 0,
-			PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED, 0,
-			PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED, PKT_RX_VLAN);
+			RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED, 0,
+			RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED, RTE_MBUF_F_RX_VLAN);
 	/* Use the same shuffle index as vlan_shuffle */
 	const __m256i vlan_ptype_shuffle =
 		_mm256_set_epi32(0, 0, 0, 0,
@@ -211,39 +211,39 @@ enic_noscatter_vec_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	const __m256i csum_shuffle =
 		_mm256_set_epi8(/* second 128 bits */
 			/* 1111 ip4+ip4_ok+l4+l4_ok */
-			((PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD) >> 1),
+			((RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD) >> 1),
 			/* 1110 ip4_ok+ip4+l4+!l4_ok */
-			((PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD) >> 1),
-			(PKT_RX_IP_CKSUM_GOOD >> 1), /* 1101 ip4+ip4_ok */
-			(PKT_RX_IP_CKSUM_GOOD >> 1), /* 1100 ip4_ok+ip4 */
-			(PKT_RX_L4_CKSUM_GOOD >> 1), /* 1011 l4+l4_ok */
-			(PKT_RX_L4_CKSUM_BAD >> 1),  /* 1010 l4+!l4_ok */
+			((RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD) >> 1),
+			(RTE_MBUF_F_RX_IP_CKSUM_GOOD >> 1), /* 1101 ip4+ip4_ok */
+			(RTE_MBUF_F_RX_IP_CKSUM_GOOD >> 1), /* 1100 ip4_ok+ip4 */
+			(RTE_MBUF_F_RX_L4_CKSUM_GOOD >> 1), /* 1011 l4+l4_ok */
+			(RTE_MBUF_F_RX_L4_CKSUM_BAD >> 1),  /* 1010 l4+!l4_ok */
 			0, /* 1001 */
 			0, /* 1000 */
 			/* 0111 !ip4_ok+ip4+l4+l4_ok */
-			((PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD) >> 1),
+			((RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_GOOD) >> 1),
 			/* 0110 !ip4_ok+ip4+l4+!l4_ok */
-			((PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD) >> 1),
-			(PKT_RX_IP_CKSUM_BAD >> 1),  /* 0101 !ip4_ok+ip4 */
-			(PKT_RX_IP_CKSUM_BAD >> 1),  /* 0100 !ip4_ok+ip4 */
-			(PKT_RX_L4_CKSUM_GOOD >> 1), /* 0011 l4+l4_ok */
-			(PKT_RX_L4_CKSUM_BAD >> 1),  /* 0010 l4+!l4_ok */
+			((RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD) >> 1),
+			(RTE_MBUF_F_RX_IP_CKSUM_BAD >> 1),  /* 0101 !ip4_ok+ip4 */
+			(RTE_MBUF_F_RX_IP_CKSUM_BAD >> 1),  /* 0100 !ip4_ok+ip4 */
+			(RTE_MBUF_F_RX_L4_CKSUM_GOOD >> 1), /* 0011 l4+l4_ok */
+			(RTE_MBUF_F_RX_L4_CKSUM_BAD >> 1),  /* 0010 l4+!l4_ok */
 			0, /* 0001 */
 			0, /* 0000 */
 			/* first 128 bits */
-			((PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD) >> 1),
-			((PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD) >> 1),
-			(PKT_RX_IP_CKSUM_GOOD >> 1),
-			(PKT_RX_IP_CKSUM_GOOD >> 1),
-			(PKT_RX_L4_CKSUM_GOOD >> 1),
-			(PKT_RX_L4_CKSUM_BAD >> 1),
+			((RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD) >> 1),
+			((RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD) >> 1),
+			(RTE_MBUF_F_RX_IP_CKSUM_GOOD >> 1),
+			(RTE_MBUF_F_RX_IP_CKSUM_GOOD >> 1),
+			(RTE_MBUF_F_RX_L4_CKSUM_GOOD >> 1),
+			(RTE_MBUF_F_RX_L4_CKSUM_BAD >> 1),
 			0, 0,
-			((PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD) >> 1),
-			((PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD) >> 1),
-			(PKT_RX_IP_CKSUM_BAD >> 1),
-			(PKT_RX_IP_CKSUM_BAD >> 1),
-			(PKT_RX_L4_CKSUM_GOOD >> 1),
-			(PKT_RX_L4_CKSUM_BAD >> 1),
+			((RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_GOOD) >> 1),
+			((RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD) >> 1),
+			(RTE_MBUF_F_RX_IP_CKSUM_BAD >> 1),
+			(RTE_MBUF_F_RX_IP_CKSUM_BAD >> 1),
+			(RTE_MBUF_F_RX_L4_CKSUM_GOOD >> 1),
+			(RTE_MBUF_F_RX_L4_CKSUM_BAD >> 1),
 			0, 0);
 	/*
 	 * Non-fragment PTYPEs.
@@ -471,7 +471,7 @@ enic_noscatter_vec_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 
 		/*
-		 * Compute PKT_RX_RSS_HASH.
+		 * Compute RTE_MBUF_F_RX_RSS_HASH.
 		 * Use 2 shifts and 1 shuffle for 8 desc: 0.375 inst/desc
 		 * RSS types in byte 0, 4, 8, 12, 16, 20, 24, 28
 		 * Everything else is zero.
@@ -479,7 +479,7 @@ enic_noscatter_vec_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		__m256i rss_types =
 			_mm256_srli_epi32(_mm256_slli_epi32(flags0_7, 10), 28);
 		/*
-		 * RSS flags (PKT_RX_RSS_HASH) are in
+		 * RSS flags (RTE_MBUF_F_RX_RSS_HASH) are in
 		 * byte 0, 4, 8, 12, 16, 20, 24, 28
 		 * Everything else is zero.
 		 */
@@ -557,7 +557,7 @@ enic_noscatter_vec_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		vlan0_7 = _mm256_sub_epi32(zero4, vlan0_7);
 
 		/*
-		 * Compute PKT_RX_VLAN and PKT_RX_VLAN_STRIPPED.
+		 * Compute RTE_MBUF_F_RX_VLAN and RTE_MBUF_F_RX_VLAN_STRIPPED.
 		 * Use 3 shifts, 1 or,  1 shuffle for 8 desc: 0.625 inst/desc
 		 * VLAN offload flags in byte 0, 4, 8, 12, 16, 20, 24, 28
 		 * Everything else is zero.

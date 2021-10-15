@@ -642,7 +642,7 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
 		uint64_t ol_flags = m->ol_flags;
 
-		if (ol_flags & PKT_TX_SEC_OFFLOAD) {
+		if (ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
 			uintptr_t ssow_base = base;
 
 			if (ev->sched_type)

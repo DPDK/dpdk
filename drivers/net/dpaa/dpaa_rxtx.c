@@ -125,8 +125,8 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m, void *fd_virt_addr)
 
 	DPAA_DP_LOG(DEBUG, " Parsing mbuf: %p with annotations: %p", m, annot);
 
-	m->ol_flags = PKT_RX_RSS_HASH | PKT_RX_IP_CKSUM_GOOD |
-		PKT_RX_L4_CKSUM_GOOD;
+	m->ol_flags = RTE_MBUF_F_RX_RSS_HASH | RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+		RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 
 	switch (prs) {
 	case DPAA_PKT_TYPE_IPV4:
@@ -204,13 +204,13 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m, void *fd_virt_addr)
 		break;
 	case DPAA_PKT_TYPE_IPV4_CSUM_ERR:
 	case DPAA_PKT_TYPE_IPV6_CSUM_ERR:
-		m->ol_flags = PKT_RX_RSS_HASH | PKT_RX_IP_CKSUM_BAD;
+		m->ol_flags = RTE_MBUF_F_RX_RSS_HASH | RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		break;
 	case DPAA_PKT_TYPE_IPV4_TCP_CSUM_ERR:
 	case DPAA_PKT_TYPE_IPV6_TCP_CSUM_ERR:
 	case DPAA_PKT_TYPE_IPV4_UDP_CSUM_ERR:
 	case DPAA_PKT_TYPE_IPV6_UDP_CSUM_ERR:
-		m->ol_flags = PKT_RX_RSS_HASH | PKT_RX_L4_CKSUM_BAD;
+		m->ol_flags = RTE_MBUF_F_RX_RSS_HASH | RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		break;
 	case DPAA_PKT_TYPE_NONE:
 		m->packet_type = 0;
@@ -229,7 +229,7 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m, void *fd_virt_addr)
 
 	/* Check if Vlan is present */
 	if (prs & DPAA_PARSE_VLAN_MASK)
-		m->ol_flags |= PKT_RX_VLAN;
+		m->ol_flags |= RTE_MBUF_F_RX_VLAN;
 	/* Packet received without stripping the vlan */
 }
 

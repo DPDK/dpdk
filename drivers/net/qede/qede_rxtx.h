@@ -144,20 +144,20 @@
 
 #define QEDE_PKT_TYPE_TUNN_MAX_TYPE			0x20 /* 2^5 */
 
-#define QEDE_TX_CSUM_OFFLOAD_MASK (PKT_TX_IP_CKSUM              | \
-				   PKT_TX_TCP_CKSUM             | \
-				   PKT_TX_UDP_CKSUM             | \
-				   PKT_TX_OUTER_IP_CKSUM        | \
-				   PKT_TX_TCP_SEG		| \
-				   PKT_TX_IPV4			| \
-				   PKT_TX_IPV6)
+#define QEDE_TX_CSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM              | \
+				   RTE_MBUF_F_TX_TCP_CKSUM             | \
+				   RTE_MBUF_F_TX_UDP_CKSUM             | \
+				   RTE_MBUF_F_TX_OUTER_IP_CKSUM        | \
+				   RTE_MBUF_F_TX_TCP_SEG		| \
+				   RTE_MBUF_F_TX_IPV4			| \
+				   RTE_MBUF_F_TX_IPV6)
 
 #define QEDE_TX_OFFLOAD_MASK (QEDE_TX_CSUM_OFFLOAD_MASK | \
-			      PKT_TX_VLAN		| \
-			      PKT_TX_TUNNEL_MASK)
+			      RTE_MBUF_F_TX_VLAN		| \
+			      RTE_MBUF_F_TX_TUNNEL_MASK)
 
 #define QEDE_TX_OFFLOAD_NOTSUP_MASK \
-	(PKT_TX_OFFLOAD_MASK ^ QEDE_TX_OFFLOAD_MASK)
+	(RTE_MBUF_F_TX_OFFLOAD_MASK ^ QEDE_TX_OFFLOAD_MASK)
 
 /* TPA related structures */
 struct qede_agg_info {

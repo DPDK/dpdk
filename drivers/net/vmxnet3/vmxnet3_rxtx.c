@@ -48,15 +48,14 @@
 #include "vmxnet3_logs.h"
 #include "vmxnet3_ethdev.h"
 
-#define	VMXNET3_TX_OFFLOAD_MASK	( \
-		PKT_TX_VLAN | \
-		PKT_TX_IPV6 |     \
-		PKT_TX_IPV4 |     \
-		PKT_TX_L4_MASK |  \
-		PKT_TX_TCP_SEG)
+#define	VMXNET3_TX_OFFLOAD_MASK	(RTE_MBUF_F_TX_VLAN | \
+		RTE_MBUF_F_TX_IPV6 |     \
+		RTE_MBUF_F_TX_IPV4 |     \
+		RTE_MBUF_F_TX_L4_MASK |  \
+		RTE_MBUF_F_TX_TCP_SEG)
 
 #define	VMXNET3_TX_OFFLOAD_NOTSUP_MASK	\
-	(PKT_TX_OFFLOAD_MASK ^ VMXNET3_TX_OFFLOAD_MASK)
+	(RTE_MBUF_F_TX_OFFLOAD_MASK ^ VMXNET3_TX_OFFLOAD_MASK)
 
 static const uint32_t rxprod_reg[2] = {VMXNET3_REG_RXPROD, VMXNET3_REG_RXPROD2};
 
@@ -359,7 +358,7 @@ vmxnet3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* Non-TSO packet cannot occupy more than
 		 * VMXNET3_MAX_TXD_PER_PKT TX descriptors.
 		 */
-		if ((ol_flags & PKT_TX_TCP_SEG) == 0 &&
+		if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) == 0 &&
 				m->nb_segs > VMXNET3_MAX_TXD_PER_PKT) {
 			rte_errno = EINVAL;
 			return i;
@@ -367,8 +366,8 @@ vmxnet3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		/* check that only supported TX offloads are requested. */
 		if ((ol_flags & VMXNET3_TX_OFFLOAD_NOTSUP_MASK) != 0 ||
-				(ol_flags & PKT_TX_L4_MASK) ==
-				PKT_TX_SCTP_CKSUM) {
+				(ol_flags & RTE_MBUF_F_TX_L4_MASK) ==
+				RTE_MBUF_F_TX_SCTP_CKSUM) {
 			rte_errno = ENOTSUP;
 			return i;
 		}
@@ -416,7 +415,7 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		struct rte_mbuf *txm = tx_pkts[nb_tx];
 		struct rte_mbuf *m_seg = txm;
 		int copy_size = 0;
-		bool tso = (txm->ol_flags & PKT_TX_TCP_SEG) != 0;
+		bool tso = (txm->ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0;
 		/* # of descriptors needed for a packet. */
 		unsigned count = txm->nb_segs;
 
@@ -520,7 +519,7 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		/* Add VLAN tag if present */
 		gdesc = txq->cmd_ring.base + first2fill;
-		if (txm->ol_flags & PKT_TX_VLAN) {
+		if (txm->ol_flags & RTE_MBUF_F_TX_VLAN) {
 			gdesc->txd.ti = 1;
 			gdesc->txd.tci = txm->vlan_tci;
 		}
@@ -535,23 +534,23 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			gdesc->txd.msscof = mss;
 
 			deferred += (rte_pktmbuf_pkt_len(txm) - gdesc->txd.hlen + mss - 1) / mss;
-		} else if (txm->ol_flags & PKT_TX_L4_MASK) {
+		} else if (txm->ol_flags & RTE_MBUF_F_TX_L4_MASK) {
 			gdesc->txd.om = VMXNET3_OM_CSUM;
 			gdesc->txd.hlen = txm->l2_len + txm->l3_len;
 
-			switch (txm->ol_flags & PKT_TX_L4_MASK) {
-			case PKT_TX_TCP_CKSUM:
+			switch (txm->ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+			case RTE_MBUF_F_TX_TCP_CKSUM:
 				gdesc->txd.msscof = gdesc->txd.hlen +
 					offsetof(struct rte_tcp_hdr, cksum);
 				break;
-			case PKT_TX_UDP_CKSUM:
+			case RTE_MBUF_F_TX_UDP_CKSUM:
 				gdesc->txd.msscof = gdesc->txd.hlen +
 					offsetof(struct rte_udp_hdr,
 						dgram_cksum);
 				break;
 			default:
 				PMD_TX_LOG(WARNING, "requested cksum offload not supported %#llx",
-					   txm->ol_flags & PKT_TX_L4_MASK);
+					   txm->ol_flags & RTE_MBUF_F_TX_L4_MASK);
 				abort();
 			}
 			deferred++;
@@ -739,35 +738,35 @@ vmxnet3_rx_offload(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 
 			rxm->tso_segsz = rcde->mss;
 			*vmxnet3_segs_dynfield(rxm) = rcde->segCnt;
-			ol_flags |= PKT_RX_LRO;
+			ol_flags |= RTE_MBUF_F_RX_LRO;
 		}
 	} else { /* Offloads set in eop */
 		/* Check for RSS */
 		if (rcd->rssType != VMXNET3_RCD_RSS_TYPE_NONE) {
-			ol_flags |= PKT_RX_RSS_HASH;
+			ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 			rxm->hash.rss = rcd->rssHash;
 		}
 
 		/* Check for hardware stripped VLAN tag */
 		if (rcd->ts) {
-			ol_flags |= (PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
+			ol_flags |= (RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED);
 			rxm->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
 		}
 
 		/* Check packet type, checksum errors, etc. */
 		if (rcd->cnc) {
-			ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
+			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
 		} else {
 			if (rcd->v4) {
 				packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
 
 				if (rcd->ipc)
-					ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+					ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 				else
-					ol_flags |= PKT_RX_IP_CKSUM_BAD;
+					ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 
 				if (rcd->tuc) {
-					ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+					ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 					if (rcd->tcp)
 						packet_type |= RTE_PTYPE_L4_TCP;
 					else
@@ -775,17 +774,17 @@ vmxnet3_rx_offload(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 				} else {
 					if (rcd->tcp) {
 						packet_type |= RTE_PTYPE_L4_TCP;
-						ol_flags |= PKT_RX_L4_CKSUM_BAD;
+						ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 					} else if (rcd->udp) {
 						packet_type |= RTE_PTYPE_L4_UDP;
-						ol_flags |= PKT_RX_L4_CKSUM_BAD;
+						ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 					}
 				}
 			} else if (rcd->v6) {
 				packet_type |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
 
 				if (rcd->tuc) {
-					ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+					ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 					if (rcd->tcp)
 						packet_type |= RTE_PTYPE_L4_TCP;
 					else
@@ -793,10 +792,10 @@ vmxnet3_rx_offload(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 				} else {
 					if (rcd->tcp) {
 						packet_type |= RTE_PTYPE_L4_TCP;
-						ol_flags |= PKT_RX_L4_CKSUM_BAD;
+						ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 					} else if (rcd->udp) {
 						packet_type |= RTE_PTYPE_L4_UDP;
-						ol_flags |= PKT_RX_L4_CKSUM_BAD;
+						ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 					}
 				}
 			} else {
@@ -804,7 +803,7 @@ vmxnet3_rx_offload(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 			}
 
 			/* Old variants of vmxnet3 do not provide MSS */
-			if ((ol_flags & PKT_RX_LRO) && rxm->tso_segsz == 0)
+			if ((ol_flags & RTE_MBUF_F_RX_LRO) && rxm->tso_segsz == 0)
 				rxm->tso_segsz = vmxnet3_guess_mss(hw,
 						rcd, rxm);
 		}

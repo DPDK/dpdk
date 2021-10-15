@@ -42,10 +42,10 @@ fill_sq_desc_header(union sq_entry_t *entry, struct rte_mbuf *pkt)
 	ol_flags = pkt->ol_flags & NICVF_TX_OFFLOAD_MASK;
 	if (unlikely(ol_flags)) {
 		/* L4 cksum */
-		uint64_t l4_flags = ol_flags & PKT_TX_L4_MASK;
-		if (l4_flags == PKT_TX_TCP_CKSUM)
+		uint64_t l4_flags = ol_flags & RTE_MBUF_F_TX_L4_MASK;
+		if (l4_flags == RTE_MBUF_F_TX_TCP_CKSUM)
 			sqe.hdr.csum_l4 = SEND_L4_CSUM_TCP;
-		else if (l4_flags == PKT_TX_UDP_CKSUM)
+		else if (l4_flags == RTE_MBUF_F_TX_UDP_CKSUM)
 			sqe.hdr.csum_l4 = SEND_L4_CSUM_UDP;
 		else
 			sqe.hdr.csum_l4 = SEND_L4_CSUM_DISABLE;
@@ -54,7 +54,7 @@ fill_sq_desc_header(union sq_entry_t *entry, struct rte_mbuf *pkt)
 		sqe.hdr.l4_offset = pkt->l3_len + pkt->l2_len;
 
 		/* L3 cksum */
-		if (ol_flags & PKT_TX_IP_CKSUM)
+		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 			sqe.hdr.csum_l3 = 1;
 	}
 
@@ -343,9 +343,9 @@ static inline uint64_t __rte_hot
 nicvf_set_olflags(const cqe_rx_word0_t cqe_rx_w0)
 {
 	static const uint64_t flag_table[3] __rte_cache_aligned = {
-		PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD,
-		PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_UNKNOWN,
-		PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+		RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN,
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
 	};
 
 	const uint8_t idx = (cqe_rx_w0.err_opcode == CQE_RX_ERR_L4_CHK) << 1 |
@@ -409,7 +409,7 @@ nicvf_rx_offload(cqe_rx_word0_t cqe_rx_w0, cqe_rx_word2_t cqe_rx_w2,
 {
 	if (likely(cqe_rx_w0.rss_alg)) {
 		pkt->hash.rss = cqe_rx_w2.rss_tag;
-		pkt->ol_flags |= PKT_RX_RSS_HASH;
+		pkt->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 
 	}
 }
@@ -454,8 +454,8 @@ nicvf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
 			pkt->ol_flags = nicvf_set_olflags(cqe_rx_w0);
 		if (flag & NICVF_RX_OFFLOAD_VLAN_STRIP) {
 			if (unlikely(cqe_rx_w0.vlan_stripped)) {
-				pkt->ol_flags |= PKT_RX_VLAN
-							| PKT_RX_VLAN_STRIPPED;
+				pkt->ol_flags |= RTE_MBUF_F_RX_VLAN
+							| RTE_MBUF_F_RX_VLAN_STRIPPED;
 				pkt->vlan_tci =
 					rte_cpu_to_be_16(cqe_rx_w2.vlan_tci);
 			}
@@ -549,8 +549,8 @@ nicvf_process_cq_mseg_entry(struct cqe_rx_t *cqe_rx,
 		pkt->ol_flags = nicvf_set_olflags(cqe_rx_w0);
 	if (flag & NICVF_RX_OFFLOAD_VLAN_STRIP) {
 		if (unlikely(cqe_rx_w0.vlan_stripped)) {
-			pkt->ol_flags |= PKT_RX_VLAN
-				| PKT_RX_VLAN_STRIPPED;
+			pkt->ol_flags |= RTE_MBUF_F_RX_VLAN
+				| RTE_MBUF_F_RX_VLAN_STRIPPED;
 			pkt->vlan_tci = rte_cpu_to_be_16(cqe_rx_w2.vlan_tci);
 		}
 	}

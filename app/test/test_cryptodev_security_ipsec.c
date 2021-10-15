@@ -524,7 +524,7 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 
 	if ((td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) &&
 				flags->ip_csum) {
-		if (m->ol_flags & PKT_RX_IP_CKSUM_GOOD)
+		if (m->ol_flags & RTE_MBUF_F_RX_IP_CKSUM_GOOD)
 			ret = test_ipsec_l3_csum_verify(m);
 		else
 			ret = TEST_FAILED;
@@ -537,7 +537,7 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 
 	if ((td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) &&
 				flags->l4_csum) {
-		if (m->ol_flags & PKT_RX_L4_CKSUM_GOOD)
+		if (m->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_GOOD)
 			ret = test_ipsec_l4_csum_verify(m);
 		else
 			ret = TEST_FAILED;

@@ -260,25 +260,25 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 	mbuf->pkt_len = rte_le_to_cpu_32(tpa_start->len);
 	mbuf->data_len = mbuf->pkt_len;
 	mbuf->port = rxq->port_id;
-	mbuf->ol_flags = PKT_RX_LRO;
+	mbuf->ol_flags = RTE_MBUF_F_RX_LRO;
 
 	bnxt_tpa_get_metadata(rxq->bp, tpa_info, tpa_start, tpa_start1);
 
 	if (likely(tpa_info->hash_valid)) {
 		mbuf->hash.rss = tpa_info->rss_hash;
-		mbuf->ol_flags |= PKT_RX_RSS_HASH;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 	} else if (tpa_info->cfa_code_valid) {
 		mbuf->hash.fdir.id = tpa_info->cfa_code;
-		mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 	}
 
 	if (tpa_info->vlan_valid && BNXT_RX_VLAN_STRIP_EN(rxq->bp)) {
 		mbuf->vlan_tci = tpa_info->vlan;
-		mbuf->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 	}
 
 	if (likely(tpa_info->l4_csum_valid))
-		mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 
 	/* recycle next mbuf */
 	data_cons = RING_NEXT(data_cons);
@@ -576,34 +576,34 @@ bnxt_init_ol_flags_tables(struct bnxt_rx_queue *rxq)
 
 		if (BNXT_RX_VLAN_STRIP_EN(rxq->bp)) {
 			if (i & RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN)
-				pt[i] |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+				pt[i] |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		}
 
 		if (i & (RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC << 3)) {
 			/* Tunnel case. */
 			if (outer_cksum_enabled) {
 				if (i & RX_PKT_CMPL_FLAGS2_IP_CS_CALC)
-					pt[i] |= PKT_RX_IP_CKSUM_GOOD;
+					pt[i] |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 				if (i & RX_PKT_CMPL_FLAGS2_L4_CS_CALC)
-					pt[i] |= PKT_RX_L4_CKSUM_GOOD;
+					pt[i] |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 
 				if (i & RX_PKT_CMPL_FLAGS2_T_L4_CS_CALC)
-					pt[i] |= PKT_RX_OUTER_L4_CKSUM_GOOD;
+					pt[i] |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD;
 			} else {
 				if (i & RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC)
-					pt[i] |= PKT_RX_IP_CKSUM_GOOD;
+					pt[i] |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 				if (i & RX_PKT_CMPL_FLAGS2_T_L4_CS_CALC)
-					pt[i] |= PKT_RX_L4_CKSUM_GOOD;
+					pt[i] |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 			}
 		} else {
 			/* Non-tunnel case. */
 			if (i & RX_PKT_CMPL_FLAGS2_IP_CS_CALC)
-				pt[i] |= PKT_RX_IP_CKSUM_GOOD;
+				pt[i] |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 			if (i & RX_PKT_CMPL_FLAGS2_L4_CS_CALC)
-				pt[i] |= PKT_RX_L4_CKSUM_GOOD;
+				pt[i] |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 		}
 	}
 
@@ -616,30 +616,30 @@ bnxt_init_ol_flags_tables(struct bnxt_rx_queue *rxq)
 			/* Tunnel case. */
 			if (outer_cksum_enabled) {
 				if (i & (RX_PKT_CMPL_ERRORS_IP_CS_ERROR >> 4))
-					pt[i] |= PKT_RX_IP_CKSUM_BAD;
+					pt[i] |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 
 				if (i & (RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR >> 4))
-					pt[i] |= PKT_RX_OUTER_IP_CKSUM_BAD;
+					pt[i] |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
 
 				if (i & (RX_PKT_CMPL_ERRORS_L4_CS_ERROR >> 4))
-					pt[i] |= PKT_RX_L4_CKSUM_BAD;
+					pt[i] |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 
 				if (i & (RX_PKT_CMPL_ERRORS_T_L4_CS_ERROR >> 4))
-					pt[i] |= PKT_RX_OUTER_L4_CKSUM_BAD;
+					pt[i] |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD;
 			} else {
 				if (i & (RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR >> 4))
-					pt[i] |= PKT_RX_IP_CKSUM_BAD;
+					pt[i] |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 
 				if (i & (RX_PKT_CMPL_ERRORS_T_L4_CS_ERROR >> 4))
-					pt[i] |= PKT_RX_L4_CKSUM_BAD;
+					pt[i] |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 			}
 		} else {
 			/* Non-tunnel case. */
 			if (i & (RX_PKT_CMPL_ERRORS_IP_CS_ERROR >> 4))
-				pt[i] |= PKT_RX_IP_CKSUM_BAD;
+				pt[i] |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 
 			if (i & (RX_PKT_CMPL_ERRORS_L4_CS_ERROR >> 4))
-				pt[i] |= PKT_RX_L4_CKSUM_BAD;
+				pt[i] |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		}
 	}
 }
@@ -677,13 +677,13 @@ bnxt_set_ol_flags(struct bnxt_rx_ring_info *rxr, struct rx_pkt_cmpl *rxcmp,
 
 	if (flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID) {
 		mbuf->hash.rss = rte_le_to_cpu_32(rxcmp->rss_hash);
-		ol_flags |= PKT_RX_RSS_HASH;
+		ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 	}
 
 #ifdef RTE_LIBRTE_IEEE1588
 	if (unlikely((flags_type & RX_PKT_CMPL_FLAGS_MASK) ==
 		     RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP))
-		ol_flags |= PKT_RX_IEEE1588_PTP | PKT_RX_IEEE1588_TMST;
+		ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP | RTE_MBUF_F_RX_IEEE1588_TMST;
 #endif
 
 	mbuf->ol_flags = ol_flags;
@@ -807,7 +807,7 @@ bnxt_ulp_set_mark_in_mbuf(struct bnxt *bp, struct rx_pkt_cmpl_hi *rxcmp1,
 		mbuf->hash.fdir.hi = mark_id;
 		*bnxt_cfa_code_dynfield(mbuf) = cfa_code & 0xffffffffull;
 		mbuf->hash.fdir.id = rxcmp1->cfa_code;
-		mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 		return mark_id;
 	}
 
@@ -854,7 +854,7 @@ void bnxt_set_mark_in_mbuf(struct bnxt *bp,
 	}
 
 	mbuf->hash.fdir.hi = bp->mark_table[cfa_code].mark_id;
-	mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+	mbuf->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 }
 
 static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,

@@ -112,7 +112,7 @@ is_lacp_packets(uint16_t ethertype, uint8_t subtype, struct rte_mbuf *mbuf)
 	const uint16_t ether_type_slow_be =
 		rte_be_to_cpu_16(RTE_ETHER_TYPE_SLOW);
 
-	return !((mbuf->ol_flags & PKT_RX_VLAN) ? mbuf->vlan_tci : 0) &&
+	return !((mbuf->ol_flags & RTE_MBUF_F_RX_VLAN) ? mbuf->vlan_tci : 0) &&
 		(ethertype == ether_type_slow_be &&
 		(subtype == SLOW_SUBTYPE_MARKER || subtype == SLOW_SUBTYPE_LACP));
 }

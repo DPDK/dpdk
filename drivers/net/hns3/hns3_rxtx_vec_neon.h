@@ -105,7 +105,7 @@ hns3_desc_parse_field(struct hns3_rx_queue *rxq,
 		pkt = sw_ring[i].mbuf;
 
 		/* init rte_mbuf.rearm_data last 64-bit */
-		pkt->ol_flags = PKT_RX_RSS_HASH;
+		pkt->ol_flags = RTE_MBUF_F_RX_RSS_HASH;
 
 		l234_info = rxdp[i].rx.l234_info;
 		ol_info = rxdp[i].rx.ol_info;

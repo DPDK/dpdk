@@ -701,9 +701,9 @@ Item: ``META``
 Matches 32 bit metadata item set.
 
 On egress, metadata can be set either by mbuf metadata field with
-PKT_TX_DYNF_METADATA flag or ``SET_META`` action. On ingress, ``SET_META``
+RTE_MBUF_DYNFLAG_TX_METADATA flag or ``SET_META`` action. On ingress, ``SET_META``
 action sets metadata for a packet and the metadata will be reported via
-``metadata`` dynamic field of ``rte_mbuf`` with PKT_RX_DYNF_METADATA flag.
+``metadata`` dynamic field of ``rte_mbuf`` with RTE_MBUF_DYNFLAG_RX_METADATA flag.
 
 - Default ``mask`` matches the specified Rx metadata value.
 
@@ -1827,8 +1827,8 @@ flows to loop between groups.
 Action: ``MARK``
 ^^^^^^^^^^^^^^^^
 
-Attaches an integer value to packets and sets ``PKT_RX_FDIR`` and
-``PKT_RX_FDIR_ID`` mbuf flags.
+Attaches an integer value to packets and sets ``RTE_MBUF_F_RX_FDIR`` and
+``RTE_MBUF_F_RX_FDIR_ID`` mbuf flags.
 
 This value is arbitrary and application-defined. Maximum allowed value
 depends on the underlying implementation. It is returned in the
@@ -1848,7 +1848,7 @@ Action: ``FLAG``
 ^^^^^^^^^^^^^^^^
 
 Flags packets. Similar to `Action: MARK`_ without a specific value; only
-sets the ``PKT_RX_FDIR`` mbuf flag.
+sets the ``RTE_MBUF_F_RX_FDIR`` mbuf flag.
 
 - No configurable properties.
 
@@ -2809,10 +2809,10 @@ Action: ``SET_META``
 
 Set metadata. Item ``META`` matches metadata.
 
-Metadata set by mbuf metadata field with PKT_TX_DYNF_METADATA flag on egress
+Metadata set by mbuf metadata field with RTE_MBUF_DYNFLAG_TX_METADATA flag on egress
 will be overridden by this action. On ingress, the metadata will be carried by
 ``metadata`` dynamic field of ``rte_mbuf`` which can be accessed by
-``RTE_FLOW_DYNF_METADATA()``. PKT_RX_DYNF_METADATA flag will be set along
+``RTE_FLOW_DYNF_METADATA()``. RTE_MBUF_DYNFLAG_RX_METADATA flag will be set along
 with the data.
 
 The mbuf dynamic field must be registered by calling

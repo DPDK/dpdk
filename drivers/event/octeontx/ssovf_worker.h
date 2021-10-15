@@ -126,7 +126,7 @@ ssovf_octeontx_wqe_to_pkt(uint64_t work, uint16_t port_info,
 
 	if (!!(flag & OCCTX_RX_VLAN_FLTR_F)) {
 		if (likely(wqe->s.w2.vv)) {
-			mbuf->ol_flags |= PKT_RX_VLAN;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN;
 			mbuf->vlan_tci =
 				ntohs(*((uint16_t *)((char *)mbuf->buf_addr +
 					mbuf->data_off + wqe->s.w4.vlptr + 2)));

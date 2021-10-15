@@ -615,7 +615,7 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 
 	if (info->vlan_info != HN_NDIS_VLAN_INFO_INVALID) {
 		m->vlan_tci = info->vlan_info;
-		m->ol_flags |= PKT_RX_VLAN_STRIPPED | PKT_RX_VLAN;
+		m->ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED | RTE_MBUF_F_RX_VLAN;
 
 		/* NDIS always strips tag, put it back if necessary */
 		if (!hv->vlan_strip && rte_vlan_insert(&m)) {
@@ -630,18 +630,18 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 
 	if (info->csum_info != HN_NDIS_RXCSUM_INFO_INVALID) {
 		if (info->csum_info & NDIS_RXCSUM_INFO_IPCS_OK)
-			m->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 		if (info->csum_info & (NDIS_RXCSUM_INFO_UDPCS_OK
 				       | NDIS_RXCSUM_INFO_TCPCS_OK))
-			m->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+			m->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 		else if (info->csum_info & (NDIS_RXCSUM_INFO_TCPCS_FAILED
 					    | NDIS_RXCSUM_INFO_UDPCS_FAILED))
-			m->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+			m->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 	}
 
 	if (info->hash_info != HN_NDIS_HASH_INFO_INVALID) {
-		m->ol_flags |= PKT_RX_RSS_HASH;
+		m->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 		m->hash.rss = info->hash_value;
 	}
 
@@ -1331,17 +1331,17 @@ static void hn_encap(struct rndis_packet_msg *pkt,
 					  NDIS_PKTINFO_TYPE_HASHVAL);
 	*pi_data = queue_id;
 
-	if (m->ol_flags & PKT_TX_VLAN) {
+	if (m->ol_flags & RTE_MBUF_F_TX_VLAN) {
 		pi_data = hn_rndis_pktinfo_append(pkt, NDIS_VLAN_INFO_SIZE,
 						  NDIS_PKTINFO_TYPE_VLAN);
 		*pi_data = m->vlan_tci;
 	}
 
-	if (m->ol_flags & PKT_TX_TCP_SEG) {
+	if (m->ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 		pi_data = hn_rndis_pktinfo_append(pkt, NDIS_LSO2_INFO_SIZE,
 						  NDIS_PKTINFO_TYPE_LSO);
 
-		if (m->ol_flags & PKT_TX_IPV6) {
+		if (m->ol_flags & RTE_MBUF_F_TX_IPV6) {
 			*pi_data = NDIS_LSO2_INFO_MAKEIPV6(hlen,
 							   m->tso_segsz);
 		} else {
@@ -1349,23 +1349,23 @@ static void hn_encap(struct rndis_packet_msg *pkt,
 							   m->tso_segsz);
 		}
 	} else if (m->ol_flags &
-		   (PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM | PKT_TX_IP_CKSUM)) {
+		   (RTE_MBUF_F_TX_TCP_CKSUM | RTE_MBUF_F_TX_UDP_CKSUM | RTE_MBUF_F_TX_IP_CKSUM)) {
 		pi_data = hn_rndis_pktinfo_append(pkt, NDIS_TXCSUM_INFO_SIZE,
 						  NDIS_PKTINFO_TYPE_CSUM);
 		*pi_data = 0;
 
-		if (m->ol_flags & PKT_TX_IPV6)
+		if (m->ol_flags & RTE_MBUF_F_TX_IPV6)
 			*pi_data |= NDIS_TXCSUM_INFO_IPV6;
-		if (m->ol_flags & PKT_TX_IPV4) {
+		if (m->ol_flags & RTE_MBUF_F_TX_IPV4) {
 			*pi_data |= NDIS_TXCSUM_INFO_IPV4;
 
-			if (m->ol_flags & PKT_TX_IP_CKSUM)
+			if (m->ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 				*pi_data |= NDIS_TXCSUM_INFO_IPCS;
 		}
 
-		if (m->ol_flags & PKT_TX_TCP_CKSUM)
+		if (m->ol_flags & RTE_MBUF_F_TX_TCP_CKSUM)
 			*pi_data |= NDIS_TXCSUM_INFO_MKTCPCS(hlen);
-		else if (m->ol_flags & PKT_TX_UDP_CKSUM)
+		else if (m->ol_flags & RTE_MBUF_F_TX_UDP_CKSUM)
 			*pi_data |= NDIS_TXCSUM_INFO_MKUDPCS(hlen);
 	}
 

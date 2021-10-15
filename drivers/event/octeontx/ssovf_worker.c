@@ -428,53 +428,53 @@ octeontx_create_rx_ol_flags_array(void *mem)
 		errcode = idx & 0xff;
 		errlev = (idx & 0x700) >> 8;
 
-		val = PKT_RX_IP_CKSUM_UNKNOWN;
-		val |= PKT_RX_L4_CKSUM_UNKNOWN;
-		val |= PKT_RX_OUTER_L4_CKSUM_UNKNOWN;
+		val = RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN;
+		val |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
+		val |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_UNKNOWN;
 
 		switch (errlev) {
 		case OCCTX_ERRLEV_RE:
 			if (errcode) {
-				val |= PKT_RX_IP_CKSUM_BAD;
-				val |= PKT_RX_L4_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 			} else {
-				val |= PKT_RX_IP_CKSUM_GOOD;
-				val |= PKT_RX_L4_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 			}
 			break;
 		case OCCTX_ERRLEV_LC:
 			if (errcode == OCCTX_EC_IP4_CSUM) {
-				val |= PKT_RX_IP_CKSUM_BAD;
-				val |= PKT_RX_OUTER_IP_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
 			} else {
-				val |= PKT_RX_IP_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 			}
 			break;
 		case OCCTX_ERRLEV_LD:
 			/* Check if parsed packet is neither IPv4 or IPV6 */
 			if (errcode == OCCTX_EC_IP4_NOT)
 				break;
-			val |= PKT_RX_IP_CKSUM_GOOD;
+			val |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 			if (errcode == OCCTX_EC_L4_CSUM)
-				val |= PKT_RX_OUTER_L4_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD;
 			else
-				val |= PKT_RX_L4_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 			break;
 		case OCCTX_ERRLEV_LE:
 			if (errcode == OCCTX_EC_IP4_CSUM)
-				val |= PKT_RX_IP_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 			else
-				val |= PKT_RX_IP_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 			break;
 		case OCCTX_ERRLEV_LF:
 			/* Check if parsed packet is neither IPv4 or IPV6 */
 			if (errcode == OCCTX_EC_IP4_NOT)
 				break;
-			val |= PKT_RX_IP_CKSUM_GOOD;
+			val |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 			if (errcode == OCCTX_EC_L4_CSUM)
-				val |= PKT_RX_L4_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 			else
-				val |= PKT_RX_L4_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 			break;
 		}
 

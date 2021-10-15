@@ -254,10 +254,10 @@ mlx5_set_cksum_table(void)
 
 	/*
 	 * The index should have:
-	 * bit[0] = PKT_TX_TCP_SEG
-	 * bit[2:3] = PKT_TX_UDP_CKSUM, PKT_TX_TCP_CKSUM
-	 * bit[4] = PKT_TX_IP_CKSUM
-	 * bit[8] = PKT_TX_OUTER_IP_CKSUM
+	 * bit[0] = RTE_MBUF_F_TX_TCP_SEG
+	 * bit[2:3] = RTE_MBUF_F_TX_UDP_CKSUM, RTE_MBUF_F_TX_TCP_CKSUM
+	 * bit[4] = RTE_MBUF_F_TX_IP_CKSUM
+	 * bit[8] = RTE_MBUF_F_TX_OUTER_IP_CKSUM
 	 * bit[9] = tunnel
 	 */
 	for (i = 0; i < RTE_DIM(mlx5_cksum_table); ++i) {
@@ -292,10 +292,10 @@ mlx5_set_swp_types_table(void)
 
 	/*
 	 * The index should have:
-	 * bit[0:1] = PKT_TX_L4_MASK
-	 * bit[4] = PKT_TX_IPV6
-	 * bit[8] = PKT_TX_OUTER_IPV6
-	 * bit[9] = PKT_TX_OUTER_UDP
+	 * bit[0:1] = RTE_MBUF_F_TX_L4_MASK
+	 * bit[4] = RTE_MBUF_F_TX_IPV6
+	 * bit[8] = RTE_MBUF_F_TX_OUTER_IPV6
+	 * bit[9] = RTE_MBUF_F_TX_OUTER_UDP
 	 */
 	for (i = 0; i < RTE_DIM(mlx5_swp_types_table); ++i) {
 		v = 0;
@@ -305,7 +305,7 @@ mlx5_set_swp_types_table(void)
 			v |= MLX5_ETH_WQE_L4_OUTER_UDP;
 		if (i & (1 << 4))
 			v |= MLX5_ETH_WQE_L3_INNER_IPV6;
-		if ((i & 3) == (PKT_TX_UDP_CKSUM >> 52))
+		if ((i & 3) == (RTE_MBUF_F_TX_UDP_CKSUM >> 52))
 			v |= MLX5_ETH_WQE_L4_INNER_UDP;
 		mlx5_swp_types_table[i] = v;
 	}

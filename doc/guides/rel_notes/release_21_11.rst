@@ -390,6 +390,8 @@ API Changes
 * mempool: The mempool API macros ``MEMPOOL_PG_*`` are deprecated and
   will be removed in DPDK 22.11.
 
+* mbuf: The mbuf offload flags ``PKT_*`` are renamed as ``RTE_MBUF_F_*``. A
+  compatibility layer will be kept until DPDK 22.11.
 * net: Renamed ``s_addr`` and ``d_addr`` fields of ``rte_ether_hdr`` structure
   to ``src_addr`` and ``dst_addr``, respectively.
 

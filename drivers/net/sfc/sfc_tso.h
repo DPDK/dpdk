@@ -59,7 +59,7 @@ sfc_tso_innermost_ip_fix_len(const struct rte_mbuf *m, uint8_t *tsoh,
 	size_t field_ofst;
 	rte_be16_t len;
 
-	if (m->ol_flags & PKT_TX_IPV4) {
+	if (m->ol_flags & RTE_MBUF_F_TX_IPV4) {
 		field_ofst = offsetof(struct rte_ipv4_hdr, total_length);
 		len = rte_cpu_to_be_16(m->l3_len + ip_payload_len);
 	} else {

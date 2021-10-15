@@ -73,11 +73,11 @@ pkt_burst_mac_forward(struct fwd_stream *fs)
 	txp = &ports[fs->tx_port];
 	tx_offloads = txp->dev_conf.txmode.offloads;
 	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
-		ol_flags = PKT_TX_VLAN;
+		ol_flags = RTE_MBUF_F_TX_VLAN;
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT)
-		ol_flags |= PKT_TX_QINQ;
+		ol_flags |= RTE_MBUF_F_TX_QINQ;
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_MACSEC_INSERT)
-		ol_flags |= PKT_TX_MACSEC;
+		ol_flags |= RTE_MBUF_F_TX_MACSEC;
 	for (i = 0; i < nb_rx; i++) {
 		if (likely(i < nb_rx - 1))
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i + 1],
@@ -88,7 +88,7 @@ pkt_burst_mac_forward(struct fwd_stream *fs)
 				&eth_hdr->dst_addr);
 		rte_ether_addr_copy(&ports[fs->tx_port].eth_addr,
 				&eth_hdr->src_addr);
-		mb->ol_flags &= IND_ATTACHED_MBUF | EXT_ATTACHED_MBUF;
+		mb->ol_flags &= RTE_MBUF_F_INDIRECT | RTE_MBUF_F_EXTERNAL;
 		mb->ol_flags |= ol_flags;
 		mb->l2_len = sizeof(struct rte_ether_hdr);
 		mb->l3_len = sizeof(struct rte_ipv4_hdr);

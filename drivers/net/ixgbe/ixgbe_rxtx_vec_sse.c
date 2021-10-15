@@ -108,9 +108,9 @@ desc_to_olflags_v_ipsec(__m128i descs[4], struct rte_mbuf **rx_pkts)
 	const __m128i ipsec_proc_msk  =
 			_mm_set1_epi32(IXGBE_RXDADV_IPSEC_STATUS_SECP);
 	const __m128i ipsec_err_flag  =
-			_mm_set1_epi32(PKT_RX_SEC_OFFLOAD_FAILED |
-				       PKT_RX_SEC_OFFLOAD);
-	const __m128i ipsec_proc_flag = _mm_set1_epi32(PKT_RX_SEC_OFFLOAD);
+			_mm_set1_epi32(RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED |
+				       RTE_MBUF_F_RX_SEC_OFFLOAD);
+	const __m128i ipsec_proc_flag = _mm_set1_epi32(RTE_MBUF_F_RX_SEC_OFFLOAD);
 
 	rearm = _mm_set_epi32(*rearm3, *rearm2, *rearm1, *rearm0);
 	sterr = _mm_set_epi32(_mm_extract_epi32(descs[3], 2),
@@ -148,10 +148,10 @@ desc_to_olflags_v(__m128i descs[4], __m128i mbuf_init, uint8_t vlan_flags,
 			0x00FF, 0x00FF, 0x00FF, 0x00FF);
 
 	/* map rss type to rss hash flag */
-	const __m128i rss_flags = _mm_set_epi8(PKT_RX_FDIR, 0, 0, 0,
-			0, 0, 0, PKT_RX_RSS_HASH,
-			PKT_RX_RSS_HASH, 0, PKT_RX_RSS_HASH, 0,
-			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, 0);
+	const __m128i rss_flags = _mm_set_epi8(RTE_MBUF_F_RX_FDIR, 0, 0, 0,
+			0, 0, 0, RTE_MBUF_F_RX_RSS_HASH,
+			RTE_MBUF_F_RX_RSS_HASH, 0, RTE_MBUF_F_RX_RSS_HASH, 0,
+			RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, 0);
 
 	/* mask everything except vlan present and l4/ip csum error */
 	const __m128i vlan_csum_msk = _mm_set_epi16(
@@ -165,23 +165,23 @@ desc_to_olflags_v(__m128i descs[4], __m128i mbuf_init, uint8_t vlan_flags,
 	/* map vlan present (0x8), IPE (0x2), L4E (0x1) to ol_flags */
 	const __m128i vlan_csum_map_lo = _mm_set_epi8(
 		0, 0, 0, 0,
-		vlan_flags | PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
-		vlan_flags | PKT_RX_IP_CKSUM_BAD,
-		vlan_flags | PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
-		vlan_flags | PKT_RX_IP_CKSUM_GOOD,
+		vlan_flags | RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+		vlan_flags | RTE_MBUF_F_RX_IP_CKSUM_BAD,
+		vlan_flags | RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+		vlan_flags | RTE_MBUF_F_RX_IP_CKSUM_GOOD,
 		0, 0, 0, 0,
-		PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
-		PKT_RX_IP_CKSUM_BAD,
-		PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
-		PKT_RX_IP_CKSUM_GOOD);
+		RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+		RTE_MBUF_F_RX_IP_CKSUM_BAD,
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+		RTE_MBUF_F_RX_IP_CKSUM_GOOD);
 
 	const __m128i vlan_csum_map_hi = _mm_set_epi8(
 		0, 0, 0, 0,
-		0, PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
-		PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t),
+		0, RTE_MBUF_F_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
+		RTE_MBUF_F_RX_L4_CKSUM_GOOD >> sizeof(uint8_t),
 		0, 0, 0, 0,
-		0, PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
-		PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t));
+		0, RTE_MBUF_F_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
+		RTE_MBUF_F_RX_L4_CKSUM_GOOD >> sizeof(uint8_t));
 
 	/* mask everything except UDP header present if specified */
 	const __m128i udp_hdr_p_msk = _mm_set_epi16
@@ -190,7 +190,7 @@ desc_to_olflags_v(__m128i descs[4], __m128i mbuf_init, uint8_t vlan_flags,
 
 	const __m128i udp_csum_bad_shuf = _mm_set_epi8
 		(0, 0, 0, 0, 0, 0, 0, 0,
-		 0, 0, 0, 0, 0, 0, ~(uint8_t)PKT_RX_L4_CKSUM_BAD, 0xFF);
+		 0, 0, 0, 0, 0, 0, ~(uint8_t)RTE_MBUF_F_RX_L4_CKSUM_BAD, 0xFF);
 
 	ptype0 = _mm_unpacklo_epi16(descs[0], descs[1]);
 	ptype1 = _mm_unpacklo_epi16(descs[2], descs[3]);
@@ -228,7 +228,7 @@ desc_to_olflags_v(__m128i descs[4], __m128i mbuf_init, uint8_t vlan_flags,
 	vtag1 = _mm_or_si128(ptype0, vtag1);
 
 	/* convert the UDP header present 0x200 to 0x1 for aligning with each
-	 * PKT_RX_L4_CKSUM_BAD value in low byte of 16 bits word ol_flag in
+	 * RTE_MBUF_F_RX_L4_CKSUM_BAD value in low byte of 16 bits word ol_flag in
 	 * vtag1 (4x16). Then mask out the bad checksum value by shuffle and
 	 * bit-mask.
 	 */
@@ -428,7 +428,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	sw_ring = &rxq->sw_ring[rxq->rx_tail];
 
 	/* ensure these 2 flags are in the lower 8 bits */
-	RTE_BUILD_BUG_ON((PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED) > UINT8_MAX);
+	RTE_BUILD_BUG_ON((RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED) > UINT8_MAX);
 	vlan_flags = rxq->vlan_flags & UINT8_MAX;
 
 	/* A. load 4 packet in one loop

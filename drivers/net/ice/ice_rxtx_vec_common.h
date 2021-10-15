@@ -369,33 +369,33 @@ ice_txd_enable_offload(struct rte_mbuf *tx_pkt,
 			ICE_TX_DESC_LEN_MACLEN_S;
 
 	/* Enable L3 checksum offload */
-	if (ol_flags & PKT_TX_IP_CKSUM) {
+	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 		td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4_CSUM;
 		td_offset |= (tx_pkt->l3_len >> 2) <<
 			ICE_TX_DESC_LEN_IPLEN_S;
-	} else if (ol_flags & PKT_TX_IPV4) {
+	} else if (ol_flags & RTE_MBUF_F_TX_IPV4) {
 		td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4;
 		td_offset |= (tx_pkt->l3_len >> 2) <<
 			ICE_TX_DESC_LEN_IPLEN_S;
-	} else if (ol_flags & PKT_TX_IPV6) {
+	} else if (ol_flags & RTE_MBUF_F_TX_IPV6) {
 		td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV6;
 		td_offset |= (tx_pkt->l3_len >> 2) <<
 			ICE_TX_DESC_LEN_IPLEN_S;
 	}
 
 	/* Enable L4 checksum offloads */
-	switch (ol_flags & PKT_TX_L4_MASK) {
-	case PKT_TX_TCP_CKSUM:
+	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+	case RTE_MBUF_F_TX_TCP_CKSUM:
 		td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_TCP;
 		td_offset |= (sizeof(struct rte_tcp_hdr) >> 2) <<
 			ICE_TX_DESC_LEN_L4_LEN_S;
 		break;
-	case PKT_TX_SCTP_CKSUM:
+	case RTE_MBUF_F_TX_SCTP_CKSUM:
 		td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_SCTP;
 		td_offset |= (sizeof(struct rte_sctp_hdr) >> 2) <<
 			ICE_TX_DESC_LEN_L4_LEN_S;
 		break;
-	case PKT_TX_UDP_CKSUM:
+	case RTE_MBUF_F_TX_UDP_CKSUM:
 		td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_UDP;
 		td_offset |= (sizeof(struct rte_udp_hdr) >> 2) <<
 			ICE_TX_DESC_LEN_L4_LEN_S;
@@ -407,7 +407,7 @@ ice_txd_enable_offload(struct rte_mbuf *tx_pkt,
 	*txd_hi |= ((uint64_t)td_offset) << ICE_TXD_QW1_OFFSET_S;
 
 	/* Tx VLAN/QINQ insertion Offload */
-	if (ol_flags & (PKT_TX_VLAN | PKT_TX_QINQ)) {
+	if (ol_flags & (RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_QINQ)) {
 		td_cmd |= ICE_TX_DESC_CMD_IL2TAG1;
 		*txd_hi |= ((uint64_t)tx_pkt->vlan_tci <<
 				ICE_TXD_QW1_L2TAG1_S);

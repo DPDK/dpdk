@@ -340,8 +340,8 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 
 		cksum = ~rte_raw_cksum(iph, l3_len);
 		mbuf->ol_flags |= cksum ?
-			PKT_RX_IP_CKSUM_BAD :
-			PKT_RX_IP_CKSUM_GOOD;
+			RTE_MBUF_F_RX_IP_CKSUM_BAD :
+			RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 	} else if (l3 == RTE_PTYPE_L3_IPV6) {
 		struct rte_ipv6_hdr *iph = l3_hdr;
 
@@ -376,7 +376,7 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 					 * indicates that the sender did not
 					 * generate one [RFC 768].
 					 */
-					mbuf->ol_flags |= PKT_RX_L4_CKSUM_NONE;
+					mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_NONE;
 					return;
 				}
 			}
@@ -387,7 +387,7 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 								 l4_hdr);
 		}
 		mbuf->ol_flags |= cksum_ok ?
-			PKT_RX_L4_CKSUM_GOOD : PKT_RX_L4_CKSUM_BAD;
+			RTE_MBUF_F_RX_L4_CKSUM_GOOD : RTE_MBUF_F_RX_L4_CKSUM_BAD;
 	}
 }
 
@@ -544,7 +544,7 @@ tap_tx_l3_cksum(char *packet, uint64_t ol_flags, unsigned int l2_len,
 {
 	void *l3_hdr = packet + l2_len;
 
-	if (ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_IPV4)) {
+	if (ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_IPV4)) {
 		struct rte_ipv4_hdr *iph = l3_hdr;
 		uint16_t cksum;
 
@@ -552,18 +552,18 @@ tap_tx_l3_cksum(char *packet, uint64_t ol_flags, unsigned int l2_len,
 		cksum = rte_raw_cksum(iph, l3_len);
 		iph->hdr_checksum = (cksum == 0xffff) ? cksum : ~cksum;
 	}
-	if (ol_flags & PKT_TX_L4_MASK) {
+	if (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
 		void *l4_hdr;
 
 		l4_hdr = packet + l2_len + l3_len;
-		if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM)
+		if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_UDP_CKSUM)
 			*l4_cksum = &((struct rte_udp_hdr *)l4_hdr)->dgram_cksum;
-		else if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM)
+		else if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_TCP_CKSUM)
 			*l4_cksum = &((struct rte_tcp_hdr *)l4_hdr)->cksum;
 		else
 			return;
 		**l4_cksum = 0;
-		if (ol_flags & PKT_TX_IPV4)
+		if (ol_flags & RTE_MBUF_F_TX_IPV4)
 			*l4_phdr_cksum = rte_ipv4_phdr_cksum(l3_hdr, 0);
 		else
 			*l4_phdr_cksum = rte_ipv6_phdr_cksum(l3_hdr, 0);
@@ -627,9 +627,9 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 
 		nb_segs = mbuf->nb_segs;
 		if (txq->csum &&
-		    ((mbuf->ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_IPV4) ||
-		     (mbuf->ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM ||
-		     (mbuf->ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM))) {
+		    ((mbuf->ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_IPV4) ||
+		      (mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_UDP_CKSUM ||
+		      (mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_TCP_CKSUM))) {
 			is_cksum = 1;
 
 			/* Support only packets with at least layer 4
@@ -719,12 +719,12 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		uint16_t hdrs_len;
 		uint64_t tso;
 
-		tso = mbuf_in->ol_flags & PKT_TX_TCP_SEG;
+		tso = mbuf_in->ol_flags & RTE_MBUF_F_TX_TCP_SEG;
 		if (tso) {
 			struct rte_gso_ctx *gso_ctx = &txq->gso_ctx;
 
 			/* TCP segmentation implies TCP checksum offload */
-			mbuf_in->ol_flags |= PKT_TX_TCP_CKSUM;
+			mbuf_in->ol_flags |= RTE_MBUF_F_TX_TCP_CKSUM;
 
 			/* gso size is calculated without RTE_ETHER_CRC_LEN */
 			hdrs_len = mbuf_in->l2_len + mbuf_in->l3_len +

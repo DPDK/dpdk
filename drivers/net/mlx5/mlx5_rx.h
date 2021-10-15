@@ -483,7 +483,7 @@ mprq_buf_to_pkt(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt, uint32_t len,
 		shinfo = &buf->shinfos[strd_idx];
 		rte_mbuf_ext_refcnt_set(shinfo, 1);
 		/*
-		 * EXT_ATTACHED_MBUF will be set to pkt->ol_flags when
+		 * RTE_MBUF_F_EXTERNAL will be set to pkt->ol_flags when
 		 * attaching the stride to mbuf and more offload flags
 		 * will be added below by calling rxq_cq_to_mbuf().
 		 * Other fields will be overwritten.
@@ -492,7 +492,7 @@ mprq_buf_to_pkt(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt, uint32_t len,
 					  buf_len, shinfo);
 		/* Set mbuf head-room. */
 		SET_DATA_OFF(pkt, RTE_PKTMBUF_HEADROOM);
-		MLX5_ASSERT(pkt->ol_flags == EXT_ATTACHED_MBUF);
+		MLX5_ASSERT(pkt->ol_flags == RTE_MBUF_F_EXTERNAL);
 		MLX5_ASSERT(rte_pktmbuf_tailroom(pkt) >=
 			len - (hdrm_overlap > 0 ? hdrm_overlap : 0));
 		DATA_LEN(pkt) = len;

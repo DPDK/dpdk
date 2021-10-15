@@ -1647,14 +1647,14 @@ struct rte_eth_conf {
 #define DEV_TX_OFFLOAD_SECURITY             RTE_ETH_TX_OFFLOAD_SECURITY
 /**
  * Device supports generic UDP tunneled packet TSO.
- * Application must set PKT_TX_TUNNEL_UDP and other mbuf fields required
+ * Application must set RTE_MBUF_F_TX_TUNNEL_UDP and other mbuf fields required
  * for tunnel TSO.
  */
 #define RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO      RTE_BIT64(18)
 #define DEV_TX_OFFLOAD_UDP_TNL_TSO          RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO
 /**
  * Device supports generic IP tunneled packet TSO.
- * Application must set PKT_TX_TUNNEL_IP and other mbuf fields required
+ * Application must set RTE_MBUF_F_TX_TUNNEL_IP and other mbuf fields required
  * for tunnel TSO.
  */
 #define RTE_ETH_TX_OFFLOAD_IP_TNL_TSO       RTE_BIT64(19)

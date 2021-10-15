@@ -358,7 +358,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 			}
 
 			/* update offloading flags */
-			m->ol_flags |= (PKT_TX_IPV4 | PKT_TX_IP_CKSUM);
+			m->ol_flags |= (RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM);
 		}
 		ip_dst = rte_be_to_cpu_32(ip_hdr->dst_addr);
 

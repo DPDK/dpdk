@@ -1520,11 +1520,12 @@ rte_flow_item_icmp6_nd_opt_tla_eth_mask = {
  * RTE_FLOW_ITEM_TYPE_META
  *
  * Matches a specified metadata value. On egress, metadata can be set
- * either by mbuf dynamic metadata field with PKT_TX_DYNF_METADATA flag or
- * RTE_FLOW_ACTION_TYPE_SET_META. On ingress, RTE_FLOW_ACTION_TYPE_SET_META
+ * either by mbuf dynamic metadata field with RTE_MBUF_DYNFLAG_TX_METADATA flag
+ * or RTE_FLOW_ACTION_TYPE_SET_META. On ingress, RTE_FLOW_ACTION_TYPE_SET_META
  * sets metadata for a packet and the metadata will be reported via mbuf
- * metadata dynamic field with PKT_RX_DYNF_METADATA flag. The dynamic mbuf
- * field must be registered in advance by rte_flow_dynf_metadata_register().
+ * metadata dynamic field with RTE_MBUF_DYNFLAG_RX_METADATA flag. The dynamic
+ * mbuf field must be registered in advance by
+ * rte_flow_dynf_metadata_register().
  */
 struct rte_flow_item_meta {
 	uint32_t data;
@@ -2239,8 +2240,8 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_JUMP,
 
 	/**
-	 * Attaches an integer value to packets and sets PKT_RX_FDIR and
-	 * PKT_RX_FDIR_ID mbuf flags.
+	 * Attaches an integer value to packets and sets RTE_MBUF_F_RX_FDIR and
+	 * RTE_MBUF_F_RX_FDIR_ID mbuf flags.
 	 *
 	 * See struct rte_flow_action_mark.
 	 *
@@ -2252,7 +2253,7 @@ enum rte_flow_action_type {
 
 	/**
 	 * Flags packets. Similar to MARK without a specific value; only
-	 * sets the PKT_RX_FDIR mbuf flag.
+	 * sets the RTE_MBUF_F_RX_FDIR mbuf flag.
 	 *
 	 * No associated configuration structure.
 	 *
@@ -2792,8 +2793,8 @@ enum rte_flow_action_type {
 /**
  * RTE_FLOW_ACTION_TYPE_MARK
  *
- * Attaches an integer value to packets and sets PKT_RX_FDIR and
- * PKT_RX_FDIR_ID mbuf flags.
+ * Attaches an integer value to packets and sets RTE_MBUF_F_RX_FDIR and
+ * RTE_MBUF_F_RX_FDIR_ID mbuf flags.
  *
  * This value is arbitrary and application-defined. Maximum allowed value
  * depends on the underlying implementation. It is returned in the
@@ -3336,10 +3337,10 @@ struct rte_flow_action_set_tag {
  * RTE_FLOW_ACTION_TYPE_SET_META
  *
  * Set metadata. Metadata set by mbuf metadata dynamic field with
- * PKT_TX_DYNF_DATA flag on egress will be overridden by this action. On
- * ingress, the metadata will be carried by mbuf metadata dynamic field
- * with PKT_RX_DYNF_METADATA flag if set.  The dynamic mbuf field must be
- * registered in advance by rte_flow_dynf_metadata_register().
+ * RTE_MBUF_DYNFLAG_TX_METADATA flag on egress will be overridden by this
+ * action. On ingress, the metadata will be carried by mbuf metadata dynamic
+ * field with RTE_MBUF_DYNFLAG_RX_METADATA flag if set.  The dynamic mbuf field
+ * must be registered in advance by rte_flow_dynf_metadata_register().
  *
  * Altering partial bits is supported with mask. For bits which have never
  * been set, unpredictable value will be seen depending on driver
@@ -3660,8 +3661,12 @@ extern uint64_t rte_flow_dynf_metadata_mask;
 	RTE_MBUF_DYNFIELD((m), rte_flow_dynf_metadata_offs, uint32_t *)
 
 /* Mbuf dynamic flags for metadata. */
-#define PKT_RX_DYNF_METADATA (rte_flow_dynf_metadata_mask)
-#define PKT_TX_DYNF_METADATA (rte_flow_dynf_metadata_mask)
+#define RTE_MBUF_DYNFLAG_RX_METADATA (rte_flow_dynf_metadata_mask)
+#define PKT_RX_DYNF_METADATA RTE_DEPRECATED(PKT_RX_DYNF_METADATA) \
+		RTE_MBUF_DYNFLAG_RX_METADATA
+#define RTE_MBUF_DYNFLAG_TX_METADATA (rte_flow_dynf_metadata_mask)
+#define PKT_TX_DYNF_METADATA RTE_DEPRECATED(PKT_TX_DYNF_METADATA) \
+		RTE_MBUF_DYNFLAG_TX_METADATA
 
 __rte_experimental
 static inline uint32_t

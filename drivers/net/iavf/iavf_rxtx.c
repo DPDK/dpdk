@@ -379,14 +379,14 @@ iavf_rxd_to_pkt_fields_by_comms_ovs(__rte_unused struct iavf_rx_queue *rxq,
 #endif
 
 	if (desc->flow_id != 0xFFFFFFFF) {
-		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mb->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
 	}
 
 #ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	stat_err = rte_le_to_cpu_16(desc->status_error0);
 	if (likely(stat_err & (1 << IAVF_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
-		mb->ol_flags |= PKT_RX_RSS_HASH;
+		mb->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
 	}
 #endif
@@ -403,13 +403,13 @@ iavf_rxd_to_pkt_fields_by_comms_aux_v1(struct iavf_rx_queue *rxq,
 
 	stat_err = rte_le_to_cpu_16(desc->status_error0);
 	if (likely(stat_err & (1 << IAVF_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
-		mb->ol_flags |= PKT_RX_RSS_HASH;
+		mb->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
 	}
 
 #ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	if (desc->flow_id != 0xFFFFFFFF) {
-		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mb->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
 	}
 
@@ -445,13 +445,13 @@ iavf_rxd_to_pkt_fields_by_comms_aux_v2(struct iavf_rx_queue *rxq,
 
 	stat_err = rte_le_to_cpu_16(desc->status_error0);
 	if (likely(stat_err & (1 << IAVF_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
-		mb->ol_flags |= PKT_RX_RSS_HASH;
+		mb->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
 	}
 
 #ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	if (desc->flow_id != 0xFFFFFFFF) {
-		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mb->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
 	}
 
@@ -1044,7 +1044,7 @@ iavf_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union iavf_rx_desc *rxdp)
 {
 	if (rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
 		(1 << IAVF_RX_DESC_STATUS_L2TAG1P_SHIFT)) {
-		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		mb->vlan_tci =
 			rte_le_to_cpu_16(rxdp->wb.qword0.lo_dword.l2tag1);
 	} else {
@@ -1072,7 +1072,7 @@ iavf_flex_rxd_to_vlan_tci(struct rte_mbuf *mb,
 #endif
 
 	if (vlan_tci) {
-		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		mb->vlan_tci = vlan_tci;
 	}
 }
@@ -1089,26 +1089,26 @@ iavf_rxd_to_pkt_flags(uint64_t qword)
 	/* Check if RSS_HASH */
 	flags = (((qword >> IAVF_RX_DESC_STATUS_FLTSTAT_SHIFT) &
 					IAVF_RX_DESC_FLTSTAT_RSS_HASH) ==
-			IAVF_RX_DESC_FLTSTAT_RSS_HASH) ? PKT_RX_RSS_HASH : 0;
+			IAVF_RX_DESC_FLTSTAT_RSS_HASH) ? RTE_MBUF_F_RX_RSS_HASH : 0;
 
 	/* Check if FDIR Match */
 	flags |= (qword & (1 << IAVF_RX_DESC_STATUS_FLM_SHIFT) ?
-				PKT_RX_FDIR : 0);
+				RTE_MBUF_F_RX_FDIR : 0);
 
 	if (likely((error_bits & IAVF_RX_ERR_BITS) == 0)) {
-		flags |= (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
+		flags |= (RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD);
 		return flags;
 	}
 
 	if (unlikely(error_bits & (1 << IAVF_RX_DESC_ERROR_IPE_SHIFT)))
-		flags |= PKT_RX_IP_CKSUM_BAD;
+		flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 	else
-		flags |= PKT_RX_IP_CKSUM_GOOD;
+		flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 	if (unlikely(error_bits & (1 << IAVF_RX_DESC_ERROR_L4E_SHIFT)))
-		flags |= PKT_RX_L4_CKSUM_BAD;
+		flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 	else
-		flags |= PKT_RX_L4_CKSUM_GOOD;
+		flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 
 	/* TODO: Oversize error bit is not processed here */
 
@@ -1129,12 +1129,12 @@ iavf_rxd_build_fdir(volatile union iavf_rx_desc *rxdp, struct rte_mbuf *mb)
 	if (flexbh == IAVF_RX_DESC_EXT_STATUS_FLEXBH_FD_ID) {
 		mb->hash.fdir.hi =
 			rte_le_to_cpu_32(rxdp->wb.qword3.hi_dword.fd_id);
-		flags |= PKT_RX_FDIR_ID;
+		flags |= RTE_MBUF_F_RX_FDIR_ID;
 	}
 #else
 	mb->hash.fdir.hi =
 		rte_le_to_cpu_32(rxdp->wb.qword0.hi_dword.fd_id);
-	flags |= PKT_RX_FDIR_ID;
+	flags |= RTE_MBUF_F_RX_FDIR_ID;
 #endif
 	return flags;
 }
@@ -1158,22 +1158,22 @@ iavf_flex_rxd_error_to_pkt_flags(uint16_t stat_err0)
 		return 0;
 
 	if (likely(!(stat_err0 & IAVF_RX_FLEX_ERR0_BITS))) {
-		flags |= (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
+		flags |= (RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD);
 		return flags;
 	}
 
 	if (unlikely(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_IPE_S)))
-		flags |= PKT_RX_IP_CKSUM_BAD;
+		flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 	else
-		flags |= PKT_RX_IP_CKSUM_GOOD;
+		flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 	if (unlikely(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_L4E_S)))
-		flags |= PKT_RX_L4_CKSUM_BAD;
+		flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 	else
-		flags |= PKT_RX_L4_CKSUM_GOOD;
+		flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 
 	if (unlikely(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_EIPE_S)))
-		flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
+		flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
 
 	return flags;
 }
@@ -1292,11 +1292,11 @@ iavf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			ptype_tbl[(uint8_t)((qword1 &
 			IAVF_RXD_QW1_PTYPE_MASK) >> IAVF_RXD_QW1_PTYPE_SHIFT)];
 
-		if (pkt_flags & PKT_RX_RSS_HASH)
+		if (pkt_flags & RTE_MBUF_F_RX_RSS_HASH)
 			rxm->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
 
-		if (pkt_flags & PKT_RX_FDIR)
+		if (pkt_flags & RTE_MBUF_F_RX_FDIR)
 			pkt_flags |= iavf_rxd_build_fdir(&rxd, rxm);
 
 		rxm->ol_flags |= pkt_flags;
@@ -1693,11 +1693,11 @@ iavf_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			ptype_tbl[(uint8_t)((qword1 &
 			IAVF_RXD_QW1_PTYPE_MASK) >> IAVF_RXD_QW1_PTYPE_SHIFT)];
 
-		if (pkt_flags & PKT_RX_RSS_HASH)
+		if (pkt_flags & RTE_MBUF_F_RX_RSS_HASH)
 			first_seg->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
 
-		if (pkt_flags & PKT_RX_FDIR)
+		if (pkt_flags & RTE_MBUF_F_RX_FDIR)
 			pkt_flags |= iavf_rxd_build_fdir(&rxd, first_seg);
 
 		first_seg->ol_flags |= pkt_flags;
@@ -1862,11 +1862,11 @@ iavf_rx_scan_hw_ring(struct iavf_rx_queue *rxq)
 				IAVF_RXD_QW1_PTYPE_MASK) >>
 				IAVF_RXD_QW1_PTYPE_SHIFT)];
 
-			if (pkt_flags & PKT_RX_RSS_HASH)
+			if (pkt_flags & RTE_MBUF_F_RX_RSS_HASH)
 				mb->hash.rss = rte_le_to_cpu_32(
 					rxdp[j].wb.qword0.hi_dword.rss);
 
-			if (pkt_flags & PKT_RX_FDIR)
+			if (pkt_flags & RTE_MBUF_F_RX_FDIR)
 				pkt_flags |= iavf_rxd_build_fdir(&rxdp[j], mb);
 
 			mb->ol_flags |= pkt_flags;
@@ -2072,9 +2072,9 @@ iavf_xmit_cleanup(struct iavf_tx_queue *txq)
 static inline uint16_t
 iavf_calc_context_desc(uint64_t flags, uint8_t vlan_flag)
 {
-	if (flags & PKT_TX_TCP_SEG)
+	if (flags & RTE_MBUF_F_TX_TCP_SEG)
 		return 1;
-	if (flags & PKT_TX_VLAN &&
+	if (flags & RTE_MBUF_F_TX_VLAN &&
 	    vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
 		return 1;
 	return 0;
@@ -2091,21 +2091,21 @@ iavf_txd_enable_checksum(uint64_t ol_flags,
 		      IAVF_TX_DESC_LENGTH_MACLEN_SHIFT;
 
 	/* Enable L3 checksum offloads */
-	if (ol_flags & PKT_TX_IP_CKSUM) {
+	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 		*td_cmd |= IAVF_TX_DESC_CMD_IIPT_IPV4_CSUM;
 		*td_offset |= (tx_offload.l3_len >> 2) <<
 			      IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
-	} else if (ol_flags & PKT_TX_IPV4) {
+	} else if (ol_flags & RTE_MBUF_F_TX_IPV4) {
 		*td_cmd |= IAVF_TX_DESC_CMD_IIPT_IPV4;
 		*td_offset |= (tx_offload.l3_len >> 2) <<
 			      IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
-	} else if (ol_flags & PKT_TX_IPV6) {
+	} else if (ol_flags & RTE_MBUF_F_TX_IPV6) {
 		*td_cmd |= IAVF_TX_DESC_CMD_IIPT_IPV6;
 		*td_offset |= (tx_offload.l3_len >> 2) <<
 			      IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
 	}
 
-	if (ol_flags & PKT_TX_TCP_SEG) {
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 		*td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_TCP;
 		*td_offset |= (tx_offload.l4_len >> 2) <<
 			      IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
@@ -2113,18 +2113,18 @@ iavf_txd_enable_checksum(uint64_t ol_flags,
 	}
 
 	/* Enable L4 checksum offloads */
-	switch (ol_flags & PKT_TX_L4_MASK) {
-	case PKT_TX_TCP_CKSUM:
+	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+	case RTE_MBUF_F_TX_TCP_CKSUM:
 		*td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_TCP;
 		*td_offset |= (sizeof(struct rte_tcp_hdr) >> 2) <<
 			      IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
 		break;
-	case PKT_TX_SCTP_CKSUM:
+	case RTE_MBUF_F_TX_SCTP_CKSUM:
 		*td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_SCTP;
 		*td_offset |= (sizeof(struct rte_sctp_hdr) >> 2) <<
 			      IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
 		break;
-	case PKT_TX_UDP_CKSUM:
+	case RTE_MBUF_F_TX_UDP_CKSUM:
 		*td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_UDP;
 		*td_offset |= (sizeof(struct rte_udp_hdr) >> 2) <<
 			      IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
@@ -2260,7 +2260,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Descriptor based VLAN insertion */
-		if (ol_flags & PKT_TX_VLAN &&
+		if (ol_flags & RTE_MBUF_F_TX_VLAN &&
 		    txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1) {
 			td_cmd |= IAVF_TX_DESC_CMD_IL2TAG1;
 			td_tag = tx_pkt->vlan_tci;
@@ -2297,12 +2297,12 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			}
 
 			/* TSO enabled */
-			if (ol_flags & PKT_TX_TCP_SEG)
+			if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 				cd_type_cmd_tso_mss |=
 					iavf_set_tso_ctx(tx_pkt, tx_offload);
 
-			if (ol_flags & PKT_TX_VLAN &&
-			   txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
+			if (ol_flags & RTE_MBUF_F_TX_VLAN &&
+			    txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
 				cd_type_cmd_tso_mss |= IAVF_TX_CTX_DESC_IL2TAG2
 					<< IAVF_TXD_CTX_QW1_CMD_SHIFT;
 				cd_l2tag2 = tx_pkt->vlan_tci;
@@ -2415,7 +2415,7 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		ol_flags = m->ol_flags;
 
 		/* Check condition for nb_segs > IAVF_TX_MAX_MTU_SEG. */
-		if (!(ol_flags & PKT_TX_TCP_SEG)) {
+		if (!(ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 			if (m->nb_segs > IAVF_TX_MAX_MTU_SEG) {
 				rte_errno = EINVAL;
 				return i;
@@ -2446,7 +2446,7 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		}
 
 		if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS &&
-		    ol_flags & (PKT_RX_VLAN_STRIPPED | PKT_RX_VLAN)) {
+		    ol_flags & (RTE_MBUF_F_RX_VLAN_STRIPPED | RTE_MBUF_F_RX_VLAN)) {
 			ret = iavf_check_vlan_up2tc(txq, m);
 			if (ret != 0) {
 				rte_errno = -ret;

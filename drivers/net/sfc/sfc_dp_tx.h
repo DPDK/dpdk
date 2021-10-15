@@ -242,7 +242,7 @@ sfc_dp_tx_prepare_pkt(struct rte_mbuf *m,
 			   unsigned int nb_vlan_descs)
 {
 	unsigned int descs_required = m->nb_segs;
-	unsigned int tcph_off = ((m->ol_flags & PKT_TX_TUNNEL_MASK) ?
+	unsigned int tcph_off = ((m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) ?
 				 m->outer_l2_len + m->outer_l3_len : 0) +
 				m->l2_len + m->l3_len;
 	unsigned int header_len = tcph_off + m->l4_len;
@@ -280,21 +280,21 @@ sfc_dp_tx_prepare_pkt(struct rte_mbuf *m,
 			 * to proceed with additional checks below.
 			 * Otherwise, throw an error.
 			 */
-			if ((m->ol_flags & PKT_TX_TCP_SEG) == 0 ||
+			if ((m->ol_flags & RTE_MBUF_F_TX_TCP_SEG) == 0 ||
 			    tso_bounce_buffer_len == 0)
 				return EINVAL;
 		}
 	}
 
-	if (m->ol_flags & PKT_TX_TCP_SEG) {
-		switch (m->ol_flags & PKT_TX_TUNNEL_MASK) {
+	if (m->ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
+		switch (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
 		case 0:
 			break;
-		case PKT_TX_TUNNEL_VXLAN:
+		case RTE_MBUF_F_TX_TUNNEL_VXLAN:
 			/* FALLTHROUGH */
-		case PKT_TX_TUNNEL_GENEVE:
+		case RTE_MBUF_F_TX_TUNNEL_GENEVE:
 			if (!(m->ol_flags &
-			      (PKT_TX_OUTER_IPV4 | PKT_TX_OUTER_IPV6)))
+			      (RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IPV6)))
 				return EINVAL;
 		}
 

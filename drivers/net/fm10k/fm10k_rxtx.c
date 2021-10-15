@@ -37,16 +37,15 @@ static inline void dump_rxd(union fm10k_rx_desc *rxd)
 }
 #endif
 
-#define FM10K_TX_OFFLOAD_MASK (  \
-		PKT_TX_VLAN |        \
-		PKT_TX_IPV6 |            \
-		PKT_TX_IPV4 |            \
-		PKT_TX_IP_CKSUM |        \
-		PKT_TX_L4_MASK |         \
-		PKT_TX_TCP_SEG)
+#define FM10K_TX_OFFLOAD_MASK (RTE_MBUF_F_TX_VLAN |        \
+		RTE_MBUF_F_TX_IPV6 |            \
+		RTE_MBUF_F_TX_IPV4 |            \
+		RTE_MBUF_F_TX_IP_CKSUM |        \
+		RTE_MBUF_F_TX_L4_MASK |         \
+		RTE_MBUF_F_TX_TCP_SEG)
 
 #define FM10K_TX_OFFLOAD_NOTSUP_MASK \
-		(PKT_TX_OFFLOAD_MASK ^ FM10K_TX_OFFLOAD_MASK)
+		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ FM10K_TX_OFFLOAD_MASK)
 
 /* @note: When this function is changed, make corresponding change to
  * fm10k_dev_supported_ptypes_get()
@@ -78,21 +77,21 @@ rx_desc_to_ol_flags(struct rte_mbuf *m, const union fm10k_rx_desc *d)
 						>> FM10K_RXD_PKTTYPE_SHIFT];
 
 	if (d->w.pkt_info & FM10K_RXD_RSSTYPE_MASK)
-		m->ol_flags |= PKT_RX_RSS_HASH;
+		m->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 
 	if (unlikely((d->d.staterr &
 		(FM10K_RXD_STATUS_IPCS | FM10K_RXD_STATUS_IPE)) ==
 		(FM10K_RXD_STATUS_IPCS | FM10K_RXD_STATUS_IPE)))
-		m->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 	else
-		m->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 	if (unlikely((d->d.staterr &
 		(FM10K_RXD_STATUS_L4CS | FM10K_RXD_STATUS_L4E)) ==
 		(FM10K_RXD_STATUS_L4CS | FM10K_RXD_STATUS_L4E)))
-		m->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+		m->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 	else
-		m->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+		m->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 }
 
 uint16_t
@@ -131,10 +130,10 @@ fm10k_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * Packets in fm10k device always carry at least one VLAN tag.
 		 * For those packets coming in without VLAN tag,
 		 * the port default VLAN tag will be used.
-		 * So, always PKT_RX_VLAN flag is set and vlan_tci
+		 * So, always RTE_MBUF_F_RX_VLAN flag is set and vlan_tci
 		 * is valid for each RX packet's mbuf.
 		 */
-		mbuf->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		mbuf->vlan_tci = desc.w.vlan;
 		/**
 		 * mbuf->vlan_tci_outer is an idle field in fm10k driver,
@@ -292,10 +291,10 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * Packets in fm10k device always carry at least one VLAN tag.
 		 * For those packets coming in without VLAN tag,
 		 * the port default VLAN tag will be used.
-		 * So, always PKT_RX_VLAN flag is set and vlan_tci
+		 * So, always RTE_MBUF_F_RX_VLAN flag is set and vlan_tci
 		 * is valid for each RX packet's mbuf.
 		 */
-		first_seg->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		first_seg->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		first_seg->vlan_tci = desc.w.vlan;
 		/**
 		 * mbuf->vlan_tci_outer is an idle field in fm10k driver,
@@ -580,11 +579,11 @@ static inline void tx_xmit_pkt(struct fm10k_tx_queue *q, struct rte_mbuf *mb)
 	/* set checksum flags on first descriptor of packet. SCTP checksum
 	 * offload is not supported, but we do not explicitly check for this
 	 * case in favor of greatly simplified processing. */
-	if (mb->ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK | PKT_TX_TCP_SEG))
+	if (mb->ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_L4_MASK | RTE_MBUF_F_TX_TCP_SEG))
 		q->hw_ring[q->next_free].flags |= FM10K_TXD_FLAG_CSUM;
 
 	/* set vlan if requested */
-	if (mb->ol_flags & PKT_TX_VLAN)
+	if (mb->ol_flags & RTE_MBUF_F_TX_VLAN)
 		q->hw_ring[q->next_free].vlan = mb->vlan_tci;
 	else
 		q->hw_ring[q->next_free].vlan = 0;
@@ -595,9 +594,9 @@ static inline void tx_xmit_pkt(struct fm10k_tx_queue *q, struct rte_mbuf *mb)
 	q->hw_ring[q->next_free].buflen =
 			rte_cpu_to_le_16(rte_pktmbuf_data_len(mb));
 
-	if (mb->ol_flags & PKT_TX_TCP_SEG) {
+	if (mb->ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 		hdrlen = mb->l2_len + mb->l3_len + mb->l4_len;
-		hdrlen += (mb->ol_flags & PKT_TX_TUNNEL_MASK) ?
+		hdrlen += (mb->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) ?
 			  mb->outer_l2_len + mb->outer_l3_len : 0;
 		if (q->hw_ring[q->next_free].flags & FM10K_TXD_FLAG_FTAG)
 			hdrlen += sizeof(struct fm10k_ftag);
@@ -674,7 +673,7 @@ fm10k_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	for (i = 0; i < nb_pkts; i++) {
 		m = tx_pkts[i];
 
-		if ((m->ol_flags & PKT_TX_TCP_SEG) &&
+		if ((m->ol_flags & RTE_MBUF_F_TX_TCP_SEG) &&
 				(m->tso_segsz < FM10K_TSO_MINMSS)) {
 			rte_errno = EINVAL;
 			return i;

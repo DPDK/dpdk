@@ -174,80 +174,80 @@ enetc_refill_rx_ring(struct enetc_bdr *rx_ring, const int buff_cnt)
 static inline void enetc_slow_parsing(struct rte_mbuf *m,
 				     uint64_t parse_results)
 {
-	m->ol_flags &= ~(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
+	m->ol_flags &= ~(RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD);
 
 	switch (parse_results) {
 	case ENETC_PARSE_ERROR | ENETC_PKT_TYPE_IPV4:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 				 RTE_PTYPE_L3_IPV4;
-		m->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		return;
 	case ENETC_PARSE_ERROR | ENETC_PKT_TYPE_IPV6:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 				 RTE_PTYPE_L3_IPV6;
-		m->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		return;
 	case ENETC_PARSE_ERROR | ENETC_PKT_TYPE_IPV4_TCP:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 				 RTE_PTYPE_L3_IPV4 |
 				 RTE_PTYPE_L4_TCP;
-		m->ol_flags |= PKT_RX_IP_CKSUM_GOOD |
-			       PKT_RX_L4_CKSUM_BAD;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+			       RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		return;
 	case ENETC_PARSE_ERROR | ENETC_PKT_TYPE_IPV6_TCP:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 				 RTE_PTYPE_L3_IPV6 |
 				 RTE_PTYPE_L4_TCP;
-		m->ol_flags |= PKT_RX_IP_CKSUM_GOOD |
-			       PKT_RX_L4_CKSUM_BAD;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+			       RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		return;
 	case ENETC_PARSE_ERROR | ENETC_PKT_TYPE_IPV4_UDP:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 				 RTE_PTYPE_L3_IPV4 |
 				 RTE_PTYPE_L4_UDP;
-		m->ol_flags |= PKT_RX_IP_CKSUM_GOOD |
-			       PKT_RX_L4_CKSUM_BAD;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+			       RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		return;
 	case ENETC_PARSE_ERROR | ENETC_PKT_TYPE_IPV6_UDP:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 				 RTE_PTYPE_L3_IPV6 |
 				 RTE_PTYPE_L4_UDP;
-		m->ol_flags |= PKT_RX_IP_CKSUM_GOOD |
-			       PKT_RX_L4_CKSUM_BAD;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+			       RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		return;
 	case ENETC_PARSE_ERROR | ENETC_PKT_TYPE_IPV4_SCTP:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 				 RTE_PTYPE_L3_IPV4 |
 				 RTE_PTYPE_L4_SCTP;
-		m->ol_flags |= PKT_RX_IP_CKSUM_GOOD |
-			       PKT_RX_L4_CKSUM_BAD;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+			       RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		return;
 	case ENETC_PARSE_ERROR | ENETC_PKT_TYPE_IPV6_SCTP:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 				 RTE_PTYPE_L3_IPV6 |
 				 RTE_PTYPE_L4_SCTP;
-		m->ol_flags |= PKT_RX_IP_CKSUM_GOOD |
-			       PKT_RX_L4_CKSUM_BAD;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+			       RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		return;
 	case ENETC_PARSE_ERROR | ENETC_PKT_TYPE_IPV4_ICMP:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 				 RTE_PTYPE_L3_IPV4 |
 				 RTE_PTYPE_L4_ICMP;
-		m->ol_flags |= PKT_RX_IP_CKSUM_GOOD |
-			       PKT_RX_L4_CKSUM_BAD;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+			       RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		return;
 	case ENETC_PARSE_ERROR | ENETC_PKT_TYPE_IPV6_ICMP:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 				 RTE_PTYPE_L3_IPV6 |
 				 RTE_PTYPE_L4_ICMP;
-		m->ol_flags |= PKT_RX_IP_CKSUM_GOOD |
-			       PKT_RX_L4_CKSUM_BAD;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+			       RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		return;
 	/* More switch cases can be added */
 	default:
 		m->packet_type = RTE_PTYPE_UNKNOWN;
-		m->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN |
-			       PKT_RX_L4_CKSUM_UNKNOWN;
+		m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN |
+			       RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
 	}
 }
 
@@ -256,7 +256,7 @@ static inline void __rte_hot
 enetc_dev_rx_parse(struct rte_mbuf *m, uint16_t parse_results)
 {
 	ENETC_PMD_DP_DEBUG("parse summary = 0x%x   ", parse_results);
-	m->ol_flags |= PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD;
+	m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 
 	switch (parse_results) {
 	case ENETC_PKT_TYPE_ETHER:

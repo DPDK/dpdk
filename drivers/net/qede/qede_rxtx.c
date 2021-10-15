@@ -1639,9 +1639,9 @@ qede_recv_pkts_regular(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 					    "L4 csum failed, flags = 0x%x\n",
 					    parse_flag);
 				rxq->rx_hw_errors++;
-				ol_flags |= PKT_RX_L4_CKSUM_BAD;
+				ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 			} else {
-				ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+				ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 			}
 
 			if (unlikely(qede_check_tunn_csum_l3(parse_flag))) {
@@ -1649,9 +1649,9 @@ qede_recv_pkts_regular(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 					"Outer L3 csum failed, flags = 0x%x\n",
 					parse_flag);
 				rxq->rx_hw_errors++;
-				ol_flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
+				ol_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
 			} else {
-				ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+				ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 			}
 
 			flags = fp_cqe->tunnel_pars_flags.flags;
@@ -1684,31 +1684,31 @@ qede_recv_pkts_regular(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				    "L4 csum failed, flags = 0x%x\n",
 				    parse_flag);
 			rxq->rx_hw_errors++;
-			ol_flags |= PKT_RX_L4_CKSUM_BAD;
+			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		} else {
-			ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 		}
 		if (unlikely(qede_check_notunn_csum_l3(rx_mb, parse_flag))) {
 			PMD_RX_LOG(ERR, rxq, "IP csum failed, flags = 0x%x\n",
 				   parse_flag);
 			rxq->rx_hw_errors++;
-			ol_flags |= PKT_RX_IP_CKSUM_BAD;
+			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		} else {
-			ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		}
 
 		if (unlikely(CQE_HAS_VLAN(parse_flag) ||
 			     CQE_HAS_OUTER_VLAN(parse_flag))) {
 			/* Note: FW doesn't indicate Q-in-Q packet */
-			ol_flags |= PKT_RX_VLAN;
+			ol_flags |= RTE_MBUF_F_RX_VLAN;
 			if (qdev->vlan_strip_flg) {
-				ol_flags |= PKT_RX_VLAN_STRIPPED;
+				ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED;
 				rx_mb->vlan_tci = vlan_tci;
 			}
 		}
 
 		if (rss_enable) {
-			ol_flags |= PKT_RX_RSS_HASH;
+			ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 			rx_mb->hash.rss = rss_hash;
 		}
 
@@ -1837,7 +1837,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			tpa_info = &rxq->tpa_info[cqe_start_tpa->tpa_agg_index];
 			tpa_start_flg = true;
 			/* Mark it as LRO packet */
-			ol_flags |= PKT_RX_LRO;
+			ol_flags |= RTE_MBUF_F_RX_LRO;
 			/* In split mode,  seg_len is same as len_on_first_bd
 			 * and bw_ext_bd_len_list will be empty since there are
 			 * no additional buffers
@@ -1908,9 +1908,9 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 					    "L4 csum failed, flags = 0x%x\n",
 					    parse_flag);
 				rxq->rx_hw_errors++;
-				ol_flags |= PKT_RX_L4_CKSUM_BAD;
+				ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 			} else {
-				ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+				ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 			}
 
 			if (unlikely(qede_check_tunn_csum_l3(parse_flag))) {
@@ -1918,9 +1918,9 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 					"Outer L3 csum failed, flags = 0x%x\n",
 					parse_flag);
 				  rxq->rx_hw_errors++;
-				  ol_flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
+				ol_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
 			} else {
-				  ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+				ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 			}
 
 			if (tpa_start_flg)
@@ -1957,32 +1957,32 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				    "L4 csum failed, flags = 0x%x\n",
 				    parse_flag);
 			rxq->rx_hw_errors++;
-			ol_flags |= PKT_RX_L4_CKSUM_BAD;
+			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		} else {
-			ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 		}
 		if (unlikely(qede_check_notunn_csum_l3(rx_mb, parse_flag))) {
 			PMD_RX_LOG(ERR, rxq, "IP csum failed, flags = 0x%x\n",
 				   parse_flag);
 			rxq->rx_hw_errors++;
-			ol_flags |= PKT_RX_IP_CKSUM_BAD;
+			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		} else {
-			ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		}
 
 		if (CQE_HAS_VLAN(parse_flag) ||
 		    CQE_HAS_OUTER_VLAN(parse_flag)) {
 			/* Note: FW doesn't indicate Q-in-Q packet */
-			ol_flags |= PKT_RX_VLAN;
+			ol_flags |= RTE_MBUF_F_RX_VLAN;
 			if (qdev->vlan_strip_flg) {
-				ol_flags |= PKT_RX_VLAN_STRIPPED;
+				ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED;
 				rx_mb->vlan_tci = vlan_tci;
 			}
 		}
 
 		/* RSS Hash */
 		if (qdev->rss_enable) {
-			ol_flags |= PKT_RX_RSS_HASH;
+			ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 			rx_mb->hash.rss = rss_hash;
 		}
 
@@ -2178,7 +2178,7 @@ qede_xmit_prep_pkts(__rte_unused void *p_txq, struct rte_mbuf **tx_pkts,
 	for (i = 0; i < nb_pkts; i++) {
 		m = tx_pkts[i];
 		ol_flags = m->ol_flags;
-		if (ol_flags & PKT_TX_TCP_SEG) {
+		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 			if (m->nb_segs >= ETH_TX_MAX_BDS_PER_LSO_PACKET) {
 				rte_errno = EINVAL;
 				break;
@@ -2196,14 +2196,14 @@ qede_xmit_prep_pkts(__rte_unused void *p_txq, struct rte_mbuf **tx_pkts,
 		}
 		if (ol_flags & QEDE_TX_OFFLOAD_NOTSUP_MASK) {
 			/* We support only limited tunnel protocols */
-			if (ol_flags & PKT_TX_TUNNEL_MASK) {
+			if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
 				uint64_t temp;
 
-				temp = ol_flags & PKT_TX_TUNNEL_MASK;
-				if (temp == PKT_TX_TUNNEL_VXLAN ||
-				    temp == PKT_TX_TUNNEL_GENEVE ||
-				    temp == PKT_TX_TUNNEL_MPLSINUDP ||
-				    temp == PKT_TX_TUNNEL_GRE)
+				temp = ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK;
+				if (temp == RTE_MBUF_F_TX_TUNNEL_VXLAN ||
+				    temp == RTE_MBUF_F_TX_TUNNEL_GENEVE ||
+				    temp == RTE_MBUF_F_TX_TUNNEL_MPLSINUDP ||
+				    temp == RTE_MBUF_F_TX_TUNNEL_GRE)
 					continue;
 			}
 
@@ -2311,13 +2311,13 @@ qede_xmit_pkts_regular(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			<< ETH_TX_DATA_1ST_BD_PKT_LEN_SHIFT;
 
 		/* Offload the IP checksum in the hardware */
-		if (tx_ol_flags & PKT_TX_IP_CKSUM)
+		if (tx_ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 			bd1_bd_flags_bf |=
 				1 << ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT;
 
 		/* L4 checksum offload (tcp or udp) */
-		if ((tx_ol_flags & (PKT_TX_IPV4 | PKT_TX_IPV6)) &&
-		    (tx_ol_flags & (PKT_TX_UDP_CKSUM | PKT_TX_TCP_CKSUM)))
+		if ((tx_ol_flags & (RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IPV6)) &&
+		    (tx_ol_flags & (RTE_MBUF_F_TX_UDP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM)))
 			bd1_bd_flags_bf |=
 				1 << ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT;
 
@@ -2456,7 +2456,7 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * offloads. Don't rely on pkt_type marked by Rx, instead use
 		 * tx_ol_flags to decide.
 		 */
-		tunn_flg = !!(tx_ol_flags & PKT_TX_TUNNEL_MASK);
+		tunn_flg = !!(tx_ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK);
 
 		if (tunn_flg) {
 			/* Check against max which is Tunnel IPv6 + ext */
@@ -2477,8 +2477,8 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			}
 
 			/* Outer IP checksum offload */
-			if (tx_ol_flags & (PKT_TX_OUTER_IP_CKSUM |
-					   PKT_TX_OUTER_IPV4)) {
+			if (tx_ol_flags & (RTE_MBUF_F_TX_OUTER_IP_CKSUM |
+					   RTE_MBUF_F_TX_OUTER_IPV4)) {
 				bd1_bd_flags_bf |=
 					ETH_TX_1ST_BD_FLAGS_TUNN_IP_CSUM_MASK <<
 					ETH_TX_1ST_BD_FLAGS_TUNN_IP_CSUM_SHIFT;
@@ -2490,8 +2490,8 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			 * and inner layers  lengths need to be provided in
 			 * mbuf.
 			 */
-			if ((tx_ol_flags & PKT_TX_TUNNEL_MASK) ==
-						PKT_TX_TUNNEL_MPLSINUDP) {
+			if ((tx_ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) ==
+						RTE_MBUF_F_TX_TUNNEL_MPLSINUDP) {
 				mplsoudp_flg = true;
 #ifdef RTE_LIBRTE_QEDE_DEBUG_TX
 				qede_mpls_tunn_tx_sanity_check(mbuf, txq);
@@ -2524,18 +2524,18 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				    1 << ETH_TX_DATA_2ND_BD_TUNN_IPV6_EXT_SHIFT;
 
 				/* Mark inner IPv6 if present */
-				if (tx_ol_flags & PKT_TX_IPV6)
+				if (tx_ol_flags & RTE_MBUF_F_TX_IPV6)
 					bd2_bf1 |=
 						1 << ETH_TX_DATA_2ND_BD_TUNN_INNER_IPV6_SHIFT;
 
 				/* Inner L4 offsets */
-				if ((tx_ol_flags & (PKT_TX_IPV4 | PKT_TX_IPV6)) &&
-				     (tx_ol_flags & (PKT_TX_UDP_CKSUM |
-							PKT_TX_TCP_CKSUM))) {
+				if ((tx_ol_flags & (RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IPV6)) &&
+				     (tx_ol_flags & (RTE_MBUF_F_TX_UDP_CKSUM |
+							RTE_MBUF_F_TX_TCP_CKSUM))) {
 					/* Determines if BD3 is needed */
 					tunn_ipv6_ext_flg = true;
-					if ((tx_ol_flags & PKT_TX_L4_MASK) ==
-							PKT_TX_UDP_CKSUM) {
+					if ((tx_ol_flags & RTE_MBUF_F_TX_L4_MASK) ==
+							RTE_MBUF_F_TX_UDP_CKSUM) {
 						bd2_bf1 |=
 							1 << ETH_TX_DATA_2ND_BD_L4_UDP_SHIFT;
 					}
@@ -2553,7 +2553,7 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			} /* End MPLSoUDP */
 		} /* End Tunnel handling */
 
-		if (tx_ol_flags & PKT_TX_TCP_SEG) {
+		if (tx_ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 			lso_flg = true;
 			if (unlikely(txq->nb_tx_avail <
 						ETH_TX_MIN_BDS_PER_LSO_PKT))
@@ -2570,7 +2570,7 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			bd1_bd_flags_bf |= 1 << ETH_TX_1ST_BD_FLAGS_LSO_SHIFT;
 			bd1_bd_flags_bf |=
 					1 << ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT;
-			/* PKT_TX_TCP_SEG implies PKT_TX_TCP_CKSUM */
+			/* RTE_MBUF_F_TX_TCP_SEG implies RTE_MBUF_F_TX_TCP_CKSUM */
 			bd1_bd_flags_bf |=
 					1 << ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT;
 			mss = rte_cpu_to_le_16(mbuf->tso_segsz);
@@ -2587,14 +2587,14 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Descriptor based VLAN insertion */
-		if (tx_ol_flags & PKT_TX_VLAN) {
+		if (tx_ol_flags & RTE_MBUF_F_TX_VLAN) {
 			vlan = rte_cpu_to_le_16(mbuf->vlan_tci);
 			bd1_bd_flags_bf |=
 			    1 << ETH_TX_1ST_BD_FLAGS_VLAN_INSERTION_SHIFT;
 		}
 
 		/* Offload the IP checksum in the hardware */
-		if (tx_ol_flags & PKT_TX_IP_CKSUM) {
+		if (tx_ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 			bd1_bd_flags_bf |=
 				1 << ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT;
 			/* There's no DPDK flag to request outer-L4 csum
@@ -2602,8 +2602,8 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			 * csum offload is requested then we need to force
 			 * recalculation of L4 tunnel header csum also.
 			 */
-			if (tunn_flg && ((tx_ol_flags & PKT_TX_TUNNEL_MASK) !=
-							PKT_TX_TUNNEL_GRE)) {
+			if (tunn_flg && ((tx_ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) !=
+							RTE_MBUF_F_TX_TUNNEL_GRE)) {
 				bd1_bd_flags_bf |=
 					ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_MASK <<
 					ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_SHIFT;
@@ -2611,8 +2611,8 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* L4 checksum offload (tcp or udp) */
-		if ((tx_ol_flags & (PKT_TX_IPV4 | PKT_TX_IPV6)) &&
-		    (tx_ol_flags & (PKT_TX_UDP_CKSUM | PKT_TX_TCP_CKSUM))) {
+		if ((tx_ol_flags & (RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IPV6)) &&
+		    (tx_ol_flags & (RTE_MBUF_F_TX_UDP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM))) {
 			bd1_bd_flags_bf |=
 				1 << ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT;
 			/* There's no DPDK flag to request outer-L4 csum

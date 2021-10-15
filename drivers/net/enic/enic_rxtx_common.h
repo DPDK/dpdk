@@ -209,11 +209,11 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 
 	/* VLAN STRIPPED flag. The L2 packet type updated here also */
 	if (bwflags & CQ_ENET_RQ_DESC_FLAGS_VLAN_STRIPPED) {
-		pkt_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		pkt_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		mbuf->packet_type |= RTE_PTYPE_L2_ETHER;
 	} else {
 		if (vlan_tci != 0) {
-			pkt_flags |= PKT_RX_VLAN;
+			pkt_flags |= RTE_MBUF_F_RX_VLAN;
 			mbuf->packet_type |= RTE_PTYPE_L2_ETHER_VLAN;
 		} else {
 			mbuf->packet_type |= RTE_PTYPE_L2_ETHER;
@@ -227,16 +227,16 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 		clsf_cqd = (struct cq_enet_rq_clsf_desc *)cqd;
 		filter_id = clsf_cqd->filter_id;
 		if (filter_id) {
-			pkt_flags |= PKT_RX_FDIR;
+			pkt_flags |= RTE_MBUF_F_RX_FDIR;
 			if (filter_id != ENIC_MAGIC_FILTER_ID) {
 				/* filter_id = mark id + 1, so subtract 1 */
 				mbuf->hash.fdir.hi = filter_id - 1;
-				pkt_flags |= PKT_RX_FDIR_ID;
+				pkt_flags |= RTE_MBUF_F_RX_FDIR_ID;
 			}
 		}
 	} else if (enic_cq_rx_desc_rss_type(cqrd)) {
 		/* RSS flag */
-		pkt_flags |= PKT_RX_RSS_HASH;
+		pkt_flags |= RTE_MBUF_F_RX_RSS_HASH;
 		mbuf->hash.rss = enic_cq_rx_desc_rss_hash(cqrd);
 	}
 
@@ -254,17 +254,17 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 			 */
 			if (mbuf->packet_type & RTE_PTYPE_L3_IPV4) {
 				if (enic_cq_rx_desc_ipv4_csum_ok(cqrd))
-					pkt_flags |= PKT_RX_IP_CKSUM_GOOD;
+					pkt_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 				else
-					pkt_flags |= PKT_RX_IP_CKSUM_BAD;
+					pkt_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 			}
 
 			if (l4_flags == RTE_PTYPE_L4_UDP ||
 			    l4_flags == RTE_PTYPE_L4_TCP) {
 				if (enic_cq_rx_desc_tcp_udp_csum_ok(cqrd))
-					pkt_flags |= PKT_RX_L4_CKSUM_GOOD;
+					pkt_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 				else
-					pkt_flags |= PKT_RX_L4_CKSUM_BAD;
+					pkt_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 			}
 		}
 	}

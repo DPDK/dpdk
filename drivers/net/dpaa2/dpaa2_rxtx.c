@@ -114,7 +114,7 @@ dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd,
 		m->packet_type = dpaa2_dev_rx_parse_slow(m, annotation);
 	}
 	m->hash.rss = fd->simple.flc_hi;
-	m->ol_flags |= PKT_RX_RSS_HASH;
+	m->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 
 	if (dpaa2_enable_ts[m->port]) {
 		*dpaa2_timestamp_dynfield(m) = annotation->word2;
@@ -141,20 +141,20 @@ dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
 
 #if defined(RTE_LIBRTE_IEEE1588)
 	if (BIT_ISSET_AT_POS(annotation->word1, DPAA2_ETH_FAS_PTP))
-		mbuf->ol_flags |= PKT_RX_IEEE1588_PTP;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP;
 #endif
 
 	if (BIT_ISSET_AT_POS(annotation->word3, L2_VLAN_1_PRESENT)) {
 		vlan_tci = rte_pktmbuf_mtod_offset(mbuf, uint16_t *,
 			(VLAN_TCI_OFFSET_1(annotation->word5) >> 16));
 		mbuf->vlan_tci = rte_be_to_cpu_16(*vlan_tci);
-		mbuf->ol_flags |= PKT_RX_VLAN;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN;
 		pkt_type |= RTE_PTYPE_L2_ETHER_VLAN;
 	} else if (BIT_ISSET_AT_POS(annotation->word3, L2_VLAN_N_PRESENT)) {
 		vlan_tci = rte_pktmbuf_mtod_offset(mbuf, uint16_t *,
 			(VLAN_TCI_OFFSET_1(annotation->word5) >> 16));
 		mbuf->vlan_tci = rte_be_to_cpu_16(*vlan_tci);
-		mbuf->ol_flags |= PKT_RX_VLAN | PKT_RX_QINQ;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_QINQ;
 		pkt_type |= RTE_PTYPE_L2_ETHER_QINQ;
 	}
 
@@ -189,9 +189,9 @@ dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
 	}
 
 	if (BIT_ISSET_AT_POS(annotation->word8, DPAA2_ETH_FAS_L3CE))
-		mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 	else if (BIT_ISSET_AT_POS(annotation->word8, DPAA2_ETH_FAS_L4CE))
-		mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 
 	if (BIT_ISSET_AT_POS(annotation->word4, L3_IP_1_FIRST_FRAGMENT |
 	    L3_IP_1_MORE_FRAGMENT |
@@ -232,9 +232,9 @@ dpaa2_dev_rx_parse(struct rte_mbuf *mbuf, void *hw_annot_addr)
 			   annotation->word4);
 
 	if (BIT_ISSET_AT_POS(annotation->word8, DPAA2_ETH_FAS_L3CE))
-		mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 	else if (BIT_ISSET_AT_POS(annotation->word8, DPAA2_ETH_FAS_L4CE))
-		mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 
 	if (dpaa2_enable_ts[mbuf->port]) {
 		*dpaa2_timestamp_dynfield(mbuf) = annotation->word2;
@@ -1228,7 +1228,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				    (*bufs)->nb_segs == 1 &&
 				    rte_mbuf_refcnt_read((*bufs)) == 1)) {
 					if (unlikely(((*bufs)->ol_flags
-						& PKT_TX_VLAN) ||
+						& RTE_MBUF_F_TX_VLAN) ||
 						(eth_data->dev_conf.txmode.offloads
 						& RTE_ETH_TX_OFFLOAD_VLAN_INSERT))) {
 						ret = rte_vlan_insert(bufs);
@@ -1271,7 +1271,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				goto send_n_return;
 			}
 
-			if (unlikely(((*bufs)->ol_flags & PKT_TX_VLAN) ||
+			if (unlikely(((*bufs)->ol_flags & RTE_MBUF_F_TX_VLAN) ||
 				(eth_data->dev_conf.txmode.offloads
 				& RTE_ETH_TX_OFFLOAD_VLAN_INSERT))) {
 				int ret = rte_vlan_insert(bufs);
@@ -1532,7 +1532,7 @@ dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				    (*bufs)->nb_segs == 1 &&
 				    rte_mbuf_refcnt_read((*bufs)) == 1)) {
 					if (unlikely((*bufs)->ol_flags
-						& PKT_TX_VLAN)) {
+						& RTE_MBUF_F_TX_VLAN)) {
 					  ret = rte_vlan_insert(bufs);
 					  if (ret)
 						goto send_n_return;

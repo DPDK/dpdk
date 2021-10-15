@@ -214,7 +214,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 
 	rte_pktmbuf_reset_headroom(pkt);
 	pkt->data_len = tx_pkt_seg_lengths[0];
-	pkt->ol_flags &= EXT_ATTACHED_MBUF;
+	pkt->ol_flags &= RTE_MBUF_F_EXTERNAL;
 	pkt->ol_flags |= ol_flags;
 	pkt->vlan_tci = vlan_tci;
 	pkt->vlan_tci_outer = vlan_tci_outer;
@@ -355,11 +355,11 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	vlan_tci = txp->tx_vlan_id;
 	vlan_tci_outer = txp->tx_vlan_id_outer;
 	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
-		ol_flags = PKT_TX_VLAN;
+		ol_flags = RTE_MBUF_F_TX_VLAN;
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT)
-		ol_flags |= PKT_TX_QINQ;
+		ol_flags |= RTE_MBUF_F_TX_QINQ;
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_MACSEC_INSERT)
-		ol_flags |= PKT_TX_MACSEC;
+		ol_flags |= RTE_MBUF_F_TX_MACSEC;
 
 	/*
 	 * Initialize Ethernet header.

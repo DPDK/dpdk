@@ -63,9 +63,9 @@
 #define MVNETA_TX_OFFLOADS (MVNETA_TX_OFFLOAD_CHECKSUM | \
 			    RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 
-#define MVNETA_TX_PKT_OFFLOADS (PKT_TX_IP_CKSUM | \
-				PKT_TX_TCP_CKSUM | \
-				PKT_TX_UDP_CKSUM)
+#define MVNETA_TX_PKT_OFFLOADS (RTE_MBUF_F_TX_IP_CKSUM | \
+				RTE_MBUF_F_TX_TCP_CKSUM | \
+				RTE_MBUF_F_TX_UDP_CKSUM)
 
 struct mvneta_priv {
 	/* Hot fields, used in fast path. */

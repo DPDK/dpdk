@@ -1622,8 +1622,8 @@ inline_outb_burst_null_null_check(struct ipsec_unitest_params *ut_params,
 			"ibuf pkt_len is not equal to obuf pkt_len");
 
 		/* check mbuf ol_flags */
-		TEST_ASSERT(ut_params->ibuf[j]->ol_flags & PKT_TX_SEC_OFFLOAD,
-			"ibuf PKT_TX_SEC_OFFLOAD is not set");
+		TEST_ASSERT(ut_params->ibuf[j]->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD,
+			    "ibuf RTE_MBUF_F_TX_SEC_OFFLOAD is not set");
 	}
 	return 0;
 }

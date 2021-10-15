@@ -208,7 +208,7 @@ sfc_ef100_rx_nt_or_inner_l4_csum(const efx_word_t class)
 	return EFX_WORD_FIELD(class,
 			      ESF_GZ_RX_PREFIX_HCLASS_NT_OR_INNER_L4_CSUM) ==
 		ESE_GZ_RH_HCLASS_L4_CSUM_GOOD ?
-		PKT_RX_L4_CKSUM_GOOD : PKT_RX_L4_CKSUM_BAD;
+		RTE_MBUF_F_RX_L4_CKSUM_GOOD : RTE_MBUF_F_RX_L4_CKSUM_BAD;
 }
 
 static inline uint64_t
@@ -217,7 +217,7 @@ sfc_ef100_rx_tun_outer_l4_csum(const efx_word_t class)
 	return EFX_WORD_FIELD(class,
 			      ESF_GZ_RX_PREFIX_HCLASS_TUN_OUTER_L4_CSUM) ==
 		ESE_GZ_RH_HCLASS_L4_CSUM_GOOD ?
-		PKT_RX_OUTER_L4_CKSUM_GOOD : PKT_RX_OUTER_L4_CKSUM_BAD;
+		RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD : RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD;
 }
 
 static uint32_t
@@ -273,11 +273,11 @@ sfc_ef100_rx_class_decode(const efx_word_t class, uint64_t *ol_flags)
 			ESF_GZ_RX_PREFIX_HCLASS_NT_OR_INNER_L3_CLASS)) {
 		case ESE_GZ_RH_HCLASS_L3_CLASS_IP4GOOD:
 			ptype |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-			*ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			*ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 			break;
 		case ESE_GZ_RH_HCLASS_L3_CLASS_IP4BAD:
 			ptype |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-			*ol_flags |= PKT_RX_IP_CKSUM_BAD;
+			*ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 			break;
 		case ESE_GZ_RH_HCLASS_L3_CLASS_IP6:
 			ptype |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
@@ -314,7 +314,7 @@ sfc_ef100_rx_class_decode(const efx_word_t class, uint64_t *ol_flags)
 			break;
 		case ESE_GZ_RH_HCLASS_L3_CLASS_IP4BAD:
 			ptype |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-			*ol_flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
+			*ol_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
 			break;
 		case ESE_GZ_RH_HCLASS_L3_CLASS_IP6:
 			ptype |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
@@ -325,11 +325,11 @@ sfc_ef100_rx_class_decode(const efx_word_t class, uint64_t *ol_flags)
 			ESF_GZ_RX_PREFIX_HCLASS_NT_OR_INNER_L3_CLASS)) {
 		case ESE_GZ_RH_HCLASS_L3_CLASS_IP4GOOD:
 			ptype |= RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
-			*ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			*ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 			break;
 		case ESE_GZ_RH_HCLASS_L3_CLASS_IP4BAD:
 			ptype |= RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
-			*ol_flags |= PKT_RX_IP_CKSUM_BAD;
+			*ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 			break;
 		case ESE_GZ_RH_HCLASS_L3_CLASS_IP6:
 			ptype |= RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN;
@@ -409,7 +409,7 @@ sfc_ef100_rx_prefix_to_offloads(const struct sfc_ef100_rxq *rxq,
 	if ((rxq->flags & SFC_EF100_RXQ_RSS_HASH) &&
 	    EFX_TEST_XWORD_BIT(rx_prefix[0],
 			       ESF_GZ_RX_PREFIX_RSS_HASH_VALID_LBN)) {
-		ol_flags |= PKT_RX_RSS_HASH;
+		ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 		/* EFX_XWORD_FIELD converts little-endian to CPU */
 		m->hash.rss = EFX_XWORD_FIELD(rx_prefix[0],
 					      ESF_GZ_RX_PREFIX_RSS_HASH);
@@ -421,7 +421,7 @@ sfc_ef100_rx_prefix_to_offloads(const struct sfc_ef100_rxq *rxq,
 		user_flag = EFX_XWORD_FIELD(rx_prefix[0],
 					    ESF_GZ_RX_PREFIX_USER_FLAG);
 		if (user_flag != 0)
-			ol_flags |= PKT_RX_FDIR;
+			ol_flags |= RTE_MBUF_F_RX_FDIR;
 	}
 
 	if (rxq->flags & SFC_EF100_RXQ_USER_MARK) {
@@ -435,7 +435,7 @@ sfc_ef100_rx_prefix_to_offloads(const struct sfc_ef100_rxq *rxq,
 
 		user_mark = mark & rxq->user_mark_mask;
 		if (user_mark != SFC_EF100_USER_MARK_INVALID) {
-			ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+			ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 			m->hash.fdir.hi = user_mark;
 		}
 

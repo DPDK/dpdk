@@ -1495,7 +1495,7 @@ test_get_rx_ol_flag_list(void)
 		GOTO_FAIL("%s expected: -1, received = %d\n", __func__, ret);
 
 	/* Test case to check with zero buffer len */
-	ret = rte_get_rx_ol_flag_list(PKT_RX_L4_CKSUM_MASK, buf, 0);
+	ret = rte_get_rx_ol_flag_list(RTE_MBUF_F_RX_L4_CKSUM_MASK, buf, 0);
 	if (ret != -1)
 		GOTO_FAIL("%s expected: -1, received = %d\n", __func__, ret);
 
@@ -1526,7 +1526,8 @@ test_get_rx_ol_flag_list(void)
 				"non-zero, buffer should not be empty");
 
 	/* Test case to check with valid mask value */
-	ret = rte_get_rx_ol_flag_list(PKT_RX_SEC_OFFLOAD, buf, sizeof(buf));
+	ret = rte_get_rx_ol_flag_list(RTE_MBUF_F_RX_SEC_OFFLOAD, buf,
+				      sizeof(buf));
 	if (ret != 0)
 		GOTO_FAIL("%s expected: 0, received = %d\n", __func__, ret);
 
@@ -1553,7 +1554,7 @@ test_get_tx_ol_flag_list(void)
 		GOTO_FAIL("%s expected: -1, received = %d\n", __func__, ret);
 
 	/* Test case to check with zero buffer len */
-	ret = rte_get_tx_ol_flag_list(PKT_TX_IP_CKSUM, buf, 0);
+	ret = rte_get_tx_ol_flag_list(RTE_MBUF_F_TX_IP_CKSUM, buf, 0);
 	if (ret != -1)
 		GOTO_FAIL("%s expected: -1, received = %d\n", __func__, ret);
 
@@ -1585,7 +1586,8 @@ test_get_tx_ol_flag_list(void)
 				"non-zero, buffer should not be empty");
 
 	/* Test case to check with valid mask value */
-	ret = rte_get_tx_ol_flag_list(PKT_TX_UDP_CKSUM, buf, sizeof(buf));
+	ret = rte_get_tx_ol_flag_list(RTE_MBUF_F_TX_UDP_CKSUM, buf,
+				      sizeof(buf));
 	if (ret != 0)
 		GOTO_FAIL("%s expected: 0, received = %d\n", __func__, ret);
 
@@ -1611,28 +1613,28 @@ test_get_rx_ol_flag_name(void)
 	uint16_t i;
 	const char *flag_str = NULL;
 	const struct flag_name rx_flags[] = {
-		VAL_NAME(PKT_RX_VLAN),
-		VAL_NAME(PKT_RX_RSS_HASH),
-		VAL_NAME(PKT_RX_FDIR),
-		VAL_NAME(PKT_RX_L4_CKSUM_BAD),
-		VAL_NAME(PKT_RX_L4_CKSUM_GOOD),
-		VAL_NAME(PKT_RX_L4_CKSUM_NONE),
-		VAL_NAME(PKT_RX_IP_CKSUM_BAD),
-		VAL_NAME(PKT_RX_IP_CKSUM_GOOD),
-		VAL_NAME(PKT_RX_IP_CKSUM_NONE),
-		VAL_NAME(PKT_RX_OUTER_IP_CKSUM_BAD),
-		VAL_NAME(PKT_RX_VLAN_STRIPPED),
-		VAL_NAME(PKT_RX_IEEE1588_PTP),
-		VAL_NAME(PKT_RX_IEEE1588_TMST),
-		VAL_NAME(PKT_RX_FDIR_ID),
-		VAL_NAME(PKT_RX_FDIR_FLX),
-		VAL_NAME(PKT_RX_QINQ_STRIPPED),
-		VAL_NAME(PKT_RX_LRO),
-		VAL_NAME(PKT_RX_SEC_OFFLOAD),
-		VAL_NAME(PKT_RX_SEC_OFFLOAD_FAILED),
-		VAL_NAME(PKT_RX_OUTER_L4_CKSUM_BAD),
-		VAL_NAME(PKT_RX_OUTER_L4_CKSUM_GOOD),
-		VAL_NAME(PKT_RX_OUTER_L4_CKSUM_INVALID),
+		VAL_NAME(RTE_MBUF_F_RX_VLAN),
+		VAL_NAME(RTE_MBUF_F_RX_RSS_HASH),
+		VAL_NAME(RTE_MBUF_F_RX_FDIR),
+		VAL_NAME(RTE_MBUF_F_RX_L4_CKSUM_BAD),
+		VAL_NAME(RTE_MBUF_F_RX_L4_CKSUM_GOOD),
+		VAL_NAME(RTE_MBUF_F_RX_L4_CKSUM_NONE),
+		VAL_NAME(RTE_MBUF_F_RX_IP_CKSUM_BAD),
+		VAL_NAME(RTE_MBUF_F_RX_IP_CKSUM_GOOD),
+		VAL_NAME(RTE_MBUF_F_RX_IP_CKSUM_NONE),
+		VAL_NAME(RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD),
+		VAL_NAME(RTE_MBUF_F_RX_VLAN_STRIPPED),
+		VAL_NAME(RTE_MBUF_F_RX_IEEE1588_PTP),
+		VAL_NAME(RTE_MBUF_F_RX_IEEE1588_TMST),
+		VAL_NAME(RTE_MBUF_F_RX_FDIR_ID),
+		VAL_NAME(RTE_MBUF_F_RX_FDIR_FLX),
+		VAL_NAME(RTE_MBUF_F_RX_QINQ_STRIPPED),
+		VAL_NAME(RTE_MBUF_F_RX_LRO),
+		VAL_NAME(RTE_MBUF_F_RX_SEC_OFFLOAD),
+		VAL_NAME(RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED),
+		VAL_NAME(RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD),
+		VAL_NAME(RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD),
+		VAL_NAME(RTE_MBUF_F_RX_OUTER_L4_CKSUM_INVALID),
 	};
 
 	/* Test case to check with valid flag */
@@ -1663,31 +1665,31 @@ test_get_tx_ol_flag_name(void)
 	uint16_t i;
 	const char *flag_str = NULL;
 	const struct flag_name tx_flags[] = {
-		VAL_NAME(PKT_TX_VLAN),
-		VAL_NAME(PKT_TX_IP_CKSUM),
-		VAL_NAME(PKT_TX_TCP_CKSUM),
-		VAL_NAME(PKT_TX_SCTP_CKSUM),
-		VAL_NAME(PKT_TX_UDP_CKSUM),
-		VAL_NAME(PKT_TX_IEEE1588_TMST),
-		VAL_NAME(PKT_TX_TCP_SEG),
-		VAL_NAME(PKT_TX_IPV4),
-		VAL_NAME(PKT_TX_IPV6),
-		VAL_NAME(PKT_TX_OUTER_IP_CKSUM),
-		VAL_NAME(PKT_TX_OUTER_IPV4),
-		VAL_NAME(PKT_TX_OUTER_IPV6),
-		VAL_NAME(PKT_TX_TUNNEL_VXLAN),
-		VAL_NAME(PKT_TX_TUNNEL_GRE),
-		VAL_NAME(PKT_TX_TUNNEL_IPIP),
-		VAL_NAME(PKT_TX_TUNNEL_GENEVE),
-		VAL_NAME(PKT_TX_TUNNEL_MPLSINUDP),
-		VAL_NAME(PKT_TX_TUNNEL_VXLAN_GPE),
-		VAL_NAME(PKT_TX_TUNNEL_IP),
-		VAL_NAME(PKT_TX_TUNNEL_UDP),
-		VAL_NAME(PKT_TX_QINQ),
-		VAL_NAME(PKT_TX_MACSEC),
-		VAL_NAME(PKT_TX_SEC_OFFLOAD),
-		VAL_NAME(PKT_TX_UDP_SEG),
-		VAL_NAME(PKT_TX_OUTER_UDP_CKSUM),
+		VAL_NAME(RTE_MBUF_F_TX_VLAN),
+		VAL_NAME(RTE_MBUF_F_TX_IP_CKSUM),
+		VAL_NAME(RTE_MBUF_F_TX_TCP_CKSUM),
+		VAL_NAME(RTE_MBUF_F_TX_SCTP_CKSUM),
+		VAL_NAME(RTE_MBUF_F_TX_UDP_CKSUM),
+		VAL_NAME(RTE_MBUF_F_TX_IEEE1588_TMST),
+		VAL_NAME(RTE_MBUF_F_TX_TCP_SEG),
+		VAL_NAME(RTE_MBUF_F_TX_IPV4),
+		VAL_NAME(RTE_MBUF_F_TX_IPV6),
+		VAL_NAME(RTE_MBUF_F_TX_OUTER_IP_CKSUM),
+		VAL_NAME(RTE_MBUF_F_TX_OUTER_IPV4),
+		VAL_NAME(RTE_MBUF_F_TX_OUTER_IPV6),
+		VAL_NAME(RTE_MBUF_F_TX_TUNNEL_VXLAN),
+		VAL_NAME(RTE_MBUF_F_TX_TUNNEL_GRE),
+		VAL_NAME(RTE_MBUF_F_TX_TUNNEL_IPIP),
+		VAL_NAME(RTE_MBUF_F_TX_TUNNEL_GENEVE),
+		VAL_NAME(RTE_MBUF_F_TX_TUNNEL_MPLSINUDP),
+		VAL_NAME(RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE),
+		VAL_NAME(RTE_MBUF_F_TX_TUNNEL_IP),
+		VAL_NAME(RTE_MBUF_F_TX_TUNNEL_UDP),
+		VAL_NAME(RTE_MBUF_F_TX_QINQ),
+		VAL_NAME(RTE_MBUF_F_TX_MACSEC),
+		VAL_NAME(RTE_MBUF_F_TX_SEC_OFFLOAD),
+		VAL_NAME(RTE_MBUF_F_TX_UDP_SEG),
+		VAL_NAME(RTE_MBUF_F_TX_OUTER_UDP_CKSUM),
 	};
 
 	/* Test case to check with valid flag */
@@ -1755,8 +1757,8 @@ test_mbuf_validate_tx_offload_one(struct rte_mempool *pktmbuf_pool)
 
 	/* test to validate if IP checksum is counted only for IPV4 packet */
 	/* set both IP checksum and IPV6 flags */
-	ol_flags |= PKT_TX_IP_CKSUM;
-	ol_flags |= PKT_TX_IPV6;
+	ol_flags |= RTE_MBUF_F_TX_IP_CKSUM;
+	ol_flags |= RTE_MBUF_F_TX_IPV6;
 	if (test_mbuf_validate_tx_offload("MBUF_TEST_IP_CKSUM_IPV6_SET",
 				pktmbuf_pool,
 				ol_flags, 0, -EINVAL) < 0)
@@ -1765,14 +1767,14 @@ test_mbuf_validate_tx_offload_one(struct rte_mempool *pktmbuf_pool)
 	ol_flags = 0;
 
 	/* test to validate if IP type is set when required */
-	ol_flags |= PKT_TX_L4_MASK;
+	ol_flags |= RTE_MBUF_F_TX_L4_MASK;
 	if (test_mbuf_validate_tx_offload("MBUF_TEST_IP_TYPE_NOT_SET",
 				pktmbuf_pool,
 				ol_flags, 0, -EINVAL) < 0)
 		GOTO_FAIL("%s failed: IP type is not set.\n", __func__);
 
 	/* test if IP type is set when TCP SEG is on */
-	ol_flags |= PKT_TX_TCP_SEG;
+	ol_flags |= RTE_MBUF_F_TX_TCP_SEG;
 	if (test_mbuf_validate_tx_offload("MBUF_TEST_IP_TYPE_NOT_SET",
 				pktmbuf_pool,
 				ol_flags, 0, -EINVAL) < 0)
@@ -1780,8 +1782,8 @@ test_mbuf_validate_tx_offload_one(struct rte_mempool *pktmbuf_pool)
 
 	ol_flags = 0;
 	/* test to confirm IP type (IPV4/IPV6) is set */
-	ol_flags = PKT_TX_L4_MASK;
-	ol_flags |= PKT_TX_IPV6;
+	ol_flags = RTE_MBUF_F_TX_L4_MASK;
+	ol_flags |= RTE_MBUF_F_TX_IPV6;
 	if (test_mbuf_validate_tx_offload("MBUF_TEST_IP_TYPE_SET",
 				pktmbuf_pool,
 				ol_flags, 0, 0) < 0)
@@ -1789,15 +1791,15 @@ test_mbuf_validate_tx_offload_one(struct rte_mempool *pktmbuf_pool)
 
 	ol_flags = 0;
 	/* test to check TSO segment size is non-zero */
-	ol_flags |= PKT_TX_IPV4;
-	ol_flags |= PKT_TX_TCP_SEG;
+	ol_flags |= RTE_MBUF_F_TX_IPV4;
+	ol_flags |= RTE_MBUF_F_TX_TCP_SEG;
 	/* set 0 tso segment size */
 	if (test_mbuf_validate_tx_offload("MBUF_TEST_NULL_TSO_SEGSZ",
 				pktmbuf_pool,
 				ol_flags, 0, -EINVAL) < 0)
 		GOTO_FAIL("%s failed: tso segment size is null.\n", __func__);
 
-	/* retain IPV4 and PKT_TX_TCP_SEG mask */
+	/* retain IPV4 and RTE_MBUF_F_TX_TCP_SEG mask */
 	/* set valid tso segment size but IP CKSUM not set */
 	if (test_mbuf_validate_tx_offload("MBUF_TEST_TSO_IP_CKSUM_NOT_SET",
 				pktmbuf_pool,
@@ -1806,7 +1808,7 @@ test_mbuf_validate_tx_offload_one(struct rte_mempool *pktmbuf_pool)
 
 	/* test to validate if IP checksum is set for TSO capability */
 	/* retain IPV4, TCP_SEG, tso_seg size */
-	ol_flags |= PKT_TX_IP_CKSUM;
+	ol_flags |= RTE_MBUF_F_TX_IP_CKSUM;
 	if (test_mbuf_validate_tx_offload("MBUF_TEST_TSO_IP_CKSUM_SET",
 				pktmbuf_pool,
 				ol_flags, 512, 0) < 0)
@@ -1814,8 +1816,8 @@ test_mbuf_validate_tx_offload_one(struct rte_mempool *pktmbuf_pool)
 
 	/* test to confirm TSO for IPV6 type */
 	ol_flags = 0;
-	ol_flags |= PKT_TX_IPV6;
-	ol_flags |= PKT_TX_TCP_SEG;
+	ol_flags |= RTE_MBUF_F_TX_IPV6;
+	ol_flags |= RTE_MBUF_F_TX_TCP_SEG;
 	if (test_mbuf_validate_tx_offload("MBUF_TEST_TSO_IPV6_SET",
 				pktmbuf_pool,
 				ol_flags, 512, 0) < 0)
@@ -1823,8 +1825,8 @@ test_mbuf_validate_tx_offload_one(struct rte_mempool *pktmbuf_pool)
 
 	ol_flags = 0;
 	/* test if outer IP checksum set for non outer IPv4 packet */
-	ol_flags |= PKT_TX_IPV6;
-	ol_flags |= PKT_TX_OUTER_IP_CKSUM;
+	ol_flags |= RTE_MBUF_F_TX_IPV6;
+	ol_flags |= RTE_MBUF_F_TX_OUTER_IP_CKSUM;
 	if (test_mbuf_validate_tx_offload("MBUF_TEST_OUTER_IPV4_NOT_SET",
 				pktmbuf_pool,
 				ol_flags, 512, -EINVAL) < 0)
@@ -1832,8 +1834,8 @@ test_mbuf_validate_tx_offload_one(struct rte_mempool *pktmbuf_pool)
 
 	ol_flags = 0;
 	/* test to confirm outer IP checksum is set for outer IPV4 packet */
-	ol_flags |= PKT_TX_OUTER_IP_CKSUM;
-	ol_flags |= PKT_TX_OUTER_IPV4;
+	ol_flags |= RTE_MBUF_F_TX_OUTER_IP_CKSUM;
+	ol_flags |= RTE_MBUF_F_TX_OUTER_IPV4;
 	if (test_mbuf_validate_tx_offload("MBUF_TEST_OUTER_IPV4_SET",
 				pktmbuf_pool,
 				ol_flags, 512, 0) < 0)
@@ -2366,7 +2368,7 @@ test_pktmbuf_ext_shinfo_init_helper(struct rte_mempool *pktmbuf_pool)
 	buf_iova = rte_mem_virt2iova(ext_buf_addr);
 	rte_pktmbuf_attach_extbuf(m, ext_buf_addr, buf_iova, buf_len,
 		ret_shinfo);
-	if (m->ol_flags != EXT_ATTACHED_MBUF)
+	if (m->ol_flags != RTE_MBUF_F_EXTERNAL)
 		GOTO_FAIL("%s: External buffer is not attached to mbuf\n",
 				__func__);
 
@@ -2380,7 +2382,7 @@ test_pktmbuf_ext_shinfo_init_helper(struct rte_mempool *pktmbuf_pool)
 	/* attach the same external buffer to the cloned mbuf */
 	rte_pktmbuf_attach_extbuf(clone, ext_buf_addr, buf_iova, buf_len,
 			ret_shinfo);
-	if (clone->ol_flags != EXT_ATTACHED_MBUF)
+	if (clone->ol_flags != RTE_MBUF_F_EXTERNAL)
 		GOTO_FAIL("%s: External buffer is not attached to mbuf\n",
 				__func__);
 
@@ -2672,8 +2674,8 @@ test_mbuf_dyn(struct rte_mempool *pktmbuf_pool)
 			flag2, strerror(errno));
 
 	flag3 = rte_mbuf_dynflag_register_bitnum(&dynflag3,
-						rte_bsf64(PKT_LAST_FREE));
-	if (flag3 != rte_bsf64(PKT_LAST_FREE))
+						rte_bsf64(RTE_MBUF_F_LAST_FREE));
+	if (flag3 != rte_bsf64(RTE_MBUF_F_LAST_FREE))
 		GOTO_FAIL("failed to register dynamic flag 3, flag3=%d: %s",
 			flag3, strerror(errno));
 

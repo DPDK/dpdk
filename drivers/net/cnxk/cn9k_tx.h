@@ -62,12 +62,12 @@ cn9k_nix_xmit_prepare_tso(struct rte_mbuf *m, const uint64_t flags)
 {
 	uint64_t mask, ol_flags = m->ol_flags;
 
-	if (flags & NIX_TX_OFFLOAD_TSO_F && (ol_flags & PKT_TX_TCP_SEG)) {
+	if (flags & NIX_TX_OFFLOAD_TSO_F && (ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 		uintptr_t mdata = rte_pktmbuf_mtod(m, uintptr_t);
 		uint16_t *iplen, *oiplen, *oudplen;
 		uint16_t lso_sb, paylen;
 
-		mask = -!!(ol_flags & (PKT_TX_OUTER_IPV4 | PKT_TX_OUTER_IPV6));
+		mask = -!!(ol_flags & (RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IPV6));
 		lso_sb = (mask & (m->outer_l2_len + m->outer_l3_len)) +
 			 m->l2_len + m->l3_len + m->l4_len;
 
@@ -76,18 +76,18 @@ cn9k_nix_xmit_prepare_tso(struct rte_mbuf *m, const uint64_t flags)
 
 		/* Get iplen position assuming no tunnel hdr */
 		iplen = (uint16_t *)(mdata + m->l2_len +
-				     (2 << !!(ol_flags & PKT_TX_IPV6)));
+				     (2 << !!(ol_flags & RTE_MBUF_F_TX_IPV6)));
 		/* Handle tunnel tso */
 		if ((flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F) &&
-		    (ol_flags & PKT_TX_TUNNEL_MASK)) {
+		    (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)) {
 			const uint8_t is_udp_tun =
 				(CNXK_NIX_UDP_TUN_BITMASK >>
-				 ((ol_flags & PKT_TX_TUNNEL_MASK) >> 45)) &
+				 ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) >> 45)) &
 				0x1;
 
 			oiplen = (uint16_t *)(mdata + m->outer_l2_len +
 					      (2 << !!(ol_flags &
-						       PKT_TX_OUTER_IPV6)));
+						       RTE_MBUF_F_TX_OUTER_IPV6)));
 			*oiplen = rte_cpu_to_be_16(rte_be_to_cpu_16(*oiplen) -
 						   paylen);
 
@@ -102,7 +102,7 @@ cn9k_nix_xmit_prepare_tso(struct rte_mbuf *m, const uint64_t flags)
 			/* Update iplen position to inner ip hdr */
 			iplen = (uint16_t *)(mdata + lso_sb - m->l3_len -
 					     m->l4_len +
-					     (2 << !!(ol_flags & PKT_TX_IPV6)));
+					     (2 << !!(ol_flags & RTE_MBUF_F_TX_IPV6)));
 		}
 
 		*iplen = rte_cpu_to_be_16(rte_be_to_cpu_16(*iplen) - paylen);
@@ -152,11 +152,11 @@ cn9k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 
 	if ((flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F) &&
 	    (flags & NIX_TX_OFFLOAD_L3_L4_CSUM_F)) {
-		const uint8_t csum = !!(ol_flags & PKT_TX_OUTER_UDP_CKSUM);
+		const uint8_t csum = !!(ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM);
 		const uint8_t ol3type =
-			((!!(ol_flags & PKT_TX_OUTER_IPV4)) << 1) +
-			((!!(ol_flags & PKT_TX_OUTER_IPV6)) << 2) +
-			!!(ol_flags & PKT_TX_OUTER_IP_CKSUM);
+			((!!(ol_flags & RTE_MBUF_F_TX_OUTER_IPV4)) << 1) +
+			((!!(ol_flags & RTE_MBUF_F_TX_OUTER_IPV6)) << 2) +
+			!!(ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM);
 
 		/* Outer L3 */
 		w1.ol3type = ol3type;
@@ -168,15 +168,15 @@ cn9k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 		w1.ol4type = csum + (csum << 1);
 
 		/* Inner L3 */
-		w1.il3type = ((!!(ol_flags & PKT_TX_IPV4)) << 1) +
-			     ((!!(ol_flags & PKT_TX_IPV6)) << 2);
+		w1.il3type = ((!!(ol_flags & RTE_MBUF_F_TX_IPV4)) << 1) +
+			     ((!!(ol_flags & RTE_MBUF_F_TX_IPV6)) << 2);
 		w1.il3ptr = w1.ol4ptr + m->l2_len;
 		w1.il4ptr = w1.il3ptr + m->l3_len;
 		/* Increment it by 1 if it is IPV4 as 3 is with csum */
-		w1.il3type = w1.il3type + !!(ol_flags & PKT_TX_IP_CKSUM);
+		w1.il3type = w1.il3type + !!(ol_flags & RTE_MBUF_F_TX_IP_CKSUM);
 
 		/* Inner L4 */
-		w1.il4type = (ol_flags & PKT_TX_L4_MASK) >> 52;
+		w1.il4type = (ol_flags & RTE_MBUF_F_TX_L4_MASK) >> 52;
 
 		/* In case of no tunnel header use only
 		 * shift IL3/IL4 fields a bit to use
@@ -187,16 +187,16 @@ cn9k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 		       ((w1.u & 0X00000000FFFFFFFF) >> (mask << 4));
 
 	} else if (flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F) {
-		const uint8_t csum = !!(ol_flags & PKT_TX_OUTER_UDP_CKSUM);
+		const uint8_t csum = !!(ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM);
 		const uint8_t outer_l2_len = m->outer_l2_len;
 
 		/* Outer L3 */
 		w1.ol3ptr = outer_l2_len;
 		w1.ol4ptr = outer_l2_len + m->outer_l3_len;
 		/* Increment it by 1 if it is IPV4 as 3 is with csum */
-		w1.ol3type = ((!!(ol_flags & PKT_TX_OUTER_IPV4)) << 1) +
-			     ((!!(ol_flags & PKT_TX_OUTER_IPV6)) << 2) +
-			     !!(ol_flags & PKT_TX_OUTER_IP_CKSUM);
+		w1.ol3type = ((!!(ol_flags & RTE_MBUF_F_TX_OUTER_IPV4)) << 1) +
+			     ((!!(ol_flags & RTE_MBUF_F_TX_OUTER_IPV6)) << 2) +
+			     !!(ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM);
 
 		/* Outer L4 */
 		w1.ol4type = csum + (csum << 1);
@@ -212,27 +212,27 @@ cn9k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 		w1.ol3ptr = l2_len;
 		w1.ol4ptr = l2_len + m->l3_len;
 		/* Increment it by 1 if it is IPV4 as 3 is with csum */
-		w1.ol3type = ((!!(ol_flags & PKT_TX_IPV4)) << 1) +
-			     ((!!(ol_flags & PKT_TX_IPV6)) << 2) +
-			     !!(ol_flags & PKT_TX_IP_CKSUM);
+		w1.ol3type = ((!!(ol_flags & RTE_MBUF_F_TX_IPV4)) << 1) +
+			     ((!!(ol_flags & RTE_MBUF_F_TX_IPV6)) << 2) +
+			     !!(ol_flags & RTE_MBUF_F_TX_IP_CKSUM);
 
 		/* Inner L4 */
-		w1.ol4type = (ol_flags & PKT_TX_L4_MASK) >> 52;
+		w1.ol4type = (ol_flags & RTE_MBUF_F_TX_L4_MASK) >> 52;
 	}
 
 	if (flags & NIX_TX_NEED_EXT_HDR && flags & NIX_TX_OFFLOAD_VLAN_QINQ_F) {
-		send_hdr_ext->w1.vlan1_ins_ena = !!(ol_flags & PKT_TX_VLAN);
+		send_hdr_ext->w1.vlan1_ins_ena = !!(ol_flags & RTE_MBUF_F_TX_VLAN);
 		/* HW will update ptr after vlan0 update */
 		send_hdr_ext->w1.vlan1_ins_ptr = 12;
 		send_hdr_ext->w1.vlan1_ins_tci = m->vlan_tci;
 
-		send_hdr_ext->w1.vlan0_ins_ena = !!(ol_flags & PKT_TX_QINQ);
+		send_hdr_ext->w1.vlan0_ins_ena = !!(ol_flags & RTE_MBUF_F_TX_QINQ);
 		/* 2B before end of l2 header */
 		send_hdr_ext->w1.vlan0_ins_ptr = 12;
 		send_hdr_ext->w1.vlan0_ins_tci = m->vlan_tci_outer;
 	}
 
-	if (flags & NIX_TX_OFFLOAD_TSO_F && (ol_flags & PKT_TX_TCP_SEG)) {
+	if (flags & NIX_TX_OFFLOAD_TSO_F && (ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 		uint16_t lso_sb;
 		uint64_t mask;
 
@@ -243,20 +243,20 @@ cn9k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 		send_hdr_ext->w0.lso = 1;
 		send_hdr_ext->w0.lso_mps = m->tso_segsz;
 		send_hdr_ext->w0.lso_format =
-			NIX_LSO_FORMAT_IDX_TSOV4 + !!(ol_flags & PKT_TX_IPV6);
+			NIX_LSO_FORMAT_IDX_TSOV4 + !!(ol_flags & RTE_MBUF_F_TX_IPV6);
 		w1.ol4type = NIX_SENDL4TYPE_TCP_CKSUM;
 
 		/* Handle tunnel tso */
 		if ((flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F) &&
-		    (ol_flags & PKT_TX_TUNNEL_MASK)) {
+		    (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)) {
 			const uint8_t is_udp_tun =
 				(CNXK_NIX_UDP_TUN_BITMASK >>
-				 ((ol_flags & PKT_TX_TUNNEL_MASK) >> 45)) &
+				 ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) >> 45)) &
 				0x1;
 			uint8_t shift = is_udp_tun ? 32 : 0;
 
-			shift += (!!(ol_flags & PKT_TX_OUTER_IPV6) << 4);
-			shift += (!!(ol_flags & PKT_TX_IPV6) << 3);
+			shift += (!!(ol_flags & RTE_MBUF_F_TX_OUTER_IPV6) << 4);
+			shift += (!!(ol_flags & RTE_MBUF_F_TX_IPV6) << 3);
 
 			w1.il4type = NIX_SENDL4TYPE_TCP_CKSUM;
 			w1.ol4type = is_udp_tun ? NIX_SENDL4TYPE_UDP_CKSUM : 0;
@@ -297,7 +297,7 @@ cn9k_nix_xmit_prepare_tstamp(uint64_t *cmd, const uint64_t *send_mem_desc,
 	if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
 		struct nix_send_mem_s *send_mem;
 		uint16_t off = (no_segdw - 1) << 1;
-		const uint8_t is_ol_tstamp = !(ol_flags & PKT_TX_IEEE1588_TMST);
+		const uint8_t is_ol_tstamp = !(ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST);
 
 		send_mem = (struct nix_send_mem_s *)(cmd + off);
 		if (flags & NIX_TX_MULTI_SEG_F) {
@@ -310,7 +310,7 @@ cn9k_nix_xmit_prepare_tstamp(uint64_t *cmd, const uint64_t *send_mem_desc,
 			rte_compiler_barrier();
 		}
 
-		/* Packets for which PKT_TX_IEEE1588_TMST is not set, tx tstamp
+		/* Packets for which RTE_MBUF_F_TX_IEEE1588_TMST is not set, tx tstamp
 		 * should not be recorded, hence changing the alg type to
 		 * NIX_SENDMEMALG_SET and also changing send mem addr field to
 		 * next 8 bytes as it corrpt the actual tx tstamp registered
@@ -554,7 +554,7 @@ cn9k_nix_prepare_tso(struct rte_mbuf *m, union nix_send_hdr_w1_u *w1,
 	uint16_t lso_sb;
 	uint64_t mask;
 
-	if (!(ol_flags & PKT_TX_TCP_SEG))
+	if (!(ol_flags & RTE_MBUF_F_TX_TCP_SEG))
 		return;
 
 	mask = -(!w1->il3type);
@@ -563,15 +563,15 @@ cn9k_nix_prepare_tso(struct rte_mbuf *m, union nix_send_hdr_w1_u *w1,
 	w0->u |= BIT(14);
 	w0->lso_sb = lso_sb;
 	w0->lso_mps = m->tso_segsz;
-	w0->lso_format = NIX_LSO_FORMAT_IDX_TSOV4 + !!(ol_flags & PKT_TX_IPV6);
+	w0->lso_format = NIX_LSO_FORMAT_IDX_TSOV4 + !!(ol_flags & RTE_MBUF_F_TX_IPV6);
 	w1->ol4type = NIX_SENDL4TYPE_TCP_CKSUM;
 
 	/* Handle tunnel tso */
 	if ((flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F) &&
-	    (ol_flags & PKT_TX_TUNNEL_MASK)) {
+	    (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)) {
 		const uint8_t is_udp_tun =
 			(CNXK_NIX_UDP_TUN_BITMASK >>
-			 ((ol_flags & PKT_TX_TUNNEL_MASK) >> 45)) &
+			 ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) >> 45)) &
 			0x1;
 
 		w1->il4type = NIX_SENDL4TYPE_TCP_CKSUM;
@@ -579,7 +579,7 @@ cn9k_nix_prepare_tso(struct rte_mbuf *m, union nix_send_hdr_w1_u *w1,
 		/* Update format for UDP tunneled packet */
 		w0->lso_format += is_udp_tun ? 2 : 6;
 
-		w0->lso_format += !!(ol_flags & PKT_TX_OUTER_IPV6) << 1;
+		w0->lso_format += !!(ol_flags & RTE_MBUF_F_TX_OUTER_IPV6) << 1;
 	}
 }
 
@@ -1061,26 +1061,26 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			const uint8x16_t tbl = {
 				/* [0-15] = il4type:il3type */
 				0x04, /* none (IPv6 assumed) */
-				0x14, /* PKT_TX_TCP_CKSUM (IPv6 assumed) */
-				0x24, /* PKT_TX_SCTP_CKSUM (IPv6 assumed) */
-				0x34, /* PKT_TX_UDP_CKSUM (IPv6 assumed) */
-				0x03, /* PKT_TX_IP_CKSUM */
-				0x13, /* PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM */
-				0x23, /* PKT_TX_IP_CKSUM | PKT_TX_SCTP_CKSUM */
-				0x33, /* PKT_TX_IP_CKSUM | PKT_TX_UDP_CKSUM */
-				0x02, /* PKT_TX_IPV4  */
-				0x12, /* PKT_TX_IPV4 | PKT_TX_TCP_CKSUM */
-				0x22, /* PKT_TX_IPV4 | PKT_TX_SCTP_CKSUM */
-				0x32, /* PKT_TX_IPV4 | PKT_TX_UDP_CKSUM */
-				0x03, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM */
-				0x13, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM |
-				       * PKT_TX_TCP_CKSUM
+				0x14, /* RTE_MBUF_F_TX_TCP_CKSUM (IPv6 assumed) */
+				0x24, /* RTE_MBUF_F_TX_SCTP_CKSUM (IPv6 assumed) */
+				0x34, /* RTE_MBUF_F_TX_UDP_CKSUM (IPv6 assumed) */
+				0x03, /* RTE_MBUF_F_TX_IP_CKSUM */
+				0x13, /* RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM */
+				0x23, /* RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_SCTP_CKSUM */
+				0x33, /* RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_UDP_CKSUM */
+				0x02, /* RTE_MBUF_F_TX_IPV4  */
+				0x12, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_TCP_CKSUM */
+				0x22, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_SCTP_CKSUM */
+				0x32, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_UDP_CKSUM */
+				0x03, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM */
+				0x13, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+				       * RTE_MBUF_F_TX_TCP_CKSUM
 				       */
-				0x23, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM |
-				       * PKT_TX_SCTP_CKSUM
+				0x23, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+				       * RTE_MBUF_F_TX_SCTP_CKSUM
 				       */
-				0x33, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM |
-				       * PKT_TX_UDP_CKSUM
+				0x33, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+				       * RTE_MBUF_F_TX_UDP_CKSUM
 				       */
 			};
 
@@ -1265,40 +1265,40 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 				{
 					/* [0-15] = il4type:il3type */
 					0x04, /* none (IPv6) */
-					0x14, /* PKT_TX_TCP_CKSUM (IPv6) */
-					0x24, /* PKT_TX_SCTP_CKSUM (IPv6) */
-					0x34, /* PKT_TX_UDP_CKSUM (IPv6) */
-					0x03, /* PKT_TX_IP_CKSUM */
-					0x13, /* PKT_TX_IP_CKSUM |
-					       * PKT_TX_TCP_CKSUM
+					0x14, /* RTE_MBUF_F_TX_TCP_CKSUM (IPv6) */
+					0x24, /* RTE_MBUF_F_TX_SCTP_CKSUM (IPv6) */
+					0x34, /* RTE_MBUF_F_TX_UDP_CKSUM (IPv6) */
+					0x03, /* RTE_MBUF_F_TX_IP_CKSUM */
+					0x13, /* RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_TCP_CKSUM
 					       */
-					0x23, /* PKT_TX_IP_CKSUM |
-					       * PKT_TX_SCTP_CKSUM
+					0x23, /* RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_SCTP_CKSUM
 					       */
-					0x33, /* PKT_TX_IP_CKSUM |
-					       * PKT_TX_UDP_CKSUM
+					0x33, /* RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_UDP_CKSUM
 					       */
-					0x02, /* PKT_TX_IPV4 */
-					0x12, /* PKT_TX_IPV4 |
-					       * PKT_TX_TCP_CKSUM
+					0x02, /* RTE_MBUF_F_TX_IPV4 */
+					0x12, /* RTE_MBUF_F_TX_IPV4 |
+					       * RTE_MBUF_F_TX_TCP_CKSUM
 					       */
-					0x22, /* PKT_TX_IPV4 |
-					       * PKT_TX_SCTP_CKSUM
+					0x22, /* RTE_MBUF_F_TX_IPV4 |
+					       * RTE_MBUF_F_TX_SCTP_CKSUM
 					       */
-					0x32, /* PKT_TX_IPV4 |
-					       * PKT_TX_UDP_CKSUM
+					0x32, /* RTE_MBUF_F_TX_IPV4 |
+					       * RTE_MBUF_F_TX_UDP_CKSUM
 					       */
-					0x03, /* PKT_TX_IPV4 |
-					       * PKT_TX_IP_CKSUM
+					0x03, /* RTE_MBUF_F_TX_IPV4 |
+					       * RTE_MBUF_F_TX_IP_CKSUM
 					       */
-					0x13, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM |
-					       * PKT_TX_TCP_CKSUM
+					0x13, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_TCP_CKSUM
 					       */
-					0x23, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM |
-					       * PKT_TX_SCTP_CKSUM
+					0x23, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_SCTP_CKSUM
 					       */
-					0x33, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM |
-					       * PKT_TX_UDP_CKSUM
+					0x33, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_UDP_CKSUM
 					       */
 				},
 
@@ -1486,11 +1486,11 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		if (flags & NIX_TX_OFFLOAD_VLAN_QINQ_F) {
 			/* Tx ol_flag for vlan. */
-			const uint64x2_t olv = {PKT_TX_VLAN, PKT_TX_VLAN};
+			const uint64x2_t olv = {RTE_MBUF_F_TX_VLAN, RTE_MBUF_F_TX_VLAN};
 			/* Bit enable for VLAN1 */
 			const uint64x2_t mlv = {BIT_ULL(49), BIT_ULL(49)};
 			/* Tx ol_flag for QnQ. */
-			const uint64x2_t olq = {PKT_TX_QINQ, PKT_TX_QINQ};
+			const uint64x2_t olq = {RTE_MBUF_F_TX_QINQ, RTE_MBUF_F_TX_QINQ};
 			/* Bit enable for VLAN0 */
 			const uint64x2_t mlq = {BIT_ULL(48), BIT_ULL(48)};
 			/* Load vlan values from packet. outer is VLAN 0 */
@@ -1532,8 +1532,8 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
 			/* Tx ol_flag for timestam. */
-			const uint64x2_t olf = {PKT_TX_IEEE1588_TMST,
-						PKT_TX_IEEE1588_TMST};
+			const uint64x2_t olf = {RTE_MBUF_F_TX_IEEE1588_TMST,
+						RTE_MBUF_F_TX_IEEE1588_TMST};
 			/* Set send mem alg to SUB. */
 			const uint64x2_t alg = {BIT_ULL(59), BIT_ULL(59)};
 			/* Increment send mem address by 8. */

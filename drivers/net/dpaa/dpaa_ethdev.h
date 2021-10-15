@@ -80,10 +80,9 @@
 	RTE_ETH_RSS_TCP | \
 	RTE_ETH_RSS_SCTP)
 
-#define DPAA_TX_CKSUM_OFFLOAD_MASK (             \
-		PKT_TX_IP_CKSUM |                \
-		PKT_TX_TCP_CKSUM |               \
-		PKT_TX_UDP_CKSUM)
+#define DPAA_TX_CKSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM |                \
+		RTE_MBUF_F_TX_TCP_CKSUM |               \
+		RTE_MBUF_F_TX_UDP_CKSUM)
 
 /* DPAA Frame descriptor macros */
 

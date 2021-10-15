@@ -163,10 +163,10 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uintptr_t sa_base, uintptr_t laddr,
 		res_w1 = sg[10];
 
 		/* Clear checksum flags and update security flag */
-		*ol_flags &= ~(PKT_RX_L4_CKSUM_MASK | PKT_RX_IP_CKSUM_MASK);
+		*ol_flags &= ~(RTE_MBUF_F_RX_L4_CKSUM_MASK | RTE_MBUF_F_RX_IP_CKSUM_MASK);
 		*ol_flags |= (((res_w1 & 0xFF) == CPT_COMP_WARN) ?
-			      PKT_RX_SEC_OFFLOAD :
-			      (PKT_RX_SEC_OFFLOAD | PKT_RX_SEC_OFFLOAD_FAILED));
+			      RTE_MBUF_F_RX_SEC_OFFLOAD :
+			      (RTE_MBUF_F_RX_SEC_OFFLOAD | RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED));
 		/* Calculate inner packet length */
 		len = ((res_w1 >> 16) & 0xFFFF) + hdr->w2.il3_off -
 			sizeof(struct cpt_parse_hdr_s) - (w0 & 0x7);
@@ -229,9 +229,9 @@ nix_update_match_id(const uint16_t match_id, uint64_t ol_flags,
 	 * 0 to CNXK_FLOW_ACTION_FLAG_DEFAULT - 2
 	 */
 	if (likely(match_id)) {
-		ol_flags |= PKT_RX_FDIR;
+		ol_flags |= RTE_MBUF_F_RX_FDIR;
 		if (match_id != CNXK_FLOW_ACTION_FLAG_DEFAULT) {
-			ol_flags |= PKT_RX_FDIR_ID;
+			ol_flags |= RTE_MBUF_F_RX_FDIR_ID;
 			mbuf->hash.fdir.hi = match_id - 1;
 		}
 	}
@@ -315,7 +315,7 @@ cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 
 	if (flag & NIX_RX_OFFLOAD_RSS_F) {
 		mbuf->hash.rss = tag;
-		ol_flags |= PKT_RX_RSS_HASH;
+		ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 	}
 
 	/* Process Security packets */
@@ -331,9 +331,9 @@ cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 			/* Rlen */
 			len = ((res_w1 >> 16) & 0xFFFF) + mbuf->pkt_len;
 			ol_flags |= ((uc_cc == CPT_COMP_WARN) ?
-						   PKT_RX_SEC_OFFLOAD :
-						   (PKT_RX_SEC_OFFLOAD |
-					      PKT_RX_SEC_OFFLOAD_FAILED));
+						   RTE_MBUF_F_RX_SEC_OFFLOAD :
+						   (RTE_MBUF_F_RX_SEC_OFFLOAD |
+					      RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED));
 		} else {
 			if (flag & NIX_RX_OFFLOAD_CHECKSUM_F)
 				ol_flags |= nix_rx_olflags_get(lookup_mem, w1);
@@ -345,11 +345,11 @@ cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 
 	if (flag & NIX_RX_OFFLOAD_VLAN_STRIP_F) {
 		if (rx->vtag0_gone) {
-			ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+			ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 			mbuf->vlan_tci = rx->vtag0_tci;
 		}
 		if (rx->vtag1_gone) {
-			ol_flags |= PKT_RX_QINQ | PKT_RX_QINQ_STRIPPED;
+			ol_flags |= RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_RX_QINQ_STRIPPED;
 			mbuf->vlan_tci_outer = rx->vtag1_tci;
 		}
 	}
@@ -495,7 +495,7 @@ static __rte_always_inline uint64_t
 nix_vlan_update(const uint64_t w2, uint64_t ol_flags, uint8x16_t *f)
 {
 	if (w2 & BIT_ULL(21) /* vtag0_gone */) {
-		ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		*f = vsetq_lane_u16((uint16_t)(w2 >> 32), *f, 5);
 	}
 
@@ -506,7 +506,7 @@ static __rte_always_inline uint64_t
 nix_qinq_update(const uint64_t w2, uint64_t ol_flags, struct rte_mbuf *mbuf)
 {
 	if (w2 & BIT_ULL(23) /* vtag1_gone */) {
-		ol_flags |= PKT_RX_QINQ | PKT_RX_QINQ_STRIPPED;
+		ol_flags |= RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_RX_QINQ_STRIPPED;
 		mbuf->vlan_tci_outer = (uint16_t)(w2 >> 48);
 	}
 
@@ -678,10 +678,10 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			f1 = vsetq_lane_u32(cq1_w0, f1, 3);
 			f2 = vsetq_lane_u32(cq2_w0, f2, 3);
 			f3 = vsetq_lane_u32(cq3_w0, f3, 3);
-			ol_flags0 = PKT_RX_RSS_HASH;
-			ol_flags1 = PKT_RX_RSS_HASH;
-			ol_flags2 = PKT_RX_RSS_HASH;
-			ol_flags3 = PKT_RX_RSS_HASH;
+			ol_flags0 = RTE_MBUF_F_RX_RSS_HASH;
+			ol_flags1 = RTE_MBUF_F_RX_RSS_HASH;
+			ol_flags2 = RTE_MBUF_F_RX_RSS_HASH;
+			ol_flags3 = RTE_MBUF_F_RX_RSS_HASH;
 		} else {
 			ol_flags0 = 0;
 			ol_flags1 = 0;
@@ -778,8 +778,8 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 						  RTE_PTYPE_L2_ETHER_TIMESYNC,
 						  RTE_PTYPE_L2_ETHER_TIMESYNC,
 						  RTE_PTYPE_L2_ETHER_TIMESYNC};
-			const uint64_t ts_olf = PKT_RX_IEEE1588_PTP |
-						PKT_RX_IEEE1588_TMST |
+			const uint64_t ts_olf = RTE_MBUF_F_RX_IEEE1588_PTP |
+						RTE_MBUF_F_RX_IEEE1588_TMST |
 						tstamp->rx_tstamp_dynflag;
 			const uint32x4_t and_mask = {0x1, 0x2, 0x4, 0x8};
 			uint64x2_t ts01, ts23, mask;

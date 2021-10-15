@@ -9391,7 +9391,7 @@ mlx5_flow_tunnel_get_restore_info(struct rte_eth_dev *dev,
 {
 	uint64_t ol_flags = m->ol_flags;
 	const struct mlx5_flow_tbl_data_entry *tble;
-	const uint64_t mask = PKT_RX_FDIR | PKT_RX_FDIR_ID;
+	const uint64_t mask = RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 
 	if (!is_tunnel_offload_active(dev)) {
 		info->flags = 0;

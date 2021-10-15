@@ -364,26 +364,26 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			const uint8x16_t tbl = {
 				/* [0-15] = il4type:il3type */
 				0x04, /* none (IPv6 assumed) */
-				0x14, /* PKT_TX_TCP_CKSUM (IPv6 assumed) */
-				0x24, /* PKT_TX_SCTP_CKSUM (IPv6 assumed) */
-				0x34, /* PKT_TX_UDP_CKSUM (IPv6 assumed) */
-				0x03, /* PKT_TX_IP_CKSUM */
-				0x13, /* PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM */
-				0x23, /* PKT_TX_IP_CKSUM | PKT_TX_SCTP_CKSUM */
-				0x33, /* PKT_TX_IP_CKSUM | PKT_TX_UDP_CKSUM */
-				0x02, /* PKT_TX_IPV4  */
-				0x12, /* PKT_TX_IPV4 | PKT_TX_TCP_CKSUM */
-				0x22, /* PKT_TX_IPV4 | PKT_TX_SCTP_CKSUM */
-				0x32, /* PKT_TX_IPV4 | PKT_TX_UDP_CKSUM */
-				0x03, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM */
-				0x13, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM |
-				       * PKT_TX_TCP_CKSUM
+				0x14, /* RTE_MBUF_F_TX_TCP_CKSUM (IPv6 assumed) */
+				0x24, /* RTE_MBUF_F_TX_SCTP_CKSUM (IPv6 assumed) */
+				0x34, /* RTE_MBUF_F_TX_UDP_CKSUM (IPv6 assumed) */
+				0x03, /* RTE_MBUF_F_TX_IP_CKSUM */
+				0x13, /* RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM */
+				0x23, /* RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_SCTP_CKSUM */
+				0x33, /* RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_UDP_CKSUM */
+				0x02, /* RTE_MBUF_F_TX_IPV4  */
+				0x12, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_TCP_CKSUM */
+				0x22, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_SCTP_CKSUM */
+				0x32, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_UDP_CKSUM */
+				0x03, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM */
+				0x13, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+				       * RTE_MBUF_F_TX_TCP_CKSUM
 				       */
-				0x23, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM |
-				       * PKT_TX_SCTP_CKSUM
+				0x23, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+				       * RTE_MBUF_F_TX_SCTP_CKSUM
 				       */
-				0x33, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM |
-				       * PKT_TX_UDP_CKSUM
+				0x33, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+				       * RTE_MBUF_F_TX_UDP_CKSUM
 				       */
 			};
 
@@ -655,40 +655,40 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 				{
 					/* [0-15] = il4type:il3type */
 					0x04, /* none (IPv6) */
-					0x14, /* PKT_TX_TCP_CKSUM (IPv6) */
-					0x24, /* PKT_TX_SCTP_CKSUM (IPv6) */
-					0x34, /* PKT_TX_UDP_CKSUM (IPv6) */
-					0x03, /* PKT_TX_IP_CKSUM */
-					0x13, /* PKT_TX_IP_CKSUM |
-					       * PKT_TX_TCP_CKSUM
+					0x14, /* RTE_MBUF_F_TX_TCP_CKSUM (IPv6) */
+					0x24, /* RTE_MBUF_F_TX_SCTP_CKSUM (IPv6) */
+					0x34, /* RTE_MBUF_F_TX_UDP_CKSUM (IPv6) */
+					0x03, /* RTE_MBUF_F_TX_IP_CKSUM */
+					0x13, /* RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_TCP_CKSUM
 					       */
-					0x23, /* PKT_TX_IP_CKSUM |
-					       * PKT_TX_SCTP_CKSUM
+					0x23, /* RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_SCTP_CKSUM
 					       */
-					0x33, /* PKT_TX_IP_CKSUM |
-					       * PKT_TX_UDP_CKSUM
+					0x33, /* RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_UDP_CKSUM
 					       */
-					0x02, /* PKT_TX_IPV4 */
-					0x12, /* PKT_TX_IPV4 |
-					       * PKT_TX_TCP_CKSUM
+					0x02, /* RTE_MBUF_F_TX_IPV4 */
+					0x12, /* RTE_MBUF_F_TX_IPV4 |
+					       * RTE_MBUF_F_TX_TCP_CKSUM
 					       */
-					0x22, /* PKT_TX_IPV4 |
-					       * PKT_TX_SCTP_CKSUM
+					0x22, /* RTE_MBUF_F_TX_IPV4 |
+					       * RTE_MBUF_F_TX_SCTP_CKSUM
 					       */
-					0x32, /* PKT_TX_IPV4 |
-					       * PKT_TX_UDP_CKSUM
+					0x32, /* RTE_MBUF_F_TX_IPV4 |
+					       * RTE_MBUF_F_TX_UDP_CKSUM
 					       */
-					0x03, /* PKT_TX_IPV4 |
-					       * PKT_TX_IP_CKSUM
+					0x03, /* RTE_MBUF_F_TX_IPV4 |
+					       * RTE_MBUF_F_TX_IP_CKSUM
 					       */
-					0x13, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM |
-					       * PKT_TX_TCP_CKSUM
+					0x13, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_TCP_CKSUM
 					       */
-					0x23, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM |
-					       * PKT_TX_SCTP_CKSUM
+					0x23, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_SCTP_CKSUM
 					       */
-					0x33, /* PKT_TX_IPV4 | PKT_TX_IP_CKSUM |
-					       * PKT_TX_UDP_CKSUM
+					0x33, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_UDP_CKSUM
 					       */
 				},
 

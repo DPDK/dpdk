@@ -1137,10 +1137,10 @@ txgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev, uint16_t queue, bool on)
 	rxq = dev->data->rx_queues[queue];
 
 	if (on) {
-		rxq->vlan_flags = PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		rxq->vlan_flags = RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		rxq->offloads |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 	} else {
-		rxq->vlan_flags = PKT_RX_VLAN;
+		rxq->vlan_flags = RTE_MBUF_F_RX_VLAN;
 		rxq->offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 	}
 }

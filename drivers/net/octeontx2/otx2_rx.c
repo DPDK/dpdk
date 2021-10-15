@@ -92,7 +92,7 @@ static __rte_always_inline uint64_t
 nix_vlan_update(const uint64_t w2, uint64_t ol_flags, uint8x16_t *f)
 {
 	if (w2 & BIT_ULL(21) /* vtag0_gone */) {
-		ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		*f = vsetq_lane_u16((uint16_t)(w2 >> 32), *f, 5);
 	}
 
@@ -103,7 +103,7 @@ static __rte_always_inline uint64_t
 nix_qinq_update(const uint64_t w2, uint64_t ol_flags, struct rte_mbuf *mbuf)
 {
 	if (w2 & BIT_ULL(23) /* vtag1_gone */) {
-		ol_flags |= PKT_RX_QINQ | PKT_RX_QINQ_STRIPPED;
+		ol_flags |= RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_RX_QINQ_STRIPPED;
 		mbuf->vlan_tci_outer = (uint16_t)(w2 >> 48);
 	}
 
@@ -205,10 +205,10 @@ nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 			f1 = vsetq_lane_u32(cq1_w0, f1, 3);
 			f2 = vsetq_lane_u32(cq2_w0, f2, 3);
 			f3 = vsetq_lane_u32(cq3_w0, f3, 3);
-			ol_flags0 = PKT_RX_RSS_HASH;
-			ol_flags1 = PKT_RX_RSS_HASH;
-			ol_flags2 = PKT_RX_RSS_HASH;
-			ol_flags3 = PKT_RX_RSS_HASH;
+			ol_flags0 = RTE_MBUF_F_RX_RSS_HASH;
+			ol_flags1 = RTE_MBUF_F_RX_RSS_HASH;
+			ol_flags2 = RTE_MBUF_F_RX_RSS_HASH;
+			ol_flags3 = RTE_MBUF_F_RX_RSS_HASH;
 		} else {
 			ol_flags0 = 0; ol_flags1 = 0;
 			ol_flags2 = 0; ol_flags3 = 0;

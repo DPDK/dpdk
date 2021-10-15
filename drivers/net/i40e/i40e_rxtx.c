@@ -44,42 +44,39 @@
 #define I40E_TXD_CMD (I40E_TX_DESC_CMD_EOP | I40E_TX_DESC_CMD_RS)
 
 #ifdef RTE_LIBRTE_IEEE1588
-#define I40E_TX_IEEE1588_TMST PKT_TX_IEEE1588_TMST
+#define I40E_TX_IEEE1588_TMST RTE_MBUF_F_TX_IEEE1588_TMST
 #else
 #define I40E_TX_IEEE1588_TMST 0
 #endif
 
-#define I40E_TX_CKSUM_OFFLOAD_MASK (		 \
-		PKT_TX_IP_CKSUM |		 \
-		PKT_TX_L4_MASK |		 \
-		PKT_TX_TCP_SEG |		 \
-		PKT_TX_OUTER_IP_CKSUM)
+#define I40E_TX_CKSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM |		 \
+		RTE_MBUF_F_TX_L4_MASK |		 \
+		RTE_MBUF_F_TX_TCP_SEG |		 \
+		RTE_MBUF_F_TX_OUTER_IP_CKSUM)
 
-#define I40E_TX_OFFLOAD_MASK (  \
-		PKT_TX_OUTER_IPV4 |	\
-		PKT_TX_OUTER_IPV6 |	\
-		PKT_TX_IPV4 |		\
-		PKT_TX_IPV6 |		\
-		PKT_TX_IP_CKSUM |       \
-		PKT_TX_L4_MASK |        \
-		PKT_TX_OUTER_IP_CKSUM | \
-		PKT_TX_TCP_SEG |        \
-		PKT_TX_QINQ |       \
-		PKT_TX_VLAN |	\
-		PKT_TX_TUNNEL_MASK |	\
+#define I40E_TX_OFFLOAD_MASK (RTE_MBUF_F_TX_OUTER_IPV4 |	\
+		RTE_MBUF_F_TX_OUTER_IPV6 |	\
+		RTE_MBUF_F_TX_IPV4 |		\
+		RTE_MBUF_F_TX_IPV6 |		\
+		RTE_MBUF_F_TX_IP_CKSUM |       \
+		RTE_MBUF_F_TX_L4_MASK |        \
+		RTE_MBUF_F_TX_OUTER_IP_CKSUM | \
+		RTE_MBUF_F_TX_TCP_SEG |        \
+		RTE_MBUF_F_TX_QINQ |       \
+		RTE_MBUF_F_TX_VLAN |	\
+		RTE_MBUF_F_TX_TUNNEL_MASK |	\
 		I40E_TX_IEEE1588_TMST)
 
 #define I40E_TX_OFFLOAD_NOTSUP_MASK \
-		(PKT_TX_OFFLOAD_MASK ^ I40E_TX_OFFLOAD_MASK)
+		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ I40E_TX_OFFLOAD_MASK)
 
-#define I40E_TX_OFFLOAD_SIMPLE_SUP_MASK ( \
-		PKT_TX_IPV4 | \
-		PKT_TX_IPV6 | \
-		PKT_TX_OUTER_IPV4 | \
-		PKT_TX_OUTER_IPV6)
+#define I40E_TX_OFFLOAD_SIMPLE_SUP_MASK (RTE_MBUF_F_TX_IPV4 | \
+		RTE_MBUF_F_TX_IPV6 | \
+		RTE_MBUF_F_TX_OUTER_IPV4 | \
+		RTE_MBUF_F_TX_OUTER_IPV6)
 
 #define I40E_TX_OFFLOAD_SIMPLE_NOTSUP_MASK \
-		(PKT_TX_OFFLOAD_MASK ^ I40E_TX_OFFLOAD_SIMPLE_SUP_MASK)
+		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ I40E_TX_OFFLOAD_SIMPLE_SUP_MASK)
 
 static int
 i40e_monitor_callback(const uint64_t value,
@@ -119,7 +116,7 @@ i40e_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union i40e_rx_desc *rxdp)
 {
 	if (rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
 		(1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT)) {
-		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		mb->vlan_tci =
 			rte_le_to_cpu_16(rxdp->wb.qword0.lo_dword.l2tag1);
 		PMD_RX_LOG(DEBUG, "Descriptor l2tag1: %u",
@@ -130,8 +127,8 @@ i40e_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union i40e_rx_desc *rxdp)
 #ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
 	if (rte_le_to_cpu_16(rxdp->wb.qword2.ext_status) &
 		(1 << I40E_RX_DESC_EXT_STATUS_L2TAG2P_SHIFT)) {
-		mb->ol_flags |= PKT_RX_QINQ_STRIPPED | PKT_RX_QINQ |
-			PKT_RX_VLAN_STRIPPED | PKT_RX_VLAN;
+		mb->ol_flags |= RTE_MBUF_F_RX_QINQ_STRIPPED | RTE_MBUF_F_RX_QINQ |
+			RTE_MBUF_F_RX_VLAN_STRIPPED | RTE_MBUF_F_RX_VLAN;
 		mb->vlan_tci_outer = mb->vlan_tci;
 		mb->vlan_tci = rte_le_to_cpu_16(rxdp->wb.qword2.l2tag2_2);
 		PMD_RX_LOG(DEBUG, "Descriptor l2tag2_1: %u, l2tag2_2: %u",
@@ -154,11 +151,11 @@ i40e_rxd_status_to_pkt_flags(uint64_t qword)
 	/* Check if RSS_HASH */
 	flags = (((qword >> I40E_RX_DESC_STATUS_FLTSTAT_SHIFT) &
 					I40E_RX_DESC_FLTSTAT_RSS_HASH) ==
-			I40E_RX_DESC_FLTSTAT_RSS_HASH) ? PKT_RX_RSS_HASH : 0;
+			I40E_RX_DESC_FLTSTAT_RSS_HASH) ? RTE_MBUF_F_RX_RSS_HASH : 0;
 
 	/* Check if FDIR Match */
 	flags |= (qword & (1 << I40E_RX_DESC_STATUS_FLM_SHIFT) ?
-							PKT_RX_FDIR : 0);
+							RTE_MBUF_F_RX_FDIR : 0);
 
 	return flags;
 }
@@ -171,22 +168,22 @@ i40e_rxd_error_to_pkt_flags(uint64_t qword)
 
 #define I40E_RX_ERR_BITS 0x3f
 	if (likely((error_bits & I40E_RX_ERR_BITS) == 0)) {
-		flags |= (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
+		flags |= (RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD);
 		return flags;
 	}
 
 	if (unlikely(error_bits & (1 << I40E_RX_DESC_ERROR_IPE_SHIFT)))
-		flags |= PKT_RX_IP_CKSUM_BAD;
+		flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 	else
-		flags |= PKT_RX_IP_CKSUM_GOOD;
+		flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 	if (unlikely(error_bits & (1 << I40E_RX_DESC_ERROR_L4E_SHIFT)))
-		flags |= PKT_RX_L4_CKSUM_BAD;
+		flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 	else
-		flags |= PKT_RX_L4_CKSUM_GOOD;
+		flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 
 	if (unlikely(error_bits & (1 << I40E_RX_DESC_ERROR_EIPE_SHIFT)))
-		flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
+		flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
 
 	return flags;
 }
@@ -205,9 +202,9 @@ i40e_get_iee15888_flags(struct rte_mbuf *mb, uint64_t qword)
 
 	if ((mb->packet_type & RTE_PTYPE_L2_MASK)
 			== RTE_PTYPE_L2_ETHER_TIMESYNC)
-		pkt_flags = PKT_RX_IEEE1588_PTP;
+		pkt_flags = RTE_MBUF_F_RX_IEEE1588_PTP;
 	if (tsyn & 0x04) {
-		pkt_flags |= PKT_RX_IEEE1588_TMST;
+		pkt_flags |= RTE_MBUF_F_RX_IEEE1588_TMST;
 		mb->timesync = tsyn & 0x03;
 	}
 
@@ -233,21 +230,21 @@ i40e_rxd_build_fdir(volatile union i40e_rx_desc *rxdp, struct rte_mbuf *mb)
 	if (flexbh == I40E_RX_DESC_EXT_STATUS_FLEXBH_FD_ID) {
 		mb->hash.fdir.hi =
 			rte_le_to_cpu_32(rxdp->wb.qword3.hi_dword.fd_id);
-		flags |= PKT_RX_FDIR_ID;
+		flags |= RTE_MBUF_F_RX_FDIR_ID;
 	} else if (flexbh == I40E_RX_DESC_EXT_STATUS_FLEXBH_FLEX) {
 		mb->hash.fdir.hi =
 			rte_le_to_cpu_32(rxdp->wb.qword3.hi_dword.flex_bytes_hi);
-		flags |= PKT_RX_FDIR_FLX;
+		flags |= RTE_MBUF_F_RX_FDIR_FLX;
 	}
 	if (flexbl == I40E_RX_DESC_EXT_STATUS_FLEXBL_FLEX) {
 		mb->hash.fdir.lo =
 			rte_le_to_cpu_32(rxdp->wb.qword3.lo_dword.flex_bytes_lo);
-		flags |= PKT_RX_FDIR_FLX;
+		flags |= RTE_MBUF_F_RX_FDIR_FLX;
 	}
 #else
 	mb->hash.fdir.hi =
 		rte_le_to_cpu_32(rxdp->wb.qword0.hi_dword.fd_id);
-	flags |= PKT_RX_FDIR_ID;
+	flags |= RTE_MBUF_F_RX_FDIR_ID;
 #endif
 	return flags;
 }
@@ -258,11 +255,11 @@ i40e_parse_tunneling_params(uint64_t ol_flags,
 			    uint32_t *cd_tunneling)
 {
 	/* EIPT: External (outer) IP header type */
-	if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
+	if (ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM)
 		*cd_tunneling |= I40E_TX_CTX_EXT_IP_IPV4;
-	else if (ol_flags & PKT_TX_OUTER_IPV4)
+	else if (ol_flags & RTE_MBUF_F_TX_OUTER_IPV4)
 		*cd_tunneling |= I40E_TX_CTX_EXT_IP_IPV4_NO_CSUM;
-	else if (ol_flags & PKT_TX_OUTER_IPV6)
+	else if (ol_flags & RTE_MBUF_F_TX_OUTER_IPV6)
 		*cd_tunneling |= I40E_TX_CTX_EXT_IP_IPV6;
 
 	/* EIPLEN: External (outer) IP header length, in DWords */
@@ -270,15 +267,15 @@ i40e_parse_tunneling_params(uint64_t ol_flags,
 		I40E_TXD_CTX_QW0_EXT_IPLEN_SHIFT;
 
 	/* L4TUNT: L4 Tunneling Type */
-	switch (ol_flags & PKT_TX_TUNNEL_MASK) {
-	case PKT_TX_TUNNEL_IPIP:
+	switch (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+	case RTE_MBUF_F_TX_TUNNEL_IPIP:
 		/* for non UDP / GRE tunneling, set to 00b */
 		break;
-	case PKT_TX_TUNNEL_VXLAN:
-	case PKT_TX_TUNNEL_GENEVE:
+	case RTE_MBUF_F_TX_TUNNEL_VXLAN:
+	case RTE_MBUF_F_TX_TUNNEL_GENEVE:
 		*cd_tunneling |= I40E_TXD_CTX_UDP_TUNNELING;
 		break;
-	case PKT_TX_TUNNEL_GRE:
+	case RTE_MBUF_F_TX_TUNNEL_GRE:
 		*cd_tunneling |= I40E_TXD_CTX_GRE_TUNNELING;
 		break;
 	default:
@@ -306,7 +303,7 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 			union i40e_tx_offload tx_offload)
 {
 	/* Set MACLEN */
-	if (ol_flags & PKT_TX_TUNNEL_MASK)
+	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
 		*td_offset |= (tx_offload.outer_l2_len >> 1)
 				<< I40E_TX_DESC_LENGTH_MACLEN_SHIFT;
 	else
@@ -314,21 +311,21 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 			<< I40E_TX_DESC_LENGTH_MACLEN_SHIFT;
 
 	/* Enable L3 checksum offloads */
-	if (ol_flags & PKT_TX_IP_CKSUM) {
+	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 		*td_cmd |= I40E_TX_DESC_CMD_IIPT_IPV4_CSUM;
 		*td_offset |= (tx_offload.l3_len >> 2)
 				<< I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
-	} else if (ol_flags & PKT_TX_IPV4) {
+	} else if (ol_flags & RTE_MBUF_F_TX_IPV4) {
 		*td_cmd |= I40E_TX_DESC_CMD_IIPT_IPV4;
 		*td_offset |= (tx_offload.l3_len >> 2)
 				<< I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
-	} else if (ol_flags & PKT_TX_IPV6) {
+	} else if (ol_flags & RTE_MBUF_F_TX_IPV6) {
 		*td_cmd |= I40E_TX_DESC_CMD_IIPT_IPV6;
 		*td_offset |= (tx_offload.l3_len >> 2)
 				<< I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
 	}
 
-	if (ol_flags & PKT_TX_TCP_SEG) {
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 		*td_cmd |= I40E_TX_DESC_CMD_L4T_EOFT_TCP;
 		*td_offset |= (tx_offload.l4_len >> 2)
 			<< I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
@@ -336,18 +333,18 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 	}
 
 	/* Enable L4 checksum offloads */
-	switch (ol_flags & PKT_TX_L4_MASK) {
-	case PKT_TX_TCP_CKSUM:
+	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+	case RTE_MBUF_F_TX_TCP_CKSUM:
 		*td_cmd |= I40E_TX_DESC_CMD_L4T_EOFT_TCP;
 		*td_offset |= (sizeof(struct rte_tcp_hdr) >> 2) <<
 				I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
 		break;
-	case PKT_TX_SCTP_CKSUM:
+	case RTE_MBUF_F_TX_SCTP_CKSUM:
 		*td_cmd |= I40E_TX_DESC_CMD_L4T_EOFT_SCTP;
 		*td_offset |= (sizeof(struct rte_sctp_hdr) >> 2) <<
 				I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
 		break;
-	case PKT_TX_UDP_CKSUM:
+	case RTE_MBUF_F_TX_UDP_CKSUM:
 		*td_cmd |= I40E_TX_DESC_CMD_L4T_EOFT_UDP;
 		*td_offset |= (sizeof(struct rte_udp_hdr) >> 2) <<
 				I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
@@ -526,10 +523,10 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 				ptype_tbl[(uint8_t)((qword1 &
 				I40E_RXD_QW1_PTYPE_MASK) >>
 				I40E_RXD_QW1_PTYPE_SHIFT)];
-			if (pkt_flags & PKT_RX_RSS_HASH)
+			if (pkt_flags & RTE_MBUF_F_RX_RSS_HASH)
 				mb->hash.rss = rte_le_to_cpu_32(\
 					rxdp[j].wb.qword0.hi_dword.rss);
-			if (pkt_flags & PKT_RX_FDIR)
+			if (pkt_flags & RTE_MBUF_F_RX_FDIR)
 				pkt_flags |= i40e_rxd_build_fdir(&rxdp[j], mb);
 
 #ifdef RTE_LIBRTE_IEEE1588
@@ -789,10 +786,10 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->packet_type =
 			ptype_tbl[(uint8_t)((qword1 &
 			I40E_RXD_QW1_PTYPE_MASK) >> I40E_RXD_QW1_PTYPE_SHIFT)];
-		if (pkt_flags & PKT_RX_RSS_HASH)
+		if (pkt_flags & RTE_MBUF_F_RX_RSS_HASH)
 			rxm->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
-		if (pkt_flags & PKT_RX_FDIR)
+		if (pkt_flags & RTE_MBUF_F_RX_FDIR)
 			pkt_flags |= i40e_rxd_build_fdir(&rxd, rxm);
 
 #ifdef RTE_LIBRTE_IEEE1588
@@ -957,10 +954,10 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		first_seg->packet_type =
 			ptype_tbl[(uint8_t)((qword1 &
 			I40E_RXD_QW1_PTYPE_MASK) >> I40E_RXD_QW1_PTYPE_SHIFT)];
-		if (pkt_flags & PKT_RX_RSS_HASH)
+		if (pkt_flags & RTE_MBUF_F_RX_RSS_HASH)
 			first_seg->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
-		if (pkt_flags & PKT_RX_FDIR)
+		if (pkt_flags & RTE_MBUF_F_RX_FDIR)
 			pkt_flags |= i40e_rxd_build_fdir(&rxd, first_seg);
 
 #ifdef RTE_LIBRTE_IEEE1588
@@ -1004,13 +1001,13 @@ i40e_recv_scattered_pkts(void *rx_queue,
 static inline uint16_t
 i40e_calc_context_desc(uint64_t flags)
 {
-	static uint64_t mask = PKT_TX_OUTER_IP_CKSUM |
-		PKT_TX_TCP_SEG |
-		PKT_TX_QINQ |
-		PKT_TX_TUNNEL_MASK;
+	static uint64_t mask = RTE_MBUF_F_TX_OUTER_IP_CKSUM |
+		RTE_MBUF_F_TX_TCP_SEG |
+		RTE_MBUF_F_TX_QINQ |
+		RTE_MBUF_F_TX_TUNNEL_MASK;
 
 #ifdef RTE_LIBRTE_IEEE1588
-	mask |= PKT_TX_IEEE1588_TMST;
+	mask |= RTE_MBUF_F_TX_IEEE1588_TMST;
 #endif
 
 	return (flags & mask) ? 1 : 0;
@@ -1029,7 +1026,7 @@ i40e_set_tso_ctx(struct rte_mbuf *mbuf, union i40e_tx_offload tx_offload)
 	}
 
 	hdr_len = tx_offload.l2_len + tx_offload.l3_len + tx_offload.l4_len;
-	hdr_len += (mbuf->ol_flags & PKT_TX_TUNNEL_MASK) ?
+	hdr_len += (mbuf->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) ?
 		   tx_offload.outer_l2_len + tx_offload.outer_l3_len : 0;
 
 	cd_cmd = I40E_TX_CTX_DESC_TSO;
@@ -1122,7 +1119,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * the mbuf data size exceeds max data size that hw allows
 		 * per tx desc.
 		 */
-		if (ol_flags & PKT_TX_TCP_SEG)
+		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 			nb_used = (uint16_t)(i40e_calc_pkt_desc(tx_pkt) +
 					     nb_ctx);
 		else
@@ -1151,7 +1148,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Descriptor based VLAN insertion */
-		if (ol_flags & (PKT_TX_VLAN | PKT_TX_QINQ)) {
+		if (ol_flags & (RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_QINQ)) {
 			td_cmd |= I40E_TX_DESC_CMD_IL2TAG1;
 			td_tag = tx_pkt->vlan_tci;
 		}
@@ -1161,7 +1158,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Fill in tunneling parameters if necessary */
 		cd_tunneling_params = 0;
-		if (ol_flags & PKT_TX_TUNNEL_MASK)
+		if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
 			i40e_parse_tunneling_params(ol_flags, tx_offload,
 						    &cd_tunneling_params);
 		/* Enable checksum offloading */
@@ -1186,12 +1183,12 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			}
 
 			/* TSO enabled means no timestamp */
-			if (ol_flags & PKT_TX_TCP_SEG)
+			if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 				cd_type_cmd_tso_mss |=
 					i40e_set_tso_ctx(tx_pkt, tx_offload);
 			else {
 #ifdef RTE_LIBRTE_IEEE1588
-				if (ol_flags & PKT_TX_IEEE1588_TMST)
+				if (ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
 					cd_type_cmd_tso_mss |=
 						((uint64_t)I40E_TX_CTX_DESC_TSYN <<
 						 I40E_TXD_CTX_QW1_CMD_SHIFT);
@@ -1200,7 +1197,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			ctx_txd->tunneling_params =
 				rte_cpu_to_le_32(cd_tunneling_params);
-			if (ol_flags & PKT_TX_QINQ) {
+			if (ol_flags & RTE_MBUF_F_TX_QINQ) {
 				cd_l2tag2 = tx_pkt->vlan_tci_outer;
 				cd_type_cmd_tso_mss |=
 					((uint64_t)I40E_TX_CTX_DESC_IL2TAG2 <<
@@ -1239,7 +1236,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			slen = m_seg->data_len;
 			buf_dma_addr = rte_mbuf_data_iova(m_seg);
 
-			while ((ol_flags & PKT_TX_TCP_SEG) &&
+			while ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) &&
 				unlikely(slen > I40E_MAX_DATA_PER_TXD)) {
 				txd->buffer_addr =
 					rte_cpu_to_le_64(buf_dma_addr);
@@ -1580,7 +1577,7 @@ i40e_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		ol_flags = m->ol_flags;
 
 		/* Check for m->nb_segs to not exceed the limits. */
-		if (!(ol_flags & PKT_TX_TCP_SEG)) {
+		if (!(ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 			if (m->nb_segs > I40E_TX_MAX_MTU_SEG ||
 			    m->pkt_len > I40E_FRAME_SIZE_MAX) {
 				rte_errno = EINVAL;

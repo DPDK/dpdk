@@ -61,7 +61,7 @@ rte_ipsec_ses_from_crypto(const struct rte_crypto_op *cop)
  * Take as input completed crypto ops, extract related mbufs
  * and group them by rte_ipsec_session they belong to.
  * For mbuf which crypto-op wasn't completed successfully
- * PKT_RX_SEC_OFFLOAD_FAILED will be raised in ol_flags.
+ * RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED will be raised in ol_flags.
  * Note that mbufs with undetermined SA (session-less) are not freed
  * by the function, but are placed beyond mbufs for the last valid group.
  * It is a user responsibility to handle them further.
@@ -95,9 +95,9 @@ rte_ipsec_pkt_crypto_group(const struct rte_crypto_op *cop[],
 		m = cop[i]->sym[0].m_src;
 		ns = cop[i]->sym[0].session;
 
-		m->ol_flags |= PKT_RX_SEC_OFFLOAD;
+		m->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD;
 		if (cop[i]->status != RTE_CRYPTO_OP_STATUS_SUCCESS)
-			m->ol_flags |= PKT_RX_SEC_OFFLOAD_FAILED;
+			m->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
 
 		/* no valid session found */
 		if (ns == NULL) {

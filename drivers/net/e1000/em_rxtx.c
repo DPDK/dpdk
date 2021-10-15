@@ -50,15 +50,14 @@
 
 #define E1000_RXDCTL_GRAN	0x01000000 /* RXDCTL Granularity */
 
-#define E1000_TX_OFFLOAD_MASK ( \
-		PKT_TX_IPV6 |           \
-		PKT_TX_IPV4 |           \
-		PKT_TX_IP_CKSUM |       \
-		PKT_TX_L4_MASK |        \
-		PKT_TX_VLAN)
+#define E1000_TX_OFFLOAD_MASK (RTE_MBUF_F_TX_IPV6 |           \
+		RTE_MBUF_F_TX_IPV4 |           \
+		RTE_MBUF_F_TX_IP_CKSUM |       \
+		RTE_MBUF_F_TX_L4_MASK |        \
+		RTE_MBUF_F_TX_VLAN)
 
 #define E1000_TX_OFFLOAD_NOTSUP_MASK \
-		(PKT_TX_OFFLOAD_MASK ^ E1000_TX_OFFLOAD_MASK)
+		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ E1000_TX_OFFLOAD_MASK)
 
 /* PCI offset for querying configuration status register */
 #define PCI_CFG_STATUS_REG                 0x06
@@ -236,7 +235,7 @@ em_set_xmit_ctx(struct em_tx_queue* txq,
 	 * When doing checksum or TCP segmentation with IPv6 headers,
 	 * IPCSE field should be set t0 0.
 	 */
-	if (flags & PKT_TX_IP_CKSUM) {
+	if (flags & RTE_MBUF_F_TX_IP_CKSUM) {
 		ctx.lower_setup.ip_fields.ipcse =
 			(uint16_t)rte_cpu_to_le_16(ipcse - 1);
 		cmd_len |= E1000_TXD_CMD_IP;
@@ -249,13 +248,13 @@ em_set_xmit_ctx(struct em_tx_queue* txq,
 	ctx.upper_setup.tcp_fields.tucss = (uint8_t)ipcse;
 	ctx.upper_setup.tcp_fields.tucse = 0;
 
-	switch (flags & PKT_TX_L4_MASK) {
-	case PKT_TX_UDP_CKSUM:
+	switch (flags & RTE_MBUF_F_TX_L4_MASK) {
+	case RTE_MBUF_F_TX_UDP_CKSUM:
 		ctx.upper_setup.tcp_fields.tucso = (uint8_t)(ipcse +
 				offsetof(struct rte_udp_hdr, dgram_cksum));
 		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
 		break;
-	case PKT_TX_TCP_CKSUM:
+	case RTE_MBUF_F_TX_TCP_CKSUM:
 		ctx.upper_setup.tcp_fields.tucso = (uint8_t)(ipcse +
 				offsetof(struct rte_tcp_hdr, cksum));
 		cmd_len |= E1000_TXD_CMD_TCP;
@@ -358,8 +357,8 @@ tx_desc_cksum_flags_to_upper(uint64_t ol_flags)
 	static const uint32_t l3_olinfo[2] = {0, E1000_TXD_POPTS_IXSM << 8};
 	uint32_t tmp;
 
-	tmp = l4_olinfo[(ol_flags & PKT_TX_L4_MASK) != PKT_TX_L4_NO_CKSUM];
-	tmp |= l3_olinfo[(ol_flags & PKT_TX_IP_CKSUM) != 0];
+	tmp = l4_olinfo[(ol_flags & RTE_MBUF_F_TX_L4_MASK) != RTE_MBUF_F_TX_L4_NO_CKSUM];
+	tmp |= l3_olinfo[(ol_flags & RTE_MBUF_F_TX_IP_CKSUM) != 0];
 	return tmp;
 }
 
@@ -412,7 +411,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		ol_flags = tx_pkt->ol_flags;
 
 		/* If hardware offload required */
-		tx_ol_req = (ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK));
+		tx_ol_req = (ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_L4_MASK));
 		if (tx_ol_req) {
 			hdrlen.f.vlan_tci = tx_pkt->vlan_tci;
 			hdrlen.f.l2_len = tx_pkt->l2_len;
@@ -508,7 +507,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		popts_spec = 0;
 
 		/* Set VLAN Tag offload fields. */
-		if (ol_flags & PKT_TX_VLAN) {
+		if (ol_flags & RTE_MBUF_F_TX_VLAN) {
 			cmd_type_len |= E1000_TXD_CMD_VLE;
 			popts_spec = tx_pkt->vlan_tci << E1000_TXD_VLAN_SHIFT;
 		}
@@ -658,7 +657,7 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status)
 
 	/* Check if VLAN present */
 	pkt_flags = ((rx_status & E1000_RXD_STAT_VP) ?
-		PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED : 0);
+		RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED : 0);
 
 	return pkt_flags;
 }
@@ -669,9 +668,9 @@ rx_desc_error_to_pkt_flags(uint32_t rx_error)
 	uint64_t pkt_flags = 0;
 
 	if (rx_error & E1000_RXD_ERR_IPE)
-		pkt_flags |= PKT_RX_IP_CKSUM_BAD;
+		pkt_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 	if (rx_error & E1000_RXD_ERR_TCPE)
-		pkt_flags |= PKT_RX_L4_CKSUM_BAD;
+		pkt_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 	return pkt_flags;
 }
 
@@ -813,7 +812,7 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->ol_flags = rxm->ol_flags |
 				rx_desc_error_to_pkt_flags(rxd.errors);
 
-		/* Only valid if PKT_RX_VLAN set in pkt_flags */
+		/* Only valid if RTE_MBUF_F_RX_VLAN set in pkt_flags */
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
 
 		/*
@@ -1039,7 +1038,7 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->ol_flags = first_seg->ol_flags |
 					rx_desc_error_to_pkt_flags(rxd.errors);
 
-		/* Only valid if PKT_RX_VLAN set in pkt_flags */
+		/* Only valid if RTE_MBUF_F_RX_VLAN set in pkt_flags */
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
 
 		/* Prefetch data of first segment, if configured to do so. */

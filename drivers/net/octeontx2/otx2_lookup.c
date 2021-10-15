@@ -264,9 +264,9 @@ nix_create_rx_ol_flags_array(void *mem)
 		errlev = idx & 0xf;
 		errcode = (idx & 0xff0) >> 4;
 
-		val = PKT_RX_IP_CKSUM_UNKNOWN;
-		val |= PKT_RX_L4_CKSUM_UNKNOWN;
-		val |= PKT_RX_OUTER_L4_CKSUM_UNKNOWN;
+		val = RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN;
+		val |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
+		val |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_UNKNOWN;
 
 		switch (errlev) {
 		case NPC_ERRLEV_RE:
@@ -274,46 +274,46 @@ nix_create_rx_ol_flags_array(void *mem)
 			 * including Outer L2 length mismatch error
 			 */
 			if (errcode) {
-				val |= PKT_RX_IP_CKSUM_BAD;
-				val |= PKT_RX_L4_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 			} else {
-				val |= PKT_RX_IP_CKSUM_GOOD;
-				val |= PKT_RX_L4_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 			}
 			break;
 		case NPC_ERRLEV_LC:
 			if (errcode == NPC_EC_OIP4_CSUM ||
 			    errcode == NPC_EC_IP_FRAG_OFFSET_1) {
-				val |= PKT_RX_IP_CKSUM_BAD;
-				val |= PKT_RX_OUTER_IP_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
 			} else {
-				val |= PKT_RX_IP_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 			}
 			break;
 		case NPC_ERRLEV_LG:
 			if (errcode == NPC_EC_IIP4_CSUM)
-				val |= PKT_RX_IP_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 			else
-				val |= PKT_RX_IP_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 			break;
 		case NPC_ERRLEV_NIX:
 			if (errcode == NIX_RX_PERRCODE_OL4_CHK ||
 			    errcode == NIX_RX_PERRCODE_OL4_LEN ||
 			    errcode == NIX_RX_PERRCODE_OL4_PORT) {
-				val |= PKT_RX_IP_CKSUM_GOOD;
-				val |= PKT_RX_L4_CKSUM_BAD;
-				val |= PKT_RX_OUTER_L4_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD;
 			} else if (errcode == NIX_RX_PERRCODE_IL4_CHK ||
 				   errcode == NIX_RX_PERRCODE_IL4_LEN ||
 				   errcode == NIX_RX_PERRCODE_IL4_PORT) {
-				val |= PKT_RX_IP_CKSUM_GOOD;
-				val |= PKT_RX_L4_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 			} else if (errcode == NIX_RX_PERRCODE_IL3_LEN ||
 				   errcode == NIX_RX_PERRCODE_OL3_LEN) {
-				val |= PKT_RX_IP_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 			} else {
-				val |= PKT_RX_IP_CKSUM_GOOD;
-				val |= PKT_RX_L4_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 			}
 			break;
 		}

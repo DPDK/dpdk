@@ -76,13 +76,13 @@ static struct rte_eth_conf port_conf = {
  * Packet RX/TX
  *
  ***/
-#define PKT_RX_BURST_MAX                32
-#define PKT_TX_BURST_MAX                32
+#define RTE_MBUF_F_RX_BURST_MAX                32
+#define RTE_MBUF_F_TX_BURST_MAX                32
 #define TIME_TX_DRAIN                   200000ULL
 
 static uint16_t port_rx;
 static uint16_t port_tx;
-static struct rte_mbuf *pkts_rx[PKT_RX_BURST_MAX];
+static struct rte_mbuf *pkts_rx[RTE_MBUF_F_RX_BURST_MAX];
 struct rte_eth_dev_tx_buffer *tx_buffer;
 
 /* Traffic meter parameters are configured in the application. 8< */
@@ -187,7 +187,7 @@ main_loop(__rte_unused void *dummy)
 		}
 
 		/* Read packet burst from NIC RX */
-		nb_rx = rte_eth_rx_burst(port_rx, NIC_RX_QUEUE, pkts_rx, PKT_RX_BURST_MAX);
+		nb_rx = rte_eth_rx_burst(port_rx, NIC_RX_QUEUE, pkts_rx, RTE_MBUF_F_RX_BURST_MAX);
 
 		/* Handle packets */
 		for (i = 0; i < nb_rx; i ++) {
@@ -419,13 +419,13 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Port %d TX queue setup error (%d)\n", port_tx, ret);
 
 	tx_buffer = rte_zmalloc_socket("tx_buffer",
-			RTE_ETH_TX_BUFFER_SIZE(PKT_TX_BURST_MAX), 0,
+			RTE_ETH_TX_BUFFER_SIZE(RTE_MBUF_F_TX_BURST_MAX), 0,
 			rte_eth_dev_socket_id(port_tx));
 	if (tx_buffer == NULL)
 		rte_exit(EXIT_FAILURE, "Port %d TX buffer allocation error\n",
 				port_tx);
 
-	rte_eth_tx_buffer_init(tx_buffer, PKT_TX_BURST_MAX);
+	rte_eth_tx_buffer_init(tx_buffer, RTE_MBUF_F_TX_BURST_MAX);
 
 	ret = rte_eth_dev_start(port_rx);
 	if (ret < 0)

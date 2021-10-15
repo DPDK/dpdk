@@ -12,7 +12,7 @@
 #define NICVF_RX_OFFLOAD_CKSUM          0x2
 #define NICVF_RX_OFFLOAD_VLAN_STRIP     0x4
 
-#define NICVF_TX_OFFLOAD_MASK (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK)
+#define NICVF_TX_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_L4_MASK)
 
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 static inline uint16_t __attribute__((const))

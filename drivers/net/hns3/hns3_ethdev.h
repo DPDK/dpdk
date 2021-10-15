@@ -622,7 +622,7 @@ struct hns3_hw {
 	 *  - HNS3_SPECIAL_PORT_SW_CKSUM_MODE
 	 *     In this mode, HW can not do checksum for special UDP port like
 	 *     4789, 4790, 6081 for non-tunnel UDP packets and UDP tunnel
-	 *     packets without the PKT_TX_TUNEL_MASK in the mbuf. So, PMD need
+	 *     packets without the RTE_MBUF_F_TX_TUNEL_MASK in the mbuf. So, PMD need
 	 *     do the checksum for these packets to avoid a checksum error.
 	 *
 	 *  - HNS3_SPECIAL_PORT_HW_CKSUM_MODE

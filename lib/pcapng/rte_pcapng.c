@@ -435,18 +435,18 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 
 	/* Expand any offloaded VLAN information */
 	if ((direction == RTE_PCAPNG_DIRECTION_IN &&
-	     (md->ol_flags & PKT_RX_VLAN_STRIPPED)) ||
+	     (md->ol_flags & RTE_MBUF_F_RX_VLAN_STRIPPED)) ||
 	    (direction == RTE_PCAPNG_DIRECTION_OUT &&
-	     (md->ol_flags & PKT_TX_VLAN))) {
+	     (md->ol_flags & RTE_MBUF_F_TX_VLAN))) {
 		if (pcapng_vlan_insert(mc, RTE_ETHER_TYPE_VLAN,
 				       md->vlan_tci) != 0)
 			goto fail;
 	}
 
 	if ((direction == RTE_PCAPNG_DIRECTION_IN &&
-	     (md->ol_flags & PKT_RX_QINQ_STRIPPED)) ||
+	     (md->ol_flags & RTE_MBUF_F_RX_QINQ_STRIPPED)) ||
 	    (direction == RTE_PCAPNG_DIRECTION_OUT &&
-	     (md->ol_flags & PKT_TX_QINQ))) {
+	     (md->ol_flags & RTE_MBUF_F_TX_QINQ))) {
 		if (pcapng_vlan_insert(mc, RTE_ETHER_TYPE_QINQ,
 				       md->vlan_tci_outer) != 0)
 			goto fail;

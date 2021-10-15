@@ -374,13 +374,13 @@ sfc_ef10_essb_rx_get_pending(struct sfc_ef10_essb_rxq *rxq,
 			rte_pktmbuf_data_len(m) = pkt_len;
 
 			m->ol_flags |=
-				(PKT_RX_RSS_HASH *
+				(RTE_MBUF_F_RX_RSS_HASH *
 				 !!EFX_TEST_QWORD_BIT(*qwordp,
 					ES_EZ_ESSB_RX_PREFIX_HASH_VALID_LBN)) |
-				(PKT_RX_FDIR_ID *
+				(RTE_MBUF_F_RX_FDIR_ID *
 				 !!EFX_TEST_QWORD_BIT(*qwordp,
 					ES_EZ_ESSB_RX_PREFIX_MARK_VALID_LBN)) |
-				(PKT_RX_FDIR *
+				(RTE_MBUF_F_RX_FDIR *
 				 !!EFX_TEST_QWORD_BIT(*qwordp,
 					ES_EZ_ESSB_RX_PREFIX_MATCH_FLAG_LBN));
 

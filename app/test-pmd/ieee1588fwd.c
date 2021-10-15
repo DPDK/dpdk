@@ -114,7 +114,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	eth_hdr = rte_pktmbuf_mtod(mb, struct rte_ether_hdr *);
 	eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
 
-	if (! (mb->ol_flags & PKT_RX_IEEE1588_PTP)) {
+	if (!(mb->ol_flags & RTE_MBUF_F_RX_IEEE1588_PTP)) {
 		if (eth_type == RTE_ETHER_TYPE_1588) {
 			printf("Port %u Received PTP packet not filtered"
 			       " by hardware\n",
@@ -163,7 +163,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	 * Check that the received PTP packet has been timestamped by the
 	 * hardware.
 	 */
-	if (! (mb->ol_flags & PKT_RX_IEEE1588_TMST)) {
+	if (!(mb->ol_flags & RTE_MBUF_F_RX_IEEE1588_TMST)) {
 		printf("Port %u Received PTP packet not timestamped"
 		       " by hardware\n",
 		       fs->rx_port);
@@ -183,7 +183,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	rte_ether_addr_copy(&addr, &eth_hdr->src_addr);
 
 	/* Forward PTP packet with hardware TX timestamp */
-	mb->ol_flags |= PKT_TX_IEEE1588_TMST;
+	mb->ol_flags |= RTE_MBUF_F_TX_IEEE1588_TMST;
 	fs->tx_packets += 1;
 	if (rte_eth_tx_burst(fs->rx_port, fs->tx_queue, &mb, 1) == 0) {
 		printf("Port %u sent PTP packet dropped\n", fs->rx_port);

@@ -159,8 +159,8 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 
 	if ((ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) ||
 			(ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO)) {
-		if (m->ol_flags & PKT_RX_SEC_OFFLOAD) {
-			if (m->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED)
+		if (m->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD) {
+			if (m->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED)
 				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 			else
 				cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
@@ -464,7 +464,7 @@ esp_outbound_post(struct rte_mbuf *m,
 
 	if ((type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) ||
 			(type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO)) {
-		m->ol_flags |= PKT_TX_SEC_OFFLOAD;
+		m->ol_flags |= RTE_MBUF_F_TX_SEC_OFFLOAD;
 	} else {
 		RTE_ASSERT(cop != NULL);
 		if (cop->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
