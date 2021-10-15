@@ -56,24 +56,6 @@ extern "C" {
 #define PKT_RX_FDIR          (1ULL << 2)
 
 /**
- * Deprecated.
- * Checking this flag alone is deprecated: check the 2 bits of
- * PKT_RX_L4_CKSUM_MASK.
- * This flag was set when the L4 checksum of a packet was detected as
- * wrong by the hardware.
- */
-#define PKT_RX_L4_CKSUM_BAD  (1ULL << 3)
-
-/**
- * Deprecated.
- * Checking this flag alone is deprecated: check the 2 bits of
- * PKT_RX_IP_CKSUM_MASK.
- * This flag was set when the IP checksum of a packet was detected as
- * wrong by the hardware.
- */
-#define PKT_RX_IP_CKSUM_BAD  (1ULL << 4)
-
-/**
  * This flag is set when the outermost IP header checksum is detected as
  * wrong by the hardware.
  */
