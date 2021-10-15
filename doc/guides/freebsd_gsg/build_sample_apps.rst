@@ -88,7 +88,7 @@ Other options, specific to Linux and are not supported under FreeBSD are as foll
 *   ``--huge-dir``:
     The directory where hugetlbfs is mounted.
 
-*   ``mbuf-pool-ops-name``:
+*   ``--mbuf-pool-ops-name``:
     Pool ops name for mbuf to use.
 
 *   ``--file-prefix``:
