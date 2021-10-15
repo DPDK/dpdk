@@ -222,6 +222,11 @@ New Features
   * Added PDCP short MAC-I support.
   * Added raw vector datapath API support.
 
+* **Added framework for consolidation of IPsec_MB dependent SW Crypto PMDs.**
+
+  * The IPsec_MB framework was added to share common code between Intel
+    SW Crypto PMDs that depend on the intel-ipsec-mb library.
+
 * **Updated the ACC100 bbdev PMD.**
 
   Added support for more comprehensive CRC options.

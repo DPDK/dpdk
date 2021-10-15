@@ -1075,6 +1075,10 @@ F: drivers/common/qat/
 F: doc/guides/cryptodevs/qat.rst
 F: doc/guides/cryptodevs/features/qat.ini
 
+IPsec MB
+M: Fan Zhang <roy.fan.zhang@intel.com>
+F: drivers/crypto/ipsec_mb/
+
 KASUMI
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/crypto/kasumi/
