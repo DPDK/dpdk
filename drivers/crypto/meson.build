@@ -14,7 +14,6 @@ drivers = [
         'dpaa_sec',
         'dpaa2_sec',
         'ipsec_mb',
-        'kasumi',
         'mlx5',
         'mvsam',
         'nitrox',
