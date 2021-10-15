@@ -22,7 +22,6 @@ drivers = [
         'octeontx2',
         'openssl',
         'scheduler',
-        'snow3g',
         'virtio',
         'zuc',
 ]

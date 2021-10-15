@@ -1068,9 +1068,11 @@ F: drivers/crypto/ipsec_mb/
 F: doc/guides/cryptodevs/aesni_gcm.rst
 F: doc/guides/cryptodevs/aesni_mb.rst
 F: doc/guides/cryptodevs/kasumi.rst
+F: doc/guides/cryptodevs/snow3g.rst
 F: doc/guides/cryptodevs/features/aesni_gcm.ini
 F: doc/guides/cryptodevs/features/aesni_mb.ini
 F: doc/guides/cryptodevs/features/kasumi.ini
+F: doc/guides/cryptodevs/features/snow3g.ini
 
 Marvell cnxk crypto
 M: Ankur Dwivedi <adwivedi@marvell.com>
@@ -1140,12 +1142,6 @@ M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/openssl/
 F: doc/guides/cryptodevs/openssl.rst
 F: doc/guides/cryptodevs/features/openssl.ini
-
-SNOW 3G
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
-F: drivers/crypto/snow3g/
-F: doc/guides/cryptodevs/snow3g.rst
-F: doc/guides/cryptodevs/features/snow3g.ini
 
 Virtio
 M: Jay Zhou <jianjay.zhou@huawei.com>

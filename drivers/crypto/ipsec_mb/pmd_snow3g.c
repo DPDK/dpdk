@@ -1,87 +1,24 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2018 Intel Corporation
+ * Copyright(c) 2016-2021 Intel Corporation
  */
 
-#include <rte_common.h>
-#include <rte_hexdump.h>
-#include <rte_cryptodev.h>
-#include <cryptodev_pmd.h>
-#include <rte_bus_vdev.h>
-#include <rte_malloc.h>
-#include <rte_cpuflags.h>
-
-#include "snow3g_pmd_private.h"
-
-#define SNOW3G_IV_LENGTH 16
-#define SNOW3G_MAX_BURST 8
-#define BYTE_LEN 8
-
-static uint8_t cryptodev_driver_id;
-
-/** Get xform chain order. */
-static enum snow3g_operation
-snow3g_get_mode(const struct rte_crypto_sym_xform *xform)
-{
-	if (xform == NULL)
-		return SNOW3G_OP_NOT_SUPPORTED;
-
-	if (xform->next)
-		if (xform->next->next != NULL)
-			return SNOW3G_OP_NOT_SUPPORTED;
-
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
-		if (xform->next == NULL)
-			return SNOW3G_OP_ONLY_AUTH;
-		else if (xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER)
-			return SNOW3G_OP_AUTH_CIPHER;
-		else
-			return SNOW3G_OP_NOT_SUPPORTED;
-	}
-
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
-		if (xform->next == NULL)
-			return SNOW3G_OP_ONLY_CIPHER;
-		else if (xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH)
-			return SNOW3G_OP_CIPHER_AUTH;
-		else
-			return SNOW3G_OP_NOT_SUPPORTED;
-	}
-
-	return SNOW3G_OP_NOT_SUPPORTED;
-}
-
+#include "pmd_snow3g_priv.h"
 
 /** Parse crypto xform chain and set private session parameters. */
-int
-snow3g_set_session_parameters(MB_MGR *mgr, struct snow3g_session *sess,
+static int
+snow3g_session_configure(IMB_MGR *mgr, void *priv_sess,
 		const struct rte_crypto_sym_xform *xform)
 {
+	struct snow3g_session *sess = (struct snow3g_session *)priv_sess;
 	const struct rte_crypto_sym_xform *auth_xform = NULL;
 	const struct rte_crypto_sym_xform *cipher_xform = NULL;
-	enum snow3g_operation mode;
+	enum ipsec_mb_operation mode;
 
 	/* Select Crypto operation - hash then cipher / cipher then hash */
-	mode = snow3g_get_mode(xform);
-
-	switch (mode) {
-	case SNOW3G_OP_CIPHER_AUTH:
-		auth_xform = xform->next;
-
-		/* Fall-through */
-	case SNOW3G_OP_ONLY_CIPHER:
-		cipher_xform = xform;
-		break;
-	case SNOW3G_OP_AUTH_CIPHER:
-		cipher_xform = xform->next;
-		/* Fall-through */
-	case SNOW3G_OP_ONLY_AUTH:
-		auth_xform = xform;
-		break;
-	case SNOW3G_OP_NOT_SUPPORTED:
-	default:
-		SNOW3G_LOG(ERR, "Unsupported operation chain order parameter");
-		return -ENOTSUP;
-	}
+	int ret = ipsec_mb_parse_xform(xform, &mode, &auth_xform,
+				&cipher_xform, NULL);
+	if (ret)
+		return ret;
 
 	if (cipher_xform) {
 		/* Only SNOW 3G UEA2 supported */
@@ -89,11 +26,11 @@ snow3g_set_session_parameters(MB_MGR *mgr, struct snow3g_session *sess,
 			return -ENOTSUP;
 
 		if (cipher_xform->cipher.iv.length != SNOW3G_IV_LENGTH) {
-			SNOW3G_LOG(ERR, "Wrong IV length");
+			IPSEC_MB_LOG(ERR, "Wrong IV length");
 			return -EINVAL;
 		}
 		if (cipher_xform->cipher.key.length > SNOW3G_MAX_KEY_SIZE) {
-			SNOW3G_LOG(ERR, "Not enough memory to store the key");
+			IPSEC_MB_LOG(ERR, "Not enough memory to store the key");
 			return -ENOMEM;
 		}
 
@@ -110,18 +47,18 @@ snow3g_set_session_parameters(MB_MGR *mgr, struct snow3g_session *sess,
 			return -ENOTSUP;
 
 		if (auth_xform->auth.digest_length != SNOW3G_DIGEST_LENGTH) {
-			SNOW3G_LOG(ERR, "Wrong digest length");
+			IPSEC_MB_LOG(ERR, "Wrong digest length");
 			return -EINVAL;
 		}
 		if (auth_xform->auth.key.length > SNOW3G_MAX_KEY_SIZE) {
-			SNOW3G_LOG(ERR, "Not enough memory to store the key");
+			IPSEC_MB_LOG(ERR, "Not enough memory to store the key");
 			return -ENOMEM;
 		}
 
 		sess->auth_op = auth_xform->auth.op;
 
 		if (auth_xform->auth.iv.length != SNOW3G_IV_LENGTH) {
-			SNOW3G_LOG(ERR, "Wrong IV length");
+			IPSEC_MB_LOG(ERR, "Wrong IV length");
 			return -EINVAL;
 		}
 		sess->auth_iv_offset = auth_xform->auth.iv.offset;
@@ -136,56 +73,13 @@ snow3g_set_session_parameters(MB_MGR *mgr, struct snow3g_session *sess,
 	return 0;
 }
 
-/** Get SNOW 3G session. */
-static struct snow3g_session *
-snow3g_get_session(struct snow3g_qp *qp, struct rte_crypto_op *op)
-{
-	struct snow3g_session *sess = NULL;
-
-	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		if (likely(op->sym->session != NULL))
-			sess = (struct snow3g_session *)
-					get_sym_session_private_data(
-					op->sym->session,
-					cryptodev_driver_id);
-	} else {
-		void *_sess = NULL;
-		void *_sess_private_data = NULL;
-
-		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
-			return NULL;
-
-		if (rte_mempool_get(qp->sess_mp_priv,
-				(void **)&_sess_private_data))
-			return NULL;
-
-		sess = (struct snow3g_session *)_sess_private_data;
-
-		if (unlikely(snow3g_set_session_parameters(qp->mgr, sess,
-				op->sym->xform) != 0)) {
-			rte_mempool_put(qp->sess_mp, _sess);
-			rte_mempool_put(qp->sess_mp_priv, _sess_private_data);
-			sess = NULL;
-		}
-		op->sym->session = (struct rte_cryptodev_sym_session *)_sess;
-		set_sym_session_private_data(op->sym->session,
-				cryptodev_driver_id, _sess_private_data);
-	}
-
-	if (unlikely(sess == NULL))
-		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
-
-
-	return sess;
-}
-
 /** Encrypt/decrypt mbufs with same cipher key. */
 static uint8_t
-process_snow3g_cipher_op(struct snow3g_qp *qp, struct rte_crypto_op **ops,
+process_snow3g_cipher_op(struct ipsec_mb_qp *qp, struct rte_crypto_op **ops,
 		struct snow3g_session *session,
 		uint8_t num_ops)
 {
-	unsigned i;
+	uint32_t i;
 	uint8_t processed_ops = 0;
 	const void *src[SNOW3G_MAX_BURST];
 	void *dst[SNOW3G_MAX_BURST];
@@ -207,7 +101,7 @@ process_snow3g_cipher_op(struct snow3g_qp *qp, struct rte_crypto_op **ops,
 		processed_ops++;
 	}
 
-	IMB_SNOW3G_F8_N_BUFFER(qp->mgr, &session->pKeySched_cipher, iv,
+	IMB_SNOW3G_F8_N_BUFFER(qp->mb_mgr, &session->pKeySched_cipher, iv,
 			src, dst, num_bytes, processed_ops);
 
 	return processed_ops;
@@ -215,7 +109,7 @@ process_snow3g_cipher_op(struct snow3g_qp *qp, struct rte_crypto_op **ops,
 
 /** Encrypt/decrypt mbuf (bit level function). */
 static uint8_t
-process_snow3g_cipher_op_bit(struct snow3g_qp *qp,
+process_snow3g_cipher_op_bit(struct ipsec_mb_qp *qp,
 		struct rte_crypto_op *op,
 		struct snow3g_session *session)
 {
@@ -227,7 +121,7 @@ process_snow3g_cipher_op_bit(struct snow3g_qp *qp,
 	src = rte_pktmbuf_mtod(op->sym->m_src, uint8_t *);
 	if (op->sym->m_dst == NULL) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-		SNOW3G_LOG(ERR, "bit-level in-place not supported\n");
+		IPSEC_MB_LOG(ERR, "bit-level in-place not supported\n");
 		return 0;
 	}
 	dst = rte_pktmbuf_mtod(op->sym->m_dst, uint8_t *);
@@ -235,7 +129,7 @@ process_snow3g_cipher_op_bit(struct snow3g_qp *qp,
 				session->cipher_iv_offset);
 	length_in_bits = op->sym->cipher.data.length;
 
-	IMB_SNOW3G_F8_1_BUFFER_BIT(qp->mgr, &session->pKeySched_cipher, iv,
+	IMB_SNOW3G_F8_1_BUFFER_BIT(qp->mb_mgr, &session->pKeySched_cipher, iv,
 			src, dst, length_in_bits, offset_in_bits);
 
 	return 1;
@@ -243,21 +137,22 @@ process_snow3g_cipher_op_bit(struct snow3g_qp *qp,
 
 /** Generate/verify hash from mbufs with same hash key. */
 static int
-process_snow3g_hash_op(struct snow3g_qp *qp, struct rte_crypto_op **ops,
+process_snow3g_hash_op(struct ipsec_mb_qp *qp, struct rte_crypto_op **ops,
 		struct snow3g_session *session,
 		uint8_t num_ops)
 {
-	unsigned i;
+	uint32_t i;
 	uint8_t processed_ops = 0;
 	uint8_t *src, *dst;
 	uint32_t length_in_bits;
 	uint8_t *iv;
+	struct snow3g_qp_data *qp_data = ipsec_mb_get_qp_private_data(qp);
 
 	for (i = 0; i < num_ops; i++) {
 		/* Data must be byte aligned */
 		if ((ops[i]->sym->auth.data.offset % BYTE_LEN) != 0) {
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-			SNOW3G_LOG(ERR, "Offset");
+			IPSEC_MB_LOG(ERR, "Offset");
 			break;
 		}
 
@@ -269,19 +164,20 @@ process_snow3g_hash_op(struct snow3g_qp *qp, struct rte_crypto_op **ops,
 				session->auth_iv_offset);
 
 		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
-			dst = qp->temp_digest;
+			dst = qp_data->temp_digest;
 
-			IMB_SNOW3G_F9_1_BUFFER(qp->mgr,
+			IMB_SNOW3G_F9_1_BUFFER(qp->mb_mgr,
 					&session->pKeySched_hash,
 					iv, src, length_in_bits, dst);
 			/* Verify digest. */
 			if (memcmp(dst, ops[i]->sym->auth.digest.data,
 					SNOW3G_DIGEST_LENGTH) != 0)
-				ops[i]->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+				ops[i]->status =
+					RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		} else  {
 			dst = ops[i]->sym->auth.digest.data;
 
-			IMB_SNOW3G_F9_1_BUFFER(qp->mgr,
+			IMB_SNOW3G_F9_1_BUFFER(qp->mb_mgr,
 					&session->pKeySched_hash,
 					iv, src, length_in_bits, dst);
 		}
@@ -294,11 +190,10 @@ process_snow3g_hash_op(struct snow3g_qp *qp, struct rte_crypto_op **ops,
 /** Process a batch of crypto ops which shares the same session. */
 static int
 process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
-		struct snow3g_qp *qp, uint8_t num_ops,
-		uint16_t *accumulated_enqueued_ops)
+		struct ipsec_mb_qp *qp, uint8_t num_ops)
 {
-	unsigned i;
-	unsigned enqueued_ops, processed_ops;
+	uint32_t i;
+	uint32_t processed_ops;
 
 #ifdef RTE_LIBRTE_PMD_SNOW3G_DEBUG
 	for (i = 0; i < num_ops; i++) {
@@ -306,7 +201,8 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 				(ops[i]->sym->m_dst != NULL &&
 				!rte_pktmbuf_is_contiguous(
 						ops[i]->sym->m_dst))) {
-			SNOW3G_LOG(ERR, "PMD supports only contiguous mbufs, "
+			IPSEC_MB_LOG(ERR,
+				"PMD supports only contiguous mbufs, "
 				"op (%p) provides noncontiguous mbuf as "
 				"source/destination buffer.\n", ops[i]);
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
@@ -316,20 +212,24 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 #endif
 
 	switch (session->op) {
-	case SNOW3G_OP_ONLY_CIPHER:
+	case IPSEC_MB_OP_ENCRYPT_ONLY:
+	case IPSEC_MB_OP_DECRYPT_ONLY:
 		processed_ops = process_snow3g_cipher_op(qp, ops,
 				session, num_ops);
 		break;
-	case SNOW3G_OP_ONLY_AUTH:
+	case IPSEC_MB_OP_HASH_GEN_ONLY:
+	case IPSEC_MB_OP_HASH_VERIFY_ONLY:
 		processed_ops = process_snow3g_hash_op(qp, ops, session,
 				num_ops);
 		break;
-	case SNOW3G_OP_CIPHER_AUTH:
+	case IPSEC_MB_OP_ENCRYPT_THEN_HASH_GEN:
+	case IPSEC_MB_OP_DECRYPT_THEN_HASH_VERIFY:
 		processed_ops = process_snow3g_cipher_op(qp, ops, session,
 				num_ops);
 		process_snow3g_hash_op(qp, ops, session, processed_ops);
 		break;
-	case SNOW3G_OP_AUTH_CIPHER:
+	case IPSEC_MB_OP_HASH_VERIFY_THEN_DECRYPT:
+	case IPSEC_MB_OP_HASH_GEN_THEN_ENCRYPT:
 		processed_ops = process_snow3g_hash_op(qp, ops, session,
 				num_ops);
 		process_snow3g_cipher_op(qp, ops, session, processed_ops);
@@ -357,36 +257,35 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 			ops[i]->sym->session = NULL;
 		}
 	}
-
-	enqueued_ops = rte_ring_enqueue_burst(qp->processed_ops,
-			(void **)ops, processed_ops, NULL);
-	qp->qp_stats.enqueued_count += enqueued_ops;
-	*accumulated_enqueued_ops += enqueued_ops;
-
-	return enqueued_ops;
+	return processed_ops;
 }
 
 /** Process a crypto op with length/offset in bits. */
 static int
 process_op_bit(struct rte_crypto_op *op, struct snow3g_session *session,
-		struct snow3g_qp *qp, uint16_t *accumulated_enqueued_ops)
+		struct ipsec_mb_qp *qp, uint16_t *accumulated_enqueued_ops)
 {
-	unsigned enqueued_op, processed_op;
+	uint32_t enqueued_op, processed_op;
 
 	switch (session->op) {
-	case SNOW3G_OP_ONLY_CIPHER:
+	case IPSEC_MB_OP_ENCRYPT_ONLY:
+	case IPSEC_MB_OP_DECRYPT_ONLY:
+
 		processed_op = process_snow3g_cipher_op_bit(qp, op,
 				session);
 		break;
-	case SNOW3G_OP_ONLY_AUTH:
+	case IPSEC_MB_OP_HASH_GEN_ONLY:
+	case IPSEC_MB_OP_HASH_VERIFY_ONLY:
 		processed_op = process_snow3g_hash_op(qp, &op, session, 1);
 		break;
-	case SNOW3G_OP_CIPHER_AUTH:
+	case IPSEC_MB_OP_ENCRYPT_THEN_HASH_GEN:
+	case IPSEC_MB_OP_DECRYPT_THEN_HASH_VERIFY:
 		processed_op = process_snow3g_cipher_op_bit(qp, op, session);
 		if (processed_op == 1)
 			process_snow3g_hash_op(qp, &op, session, 1);
 		break;
-	case SNOW3G_OP_AUTH_CIPHER:
+	case IPSEC_MB_OP_HASH_VERIFY_THEN_DECRYPT:
+	case IPSEC_MB_OP_HASH_GEN_THEN_ENCRYPT:
 		processed_op = process_snow3g_hash_op(qp, &op, session, 1);
 		if (processed_op == 1)
 			process_snow3g_cipher_op_bit(qp, op, session);
@@ -410,50 +309,56 @@ process_op_bit(struct rte_crypto_op *op, struct snow3g_session *session,
 		op->sym->session = NULL;
 	}
 
-	enqueued_op = rte_ring_enqueue_burst(qp->processed_ops,
+	enqueued_op = rte_ring_enqueue_burst(qp->ingress_queue,
 			(void **)&op, processed_op, NULL);
-	qp->qp_stats.enqueued_count += enqueued_op;
+	qp->stats.enqueued_count += enqueued_op;
 	*accumulated_enqueued_ops += enqueued_op;
 
 	return enqueued_op;
 }
 
 static uint16_t
-snow3g_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
-		uint16_t nb_ops)
+snow3g_pmd_dequeue_burst(void *queue_pair,
+		struct rte_crypto_op **ops, uint16_t nb_ops)
 {
+	struct ipsec_mb_qp *qp = queue_pair;
 	struct rte_crypto_op *c_ops[SNOW3G_MAX_BURST];
 	struct rte_crypto_op *curr_c_op;
 
 	struct snow3g_session *prev_sess = NULL, *curr_sess = NULL;
-	struct snow3g_qp *qp = queue_pair;
-	unsigned i;
+	uint32_t i;
 	uint8_t burst_size = 0;
 	uint16_t enqueued_ops = 0;
 	uint8_t processed_ops;
+	uint32_t nb_dequeued;
 
-	for (i = 0; i < nb_ops; i++) {
+	nb_dequeued = rte_ring_dequeue_burst(qp->ingress_queue,
+			(void **)ops, nb_ops, NULL);
+
+	for (i = 0; i < nb_dequeued; i++) {
 		curr_c_op = ops[i];
 
 		/* Set status as enqueued (not processed yet) by default. */
 		curr_c_op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 
-		curr_sess = snow3g_get_session(qp, curr_c_op);
+		curr_sess = ipsec_mb_get_session_private(qp, curr_c_op);
 		if (unlikely(curr_sess == NULL ||
-				curr_sess->op == SNOW3G_OP_NOT_SUPPORTED)) {
+				curr_sess->op == IPSEC_MB_OP_NOT_SUPPORTED)) {
 			curr_c_op->status =
 					RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 			break;
 		}
 
-		/* If length/offset is at bit-level, process this buffer alone. */
+		/* If length/offset is at bit-level,
+		 * process this buffer alone.
+		 */
 		if (((curr_c_op->sym->cipher.data.length % BYTE_LEN) != 0)
 				|| ((curr_c_op->sym->cipher.data.offset
 					% BYTE_LEN) != 0)) {
 			/* Process the ops of the previous session. */
 			if (prev_sess != NULL) {
 				processed_ops = process_ops(c_ops, prev_sess,
-				qp, burst_size, &enqueued_ops);
+						qp, burst_size);
 				if (processed_ops < burst_size) {
 					burst_size = 0;
 					break;
@@ -483,7 +388,7 @@ snow3g_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 			 */
 			if (burst_size == SNOW3G_MAX_BURST) {
 				processed_ops = process_ops(c_ops, prev_sess,
-						qp, burst_size, &enqueued_ops);
+						qp, burst_size);
 				if (processed_ops < burst_size) {
 					burst_size = 0;
 					break;
@@ -498,7 +403,7 @@ snow3g_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 			 * of the previous session.
 			 */
 			processed_ops = process_ops(c_ops, prev_sess,
-					qp, burst_size, &enqueued_ops);
+					qp, burst_size);
 			if (processed_ops < burst_size) {
 				burst_size = 0;
 				break;
@@ -514,134 +419,43 @@ snow3g_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	if (burst_size != 0) {
 		/* Process the crypto ops of the last session. */
 		processed_ops = process_ops(c_ops, prev_sess,
-				qp, burst_size, &enqueued_ops);
+				qp, burst_size);
 	}
 
-	qp->qp_stats.enqueue_err_count += nb_ops - enqueued_ops;
-	return enqueued_ops;
+	qp->stats.dequeued_count += i;
+	return i;
 }
 
-static uint16_t
-snow3g_pmd_dequeue_burst(void *queue_pair,
-		struct rte_crypto_op **c_ops, uint16_t nb_ops)
-{
-	struct snow3g_qp *qp = queue_pair;
+struct rte_cryptodev_ops snow3g_pmd_ops = {
+	.dev_configure = ipsec_mb_config,
+	.dev_start = ipsec_mb_start,
+	.dev_stop = ipsec_mb_stop,
+	.dev_close = ipsec_mb_close,
 
-	unsigned nb_dequeued;
+	.stats_get = ipsec_mb_stats_get,
+	.stats_reset = ipsec_mb_stats_reset,
 
-	nb_dequeued = rte_ring_dequeue_burst(qp->processed_ops,
-			(void **)c_ops, nb_ops, NULL);
-	qp->qp_stats.dequeued_count += nb_dequeued;
+	.dev_infos_get = ipsec_mb_info_get,
 
-	return nb_dequeued;
-}
+	.queue_pair_setup = ipsec_mb_qp_setup,
+	.queue_pair_release = ipsec_mb_qp_release,
 
-static int cryptodev_snow3g_remove(struct rte_vdev_device *vdev);
+	.sym_session_get_size = ipsec_mb_sym_session_get_size,
+	.sym_session_configure = ipsec_mb_sym_session_configure,
+	.sym_session_clear = ipsec_mb_sym_session_clear
+};
+
+struct rte_cryptodev_ops *rte_snow3g_pmd_ops = &snow3g_pmd_ops;
 
 static int
-cryptodev_snow3g_create(const char *name,
-			struct rte_vdev_device *vdev,
-			struct rte_cryptodev_pmd_init_params *init_params)
+snow3g_probe(struct rte_vdev_device *vdev)
 {
-	struct rte_cryptodev *dev;
-	struct snow3g_private *internals;
-	MB_MGR *mgr;
-
-	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
-	if (dev == NULL) {
-		SNOW3G_LOG(ERR, "failed to create cryptodev vdev");
-		goto init_error;
-	}
-
-	dev->driver_id = cryptodev_driver_id;
-	dev->dev_ops = rte_snow3g_pmd_ops;
-
-	/* Register RX/TX burst functions for data path. */
-	dev->dequeue_burst = snow3g_pmd_dequeue_burst;
-	dev->enqueue_burst = snow3g_pmd_enqueue_burst;
-
-	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
-			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
-			RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA |
-			RTE_CRYPTODEV_FF_SYM_SESSIONLESS |
-			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT;
-
-	mgr = alloc_mb_mgr(0);
-	if (mgr == NULL)
-		return -ENOMEM;
-
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2)) {
-		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX2;
-		init_mb_mgr_avx2(mgr);
-	} else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX)) {
-		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX;
-		init_mb_mgr_avx(mgr);
-	} else {
-		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_SSE;
-		init_mb_mgr_sse(mgr);
-	}
-
-	internals = dev->data->dev_private;
-	internals->mgr = mgr;
-
-	internals->max_nb_queue_pairs = init_params->max_nb_queue_pairs;
-
-	return 0;
-init_error:
-	SNOW3G_LOG(ERR, "driver %s: cryptodev_snow3g_create failed",
-			init_params->name);
-
-	cryptodev_snow3g_remove(vdev);
-	return -EFAULT;
-}
-
-static int
-cryptodev_snow3g_probe(struct rte_vdev_device *vdev)
-{
-	struct rte_cryptodev_pmd_init_params init_params = {
-		"",
-		sizeof(struct snow3g_private),
-		rte_socket_id(),
-		RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS
-	};
-	const char *name;
-	const char *input_args;
-
-	name = rte_vdev_device_name(vdev);
-	if (name == NULL)
-		return -EINVAL;
-	input_args = rte_vdev_device_args(vdev);
-
-	rte_cryptodev_pmd_parse_input_args(&init_params, input_args);
-
-	return cryptodev_snow3g_create(name, vdev, &init_params);
-}
-
-static int
-cryptodev_snow3g_remove(struct rte_vdev_device *vdev)
-{
-	struct rte_cryptodev *cryptodev;
-	const char *name;
-	struct snow3g_private *internals;
-
-	name = rte_vdev_device_name(vdev);
-	if (name == NULL)
-		return -EINVAL;
-
-	cryptodev = rte_cryptodev_pmd_get_named_dev(name);
-	if (cryptodev == NULL)
-		return -ENODEV;
-
-	internals = cryptodev->data->dev_private;
-
-	free_mb_mgr(internals->mgr);
-
-	return rte_cryptodev_pmd_destroy(cryptodev);
+	return ipsec_mb_create(vdev, IPSEC_MB_PMD_TYPE_SNOW3G);
 }
 
 static struct rte_vdev_driver cryptodev_snow3g_pmd_drv = {
-	.probe = cryptodev_snow3g_probe,
-	.remove = cryptodev_snow3g_remove
+	.probe = snow3g_probe,
+	.remove = ipsec_mb_remove
 };
 
 static struct cryptodev_driver snow3g_crypto_drv;
@@ -649,8 +463,27 @@ static struct cryptodev_driver snow3g_crypto_drv;
 RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_SNOW3G_PMD, cryptodev_snow3g_pmd_drv);
 RTE_PMD_REGISTER_ALIAS(CRYPTODEV_NAME_SNOW3G_PMD, cryptodev_snow3g_pmd);
 RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SNOW3G_PMD,
-	"max_nb_queue_pairs=<int> "
-	"socket_id=<int>");
+			       "max_nb_queue_pairs=<int> socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(snow3g_crypto_drv,
-		cryptodev_snow3g_pmd_drv.driver, cryptodev_driver_id);
-RTE_LOG_REGISTER_DEFAULT(snow3g_logtype_driver, INFO);
+				cryptodev_snow3g_pmd_drv.driver,
+				pmd_driver_id_snow3g);
+
+/* Constructor function to register snow3g PMD */
+RTE_INIT(ipsec_mb_register_snow3g)
+{
+	struct ipsec_mb_internals *snow3g_data
+		= &ipsec_mb_pmds[IPSEC_MB_PMD_TYPE_SNOW3G];
+
+	snow3g_data->caps = snow3g_capabilities;
+	snow3g_data->dequeue_burst = snow3g_pmd_dequeue_burst;
+	snow3g_data->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+			RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA |
+			RTE_CRYPTODEV_FF_SYM_SESSIONLESS |
+			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT;
+	snow3g_data->internals_priv_size = 0;
+	snow3g_data->ops = &snow3g_pmd_ops;
+	snow3g_data->qp_priv_size = sizeof(struct snow3g_qp_data);
+	snow3g_data->session_configure = snow3g_session_configure;
+	snow3g_data->session_priv_size = sizeof(struct snow3g_session);
+}

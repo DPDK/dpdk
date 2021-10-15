@@ -233,6 +233,7 @@ New Features
     * AESNI_MB PMD.
     * AESNI_GCM PMD.
     * KASUMI PMD.
+    * SNOW3G PMD.
 
 * **Updated the aesni_mb crypto PMD.**
 
