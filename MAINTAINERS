@@ -1069,10 +1069,12 @@ F: doc/guides/cryptodevs/aesni_gcm.rst
 F: doc/guides/cryptodevs/aesni_mb.rst
 F: doc/guides/cryptodevs/kasumi.rst
 F: doc/guides/cryptodevs/snow3g.rst
+F: doc/guides/cryptodevs/zuc.rst
 F: doc/guides/cryptodevs/features/aesni_gcm.ini
 F: doc/guides/cryptodevs/features/aesni_mb.ini
 F: doc/guides/cryptodevs/features/kasumi.ini
 F: doc/guides/cryptodevs/features/snow3g.ini
+F: doc/guides/cryptodevs/features/zuc.ini
 
 Marvell cnxk crypto
 M: Ankur Dwivedi <adwivedi@marvell.com>
@@ -1148,12 +1150,6 @@ M: Jay Zhou <jianjay.zhou@huawei.com>
 F: drivers/crypto/virtio/
 F: doc/guides/cryptodevs/virtio.rst
 F: doc/guides/cryptodevs/features/virtio.ini
-
-ZUC
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
-F: drivers/crypto/zuc/
-F: doc/guides/cryptodevs/zuc.rst
-F: doc/guides/cryptodevs/features/zuc.ini
 
 
 Compression Drivers

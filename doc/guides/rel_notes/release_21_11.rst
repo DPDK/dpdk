@@ -234,6 +234,7 @@ New Features
     * AESNI_GCM PMD.
     * KASUMI PMD.
     * SNOW3G PMD.
+    * ZUC PMD.
 
 * **Updated the aesni_mb crypto PMD.**
 

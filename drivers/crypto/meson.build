@@ -23,7 +23,6 @@ drivers = [
         'openssl',
         'scheduler',
         'virtio',
-        'zuc',
 ]
 
 std_deps = ['cryptodev'] # cryptodev pulls in all other needed deps
