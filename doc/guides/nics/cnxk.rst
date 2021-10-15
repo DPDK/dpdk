@@ -231,7 +231,7 @@ Runtime Config Options
 
       -a 0002:02:00.0,outb_nb_crypto_qs=2
 
-   With the above confiuration, two CPT LF's are setup and distributed among
+   With the above configuration, two CPT LF's are setup and distributed among
    all the Tx queues for outbound processing.
 
 - ``Force using inline ipsec device for inbound`` (default ``0``)
