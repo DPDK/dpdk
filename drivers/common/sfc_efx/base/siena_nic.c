@@ -197,6 +197,7 @@ siena_board_cfg(
 	encp->enc_filter_action_mark_max = 0;
 
 	encp->enc_mae_supported = B_FALSE;
+	encp->enc_mae_admin = B_FALSE;
 
 	return (0);
 

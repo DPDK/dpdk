@@ -1442,13 +1442,19 @@ ef10_get_datapath_caps(
 	 * MAE support requires the privilege is granted initially,
 	 * and ignore later dynamic changes.
 	 */
-	if (CAP_FLAGS3(req, MAE_SUPPORTED) &&
-	    EFX_MCDI_HAVE_PRIVILEGE(encp->enc_privilege_mask, MAE))
+	if (CAP_FLAGS3(req, MAE_SUPPORTED)) {
 		encp->enc_mae_supported = B_TRUE;
-	else
+		if (EFX_MCDI_HAVE_PRIVILEGE(encp->enc_privilege_mask, MAE))
+			encp->enc_mae_admin = B_TRUE;
+		else
+			encp->enc_mae_admin = B_FALSE;
+	} else {
 		encp->enc_mae_supported = B_FALSE;
+		encp->enc_mae_admin = B_FALSE;
+	}
 #else
 	encp->enc_mae_supported = B_FALSE;
+	encp->enc_mae_admin = B_FALSE;
 #endif /* EFSYS_OPT_MAE */
 
 #undef CAP_FLAGS1

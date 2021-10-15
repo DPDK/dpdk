@@ -1618,6 +1618,13 @@ typedef struct efx_nic_cfg_s {
 	boolean_t		enc_hlb_counters;
 	/* NIC support for Match-Action Engine (MAE). */
 	boolean_t		enc_mae_supported;
+	/*
+	 * NIC is privileged, i.e. it is the MAE admin.
+	 * Only privileged MAE clients can manage MAE flow rules,
+	 * for example, modify, count and route traffic to selected
+	 * destination (a MAE client or network port).
+	 */
+	boolean_t		enc_mae_admin;
 	/* Firmware support for "FLAG" and "MARK" filter actions */
 	boolean_t		enc_filter_action_flag_supported;
 	boolean_t		enc_filter_action_mark_supported;
