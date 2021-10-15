@@ -197,23 +197,25 @@ sfc_mae_attach(struct sfc_adapter *sa)
 		return 0;
 	}
 
-	sfc_log_init(sa, "init MAE");
-	rc = efx_mae_init(sa->nic);
-	if (rc != 0)
-		goto fail_mae_init;
+	if (encp->enc_mae_admin) {
+		sfc_log_init(sa, "init MAE");
+		rc = efx_mae_init(sa->nic);
+		if (rc != 0)
+			goto fail_mae_init;
 
-	sfc_log_init(sa, "get MAE limits");
-	rc = efx_mae_get_limits(sa->nic, &limits);
-	if (rc != 0)
-		goto fail_mae_get_limits;
+		sfc_log_init(sa, "get MAE limits");
+		rc = efx_mae_get_limits(sa->nic, &limits);
+		if (rc != 0)
+			goto fail_mae_get_limits;
 
-	sfc_log_init(sa, "init MAE counter registry");
-	rc = sfc_mae_counter_registry_init(&mae->counter_registry,
-					   limits.eml_max_n_counters);
-	if (rc != 0) {
-		sfc_err(sa, "failed to init MAE counters registry for %u entries: %s",
-			limits.eml_max_n_counters, rte_strerror(rc));
-		goto fail_counter_registry_init;
+		sfc_log_init(sa, "init MAE counter registry");
+		rc = sfc_mae_counter_registry_init(&mae->counter_registry,
+						   limits.eml_max_n_counters);
+		if (rc != 0) {
+			sfc_err(sa, "failed to init MAE counters registry for %u entries: %s",
+				limits.eml_max_n_counters, rte_strerror(rc));
+			goto fail_counter_registry_init;
+		}
 	}
 
 	sfc_log_init(sa, "assign entity MPORT");
@@ -238,20 +240,27 @@ sfc_mae_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mae_assign_switch_port;
 
-	sfc_log_init(sa, "allocate encap. header bounce buffer");
-	bounce_eh->buf_size = limits.eml_encap_header_size_limit;
-	bounce_eh->buf = rte_malloc("sfc_mae_bounce_eh",
-				    bounce_eh->buf_size, 0);
-	if (bounce_eh->buf == NULL)
-		goto fail_mae_alloc_bounce_eh;
+	if (encp->enc_mae_admin) {
+		sfc_log_init(sa, "allocate encap. header bounce buffer");
+		bounce_eh->buf_size = limits.eml_encap_header_size_limit;
+		bounce_eh->buf = rte_malloc("sfc_mae_bounce_eh",
+					    bounce_eh->buf_size, 0);
+		if (bounce_eh->buf == NULL)
+			goto fail_mae_alloc_bounce_eh;
 
-	mae->status = SFC_MAE_STATUS_SUPPORTED;
-	mae->nb_outer_rule_prios_max = limits.eml_max_n_outer_prios;
-	mae->nb_action_rule_prios_max = limits.eml_max_n_action_prios;
-	mae->encap_types_supported = limits.eml_encap_types_supported;
+		mae->nb_outer_rule_prios_max = limits.eml_max_n_outer_prios;
+		mae->nb_action_rule_prios_max = limits.eml_max_n_action_prios;
+		mae->encap_types_supported = limits.eml_encap_types_supported;
+	}
+
 	TAILQ_INIT(&mae->outer_rules);
 	TAILQ_INIT(&mae->encap_headers);
 	TAILQ_INIT(&mae->action_sets);
+
+	if (encp->enc_mae_admin)
+		mae->status = SFC_MAE_STATUS_ADMIN;
+	else
+		mae->status = SFC_MAE_STATUS_SUPPORTED;
 
 	sfc_log_init(sa, "done");
 
@@ -261,11 +270,13 @@ fail_mae_alloc_bounce_eh:
 fail_mae_assign_switch_port:
 fail_mae_assign_switch_domain:
 fail_mae_assign_entity_mport:
-	sfc_mae_counter_registry_fini(&mae->counter_registry);
+	if (encp->enc_mae_admin)
+		sfc_mae_counter_registry_fini(&mae->counter_registry);
 
 fail_counter_registry_init:
 fail_mae_get_limits:
-	efx_mae_fini(sa->nic);
+	if (encp->enc_mae_admin)
+		efx_mae_fini(sa->nic);
 
 fail_mae_init:
 	sfc_log_init(sa, "failed %d", rc);
@@ -284,7 +295,7 @@ sfc_mae_detach(struct sfc_adapter *sa)
 	mae->nb_action_rule_prios_max = 0;
 	mae->status = SFC_MAE_STATUS_UNKNOWN;
 
-	if (status_prev != SFC_MAE_STATUS_SUPPORTED)
+	if (status_prev != SFC_MAE_STATUS_ADMIN)
 		return;
 
 	rte_free(mae->bounce_eh.buf);
@@ -4036,9 +4047,9 @@ sfc_mae_switchdev_init(struct sfc_adapter *sa)
 		return 0;
 	}
 
-	if (mae->status != SFC_MAE_STATUS_SUPPORTED) {
+	if (mae->status != SFC_MAE_STATUS_ADMIN) {
 		rc = ENOTSUP;
-		sfc_err(sa, "failed to init switchdev - no MAE support");
+		sfc_err(sa, "failed to init switchdev - no admin MAE privilege");
 		goto fail_no_mae;
 	}
 

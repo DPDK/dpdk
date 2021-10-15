@@ -187,7 +187,8 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
 			     RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
 
-	if (mae->status == SFC_MAE_STATUS_SUPPORTED) {
+	if (mae->status == SFC_MAE_STATUS_SUPPORTED ||
+	    mae->status == SFC_MAE_STATUS_ADMIN) {
 		dev_info->switch_info.name = dev->device->driver->name;
 		dev_info->switch_info.domain_id = mae->switch_domain_id;
 		dev_info->switch_info.port_id = mae->switch_port_id;
@@ -2241,7 +2242,7 @@ sfc_representor_info_get(struct rte_eth_dev *dev,
 
 	sfc_adapter_lock(sa);
 
-	if (sa->mae.status != SFC_MAE_STATUS_SUPPORTED) {
+	if (sa->mae.status != SFC_MAE_STATUS_ADMIN) {
 		sfc_adapter_unlock(sa);
 		return -ENOTSUP;
 	}
@@ -2687,7 +2688,7 @@ sfc_parse_switch_mode(struct sfc_adapter *sa, bool has_representors)
 		goto fail_kvargs;
 
 	if (switch_mode == NULL) {
-		sa->switchdev = encp->enc_mae_supported &&
+		sa->switchdev = encp->enc_mae_admin &&
 				(!encp->enc_datapath_cap_evb ||
 				 has_representors);
 	} else if (strcasecmp(switch_mode, SFC_KVARG_SWITCH_MODE_LEGACY) == 0) {
@@ -2822,9 +2823,9 @@ sfc_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 	if (rc != 0)
 		goto fail_attach;
 
-	if (sa->switchdev && sa->mae.status != SFC_MAE_STATUS_SUPPORTED) {
+	if (sa->switchdev && sa->mae.status != SFC_MAE_STATUS_ADMIN) {
 		sfc_err(sa,
-			"failed to enable switchdev mode without MAE support");
+			"failed to enable switchdev mode without admin MAE privilege");
 		rc = ENOTSUP;
 		goto fail_switchdev_no_mae;
 	}

@@ -1275,7 +1275,7 @@ sfc_flow_parse_attr(struct sfc_adapter *sa,
 		spec_filter->template.efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
 		spec_filter->template.efs_priority = EFX_FILTER_PRI_MANUAL;
 	} else {
-		if (mae->status != SFC_MAE_STATUS_SUPPORTED) {
+		if (mae->status != SFC_MAE_STATUS_ADMIN) {
 			rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
 					   attr, "Transfer is not supported");

@@ -88,7 +88,8 @@ TAILQ_HEAD(sfc_mae_action_sets, sfc_mae_action_set);
 enum sfc_mae_status {
 	SFC_MAE_STATUS_UNKNOWN = 0,
 	SFC_MAE_STATUS_UNSUPPORTED,
-	SFC_MAE_STATUS_SUPPORTED
+	SFC_MAE_STATUS_SUPPORTED,
+	SFC_MAE_STATUS_ADMIN,
 };
 
 /*
