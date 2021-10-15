@@ -1,19 +1,28 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2017 Intel Corporation
+ * Copyright(c) 2015-2021 Intel Corporation
  */
 
-#include <string.h>
+#ifndef _PMD_AESNI_MB_PRIV_H_
+#define _PMD_AESNI_MB_PRIV_H_
 
-#include <rte_string_fns.h>
-#include <rte_common.h>
-#include <rte_malloc.h>
+#include <intel-ipsec-mb.h>
+
+#if defined(RTE_LIB_SECURITY)
+#define AESNI_MB_DOCSIS_SEC_ENABLED 1
+#include <rte_security.h>
+#include <rte_security_driver.h>
 #include <rte_ether.h>
-#include <cryptodev_pmd.h>
+#endif
 
-#include "aesni_mb_pmd_private.h"
+#include "ipsec_mb_private.h"
 
+#define AES_CCM_DIGEST_MIN_LEN 4
+#define AES_CCM_DIGEST_MAX_LEN 16
+#define HMAC_MAX_BLOCK_SIZE 128
+#define HMAC_IPAD_VALUE			(0x36)
+#define HMAC_OPAD_VALUE			(0x5C)
 
-static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
+static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 	{	/* MD5 HMAC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -315,13 +324,8 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 				.block_size = 16,
 				.key_size = {
 					.min = 16,
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 53, 3)
 					.max = 32,
 					.increment = 16
-#else
-					.max = 16,
-					.increment = 0
-#endif
 				},
 				.iv_size = {
 					.min = 16,
@@ -400,13 +404,8 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 				.block_size = 16,
 				.key_size = {
 					.min = 16,
-#if IMB_VERSION(0, 54, 2) <= IMB_VERSION_NUM
 					.max = 32,
 					.increment = 16
-#else
-					.max = 16,
-					.increment = 0
-#endif
 				},
 				.digest_size = {
 					.min = 4,
@@ -502,7 +501,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
-#if IMB_VERSION(0, 53, 0) <= IMB_VERSION_NUM
 	{	/* AES ECB */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -519,8 +517,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
-#endif
-#if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
 	{	/* ZUC (EIA3) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -652,8 +648,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
-#endif
-#if IMB_VERSION(0, 54, 3) <= IMB_VERSION_NUM
 	{	/* CHACHA20-POLY1305 */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -673,7 +667,7 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 				},
 				.aad_size = {
 					.min = 0,
-					.max = 240,
+					.max = 1024,
 					.increment = 1
 				},
 				.iv_size = {
@@ -684,9 +678,243 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
-#endif
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
+
+uint8_t pmd_driver_id_aesni_mb;
+
+struct aesni_mb_qp_data {
+	uint8_t temp_digests[IMB_MAX_JOBS][DIGEST_LENGTH_MAX];
+	/* *< Buffers used to store the digest generated
+	 * by the driver when verifying a digest provided
+	 * by the user (using authentication verify operation)
+	 */
+};
+
+/* Maximum length for digest */
+#define DIGEST_LENGTH_MAX 64
+static const unsigned int auth_blocksize[] = {
+		[IMB_AUTH_NULL]			= 0,
+		[IMB_AUTH_MD5]			= 64,
+		[IMB_AUTH_HMAC_SHA_1]		= 64,
+		[IMB_AUTH_HMAC_SHA_224]		= 64,
+		[IMB_AUTH_HMAC_SHA_256]		= 64,
+		[IMB_AUTH_HMAC_SHA_384]		= 128,
+		[IMB_AUTH_HMAC_SHA_512]		= 128,
+		[IMB_AUTH_AES_XCBC]		= 16,
+		[IMB_AUTH_AES_CCM]		= 16,
+		[IMB_AUTH_AES_CMAC]		= 16,
+		[IMB_AUTH_AES_GMAC]		= 16,
+		[IMB_AUTH_SHA_1]		= 64,
+		[IMB_AUTH_SHA_224]		= 64,
+		[IMB_AUTH_SHA_256]		= 64,
+		[IMB_AUTH_SHA_384]		= 128,
+		[IMB_AUTH_SHA_512]		= 128,
+		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 16,
+		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 16,
+		[IMB_AUTH_KASUMI_UIA1]		= 16
+};
+
+/**
+ * Get the blocksize in bytes for a specified authentication algorithm
+ *
+ * @Note: this function will not return a valid value for a non-valid
+ * authentication algorithm
+ */
+static inline unsigned int
+get_auth_algo_blocksize(IMB_HASH_ALG algo)
+{
+	return auth_blocksize[algo];
+}
+
+static const unsigned int auth_truncated_digest_byte_lengths[] = {
+		[IMB_AUTH_MD5]			= 12,
+		[IMB_AUTH_HMAC_SHA_1]		= 12,
+		[IMB_AUTH_HMAC_SHA_224]		= 14,
+		[IMB_AUTH_HMAC_SHA_256]		= 16,
+		[IMB_AUTH_HMAC_SHA_384]		= 24,
+		[IMB_AUTH_HMAC_SHA_512]		= 32,
+		[IMB_AUTH_AES_XCBC]		= 12,
+		[IMB_AUTH_AES_CMAC]		= 12,
+		[IMB_AUTH_AES_CCM]		= 8,
+		[IMB_AUTH_NULL]			= 0,
+		[IMB_AUTH_AES_GMAC]		= 12,
+		[IMB_AUTH_SHA_1]		= 20,
+		[IMB_AUTH_SHA_224]		= 28,
+		[IMB_AUTH_SHA_256]		= 32,
+		[IMB_AUTH_SHA_384]		= 48,
+		[IMB_AUTH_SHA_512]		= 64,
+		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 4,
+		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 4,
+		[IMB_AUTH_KASUMI_UIA1]		= 4
+};
+
+/**
+ * Get the IPsec specified truncated length in bytes of the HMAC digest for a
+ * specified authentication algorithm
+ *
+ * @Note: this function will not return a valid value for a non-valid
+ * authentication algorithm
+ */
+static inline unsigned int
+get_truncated_digest_byte_length(IMB_HASH_ALG algo)
+{
+	return auth_truncated_digest_byte_lengths[algo];
+}
+
+static const unsigned int auth_digest_byte_lengths[] = {
+		[IMB_AUTH_MD5]			= 16,
+		[IMB_AUTH_HMAC_SHA_1]		= 20,
+		[IMB_AUTH_HMAC_SHA_224]		= 28,
+		[IMB_AUTH_HMAC_SHA_256]		= 32,
+		[IMB_AUTH_HMAC_SHA_384]		= 48,
+		[IMB_AUTH_HMAC_SHA_512]		= 64,
+		[IMB_AUTH_AES_XCBC]		= 16,
+		[IMB_AUTH_AES_CMAC]		= 16,
+		[IMB_AUTH_AES_CCM]		= 16,
+		[IMB_AUTH_AES_GMAC]		= 16,
+		[IMB_AUTH_NULL]			= 0,
+		[IMB_AUTH_SHA_1]		= 20,
+		[IMB_AUTH_SHA_224]		= 28,
+		[IMB_AUTH_SHA_256]		= 32,
+		[IMB_AUTH_SHA_384]		= 48,
+		[IMB_AUTH_SHA_512]		= 64,
+		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 4,
+		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 4,
+		[IMB_AUTH_KASUMI_UIA1]		= 4
+	/**< Vector mode dependent pointer table of the multi-buffer APIs */
+
+};
+
+/**
+ * Get the full digest size in bytes for a specified authentication algorithm
+ * (if available in the Multi-buffer library)
+ *
+ * @Note: this function will not return a valid value for a non-valid
+ * authentication algorithm
+ */
+static inline unsigned int
+get_digest_byte_length(IMB_HASH_ALG algo)
+{
+	return auth_digest_byte_lengths[algo];
+}
+
+/** AES-NI multi-buffer private session structure */
+struct aesni_mb_session {
+	IMB_CIPHER_MODE cipher_mode;
+	IMB_CIPHER_DIRECTION cipher_direction;
+	IMB_HASH_ALG hash_alg;
+	IMB_CHAIN_ORDER chain_order;
+	/*  common job fields */
+	struct {
+		uint16_t length;
+		uint16_t offset;
+	} iv;
+	struct {
+		uint16_t length;
+		uint16_t offset;
+	} auth_iv;
+	/* *< IV parameters
+	 */
+
+	/* * Cipher Parameters
+	 */
+	struct {
+		/* * Cipher direction - encrypt / decrypt */
+		IMB_CIPHER_DIRECTION direction;
+		/* * Cipher mode - CBC / Counter */
+		IMB_CIPHER_MODE mode;
+
+		uint64_t key_length_in_bytes;
+
+		union {
+			struct {
+				uint32_t encode[60] __rte_aligned(16);
+				/* *< encode key */
+				uint32_t decode[60] __rte_aligned(16);
+				/* *< decode key */
+			} expanded_aes_keys;
+			/* *< Expanded AES keys - Allocating space to
+			 * contain the maximum expanded key size which
+			 * is 240 bytes for 256 bit AES, calculate by:
+			 * ((key size (bytes)) *
+			 * ((number of rounds) + 1))
+			 */
+			struct {
+				const void *ks_ptr[3];
+				uint64_t key[3][16];
+			} exp_3des_keys;
+			/* *< Expanded 3DES keys */
+
+			struct gcm_key_data gcm_key;
+			/* *< Expanded GCM key */
+			uint8_t zuc_cipher_key[16];
+			/* *< ZUC cipher key */
+			snow3g_key_schedule_t pKeySched_snow3g_cipher;
+			/* *< SNOW3G scheduled cipher key */
+			kasumi_key_sched_t pKeySched_kasumi_cipher;
+			/* *< KASUMI scheduled cipher key */
+		};
+	} cipher;
+
+	/* *< Authentication Parameters */
+	struct {
+		IMB_HASH_ALG algo; /* *< Authentication Algorithm */
+		enum rte_crypto_auth_operation operation;
+		/* *< auth operation generate or verify */
+		union {
+			struct {
+				uint8_t inner[128] __rte_aligned(16);
+				/* *< inner pad */
+				uint8_t outer[128] __rte_aligned(16);
+				/* *< outer pad */
+			} pads;
+			/* *< HMAC Authentication pads -
+			 * allocating space for the maximum pad
+			 * size supported which is 128 bytes for
+			 * SHA512
+			 */
+
+			struct {
+				uint32_t k1_expanded[44] __rte_aligned(16);
+				/* *< k1 (expanded key). */
+				uint8_t k2[16] __rte_aligned(16);
+				/* *< k2. */
+				uint8_t k3[16] __rte_aligned(16);
+				/* *< k3. */
+			} xcbc;
+
+			struct {
+				uint32_t expkey[60] __rte_aligned(16);
+				/* *< k1 (expanded key). */
+				uint32_t skey1[4] __rte_aligned(16);
+				/* *< k2. */
+				uint32_t skey2[4] __rte_aligned(16);
+				/* *< k3. */
+			} cmac;
+			/* *< Expanded XCBC authentication keys */
+			uint8_t zuc_auth_key[16];
+			/* *< ZUC authentication key */
+			snow3g_key_schedule_t pKeySched_snow3g_auth;
+			/* *< SNOW3G scheduled authentication key */
+			kasumi_key_sched_t pKeySched_kasumi_auth;
+			/* *< KASUMI scheduled authentication key */
+		};
+		/* * Generated digest size by the Multi-buffer library */
+		uint16_t gen_digest_len;
+		/* * Requested digest size from Cryptodev */
+		uint16_t req_digest_len;
+
+	} auth;
+	struct {
+		/* * AAD data length */
+		uint16_t aad_len;
+	} aead;
+} __rte_cache_aligned;
+
+typedef void (*hash_one_block_t)(const void *data, void *digest);
+typedef void (*aes_keyexp_t)(const void *key, void *enc_exp_keys,
+			void *dec_exp_keys);
 
 #ifdef AESNI_MB_DOCSIS_SEC_ENABLED
 static const struct rte_cryptodev_capabilities
@@ -738,389 +966,4 @@ static const struct rte_security_capability aesni_mb_pmd_security_cap[] = {
 };
 #endif
 
-/** Configure device */
-static int
-aesni_mb_pmd_config(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused struct rte_cryptodev_config *config)
-{
-	return 0;
-}
-
-/** Start device */
-static int
-aesni_mb_pmd_start(__rte_unused struct rte_cryptodev *dev)
-{
-	return 0;
-}
-
-/** Stop device */
-static void
-aesni_mb_pmd_stop(__rte_unused struct rte_cryptodev *dev)
-{
-}
-
-/** Close device */
-static int
-aesni_mb_pmd_close(__rte_unused struct rte_cryptodev *dev)
-{
-	return 0;
-}
-
-
-/** Get device statistics */
-static void
-aesni_mb_pmd_stats_get(struct rte_cryptodev *dev,
-		struct rte_cryptodev_stats *stats)
-{
-	int qp_id;
-
-	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
-		struct aesni_mb_qp *qp = dev->data->queue_pairs[qp_id];
-
-		stats->enqueued_count += qp->stats.enqueued_count;
-		stats->dequeued_count += qp->stats.dequeued_count;
-
-		stats->enqueue_err_count += qp->stats.enqueue_err_count;
-		stats->dequeue_err_count += qp->stats.dequeue_err_count;
-	}
-}
-
-/** Reset device statistics */
-static void
-aesni_mb_pmd_stats_reset(struct rte_cryptodev *dev)
-{
-	int qp_id;
-
-	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
-		struct aesni_mb_qp *qp = dev->data->queue_pairs[qp_id];
-
-		memset(&qp->stats, 0, sizeof(qp->stats));
-	}
-}
-
-
-/** Get device info */
-static void
-aesni_mb_pmd_info_get(struct rte_cryptodev *dev,
-		struct rte_cryptodev_info *dev_info)
-{
-	struct aesni_mb_private *internals = dev->data->dev_private;
-
-	if (dev_info != NULL) {
-		dev_info->driver_id = dev->driver_id;
-		dev_info->feature_flags = dev->feature_flags;
-		dev_info->capabilities = aesni_mb_pmd_capabilities;
-		dev_info->max_nb_queue_pairs = internals->max_nb_queue_pairs;
-		/* No limit of number of sessions */
-		dev_info->sym.max_nb_sessions = 0;
-	}
-}
-
-/** Release queue pair */
-static int
-aesni_mb_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
-{
-	struct aesni_mb_qp *qp = dev->data->queue_pairs[qp_id];
-	struct rte_ring *r = NULL;
-
-	if (qp != NULL) {
-		r = rte_ring_lookup(qp->name);
-		if (r)
-			rte_ring_free(r);
-		if (qp->mb_mgr)
-			free_mb_mgr(qp->mb_mgr);
-		rte_free(qp);
-		dev->data->queue_pairs[qp_id] = NULL;
-	}
-	return 0;
-}
-
-/** set a unique name for the queue pair based on it's name, dev_id and qp_id */
-static int
-aesni_mb_pmd_qp_set_unique_name(struct rte_cryptodev *dev,
-		struct aesni_mb_qp *qp)
-{
-	unsigned n = snprintf(qp->name, sizeof(qp->name),
-			"aesni_mb_pmd_%u_qp_%u",
-			dev->data->dev_id, qp->id);
-
-	if (n >= sizeof(qp->name))
-		return -1;
-
-	return 0;
-}
-
-/** Create a ring to place processed operations on */
-static struct rte_ring *
-aesni_mb_pmd_qp_create_processed_ops_ring(struct aesni_mb_qp *qp,
-		unsigned int ring_size, int socket_id)
-{
-	struct rte_ring *r;
-	char ring_name[RTE_CRYPTODEV_NAME_MAX_LEN];
-
-	unsigned int n = strlcpy(ring_name, qp->name, sizeof(ring_name));
-
-	if (n >= sizeof(ring_name))
-		return NULL;
-
-	r = rte_ring_lookup(ring_name);
-	if (r) {
-		if (rte_ring_get_size(r) >= ring_size) {
-			AESNI_MB_LOG(INFO, "Reusing existing ring %s for processed ops",
-			ring_name);
-			return r;
-		}
-
-		AESNI_MB_LOG(ERR, "Unable to reuse existing ring %s for processed ops",
-			ring_name);
-		return NULL;
-	}
-
-	return rte_ring_create(ring_name, ring_size, socket_id,
-			RING_F_SP_ENQ | RING_F_SC_DEQ);
-}
-
-/** Setup a queue pair */
-static int
-aesni_mb_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
-		const struct rte_cryptodev_qp_conf *qp_conf,
-		int socket_id)
-{
-	struct aesni_mb_qp *qp = NULL;
-	struct aesni_mb_private *internals = dev->data->dev_private;
-	int ret = -1;
-
-	/* Free memory prior to re-allocation if needed. */
-	if (dev->data->queue_pairs[qp_id] != NULL)
-		aesni_mb_pmd_qp_release(dev, qp_id);
-
-	/* Allocate the queue pair data structure. */
-	qp = rte_zmalloc_socket("AES-NI PMD Queue Pair", sizeof(*qp),
-					RTE_CACHE_LINE_SIZE, socket_id);
-	if (qp == NULL)
-		return -ENOMEM;
-
-	qp->id = qp_id;
-	dev->data->queue_pairs[qp_id] = qp;
-
-	if (aesni_mb_pmd_qp_set_unique_name(dev, qp))
-		goto qp_setup_cleanup;
-
-
-	qp->mb_mgr = alloc_mb_mgr(0);
-	if (qp->mb_mgr == NULL) {
-		ret = -ENOMEM;
-		goto qp_setup_cleanup;
-	}
-
-	switch (internals->vector_mode) {
-	case RTE_AESNI_MB_SSE:
-		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_SSE;
-		init_mb_mgr_sse(qp->mb_mgr);
-		break;
-	case RTE_AESNI_MB_AVX:
-		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX;
-		init_mb_mgr_avx(qp->mb_mgr);
-		break;
-	case RTE_AESNI_MB_AVX2:
-		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX2;
-		init_mb_mgr_avx2(qp->mb_mgr);
-		break;
-	case RTE_AESNI_MB_AVX512:
-		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX512;
-		init_mb_mgr_avx512(qp->mb_mgr);
-		break;
-	default:
-		AESNI_MB_LOG(ERR, "Unsupported vector mode %u\n",
-				internals->vector_mode);
-		goto qp_setup_cleanup;
-	}
-
-	qp->ingress_queue = aesni_mb_pmd_qp_create_processed_ops_ring(qp,
-			qp_conf->nb_descriptors, socket_id);
-	if (qp->ingress_queue == NULL) {
-		ret = -1;
-		goto qp_setup_cleanup;
-	}
-
-	qp->sess_mp = qp_conf->mp_session;
-	qp->sess_mp_priv = qp_conf->mp_session_private;
-
-	memset(&qp->stats, 0, sizeof(qp->stats));
-
-	char mp_name[RTE_MEMPOOL_NAMESIZE];
-
-	snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
-				"digest_mp_%u_%u", dev->data->dev_id, qp_id);
-	return 0;
-
-qp_setup_cleanup:
-	if (qp) {
-		if (qp->mb_mgr)
-			free_mb_mgr(qp->mb_mgr);
-		rte_free(qp);
-	}
-
-	return ret;
-}
-
-/** Returns the size of the aesni multi-buffer session structure */
-static unsigned
-aesni_mb_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
-{
-	return sizeof(struct aesni_mb_session);
-}
-
-/** Configure a aesni multi-buffer session from a crypto xform chain */
-static int
-aesni_mb_pmd_sym_session_configure(struct rte_cryptodev *dev,
-		struct rte_crypto_sym_xform *xform,
-		struct rte_cryptodev_sym_session *sess,
-		struct rte_mempool *mempool)
-{
-	void *sess_private_data;
-	struct aesni_mb_private *internals = dev->data->dev_private;
-	int ret;
-
-	if (unlikely(sess == NULL)) {
-		AESNI_MB_LOG(ERR, "invalid session struct");
-		return -EINVAL;
-	}
-
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		AESNI_MB_LOG(ERR,
-				"Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
-
-	ret = aesni_mb_set_session_parameters(internals->mb_mgr,
-			sess_private_data, xform);
-	if (ret != 0) {
-		AESNI_MB_LOG(ERR, "failed configure session parameters");
-
-		/* Return session to mempool */
-		rte_mempool_put(mempool, sess_private_data);
-		return ret;
-	}
-
-	set_sym_session_private_data(sess, dev->driver_id,
-			sess_private_data);
-
-	return 0;
-}
-
-/** Clear the memory of session so it doesn't leave key material behind */
-static void
-aesni_mb_pmd_sym_session_clear(struct rte_cryptodev *dev,
-		struct rte_cryptodev_sym_session *sess)
-{
-	uint8_t index = dev->driver_id;
-	void *sess_priv = get_sym_session_private_data(sess, index);
-
-	/* Zero out the whole structure */
-	if (sess_priv) {
-		memset(sess_priv, 0, sizeof(struct aesni_mb_session));
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-		set_sym_session_private_data(sess, index, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
-	}
-}
-
-struct rte_cryptodev_ops aesni_mb_pmd_ops = {
-		.dev_configure		= aesni_mb_pmd_config,
-		.dev_start		= aesni_mb_pmd_start,
-		.dev_stop		= aesni_mb_pmd_stop,
-		.dev_close		= aesni_mb_pmd_close,
-
-		.stats_get		= aesni_mb_pmd_stats_get,
-		.stats_reset		= aesni_mb_pmd_stats_reset,
-
-		.dev_infos_get		= aesni_mb_pmd_info_get,
-
-		.queue_pair_setup	= aesni_mb_pmd_qp_setup,
-		.queue_pair_release	= aesni_mb_pmd_qp_release,
-
-		.sym_cpu_process	= aesni_mb_cpu_crypto_process_bulk,
-
-		.sym_session_get_size	= aesni_mb_pmd_sym_session_get_size,
-		.sym_session_configure	= aesni_mb_pmd_sym_session_configure,
-		.sym_session_clear	= aesni_mb_pmd_sym_session_clear
-};
-
-struct rte_cryptodev_ops *rte_aesni_mb_pmd_ops = &aesni_mb_pmd_ops;
-
-#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
-/**
- * Configure a aesni multi-buffer session from a security session
- * configuration
- */
-static int
-aesni_mb_pmd_sec_sess_create(void *dev, struct rte_security_session_conf *conf,
-		struct rte_security_session *sess,
-		struct rte_mempool *mempool)
-{
-	void *sess_private_data;
-	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
-	int ret;
-
-	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL ||
-			conf->protocol != RTE_SECURITY_PROTOCOL_DOCSIS) {
-		AESNI_MB_LOG(ERR, "Invalid security protocol");
-		return -EINVAL;
-	}
-
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		AESNI_MB_LOG(ERR, "Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
-
-	ret = aesni_mb_set_docsis_sec_session_parameters(cdev, conf,
-			sess_private_data);
-
-	if (ret != 0) {
-		AESNI_MB_LOG(ERR, "Failed to configure session parameters");
-
-		/* Return session to mempool */
-		rte_mempool_put(mempool, sess_private_data);
-		return ret;
-	}
-
-	set_sec_session_private_data(sess, sess_private_data);
-
-	return ret;
-}
-
-/** Clear the memory of session so it doesn't leave key material behind */
-static int
-aesni_mb_pmd_sec_sess_destroy(void *dev __rte_unused,
-		struct rte_security_session *sess)
-{
-	void *sess_priv = get_sec_session_private_data(sess);
-
-	if (sess_priv) {
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-		memset(sess_priv, 0, sizeof(struct aesni_mb_session));
-		set_sec_session_private_data(sess, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
-	}
-	return 0;
-}
-
-/** Get security capabilities for aesni multi-buffer */
-static const struct rte_security_capability *
-aesni_mb_pmd_sec_capa_get(void *device __rte_unused)
-{
-	return aesni_mb_pmd_security_cap;
-}
-
-static struct rte_security_ops aesni_mb_pmd_sec_ops = {
-		.session_create = aesni_mb_pmd_sec_sess_create,
-		.session_update = NULL,
-		.session_stats_get = NULL,
-		.session_destroy = aesni_mb_pmd_sec_sess_destroy,
-		.set_pkt_metadata = NULL,
-		.capabilities_get = aesni_mb_pmd_sec_capa_get
-};
-
-struct rte_security_ops *rte_aesni_mb_pmd_sec_ops = &aesni_mb_pmd_sec_ops;
-#endif
+#endif /* _PMD_AESNI_MB_PRIV_H_ */

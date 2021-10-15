@@ -130,7 +130,9 @@ and the Multi-Buffer library version supported by them:
    18.02           0.48
    18.05 - 19.02   0.49 - 0.52
    19.05 - 19.08   0.52
-   19.11+          0.52 - 1.0*
+   19.11 - 20.08   0.52 - 0.55
+   20.11 - 21.08   0.53 - 1.0*
+   21.11+          1.0*
    ==============  ============================
 
 \* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.

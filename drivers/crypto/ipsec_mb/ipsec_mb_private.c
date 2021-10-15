@@ -105,6 +105,7 @@ ipsec_mb_create(struct rte_vdev_device *vdev,
 	dev->dev_ops = ipsec_mb_pmds[pmd_type].ops;
 	dev->enqueue_burst = ipsec_mb_enqueue_burst;
 	dev->dequeue_burst = ipsec_mb_pmds[pmd_type].dequeue_burst;
+	dev->feature_flags = pmd_data->feature_flags;
 
 	if (pmd_data->dev_config) {
 		retval = (*pmd_data->dev_config)(dev);
@@ -115,8 +116,6 @@ ipsec_mb_create(struct rte_vdev_device *vdev,
 			return retval;
 		}
 	}
-
-	dev->feature_flags = pmd_data->feature_flags;
 
 	switch (vector_mode) {
 	case IPSEC_MB_AVX512:
@@ -165,6 +164,10 @@ ipsec_mb_remove(struct rte_vdev_device *vdev)
 		rte_free(cryptodev->security_ctx);
 		cryptodev->security_ctx = NULL;
 	}
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+	rte_free(cryptodev->security_ctx);
+	cryptodev->security_ctx = NULL;
+#endif
 
 	for (qp_id = 0; qp_id < cryptodev->data->nb_queue_pairs; qp_id++)
 		ipsec_mb_qp_release(cryptodev, qp_id);

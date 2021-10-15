@@ -34,6 +34,9 @@ extern enum ipsec_mb_vector_mode vector_mode;
 /** IMB_MGR instances, one per thread */
 extern RTE_DEFINE_PER_LCORE(IMB_MGR *, mb_mgr);
 
+#define CRYPTODEV_NAME_AESNI_MB_PMD crypto_aesni_mb
+/**< IPSEC Multi buffer aesni_mb PMD device name */
+
 /** PMD LOGTYPE DRIVER, common to all PMDs */
 extern int ipsec_mb_logtype_driver;
 #define IPSEC_MB_LOG(level, fmt, ...)                                         \
@@ -42,6 +45,7 @@ extern int ipsec_mb_logtype_driver;
 
 /** All supported device types */
 enum ipsec_mb_pmd_types {
+	IPSEC_MB_PMD_TYPE_AESNI_MB = 0,
 	IPSEC_MB_N_PMD_TYPES
 };
 
@@ -60,10 +64,18 @@ enum ipsec_mb_operation {
 	IPSEC_MB_OP_NOT_SUPPORTED
 };
 
+extern uint8_t pmd_driver_id_aesni_mb;
+
 /** Helper function. Gets driver ID based on PMD type */
 static __rte_always_inline uint8_t
-ipsec_mb_get_driver_id(__rte_unused enum ipsec_mb_pmd_types pmd_type)
+ipsec_mb_get_driver_id(enum ipsec_mb_pmd_types pmd_type)
 {
+	switch (pmd_type) {
+	case IPSEC_MB_PMD_TYPE_AESNI_MB:
+		return pmd_driver_id_aesni_mb;
+	default:
+		break;
+	}
 	return UINT8_MAX;
 }
 
@@ -134,6 +146,135 @@ get_per_thread_mb_mgr(void)
 		RTE_PER_LCORE(mb_mgr) = alloc_init_mb_mgr();
 
 	return RTE_PER_LCORE(mb_mgr);
+}
+
+/** Helper function. Gets mode and chained xforms from the xform */
+static __rte_always_inline int
+ipsec_mb_parse_xform(const struct rte_crypto_sym_xform *xform,
+			enum ipsec_mb_operation *mode,
+			const struct rte_crypto_sym_xform **auth_xform,
+			const struct rte_crypto_sym_xform **cipher_xform,
+			const struct rte_crypto_sym_xform **aead_xform)
+{
+	const struct rte_crypto_sym_xform *next = xform->next;
+
+	if (xform == NULL) {
+		*mode = IPSEC_MB_OP_NOT_SUPPORTED;
+		return -ENOTSUP;
+	}
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
+		if (next == NULL) {
+			if (xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+				*mode = IPSEC_MB_OP_ENCRYPT_ONLY;
+				*cipher_xform = xform;
+				*auth_xform = NULL;
+				return 0;
+			}
+			*mode = IPSEC_MB_OP_DECRYPT_ONLY;
+			*cipher_xform = xform;
+			*auth_xform = NULL;
+			return 0;
+		}
+
+		if (next->type != RTE_CRYPTO_SYM_XFORM_AUTH) {
+			*mode = IPSEC_MB_OP_NOT_SUPPORTED;
+			return -ENOTSUP;
+		}
+
+		if (xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+			if (next->auth.op != RTE_CRYPTO_AUTH_OP_GENERATE) {
+				*mode = IPSEC_MB_OP_NOT_SUPPORTED;
+				return -ENOTSUP;
+			}
+
+			*mode = IPSEC_MB_OP_ENCRYPT_THEN_HASH_GEN;
+			*cipher_xform = xform;
+			*auth_xform = xform->next;
+			return 0;
+		}
+		if (next->auth.op != RTE_CRYPTO_AUTH_OP_VERIFY) {
+			*mode = IPSEC_MB_OP_NOT_SUPPORTED;
+			return -ENOTSUP;
+		}
+
+		*mode = IPSEC_MB_OP_DECRYPT_THEN_HASH_VERIFY;
+		*cipher_xform = xform;
+		*auth_xform = xform->next;
+		return 0;
+	}
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+		if (next == NULL) {
+			if (xform->auth.op == RTE_CRYPTO_AUTH_OP_GENERATE) {
+				*mode = IPSEC_MB_OP_HASH_GEN_ONLY;
+				*auth_xform = xform;
+				*cipher_xform = NULL;
+				return 0;
+			}
+			*mode = IPSEC_MB_OP_HASH_VERIFY_ONLY;
+			*auth_xform = xform;
+			*cipher_xform = NULL;
+			return 0;
+		}
+
+		if (next->type != RTE_CRYPTO_SYM_XFORM_CIPHER) {
+			*mode = IPSEC_MB_OP_NOT_SUPPORTED;
+			return -ENOTSUP;
+		}
+
+		if (xform->auth.op == RTE_CRYPTO_AUTH_OP_GENERATE) {
+			if (next->cipher.op != RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+				*mode = IPSEC_MB_OP_NOT_SUPPORTED;
+				return -ENOTSUP;
+			}
+
+			*mode = IPSEC_MB_OP_HASH_GEN_THEN_ENCRYPT;
+			*auth_xform = xform;
+			*cipher_xform = xform->next;
+			return 0;
+		}
+		if (next->cipher.op != RTE_CRYPTO_CIPHER_OP_DECRYPT) {
+			*mode = IPSEC_MB_OP_NOT_SUPPORTED;
+			return -ENOTSUP;
+		}
+
+		*mode = IPSEC_MB_OP_HASH_VERIFY_THEN_DECRYPT;
+		*auth_xform = xform;
+		*cipher_xform = xform->next;
+		return 0;
+	}
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+		if (xform->aead.op == RTE_CRYPTO_AEAD_OP_ENCRYPT) {
+			/*
+			 * CCM requires to hash first and cipher later
+			 * when encrypting
+			 */
+			if (xform->aead.algo == RTE_CRYPTO_AEAD_AES_CCM) {
+				*mode = IPSEC_MB_OP_AEAD_AUTHENTICATED_DECRYPT;
+				*aead_xform = xform;
+				return 0;
+				} else {
+					*mode =
+				IPSEC_MB_OP_AEAD_AUTHENTICATED_ENCRYPT;
+					*aead_xform = xform;
+					return 0;
+				}
+		} else {
+			if (xform->aead.algo == RTE_CRYPTO_AEAD_AES_CCM) {
+				*mode = IPSEC_MB_OP_AEAD_AUTHENTICATED_ENCRYPT;
+				*aead_xform = xform;
+				return 0;
+			}
+			*mode = IPSEC_MB_OP_AEAD_AUTHENTICATED_DECRYPT;
+			*aead_xform = xform;
+			return 0;
+		}
+	}
+
+	*mode = IPSEC_MB_OP_NOT_SUPPORTED;
+	return -ENOTSUP;
 }
 
 /** Device creation function */

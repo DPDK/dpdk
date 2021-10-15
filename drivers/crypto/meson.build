@@ -7,7 +7,6 @@ endif
 
 drivers = [
         'aesni_gcm',
-        'aesni_mb',
         'armv8',
         'bcmfs',
         'caam_jr',

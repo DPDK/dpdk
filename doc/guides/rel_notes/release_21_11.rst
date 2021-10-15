@@ -228,6 +228,9 @@ New Features
     SW Crypto PMDs that depend on the intel-ipsec-mb library.
   * Multiprocess support was added for the consolidated PMDs,
     which requires v1.1 of the intel-ipsec-mb library.
+  * The following PMDs were moved into a single source folder,
+    however their usage and EAL options remain unchanged.
+    * AESNI_MB PMD.
 
 * **Updated the ACC100 bbdev PMD.**
 
