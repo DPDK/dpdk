@@ -686,6 +686,7 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct mlx5_vdpa_priv *priv = NULL;
 	struct ibv_context *ctx = NULL;
 	struct mlx5_hca_attr attr;
+	int retry;
 	int ret;
 
 	ibv = mlx5_vdpa_get_ib_device_match(&pci_dev->addr);
@@ -740,7 +741,14 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		priv->num_lag_ports = 1;
 	priv->ctx = ctx;
 	priv->pci_dev = pci_dev;
-	priv->var = mlx5_glue->dv_alloc_var(ctx, 0);
+	for (retry = 0; retry < 7; retry++) {
+		priv->var = mlx5_glue->dv_alloc_var(priv->ctx, 0);
+		if (priv->var != NULL)
+			break;
+		DRV_LOG(WARNING, "Failed to allocate VAR, retry %d.\n", retry);
+		/* Wait Qemu release VAR during vdpa restart, 0.1 sec based. */
+		usleep(100000U << retry);
+	}
 	if (!priv->var) {
 		DRV_LOG(ERR, "Failed to allocate VAR %u.\n", errno);
 		goto error;
