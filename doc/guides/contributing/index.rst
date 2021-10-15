@@ -13,6 +13,7 @@ Contributor's Guidelines
     abi_policy
     abi_versioning
     documentation
+    unit_test
     patches
     vulnerability
     stable
