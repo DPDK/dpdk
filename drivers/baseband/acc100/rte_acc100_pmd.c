@@ -1089,6 +1089,7 @@ acc100_dev_info_get(struct rte_bbdev *dev,
 #else
 	dev_info->harq_buffer_size = 0;
 #endif
+	dev_info->data_endianness = RTE_LITTLE_ENDIAN;
 	acc100_check_ir(d);
 }
 

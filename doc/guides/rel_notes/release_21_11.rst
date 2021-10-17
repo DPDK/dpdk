@@ -277,6 +277,8 @@ API Changes
 * cryptodev: The structure ``rte_crypto_sym_vec`` was updated to add
   ``dest_sgl`` to support out of place processing.
 
+* bbdev: Added device info related to data byte endianness processing.
+
 
 ABI Changes
 -----------

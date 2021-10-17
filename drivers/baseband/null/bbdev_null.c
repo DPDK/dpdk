@@ -77,6 +77,12 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 	dev_info->cpu_flag_reqs = NULL;
 	dev_info->min_alignment = 0;
 
+	/* BBDEV null device does not process the data, so
+	 * endianness setting is not relevant, but setting it
+	 * here for code completeness.
+	 */
+	dev_info->data_endianness = RTE_LITTLE_ENDIAN;
+
 	rte_bbdev_log_debug("got device info from %u", dev->data->dev_id);
 }
 

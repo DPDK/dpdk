@@ -253,6 +253,7 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 	dev_info->capabilities = bbdev_capabilities;
 	dev_info->min_alignment = 64;
 	dev_info->harq_buffer_size = 0;
+	dev_info->data_endianness = RTE_LITTLE_ENDIAN;
 
 	rte_bbdev_log_debug("got device info from %u\n", dev->data->dev_id);
 }
