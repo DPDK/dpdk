@@ -9,6 +9,7 @@ drivers = [
         'acc100',
         'fpga_5gnr_fec',
         'fpga_lte_fec',
+        'la12xx',
         'null',
         'turbo_sw',
 ]

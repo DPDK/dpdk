@@ -1,0 +1,71 @@
+..  SPDX-License-Identifier: BSD-3-Clause
+    Copyright 2021 NXP
+
+NXP LA12xx Poll Mode Driver
+===========================
+
+The BBDEV LA12xx poll mode driver (PMD) supports an implementation for
+offloading High Phy processing functions like LDPC Encode / Decode 5GNR wireless
+acceleration function, using PCI based LA12xx Software defined radio.
+
+More information can be found at `NXP Official Website
+<https://www.nxp.com/products/processors-and-microcontrollers/arm-processors/layerscape-processors/layerscape-access-la1200-programmable-baseband-processor:LA1200>`_.
+
+Features
+--------
+
+LA12xx PMD supports the following features:
+
+- Maximum of 8 LDPC decode (UL) queues
+- Maximum of 8 LDPC encode (DL) queues
+- PCIe Gen-3 x8 Interface
+
+Installation
+------------
+
+Section 3 of the DPDK manual provides instructions on installing and compiling DPDK.
+
+DPDK requires hugepages to be configured as detailed in section 2 of the DPDK manual.
+
+Initialization
+--------------
+
+The device can be listed on the host console with:
+
+
+Use the following lspci command to get the multiple LA12xx processor ids. The
+device ID of the LA12xx baseband processor is "1c30".
+
+.. code-block:: console
+
+  sudo lspci -nn
+
+...
+0001:01:00.0 Power PC [0b20]: Freescale Semiconductor Inc Device [1957:1c30] (
+rev 10)
+...
+0002:01:00.0 Power PC [0b20]: Freescale Semiconductor Inc Device [1957:1c30] (
+rev 10)
+
+
+Prerequisites
+-------------
+
+Currently supported by DPDK:
+
+- NXP LA1224 BSP **1.0+**.
+- NXP LA1224 PCIe Modem card connected to ARM host.
+
+- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
+
+Enabling logs
+-------------
+
+For enabling logs, use the following EAL parameter:
+
+.. code-block:: console
+
+   ./your_bbdev_application <EAL args> --log-level=la12xx:<level>
+
+Using ``bb.la12xx`` as log matching criteria, all Baseband PMD logs can be
+enabled which are lower than logging ``level``.
