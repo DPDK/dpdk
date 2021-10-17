@@ -335,39 +335,30 @@ vhost_count_xcast_packets(struct vhost_queue *vq,
 	}
 }
 
-static void
-vhost_update_packet_xstats(struct vhost_queue *vq, struct rte_mbuf **bufs,
-			   uint16_t count, uint64_t nb_bytes,
-			   uint64_t nb_missed)
+static __rte_always_inline void
+vhost_update_single_packet_xstats(struct vhost_queue *vq, struct rte_mbuf *buf)
 {
 	uint32_t pkt_len = 0;
-	uint64_t i = 0;
 	uint64_t index;
 	struct vhost_stats *pstats = &vq->stats;
 
-	pstats->xstats[VHOST_BYTE] += nb_bytes;
-	pstats->xstats[VHOST_MISSED_PKT] += nb_missed;
-	pstats->xstats[VHOST_UNICAST_PKT] += nb_missed;
-
-	for (i = 0; i < count ; i++) {
-		pstats->xstats[VHOST_PKT]++;
-		pkt_len = bufs[i]->pkt_len;
-		if (pkt_len == 64) {
-			pstats->xstats[VHOST_64_PKT]++;
-		} else if (pkt_len > 64 && pkt_len < 1024) {
-			index = (sizeof(pkt_len) * 8)
-				- __builtin_clz(pkt_len) - 5;
-			pstats->xstats[index]++;
-		} else {
-			if (pkt_len < 64)
-				pstats->xstats[VHOST_UNDERSIZE_PKT]++;
-			else if (pkt_len <= 1522)
-				pstats->xstats[VHOST_1024_TO_1522_PKT]++;
-			else if (pkt_len > 1522)
-				pstats->xstats[VHOST_1523_TO_MAX_PKT]++;
-		}
-		vhost_count_xcast_packets(vq, bufs[i]);
+	pstats->xstats[VHOST_PKT]++;
+	pkt_len = buf->pkt_len;
+	if (pkt_len == 64) {
+		pstats->xstats[VHOST_64_PKT]++;
+	} else if (pkt_len > 64 && pkt_len < 1024) {
+		index = (sizeof(pkt_len) * 8)
+			- __builtin_clz(pkt_len) - 5;
+		pstats->xstats[index]++;
+	} else {
+		if (pkt_len < 64)
+			pstats->xstats[VHOST_UNDERSIZE_PKT]++;
+		else if (pkt_len <= 1522)
+			pstats->xstats[VHOST_1024_TO_1522_PKT]++;
+		else if (pkt_len > 1522)
+			pstats->xstats[VHOST_1523_TO_MAX_PKT]++;
 	}
+	vhost_count_xcast_packets(vq, buf);
 }
 
 static uint16_t
@@ -376,7 +367,6 @@ eth_vhost_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	struct vhost_queue *r = q;
 	uint16_t i, nb_rx = 0;
 	uint16_t nb_receive = nb_bufs;
-	uint64_t nb_bytes = 0;
 
 	if (unlikely(rte_atomic32_read(&r->allow_queuing) == 0))
 		return 0;
@@ -411,11 +401,11 @@ eth_vhost_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		if (r->internal->vlan_strip)
 			rte_vlan_strip(bufs[i]);
 
-		nb_bytes += bufs[i]->pkt_len;
-	}
+		r->stats.bytes += bufs[i]->pkt_len;
+		r->stats.xstats[VHOST_BYTE] += bufs[i]->pkt_len;
 
-	r->stats.bytes += nb_bytes;
-	vhost_update_packet_xstats(r, bufs, nb_rx, nb_bytes, 0);
+		vhost_update_single_packet_xstats(r, bufs[i]);
+	}
 
 out:
 	rte_atomic32_set(&r->while_queuing, 0);
@@ -471,16 +461,20 @@ eth_vhost_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 			break;
 	}
 
-	for (i = 0; likely(i < nb_tx); i++)
+	for (i = 0; likely(i < nb_tx); i++) {
 		nb_bytes += bufs[i]->pkt_len;
+		vhost_update_single_packet_xstats(r, bufs[i]);
+	}
 
 	nb_missed = nb_bufs - nb_tx;
 
 	r->stats.pkts += nb_tx;
 	r->stats.bytes += nb_bytes;
-	r->stats.missed_pkts += nb_bufs - nb_tx;
+	r->stats.missed_pkts += nb_missed;
 
-	vhost_update_packet_xstats(r, bufs, nb_tx, nb_bytes, nb_missed);
+	r->stats.xstats[VHOST_BYTE] += nb_bytes;
+	r->stats.xstats[VHOST_MISSED_PKT] += nb_missed;
+	r->stats.xstats[VHOST_UNICAST_PKT] += nb_missed;
 
 	/* According to RFC2863, ifHCOutUcastPkts, ifHCOutMulticastPkts and
 	 * ifHCOutBroadcastPkts counters are increased when packets are not
