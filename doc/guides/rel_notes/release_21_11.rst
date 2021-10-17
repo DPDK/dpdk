@@ -153,6 +153,11 @@ New Features
 
   Added support for more comprehensive CRC options.
 
+* **Added NXP LA12xx baseband PMD.**
+
+  * Added a new baseband PMD driver for NXP LA12xx Software defined radio.
+  * See the :doc:`../bbdevs/la12xx` for more details.
+
 * **Updated IPsec library.**
 
   * Added support for more AEAD algorithms AES_CCM, CHACHA20_POLY1305

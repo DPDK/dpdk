@@ -73,6 +73,25 @@ typedef struct {
 	_IOWR(GUL_IPC_MAGIC, 5, struct ipc_msg *)
 #define IOCTL_GUL_IPC_CHANNEL_RAISE_INTERRUPT _IOW(GUL_IPC_MAGIC, 6, int *)
 
+#define GUL_USER_HUGE_PAGE_OFFSET	(0)
+#define GUL_PCI1_ADDR_BASE	(0x00000000ULL)
+
+#define GUL_USER_HUGE_PAGE_ADDR	(GUL_PCI1_ADDR_BASE + GUL_USER_HUGE_PAGE_OFFSET)
+
+/* IPC PI/CI index & flag manipulation helpers */
+#define IPC_PI_CI_FLAG_MASK	0x80000000 /*  (1<<31) */
+#define IPC_PI_CI_INDEX_MASK	0x7FFFFFFF /* ~(1<<31) */
+
+#define IPC_SET_PI_FLAG(x)	(x |= IPC_PI_CI_FLAG_MASK)
+#define IPC_RESET_PI_FLAG(x)	(x &= IPC_PI_CI_INDEX_MASK)
+#define IPC_GET_PI_FLAG(x)	(x >> 31)
+#define IPC_GET_PI_INDEX(x)	(x & IPC_PI_CI_INDEX_MASK)
+
+#define IPC_SET_CI_FLAG(x)	(x |= IPC_PI_CI_FLAG_MASK)
+#define IPC_RESET_CI_FLAG(x)	(x &= IPC_PI_CI_INDEX_MASK)
+#define IPC_GET_CI_FLAG(x)	(x >> 31)
+#define IPC_GET_CI_INDEX(x)	(x & IPC_PI_CI_INDEX_MASK)
+
 /** buffer ring common metadata */
 typedef struct ipc_bd_ring_md {
 	volatile uint32_t pi;		/**< Producer index and flag (MSB)
@@ -178,6 +197,24 @@ struct bbdev_ipc_enqueue_op {
 	uint32_t out_len;
 	/** Reserved (for 8 byte alignment) */
 	uint32_t rsvd;
+};
+
+/** Structure specifying dequeue operation (dequeue at LA1224) */
+struct bbdev_ipc_dequeue_op {
+	/** Input buffer memory address */
+	uint32_t in_addr;
+	/** Input buffer memory length */
+	uint32_t in_len;
+	/** Output buffer memory address */
+	uint32_t out_addr;
+	/** Output buffer memory length */
+	uint32_t out_len;
+	/* Number of code blocks. Only set when HARQ is used */
+	uint32_t num_code_blocks;
+	/** Dequeue Operation flags */
+	uint32_t op_flags;
+	/** Shared metadata between L1 and L2 */
+	uint32_t shared_metadata;
 };
 
 /* This shared memory would be on the host side which have copy of some
