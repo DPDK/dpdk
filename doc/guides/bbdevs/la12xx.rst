@@ -58,6 +58,10 @@ Currently supported by DPDK:
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
+* Use dev arg option ``max_nb_queues=x`` to specify the maximum number of queues
+  to be used for communication with offload device i.e. modem. default is 16.
+  e.g. ``--vdev=baseband_la12xx,max_nb_queues=4``
+
 Enabling logs
 -------------
 
