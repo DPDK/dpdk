@@ -227,6 +227,45 @@ clear_soft_out_cap(uint32_t *op_flags)
 	*op_flags &= ~RTE_BBDEV_TURBO_NEG_LLR_1_BIT_SOFT_OUT;
 }
 
+/* This API is to convert all the test vector op data entries
+ * to big endian format. It is used when the device supports
+ * the input in the big endian format.
+ */
+static inline void
+convert_op_data_to_be(void)
+{
+	struct op_data_entries *op;
+	enum op_data_type type;
+	uint8_t nb_segs, *rem_data, temp;
+	uint32_t *data, len;
+	int complete, rem, i, j;
+
+	for (type = DATA_INPUT; type < DATA_NUM_TYPES; ++type) {
+		nb_segs = test_vector.entries[type].nb_segments;
+		op = &test_vector.entries[type];
+
+		/* Invert byte endianness for all the segments */
+		for (i = 0; i < nb_segs; ++i) {
+			len = op->segments[i].length;
+			data = op->segments[i].addr;
+
+			/* Swap complete u32 bytes */
+			complete = len / 4;
+			for (j = 0; j < complete; j++)
+				data[j] = rte_bswap32(data[j]);
+
+			/* Swap any remaining bytes */
+			rem = len % 4;
+			rem_data = (uint8_t *)&data[j];
+			for (j = 0; j < rem/2; j++) {
+				temp = rem_data[j];
+				rem_data[j] = rem_data[rem - j - 1];
+				rem_data[rem - j - 1] = temp;
+			}
+		}
+	}
+}
+
 static int
 check_dev_cap(const struct rte_bbdev_info *dev_info)
 {
@@ -234,6 +273,7 @@ check_dev_cap(const struct rte_bbdev_info *dev_info)
 	unsigned int nb_inputs, nb_soft_outputs, nb_hard_outputs,
 		nb_harq_inputs, nb_harq_outputs;
 	const struct rte_bbdev_op_cap *op_cap = dev_info->drv.capabilities;
+	uint8_t dev_data_endianness = dev_info->drv.data_endianness;
 
 	nb_inputs = test_vector.entries[DATA_INPUT].nb_segments;
 	nb_soft_outputs = test_vector.entries[DATA_SOFT_OUTPUT].nb_segments;
@@ -244,6 +284,9 @@ check_dev_cap(const struct rte_bbdev_info *dev_info)
 	for (i = 0; op_cap->type != RTE_BBDEV_OP_NONE; ++i, ++op_cap) {
 		if (op_cap->type != test_vector.op_type)
 			continue;
+
+		if (dev_data_endianness == RTE_BIG_ENDIAN)
+			convert_op_data_to_be();
 
 		if (op_cap->type == RTE_BBDEV_OP_TURBO_DEC) {
 			const struct rte_bbdev_op_cap_turbo_dec *cap =

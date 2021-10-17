@@ -332,6 +332,9 @@ Variable op_type has to be defined as a first variable in file. It specifies
 what type of operations will be executed. For 4G decoder op_type has to be set to
 ``RTE_BBDEV_OP_TURBO_DEC`` and for 4G encoder to ``RTE_BBDEV_OP_TURBO_ENC``.
 
+Bbdev-test adjusts the byte endianness based on the PMD capability (data_endianness)
+and all the test vectors input/output data are assumed to be LE by default
+
 Full details of the meaning and valid values for the below fields are
 documented in *rte_bbdev_op.h*
 
