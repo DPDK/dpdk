@@ -85,6 +85,9 @@ DPDK_22 {
 	rte_event_timer_cancel_burst;
 	rte_eventdevs;
 
+	#added in 21.11
+	rte_event_fp_ops;
+
 	local: *;
 };
 
@@ -143,6 +146,9 @@ EXPERIMENTAL {
 INTERNAL {
 	global:
 
+	event_dev_fp_ops_reset;
+	event_dev_fp_ops_set;
+	event_dev_probing_finish;
 	rte_event_pmd_selftest_seqn_dynfield_offset;
 	rte_event_pmd_allocate;
 	rte_event_pmd_get_named_dev;

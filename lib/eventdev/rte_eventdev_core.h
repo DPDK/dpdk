@@ -39,6 +39,32 @@ typedef uint16_t (*event_crypto_adapter_enqueue_t)(void *port,
 						   uint16_t nb_events);
 /**< @internal Enqueue burst of events on crypto adapter */
 
+struct rte_event_fp_ops {
+	void **data;
+	/**< points to array of internal port data pointers */
+	event_enqueue_t enqueue;
+	/**< PMD enqueue function. */
+	event_enqueue_burst_t enqueue_burst;
+	/**< PMD enqueue burst function. */
+	event_enqueue_burst_t enqueue_new_burst;
+	/**< PMD enqueue burst new function. */
+	event_enqueue_burst_t enqueue_forward_burst;
+	/**< PMD enqueue burst fwd function. */
+	event_dequeue_t dequeue;
+	/**< PMD dequeue function. */
+	event_dequeue_burst_t dequeue_burst;
+	/**< PMD dequeue burst function. */
+	event_tx_adapter_enqueue_t txa_enqueue;
+	/**< PMD Tx adapter enqueue function. */
+	event_tx_adapter_enqueue_t txa_enqueue_same_dest;
+	/**< PMD Tx adapter enqueue same destination function. */
+	event_crypto_adapter_enqueue_t ca_enqueue;
+	/**< PMD Crypto adapter enqueue function. */
+	uintptr_t reserved[6];
+} __rte_cache_aligned;
+
+extern struct rte_event_fp_ops rte_event_fp_ops[RTE_EVENT_MAX_DEVS];
+
 #define RTE_EVENTDEV_NAME_MAX_LEN (64)
 /**< @internal Max length of name of event PMD */
 

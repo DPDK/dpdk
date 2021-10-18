@@ -435,6 +435,12 @@ ABI Changes
   were added in structure ``rte_event_eth_rx_adapter_stats`` to get additional
   status.
 
+* eventdev: A new structure ``rte_event_fp_ops`` has been added which is now used
+  by the fastpath inline functions. The structures ``rte_eventdev``,
+  ``rte_eventdev_data`` have been made internal. ``rte_eventdevs[]`` can't be
+  accessed directly by user any more. This change is transparent to both
+  applications and PMDs.
+
 
 Known Issues
 ------------

@@ -1188,4 +1188,42 @@ __rte_internal
 int
 rte_event_pmd_release(struct rte_eventdev *eventdev);
 
+/**
+ *
+ * @internal
+ * This is the last step of device probing.
+ * It must be called after a port is allocated and initialized successfully.
+ *
+ * @param eventdev
+ *  New event device.
+ */
+__rte_internal
+void
+event_dev_probing_finish(struct rte_eventdev *eventdev);
+
+/**
+ * Reset eventdevice fastpath APIs to dummy values.
+ *
+ * @param fp_ops
+ * The *fp_ops* pointer to reset.
+ */
+__rte_internal
+void
+event_dev_fp_ops_reset(struct rte_event_fp_ops *fp_op);
+
+/**
+ * Set eventdevice fastpath APIs to event device values.
+ *
+ * @param fp_ops
+ * The *fp_ops* pointer to set.
+ */
+__rte_internal
+void
+event_dev_fp_ops_set(struct rte_event_fp_ops *fp_ops,
+		     const struct rte_eventdev *dev);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* _RTE_EVENTDEV_PMD_H_ */

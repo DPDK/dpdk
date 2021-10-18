@@ -46,6 +46,9 @@ static struct rte_eventdev_global eventdev_globals = {
 	.nb_devs		= 0
 };
 
+/* Public fastpath APIs. */
+struct rte_event_fp_ops rte_event_fp_ops[RTE_EVENT_MAX_DEVS];
+
 /* Event dev north bound API implementation */
 
 uint8_t
@@ -300,8 +303,8 @@ int
 rte_event_dev_configure(uint8_t dev_id,
 			const struct rte_event_dev_config *dev_conf)
 {
-	struct rte_eventdev *dev;
 	struct rte_event_dev_info info;
+	struct rte_eventdev *dev;
 	int diag;
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
@@ -470,10 +473,13 @@ rte_event_dev_configure(uint8_t dev_id,
 		return diag;
 	}
 
+	event_dev_fp_ops_reset(rte_event_fp_ops + dev_id);
+
 	/* Configure the device */
 	diag = (*dev->dev_ops->dev_configure)(dev);
 	if (diag != 0) {
 		RTE_EDEV_LOG_ERR("dev%d dev_configure = %d", dev_id, diag);
+		event_dev_fp_ops_reset(rte_event_fp_ops + dev_id);
 		event_dev_queue_config(dev, 0);
 		event_dev_port_config(dev, 0);
 	}
@@ -1244,6 +1250,8 @@ rte_event_dev_start(uint8_t dev_id)
 	else
 		return diag;
 
+	event_dev_fp_ops_set(rte_event_fp_ops + dev_id, dev);
+
 	return 0;
 }
 
@@ -1284,6 +1292,7 @@ rte_event_dev_stop(uint8_t dev_id)
 	dev->data->dev_started = 0;
 	(*dev->dev_ops->dev_stop)(dev);
 	rte_eventdev_trace_stop(dev_id);
+	event_dev_fp_ops_reset(rte_event_fp_ops + dev_id);
 }
 
 int
@@ -1302,6 +1311,7 @@ rte_event_dev_close(uint8_t dev_id)
 		return -EBUSY;
 	}
 
+	event_dev_fp_ops_reset(rte_event_fp_ops + dev_id);
 	rte_eventdev_trace_close(dev_id);
 	return (*dev->dev_ops->dev_close)(dev);
 }
@@ -1435,6 +1445,7 @@ rte_event_pmd_release(struct rte_eventdev *eventdev)
 	if (eventdev == NULL)
 		return -EINVAL;
 
+	event_dev_fp_ops_reset(rte_event_fp_ops + eventdev->data->dev_id);
 	eventdev->attached = RTE_EVENTDEV_DETACHED;
 	eventdev_globals.nb_devs--;
 
@@ -1460,6 +1471,15 @@ rte_event_pmd_release(struct rte_eventdev *eventdev)
 	return 0;
 }
 
+void
+event_dev_probing_finish(struct rte_eventdev *eventdev)
+{
+	if (eventdev == NULL)
+		return;
+
+	event_dev_fp_ops_set(rte_event_fp_ops + eventdev->data->dev_id,
+			     eventdev);
+}
 
 static int
 handle_dev_list(const char *cmd __rte_unused,
