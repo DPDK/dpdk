@@ -78,6 +78,96 @@ ioat_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
 	return 0;
 }
 
+/* Recover IOAT device. */
+static inline int
+__ioat_recover(struct ioat_dmadev *ioat)
+{
+	uint32_t chanerr, retry = 0;
+	uint16_t mask = ioat->qcfg.nb_desc - 1;
+
+	/* Clear any channel errors. Reading and writing to chanerr does this. */
+	chanerr = ioat->regs->chanerr;
+	ioat->regs->chanerr = chanerr;
+
+	/* Reset Channel. */
+	ioat->regs->chancmd = IOAT_CHANCMD_RESET;
+
+	/* Write new chain address to trigger state change. */
+	ioat->regs->chainaddr = ioat->desc_ring[(ioat->next_read - 1) & mask].next;
+	/* Ensure channel control and status addr are correct. */
+	ioat->regs->chanctrl = IOAT_CHANCTRL_ANY_ERR_ABORT_EN |
+			IOAT_CHANCTRL_ERR_COMPLETION_EN;
+	ioat->regs->chancmp = ioat->status_addr;
+
+	/* Allow HW time to move to the ARMED state. */
+	do {
+		rte_pause();
+		retry++;
+	} while (ioat->regs->chansts != IOAT_CHANSTS_ARMED && retry < 200);
+
+	/* Exit as failure if device is still HALTED. */
+	if (ioat->regs->chansts != IOAT_CHANSTS_ARMED)
+		return -1;
+
+	/* Store next write as offset as recover will move HW and SW ring out of sync. */
+	ioat->offset = ioat->next_read;
+
+	/* Prime status register with previous address. */
+	ioat->status = ioat->desc_ring[(ioat->next_read - 2) & mask].next;
+
+	return 0;
+}
+
+/* Start a configured device. */
+static int
+ioat_dev_start(struct rte_dma_dev *dev)
+{
+	struct ioat_dmadev *ioat = dev->fp_obj->dev_private;
+
+	if (ioat->qcfg.nb_desc == 0 || ioat->desc_ring == NULL)
+		return -EBUSY;
+
+	/* Inform hardware of where the descriptor ring is. */
+	ioat->regs->chainaddr = ioat->ring_addr;
+	/* Inform hardware of where to write the status/completions. */
+	ioat->regs->chancmp = ioat->status_addr;
+
+	/* Prime the status register to be set to the last element. */
+	ioat->status = ioat->ring_addr + ((ioat->qcfg.nb_desc - 1) * DESC_SZ);
+
+	printf("IOAT.status: %s [0x%"PRIx64"]\n",
+			chansts_readable[ioat->status & IOAT_CHANSTS_STATUS],
+			ioat->status);
+
+	if ((ioat->regs->chansts & IOAT_CHANSTS_STATUS) == IOAT_CHANSTS_HALTED) {
+		IOAT_PMD_WARN("Device HALTED on start, attempting to recover\n");
+		if (__ioat_recover(ioat) != 0) {
+			IOAT_PMD_ERR("Device couldn't be recovered");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+/* Stop a configured device. */
+static int
+ioat_dev_stop(struct rte_dma_dev *dev)
+{
+	struct ioat_dmadev *ioat = dev->fp_obj->dev_private;
+	uint32_t retry = 0;
+
+	ioat->regs->chancmd = IOAT_CHANCMD_SUSPEND;
+
+	do {
+		rte_pause();
+		retry++;
+	} while ((ioat->regs->chansts & IOAT_CHANSTS_STATUS) != IOAT_CHANSTS_SUSPENDED
+			&& retry < 200);
+
+	return ((ioat->regs->chansts & IOAT_CHANSTS_STATUS) == IOAT_CHANSTS_SUSPENDED) ? 0 : -1;
+}
+
 /* Get device information of a device. */
 static int
 ioat_dev_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *info, uint32_t size)
@@ -193,6 +283,8 @@ ioat_dmadev_create(const char *name, struct rte_pci_device *dev)
 		.dev_configure = ioat_dev_configure,
 		.dev_dump = ioat_dev_dump,
 		.dev_info_get = ioat_dev_info_get,
+		.dev_start = ioat_dev_start,
+		.dev_stop = ioat_dev_stop,
 		.vchan_setup = ioat_vchan_setup,
 	};
 
