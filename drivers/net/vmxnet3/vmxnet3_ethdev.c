@@ -54,7 +54,6 @@
 	 DEV_RX_OFFLOAD_UDP_CKSUM |	\
 	 DEV_RX_OFFLOAD_TCP_CKSUM |	\
 	 DEV_RX_OFFLOAD_TCP_LRO |	\
-	 DEV_RX_OFFLOAD_JUMBO_FRAME |   \
 	 DEV_RX_OFFLOAD_RSS_HASH)
 
 int vmxnet3_segs_dynfield_offset = -1;

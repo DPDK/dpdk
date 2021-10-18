@@ -660,14 +660,6 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	rxq->rspq.size = temp_nb_desc;
 	rxq->fl.size = temp_nb_desc;
 
-	/* Set to jumbo mode if necessary */
-	if (eth_dev->data->mtu > RTE_ETHER_MTU)
-		eth_dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		eth_dev->data->dev_conf.rxmode.offloads &=
-			~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
 	err = t4_sge_alloc_rxq(adapter, &rxq->rspq, false, eth_dev, msi_idx,
 			       &rxq->fl, NULL,
 			       is_pf4(adapter) ?

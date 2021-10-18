@@ -39,8 +39,7 @@ otx_ep_dev_info_get(struct rte_eth_dev *eth_dev,
 
 	devinfo->min_rx_bufsize = OTX_EP_MIN_RX_BUF_SIZE;
 	devinfo->max_rx_pktlen = OTX_EP_MAX_PKT_SZ;
-	devinfo->rx_offload_capa = DEV_RX_OFFLOAD_JUMBO_FRAME;
-	devinfo->rx_offload_capa |= DEV_RX_OFFLOAD_SCATTER;
+	devinfo->rx_offload_capa = DEV_RX_OFFLOAD_SCATTER;
 	devinfo->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS;
 
 	devinfo->max_mac_addrs = OTX_EP_MAX_MAC_ADDRS;

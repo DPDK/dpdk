@@ -885,7 +885,6 @@ processing. This improved performance is derived from a number of optimizations:
 
        DEV_RX_OFFLOAD_VLAN_STRIP
        DEV_RX_OFFLOAD_KEEP_CRC
-       DEV_RX_OFFLOAD_JUMBO_FRAME
        DEV_RX_OFFLOAD_IPV4_CKSUM
        DEV_RX_OFFLOAD_UDP_CKSUM
        DEV_RX_OFFLOAD_TCP_CKSUM

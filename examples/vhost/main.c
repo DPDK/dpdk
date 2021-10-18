@@ -631,11 +631,8 @@ us_vhost_parse_args(int argc, char **argv)
 				return -1;
 			}
 			mergeable = !!ret;
-			if (ret) {
-				vmdq_conf_default.rxmode.offloads |=
-					DEV_RX_OFFLOAD_JUMBO_FRAME;
+			if (ret)
 				vmdq_conf_default.rxmode.mtu = MAX_MTU;
-			}
 			break;
 
 		case OPT_STATS_NUM:

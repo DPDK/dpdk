@@ -54,7 +54,6 @@
 
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
-		DEV_RX_OFFLOAD_JUMBO_FRAME |
 		DEV_RX_OFFLOAD_SCATTER;
 
 /* Rx offloads which cannot be disabled */
@@ -592,7 +591,6 @@ dpaa_dev_rx_burst_mode_get(struct rte_eth_dev *dev,
 		uint64_t flags;
 		const char *output;
 	} rx_offload_map[] = {
-			{DEV_RX_OFFLOAD_JUMBO_FRAME, " Jumbo frame,"},
 			{DEV_RX_OFFLOAD_SCATTER, " Scattered,"},
 			{DEV_RX_OFFLOAD_IPV4_CKSUM, " IPV4 csum,"},
 			{DEV_RX_OFFLOAD_UDP_CKSUM, " UDP csum,"},

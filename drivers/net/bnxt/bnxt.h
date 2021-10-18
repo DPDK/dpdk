@@ -595,7 +595,6 @@ struct bnxt_rep_info {
 				     DEV_RX_OFFLOAD_TCP_CKSUM | \
 				     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM | \
 				     DEV_RX_OFFLOAD_OUTER_UDP_CKSUM | \
-				     DEV_RX_OFFLOAD_JUMBO_FRAME | \
 				     DEV_RX_OFFLOAD_KEEP_CRC | \
 				     DEV_RX_OFFLOAD_VLAN_EXTEND | \
 				     DEV_RX_OFFLOAD_TCP_LRO | \

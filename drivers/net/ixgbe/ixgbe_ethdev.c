@@ -6040,7 +6040,6 @@ ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 			   uint16_t queue_idx, uint16_t tx_rate)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_eth_rxmode *rxmode;
 	uint32_t rf_dec, rf_int;
 	uint32_t bcnrc_val;
 	uint16_t link_speed = dev->data->dev_link.link_speed;
@@ -6062,14 +6061,12 @@ ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 		bcnrc_val = 0;
 	}
 
-	rxmode = &dev->data->dev_conf.rxmode;
 	/*
 	 * Set global transmit compensation time to the MMW_SIZE in RTTBCNRM
 	 * register. MMW_SIZE=0x014 if 9728-byte jumbo is supported, otherwise
 	 * set as 0x4.
 	 */
-	if ((rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) &&
-	    (dev->data->mtu + IXGBE_ETH_OVERHEAD >= IXGBE_MAX_JUMBO_FRAME_SIZE))
+	if (dev->data->mtu + IXGBE_ETH_OVERHEAD >= IXGBE_MAX_JUMBO_FRAME_SIZE)
 		IXGBE_WRITE_REG(hw, IXGBE_RTTBCNRM, IXGBE_MMW_SIZE_JUMBO_FRAME);
 	else
 		IXGBE_WRITE_REG(hw, IXGBE_RTTBCNRM, IXGBE_MMW_SIZE_DEFAULT);

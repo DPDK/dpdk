@@ -1572,12 +1572,6 @@ init_config_port_offloads(portid_t pid, uint32_t socket_id)
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE, "rte_eth_dev_info_get() failed\n");
 
-	ret = update_jumbo_frame_offload(pid, 0);
-	if (ret != 0)
-		fprintf(stderr,
-			"Updating jumbo frame offload failed for port %u\n",
-			pid);
-
 	if (!(port->dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE))
 		port->dev_conf.txmode.offloads &=
 			~DEV_TX_OFFLOAD_MBUF_FAST_FREE;
@@ -3691,24 +3685,18 @@ rxtx_port_config(struct rte_port *port)
 }
 
 /*
- * Helper function to arrange max_rx_pktlen value and JUMBO_FRAME offload,
- * MTU is also aligned.
+ * Helper function to set MTU from frame size
  *
  * port->dev_info should be set before calling this function.
- *
- * if 'max_rx_pktlen' is zero, it is set to current device value, "MTU +
- * ETH_OVERHEAD". This is useful to update flags but not MTU value.
  *
  * return 0 on success, negative on error
  */
 int
-update_jumbo_frame_offload(portid_t portid, uint32_t max_rx_pktlen)
+update_mtu_from_frame_size(portid_t portid, uint32_t max_rx_pktlen)
 {
 	struct rte_port *port = &ports[portid];
 	uint32_t eth_overhead;
-	uint64_t rx_offloads;
 	uint16_t mtu, new_mtu;
-	bool on;
 
 	eth_overhead = get_eth_overhead(&port->dev_info);
 
@@ -3717,39 +3705,7 @@ update_jumbo_frame_offload(portid_t portid, uint32_t max_rx_pktlen)
 		return -1;
 	}
 
-	if (max_rx_pktlen == 0)
-		max_rx_pktlen = mtu + eth_overhead;
-
-	rx_offloads = port->dev_conf.rxmode.offloads;
 	new_mtu = max_rx_pktlen - eth_overhead;
-
-	if (new_mtu <= RTE_ETHER_MTU) {
-		rx_offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
-		on = false;
-	} else {
-		if ((port->dev_info.rx_offload_capa & DEV_RX_OFFLOAD_JUMBO_FRAME) == 0) {
-			fprintf(stderr,
-				"Frame size (%u) is not supported by port %u\n",
-				max_rx_pktlen, portid);
-			return -1;
-		}
-		rx_offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-		on = true;
-	}
-
-	if (rx_offloads != port->dev_conf.rxmode.offloads) {
-		uint16_t qid;
-
-		port->dev_conf.rxmode.offloads = rx_offloads;
-
-		/* Apply JUMBO_FRAME offload configuration to Rx queue(s) */
-		for (qid = 0; qid < port->dev_info.nb_rx_queues; qid++) {
-			if (on)
-				port->rx_conf[qid].offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-			else
-				port->rx_conf[qid].offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
-		}
-	}
 
 	if (mtu == new_mtu)
 		return 0;

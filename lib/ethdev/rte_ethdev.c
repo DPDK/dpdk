@@ -121,7 +121,6 @@ static const struct {
 	RTE_RX_OFFLOAD_BIT2STR(HEADER_SPLIT),
 	RTE_RX_OFFLOAD_BIT2STR(VLAN_FILTER),
 	RTE_RX_OFFLOAD_BIT2STR(VLAN_EXTEND),
-	RTE_RX_OFFLOAD_BIT2STR(JUMBO_FRAME),
 	RTE_RX_OFFLOAD_BIT2STR(SCATTER),
 	RTE_RX_OFFLOAD_BIT2STR(TIMESTAMP),
 	RTE_RX_OFFLOAD_BIT2STR(SECURITY),
@@ -1474,13 +1473,6 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			port_id, max_rx_pktlen, RTE_ETHER_MIN_LEN);
 		ret = -EINVAL;
 		goto rollback;
-	}
-
-	if ((dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) == 0) {
-		if (dev->data->dev_conf.rxmode.mtu < RTE_ETHER_MIN_MTU ||
-				dev->data->dev_conf.rxmode.mtu > RTE_ETHER_MTU)
-			/* Use default value */
-			dev->data->dev_conf.rxmode.mtu = RTE_ETHER_MTU;
 	}
 
 	dev->data->mtu = dev->data->dev_conf.rxmode.mtu;
@@ -3647,7 +3639,6 @@ rte_eth_dev_set_mtu(uint16_t port_id, uint16_t mtu)
 	int ret;
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev;
-	int is_jumbo_frame_capable = 0;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
@@ -3675,26 +3666,11 @@ rte_eth_dev_set_mtu(uint16_t port_id, uint16_t mtu)
 		frame_size = mtu + overhead_len;
 		if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen)
 			return -EINVAL;
-
-		if ((dev_info.rx_offload_capa & DEV_RX_OFFLOAD_JUMBO_FRAME) != 0)
-			is_jumbo_frame_capable = 1;
 	}
-
-	if (mtu > RTE_ETHER_MTU && is_jumbo_frame_capable == 0)
-		return -EINVAL;
 
 	ret = (*dev->dev_ops->mtu_set)(dev, mtu);
-	if (ret == 0) {
+	if (ret == 0)
 		dev->data->mtu = mtu;
-
-		/* switch to jumbo mode if needed */
-		if (mtu > RTE_ETHER_MTU)
-			dev->data->dev_conf.rxmode.offloads |=
-				DEV_RX_OFFLOAD_JUMBO_FRAME;
-		else
-			dev->data->dev_conf.rxmode.offloads &=
-				~DEV_RX_OFFLOAD_JUMBO_FRAME;
-	}
 
 	return eth_err(port_id, ret);
 }

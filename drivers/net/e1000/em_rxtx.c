@@ -1364,12 +1364,9 @@ em_reset_rx_queue(struct em_rx_queue *rxq)
 }
 
 uint64_t
-em_get_rx_port_offloads_capa(struct rte_eth_dev *dev)
+em_get_rx_port_offloads_capa(void)
 {
 	uint64_t rx_offload_capa;
-	uint32_t max_rx_pktlen;
-
-	max_rx_pktlen = em_get_max_pktlen(dev);
 
 	rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP  |
@@ -1379,14 +1376,12 @@ em_get_rx_port_offloads_capa(struct rte_eth_dev *dev)
 		DEV_RX_OFFLOAD_TCP_CKSUM   |
 		DEV_RX_OFFLOAD_KEEP_CRC    |
 		DEV_RX_OFFLOAD_SCATTER;
-	if (max_rx_pktlen > RTE_ETHER_MAX_LEN)
-		rx_offload_capa |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	return rx_offload_capa;
 }
 
 uint64_t
-em_get_rx_queue_offloads_capa(struct rte_eth_dev *dev)
+em_get_rx_queue_offloads_capa(void)
 {
 	uint64_t rx_queue_offload_capa;
 
@@ -1395,7 +1390,7 @@ em_get_rx_queue_offloads_capa(struct rte_eth_dev *dev)
 	 * capability be same to per port queue offloading capability
 	 * for better convenience.
 	 */
-	rx_queue_offload_capa = em_get_rx_port_offloads_capa(dev);
+	rx_queue_offload_capa = em_get_rx_port_offloads_capa();
 
 	return rx_queue_offload_capa;
 }
@@ -1826,7 +1821,7 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 		 * to avoid splitting packets that don't fit into
 		 * one buffer.
 		 */
-		if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME ||
+		if (dev->data->mtu > RTE_ETHER_MTU ||
 				rctl_bsize < RTE_ETHER_MAX_LEN) {
 			if (!dev->data->scattered_rx)
 				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
@@ -1861,14 +1856,14 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 	if ((hw->mac.type == e1000_ich9lan ||
 			hw->mac.type == e1000_pch2lan ||
 			hw->mac.type == e1000_ich10lan) &&
-			rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+			dev->data->mtu > RTE_ETHER_MTU) {
 		u32 rxdctl = E1000_READ_REG(hw, E1000_RXDCTL(0));
 		E1000_WRITE_REG(hw, E1000_RXDCTL(0), rxdctl | 3);
 		E1000_WRITE_REG(hw, E1000_ERT, 0x100 | (1 << 13));
 	}
 
 	if (hw->mac.type == e1000_pch2lan) {
-		if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
+		if (dev->data->mtu > RTE_ETHER_MTU)
 			e1000_lv_jumbo_workaround_ich8lan(hw, TRUE);
 		else
 			e1000_lv_jumbo_workaround_ich8lan(hw, FALSE);
@@ -1895,7 +1890,7 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 	/*
 	 * Configure support of jumbo frames, if any.
 	 */
-	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
+	if (dev->data->mtu > RTE_ETHER_MTU)
 		rctl |= E1000_RCTL_LPE;
 	else
 		rctl &= ~E1000_RCTL_LPE;

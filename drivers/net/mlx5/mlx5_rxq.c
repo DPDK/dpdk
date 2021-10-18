@@ -335,7 +335,6 @@ mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev)
 	struct mlx5_dev_config *config = &priv->config;
 	uint64_t offloads = (DEV_RX_OFFLOAD_SCATTER |
 			     DEV_RX_OFFLOAD_TIMESTAMP |
-			     DEV_RX_OFFLOAD_JUMBO_FRAME |
 			     DEV_RX_OFFLOAD_RSS_HASH);
 
 	if (!config->mprq.enabled)

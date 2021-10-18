@@ -2901,7 +2901,7 @@ i40e_rx_queue_config(struct i40e_rx_queue *rxq)
 	rxq->max_pkt_len =
 		RTE_MIN(hw->func_caps.rx_buf_chain_len * rxq->rx_buf_len,
 				data->mtu + I40E_ETH_OVERHEAD);
-	if (data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+	if (data->mtu > RTE_ETHER_MTU) {
 		if (rxq->max_pkt_len <= I40E_ETH_MAX_LEN ||
 			rxq->max_pkt_len > I40E_FRAME_SIZE_MAX) {
 			PMD_DRV_LOG(ERR, "maximum packet length must "

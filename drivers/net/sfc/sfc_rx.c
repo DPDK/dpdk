@@ -941,8 +941,6 @@ sfc_rx_get_dev_offload_caps(struct sfc_adapter *sa)
 {
 	uint64_t caps = sa->priv.dp_rx->dev_offload_capa;
 
-	caps |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-
 	return caps & sfc_rx_get_offload_mask(sa);
 }
 

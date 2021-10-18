@@ -3676,7 +3676,6 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_JUMBO_FRAME |
 		DEV_RX_OFFLOAD_KEEP_CRC |
 		DEV_RX_OFFLOAD_SCATTER |
 		DEV_RX_OFFLOAD_VLAN_FILTER;

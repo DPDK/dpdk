@@ -267,7 +267,6 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 	struct ice_rlan_ctx rx_ctx;
 	enum ice_status err;
 	uint16_t buf_size;
-	struct rte_eth_rxmode *rxmode = &dev_data->dev_conf.rxmode;
 	uint32_t rxdid = ICE_RXDID_COMMS_OVS;
 	uint32_t regval;
 	struct ice_adapter *ad = rxq->vsi->adapter;
@@ -282,7 +281,7 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 		RTE_MIN((uint32_t)ICE_SUPPORT_CHAIN_NUM * rxq->rx_buf_len,
 			frame_size);
 
-	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+	if (dev_data->mtu > RTE_ETHER_MTU) {
 		if (rxq->max_pkt_len <= ICE_ETH_MAX_LEN ||
 		    rxq->max_pkt_len > ICE_FRAME_SIZE_MAX) {
 			PMD_DRV_LOG(ERR, "maximum packet length must "

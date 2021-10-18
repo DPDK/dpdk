@@ -597,15 +597,10 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 		   IXGBE_MHADD_MFS_MASK) >> IXGBE_MHADD_MFS_SHIFT;
 	if (max_frs < max_frame) {
 		hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
-		if (max_frame > IXGBE_ETH_MAX_LEN) {
-			dev->data->dev_conf.rxmode.offloads |=
-				DEV_RX_OFFLOAD_JUMBO_FRAME;
+		if (max_frame > IXGBE_ETH_MAX_LEN)
 			hlreg0 |= IXGBE_HLREG0_JUMBOEN;
-		} else {
-			dev->data->dev_conf.rxmode.offloads &=
-				~DEV_RX_OFFLOAD_JUMBO_FRAME;
+		else
 			hlreg0 &= ~IXGBE_HLREG0_JUMBOEN;
-		}
 		IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 
 		max_frs = max_frame << IXGBE_MHADD_MFS_SHIFT;

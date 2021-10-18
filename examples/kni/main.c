@@ -789,11 +789,6 @@ kni_change_mtu_(uint16_t port_id, unsigned int new_mtu)
 	}
 
 	memcpy(&conf, &port_conf, sizeof(conf));
-	/* Set new MTU */
-	if (new_mtu > RTE_ETHER_MTU)
-		conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	conf.rxmode.mtu = new_mtu;
 	ret = rte_eth_dev_configure(port_id, 1, 1, &conf);

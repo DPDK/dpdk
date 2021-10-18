@@ -158,7 +158,6 @@ static struct rte_pci_driver rte_atl_pmd = {
 			| DEV_RX_OFFLOAD_IPV4_CKSUM \
 			| DEV_RX_OFFLOAD_UDP_CKSUM \
 			| DEV_RX_OFFLOAD_TCP_CKSUM \
-			| DEV_RX_OFFLOAD_JUMBO_FRAME \
 			| DEV_RX_OFFLOAD_MACSEC_STRIP \
 			| DEV_RX_OFFLOAD_VLAN_FILTER)
 

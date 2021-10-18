@@ -738,7 +738,6 @@ hinic_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 				DEV_RX_OFFLOAD_TCP_CKSUM |
 				DEV_RX_OFFLOAD_VLAN_FILTER |
 				DEV_RX_OFFLOAD_SCATTER |
-				DEV_RX_OFFLOAD_JUMBO_FRAME |
 				DEV_RX_OFFLOAD_TCP_LRO |
 				DEV_RX_OFFLOAD_RSS_HASH;
 

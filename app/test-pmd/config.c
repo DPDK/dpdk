@@ -1206,40 +1206,19 @@ port_reg_set(portid_t port_id, uint32_t reg_off, uint32_t reg_v)
 void
 port_mtu_set(portid_t port_id, uint16_t mtu)
 {
+	struct rte_port *port = &ports[port_id];
 	int diag;
-	struct rte_port *rte_port = &ports[port_id];
-	struct rte_eth_dev_info dev_info;
-	int ret;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
-	ret = eth_dev_info_get_print_err(port_id, &dev_info);
-	if (ret != 0)
-		return;
-
-	if (mtu > dev_info.max_mtu || mtu < dev_info.min_mtu) {
-		fprintf(stderr,
-			"Set MTU failed. MTU:%u is not in valid range, min:%u - max:%u\n",
-			mtu, dev_info.min_mtu, dev_info.max_mtu);
-		return;
-	}
 	diag = rte_eth_dev_set_mtu(port_id, mtu);
 	if (diag != 0) {
 		fprintf(stderr, "Set MTU failed. diag=%d\n", diag);
 		return;
 	}
 
-	rte_port->dev_conf.rxmode.mtu = mtu;
-
-	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		if (mtu > RTE_ETHER_MTU)
-			rte_port->dev_conf.rxmode.offloads |=
-						DEV_RX_OFFLOAD_JUMBO_FRAME;
-		else
-			rte_port->dev_conf.rxmode.offloads &=
-						~DEV_RX_OFFLOAD_JUMBO_FRAME;
-	}
+	port->dev_conf.rxmode.mtu = mtu;
 }
 
 /* Generic flow management functions. */

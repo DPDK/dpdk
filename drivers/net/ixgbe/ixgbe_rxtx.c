@@ -3036,7 +3036,6 @@ ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 		   DEV_RX_OFFLOAD_UDP_CKSUM   |
 		   DEV_RX_OFFLOAD_TCP_CKSUM   |
 		   DEV_RX_OFFLOAD_KEEP_CRC    |
-		   DEV_RX_OFFLOAD_JUMBO_FRAME |
 		   DEV_RX_OFFLOAD_VLAN_FILTER |
 		   DEV_RX_OFFLOAD_SCATTER |
 		   DEV_RX_OFFLOAD_RSS_HASH;
@@ -5079,7 +5078,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	/*
 	 * Configure jumbo frame support, if any.
 	 */
-	if (rx_conf->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+	if ((dev->data->mtu & RTE_ETHER_MTU) != 0) {
 		hlreg0 |= IXGBE_HLREG0_JUMBOEN;
 		maxfrs = IXGBE_READ_REG(hw, IXGBE_MAXFRS);
 		maxfrs &= 0x0000FFFF;

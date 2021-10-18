@@ -1779,7 +1779,6 @@ static uint64_t fm10k_get_rx_port_offloads_capa(struct rte_eth_dev *dev)
 			   DEV_RX_OFFLOAD_IPV4_CKSUM  |
 			   DEV_RX_OFFLOAD_UDP_CKSUM   |
 			   DEV_RX_OFFLOAD_TCP_CKSUM   |
-			   DEV_RX_OFFLOAD_JUMBO_FRAME |
 			   DEV_RX_OFFLOAD_HEADER_SPLIT |
 			   DEV_RX_OFFLOAD_RSS_HASH);
 }

@@ -465,8 +465,8 @@ void eth_em_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 void em_dev_clear_queues(struct rte_eth_dev *dev);
 void em_dev_free_queues(struct rte_eth_dev *dev);
 
-uint64_t em_get_rx_port_offloads_capa(struct rte_eth_dev *dev);
-uint64_t em_get_rx_queue_offloads_capa(struct rte_eth_dev *dev);
+uint64_t em_get_rx_port_offloads_capa(void);
+uint64_t em_get_rx_queue_offloads_capa(void);
 
 int eth_em_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, unsigned int socket_id,

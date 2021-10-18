@@ -730,10 +730,8 @@ config_port_max_pkt_len(struct rte_eth_conf *conf,
 			dev_info->max_mtu);
 	conf->rxmode.mtu = max_pkt_len - overhead_len;
 
-	if (conf->rxmode.mtu > RTE_ETHER_MTU) {
+	if (conf->rxmode.mtu > RTE_ETHER_MTU)
 		conf->txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
-		conf->rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	}
 
 	return 0;
 }

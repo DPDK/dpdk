@@ -54,8 +54,7 @@
 #define MRVL_NETA_MRU_TO_MTU(mru)	((mru) - MRVL_NETA_HDRS_LEN)
 
 /** Rx offloads capabilities */
-#define MVNETA_RX_OFFLOADS (DEV_RX_OFFLOAD_JUMBO_FRAME | \
-			    DEV_RX_OFFLOAD_CHECKSUM)
+#define MVNETA_RX_OFFLOADS (DEV_RX_OFFLOAD_CHECKSUM)
 
 /** Tx offloads capabilities */
 #define MVNETA_TX_OFFLOAD_CHECKSUM (DEV_TX_OFFLOAD_IPV4_CKSUM | \

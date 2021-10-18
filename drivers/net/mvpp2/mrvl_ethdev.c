@@ -59,7 +59,6 @@
 
 /** Port Rx offload capabilities */
 #define MRVL_RX_OFFLOADS (DEV_RX_OFFLOAD_VLAN_FILTER | \
-			  DEV_RX_OFFLOAD_JUMBO_FRAME | \
 			  DEV_RX_OFFLOAD_CHECKSUM)
 
 /** Port Tx offloads capabilities */

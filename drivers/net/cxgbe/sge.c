@@ -365,13 +365,10 @@ static unsigned int refill_fl_usembufs(struct adapter *adap, struct sge_fl *q,
 	struct rte_mbuf *buf_bulk[n];
 	int ret, i;
 	struct rte_pktmbuf_pool_private *mbp_priv;
-	u8 jumbo_en = rxq->rspq.eth_dev->data->dev_conf.rxmode.offloads &
-		DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	/* Use jumbo mtu buffers if mbuf data room size can fit jumbo data. */
 	mbp_priv = rte_mempool_get_priv(rxq->rspq.mb_pool);
-	if (jumbo_en &&
-	    ((mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM) >= 9000))
+	if ((mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM) >= 9000)
 		buf_size_idx = RX_LARGE_MTU_BUF;
 
 	ret = rte_mempool_get_bulk(rxq->rspq.mb_pool, (void *)buf_bulk, n);

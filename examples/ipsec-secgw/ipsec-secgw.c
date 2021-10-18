@@ -2198,8 +2198,6 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 	printf("Creating queues: nb_rx_queue=%d nb_tx_queue=%u...\n",
 			nb_rx_queue, nb_tx_queue);
 
-	if (mtu_size > RTE_ETHER_MTU)
-		local_port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	local_port_conf.rxmode.mtu = mtu_size;
 
 	if (multi_seg_required()) {

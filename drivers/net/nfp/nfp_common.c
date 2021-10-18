@@ -369,8 +369,7 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 			ctrl |= NFP_NET_CFG_CTRL_RXVLAN;
 	}
 
-	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
-		hw->mtu = dev->data->mtu;
+	hw->mtu = dev->data->mtu;
 
 	if (txmode->offloads & DEV_TX_OFFLOAD_VLAN_INSERT)
 		ctrl |= NFP_NET_CFG_CTRL_TXVLAN;
@@ -756,9 +755,6 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_seg_max = NFP_TX_MAX_SEG,
 		.nb_mtu_seg_max = NFP_TX_MAX_MTU_SEG,
 	};
-
-	/* All NFP devices support jumbo frames */
-	dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_RSS) {
 		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_RSS_HASH;

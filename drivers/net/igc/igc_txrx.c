@@ -1080,7 +1080,7 @@ igc_rx_init(struct rte_eth_dev *dev)
 	IGC_WRITE_REG(hw, IGC_RCTL, rctl & ~IGC_RCTL_EN);
 
 	/* Configure support of jumbo frames, if any. */
-	if ((offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) != 0)
+	if (dev->data->mtu & RTE_ETHER_MTU)
 		rctl |= IGC_RCTL_LPE;
 	else
 		rctl &= ~IGC_RCTL_LPE;

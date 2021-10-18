@@ -535,7 +535,6 @@ bnx2x_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_pktlen  = BNX2X_MAX_RX_PKT_LEN;
 	dev_info->max_mac_addrs  = BNX2X_MAX_MAC_ADDRS;
 	dev_info->speed_capa = ETH_LINK_SPEED_10G | ETH_LINK_SPEED_20G;
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	dev_info->rx_desc_lim.nb_max = MAX_RX_AVAIL;
 	dev_info->rx_desc_lim.nb_min = MIN_RX_SIZE_NONTPA;

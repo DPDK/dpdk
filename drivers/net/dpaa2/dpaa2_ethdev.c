@@ -44,7 +44,6 @@ static uint64_t dev_rx_offloads_sup =
 		DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_VLAN_FILTER |
-		DEV_RX_OFFLOAD_JUMBO_FRAME |
 		DEV_RX_OFFLOAD_TIMESTAMP;
 
 /* Rx offloads which cannot be disabled */
@@ -298,7 +297,6 @@ dpaa2_dev_rx_burst_mode_get(struct rte_eth_dev *dev,
 			{DEV_RX_OFFLOAD_OUTER_UDP_CKSUM, " Outer UDP csum,"},
 			{DEV_RX_OFFLOAD_VLAN_STRIP, " VLAN strip,"},
 			{DEV_RX_OFFLOAD_VLAN_FILTER, " VLAN filter,"},
-			{DEV_RX_OFFLOAD_JUMBO_FRAME, " Jumbo frame,"},
 			{DEV_RX_OFFLOAD_TIMESTAMP, " Timestamp,"},
 			{DEV_RX_OFFLOAD_RSS_HASH, " RSS,"},
 			{DEV_RX_OFFLOAD_SCATTER, " Scattered,"}

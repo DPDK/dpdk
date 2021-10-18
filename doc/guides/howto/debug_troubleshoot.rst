@@ -71,8 +71,6 @@ RX Port and associated core :numref:`dtg_rx_rate`.
    * Identify if port Speed and Duplex is matching to desired values with
      ``rte_eth_link_get``.
 
-   * Check ``DEV_RX_OFFLOAD_JUMBO_FRAME`` is set with ``rte_eth_dev_info_get``.
-
    * Check promiscuous mode if the drops do not occur for unique MAC address
      with ``rte_eth_promiscuous_get``.
 

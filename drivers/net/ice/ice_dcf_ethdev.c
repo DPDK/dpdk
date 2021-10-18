@@ -72,7 +72,7 @@ ice_dcf_init_rxq(struct rte_eth_dev *dev, struct ice_rx_queue *rxq)
 	/* Check if the jumbo frame and maximum packet length are set
 	 * correctly.
 	 */
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+	if (dev_data->mtu > RTE_ETHER_MTU) {
 		if (max_pkt_len <= ICE_ETH_MAX_LEN ||
 		    max_pkt_len > ICE_FRAME_SIZE_MAX) {
 			PMD_DRV_LOG(ERR, "maximum packet length must be "
@@ -681,7 +681,6 @@ ice_dcf_dev_info_get(struct rte_eth_dev *dev,
 		DEV_RX_OFFLOAD_TCP_CKSUM |
 		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_SCATTER |
-		DEV_RX_OFFLOAD_JUMBO_FRAME |
 		DEV_RX_OFFLOAD_VLAN_FILTER |
 		DEV_RX_OFFLOAD_RSS_HASH;
 	dev_info->tx_offload_capa =

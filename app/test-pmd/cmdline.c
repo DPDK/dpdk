@@ -1911,7 +1911,7 @@ cmd_config_max_pkt_len_parsed(void *parsed_result,
 			return;
 		}
 
-		update_jumbo_frame_offload(port_id, res->value);
+		update_mtu_from_frame_size(port_id, res->value);
 	}
 
 	init_port_config();

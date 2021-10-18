@@ -210,8 +210,7 @@ enetc_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 		(DEV_RX_OFFLOAD_IPV4_CKSUM |
 		 DEV_RX_OFFLOAD_UDP_CKSUM |
 		 DEV_RX_OFFLOAD_TCP_CKSUM |
-		 DEV_RX_OFFLOAD_KEEP_CRC |
-		 DEV_RX_OFFLOAD_JUMBO_FRAME);
+		 DEV_RX_OFFLOAD_KEEP_CRC);
 
 	return 0;
 }

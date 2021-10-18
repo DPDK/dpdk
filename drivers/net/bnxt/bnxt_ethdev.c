@@ -736,15 +736,10 @@ static int bnxt_start_nic(struct bnxt *bp)
 	unsigned int i, j;
 	int rc;
 
-	if (bp->eth_dev->data->mtu > RTE_ETHER_MTU) {
-		bp->eth_dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_JUMBO_FRAME;
+	if (bp->eth_dev->data->mtu > RTE_ETHER_MTU)
 		bp->flags |= BNXT_FLAG_JUMBO;
-	} else {
-		bp->eth_dev->data->dev_conf.rxmode.offloads &=
-			~DEV_RX_OFFLOAD_JUMBO_FRAME;
+	else
 		bp->flags &= ~BNXT_FLAG_JUMBO;
-	}
 
 	/* THOR does not support ring groups.
 	 * But we will use the array to save RSS context IDs.
@@ -1254,7 +1249,6 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 	if (eth_dev->data->dev_conf.rxmode.offloads &
 		~(DEV_RX_OFFLOAD_VLAN_STRIP |
 		  DEV_RX_OFFLOAD_KEEP_CRC |
-		  DEV_RX_OFFLOAD_JUMBO_FRAME |
 		  DEV_RX_OFFLOAD_IPV4_CKSUM |
 		  DEV_RX_OFFLOAD_UDP_CKSUM |
 		  DEV_RX_OFFLOAD_TCP_CKSUM |
