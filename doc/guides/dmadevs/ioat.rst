@@ -67,3 +67,18 @@ For example::
 Once probed successfully, the device will appear as a ``dmadev``, that is a
 "DMA device type" inside DPDK, and can be accessed using APIs from the
 ``rte_dmadev`` library.
+
+Using IOAT DMAdev Devices
+--------------------------
+
+To use IOAT devices from an application, the ``dmadev`` API can be used.
+
+Device Configuration
+~~~~~~~~~~~~~~~~~~~~~
+
+IOAT configuration requirements:
+
+* ``ring_size`` must be a power of two, between 64 and 4096.
+* Only one ``vchan`` is supported per device.
+* Silent mode is not supported.
+* The transfer direction must be set to ``RTE_DMA_DIR_MEM_TO_MEM`` to copy from memory to memory.

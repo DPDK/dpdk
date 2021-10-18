@@ -12,8 +12,111 @@ static struct rte_pci_driver ioat_pmd_drv;
 
 RTE_LOG_REGISTER_DEFAULT(ioat_pmd_logtype, INFO);
 
+#define DESC_SZ sizeof(struct ioat_dma_hw_desc)
+
 #define IOAT_PMD_NAME dmadev_ioat
 #define IOAT_PMD_NAME_STR RTE_STR(IOAT_PMD_NAME)
+
+/* Configure a device. */
+static int
+ioat_dev_configure(struct rte_dma_dev *dev __rte_unused, const struct rte_dma_conf *dev_conf,
+		uint32_t conf_sz)
+{
+	if (sizeof(struct rte_dma_conf) != conf_sz)
+		return -EINVAL;
+
+	if (dev_conf->nb_vchans != 1)
+		return -EINVAL;
+
+	return 0;
+}
+
+/* Setup a virtual channel for IOAT, only 1 vchan is supported. */
+static int
+ioat_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
+		const struct rte_dma_vchan_conf *qconf, uint32_t qconf_sz)
+{
+	struct ioat_dmadev *ioat = dev->fp_obj->dev_private;
+	uint16_t max_desc = qconf->nb_desc;
+	int i;
+
+	if (sizeof(struct rte_dma_vchan_conf) != qconf_sz)
+		return -EINVAL;
+
+	ioat->qcfg = *qconf;
+
+	if (!rte_is_power_of_2(max_desc)) {
+		max_desc = rte_align32pow2(max_desc);
+		IOAT_PMD_DEBUG("DMA dev %u using %u descriptors", dev->data->dev_id, max_desc);
+		ioat->qcfg.nb_desc = max_desc;
+	}
+
+	/* In case we are reconfiguring a device, free any existing memory. */
+	rte_free(ioat->desc_ring);
+
+	ioat->desc_ring = rte_zmalloc(NULL, sizeof(*ioat->desc_ring) * max_desc, 0);
+	if (ioat->desc_ring == NULL)
+		return -ENOMEM;
+
+	ioat->ring_addr = rte_mem_virt2iova(ioat->desc_ring);
+
+	ioat->status_addr = rte_mem_virt2iova(ioat) + offsetof(struct ioat_dmadev, status);
+
+	/* Ensure all counters are reset, if reconfiguring/restarting device. */
+	ioat->next_read = 0;
+	ioat->next_write = 0;
+	ioat->last_write = 0;
+	ioat->offset = 0;
+	ioat->failure = 0;
+
+	/* Configure descriptor ring - each one points to next. */
+	for (i = 0; i < ioat->qcfg.nb_desc; i++) {
+		ioat->desc_ring[i].next = ioat->ring_addr +
+				(((i + 1) % ioat->qcfg.nb_desc) * DESC_SZ);
+	}
+
+	return 0;
+}
+
+/* Get device information of a device. */
+static int
+ioat_dev_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *info, uint32_t size)
+{
+	struct ioat_dmadev *ioat = dev->fp_obj->dev_private;
+	if (size < sizeof(*info))
+		return -EINVAL;
+	info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM |
+			RTE_DMA_CAPA_OPS_COPY |
+			RTE_DMA_CAPA_OPS_FILL;
+	if (ioat->version >= IOAT_VER_3_4)
+		info->dev_capa |= RTE_DMA_CAPA_HANDLES_ERRORS;
+	info->max_vchans = 1;
+	info->min_desc = 32;
+	info->max_desc = 4096;
+	return 0;
+}
+
+/* Close a configured device. */
+static int
+ioat_dev_close(struct rte_dma_dev *dev)
+{
+	struct ioat_dmadev *ioat;
+
+	if (!dev) {
+		IOAT_PMD_ERR("Invalid device");
+		return -EINVAL;
+	}
+
+	ioat = dev->fp_obj->dev_private;
+	if (!ioat) {
+		IOAT_PMD_ERR("Error getting dev_private");
+		return -EINVAL;
+	}
+
+	rte_free(ioat->desc_ring);
+
+	return 0;
+}
 
 /* Dump DMA device info. */
 static int
@@ -86,7 +189,11 @@ static int
 ioat_dmadev_create(const char *name, struct rte_pci_device *dev)
 {
 	static const struct rte_dma_dev_ops ioat_dmadev_ops = {
+		.dev_close = ioat_dev_close,
+		.dev_configure = ioat_dev_configure,
 		.dev_dump = ioat_dev_dump,
+		.dev_info_get = ioat_dev_info_get,
+		.vchan_setup = ioat_vchan_setup,
 	};
 
 	struct rte_dma_dev *dmadev = NULL;
