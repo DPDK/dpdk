@@ -221,6 +221,9 @@ API Changes
   removed. Its usages have been replaced by a new function
   ``rte_kvargs_get_with_value()``.
 
+* mempool: Added ``MEMPOOL_F_NON_IO`` flag to give a hint to DPDK components
+  that objects from this pool will not be used for device IO (e.g. DMA).
+
 * net: Renamed ``s_addr`` and ``d_addr`` fields of ``rte_ether_hdr`` structure
   to ``src_addr`` and ``dst_addr``, respectively.
 

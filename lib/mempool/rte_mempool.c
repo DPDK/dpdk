@@ -372,6 +372,10 @@ rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	STAILQ_INSERT_TAIL(&mp->mem_list, memhdr, next);
 	mp->nb_mem_chunks++;
 
+	/* At least some objects in the pool can now be used for IO. */
+	if (iova != RTE_BAD_IOVA)
+		mp->flags &= ~MEMPOOL_F_NON_IO;
+
 	/* Report the mempool as ready only when fully populated. */
 	if (mp->populated_size >= mp->size)
 		mempool_event_callback_invoke(RTE_MEMPOOL_EVENT_READY, mp);
@@ -850,6 +854,12 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 		rte_errno = EINVAL;
 		return NULL;
 	}
+
+	/*
+	 * No objects in the pool can be used for IO until it's populated
+	 * with at least some objects with valid IOVA.
+	 */
+	flags |= MEMPOOL_F_NON_IO;
 
 	/* "no cache align" imply "no spread" */
 	if (flags & MEMPOOL_F_NO_CACHE_ALIGN)
