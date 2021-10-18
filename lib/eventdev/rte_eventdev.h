@@ -1747,15 +1747,19 @@ __rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
 			  const struct rte_event ev[], uint16_t nb_events,
 			  const event_enqueue_burst_t fn)
 {
-	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+	const struct rte_event_fp_ops *fp_ops;
+	void *port;
 
+	fp_ops = &rte_event_fp_ops[dev_id];
+	port = fp_ops->data[port_id];
 #ifdef RTE_LIBRTE_EVENTDEV_DEBUG
-	if (dev_id >= RTE_EVENT_MAX_DEVS || !rte_eventdevs[dev_id].attached) {
+	if (dev_id >= RTE_EVENT_MAX_DEVS ||
+	    port_id >= RTE_EVENT_MAX_PORTS_PER_DEV) {
 		rte_errno = EINVAL;
 		return 0;
 	}
 
-	if (port_id >= dev->data->nb_ports) {
+	if (port == NULL) {
 		rte_errno = EINVAL;
 		return 0;
 	}
@@ -1766,9 +1770,9 @@ __rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
 	 * requests nb_events as const one
 	 */
 	if (nb_events == 1)
-		return (*dev->enqueue)(dev->data->ports[port_id], ev);
+		return (fp_ops->enqueue)(port, ev);
 	else
-		return fn(dev->data->ports[port_id], ev, nb_events);
+		return fn(port, ev, nb_events);
 }
 
 /**
@@ -1818,10 +1822,11 @@ static inline uint16_t
 rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
 			const struct rte_event ev[], uint16_t nb_events)
 {
-	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+	const struct rte_event_fp_ops *fp_ops;
 
+	fp_ops = &rte_event_fp_ops[dev_id];
 	return __rte_event_enqueue_burst(dev_id, port_id, ev, nb_events,
-					 dev->enqueue_burst);
+					 fp_ops->enqueue_burst);
 }
 
 /**
@@ -1869,10 +1874,11 @@ static inline uint16_t
 rte_event_enqueue_new_burst(uint8_t dev_id, uint8_t port_id,
 			    const struct rte_event ev[], uint16_t nb_events)
 {
-	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+	const struct rte_event_fp_ops *fp_ops;
 
+	fp_ops = &rte_event_fp_ops[dev_id];
 	return __rte_event_enqueue_burst(dev_id, port_id, ev, nb_events,
-					 dev->enqueue_new_burst);
+					 fp_ops->enqueue_new_burst);
 }
 
 /**
@@ -1920,10 +1926,11 @@ static inline uint16_t
 rte_event_enqueue_forward_burst(uint8_t dev_id, uint8_t port_id,
 				const struct rte_event ev[], uint16_t nb_events)
 {
-	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+	const struct rte_event_fp_ops *fp_ops;
 
+	fp_ops = &rte_event_fp_ops[dev_id];
 	return __rte_event_enqueue_burst(dev_id, port_id, ev, nb_events,
-					 dev->enqueue_forward_burst);
+					 fp_ops->enqueue_forward_burst);
 }
 
 /**
@@ -1996,15 +2003,19 @@ static inline uint16_t
 rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
 			uint16_t nb_events, uint64_t timeout_ticks)
 {
-	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+	const struct rte_event_fp_ops *fp_ops;
+	void *port;
 
+	fp_ops = &rte_event_fp_ops[dev_id];
+	port = fp_ops->data[port_id];
 #ifdef RTE_LIBRTE_EVENTDEV_DEBUG
-	if (dev_id >= RTE_EVENT_MAX_DEVS || !rte_eventdevs[dev_id].attached) {
+	if (dev_id >= RTE_EVENT_MAX_DEVS ||
+	    port_id >= RTE_EVENT_MAX_PORTS_PER_DEV) {
 		rte_errno = EINVAL;
 		return 0;
 	}
 
-	if (port_id >= dev->data->nb_ports) {
+	if (port == NULL) {
 		rte_errno = EINVAL;
 		return 0;
 	}
@@ -2015,11 +2026,10 @@ rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
 	 * requests nb_events as const one
 	 */
 	if (nb_events == 1)
-		return (*dev->dequeue)(dev->data->ports[port_id], ev,
-				       timeout_ticks);
+		return (fp_ops->dequeue)(port, ev, timeout_ticks);
 	else
-		return (*dev->dequeue_burst)(dev->data->ports[port_id], ev,
-					     nb_events, timeout_ticks);
+		return (fp_ops->dequeue_burst)(port, ev, nb_events,
+					       timeout_ticks);
 }
 
 #ifdef __cplusplus
