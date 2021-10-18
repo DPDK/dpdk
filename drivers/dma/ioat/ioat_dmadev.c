@@ -6,6 +6,7 @@
 #include <rte_dmadev_pmd.h>
 #include <rte_malloc.h>
 #include <rte_prefetch.h>
+#include <rte_errno.h>
 
 #include "ioat_internal.h"
 
@@ -362,6 +363,144 @@ ioat_dev_dump(const struct rte_dma_dev *dev, FILE *f)
 	return __dev_dump(dev->fp_obj->dev_private, f);
 }
 
+/* Returns the index of the last completed operation. */
+static inline uint16_t
+__get_last_completed(const struct ioat_dmadev *ioat, int *state)
+{
+	/* Status register contains the address of the completed operation */
+	uint64_t status = ioat->status;
+
+	/* lower 3 bits indicate "transfer status" : active, idle, halted.
+	 * We can ignore bit 0.
+	 */
+	*state = status & IOAT_CHANSTS_STATUS;
+
+	/* If we are just after recovering from an error the address returned by
+	 * status will be 0, in this case we return the offset - 1 as the last
+	 * completed. If not return the status value minus the chainaddr which
+	 * gives us an offset into the ring. Right shifting by 6 (divide by 64)
+	 * gives the index of the completion from the HW point of view and adding
+	 * the offset translates the ring index from HW to SW point of view.
+	 */
+	if ((status & ~IOAT_CHANSTS_STATUS) == 0)
+		return ioat->offset - 1;
+
+	return (status - ioat->ring_addr) >> 6;
+}
+
+/* Translates IOAT ChanERRs to DMA error codes. */
+static inline enum rte_dma_status_code
+__translate_status_ioat_to_dma(uint32_t chanerr)
+{
+	if (chanerr & IOAT_CHANERR_INVALID_SRC_ADDR_MASK)
+		return RTE_DMA_STATUS_INVALID_SRC_ADDR;
+	else if (chanerr & IOAT_CHANERR_INVALID_DST_ADDR_MASK)
+		return RTE_DMA_STATUS_INVALID_DST_ADDR;
+	else if (chanerr & IOAT_CHANERR_INVALID_LENGTH_MASK)
+		return RTE_DMA_STATUS_INVALID_LENGTH;
+	else if (chanerr & IOAT_CHANERR_DESCRIPTOR_READ_ERROR_MASK)
+		return RTE_DMA_STATUS_DESCRIPTOR_READ_ERROR;
+	else
+		return RTE_DMA_STATUS_ERROR_UNKNOWN;
+}
+
+/* Returns details of operations that have been completed. */
+static uint16_t
+ioat_completed(void *dev_private, uint16_t qid __rte_unused, const uint16_t max_ops,
+		uint16_t *last_idx, bool *has_error)
+{
+	struct ioat_dmadev *ioat = dev_private;
+
+	const unsigned short mask = (ioat->qcfg.nb_desc - 1);
+	const unsigned short read = ioat->next_read;
+	unsigned short last_completed, count;
+	int state, fails = 0;
+
+	/* Do not do any work if there is an uncleared error. */
+	if (ioat->failure != 0) {
+		*has_error = true;
+		*last_idx = ioat->next_read - 2;
+		return 0;
+	}
+
+	last_completed = __get_last_completed(ioat, &state);
+	count = (last_completed + 1 - read) & mask;
+
+	/* Cap count at max_ops or set as last run in batch. */
+	if (count > max_ops)
+		count = max_ops;
+
+	if (count == max_ops || state != IOAT_CHANSTS_HALTED) {
+		ioat->next_read = read + count;
+		*last_idx = ioat->next_read - 1;
+	} else {
+		*has_error = true;
+		rte_errno = EIO;
+		ioat->failure = ioat->regs->chanerr;
+		ioat->next_read = read + count + 1;
+		if (__ioat_recover(ioat) != 0) {
+			IOAT_PMD_ERR("Device HALTED and could not be recovered\n");
+			__dev_dump(dev_private, stdout);
+			return 0;
+		}
+		__submit(ioat);
+		fails++;
+		*last_idx = ioat->next_read - 2;
+	}
+
+	return count;
+}
+
+/* Returns detailed status information about operations that have been completed. */
+static uint16_t
+ioat_completed_status(void *dev_private, uint16_t qid __rte_unused,
+		uint16_t max_ops, uint16_t *last_idx, enum rte_dma_status_code *status)
+{
+	struct ioat_dmadev *ioat = dev_private;
+
+	const unsigned short mask = (ioat->qcfg.nb_desc - 1);
+	const unsigned short read = ioat->next_read;
+	unsigned short count, last_completed;
+	uint64_t fails = 0;
+	int state, i;
+
+	last_completed = __get_last_completed(ioat, &state);
+	count = (last_completed + 1 - read) & mask;
+
+	for (i = 0; i < RTE_MIN(count + 1, max_ops); i++)
+		status[i] = RTE_DMA_STATUS_SUCCESSFUL;
+
+	/* Cap count at max_ops or set as last run in batch. */
+	if (count > max_ops)
+		count = max_ops;
+
+	if (count == max_ops || state != IOAT_CHANSTS_HALTED)
+		ioat->next_read = read + count;
+	else {
+		rte_errno = EIO;
+		status[count] = __translate_status_ioat_to_dma(ioat->regs->chanerr);
+		count++;
+		ioat->next_read = read + count;
+		if (__ioat_recover(ioat) != 0) {
+			IOAT_PMD_ERR("Device HALTED and could not be recovered\n");
+			__dev_dump(dev_private, stdout);
+			return 0;
+		}
+		__submit(ioat);
+		fails++;
+	}
+
+	if (ioat->failure > 0) {
+		status[0] = __translate_status_ioat_to_dma(ioat->failure);
+		count = RTE_MIN(count + 1, max_ops);
+		ioat->failure = 0;
+	}
+
+	*last_idx = ioat->next_read - 1;
+
+	return count;
+}
+
 /* Create a DMA device. */
 static int
 ioat_dmadev_create(const char *name, struct rte_pci_device *dev)
@@ -398,6 +537,8 @@ ioat_dmadev_create(const char *name, struct rte_pci_device *dev)
 
 	dmadev->dev_ops = &ioat_dmadev_ops;
 
+	dmadev->fp_obj->completed = ioat_completed;
+	dmadev->fp_obj->completed_status = ioat_completed_status;
 	dmadev->fp_obj->copy = ioat_enqueue_copy;
 	dmadev->fp_obj->fill = ioat_enqueue_fill;
 	dmadev->fp_obj->submit = ioat_submit;
