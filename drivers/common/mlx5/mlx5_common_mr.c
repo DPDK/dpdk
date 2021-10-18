@@ -2,7 +2,10 @@
  * Copyright 2016 6WIND S.A.
  * Copyright 2020 Mellanox Technologies, Ltd
  */
+#include <stddef.h>
+
 #include <rte_eal_memconfig.h>
+#include <rte_eal_paging.h>
 #include <rte_errno.h>
 #include <rte_mempool.h>
 #include <rte_malloc.h>
@@ -19,6 +22,29 @@ struct mr_find_contig_memsegs_data {
 	uintptr_t start;
 	uintptr_t end;
 	const struct rte_memseg_list *msl;
+};
+
+/* Virtual memory range. */
+struct mlx5_range {
+	uintptr_t start;
+	uintptr_t end;
+};
+
+/** Memory region for a mempool. */
+struct mlx5_mempool_mr {
+	struct mlx5_pmd_mr pmd_mr;
+	uint32_t refcnt; /**< Number of mempools sharing this MR. */
+};
+
+/* Mempool registration. */
+struct mlx5_mempool_reg {
+	LIST_ENTRY(mlx5_mempool_reg) next;
+	/** Registered mempool, used to designate registrations. */
+	struct rte_mempool *mp;
+	/** Memory regions for the address ranges of the mempool. */
+	struct mlx5_mempool_mr *mrs;
+	/** Number of memory regions. */
+	unsigned int mrs_n;
 };
 
 /**
@@ -1190,4 +1216,558 @@ mlx5_mr_dump_cache(struct mlx5_mr_share_cache *share_cache __rte_unused)
 	mlx5_mr_btree_dump(&share_cache->cache);
 	rte_rwlock_read_unlock(&share_cache->rwlock);
 #endif
+}
+
+static int
+mlx5_range_compare_start(const void *lhs, const void *rhs)
+{
+	const struct mlx5_range *r1 = lhs, *r2 = rhs;
+
+	if (r1->start > r2->start)
+		return 1;
+	else if (r1->start < r2->start)
+		return -1;
+	return 0;
+}
+
+static void
+mlx5_range_from_mempool_chunk(struct rte_mempool *mp, void *opaque,
+			      struct rte_mempool_memhdr *memhdr,
+			      unsigned int idx)
+{
+	struct mlx5_range *ranges = opaque, *range = &ranges[idx];
+	uint64_t page_size = rte_mem_page_size();
+
+	RTE_SET_USED(mp);
+	range->start = RTE_ALIGN_FLOOR((uintptr_t)memhdr->addr, page_size);
+	range->end = RTE_ALIGN_CEIL(range->start + memhdr->len, page_size);
+}
+
+/**
+ * Get VA-contiguous ranges of the mempool memory.
+ * Each range start and end is aligned to the system page size.
+ *
+ * @param[in] mp
+ *   Analyzed mempool.
+ * @param[out] out
+ *   Receives the ranges, caller must release it with free().
+ * @param[out] ount_n
+ *   Receives the number of @p out elements.
+ *
+ * @return
+ *   0 on success, (-1) on failure.
+ */
+static int
+mlx5_get_mempool_ranges(struct rte_mempool *mp, struct mlx5_range **out,
+			unsigned int *out_n)
+{
+	struct mlx5_range *chunks;
+	unsigned int chunks_n = mp->nb_mem_chunks, contig_n, i;
+
+	/* Collect page-aligned memory ranges of the mempool. */
+	chunks = calloc(sizeof(chunks[0]), chunks_n);
+	if (chunks == NULL)
+		return -1;
+	rte_mempool_mem_iter(mp, mlx5_range_from_mempool_chunk, chunks);
+	/* Merge adjacent chunks and place them at the beginning. */
+	qsort(chunks, chunks_n, sizeof(chunks[0]), mlx5_range_compare_start);
+	contig_n = 1;
+	for (i = 1; i < chunks_n; i++)
+		if (chunks[i - 1].end != chunks[i].start) {
+			chunks[contig_n - 1].end = chunks[i - 1].end;
+			chunks[contig_n] = chunks[i];
+			contig_n++;
+		}
+	/* Extend the last contiguous chunk to the end of the mempool. */
+	chunks[contig_n - 1].end = chunks[i - 1].end;
+	*out = chunks;
+	*out_n = contig_n;
+	return 0;
+}
+
+/**
+ * Analyze mempool memory to select memory ranges to register.
+ *
+ * @param[in] mp
+ *   Mempool to analyze.
+ * @param[out] out
+ *   Receives memory ranges to register, aligned to the system page size.
+ *   The caller must release them with free().
+ * @param[out] out_n
+ *   Receives the number of @p out items.
+ * @param[out] share_hugepage
+ *   Receives True if the entire pool resides within a single hugepage.
+ *
+ * @return
+ *   0 on success, (-1) on failure.
+ */
+static int
+mlx5_mempool_reg_analyze(struct rte_mempool *mp, struct mlx5_range **out,
+			 unsigned int *out_n, bool *share_hugepage)
+{
+	struct mlx5_range *ranges = NULL;
+	unsigned int i, ranges_n = 0;
+	struct rte_memseg_list *msl;
+
+	if (mlx5_get_mempool_ranges(mp, &ranges, &ranges_n) < 0) {
+		DRV_LOG(ERR, "Cannot get address ranges for mempool %s",
+			mp->name);
+		return -1;
+	}
+	/* Check if the hugepage of the pool can be shared. */
+	*share_hugepage = false;
+	msl = rte_mem_virt2memseg_list((void *)ranges[0].start);
+	if (msl != NULL) {
+		uint64_t hugepage_sz = 0;
+
+		/* Check that all ranges are on pages of the same size. */
+		for (i = 0; i < ranges_n; i++) {
+			if (hugepage_sz != 0 && hugepage_sz != msl->page_sz)
+				break;
+			hugepage_sz = msl->page_sz;
+		}
+		if (i == ranges_n) {
+			/*
+			 * If the entire pool is within one hugepage,
+			 * combine all ranges into one of the hugepage size.
+			 */
+			uintptr_t reg_start = ranges[0].start;
+			uintptr_t reg_end = ranges[ranges_n - 1].end;
+			uintptr_t hugepage_start =
+				RTE_ALIGN_FLOOR(reg_start, hugepage_sz);
+			uintptr_t hugepage_end = hugepage_start + hugepage_sz;
+			if (reg_end < hugepage_end) {
+				ranges[0].start = hugepage_start;
+				ranges[0].end = hugepage_end;
+				ranges_n = 1;
+				*share_hugepage = true;
+			}
+		}
+	}
+	*out = ranges;
+	*out_n = ranges_n;
+	return 0;
+}
+
+/** Create a registration object for the mempool. */
+static struct mlx5_mempool_reg *
+mlx5_mempool_reg_create(struct rte_mempool *mp, unsigned int mrs_n)
+{
+	struct mlx5_mempool_reg *mpr = NULL;
+
+	mpr = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
+			  sizeof(*mpr) + mrs_n * sizeof(mpr->mrs[0]),
+			  RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (mpr == NULL) {
+		DRV_LOG(ERR, "Cannot allocate mempool %s registration object",
+			mp->name);
+		return NULL;
+	}
+	mpr->mp = mp;
+	mpr->mrs = (struct mlx5_mempool_mr *)(mpr + 1);
+	mpr->mrs_n = mrs_n;
+	return mpr;
+}
+
+/**
+ * Destroy a mempool registration object.
+ *
+ * @param standalone
+ *   Whether @p mpr owns its MRs excludively, i.e. they are not shared.
+ */
+static void
+mlx5_mempool_reg_destroy(struct mlx5_mr_share_cache *share_cache,
+			 struct mlx5_mempool_reg *mpr, bool standalone)
+{
+	if (standalone) {
+		unsigned int i;
+
+		for (i = 0; i < mpr->mrs_n; i++)
+			share_cache->dereg_mr_cb(&mpr->mrs[i].pmd_mr);
+	}
+	mlx5_free(mpr);
+}
+
+/** Find registration object of a mempool. */
+static struct mlx5_mempool_reg *
+mlx5_mempool_reg_lookup(struct mlx5_mr_share_cache *share_cache,
+			struct rte_mempool *mp)
+{
+	struct mlx5_mempool_reg *mpr;
+
+	LIST_FOREACH(mpr, &share_cache->mempool_reg_list, next)
+		if (mpr->mp == mp)
+			break;
+	return mpr;
+}
+
+/** Increment reference counters of MRs used in the registration. */
+static void
+mlx5_mempool_reg_attach(struct mlx5_mempool_reg *mpr)
+{
+	unsigned int i;
+
+	for (i = 0; i < mpr->mrs_n; i++)
+		__atomic_add_fetch(&mpr->mrs[i].refcnt, 1, __ATOMIC_RELAXED);
+}
+
+/**
+ * Decrement reference counters of MRs used in the registration.
+ *
+ * @return True if no more references to @p mpr MRs exist, False otherwise.
+ */
+static bool
+mlx5_mempool_reg_detach(struct mlx5_mempool_reg *mpr)
+{
+	unsigned int i;
+	bool ret = false;
+
+	for (i = 0; i < mpr->mrs_n; i++)
+		ret |= __atomic_sub_fetch(&mpr->mrs[i].refcnt, 1,
+					  __ATOMIC_RELAXED) == 0;
+	return ret;
+}
+
+static int
+mlx5_mr_mempool_register_primary(struct mlx5_mr_share_cache *share_cache,
+				 void *pd, struct rte_mempool *mp)
+{
+	struct mlx5_range *ranges = NULL;
+	struct mlx5_mempool_reg *mpr, *new_mpr;
+	unsigned int i, ranges_n;
+	bool share_hugepage;
+	int ret = -1;
+
+	/* Early check to avoid unnecessary creation of MRs. */
+	rte_rwlock_read_lock(&share_cache->rwlock);
+	mpr = mlx5_mempool_reg_lookup(share_cache, mp);
+	rte_rwlock_read_unlock(&share_cache->rwlock);
+	if (mpr != NULL) {
+		DRV_LOG(DEBUG, "Mempool %s is already registered for PD %p",
+			mp->name, pd);
+		rte_errno = EEXIST;
+		goto exit;
+	}
+	if (mlx5_mempool_reg_analyze(mp, &ranges, &ranges_n,
+				     &share_hugepage) < 0) {
+		DRV_LOG(ERR, "Cannot get mempool %s memory ranges", mp->name);
+		rte_errno = ENOMEM;
+		goto exit;
+	}
+	new_mpr = mlx5_mempool_reg_create(mp, ranges_n);
+	if (new_mpr == NULL) {
+		DRV_LOG(ERR,
+			"Cannot create a registration object for mempool %s in PD %p",
+			mp->name, pd);
+		rte_errno = ENOMEM;
+		goto exit;
+	}
+	/*
+	 * If the entire mempool fits in a single hugepage, the MR for this
+	 * hugepage can be shared across mempools that also fit in it.
+	 */
+	if (share_hugepage) {
+		rte_rwlock_write_lock(&share_cache->rwlock);
+		LIST_FOREACH(mpr, &share_cache->mempool_reg_list, next) {
+			if (mpr->mrs[0].pmd_mr.addr == (void *)ranges[0].start)
+				break;
+		}
+		if (mpr != NULL) {
+			new_mpr->mrs = mpr->mrs;
+			mlx5_mempool_reg_attach(new_mpr);
+			LIST_INSERT_HEAD(&share_cache->mempool_reg_list,
+					 new_mpr, next);
+		}
+		rte_rwlock_write_unlock(&share_cache->rwlock);
+		if (mpr != NULL) {
+			DRV_LOG(DEBUG, "Shared MR %#x in PD %p for mempool %s with mempool %s",
+				mpr->mrs[0].pmd_mr.lkey, pd, mp->name,
+				mpr->mp->name);
+			ret = 0;
+			goto exit;
+		}
+	}
+	for (i = 0; i < ranges_n; i++) {
+		struct mlx5_mempool_mr *mr = &new_mpr->mrs[i];
+		const struct mlx5_range *range = &ranges[i];
+		size_t len = range->end - range->start;
+
+		if (share_cache->reg_mr_cb(pd, (void *)range->start, len,
+		    &mr->pmd_mr) < 0) {
+			DRV_LOG(ERR,
+				"Failed to create an MR in PD %p for address range "
+				"[0x%" PRIxPTR ", 0x%" PRIxPTR "] (%zu bytes) for mempool %s",
+				pd, range->start, range->end, len, mp->name);
+			break;
+		}
+		DRV_LOG(DEBUG,
+			"Created a new MR %#x in PD %p for address range "
+			"[0x%" PRIxPTR ", 0x%" PRIxPTR "] (%zu bytes) for mempool %s",
+			mr->pmd_mr.lkey, pd, range->start, range->end, len,
+			mp->name);
+	}
+	if (i != ranges_n) {
+		mlx5_mempool_reg_destroy(share_cache, new_mpr, true);
+		rte_errno = EINVAL;
+		goto exit;
+	}
+	/* Concurrent registration is not supposed to happen. */
+	rte_rwlock_write_lock(&share_cache->rwlock);
+	mpr = mlx5_mempool_reg_lookup(share_cache, mp);
+	if (mpr == NULL) {
+		mlx5_mempool_reg_attach(new_mpr);
+		LIST_INSERT_HEAD(&share_cache->mempool_reg_list,
+				 new_mpr, next);
+		ret = 0;
+	}
+	rte_rwlock_write_unlock(&share_cache->rwlock);
+	if (mpr != NULL) {
+		DRV_LOG(DEBUG, "Mempool %s is already registered for PD %p",
+			mp->name, pd);
+		mlx5_mempool_reg_destroy(share_cache, new_mpr, true);
+		rte_errno = EEXIST;
+		goto exit;
+	}
+exit:
+	free(ranges);
+	return ret;
+}
+
+static int
+mlx5_mr_mempool_register_secondary(struct mlx5_mr_share_cache *share_cache,
+				   void *pd, struct rte_mempool *mp,
+				   struct mlx5_mp_id *mp_id)
+{
+	if (mp_id == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	return mlx5_mp_req_mempool_reg(mp_id, share_cache, pd, mp, true);
+}
+
+/**
+ * Register the memory of a mempool in the protection domain.
+ *
+ * @param share_cache
+ *   Shared MR cache of the protection domain.
+ * @param pd
+ *   Protection domain object.
+ * @param mp
+ *   Mempool to register.
+ * @param mp_id
+ *   Multi-process identifier, may be NULL for the primary process.
+ *
+ * @return
+ *   0 on success, (-1) on failure and rte_errno is set.
+ */
+int
+mlx5_mr_mempool_register(struct mlx5_mr_share_cache *share_cache, void *pd,
+			 struct rte_mempool *mp, struct mlx5_mp_id *mp_id)
+{
+	if (mp->flags & MEMPOOL_F_NON_IO)
+		return 0;
+	switch (rte_eal_process_type()) {
+	case RTE_PROC_PRIMARY:
+		return mlx5_mr_mempool_register_primary(share_cache, pd, mp);
+	case RTE_PROC_SECONDARY:
+		return mlx5_mr_mempool_register_secondary(share_cache, pd, mp,
+							  mp_id);
+	default:
+		return -1;
+	}
+}
+
+static int
+mlx5_mr_mempool_unregister_primary(struct mlx5_mr_share_cache *share_cache,
+				   struct rte_mempool *mp)
+{
+	struct mlx5_mempool_reg *mpr;
+	bool standalone = false;
+
+	rte_rwlock_write_lock(&share_cache->rwlock);
+	LIST_FOREACH(mpr, &share_cache->mempool_reg_list, next)
+		if (mpr->mp == mp) {
+			LIST_REMOVE(mpr, next);
+			standalone = mlx5_mempool_reg_detach(mpr);
+			if (standalone)
+				/*
+				 * The unlock operation below provides a memory
+				 * barrier due to its store-release semantics.
+				 */
+				++share_cache->dev_gen;
+			break;
+		}
+	rte_rwlock_write_unlock(&share_cache->rwlock);
+	if (mpr == NULL) {
+		rte_errno = ENOENT;
+		return -1;
+	}
+	mlx5_mempool_reg_destroy(share_cache, mpr, standalone);
+	return 0;
+}
+
+static int
+mlx5_mr_mempool_unregister_secondary(struct mlx5_mr_share_cache *share_cache,
+				     struct rte_mempool *mp,
+				     struct mlx5_mp_id *mp_id)
+{
+	if (mp_id == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	return mlx5_mp_req_mempool_reg(mp_id, share_cache, NULL, mp, false);
+}
+
+/**
+ * Unregister the memory of a mempool from the protection domain.
+ *
+ * @param share_cache
+ *   Shared MR cache of the protection domain.
+ * @param mp
+ *   Mempool to unregister.
+ * @param mp_id
+ *   Multi-process identifier, may be NULL for the primary process.
+ *
+ * @return
+ *   0 on success, (-1) on failure and rte_errno is set.
+ */
+int
+mlx5_mr_mempool_unregister(struct mlx5_mr_share_cache *share_cache,
+			   struct rte_mempool *mp, struct mlx5_mp_id *mp_id)
+{
+	if (mp->flags & MEMPOOL_F_NON_IO)
+		return 0;
+	switch (rte_eal_process_type()) {
+	case RTE_PROC_PRIMARY:
+		return mlx5_mr_mempool_unregister_primary(share_cache, mp);
+	case RTE_PROC_SECONDARY:
+		return mlx5_mr_mempool_unregister_secondary(share_cache, mp,
+							    mp_id);
+	default:
+		return -1;
+	}
+}
+
+/**
+ * Lookup a MR key by and address in a registered mempool.
+ *
+ * @param mpr
+ *   Mempool registration object.
+ * @param addr
+ *   Address within the mempool.
+ * @param entry
+ *   Bottom-half cache entry to fill.
+ *
+ * @return
+ *   MR key or UINT32_MAX on failure, which can only happen
+ *   if the address is not from within the mempool.
+ */
+static uint32_t
+mlx5_mempool_reg_addr2mr(struct mlx5_mempool_reg *mpr, uintptr_t addr,
+			 struct mr_cache_entry *entry)
+{
+	uint32_t lkey = UINT32_MAX;
+	unsigned int i;
+
+	for (i = 0; i < mpr->mrs_n; i++) {
+		const struct mlx5_pmd_mr *mr = &mpr->mrs[i].pmd_mr;
+		uintptr_t mr_addr = (uintptr_t)mr->addr;
+
+		if (mr_addr <= addr) {
+			lkey = rte_cpu_to_be_32(mr->lkey);
+			entry->start = mr_addr;
+			entry->end = mr_addr + mr->len;
+			entry->lkey = lkey;
+			break;
+		}
+	}
+	return lkey;
+}
+
+/**
+ * Update bottom-half cache from the list of mempool registrations.
+ *
+ * @param share_cache
+ *   Pointer to a global shared MR cache.
+ * @param mr_ctrl
+ *   Per-queue MR control handle.
+ * @param entry
+ *   Pointer to an entry in the bottom-half cache to update
+ *   with the MR lkey looked up.
+ * @param mp
+ *   Mempool containing the address.
+ * @param addr
+ *   Address to lookup.
+ * @return
+ *   MR lkey on success, UINT32_MAX on failure.
+ */
+static uint32_t
+mlx5_lookup_mempool_regs(struct mlx5_mr_share_cache *share_cache,
+			 struct mlx5_mr_ctrl *mr_ctrl,
+			 struct mr_cache_entry *entry,
+			 struct rte_mempool *mp, uintptr_t addr)
+{
+	struct mlx5_mr_btree *bt = &mr_ctrl->cache_bh;
+	struct mlx5_mempool_reg *mpr;
+	uint32_t lkey = UINT32_MAX;
+
+	/* If local cache table is full, try to double it. */
+	if (unlikely(bt->len == bt->size))
+		mr_btree_expand(bt, bt->size << 1);
+	/* Look up in mempool registrations. */
+	rte_rwlock_read_lock(&share_cache->rwlock);
+	mpr = mlx5_mempool_reg_lookup(share_cache, mp);
+	if (mpr != NULL)
+		lkey = mlx5_mempool_reg_addr2mr(mpr, addr, entry);
+	rte_rwlock_read_unlock(&share_cache->rwlock);
+	/*
+	 * Update local cache. Even if it fails, return the found entry
+	 * to update top-half cache. Next time, this entry will be found
+	 * in the global cache.
+	 */
+	if (lkey != UINT32_MAX)
+		mr_btree_insert(bt, entry);
+	return lkey;
+}
+
+/**
+ * Bottom-half lookup for the address from the mempool.
+ *
+ * @param share_cache
+ *   Pointer to a global shared MR cache.
+ * @param mr_ctrl
+ *   Per-queue MR control handle.
+ * @param mp
+ *   Mempool containing the address.
+ * @param addr
+ *   Address to lookup.
+ * @return
+ *   MR lkey on success, UINT32_MAX on failure.
+ */
+uint32_t
+mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
+		      struct mlx5_mr_ctrl *mr_ctrl,
+		      struct rte_mempool *mp, uintptr_t addr)
+{
+	struct mr_cache_entry *repl = &mr_ctrl->cache[mr_ctrl->head];
+	uint32_t lkey;
+	uint16_t bh_idx = 0;
+
+	/* Binary-search MR translation table. */
+	lkey = mr_btree_lookup(&mr_ctrl->cache_bh, &bh_idx, addr);
+	/* Update top-half cache. */
+	if (likely(lkey != UINT32_MAX)) {
+		*repl = (*mr_ctrl->cache_bh.table)[bh_idx];
+	} else {
+		lkey = mlx5_lookup_mempool_regs(share_cache, mr_ctrl, repl,
+						mp, addr);
+		/* Can only fail if the address is not from the mempool. */
+		if (unlikely(lkey == UINT32_MAX))
+			return UINT32_MAX;
+	}
+	/* Update the most recently used entry. */
+	mr_ctrl->mru = mr_ctrl->head;
+	/* Point to the next victim, the oldest. */
+	mr_ctrl->head = (mr_ctrl->head + 1) % MLX5_MR_CACHE_N;
+	return lkey;
 }

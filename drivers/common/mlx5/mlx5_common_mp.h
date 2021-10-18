@@ -14,6 +14,8 @@
 enum mlx5_mp_req_type {
 	MLX5_MP_REQ_VERBS_CMD_FD = 1,
 	MLX5_MP_REQ_CREATE_MR,
+	MLX5_MP_REQ_MEMPOOL_REGISTER,
+	MLX5_MP_REQ_MEMPOOL_UNREGISTER,
 	MLX5_MP_REQ_START_RXTX,
 	MLX5_MP_REQ_STOP_RXTX,
 	MLX5_MP_REQ_QUEUE_STATE_MODIFY,
@@ -33,6 +35,12 @@ struct mlx5_mp_arg_queue_id {
 	uint16_t queue_id; /* DPDK queue ID. */
 };
 
+struct mlx5_mp_arg_mempool_reg {
+	struct mlx5_mr_share_cache *share_cache;
+	void *pd; /* NULL for MLX5_MP_REQ_MEMPOOL_UNREGISTER */
+	struct rte_mempool *mempool;
+};
+
 /* Pameters for IPC. */
 struct mlx5_mp_param {
 	enum mlx5_mp_req_type type;
@@ -41,6 +49,8 @@ struct mlx5_mp_param {
 	RTE_STD_C11
 	union {
 		uintptr_t addr; /* MLX5_MP_REQ_CREATE_MR */
+		struct mlx5_mp_arg_mempool_reg mempool_reg;
+		/* MLX5_MP_REQ_MEMPOOL_(UN)REGISTER */
 		struct mlx5_mp_arg_queue_state_modify state_modify;
 		/* MLX5_MP_REQ_QUEUE_STATE_MODIFY */
 		struct mlx5_mp_arg_queue_id queue_id;
@@ -90,6 +100,10 @@ __rte_internal
 void mlx5_mp_uninit_secondary(const char *name);
 __rte_internal
 int mlx5_mp_req_mr_create(struct mlx5_mp_id *mp_id, uintptr_t addr);
+__rte_internal
+int mlx5_mp_req_mempool_reg(struct mlx5_mp_id *mp_id,
+			struct mlx5_mr_share_cache *share_cache, void *pd,
+			struct rte_mempool *mempool, bool reg);
 __rte_internal
 int mlx5_mp_req_queue_state_modify(struct mlx5_mp_id *mp_id,
 				   struct mlx5_mp_arg_queue_state_modify *sm);

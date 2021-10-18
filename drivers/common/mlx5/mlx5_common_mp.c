@@ -55,6 +55,56 @@ mlx5_mp_req_mr_create(struct mlx5_mp_id *mp_id, uintptr_t addr)
 }
 
 /**
+ * @param mp_id
+ *   ID of the MP process.
+ * @param share_cache
+ *   Shared MR cache.
+ * @param pd
+ *   Protection domain.
+ * @param mempool
+ *   Mempool to register or unregister.
+ * @param reg
+ *   True to register the mempool, False to unregister.
+ */
+int
+mlx5_mp_req_mempool_reg(struct mlx5_mp_id *mp_id,
+			struct mlx5_mr_share_cache *share_cache, void *pd,
+			struct rte_mempool *mempool, bool reg)
+{
+	struct rte_mp_msg mp_req;
+	struct rte_mp_msg *mp_res;
+	struct rte_mp_reply mp_rep;
+	struct mlx5_mp_param *req = (struct mlx5_mp_param *)mp_req.param;
+	struct mlx5_mp_arg_mempool_reg *arg = &req->args.mempool_reg;
+	struct mlx5_mp_param *res;
+	struct timespec ts = {.tv_sec = MLX5_MP_REQ_TIMEOUT_SEC, .tv_nsec = 0};
+	enum mlx5_mp_req_type type;
+	int ret;
+
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
+	type = reg ? MLX5_MP_REQ_MEMPOOL_REGISTER :
+		     MLX5_MP_REQ_MEMPOOL_UNREGISTER;
+	mp_init_msg(mp_id, &mp_req, type);
+	arg->share_cache = share_cache;
+	arg->pd = pd;
+	arg->mempool = mempool;
+	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
+	if (ret) {
+		DRV_LOG(ERR, "port %u request to primary process failed",
+			mp_id->port_id);
+		return -rte_errno;
+	}
+	MLX5_ASSERT(mp_rep.nb_received == 1);
+	mp_res = &mp_rep.msgs[0];
+	res = (struct mlx5_mp_param *)mp_res->param;
+	ret = res->result;
+	if (ret)
+		rte_errno = -ret;
+	mlx5_free(mp_rep.msgs);
+	return ret;
+}
+
+/**
  * Request Verbs queue state modification to the primary process.
  *
  * @param[in] mp_id

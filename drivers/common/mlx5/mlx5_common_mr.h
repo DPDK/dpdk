@@ -13,6 +13,7 @@
 
 #include <rte_rwlock.h>
 #include <rte_bitmap.h>
+#include <rte_mbuf.h>
 #include <rte_memory.h>
 
 #include "mlx5_glue.h"
@@ -75,6 +76,7 @@ struct mlx5_mr_ctrl {
 } __rte_packed;
 
 LIST_HEAD(mlx5_mr_list, mlx5_mr);
+LIST_HEAD(mlx5_mempool_reg_list, mlx5_mempool_reg);
 
 /* Global per-device MR cache. */
 struct mlx5_mr_share_cache {
@@ -83,6 +85,7 @@ struct mlx5_mr_share_cache {
 	struct mlx5_mr_btree cache; /* Global MR cache table. */
 	struct mlx5_mr_list mr_list; /* Registered MR list. */
 	struct mlx5_mr_list mr_free_list; /* Freed MR list. */
+	struct mlx5_mempool_reg_list mempool_reg_list; /* Mempool database. */
 	mlx5_reg_mr_t reg_mr_cb; /* Callback to reg_mr func */
 	mlx5_dereg_mr_t dereg_mr_cb; /* Callback to dereg_mr func */
 } __rte_packed;
@@ -136,6 +139,10 @@ uint32_t mlx5_mr_addr2mr_bh(void *pd, struct mlx5_mp_id *mp_id,
 			    struct mlx5_mr_ctrl *mr_ctrl,
 			    uintptr_t addr, unsigned int mr_ext_memseg_en);
 __rte_internal
+uint32_t mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
+			       struct mlx5_mr_ctrl *mr_ctrl,
+			       struct rte_mempool *mp, uintptr_t addr);
+__rte_internal
 void mlx5_mr_release_cache(struct mlx5_mr_share_cache *mr_cache);
 __rte_internal
 void mlx5_mr_dump_cache(struct mlx5_mr_share_cache *share_cache __rte_unused);
@@ -179,4 +186,14 @@ mlx5_common_verbs_dereg_mr(struct mlx5_pmd_mr *pmd_mr);
 __rte_internal
 void
 mlx5_mr_free(struct mlx5_mr *mr, mlx5_dereg_mr_t dereg_mr_cb);
+
+__rte_internal
+int
+mlx5_mr_mempool_register(struct mlx5_mr_share_cache *share_cache, void *pd,
+			 struct rte_mempool *mp, struct mlx5_mp_id *mp_id);
+__rte_internal
+int
+mlx5_mr_mempool_unregister(struct mlx5_mr_share_cache *share_cache,
+			   struct rte_mempool *mp, struct mlx5_mp_id *mp_id);
+
 #endif /* RTE_PMD_MLX5_COMMON_MR_H_ */
