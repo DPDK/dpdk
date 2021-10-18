@@ -180,7 +180,6 @@ test_cmdline_socket_fns(void)
 	/* void functions */
 	cmdline_stdin_exit(NULL);
 
-	cmdline_free(cl);
 	return 0;
 error:
 	printf("Error: function accepted null parameter!\n");

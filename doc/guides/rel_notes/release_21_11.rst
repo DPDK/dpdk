@@ -325,6 +325,9 @@ API Changes
   removed. Its usages have been replaced by a new function
   ``rte_kvargs_get_with_value()``.
 
+* cmdline: ``cmdline_stdin_exit()`` now frees the ``cmdline`` structure.
+  Calls to ``cmdline_free()`` after it need to be deleted from applications.
+
 * cmdline: Made ``cmdline`` structure definition hidden on Linux and FreeBSD.
 
 * cmdline: Made ``rdline`` structure definition hidden. Functions are added

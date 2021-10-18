@@ -233,7 +233,6 @@ main(int argc, char **argv)
 
 		cmdline_interact(cl);
 		cmdline_stdin_exit(cl);
-		cmdline_free(cl);
 	}
 #endif
 	ret = 0;

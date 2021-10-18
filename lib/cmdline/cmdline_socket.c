@@ -53,4 +53,5 @@ cmdline_stdin_exit(struct cmdline *cl)
 		return;
 
 	terminal_restore(cl);
+	cmdline_free(cl);
 }
