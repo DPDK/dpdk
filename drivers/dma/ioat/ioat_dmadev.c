@@ -5,6 +5,7 @@
 #include <rte_bus_pci.h>
 #include <rte_dmadev_pmd.h>
 #include <rte_malloc.h>
+#include <rte_prefetch.h>
 
 #include "ioat_internal.h"
 
@@ -16,6 +17,12 @@ RTE_LOG_REGISTER_DEFAULT(ioat_pmd_logtype, INFO);
 
 #define IOAT_PMD_NAME dmadev_ioat
 #define IOAT_PMD_NAME_STR RTE_STR(IOAT_PMD_NAME)
+
+/* IOAT operations. */
+enum rte_ioat_ops {
+	ioat_op_copy = 0,	/* Standard DMA Operation */
+	ioat_op_fill		/* Block Fill */
+};
 
 /* Configure a device. */
 static int
@@ -208,6 +215,87 @@ ioat_dev_close(struct rte_dma_dev *dev)
 	return 0;
 }
 
+/* Trigger hardware to begin performing enqueued operations. */
+static inline void
+__submit(struct ioat_dmadev *ioat)
+{
+	*ioat->doorbell = ioat->next_write - ioat->offset;
+
+	ioat->last_write = ioat->next_write;
+}
+
+/* External submit function wrapper. */
+static int
+ioat_submit(void *dev_private, uint16_t qid __rte_unused)
+{
+	struct ioat_dmadev *ioat = dev_private;
+
+	__submit(ioat);
+
+	return 0;
+}
+
+/* Write descriptor for enqueue. */
+static inline int
+__write_desc(void *dev_private, uint32_t op, uint64_t src, phys_addr_t dst,
+		unsigned int length, uint64_t flags)
+{
+	struct ioat_dmadev *ioat = dev_private;
+	uint16_t ret;
+	const unsigned short mask = ioat->qcfg.nb_desc - 1;
+	const unsigned short read = ioat->next_read;
+	unsigned short write = ioat->next_write;
+	const unsigned short space = mask + read - write;
+	struct ioat_dma_hw_desc *desc;
+
+	if (space == 0)
+		return -ENOSPC;
+
+	ioat->next_write = write + 1;
+	write &= mask;
+
+	desc = &ioat->desc_ring[write];
+	desc->size = length;
+	desc->u.control_raw = (uint32_t)((op << IOAT_CMD_OP_SHIFT) |
+			(1 << IOAT_COMP_UPDATE_SHIFT));
+
+	/* In IOAT the fence ensures that all operations including the current one
+	 * are completed before moving on, DMAdev assumes that the fence ensures
+	 * all operations before the current one are completed before starting
+	 * the current one, so in IOAT we set the fence for the previous descriptor.
+	 */
+	if (flags & RTE_DMA_OP_FLAG_FENCE)
+		ioat->desc_ring[(write - 1) & mask].u.control.fence = 1;
+
+	desc->src_addr = src;
+	desc->dest_addr = dst;
+
+	rte_prefetch0(&ioat->desc_ring[ioat->next_write & mask]);
+
+	ret = (uint16_t)(ioat->next_write - 1);
+
+	if (flags & RTE_DMA_OP_FLAG_SUBMIT)
+		__submit(ioat);
+
+	return ret;
+}
+
+/* Enqueue a fill operation onto the ioat device. */
+static int
+ioat_enqueue_fill(void *dev_private, uint16_t qid __rte_unused, uint64_t pattern,
+		rte_iova_t dst, unsigned int length, uint64_t flags)
+{
+	return __write_desc(dev_private, ioat_op_fill, pattern, dst, length, flags);
+}
+
+/* Enqueue a copy operation onto the ioat device. */
+static int
+ioat_enqueue_copy(void *dev_private, uint16_t qid __rte_unused, rte_iova_t src,
+		rte_iova_t dst, unsigned int length, uint64_t flags)
+{
+	return __write_desc(dev_private, ioat_op_copy, src, dst, length, flags);
+}
+
 /* Dump DMA device info. */
 static int
 __dev_dump(void *dev_private, FILE *f)
@@ -309,6 +397,10 @@ ioat_dmadev_create(const char *name, struct rte_pci_device *dev)
 	dmadev->fp_obj->dev_private = dmadev->data->dev_private;
 
 	dmadev->dev_ops = &ioat_dmadev_ops;
+
+	dmadev->fp_obj->copy = ioat_enqueue_copy;
+	dmadev->fp_obj->fill = ioat_enqueue_fill;
+	dmadev->fp_obj->submit = ioat_submit;
 
 	ioat = dmadev->data->dev_private;
 	ioat->dmadev = dmadev;
