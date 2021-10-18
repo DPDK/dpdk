@@ -27,6 +27,9 @@ headers = files(
         'rte_event_crypto_adapter.h',
         'rte_event_eth_tx_adapter.h',
 )
+indirect_headers += files(
+        'rte_eventdev_core.h',
+)
 driver_sdk_headers += files(
         'eventdev_pmd.h',
         'eventdev_pmd_pci.h',

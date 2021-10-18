@@ -1324,317 +1324,6 @@ int
 rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 				uint32_t *caps);
 
-struct eventdev_ops;
-struct rte_eventdev;
-
-typedef uint16_t (*event_enqueue_t)(void *port, const struct rte_event *ev);
-/**< @internal Enqueue event on port of a device */
-
-typedef uint16_t (*event_enqueue_burst_t)(void *port,
-			const struct rte_event ev[], uint16_t nb_events);
-/**< @internal Enqueue burst of events on port of a device */
-
-typedef uint16_t (*event_dequeue_t)(void *port, struct rte_event *ev,
-		uint64_t timeout_ticks);
-/**< @internal Dequeue event from port of a device */
-
-typedef uint16_t (*event_dequeue_burst_t)(void *port, struct rte_event ev[],
-		uint16_t nb_events, uint64_t timeout_ticks);
-/**< @internal Dequeue burst of events from port of a device */
-
-typedef uint16_t (*event_tx_adapter_enqueue_t)(void *port,
-					       struct rte_event ev[],
-					       uint16_t nb_events);
-/**< @internal Enqueue burst of events on port of a device */
-
-typedef uint16_t (*event_tx_adapter_enqueue_same_dest_t)(void *port,
-							 struct rte_event ev[],
-							 uint16_t nb_events);
-/**< @internal Enqueue burst of events on port of a device supporting
- * burst having same destination Ethernet port & Tx queue.
- */
-
-typedef uint16_t (*event_crypto_adapter_enqueue_t)(void *port,
-						   struct rte_event ev[],
-						   uint16_t nb_events);
-/**< @internal Enqueue burst of events on crypto adapter */
-
-#define RTE_EVENTDEV_NAME_MAX_LEN	(64)
-/**< @internal Max length of name of event PMD */
-
-/**
- * @internal
- * The data part, with no function pointers, associated with each device.
- *
- * This structure is safe to place in shared memory to be common among
- * different processes in a multi-process configuration.
- */
-struct rte_eventdev_data {
-	int socket_id;
-	/**< Socket ID where memory is allocated */
-	uint8_t dev_id;
-	/**< Device ID for this instance */
-	uint8_t nb_queues;
-	/**< Number of event queues. */
-	uint8_t nb_ports;
-	/**< Number of event ports. */
-	void **ports;
-	/**< Array of pointers to ports. */
-	struct rte_event_port_conf *ports_cfg;
-	/**< Array of port configuration structures. */
-	struct rte_event_queue_conf *queues_cfg;
-	/**< Array of queue configuration structures. */
-	uint16_t *links_map;
-	/**< Memory to store queues to port connections. */
-	void *dev_private;
-	/**< PMD-specific private data */
-	uint32_t event_dev_cap;
-	/**< Event device capabilities(RTE_EVENT_DEV_CAP_)*/
-	struct rte_event_dev_config dev_conf;
-	/**< Configuration applied to device. */
-	uint8_t service_inited;
-	/* Service initialization state */
-	uint32_t service_id;
-	/* Service ID*/
-	void *dev_stop_flush_arg;
-	/**< User-provided argument for event flush function */
-
-	RTE_STD_C11
-	uint8_t dev_started : 1;
-	/**< Device state: STARTED(1)/STOPPED(0) */
-
-	char name[RTE_EVENTDEV_NAME_MAX_LEN];
-	/**< Unique identifier name */
-
-	uint64_t reserved_64s[4]; /**< Reserved for future fields */
-	void *reserved_ptrs[4];   /**< Reserved for future fields */
-} __rte_cache_aligned;
-
-/** @internal The data structure associated with each event device. */
-struct rte_eventdev {
-	event_enqueue_t enqueue;
-	/**< Pointer to PMD enqueue function. */
-	event_enqueue_burst_t enqueue_burst;
-	/**< Pointer to PMD enqueue burst function. */
-	event_enqueue_burst_t enqueue_new_burst;
-	/**< Pointer to PMD enqueue burst function(op new variant) */
-	event_enqueue_burst_t enqueue_forward_burst;
-	/**< Pointer to PMD enqueue burst function(op forward variant) */
-	event_dequeue_t dequeue;
-	/**< Pointer to PMD dequeue function. */
-	event_dequeue_burst_t dequeue_burst;
-	/**< Pointer to PMD dequeue burst function. */
-	event_tx_adapter_enqueue_same_dest_t txa_enqueue_same_dest;
-	/**< Pointer to PMD eth Tx adapter burst enqueue function with
-	 * events destined to same Eth port & Tx queue.
-	 */
-	event_tx_adapter_enqueue_t txa_enqueue;
-	/**< Pointer to PMD eth Tx adapter enqueue function. */
-	struct rte_eventdev_data *data;
-	/**< Pointer to device data */
-	struct eventdev_ops *dev_ops;
-	/**< Functions exported by PMD */
-	struct rte_device *dev;
-	/**< Device info. supplied by probing */
-
-	RTE_STD_C11
-	uint8_t attached : 1;
-	/**< Flag indicating the device is attached */
-
-	event_crypto_adapter_enqueue_t ca_enqueue;
-	/**< Pointer to PMD crypto adapter enqueue function. */
-
-	uint64_t reserved_64s[4]; /**< Reserved for future fields */
-	void *reserved_ptrs[3];   /**< Reserved for future fields */
-} __rte_cache_aligned;
-
-extern struct rte_eventdev *rte_eventdevs;
-/** @internal The pool of rte_eventdev structures. */
-
-static __rte_always_inline uint16_t
-__rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
-			const struct rte_event ev[], uint16_t nb_events,
-			const event_enqueue_burst_t fn)
-{
-	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
-
-#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
-	if (dev_id >= RTE_EVENT_MAX_DEVS || !rte_eventdevs[dev_id].attached) {
-		rte_errno = EINVAL;
-		return 0;
-	}
-
-	if (port_id >= dev->data->nb_ports) {
-		rte_errno = EINVAL;
-		return 0;
-	}
-#endif
-	rte_eventdev_trace_enq_burst(dev_id, port_id, ev, nb_events, fn);
-	/*
-	 * Allow zero cost non burst mode routine invocation if application
-	 * requests nb_events as const one
-	 */
-	if (nb_events == 1)
-		return (*dev->enqueue)(dev->data->ports[port_id], ev);
-	else
-		return fn(dev->data->ports[port_id], ev, nb_events);
-}
-
-/**
- * Enqueue a burst of events objects or an event object supplied in *rte_event*
- * structure on an  event device designated by its *dev_id* through the event
- * port specified by *port_id*. Each event object specifies the event queue on
- * which it will be enqueued.
- *
- * The *nb_events* parameter is the number of event objects to enqueue which are
- * supplied in the *ev* array of *rte_event* structure.
- *
- * Event operations RTE_EVENT_OP_FORWARD and RTE_EVENT_OP_RELEASE must only be
- * enqueued to the same port that their associated events were dequeued from.
- *
- * The rte_event_enqueue_burst() function returns the number of
- * events objects it actually enqueued. A return value equal to *nb_events*
- * means that all event objects have been enqueued.
- *
- * @param dev_id
- *   The identifier of the device.
- * @param port_id
- *   The identifier of the event port.
- * @param ev
- *   Points to an array of *nb_events* objects of type *rte_event* structure
- *   which contain the event object enqueue operations to be processed.
- * @param nb_events
- *   The number of event objects to enqueue, typically number of
- *   rte_event_port_attr_get(...RTE_EVENT_PORT_ATTR_ENQ_DEPTH...)
- *   available for this port.
- *
- * @return
- *   The number of event objects actually enqueued on the event device. The
- *   return value can be less than the value of the *nb_events* parameter when
- *   the event devices queue is full or if invalid parameters are specified in a
- *   *rte_event*. If the return value is less than *nb_events*, the remaining
- *   events at the end of ev[] are not consumed and the caller has to take care
- *   of them, and rte_errno is set accordingly. Possible errno values include:
- *   - EINVAL   The port ID is invalid, device ID is invalid, an event's queue
- *              ID is invalid, or an event's sched type doesn't match the
- *              capabilities of the destination queue.
- *   - ENOSPC   The event port was backpressured and unable to enqueue
- *              one or more events. This error code is only applicable to
- *              closed systems.
- * @see rte_event_port_attr_get(), RTE_EVENT_PORT_ATTR_ENQ_DEPTH
- */
-static inline uint16_t
-rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
-			const struct rte_event ev[], uint16_t nb_events)
-{
-	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
-
-	return __rte_event_enqueue_burst(dev_id, port_id, ev, nb_events,
-			dev->enqueue_burst);
-}
-
-/**
- * Enqueue a burst of events objects of operation type *RTE_EVENT_OP_NEW* on
- * an event device designated by its *dev_id* through the event port specified
- * by *port_id*.
- *
- * Provides the same functionality as rte_event_enqueue_burst(), expect that
- * application can use this API when the all objects in the burst contains
- * the enqueue operation of the type *RTE_EVENT_OP_NEW*. This specialized
- * function can provide the additional hint to the PMD and optimize if possible.
- *
- * The rte_event_enqueue_new_burst() result is undefined if the enqueue burst
- * has event object of operation type != RTE_EVENT_OP_NEW.
- *
- * @param dev_id
- *   The identifier of the device.
- * @param port_id
- *   The identifier of the event port.
- * @param ev
- *   Points to an array of *nb_events* objects of type *rte_event* structure
- *   which contain the event object enqueue operations to be processed.
- * @param nb_events
- *   The number of event objects to enqueue, typically number of
- *   rte_event_port_attr_get(...RTE_EVENT_PORT_ATTR_ENQ_DEPTH...)
- *   available for this port.
- *
- * @return
- *   The number of event objects actually enqueued on the event device. The
- *   return value can be less than the value of the *nb_events* parameter when
- *   the event devices queue is full or if invalid parameters are specified in a
- *   *rte_event*. If the return value is less than *nb_events*, the remaining
- *   events at the end of ev[] are not consumed and the caller has to take care
- *   of them, and rte_errno is set accordingly. Possible errno values include:
- *   - EINVAL   The port ID is invalid, device ID is invalid, an event's queue
- *              ID is invalid, or an event's sched type doesn't match the
- *              capabilities of the destination queue.
- *   - ENOSPC   The event port was backpressured and unable to enqueue
- *              one or more events. This error code is only applicable to
- *              closed systems.
- * @see rte_event_port_attr_get(), RTE_EVENT_PORT_ATTR_ENQ_DEPTH
- * @see rte_event_enqueue_burst()
- */
-static inline uint16_t
-rte_event_enqueue_new_burst(uint8_t dev_id, uint8_t port_id,
-			const struct rte_event ev[], uint16_t nb_events)
-{
-	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
-
-	return __rte_event_enqueue_burst(dev_id, port_id, ev, nb_events,
-			dev->enqueue_new_burst);
-}
-
-/**
- * Enqueue a burst of events objects of operation type *RTE_EVENT_OP_FORWARD*
- * on an event device designated by its *dev_id* through the event port
- * specified by *port_id*.
- *
- * Provides the same functionality as rte_event_enqueue_burst(), expect that
- * application can use this API when the all objects in the burst contains
- * the enqueue operation of the type *RTE_EVENT_OP_FORWARD*. This specialized
- * function can provide the additional hint to the PMD and optimize if possible.
- *
- * The rte_event_enqueue_new_burst() result is undefined if the enqueue burst
- * has event object of operation type != RTE_EVENT_OP_FORWARD.
- *
- * @param dev_id
- *   The identifier of the device.
- * @param port_id
- *   The identifier of the event port.
- * @param ev
- *   Points to an array of *nb_events* objects of type *rte_event* structure
- *   which contain the event object enqueue operations to be processed.
- * @param nb_events
- *   The number of event objects to enqueue, typically number of
- *   rte_event_port_attr_get(...RTE_EVENT_PORT_ATTR_ENQ_DEPTH...)
- *   available for this port.
- *
- * @return
- *   The number of event objects actually enqueued on the event device. The
- *   return value can be less than the value of the *nb_events* parameter when
- *   the event devices queue is full or if invalid parameters are specified in a
- *   *rte_event*. If the return value is less than *nb_events*, the remaining
- *   events at the end of ev[] are not consumed and the caller has to take care
- *   of them, and rte_errno is set accordingly. Possible errno values include:
- *   - EINVAL   The port ID is invalid, device ID is invalid, an event's queue
- *              ID is invalid, or an event's sched type doesn't match the
- *              capabilities of the destination queue.
- *   - ENOSPC   The event port was backpressured and unable to enqueue
- *              one or more events. This error code is only applicable to
- *              closed systems.
- * @see rte_event_port_attr_get(), RTE_EVENT_PORT_ATTR_ENQ_DEPTH
- * @see rte_event_enqueue_burst()
- */
-static inline uint16_t
-rte_event_enqueue_forward_burst(uint8_t dev_id, uint8_t port_id,
-			const struct rte_event ev[], uint16_t nb_events)
-{
-	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
-
-	return __rte_event_enqueue_burst(dev_id, port_id, ev, nb_events,
-			dev->enqueue_forward_burst);
-}
-
 /**
  * Converts nanoseconds to *timeout_ticks* value for rte_event_dequeue_burst()
  *
@@ -1663,103 +1352,6 @@ rte_event_enqueue_forward_burst(uint8_t dev_id, uint8_t port_id,
 int
 rte_event_dequeue_timeout_ticks(uint8_t dev_id, uint64_t ns,
 					uint64_t *timeout_ticks);
-
-/**
- * Dequeue a burst of events objects or an event object from the event port
- * designated by its *event_port_id*, on an event device designated
- * by its *dev_id*.
- *
- * rte_event_dequeue_burst() does not dictate the specifics of scheduling
- * algorithm as each eventdev driver may have different criteria to schedule
- * an event. However, in general, from an application perspective scheduler may
- * use the following scheme to dispatch an event to the port.
- *
- * 1) Selection of event queue based on
- *   a) The list of event queues are linked to the event port.
- *   b) If the device has RTE_EVENT_DEV_CAP_QUEUE_QOS capability then event
- *   queue selection from list is based on event queue priority relative to
- *   other event queue supplied as *priority* in rte_event_queue_setup()
- *   c) If the device has RTE_EVENT_DEV_CAP_EVENT_QOS capability then event
- *   queue selection from the list is based on event priority supplied as
- *   *priority* in rte_event_enqueue_burst()
- * 2) Selection of event
- *   a) The number of flows available in selected event queue.
- *   b) Schedule type method associated with the event
- *
- * The *nb_events* parameter is the maximum number of event objects to dequeue
- * which are returned in the *ev* array of *rte_event* structure.
- *
- * The rte_event_dequeue_burst() function returns the number of events objects
- * it actually dequeued. A return value equal to *nb_events* means that all
- * event objects have been dequeued.
- *
- * The number of events dequeued is the number of scheduler contexts held by
- * this port. These contexts are automatically released in the next
- * rte_event_dequeue_burst() invocation if the port supports implicit
- * releases, or invoking rte_event_enqueue_burst() with RTE_EVENT_OP_RELEASE
- * operation can be used to release the contexts early.
- *
- * Event operations RTE_EVENT_OP_FORWARD and RTE_EVENT_OP_RELEASE must only be
- * enqueued to the same port that their associated events were dequeued from.
- *
- * @param dev_id
- *   The identifier of the device.
- * @param port_id
- *   The identifier of the event port.
- * @param[out] ev
- *   Points to an array of *nb_events* objects of type *rte_event* structure
- *   for output to be populated with the dequeued event objects.
- * @param nb_events
- *   The maximum number of event objects to dequeue, typically number of
- *   rte_event_port_dequeue_depth() available for this port.
- *
- * @param timeout_ticks
- *   - 0 no-wait, returns immediately if there is no event.
- *   - >0 wait for the event, if the device is configured with
- *   RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT then this function will wait until
- *   at least one event is available or *timeout_ticks* time.
- *   if the device is not configured with RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT
- *   then this function will wait until the event available or
- *   *dequeue_timeout_ns* ns which was previously supplied to
- *   rte_event_dev_configure()
- *
- * @return
- * The number of event objects actually dequeued from the port. The return
- * value can be less than the value of the *nb_events* parameter when the
- * event port's queue is not full.
- *
- * @see rte_event_port_dequeue_depth()
- */
-static inline uint16_t
-rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
-			uint16_t nb_events, uint64_t timeout_ticks)
-{
-	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
-
-#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
-	if (dev_id >= RTE_EVENT_MAX_DEVS || !rte_eventdevs[dev_id].attached) {
-		rte_errno = EINVAL;
-		return 0;
-	}
-
-	if (port_id >= dev->data->nb_ports) {
-		rte_errno = EINVAL;
-		return 0;
-	}
-#endif
-	rte_eventdev_trace_deq_burst(dev_id, port_id, ev, nb_events);
-	/*
-	 * Allow zero cost non burst mode routine invocation if application
-	 * requests nb_events as const one
-	 */
-	if (nb_events == 1)
-		return (*dev->dequeue)(
-			dev->data->ports[port_id], ev, timeout_ticks);
-	else
-		return (*dev->dequeue_burst)(
-			dev->data->ports[port_id], ev, nb_events,
-				timeout_ticks);
-}
 
 /**
  * Link multiple source event queues supplied in *queues* to the destination
@@ -2147,6 +1739,288 @@ struct rte_mempool *
 rte_event_vector_pool_create(const char *name, unsigned int n,
 			     unsigned int cache_size, uint16_t nb_elem,
 			     int socket_id);
+
+#include <rte_eventdev_core.h>
+
+static __rte_always_inline uint16_t
+__rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
+			  const struct rte_event ev[], uint16_t nb_events,
+			  const event_enqueue_burst_t fn)
+{
+	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
+	if (dev_id >= RTE_EVENT_MAX_DEVS || !rte_eventdevs[dev_id].attached) {
+		rte_errno = EINVAL;
+		return 0;
+	}
+
+	if (port_id >= dev->data->nb_ports) {
+		rte_errno = EINVAL;
+		return 0;
+	}
+#endif
+	rte_eventdev_trace_enq_burst(dev_id, port_id, ev, nb_events, fn);
+	/*
+	 * Allow zero cost non burst mode routine invocation if application
+	 * requests nb_events as const one
+	 */
+	if (nb_events == 1)
+		return (*dev->enqueue)(dev->data->ports[port_id], ev);
+	else
+		return fn(dev->data->ports[port_id], ev, nb_events);
+}
+
+/**
+ * Enqueue a burst of events objects or an event object supplied in *rte_event*
+ * structure on an  event device designated by its *dev_id* through the event
+ * port specified by *port_id*. Each event object specifies the event queue on
+ * which it will be enqueued.
+ *
+ * The *nb_events* parameter is the number of event objects to enqueue which are
+ * supplied in the *ev* array of *rte_event* structure.
+ *
+ * Event operations RTE_EVENT_OP_FORWARD and RTE_EVENT_OP_RELEASE must only be
+ * enqueued to the same port that their associated events were dequeued from.
+ *
+ * The rte_event_enqueue_burst() function returns the number of
+ * events objects it actually enqueued. A return value equal to *nb_events*
+ * means that all event objects have been enqueued.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param port_id
+ *   The identifier of the event port.
+ * @param ev
+ *   Points to an array of *nb_events* objects of type *rte_event* structure
+ *   which contain the event object enqueue operations to be processed.
+ * @param nb_events
+ *   The number of event objects to enqueue, typically number of
+ *   rte_event_port_attr_get(...RTE_EVENT_PORT_ATTR_ENQ_DEPTH...)
+ *   available for this port.
+ *
+ * @return
+ *   The number of event objects actually enqueued on the event device. The
+ *   return value can be less than the value of the *nb_events* parameter when
+ *   the event devices queue is full or if invalid parameters are specified in a
+ *   *rte_event*. If the return value is less than *nb_events*, the remaining
+ *   events at the end of ev[] are not consumed and the caller has to take care
+ *   of them, and rte_errno is set accordingly. Possible errno values include:
+ *   - EINVAL   The port ID is invalid, device ID is invalid, an event's queue
+ *              ID is invalid, or an event's sched type doesn't match the
+ *              capabilities of the destination queue.
+ *   - ENOSPC   The event port was backpressured and unable to enqueue
+ *              one or more events. This error code is only applicable to
+ *              closed systems.
+ * @see rte_event_port_attr_get(), RTE_EVENT_PORT_ATTR_ENQ_DEPTH
+ */
+static inline uint16_t
+rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
+			const struct rte_event ev[], uint16_t nb_events)
+{
+	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+	return __rte_event_enqueue_burst(dev_id, port_id, ev, nb_events,
+					 dev->enqueue_burst);
+}
+
+/**
+ * Enqueue a burst of events objects of operation type *RTE_EVENT_OP_NEW* on
+ * an event device designated by its *dev_id* through the event port specified
+ * by *port_id*.
+ *
+ * Provides the same functionality as rte_event_enqueue_burst(), expect that
+ * application can use this API when the all objects in the burst contains
+ * the enqueue operation of the type *RTE_EVENT_OP_NEW*. This specialized
+ * function can provide the additional hint to the PMD and optimize if possible.
+ *
+ * The rte_event_enqueue_new_burst() result is undefined if the enqueue burst
+ * has event object of operation type != RTE_EVENT_OP_NEW.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param port_id
+ *   The identifier of the event port.
+ * @param ev
+ *   Points to an array of *nb_events* objects of type *rte_event* structure
+ *   which contain the event object enqueue operations to be processed.
+ * @param nb_events
+ *   The number of event objects to enqueue, typically number of
+ *   rte_event_port_attr_get(...RTE_EVENT_PORT_ATTR_ENQ_DEPTH...)
+ *   available for this port.
+ *
+ * @return
+ *   The number of event objects actually enqueued on the event device. The
+ *   return value can be less than the value of the *nb_events* parameter when
+ *   the event devices queue is full or if invalid parameters are specified in a
+ *   *rte_event*. If the return value is less than *nb_events*, the remaining
+ *   events at the end of ev[] are not consumed and the caller has to take care
+ *   of them, and rte_errno is set accordingly. Possible errno values include:
+ *   - EINVAL   The port ID is invalid, device ID is invalid, an event's queue
+ *              ID is invalid, or an event's sched type doesn't match the
+ *              capabilities of the destination queue.
+ *   - ENOSPC   The event port was backpressured and unable to enqueue
+ *              one or more events. This error code is only applicable to
+ *              closed systems.
+ * @see rte_event_port_attr_get(), RTE_EVENT_PORT_ATTR_ENQ_DEPTH
+ * @see rte_event_enqueue_burst()
+ */
+static inline uint16_t
+rte_event_enqueue_new_burst(uint8_t dev_id, uint8_t port_id,
+			    const struct rte_event ev[], uint16_t nb_events)
+{
+	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+	return __rte_event_enqueue_burst(dev_id, port_id, ev, nb_events,
+					 dev->enqueue_new_burst);
+}
+
+/**
+ * Enqueue a burst of events objects of operation type *RTE_EVENT_OP_FORWARD*
+ * on an event device designated by its *dev_id* through the event port
+ * specified by *port_id*.
+ *
+ * Provides the same functionality as rte_event_enqueue_burst(), expect that
+ * application can use this API when the all objects in the burst contains
+ * the enqueue operation of the type *RTE_EVENT_OP_FORWARD*. This specialized
+ * function can provide the additional hint to the PMD and optimize if possible.
+ *
+ * The rte_event_enqueue_new_burst() result is undefined if the enqueue burst
+ * has event object of operation type != RTE_EVENT_OP_FORWARD.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param port_id
+ *   The identifier of the event port.
+ * @param ev
+ *   Points to an array of *nb_events* objects of type *rte_event* structure
+ *   which contain the event object enqueue operations to be processed.
+ * @param nb_events
+ *   The number of event objects to enqueue, typically number of
+ *   rte_event_port_attr_get(...RTE_EVENT_PORT_ATTR_ENQ_DEPTH...)
+ *   available for this port.
+ *
+ * @return
+ *   The number of event objects actually enqueued on the event device. The
+ *   return value can be less than the value of the *nb_events* parameter when
+ *   the event devices queue is full or if invalid parameters are specified in a
+ *   *rte_event*. If the return value is less than *nb_events*, the remaining
+ *   events at the end of ev[] are not consumed and the caller has to take care
+ *   of them, and rte_errno is set accordingly. Possible errno values include:
+ *   - EINVAL   The port ID is invalid, device ID is invalid, an event's queue
+ *              ID is invalid, or an event's sched type doesn't match the
+ *              capabilities of the destination queue.
+ *   - ENOSPC   The event port was backpressured and unable to enqueue
+ *              one or more events. This error code is only applicable to
+ *              closed systems.
+ * @see rte_event_port_attr_get(), RTE_EVENT_PORT_ATTR_ENQ_DEPTH
+ * @see rte_event_enqueue_burst()
+ */
+static inline uint16_t
+rte_event_enqueue_forward_burst(uint8_t dev_id, uint8_t port_id,
+				const struct rte_event ev[], uint16_t nb_events)
+{
+	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+	return __rte_event_enqueue_burst(dev_id, port_id, ev, nb_events,
+					 dev->enqueue_forward_burst);
+}
+
+/**
+ * Dequeue a burst of events objects or an event object from the event port
+ * designated by its *event_port_id*, on an event device designated
+ * by its *dev_id*.
+ *
+ * rte_event_dequeue_burst() does not dictate the specifics of scheduling
+ * algorithm as each eventdev driver may have different criteria to schedule
+ * an event. However, in general, from an application perspective scheduler may
+ * use the following scheme to dispatch an event to the port.
+ *
+ * 1) Selection of event queue based on
+ *   a) The list of event queues are linked to the event port.
+ *   b) If the device has RTE_EVENT_DEV_CAP_QUEUE_QOS capability then event
+ *   queue selection from list is based on event queue priority relative to
+ *   other event queue supplied as *priority* in rte_event_queue_setup()
+ *   c) If the device has RTE_EVENT_DEV_CAP_EVENT_QOS capability then event
+ *   queue selection from the list is based on event priority supplied as
+ *   *priority* in rte_event_enqueue_burst()
+ * 2) Selection of event
+ *   a) The number of flows available in selected event queue.
+ *   b) Schedule type method associated with the event
+ *
+ * The *nb_events* parameter is the maximum number of event objects to dequeue
+ * which are returned in the *ev* array of *rte_event* structure.
+ *
+ * The rte_event_dequeue_burst() function returns the number of events objects
+ * it actually dequeued. A return value equal to *nb_events* means that all
+ * event objects have been dequeued.
+ *
+ * The number of events dequeued is the number of scheduler contexts held by
+ * this port. These contexts are automatically released in the next
+ * rte_event_dequeue_burst() invocation if the port supports implicit
+ * releases, or invoking rte_event_enqueue_burst() with RTE_EVENT_OP_RELEASE
+ * operation can be used to release the contexts early.
+ *
+ * Event operations RTE_EVENT_OP_FORWARD and RTE_EVENT_OP_RELEASE must only be
+ * enqueued to the same port that their associated events were dequeued from.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param port_id
+ *   The identifier of the event port.
+ * @param[out] ev
+ *   Points to an array of *nb_events* objects of type *rte_event* structure
+ *   for output to be populated with the dequeued event objects.
+ * @param nb_events
+ *   The maximum number of event objects to dequeue, typically number of
+ *   rte_event_port_dequeue_depth() available for this port.
+ *
+ * @param timeout_ticks
+ *   - 0 no-wait, returns immediately if there is no event.
+ *   - >0 wait for the event, if the device is configured with
+ *   RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT then this function will wait until
+ *   at least one event is available or *timeout_ticks* time.
+ *   if the device is not configured with RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT
+ *   then this function will wait until the event available or
+ *   *dequeue_timeout_ns* ns which was previously supplied to
+ *   rte_event_dev_configure()
+ *
+ * @return
+ * The number of event objects actually dequeued from the port. The return
+ * value can be less than the value of the *nb_events* parameter when the
+ * event port's queue is not full.
+ *
+ * @see rte_event_port_dequeue_depth()
+ */
+static inline uint16_t
+rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
+			uint16_t nb_events, uint64_t timeout_ticks)
+{
+	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
+	if (dev_id >= RTE_EVENT_MAX_DEVS || !rte_eventdevs[dev_id].attached) {
+		rte_errno = EINVAL;
+		return 0;
+	}
+
+	if (port_id >= dev->data->nb_ports) {
+		rte_errno = EINVAL;
+		return 0;
+	}
+#endif
+	rte_eventdev_trace_deq_burst(dev_id, port_id, ev, nb_events);
+	/*
+	 * Allow zero cost non burst mode routine invocation if application
+	 * requests nb_events as const one
+	 */
+	if (nb_events == 1)
+		return (*dev->dequeue)(dev->data->ports[port_id], ev,
+				       timeout_ticks);
+	else
+		return (*dev->dequeue_burst)(dev->data->ports[port_id], ev,
+					     nb_events, timeout_ticks);
+}
 
 #ifdef __cplusplus
 }
