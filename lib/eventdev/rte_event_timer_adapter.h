@@ -523,7 +523,7 @@ struct rte_event_timer_adapter {
 	/**< Pointer to driver cancel function. */
 	struct rte_event_timer_adapter_data *data;
 	/**< Pointer to shared adapter data */
-	const struct rte_event_timer_adapter_ops *ops;
+	const struct event_timer_adapter_ops *ops;
 	/**< Functions exported by adapter driver */
 
 	RTE_STD_C11

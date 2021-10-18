@@ -561,10 +561,9 @@ sw_eth_rx_adapter_caps_get(const struct rte_eventdev *dev,
 }
 
 static int
-sw_timer_adapter_caps_get(const struct rte_eventdev *dev,
-			  uint64_t flags,
+sw_timer_adapter_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 			  uint32_t *caps,
-			  const struct rte_event_timer_adapter_ops **ops)
+			  const struct event_timer_adapter_ops **ops)
 {
 	RTE_SET_USED(dev);
 	RTE_SET_USED(flags);

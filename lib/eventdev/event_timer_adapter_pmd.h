@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef __RTE_EVENT_TIMER_ADAPTER_PMD_H__
-#define __RTE_EVENT_TIMER_ADAPTER_PMD_H__
+#ifndef __EVENT_TIMER_ADAPTER_PMD_H__
+#define __EVENT_TIMER_ADAPTER_PMD_H__
 
 /**
  * @file
@@ -57,7 +57,7 @@ typedef int (*rte_event_timer_adapter_stats_reset_t)(
  * @internal Structure containing the functions exported by an event timer
  * adapter implementation.
  */
-struct rte_event_timer_adapter_ops {
+struct event_timer_adapter_ops {
 	rte_event_timer_adapter_init_t		init;  /**< Set up adapter */
 	rte_event_timer_adapter_uninit_t	uninit;/**< Tear down adapter */
 	rte_event_timer_adapter_start_t		start; /**< Start adapter */
@@ -111,4 +111,4 @@ struct rte_event_timer_adapter_data {
 }
 #endif
 
-#endif /* __RTE_EVENT_TIMER_ADAPTER_PMD_H__ */
+#endif /* __EVENT_TIMER_ADAPTER_PMD_H__ */

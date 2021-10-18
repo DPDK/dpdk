@@ -142,7 +142,7 @@ int
 rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps)
 {
 	struct rte_eventdev *dev;
-	const struct rte_event_timer_adapter_ops *ops;
+	const struct event_timer_adapter_ops *ops;
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 

@@ -5,7 +5,7 @@
 #include "cnxk_eventdev.h"
 #include "cnxk_tim_evdev.h"
 
-static struct rte_event_timer_adapter_ops cnxk_tim_ops;
+static struct event_timer_adapter_ops cnxk_tim_ops;
 
 static int
 cnxk_tim_chnk_pool_create(struct cnxk_tim_ring *tim_ring,
@@ -353,8 +353,7 @@ cnxk_tim_stats_reset(const struct rte_event_timer_adapter *adapter)
 
 int
 cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
-		  uint32_t *caps,
-		  const struct rte_event_timer_adapter_ops **ops)
+		  uint32_t *caps, const struct event_timer_adapter_ops **ops)
 {
 	struct cnxk_tim_evdev *dev = cnxk_tim_priv_get();
 

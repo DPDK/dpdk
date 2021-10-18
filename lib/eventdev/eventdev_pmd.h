@@ -24,8 +24,8 @@
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
 
+#include "event_timer_adapter_pmd.h"
 #include "rte_eventdev.h"
-#include "rte_event_timer_adapter_pmd.h"
 
 /* Logging Macros */
 #define RTE_EDEV_LOG_ERR(...) \
@@ -591,10 +591,8 @@ struct rte_event_eth_rx_adapter_queue_conf;
  *
  */
 typedef int (*eventdev_timer_adapter_caps_get_t)(
-				const struct rte_eventdev *dev,
-				uint64_t flags,
-				uint32_t *caps,
-				const struct rte_event_timer_adapter_ops **ops);
+	const struct rte_eventdev *dev, uint64_t flags, uint32_t *caps,
+	const struct event_timer_adapter_ops **ops);
 
 /**
  * Add ethernet Rx queues to event device. This callback is invoked if

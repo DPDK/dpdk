@@ -5,8 +5,8 @@
 #ifndef __OTX2_TIM_EVDEV_H__
 #define __OTX2_TIM_EVDEV_H__
 
+#include <event_timer_adapter_pmd.h>
 #include <rte_event_timer_adapter.h>
-#include <rte_event_timer_adapter_pmd.h>
 #include <rte_reciprocal.h>
 
 #include "otx2_dev.h"
@@ -244,7 +244,7 @@ uint16_t otx2_tim_timer_cancel_burst(
 
 int otx2_tim_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 		      uint32_t *caps,
-		      const struct rte_event_timer_adapter_ops **ops);
+		      const struct event_timer_adapter_ops **ops);
 
 void otx2_tim_init(struct rte_pci_device *pci_dev, struct otx2_dev *cmn_dev);
 void otx2_tim_fini(void);

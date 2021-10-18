@@ -9,7 +9,7 @@
 #include "otx2_evdev.h"
 #include "otx2_tim_evdev.h"
 
-static struct rte_event_timer_adapter_ops otx2_tim_ops;
+static struct event_timer_adapter_ops otx2_tim_ops;
 
 static inline int
 tim_get_msix_offsets(void)
@@ -497,8 +497,7 @@ otx2_tim_stats_reset(const struct rte_event_timer_adapter *adapter)
 
 int
 otx2_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
-		  uint32_t *caps,
-		  const struct rte_event_timer_adapter_ops **ops)
+		  uint32_t *caps, const struct event_timer_adapter_ops **ops)
 {
 	struct otx2_tim_evdev *dev = tim_priv_get();
 

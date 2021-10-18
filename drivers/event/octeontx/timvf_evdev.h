@@ -5,13 +5,13 @@
 #ifndef __TIMVF_EVDEV_H__
 #define __TIMVF_EVDEV_H__
 
+#include <event_timer_adapter_pmd.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_debug.h>
 #include <rte_eal.h>
-#include <rte_eventdev.h>
 #include <rte_event_timer_adapter.h>
-#include <rte_event_timer_adapter_pmd.h>
+#include <rte_eventdev.h>
 #include <rte_io.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
@@ -196,8 +196,9 @@ uint8_t timvf_get_ring(void);
 void timvf_release_ring(uint8_t vfid);
 void *timvf_bar(uint8_t id, uint8_t bar);
 int timvf_timer_adapter_caps_get(const struct rte_eventdev *dev, uint64_t flags,
-		uint32_t *caps, const struct rte_event_timer_adapter_ops **ops,
-		uint8_t enable_stats);
+				 uint32_t *caps,
+				 const struct event_timer_adapter_ops **ops,
+				 uint8_t enable_stats);
 uint16_t timvf_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
 		struct rte_event_timer **tim, const uint16_t nb_timers);
 uint16_t timvf_timer_arm_burst_sp(const struct rte_event_timer_adapter *adptr,

@@ -20,11 +20,11 @@
 #include <rte_service_component.h>
 #include <rte_cycles.h>
 
-#include "rte_eventdev.h"
+#include "event_timer_adapter_pmd.h"
 #include "eventdev_pmd.h"
-#include "rte_eventdev_trace.h"
 #include "rte_event_timer_adapter.h"
-#include "rte_event_timer_adapter_pmd.h"
+#include "rte_eventdev.h"
+#include "rte_eventdev_trace.h"
 
 #define DATA_MZ_NAME_MAX_LEN 64
 #define DATA_MZ_NAME_FORMAT "rte_event_timer_adapter_data_%d"
@@ -35,7 +35,7 @@ RTE_LOG_REGISTER_SUFFIX(evtim_svc_logtype, adapter.timer.svc, NOTICE);
 
 static struct rte_event_timer_adapter adapters[RTE_EVENT_TIMER_ADAPTER_NUM_MAX];
 
-static const struct rte_event_timer_adapter_ops swtim_ops;
+static const struct event_timer_adapter_ops swtim_ops;
 
 #define EVTIM_LOG(level, logtype, ...) \
 	rte_log(RTE_LOG_ ## level, logtype, \
@@ -1207,15 +1207,15 @@ swtim_arm_tmo_tick_burst(const struct rte_event_timer_adapter *adapter,
 	return __swtim_arm_burst(adapter, evtims, nb_evtims);
 }
 
-static const struct rte_event_timer_adapter_ops swtim_ops = {
-	.init			= swtim_init,
-	.uninit			= swtim_uninit,
-	.start			= swtim_start,
-	.stop			= swtim_stop,
-	.get_info		= swtim_get_info,
-	.stats_get		= swtim_stats_get,
-	.stats_reset		= swtim_stats_reset,
-	.arm_burst		= swtim_arm_burst,
-	.arm_tmo_tick_burst	= swtim_arm_tmo_tick_burst,
-	.cancel_burst		= swtim_cancel_burst,
+static const struct event_timer_adapter_ops swtim_ops = {
+	.init = swtim_init,
+	.uninit = swtim_uninit,
+	.start = swtim_start,
+	.stop = swtim_stop,
+	.get_info = swtim_get_info,
+	.stats_get = swtim_stats_get,
+	.stats_reset = swtim_stats_reset,
+	.arm_burst = swtim_arm_burst,
+	.arm_tmo_tick_burst = swtim_arm_tmo_tick_burst,
+	.cancel_burst = swtim_cancel_burst,
 };

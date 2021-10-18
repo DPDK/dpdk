@@ -268,7 +268,7 @@ cnxk_tim_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
 
 int cnxk_tim_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 		      uint32_t *caps,
-		      const struct rte_event_timer_adapter_ops **ops);
+		      const struct event_timer_adapter_ops **ops);
 
 void cnxk_tim_init(struct roc_sso *sso);
 void cnxk_tim_fini(void);

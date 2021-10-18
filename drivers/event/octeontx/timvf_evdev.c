@@ -407,18 +407,19 @@ timvf_stats_reset(const struct rte_event_timer_adapter *adapter)
 	return 0;
 }
 
-static struct rte_event_timer_adapter_ops timvf_ops = {
-	.init		= timvf_ring_create,
-	.uninit		= timvf_ring_free,
-	.start		= timvf_ring_start,
-	.stop		= timvf_ring_stop,
-	.get_info	= timvf_ring_info_get,
+static struct event_timer_adapter_ops timvf_ops = {
+	.init = timvf_ring_create,
+	.uninit = timvf_ring_free,
+	.start = timvf_ring_start,
+	.stop = timvf_ring_stop,
+	.get_info = timvf_ring_info_get,
 };
 
 int
 timvf_timer_adapter_caps_get(const struct rte_eventdev *dev, uint64_t flags,
-		uint32_t *caps, const struct rte_event_timer_adapter_ops **ops,
-		uint8_t enable_stats)
+			     uint32_t *caps,
+			     const struct event_timer_adapter_ops **ops,
+			     uint8_t enable_stats)
 {
 	RTE_SET_USED(dev);
 

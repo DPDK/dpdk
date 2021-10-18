@@ -721,7 +721,7 @@ ssovf_parsekv(const char *key __rte_unused, const char *value, void *opaque)
 
 static int
 ssovf_timvf_caps_get(const struct rte_eventdev *dev, uint64_t flags,
-		uint32_t *caps, const struct rte_event_timer_adapter_ops **ops)
+		     uint32_t *caps, const struct event_timer_adapter_ops **ops)
 {
 	return timvf_timer_adapter_caps_get(dev, flags, caps, ops,
 			timvf_enable_stats);

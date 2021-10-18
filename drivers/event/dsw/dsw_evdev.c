@@ -381,8 +381,8 @@ dsw_eth_rx_adapter_caps_get(const struct rte_eventdev *dev __rte_unused,
 
 static int
 dsw_timer_adapter_caps_get(const struct rte_eventdev *dev __rte_unused,
-			   uint64_t flags  __rte_unused, uint32_t *caps,
-			   const struct rte_event_timer_adapter_ops **ops)
+			   uint64_t flags __rte_unused, uint32_t *caps,
+			   const struct event_timer_adapter_ops **ops)
 {
 	*caps = 0;
 	*ops = NULL;
