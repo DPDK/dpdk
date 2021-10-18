@@ -3599,6 +3599,8 @@ flow_get_rss_action(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_rss *rss = NULL;
+	struct mlx5_meter_policy_action_container *acg;
+	struct mlx5_meter_policy_action_container *acy;
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
@@ -3634,9 +3636,18 @@ flow_get_rss_action(struct rte_eth_dev *dev,
 					if (!policy)
 						return NULL;
 				}
-				if (policy->is_rss)
-					rss =
-				policy->act_cnt[RTE_COLOR_GREEN].rss->conf;
+				if (policy->is_rss) {
+					acg =
+					&policy->act_cnt[RTE_COLOR_GREEN];
+					acy =
+					&policy->act_cnt[RTE_COLOR_YELLOW];
+					if (acg->fate_action ==
+					    MLX5_FLOW_FATE_SHARED_RSS)
+						rss = acg->rss->conf;
+					else if (acy->fate_action ==
+						 MLX5_FLOW_FATE_SHARED_RSS)
+						rss = acy->rss->conf;
+				}
 			}
 			break;
 		}
