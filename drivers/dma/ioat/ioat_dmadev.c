@@ -542,6 +542,26 @@ ioat_stats_reset(struct rte_dma_dev *dev, uint16_t vchan __rte_unused)
 	return 0;
 }
 
+/* Check if the IOAT device is idle. */
+static int
+ioat_vchan_status(const struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
+		enum rte_dma_vchan_status *status)
+{
+	int state = 0;
+	const struct ioat_dmadev *ioat = dev->fp_obj->dev_private;
+	const uint16_t mask = ioat->qcfg.nb_desc - 1;
+	const uint16_t last = __get_last_completed(ioat, &state);
+
+	if (state == IOAT_CHANSTS_HALTED || state == IOAT_CHANSTS_SUSPENDED)
+		*status = RTE_DMA_VCHAN_HALTED_ERROR;
+	else if (last == ((ioat->next_write - 1) & mask))
+		*status = RTE_DMA_VCHAN_IDLE;
+	else
+		*status = RTE_DMA_VCHAN_ACTIVE;
+
+	return 0;
+}
+
 /* Create a DMA device. */
 static int
 ioat_dmadev_create(const char *name, struct rte_pci_device *dev)
@@ -555,6 +575,7 @@ ioat_dmadev_create(const char *name, struct rte_pci_device *dev)
 		.dev_stop = ioat_dev_stop,
 		.stats_get = ioat_stats_get,
 		.stats_reset = ioat_stats_reset,
+		.vchan_status = ioat_vchan_status,
 		.vchan_setup = ioat_vchan_setup,
 	};
 
