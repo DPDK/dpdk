@@ -1365,24 +1365,6 @@ eventdev_find_free_device_index(void)
 	return RTE_EVENT_MAX_DEVS;
 }
 
-static uint16_t
-rte_event_tx_adapter_enqueue(__rte_unused void *port,
-			__rte_unused struct rte_event ev[],
-			__rte_unused uint16_t nb_events)
-{
-	rte_errno = ENOTSUP;
-	return 0;
-}
-
-static uint16_t
-rte_event_crypto_adapter_enqueue(__rte_unused void *port,
-			__rte_unused struct rte_event ev[],
-			__rte_unused uint16_t nb_events)
-{
-	rte_errno = ENOTSUP;
-	return 0;
-}
-
 struct rte_eventdev *
 rte_event_pmd_allocate(const char *name, int socket_id)
 {
@@ -1402,10 +1384,6 @@ rte_event_pmd_allocate(const char *name, int socket_id)
 	}
 
 	eventdev = &rte_eventdevs[dev_id];
-
-	eventdev->txa_enqueue = rte_event_tx_adapter_enqueue;
-	eventdev->txa_enqueue_same_dest = rte_event_tx_adapter_enqueue;
-	eventdev->ca_enqueue = rte_event_crypto_adapter_enqueue;
 
 	if (eventdev->data == NULL) {
 		struct rte_eventdev_data *eventdev_data = NULL;

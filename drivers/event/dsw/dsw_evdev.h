@@ -5,6 +5,8 @@
 #ifndef _DSW_EVDEV_H_
 #define _DSW_EVDEV_H_
 
+#include <eventdev_pmd.h>
+
 #include <rte_event_ring.h>
 #include <rte_eventdev.h>
 

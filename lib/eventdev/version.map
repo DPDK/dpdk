@@ -83,7 +83,6 @@ DPDK_22 {
 	rte_event_timer_arm_burst;
 	rte_event_timer_arm_tmo_tick_burst;
 	rte_event_timer_cancel_burst;
-	rte_eventdevs;
 
 	#added in 21.11
 	rte_event_fp_ops;
@@ -159,4 +158,5 @@ INTERNAL {
 	rte_event_pmd_release;
 	rte_event_pmd_vdev_init;
 	rte_event_pmd_vdev_uninit;
+	rte_eventdevs;
 };

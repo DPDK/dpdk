@@ -2,6 +2,8 @@
  * Copyright(c) 2017 Cavium, Inc
  */
 
+#include <eventdev_pmd.h>
+
 #include <rte_common.h>
 #include <rte_branch_prediction.h>
 

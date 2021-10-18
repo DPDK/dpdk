@@ -5,6 +5,8 @@
 #ifndef _DLB2_INLINE_FNS_H_
 #define _DLB2_INLINE_FNS_H_
 
+#include <eventdev_pmd.h>
+
 /* Inline functions required in more than one source file. */
 
 static inline struct dlb2_eventdev *

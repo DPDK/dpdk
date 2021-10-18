@@ -9,13 +9,14 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <eventdev_pmd.h>
 #include <rte_alarm.h>
 #include <rte_branch_prediction.h>
 #include <rte_bus_vdev.h>
 #include <rte_cycles.h>
 #include <rte_debug.h>
-#include <rte_devargs.h>
 #include <rte_dev.h>
+#include <rte_devargs.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
 #include <rte_mbuf_pool_ops.h>
