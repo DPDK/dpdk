@@ -263,6 +263,15 @@ struct rte_security_ipsec_sa_options {
 	 * PKT_TX_UDP_CKSUM or PKT_TX_L4_MASK in mbuf.
 	 */
 	uint32_t l4_csum_enable : 1;
+
+	/** Reserved bit fields for future extension
+	 *
+	 * User should ensure reserved_opts is cleared as it may change in
+	 * subsequent releases to support new options.
+	 *
+	 * Note: Reduce number of bits in reserved_opts for every new option.
+	 */
+	uint32_t reserved_opts : 18;
 };
 
 /** IPSec security association direction */
