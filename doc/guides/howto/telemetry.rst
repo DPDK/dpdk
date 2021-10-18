@@ -109,6 +109,10 @@ instances are run:
 
      $ ./usertools/dpdk-telemetry -f "tpmd"
 
+  To list all running telemetry-enabled file-prefixes, the ``-l`` or ``--list`` flags can be used::
+
+     $ ./usertools/dpdk-telemetry -l
+
 * For the case where multiple processes are run using the `--in-memory` EAL flag,
   but no `--file-prefix` flag, or the same `--file-prefix` flag,
   those processes will all share the same runtime directory.

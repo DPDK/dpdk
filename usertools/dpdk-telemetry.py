@@ -72,6 +72,31 @@ def print_socket_options(prefix, paths):
                                                            s.split(':')[-1]))
 
 
+def get_dpdk_runtime_dir(fp):
+    """ Using the same logic as in DPDK's EAL, get the DPDK runtime directory
+    based on the file-prefix and user """
+    if (os.getuid() == 0):
+        return os.path.join('/var/run/dpdk', fp)
+    return os.path.join(os.environ.get('XDG_RUNTIME_DIR', '/tmp'), 'dpdk', fp)
+
+
+def list_fp():
+    """ List all available file-prefixes to user """
+    path = get_dpdk_runtime_dir('')
+    sockets = glob.glob(os.path.join(path, "*", SOCKET_NAME + "*"))
+    prefixes = []
+    if not sockets:
+        print("No DPDK apps with telemetry enabled available")
+    else:
+        print("Valid file-prefixes:\n")
+    for s in sockets:
+        prefixes.append(os.path.relpath(os.path.dirname(s), start=path))
+    for p in sorted(set(prefixes)):
+        print(p)
+        print_socket_options(p, glob.glob(os.path.join(path, p,
+                                                       SOCKET_NAME + "*")))
+
+
 def handle_socket(args, path):
     """ Connect to socket and handle user input """
     prompt = ''  # this evaluates to false in conditions
@@ -95,6 +120,8 @@ def handle_socket(args, path):
         if socks:
             print("\nOther DPDK telemetry sockets found:")
             print_socket_options(args.file_prefix, socks)
+        else:
+            list_fp()
         return
     json_reply = read_socket(sock, 1024, prompt)
     output_buf_len = json_reply["max_output_len"]
@@ -130,14 +157,6 @@ def readline_complete(text, state):
     return matches[state]
 
 
-def get_dpdk_runtime_dir(fp):
-    """ Using the same logic as in DPDK's EAL, get the DPDK runtime directory
-    based on the file-prefix and user """
-    if (os.getuid() == 0):
-        return os.path.join('/var/run/dpdk', fp)
-    return os.path.join(os.environ.get('XDG_RUNTIME_DIR', '/tmp'), 'dpdk', fp)
-
-
 readline.parse_and_bind('tab: complete')
 readline.set_completer(readline_complete)
 readline.set_completer_delims(readline.get_completer_delims().replace('/', ''))
@@ -147,7 +166,12 @@ parser.add_argument('-f', '--file-prefix', default=DEFAULT_PREFIX,
                     help='Provide file-prefix for DPDK runtime directory')
 parser.add_argument('-i', '--instance', default='0', type=int,
                     help='Provide instance number for DPDK application')
+parser.add_argument('-l', '--list', action="store_true", default=False,
+                    help='List all possible file-prefixes and exit')
 args = parser.parse_args()
+if args.list:
+    list_fp()
+    sys.exit(0)
 sock_path = os.path.join(get_dpdk_runtime_dir(args.file_prefix), SOCKET_NAME)
 if args.instance > 0:
     sock_path += ":{}".format(args.instance)
