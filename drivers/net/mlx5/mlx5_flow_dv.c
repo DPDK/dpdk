@@ -17583,12 +17583,22 @@ static inline int
 flow_dv_mtr_policy_rss_compare(const struct rte_flow_action_rss *r1,
 			       const struct rte_flow_action_rss *r2)
 {
-	if (!r1 || !r2)
+	if (r1 == NULL || r2 == NULL)
 		return 0;
-	if (r1->func != r2->func || r1->level != r2->level ||
-	    r1->types != r2->types || r1->key_len != r2->key_len ||
-	    memcmp(r1->key, r2->key, r1->key_len))
+	if (!(r1->level <= 1 && r2->level <= 1) &&
+	    !(r1->level > 1 && r2->level > 1))
 		return 1;
+	if (r1->types != r2->types &&
+	    !((r1->types == 0 || r1->types == RTE_ETH_RSS_IP) &&
+	      (r2->types == 0 || r2->types == RTE_ETH_RSS_IP)))
+		return 1;
+	if (r1->key || r2->key) {
+		const void *key1 = r1->key ? r1->key : rss_hash_default_key;
+		const void *key2 = r2->key ? r2->key : rss_hash_default_key;
+
+		if (memcmp(key1, key2, MLX5_RSS_HASH_KEY_LEN))
+			return 1;
+	}
 	return 0;
 }
 
