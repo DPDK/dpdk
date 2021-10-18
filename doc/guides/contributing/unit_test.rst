@@ -192,11 +192,21 @@ There are two important functions for interacting with the test harness:
    ``unit_test_suite_runner(struct unit_test_suite *)``
       Returns a runner for a full test suite object,
       which contains a test suite name, setup, tear down,
+      a pointer to a list of sub-testsuites,
       and vector of unit test cases.
 
 Each test suite has a setup and tear down function
 that runs at the beginning and end of the test suite execution.
 Each unit test has a similar function for test case setup and tear down.
+
+Each test suite may use a nested list of sub-testsuites,
+which are iterated by the ``unit_test_suite_runner``.
+This support allows for better granularity when designing test suites.
+The sub-testsuites list can also be used in parallel with the vector of test cases,
+in this case the test cases will be run,
+and then each sub-testsuite is executed.
+To see an example of a test suite using sub-testsuites,
+see *app/test/test_cryptodev.c*.
 
 Test cases are added to the ``.unit_test_cases`` element
 of the appropriate unit test suite structure.
@@ -242,6 +252,70 @@ An example of both a test suite and a case:
 
 The above code block is a small example
 that can be used to create a complete test suite with test case.
+
+Sub-testsuites can be added to the ``.unit_test_suites`` element
+of the unit test suite structure, for example:
+
+.. code-block:: c
+   :linenos:
+
+   static int testsuite_setup(void) { return TEST_SUCCESS; }
+   static void testsuite_teardown(void) { }
+
+   static int ut_setup(void) { return TEST_SUCCESS; }
+   static void ut_teardown(void) { }
+
+   static int test_case_first(void) { return TEST_SUCCESS; }
+
+   static struct unit_test_suite example_parent_testsuite = {
+          .suite_name = "EXAMPLE PARENT TEST SUITE",
+          .setup = testsuite_setup,
+          .teardown = testsuite_teardown,
+          .unit_test_cases = {TEST_CASES_END()}
+   };
+
+   static int sub_testsuite_setup(void) { return TEST_SUCCESS; }
+   static void sub_testsuite_teardown(void) { }
+
+   static struct unit_test_suite example_sub_testsuite = {
+          .suite_name = "EXAMPLE SUB TEST SUITE",
+          .setup = sub_testsuite_setup,
+          .teardown = sub_testsuite_teardown,
+          .unit_test_cases = {
+               TEST_CASE_ST(ut_setup, ut_teardown, test_case_first),
+
+               TEST_CASES_END(), /**< NULL terminate unit test array */
+          },
+   };
+
+   static struct unit_test_suite end_testsuite = {
+          .suite_name = NULL,
+          .setup = NULL,
+          .teardown = NULL,
+          .unit_test_suites = NULL
+   };
+
+   static int example_tests()
+   {
+       uint8_t ret, i = 0;
+       struct unit_test_suite *sub_suites[] = {
+              &example_sub_testsuite,
+              &end_testsuite /**< NULL test suite to indicate end of list */
+        };
+
+       example_parent_testsuite.unit_test_suites =
+               malloc(sizeof(struct unit_test_suite *) * RTE_DIM(sub_suites));
+
+       for (i = 0; i < RTE_DIM(sub_suites); i++)
+           example_parent_testsuite.unit_test_suites[i] = sub_suites[i];
+
+       ret = unit_test_suite_runner(&example_parent_testsuite);
+       free(example_parent_testsuite.unit_test_suites);
+
+       return ret;
+   }
+
+   REGISTER_TEST_COMMAND(example_autotest, example_tests);
 
 
 Designing a test
@@ -339,3 +413,20 @@ In general, when a test is added to the `dpdk-test` application,
 it probably should be added to a Meson test suite,
 but the choice is left to maintainers and individual developers.
 Preference is to add tests to the Meson test suites.
+
+
+Running cryptodev tests
+-----------------------
+
+When running cryptodev tests, the user must create any required virtual device
+via EAL arguments, as this is not automatically done by the test::
+
+   $ ./build/app/test/dpdk-test --vdev crypto_aesni_mb
+   $ meson test -C build --suite driver-tests \
+                --test-args="--vdev crypto_aesni_mb"
+
+.. note::
+
+   The ``cryptodev_scheduler_autotest`` is the only exception to this.
+   This vdev will be created automatically by the test app,
+   as it requires a more complex setup than other vdevs.
