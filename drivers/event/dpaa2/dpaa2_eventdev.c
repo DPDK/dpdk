@@ -1110,7 +1110,7 @@ dpaa2_eventdev_create(const char *name)
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
+		goto done;
 
 	priv = eventdev->data->dev_private;
 	priv->max_event_queues = 0;
@@ -1139,6 +1139,8 @@ dpaa2_eventdev_create(const char *name)
 
 	RTE_LOG(INFO, PMD, "%s eventdev created\n", name);
 
+done:
+	event_dev_probing_finish(eventdev);
 	return 0;
 fail:
 	return -EFAULT;

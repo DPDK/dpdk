@@ -720,7 +720,7 @@ opdl_probe(struct rte_vdev_device *vdev)
 	dev->dequeue_burst = opdl_event_dequeue_burst;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
+		goto done;
 
 	opdl = dev->data->dev_private;
 	opdl->data = dev->data;
@@ -733,6 +733,8 @@ opdl_probe(struct rte_vdev_device *vdev)
 	if (do_test == 1)
 		test_result =  opdl_selftest();
 
+done:
+	event_dev_probing_finish(dev);
 	return test_result;
 }
 

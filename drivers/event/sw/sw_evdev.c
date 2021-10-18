@@ -1124,6 +1124,8 @@ sw_probe(struct rte_vdev_device *vdev)
 	dev->data->service_inited = 1;
 	dev->data->service_id = sw->service_id;
 
+	event_dev_probing_finish(dev);
+
 	return 0;
 }
 

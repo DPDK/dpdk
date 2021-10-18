@@ -1026,10 +1026,12 @@ dpaa_event_dev_create(const char *name, const char *params)
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
+		goto done;
 
 	priv->max_event_queues = DPAA_EVENT_MAX_QUEUES;
 
+done:
+	event_dev_probing_finish(eventdev);
 	return 0;
 fail:
 	return -EFAULT;

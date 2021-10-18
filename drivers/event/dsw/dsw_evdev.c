@@ -448,6 +448,7 @@ dsw_probe(struct rte_vdev_device *vdev)
 	dsw = dev->data->dev_private;
 	dsw->data = dev->data;
 
+	event_dev_probing_finish(dev);
 	return 0;
 }
 

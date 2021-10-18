@@ -443,6 +443,7 @@ skeleton_eventdev_create(const char *name, int socket_id)
 	eventdev->dequeue       = skeleton_eventdev_dequeue;
 	eventdev->dequeue_burst = skeleton_eventdev_dequeue_burst;
 
+	event_dev_probing_finish(eventdev);
 	return 0;
 fail:
 	return -EFAULT;

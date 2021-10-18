@@ -933,6 +933,7 @@ ssovf_vdev_probe(struct rte_vdev_device *vdev)
 			edev->max_event_ports);
 
 	ssovf_init_once = 1;
+	event_dev_probing_finish(eventdev);
 	return 0;
 
 error:
