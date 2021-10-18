@@ -363,6 +363,9 @@ API Changes
 
 * bbdev: Added device info related to data byte endianness processing.
 
+* eventdev: Moved memory used by timer adapters to hugepage. This will prevent
+  TLB misses if any and aligns to memory structure of other subsystems.
+
 
 ABI Changes
 -----------
