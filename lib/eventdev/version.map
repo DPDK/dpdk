@@ -42,6 +42,7 @@ DPDK_22 {
 	rte_event_eth_rx_adapter_start;
 	rte_event_eth_rx_adapter_stats_get;
 	rte_event_eth_rx_adapter_stats_reset;
+	rte_event_eth_rx_adapter_vector_limits_get;
 	rte_event_eth_rx_adapter_stop;
 	rte_event_eth_tx_adapter_caps_get;
 	rte_event_eth_tx_adapter_create;
@@ -83,6 +84,7 @@ DPDK_22 {
 	rte_event_timer_arm_burst;
 	rte_event_timer_arm_tmo_tick_burst;
 	rte_event_timer_cancel_burst;
+	rte_event_vector_pool_create;
 
 	#added in 21.11
 	rte_event_fp_ops;
@@ -136,8 +138,6 @@ EXPERIMENTAL {
 	rte_event_eth_rx_adapter_create_with_params;
 
 	#added in 21.05
-	rte_event_vector_pool_create;
-	rte_event_eth_rx_adapter_vector_limits_get;
 	__rte_eventdev_trace_crypto_adapter_enqueue;
 	rte_event_eth_rx_adapter_queue_conf_get;
 };

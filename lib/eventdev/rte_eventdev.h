@@ -1734,7 +1734,6 @@ int rte_event_dev_selftest(uint8_t dev_id);
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  *    - ENAMETOOLONG - mempool name requested is too long.
  */
-__rte_experimental
 struct rte_mempool *
 rte_event_vector_pool_create(const char *name, unsigned int n,
 			     unsigned int cache_size, uint16_t nb_elem,
