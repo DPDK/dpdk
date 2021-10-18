@@ -3,6 +3,7 @@
 
 drivers = [
         'idxd',
+        'ioat',
         'skeleton',
 ]
 std_deps = ['dmadev']

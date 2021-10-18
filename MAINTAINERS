@@ -1210,6 +1210,12 @@ M: Kevin Laatz <kevin.laatz@intel.com>
 F: drivers/dma/idxd/
 F: doc/guides/dmadevs/idxd.rst
 
+Intel IOAT
+M: Bruce Richardson <bruce.richardson@intel.com>
+M: Conor Walsh <conor.walsh@intel.com>
+F: drivers/dma/ioat/
+F: doc/guides/dmadevs/ioat.rst
+
 
 RegEx Drivers
 -------------

@@ -80,6 +80,12 @@ New Features
   The IDXD dmadev driver provide device drivers for the Intel DSA devices.
   This device driver can be used through the generic dmadev API.
 
+* **Added IOAT dmadev driver implementation.**
+
+  The Intel I/O Acceleration Technology (IOAT) dmadev driver provides a device
+  driver for Intel IOAT devices such as Crystal Beach DMA (CBDMA) on Ice Lake,
+  Skylake and Broadwell. This device driver can be used through the generic dmadev API.
+
 * **Added support to get all MAC addresses of a device.**
 
   Added ``rte_eth_macaddrs_get`` to allow user to retrieve all Ethernet

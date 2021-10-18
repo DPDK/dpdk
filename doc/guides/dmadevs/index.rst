@@ -12,3 +12,4 @@ an application through DMA API.
    :numbered:
 
    idxd
+   ioat
