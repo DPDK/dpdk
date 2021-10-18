@@ -746,6 +746,8 @@ struct table {
 	uint32_t n_actions;
 	int default_action_is_const;
 	uint32_t action_data_size_max;
+	int *action_is_for_table_entries;
+	int *action_is_for_default_entry;
 
 	uint32_t size;
 	uint32_t id;
@@ -815,6 +817,8 @@ struct learner {
 	uint32_t n_actions;
 	int default_action_is_const;
 	uint32_t action_data_size_max;
+	int *action_is_for_table_entries;
+	int *action_is_for_default_entry;
 
 	uint32_t size;
 	uint32_t timeout;

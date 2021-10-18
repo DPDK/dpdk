@@ -7309,7 +7309,7 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 			      uint32_t size)
 {
 	struct table_type *type;
-	struct table *t;
+	struct table *t = NULL;
 	struct action *default_action;
 	struct header *header = NULL;
 	uint32_t action_data_size_max = 0, i;
@@ -7336,6 +7336,7 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 		const char *action_name = params->action_names[i];
 		struct action *a;
 		uint32_t action_data_size;
+		int action_is_for_table_entries = 1, action_is_for_default_entry = 1;
 
 		CHECK_NAME(action_name, EINVAL);
 
@@ -7346,6 +7347,12 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 		action_data_size = a->st ? a->st->n_bits / 8 : 0;
 		if (action_data_size > action_data_size_max)
 			action_data_size_max = action_data_size;
+
+		if (params->action_is_for_table_entries)
+			action_is_for_table_entries = params->action_is_for_table_entries[i];
+		if (params->action_is_for_default_entry)
+			action_is_for_default_entry = params->action_is_for_default_entry[i];
+		CHECK(action_is_for_table_entries || action_is_for_default_entry, EINVAL);
 	}
 
 	CHECK_NAME(params->default_action_name, EINVAL);
@@ -7354,6 +7361,9 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 			    params->default_action_name))
 			break;
 	CHECK(i < params->n_actions, EINVAL);
+	CHECK(!params->action_is_for_default_entry || params->action_is_for_default_entry[i],
+	      EINVAL);
+
 	default_action = action_find(p, params->default_action_name);
 	CHECK((default_action->st && params->default_action_data) ||
 	      !params->default_action_data, EINVAL);
@@ -7380,27 +7390,26 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	CHECK(t, ENOMEM);
 
 	t->fields = calloc(params->n_fields, sizeof(struct match_field));
-	if (!t->fields) {
-		free(t);
-		CHECK(0, ENOMEM);
-	}
+	if (!t->fields)
+		goto nomem;
 
 	t->actions = calloc(params->n_actions, sizeof(struct action *));
-	if (!t->actions) {
-		free(t->fields);
-		free(t);
-		CHECK(0, ENOMEM);
-	}
+	if (!t->actions)
+		goto nomem;
 
 	if (action_data_size_max) {
 		t->default_action_data = calloc(1, action_data_size_max);
-		if (!t->default_action_data) {
-			free(t->actions);
-			free(t->fields);
-			free(t);
-			CHECK(0, ENOMEM);
-		}
+		if (!t->default_action_data)
+			goto nomem;
 	}
+
+	t->action_is_for_table_entries = calloc(params->n_actions, sizeof(int));
+	if (!t->action_is_for_table_entries)
+		goto nomem;
+
+	t->action_is_for_default_entry = calloc(params->n_actions, sizeof(int));
+	if (!t->action_is_for_default_entry)
+		goto nomem;
 
 	/* Node initialization. */
 	strcpy(t->name, name);
@@ -7420,8 +7429,18 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	t->n_fields = params->n_fields;
 	t->header = header;
 
-	for (i = 0; i < params->n_actions; i++)
+	for (i = 0; i < params->n_actions; i++) {
+		int action_is_for_table_entries = 1, action_is_for_default_entry = 1;
+
+		if (params->action_is_for_table_entries)
+			action_is_for_table_entries = params->action_is_for_table_entries[i];
+		if (params->action_is_for_default_entry)
+			action_is_for_default_entry = params->action_is_for_default_entry[i];
+
 		t->actions[i] = action_find(p, params->action_names[i]);
+		t->action_is_for_table_entries[i] = action_is_for_table_entries;
+		t->action_is_for_default_entry[i] = action_is_for_default_entry;
+	}
 	t->default_action = default_action;
 	if (default_action->st)
 		memcpy(t->default_action_data,
@@ -7439,6 +7458,19 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	p->n_tables++;
 
 	return 0;
+
+nomem:
+	if (!t)
+		return -ENOMEM;
+
+	free(t->action_is_for_default_entry);
+	free(t->action_is_for_table_entries);
+	free(t->default_action_data);
+	free(t->actions);
+	free(t->fields);
+	free(t);
+
+	return -ENOMEM;
 }
 
 static struct rte_swx_table_params *
@@ -8179,12 +8211,12 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 
 	/* Action checks. */
 	CHECK(params->n_actions, EINVAL);
-
 	CHECK(params->action_names, EINVAL);
 	for (i = 0; i < params->n_actions; i++) {
 		const char *action_name = params->action_names[i];
 		struct action *a;
 		uint32_t action_data_size;
+		int action_is_for_table_entries = 1, action_is_for_default_entry = 1;
 
 		CHECK_NAME(action_name, EINVAL);
 
@@ -8201,6 +8233,12 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 		action_data_size = a->st ? a->st->n_bits / 8 : 0;
 		if (action_data_size > action_data_size_max)
 			action_data_size_max = action_data_size;
+
+		if (params->action_is_for_table_entries)
+			action_is_for_table_entries = params->action_is_for_table_entries[i];
+		if (params->action_is_for_default_entry)
+			action_is_for_default_entry = params->action_is_for_default_entry[i];
+		CHECK(action_is_for_table_entries || action_is_for_default_entry, EINVAL);
 	}
 
 	CHECK_NAME(params->default_action_name, EINVAL);
@@ -8209,6 +8247,8 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 			    params->default_action_name))
 			break;
 	CHECK(i < params->n_actions, EINVAL);
+	CHECK(!params->action_is_for_default_entry || params->action_is_for_default_entry[i],
+	      EINVAL);
 
 	default_action = action_find(p, params->default_action_name);
 	CHECK((default_action->st && params->default_action_data) ||
@@ -8237,6 +8277,14 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 			goto nomem;
 	}
 
+	l->action_is_for_table_entries = calloc(params->n_actions, sizeof(int));
+	if (!l->action_is_for_table_entries)
+		goto nomem;
+
+	l->action_is_for_default_entry = calloc(params->n_actions, sizeof(int));
+	if (!l->action_is_for_default_entry)
+		goto nomem;
+
 	/* Node initialization. */
 	strcpy(l->name, name);
 
@@ -8252,8 +8300,18 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 
 	l->header = header;
 
-	for (i = 0; i < params->n_actions; i++)
+	for (i = 0; i < params->n_actions; i++) {
+		int action_is_for_table_entries = 1, action_is_for_default_entry = 1;
+
+		if (params->action_is_for_table_entries)
+			action_is_for_table_entries = params->action_is_for_table_entries[i];
+		if (params->action_is_for_default_entry)
+			action_is_for_default_entry = params->action_is_for_default_entry[i];
+
 		l->actions[i] = action_find(p, params->action_names[i]);
+		l->action_is_for_table_entries[i] = action_is_for_table_entries;
+		l->action_is_for_default_entry[i] = action_is_for_default_entry;
+	}
 
 	l->default_action = default_action;
 
@@ -8284,6 +8342,9 @@ nomem:
 	if (!l)
 		return -ENOMEM;
 
+	free(l->action_is_for_default_entry);
+	free(l->action_is_for_table_entries);
+	free(l->default_action_data);
 	free(l->actions);
 	free(l->fields);
 	free(l);
@@ -9277,6 +9338,9 @@ rte_swx_ctl_table_action_info_get(struct rte_swx_pipeline *p,
 
 	table_action->action_id = t->actions[table_action_id]->id;
 
+	table_action->action_is_for_table_entries = t->action_is_for_table_entries[table_action_id];
+	table_action->action_is_for_default_entry = t->action_is_for_default_entry[table_action_id];
+
 	return 0;
 }
 
@@ -9463,6 +9527,12 @@ rte_swx_ctl_learner_action_info_get(struct rte_swx_pipeline *p,
 		return -EINVAL;
 
 	learner_action->action_id = l->actions[learner_action_id]->id;
+
+	learner_action->action_is_for_table_entries =
+		l->action_is_for_table_entries[learner_action_id];
+
+	learner_action->action_is_for_default_entry =
+		l->action_is_for_default_entry[learner_action_id];
 
 	return 0;
 }

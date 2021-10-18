@@ -567,6 +567,20 @@ struct rte_swx_pipeline_table_params {
 	/** The set of actions for the current table. */
 	const char **action_names;
 
+	/**  Array of *n_actions* flags. For each action, the associated flag
+	 * indicates whether the action can be assigned to regular table entries
+	 * (when non-zero, i.e. true) or not (when zero, i.e. false). When set
+	 * to NULL, it defaults to true for all actions.
+	 */
+	int *action_is_for_table_entries;
+
+	/**  Array of *n_actions* flags. For each action, the associated flag
+	 * indicates whether the action can be assigned to the default table
+	 * entry (when non-zero, i.e. true) or not (when zero, i.e. false).
+	 * When set to NULL, it defaults to true for all actions.
+	 */
+	int *action_is_for_default_entry;
+
 	/** The number of actions for the current table. Must be at least one.
 	 */
 	uint32_t n_actions;
@@ -691,6 +705,20 @@ struct rte_swx_pipeline_learner_params {
 
 	/** The set of actions for the current table. */
 	const char **action_names;
+
+	/**  Array of *n_actions* flags. For each action, the associated flag
+	 * indicates whether the action can be assigned to regular table entries
+	 * (when non-zero, i.e. true) or not (when zero, i.e. false). When set
+	 * to NULL, it defaults to true for all actions.
+	 */
+	int *action_is_for_table_entries;
+
+	/**  Array of *n_actions* flags. For each action, the associated flag
+	 * indicates whether the action can be assigned to the default table
+	 * entry (when non-zero, i.e. true) or not (when zero, i.e. false).
+	 * When set to NULL, it defaults to true for all actions.
+	 */
+	int *action_is_for_default_entry;
 
 	/** The number of actions for the current table. Must be at least one.
 	 */

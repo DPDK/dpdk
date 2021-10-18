@@ -1446,6 +1446,8 @@ rte_swx_ctl_pipeline_table_entry_add(struct rte_swx_ctl_pipeline *ctl,
 	CHECK(entry, EINVAL);
 	CHECK(!table_entry_check(ctl, table_id, entry, 1, 1), EINVAL);
 
+	CHECK(table->actions[entry->action_id].action_is_for_table_entries, EINVAL);
+
 	new_entry = table_entry_duplicate(ctl, table_id, entry, 1, 1);
 	CHECK(new_entry, ENOMEM);
 
@@ -1650,6 +1652,8 @@ rte_swx_ctl_pipeline_table_default_entry_add(struct rte_swx_ctl_pipeline *ctl,
 
 	CHECK(entry, EINVAL);
 	CHECK(!table_entry_check(ctl, table_id, entry, 0, 1), EINVAL);
+
+	CHECK(table->actions[entry->action_id].action_is_for_default_entry, EINVAL);
 
 	new_entry = table_entry_duplicate(ctl, table_id, entry, 0, 1);
 	CHECK(new_entry, ENOMEM);
@@ -2377,6 +2381,8 @@ rte_swx_ctl_pipeline_learner_default_entry_add(struct rte_swx_ctl_pipeline *ctl,
 
 	CHECK(entry, EINVAL);
 	CHECK(!learner_default_entry_check(ctl, learner_id, entry), EINVAL);
+
+	CHECK(l->actions[entry->action_id].action_is_for_default_entry, EINVAL);
 
 	new_entry = learner_default_entry_duplicate(ctl, learner_id, entry);
 	CHECK(new_entry, ENOMEM);

@@ -301,6 +301,12 @@ rte_swx_ctl_table_match_field_info_get(struct rte_swx_pipeline *p,
 struct rte_swx_ctl_table_action_info {
 	/** Action ID. */
 	uint32_t action_id;
+
+	/**  When non-zero (true), the action can be assigned to regular table entries. */
+	int action_is_for_table_entries;
+
+	/**  When non-zero (true), the action can be assigned to the table default entry. */
+	int action_is_for_default_entry;
 };
 
 /**

@@ -539,7 +539,7 @@ action_block_parse(struct action_spec *s,
  *		...
  *	}
  *	actions {
- *		ACTION_NAME
+ *		ACTION_NAME [ @tableonly | @defaultonly ]
  *		...
  *	}
  *	default_action ACTION_NAME args none | ARGS_BYTE_ARRAY [ const ]
@@ -596,6 +596,12 @@ table_spec_free(struct table_spec *s)
 
 	free(s->params.default_action_data);
 	s->params.default_action_data = NULL;
+
+	free(s->params.action_is_for_table_entries);
+	s->params.action_is_for_table_entries = NULL;
+
+	free(s->params.action_is_for_default_entry);
+	s->params.action_is_for_default_entry = NULL;
 
 	s->params.default_action_is_const = 0;
 
@@ -730,8 +736,10 @@ table_actions_block_parse(struct table_spec *s,
 			  uint32_t *err_line,
 			  const char **err_msg)
 {
-	const char **new_action_names;
-	char *name;
+	const char **new_action_names = NULL;
+	int *new_action_is_for_table_entries = NULL, *new_action_is_for_default_entry = NULL;
+	char *name = NULL;
+	int action_is_for_table_entries = 1, action_is_for_default_entry = 1;
 
 	/* Handle end of block. */
 	if ((n_tokens == 1) && !strcmp(tokens[0], "}")) {
@@ -740,7 +748,9 @@ table_actions_block_parse(struct table_spec *s,
 	}
 
 	/* Check input arguments. */
-	if (n_tokens != 1) {
+	if ((n_tokens > 2) ||
+	    ((n_tokens == 2) && strcmp(tokens[1], "@tableonly") &&
+	      strcmp(tokens[1], "@defaultonly"))) {
 		if (err_line)
 			*err_line = n_lines;
 		if (err_msg)
@@ -749,18 +759,30 @@ table_actions_block_parse(struct table_spec *s,
 	}
 
 	name = strdup(tokens[0]);
-	if (!name) {
-		if (err_line)
-			*err_line = n_lines;
-		if (err_msg)
-			*err_msg = "Memory allocation failed.";
-		return -ENOMEM;
+
+	if (n_tokens == 2) {
+		if (!strcmp(tokens[1], "@tableonly"))
+			action_is_for_default_entry = 0;
+
+		if (!strcmp(tokens[1], "@defaultonly"))
+			action_is_for_table_entries = 0;
 	}
 
 	new_action_names = realloc(s->params.action_names,
 				   (s->params.n_actions + 1) * sizeof(char *));
-	if (!new_action_names) {
+	new_action_is_for_table_entries = realloc(s->params.action_is_for_table_entries,
+						  (s->params.n_actions + 1) * sizeof(int));
+	new_action_is_for_default_entry = realloc(s->params.action_is_for_default_entry,
+						  (s->params.n_actions + 1) * sizeof(int));
+
+	if (!name ||
+	    !new_action_names ||
+	    !new_action_is_for_table_entries ||
+	    !new_action_is_for_default_entry) {
 		free(name);
+		free(new_action_names);
+		free(new_action_is_for_table_entries);
+		free(new_action_is_for_default_entry);
 
 		if (err_line)
 			*err_line = n_lines;
@@ -771,6 +793,13 @@ table_actions_block_parse(struct table_spec *s,
 
 	s->params.action_names = new_action_names;
 	s->params.action_names[s->params.n_actions] = name;
+
+	s->params.action_is_for_table_entries = new_action_is_for_table_entries;
+	s->params.action_is_for_table_entries[s->params.n_actions] = action_is_for_table_entries;
+
+	s->params.action_is_for_default_entry = new_action_is_for_default_entry;
+	s->params.action_is_for_default_entry[s->params.n_actions] = action_is_for_default_entry;
+
 	s->params.n_actions++;
 
 	return 0;
@@ -1293,7 +1322,7 @@ selector_block_parse(struct selector_spec *s,
  *		...
  *	}
  *	actions {
- *		ACTION_NAME
+ *		ACTION_NAME [ @tableonly | @defaultonly]
  *		...
  *	}
  *	default_action ACTION_NAME args none | ARGS_BYTE_ARRAY [ const ]
@@ -1348,6 +1377,12 @@ learner_spec_free(struct learner_spec *s)
 
 	free(s->params.default_action_data);
 	s->params.default_action_data = NULL;
+
+	free(s->params.action_is_for_table_entries);
+	s->params.action_is_for_table_entries = NULL;
+
+	free(s->params.action_is_for_default_entry);
+	s->params.action_is_for_default_entry = NULL;
 
 	s->params.default_action_is_const = 0;
 
@@ -1459,7 +1494,9 @@ learner_actions_block_parse(struct learner_spec *s,
 			    const char **err_msg)
 {
 	const char **new_action_names = NULL;
-	char *action_name = NULL;
+	int *new_action_is_for_table_entries = NULL, *new_action_is_for_default_entry = NULL;
+	char *name = NULL;
+	int action_is_for_table_entries = 1, action_is_for_default_entry = 1;
 
 	/* Handle end of block. */
 	if ((n_tokens == 1) && !strcmp(tokens[0], "}")) {
@@ -1468,7 +1505,9 @@ learner_actions_block_parse(struct learner_spec *s,
 	}
 
 	/* Check input arguments. */
-	if (n_tokens != 1) {
+	if ((n_tokens > 2) ||
+	    ((n_tokens == 2) && strcmp(tokens[1], "@tableonly") &&
+	      strcmp(tokens[1], "@defaultonly"))) {
 		if (err_line)
 			*err_line = n_lines;
 		if (err_msg)
@@ -1476,14 +1515,31 @@ learner_actions_block_parse(struct learner_spec *s,
 		return -EINVAL;
 	}
 
-	action_name = strdup(tokens[0]);
+	name = strdup(tokens[0]);
+
+	if (n_tokens == 2) {
+		if (!strcmp(tokens[1], "@tableonly"))
+			action_is_for_default_entry = 0;
+
+		if (!strcmp(tokens[1], "@defaultonly"))
+			action_is_for_table_entries = 0;
+	}
 
 	new_action_names = realloc(s->params.action_names,
 				   (s->params.n_actions + 1) * sizeof(char *));
+	new_action_is_for_table_entries = realloc(s->params.action_is_for_table_entries,
+						  (s->params.n_actions + 1) * sizeof(int));
+	new_action_is_for_default_entry = realloc(s->params.action_is_for_default_entry,
+						  (s->params.n_actions + 1) * sizeof(int));
 
-	if (!action_name || !new_action_names) {
-		free(action_name);
+	if (!name ||
+	    !new_action_names ||
+	    !new_action_is_for_table_entries ||
+	    !new_action_is_for_default_entry) {
+		free(name);
 		free(new_action_names);
+		free(new_action_is_for_table_entries);
+		free(new_action_is_for_default_entry);
 
 		if (err_line)
 			*err_line = n_lines;
@@ -1493,7 +1549,14 @@ learner_actions_block_parse(struct learner_spec *s,
 	}
 
 	s->params.action_names = new_action_names;
-	s->params.action_names[s->params.n_actions] = action_name;
+	s->params.action_names[s->params.n_actions] = name;
+
+	s->params.action_is_for_table_entries = new_action_is_for_table_entries;
+	s->params.action_is_for_table_entries[s->params.n_actions] = action_is_for_table_entries;
+
+	s->params.action_is_for_default_entry = new_action_is_for_default_entry;
+	s->params.action_is_for_default_entry[s->params.n_actions] = action_is_for_default_entry;
+
 	s->params.n_actions++;
 
 	return 0;
