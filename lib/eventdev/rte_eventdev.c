@@ -209,7 +209,7 @@ rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 }
 
 static inline int
-rte_event_dev_queue_config(struct rte_eventdev *dev, uint8_t nb_queues)
+event_dev_queue_config(struct rte_eventdev *dev, uint8_t nb_queues)
 {
 	uint8_t old_nb_queues = dev->data->nb_queues;
 	struct rte_event_queue_conf *queues_cfg;
@@ -218,37 +218,13 @@ rte_event_dev_queue_config(struct rte_eventdev *dev, uint8_t nb_queues)
 	RTE_EDEV_LOG_DEBUG("Setup %d queues on device %u", nb_queues,
 			 dev->data->dev_id);
 
-	/* First time configuration */
-	if (dev->data->queues_cfg == NULL && nb_queues != 0) {
-		/* Allocate memory to store queue configuration */
-		dev->data->queues_cfg = rte_zmalloc_socket(
-				"eventdev->data->queues_cfg",
-				sizeof(dev->data->queues_cfg[0]) * nb_queues,
-				RTE_CACHE_LINE_SIZE, dev->data->socket_id);
-		if (dev->data->queues_cfg == NULL) {
-			dev->data->nb_queues = 0;
-			RTE_EDEV_LOG_ERR("failed to get mem for queue cfg,"
-					"nb_queues %u", nb_queues);
-			return -(ENOMEM);
-		}
-	/* Re-configure */
-	} else if (dev->data->queues_cfg != NULL && nb_queues != 0) {
+	if (nb_queues != 0) {
+		queues_cfg = dev->data->queues_cfg;
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_release, -ENOTSUP);
 
 		for (i = nb_queues; i < old_nb_queues; i++)
 			(*dev->dev_ops->queue_release)(dev, i);
 
-		/* Re allocate memory to store queue configuration */
-		queues_cfg = dev->data->queues_cfg;
-		queues_cfg = rte_realloc(queues_cfg,
-				sizeof(queues_cfg[0]) * nb_queues,
-				RTE_CACHE_LINE_SIZE);
-		if (queues_cfg == NULL) {
-			RTE_EDEV_LOG_ERR("failed to realloc queue cfg memory,"
-						" nb_queues %u", nb_queues);
-			return -(ENOMEM);
-		}
-		dev->data->queues_cfg = queues_cfg;
 
 		if (nb_queues > old_nb_queues) {
 			uint8_t new_qs = nb_queues - old_nb_queues;
@@ -256,7 +232,7 @@ rte_event_dev_queue_config(struct rte_eventdev *dev, uint8_t nb_queues)
 			memset(queues_cfg + old_nb_queues, 0,
 				sizeof(queues_cfg[0]) * new_qs);
 		}
-	} else if (dev->data->queues_cfg != NULL && nb_queues == 0) {
+	} else {
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_release, -ENOTSUP);
 
 		for (i = nb_queues; i < old_nb_queues; i++)
@@ -270,7 +246,7 @@ rte_event_dev_queue_config(struct rte_eventdev *dev, uint8_t nb_queues)
 #define EVENT_QUEUE_SERVICE_PRIORITY_INVALID (0xdead)
 
 static inline int
-rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
+event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 {
 	uint8_t old_nb_ports = dev->data->nb_ports;
 	void **ports;
@@ -281,46 +257,7 @@ rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 	RTE_EDEV_LOG_DEBUG("Setup %d ports on device %u", nb_ports,
 			 dev->data->dev_id);
 
-	/* First time configuration */
-	if (dev->data->ports == NULL && nb_ports != 0) {
-		dev->data->ports = rte_zmalloc_socket("eventdev->data->ports",
-				sizeof(dev->data->ports[0]) * nb_ports,
-				RTE_CACHE_LINE_SIZE, dev->data->socket_id);
-		if (dev->data->ports == NULL) {
-			dev->data->nb_ports = 0;
-			RTE_EDEV_LOG_ERR("failed to get mem for port meta data,"
-					"nb_ports %u", nb_ports);
-			return -(ENOMEM);
-		}
-
-		/* Allocate memory to store port configurations */
-		dev->data->ports_cfg =
-			rte_zmalloc_socket("eventdev->ports_cfg",
-			sizeof(dev->data->ports_cfg[0]) * nb_ports,
-			RTE_CACHE_LINE_SIZE, dev->data->socket_id);
-		if (dev->data->ports_cfg == NULL) {
-			dev->data->nb_ports = 0;
-			RTE_EDEV_LOG_ERR("failed to get mem for port cfg,"
-					"nb_ports %u", nb_ports);
-			return -(ENOMEM);
-		}
-
-		/* Allocate memory to store queue to port link connection */
-		dev->data->links_map =
-			rte_zmalloc_socket("eventdev->links_map",
-			sizeof(dev->data->links_map[0]) * nb_ports *
-			RTE_EVENT_MAX_QUEUES_PER_DEV,
-			RTE_CACHE_LINE_SIZE, dev->data->socket_id);
-		if (dev->data->links_map == NULL) {
-			dev->data->nb_ports = 0;
-			RTE_EDEV_LOG_ERR("failed to get mem for port_map area,"
-					"nb_ports %u", nb_ports);
-			return -(ENOMEM);
-		}
-		for (i = 0; i < nb_ports * RTE_EVENT_MAX_QUEUES_PER_DEV; i++)
-			dev->data->links_map[i] =
-				EVENT_QUEUE_SERVICE_PRIORITY_INVALID;
-	} else if (dev->data->ports != NULL && nb_ports != 0) {/* re-config */
+	if (nb_ports != 0) { /* re-config */
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->port_release, -ENOTSUP);
 
 		ports = dev->data->ports;
@@ -329,37 +266,6 @@ rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 
 		for (i = nb_ports; i < old_nb_ports; i++)
 			(*dev->dev_ops->port_release)(ports[i]);
-
-		/* Realloc memory for ports */
-		ports = rte_realloc(ports, sizeof(ports[0]) * nb_ports,
-				RTE_CACHE_LINE_SIZE);
-		if (ports == NULL) {
-			RTE_EDEV_LOG_ERR("failed to realloc port meta data,"
-						" nb_ports %u", nb_ports);
-			return -(ENOMEM);
-		}
-
-		/* Realloc memory for ports_cfg */
-		ports_cfg = rte_realloc(ports_cfg,
-			sizeof(ports_cfg[0]) * nb_ports,
-			RTE_CACHE_LINE_SIZE);
-		if (ports_cfg == NULL) {
-			RTE_EDEV_LOG_ERR("failed to realloc port cfg mem,"
-						" nb_ports %u", nb_ports);
-			return -(ENOMEM);
-		}
-
-		/* Realloc memory to store queue to port link connection */
-		links_map = rte_realloc(links_map,
-			sizeof(dev->data->links_map[0]) * nb_ports *
-			RTE_EVENT_MAX_QUEUES_PER_DEV,
-			RTE_CACHE_LINE_SIZE);
-		if (links_map == NULL) {
-			dev->data->nb_ports = 0;
-			RTE_EDEV_LOG_ERR("failed to realloc mem for port_map,"
-					"nb_ports %u", nb_ports);
-			return -(ENOMEM);
-		}
 
 		if (nb_ports > old_nb_ports) {
 			uint8_t new_ps = nb_ports - old_nb_ports;
@@ -376,16 +282,14 @@ rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 				links_map[i] =
 					EVENT_QUEUE_SERVICE_PRIORITY_INVALID;
 		}
-
-		dev->data->ports = ports;
-		dev->data->ports_cfg = ports_cfg;
-		dev->data->links_map = links_map;
-	} else if (dev->data->ports != NULL && nb_ports == 0) {
+	} else {
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->port_release, -ENOTSUP);
 
 		ports = dev->data->ports;
-		for (i = nb_ports; i < old_nb_ports; i++)
+		for (i = nb_ports; i < old_nb_ports; i++) {
 			(*dev->dev_ops->port_release)(ports[i]);
+			ports[i] = NULL;
+		}
 	}
 
 	dev->data->nb_ports = nb_ports;
@@ -550,19 +454,19 @@ rte_event_dev_configure(uint8_t dev_id,
 	memcpy(&dev->data->dev_conf, dev_conf, sizeof(dev->data->dev_conf));
 
 	/* Setup new number of queues and reconfigure device. */
-	diag = rte_event_dev_queue_config(dev, dev_conf->nb_event_queues);
+	diag = event_dev_queue_config(dev, dev_conf->nb_event_queues);
 	if (diag != 0) {
-		RTE_EDEV_LOG_ERR("dev%d rte_event_dev_queue_config = %d",
-				dev_id, diag);
+		RTE_EDEV_LOG_ERR("dev%d event_dev_queue_config = %d", dev_id,
+				 diag);
 		return diag;
 	}
 
 	/* Setup new number of ports and reconfigure device. */
-	diag = rte_event_dev_port_config(dev, dev_conf->nb_event_ports);
+	diag = event_dev_port_config(dev, dev_conf->nb_event_ports);
 	if (diag != 0) {
-		rte_event_dev_queue_config(dev, 0);
-		RTE_EDEV_LOG_ERR("dev%d rte_event_dev_port_config = %d",
-				dev_id, diag);
+		event_dev_queue_config(dev, 0);
+		RTE_EDEV_LOG_ERR("dev%d event_dev_port_config = %d", dev_id,
+				 diag);
 		return diag;
 	}
 
@@ -570,8 +474,8 @@ rte_event_dev_configure(uint8_t dev_id,
 	diag = (*dev->dev_ops->dev_configure)(dev);
 	if (diag != 0) {
 		RTE_EDEV_LOG_ERR("dev%d dev_configure = %d", dev_id, diag);
-		rte_event_dev_queue_config(dev, 0);
-		rte_event_dev_port_config(dev, 0);
+		event_dev_queue_config(dev, 0);
+		event_dev_port_config(dev, 0);
 	}
 
 	dev->data->event_dev_cap = info.event_dev_cap;
@@ -1403,8 +1307,8 @@ rte_event_dev_close(uint8_t dev_id)
 }
 
 static inline int
-rte_eventdev_data_alloc(uint8_t dev_id, struct rte_eventdev_data **data,
-		int socket_id)
+eventdev_data_alloc(uint8_t dev_id, struct rte_eventdev_data **data,
+		    int socket_id)
 {
 	char mz_name[RTE_EVENTDEV_NAME_MAX_LEN];
 	const struct rte_memzone *mz;
@@ -1426,14 +1330,20 @@ rte_eventdev_data_alloc(uint8_t dev_id, struct rte_eventdev_data **data,
 		return -ENOMEM;
 
 	*data = mz->addr;
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		memset(*data, 0, sizeof(struct rte_eventdev_data));
+		for (n = 0; n < RTE_EVENT_MAX_PORTS_PER_DEV *
+					RTE_EVENT_MAX_QUEUES_PER_DEV;
+		     n++)
+			(*data)->links_map[n] =
+				EVENT_QUEUE_SERVICE_PRIORITY_INVALID;
+	}
 
 	return 0;
 }
 
 static inline uint8_t
-rte_eventdev_find_free_device_index(void)
+eventdev_find_free_device_index(void)
 {
 	uint8_t dev_id;
 
@@ -1475,7 +1385,7 @@ rte_event_pmd_allocate(const char *name, int socket_id)
 		return NULL;
 	}
 
-	dev_id = rte_eventdev_find_free_device_index();
+	dev_id = eventdev_find_free_device_index();
 	if (dev_id == RTE_EVENT_MAX_DEVS) {
 		RTE_EDEV_LOG_ERR("Reached maximum number of event devices");
 		return NULL;
@@ -1490,8 +1400,8 @@ rte_event_pmd_allocate(const char *name, int socket_id)
 	if (eventdev->data == NULL) {
 		struct rte_eventdev_data *eventdev_data = NULL;
 
-		int retval = rte_eventdev_data_alloc(dev_id, &eventdev_data,
-				socket_id);
+		int retval =
+			eventdev_data_alloc(dev_id, &eventdev_data, socket_id);
 
 		if (retval < 0 || eventdev_data == NULL)
 			return NULL;

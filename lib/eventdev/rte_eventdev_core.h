@@ -58,13 +58,14 @@ struct rte_eventdev_data {
 	/**< Number of event queues. */
 	uint8_t nb_ports;
 	/**< Number of event ports. */
-	void **ports;
+	void *ports[RTE_EVENT_MAX_PORTS_PER_DEV];
 	/**< Array of pointers to ports. */
-	struct rte_event_port_conf *ports_cfg;
+	struct rte_event_port_conf ports_cfg[RTE_EVENT_MAX_PORTS_PER_DEV];
 	/**< Array of port configuration structures. */
-	struct rte_event_queue_conf *queues_cfg;
+	struct rte_event_queue_conf queues_cfg[RTE_EVENT_MAX_QUEUES_PER_DEV];
 	/**< Array of queue configuration structures. */
-	uint16_t *links_map;
+	uint16_t links_map[RTE_EVENT_MAX_PORTS_PER_DEV *
+			   RTE_EVENT_MAX_QUEUES_PER_DEV];
 	/**< Memory to store queues to port connections. */
 	void *dev_private;
 	/**< PMD-specific private data */
