@@ -207,15 +207,15 @@ static int test_mempool_creation_with_exceeded_cache_size(void)
 	return 0;
 }
 
-static int test_mempool_creation_with_unknown_flag(void)
+static int test_mempool_creation_with_invalid_flags(void)
 {
 	struct rte_mempool *mp_cov;
 
-	mp_cov = rte_mempool_create("test_mempool_unknown_flag", MEMPOOL_SIZE,
+	mp_cov = rte_mempool_create("test_mempool_invalid_flags", MEMPOOL_SIZE,
 		MEMPOOL_ELT_SIZE, 0, 0,
 		NULL, NULL,
 		NULL, NULL,
-		SOCKET_ID_ANY, RTE_MEMPOOL_F_NO_IOVA_CONTIG << 1);
+		SOCKET_ID_ANY, ~RTE_MEMPOOL_VALID_USER_FLAGS);
 
 	if (mp_cov != NULL) {
 		rte_mempool_free(mp_cov);
@@ -1000,7 +1000,7 @@ test_mempool(void)
 	if (test_mempool_creation_with_exceeded_cache_size() < 0)
 		GOTO_ERR(ret, err);
 
-	if (test_mempool_creation_with_unknown_flag() < 0)
+	if (test_mempool_creation_with_invalid_flags() < 0)
 		GOTO_ERR(ret, err);
 
 	if (test_mempool_same_name_twice_creation() < 0)

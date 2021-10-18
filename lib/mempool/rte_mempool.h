@@ -292,6 +292,15 @@ struct rte_mempool {
 #define RTE_MEMPOOL_F_NON_IO		0x0040
 
 /**
+ * This macro lists all the mempool flags an application may request.
+ */
+#define RTE_MEMPOOL_VALID_USER_FLAGS (RTE_MEMPOOL_F_NO_SPREAD \
+	| RTE_MEMPOOL_F_NO_CACHE_ALIGN \
+	| RTE_MEMPOOL_F_SP_PUT \
+	| RTE_MEMPOOL_F_SC_GET \
+	| RTE_MEMPOOL_F_NO_IOVA_CONTIG \
+	)
+/**
  * @internal When debug is enabled, store some statistics.
  *
  * @param mp
