@@ -568,6 +568,9 @@ cpt_lf_init(struct roc_cpt_lf *lf)
 	if (lf->nb_desc == 0 || lf->nb_desc > CPT_LF_MAX_NB_DESC)
 		lf->nb_desc = CPT_LF_DEFAULT_NB_DESC;
 
+	/* Update nb_desc to next power of 2 to aid in pending queue checks */
+	lf->nb_desc = plt_align32pow2(lf->nb_desc);
+
 	/* Allocate memory for instruction queue for CPT LF. */
 	iq_mem = plt_zmalloc(cpt_lf_iq_mem_calc(lf->nb_desc), ROC_ALIGN);
 	if (iq_mem == NULL)
