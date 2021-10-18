@@ -516,6 +516,19 @@ ioat_completed_status(void *dev_private, uint16_t qid __rte_unused,
 	return count;
 }
 
+/* Get the remaining capacity of the ring. */
+static uint16_t
+ioat_burst_capacity(const void *dev_private, uint16_t vchan __rte_unused)
+{
+	const struct ioat_dmadev *ioat = dev_private;
+	unsigned short size = ioat->qcfg.nb_desc - 1;
+	unsigned short read = ioat->next_read;
+	unsigned short write = ioat->next_write;
+	unsigned short space = size - (write - read);
+
+	return space;
+}
+
 /* Retrieve the generic stats of a DMA device. */
 static int
 ioat_stats_get(const struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
@@ -601,6 +614,7 @@ ioat_dmadev_create(const char *name, struct rte_pci_device *dev)
 
 	dmadev->dev_ops = &ioat_dmadev_ops;
 
+	dmadev->fp_obj->burst_capacity = ioat_burst_capacity;
 	dmadev->fp_obj->completed = ioat_completed;
 	dmadev->fp_obj->completed_status = ioat_completed_status;
 	dmadev->fp_obj->copy = ioat_enqueue_copy;
