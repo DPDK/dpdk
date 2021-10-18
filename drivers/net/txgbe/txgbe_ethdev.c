@@ -3482,12 +3482,6 @@ txgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 	}
 
-	/* switch to jumbo mode if needed */
-	if (mtu > RTE_ETHER_MTU)
-		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		dev->data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
 	if (hw->mode)
 		wr32m(hw, TXGBE_FRMSZ, TXGBE_FRMSZ_MAX_MASK,
 			TXGBE_FRAME_SIZE_MAX);

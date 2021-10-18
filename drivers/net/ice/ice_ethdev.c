@@ -3992,11 +3992,6 @@ ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	if (mtu > RTE_ETHER_MTU)
-		dev_data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		dev_data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
 	return 0;
 }
 

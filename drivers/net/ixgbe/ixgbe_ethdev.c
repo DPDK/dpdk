@@ -5189,13 +5189,10 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
 
 	/* switch to jumbo mode if needed */
-	if (mtu > RTE_ETHER_MTU) {
-		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	if (mtu > RTE_ETHER_MTU)
 		hlreg0 |= IXGBE_HLREG0_JUMBOEN;
-	} else {
-		dev->data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
+	else
 		hlreg0 &= ~IXGBE_HLREG0_JUMBOEN;
-	}
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 
 	maxfrs = IXGBE_READ_REG(hw, IXGBE_MAXFRS);

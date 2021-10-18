@@ -313,14 +313,6 @@ int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	if (mtu < RTE_ETHER_MIN_MTU || new_mtu > dev_info.max_rx_pktlen)
 		return -EINVAL;
 
-	/* set to jumbo mode if needed */
-	if (mtu > RTE_ETHER_MTU)
-		eth_dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		eth_dev->data->dev_conf.rxmode.offloads &=
-			~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
 	err = t4_set_rxmode(adapter, adapter->mbox, pi->viid, new_mtu, -1, -1,
 			    -1, -1, true);
 	return err;

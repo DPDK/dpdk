@@ -439,11 +439,6 @@ cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 		plt_err("Failed to max Rx frame length, rc=%d", rc);
 		goto exit;
 	}
-
-	if (mtu > RTE_ETHER_MTU)
-		dev->rx_offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		dev->rx_offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 exit:
 	return rc;
 }

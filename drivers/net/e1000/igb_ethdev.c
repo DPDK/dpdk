@@ -4392,15 +4392,10 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 
 	/* switch to jumbo mode if needed */
-	if (mtu > RTE_ETHER_MTU) {
-		dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_JUMBO_FRAME;
+	if (mtu > RTE_ETHER_MTU)
 		rctl |= E1000_RCTL_LPE;
-	} else {
-		dev->data->dev_conf.rxmode.offloads &=
-			~DEV_RX_OFFLOAD_JUMBO_FRAME;
+	else
 		rctl &= ~E1000_RCTL_LPE;
-	}
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
 
 	E1000_WRITE_REG(hw, E1000_RLPML, frame_size);

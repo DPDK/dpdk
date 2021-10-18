@@ -2791,11 +2791,6 @@ ipn3ke_rpst_mtu_set(struct rte_eth_dev *ethdev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	if (mtu > RTE_ETHER_MTU)
-		dev_data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		dev_data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
 	if (rpst->i40e_pf_eth) {
 		ret = rpst->i40e_pf_eth->dev_ops->mtu_set(rpst->i40e_pf_eth,
 							mtu);

@@ -2566,7 +2566,6 @@ hns3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	uint32_t frame_size = mtu + HNS3_ETH_OVERHEAD;
 	struct hns3_hw *hw = &hns->hw;
-	bool is_jumbo_frame;
 	int ret;
 
 	if (dev->data->dev_started) {
@@ -2576,7 +2575,6 @@ hns3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	rte_spinlock_lock(&hw->lock);
-	is_jumbo_frame = mtu > RTE_ETHER_MTU ? true : false;
 	frame_size = RTE_MAX(frame_size, HNS3_DEFAULT_FRAME_LEN);
 
 	/*
@@ -2591,12 +2589,6 @@ hns3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return ret;
 	}
 
-	if (is_jumbo_frame)
-		dev->data->dev_conf.rxmode.offloads |=
-						DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		dev->data->dev_conf.rxmode.offloads &=
-						~DEV_RX_OFFLOAD_JUMBO_FRAME;
 	rte_spinlock_unlock(&hw->lock);
 
 	return 0;

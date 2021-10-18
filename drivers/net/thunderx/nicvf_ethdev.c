@@ -151,7 +151,6 @@ nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 	uint32_t buffsz, frame_size = mtu + NIC_HW_L2_OVERHEAD;
 	size_t i;
-	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -175,11 +174,6 @@ nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	if (dev->data->scattered_rx &&
 		(frame_size + 2 * VLAN_TAG_SIZE > buffsz * NIC_HW_MAX_SEGS))
 		return -EINVAL;
-
-	if (mtu > RTE_ETHER_MTU)
-		rxmode->offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		rxmode->offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	if (nicvf_mbox_update_hw_max_frs(nic, mtu))
 		return -EINVAL;

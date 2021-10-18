@@ -681,13 +681,6 @@ enetc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 	}
 
-	if (mtu > RTE_ETHER_MTU)
-		dev->data->dev_conf.rxmode.offloads &=
-						DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		dev->data->dev_conf.rxmode.offloads &=
-						~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
 	enetc_port_wr(enetc_hw, ENETC_PTCMSDUR(0), ENETC_MAC_MAXFRM_SIZE);
 	enetc_port_wr(enetc_hw, ENETC_PTXMBAR, 2 * ENETC_MAC_MAXFRM_SIZE);
 

@@ -1591,15 +1591,10 @@ eth_igc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	rctl = IGC_READ_REG(hw, IGC_RCTL);
-
-	/* switch to jumbo mode if needed */
-	if (mtu > RTE_ETHER_MTU) {
-		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	if (mtu > RTE_ETHER_MTU)
 		rctl |= IGC_RCTL_LPE;
-	} else {
-		dev->data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
+	else
 		rctl &= ~IGC_RCTL_LPE;
-	}
 	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
 
 	IGC_WRITE_REG(hw, IGC_RLPML, frame_size);

@@ -480,13 +480,6 @@ lio_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 		return -1;
 	}
 
-	if (mtu > RTE_ETHER_MTU)
-		eth_dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		eth_dev->data->dev_conf.rxmode.offloads &=
-			~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
 	return 0;
 }
 

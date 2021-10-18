@@ -1465,13 +1465,6 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	if (mtu < RTE_ETHER_MIN_MTU || frame_size > DPAA2_MAX_RX_PKT_LEN)
 		return -EINVAL;
 
-	if (mtu > RTE_ETHER_MTU)
-		dev->data->dev_conf.rxmode.offloads |=
-						DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		dev->data->dev_conf.rxmode.offloads &=
-						~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
 	/* Set the Max Rx frame length as 'mtu' +
 	 * Maximum Ethernet header length
 	 */

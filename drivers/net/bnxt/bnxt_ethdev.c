@@ -3056,15 +3056,10 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 		return -EINVAL;
 	}
 
-	if (new_mtu > RTE_ETHER_MTU) {
+	if (new_mtu > RTE_ETHER_MTU)
 		bp->flags |= BNXT_FLAG_JUMBO;
-		bp->eth_dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_JUMBO_FRAME;
-	} else {
-		bp->eth_dev->data->dev_conf.rxmode.offloads &=
-			~DEV_RX_OFFLOAD_JUMBO_FRAME;
+	else
 		bp->flags &= ~BNXT_FLAG_JUMBO;
-	}
 
 	/* Is there a change in mtu setting? */
 	if (eth_dev->data->mtu == new_mtu)

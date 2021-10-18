@@ -962,12 +962,6 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	/* switch to jumbo mode if needed */
-	if (mtu > RTE_ETHER_MTU)
-		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	else
-		dev->data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
 	/* writing to configuration space */
 	nn_cfg_writel(hw, NFP_NET_CFG_MTU, mtu);
 

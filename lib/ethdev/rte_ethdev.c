@@ -3647,6 +3647,7 @@ rte_eth_dev_set_mtu(uint16_t port_id, uint16_t mtu)
 	int ret;
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev;
+	int is_jumbo_frame_capable = 0;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
@@ -3665,11 +3666,26 @@ rte_eth_dev_set_mtu(uint16_t port_id, uint16_t mtu)
 
 		if (mtu < dev_info.min_mtu || mtu > dev_info.max_mtu)
 			return -EINVAL;
+
+		if ((dev_info.rx_offload_capa & DEV_RX_OFFLOAD_JUMBO_FRAME) != 0)
+			is_jumbo_frame_capable = 1;
 	}
 
+	if (mtu > RTE_ETHER_MTU && is_jumbo_frame_capable == 0)
+		return -EINVAL;
+
 	ret = (*dev->dev_ops->mtu_set)(dev, mtu);
-	if (!ret)
+	if (ret == 0) {
 		dev->data->mtu = mtu;
+
+		/* switch to jumbo mode if needed */
+		if (mtu > RTE_ETHER_MTU)
+			dev->data->dev_conf.rxmode.offloads |=
+				DEV_RX_OFFLOAD_JUMBO_FRAME;
+		else
+			dev->data->dev_conf.rxmode.offloads &=
+				~DEV_RX_OFFLOAD_JUMBO_FRAME;
+	}
 
 	return eth_err(port_id, ret);
 }

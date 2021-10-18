@@ -1492,15 +1492,10 @@ static int axgb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 				dev->data->port_id);
 		return -EBUSY;
 	}
-	if (mtu > RTE_ETHER_MTU) {
-		dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_JUMBO_FRAME;
+	if (mtu > RTE_ETHER_MTU)
 		val = 1;
-	} else {
-		dev->data->dev_conf.rxmode.offloads &=
-			~DEV_RX_OFFLOAD_JUMBO_FRAME;
+	else
 		val = 0;
-	}
 	AXGMAC_IOWRITE_BITS(pdata, MAC_RCR, JE, val);
 	return 0;
 }
