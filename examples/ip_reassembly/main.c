@@ -515,7 +515,6 @@ static void
 print_usage(const char *prgname)
 {
 	printf("%s [EAL options] -- -p PORTMASK [-q NQ]"
-		"  [--max-pkt-len PKTLEN]"
 		"  [--maxflows=<flows>]  [--flowttl=<ttl>[(s|ms)]]\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
 		"  -q NQ: number of RX queues per lcore\n"
@@ -617,7 +616,6 @@ parse_args(int argc, char **argv)
 	int option_index;
 	char *prgname = argv[0];
 	static struct option lgopts[] = {
-		{"max-pkt-len", 1, 0, 0},
 		{"maxflows", 1, 0, 0},
 		{"flowttl", 1, 0, 0},
 		{NULL, 0, 0, 0}
