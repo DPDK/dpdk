@@ -2239,6 +2239,11 @@ rte_event_eth_rx_adapter_queue_del(uint8_t id, uint16_t eth_dev_id,
 		rx_adapter->eth_rx_poll = rx_poll;
 		rx_adapter->wrr_sched = rx_wrr;
 		rx_adapter->wrr_len = nb_wrr;
+		/*
+		 * reset next poll start position (wrr_pos) to avoid buffer
+		 * overrun when wrr_len is reduced in case of queue delete
+		 */
+		rx_adapter->wrr_pos = 0;
 		rx_adapter->num_intr_vec += num_intr_vec;
 
 		if (dev_info->nb_dev_queues == 0) {
