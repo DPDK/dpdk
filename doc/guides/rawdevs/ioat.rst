@@ -6,6 +6,10 @@
 IOAT Rawdev Driver
 ===================
 
+.. warning::
+        As of DPDK 21.11 the rawdev implementation of the IOAT driver has been deprecated.
+        Please use the dmadev library instead.
+
 The ``ioat`` rawdev driver provides a poll-mode driver (PMD) for Intel\ |reg|
 Data Streaming Accelerator `(Intel DSA)
 <https://01.org/blogs/2019/introducing-intel-data-streaming-accelerator>`_ and for Intel\ |reg|
