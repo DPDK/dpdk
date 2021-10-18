@@ -1575,11 +1575,6 @@ eth_igc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	if (IGC_READ_REG(hw, IGC_CTRL_EXT) & IGC_CTRL_EXT_EXT_VLAN)
 		frame_size += VLAN_TAG_SIZE;
 
-	/* check that mtu is within the allowed range */
-	if (mtu < RTE_ETHER_MIN_MTU ||
-		frame_size > MAX_RX_JUMBO_FRAME_SIZE)
-		return -EINVAL;
-
 	/*
 	 * If device is started, refuse mtu that requires the support of
 	 * scattered packets when this feature has not been enabled before.

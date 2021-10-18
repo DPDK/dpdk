@@ -154,12 +154,6 @@ nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (frame_size > NIC_HW_MAX_FRS)
-		return -EINVAL;
-
-	if (frame_size < NIC_HW_MIN_FRS)
-		return -EINVAL;
-
 	buffsz = dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM;
 
 	/*

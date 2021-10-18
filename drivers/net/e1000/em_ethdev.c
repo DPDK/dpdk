@@ -1786,21 +1786,11 @@ eth_em_default_mac_addr_set(struct rte_eth_dev *dev,
 static int
 eth_em_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
-	struct rte_eth_dev_info dev_info;
 	struct e1000_hw *hw;
 	uint32_t frame_size;
 	uint32_t rctl;
-	int ret;
-
-	ret = eth_em_infos_get(dev, &dev_info);
-	if (ret != 0)
-		return ret;
 
 	frame_size = mtu + E1000_ETH_OVERHEAD;
-
-	/* check that mtu is within the allowed range */
-	if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen)
-		return -EINVAL;
 
 	/*
 	 * If device is started, refuse mtu that requires the support of

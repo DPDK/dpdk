@@ -951,10 +951,6 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	/* check that mtu is within the allowed range */
-	if (mtu < RTE_ETHER_MIN_MTU || (uint32_t)mtu > hw->max_mtu)
-		return -EINVAL;
-
 	/* mtu setting is forbidden if port is started */
 	if (dev->data->dev_started) {
 		PMD_DRV_LOG(ERR, "port %d must be stopped before configuration",

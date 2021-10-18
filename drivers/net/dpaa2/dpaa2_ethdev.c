@@ -1461,10 +1461,6 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 	}
 
-	/* check that mtu is within the allowed range */
-	if (mtu < RTE_ETHER_MIN_MTU || frame_size > DPAA2_MAX_RX_PKT_LEN)
-		return -EINVAL;
-
 	/* Set the Max Rx frame length as 'mtu' +
 	 * Maximum Ethernet header length
 	 */

@@ -3660,11 +3660,20 @@ rte_eth_dev_set_mtu(uint16_t port_id, uint16_t mtu)
 	 * which relies on dev->dev_ops->dev_infos_get.
 	 */
 	if (*dev->dev_ops->dev_infos_get != NULL) {
+		uint16_t overhead_len;
+		uint32_t frame_size;
+
 		ret = rte_eth_dev_info_get(port_id, &dev_info);
 		if (ret != 0)
 			return ret;
 
 		if (mtu < dev_info.min_mtu || mtu > dev_info.max_mtu)
+			return -EINVAL;
+
+		overhead_len = eth_dev_get_overhead_len(dev_info.max_rx_pktlen,
+				dev_info.max_mtu);
+		frame_size = mtu + overhead_len;
+		if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen)
 			return -EINVAL;
 
 		if ((dev_info.rx_offload_capa & DEV_RX_OFFLOAD_JUMBO_FRAME) != 0)

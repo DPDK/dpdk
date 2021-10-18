@@ -666,10 +666,6 @@ enetc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	struct enetc_hw *enetc_hw = &hw->hw;
 	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 
-	/* check that mtu is within the allowed range */
-	if (mtu < ENETC_MAC_MINFRM_SIZE || frame_size > ENETC_MAC_MAXFRM_SIZE)
-		return -EINVAL;
-
 	/*
 	 * Refuse mtu that requires the support of scattered packets
 	 * when this feature has not been enabled before.

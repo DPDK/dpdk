@@ -434,7 +434,6 @@ static int
 lio_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
-	uint16_t pf_mtu = lio_dev->linfo.link.s.mtu;
 	struct lio_dev_ctrl_cmd ctrl_cmd;
 	struct lio_ctrl_pkt ctrl_pkt;
 
@@ -443,15 +442,6 @@ lio_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	if (!lio_dev->intf_open) {
 		lio_dev_err(lio_dev, "Port %d down, can't set MTU\n",
 			    lio_dev->port_id);
-		return -EINVAL;
-	}
-
-	/* check if VF MTU is within allowed range.
-	 * New value should not exceed PF MTU.
-	 */
-	if (mtu < RTE_ETHER_MIN_MTU || mtu > pf_mtu) {
-		lio_dev_err(lio_dev, "VF MTU should be >= %d and <= %d\n",
-			    RTE_ETHER_MIN_MTU, pf_mtu);
 		return -EINVAL;
 	}
 

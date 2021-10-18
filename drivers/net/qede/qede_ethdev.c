@@ -2307,7 +2307,6 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct rte_eth_dev_info dev_info = {0};
 	struct qede_fastpath *fp;
 	uint32_t frame_size;
 	uint16_t bufsz;
@@ -2315,19 +2314,8 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	int i, rc;
 
 	PMD_INIT_FUNC_TRACE(edev);
-	rc = qede_dev_info_get(dev, &dev_info);
-	if (rc != 0) {
-		DP_ERR(edev, "Error during getting ethernet device info\n");
-		return rc;
-	}
 
 	frame_size = mtu + QEDE_MAX_ETHER_HDR_LEN;
-	if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen) {
-		DP_ERR(edev, "MTU %u out of range, %u is maximum allowable\n",
-		       mtu, dev_info.max_rx_pktlen - RTE_ETHER_HDR_LEN -
-		       QEDE_ETH_OVERHEAD);
-		return -EINVAL;
-	}
 	if (!dev->data->scattered_rx &&
 	    frame_size > dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM) {
 		DP_INFO(edev, "MTU greater than minimum RX buffer size of %u\n",

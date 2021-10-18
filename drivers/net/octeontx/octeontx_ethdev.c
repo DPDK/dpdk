@@ -524,10 +524,6 @@ octeontx_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	struct rte_eth_dev_data *data = eth_dev->data;
 	int rc = 0;
 
-	/* Check if MTU is within the allowed range */
-	if (frame_size < OCCTX_MIN_FRS || frame_size > OCCTX_MAX_FRS)
-		return -EINVAL;
-
 	buffsz = data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM;
 
 	/* Refuse MTU that requires the support of scattered packets

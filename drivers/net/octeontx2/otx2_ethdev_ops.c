@@ -20,10 +20,6 @@ otx2_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	if (dev->configured && otx2_ethdev_is_ptp_en(dev))
 		frame_size += NIX_TIMESYNC_RX_OFFSET;
 
-	/* Check if MTU is within the allowed range */
-	if (frame_size < NIX_MIN_FRS || frame_size > NIX_MAX_FRS)
-		return -EINVAL;
-
 	buffsz = data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM;
 
 	/* Refuse MTU that requires the support of scattered packets

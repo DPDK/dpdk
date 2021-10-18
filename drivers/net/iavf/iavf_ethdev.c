@@ -1459,21 +1459,15 @@ iavf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 }
 
 static int
-iavf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+iavf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu __rte_unused)
 {
-	uint32_t frame_size = mtu + IAVF_ETH_OVERHEAD;
-	int ret = 0;
-
-	if (mtu < RTE_ETHER_MIN_MTU || frame_size > IAVF_FRAME_SIZE_MAX)
-		return -EINVAL;
-
 	/* mtu setting is forbidden if port is start */
 	if (dev->data->dev_started) {
 		PMD_DRV_LOG(ERR, "port must be stopped before configuration");
 		return -EBUSY;
 	}
 
-	return ret;
+	return 0;
 }
 
 static int

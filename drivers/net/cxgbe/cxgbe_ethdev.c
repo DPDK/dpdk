@@ -301,21 +301,10 @@ int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
-	struct rte_eth_dev_info dev_info;
-	int err;
 	uint16_t new_mtu = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 
-	err = cxgbe_dev_info_get(eth_dev, &dev_info);
-	if (err != 0)
-		return err;
-
-	/* Must accommodate at least RTE_ETHER_MIN_MTU */
-	if (mtu < RTE_ETHER_MIN_MTU || new_mtu > dev_info.max_rx_pktlen)
-		return -EINVAL;
-
-	err = t4_set_rxmode(adapter, adapter->mbox, pi->viid, new_mtu, -1, -1,
+	return t4_set_rxmode(adapter, adapter->mbox, pi->viid, new_mtu, -1, -1,
 			    -1, -1, true);
-	return err;
 }
 
 /*

@@ -3459,18 +3459,8 @@ static int
 txgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
-	struct rte_eth_dev_info dev_info;
 	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 	struct rte_eth_dev_data *dev_data = dev->data;
-	int ret;
-
-	ret = txgbe_dev_info_get(dev, &dev_info);
-	if (ret != 0)
-		return ret;
-
-	/* check that mtu is within the allowed range */
-	if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen)
-		return -EINVAL;
 
 	/* If device is started, refuse mtu that requires the support of
 	 * scattered packets when this feature has not been enabled before.

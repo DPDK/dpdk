@@ -3974,21 +3974,13 @@ ice_dev_set_link_down(struct rte_eth_dev *dev)
 }
 
 static int
-ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu __rte_unused)
 {
-	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct rte_eth_dev_data *dev_data = pf->dev_data;
-	uint32_t frame_size = mtu + ICE_ETH_OVERHEAD;
-
-	/* check if mtu is within the allowed range */
-	if (mtu < RTE_ETHER_MIN_MTU || frame_size > ICE_FRAME_SIZE_MAX)
-		return -EINVAL;
-
 	/* mtu setting is forbidden if port is start */
-	if (dev_data->dev_started) {
+	if (dev->data->dev_started != 0) {
 		PMD_DRV_LOG(ERR,
 			    "port %d must be stopped before configuration",
-			    dev_data->port_id);
+			    dev->data->port_id);
 		return -EBUSY;
 	}
 

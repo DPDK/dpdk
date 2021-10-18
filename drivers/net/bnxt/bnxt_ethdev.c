@@ -3029,7 +3029,7 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	uint32_t overhead = BNXT_MAX_PKT_LEN - BNXT_MAX_MTU;
 	struct bnxt *bp = eth_dev->data->dev_private;
 	uint32_t new_pkt_size;
-	uint32_t rc = 0;
+	uint32_t rc;
 	uint32_t i;
 
 	rc = is_bnxt_in_error(bp);

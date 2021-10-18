@@ -1478,25 +1478,18 @@ axgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 
 static int axgb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
-	struct rte_eth_dev_info dev_info;
 	struct axgbe_port *pdata = dev->data->dev_private;
-	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
-	unsigned int val = 0;
-	axgbe_dev_info_get(dev, &dev_info);
-	/* check that mtu is within the allowed range */
-	if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen)
-		return -EINVAL;
+	unsigned int val;
+
 	/* mtu setting is forbidden if port is start */
 	if (dev->data->dev_started) {
 		PMD_DRV_LOG(ERR, "port %d must be stopped before configuration",
 				dev->data->port_id);
 		return -EBUSY;
 	}
-	if (mtu > RTE_ETHER_MTU)
-		val = 1;
-	else
-		val = 0;
+	val = mtu > RTE_ETHER_MTU ? 1 : 0;
 	AXGMAC_IOWRITE_BITS(pdata, MAC_RCR, JE, val);
+
 	return 0;
 }
 

@@ -2768,12 +2768,6 @@ ipn3ke_rpst_mtu_set(struct rte_eth_dev *ethdev, uint16_t mtu)
 	int ret = 0;
 	struct ipn3ke_rpst *rpst = IPN3KE_DEV_PRIVATE_TO_RPST(ethdev);
 	struct rte_eth_dev_data *dev_data = ethdev->data;
-	uint32_t frame_size = mtu  + IPN3KE_ETH_OVERHEAD;
-
-	/* check if mtu is within the allowed range */
-	if (mtu < RTE_ETHER_MIN_MTU ||
-		frame_size > IPN3KE_MAC_FRAME_SIZE_MAX)
-		return -EINVAL;
 
 	/* mtu setting is forbidden if port is start */
 	/* make sure NIC port is stopped */

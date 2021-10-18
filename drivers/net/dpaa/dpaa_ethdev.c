@@ -167,8 +167,6 @@ dpaa_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (mtu < RTE_ETHER_MIN_MTU || frame_size > DPAA_MAX_RX_PKT_LEN)
-		return -EINVAL;
 	/*
 	 * Refuse mtu that requires the support of scattered packets
 	 * when this feature has not been enabled before.

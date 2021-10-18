@@ -1534,16 +1534,10 @@ static void hinic_deinit_mac_addr(struct rte_eth_dev *eth_dev)
 static int hinic_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
-	int ret = 0;
+	int ret;
 
 	PMD_DRV_LOG(INFO, "Set port mtu, port_id: %d, mtu: %d, max_pkt_len: %d",
 			dev->data->port_id, mtu, HINIC_MTU_TO_PKTLEN(mtu));
-
-	if (mtu < HINIC_MIN_MTU_SIZE || mtu > HINIC_MAX_MTU_SIZE) {
-		PMD_DRV_LOG(ERR, "Invalid mtu: %d, must between %d and %d",
-				mtu, HINIC_MIN_MTU_SIZE, HINIC_MAX_MTU_SIZE);
-		return -EINVAL;
-	}
 
 	ret = hinic_set_port_mtu(nic_dev->hwdev, mtu);
 	if (ret) {

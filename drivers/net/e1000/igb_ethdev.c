@@ -4359,9 +4359,7 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	uint32_t rctl;
 	struct e1000_hw *hw;
-	struct rte_eth_dev_info dev_info;
 	uint32_t frame_size = mtu + E1000_ETH_OVERHEAD;
-	int ret;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -4370,15 +4368,6 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	if (hw->mac.type == e1000_82571)
 		return -ENOTSUP;
 #endif
-	ret = eth_igb_infos_get(dev, &dev_info);
-	if (ret != 0)
-		return ret;
-
-	/* check that mtu is within the allowed range */
-	if (mtu < RTE_ETHER_MIN_MTU ||
-			frame_size > dev_info.max_rx_pktlen)
-		return -EINVAL;
-
 	/*
 	 * If device is started, refuse mtu that requires the support of
 	 * scattered packets when this feature has not been enabled before.
