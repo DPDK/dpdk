@@ -146,7 +146,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--file-prefix', default=DEFAULT_PREFIX,
                     help='Provide file-prefix for DPDK runtime directory')
 parser.add_argument('-i', '--instance', default='0', type=int,
-                    help='Provide file-prefix for DPDK runtime directory')
+                    help='Provide instance number for DPDK application')
 args = parser.parse_args()
 sock_path = os.path.join(get_dpdk_runtime_dir(args.file_prefix), SOCKET_NAME)
 if args.instance > 0:
