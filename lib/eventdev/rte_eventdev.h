@@ -1193,7 +1193,7 @@ struct rte_event {
 #define RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID	0x4
 /**< The application can override the adapter generated flow ID in the
  * event. This flow ID can be specified when adding an ethdev Rx queue
- * to the adapter using the ev member of struct rte_event_eth_rx_adapter
+ * to the adapter using the ev.flow_id member.
  * @see struct rte_event_eth_rx_adapter_queue_conf::ev
  * @see struct rte_event_eth_rx_adapter_queue_conf::rx_queue_flags
  */

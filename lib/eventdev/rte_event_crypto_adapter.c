@@ -30,7 +30,7 @@
  */
 #define CRYPTO_ENQ_FLUSH_THRESHOLD 1024
 
-struct rte_event_crypto_adapter {
+struct event_crypto_adapter {
 	/* Event device identifier */
 	uint8_t eventdev_id;
 	/* Event port identifier */
@@ -99,7 +99,7 @@ struct crypto_queue_pair_info {
 	uint8_t len;
 } __rte_cache_aligned;
 
-static struct rte_event_crypto_adapter **event_crypto_adapter;
+static struct event_crypto_adapter **event_crypto_adapter;
 
 /* Macros to check for valid adapter */
 #define EVENT_CRYPTO_ADAPTER_ID_VALID_OR_ERR_RET(id, retval) do { \
@@ -141,7 +141,7 @@ eca_init(void)
 	return 0;
 }
 
-static inline struct rte_event_crypto_adapter *
+static inline struct event_crypto_adapter *
 eca_id_to_adapter(uint8_t id)
 {
 	return event_crypto_adapter ?
@@ -158,7 +158,7 @@ eca_default_config_cb(uint8_t id, uint8_t dev_id,
 	int started;
 	int ret;
 	struct rte_event_port_conf *port_conf = arg;
-	struct rte_event_crypto_adapter *adapter = eca_id_to_adapter(id);
+	struct event_crypto_adapter *adapter = eca_id_to_adapter(id);
 
 	if (adapter == NULL)
 		return -EINVAL;
@@ -202,7 +202,7 @@ rte_event_crypto_adapter_create_ext(uint8_t id, uint8_t dev_id,
 				enum rte_event_crypto_adapter_mode mode,
 				void *conf_arg)
 {
-	struct rte_event_crypto_adapter *adapter;
+	struct event_crypto_adapter *adapter;
 	char mem_name[CRYPTO_ADAPTER_NAME_LEN];
 	struct rte_event_dev_info dev_info;
 	int socket_id;
@@ -304,7 +304,7 @@ rte_event_crypto_adapter_create(uint8_t id, uint8_t dev_id,
 int
 rte_event_crypto_adapter_free(uint8_t id)
 {
-	struct rte_event_crypto_adapter *adapter;
+	struct event_crypto_adapter *adapter;
 
 	EVENT_CRYPTO_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
@@ -329,8 +329,8 @@ rte_event_crypto_adapter_free(uint8_t id)
 }
 
 static inline unsigned int
-eca_enq_to_cryptodev(struct rte_event_crypto_adapter *adapter,
-		 struct rte_event *ev, unsigned int cnt)
+eca_enq_to_cryptodev(struct event_crypto_adapter *adapter, struct rte_event *ev,
+		     unsigned int cnt)
 {
 	struct rte_event_crypto_adapter_stats *stats = &adapter->crypto_stats;
 	union rte_event_crypto_metadata *m_data = NULL;
@@ -420,7 +420,7 @@ eca_enq_to_cryptodev(struct rte_event_crypto_adapter *adapter,
 }
 
 static unsigned int
-eca_crypto_enq_flush(struct rte_event_crypto_adapter *adapter)
+eca_crypto_enq_flush(struct event_crypto_adapter *adapter)
 {
 	struct rte_event_crypto_adapter_stats *stats = &adapter->crypto_stats;
 	struct crypto_device_info *curr_dev;
@@ -466,8 +466,8 @@ eca_crypto_enq_flush(struct rte_event_crypto_adapter *adapter)
 }
 
 static int
-eca_crypto_adapter_enq_run(struct rte_event_crypto_adapter *adapter,
-			unsigned int max_enq)
+eca_crypto_adapter_enq_run(struct event_crypto_adapter *adapter,
+			   unsigned int max_enq)
 {
 	struct rte_event_crypto_adapter_stats *stats = &adapter->crypto_stats;
 	struct rte_event ev[BATCH_SIZE];
@@ -500,8 +500,8 @@ eca_crypto_adapter_enq_run(struct rte_event_crypto_adapter *adapter,
 }
 
 static inline void
-eca_ops_enqueue_burst(struct rte_event_crypto_adapter *adapter,
-		  struct rte_crypto_op **ops, uint16_t num)
+eca_ops_enqueue_burst(struct event_crypto_adapter *adapter,
+		      struct rte_crypto_op **ops, uint16_t num)
 {
 	struct rte_event_crypto_adapter_stats *stats = &adapter->crypto_stats;
 	union rte_event_crypto_metadata *m_data = NULL;
@@ -564,8 +564,8 @@ eca_ops_enqueue_burst(struct rte_event_crypto_adapter *adapter,
 }
 
 static inline unsigned int
-eca_crypto_adapter_deq_run(struct rte_event_crypto_adapter *adapter,
-			unsigned int max_deq)
+eca_crypto_adapter_deq_run(struct event_crypto_adapter *adapter,
+			   unsigned int max_deq)
 {
 	struct rte_event_crypto_adapter_stats *stats = &adapter->crypto_stats;
 	struct crypto_device_info *curr_dev;
@@ -627,8 +627,8 @@ eca_crypto_adapter_deq_run(struct rte_event_crypto_adapter *adapter,
 }
 
 static void
-eca_crypto_adapter_run(struct rte_event_crypto_adapter *adapter,
-			unsigned int max_ops)
+eca_crypto_adapter_run(struct event_crypto_adapter *adapter,
+		       unsigned int max_ops)
 {
 	while (max_ops) {
 		unsigned int e_cnt, d_cnt;
@@ -648,7 +648,7 @@ eca_crypto_adapter_run(struct rte_event_crypto_adapter *adapter,
 static int
 eca_service_func(void *args)
 {
-	struct rte_event_crypto_adapter *adapter = args;
+	struct event_crypto_adapter *adapter = args;
 
 	if (rte_spinlock_trylock(&adapter->lock) == 0)
 		return 0;
@@ -659,7 +659,7 @@ eca_service_func(void *args)
 }
 
 static int
-eca_init_service(struct rte_event_crypto_adapter *adapter, uint8_t id)
+eca_init_service(struct event_crypto_adapter *adapter, uint8_t id)
 {
 	struct rte_event_crypto_adapter_conf adapter_conf;
 	struct rte_service_spec service;
@@ -699,10 +699,9 @@ eca_init_service(struct rte_event_crypto_adapter *adapter, uint8_t id)
 }
 
 static void
-eca_update_qp_info(struct rte_event_crypto_adapter *adapter,
-			struct crypto_device_info *dev_info,
-			int32_t queue_pair_id,
-			uint8_t add)
+eca_update_qp_info(struct event_crypto_adapter *adapter,
+		   struct crypto_device_info *dev_info, int32_t queue_pair_id,
+		   uint8_t add)
 {
 	struct crypto_queue_pair_info *qp_info;
 	int enabled;
@@ -729,9 +728,8 @@ eca_update_qp_info(struct rte_event_crypto_adapter *adapter,
 }
 
 static int
-eca_add_queue_pair(struct rte_event_crypto_adapter *adapter,
-		uint8_t cdev_id,
-		int queue_pair_id)
+eca_add_queue_pair(struct event_crypto_adapter *adapter, uint8_t cdev_id,
+		   int queue_pair_id)
 {
 	struct crypto_device_info *dev_info = &adapter->cdevs[cdev_id];
 	struct crypto_queue_pair_info *qpairs;
@@ -773,7 +771,7 @@ rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 			int32_t queue_pair_id,
 			const struct rte_event *event)
 {
-	struct rte_event_crypto_adapter *adapter;
+	struct event_crypto_adapter *adapter;
 	struct rte_eventdev *dev;
 	struct crypto_device_info *dev_info;
 	uint32_t cap;
@@ -889,7 +887,7 @@ int
 rte_event_crypto_adapter_queue_pair_del(uint8_t id, uint8_t cdev_id,
 					int32_t queue_pair_id)
 {
-	struct rte_event_crypto_adapter *adapter;
+	struct event_crypto_adapter *adapter;
 	struct crypto_device_info *dev_info;
 	struct rte_eventdev *dev;
 	int ret;
@@ -975,7 +973,7 @@ rte_event_crypto_adapter_queue_pair_del(uint8_t id, uint8_t cdev_id,
 static int
 eca_adapter_ctrl(uint8_t id, int start)
 {
-	struct rte_event_crypto_adapter *adapter;
+	struct event_crypto_adapter *adapter;
 	struct crypto_device_info *dev_info;
 	struct rte_eventdev *dev;
 	uint32_t i;
@@ -1017,7 +1015,7 @@ eca_adapter_ctrl(uint8_t id, int start)
 int
 rte_event_crypto_adapter_start(uint8_t id)
 {
-	struct rte_event_crypto_adapter *adapter;
+	struct event_crypto_adapter *adapter;
 
 	EVENT_CRYPTO_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 	adapter = eca_id_to_adapter(id);
@@ -1039,7 +1037,7 @@ int
 rte_event_crypto_adapter_stats_get(uint8_t id,
 				struct rte_event_crypto_adapter_stats *stats)
 {
-	struct rte_event_crypto_adapter *adapter;
+	struct event_crypto_adapter *adapter;
 	struct rte_event_crypto_adapter_stats dev_stats_sum = { 0 };
 	struct rte_event_crypto_adapter_stats dev_stats;
 	struct rte_eventdev *dev;
@@ -1083,7 +1081,7 @@ rte_event_crypto_adapter_stats_get(uint8_t id,
 int
 rte_event_crypto_adapter_stats_reset(uint8_t id)
 {
-	struct rte_event_crypto_adapter *adapter;
+	struct event_crypto_adapter *adapter;
 	struct crypto_device_info *dev_info;
 	struct rte_eventdev *dev;
 	uint32_t i;
@@ -1111,7 +1109,7 @@ rte_event_crypto_adapter_stats_reset(uint8_t id)
 int
 rte_event_crypto_adapter_service_id_get(uint8_t id, uint32_t *service_id)
 {
-	struct rte_event_crypto_adapter *adapter;
+	struct event_crypto_adapter *adapter;
 
 	EVENT_CRYPTO_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
@@ -1128,7 +1126,7 @@ rte_event_crypto_adapter_service_id_get(uint8_t id, uint32_t *service_id)
 int
 rte_event_crypto_adapter_event_port_get(uint8_t id, uint8_t *event_port_id)
 {
-	struct rte_event_crypto_adapter *adapter;
+	struct event_crypto_adapter *adapter;
 
 	EVENT_CRYPTO_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
