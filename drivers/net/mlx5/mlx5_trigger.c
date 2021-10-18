@@ -230,6 +230,7 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		ret = priv->obj_ops.rxq_obj_new(dev, i);
 		if (ret) {
 			mlx5_free(rxq_ctrl->obj);
+			rxq_ctrl->obj = NULL;
 			goto error;
 		}
 		DRV_LOG(DEBUG, "Port %u rxq %u updated with %p.",
