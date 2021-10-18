@@ -77,6 +77,9 @@ ioat_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
 	ioat->offset = 0;
 	ioat->failure = 0;
 
+	/* Reset Stats. */
+	ioat->stats = (struct rte_dma_stats){0};
+
 	/* Configure descriptor ring - each one points to next. */
 	for (i = 0; i < ioat->qcfg.nb_desc; i++) {
 		ioat->desc_ring[i].next = ioat->ring_addr +
@@ -222,6 +225,8 @@ __submit(struct ioat_dmadev *ioat)
 {
 	*ioat->doorbell = ioat->next_write - ioat->offset;
 
+	ioat->stats.submitted += (uint16_t)(ioat->next_write - ioat->last_write);
+
 	ioat->last_write = ioat->next_write;
 }
 
@@ -352,6 +357,10 @@ __dev_dump(void *dev_private, FILE *f)
 	fprintf(f, "    Dest: 0x%"PRIx64"\n", ioat->desc_ring[ioat->next_read & mask].dest_addr);
 	fprintf(f, "    Next: 0x%"PRIx64"\n", ioat->desc_ring[ioat->next_read & mask].next);
 	fprintf(f, "  }\n");
+	fprintf(f, "  Key Stats { submitted: %"PRIu64", comp: %"PRIu64", failed: %"PRIu64" }\n",
+			ioat->stats.submitted,
+			ioat->stats.completed,
+			ioat->stats.errors);
 
 	return 0;
 }
@@ -448,6 +457,9 @@ ioat_completed(void *dev_private, uint16_t qid __rte_unused, const uint16_t max_
 		*last_idx = ioat->next_read - 2;
 	}
 
+	ioat->stats.completed += count;
+	ioat->stats.errors += fails;
+
 	return count;
 }
 
@@ -498,7 +510,36 @@ ioat_completed_status(void *dev_private, uint16_t qid __rte_unused,
 
 	*last_idx = ioat->next_read - 1;
 
+	ioat->stats.completed += count;
+	ioat->stats.errors += fails;
+
 	return count;
+}
+
+/* Retrieve the generic stats of a DMA device. */
+static int
+ioat_stats_get(const struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
+		struct rte_dma_stats *rte_stats, uint32_t size)
+{
+	struct rte_dma_stats *stats = (&((struct ioat_dmadev *)dev->fp_obj->dev_private)->stats);
+
+	if (size < sizeof(rte_stats))
+		return -EINVAL;
+	if (rte_stats == NULL)
+		return -EINVAL;
+
+	*rte_stats = *stats;
+	return 0;
+}
+
+/* Reset the generic stat counters for the DMA device. */
+static int
+ioat_stats_reset(struct rte_dma_dev *dev, uint16_t vchan __rte_unused)
+{
+	struct ioat_dmadev *ioat = dev->fp_obj->dev_private;
+
+	ioat->stats = (struct rte_dma_stats){0};
+	return 0;
 }
 
 /* Create a DMA device. */
@@ -512,6 +553,8 @@ ioat_dmadev_create(const char *name, struct rte_pci_device *dev)
 		.dev_info_get = ioat_dev_info_get,
 		.dev_start = ioat_dev_start,
 		.dev_stop = ioat_dev_stop,
+		.stats_get = ioat_stats_get,
+		.stats_reset = ioat_stats_reset,
 		.vchan_setup = ioat_vchan_setup,
 	};
 
