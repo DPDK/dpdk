@@ -20,6 +20,45 @@
 #include "mlx5_tx.h"
 #include "mlx5_utils.h"
 
+/**
+ * Handle a port-agnostic message.
+ *
+ * @return
+ *   0 on success, 1 when message is not port-agnostic, (-1) on error.
+ */
+static int
+mlx5_mp_os_handle_port_agnostic(const struct rte_mp_msg *mp_msg,
+				const void *peer)
+{
+	struct rte_mp_msg mp_res;
+	struct mlx5_mp_param *res = (struct mlx5_mp_param *)mp_res.param;
+	const struct mlx5_mp_param *param =
+		(const struct mlx5_mp_param *)mp_msg->param;
+	const struct mlx5_mp_arg_mempool_reg *mpr;
+	struct mlx5_mp_id mp_id;
+
+	switch (param->type) {
+	case MLX5_MP_REQ_MEMPOOL_REGISTER:
+		mlx5_mp_id_init(&mp_id, param->port_id);
+		mp_init_msg(&mp_id, &mp_res, param->type);
+		mpr = &param->args.mempool_reg;
+		res->result = mlx5_mr_mempool_register(mpr->share_cache,
+						       mpr->pd, mpr->mempool,
+						       NULL);
+		return rte_mp_reply(&mp_res, peer);
+	case MLX5_MP_REQ_MEMPOOL_UNREGISTER:
+		mlx5_mp_id_init(&mp_id, param->port_id);
+		mp_init_msg(&mp_id, &mp_res, param->type);
+		mpr = &param->args.mempool_reg;
+		res->result = mlx5_mr_mempool_unregister(mpr->share_cache,
+							 mpr->mempool, NULL);
+		return rte_mp_reply(&mp_res, peer);
+	default:
+		return 1;
+	}
+	return -1;
+}
+
 int
 mlx5_mp_os_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 {
@@ -34,6 +73,11 @@ mlx5_mp_os_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	int ret;
 
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	/* Port-agnostic messages. */
+	ret = mlx5_mp_os_handle_port_agnostic(mp_msg, peer);
+	if (ret <= 0)
+		return ret;
+	/* Port-specific messages. */
 	if (!rte_eth_dev_is_valid_port(param->port_id)) {
 		rte_errno = ENODEV;
 		DRV_LOG(ERR, "port %u invalid port ID", param->port_id);

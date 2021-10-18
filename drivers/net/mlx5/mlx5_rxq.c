@@ -1162,6 +1162,7 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 	unsigned int strd_sz_n = 0;
 	unsigned int i;
 	unsigned int n_ibv = 0;
+	int ret;
 
 	if (!mlx5_mprq_enabled(dev))
 		return 0;
@@ -1239,6 +1240,16 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 			" Multi-Packet RQ, count=%u, size=%u",
 			dev->data->port_id, obj_num, obj_size);
 		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	ret = mlx5_mr_mempool_register(&priv->sh->share_cache, priv->sh->pd,
+				       mp, &priv->mp_id);
+	if (ret < 0 && rte_errno != EEXIST) {
+		ret = rte_errno;
+		DRV_LOG(ERR, "port %u failed to register a mempool for Multi-Packet RQ",
+			dev->data->port_id);
+		rte_mempool_free(mp);
+		rte_errno = ret;
 		return -rte_errno;
 	}
 	priv->mprq_mp = mp;
@@ -1443,6 +1454,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		/* rte_errno is already set. */
 		goto error;
 	}
+	/* Rx queues don't use this pointer, but we want a valid structure. */
+	tmpl->rxq.mr_ctrl.dev_gen_ptr = &priv->sh->share_cache.dev_gen;
 	tmpl->socket = socket;
 	if (dev->data->dev_conf.intr_conf.rxq)
 		tmpl->irq = 1;

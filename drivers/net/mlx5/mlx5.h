@@ -155,6 +155,13 @@ struct mlx5_flow_dump_ack {
 /** Key string for IPC. */
 #define MLX5_MP_NAME "net_mlx5_mp"
 
+/** Initialize a multi-process ID. */
+static inline void
+mlx5_mp_id_init(struct mlx5_mp_id *mp_id, uint16_t port_id)
+{
+	mp_id->port_id = port_id;
+	strlcpy(mp_id->name, MLX5_MP_NAME, RTE_MP_MAX_NAME_LEN);
+}
 
 LIST_HEAD(mlx5_dev_list, mlx5_dev_ctx_shared);
 
@@ -270,6 +277,8 @@ struct mlx5_dev_config {
 	unsigned int dv_miss_info:1; /* restore packet after partial hw miss */
 	unsigned int allow_duplicate_pattern:1;
 	/* Allow/Prevent the duplicate rules pattern. */
+	unsigned int mr_mempool_reg_en:1;
+	/* Allow/prevent implicit mempool memory registration. */
 	struct {
 		unsigned int enabled:1; /* Whether MPRQ is enabled. */
 		unsigned int stride_num_n; /* Number of strides. */
@@ -1498,6 +1507,7 @@ struct mlx5_dev_ctx_shared *
 mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 			   const struct mlx5_dev_config *config);
 void mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh);
+int mlx5_dev_ctx_shared_mempool_subscribe(struct rte_eth_dev *dev);
 void mlx5_free_table_hash_list(struct mlx5_priv *priv);
 int mlx5_alloc_table_hash_list(struct mlx5_priv *priv);
 void mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,

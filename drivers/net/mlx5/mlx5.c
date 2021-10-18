@@ -181,6 +181,9 @@
 /* Device parameter to configure allow or prevent duplicate rules pattern. */
 #define MLX5_ALLOW_DUPLICATE_PATTERN "allow_duplicate_pattern"
 
+/* Device parameter to configure implicit registration of mempool memory. */
+#define MLX5_MR_MEMPOOL_REG_EN "mr_mempool_reg_en"
+
 /* Shared memory between primary and secondary processes. */
 struct mlx5_shared_data *mlx5_shared_data;
 
@@ -1089,6 +1092,141 @@ exit:
 }
 
 /**
+ * Unregister the mempool from the protection domain.
+ *
+ * @param sh
+ *   Pointer to the device shared context.
+ * @param mp
+ *   Mempool being unregistered.
+ */
+static void
+mlx5_dev_ctx_shared_mempool_unregister(struct mlx5_dev_ctx_shared *sh,
+				       struct rte_mempool *mp)
+{
+	struct mlx5_mp_id mp_id;
+
+	mlx5_mp_id_init(&mp_id, 0);
+	if (mlx5_mr_mempool_unregister(&sh->share_cache, mp, &mp_id) < 0)
+		DRV_LOG(WARNING, "Failed to unregister mempool %s for PD %p: %s",
+			mp->name, sh->pd, rte_strerror(rte_errno));
+}
+
+/**
+ * rte_mempool_walk() callback to register mempools
+ * for the protection domain.
+ *
+ * @param mp
+ *   The mempool being walked.
+ * @param arg
+ *   Pointer to the device shared context.
+ */
+static void
+mlx5_dev_ctx_shared_mempool_register_cb(struct rte_mempool *mp, void *arg)
+{
+	struct mlx5_dev_ctx_shared *sh = arg;
+	struct mlx5_mp_id mp_id;
+	int ret;
+
+	mlx5_mp_id_init(&mp_id, 0);
+	ret = mlx5_mr_mempool_register(&sh->share_cache, sh->pd, mp, &mp_id);
+	if (ret < 0 && rte_errno != EEXIST)
+		DRV_LOG(ERR, "Failed to register existing mempool %s for PD %p: %s",
+			mp->name, sh->pd, rte_strerror(rte_errno));
+}
+
+/**
+ * rte_mempool_walk() callback to unregister mempools
+ * from the protection domain.
+ *
+ * @param mp
+ *   The mempool being walked.
+ * @param arg
+ *   Pointer to the device shared context.
+ */
+static void
+mlx5_dev_ctx_shared_mempool_unregister_cb(struct rte_mempool *mp, void *arg)
+{
+	mlx5_dev_ctx_shared_mempool_unregister
+				((struct mlx5_dev_ctx_shared *)arg, mp);
+}
+
+/**
+ * Mempool life cycle callback for Ethernet devices.
+ *
+ * @param event
+ *   Mempool life cycle event.
+ * @param mp
+ *   Associated mempool.
+ * @param arg
+ *   Pointer to a device shared context.
+ */
+static void
+mlx5_dev_ctx_shared_mempool_event_cb(enum rte_mempool_event event,
+				     struct rte_mempool *mp, void *arg)
+{
+	struct mlx5_dev_ctx_shared *sh = arg;
+	struct mlx5_mp_id mp_id;
+
+	switch (event) {
+	case RTE_MEMPOOL_EVENT_READY:
+		mlx5_mp_id_init(&mp_id, 0);
+		if (mlx5_mr_mempool_register(&sh->share_cache, sh->pd, mp,
+					     &mp_id) < 0)
+			DRV_LOG(ERR, "Failed to register new mempool %s for PD %p: %s",
+				mp->name, sh->pd, rte_strerror(rte_errno));
+		break;
+	case RTE_MEMPOOL_EVENT_DESTROY:
+		mlx5_dev_ctx_shared_mempool_unregister(sh, mp);
+		break;
+	}
+}
+
+/**
+ * Callback used when implicit mempool registration is disabled
+ * in order to track Rx mempool destruction.
+ *
+ * @param event
+ *   Mempool life cycle event.
+ * @param mp
+ *   An Rx mempool registered explicitly when the port is started.
+ * @param arg
+ *   Pointer to a device shared context.
+ */
+static void
+mlx5_dev_ctx_shared_rx_mempool_event_cb(enum rte_mempool_event event,
+					struct rte_mempool *mp, void *arg)
+{
+	struct mlx5_dev_ctx_shared *sh = arg;
+
+	if (event == RTE_MEMPOOL_EVENT_DESTROY)
+		mlx5_dev_ctx_shared_mempool_unregister(sh, mp);
+}
+
+int
+mlx5_dev_ctx_shared_mempool_subscribe(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	int ret;
+
+	/* Check if we only need to track Rx mempool destruction. */
+	if (!priv->config.mr_mempool_reg_en) {
+		ret = rte_mempool_event_callback_register
+				(mlx5_dev_ctx_shared_rx_mempool_event_cb, sh);
+		return ret == 0 || rte_errno == EEXIST ? 0 : ret;
+	}
+	/* Callback for this shared context may be already registered. */
+	ret = rte_mempool_event_callback_register
+				(mlx5_dev_ctx_shared_mempool_event_cb, sh);
+	if (ret != 0 && rte_errno != EEXIST)
+		return ret;
+	/* Register mempools only once for this shared context. */
+	if (ret == 0)
+		rte_mempool_walk(mlx5_dev_ctx_shared_mempool_register_cb, sh);
+	return 0;
+}
+
+/**
  * Allocate shared device context. If there is multiport device the
  * master and representors will share this context, if there is single
  * port dedicated device, the context will be used by only given
@@ -1287,6 +1425,8 @@ error:
 void
 mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 {
+	int ret;
+
 	pthread_mutex_lock(&mlx5_dev_ctx_list_mutex);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	/* Check the object presence in the list. */
@@ -1307,6 +1447,15 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	if (--sh->refcnt)
 		goto exit;
+	/* Stop watching for mempool events and unregister all mempools. */
+	ret = rte_mempool_event_callback_unregister
+				(mlx5_dev_ctx_shared_mempool_event_cb, sh);
+	if (ret < 0 && rte_errno == ENOENT)
+		ret = rte_mempool_event_callback_unregister
+				(mlx5_dev_ctx_shared_rx_mempool_event_cb, sh);
+	if (ret == 0)
+		rte_mempool_walk(mlx5_dev_ctx_shared_mempool_unregister_cb,
+				 sh);
 	/* Remove from memory callback device list. */
 	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
 	LIST_REMOVE(sh, mem_event_cb);
@@ -1997,6 +2146,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->decap_en = !!tmp;
 	} else if (strcmp(MLX5_ALLOW_DUPLICATE_PATTERN, key) == 0) {
 		config->allow_duplicate_pattern = !!tmp;
+	} else if (strcmp(MLX5_MR_MEMPOOL_REG_EN, key) == 0) {
+		config->mr_mempool_reg_en = !!tmp;
 	} else {
 		DRV_LOG(WARNING, "%s: unknown parameter", key);
 		rte_errno = EINVAL;
@@ -2058,6 +2209,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_SYS_MEM_EN,
 		MLX5_DECAP_EN,
 		MLX5_ALLOW_DUPLICATE_PATTERN,
+		MLX5_MR_MEMPOOL_REG_EN,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;

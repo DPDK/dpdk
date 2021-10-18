@@ -1001,6 +1001,19 @@ Driver options
 
   Enabled by default.
 
+- ``mr_mempool_reg_en`` parameter [int]
+
+  A nonzero value enables implicit registration of DMA memory of all mempools
+  except those having ``MEMPOOL_F_NON_IO``. This flag is set automatically
+  for mempools populated with non-contiguous objects or those without IOVA.
+  The effect is that when a packet from a mempool is transmitted,
+  its memory is already registered for DMA in the PMD and no registration
+  will happen on the data path. The tradeoff is extra work on the creation
+  of each mempool and increased HW resource use if some mempools
+  are not used with MLX5 devices.
+
+  Enabled by default.
+
 - ``representor`` parameter [list]
 
   This parameter can be used to instantiate DPDK Ethernet devices from

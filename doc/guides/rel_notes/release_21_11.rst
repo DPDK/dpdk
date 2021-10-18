@@ -114,6 +114,12 @@ New Features
   * Added support for Inline IPsec for CN9K event mode and CN10K
     poll mode and event mode.
 
+* **Updated Mellanox mlx5 driver.**
+
+  Updated the Mellanox mlx5 driver with new features and improvements, including:
+
+  * Added implicit mempool registration to avoid data path hiccups (opt-out).
+
 * **Updated Marvell cnxk crypto PMD.**
 
   * Added AES-CBC SHA1-HMAC support in lookaside protocol (IPsec) for CN10K.

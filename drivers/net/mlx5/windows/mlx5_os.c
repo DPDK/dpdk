@@ -1116,6 +1116,7 @@ mlx5_os_net_probe(struct rte_device *dev)
 	dev_config.txqs_inline = MLX5_ARG_UNSET;
 	dev_config.vf_nl_en = 0;
 	dev_config.mr_ext_memseg_en = 1;
+	dev_config.mr_mempool_reg_en = 1;
 	dev_config.mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
 	dev_config.mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
 	dev_config.dv_esw_en = 0;

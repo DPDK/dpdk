@@ -66,30 +66,6 @@ mlx5_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 }
 
 /**
- * Bottom-half of LKey search on Rx.
- *
- * @param rxq
- *   Pointer to Rx queue structure.
- * @param addr
- *   Search key.
- *
- * @return
- *   Searched LKey on success, UINT32_MAX on no match.
- */
-uint32_t
-mlx5_rx_addr2mr_bh(struct mlx5_rxq_data *rxq, uintptr_t addr)
-{
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
-	struct mlx5_mr_ctrl *mr_ctrl = &rxq->mr_ctrl;
-	struct mlx5_priv *priv = rxq_ctrl->priv;
-
-	return mlx5_mr_addr2mr_bh(priv->sh->pd, &priv->mp_id,
-				  &priv->sh->share_cache, mr_ctrl, addr,
-				  priv->config.mr_ext_memseg_en);
-}
-
-/**
  * Bottom-half of LKey search on Tx.
  *
  * @param txq
@@ -128,9 +104,36 @@ mlx5_tx_addr2mr_bh(struct mlx5_txq_data *txq, uintptr_t addr)
 uint32_t
 mlx5_tx_mb2mr_bh(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 {
+	struct mlx5_txq_ctrl *txq_ctrl =
+		container_of(txq, struct mlx5_txq_ctrl, txq);
+	struct mlx5_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
+	struct mlx5_priv *priv = txq_ctrl->priv;
 	uintptr_t addr = (uintptr_t)mb->buf_addr;
 	uint32_t lkey;
 
+	if (priv->config.mr_mempool_reg_en) {
+		struct rte_mempool *mp = NULL;
+		struct mlx5_mprq_buf *buf;
+
+		if (!RTE_MBUF_HAS_EXTBUF(mb)) {
+			mp = mlx5_mb2mp(mb);
+		} else if (mb->shinfo->free_cb == mlx5_mprq_buf_free_cb) {
+			/* Recover MPRQ mempool. */
+			buf = mb->shinfo->fcb_opaque;
+			mp = buf->mp;
+		}
+		if (mp != NULL) {
+			lkey = mlx5_mr_mempool2mr_bh(&priv->sh->share_cache,
+						     mr_ctrl, mp, addr);
+			/*
+			 * Lookup can only fail on invalid input, e.g. "addr"
+			 * is not from "mp" or "mp" has MEMPOOL_F_NON_IO set.
+			 */
+			if (lkey != UINT32_MAX)
+				return lkey;
+		}
+		/* Fallback for generic mechanism in corner cases. */
+	}
 	lkey = mlx5_tx_addr2mr_bh(txq, addr);
 	if (lkey == UINT32_MAX && rte_errno == ENXIO) {
 		/* Mempool may have externally allocated memory. */
@@ -391,73 +394,4 @@ mlx5_tx_update_ext_mp(struct mlx5_txq_data *txq, uintptr_t addr,
 	}
 	mlx5_mr_update_ext_mp(ETH_DEV(priv), mr_ctrl, mp);
 	return mlx5_tx_addr2mr_bh(txq, addr);
-}
-
-/* Called during rte_mempool_mem_iter() by mlx5_mr_update_mp(). */
-static void
-mlx5_mr_update_mp_cb(struct rte_mempool *mp __rte_unused, void *opaque,
-		     struct rte_mempool_memhdr *memhdr,
-		     unsigned mem_idx __rte_unused)
-{
-	struct mr_update_mp_data *data = opaque;
-	struct rte_eth_dev *dev = data->dev;
-	struct mlx5_priv *priv = dev->data->dev_private;
-
-	uint32_t lkey;
-
-	/* Stop iteration if failed in the previous walk. */
-	if (data->ret < 0)
-		return;
-	/* Register address of the chunk and update local caches. */
-	lkey = mlx5_mr_addr2mr_bh(priv->sh->pd, &priv->mp_id,
-				  &priv->sh->share_cache, data->mr_ctrl,
-				  (uintptr_t)memhdr->addr,
-				  priv->config.mr_ext_memseg_en);
-	if (lkey == UINT32_MAX)
-		data->ret = -1;
-}
-
-/**
- * Register entire memory chunks in a Mempool.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param mr_ctrl
- *   Pointer to per-queue MR control structure.
- * @param mp
- *   Pointer to registering Mempool.
- *
- * @return
- *   0 on success, -1 on failure.
- */
-int
-mlx5_mr_update_mp(struct rte_eth_dev *dev, struct mlx5_mr_ctrl *mr_ctrl,
-		  struct rte_mempool *mp)
-{
-	struct mr_update_mp_data data = {
-		.dev = dev,
-		.mr_ctrl = mr_ctrl,
-		.ret = 0,
-	};
-	uint32_t flags = rte_pktmbuf_priv_flags(mp);
-
-	if (flags & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF) {
-		/*
-		 * The pinned external buffer should be registered for DMA
-		 * operations by application. The mem_list of the pool contains
-		 * the list of chunks with mbuf structures w/o built-in data
-		 * buffers and DMA actually does not happen there, no need
-		 * to create MR for these chunks.
-		 */
-		return 0;
-	}
-	DRV_LOG(DEBUG, "Port %u Rx queue registering mp %s "
-		       "having %u chunks.", dev->data->port_id,
-		       mp->name, mp->nb_mem_chunks);
-	rte_mempool_mem_iter(mp, mlx5_mr_update_mp_cb, &data);
-	if (data.ret < 0 && rte_errno == ENXIO) {
-		/* Mempool may have externally allocated memory. */
-		return mlx5_mr_update_ext_mp(dev, mr_ctrl, mp);
-	}
-	return data.ret;
 }

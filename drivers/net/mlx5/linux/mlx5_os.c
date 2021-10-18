@@ -1034,8 +1034,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		err = mlx5_proc_priv_init(eth_dev);
 		if (err)
 			return NULL;
-		mp_id.port_id = eth_dev->data->port_id;
-		strlcpy(mp_id.name, MLX5_MP_NAME, RTE_MP_MAX_NAME_LEN);
+		mlx5_mp_id_init(&mp_id, eth_dev->data->port_id);
 		/* Receive command fd from primary process */
 		err = mlx5_mp_req_verbs_cmd_fd(&mp_id);
 		if (err < 0)
@@ -2133,6 +2132,7 @@ mlx5_os_config_default(struct mlx5_dev_config *config)
 	config->txqs_inline = MLX5_ARG_UNSET;
 	config->vf_nl_en = 1;
 	config->mr_ext_memseg_en = 1;
+	config->mr_mempool_reg_en = 1;
 	config->mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
 	config->mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
 	config->dv_esw_en = 1;
