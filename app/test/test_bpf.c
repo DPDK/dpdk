@@ -59,6 +59,9 @@ struct dummy_mbuf {
 #define TEST_SHIFT_1	15
 #define TEST_SHIFT_2	33
 
+#define TEST_SHIFT32_MASK	(CHAR_BIT * sizeof(uint32_t) - 1)
+#define TEST_SHIFT64_MASK	(CHAR_BIT * sizeof(uint64_t) - 1)
+
 #define TEST_JCC_1	0
 #define TEST_JCC_2	-123
 #define TEST_JCC_3	5678
@@ -548,13 +551,23 @@ static const struct ebpf_insn test_shift1_prog[] = {
 		.off = offsetof(struct dummy_vect8, out[1].u64),
 	},
 	{
-		.code = (BPF_ALU | BPF_RSH | BPF_X),
-		.dst_reg = EBPF_REG_2,
-		.src_reg = EBPF_REG_4,
+		.code = (BPF_ALU | BPF_AND | BPF_K),
+		.dst_reg = EBPF_REG_4,
+		.imm = TEST_SHIFT64_MASK,
 	},
 	{
 		.code = (EBPF_ALU64 | BPF_LSH | BPF_X),
 		.dst_reg = EBPF_REG_3,
+		.src_reg = EBPF_REG_4,
+	},
+	{
+		.code = (BPF_ALU | BPF_AND | BPF_K),
+		.dst_reg = EBPF_REG_4,
+		.imm = TEST_SHIFT32_MASK,
+	},
+	{
+		.code = (BPF_ALU | BPF_RSH | BPF_X),
+		.dst_reg = EBPF_REG_2,
 		.src_reg = EBPF_REG_4,
 	},
 	{
@@ -590,7 +603,7 @@ static const struct ebpf_insn test_shift1_prog[] = {
 	{
 		.code = (BPF_ALU | BPF_AND | BPF_K),
 		.dst_reg = EBPF_REG_2,
-		.imm = sizeof(uint64_t) * CHAR_BIT - 1,
+		.imm = TEST_SHIFT64_MASK,
 	},
 	{
 		.code = (EBPF_ALU64 | EBPF_ARSH | BPF_X),
@@ -600,7 +613,7 @@ static const struct ebpf_insn test_shift1_prog[] = {
 	{
 		.code = (BPF_ALU | BPF_AND | BPF_K),
 		.dst_reg = EBPF_REG_2,
-		.imm = sizeof(uint32_t) * CHAR_BIT - 1,
+		.imm = TEST_SHIFT32_MASK,
 	},
 	{
 		.code = (BPF_ALU | BPF_LSH | BPF_X),
@@ -666,8 +679,10 @@ test_shift1_check(uint64_t rc, const void *arg)
 	dve.out[0].u64 = r2;
 	dve.out[1].u64 = r3;
 
-	r2 = (uint32_t)r2 >> r4;
+	r4 &= TEST_SHIFT64_MASK;
 	r3 <<= r4;
+	r4 &= TEST_SHIFT32_MASK;
+	r2 = (uint32_t)r2 >> r4;
 
 	dve.out[2].u64 = r2;
 	dve.out[3].u64 = r3;
@@ -676,9 +691,9 @@ test_shift1_check(uint64_t rc, const void *arg)
 	r3 = dvt->in[1].u64;
 	r4 = dvt->in[2].u32;
 
-	r2 &= sizeof(uint64_t) * CHAR_BIT - 1;
+	r2 &= TEST_SHIFT64_MASK;
 	r3 = (int64_t)r3 >> r2;
-	r2 &= sizeof(uint32_t) * CHAR_BIT - 1;
+	r2 &= TEST_SHIFT32_MASK;
 	r4 = (uint32_t)r4 << r2;
 
 	dve.out[4].u64 = r4;
