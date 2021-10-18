@@ -924,7 +924,6 @@ virtio_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	hw->max_rx_pkt_len = frame_size;
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = hw->max_rx_pkt_len;
 
 	return 0;
 }
@@ -2107,14 +2106,10 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			return ret;
 	}
 
-	if ((rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) &&
-	    (rxmode->max_rx_pkt_len > hw->max_mtu + ether_hdr_len))
+	if (rxmode->mtu > hw->max_mtu)
 		req_features &= ~(1ULL << VIRTIO_NET_F_MTU);
 
-	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
-		hw->max_rx_pkt_len = rxmode->max_rx_pkt_len;
-	else
-		hw->max_rx_pkt_len = ether_hdr_len + dev->data->mtu;
+	hw->max_rx_pkt_len = ether_hdr_len + rxmode->mtu;
 
 	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
 			   DEV_RX_OFFLOAD_TCP_CKSUM))

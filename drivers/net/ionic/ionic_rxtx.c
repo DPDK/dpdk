@@ -771,7 +771,7 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 	struct ionic_rxq_comp *cq_desc = &cq_desc_base[cq_desc_index];
 	struct rte_mbuf *rxm, *rxm_seg;
 	uint32_t max_frame_size =
-		rxq->qcq.lif->eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+		rxq->qcq.lif->eth_dev->data->mtu + RTE_ETHER_HDR_LEN;
 	uint64_t pkt_flags = 0;
 	uint32_t pkt_type;
 	struct ionic_rx_stats *stats = &rxq->stats;
@@ -1014,7 +1014,7 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq, uint32_t len)
 int __rte_cold
 ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
-	uint32_t frame_size = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	uint32_t frame_size = eth_dev->data->mtu + RTE_ETHER_HDR_LEN;
 	uint8_t *rx_queue_state = eth_dev->data->rx_queue_state;
 	struct ionic_rx_qcq *rxq;
 	int err;
@@ -1128,7 +1128,7 @@ ionic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 {
 	struct ionic_rx_qcq *rxq = rx_queue;
 	uint32_t frame_size =
-		rxq->qcq.lif->eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+		rxq->qcq.lif->eth_dev->data->mtu + RTE_ETHER_HDR_LEN;
 	struct ionic_rx_service service_cb_arg;
 
 	service_cb_arg.rx_pkts = rx_pkts;

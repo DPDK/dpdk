@@ -1747,18 +1747,18 @@ hns3_rxq_conf_runtime_check(struct hns3_hw *hw, uint16_t buf_size,
 				uint16_t nb_desc)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
-	struct rte_eth_rxmode *rxmode = &hw->data->dev_conf.rxmode;
 	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+	uint32_t frame_size = dev->data->mtu + HNS3_ETH_OVERHEAD;
 	uint16_t min_vec_bds;
 
 	/*
 	 * HNS3 hardware network engine set scattered as default. If the driver
 	 * is not work in scattered mode and the pkts greater than buf_size
-	 * but smaller than max_rx_pkt_len will be distributed to multiple BDs.
+	 * but smaller than frame size will be distributed to multiple BDs.
 	 * Driver cannot handle this situation.
 	 */
-	if (!hw->data->scattered_rx && rxmode->max_rx_pkt_len > buf_size) {
-		hns3_err(hw, "max_rx_pkt_len is not allowed to be set greater "
+	if (!hw->data->scattered_rx && frame_size > buf_size) {
+		hns3_err(hw, "frame size is not allowed to be set greater "
 			     "than rx_buf_len if scattered is off.");
 		return -EINVAL;
 	}
@@ -1970,7 +1970,7 @@ hns3_rx_scattered_calc(struct rte_eth_dev *dev)
 	}
 
 	if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_SCATTER ||
-	    dev_conf->rxmode.max_rx_pkt_len > hw->rx_buf_len)
+	    dev->data->mtu + HNS3_ETH_OVERHEAD > hw->rx_buf_len)
 		dev->data->scattered_rx = true;
 }
 

@@ -576,13 +576,14 @@ iavf_init_rxq(struct rte_eth_dev *dev, struct iavf_rx_queue *rxq)
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_dev_data *dev_data = dev->data;
 	uint16_t buf_size, max_pkt_len;
+	uint32_t frame_size = dev->data->mtu + IAVF_ETH_OVERHEAD;
 
 	buf_size = rte_pktmbuf_data_room_size(rxq->mp) - RTE_PKTMBUF_HEADROOM;
 
 	/* Calculate the maximum packet length allowed */
 	max_pkt_len = RTE_MIN((uint32_t)
 			rxq->rx_buf_len * IAVF_MAX_CHAINED_RX_BUFFERS,
-			dev->data->dev_conf.rxmode.max_rx_pkt_len);
+			frame_size);
 
 	/* Check if the jumbo frame and maximum packet length are set
 	 * correctly.
@@ -839,7 +840,7 @@ iavf_dev_start(struct rte_eth_dev *dev)
 
 	adapter->stopped = 0;
 
-	vf->max_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	vf->max_pkt_len = dev->data->mtu + IAVF_ETH_OVERHEAD;
 	vf->num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
 				      dev->data->nb_tx_queues);
 	num_queue_pairs = vf->num_queue_pairs;
@@ -1472,14 +1473,12 @@ iavf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	if (frame_size > IAVF_ETH_MAX_LEN)
+	if (mtu > RTE_ETHER_MTU)
 		dev->data->dev_conf.rxmode.offloads |=
 				DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		dev->data->dev_conf.rxmode.offloads &=
 				~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
 	return ret;
 }

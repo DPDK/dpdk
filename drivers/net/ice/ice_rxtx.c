@@ -271,15 +271,16 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 	uint32_t rxdid = ICE_RXDID_COMMS_OVS;
 	uint32_t regval;
 	struct ice_adapter *ad = rxq->vsi->adapter;
+	uint32_t frame_size = dev_data->mtu + ICE_ETH_OVERHEAD;
 
 	/* Set buffer size as the head split is disabled. */
 	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
 			      RTE_PKTMBUF_HEADROOM);
 	rxq->rx_hdr_len = 0;
 	rxq->rx_buf_len = RTE_ALIGN(buf_size, (1 << ICE_RLAN_CTX_DBUF_S));
-	rxq->max_pkt_len = RTE_MIN((uint32_t)
-				   ICE_SUPPORT_CHAIN_NUM * rxq->rx_buf_len,
-				   dev_data->dev_conf.rxmode.max_rx_pkt_len);
+	rxq->max_pkt_len =
+		RTE_MIN((uint32_t)ICE_SUPPORT_CHAIN_NUM * rxq->rx_buf_len,
+			frame_size);
 
 	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		if (rxq->max_pkt_len <= ICE_ETH_MAX_LEN ||
@@ -385,11 +386,8 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 		return -EINVAL;
 	}
 
-	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
-			      RTE_PKTMBUF_HEADROOM);
-
 	/* Check if scattered RX needs to be used. */
-	if (rxq->max_pkt_len > buf_size)
+	if (frame_size > buf_size)
 		dev_data->scattered_rx = 1;
 
 	rxq->qrx_tail = hw->hw_addr + QRX_TAIL(rxq->reg_idx);

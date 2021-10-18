@@ -51,17 +51,10 @@
 static uint32_t enabled_port_mask;
 static volatile bool force_quit;
 
-/****************/
-static const struct rte_eth_conf port_conf_default = {
-	.rxmode = {
-		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
-	},
-};
-
 static inline int
 port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
-	struct rte_eth_conf port_conf = port_conf_default;
+	struct rte_eth_conf port_conf;
 	const uint16_t rx_rings = 1, tx_rings = 1;
 	int retval;
 	uint16_t q;
@@ -70,6 +63,8 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 
 	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
+
+	memset(&port_conf, 0, sizeof(struct rte_eth_conf));
 
 	retval = rte_eth_dev_info_get(port, &dev_info);
 	if (retval != 0) {

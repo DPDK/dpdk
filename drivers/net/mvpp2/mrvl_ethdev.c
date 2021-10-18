@@ -496,16 +496,11 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		dev->data->mtu = dev->data->dev_conf.rxmode.max_rx_pkt_len -
-				 MRVL_PP2_ETH_HDRS_LEN;
-		if (dev->data->mtu > priv->max_mtu) {
-			MRVL_LOG(ERR, "inherit MTU %u from max_rx_pkt_len %u is larger than max_mtu %u\n",
-				 dev->data->mtu,
-				 dev->data->dev_conf.rxmode.max_rx_pkt_len,
-				 priv->max_mtu);
-			return -EINVAL;
-		}
+	if (dev->data->dev_conf.rxmode.mtu > priv->max_mtu) {
+		MRVL_LOG(ERR, "MTU %u is larger than max_mtu %u\n",
+			 dev->data->dev_conf.rxmode.mtu,
+			 priv->max_mtu);
+		return -EINVAL;
 	}
 
 	if (dev->data->dev_conf.txmode.offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
@@ -594,9 +589,6 @@ mrvl_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		MRVL_LOG(ERR, "Invalid MTU [%u] or MRU [%u]", mtu, mru);
 		return -EINVAL;
 	}
-
-	dev->data->mtu = mtu;
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = mru - MV_MH_SIZE;
 
 	if (!priv->ppio)
 		return 0;
@@ -1994,7 +1986,7 @@ mrvl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct mrvl_priv *priv = dev->data->dev_private;
 	struct mrvl_rxq *rxq;
 	uint32_t frame_size, buf_size = rte_pktmbuf_data_room_size(mp);
-	uint32_t max_rx_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	uint32_t max_rx_pktlen = dev->data->mtu + RTE_ETHER_HDR_LEN;
 	int ret, tc, inq;
 	uint64_t offloads;
 
@@ -2009,17 +2001,15 @@ mrvl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		return -EFAULT;
 	}
 
-	frame_size = buf_size - RTE_PKTMBUF_HEADROOM -
-		     MRVL_PKT_EFFEC_OFFS + RTE_ETHER_CRC_LEN;
-	if (frame_size < max_rx_pkt_len) {
+	frame_size = buf_size - RTE_PKTMBUF_HEADROOM - MRVL_PKT_EFFEC_OFFS;
+	if (frame_size < max_rx_pktlen) {
 		MRVL_LOG(WARNING,
 			"Mbuf size must be increased to %u bytes to hold up "
 			"to %u bytes of data.",
-			buf_size + max_rx_pkt_len - frame_size,
-			max_rx_pkt_len);
-		dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
-		MRVL_LOG(INFO, "Setting max rx pkt len to %u",
-			dev->data->dev_conf.rxmode.max_rx_pkt_len);
+			max_rx_pktlen + buf_size - frame_size,
+			max_rx_pktlen);
+		dev->data->mtu = frame_size - RTE_ETHER_HDR_LEN;
+		MRVL_LOG(INFO, "Setting MTU to %u", dev->data->mtu);
 	}
 
 	if (dev->data->rx_queues[idx]) {

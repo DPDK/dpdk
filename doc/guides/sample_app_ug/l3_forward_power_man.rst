@@ -88,7 +88,7 @@ The application has a number of command line options:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd_power [EAL options] -- -p PORTMASK [-P]  --config(port,queue,lcore)[,(port,queue,lcore)] [--enable-jumbo [--max-pkt-len PKTLEN]] [--no-numa]
+    ./<build_dir>/examples/dpdk-l3fwd_power [EAL options] -- -p PORTMASK [-P]  --config(port,queue,lcore)[,(port,queue,lcore)] [--max-pkt-len PKTLEN] [--no-numa]
 
 where,
 
@@ -98,8 +98,6 @@ where,
     Without this option, only packets with the Ethernet MAC destination address set to the Ethernet address of the port are accepted.
 
 *   --config (port,queue,lcore)[,(port,queue,lcore)]: determines which queues from which ports are mapped to which cores.
-
-*   --enable-jumbo: optional, enables jumbo frames
 
 *   --max-pkt-len: optional, maximum packet length in decimal (64-9600)
 

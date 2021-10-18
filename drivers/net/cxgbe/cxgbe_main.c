@@ -1661,8 +1661,7 @@ int cxgbe_link_start(struct port_info *pi)
 	unsigned int mtu;
 	int ret;
 
-	mtu = pi->eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
-	      (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN);
+	mtu = pi->eth_dev->data->mtu;
 
 	conf_offloads = pi->eth_dev->data->dev_conf.rxmode.offloads;
 

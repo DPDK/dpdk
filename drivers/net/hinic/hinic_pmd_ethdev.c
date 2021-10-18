@@ -315,19 +315,19 @@ static int hinic_dev_configure(struct rte_eth_dev *dev)
 		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 
 	/* mtu size is 256~9600 */
-	if (dev->data->dev_conf.rxmode.max_rx_pkt_len < HINIC_MIN_FRAME_SIZE ||
-	    dev->data->dev_conf.rxmode.max_rx_pkt_len >
-	    HINIC_MAX_JUMBO_FRAME_SIZE) {
+	if (HINIC_MTU_TO_PKTLEN(dev->data->dev_conf.rxmode.mtu) <
+			HINIC_MIN_FRAME_SIZE ||
+	    HINIC_MTU_TO_PKTLEN(dev->data->dev_conf.rxmode.mtu) >
+			HINIC_MAX_JUMBO_FRAME_SIZE) {
 		PMD_DRV_LOG(ERR,
-			"Max rx pkt len out of range, get max_rx_pkt_len:%d, "
+			"Packet length out of range, get packet length:%d, "
 			"expect between %d and %d",
-			dev->data->dev_conf.rxmode.max_rx_pkt_len,
+			HINIC_MTU_TO_PKTLEN(dev->data->dev_conf.rxmode.mtu),
 			HINIC_MIN_FRAME_SIZE, HINIC_MAX_JUMBO_FRAME_SIZE);
 		return -EINVAL;
 	}
 
-	nic_dev->mtu_size =
-		HINIC_PKTLEN_TO_MTU(dev->data->dev_conf.rxmode.max_rx_pkt_len);
+	nic_dev->mtu_size = dev->data->dev_conf.rxmode.mtu;
 
 	/* rss template */
 	err = hinic_config_mq_mode(dev, TRUE);
@@ -1534,7 +1534,6 @@ static void hinic_deinit_mac_addr(struct rte_eth_dev *eth_dev)
 static int hinic_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
-	uint32_t frame_size;
 	int ret = 0;
 
 	PMD_DRV_LOG(INFO, "Set port mtu, port_id: %d, mtu: %d, max_pkt_len: %d",
@@ -1552,16 +1551,13 @@ static int hinic_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		return ret;
 	}
 
-	/* update max frame size */
-	frame_size = HINIC_MTU_TO_PKTLEN(mtu);
-	if (frame_size > HINIC_ETH_MAX_LEN)
+	if (mtu > RTE_ETHER_MTU)
 		dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		dev->data->dev_conf.rxmode.offloads &=
 			~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 	nic_dev->mtu_size = mtu;
 
 	return ret;

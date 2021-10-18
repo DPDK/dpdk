@@ -20,13 +20,6 @@
 
 #define IGC_INTEL_VENDOR_ID		0x8086
 
-/*
- * The overhead from MTU to max frame size.
- * Considering VLAN so tag needs to be counted.
- */
-#define IGC_ETH_OVERHEAD		(RTE_ETHER_HDR_LEN + \
-					RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE)
-
 #define IGC_FC_PAUSE_TIME		0x0680
 #define IGC_LINK_UPDATE_CHECK_TIMEOUT	90  /* 9s */
 #define IGC_LINK_UPDATE_CHECK_INTERVAL	100 /* ms */
@@ -1601,21 +1594,15 @@ eth_igc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	/* switch to jumbo mode if needed */
 	if (mtu > RTE_ETHER_MTU) {
-		dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_JUMBO_FRAME;
+		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 		rctl |= IGC_RCTL_LPE;
 	} else {
-		dev->data->dev_conf.rxmode.offloads &=
-			~DEV_RX_OFFLOAD_JUMBO_FRAME;
+		dev->data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 		rctl &= ~IGC_RCTL_LPE;
 	}
 	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
 
-	/* update max frame size */
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
-
-	IGC_WRITE_REG(hw, IGC_RLPML,
-			dev->data->dev_conf.rxmode.max_rx_pkt_len);
+	IGC_WRITE_REG(hw, IGC_RLPML, frame_size);
 
 	return 0;
 }
@@ -2485,6 +2472,7 @@ static int
 igc_vlan_hw_extend_disable(struct rte_eth_dev *dev)
 {
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t frame_size = dev->data->mtu + IGC_ETH_OVERHEAD;
 	uint32_t ctrl_ext;
 
 	ctrl_ext = IGC_READ_REG(hw, IGC_CTRL_EXT);
@@ -2493,23 +2481,14 @@ igc_vlan_hw_extend_disable(struct rte_eth_dev *dev)
 	if ((ctrl_ext & IGC_CTRL_EXT_EXT_VLAN) == 0)
 		return 0;
 
-	if ((dev->data->dev_conf.rxmode.offloads &
-			DEV_RX_OFFLOAD_JUMBO_FRAME) == 0)
-		goto write_ext_vlan;
-
 	/* Update maximum packet length */
-	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <
-		RTE_ETHER_MIN_MTU + VLAN_TAG_SIZE) {
+	if (frame_size < RTE_ETHER_MIN_MTU + VLAN_TAG_SIZE) {
 		PMD_DRV_LOG(ERR, "Maximum packet length %u error, min is %u",
-			dev->data->dev_conf.rxmode.max_rx_pkt_len,
-			VLAN_TAG_SIZE + RTE_ETHER_MIN_MTU);
+			frame_size, VLAN_TAG_SIZE + RTE_ETHER_MIN_MTU);
 		return -EINVAL;
 	}
-	dev->data->dev_conf.rxmode.max_rx_pkt_len -= VLAN_TAG_SIZE;
-	IGC_WRITE_REG(hw, IGC_RLPML,
-		dev->data->dev_conf.rxmode.max_rx_pkt_len);
+	IGC_WRITE_REG(hw, IGC_RLPML, frame_size - VLAN_TAG_SIZE);
 
-write_ext_vlan:
 	IGC_WRITE_REG(hw, IGC_CTRL_EXT, ctrl_ext & ~IGC_CTRL_EXT_EXT_VLAN);
 	return 0;
 }
@@ -2518,6 +2497,7 @@ static int
 igc_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 {
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t frame_size = dev->data->mtu + IGC_ETH_OVERHEAD;
 	uint32_t ctrl_ext;
 
 	ctrl_ext = IGC_READ_REG(hw, IGC_CTRL_EXT);
@@ -2526,23 +2506,14 @@ igc_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 	if (ctrl_ext & IGC_CTRL_EXT_EXT_VLAN)
 		return 0;
 
-	if ((dev->data->dev_conf.rxmode.offloads &
-			DEV_RX_OFFLOAD_JUMBO_FRAME) == 0)
-		goto write_ext_vlan;
-
 	/* Update maximum packet length */
-	if (dev->data->dev_conf.rxmode.max_rx_pkt_len >
-		MAX_RX_JUMBO_FRAME_SIZE - VLAN_TAG_SIZE) {
+	if (frame_size > MAX_RX_JUMBO_FRAME_SIZE) {
 		PMD_DRV_LOG(ERR, "Maximum packet length %u error, max is %u",
-			dev->data->dev_conf.rxmode.max_rx_pkt_len +
-			VLAN_TAG_SIZE, MAX_RX_JUMBO_FRAME_SIZE);
+			frame_size, MAX_RX_JUMBO_FRAME_SIZE);
 		return -EINVAL;
 	}
-	dev->data->dev_conf.rxmode.max_rx_pkt_len += VLAN_TAG_SIZE;
-	IGC_WRITE_REG(hw, IGC_RLPML,
-		dev->data->dev_conf.rxmode.max_rx_pkt_len);
+	IGC_WRITE_REG(hw, IGC_RLPML, frame_size);
 
-write_ext_vlan:
 	IGC_WRITE_REG(hw, IGC_CTRL_EXT, ctrl_ext | IGC_CTRL_EXT_EXT_VLAN);
 	return 0;
 }

@@ -4326,13 +4326,8 @@ txgbe_dev_rx_init(struct rte_eth_dev *dev)
 	/*
 	 * Configure jumbo frame support, if any.
 	 */
-	if (rx_conf->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		wr32m(hw, TXGBE_FRMSZ, TXGBE_FRMSZ_MAX_MASK,
-			TXGBE_FRMSZ_MAX(rx_conf->max_rx_pkt_len));
-	} else {
-		wr32m(hw, TXGBE_FRMSZ, TXGBE_FRMSZ_MAX_MASK,
-			TXGBE_FRMSZ_MAX(TXGBE_FRAME_SIZE_DFT));
-	}
+	wr32m(hw, TXGBE_FRMSZ, TXGBE_FRMSZ_MAX_MASK,
+		TXGBE_FRMSZ_MAX(dev->data->mtu + TXGBE_ETH_OVERHEAD));
 
 	/*
 	 * If loopback mode is configured, set LPBK bit.
@@ -4394,8 +4389,8 @@ txgbe_dev_rx_init(struct rte_eth_dev *dev)
 		wr32(hw, TXGBE_RXCFG(rxq->reg_idx), srrctl);
 
 		/* It adds dual VLAN length for supporting dual VLAN */
-		if (dev->data->dev_conf.rxmode.max_rx_pkt_len +
-					    2 * TXGBE_VLAN_TAG_SIZE > buf_size)
+		if (dev->data->mtu + TXGBE_ETH_OVERHEAD +
+				2 * TXGBE_VLAN_TAG_SIZE > buf_size)
 			dev->data->scattered_rx = 1;
 		if (rxq->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 			rx_conf->offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
@@ -4847,9 +4842,9 @@ txgbevf_dev_rx_init(struct rte_eth_dev *dev)
 	 * VF packets received can work in all cases.
 	 */
 	if (txgbevf_rlpml_set_vf(hw,
-	    (uint16_t)dev->data->dev_conf.rxmode.max_rx_pkt_len)) {
+	    (uint16_t)dev->data->mtu + TXGBE_ETH_OVERHEAD)) {
 		PMD_INIT_LOG(ERR, "Set max packet length to %d failed.",
-			     dev->data->dev_conf.rxmode.max_rx_pkt_len);
+			     dev->data->mtu + TXGBE_ETH_OVERHEAD);
 		return -EINVAL;
 	}
 
@@ -4911,7 +4906,7 @@ txgbevf_dev_rx_init(struct rte_eth_dev *dev)
 
 		if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER ||
 		    /* It adds dual VLAN length for supporting dual VLAN */
-		    (rxmode->max_rx_pkt_len +
+		    (dev->data->mtu + TXGBE_ETH_OVERHEAD +
 				2 * TXGBE_VLAN_TAG_SIZE) > buf_size) {
 			if (!dev->data->scattered_rx)
 				PMD_INIT_LOG(DEBUG, "forcing scatter mode");

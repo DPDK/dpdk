@@ -106,12 +106,7 @@ Forwarding application is shown below:
     :end-before: >8 End of main functional part of port initialization.
 
 The Ethernet ports are configured with default settings using the
-``rte_eth_dev_configure()`` function and the ``port_conf_default`` struct:
-
-.. literalinclude:: ../../../examples/skeleton/basicfwd.c
-        :language: c
-        :start-after: Configuration of ethernet ports. 8<
-        :end-before: >8 End of configuration of ethernet ports.
+``rte_eth_dev_configure()`` function.
 
 For this example the ports are set up with 1 RX and 1 TX queue using the
 ``rte_eth_rx_queue_setup()`` and ``rte_eth_tx_queue_setup()`` functions.

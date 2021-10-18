@@ -220,6 +220,11 @@ unsigned int xstats_display_num; /**< Size of extended statistics to show */
 uint8_t f_quit;
 
 /*
+ * Max Rx frame size, set by '--max-pkt-len' parameter.
+ */
+uint32_t max_rx_pkt_len;
+
+/*
  * Configuration of packet segments used to scatter received packets
  * if some of split features is configured.
  */
@@ -451,13 +456,7 @@ lcoreid_t latencystats_lcore_id = -1;
 /*
  * Ethernet device configuration.
  */
-struct rte_eth_rxmode rx_mode = {
-	/* Default maximum frame length.
-	 * Zero is converted to "RTE_ETHER_MTU + PMD Ethernet overhead"
-	 * in init_config().
-	 */
-	.max_rx_pkt_len = 0,
-};
+struct rte_eth_rxmode rx_mode;
 
 struct rte_eth_txmode tx_mode = {
 	.offloads = DEV_TX_OFFLOAD_MBUF_FAST_FREE,
@@ -1542,11 +1541,24 @@ check_nb_hairpinq(queueid_t hairpinq)
 	return 0;
 }
 
+static int
+get_eth_overhead(struct rte_eth_dev_info *dev_info)
+{
+	uint32_t eth_overhead;
+
+	if (dev_info->max_mtu != UINT16_MAX &&
+	    dev_info->max_rx_pktlen > dev_info->max_mtu)
+		eth_overhead = dev_info->max_rx_pktlen - dev_info->max_mtu;
+	else
+		eth_overhead = RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+
+	return eth_overhead;
+}
+
 static void
 init_config_port_offloads(portid_t pid, uint32_t socket_id)
 {
 	struct rte_port *port = &ports[pid];
-	uint16_t data_size;
 	int ret;
 	int i;
 
@@ -1560,7 +1572,7 @@ init_config_port_offloads(portid_t pid, uint32_t socket_id)
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE, "rte_eth_dev_info_get() failed\n");
 
-	ret = update_jumbo_frame_offload(pid);
+	ret = update_jumbo_frame_offload(pid, 0);
 	if (ret != 0)
 		fprintf(stderr,
 			"Updating jumbo frame offload failed for port %u\n",
@@ -1580,6 +1592,10 @@ init_config_port_offloads(portid_t pid, uint32_t socket_id)
 	if (eth_link_speed)
 		port->dev_conf.link_speeds = eth_link_speed;
 
+	if (max_rx_pkt_len)
+		port->dev_conf.rxmode.mtu = max_rx_pkt_len -
+			get_eth_overhead(&port->dev_info);
+
 	/* set flag to initialize port/queue */
 	port->need_reconfig = 1;
 	port->need_reconfig_queues = 1;
@@ -1592,14 +1608,20 @@ init_config_port_offloads(portid_t pid, uint32_t socket_id)
 	 */
 	if (port->dev_info.rx_desc_lim.nb_mtu_seg_max != UINT16_MAX &&
 	    port->dev_info.rx_desc_lim.nb_mtu_seg_max != 0) {
-		data_size = rx_mode.max_rx_pkt_len /
-			port->dev_info.rx_desc_lim.nb_mtu_seg_max;
+		uint32_t eth_overhead = get_eth_overhead(&port->dev_info);
+		uint16_t mtu;
 
-		if ((data_size + RTE_PKTMBUF_HEADROOM) > mbuf_data_size[0]) {
-			mbuf_data_size[0] = data_size + RTE_PKTMBUF_HEADROOM;
-			TESTPMD_LOG(WARNING,
-				    "Configured mbuf size of the first segment %hu\n",
-				    mbuf_data_size[0]);
+		if (rte_eth_dev_get_mtu(pid, &mtu) == 0) {
+			uint16_t data_size = (mtu + eth_overhead) /
+				port->dev_info.rx_desc_lim.nb_mtu_seg_max;
+			uint16_t buffer_size = data_size + RTE_PKTMBUF_HEADROOM;
+
+			if (buffer_size > mbuf_data_size[0]) {
+				mbuf_data_size[0] = buffer_size;
+				TESTPMD_LOG(WARNING,
+					"Configured mbuf size of the first segment %hu\n",
+					mbuf_data_size[0]);
+			}
 		}
 	}
 }
@@ -2735,6 +2757,7 @@ start_port(portid_t pid)
 					pi);
 				return -1;
 			}
+
 			/* configure port */
 			diag = eth_dev_configure_mp(pi, nb_rxq + nb_hairpinq,
 						     nb_txq + nb_hairpinq,
@@ -3669,44 +3692,45 @@ rxtx_port_config(struct rte_port *port)
 
 /*
  * Helper function to arrange max_rx_pktlen value and JUMBO_FRAME offload,
- * MTU is also aligned if JUMBO_FRAME offload is not set.
+ * MTU is also aligned.
  *
  * port->dev_info should be set before calling this function.
+ *
+ * if 'max_rx_pktlen' is zero, it is set to current device value, "MTU +
+ * ETH_OVERHEAD". This is useful to update flags but not MTU value.
  *
  * return 0 on success, negative on error
  */
 int
-update_jumbo_frame_offload(portid_t portid)
+update_jumbo_frame_offload(portid_t portid, uint32_t max_rx_pktlen)
 {
 	struct rte_port *port = &ports[portid];
 	uint32_t eth_overhead;
 	uint64_t rx_offloads;
-	int ret;
+	uint16_t mtu, new_mtu;
 	bool on;
 
-	/* Update the max_rx_pkt_len to have MTU as RTE_ETHER_MTU */
-	if (port->dev_info.max_mtu != UINT16_MAX &&
-	    port->dev_info.max_rx_pktlen > port->dev_info.max_mtu)
-		eth_overhead = port->dev_info.max_rx_pktlen -
-				port->dev_info.max_mtu;
-	else
-		eth_overhead = RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+	eth_overhead = get_eth_overhead(&port->dev_info);
+
+	if (rte_eth_dev_get_mtu(portid, &mtu) != 0) {
+		printf("Failed to get MTU for port %u\n", portid);
+		return -1;
+	}
+
+	if (max_rx_pktlen == 0)
+		max_rx_pktlen = mtu + eth_overhead;
 
 	rx_offloads = port->dev_conf.rxmode.offloads;
+	new_mtu = max_rx_pktlen - eth_overhead;
 
-	/* Default config value is 0 to use PMD specific overhead */
-	if (port->dev_conf.rxmode.max_rx_pkt_len == 0)
-		port->dev_conf.rxmode.max_rx_pkt_len = RTE_ETHER_MTU + eth_overhead;
-
-	if (port->dev_conf.rxmode.max_rx_pkt_len <= RTE_ETHER_MTU + eth_overhead) {
+	if (new_mtu <= RTE_ETHER_MTU) {
 		rx_offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 		on = false;
 	} else {
 		if ((port->dev_info.rx_offload_capa & DEV_RX_OFFLOAD_JUMBO_FRAME) == 0) {
 			fprintf(stderr,
 				"Frame size (%u) is not supported by port %u\n",
-				port->dev_conf.rxmode.max_rx_pkt_len,
-				portid);
+				max_rx_pktlen, portid);
 			return -1;
 		}
 		rx_offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
@@ -3727,18 +3751,17 @@ update_jumbo_frame_offload(portid_t portid)
 		}
 	}
 
-	/* If JUMBO_FRAME is set MTU conversion done by ethdev layer,
-	 * if unset do it here
-	 */
-	if ((rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) == 0) {
-		ret = eth_dev_set_mtu_mp(portid,
-				port->dev_conf.rxmode.max_rx_pkt_len - eth_overhead);
-		if (ret)
-			fprintf(stderr,
-				"Failed to set MTU to %u for port %u\n",
-				port->dev_conf.rxmode.max_rx_pkt_len - eth_overhead,
-				portid);
+	if (mtu == new_mtu)
+		return 0;
+
+	if (eth_dev_set_mtu_mp(portid, new_mtu) != 0) {
+		fprintf(stderr,
+			"Failed to set MTU to %u for port %u\n",
+			new_mtu, portid);
+		return -1;
 	}
+
+	port->dev_conf.rxmode.mtu = new_mtu;
 
 	return 0;
 }

@@ -467,6 +467,8 @@ extern uint8_t bitrate_enabled;
 
 extern struct rte_fdir_conf fdir_conf;
 
+extern uint32_t max_rx_pkt_len;
+
 /*
  * Configuration of packet segments used to scatter received packets
  * if some of split features is configured.
@@ -1043,7 +1045,7 @@ uint16_t tx_pkt_set_dynf(uint16_t port_id, __rte_unused uint16_t queue,
 			 __rte_unused void *user_param);
 void add_tx_dynf_callback(portid_t portid);
 void remove_tx_dynf_callback(portid_t portid);
-int update_jumbo_frame_offload(portid_t portid);
+int update_jumbo_frame_offload(portid_t portid, uint32_t max_rx_pktlen);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the

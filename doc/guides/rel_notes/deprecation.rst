@@ -92,31 +92,6 @@ Deprecation Notices
   In 19.11 PMDs will still update the field even when the offload is not
   enabled.
 
-* ethdev: ``uint32_t max_rx_pkt_len`` field of ``struct rte_eth_rxmode``, will be
-  replaced by a new ``uint32_t mtu`` field of ``struct rte_eth_conf`` in v21.11.
-  The new ``mtu`` field will be used to configure the initial device MTU via
-  ``rte_eth_dev_configure()`` API.
-  Later MTU can be changed by ``rte_eth_dev_set_mtu()`` API as done now.
-  The existing ``(struct rte_eth_dev)->data->mtu`` variable will be used to store
-  the configured ``mtu`` value,
-  and this new ``(struct rte_eth_dev)->data->dev_conf.mtu`` variable will
-  be used to store the user configuration request.
-  Unlike ``max_rx_pkt_len``, which was valid only when ``JUMBO_FRAME`` enabled,
-  ``mtu`` field will be always valid.
-  When ``mtu`` config is not provided by the application, default ``RTE_ETHER_MTU``
-  value will be used.
-  ``(struct rte_eth_dev)->data->mtu`` should be updated after MTU set successfully,
-  either by ``rte_eth_dev_configure()`` or ``rte_eth_dev_set_mtu()``.
-
-  An application may need to configure device for a specific Rx packet size, like for
-  cases ``DEV_RX_OFFLOAD_SCATTER`` is not supported and device received packet size
-  can't be bigger than Rx buffer size.
-  To cover these cases an application needs to know the device packet overhead to be
-  able to calculate the ``mtu`` corresponding to a Rx buffer size, for this
-  ``(struct rte_eth_dev_info).max_rx_pktlen`` will be kept,
-  the device packet overhead can be calculated as:
-  ``(struct rte_eth_dev_info).max_rx_pktlen - (struct rte_eth_dev_info).max_mtu``
-
 * ethdev: Announce moving from dedicated modify function for each field,
   to using the general ``rte_flow_modify_field`` action.
 

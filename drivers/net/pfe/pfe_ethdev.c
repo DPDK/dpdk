@@ -670,16 +670,11 @@ pfe_link_up(struct rte_eth_dev *dev)
 static int
 pfe_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
-	int ret;
 	struct pfe_eth_priv_s *priv = dev->data->dev_private;
 	uint16_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 
 	/*TODO Support VLAN*/
-	ret = gemac_set_rx(priv->EMAC_baseaddr, frame_size);
-	if (!ret)
-		dev->data->mtu = mtu;
-
-	return ret;
+	return gemac_set_rx(priv->EMAC_baseaddr, frame_size);
 }
 
 /* pfe_eth_enet_addr_byte_mac

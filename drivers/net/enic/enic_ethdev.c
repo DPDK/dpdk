@@ -459,7 +459,7 @@ static int enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	 * max mtu regardless of the current mtu (vNIC's mtu). vNIC mtu is
 	 * a hint to the driver to size receive buffers accordingly so that
 	 * larger-than-vnic-mtu packets get truncated.. For DPDK, we let
-	 * the user decide the buffer size via rxmode.max_rx_pkt_len, basically
+	 * the user decide the buffer size via rxmode.mtu, basically
 	 * ignoring vNIC mtu.
 	 */
 	device_info->max_rx_pktlen = enic_mtu_to_max_rx_pktlen(enic->max_mtu);

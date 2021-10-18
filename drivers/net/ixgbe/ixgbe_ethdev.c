@@ -5165,7 +5165,6 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev_info dev_info;
 	uint32_t frame_size = mtu + IXGBE_ETH_OVERHEAD;
-	struct rte_eth_dev_data *dev_data = dev->data;
 	int ret;
 
 	ret = ixgbe_dev_info_get(dev, &dev_info);
@@ -5179,9 +5178,9 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	/* If device is started, refuse mtu that requires the support of
 	 * scattered packets when this feature has not been enabled before.
 	 */
-	if (dev_data->dev_started && !dev_data->scattered_rx &&
-	    (frame_size + 2 * IXGBE_VLAN_TAG_SIZE >
-	     dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)) {
+	if (dev->data->dev_started && !dev->data->scattered_rx &&
+	    frame_size + 2 * IXGBE_VLAN_TAG_SIZE >
+			dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM) {
 		PMD_INIT_LOG(ERR, "Stop port first.");
 		return -EINVAL;
 	}
@@ -5190,23 +5189,18 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
 
 	/* switch to jumbo mode if needed */
-	if (frame_size > IXGBE_ETH_MAX_LEN) {
-		dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_JUMBO_FRAME;
+	if (mtu > RTE_ETHER_MTU) {
+		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 		hlreg0 |= IXGBE_HLREG0_JUMBOEN;
 	} else {
-		dev->data->dev_conf.rxmode.offloads &=
-			~DEV_RX_OFFLOAD_JUMBO_FRAME;
+		dev->data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 		hlreg0 &= ~IXGBE_HLREG0_JUMBOEN;
 	}
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 
-	/* update max frame size */
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
-
 	maxfrs = IXGBE_READ_REG(hw, IXGBE_MAXFRS);
 	maxfrs &= 0x0000FFFF;
-	maxfrs |= (dev->data->dev_conf.rxmode.max_rx_pkt_len << 16);
+	maxfrs |= (frame_size << 16);
 	IXGBE_WRITE_REG(hw, IXGBE_MAXFRS, maxfrs);
 
 	return 0;
@@ -6078,12 +6072,10 @@ ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 	 * set as 0x4.
 	 */
 	if ((rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) &&
-	    (rxmode->max_rx_pkt_len >= IXGBE_MAX_JUMBO_FRAME_SIZE))
-		IXGBE_WRITE_REG(hw, IXGBE_RTTBCNRM,
-			IXGBE_MMW_SIZE_JUMBO_FRAME);
+	    (dev->data->mtu + IXGBE_ETH_OVERHEAD >= IXGBE_MAX_JUMBO_FRAME_SIZE))
+		IXGBE_WRITE_REG(hw, IXGBE_RTTBCNRM, IXGBE_MMW_SIZE_JUMBO_FRAME);
 	else
-		IXGBE_WRITE_REG(hw, IXGBE_RTTBCNRM,
-			IXGBE_MMW_SIZE_DEFAULT);
+		IXGBE_WRITE_REG(hw, IXGBE_RTTBCNRM, IXGBE_MMW_SIZE_DEFAULT);
 
 	/* Set RTTBCNRC of queue X */
 	IXGBE_WRITE_REG(hw, IXGBE_RTTDQSEL, queue_idx);
@@ -6355,8 +6347,7 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (mtu < RTE_ETHER_MIN_MTU ||
-			max_frame > RTE_ETHER_MAX_JUMBO_FRAME_LEN)
+	if (mtu < RTE_ETHER_MIN_MTU || max_frame > RTE_ETHER_MAX_JUMBO_FRAME_LEN)
 		return -EINVAL;
 
 	/* If device is started, refuse mtu that requires the support of
@@ -6364,7 +6355,7 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	 */
 	if (dev_data->dev_started && !dev_data->scattered_rx &&
 	    (max_frame + 2 * IXGBE_VLAN_TAG_SIZE >
-	     dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)) {
+			dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)) {
 		PMD_INIT_LOG(ERR, "Stop port first.");
 		return -EINVAL;
 	}
@@ -6381,8 +6372,6 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	if (ixgbevf_rlpml_set_vf(hw, max_frame))
 		return -EINVAL;
 
-	/* update max frame size */
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame;
 	return 0;
 }
 

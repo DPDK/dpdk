@@ -236,7 +236,7 @@ The application has a number of command line options:
 
 ..  code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd-acl [EAL options] -- -p PORTMASK [-P] --config(port,queue,lcore)[,(port,queue,lcore)] --rule_ipv4 FILENAME --rule_ipv6 FILENAME [--alg=<val>] [--enable-jumbo [--max-pkt-len PKTLEN]] [--no-numa] [--eth-dest=X,MM:MM:MM:MM:MM:MM]
+    ./<build_dir>/examples/dpdk-l3fwd-acl [EAL options] -- -p PORTMASK [-P] --config(port,queue,lcore)[,(port,queue,lcore)] --rule_ipv4 FILENAME --rule_ipv6 FILENAME [--alg=<val>] [--max-pkt-len PKTLEN] [--no-numa] [--eth-dest=X,MM:MM:MM:MM:MM:MM]
 
 
 where,
@@ -254,8 +254,6 @@ where,
 
 *   --alg=<val>: optional, ACL classify method to use, one of:
     ``scalar|sse|avx2|neon|altivec|avx512x16|avx512x32``
-
-*   --enable-jumbo: optional, enables jumbo frames
 
 *   --max-pkt-len: optional, maximum packet length in decimal (64-9600)
 

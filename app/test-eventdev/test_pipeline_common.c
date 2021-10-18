@@ -197,8 +197,9 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 		return -EINVAL;
 	}
 
-	port_conf.rxmode.max_rx_pkt_len = opt->max_pkt_sz;
-	if (opt->max_pkt_sz > RTE_ETHER_MAX_LEN)
+	port_conf.rxmode.mtu = opt->max_pkt_sz - RTE_ETHER_HDR_LEN -
+		RTE_ETHER_CRC_LEN;
+	if (port_conf.rxmode.mtu > RTE_ETHER_MTU)
 		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	t->internal_port = 1;

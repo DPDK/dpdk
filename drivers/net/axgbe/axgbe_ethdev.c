@@ -350,7 +350,7 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 	struct axgbe_port *pdata = dev->data->dev_private;
 	int ret;
 	struct rte_eth_dev_data *dev_data = dev->data;
-	uint16_t max_pkt_len = dev_data->dev_conf.rxmode.max_rx_pkt_len;
+	uint16_t max_pkt_len;
 
 	dev->dev_ops = &axgbe_eth_dev_ops;
 
@@ -383,6 +383,8 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 
 	rte_bit_relaxed_clear32(AXGBE_STOPPED, &pdata->dev_state);
 	rte_bit_relaxed_clear32(AXGBE_DOWN, &pdata->dev_state);
+
+	max_pkt_len = dev_data->mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 	if ((dev_data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) ||
 				max_pkt_len > pdata->rx_buf_size)
 		dev_data->scattered_rx = 1;
@@ -1490,7 +1492,7 @@ static int axgb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 				dev->data->port_id);
 		return -EBUSY;
 	}
-	if (frame_size > AXGBE_ETH_MAX_LEN) {
+	if (mtu > RTE_ETHER_MTU) {
 		dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 		val = 1;
@@ -1500,7 +1502,6 @@ static int axgb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		val = 0;
 	}
 	AXGMAC_IOWRITE_BITS(pdata, MAC_RCR, JE, val);
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 	return 0;
 }
 

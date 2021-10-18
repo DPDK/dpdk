@@ -59,13 +59,10 @@ otx2_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	if (rc)
 		return rc;
 
-	if (frame_size > NIX_L2_MAX_LEN)
+	if (mtu > RTE_ETHER_MTU)
 		dev->rx_offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		dev->rx_offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
-	/* Update max_rx_pkt_len */
-	data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
 	return rc;
 }
@@ -75,7 +72,6 @@ otx2_nix_recalc_mtu(struct rte_eth_dev *eth_dev)
 {
 	struct rte_eth_dev_data *data = eth_dev->data;
 	struct otx2_eth_rxq *rxq;
-	uint16_t mtu;
 	int rc;
 
 	rxq = data->rx_queues[0];
@@ -83,10 +79,7 @@ otx2_nix_recalc_mtu(struct rte_eth_dev *eth_dev)
 	/* Setup scatter mode if needed by jumbo */
 	otx2_nix_enable_mseg_on_jumbo(rxq);
 
-	/* Setup MTU based on max_rx_pkt_len */
-	mtu = data->dev_conf.rxmode.max_rx_pkt_len - NIX_L2_OVERHEAD;
-
-	rc = otx2_nix_mtu_set(eth_dev, mtu);
+	rc = otx2_nix_mtu_set(eth_dev, data->mtu);
 	if (rc)
 		otx2_err("Failed to set default MTU size %d", rc);
 

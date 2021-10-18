@@ -1062,7 +1062,7 @@ igc_rx_init(struct rte_eth_dev *dev)
 	struct igc_rx_queue *rxq;
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint64_t offloads = dev->data->dev_conf.rxmode.offloads;
-	uint32_t max_rx_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	uint32_t max_rx_pktlen;
 	uint32_t rctl;
 	uint32_t rxcsum;
 	uint16_t buf_size;
@@ -1080,17 +1080,17 @@ igc_rx_init(struct rte_eth_dev *dev)
 	IGC_WRITE_REG(hw, IGC_RCTL, rctl & ~IGC_RCTL_EN);
 
 	/* Configure support of jumbo frames, if any. */
-	if (offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+	if ((offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) != 0)
 		rctl |= IGC_RCTL_LPE;
-
-		/*
-		 * Set maximum packet length by default, and might be updated
-		 * together with enabling/disabling dual VLAN.
-		 */
-		IGC_WRITE_REG(hw, IGC_RLPML, max_rx_pkt_len);
-	} else {
+	else
 		rctl &= ~IGC_RCTL_LPE;
-	}
+
+	max_rx_pktlen = dev->data->mtu + IGC_ETH_OVERHEAD;
+	/*
+	 * Set maximum packet length by default, and might be updated
+	 * together with enabling/disabling dual VLAN.
+	 */
+	IGC_WRITE_REG(hw, IGC_RLPML, max_rx_pktlen);
 
 	/* Configure and enable each RX queue. */
 	rctl_bsize = 0;
@@ -1149,7 +1149,7 @@ igc_rx_init(struct rte_eth_dev *dev)
 					IGC_SRRCTL_BSIZEPKT_SHIFT);
 
 			/* It adds dual VLAN length for supporting dual VLAN */
-			if (max_rx_pkt_len + 2 * VLAN_TAG_SIZE > buf_size)
+			if (max_rx_pktlen > buf_size)
 				dev->data->scattered_rx = 1;
 		} else {
 			/*

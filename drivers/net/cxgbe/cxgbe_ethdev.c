@@ -310,11 +310,11 @@ int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 		return err;
 
 	/* Must accommodate at least RTE_ETHER_MIN_MTU */
-	if (new_mtu < RTE_ETHER_MIN_MTU || new_mtu > dev_info.max_rx_pktlen)
+	if (mtu < RTE_ETHER_MIN_MTU || new_mtu > dev_info.max_rx_pktlen)
 		return -EINVAL;
 
 	/* set to jumbo mode if needed */
-	if (new_mtu > CXGBE_ETH_MAX_LEN)
+	if (mtu > RTE_ETHER_MTU)
 		eth_dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
@@ -323,9 +323,6 @@ int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 
 	err = t4_set_rxmode(adapter, adapter->mbox, pi->viid, new_mtu, -1, -1,
 			    -1, -1, true);
-	if (!err)
-		eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = new_mtu;
-
 	return err;
 }
 
@@ -623,7 +620,8 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 			     const struct rte_eth_rxconf *rx_conf __rte_unused,
 			     struct rte_mempool *mp)
 {
-	unsigned int pkt_len = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	unsigned int pkt_len = eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
+		RTE_ETHER_CRC_LEN;
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
 	struct rte_eth_dev_info dev_info;
@@ -682,7 +680,7 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	rxq->fl.size = temp_nb_desc;
 
 	/* Set to jumbo mode if necessary */
-	if (pkt_len > CXGBE_ETH_MAX_LEN)
+	if (eth_dev->data->mtu > RTE_ETHER_MTU)
 		eth_dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else

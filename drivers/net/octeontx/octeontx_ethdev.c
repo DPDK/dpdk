@@ -552,13 +552,11 @@ octeontx_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	if (rc)
 		return rc;
 
-	if (frame_size > OCCTX_L2_MAX_LEN)
+	if (mtu > RTE_ETHER_MTU)
 		nic->rx_offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		nic->rx_offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
-	/* Update max_rx_pkt_len */
-	data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 	octeontx_log_info("Received pkt beyond  maxlen %d will be dropped",
 			  frame_size);
 
@@ -581,7 +579,7 @@ octeontx_recheck_rx_offloads(struct octeontx_rxq *rxq)
 	buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
 
 	/* Setup scatter mode if needed by jumbo */
-	if (data->dev_conf.rxmode.max_rx_pkt_len > buffsz) {
+	if (data->mtu > buffsz) {
 		nic->rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
 		nic->rx_offload_flags |= octeontx_rx_offload_flags(eth_dev);
 		nic->tx_offload_flags |= octeontx_tx_offload_flags(eth_dev);
@@ -593,8 +591,8 @@ octeontx_recheck_rx_offloads(struct octeontx_rxq *rxq)
 	evdev_priv->rx_offload_flags = nic->rx_offload_flags;
 	evdev_priv->tx_offload_flags = nic->tx_offload_flags;
 
-	/* Setup MTU based on max_rx_pkt_len */
-	nic->mtu = data->dev_conf.rxmode.max_rx_pkt_len - OCCTX_L2_OVERHEAD;
+	/* Setup MTU */
+	nic->mtu = data->mtu;
 
 	return 0;
 }
@@ -615,7 +613,7 @@ octeontx_dev_start(struct rte_eth_dev *dev)
 		octeontx_recheck_rx_offloads(rxq);
 	}
 
-	/* Setting up the mtu based on max_rx_pkt_len */
+	/* Setting up the mtu */
 	ret = octeontx_dev_mtu_set(dev, nic->mtu);
 	if (ret) {
 		octeontx_log_err("Failed to set default MTU size %d", ret);

@@ -913,7 +913,7 @@ otx2_nix_enable_mseg_on_jumbo(struct otx2_eth_rxq *rxq)
 	mbp_priv = rte_mempool_get_priv(rxq->pool);
 	buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
 
-	if (eth_dev->data->dev_conf.rxmode.max_rx_pkt_len > buffsz) {
+	if (eth_dev->data->mtu + (uint32_t)NIX_L2_OVERHEAD > buffsz) {
 		dev->rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
 		dev->tx_offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
 

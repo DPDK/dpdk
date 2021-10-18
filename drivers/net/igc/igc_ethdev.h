@@ -36,6 +36,13 @@ extern "C" {
 #define IGC_HKEY_SIZE			(IGC_HKEY_REG_SIZE * IGC_HKEY_MAX_INDEX)
 
 /*
+ * The overhead from MTU to max frame size.
+ * Considering VLAN so tag needs to be counted.
+ */
+#define IGC_ETH_OVERHEAD		(RTE_ETHER_HDR_LEN + \
+					RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE * 2)
+
+/*
  * TDBA/RDBA should be aligned on 16 byte boundary. But TDLEN/RDLEN should be
  * multiple of 128 bytes. So we align TDBA/RDBA on 128 byte boundary.
  * This will also optimize cache line size effect.

@@ -681,7 +681,7 @@ enetc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 	}
 
-	if (frame_size > ENETC_ETH_MAX_LEN)
+	if (mtu > RTE_ETHER_MTU)
 		dev->data->dev_conf.rxmode.offloads &=
 						DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
@@ -690,8 +690,6 @@ enetc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	enetc_port_wr(enetc_hw, ENETC_PTCMSDUR(0), ENETC_MAC_MAXFRM_SIZE);
 	enetc_port_wr(enetc_hw, ENETC_PTXMBAR, 2 * ENETC_MAC_MAXFRM_SIZE);
-
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
 	/*setting the MTU*/
 	enetc_port_wr(enetc_hw, ENETC_PM0_MAXFRM, ENETC_SET_MAXFRM(frame_size) |
@@ -709,23 +707,15 @@ enetc_dev_configure(struct rte_eth_dev *dev)
 	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
 	uint64_t rx_offloads = eth_conf->rxmode.offloads;
 	uint32_t checksum = L3_CKSUM | L4_CKSUM;
+	uint32_t max_len;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		uint32_t max_len;
-
-		max_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
-
-		enetc_port_wr(enetc_hw, ENETC_PM0_MAXFRM,
-			      ENETC_SET_MAXFRM(max_len));
-		enetc_port_wr(enetc_hw, ENETC_PTCMSDUR(0),
-			      ENETC_MAC_MAXFRM_SIZE);
-		enetc_port_wr(enetc_hw, ENETC_PTXMBAR,
-			      2 * ENETC_MAC_MAXFRM_SIZE);
-		dev->data->mtu = RTE_ETHER_MAX_LEN - RTE_ETHER_HDR_LEN -
-			RTE_ETHER_CRC_LEN;
-	}
+	max_len = dev->data->dev_conf.rxmode.mtu + RTE_ETHER_HDR_LEN +
+		RTE_ETHER_CRC_LEN;
+	enetc_port_wr(enetc_hw, ENETC_PM0_MAXFRM, ENETC_SET_MAXFRM(max_len));
+	enetc_port_wr(enetc_hw, ENETC_PTCMSDUR(0), ENETC_MAC_MAXFRM_SIZE);
+	enetc_port_wr(enetc_hw, ENETC_PTXMBAR, 2 * ENETC_MAC_MAXFRM_SIZE);
 
 	if (rx_offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
 		int config;

@@ -209,7 +209,7 @@ nix_enable_mseg_on_jumbo(struct cnxk_eth_rxq_sp *rxq)
 	mbp_priv = rte_mempool_get_priv(rxq->qconf.mp);
 	buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
 
-	if (eth_dev->data->dev_conf.rxmode.max_rx_pkt_len > buffsz) {
+	if (eth_dev->data->mtu + (uint32_t)CNXK_NIX_L2_OVERHEAD > buffsz) {
 		dev->rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
 		dev->tx_offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
 	}
@@ -220,18 +220,13 @@ nix_recalc_mtu(struct rte_eth_dev *eth_dev)
 {
 	struct rte_eth_dev_data *data = eth_dev->data;
 	struct cnxk_eth_rxq_sp *rxq;
-	uint16_t mtu;
 	int rc;
 
 	rxq = ((struct cnxk_eth_rxq_sp *)data->rx_queues[0]) - 1;
 	/* Setup scatter mode if needed by jumbo */
 	nix_enable_mseg_on_jumbo(rxq);
 
-	/* Setup MTU based on max_rx_pkt_len */
-	mtu = data->dev_conf.rxmode.max_rx_pkt_len - CNXK_NIX_L2_OVERHEAD +
-				CNXK_NIX_MAX_VTAG_ACT_SIZE;
-
-	rc = cnxk_nix_mtu_set(eth_dev, mtu);
+	rc = cnxk_nix_mtu_set(eth_dev, data->mtu);
 	if (rc)
 		plt_err("Failed to set default MTU size, rc=%d", rc);
 

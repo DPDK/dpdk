@@ -141,7 +141,7 @@ Maximum packet length
 ~~~~~~~~~~~~~~~~~~~~~
 
 The FM10000 family of NICS support a maximum of a 15K jumbo frame. The value
-is fixed and cannot be changed. So, even when the ``rxmode.max_rx_pkt_len``
+is fixed and cannot be changed. So, even when the ``rxmode.mtu``
 member of ``struct rte_eth_conf`` is set to a value lower than 15364, frames
 up to 15364 bytes can still reach the host interface.
 

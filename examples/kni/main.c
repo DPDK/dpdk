@@ -790,14 +790,12 @@ kni_change_mtu_(uint16_t port_id, unsigned int new_mtu)
 
 	memcpy(&conf, &port_conf, sizeof(conf));
 	/* Set new MTU */
-	if (new_mtu > RTE_ETHER_MAX_LEN)
+	if (new_mtu > RTE_ETHER_MTU)
 		conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
-	/* mtu + length of header + length of FCS = max pkt length */
-	conf.rxmode.max_rx_pkt_len = new_mtu + KNI_ENET_HEADER_SIZE +
-							KNI_ENET_FCS_SIZE;
+	conf.rxmode.mtu = new_mtu;
 	ret = rte_eth_dev_configure(port_id, 1, 1, &conf);
 	if (ret < 0) {
 		RTE_LOG(ERR, APP, "Fail to reconfigure port %d\n", port_id);

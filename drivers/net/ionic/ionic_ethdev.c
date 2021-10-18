@@ -343,24 +343,14 @@ static int
 ionic_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
-	uint32_t max_frame_size;
 	int err;
 
 	IONIC_PRINT_CALL();
 
 	/*
 	 * Note: mtu check against IONIC_MIN_MTU, IONIC_MAX_MTU
-	 * is done by the the API.
+	 * is done by the API.
 	 */
-
-	/*
-	 * Max frame size is MTU + Ethernet header + VLAN + QinQ
-	 * (plus ETHER_CRC_LEN if the adapter is able to keep CRC)
-	 */
-	max_frame_size = mtu + RTE_ETHER_HDR_LEN + 4 + 4;
-
-	if (eth_dev->data->dev_conf.rxmode.max_rx_pkt_len < max_frame_size)
-		return -EINVAL;
 
 	err = ionic_lif_change_mtu(lif, mtu);
 	if (err)

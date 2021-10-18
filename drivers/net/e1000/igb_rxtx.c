@@ -2312,6 +2312,7 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	uint32_t srrctl;
 	uint16_t buf_size;
 	uint16_t rctl_bsize;
+	uint32_t max_len;
 	uint16_t i;
 	int ret;
 
@@ -2330,9 +2331,8 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	/*
 	 * Configure support of jumbo frames, if any.
 	 */
+	max_len = dev->data->mtu + E1000_ETH_OVERHEAD;
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		uint32_t max_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
-
 		rctl |= E1000_RCTL_LPE;
 
 		/*
@@ -2410,8 +2410,7 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 					       E1000_SRRCTL_BSIZEPKT_SHIFT);
 
 			/* It adds dual VLAN length for supporting dual VLAN */
-			if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
-						2 * VLAN_TAG_SIZE) > buf_size){
+			if ((max_len + 2 * VLAN_TAG_SIZE) > buf_size) {
 				if (!dev->data->scattered_rx)
 					PMD_INIT_LOG(DEBUG,
 						     "forcing scatter mode");
@@ -2635,15 +2634,15 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 	uint32_t srrctl;
 	uint16_t buf_size;
 	uint16_t rctl_bsize;
+	uint32_t max_len;
 	uint16_t i;
 	int ret;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	/* setup MTU */
-	e1000_rlpml_set_vf(hw,
-		(uint16_t)(dev->data->dev_conf.rxmode.max_rx_pkt_len +
-		VLAN_TAG_SIZE));
+	max_len = dev->data->mtu + E1000_ETH_OVERHEAD;
+	e1000_rlpml_set_vf(hw, (uint16_t)(max_len + VLAN_TAG_SIZE));
 
 	/* Configure and enable each RX queue. */
 	rctl_bsize = 0;
@@ -2700,8 +2699,7 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 					       E1000_SRRCTL_BSIZEPKT_SHIFT);
 
 			/* It adds dual VLAN length for supporting dual VLAN */
-			if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
-						2 * VLAN_TAG_SIZE) > buf_size){
+			if ((max_len + 2 * VLAN_TAG_SIZE) > buf_size) {
 				if (!dev->data->scattered_rx)
 					PMD_INIT_LOG(DEBUG,
 						     "forcing scatter mode");

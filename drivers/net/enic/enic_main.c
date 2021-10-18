@@ -282,7 +282,7 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 	struct rq_enet_desc *rqd = rq->ring.descs;
 	unsigned i;
 	dma_addr_t dma_addr;
-	uint32_t max_rx_pkt_len;
+	uint32_t max_rx_pktlen;
 	uint16_t rq_buf_len;
 
 	if (!rq->in_use)
@@ -293,16 +293,16 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 
 	/*
 	 * If *not* using scatter and the mbuf size is greater than the
-	 * requested max packet size (max_rx_pkt_len), then reduce the
-	 * posted buffer size to max_rx_pkt_len. HW still receives packets
-	 * larger than max_rx_pkt_len, but they will be truncated, which we
+	 * requested max packet size (mtu + eth overhead), then reduce the
+	 * posted buffer size to max packet size. HW still receives packets
+	 * larger than max packet size, but they will be truncated, which we
 	 * drop in the rx handler. Not ideal, but better than returning
 	 * large packets when the user is not expecting them.
 	 */
-	max_rx_pkt_len = enic->rte_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	max_rx_pktlen = enic_mtu_to_max_rx_pktlen(enic->rte_dev->data->mtu);
 	rq_buf_len = rte_pktmbuf_data_room_size(rq->mp) - RTE_PKTMBUF_HEADROOM;
-	if (max_rx_pkt_len < rq_buf_len && !rq->data_queue_enable)
-		rq_buf_len = max_rx_pkt_len;
+	if (max_rx_pktlen < rq_buf_len && !rq->data_queue_enable)
+		rq_buf_len = max_rx_pktlen;
 	for (i = 0; i < rq->ring.desc_count; i++, rqd++) {
 		mb = rte_mbuf_raw_alloc(rq->mp);
 		if (mb == NULL) {
@@ -818,7 +818,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	unsigned int mbuf_size, mbufs_per_pkt;
 	unsigned int nb_sop_desc, nb_data_desc;
 	uint16_t min_sop, max_sop, min_data, max_data;
-	uint32_t max_rx_pkt_len;
+	uint32_t max_rx_pktlen;
 
 	/*
 	 * Representor uses a reserved PF queue. Translate representor
@@ -854,23 +854,23 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 
 	mbuf_size = (uint16_t)(rte_pktmbuf_data_room_size(mp) -
 			       RTE_PKTMBUF_HEADROOM);
-	/* max_rx_pkt_len includes the ethernet header and CRC. */
-	max_rx_pkt_len = enic->rte_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	/* max_rx_pktlen includes the ethernet header and CRC. */
+	max_rx_pktlen = enic_mtu_to_max_rx_pktlen(enic->rte_dev->data->mtu);
 
 	if (enic->rte_dev->data->dev_conf.rxmode.offloads &
 	    DEV_RX_OFFLOAD_SCATTER) {
 		dev_info(enic, "Rq %u Scatter rx mode enabled\n", queue_idx);
 		/* ceil((max pkt len)/mbuf_size) */
-		mbufs_per_pkt = (max_rx_pkt_len + mbuf_size - 1) / mbuf_size;
+		mbufs_per_pkt = (max_rx_pktlen + mbuf_size - 1) / mbuf_size;
 	} else {
 		dev_info(enic, "Scatter rx mode disabled\n");
 		mbufs_per_pkt = 1;
-		if (max_rx_pkt_len > mbuf_size) {
+		if (max_rx_pktlen > mbuf_size) {
 			dev_warning(enic, "The maximum Rx packet size (%u) is"
 				    " larger than the mbuf size (%u), and"
 				    " scatter is disabled. Larger packets will"
 				    " be truncated.\n",
-				    max_rx_pkt_len, mbuf_size);
+				    max_rx_pktlen, mbuf_size);
 		}
 	}
 
@@ -879,16 +879,15 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 		rq_sop->data_queue_enable = 1;
 		rq_data->in_use = 1;
 		/*
-		 * HW does not directly support rxmode.max_rx_pkt_len. HW always
+		 * HW does not directly support MTU. HW always
 		 * receives packet sizes up to the "max" MTU.
 		 * If not using scatter, we can achieve the effect of dropping
 		 * larger packets by reducing the size of posted buffers.
 		 * See enic_alloc_rx_queue_mbufs().
 		 */
-		if (max_rx_pkt_len <
-		    enic_mtu_to_max_rx_pktlen(enic->max_mtu)) {
-			dev_warning(enic, "rxmode.max_rx_pkt_len is ignored"
-				    " when scatter rx mode is in use.\n");
+		if (enic->rte_dev->data->mtu < enic->max_mtu) {
+			dev_warning(enic,
+				"mtu is ignored when scatter rx mode is in use.\n");
 		}
 	} else {
 		dev_info(enic, "Rq %u Scatter rx mode not being used\n",
@@ -931,7 +930,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	if (mbufs_per_pkt > 1) {
 		dev_info(enic, "For max packet size %u and mbuf size %u valid"
 			 " rx descriptor range is %u to %u\n",
-			 max_rx_pkt_len, mbuf_size, min_sop + min_data,
+			 max_rx_pktlen, mbuf_size, min_sop + min_data,
 			 max_sop + max_data);
 	}
 	dev_info(enic, "Using %d rx descriptors (sop %d, data %d)\n",
@@ -1633,11 +1632,6 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 		dev_warning(enic,
 			"MTU (%u) is greater than value configured in NIC (%u)\n",
 			new_mtu, config_mtu);
-
-	/* Update the MTU and maximum packet length */
-	eth_dev->data->mtu = new_mtu;
-	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len =
-		enic_mtu_to_max_rx_pktlen(new_mtu);
 
 	/*
 	 * If the device has not started (enic_enable), nothing to do.

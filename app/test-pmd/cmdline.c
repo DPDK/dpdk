@@ -1880,45 +1880,38 @@ cmd_config_max_pkt_len_parsed(void *parsed_result,
 				__rte_unused void *data)
 {
 	struct cmd_config_max_pkt_len_result *res = parsed_result;
-	uint32_t max_rx_pkt_len_backup = 0;
-	portid_t pid;
+	portid_t port_id;
 	int ret;
+
+	if (strcmp(res->name, "max-pkt-len") != 0) {
+		printf("Unknown parameter\n");
+		return;
+	}
 
 	if (!all_ports_stopped()) {
 		fprintf(stderr, "Please stop all ports first\n");
 		return;
 	}
 
-	RTE_ETH_FOREACH_DEV(pid) {
-		struct rte_port *port = &ports[pid];
+	RTE_ETH_FOREACH_DEV(port_id) {
+		struct rte_port *port = &ports[port_id];
 
-		if (!strcmp(res->name, "max-pkt-len")) {
-			if (res->value < RTE_ETHER_MIN_LEN) {
-				fprintf(stderr,
-					"max-pkt-len can not be less than %d\n",
-					RTE_ETHER_MIN_LEN);
-				return;
-			}
-			if (res->value == port->dev_conf.rxmode.max_rx_pkt_len)
-				return;
-
-			ret = eth_dev_info_get_print_err(pid, &port->dev_info);
-			if (ret != 0) {
-				fprintf(stderr,
-					"rte_eth_dev_info_get() failed for port %u\n",
-					pid);
-				return;
-			}
-
-			max_rx_pkt_len_backup = port->dev_conf.rxmode.max_rx_pkt_len;
-
-			port->dev_conf.rxmode.max_rx_pkt_len = res->value;
-			if (update_jumbo_frame_offload(pid) != 0)
-				port->dev_conf.rxmode.max_rx_pkt_len = max_rx_pkt_len_backup;
-		} else {
-			fprintf(stderr, "Unknown parameter\n");
+		if (res->value < RTE_ETHER_MIN_LEN) {
+			fprintf(stderr,
+				"max-pkt-len can not be less than %d\n",
+				RTE_ETHER_MIN_LEN);
 			return;
 		}
+
+		ret = eth_dev_info_get_print_err(port_id, &port->dev_info);
+		if (ret != 0) {
+			fprintf(stderr,
+				"rte_eth_dev_info_get() failed for port %u\n",
+				port_id);
+			return;
+		}
+
+		update_jumbo_frame_offload(port_id, res->value);
 	}
 
 	init_port_config();

@@ -11,7 +11,6 @@ l2fwd_event_init_ports(struct l2fwd_resources *rsrc)
 	uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
-			.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 			.split_hdr_size = 0,
 		},
 		.txmode = {

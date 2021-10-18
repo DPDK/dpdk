@@ -44,6 +44,7 @@
 #define BURST_RX_RETRIES 4		/* Number of retries on RX. */
 
 #define JUMBO_FRAME_MAX_SIZE    0x2600
+#define MAX_MTU (JUMBO_FRAME_MAX_SIZE - (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN))
 
 /* State of virtio device. */
 #define DEVICE_MAC_LEARNING 0
@@ -633,8 +634,7 @@ us_vhost_parse_args(int argc, char **argv)
 			if (ret) {
 				vmdq_conf_default.rxmode.offloads |=
 					DEV_RX_OFFLOAD_JUMBO_FRAME;
-				vmdq_conf_default.rxmode.max_rx_pkt_len
-					= JUMBO_FRAME_MAX_SIZE;
+				vmdq_conf_default.rxmode.mtu = MAX_MTU;
 			}
 			break;
 

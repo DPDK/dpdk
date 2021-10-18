@@ -708,19 +708,18 @@ mvneta_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct mvneta_priv *priv = dev->data->dev_private;
 	struct mvneta_rxq *rxq;
 	uint32_t frame_size, buf_size = rte_pktmbuf_data_room_size(mp);
-	uint32_t max_rx_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	uint32_t max_rx_pktlen = dev->data->mtu + RTE_ETHER_HDR_LEN;
 
 	frame_size = buf_size - RTE_PKTMBUF_HEADROOM - MVNETA_PKT_EFFEC_OFFS;
 
-	if (frame_size < max_rx_pkt_len) {
+	if (frame_size < max_rx_pktlen) {
 		MVNETA_LOG(ERR,
 			"Mbuf size must be increased to %u bytes to hold up "
 			"to %u bytes of data.",
-			buf_size + max_rx_pkt_len - frame_size,
-			max_rx_pkt_len);
-		dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
-		MVNETA_LOG(INFO, "Setting max rx pkt len to %u",
-			dev->data->dev_conf.rxmode.max_rx_pkt_len);
+			max_rx_pktlen + buf_size - frame_size,
+			max_rx_pktlen);
+		dev->data->mtu = frame_size - RTE_ETHER_HDR_LEN;
+		MVNETA_LOG(INFO, "Setting MTU to %u", dev->data->mtu);
 	}
 
 	if (dev->data->rx_queues[idx]) {

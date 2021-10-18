@@ -234,7 +234,6 @@ static struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode	= ETH_MQ_RX_RSS,
-		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 		.offloads = DEV_RX_OFFLOAD_CHECKSUM,
 	},
@@ -2152,7 +2151,6 @@ cryptodevs_init(uint16_t req_queue_num)
 static void
 port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 {
-	uint32_t frame_size;
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf *txconf;
 	uint16_t nb_tx_queue, nb_rx_queue;
@@ -2200,10 +2198,9 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 	printf("Creating queues: nb_rx_queue=%d nb_tx_queue=%u...\n",
 			nb_rx_queue, nb_tx_queue);
 
-	frame_size = MTU_TO_FRAMELEN(mtu_size);
-	if (frame_size > local_port_conf.rxmode.max_rx_pkt_len)
+	if (mtu_size > RTE_ETHER_MTU)
 		local_port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	local_port_conf.rxmode.max_rx_pkt_len = frame_size;
+	local_port_conf.rxmode.mtu = mtu_size;
 
 	if (multi_seg_required()) {
 		local_port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SCATTER;

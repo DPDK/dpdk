@@ -440,16 +440,10 @@ cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 		goto exit;
 	}
 
-	frame_size += RTE_ETHER_CRC_LEN;
-
-	if (frame_size > RTE_ETHER_MAX_LEN)
+	if (mtu > RTE_ETHER_MTU)
 		dev->rx_offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		dev->rx_offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
-	/* Update max_rx_pkt_len */
-	data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
-
 exit:
 	return rc;
 }

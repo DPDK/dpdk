@@ -392,7 +392,7 @@ Maximum packet length
 ~~~~~~~~~~~~~~~~~~~~~
 
 The ThunderX SoC family NICs support a maximum of a 9K jumbo frame. The value
-is fixed and cannot be changed. So, even when the ``rxmode.max_rx_pkt_len``
+is fixed and cannot be changed. So, even when the ``rxmode.mtu``
 member of ``struct rte_eth_conf`` is set to a value lower than 9200, frames
 up to 9200 bytes can still reach the host interface.
 

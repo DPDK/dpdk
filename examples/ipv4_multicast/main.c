@@ -109,7 +109,8 @@ static struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
-		.max_rx_pkt_len = JUMBO_FRAME_MAX_SIZE,
+		.mtu = JUMBO_FRAME_MAX_SIZE - RTE_ETHER_HDR_LEN -
+			RTE_ETHER_CRC_LEN,
 		.split_hdr_size = 0,
 		.offloads = DEV_RX_OFFLOAD_JUMBO_FRAME,
 	},
@@ -714,9 +715,9 @@ main(int argc, char **argv)
 				"Error during getting device (port %u) info: %s\n",
 				portid, strerror(-ret));
 
-		local_port_conf.rxmode.max_rx_pkt_len = RTE_MIN(
-		    dev_info.max_rx_pktlen,
-		    local_port_conf.rxmode.max_rx_pkt_len);
+		local_port_conf.rxmode.mtu = RTE_MIN(
+		    dev_info.max_mtu,
+		    local_port_conf.rxmode.mtu);
 
 		/* get the lcore_id for this port */
 		while (rte_lcore_is_enabled(rx_lcore_id) == 0 ||

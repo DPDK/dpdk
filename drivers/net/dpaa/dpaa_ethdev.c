@@ -187,14 +187,12 @@ dpaa_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 	}
 
-	if (frame_size > DPAA_ETH_MAX_LEN)
+	if (mtu > RTE_ETHER_MTU)
 		dev->data->dev_conf.rxmode.offloads |=
 						DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		dev->data->dev_conf.rxmode.offloads &=
 						~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
 	fman_if_set_maxfrm(dev->process_private, frame_size);
 
@@ -213,6 +211,7 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 	struct fman_if *fif = dev->process_private;
 	struct __fman_if *__fif;
 	struct rte_intr_handle *intr_handle;
+	uint32_t max_rx_pktlen;
 	int speed, duplex;
 	int ret;
 
@@ -238,26 +237,16 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 		tx_offloads, dev_tx_offloads_nodis);
 	}
 
-	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		uint32_t max_len;
-
-		DPAA_PMD_DEBUG("enabling jumbo");
-
-		if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
-		    DPAA_MAX_RX_PKT_LEN)
-			max_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
-		else {
-			DPAA_PMD_INFO("enabling jumbo override conf max len=%d "
-				"supported is %d",
-				dev->data->dev_conf.rxmode.max_rx_pkt_len,
-				DPAA_MAX_RX_PKT_LEN);
-			max_len = DPAA_MAX_RX_PKT_LEN;
-		}
-
-		fman_if_set_maxfrm(dev->process_private, max_len);
-		dev->data->mtu = max_len
-			- RTE_ETHER_HDR_LEN - RTE_ETHER_CRC_LEN - VLAN_TAG_SIZE;
+	max_rx_pktlen = eth_conf->rxmode.mtu + RTE_ETHER_HDR_LEN +
+			RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE;
+	if (max_rx_pktlen > DPAA_MAX_RX_PKT_LEN) {
+		DPAA_PMD_INFO("enabling jumbo override conf max len=%d "
+			"supported is %d",
+			max_rx_pktlen, DPAA_MAX_RX_PKT_LEN);
+		max_rx_pktlen = DPAA_MAX_RX_PKT_LEN;
 	}
+
+	fman_if_set_maxfrm(dev->process_private, max_rx_pktlen);
 
 	if (rx_offloads & DEV_RX_OFFLOAD_SCATTER) {
 		DPAA_PMD_DEBUG("enabling scatter mode");
@@ -936,6 +925,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	u32 flags = 0;
 	int ret;
 	u32 buffsz = rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
+	uint32_t max_rx_pktlen;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -977,17 +967,17 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		return -EINVAL;
 	}
 
+	max_rx_pktlen = dev->data->mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
+		VLAN_TAG_SIZE;
 	/* Max packet can fit in single buffer */
-	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <= buffsz) {
+	if (max_rx_pktlen <= buffsz) {
 		;
 	} else if (dev->data->dev_conf.rxmode.offloads &
 			DEV_RX_OFFLOAD_SCATTER) {
-		if (dev->data->dev_conf.rxmode.max_rx_pkt_len >
-			buffsz * DPAA_SGT_MAX_ENTRIES) {
-			DPAA_PMD_ERR("max RxPkt size %d too big to fit "
+		if (max_rx_pktlen > buffsz * DPAA_SGT_MAX_ENTRIES) {
+			DPAA_PMD_ERR("Maximum Rx packet size %d too big to fit "
 				"MaxSGlist %d",
-				dev->data->dev_conf.rxmode.max_rx_pkt_len,
-				buffsz * DPAA_SGT_MAX_ENTRIES);
+				max_rx_pktlen, buffsz * DPAA_SGT_MAX_ENTRIES);
 			rte_errno = EOVERFLOW;
 			return -rte_errno;
 		}
@@ -995,8 +985,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		DPAA_PMD_WARN("The requested maximum Rx packet size (%u) is"
 		     " larger than a single mbuf (%u) and scattered"
 		     " mode has not been requested",
-		     dev->data->dev_conf.rxmode.max_rx_pkt_len,
-		     buffsz - RTE_PKTMBUF_HEADROOM);
+		     max_rx_pktlen, buffsz - RTE_PKTMBUF_HEADROOM);
 	}
 
 	dpaa_intf->bp_info = DPAA_MEMPOOL_TO_POOL_INFO(mp);
@@ -1034,8 +1023,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	dpaa_intf->valid = 1;
 	DPAA_PMD_DEBUG("if:%s sg_on = %d, max_frm =%d", dpaa_intf->name,
-		fman_if_get_sg_enable(fif),
-		dev->data->dev_conf.rxmode.max_rx_pkt_len);
+		fman_if_get_sg_enable(fif), max_rx_pktlen);
 	/* checking if push mode only, no error check for now */
 	if (!rxq->is_static &&
 	    dpaa_push_mode_max_queue > dpaa_push_queue_idx) {

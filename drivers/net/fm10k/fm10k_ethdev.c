@@ -757,7 +757,7 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 				FM10K_SRRCTL_LOOPBACK_SUPPRESS);
 
 		/* It adds dual VLAN length for supporting dual VLAN */
-		if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
+		if ((dev->data->mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
 				2 * FM10K_VLAN_TAG_SIZE) > buf_size ||
 			rxq->offloads & DEV_RX_OFFLOAD_SCATTER) {
 			uint32_t reg;

@@ -5047,6 +5047,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	uint16_t buf_size;
 	uint16_t i;
 	struct rte_eth_rxmode *rx_conf = &dev->data->dev_conf.rxmode;
+	uint32_t frame_size = dev->data->mtu + IXGBE_ETH_OVERHEAD;
 	int rc;
 
 	PMD_INIT_FUNC_TRACE();
@@ -5082,7 +5083,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		hlreg0 |= IXGBE_HLREG0_JUMBOEN;
 		maxfrs = IXGBE_READ_REG(hw, IXGBE_MAXFRS);
 		maxfrs &= 0x0000FFFF;
-		maxfrs |= (rx_conf->max_rx_pkt_len << 16);
+		maxfrs |= (frame_size << 16);
 		IXGBE_WRITE_REG(hw, IXGBE_MAXFRS, maxfrs);
 	} else
 		hlreg0 &= ~IXGBE_HLREG0_JUMBOEN;
@@ -5156,8 +5157,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 				       IXGBE_SRRCTL_BSIZEPKT_SHIFT);
 
 		/* It adds dual VLAN length for supporting dual VLAN */
-		if (dev->data->dev_conf.rxmode.max_rx_pkt_len +
-					    2 * IXGBE_VLAN_TAG_SIZE > buf_size)
+		if (frame_size + 2 * IXGBE_VLAN_TAG_SIZE > buf_size)
 			dev->data->scattered_rx = 1;
 		if (rxq->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 			rx_conf->offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
@@ -5637,6 +5637,7 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 	struct ixgbe_hw     *hw;
 	struct ixgbe_rx_queue *rxq;
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	uint32_t frame_size = dev->data->mtu + IXGBE_ETH_OVERHEAD;
 	uint64_t bus_addr;
 	uint32_t srrctl, psrtype = 0;
 	uint16_t buf_size;
@@ -5673,10 +5674,9 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 	 * ixgbevf_rlpml_set_vf even if jumbo frames are not used. This way,
 	 * VF packets received can work in all cases.
 	 */
-	if (ixgbevf_rlpml_set_vf(hw,
-	    (uint16_t)dev->data->dev_conf.rxmode.max_rx_pkt_len)) {
+	if (ixgbevf_rlpml_set_vf(hw, frame_size) != 0) {
 		PMD_INIT_LOG(ERR, "Set max packet length to %d failed.",
-			     dev->data->dev_conf.rxmode.max_rx_pkt_len);
+			     frame_size);
 		return -EINVAL;
 	}
 
@@ -5735,8 +5735,7 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 
 		if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER ||
 		    /* It adds dual VLAN length for supporting dual VLAN */
-		    (rxmode->max_rx_pkt_len +
-				2 * IXGBE_VLAN_TAG_SIZE) > buf_size) {
+		    (frame_size + 2 * IXGBE_VLAN_TAG_SIZE) > buf_size) {
 			if (!dev->data->scattered_rx)
 				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 			dev->data->scattered_rx = 1;

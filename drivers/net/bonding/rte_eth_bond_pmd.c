@@ -1721,8 +1721,8 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 		slave_eth_dev->data->dev_conf.rxmode.offloads &=
 				~DEV_RX_OFFLOAD_VLAN_FILTER;
 
-	slave_eth_dev->data->dev_conf.rxmode.max_rx_pkt_len =
-			bonded_eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	slave_eth_dev->data->dev_conf.rxmode.mtu =
+			bonded_eth_dev->data->dev_conf.rxmode.mtu;
 
 	if (bonded_eth_dev->data->dev_conf.rxmode.offloads &
 			DEV_RX_OFFLOAD_JUMBO_FRAME)

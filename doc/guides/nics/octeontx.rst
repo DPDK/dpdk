@@ -157,7 +157,7 @@ Maximum packet length
 ~~~~~~~~~~~~~~~~~~~~~
 
 The OCTEON TX SoC family NICs support a maximum of a 32K jumbo frame. The value
-is fixed and cannot be changed. So, even when the ``rxmode.max_rx_pkt_len``
+is fixed and cannot be changed. So, even when the ``rxmode.mtu``
 member of ``struct rte_eth_conf`` is set to a value lower than 32k, frames
 up to 32k bytes can still reach the host interface.
 

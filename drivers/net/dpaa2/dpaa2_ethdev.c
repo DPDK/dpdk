@@ -540,6 +540,7 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 	int tx_l3_csum_offload = false;
 	int tx_l4_csum_offload = false;
 	int ret, tc_index;
+	uint32_t max_rx_pktlen;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -559,25 +560,19 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		tx_offloads, dev_tx_offloads_nodis);
 	}
 
-	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		if (eth_conf->rxmode.max_rx_pkt_len <= DPAA2_MAX_RX_PKT_LEN) {
-			ret = dpni_set_max_frame_length(dpni, CMD_PRI_LOW,
-				priv->token, eth_conf->rxmode.max_rx_pkt_len
-				- RTE_ETHER_CRC_LEN);
-			if (ret) {
-				DPAA2_PMD_ERR(
-					"Unable to set mtu. check config");
-				return ret;
-			}
-			dev->data->mtu =
-				dev->data->dev_conf.rxmode.max_rx_pkt_len -
-				RTE_ETHER_HDR_LEN - RTE_ETHER_CRC_LEN -
-				VLAN_TAG_SIZE;
-				DPAA2_PMD_INFO("MTU configured for the device: %d",
-						dev->data->mtu);
-		} else {
-			return -1;
+	max_rx_pktlen = eth_conf->rxmode.mtu + RTE_ETHER_HDR_LEN +
+				RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE;
+	if (max_rx_pktlen <= DPAA2_MAX_RX_PKT_LEN) {
+		ret = dpni_set_max_frame_length(dpni, CMD_PRI_LOW,
+			priv->token, max_rx_pktlen - RTE_ETHER_CRC_LEN);
+		if (ret != 0) {
+			DPAA2_PMD_ERR("Unable to set mtu. check config");
+			return ret;
 		}
+		DPAA2_PMD_INFO("MTU configured for the device: %d",
+				dev->data->mtu);
+	} else {
+		return -1;
 	}
 
 	if (eth_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) {
@@ -1470,14 +1465,12 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	if (mtu < RTE_ETHER_MIN_MTU || frame_size > DPAA2_MAX_RX_PKT_LEN)
 		return -EINVAL;
 
-	if (frame_size > DPAA2_ETH_MAX_LEN)
+	if (mtu > RTE_ETHER_MTU)
 		dev->data->dev_conf.rxmode.offloads |=
 						DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		dev->data->dev_conf.rxmode.offloads &=
 						~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
 	/* Set the Max Rx frame length as 'mtu' +
 	 * Maximum Ethernet header length

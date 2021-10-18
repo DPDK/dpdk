@@ -370,7 +370,7 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 	}
 
 	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
-		hw->mtu = rxmode->max_rx_pkt_len;
+		hw->mtu = dev->data->mtu;
 
 	if (txmode->offloads & DEV_TX_OFFLOAD_VLAN_INSERT)
 		ctrl |= NFP_NET_CFG_CTRL_TXVLAN;
@@ -963,16 +963,13 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	/* switch to jumbo mode if needed */
-	if ((uint32_t)mtu > RTE_ETHER_MTU)
+	if (mtu > RTE_ETHER_MTU)
 		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		dev->data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
-	/* update max frame size */
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = (uint32_t)mtu;
-
 	/* writing to configuration space */
-	nn_cfg_writel(hw, NFP_NET_CFG_MTU, (uint32_t)mtu);
+	nn_cfg_writel(hw, NFP_NET_CFG_MTU, mtu);
 
 	hw->mtu = mtu;
 

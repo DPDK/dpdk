@@ -134,7 +134,7 @@ static struct rte_eth_conf port_conf_default = {
 	.link_speeds = 0,
 	.rxmode = {
 		.mq_mode = ETH_MQ_RX_NONE,
-		.max_rx_pkt_len = 9000, /* Jumbo frame max packet len */
+		.mtu = 9000 - (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN), /* Jumbo frame MTU */
 		.split_hdr_size = 0, /* Header split buffer size */
 	},
 	.rx_adv_conf = {

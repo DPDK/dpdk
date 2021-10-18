@@ -166,7 +166,7 @@ Jumbo frame
 Supports Rx jumbo frames.
 
 * **[uses]    rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_JUMBO_FRAME``.
-  ``dev_conf.rxmode.max_rx_pkt_len``.
+  ``dev_conf.rxmode.mtu``.
 * **[related] rte_eth_dev_info**: ``max_rx_pktlen``.
 * **[related] API**: ``rte_eth_dev_set_mtu()``.
 

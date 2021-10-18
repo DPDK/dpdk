@@ -1209,7 +1209,6 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 	int diag;
 	struct rte_port *rte_port = &ports[port_id];
 	struct rte_eth_dev_info dev_info;
-	uint16_t eth_overhead;
 	int ret;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
@@ -1226,21 +1225,18 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 		return;
 	}
 	diag = rte_eth_dev_set_mtu(port_id, mtu);
-	if (diag)
+	if (diag != 0) {
 		fprintf(stderr, "Set MTU failed. diag=%d\n", diag);
-	else if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		/*
-		 * Ether overhead in driver is equal to the difference of
-		 * max_rx_pktlen and max_mtu in rte_eth_dev_info when the
-		 * device supports jumbo frame.
-		 */
-		eth_overhead = dev_info.max_rx_pktlen - dev_info.max_mtu;
-		if (mtu > RTE_ETHER_MTU) {
+		return;
+	}
+
+	rte_port->dev_conf.rxmode.mtu = mtu;
+
+	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+		if (mtu > RTE_ETHER_MTU)
 			rte_port->dev_conf.rxmode.offloads |=
 						DEV_RX_OFFLOAD_JUMBO_FRAME;
-			rte_port->dev_conf.rxmode.max_rx_pkt_len =
-						mtu + eth_overhead;
-		} else
+		else
 			rte_port->dev_conf.rxmode.offloads &=
 						~DEV_RX_OFFLOAD_JUMBO_FRAME;
 	}

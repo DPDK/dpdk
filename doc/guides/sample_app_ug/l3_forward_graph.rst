@@ -48,7 +48,7 @@ The application has a number of command line options similar to l3fwd::
                                    [-P]
                                    --config(port,queue,lcore)[,(port,queue,lcore)]
                                    [--eth-dest=X,MM:MM:MM:MM:MM:MM]
-                                   [--enable-jumbo [--max-pkt-len PKTLEN]]
+                                   [--max-pkt-len PKTLEN]
                                    [--no-numa]
                                    [--per-port-pool]
 
@@ -63,9 +63,7 @@ Where,
 
 * ``--eth-dest=X,MM:MM:MM:MM:MM:MM:`` Optional, ethernet destination for port X.
 
-* ``--enable-jumbo:`` Optional, enables jumbo frames.
-
-* ``--max-pkt-len:`` Optional, under the premise of enabling jumbo, maximum packet length in decimal (64-9600).
+* ``--max-pkt-len:`` Optional, maximum packet length in decimal (64-9600).
 
 * ``--no-numa:`` Optional, disables numa awareness.
 

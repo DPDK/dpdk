@@ -40,12 +40,6 @@ tsc_field(struct rte_mbuf *mbuf)
 static const char usage[] =
 	"%s EAL_ARGS -- [-t]\n";
 
-static const struct rte_eth_conf port_conf_default = {
-	.rxmode = {
-		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
-	},
-};
-
 static struct {
 	uint64_t total_cycles;
 	uint64_t total_queue_cycles;
@@ -124,7 +118,7 @@ calc_latency(uint16_t port, uint16_t qidx __rte_unused,
 static inline int
 port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
-	struct rte_eth_conf port_conf = port_conf_default;
+	struct rte_eth_conf port_conf;
 	const uint16_t rx_rings = 1, tx_rings = 1;
 	uint16_t nb_rxd = RX_RING_SIZE;
 	uint16_t nb_txd = TX_RING_SIZE;
@@ -136,6 +130,8 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 
 	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
+
+	memset(&port_conf, 0, sizeof(struct rte_eth_conf));
 
 	retval = rte_eth_dev_info_get(port, &dev_info);
 	if (retval != 0) {

@@ -1059,17 +1059,18 @@ static int
 avp_dev_enable_scattered(struct rte_eth_dev *eth_dev,
 			 struct avp_dev *avp)
 {
-	unsigned int max_rx_pkt_len;
+	unsigned int max_rx_pktlen;
 
-	max_rx_pkt_len = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	max_rx_pktlen = eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
+		RTE_ETHER_CRC_LEN;
 
-	if ((max_rx_pkt_len > avp->guest_mbuf_size) ||
-	    (max_rx_pkt_len > avp->host_mbuf_size)) {
+	if (max_rx_pktlen > avp->guest_mbuf_size ||
+	    max_rx_pktlen > avp->host_mbuf_size) {
 		/*
 		 * If the guest MTU is greater than either the host or guest
 		 * buffers then chained mbufs have to be enabled in the TX
 		 * direction.  It is assumed that the application will not need
-		 * to send packets larger than their max_rx_pkt_len (MRU).
+		 * to send packets larger than their MTU.
 		 */
 		return 1;
 	}
@@ -1124,7 +1125,7 @@ avp_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 
 	PMD_DRV_LOG(DEBUG, "AVP max_rx_pkt_len=(%u,%u) mbuf_size=(%u,%u)\n",
 		    avp->max_rx_pkt_len,
-		    eth_dev->data->dev_conf.rxmode.max_rx_pkt_len,
+		    eth_dev->data->mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN,
 		    avp->host_mbuf_size,
 		    avp->guest_mbuf_size);
 
@@ -1889,8 +1890,8 @@ avp_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			 * function; send it truncated to avoid the performance
 			 * hit of having to manage returning the already
 			 * allocated buffer to the free list.  This should not
-			 * happen since the application should have set the
-			 * max_rx_pkt_len based on its MTU and it should be
+			 * happen since the application should have not send
+			 * packages larger than its MTU and it should be
 			 * policing its own packet sizes.
 			 */
 			txq->errors++;

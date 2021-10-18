@@ -162,12 +162,7 @@ Forwarding application is shown below:
     :end-before: >8 End of initializing a given port.
 
 The Ethernet ports are configured with default settings using the
-``rte_eth_dev_configure()`` function and the ``port_conf_default`` struct.
-
-.. literalinclude:: ../../../examples/flow_classify/flow_classify.c
-    :language: c
-    :start-after: Ethernet ports configured with default settings using struct. 8<
-    :end-before: >8 End of configuration of Ethernet ports.
+``rte_eth_dev_configure()`` function.
 
 For this example the ports are set up with 1 RX and 1 TX queue using the
 ``rte_eth_rx_queue_setup()`` and ``rte_eth_tx_queue_setup()`` functions.

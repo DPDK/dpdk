@@ -126,10 +126,6 @@ mvneta_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
-		dev->data->mtu = dev->data->dev_conf.rxmode.max_rx_pkt_len -
-				 MRVL_NETA_ETH_HDRS_LEN;
-
 	if (dev->data->dev_conf.txmode.offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
 		priv->multiseg = 1;
 
@@ -260,9 +256,6 @@ mvneta_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		MVNETA_LOG(ERR, "Invalid MTU [%u] or MRU [%u]", mtu, mru);
 		return -EINVAL;
 	}
-
-	dev->data->mtu = mtu;
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = mru - MV_MH_SIZE;
 
 	if (!priv->ppio)
 		/* It is OK. New MTU will be set later on mvneta_dev_start */

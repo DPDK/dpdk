@@ -1161,13 +1161,8 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 		rx_offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 	eth_dev->data->dev_conf.rxmode.offloads = rx_offloads;
 
-	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		eth_dev->data->mtu =
-			eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
-			RTE_ETHER_HDR_LEN - RTE_ETHER_CRC_LEN - VLAN_TAG_SIZE *
-			BNXT_NUM_VLANS;
-		bnxt_mtu_set_op(eth_dev, eth_dev->data->mtu);
-	}
+	bnxt_mtu_set_op(eth_dev, eth_dev->data->mtu);
+
 	return 0;
 
 resource_error:
@@ -1205,6 +1200,7 @@ void bnxt_print_link_info(struct rte_eth_dev *eth_dev)
  */
 static int bnxt_scattered_rx(struct rte_eth_dev *eth_dev)
 {
+	uint32_t overhead = BNXT_MAX_PKT_LEN - BNXT_MAX_MTU;
 	uint16_t buf_size;
 	int i;
 
@@ -1219,7 +1215,7 @@ static int bnxt_scattered_rx(struct rte_eth_dev *eth_dev)
 
 		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
 				      RTE_PKTMBUF_HEADROOM);
-		if (eth_dev->data->dev_conf.rxmode.max_rx_pkt_len > buf_size)
+		if (eth_dev->data->mtu + overhead > buf_size)
 			return 1;
 	}
 	return 0;
@@ -3030,6 +3026,7 @@ bnxt_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 {
+	uint32_t overhead = BNXT_MAX_PKT_LEN - BNXT_MAX_MTU;
 	struct bnxt *bp = eth_dev->data->dev_private;
 	uint32_t new_pkt_size;
 	uint32_t rc = 0;
@@ -3043,8 +3040,7 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	if (!eth_dev->data->nb_rx_queues)
 		return rc;
 
-	new_pkt_size = new_mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
-		       VLAN_TAG_SIZE * BNXT_NUM_VLANS;
+	new_pkt_size = new_mtu + overhead;
 
 	/*
 	 * Disallow any MTU change that would require scattered receive support
@@ -3071,7 +3067,7 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	}
 
 	/* Is there a change in mtu setting? */
-	if (eth_dev->data->dev_conf.rxmode.max_rx_pkt_len == new_pkt_size)
+	if (eth_dev->data->mtu == new_mtu)
 		return rc;
 
 	for (i = 0; i < bp->nr_vnics; i++) {
@@ -3092,9 +3088,6 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 				return rc;
 		}
 	}
-
-	if (!rc)
-		eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = new_pkt_size;
 
 	if (bnxt_hwrm_config_host_mtu(bp))
 		PMD_DRV_LOG(WARNING, "Failed to configure host MTU\n");

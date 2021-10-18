@@ -175,16 +175,12 @@ static int
 bnx2x_dev_configure(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
-	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 
 	int mp_ncpus = sysconf(_SC_NPROCESSORS_CONF);
 
 	PMD_INIT_FUNC_TRACE(sc);
 
-	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		sc->mtu = dev->data->dev_conf.rxmode.max_rx_pkt_len;
-		dev->data->mtu = sc->mtu;
-	}
+	sc->mtu = dev->data->dev_conf.rxmode.mtu;
 
 	if (dev->data->nb_tx_queues > dev->data->nb_rx_queues) {
 		PMD_DRV_LOG(ERR, sc, "The number of TX queues is greater than number of RX queues");

@@ -1312,12 +1312,6 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 			return -ENOMEM;
 	}
 
-	/* If jumbo enabled adjust MTU */
-	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
-		eth_dev->data->mtu =
-			eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
-			RTE_ETHER_HDR_LEN - QEDE_ETH_OVERHEAD;
-
 	if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER)
 		eth_dev->data->scattered_rx = 1;
 
@@ -2315,7 +2309,6 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct rte_eth_dev_info dev_info = {0};
 	struct qede_fastpath *fp;
-	uint32_t max_rx_pkt_len;
 	uint32_t frame_size;
 	uint16_t bufsz;
 	bool restart = false;
@@ -2327,8 +2320,8 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		DP_ERR(edev, "Error during getting ethernet device info\n");
 		return rc;
 	}
-	max_rx_pkt_len = mtu + QEDE_MAX_ETHER_HDR_LEN;
-	frame_size = max_rx_pkt_len;
+
+	frame_size = mtu + QEDE_MAX_ETHER_HDR_LEN;
 	if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen) {
 		DP_ERR(edev, "MTU %u out of range, %u is maximum allowable\n",
 		       mtu, dev_info.max_rx_pktlen - RTE_ETHER_HDR_LEN -
@@ -2368,7 +2361,7 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 			fp->rxq->rx_buf_size = rc;
 		}
 	}
-	if (frame_size > QEDE_ETH_MAX_LEN)
+	if (mtu > RTE_ETHER_MTU)
 		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		dev->data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
@@ -2377,9 +2370,6 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		qede_dev_start(dev);
 		dev->data->dev_started = 1;
 	}
-
-	/* update max frame size */
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = max_rx_pkt_len;
 
 	return 0;
 }

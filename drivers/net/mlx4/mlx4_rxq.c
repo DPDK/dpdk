@@ -753,6 +753,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	int ret;
 	uint32_t crc_present;
 	uint64_t offloads;
+	uint32_t max_rx_pktlen;
 
 	offloads = conf->offloads | dev->data->dev_conf.rxmode.offloads;
 
@@ -829,13 +830,11 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	dev->data->rx_queues[idx] = rxq;
 	/* Enable scattered packets support for this queue if necessary. */
 	MLX4_ASSERT(mb_len >= RTE_PKTMBUF_HEADROOM);
-	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
-	    (mb_len - RTE_PKTMBUF_HEADROOM)) {
+	max_rx_pktlen = dev->data->mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+	if (max_rx_pktlen <= (mb_len - RTE_PKTMBUF_HEADROOM)) {
 		;
 	} else if (offloads & DEV_RX_OFFLOAD_SCATTER) {
-		uint32_t size =
-			RTE_PKTMBUF_HEADROOM +
-			dev->data->dev_conf.rxmode.max_rx_pkt_len;
+		uint32_t size = RTE_PKTMBUF_HEADROOM + max_rx_pktlen;
 		uint32_t sges_n;
 
 		/*
@@ -847,21 +846,19 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		/* Make sure sges_n did not overflow. */
 		size = mb_len * (1 << rxq->sges_n);
 		size -= RTE_PKTMBUF_HEADROOM;
-		if (size < dev->data->dev_conf.rxmode.max_rx_pkt_len) {
+		if (size < max_rx_pktlen) {
 			rte_errno = EOVERFLOW;
 			ERROR("%p: too many SGEs (%u) needed to handle"
 			      " requested maximum packet size %u",
 			      (void *)dev,
-			      1 << sges_n,
-			      dev->data->dev_conf.rxmode.max_rx_pkt_len);
+			      1 << sges_n, max_rx_pktlen);
 			goto error;
 		}
 	} else {
 		WARN("%p: the requested maximum Rx packet size (%u) is"
 		     " larger than a single mbuf (%u) and scattered"
 		     " mode has not been requested",
-		     (void *)dev,
-		     dev->data->dev_conf.rxmode.max_rx_pkt_len,
+		     (void *)dev, max_rx_pktlen,
 		     mb_len - RTE_PKTMBUF_HEADROOM);
 	}
 	DEBUG("%p: maximum number of segments per packet: %u",

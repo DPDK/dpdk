@@ -19,10 +19,6 @@
 #define MBUF_CACHE_SIZE 250
 #define BURST_SIZE 32
 
-static const struct rte_eth_conf port_conf_default = {
-	.rxmode = { .max_rx_pkt_len = RTE_ETHER_MAX_LEN }
-};
-
 /* l2fwd-cat.c: CAT enabled, basic DPDK skeleton forwarding example. */
 
 /*
@@ -32,7 +28,7 @@ static const struct rte_eth_conf port_conf_default = {
 static inline int
 port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
-	struct rte_eth_conf port_conf = port_conf_default;
+	struct rte_eth_conf port_conf;
 	const uint16_t rx_rings = 1, tx_rings = 1;
 	int retval;
 	uint16_t q;
@@ -41,6 +37,8 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 
 	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
+
+	memset(&port_conf, 0, sizeof(struct rte_eth_conf));
 
 	/* Configure the Ethernet device. */
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);

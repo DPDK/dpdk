@@ -59,7 +59,7 @@ The application has a number of command line options::
         -p PORTMASK [-P]
         --rx(port,queue,lcore,thread)[,(port,queue,lcore,thread)]
         --tx(lcore,thread)[,(lcore,thread)]
-        [--enable-jumbo] [--max-pkt-len PKTLEN]]  [--no-numa]
+        [--max-pkt-len PKTLEN]  [--no-numa]
         [--hash-entry-num] [--ipv6] [--no-lthreads] [--stat-lcore lcore]
         [--parse-ptype]
 
@@ -79,8 +79,6 @@ Where:
 * ``--tx (lcore,thread)[,(lcore,thread)]``: the list of TX threads identifying
   the lcore the thread runs on, and the id of RX thread with which it is
   associated. The parameters are explained below.
-
-* ``--enable-jumbo``: optional, enables jumbo frames.
 
 * ``--max-pkt-len``: optional, maximum packet length in decimal (64-9600).
 

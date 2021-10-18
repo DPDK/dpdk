@@ -573,8 +573,7 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 			  * if PF has jumbo frames enabled which means legacy
 			  * VFs are disabled.
 			  */
-			if (dev->data->dev_conf.rxmode.max_rx_pkt_len >
-			    IXGBE_ETH_MAX_LEN)
+			if (dev->data->mtu > RTE_ETHER_MTU)
 				break;
 			/* fall through */
 		default:
@@ -584,8 +583,7 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 			 * legacy VFs.
 			 */
 			if (max_frame > IXGBE_ETH_MAX_LEN ||
-			    dev->data->dev_conf.rxmode.max_rx_pkt_len >
-			    IXGBE_ETH_MAX_LEN)
+					dev->data->mtu > RTE_ETHER_MTU)
 				return -1;
 			break;
 		}

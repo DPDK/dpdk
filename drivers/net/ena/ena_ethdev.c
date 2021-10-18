@@ -677,26 +677,14 @@ err:
 	return rc;
 }
 
-static uint32_t ena_get_mtu_conf(struct ena_adapter *adapter)
-{
-	uint32_t max_frame_len = adapter->max_mtu;
-
-	if (adapter->edev_data->dev_conf.rxmode.offloads &
-	    DEV_RX_OFFLOAD_JUMBO_FRAME)
-		max_frame_len =
-			adapter->edev_data->dev_conf.rxmode.max_rx_pkt_len;
-
-	return max_frame_len;
-}
-
 static int ena_check_valid_conf(struct ena_adapter *adapter)
 {
-	uint32_t max_frame_len = ena_get_mtu_conf(adapter);
+	uint32_t mtu = adapter->edev_data->mtu;
 
-	if (max_frame_len > adapter->max_mtu || max_frame_len < ENA_MIN_MTU) {
+	if (mtu > adapter->max_mtu || mtu < ENA_MIN_MTU) {
 		PMD_INIT_LOG(ERR,
 			"Unsupported MTU of %d. Max MTU: %d, min MTU: %d\n",
-			max_frame_len, adapter->max_mtu, ENA_MIN_MTU);
+			mtu, adapter->max_mtu, ENA_MIN_MTU);
 		return ENA_COM_UNSUPPORTED;
 	}
 
@@ -869,10 +857,10 @@ static int ena_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	ena_dev = &adapter->ena_dev;
 	ena_assert_msg(ena_dev != NULL, "Uninitialized device\n");
 
-	if (mtu > ena_get_mtu_conf(adapter) || mtu < ENA_MIN_MTU) {
+	if (mtu > adapter->max_mtu || mtu < ENA_MIN_MTU) {
 		PMD_DRV_LOG(ERR,
 			"Invalid MTU setting. New MTU: %d, max MTU: %d, min MTU: %d\n",
-			mtu, ena_get_mtu_conf(adapter), ENA_MIN_MTU);
+			mtu, adapter->max_mtu, ENA_MIN_MTU);
 		return -EINVAL;
 	}
 
@@ -1943,7 +1931,10 @@ static int ena_infos_get(struct rte_eth_dev *dev,
 	dev_info->hash_key_size = ENA_HASH_KEY_SIZE;
 
 	dev_info->min_rx_bufsize = ENA_MIN_FRAME_LEN;
-	dev_info->max_rx_pktlen  = adapter->max_mtu;
+	dev_info->max_rx_pktlen  = adapter->max_mtu + RTE_ETHER_HDR_LEN +
+		RTE_ETHER_CRC_LEN;
+	dev_info->min_mtu = ENA_MIN_MTU;
+	dev_info->max_mtu = adapter->max_mtu;
 	dev_info->max_mac_addrs = 1;
 
 	dev_info->max_rx_queues = adapter->max_num_io_queues;

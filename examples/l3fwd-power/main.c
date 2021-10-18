@@ -250,7 +250,6 @@ uint16_t nb_lcore_params = RTE_DIM(lcore_params_array_default);
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode        = ETH_MQ_RX_RSS,
-		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 		.offloads = DEV_RX_OFFLOAD_CHECKSUM,
 	},
@@ -264,6 +263,8 @@ static struct rte_eth_conf port_conf = {
 		.mq_mode = ETH_MQ_TX_NONE,
 	}
 };
+
+static uint32_t max_pkt_len;
 
 static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
 
@@ -1600,16 +1601,15 @@ print_usage(const char *prgname)
 		"  [--config (port,queue,lcore)[,(port,queue,lcore]]"
 		"  [--high-perf-cores CORELIST"
 		"  [--perf-config (port,queue,hi_perf,lcore_index)[,(port,queue,hi_perf,lcore_index]]"
-		"  [--enable-jumbo [--max-pkt-len PKTLEN]]\n"
+		"  [--max-pkt-len PKTLEN]\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
-		"  -P : enable promiscuous mode\n"
+		"  -P: enable promiscuous mode\n"
 		"  --config (port,queue,lcore): rx queues configuration\n"
 		"  --high-perf-cores CORELIST: list of high performance cores\n"
 		"  --perf-config: similar as config, cores specified as indices"
 		" for bins containing high or regular performance cores\n"
 		"  --no-numa: optional, disable numa awareness\n"
-		"  --enable-jumbo: enable jumbo frame"
-		" which max packet len is PKTLEN in decimal (64-9600)\n"
+		"  --max-pkt-len PKTLEN: maximum packet length in decimal (64-9600)\n"
 		"  --parse-ptype: parse packet type by software\n"
 		"  --legacy: use legacy interrupt-based scaling\n"
 		"  --empty-poll: enable empty poll detection"
@@ -1794,6 +1794,7 @@ parse_ep_config(const char *q_arg)
 #define CMD_LINE_OPT_INTERRUPT_ONLY "interrupt-only"
 #define CMD_LINE_OPT_TELEMETRY "telemetry"
 #define CMD_LINE_OPT_PMD_MGMT "pmd-mgmt"
+#define CMD_LINE_OPT_MAX_PKT_LEN "max-pkt-len"
 
 /* Parse the argument given in the command line of the application */
 static int
@@ -1809,7 +1810,7 @@ parse_args(int argc, char **argv)
 		{"perf-config", 1, 0, 0},
 		{"high-perf-cores", 1, 0, 0},
 		{"no-numa", 0, 0, 0},
-		{"enable-jumbo", 0, 0, 0},
+		{CMD_LINE_OPT_MAX_PKT_LEN, 1, 0, 0},
 		{CMD_LINE_OPT_EMPTY_POLL, 1, 0, 0},
 		{CMD_LINE_OPT_PARSE_PTYPE, 0, 0, 0},
 		{CMD_LINE_OPT_LEGACY, 0, 0, 0},
@@ -1953,36 +1954,10 @@ parse_args(int argc, char **argv)
 			}
 
 			if (!strncmp(lgopts[option_index].name,
-					"enable-jumbo", 12)) {
-				struct option lenopts =
-					{"max-pkt-len", required_argument, \
-									0, 0};
-
-				printf("jumbo frame is enabled \n");
-				port_conf.rxmode.offloads |=
-						DEV_RX_OFFLOAD_JUMBO_FRAME;
-				port_conf.txmode.offloads |=
-						DEV_TX_OFFLOAD_MULTI_SEGS;
-
-				/**
-				 * if no max-pkt-len set, use the default value
-				 * RTE_ETHER_MAX_LEN
-				 */
-				if (0 == getopt_long(argc, argvopt, "",
-						&lenopts, &option_index)) {
-					ret = parse_max_pkt_len(optarg);
-					if ((ret < 64) ||
-						(ret > MAX_JUMBO_PKT_LEN)){
-						printf("invalid packet "
-								"length\n");
-						print_usage(prgname);
-						return -1;
-					}
-					port_conf.rxmode.max_rx_pkt_len = ret;
-				}
-				printf("set jumbo frame "
-					"max packet length to %u\n",
-				(unsigned int)port_conf.rxmode.max_rx_pkt_len);
+					CMD_LINE_OPT_MAX_PKT_LEN,
+					sizeof(CMD_LINE_OPT_MAX_PKT_LEN))) {
+				printf("Custom frame size is configured\n");
+				max_pkt_len = parse_max_pkt_len(optarg);
 			}
 
 			if (!strncmp(lgopts[option_index].name,
@@ -2504,6 +2479,43 @@ mode_to_str(enum appmode mode)
 	}
 }
 
+static uint32_t
+eth_dev_get_overhead_len(uint32_t max_rx_pktlen, uint16_t max_mtu)
+{
+	uint32_t overhead_len;
+
+	if (max_mtu != UINT16_MAX && max_rx_pktlen > max_mtu)
+		overhead_len = max_rx_pktlen - max_mtu;
+	else
+		overhead_len = RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+
+	return overhead_len;
+}
+
+static int
+config_port_max_pkt_len(struct rte_eth_conf *conf,
+		struct rte_eth_dev_info *dev_info)
+{
+	uint32_t overhead_len;
+
+	if (max_pkt_len == 0)
+		return 0;
+
+	if (max_pkt_len < RTE_ETHER_MIN_LEN || max_pkt_len > MAX_JUMBO_PKT_LEN)
+		return -1;
+
+	overhead_len = eth_dev_get_overhead_len(dev_info->max_rx_pktlen,
+			dev_info->max_mtu);
+	conf->rxmode.mtu = max_pkt_len - overhead_len;
+
+	if (conf->rxmode.mtu > RTE_ETHER_MTU) {
+		conf->txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+		conf->rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	}
+
+	return 0;
+}
+
 /* Power library initialized in the main routine. 8< */
 int
 main(int argc, char **argv)
@@ -2620,6 +2632,12 @@ main(int argc, char **argv)
 			rte_exit(EXIT_FAILURE,
 				"Error during getting device (port %u) info: %s\n",
 				portid, strerror(-ret));
+
+		ret = config_port_max_pkt_len(&local_port_conf, &dev_info);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				"Invalid max packet length: %u (port %u)\n",
+				max_pkt_len, portid);
 
 		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 			local_port_conf.txmode.offloads |=

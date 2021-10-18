@@ -1315,6 +1315,19 @@ eth_dev_validate_offloads(uint16_t port_id, uint64_t req_offloads,
 	return ret;
 }
 
+static uint32_t
+eth_dev_get_overhead_len(uint32_t max_rx_pktlen, uint16_t max_mtu)
+{
+	uint32_t overhead_len;
+
+	if (max_mtu != UINT16_MAX && max_rx_pktlen > max_mtu)
+		overhead_len = max_rx_pktlen - max_mtu;
+	else
+		overhead_len = RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+
+	return overhead_len;
+}
+
 int
 rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		      const struct rte_eth_conf *dev_conf)
@@ -1322,7 +1335,8 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_conf orig_conf;
-	uint16_t overhead_len;
+	uint32_t max_rx_pktlen;
+	uint32_t overhead_len;
 	int diag;
 	int ret;
 	uint16_t old_mtu;
@@ -1372,11 +1386,8 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		goto rollback;
 
 	/* Get the real Ethernet overhead length */
-	if (dev_info.max_mtu != UINT16_MAX &&
-	    dev_info.max_rx_pktlen > dev_info.max_mtu)
-		overhead_len = dev_info.max_rx_pktlen - dev_info.max_mtu;
-	else
-		overhead_len = RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+	overhead_len = eth_dev_get_overhead_len(dev_info.max_rx_pktlen,
+			dev_info.max_mtu);
 
 	/* If number of queues specified by application for both Rx and Tx is
 	 * zero, use driver preferred values. This cannot be done individually
@@ -1445,37 +1456,34 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	}
 
 	/*
-	 * If jumbo frames are enabled, check that the maximum RX packet
-	 * length is supported by the configured device.
+	 * Check that the maximum RX packet length is supported by the
+	 * configured device.
 	 */
-	if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		if (dev_conf->rxmode.max_rx_pkt_len > dev_info.max_rx_pktlen) {
-			RTE_ETHDEV_LOG(ERR,
-				"Ethdev port_id=%u max_rx_pkt_len %u > max valid value %u\n",
-				port_id, dev_conf->rxmode.max_rx_pkt_len,
-				dev_info.max_rx_pktlen);
-			ret = -EINVAL;
-			goto rollback;
-		} else if (dev_conf->rxmode.max_rx_pkt_len < RTE_ETHER_MIN_LEN) {
-			RTE_ETHDEV_LOG(ERR,
-				"Ethdev port_id=%u max_rx_pkt_len %u < min valid value %u\n",
-				port_id, dev_conf->rxmode.max_rx_pkt_len,
-				(unsigned int)RTE_ETHER_MIN_LEN);
-			ret = -EINVAL;
-			goto rollback;
-		}
-
-		/* Scale the MTU size to adapt max_rx_pkt_len */
-		dev->data->mtu = dev->data->dev_conf.rxmode.max_rx_pkt_len -
-				overhead_len;
-	} else {
-		uint16_t pktlen = dev_conf->rxmode.max_rx_pkt_len;
-		if (pktlen < RTE_ETHER_MIN_MTU + overhead_len ||
-		    pktlen > RTE_ETHER_MTU + overhead_len)
-			/* Use default value */
-			dev->data->dev_conf.rxmode.max_rx_pkt_len =
-						RTE_ETHER_MTU + overhead_len;
+	if (dev_conf->rxmode.mtu == 0)
+		dev->data->dev_conf.rxmode.mtu = RTE_ETHER_MTU;
+	max_rx_pktlen = dev->data->dev_conf.rxmode.mtu + overhead_len;
+	if (max_rx_pktlen > dev_info.max_rx_pktlen) {
+		RTE_ETHDEV_LOG(ERR,
+			"Ethdev port_id=%u max_rx_pktlen %u > max valid value %u\n",
+			port_id, max_rx_pktlen, dev_info.max_rx_pktlen);
+		ret = -EINVAL;
+		goto rollback;
+	} else if (max_rx_pktlen < RTE_ETHER_MIN_LEN) {
+		RTE_ETHDEV_LOG(ERR,
+			"Ethdev port_id=%u max_rx_pktlen %u < min valid value %u\n",
+			port_id, max_rx_pktlen, RTE_ETHER_MIN_LEN);
+		ret = -EINVAL;
+		goto rollback;
 	}
+
+	if ((dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) == 0) {
+		if (dev->data->dev_conf.rxmode.mtu < RTE_ETHER_MIN_MTU ||
+				dev->data->dev_conf.rxmode.mtu > RTE_ETHER_MTU)
+			/* Use default value */
+			dev->data->dev_conf.rxmode.mtu = RTE_ETHER_MTU;
+	}
+
+	dev->data->mtu = dev->data->dev_conf.rxmode.mtu;
 
 	/*
 	 * If LRO is enabled, check that the maximum aggregated packet
@@ -1483,11 +1491,10 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 */
 	if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO) {
 		if (dev_conf->rxmode.max_lro_pkt_size == 0)
-			dev->data->dev_conf.rxmode.max_lro_pkt_size =
-				dev->data->dev_conf.rxmode.max_rx_pkt_len;
+			dev->data->dev_conf.rxmode.max_lro_pkt_size = max_rx_pktlen;
 		ret = eth_dev_check_lro_pkt_size(port_id,
 				dev->data->dev_conf.rxmode.max_lro_pkt_size,
-				dev->data->dev_conf.rxmode.max_rx_pkt_len,
+				max_rx_pktlen,
 				dev_info.max_lro_pkt_size);
 		if (ret != 0)
 			goto rollback;
@@ -2146,13 +2153,20 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	 * If LRO is enabled, check that the maximum aggregated packet
 	 * size is supported by the configured device.
 	 */
+	/* Get the real Ethernet overhead length */
 	if (local_conf.offloads & DEV_RX_OFFLOAD_TCP_LRO) {
+		uint32_t overhead_len;
+		uint32_t max_rx_pktlen;
+		int ret;
+
+		overhead_len = eth_dev_get_overhead_len(dev_info.max_rx_pktlen,
+				dev_info.max_mtu);
+		max_rx_pktlen = dev->data->mtu + overhead_len;
 		if (dev->data->dev_conf.rxmode.max_lro_pkt_size == 0)
-			dev->data->dev_conf.rxmode.max_lro_pkt_size =
-				dev->data->dev_conf.rxmode.max_rx_pkt_len;
-		int ret = eth_dev_check_lro_pkt_size(port_id,
+			dev->data->dev_conf.rxmode.max_lro_pkt_size = max_rx_pktlen;
+		ret = eth_dev_check_lro_pkt_size(port_id,
 				dev->data->dev_conf.rxmode.max_lro_pkt_size,
-				dev->data->dev_conf.rxmode.max_rx_pkt_len,
+				max_rx_pktlen,
 				dev_info.max_lro_pkt_size);
 		if (ret != 0)
 			return ret;

@@ -606,9 +606,9 @@ Driver options
   and each stride receives one packet. MPRQ can improve throughput for
   small-packet traffic.
 
-  When MPRQ is enabled, max_rx_pkt_len can be larger than the size of
+  When MPRQ is enabled, MTU can be larger than the size of
   user-provided mbuf even if DEV_RX_OFFLOAD_SCATTER isn't enabled. PMD will
-  configure large stride size enough to accommodate max_rx_pkt_len as long as
+  configure large stride size enough to accommodate MTU as long as
   device allows. Note that this can waste system memory compared to enabling Rx
   scatter and multi-segment packet.
 

@@ -28,7 +28,7 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_u16(nb_tx_q);
 	rte_trace_point_emit_u32(dev_conf->link_speeds);
 	rte_trace_point_emit_u32(dev_conf->rxmode.mq_mode);
-	rte_trace_point_emit_u32(dev_conf->rxmode.max_rx_pkt_len);
+	rte_trace_point_emit_u32(dev_conf->rxmode.mtu);
 	rte_trace_point_emit_u64(dev_conf->rxmode.offloads);
 	rte_trace_point_emit_u32(dev_conf->txmode.mq_mode);
 	rte_trace_point_emit_u64(dev_conf->txmode.offloads);

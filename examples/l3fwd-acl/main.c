@@ -124,7 +124,6 @@ static uint16_t nb_lcore_params = sizeof(lcore_params_array_default) /
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode	= ETH_MQ_RX_RSS,
-		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 		.offloads = DEV_RX_OFFLOAD_CHECKSUM,
 	},
@@ -139,6 +138,8 @@ static struct rte_eth_conf port_conf = {
 		.mq_mode = ETH_MQ_TX_NONE,
 	},
 };
+
+static uint32_t max_pkt_len;
 
 static struct rte_mempool *pktmbuf_pool[NB_SOCKETS];
 
@@ -200,8 +201,8 @@ enum {
 	OPT_CONFIG_NUM = 256,
 #define OPT_NONUMA      "no-numa"
 	OPT_NONUMA_NUM,
-#define OPT_ENBJMO      "enable-jumbo"
-	OPT_ENBJMO_NUM,
+#define OPT_MAX_PKT_LEN "max-pkt-len"
+	OPT_MAX_PKT_LEN_NUM,
 #define OPT_RULE_IPV4   "rule_ipv4"
 	OPT_RULE_IPV4_NUM,
 #define OPT_RULE_IPV6	"rule_ipv6"
@@ -1619,26 +1620,21 @@ print_usage(const char *prgname)
 
 	usage_acl_alg(alg, sizeof(alg));
 	printf("%s [EAL options] -- -p PORTMASK -P"
-		"--"OPT_RULE_IPV4"=FILE"
-		"--"OPT_RULE_IPV6"=FILE"
+		"  --"OPT_RULE_IPV4"=FILE"
+		"  --"OPT_RULE_IPV6"=FILE"
 		"  [--"OPT_CONFIG" (port,queue,lcore)[,(port,queue,lcore]]"
-		"  [--"OPT_ENBJMO" [--max-pkt-len PKTLEN]]\n"
+		"  [--"OPT_MAX_PKT_LEN" PKTLEN]\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
-		"  -P : enable promiscuous mode\n"
-		"  --"OPT_CONFIG": (port,queue,lcore): "
-		"rx queues configuration\n"
+		"  -P: enable promiscuous mode\n"
+		"  --"OPT_CONFIG" (port,queue,lcore): rx queues configuration\n"
 		"  --"OPT_NONUMA": optional, disable numa awareness\n"
-		"  --"OPT_ENBJMO": enable jumbo frame"
-		" which max packet len is PKTLEN in decimal (64-9600)\n"
-		"  --"OPT_RULE_IPV4"=FILE: specify the ipv4 rules entries "
-		"file. "
+		"  --"OPT_MAX_PKT_LEN" PKTLEN: maximum packet length in decimal (64-9600)\n"
+		"  --"OPT_RULE_IPV4"=FILE: specify the ipv4 rules entries file. "
 		"Each rule occupy one line. "
 		"2 kinds of rules are supported. "
 		"One is ACL entry at while line leads with character '%c', "
-		"another is route entry at while line leads with "
-		"character '%c'.\n"
-		"  --"OPT_RULE_IPV6"=FILE: specify the ipv6 rules "
-		"entries file.\n"
+		"another is route entry at while line leads with character '%c'.\n"
+		"  --"OPT_RULE_IPV6"=FILE: specify the ipv6 rules entries file.\n"
 		"  --"OPT_ALG": ACL classify method to use, one of: %s\n",
 		prgname, ACL_LEAD_CHAR, ROUTE_LEAD_CHAR, alg);
 }
@@ -1759,14 +1755,14 @@ parse_args(int argc, char **argv)
 	int option_index;
 	char *prgname = argv[0];
 	static struct option lgopts[] = {
-		{OPT_CONFIG,    1, NULL, OPT_CONFIG_NUM    },
-		{OPT_NONUMA,    0, NULL, OPT_NONUMA_NUM    },
-		{OPT_ENBJMO,    0, NULL, OPT_ENBJMO_NUM    },
-		{OPT_RULE_IPV4, 1, NULL, OPT_RULE_IPV4_NUM },
-		{OPT_RULE_IPV6, 1, NULL, OPT_RULE_IPV6_NUM },
-		{OPT_ALG,       1, NULL, OPT_ALG_NUM       },
-		{OPT_ETH_DEST,  1, NULL, OPT_ETH_DEST_NUM  },
-		{NULL,          0, 0,    0                 }
+		{OPT_CONFIG,      1, NULL, OPT_CONFIG_NUM      },
+		{OPT_NONUMA,      0, NULL, OPT_NONUMA_NUM      },
+		{OPT_MAX_PKT_LEN, 1, NULL, OPT_MAX_PKT_LEN_NUM },
+		{OPT_RULE_IPV4,   1, NULL, OPT_RULE_IPV4_NUM   },
+		{OPT_RULE_IPV6,   1, NULL, OPT_RULE_IPV6_NUM   },
+		{OPT_ALG,         1, NULL, OPT_ALG_NUM         },
+		{OPT_ETH_DEST,    1, NULL, OPT_ETH_DEST_NUM    },
+		{NULL,            0, 0,    0                   }
 	};
 
 	argvopt = argv;
@@ -1805,43 +1801,11 @@ parse_args(int argc, char **argv)
 			numa_on = 0;
 			break;
 
-		case OPT_ENBJMO_NUM:
-		{
-			struct option lenopts = {
-				"max-pkt-len",
-				required_argument,
-				0,
-				0
-			};
-
-			printf("jumbo frame is enabled\n");
-			port_conf.rxmode.offloads |=
-					DEV_RX_OFFLOAD_JUMBO_FRAME;
-			port_conf.txmode.offloads |=
-					DEV_TX_OFFLOAD_MULTI_SEGS;
-
-			/*
-			 * if no max-pkt-len set, then use the
-			 * default value RTE_ETHER_MAX_LEN
-			 */
-			if (getopt_long(argc, argvopt, "",
-					&lenopts, &option_index) == 0) {
-				ret = parse_max_pkt_len(optarg);
-				if ((ret < 64) ||
-					(ret > MAX_JUMBO_PKT_LEN)) {
-					printf("invalid packet "
-						"length\n");
-					print_usage(prgname);
-					return -1;
-				}
-				port_conf.rxmode.max_rx_pkt_len = ret;
-			}
-			printf("set jumbo frame max packet length "
-				"to %u\n",
-				(unsigned int)
-				port_conf.rxmode.max_rx_pkt_len);
+		case OPT_MAX_PKT_LEN_NUM:
+			printf("Custom frame size is configured\n");
+			max_pkt_len = parse_max_pkt_len(optarg);
 			break;
-		}
+
 		case OPT_RULE_IPV4_NUM:
 			parm_config.rule_ipv4_name = optarg;
 			break;
@@ -2009,6 +1973,43 @@ set_default_dest_mac(void)
 	}
 }
 
+static uint32_t
+eth_dev_get_overhead_len(uint32_t max_rx_pktlen, uint16_t max_mtu)
+{
+	uint32_t overhead_len;
+
+	if (max_mtu != UINT16_MAX && max_rx_pktlen > max_mtu)
+		overhead_len = max_rx_pktlen - max_mtu;
+	else
+		overhead_len = RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+
+	return overhead_len;
+}
+
+static int
+config_port_max_pkt_len(struct rte_eth_conf *conf,
+		struct rte_eth_dev_info *dev_info)
+{
+	uint32_t overhead_len;
+
+	if (max_pkt_len == 0)
+		return 0;
+
+	if (max_pkt_len < RTE_ETHER_MIN_LEN || max_pkt_len > MAX_JUMBO_PKT_LEN)
+		return -1;
+
+	overhead_len = eth_dev_get_overhead_len(dev_info->max_rx_pktlen,
+			dev_info->max_mtu);
+	conf->rxmode.mtu = max_pkt_len - overhead_len;
+
+	if (conf->rxmode.mtu > RTE_ETHER_MTU) {
+		conf->txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+		conf->rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	}
+
+	return 0;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -2081,6 +2082,12 @@ main(int argc, char **argv)
 			rte_exit(EXIT_FAILURE,
 				"Error during getting device (port %u) info: %s\n",
 				portid, strerror(-ret));
+
+		ret = config_port_max_pkt_len(&local_port_conf, &dev_info);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				"Invalid max packet length: %u (port %u)\n",
+				max_pkt_len, portid);
 
 		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 			local_port_conf.txmode.offloads |=

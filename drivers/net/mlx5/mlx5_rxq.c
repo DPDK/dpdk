@@ -1338,10 +1338,11 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	uint64_t offloads = conf->offloads |
 			   dev->data->dev_conf.rxmode.offloads;
 	unsigned int lro_on_queue = !!(offloads & DEV_RX_OFFLOAD_TCP_LRO);
-	unsigned int max_rx_pkt_len = lro_on_queue ?
+	unsigned int max_rx_pktlen = lro_on_queue ?
 			dev->data->dev_conf.rxmode.max_lro_pkt_size :
-			dev->data->dev_conf.rxmode.max_rx_pkt_len;
-	unsigned int non_scatter_min_mbuf_size = max_rx_pkt_len +
+			dev->data->mtu + (unsigned int)RTE_ETHER_HDR_LEN +
+				RTE_ETHER_CRC_LEN;
+	unsigned int non_scatter_min_mbuf_size = max_rx_pktlen +
 							RTE_PKTMBUF_HEADROOM;
 	unsigned int max_lro_size = 0;
 	unsigned int first_mb_free_size = mb_len - RTE_PKTMBUF_HEADROOM;
@@ -1380,7 +1381,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 * needed to handle max size packets, replace zero length
 	 * with the buffer length from the pool.
 	 */
-	tail_len = max_rx_pkt_len;
+	tail_len = max_rx_pktlen;
 	do {
 		struct mlx5_eth_rxseg *hw_seg =
 					&tmpl->rxq.rxseg[tmpl->rxq.rxseg_n];
@@ -1418,7 +1419,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 				"port %u too many SGEs (%u) needed to handle"
 				" requested maximum packet size %u, the maximum"
 				" supported are %u", dev->data->port_id,
-				tmpl->rxq.rxseg_n, max_rx_pkt_len,
+				tmpl->rxq.rxseg_n, max_rx_pktlen,
 				MLX5_MAX_RXQ_NSEG);
 			rte_errno = ENOTSUP;
 			goto error;
@@ -1443,7 +1444,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		DRV_LOG(ERR, "port %u Rx queue %u: Scatter offload is not"
 			" configured and no enough mbuf space(%u) to contain "
 			"the maximum RX packet length(%u) with head-room(%u)",
-			dev->data->port_id, idx, mb_len, max_rx_pkt_len,
+			dev->data->port_id, idx, mb_len, max_rx_pktlen,
 			RTE_PKTMBUF_HEADROOM);
 		rte_errno = ENOSPC;
 		goto error;
@@ -1464,7 +1465,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 * following conditions are met:
 	 *  - MPRQ is enabled.
 	 *  - The number of descs is more than the number of strides.
-	 *  - max_rx_pkt_len plus overhead is less than the max size
+	 *  - max_rx_pktlen plus overhead is less than the max size
 	 *    of a stride or mprq_stride_size is specified by a user.
 	 *    Need to make sure that there are enough strides to encap
 	 *    the maximum packet size in case mprq_stride_size is set.
@@ -1488,7 +1489,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 				!!(offloads & DEV_RX_OFFLOAD_SCATTER);
 		tmpl->rxq.mprq_max_memcpy_len = RTE_MIN(first_mb_free_size,
 				config->mprq.max_memcpy_len);
-		max_lro_size = RTE_MIN(max_rx_pkt_len,
+		max_lro_size = RTE_MIN(max_rx_pktlen,
 				       (1u << tmpl->rxq.strd_num_n) *
 				       (1u << tmpl->rxq.strd_sz_n));
 		DRV_LOG(DEBUG,
@@ -1497,9 +1498,9 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			dev->data->port_id, idx,
 			tmpl->rxq.strd_num_n, tmpl->rxq.strd_sz_n);
 	} else if (tmpl->rxq.rxseg_n == 1) {
-		MLX5_ASSERT(max_rx_pkt_len <= first_mb_free_size);
+		MLX5_ASSERT(max_rx_pktlen <= first_mb_free_size);
 		tmpl->rxq.sges_n = 0;
-		max_lro_size = max_rx_pkt_len;
+		max_lro_size = max_rx_pktlen;
 	} else if (offloads & DEV_RX_OFFLOAD_SCATTER) {
 		unsigned int sges_n;
 
@@ -1521,13 +1522,13 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 				"port %u too many SGEs (%u) needed to handle"
 				" requested maximum packet size %u, the maximum"
 				" supported are %u", dev->data->port_id,
-				1 << sges_n, max_rx_pkt_len,
+				1 << sges_n, max_rx_pktlen,
 				1u << MLX5_MAX_LOG_RQ_SEGS);
 			rte_errno = ENOTSUP;
 			goto error;
 		}
 		tmpl->rxq.sges_n = sges_n;
-		max_lro_size = max_rx_pkt_len;
+		max_lro_size = max_rx_pktlen;
 	}
 	if (config->mprq.enabled && !mlx5_rxq_mprq_enabled(&tmpl->rxq))
 		DRV_LOG(WARNING,

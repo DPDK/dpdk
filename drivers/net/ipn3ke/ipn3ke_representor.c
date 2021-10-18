@@ -2791,14 +2791,10 @@ ipn3ke_rpst_mtu_set(struct rte_eth_dev *ethdev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	if (frame_size > IPN3KE_ETH_MAX_LEN)
-		dev_data->dev_conf.rxmode.offloads |=
-			(uint64_t)(DEV_RX_OFFLOAD_JUMBO_FRAME);
+	if (mtu > RTE_ETHER_MTU)
+		dev_data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
-		dev_data->dev_conf.rxmode.offloads &=
-			(uint64_t)(~DEV_RX_OFFLOAD_JUMBO_FRAME);
-
-	dev_data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+		dev_data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	if (rpst->i40e_pf_eth) {
 		ret = rpst->i40e_pf_eth->dev_ops->mtu_set(rpst->i40e_pf_eth,

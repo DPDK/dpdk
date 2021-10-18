@@ -435,7 +435,6 @@ lio_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
 	uint16_t pf_mtu = lio_dev->linfo.link.s.mtu;
-	uint32_t frame_len = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 	struct lio_dev_ctrl_cmd ctrl_cmd;
 	struct lio_ctrl_pkt ctrl_pkt;
 
@@ -481,15 +480,12 @@ lio_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 		return -1;
 	}
 
-	if (frame_len > LIO_ETH_MAX_LEN)
+	if (mtu > RTE_ETHER_MTU)
 		eth_dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		eth_dev->data->dev_conf.rxmode.offloads &=
 			~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
-	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_len;
-	eth_dev->data->mtu = mtu;
 
 	return 0;
 }
@@ -1402,8 +1398,6 @@ lio_sync_link_state_check(void *eth_dev)
 static int
 lio_dev_start(struct rte_eth_dev *eth_dev)
 {
-	uint16_t mtu;
-	uint32_t frame_len = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
 	uint16_t timeout = LIO_MAX_CMD_TIMEOUT;
 	int ret = 0;
@@ -1446,15 +1440,9 @@ lio_dev_start(struct rte_eth_dev *eth_dev)
 		goto dev_mtu_set_error;
 	}
 
-	mtu = (uint16_t)(frame_len - RTE_ETHER_HDR_LEN - RTE_ETHER_CRC_LEN);
-	if (mtu < RTE_ETHER_MIN_MTU)
-		mtu = RTE_ETHER_MIN_MTU;
-
-	if (eth_dev->data->mtu != mtu) {
-		ret = lio_dev_mtu_set(eth_dev, mtu);
-		if (ret)
-			goto dev_mtu_set_error;
-	}
+	ret = lio_dev_mtu_set(eth_dev, eth_dev->data->mtu);
+	if (ret != 0)
+		goto dev_mtu_set_error;
 
 	return 0;
 

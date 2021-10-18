@@ -2677,9 +2677,7 @@ igb_vlan_hw_extend_disable(struct rte_eth_dev *dev)
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, reg);
 
 	/* Update maximum packet length */
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
-		E1000_WRITE_REG(hw, E1000_RLPML,
-				dev->data->dev_conf.rxmode.max_rx_pkt_len);
+	E1000_WRITE_REG(hw, E1000_RLPML, dev->data->mtu + E1000_ETH_OVERHEAD);
 }
 
 static void
@@ -2695,10 +2693,8 @@ igb_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, reg);
 
 	/* Update maximum packet length */
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
-		E1000_WRITE_REG(hw, E1000_RLPML,
-			dev->data->dev_conf.rxmode.max_rx_pkt_len +
-						VLAN_TAG_SIZE);
+	E1000_WRITE_REG(hw, E1000_RLPML,
+		dev->data->mtu + E1000_ETH_OVERHEAD + VLAN_TAG_SIZE);
 }
 
 static int
@@ -4396,7 +4392,7 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 
 	/* switch to jumbo mode if needed */
-	if (frame_size > E1000_ETH_MAX_LEN) {
+	if (mtu > RTE_ETHER_MTU) {
 		dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 		rctl |= E1000_RCTL_LPE;
@@ -4407,11 +4403,7 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
 
-	/* update max frame size */
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
-
-	E1000_WRITE_REG(hw, E1000_RLPML,
-			dev->data->dev_conf.rxmode.max_rx_pkt_len);
+	E1000_WRITE_REG(hw, E1000_RLPML, frame_size);
 
 	return 0;
 }

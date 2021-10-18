@@ -3603,8 +3603,8 @@ ice_dev_start(struct rte_eth_dev *dev)
 	pf->adapter_stopped = false;
 
 	/* Set the max frame size to default value*/
-	max_frame_size = pf->dev_data->dev_conf.rxmode.max_rx_pkt_len ?
-		pf->dev_data->dev_conf.rxmode.max_rx_pkt_len :
+	max_frame_size = pf->dev_data->mtu ?
+		pf->dev_data->mtu + ICE_ETH_OVERHEAD :
 		ICE_FRAME_SIZE_MAX;
 
 	/* Set the max frame size to HW*/
@@ -3992,14 +3992,10 @@ ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	if (frame_size > ICE_ETH_MAX_LEN)
-		dev_data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_JUMBO_FRAME;
+	if (mtu > RTE_ETHER_MTU)
+		dev_data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
-		dev_data->dev_conf.rxmode.offloads &=
-			~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
-	dev_data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+		dev_data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	return 0;
 }

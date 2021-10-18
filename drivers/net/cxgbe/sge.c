@@ -1113,7 +1113,7 @@ int t4_eth_xmit(struct sge_eth_txq *txq, struct rte_mbuf *mbuf,
 	u32 wr_mid;
 	u64 cntrl, *end;
 	bool v6;
-	u32 max_pkt_len = txq->data->dev_conf.rxmode.max_rx_pkt_len;
+	u32 max_pkt_len;
 
 	/* Reject xmit if queue is stopped */
 	if (unlikely(txq->flags & EQ_STOPPED))
@@ -1129,6 +1129,7 @@ out_free:
 		return 0;
 	}
 
+	max_pkt_len = txq->data->mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 	if ((!(m->ol_flags & PKT_TX_TCP_SEG)) &&
 	    (unlikely(m->pkt_len > max_pkt_len)))
 		goto out_free;

@@ -176,7 +176,7 @@ nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		(frame_size + 2 * VLAN_TAG_SIZE > buffsz * NIC_HW_MAX_SEGS))
 		return -EINVAL;
 
-	if (frame_size > NIC_HW_L2_MAX_LEN)
+	if (mtu > RTE_ETHER_MTU)
 		rxmode->offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		rxmode->offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
@@ -184,8 +184,6 @@ nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	if (nicvf_mbox_update_hw_max_frs(nic, mtu))
 		return -EINVAL;
 
-	/* Update max_rx_pkt_len */
-	rxmode->max_rx_pkt_len = mtu + RTE_ETHER_HDR_LEN;
 	nic->mtu = mtu;
 
 	for (i = 0; i < nic->sqs_count; i++)
@@ -1723,16 +1721,13 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* Setup scatter mode if needed by jumbo */
-	if (dev->data->dev_conf.rxmode.max_rx_pkt_len +
-					    2 * VLAN_TAG_SIZE > buffsz)
+	if (dev->data->mtu + (uint32_t)NIC_HW_L2_OVERHEAD + 2 * VLAN_TAG_SIZE > buffsz)
 		dev->data->scattered_rx = 1;
 	if ((rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER) != 0)
 		dev->data->scattered_rx = 1;
 
-	/* Setup MTU based on max_rx_pkt_len or default */
-	mtu = dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME ?
-		dev->data->dev_conf.rxmode.max_rx_pkt_len
-			-  RTE_ETHER_HDR_LEN : RTE_ETHER_MTU;
+	/* Setup MTU */
+	mtu = dev->data->mtu;
 
 	if (nicvf_dev_set_mtu(dev, mtu)) {
 		PMD_INIT_LOG(ERR, "Failed to set default mtu size");

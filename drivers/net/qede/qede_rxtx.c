@@ -224,7 +224,7 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qid,
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct qede_rx_queue *rxq;
-	uint16_t max_rx_pkt_len;
+	uint16_t max_rx_pktlen;
 	uint16_t bufsz;
 	int rc;
 
@@ -243,21 +243,21 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qid,
 		dev->data->rx_queues[qid] = NULL;
 	}
 
-	max_rx_pkt_len = (uint16_t)rxmode->max_rx_pkt_len;
+	max_rx_pktlen = dev->data->mtu + RTE_ETHER_HDR_LEN;
 
 	/* Fix up RX buffer size */
 	bufsz = (uint16_t)rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
 	/* cache align the mbuf size to simplfy rx_buf_size calculation */
 	bufsz = QEDE_FLOOR_TO_CACHE_LINE_SIZE(bufsz);
 	if ((rxmode->offloads & DEV_RX_OFFLOAD_SCATTER)	||
-	    (max_rx_pkt_len + QEDE_ETH_OVERHEAD) > bufsz) {
+	    (max_rx_pktlen + QEDE_ETH_OVERHEAD) > bufsz) {
 		if (!dev->data->scattered_rx) {
 			DP_INFO(edev, "Forcing scatter-gather mode\n");
 			dev->data->scattered_rx = 1;
 		}
 	}
 
-	rc = qede_calc_rx_buf_size(dev, bufsz, max_rx_pkt_len);
+	rc = qede_calc_rx_buf_size(dev, bufsz, max_rx_pktlen);
 	if (rc < 0)
 		return rc;
 
