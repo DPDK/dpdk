@@ -441,6 +441,8 @@ ABI Changes
   accessed directly by user any more. This change is transparent to both
   applications and PMDs.
 
+* eventdev: Re-arranged fields in ``rte_event_timer`` to remove holes.
+
 
 Known Issues
 ------------
