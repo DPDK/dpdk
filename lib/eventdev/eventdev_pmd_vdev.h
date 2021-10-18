@@ -37,6 +37,7 @@
  *   - Eventdev pointer if device is successfully created.
  *   - NULL if device cannot be created.
  */
+__rte_internal
 static inline struct rte_eventdev *
 rte_event_pmd_vdev_init(const char *name, size_t dev_private_size,
 		int socket_id)
@@ -74,6 +75,7 @@ rte_event_pmd_vdev_init(const char *name, size_t dev_private_size,
  * @return
  *   - 0 on success, negative on error
  */
+__rte_internal
 static inline int
 rte_event_pmd_vdev_uninit(const char *name)
 {

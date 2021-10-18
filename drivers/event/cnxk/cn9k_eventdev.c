@@ -514,7 +514,7 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 	};
 
 	/* Tx modes */
-	const event_tx_adapter_enqueue
+	const event_tx_adapter_enqueue_t
 		sso_hws_tx_adptr_enq[2][2][2][2][2][2][2] = {
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)                         \
 	[f6][f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_tx_adptr_enq_##name,
@@ -522,7 +522,7 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 #undef T
 		};
 
-	const event_tx_adapter_enqueue
+	const event_tx_adapter_enqueue_t
 		sso_hws_tx_adptr_enq_seg[2][2][2][2][2][2][2] = {
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)                         \
 	[f6][f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_tx_adptr_enq_seg_##name,
@@ -530,7 +530,7 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 #undef T
 		};
 
-	const event_tx_adapter_enqueue
+	const event_tx_adapter_enqueue_t
 		sso_hws_dual_tx_adptr_enq[2][2][2][2][2][2][2] = {
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)                         \
 	[f6][f5][f4][f3][f2][f1][f0] = cn9k_sso_hws_dual_tx_adptr_enq_##name,
@@ -538,7 +538,7 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 #undef T
 		};
 
-	const event_tx_adapter_enqueue
+	const event_tx_adapter_enqueue_t
 		sso_hws_dual_tx_adptr_enq_seg[2][2][2][2][2][2][2] = {
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)                         \
 	[f6][f5][f4][f3][f2][f1][f0] =                                         \
@@ -1060,7 +1060,7 @@ cn9k_crypto_adapter_qp_del(const struct rte_eventdev *event_dev,
 	return cnxk_crypto_adapter_qp_del(cdev, queue_pair_id);
 }
 
-static struct rte_eventdev_ops cn9k_sso_dev_ops = {
+static struct eventdev_ops cn9k_sso_dev_ops = {
 	.dev_infos_get = cn9k_sso_info_get,
 	.dev_configure = cn9k_sso_dev_configure,
 	.queue_def_conf = cnxk_sso_queue_def_conf,

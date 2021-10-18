@@ -343,11 +343,11 @@ ssovf_fastpath_fns_set(struct rte_eventdev *dev)
 
 	dev->ca_enqueue = ssow_crypto_adapter_enqueue;
 
-	const event_tx_adapter_enqueue ssow_txa_enqueue[2][2][2][2] = {
+	const event_tx_adapter_enqueue_t ssow_txa_enqueue[2][2][2][2] = {
 #define T(name, f3, f2, f1, f0, sz, flags)				\
 	[f3][f2][f1][f0] =  sso_event_tx_adapter_enqueue_ ##name,
 
-SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
+		SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
 	};
 

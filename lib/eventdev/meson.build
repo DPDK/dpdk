@@ -27,5 +27,11 @@ headers = files(
         'rte_event_crypto_adapter.h',
         'rte_event_eth_tx_adapter.h',
 )
+driver_sdk_headers += files(
+        'eventdev_pmd.h',
+        'eventdev_pmd_pci.h',
+        'eventdev_pmd_vdev.h',
+)
+
 deps += ['ring', 'ethdev', 'hash', 'mempool', 'mbuf', 'timer', 'cryptodev']
 deps += ['telemetry']

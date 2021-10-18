@@ -55,12 +55,6 @@ DPDK_22 {
 	rte_event_eth_tx_adapter_stats_get;
 	rte_event_eth_tx_adapter_stats_reset;
 	rte_event_eth_tx_adapter_stop;
-	rte_event_pmd_allocate;
-	rte_event_pmd_pci_probe;
-	rte_event_pmd_pci_remove;
-	rte_event_pmd_release;
-	rte_event_pmd_vdev_init;
-	rte_event_pmd_vdev_uninit;
 	rte_event_port_attr_get;
 	rte_event_port_default_conf_get;
 	rte_event_port_link;
@@ -136,8 +130,6 @@ EXPERIMENTAL {
 
 	# changed in 20.11
 	__rte_eventdev_trace_port_setup;
-	# added in 20.11
-	rte_event_pmd_pci_probe_named;
 	# added in 21.11
 	rte_event_eth_rx_adapter_create_with_params;
 
@@ -152,4 +144,13 @@ INTERNAL {
 	global:
 
 	rte_event_pmd_selftest_seqn_dynfield_offset;
+	rte_event_pmd_allocate;
+	rte_event_pmd_get_named_dev;
+	rte_event_pmd_is_valid_dev;
+	rte_event_pmd_pci_probe;
+	rte_event_pmd_pci_probe_named;
+	rte_event_pmd_pci_remove;
+	rte_event_pmd_release;
+	rte_event_pmd_vdev_init;
+	rte_event_pmd_vdev_uninit;
 };

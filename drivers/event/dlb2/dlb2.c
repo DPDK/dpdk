@@ -4384,7 +4384,7 @@ dlb2_entry_points_init(struct rte_eventdev *dev)
 	struct dlb2_eventdev *dlb2;
 
 	/* Expose PMD's eventdev interface */
-	static struct rte_eventdev_ops dlb2_eventdev_entry_ops = {
+	static struct eventdev_ops dlb2_eventdev_entry_ops = {
 		.dev_infos_get    = dlb2_eventdev_info_get,
 		.dev_configure    = dlb2_eventdev_configure,
 		.dev_start        = dlb2_eventdev_start,

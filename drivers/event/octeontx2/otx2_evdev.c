@@ -178,41 +178,41 @@ SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 	};
 
 	/* Tx modes */
-	const event_tx_adapter_enqueue
+	const event_tx_adapter_enqueue_t
 		ssogws_tx_adptr_enq[2][2][2][2][2][2][2] = {
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
 		[f6][f5][f4][f3][f2][f1][f0] =				\
 			otx2_ssogws_tx_adptr_enq_ ## name,
-SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
+			SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
-	};
+		};
 
-	const event_tx_adapter_enqueue
+	const event_tx_adapter_enqueue_t
 		ssogws_tx_adptr_enq_seg[2][2][2][2][2][2][2] = {
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
 		[f6][f5][f4][f3][f2][f1][f0] =				\
 			otx2_ssogws_tx_adptr_enq_seg_ ## name,
-SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
+			SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
-	};
+		};
 
-	const event_tx_adapter_enqueue
+	const event_tx_adapter_enqueue_t
 		ssogws_dual_tx_adptr_enq[2][2][2][2][2][2][2] = {
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
 		[f6][f5][f4][f3][f2][f1][f0] =				\
 			otx2_ssogws_dual_tx_adptr_enq_ ## name,
-SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
+			SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
-	};
+		};
 
-	const event_tx_adapter_enqueue
+	const event_tx_adapter_enqueue_t
 		ssogws_dual_tx_adptr_enq_seg[2][2][2][2][2][2][2] = {
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
 		[f6][f5][f4][f3][f2][f1][f0] =				\
 			otx2_ssogws_dual_tx_adptr_enq_seg_ ## name,
-SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
+			SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
-	};
+		};
 
 	event_dev->enqueue			= otx2_ssogws_enq;
 	event_dev->enqueue_burst		= otx2_ssogws_enq_burst;
@@ -1596,7 +1596,7 @@ otx2_sso_close(struct rte_eventdev *event_dev)
 }
 
 /* Initialize and register event driver with DPDK Application */
-static struct rte_eventdev_ops otx2_sso_ops = {
+static struct eventdev_ops otx2_sso_ops = {
 	.dev_infos_get    = otx2_sso_info_get,
 	.dev_configure    = otx2_sso_configure,
 	.queue_def_conf   = otx2_sso_queue_def_conf,

@@ -398,7 +398,7 @@ dsw_crypto_adapter_caps_get(const struct rte_eventdev *dev  __rte_unused,
 	return 0;
 }
 
-static struct rte_eventdev_ops dsw_evdev_ops = {
+static struct eventdev_ops dsw_evdev_ops = {
 	.port_setup = dsw_port_setup,
 	.port_def_conf = dsw_port_def_conf,
 	.port_release = dsw_port_release,

@@ -31,7 +31,7 @@ typedef int (*eventdev_pmd_pci_callback_t)(struct rte_eventdev *dev);
  * interface.  Same as rte_event_pmd_pci_probe, except caller can specify
  * the name.
  */
-__rte_experimental
+__rte_internal
 static inline int
 rte_event_pmd_pci_probe_named(struct rte_pci_driver *pci_drv,
 			      struct rte_pci_device *pci_dev,
@@ -85,6 +85,7 @@ rte_event_pmd_pci_probe_named(struct rte_pci_driver *pci_drv,
  * Wrapper for use by pci drivers as a .probe function to attach to a event
  * interface.
  */
+__rte_internal
 static inline int
 rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
 			    struct rte_pci_device *pci_dev,
@@ -108,6 +109,7 @@ rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
  * Wrapper for use by pci drivers as a .remove function to detach a event
  * interface.
  */
+__rte_internal
 static inline int
 rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev,
 			     eventdev_pmd_pci_callback_t devuninit)

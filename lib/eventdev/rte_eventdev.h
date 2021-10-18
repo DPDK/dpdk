@@ -1324,7 +1324,7 @@ int
 rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 				uint32_t *caps);
 
-struct rte_eventdev_ops;
+struct eventdev_ops;
 struct rte_eventdev;
 
 typedef uint16_t (*event_enqueue_t)(void *port, const struct rte_event *ev);
@@ -1342,18 +1342,21 @@ typedef uint16_t (*event_dequeue_burst_t)(void *port, struct rte_event ev[],
 		uint16_t nb_events, uint64_t timeout_ticks);
 /**< @internal Dequeue burst of events from port of a device */
 
-typedef uint16_t (*event_tx_adapter_enqueue)(void *port,
-				struct rte_event ev[], uint16_t nb_events);
+typedef uint16_t (*event_tx_adapter_enqueue_t)(void *port,
+					       struct rte_event ev[],
+					       uint16_t nb_events);
 /**< @internal Enqueue burst of events on port of a device */
 
-typedef uint16_t (*event_tx_adapter_enqueue_same_dest)(void *port,
-		struct rte_event ev[], uint16_t nb_events);
+typedef uint16_t (*event_tx_adapter_enqueue_same_dest_t)(void *port,
+							 struct rte_event ev[],
+							 uint16_t nb_events);
 /**< @internal Enqueue burst of events on port of a device supporting
  * burst having same destination Ethernet port & Tx queue.
  */
 
-typedef uint16_t (*event_crypto_adapter_enqueue)(void *port,
-				struct rte_event ev[], uint16_t nb_events);
+typedef uint16_t (*event_crypto_adapter_enqueue_t)(void *port,
+						   struct rte_event ev[],
+						   uint16_t nb_events);
 /**< @internal Enqueue burst of events on crypto adapter */
 
 #define RTE_EVENTDEV_NAME_MAX_LEN	(64)
@@ -1421,15 +1424,15 @@ struct rte_eventdev {
 	/**< Pointer to PMD dequeue function. */
 	event_dequeue_burst_t dequeue_burst;
 	/**< Pointer to PMD dequeue burst function. */
-	event_tx_adapter_enqueue_same_dest txa_enqueue_same_dest;
+	event_tx_adapter_enqueue_same_dest_t txa_enqueue_same_dest;
 	/**< Pointer to PMD eth Tx adapter burst enqueue function with
 	 * events destined to same Eth port & Tx queue.
 	 */
-	event_tx_adapter_enqueue txa_enqueue;
+	event_tx_adapter_enqueue_t txa_enqueue;
 	/**< Pointer to PMD eth Tx adapter enqueue function. */
 	struct rte_eventdev_data *data;
 	/**< Pointer to device data */
-	struct rte_eventdev_ops *dev_ops;
+	struct eventdev_ops *dev_ops;
 	/**< Functions exported by PMD */
 	struct rte_device *dev;
 	/**< Device info. supplied by probing */
@@ -1438,7 +1441,7 @@ struct rte_eventdev {
 	uint8_t attached : 1;
 	/**< Flag indicating the device is attached */
 
-	event_crypto_adapter_enqueue ca_enqueue;
+	event_crypto_adapter_enqueue_t ca_enqueue;
 	/**< Pointer to PMD crypto adapter enqueue function. */
 
 	uint64_t reserved_64s[4]; /**< Reserved for future fields */

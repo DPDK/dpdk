@@ -171,7 +171,6 @@ extern "C" {
 #include <stdint.h>
 
 #include "rte_eventdev.h"
-#include "eventdev_pmd.h"
 
 /**
  * Crypto event adapter mode

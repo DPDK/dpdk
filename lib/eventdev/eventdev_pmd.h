@@ -99,6 +99,7 @@ extern struct rte_eventdev *rte_eventdevs;
  * @return
  *   - The rte_eventdev structure pointer for the given device ID.
  */
+__rte_internal
 static inline struct rte_eventdev *
 rte_event_pmd_get_named_dev(const char *name)
 {
@@ -127,6 +128,7 @@ rte_event_pmd_get_named_dev(const char *name)
  * @return
  *   - If the device index is valid (1) or not (0).
  */
+__rte_internal
 static inline unsigned
 rte_event_pmd_is_valid_dev(uint8_t dev_id)
 {
@@ -1056,7 +1058,7 @@ typedef int (*eventdev_eth_tx_adapter_stats_reset_t)(uint8_t id,
 					const struct rte_eventdev *dev);
 
 /** Event device operations function pointer table */
-struct rte_eventdev_ops {
+struct eventdev_ops {
 	eventdev_info_get_t dev_infos_get;	/**< Get device info. */
 	eventdev_configure_t dev_configure;	/**< Configure device. */
 	eventdev_start_t dev_start;		/**< Start device. */
@@ -1173,6 +1175,7 @@ struct rte_eventdev_ops {
  * @return
  *   - Slot in the rte_dev_devices array for a new device;
  */
+__rte_internal
 struct rte_eventdev *
 rte_event_pmd_allocate(const char *name, int socket_id);
 
@@ -1184,6 +1187,7 @@ rte_event_pmd_allocate(const char *name, int socket_id);
  * @return
  *   - 0 on success, negative on error
  */
+__rte_internal
 int
 rte_event_pmd_release(struct rte_eventdev *eventdev);
 
