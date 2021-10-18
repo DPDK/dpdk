@@ -6,7 +6,7 @@
 #include <ethdev_driver.h>
 
 #include "eventdev_pmd.h"
-#include "rte_eventdev_trace.h"
+#include "eventdev_trace.h"
 #include "rte_event_eth_tx_adapter.h"
 
 #define TXA_BATCH_SIZE		32

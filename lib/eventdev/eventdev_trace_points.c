@@ -4,7 +4,7 @@
 
 #include <rte_trace_point_register.h>
 
-#include "rte_eventdev_trace.h"
+#include "eventdev_trace.h"
 
 /* Eventdev trace points */
 RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_configure,

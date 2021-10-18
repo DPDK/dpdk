@@ -24,7 +24,6 @@ headers = files(
         'rte_event_ring.h',
         'rte_event_timer_adapter.h',
         'rte_eventdev.h',
-        'rte_eventdev_trace.h',
         'rte_eventdev_trace_fp.h',
 )
 indirect_headers += files(
@@ -34,6 +33,7 @@ driver_sdk_headers += files(
         'eventdev_pmd.h',
         'eventdev_pmd_pci.h',
         'eventdev_pmd_vdev.h',
+        'eventdev_trace.h',
         'event_timer_adapter_pmd.h',
 )
 

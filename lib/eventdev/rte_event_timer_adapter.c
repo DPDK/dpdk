@@ -24,7 +24,7 @@
 #include "eventdev_pmd.h"
 #include "rte_event_timer_adapter.h"
 #include "rte_eventdev.h"
-#include "rte_eventdev_trace.h"
+#include "eventdev_trace.h"
 
 #define DATA_MZ_NAME_MAX_LEN 64
 #define DATA_MZ_NAME_FORMAT "rte_event_timer_adapter_data_%d"

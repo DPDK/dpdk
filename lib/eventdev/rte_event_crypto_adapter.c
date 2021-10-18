@@ -16,7 +16,7 @@
 
 #include "rte_eventdev.h"
 #include "eventdev_pmd.h"
-#include "rte_eventdev_trace.h"
+#include "eventdev_trace.h"
 #include "rte_event_crypto_adapter.h"
 
 #define BATCH_SIZE 32
