@@ -1333,8 +1333,8 @@ F: doc/guides/rawdevs/cnxk_bphy.rst
 F: drivers/raw/cnxk_bphy/
 
 NTB
-M: Xiaoyun Li <xiaoyun.li@intel.com>
 M: Jingjing Wu <jingjing.wu@intel.com>
+M: Junfeng Guo <junfeng.guo@intel.com>
 F: drivers/raw/ntb/
 F: doc/guides/rawdevs/ntb.rst
 F: examples/ntb/
