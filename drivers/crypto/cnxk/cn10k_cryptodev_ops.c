@@ -196,11 +196,15 @@ cn10k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	struct pending_queue *pend_q;
 	struct cpt_inst_s *inst;
 	uint16_t lmt_id;
+	uint64_t head;
 	int ret, i;
 
 	pend_q = &qp->pend_q;
 
-	nb_allowed = qp->lf.nb_desc - pend_q->pending_count;
+	const uint64_t pq_mask = pend_q->pq_mask;
+
+	head = pend_q->head;
+	nb_allowed = pending_queue_free_cnt(head, pend_q->tail, pq_mask);
 	nb_ops = RTE_MIN(nb_ops, nb_allowed);
 
 	if (unlikely(nb_ops == 0))
@@ -214,18 +218,18 @@ cn10k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 
 again:
 	for (i = 0; i < RTE_MIN(PKTS_PER_LOOP, nb_ops); i++) {
-		infl_req = &pend_q->req_queue[pend_q->enq_tail];
+		infl_req = &pend_q->req_queue[head];
 		infl_req->op_flags = 0;
 
 		ret = cn10k_cpt_fill_inst(qp, ops + i, &inst[2 * i], infl_req);
 		if (unlikely(ret != 1)) {
 			plt_dp_err("Could not process op: %p", ops + i);
 			if (i == 0)
-				goto update_pending;
+				goto pend_q_commit;
 			break;
 		}
 
-		MOD_INC(pend_q->enq_tail, qp->lf.nb_desc);
+		pending_queue_advance(&head, pq_mask);
 	}
 
 	if (i > PKTS_PER_STEORL) {
@@ -251,9 +255,10 @@ again:
 		goto again;
 	}
 
-update_pending:
-	pend_q->pending_count += count + i;
+pend_q_commit:
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 
+	pend_q->head = head;
 	pend_q->time_out = rte_get_timer_cycles() +
 			   DEFAULT_COMMAND_TIMEOUT * rte_get_timer_hz();
 
@@ -512,18 +517,23 @@ cn10k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	struct cnxk_cpt_qp *qp = qptr;
 	struct pending_queue *pend_q;
 	struct cpt_cn10k_res_s *res;
+	uint64_t infl_cnt, pq_tail;
 	struct rte_crypto_op *cop;
-	int i, nb_pending;
+	int i;
 
 	pend_q = &qp->pend_q;
 
-	nb_pending = pend_q->pending_count;
+	const uint64_t pq_mask = pend_q->pq_mask;
 
-	if (nb_ops > nb_pending)
-		nb_ops = nb_pending;
+	pq_tail = pend_q->tail;
+	infl_cnt = pending_queue_infl_cnt(pend_q->head, pq_tail, pq_mask);
+	nb_ops = RTE_MIN(nb_ops, infl_cnt);
+
+	/* Ensure infl_cnt isn't read before data lands */
+	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
 
 	for (i = 0; i < nb_ops; i++) {
-		infl_req = &pend_q->req_queue[pend_q->deq_head];
+		infl_req = &pend_q->req_queue[pq_tail];
 
 		res = (struct cpt_cn10k_res_s *)&infl_req->res;
 
@@ -538,7 +548,7 @@ cn10k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 			break;
 		}
 
-		MOD_INC(pend_q->deq_head, qp->lf.nb_desc);
+		pending_queue_advance(&pq_tail, pq_mask);
 
 		cop = infl_req->cop;
 
@@ -550,7 +560,7 @@ cn10k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 			rte_mempool_put(qp->meta_info.pool, infl_req->mdata);
 	}
 
-	pend_q->pending_count -= i;
+	pend_q->tail = pq_tail;
 
 	return i;
 }

@@ -218,14 +218,14 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	uint16_t nb_allowed, count = 0;
 	struct cnxk_cpt_qp *qp = qptr;
 	struct pending_queue *pend_q;
-	uint64_t enq_tail;
+	uint64_t head;
 	int ret;
 
-	const uint32_t nb_desc = qp->lf.nb_desc;
+	pend_q = &qp->pend_q;
+
 	const uint64_t lmt_base = qp->lf.lmt_base;
 	const uint64_t io_addr = qp->lf.io_addr;
-
-	pend_q = &qp->pend_q;
+	const uint64_t pq_mask = pend_q->pq_mask;
 
 	/* Clear w0, w2, w3 of both inst */
 
@@ -236,14 +236,13 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	inst[1].w2.u64 = 0;
 	inst[1].w3.u64 = 0;
 
-	nb_allowed = qp->lf.nb_desc - pend_q->pending_count;
+	head = pend_q->head;
+	nb_allowed = pending_queue_free_cnt(head, pend_q->tail, pq_mask);
 	nb_ops = RTE_MIN(nb_ops, nb_allowed);
-
-	enq_tail = pend_q->enq_tail;
 
 	if (unlikely(nb_ops & 1)) {
 		op_1 = ops[0];
-		infl_req_1 = &pend_q->req_queue[enq_tail];
+		infl_req_1 = &pend_q->req_queue[head];
 		infl_req_1->op_flags = 0;
 
 		ret = cn9k_cpt_inst_prep(qp, op_1, infl_req_1, &inst[0]);
@@ -257,7 +256,7 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 		inst[0].res_addr = (uint64_t)&infl_req_1->res;
 
 		cn9k_cpt_inst_submit(&inst[0], lmt_base, io_addr);
-		MOD_INC(enq_tail, nb_desc);
+		pending_queue_advance(&head, pq_mask);
 		count++;
 	}
 
@@ -265,10 +264,10 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 		op_1 = ops[count];
 		op_2 = ops[count + 1];
 
-		infl_req_1 = &pend_q->req_queue[enq_tail];
-		MOD_INC(enq_tail, nb_desc);
-		infl_req_2 = &pend_q->req_queue[enq_tail];
-		MOD_INC(enq_tail, nb_desc);
+		infl_req_1 = &pend_q->req_queue[head];
+		pending_queue_advance(&head, pq_mask);
+		infl_req_2 = &pend_q->req_queue[head];
+		pending_queue_advance(&head, pq_mask);
 
 		infl_req_1->cop = op_1;
 		infl_req_2->cop = op_2;
@@ -284,23 +283,14 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 		ret = cn9k_cpt_inst_prep(qp, op_1, infl_req_1, &inst[0]);
 		if (unlikely(ret)) {
 			plt_dp_err("Could not process op: %p", op_1);
-			if (enq_tail == 0)
-				enq_tail = nb_desc - 2;
-			else if (enq_tail == 1)
-				enq_tail = nb_desc - 1;
-			else
-				enq_tail--;
+			pending_queue_retreat(&head, pq_mask, 2);
 			break;
 		}
 
 		ret = cn9k_cpt_inst_prep(qp, op_2, infl_req_2, &inst[1]);
 		if (unlikely(ret)) {
 			plt_dp_err("Could not process op: %p", op_2);
-			if (enq_tail == 0)
-				enq_tail = nb_desc - 1;
-			else
-				enq_tail--;
-
+			pending_queue_retreat(&head, pq_mask, 1);
 			cn9k_cpt_inst_submit(&inst[0], lmt_base, io_addr);
 			count++;
 			break;
@@ -311,8 +301,9 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 		count += 2;
 	}
 
-	pend_q->enq_tail = enq_tail;
-	pend_q->pending_count += count;
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+
+	pend_q->head = head;
 	pend_q->time_out = rte_get_timer_cycles() +
 			   DEFAULT_COMMAND_TIMEOUT * rte_get_timer_hz();
 
@@ -522,20 +513,23 @@ cn9k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	struct cnxk_cpt_qp *qp = qptr;
 	struct pending_queue *pend_q;
 	struct cpt_cn9k_res_s *res;
+	uint64_t infl_cnt, pq_tail;
 	struct rte_crypto_op *cop;
-	uint32_t pq_deq_head;
 	int i;
-
-	const uint32_t nb_desc = qp->lf.nb_desc;
 
 	pend_q = &qp->pend_q;
 
-	nb_ops = RTE_MIN(nb_ops, pend_q->pending_count);
+	const uint64_t pq_mask = pend_q->pq_mask;
 
-	pq_deq_head = pend_q->deq_head;
+	pq_tail = pend_q->tail;
+	infl_cnt = pending_queue_infl_cnt(pend_q->head, pq_tail, pq_mask);
+	nb_ops = RTE_MIN(nb_ops, infl_cnt);
+
+	/* Ensure infl_cnt isn't read before data lands */
+	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
 
 	for (i = 0; i < nb_ops; i++) {
-		infl_req = &pend_q->req_queue[pq_deq_head];
+		infl_req = &pend_q->req_queue[pq_tail];
 
 		res = (struct cpt_cn9k_res_s *)&infl_req->res;
 
@@ -550,7 +544,7 @@ cn9k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 			break;
 		}
 
-		MOD_INC(pq_deq_head, nb_desc);
+		pending_queue_advance(&pq_tail, pq_mask);
 
 		cop = infl_req->cop;
 
@@ -562,8 +556,7 @@ cn9k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 			rte_mempool_put(qp->meta_info.pool, infl_req->mdata);
 	}
 
-	pend_q->pending_count -= i;
-	pend_q->deq_head = pq_deq_head;
+	pend_q->tail = pq_tail;
 
 	return i;
 }

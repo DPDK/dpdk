@@ -53,14 +53,14 @@ struct cpt_inflight_req {
 } __rte_aligned(16);
 
 struct pending_queue {
-	/** Pending requests count */
-	uint64_t pending_count;
 	/** Array of pending requests */
 	struct cpt_inflight_req *req_queue;
-	/** Tail of queue to be used for enqueue */
-	uint16_t enq_tail;
-	/** Head of queue to be used for dequeue */
-	uint16_t deq_head;
+	/** Head of the queue to be used for enqueue */
+	uint64_t head;
+	/** Tail of the queue to be used for dequeue */
+	uint64_t tail;
+	/** Pending queue mask */
+	uint64_t pq_mask;
 	/** Timeout to track h/w being unresponsive */
 	uint64_t time_out;
 };
@@ -149,6 +149,31 @@ cnxk_event_crypto_mdata_get(struct rte_crypto_op *op)
 		return NULL;
 
 	return ec_mdata;
+}
+
+static __rte_always_inline void
+pending_queue_advance(uint64_t *index, const uint64_t mask)
+{
+	*index = (*index + 1) & mask;
+}
+
+static __rte_always_inline void
+pending_queue_retreat(uint64_t *index, const uint64_t mask, uint64_t nb_entry)
+{
+	*index = (*index - nb_entry) & mask;
+}
+
+static __rte_always_inline uint64_t
+pending_queue_infl_cnt(uint64_t head, uint64_t tail, const uint64_t mask)
+{
+	return (head - tail) & mask;
+}
+
+static __rte_always_inline uint64_t
+pending_queue_free_cnt(uint64_t head, uint64_t tail, const uint64_t mask)
+{
+	/* mask is nb_desc - 1 */
+	return mask - pending_queue_infl_cnt(head, tail, mask);
 }
 
 #endif /* _CNXK_CRYPTODEV_OPS_H_ */

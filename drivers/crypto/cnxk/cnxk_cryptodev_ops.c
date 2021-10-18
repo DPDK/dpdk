@@ -174,9 +174,10 @@ cnxk_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 {
 	char mempool_name[RTE_MEMPOOL_NAMESIZE];
 	struct cpt_qp_meta_info *meta_info;
+	int lcore_cnt = rte_lcore_count();
 	struct rte_mempool *pool;
+	int mb_pool_sz, mlen = 8;
 	uint32_t cache_sz;
-	int mlen = 8;
 
 	if (dev->feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) {
 		/* Get meta len */
@@ -189,14 +190,22 @@ cnxk_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 		mlen = RTE_MAX(mlen, cnxk_cpt_asym_get_mlen());
 	}
 
+	mb_pool_sz = nb_elements;
 	cache_sz = RTE_MIN(RTE_MEMPOOL_CACHE_MAX_SIZE, nb_elements / 1.5);
+
+	/* For poll mode, core that enqueues and core that dequeues can be
+	 * different. For event mode, all cores are allowed to use same crypto
+	 * queue pair.
+	 */
+
+	mb_pool_sz += (RTE_MAX(2, lcore_cnt) * cache_sz);
 
 	/* Allocate mempool */
 
 	snprintf(mempool_name, RTE_MEMPOOL_NAMESIZE, "cnxk_cpt_mb_%u:%u",
 		 dev->data->dev_id, qp_id);
 
-	pool = rte_mempool_create(mempool_name, nb_elements, mlen, cache_sz, 0,
+	pool = rte_mempool_create(mempool_name, mb_pool_sz, mlen, cache_sz, 0,
 				  NULL, NULL, NULL, NULL, rte_socket_id(), 0);
 
 	if (pool == NULL) {
@@ -269,9 +278,8 @@ cnxk_cpt_qp_create(const struct rte_cryptodev *dev, uint16_t qp_id,
 
 	/* Initialize pending queue */
 	qp->pend_q.req_queue = pq_mem->addr;
-	qp->pend_q.enq_tail = 0;
-	qp->pend_q.deq_head = 0;
-	qp->pend_q.pending_count = 0;
+	qp->pend_q.head = 0;
+	qp->pend_q.tail = 0;
 
 	return qp;
 
@@ -371,6 +379,8 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		ret = -EINVAL;
 		goto exit;
 	}
+
+	qp->pend_q.pq_mask = qp->lf.nb_desc - 1;
 
 	roc_cpt->lf[qp_id] = &qp->lf;
 
