@@ -117,6 +117,7 @@ New Features
   bug fixes and improvements, including:
 
   * Support for the tx_free_thresh and rx_free_thresh configuration parameters.
+  * NUMA aware allocations for the queue helper structures.
 
 * **Updated Broadcom bnxt PMD.**
 

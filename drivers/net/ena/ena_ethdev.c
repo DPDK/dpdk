@@ -1165,19 +1165,20 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->numa_socket_id = socket_id;
 	txq->pkts_without_db = false;
 
-	txq->tx_buffer_info = rte_zmalloc("txq->tx_buffer_info",
-					  sizeof(struct ena_tx_buffer) *
-					  txq->ring_size,
-					  RTE_CACHE_LINE_SIZE);
+	txq->tx_buffer_info = rte_zmalloc_socket("txq->tx_buffer_info",
+		sizeof(struct ena_tx_buffer) * txq->ring_size,
+		RTE_CACHE_LINE_SIZE,
+		socket_id);
 	if (!txq->tx_buffer_info) {
 		PMD_DRV_LOG(ERR,
 			"Failed to allocate memory for Tx buffer info\n");
 		return -ENOMEM;
 	}
 
-	txq->empty_tx_reqs = rte_zmalloc("txq->empty_tx_reqs",
-					 sizeof(u16) * txq->ring_size,
-					 RTE_CACHE_LINE_SIZE);
+	txq->empty_tx_reqs = rte_zmalloc_socket("txq->empty_tx_reqs",
+		sizeof(uint16_t) * txq->ring_size,
+		RTE_CACHE_LINE_SIZE,
+		socket_id);
 	if (!txq->empty_tx_reqs) {
 		PMD_DRV_LOG(ERR,
 			"Failed to allocate memory for empty Tx requests\n");
@@ -1186,9 +1187,10 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	txq->push_buf_intermediate_buf =
-		rte_zmalloc("txq->push_buf_intermediate_buf",
-			    txq->tx_max_header_size,
-			    RTE_CACHE_LINE_SIZE);
+		rte_zmalloc_socket("txq->push_buf_intermediate_buf",
+			txq->tx_max_header_size,
+			RTE_CACHE_LINE_SIZE,
+			socket_id);
 	if (!txq->push_buf_intermediate_buf) {
 		PMD_DRV_LOG(ERR, "Failed to alloc push buffer for LLQ\n");
 		rte_free(txq->tx_buffer_info);
@@ -1270,19 +1272,20 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->numa_socket_id = socket_id;
 	rxq->mb_pool = mp;
 
-	rxq->rx_buffer_info = rte_zmalloc("rxq->buffer_info",
+	rxq->rx_buffer_info = rte_zmalloc_socket("rxq->buffer_info",
 		sizeof(struct ena_rx_buffer) * nb_desc,
-		RTE_CACHE_LINE_SIZE);
+		RTE_CACHE_LINE_SIZE,
+		socket_id);
 	if (!rxq->rx_buffer_info) {
 		PMD_DRV_LOG(ERR,
 			"Failed to allocate memory for Rx buffer info\n");
 		return -ENOMEM;
 	}
 
-	rxq->rx_refill_buffer = rte_zmalloc("rxq->rx_refill_buffer",
-					    sizeof(struct rte_mbuf *) * nb_desc,
-					    RTE_CACHE_LINE_SIZE);
-
+	rxq->rx_refill_buffer = rte_zmalloc_socket("rxq->rx_refill_buffer",
+		sizeof(struct rte_mbuf *) * nb_desc,
+		RTE_CACHE_LINE_SIZE,
+		socket_id);
 	if (!rxq->rx_refill_buffer) {
 		PMD_DRV_LOG(ERR,
 			"Failed to allocate memory for Rx refill buffer\n");
@@ -1291,9 +1294,10 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
-	rxq->empty_rx_reqs = rte_zmalloc("rxq->empty_rx_reqs",
-					 sizeof(uint16_t) * nb_desc,
-					 RTE_CACHE_LINE_SIZE);
+	rxq->empty_rx_reqs = rte_zmalloc_socket("rxq->empty_rx_reqs",
+		sizeof(uint16_t) * nb_desc,
+		RTE_CACHE_LINE_SIZE,
+		socket_id);
 	if (!rxq->empty_rx_reqs) {
 		PMD_DRV_LOG(ERR,
 			"Failed to allocate memory for empty Rx requests\n");
