@@ -128,8 +128,6 @@ __rte_internal
 int mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl, uint32_t *dev_gen_ptr,
 		      int socket);
 __rte_internal
-int mlx5_mr_btree_init(struct mlx5_mr_btree *bt, int n, int socket);
-__rte_internal
 void mlx5_mr_btree_free(struct mlx5_mr_btree *bt);
 __rte_internal
 void mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused);
@@ -144,6 +142,8 @@ uint32_t mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
 			       struct rte_mempool *mp, uintptr_t addr);
 __rte_internal
 void mlx5_mr_release_cache(struct mlx5_mr_share_cache *mr_cache);
+__rte_internal
+int mlx5_mr_create_cache(struct mlx5_mr_share_cache *share_cache, int socket);
 __rte_internal
 void mlx5_mr_dump_cache(struct mlx5_mr_share_cache *share_cache __rte_unused);
 __rte_internal
@@ -182,6 +182,10 @@ mlx5_common_verbs_reg_mr(void *pd, void *addr, size_t length,
 __rte_internal
 void
 mlx5_common_verbs_dereg_mr(struct mlx5_pmd_mr *pmd_mr);
+
+__rte_internal
+void
+mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb, mlx5_dereg_mr_t *dereg_mr_cb);
 
 __rte_internal
 void

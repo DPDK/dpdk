@@ -799,16 +799,13 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 		rte_compressdev_pmd_destroy(priv->compressdev);
 		return -1;
 	}
-	if (mlx5_mr_btree_init(&priv->mr_scache.cache,
-			     MLX5_MR_BTREE_CACHE_N * 2, rte_socket_id()) != 0) {
+	if (mlx5_mr_create_cache(&priv->mr_scache, rte_socket_id()) != 0) {
 		DRV_LOG(ERR, "Failed to allocate shared cache MR memory.");
 		mlx5_compress_uar_release(priv);
 		rte_compressdev_pmd_destroy(priv->compressdev);
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
-	priv->mr_scache.reg_mr_cb = mlx5_common_verbs_reg_mr;
-	priv->mr_scache.dereg_mr_cb = mlx5_common_verbs_dereg_mr;
 	/* Register callback function for global shared MR cache management. */
 	if (TAILQ_EMPTY(&mlx5_compress_priv_list))
 		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",

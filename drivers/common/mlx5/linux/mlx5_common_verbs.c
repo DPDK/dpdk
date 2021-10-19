@@ -142,3 +142,18 @@ mlx5_common_verbs_dereg_mr(struct mlx5_pmd_mr *pmd_mr)
 		memset(pmd_mr, 0, sizeof(*pmd_mr));
 	}
 }
+
+/**
+ * Set the reg_mr and dereg_mr callbacks.
+ *
+ * @param[out] reg_mr_cb
+ *   Pointer to reg_mr func
+ * @param[out] dereg_mr_cb
+ *   Pointer to dereg_mr func
+ */
+void
+mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb, mlx5_dereg_mr_t *dereg_mr_cb)
+{
+	*reg_mr_cb = mlx5_common_verbs_reg_mr;
+	*dereg_mr_cb = mlx5_common_verbs_dereg_mr;
+}

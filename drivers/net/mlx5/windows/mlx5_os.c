@@ -963,21 +963,4 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 	return 0;
 }
 
-/**
- * Set the reg_mr and dereg_mr call backs
- *
- * @param reg_mr_cb[out]
- *   Pointer to reg_mr func
- * @param dereg_mr_cb[out]
- *   Pointer to dereg_mr func
- *
- */
-void
-mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,
-		      mlx5_dereg_mr_t *dereg_mr_cb)
-{
-	*reg_mr_cb = mlx5_os_reg_mr;
-	*dereg_mr_cb = mlx5_os_dereg_mr;
-}
-
 const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops = {0};

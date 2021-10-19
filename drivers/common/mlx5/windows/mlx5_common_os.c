@@ -317,7 +317,7 @@ mlx5_os_umem_dereg(void *pumem)
  * @return
  *   0 on successful registration, -1 otherwise
  */
-int
+static int
 mlx5_os_reg_mr(void *pd,
 	       void *addr, size_t length, struct mlx5_pmd_mr *pmd_mr)
 {
@@ -365,7 +365,7 @@ mlx5_os_reg_mr(void *pd,
  * @param[in] pmd_mr
  *  Pointer to PMD mr object
  */
-void
+static void
 mlx5_os_dereg_mr(struct mlx5_pmd_mr *pmd_mr)
 {
 	if (pmd_mr && pmd_mr->mkey)
@@ -373,4 +373,20 @@ mlx5_os_dereg_mr(struct mlx5_pmd_mr *pmd_mr)
 	if (pmd_mr && pmd_mr->obj)
 		claim_zero(mlx5_os_umem_dereg(pmd_mr->obj));
 	memset(pmd_mr, 0, sizeof(*pmd_mr));
+}
+
+/**
+ * Set the reg_mr and dereg_mr callbacks.
+ *
+ * @param[out] reg_mr_cb
+ *   Pointer to reg_mr func
+ * @param[out] dereg_mr_cb
+ *   Pointer to dereg_mr func
+ *
+ */
+void
+mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb, mlx5_dereg_mr_t *dereg_mr_cb)
+{
+	*reg_mr_cb = mlx5_os_reg_mr;
+	*dereg_mr_cb = mlx5_os_dereg_mr;
 }

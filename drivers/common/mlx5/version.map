@@ -109,7 +109,7 @@ INTERNAL {
 	mlx5_mr_addr2mr_bh;
 	mlx5_mr_btree_dump;
 	mlx5_mr_btree_free;
-	mlx5_mr_btree_init;
+	mlx5_mr_create_cache;
 	mlx5_mr_create_primary;
 	mlx5_mr_ctrl_init;
 	mlx5_mr_dump_cache;
@@ -136,10 +136,9 @@ INTERNAL {
 	mlx5_nl_vlan_vmwa_create; # WINDOWS_NO_EXPORT
 	mlx5_nl_vlan_vmwa_delete; # WINDOWS_NO_EXPORT
 
-	mlx5_os_dereg_mr;
-	mlx5_os_reg_mr;
 	mlx5_os_umem_dereg;
 	mlx5_os_umem_reg;
+	mlx5_os_set_reg_mr_cb;
 
 	mlx5_realloc;
 

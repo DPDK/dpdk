@@ -1354,12 +1354,6 @@ struct mlx5_obj_ops {
 
 #define MLX5_RSS_HASH_FIELDS_LEN RTE_DIM(mlx5_rss_hash_fields)
 
-/* MR operations structure. */
-struct mlx5_mr_ops {
-	mlx5_reg_mr_t reg_mr;
-	mlx5_dereg_mr_t dereg_mr;
-};
-
 struct mlx5_priv {
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared device context. */
@@ -1759,8 +1753,6 @@ void mlx5_os_free_shared_dr(struct mlx5_priv *priv);
 int mlx5_os_net_probe(struct mlx5_common_device *cdev);
 void mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh);
 void mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh);
-void mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,
-			   mlx5_dereg_mr_t *dereg_mr_cb);
 void mlx5_os_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 int mlx5_os_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 			 uint32_t index);

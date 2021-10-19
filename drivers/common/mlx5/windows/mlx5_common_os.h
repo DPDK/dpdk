@@ -253,9 +253,5 @@ __rte_internal
 void *mlx5_os_umem_reg(void *ctx, void *addr, size_t size, uint32_t access);
 __rte_internal
 int mlx5_os_umem_dereg(void *pumem);
-__rte_internal
-int mlx5_os_reg_mr(void *pd,
-		   void *addr, size_t length, struct mlx5_pmd_mr *pmd_mr);
-__rte_internal
-void mlx5_os_dereg_mr(struct mlx5_pmd_mr *pmd_mr);
+
 #endif /* RTE_PMD_MLX5_COMMON_OS_H_ */

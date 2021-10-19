@@ -199,7 +199,7 @@ mr_btree_insert(struct mlx5_mr_btree *bt, struct mr_cache_entry *entry)
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-int
+static int
 mlx5_mr_btree_init(struct mlx5_mr_btree *bt, int n, int socket)
 {
 	if (bt == NULL) {
@@ -1042,6 +1042,29 @@ mlx5_mr_release_cache(struct mlx5_mr_share_cache *share_cache)
 	rte_rwlock_write_unlock(&share_cache->rwlock);
 	/* Free all remaining MRs. */
 	mlx5_mr_garbage_collect(share_cache);
+}
+
+/**
+ * Initialize global MR cache of a device.
+ *
+ * @param share_cache
+ *   Pointer to a global shared MR cache.
+ * @param socket
+ *   NUMA socket on which memory must be allocated.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_mr_create_cache(struct mlx5_mr_share_cache *share_cache, int socket)
+{
+	/* Set the reg_mr and dereg_mr callback functions */
+	mlx5_os_set_reg_mr_cb(&share_cache->reg_mr_cb,
+			      &share_cache->dereg_mr_cb);
+	rte_rwlock_init(&share_cache->rwlock);
+	/* Initialize B-tree and allocate memory for global MR cache table. */
+	return mlx5_mr_btree_init(&share_cache->cache,
+				  MLX5_MR_BTREE_CACHE_N * 2, socket);
 }
 
 /**

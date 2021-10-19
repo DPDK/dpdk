@@ -2852,23 +2852,6 @@ mlx5_os_read_dev_stat(struct mlx5_priv *priv, const char *ctr_name,
 }
 
 /**
- * Set the reg_mr and dereg_mr call backs
- *
- * @param reg_mr_cb[out]
- *   Pointer to reg_mr func
- * @param dereg_mr_cb[out]
- *   Pointer to dereg_mr func
- *
- */
-void
-mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,
-		      mlx5_dereg_mr_t *dereg_mr_cb)
-{
-	*reg_mr_cb = mlx5_mr_verbs_ops.reg_mr;
-	*dereg_mr_cb = mlx5_mr_verbs_ops.dereg_mr;
-}
-
-/**
  * Remove a MAC address from device
  *
  * @param dev

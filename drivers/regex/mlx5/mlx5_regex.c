@@ -194,11 +194,7 @@ mlx5_regex_dev_probe(struct mlx5_common_device *cdev)
 	priv->regexdev->device = cdev->dev;
 	priv->regexdev->data->dev_private = priv;
 	priv->regexdev->state = RTE_REGEXDEV_READY;
-	priv->mr_scache.reg_mr_cb = mlx5_common_verbs_reg_mr;
-	priv->mr_scache.dereg_mr_cb = mlx5_common_verbs_dereg_mr;
-	ret = mlx5_mr_btree_init(&priv->mr_scache.cache,
-				 MLX5_MR_BTREE_CACHE_N * 2,
-				 rte_socket_id());
+	ret = mlx5_mr_create_cache(&priv->mr_scache, rte_socket_id());
 	if (ret) {
 		DRV_LOG(ERR, "MR init tree failed.");
 	    rte_errno = ENOMEM;

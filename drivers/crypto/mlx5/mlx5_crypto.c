@@ -974,16 +974,13 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		return -1;
 	}
-	if (mlx5_mr_btree_init(&priv->mr_scache.cache,
-			     MLX5_MR_BTREE_CACHE_N * 2, rte_socket_id()) != 0) {
+	if (mlx5_mr_create_cache(&priv->mr_scache, rte_socket_id()) != 0) {
 		DRV_LOG(ERR, "Failed to allocate shared cache MR memory.");
 		mlx5_crypto_uar_release(priv);
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
-	priv->mr_scache.reg_mr_cb = mlx5_common_verbs_reg_mr;
-	priv->mr_scache.dereg_mr_cb = mlx5_common_verbs_dereg_mr;
 	priv->keytag = rte_cpu_to_be_64(devarg_prms.keytag);
 	priv->max_segs_num = devarg_prms.max_segs_num;
 	priv->umr_wqe_size = sizeof(struct mlx5_wqe_umr_bsf_seg) +
