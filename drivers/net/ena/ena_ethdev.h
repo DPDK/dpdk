@@ -223,10 +223,8 @@ struct ena_stats_eni {
 };
 
 struct ena_offloads {
-	bool tso4_supported;
-	bool tx_csum_supported;
-	bool rx_csum_supported;
-	bool rss_hash_supported;
+	uint32_t tx_offloads;
+	uint32_t rx_offloads;
 };
 
 /* board specific private data structure */

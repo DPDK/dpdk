@@ -140,6 +140,23 @@ static const struct ena_stats ena_stats_rx_strings[] = {
 #define	ENA_TX_OFFLOAD_NOTSUP_MASK	\
 	(PKT_TX_OFFLOAD_MASK ^ ENA_TX_OFFLOAD_MASK)
 
+/** HW specific offloads capabilities. */
+/* IPv4 checksum offload. */
+#define ENA_L3_IPV4_CSUM		0x0001
+/* TCP/UDP checksum offload for IPv4 packets. */
+#define ENA_L4_IPV4_CSUM		0x0002
+/* TCP/UDP checksum offload for IPv4 packets with pseudo header checksum. */
+#define ENA_L4_IPV4_CSUM_PARTIAL	0x0004
+/* TCP/UDP checksum offload for IPv6 packets. */
+#define ENA_L4_IPV6_CSUM		0x0008
+/* TCP/UDP checksum offload for IPv6 packets with pseudo header checksum. */
+#define ENA_L4_IPV6_CSUM_PARTIAL	0x0010
+/* TSO support for IPv4 packets. */
+#define ENA_IPV4_TSO			0x0020
+
+/* Device supports setting RSS hash. */
+#define ENA_RX_RSS_HASH			0x0040
+
 static const struct rte_pci_id pci_id_ena_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_VF_RSERV0) },
@@ -1612,6 +1629,50 @@ static uint32_t ena_calc_max_io_queue_num(struct ena_com_dev *ena_dev,
 	return max_num_io_queues;
 }
 
+static void
+ena_set_offloads(struct ena_offloads *offloads,
+		 struct ena_admin_feature_offload_desc *offload_desc)
+{
+	if (offload_desc->tx & ENA_ADMIN_FEATURE_OFFLOAD_DESC_TSO_IPV4_MASK)
+		offloads->tx_offloads |= ENA_IPV4_TSO;
+
+	/* Tx IPv4 checksum offloads */
+	if (offload_desc->tx &
+	    ENA_ADMIN_FEATURE_OFFLOAD_DESC_TX_L3_CSUM_IPV4_MASK)
+		offloads->tx_offloads |= ENA_L3_IPV4_CSUM;
+	if (offload_desc->tx &
+	    ENA_ADMIN_FEATURE_OFFLOAD_DESC_TX_L4_IPV4_CSUM_FULL_MASK)
+		offloads->tx_offloads |= ENA_L4_IPV4_CSUM;
+	if (offload_desc->tx &
+	    ENA_ADMIN_FEATURE_OFFLOAD_DESC_TX_L4_IPV4_CSUM_PART_MASK)
+		offloads->tx_offloads |= ENA_L4_IPV4_CSUM_PARTIAL;
+
+	/* Tx IPv6 checksum offloads */
+	if (offload_desc->tx &
+	    ENA_ADMIN_FEATURE_OFFLOAD_DESC_TX_L4_IPV6_CSUM_FULL_MASK)
+		offloads->tx_offloads |= ENA_L4_IPV6_CSUM;
+	if (offload_desc->tx &
+	     ENA_ADMIN_FEATURE_OFFLOAD_DESC_TX_L4_IPV6_CSUM_PART_MASK)
+		offloads->tx_offloads |= ENA_L4_IPV6_CSUM_PARTIAL;
+
+	/* Rx IPv4 checksum offloads */
+	if (offload_desc->rx_supported &
+	    ENA_ADMIN_FEATURE_OFFLOAD_DESC_RX_L3_CSUM_IPV4_MASK)
+		offloads->rx_offloads |= ENA_L3_IPV4_CSUM;
+	if (offload_desc->rx_supported &
+	    ENA_ADMIN_FEATURE_OFFLOAD_DESC_RX_L4_IPV4_CSUM_MASK)
+		offloads->rx_offloads |= ENA_L4_IPV4_CSUM;
+
+	/* Rx IPv6 checksum offloads */
+	if (offload_desc->rx_supported &
+	    ENA_ADMIN_FEATURE_OFFLOAD_DESC_RX_L4_IPV6_CSUM_MASK)
+		offloads->rx_offloads |= ENA_L4_IPV6_CSUM;
+
+	if (offload_desc->rx_supported &
+	    ENA_ADMIN_FEATURE_OFFLOAD_DESC_RX_HASH_MASK)
+		offloads->rx_offloads |= ENA_RX_RSS_HASH;
+}
+
 static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct ena_calc_queue_size_ctx calc_queue_ctx = { 0 };
@@ -1733,17 +1794,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	/* Set max MTU for this device */
 	adapter->max_mtu = get_feat_ctx.dev_attr.max_mtu;
 
-	/* set device support for offloads */
-	adapter->offloads.tso4_supported = (get_feat_ctx.offload.tx &
-		ENA_ADMIN_FEATURE_OFFLOAD_DESC_TSO_IPV4_MASK) != 0;
-	adapter->offloads.tx_csum_supported = (get_feat_ctx.offload.tx &
-		ENA_ADMIN_FEATURE_OFFLOAD_DESC_TX_L4_IPV4_CSUM_PART_MASK) != 0;
-	adapter->offloads.rx_csum_supported =
-		(get_feat_ctx.offload.rx_supported &
-		ENA_ADMIN_FEATURE_OFFLOAD_DESC_RX_L4_IPV4_CSUM_MASK) != 0;
-	adapter->offloads.rss_hash_supported =
-		(get_feat_ctx.offload.rx_supported &
-		ENA_ADMIN_FEATURE_OFFLOAD_DESC_RX_HASH_MASK) != 0;
+	ena_set_offloads(&adapter->offloads, &get_feat_ctx.offload);
 
 	/* Copy MAC address and point DPDK to it */
 	eth_dev->data->mac_addrs = (struct rte_ether_addr *)adapter->mac_addr;
@@ -1903,24 +1954,27 @@ static int ena_infos_get(struct rte_eth_dev *dev,
 			ETH_LINK_SPEED_100G;
 
 	/* Set Tx & Rx features available for device */
-	if (adapter->offloads.tso4_supported)
+	if (adapter->offloads.tx_offloads & ENA_IPV4_TSO)
 		tx_feat	|= DEV_TX_OFFLOAD_TCP_TSO;
 
-	if (adapter->offloads.tx_csum_supported)
-		tx_feat |= DEV_TX_OFFLOAD_IPV4_CKSUM |
-			DEV_TX_OFFLOAD_UDP_CKSUM |
-			DEV_TX_OFFLOAD_TCP_CKSUM;
+	if (adapter->offloads.tx_offloads & ENA_L3_IPV4_CSUM)
+		tx_feat |= DEV_TX_OFFLOAD_IPV4_CKSUM;
+	if (adapter->offloads.tx_offloads &
+	    (ENA_L4_IPV4_CSUM_PARTIAL | ENA_L4_IPV4_CSUM |
+	     ENA_L4_IPV6_CSUM | ENA_L4_IPV6_CSUM_PARTIAL))
+		tx_feat |= DEV_TX_OFFLOAD_UDP_CKSUM | DEV_TX_OFFLOAD_TCP_CKSUM;
 
-	if (adapter->offloads.rx_csum_supported)
-		rx_feat |= DEV_RX_OFFLOAD_IPV4_CKSUM |
-			DEV_RX_OFFLOAD_UDP_CKSUM  |
-			DEV_RX_OFFLOAD_TCP_CKSUM;
+	if (adapter->offloads.rx_offloads & ENA_L3_IPV4_CSUM)
+		rx_feat |= DEV_RX_OFFLOAD_IPV4_CKSUM;
+	if (adapter->offloads.rx_offloads &
+	    (ENA_L4_IPV4_CSUM | ENA_L4_IPV6_CSUM))
+		rx_feat |= DEV_RX_OFFLOAD_UDP_CKSUM | DEV_RX_OFFLOAD_TCP_CKSUM;
 
 	tx_feat |= DEV_TX_OFFLOAD_MULTI_SEGS;
 
 	/* Inform framework about available features */
 	dev_info->rx_offload_capa = rx_feat;
-	if (adapter->offloads.rss_hash_supported)
+	if (adapter->offloads.rx_offloads & ENA_RX_RSS_HASH)
 		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_RSS_HASH;
 	dev_info->rx_queue_offload_capa = rx_feat;
 	dev_info->tx_offload_capa = tx_feat;
@@ -2173,45 +2227,60 @@ eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint32_t i;
 	struct rte_mbuf *m;
 	struct ena_ring *tx_ring = (struct ena_ring *)(tx_queue);
+	struct ena_adapter *adapter = tx_ring->adapter;
 	struct rte_ipv4_hdr *ip_hdr;
 	uint64_t ol_flags;
+	uint64_t l4_csum_flag;
+	uint64_t dev_offload_capa;
 	uint16_t frag_field;
+	bool need_pseudo_csum;
 
+	dev_offload_capa = adapter->offloads.tx_offloads;
 	for (i = 0; i != nb_pkts; i++) {
 		m = tx_pkts[i];
 		ol_flags = m->ol_flags;
 
-		if (!(ol_flags & PKT_TX_IPV4))
+		/* Check if any offload flag was set */
+		if (ol_flags == 0)
 			continue;
 
-		/* If there was not L2 header length specified, assume it is
-		 * length of the ethernet header.
-		 */
-		if (unlikely(m->l2_len == 0))
-			m->l2_len = sizeof(struct rte_ether_hdr);
-
-		ip_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
-						 m->l2_len);
-		frag_field = rte_be_to_cpu_16(ip_hdr->fragment_offset);
-
-		if ((frag_field & RTE_IPV4_HDR_DF_FLAG) != 0) {
-			m->packet_type |= RTE_PTYPE_L4_NONFRAG;
-
-			/* If IPv4 header has DF flag enabled and TSO support is
-			 * disabled, partial chcecksum should not be calculated.
-			 */
-			if (!tx_ring->adapter->offloads.tso4_supported)
-				continue;
-		}
-
-		if ((ol_flags & ENA_TX_OFFLOAD_NOTSUP_MASK) != 0 ||
-				(ol_flags & PKT_TX_L4_MASK) ==
-				PKT_TX_SCTP_CKSUM) {
+		l4_csum_flag = ol_flags & PKT_TX_L4_MASK;
+		/* SCTP checksum offload is not supported by the ENA. */
+		if ((ol_flags & ENA_TX_OFFLOAD_NOTSUP_MASK) ||
+		    l4_csum_flag == PKT_TX_SCTP_CKSUM) {
+			PMD_TX_LOG(DEBUG,
+				"mbuf[%" PRIu32 "] has unsupported offloads flags set: 0x%" PRIu64 "\n",
+				i, ol_flags);
 			rte_errno = ENOTSUP;
 			return i;
 		}
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
+		/* Check if requested offload is also enabled for the queue */
+		if ((ol_flags & PKT_TX_IP_CKSUM &&
+		     !(tx_ring->offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)) ||
+		    (l4_csum_flag == PKT_TX_TCP_CKSUM &&
+		     !(tx_ring->offloads & DEV_TX_OFFLOAD_TCP_CKSUM)) ||
+		    (l4_csum_flag == PKT_TX_UDP_CKSUM &&
+		     !(tx_ring->offloads & DEV_TX_OFFLOAD_UDP_CKSUM))) {
+			PMD_TX_LOG(DEBUG,
+				"mbuf[%" PRIu32 "]: requested offloads: %" PRIu16 " are not enabled for the queue[%u]\n",
+				i, m->nb_segs, tx_ring->id);
+			rte_errno = EINVAL;
+			return i;
+		}
+
+		/* The caller is obligated to set l2 and l3 len if any cksum
+		 * offload is enabled.
+		 */
+		if (unlikely(ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK) &&
+		    (m->l2_len == 0 || m->l3_len == 0))) {
+			PMD_TX_LOG(DEBUG,
+				"mbuf[%" PRIu32 "]: l2_len or l3_len values are 0 while the offload was requested\n",
+				i);
+			rte_errno = EINVAL;
+			return i;
+		}
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
 			rte_errno = -ret;
@@ -2219,16 +2288,76 @@ eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		}
 #endif
 
-		/* In case we are supposed to TSO and have DF not set (DF=0)
-		 * hardware must be provided with partial checksum, otherwise
-		 * it will take care of necessary calculations.
+		/* Verify HW support for requested offloads and determine if
+		 * pseudo header checksum is needed.
 		 */
+		need_pseudo_csum = false;
+		if (ol_flags & PKT_TX_IPV4) {
+			if (ol_flags & PKT_TX_IP_CKSUM &&
+			    !(dev_offload_capa & ENA_L3_IPV4_CSUM)) {
+				rte_errno = ENOTSUP;
+				return i;
+			}
 
-		ret = rte_net_intel_cksum_flags_prepare(m,
-			ol_flags & ~PKT_TX_TCP_SEG);
-		if (ret != 0) {
-			rte_errno = -ret;
-			return i;
+			if (ol_flags & PKT_TX_TCP_SEG &&
+			    !(dev_offload_capa & ENA_IPV4_TSO)) {
+				rte_errno = ENOTSUP;
+				return i;
+			}
+
+			/* Check HW capabilities and if pseudo csum is needed
+			 * for L4 offloads.
+			 */
+			if (l4_csum_flag != PKT_TX_L4_NO_CKSUM &&
+			    !(dev_offload_capa & ENA_L4_IPV4_CSUM)) {
+				if (dev_offload_capa &
+				    ENA_L4_IPV4_CSUM_PARTIAL) {
+					need_pseudo_csum = true;
+				} else {
+					rte_errno = ENOTSUP;
+					return i;
+				}
+			}
+
+			/* Parse the DF flag */
+			ip_hdr = rte_pktmbuf_mtod_offset(m,
+				struct rte_ipv4_hdr *, m->l2_len);
+			frag_field = rte_be_to_cpu_16(ip_hdr->fragment_offset);
+			if (frag_field & RTE_IPV4_HDR_DF_FLAG) {
+				m->packet_type |= RTE_PTYPE_L4_NONFRAG;
+			} else if (ol_flags & PKT_TX_TCP_SEG) {
+				/* In case we are supposed to TSO and have DF
+				 * not set (DF=0) hardware must be provided with
+				 * partial checksum.
+				 */
+				need_pseudo_csum = true;
+			}
+		} else if (ol_flags & PKT_TX_IPV6) {
+			/* There is no support for IPv6 TSO as for now. */
+			if (ol_flags & PKT_TX_TCP_SEG) {
+				rte_errno = ENOTSUP;
+				return i;
+			}
+
+			/* Check HW capabilities and if pseudo csum is needed */
+			if (l4_csum_flag != PKT_TX_L4_NO_CKSUM &&
+			    !(dev_offload_capa & ENA_L4_IPV6_CSUM)) {
+				if (dev_offload_capa &
+				    ENA_L4_IPV6_CSUM_PARTIAL) {
+					need_pseudo_csum = true;
+				} else {
+					rte_errno = ENOTSUP;
+					return i;
+				}
+			}
+		}
+
+		if (need_pseudo_csum) {
+			ret = rte_net_intel_cksum_flags_prepare(m, ol_flags);
+			if (ret != 0) {
+				rte_errno = -ret;
+				return i;
+			}
 		}
 	}
 
