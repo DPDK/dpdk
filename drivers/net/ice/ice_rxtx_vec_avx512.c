@@ -3,6 +3,7 @@
  */
 
 #include "ice_rxtx_vec_common.h"
+#include "ice_rxtx_common_avx.h"
 
 #include <x86intrin.h>
 
