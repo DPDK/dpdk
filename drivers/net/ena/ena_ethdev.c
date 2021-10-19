@@ -223,6 +223,10 @@ static int ena_queue_start(struct rte_eth_dev *dev, struct ena_ring *ring);
 static int ena_queue_start_all(struct rte_eth_dev *dev,
 			       enum ena_ring_type ring_type);
 static void ena_stats_restart(struct rte_eth_dev *dev);
+static uint64_t ena_get_rx_port_offloads(struct ena_adapter *adapter);
+static uint64_t ena_get_tx_port_offloads(struct ena_adapter *adapter);
+static uint64_t ena_get_rx_queue_offloads(struct ena_adapter *adapter);
+static uint64_t ena_get_tx_queue_offloads(struct ena_adapter *adapter);
 static int ena_infos_get(struct rte_eth_dev *dev,
 			 struct rte_eth_dev_info *dev_info);
 static void ena_interrupt_handler_rte(void *cb_arg);
@@ -1947,12 +1951,63 @@ static void ena_init_rings(struct ena_adapter *adapter,
 	}
 }
 
+static uint64_t ena_get_rx_port_offloads(struct ena_adapter *adapter)
+{
+	uint64_t port_offloads = 0;
+
+	if (adapter->offloads.rx_offloads & ENA_L3_IPV4_CSUM)
+		port_offloads |= DEV_RX_OFFLOAD_IPV4_CKSUM;
+
+	if (adapter->offloads.rx_offloads &
+	    (ENA_L4_IPV4_CSUM | ENA_L4_IPV6_CSUM))
+		port_offloads |=
+			DEV_RX_OFFLOAD_UDP_CKSUM | DEV_RX_OFFLOAD_TCP_CKSUM;
+
+	if (adapter->offloads.rx_offloads & ENA_RX_RSS_HASH)
+		port_offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
+	return port_offloads;
+}
+
+static uint64_t ena_get_tx_port_offloads(struct ena_adapter *adapter)
+{
+	uint64_t port_offloads = 0;
+
+	if (adapter->offloads.tx_offloads & ENA_IPV4_TSO)
+		port_offloads |= DEV_TX_OFFLOAD_TCP_TSO;
+
+	if (adapter->offloads.tx_offloads & ENA_L3_IPV4_CSUM)
+		port_offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
+	if (adapter->offloads.tx_offloads &
+	    (ENA_L4_IPV4_CSUM_PARTIAL | ENA_L4_IPV4_CSUM |
+	     ENA_L4_IPV6_CSUM | ENA_L4_IPV6_CSUM_PARTIAL))
+		port_offloads |=
+			DEV_TX_OFFLOAD_UDP_CKSUM | DEV_TX_OFFLOAD_TCP_CKSUM;
+
+	port_offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+
+	return port_offloads;
+}
+
+static uint64_t ena_get_rx_queue_offloads(struct ena_adapter *adapter)
+{
+	RTE_SET_USED(adapter);
+
+	return 0;
+}
+
+static uint64_t ena_get_tx_queue_offloads(struct ena_adapter *adapter)
+{
+	RTE_SET_USED(adapter);
+
+	return 0;
+}
+
 static int ena_infos_get(struct rte_eth_dev *dev,
 			  struct rte_eth_dev_info *dev_info)
 {
 	struct ena_adapter *adapter;
 	struct ena_com_dev *ena_dev;
-	uint64_t rx_feat = 0, tx_feat = 0;
 
 	ena_assert_msg(dev->data != NULL, "Uninitialized device\n");
 	ena_assert_msg(dev->data->dev_private != NULL, "Uninitialized device\n");
@@ -1971,32 +2026,11 @@ static int ena_infos_get(struct rte_eth_dev *dev,
 			ETH_LINK_SPEED_50G  |
 			ETH_LINK_SPEED_100G;
 
-	/* Set Tx & Rx features available for device */
-	if (adapter->offloads.tx_offloads & ENA_IPV4_TSO)
-		tx_feat	|= DEV_TX_OFFLOAD_TCP_TSO;
-
-	if (adapter->offloads.tx_offloads & ENA_L3_IPV4_CSUM)
-		tx_feat |= DEV_TX_OFFLOAD_IPV4_CKSUM;
-	if (adapter->offloads.tx_offloads &
-	    (ENA_L4_IPV4_CSUM_PARTIAL | ENA_L4_IPV4_CSUM |
-	     ENA_L4_IPV6_CSUM | ENA_L4_IPV6_CSUM_PARTIAL))
-		tx_feat |= DEV_TX_OFFLOAD_UDP_CKSUM | DEV_TX_OFFLOAD_TCP_CKSUM;
-
-	if (adapter->offloads.rx_offloads & ENA_L3_IPV4_CSUM)
-		rx_feat |= DEV_RX_OFFLOAD_IPV4_CKSUM;
-	if (adapter->offloads.rx_offloads &
-	    (ENA_L4_IPV4_CSUM | ENA_L4_IPV6_CSUM))
-		rx_feat |= DEV_RX_OFFLOAD_UDP_CKSUM | DEV_RX_OFFLOAD_TCP_CKSUM;
-
-	tx_feat |= DEV_TX_OFFLOAD_MULTI_SEGS;
-
 	/* Inform framework about available features */
-	dev_info->rx_offload_capa = rx_feat;
-	if (adapter->offloads.rx_offloads & ENA_RX_RSS_HASH)
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_RSS_HASH;
-	dev_info->rx_queue_offload_capa = rx_feat;
-	dev_info->tx_offload_capa = tx_feat;
-	dev_info->tx_queue_offload_capa = tx_feat;
+	dev_info->rx_offload_capa = ena_get_rx_port_offloads(adapter);
+	dev_info->tx_offload_capa = ena_get_tx_port_offloads(adapter);
+	dev_info->rx_queue_offload_capa = ena_get_rx_queue_offloads(adapter);
+	dev_info->tx_queue_offload_capa = ena_get_tx_queue_offloads(adapter);
 
 	dev_info->flow_type_rss_offloads = ENA_ALL_RSS_HF;
 	dev_info->hash_key_size = ENA_HASH_KEY_SIZE;
@@ -2011,9 +2045,6 @@ static int ena_infos_get(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = adapter->max_num_io_queues;
 	dev_info->max_tx_queues = adapter->max_num_io_queues;
 	dev_info->reta_size = ENA_RX_RSS_TABLE_SIZE;
-
-	adapter->tx_supported_offloads = tx_feat;
-	adapter->rx_supported_offloads = rx_feat;
 
 	dev_info->rx_desc_lim.nb_max = adapter->max_rx_ring_size;
 	dev_info->rx_desc_lim.nb_min = ENA_MIN_RING_DESC;
