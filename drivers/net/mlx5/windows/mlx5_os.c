@@ -993,9 +993,9 @@ mlx5_match_devx_devices_to_addr(struct devx_device_bdf *devx_bdf,
 
 	if (mlx5_match_devx_bdf_to_addr(devx_bdf, addr))
 		return 1;
-	/**
-	 * Didn't match on Native/PF BDF, could still
-	 * Match a VF BDF, check it next
+	/*
+	 * Didn't match on Native/PF BDF, could still match a VF BDF,
+	 * check it next.
 	 */
 	err = mlx5_glue->query_device(devx_bdf, &mlx5_dev);
 	if (err) {
@@ -1006,6 +1006,52 @@ mlx5_match_devx_devices_to_addr(struct devx_device_bdf *devx_bdf,
 	if (mlx5_match_devx_bdf_to_addr(&mlx5_dev.raw_bdf, addr))
 		return 1;
 	return 0;
+}
+
+/**
+ * Look for DevX device that match to given rte_device.
+ *
+ * @param dev
+ *   Pointer to the generic device.
+ * @param orig_devx_list
+ *   Pointer to head of DevX devices list.
+ * @param n
+ *   Number of devices in given DevX devices list.
+ *
+ * @return
+ *   A device match on success, NULL otherwise and rte_errno is set.
+ */
+static struct devx_device_bdf *
+mlx5_os_get_devx_device(struct rte_device *dev,
+			struct devx_device_bdf *orig_devx_list, int n)
+{
+	struct devx_device_bdf *devx_list = orig_devx_list;
+	struct devx_device_bdf *devx_match = NULL;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev);
+	struct rte_pci_addr *addr = &pci_dev->addr;
+
+	while (n-- > 0) {
+		int ret = mlx5_match_devx_devices_to_addr(devx_list, addr);
+		if (!ret) {
+			devx_list++;
+			continue;
+		}
+		if (ret != 1) {
+			rte_errno = ret;
+			return NULL;
+		}
+		devx_match = devx_list;
+		break;
+	}
+	if (devx_match == NULL) {
+		/* No device matches, just complain and bail out. */
+		DRV_LOG(WARNING,
+			"No DevX device matches PCI device " PCI_PRI_FMT ","
+			" is DevX Configured?",
+			addr->domain, addr->bus, addr->devid, addr->function);
+		rte_errno = ENOENT;
+	}
+	return devx_match;
 }
 
 /**
@@ -1023,37 +1069,34 @@ int
 mlx5_os_net_probe(struct mlx5_common_device *cdev)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
-	struct devx_device_bdf *devx_bdf_devs, *orig_devx_bdf_devs;
-	/*
-	 * Number of found IB Devices matching with requested PCI BDF.
-	 * nd != 1 means there are multiple IB devices over the same
-	 * PCI device and we have representors and master.
-	 */
-	unsigned int nd = 0;
-	/*
-	 * Number of found IB device Ports. nd = 1 and np = 1..n means
-	 * we have the single multiport IB device, and there may be
-	 * representors attached to some of found ports.
-	 * Currently not supported.
-	 * unsigned int np = 0;
-	 */
-
-	/*
-	 * Number of DPDK ethernet devices to Spawn - either over
-	 * multiple IB devices or multiple ports of single IB device.
-	 * Actually this is the number of iterations to spawn.
-	 */
-	unsigned int ns = 0;
-	/*
-	 * Bonding device
-	 *   < 0 - no bonding device (single one)
-	 *  >= 0 - bonding device (value is slave PF index)
-	 */
-	int bd = -1;
-	struct mlx5_dev_spawn_data *list = NULL;
-	struct mlx5_dev_config dev_config;
-	unsigned int dev_config_vf;
-	int ret, err;
+	struct devx_device_bdf *devx_list;
+	struct devx_device_bdf *devx_bdf_match;
+	struct mlx5_dev_spawn_data spawn = {
+		.pf_bond = -1,
+		.max_port = 1,
+		.phys_port = 1,
+		.pci_dev = pci_dev,
+		.cdev = cdev,
+		.ifindex = -1, /* Spawn will assign */
+		.info = (struct mlx5_switch_info){
+			.name_type = MLX5_PHYS_PORT_NAME_TYPE_UPLINK,
+		},
+	};
+	struct mlx5_dev_config dev_config = {
+		.rx_vec_en = 1,
+		.txq_inline_max = MLX5_ARG_UNSET,
+		.txq_inline_min = MLX5_ARG_UNSET,
+		.txq_inline_mpw = MLX5_ARG_UNSET,
+		.txqs_inline = MLX5_ARG_UNSET,
+		.mprq = {
+			.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN,
+			.min_rxqs_num = MLX5_MPRQ_MIN_RXQS,
+		},
+		.dv_flow_en = 1,
+		.log_hp_size = MLX5_ARG_UNSET,
+	};
+	int ret;
+	int n;
 	uint32_t restore;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
@@ -1067,74 +1110,18 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 		return -rte_errno;
 	}
 	errno = 0;
-	devx_bdf_devs = mlx5_glue->get_device_list(&ret);
-	orig_devx_bdf_devs = devx_bdf_devs;
-	if (!devx_bdf_devs) {
+	devx_list = mlx5_glue->get_device_list(&n);
+	if (devx_list == NULL) {
 		rte_errno = errno ? errno : ENOSYS;
-		DRV_LOG(ERR, "cannot list devices, is ib_uverbs loaded?");
+		DRV_LOG(ERR, "Cannot list devices, is DevX enabled?");
 		return -rte_errno;
 	}
-	/*
-	 * First scan the list of all Infiniband devices to find
-	 * matching ones, gathering into the list.
-	 */
-	struct devx_device_bdf *devx_bdf_match[ret + 1];
-
-	while (ret-- > 0) {
-		err = mlx5_match_devx_devices_to_addr(devx_bdf_devs,
-		    &pci_dev->addr);
-		if (!err) {
-			devx_bdf_devs++;
-			continue;
-		}
-		if (err != 1) {
-			ret = -err;
-			goto exit;
-		}
-		devx_bdf_match[nd++] = devx_bdf_devs;
-	}
-	devx_bdf_match[nd] = NULL;
-	if (!nd) {
-		/* No device matches, just complain and bail out. */
-		DRV_LOG(WARNING,
-			"no DevX device matches PCI device " PCI_PRI_FMT ","
-			" is DevX Configured?",
-			pci_dev->addr.domain, pci_dev->addr.bus,
-			pci_dev->addr.devid, pci_dev->addr.function);
-		rte_errno = ENOENT;
+	devx_bdf_match = mlx5_os_get_devx_device(cdev->dev, devx_list, n);
+	if (devx_bdf_match == NULL) {
 		ret = -rte_errno;
 		goto exit;
 	}
-	/*
-	 * Now we can determine the maximal
-	 * amount of devices to be spawned.
-	 */
-	list = mlx5_malloc(MLX5_MEM_ZERO,
-			   sizeof(struct mlx5_dev_spawn_data),
-			   RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
-	if (!list) {
-		DRV_LOG(ERR, "spawn data array allocation failure");
-		rte_errno = ENOMEM;
-		ret = -rte_errno;
-		goto exit;
-	}
-	memset(&list[ns].info, 0, sizeof(list[ns].info));
-	list[ns].max_port = 1;
-	list[ns].phys_port = 1;
-	list[ns].phys_dev = devx_bdf_match[ns];
-	list[ns].eth_dev = NULL;
-	list[ns].pci_dev = pci_dev;
-	list[ns].cdev = cdev;
-	list[ns].pf_bond = bd;
-	list[ns].ifindex = -1; /* Spawn will assign */
-	list[ns].info =
-		(struct mlx5_switch_info){
-			.master = 0,
-			.representor = 0,
-			.name_type = MLX5_PHYS_PORT_NAME_TYPE_UPLINK,
-			.port_name = 0,
-			.switch_id = 0,
-		};
+	spawn.phys_dev = devx_bdf_match;
 	/* Device specific configuration. */
 	switch (pci_dev->id.device_id) {
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
@@ -1144,47 +1131,24 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BFVF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX6VF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTXVF:
-		dev_config_vf = 1;
+		dev_config.vf = 1;
 		break;
 	default:
-		dev_config_vf = 0;
+		dev_config.vf = 0;
 		break;
 	}
-	/* Default configuration. */
-	memset(&dev_config, 0, sizeof(struct mlx5_dev_config));
-	dev_config.vf = dev_config_vf;
-	dev_config.mps = 0;
-	dev_config.rx_vec_en = 1;
-	dev_config.txq_inline_max = MLX5_ARG_UNSET;
-	dev_config.txq_inline_min = MLX5_ARG_UNSET;
-	dev_config.txq_inline_mpw = MLX5_ARG_UNSET;
-	dev_config.txqs_inline = MLX5_ARG_UNSET;
-	dev_config.vf_nl_en = 0;
-	dev_config.mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
-	dev_config.mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
-	dev_config.dv_esw_en = 0;
-	dev_config.dv_flow_en = 1;
-	dev_config.decap_en = 0;
-	dev_config.log_hp_size = MLX5_ARG_UNSET;
-	list[ns].eth_dev = mlx5_dev_spawn(cdev->dev, &list[ns], &dev_config);
-	if (!list[ns].eth_dev)
+	spawn.eth_dev = mlx5_dev_spawn(cdev->dev, &spawn, &dev_config);
+	if (!spawn.eth_dev) {
+		ret = -rte_errno;
 		goto exit;
-	restore = list[ns].eth_dev->data->dev_flags;
-	rte_eth_copy_pci_info(list[ns].eth_dev, pci_dev);
+	}
+	restore = spawn.eth_dev->data->dev_flags;
+	rte_eth_copy_pci_info(spawn.eth_dev, pci_dev);
 	/* Restore non-PCI flags cleared by the above call. */
-	list[ns].eth_dev->data->dev_flags |= restore;
-	rte_eth_dev_probing_finish(list[ns].eth_dev);
-	ret = 0;
+	spawn.eth_dev->data->dev_flags |= restore;
+	rte_eth_dev_probing_finish(spawn.eth_dev);
 exit:
-	/*
-	 * Do the routine cleanup:
-	 * - free allocated spawn data array
-	 * - free the device list
-	 */
-	if (list)
-		mlx5_free(list);
-	MLX5_ASSERT(orig_devx_bdf_devs);
-	mlx5_glue->free_device_list(orig_devx_bdf_devs);
+	mlx5_glue->free_device_list(devx_list);
 	return ret;
 }
 
