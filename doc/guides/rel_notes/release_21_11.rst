@@ -118,6 +118,7 @@ New Features
 
   * Support for the tx_free_thresh and rx_free_thresh configuration parameters.
   * NUMA aware allocations for the queue helper structures.
+  * Watchdog's feature which is checking for missing Tx completions.
 
 * **Updated Broadcom bnxt PMD.**
 

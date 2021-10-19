@@ -36,6 +36,10 @@
 #define ENA_WD_TIMEOUT_SEC	3
 #define ENA_DEVICE_KALIVE_TIMEOUT (ENA_WD_TIMEOUT_SEC * rte_get_timer_hz())
 
+#define ENA_TX_TIMEOUT			(5 * rte_get_timer_hz())
+#define ENA_MONITORED_TX_QUEUES		3
+#define ENA_DEFAULT_MISSING_COMP	256U
+
 /* While processing submitted and completed descriptors (rx and tx path
  * respectively) in a loop it is desired to:
  *  - perform batch submissions while populating sumbissmion queue
@@ -75,6 +79,8 @@ struct ena_tx_buffer {
 	struct rte_mbuf *mbuf;
 	unsigned int tx_descs;
 	unsigned int num_of_bufs;
+	uint64_t timestamp;
+	bool print_once;
 	struct ena_com_buf bufs[ENA_PKT_MAX_BUFS];
 };
 
@@ -103,6 +109,7 @@ struct ena_stats_tx {
 	u64 doorbells;
 	u64 bad_req_id;
 	u64 available_desc;
+	u64 missed_tx;
 };
 
 struct ena_stats_rx {
@@ -118,6 +125,7 @@ struct ena_stats_rx {
 struct ena_ring {
 	u16 next_to_use;
 	u16 next_to_clean;
+	uint64_t last_cleanup_ticks;
 
 	enum ena_ring_type type;
 	enum ena_admin_placement_policy_type tx_mem_queue_type;
@@ -171,6 +179,8 @@ struct ena_ring {
 	};
 
 	unsigned int numa_socket_id;
+
+	uint32_t missing_tx_completion_threshold;
 } __rte_cache_aligned;
 
 enum ena_adapter_state {
@@ -291,6 +301,11 @@ struct ena_adapter {
 	bool wd_state;
 
 	bool use_large_llq_hdr;
+
+	uint32_t last_tx_comp_qid;
+	uint64_t missing_tx_completion_to;
+	uint64_t missing_tx_completion_budget;
+	uint64_t tx_cleanup_stall_delay;
 };
 
 int ena_rss_reta_update(struct rte_eth_dev *dev,

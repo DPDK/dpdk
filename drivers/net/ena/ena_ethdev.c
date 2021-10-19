@@ -99,6 +99,7 @@ static const struct ena_stats ena_stats_tx_strings[] = {
 	ENA_STAT_TX_ENTRY(doorbells),
 	ENA_STAT_TX_ENTRY(bad_req_id),
 	ENA_STAT_TX_ENTRY(available_desc),
+	ENA_STAT_TX_ENTRY(missed_tx),
 };
 
 static const struct ena_stats ena_stats_rx_strings[] = {
@@ -1164,6 +1165,7 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->size_mask = nb_desc - 1;
 	txq->numa_socket_id = socket_id;
 	txq->pkts_without_db = false;
+	txq->last_cleanup_ticks = 0;
 
 	txq->tx_buffer_info = rte_zmalloc_socket("txq->tx_buffer_info",
 		sizeof(struct ena_tx_buffer) * txq->ring_size,
@@ -1212,6 +1214,9 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 		txq->tx_free_thresh = RTE_MAX(dyn_thresh,
 			txq->ring_size - ENA_REFILL_THRESH_PACKET);
 	}
+
+	txq->missing_tx_completion_threshold =
+		RTE_MIN(txq->ring_size / 2, ENA_DEFAULT_MISSING_COMP);
 
 	/* Store pointer to this queue in upper layer */
 	txq->configured = 1;
@@ -1539,6 +1544,87 @@ static void check_for_admin_com_state(struct ena_adapter *adapter)
 	}
 }
 
+static int check_for_tx_completion_in_queue(struct ena_adapter *adapter,
+					    struct ena_ring *tx_ring)
+{
+	struct ena_tx_buffer *tx_buf;
+	uint64_t timestamp;
+	uint64_t completion_delay;
+	uint32_t missed_tx = 0;
+	unsigned int i;
+	int rc = 0;
+
+	for (i = 0; i < tx_ring->ring_size; ++i) {
+		tx_buf = &tx_ring->tx_buffer_info[i];
+		timestamp = tx_buf->timestamp;
+
+		if (timestamp == 0)
+			continue;
+
+		completion_delay = rte_get_timer_cycles() - timestamp;
+		if (completion_delay > adapter->missing_tx_completion_to) {
+			if (unlikely(!tx_buf->print_once)) {
+				PMD_TX_LOG(WARNING,
+					"Found a Tx that wasn't completed on time, qid %d, index %d. "
+					"Missing Tx outstanding for %" PRIu64 " msecs.\n",
+					tx_ring->id, i,	completion_delay /
+					rte_get_timer_hz() * 1000);
+				tx_buf->print_once = true;
+			}
+			++missed_tx;
+		}
+	}
+
+	if (unlikely(missed_tx > tx_ring->missing_tx_completion_threshold)) {
+		PMD_DRV_LOG(ERR,
+			"The number of lost Tx completions is above the threshold (%d > %d). "
+			"Trigger the device reset.\n",
+			missed_tx,
+			tx_ring->missing_tx_completion_threshold);
+		adapter->reset_reason = ENA_REGS_RESET_MISS_TX_CMPL;
+		adapter->trigger_reset = true;
+		rc = -EIO;
+	}
+
+	tx_ring->tx_stats.missed_tx += missed_tx;
+
+	return rc;
+}
+
+static void check_for_tx_completions(struct ena_adapter *adapter)
+{
+	struct ena_ring *tx_ring;
+	uint64_t tx_cleanup_delay;
+	size_t qid;
+	int budget;
+	uint16_t nb_tx_queues = adapter->edev_data->nb_tx_queues;
+
+	if (adapter->missing_tx_completion_to == ENA_HW_HINTS_NO_TIMEOUT)
+		return;
+
+	nb_tx_queues = adapter->edev_data->nb_tx_queues;
+	budget = adapter->missing_tx_completion_budget;
+
+	qid = adapter->last_tx_comp_qid;
+	while (budget-- > 0) {
+		tx_ring = &adapter->tx_ring[qid];
+
+		/* Tx cleanup is called only by the burst function and can be
+		 * called dynamically by the application. Also cleanup is
+		 * limited by the threshold. To avoid false detection of the
+		 * missing HW Tx completion, get the delay since last cleanup
+		 * function was called.
+		 */
+		tx_cleanup_delay = rte_get_timer_cycles() -
+			tx_ring->last_cleanup_ticks;
+		if (tx_cleanup_delay < adapter->tx_cleanup_stall_delay)
+			check_for_tx_completion_in_queue(adapter, tx_ring);
+		qid = (qid + 1) % nb_tx_queues;
+	}
+
+	adapter->last_tx_comp_qid = qid;
+}
+
 static void ena_timer_wd_callback(__rte_unused struct rte_timer *timer,
 				  void *arg)
 {
@@ -1547,6 +1633,7 @@ static void ena_timer_wd_callback(__rte_unused struct rte_timer *timer,
 
 	check_for_missing_keep_alive(adapter);
 	check_for_admin_com_state(adapter);
+	check_for_tx_completions(adapter);
 
 	if (unlikely(adapter->trigger_reset)) {
 		PMD_DRV_LOG(ERR, "Trigger reset is on\n");
@@ -1925,6 +2012,20 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 	 * be forced.
 	 */
 	dev->data->scattered_rx = 1;
+
+	adapter->last_tx_comp_qid = 0;
+
+	adapter->missing_tx_completion_budget =
+		RTE_MIN(ENA_MONITORED_TX_QUEUES, dev->data->nb_tx_queues);
+
+	adapter->missing_tx_completion_to = ENA_TX_TIMEOUT;
+	/* To avoid detection of the spurious Tx completion timeout due to
+	 * application not calling the Tx cleanup function, set timeout for the
+	 * Tx queue which should be half of the missing completion timeout for a
+	 * safety. If there will be a lot of missing Tx completions in the
+	 * queue, they will be detected sooner or later.
+	 */
+	adapter->tx_cleanup_stall_delay = adapter->missing_tx_completion_to / 2;
 
 	adapter->tx_selected_offloads = dev->data->dev_conf.txmode.offloads;
 	adapter->rx_selected_offloads = dev->data->dev_conf.rxmode.offloads;
@@ -2433,6 +2534,20 @@ static void ena_update_hints(struct ena_adapter *adapter,
 		adapter->ena_dev.mmio_read.reg_read_to =
 			hints->mmio_read_timeout * 1000;
 
+	if (hints->missing_tx_completion_timeout) {
+		if (hints->missing_tx_completion_timeout ==
+		    ENA_HW_HINTS_NO_TIMEOUT) {
+			adapter->missing_tx_completion_to =
+				ENA_HW_HINTS_NO_TIMEOUT;
+		} else {
+			/* Convert from msecs to ticks */
+			adapter->missing_tx_completion_to = rte_get_timer_hz() *
+				hints->missing_tx_completion_timeout / 1000;
+			adapter->tx_cleanup_stall_delay =
+				adapter->missing_tx_completion_to / 2;
+		}
+	}
+
 	if (hints->driver_watchdog_timeout) {
 		if (hints->driver_watchdog_timeout == ENA_HW_HINTS_NO_TIMEOUT)
 			adapter->keep_alive_timeout = ENA_HW_HINTS_NO_TIMEOUT;
@@ -2623,6 +2738,7 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 	}
 
 	tx_info->tx_descs = nb_hw_desc;
+	tx_info->timestamp = rte_get_timer_cycles();
 
 	tx_ring->tx_stats.cnt++;
 	tx_ring->tx_stats.bytes += mbuf->pkt_len;
@@ -2655,6 +2771,7 @@ static void ena_tx_cleanup(struct ena_ring *tx_ring)
 
 		/* Get Tx info & store how many descs were processed  */
 		tx_info = &tx_ring->tx_buffer_info[req_id];
+		tx_info->timestamp = 0;
 
 		mbuf = tx_info->mbuf;
 		rte_pktmbuf_free(mbuf);
@@ -2675,6 +2792,9 @@ static void ena_tx_cleanup(struct ena_ring *tx_ring)
 		ena_com_comp_ack(tx_ring->ena_com_io_sq, total_tx_descs);
 		ena_com_update_dev_comp_head(tx_ring->ena_com_io_cq);
 	}
+
+	/* Notify completion handler that the cleanup was just called */
+	tx_ring->last_cleanup_ticks = rte_get_timer_cycles();
 }
 
 static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
