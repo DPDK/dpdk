@@ -110,9 +110,9 @@ common_ring_alloc(struct rte_mempool *mp)
 {
 	uint32_t rg_flags = 0;
 
-	if (mp->flags & MEMPOOL_F_SP_PUT)
+	if (mp->flags & RTE_MEMPOOL_F_SP_PUT)
 		rg_flags |= RING_F_SP_ENQ;
-	if (mp->flags & MEMPOOL_F_SC_GET)
+	if (mp->flags & RTE_MEMPOOL_F_SC_GET)
 		rg_flags |= RING_F_SC_DEQ;
 
 	return ring_alloc(mp, rg_flags);

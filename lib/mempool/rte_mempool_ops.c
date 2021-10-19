@@ -168,7 +168,7 @@ rte_mempool_set_ops_byname(struct rte_mempool *mp, const char *name,
 	unsigned i;
 
 	/* too late, the mempool is already populated. */
-	if (mp->flags & MEMPOOL_F_POOL_CREATED)
+	if (mp->flags & RTE_MEMPOOL_F_POOL_CREATED)
 		return -EEXIST;
 
 	for (i = 0; i < rte_mempool_ops_table.num_ops; i++) {

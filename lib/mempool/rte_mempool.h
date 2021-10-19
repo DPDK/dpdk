@@ -251,19 +251,44 @@ struct rte_mempool {
 }  __rte_cache_aligned;
 
 /** Spreading among memory channels not required. */
-#define MEMPOOL_F_NO_SPREAD      0x0001
+#define RTE_MEMPOOL_F_NO_SPREAD		0x0001
+/**
+ * Backward compatibility synonym for RTE_MEMPOOL_F_NO_SPREAD.
+ * To be deprecated.
+ */
+#define MEMPOOL_F_NO_SPREAD		RTE_MEMPOOL_F_NO_SPREAD
 /** Do not align objects on cache lines. */
-#define MEMPOOL_F_NO_CACHE_ALIGN 0x0002
+#define RTE_MEMPOOL_F_NO_CACHE_ALIGN	0x0002
+/**
+ * Backward compatibility synonym for RTE_MEMPOOL_F_NO_CACHE_ALIGN.
+ * To be deprecated.
+ */
+#define MEMPOOL_F_NO_CACHE_ALIGN	RTE_MEMPOOL_F_NO_CACHE_ALIGN
 /** Default put is "single-producer". */
-#define MEMPOOL_F_SP_PUT         0x0004
+#define RTE_MEMPOOL_F_SP_PUT		0x0004
+/**
+ * Backward compatibility synonym for RTE_MEMPOOL_F_SP_PUT.
+ * To be deprecated.
+ */
+#define MEMPOOL_F_SP_PUT		RTE_MEMPOOL_F_SP_PUT
 /** Default get is "single-consumer". */
-#define MEMPOOL_F_SC_GET         0x0008
+#define RTE_MEMPOOL_F_SC_GET		0x0008
+/**
+ * Backward compatibility synonym for RTE_MEMPOOL_F_SC_GET.
+ * To be deprecated.
+ */
+#define MEMPOOL_F_SC_GET		RTE_MEMPOOL_F_SC_GET
 /** Internal: pool is created. */
-#define MEMPOOL_F_POOL_CREATED   0x0010
+#define RTE_MEMPOOL_F_POOL_CREATED	0x0010
 /** Don't need IOVA contiguous objects. */
-#define MEMPOOL_F_NO_IOVA_CONTIG 0x0020
+#define RTE_MEMPOOL_F_NO_IOVA_CONTIG	0x0020
+/**
+ * Backward compatibility synonym for RTE_MEMPOOL_F_NO_IOVA_CONTIG.
+ * To be deprecated.
+ */
+#define MEMPOOL_F_NO_IOVA_CONTIG	RTE_MEMPOOL_F_NO_IOVA_CONTIG
 /** Internal: no object from the pool can be used for device IO (DMA). */
-#define MEMPOOL_F_NON_IO         0x0040
+#define RTE_MEMPOOL_F_NON_IO		0x0040
 
 /**
  * @internal When debug is enabled, store some statistics.
@@ -426,9 +451,9 @@ typedef unsigned (*rte_mempool_get_count)(const struct rte_mempool *mp);
  * Calculate memory size required to store given number of objects.
  *
  * If mempool objects are not required to be IOVA-contiguous
- * (the flag MEMPOOL_F_NO_IOVA_CONTIG is set), min_chunk_size defines
+ * (the flag RTE_MEMPOOL_F_NO_IOVA_CONTIG is set), min_chunk_size defines
  * virtually contiguous chunk size. Otherwise, if mempool objects must
- * be IOVA-contiguous (the flag MEMPOOL_F_NO_IOVA_CONTIG is clear),
+ * be IOVA-contiguous (the flag RTE_MEMPOOL_F_NO_IOVA_CONTIG is clear),
  * min_chunk_size defines IOVA-contiguous chunk size.
  *
  * @param[in] mp
@@ -976,22 +1001,22 @@ typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
  *   constraint for the reserved zone.
  * @param flags
  *   The *flags* arguments is an OR of following flags:
- *   - MEMPOOL_F_NO_SPREAD: By default, objects addresses are spread
+ *   - RTE_MEMPOOL_F_NO_SPREAD: By default, objects addresses are spread
  *     between channels in RAM: the pool allocator will add padding
  *     between objects depending on the hardware configuration. See
  *     Memory alignment constraints for details. If this flag is set,
  *     the allocator will just align them to a cache line.
- *   - MEMPOOL_F_NO_CACHE_ALIGN: By default, the returned objects are
+ *   - RTE_MEMPOOL_F_NO_CACHE_ALIGN: By default, the returned objects are
  *     cache-aligned. This flag removes this constraint, and no
  *     padding will be present between objects. This flag implies
- *     MEMPOOL_F_NO_SPREAD.
- *   - MEMPOOL_F_SP_PUT: If this flag is set, the default behavior
+ *     RTE_MEMPOOL_F_NO_SPREAD.
+ *   - RTE_MEMPOOL_F_SP_PUT: If this flag is set, the default behavior
  *     when using rte_mempool_put() or rte_mempool_put_bulk() is
  *     "single-producer". Otherwise, it is "multi-producers".
- *   - MEMPOOL_F_SC_GET: If this flag is set, the default behavior
+ *   - RTE_MEMPOOL_F_SC_GET: If this flag is set, the default behavior
  *     when using rte_mempool_get() or rte_mempool_get_bulk() is
  *     "single-consumer". Otherwise, it is "multi-consumers".
- *   - MEMPOOL_F_NO_IOVA_CONTIG: If set, allocated objects won't
+ *   - RTE_MEMPOOL_F_NO_IOVA_CONTIG: If set, allocated objects won't
  *     necessarily be contiguous in IO memory.
  * @return
  *   The pointer to the new allocated mempool, on success. NULL on error
@@ -1678,7 +1703,7 @@ rte_mempool_empty(const struct rte_mempool *mp)
  *   A pointer (virtual address) to the element of the pool.
  * @return
  *   The IO address of the elt element.
- *   If the mempool was created with MEMPOOL_F_NO_IOVA_CONTIG, the
+ *   If the mempool was created with RTE_MEMPOOL_F_NO_IOVA_CONTIG, the
  *   returned value is RTE_BAD_IOVA.
  */
 static inline rte_iova_t

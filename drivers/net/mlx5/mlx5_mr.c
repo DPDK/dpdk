@@ -127,7 +127,7 @@ mlx5_tx_mb2mr_bh(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 						     mr_ctrl, mp, addr);
 			/*
 			 * Lookup can only fail on invalid input, e.g. "addr"
-			 * is not from "mp" or "mp" has MEMPOOL_F_NON_IO set.
+			 * is not from "mp" or "mp" has RTE_MEMPOOL_F_NON_IO set.
 			 */
 			if (lkey != UINT32_MAX)
 				return lkey;

@@ -1564,7 +1564,7 @@ int
 mlx5_mr_mempool_register(struct mlx5_mr_share_cache *share_cache, void *pd,
 			 struct rte_mempool *mp, struct mlx5_mp_id *mp_id)
 {
-	if (mp->flags & MEMPOOL_F_NON_IO)
+	if (mp->flags & RTE_MEMPOOL_F_NON_IO)
 		return 0;
 	switch (rte_eal_process_type()) {
 	case RTE_PROC_PRIMARY:
@@ -1635,7 +1635,7 @@ int
 mlx5_mr_mempool_unregister(struct mlx5_mr_share_cache *share_cache,
 			   struct rte_mempool *mp, struct mlx5_mp_id *mp_id)
 {
-	if (mp->flags & MEMPOOL_F_NON_IO)
+	if (mp->flags & RTE_MEMPOOL_F_NON_IO)
 		return 0;
 	switch (rte_eal_process_type()) {
 	case RTE_PROC_PRIMARY:

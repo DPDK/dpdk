@@ -215,7 +215,7 @@ static int test_mempool_creation_with_unknown_flag(void)
 		MEMPOOL_ELT_SIZE, 0, 0,
 		NULL, NULL,
 		NULL, NULL,
-		SOCKET_ID_ANY, MEMPOOL_F_NO_IOVA_CONTIG << 1);
+		SOCKET_ID_ANY, RTE_MEMPOOL_F_NO_IOVA_CONTIG << 1);
 
 	if (mp_cov != NULL) {
 		rte_mempool_free(mp_cov);
@@ -338,8 +338,8 @@ test_mempool_sp_sc(void)
 			my_mp_init, NULL,
 			my_obj_init, NULL,
 			SOCKET_ID_ANY,
-			MEMPOOL_F_NO_CACHE_ALIGN | MEMPOOL_F_SP_PUT |
-			MEMPOOL_F_SC_GET);
+			RTE_MEMPOOL_F_NO_CACHE_ALIGN | RTE_MEMPOOL_F_SP_PUT |
+			RTE_MEMPOOL_F_SC_GET);
 		if (mp_spsc == NULL)
 			RET_ERR();
 	}
@@ -745,14 +745,14 @@ test_mempool_flag_non_io_set_when_no_iova_contig_set(void)
 
 	mp = rte_mempool_create_empty("empty", MEMPOOL_SIZE,
 				      MEMPOOL_ELT_SIZE, 0, 0,
-				      SOCKET_ID_ANY, MEMPOOL_F_NO_IOVA_CONTIG);
+				      SOCKET_ID_ANY, RTE_MEMPOOL_F_NO_IOVA_CONTIG);
 	RTE_TEST_ASSERT_NOT_NULL(mp, "Cannot create mempool: %s",
 				 rte_strerror(rte_errno));
 	rte_mempool_set_ops_byname(mp, rte_mbuf_best_mempool_ops(), NULL);
 	ret = rte_mempool_populate_default(mp);
 	RTE_TEST_ASSERT(ret > 0, "Failed to populate mempool: %s",
 			rte_strerror(-ret));
-	RTE_TEST_ASSERT(mp->flags & MEMPOOL_F_NON_IO,
+	RTE_TEST_ASSERT(mp->flags & RTE_MEMPOOL_F_NON_IO,
 			"NON_IO flag is not set when NO_IOVA_CONTIG is set");
 	ret = TEST_SUCCESS;
 exit:
@@ -789,20 +789,20 @@ test_mempool_flag_non_io_unset_when_populated_with_valid_iova(void)
 					RTE_BAD_IOVA, block_size, NULL, NULL);
 	RTE_TEST_ASSERT(ret > 0, "Failed to populate mempool: %s",
 			rte_strerror(-ret));
-	RTE_TEST_ASSERT(mp->flags & MEMPOOL_F_NON_IO,
+	RTE_TEST_ASSERT(mp->flags & RTE_MEMPOOL_F_NON_IO,
 			"NON_IO flag is not set when mempool is populated with only RTE_BAD_IOVA");
 
 	ret = rte_mempool_populate_iova(mp, virt, iova, block_size, NULL, NULL);
 	RTE_TEST_ASSERT(ret > 0, "Failed to populate mempool: %s",
 			rte_strerror(-ret));
-	RTE_TEST_ASSERT(!(mp->flags & MEMPOOL_F_NON_IO),
+	RTE_TEST_ASSERT(!(mp->flags & RTE_MEMPOOL_F_NON_IO),
 			"NON_IO flag is not unset when mempool is populated with valid IOVA");
 
 	ret = rte_mempool_populate_iova(mp, RTE_PTR_ADD(virt, 2 * block_size),
 					RTE_BAD_IOVA, block_size, NULL, NULL);
 	RTE_TEST_ASSERT(ret > 0, "Failed to populate mempool: %s",
 			rte_strerror(-ret));
-	RTE_TEST_ASSERT(!(mp->flags & MEMPOOL_F_NON_IO),
+	RTE_TEST_ASSERT(!(mp->flags & RTE_MEMPOOL_F_NON_IO),
 			"NON_IO flag is set even when some objects have valid IOVA");
 	ret = TEST_SUCCESS;
 
@@ -826,7 +826,7 @@ test_mempool_flag_non_io_unset_by_default(void)
 	ret = rte_mempool_populate_default(mp);
 	RTE_TEST_ASSERT_EQUAL(ret, (int)mp->size, "Failed to populate mempool: %s",
 			      rte_strerror(-ret));
-	RTE_TEST_ASSERT(!(mp->flags & MEMPOOL_F_NON_IO),
+	RTE_TEST_ASSERT(!(mp->flags & RTE_MEMPOOL_F_NON_IO),
 			"NON_IO flag is set by default");
 	ret = TEST_SUCCESS;
 exit:

@@ -371,7 +371,8 @@ pdump_validate_ring_mp(struct rte_ring *ring, struct rte_mempool *mp)
 		rte_errno = EINVAL;
 		return -1;
 	}
-	if (mp->flags & MEMPOOL_F_SP_PUT || mp->flags & MEMPOOL_F_SC_GET) {
+	if (mp->flags & RTE_MEMPOOL_F_SP_PUT ||
+	    mp->flags & RTE_MEMPOOL_F_SC_GET) {
 		PDUMP_LOG(ERR,
 			  "mempool with SP or SC set not valid for pdump,"
 			  "must have MP and MC set\n");

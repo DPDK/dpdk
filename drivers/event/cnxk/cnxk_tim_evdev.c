@@ -19,7 +19,7 @@ cnxk_tim_chnk_pool_create(struct cnxk_tim_ring *tim_ring,
 	cache_sz /= rte_lcore_count();
 	/* Create chunk pool. */
 	if (rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_SP_PUT) {
-		mp_flags = MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET;
+		mp_flags = RTE_MEMPOOL_F_SP_PUT | RTE_MEMPOOL_F_SC_GET;
 		plt_tim_dbg("Using single producer mode");
 		tim_ring->prod_type_sp = true;
 	}

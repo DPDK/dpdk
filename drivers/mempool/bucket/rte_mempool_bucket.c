@@ -426,7 +426,7 @@ bucket_init_per_lcore(unsigned int lcore_id, void *arg)
 		goto error;
 
 	rg_flags = RING_F_SC_DEQ;
-	if (mp->flags & MEMPOOL_F_SP_PUT)
+	if (mp->flags & RTE_MEMPOOL_F_SP_PUT)
 		rg_flags |= RING_F_SP_ENQ;
 	bd->adoption_buffer_rings[lcore_id] = rte_ring_create(rg_name,
 		rte_align32pow2(mp->size + 1), mp->socket_id, rg_flags);
@@ -472,7 +472,7 @@ bucket_alloc(struct rte_mempool *mp)
 		goto no_mem_for_data;
 	}
 	bd->pool = mp;
-	if (mp->flags & MEMPOOL_F_NO_CACHE_ALIGN)
+	if (mp->flags & RTE_MEMPOOL_F_NO_CACHE_ALIGN)
 		bucket_header_size = sizeof(struct bucket_header);
 	else
 		bucket_header_size = RTE_CACHE_LINE_SIZE;
@@ -494,9 +494,9 @@ bucket_alloc(struct rte_mempool *mp)
 		goto no_mem_for_stacks;
 	}
 
-	if (mp->flags & MEMPOOL_F_SP_PUT)
+	if (mp->flags & RTE_MEMPOOL_F_SP_PUT)
 		rg_flags |= RING_F_SP_ENQ;
-	if (mp->flags & MEMPOOL_F_SC_GET)
+	if (mp->flags & RTE_MEMPOOL_F_SC_GET)
 		rg_flags |= RING_F_SC_DEQ;
 	rc = snprintf(rg_name, sizeof(rg_name),
 		      RTE_MEMPOOL_MZ_FORMAT ".0", mp->name);

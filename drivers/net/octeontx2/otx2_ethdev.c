@@ -1124,7 +1124,7 @@ nix_alloc_sqb_pool(int port, struct otx2_eth_txq *txq, uint16_t nb_desc)
 
 	txq->sqb_pool = rte_mempool_create_empty(name, NIX_MAX_SQB, blk_sz,
 						 0, 0, dev->node,
-						 MEMPOOL_F_NO_SPREAD);
+						 RTE_MEMPOOL_F_NO_SPREAD);
 	txq->nb_sqb_bufs = nb_sqb_bufs;
 	txq->sqes_per_sqb_log2 = (uint16_t)rte_log2_u32(sqes_per_sqb);
 	txq->nb_sqb_bufs_adj = nb_sqb_bufs -
@@ -1150,7 +1150,7 @@ nix_alloc_sqb_pool(int port, struct otx2_eth_txq *txq, uint16_t nb_desc)
 		goto fail;
 	}
 
-	tmp = rte_mempool_calc_obj_size(blk_sz, MEMPOOL_F_NO_SPREAD, &sz);
+	tmp = rte_mempool_calc_obj_size(blk_sz, RTE_MEMPOOL_F_NO_SPREAD, &sz);
 	if (dev->sqb_size != sz.elt_size) {
 		otx2_err("sqe pool block size is not expected %d != %d",
 			 dev->sqb_size, tmp);

@@ -1004,7 +1004,7 @@ Driver options
 - ``mr_mempool_reg_en`` parameter [int]
 
   A nonzero value enables implicit registration of DMA memory of all mempools
-  except those having ``MEMPOOL_F_NON_IO``. This flag is set automatically
+  except those having ``RTE_MEMPOOL_F_NON_IO``. This flag is set automatically
   for mempools populated with non-contiguous objects or those without IOVA.
   The effect is that when a packet from a mempool is transmitted,
   its memory is already registered for DMA in the PMD and no registration

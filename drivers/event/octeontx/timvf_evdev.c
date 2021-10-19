@@ -310,7 +310,7 @@ timvf_ring_create(struct rte_event_timer_adapter *adptr)
 	}
 
 	if (rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_SP_PUT) {
-		mp_flags = MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET;
+		mp_flags = RTE_MEMPOOL_F_SP_PUT | RTE_MEMPOOL_F_SC_GET;
 		timvf_log_info("Using single producer mode");
 	}
 

@@ -1396,7 +1396,7 @@ launch_args_parse(int argc, char** argv)
 						 "noisy-lkup-num-reads-writes must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "no-iova-contig"))
-				mempool_flags = MEMPOOL_F_NO_IOVA_CONTIG;
+				mempool_flags = RTE_MEMPOOL_F_NO_IOVA_CONTIG;
 
 			if (!strcmp(lgopts[opt_idx].name, "rx-mq-mode")) {
 				char *end = NULL;
@@ -1440,7 +1440,7 @@ launch_args_parse(int argc, char** argv)
 	rx_mode.offloads = rx_offloads;
 	tx_mode.offloads = tx_offloads;
 
-	if (mempool_flags & MEMPOOL_F_NO_IOVA_CONTIG &&
+	if (mempool_flags & RTE_MEMPOOL_F_NO_IOVA_CONTIG &&
 	    mp_alloc_type != MP_ALLOC_ANON) {
 		TESTPMD_LOG(WARNING, "cannot use no-iova-contig without "
 				  "mp-alloc=anon. mempool no-iova-contig is "
