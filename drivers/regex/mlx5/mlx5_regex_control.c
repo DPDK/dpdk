@@ -139,7 +139,8 @@ regex_ctrl_create_hw_qp(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 		.cqn = qp->cq.cq_obj.cq->id,
 		.uar_index = priv->uar->page_id,
 		.pd = priv->cdev->pdn,
-		.ts_format = mlx5_ts_format_conv(priv->qp_ts_format),
+		.ts_format = mlx5_ts_format_conv
+				     (priv->cdev->config.hca_attr.qp_ts_format),
 		.user_index = q_ind,
 	};
 	struct mlx5_regex_hw_qp *qp_obj = &qp->qps[q_ind];

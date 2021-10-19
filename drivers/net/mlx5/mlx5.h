@@ -1120,11 +1120,8 @@ struct mlx5_dev_ctx_shared {
 	uint32_t refcnt;
 	uint32_t devx:1; /* Opened with DV. */
 	uint32_t flow_hit_aso_en:1; /* Flow Hit ASO is supported. */
-	uint32_t rq_ts_format:2; /* RQ timestamp formats supported. */
-	uint32_t sq_ts_format:2; /* SQ timestamp formats supported. */
 	uint32_t steering_format_version:4;
 	/* Indicates the device steering logic format. */
-	uint32_t qp_ts_format:2; /* QP timestamp formats supported. */
 	uint32_t meter_aso_en:1; /* Flow Meter ASO is supported. */
 	uint32_t ct_aso_en:1; /* Connection Tracking ASO is supported. */
 	uint32_t tunnel_header_0_1:1; /* tunnel_header_0_1 is supported. */
@@ -1756,7 +1753,8 @@ void mlx5_flow_meter_rxq_flush(struct rte_eth_dev *dev);
 
 /* mlx5_os.c */
 struct rte_pci_driver;
-int mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *dev_attr);
+int mlx5_os_get_dev_attr(struct mlx5_common_device *dev,
+			 struct mlx5_dev_attr *dev_attr);
 void mlx5_os_free_shared_dr(struct mlx5_priv *priv);
 int mlx5_os_net_probe(struct mlx5_common_device *cdev);
 void mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh);

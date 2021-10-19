@@ -132,8 +132,8 @@ mlx5_os_set_nonblock_channel_fd(int fd)
  * with out parameter of type 'struct ibv_device_attr_ex *'. Then fill in mlx5
  * device attributes from the glue out parameter.
  *
- * @param dev
- *   Pointer to ibv context.
+ * @param cdev
+ *   Pointer to mlx5 device.
  *
  * @param device_attr
  *   Pointer to mlx5 device attributes.
@@ -142,15 +142,17 @@ mlx5_os_set_nonblock_channel_fd(int fd)
  *   0 on success, non zero error number otherwise
  */
 int
-mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *device_attr)
+mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
+		     struct mlx5_dev_attr *device_attr)
 {
 	int err;
+	struct ibv_context *ctx = cdev->ctx;
 	struct ibv_device_attr_ex attr_ex;
+
 	memset(device_attr, 0, sizeof(*device_attr));
 	err = mlx5_glue->query_device_ex(ctx, NULL, &attr_ex);
 	if (err)
 		return err;
-
 	device_attr->device_cap_flags_ex = attr_ex.device_cap_flags_ex;
 	device_attr->max_qp_wr = attr_ex.orig_attr.max_qp_wr;
 	device_attr->max_sge = attr_ex.orig_attr.max_sge;
@@ -1333,27 +1335,9 @@ err_secondary:
 		config->mps == MLX5_MPW ? "legacy " : "",
 		config->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
 	if (sh->devx) {
-		err = mlx5_devx_cmd_query_hca_attr(sh->cdev->ctx,
-						   &config->hca_attr);
-		if (err) {
-			err = -err;
-			goto error;
-		}
-		/* Check relax ordering support. */
-		if (!haswell_broadwell_cpu) {
-			sh->cmng.relaxed_ordering_write =
-				config->hca_attr.relaxed_ordering_write;
-			sh->cmng.relaxed_ordering_read =
-				config->hca_attr.relaxed_ordering_read;
-		} else {
-			sh->cmng.relaxed_ordering_read = 0;
-			sh->cmng.relaxed_ordering_write = 0;
-		}
-		sh->rq_ts_format = config->hca_attr.rq_ts_format;
-		sh->sq_ts_format = config->hca_attr.sq_ts_format;
+		config->hca_attr = sh->cdev->config.hca_attr;
 		sh->steering_format_version =
 			config->hca_attr.steering_format_version;
-		sh->qp_ts_format = config->hca_attr.qp_ts_format;
 		/* Check for LRO support. */
 		if (config->dest_tir && config->hca_attr.lro_cap &&
 		    config->dv_flow_en) {

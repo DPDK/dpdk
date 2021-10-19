@@ -354,6 +354,16 @@ mlx5_dev_hw_global_prepare(struct mlx5_common_device *cdev, uint32_t classes)
 	ret = mlx5_os_pd_create(cdev);
 	if (ret)
 		goto error;
+	/* All actions taken below are relevant only when DevX is supported */
+	if (cdev->config.devx == 0)
+		return 0;
+	/* Query HCA attributes. */
+	ret = mlx5_devx_cmd_query_hca_attr(cdev->ctx, &cdev->config.hca_attr);
+	if (ret) {
+		DRV_LOG(ERR, "Unable to read HCA capabilities.");
+		rte_errno = ENOTSUP;
+		goto error;
+	}
 	return 0;
 error:
 	mlx5_dev_hw_global_release(cdev);

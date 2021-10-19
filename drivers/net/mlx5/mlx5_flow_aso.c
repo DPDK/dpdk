@@ -319,7 +319,7 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 		if (mlx5_aso_sq_create(cdev->ctx, &sh->aso_age_mng->aso_sq, 0,
 				       sh->tx_uar, cdev->pdn,
 				       MLX5_ASO_QUEUE_LOG_DESC,
-				       sh->sq_ts_format)) {
+				       cdev->config.hca_attr.sq_ts_format)) {
 			mlx5_aso_dereg_mr(sh, &sh->aso_age_mng->aso_sq.mr);
 			return -1;
 		}
@@ -329,7 +329,7 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 		if (mlx5_aso_sq_create(cdev->ctx, &sh->mtrmng->pools_mng.sq, 0,
 				       sh->tx_uar, cdev->pdn,
 				       MLX5_ASO_QUEUE_LOG_DESC,
-				       sh->sq_ts_format))
+				       cdev->config.hca_attr.sq_ts_format))
 			return -1;
 		mlx5_aso_mtr_init_sq(&sh->mtrmng->pools_mng.sq);
 		break;
@@ -341,7 +341,7 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 		if (mlx5_aso_sq_create(cdev->ctx, &sh->ct_mng->aso_sq, 0,
 				       sh->tx_uar, cdev->pdn,
 				       MLX5_ASO_QUEUE_LOG_DESC,
-				       sh->sq_ts_format)) {
+				       cdev->config.hca_attr.sq_ts_format)) {
 			mlx5_aso_dereg_mr(sh, &sh->ct_mng->aso_sq.mr);
 			return -1;
 		}

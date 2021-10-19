@@ -235,7 +235,8 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 			.pd = sh->cdev->pdn,
 			.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar),
 		},
-		.ts_format = mlx5_ts_format_conv(sh->sq_ts_format),
+		.ts_format = mlx5_ts_format_conv
+				       (sh->cdev->config.hca_attr.sq_ts_format),
 	};
 	struct mlx5_devx_modify_sq_attr msq_attr = { 0 };
 	struct mlx5_devx_cq_attr cq_attr = {
@@ -445,7 +446,8 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	sq_attr.wq_attr.cd_slave = 1;
 	sq_attr.wq_attr.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar);
 	sq_attr.wq_attr.pd = sh->cdev->pdn;
-	sq_attr.ts_format = mlx5_ts_format_conv(sh->sq_ts_format);
+	sq_attr.ts_format =
+		mlx5_ts_format_conv(sh->cdev->config.hca_attr.sq_ts_format);
 	ret = mlx5_devx_sq_create(sh->cdev->ctx, &wq->sq_obj,
 				  log2above(wq->sq_size),
 				  &sq_attr, sh->numa_node);

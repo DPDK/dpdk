@@ -143,50 +143,45 @@ mlx5_init_once(void)
 /**
  * Get mlx5 device attributes.
  *
- * @param ctx
- *   Pointer to device context.
+ * @param cdev
+ *   Pointer to mlx5 device.
  *
  * @param device_attr
  *   Pointer to mlx5 device attributes.
  *
  * @return
- *   0 on success, non zero error number otherwise
+ *   0 on success, non zero error number otherwise.
  */
 int
-mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *device_attr)
+mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
+		     struct mlx5_dev_attr *device_attr)
 {
 	struct mlx5_context *mlx5_ctx;
-	struct mlx5_hca_attr hca_attr;
 	void *pv_iseg = NULL;
 	u32 cb_iseg = 0;
 	int err = 0;
 
-	if (!ctx)
+	if (!cdev || !cdev->ctx)
 		return -EINVAL;
-	mlx5_ctx = (struct mlx5_context *)ctx;
+	mlx5_ctx = (struct mlx5_context *)cdev->ctx;
 	memset(device_attr, 0, sizeof(*device_attr));
-	err = mlx5_devx_cmd_query_hca_attr(mlx5_ctx, &hca_attr);
-	if (err) {
-		DRV_LOG(ERR, "Failed to get device hca_cap");
-		return err;
-	}
-	device_attr->max_cq = 1 << hca_attr.log_max_cq;
-	device_attr->max_qp = 1 << hca_attr.log_max_qp;
-	device_attr->max_qp_wr = 1 << hca_attr.log_max_qp_sz;
-	device_attr->max_cqe = 1 << hca_attr.log_max_cq_sz;
-	device_attr->max_mr = 1 << hca_attr.log_max_mrw_sz;
-	device_attr->max_pd = 1 << hca_attr.log_max_pd;
-	device_attr->max_srq = 1 << hca_attr.log_max_srq;
-	device_attr->max_srq_wr = 1 << hca_attr.log_max_srq_sz;
-	device_attr->max_tso = 1 << hca_attr.max_lso_cap;
-	if (hca_attr.rss_ind_tbl_cap) {
+	device_attr->max_cq = 1 << cdev->config.hca_attr.log_max_cq;
+	device_attr->max_qp = 1 << cdev->config.hca_attr.log_max_qp;
+	device_attr->max_qp_wr = 1 << cdev->config.hca_attr.log_max_qp_sz;
+	device_attr->max_cqe = 1 << cdev->config.hca_attr.log_max_cq_sz;
+	device_attr->max_mr = 1 << cdev->config.hca_attr.log_max_mrw_sz;
+	device_attr->max_pd = 1 << cdev->config.hca_attr.log_max_pd;
+	device_attr->max_srq = 1 << cdev->config.hca_attr.log_max_srq;
+	device_attr->max_srq_wr = 1 << cdev->config.hca_attr.log_max_srq_sz;
+	device_attr->max_tso = 1 << cdev->config.hca_attr.max_lso_cap;
+	if (cdev->config.hca_attr.rss_ind_tbl_cap) {
 		device_attr->max_rwq_indirection_table_size =
-			1 << hca_attr.rss_ind_tbl_cap;
+			1 << cdev->config.hca_attr.rss_ind_tbl_cap;
 	}
 	device_attr->sw_parsing_offloads =
-		mlx5_get_supported_sw_parsing_offloads(&hca_attr);
+		mlx5_get_supported_sw_parsing_offloads(&cdev->config.hca_attr);
 	device_attr->tunnel_offloads_caps =
-		mlx5_get_supported_tunneling_offloads(&hca_attr);
+		mlx5_get_supported_tunneling_offloads(&cdev->config.hca_attr);
 	pv_iseg = mlx5_glue->query_hca_iseg(mlx5_ctx, &cb_iseg);
 	if (pv_iseg == NULL) {
 		DRV_LOG(ERR, "Failed to get device hca_iseg");
@@ -364,7 +359,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		goto error;
 	}
 	DRV_LOG(DEBUG, "MPW isn't supported");
-	mlx5_os_get_dev_attr(sh->cdev->ctx, &device_attr);
+	mlx5_os_get_dev_attr(sh->cdev, &device_attr);
 	config->swp = device_attr.sw_parsing_offloads &
 		(MLX5_SW_PARSING_CAP | MLX5_SW_PARSING_CSUM_CAP |
 		 MLX5_SW_PARSING_TSO_CAP);
@@ -472,21 +467,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		config->cqe_comp = 0;
 	}
 	if (sh->devx) {
-		err = mlx5_devx_cmd_query_hca_attr(sh->cdev->ctx,
-						   &config->hca_attr);
-		if (err) {
-			err = -err;
-			goto error;
-		}
-		/* Check relax ordering support. */
-		sh->cmng.relaxed_ordering_read = 0;
-		sh->cmng.relaxed_ordering_write = 0;
-		if (!haswell_broadwell_cpu) {
-			sh->cmng.relaxed_ordering_write =
-				config->hca_attr.relaxed_ordering_write;
-			sh->cmng.relaxed_ordering_read =
-				config->hca_attr.relaxed_ordering_read;
-		}
+		config->hca_attr = sh->cdev->config.hca_attr;
 		config->hw_csum = config->hca_attr.csum_cap;
 		DRV_LOG(DEBUG, "checksum offloading is %ssupported",
 		    (config->hw_csum ? "" : "not "));
@@ -516,9 +497,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 						 (NS_PER_S / MS_PER_S))
 				config->rt_timestamp = 1;
 		}
-		sh->rq_ts_format = config->hca_attr.rq_ts_format;
-		sh->sq_ts_format = config->hca_attr.sq_ts_format;
-		sh->qp_ts_format = config->hca_attr.qp_ts_format;
 	}
 	if (config->mprq.enabled) {
 		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported");

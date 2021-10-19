@@ -669,7 +669,8 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	attr.cqn = qp->cq_obj.cq->id;
 	attr.rq_size = 0;
 	attr.sq_size = RTE_BIT32(log_nb_desc);
-	attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
+	attr.ts_format =
+		mlx5_ts_format_conv(priv->cdev->config.hca_attr.qp_ts_format);
 	ret = mlx5_devx_qp_create(priv->cdev->ctx, &qp->qp_obj, log_nb_desc,
 				  &attr, socket_id);
 	if (ret) {
@@ -920,7 +921,6 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 	struct mlx5_devx_obj *login;
 	struct mlx5_crypto_priv *priv;
 	struct mlx5_crypto_devarg_params devarg_prms = { 0 };
-	struct mlx5_hca_attr attr = { 0 };
 	struct rte_cryptodev_pmd_init_params init_params = {
 		.name = "",
 		.private_data_size = sizeof(struct mlx5_crypto_priv),
@@ -937,8 +937,7 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	if (mlx5_devx_cmd_query_hca_attr(cdev->ctx, &attr) != 0 ||
-	    attr.crypto == 0 || attr.aes_xts == 0) {
+	if (!cdev->config.hca_attr.crypto || !cdev->config.hca_attr.aes_xts) {
 		DRV_LOG(ERR, "Not enough capabilities to support crypto "
 			"operations, maybe old FW/OFED version?");
 		rte_errno = ENOTSUP;
@@ -972,7 +971,6 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 	priv->cdev = cdev;
 	priv->login_obj = login;
 	priv->crypto_dev = crypto_dev;
-	priv->qp_ts_format = attr.qp_ts_format;
 	if (mlx5_crypto_uar_prepare(priv) != 0) {
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		return -1;

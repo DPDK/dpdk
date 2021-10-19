@@ -39,7 +39,6 @@ struct mlx5_compress_priv {
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
 	void *uar;
 	uint8_t min_block_size;
-	uint8_t qp_ts_format; /* Whether SQ supports timestamp formats. */
 	/* Minimum huffman block size supported by the device. */
 	struct rte_compressdev_config dev_config;
 	LIST_HEAD(xform_list, mlx5_compress_xform) xform_list;
@@ -243,7 +242,8 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		goto err;
 	}
 	qp_attr.cqn = qp->cq.cq->id;
-	qp_attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
+	qp_attr.ts_format =
+		mlx5_ts_format_conv(priv->cdev->config.hca_attr.qp_ts_format);
 	qp_attr.rq_size = 0;
 	qp_attr.sq_size = RTE_BIT32(log_ops_n);
 	qp_attr.mmo = priv->mmo_decomp_qp && priv->mmo_comp_qp
@@ -755,7 +755,7 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 {
 	struct rte_compressdev *compressdev;
 	struct mlx5_compress_priv *priv;
-	struct mlx5_hca_attr att = { 0 };
+	struct mlx5_hca_attr *attr = &cdev->config.hca_attr;
 	struct rte_compressdev_pmd_init_params init_params = {
 		.name = "",
 		.socket_id = cdev->dev->numa_node,
@@ -767,10 +767,9 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	if (mlx5_devx_cmd_query_hca_attr(cdev->ctx, &att) != 0 ||
-	    ((att.mmo_compress_sq_en == 0 || att.mmo_decompress_sq_en == 0 ||
-		att.mmo_dma_sq_en == 0) && (att.mmo_compress_qp_en == 0 ||
-		att.mmo_decompress_qp_en == 0 || att.mmo_dma_qp_en == 0))) {
+	if ((attr->mmo_compress_sq_en == 0 || attr->mmo_decompress_sq_en == 0 ||
+	    attr->mmo_dma_sq_en == 0) && (attr->mmo_compress_qp_en == 0 ||
+	    attr->mmo_decompress_qp_en == 0 || attr->mmo_dma_qp_en == 0)) {
 		DRV_LOG(ERR, "Not enough capabilities to support compress "
 			"operations, maybe old FW/OFED version?");
 		rte_errno = ENOTSUP;
@@ -789,16 +788,15 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 	compressdev->enqueue_burst = mlx5_compress_enqueue_burst;
 	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 	priv = compressdev->data->dev_private;
-	priv->mmo_decomp_sq = att.mmo_decompress_sq_en;
-	priv->mmo_decomp_qp = att.mmo_decompress_qp_en;
-	priv->mmo_comp_sq = att.mmo_compress_sq_en;
-	priv->mmo_comp_qp = att.mmo_compress_qp_en;
-	priv->mmo_dma_sq = att.mmo_dma_sq_en;
-	priv->mmo_dma_qp = att.mmo_dma_qp_en;
+	priv->mmo_decomp_sq = attr->mmo_decompress_sq_en;
+	priv->mmo_decomp_qp = attr->mmo_decompress_qp_en;
+	priv->mmo_comp_sq = attr->mmo_compress_sq_en;
+	priv->mmo_comp_qp = attr->mmo_compress_qp_en;
+	priv->mmo_dma_sq = attr->mmo_dma_sq_en;
+	priv->mmo_dma_qp = attr->mmo_dma_qp_en;
 	priv->cdev = cdev;
 	priv->compressdev = compressdev;
-	priv->min_block_size = att.compress_min_block_size;
-	priv->qp_ts_format = att.qp_ts_format;
+	priv->min_block_size = attr->compress_min_block_size;
 	if (mlx5_compress_uar_prepare(priv) != 0) {
 		rte_compressdev_pmd_destroy(priv->compressdev);
 		return -1;

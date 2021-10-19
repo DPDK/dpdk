@@ -594,7 +594,8 @@ mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 	if (mlx5_vdpa_cq_create(priv, log_desc_n, callfd, &eqp->cq))
 		return -1;
 	attr.pd = priv->cdev->pdn;
-	attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
+	attr.ts_format =
+		mlx5_ts_format_conv(priv->cdev->config.hca_attr.qp_ts_format);
 	eqp->fw_qp = mlx5_devx_cmd_create_qp(priv->cdev->ctx, &attr);
 	if (!eqp->fw_qp) {
 		DRV_LOG(ERR, "Failed to create FW QP(%u).", rte_errno);
@@ -605,7 +606,8 @@ mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 	attr.rq_size = RTE_BIT32(log_desc_n);
 	attr.log_rq_stride = rte_log2_u32(MLX5_WSEG_SIZE);
 	attr.sq_size = 0; /* No need SQ. */
-	attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
+	attr.ts_format =
+		mlx5_ts_format_conv(priv->cdev->config.hca_attr.qp_ts_format);
 	ret = mlx5_devx_qp_create(priv->cdev->ctx, &(eqp->sw_qp), log_desc_n,
 				  &attr, SOCKET_ID_ANY);
 	if (ret) {

@@ -332,6 +332,7 @@ void mlx5_common_init(void);
  *  - User device parameters disabled features.
  */
 struct mlx5_common_dev_config {
+	struct mlx5_hca_attr hca_attr; /* HCA attributes. */
 	int dbnc; /* Skip doorbell register write barrier. */
 	unsigned int devx:1; /* Whether devx interface is available or not. */
 	unsigned int sys_mem_en:1; /* The default memory allocator. */

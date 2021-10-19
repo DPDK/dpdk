@@ -505,36 +505,29 @@ static int
 mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev)
 {
 	struct mlx5_vdpa_priv *priv = NULL;
-	struct mlx5_hca_attr attr;
-	int ret;
+	struct mlx5_hca_attr *attr = &cdev->config.hca_attr;
 
-	ret = mlx5_devx_cmd_query_hca_attr(cdev->ctx, &attr);
-	if (ret) {
-		DRV_LOG(ERR, "Unable to read HCA capabilities.");
-		rte_errno = ENOTSUP;
-		return -rte_errno;
-	} else if (!attr.vdpa.valid || !attr.vdpa.max_num_virtio_queues) {
+	if (!attr->vdpa.valid || !attr->vdpa.max_num_virtio_queues) {
 		DRV_LOG(ERR, "Not enough capabilities to support vdpa, maybe "
 			"old FW/OFED version?");
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	if (!attr.vdpa.queue_counters_valid)
+	if (!attr->vdpa.queue_counters_valid)
 		DRV_LOG(DEBUG, "No capability to support virtq statistics.");
 	priv = rte_zmalloc("mlx5 vDPA device private", sizeof(*priv) +
 			   sizeof(struct mlx5_vdpa_virtq) *
-			   attr.vdpa.max_num_virtio_queues * 2,
+			   attr->vdpa.max_num_virtio_queues * 2,
 			   RTE_CACHE_LINE_SIZE);
 	if (!priv) {
 		DRV_LOG(ERR, "Failed to allocate private memory.");
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
-	priv->caps = attr.vdpa;
-	priv->log_max_rqt_size = attr.log_max_rqt_size;
-	priv->num_lag_ports = attr.num_lag_ports;
-	priv->qp_ts_format = attr.qp_ts_format;
-	if (attr.num_lag_ports == 0)
+	priv->caps = attr->vdpa;
+	priv->log_max_rqt_size = attr->log_max_rqt_size;
+	priv->num_lag_ports = attr->num_lag_ports;
+	if (attr->num_lag_ports == 0)
 		priv->num_lag_ports = 1;
 	priv->cdev = cdev;
 	priv->var = mlx5_glue->dv_alloc_var(priv->cdev->ctx, 0);
