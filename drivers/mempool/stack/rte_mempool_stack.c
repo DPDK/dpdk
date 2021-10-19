@@ -93,5 +93,5 @@ static struct rte_mempool_ops ops_lf_stack = {
 	.get_count = stack_get_count
 };
 
-MEMPOOL_REGISTER_OPS(ops_stack);
-MEMPOOL_REGISTER_OPS(ops_lf_stack);
+RTE_MEMPOOL_REGISTER_OPS(ops_stack);
+RTE_MEMPOOL_REGISTER_OPS(ops_lf_stack);

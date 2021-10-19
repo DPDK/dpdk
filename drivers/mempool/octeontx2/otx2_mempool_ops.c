@@ -898,4 +898,4 @@ static struct rte_mempool_ops otx2_npa_ops = {
 #endif
 };
 
-MEMPOOL_REGISTER_OPS(otx2_npa_ops);
+RTE_MEMPOOL_REGISTER_OPS(otx2_npa_ops);

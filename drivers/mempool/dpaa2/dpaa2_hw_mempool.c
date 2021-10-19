@@ -455,6 +455,6 @@ static const struct rte_mempool_ops dpaa2_mpool_ops = {
 	.populate = dpaa2_populate,
 };
 
-MEMPOOL_REGISTER_OPS(dpaa2_mpool_ops);
+RTE_MEMPOOL_REGISTER_OPS(dpaa2_mpool_ops);
 
 RTE_LOG_REGISTER_DEFAULT(dpaa2_logtype_mempool, NOTICE);

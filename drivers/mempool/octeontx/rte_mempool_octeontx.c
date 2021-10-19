@@ -202,4 +202,4 @@ static struct rte_mempool_ops octeontx_fpavf_ops = {
 	.populate = octeontx_fpavf_populate,
 };
 
-MEMPOOL_REGISTER_OPS(octeontx_fpavf_ops);
+RTE_MEMPOOL_REGISTER_OPS(octeontx_fpavf_ops);

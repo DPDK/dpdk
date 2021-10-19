@@ -316,4 +316,4 @@ static struct rte_mempool_ops cn10k_mempool_ops = {
 	.populate = cnxk_mempool_populate,
 };
 
-MEMPOOL_REGISTER_OPS(cn10k_mempool_ops);
+RTE_MEMPOOL_REGISTER_OPS(cn10k_mempool_ops);

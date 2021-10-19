@@ -358,4 +358,4 @@ static const struct rte_mempool_ops dpaa_mpool_ops = {
 	.populate = dpaa_populate,
 };
 
-MEMPOOL_REGISTER_OPS(dpaa_mpool_ops);
+RTE_MEMPOOL_REGISTER_OPS(dpaa_mpool_ops);

@@ -236,6 +236,9 @@ API Changes
 * mempool: Helper macro ``MEMPOOL_HEADER_SIZE()`` is deprecated.
   The replacement macro ``RTE_MEMPOOL_HEADER_SIZE()`` is internal only.
 
+* mempool: Macro to register mempool driver ``MEMPOOL_REGISTER_OPS()`` is
+  deprecated.  Use replacement ``RTE_MEMPOOL_REGISTER_OPS()``.
+
 * net: Renamed ``s_addr`` and ``d_addr`` fields of ``rte_ether_hdr`` structure
   to ``src_addr`` and ``dst_addr``, respectively.
 

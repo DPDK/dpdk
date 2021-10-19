@@ -663,4 +663,4 @@ static const struct rte_mempool_ops ops_bucket = {
 };
 
 
-MEMPOOL_REGISTER_OPS(ops_bucket);
+RTE_MEMPOOL_REGISTER_OPS(ops_bucket);

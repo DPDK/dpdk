@@ -922,11 +922,15 @@ int rte_mempool_register_ops(const struct rte_mempool_ops *ops);
  * Note that the rte_mempool_register_ops fails silently here when
  * more than RTE_MEMPOOL_MAX_OPS_IDX is registered.
  */
-#define MEMPOOL_REGISTER_OPS(ops)				\
+#define RTE_MEMPOOL_REGISTER_OPS(ops)				\
 	RTE_INIT(mp_hdlr_init_##ops)				\
 	{							\
 		rte_mempool_register_ops(&ops);			\
 	}
+
+/** Deprecated. Use RTE_MEMPOOL_REGISTER_OPS() instead. */
+#define MEMPOOL_REGISTER_OPS(ops) \
+	RTE_DEPRECATED(MEMPOOL_REGISTER_OPS) RTE_MEMPOOL_REGISTER_OPS(ops)
 
 /**
  * An object callback function for mempool.

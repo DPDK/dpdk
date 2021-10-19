@@ -198,9 +198,9 @@ static const struct rte_mempool_ops ops_mt_hts = {
 	.get_count = common_ring_get_count,
 };
 
-MEMPOOL_REGISTER_OPS(ops_mp_mc);
-MEMPOOL_REGISTER_OPS(ops_sp_sc);
-MEMPOOL_REGISTER_OPS(ops_mp_sc);
-MEMPOOL_REGISTER_OPS(ops_sp_mc);
-MEMPOOL_REGISTER_OPS(ops_mt_rts);
-MEMPOOL_REGISTER_OPS(ops_mt_hts);
+RTE_MEMPOOL_REGISTER_OPS(ops_mp_mc);
+RTE_MEMPOOL_REGISTER_OPS(ops_sp_sc);
+RTE_MEMPOOL_REGISTER_OPS(ops_mp_sc);
+RTE_MEMPOOL_REGISTER_OPS(ops_sp_mc);
+RTE_MEMPOOL_REGISTER_OPS(ops_mt_rts);
+RTE_MEMPOOL_REGISTER_OPS(ops_mt_hts);

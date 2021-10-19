@@ -43,6 +43,10 @@ Deprecation Notices
   be removed in DPDK 22.11. The replacement macro
   ``RTE_MEMPOOL_HEADER_SIZE()`` is internal only.
 
+* mempool: Macro to register mempool driver ``MEMPOOL_REGISTER_OPS()`` is
+  deprecated and will be removed in DPDK 22.11. Use replacement macro
+  ``RTE_MEMPOOL_REGISTER_OPS()``.
+
 * mbuf: The mbuf offload flags ``PKT_*`` will be renamed as ``RTE_MBUF_F_*``.
   A compatibility layer will be kept until DPDK 22.11, except for the flags
   that are already deprecated (``PKT_RX_L4_CKSUM_BAD``, ``PKT_RX_IP_CKSUM_BAD``,

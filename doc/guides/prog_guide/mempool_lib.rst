@@ -115,7 +115,7 @@ management systems and software based memory allocators, to be used with DPDK.
 There are two aspects to a mempool handler.
 
 * Adding the code for your new mempool operations (ops). This is achieved by
-  adding a new mempool ops code, and using the ``MEMPOOL_REGISTER_OPS`` macro.
+  adding a new mempool ops code, and using the ``RTE_MEMPOOL_REGISTER_OPS`` macro.
 
 * Using the new API to call ``rte_mempool_create_empty()`` and
   ``rte_mempool_set_ops_byname()`` to create a new mempool and specifying which
