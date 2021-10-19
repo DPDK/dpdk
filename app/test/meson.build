@@ -465,13 +465,8 @@ message('hugepage availability: @0@'.format(has_hugepage))
 timeout_seconds = 600
 timeout_seconds_fast = 10
 
-get_coremask = find_program('get-coremask.sh')
-num_cores_arg = '-l ' + run_command(get_coremask).stdout().strip()
-
-default_test_args = [num_cores_arg]
-
 foreach arg : fast_tests
-    test_args = default_test_args
+    test_args = []
     run_test = true
     if not has_hugepage
         if arg[1]
@@ -504,7 +499,6 @@ endforeach
 foreach arg : perf_test_names
     test(arg, dpdk_test,
             env : ['DPDK_TEST=' + arg],
-            args : default_test_args,
             timeout : timeout_seconds,
             is_parallel : false,
             suite : 'perf-tests')
@@ -513,7 +507,6 @@ endforeach
 foreach arg : driver_test_names
     test(arg, dpdk_test,
             env : ['DPDK_TEST=' + arg],
-            args : default_test_args,
             timeout : timeout_seconds,
             is_parallel : false,
             suite : 'driver-tests')
@@ -522,7 +515,6 @@ endforeach
 foreach arg : dump_test_names
     test(arg, dpdk_test,
             env : ['DPDK_TEST=' + arg],
-            args : default_test_args,
             timeout : timeout_seconds,
             is_parallel : false,
             suite : 'debug-tests')

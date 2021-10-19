@@ -37,6 +37,14 @@ command::
 
     $ meson test --suite fast-tests
 
+If desired, additional arguments can be passed to the test run via the meson
+``--test-args`` option.
+For example, tests will by default run on as many available cores as is needed
+for the test, starting with the lowest number core - generally core 0.
+To run the fast-tests suite using only cores 8 through 16, one can use::
+
+    $ meson test --suite fast-tests --test-args="-l 8-16"
+
 The meson command to list all available tests::
 
     $ meson test --list
@@ -47,8 +55,15 @@ Arguments of ``test()`` that can be provided in meson.build are as below:
 
 * ``is_parallel`` is used to run test case either in parallel or non-parallel mode.
 * ``timeout`` is used to specify the timeout of test case.
-* ``args`` is used to specify test specific parameters.
+* ``args`` is used to specify test specific parameters (see note below).
 * ``env`` is used to specify test specific environment parameters.
+
+Note: the content of meson ``--test-args`` option and the content of ``args``
+are appended when invoking the DPDK test binary.
+Because of this, it is recommended not to set any default coremask or memory
+configuration in per test ``args`` and rather let users select what best fits
+their environment. If a test can't run, then it should be skipped, as described
+below.
 
 
 Dealing with skipped test cases
