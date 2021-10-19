@@ -435,40 +435,6 @@ static struct rte_compressdev_ops mlx5_compress_ops = {
 	.stream_free		= NULL,
 };
 
-/**
- * Query LKey from a packet buffer for QP. If not found, add the mempool.
- *
- * @param priv
- *   Pointer to the priv object.
- * @param addr
- *   Search key.
- * @param mr_ctrl
- *   Pointer to per-queue MR control structure.
- * @param ol_flags
- *   Mbuf offload features.
- *
- * @return
- *   Searched LKey on success, UINT32_MAX on no match.
- */
-static __rte_always_inline uint32_t
-mlx5_compress_addr2mr(struct mlx5_compress_priv *priv, uintptr_t addr,
-		      struct mlx5_mr_ctrl *mr_ctrl, uint64_t ol_flags)
-{
-	uint32_t lkey;
-
-	/* Check generation bit to see if there's any change on existing MRs. */
-	if (unlikely(*mr_ctrl->dev_gen_ptr != mr_ctrl->cur_gen))
-		mlx5_mr_flush_local_cache(mr_ctrl);
-	/* Linear search on MR cache array. */
-	lkey = mlx5_mr_lookup_lkey(mr_ctrl->cache, &mr_ctrl->mru,
-				   MLX5_MR_CACHE_N, addr);
-	if (likely(lkey != UINT32_MAX))
-		return lkey;
-	/* Take slower bottom-half on miss. */
-	return mlx5_mr_addr2mr_bh(priv->cdev->pd, 0, &priv->mr_scache, mr_ctrl,
-				  addr, !!(ol_flags & EXT_ATTACHED_MBUF));
-}
-
 static __rte_always_inline uint32_t
 mlx5_compress_dseg_set(struct mlx5_compress_qp *qp,
 		       volatile struct mlx5_wqe_dseg *restrict dseg,
@@ -478,8 +444,8 @@ mlx5_compress_dseg_set(struct mlx5_compress_qp *qp,
 	uintptr_t addr = rte_pktmbuf_mtod_offset(mbuf, uintptr_t, offset);
 
 	dseg->bcount = rte_cpu_to_be_32(len);
-	dseg->lkey = mlx5_compress_addr2mr(qp->priv, addr, &qp->mr_ctrl,
-					   mbuf->ol_flags);
+	dseg->lkey = mlx5_mr_mb2mr(qp->priv->cdev, 0, &qp->mr_ctrl, mbuf,
+				   &qp->priv->mr_scache);
 	dseg->pbuf = rte_cpu_to_be_64(addr);
 	return dseg->lkey;
 }

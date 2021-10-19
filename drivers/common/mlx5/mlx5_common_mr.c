@@ -576,6 +576,8 @@ mr_find_contig_memsegs_cb(const struct rte_memseg_list *msl,
  *
  * @param pd
  *   Pointer to pd of a device (net, regex, vdpa,...).
+ * @param mp_id
+ *   Multi-process identifier, may be NULL for the primary process.
  * @param share_cache
  *   Pointer to a global shared MR cache.
  * @param[out] entry
@@ -867,6 +869,8 @@ err_nolock:
  *
  * @param pd
  *   Pointer to pd handle of a device (net, regex, vdpa,...).
+ * @param mp_id
+ *   Multi-process identifier, may be NULL for the primary process.
  * @param share_cache
  *   Pointer to a global shared MR cache.
  * @param[out] entry
@@ -874,6 +878,8 @@ err_nolock:
  *   created. If failed to create one, this will not be updated.
  * @param addr
  *   Target virtual address to register.
+ * @param mr_ext_memseg_en
+ *   Configurable flag about external memory segment enable or not.
  *
  * @return
  *   Searched LKey on success, UINT32_MAX on failure and rte_errno is set.
@@ -907,6 +913,8 @@ mlx5_mr_create(void *pd, struct mlx5_mp_id *mp_id,
  *
  * @param pd
  *   Pointer to pd of a device (net, regex, vdpa,...).
+ * @param mp_id
+ *   Multi-process identifier, may be NULL for the primary process.
  * @param share_cache
  *   Pointer to a global shared MR cache.
  * @param mr_ctrl
@@ -916,6 +924,8 @@ mlx5_mr_create(void *pd, struct mlx5_mp_id *mp_id,
  *   created. If failed to create one, this is not written.
  * @param addr
  *   Search key.
+ * @param mr_ext_memseg_en
+ *   Configurable flag about external memory segment enable or not.
  *
  * @return
  *   Searched LKey on success, UINT32_MAX on no match.
@@ -971,12 +981,16 @@ mr_lookup_caches(void *pd, struct mlx5_mp_id *mp_id,
  *
  * @param pd
  *   Pointer to pd of a device (net, regex, vdpa,...).
+ * @param mp_id
+ *   Multi-process identifier, may be NULL for the primary process.
  * @param share_cache
  *   Pointer to a global shared MR cache.
  * @param mr_ctrl
  *   Pointer to per-queue MR control structure.
  * @param addr
  *   Search key.
+ * @param mr_ext_memseg_en
+ *   Configurable flag about external memory segment enable or not.
  *
  * @return
  *   Searched LKey on success, UINT32_MAX on no match.
@@ -1821,4 +1835,42 @@ mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
 	/* Point to the next victim, the oldest. */
 	mr_ctrl->head = (mr_ctrl->head + 1) % MLX5_MR_CACHE_N;
 	return lkey;
+}
+
+/**
+ * Query LKey from a packet buffer.
+ *
+ * @param cdev
+ *   Pointer to the mlx5 device structure.
+ * @param mp_id
+ *   Multi-process identifier, may be NULL for the primary process.
+ * @param mr_ctrl
+ *   Pointer to per-queue MR control structure.
+ * @param mbuf
+ *   Pointer to mbuf.
+ * @param share_cache
+ *   Pointer to a global shared MR cache.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on no match.
+ */
+uint32_t
+mlx5_mr_mb2mr(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
+	      struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf,
+	      struct mlx5_mr_share_cache *share_cache)
+{
+	uint32_t lkey;
+	uintptr_t addr = (uintptr_t)mbuf->buf_addr;
+
+	/* Check generation bit to see if there's any change on existing MRs. */
+	if (unlikely(*mr_ctrl->dev_gen_ptr != mr_ctrl->cur_gen))
+		mlx5_mr_flush_local_cache(mr_ctrl);
+	/* Linear search on MR cache array. */
+	lkey = mlx5_mr_lookup_lkey(mr_ctrl->cache, &mr_ctrl->mru,
+				   MLX5_MR_CACHE_N, (uintptr_t)mbuf->buf_addr);
+	if (likely(lkey != UINT32_MAX))
+		return lkey;
+	/* Take slower bottom-half on miss. */
+	return mlx5_mr_addr2mr_bh(cdev->pd, mp_id, share_cache, mr_ctrl,
+				  addr, cdev->config.mr_ext_memseg_en);
 }
