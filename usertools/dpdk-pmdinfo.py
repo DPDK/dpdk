@@ -593,7 +593,7 @@ def main(stream=None):
             exit(1)
 
     if args.pdir:
-        exit(scan_for_autoload_pmds(args[0]))
+        exit(scan_for_autoload_pmds(args.elf_file))
 
     ldlibpath = os.environ.get('LD_LIBRARY_PATH')
     if ldlibpath is None:
