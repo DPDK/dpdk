@@ -10818,22 +10818,22 @@ flow_dv_translate_item_tx_queue(struct rte_eth_dev *dev,
 	void *misc_v =
 		MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
 	struct mlx5_txq_ctrl *txq;
-	uint32_t queue;
-
+	uint32_t queue, mask;
 
 	queue_m = (const void *)item->mask;
-	if (!queue_m)
-		return;
 	queue_v = (const void *)item->spec;
 	if (!queue_v)
 		return;
 	txq = mlx5_txq_get(dev, queue_v->queue);
 	if (!txq)
 		return;
-	queue = txq->obj->sq->id;
-	MLX5_SET(fte_match_set_misc, misc_m, source_sqn, queue_m->queue);
-	MLX5_SET(fte_match_set_misc, misc_v, source_sqn,
-		 queue & queue_m->queue);
+	if (txq->type == MLX5_TXQ_TYPE_HAIRPIN)
+		queue = txq->obj->sq->id;
+	else
+		queue = txq->obj->sq_obj.sq->id;
+	mask = queue_m == NULL ? UINT32_MAX : queue_m->queue;
+	MLX5_SET(fte_match_set_misc, misc_m, source_sqn, mask);
+	MLX5_SET(fte_match_set_misc, misc_v, source_sqn, queue & mask);
 	mlx5_txq_release(dev, queue_v->queue);
 }
 
