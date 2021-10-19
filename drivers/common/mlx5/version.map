@@ -144,6 +144,7 @@ INTERNAL {
 	mlx5_os_dealloc_pd;
 	mlx5_os_dereg_mr;
 	mlx5_os_get_ibv_dev; # WINDOWS_NO_EXPORT
+	mlx5_os_open_device;
 	mlx5_os_reg_mr;
 	mlx5_os_umem_dereg;
 	mlx5_os_umem_reg;

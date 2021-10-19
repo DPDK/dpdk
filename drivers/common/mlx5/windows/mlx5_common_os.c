@@ -73,6 +73,167 @@ mlx5_os_dealloc_pd(void *pd)
 }
 
 /**
+ * Detect if a devx_device_bdf object has identical DBDF values to the
+ * rte_pci_addr found in bus/pci probing.
+ *
+ * @param[in] devx_bdf
+ *   Pointer to the devx_device_bdf structure.
+ * @param[in] addr
+ *   Pointer to the rte_pci_addr structure.
+ *
+ * @return
+ *   1 on Device match, 0 on mismatch.
+ */
+static int
+mlx5_match_devx_bdf_to_addr(struct devx_device_bdf *devx_bdf,
+			    struct rte_pci_addr *addr)
+{
+	if (addr->domain != (devx_bdf->bus_id >> 8) ||
+	    addr->bus != (devx_bdf->bus_id & 0xff) ||
+	    addr->devid != devx_bdf->dev_id ||
+	    addr->function != devx_bdf->fnc_id) {
+		return 0;
+	}
+	return 1;
+}
+
+/**
+ * Detect if a devx_device_bdf object matches the rte_pci_addr
+ * found in bus/pci probing
+ * Compare both the Native/PF BDF and the raw_bdf representing a VF BDF.
+ *
+ * @param[in] devx_bdf
+ *   Pointer to the devx_device_bdf structure.
+ * @param[in] addr
+ *   Pointer to the rte_pci_addr structure.
+ *
+ * @return
+ *   1 on Device match, 0 on mismatch, rte_errno code on failure.
+ */
+static int
+mlx5_match_devx_devices_to_addr(struct devx_device_bdf *devx_bdf,
+				struct rte_pci_addr *addr)
+{
+	int err;
+	struct devx_device mlx5_dev;
+
+	if (mlx5_match_devx_bdf_to_addr(devx_bdf, addr))
+		return 1;
+	/*
+	 * Didn't match on Native/PF BDF, could still match a VF BDF,
+	 * check it next.
+	 */
+	err = mlx5_glue->query_device(devx_bdf, &mlx5_dev);
+	if (err) {
+		DRV_LOG(ERR, "query_device failed");
+		rte_errno = err;
+		return rte_errno;
+	}
+	if (mlx5_match_devx_bdf_to_addr(&mlx5_dev.raw_bdf, addr))
+		return 1;
+	return 0;
+}
+
+/**
+ * Look for DevX device that match to given rte_device.
+ *
+ * @param dev
+ *   Pointer to the generic device.
+ * @param devx_list
+ *   Pointer to head of DevX devices list.
+ * @param n
+ *   Number of devices in given DevX devices list.
+ *
+ * @return
+ *   A device match on success, NULL otherwise and rte_errno is set.
+ */
+static struct devx_device_bdf *
+mlx5_os_get_devx_device(struct rte_device *dev,
+			struct devx_device_bdf *devx_list, int n)
+{
+	struct devx_device_bdf *devx_match = NULL;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev);
+	struct rte_pci_addr *addr = &pci_dev->addr;
+
+	while (n-- > 0) {
+		int ret = mlx5_match_devx_devices_to_addr(devx_list, addr);
+		if (!ret) {
+			devx_list++;
+			continue;
+		}
+		if (ret != 1) {
+			rte_errno = ret;
+			return NULL;
+		}
+		devx_match = devx_list;
+		break;
+	}
+	if (devx_match == NULL) {
+		/* No device matches, just complain and bail out. */
+		DRV_LOG(WARNING,
+			"No DevX device matches PCI device " PCI_PRI_FMT ","
+			" is DevX Configured?",
+			addr->domain, addr->bus, addr->devid, addr->function);
+		rte_errno = ENOENT;
+	}
+	return devx_match;
+}
+
+/**
+ * Function API open device under Windows.
+ *
+ * This function calls the Windows glue APIs to open a device.
+ *
+ * @param dev
+ *   Pointer to mlx5 device structure.
+ * @param ctx
+ *   Pointer to fill inside pointer to device context.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_os_open_device(struct mlx5_common_device *cdev, void **ctx)
+{
+	struct devx_device_bdf *devx_bdf_dev = NULL;
+	struct devx_device_bdf *devx_list;
+	struct mlx5_context *mlx5_ctx = NULL;
+	int n;
+
+	errno = 0;
+	devx_list = mlx5_glue->get_device_list(&n);
+	if (devx_list == NULL) {
+		rte_errno = errno ? errno : ENOSYS;
+		DRV_LOG(ERR, "Cannot list devices, is DevX enabled?");
+		return -rte_errno;
+	}
+	devx_bdf_dev = mlx5_os_get_devx_device(cdev->dev, devx_list, n);
+	if (devx_bdf_dev == NULL)
+		goto error;
+	/* Try to open DevX device with DV. */
+	mlx5_ctx = mlx5_glue->open_device(devx_bdf_dev);
+	if (mlx5_ctx == NULL) {
+		DRV_LOG(ERR, "Failed to open DevX device.");
+		rte_errno = errno;
+		goto error;
+	}
+	if (mlx5_glue->query_device(devx_bdf_dev, &mlx5_ctx->mlx5_dev)) {
+		DRV_LOG(ERR, "Failed to query device context fields.");
+		rte_errno = errno;
+		goto error;
+	}
+	cdev->config.devx = 1;
+	*ctx = (void *)mlx5_ctx;
+	mlx5_glue->free_device_list(devx_list);
+	return 0;
+error:
+	if (mlx5_ctx != NULL)
+		claim_zero(mlx5_glue->close_device(mlx5_ctx));
+	mlx5_glue->free_device_list(devx_list);
+	return -rte_errno;
+}
+
+/**
  * Register umem.
  *
  * @param[in] ctx

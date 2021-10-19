@@ -16,6 +16,7 @@
 
 #include "mlx5_common.h"
 #include "mlx5_common_log.h"
+#include "mlx5_common_defs.h"
 #include "mlx5_common_os.h"
 #include "mlx5_glue.h"
 
@@ -427,4 +428,89 @@ mlx5_os_get_ibv_device(const struct rte_pci_addr *addr)
 		rte_errno = ENOENT;
 	mlx5_glue->free_device_list(ibv_list);
 	return ibv_match;
+}
+
+static int
+mlx5_config_doorbell_mapping_env(int dbnc)
+{
+	char *env;
+	int value;
+
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	/* Get environment variable to store. */
+	env = getenv(MLX5_SHUT_UP_BF);
+	value = env ? !!strcmp(env, "0") : MLX5_ARG_UNSET;
+	if (dbnc == MLX5_ARG_UNSET)
+		setenv(MLX5_SHUT_UP_BF, MLX5_SHUT_UP_BF_DEFAULT, 1);
+	else
+		setenv(MLX5_SHUT_UP_BF,
+		       dbnc == MLX5_TXDB_NCACHED ? "1" : "0", 1);
+	return value;
+}
+
+static void
+mlx5_restore_doorbell_mapping_env(int value)
+{
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	/* Restore the original environment variable state. */
+	if (value == MLX5_ARG_UNSET)
+		unsetenv(MLX5_SHUT_UP_BF);
+	else
+		setenv(MLX5_SHUT_UP_BF, value ? "1" : "0", 1);
+}
+
+/**
+ * Function API to open IB device.
+ *
+ *
+ * @param cdev
+ *   Pointer to the mlx5 device.
+ * @param ctx_ptr
+ *   Pointer to fill inside pointer to device context.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_os_open_device(struct mlx5_common_device *cdev, void **ctx_ptr)
+{
+	struct ibv_device *ibv;
+	struct ibv_context *ctx = NULL;
+	int dbmap_env;
+
+	ibv = mlx5_os_get_ibv_dev(cdev->dev);
+	if (!ibv)
+		return -rte_errno;
+	DRV_LOG(INFO, "Dev information matches for device \"%s\".", ibv->name);
+	/*
+	 * Configure environment variable "MLX5_BF_SHUT_UP" before the device
+	 * creation. The rdma_core library checks the variable at device
+	 * creation and stores the result internally.
+	 */
+	dbmap_env = mlx5_config_doorbell_mapping_env(cdev->config.dbnc);
+	/* Try to open IB device with DV first, then usual Verbs. */
+	errno = 0;
+	ctx = mlx5_glue->dv_open_device(ibv);
+	if (ctx) {
+		cdev->config.devx = 1;
+		DRV_LOG(DEBUG, "DevX is supported.");
+	} else {
+		/* The environment variable is still configured. */
+		ctx = mlx5_glue->open_device(ibv);
+		if (ctx == NULL)
+			goto error;
+		DRV_LOG(DEBUG, "DevX is NOT supported.");
+	}
+	/* The device is created, no need for environment. */
+	mlx5_restore_doorbell_mapping_env(dbmap_env);
+	/* Hint libmlx5 to use PMD allocator for data plane resources */
+	mlx5_set_context_attr(cdev->dev, ctx);
+	*ctx_ptr = (void *)ctx;
+	return 0;
+error:
+	rte_errno = errno ? errno : ENODEV;
+	/* The device creation is failed, no need for environment. */
+	mlx5_restore_doorbell_mapping_env(dbmap_env);
+	DRV_LOG(ERR, "Failed to open IB device \"%s\".", ibv->name);
+	return -rte_errno;
 }

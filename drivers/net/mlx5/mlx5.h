@@ -136,7 +136,8 @@ struct mlx5_dev_spawn_data {
 	uint32_t phys_port; /**< Device physical port index. */
 	int pf_bond; /**< bonding device PF index. < 0 - no bonding */
 	struct mlx5_switch_info info; /**< Switch information. */
-	void *phys_dev; /**< Associated physical device. */
+	const char *phys_dev_name; /**< Name of physical device. */
+	void *ctx; /**< Associated physical device context. */
 	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
 	struct rte_pci_device *pci_dev; /**< Backend PCI device. */
 	struct mlx5_common_device *cdev; /**< Backend common device. */
@@ -1762,8 +1763,6 @@ void mlx5_flow_meter_rxq_flush(struct rte_eth_dev *dev);
 struct rte_pci_driver;
 int mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *dev_attr);
 void mlx5_os_free_shared_dr(struct mlx5_priv *priv);
-int mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
-			 struct mlx5_dev_ctx_shared *sh);
 int mlx5_os_get_pdn(void *pd, uint32_t *pdn);
 int mlx5_os_net_probe(struct mlx5_common_device *cdev);
 void mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh);

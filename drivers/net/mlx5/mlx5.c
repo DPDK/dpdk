@@ -1292,7 +1292,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	/* Search for IB context by device name. */
 	LIST_FOREACH(sh, &mlx5_dev_ctx_list, next) {
 		if (!strcmp(sh->ibdev_name,
-			mlx5_os_get_dev_device_name(spawn->phys_dev))) {
+			mlx5_os_get_ctx_device_name(spawn->ctx))) {
 			sh->refcnt++;
 			goto exit;
 		}
@@ -1309,13 +1309,13 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		rte_errno  = ENOMEM;
 		goto exit;
 	}
+	pthread_mutex_init(&sh->txpp.mutex, NULL);
 	sh->numa_node = spawn->cdev->dev->numa_node;
 	sh->cdev = spawn->cdev;
+	sh->devx = sh->cdev->config.devx;
+	sh->ctx = spawn->ctx;
 	if (spawn->bond_info)
 		sh->bond = *spawn->bond_info;
-	err = mlx5_os_open_device(spawn, sh);
-	if (!sh->ctx)
-		goto error;
 	err = mlx5_os_get_dev_attr(sh->ctx, &sh->device_attr);
 	if (err) {
 		DRV_LOG(DEBUG, "mlx5_os_get_dev_attr() failed");

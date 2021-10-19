@@ -12,6 +12,7 @@
 
 #include <rte_errno.h>
 #include <rte_bus_pci.h>
+#include <rte_eal_paging.h>
 #include <rte_bus_auxiliary.h>
 
 #include "mlx5_common_utils.h"
@@ -19,6 +20,7 @@
 #include "mlx5_common_private.h"
 #include "mlx5_autoconf.h"
 #include <mlx5_glue.h>
+#include <mlx5_malloc.h>
 #include <mlx5_common.h>
 #include <mlx5_common_mr.h>
 
@@ -36,6 +38,74 @@ mlx5_os_get_ibv_dev(const struct rte_device *dev)
 		DRV_LOG(ERR, "Verbs device not found: %s", dev->name);
 	}
 	return ibv;
+}
+
+/**
+ * Verbs callback to allocate a memory. This function should allocate the space
+ * according to the size provided residing inside a huge page.
+ * Please note that all allocation must respect the alignment from libmlx5
+ * (i.e. currently rte_mem_page_size()).
+ *
+ * @param[in] size
+ *   The size in bytes of the memory to allocate.
+ * @param[in] data
+ *   A pointer to the callback data.
+ *
+ * @return
+ *   Allocated buffer, NULL otherwise and rte_errno is set.
+ */
+static void *
+mlx5_alloc_verbs_buf(size_t size, void *data)
+{
+	struct rte_device *dev = data;
+	void *ret;
+	size_t alignment = rte_mem_page_size();
+	if (alignment == (size_t)-1) {
+		DRV_LOG(ERR, "Failed to get mem page size");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	MLX5_ASSERT(data != NULL);
+	ret = mlx5_malloc(0, size, alignment, dev->numa_node);
+	if (!ret && size)
+		rte_errno = ENOMEM;
+	return ret;
+}
+
+/**
+ * Verbs callback to free a memory.
+ *
+ * @param[in] ptr
+ *   A pointer to the memory to free.
+ * @param[in] data
+ *   A pointer to the callback data.
+ */
+static void
+mlx5_free_verbs_buf(void *ptr, void *data __rte_unused)
+{
+	MLX5_ASSERT(data != NULL);
+	mlx5_free(ptr);
+}
+
+/**
+ * Hint libmlx5 to use PMD allocator for data plane resources.
+ *
+ * @param dev
+ *   Pointer to the generic device.
+ */
+void
+mlx5_set_context_attr(struct rte_device *dev, struct ibv_context *ctx)
+{
+	struct mlx5dv_ctx_allocators allocator = {
+		.alloc = &mlx5_alloc_verbs_buf,
+		.free = &mlx5_free_verbs_buf,
+		.data = dev,
+	};
+
+	/* Hint libmlx5 to use PMD allocator for data plane resources */
+	mlx5_glue->dv_set_context_attr(ctx, MLX5DV_CTX_ATTR_BUF_ALLOCATORS,
+				       (void *)((uintptr_t)&allocator));
 }
 
 /**

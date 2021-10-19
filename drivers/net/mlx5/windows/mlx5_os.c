@@ -259,46 +259,6 @@ mlx5_os_set_nonblock_channel_fd(int fd)
 }
 
 /**
- * Function API open device under Windows
- *
- * This function calls the Windows glue APIs to open a device.
- *
- * @param[in] spawn
- *   Pointer to the device attributes (name, port, etc).
- * @param[out] sh
- *   Pointer to shared context structure.
- *
- * @return
- *   0 on success, a positive error value otherwise.
- */
-int
-mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
-		 struct mlx5_dev_ctx_shared *sh)
-{
-	int err = 0;
-	struct mlx5_context *mlx5_ctx;
-
-	pthread_mutex_init(&sh->txpp.mutex, NULL);
-	/* Set numa node from pci probe */
-	sh->numa_node = spawn->pci_dev->device.numa_node;
-
-	/* Try to open device with DevX */
-	rte_errno = 0;
-	sh->ctx = mlx5_glue->open_device(spawn->phys_dev);
-	if (!sh->ctx) {
-		DRV_LOG(ERR, "open_device failed");
-		err = errno;
-		return err;
-	}
-	sh->devx = 1;
-	mlx5_ctx = (struct mlx5_context *)sh->ctx;
-	err = mlx5_glue->query_device(spawn->phys_dev, &mlx5_ctx->mlx5_dev);
-	if (err)
-		DRV_LOG(ERR, "Failed to query device context fields.");
-	return err;
-}
-
-/**
  * DV flow counter mode detect and config.
  *
  * @param dev
@@ -947,114 +907,6 @@ mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable)
 }
 
 /**
- * Detect if a devx_device_bdf object has identical DBDF values to the
- * rte_pci_addr found in bus/pci probing
- *
- * @param[in] devx_bdf
- *   Pointer to the devx_device_bdf structure.
- * @param[in] addr
- *   Pointer to the rte_pci_addr structure.
- *
- * @return
- *   1 on Device match, 0 on mismatch.
- */
-static int
-mlx5_match_devx_bdf_to_addr(struct devx_device_bdf *devx_bdf,
-			    struct rte_pci_addr *addr)
-{
-	if (addr->domain != (devx_bdf->bus_id >> 8) ||
-	    addr->bus != (devx_bdf->bus_id & 0xff) ||
-	    addr->devid != devx_bdf->dev_id ||
-	    addr->function != devx_bdf->fnc_id) {
-		return 0;
-	}
-	return 1;
-}
-
-/**
- * Detect if a devx_device_bdf object matches the rte_pci_addr
- * found in bus/pci probing
- * Compare both the Native/PF BDF and the raw_bdf representing a VF BDF.
- *
- * @param[in] devx_bdf
- *   Pointer to the devx_device_bdf structure.
- * @param[in] addr
- *   Pointer to the rte_pci_addr structure.
- *
- * @return
- *   1 on Device match, 0 on mismatch, rte_errno code on failure.
- */
-static int
-mlx5_match_devx_devices_to_addr(struct devx_device_bdf *devx_bdf,
-				struct rte_pci_addr *addr)
-{
-	int err;
-	struct devx_device mlx5_dev;
-
-	if (mlx5_match_devx_bdf_to_addr(devx_bdf, addr))
-		return 1;
-	/*
-	 * Didn't match on Native/PF BDF, could still match a VF BDF,
-	 * check it next.
-	 */
-	err = mlx5_glue->query_device(devx_bdf, &mlx5_dev);
-	if (err) {
-		DRV_LOG(ERR, "query_device failed");
-		rte_errno = err;
-		return rte_errno;
-	}
-	if (mlx5_match_devx_bdf_to_addr(&mlx5_dev.raw_bdf, addr))
-		return 1;
-	return 0;
-}
-
-/**
- * Look for DevX device that match to given rte_device.
- *
- * @param dev
- *   Pointer to the generic device.
- * @param orig_devx_list
- *   Pointer to head of DevX devices list.
- * @param n
- *   Number of devices in given DevX devices list.
- *
- * @return
- *   A device match on success, NULL otherwise and rte_errno is set.
- */
-static struct devx_device_bdf *
-mlx5_os_get_devx_device(struct rte_device *dev,
-			struct devx_device_bdf *orig_devx_list, int n)
-{
-	struct devx_device_bdf *devx_list = orig_devx_list;
-	struct devx_device_bdf *devx_match = NULL;
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev);
-	struct rte_pci_addr *addr = &pci_dev->addr;
-
-	while (n-- > 0) {
-		int ret = mlx5_match_devx_devices_to_addr(devx_list, addr);
-		if (!ret) {
-			devx_list++;
-			continue;
-		}
-		if (ret != 1) {
-			rte_errno = ret;
-			return NULL;
-		}
-		devx_match = devx_list;
-		break;
-	}
-	if (devx_match == NULL) {
-		/* No device matches, just complain and bail out. */
-		DRV_LOG(WARNING,
-			"No DevX device matches PCI device " PCI_PRI_FMT ","
-			" is DevX Configured?",
-			addr->domain, addr->bus, addr->devid, addr->function);
-		rte_errno = ENOENT;
-	}
-	return devx_match;
-}
-
-/**
  * DPDK callback to register a PCI device.
  *
  * This function spawns Ethernet devices out of a given device.
@@ -1069,8 +921,6 @@ int
 mlx5_os_net_probe(struct mlx5_common_device *cdev)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
-	struct devx_device_bdf *devx_list;
-	struct devx_device_bdf *devx_bdf_match;
 	struct mlx5_dev_spawn_data spawn = {
 		.pf_bond = -1,
 		.max_port = 1,
@@ -1095,33 +945,28 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 		.dv_flow_en = 1,
 		.log_hp_size = MLX5_ARG_UNSET,
 	};
+	void *ctx;
 	int ret;
-	int n;
 	uint32_t restore;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		DRV_LOG(ERR, "Secondary process is not supported on Windows.");
 		return -ENOTSUP;
 	}
+	ret = mlx5_os_open_device(cdev, &ctx);
+	if (ret) {
+		DRV_LOG(ERR, "Fail to open DevX device %s", cdev->dev->name);
+		return -rte_errno;
+	}
 	ret = mlx5_init_once();
 	if (ret) {
 		DRV_LOG(ERR, "unable to init PMD global data: %s",
 			strerror(rte_errno));
+		claim_zero(mlx5_glue->close_device(ctx));
 		return -rte_errno;
 	}
-	errno = 0;
-	devx_list = mlx5_glue->get_device_list(&n);
-	if (devx_list == NULL) {
-		rte_errno = errno ? errno : ENOSYS;
-		DRV_LOG(ERR, "Cannot list devices, is DevX enabled?");
-		return -rte_errno;
-	}
-	devx_bdf_match = mlx5_os_get_devx_device(cdev->dev, devx_list, n);
-	if (devx_bdf_match == NULL) {
-		ret = -rte_errno;
-		goto exit;
-	}
-	spawn.phys_dev = devx_bdf_match;
+	spawn.ctx = ctx;
+	spawn.phys_dev_name = mlx5_os_get_ctx_device_name(ctx);
 	/* Device specific configuration. */
 	switch (pci_dev->id.device_id) {
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
@@ -1139,17 +984,15 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 	}
 	spawn.eth_dev = mlx5_dev_spawn(cdev->dev, &spawn, &dev_config);
 	if (!spawn.eth_dev) {
-		ret = -rte_errno;
-		goto exit;
+		claim_zero(mlx5_glue->close_device(ctx));
+		return -rte_errno;
 	}
 	restore = spawn.eth_dev->data->dev_flags;
 	rte_eth_copy_pci_info(spawn.eth_dev, pci_dev);
 	/* Restore non-PCI flags cleared by the above call. */
 	spawn.eth_dev->data->dev_flags |= restore;
 	rte_eth_dev_probing_finish(spawn.eth_dev);
-exit:
-	mlx5_glue->free_device_list(devx_list);
-	return ret;
+	return 0;
 }
 
 /**

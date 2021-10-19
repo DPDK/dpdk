@@ -296,4 +296,7 @@ __rte_internal
 struct ibv_device *
 mlx5_os_get_ibv_dev(const struct rte_device *dev);
 
+void
+mlx5_set_context_attr(struct rte_device *dev, struct ibv_context *ctx);
+
 #endif /* RTE_PMD_MLX5_COMMON_OS_H_ */

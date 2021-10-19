@@ -334,6 +334,7 @@ void mlx5_common_init(void);
  */
 struct mlx5_common_dev_config {
 	int dbnc; /* Skip doorbell register write barrier. */
+	unsigned int devx:1; /* Whether devx interface is available or not. */
 	unsigned int sys_mem_en:1; /* The default memory allocator. */
 	unsigned int mr_mempool_reg_en:1;
 	/* Allow/prevent implicit mempool memory registration. */
@@ -442,5 +443,10 @@ mlx5_class_driver_register(struct mlx5_class_driver *driver);
 __rte_internal
 bool
 mlx5_dev_is_pci(const struct rte_device *dev);
+
+/* mlx5_common_os.c */
+
+__rte_internal
+int mlx5_os_open_device(struct mlx5_common_device *cdev, void **ctx);
 
 #endif /* RTE_PMD_MLX5_COMMON_H_ */
