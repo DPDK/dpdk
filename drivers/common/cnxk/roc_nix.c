@@ -184,6 +184,8 @@ roc_nix_lf_alloc(struct roc_nix *roc_nix, uint32_t nb_rxq, uint32_t nb_txq,
 	nix->sqs = plt_zmalloc(sizeof(struct roc_nix_sq *) * nb_txq, 0);
 	if (!nix->sqs)
 		return -ENOMEM;
+
+	nix_tel_node_add(roc_nix);
 fail:
 	return rc;
 }
@@ -419,6 +421,7 @@ lf_detach:
 dev_fini:
 	rc |= dev_fini(dev, pci_dev);
 fail:
+	nix_tel_node_del(roc_nix);
 	return rc;
 }
 

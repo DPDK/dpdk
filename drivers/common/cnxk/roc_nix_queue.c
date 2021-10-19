@@ -381,7 +381,11 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	if (rc)
 		return rc;
 
-	return mbox_process(mbox);
+	rc = mbox_process(mbox);
+	if (rc)
+		return rc;
+
+	return nix_tel_node_add_rq(rq);
 }
 
 int
@@ -409,7 +413,11 @@ roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	if (rc)
 		return rc;
 
-	return mbox_process(mbox);
+	rc = mbox_process(mbox);
+	if (rc)
+		return rc;
+
+	return nix_tel_node_add_rq(rq);
 }
 
 int
@@ -513,7 +521,7 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	if (rc)
 		goto free_mem;
 
-	return 0;
+	return nix_tel_node_add_cq(cq);
 
 free_mem:
 	plt_free(cq->desc_base);
@@ -897,6 +905,7 @@ roc_nix_sq_init(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 					((qid & RVU_CN9K_LMT_SLOT_MASK) << 12));
 	}
 
+	rc = nix_tel_node_add_sq(sq);
 	return rc;
 nomem:
 	plt_free(sq->fc);

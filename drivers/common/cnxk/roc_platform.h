@@ -146,9 +146,11 @@
 #define plt_strlcpy rte_strlcpy
 
 #define PLT_TEL_INT_VAL              RTE_TEL_INT_VAL
+#define PLT_TEL_STRING_VAL           RTE_TEL_STRING_VAL
 #define plt_tel_data                 rte_tel_data
 #define plt_tel_data_start_array     rte_tel_data_start_array
 #define plt_tel_data_add_array_int   rte_tel_data_add_array_int
+#define plt_tel_data_add_array_string rte_tel_data_add_array_string
 #define plt_tel_data_start_dict      rte_tel_data_start_dict
 #define plt_tel_data_add_dict_int    rte_tel_data_add_dict_int
 #define plt_tel_data_add_dict_ptr(d, n, v)			\

@@ -429,4 +429,13 @@ int nix_lf_int_reg_dump(uintptr_t nix_lf_base, uint64_t *data, uint16_t qints,
 int nix_q_ctx_get(struct dev *dev, uint8_t ctype, uint16_t qid,
 		  __io void **ctx_p);
 
+/*
+ * Telemetry
+ */
+int nix_tel_node_add(struct roc_nix *roc_nix);
+void nix_tel_node_del(struct roc_nix *roc_nix);
+int nix_tel_node_add_rq(struct roc_nix_rq *rq);
+int nix_tel_node_add_cq(struct roc_nix_cq *cq);
+int nix_tel_node_add_sq(struct roc_nix_sq *sq);
+
 #endif /* _ROC_NIX_PRIV_H_ */
