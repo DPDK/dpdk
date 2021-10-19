@@ -86,7 +86,7 @@ mlx5_tx_addr2mr_bh(struct mlx5_txq_data *txq, uintptr_t addr)
 
 	return mlx5_mr_addr2mr_bh(priv->sh->pd, &priv->mp_id,
 				  &priv->sh->share_cache, mr_ctrl, addr,
-				  priv->config.mr_ext_memseg_en);
+				  priv->sh->cdev->config.mr_ext_memseg_en);
 }
 
 /**
@@ -111,7 +111,7 @@ mlx5_tx_mb2mr_bh(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 	uintptr_t addr = (uintptr_t)mb->buf_addr;
 	uint32_t lkey;
 
-	if (priv->config.mr_mempool_reg_en) {
+	if (priv->sh->cdev->config.mr_mempool_reg_en) {
 		struct rte_mempool *mp = NULL;
 		struct mlx5_mprq_buf *buf;
 
@@ -196,8 +196,8 @@ mlx5_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 	mlx5_mr_insert_cache(&sh->share_cache, mr);
 	rte_rwlock_write_unlock(&sh->share_cache.rwlock);
 	/* Insert to the local cache table */
-	mlx5_mr_addr2mr_bh(sh->pd, &priv->mp_id, &sh->share_cache,
-			   mr_ctrl, addr, priv->config.mr_ext_memseg_en);
+	mlx5_mr_addr2mr_bh(sh->pd, &priv->mp_id, &sh->share_cache, mr_ctrl,
+			   addr, priv->sh->cdev->config.mr_ext_memseg_en);
 }
 
 /**

@@ -256,8 +256,6 @@ struct mlx5_dev_config {
 	unsigned int cqe_comp_fmt:3; /* CQE compression format. */
 	unsigned int tso:1; /* Whether TSO is supported. */
 	unsigned int rx_vec_en:1; /* Rx vector is enabled. */
-	unsigned int mr_ext_memseg_en:1;
-	/* Whether memseg should be extended for MR creation. */
 	unsigned int l3_vxlan_en:1; /* Enable L3 VXLAN flow creation. */
 	unsigned int vf_nl_en:1; /* Enable Netlink requests in VF mode. */
 	unsigned int dv_esw_en:1; /* Enable E-Switch DV flow. */
@@ -270,13 +268,10 @@ struct mlx5_dev_config {
 	unsigned int dest_tir:1; /* Whether advanced DR API is available. */
 	unsigned int reclaim_mode:2; /* Memory reclaim mode. */
 	unsigned int rt_timestamp:1; /* realtime timestamp format. */
-	unsigned int sys_mem_en:1; /* The default memory allocator. */
 	unsigned int decap_en:1; /* Whether decap will be used or not. */
 	unsigned int dv_miss_info:1; /* restore packet after partial hw miss */
 	unsigned int allow_duplicate_pattern:1;
 	/* Allow/Prevent the duplicate rules pattern. */
-	unsigned int mr_mempool_reg_en:1;
-	/* Allow/prevent implicit mempool memory registration. */
 	struct {
 		unsigned int enabled:1; /* Whether MPRQ is enabled. */
 		unsigned int stride_num_n; /* Number of strides. */
@@ -289,7 +284,6 @@ struct mlx5_dev_config {
 		/* Rx queue count threshold to enable MPRQ. */
 	} mprq; /* Configurations for Multi-Packet RQ. */
 	int mps; /* Multi-packet send supported mode. */
-	int dbnc; /* Skip doorbell register write barrier. */
 	unsigned int flow_prio; /* Number of flow priorities. */
 	enum modify_reg flow_mreg_c[MLX5_MREG_C_NUM];
 	/* Availibility of mreg_c's. */
@@ -1769,7 +1763,6 @@ struct rte_pci_driver;
 int mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *dev_attr);
 void mlx5_os_free_shared_dr(struct mlx5_priv *priv);
 int mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
-			 const struct mlx5_dev_config *config,
 			 struct mlx5_dev_ctx_shared *sh);
 int mlx5_os_get_pdn(void *pd, uint32_t *pdn);
 int mlx5_os_net_probe(struct mlx5_common_device *cdev);

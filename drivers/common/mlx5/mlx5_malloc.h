@@ -38,7 +38,6 @@ enum mlx5_mem_flags {
  * @param sys_mem_en
  *   Use system memory or not.
  */
-__rte_internal
 void mlx5_malloc_mem_select(uint32_t sys_mem_en);
 
 /**

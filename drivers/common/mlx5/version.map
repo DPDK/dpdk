@@ -96,7 +96,6 @@ INTERNAL {
 	mlx5_hlist_destroy;
 
 	mlx5_malloc;
-	mlx5_malloc_mem_select;
 
 	mlx5_memory_stat_dump; # WINDOWS_NO_EXPORT
 

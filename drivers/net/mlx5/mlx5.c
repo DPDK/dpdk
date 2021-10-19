@@ -998,7 +998,7 @@ mlx5_get_supported_tunneling_offloads(const struct mlx5_hca_attr *attr)
  */
 static int
 mlx5_alloc_rxtx_uars(struct mlx5_dev_ctx_shared *sh,
-		     const struct mlx5_dev_config *config)
+		     const struct mlx5_common_dev_config *config)
 {
 	uint32_t uar_mapping, retry;
 	int err = 0;
@@ -1240,7 +1240,7 @@ mlx5_dev_ctx_shared_mempool_subscribe(struct rte_eth_dev *dev)
 	int ret;
 
 	/* Check if we only need to track Rx mempool destruction. */
-	if (!priv->config.mr_mempool_reg_en) {
+	if (!sh->cdev->config.mr_mempool_reg_en) {
 		ret = rte_mempool_event_callback_register
 				(mlx5_dev_ctx_shared_rx_mempool_event_cb, sh);
 		return ret == 0 || rte_errno == EEXIST ? 0 : ret;
@@ -1313,7 +1313,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	sh->cdev = spawn->cdev;
 	if (spawn->bond_info)
 		sh->bond = *spawn->bond_info;
-	err = mlx5_os_open_device(spawn, config, sh);
+	err = mlx5_os_open_device(spawn, sh);
 	if (!sh->ctx)
 		goto error;
 	err = mlx5_os_get_dev_attr(sh->ctx, &sh->device_attr);
@@ -1362,7 +1362,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 			err = ENOMEM;
 			goto error;
 		}
-		err = mlx5_alloc_rxtx_uars(sh, config);
+		err = mlx5_alloc_rxtx_uars(sh, &sh->cdev->config);
 		if (err)
 			goto error;
 		MLX5_ASSERT(sh->tx_uar);
@@ -2035,7 +2035,10 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	signed long tmp;
 
 	/* No-op, port representors are processed in mlx5_dev_spawn(). */
-	if (!strcmp(MLX5_DRIVER_KEY, key) || !strcmp(MLX5_REPRESENTOR, key))
+	if (!strcmp(MLX5_DRIVER_KEY, key) || !strcmp(MLX5_REPRESENTOR, key) ||
+	    !strcmp(MLX5_SYS_MEM_EN, key) || !strcmp(MLX5_TX_DB_NC, key) ||
+	    !strcmp(MLX5_MR_MEMPOOL_REG_EN, key) ||
+	    !strcmp(MLX5_MR_EXT_MEMSEG_EN, key))
 		return 0;
 	errno = 0;
 	tmp = strtol(val, NULL, 0);
@@ -2088,16 +2091,6 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		DRV_LOG(WARNING, "%s: deprecated parameter, ignored", key);
 	} else if (strcmp(MLX5_TXQ_MPW_EN, key) == 0) {
 		config->mps = !!tmp;
-	} else if (strcmp(MLX5_TX_DB_NC, key) == 0) {
-		if (tmp != MLX5_TXDB_CACHED &&
-		    tmp != MLX5_TXDB_NCACHED &&
-		    tmp != MLX5_TXDB_HEURISTIC) {
-			DRV_LOG(ERR, "invalid Tx doorbell "
-				     "mapping parameter");
-			rte_errno = EINVAL;
-			return -rte_errno;
-		}
-		config->dbnc = tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_HDR_DSEG_EN, key) == 0) {
 		DRV_LOG(WARNING, "%s: deprecated parameter, ignored", key);
 	} else if (strcmp(MLX5_TXQ_MAX_INLINE_LEN, key) == 0) {
@@ -2141,8 +2134,6 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 			config->dv_miss_info = 1;
 	} else if (strcmp(MLX5_LACP_BY_USER, key) == 0) {
 		config->lacp_by_user = !!tmp;
-	} else if (strcmp(MLX5_MR_EXT_MEMSEG_EN, key) == 0) {
-		config->mr_ext_memseg_en = !!tmp;
 	} else if (strcmp(MLX5_MAX_DUMP_FILES_NUM, key) == 0) {
 		config->max_dump_files_num = tmp;
 	} else if (strcmp(MLX5_LRO_TIMEOUT_USEC, key) == 0) {
@@ -2160,14 +2151,10 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 			return -rte_errno;
 		}
 		config->reclaim_mode = tmp;
-	} else if (strcmp(MLX5_SYS_MEM_EN, key) == 0) {
-		config->sys_mem_en = !!tmp;
 	} else if (strcmp(MLX5_DECAP_EN, key) == 0) {
 		config->decap_en = !!tmp;
 	} else if (strcmp(MLX5_ALLOW_DUPLICATE_PATTERN, key) == 0) {
 		config->allow_duplicate_pattern = !!tmp;
-	} else if (strcmp(MLX5_MR_MEMPOOL_REG_EN, key) == 0) {
-		config->mr_mempool_reg_en = !!tmp;
 	} else {
 		DRV_LOG(WARNING, "%s: unknown parameter", key);
 		rte_errno = EINVAL;

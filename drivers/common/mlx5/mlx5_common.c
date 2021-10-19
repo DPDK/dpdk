@@ -90,6 +90,93 @@ driver_get(uint32_t class)
 	return NULL;
 }
 
+/**
+ * Verify and store value for devargs.
+ *
+ * @param[in] key
+ *   Key argument to verify.
+ * @param[in] val
+ *   Value associated with key.
+ * @param opaque
+ *   User data.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_common_args_check_handler(const char *key, const char *val, void *opaque)
+{
+	struct mlx5_common_dev_config *config = opaque;
+	signed long tmp;
+
+	errno = 0;
+	tmp = strtol(val, NULL, 0);
+	if (errno) {
+		rte_errno = errno;
+		DRV_LOG(WARNING, "%s: \"%s\" is an invalid integer.", key, val);
+		return -rte_errno;
+	}
+	if (strcmp(key, "tx_db_nc") == 0) {
+		if (tmp != MLX5_TXDB_CACHED &&
+		    tmp != MLX5_TXDB_NCACHED &&
+		    tmp != MLX5_TXDB_HEURISTIC) {
+			DRV_LOG(ERR, "Invalid Tx doorbell mapping parameter.");
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+		config->dbnc = tmp;
+	} else if (strcmp(key, "mr_ext_memseg_en") == 0) {
+		config->mr_ext_memseg_en = !!tmp;
+	} else if (strcmp(key, "mr_mempool_reg_en") == 0) {
+		config->mr_mempool_reg_en = !!tmp;
+	} else if (strcmp(key, "sys_mem_en") == 0) {
+		config->sys_mem_en = !!tmp;
+	}
+	return 0;
+}
+
+/**
+ * Parse common device parameters.
+ *
+ * @param devargs
+ *   Device arguments structure.
+ * @param config
+ *   Pointer to device configuration structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_common_config_get(struct rte_devargs *devargs,
+		       struct mlx5_common_dev_config *config)
+{
+	struct rte_kvargs *kvlist;
+	int ret = 0;
+
+	/* Set defaults. */
+	config->mr_ext_memseg_en = 1;
+	config->mr_mempool_reg_en = 1;
+	config->sys_mem_en = 0;
+	config->dbnc = MLX5_ARG_UNSET;
+	if (devargs == NULL)
+		return 0;
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	ret = rte_kvargs_process(kvlist, NULL, mlx5_common_args_check_handler,
+				 config);
+	if (ret)
+		ret = -rte_errno;
+	rte_kvargs_free(kvlist);
+	DRV_LOG(DEBUG, "mr_ext_memseg_en is %u.", config->mr_ext_memseg_en);
+	DRV_LOG(DEBUG, "mr_mempool_reg_en is %u.", config->mr_mempool_reg_en);
+	DRV_LOG(DEBUG, "sys_mem_en is %u.", config->sys_mem_en);
+	DRV_LOG(DEBUG, "Tx doorbell mapping parameter is %d.", config->dbnc);
+	return ret;
+}
+
 static int
 devargs_class_handler(__rte_unused const char *key,
 		      const char *class_names, void *opaque)
@@ -189,11 +276,11 @@ mlx5_bus_match(const struct mlx5_class_driver *drv,
 static struct mlx5_common_device *
 to_mlx5_device(const struct rte_device *rte_dev)
 {
-	struct mlx5_common_device *dev;
+	struct mlx5_common_device *cdev;
 
-	TAILQ_FOREACH(dev, &devices_list, next) {
-		if (rte_dev == dev->dev)
-			return dev;
+	TAILQ_FOREACH(cdev, &devices_list, next) {
+		if (rte_dev == cdev->dev)
+			return cdev;
 	}
 	return NULL;
 }
@@ -222,29 +309,60 @@ mlx5_dev_to_pci_str(const struct rte_device *dev, char *addr, size_t size)
 }
 
 static void
-dev_release(struct mlx5_common_device *dev)
+mlx5_common_dev_release(struct mlx5_common_device *cdev)
 {
 	pthread_mutex_lock(&devices_list_lock);
-	TAILQ_REMOVE(&devices_list, dev, next);
+	TAILQ_REMOVE(&devices_list, cdev, next);
 	pthread_mutex_unlock(&devices_list_lock);
-	rte_free(dev);
+	rte_free(cdev);
+}
+
+static struct mlx5_common_device *
+mlx5_common_dev_create(struct rte_device *eal_dev)
+{
+	struct mlx5_common_device *cdev;
+	int ret;
+
+	cdev = rte_zmalloc("mlx5_common_device", sizeof(*cdev), 0);
+	if (!cdev) {
+		DRV_LOG(ERR, "Device allocation failure.");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	cdev->dev = eal_dev;
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		goto exit;
+	/* Parse device parameters. */
+	ret = mlx5_common_config_get(eal_dev->devargs, &cdev->config);
+	if (ret < 0) {
+		DRV_LOG(ERR, "Failed to process device arguments: %s",
+			strerror(rte_errno));
+		rte_free(cdev);
+		return NULL;
+	}
+	mlx5_malloc_mem_select(cdev->config.sys_mem_en);
+exit:
+	pthread_mutex_lock(&devices_list_lock);
+	TAILQ_INSERT_HEAD(&devices_list, cdev, next);
+	pthread_mutex_unlock(&devices_list_lock);
+	return cdev;
 }
 
 static int
-drivers_remove(struct mlx5_common_device *dev, uint32_t enabled_classes)
+drivers_remove(struct mlx5_common_device *cdev, uint32_t enabled_classes)
 {
 	struct mlx5_class_driver *driver;
 	int local_ret = -ENODEV;
 	unsigned int i = 0;
 	int ret = 0;
 
-	enabled_classes &= dev->classes_loaded;
+	enabled_classes &= cdev->classes_loaded;
 	while (enabled_classes) {
 		driver = driver_get(RTE_BIT64(i));
 		if (driver != NULL) {
-			local_ret = driver->remove(dev);
+			local_ret = driver->remove(cdev);
 			if (local_ret == 0)
-				dev->classes_loaded &= ~RTE_BIT64(i);
+				cdev->classes_loaded &= ~RTE_BIT64(i);
 			else if (ret == 0)
 				ret = local_ret;
 		}
@@ -257,7 +375,7 @@ drivers_remove(struct mlx5_common_device *dev, uint32_t enabled_classes)
 }
 
 static int
-drivers_probe(struct mlx5_common_device *dev, uint32_t user_classes)
+drivers_probe(struct mlx5_common_device *cdev, uint32_t user_classes)
 {
 	struct mlx5_class_driver *driver;
 	uint32_t enabled_classes = 0;
@@ -267,16 +385,16 @@ drivers_probe(struct mlx5_common_device *dev, uint32_t user_classes)
 	TAILQ_FOREACH(driver, &drivers_list, next) {
 		if ((driver->drv_class & user_classes) == 0)
 			continue;
-		if (!mlx5_bus_match(driver, dev->dev))
+		if (!mlx5_bus_match(driver, cdev->dev))
 			continue;
-		already_loaded = dev->classes_loaded & driver->drv_class;
+		already_loaded = cdev->classes_loaded & driver->drv_class;
 		if (already_loaded && driver->probe_again == 0) {
 			DRV_LOG(ERR, "Device %s is already probed",
-				dev->dev->name);
+				cdev->dev->name);
 			ret = -EEXIST;
 			goto probe_err;
 		}
-		ret = driver->probe(dev);
+		ret = driver->probe(cdev);
 		if (ret < 0) {
 			DRV_LOG(ERR, "Failed to load driver %s",
 				driver->name);
@@ -284,20 +402,20 @@ drivers_probe(struct mlx5_common_device *dev, uint32_t user_classes)
 		}
 		enabled_classes |= driver->drv_class;
 	}
-	dev->classes_loaded |= enabled_classes;
+	cdev->classes_loaded |= enabled_classes;
 	return 0;
 probe_err:
 	/* Only unload drivers which are enabled which were enabled
 	 * in this probe instance.
 	 */
-	drivers_remove(dev, enabled_classes);
+	drivers_remove(cdev, enabled_classes);
 	return ret;
 }
 
 int
 mlx5_common_dev_probe(struct rte_device *eal_dev)
 {
-	struct mlx5_common_device *dev;
+	struct mlx5_common_device *cdev;
 	uint32_t classes = 0;
 	bool new_device = false;
 	int ret;
@@ -313,15 +431,11 @@ mlx5_common_dev_probe(struct rte_device *eal_dev)
 	if (classes == 0)
 		/* Default to net class. */
 		classes = MLX5_CLASS_ETH;
-	dev = to_mlx5_device(eal_dev);
-	if (!dev) {
-		dev = rte_zmalloc("mlx5_common_device", sizeof(*dev), 0);
-		if (!dev)
+	cdev = to_mlx5_device(eal_dev);
+	if (!cdev) {
+		cdev = mlx5_common_dev_create(eal_dev);
+		if (!cdev)
 			return -ENOMEM;
-		dev->dev = eal_dev;
-		pthread_mutex_lock(&devices_list_lock);
-		TAILQ_INSERT_HEAD(&devices_list, dev, next);
-		pthread_mutex_unlock(&devices_list_lock);
 		new_device = true;
 	}
 	/*
@@ -329,34 +443,34 @@ mlx5_common_dev_probe(struct rte_device *eal_dev)
 	 * For new device, the classes_loaded field is 0 and it check only
 	 * the classes given as user device arguments.
 	 */
-	ret = is_valid_class_combination(classes | dev->classes_loaded);
+	ret = is_valid_class_combination(classes | cdev->classes_loaded);
 	if (ret != 0) {
 		DRV_LOG(ERR, "Unsupported mlx5 classes combination.");
 		goto class_err;
 	}
-	ret = drivers_probe(dev, classes);
+	ret = drivers_probe(cdev, classes);
 	if (ret)
 		goto class_err;
 	return 0;
 class_err:
 	if (new_device)
-		dev_release(dev);
+		mlx5_common_dev_release(cdev);
 	return ret;
 }
 
 int
 mlx5_common_dev_remove(struct rte_device *eal_dev)
 {
-	struct mlx5_common_device *dev;
+	struct mlx5_common_device *cdev;
 	int ret;
 
-	dev = to_mlx5_device(eal_dev);
-	if (!dev)
+	cdev = to_mlx5_device(eal_dev);
+	if (!cdev)
 		return -ENODEV;
 	/* Matching device found, cleanup and unload drivers. */
-	ret = drivers_remove(dev, dev->classes_loaded);
+	ret = drivers_remove(cdev, cdev->classes_loaded);
 	if (ret == 0)
-		dev_release(dev);
+		mlx5_common_dev_release(cdev);
 	return ret;
 }
 

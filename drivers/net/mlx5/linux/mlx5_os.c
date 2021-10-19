@@ -1071,7 +1071,6 @@ err_secondary:
 		if (switch_info->master || switch_info->representor)
 			config->dv_xmeta_en = MLX5_XMETA_MODE_META16;
 	}
-	mlx5_malloc_mem_select(config->sys_mem_en);
 	sh = mlx5_alloc_shared_dev_ctx(spawn, config);
 	if (!sh)
 		return NULL;
@@ -2144,15 +2143,12 @@ mlx5_os_config_default(struct mlx5_dev_config *config)
 {
 	memset(config, 0, sizeof(*config));
 	config->mps = MLX5_ARG_UNSET;
-	config->dbnc = MLX5_ARG_UNSET;
 	config->rx_vec_en = 1;
 	config->txq_inline_max = MLX5_ARG_UNSET;
 	config->txq_inline_min = MLX5_ARG_UNSET;
 	config->txq_inline_mpw = MLX5_ARG_UNSET;
 	config->txqs_inline = MLX5_ARG_UNSET;
 	config->vf_nl_en = 1;
-	config->mr_ext_memseg_en = 1;
-	config->mr_mempool_reg_en = 1;
 	config->mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
 	config->mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
 	config->dv_esw_en = 1;
@@ -2816,7 +2812,7 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 }
 
 static int
-mlx5_config_doorbell_mapping_env(const struct mlx5_dev_config *config)
+mlx5_config_doorbell_mapping_env(const struct mlx5_common_dev_config *config)
 {
 	char *env;
 	int value;
@@ -2886,8 +2882,6 @@ mlx5_os_get_pdn(void *pd, uint32_t *pdn)
  *
  * @param[in] spawn
  *   Pointer to the IB device attributes (name, port, etc).
- * @param[out] config
- *   Pointer to device configuration structure.
  * @param[out] sh
  *   Pointer to shared context structure.
  *
@@ -2896,7 +2890,6 @@ mlx5_os_get_pdn(void *pd, uint32_t *pdn)
  */
 int
 mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
-		     const struct mlx5_dev_config *config,
 		     struct mlx5_dev_ctx_shared *sh)
 {
 	int dbmap_env;
@@ -2909,7 +2902,7 @@ mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
 	 * checks the variable at device creation and
 	 * stores the result internally.
 	 */
-	dbmap_env = mlx5_config_doorbell_mapping_env(config);
+	dbmap_env = mlx5_config_doorbell_mapping_env(&spawn->cdev->config);
 	/* Try to open IB device with DV first, then usual Verbs. */
 	errno = 0;
 	sh->ctx = mlx5_glue->dv_open_device(spawn->phys_dev);

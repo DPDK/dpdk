@@ -265,8 +265,6 @@ mlx5_os_set_nonblock_channel_fd(int fd)
  *
  * @param[in] spawn
  *   Pointer to the device attributes (name, port, etc).
- * @param[out] config
- *   Pointer to device configuration structure.
  * @param[out] sh
  *   Pointer to shared context structure.
  *
@@ -275,10 +273,8 @@ mlx5_os_set_nonblock_channel_fd(int fd)
  */
 int
 mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
-		 const struct mlx5_dev_config *config,
 		 struct mlx5_dev_ctx_shared *sh)
 {
-	RTE_SET_USED(config);
 	int err = 0;
 	struct mlx5_context *mlx5_ctx;
 
@@ -395,7 +391,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			strerror(rte_errno));
 		goto error;
 	}
-	mlx5_malloc_mem_select(config->sys_mem_en);
 	sh = mlx5_alloc_shared_dev_ctx(spawn, config);
 	if (!sh)
 		return NULL;
@@ -1159,15 +1154,12 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 	memset(&dev_config, 0, sizeof(struct mlx5_dev_config));
 	dev_config.vf = dev_config_vf;
 	dev_config.mps = 0;
-	dev_config.dbnc = MLX5_ARG_UNSET;
 	dev_config.rx_vec_en = 1;
 	dev_config.txq_inline_max = MLX5_ARG_UNSET;
 	dev_config.txq_inline_min = MLX5_ARG_UNSET;
 	dev_config.txq_inline_mpw = MLX5_ARG_UNSET;
 	dev_config.txqs_inline = MLX5_ARG_UNSET;
 	dev_config.vf_nl_en = 0;
-	dev_config.mr_ext_memseg_en = 1;
-	dev_config.mr_mempool_reg_en = 1;
 	dev_config.mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
 	dev_config.mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
 	dev_config.dv_esw_en = 0;

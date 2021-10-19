@@ -324,10 +324,28 @@ void mlx5_common_init(void);
  *   from devargs, locating target RDMA device and probing with it.
  */
 
+/*
+ * Device configuration structure.
+ *
+ * Merged configuration from:
+ *
+ *  - Device capabilities,
+ *  - User device parameters disabled features.
+ */
+struct mlx5_common_dev_config {
+	int dbnc; /* Skip doorbell register write barrier. */
+	unsigned int sys_mem_en:1; /* The default memory allocator. */
+	unsigned int mr_mempool_reg_en:1;
+	/* Allow/prevent implicit mempool memory registration. */
+	unsigned int mr_ext_memseg_en:1;
+	/* Whether memseg should be extended for MR creation. */
+};
+
 struct mlx5_common_device {
 	struct rte_device *dev;
 	TAILQ_ENTRY(mlx5_common_device) next;
 	uint32_t classes_loaded;
+	struct mlx5_common_dev_config config; /* Device configuration. */
 };
 
 /**
