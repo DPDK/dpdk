@@ -906,17 +906,14 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 			bytes_read = sizeof(buf.timerfd_num);
 			break;
 #ifdef VFIO_PRESENT
+#ifdef HAVE_VFIO_DEV_REQ_INTERFACE
+		case RTE_INTR_HANDLE_VFIO_REQ:
+#endif
 		case RTE_INTR_HANDLE_VFIO_MSIX:
 		case RTE_INTR_HANDLE_VFIO_MSI:
 		case RTE_INTR_HANDLE_VFIO_LEGACY:
 			bytes_read = sizeof(buf.vfio_intr_count);
 			break;
-#ifdef HAVE_VFIO_DEV_REQ_INTERFACE
-		case RTE_INTR_HANDLE_VFIO_REQ:
-			bytes_read = 0;
-			call = true;
-			break;
-#endif
 #endif
 		case RTE_INTR_HANDLE_VDEV:
 		case RTE_INTR_HANDLE_EXT:
