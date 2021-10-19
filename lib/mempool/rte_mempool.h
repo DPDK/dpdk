@@ -301,14 +301,14 @@ struct rte_mempool {
  *   Number to add to the object-oriented statistics.
  */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-#define __MEMPOOL_STAT_ADD(mp, name, n) do {                    \
+#define RTE_MEMPOOL_STAT_ADD(mp, name, n) do {                  \
 		unsigned __lcore_id = rte_lcore_id();           \
 		if (__lcore_id < RTE_MAX_LCORE) {               \
 			mp->stats[__lcore_id].name += n;        \
 		}                                               \
-	} while(0)
+	} while (0)
 #else
-#define __MEMPOOL_STAT_ADD(mp, name, n) do {} while(0)
+#define RTE_MEMPOOL_STAT_ADD(mp, name, n) do {} while (0)
 #endif
 
 /**
@@ -324,7 +324,8 @@ struct rte_mempool {
 	(sizeof(struct rte_mempool_cache) * RTE_MAX_LCORE)))
 
 /* return the header of a mempool object (internal) */
-static inline struct rte_mempool_objhdr *__mempool_get_header(void *obj)
+static inline struct rte_mempool_objhdr *
+rte_mempool_get_header(void *obj)
 {
 	return (struct rte_mempool_objhdr *)RTE_PTR_SUB(obj,
 		sizeof(struct rte_mempool_objhdr));
@@ -341,12 +342,12 @@ static inline struct rte_mempool_objhdr *__mempool_get_header(void *obj)
  */
 static inline struct rte_mempool *rte_mempool_from_obj(void *obj)
 {
-	struct rte_mempool_objhdr *hdr = __mempool_get_header(obj);
+	struct rte_mempool_objhdr *hdr = rte_mempool_get_header(obj);
 	return hdr->mp;
 }
 
 /* return the trailer of a mempool object (internal) */
-static inline struct rte_mempool_objtlr *__mempool_get_trailer(void *obj)
+static inline struct rte_mempool_objtlr *rte_mempool_get_trailer(void *obj)
 {
 	struct rte_mempool *mp = rte_mempool_from_obj(obj);
 	return (struct rte_mempool_objtlr *)RTE_PTR_ADD(obj, mp->elt_size);
@@ -370,10 +371,10 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 	void * const *obj_table_const, unsigned n, int free);
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-#define __mempool_check_cookies(mp, obj_table_const, n, free) \
+#define RTE_MEMPOOL_CHECK_COOKIES(mp, obj_table_const, n, free) \
 	rte_mempool_check_cookies(mp, obj_table_const, n, free)
 #else
-#define __mempool_check_cookies(mp, obj_table_const, n, free) do {} while(0)
+#define RTE_MEMPOOL_CHECK_COOKIES(mp, obj_table_const, n, free) do {} while (0)
 #endif /* RTE_LIBRTE_MEMPOOL_DEBUG */
 
 /**
@@ -395,13 +396,13 @@ void rte_mempool_contig_blocks_check_cookies(const struct rte_mempool *mp,
 	void * const *first_obj_table_const, unsigned int n, int free);
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-#define __mempool_contig_blocks_check_cookies(mp, first_obj_table_const, n, \
-					      free) \
+#define RTE_MEMPOOL_CONTIG_BLOCKS_CHECK_COOKIES(mp, first_obj_table_const, n, \
+						free) \
 	rte_mempool_contig_blocks_check_cookies(mp, first_obj_table_const, n, \
 						free)
 #else
-#define __mempool_contig_blocks_check_cookies(mp, first_obj_table_const, n, \
-					      free) \
+#define RTE_MEMPOOL_CONTIG_BLOCKS_CHECK_COOKIES(mp, first_obj_table_const, n, \
+						free) \
 	do {} while (0)
 #endif /* RTE_LIBRTE_MEMPOOL_DEBUG */
 
@@ -736,8 +737,8 @@ rte_mempool_ops_dequeue_bulk(struct rte_mempool *mp,
 	ops = rte_mempool_get_ops(mp->ops_index);
 	ret = ops->dequeue(mp, obj_table, n);
 	if (ret == 0) {
-		__MEMPOOL_STAT_ADD(mp, get_common_pool_bulk, 1);
-		__MEMPOOL_STAT_ADD(mp, get_common_pool_objs, n);
+		RTE_MEMPOOL_STAT_ADD(mp, get_common_pool_bulk, 1);
+		RTE_MEMPOOL_STAT_ADD(mp, get_common_pool_objs, n);
 	}
 	return ret;
 }
@@ -786,8 +787,8 @@ rte_mempool_ops_enqueue_bulk(struct rte_mempool *mp, void * const *obj_table,
 {
 	struct rte_mempool_ops *ops;
 
-	__MEMPOOL_STAT_ADD(mp, put_common_pool_bulk, 1);
-	__MEMPOOL_STAT_ADD(mp, put_common_pool_objs, n);
+	RTE_MEMPOOL_STAT_ADD(mp, put_common_pool_bulk, 1);
+	RTE_MEMPOOL_STAT_ADD(mp, put_common_pool_objs, n);
 	rte_mempool_trace_ops_enqueue_bulk(mp, obj_table, n);
 	ops = rte_mempool_get_ops(mp->ops_index);
 	return ops->enqueue(mp, obj_table, n);
@@ -1312,14 +1313,14 @@ rte_mempool_cache_flush(struct rte_mempool_cache *cache,
  *   A pointer to a mempool cache structure. May be NULL if not needed.
  */
 static __rte_always_inline void
-__mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
-		      unsigned int n, struct rte_mempool_cache *cache)
+rte_mempool_do_generic_put(struct rte_mempool *mp, void * const *obj_table,
+			   unsigned int n, struct rte_mempool_cache *cache)
 {
 	void **cache_objs;
 
 	/* increment stat now, adding in mempool always success */
-	__MEMPOOL_STAT_ADD(mp, put_bulk, 1);
-	__MEMPOOL_STAT_ADD(mp, put_objs, n);
+	RTE_MEMPOOL_STAT_ADD(mp, put_bulk, 1);
+	RTE_MEMPOOL_STAT_ADD(mp, put_objs, n);
 
 	/* No cache provided or if put would overflow mem allocated for cache */
 	if (unlikely(cache == NULL || n > RTE_MEMPOOL_CACHE_MAX_SIZE))
@@ -1376,8 +1377,8 @@ rte_mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
 			unsigned int n, struct rte_mempool_cache *cache)
 {
 	rte_mempool_trace_generic_put(mp, obj_table, n, cache);
-	__mempool_check_cookies(mp, obj_table, n, 0);
-	__mempool_generic_put(mp, obj_table, n, cache);
+	RTE_MEMPOOL_CHECK_COOKIES(mp, obj_table, n, 0);
+	rte_mempool_do_generic_put(mp, obj_table, n, cache);
 }
 
 /**
@@ -1437,8 +1438,8 @@ rte_mempool_put(struct rte_mempool *mp, void *obj)
  *   - <0: Error; code of ring dequeue function.
  */
 static __rte_always_inline int
-__mempool_generic_get(struct rte_mempool *mp, void **obj_table,
-		      unsigned int n, struct rte_mempool_cache *cache)
+rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
+			   unsigned int n, struct rte_mempool_cache *cache)
 {
 	int ret;
 	uint32_t index, len;
@@ -1477,8 +1478,8 @@ __mempool_generic_get(struct rte_mempool *mp, void **obj_table,
 
 	cache->len -= n;
 
-	__MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
-	__MEMPOOL_STAT_ADD(mp, get_success_objs, n);
+	RTE_MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
+	RTE_MEMPOOL_STAT_ADD(mp, get_success_objs, n);
 
 	return 0;
 
@@ -1488,11 +1489,11 @@ ring_dequeue:
 	ret = rte_mempool_ops_dequeue_bulk(mp, obj_table, n);
 
 	if (ret < 0) {
-		__MEMPOOL_STAT_ADD(mp, get_fail_bulk, 1);
-		__MEMPOOL_STAT_ADD(mp, get_fail_objs, n);
+		RTE_MEMPOOL_STAT_ADD(mp, get_fail_bulk, 1);
+		RTE_MEMPOOL_STAT_ADD(mp, get_fail_objs, n);
 	} else {
-		__MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
-		__MEMPOOL_STAT_ADD(mp, get_success_objs, n);
+		RTE_MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
+		RTE_MEMPOOL_STAT_ADD(mp, get_success_objs, n);
 	}
 
 	return ret;
@@ -1523,9 +1524,9 @@ rte_mempool_generic_get(struct rte_mempool *mp, void **obj_table,
 			unsigned int n, struct rte_mempool_cache *cache)
 {
 	int ret;
-	ret = __mempool_generic_get(mp, obj_table, n, cache);
+	ret = rte_mempool_do_generic_get(mp, obj_table, n, cache);
 	if (ret == 0)
-		__mempool_check_cookies(mp, obj_table, n, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mp, obj_table, n, 1);
 	rte_mempool_trace_generic_get(mp, obj_table, n, cache);
 	return ret;
 }
@@ -1616,13 +1617,13 @@ rte_mempool_get_contig_blocks(struct rte_mempool *mp,
 
 	ret = rte_mempool_ops_dequeue_contig_blocks(mp, first_obj_table, n);
 	if (ret == 0) {
-		__MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
-		__MEMPOOL_STAT_ADD(mp, get_success_blks, n);
-		__mempool_contig_blocks_check_cookies(mp, first_obj_table, n,
-						      1);
+		RTE_MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
+		RTE_MEMPOOL_STAT_ADD(mp, get_success_blks, n);
+		RTE_MEMPOOL_CONTIG_BLOCKS_CHECK_COOKIES(mp, first_obj_table, n,
+							1);
 	} else {
-		__MEMPOOL_STAT_ADD(mp, get_fail_bulk, 1);
-		__MEMPOOL_STAT_ADD(mp, get_fail_blks, n);
+		RTE_MEMPOOL_STAT_ADD(mp, get_fail_bulk, 1);
+		RTE_MEMPOOL_STAT_ADD(mp, get_fail_blks, n);
 	}
 
 	rte_mempool_trace_get_contig_blocks(mp, first_obj_table, n);

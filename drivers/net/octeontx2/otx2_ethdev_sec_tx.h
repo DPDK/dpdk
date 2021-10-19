@@ -146,7 +146,7 @@ otx2_sec_event_tx(uint64_t base, struct rte_event *ev, struct rte_mbuf *m,
 	sd->nix_iova.addr = rte_mbuf_data_iova(m);
 
 	/* Mark mempool object as "put" since it is freed by NIX */
-	__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+	RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 
 	if (!ev->sched_type)
 		otx2_ssogws_head_wait(base + SSOW_LF_GWS_TAG);

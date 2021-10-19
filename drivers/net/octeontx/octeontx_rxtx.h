@@ -344,7 +344,7 @@ __octeontx_xmit_prepare(struct rte_mbuf *tx_pkt, uint64_t *cmd_buf,
 
 	/* Mark mempool object as "put" since it is freed by PKO */
 	if (!(cmd_buf[0] & (1ULL << 58)))
-		__mempool_check_cookies(m_tofree->pool, (void **)&m_tofree,
+		RTE_MEMPOOL_CHECK_COOKIES(m_tofree->pool, (void **)&m_tofree,
 					1, 0);
 	/* Get the gaura Id */
 	gaura_id =
@@ -417,7 +417,7 @@ __octeontx_xmit_mseg_prepare(struct rte_mbuf *tx_pkt, uint64_t *cmd_buf,
 		 */
 		if (!(cmd_buf[nb_desc] & (1ULL << 57))) {
 			tx_pkt->next = NULL;
-			__mempool_check_cookies(m_tofree->pool,
+			RTE_MEMPOOL_CHECK_COOKIES(m_tofree->pool,
 						(void **)&m_tofree, 1, 0);
 		}
 		nb_desc++;

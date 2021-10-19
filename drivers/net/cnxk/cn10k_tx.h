@@ -677,7 +677,7 @@ cn10k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 		}
 		/* Mark mempool object as "put" since it is freed by NIX */
 		if (!send_hdr->w0.df)
-			__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+			RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 	} else {
 		sg->seg1_size = m->data_len;
 		*(rte_iova_t *)(sg + 1) = rte_mbuf_data_iova(m);
@@ -789,7 +789,7 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 		/* Mark mempool object as "put" since it is freed by NIX */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	if (!(sg_u & (1ULL << 55)))
-		__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+		RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 	rte_io_wmb();
 #endif
 	m = m_next;
@@ -808,7 +808,7 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 			 */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 		if (!(sg_u & (1ULL << (i + 55))))
-			__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+			RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 #endif
 		slist++;
 		i++;
@@ -1177,7 +1177,7 @@ cn10k_nix_prepare_mseg_vec_list(struct rte_mbuf *m, uint64_t *cmd,
 		/* Mark mempool object as "put" since it is freed by NIX */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	if (!(sg_u & (1ULL << 55)))
-		__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+		RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 	rte_io_wmb();
 #endif
 
@@ -1194,7 +1194,7 @@ cn10k_nix_prepare_mseg_vec_list(struct rte_mbuf *m, uint64_t *cmd,
 			 */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 		if (!(sg_u & (1ULL << (i + 55))))
-			__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+			RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 		rte_io_wmb();
 #endif
 		slist++;
@@ -1235,7 +1235,7 @@ cn10k_nix_prepare_mseg_vec(struct rte_mbuf *m, uint64_t *cmd, uint64x2_t *cmd0,
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 		sg.u = vgetq_lane_u64(cmd1[0], 0);
 		if (!(sg.u & (1ULL << 55)))
-			__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+			RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 		rte_io_wmb();
 #endif
 		return;
@@ -1425,7 +1425,7 @@ cn10k_nix_xmit_store(struct rte_mbuf *mbuf, uint8_t segdw, uintptr_t laddr,
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 		sg.u = vgetq_lane_u64(cmd1, 0);
 		if (!(sg.u & (1ULL << 55)))
-			__mempool_check_cookies(mbuf->pool, (void **)&mbuf, 1,
+			RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1,
 						0);
 		rte_io_wmb();
 #endif
@@ -2352,28 +2352,28 @@ again:
 			if (cnxk_nix_prefree_seg((struct rte_mbuf *)mbuf0))
 				vsetq_lane_u64(0x80000, xmask01, 0);
 			else
-				__mempool_check_cookies(
+				RTE_MEMPOOL_CHECK_COOKIES(
 					((struct rte_mbuf *)mbuf0)->pool,
 					(void **)&mbuf0, 1, 0);
 
 			if (cnxk_nix_prefree_seg((struct rte_mbuf *)mbuf1))
 				vsetq_lane_u64(0x80000, xmask01, 1);
 			else
-				__mempool_check_cookies(
+				RTE_MEMPOOL_CHECK_COOKIES(
 					((struct rte_mbuf *)mbuf1)->pool,
 					(void **)&mbuf1, 1, 0);
 
 			if (cnxk_nix_prefree_seg((struct rte_mbuf *)mbuf2))
 				vsetq_lane_u64(0x80000, xmask23, 0);
 			else
-				__mempool_check_cookies(
+				RTE_MEMPOOL_CHECK_COOKIES(
 					((struct rte_mbuf *)mbuf2)->pool,
 					(void **)&mbuf2, 1, 0);
 
 			if (cnxk_nix_prefree_seg((struct rte_mbuf *)mbuf3))
 				vsetq_lane_u64(0x80000, xmask23, 1);
 			else
-				__mempool_check_cookies(
+				RTE_MEMPOOL_CHECK_COOKIES(
 					((struct rte_mbuf *)mbuf3)->pool,
 					(void **)&mbuf3, 1, 0);
 			senddesc01_w0 = vorrq_u64(senddesc01_w0, xmask01);
@@ -2389,19 +2389,19 @@ again:
 			/* Mark mempool object as "put" since
 			 * it is freed by NIX
 			 */
-			__mempool_check_cookies(
+			RTE_MEMPOOL_CHECK_COOKIES(
 				((struct rte_mbuf *)mbuf0)->pool,
 				(void **)&mbuf0, 1, 0);
 
-			__mempool_check_cookies(
+			RTE_MEMPOOL_CHECK_COOKIES(
 				((struct rte_mbuf *)mbuf1)->pool,
 				(void **)&mbuf1, 1, 0);
 
-			__mempool_check_cookies(
+			RTE_MEMPOOL_CHECK_COOKIES(
 				((struct rte_mbuf *)mbuf2)->pool,
 				(void **)&mbuf2, 1, 0);
 
-			__mempool_check_cookies(
+			RTE_MEMPOOL_CHECK_COOKIES(
 				((struct rte_mbuf *)mbuf3)->pool,
 				(void **)&mbuf3, 1, 0);
 		}

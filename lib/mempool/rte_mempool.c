@@ -179,7 +179,7 @@ mempool_add_elem(struct rte_mempool *mp, __rte_unused void *opaque,
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE2;
-	tlr = __mempool_get_trailer(obj);
+	tlr = rte_mempool_get_trailer(obj);
 	tlr->cookie = RTE_MEMPOOL_TRAILER_COOKIE;
 #endif
 }
@@ -1091,7 +1091,7 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 			rte_panic("MEMPOOL: object is owned by another "
 				  "mempool\n");
 
-		hdr = __mempool_get_header(obj);
+		hdr = rte_mempool_get_header(obj);
 		cookie = hdr->cookie;
 
 		if (free == 0) {
@@ -1119,7 +1119,7 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 				rte_panic("MEMPOOL: bad header cookie (audit)\n");
 			}
 		}
-		tlr = __mempool_get_trailer(obj);
+		tlr = rte_mempool_get_trailer(obj);
 		cookie = tlr->cookie;
 		if (cookie != RTE_MEMPOOL_TRAILER_COOKIE) {
 			RTE_LOG(CRIT, MEMPOOL,
@@ -1171,7 +1171,7 @@ static void
 mempool_obj_audit(struct rte_mempool *mp, __rte_unused void *opaque,
 	void *obj, __rte_unused unsigned idx)
 {
-	__mempool_check_cookies(mp, &obj, 1, 2);
+	RTE_MEMPOOL_CHECK_COOKIES(mp, &obj, 1, 2);
 }
 
 static void

@@ -202,7 +202,7 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			if (otx2_nix_prefree_seg(mbuf))
 				vsetq_lane_u64(0x80000, xmask01, 0);
 			else
-				__mempool_check_cookies(mbuf->pool,
+				RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool,
 							(void **)&mbuf,
 							1, 0);
 
@@ -211,7 +211,7 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			if (otx2_nix_prefree_seg(mbuf))
 				vsetq_lane_u64(0x80000, xmask01, 1);
 			else
-				__mempool_check_cookies(mbuf->pool,
+				RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool,
 							(void **)&mbuf,
 							1, 0);
 
@@ -220,7 +220,7 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			if (otx2_nix_prefree_seg(mbuf))
 				vsetq_lane_u64(0x80000, xmask23, 0);
 			else
-				__mempool_check_cookies(mbuf->pool,
+				RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool,
 							(void **)&mbuf,
 							1, 0);
 
@@ -229,7 +229,7 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			if (otx2_nix_prefree_seg(mbuf))
 				vsetq_lane_u64(0x80000, xmask23, 1);
 			else
-				__mempool_check_cookies(mbuf->pool,
+				RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool,
 							(void **)&mbuf,
 							1, 0);
 			senddesc01_w0 = vorrq_u64(senddesc01_w0, xmask01);
@@ -245,22 +245,22 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 */
 			mbuf = (struct rte_mbuf *)((uintptr_t)mbuf0 -
 				offsetof(struct rte_mbuf, buf_iova));
-			__mempool_check_cookies(mbuf->pool, (void **)&mbuf,
+			RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf,
 						1, 0);
 
 			mbuf = (struct rte_mbuf *)((uintptr_t)mbuf1 -
 				offsetof(struct rte_mbuf, buf_iova));
-			__mempool_check_cookies(mbuf->pool, (void **)&mbuf,
+			RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf,
 						1, 0);
 
 			mbuf = (struct rte_mbuf *)((uintptr_t)mbuf2 -
 				offsetof(struct rte_mbuf, buf_iova));
-			__mempool_check_cookies(mbuf->pool, (void **)&mbuf,
+			RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf,
 						1, 0);
 
 			mbuf = (struct rte_mbuf *)((uintptr_t)mbuf3 -
 				offsetof(struct rte_mbuf, buf_iova));
-			__mempool_check_cookies(mbuf->pool, (void **)&mbuf,
+			RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf,
 						1, 0);
 			RTE_SET_USED(mbuf);
 		}

@@ -296,10 +296,10 @@ nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 		otx2_prefetch_store_keep(mbuf3);
 
 		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
-		__mempool_check_cookies(mbuf0->pool, (void **)&mbuf0, 1, 1);
-		__mempool_check_cookies(mbuf1->pool, (void **)&mbuf1, 1, 1);
-		__mempool_check_cookies(mbuf2->pool, (void **)&mbuf2, 1, 1);
-		__mempool_check_cookies(mbuf3->pool, (void **)&mbuf3, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf0->pool, (void **)&mbuf0, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf1->pool, (void **)&mbuf1, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf2->pool, (void **)&mbuf2, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf3->pool, (void **)&mbuf3, 1, 1);
 
 		/* Advance head pointer and packets */
 		head += NIX_DESCS_PER_LOOP; head &= qmask;

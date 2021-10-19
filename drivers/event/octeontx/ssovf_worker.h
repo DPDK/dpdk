@@ -83,7 +83,7 @@ ssovf_octeontx_wqe_xtract_mseg(octtx_wqe_t *wqe,
 
 		mbuf->data_off = sizeof(octtx_pki_buflink_t);
 
-		__mempool_check_cookies(mbuf->pool, (void **)&mbuf, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 		if (nb_segs == 1)
 			mbuf->data_len = bytes_left;
 		else

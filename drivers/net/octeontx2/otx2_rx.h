@@ -199,7 +199,7 @@ nix_cqe_xtract_mseg(const struct nix_rx_parse_s *rx,
 		mbuf->next = ((struct rte_mbuf *)*iova_list) - 1;
 		mbuf = mbuf->next;
 
-		__mempool_check_cookies(mbuf->pool, (void **)&mbuf, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 
 		mbuf->data_len = sg & 0xFFFF;
 		sg = sg >> 16;
@@ -309,7 +309,7 @@ otx2_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 	uint64_t ol_flags = 0;
 
 	/* Mark mempool obj as "get" as it is alloc'ed by NIX */
-	__mempool_check_cookies(mbuf->pool, (void **)&mbuf, 1, 1);
+	RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 
 	if (flag & NIX_RX_OFFLOAD_PTYPE_F)
 		mbuf->packet_type = nix_ptype_get(lookup_mem, w1);

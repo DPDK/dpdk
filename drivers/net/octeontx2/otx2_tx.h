@@ -372,7 +372,7 @@ otx2_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 		}
 		/* Mark mempool object as "put" since it is freed by NIX */
 		if (!send_hdr->w0.df)
-			__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+			RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 	}
 }
 
@@ -450,7 +450,7 @@ otx2_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 		/* Mark mempool object as "put" since it is freed by NIX */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 		if (!(sg_u & (1ULL << (i + 55))))
-			__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+			RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 		rte_io_wmb();
 #endif
 		slist++;
