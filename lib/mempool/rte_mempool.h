@@ -250,13 +250,18 @@ struct rte_mempool {
 #endif
 }  __rte_cache_aligned;
 
+/** Spreading among memory channels not required. */
 #define MEMPOOL_F_NO_SPREAD      0x0001
-		/**< Spreading among memory channels not required. */
-#define MEMPOOL_F_NO_CACHE_ALIGN 0x0002 /**< Do not align objs on cache lines.*/
-#define MEMPOOL_F_SP_PUT         0x0004 /**< Default put is "single-producer".*/
-#define MEMPOOL_F_SC_GET         0x0008 /**< Default get is "single-consumer".*/
-#define MEMPOOL_F_POOL_CREATED   0x0010 /**< Internal: pool is created. */
-#define MEMPOOL_F_NO_IOVA_CONTIG 0x0020 /**< Don't need IOVA contiguous objs. */
+/** Do not align objects on cache lines. */
+#define MEMPOOL_F_NO_CACHE_ALIGN 0x0002
+/** Default put is "single-producer". */
+#define MEMPOOL_F_SP_PUT         0x0004
+/** Default get is "single-consumer". */
+#define MEMPOOL_F_SC_GET         0x0008
+/** Internal: pool is created. */
+#define MEMPOOL_F_POOL_CREATED   0x0010
+/** Don't need IOVA contiguous objects. */
+#define MEMPOOL_F_NO_IOVA_CONTIG 0x0020
 /** Internal: no object from the pool can be used for device IO (DMA). */
 #define MEMPOOL_F_NON_IO         0x0040
 
