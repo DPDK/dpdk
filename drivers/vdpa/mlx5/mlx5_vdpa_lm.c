@@ -54,7 +54,7 @@ mlx5_vdpa_dirty_bitmap_set(struct mlx5_vdpa_priv *priv, uint64_t log_base,
 		DRV_LOG(ERR, "Failed to allocate mem for lm mr.");
 		return -1;
 	}
-	mr->umem = mlx5_glue->devx_umem_reg(priv->ctx,
+	mr->umem = mlx5_glue->devx_umem_reg(priv->cdev->ctx,
 					    (void *)(uintptr_t)log_base,
 					    log_size, IBV_ACCESS_LOCAL_WRITE);
 	if (!mr->umem) {
@@ -62,7 +62,7 @@ mlx5_vdpa_dirty_bitmap_set(struct mlx5_vdpa_priv *priv, uint64_t log_base,
 		goto err;
 	}
 	mkey_attr.umem_id = mr->umem->umem_id;
-	mr->mkey = mlx5_devx_cmd_mkey_create(priv->ctx, &mkey_attr);
+	mr->mkey = mlx5_devx_cmd_mkey_create(priv->cdev->ctx, &mkey_attr);
 	if (!mr->mkey) {
 		DRV_LOG(ERR, "Failed to create Mkey for lm.");
 		goto err;

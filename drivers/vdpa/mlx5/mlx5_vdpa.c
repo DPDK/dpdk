@@ -16,6 +16,7 @@
 
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
+#include <mlx5_common_defs.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
 #include <mlx5_nl.h>
@@ -42,8 +43,6 @@
 			     (1ULL << VHOST_USER_PROTOCOL_F_NET_MTU) | \
 			     (1ULL << VHOST_USER_PROTOCOL_F_STATUS))
 
-#define MLX5_VDPA_MAX_RETRIES 20
-#define MLX5_VDPA_USEC 1000
 #define MLX5_VDPA_DEFAULT_NO_TRAFFIC_MAX 16LLU
 
 TAILQ_HEAD(mlx5_vdpa_privs, mlx5_vdpa_priv) priv_list =
@@ -193,7 +192,7 @@ static int
 mlx5_vdpa_pd_create(struct mlx5_vdpa_priv *priv)
 {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	priv->pd = mlx5_glue->alloc_pd(priv->ctx);
+	priv->pd = mlx5_glue->alloc_pd(priv->cdev->ctx);
 	if (priv->pd == NULL) {
 		DRV_LOG(ERR, "Failed to allocate PD.");
 		return errno ? -errno : -ENOMEM;
@@ -238,8 +237,9 @@ mlx5_vdpa_mtu_set(struct mlx5_vdpa_priv *priv)
 		DRV_LOG(DEBUG, "Vhost MTU is 0.");
 		return ret;
 	}
-	ret = mlx5_get_ifname_sysfs(priv->ctx->device->ibdev_path,
-				    request.ifr_name);
+	ret = mlx5_get_ifname_sysfs
+				(mlx5_os_get_ctx_device_name(priv->cdev->ctx),
+				 request.ifr_name);
 	if (ret) {
 		DRV_LOG(DEBUG, "Cannot get kernel IF name - %d.", ret);
 		return ret;
@@ -343,7 +343,7 @@ mlx5_vdpa_get_device_fd(int vid)
 		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -EINVAL;
 	}
-	return priv->ctx->cmd_fd;
+	return ((struct ibv_context *)priv->cdev->ctx)->cmd_fd;
 }
 
 static int
@@ -472,98 +472,6 @@ static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.reset_stats = mlx5_vdpa_reset_stats,
 };
 
-/* Try to disable ROCE by Netlink\Devlink. */
-static int
-mlx5_vdpa_nl_roce_disable(const char *addr)
-{
-	int nlsk_fd = mlx5_nl_init(NETLINK_GENERIC);
-	int devlink_id;
-	int enable;
-	int ret;
-
-	if (nlsk_fd < 0)
-		return nlsk_fd;
-	devlink_id = mlx5_nl_devlink_family_id_get(nlsk_fd);
-	if (devlink_id < 0) {
-		ret = devlink_id;
-		DRV_LOG(DEBUG, "Failed to get devlink id for ROCE operations by"
-			" Netlink.");
-		goto close;
-	}
-	ret = mlx5_nl_enable_roce_get(nlsk_fd, devlink_id, addr, &enable);
-	if (ret) {
-		DRV_LOG(DEBUG, "Failed to get ROCE enable by Netlink: %d.",
-			ret);
-		goto close;
-	} else if (!enable) {
-		DRV_LOG(INFO, "ROCE has already disabled(Netlink).");
-		goto close;
-	}
-	ret = mlx5_nl_enable_roce_set(nlsk_fd, devlink_id, addr, 0);
-	if (ret)
-		DRV_LOG(DEBUG, "Failed to disable ROCE by Netlink: %d.", ret);
-	else
-		DRV_LOG(INFO, "ROCE is disabled by Netlink successfully.");
-close:
-	close(nlsk_fd);
-	return ret;
-}
-
-/* Try to disable ROCE by sysfs. */
-static int
-mlx5_vdpa_sys_roce_disable(const char *addr)
-{
-	FILE *file_o;
-	int enable;
-	int ret;
-
-	MKSTR(file_p, "/sys/bus/pci/devices/%s/roce_enable", addr);
-	file_o = fopen(file_p, "rb");
-	if (!file_o) {
-		rte_errno = ENOTSUP;
-		return -ENOTSUP;
-	}
-	ret = fscanf(file_o, "%d", &enable);
-	if (ret != 1) {
-		rte_errno = EINVAL;
-		ret = EINVAL;
-		goto close;
-	} else if (!enable) {
-		ret = 0;
-		DRV_LOG(INFO, "ROCE has already disabled(sysfs).");
-		goto close;
-	}
-	fclose(file_o);
-	file_o = fopen(file_p, "wb");
-	if (!file_o) {
-		rte_errno = ENOTSUP;
-		return -ENOTSUP;
-	}
-	fprintf(file_o, "0\n");
-	ret = 0;
-close:
-	if (ret)
-		DRV_LOG(DEBUG, "Failed to disable ROCE by sysfs: %d.", ret);
-	else
-		DRV_LOG(INFO, "ROCE is disabled by sysfs successfully.");
-	fclose(file_o);
-	return ret;
-}
-
-static int
-mlx5_vdpa_roce_disable(struct rte_device *dev)
-{
-	char pci_addr[PCI_PRI_STR_SIZE] = { 0 };
-
-	if (mlx5_dev_to_pci_str(dev, pci_addr, sizeof(pci_addr)) < 0)
-		return -rte_errno;
-	/* Firstly try to disable ROCE by Netlink and fallback to sysfs. */
-	if (mlx5_vdpa_nl_roce_disable(pci_addr) != 0 &&
-	    mlx5_vdpa_sys_roce_disable(pci_addr) != 0)
-		return -rte_errno;
-	return 0;
-}
-
 static int
 mlx5_vdpa_args_check_handler(const char *key, const char *val, void *opaque)
 {
@@ -632,48 +540,20 @@ mlx5_vdpa_config_get(struct rte_devargs *devargs, struct mlx5_vdpa_priv *priv)
 static int
 mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev)
 {
-	struct ibv_device *ibv;
 	struct mlx5_vdpa_priv *priv = NULL;
-	struct ibv_context *ctx = NULL;
 	struct mlx5_hca_attr attr;
-	int retry;
 	int ret;
 
-	if (mlx5_vdpa_roce_disable(cdev->dev) != 0) {
-		DRV_LOG(WARNING, "Failed to disable ROCE for \"%s\".",
-			cdev->dev->name);
-		return -rte_errno;
-	}
-	/* Wait for the IB device to appear again after reload. */
-	for (retry = MLX5_VDPA_MAX_RETRIES; retry > 0; --retry) {
-		ibv = mlx5_os_get_ibv_dev(cdev->dev);
-		if (ibv != NULL)
-			break;
-		usleep(MLX5_VDPA_USEC);
-	}
-	if (ibv == NULL) {
-		DRV_LOG(ERR, "Cannot get IB device after disabling RoCE for "
-				"\"%s\", retries exceed %d.",
-				cdev->dev->name, MLX5_VDPA_MAX_RETRIES);
-		rte_errno = EAGAIN;
-		return -rte_errno;
-	}
-	ctx = mlx5_glue->dv_open_device(ibv);
-	if (!ctx) {
-		DRV_LOG(ERR, "Failed to open IB device \"%s\".", ibv->name);
-		rte_errno = ENODEV;
-		return -rte_errno;
-	}
-	ret = mlx5_devx_cmd_query_hca_attr(ctx, &attr);
+	ret = mlx5_devx_cmd_query_hca_attr(cdev->ctx, &attr);
 	if (ret) {
 		DRV_LOG(ERR, "Unable to read HCA capabilities.");
 		rte_errno = ENOTSUP;
-		goto error;
+		return -rte_errno;
 	} else if (!attr.vdpa.valid || !attr.vdpa.max_num_virtio_queues) {
 		DRV_LOG(ERR, "Not enough capabilities to support vdpa, maybe "
 			"old FW/OFED version?");
 		rte_errno = ENOTSUP;
-		goto error;
+		return -rte_errno;
 	}
 	if (!attr.vdpa.queue_counters_valid)
 		DRV_LOG(DEBUG, "No capability to support virtq statistics.");
@@ -684,7 +564,7 @@ mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev)
 	if (!priv) {
 		DRV_LOG(ERR, "Failed to allocate private memory.");
 		rte_errno = ENOMEM;
-		goto error;
+		return -rte_errno;
 	}
 	priv->caps = attr.vdpa;
 	priv->log_max_rqt_size = attr.log_max_rqt_size;
@@ -692,8 +572,8 @@ mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev)
 	priv->qp_ts_format = attr.qp_ts_format;
 	if (attr.num_lag_ports == 0)
 		priv->num_lag_ports = 1;
-	priv->ctx = ctx;
-	priv->var = mlx5_glue->dv_alloc_var(ctx, 0);
+	priv->cdev = cdev;
+	priv->var = mlx5_glue->dv_alloc_var(priv->cdev->ctx, 0);
 	if (!priv->var) {
 		DRV_LOG(ERR, "Failed to allocate VAR %u.", errno);
 		goto error;
@@ -718,8 +598,6 @@ error:
 			mlx5_glue->dv_free_var(priv->var);
 		rte_free(priv);
 	}
-	if (ctx)
-		mlx5_glue->close_device(ctx);
 	return -rte_errno;
 }
 
@@ -748,7 +626,6 @@ mlx5_vdpa_dev_remove(struct mlx5_common_device *cdev)
 		}
 		if (priv->vdev)
 			rte_vdpa_unregister_device(priv->vdev);
-		mlx5_glue->close_device(priv->ctx);
 		pthread_mutex_destroy(&priv->vq_config_lock);
 		rte_free(priv);
 	}

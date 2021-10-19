@@ -13,9 +13,13 @@
 
 #include <rte_errno.h>
 #include <rte_string_fns.h>
+#include <rte_bus_pci.h>
+#include <rte_bus_auxiliary.h>
 
 #include "mlx5_common.h"
+#include "mlx5_nl.h"
 #include "mlx5_common_log.h"
+#include "mlx5_common_private.h"
 #include "mlx5_common_defs.h"
 #include "mlx5_common_os.h"
 #include "mlx5_glue.h"
@@ -402,7 +406,7 @@ glue_error:
 	mlx5_glue = NULL;
 }
 
-struct ibv_device *
+static struct ibv_device *
 mlx5_os_get_ibv_device(const struct rte_pci_addr *addr)
 {
 	int n;
@@ -433,6 +437,139 @@ mlx5_os_get_ibv_device(const struct rte_pci_addr *addr)
 	}
 	mlx5_glue->free_device_list(ibv_list);
 	return ibv_match;
+}
+
+/* Try to disable ROCE by Netlink\Devlink. */
+static int
+mlx5_nl_roce_disable(const char *addr)
+{
+	int nlsk_fd = mlx5_nl_init(NETLINK_GENERIC);
+	int devlink_id;
+	int enable;
+	int ret;
+
+	if (nlsk_fd < 0)
+		return nlsk_fd;
+	devlink_id = mlx5_nl_devlink_family_id_get(nlsk_fd);
+	if (devlink_id < 0) {
+		ret = devlink_id;
+		DRV_LOG(DEBUG,
+			"Failed to get devlink id for ROCE operations by Netlink.");
+		goto close;
+	}
+	ret = mlx5_nl_enable_roce_get(nlsk_fd, devlink_id, addr, &enable);
+	if (ret) {
+		DRV_LOG(DEBUG, "Failed to get ROCE enable by Netlink: %d.",
+			ret);
+		goto close;
+	} else if (!enable) {
+		DRV_LOG(INFO, "ROCE has already disabled(Netlink).");
+		goto close;
+	}
+	ret = mlx5_nl_enable_roce_set(nlsk_fd, devlink_id, addr, 0);
+	if (ret)
+		DRV_LOG(DEBUG, "Failed to disable ROCE by Netlink: %d.", ret);
+	else
+		DRV_LOG(INFO, "ROCE is disabled by Netlink successfully.");
+close:
+	close(nlsk_fd);
+	return ret;
+}
+
+/* Try to disable ROCE by sysfs. */
+static int
+mlx5_sys_roce_disable(const char *addr)
+{
+	FILE *file_o;
+	int enable;
+	int ret;
+
+	MKSTR(file_p, "/sys/bus/pci/devices/%s/roce_enable", addr);
+	file_o = fopen(file_p, "rb");
+	if (!file_o) {
+		rte_errno = ENOTSUP;
+		return -ENOTSUP;
+	}
+	ret = fscanf(file_o, "%d", &enable);
+	if (ret != 1) {
+		rte_errno = EINVAL;
+		ret = EINVAL;
+		goto close;
+	} else if (!enable) {
+		ret = 0;
+		DRV_LOG(INFO, "ROCE has already disabled(sysfs).");
+		goto close;
+	}
+	fclose(file_o);
+	file_o = fopen(file_p, "wb");
+	if (!file_o) {
+		rte_errno = ENOTSUP;
+		return -ENOTSUP;
+	}
+	fprintf(file_o, "0\n");
+	ret = 0;
+close:
+	if (ret)
+		DRV_LOG(DEBUG, "Failed to disable ROCE by sysfs: %d.", ret);
+	else
+		DRV_LOG(INFO, "ROCE is disabled by sysfs successfully.");
+	fclose(file_o);
+	return ret;
+}
+
+static int
+mlx5_roce_disable(const struct rte_device *dev)
+{
+	char pci_addr[PCI_PRI_STR_SIZE] = { 0 };
+
+	if (mlx5_dev_to_pci_str(dev, pci_addr, sizeof(pci_addr)) < 0)
+		return -rte_errno;
+	/* Firstly try to disable ROCE by Netlink and fallback to sysfs. */
+	if (mlx5_nl_roce_disable(pci_addr) != 0 &&
+	    mlx5_sys_roce_disable(pci_addr) != 0)
+		return -rte_errno;
+	return 0;
+}
+
+static struct ibv_device *
+mlx5_os_get_ibv_dev(const struct rte_device *dev)
+{
+	struct ibv_device *ibv;
+
+	if (mlx5_dev_is_pci(dev))
+		ibv = mlx5_os_get_ibv_device(&RTE_DEV_TO_PCI_CONST(dev)->addr);
+	else
+		ibv = mlx5_get_aux_ibv_device(RTE_DEV_TO_AUXILIARY_CONST(dev));
+	if (ibv == NULL) {
+		rte_errno = ENODEV;
+		DRV_LOG(ERR, "Verbs device not found: %s", dev->name);
+	}
+	return ibv;
+}
+
+static struct ibv_device *
+mlx5_vdpa_get_ibv_dev(const struct rte_device *dev)
+{
+	struct ibv_device *ibv;
+	int retry;
+
+	if (mlx5_roce_disable(dev) != 0) {
+		DRV_LOG(WARNING, "Failed to disable ROCE for \"%s\".",
+			dev->name);
+		return NULL;
+	}
+	/* Wait for the IB device to appear again after reload. */
+	for (retry = MLX5_VDPA_MAX_RETRIES; retry > 0; --retry) {
+		ibv = mlx5_os_get_ibv_dev(dev);
+		if (ibv != NULL)
+			return ibv;
+		usleep(MLX5_VDPA_USEC);
+	}
+	DRV_LOG(ERR,
+		"Cannot get IB device after disabling RoCE for \"%s\", retries exceed %d.",
+		dev->name, MLX5_VDPA_MAX_RETRIES);
+	rte_errno = EAGAIN;
+	return NULL;
 }
 
 static int
@@ -483,7 +620,10 @@ mlx5_os_open_device(struct mlx5_common_device *cdev, uint32_t classes)
 	struct ibv_context *ctx = NULL;
 	int dbmap_env;
 
-	ibv = mlx5_os_get_ibv_dev(cdev->dev);
+	if (classes & MLX5_CLASS_VDPA)
+		ibv = mlx5_vdpa_get_ibv_dev(cdev->dev);
+	else
+		ibv = mlx5_os_get_ibv_dev(cdev->dev);
 	if (!ibv)
 		return -rte_errno;
 	DRV_LOG(INFO, "Dev information matches for device \"%s\".", ibv->name);

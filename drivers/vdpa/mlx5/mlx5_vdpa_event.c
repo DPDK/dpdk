@@ -48,7 +48,7 @@ mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv)
 {
 	if (priv->eventc)
 		return 0;
-	priv->eventc = mlx5_os_devx_create_event_channel(priv->ctx,
+	priv->eventc = mlx5_os_devx_create_event_channel(priv->cdev->ctx,
 			   MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA);
 	if (!priv->eventc) {
 		rte_errno = errno;
@@ -61,7 +61,7 @@ mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv)
 	 * registers writings, it is safe to allocate UAR with any
 	 * memory mapping type.
 	 */
-	priv->uar = mlx5_devx_alloc_uar(priv->ctx, -1);
+	priv->uar = mlx5_devx_alloc_uar(priv->cdev->ctx, -1);
 	if (!priv->uar) {
 		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to allocate UAR.");
@@ -115,8 +115,8 @@ mlx5_vdpa_cq_create(struct mlx5_vdpa_priv *priv, uint16_t log_desc_n,
 	uint16_t event_nums[1] = {0};
 	int ret;
 
-	ret = mlx5_devx_cq_create(priv->ctx, &cq->cq_obj, log_desc_n, &attr,
-				  SOCKET_ID_ANY);
+	ret = mlx5_devx_cq_create(priv->cdev->ctx, &cq->cq_obj, log_desc_n,
+				  &attr, SOCKET_ID_ANY);
 	if (ret)
 		goto error;
 	cq->cq_ci = 0;
@@ -397,7 +397,8 @@ mlx5_vdpa_err_event_setup(struct mlx5_vdpa_priv *priv)
 	int flags;
 
 	/* Setup device event channel. */
-	priv->err_chnl = mlx5_glue->devx_create_event_channel(priv->ctx, 0);
+	priv->err_chnl = mlx5_glue->devx_create_event_channel(priv->cdev->ctx,
+							      0);
 	if (!priv->err_chnl) {
 		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to create device event channel %d.",
@@ -594,7 +595,7 @@ mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 		return -1;
 	attr.pd = priv->pdn;
 	attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
-	eqp->fw_qp = mlx5_devx_cmd_create_qp(priv->ctx, &attr);
+	eqp->fw_qp = mlx5_devx_cmd_create_qp(priv->cdev->ctx, &attr);
 	if (!eqp->fw_qp) {
 		DRV_LOG(ERR, "Failed to create FW QP(%u).", rte_errno);
 		goto error;
@@ -605,8 +606,8 @@ mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 	attr.log_rq_stride = rte_log2_u32(MLX5_WSEG_SIZE);
 	attr.sq_size = 0; /* No need SQ. */
 	attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
-	ret = mlx5_devx_qp_create(priv->ctx, &(eqp->sw_qp), log_desc_n, &attr,
-			SOCKET_ID_ANY);
+	ret = mlx5_devx_qp_create(priv->cdev->ctx, &(eqp->sw_qp), log_desc_n,
+				  &attr, SOCKET_ID_ANY);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to create SW QP(%u).", rte_errno);
 		goto error;

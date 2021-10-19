@@ -128,8 +128,8 @@ struct mlx5_vdpa_priv {
 	uint16_t hw_max_latency_us; /* Hardware CQ moderation period in usec. */
 	uint16_t hw_max_pending_comp; /* Hardware CQ moderation counter. */
 	struct rte_vdpa_device *vdev; /* vDPA device. */
+	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
 	int vid; /* vhost device id. */
-	struct ibv_context *ctx; /* Device context. */
 	struct mlx5_hca_vdpa_attr caps;
 	uint32_t pdn; /* Protection Domain number. */
 	struct ibv_pd *pd;

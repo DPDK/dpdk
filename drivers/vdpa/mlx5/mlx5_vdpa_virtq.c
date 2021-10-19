@@ -250,7 +250,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 	if (priv->caps.queue_counters_valid) {
 		if (!virtq->counters)
 			virtq->counters = mlx5_devx_cmd_create_virtio_q_counters
-								(priv->ctx);
+							      (priv->cdev->ctx);
 		if (!virtq->counters) {
 			DRV_LOG(ERR, "Failed to create virtq couners for virtq"
 				" %d.", index);
@@ -269,7 +269,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 				" %u.", i, index);
 			goto error;
 		}
-		virtq->umems[i].obj = mlx5_glue->devx_umem_reg(priv->ctx,
+		virtq->umems[i].obj = mlx5_glue->devx_umem_reg(priv->cdev->ctx,
 							virtq->umems[i].buf,
 							virtq->umems[i].size,
 							IBV_ACCESS_LOCAL_WRITE);
@@ -326,7 +326,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 	attr.hw_latency_mode = priv->hw_latency_mode;
 	attr.hw_max_latency_us = priv->hw_max_latency_us;
 	attr.hw_max_pending_comp = priv->hw_max_pending_comp;
-	virtq->virtq = mlx5_devx_cmd_create_virtq(priv->ctx, &attr);
+	virtq->virtq = mlx5_devx_cmd_create_virtq(priv->cdev->ctx, &attr);
 	virtq->priv = priv;
 	if (!virtq->virtq)
 		goto error;
@@ -434,6 +434,7 @@ int
 mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 {
 	struct mlx5_devx_tis_attr tis_attr = {0};
+	struct ibv_context *ctx = priv->cdev->ctx;
 	uint32_t i;
 	uint16_t nr_vring = rte_vhost_get_vring_num(priv->vid);
 	int ret = rte_vhost_get_negotiated_features(priv->vid, &priv->features);
@@ -457,7 +458,7 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 	}
 	/* Always map the entire page. */
 	priv->virtq_db_addr = mmap(NULL, priv->var->length, PROT_READ |
-				   PROT_WRITE, MAP_SHARED, priv->ctx->cmd_fd,
+				   PROT_WRITE, MAP_SHARED, ctx->cmd_fd,
 				   priv->var->mmap_off);
 	if (priv->virtq_db_addr == MAP_FAILED) {
 		DRV_LOG(ERR, "Failed to map doorbell page %u.", errno);
@@ -467,7 +468,7 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 		DRV_LOG(DEBUG, "VAR address of doorbell mapping is %p.",
 			priv->virtq_db_addr);
 	}
-	priv->td = mlx5_devx_cmd_create_td(priv->ctx);
+	priv->td = mlx5_devx_cmd_create_td(ctx);
 	if (!priv->td) {
 		DRV_LOG(ERR, "Failed to create transport domain.");
 		return -rte_errno;
@@ -476,7 +477,7 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 	for (i = 0; i < priv->num_lag_ports; i++) {
 		/* 0 is auto affinity, non-zero value to propose port. */
 		tis_attr.lag_tx_port_affinity = i + 1;
-		priv->tiss[i] = mlx5_devx_cmd_create_tis(priv->ctx, &tis_attr);
+		priv->tiss[i] = mlx5_devx_cmd_create_tis(ctx, &tis_attr);
 		if (!priv->tiss[i]) {
 			DRV_LOG(ERR, "Failed to create TIS %u.", i);
 			goto error;

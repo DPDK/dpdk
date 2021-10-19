@@ -209,7 +209,7 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 			DRV_LOG(ERR, "Failed to allocate mem entry memory.");
 			goto error;
 		}
-		entry->umem = mlx5_glue->devx_umem_reg(priv->ctx,
+		entry->umem = mlx5_glue->devx_umem_reg(priv->cdev->ctx,
 					 (void *)(uintptr_t)reg->host_user_addr,
 					     reg->size, IBV_ACCESS_LOCAL_WRITE);
 		if (!entry->umem) {
@@ -222,7 +222,8 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 		mkey_attr.umem_id = entry->umem->umem_id;
 		mkey_attr.pd = priv->pdn;
 		mkey_attr.pg_access = 1;
-		entry->mkey = mlx5_devx_cmd_mkey_create(priv->ctx, &mkey_attr);
+		entry->mkey = mlx5_devx_cmd_mkey_create(priv->cdev->ctx,
+							&mkey_attr);
 		if (!entry->mkey) {
 			DRV_LOG(ERR, "Failed to create direct Mkey.");
 			ret = -rte_errno;
@@ -281,7 +282,7 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 		ret = -ENOMEM;
 		goto error;
 	}
-	entry->mkey = mlx5_devx_cmd_mkey_create(priv->ctx, &mkey_attr);
+	entry->mkey = mlx5_devx_cmd_mkey_create(priv->cdev->ctx, &mkey_attr);
 	if (!entry->mkey) {
 		DRV_LOG(ERR, "Failed to create indirect Mkey.");
 		ret = -rte_errno;

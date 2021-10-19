@@ -15,7 +15,6 @@ INTERNAL {
 	mlx5_create_mr_ext;
 
 	mlx5_dev_is_pci;
-	mlx5_dev_to_pci_str;
 
 	mlx5_devx_alloc_uar; # WINDOWS_NO_EXPORT
 
@@ -123,10 +122,6 @@ INTERNAL {
 	mlx5_mr_release_cache;
 
 	mlx5_nl_allmulti; # WINDOWS_NO_EXPORT
-	mlx5_nl_devlink_family_id_get; # WINDOWS_NO_EXPORT
-	mlx5_nl_driver_reload; # WINDOWS_NO_EXPORT
-	mlx5_nl_enable_roce_get; # WINDOWS_NO_EXPORT
-	mlx5_nl_enable_roce_set; # WINDOWS_NO_EXPORT
 	mlx5_nl_ifindex; # WINDOWS_NO_EXPORT
 	mlx5_nl_init; # WINDOWS_NO_EXPORT
 	mlx5_nl_mac_addr_add; # WINDOWS_NO_EXPORT
@@ -143,7 +138,6 @@ INTERNAL {
 	mlx5_os_alloc_pd;
 	mlx5_os_dealloc_pd;
 	mlx5_os_dereg_mr;
-	mlx5_os_get_ibv_dev; # WINDOWS_NO_EXPORT
 	mlx5_os_reg_mr;
 	mlx5_os_umem_dereg;
 	mlx5_os_umem_reg;

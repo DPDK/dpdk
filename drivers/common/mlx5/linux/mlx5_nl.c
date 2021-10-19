@@ -1700,7 +1700,7 @@ mlx5_nl_enable_roce_get(int nlsk_fd, int family_id, const char *pci_addr,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-int
+static int
 mlx5_nl_driver_reload(int nlsk_fd, int family_id, const char *pci_addr)
 {
 	struct nlmsghdr *nlh;
