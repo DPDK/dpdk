@@ -1,6 +1,17 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Luca Boccassi <bluca@debian.org>
 
+# For SUSE build check function arguments of ndo_tx_timeout API
+# Ref: https://jira.devtools.intel.com/browse/DPDK-29263
+kmod_cflags = ''
+file_path = kernel_source_dir + '/include/linux/netdevice.h'
+run_cmd = run_command('grep', 'ndo_tx_timeout', file_path)
+
+if run_cmd.stdout().contains('txqueue') == true
+   kmod_cflags = '-DHAVE_ARG_TX_QUEUE'
+endif
+
+
 kni_mkfile = custom_target('rte_kni_makefile',
         output: 'Makefile',
         command: ['touch', '@OUTPUT@'])
@@ -17,7 +28,8 @@ custom_target('rte_kni',
         command: ['make', '-j4', '-C', kernel_build_dir,
             'M=' + meson.current_build_dir(),
             'src=' + meson.current_source_dir(),
-            'MODULE_CFLAGS=-include ' + meson.source_root() + '/config/rte_config.h' +
+            ' '.join(['MODULE_CFLAGS=', kmod_cflags,'-include '])
+            + meson.source_root() + '/config/rte_config.h' +
             ' -I' + meson.source_root() + '/lib/eal/include' +
             ' -I' + meson.source_root() + '/lib/kni' +
             ' -I' + meson.build_root() +

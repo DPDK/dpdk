@@ -4,6 +4,7 @@
 subdirs = ['kni']
 
 kernel_build_dir = get_option('kernel_dir')
+kernel_source_dir = get_option('kernel_dir')
 kernel_install_dir = ''
 install = not meson.is_cross_build()
 cross_args = []
@@ -15,6 +16,10 @@ if not meson.is_cross_build()
     if kernel_build_dir == ''
         # use default path for native builds
         kernel_build_dir = '/lib/modules/' + kernel_version + '/build'
+    endif
+    if kernel_source_dir == ''
+        # use default path for native builds
+        kernel_source_dir = '/lib/modules/' + kernel_version + '/source'
     endif
 
     # test running make in kernel directory, using "make kernelversion"
