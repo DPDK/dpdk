@@ -78,6 +78,9 @@
 #ifndef HAVE_RDMA_NLDEV_ATTR_PORT_INDEX
 #define RDMA_NLDEV_ATTR_PORT_INDEX 3
 #endif
+#ifndef HAVE_RDMA_NLDEV_ATTR_PORT_STATE
+#define RDMA_NLDEV_ATTR_PORT_STATE 12
+#endif
 #ifndef HAVE_RDMA_NLDEV_ATTR_NDEV_INDEX
 #define RDMA_NLDEV_ATTR_NDEV_INDEX 50
 #endif
@@ -160,14 +163,16 @@ struct mlx5_nl_mac_addr {
 #define MLX5_NL_CMD_GET_IB_INDEX (1 << 1)
 #define MLX5_NL_CMD_GET_NET_INDEX (1 << 2)
 #define MLX5_NL_CMD_GET_PORT_INDEX (1 << 3)
+#define MLX5_NL_CMD_GET_PORT_STATE (1 << 4)
 
 /** Data structure used by mlx5_nl_cmdget_cb(). */
-struct mlx5_nl_ifindex_data {
+struct mlx5_nl_port_info {
 	const char *name; /**< IB device name (in). */
 	uint32_t flags; /**< found attribute flags (out). */
 	uint32_t ibindex; /**< IB device index (out). */
 	uint32_t ifindex; /**< Network interface index (out). */
 	uint32_t portnum; /**< IB device max port number (out). */
+	uint16_t state; /**< IB device port state (out). */
 };
 
 uint32_t atomic_sn;
@@ -966,8 +971,8 @@ mlx5_nl_allmulti(int nlsk_fd, unsigned int iface_idx, int enable)
 static int
 mlx5_nl_cmdget_cb(struct nlmsghdr *nh, void *arg)
 {
-	struct mlx5_nl_ifindex_data *data = arg;
-	struct mlx5_nl_ifindex_data local = {
+	struct mlx5_nl_port_info *data = arg;
+	struct mlx5_nl_port_info local = {
 		.flags = 0,
 	};
 	size_t off = NLMSG_HDRLEN;
@@ -1000,6 +1005,10 @@ mlx5_nl_cmdget_cb(struct nlmsghdr *nh, void *arg)
 			local.portnum = *(uint32_t *)payload;
 			local.flags |= MLX5_NL_CMD_GET_PORT_INDEX;
 			break;
+		case RDMA_NLDEV_ATTR_PORT_STATE:
+			local.state = *(uint8_t *)payload;
+			local.flags |= MLX5_NL_CMD_GET_PORT_STATE;
+			break;
 		default:
 			break;
 		}
@@ -1016,10 +1025,89 @@ mlx5_nl_cmdget_cb(struct nlmsghdr *nh, void *arg)
 		data->ibindex = local.ibindex;
 		data->ifindex = local.ifindex;
 		data->portnum = local.portnum;
+		data->state = local.state;
 	}
 	return 0;
 error:
 	rte_errno = EINVAL;
+	return -rte_errno;
+}
+
+/**
+ * Get port info of network interface associated with some IB device.
+ *
+ * This is the only somewhat safe method to avoid resorting to heuristics
+ * when faced with port representors. Unfortunately it requires at least
+ * Linux 4.17.
+ *
+ * @param nl
+ *   Netlink socket of the RDMA kind (NETLINK_RDMA).
+ * @param[in] pindex
+ *   IB device port index, starting from 1
+ * @param[out] data
+ *   Pointer to port info.
+ * @return
+ *   0 on success, negative on error and rte_errno is set.
+ */
+static int
+mlx5_nl_port_info(int nl, uint32_t pindex, struct mlx5_nl_port_info *data)
+{
+	union {
+		struct nlmsghdr nh;
+		uint8_t buf[NLMSG_HDRLEN +
+			    NLA_HDRLEN + NLA_ALIGN(sizeof(data->ibindex)) +
+			    NLA_HDRLEN + NLA_ALIGN(sizeof(pindex))];
+	} req = {
+		.nh = {
+			.nlmsg_len = NLMSG_LENGTH(0),
+			.nlmsg_type = RDMA_NL_GET_TYPE(RDMA_NL_NLDEV,
+						       RDMA_NLDEV_CMD_GET),
+			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK | NLM_F_DUMP,
+		},
+	};
+	struct nlattr *na;
+	uint32_t sn = MLX5_NL_SN_GENERATE;
+	int ret;
+
+	ret = mlx5_nl_send(nl, &req.nh, sn);
+	if (ret < 0)
+		return ret;
+	ret = mlx5_nl_recv(nl, sn, mlx5_nl_cmdget_cb, data);
+	if (ret < 0)
+		return ret;
+	if (!(data->flags & MLX5_NL_CMD_GET_IB_NAME) ||
+	    !(data->flags & MLX5_NL_CMD_GET_IB_INDEX))
+		goto error;
+	data->flags = 0;
+	sn = MLX5_NL_SN_GENERATE;
+	req.nh.nlmsg_type = RDMA_NL_GET_TYPE(RDMA_NL_NLDEV,
+					     RDMA_NLDEV_CMD_PORT_GET);
+	req.nh.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	req.nh.nlmsg_len = NLMSG_LENGTH(sizeof(req.buf) - NLMSG_HDRLEN);
+	na = (void *)((uintptr_t)req.buf + NLMSG_HDRLEN);
+	na->nla_len = NLA_HDRLEN + sizeof(data->ibindex);
+	na->nla_type = RDMA_NLDEV_ATTR_DEV_INDEX;
+	memcpy((void *)((uintptr_t)na + NLA_HDRLEN),
+	       &data->ibindex, sizeof(data->ibindex));
+	na = (void *)((uintptr_t)na + NLA_ALIGN(na->nla_len));
+	na->nla_len = NLA_HDRLEN + sizeof(pindex);
+	na->nla_type = RDMA_NLDEV_ATTR_PORT_INDEX;
+	memcpy((void *)((uintptr_t)na + NLA_HDRLEN),
+	       &pindex, sizeof(pindex));
+	ret = mlx5_nl_send(nl, &req.nh, sn);
+	if (ret < 0)
+		return ret;
+	ret = mlx5_nl_recv(nl, sn, mlx5_nl_cmdget_cb, data);
+	if (ret < 0)
+		return ret;
+	if (!(data->flags & MLX5_NL_CMD_GET_IB_NAME) ||
+	    !(data->flags & MLX5_NL_CMD_GET_IB_INDEX) ||
+	    !(data->flags & MLX5_NL_CMD_GET_NET_INDEX) ||
+	    !data->ifindex)
+		goto error;
+	return 1;
+error:
+	rte_errno = ENODEV;
 	return -rte_errno;
 }
 
@@ -1043,69 +1131,47 @@ error:
 unsigned int
 mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex)
 {
-	struct mlx5_nl_ifindex_data data = {
-		.name = name,
-		.flags = 0,
-		.ibindex = 0, /* Determined during first pass. */
-		.ifindex = 0, /* Determined during second pass. */
+	struct mlx5_nl_port_info data = {
+			.ifindex = 0,
+			.name = name,
 	};
-	union {
-		struct nlmsghdr nh;
-		uint8_t buf[NLMSG_HDRLEN +
-			    NLA_HDRLEN + NLA_ALIGN(sizeof(data.ibindex)) +
-			    NLA_HDRLEN + NLA_ALIGN(sizeof(pindex))];
-	} req = {
-		.nh = {
-			.nlmsg_len = NLMSG_LENGTH(0),
-			.nlmsg_type = RDMA_NL_GET_TYPE(RDMA_NL_NLDEV,
-						       RDMA_NLDEV_CMD_GET),
-			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK | NLM_F_DUMP,
-		},
-	};
-	struct nlattr *na;
-	uint32_t sn = MLX5_NL_SN_GENERATE;
-	int ret;
 
-	ret = mlx5_nl_send(nl, &req.nh, sn);
-	if (ret < 0)
+	if (mlx5_nl_port_info(nl, pindex, &data) < 0)
 		return 0;
-	ret = mlx5_nl_recv(nl, sn, mlx5_nl_cmdget_cb, &data);
-	if (ret < 0)
-		return 0;
-	if (!(data.flags & MLX5_NL_CMD_GET_IB_NAME) ||
-	    !(data.flags & MLX5_NL_CMD_GET_IB_INDEX))
-		goto error;
-	data.flags = 0;
-	sn = MLX5_NL_SN_GENERATE;
-	req.nh.nlmsg_type = RDMA_NL_GET_TYPE(RDMA_NL_NLDEV,
-					     RDMA_NLDEV_CMD_PORT_GET);
-	req.nh.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
-	req.nh.nlmsg_len = NLMSG_LENGTH(sizeof(req.buf) - NLMSG_HDRLEN);
-	na = (void *)((uintptr_t)req.buf + NLMSG_HDRLEN);
-	na->nla_len = NLA_HDRLEN + sizeof(data.ibindex);
-	na->nla_type = RDMA_NLDEV_ATTR_DEV_INDEX;
-	memcpy((void *)((uintptr_t)na + NLA_HDRLEN),
-	       &data.ibindex, sizeof(data.ibindex));
-	na = (void *)((uintptr_t)na + NLA_ALIGN(na->nla_len));
-	na->nla_len = NLA_HDRLEN + sizeof(pindex);
-	na->nla_type = RDMA_NLDEV_ATTR_PORT_INDEX;
-	memcpy((void *)((uintptr_t)na + NLA_HDRLEN),
-	       &pindex, sizeof(pindex));
-	ret = mlx5_nl_send(nl, &req.nh, sn);
-	if (ret < 0)
-		return 0;
-	ret = mlx5_nl_recv(nl, sn, mlx5_nl_cmdget_cb, &data);
-	if (ret < 0)
-		return 0;
-	if (!(data.flags & MLX5_NL_CMD_GET_IB_NAME) ||
-	    !(data.flags & MLX5_NL_CMD_GET_IB_INDEX) ||
-	    !(data.flags & MLX5_NL_CMD_GET_NET_INDEX) ||
-	    !data.ifindex)
-		goto error;
 	return data.ifindex;
-error:
-	rte_errno = ENODEV;
-	return 0;
+}
+
+/**
+ * Get IB device port state.
+ *
+ * This is the only somewhat safe method to get info for port number >= 255.
+ * Unfortunately it requires at least Linux 4.17.
+ *
+ * @param nl
+ *   Netlink socket of the RDMA kind (NETLINK_RDMA).
+ * @param[in] name
+ *   IB device name.
+ * @param[in] pindex
+ *   IB device port index, starting from 1
+ * @return
+ *   Port state (ibv_port_state) on success, negative on error
+ *   and rte_errno is set.
+ */
+int
+mlx5_nl_port_state(int nl, const char *name, uint32_t pindex)
+{
+	struct mlx5_nl_port_info data = {
+			.state = 0,
+			.name = name,
+	};
+
+	if (mlx5_nl_port_info(nl, pindex, &data) < 0)
+		return -rte_errno;
+	if ((data.flags & MLX5_NL_CMD_GET_PORT_STATE) == 0) {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	return (int)data.state;
 }
 
 /**
@@ -1123,7 +1189,7 @@ error:
 unsigned int
 mlx5_nl_portnum(int nl, const char *name)
 {
-	struct mlx5_nl_ifindex_data data = {
+	struct mlx5_nl_port_info data = {
 		.flags = 0,
 		.name = name,
 		.ifindex = 0,

@@ -54,6 +54,8 @@ unsigned int mlx5_nl_portnum(int nl, const char *name);
 __rte_internal
 unsigned int mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex);
 __rte_internal
+int mlx5_nl_port_state(int nl, const char *name, uint32_t pindex);
+__rte_internal
 int mlx5_nl_vf_mac_addr_modify(int nlsk_fd, unsigned int iface_idx,
 			       struct rte_ether_addr *mac, int vf_index);
 __rte_internal

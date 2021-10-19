@@ -175,6 +175,8 @@ has_sym_args = [
             'RDMA_NLDEV_ATTR_DEV_NAME' ],
         [ 'HAVE_RDMA_NLDEV_ATTR_PORT_INDEX', 'rdma/rdma_netlink.h',
             'RDMA_NLDEV_ATTR_PORT_INDEX' ],
+        [ 'HAVE_RDMA_NLDEV_ATTR_PORT_STATE', 'rdma/rdma_netlink.h',
+            'RDMA_NLDEV_ATTR_PORT_STATE' ],
         [ 'HAVE_RDMA_NLDEV_ATTR_NDEV_INDEX', 'rdma/rdma_netlink.h',
             'RDMA_NLDEV_ATTR_NDEV_INDEX' ],
         [ 'HAVE_MLX5_DR_FLOW_DUMP', 'infiniband/mlx5dv.h',

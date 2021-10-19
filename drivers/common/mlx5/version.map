@@ -120,6 +120,7 @@ INTERNAL {
 	mlx5_nl_mac_addr_flush; # WINDOWS_NO_EXPORT
 	mlx5_nl_mac_addr_remove; # WINDOWS_NO_EXPORT
 	mlx5_nl_mac_addr_sync; # WINDOWS_NO_EXPORT
+	mlx5_nl_port_state; # WINDOWS_NO_EXPORT
 	mlx5_nl_portnum; # WINDOWS_NO_EXPORT
 	mlx5_nl_promisc; # WINDOWS_NO_EXPORT
 	mlx5_nl_switch_info; # WINDOWS_NO_EXPORT
