@@ -142,6 +142,11 @@ struct ena_ring {
 	struct ena_com_io_cq *ena_com_io_cq;
 	struct ena_com_io_sq *ena_com_io_sq;
 
+	union {
+		uint16_t tx_free_thresh;
+		uint16_t rx_free_thresh;
+	};
+
 	struct ena_com_rx_buf_info ena_bufs[ENA_PKT_MAX_BUFS]
 						__rte_cache_aligned;
 

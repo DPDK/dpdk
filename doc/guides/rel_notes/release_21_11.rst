@@ -111,6 +111,13 @@ New Features
 
   * Disabled secondary process support.
 
+* **Updated Amazon ENA PMD.**
+
+  Updated the Amazon ENA PMD. The new driver version (v2.5.0) introduced
+  bug fixes and improvements, including:
+
+  * Support for the tx_free_thresh and rx_free_thresh configuration parameters.
+
 * **Updated Broadcom bnxt PMD.**
 
   * Added flow offload support for Thor.

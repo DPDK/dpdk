@@ -1128,6 +1128,7 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	struct ena_ring *txq = NULL;
 	struct ena_adapter *adapter = dev->data->dev_private;
 	unsigned int i;
+	uint16_t dyn_thresh;
 
 	txq = &adapter->tx_ring[queue_idx];
 
@@ -1194,10 +1195,18 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	for (i = 0; i < txq->ring_size; i++)
 		txq->empty_tx_reqs[i] = i;
 
-	if (tx_conf != NULL) {
-		txq->offloads =
-			tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
+	txq->offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
+
+	/* Check if caller provided the Tx cleanup threshold value. */
+	if (tx_conf->tx_free_thresh != 0) {
+		txq->tx_free_thresh = tx_conf->tx_free_thresh;
+	} else {
+		dyn_thresh = txq->ring_size -
+			txq->ring_size / ENA_REFILL_THRESH_DIVIDER;
+		txq->tx_free_thresh = RTE_MAX(dyn_thresh,
+			txq->ring_size - ENA_REFILL_THRESH_PACKET);
 	}
+
 	/* Store pointer to this queue in upper layer */
 	txq->configured = 1;
 	dev->data->tx_queues[queue_idx] = txq;
@@ -1216,6 +1225,7 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 	struct ena_ring *rxq = NULL;
 	size_t buffer_size;
 	int i;
+	uint16_t dyn_thresh;
 
 	rxq = &adapter->rx_ring[queue_idx];
 	if (rxq->configured) {
@@ -1294,6 +1304,14 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 		rxq->empty_rx_reqs[i] = i;
 
 	rxq->offloads = rx_conf->offloads | dev->data->dev_conf.rxmode.offloads;
+
+	if (rx_conf->rx_free_thresh != 0) {
+		rxq->rx_free_thresh = rx_conf->rx_free_thresh;
+	} else {
+		dyn_thresh = rxq->ring_size / ENA_REFILL_THRESH_DIVIDER;
+		rxq->rx_free_thresh = RTE_MIN(dyn_thresh,
+			(uint16_t)(ENA_REFILL_THRESH_PACKET));
+	}
 
 	/* Store pointer to this queue in upper layer */
 	rxq->configured = 1;
@@ -2124,7 +2142,6 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 {
 	struct ena_ring *rx_ring = (struct ena_ring *)(rx_queue);
 	unsigned int free_queue_entries;
-	unsigned int refill_threshold;
 	uint16_t next_to_clean = rx_ring->next_to_clean;
 	uint16_t descs_in_use;
 	struct rte_mbuf *mbuf;
@@ -2206,12 +2223,9 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rx_ring->next_to_clean = next_to_clean;
 
 	free_queue_entries = ena_com_free_q_entries(rx_ring->ena_com_io_sq);
-	refill_threshold =
-		RTE_MIN(rx_ring->ring_size / ENA_REFILL_THRESH_DIVIDER,
-		(unsigned int)ENA_REFILL_THRESH_PACKET);
 
 	/* Burst refill to save doorbells, memory barriers, const interval */
-	if (free_queue_entries > refill_threshold) {
+	if (free_queue_entries >= rx_ring->rx_free_thresh) {
 		ena_com_update_dev_comp_head(rx_ring->ena_com_io_cq);
 		ena_populate_rx_queue(rx_ring, free_queue_entries);
 	}
@@ -2578,12 +2592,12 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 
 static void ena_tx_cleanup(struct ena_ring *tx_ring)
 {
-	unsigned int cleanup_budget;
 	unsigned int total_tx_descs = 0;
+	uint16_t cleanup_budget;
 	uint16_t next_to_clean = tx_ring->next_to_clean;
 
-	cleanup_budget = RTE_MIN(tx_ring->ring_size / ENA_REFILL_THRESH_DIVIDER,
-		(unsigned int)ENA_REFILL_THRESH_PACKET);
+	/* Attempt to release all Tx descriptors (ring_size - 1 -> size_mask) */
+	cleanup_budget = tx_ring->size_mask;
 
 	while (likely(total_tx_descs < cleanup_budget)) {
 		struct rte_mbuf *mbuf;
@@ -2624,6 +2638,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts)
 {
 	struct ena_ring *tx_ring = (struct ena_ring *)(tx_queue);
+	int available_desc;
 	uint16_t sent_idx = 0;
 
 #ifdef RTE_ETHDEV_DEBUG_TX
@@ -2643,8 +2658,8 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tx_ring->size_mask)]);
 	}
 
-	tx_ring->tx_stats.available_desc =
-		ena_com_free_q_entries(tx_ring->ena_com_io_sq);
+	available_desc = ena_com_free_q_entries(tx_ring->ena_com_io_sq);
+	tx_ring->tx_stats.available_desc = available_desc;
 
 	/* If there are ready packets to be xmitted... */
 	if (likely(tx_ring->pkts_without_db)) {
@@ -2654,7 +2669,8 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_ring->pkts_without_db = false;
 	}
 
-	ena_tx_cleanup(tx_ring);
+	if (available_desc < tx_ring->tx_free_thresh)
+		ena_tx_cleanup(tx_ring);
 
 	tx_ring->tx_stats.available_desc =
 		ena_com_free_q_entries(tx_ring->ena_com_io_sq);
