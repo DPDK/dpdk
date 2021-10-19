@@ -905,7 +905,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 {
 	const struct mlx5_switch_info *switch_info = &spawn->info;
 	struct mlx5_dev_ctx_shared *sh = NULL;
-	struct ibv_port_attr port_attr;
+	struct ibv_port_attr port_attr = { .state = IBV_PORT_NOP };
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 	struct rte_eth_dev *eth_dev = NULL;
 	struct mlx5_priv *priv = NULL;
@@ -924,6 +924,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	int own_domain_id = 0;
 	uint16_t port_id;
 	struct mlx5_port_info vport_info = { .query_flags = 0 };
+	int nl_rdma = -1;
 	int i;
 
 	/* Determine if this port representor is supposed to be spawned. */
@@ -1121,20 +1122,36 @@ err_secondary:
 		" old OFED/rdma-core version or firmware configuration");
 #endif
 	config->mpls_en = mpls_en;
+	nl_rdma = mlx5_nl_init(NETLINK_RDMA);
 	/* Check port status. */
-	err = mlx5_glue->query_port(sh->cdev->ctx, spawn->phys_port,
-				    &port_attr);
-	if (err) {
-		DRV_LOG(ERR, "port query failed: %s", strerror(err));
-		goto error;
-	}
-	if (port_attr.link_layer != IBV_LINK_LAYER_ETHERNET) {
-		DRV_LOG(ERR, "port is not configured in Ethernet mode");
-		err = EINVAL;
-		goto error;
+	if (spawn->phys_port <= UINT8_MAX) {
+		/* Legacy Verbs api only support u8 port number. */
+		err = mlx5_glue->query_port(sh->cdev->ctx, spawn->phys_port,
+					    &port_attr);
+		if (err) {
+			DRV_LOG(ERR, "port query failed: %s", strerror(err));
+			goto error;
+		}
+		if (port_attr.link_layer != IBV_LINK_LAYER_ETHERNET) {
+			DRV_LOG(ERR, "port is not configured in Ethernet mode");
+			err = EINVAL;
+			goto error;
+		}
+	} else if (nl_rdma >= 0) {
+		/* IB doesn't allow more than 255 ports, must be Ethernet. */
+		err = mlx5_nl_port_state(nl_rdma,
+			spawn->phys_dev_name,
+			spawn->phys_port);
+		if (err < 0) {
+			DRV_LOG(INFO, "Failed to get netlink port state: %s",
+				strerror(rte_errno));
+			err = -rte_errno;
+			goto error;
+		}
+		port_attr.state = (enum ibv_port_state)err;
 	}
 	if (port_attr.state != IBV_PORT_ACTIVE)
-		DRV_LOG(DEBUG, "port is not active: \"%s\" (%d)",
+		DRV_LOG(INFO, "port is not active: \"%s\" (%d)",
 			mlx5_glue->port_state_str(port_attr.state),
 			port_attr.state);
 	/* Allocate private eth device data. */
@@ -1151,7 +1168,7 @@ err_secondary:
 	priv->pci_dev = spawn->pci_dev;
 	priv->mtu = RTE_ETHER_MTU;
 	/* Some internal functions rely on Netlink sockets, open them now. */
-	priv->nl_socket_rdma = mlx5_nl_init(NETLINK_RDMA);
+	priv->nl_socket_rdma = nl_rdma;
 	priv->nl_socket_route =	mlx5_nl_init(NETLINK_ROUTE);
 	priv->representor = !!switch_info->representor;
 	priv->master = !!switch_info->master;
@@ -1844,8 +1861,6 @@ error:
 			mlx5_os_free_shared_dr(priv);
 		if (priv->nl_socket_route >= 0)
 			close(priv->nl_socket_route);
-		if (priv->nl_socket_rdma >= 0)
-			close(priv->nl_socket_rdma);
 		if (priv->vmwa_context)
 			mlx5_vlan_vmwa_exit(priv->vmwa_context);
 		if (eth_dev && priv->drop_queue.hrxq)
@@ -1869,6 +1884,8 @@ error:
 	}
 	if (sh)
 		mlx5_free_shared_dev_ctx(sh);
+	if (nl_rdma >= 0)
+		close(nl_rdma);
 	MLX5_ASSERT(err > 0);
 	rte_errno = err;
 	return NULL;
