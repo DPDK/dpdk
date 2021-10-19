@@ -277,7 +277,7 @@ mlx5_flow_counter_mode_config(struct rte_eth_dev *dev __rte_unused)
 	fallback = true;
 #else
 	fallback = false;
-	if (!priv->config.devx || !priv->config.dv_flow_en ||
+	if (!sh->devx || !priv->config.dv_flow_en ||
 	    !priv->config.hca_attr.flow_counters_dump ||
 	    !(priv->config.hca_attr.flow_counter_bulk_alloc_bitmap & 0x4) ||
 	    (mlx5_flow_dv_discover_counter_offset_support(dev) == -ENOTSUP))
@@ -354,7 +354,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	sh = mlx5_alloc_shared_dev_ctx(spawn, config);
 	if (!sh)
 		return NULL;
-	config->devx = sh->devx;
 	/* Initialize the shutdown event in mlx5_dev_spawn to
 	 * support mlx5_is_removed for Windows.
 	 */
@@ -472,7 +471,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DRV_LOG(WARNING, "Rx CQE compression isn't supported.");
 		config->cqe_comp = 0;
 	}
-	if (config->devx) {
+	if (sh->devx) {
 		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config->hca_attr);
 		if (err) {
 			err = -err;
@@ -495,7 +494,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			(config->hw_vlan_strip ? "" : "not "));
 		config->hw_fcs_strip = config->hca_attr.scatter_fcs;
 	}
-	if (config->devx) {
+	if (sh->devx) {
 		uint32_t reg[MLX5_ST_SZ_DW(register_mtutc)];
 
 		err = config->hca_attr.access_register_user ?
@@ -679,7 +678,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			goto error;
 		}
 	}
-	if (config->devx && config->dv_flow_en) {
+	if (sh->devx && config->dv_flow_en) {
 		priv->obj_ops = devx_obj_ops;
 	} else {
 		DRV_LOG(ERR, "Flow mode %u is not supported "
