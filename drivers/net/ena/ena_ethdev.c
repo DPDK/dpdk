@@ -2023,8 +2023,14 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 	dev->data->dev_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
 
+	/* Scattered Rx cannot be turned off in the HW, so this capability must
+	 * be forced.
+	 */
+	dev->data->scattered_rx = 1;
+
 	adapter->tx_selected_offloads = dev->data->dev_conf.txmode.offloads;
 	adapter->rx_selected_offloads = dev->data->dev_conf.rxmode.offloads;
+
 	return 0;
 }
 
@@ -2071,6 +2077,8 @@ static uint64_t ena_get_rx_port_offloads(struct ena_adapter *adapter)
 
 	if (adapter->offloads.rx_offloads & ENA_RX_RSS_HASH)
 		port_offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
+	port_offloads |= DEV_RX_OFFLOAD_SCATTER;
 
 	return port_offloads;
 }
