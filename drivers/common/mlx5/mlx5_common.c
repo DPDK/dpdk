@@ -259,12 +259,6 @@ is_valid_class_combination(uint32_t user_classes)
 }
 
 static bool
-device_class_enabled(const struct mlx5_common_device *device, uint32_t class)
-{
-	return (device->classes_loaded & class) > 0;
-}
-
-static bool
 mlx5_bus_match(const struct mlx5_class_driver *drv,
 	       const struct rte_device *dev)
 {
@@ -597,62 +591,106 @@ mlx5_common_dev_remove(struct rte_device *eal_dev)
 	return ret;
 }
 
+/**
+ * Callback to DMA map external memory to a device.
+ *
+ * @param rte_dev
+ *   Pointer to the generic device.
+ * @param addr
+ *   Starting virtual address of memory to be mapped.
+ * @param iova
+ *   Starting IOVA address of memory to be mapped.
+ * @param len
+ *   Length of memory segment being mapped.
+ *
+ * @return
+ *   0 on success, negative value on error.
+ */
 int
-mlx5_common_dev_dma_map(struct rte_device *dev, void *addr, uint64_t iova,
-			size_t len)
+mlx5_common_dev_dma_map(struct rte_device *rte_dev, void *addr,
+			uint64_t iova __rte_unused, size_t len)
 {
-	struct mlx5_class_driver *driver = NULL;
-	struct mlx5_class_driver *temp;
-	struct mlx5_common_device *mdev;
-	int ret = -EINVAL;
+	struct mlx5_common_device *dev;
+	struct mlx5_mr *mr;
 
-	mdev = to_mlx5_device(dev);
-	if (!mdev)
-		return -ENODEV;
-	TAILQ_FOREACH(driver, &drivers_list, next) {
-		if (!device_class_enabled(mdev, driver->drv_class) ||
-		    driver->dma_map == NULL)
-			continue;
-		ret = driver->dma_map(dev, addr, iova, len);
-		if (ret)
-			goto map_err;
+	dev = to_mlx5_device(rte_dev);
+	if (!dev) {
+		DRV_LOG(WARNING,
+			"Unable to find matching mlx5 device to device %s",
+			rte_dev->name);
+		rte_errno = ENODEV;
+		return -1;
 	}
-	return ret;
-map_err:
-	TAILQ_FOREACH(temp, &drivers_list, next) {
-		if (temp == driver)
-			break;
-		if (device_class_enabled(mdev, temp->drv_class) &&
-		    temp->dma_map && temp->dma_unmap)
-			temp->dma_unmap(dev, addr, iova, len);
+	mr = mlx5_create_mr_ext(dev->pd, (uintptr_t)addr, len,
+				SOCKET_ID_ANY, dev->mr_scache.reg_mr_cb);
+	if (!mr) {
+		DRV_LOG(WARNING, "Device %s unable to DMA map", rte_dev->name);
+		rte_errno = EINVAL;
+		return -1;
 	}
-	return ret;
+	rte_rwlock_write_lock(&dev->mr_scache.rwlock);
+	LIST_INSERT_HEAD(&dev->mr_scache.mr_list, mr, mr);
+	/* Insert to the global cache table. */
+	mlx5_mr_insert_cache(&dev->mr_scache, mr);
+	rte_rwlock_write_unlock(&dev->mr_scache.rwlock);
+	return 0;
 }
 
+/**
+ * Callback to DMA unmap external memory to a device.
+ *
+ * @param rte_dev
+ *   Pointer to the generic device.
+ * @param addr
+ *   Starting virtual address of memory to be unmapped.
+ * @param iova
+ *   Starting IOVA address of memory to be unmapped.
+ * @param len
+ *   Length of memory segment being unmapped.
+ *
+ * @return
+ *   0 on success, negative value on error.
+ */
 int
-mlx5_common_dev_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova,
-			  size_t len)
+mlx5_common_dev_dma_unmap(struct rte_device *rte_dev, void *addr,
+			  uint64_t iova __rte_unused, size_t len __rte_unused)
 {
-	struct mlx5_class_driver *driver;
-	struct mlx5_common_device *mdev;
-	int local_ret = -EINVAL;
-	int ret = 0;
+	struct mlx5_common_device *dev;
+	struct mr_cache_entry entry;
+	struct mlx5_mr *mr;
 
-	mdev = to_mlx5_device(dev);
-	if (!mdev)
-		return -ENODEV;
-	/* There is no unmap error recovery in current implementation. */
-	TAILQ_FOREACH_REVERSE(driver, &drivers_list, mlx5_drivers, next) {
-		if (!device_class_enabled(mdev, driver->drv_class) ||
-		    driver->dma_unmap == NULL)
-			continue;
-		local_ret = driver->dma_unmap(dev, addr, iova, len);
-		if (local_ret && (ret == 0))
-			ret = local_ret;
+	dev = to_mlx5_device(rte_dev);
+	if (!dev) {
+		DRV_LOG(WARNING,
+			"Unable to find matching mlx5 device to device %s.",
+			rte_dev->name);
+		rte_errno = ENODEV;
+		return -1;
 	}
-	if (local_ret)
-		ret = local_ret;
-	return ret;
+	rte_rwlock_read_lock(&dev->mr_scache.rwlock);
+	mr = mlx5_mr_lookup_list(&dev->mr_scache, &entry, (uintptr_t)addr);
+	if (!mr) {
+		rte_rwlock_read_unlock(&dev->mr_scache.rwlock);
+		DRV_LOG(WARNING,
+			"Address 0x%" PRIxPTR " wasn't registered to device %s",
+			(uintptr_t)addr, rte_dev->name);
+		rte_errno = EINVAL;
+		return -1;
+	}
+	LIST_REMOVE(mr, mr);
+	DRV_LOG(DEBUG, "MR(%p) is removed from list.", (void *)mr);
+	mlx5_mr_free(mr, dev->mr_scache.dereg_mr_cb);
+	mlx5_mr_rebuild_cache(&dev->mr_scache);
+	/*
+	 * No explicit wmb is needed after updating dev_gen due to
+	 * store-release ordering in unlock that provides the
+	 * implicit barrier at the software visible level.
+	 */
+	++dev->mr_scache.dev_gen;
+	DRV_LOG(DEBUG, "Broadcasting local cache flush, gen=%d.",
+		dev->mr_scache.dev_gen);
+	rte_rwlock_read_unlock(&dev->mr_scache.rwlock);
+	return 0;
 }
 
 void

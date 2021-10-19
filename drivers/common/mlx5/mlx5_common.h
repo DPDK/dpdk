@@ -364,44 +364,6 @@ typedef int (mlx5_class_driver_probe_t)(struct mlx5_common_device *dev);
  */
 typedef int (mlx5_class_driver_remove_t)(struct mlx5_common_device *dev);
 
-/**
- * Driver-specific DMA mapping. After a successful call the device
- * will be able to read/write from/to this segment.
- *
- * @param dev
- *   Pointer to the device.
- * @param addr
- *   Starting virtual address of memory to be mapped.
- * @param iova
- *   Starting IOVA address of memory to be mapped.
- * @param len
- *   Length of memory segment being mapped.
- * @return
- *   - 0 On success.
- *   - Negative value and rte_errno is set otherwise.
- */
-typedef int (mlx5_class_driver_dma_map_t)(struct rte_device *dev, void *addr,
-					  uint64_t iova, size_t len);
-
-/**
- * Driver-specific DMA un-mapping. After a successful call the device
- * will not be able to read/write from/to this segment.
- *
- * @param dev
- *   Pointer to the device.
- * @param addr
- *   Starting virtual address of memory to be unmapped.
- * @param iova
- *   Starting IOVA address of memory to be unmapped.
- * @param len
- *   Length of memory segment being unmapped.
- * @return
- *   - 0 On success.
- *   - Negative value and rte_errno is set otherwise.
- */
-typedef int (mlx5_class_driver_dma_unmap_t)(struct rte_device *dev, void *addr,
-					    uint64_t iova, size_t len);
-
 /** Device already probed can be probed again to check for new ports. */
 #define MLX5_DRV_PROBE_AGAIN 0x0004
 
@@ -414,9 +376,6 @@ struct mlx5_class_driver {
 	const char *name;                     /**< Driver name. */
 	mlx5_class_driver_probe_t *probe;     /**< Device probe function. */
 	mlx5_class_driver_remove_t *remove;   /**< Device remove function. */
-	mlx5_class_driver_dma_map_t *dma_map; /**< Device DMA map function. */
-	mlx5_class_driver_dma_unmap_t *dma_unmap;
-	/**< Device DMA unmap function. */
 	const struct rte_pci_id *id_table;    /**< ID table, NULL terminated. */
 	uint32_t probe_again:1;
 	/**< Device already probed can be probed again to check new device. */

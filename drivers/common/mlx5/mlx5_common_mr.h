@@ -124,12 +124,13 @@ mlx5_mr_lookup_lkey(struct mr_cache_entry *lkp_tbl, uint16_t *cached_idx,
 	return UINT32_MAX;
 }
 
+/* mlx5_common_mr.c */
+
 __rte_internal
 int mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl, uint32_t *dev_gen_ptr,
 		      int socket);
 __rte_internal
 void mlx5_mr_btree_free(struct mlx5_mr_btree *bt);
-__rte_internal
 void mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused);
 __rte_internal
 uint32_t mlx5_mr_addr2mr_bh(void *pd, struct mlx5_mp_id *mp_id,
@@ -142,36 +143,30 @@ uint32_t mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
 			       struct rte_mempool *mp, uintptr_t addr);
 void mlx5_mr_release_cache(struct mlx5_mr_share_cache *mr_cache);
 int mlx5_mr_create_cache(struct mlx5_mr_share_cache *share_cache, int socket);
-__rte_internal
 void mlx5_mr_dump_cache(struct mlx5_mr_share_cache *share_cache __rte_unused);
-__rte_internal
 void mlx5_mr_rebuild_cache(struct mlx5_mr_share_cache *share_cache);
 __rte_internal
 void mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl);
 void mlx5_free_mr_by_addr(struct mlx5_mr_share_cache *share_cache,
 			  const char *ibdev_name, const void *addr, size_t len);
-__rte_internal
-int
-mlx5_mr_insert_cache(struct mlx5_mr_share_cache *share_cache,
-		     struct mlx5_mr *mr);
-__rte_internal
-uint32_t
-mlx5_mr_lookup_cache(struct mlx5_mr_share_cache *share_cache,
-		     struct mr_cache_entry *entry, uintptr_t addr);
-__rte_internal
+int mlx5_mr_insert_cache(struct mlx5_mr_share_cache *share_cache,
+			 struct mlx5_mr *mr);
 struct mlx5_mr *
 mlx5_mr_lookup_list(struct mlx5_mr_share_cache *share_cache,
 		    struct mr_cache_entry *entry, uintptr_t addr);
-__rte_internal
 struct mlx5_mr *
 mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id,
 		   mlx5_reg_mr_t reg_mr_cb);
+void mlx5_mr_free(struct mlx5_mr *mr, mlx5_dereg_mr_t dereg_mr_cb);
 __rte_internal
 uint32_t
 mlx5_mr_create_primary(void *pd,
 		       struct mlx5_mr_share_cache *share_cache,
 		       struct mr_cache_entry *entry, uintptr_t addr,
 		       unsigned int mr_ext_memseg_en);
+
+/* mlx5_common_verbs.c */
+
 __rte_internal
 int
 mlx5_common_verbs_reg_mr(void *pd, void *addr, size_t length,
@@ -182,10 +177,6 @@ mlx5_common_verbs_dereg_mr(struct mlx5_pmd_mr *pmd_mr);
 
 void
 mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb, mlx5_dereg_mr_t *dereg_mr_cb);
-
-__rte_internal
-void
-mlx5_mr_free(struct mlx5_mr *mr, mlx5_dereg_mr_t dereg_mr_cb);
 
 __rte_internal
 int

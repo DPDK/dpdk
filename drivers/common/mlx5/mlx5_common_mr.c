@@ -455,7 +455,7 @@ mlx5_mr_lookup_list(struct mlx5_mr_share_cache *share_cache,
  * @return
  *   Searched LKey on success, UINT32_MAX on failure and rte_errno is set.
  */
-uint32_t
+static uint32_t
 mlx5_mr_lookup_cache(struct mlx5_mr_share_cache *share_cache,
 		     struct mr_cache_entry *entry, uintptr_t addr)
 {
