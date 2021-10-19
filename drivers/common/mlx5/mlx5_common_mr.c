@@ -1848,16 +1848,13 @@ mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
  *   Pointer to per-queue MR control structure.
  * @param mbuf
  *   Pointer to mbuf.
- * @param share_cache
- *   Pointer to a global shared MR cache.
  *
  * @return
  *   Searched LKey on success, UINT32_MAX on no match.
  */
 uint32_t
 mlx5_mr_mb2mr(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
-	      struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf,
-	      struct mlx5_mr_share_cache *share_cache)
+	      struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf)
 {
 	uint32_t lkey;
 	uintptr_t addr = (uintptr_t)mbuf->buf_addr;
@@ -1871,6 +1868,6 @@ mlx5_mr_mb2mr(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
 	if (likely(lkey != UINT32_MAX))
 		return lkey;
 	/* Take slower bottom-half on miss. */
-	return mlx5_mr_addr2mr_bh(cdev->pd, mp_id, share_cache, mr_ctrl,
+	return mlx5_mr_addr2mr_bh(cdev->pd, mp_id, &cdev->mr_scache, mr_ctrl,
 				  addr, cdev->config.mr_ext_memseg_en);
 }

@@ -60,17 +60,17 @@ mlx5_aso_cq_create(void *ctx, struct mlx5_aso_cq *cq, uint16_t log_desc_n,
 /**
  * Free MR resources.
  *
- * @param[in] sh
- *   Pointer to shared device context.
+ * @param[in] cdev
+ *   Pointer to the mlx5 common device.
  * @param[in] mr
  *   MR to free.
  */
 static void
-mlx5_aso_dereg_mr(struct mlx5_dev_ctx_shared *sh, struct mlx5_pmd_mr *mr)
+mlx5_aso_dereg_mr(struct mlx5_common_device *cdev, struct mlx5_pmd_mr *mr)
 {
 	void *addr = mr->addr;
 
-	sh->share_cache.dereg_mr_cb(mr);
+	cdev->mr_scache.dereg_mr_cb(mr);
 	mlx5_free(addr);
 	memset(mr, 0, sizeof(*mr));
 }
@@ -78,8 +78,8 @@ mlx5_aso_dereg_mr(struct mlx5_dev_ctx_shared *sh, struct mlx5_pmd_mr *mr)
 /**
  * Register Memory Region.
  *
- * @param[in] sh
- *   Pointer to shared device context.
+ * @param[in] cdev
+ *   Pointer to the mlx5 common device.
  * @param[in] length
  *   Size of MR buffer.
  * @param[in/out] mr
@@ -91,7 +91,7 @@ mlx5_aso_dereg_mr(struct mlx5_dev_ctx_shared *sh, struct mlx5_pmd_mr *mr)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_aso_reg_mr(struct mlx5_dev_ctx_shared *sh, size_t length,
+mlx5_aso_reg_mr(struct mlx5_common_device *cdev, size_t length,
 		struct mlx5_pmd_mr *mr, int socket)
 {
 
@@ -103,7 +103,7 @@ mlx5_aso_reg_mr(struct mlx5_dev_ctx_shared *sh, size_t length,
 		DRV_LOG(ERR, "Failed to create ASO bits mem for MR.");
 		return -1;
 	}
-	ret = sh->share_cache.reg_mr_cb(sh->cdev->pd, mr->addr, length, mr);
+	ret = cdev->mr_scache.reg_mr_cb(cdev->pd, mr->addr, length, mr);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to create direct Mkey.");
 		mlx5_free(mr->addr);
@@ -313,14 +313,14 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 
 	switch (aso_opc_mod) {
 	case ASO_OPC_MOD_FLOW_HIT:
-		if (mlx5_aso_reg_mr(sh, (MLX5_ASO_AGE_ACTIONS_PER_POOL / 8) *
+		if (mlx5_aso_reg_mr(cdev, (MLX5_ASO_AGE_ACTIONS_PER_POOL / 8) *
 				    sq_desc_n, &sh->aso_age_mng->aso_sq.mr, 0))
 			return -1;
 		if (mlx5_aso_sq_create(cdev->ctx, &sh->aso_age_mng->aso_sq, 0,
 				       sh->tx_uar, cdev->pdn,
 				       MLX5_ASO_QUEUE_LOG_DESC,
 				       cdev->config.hca_attr.sq_ts_format)) {
-			mlx5_aso_dereg_mr(sh, &sh->aso_age_mng->aso_sq.mr);
+			mlx5_aso_dereg_mr(cdev, &sh->aso_age_mng->aso_sq.mr);
 			return -1;
 		}
 		mlx5_aso_age_init_sq(&sh->aso_age_mng->aso_sq);
@@ -335,14 +335,14 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 		break;
 	case ASO_OPC_MOD_CONNECTION_TRACKING:
 		/* 64B per object for query. */
-		if (mlx5_aso_reg_mr(sh, 64 * sq_desc_n,
+		if (mlx5_aso_reg_mr(cdev, 64 * sq_desc_n,
 				    &sh->ct_mng->aso_sq.mr, 0))
 			return -1;
 		if (mlx5_aso_sq_create(cdev->ctx, &sh->ct_mng->aso_sq, 0,
 				       sh->tx_uar, cdev->pdn,
 				       MLX5_ASO_QUEUE_LOG_DESC,
 				       cdev->config.hca_attr.sq_ts_format)) {
-			mlx5_aso_dereg_mr(sh, &sh->ct_mng->aso_sq.mr);
+			mlx5_aso_dereg_mr(cdev, &sh->ct_mng->aso_sq.mr);
 			return -1;
 		}
 		mlx5_aso_ct_init_sq(&sh->ct_mng->aso_sq);
@@ -370,14 +370,14 @@ mlx5_aso_queue_uninit(struct mlx5_dev_ctx_shared *sh,
 
 	switch (aso_opc_mod) {
 	case ASO_OPC_MOD_FLOW_HIT:
-		mlx5_aso_dereg_mr(sh, &sh->aso_age_mng->aso_sq.mr);
+		mlx5_aso_dereg_mr(sh->cdev, &sh->aso_age_mng->aso_sq.mr);
 		sq = &sh->aso_age_mng->aso_sq;
 		break;
 	case ASO_OPC_MOD_POLICER:
 		sq = &sh->mtrmng->pools_mng.sq;
 		break;
 	case ASO_OPC_MOD_CONNECTION_TRACKING:
-		mlx5_aso_dereg_mr(sh, &sh->ct_mng->aso_sq.mr);
+		mlx5_aso_dereg_mr(sh->cdev, &sh->ct_mng->aso_sq.mr);
 		sq = &sh->ct_mng->aso_sq;
 		break;
 	default:

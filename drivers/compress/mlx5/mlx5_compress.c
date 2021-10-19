@@ -43,7 +43,6 @@ struct mlx5_compress_priv {
 	struct rte_compressdev_config dev_config;
 	LIST_HEAD(xform_list, mlx5_compress_xform) xform_list;
 	rte_spinlock_t xform_sl;
-	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 	volatile uint64_t *uar_addr;
 	/* HCA caps*/
 	uint32_t mmo_decomp_sq:1;
@@ -206,7 +205,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		return -rte_errno;
 	}
 	dev->data->queue_pairs[qp_id] = qp;
-	if (mlx5_mr_ctrl_init(&qp->mr_ctrl, &priv->mr_scache.dev_gen,
+	if (mlx5_mr_ctrl_init(&qp->mr_ctrl, &priv->cdev->mr_scache.dev_gen,
 			      priv->dev_config.socket_id)) {
 		DRV_LOG(ERR, "Cannot allocate MR Btree for qp %u.",
 			(uint32_t)qp_id);
@@ -444,8 +443,7 @@ mlx5_compress_dseg_set(struct mlx5_compress_qp *qp,
 	uintptr_t addr = rte_pktmbuf_mtod_offset(mbuf, uintptr_t, offset);
 
 	dseg->bcount = rte_cpu_to_be_32(len);
-	dseg->lkey = mlx5_mr_mb2mr(qp->priv->cdev, 0, &qp->mr_ctrl, mbuf,
-				   &qp->priv->mr_scache);
+	dseg->lkey = mlx5_mr_mb2mr(qp->priv->cdev, 0, &qp->mr_ctrl, mbuf);
 	dseg->pbuf = rte_cpu_to_be_64(addr);
 	return dseg->lkey;
 }
@@ -679,41 +677,6 @@ mlx5_compress_uar_prepare(struct mlx5_compress_priv *priv)
 	return 0;
 }
 
-/**
- * Callback for memory event.
- *
- * @param event_type
- *   Memory event type.
- * @param addr
- *   Address of memory.
- * @param len
- *   Size of memory.
- */
-static void
-mlx5_compress_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
-			      size_t len, void *arg __rte_unused)
-{
-	struct mlx5_compress_priv *priv;
-
-	/* Must be called from the primary process. */
-	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	switch (event_type) {
-	case RTE_MEM_EVENT_FREE:
-		pthread_mutex_lock(&priv_list_lock);
-		/* Iterate all the existing mlx5 devices. */
-		TAILQ_FOREACH(priv, &mlx5_compress_priv_list, next)
-			mlx5_free_mr_by_addr(&priv->mr_scache,
-					     mlx5_os_get_ctx_device_name
-							      (priv->cdev->ctx),
-					     addr, len);
-		pthread_mutex_unlock(&priv_list_lock);
-		break;
-	case RTE_MEM_EVENT_ALLOC:
-	default:
-		break;
-	}
-}
-
 static int
 mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 {
@@ -765,18 +728,6 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 		rte_compressdev_pmd_destroy(priv->compressdev);
 		return -1;
 	}
-	if (mlx5_mr_create_cache(&priv->mr_scache, rte_socket_id()) != 0) {
-		DRV_LOG(ERR, "Failed to allocate shared cache MR memory.");
-		mlx5_compress_uar_release(priv);
-		rte_compressdev_pmd_destroy(priv->compressdev);
-		rte_errno = ENOMEM;
-		return -rte_errno;
-	}
-	/* Register callback function for global shared MR cache management. */
-	if (TAILQ_EMPTY(&mlx5_compress_priv_list))
-		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
-						mlx5_compress_mr_mem_event_cb,
-						NULL);
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&mlx5_compress_priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
@@ -796,10 +747,6 @@ mlx5_compress_dev_remove(struct mlx5_common_device *cdev)
 		TAILQ_REMOVE(&mlx5_compress_priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
 	if (priv) {
-		if (TAILQ_EMPTY(&mlx5_compress_priv_list))
-			rte_mem_event_callback_unregister("MLX5_MEM_EVENT_CB",
-							  NULL);
-		mlx5_mr_release_cache(&priv->mr_scache);
 		mlx5_compress_uar_release(priv);
 		rte_compressdev_pmd_destroy(priv->compressdev);
 	}

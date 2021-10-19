@@ -68,9 +68,6 @@ struct mlx5_regex_priv {
 				MLX5_RXP_EM_COUNT];
 	uint32_t nb_engines; /* Number of RegEx engines. */
 	struct mlx5dv_devx_uar *uar; /* UAR object. */
-	TAILQ_ENTRY(mlx5_regex_priv) mem_event_cb;
-	/**< Called by memory event callback. */
-	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 	uint8_t is_bf2; /* The device is BF2 device. */
 	uint8_t has_umr; /* The device supports UMR. */
 	uint32_t mmo_regex_qp_cap:1;

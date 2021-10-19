@@ -44,7 +44,6 @@
 #include "mlx5_rx.h"
 #include "mlx5_tx.h"
 #include "mlx5_autoconf.h"
-#include "mlx5_mr.h"
 #include "mlx5_flow.h"
 #include "rte_pmd_mlx5.h"
 #include "mlx5_verbs.h"
@@ -623,10 +622,6 @@ mlx5_init_once(void)
 	case RTE_PROC_PRIMARY:
 		if (sd->init_done)
 			break;
-		LIST_INIT(&sd->mem_event_cb_list);
-		rte_rwlock_init(&sd->mem_event_rwlock);
-		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
-						mlx5_mr_mem_event_cb, NULL);
 		ret = mlx5_mp_init_primary(MLX5_MP_NAME,
 					   mlx5_mp_os_primary_handle);
 		if (ret)

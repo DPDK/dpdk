@@ -309,6 +309,41 @@ mlx5_dev_to_pci_str(const struct rte_device *dev, char *addr, size_t size)
 }
 
 /**
+ * Callback for memory event.
+ *
+ * @param event_type
+ *   Memory event type.
+ * @param addr
+ *   Address of memory.
+ * @param len
+ *   Size of memory.
+ */
+static void
+mlx5_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
+		     size_t len, void *arg __rte_unused)
+{
+	struct mlx5_common_device *cdev;
+
+	/* Must be called from the primary process. */
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	switch (event_type) {
+	case RTE_MEM_EVENT_FREE:
+		pthread_mutex_lock(&devices_list_lock);
+		/* Iterate all the existing mlx5 devices. */
+		TAILQ_FOREACH(cdev, &devices_list, next)
+			mlx5_free_mr_by_addr(&cdev->mr_scache,
+					     mlx5_os_get_ctx_device_name
+								    (cdev->ctx),
+					     addr, len);
+		pthread_mutex_unlock(&devices_list_lock);
+		break;
+	case RTE_MEM_EVENT_ALLOC:
+	default:
+		break;
+	}
+}
+
+/**
  * Uninitialize all HW global of device context.
  *
  * @param cdev
@@ -376,8 +411,13 @@ mlx5_common_dev_release(struct mlx5_common_device *cdev)
 	pthread_mutex_lock(&devices_list_lock);
 	TAILQ_REMOVE(&devices_list, cdev, next);
 	pthread_mutex_unlock(&devices_list_lock);
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		if (TAILQ_EMPTY(&devices_list))
+			rte_mem_event_callback_unregister("MLX5_MEM_EVENT_CB",
+							  NULL);
+		mlx5_mr_release_cache(&cdev->mr_scache);
 		mlx5_dev_hw_global_release(cdev);
+	}
 	rte_free(cdev);
 }
 
@@ -412,6 +452,18 @@ mlx5_common_dev_create(struct rte_device *eal_dev, uint32_t classes)
 		rte_free(cdev);
 		return NULL;
 	}
+	/* Initialize global MR cache resources and update its functions. */
+	ret = mlx5_mr_create_cache(&cdev->mr_scache, eal_dev->numa_node);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to initialize global MR share cache.");
+		mlx5_dev_hw_global_release(cdev);
+		rte_free(cdev);
+		return NULL;
+	}
+	/* Register callback function for global shared MR cache management. */
+	if (TAILQ_EMPTY(&devices_list))
+		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
+						mlx5_mr_mem_event_cb, NULL);
 exit:
 	pthread_mutex_lock(&devices_list_lock);
 	TAILQ_INSERT_HEAD(&devices_list, cdev, next);

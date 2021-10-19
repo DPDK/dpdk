@@ -14,7 +14,6 @@
 #include <mlx5_malloc.h>
 
 #include "mlx5.h"
-#include "mlx5_mr.h"
 #include "mlx5_rx.h"
 #include "mlx5_tx.h"
 #include "mlx5_utils.h"
@@ -148,7 +147,7 @@ mlx5_rxq_mempool_register(struct mlx5_rxq_ctrl *rxq_ctrl)
 	}
 	for (s = 0; s < rxq_ctrl->rxq.rxseg_n; s++) {
 		mp = rxq_ctrl->rxq.rxseg[s].mp;
-		ret = mlx5_mr_mempool_register(&priv->sh->share_cache,
+		ret = mlx5_mr_mempool_register(&priv->sh->cdev->mr_scache,
 					       priv->sh->cdev->pd, mp,
 					       &priv->mp_id);
 		if (ret < 0 && rte_errno != EEXIST)

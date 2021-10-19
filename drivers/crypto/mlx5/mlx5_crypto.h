@@ -26,7 +26,6 @@ struct mlx5_crypto_priv {
 	uint32_t max_segs_num; /* Maximum supported data segs. */
 	struct mlx5_hlist *dek_hlist; /* Dek hash list. */
 	struct rte_cryptodev_config dev_config;
-	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 	struct mlx5_devx_obj *login_obj;
 	uint64_t keytag;
 	uint16_t wqe_set_size;

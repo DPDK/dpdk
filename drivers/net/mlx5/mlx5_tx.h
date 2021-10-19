@@ -18,7 +18,6 @@
 
 #include "mlx5.h"
 #include "mlx5_autoconf.h"
-#include "mlx5_mr.h"
 
 /* TX burst subroutines return codes. */
 enum mlx5_txcmp_code {

@@ -242,7 +242,7 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 		nb_sq_config++;
 	}
 
-	ret = mlx5_mr_ctrl_init(&qp->mr_ctrl, &priv->mr_scache.dev_gen,
+	ret = mlx5_mr_ctrl_init(&qp->mr_ctrl, &priv->cdev->mr_scache.dev_gen,
 				rte_socket_id());
 	if (ret) {
 		DRV_LOG(ERR, "Error setting up mr btree");

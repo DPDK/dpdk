@@ -91,7 +91,7 @@ mlx5_mp_os_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	case MLX5_MP_REQ_CREATE_MR:
 		mp_init_msg(&priv->mp_id, &mp_res, param->type);
 		lkey = mlx5_mr_create_primary(cdev->pd,
-					      &priv->sh->share_cache,
+					      &priv->sh->cdev->mr_scache,
 					      &entry, param->args.addr,
 					      cdev->config.mr_ext_memseg_en);
 		if (lkey == UINT32_MAX)

@@ -1135,9 +1135,6 @@ struct mlx5_dev_ctx_shared {
 	char ibdev_path[MLX5_FS_PATH_MAX]; /* SYSFS dev path for secondary */
 	struct mlx5_dev_attr device_attr; /* Device properties. */
 	int numa_node; /* Numa node of backing physical device. */
-	LIST_ENTRY(mlx5_dev_ctx_shared) mem_event_cb;
-	/**< Called by memory event callback. */
-	struct mlx5_mr_share_cache share_cache;
 	/* Packet pacing related structure. */
 	struct mlx5_dev_txpp txpp;
 	/* Shared DV/DR flow data section. */

@@ -350,6 +350,7 @@ struct mlx5_common_device {
 	void *ctx; /* Verbs/DV/DevX context. */
 	void *pd; /* Protection Domain. */
 	uint32_t pdn; /* Protection Domain Number. */
+	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 	struct mlx5_common_dev_config config; /* Device configuration. */
 };
 
@@ -453,8 +454,7 @@ mlx5_dev_is_pci(const struct rte_device *dev);
 __rte_internal
 uint32_t
 mlx5_mr_mb2mr(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
-	      struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf,
-	      struct mlx5_mr_share_cache *share_cache);
+	      struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf);
 
 /* mlx5_common_os.c */
 

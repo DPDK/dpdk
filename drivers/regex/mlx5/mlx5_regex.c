@@ -25,10 +25,6 @@
 
 int mlx5_regex_logtype;
 
-TAILQ_HEAD(regex_mem_event, mlx5_regex_priv) mlx5_mem_event_list =
-				TAILQ_HEAD_INITIALIZER(mlx5_mem_event_list);
-static pthread_mutex_t mem_event_list_lock = PTHREAD_MUTEX_INITIALIZER;
-
 const struct rte_regexdev_ops mlx5_regexdev_ops = {
 	.dev_info_get = mlx5_regex_info_get,
 	.dev_configure = mlx5_regex_configure,
@@ -84,41 +80,6 @@ static void
 mlx5_regex_get_name(char *name, struct rte_device *dev)
 {
 	sprintf(name, "mlx5_regex_%s", dev->name);
-}
-
-/**
- * Callback for memory event.
- *
- * @param event_type
- *   Memory event type.
- * @param addr
- *   Address of memory.
- * @param len
- *   Size of memory.
- */
-static void
-mlx5_regex_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
-			   size_t len, void *arg __rte_unused)
-{
-	struct mlx5_regex_priv *priv;
-
-	/* Must be called from the primary process. */
-	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	switch (event_type) {
-	case RTE_MEM_EVENT_FREE:
-		pthread_mutex_lock(&mem_event_list_lock);
-		/* Iterate all the existing mlx5 devices. */
-		TAILQ_FOREACH(priv, &mlx5_mem_event_list, mem_event_cb)
-			mlx5_free_mr_by_addr(&priv->mr_scache,
-					     mlx5_os_get_ctx_device_name
-							      (priv->cdev->ctx),
-					     addr, len);
-		pthread_mutex_unlock(&mem_event_list_lock);
-		break;
-	case RTE_MEM_EVENT_ALLOC:
-	default:
-		break;
-	}
 }
 
 static int
@@ -194,21 +155,6 @@ mlx5_regex_dev_probe(struct mlx5_common_device *cdev)
 	priv->regexdev->device = cdev->dev;
 	priv->regexdev->data->dev_private = priv;
 	priv->regexdev->state = RTE_REGEXDEV_READY;
-	ret = mlx5_mr_create_cache(&priv->mr_scache, rte_socket_id());
-	if (ret) {
-		DRV_LOG(ERR, "MR init tree failed.");
-	    rte_errno = ENOMEM;
-		goto error;
-	}
-	/* Register callback function for global shared MR cache management. */
-	if (TAILQ_EMPTY(&mlx5_mem_event_list))
-		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
-						mlx5_regex_mr_mem_event_cb,
-						NULL);
-	/* Add device to memory callback list. */
-	pthread_mutex_lock(&mem_event_list_lock);
-	TAILQ_INSERT_TAIL(&mlx5_mem_event_list, priv, mem_event_cb);
-	pthread_mutex_unlock(&mem_event_list_lock);
 	DRV_LOG(INFO, "RegEx GGA is %s.",
 		priv->has_umr ? "supported" : "unsupported");
 	return 0;
@@ -237,15 +183,6 @@ mlx5_regex_dev_remove(struct mlx5_common_device *cdev)
 		return 0;
 	priv = dev->data->dev_private;
 	if (priv) {
-		/* Remove from memory callback device list. */
-		pthread_mutex_lock(&mem_event_list_lock);
-		TAILQ_REMOVE(&mlx5_mem_event_list, priv, mem_event_cb);
-		pthread_mutex_unlock(&mem_event_list_lock);
-		if (TAILQ_EMPTY(&mlx5_mem_event_list))
-			rte_mem_event_callback_unregister("MLX5_MEM_EVENT_CB",
-							  NULL);
-		if (priv->mr_scache.cache.table)
-			mlx5_mr_release_cache(&priv->mr_scache);
 		if (priv->uar)
 			mlx5_glue->devx_free_uar(priv->uar);
 		if (priv->regexdev)

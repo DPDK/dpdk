@@ -18,10 +18,12 @@
 
 #include "mlx5.h"
 #include "mlx5_autoconf.h"
-#include "mlx5_mr.h"
 
 /* Support tunnel matching. */
 #define MLX5_FLOW_TUNNEL 10
+
+/* First entry must be NULL for comparison. */
+#define mlx5_mr_btree_len(bt) ((bt)->len - 1)
 
 struct mlx5_rxq_stats {
 #ifdef MLX5_PMD_SOFT_COUNTERS
@@ -309,7 +311,7 @@ mlx5_rx_addr2mr(struct mlx5_rxq_data *rxq, uintptr_t addr)
 	 */
 	rxq_ctrl = container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	mp = mlx5_rxq_mprq_enabled(rxq) ? rxq->mprq_mp : rxq->mp;
-	return mlx5_mr_mempool2mr_bh(&rxq_ctrl->priv->sh->share_cache,
+	return mlx5_mr_mempool2mr_bh(&rxq_ctrl->priv->sh->cdev->mr_scache,
 				     mr_ctrl, mp, addr);
 }
 

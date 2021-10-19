@@ -109,7 +109,6 @@ INTERNAL {
 	mlx5_mr_addr2mr_bh;
 	mlx5_mr_btree_dump;
 	mlx5_mr_btree_free;
-	mlx5_mr_create_cache;
 	mlx5_mr_create_primary;
 	mlx5_mr_ctrl_init;
 	mlx5_mr_dump_cache;
@@ -119,9 +118,7 @@ INTERNAL {
 	mlx5_mr_lookup_cache;
 	mlx5_mr_lookup_list;
 	mlx5_mr_mb2mr;
-	mlx5_free_mr_by_addr;
 	mlx5_mr_rebuild_cache;
-	mlx5_mr_release_cache;
 
 	mlx5_nl_allmulti; # WINDOWS_NO_EXPORT
 	mlx5_nl_ifindex; # WINDOWS_NO_EXPORT
@@ -139,7 +136,6 @@ INTERNAL {
 
 	mlx5_os_umem_dereg;
 	mlx5_os_umem_reg;
-	mlx5_os_set_reg_mr_cb;
 
 	mlx5_realloc;
 

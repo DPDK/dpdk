@@ -126,7 +126,7 @@ static inline uint32_t
 mlx5_regex_mb2mr(struct mlx5_regex_priv *priv, struct mlx5_mr_ctrl *mr_ctrl,
 		 struct rte_mbuf *mbuf)
 {
-	return mlx5_mr_mb2mr(priv->cdev, 0, mr_ctrl, mbuf, &priv->mr_scache);
+	return mlx5_mr_mb2mr(priv->cdev, 0, mr_ctrl, mbuf);
 }
 
 static inline void

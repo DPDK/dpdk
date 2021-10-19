@@ -1241,7 +1241,7 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
-	ret = mlx5_mr_mempool_register(&priv->sh->share_cache,
+	ret = mlx5_mr_mempool_register(&priv->sh->cdev->mr_scache,
 				       priv->sh->cdev->pd, mp, &priv->mp_id);
 	if (ret < 0 && rte_errno != EEXIST) {
 		ret = rte_errno;
@@ -1450,7 +1450,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 	tmpl->type = MLX5_RXQ_TYPE_STANDARD;
 	if (mlx5_mr_ctrl_init(&tmpl->rxq.mr_ctrl,
-			      &priv->sh->share_cache.dev_gen, socket)) {
+			      &priv->sh->cdev->mr_scache.dev_gen, socket)) {
 		/* rte_errno is already set. */
 		goto error;
 	}

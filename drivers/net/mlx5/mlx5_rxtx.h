@@ -24,7 +24,6 @@
 #include "mlx5_utils.h"
 #include "mlx5.h"
 #include "mlx5_autoconf.h"
-#include "mlx5_mr.h"
 
 struct mlx5_priv;
 
