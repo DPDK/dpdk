@@ -150,18 +150,18 @@ handle_telemetry_cmd_ipsec_sa_details(const char *cmd __rte_unused,
 						RTE_IPSEC_SATP_MODE_TUNLV6) {
 					rte_tel_data_add_dict_string(data,
 						"Tunnel-Type",
-						"IPv4-UDP");
+						"IPv6-UDP");
 				}
 			} else {
 				if (sa->type & RTE_IPSEC_SATP_MODE_TUNLV4) {
 					rte_tel_data_add_dict_string(data,
 						"Tunnel-Type",
-						"IPv4-UDP");
+						"IPv4");
 				} else if (sa->type &
 						RTE_IPSEC_SATP_MODE_TUNLV6) {
 					rte_tel_data_add_dict_string(data,
 						"Tunnel-Type",
-						"IPv4-UDP");
+						"IPv6");
 				}
 			}
 		}
