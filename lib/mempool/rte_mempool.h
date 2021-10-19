@@ -312,16 +312,20 @@ struct rte_mempool {
 #endif
 
 /**
- * Calculate the size of the mempool header.
+ * @internal Calculate the size of the mempool header.
  *
  * @param mp
  *   Pointer to the memory pool.
  * @param cs
  *   Size of the per-lcore cache.
  */
-#define MEMPOOL_HEADER_SIZE(mp, cs) \
+#define RTE_MEMPOOL_HEADER_SIZE(mp, cs) \
 	(sizeof(*(mp)) + (((cs) == 0) ? 0 : \
 	(sizeof(struct rte_mempool_cache) * RTE_MAX_LCORE)))
+
+/** Deprecated. Use RTE_MEMPOOL_HEADER_SIZE() for internal purposes only. */
+#define MEMPOOL_HEADER_SIZE(mp, cs) \
+	RTE_DEPRECATED(MEMPOOL_HEADER_SIZE) RTE_MEMPOOL_HEADER_SIZE(mp, cs)
 
 /* return the header of a mempool object (internal) */
 static inline struct rte_mempool_objhdr *
@@ -1739,7 +1743,7 @@ void rte_mempool_audit(struct rte_mempool *mp);
 static inline void *rte_mempool_get_priv(struct rte_mempool *mp)
 {
 	return (char *)mp +
-		MEMPOOL_HEADER_SIZE(mp, mp->cache_size);
+		RTE_MEMPOOL_HEADER_SIZE(mp, mp->cache_size);
 }
 
 /**

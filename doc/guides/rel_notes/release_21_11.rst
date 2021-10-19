@@ -233,6 +233,9 @@ API Changes
 * mempool: The mempool flags ``MEMPOOL_F_*`` will be deprecated in the future.
   Newly added flags with ``RTE_MEMPOOL_F_`` prefix should be used instead.
 
+* mempool: Helper macro ``MEMPOOL_HEADER_SIZE()`` is deprecated.
+  The replacement macro ``RTE_MEMPOOL_HEADER_SIZE()`` is internal only.
+
 * net: Renamed ``s_addr`` and ``d_addr`` fields of ``rte_ether_hdr`` structure
   to ``src_addr`` and ``dst_addr``, respectively.
 
