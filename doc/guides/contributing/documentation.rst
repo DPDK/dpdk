@@ -705,7 +705,7 @@ The following are some guidelines for use of Doxygen in the DPDK API documentati
      /**< Virtual address of the first mempool object. */
      uintptr_t   elt_va_end;
      /**< Virtual address of the <size + 1> mempool object. */
-     phys_addr_t elt_pa[MEMPOOL_PG_NUM_DEFAULT];
+     phys_addr_t elt_pa[1];
      /**< Array of physical page addresses for the mempool buffer. */
 
   This doesn't have an effect on the rendered documentation but it is confusing for the developer reading the code.
@@ -724,7 +724,7 @@ The following are some guidelines for use of Doxygen in the DPDK API documentati
      /** Virtual address of the <size + 1> mempool object. */
      uintptr_t   elt_va_end;
      /** Array of physical page addresses for the mempool buffer. */
-     phys_addr_t elt_pa[MEMPOOL_PG_NUM_DEFAULT];
+     phys_addr_t elt_pa[1];
 
 * Read the rendered section of the documentation that you have added for correctness, clarity and consistency
   with the surrounding text.

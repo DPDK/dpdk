@@ -239,6 +239,9 @@ API Changes
 * mempool: Macro to register mempool driver ``MEMPOOL_REGISTER_OPS()`` is
   deprecated.  Use replacement ``RTE_MEMPOOL_REGISTER_OPS()``.
 
+* mempool: The mempool API macros ``MEMPOOL_PG_*`` are deprecated and
+  will be removed in DPDK 22.11.
+
 * net: Renamed ``s_addr`` and ``d_addr`` fields of ``rte_ether_hdr`` structure
   to ``src_addr`` and ``dst_addr``, respectively.
 

@@ -47,6 +47,9 @@ Deprecation Notices
   deprecated and will be removed in DPDK 22.11. Use replacement macro
   ``RTE_MEMPOOL_REGISTER_OPS()``.
 
+* mempool: The mempool API macros ``MEMPOOL_PG_*`` are deprecated and
+  will be removed in DPDK 22.11.
+
 * mbuf: The mbuf offload flags ``PKT_*`` will be renamed as ``RTE_MBUF_F_*``.
   A compatibility layer will be kept until DPDK 22.11, except for the flags
   that are already deprecated (``PKT_RX_L4_CKSUM_BAD``, ``PKT_RX_IP_CKSUM_BAD``,
