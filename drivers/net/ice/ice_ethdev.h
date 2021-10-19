@@ -19,6 +19,7 @@
 #define ICE_ADMINQ_LEN               32
 #define ICE_SBIOQ_LEN                32
 #define ICE_MAILBOXQ_LEN             32
+#define ICE_SBQ_LEN                  64
 #define ICE_ADMINQ_BUF_SZ            4096
 #define ICE_SBIOQ_BUF_SZ             4096
 #define ICE_MAILBOXQ_BUF_SZ          4096

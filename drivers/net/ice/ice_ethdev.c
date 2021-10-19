@@ -350,6 +350,13 @@ ice_init_controlq_parameter(struct ice_hw *hw)
 	hw->mailboxq.num_sq_entries = ICE_MAILBOXQ_LEN;
 	hw->mailboxq.rq_buf_size = ICE_MAILBOXQ_BUF_SZ;
 	hw->mailboxq.sq_buf_size = ICE_MAILBOXQ_BUF_SZ;
+
+	/* fields for sideband queue */
+	hw->sbq.num_rq_entries = ICE_SBQ_LEN;
+	hw->sbq.num_sq_entries = ICE_SBQ_LEN;
+	hw->sbq.rq_buf_size = ICE_SBQ_MAX_BUF_LEN;
+	hw->sbq.sq_buf_size = ICE_SBQ_MAX_BUF_LEN;
+
 }
 
 static int
