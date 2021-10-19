@@ -13556,7 +13556,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
 				    matcher.mask.size);
 	matcher.priority = mlx5_get_matcher_priority(dev, attr,
-					matcher.priority);
+						     matcher.priority,
+						     dev_flow->external);
 	/**
 	 * When creating meter drop flow in drop table, using original
 	 * 5-tuple match, the matcher priority should be lower than

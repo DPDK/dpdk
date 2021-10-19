@@ -1431,8 +1431,8 @@ uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 uint32_t mlx5_get_lowest_priority(struct rte_eth_dev *dev,
 					const struct rte_flow_attr *attr);
 uint16_t mlx5_get_matcher_priority(struct rte_eth_dev *dev,
-				     const struct rte_flow_attr *attr,
-				     uint32_t subpriority);
+				   const struct rte_flow_attr *attr,
+				   uint32_t subpriority, bool external);
 int mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 				     enum mlx5_feature_name feature,
 				     uint32_t id,
