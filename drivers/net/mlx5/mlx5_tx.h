@@ -239,8 +239,6 @@ int mlx5_tx_burst_mode_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 /* mlx5_mr.c */
 
 uint32_t mlx5_tx_mb2mr_bh(struct mlx5_txq_data *txq, struct rte_mbuf *mb);
-uint32_t mlx5_tx_update_ext_mp(struct mlx5_txq_data *txq, uintptr_t addr,
-			       struct rte_mempool *mp);
 
 /* mlx5_tx_empw.c */
 
