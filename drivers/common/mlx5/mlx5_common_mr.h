@@ -125,6 +125,9 @@ mlx5_mr_lookup_lkey(struct mr_cache_entry *lkp_tbl, uint16_t *cached_idx,
 }
 
 __rte_internal
+int mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl, uint32_t *dev_gen_ptr,
+		      int socket);
+__rte_internal
 int mlx5_mr_btree_init(struct mlx5_mr_btree *bt, int n, int socket);
 __rte_internal
 void mlx5_mr_btree_free(struct mlx5_mr_btree *bt);

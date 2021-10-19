@@ -206,8 +206,8 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		return -rte_errno;
 	}
 	dev->data->queue_pairs[qp_id] = qp;
-	if (mlx5_mr_btree_init(&qp->mr_ctrl.cache_bh, MLX5_MR_BTREE_CACHE_N,
-			       priv->dev_config.socket_id)) {
+	if (mlx5_mr_ctrl_init(&qp->mr_ctrl, &priv->mr_scache.dev_gen,
+			      priv->dev_config.socket_id)) {
 		DRV_LOG(ERR, "Cannot allocate MR Btree for qp %u.",
 			(uint32_t)qp_id);
 		rte_errno = ENOMEM;
@@ -258,8 +258,6 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	ret = mlx5_devx_qp2rts(&qp->qp, 0);
 	if (ret)
 		goto err;
-	/* Save pointer of global generation number to check memory event. */
-	qp->mr_ctrl.dev_gen_ptr = &priv->mr_scache.dev_gen;
 	DRV_LOG(INFO, "QP %u: SQN=0x%X CQN=0x%X entries num = %u",
 		(uint32_t)qp_id, qp->qp.qp->id, qp->cq.cq->id, qp->entries_n);
 	return 0;

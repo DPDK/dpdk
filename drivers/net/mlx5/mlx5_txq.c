@@ -1134,13 +1134,11 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	if (mlx5_mr_btree_init(&tmpl->txq.mr_ctrl.cache_bh,
-			       MLX5_MR_BTREE_CACHE_N, socket)) {
+	if (mlx5_mr_ctrl_init(&tmpl->txq.mr_ctrl,
+			      &priv->sh->share_cache.dev_gen, socket)) {
 		/* rte_errno is already set. */
 		goto error;
 	}
-	/* Save pointer of global generation number to check memory event. */
-	tmpl->txq.mr_ctrl.dev_gen_ptr = &priv->sh->share_cache.dev_gen;
 	MLX5_ASSERT(desc > MLX5_TX_COMP_THRESH);
 	tmpl->txq.offloads = conf->offloads |
 			     dev->data->dev_conf.txmode.offloads;

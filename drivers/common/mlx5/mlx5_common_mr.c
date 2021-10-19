@@ -272,6 +272,34 @@ mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused)
 }
 
 /**
+ * Initialize per-queue MR control descriptor.
+ *
+ * @param mr_ctrl
+ *   Pointer to MR control structure.
+ * @param dev_gen_ptr
+ *   Pointer to generation number of global cache.
+ * @param socket
+ *   NUMA socket on which memory must be allocated.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl, uint32_t *dev_gen_ptr,
+		  int socket)
+{
+	if (mr_ctrl == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	/* Save pointer of global generation number to check memory event. */
+	mr_ctrl->dev_gen_ptr = dev_gen_ptr;
+	/* Initialize B-tree and allocate memory for bottom-half cache table. */
+	return mlx5_mr_btree_init(&mr_ctrl->cache_bh, MLX5_MR_BTREE_CACHE_N,
+				  socket);
+}
+
+/**
  * Find virtually contiguous memory chunk in a given MR.
  *
  * @param dev

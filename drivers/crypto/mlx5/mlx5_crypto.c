@@ -677,14 +677,13 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		DRV_LOG(ERR, "Failed to create QP.");
 		goto error;
 	}
-	if (mlx5_mr_btree_init(&qp->mr_ctrl.cache_bh, MLX5_MR_BTREE_CACHE_N,
-			       priv->dev_config.socket_id) != 0) {
+	if (mlx5_mr_ctrl_init(&qp->mr_ctrl, &priv->mr_scache.dev_gen,
+			      priv->dev_config.socket_id) != 0) {
 		DRV_LOG(ERR, "Cannot allocate MR Btree for qp %u.",
 			(uint32_t)qp_id);
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	qp->mr_ctrl.dev_gen_ptr = &priv->mr_scache.dev_gen;
 	/*
 	 * In Order to configure self loopback, when calling devx qp2rts the
 	 * remote QP id that is used is the id of the same QP.
