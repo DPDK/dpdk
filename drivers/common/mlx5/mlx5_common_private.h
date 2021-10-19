@@ -16,12 +16,6 @@ extern "C" {
 
 /* Common bus driver: */
 
-struct mlx5_common_device {
-	struct rte_device *dev;
-	TAILQ_ENTRY(mlx5_common_device) next;
-	uint32_t classes_loaded;
-};
-
 int mlx5_common_dev_probe(struct rte_device *eal_dev);
 int mlx5_common_dev_remove(struct rte_device *eal_dev);
 int mlx5_common_dev_dma_map(struct rte_device *dev, void *addr, uint64_t iova,

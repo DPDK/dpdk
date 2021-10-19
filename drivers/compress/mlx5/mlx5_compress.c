@@ -36,7 +36,7 @@ struct mlx5_compress_xform {
 struct mlx5_compress_priv {
 	TAILQ_ENTRY(mlx5_compress_priv) next;
 	struct ibv_context *ctx; /* Device context. */
-	struct rte_compressdev *cdev;
+	struct rte_compressdev *compressdev;
 	void *uar;
 	uint32_t pdn; /* Protection Domain number. */
 	uint8_t min_block_size;
@@ -790,16 +790,16 @@ mlx5_compress_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 }
 
 static int
-mlx5_compress_dev_probe(struct rte_device *dev)
+mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 {
 	struct ibv_device *ibv;
-	struct rte_compressdev *cdev;
+	struct rte_compressdev *compressdev;
 	struct ibv_context *ctx;
 	struct mlx5_compress_priv *priv;
 	struct mlx5_hca_attr att = { 0 };
 	struct rte_compressdev_pmd_init_params init_params = {
 		.name = "",
-		.socket_id = dev->numa_node,
+		.socket_id = cdev->dev->numa_node,
 	};
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
@@ -807,7 +807,7 @@ mlx5_compress_dev_probe(struct rte_device *dev)
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	ibv = mlx5_os_get_ibv_dev(dev);
+	ibv = mlx5_os_get_ibv_dev(cdev->dev);
 	if (ibv == NULL)
 		return -rte_errno;
 	ctx = mlx5_glue->dv_open_device(ibv);
@@ -826,20 +826,20 @@ mlx5_compress_dev_probe(struct rte_device *dev)
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
-	cdev = rte_compressdev_pmd_create(ibv->name, dev,
-					  sizeof(*priv), &init_params);
-	if (cdev == NULL) {
+	compressdev = rte_compressdev_pmd_create(ibv->name, cdev->dev,
+						 sizeof(*priv), &init_params);
+	if (compressdev == NULL) {
 		DRV_LOG(ERR, "Failed to create device \"%s\".", ibv->name);
 		claim_zero(mlx5_glue->close_device(ctx));
 		return -ENODEV;
 	}
 	DRV_LOG(INFO,
 		"Compress device %s was created successfully.", ibv->name);
-	cdev->dev_ops = &mlx5_compress_ops;
-	cdev->dequeue_burst = mlx5_compress_dequeue_burst;
-	cdev->enqueue_burst = mlx5_compress_enqueue_burst;
-	cdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
-	priv = cdev->data->dev_private;
+	compressdev->dev_ops = &mlx5_compress_ops;
+	compressdev->dequeue_burst = mlx5_compress_dequeue_burst;
+	compressdev->enqueue_burst = mlx5_compress_enqueue_burst;
+	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
+	priv = compressdev->data->dev_private;
 	priv->mmo_decomp_sq = att.mmo_decompress_sq_en;
 	priv->mmo_decomp_qp = att.mmo_decompress_qp_en;
 	priv->mmo_comp_sq = att.mmo_compress_sq_en;
@@ -847,11 +847,11 @@ mlx5_compress_dev_probe(struct rte_device *dev)
 	priv->mmo_dma_sq = att.mmo_dma_sq_en;
 	priv->mmo_dma_qp = att.mmo_dma_qp_en;
 	priv->ctx = ctx;
-	priv->cdev = cdev;
+	priv->compressdev = compressdev;
 	priv->min_block_size = att.compress_min_block_size;
 	priv->qp_ts_format = att.qp_ts_format;
 	if (mlx5_compress_hw_global_prepare(priv) != 0) {
-		rte_compressdev_pmd_destroy(priv->cdev);
+		rte_compressdev_pmd_destroy(priv->compressdev);
 		claim_zero(mlx5_glue->close_device(priv->ctx));
 		return -1;
 	}
@@ -859,7 +859,7 @@ mlx5_compress_dev_probe(struct rte_device *dev)
 			     MLX5_MR_BTREE_CACHE_N * 2, rte_socket_id()) != 0) {
 		DRV_LOG(ERR, "Failed to allocate shared cache MR memory.");
 		mlx5_compress_hw_global_release(priv);
-		rte_compressdev_pmd_destroy(priv->cdev);
+		rte_compressdev_pmd_destroy(priv->compressdev);
 		claim_zero(mlx5_glue->close_device(priv->ctx));
 		rte_errno = ENOMEM;
 		return -rte_errno;
@@ -878,13 +878,13 @@ mlx5_compress_dev_probe(struct rte_device *dev)
 }
 
 static int
-mlx5_compress_dev_remove(struct rte_device *dev)
+mlx5_compress_dev_remove(struct mlx5_common_device *cdev)
 {
 	struct mlx5_compress_priv *priv = NULL;
 
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_FOREACH(priv, &mlx5_compress_priv_list, next)
-		if (priv->cdev->device == dev)
+		if (priv->compressdev->device == cdev->dev)
 			break;
 	if (priv)
 		TAILQ_REMOVE(&mlx5_compress_priv_list, priv, next);
@@ -895,7 +895,7 @@ mlx5_compress_dev_remove(struct rte_device *dev)
 							  NULL);
 		mlx5_mr_release_cache(&priv->mr_scache);
 		mlx5_compress_hw_global_release(priv);
-		rte_compressdev_pmd_destroy(priv->cdev);
+		rte_compressdev_pmd_destroy(priv->compressdev);
 		claim_zero(mlx5_glue->close_device(priv->ctx));
 	}
 	return 0;

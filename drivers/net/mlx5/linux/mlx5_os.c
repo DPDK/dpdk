@@ -2168,8 +2168,8 @@ mlx5_os_config_default(struct mlx5_dev_config *config)
  * This function spawns Ethernet devices out of a given PCI device and
  * bonding owner PF index.
  *
- * @param[in] pci_dev
- *   PCI device information.
+ * @param[in] cdev
+ *   Pointer to common mlx5 device structure.
  * @param[in] req_eth_da
  *   Requested ethdev device argument.
  * @param[in] owner_id
@@ -2179,7 +2179,7 @@ mlx5_os_config_default(struct mlx5_dev_config *config)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
+mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 		     struct rte_eth_devargs *req_eth_da,
 		     uint16_t owner_id)
 {
@@ -2208,6 +2208,7 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 	 *  >= 0 - bonding device (value is slave PF index)
 	 */
 	int bd = -1;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
 	struct mlx5_dev_spawn_data *list = NULL;
 	struct mlx5_dev_config dev_config;
 	unsigned int dev_config_vf;
@@ -2340,6 +2341,7 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 			list[ns].phys_dev = ibv_match[0];
 			list[ns].eth_dev = NULL;
 			list[ns].pci_dev = pci_dev;
+			list[ns].cdev = cdev;
 			list[ns].pf_bond = bd;
 			list[ns].ifindex = mlx5_nl_ifindex
 				(nl_rdma,
@@ -2438,6 +2440,7 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 			list[ns].phys_dev = ibv_match[i];
 			list[ns].eth_dev = NULL;
 			list[ns].pci_dev = pci_dev;
+			list[ns].cdev = cdev;
 			list[ns].pf_bond = -1;
 			list[ns].ifindex = 0;
 			if (nl_rdma >= 0)
@@ -2582,11 +2585,8 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 		/* Default configuration. */
 		mlx5_os_config_default(&dev_config);
 		dev_config.vf = dev_config_vf;
-		list[i].numa_node = pci_dev->device.numa_node;
-		list[i].eth_dev = mlx5_dev_spawn(&pci_dev->device,
-						 &list[i],
-						 &dev_config,
-						 &eth_da);
+		list[i].eth_dev = mlx5_dev_spawn(cdev->dev, &list[i],
+						 &dev_config, &eth_da);
 		if (!list[i].eth_dev) {
 			if (rte_errno != EBUSY && rte_errno != EEXIST)
 				break;
@@ -2698,27 +2698,28 @@ mlx5_os_parse_eth_devargs(struct rte_device *dev,
  *
  * This function spawns Ethernet devices out of a given PCI device.
  *
- * @param[in] pci_dev
- *   PCI device information.
+ * @param[in] cdev
+ *   Pointer to common mlx5 device structure.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_os_pci_probe(struct rte_pci_device *pci_dev)
+mlx5_os_pci_probe(struct mlx5_common_device *cdev)
 {
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
 	struct rte_eth_devargs eth_da = { .nb_ports = 0 };
 	int ret = 0;
 	uint16_t p;
 
-	ret = mlx5_os_parse_eth_devargs(&pci_dev->device, &eth_da);
+	ret = mlx5_os_parse_eth_devargs(cdev->dev, &eth_da);
 	if (ret != 0)
 		return ret;
 
 	if (eth_da.nb_ports > 0) {
 		/* Iterate all port if devargs pf is range: "pf[0-1]vf[...]". */
 		for (p = 0; p < eth_da.nb_ports; p++) {
-			ret = mlx5_os_pci_probe_pf(pci_dev, &eth_da,
+			ret = mlx5_os_pci_probe_pf(cdev, &eth_da,
 						   eth_da.ports[p]);
 			if (ret)
 				break;
@@ -2729,21 +2730,22 @@ mlx5_os_pci_probe(struct rte_pci_device *pci_dev)
 				pci_dev->addr.domain, pci_dev->addr.bus,
 				pci_dev->addr.devid, pci_dev->addr.function,
 				eth_da.ports[p]);
-			mlx5_net_remove(&pci_dev->device);
+			mlx5_net_remove(cdev);
 		}
 	} else {
-		ret = mlx5_os_pci_probe_pf(pci_dev, &eth_da, 0);
+		ret = mlx5_os_pci_probe_pf(cdev, &eth_da, 0);
 	}
 	return ret;
 }
 
 /* Probe a single SF device on auxiliary bus, no representor support. */
 static int
-mlx5_os_auxiliary_probe(struct rte_device *dev)
+mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev)
 {
 	struct rte_eth_devargs eth_da = { .nb_ports = 0 };
 	struct mlx5_dev_config config;
 	struct mlx5_dev_spawn_data spawn = { .pf_bond = -1 };
+	struct rte_device *dev = cdev->dev;
 	struct rte_auxiliary_device *adev = RTE_DEV_TO_AUXILIARY(dev);
 	struct rte_eth_dev *eth_dev;
 	int ret = 0;
@@ -2767,7 +2769,7 @@ mlx5_os_auxiliary_probe(struct rte_device *dev)
 		return ret;
 	}
 	spawn.ifindex = ret;
-	spawn.numa_node = dev->numa_node;
+	spawn.cdev = cdev;
 	/* Spawn device. */
 	eth_dev = mlx5_dev_spawn(dev, &spawn, &config, &eth_da);
 	if (eth_dev == NULL)
@@ -2788,14 +2790,14 @@ mlx5_os_auxiliary_probe(struct rte_device *dev)
  *
  * This function probe PCI bus device(s) or a single SF on auxiliary bus.
  *
- * @param[in] dev
- *   Pointer to the generic device.
+ * @param[in] cdev
+ *   Pointer to the common mlx5 device.
  *
  * @return
- *   0 on success, the function cannot fail.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_os_net_probe(struct rte_device *dev)
+mlx5_os_net_probe(struct mlx5_common_device *cdev)
 {
 	int ret;
 
@@ -2803,14 +2805,14 @@ mlx5_os_net_probe(struct rte_device *dev)
 		mlx5_pmd_socket_init();
 	ret = mlx5_init_once();
 	if (ret) {
-		DRV_LOG(ERR, "unable to init PMD global data: %s",
+		DRV_LOG(ERR, "Unable to init PMD global data: %s",
 			strerror(rte_errno));
 		return -rte_errno;
 	}
-	if (mlx5_dev_is_pci(dev))
-		return mlx5_os_pci_probe(RTE_DEV_TO_PCI(dev));
+	if (mlx5_dev_is_pci(cdev->dev))
+		return mlx5_os_pci_probe(cdev);
 	else
-		return mlx5_os_auxiliary_probe(dev);
+		return mlx5_os_auxiliary_probe(cdev);
 }
 
 static int

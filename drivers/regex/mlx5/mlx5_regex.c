@@ -121,7 +121,7 @@ mlx5_regex_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 }
 
 static int
-mlx5_regex_dev_probe(struct rte_device *rte_dev)
+mlx5_regex_dev_probe(struct mlx5_common_device *cdev)
 {
 	struct ibv_device *ibv;
 	struct mlx5_regex_priv *priv = NULL;
@@ -131,7 +131,7 @@ mlx5_regex_dev_probe(struct rte_device *rte_dev)
 	int ret;
 	uint32_t val;
 
-	ibv = mlx5_os_get_ibv_dev(rte_dev);
+	ibv = mlx5_os_get_ibv_dev(cdev->dev);
 	if (ibv == NULL)
 		return -rte_errno;
 	DRV_LOG(INFO, "Probe device \"%s\".", ibv->name);
@@ -180,7 +180,7 @@ mlx5_regex_dev_probe(struct rte_device *rte_dev)
 		priv->is_bf2 = 1;
 	/* Default RXP programming mode to Shared. */
 	priv->prog_mode = MLX5_RXP_SHARED_PROG_MODE;
-	mlx5_regex_get_name(name, rte_dev);
+	mlx5_regex_get_name(name, cdev->dev);
 	priv->regexdev = rte_regexdev_register(name);
 	if (priv->regexdev == NULL) {
 		DRV_LOG(ERR, "Failed to register RegEx device.");
@@ -214,7 +214,7 @@ mlx5_regex_dev_probe(struct rte_device *rte_dev)
 		priv->regexdev->enqueue = mlx5_regexdev_enqueue_gga;
 #endif
 	priv->regexdev->dequeue = mlx5_regexdev_dequeue;
-	priv->regexdev->device = rte_dev;
+	priv->regexdev->device = cdev->dev;
 	priv->regexdev->data->dev_private = priv;
 	priv->regexdev->state = RTE_REGEXDEV_READY;
 	priv->mr_scache.reg_mr_cb = mlx5_common_verbs_reg_mr;
@@ -256,13 +256,13 @@ dev_error:
 }
 
 static int
-mlx5_regex_dev_remove(struct rte_device *rte_dev)
+mlx5_regex_dev_remove(struct mlx5_common_device *cdev)
 {
 	char name[RTE_REGEXDEV_NAME_MAX_LEN];
 	struct rte_regexdev *dev;
 	struct mlx5_regex_priv *priv = NULL;
 
-	mlx5_regex_get_name(name, rte_dev);
+	mlx5_regex_get_name(name, cdev->dev);
 	dev = rte_regexdev_get_device_by_name(name);
 	if (!dev)
 		return 0;

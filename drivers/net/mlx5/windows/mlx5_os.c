@@ -342,7 +342,7 @@ mlx5_flow_counter_mode_config(struct rte_eth_dev *dev __rte_unused)
 }
 
 /**
- * Spawn an Ethernet device from Verbs information.
+ * Spawn an Ethernet device from DevX information.
  *
  * @param dpdk_dev
  *   Backing DPDK device.
@@ -1019,15 +1019,15 @@ mlx5_match_devx_devices_to_addr(struct devx_device_bdf *devx_bdf,
  * This function spawns Ethernet devices out of a given device.
  *
  * @param[in] dev
- *   Pointer to the generic device.
+ *   Pointer to the common device.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_os_net_probe(struct rte_device *dev)
+mlx5_os_net_probe(struct mlx5_common_device *cdev)
 {
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
 	struct devx_device_bdf *devx_bdf_devs, *orig_devx_bdf_devs;
 	/*
 	 * Number of found IB Devices matching with requested PCI BDF.
@@ -1129,6 +1129,7 @@ mlx5_os_net_probe(struct rte_device *dev)
 	list[ns].phys_dev = devx_bdf_match[ns];
 	list[ns].eth_dev = NULL;
 	list[ns].pci_dev = pci_dev;
+	list[ns].cdev = cdev;
 	list[ns].pf_bond = bd;
 	list[ns].ifindex = -1; /* Spawn will assign */
 	list[ns].info =
@@ -1173,10 +1174,7 @@ mlx5_os_net_probe(struct rte_device *dev)
 	dev_config.dv_flow_en = 1;
 	dev_config.decap_en = 0;
 	dev_config.log_hp_size = MLX5_ARG_UNSET;
-	list[ns].numa_node = pci_dev->device.numa_node;
-	list[ns].eth_dev = mlx5_dev_spawn(&pci_dev->device,
-					  &list[ns],
-					  &dev_config);
+	list[ns].eth_dev = mlx5_dev_spawn(cdev->dev, &list[ns], &dev_config);
 	if (!list[ns].eth_dev)
 		goto exit;
 	restore = list[ns].eth_dev->data->dev_flags;

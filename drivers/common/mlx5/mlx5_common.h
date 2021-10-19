@@ -324,15 +324,21 @@ void mlx5_common_init(void);
  *   from devargs, locating target RDMA device and probing with it.
  */
 
+struct mlx5_common_device {
+	struct rte_device *dev;
+	TAILQ_ENTRY(mlx5_common_device) next;
+	uint32_t classes_loaded;
+};
+
 /**
  * Initialization function for the driver called during device probing.
  */
-typedef int (mlx5_class_driver_probe_t)(struct rte_device *dev);
+typedef int (mlx5_class_driver_probe_t)(struct mlx5_common_device *dev);
 
 /**
  * Uninitialization function for the driver called during hot-unplugging.
  */
-typedef int (mlx5_class_driver_remove_t)(struct rte_device *dev);
+typedef int (mlx5_class_driver_remove_t)(struct mlx5_common_device *dev);
 
 /**
  * Driver-specific DMA mapping. After a successful call the device

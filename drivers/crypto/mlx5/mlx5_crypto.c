@@ -951,7 +951,7 @@ mlx5_crypto_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 }
 
 static int
-mlx5_crypto_dev_probe(struct rte_device *dev)
+mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 {
 	struct ibv_device *ibv;
 	struct rte_cryptodev *crypto_dev;
@@ -963,7 +963,7 @@ mlx5_crypto_dev_probe(struct rte_device *dev)
 	struct rte_cryptodev_pmd_init_params init_params = {
 		.name = "",
 		.private_data_size = sizeof(struct mlx5_crypto_priv),
-		.socket_id = dev->numa_node,
+		.socket_id = cdev->dev->numa_node,
 		.max_nb_queue_pairs =
 				RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS,
 	};
@@ -975,7 +975,7 @@ mlx5_crypto_dev_probe(struct rte_device *dev)
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	ibv = mlx5_os_get_ibv_dev(dev);
+	ibv = mlx5_os_get_ibv_dev(cdev->dev);
 	if (ibv == NULL)
 		return -rte_errno;
 	ctx = mlx5_glue->dv_open_device(ibv);
@@ -992,7 +992,7 @@ mlx5_crypto_dev_probe(struct rte_device *dev)
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
-	ret = mlx5_crypto_parse_devargs(dev->devargs, &devarg_prms);
+	ret = mlx5_crypto_parse_devargs(cdev->dev->devargs, &devarg_prms);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to parse devargs.");
 		claim_zero(mlx5_glue->close_device(ctx));
@@ -1005,8 +1005,8 @@ mlx5_crypto_dev_probe(struct rte_device *dev)
 		claim_zero(mlx5_glue->close_device(ctx));
 		return -rte_errno;
 	}
-	crypto_dev = rte_cryptodev_pmd_create(ibv->name, dev,
-					&init_params);
+	crypto_dev = rte_cryptodev_pmd_create(ibv->name, cdev->dev,
+					      &init_params);
 	if (crypto_dev == NULL) {
 		DRV_LOG(ERR, "Failed to create device \"%s\".", ibv->name);
 		claim_zero(mlx5_glue->close_device(ctx));
@@ -1065,13 +1065,13 @@ mlx5_crypto_dev_probe(struct rte_device *dev)
 }
 
 static int
-mlx5_crypto_dev_remove(struct rte_device *dev)
+mlx5_crypto_dev_remove(struct mlx5_common_device *cdev)
 {
 	struct mlx5_crypto_priv *priv = NULL;
 
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_FOREACH(priv, &mlx5_crypto_priv_list, next)
-		if (priv->crypto_dev->device == dev)
+		if (priv->crypto_dev->device == cdev->dev)
 			break;
 	if (priv)
 		TAILQ_REMOVE(&mlx5_crypto_priv_list, priv, next);

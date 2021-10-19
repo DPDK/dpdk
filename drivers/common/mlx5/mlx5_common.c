@@ -241,7 +241,7 @@ drivers_remove(struct mlx5_common_device *dev, uint32_t enabled_classes)
 	while (enabled_classes) {
 		driver = driver_get(RTE_BIT64(i));
 		if (driver != NULL) {
-			local_ret = driver->remove(dev->dev);
+			local_ret = driver->remove(dev);
 			if (local_ret == 0)
 				dev->classes_loaded &= ~RTE_BIT64(i);
 			else if (ret == 0)
@@ -275,7 +275,7 @@ drivers_probe(struct mlx5_common_device *dev, uint32_t user_classes)
 			ret = -EEXIST;
 			goto probe_err;
 		}
-		ret = driver->probe(dev->dev);
+		ret = driver->probe(dev);
 		if (ret < 0) {
 			DRV_LOG(ERR, "Failed to load driver %s",
 				driver->name);

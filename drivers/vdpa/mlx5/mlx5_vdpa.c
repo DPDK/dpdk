@@ -630,7 +630,7 @@ mlx5_vdpa_config_get(struct rte_devargs *devargs, struct mlx5_vdpa_priv *priv)
 }
 
 static int
-mlx5_vdpa_dev_probe(struct rte_device *dev)
+mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev)
 {
 	struct ibv_device *ibv;
 	struct mlx5_vdpa_priv *priv = NULL;
@@ -639,14 +639,14 @@ mlx5_vdpa_dev_probe(struct rte_device *dev)
 	int retry;
 	int ret;
 
-	if (mlx5_vdpa_roce_disable(dev) != 0) {
+	if (mlx5_vdpa_roce_disable(cdev->dev) != 0) {
 		DRV_LOG(WARNING, "Failed to disable ROCE for \"%s\".",
-			dev->name);
+			cdev->dev->name);
 		return -rte_errno;
 	}
 	/* Wait for the IB device to appear again after reload. */
 	for (retry = MLX5_VDPA_MAX_RETRIES; retry > 0; --retry) {
-		ibv = mlx5_os_get_ibv_dev(dev);
+		ibv = mlx5_os_get_ibv_dev(cdev->dev);
 		if (ibv != NULL)
 			break;
 		usleep(MLX5_VDPA_USEC);
@@ -654,7 +654,7 @@ mlx5_vdpa_dev_probe(struct rte_device *dev)
 	if (ibv == NULL) {
 		DRV_LOG(ERR, "Cannot get IB device after disabling RoCE for "
 				"\"%s\", retries exceed %d.",
-				dev->name, MLX5_VDPA_MAX_RETRIES);
+				cdev->dev->name, MLX5_VDPA_MAX_RETRIES);
 		rte_errno = EAGAIN;
 		return -rte_errno;
 	}
@@ -698,13 +698,13 @@ mlx5_vdpa_dev_probe(struct rte_device *dev)
 		DRV_LOG(ERR, "Failed to allocate VAR %u.", errno);
 		goto error;
 	}
-	priv->vdev = rte_vdpa_register_device(dev, &mlx5_vdpa_ops);
+	priv->vdev = rte_vdpa_register_device(cdev->dev, &mlx5_vdpa_ops);
 	if (priv->vdev == NULL) {
 		DRV_LOG(ERR, "Failed to register vDPA device.");
 		rte_errno = rte_errno ? rte_errno : EINVAL;
 		goto error;
 	}
-	mlx5_vdpa_config_get(dev->devargs, priv);
+	mlx5_vdpa_config_get(cdev->dev->devargs, priv);
 	SLIST_INIT(&priv->mr_list);
 	pthread_mutex_init(&priv->vq_config_lock, NULL);
 	pthread_mutex_lock(&priv_list_lock);
@@ -724,14 +724,14 @@ error:
 }
 
 static int
-mlx5_vdpa_dev_remove(struct rte_device *dev)
+mlx5_vdpa_dev_remove(struct mlx5_common_device *cdev)
 {
 	struct mlx5_vdpa_priv *priv = NULL;
 	int found = 0;
 
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_FOREACH(priv, &priv_list, next) {
-		if (priv->vdev->device == dev) {
+		if (priv->vdev->device == cdev->dev) {
 			found = 1;
 			break;
 		}

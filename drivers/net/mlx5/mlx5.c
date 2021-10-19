@@ -1309,7 +1309,8 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		rte_errno  = ENOMEM;
 		goto exit;
 	}
-	sh->numa_node = spawn->numa_node;
+	sh->numa_node = spawn->cdev->dev->numa_node;
+	sh->cdev = spawn->cdev;
 	if (spawn->bond_info)
 		sh->bond = *spawn->bond_info;
 	err = mlx5_os_open_device(spawn, config, sh);
@@ -2556,19 +2557,19 @@ mlx5_eth_find_next(uint16_t port_id, struct rte_device *odev)
  *
  * This function removes all Ethernet devices belong to a given device.
  *
- * @param[in] dev
+ * @param[in] cdev
  *   Pointer to the generic device.
  *
  * @return
  *   0 on success, the function cannot fail.
  */
 int
-mlx5_net_remove(struct rte_device *dev)
+mlx5_net_remove(struct mlx5_common_device *cdev)
 {
 	uint16_t port_id;
 	int ret = 0;
 
-	RTE_ETH_FOREACH_DEV_OF(port_id, dev) {
+	RTE_ETH_FOREACH_DEV_OF(port_id, cdev->dev) {
 		/*
 		 * mlx5_dev_close() is not registered to secondary process,
 		 * call the close function explicitly for secondary process.
