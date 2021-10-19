@@ -122,8 +122,21 @@ error:
 static int
 mlx5_init_once(void)
 {
+	struct mlx5_shared_data *sd;
+
 	if (mlx5_init_shared_data())
 		return -rte_errno;
+	sd = mlx5_shared_data;
+	rte_spinlock_lock(&sd->lock);
+	MLX5_ASSERT(sd);
+	if (!sd->init_done) {
+		LIST_INIT(&sd->mem_event_cb_list);
+		rte_rwlock_init(&sd->mem_event_rwlock);
+		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
+						mlx5_mr_mem_event_cb, NULL);
+		sd->init_done = true;
+	}
+	rte_spinlock_unlock(&sd->lock);
 	return 0;
 }
 
