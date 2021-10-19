@@ -18,10 +18,7 @@
 
 #include "mlx5_glue.h"
 #include "mlx5_common_mp.h"
-
-/* Size of per-queue MR cache array for linear search. */
-#define MLX5_MR_CACHE_N 8
-#define MLX5_MR_BTREE_CACHE_N 256
+#include "mlx5_common_defs.h"
 
 /* mlx5 PMD MR struct. */
 struct mlx5_pmd_mr {

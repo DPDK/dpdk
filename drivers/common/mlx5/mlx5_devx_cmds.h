@@ -5,18 +5,10 @@
 #ifndef RTE_PMD_MLX5_DEVX_CMDS_H_
 #define RTE_PMD_MLX5_DEVX_CMDS_H_
 
-#include "mlx5_glue.h"
-#include "mlx5_prm.h"
 #include <rte_compat.h>
 
-/*
- * Defines the amount of retries to allocate the first UAR in the page.
- * OFED 5.0.x and Upstream rdma_core before v29 returned the NULL as
- * UAR base address if UAR was not the first object in the UAR page.
- * It caused the PMD failure and we should try to get another UAR
- * till we get the first one with non-NULL base address returned.
- */
-#define MLX5_ALLOC_UAR_RETRY 32
+#include "mlx5_glue.h"
+#include "mlx5_prm.h"
 
 /* This is limitation of libibverbs: in length variable type is u16. */
 #define MLX5_DEVX_MAX_KLM_ENTRIES ((UINT16_MAX - \

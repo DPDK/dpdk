@@ -27,6 +27,7 @@
 #include <mlx5_common_mp.h>
 #include <mlx5_common_mr.h>
 #include <mlx5_common_devx.h>
+#include <mlx5_common_defs.h>
 
 #include "mlx5_defs.h"
 #include "mlx5_utils.h"
@@ -213,9 +214,6 @@ struct mlx5_stats_ctrl {
 	uint64_t imissed_base;
 	uint64_t imissed;
 };
-
-/* Default PMD specific parameter value. */
-#define MLX5_ARG_UNSET (-1)
 
 #define MLX5_LRO_SUPPORTED(dev) \
 	(((struct mlx5_priv *)((dev)->data->dev_private))->config.lro.supported)

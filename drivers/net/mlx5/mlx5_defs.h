@@ -9,6 +9,8 @@
 #include <ethdev_driver.h>
 #include <rte_vxlan.h>
 
+#include <mlx5_common_defs.h>
+
 #include "mlx5_autoconf.h"
 
 /* Maximum number of simultaneous VLAN filters. */
@@ -32,13 +34,6 @@
  * processed in one call of tx_burst() routine.
  */
 #define MLX5_TX_COMP_MAX_CQE 2u
-
-
-/* Size of per-queue MR cache array for linear search. */
-#define MLX5_MR_CACHE_N 8
-
-/* Size of MR cache table for binary search. */
-#define MLX5_MR_BTREE_CACHE_N 256
 
 /*
  * If defined, only use software counters. The PMD will never ask the hardware
@@ -121,14 +116,6 @@
 #define MLX5_UAR_MMAP_CMD_SHIFT 8
 #define MLX5_UAR_MMAP_CMD_MASK 0xff
 
-/* Environment variable to control the doorbell register mapping. */
-#define MLX5_SHUT_UP_BF "MLX5_SHUT_UP_BF"
-#if defined(RTE_ARCH_ARM64)
-#define MLX5_SHUT_UP_BF_DEFAULT "0"
-#else
-#define MLX5_SHUT_UP_BF_DEFAULT "1"
-#endif
-
 #ifndef HAVE_MLX5DV_MMAP_GET_NC_PAGES_CMD
 #define MLX5_MMAP_GET_NC_PAGES_CMD 3
 #endif
@@ -160,11 +147,6 @@
 #define MLX5_XMETA_MODE_META32 2
 /* Provide info on patrial hw miss. Implies MLX5_XMETA_MODE_META16 */
 #define MLX5_XMETA_MODE_MISS_INFO 3
-
-/* MLX5_TX_DB_NC supported values. */
-#define MLX5_TXDB_CACHED 0
-#define MLX5_TXDB_NCACHED 1
-#define MLX5_TXDB_HEURISTIC 2
 
 /* Tx accurate scheduling on timestamps parameters. */
 #define MLX5_TXPP_WAIT_INIT_TS 1000ul /* How long to wait timestamp. */
