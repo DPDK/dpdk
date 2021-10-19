@@ -19,6 +19,7 @@
 #include <rte_pci.h>
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
+#include <rte_telemetry.h>
 
 #include "roc_bits.h"
 
@@ -51,6 +52,7 @@
 #define PLT_CACHE_LINE_SIZE      RTE_CACHE_LINE_SIZE
 #define BITMASK_ULL		 GENMASK_ULL
 #define PLT_ALIGN_CEIL		 RTE_ALIGN_CEIL
+#define PLT_INIT		 RTE_INIT
 
 /** Divide ceil */
 #define PLT_DIV_CEIL(x, y)			\
@@ -63,6 +65,7 @@
 #define __plt_cache_aligned __rte_cache_aligned
 #define __plt_always_inline __rte_always_inline
 #define __plt_packed	    __rte_packed
+#define __plt_unused	    __rte_unused
 #define __roc_api	    __rte_internal
 #define plt_iova_t	    rte_iova_t
 
@@ -141,6 +144,18 @@
 #define plt_lcore_id rte_lcore_id
 
 #define plt_strlcpy rte_strlcpy
+
+#define PLT_TEL_INT_VAL              RTE_TEL_INT_VAL
+#define plt_tel_data                 rte_tel_data
+#define plt_tel_data_start_array     rte_tel_data_start_array
+#define plt_tel_data_add_array_int   rte_tel_data_add_array_int
+#define plt_tel_data_start_dict      rte_tel_data_start_dict
+#define plt_tel_data_add_dict_int    rte_tel_data_add_dict_int
+#define plt_tel_data_add_dict_ptr(d, n, v)			\
+	rte_tel_data_add_dict_u64(d, n, (uint64_t)v)
+#define plt_tel_data_add_dict_string rte_tel_data_add_dict_string
+#define plt_tel_data_add_dict_u64    rte_tel_data_add_dict_u64
+#define plt_telemetry_register_cmd   rte_telemetry_register_cmd
 
 /* Log */
 extern int cnxk_logtype_base;
