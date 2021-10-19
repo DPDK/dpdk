@@ -15,6 +15,7 @@
 #include <rte_flow_driver.h>
 #include <rte_malloc.h>
 #include <rte_cycles.h>
+#include <rte_bus_pci.h>
 #include <rte_ip.h>
 #include <rte_gre.h>
 #include <rte_vxlan.h>
@@ -91,6 +92,23 @@ flow_dv_shared_rss_action_release(struct rte_eth_dev *dev, uint32_t srss);
 static int
 flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 				  uint32_t rix_jump);
+
+static int16_t
+flow_dv_get_esw_manager_vport_id(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->pci_dev == NULL)
+		return 0;
+	switch (priv->pci_dev->id.device_id) {
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX6DXBF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX7BF:
+		return (int16_t)0xfffe;
+	default:
+		return 0;
+	}
+}
 
 /**
  * Initialize flow attributes structure according to flow items' types.
@@ -2183,6 +2201,8 @@ flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
 	if (ret)
 		return ret;
 	if (!spec)
+		return 0;
+	if (spec->id == MLX5_PORT_ESW_MGR)
 		return 0;
 	esw_priv = mlx5_port_to_eswitch_info(spec->id, false);
 	if (!esw_priv)
@@ -9575,6 +9595,11 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
 	struct mlx5_priv *priv;
 	uint16_t mask, id;
 
+	if (pid_v && pid_v->id == MLX5_PORT_ESW_MGR) {
+		flow_dv_translate_item_source_vport(matcher, key,
+			flow_dv_get_esw_manager_vport_id(dev), 0xffff);
+		return 0;
+	}
 	mask = pid_m ? pid_m->id : 0xffff;
 	id = pid_v ? pid_v->id : dev->data->port_id;
 	priv = mlx5_port_to_eswitch_info(id, item == NULL);
