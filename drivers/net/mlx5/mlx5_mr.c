@@ -84,7 +84,7 @@ mlx5_tx_addr2mr_bh(struct mlx5_txq_data *txq, uintptr_t addr)
 	struct mlx5_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
 	struct mlx5_priv *priv = txq_ctrl->priv;
 
-	return mlx5_mr_addr2mr_bh(priv->sh->pd, &priv->mp_id,
+	return mlx5_mr_addr2mr_bh(priv->sh->cdev->pd, &priv->mp_id,
 				  &priv->sh->share_cache, mr_ctrl, addr,
 				  priv->sh->cdev->config.mr_ext_memseg_en);
 }
@@ -180,7 +180,7 @@ mlx5_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 		return;
 	DRV_LOG(DEBUG, "port %u register MR for chunk #%d of mempool (%s)",
 		dev->data->port_id, mem_idx, mp->name);
-	mr = mlx5_create_mr_ext(sh->pd, addr, len, mp->socket_id,
+	mr = mlx5_create_mr_ext(sh->cdev->pd, addr, len, mp->socket_id,
 				sh->share_cache.reg_mr_cb);
 	if (!mr) {
 		DRV_LOG(WARNING,
@@ -196,8 +196,8 @@ mlx5_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 	mlx5_mr_insert_cache(&sh->share_cache, mr);
 	rte_rwlock_write_unlock(&sh->share_cache.rwlock);
 	/* Insert to the local cache table */
-	mlx5_mr_addr2mr_bh(sh->pd, &priv->mp_id, &sh->share_cache, mr_ctrl,
-			   addr, priv->sh->cdev->config.mr_ext_memseg_en);
+	mlx5_mr_addr2mr_bh(sh->cdev->pd, &priv->mp_id, &sh->share_cache,
+			   mr_ctrl, addr, sh->cdev->config.mr_ext_memseg_en);
 }
 
 /**
@@ -256,8 +256,8 @@ mlx5_net_dma_map(struct rte_device *rte_dev, void *addr,
 	}
 	priv = dev->data->dev_private;
 	sh = priv->sh;
-	mr = mlx5_create_mr_ext(sh->pd, (uintptr_t)addr, len, SOCKET_ID_ANY,
-				sh->share_cache.reg_mr_cb);
+	mr = mlx5_create_mr_ext(sh->cdev->pd, (uintptr_t)addr, len,
+				SOCKET_ID_ANY, sh->share_cache.reg_mr_cb);
 	if (!mr) {
 		DRV_LOG(WARNING,
 			"port %u unable to dma map", dev->data->port_id);

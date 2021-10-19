@@ -1133,8 +1133,6 @@ struct mlx5_dev_ctx_shared {
 	uint32_t max_port; /* Maximal IB device port index. */
 	struct mlx5_bond_info bond; /* Bonding information. */
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
-	void *pd; /* Protection Domain. */
-	uint32_t pdn; /* Protection Domain number. */
 	uint32_t tdn; /* Transport Domain number. */
 	char ibdev_name[MLX5_FS_NAME_MAX]; /* SYSFS dev name. */
 	char ibdev_path[MLX5_FS_PATH_MAX]; /* SYSFS dev path for secondary */
@@ -1760,7 +1758,6 @@ void mlx5_flow_meter_rxq_flush(struct rte_eth_dev *dev);
 struct rte_pci_driver;
 int mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *dev_attr);
 void mlx5_os_free_shared_dr(struct mlx5_priv *priv);
-int mlx5_os_get_pdn(void *pd, uint32_t *pdn);
 int mlx5_os_net_probe(struct mlx5_common_device *cdev);
 void mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh);
 void mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh);

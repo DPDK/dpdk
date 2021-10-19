@@ -248,9 +248,6 @@ mlx5_os_devx_subscribe_devx_event(void *eventc,
 	return -ENOTSUP;
 }
 
-__rte_internal
-void *mlx5_os_alloc_pd(void *ctx);
-__rte_internal
 int mlx5_os_dealloc_pd(void *pd);
 __rte_internal
 void *mlx5_os_umem_reg(void *ctx, void *addr, size_t size, uint32_t access);

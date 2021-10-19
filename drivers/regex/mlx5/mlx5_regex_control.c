@@ -138,21 +138,17 @@ regex_ctrl_create_hw_qp(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 	struct mlx5_devx_qp_attr attr = {
 		.cqn = qp->cq.cq_obj.cq->id,
 		.uar_index = priv->uar->page_id,
+		.pd = priv->cdev->pdn,
 		.ts_format = mlx5_ts_format_conv(priv->qp_ts_format),
 		.user_index = q_ind,
 	};
 	struct mlx5_regex_hw_qp *qp_obj = &qp->qps[q_ind];
-	uint32_t pd_num = 0;
 	int ret;
 
 	qp_obj->log_nb_desc = log_nb_desc;
 	qp_obj->qpn = q_ind;
 	qp_obj->ci = 0;
 	qp_obj->pi = 0;
-	ret = regex_get_pdn(priv->pd, &pd_num);
-	if (ret)
-		return ret;
-	attr.pd = pd_num;
 	attr.rq_size = 0;
 	attr.sq_size = RTE_BIT32(MLX5_REGEX_WQE_LOG_NUM(priv->has_umr,
 			log_nb_desc));

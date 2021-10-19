@@ -187,12 +187,6 @@ mlx5_regex_dev_probe(struct mlx5_common_device *cdev)
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	priv->pd = mlx5_glue->alloc_pd(priv->cdev->ctx);
-	if (!priv->pd) {
-		DRV_LOG(ERR, "can't allocate pd.");
-		rte_errno = ENOMEM;
-		goto error;
-	}
 	priv->regexdev->dev_ops = &mlx5_regexdev_ops;
 	priv->regexdev->enqueue = mlx5_regexdev_enqueue;
 #ifdef HAVE_MLX5_UMR_IMKEY
@@ -230,8 +224,6 @@ mlx5_regex_dev_probe(struct mlx5_common_device *cdev)
 	return 0;
 
 error:
-	if (priv->pd)
-		mlx5_glue->dealloc_pd(priv->pd);
 	if (priv->uar)
 		mlx5_glue->devx_free_uar(priv->uar);
 	if (priv->regexdev)
@@ -264,8 +256,6 @@ mlx5_regex_dev_remove(struct mlx5_common_device *cdev)
 							  NULL);
 		if (priv->mr_scache.cache.table)
 			mlx5_mr_release_cache(&priv->mr_scache);
-		if (priv->pd)
-			mlx5_glue->dealloc_pd(priv->pd);
 		if (priv->uar)
 			mlx5_glue->devx_free_uar(priv->uar);
 		if (priv->regexdev)

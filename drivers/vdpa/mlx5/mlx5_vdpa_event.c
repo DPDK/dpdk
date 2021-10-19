@@ -593,7 +593,7 @@ mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 		return -1;
 	if (mlx5_vdpa_cq_create(priv, log_desc_n, callfd, &eqp->cq))
 		return -1;
-	attr.pd = priv->pdn;
+	attr.pd = priv->cdev->pdn;
 	attr.ts_format = mlx5_ts_format_conv(priv->qp_ts_format);
 	eqp->fw_qp = mlx5_devx_cmd_create_qp(priv->cdev->ctx, &attr);
 	if (!eqp->fw_qp) {

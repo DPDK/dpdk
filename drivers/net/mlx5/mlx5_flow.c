@@ -7662,7 +7662,7 @@ mlx5_flow_create_counter_stat_mem_mng(struct mlx5_dev_ctx_shared *sh)
 	mkey_attr.addr = (uintptr_t)mem;
 	mkey_attr.size = size;
 	mkey_attr.umem_id = mlx5_os_get_umem_id(mem_mng->umem);
-	mkey_attr.pd = sh->pdn;
+	mkey_attr.pd = sh->cdev->pdn;
 	mkey_attr.relaxed_ordering_write = sh->cmng.relaxed_ordering_write;
 	mkey_attr.relaxed_ordering_read = sh->cmng.relaxed_ordering_read;
 	mem_mng->dm = mlx5_devx_cmd_mkey_create(sh->cdev->ctx, &mkey_attr);

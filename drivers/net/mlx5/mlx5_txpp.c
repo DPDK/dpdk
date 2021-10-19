@@ -232,7 +232,7 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 		.tis_lst_sz = 1,
 		.tis_num = sh->tis->id,
 		.wq_attr = (struct mlx5_devx_wq_attr){
-			.pd = sh->pdn,
+			.pd = sh->cdev->pdn,
 			.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar),
 		},
 		.ts_format = mlx5_ts_format_conv(sh->sq_ts_format),
@@ -444,7 +444,7 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	sq_attr.packet_pacing_rate_limit_index = sh->txpp.pp_id;
 	sq_attr.wq_attr.cd_slave = 1;
 	sq_attr.wq_attr.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar);
-	sq_attr.wq_attr.pd = sh->pdn;
+	sq_attr.wq_attr.pd = sh->cdev->pdn;
 	sq_attr.ts_format = mlx5_ts_format_conv(sh->sq_ts_format);
 	ret = mlx5_devx_sq_create(sh->cdev->ctx, &wq->sq_obj,
 				  log2above(wq->sq_size),

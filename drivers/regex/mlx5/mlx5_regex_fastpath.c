@@ -138,8 +138,8 @@ mlx5_regex_addr2mr(struct mlx5_regex_priv *priv, struct mlx5_mr_ctrl *mr_ctrl,
 	if (likely(lkey != UINT32_MAX))
 		return lkey;
 	/* Take slower bottom-half on miss. */
-	return mlx5_mr_addr2mr_bh(priv->pd, 0, &priv->mr_scache, mr_ctrl, addr,
-				  !!(mbuf->ol_flags & EXT_ATTACHED_MBUF));
+	return mlx5_mr_addr2mr_bh(priv->cdev->pd, 0, &priv->mr_scache, mr_ctrl,
+				  addr, !!(mbuf->ol_flags & EXT_ATTACHED_MBUF));
 }
 
 
@@ -639,7 +639,7 @@ setup_qps(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *queue)
 static int
 setup_buffers(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp)
 {
-	struct ibv_pd *pd = priv->pd;
+	struct ibv_pd *pd = priv->cdev->pd;
 	uint32_t i;
 	int err;
 
@@ -746,12 +746,7 @@ mlx5_regexdev_setup_fastpath(struct mlx5_regex_priv *priv, uint32_t qp_id)
 
 	if (priv->has_umr) {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-		if (regex_get_pdn(priv->pd, &attr.pd)) {
-			err = -rte_errno;
-			DRV_LOG(ERR, "Failed to get pdn.");
-			mlx5_regexdev_teardown_fastpath(priv, qp_id);
-			return err;
-		}
+		attr.pd = priv->cdev->pdn;
 #endif
 		for (i = 0; i < qp->nb_desc; i++) {
 			attr.klm_num = MLX5_REGEX_MAX_KLM_NUM;

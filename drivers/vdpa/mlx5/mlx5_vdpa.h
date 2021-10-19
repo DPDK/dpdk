@@ -131,8 +131,6 @@ struct mlx5_vdpa_priv {
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
 	int vid; /* vhost device id. */
 	struct mlx5_hca_vdpa_attr caps;
-	uint32_t pdn; /* Protection Domain number. */
-	struct ibv_pd *pd;
 	uint32_t gpa_mkey_index;
 	struct ibv_mr *null_mr;
 	struct rte_vhost_memory *vmem;

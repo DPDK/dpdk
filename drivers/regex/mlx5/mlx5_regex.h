@@ -68,7 +68,6 @@ struct mlx5_regex_priv {
 				MLX5_RXP_EM_COUNT];
 	uint32_t nb_engines; /* Number of RegEx engines. */
 	struct mlx5dv_devx_uar *uar; /* UAR object. */
-	struct ibv_pd *pd;
 	TAILQ_ENTRY(mlx5_regex_priv) mem_event_cb;
 	/**< Called by memory event callback. */
 	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
@@ -78,26 +77,6 @@ struct mlx5_regex_priv {
 	uint32_t mmo_regex_qp_cap:1;
 	uint32_t mmo_regex_sq_cap:1;
 };
-
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-static inline int
-regex_get_pdn(void *pd, uint32_t *pdn)
-{
-	struct mlx5dv_obj obj;
-	struct mlx5dv_pd pd_info;
-	int ret = 0;
-
-	obj.pd.in = pd;
-	obj.pd.out = &pd_info;
-	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_PD);
-	if (ret) {
-		DRV_LOG(DEBUG, "Fail to get PD object info");
-		return ret;
-	}
-	*pdn = pd_info.pdn;
-	return 0;
-}
-#endif
 
 /* mlx5_regex.c */
 int mlx5_regex_start(struct rte_regexdev *dev);

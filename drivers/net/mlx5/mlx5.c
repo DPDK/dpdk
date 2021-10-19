@@ -1139,7 +1139,7 @@ mlx5_dev_ctx_shared_mempool_unregister(struct mlx5_dev_ctx_shared *sh,
 	mlx5_mp_id_init(&mp_id, 0);
 	if (mlx5_mr_mempool_unregister(&sh->share_cache, mp, &mp_id) < 0)
 		DRV_LOG(WARNING, "Failed to unregister mempool %s for PD %p: %s",
-			mp->name, sh->pd, rte_strerror(rte_errno));
+			mp->name, sh->cdev->pd, rte_strerror(rte_errno));
 }
 
 /**
@@ -1159,10 +1159,11 @@ mlx5_dev_ctx_shared_mempool_register_cb(struct rte_mempool *mp, void *arg)
 	int ret;
 
 	mlx5_mp_id_init(&mp_id, 0);
-	ret = mlx5_mr_mempool_register(&sh->share_cache, sh->pd, mp, &mp_id);
+	ret = mlx5_mr_mempool_register(&sh->share_cache, sh->cdev->pd, mp,
+				       &mp_id);
 	if (ret < 0 && rte_errno != EEXIST)
 		DRV_LOG(ERR, "Failed to register existing mempool %s for PD %p: %s",
-			mp->name, sh->pd, rte_strerror(rte_errno));
+			mp->name, sh->cdev->pd, rte_strerror(rte_errno));
 }
 
 /**
@@ -1201,10 +1202,11 @@ mlx5_dev_ctx_shared_mempool_event_cb(enum rte_mempool_event event,
 	switch (event) {
 	case RTE_MEMPOOL_EVENT_READY:
 		mlx5_mp_id_init(&mp_id, 0);
-		if (mlx5_mr_mempool_register(&sh->share_cache, sh->pd, mp,
+		if (mlx5_mr_mempool_register(&sh->share_cache, sh->cdev->pd, mp,
 					     &mp_id) < 0)
 			DRV_LOG(ERR, "Failed to register new mempool %s for PD %p: %s",
-				mp->name, sh->pd, rte_strerror(rte_errno));
+				mp->name, sh->cdev->pd,
+				rte_strerror(rte_errno));
 		break;
 	case RTE_MEMPOOL_EVENT_DESTROY:
 		mlx5_dev_ctx_shared_mempool_unregister(sh, mp);
@@ -1336,18 +1338,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		sh->port[i].ih_port_id = RTE_MAX_ETHPORTS;
 		sh->port[i].devx_ih_port_id = RTE_MAX_ETHPORTS;
 	}
-	sh->pd = mlx5_os_alloc_pd(sh->cdev->ctx);
-	if (sh->pd == NULL) {
-		DRV_LOG(ERR, "PD allocation failure");
-		err = ENOMEM;
-		goto error;
-	}
 	if (sh->devx) {
-		err = mlx5_os_get_pdn(sh->pd, &sh->pdn);
-		if (err) {
-			DRV_LOG(ERR, "Fail to extract pdn from PD");
-			goto error;
-		}
 		sh->td = mlx5_devx_cmd_create_td(sh->cdev->ctx);
 		if (!sh->td) {
 			DRV_LOG(ERR, "TD allocation failure");
@@ -1428,8 +1419,6 @@ error:
 		mlx5_glue->devx_free_uar(sh->devx_rx_uar);
 	if (sh->tx_uar)
 		mlx5_glue->devx_free_uar(sh->tx_uar);
-	if (sh->pd)
-		claim_zero(mlx5_os_dealloc_pd(sh->pd));
 	mlx5_free(sh);
 	MLX5_ASSERT(err > 0);
 	rte_errno = err;
@@ -1506,8 +1495,6 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		mlx5_glue->devx_free_uar(sh->tx_uar);
 		sh->tx_uar = NULL;
 	}
-	if (sh->pd)
-		claim_zero(mlx5_os_dealloc_pd(sh->pd));
 	if (sh->tis)
 		claim_zero(mlx5_devx_cmd_destroy(sh->tis));
 	if (sh->td)

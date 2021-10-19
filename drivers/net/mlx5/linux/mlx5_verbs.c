@@ -289,7 +289,7 @@ mlx5_rxq_ibv_wq_create(struct rte_eth_dev *dev, uint16_t idx)
 		.max_wr = wqe_n >> rxq_data->sges_n,
 		/* Max number of scatter/gather elements in a WR. */
 		.max_sge = 1 << rxq_data->sges_n,
-		.pd = priv->sh->pd,
+		.pd = priv->sh->cdev->pd,
 		.cq = rxq_obj->ibv_cq,
 		.comp_mask = IBV_WQ_FLAGS_CVLAN_STRIPPING | 0,
 		.create_flags = (rxq_data->vlan_strip ?
@@ -627,7 +627,7 @@ mlx5_ibv_hrxq_new(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 					.rx_hash_fields_mask = hash_fields,
 				},
 				.rwq_ind_tbl = ind_tbl->ind_table,
-				.pd = priv->sh->pd,
+				.pd = priv->sh->cdev->pd,
 			  },
 			  &qp_init_attr);
 #else
@@ -648,7 +648,7 @@ mlx5_ibv_hrxq_new(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 					.rx_hash_fields_mask = hash_fields,
 				},
 				.rwq_ind_tbl = ind_tbl->ind_table,
-				.pd = priv->sh->pd,
+				.pd = priv->sh->cdev->pd,
 			 });
 #endif
 	if (!qp) {
@@ -741,7 +741,7 @@ mlx5_rxq_ibv_obj_drop_create(struct rte_eth_dev *dev)
 						    .wq_type = IBV_WQT_RQ,
 						    .max_wr = 1,
 						    .max_sge = 1,
-						    .pd = priv->sh->pd,
+						    .pd = priv->sh->cdev->pd,
 						    .cq = rxq->ibv_cq,
 					      });
 	if (!rxq->wq) {
@@ -807,7 +807,7 @@ mlx5_ibv_drop_action_create(struct rte_eth_dev *dev)
 				.rx_hash_fields_mask = 0,
 				},
 			.rwq_ind_tbl = ind_tbl,
-			.pd = priv->sh->pd
+			.pd = priv->sh->cdev->pd
 		 });
 	if (!hrxq->qp) {
 		DRV_LOG(DEBUG, "Port %u cannot allocate QP for drop queue.",
@@ -895,7 +895,7 @@ mlx5_txq_ibv_qp_create(struct rte_eth_dev *dev, uint16_t idx)
 	qp_attr.qp_type = IBV_QPT_RAW_PACKET,
 	/* Do *NOT* enable this, completions events are managed per Tx burst. */
 	qp_attr.sq_sig_all = 0;
-	qp_attr.pd = priv->sh->pd;
+	qp_attr.pd = priv->sh->cdev->pd;
 	qp_attr.comp_mask = IBV_QP_INIT_ATTR_PD;
 	if (txq_data->inlen_send)
 		qp_attr.cap.max_inline_data = txq_ctrl->max_inline_data;
@@ -1117,7 +1117,7 @@ mlx5_rxq_ibv_obj_dummy_lb_create(struct rte_eth_dev *dev)
 				&(struct ibv_qp_init_attr_ex){
 					.qp_type = IBV_QPT_RAW_PACKET,
 					.comp_mask = IBV_QP_INIT_ATTR_PD,
-					.pd = sh->pd,
+					.pd = sh->cdev->pd,
 					.send_cq = sh->self_lb.ibv_cq,
 					.recv_cq = sh->self_lb.ibv_cq,
 					.cap.max_recv_wr = 1,

@@ -346,6 +346,8 @@ struct mlx5_common_device {
 	TAILQ_ENTRY(mlx5_common_device) next;
 	uint32_t classes_loaded;
 	void *ctx; /* Verbs/DV/DevX context. */
+	void *pd; /* Protection Domain. */
+	uint32_t pdn; /* Protection Domain Number. */
 	struct mlx5_common_dev_config config; /* Device configuration. */
 };
 
@@ -447,5 +449,6 @@ mlx5_dev_is_pci(const struct rte_device *dev);
 /* mlx5_common_os.c */
 
 int mlx5_os_open_device(struct mlx5_common_device *cdev, uint32_t classes);
+int mlx5_os_pd_create(struct mlx5_common_device *cdev);
 
 #endif /* RTE_PMD_MLX5_COMMON_H_ */

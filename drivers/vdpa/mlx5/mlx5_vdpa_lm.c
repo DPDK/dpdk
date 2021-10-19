@@ -39,7 +39,7 @@ mlx5_vdpa_dirty_bitmap_set(struct mlx5_vdpa_priv *priv, uint64_t log_base,
 	struct mlx5_devx_mkey_attr mkey_attr = {
 			.addr = (uintptr_t)log_base,
 			.size = log_size,
-			.pd = priv->pdn,
+			.pd = priv->cdev->pdn,
 			.pg_access = 1,
 	};
 	struct mlx5_devx_virtq_attr attr = {

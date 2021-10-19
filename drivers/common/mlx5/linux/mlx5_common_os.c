@@ -406,6 +406,49 @@ glue_error:
 	mlx5_glue = NULL;
 }
 
+/**
+ * Allocate Protection Domain object and extract its pdn using DV API.
+ *
+ * @param[out] cdev
+ *   Pointer to the mlx5 device.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_os_pd_create(struct mlx5_common_device *cdev)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	struct mlx5dv_obj obj;
+	struct mlx5dv_pd pd_info;
+	int ret;
+#endif
+
+	cdev->pd = mlx5_glue->alloc_pd(cdev->ctx);
+	if (cdev->pd == NULL) {
+		DRV_LOG(ERR, "Failed to allocate PD.");
+		return errno ? -errno : -ENOMEM;
+	}
+	if (cdev->config.devx == 0)
+		return 0;
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	obj.pd.in = cdev->pd;
+	obj.pd.out = &pd_info;
+	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_PD);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Fail to get PD object info.");
+		mlx5_glue->dealloc_pd(cdev->pd);
+		cdev->pd = NULL;
+		return -errno;
+	}
+	cdev->pdn = pd_info.pdn;
+	return 0;
+#else
+	DRV_LOG(ERR, "Cannot get pdn - no DV support.");
+	return -ENOTSUP;
+#endif /* HAVE_IBV_FLOW_DV_SUPPORT */
+}
+
 static struct ibv_device *
 mlx5_os_get_ibv_device(const struct rte_pci_addr *addr)
 {

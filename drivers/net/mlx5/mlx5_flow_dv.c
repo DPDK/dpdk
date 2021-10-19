@@ -6357,12 +6357,10 @@ flow_dv_mtr_container_resize(struct rte_eth_dev *dev)
  *   NULL otherwise and rte_errno is set.
  */
 static struct mlx5_aso_mtr_pool *
-flow_dv_mtr_pool_create(struct rte_eth_dev *dev,
-			     struct mlx5_aso_mtr **mtr_free)
+flow_dv_mtr_pool_create(struct rte_eth_dev *dev, struct mlx5_aso_mtr **mtr_free)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_aso_mtr_pools_mng *pools_mng =
-				&priv->sh->mtrmng->pools_mng;
+	struct mlx5_aso_mtr_pools_mng *pools_mng = &priv->sh->mtrmng->pools_mng;
 	struct mlx5_aso_mtr_pool *pool = NULL;
 	struct mlx5_devx_obj *dcs = NULL;
 	uint32_t i;
@@ -6370,7 +6368,8 @@ flow_dv_mtr_pool_create(struct rte_eth_dev *dev,
 
 	log_obj_size = rte_log2_u32(MLX5_ASO_MTRS_PER_POOL >> 1);
 	dcs = mlx5_devx_cmd_create_flow_meter_aso_obj(priv->sh->cdev->ctx,
-			priv->sh->pdn, log_obj_size);
+						      priv->sh->cdev->pdn,
+						      log_obj_size);
 	if (!dcs) {
 		rte_errno = ENODATA;
 		return NULL;
@@ -6392,8 +6391,7 @@ flow_dv_mtr_pool_create(struct rte_eth_dev *dev,
 	pools_mng->n_valid++;
 	for (i = 1; i < MLX5_ASO_MTRS_PER_POOL; ++i) {
 		pool->mtrs[i].offset = i;
-		LIST_INSERT_HEAD(&pools_mng->meters,
-						&pool->mtrs[i], next);
+		LIST_INSERT_HEAD(&pools_mng->meters, &pool->mtrs[i], next);
 	}
 	pool->mtrs[0].offset = 0;
 	*mtr_free = &pool->mtrs[0];
@@ -11866,7 +11864,7 @@ flow_dv_age_pool_create(struct rte_eth_dev *dev,
 	uint32_t i;
 
 	obj = mlx5_devx_cmd_create_flow_hit_aso_obj(priv->sh->cdev->ctx,
-						    priv->sh->pdn);
+						    priv->sh->cdev->pdn);
 	if (!obj) {
 		rte_errno = ENODATA;
 		DRV_LOG(ERR, "Failed to create flow_hit_aso_obj using DevX.");
@@ -12294,7 +12292,8 @@ flow_dv_ct_pool_create(struct rte_eth_dev *dev,
 	uint32_t log_obj_size = rte_log2_u32(MLX5_ASO_CT_ACTIONS_PER_POOL);
 
 	obj = mlx5_devx_cmd_create_conn_track_offload_obj(priv->sh->cdev->ctx,
-						priv->sh->pdn, log_obj_size);
+							  priv->sh->cdev->pdn,
+							  log_obj_size);
 	if (!obj) {
 		rte_errno = ENODATA;
 		DRV_LOG(ERR, "Failed to create conn_track_offload_obj using DevX.");

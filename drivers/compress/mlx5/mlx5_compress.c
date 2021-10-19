@@ -38,11 +38,9 @@ struct mlx5_compress_priv {
 	struct rte_compressdev *compressdev;
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
 	void *uar;
-	uint32_t pdn; /* Protection Domain number. */
 	uint8_t min_block_size;
 	uint8_t qp_ts_format; /* Whether SQ supports timestamp formats. */
 	/* Minimum huffman block size supported by the device. */
-	struct ibv_pd *pd;
 	struct rte_compressdev_config dev_config;
 	LIST_HEAD(xform_list, mlx5_compress_xform) xform_list;
 	rte_spinlock_t xform_sl;
@@ -190,7 +188,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->uar),
 	};
 	struct mlx5_devx_qp_attr qp_attr = {
-		.pd = priv->pdn,
+		.pd = priv->cdev->pdn,
 		.uar_index = mlx5_os_get_devx_uar_page_id(priv->uar),
 		.user_index = qp_id,
 	};
@@ -230,7 +228,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	qp->priv = priv;
 	qp->ops = (struct rte_comp_op **)RTE_ALIGN((uintptr_t)(qp + 1),
 						   RTE_CACHE_LINE_SIZE);
-	if (mlx5_common_verbs_reg_mr(priv->pd, opaq_buf, qp->entries_n *
+	if (mlx5_common_verbs_reg_mr(priv->cdev->pd, opaq_buf, qp->entries_n *
 					sizeof(struct mlx5_gga_compress_opaque),
 							 &qp->opaque_mr) != 0) {
 		rte_free(opaq_buf);
@@ -469,8 +467,8 @@ mlx5_compress_addr2mr(struct mlx5_compress_priv *priv, uintptr_t addr,
 	if (likely(lkey != UINT32_MAX))
 		return lkey;
 	/* Take slower bottom-half on miss. */
-	return mlx5_mr_addr2mr_bh(priv->pd, 0, &priv->mr_scache, mr_ctrl, addr,
-				  !!(ol_flags & EXT_ATTACHED_MBUF));
+	return mlx5_mr_addr2mr_bh(priv->cdev->pd, 0, &priv->mr_scache, mr_ctrl,
+				  addr, !!(ol_flags & EXT_ATTACHED_MBUF));
 }
 
 static __rte_always_inline uint32_t
@@ -691,12 +689,8 @@ mlx5_compress_dequeue_burst(void *queue_pair, struct rte_comp_op **ops,
 }
 
 static void
-mlx5_compress_hw_global_release(struct mlx5_compress_priv *priv)
+mlx5_compress_uar_release(struct mlx5_compress_priv *priv)
 {
-	if (priv->pd != NULL) {
-		claim_zero(mlx5_glue->dealloc_pd(priv->pd));
-		priv->pd = NULL;
-	}
 	if (priv->uar != NULL) {
 		mlx5_glue->devx_free_uar(priv->uar);
 		priv->uar = NULL;
@@ -704,46 +698,12 @@ mlx5_compress_hw_global_release(struct mlx5_compress_priv *priv)
 }
 
 static int
-mlx5_compress_pd_create(struct mlx5_compress_priv *priv)
+mlx5_compress_uar_prepare(struct mlx5_compress_priv *priv)
 {
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	struct mlx5dv_obj obj;
-	struct mlx5dv_pd pd_info;
-	int ret;
-
-	priv->pd = mlx5_glue->alloc_pd(priv->cdev->ctx);
-	if (priv->pd == NULL) {
-		DRV_LOG(ERR, "Failed to allocate PD.");
-		return errno ? -errno : -ENOMEM;
-	}
-	obj.pd.in = priv->pd;
-	obj.pd.out = &pd_info;
-	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_PD);
-	if (ret != 0) {
-		DRV_LOG(ERR, "Fail to get PD object info.");
-		mlx5_glue->dealloc_pd(priv->pd);
-		priv->pd = NULL;
-		return -errno;
-	}
-	priv->pdn = pd_info.pdn;
-	return 0;
-#else
-	(void)priv;
-	DRV_LOG(ERR, "Cannot get pdn - no DV support.");
-	return -ENOTSUP;
-#endif /* HAVE_IBV_FLOW_DV_SUPPORT */
-}
-
-static int
-mlx5_compress_hw_global_prepare(struct mlx5_compress_priv *priv)
-{
-	if (mlx5_compress_pd_create(priv) != 0)
-		return -1;
 	priv->uar = mlx5_devx_alloc_uar(priv->cdev->ctx, -1);
 	if (priv->uar == NULL || mlx5_os_get_devx_uar_reg_addr(priv->uar) ==
 	    NULL) {
 		rte_errno = errno;
-		claim_zero(mlx5_glue->dealloc_pd(priv->pd));
 		DRV_LOG(ERR, "Failed to allocate UAR.");
 		return -1;
 	}
@@ -839,14 +799,14 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 	priv->compressdev = compressdev;
 	priv->min_block_size = att.compress_min_block_size;
 	priv->qp_ts_format = att.qp_ts_format;
-	if (mlx5_compress_hw_global_prepare(priv) != 0) {
+	if (mlx5_compress_uar_prepare(priv) != 0) {
 		rte_compressdev_pmd_destroy(priv->compressdev);
 		return -1;
 	}
 	if (mlx5_mr_btree_init(&priv->mr_scache.cache,
 			     MLX5_MR_BTREE_CACHE_N * 2, rte_socket_id()) != 0) {
 		DRV_LOG(ERR, "Failed to allocate shared cache MR memory.");
-		mlx5_compress_hw_global_release(priv);
+		mlx5_compress_uar_release(priv);
 		rte_compressdev_pmd_destroy(priv->compressdev);
 		rte_errno = ENOMEM;
 		return -rte_errno;
@@ -881,7 +841,7 @@ mlx5_compress_dev_remove(struct mlx5_common_device *cdev)
 			rte_mem_event_callback_unregister("MLX5_MEM_EVENT_CB",
 							  NULL);
 		mlx5_mr_release_cache(&priv->mr_scache);
-		mlx5_compress_hw_global_release(priv);
+		mlx5_compress_uar_release(priv);
 		rte_compressdev_pmd_destroy(priv->compressdev);
 	}
 	return 0;

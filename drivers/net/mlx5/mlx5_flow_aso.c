@@ -103,7 +103,7 @@ mlx5_aso_reg_mr(struct mlx5_dev_ctx_shared *sh, size_t length,
 		DRV_LOG(ERR, "Failed to create ASO bits mem for MR.");
 		return -1;
 	}
-	ret = sh->share_cache.reg_mr_cb(sh->pd, mr->addr, length, mr);
+	ret = sh->share_cache.reg_mr_cb(sh->cdev->pd, mr->addr, length, mr);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to create direct Mkey.");
 		mlx5_free(mr->addr);
@@ -317,8 +317,9 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 				    sq_desc_n, &sh->aso_age_mng->aso_sq.mr, 0))
 			return -1;
 		if (mlx5_aso_sq_create(cdev->ctx, &sh->aso_age_mng->aso_sq, 0,
-				  sh->tx_uar, sh->pdn, MLX5_ASO_QUEUE_LOG_DESC,
-				  sh->sq_ts_format)) {
+				       sh->tx_uar, cdev->pdn,
+				       MLX5_ASO_QUEUE_LOG_DESC,
+				       sh->sq_ts_format)) {
 			mlx5_aso_dereg_mr(sh, &sh->aso_age_mng->aso_sq.mr);
 			return -1;
 		}
@@ -326,8 +327,9 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 		break;
 	case ASO_OPC_MOD_POLICER:
 		if (mlx5_aso_sq_create(cdev->ctx, &sh->mtrmng->pools_mng.sq, 0,
-				  sh->tx_uar, sh->pdn, MLX5_ASO_QUEUE_LOG_DESC,
-				  sh->sq_ts_format))
+				       sh->tx_uar, cdev->pdn,
+				       MLX5_ASO_QUEUE_LOG_DESC,
+				       sh->sq_ts_format))
 			return -1;
 		mlx5_aso_mtr_init_sq(&sh->mtrmng->pools_mng.sq);
 		break;
@@ -337,8 +339,9 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 				    &sh->ct_mng->aso_sq.mr, 0))
 			return -1;
 		if (mlx5_aso_sq_create(cdev->ctx, &sh->ct_mng->aso_sq, 0,
-				sh->tx_uar, sh->pdn, MLX5_ASO_QUEUE_LOG_DESC,
-				sh->sq_ts_format)) {
+				       sh->tx_uar, cdev->pdn,
+				       MLX5_ASO_QUEUE_LOG_DESC,
+				       sh->sq_ts_format)) {
 			mlx5_aso_dereg_mr(sh, &sh->ct_mng->aso_sq.mr);
 			return -1;
 		}

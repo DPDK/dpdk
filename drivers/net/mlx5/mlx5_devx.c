@@ -276,7 +276,7 @@ mlx5_rxq_create_devx_rq_resources(struct rte_eth_dev *dev, uint16_t idx)
 	rq_attr.wq_attr.end_padding_mode = priv->config.hw_padding ?
 						MLX5_WQ_END_PAD_MODE_ALIGN :
 						MLX5_WQ_END_PAD_MODE_NONE;
-	rq_attr.wq_attr.pd = priv->sh->pdn;
+	rq_attr.wq_attr.pd = priv->sh->cdev->pdn;
 	rq_attr.counter_set_id = priv->counter_set_id;
 	/* Create RQ using DevX API. */
 	return mlx5_devx_rq_create(priv->sh->cdev->ctx, &rxq_ctrl->obj->rq_obj,
@@ -994,7 +994,7 @@ mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx,
 		.tis_lst_sz = 1,
 		.tis_num = priv->sh->tis->id,
 		.wq_attr = (struct mlx5_devx_wq_attr){
-			.pd = priv->sh->pdn,
+			.pd = priv->sh->cdev->pdn,
 			.uar_page =
 				 mlx5_os_get_devx_uar_page_id(priv->sh->tx_uar),
 		},

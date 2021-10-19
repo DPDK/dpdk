@@ -94,7 +94,7 @@ mlx5_crypto_dek_create_cb(void *tool_ctx __rte_unused, void *cb_ctx)
 	struct mlx5_crypto_dek *dek = rte_zmalloc(__func__, sizeof(*dek),
 						  RTE_CACHE_LINE_SIZE);
 	struct mlx5_devx_dek_attr dek_attr = {
-		.pd = ctx->priv->pdn,
+		.pd = ctx->priv->cdev->pdn,
 		.key_purpose = MLX5_CRYPTO_KEY_PURPOSE_AES_XTS,
 		.has_keytag = 1,
 	};

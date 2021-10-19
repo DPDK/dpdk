@@ -203,14 +203,6 @@ mlx5_os_get_devx_uar_page_id(void *uar)
 #endif
 }
 
-__rte_internal
-static inline void *
-mlx5_os_alloc_pd(void *ctx)
-{
-	return mlx5_glue->alloc_pd(ctx);
-}
-
-__rte_internal
 static inline int
 mlx5_os_dealloc_pd(void *pd)
 {

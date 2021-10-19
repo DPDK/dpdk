@@ -320,6 +320,10 @@ mlx5_dev_to_pci_str(const struct rte_device *dev, char *addr, size_t size)
 static void
 mlx5_dev_hw_global_release(struct mlx5_common_device *cdev)
 {
+	if (cdev->pd != NULL) {
+		claim_zero(mlx5_os_dealloc_pd(cdev->pd));
+		cdev->pd = NULL;
+	}
 	if (cdev->ctx != NULL) {
 		claim_zero(mlx5_glue->close_device(cdev->ctx));
 		cdev->ctx = NULL;
@@ -346,7 +350,14 @@ mlx5_dev_hw_global_prepare(struct mlx5_common_device *cdev, uint32_t classes)
 	ret = mlx5_os_open_device(cdev, classes);
 	if (ret < 0)
 		return ret;
+	/* Allocate Protection Domain object and extract its pdn. */
+	ret = mlx5_os_pd_create(cdev);
+	if (ret)
+		goto error;
 	return 0;
+error:
+	mlx5_dev_hw_global_release(cdev);
+	return ret;
 }
 
 static void

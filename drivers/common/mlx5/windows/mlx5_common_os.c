@@ -26,35 +26,6 @@ mlx5_glue_constructor(void)
 }
 
 /**
- * Allocate PD. Given a DevX context object
- * return an mlx5-pd object.
- *
- * @param[in] ctx
- *   Pointer to context.
- *
- * @return
- *    The mlx5_pd if pd is valid, NULL and errno otherwise.
- */
-void *
-mlx5_os_alloc_pd(void *ctx)
-{
-	struct mlx5_pd *ppd = mlx5_malloc(MLX5_MEM_ZERO, sizeof(struct mlx5_pd),
-					  0, SOCKET_ID_ANY);
-	if (!ppd)
-		return NULL;
-
-	struct mlx5_devx_obj *obj = mlx5_devx_cmd_alloc_pd(ctx);
-	if (!obj) {
-		mlx5_free(ppd);
-		return NULL;
-	}
-	ppd->obj = obj;
-	ppd->pdn = obj->id;
-	ppd->devx_ctx = ctx;
-	return ppd;
-}
-
-/**
  * Release PD. Releases a given mlx5_pd object
  *
  * @param[in] pd
@@ -70,6 +41,36 @@ mlx5_os_dealloc_pd(void *pd)
 		return -EINVAL;
 	mlx5_devx_cmd_destroy(((struct mlx5_pd *)pd)->obj);
 	mlx5_free(pd);
+	return 0;
+}
+
+/**
+ * Allocate Protection Domain object and extract its pdn using DV API.
+ *
+ * @param[out] dev
+ *   Pointer to the mlx5 device.
+ *
+ * @return
+ *   0 on success, a negative value otherwise.
+ */
+int
+mlx5_os_pd_create(struct mlx5_common_device *cdev)
+{
+	struct mlx5_pd *pd;
+
+	pd = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*pd), 0, SOCKET_ID_ANY);
+	if (!pd)
+		return -1;
+	struct mlx5_devx_obj *obj = mlx5_devx_cmd_alloc_pd(cdev->ctx);
+	if (!obj) {
+		mlx5_free(pd);
+		return -1;
+	}
+	pd->obj = obj;
+	pd->pdn = obj->id;
+	pd->devx_ctx = cdev->ctx;
+	cdev->pd = pd;
+	cdev->pdn = pd->pdn;
 	return 0;
 }
 

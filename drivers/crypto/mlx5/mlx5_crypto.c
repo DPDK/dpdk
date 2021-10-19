@@ -333,8 +333,8 @@ mlx5_crypto_addr2mr(struct mlx5_crypto_priv *priv, uintptr_t addr,
 	if (likely(lkey != UINT32_MAX))
 		return lkey;
 	/* Take slower bottom-half on miss. */
-	return mlx5_mr_addr2mr_bh(priv->pd, 0, &priv->mr_scache, mr_ctrl, addr,
-				  !!(ol_flags & EXT_ATTACHED_MBUF));
+	return mlx5_mr_addr2mr_bh(priv->cdev->pd, 0, &priv->mr_scache, mr_ctrl,
+				  addr, !!(ol_flags & EXT_ATTACHED_MBUF));
 }
 
 static __rte_always_inline uint32_t
@@ -610,7 +610,7 @@ mlx5_crypto_indirect_mkeys_prepare(struct mlx5_crypto_priv *priv,
 	struct mlx5_umr_wqe *umr;
 	uint32_t i;
 	struct mlx5_devx_mkey_attr attr = {
-		.pd = priv->pdn,
+		.pd = priv->cdev->pdn,
 		.umr_en = 1,
 		.crypto_en = 1,
 		.set_remote_rw = 1,
@@ -664,7 +664,7 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		DRV_LOG(ERR, "Failed to create CQ.");
 		goto error;
 	}
-	attr.pd = priv->pdn;
+	attr.pd = priv->cdev->pdn;
 	attr.uar_index = mlx5_os_get_devx_uar_page_id(priv->uar);
 	attr.cqn = qp->cq_obj.cq->id;
 	attr.rq_size = 0;
@@ -754,12 +754,8 @@ static struct rte_cryptodev_ops mlx5_crypto_ops = {
 };
 
 static void
-mlx5_crypto_hw_global_release(struct mlx5_crypto_priv *priv)
+mlx5_crypto_uar_release(struct mlx5_crypto_priv *priv)
 {
-	if (priv->pd != NULL) {
-		claim_zero(mlx5_glue->dealloc_pd(priv->pd));
-		priv->pd = NULL;
-	}
 	if (priv->uar != NULL) {
 		mlx5_glue->devx_free_uar(priv->uar);
 		priv->uar = NULL;
@@ -767,47 +763,13 @@ mlx5_crypto_hw_global_release(struct mlx5_crypto_priv *priv)
 }
 
 static int
-mlx5_crypto_pd_create(struct mlx5_crypto_priv *priv)
+mlx5_crypto_uar_prepare(struct mlx5_crypto_priv *priv)
 {
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	struct mlx5dv_obj obj;
-	struct mlx5dv_pd pd_info;
-	int ret;
-
-	priv->pd = mlx5_glue->alloc_pd(priv->cdev->ctx);
-	if (priv->pd == NULL) {
-		DRV_LOG(ERR, "Failed to allocate PD.");
-		return errno ? -errno : -ENOMEM;
-	}
-	obj.pd.in = priv->pd;
-	obj.pd.out = &pd_info;
-	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_PD);
-	if (ret != 0) {
-		DRV_LOG(ERR, "Fail to get PD object info.");
-		mlx5_glue->dealloc_pd(priv->pd);
-		priv->pd = NULL;
-		return -errno;
-	}
-	priv->pdn = pd_info.pdn;
-	return 0;
-#else
-	(void)priv;
-	DRV_LOG(ERR, "Cannot get pdn - no DV support.");
-	return -ENOTSUP;
-#endif /* HAVE_IBV_FLOW_DV_SUPPORT */
-}
-
-static int
-mlx5_crypto_hw_global_prepare(struct mlx5_crypto_priv *priv)
-{
-	if (mlx5_crypto_pd_create(priv) != 0)
-		return -1;
 	priv->uar = mlx5_devx_alloc_uar(priv->cdev->ctx, -1);
 	if (priv->uar)
 		priv->uar_addr = mlx5_os_get_devx_uar_reg_addr(priv->uar);
 	if (priv->uar == NULL || priv->uar_addr == NULL) {
 		rte_errno = errno;
-		claim_zero(mlx5_glue->dealloc_pd(priv->pd));
 		DRV_LOG(ERR, "Failed to allocate UAR.");
 		return -1;
 	}
@@ -1011,14 +973,14 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 	priv->login_obj = login;
 	priv->crypto_dev = crypto_dev;
 	priv->qp_ts_format = attr.qp_ts_format;
-	if (mlx5_crypto_hw_global_prepare(priv) != 0) {
+	if (mlx5_crypto_uar_prepare(priv) != 0) {
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		return -1;
 	}
 	if (mlx5_mr_btree_init(&priv->mr_scache.cache,
 			     MLX5_MR_BTREE_CACHE_N * 2, rte_socket_id()) != 0) {
 		DRV_LOG(ERR, "Failed to allocate shared cache MR memory.");
-		mlx5_crypto_hw_global_release(priv);
+		mlx5_crypto_uar_release(priv);
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		rte_errno = ENOMEM;
 		return -rte_errno;
@@ -1066,7 +1028,7 @@ mlx5_crypto_dev_remove(struct mlx5_common_device *cdev)
 			rte_mem_event_callback_unregister("MLX5_MEM_EVENT_CB",
 							  NULL);
 		mlx5_mr_release_cache(&priv->mr_scache);
-		mlx5_crypto_hw_global_release(priv);
+		mlx5_crypto_uar_release(priv);
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		claim_zero(mlx5_devx_cmd_destroy(priv->login_obj));
 	}

@@ -785,7 +785,7 @@ mlx5_queue_counter_id_prepare(struct rte_eth_dev *dev)
 						    .wq_type = IBV_WQT_RQ,
 						    .max_wr = 1,
 						    .max_sge = 1,
-						    .pd = priv->sh->pd,
+						    .pd = priv->sh->cdev->pd,
 						    .cq = cq,
 						});
 			if (wq) {
@@ -2729,41 +2729,6 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 		return mlx5_os_pci_probe(cdev);
 	else
 		return mlx5_os_auxiliary_probe(cdev);
-}
-
-/**
- * Extract pdn of PD object using DV API.
- *
- * @param[in] pd
- *   Pointer to the verbs PD object.
- * @param[out] pdn
- *   Pointer to the PD object number variable.
- *
- * @return
- *   0 on success, error value otherwise.
- */
-int
-mlx5_os_get_pdn(void *pd, uint32_t *pdn)
-{
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	struct mlx5dv_obj obj;
-	struct mlx5dv_pd pd_info;
-	int ret = 0;
-
-	obj.pd.in = pd;
-	obj.pd.out = &pd_info;
-	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_PD);
-	if (ret) {
-		DRV_LOG(DEBUG, "Fail to get PD object info");
-		return ret;
-	}
-	*pdn = pd_info.pdn;
-	return 0;
-#else
-	(void)pd;
-	(void)pdn;
-	return -ENOTSUP;
-#endif /* HAVE_IBV_FLOW_DV_SUPPORT */
 }
 
 /**
