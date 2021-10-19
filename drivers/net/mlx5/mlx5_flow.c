@@ -6597,6 +6597,80 @@ mlx5_flow_create_esw_table_zero_flow(struct rte_eth_dev *dev)
 }
 
 /**
+ * Create a dedicated flow rule on e-switch table 1, matches ESW manager
+ * and sq number, directs all packets to peer vport.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param txq
+ *   Txq index.
+ *
+ * @return
+ *   Flow ID on success, 0 otherwise and rte_errno is set.
+ */
+uint32_t
+mlx5_flow_create_devx_sq_miss_flow(struct rte_eth_dev *dev, uint32_t txq)
+{
+	struct rte_flow_attr attr = {
+		.group = 0,
+		.priority = MLX5_FLOW_LOWEST_PRIO_INDICATOR,
+		.ingress = 1,
+		.egress = 0,
+		.transfer = 1,
+	};
+	struct rte_flow_item_port_id port_spec = {
+		.id = MLX5_PORT_ESW_MGR,
+	};
+	struct mlx5_rte_flow_item_tx_queue txq_spec = {
+		.queue = txq,
+	};
+	struct rte_flow_item pattern[] = {
+		{
+			.type = RTE_FLOW_ITEM_TYPE_PORT_ID,
+			.spec = &port_spec,
+		},
+		{
+			.type = (enum rte_flow_item_type)
+				MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE,
+			.spec = &txq_spec,
+		},
+		{
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+	};
+	struct rte_flow_action_jump jump = {
+		.group = 1,
+	};
+	struct rte_flow_action_port_id port = {
+		.id = dev->data->port_id,
+	};
+	struct rte_flow_action actions[] = {
+		{
+			.type = RTE_FLOW_ACTION_TYPE_JUMP,
+			.conf = &jump,
+		},
+		{
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		},
+	};
+	struct rte_flow_error error;
+
+	/*
+	 * Creates group 0, highest priority jump flow.
+	 * Matches txq to bypass kernel packets.
+	 */
+	if (flow_list_create(dev, MLX5_FLOW_TYPE_CTL, &attr, pattern, actions,
+			     false, &error) == 0)
+		return 0;
+	/* Create group 1, lowest priority redirect flow for txq. */
+	attr.group = 1;
+	actions[0].conf = &port;
+	actions[0].type = RTE_FLOW_ACTION_TYPE_PORT_ID;
+	return flow_list_create(dev, MLX5_FLOW_TYPE_CTL, &attr, pattern,
+				actions, false, &error);
+}
+
+/**
  * Validate a flow supported by the NIC.
  *
  * @see rte_flow_validate()

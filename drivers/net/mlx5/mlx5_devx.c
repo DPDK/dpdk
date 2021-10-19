@@ -102,9 +102,9 @@ mlx5_devx_modify_rq(struct mlx5_rxq_obj *rxq_obj, uint8_t type)
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
-mlx5_devx_modify_sq(struct mlx5_txq_obj *obj, enum mlx5_txq_modify_type type,
-		    uint8_t dev_port)
+int
+mlx5_txq_devx_modify(struct mlx5_txq_obj *obj, enum mlx5_txq_modify_type type,
+		     uint8_t dev_port)
 {
 	struct mlx5_devx_modify_sq_attr msq_attr = { 0 };
 	int ret;
@@ -1121,7 +1121,7 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	*txq_data->qp_db = 0;
 	txq_data->qp_num_8s = txq_obj->sq_obj.sq->id << 8;
 	/* Change Send Queue state to Ready-to-Send. */
-	ret = mlx5_devx_modify_sq(txq_obj, MLX5_TXQ_MOD_RST2RDY, 0);
+	ret = mlx5_txq_devx_modify(txq_obj, MLX5_TXQ_MOD_RST2RDY, 0);
 	if (ret) {
 		rte_errno = errno;
 		DRV_LOG(ERR,
@@ -1190,7 +1190,7 @@ struct mlx5_obj_ops devx_obj_ops = {
 	.drop_action_create = mlx5_devx_drop_action_create,
 	.drop_action_destroy = mlx5_devx_drop_action_destroy,
 	.txq_obj_new = mlx5_txq_devx_obj_new,
-	.txq_obj_modify = mlx5_devx_modify_sq,
+	.txq_obj_modify = mlx5_txq_devx_modify,
 	.txq_obj_release = mlx5_txq_devx_obj_release,
 	.lb_dummy_queue_create = NULL,
 	.lb_dummy_queue_release = NULL,
