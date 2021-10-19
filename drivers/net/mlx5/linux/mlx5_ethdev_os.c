@@ -324,7 +324,7 @@ int
 mlx5_read_clock(struct rte_eth_dev *dev, uint64_t *clock)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct ibv_context *ctx = priv->sh->ctx;
+	struct ibv_context *ctx = priv->sh->cdev->ctx;
 	struct ibv_values_ex values;
 	int err = 0;
 
@@ -778,7 +778,7 @@ mlx5_dev_interrupt_handler(void *cb_arg)
 		struct rte_eth_dev *dev;
 		uint32_t tmp;
 
-		if (mlx5_glue->get_async_event(sh->ctx, &event))
+		if (mlx5_glue->get_async_event(sh->cdev->ctx, &event))
 			break;
 		/* Retrieve and check IB port index. */
 		tmp = (uint32_t)event.element.port_num;
@@ -990,7 +990,7 @@ mlx5_is_removed(struct rte_eth_dev *dev)
 	struct ibv_device_attr device_attr;
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (mlx5_glue->query_device(priv->sh->ctx, &device_attr) == EIO)
+	if (mlx5_glue->query_device(priv->sh->cdev->ctx, &device_attr) == EIO)
 		return 1;
 	return 0;
 }

@@ -35,8 +35,8 @@ struct mlx5_compress_xform {
 
 struct mlx5_compress_priv {
 	TAILQ_ENTRY(mlx5_compress_priv) next;
-	struct ibv_context *ctx; /* Device context. */
 	struct rte_compressdev *compressdev;
+	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
 	void *uar;
 	uint32_t pdn; /* Protection Domain number. */
 	uint8_t min_block_size;
@@ -238,7 +238,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		rte_errno = ENOMEM;
 		goto err;
 	}
-	ret = mlx5_devx_cq_create(priv->ctx, &qp->cq, log_ops_n, &cq_attr,
+	ret = mlx5_devx_cq_create(priv->cdev->ctx, &qp->cq, log_ops_n, &cq_attr,
 				  socket_id);
 	if (ret != 0) {
 		DRV_LOG(ERR, "Failed to create CQ.");
@@ -250,7 +250,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	qp_attr.sq_size = RTE_BIT32(log_ops_n);
 	qp_attr.mmo = priv->mmo_decomp_qp && priv->mmo_comp_qp
 			&& priv->mmo_dma_qp;
-	ret = mlx5_devx_qp_create(priv->ctx, &qp->qp, log_ops_n, &qp_attr,
+	ret = mlx5_devx_qp_create(priv->cdev->ctx, &qp->qp, log_ops_n, &qp_attr,
 				  socket_id);
 	if (ret != 0) {
 		DRV_LOG(ERR, "Failed to create QP.");
@@ -711,7 +711,7 @@ mlx5_compress_pd_create(struct mlx5_compress_priv *priv)
 	struct mlx5dv_pd pd_info;
 	int ret;
 
-	priv->pd = mlx5_glue->alloc_pd(priv->ctx);
+	priv->pd = mlx5_glue->alloc_pd(priv->cdev->ctx);
 	if (priv->pd == NULL) {
 		DRV_LOG(ERR, "Failed to allocate PD.");
 		return errno ? -errno : -ENOMEM;
@@ -739,7 +739,7 @@ mlx5_compress_hw_global_prepare(struct mlx5_compress_priv *priv)
 {
 	if (mlx5_compress_pd_create(priv) != 0)
 		return -1;
-	priv->uar = mlx5_devx_alloc_uar(priv->ctx, -1);
+	priv->uar = mlx5_devx_alloc_uar(priv->cdev->ctx, -1);
 	if (priv->uar == NULL || mlx5_os_get_devx_uar_reg_addr(priv->uar) ==
 	    NULL) {
 		rte_errno = errno;
@@ -779,7 +779,8 @@ mlx5_compress_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 		/* Iterate all the existing mlx5 devices. */
 		TAILQ_FOREACH(priv, &mlx5_compress_priv_list, next)
 			mlx5_free_mr_by_addr(&priv->mr_scache,
-					     priv->ctx->device->name,
+					     mlx5_os_get_ctx_device_name
+							      (priv->cdev->ctx),
 					     addr, len);
 		pthread_mutex_unlock(&priv_list_lock);
 		break;
@@ -792,49 +793,37 @@ mlx5_compress_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 static int
 mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 {
-	struct ibv_device *ibv;
 	struct rte_compressdev *compressdev;
-	struct ibv_context *ctx;
 	struct mlx5_compress_priv *priv;
 	struct mlx5_hca_attr att = { 0 };
 	struct rte_compressdev_pmd_init_params init_params = {
 		.name = "",
 		.socket_id = cdev->dev->numa_node,
 	};
+	const char *ibdev_name = mlx5_os_get_ctx_device_name(cdev->ctx);
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		DRV_LOG(ERR, "Non-primary process type is not supported.");
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	ibv = mlx5_os_get_ibv_dev(cdev->dev);
-	if (ibv == NULL)
-		return -rte_errno;
-	ctx = mlx5_glue->dv_open_device(ibv);
-	if (ctx == NULL) {
-		DRV_LOG(ERR, "Failed to open IB device \"%s\".", ibv->name);
-		rte_errno = ENODEV;
-		return -rte_errno;
-	}
-	if (mlx5_devx_cmd_query_hca_attr(ctx, &att) != 0 ||
+	if (mlx5_devx_cmd_query_hca_attr(cdev->ctx, &att) != 0 ||
 	    ((att.mmo_compress_sq_en == 0 || att.mmo_decompress_sq_en == 0 ||
 		att.mmo_dma_sq_en == 0) && (att.mmo_compress_qp_en == 0 ||
 		att.mmo_decompress_qp_en == 0 || att.mmo_dma_qp_en == 0))) {
 		DRV_LOG(ERR, "Not enough capabilities to support compress "
 			"operations, maybe old FW/OFED version?");
-		claim_zero(mlx5_glue->close_device(ctx));
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
-	compressdev = rte_compressdev_pmd_create(ibv->name, cdev->dev,
+	compressdev = rte_compressdev_pmd_create(ibdev_name, cdev->dev,
 						 sizeof(*priv), &init_params);
 	if (compressdev == NULL) {
-		DRV_LOG(ERR, "Failed to create device \"%s\".", ibv->name);
-		claim_zero(mlx5_glue->close_device(ctx));
+		DRV_LOG(ERR, "Failed to create device \"%s\".", ibdev_name);
 		return -ENODEV;
 	}
 	DRV_LOG(INFO,
-		"Compress device %s was created successfully.", ibv->name);
+		"Compress device %s was created successfully.", ibdev_name);
 	compressdev->dev_ops = &mlx5_compress_ops;
 	compressdev->dequeue_burst = mlx5_compress_dequeue_burst;
 	compressdev->enqueue_burst = mlx5_compress_enqueue_burst;
@@ -846,13 +835,12 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 	priv->mmo_comp_qp = att.mmo_compress_qp_en;
 	priv->mmo_dma_sq = att.mmo_dma_sq_en;
 	priv->mmo_dma_qp = att.mmo_dma_qp_en;
-	priv->ctx = ctx;
+	priv->cdev = cdev;
 	priv->compressdev = compressdev;
 	priv->min_block_size = att.compress_min_block_size;
 	priv->qp_ts_format = att.qp_ts_format;
 	if (mlx5_compress_hw_global_prepare(priv) != 0) {
 		rte_compressdev_pmd_destroy(priv->compressdev);
-		claim_zero(mlx5_glue->close_device(priv->ctx));
 		return -1;
 	}
 	if (mlx5_mr_btree_init(&priv->mr_scache.cache,
@@ -860,7 +848,6 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 		DRV_LOG(ERR, "Failed to allocate shared cache MR memory.");
 		mlx5_compress_hw_global_release(priv);
 		rte_compressdev_pmd_destroy(priv->compressdev);
-		claim_zero(mlx5_glue->close_device(priv->ctx));
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
@@ -896,7 +883,6 @@ mlx5_compress_dev_remove(struct mlx5_common_device *cdev)
 		mlx5_mr_release_cache(&priv->mr_scache);
 		mlx5_compress_hw_global_release(priv);
 		rte_compressdev_pmd_destroy(priv->compressdev);
-		claim_zero(mlx5_glue->close_device(priv->ctx));
 	}
 	return 0;
 }

@@ -424,8 +424,13 @@ mlx5_os_get_ibv_device(const struct rte_pci_addr *addr)
 		ibv_match = ibv_list[n];
 		break;
 	}
-	if (ibv_match == NULL)
+	if (ibv_match == NULL) {
+		DRV_LOG(WARNING,
+			"No Verbs device matches PCI device " PCI_PRI_FMT ","
+			" are kernel drivers loaded?",
+			addr->domain, addr->bus, addr->devid, addr->function);
 		rte_errno = ENOENT;
+	}
 	mlx5_glue->free_device_list(ibv_list);
 	return ibv_match;
 }
@@ -465,14 +470,14 @@ mlx5_restore_doorbell_mapping_env(int value)
  *
  * @param cdev
  *   Pointer to the mlx5 device.
- * @param ctx_ptr
- *   Pointer to fill inside pointer to device context.
+ * @param classes
+ *   Chosen classes come from device arguments.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_os_open_device(struct mlx5_common_device *cdev, void **ctx_ptr)
+mlx5_os_open_device(struct mlx5_common_device *cdev, uint32_t classes)
 {
 	struct ibv_device *ibv;
 	struct ibv_context *ctx = NULL;
@@ -494,18 +499,20 @@ mlx5_os_open_device(struct mlx5_common_device *cdev, void **ctx_ptr)
 	if (ctx) {
 		cdev->config.devx = 1;
 		DRV_LOG(DEBUG, "DevX is supported.");
-	} else {
+	} else if (classes == MLX5_CLASS_ETH) {
 		/* The environment variable is still configured. */
 		ctx = mlx5_glue->open_device(ibv);
 		if (ctx == NULL)
 			goto error;
 		DRV_LOG(DEBUG, "DevX is NOT supported.");
+	} else {
+		goto error;
 	}
 	/* The device is created, no need for environment. */
 	mlx5_restore_doorbell_mapping_env(dbmap_env);
 	/* Hint libmlx5 to use PMD allocator for data plane resources */
 	mlx5_set_context_attr(cdev->dev, ctx);
-	*ctx_ptr = (void *)ctx;
+	cdev->ctx = ctx;
 	return 0;
 error:
 	rte_errno = errno ? errno : ENODEV;

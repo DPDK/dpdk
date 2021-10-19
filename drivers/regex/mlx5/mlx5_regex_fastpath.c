@@ -756,8 +756,8 @@ mlx5_regexdev_setup_fastpath(struct mlx5_regex_priv *priv, uint32_t qp_id)
 		for (i = 0; i < qp->nb_desc; i++) {
 			attr.klm_num = MLX5_REGEX_MAX_KLM_NUM;
 			attr.klm_array = qp->jobs[i].imkey_array;
-			qp->jobs[i].imkey = mlx5_devx_cmd_mkey_create(priv->ctx,
-								      &attr);
+			qp->jobs[i].imkey = mlx5_devx_cmd_mkey_create
+						       (priv->cdev->ctx, &attr);
 			if (!qp->jobs[i].imkey) {
 				err = -rte_errno;
 				DRV_LOG(ERR, "Failed to allocate imkey.");

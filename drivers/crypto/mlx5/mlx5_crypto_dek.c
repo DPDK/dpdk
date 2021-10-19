@@ -117,7 +117,8 @@ mlx5_crypto_dek_create_cb(void *tool_ctx __rte_unused, void *cb_ctx)
 		return NULL;
 	}
 	memcpy(&dek_attr.key, cipher_ctx->key.data, cipher_ctx->key.length);
-	dek->obj = mlx5_devx_cmd_create_dek_obj(ctx->priv->ctx, &dek_attr);
+	dek->obj = mlx5_devx_cmd_create_dek_obj(ctx->priv->cdev->ctx,
+						&dek_attr);
 	if (dek->obj == NULL) {
 		rte_free(dek);
 		return NULL;

@@ -357,14 +357,14 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	/* Initialize the shutdown event in mlx5_dev_spawn to
 	 * support mlx5_is_removed for Windows.
 	 */
-	err = mlx5_glue->devx_init_showdown_event(sh->ctx);
+	err = mlx5_glue->devx_init_showdown_event(sh->cdev->ctx);
 	if (err) {
 		DRV_LOG(ERR, "failed to init showdown event: %s",
 			strerror(errno));
 		goto error;
 	}
 	DRV_LOG(DEBUG, "MPW isn't supported");
-	mlx5_os_get_dev_attr(sh->ctx, &device_attr);
+	mlx5_os_get_dev_attr(sh->cdev->ctx, &device_attr);
 	config->swp = device_attr.sw_parsing_offloads &
 		(MLX5_SW_PARSING_CAP | MLX5_SW_PARSING_CSUM_CAP |
 		 MLX5_SW_PARSING_TSO_CAP);
@@ -472,7 +472,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		config->cqe_comp = 0;
 	}
 	if (sh->devx) {
-		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config->hca_attr);
+		err = mlx5_devx_cmd_query_hca_attr(sh->cdev->ctx,
+						   &config->hca_attr);
 		if (err) {
 			err = -err;
 			goto error;
@@ -499,7 +500,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 
 		err = config->hca_attr.access_register_user ?
 			mlx5_devx_cmd_register_read
-				(sh->ctx, MLX5_REGISTER_ID_MTUTC, 0,
+				(sh->cdev->ctx, MLX5_REGISTER_ID_MTUTC, 0,
 				reg, MLX5_ST_SZ_DW(register_mtutc)) : ENOTSUP;
 		if (!err) {
 			uint32_t ts_mode;
@@ -924,6 +925,7 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 		.pf_bond = -1,
 		.max_port = 1,
 		.phys_port = 1,
+		.phys_dev_name = mlx5_os_get_ctx_device_name(cdev->ctx),
 		.pci_dev = pci_dev,
 		.cdev = cdev,
 		.ifindex = -1, /* Spawn will assign */
@@ -944,7 +946,6 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 		.dv_flow_en = 1,
 		.log_hp_size = MLX5_ARG_UNSET,
 	};
-	void *ctx;
 	int ret;
 	uint32_t restore;
 
@@ -952,20 +953,12 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 		DRV_LOG(ERR, "Secondary process is not supported on Windows.");
 		return -ENOTSUP;
 	}
-	ret = mlx5_os_open_device(cdev, &ctx);
-	if (ret) {
-		DRV_LOG(ERR, "Fail to open DevX device %s", cdev->dev->name);
-		return -rte_errno;
-	}
 	ret = mlx5_init_once();
 	if (ret) {
 		DRV_LOG(ERR, "unable to init PMD global data: %s",
 			strerror(rte_errno));
-		claim_zero(mlx5_glue->close_device(ctx));
 		return -rte_errno;
 	}
-	spawn.ctx = ctx;
-	spawn.phys_dev_name = mlx5_os_get_ctx_device_name(ctx);
 	/* Device specific configuration. */
 	switch (pci_dev->id.device_id) {
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
@@ -982,10 +975,8 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 		break;
 	}
 	spawn.eth_dev = mlx5_dev_spawn(cdev->dev, &spawn, &dev_config);
-	if (!spawn.eth_dev) {
-		claim_zero(mlx5_glue->close_device(ctx));
+	if (!spawn.eth_dev)
 		return -rte_errno;
-	}
 	restore = spawn.eth_dev->data->dev_flags;
 	rte_eth_copy_pci_info(spawn.eth_dev, pci_dev);
 	/* Restore non-PCI flags cleared by the above call. */

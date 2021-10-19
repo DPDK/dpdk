@@ -137,7 +137,6 @@ struct mlx5_dev_spawn_data {
 	int pf_bond; /**< bonding device PF index. < 0 - no bonding */
 	struct mlx5_switch_info info; /**< Switch information. */
 	const char *phys_dev_name; /**< Name of physical device. */
-	void *ctx; /**< Associated physical device context. */
 	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
 	struct rte_pci_device *pci_dev; /**< Backend PCI device. */
 	struct mlx5_common_device *cdev; /**< Backend common device. */
@@ -1134,7 +1133,6 @@ struct mlx5_dev_ctx_shared {
 	uint32_t max_port; /* Maximal IB device port index. */
 	struct mlx5_bond_info bond; /* Bonding information. */
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
-	void *ctx; /* Verbs/DV/DevX context. */
 	void *pd; /* Protection Domain. */
 	uint32_t pdn; /* Protection Domain number. */
 	uint32_t tdn; /* Transport Domain number. */

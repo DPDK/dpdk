@@ -101,7 +101,7 @@ mlx5_mp_os_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	case MLX5_MP_REQ_VERBS_CMD_FD:
 		mp_init_msg(&priv->mp_id, &mp_res, param->type);
 		mp_res.num_fds = 1;
-		mp_res.fds[0] = ((struct ibv_context *)priv->sh->ctx)->cmd_fd;
+		mp_res.fds[0] = ((struct ibv_context *)cdev->ctx)->cmd_fd;
 		res->result = 0;
 		ret = rte_mp_reply(&mp_res, peer);
 		break;
@@ -248,7 +248,8 @@ mp_req_on_rxtx(struct rte_eth_dev *dev, enum mlx5_mp_req_type type)
 	mp_init_msg(&priv->mp_id, &mp_req, type);
 	if (type == MLX5_MP_REQ_START_RXTX) {
 		mp_req.num_fds = 1;
-		mp_req.fds[0] = ((struct ibv_context *)priv->sh->ctx)->cmd_fd;
+		mp_req.fds[0] =
+			((struct ibv_context *)priv->sh->cdev->ctx)->cmd_fd;
 	}
 	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
 	if (ret) {

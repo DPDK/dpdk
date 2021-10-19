@@ -83,7 +83,7 @@ regex_ctrl_create_cq(struct mlx5_regex_priv *priv, struct mlx5_regex_cq *cq)
 	int ret;
 
 	cq->ci = 0;
-	ret = mlx5_devx_cq_create(priv->ctx, &cq->cq_obj, cq->log_nb_desc,
+	ret = mlx5_devx_cq_create(priv->cdev->ctx, &cq->cq_obj, cq->log_nb_desc,
 				  &attr, SOCKET_ID_ANY);
 	if (ret) {
 		DRV_LOG(ERR, "Can't create CQ object.");
@@ -157,7 +157,7 @@ regex_ctrl_create_hw_qp(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 	attr.sq_size = RTE_BIT32(MLX5_REGEX_WQE_LOG_NUM(priv->has_umr,
 			log_nb_desc));
 	attr.mmo = priv->mmo_regex_qp_cap;
-	ret = mlx5_devx_qp_create(priv->ctx, &qp_obj->qp_obj,
+	ret = mlx5_devx_qp_create(priv->cdev->ctx, &qp_obj->qp_obj,
 			MLX5_REGEX_WQE_LOG_NUM(priv->has_umr, log_nb_desc),
 			&attr, SOCKET_ID_ANY);
 	if (ret) {

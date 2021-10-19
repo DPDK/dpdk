@@ -309,13 +309,14 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 		    enum mlx5_access_aso_opc_mod aso_opc_mod)
 {
 	uint32_t sq_desc_n = 1 << MLX5_ASO_QUEUE_LOG_DESC;
+	struct mlx5_common_device *cdev = sh->cdev;
 
 	switch (aso_opc_mod) {
 	case ASO_OPC_MOD_FLOW_HIT:
 		if (mlx5_aso_reg_mr(sh, (MLX5_ASO_AGE_ACTIONS_PER_POOL / 8) *
 				    sq_desc_n, &sh->aso_age_mng->aso_sq.mr, 0))
 			return -1;
-		if (mlx5_aso_sq_create(sh->ctx, &sh->aso_age_mng->aso_sq, 0,
+		if (mlx5_aso_sq_create(cdev->ctx, &sh->aso_age_mng->aso_sq, 0,
 				  sh->tx_uar, sh->pdn, MLX5_ASO_QUEUE_LOG_DESC,
 				  sh->sq_ts_format)) {
 			mlx5_aso_dereg_mr(sh, &sh->aso_age_mng->aso_sq.mr);
@@ -324,7 +325,7 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 		mlx5_aso_age_init_sq(&sh->aso_age_mng->aso_sq);
 		break;
 	case ASO_OPC_MOD_POLICER:
-		if (mlx5_aso_sq_create(sh->ctx, &sh->mtrmng->pools_mng.sq, 0,
+		if (mlx5_aso_sq_create(cdev->ctx, &sh->mtrmng->pools_mng.sq, 0,
 				  sh->tx_uar, sh->pdn, MLX5_ASO_QUEUE_LOG_DESC,
 				  sh->sq_ts_format))
 			return -1;
@@ -335,7 +336,7 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 		if (mlx5_aso_reg_mr(sh, 64 * sq_desc_n,
 				    &sh->ct_mng->aso_sq.mr, 0))
 			return -1;
-		if (mlx5_aso_sq_create(sh->ctx, &sh->ct_mng->aso_sq, 0,
+		if (mlx5_aso_sq_create(cdev->ctx, &sh->ct_mng->aso_sq, 0,
 				sh->tx_uar, sh->pdn, MLX5_ASO_QUEUE_LOG_DESC,
 				sh->sq_ts_format)) {
 			mlx5_aso_dereg_mr(sh, &sh->ct_mng->aso_sq.mr);

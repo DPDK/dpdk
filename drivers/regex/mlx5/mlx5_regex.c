@@ -110,7 +110,8 @@ mlx5_regex_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 		/* Iterate all the existing mlx5 devices. */
 		TAILQ_FOREACH(priv, &mlx5_mem_event_list, mem_event_cb)
 			mlx5_free_mr_by_addr(&priv->mr_scache,
-					     priv->ctx->device->name,
+					     mlx5_os_get_ctx_device_name
+							      (priv->cdev->ctx),
 					     addr, len);
 		pthread_mutex_unlock(&mem_event_list_lock);
 		break;
@@ -123,54 +124,42 @@ mlx5_regex_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 static int
 mlx5_regex_dev_probe(struct mlx5_common_device *cdev)
 {
-	struct ibv_device *ibv;
 	struct mlx5_regex_priv *priv = NULL;
-	struct ibv_context *ctx = NULL;
 	struct mlx5_hca_attr attr;
 	char name[RTE_REGEXDEV_NAME_MAX_LEN];
 	int ret;
 	uint32_t val;
 
-	ibv = mlx5_os_get_ibv_dev(cdev->dev);
-	if (ibv == NULL)
-		return -rte_errno;
-	DRV_LOG(INFO, "Probe device \"%s\".", ibv->name);
-	ctx = mlx5_glue->dv_open_device(ibv);
-	if (!ctx) {
-		DRV_LOG(ERR, "Failed to open IB device \"%s\".", ibv->name);
-		rte_errno = ENODEV;
-		return -rte_errno;
-	}
-	ret = mlx5_devx_cmd_query_hca_attr(ctx, &attr);
+	ret = mlx5_devx_cmd_query_hca_attr(cdev->ctx, &attr);
 	if (ret) {
 		DRV_LOG(ERR, "Unable to read HCA capabilities.");
 		rte_errno = ENOTSUP;
-		goto dev_error;
+		return -rte_errno;
 	} else if (((!attr.regex) && (!attr.mmo_regex_sq_en) &&
 		(!attr.mmo_regex_qp_en)) || attr.regexp_num_of_engines == 0) {
 		DRV_LOG(ERR, "Not enough capabilities to support RegEx, maybe "
 			"old FW/OFED version?");
 		rte_errno = ENOTSUP;
-		goto dev_error;
+		return -rte_errno;
 	}
-	if (mlx5_regex_engines_status(ctx, 2)) {
+	if (mlx5_regex_engines_status(cdev->ctx, 2)) {
 		DRV_LOG(ERR, "RegEx engine error.");
 		rte_errno = ENOMEM;
-		goto dev_error;
+		return -rte_errno;
 	}
 	priv = rte_zmalloc("mlx5 regex device private", sizeof(*priv),
 			   RTE_CACHE_LINE_SIZE);
 	if (!priv) {
 		DRV_LOG(ERR, "Failed to allocate private memory.");
 		rte_errno = ENOMEM;
-		goto dev_error;
+		return -rte_errno;
 	}
 	priv->mmo_regex_qp_cap = attr.mmo_regex_qp_en;
 	priv->mmo_regex_sq_cap = attr.mmo_regex_sq_en;
 	priv->qp_ts_format = attr.qp_ts_format;
-	priv->ctx = ctx;
+	priv->cdev = cdev;
 	priv->nb_engines = 2; /* attr.regexp_num_of_engines */
-	ret = mlx5_devx_regex_register_read(priv->ctx, 0,
+	ret = mlx5_devx_regex_register_read(priv->cdev->ctx, 0,
 					    MLX5_RXP_CSR_IDENTIFIER, &val);
 	if (ret) {
 		DRV_LOG(ERR, "CSR read failed!");
@@ -185,20 +174,20 @@ mlx5_regex_dev_probe(struct mlx5_common_device *cdev)
 	if (priv->regexdev == NULL) {
 		DRV_LOG(ERR, "Failed to register RegEx device.");
 		rte_errno = rte_errno ? rte_errno : EINVAL;
-		goto error;
+		goto dev_error;
 	}
 	/*
 	 * This PMD always claims the write memory barrier on UAR
 	 * registers writings, it is safe to allocate UAR with any
 	 * memory mapping type.
 	 */
-	priv->uar = mlx5_devx_alloc_uar(ctx, -1);
+	priv->uar = mlx5_devx_alloc_uar(priv->cdev->ctx, -1);
 	if (!priv->uar) {
 		DRV_LOG(ERR, "can't allocate uar.");
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	priv->pd = mlx5_glue->alloc_pd(ctx);
+	priv->pd = mlx5_glue->alloc_pd(priv->cdev->ctx);
 	if (!priv->pd) {
 		DRV_LOG(ERR, "can't allocate pd.");
 		rte_errno = ENOMEM;
@@ -248,8 +237,6 @@ error:
 	if (priv->regexdev)
 		rte_regexdev_unregister(priv->regexdev);
 dev_error:
-	if (ctx)
-		mlx5_glue->close_device(ctx);
 	if (priv)
 		rte_free(priv);
 	return -rte_errno;
@@ -283,8 +270,6 @@ mlx5_regex_dev_remove(struct mlx5_common_device *cdev)
 			mlx5_glue->devx_free_uar(priv->uar);
 		if (priv->regexdev)
 			rte_regexdev_unregister(priv->regexdev);
-		if (priv->ctx)
-			mlx5_glue->close_device(priv->ctx);
 		rte_free(priv);
 	}
 	return 0;

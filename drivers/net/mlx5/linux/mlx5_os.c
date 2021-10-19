@@ -257,7 +257,7 @@ __mlx5_discovery_misc5_cap(struct mlx5_priv *priv)
 			 metadata_reg_c_0, 0xffff);
 	}
 #endif
-	matcher = mlx5_glue->dv_create_flow_matcher(priv->sh->ctx,
+	matcher = mlx5_glue->dv_create_flow_matcher(priv->sh->cdev->ctx,
 						    &dv_attr, tbl);
 	if (matcher) {
 		priv->sh->misc5_cap = 1;
@@ -341,7 +341,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	void *domain;
 
 	/* Reference counter is zero, we should initialize structures. */
-	domain = mlx5_glue->dr_create_domain(sh->ctx,
+	domain = mlx5_glue->dr_create_domain(sh->cdev->ctx,
 					     MLX5DV_DR_DOMAIN_TYPE_NIC_RX);
 	if (!domain) {
 		DRV_LOG(ERR, "ingress mlx5dv_dr_create_domain failed");
@@ -349,7 +349,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		goto error;
 	}
 	sh->rx_domain = domain;
-	domain = mlx5_glue->dr_create_domain(sh->ctx,
+	domain = mlx5_glue->dr_create_domain(sh->cdev->ctx,
 					     MLX5DV_DR_DOMAIN_TYPE_NIC_TX);
 	if (!domain) {
 		DRV_LOG(ERR, "egress mlx5dv_dr_create_domain failed");
@@ -359,8 +359,8 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	sh->tx_domain = domain;
 #ifdef HAVE_MLX5DV_DR_ESWITCH
 	if (priv->config.dv_esw_en) {
-		domain  = mlx5_glue->dr_create_domain
-			(sh->ctx, MLX5DV_DR_DOMAIN_TYPE_FDB);
+		domain = mlx5_glue->dr_create_domain(sh->cdev->ctx,
+						     MLX5DV_DR_DOMAIN_TYPE_FDB);
 		if (!domain) {
 			DRV_LOG(ERR, "FDB mlx5dv_dr_create_domain failed");
 			err = errno;
@@ -768,7 +768,7 @@ static void
 mlx5_queue_counter_id_prepare(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	void *ctx = priv->sh->ctx;
+	void *ctx = priv->sh->cdev->ctx;
 
 	priv->q_counters = mlx5_devx_cmd_queue_counter_alloc(ctx);
 	if (!priv->q_counters) {
@@ -1040,7 +1040,7 @@ err_secondary:
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
 	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
 #endif
-	mlx5_glue->dv_query_device(sh->ctx, &dv_attr);
+	mlx5_glue->dv_query_device(sh->cdev->ctx, &dv_attr);
 	if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
 		if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
 			DRV_LOG(DEBUG, "enhanced MPW is supported");
@@ -1125,7 +1125,8 @@ err_secondary:
 #endif
 	config->mpls_en = mpls_en;
 	/* Check port status. */
-	err = mlx5_glue->query_port(sh->ctx, spawn->phys_port, &port_attr);
+	err = mlx5_glue->query_port(sh->cdev->ctx, spawn->phys_port,
+				    &port_attr);
 	if (err) {
 		DRV_LOG(ERR, "port query failed: %s", strerror(err));
 		goto error;
@@ -1175,7 +1176,7 @@ err_secondary:
 	 * register is defined by mask.
 	 */
 	if (switch_info->representor || switch_info->master) {
-		err = mlx5_glue->devx_port_query(sh->ctx,
+		err = mlx5_glue->devx_port_query(sh->cdev->ctx,
 						 spawn->phys_port,
 						 &vport_info);
 		if (err) {
@@ -1332,7 +1333,8 @@ err_secondary:
 		config->mps == MLX5_MPW ? "legacy " : "",
 		config->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
 	if (sh->devx) {
-		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config->hca_attr);
+		err = mlx5_devx_cmd_query_hca_attr(sh->cdev->ctx,
+						   &config->hca_attr);
 		if (err) {
 			err = -err;
 			goto error;
@@ -1555,7 +1557,7 @@ err_secondary:
 
 		err = config->hca_attr.access_register_user ?
 			mlx5_devx_cmd_register_read
-				(sh->ctx, MLX5_REGISTER_ID_MTUTC, 0,
+				(sh->cdev->ctx, MLX5_REGISTER_ID_MTUTC, 0,
 				reg, MLX5_ST_SZ_DW(register_mtutc)) : ENOTSUP;
 		if (!err) {
 			uint32_t ts_mode;
@@ -1934,14 +1936,14 @@ mlx5_dev_spawn_data_cmp(const void *a, const void *b)
 /**
  * Match PCI information for possible slaves of bonding device.
  *
- * @param[in] ibv_dev
- *   Pointer to Infiniband device structure.
+ * @param[in] ibdev_name
+ *   Name of Infiniband device.
  * @param[in] pci_dev
  *   Pointer to primary PCI address structure to match.
  * @param[in] nl_rdma
  *   Netlink RDMA group socket handle.
  * @param[in] owner
- *   Rerepsentor owner PF index.
+ *   Representor owner PF index.
  * @param[out] bond_info
  *   Pointer to bonding information.
  *
@@ -1950,7 +1952,7 @@ mlx5_dev_spawn_data_cmp(const void *a, const void *b)
  *   positive index of slave PF in bonding.
  */
 static int
-mlx5_device_bond_pci_match(const struct ibv_device *ibv_dev,
+mlx5_device_bond_pci_match(const char *ibdev_name,
 			   const struct rte_pci_addr *pci_dev,
 			   int nl_rdma, uint16_t owner,
 			   struct mlx5_bond_info *bond_info)
@@ -1963,27 +1965,25 @@ mlx5_device_bond_pci_match(const struct ibv_device *ibv_dev,
 	int ret;
 
 	/*
-	 * Try to get master device name. If something goes
-	 * wrong suppose the lack of kernel support and no
-	 * bonding devices.
+	 * Try to get master device name. If something goes wrong suppose
+	 * the lack of kernel support and no bonding devices.
 	 */
 	memset(bond_info, 0, sizeof(*bond_info));
 	if (nl_rdma < 0)
 		return -1;
-	if (!strstr(ibv_dev->name, "bond"))
+	if (!strstr(ibdev_name, "bond"))
 		return -1;
-	np = mlx5_nl_portnum(nl_rdma, ibv_dev->name);
+	np = mlx5_nl_portnum(nl_rdma, ibdev_name);
 	if (!np)
 		return -1;
 	/*
-	 * The Master device might not be on the predefined
-	 * port (not on port index 1, it is not garanted),
-	 * we have to scan all Infiniband device port and
-	 * find master.
+	 * The master device might not be on the predefined port(not on port
+	 * index 1, it is not guaranteed), we have to scan all Infiniband
+	 * device ports and find master.
 	 */
 	for (i = 1; i <= np; ++i) {
 		/* Check whether Infiniband port is populated. */
-		ifindex = mlx5_nl_ifindex(nl_rdma, ibv_dev->name, i);
+		ifindex = mlx5_nl_ifindex(nl_rdma, ibdev_name, i);
 		if (!ifindex)
 			continue;
 		if (!if_indextoname(ifindex, ifname))
@@ -2008,8 +2008,9 @@ mlx5_device_bond_pci_match(const struct ibv_device *ibv_dev,
 		snprintf(tmp_str, sizeof(tmp_str),
 			 "/sys/class/net/%s", ifname);
 		if (mlx5_get_pci_addr(tmp_str, &pci_addr)) {
-			DRV_LOG(WARNING, "can not get PCI address"
-					 " for netdev \"%s\"", ifname);
+			DRV_LOG(WARNING,
+				"Cannot get PCI address for netdev \"%s\".",
+				ifname);
 			continue;
 		}
 		/* Slave interface PCI address match found. */
@@ -2110,7 +2111,7 @@ mlx5_os_config_default(struct mlx5_dev_config *config)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev, void *ctx,
+mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 		     struct rte_eth_devargs *req_eth_da,
 		     uint16_t owner_id)
 {
@@ -2168,9 +2169,8 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev, void *ctx,
 		struct rte_pci_addr pci_addr;
 
 		DRV_LOG(DEBUG, "Checking device \"%s\"", ibv_list[ret]->name);
-		bd = mlx5_device_bond_pci_match
-				(ibv_list[ret], &owner_pci, nl_rdma, owner_id,
-				 &bond_info);
+		bd = mlx5_device_bond_pci_match(ibv_list[ret]->name, &owner_pci,
+						nl_rdma, owner_id, &bond_info);
 		if (bd >= 0) {
 			/*
 			 * Bonding device detected. Only one match is allowed,
@@ -2190,9 +2190,9 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev, void *ctx,
 			/* Amend owner pci address if owner PF ID specified. */
 			if (eth_da.nb_representor_ports)
 				owner_pci.function += owner_id;
-			DRV_LOG(INFO, "PCI information matches for"
-				      " slave %d bonding device \"%s\"",
-				      bd, ibv_list[ret]->name);
+			DRV_LOG(INFO,
+				"PCI information matches for slave %d bonding device \"%s\"",
+				bd, ibv_list[ret]->name);
 			ibv_match[nd++] = ibv_list[ret];
 			break;
 		} else {
@@ -2266,7 +2266,6 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev, void *ctx,
 			list[ns].max_port = np;
 			list[ns].phys_port = i;
 			list[ns].phys_dev_name = ibv_match[0]->name;
-			list[ns].ctx = ctx;
 			list[ns].eth_dev = NULL;
 			list[ns].pci_dev = pci_dev;
 			list[ns].cdev = cdev;
@@ -2362,7 +2361,6 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev, void *ctx,
 			list[ns].max_port = 1;
 			list[ns].phys_port = 1;
 			list[ns].phys_dev_name = ibv_match[i]->name;
-			list[ns].ctx = ctx;
 			list[ns].eth_dev = NULL;
 			list[ns].pci_dev = pci_dev;
 			list[ns].cdev = cdev;
@@ -2411,10 +2409,9 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev, void *ctx,
 			}
 			ret = -1;
 			if (nl_route >= 0)
-				ret = mlx5_nl_switch_info
-					       (nl_route,
-						list[ns].ifindex,
-						&list[ns].info);
+				ret = mlx5_nl_switch_info(nl_route,
+							  list[ns].ifindex,
+							  &list[ns].info);
 			if (ret || (!list[ns].info.representor &&
 				    !list[ns].info.master)) {
 				/*
@@ -2451,10 +2448,9 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev, void *ctx,
 		}
 		/*
 		 * New kernels may add the switch_id attribute for the case
-		 * there is no E-Switch and we wrongly recognized the
-		 * only device as master. Override this if there is the
-		 * single device with single port and new device name
-		 * format present.
+		 * there is no E-Switch and we wrongly recognized the only
+		 * device as master. Override this if there is the single
+		 * device with single port and new device name format present.
 		 */
 		if (nd == 1 &&
 		    list[0].info.name_type == MLX5_PHYS_PORT_NAME_TYPE_UPLINK) {
@@ -2627,7 +2623,7 @@ mlx5_os_parse_eth_devargs(struct rte_device *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_os_pci_probe(struct mlx5_common_device *cdev, void *ctx)
+mlx5_os_pci_probe(struct mlx5_common_device *cdev)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
 	struct rte_eth_devargs eth_da = { .nb_ports = 0 };
@@ -2641,7 +2637,7 @@ mlx5_os_pci_probe(struct mlx5_common_device *cdev, void *ctx)
 	if (eth_da.nb_ports > 0) {
 		/* Iterate all port if devargs pf is range: "pf[0-1]vf[...]". */
 		for (p = 0; p < eth_da.nb_ports; p++) {
-			ret = mlx5_os_pci_probe_pf(cdev, ctx, &eth_da,
+			ret = mlx5_os_pci_probe_pf(cdev, &eth_da,
 						   eth_da.ports[p]);
 			if (ret)
 				break;
@@ -2655,14 +2651,14 @@ mlx5_os_pci_probe(struct mlx5_common_device *cdev, void *ctx)
 			mlx5_net_remove(cdev);
 		}
 	} else {
-		ret = mlx5_os_pci_probe_pf(cdev, ctx, &eth_da, 0);
+		ret = mlx5_os_pci_probe_pf(cdev, &eth_da, 0);
 	}
 	return ret;
 }
 
 /* Probe a single SF device on auxiliary bus, no representor support. */
 static int
-mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev, void *ctx)
+mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev)
 {
 	struct rte_eth_devargs eth_da = { .nb_ports = 0 };
 	struct mlx5_dev_config config;
@@ -2682,8 +2678,7 @@ mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev, void *ctx)
 	/* Init spawn data. */
 	spawn.max_port = 1;
 	spawn.phys_port = 1;
-	spawn.ctx = ctx;
-	spawn.phys_dev_name = mlx5_os_get_ctx_device_name(ctx);
+	spawn.phys_dev_name = mlx5_os_get_ctx_device_name(cdev->ctx);
 	ret = mlx5_auxiliary_get_ifindex(dev->name);
 	if (ret < 0) {
 		DRV_LOG(ERR, "failed to get ethdev ifindex: %s", dev->name);
@@ -2721,28 +2716,19 @@ int
 mlx5_os_net_probe(struct mlx5_common_device *cdev)
 {
 	int ret;
-	void *ctx = NULL;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		ret = mlx5_os_open_device(cdev, &ctx);
-		if (ret) {
-			DRV_LOG(ERR, "Fail to open device %s", cdev->dev->name);
-			return -rte_errno;
-		}
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		mlx5_pmd_socket_init();
-	}
 	ret = mlx5_init_once();
 	if (ret) {
 		DRV_LOG(ERR, "Unable to init PMD global data: %s",
 			strerror(rte_errno));
-		if (ctx != NULL)
-			claim_zero(mlx5_glue->close_device(ctx));
 		return -rte_errno;
 	}
 	if (mlx5_dev_is_pci(cdev->dev))
-		return mlx5_os_pci_probe(cdev, ctx);
+		return mlx5_os_pci_probe(cdev);
 	else
-		return mlx5_os_auxiliary_probe(cdev, ctx);
+		return mlx5_os_auxiliary_probe(cdev);
 }
 
 /**
@@ -2793,16 +2779,16 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 {
 	int ret;
 	int flags;
+	struct ibv_context *ctx = sh->cdev->ctx;
 
 	sh->intr_handle.fd = -1;
-	flags = fcntl(((struct ibv_context *)sh->ctx)->async_fd, F_GETFL);
-	ret = fcntl(((struct ibv_context *)sh->ctx)->async_fd,
-		    F_SETFL, flags | O_NONBLOCK);
+	flags = fcntl(ctx->async_fd, F_GETFL);
+	ret = fcntl(ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
 	if (ret) {
 		DRV_LOG(INFO, "failed to change file descriptor async event"
 			" queue");
 	} else {
-		sh->intr_handle.fd = ((struct ibv_context *)sh->ctx)->async_fd;
+		sh->intr_handle.fd = ctx->async_fd;
 		sh->intr_handle.type = RTE_INTR_HANDLE_EXT;
 		if (rte_intr_callback_register(&sh->intr_handle,
 					mlx5_dev_interrupt_handler, sh)) {
@@ -2813,8 +2799,7 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 	if (sh->devx) {
 #ifdef HAVE_IBV_DEVX_ASYNC
 		sh->intr_handle_devx.fd = -1;
-		sh->devx_comp =
-			(void *)mlx5_glue->devx_create_cmd_comp(sh->ctx);
+		sh->devx_comp = (void *)mlx5_glue->devx_create_cmd_comp(ctx);
 		struct mlx5dv_devx_cmd_comp *devx_comp = sh->devx_comp;
 		if (!devx_comp) {
 			DRV_LOG(INFO, "failed to allocate devx_comp.");

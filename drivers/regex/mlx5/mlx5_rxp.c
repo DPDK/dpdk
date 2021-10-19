@@ -167,7 +167,7 @@ rxp_init_rtru(struct mlx5_regex_priv *priv, uint8_t id, uint32_t init_bits)
 	uint32_t poll_value;
 	uint32_t expected_value;
 	uint32_t expected_mask;
-	struct ibv_context *ctx = priv->ctx;
+	struct ibv_context *ctx = priv->cdev->ctx;
 	int ret = 0;
 
 	/* Read the rtru ctrl CSR. */
@@ -313,7 +313,7 @@ rxp_program_rof(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
 			tmp_addr = rxp_get_reg_address(address);
 			if (tmp_addr == UINT32_MAX)
 				goto parse_error;
-			ret = mlx5_devx_regex_register_read(priv->ctx, id,
+			ret = mlx5_devx_regex_register_read(priv->cdev->ctx, id,
 							    tmp_addr, &reg_val);
 			if (ret)
 				goto parse_error;
@@ -337,7 +337,7 @@ rxp_program_rof(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
 			tmp_addr = rxp_get_reg_address(address);
 			if (tmp_addr == UINT32_MAX)
 				goto parse_error;
-			ret = mlx5_devx_regex_register_read(priv->ctx, id,
+			ret = mlx5_devx_regex_register_read(priv->cdev->ctx, id,
 							    tmp_addr, &reg_val);
 			if (ret)
 				goto parse_error;
@@ -359,7 +359,7 @@ rxp_program_rof(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
 			tmp_addr = rxp_get_reg_address(address);
 			if (tmp_addr == UINT32_MAX)
 				goto parse_error;
-			ret = mlx5_devx_regex_register_read(priv->ctx, id,
+			ret = mlx5_devx_regex_register_read(priv->cdev->ctx, id,
 							    tmp_addr, &reg_val);
 			if (ret)
 				goto parse_error;
@@ -395,7 +395,7 @@ rxp_program_rof(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
 			if (tmp_addr == UINT32_MAX)
 				goto parse_error;
 
-			ret = mlx5_devx_regex_register_read(priv->ctx, id,
+			ret = mlx5_devx_regex_register_read(priv->cdev->ctx, id,
 							    tmp_addr, &reg_val);
 			if (ret) {
 				DRV_LOG(ERR, "RXP CSR read failed!");
@@ -418,17 +418,17 @@ rxp_program_rof(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
 			 */
 			temp = val;
 			ret |= mlx5_devx_regex_register_write
-					(priv->ctx, id,
+					(priv->cdev->ctx, id,
 					 MLX5_RXP_RTRU_CSR_DATA_0, temp);
 			temp = (uint32_t)(val >> 32);
 			ret |= mlx5_devx_regex_register_write
-					(priv->ctx, id,
+					(priv->cdev->ctx, id,
 					 MLX5_RXP_RTRU_CSR_DATA_0 +
 					 MLX5_RXP_CSR_WIDTH, temp);
 			temp = address;
 			ret |= mlx5_devx_regex_register_write
-					(priv->ctx, id, MLX5_RXP_RTRU_CSR_ADDR,
-					 temp);
+					(priv->cdev->ctx, id,
+					 MLX5_RXP_RTRU_CSR_ADDR, temp);
 			if (ret) {
 				DRV_LOG(ERR,
 					"Failed to copy instructions to RXP.");
@@ -506,13 +506,13 @@ mlnx_set_database(struct mlx5_regex_priv *priv, uint8_t id, uint8_t db_to_use)
 	int ret;
 	uint32_t umem_id;
 
-	ret = mlx5_devx_regex_database_stop(priv->ctx, id);
+	ret = mlx5_devx_regex_database_stop(priv->cdev->ctx, id);
 	if (ret < 0) {
 		DRV_LOG(ERR, "stop engine failed!");
 		return ret;
 	}
 	umem_id = mlx5_os_get_umem_id(priv->db[db_to_use].umem.umem);
-	ret = mlx5_devx_regex_database_program(priv->ctx, id, umem_id, 0);
+	ret = mlx5_devx_regex_database_program(priv->cdev->ctx, id, umem_id, 0);
 	if (ret < 0) {
 		DRV_LOG(ERR, "program db failed!");
 		return ret;
@@ -523,7 +523,7 @@ mlnx_set_database(struct mlx5_regex_priv *priv, uint8_t id, uint8_t db_to_use)
 static int
 mlnx_resume_database(struct mlx5_regex_priv *priv, uint8_t id)
 {
-	mlx5_devx_regex_database_resume(priv->ctx, id);
+	mlx5_devx_regex_database_resume(priv->cdev->ctx, id);
 	return 0;
 }
 
@@ -588,13 +588,13 @@ program_rxp_rules(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
 {
 	int ret;
 	uint32_t val;
+	struct ibv_context *ctx = priv->cdev->ctx;
 
 	ret = rxp_init_eng(priv, id);
 	if (ret < 0)
 		return ret;
 	/* Confirm the RXP is initialised. */
-	if (mlx5_devx_regex_register_read(priv->ctx, id,
-					    MLX5_RXP_CSR_STATUS, &val)) {
+	if (mlx5_devx_regex_register_read(ctx, id, MLX5_RXP_CSR_STATUS, &val)) {
 		DRV_LOG(ERR, "Failed to read from RXP!");
 		return -ENODEV;
 	}
@@ -602,14 +602,14 @@ program_rxp_rules(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
 		DRV_LOG(ERR, "RXP not initialised...");
 		return -EBUSY;
 	}
-	ret = mlx5_devx_regex_register_read(priv->ctx, id,
+	ret = mlx5_devx_regex_register_read(ctx, id,
 					    MLX5_RXP_RTRU_CSR_CTRL, &val);
 	if (ret) {
 		DRV_LOG(ERR, "CSR read failed!");
 		return -1;
 	}
 	val |= MLX5_RXP_RTRU_CSR_CTRL_GO;
-	ret = mlx5_devx_regex_register_write(priv->ctx, id,
+	ret = mlx5_devx_regex_register_write(ctx, id,
 					     MLX5_RXP_RTRU_CSR_CTRL, val);
 	if (ret) {
 		DRV_LOG(ERR, "Can't program rof file!");
@@ -622,7 +622,7 @@ program_rxp_rules(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
 	}
 	if (priv->is_bf2) {
 		ret = rxp_poll_csr_for_value
-			(priv->ctx, &val, MLX5_RXP_RTRU_CSR_STATUS,
+			(ctx, &val, MLX5_RXP_RTRU_CSR_STATUS,
 			 MLX5_RXP_RTRU_CSR_STATUS_UPDATE_DONE,
 			 MLX5_RXP_RTRU_CSR_STATUS_UPDATE_DONE,
 			 MLX5_RXP_POLL_CSR_FOR_VALUE_TIMEOUT, id);
@@ -632,30 +632,27 @@ program_rxp_rules(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
 		}
 		DRV_LOG(DEBUG, "Rules update took %d cycles", ret);
 	}
-	if (mlx5_devx_regex_register_read(priv->ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
+	if (mlx5_devx_regex_register_read(ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
 					  &val)) {
 		DRV_LOG(ERR, "CSR read failed!");
 		return -1;
 	}
 	val &= ~(MLX5_RXP_RTRU_CSR_CTRL_GO);
-	if (mlx5_devx_regex_register_write(priv->ctx, id,
+	if (mlx5_devx_regex_register_write(ctx, id,
 					   MLX5_RXP_RTRU_CSR_CTRL, val)) {
 		DRV_LOG(ERR, "CSR write failed!");
 		return -1;
 	}
-	ret = mlx5_devx_regex_register_read(priv->ctx, id, MLX5_RXP_CSR_CTRL,
-					    &val);
+	ret = mlx5_devx_regex_register_read(ctx, id, MLX5_RXP_CSR_CTRL, &val);
 	if (ret)
 		return ret;
 	val &= ~MLX5_RXP_CSR_CTRL_INIT;
-	ret = mlx5_devx_regex_register_write(priv->ctx, id, MLX5_RXP_CSR_CTRL,
-					     val);
+	ret = mlx5_devx_regex_register_write(ctx, id, MLX5_RXP_CSR_CTRL, val);
 	if (ret)
 		return ret;
 	rxp_init_rtru(priv, id, MLX5_RXP_RTRU_CSR_CTRL_INIT_MODE_L1_L2);
 	if (priv->is_bf2) {
-		ret = rxp_poll_csr_for_value(priv->ctx, &val,
-					     MLX5_RXP_CSR_STATUS,
+		ret = rxp_poll_csr_for_value(ctx, &val, MLX5_RXP_CSR_STATUS,
 					     MLX5_RXP_CSR_STATUS_INIT_DONE,
 					     MLX5_RXP_CSR_STATUS_INIT_DONE,
 					     MLX5_RXP_CSR_STATUS_TRIAL_TIMEOUT,
@@ -680,7 +677,7 @@ rxp_init_eng(struct mlx5_regex_priv *priv, uint8_t id)
 {
 	uint32_t ctrl;
 	uint32_t reg;
-	struct ibv_context *ctx = priv->ctx;
+	struct ibv_context *ctx = priv->cdev->ctx;
 	int ret;
 
 	ret = mlx5_devx_regex_register_read(ctx, id, MLX5_RXP_CSR_CTRL, &ctrl);
@@ -758,9 +755,10 @@ rxp_db_setup(struct mlx5_regex_priv *priv)
 			goto tidyup_error;
 		}
 		/* Register the memory. */
-		priv->db[i].umem.umem = mlx5_glue->devx_umem_reg(priv->ctx,
-							priv->db[i].ptr,
-							MLX5_MAX_DB_SIZE, 7);
+		priv->db[i].umem.umem = mlx5_glue->devx_umem_reg
+							(priv->cdev->ctx,
+							 priv->db[i].ptr,
+							 MLX5_MAX_DB_SIZE, 7);
 		if (!priv->db[i].umem.umem) {
 			DRV_LOG(ERR, "Failed to register memory!");
 			ret = ENODEV;
@@ -804,14 +802,14 @@ mlx5_regex_rules_db_import(struct rte_regexdev *dev,
 	}
 	if (rule_db_len == 0)
 		return -EINVAL;
-	if (mlx5_devx_regex_register_read(priv->ctx, 0,
+	if (mlx5_devx_regex_register_read(priv->cdev->ctx, 0,
 					  MLX5_RXP_CSR_BASE_ADDRESS, &ver)) {
 		DRV_LOG(ERR, "Failed to read Main CSRs Engine 0!");
 		return -1;
 	}
 	/* Need to ensure RXP not busy before stop! */
 	for (id = 0; id < priv->nb_engines; id++) {
-		ret = rxp_stop_engine(priv->ctx, id);
+		ret = rxp_stop_engine(priv->cdev->ctx, id);
 		if (ret) {
 			DRV_LOG(ERR, "Can't stop engine.");
 			ret = -ENODEV;
@@ -823,7 +821,7 @@ mlx5_regex_rules_db_import(struct rte_regexdev *dev,
 			ret = -ENODEV;
 			goto tidyup_error;
 		}
-		ret = rxp_start_engine(priv->ctx, id);
+		ret = rxp_start_engine(priv->cdev->ctx, id);
 		if (ret) {
 			DRV_LOG(ERR, "Can't start engine.");
 			ret = -ENODEV;

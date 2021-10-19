@@ -3618,8 +3618,8 @@ flow_dv_encap_decap_create_cb(void *tool_ctx, void *cb_ctx)
 	}
 	*resource = *ctx_resource;
 	resource->idx = idx;
-	ret = mlx5_flow_os_create_flow_action_packet_reformat(sh->ctx, domain,
-							      resource,
+	ret = mlx5_flow_os_create_flow_action_packet_reformat(sh->cdev->ctx,
+							      domain, resource,
 							     &resource->action);
 	if (ret) {
 		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_DECAP_ENCAP], idx);
@@ -5434,7 +5434,7 @@ flow_dv_modify_create_cb(void *tool_ctx, void *cb_ctx)
 	else
 		ns = sh->rx_domain;
 	ret = mlx5_flow_os_create_flow_action_modify_header
-					(sh->ctx, ns, entry,
+					(sh->cdev->ctx, ns, entry,
 					 data_len, &entry->action);
 	if (ret) {
 		mlx5_ipool_free(sh->mdh_ipools[ref->actions_num - 1], idx);
@@ -6056,7 +6056,7 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 
 	if (fallback) {
 		/* bulk_bitmap must be 0 for single counter allocation. */
-		dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, 0);
+		dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->cdev->ctx, 0);
 		if (!dcs)
 			return NULL;
 		pool = flow_dv_find_pool_by_id(cmng, dcs->id);
@@ -6074,7 +6074,7 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 		*cnt_free = cnt;
 		return pool;
 	}
-	dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, 0x4);
+	dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->cdev->ctx, 0x4);
 	if (!dcs) {
 		rte_errno = ENODATA;
 		return NULL;
@@ -6369,7 +6369,7 @@ flow_dv_mtr_pool_create(struct rte_eth_dev *dev,
 	uint32_t log_obj_size;
 
 	log_obj_size = rte_log2_u32(MLX5_ASO_MTRS_PER_POOL >> 1);
-	dcs = mlx5_devx_cmd_create_flow_meter_aso_obj(priv->sh->ctx,
+	dcs = mlx5_devx_cmd_create_flow_meter_aso_obj(priv->sh->cdev->ctx,
 			priv->sh->pdn, log_obj_size);
 	if (!dcs) {
 		rte_errno = ENODATA;
@@ -9067,7 +9067,7 @@ flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
 		}
 	} else {
 		/* Create a GENEVE TLV object and resource. */
-		obj = mlx5_devx_cmd_create_geneve_tlv_option(sh->ctx,
+		obj = mlx5_devx_cmd_create_geneve_tlv_option(sh->cdev->ctx,
 				geneve_opt_v->option_class,
 				geneve_opt_v->option_type,
 				geneve_opt_v->option_len);
@@ -10427,7 +10427,8 @@ flow_dv_matcher_create_cb(void *tool_ctx, void *cb_ctx)
 	dv_attr.priority = ref->priority;
 	if (tbl->is_egress)
 		dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
-	ret = mlx5_flow_os_create_flow_matcher(sh->ctx, &dv_attr, tbl->tbl.obj,
+	ret = mlx5_flow_os_create_flow_matcher(sh->cdev->ctx, &dv_attr,
+					       tbl->tbl.obj,
 					       &resource->matcher_object);
 	if (ret) {
 		mlx5_free(resource);
@@ -11864,7 +11865,7 @@ flow_dv_age_pool_create(struct rte_eth_dev *dev,
 	struct mlx5_devx_obj *obj = NULL;
 	uint32_t i;
 
-	obj = mlx5_devx_cmd_create_flow_hit_aso_obj(priv->sh->ctx,
+	obj = mlx5_devx_cmd_create_flow_hit_aso_obj(priv->sh->cdev->ctx,
 						    priv->sh->pdn);
 	if (!obj) {
 		rte_errno = ENODATA;
@@ -12292,7 +12293,7 @@ flow_dv_ct_pool_create(struct rte_eth_dev *dev,
 	uint32_t i;
 	uint32_t log_obj_size = rte_log2_u32(MLX5_ASO_CT_ACTIONS_PER_POOL);
 
-	obj = mlx5_devx_cmd_create_conn_track_offload_obj(priv->sh->ctx,
+	obj = mlx5_devx_cmd_create_conn_track_offload_obj(priv->sh->cdev->ctx,
 						priv->sh->pdn, log_obj_size);
 	if (!obj) {
 		rte_errno = ENODATA;
@@ -17099,8 +17100,8 @@ mlx5_flow_discover_dr_action_support(struct rte_eth_dev *dev)
 		goto err;
 	dv_attr.match_criteria_enable = flow_dv_matcher_enable(mask.buf);
 	__flow_dv_adjust_buf_size(&mask.size, dv_attr.match_criteria_enable);
-	ret = mlx5_flow_os_create_flow_matcher(sh->ctx, &dv_attr, tbl->obj,
-					       &matcher);
+	ret = mlx5_flow_os_create_flow_matcher(sh->cdev->ctx, &dv_attr,
+					       tbl->obj, &matcher);
 	if (ret)
 		goto err;
 	__flow_dv_adjust_buf_size(&value.size, dv_attr.match_criteria_enable);
@@ -17168,7 +17169,7 @@ mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev)
 					0, 0, 0, NULL);
 	if (!tbl)
 		goto err;
-	dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, 0x4);
+	dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->cdev->ctx, 0x4);
 	if (!dcs)
 		goto err;
 	ret = mlx5_flow_os_create_flow_action_count(dcs->obj, UINT16_MAX,
@@ -17177,8 +17178,8 @@ mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev)
 		goto err;
 	dv_attr.match_criteria_enable = flow_dv_matcher_enable(mask.buf);
 	__flow_dv_adjust_buf_size(&mask.size, dv_attr.match_criteria_enable);
-	ret = mlx5_flow_os_create_flow_matcher(sh->ctx, &dv_attr, tbl->obj,
-					       &matcher);
+	ret = mlx5_flow_os_create_flow_matcher(sh->cdev->ctx, &dv_attr,
+					       tbl->obj, &matcher);
 	if (ret)
 		goto err;
 	__flow_dv_adjust_buf_size(&value.size, dv_attr.match_criteria_enable);

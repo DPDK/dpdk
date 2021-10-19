@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include <rte_mempool.h>
+#include <rte_bus_pci.h>
 #include <rte_malloc.h>
 #include <rte_errno.h>
 
@@ -17,7 +18,7 @@
 #include "mlx5_malloc.h"
 
 /**
- * Initialization routine for run-time dependency on external lib
+ * Initialization routine for run-time dependency on external lib.
  */
 void
 mlx5_glue_constructor(void)
@@ -25,7 +26,7 @@ mlx5_glue_constructor(void)
 }
 
 /**
- * Allocate PD. Given a devx context object
+ * Allocate PD. Given a DevX context object
  * return an mlx5-pd object.
  *
  * @param[in] ctx
@@ -37,8 +38,8 @@ mlx5_glue_constructor(void)
 void *
 mlx5_os_alloc_pd(void *ctx)
 {
-	struct mlx5_pd *ppd =  mlx5_malloc(MLX5_MEM_ZERO,
-		sizeof(struct mlx5_pd), 0, SOCKET_ID_ANY);
+	struct mlx5_pd *ppd = mlx5_malloc(MLX5_MEM_ZERO, sizeof(struct mlx5_pd),
+					  0, SOCKET_ID_ANY);
 	if (!ppd)
 		return NULL;
 
@@ -60,7 +61,7 @@ mlx5_os_alloc_pd(void *ctx)
  *   Pointer to mlx5_pd.
  *
  * @return
- *    Zero if pd is released successfully, negative number otherwise.
+ *   Zero if pd is released successfully, negative number otherwise.
  */
 int
 mlx5_os_dealloc_pd(void *pd)
@@ -184,22 +185,28 @@ mlx5_os_get_devx_device(struct rte_device *dev,
  *
  * This function calls the Windows glue APIs to open a device.
  *
- * @param dev
+ * @param cdev
  *   Pointer to mlx5 device structure.
- * @param ctx
- *   Pointer to fill inside pointer to device context.
+ * @param classes
+ *   Chosen classes come from user device arguments.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_os_open_device(struct mlx5_common_device *cdev, void **ctx)
+mlx5_os_open_device(struct mlx5_common_device *cdev, uint32_t classes)
 {
 	struct devx_device_bdf *devx_bdf_dev = NULL;
 	struct devx_device_bdf *devx_list;
 	struct mlx5_context *mlx5_ctx = NULL;
 	int n;
 
+	if (classes != MLX5_CLASS_ETH) {
+		DRV_LOG(ERR,
+			"The chosen classes are not supported on Windows.");
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
 	errno = 0;
 	devx_list = mlx5_glue->get_device_list(&n);
 	if (devx_list == NULL) {
@@ -223,7 +230,7 @@ mlx5_os_open_device(struct mlx5_common_device *cdev, void **ctx)
 		goto error;
 	}
 	cdev->config.devx = 1;
-	*ctx = (void *)mlx5_ctx;
+	cdev->ctx = mlx5_ctx;
 	mlx5_glue->free_device_list(devx_list);
 	return 0;
 error:

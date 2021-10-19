@@ -308,17 +308,60 @@ mlx5_dev_to_pci_str(const struct rte_device *dev, char *addr, size_t size)
 #endif
 }
 
+/**
+ * Uninitialize all HW global of device context.
+ *
+ * @param cdev
+ *   Pointer to mlx5 device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static void
+mlx5_dev_hw_global_release(struct mlx5_common_device *cdev)
+{
+	if (cdev->ctx != NULL) {
+		claim_zero(mlx5_glue->close_device(cdev->ctx));
+		cdev->ctx = NULL;
+	}
+}
+
+/**
+ * Initialize all HW global of device context.
+ *
+ * @param cdev
+ *   Pointer to mlx5 device structure.
+ * @param classes
+ *   Chosen classes come from user device arguments.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_dev_hw_global_prepare(struct mlx5_common_device *cdev, uint32_t classes)
+{
+	int ret;
+
+	/* Create context device */
+	ret = mlx5_os_open_device(cdev, classes);
+	if (ret < 0)
+		return ret;
+	return 0;
+}
+
 static void
 mlx5_common_dev_release(struct mlx5_common_device *cdev)
 {
 	pthread_mutex_lock(&devices_list_lock);
 	TAILQ_REMOVE(&devices_list, cdev, next);
 	pthread_mutex_unlock(&devices_list_lock);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		mlx5_dev_hw_global_release(cdev);
 	rte_free(cdev);
 }
 
 static struct mlx5_common_device *
-mlx5_common_dev_create(struct rte_device *eal_dev)
+mlx5_common_dev_create(struct rte_device *eal_dev, uint32_t classes)
 {
 	struct mlx5_common_device *cdev;
 	int ret;
@@ -341,6 +384,13 @@ mlx5_common_dev_create(struct rte_device *eal_dev)
 		return NULL;
 	}
 	mlx5_malloc_mem_select(cdev->config.sys_mem_en);
+	/* Initialize all HW global of device context. */
+	ret = mlx5_dev_hw_global_prepare(cdev, classes);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to initialize device context.");
+		rte_free(cdev);
+		return NULL;
+	}
 exit:
 	pthread_mutex_lock(&devices_list_lock);
 	TAILQ_INSERT_HEAD(&devices_list, cdev, next);
@@ -433,7 +483,7 @@ mlx5_common_dev_probe(struct rte_device *eal_dev)
 		classes = MLX5_CLASS_ETH;
 	cdev = to_mlx5_device(eal_dev);
 	if (!cdev) {
-		cdev = mlx5_common_dev_create(eal_dev);
+		cdev = mlx5_common_dev_create(eal_dev, classes);
 		if (!cdev)
 			return -ENOMEM;
 		new_device = true;

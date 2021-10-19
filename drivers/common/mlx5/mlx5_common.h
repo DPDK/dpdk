@@ -346,6 +346,7 @@ struct mlx5_common_device {
 	struct rte_device *dev;
 	TAILQ_ENTRY(mlx5_common_device) next;
 	uint32_t classes_loaded;
+	void *ctx; /* Verbs/DV/DevX context. */
 	struct mlx5_common_dev_config config; /* Device configuration. */
 };
 
@@ -446,7 +447,6 @@ mlx5_dev_is_pci(const struct rte_device *dev);
 
 /* mlx5_common_os.c */
 
-__rte_internal
-int mlx5_os_open_device(struct mlx5_common_device *cdev, void **ctx);
+int mlx5_os_open_device(struct mlx5_common_device *cdev, uint32_t classes);
 
 #endif /* RTE_PMD_MLX5_COMMON_H_ */

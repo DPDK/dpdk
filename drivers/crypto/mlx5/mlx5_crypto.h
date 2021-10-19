@@ -19,7 +19,7 @@
 
 struct mlx5_crypto_priv {
 	TAILQ_ENTRY(mlx5_crypto_priv) next;
-	struct ibv_context *ctx; /* Device context. */
+	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
 	struct rte_cryptodev *crypto_dev;
 	void *uar; /* User Access Region. */
 	volatile uint64_t *uar_addr;

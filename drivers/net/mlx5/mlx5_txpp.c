@@ -49,7 +49,7 @@ static int
 mlx5_txpp_create_event_channel(struct mlx5_dev_ctx_shared *sh)
 {
 	MLX5_ASSERT(!sh->txpp.echan);
-	sh->txpp.echan = mlx5_os_devx_create_event_channel(sh->ctx,
+	sh->txpp.echan = mlx5_os_devx_create_event_channel(sh->cdev->ctx,
 			MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA);
 	if (!sh->txpp.echan) {
 		rte_errno = errno;
@@ -104,7 +104,7 @@ mlx5_txpp_alloc_pp_index(struct mlx5_dev_ctx_shared *sh)
 	MLX5_SET(set_pp_rate_limit_context, &pp, rate_mode,
 		 sh->txpp.test ? MLX5_DATA_RATE : MLX5_WQE_RATE);
 	sh->txpp.pp = mlx5_glue->dv_alloc_pp
-				(sh->ctx, sizeof(pp), &pp,
+				(sh->cdev->ctx, sizeof(pp), &pp,
 				 MLX5DV_PP_ALLOC_FLAGS_DEDICATED_INDEX);
 	if (sh->txpp.pp == NULL) {
 		DRV_LOG(ERR, "Failed to allocate packet pacing index.");
@@ -245,7 +245,7 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 	int ret;
 
 	/* Create completion queue object for Rearm Queue. */
-	ret = mlx5_devx_cq_create(sh->ctx, &wq->cq_obj,
+	ret = mlx5_devx_cq_create(sh->cdev->ctx, &wq->cq_obj,
 				  log2above(MLX5_TXPP_REARM_CQ_SIZE), &cq_attr,
 				  sh->numa_node);
 	if (ret) {
@@ -259,7 +259,7 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 	/* Create send queue object for Rearm Queue. */
 	sq_attr.cqn = wq->cq_obj.cq->id;
 	/* There should be no WQE leftovers in the cyclic queue. */
-	ret = mlx5_devx_sq_create(sh->ctx, &wq->sq_obj,
+	ret = mlx5_devx_sq_create(sh->cdev->ctx, &wq->sq_obj,
 				  log2above(MLX5_TXPP_REARM_SQ_SIZE), &sq_attr,
 				  sh->numa_node);
 	if (ret) {
@@ -409,7 +409,7 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	sh->txpp.ts_p = 0;
 	sh->txpp.ts_n = 0;
 	/* Create completion queue object for Clock Queue. */
-	ret = mlx5_devx_cq_create(sh->ctx, &wq->cq_obj,
+	ret = mlx5_devx_cq_create(sh->cdev->ctx, &wq->cq_obj,
 				  log2above(MLX5_TXPP_CLKQ_SIZE), &cq_attr,
 				  sh->numa_node);
 	if (ret) {
@@ -446,7 +446,8 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	sq_attr.wq_attr.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar);
 	sq_attr.wq_attr.pd = sh->pdn;
 	sq_attr.ts_format = mlx5_ts_format_conv(sh->sq_ts_format);
-	ret = mlx5_devx_sq_create(sh->ctx, &wq->sq_obj, log2above(wq->sq_size),
+	ret = mlx5_devx_sq_create(sh->cdev->ctx, &wq->sq_obj,
+				  log2above(wq->sq_size),
 				  &sq_attr, sh->numa_node);
 	if (ret) {
 		rte_errno = errno;
