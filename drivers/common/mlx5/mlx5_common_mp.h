@@ -64,6 +64,17 @@ struct mlx5_mp_id {
 	uint16_t port_id;
 };
 
+/** Key string for IPC. */
+#define MLX5_MP_NAME "common_mlx5_mp"
+
+/** Initialize a multi-process ID. */
+static inline void
+mlx5_mp_id_init(struct mlx5_mp_id *mp_id, uint16_t port_id)
+{
+	mp_id->port_id = port_id;
+	strlcpy(mp_id->name, MLX5_MP_NAME, RTE_MP_MAX_NAME_LEN);
+}
+
 /** Request timeout for IPC. */
 #define MLX5_MP_REQ_TIMEOUT_SEC 5
 

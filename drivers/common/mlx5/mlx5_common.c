@@ -13,6 +13,7 @@
 
 #include "mlx5_common.h"
 #include "mlx5_common_os.h"
+#include "mlx5_common_mp.h"
 #include "mlx5_common_log.h"
 #include "mlx5_common_defs.h"
 #include "mlx5_common_private.h"
@@ -303,6 +304,152 @@ mlx5_dev_to_pci_str(const struct rte_device *dev, char *addr, size_t size)
 }
 
 /**
+ * Register the mempool for the protection domain.
+ *
+ * @param cdev
+ *   Pointer to the mlx5 common device.
+ * @param mp
+ *   Mempool being registered.
+ *
+ * @return
+ *   0 on success, (-1) on failure and rte_errno is set.
+ */
+static int
+mlx5_dev_mempool_register(struct mlx5_common_device *cdev,
+			  struct rte_mempool *mp)
+{
+	struct mlx5_mp_id mp_id;
+
+	mlx5_mp_id_init(&mp_id, 0);
+	return mlx5_mr_mempool_register(&cdev->mr_scache, cdev->pd, mp, &mp_id);
+}
+
+/**
+ * Unregister the mempool from the protection domain.
+ *
+ * @param cdev
+ *   Pointer to the mlx5 common device.
+ * @param mp
+ *   Mempool being unregistered.
+ */
+void
+mlx5_dev_mempool_unregister(struct mlx5_common_device *cdev,
+			    struct rte_mempool *mp)
+{
+	struct mlx5_mp_id mp_id;
+
+	mlx5_mp_id_init(&mp_id, 0);
+	if (mlx5_mr_mempool_unregister(&cdev->mr_scache, mp, &mp_id) < 0)
+		DRV_LOG(WARNING, "Failed to unregister mempool %s for PD %p: %s",
+			mp->name, cdev->pd, rte_strerror(rte_errno));
+}
+
+/**
+ * rte_mempool_walk() callback to register mempools for the protection domain.
+ *
+ * @param mp
+ *   The mempool being walked.
+ * @param arg
+ *   Pointer to the device shared context.
+ */
+static void
+mlx5_dev_mempool_register_cb(struct rte_mempool *mp, void *arg)
+{
+	struct mlx5_common_device *cdev = arg;
+	int ret;
+
+	ret = mlx5_dev_mempool_register(cdev, mp);
+	if (ret < 0 && rte_errno != EEXIST)
+		DRV_LOG(ERR,
+			"Failed to register existing mempool %s for PD %p: %s",
+			mp->name, cdev->pd, rte_strerror(rte_errno));
+}
+
+/**
+ * rte_mempool_walk() callback to unregister mempools
+ * from the protection domain.
+ *
+ * @param mp
+ *   The mempool being walked.
+ * @param arg
+ *   Pointer to the device shared context.
+ */
+static void
+mlx5_dev_mempool_unregister_cb(struct rte_mempool *mp, void *arg)
+{
+	mlx5_dev_mempool_unregister((struct mlx5_common_device *)arg, mp);
+}
+
+/**
+ * Mempool life cycle callback for mlx5 common devices.
+ *
+ * @param event
+ *   Mempool life cycle event.
+ * @param mp
+ *   Associated mempool.
+ * @param arg
+ *   Pointer to a device shared context.
+ */
+static void
+mlx5_dev_mempool_event_cb(enum rte_mempool_event event, struct rte_mempool *mp,
+			  void *arg)
+{
+	struct mlx5_common_device *cdev = arg;
+
+	switch (event) {
+	case RTE_MEMPOOL_EVENT_READY:
+		if (mlx5_dev_mempool_register(cdev, mp) < 0)
+			DRV_LOG(ERR,
+				"Failed to register new mempool %s for PD %p: %s",
+				mp->name, cdev->pd, rte_strerror(rte_errno));
+		break;
+	case RTE_MEMPOOL_EVENT_DESTROY:
+		mlx5_dev_mempool_unregister(cdev, mp);
+		break;
+	}
+}
+
+int
+mlx5_dev_mempool_subscribe(struct mlx5_common_device *cdev)
+{
+	int ret = 0;
+
+	if (!cdev->config.mr_mempool_reg_en)
+		return 0;
+	rte_rwlock_write_lock(&cdev->mr_scache.mprwlock);
+	if (cdev->mr_scache.mp_cb_registered)
+		goto exit;
+	/* Callback for this device may be already registered. */
+	ret = rte_mempool_event_callback_register(mlx5_dev_mempool_event_cb,
+						  cdev);
+	if (ret != 0 && rte_errno != EEXIST)
+		goto exit;
+	/* Register mempools only once for this device. */
+	if (ret == 0)
+		rte_mempool_walk(mlx5_dev_mempool_register_cb, cdev);
+	ret = 0;
+	cdev->mr_scache.mp_cb_registered = 1;
+exit:
+	rte_rwlock_write_unlock(&cdev->mr_scache.mprwlock);
+	return ret;
+}
+
+static void
+mlx5_dev_mempool_unsubscribe(struct mlx5_common_device *cdev)
+{
+	int ret;
+
+	if (!cdev->mr_scache.mp_cb_registered ||
+	    !cdev->config.mr_mempool_reg_en)
+		return;
+	/* Stop watching for mempool events and unregister all mempools. */
+	ret = rte_mempool_event_callback_unregister(mlx5_dev_mempool_event_cb,
+						    cdev);
+	if (ret == 0)
+		rte_mempool_walk(mlx5_dev_mempool_unregister_cb, cdev);
+}
+
+/**
  * Callback for memory event.
  *
  * @param event_type
@@ -409,6 +556,7 @@ mlx5_common_dev_release(struct mlx5_common_device *cdev)
 		if (TAILQ_EMPTY(&devices_list))
 			rte_mem_event_callback_unregister("MLX5_MEM_EVENT_CB",
 							  NULL);
+		mlx5_dev_mempool_unsubscribe(cdev);
 		mlx5_mr_release_cache(&cdev->mr_scache);
 		mlx5_dev_hw_global_release(cdev);
 	}

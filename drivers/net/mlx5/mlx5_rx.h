@@ -43,19 +43,6 @@ struct rxq_zip {
 	uint32_t cqe_cnt; /* Number of CQEs. */
 };
 
-/* Multi-Packet RQ buffer header. */
-struct mlx5_mprq_buf {
-	struct rte_mempool *mp;
-	uint16_t refcnt; /* Atomically accessed refcnt. */
-	uint8_t pad[RTE_PKTMBUF_HEADROOM]; /* Headroom for the first packet. */
-	struct rte_mbuf_ext_shared_info shinfos[];
-	/*
-	 * Shared information per stride.
-	 * More memory will be allocated for the first stride head-room and for
-	 * the strides data.
-	 */
-} __rte_cache_aligned;
-
 /* Get pointer to the first stride. */
 #define mlx5_mprq_buf_addr(ptr, strd_n) (RTE_PTR_ADD((ptr), \
 				sizeof(struct mlx5_mprq_buf) + \
@@ -255,7 +242,6 @@ int mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hxrq_idx,
 uint16_t mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
 void mlx5_rxq_initialize(struct mlx5_rxq_data *rxq);
 __rte_noinline int mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec);
-void mlx5_mprq_buf_free_cb(void *addr, void *opaque);
 void mlx5_mprq_buf_free(struct mlx5_mprq_buf *buf);
 uint16_t mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts,
 			    uint16_t pkts_n);

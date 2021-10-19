@@ -386,8 +386,9 @@ mlx5_compress_dev_stop(struct rte_compressdev *dev)
 static int
 mlx5_compress_dev_start(struct rte_compressdev *dev)
 {
-	RTE_SET_USED(dev);
-	return 0;
+	struct mlx5_compress_priv *priv = dev->data->dev_private;
+
+	return mlx5_dev_mempool_subscribe(priv->cdev);
 }
 
 static void

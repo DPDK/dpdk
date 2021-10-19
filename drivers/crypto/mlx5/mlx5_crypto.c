@@ -142,8 +142,9 @@ mlx5_crypto_dev_stop(struct rte_cryptodev *dev)
 static int
 mlx5_crypto_dev_start(struct rte_cryptodev *dev)
 {
-	RTE_SET_USED(dev);
-	return 0;
+	struct mlx5_crypto_priv *priv = dev->data->dev_private;
+
+	return mlx5_dev_mempool_subscribe(priv->cdev);
 }
 
 static int

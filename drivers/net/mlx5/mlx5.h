@@ -153,17 +153,6 @@ struct mlx5_flow_dump_ack {
 	int rc; /**< Return code. */
 };
 
-/** Key string for IPC. */
-#define MLX5_MP_NAME "net_mlx5_mp"
-
-/** Initialize a multi-process ID. */
-static inline void
-mlx5_mp_id_init(struct mlx5_mp_id *mp_id, uint16_t port_id)
-{
-	mp_id->port_id = port_id;
-	strlcpy(mp_id->name, MLX5_MP_NAME, RTE_MP_MAX_NAME_LEN);
-}
-
 LIST_HEAD(mlx5_dev_list, mlx5_dev_ctx_shared);
 
 /* Shared data between primary and secondary processes. */
@@ -172,8 +161,6 @@ struct mlx5_shared_data {
 	/* Global spinlock for primary and secondary processes. */
 	int init_done; /* Whether primary has done initialization. */
 	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
-	struct mlx5_dev_list mem_event_cb_list;
-	rte_rwlock_t mem_event_rwlock;
 };
 
 /* Per-process data structure, not visible to other processes. */

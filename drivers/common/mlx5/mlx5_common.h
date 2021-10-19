@@ -408,6 +408,15 @@ __rte_internal
 bool
 mlx5_dev_is_pci(const struct rte_device *dev);
 
+__rte_internal
+int
+mlx5_dev_mempool_subscribe(struct mlx5_common_device *cdev);
+
+__rte_internal
+void
+mlx5_dev_mempool_unregister(struct mlx5_common_device *cdev,
+			    struct rte_mempool *mp);
+
 /* mlx5_common_mr.c */
 
 __rte_internal

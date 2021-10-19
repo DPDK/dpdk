@@ -235,10 +235,6 @@ void mlx5_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 int mlx5_tx_burst_mode_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 			   struct rte_eth_burst_mode *mode);
 
-/* mlx5_mr.c */
-
-uint32_t mlx5_tx_mb2mr_bh(struct mlx5_txq_data *txq, struct rte_mbuf *mb);
-
 /* mlx5_tx_empw.c */
 
 MLX5_TXOFF_PRE_DECL(full_empw);
@@ -356,12 +352,12 @@ __mlx5_uar_write64(uint64_t val, void *addr, rte_spinlock_t *lock)
 #endif
 
 /**
- * Query LKey from a packet buffer for Tx. If not found, add the mempool.
+ * Query LKey from a packet buffer for Tx.
  *
  * @param txq
  *   Pointer to Tx queue structure.
- * @param addr
- *   Address to search.
+ * @param mb
+ *   Pointer to mbuf.
  *
  * @return
  *   Searched LKey on success, UINT32_MAX on no match.
@@ -370,19 +366,12 @@ static __rte_always_inline uint32_t
 mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 {
 	struct mlx5_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
-	uintptr_t addr = (uintptr_t)mb->buf_addr;
-	uint32_t lkey;
+	struct mlx5_txq_ctrl *txq_ctrl =
+			container_of(txq, struct mlx5_txq_ctrl, txq);
+	struct mlx5_priv *priv = txq_ctrl->priv;
 
-	/* Check generation bit to see if there's any change on existing MRs. */
-	if (unlikely(*mr_ctrl->dev_gen_ptr != mr_ctrl->cur_gen))
-		mlx5_mr_flush_local_cache(mr_ctrl);
-	/* Linear search on MR cache array. */
-	lkey = mlx5_mr_lookup_lkey(mr_ctrl->cache, &mr_ctrl->mru,
-				   MLX5_MR_CACHE_N, addr);
-	if (likely(lkey != UINT32_MAX))
-		return lkey;
 	/* Take slower bottom-half on miss. */
-	return mlx5_tx_mb2mr_bh(txq, mb);
+	return mlx5_mr_mb2mr(priv->sh->cdev, &priv->mp_id, mr_ctrl, mb);
 }
 
 /**

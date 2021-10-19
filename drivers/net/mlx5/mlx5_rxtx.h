@@ -43,30 +43,4 @@ int mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 int mlx5_queue_state_modify(struct rte_eth_dev *dev,
 			    struct mlx5_mp_arg_queue_state_modify *sm);
 
-/* mlx5_mr.c */
-
-void mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl);
-int mlx5_net_dma_map(struct rte_device *rte_dev, void *addr, uint64_t iova,
-		     size_t len);
-int mlx5_net_dma_unmap(struct rte_device *rte_dev, void *addr, uint64_t iova,
-		       size_t len);
-
-/**
- * Get Memory Pool (MP) from mbuf. If mbuf is indirect, the pool from which the
- * cloned mbuf is allocated is returned instead.
- *
- * @param buf
- *   Pointer to mbuf.
- *
- * @return
- *   Memory pool where data is located for given mbuf.
- */
-static inline struct rte_mempool *
-mlx5_mb2mp(struct rte_mbuf *buf)
-{
-	if (unlikely(RTE_MBUF_CLONED(buf)))
-		return rte_mbuf_from_indirect(buf)->pool;
-	return buf->pool;
-}
-
 #endif /* RTE_PMD_MLX5_RXTX_H_ */

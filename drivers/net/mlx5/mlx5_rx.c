@@ -18,6 +18,7 @@
 
 #include <mlx5_prm.h>
 #include <mlx5_common.h>
+#include <mlx5_common_mr.h>
 
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
@@ -1025,20 +1026,6 @@ mlx5_lro_update_hdr(uint8_t *__rte_restrict padd,
 		l4_type = (rte_be_to_cpu_16(mcqe->hdr_type) &
 			   MLX5_CQE_L4_TYPE_MASK) >> MLX5_CQE_L4_TYPE_SHIFT;
 	mlx5_lro_update_tcp_hdr(h.tcp, cqe, phcsum, l4_type);
-}
-
-void
-mlx5_mprq_buf_free_cb(void *addr __rte_unused, void *opaque)
-{
-	struct mlx5_mprq_buf *buf = opaque;
-
-	if (__atomic_load_n(&buf->refcnt, __ATOMIC_RELAXED) == 1) {
-		rte_mempool_put(buf->mp, buf);
-	} else if (unlikely(__atomic_sub_fetch(&buf->refcnt, 1,
-					       __ATOMIC_RELAXED) == 0)) {
-		__atomic_store_n(&buf->refcnt, 1, __ATOMIC_RELAXED);
-		rte_mempool_put(buf->mp, buf);
-	}
 }
 
 void

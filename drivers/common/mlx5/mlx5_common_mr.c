@@ -12,8 +12,10 @@
 #include <rte_rwlock.h>
 
 #include "mlx5_glue.h"
+#include "mlx5_common.h"
 #include "mlx5_common_mp.h"
 #include "mlx5_common_mr.h"
+#include "mlx5_common_os.h"
 #include "mlx5_common_log.h"
 #include "mlx5_malloc.h"
 
@@ -46,6 +48,20 @@ struct mlx5_mempool_reg {
 	/** Number of memory regions. */
 	unsigned int mrs_n;
 };
+
+void
+mlx5_mprq_buf_free_cb(void *addr __rte_unused, void *opaque)
+{
+	struct mlx5_mprq_buf *buf = opaque;
+
+	if (__atomic_load_n(&buf->refcnt, __ATOMIC_RELAXED) == 1) {
+		rte_mempool_put(buf->mp, buf);
+	} else if (unlikely(__atomic_sub_fetch(&buf->refcnt, 1,
+					       __ATOMIC_RELAXED) == 0)) {
+		__atomic_store_n(&buf->refcnt, 1, __ATOMIC_RELAXED);
+		rte_mempool_put(buf->mp, buf);
+	}
+}
 
 /**
  * Expand B-tree table to a given size. Can't be called with holding
@@ -600,6 +616,10 @@ mlx5_mr_create_secondary(void *pd __rte_unused,
 {
 	int ret;
 
+	if (mp_id == NULL) {
+		rte_errno = EINVAL;
+		return UINT32_MAX;
+	}
 	DRV_LOG(DEBUG, "port %u requesting MR creation for address (%p)",
 	      mp_id->port_id, (void *)addr);
 	ret = mlx5_mp_req_mr_create(mp_id, addr);
@@ -995,10 +1015,11 @@ mr_lookup_caches(void *pd, struct mlx5_mp_id *mp_id,
  * @return
  *   Searched LKey on success, UINT32_MAX on no match.
  */
-uint32_t mlx5_mr_addr2mr_bh(void *pd, struct mlx5_mp_id *mp_id,
-			    struct mlx5_mr_share_cache *share_cache,
-			    struct mlx5_mr_ctrl *mr_ctrl,
-			    uintptr_t addr, unsigned int mr_ext_memseg_en)
+static uint32_t
+mlx5_mr_addr2mr_bh(void *pd, struct mlx5_mp_id *mp_id,
+		   struct mlx5_mr_share_cache *share_cache,
+		   struct mlx5_mr_ctrl *mr_ctrl, uintptr_t addr,
+		   unsigned int mr_ext_memseg_en)
 {
 	uint32_t lkey;
 	uint16_t bh_idx = 0;
@@ -1029,7 +1050,7 @@ uint32_t mlx5_mr_addr2mr_bh(void *pd, struct mlx5_mp_id *mp_id,
 }
 
 /**
- * Release all the created MRs and resources on global MR cache of a device.
+ * Release all the created MRs and resources on global MR cache of a device
  * list.
  *
  * @param share_cache
@@ -1076,6 +1097,8 @@ mlx5_mr_create_cache(struct mlx5_mr_share_cache *share_cache, int socket)
 	mlx5_os_set_reg_mr_cb(&share_cache->reg_mr_cb,
 			      &share_cache->dereg_mr_cb);
 	rte_rwlock_init(&share_cache->rwlock);
+	rte_rwlock_init(&share_cache->mprwlock);
+	share_cache->mp_cb_registered = 0;
 	/* Initialize B-tree and allocate memory for global MR cache table. */
 	return mlx5_mr_btree_init(&share_cache->cache,
 				  MLX5_MR_BTREE_CACHE_N * 2, socket);
@@ -1245,8 +1268,8 @@ mlx5_free_mr_by_addr(struct mlx5_mr_share_cache *share_cache,
 /**
  * Dump all the created MRs and the global cache entries.
  *
- * @param sh
- *   Pointer to Ethernet device shared context.
+ * @param share_cache
+ *   Pointer to a global shared MR cache.
  */
 void
 mlx5_mr_dump_cache(struct mlx5_mr_share_cache *share_cache __rte_unused)
@@ -1581,8 +1604,7 @@ mlx5_mr_mempool_register_primary(struct mlx5_mr_share_cache *share_cache,
 	mpr = mlx5_mempool_reg_lookup(share_cache, mp);
 	if (mpr == NULL) {
 		mlx5_mempool_reg_attach(new_mpr);
-		LIST_INSERT_HEAD(&share_cache->mempool_reg_list,
-				 new_mpr, next);
+		LIST_INSERT_HEAD(&share_cache->mempool_reg_list, new_mpr, next);
 		ret = 0;
 	}
 	rte_rwlock_write_unlock(&share_cache->rwlock);
@@ -1838,6 +1860,56 @@ mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
 }
 
 /**
+ * Bottom-half of LKey search on. If supported, lookup for the address from
+ * the mempool. Otherwise, search in old mechanism caches.
+ *
+ * @param cdev
+ *   Pointer to mlx5 device.
+ * @param mp_id
+ *   Multi-process identifier, may be NULL for the primary process.
+ * @param mr_ctrl
+ *   Pointer to per-queue MR control structure.
+ * @param mb
+ *   Pointer to mbuf.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on no match.
+ */
+static uint32_t
+mlx5_mr_mb2mr_bh(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
+		 struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mb)
+{
+	uint32_t lkey;
+	uintptr_t addr = (uintptr_t)mb->buf_addr;
+
+	if (cdev->config.mr_mempool_reg_en) {
+		struct rte_mempool *mp = NULL;
+		struct mlx5_mprq_buf *buf;
+
+		if (!RTE_MBUF_HAS_EXTBUF(mb)) {
+			mp = mlx5_mb2mp(mb);
+		} else if (mb->shinfo->free_cb == mlx5_mprq_buf_free_cb) {
+			/* Recover MPRQ mempool. */
+			buf = mb->shinfo->fcb_opaque;
+			mp = buf->mp;
+		}
+		if (mp != NULL) {
+			lkey = mlx5_mr_mempool2mr_bh(&cdev->mr_scache,
+						     mr_ctrl, mp, addr);
+			/*
+			 * Lookup can only fail on invalid input, e.g. "addr"
+			 * is not from "mp" or "mp" has MEMPOOL_F_NON_IO set.
+			 */
+			if (lkey != UINT32_MAX)
+				return lkey;
+		}
+		/* Fallback for generic mechanism in corner cases. */
+	}
+	return mlx5_mr_addr2mr_bh(cdev->pd, mp_id, &cdev->mr_scache, mr_ctrl,
+				  addr, cdev->config.mr_ext_memseg_en);
+}
+
+/**
  * Query LKey from a packet buffer.
  *
  * @param cdev
@@ -1857,7 +1929,6 @@ mlx5_mr_mb2mr(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
 	      struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf)
 {
 	uint32_t lkey;
-	uintptr_t addr = (uintptr_t)mbuf->buf_addr;
 
 	/* Check generation bit to see if there's any change on existing MRs. */
 	if (unlikely(*mr_ctrl->dev_gen_ptr != mr_ctrl->cur_gen))
@@ -1868,6 +1939,5 @@ mlx5_mr_mb2mr(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
 	if (likely(lkey != UINT32_MAX))
 		return lkey;
 	/* Take slower bottom-half on miss. */
-	return mlx5_mr_addr2mr_bh(cdev->pd, mp_id, &cdev->mr_scache, mr_ctrl,
-				  addr, cdev->config.mr_ext_memseg_en);
+	return mlx5_mr_mb2mr_bh(cdev, mp_id, mr_ctrl, mbuf);
 }

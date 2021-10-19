@@ -21,6 +21,7 @@
 
 #include <mlx5_glue.h>
 #include <mlx5_malloc.h>
+#include <mlx5_common_mr.h>
 
 #include "mlx5_defs.h"
 #include "mlx5.h"

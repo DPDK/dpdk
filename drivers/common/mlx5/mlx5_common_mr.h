@@ -79,6 +79,8 @@ LIST_HEAD(mlx5_mempool_reg_list, mlx5_mempool_reg);
 struct mlx5_mr_share_cache {
 	uint32_t dev_gen; /* Generation number to flush local caches. */
 	rte_rwlock_t rwlock; /* MR cache Lock. */
+	rte_rwlock_t mprwlock; /* Mempool Registration Lock. */
+	uint8_t mp_cb_registered; /* Mempool are Registered. */
 	struct mlx5_mr_btree cache; /* Global MR cache table. */
 	struct mlx5_mr_list mr_list; /* Registered MR list. */
 	struct mlx5_mr_list mr_free_list; /* Freed MR list. */
@@ -86,6 +88,40 @@ struct mlx5_mr_share_cache {
 	mlx5_reg_mr_t reg_mr_cb; /* Callback to reg_mr func */
 	mlx5_dereg_mr_t dereg_mr_cb; /* Callback to dereg_mr func */
 } __rte_packed;
+
+/* Multi-Packet RQ buffer header. */
+struct mlx5_mprq_buf {
+	struct rte_mempool *mp;
+	uint16_t refcnt; /* Atomically accessed refcnt. */
+	uint8_t pad[RTE_PKTMBUF_HEADROOM]; /* Headroom for the first packet. */
+	struct rte_mbuf_ext_shared_info shinfos[];
+	/*
+	 * Shared information per stride.
+	 * More memory will be allocated for the first stride head-room and for
+	 * the strides data.
+	 */
+} __rte_cache_aligned;
+
+__rte_internal
+void mlx5_mprq_buf_free_cb(void *addr, void *opaque);
+
+/**
+ * Get Memory Pool (MP) from mbuf. If mbuf is indirect, the pool from which the
+ * cloned mbuf is allocated is returned instead.
+ *
+ * @param buf
+ *   Pointer to mbuf.
+ *
+ * @return
+ *   Memory pool where data is located for given mbuf.
+ */
+static inline struct rte_mempool *
+mlx5_mb2mp(struct rte_mbuf *buf)
+{
+	if (unlikely(RTE_MBUF_CLONED(buf)))
+		return rte_mbuf_from_indirect(buf)->pool;
+	return buf->pool;
+}
 
 /**
  * Look up LKey from given lookup table by linear search. Firstly look up the
@@ -132,11 +168,6 @@ int mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl, uint32_t *dev_gen_ptr,
 __rte_internal
 void mlx5_mr_btree_free(struct mlx5_mr_btree *bt);
 void mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused);
-__rte_internal
-uint32_t mlx5_mr_addr2mr_bh(void *pd, struct mlx5_mp_id *mp_id,
-			    struct mlx5_mr_share_cache *share_cache,
-			    struct mlx5_mr_ctrl *mr_ctrl,
-			    uintptr_t addr, unsigned int mr_ext_memseg_en);
 __rte_internal
 uint32_t mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
 			       struct mlx5_mr_ctrl *mr_ctrl,

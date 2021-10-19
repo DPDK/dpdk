@@ -13,6 +13,8 @@ INTERNAL {
 	mlx5_common_verbs_dereg_mr; # WINDOWS_NO_EXPORT
 
 	mlx5_dev_is_pci;
+	mlx5_dev_mempool_unregister;
+	mlx5_dev_mempool_subscribe;
 
 	mlx5_devx_alloc_uar; # WINDOWS_NO_EXPORT
 
@@ -104,7 +106,7 @@ INTERNAL {
 	mlx5_mp_uninit_primary; # WINDOWS_NO_EXPORT
 	mlx5_mp_uninit_secondary; # WINDOWS_NO_EXPORT
 
-	mlx5_mr_addr2mr_bh;
+	mlx5_mprq_buf_free_cb;
 	mlx5_mr_btree_free;
 	mlx5_mr_create_primary;
 	mlx5_mr_ctrl_init;

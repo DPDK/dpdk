@@ -36,9 +36,11 @@ const struct rte_regexdev_ops mlx5_regexdev_ops = {
 };
 
 int
-mlx5_regex_start(struct rte_regexdev *dev __rte_unused)
+mlx5_regex_start(struct rte_regexdev *dev)
 {
-	return 0;
+	struct mlx5_regex_priv *priv = dev->data->dev_private;
+
+	return mlx5_dev_mempool_subscribe(priv->cdev);
 }
 
 int
