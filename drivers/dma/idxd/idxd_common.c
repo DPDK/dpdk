@@ -163,6 +163,23 @@ get_comp_status(struct idxd_completion *c)
 	}
 }
 
+int
+idxd_vchan_status(const struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
+		enum rte_dma_vchan_status *status)
+{
+	struct idxd_dmadev *idxd = dev->fp_obj->dev_private;
+	uint16_t last_batch_write = idxd->batch_idx_write == 0 ? idxd->max_batches :
+			idxd->batch_idx_write - 1;
+	uint8_t bstatus = (idxd->batch_comp_ring[last_batch_write].status != 0);
+
+	/* An IDXD device will always be either active or idle.
+	 * RTE_DMA_VCHAN_HALTED_ERROR is therefore not supported by IDXD.
+	 */
+	*status = bstatus ? RTE_DMA_VCHAN_IDLE : RTE_DMA_VCHAN_ACTIVE;
+
+	return 0;
+}
+
 static __rte_always_inline int
 batch_ok(struct idxd_dmadev *idxd, uint16_t max_ops, enum rte_dma_status_code *status)
 {

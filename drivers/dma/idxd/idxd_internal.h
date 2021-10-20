@@ -102,5 +102,7 @@ uint16_t idxd_completed_status(void *dev_private, uint16_t qid __rte_unused,
 int idxd_stats_get(const struct rte_dma_dev *dev, uint16_t vchan,
 		struct rte_dma_stats *stats, uint32_t stats_sz);
 int idxd_stats_reset(struct rte_dma_dev *dev, uint16_t vchan);
+int idxd_vchan_status(const struct rte_dma_dev *dev, uint16_t vchan,
+		enum rte_dma_vchan_status *status);
 
 #endif /* _IDXD_INTERNAL_H_ */

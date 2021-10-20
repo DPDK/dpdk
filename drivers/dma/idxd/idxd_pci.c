@@ -141,6 +141,7 @@ static const struct rte_dma_dev_ops idxd_pci_ops = {
 	.stats_reset = idxd_stats_reset,
 	.dev_start = idxd_pci_dev_start,
 	.dev_stop = idxd_pci_dev_stop,
+	.vchan_status = idxd_vchan_status,
 };
 
 /* each portal uses 4 x 4k pages */
