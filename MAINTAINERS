@@ -1437,6 +1437,7 @@ F: doc/guides/prog_guide/pdump_lib.rst
 F: app/test/test_pdump.*
 F: lib/pcapng/
 F: doc/guides/prog_guide/pcapng_lib.rst
+F: app/test/test_pcapng.c
 F: app/pdump/
 F: doc/guides/tools/pdump.rst
 

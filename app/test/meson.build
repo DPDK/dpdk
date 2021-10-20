@@ -402,6 +402,10 @@ if dpdk_conf.has('RTE_NET_RING')
     fast_tests += [['pdump_autotest', true]]
 endif
 
+if dpdk_conf.has('RTE_PORT_PCAP')
+    test_sources += 'test_pcapng.c'
+endif
+
 if dpdk_conf.has('RTE_LIB_POWER')
     test_deps += 'power'
 endif
