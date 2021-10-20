@@ -86,6 +86,18 @@ dsa_get_sysfs_path(void)
 	return path ? path : DSA_SYSFS_PATH;
 }
 
+static int
+idxd_dev_close(struct rte_dma_dev *dev)
+{
+	struct idxd_dmadev *idxd = dev->data->dev_private;
+	munmap(idxd->portal, 0x1000);
+	return 0;
+}
+
+static const struct rte_dma_dev_ops idxd_bus_ops = {
+		.dev_close = idxd_dev_close,
+};
+
 static void *
 idxd_bus_mmap_wq(struct rte_dsa_device *dev)
 {
@@ -207,12 +219,19 @@ idxd_probe_dsa(struct rte_dsa_device *dev)
 		return -1;
 	idxd.max_batch_size = ret;
 	idxd.qid = dev->addr.wq_id;
+	idxd.u.bus.dsa_id = dev->addr.device_id;
 	idxd.sva_support = 1;
 
 	idxd.portal = idxd_bus_mmap_wq(dev);
 	if (idxd.portal == NULL) {
 		IDXD_PMD_ERR("WQ mmap failed");
 		return -ENOENT;
+	}
+
+	ret = idxd_dmadev_create(dev->wq_name, &dev->device, &idxd, &idxd_bus_ops);
+	if (ret) {
+		IDXD_PMD_ERR("Failed to create dmadev %s", dev->wq_name);
+		return ret;
 	}
 
 	return 0;

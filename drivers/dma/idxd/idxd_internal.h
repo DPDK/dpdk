@@ -5,6 +5,10 @@
 #ifndef _IDXD_INTERNAL_H_
 #define _IDXD_INTERNAL_H_
 
+#include <rte_dmadev_pmd.h>
+
+#include "idxd_hw_defs.h"
+
 /**
  * @file idxd_internal.h
  *
@@ -57,5 +61,8 @@ struct idxd_dmadev {
 		} bus;
 	} u;
 };
+
+int idxd_dmadev_create(const char *name, struct rte_device *dev,
+		const struct idxd_dmadev *base_idxd, const struct rte_dma_dev_ops *ops);
 
 #endif /* _IDXD_INTERNAL_H_ */
