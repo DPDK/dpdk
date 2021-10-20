@@ -25,30 +25,36 @@ RTE_TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
 
 struct rte_eth_dev;
 
+/**
+ * @internal Retrieve input packets from a receive queue of an Ethernet device.
+ */
 typedef uint16_t (*eth_rx_burst_t)(void *rxq,
 				   struct rte_mbuf **rx_pkts,
 				   uint16_t nb_pkts);
-/**< @internal Retrieve input packets from a receive queue of an Ethernet device. */
 
+/**
+ * @internal Send output packets on a transmit queue of an Ethernet device.
+ */
 typedef uint16_t (*eth_tx_burst_t)(void *txq,
 				   struct rte_mbuf **tx_pkts,
 				   uint16_t nb_pkts);
-/**< @internal Send output packets on a transmit queue of an Ethernet device. */
 
+/**
+ * @internal Prepare output packets on a transmit queue of an Ethernet device.
+ */
 typedef uint16_t (*eth_tx_prep_t)(void *txq,
 				   struct rte_mbuf **tx_pkts,
 				   uint16_t nb_pkts);
-/**< @internal Prepare output packets on a transmit queue of an Ethernet device. */
 
 
+/** @internal Get number of used descriptors on a receive queue. */
 typedef uint32_t (*eth_rx_queue_count_t)(void *rxq);
-/**< @internal Get number of used descriptors on a receive queue. */
 
+/** @internal Check the status of a Rx descriptor */
 typedef int (*eth_rx_descriptor_status_t)(void *rxq, uint16_t offset);
-/**< @internal Check the status of a Rx descriptor */
 
+/** @internal Check the status of a Tx descriptor */
 typedef int (*eth_tx_descriptor_status_t)(void *txq, uint16_t offset);
-/**< @internal Check the status of a Tx descriptor */
 
 /**
  * @internal

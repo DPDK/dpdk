@@ -901,8 +901,8 @@ struct rte_flow_item_vlan {
 		};
 		struct rte_vlan_hdr hdr;
 	};
+	/** Packet header contains at least one more VLAN, after this VLAN. */
 	uint32_t has_more_vlan:1;
-	/**< Packet header contains at least one more VLAN, after this VLAN. */
 	uint32_t reserved:31; /**< Reserved, must be zero. */
 };
 
@@ -944,26 +944,26 @@ static const struct rte_flow_item_ipv4 rte_flow_item_ipv4_mask = {
  */
 struct rte_flow_item_ipv6 {
 	struct rte_ipv6_hdr hdr; /**< IPv6 header definition. */
+	/** Header contains Hop-by-Hop Options extension header. */
 	uint32_t has_hop_ext:1;
-	/**< Header contains Hop-by-Hop Options extension header. */
+	/** Header contains Routing extension header. */
 	uint32_t has_route_ext:1;
-	/**< Header contains Routing extension header. */
+	/** Header contains Fragment extension header. */
 	uint32_t has_frag_ext:1;
-	/**< Header contains Fragment extension header. */
+	/** Header contains Authentication extension header. */
 	uint32_t has_auth_ext:1;
-	/**< Header contains Authentication extension header. */
+	/** Header contains Encapsulation Security Payload extension header. */
 	uint32_t has_esp_ext:1;
-	/**< Header contains Encapsulation Security Payload extension header. */
+	/** Header contains Destination Options extension header. */
 	uint32_t has_dest_ext:1;
-	/**< Header contains Destination Options extension header. */
+	/** Header contains Mobility extension header. */
 	uint32_t has_mobil_ext:1;
-	/**< Header contains Mobility extension header. */
+	/** Header contains Host Identity Protocol extension header. */
 	uint32_t has_hip_ext:1;
-	/**< Header contains Host Identity Protocol extension header. */
+	/** Header contains Shim6 Protocol extension header. */
 	uint32_t has_shim6_ext:1;
-	/**< Header contains Shim6 Protocol extension header. */
+	/** Reserved for future extension headers, must be zero. */
 	uint32_t reserved:23;
-	/**< Reserved for future extension headers, must be zero. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_IPV6. */
@@ -2777,8 +2777,8 @@ struct rte_flow_action_queue {
 struct rte_flow_action_age {
 	uint32_t timeout:24; /**< Time in seconds. */
 	uint32_t reserved:8; /**< Reserved, must be zero. */
+	/** The user flow context, NULL means the rte_flow pointer. */
 	void *context;
-		/**< The user flow context, NULL means the rte_flow pointer. */
 };
 
 /**
@@ -2790,8 +2790,8 @@ struct rte_flow_action_age {
 struct rte_flow_query_age {
 	uint32_t reserved:6; /**< Reserved, must be zero. */
 	uint32_t aged:1; /**< 1 if aging timeout expired, 0 otherwise. */
+	/** sec_since_last_hit value is valid. */
 	uint32_t sec_since_last_hit_valid:1;
-	/**< sec_since_last_hit value is valid. */
 	uint32_t sec_since_last_hit:24; /**< Seconds since last traffic hit. */
 };
 
@@ -3422,7 +3422,7 @@ struct rte_flow_action_conntrack {
 	uint32_t last_direction:1;
 	/** No TCP check will be done except the state change. */
 	uint32_t liberal_mode:1;
-	/**<The current state of this connection. */
+	/** The current state of this connection. */
 	enum rte_flow_conntrack_state state;
 	/** Scaling factor for maximal allowed ACK window. */
 	uint8_t max_ack_window;
@@ -3535,9 +3535,9 @@ struct rte_flow_action_modify_data {
 	RTE_STD_C11
 	union {
 		struct {
-			/**< Encapsulation level or tag index. */
+			/** Encapsulation level or tag index. */
 			uint32_t level;
-			/**< Number of bits to skip from a field. */
+			/** Number of bits to skip from a field. */
 			uint32_t offset;
 		};
 		/**
@@ -3648,8 +3648,8 @@ struct rte_flow;
  */
 struct rte_flow_action_sample {
 	uint32_t ratio; /**< packets sampled equals to '1/ratio'. */
+	/** sub-action list specific for the sampling hit cases. */
 	const struct rte_flow_action *actions;
-		/**< sub-action list specific for the sampling hit cases. */
 };
 
 /**
@@ -4281,10 +4281,10 @@ struct rte_flow_indir_action_conf {
 	 * Action should be valid at least for one flow direction,
 	 * otherwise it is invalid for both ingress and egress rules.
 	 */
+	/** Action valid for rules applied to ingress traffic. */
 	uint32_t ingress:1;
-	/**< Action valid for rules applied to ingress traffic. */
+	/** Action valid for rules applied to egress traffic. */
 	uint32_t egress:1;
-	/**< Action valid for rules applied to egress traffic. */
 	/**
 	 * When set to 1, indicates that the action is valid for
 	 * transfer traffic; otherwise, for non-transfer traffic.

@@ -257,24 +257,25 @@ struct rte_eth_stats {
 	uint64_t opackets;  /**< Total number of successfully transmitted packets.*/
 	uint64_t ibytes;    /**< Total number of successfully received bytes. */
 	uint64_t obytes;    /**< Total number of successfully transmitted bytes. */
-	uint64_t imissed;
-	/**< Total of RX packets dropped by the HW,
+	/**
+	 * Total of RX packets dropped by the HW,
 	 * because there are no available buffer (i.e. RX queues are full).
 	 */
+	uint64_t imissed;
 	uint64_t ierrors;   /**< Total number of erroneous received packets. */
 	uint64_t oerrors;   /**< Total number of failed transmitted packets. */
 	uint64_t rx_nombuf; /**< Total number of RX mbuf allocation failures. */
 	/* Queue stats are limited to max 256 queues */
+	/** Total number of queue RX packets. */
 	uint64_t q_ipackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	/**< Total number of queue RX packets. */
+	/** Total number of queue TX packets. */
 	uint64_t q_opackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	/**< Total number of queue TX packets. */
+	/** Total number of successfully received queue bytes. */
 	uint64_t q_ibytes[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	/**< Total number of successfully received queue bytes. */
+	/** Total number of successfully transmitted queue bytes. */
 	uint64_t q_obytes[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	/**< Total number of successfully transmitted queue bytes. */
+	/** Total number of queue packets received that are dropped. */
 	uint64_t q_errors[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	/**< Total number of queue packets received that are dropped. */
 };
 
 /**@{@name Link speed capabilities
@@ -500,8 +501,8 @@ struct rte_eth_rss_conf {
 #define RTE_ETH_FLOW_IPV6_EX            15
 #define RTE_ETH_FLOW_IPV6_TCP_EX        16
 #define RTE_ETH_FLOW_IPV6_UDP_EX        17
+/** Consider device port number as a flow differentiator */
 #define RTE_ETH_FLOW_PORT               18
-	/**< Consider device port number as a flow differentiator */
 #define RTE_ETH_FLOW_VXLAN              19 /**< VXLAN protocol based flow */
 #define RTE_ETH_FLOW_GENEVE             20 /**< GENEVE protocol based flow */
 #define RTE_ETH_FLOW_NVGRE              21 /**< NVGRE protocol based flow */
@@ -769,7 +770,7 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 	ETH_RSS_S_VLAN  | \
 	ETH_RSS_C_VLAN)
 
-/**< Mask of valid RSS hash protocols */
+/** Mask of valid RSS hash protocols */
 #define ETH_RSS_PROTO_MASK ( \
 	ETH_RSS_IPV4 | \
 	ETH_RSS_FRAG_IPV4 | \
@@ -852,10 +853,10 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
  * is needed.
  */
 struct rte_eth_rss_reta_entry64 {
+	/** Mask bits indicate which entries need to be updated/queried. */
 	uint64_t mask;
-	/**< Mask bits indicate which entries need to be updated/queried. */
+	/** Group of 64 redirection table entries. */
 	uint16_t reta[RTE_RETA_GROUP_SIZE];
-	/**< Group of 64 redirection table entries. */
 };
 
 /**
@@ -921,8 +922,8 @@ struct rte_eth_vmdq_dcb_conf {
 		uint16_t vlan_id; /**< The vlan id of the received frame */
 		uint64_t pools;   /**< Bitmask of pools for packet rx */
 	} pool_map[ETH_VMDQ_MAX_VLAN_FILTERS]; /**< VMDq vlan pool maps. */
+	/** Selects a queue in a pool */
 	uint8_t dcb_tc[ETH_DCB_NUM_USER_PRIORITIES];
-	/**< Selects a queue in a pool */
 };
 
 /**
@@ -970,12 +971,12 @@ struct rte_eth_txmode {
 
 	uint16_t pvid;
 	__extension__
-	uint8_t hw_vlan_reject_tagged : 1,
-		/**< If set, reject sending out tagged pkts */
+	uint8_t /** If set, reject sending out tagged pkts */
+		hw_vlan_reject_tagged : 1,
+		/** If set, reject sending out untagged pkts */
 		hw_vlan_reject_untagged : 1,
-		/**< If set, reject sending out untagged pkts */
+		/** If set, enable port based VLAN insertion */
 		hw_vlan_insert_pvid : 1;
-		/**< If set, enable port based VLAN insertion */
 
 	uint64_t reserved_64s[2]; /**< Reserved for future fields */
 	void *reserved_ptrs[2];   /**< Reserved for future fields */
@@ -1269,8 +1270,8 @@ struct rte_fdir_conf {
 	/** RX queue of packets matching a "drop" filter in perfect mode. */
 	uint8_t drop_queue;
 	struct rte_eth_fdir_masks mask;
+	/** Flex payload configuration. */
 	struct rte_eth_fdir_flex_conf flex_conf;
-	/**< Flex payload configuration. */
 };
 
 /**
@@ -1321,20 +1322,20 @@ struct rte_eth_conf {
 				 are defined in implementation of each driver. */
 	struct {
 		struct rte_eth_rss_conf rss_conf; /**< Port RSS configuration */
+		/** Port vmdq+dcb configuration. */
 		struct rte_eth_vmdq_dcb_conf vmdq_dcb_conf;
-		/**< Port vmdq+dcb configuration. */
+		/** Port dcb RX configuration. */
 		struct rte_eth_dcb_rx_conf dcb_rx_conf;
-		/**< Port dcb RX configuration. */
+		/** Port vmdq RX configuration. */
 		struct rte_eth_vmdq_rx_conf vmdq_rx_conf;
-		/**< Port vmdq RX configuration. */
 	} rx_adv_conf; /**< Port RX filtering configuration. */
 	union {
+		/** Port vmdq+dcb TX configuration. */
 		struct rte_eth_vmdq_dcb_tx_conf vmdq_dcb_tx_conf;
-		/**< Port vmdq+dcb TX configuration. */
+		/** Port dcb TX configuration. */
 		struct rte_eth_dcb_tx_conf dcb_tx_conf;
-		/**< Port dcb TX configuration. */
+		/** Port vmdq TX configuration. */
 		struct rte_eth_vmdq_tx_conf vmdq_tx_conf;
-		/**< Port vmdq TX configuration. */
 	} tx_adv_conf; /**< Port TX DCB configuration (union). */
 	/** Currently,Priority Flow Control(PFC) are supported,if DCB with PFC
 	    is needed,and the variable must be set ETH_DCB_PFC_SUPPORT. */
@@ -1401,17 +1402,19 @@ struct rte_eth_conf {
 #define DEV_TX_OFFLOAD_IPIP_TNL_TSO     0x00000800    /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_GENEVE_TNL_TSO   0x00001000    /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_MACSEC_INSERT    0x00002000
-#define DEV_TX_OFFLOAD_MT_LOCKFREE      0x00004000
-/**< Multiple threads can invoke rte_eth_tx_burst() concurrently on the same
+/**
+ * Multiple threads can invoke rte_eth_tx_burst() concurrently on the same
  * tx queue without SW lock.
  */
+#define DEV_TX_OFFLOAD_MT_LOCKFREE      0x00004000
+/** Device supports multi segment send. */
 #define DEV_TX_OFFLOAD_MULTI_SEGS	0x00008000
-/**< Device supports multi segment send. */
-#define DEV_TX_OFFLOAD_MBUF_FAST_FREE	0x00010000
-/**< Device supports optimization for fast release of mbufs.
- *   When set application must guarantee that per-queue all mbufs comes from
- *   the same mempool and has refcnt = 1.
+/**
+ * Device supports optimization for fast release of mbufs.
+ * When set application must guarantee that per-queue all mbufs comes from
+ * the same mempool and has refcnt = 1.
  */
+#define DEV_TX_OFFLOAD_MBUF_FAST_FREE	0x00010000
 #define DEV_TX_OFFLOAD_SECURITY         0x00020000
 /**
  * Device supports generic UDP tunneled packet TSO.
@@ -1480,14 +1483,14 @@ struct rte_eth_dev_portconf {
 struct rte_eth_switch_info {
 	const char *name;	/**< switch name */
 	uint16_t domain_id;	/**< switch domain id */
-	uint16_t port_id;
-	/**<
-	 * mapping to the devices physical switch port as enumerated from the
+	/**
+	 * Mapping to the devices physical switch port as enumerated from the
 	 * perspective of the embedded interconnect/switch. For SR-IOV enabled
 	 * device this may correspond to the VF_ID of each virtual function,
 	 * but each driver should explicitly define the mapping of switch
 	 * port identifier to that physical interconnect/switch
 	 */
+	uint16_t port_id;
 };
 
 /**
@@ -1544,16 +1547,16 @@ struct rte_eth_dev_info {
 	uint16_t max_vfs; /**< Maximum number of VFs. */
 	uint16_t max_vmdq_pools; /**< Maximum number of VMDq pools. */
 	struct rte_eth_rxseg_capa rx_seg_capa; /**< Segmentation capability.*/
+	/** All RX offload capabilities including all per-queue ones */
 	uint64_t rx_offload_capa;
-	/**< All RX offload capabilities including all per-queue ones */
+	/** All TX offload capabilities including all per-queue ones */
 	uint64_t tx_offload_capa;
-	/**< All TX offload capabilities including all per-queue ones */
+	/** Device per-queue RX offload capabilities. */
 	uint64_t rx_queue_offload_capa;
-	/**< Device per-queue RX offload capabilities. */
+	/** Device per-queue TX offload capabilities. */
 	uint64_t tx_queue_offload_capa;
-	/**< Device per-queue TX offload capabilities. */
+	/** Device redirection table size, the total number of entries. */
 	uint16_t reta_size;
-	/**< Device redirection table size, the total number of entries. */
 	uint8_t hash_key_size; /**< Hash key size in bytes */
 	/** Bit mask of RSS offloads, the bit offset also means flow type */
 	uint64_t flow_type_rss_offloads;
@@ -1741,13 +1744,13 @@ struct rte_eth_fec_capa {
 } while (0)
 
 /**@{@name L2 tunnel configuration */
-/**< l2 tunnel enable mask */
+/** L2 tunnel enable mask */
 #define ETH_L2_TUNNEL_ENABLE_MASK       0x00000001
-/**< l2 tunnel insertion mask */
+/** L2 tunnel insertion mask */
 #define ETH_L2_TUNNEL_INSERTION_MASK    0x00000002
-/**< l2 tunnel stripping mask */
+/** L2 tunnel stripping mask */
 #define ETH_L2_TUNNEL_STRIPPING_MASK    0x00000004
-/**< l2 tunnel forwarding mask */
+/** L2 tunnel forwarding mask */
 #define ETH_L2_TUNNEL_FORWARDING_MASK   0x00000008
 /**@}*/
 
@@ -3348,8 +3351,8 @@ struct rte_eth_dev_tx_buffer {
 	void *error_userdata;
 	uint16_t size;           /**< Size of buffer for buffered tx */
 	uint16_t length;         /**< Number of packets in the array */
+	/** Pending packets to be sent on explicit flush or when full */
 	struct rte_mbuf *pkts[];
-	/**< Pending packets to be sent on explicit flush or when full */
 };
 
 /**
@@ -3488,16 +3491,16 @@ rte_eth_tx_done_cleanup(uint16_t port_id, uint16_t queue_id, uint32_t free_cnt);
  * eth device.
  */
 enum rte_eth_event_ipsec_subtype {
+	/** Unknown event type */
 	RTE_ETH_EVENT_IPSEC_UNKNOWN = 0,
-			/**< Unknown event type */
+	/** Sequence number overflow */
 	RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW,
-			/**< Sequence number overflow */
+	/** Soft time expiry of SA */
 	RTE_ETH_EVENT_IPSEC_SA_TIME_EXPIRY,
-			/**< Soft time expiry of SA */
+	/** Soft byte expiry of SA */
 	RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY,
-			/**< Soft byte expiry of SA */
+	/** Max value of this enum */
 	RTE_ETH_EVENT_IPSEC_MAX
-			/**< Max value of this enum */
 };
 
 /**
@@ -3505,22 +3508,23 @@ enum rte_eth_event_ipsec_subtype {
  * information of the IPsec offload event.
  */
 struct rte_eth_event_ipsec_desc {
+	/** Type of RTE_ETH_EVENT_IPSEC_* event */
 	enum rte_eth_event_ipsec_subtype subtype;
-			/**< Type of RTE_ETH_EVENT_IPSEC_* event */
+	/**
+	 * Event specific metadata.
+	 *
+	 * For the following events, *userdata* registered
+	 * with the *rte_security_session* would be returned
+	 * as metadata,
+	 *
+	 * - @ref RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW
+	 * - @ref RTE_ETH_EVENT_IPSEC_SA_TIME_EXPIRY
+	 * - @ref RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY
+	 *
+	 * @see struct rte_security_session_conf
+	 *
+	 */
 	uint64_t metadata;
-			/**< Event specific metadata
-			 *
-			 * For the following events, *userdata* registered
-			 * with the *rte_security_session* would be returned
-			 * as metadata,
-			 *
-			 * - @ref RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW
-			 * - @ref RTE_ETH_EVENT_IPSEC_SA_TIME_EXPIRY
-			 * - @ref RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY
-			 *
-			 * @see struct rte_security_session_conf
-			 *
-			 */
 };
 
 /**
@@ -3529,10 +3533,10 @@ struct rte_eth_event_ipsec_desc {
 enum rte_eth_event_type {
 	RTE_ETH_EVENT_UNKNOWN,  /**< unknown event type */
 	RTE_ETH_EVENT_INTR_LSC, /**< lsc interrupt event */
+	/** queue state event (enabled/disabled) */
 	RTE_ETH_EVENT_QUEUE_STATE,
-				/**< queue state event (enabled/disabled) */
+	/** reset interrupt event, sent to VF on PF reset */
 	RTE_ETH_EVENT_INTR_RESET,
-			/**< reset interrupt event, sent to VF on PF reset */
 	RTE_ETH_EVENT_VF_MBOX,  /**< message from the VF received by PF */
 	RTE_ETH_EVENT_MACSEC,   /**< MACsec offload related event */
 	RTE_ETH_EVENT_INTR_RMV, /**< device removal event */
@@ -3543,9 +3547,9 @@ enum rte_eth_event_type {
 	RTE_ETH_EVENT_MAX       /**< max value of this enum */
 };
 
+/** User application callback to be registered for interrupts. */
 typedef int (*rte_eth_dev_cb_fn)(uint16_t port_id,
 		enum rte_eth_event_type event, void *cb_arg, void *ret_param);
-/**< user application callback to be registered for interrupts */
 
 /**
  * Register a callback function for port event.

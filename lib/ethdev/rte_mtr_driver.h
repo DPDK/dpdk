@@ -25,91 +25,91 @@
 extern "C" {
 #endif
 
+/** @internal MTR capabilities get. */
 typedef int (*rte_mtr_capabilities_get_t)(struct rte_eth_dev *dev,
 	struct rte_mtr_capabilities *cap,
 	struct rte_mtr_error *error);
-/**< @internal MTR capabilities get */
 
+/** @internal MTR meter profile add. */
 typedef int (*rte_mtr_meter_profile_add_t)(struct rte_eth_dev *dev,
 	uint32_t meter_profile_id,
 	struct rte_mtr_meter_profile *profile,
 	struct rte_mtr_error *error);
-/**< @internal MTR meter profile add */
 
+/** @internal MTR meter profile delete. */
 typedef int (*rte_mtr_meter_profile_delete_t)(struct rte_eth_dev *dev,
 	uint32_t meter_profile_id,
 	struct rte_mtr_error *error);
-/**< @internal MTR meter profile delete */
 
+/** @internal MTR meter policy validate. */
 typedef int (*rte_mtr_meter_policy_validate_t)(struct rte_eth_dev *dev,
 	struct rte_mtr_meter_policy_params *policy,
 	struct rte_mtr_error *error);
-/**< @internal MTR meter policy validate */
 
+/** @internal MTR meter policy add. */
 typedef int (*rte_mtr_meter_policy_add_t)(struct rte_eth_dev *dev,
 	uint32_t policy_id,
 	struct rte_mtr_meter_policy_params *policy,
 	struct rte_mtr_error *error);
-/**< @internal MTR meter policy add */
 
+/** @internal MTR meter policy delete. */
 typedef int (*rte_mtr_meter_policy_delete_t)(struct rte_eth_dev *dev,
 	uint32_t policy_id,
 	struct rte_mtr_error *error);
-/**< @internal MTR meter policy delete */
 
+/** @internal MTR object create. */
 typedef int (*rte_mtr_create_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
 	struct rte_mtr_params *params,
 	int shared,
 	struct rte_mtr_error *error);
-/**< @internal MTR object create */
 
+/** @internal MTR object destroy. */
 typedef int (*rte_mtr_destroy_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
 	struct rte_mtr_error *error);
-/**< @internal MTR object destroy */
 
+/** @internal MTR object meter enable. */
 typedef int (*rte_mtr_meter_enable_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
 	struct rte_mtr_error *error);
-/**< @internal MTR object meter enable */
 
+/** @internal MTR object meter disable. */
 typedef int (*rte_mtr_meter_disable_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
 	struct rte_mtr_error *error);
-/**< @internal MTR object meter disable */
 
+/** @internal MTR object meter profile update. */
 typedef int (*rte_mtr_meter_profile_update_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
 	uint32_t meter_profile_id,
 	struct rte_mtr_error *error);
-/**< @internal MTR object meter profile update */
 
+/** @internal MTR object meter policy update. */
 typedef int (*rte_mtr_meter_policy_update_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
 	uint32_t meter_policy_id,
 	struct rte_mtr_error *error);
-/**< @internal MTR object meter policy update */
 
+/** @internal MTR object meter DSCP table update. */
 typedef int (*rte_mtr_meter_dscp_table_update_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
 	enum rte_color *dscp_table,
 	struct rte_mtr_error *error);
-/**< @internal MTR object meter DSCP table update */
 
+/** @internal MTR object enabled stats update. */
 typedef int (*rte_mtr_stats_update_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
 	uint64_t stats_mask,
 	struct rte_mtr_error *error);
-/**< @internal MTR object enabled stats update */
 
+/** @internal MTR object stats read. */
 typedef int (*rte_mtr_stats_read_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
 	struct rte_mtr_stats *stats,
 	uint64_t *stats_mask,
 	int clear,
 	struct rte_mtr_error *error);
-/**< @internal MTR object stats read */
 
 struct rte_mtr_ops {
 	/** MTR capabilities get */

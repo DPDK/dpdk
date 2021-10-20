@@ -44,18 +44,17 @@ struct rte_eth_rxtx_callback {
 struct rte_eth_dev {
 	eth_rx_burst_t rx_pkt_burst; /**< Pointer to PMD receive function. */
 	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function. */
+	/** Pointer to PMD transmit prepare function */
 	eth_tx_prep_t tx_pkt_prepare;
-	/**< Pointer to PMD transmit prepare function. */
+	/** Get the number of used Rx descriptors */
 	eth_rx_queue_count_t rx_queue_count;
-	/**< Get the number of used RX descriptors. */
+	/** Check the status of a Rx descriptor */
 	eth_rx_descriptor_status_t rx_descriptor_status;
-	/**< Check the status of a Rx descriptor. */
+	/** Check the status of a Tx descriptor */
 	eth_tx_descriptor_status_t tx_descriptor_status;
-	/**< Check the status of a Tx descriptor. */
 
 	/**
-	 * points to device data that is shared between
-	 * primary and secondary processes.
+	 * Device data that is shared between primary and secondary processes
 	 */
 	struct rte_eth_dev_data *data;
 	void *process_private; /**< Pointer to per-process device data. */
@@ -100,64 +99,63 @@ struct rte_eth_dev_data {
 
 	struct rte_eth_dev_sriov sriov;    /**< SRIOV data */
 
+	/** PMD-specific private data. @see rte_eth_dev_release_port() */
 	void *dev_private;
-			/**< PMD-specific private data.
-			 *   @see rte_eth_dev_release_port()
-			 */
 
 	struct rte_eth_link dev_link;   /**< Link-level information & status. */
 	struct rte_eth_conf dev_conf;   /**< Configuration applied to device. */
 	uint16_t mtu;                   /**< Maximum Transmission Unit. */
+	/** Common Rx buffer size handled by all queues */
 	uint32_t min_rx_buf_size;
-			/**< Common RX buffer size handled by all queues. */
 
 	uint64_t rx_mbuf_alloc_failed; /**< RX ring mbuf allocation failures. */
+	/** Device Ethernet link address. @see rte_eth_dev_release_port() */
 	struct rte_ether_addr *mac_addrs;
-			/**< Device Ethernet link address.
-			 *   @see rte_eth_dev_release_port()
-			 */
+	/** Bitmap associating MAC addresses to pools */
 	uint64_t mac_pool_sel[ETH_NUM_RECEIVE_MAC_ADDR];
-			/**< Bitmap associating MAC addresses to pools. */
+	/**
+	 * Device Ethernet MAC addresses of hash filtering.
+	 * @see rte_eth_dev_release_port()
+	 */
 	struct rte_ether_addr *hash_mac_addrs;
-			/**< Device Ethernet MAC addresses of hash filtering.
-			 *   @see rte_eth_dev_release_port()
-			 */
 	uint16_t port_id;           /**< Device [external] port identifier. */
 
 	__extension__
-	uint8_t promiscuous   : 1,
-		/**< RX promiscuous mode ON(1) / OFF(0). */
+	uint8_t /** Rx promiscuous mode ON(1) / OFF(0) */
+		promiscuous   : 1,
+		/** Rx of scattered packets is ON(1) / OFF(0) */
 		scattered_rx : 1,
-		/**< RX of scattered packets is ON(1) / OFF(0) */
+		/** Rx all multicast mode ON(1) / OFF(0) */
 		all_multicast : 1,
-		/**< RX all multicast mode ON(1) / OFF(0). */
+		/** Device state: STARTED(1) / STOPPED(0) */
 		dev_started : 1,
-		/**< Device state: STARTED(1) / STOPPED(0). */
+		/** Rx LRO is ON(1) / OFF(0) */
 		lro         : 1,
-		/**< RX LRO is ON(1) / OFF(0) */
-		dev_configured : 1;
-		/**< Indicates whether the device is configured.
-		 *   CONFIGURED(1) / NOT CONFIGURED(0).
+		/**
+		 * Indicates whether the device is configured:
+		 * CONFIGURED(1) / NOT CONFIGURED(0)
 		 */
+		dev_configured : 1;
+	/** Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0) */
 	uint8_t rx_queue_state[RTE_MAX_QUEUES_PER_PORT];
-		/**< Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0). */
+	/** Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0) */
 	uint8_t tx_queue_state[RTE_MAX_QUEUES_PER_PORT];
-		/**< Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0). */
 	uint32_t dev_flags;             /**< Capabilities. */
 	int numa_node;                  /**< NUMA node connection. */
+	/** VLAN filter configuration */
 	struct rte_vlan_filter_conf vlan_filter_conf;
-			/**< VLAN filter configuration. */
 	struct rte_eth_dev_owner owner; /**< The port owner. */
+	/**
+	 * Switch-specific identifier.
+	 * Valid if RTE_ETH_DEV_REPRESENTOR in dev_flags.
+	 */
 	uint16_t representor_id;
-			/**< Switch-specific identifier.
-			 *   Valid if RTE_ETH_DEV_REPRESENTOR in dev_flags.
-			 */
+	/**
+	 * Port ID of the backing device.
+	 * This device will be used to query representor info and calculate
+	 * representor IDs. Valid if RTE_ETH_DEV_REPRESENTOR in dev_flags.
+	 */
 	uint16_t backer_port_id;
-			/**< Port ID of the backing device.
-			 *   This device will be used to query representor
-			 *   info and calculate representor IDs.
-			 *   Valid if RTE_ETH_DEV_REPRESENTOR in dev_flags.
-			 */
 
 	pthread_mutex_t flow_ops_mutex; /**< rte_flow ops mutex. */
 	uint64_t reserved_64s[4]; /**< Reserved for future fields */
@@ -171,7 +169,7 @@ struct rte_eth_dev_data {
  */
 extern struct rte_eth_dev rte_eth_devices[];
 
-/**< @internal Declaration of the hairpin peer queue information structure. */
+/** @internal Declaration of the hairpin peer queue information structure. */
 struct rte_hairpin_peer_info;
 
 /*
@@ -180,29 +178,29 @@ struct rte_hairpin_peer_info;
  * structure associated with an Ethernet device.
  */
 
+/** @internal Ethernet device configuration. */
 typedef int  (*eth_dev_configure_t)(struct rte_eth_dev *dev);
-/**< @internal Ethernet device configuration. */
 
+/** @internal Function used to start a configured Ethernet device. */
 typedef int  (*eth_dev_start_t)(struct rte_eth_dev *dev);
-/**< @internal Function used to start a configured Ethernet device. */
 
+/** @internal Function used to stop a configured Ethernet device. */
 typedef int (*eth_dev_stop_t)(struct rte_eth_dev *dev);
-/**< @internal Function used to stop a configured Ethernet device. */
 
+/** @internal Function used to link up a configured Ethernet device. */
 typedef int  (*eth_dev_set_link_up_t)(struct rte_eth_dev *dev);
-/**< @internal Function used to link up a configured Ethernet device. */
 
+/** @internal Function used to link down a configured Ethernet device. */
 typedef int  (*eth_dev_set_link_down_t)(struct rte_eth_dev *dev);
-/**< @internal Function used to link down a configured Ethernet device. */
 
+/** @internal Function used to close a configured Ethernet device. */
 typedef int (*eth_dev_close_t)(struct rte_eth_dev *dev);
-/**< @internal Function used to close a configured Ethernet device. */
 
+/** @internal Function used to reset a configured Ethernet device. */
 typedef int (*eth_dev_reset_t)(struct rte_eth_dev *dev);
-/** <@internal Function used to reset a configured Ethernet device. */
 
+/** @internal Function used to detect an Ethernet device removal. */
 typedef int (*eth_is_removed_t)(struct rte_eth_dev *dev);
-/**< @internal Function used to detect an Ethernet device removal. */
 
 /**
  * @internal
@@ -304,13 +302,16 @@ typedef int (*eth_allmulticast_enable_t)(struct rte_eth_dev *dev);
  */
 typedef int (*eth_allmulticast_disable_t)(struct rte_eth_dev *dev);
 
+/**
+ * @internal
+ * Get link speed, duplex mode and state (up/down) of an Ethernet device.
+ */
 typedef int (*eth_link_update_t)(struct rte_eth_dev *dev,
 				int wait_to_complete);
-/**< @internal Get link speed, duplex mode and state (up/down) of an Ethernet device. */
 
+/** @internal Get global I/O statistics of an Ethernet device. */
 typedef int (*eth_stats_get_t)(struct rte_eth_dev *dev,
 				struct rte_eth_stats *igb_stats);
-/**< @internal Get global I/O statistics of an Ethernet device. */
 
 /**
  * @internal
@@ -333,9 +334,9 @@ typedef int (*eth_stats_get_t)(struct rte_eth_dev *dev,
  */
 typedef int (*eth_stats_reset_t)(struct rte_eth_dev *dev);
 
+/** @internal Get extended stats of an Ethernet device. */
 typedef int (*eth_xstats_get_t)(struct rte_eth_dev *dev,
 	struct rte_eth_xstat *stats, unsigned int n);
-/**< @internal Get extended stats of an Ethernet device. */
 
 /**
  * @internal
@@ -381,9 +382,9 @@ typedef int (*eth_xstats_get_by_id_t)(struct rte_eth_dev *dev,
  */
 typedef int (*eth_xstats_reset_t)(struct rte_eth_dev *dev);
 
+/** @internal Get names of extended stats of an Ethernet device. */
 typedef int (*eth_xstats_get_names_t)(struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names, unsigned int size);
-/**< @internal Get names of extended stats of an Ethernet device. */
 
 /**
  * @internal
@@ -407,18 +408,21 @@ typedef int (*eth_xstats_get_names_by_id_t)(struct rte_eth_dev *dev,
 	const uint64_t *ids, struct rte_eth_xstat_name *xstats_names,
 	unsigned int size);
 
+/**
+ * @internal
+ * Set a queue statistics mapping for a Tx/Rx queue of an Ethernet device.
+ */
 typedef int (*eth_queue_stats_mapping_set_t)(struct rte_eth_dev *dev,
 					     uint16_t queue_id,
 					     uint8_t stat_idx,
 					     uint8_t is_rx);
-/**< @internal Set a queue statistics mapping for a tx/rx queue of an Ethernet device. */
 
+/** @internal Get specific information of an Ethernet device. */
 typedef int (*eth_dev_infos_get_t)(struct rte_eth_dev *dev,
 				   struct rte_eth_dev_info *dev_info);
-/**< @internal Get specific information of an Ethernet device. */
 
+/** @internal Get supported ptypes of an Ethernet device. */
 typedef const uint32_t *(*eth_dev_supported_ptypes_get_t)(struct rte_eth_dev *dev);
-/**< @internal Get supported ptypes of an Ethernet device. */
 
 /**
  * @internal
@@ -435,47 +439,47 @@ typedef const uint32_t *(*eth_dev_supported_ptypes_get_t)(struct rte_eth_dev *de
 typedef int (*eth_dev_ptypes_set_t)(struct rte_eth_dev *dev,
 				     uint32_t ptype_mask);
 
+/** @internal Start Rx and Tx of a queue of an Ethernet device. */
 typedef int (*eth_queue_start_t)(struct rte_eth_dev *dev,
 				    uint16_t queue_id);
-/**< @internal Start rx and tx of a queue of an Ethernet device. */
 
+/** @internal Stop Rx and Tx of a queue of an Ethernet device. */
 typedef int (*eth_queue_stop_t)(struct rte_eth_dev *dev,
 				    uint16_t queue_id);
-/**< @internal Stop rx and tx of a queue of an Ethernet device. */
 
+/** @internal Set up a receive queue of an Ethernet device. */
 typedef int (*eth_rx_queue_setup_t)(struct rte_eth_dev *dev,
 				    uint16_t rx_queue_id,
 				    uint16_t nb_rx_desc,
 				    unsigned int socket_id,
 				    const struct rte_eth_rxconf *rx_conf,
 				    struct rte_mempool *mb_pool);
-/**< @internal Set up a receive queue of an Ethernet device. */
 
+/** @internal Setup a transmit queue of an Ethernet device. */
 typedef int (*eth_tx_queue_setup_t)(struct rte_eth_dev *dev,
 				    uint16_t tx_queue_id,
 				    uint16_t nb_tx_desc,
 				    unsigned int socket_id,
 				    const struct rte_eth_txconf *tx_conf);
-/**< @internal Setup a transmit queue of an Ethernet device. */
 
+/** @internal Enable interrupt of a receive queue of an Ethernet device. */
 typedef int (*eth_rx_enable_intr_t)(struct rte_eth_dev *dev,
 				    uint16_t rx_queue_id);
-/**< @internal Enable interrupt of a receive queue of an Ethernet device. */
 
+/** @internal Disable interrupt of a receive queue of an Ethernet device. */
 typedef int (*eth_rx_disable_intr_t)(struct rte_eth_dev *dev,
 				    uint16_t rx_queue_id);
-/**< @internal Disable interrupt of a receive queue of an Ethernet device. */
 
+/** @internal Release memory resources allocated by given Rx/Tx queue. */
 typedef void (*eth_queue_release_t)(struct rte_eth_dev *dev,
 				    uint16_t queue_id);
-/**< @internal Release memory resources allocated by given RX/TX queue. */
 
+/** @internal Get firmware information of an Ethernet device. */
 typedef int (*eth_fw_version_get_t)(struct rte_eth_dev *dev,
 				     char *fw_version, size_t fw_size);
-/**< @internal Get firmware information of an Ethernet device. */
 
+/** @internal Force mbufs to be from Tx ring. */
 typedef int (*eth_tx_done_cleanup_t)(void *txq, uint32_t free_cnt);
-/**< @internal Force mbufs to be from TX ring. */
 
 typedef void (*eth_rxq_info_get_t)(struct rte_eth_dev *dev,
 	uint16_t rx_queue_id, struct rte_eth_rxq_info *qinfo);
@@ -486,159 +490,159 @@ typedef void (*eth_txq_info_get_t)(struct rte_eth_dev *dev,
 typedef int (*eth_burst_mode_get_t)(struct rte_eth_dev *dev,
 	uint16_t queue_id, struct rte_eth_burst_mode *mode);
 
+/** @internal Set MTU. */
 typedef int (*mtu_set_t)(struct rte_eth_dev *dev, uint16_t mtu);
-/**< @internal Set MTU. */
 
+/** @internal Filtering of a VLAN Tag Identifier by an Ethernet device. */
 typedef int (*vlan_filter_set_t)(struct rte_eth_dev *dev,
 				  uint16_t vlan_id,
 				  int on);
-/**< @internal filtering of a VLAN Tag Identifier by an Ethernet device. */
 
+/** @internal Set the outer/inner VLAN-TPID by an Ethernet device. */
 typedef int (*vlan_tpid_set_t)(struct rte_eth_dev *dev,
 			       enum rte_vlan_type type, uint16_t tpid);
-/**< @internal set the outer/inner VLAN-TPID by an Ethernet device. */
 
+/** @internal Set VLAN offload function by an Ethernet device. */
 typedef int (*vlan_offload_set_t)(struct rte_eth_dev *dev, int mask);
-/**< @internal set VLAN offload function by an Ethernet device. */
 
+/** @internal Set port based Tx VLAN insertion by an Ethernet device. */
 typedef int (*vlan_pvid_set_t)(struct rte_eth_dev *dev,
 			       uint16_t vlan_id,
 			       int on);
-/**< @internal set port based TX VLAN insertion by an Ethernet device. */
 
+/** @internal VLAN stripping enable/disable by an queue of Ethernet device. */
 typedef void (*vlan_strip_queue_set_t)(struct rte_eth_dev *dev,
 				  uint16_t rx_queue_id,
 				  int on);
-/**< @internal VLAN stripping enable/disable by an queue of Ethernet device. */
 
+/** @internal Get current flow control parameter on an Ethernet device. */
 typedef int (*flow_ctrl_get_t)(struct rte_eth_dev *dev,
 			       struct rte_eth_fc_conf *fc_conf);
-/**< @internal Get current flow control parameter on an Ethernet device */
 
+/** @internal Setup flow control parameter on an Ethernet device. */
 typedef int (*flow_ctrl_set_t)(struct rte_eth_dev *dev,
 			       struct rte_eth_fc_conf *fc_conf);
-/**< @internal Setup flow control parameter on an Ethernet device */
 
+/** @internal Setup priority flow control parameter on an Ethernet device. */
 typedef int (*priority_flow_ctrl_set_t)(struct rte_eth_dev *dev,
 				struct rte_eth_pfc_conf *pfc_conf);
-/**< @internal Setup priority flow control parameter on an Ethernet device */
 
+/** @internal Update RSS redirection table on an Ethernet device. */
 typedef int (*reta_update_t)(struct rte_eth_dev *dev,
 			     struct rte_eth_rss_reta_entry64 *reta_conf,
 			     uint16_t reta_size);
-/**< @internal Update RSS redirection table on an Ethernet device */
 
+/** @internal Query RSS redirection table on an Ethernet device. */
 typedef int (*reta_query_t)(struct rte_eth_dev *dev,
 			    struct rte_eth_rss_reta_entry64 *reta_conf,
 			    uint16_t reta_size);
-/**< @internal Query RSS redirection table on an Ethernet device */
 
+/** @internal Update RSS hash configuration of an Ethernet device. */
 typedef int (*rss_hash_update_t)(struct rte_eth_dev *dev,
 				 struct rte_eth_rss_conf *rss_conf);
-/**< @internal Update RSS hash configuration of an Ethernet device */
 
+/** @internal Get current RSS hash configuration of an Ethernet device. */
 typedef int (*rss_hash_conf_get_t)(struct rte_eth_dev *dev,
 				   struct rte_eth_rss_conf *rss_conf);
-/**< @internal Get current RSS hash configuration of an Ethernet device */
 
+/** @internal Turn on SW controllable LED on an Ethernet device. */
 typedef int (*eth_dev_led_on_t)(struct rte_eth_dev *dev);
-/**< @internal Turn on SW controllable LED on an Ethernet device */
 
+/** @internal Turn off SW controllable LED on an Ethernet device. */
 typedef int (*eth_dev_led_off_t)(struct rte_eth_dev *dev);
-/**< @internal Turn off SW controllable LED on an Ethernet device */
 
+/** @internal Remove MAC address from receive address register. */
 typedef void (*eth_mac_addr_remove_t)(struct rte_eth_dev *dev, uint32_t index);
-/**< @internal Remove MAC address from receive address register */
 
+/** @internal Set a MAC address into Receive Address Register. */
 typedef int (*eth_mac_addr_add_t)(struct rte_eth_dev *dev,
 				  struct rte_ether_addr *mac_addr,
 				  uint32_t index,
 				  uint32_t vmdq);
-/**< @internal Set a MAC address into Receive Address Register */
 
+/** @internal Set a MAC address into Receive Address Register. */
 typedef int (*eth_mac_addr_set_t)(struct rte_eth_dev *dev,
 				  struct rte_ether_addr *mac_addr);
-/**< @internal Set a MAC address into Receive Address Register */
 
+/** @internal Set a Unicast Hash bitmap. */
 typedef int (*eth_uc_hash_table_set_t)(struct rte_eth_dev *dev,
 				  struct rte_ether_addr *mac_addr,
 				  uint8_t on);
-/**< @internal Set a Unicast Hash bitmap */
 
+/** @internal Set all Unicast Hash bitmap. */
 typedef int (*eth_uc_all_hash_table_set_t)(struct rte_eth_dev *dev,
 				  uint8_t on);
-/**< @internal Set all Unicast Hash bitmap */
 
+/** @internal Set queue Tx rate. */
 typedef int (*eth_set_queue_rate_limit_t)(struct rte_eth_dev *dev,
 				uint16_t queue_idx,
 				uint16_t tx_rate);
-/**< @internal Set queue TX rate */
 
+/** @internal Add tunneling UDP port. */
 typedef int (*eth_udp_tunnel_port_add_t)(struct rte_eth_dev *dev,
 					 struct rte_eth_udp_tunnel *tunnel_udp);
-/**< @internal Add tunneling UDP port */
 
+/** @internal Delete tunneling UDP port. */
 typedef int (*eth_udp_tunnel_port_del_t)(struct rte_eth_dev *dev,
 					 struct rte_eth_udp_tunnel *tunnel_udp);
-/**< @internal Delete tunneling UDP port */
 
+/** @internal set the list of multicast addresses on an Ethernet device. */
 typedef int (*eth_set_mc_addr_list_t)(struct rte_eth_dev *dev,
 				      struct rte_ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);
-/**< @internal set the list of multicast addresses on an Ethernet device */
 
+/** @internal Function used to enable IEEE1588/802.1AS timestamping. */
 typedef int (*eth_timesync_enable_t)(struct rte_eth_dev *dev);
-/**< @internal Function used to enable IEEE1588/802.1AS timestamping. */
 
+/** @internal Function used to disable IEEE1588/802.1AS timestamping. */
 typedef int (*eth_timesync_disable_t)(struct rte_eth_dev *dev);
-/**< @internal Function used to disable IEEE1588/802.1AS timestamping. */
 
+/** @internal Function used to read an Rx IEEE1588/802.1AS timestamp. */
 typedef int (*eth_timesync_read_rx_timestamp_t)(struct rte_eth_dev *dev,
 						struct timespec *timestamp,
 						uint32_t flags);
-/**< @internal Function used to read an RX IEEE1588/802.1AS timestamp. */
 
+/** @internal Function used to read a Tx IEEE1588/802.1AS timestamp. */
 typedef int (*eth_timesync_read_tx_timestamp_t)(struct rte_eth_dev *dev,
 						struct timespec *timestamp);
-/**< @internal Function used to read a TX IEEE1588/802.1AS timestamp. */
 
+/** @internal Function used to adjust the device clock. */
 typedef int (*eth_timesync_adjust_time)(struct rte_eth_dev *dev, int64_t);
-/**< @internal Function used to adjust the device clock */
 
+/** @internal Function used to get time from the device clock. */
 typedef int (*eth_timesync_read_time)(struct rte_eth_dev *dev,
 				      struct timespec *timestamp);
-/**< @internal Function used to get time from the device clock. */
 
+/** @internal Function used to get time from the device clock. */
 typedef int (*eth_timesync_write_time)(struct rte_eth_dev *dev,
 				       const struct timespec *timestamp);
-/**< @internal Function used to get time from the device clock */
 
+/** @internal Function used to get the current value of the device clock. */
 typedef int (*eth_read_clock)(struct rte_eth_dev *dev,
 				      uint64_t *timestamp);
-/**< @internal Function used to get the current value of the device clock. */
 
+/** @internal Retrieve registers. */
 typedef int (*eth_get_reg_t)(struct rte_eth_dev *dev,
 				struct rte_dev_reg_info *info);
-/**< @internal Retrieve registers  */
 
+/** @internal Retrieve eeprom size. */
 typedef int (*eth_get_eeprom_length_t)(struct rte_eth_dev *dev);
-/**< @internal Retrieve eeprom size  */
 
+/** @internal Retrieve eeprom data. */
 typedef int (*eth_get_eeprom_t)(struct rte_eth_dev *dev,
 				struct rte_dev_eeprom_info *info);
-/**< @internal Retrieve eeprom data  */
 
+/** @internal Program eeprom data. */
 typedef int (*eth_set_eeprom_t)(struct rte_eth_dev *dev,
 				struct rte_dev_eeprom_info *info);
-/**< @internal Program eeprom data  */
 
+/** @internal Retrieve type and size of plugin module eeprom. */
 typedef int (*eth_get_module_info_t)(struct rte_eth_dev *dev,
 				     struct rte_eth_dev_module_info *modinfo);
-/**< @internal Retrieve type and size of plugin module eeprom */
 
+/** @internal Retrieve plugin module eeprom data. */
 typedef int (*eth_get_module_eeprom_t)(struct rte_eth_dev *dev,
 				       struct rte_dev_eeprom_info *info);
-/**< @internal Retrieve plugin module eeprom data */
 
 struct rte_flow_ops;
 /**
@@ -651,19 +655,19 @@ struct rte_flow_ops;
 typedef int (*eth_flow_ops_get_t)(struct rte_eth_dev *dev,
 				  const struct rte_flow_ops **ops);
 
+/** @internal Get Traffic Management (TM) operations on an Ethernet device. */
 typedef int (*eth_tm_ops_get_t)(struct rte_eth_dev *dev, void *ops);
-/**< @internal Get Traffic Management (TM) operations on an Ethernet device */
 
+/** @internal Get Traffic Metering and Policing (MTR) operations. */
 typedef int (*eth_mtr_ops_get_t)(struct rte_eth_dev *dev, void *ops);
-/**< @internal Get Traffic Metering and Policing (MTR) operations */
 
+/** @internal Get dcb information on an Ethernet device. */
 typedef int (*eth_get_dcb_info)(struct rte_eth_dev *dev,
 				 struct rte_eth_dcb_info *dcb_info);
-/**< @internal Get dcb information on an Ethernet device */
 
+/** @internal Test if a port supports specific mempool ops. */
 typedef int (*eth_pool_ops_supported_t)(struct rte_eth_dev *dev,
 						const char *pool);
-/**< @internal Test if a port supports specific mempool ops */
 
 /**
  * @internal
@@ -905,20 +909,20 @@ typedef int (*eth_hairpin_bind_t)(struct rte_eth_dev *dev,
 typedef int (*eth_hairpin_unbind_t)(struct rte_eth_dev *dev,
 				  uint16_t rx_port);
 
+/** @internal Update and fetch peer queue information. */
 typedef int (*eth_hairpin_queue_peer_update_t)
 	(struct rte_eth_dev *dev, uint16_t peer_queue,
 	 struct rte_hairpin_peer_info *current_info,
 	 struct rte_hairpin_peer_info *peer_info, uint32_t direction);
-/**< @internal Update and fetch peer queue information. */
 
+/** @internal Bind peer queue to the current queue with fetched information. */
 typedef int (*eth_hairpin_queue_peer_bind_t)
 	(struct rte_eth_dev *dev, uint16_t cur_queue,
 	 struct rte_hairpin_peer_info *peer_info, uint32_t direction);
-/**< @internal Bind peer queue to the current queue with fetched information. */
 
+/** @internal Unbind peer queue from the current queue. */
 typedef int (*eth_hairpin_queue_peer_unbind_t)
 	(struct rte_eth_dev *dev, uint16_t cur_queue, uint32_t direction);
-/**< @internal Unbind peer queue from the current queue. */
 
 /**
  * @internal
@@ -992,8 +996,8 @@ struct eth_dev_ops {
 	eth_dev_close_t            dev_close;     /**< Close device. */
 	eth_dev_reset_t		   dev_reset;	  /**< Reset device. */
 	eth_link_update_t          link_update;   /**< Get device link state. */
+	/** Check if the device was physically removed */
 	eth_is_removed_t           is_removed;
-	/**< Check if the device was physically removed. */
 
 	eth_promiscuous_enable_t   promiscuous_enable; /**< Promiscuous ON. */
 	eth_promiscuous_disable_t  promiscuous_disable;/**< Promiscuous OFF. */
@@ -1002,34 +1006,50 @@ struct eth_dev_ops {
 	eth_mac_addr_remove_t      mac_addr_remove; /**< Remove MAC address. */
 	eth_mac_addr_add_t         mac_addr_add;  /**< Add a MAC address. */
 	eth_mac_addr_set_t         mac_addr_set;  /**< Set a MAC address. */
-	eth_set_mc_addr_list_t     set_mc_addr_list; /**< set list of mcast addrs. */
+	/** Set list of multicast addresses */
+	eth_set_mc_addr_list_t     set_mc_addr_list;
 	mtu_set_t                  mtu_set;       /**< Set MTU. */
 
-	eth_stats_get_t            stats_get;     /**< Get generic device statistics. */
-	eth_stats_reset_t          stats_reset;   /**< Reset generic device statistics. */
-	eth_xstats_get_t           xstats_get;    /**< Get extended device statistics. */
-	eth_xstats_reset_t         xstats_reset;  /**< Reset extended device statistics. */
+	/** Get generic device statistics */
+	eth_stats_get_t            stats_get;
+	/** Reset generic device statistics */
+	eth_stats_reset_t          stats_reset;
+	/** Get extended device statistics */
+	eth_xstats_get_t           xstats_get;
+	/** Reset extended device statistics */
+	eth_xstats_reset_t         xstats_reset;
+	/** Get names of extended statistics */
 	eth_xstats_get_names_t     xstats_get_names;
-	/**< Get names of extended statistics. */
+	/** Configure per queue stat counter mapping */
 	eth_queue_stats_mapping_set_t queue_stats_mapping_set;
-	/**< Configure per queue stat counter mapping. */
 
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
-	eth_rxq_info_get_t         rxq_info_get; /**< retrieve RX queue information. */
-	eth_txq_info_get_t         txq_info_get; /**< retrieve TX queue information. */
+	/** Retrieve Rx queue information */
+	eth_rxq_info_get_t         rxq_info_get;
+	/** Retrieve Tx queue information */
+	eth_txq_info_get_t         txq_info_get;
 	eth_burst_mode_get_t       rx_burst_mode_get; /**< Get RX burst mode */
 	eth_burst_mode_get_t       tx_burst_mode_get; /**< Get TX burst mode */
 	eth_fw_version_get_t       fw_version_get; /**< Get firmware version. */
-	eth_dev_supported_ptypes_get_t dev_supported_ptypes_get;
-	/**< Get packet types supported and identified by device. */
-	eth_dev_ptypes_set_t dev_ptypes_set;
-	/**< Inform Ethernet device about reduced range of packet types to handle. */
 
-	vlan_filter_set_t          vlan_filter_set; /**< Filter VLAN Setup. */
-	vlan_tpid_set_t            vlan_tpid_set; /**< Outer/Inner VLAN TPID Setup. */
-	vlan_strip_queue_set_t     vlan_strip_queue_set; /**< VLAN Stripping on queue. */
-	vlan_offload_set_t         vlan_offload_set; /**< Set VLAN Offload. */
-	vlan_pvid_set_t            vlan_pvid_set; /**< Set port based TX VLAN insertion. */
+	/** Get packet types supported and identified by device */
+	eth_dev_supported_ptypes_get_t dev_supported_ptypes_get;
+	/**
+	 * Inform Ethernet device about reduced range of packet types to
+	 * handle
+	 */
+	eth_dev_ptypes_set_t dev_ptypes_set;
+
+	/** Filter VLAN Setup */
+	vlan_filter_set_t          vlan_filter_set;
+	/** Outer/Inner VLAN TPID Setup */
+	vlan_tpid_set_t            vlan_tpid_set;
+	/** VLAN Stripping on queue */
+	vlan_strip_queue_set_t     vlan_strip_queue_set;
+	/** Set VLAN Offload */
+	vlan_offload_set_t         vlan_offload_set;
+	/** Set port based Tx VLAN insertion */
+	vlan_pvid_set_t            vlan_pvid_set;
 
 	eth_queue_start_t          rx_queue_start;/**< Start RX for a queue. */
 	eth_queue_stop_t           rx_queue_stop; /**< Stop RX for a queue. */
@@ -1038,8 +1058,11 @@ struct eth_dev_ops {
 	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device RX queue. */
 	eth_queue_release_t        rx_queue_release; /**< Release RX queue. */
 
-	eth_rx_enable_intr_t       rx_queue_intr_enable;  /**< Enable Rx queue interrupt. */
-	eth_rx_disable_intr_t      rx_queue_intr_disable; /**< Disable Rx queue interrupt. */
+	/** Enable Rx queue interrupt */
+	eth_rx_enable_intr_t       rx_queue_intr_enable;
+	/** Disable Rx queue interrupt */
+	eth_rx_disable_intr_t      rx_queue_intr_disable;
+
 	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue. */
 	eth_queue_release_t        tx_queue_release; /**< Release TX queue. */
 	eth_tx_done_cleanup_t      tx_done_cleanup;/**< Free tx ring mbufs */
@@ -1049,94 +1072,108 @@ struct eth_dev_ops {
 
 	flow_ctrl_get_t            flow_ctrl_get; /**< Get flow control. */
 	flow_ctrl_set_t            flow_ctrl_set; /**< Setup flow control. */
-	priority_flow_ctrl_set_t   priority_flow_ctrl_set; /**< Setup priority flow control. */
+	/** Setup priority flow control */
+	priority_flow_ctrl_set_t   priority_flow_ctrl_set;
 
-	eth_uc_hash_table_set_t    uc_hash_table_set; /**< Set Unicast Table Array. */
-	eth_uc_all_hash_table_set_t uc_all_hash_table_set; /**< Set Unicast hash bitmap. */
+	/** Set Unicast Table Array */
+	eth_uc_hash_table_set_t    uc_hash_table_set;
+	/** Set Unicast hash bitmap */
+	eth_uc_all_hash_table_set_t uc_all_hash_table_set;
 
-	eth_udp_tunnel_port_add_t  udp_tunnel_port_add; /** Add UDP tunnel port. */
-	eth_udp_tunnel_port_del_t  udp_tunnel_port_del; /** Del UDP tunnel port. */
+	/** Add UDP tunnel port */
+	eth_udp_tunnel_port_add_t  udp_tunnel_port_add;
+	/** Delete UDP tunnel port */
+	eth_udp_tunnel_port_del_t  udp_tunnel_port_del;
 
-	eth_set_queue_rate_limit_t set_queue_rate_limit; /**< Set queue rate limit. */
+	/** Set queue rate limit */
+	eth_set_queue_rate_limit_t set_queue_rate_limit;
 
-	rss_hash_update_t          rss_hash_update; /** Configure RSS hash protocols. */
-	rss_hash_conf_get_t        rss_hash_conf_get; /** Get current RSS hash configuration. */
-	reta_update_t              reta_update;   /** Update redirection table. */
-	reta_query_t               reta_query;    /** Query redirection table. */
+	/** Configure RSS hash protocols and hashing key */
+	rss_hash_update_t          rss_hash_update;
+	/** Get current RSS hash configuration */
+	rss_hash_conf_get_t        rss_hash_conf_get;
+	/** Update redirection table */
+	reta_update_t              reta_update;
+	/** Query redirection table */
+	reta_query_t               reta_query;
 
 	eth_get_reg_t              get_reg;           /**< Get registers. */
 	eth_get_eeprom_length_t    get_eeprom_length; /**< Get eeprom length. */
 	eth_get_eeprom_t           get_eeprom;        /**< Get eeprom data. */
 	eth_set_eeprom_t           set_eeprom;        /**< Set eeprom. */
 
+	/** Get plugin module eeprom attribute */
 	eth_get_module_info_t      get_module_info;
-	/** Get plugin module eeprom attribute. */
+	/** Get plugin module eeprom data */
 	eth_get_module_eeprom_t    get_module_eeprom;
-	/** Get plugin module eeprom data. */
 
 	eth_flow_ops_get_t         flow_ops_get; /**< Get flow operations. */
 
-	eth_get_dcb_info           get_dcb_info; /** Get DCB information. */
+	eth_get_dcb_info           get_dcb_info; /**< Get DCB information */
 
+	/** Turn IEEE1588/802.1AS timestamping on */
 	eth_timesync_enable_t      timesync_enable;
-	/** Turn IEEE1588/802.1AS timestamping on. */
+	/** Turn IEEE1588/802.1AS timestamping off */
 	eth_timesync_disable_t     timesync_disable;
-	/** Turn IEEE1588/802.1AS timestamping off. */
+	/** Read the IEEE1588/802.1AS Rx timestamp */
 	eth_timesync_read_rx_timestamp_t timesync_read_rx_timestamp;
-	/** Read the IEEE1588/802.1AS RX timestamp. */
+	/** Read the IEEE1588/802.1AS Tx timestamp */
 	eth_timesync_read_tx_timestamp_t timesync_read_tx_timestamp;
-	/** Read the IEEE1588/802.1AS TX timestamp. */
-	eth_timesync_adjust_time   timesync_adjust_time; /** Adjust the device clock. */
-	eth_timesync_read_time     timesync_read_time; /** Get the device clock time. */
-	eth_timesync_write_time    timesync_write_time; /** Set the device clock time. */
+	/** Adjust the device clock */
+	eth_timesync_adjust_time   timesync_adjust_time;
+	/** Get the device clock time */
+	eth_timesync_read_time     timesync_read_time;
+	/** Set the device clock time */
+	eth_timesync_write_time    timesync_write_time;
 
 	eth_read_clock             read_clock;
 
+	/** Get extended device statistic values by ID */
 	eth_xstats_get_by_id_t     xstats_get_by_id;
-	/**< Get extended device statistic values by ID. */
+	/** Get name of extended device statistics by ID */
 	eth_xstats_get_names_by_id_t xstats_get_names_by_id;
-	/**< Get name of extended device statistics by ID. */
 
+	/** Get Traffic Management (TM) operations */
 	eth_tm_ops_get_t tm_ops_get;
-	/**< Get Traffic Management (TM) operations. */
 
+	/** Get Traffic Metering and Policing (MTR) operations */
 	eth_mtr_ops_get_t mtr_ops_get;
-	/**< Get Traffic Metering and Policing (MTR) operations. */
 
+	/** Test if a port supports specific mempool ops */
 	eth_pool_ops_supported_t pool_ops_supported;
-	/**< Test if a port supports specific mempool ops */
 
+	/** Returns the hairpin capabilities */
 	eth_hairpin_cap_get_t hairpin_cap_get;
-	/**< Returns the hairpin capabilities. */
+	/** Set up device Rx hairpin queue */
 	eth_rx_hairpin_queue_setup_t rx_hairpin_queue_setup;
-	/**< Set up device RX hairpin queue. */
+	/** Set up device Tx hairpin queue */
 	eth_tx_hairpin_queue_setup_t tx_hairpin_queue_setup;
-	/**< Set up device TX hairpin queue. */
 
+	/** Get Forward Error Correction(FEC) capability */
 	eth_fec_get_capability_t fec_get_capability;
-	/**< Get Forward Error Correction(FEC) capability. */
+	/** Get Forward Error Correction(FEC) mode */
 	eth_fec_get_t fec_get;
-	/**< Get Forward Error Correction(FEC) mode. */
+	/** Set Forward Error Correction(FEC) mode */
 	eth_fec_set_t fec_set;
-	/**< Set Forward Error Correction(FEC) mode. */
+
+	/** Get hairpin peer ports list */
 	hairpin_get_peer_ports_t hairpin_get_peer_ports;
-	/**< Get hairpin peer ports list. */
+	/** Bind all hairpin Tx queues of device to the peer port Rx queues */
 	eth_hairpin_bind_t hairpin_bind;
-	/**< Bind all hairpin Tx queues of device to the peer port Rx queues. */
+	/** Unbind all hairpin Tx queues from the peer port Rx queues */
 	eth_hairpin_unbind_t hairpin_unbind;
-	/**< Unbind all hairpin Tx queues from the peer port Rx queues. */
+	/** Pass the current queue info and get the peer queue info */
 	eth_hairpin_queue_peer_update_t hairpin_queue_peer_update;
-	/**< Pass the current queue info and get the peer queue info. */
+	/** Set up the connection between the pair of hairpin queues */
 	eth_hairpin_queue_peer_bind_t hairpin_queue_peer_bind;
-	/**< Set up the connection between the pair of hairpin queues. */
+	/** Disconnect the hairpin queues of a pair from each other */
 	eth_hairpin_queue_peer_unbind_t hairpin_queue_peer_unbind;
-	/**< Disconnect the hairpin queues of a pair from each other. */
 
+	/** Get power monitoring condition for Rx queue */
 	eth_get_monitor_addr_t get_monitor_addr;
-	/**< Get power monitoring condition for Rx queue. */
 
+	/** Get representor info */
 	eth_representor_info_get_t representor_info_get;
-	/**< Get representor info. */
 
 	/**
 	 * Negotiate the NIC's ability to deliver specific
