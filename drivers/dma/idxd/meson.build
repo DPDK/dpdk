@@ -9,3 +9,7 @@ sources = files(
         'idxd_common.c',
         'idxd_pci.c',
 )
+
+if is_linux
+    sources += files('idxd_bus.c')
+endif

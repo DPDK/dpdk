@@ -32,6 +32,56 @@ target platform is x86-based. No additional compilation steps are necessary.
 Device Setup
 -------------
 
+Intel\ |reg| DSA devices can use the IDXD kernel driver or DPDK-supported drivers,
+such as ``vfio-pci``. Both are supported by the IDXD PMD.
+
+Intel\ |reg| DSA devices using IDXD kernel driver
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To use an Intel\ |reg| DSA device bound to the IDXD kernel driver, the device must first be configured.
+The `accel-config <https://github.com/intel/idxd-config>`_ utility library can be used for configuration.
+
+.. note::
+        The device configuration can also be done by directly interacting with the sysfs nodes.
+        An example of how this may be done can be seen in the script ``dpdk_idxd_cfg.py``
+        included in the driver source directory.
+
+There are some mandatory configuration steps before being able to use a device with an application.
+The internal engines, which do the copies or other operations,
+and the work-queues, which are used by applications to assign work to the device,
+need to be assigned to groups, and the various other configuration options,
+such as priority or queue depth, need to be set for each queue.
+
+To assign an engine to a group::
+
+        $ accel-config config-engine dsa0/engine0.0 --group-id=0
+        $ accel-config config-engine dsa0/engine0.1 --group-id=1
+
+To assign work queues to groups for passing descriptors to the engines a similar accel-config command can be used.
+However, the work queues also need to be configured depending on the use case.
+Some configuration options include:
+
+* mode (Dedicated/Shared): Indicates whether a WQ may accept jobs from multiple queues simultaneously.
+* priority: WQ priority between 1 and 15. Larger value means higher priority.
+* wq-size: the size of the WQ. Sum of all WQ sizes must be less that the total-size defined by the device.
+* type: WQ type (kernel/mdev/user). Determines how the device is presented.
+* name: identifier given to the WQ.
+
+Example configuration for a work queue::
+
+        $ accel-config config-wq dsa0/wq0.0 --group-id=0 \
+           --mode=dedicated --priority=10 --wq-size=8 \
+           --type=user --name=dpdk_app1
+
+Once the devices have been configured, they need to be enabled::
+
+        $ accel-config enable-device dsa0
+        $ accel-config enable-wq dsa0/wq0.0
+
+Check the device configuration::
+
+        $ accel-config list
+
 Devices using VFIO/UIO drivers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -56,3 +106,17 @@ If fewer workqueues are required, then the ``max_queues`` parameter may be passe
 the device driver on the EAL commandline, via the ``allowlist`` or ``-a`` flag e.g.::
 
 	$ dpdk-test -a <b:d:f>,max_queues=4
+
+For devices bound to the IDXD kernel driver,
+the DPDK IDXD driver will automatically perform a scan for available workqueues
+to use. Any workqueues found listed in ``/dev/dsa`` on the system will be checked
+in ``/sys``, and any which have ``dpdk_`` prefix in their name will be automatically
+probed by the driver to make them available to the application.
+Alternatively, to support use by multiple DPDK processes simultaneously,
+the value used as the DPDK ``--file-prefix`` parameter may be used as a workqueue
+name prefix, instead of ``dpdk_``, allowing each DPDK application instance to only
+use a subset of configured queues.
+
+Once probed successfully, irrespective of kernel driver, the device will appear as a ``dmadev``,
+that is a "DMA device type" inside DPDK, and can be accessed using APIs from the
+``rte_dmadev`` library.
