@@ -867,17 +867,6 @@ rte_cryptodev_callback_unregister(uint8_t dev_id,
 		enum rte_cryptodev_event_type event,
 		rte_cryptodev_cb_fn cb_fn, void *cb_arg);
 
-typedef uint16_t (*dequeue_pkt_burst_t)(void *qp,
-		struct rte_crypto_op **ops,	uint16_t nb_ops);
-/**< Dequeue processed packets from queue pair of a device. */
-
-typedef uint16_t (*enqueue_pkt_burst_t)(void *qp,
-		struct rte_crypto_op **ops,	uint16_t nb_ops);
-/**< Enqueue packets for processing on queue pair of a device. */
-
-
-
-
 struct rte_cryptodev_callback;
 
 /** Structure to keep track of registered callbacks */
@@ -907,215 +896,8 @@ struct rte_cryptodev_cb_rcu {
 	/**< RCU QSBR variable per queue pair */
 };
 
-/** The data structure associated with each crypto device. */
-struct rte_cryptodev {
-	dequeue_pkt_burst_t dequeue_burst;
-	/**< Pointer to PMD receive function. */
-	enqueue_pkt_burst_t enqueue_burst;
-	/**< Pointer to PMD transmit function. */
-
-	struct rte_cryptodev_data *data;
-	/**< Pointer to device data */
-	struct rte_cryptodev_ops *dev_ops;
-	/**< Functions exported by PMD */
-	uint64_t feature_flags;
-	/**< Feature flags exposes HW/SW features for the given device */
-	struct rte_device *device;
-	/**< Backing device */
-
-	uint8_t driver_id;
-	/**< Crypto driver identifier*/
-
-	struct rte_cryptodev_cb_list link_intr_cbs;
-	/**< User application callback for interrupts if present */
-
-	void *security_ctx;
-	/**< Context for security ops */
-
-	__extension__
-	uint8_t attached : 1;
-	/**< Flag indicating the device is attached */
-
-	struct rte_cryptodev_cb_rcu *enq_cbs;
-	/**< User application callback for pre enqueue processing */
-
-	struct rte_cryptodev_cb_rcu *deq_cbs;
-	/**< User application callback for post dequeue processing */
-} __rte_cache_aligned;
-
 void *
 rte_cryptodev_get_sec_ctx(uint8_t dev_id);
-
-/**
- *
- * The data part, with no function pointers, associated with each device.
- *
- * This structure is safe to place in shared memory to be common among
- * different processes in a multi-process configuration.
- */
-struct rte_cryptodev_data {
-	uint8_t dev_id;
-	/**< Device ID for this instance */
-	uint8_t socket_id;
-	/**< Socket ID where memory is allocated */
-	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
-	/**< Unique identifier name */
-
-	__extension__
-	uint8_t dev_started : 1;
-	/**< Device state: STARTED(1)/STOPPED(0) */
-
-	struct rte_mempool *session_pool;
-	/**< Session memory pool */
-	void **queue_pairs;
-	/**< Array of pointers to queue pairs. */
-	uint16_t nb_queue_pairs;
-	/**< Number of device queue pairs. */
-
-	void *dev_private;
-	/**< PMD-specific private data */
-} __rte_cache_aligned;
-
-extern struct rte_cryptodev *rte_cryptodevs;
-/**
- *
- * Dequeue a burst of processed crypto operations from a queue on the crypto
- * device. The dequeued operation are stored in *rte_crypto_op* structures
- * whose pointers are supplied in the *ops* array.
- *
- * The rte_cryptodev_dequeue_burst() function returns the number of ops
- * actually dequeued, which is the number of *rte_crypto_op* data structures
- * effectively supplied into the *ops* array.
- *
- * A return value equal to *nb_ops* indicates that the queue contained
- * at least *nb_ops* operations, and this is likely to signify that other
- * processed operations remain in the devices output queue. Applications
- * implementing a "retrieve as many processed operations as possible" policy
- * can check this specific case and keep invoking the
- * rte_cryptodev_dequeue_burst() function until a value less than
- * *nb_ops* is returned.
- *
- * The rte_cryptodev_dequeue_burst() function does not provide any error
- * notification to avoid the corresponding overhead.
- *
- * @param	dev_id		The symmetric crypto device identifier
- * @param	qp_id		The index of the queue pair from which to
- *				retrieve processed packets. The value must be
- *				in the range [0, nb_queue_pair - 1] previously
- *				supplied to rte_cryptodev_configure().
- * @param	ops		The address of an array of pointers to
- *				*rte_crypto_op* structures that must be
- *				large enough to store *nb_ops* pointers in it.
- * @param	nb_ops		The maximum number of operations to dequeue.
- *
- * @return
- *   - The number of operations actually dequeued, which is the number
- *   of pointers to *rte_crypto_op* structures effectively supplied to the
- *   *ops* array.
- */
-static inline uint16_t
-rte_cryptodev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
-		struct rte_crypto_op **ops, uint16_t nb_ops)
-{
-	struct rte_cryptodev *dev = &rte_cryptodevs[dev_id];
-
-	rte_cryptodev_trace_dequeue_burst(dev_id, qp_id, (void **)ops, nb_ops);
-	nb_ops = (*dev->dequeue_burst)
-			(dev->data->queue_pairs[qp_id], ops, nb_ops);
-#ifdef RTE_CRYPTO_CALLBACKS
-	if (unlikely(dev->deq_cbs != NULL)) {
-		struct rte_cryptodev_cb_rcu *list;
-		struct rte_cryptodev_cb *cb;
-
-		/* __ATOMIC_RELEASE memory order was used when the
-		 * call back was inserted into the list.
-		 * Since there is a clear dependency between loading
-		 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
-		 * not required.
-		 */
-		list = &dev->deq_cbs[qp_id];
-		rte_rcu_qsbr_thread_online(list->qsbr, 0);
-		cb = __atomic_load_n(&list->next, __ATOMIC_RELAXED);
-
-		while (cb != NULL) {
-			nb_ops = cb->fn(dev_id, qp_id, ops, nb_ops,
-					cb->arg);
-			cb = cb->next;
-		};
-
-		rte_rcu_qsbr_thread_offline(list->qsbr, 0);
-	}
-#endif
-	return nb_ops;
-}
-
-/**
- * Enqueue a burst of operations for processing on a crypto device.
- *
- * The rte_cryptodev_enqueue_burst() function is invoked to place
- * crypto operations on the queue *qp_id* of the device designated by
- * its *dev_id*.
- *
- * The *nb_ops* parameter is the number of operations to process which are
- * supplied in the *ops* array of *rte_crypto_op* structures.
- *
- * The rte_cryptodev_enqueue_burst() function returns the number of
- * operations it actually enqueued for processing. A return value equal to
- * *nb_ops* means that all packets have been enqueued.
- *
- * @param	dev_id		The identifier of the device.
- * @param	qp_id		The index of the queue pair which packets are
- *				to be enqueued for processing. The value
- *				must be in the range [0, nb_queue_pairs - 1]
- *				previously supplied to
- *				 *rte_cryptodev_configure*.
- * @param	ops		The address of an array of *nb_ops* pointers
- *				to *rte_crypto_op* structures which contain
- *				the crypto operations to be processed.
- * @param	nb_ops		The number of operations to process.
- *
- * @return
- * The number of operations actually enqueued on the crypto device. The return
- * value can be less than the value of the *nb_ops* parameter when the
- * crypto devices queue is full or if invalid parameters are specified in
- * a *rte_crypto_op*.
- */
-static inline uint16_t
-rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
-		struct rte_crypto_op **ops, uint16_t nb_ops)
-{
-	struct rte_cryptodev *dev = &rte_cryptodevs[dev_id];
-
-#ifdef RTE_CRYPTO_CALLBACKS
-	if (unlikely(dev->enq_cbs != NULL)) {
-		struct rte_cryptodev_cb_rcu *list;
-		struct rte_cryptodev_cb *cb;
-
-		/* __ATOMIC_RELEASE memory order was used when the
-		 * call back was inserted into the list.
-		 * Since there is a clear dependency between loading
-		 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
-		 * not required.
-		 */
-		list = &dev->enq_cbs[qp_id];
-		rte_rcu_qsbr_thread_online(list->qsbr, 0);
-		cb = __atomic_load_n(&list->next, __ATOMIC_RELAXED);
-
-		while (cb != NULL) {
-			nb_ops = cb->fn(dev_id, qp_id, ops, nb_ops,
-					cb->arg);
-			cb = cb->next;
-		};
-
-		rte_rcu_qsbr_thread_offline(list->qsbr, 0);
-	}
-#endif
-
-	rte_cryptodev_trace_enqueue_burst(dev_id, qp_id, (void **)ops, nb_ops);
-	return (*dev->enqueue_burst)(
-			dev->data->queue_pairs[qp_id], ops, nb_ops);
-}
-
 
 /** Cryptodev symmetric crypto session
  * Each session is derived from a fixed xform chain. Therefore each session
@@ -2008,6 +1790,148 @@ __rte_experimental
 int rte_cryptodev_remove_deq_callback(uint8_t dev_id,
 				      uint16_t qp_id,
 				      struct rte_cryptodev_cb *cb);
+
+#include <rte_cryptodev_core.h>
+/**
+ *
+ * Dequeue a burst of processed crypto operations from a queue on the crypto
+ * device. The dequeued operation are stored in *rte_crypto_op* structures
+ * whose pointers are supplied in the *ops* array.
+ *
+ * The rte_cryptodev_dequeue_burst() function returns the number of ops
+ * actually dequeued, which is the number of *rte_crypto_op* data structures
+ * effectively supplied into the *ops* array.
+ *
+ * A return value equal to *nb_ops* indicates that the queue contained
+ * at least *nb_ops* operations, and this is likely to signify that other
+ * processed operations remain in the devices output queue. Applications
+ * implementing a "retrieve as many processed operations as possible" policy
+ * can check this specific case and keep invoking the
+ * rte_cryptodev_dequeue_burst() function until a value less than
+ * *nb_ops* is returned.
+ *
+ * The rte_cryptodev_dequeue_burst() function does not provide any error
+ * notification to avoid the corresponding overhead.
+ *
+ * @param	dev_id		The symmetric crypto device identifier
+ * @param	qp_id		The index of the queue pair from which to
+ *				retrieve processed packets. The value must be
+ *				in the range [0, nb_queue_pair - 1] previously
+ *				supplied to rte_cryptodev_configure().
+ * @param	ops		The address of an array of pointers to
+ *				*rte_crypto_op* structures that must be
+ *				large enough to store *nb_ops* pointers in it.
+ * @param	nb_ops		The maximum number of operations to dequeue.
+ *
+ * @return
+ *   - The number of operations actually dequeued, which is the number
+ *   of pointers to *rte_crypto_op* structures effectively supplied to the
+ *   *ops* array.
+ */
+static inline uint16_t
+rte_cryptodev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
+		struct rte_crypto_op **ops, uint16_t nb_ops)
+{
+	struct rte_cryptodev *dev = &rte_cryptodevs[dev_id];
+
+	rte_cryptodev_trace_dequeue_burst(dev_id, qp_id, (void **)ops, nb_ops);
+	nb_ops = (*dev->dequeue_burst)
+			(dev->data->queue_pairs[qp_id], ops, nb_ops);
+#ifdef RTE_CRYPTO_CALLBACKS
+	if (unlikely(dev->deq_cbs != NULL)) {
+		struct rte_cryptodev_cb_rcu *list;
+		struct rte_cryptodev_cb *cb;
+
+		/* __ATOMIC_RELEASE memory order was used when the
+		 * call back was inserted into the list.
+		 * Since there is a clear dependency between loading
+		 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
+		 * not required.
+		 */
+		list = &dev->deq_cbs[qp_id];
+		rte_rcu_qsbr_thread_online(list->qsbr, 0);
+		cb = __atomic_load_n(&list->next, __ATOMIC_RELAXED);
+
+		while (cb != NULL) {
+			nb_ops = cb->fn(dev_id, qp_id, ops, nb_ops,
+					cb->arg);
+			cb = cb->next;
+		};
+
+		rte_rcu_qsbr_thread_offline(list->qsbr, 0);
+	}
+#endif
+	return nb_ops;
+}
+
+/**
+ * Enqueue a burst of operations for processing on a crypto device.
+ *
+ * The rte_cryptodev_enqueue_burst() function is invoked to place
+ * crypto operations on the queue *qp_id* of the device designated by
+ * its *dev_id*.
+ *
+ * The *nb_ops* parameter is the number of operations to process which are
+ * supplied in the *ops* array of *rte_crypto_op* structures.
+ *
+ * The rte_cryptodev_enqueue_burst() function returns the number of
+ * operations it actually enqueued for processing. A return value equal to
+ * *nb_ops* means that all packets have been enqueued.
+ *
+ * @param	dev_id		The identifier of the device.
+ * @param	qp_id		The index of the queue pair which packets are
+ *				to be enqueued for processing. The value
+ *				must be in the range [0, nb_queue_pairs - 1]
+ *				previously supplied to
+ *				 *rte_cryptodev_configure*.
+ * @param	ops		The address of an array of *nb_ops* pointers
+ *				to *rte_crypto_op* structures which contain
+ *				the crypto operations to be processed.
+ * @param	nb_ops		The number of operations to process.
+ *
+ * @return
+ * The number of operations actually enqueued on the crypto device. The return
+ * value can be less than the value of the *nb_ops* parameter when the
+ * crypto devices queue is full or if invalid parameters are specified in
+ * a *rte_crypto_op*.
+ */
+static inline uint16_t
+rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
+		struct rte_crypto_op **ops, uint16_t nb_ops)
+{
+	struct rte_cryptodev *dev = &rte_cryptodevs[dev_id];
+
+#ifdef RTE_CRYPTO_CALLBACKS
+	if (unlikely(dev->enq_cbs != NULL)) {
+		struct rte_cryptodev_cb_rcu *list;
+		struct rte_cryptodev_cb *cb;
+
+		/* __ATOMIC_RELEASE memory order was used when the
+		 * call back was inserted into the list.
+		 * Since there is a clear dependency between loading
+		 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
+		 * not required.
+		 */
+		list = &dev->enq_cbs[qp_id];
+		rte_rcu_qsbr_thread_online(list->qsbr, 0);
+		cb = __atomic_load_n(&list->next, __ATOMIC_RELAXED);
+
+		while (cb != NULL) {
+			nb_ops = cb->fn(dev_id, qp_id, ops, nb_ops,
+					cb->arg);
+			cb = cb->next;
+		};
+
+		rte_rcu_qsbr_thread_offline(list->qsbr, 0);
+	}
+#endif
+
+	rte_cryptodev_trace_enqueue_burst(dev_id, qp_id, (void **)ops, nb_ops);
+	return (*dev->enqueue_burst)(
+			dev->data->queue_pairs[qp_id], ops, nb_ops);
+}
+
+
 
 #ifdef __cplusplus
 }

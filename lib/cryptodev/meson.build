@@ -14,7 +14,9 @@ headers = files(
         'rte_crypto_sym.h',
         'rte_crypto_asym.h',
 )
-
+indirect_headers += files(
+        'rte_cryptodev_core.h',
+)
 driver_sdk_headers += files(
         'cryptodev_pmd.h',
 )

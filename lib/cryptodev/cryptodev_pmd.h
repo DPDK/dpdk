@@ -93,12 +93,6 @@ struct rte_cryptodev *
 rte_cryptodev_pmd_get_named_dev(const char *name);
 
 /**
- * The pool of rte_cryptodev structures.
- */
-extern struct rte_cryptodev *rte_cryptodevs;
-
-
-/**
  * Definitions of all functions exported by a driver through the
  * the generic structure of type *crypto_dev_ops* supplied in the
  * *rte_cryptodev* structure associated with a device.
