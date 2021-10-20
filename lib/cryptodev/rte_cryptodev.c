@@ -978,7 +978,8 @@ rte_cryptodev_queue_pairs_config(struct rte_cryptodev *dev, uint16_t nb_qpairs,
 	if (dev->data->queue_pairs == NULL) { /* first time configuration */
 		dev->data->queue_pairs = rte_zmalloc_socket(
 				"cryptodev->queue_pairs",
-				sizeof(dev->data->queue_pairs[0]) * nb_qpairs,
+				sizeof(dev->data->queue_pairs[0]) *
+				dev_info.max_nb_queue_pairs,
 				RTE_CACHE_LINE_SIZE, socket_id);
 
 		if (dev->data->queue_pairs == NULL) {
@@ -1001,24 +1002,8 @@ rte_cryptodev_queue_pairs_config(struct rte_cryptodev *dev, uint16_t nb_qpairs,
 			ret = (*dev->dev_ops->queue_pair_release)(dev, i);
 			if (ret < 0)
 				return ret;
+			qp[i] = NULL;
 		}
-
-		qp = rte_realloc(qp, sizeof(qp[0]) * nb_qpairs,
-				RTE_CACHE_LINE_SIZE);
-		if (qp == NULL) {
-			CDEV_LOG_ERR("failed to realloc qp meta data,"
-						" nb_queues %u", nb_qpairs);
-			return -(ENOMEM);
-		}
-
-		if (nb_qpairs > old_nb_queues) {
-			uint16_t new_qs = nb_qpairs - old_nb_queues;
-
-			memset(qp + old_nb_queues, 0,
-				sizeof(qp[0]) * new_qs);
-		}
-
-		dev->data->queue_pairs = qp;
 
 	}
 	dev->data->nb_queue_pairs = nb_qpairs;
