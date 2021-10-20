@@ -4642,7 +4642,7 @@ instr_meter_translate(struct rte_swx_pipeline *p,
 		return 0;
 	}
 
-	CHECK(0, EINVAL);
+	return -EINVAL;
 }
 
 static inline void
@@ -5937,7 +5937,7 @@ instr_translate(struct rte_swx_pipeline *p,
 					      instr,
 					      data);
 
-	CHECK(0, EINVAL);
+	return -EINVAL;
 }
 
 static struct instruction_data *
