@@ -29,18 +29,6 @@ TAILQ_HEAD(rte_devargs_list, rte_devargs);
 static struct rte_devargs_list devargs_list =
 	TAILQ_HEAD_INITIALIZER(devargs_list);
 
-static size_t
-devargs_layer_count(const char *s)
-{
-	size_t i = s ? 1 : 0;
-
-	while (s != NULL && s[0] != '\0') {
-		i += s[0] == '/';
-		s++;
-	}
-	return i;
-}
-
 /* Resolve devargs name from bus arguments. */
 static int
 devargs_bus_parse_default(struct rte_devargs *devargs,
@@ -77,22 +65,12 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 		{ RTE_DEVARGS_KEY_DRIVER "=", NULL, NULL, },
 	};
 	struct rte_kvargs_pair *kv = NULL;
-	struct rte_class *cls = NULL;
-	struct rte_bus *bus = NULL;
-	const char *s = devstr;
-	size_t nblayer;
-	size_t i = 0;
+	struct rte_kvargs *bus_kvlist = NULL;
+	char *s;
+	size_t nblayer = 0;
+	size_t i;
 	int ret = 0;
 	bool allocated_data = false;
-
-	/* Split each sub-lists. */
-	nblayer = devargs_layer_count(devstr);
-	if (nblayer > RTE_DIM(layers)) {
-		RTE_LOG(ERR, EAL, "Invalid format: too many layers (%zu)\n",
-			nblayer);
-		ret = -E2BIG;
-		goto get_out;
-	}
 
 	/* If the devargs points the devstr
 	 * as source data, then it should not allocate
@@ -106,33 +84,41 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 			goto get_out;
 		}
 		allocated_data = true;
-		s = devargs->data;
 	}
+	s = devargs->data;
 
 	while (s != NULL) {
-		if (i >= RTE_DIM(layers)) {
-			RTE_LOG(ERR, EAL, "Unrecognized layer %s\n", s);
-			ret = -EINVAL;
+		if (nblayer > RTE_DIM(layers)) {
+			ret = -E2BIG;
 			goto get_out;
 		}
-		/*
-		 * The last layer is free-form.
-		 * The "driver" key is not required (but accepted).
-		 */
-		if (strncmp(layers[i].key, s, strlen(layers[i].key)) &&
-				i != RTE_DIM(layers) - 1)
-			goto next_layer;
-		layers[i].str = s;
-		layers[i].kvlist = rte_kvargs_parse_delim(s, NULL, "/");
-		if (layers[i].kvlist == NULL) {
-			ret = -EINVAL;
-			goto get_out;
-		}
-		s = strchr(s, '/');
-		if (s != NULL)
+		layers[nblayer].str = s;
+
+		/* Locate next layer starts with valid layer key. */
+		while (s != NULL) {
+			s = strchr(s, '/');
+			if (s == NULL)
+				break;
+			for (i = 0; i < RTE_DIM(layers); i++) {
+				if (strncmp(s + 1, layers[i].key,
+					    strlen(layers[i].key)) == 0) {
+					*s = '\0';
+					break;
+				}
+			}
 			s++;
-next_layer:
-		i++;
+			if (i < RTE_DIM(layers))
+				break;
+		}
+
+		layers[nblayer].kvlist = rte_kvargs_parse
+				(layers[nblayer].str, NULL);
+		if (layers[nblayer].kvlist == NULL) {
+			ret = -EINVAL;
+			goto get_out;
+		}
+
+		nblayer++;
 	}
 
 	/* Parse each sub-list. */
@@ -143,52 +129,35 @@ next_layer:
 		if (kv->key == NULL)
 			continue;
 		if (strcmp(kv->key, RTE_DEVARGS_KEY_BUS) == 0) {
-			bus = rte_bus_find_by_name(kv->value);
-			if (bus == NULL) {
+			bus_kvlist = layers[i].kvlist;
+			devargs->bus_str = layers[i].str;
+			devargs->bus = rte_bus_find_by_name(kv->value);
+			if (devargs->bus == NULL) {
 				RTE_LOG(ERR, EAL, "Could not find bus \"%s\"\n",
 					kv->value);
 				ret = -EFAULT;
 				goto get_out;
 			}
 		} else if (strcmp(kv->key, RTE_DEVARGS_KEY_CLASS) == 0) {
-			cls = rte_class_find_by_name(kv->value);
-			if (cls == NULL) {
+			devargs->cls_str = layers[i].str;
+			devargs->cls = rte_class_find_by_name(kv->value);
+			if (devargs->cls == NULL) {
 				RTE_LOG(ERR, EAL, "Could not find class \"%s\"\n",
 					kv->value);
 				ret = -EFAULT;
 				goto get_out;
 			}
 		} else if (strcmp(kv->key, RTE_DEVARGS_KEY_DRIVER) == 0) {
-			/* Ignore */
+			devargs->drv_str = layers[i].str;
 			continue;
 		}
 	}
 
-	/* Fill devargs fields. */
-	devargs->bus_str = layers[0].str;
-	devargs->cls_str = layers[1].str;
-	devargs->drv_str = layers[2].str;
-	devargs->bus = bus;
-	devargs->cls = cls;
-
-	/* If we own the data, clean up a bit
-	 * the several layers string, to ease
-	 * their parsing afterward.
-	 */
-	if (devargs->data != devstr) {
-		char *s = devargs->data;
-
-		while ((s = strchr(s, '/'))) {
-			*s = '\0';
-			s++;
-		}
-	}
-
 	/* Resolve devargs name. */
-	if (bus != NULL && bus->devargs_parse != NULL)
-		ret = bus->devargs_parse(devargs);
-	else if (layers[0].kvlist != NULL)
-		ret = devargs_bus_parse_default(devargs, layers[0].kvlist);
+	if (devargs->bus != NULL && devargs->bus->devargs_parse != NULL)
+		ret = devargs->bus->devargs_parse(devargs);
+	else if (bus_kvlist != NULL)
+		ret = devargs_bus_parse_default(devargs, bus_kvlist);
 
 get_out:
 	for (i = 0; i < RTE_DIM(layers); i++) {
