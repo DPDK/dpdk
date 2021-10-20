@@ -42,8 +42,8 @@ struct rte_eth_rxtx_callback {
  * process, while the actual configuration data for the device is shared.
  */
 struct rte_eth_dev {
-	eth_rx_burst_t rx_pkt_burst; /**< Pointer to PMD receive function. */
-	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function. */
+	eth_rx_burst_t rx_pkt_burst; /**< Pointer to PMD receive function */
+	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function */
 
 	/** Pointer to PMD transmit prepare function */
 	eth_tx_prep_t tx_pkt_prepare;
@@ -58,7 +58,7 @@ struct rte_eth_dev {
 	 * Device data that is shared between primary and secondary processes
 	 */
 	struct rte_eth_dev_data *data;
-	void *process_private; /**< Pointer to per-process device data. */
+	void *process_private; /**< Pointer to per-process device data */
 	const struct eth_dev_ops *dev_ops; /**< Functions exported by PMD */
 	struct rte_device *device; /**< Backing device */
 	struct rte_intr_handle *intr_handle; /**< Device interrupt handle */
@@ -72,7 +72,7 @@ struct rte_eth_dev {
 	struct rte_eth_rxtx_callback *post_rx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
 	/**
 	 * User-supplied functions called from tx_burst to pre-process
-	 * received packets before passing them to the driver for transmission.
+	 * received packets before passing them to the driver for transmission
 	 */
 	struct rte_eth_rxtx_callback *pre_tx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
 
@@ -92,19 +92,19 @@ struct rte_eth_dev_owner;
 struct rte_eth_dev_data {
 	char name[RTE_ETH_NAME_MAX_LEN]; /**< Unique identifier name */
 
-	void **rx_queues; /**< Array of pointers to Rx queues. */
-	void **tx_queues; /**< Array of pointers to Tx queues. */
-	uint16_t nb_rx_queues; /**< Number of Rx queues. */
-	uint16_t nb_tx_queues; /**< Number of Tx queues. */
+	void **rx_queues; /**< Array of pointers to Rx queues */
+	void **tx_queues; /**< Array of pointers to Tx queues */
+	uint16_t nb_rx_queues; /**< Number of Rx queues */
+	uint16_t nb_tx_queues; /**< Number of Tx queues */
 
 	struct rte_eth_dev_sriov sriov;    /**< SRIOV data */
 
 	/** PMD-specific private data. @see rte_eth_dev_release_port() */
 	void *dev_private;
 
-	struct rte_eth_link dev_link;   /**< Link-level information & status. */
-	struct rte_eth_conf dev_conf;   /**< Configuration applied to device. */
-	uint16_t mtu;                   /**< Maximum Transmission Unit. */
+	struct rte_eth_link dev_link;   /**< Link-level information & status */
+	struct rte_eth_conf dev_conf;   /**< Configuration applied to device */
+	uint16_t mtu;                   /**< Maximum Transmission Unit */
 
 	/** Common Rx buffer size handled by all queues */
 	uint32_t min_rx_buf_size;
@@ -121,7 +121,7 @@ struct rte_eth_dev_data {
 	 */
 	struct rte_ether_addr *hash_mac_addrs;
 
-	uint16_t port_id;           /**< Device [external] port identifier. */
+	uint16_t port_id;           /**< Device [external] port identifier */
 
 	__extension__
 	uint8_t /** Rx promiscuous mode ON(1) / OFF(0) */
@@ -145,13 +145,13 @@ struct rte_eth_dev_data {
 	/** Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0) */
 	uint8_t tx_queue_state[RTE_MAX_QUEUES_PER_PORT];
 
-	uint32_t dev_flags;             /**< Capabilities. */
-	int numa_node;                  /**< NUMA node connection. */
+	uint32_t dev_flags;             /**< Capabilities */
+	int numa_node;                  /**< NUMA node connection */
 
 	/** VLAN filter configuration */
 	struct rte_vlan_filter_conf vlan_filter_conf;
 
-	struct rte_eth_dev_owner owner; /**< The port owner. */
+	struct rte_eth_dev_owner owner; /**< The port owner */
 
 	/**
 	 * Switch-specific identifier.
@@ -165,7 +165,7 @@ struct rte_eth_dev_data {
 	 */
 	uint16_t backer_port_id;
 
-	pthread_mutex_t flow_ops_mutex; /**< rte_flow ops mutex. */
+	pthread_mutex_t flow_ops_mutex; /**< rte_flow ops mutex */
 } __rte_cache_aligned;
 
 /**
@@ -994,27 +994,27 @@ typedef int (*eth_rx_metadata_negotiate_t)(struct rte_eth_dev *dev,
  * @internal A structure containing the functions exported by an Ethernet driver.
  */
 struct eth_dev_ops {
-	eth_dev_configure_t        dev_configure; /**< Configure device. */
-	eth_dev_start_t            dev_start;     /**< Start device. */
-	eth_dev_stop_t             dev_stop;      /**< Stop device. */
-	eth_dev_set_link_up_t      dev_set_link_up;   /**< Device link up. */
-	eth_dev_set_link_down_t    dev_set_link_down; /**< Device link down. */
-	eth_dev_close_t            dev_close;     /**< Close device. */
-	eth_dev_reset_t		   dev_reset;	  /**< Reset device. */
-	eth_link_update_t          link_update;   /**< Get device link state. */
+	eth_dev_configure_t        dev_configure; /**< Configure device */
+	eth_dev_start_t            dev_start;     /**< Start device */
+	eth_dev_stop_t             dev_stop;      /**< Stop device */
+	eth_dev_set_link_up_t      dev_set_link_up;   /**< Device link up */
+	eth_dev_set_link_down_t    dev_set_link_down; /**< Device link down */
+	eth_dev_close_t            dev_close;     /**< Close device */
+	eth_dev_reset_t		   dev_reset;	  /**< Reset device */
+	eth_link_update_t          link_update;   /**< Get device link state */
 	/** Check if the device was physically removed */
 	eth_is_removed_t           is_removed;
 
-	eth_promiscuous_enable_t   promiscuous_enable; /**< Promiscuous ON. */
-	eth_promiscuous_disable_t  promiscuous_disable;/**< Promiscuous OFF. */
-	eth_allmulticast_enable_t  allmulticast_enable;/**< Rx multicast ON. */
-	eth_allmulticast_disable_t allmulticast_disable;/**< Rx multicast OFF. */
-	eth_mac_addr_remove_t      mac_addr_remove; /**< Remove MAC address. */
-	eth_mac_addr_add_t         mac_addr_add;  /**< Add a MAC address. */
-	eth_mac_addr_set_t         mac_addr_set;  /**< Set a MAC address. */
+	eth_promiscuous_enable_t   promiscuous_enable; /**< Promiscuous ON */
+	eth_promiscuous_disable_t  promiscuous_disable;/**< Promiscuous OFF */
+	eth_allmulticast_enable_t  allmulticast_enable;/**< Rx multicast ON */
+	eth_allmulticast_disable_t allmulticast_disable;/**< Rx multicast OFF */
+	eth_mac_addr_remove_t      mac_addr_remove; /**< Remove MAC address */
+	eth_mac_addr_add_t         mac_addr_add;  /**< Add a MAC address */
+	eth_mac_addr_set_t         mac_addr_set;  /**< Set a MAC address */
 	/** Set list of multicast addresses */
 	eth_set_mc_addr_list_t     set_mc_addr_list;
-	mtu_set_t                  mtu_set;       /**< Set MTU. */
+	mtu_set_t                  mtu_set;       /**< Set MTU */
 
 	/** Get generic device statistics */
 	eth_stats_get_t            stats_get;
@@ -1029,14 +1029,14 @@ struct eth_dev_ops {
 	/** Configure per queue stat counter mapping */
 	eth_queue_stats_mapping_set_t queue_stats_mapping_set;
 
-	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
+	eth_dev_infos_get_t        dev_infos_get; /**< Get device info */
 	/** Retrieve Rx queue information */
 	eth_rxq_info_get_t         rxq_info_get;
 	/** Retrieve Tx queue information */
 	eth_txq_info_get_t         txq_info_get;
 	eth_burst_mode_get_t       rx_burst_mode_get; /**< Get Rx burst mode */
 	eth_burst_mode_get_t       tx_burst_mode_get; /**< Get Tx burst mode */
-	eth_fw_version_get_t       fw_version_get; /**< Get firmware version. */
+	eth_fw_version_get_t       fw_version_get; /**< Get firmware version */
 
 	/** Get packet types supported and identified by device */
 	eth_dev_supported_ptypes_get_t dev_supported_ptypes_get;
@@ -1057,12 +1057,12 @@ struct eth_dev_ops {
 	/** Set port based Tx VLAN insertion */
 	vlan_pvid_set_t            vlan_pvid_set;
 
-	eth_queue_start_t          rx_queue_start;/**< Start Rx for a queue. */
-	eth_queue_stop_t           rx_queue_stop; /**< Stop Rx for a queue. */
-	eth_queue_start_t          tx_queue_start;/**< Start Tx for a queue. */
-	eth_queue_stop_t           tx_queue_stop; /**< Stop Tx for a queue. */
-	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device Rx queue. */
-	eth_queue_release_t        rx_queue_release; /**< Release Rx queue. */
+	eth_queue_start_t          rx_queue_start;/**< Start Rx for a queue */
+	eth_queue_stop_t           rx_queue_stop; /**< Stop Rx for a queue */
+	eth_queue_start_t          tx_queue_start;/**< Start Tx for a queue */
+	eth_queue_stop_t           tx_queue_stop; /**< Stop Tx for a queue */
+	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device Rx queue */
+	eth_queue_release_t        rx_queue_release; /**< Release Rx queue */
 
 	/** Enable Rx queue interrupt */
 	eth_rx_enable_intr_t       rx_queue_intr_enable;
@@ -1073,11 +1073,11 @@ struct eth_dev_ops {
 	eth_queue_release_t        tx_queue_release; /**< Release Tx queue */
 	eth_tx_done_cleanup_t      tx_done_cleanup;/**< Free Tx ring mbufs */
 
-	eth_dev_led_on_t           dev_led_on;    /**< Turn on LED. */
-	eth_dev_led_off_t          dev_led_off;   /**< Turn off LED. */
+	eth_dev_led_on_t           dev_led_on;    /**< Turn on LED */
+	eth_dev_led_off_t          dev_led_off;   /**< Turn off LED */
 
-	flow_ctrl_get_t            flow_ctrl_get; /**< Get flow control. */
-	flow_ctrl_set_t            flow_ctrl_set; /**< Setup flow control. */
+	flow_ctrl_get_t            flow_ctrl_get; /**< Get flow control */
+	flow_ctrl_set_t            flow_ctrl_set; /**< Setup flow control */
 	/** Setup priority flow control */
 	priority_flow_ctrl_set_t   priority_flow_ctrl_set;
 
@@ -1103,17 +1103,17 @@ struct eth_dev_ops {
 	/** Query redirection table */
 	reta_query_t               reta_query;
 
-	eth_get_reg_t              get_reg;           /**< Get registers. */
-	eth_get_eeprom_length_t    get_eeprom_length; /**< Get EEPROM length. */
-	eth_get_eeprom_t           get_eeprom;        /**< Get EEPROM data. */
-	eth_set_eeprom_t           set_eeprom;        /**< Set EEPROM. */
+	eth_get_reg_t              get_reg;           /**< Get registers */
+	eth_get_eeprom_length_t    get_eeprom_length; /**< Get EEPROM length */
+	eth_get_eeprom_t           get_eeprom;        /**< Get EEPROM data */
+	eth_set_eeprom_t           set_eeprom;        /**< Set EEPROM */
 
 	/** Get plugin module EEPROM attribute */
 	eth_get_module_info_t      get_module_info;
 	/** Get plugin module EEPROM data */
 	eth_get_module_eeprom_t    get_module_eeprom;
 
-	eth_flow_ops_get_t         flow_ops_get; /**< Get flow operations. */
+	eth_flow_ops_get_t         flow_ops_get; /**< Get flow operations */
 
 	eth_get_dcb_info           get_dcb_info; /**< Get DCB information */
 
@@ -1183,7 +1183,7 @@ struct eth_dev_ops {
 
 	/**
 	 * Negotiate the NIC's ability to deliver specific
-	 * kinds of metadata to the PMD.
+	 * kinds of metadata to the PMD
 	 */
 	eth_rx_metadata_negotiate_t rx_metadata_negotiate;
 };
@@ -1681,10 +1681,10 @@ enum rte_filter_type {
  * to support RTE_ETH_FILTER_ETHERTYPE data representation.
  */
 struct rte_eth_ethertype_filter {
-	struct rte_ether_addr mac_addr;   /**< Mac address to match. */
+	struct rte_ether_addr mac_addr;   /**< Mac address to match */
 	uint16_t ether_type;          /**< Ether type to match */
 	uint16_t flags;               /**< Flags from RTE_ETHTYPE_FLAGS_* */
-	uint16_t queue;               /**< Queue assigned to when match*/
+	uint16_t queue;               /**< Queue assigned to when match */
 };
 
 /**
@@ -1692,7 +1692,7 @@ struct rte_eth_ethertype_filter {
  * to support RTE_ETH_FILTER_SYN data representation.
  */
 struct rte_eth_syn_filter {
-	/** 1 - higher priority than other filters, 0 - lower priority. */
+	/** 1 - higher priority than other filters, 0 - lower priority */
 	uint8_t hig_pri;
 	uint16_t queue;      /**< Queue assigned to when match */
 };
@@ -1722,32 +1722,32 @@ struct rte_eth_syn_filter {
  *  Select IPv4 or IPv6 for tunnel filters.
  */
 enum rte_tunnel_iptype {
-	RTE_TUNNEL_IPTYPE_IPV4 = 0, /**< IPv4. */
-	RTE_TUNNEL_IPTYPE_IPV6,     /**< IPv6. */
+	RTE_TUNNEL_IPTYPE_IPV4 = 0, /**< IPv4 */
+	RTE_TUNNEL_IPTYPE_IPV6,     /**< IPv6 */
 };
 
 /**
  * Tunneling Packet filter configuration.
  */
 struct rte_eth_tunnel_filter_conf {
-	struct rte_ether_addr outer_mac;    /**< Outer MAC address to match. */
-	struct rte_ether_addr inner_mac;    /**< Inner MAC address to match. */
-	uint16_t inner_vlan;            /**< Inner VLAN to match. */
-	enum rte_tunnel_iptype ip_type; /**< IP address type. */
+	struct rte_ether_addr outer_mac;    /**< Outer MAC address to match */
+	struct rte_ether_addr inner_mac;    /**< Inner MAC address to match */
+	uint16_t inner_vlan;                /**< Inner VLAN to match */
+	enum rte_tunnel_iptype ip_type;     /**< IP address type */
 	/**
 	 * Outer destination IP address to match if ETH_TUNNEL_FILTER_OIP
 	 * is set in filter_type, or inner destination IP address to match
 	 * if ETH_TUNNEL_FILTER_IIP is set in filter_type.
 	 */
 	union {
-		uint32_t ipv4_addr;     /**< IPv4 address in big endian. */
-		uint32_t ipv6_addr[4];  /**< IPv6 address in big endian. */
+		uint32_t ipv4_addr;         /**< IPv4 address in big endian */
+		uint32_t ipv6_addr[4];      /**< IPv6 address in big endian */
 	} ip_addr;
-	/** Flags from ETH_TUNNEL_FILTER_XX - see above. */
+	/** Flags from ETH_TUNNEL_FILTER_XX - see above */
 	uint16_t filter_type;
-	enum rte_eth_tunnel_type tunnel_type; /**< Tunnel Type. */
-	uint32_t tenant_id;     /**< Tenant ID to match. VNI, GRE key... */
-	uint16_t queue_id;      /**< Queue assigned to if match. */
+	enum rte_eth_tunnel_type tunnel_type; /**< Tunnel Type */
+	uint32_t tenant_id;     /**< Tenant ID to match: VNI, GRE key... */
+	uint16_t queue_id;      /**< Queue assigned to if match */
 };
 
 #endif /* _RTE_ETHDEV_DRIVER_H_ */
