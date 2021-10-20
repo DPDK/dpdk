@@ -30,8 +30,7 @@ eal_mcfg_wait_complete(void)
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 
 	/* wait until shared mem_config finish initialising */
-	while (mcfg->magic != RTE_MAGIC)
-		rte_pause();
+	rte_wait_until_equal_32(&mcfg->magic, RTE_MAGIC, __ATOMIC_RELAXED);
 }
 
 int
