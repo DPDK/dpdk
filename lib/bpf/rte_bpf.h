@@ -198,6 +198,20 @@ rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
 int
 rte_bpf_get_jit(const struct rte_bpf *bpf, struct rte_bpf_jit *jit);
 
+/**
+ * Dump epf instructions to a file.
+ *
+ * @param f
+ *   A pointer to a file for output
+ * @param buf
+ *   A pointer to BPF instructions
+ * @param len
+ *   Number of BPF instructions to dump.
+ */
+__rte_experimental
+void
+rte_bpf_dump(FILE *f, const struct ebpf_insn *buf, uint32_t len);
+
 #ifdef RTE_PORT_PCAP
 
 struct bpf_program;

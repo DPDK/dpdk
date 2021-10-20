@@ -2,6 +2,7 @@
 # Copyright(c) 2018 Intel Corporation
 
 sources = files('bpf.c',
+        'bpf_dump.c',
         'bpf_exec.c',
         'bpf_load.c',
         'bpf_pkt.c',

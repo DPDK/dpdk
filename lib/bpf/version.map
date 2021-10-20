@@ -19,4 +19,5 @@ EXPERIMENTAL {
 	global:
 
 	rte_bpf_convert;
+	rte_bpf_dump;
 };
