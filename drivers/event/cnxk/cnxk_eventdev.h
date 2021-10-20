@@ -7,7 +7,7 @@
 
 #include <string.h>
 
-#include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 #include <rte_devargs.h>
 #include <rte_ethdev.h>
 #include <rte_event_eth_rx_adapter.h>

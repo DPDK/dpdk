@@ -3,7 +3,7 @@
  */
 
 #include <rte_malloc.h>
-#include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 #include <rte_esp.h>
 #include <rte_ip.h>
 #include <rte_security.h>

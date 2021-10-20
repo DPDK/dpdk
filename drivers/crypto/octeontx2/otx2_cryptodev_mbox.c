@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (C) 2019 Marvell International Ltd.
  */
-#include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 #include <rte_ethdev.h>
 
 #include "otx2_cryptodev.h"

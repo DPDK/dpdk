@@ -3,7 +3,7 @@
  */
 #include <unistd.h>
 
-#include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 #include <rte_malloc.h>
 
 #include "rte_cryptodev_scheduler_operations.h"

@@ -7,7 +7,7 @@
 
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
-#include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 #include <rte_errno.h>
 #include <rte_mempool.h>
 #include <rte_memzone.h>

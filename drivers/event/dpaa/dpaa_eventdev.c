@@ -28,7 +28,7 @@
 #include <rte_ethdev.h>
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_event_eth_tx_adapter.h>
-#include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 #include <rte_dpaa_bus.h>
 #include <rte_dpaa_logs.h>
 #include <rte_cycles.h>

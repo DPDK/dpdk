@@ -17,7 +17,7 @@
 #include <rte_pci.h>
 #include <rte_spinlock.h>
 #include <rte_crypto_sym.h>
-#include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 
 /**< CCP sspecific */
 #define MAX_HW_QUEUES                   5

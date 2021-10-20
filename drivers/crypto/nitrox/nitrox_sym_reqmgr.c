@@ -3,7 +3,7 @@
  */
 
 #include <rte_crypto.h>
-#include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 #include <rte_cycles.h>
 #include <rte_errno.h>
 

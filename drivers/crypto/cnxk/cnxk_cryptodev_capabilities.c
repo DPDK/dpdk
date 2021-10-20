@@ -2,7 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 
-#include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 #include <rte_security.h>
 
 #include "roc_api.h"

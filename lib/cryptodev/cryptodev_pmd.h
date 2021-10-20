@@ -52,6 +52,71 @@ struct rte_cryptodev_pmd_init_params {
 	unsigned int max_nb_queue_pairs;
 };
 
+/**
+ * @internal
+ * The data part, with no function pointers, associated with each device.
+ *
+ * This structure is safe to place in shared memory to be common among
+ * different processes in a multi-process configuration.
+ */
+struct rte_cryptodev_data {
+	/** Device ID for this instance */
+	uint8_t dev_id;
+	/** Socket ID where memory is allocated */
+	uint8_t socket_id;
+	/** Unique identifier name */
+	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
+
+	__extension__
+	/** Device state: STARTED(1)/STOPPED(0) */
+	uint8_t dev_started : 1;
+
+	/** Session memory pool */
+	struct rte_mempool *session_pool;
+	/** Array of pointers to queue pairs. */
+	void **queue_pairs;
+	/** Number of device queue pairs. */
+	uint16_t nb_queue_pairs;
+
+	/** PMD-specific private data */
+	void *dev_private;
+} __rte_cache_aligned;
+
+/** @internal The data structure associated with each crypto device. */
+struct rte_cryptodev {
+	/** Pointer to PMD dequeue function. */
+	dequeue_pkt_burst_t dequeue_burst;
+	/** Pointer to PMD enqueue function. */
+	enqueue_pkt_burst_t enqueue_burst;
+
+	/** Pointer to device data */
+	struct rte_cryptodev_data *data;
+	/** Functions exported by PMD */
+	struct rte_cryptodev_ops *dev_ops;
+	/** Feature flags exposes HW/SW features for the given device */
+	uint64_t feature_flags;
+	/** Backing device */
+	struct rte_device *device;
+
+	/** Crypto driver identifier*/
+	uint8_t driver_id;
+
+	/** User application callback for interrupts if present */
+	struct rte_cryptodev_cb_list link_intr_cbs;
+
+	/** Context for security ops */
+	void *security_ctx;
+
+	__extension__
+	/** Flag indicating the device is attached */
+	uint8_t attached : 1;
+
+	/** User application callback for pre enqueue processing */
+	struct rte_cryptodev_cb_rcu *enq_cbs;
+	/** User application callback for post dequeue processing */
+	struct rte_cryptodev_cb_rcu *deq_cbs;
+} __rte_cache_aligned;
+
 /** Global structure used for maintaining state of allocated crypto devices */
 struct rte_cryptodev_global {
 	struct rte_cryptodev *devs;	/**< Device information array */

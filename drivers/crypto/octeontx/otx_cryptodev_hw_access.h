@@ -7,7 +7,7 @@
 #include <stdbool.h>
 
 #include <rte_branch_prediction.h>
-#include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 #include <rte_cycles.h>
 #include <rte_io.h>
 #include <rte_memory.h>

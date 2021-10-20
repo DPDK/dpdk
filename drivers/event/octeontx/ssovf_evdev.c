@@ -5,7 +5,7 @@
 #include <inttypes.h>
 
 #include <rte_common.h>
-#include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 #include <rte_debug.h>
 #include <rte_dev.h>
 #include <rte_eal.h>

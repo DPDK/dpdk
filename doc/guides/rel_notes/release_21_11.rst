@@ -470,6 +470,12 @@ ABI Changes
   to be transparent for both users (no changes in user app is required) and
   PMD developers (no changes in PMD is required).
 
+* cryptodev: Made ``rte_cryptodev``, ``rte_cryptodev_data`` private
+  structures internal to DPDK. ``rte_cryptodevs`` can't be accessed directly
+  by user any more. While it is an ABI breakage, this change is intended
+  to be transparent for both users (no changes in user app is required) and
+  PMD developers (no changes in PMD is required).
+
 * security: ``rte_security_set_pkt_metadata`` and ``rte_security_get_userdata``
   routines used by inline outbound and inline inbound security processing were
   made inline and enhanced to do simple 64-bit set/get for PMDs that do not
