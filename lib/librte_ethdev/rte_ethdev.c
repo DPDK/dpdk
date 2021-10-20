@@ -1814,6 +1814,12 @@ rte_eth_dev_close(uint16_t port_id)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
+	if (dev->data->dev_started) {
+		RTE_ETHDEV_LOG(ERR, "Cannot close started device (port %u)\n",
+			       port_id);
+		return -EINVAL;
+	}
+
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_close, -ENOTSUP);
 	*lasterr = (*dev->dev_ops->dev_close)(dev);
 	if (*lasterr != 0)
