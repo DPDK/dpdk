@@ -280,12 +280,12 @@ rte_flow_dynf_metadata_register(void)
 	if (flag < 0)
 		goto error;
 	rte_flow_dynf_metadata_offs = offset;
-	rte_flow_dynf_metadata_mask = (1ULL << flag);
+	rte_flow_dynf_metadata_mask = RTE_BIT64(flag);
 	return 0;
 
 error:
 	rte_flow_dynf_metadata_offs = -1;
-	rte_flow_dynf_metadata_mask = 0ULL;
+	rte_flow_dynf_metadata_mask = UINT64_C(0);
 	return -rte_errno;
 }
 

@@ -4463,17 +4463,17 @@ struct rte_flow_tunnel {
 /**
  * Indicate that the packet has a tunnel.
  */
-#define RTE_FLOW_RESTORE_INFO_TUNNEL  (1ULL << 0)
+#define RTE_FLOW_RESTORE_INFO_TUNNEL RTE_BIT64(0)
 
 /**
  * Indicate that the packet has a non decapsulated tunnel header.
  */
-#define RTE_FLOW_RESTORE_INFO_ENCAPSULATED  (1ULL << 1)
+#define RTE_FLOW_RESTORE_INFO_ENCAPSULATED RTE_BIT64(1)
 
 /**
  * Indicate that the packet has a group_id.
  */
-#define RTE_FLOW_RESTORE_INFO_GROUP_ID  (1ULL << 2)
+#define RTE_FLOW_RESTORE_INFO_GROUP_ID RTE_BIT64(2)
 
 /**
  * Restore information structure to communicate the current packet processing

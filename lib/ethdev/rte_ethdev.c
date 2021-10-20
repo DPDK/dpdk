@@ -1293,7 +1293,7 @@ eth_dev_validate_offloads(uint16_t port_id, uint64_t req_offloads,
 
 	while (offloads_diff != 0) {
 		/* Check if any offload is requested but not enabled. */
-		offload = 1ULL << __builtin_ctzll(offloads_diff);
+		offload = RTE_BIT64(__builtin_ctzll(offloads_diff));
 		if (offload & req_offloads) {
 			RTE_ETHDEV_LOG(ERR,
 				"Port %u failed to enable %s offload %s\n",
@@ -1687,7 +1687,7 @@ eth_dev_mac_restore(struct rte_eth_dev *dev,
 			pool_mask = dev->data->mac_pool_sel[i];
 
 			do {
-				if (pool_mask & 1ULL)
+				if (pool_mask & UINT64_C(1))
 					(*dev->dev_ops->mac_addr_add)(dev,
 						addr, i, pool);
 				pool_mask >>= 1;
@@ -1975,7 +1975,7 @@ rte_eth_rx_queue_check_split(const struct rte_eth_rxseg_split *rx_seg,
 	 * for each segment specified in extended configuration.
 	 */
 	mp_first = rx_seg[0].mp;
-	offset_mask = (1u << seg_capa->offset_align_log2) - 1;
+	offset_mask = RTE_BIT32(seg_capa->offset_align_log2) - 1;
 	for (seg_idx = 0; seg_idx < n_seg; seg_idx++) {
 		struct rte_mempool *mpl = rx_seg[seg_idx].mp;
 		uint32_t length = rx_seg[seg_idx].length;
@@ -3736,9 +3736,9 @@ rte_eth_dev_vlan_filter(uint16_t port_id, uint16_t vlan_id, int on)
 		vbit = vlan_id % 64;
 
 		if (on)
-			vfc->ids[vidx] |= UINT64_C(1) << vbit;
+			vfc->ids[vidx] |= RTE_BIT64(vbit);
 		else
-			vfc->ids[vidx] &= ~(UINT64_C(1) << vbit);
+			vfc->ids[vidx] &= ~RTE_BIT64(vbit);
 	}
 
 	return eth_err(port_id, ret);
@@ -4010,7 +4010,7 @@ eth_check_reta_entry(struct rte_eth_rss_reta_entry64 *reta_conf,
 	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_RETA_GROUP_SIZE;
 		shift = i % RTE_RETA_GROUP_SIZE;
-		if ((reta_conf[idx].mask & (1ULL << shift)) &&
+		if ((reta_conf[idx].mask & RTE_BIT64(shift)) &&
 			(reta_conf[idx].reta[shift] >= max_rxq)) {
 			RTE_ETHDEV_LOG(ERR,
 				"reta_conf[%u]->reta[%u]: %u exceeds the maximum rxq index: %u\n",
@@ -4349,7 +4349,7 @@ rte_eth_dev_mac_addr_add(uint16_t port_id, struct rte_ether_addr *addr,
 		pool_mask = dev->data->mac_pool_sel[index];
 
 		/* Check if both MAC address and pool is already there, and do nothing */
-		if (pool_mask & (1ULL << pool))
+		if (pool_mask & RTE_BIT64(pool))
 			return 0;
 	}
 
@@ -4361,7 +4361,7 @@ rte_eth_dev_mac_addr_add(uint16_t port_id, struct rte_ether_addr *addr,
 		rte_ether_addr_copy(addr, &dev->data->mac_addrs[index]);
 
 		/* Update pool bitmap in NIC data structure */
-		dev->data->mac_pool_sel[index] |= (1ULL << pool);
+		dev->data->mac_pool_sel[index] |= RTE_BIT64(pool);
 	}
 
 	return eth_err(port_id, ret);

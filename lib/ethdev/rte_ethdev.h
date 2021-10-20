@@ -159,6 +159,7 @@ extern "C" {
 #include <rte_interrupts.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
+#include <rte_bitops.h>
 #include <rte_errno.h>
 #include <rte_common.h>
 #include <rte_config.h>
@@ -279,23 +280,23 @@ struct rte_eth_stats {
 /**@{@name Link speed capabilities
  * Device supported speeds bitmap flags
  */
-#define ETH_LINK_SPEED_AUTONEG  (0 <<  0)  /**< Autonegotiate (all speeds) */
-#define ETH_LINK_SPEED_FIXED    (1 <<  0)  /**< Disable autoneg (fixed speed) */
-#define ETH_LINK_SPEED_10M_HD   (1 <<  1)  /**<  10 Mbps half-duplex */
-#define ETH_LINK_SPEED_10M      (1 <<  2)  /**<  10 Mbps full-duplex */
-#define ETH_LINK_SPEED_100M_HD  (1 <<  3)  /**< 100 Mbps half-duplex */
-#define ETH_LINK_SPEED_100M     (1 <<  4)  /**< 100 Mbps full-duplex */
-#define ETH_LINK_SPEED_1G       (1 <<  5)  /**<   1 Gbps */
-#define ETH_LINK_SPEED_2_5G     (1 <<  6)  /**< 2.5 Gbps */
-#define ETH_LINK_SPEED_5G       (1 <<  7)  /**<   5 Gbps */
-#define ETH_LINK_SPEED_10G      (1 <<  8)  /**<  10 Gbps */
-#define ETH_LINK_SPEED_20G      (1 <<  9)  /**<  20 Gbps */
-#define ETH_LINK_SPEED_25G      (1 << 10)  /**<  25 Gbps */
-#define ETH_LINK_SPEED_40G      (1 << 11)  /**<  40 Gbps */
-#define ETH_LINK_SPEED_50G      (1 << 12)  /**<  50 Gbps */
-#define ETH_LINK_SPEED_56G      (1 << 13)  /**<  56 Gbps */
-#define ETH_LINK_SPEED_100G     (1 << 14)  /**< 100 Gbps */
-#define ETH_LINK_SPEED_200G     (1 << 15)  /**< 200 Gbps */
+#define ETH_LINK_SPEED_AUTONEG 0             /**< Autonegotiate (all speeds) */
+#define ETH_LINK_SPEED_FIXED   RTE_BIT32(0)  /**< Disable autoneg (fixed speed) */
+#define ETH_LINK_SPEED_10M_HD  RTE_BIT32(1)  /**<  10 Mbps half-duplex */
+#define ETH_LINK_SPEED_10M     RTE_BIT32(2)  /**<  10 Mbps full-duplex */
+#define ETH_LINK_SPEED_100M_HD RTE_BIT32(3)  /**< 100 Mbps half-duplex */
+#define ETH_LINK_SPEED_100M    RTE_BIT32(4)  /**< 100 Mbps full-duplex */
+#define ETH_LINK_SPEED_1G      RTE_BIT32(5)  /**<   1 Gbps */
+#define ETH_LINK_SPEED_2_5G    RTE_BIT32(6)  /**< 2.5 Gbps */
+#define ETH_LINK_SPEED_5G      RTE_BIT32(7)  /**<   5 Gbps */
+#define ETH_LINK_SPEED_10G     RTE_BIT32(8)  /**<  10 Gbps */
+#define ETH_LINK_SPEED_20G     RTE_BIT32(9)  /**<  20 Gbps */
+#define ETH_LINK_SPEED_25G     RTE_BIT32(10) /**<  25 Gbps */
+#define ETH_LINK_SPEED_40G     RTE_BIT32(11) /**<  40 Gbps */
+#define ETH_LINK_SPEED_50G     RTE_BIT32(12) /**<  50 Gbps */
+#define ETH_LINK_SPEED_56G     RTE_BIT32(13) /**<  56 Gbps */
+#define ETH_LINK_SPEED_100G    RTE_BIT32(14) /**< 100 Gbps */
+#define ETH_LINK_SPEED_200G    RTE_BIT32(15) /**< 200 Gbps */
 /**@}*/
 
 /**@{@name Link speed
@@ -512,38 +513,38 @@ struct rte_eth_rss_conf {
  * Below macros are defined for RSS offload types, they can be used to
  * fill rte_eth_rss_conf.rss_hf or rte_flow_action_rss.types.
  */
-#define ETH_RSS_IPV4               (1ULL << 2)
-#define ETH_RSS_FRAG_IPV4          (1ULL << 3)
-#define ETH_RSS_NONFRAG_IPV4_TCP   (1ULL << 4)
-#define ETH_RSS_NONFRAG_IPV4_UDP   (1ULL << 5)
-#define ETH_RSS_NONFRAG_IPV4_SCTP  (1ULL << 6)
-#define ETH_RSS_NONFRAG_IPV4_OTHER (1ULL << 7)
-#define ETH_RSS_IPV6               (1ULL << 8)
-#define ETH_RSS_FRAG_IPV6          (1ULL << 9)
-#define ETH_RSS_NONFRAG_IPV6_TCP   (1ULL << 10)
-#define ETH_RSS_NONFRAG_IPV6_UDP   (1ULL << 11)
-#define ETH_RSS_NONFRAG_IPV6_SCTP  (1ULL << 12)
-#define ETH_RSS_NONFRAG_IPV6_OTHER (1ULL << 13)
-#define ETH_RSS_L2_PAYLOAD         (1ULL << 14)
-#define ETH_RSS_IPV6_EX            (1ULL << 15)
-#define ETH_RSS_IPV6_TCP_EX        (1ULL << 16)
-#define ETH_RSS_IPV6_UDP_EX        (1ULL << 17)
-#define ETH_RSS_PORT               (1ULL << 18)
-#define ETH_RSS_VXLAN              (1ULL << 19)
-#define ETH_RSS_GENEVE             (1ULL << 20)
-#define ETH_RSS_NVGRE              (1ULL << 21)
-#define ETH_RSS_GTPU               (1ULL << 23)
-#define ETH_RSS_ETH                (1ULL << 24)
-#define ETH_RSS_S_VLAN             (1ULL << 25)
-#define ETH_RSS_C_VLAN             (1ULL << 26)
-#define ETH_RSS_ESP                (1ULL << 27)
-#define ETH_RSS_AH                 (1ULL << 28)
-#define ETH_RSS_L2TPV3             (1ULL << 29)
-#define ETH_RSS_PFCP               (1ULL << 30)
-#define ETH_RSS_PPPOE		   (1ULL << 31)
-#define ETH_RSS_ECPRI		   (1ULL << 32)
-#define ETH_RSS_MPLS		   (1ULL << 33)
-#define ETH_RSS_IPV4_CHKSUM	   (1ULL << 34)
+#define ETH_RSS_IPV4               RTE_BIT64(2)
+#define ETH_RSS_FRAG_IPV4          RTE_BIT64(3)
+#define ETH_RSS_NONFRAG_IPV4_TCP   RTE_BIT64(4)
+#define ETH_RSS_NONFRAG_IPV4_UDP   RTE_BIT64(5)
+#define ETH_RSS_NONFRAG_IPV4_SCTP  RTE_BIT64(6)
+#define ETH_RSS_NONFRAG_IPV4_OTHER RTE_BIT64(7)
+#define ETH_RSS_IPV6               RTE_BIT64(8)
+#define ETH_RSS_FRAG_IPV6          RTE_BIT64(9)
+#define ETH_RSS_NONFRAG_IPV6_TCP   RTE_BIT64(10)
+#define ETH_RSS_NONFRAG_IPV6_UDP   RTE_BIT64(11)
+#define ETH_RSS_NONFRAG_IPV6_SCTP  RTE_BIT64(12)
+#define ETH_RSS_NONFRAG_IPV6_OTHER RTE_BIT64(13)
+#define ETH_RSS_L2_PAYLOAD         RTE_BIT64(14)
+#define ETH_RSS_IPV6_EX            RTE_BIT64(15)
+#define ETH_RSS_IPV6_TCP_EX        RTE_BIT64(16)
+#define ETH_RSS_IPV6_UDP_EX        RTE_BIT64(17)
+#define ETH_RSS_PORT               RTE_BIT64(18)
+#define ETH_RSS_VXLAN              RTE_BIT64(19)
+#define ETH_RSS_GENEVE             RTE_BIT64(20)
+#define ETH_RSS_NVGRE              RTE_BIT64(21)
+#define ETH_RSS_GTPU               RTE_BIT64(23)
+#define ETH_RSS_ETH                RTE_BIT64(24)
+#define ETH_RSS_S_VLAN             RTE_BIT64(25)
+#define ETH_RSS_C_VLAN             RTE_BIT64(26)
+#define ETH_RSS_ESP                RTE_BIT64(27)
+#define ETH_RSS_AH                 RTE_BIT64(28)
+#define ETH_RSS_L2TPV3             RTE_BIT64(29)
+#define ETH_RSS_PFCP               RTE_BIT64(30)
+#define ETH_RSS_PPPOE              RTE_BIT64(31)
+#define ETH_RSS_ECPRI              RTE_BIT64(32)
+#define ETH_RSS_MPLS               RTE_BIT64(33)
+#define ETH_RSS_IPV4_CHKSUM        RTE_BIT64(34)
 
 /**
  * The ETH_RSS_L4_CHKSUM works on checksum field of any L4 header.
@@ -557,7 +558,7 @@ struct rte_eth_rss_conf {
  * For the case that checksum is not used in an UDP header,
  * it takes the reserved value 0 as input for the hash function.
  */
-#define ETH_RSS_L4_CHKSUM          (1ULL << 35)
+#define ETH_RSS_L4_CHKSUM          RTE_BIT64(35)
 
 /*
  * We use the following macros to combine with above ETH_RSS_* for
@@ -568,12 +569,12 @@ struct rte_eth_rss_conf {
  * the same level are used simultaneously, it is the same case as none of
  * them are added.
  */
-#define ETH_RSS_L3_SRC_ONLY        (1ULL << 63)
-#define ETH_RSS_L3_DST_ONLY        (1ULL << 62)
-#define ETH_RSS_L4_SRC_ONLY        (1ULL << 61)
-#define ETH_RSS_L4_DST_ONLY        (1ULL << 60)
-#define ETH_RSS_L2_SRC_ONLY        (1ULL << 59)
-#define ETH_RSS_L2_DST_ONLY        (1ULL << 58)
+#define ETH_RSS_L3_SRC_ONLY        RTE_BIT64(63)
+#define ETH_RSS_L3_DST_ONLY        RTE_BIT64(62)
+#define ETH_RSS_L4_SRC_ONLY        RTE_BIT64(61)
+#define ETH_RSS_L4_DST_ONLY        RTE_BIT64(60)
+#define ETH_RSS_L2_SRC_ONLY        RTE_BIT64(59)
+#define ETH_RSS_L2_DST_ONLY        RTE_BIT64(58)
 
 /*
  * Only select IPV6 address prefix as RSS input set according to
@@ -581,12 +582,12 @@ struct rte_eth_rss_conf {
  * Must be combined with ETH_RSS_IPV6, ETH_RSS_NONFRAG_IPV6_UDP,
  * ETH_RSS_NONFRAG_IPV6_TCP, ETH_RSS_NONFRAG_IPV6_SCTP.
  */
-#define RTE_ETH_RSS_L3_PRE32	   (1ULL << 57)
-#define RTE_ETH_RSS_L3_PRE40	   (1ULL << 56)
-#define RTE_ETH_RSS_L3_PRE48	   (1ULL << 55)
-#define RTE_ETH_RSS_L3_PRE56	   (1ULL << 54)
-#define RTE_ETH_RSS_L3_PRE64	   (1ULL << 53)
-#define RTE_ETH_RSS_L3_PRE96	   (1ULL << 52)
+#define RTE_ETH_RSS_L3_PRE32	   RTE_BIT64(57)
+#define RTE_ETH_RSS_L3_PRE40	   RTE_BIT64(56)
+#define RTE_ETH_RSS_L3_PRE48	   RTE_BIT64(55)
+#define RTE_ETH_RSS_L3_PRE56	   RTE_BIT64(54)
+#define RTE_ETH_RSS_L3_PRE64	   RTE_BIT64(53)
+#define RTE_ETH_RSS_L3_PRE96	   RTE_BIT64(52)
 
 /*
  * Use the following macros to combine with the above layers
@@ -1619,7 +1620,7 @@ struct rte_eth_txq_info {
  * by PMD, then the application can iterate to retrieve burst description for
  * all other queues.
  */
-#define RTE_ETH_BURST_FLAG_PER_QUEUE     (1ULL << 0)
+#define RTE_ETH_BURST_FLAG_PER_QUEUE RTE_BIT64(0)
 
 /**
  * Ethernet device RX/TX queue packet burst mode information structure.
@@ -1711,10 +1712,10 @@ enum rte_eth_fec_mode {
 };
 
 /* Translate from FEC mode to FEC capa */
-#define RTE_ETH_FEC_MODE_TO_CAPA(x)	(1U << (x))
+#define RTE_ETH_FEC_MODE_TO_CAPA(x) RTE_BIT32(x)
 
 /* This macro indicates FEC capa mask */
-#define RTE_ETH_FEC_MODE_CAPA_MASK(x)	(1U << (RTE_ETH_FEC_ ## x))
+#define RTE_ETH_FEC_MODE_CAPA_MASK(x) RTE_BIT32(RTE_ETH_FEC_ ## x)
 
 /* A structure used to get capabilities per link speed */
 struct rte_eth_fec_capa {
@@ -4870,13 +4871,13 @@ int rte_eth_representor_info_get(uint16_t port_id,
 				 struct rte_eth_representor_info *info);
 
 /** The NIC is able to deliver flag (if set) with packets to the PMD. */
-#define RTE_ETH_RX_METADATA_USER_FLAG (UINT64_C(1) << 0)
+#define RTE_ETH_RX_METADATA_USER_FLAG RTE_BIT64(0)
 
 /** The NIC is able to deliver mark ID with packets to the PMD. */
-#define RTE_ETH_RX_METADATA_USER_MARK (UINT64_C(1) << 1)
+#define RTE_ETH_RX_METADATA_USER_MARK RTE_BIT64(1)
 
 /** The NIC is able to deliver tunnel ID with packets to the PMD. */
-#define RTE_ETH_RX_METADATA_TUNNEL_ID (UINT64_C(1) << 2)
+#define RTE_ETH_RX_METADATA_TUNNEL_ID RTE_BIT64(2)
 
 /**
  * @warning
