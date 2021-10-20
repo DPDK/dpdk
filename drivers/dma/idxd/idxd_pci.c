@@ -258,6 +258,7 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 
 	idxd->u.pci = pci;
 	idxd->max_batches = wq_size;
+	idxd->max_batch_size = 1 << lg2_max_batch;
 
 	/* enable the device itself */
 	err_code = idxd_pci_dev_command(idxd, idxd_enable_dev);

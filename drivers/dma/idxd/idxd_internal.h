@@ -104,5 +104,6 @@ int idxd_stats_get(const struct rte_dma_dev *dev, uint16_t vchan,
 int idxd_stats_reset(struct rte_dma_dev *dev, uint16_t vchan);
 int idxd_vchan_status(const struct rte_dma_dev *dev, uint16_t vchan,
 		enum rte_dma_vchan_status *status);
+uint16_t idxd_burst_capacity(const void *dev_private, uint16_t vchan);
 
 #endif /* _IDXD_INTERNAL_H_ */

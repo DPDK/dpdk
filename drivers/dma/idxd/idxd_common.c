@@ -468,6 +468,26 @@ idxd_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *info, uint32_t
 	return 0;
 }
 
+uint16_t
+idxd_burst_capacity(const void *dev_private, uint16_t vchan __rte_unused)
+{
+	const struct idxd_dmadev *idxd = dev_private;
+	uint16_t write_idx = idxd->batch_start + idxd->batch_size;
+	uint16_t used_space;
+
+	/* Check for space in the batch ring */
+	if ((idxd->batch_idx_read == 0 && idxd->batch_idx_write == idxd->max_batches) ||
+			idxd->batch_idx_write + 1 == idxd->batch_idx_read)
+		return 0;
+
+	/* For descriptors, check for wrap-around on write but not read */
+	if (idxd->ids_returned > write_idx)
+		write_idx += idxd->desc_ring_mask + 1;
+	used_space = write_idx - idxd->ids_returned;
+
+	return RTE_MIN((idxd->desc_ring_mask - used_space), idxd->max_batch_size);
+}
+
 int
 idxd_configure(struct rte_dma_dev *dev __rte_unused, const struct rte_dma_conf *dev_conf,
 		uint32_t conf_sz)
@@ -553,6 +573,7 @@ idxd_dmadev_create(const char *name, struct rte_device *dev,
 	dmadev->fp_obj->submit = idxd_submit;
 	dmadev->fp_obj->completed = idxd_completed;
 	dmadev->fp_obj->completed_status = idxd_completed_status;
+	dmadev->fp_obj->burst_capacity = idxd_burst_capacity;
 
 	idxd = dmadev->data->dev_private;
 	*idxd = *base_idxd; /* copy over the main fields already passed in */
