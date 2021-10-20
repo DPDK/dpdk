@@ -5,6 +5,7 @@ API
 Arm
 armv7
 armv8
+ASan
 BAR
 CRC
 DCB

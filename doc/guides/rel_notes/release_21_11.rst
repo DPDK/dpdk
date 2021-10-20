@@ -305,6 +305,15 @@ New Features
     * Pcapng format with timestamps and meta-data.
     * Fixes packet capture with stripped VLAN tags.
 
+* **Added ASan support.**
+
+  `AddressSanitizer
+  <https://github.com/google/sanitizers/wiki/AddressSanitizer>`_ (ASan)
+  is a widely-used debugging tool to detect memory access errors.
+  It helps to detect issues like use-after-free, various kinds of buffer
+  overruns in C/C++ programs, and other similar errors, as well as
+  printing out detailed debug information whenever an error is detected.
+
 
 Removed Items
 -------------
