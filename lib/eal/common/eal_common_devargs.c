@@ -39,7 +39,7 @@ devargs_bus_parse_default(struct rte_devargs *devargs,
 	/* Parse devargs name from bus key-value list. */
 	name = rte_kvargs_get(bus_args, "name");
 	if (name == NULL) {
-		RTE_LOG(INFO, EAL, "devargs name not found: %s\n",
+		RTE_LOG(DEBUG, EAL, "devargs name not found: %s\n",
 			devargs->data);
 		return 0;
 	}

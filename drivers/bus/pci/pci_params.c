@@ -87,11 +87,10 @@ rte_pci_devargs_parse(struct rte_devargs *da)
 	struct rte_kvargs *kvargs;
 	const char *addr_str;
 	struct rte_pci_addr addr;
-	int ret;
+	int ret = 0;
 
-	if (da == NULL)
+	if (da == NULL || da->bus_str == NULL)
 		return 0;
-	RTE_ASSERT(da->bus_str != NULL);
 
 	kvargs = rte_kvargs_parse(da->bus_str, NULL);
 	if (kvargs == NULL) {
@@ -103,9 +102,8 @@ rte_pci_devargs_parse(struct rte_devargs *da)
 
 	addr_str = rte_kvargs_get(kvargs, pci_params_keys[RTE_PCI_PARAM_ADDR]);
 	if (addr_str == NULL) {
-		RTE_LOG(ERR, EAL, "No PCI address specified using '%s=<id>' in: %s\n",
+		RTE_LOG(DEBUG, EAL, "No PCI address specified using '%s=<id>' in: %s\n",
 			pci_params_keys[RTE_PCI_PARAM_ADDR], da->bus_str);
-		ret = -ENODEV;
 		goto out;
 	}
 
