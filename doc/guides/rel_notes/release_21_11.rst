@@ -243,6 +243,10 @@ New Features
 * **Revised packet capture framework.**
 
   * New library for writing pcapng packet capture files.
+  * Enhancements to the pdump library to support:
+    * Packet filter with BPF.
+    * Pcapng format with timestamps and meta-data.
+    * Fixes packet capture with stripped VLAN tags.
 
 
 Removed Items

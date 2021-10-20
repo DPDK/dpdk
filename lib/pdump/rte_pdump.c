@@ -7,8 +7,10 @@
 #include <rte_ethdev.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
+#include <rte_memzone.h>
 #include <rte_errno.h>
 #include <rte_string_fns.h>
+#include <rte_pcapng.h>
 
 #include "rte_pdump.h"
 
@@ -27,30 +29,23 @@ enum pdump_operation {
 	ENABLE = 2
 };
 
+/* Internal version number in request */
 enum pdump_version {
-	V1 = 1
+	V1 = 1,		    /* no filtering or snap */
+	V2 = 2,
 };
 
 struct pdump_request {
 	uint16_t ver;
 	uint16_t op;
 	uint32_t flags;
-	union pdump_data {
-		struct enable_v1 {
-			char device[RTE_DEV_NAME_MAX_LEN];
-			uint16_t queue;
-			struct rte_ring *ring;
-			struct rte_mempool *mp;
-			void *filter;
-		} en_v1;
-		struct disable_v1 {
-			char device[RTE_DEV_NAME_MAX_LEN];
-			uint16_t queue;
-			struct rte_ring *ring;
-			struct rte_mempool *mp;
-			void *filter;
-		} dis_v1;
-	} data;
+	char device[RTE_DEV_NAME_MAX_LEN];
+	uint16_t queue;
+	struct rte_ring *ring;
+	struct rte_mempool *mp;
+
+	const struct rte_bpf_prm *prm;
+	uint32_t snaplen;
 };
 
 struct pdump_response {
@@ -63,80 +58,140 @@ static struct pdump_rxtx_cbs {
 	struct rte_ring *ring;
 	struct rte_mempool *mp;
 	const struct rte_eth_rxtx_callback *cb;
-	void *filter;
+	const struct rte_bpf *filter;
+	enum pdump_version ver;
+	uint32_t snaplen;
 } rx_cbs[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT],
 tx_cbs[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT];
 
 
-static inline void
-pdump_copy(struct rte_mbuf **pkts, uint16_t nb_pkts, void *user_params)
+/*
+ * The packet capture statistics keep track of packets
+ * accepted, filtered and dropped. These are per-queue
+ * and in memory between primary and secondary processes.
+ */
+static const char MZ_RTE_PDUMP_STATS[] = "rte_pdump_stats";
+static struct {
+	struct rte_pdump_stats rx[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT];
+	struct rte_pdump_stats tx[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT];
+} *pdump_stats;
+
+/* Create a clone of mbuf to be placed into ring. */
+static void
+pdump_copy(uint16_t port_id, uint16_t queue,
+	   enum rte_pcapng_direction direction,
+	   struct rte_mbuf **pkts, uint16_t nb_pkts,
+	   const struct pdump_rxtx_cbs *cbs,
+	   struct rte_pdump_stats *stats)
 {
 	unsigned int i;
 	int ring_enq;
 	uint16_t d_pkts = 0;
 	struct rte_mbuf *dup_bufs[nb_pkts];
-	struct pdump_rxtx_cbs *cbs;
+	uint64_t ts;
 	struct rte_ring *ring;
 	struct rte_mempool *mp;
 	struct rte_mbuf *p;
+	uint64_t rcs[nb_pkts];
 
-	cbs  = user_params;
+	if (cbs->filter)
+		rte_bpf_exec_burst(cbs->filter, (void **)pkts, rcs, nb_pkts);
+
+	ts = rte_get_tsc_cycles();
 	ring = cbs->ring;
 	mp = cbs->mp;
 	for (i = 0; i < nb_pkts; i++) {
-		p = rte_pktmbuf_copy(pkts[i], mp, 0, UINT32_MAX);
-		if (p)
+		/*
+		 * This uses same BPF return value convention as socket filter
+		 * and pcap_offline_filter.
+		 * if program returns zero
+		 * then packet doesn't match the filter (will be ignored).
+		 */
+		if (cbs->filter && rcs[i] == 0) {
+			__atomic_fetch_add(&stats->filtered,
+					   1, __ATOMIC_RELAXED);
+			continue;
+		}
+
+		/*
+		 * If using pcapng then want to wrap packets
+		 * otherwise a simple copy.
+		 */
+		if (cbs->ver == V2)
+			p = rte_pcapng_copy(port_id, queue,
+					    pkts[i], mp, cbs->snaplen,
+					    ts, direction);
+		else
+			p = rte_pktmbuf_copy(pkts[i], mp, 0, cbs->snaplen);
+
+		if (unlikely(p == NULL))
+			__atomic_fetch_add(&stats->nombuf, 1, __ATOMIC_RELAXED);
+		else
 			dup_bufs[d_pkts++] = p;
 	}
+
+	__atomic_fetch_add(&stats->accepted, d_pkts, __ATOMIC_RELAXED);
 
 	ring_enq = rte_ring_enqueue_burst(ring, (void *)dup_bufs, d_pkts, NULL);
 	if (unlikely(ring_enq < d_pkts)) {
 		unsigned int drops = d_pkts - ring_enq;
 
-		PDUMP_LOG(DEBUG,
-			"only %d of packets enqueued to ring\n", ring_enq);
+		__atomic_fetch_add(&stats->ringfull, drops, __ATOMIC_RELAXED);
 		rte_pktmbuf_free_bulk(&dup_bufs[ring_enq], drops);
 	}
 }
 
 static uint16_t
-pdump_rx(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
+pdump_rx(uint16_t port, uint16_t queue,
 	struct rte_mbuf **pkts, uint16_t nb_pkts,
-	uint16_t max_pkts __rte_unused,
-	void *user_params)
+	uint16_t max_pkts __rte_unused, void *user_params)
 {
-	pdump_copy(pkts, nb_pkts, user_params);
+	const struct pdump_rxtx_cbs *cbs = user_params;
+	struct rte_pdump_stats *stats = &pdump_stats->rx[port][queue];
+
+	pdump_copy(port, queue, RTE_PCAPNG_DIRECTION_IN,
+		   pkts, nb_pkts, cbs, stats);
 	return nb_pkts;
 }
 
 static uint16_t
-pdump_tx(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
+pdump_tx(uint16_t port, uint16_t queue,
 		struct rte_mbuf **pkts, uint16_t nb_pkts, void *user_params)
 {
-	pdump_copy(pkts, nb_pkts, user_params);
+	const struct pdump_rxtx_cbs *cbs = user_params;
+	struct rte_pdump_stats *stats = &pdump_stats->tx[port][queue];
+
+	pdump_copy(port, queue, RTE_PCAPNG_DIRECTION_OUT,
+		   pkts, nb_pkts, cbs, stats);
 	return nb_pkts;
 }
 
 static int
-pdump_register_rx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
-				struct rte_ring *ring, struct rte_mempool *mp,
-				uint16_t operation)
+pdump_register_rx_callbacks(enum pdump_version ver,
+			    uint16_t end_q, uint16_t port, uint16_t queue,
+			    struct rte_ring *ring, struct rte_mempool *mp,
+			    struct rte_bpf *filter,
+			    uint16_t operation, uint32_t snaplen)
 {
 	uint16_t qid;
-	struct pdump_rxtx_cbs *cbs = NULL;
 
 	qid = (queue == RTE_PDUMP_ALL_QUEUES) ? 0 : queue;
 	for (; qid < end_q; qid++) {
-		cbs = &rx_cbs[port][qid];
-		if (cbs && operation == ENABLE) {
+		struct pdump_rxtx_cbs *cbs = &rx_cbs[port][qid];
+
+		if (operation == ENABLE) {
 			if (cbs->cb) {
 				PDUMP_LOG(ERR,
 					"rx callback for port=%d queue=%d, already exists\n",
 					port, qid);
 				return -EEXIST;
 			}
+			cbs->ver = ver;
 			cbs->ring = ring;
 			cbs->mp = mp;
+			cbs->snaplen = snaplen;
+			cbs->filter = filter;
+
 			cbs->cb = rte_eth_add_first_rx_callback(port, qid,
 								pdump_rx, cbs);
 			if (cbs->cb == NULL) {
@@ -145,8 +200,7 @@ pdump_register_rx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 					rte_errno);
 				return rte_errno;
 			}
-		}
-		if (cbs && operation == DISABLE) {
+		} else if (operation == DISABLE) {
 			int ret;
 
 			if (cbs->cb == NULL) {
@@ -170,26 +224,32 @@ pdump_register_rx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 }
 
 static int
-pdump_register_tx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
-				struct rte_ring *ring, struct rte_mempool *mp,
-				uint16_t operation)
+pdump_register_tx_callbacks(enum pdump_version ver,
+			    uint16_t end_q, uint16_t port, uint16_t queue,
+			    struct rte_ring *ring, struct rte_mempool *mp,
+			    struct rte_bpf *filter,
+			    uint16_t operation, uint32_t snaplen)
 {
 
 	uint16_t qid;
-	struct pdump_rxtx_cbs *cbs = NULL;
 
 	qid = (queue == RTE_PDUMP_ALL_QUEUES) ? 0 : queue;
 	for (; qid < end_q; qid++) {
-		cbs = &tx_cbs[port][qid];
-		if (cbs && operation == ENABLE) {
+		struct pdump_rxtx_cbs *cbs = &tx_cbs[port][qid];
+
+		if (operation == ENABLE) {
 			if (cbs->cb) {
 				PDUMP_LOG(ERR,
 					"tx callback for port=%d queue=%d, already exists\n",
 					port, qid);
 				return -EEXIST;
 			}
+			cbs->ver = ver;
 			cbs->ring = ring;
 			cbs->mp = mp;
+			cbs->snaplen = snaplen;
+			cbs->filter = filter;
+
 			cbs->cb = rte_eth_add_tx_callback(port, qid, pdump_tx,
 								cbs);
 			if (cbs->cb == NULL) {
@@ -198,8 +258,7 @@ pdump_register_tx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 					rte_errno);
 				return rte_errno;
 			}
-		}
-		if (cbs && operation == DISABLE) {
+		} else if (operation == DISABLE) {
 			int ret;
 
 			if (cbs->cb == NULL) {
@@ -228,37 +287,47 @@ set_pdump_rxtx_cbs(const struct pdump_request *p)
 	uint16_t nb_rx_q = 0, nb_tx_q = 0, end_q, queue;
 	uint16_t port;
 	int ret = 0;
+	struct rte_bpf *filter = NULL;
 	uint32_t flags;
 	uint16_t operation;
 	struct rte_ring *ring;
 	struct rte_mempool *mp;
 
+	/* Check for possible DPDK version mismatch */
+	if (!(p->ver == V1 || p->ver == V2)) {
+		PDUMP_LOG(ERR,
+			  "incorrect client version %u\n", p->ver);
+		return -EINVAL;
+	}
+
+	if (p->prm) {
+		if (p->prm->prog_arg.type != RTE_BPF_ARG_PTR_MBUF) {
+			PDUMP_LOG(ERR,
+				  "invalid BPF program type: %u\n",
+				  p->prm->prog_arg.type);
+			return -EINVAL;
+		}
+
+		filter = rte_bpf_load(p->prm);
+		if (filter == NULL) {
+			PDUMP_LOG(ERR, "cannot load BPF filter: %s\n",
+				  rte_strerror(rte_errno));
+			return -rte_errno;
+		}
+	}
+
 	flags = p->flags;
 	operation = p->op;
-	if (operation == ENABLE) {
-		ret = rte_eth_dev_get_port_by_name(p->data.en_v1.device,
-				&port);
-		if (ret < 0) {
-			PDUMP_LOG(ERR,
-				"failed to get port id for device id=%s\n",
-				p->data.en_v1.device);
-			return -EINVAL;
-		}
-		queue = p->data.en_v1.queue;
-		ring = p->data.en_v1.ring;
-		mp = p->data.en_v1.mp;
-	} else {
-		ret = rte_eth_dev_get_port_by_name(p->data.dis_v1.device,
-				&port);
-		if (ret < 0) {
-			PDUMP_LOG(ERR,
-				"failed to get port id for device id=%s\n",
-				p->data.dis_v1.device);
-			return -EINVAL;
-		}
-		queue = p->data.dis_v1.queue;
-		ring = p->data.dis_v1.ring;
-		mp = p->data.dis_v1.mp;
+	queue = p->queue;
+	ring = p->ring;
+	mp = p->mp;
+
+	ret = rte_eth_dev_get_port_by_name(p->device, &port);
+	if (ret < 0) {
+		PDUMP_LOG(ERR,
+			  "failed to get port id for device id=%s\n",
+			  p->device);
+		return -EINVAL;
 	}
 
 	/* validation if packet capture is for all queues */
@@ -296,8 +365,9 @@ set_pdump_rxtx_cbs(const struct pdump_request *p)
 	/* register RX callback */
 	if (flags & RTE_PDUMP_FLAG_RX) {
 		end_q = (queue == RTE_PDUMP_ALL_QUEUES) ? nb_rx_q : queue + 1;
-		ret = pdump_register_rx_callbacks(end_q, port, queue, ring, mp,
-							operation);
+		ret = pdump_register_rx_callbacks(p->ver, end_q, port, queue,
+						  ring, mp, filter,
+						  operation, p->snaplen);
 		if (ret < 0)
 			return ret;
 	}
@@ -305,8 +375,9 @@ set_pdump_rxtx_cbs(const struct pdump_request *p)
 	/* register TX callback */
 	if (flags & RTE_PDUMP_FLAG_TX) {
 		end_q = (queue == RTE_PDUMP_ALL_QUEUES) ? nb_tx_q : queue + 1;
-		ret = pdump_register_tx_callbacks(end_q, port, queue, ring, mp,
-							operation);
+		ret = pdump_register_tx_callbacks(p->ver, end_q, port, queue,
+						  ring, mp, filter,
+						  operation, p->snaplen);
 		if (ret < 0)
 			return ret;
 	}
@@ -332,7 +403,7 @@ pdump_server(const struct rte_mp_msg *mp_msg, const void *peer)
 		resp->err_value = set_pdump_rxtx_cbs(cli_req);
 	}
 
-	strlcpy(mp_resp.name, PDUMP_MP, RTE_MP_MAX_NAME_LEN);
+	rte_strscpy(mp_resp.name, PDUMP_MP, RTE_MP_MAX_NAME_LEN);
 	mp_resp.len_param = sizeof(*resp);
 	mp_resp.num_fds = 0;
 	if (rte_mp_reply(&mp_resp, peer) < 0) {
@@ -347,7 +418,17 @@ pdump_server(const struct rte_mp_msg *mp_msg, const void *peer)
 int
 rte_pdump_init(void)
 {
+	const struct rte_memzone *mz;
 	int ret;
+
+	mz = rte_memzone_reserve(MZ_RTE_PDUMP_STATS, sizeof(*pdump_stats),
+				 rte_socket_id(), 0);
+	if (mz == NULL) {
+		PDUMP_LOG(ERR, "cannot allocate pdump statistics\n");
+		rte_errno = ENOMEM;
+		return -1;
+	}
+	pdump_stats = mz->addr;
 
 	ret = rte_mp_action_register(PDUMP_MP, pdump_server);
 	if (ret && rte_errno != ENOTSUP)
@@ -393,11 +474,18 @@ pdump_validate_ring_mp(struct rte_ring *ring, struct rte_mempool *mp)
 static int
 pdump_validate_flags(uint32_t flags)
 {
-	if (flags != RTE_PDUMP_FLAG_RX && flags != RTE_PDUMP_FLAG_TX &&
-		flags != RTE_PDUMP_FLAG_RXTX) {
+	if ((flags & RTE_PDUMP_FLAG_RXTX) == 0) {
 		PDUMP_LOG(ERR,
 			"invalid flags, should be either rx/tx/rxtx\n");
 		rte_errno = EINVAL;
+		return -1;
+	}
+
+	/* mask off the flags we know about */
+	if (flags & ~(RTE_PDUMP_FLAG_RXTX | RTE_PDUMP_FLAG_PCAPNG)) {
+		PDUMP_LOG(ERR,
+			  "unknown flags: %#x\n", flags);
+		rte_errno = ENOTSUP;
 		return -1;
 	}
 
@@ -427,12 +515,12 @@ pdump_validate_port(uint16_t port, char *name)
 }
 
 static int
-pdump_prepare_client_request(char *device, uint16_t queue,
-				uint32_t flags,
-				uint16_t operation,
-				struct rte_ring *ring,
-				struct rte_mempool *mp,
-				void *filter)
+pdump_prepare_client_request(const char *device, uint16_t queue,
+			     uint32_t flags, uint32_t snaplen,
+			     uint16_t operation,
+			     struct rte_ring *ring,
+			     struct rte_mempool *mp,
+			     const struct rte_bpf_prm *prm)
 {
 	int ret = -1;
 	struct rte_mp_msg mp_req, *mp_rep;
@@ -441,26 +529,22 @@ pdump_prepare_client_request(char *device, uint16_t queue,
 	struct pdump_request *req = (struct pdump_request *)mp_req.param;
 	struct pdump_response *resp;
 
-	req->ver = 1;
-	req->flags = flags;
+	memset(req, 0, sizeof(*req));
+
+	req->ver = (flags & RTE_PDUMP_FLAG_PCAPNG) ? V2 : V1;
+	req->flags = flags & RTE_PDUMP_FLAG_RXTX;
 	req->op = operation;
+	req->queue = queue;
+	rte_strscpy(req->device, device, sizeof(req->device));
+
 	if ((operation & ENABLE) != 0) {
-		strlcpy(req->data.en_v1.device, device,
-			sizeof(req->data.en_v1.device));
-		req->data.en_v1.queue = queue;
-		req->data.en_v1.ring = ring;
-		req->data.en_v1.mp = mp;
-		req->data.en_v1.filter = filter;
-	} else {
-		strlcpy(req->data.dis_v1.device, device,
-			sizeof(req->data.dis_v1.device));
-		req->data.dis_v1.queue = queue;
-		req->data.dis_v1.ring = NULL;
-		req->data.dis_v1.mp = NULL;
-		req->data.dis_v1.filter = NULL;
+		req->ring = ring;
+		req->mp = mp;
+		req->prm = prm;
+		req->snaplen = snaplen;
 	}
 
-	strlcpy(mp_req.name, PDUMP_MP, RTE_MP_MAX_NAME_LEN);
+	rte_strscpy(mp_req.name, PDUMP_MP, RTE_MP_MAX_NAME_LEN);
 	mp_req.len_param = sizeof(*req);
 	mp_req.num_fds = 0;
 	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0) {
@@ -478,11 +562,17 @@ pdump_prepare_client_request(char *device, uint16_t queue,
 	return ret;
 }
 
-int
-rte_pdump_enable(uint16_t port, uint16_t queue, uint32_t flags,
-			struct rte_ring *ring,
-			struct rte_mempool *mp,
-			void *filter)
+/*
+ * There are two versions of this function, because although original API
+ * left place holder for future filter, it never checked the value.
+ * Therefore the API can't depend on application passing a non
+ * bogus value.
+ */
+static int
+pdump_enable(uint16_t port, uint16_t queue,
+	     uint32_t flags, uint32_t snaplen,
+	     struct rte_ring *ring, struct rte_mempool *mp,
+	     const struct rte_bpf_prm *prm)
 {
 	int ret;
 	char name[RTE_DEV_NAME_MAX_LEN];
@@ -497,20 +587,42 @@ rte_pdump_enable(uint16_t port, uint16_t queue, uint32_t flags,
 	if (ret < 0)
 		return ret;
 
-	ret = pdump_prepare_client_request(name, queue, flags,
-						ENABLE, ring, mp, filter);
+	if (snaplen == 0)
+		snaplen = UINT32_MAX;
 
-	return ret;
+	return pdump_prepare_client_request(name, queue, flags, snaplen,
+					    ENABLE, ring, mp, prm);
 }
 
 int
-rte_pdump_enable_by_deviceid(char *device_id, uint16_t queue,
-				uint32_t flags,
-				struct rte_ring *ring,
-				struct rte_mempool *mp,
-				void *filter)
+rte_pdump_enable(uint16_t port, uint16_t queue, uint32_t flags,
+		 struct rte_ring *ring,
+		 struct rte_mempool *mp,
+		 void *filter __rte_unused)
 {
-	int ret = 0;
+	return pdump_enable(port, queue, flags, 0,
+			    ring, mp, NULL);
+}
+
+int
+rte_pdump_enable_bpf(uint16_t port, uint16_t queue,
+		     uint32_t flags, uint32_t snaplen,
+		     struct rte_ring *ring,
+		     struct rte_mempool *mp,
+		     const struct rte_bpf_prm *prm)
+{
+	return pdump_enable(port, queue, flags, snaplen,
+			    ring, mp, prm);
+}
+
+static int
+pdump_enable_by_deviceid(const char *device_id, uint16_t queue,
+			 uint32_t flags, uint32_t snaplen,
+			 struct rte_ring *ring,
+			 struct rte_mempool *mp,
+			 const struct rte_bpf_prm *prm)
+{
+	int ret;
 
 	ret = pdump_validate_ring_mp(ring, mp);
 	if (ret < 0)
@@ -519,10 +631,30 @@ rte_pdump_enable_by_deviceid(char *device_id, uint16_t queue,
 	if (ret < 0)
 		return ret;
 
-	ret = pdump_prepare_client_request(device_id, queue, flags,
-						ENABLE, ring, mp, filter);
+	return pdump_prepare_client_request(device_id, queue, flags, snaplen,
+					    ENABLE, ring, mp, prm);
+}
 
-	return ret;
+int
+rte_pdump_enable_by_deviceid(char *device_id, uint16_t queue,
+			     uint32_t flags,
+			     struct rte_ring *ring,
+			     struct rte_mempool *mp,
+			     void *filter __rte_unused)
+{
+	return pdump_enable_by_deviceid(device_id, queue, flags, 0,
+					ring, mp, NULL);
+}
+
+int
+rte_pdump_enable_bpf_by_deviceid(const char *device_id, uint16_t queue,
+				 uint32_t flags, uint32_t snaplen,
+				 struct rte_ring *ring,
+				 struct rte_mempool *mp,
+				 const struct rte_bpf_prm *prm)
+{
+	return pdump_enable_by_deviceid(device_id, queue, flags, snaplen,
+					ring, mp, prm);
 }
 
 int
@@ -538,8 +670,8 @@ rte_pdump_disable(uint16_t port, uint16_t queue, uint32_t flags)
 	if (ret < 0)
 		return ret;
 
-	ret = pdump_prepare_client_request(name, queue, flags,
-						DISABLE, NULL, NULL, NULL);
+	ret = pdump_prepare_client_request(name, queue, flags, 0,
+					   DISABLE, NULL, NULL, NULL);
 
 	return ret;
 }
@@ -554,8 +686,68 @@ rte_pdump_disable_by_deviceid(char *device_id, uint16_t queue,
 	if (ret < 0)
 		return ret;
 
-	ret = pdump_prepare_client_request(device_id, queue, flags,
-						DISABLE, NULL, NULL, NULL);
+	ret = pdump_prepare_client_request(device_id, queue, flags, 0,
+					   DISABLE, NULL, NULL, NULL);
 
 	return ret;
+}
+
+static void
+pdump_sum_stats(uint16_t port, uint16_t nq,
+		struct rte_pdump_stats stats[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT],
+		struct rte_pdump_stats *total)
+{
+	uint64_t *sum = (uint64_t *)total;
+	unsigned int i;
+	uint64_t val;
+	uint16_t qid;
+
+	for (qid = 0; qid < nq; qid++) {
+		const uint64_t *perq = (const uint64_t *)&stats[port][qid];
+
+		for (i = 0; i < sizeof(*total) / sizeof(uint64_t); i++) {
+			val = __atomic_load_n(&perq[i], __ATOMIC_RELAXED);
+			sum[i] += val;
+		}
+	}
+}
+
+int
+rte_pdump_stats(uint16_t port, struct rte_pdump_stats *stats)
+{
+	struct rte_eth_dev_info dev_info;
+	const struct rte_memzone *mz;
+	int ret;
+
+	memset(stats, 0, sizeof(*stats));
+	ret = rte_eth_dev_info_get(port, &dev_info);
+	if (ret != 0) {
+		PDUMP_LOG(ERR,
+			  "Error during getting device (port %u) info: %s\n",
+			  port, strerror(-ret));
+		return ret;
+	}
+
+	if (pdump_stats == NULL) {
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			/* rte_pdump_init was not called */
+			PDUMP_LOG(ERR, "pdump stats not initialized\n");
+			rte_errno = EINVAL;
+			return -1;
+		}
+
+		/* secondary process looks up the memzone */
+		mz = rte_memzone_lookup(MZ_RTE_PDUMP_STATS);
+		if (mz == NULL) {
+			/* rte_pdump_init was not called in primary process?? */
+			PDUMP_LOG(ERR, "can not find pdump stats\n");
+			rte_errno = EINVAL;
+			return -1;
+		}
+		pdump_stats = mz->addr;
+	}
+
+	pdump_sum_stats(port, dev_info.nb_rx_queues, pdump_stats->rx, stats);
+	pdump_sum_stats(port, dev_info.nb_tx_queues, pdump_stats->tx, stats);
+	return 0;
 }

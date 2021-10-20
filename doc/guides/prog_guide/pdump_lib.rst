@@ -1,12 +1,10 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2016 Intel Corporation.
 
-.. _pdump_library:
+Packet Capture Library
+======================
 
-The librte_pdump Library
-========================
-
-The ``librte_pdump`` library provides a framework for packet capturing in DPDK.
+The DPDK ``pdump`` library provides a framework for packet capturing in DPDK.
 The library does the complete copy of the Rx and Tx mbufs to a new mempool and
 hence it slows down the performance of the applications, so it is recommended
 to use this library for debugging purposes.
@@ -23,11 +21,19 @@ or disable the packet capture, and to uninitialize it.
 
 * ``rte_pdump_enable()``:
   This API enables the packet capture on a given port and queue.
-  Note: The filter option in the API is a place holder for future enhancements.
+
+* ``rte_pdump_enable_bpf()``
+  This API enables the packet capture on a given port and queue.
+  It also allows setting an optional filter using DPDK BPF interpreter
+  and setting the captured packet length.
 
 * ``rte_pdump_enable_by_deviceid()``:
   This API enables the packet capture on a given device id (``vdev name or pci address``) and queue.
-  Note: The filter option in the API is a place holder for future enhancements.
+
+* ``rte_pdump_enable_bpf_by_deviceid()``
+  This API enables the packet capture on a given device id (``vdev name or pci address``) and queue.
+  It also allows setting an optional filter using DPDK BPF interpreter
+  and setting the captured packet length.
 
 * ``rte_pdump_disable()``:
   This API disables the packet capture on a given port and queue.
@@ -60,6 +66,15 @@ the request to the primary process over the multi process channel. The primary p
 and enables the packet capture by registering the Ethernet RX and TX callbacks for the given port or device_id
 and queue combinations. Then the primary process will mirror the packets to the new mempool and enqueue them to
 the rte_ring that secondary process have passed to these APIs.
+
+The packet ring supports one of two formats.
+The default format enqueues copies of the original packets into the rte_ring.
+If the ``RTE_PDUMP_FLAG_PCAPNG`` is set, the mbuf data is extended
+with header and trailer to match the format of Pcapng enhanced packet block.
+The enhanced packet block has meta-data such as the timestamp, port and queue
+the packet was captured on.
+It is up to the application consuming the packets from the ring
+to select the format desired.
 
 The library APIs ``rte_pdump_disable()`` and ``rte_pdump_disable_by_deviceid()`` disables the packet capture.
 For the calls to these APIs from secondary process, the library creates the "pdump disable" request and sends

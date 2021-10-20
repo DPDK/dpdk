@@ -27,6 +27,7 @@ libraries = [
         'acl',
         'bbdev',
         'bitratestats',
+        'bpf',
         'cfgfile',
         'compressdev',
         'cryptodev',
@@ -43,7 +44,6 @@ libraries = [
         'member',
         'pcapng',
         'power',
-        'pdump',
         'rawdev',
         'regexdev',
         'dmadev',
@@ -56,10 +56,10 @@ libraries = [
         'ipsec', # ipsec lib depends on net, crypto and security
         'fib', #fib lib depends on rib
         'port', # pkt framework libs which use other libs from above
+        'pdump', # pdump lib depends on bpf
         'table',
         'pipeline',
         'flow_classify', # flow_classify lib depends on pkt framework table lib
-        'bpf',
         'graph',
         'node',
 ]

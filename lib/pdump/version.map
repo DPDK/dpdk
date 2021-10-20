@@ -10,3 +10,11 @@ DPDK_22 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	rte_pdump_enable_bpf;
+	rte_pdump_enable_bpf_by_deviceid;
+	rte_pdump_stats;
+};
