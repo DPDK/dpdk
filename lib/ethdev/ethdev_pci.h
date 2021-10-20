@@ -59,7 +59,7 @@ eth_dev_pci_specific_init(struct rte_eth_dev *eth_dev, void *bus_device) {
 
 /**
  * @internal
- * Allocates a new ethdev slot for an ethernet device and returns the pointer
+ * Allocates a new ethdev slot for an Ethernet device and returns the pointer
  * to that slot for the driver to use.
  *
  * @param dev

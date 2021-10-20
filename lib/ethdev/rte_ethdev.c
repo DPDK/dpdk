@@ -1265,14 +1265,14 @@ eth_dev_check_lro_pkt_size(uint16_t port_id, uint32_t config_size,
 
 /*
  * Validate offloads that are requested through rte_eth_dev_configure against
- * the offloads successfully set by the ethernet device.
+ * the offloads successfully set by the Ethernet device.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param req_offloads
  *   The offloads that have been requested through `rte_eth_dev_configure`.
  * @param set_offloads
- *   The offloads successfully set by the ethernet device.
+ *   The offloads successfully set by the Ethernet device.
  * @param offload_type
  *   The offload type i.e. Rx/Tx string.
  * @param offload_name

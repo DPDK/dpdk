@@ -117,7 +117,7 @@
  * *rte_eth_dev* structure to avoid an extra indirect memory access during
  * their invocation.
  *
- * RTE ethernet device drivers do not use interrupts for transmitting or
+ * RTE Ethernet device drivers do not use interrupts for transmitting or
  * receiving. Instead, Ethernet drivers export Poll-Mode receive and transmit
  * functions to applications.
  * Both receive and transmit functions are packet-burst oriented to minimize
@@ -1317,7 +1317,7 @@ struct rte_eth_conf {
 	struct rte_eth_txmode txmode; /**< Port Tx configuration. */
 	uint32_t lpbk_mode; /**< Loopback operation mode. By default the value
 			         is 0, meaning the loopback mode is disabled.
-				 Read the datasheet of given ethernet controller
+				 Read the datasheet of given Ethernet controller
 				 for details. The possible values of this field
 				 are defined in implementation of each driver. */
 	struct {
@@ -3381,7 +3381,7 @@ rte_eth_tx_buffer_init(struct rte_eth_dev_tx_buffer *buffer, uint16_t size);
  * Configure a callback for buffered packets which cannot be sent
  *
  * Register a specific callback to be called when an attempt is made to send
- * all packets buffered on an ethernet port, but not all packets can
+ * all packets buffered on an Ethernet port, but not all packets can
  * successfully be sent. The callback registered here will be called only
  * from calls to rte_eth_tx_buffer() and rte_eth_tx_buffer_flush() APIs.
  * The default callback configured for each queue by default just frees the
@@ -4747,7 +4747,7 @@ rte_eth_dev_get_name_by_port(uint16_t port_id, char *name);
 
 /**
  * Check that numbers of Rx and Tx descriptors satisfy descriptors limits from
- * the ethernet device information, otherwise adjust them to boundaries.
+ * the Ethernet device information, otherwise adjust them to boundaries.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
@@ -4817,7 +4817,7 @@ int rte_eth_dev_hairpin_capability_get(uint16_t port_id,
  * @warning
  * @b EXPERIMENTAL: this structure may change without prior notice.
  *
- * ethernet device representor ID range entry
+ * Ethernet device representor ID range entry
  */
 struct rte_eth_representor_range {
 	enum rte_eth_representor_type type; /**< Representor type */

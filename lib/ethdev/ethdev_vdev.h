@@ -13,7 +13,7 @@
 
 /**
  * @internal
- * Allocates a new ethdev slot for an ethernet device and returns the pointer
+ * Allocates a new ethdev slot for an Ethernet device and returns the pointer
  * to that slot for the driver to use.
  *
  * @param dev

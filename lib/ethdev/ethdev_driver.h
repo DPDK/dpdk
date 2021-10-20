@@ -33,7 +33,7 @@ struct rte_eth_rxtx_callback {
 
 /**
  * @internal
- * The generic data structure associated with each ethernet device.
+ * The generic data structure associated with each Ethernet device.
  *
  * Pointers to burst-oriented packet receive and transmit functions are
  * located at the beginning of the structure, along with the pointer to
@@ -85,7 +85,7 @@ struct rte_eth_dev_owner;
 
 /**
  * @internal
- * The data part, with no function pointers, associated with each ethernet
+ * The data part, with no function pointers, associated with each Ethernet
  * device. This structure is safe to place in shared memory to be common
  * among different processes in a multi-process configuration.
  */
@@ -1226,7 +1226,7 @@ struct rte_eth_dev *rte_eth_dev_allocated(const char *name);
 
 /**
  * @internal
- * Allocates a new ethdev slot for an ethernet device and returns the pointer
+ * Allocates a new ethdev slot for an Ethernet device and returns the pointer
  * to that slot for the driver to use.
  *
  * @param	name	Unique identifier name for each Ethernet device
