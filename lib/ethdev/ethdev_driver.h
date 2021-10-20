@@ -44,6 +44,7 @@ struct rte_eth_rxtx_callback {
 struct rte_eth_dev {
 	eth_rx_burst_t rx_pkt_burst; /**< Pointer to PMD receive function. */
 	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function. */
+
 	/** Pointer to PMD transmit prepare function */
 	eth_tx_prep_t tx_pkt_prepare;
 	/** Get the number of used Rx descriptors */
@@ -61,6 +62,7 @@ struct rte_eth_dev {
 	const struct eth_dev_ops *dev_ops; /**< Functions exported by PMD */
 	struct rte_device *device; /**< Backing device */
 	struct rte_intr_handle *intr_handle; /**< Device interrupt handle */
+
 	/** User application callbacks for NIC interrupts */
 	struct rte_eth_dev_cb_list link_intr_cbs;
 	/**
@@ -73,6 +75,7 @@ struct rte_eth_dev {
 	 * received packets before passing them to the driver for transmission.
 	 */
 	struct rte_eth_rxtx_callback *pre_tx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
+
 	enum rte_eth_dev_state state; /**< Flag indicating the port state */
 	void *security_ctx; /**< Context for security ops */
 } __rte_cache_aligned;
@@ -102,10 +105,12 @@ struct rte_eth_dev_data {
 	struct rte_eth_link dev_link;   /**< Link-level information & status. */
 	struct rte_eth_conf dev_conf;   /**< Configuration applied to device. */
 	uint16_t mtu;                   /**< Maximum Transmission Unit. */
+
 	/** Common Rx buffer size handled by all queues */
 	uint32_t min_rx_buf_size;
 
 	uint64_t rx_mbuf_alloc_failed; /**< Rx ring mbuf allocation failures */
+
 	/** Device Ethernet link address. @see rte_eth_dev_release_port() */
 	struct rte_ether_addr *mac_addrs;
 	/** Bitmap associating MAC addresses to pools */
@@ -115,6 +120,7 @@ struct rte_eth_dev_data {
 	 * @see rte_eth_dev_release_port()
 	 */
 	struct rte_ether_addr *hash_mac_addrs;
+
 	uint16_t port_id;           /**< Device [external] port identifier. */
 
 	__extension__
@@ -133,15 +139,20 @@ struct rte_eth_dev_data {
 		 * CONFIGURED(1) / NOT CONFIGURED(0)
 		 */
 		dev_configured : 1;
+
 	/** Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0) */
 	uint8_t rx_queue_state[RTE_MAX_QUEUES_PER_PORT];
 	/** Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0) */
 	uint8_t tx_queue_state[RTE_MAX_QUEUES_PER_PORT];
+
 	uint32_t dev_flags;             /**< Capabilities. */
 	int numa_node;                  /**< NUMA node connection. */
+
 	/** VLAN filter configuration */
 	struct rte_vlan_filter_conf vlan_filter_conf;
+
 	struct rte_eth_dev_owner owner; /**< The port owner. */
+
 	/**
 	 * Switch-specific identifier.
 	 * Valid if RTE_ETH_DEV_REPRESENTOR in dev_flags.
