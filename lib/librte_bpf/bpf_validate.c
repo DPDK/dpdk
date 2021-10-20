@@ -661,8 +661,15 @@ eval_alu(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 
 	op = BPF_OP(ins->code);
 
+	/* Allow self-xor as way to zero register */
+	if (op == BPF_XOR && BPF_SRC(ins->code) == BPF_X &&
+	    ins->src_reg == ins->dst_reg) {
+		eval_fill_imm(&rs, UINT64_MAX, 0);
+		eval_fill_imm(rd, UINT64_MAX, 0);
+	}
+
 	err = eval_defined((op != EBPF_MOV) ? rd : NULL,
-			(op != BPF_NEG) ? &rs : NULL);
+			   (op != BPF_NEG) ? &rs : NULL);
 	if (err != NULL)
 		return err;
 
