@@ -19,6 +19,7 @@
 #include <rte_log.h>
 #include <rte_spinlock.h>
 #include <rte_common.h>
+#include <rte_string_fns.h>
 
 #include "lthread_api.h"
 #include "lthread_int.h"
@@ -52,10 +53,9 @@ lthread_mutex_init(char *name, struct lthread_mutex **mutex,
 	}
 
 	if (name == NULL)
-		strncpy(m->name, "no name", sizeof(m->name));
+		strlcpy(m->name, "no name", sizeof(m->name));
 	else
-		strncpy(m->name, name, sizeof(m->name));
-	m->name[sizeof(m->name)-1] = 0;
+		strlcpy(m->name, name, sizeof(m->name));
 
 	m->root_sched = THIS_SCHED;
 	m->owner = NULL;

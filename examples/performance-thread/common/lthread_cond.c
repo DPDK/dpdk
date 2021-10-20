@@ -20,6 +20,7 @@
 
 #include <rte_log.h>
 #include <rte_common.h>
+#include <rte_string_fns.h>
 
 #include "lthread_api.h"
 #include "lthread_diag_api.h"
@@ -57,10 +58,9 @@ lthread_cond_init(char *name, struct lthread_cond **cond,
 	}
 
 	if (name == NULL)
-		strncpy(c->name, "no name", sizeof(c->name));
+		strlcpy(c->name, "no name", sizeof(c->name));
 	else
-		strncpy(c->name, name, sizeof(c->name));
-	c->name[sizeof(c->name)-1] = 0;
+		strlcpy(c->name, name, sizeof(c->name));
 
 	c->root_sched = THIS_SCHED;
 

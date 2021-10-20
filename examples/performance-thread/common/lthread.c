@@ -20,6 +20,7 @@
 #include <sys/mman.h>
 
 #include <rte_log.h>
+#include <rte_string_fns.h>
 #include <ctx.h>
 #include <stack.h>
 
@@ -465,6 +466,5 @@ void lthread_set_funcname(const char *f)
 {
 	struct lthread *lt = THIS_LTHREAD;
 
-	strncpy(lt->funcname, f, sizeof(lt->funcname));
-	lt->funcname[sizeof(lt->funcname)-1] = 0;
+	strlcpy(lt->funcname, f, sizeof(lt->funcname));
 }
