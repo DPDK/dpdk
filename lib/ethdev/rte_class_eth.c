@@ -90,7 +90,7 @@ eth_representor_cmp(const char *key __rte_unused,
 	np = eth_da.nb_ports > 0 ? eth_da.nb_ports : 1;
 	nf = eth_da.nb_representor_ports > 0 ? eth_da.nb_representor_ports : 1;
 
-	/* Return 0 if representor id is matching one of the values. */
+	/* Return 0 if representor ID is matching one of the values. */
 	for (i = 0; i < nc * np * nf; ++i) {
 		c = i / (np * nf);
 		p = (i / nf) % np;

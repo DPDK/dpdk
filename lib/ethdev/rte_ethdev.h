@@ -198,7 +198,7 @@ int rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs);
  * Iterates on devices with devargs filter.
  * The ownership is not checked.
  *
- * The next port id is returned, and the iterator is updated.
+ * The next port ID is returned, and the iterator is updated.
  *
  * @param iter
  *   Device iterator handle initialized by rte_eth_iterator_init().
@@ -206,7 +206,7 @@ int rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs);
  *   by calling rte_eth_iterator_cleanup().
  *
  * @return
- *   A port id if found, RTE_MAX_ETHPORTS otherwise.
+ *   A port ID if found, RTE_MAX_ETHPORTS otherwise.
  */
 uint16_t rte_eth_iterator_next(struct rte_dev_iterator *iter);
 
@@ -231,7 +231,7 @@ void rte_eth_iterator_cleanup(struct rte_dev_iterator *iter);
  * the function rte_eth_iterator_cleanup() must be called.
  *
  * @param id
- *   Iterated port id of type uint16_t.
+ *   Iterated port ID of type uint16_t.
  * @param devargs
  *   Device parameters input as string of type char*.
  * @param iter
@@ -936,7 +936,7 @@ struct rte_eth_vmdq_dcb_conf {
  * Passing the ETH_VMDQ_ACCEPT_UNTAG in the rx_mode field allows pool
  * selection using only the MAC address. MAC address to pool mapping is done
  * using the rte_eth_dev_mac_addr_add function, with the pool parameter
- * corresponding to the pool id.
+ * corresponding to the pool ID.
  *
  * Queue selection within the selected pool will be done using RSS when
  * it is enabled or revert to the first queue of the pool if not.
@@ -1472,7 +1472,7 @@ struct rte_eth_dev_portconf {
 };
 
 /**
- * Default values for switch domain id when ethdev does not support switch
+ * Default values for switch domain ID when ethdev does not support switch
  * domain definitions.
  */
 #define RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID	(UINT16_MAX)
@@ -1482,7 +1482,7 @@ struct rte_eth_dev_portconf {
  */
 struct rte_eth_switch_info {
 	const char *name;	/**< switch name */
-	uint16_t domain_id;	/**< switch domain id */
+	uint16_t domain_id;	/**< switch domain ID */
 	/**
 	 * Mapping to the devices physical switch port as enumerated from the
 	 * perspective of the embedded interconnect/switch. For SR-IOV enabled
@@ -1645,7 +1645,7 @@ struct rte_eth_burst_mode {
  * This structure is used by rte_eth_xstats_get() to provide
  * statistics that are not provided in the generic *rte_eth_stats*
  * structure.
- * It maps a name id, corresponding to an index in the array returned
+ * It maps a name ID, corresponding to an index in the array returned
  * by rte_eth_xstats_get_names(), to a statistic value.
  */
 struct rte_eth_xstat {
@@ -1861,12 +1861,12 @@ struct rte_eth_dev_owner {
  * Iterates over valid ethdev ports owned by a specific owner.
  *
  * @param port_id
- *   The id of the next possible valid owned port.
+ *   The ID of the next possible valid owned port.
  * @param	owner_id
  *  The owner identifier.
  *  RTE_ETH_DEV_NO_OWNER means iterate over all valid ownerless ports.
  * @return
- *   Next valid port id owned by owner_id, RTE_MAX_ETHPORTS if there is none.
+ *   Next valid port ID owned by owner_id, RTE_MAX_ETHPORTS if there is none.
  */
 uint64_t rte_eth_find_next_owned_by(uint16_t port_id,
 		const uint64_t owner_id);
@@ -1883,9 +1883,9 @@ uint64_t rte_eth_find_next_owned_by(uint16_t port_id,
  * Iterates over valid ethdev ports.
  *
  * @param port_id
- *   The id of the next possible valid port.
+ *   The ID of the next possible valid port.
  * @return
- *   Next valid port id, RTE_MAX_ETHPORTS if there is none.
+ *   Next valid port ID, RTE_MAX_ETHPORTS if there is none.
  */
 uint16_t rte_eth_find_next(uint16_t port_id);
 
@@ -1899,11 +1899,11 @@ uint16_t rte_eth_find_next(uint16_t port_id);
  * Iterates over ethdev ports of a specified device.
  *
  * @param port_id_start
- *   The id of the next possible valid port.
+ *   The ID of the next possible valid port.
  * @param parent
  *   The generic device behind the ports to iterate.
  * @return
- *   Next port id of the device, possibly port_id_start,
+ *   Next port ID of the device, possibly port_id_start,
  *   RTE_MAX_ETHPORTS if there is none.
  */
 uint16_t
@@ -1914,7 +1914,7 @@ rte_eth_find_next_of(uint16_t port_id_start,
  * Macro to iterate over all ethdev ports of a specified device.
  *
  * @param port_id
- *   The id of the matching port being iterated.
+ *   The ID of the matching port being iterated.
  * @param parent
  *   The rte_device pointer matching the iterated ports.
  */
@@ -1927,11 +1927,11 @@ rte_eth_find_next_of(uint16_t port_id_start,
  * Iterates over sibling ethdev ports (i.e. sharing the same rte_device).
  *
  * @param port_id_start
- *   The id of the next possible valid sibling port.
+ *   The ID of the next possible valid sibling port.
  * @param ref_port_id
- *   The id of a reference port to compare rte_device with.
+ *   The ID of a reference port to compare rte_device with.
  * @return
- *   Next sibling port id, possibly port_id_start or ref_port_id itself,
+ *   Next sibling port ID, possibly port_id_start or ref_port_id itself,
  *   RTE_MAX_ETHPORTS if there is none.
  */
 uint16_t
@@ -1943,9 +1943,9 @@ rte_eth_find_next_sibling(uint16_t port_id_start, uint16_t ref_port_id);
  * Note: the specified reference port is part of the loop iterations.
  *
  * @param port_id
- *   The id of the matching port being iterated.
+ *   The ID of the matching port being iterated.
  * @param ref_port_id
- *   The id of the port being compared.
+ *   The ID of the port being compared.
  */
 #define RTE_ETH_FOREACH_DEV_SIBLING(port_id, ref_port_id) \
 	for (port_id = rte_eth_find_next_sibling(0, ref_port_id); \
@@ -2414,7 +2414,7 @@ int rte_eth_hairpin_unbind(uint16_t tx_port, uint16_t rx_port);
  * @param port_id
  *   The port identifier of the Ethernet device
  * @return
- *   The NUMA socket id to which the Ethernet device is connected or
+ *   The NUMA socket ID to which the Ethernet device is connected or
  *   a default of zero if the socket could not be determined.
  *   -1 is returned is the port_id value is out of range.
  */
@@ -2576,7 +2576,7 @@ int rte_eth_dev_set_link_down(uint16_t port_id);
 int rte_eth_dev_close(uint16_t port_id);
 
 /**
- * Reset a Ethernet device and keep its port id.
+ * Reset a Ethernet device and keep its port ID.
  *
  * When a port has to be reset passively, the DPDK application can invoke
  * this function. For example when a PF is reset, all its VFs should also
@@ -2587,7 +2587,7 @@ int rte_eth_dev_close(uint16_t port_id);
  * When this function is called, it first stops the port and then calls the
  * PMD specific dev_uninit( ) and dev_init( ) to return the port to initial
  * state, in which no Tx and Rx queues are setup, as if the port has been
- * reset and not started. The port keeps the port id it had before the
+ * reset and not started. The port keeps the port ID it had before the
  * function call.
  *
  * After calling rte_eth_dev_reset( ), the application should use
@@ -2822,7 +2822,7 @@ int rte_eth_stats_reset(uint16_t port_id);
  *     is too small. The return value corresponds to the size that should
  *     be given to succeed. The entries in the table are not valid and
  *     shall not be used by the caller.
- *   - A negative value on error (invalid port id).
+ *   - A negative value on error (invalid port ID).
  */
 int rte_eth_xstats_get_names(uint16_t port_id,
 		struct rte_eth_xstat_name *xstats_names,
@@ -2855,7 +2855,7 @@ int rte_eth_xstats_get_names(uint16_t port_id,
  *     is too small. The return value corresponds to the size that should
  *     be given to succeed. The entries in the table are not valid and
  *     shall not be used by the caller.
- *   - A negative value on error (invalid port id).
+ *   - A negative value on error (invalid port ID).
  */
 int rte_eth_xstats_get(uint16_t port_id, struct rte_eth_xstat *xstats,
 		unsigned int n);
@@ -3555,7 +3555,7 @@ typedef int (*rte_eth_dev_cb_fn)(uint16_t port_id,
  * Register a callback function for port event.
  *
  * @param port_id
- *  Port id.
+ *  Port ID.
  *  RTE_ETH_ALL means register the event for all port ids.
  * @param event
  *  Event interested.
@@ -3576,7 +3576,7 @@ int rte_eth_dev_callback_register(uint16_t port_id,
  * Unregister a callback function for port event.
  *
  * @param port_id
- *  Port id.
+ *  Port ID.
  *  RTE_ETH_ALL means unregister the event for all port ids.
  * @param event
  *  Event interested.
@@ -4008,7 +4008,7 @@ int rte_eth_dev_uc_all_hash_table_set(uint16_t port_id, uint8_t on);
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param queue_idx
- *   The queue id.
+ *   The queue ID.
  * @param tx_rate
  *   The Tx rate in Mbps. Allocated from the total port link speed.
  * @return
@@ -4710,7 +4710,7 @@ int
 rte_eth_read_clock(uint16_t port_id, uint64_t *clock);
 
 /**
-* Get the port id from device name. The device name should be specified
+* Get the port ID from device name. The device name should be specified
 * as below:
 * - PCIe address (Domain:Bus:Device.Function), for example- 0000:2:00.0
 * - SoC device name, for example- fsl-gmac0
@@ -4728,7 +4728,7 @@ int
 rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id);
 
 /**
-* Get the device name from port id. The device name is specified as below:
+* Get the device name from port ID. The device name is specified as below:
 * - PCIe address (Domain:Bus:Device.Function), for example- 0000:02:00.0
 * - SoC device name, for example- fsl-gmac0
 * - vdev dpdk name, for example- net_[pcap0|null0|tun0|tap0]
@@ -5106,7 +5106,7 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
  * @param port_id
  *  The port identifier of the Ethernet device.
  * @param queue_id
- *  The queue id on the specific port.
+ *  The queue ID on the specific port.
  * @return
  *  The number of used descriptors in the specific queue, or:
  *   - (-ENODEV) if *port_id* is invalid.
@@ -5456,7 +5456,7 @@ rte_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
- *   The value must be a valid port id.
+ *   The value must be a valid port ID.
  * @param queue_id
  *   The index of the transmit queue through which output packets must be
  *   sent.

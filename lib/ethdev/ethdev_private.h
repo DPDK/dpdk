@@ -10,7 +10,7 @@
 #include "rte_ethdev.h"
 
 /*
- * Convert rte_eth_dev pointer to port id.
+ * Convert rte_eth_dev pointer to port ID.
  * NULL will be translated to RTE_MAX_ETHPORTS.
  */
 uint16_t eth_dev_to_id(const struct rte_eth_dev *dev);

@@ -2804,12 +2804,12 @@ struct rte_flow_query_age {
  * Adds a counter action to a matched flow.
  *
  * If more than one count action is specified in a single flow rule, then each
- * action must specify a unique id.
+ * action must specify a unique ID.
  *
  * Counters can be retrieved and reset through ``rte_flow_query()``, see
  * ``struct rte_flow_query_count``.
  *
- * For ports within the same switch domain then the counter id namespace extends
+ * For ports within the same switch domain then the counter ID namespace extends
  * to all ports within that switch domain.
  */
 struct rte_flow_action_count {

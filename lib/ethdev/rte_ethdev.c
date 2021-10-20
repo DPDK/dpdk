@@ -538,7 +538,7 @@ unlock:
 
 /*
  * Attach to a port already registered by the primary process, which
- * makes sure that the same device would have the same port id both
+ * makes sure that the same device would have the same port ID both
  * in the primary and secondary process.
  */
 struct rte_eth_dev *
@@ -668,7 +668,7 @@ eth_dev_owner_set(const uint16_t port_id, const uint64_t old_owner_id,
 	struct rte_eth_dev_owner *port_owner;
 
 	if (port_id >= RTE_MAX_ETHPORTS || !eth_dev_is_allocated(ethdev)) {
-		RTE_ETHDEV_LOG(ERR, "Port id %"PRIu16" is not allocated\n",
+		RTE_ETHDEV_LOG(ERR, "Port ID %"PRIu16" is not allocated\n",
 			port_id);
 		return -ENODEV;
 	}
@@ -760,7 +760,7 @@ rte_eth_dev_owner_delete(const uint64_t owner_id)
 			owner_id);
 	} else {
 		RTE_ETHDEV_LOG(ERR,
-			       "Invalid owner id=%016"PRIx64"\n",
+			       "Invalid owner ID=%016"PRIx64"\n",
 			       owner_id);
 		ret = -EINVAL;
 	}
@@ -779,7 +779,7 @@ rte_eth_dev_owner_get(const uint16_t port_id, struct rte_eth_dev_owner *owner)
 	ethdev = &rte_eth_devices[port_id];
 
 	if (!eth_dev_is_allocated(ethdev)) {
-		RTE_ETHDEV_LOG(ERR, "Port id %"PRIu16" is not allocated\n",
+		RTE_ETHDEV_LOG(ERR, "Port ID %"PRIu16" is not allocated\n",
 			port_id);
 		return -ENODEV;
 	}
@@ -4333,7 +4333,7 @@ rte_eth_dev_mac_addr_add(uint16_t port_id, struct rte_ether_addr *addr,
 		return -EINVAL;
 	}
 	if (pool >= ETH_64_POOLS) {
-		RTE_ETHDEV_LOG(ERR, "Pool id must be 0-%d\n", ETH_64_POOLS - 1);
+		RTE_ETHDEV_LOG(ERR, "Pool ID must be 0-%d\n", ETH_64_POOLS - 1);
 		return -EINVAL;
 	}
 
@@ -4558,7 +4558,7 @@ int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
 
 	if (queue_idx > dev_info.max_tx_queues) {
 		RTE_ETHDEV_LOG(ERR,
-			"Set queue rate limit:port %u: invalid queue id=%u\n",
+			"Set queue rate limit:port %u: invalid queue ID=%u\n",
 			port_id, queue_idx);
 		return -EINVAL;
 	}
@@ -6415,7 +6415,7 @@ rte_eth_rx_metadata_negotiate(uint16_t port_id, uint64_t *features)
 
 	if (dev->data->dev_configured != 0) {
 		RTE_ETHDEV_LOG(ERR,
-			"The port (id=%"PRIu16") is already configured\n",
+			"The port (ID=%"PRIu16") is already configured\n",
 			port_id);
 		return -EBUSY;
 	}

@@ -1420,7 +1420,7 @@ rte_eth_linkstatus_get(const struct rte_eth_dev *dev,
  *
  * A pool of switch domain identifiers which can be allocated on request. This
  * will enabled devices which support the concept of switch domains to request
- * a switch domain id which is guaranteed to be unique from other devices
+ * a switch domain ID which is guaranteed to be unique from other devices
  * running in the same process.
  *
  * @param domain_id
