@@ -71,13 +71,13 @@ intel_ntb_icx = {'Class': '06', 'Vendor': '8086', 'Device': '347e',
 network_devices = [network_class, cavium_pkx, avp_vnic, ifpga_class]
 baseband_devices = [acceleration_class]
 crypto_devices = [encryption_class, intel_processor_class]
-dma_devices = []
+dma_devices = [intel_idxd_spr]
 eventdev_devices = [cavium_sso, cavium_tim, intel_dlb, octeontx2_sso]
 mempool_devices = [cavium_fpa, octeontx2_npa]
 compress_devices = [cavium_zip]
 regex_devices = [octeontx2_ree]
 misc_devices = [cnxk_bphy, cnxk_bphy_cgx, cnxk_inl_dev, intel_ioat_bdw,
-	        intel_ioat_skx, intel_ioat_icx, intel_idxd_spr, intel_ntb_skx,
+	        intel_ioat_skx, intel_ioat_icx, intel_ntb_skx,
 		intel_ntb_icx, octeontx2_dma]
 
 # global dict ethernet devices present. Dictionary indexed by PCI address.
