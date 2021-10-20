@@ -252,6 +252,8 @@ EXPERIMENTAL {
 	rte_eth_dev_conf_get;
 	rte_eth_macaddrs_get;
 	rte_eth_rx_metadata_negotiate;
+	rte_flow_flex_item_create;
+	rte_flow_flex_item_release;
 	rte_flow_pick_transfer_proxy;
 };
 

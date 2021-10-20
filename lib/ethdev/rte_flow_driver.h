@@ -144,6 +144,14 @@ struct rte_flow_ops {
 		(struct rte_eth_dev *dev,
 		 uint16_t *proxy_port_id,
 		 struct rte_flow_error *error);
+	struct rte_flow_item_flex_handle *(*flex_item_create)
+		(struct rte_eth_dev *dev,
+		 const struct rte_flow_item_flex_conf *conf,
+		 struct rte_flow_error *error);
+	int (*flex_item_release)
+		(struct rte_eth_dev *dev,
+		 const struct rte_flow_item_flex_handle *handle,
+		 struct rte_flow_error *error);
 };
 
 /**

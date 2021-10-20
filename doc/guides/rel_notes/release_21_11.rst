@@ -85,6 +85,13 @@ New Features
   Added macros ETH_RSS_IPV4_CHKSUM and ETH_RSS_L4_CHKSUM, now IPv4 and
   TCP/UDP/SCTP header checksum field can be used as input set for RSS.
 
+* **Added flow flex item.**
+
+  The configurable flow flex item provides the capability to introduce
+  an arbitrary user-specified network protocol header,
+  configure the hardware accordingly, and perform match on this header
+  with desired patterns and masks.
+
 * **Added ethdev support to control delivery of Rx metadata from the HW to the PMD.**
 
   A new API, ``rte_eth_rx_metadata_negotiate()``, was added.

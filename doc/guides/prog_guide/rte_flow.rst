@@ -1548,6 +1548,31 @@ This item is meant to use the same structure as `Item: PORT_REPRESENTOR`_.
 
 See also `Action: REPRESENTED_PORT`_.
 
+Item: ``FLEX``
+^^^^^^^^^^^^^^
+
+Matches with the custom network protocol header that was created
+using rte_flow_flex_item_create() API. The application describes
+the desired header structure, defines the header fields attributes
+and header relations with preceding and following protocols and
+configures the ethernet devices accordingly via
+rte_flow_flex_item_create() routine.
+
+- ``handle``: the flex item handle returned by the PMD on successful
+  rte_flow_flex_item_create() call, mask for this field is ignored.
+- ``length``: match pattern length in bytes. If the length does not cover
+  all fields defined in item configuration, the pattern spec and mask are
+  considered by the driver as padded with trailing zeroes till the full
+  configured item pattern length.
+- ``pattern``: pattern to match. The pattern is concatenation of bit fields
+  configured at item creation. At configuration the fields are presented
+  by sample_data array. The order of the bitfields is defined by the order
+  of sample_data elements. The width of each bitfield is defined by the width
+  specified in the corresponding sample_data element as well. If pattern
+  length is smaller than configured fields overall length it is considered
+  as padded with trailing zeroes up to full configured length, both for
+  value and mask.
+
 Actions
 ~~~~~~~
 
