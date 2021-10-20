@@ -41,6 +41,7 @@ libraries = [
         'latencystats',
         'lpm',
         'member',
+        'pcapng',
         'power',
         'pdump',
         'rawdev',

@@ -1,32 +1,32 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2017 Intel Corporation.
+    Copyright(c) 2017-2021 Intel Corporation.
 
-DPDK pdump Library and pdump Tool
-=================================
+DPDK packet capture libraries and tools
+=======================================
 
 This document describes how the Data Plane Development Kit (DPDK) Packet
 Capture Framework is used for capturing packets on DPDK ports. It is intended
 for users of DPDK who want to know more about the Packet Capture feature and
 for those who want to monitor traffic on DPDK-controlled devices.
 
-The DPDK packet capture framework was introduced in DPDK v16.07. The DPDK
-packet capture framework consists of the DPDK pdump library and DPDK pdump
-tool.
-
+The DPDK packet capture framework was introduced in DPDK v16.07
+and enhanced in 21.11.
+The DPDK packet capture framework consists of the libraries
+for collecting packets ``librte_pdump``
+and writing packets to a file ``librte_pcapng``.
+There is an application: ``dpdk-pdump``.
 
 Introduction
 ------------
 
-The :ref:`librte_pdump <pdump_library>` library provides the APIs required to
-allow users to initialize the packet capture framework and to enable or
-disable packet capture. The library works on a multi process communication model and its
-usage is recommended for debugging purposes.
+The :doc:`librte_pdump <../prog_guide/pdump_lib>` library provides the API
+required to allow users to initialize the packet capture framework
+and to enable or disable packet capture.
+The library works on a multi-process communication model
+and its usage is recommended for debugging purposes.
 
-The :ref:`dpdk-pdump <pdump_tool>` tool is developed based on the
-``librte_pdump`` library.  It runs as a DPDK secondary process and is capable
-of enabling or disabling packet capture on DPDK ports. The ``dpdk-pdump`` tool
-provides command-line options with which users can request enabling or
-disabling of the packet capture on DPDK ports.
+The :doc:`librte_pcapng <../prog_guide/pcapng_lib>` library provides the API
+to format packets and write them to a file in Pcapng format.
 
 The application which initializes the packet capture framework will be a primary process
 and the application that enables or disables the packet capture will

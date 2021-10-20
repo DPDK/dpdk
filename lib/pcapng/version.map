@@ -1,0 +1,12 @@
+EXPERIMENTAL {
+	global:
+
+	rte_pcapng_close;
+	rte_pcapng_copy;
+	rte_pcapng_fdopen;
+	rte_pcapng_mbuf_size;
+	rte_pcapng_write_packets;
+	rte_pcapng_write_stats;
+
+	local: *;
+};

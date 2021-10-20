@@ -44,6 +44,7 @@ Programmer's Guide
     ip_fragment_reassembly_lib
     generic_receive_offload_lib
     generic_segmentation_offload_lib
+    pcapng_lib
     pdump_lib
     multi_proc_support
     kernel_nic_interface

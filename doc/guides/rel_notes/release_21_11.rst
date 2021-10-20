@@ -240,6 +240,10 @@ New Features
   * Added tests to verify tunnel header verification in IPsec inbound.
   * Added tests to verify inner checksum.
 
+* **Revised packet capture framework.**
+
+  * New library for writing pcapng packet capture files.
+
 
 Removed Items
 -------------
