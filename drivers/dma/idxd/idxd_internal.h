@@ -81,5 +81,11 @@ struct idxd_dmadev {
 int idxd_dmadev_create(const char *name, struct rte_device *dev,
 		const struct idxd_dmadev *base_idxd, const struct rte_dma_dev_ops *ops);
 int idxd_dump(const struct rte_dma_dev *dev, FILE *f);
+int idxd_configure(struct rte_dma_dev *dev, const struct rte_dma_conf *dev_conf,
+		uint32_t conf_sz);
+int idxd_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
+		const struct rte_dma_vchan_conf *qconf, uint32_t qconf_sz);
+int idxd_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *dev_info,
+		uint32_t size);
 
 #endif /* _IDXD_INTERNAL_H_ */

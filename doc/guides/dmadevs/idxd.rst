@@ -120,3 +120,18 @@ use a subset of configured queues.
 Once probed successfully, irrespective of kernel driver, the device will appear as a ``dmadev``,
 that is a "DMA device type" inside DPDK, and can be accessed using APIs from the
 ``rte_dmadev`` library.
+
+Using IDXD DMAdev Devices
+--------------------------
+
+To use the devices from an application, the dmadev API can be used.
+
+Device Configuration
+~~~~~~~~~~~~~~~~~~~~~
+
+IDXD configuration requirements:
+
+* ``ring_size`` must be a power of two, between 64 and 4096.
+* Only one ``vchan`` is supported per device (work queue).
+* IDXD devices do not support silent mode.
+* The transfer direction must be set to ``RTE_DMA_DIR_MEM_TO_MEM`` to copy from memory to memory.

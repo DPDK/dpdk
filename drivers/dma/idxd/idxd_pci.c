@@ -85,6 +85,9 @@ idxd_pci_dev_close(struct rte_dma_dev *dev)
 static const struct rte_dma_dev_ops idxd_pci_ops = {
 	.dev_close = idxd_pci_dev_close,
 	.dev_dump = idxd_dump,
+	.dev_configure = idxd_configure,
+	.vchan_setup = idxd_vchan_setup,
+	.dev_info_get = idxd_info_get,
 };
 
 /* each portal uses 4 x 4k pages */
