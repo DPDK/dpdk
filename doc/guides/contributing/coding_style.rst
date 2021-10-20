@@ -27,7 +27,7 @@ Line length is recommended to be not more than 80 characters, including comments
 .. note::
 
 	The above is recommendation, and not a hard limit.
-	However, it is expected that the recommendations should be followed in all but the rarest situations.
+	Generally, line lengths up to 100 characters are acceptable in the code.
 
 C Comment Style
 ---------------

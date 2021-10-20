@@ -15,7 +15,7 @@ VALIDATE_NEW_API=$(dirname $(readlink -f $0))/check-symbol-change.sh
 # Codespell can also be enabled by setting DPDK_CHECKPATCH_CODESPELL to a valid path
 # to a dictionary.txt file if dictionary.txt is not in the default location.
 codespell=${DPDK_CHECKPATCH_CODESPELL:-enable}
-length=${DPDK_CHECKPATCH_LINE_LENGTH:-80}
+length=${DPDK_CHECKPATCH_LINE_LENGTH:-100}
 
 # override default Linux options
 options="--no-tree"

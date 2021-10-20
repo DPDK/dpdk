@@ -11,11 +11,12 @@ trim_trailing_whitespace = true
 charset = utf-8
 indent_style = tab
 tab_width = 8
-max_line_length = 80
+max_line_length = 100
 
 [*.py]
 indent_style = space
 indent_size = 4
+max_line_length = 79
 
 [meson.build]
 indent_style = space
