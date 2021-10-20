@@ -64,35 +64,6 @@ libraries = [
         'node',
 ]
 
-if is_windows
-    libraries = [
-            'kvargs',
-            'telemetry',
-            'eal',
-            'ring',
-            'rcu',
-            'mempool',
-            'mbuf',
-            'net',
-            'meter',
-            'ethdev',
-            'dmadev',
-            'pci',
-            'cmdline',
-            'metrics',
-            'hash',
-            'timer',
-            'bitratestats',
-            'cryptodev',
-            'cfgfile',
-            'gro',
-            'gso',
-            'latencystats',
-            'stack',
-            'security',
-    ] # only supported libraries for windows
-endif
-
 optional_libs = [
         'kni',
         'power',

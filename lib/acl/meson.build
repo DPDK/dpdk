@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
+if is_windows
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
+endif
+
 sources = files('acl_bld.c', 'acl_gen.c', 'acl_run_scalar.c',
         'rte_acl.c', 'tb_mem.c')
 headers = files('rte_acl.h', 'rte_acl_osdep.h')
