@@ -5673,11 +5673,9 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 	 * ixgbevf_rlpml_set_vf even if jumbo frames are not used. This way,
 	 * VF packets received can work in all cases.
 	 */
-	if (ixgbevf_rlpml_set_vf(hw, frame_size) != 0) {
+	if (ixgbevf_rlpml_set_vf(hw, frame_size) != 0)
 		PMD_INIT_LOG(ERR, "Set max packet length to %d failed.",
 			     frame_size);
-		return -EINVAL;
-	}
 
 	/*
 	 * Assume no header split and no VLAN strip support
