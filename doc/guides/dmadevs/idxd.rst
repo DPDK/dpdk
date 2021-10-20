@@ -135,3 +135,6 @@ IDXD configuration requirements:
 * Only one ``vchan`` is supported per device (work queue).
 * IDXD devices do not support silent mode.
 * The transfer direction must be set to ``RTE_DMA_DIR_MEM_TO_MEM`` to copy from memory to memory.
+
+Once configured, the device can then be made ready for use by calling the
+``rte_dma_start()`` API.

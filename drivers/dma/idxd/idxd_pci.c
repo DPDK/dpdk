@@ -61,6 +61,55 @@ idxd_is_wq_enabled(struct idxd_dmadev *idxd)
 }
 
 static int
+idxd_pci_dev_stop(struct rte_dma_dev *dev)
+{
+	struct idxd_dmadev *idxd = dev->fp_obj->dev_private;
+	uint8_t err_code;
+
+	if (!idxd_is_wq_enabled(idxd)) {
+		IDXD_PMD_ERR("Work queue %d already disabled", idxd->qid);
+		return 0;
+	}
+
+	err_code = idxd_pci_dev_command(idxd, idxd_disable_wq);
+	if (err_code || idxd_is_wq_enabled(idxd)) {
+		IDXD_PMD_ERR("Failed disabling work queue %d, error code: %#x",
+				idxd->qid, err_code);
+		return err_code == 0 ? -1 : -err_code;
+	}
+	IDXD_PMD_DEBUG("Work queue %d disabled OK", idxd->qid);
+
+	return 0;
+}
+
+static int
+idxd_pci_dev_start(struct rte_dma_dev *dev)
+{
+	struct idxd_dmadev *idxd = dev->fp_obj->dev_private;
+	uint8_t err_code;
+
+	if (idxd_is_wq_enabled(idxd)) {
+		IDXD_PMD_WARN("WQ %d already enabled", idxd->qid);
+		return 0;
+	}
+
+	if (idxd->desc_ring == NULL) {
+		IDXD_PMD_ERR("WQ %d has not been fully configured", idxd->qid);
+		return -EINVAL;
+	}
+
+	err_code = idxd_pci_dev_command(idxd, idxd_enable_wq);
+	if (err_code || !idxd_is_wq_enabled(idxd)) {
+		IDXD_PMD_ERR("Failed enabling work queue %d, error code: %#x",
+				idxd->qid, err_code);
+		return err_code == 0 ? -1 : -err_code;
+	}
+	IDXD_PMD_DEBUG("Work queue %d enabled OK", idxd->qid);
+
+	return 0;
+}
+
+static int
 idxd_pci_dev_close(struct rte_dma_dev *dev)
 {
 	struct idxd_dmadev *idxd = dev->fp_obj->dev_private;
@@ -88,6 +137,8 @@ static const struct rte_dma_dev_ops idxd_pci_ops = {
 	.dev_configure = idxd_configure,
 	.vchan_setup = idxd_vchan_setup,
 	.dev_info_get = idxd_info_get,
+	.dev_start = idxd_pci_dev_start,
+	.dev_stop = idxd_pci_dev_stop,
 };
 
 /* each portal uses 4 x 4k pages */
