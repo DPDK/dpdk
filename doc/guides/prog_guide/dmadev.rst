@@ -107,3 +107,14 @@ completed operations along with the status of each operation (filled into the
 ``status`` array passed by user). These two APIs can also return the last
 completed operation's ``ring_idx`` which could help user track operations within
 their own application-defined rings.
+
+
+Querying Device Statistics
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The statistics from a dmadev device can be got via the statistics functions,
+i.e. ``rte_dma_stats_get()``. The statistics returned for each device instance are:
+
+* ``submitted``: The number of operations submitted to the device.
+* ``completed``: The number of operations which have completed (successful and failed).
+* ``errors``: The number of operations that completed with error.

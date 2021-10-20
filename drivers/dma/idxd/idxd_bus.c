@@ -100,6 +100,8 @@ static const struct rte_dma_dev_ops idxd_bus_ops = {
 		.dev_configure = idxd_configure,
 		.vchan_setup = idxd_vchan_setup,
 		.dev_info_get = idxd_info_get,
+		.stats_get = idxd_stats_get,
+		.stats_reset = idxd_stats_reset,
 };
 
 static void *

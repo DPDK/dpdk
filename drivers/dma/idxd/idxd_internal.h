@@ -59,6 +59,8 @@ struct idxd_dmadev {
 	struct idxd_completion *batch_comp_ring;
 	unsigned short *batch_idx_ring; /* store where each batch ends */
 
+	struct rte_dma_stats stats;
+
 	rte_iova_t batch_iova; /* base address of the batch comp ring */
 	rte_iova_t desc_iova; /* base address of desc ring, needed for completions */
 
@@ -97,5 +99,8 @@ uint16_t idxd_completed(void *dev_private, uint16_t qid, uint16_t max_ops,
 uint16_t idxd_completed_status(void *dev_private, uint16_t qid __rte_unused,
 		uint16_t max_ops, uint16_t *last_idx,
 		enum rte_dma_status_code *status);
+int idxd_stats_get(const struct rte_dma_dev *dev, uint16_t vchan,
+		struct rte_dma_stats *stats, uint32_t stats_sz);
+int idxd_stats_reset(struct rte_dma_dev *dev, uint16_t vchan);
 
 #endif /* _IDXD_INTERNAL_H_ */

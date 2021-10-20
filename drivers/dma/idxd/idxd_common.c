@@ -65,6 +65,8 @@ __submit(struct idxd_dmadev *idxd)
 	if (++idxd->batch_idx_write > idxd->max_batches)
 		idxd->batch_idx_write = 0;
 
+	idxd->stats.submitted += idxd->batch_size;
+
 	idxd->batch_start += idxd->batch_size;
 	idxd->batch_size = 0;
 	idxd->batch_idx_ring[idxd->batch_idx_write] = idxd->batch_start;
@@ -276,6 +278,8 @@ batch_completed_status(struct idxd_dmadev *idxd, uint16_t max_ops, enum rte_dma_
 	const uint16_t b_len = b_end - b_start;
 	if (b_len == 1) {/* not a batch */
 		*status = get_comp_status(&idxd->batch_comp_ring[idxd->batch_idx_read]);
+		if (status != RTE_DMA_STATUS_SUCCESSFUL)
+			idxd->stats.errors++;
 		idxd->ids_avail++;
 		idxd->ids_returned++;
 		idxd->batch_idx_read = next_batch;
@@ -297,6 +301,8 @@ batch_completed_status(struct idxd_dmadev *idxd, uint16_t max_ops, enum rte_dma_
 		struct idxd_completion *c = (void *)
 				&idxd->desc_ring[(b_start + ret) & idxd->desc_ring_mask];
 		status[ret] = (ret < bcount) ? get_comp_status(c) : RTE_DMA_STATUS_NOT_ATTEMPTED;
+		if (status[ret] != RTE_DMA_STATUS_SUCCESSFUL)
+			idxd->stats.errors++;
 	}
 	idxd->ids_avail = idxd->ids_returned += ret;
 
@@ -355,6 +361,7 @@ idxd_completed(void *dev_private, uint16_t qid __rte_unused, uint16_t max_ops,
 		ret += batch;
 	} while (batch > 0 && *has_error == false);
 
+	idxd->stats.completed += ret;
 	*last_idx = idxd->ids_returned - 1;
 	return ret;
 }
@@ -371,6 +378,7 @@ idxd_completed_status(void *dev_private, uint16_t qid __rte_unused, uint16_t max
 		ret += batch;
 	} while (batch > 0);
 
+	idxd->stats.completed += ret;
 	*last_idx = idxd->ids_returned - 1;
 	return ret;
 }
@@ -401,6 +409,25 @@ idxd_dump(const struct rte_dma_dev *dev, FILE *f)
 
 	fprintf(f, "  Curr batch: start = %u, size = %u\n", idxd->batch_start, idxd->batch_size);
 	fprintf(f, "  IDS: avail = %u, returned: %u\n", idxd->ids_avail, idxd->ids_returned);
+	return 0;
+}
+
+int
+idxd_stats_get(const struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
+		struct rte_dma_stats *stats, uint32_t stats_sz)
+{
+	struct idxd_dmadev *idxd = dev->fp_obj->dev_private;
+	if (stats_sz < sizeof(*stats))
+		return -EINVAL;
+	*stats = idxd->stats;
+	return 0;
+}
+
+int
+idxd_stats_reset(struct rte_dma_dev *dev, uint16_t vchan __rte_unused)
+{
+	struct idxd_dmadev *idxd = dev->fp_obj->dev_private;
+	idxd->stats = (struct rte_dma_stats){0};
 	return 0;
 }
 
