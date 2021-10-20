@@ -83,7 +83,7 @@
  *     - MTU
  *     - flow control settings
  *     - receive mode configuration (promiscuous mode, all-multicast mode,
- *       hardware checksum mode, RSS/VMDQ settings etc.)
+ *       hardware checksum mode, RSS/VMDq settings etc.)
  *     - VLAN filtering configuration
  *     - default MAC address
  *     - MAC addresses supplied to MAC address array
@@ -366,7 +366,7 @@ struct rte_eth_thresh {
  *  packets to multiple queues.
  */
 enum rte_eth_rx_mq_mode {
-	/** None of DCB,RSS or VMDQ mode */
+	/** None of DCB, RSS or VMDq mode */
 	ETH_MQ_RX_NONE = 0,
 
 	/** For Rx side, only RSS is on */
@@ -376,13 +376,13 @@ enum rte_eth_rx_mq_mode {
 	/** Both DCB and RSS enable */
 	ETH_MQ_RX_DCB_RSS = ETH_MQ_RX_RSS_FLAG | ETH_MQ_RX_DCB_FLAG,
 
-	/** Only VMDQ, no RSS nor DCB */
+	/** Only VMDq, no RSS nor DCB */
 	ETH_MQ_RX_VMDQ_ONLY = ETH_MQ_RX_VMDQ_FLAG,
-	/** RSS mode with VMDQ */
+	/** RSS mode with VMDq */
 	ETH_MQ_RX_VMDQ_RSS = ETH_MQ_RX_RSS_FLAG | ETH_MQ_RX_VMDQ_FLAG,
-	/** Use VMDQ+DCB to route traffic to queues */
+	/** Use VMDq+DCB to route traffic to queues */
 	ETH_MQ_RX_VMDQ_DCB = ETH_MQ_RX_VMDQ_FLAG | ETH_MQ_RX_DCB_FLAG,
-	/** Enable both VMDQ and DCB in VMDq */
+	/** Enable both VMDq and DCB in VMDq */
 	ETH_MQ_RX_VMDQ_DCB_RSS = ETH_MQ_RX_RSS_FLAG | ETH_MQ_RX_DCB_FLAG |
 				 ETH_MQ_RX_VMDQ_FLAG,
 };
@@ -806,9 +806,9 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 #define RTE_RETA_GROUP_SIZE   64
 
 /**@{@name VMDq and DCB maximums */
-#define ETH_VMDQ_MAX_VLAN_FILTERS   64 /**< Maximum nb. of VMDQ vlan filters. */
+#define ETH_VMDQ_MAX_VLAN_FILTERS   64 /**< Maximum nb. of VMDq vlan filters. */
 #define ETH_DCB_NUM_USER_PRIORITIES 8  /**< Maximum nb. of DCB priorities. */
-#define ETH_VMDQ_DCB_NUM_QUEUES     128 /**< Maximum nb. of VMDQ DCB queues. */
+#define ETH_VMDQ_DCB_NUM_QUEUES     128 /**< Maximum nb. of VMDq DCB queues. */
 #define ETH_DCB_NUM_QUEUES          128 /**< Maximum nb. of DCB queues. */
 /**@}*/
 
@@ -870,7 +870,7 @@ enum rte_eth_nb_tcs {
 
 /**
  * This enum indicates the possible number of queue pools
- * in VMDQ configurations.
+ * in VMDq configurations.
  */
 enum rte_eth_nb_pools {
 	ETH_8_POOLS = 8,    /**< 8 VMDq pools. */
@@ -903,7 +903,7 @@ struct rte_eth_vmdq_tx_conf {
 };
 
 /**
- * A structure used to configure the VMDQ+DCB feature
+ * A structure used to configure the VMDq+DCB feature
  * of an Ethernet port.
  *
  * Using this feature, packets are routed to a pool of queues, based
@@ -927,7 +927,7 @@ struct rte_eth_vmdq_dcb_conf {
 };
 
 /**
- * A structure used to configure the VMDQ feature of an Ethernet port when
+ * A structure used to configure the VMDq feature of an Ethernet port when
  * not combined with the DCB feature.
  *
  * Using this feature, packets are routed to a pool of queues. By default,
@@ -1322,19 +1322,19 @@ struct rte_eth_conf {
 				 are defined in implementation of each driver. */
 	struct {
 		struct rte_eth_rss_conf rss_conf; /**< Port RSS configuration */
-		/** Port vmdq+dcb configuration. */
+		/** Port VMDq+DCB configuration. */
 		struct rte_eth_vmdq_dcb_conf vmdq_dcb_conf;
-		/** Port dcb Rx configuration. */
+		/** Port DCB Rx configuration. */
 		struct rte_eth_dcb_rx_conf dcb_rx_conf;
-		/** Port vmdq Rx configuration. */
+		/** Port VMDq Rx configuration. */
 		struct rte_eth_vmdq_rx_conf vmdq_rx_conf;
 	} rx_adv_conf; /**< Port Rx filtering configuration. */
 	union {
-		/** Port vmdq+dcb Tx configuration. */
+		/** Port VMDq+DCB Tx configuration. */
 		struct rte_eth_vmdq_dcb_tx_conf vmdq_dcb_tx_conf;
-		/** Port dcb Tx configuration. */
+		/** Port DCB Tx configuration. */
 		struct rte_eth_dcb_tx_conf dcb_tx_conf;
-		/** Port vmdq Tx configuration. */
+		/** Port VMDq Tx configuration. */
 		struct rte_eth_vmdq_tx_conf vmdq_tx_conf;
 	} tx_adv_conf; /**< Port Tx DCB configuration (union). */
 	/** Currently,Priority Flow Control(PFC) are supported,if DCB with PFC
@@ -1562,9 +1562,9 @@ struct rte_eth_dev_info {
 	uint64_t flow_type_rss_offloads;
 	struct rte_eth_rxconf default_rxconf; /**< Default Rx configuration */
 	struct rte_eth_txconf default_txconf; /**< Default Tx configuration */
-	uint16_t vmdq_queue_base; /**< First queue ID for VMDQ pools. */
-	uint16_t vmdq_queue_num;  /**< Queue number for VMDQ pools. */
-	uint16_t vmdq_pool_base;  /**< First ID of VMDQ pools. */
+	uint16_t vmdq_queue_base; /**< First queue ID for VMDq pools. */
+	uint16_t vmdq_queue_num;  /**< Queue number for VMDq pools. */
+	uint16_t vmdq_pool_base;  /**< First ID of VMDq pools. */
 	struct rte_eth_desc_lim rx_desc_lim;  /**< Rx descriptors limits */
 	struct rte_eth_desc_lim tx_desc_lim;  /**< Tx descriptors limits */
 	uint32_t speed_capa;  /**< Supported speeds bitmap (ETH_LINK_SPEED_). */
@@ -4114,7 +4114,7 @@ rte_eth_dev_udp_tunnel_port_delete(uint16_t port_id,
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param dcb_info
- *   dcb information.
+ *   DCB information.
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if port identifier is invalid.

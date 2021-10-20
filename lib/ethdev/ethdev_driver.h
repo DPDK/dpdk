@@ -661,7 +661,7 @@ typedef int (*eth_tm_ops_get_t)(struct rte_eth_dev *dev, void *ops);
 /** @internal Get Traffic Metering and Policing (MTR) operations. */
 typedef int (*eth_mtr_ops_get_t)(struct rte_eth_dev *dev, void *ops);
 
-/** @internal Get dcb information on an Ethernet device. */
+/** @internal Get DCB information on an Ethernet device. */
 typedef int (*eth_get_dcb_info)(struct rte_eth_dev *dev,
 				 struct rte_eth_dcb_info *dcb_info);
 
