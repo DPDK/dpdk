@@ -25,3 +25,8 @@ if dep.found()
     sources += files('bpf_load_elf.c')
     ext_deps += dep
 endif
+
+if dpdk_conf.has('RTE_PORT_PCAP')
+    sources += files('bpf_convert.c')
+    ext_deps += pcap_dep
+endif

@@ -10,6 +10,7 @@
 #include <rte_memory.h>
 #include <rte_debug.h>
 #include <rte_hexdump.h>
+#include <rte_malloc.h>
 #include <rte_random.h>
 #include <rte_byteorder.h>
 #include <rte_errno.h>
@@ -3248,3 +3249,202 @@ test_bpf(void)
 }
 
 REGISTER_TEST_COMMAND(bpf_autotest, test_bpf);
+
+#ifdef RTE_PORT_PCAP
+#include <pcap/pcap.h>
+
+static void
+test_bpf_dump(struct bpf_program *cbf, const struct rte_bpf_prm *prm)
+{
+	printf("cBPF program (%u insns)\n", cbf->bf_len);
+	bpf_dump(cbf, 1);
+
+	printf("\neBPF program (%u insns)\n", prm->nb_ins);
+	rte_bpf_dump(stdout, prm->ins, prm->nb_ins);
+}
+
+static int
+test_bpf_match(pcap_t *pcap, const char *str,
+	       struct rte_mbuf *mb)
+{
+	struct bpf_program fcode;
+	struct rte_bpf_prm *prm = NULL;
+	struct rte_bpf *bpf = NULL;
+	int ret = -1;
+	uint64_t rc;
+
+	if (pcap_compile(pcap, &fcode, str, 1, PCAP_NETMASK_UNKNOWN)) {
+		printf("%s@%d: pcap_compile(\"%s\") failed: %s;\n",
+		       __func__, __LINE__,  str, pcap_geterr(pcap));
+		return -1;
+	}
+
+	prm = rte_bpf_convert(&fcode);
+	if (prm == NULL) {
+		printf("%s@%d: bpf_convert('%s') failed,, error=%d(%s);\n",
+		       __func__, __LINE__, str, rte_errno, strerror(rte_errno));
+		goto error;
+	}
+
+	bpf = rte_bpf_load(prm);
+	if (bpf == NULL) {
+		printf("%s@%d: failed to load bpf code, error=%d(%s);\n",
+			__func__, __LINE__, rte_errno, strerror(rte_errno));
+		goto error;
+	}
+
+	rc = rte_bpf_exec(bpf, mb);
+	/* The return code from bpf capture filter is non-zero if matched */
+	ret = (rc == 0);
+error:
+	if (bpf)
+		rte_bpf_destroy(bpf);
+	rte_free(prm);
+	pcap_freecode(&fcode);
+	return ret;
+}
+
+/* Basic sanity test can we match a IP packet */
+static int
+test_bpf_filter_sanity(pcap_t *pcap)
+{
+	const uint32_t plen = 100;
+	struct rte_mbuf mb, *m;
+	uint8_t tbuf[RTE_MBUF_DEFAULT_BUF_SIZE];
+	struct {
+		struct rte_ether_hdr eth_hdr;
+		struct rte_ipv4_hdr ip_hdr;
+	} *hdr;
+
+	dummy_mbuf_prep(&mb, tbuf, sizeof(tbuf), plen);
+	m = &mb;
+
+	hdr = rte_pktmbuf_mtod(m, typeof(hdr));
+	hdr->eth_hdr = (struct rte_ether_hdr) {
+		.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4),
+	};
+	hdr->ip_hdr = (struct rte_ipv4_hdr) {
+		.version_ihl = RTE_IPV4_VHL_DEF,
+		.total_length = rte_cpu_to_be_16(plen),
+		.time_to_live = IPDEFTTL,
+		.next_proto_id = IPPROTO_RAW,
+		.src_addr = rte_cpu_to_be_32(RTE_IPV4_LOOPBACK),
+		.dst_addr = rte_cpu_to_be_32(RTE_IPV4_BROADCAST),
+	};
+
+	if (test_bpf_match(pcap, "ip", m) != 0) {
+		printf("%s@%d: filter \"ip\" doesn't match test data\n",
+		       __func__, __LINE__);
+		return -1;
+	}
+	if (test_bpf_match(pcap, "not ip", m) == 0) {
+		printf("%s@%d: filter \"not ip\" does match test data\n",
+		       __func__, __LINE__);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * Some sample pcap filter strings from
+ * https://wiki.wireshark.org/CaptureFilters
+ */
+static const char * const sample_filters[] = {
+	"host 172.18.5.4",
+	"net 192.168.0.0/24",
+	"src net 192.168.0.0/24",
+	"src net 192.168.0.0 mask 255.255.255.0",
+	"dst net 192.168.0.0/24",
+	"dst net 192.168.0.0 mask 255.255.255.0",
+	"port 53",
+	"host dpdk.org and not (port 80 or port 25)",
+	"host dpdk.org and not port 80 and not port 25",
+	"port not 53 and not arp",
+	"(tcp[0:2] > 1500 and tcp[0:2] < 1550) or (tcp[2:2] > 1500 and tcp[2:2] < 1550)",
+	"ether proto 0x888e",
+	"ether[0] & 1 = 0 and ip[16] >= 224",
+	"icmp[icmptype] != icmp-echo and icmp[icmptype] != icmp-echoreply",
+	"tcp[tcpflags] & (tcp-syn|tcp-fin) != 0 and not src and dst net 127.0.0.1",
+	"not ether dst 01:80:c2:00:00:0e",
+	"not broadcast and not multicast",
+	"dst host ff02::1",
+	"port 80 and tcp[((tcp[12:1] & 0xf0) >> 2):4] = 0x47455420",
+	/* Worms */
+	"dst port 135 and tcp port 135 and ip[2:2]==48",
+	"icmp[icmptype]==icmp-echo and ip[2:2]==92 and icmp[8:4]==0xAAAAAAAA",
+	"dst port 135 or dst port 445 or dst port 1433"
+	" and tcp[tcpflags] & (tcp-syn) != 0"
+	" and tcp[tcpflags] & (tcp-ack) = 0 and src net 192.168.0.0/24",
+	"tcp src port 443 and (tcp[((tcp[12] & 0xF0) >> 4 ) * 4] = 0x18)"
+	" and (tcp[((tcp[12] & 0xF0) >> 4 ) * 4 + 1] = 0x03)"
+	" and (tcp[((tcp[12] & 0xF0) >> 4 ) * 4 + 2] < 0x04)"
+	" and ((ip[2:2] - 4 * (ip[0] & 0x0F) - 4 * ((tcp[12] & 0xF0) >> 4) > 69))",
+	/* Other */
+	"len = 128",
+};
+
+static int
+test_bpf_filter(pcap_t *pcap, const char *s)
+{
+	struct bpf_program fcode;
+	struct rte_bpf_prm *prm = NULL;
+	struct rte_bpf *bpf = NULL;
+
+	if (pcap_compile(pcap, &fcode, s, 1, PCAP_NETMASK_UNKNOWN)) {
+		printf("%s@%d: pcap_compile('%s') failed: %s;\n",
+		       __func__, __LINE__, s, pcap_geterr(pcap));
+		return -1;
+	}
+
+	prm = rte_bpf_convert(&fcode);
+	if (prm == NULL) {
+		printf("%s@%d: bpf_convert('%s') failed,, error=%d(%s);\n",
+		       __func__, __LINE__, s, rte_errno, strerror(rte_errno));
+		goto error;
+	}
+
+	bpf = rte_bpf_load(prm);
+	if (bpf == NULL) {
+		printf("%s@%d: failed to load bpf code, error=%d(%s);\n",
+			__func__, __LINE__, rte_errno, strerror(rte_errno));
+		goto error;
+	}
+
+error:
+	if (bpf)
+		rte_bpf_destroy(bpf);
+	else {
+		printf("%s \"%s\"\n", __func__, s);
+		test_bpf_dump(&fcode, prm);
+	}
+
+	rte_free(prm);
+	pcap_freecode(&fcode);
+	return (bpf == NULL) ? -1 : 0;
+}
+
+static int
+test_bpf_convert(void)
+{
+	unsigned int i;
+	pcap_t *pcap;
+	int rc;
+
+	pcap = pcap_open_dead(DLT_EN10MB, 262144);
+	if (!pcap) {
+		printf("pcap_open_dead failed\n");
+		return -1;
+	}
+
+	rc = test_bpf_filter_sanity(pcap);
+	for (i = 0; i < RTE_DIM(sample_filters); i++)
+		rc |= test_bpf_filter(pcap, sample_filters[i]);
+
+	pcap_close(pcap);
+	return rc;
+}
+
+REGISTER_TEST_COMMAND(bpf_convert_autotest, test_bpf_convert);
+#endif /* RTE_PORT_PCAP */

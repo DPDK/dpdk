@@ -198,6 +198,31 @@ rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
 int
 rte_bpf_get_jit(const struct rte_bpf *bpf, struct rte_bpf_jit *jit);
 
+#ifdef RTE_PORT_PCAP
+
+struct bpf_program;
+
+/**
+ * Convert a Classic BPF program from libpcap into a DPDK BPF code.
+ *
+ * @param prog
+ *  Classic BPF program from pcap_compile().
+ * @param prm
+ *  Result Extended BPF program.
+ * @return
+ *   Pointer to BPF program (allocated with *rte_malloc*)
+ *   that is used in future BPF operations,
+ *   or NULL on error, with error code set in rte_errno.
+ *   Possible rte_errno errors include:
+ *   - EINVAL - invalid parameter passed to function
+ *   - ENOMEM - can't reserve enough memory
+ */
+__rte_experimental
+struct rte_bpf_prm *
+rte_bpf_convert(const struct bpf_program *prog);
+
+#endif
+
 #ifdef __cplusplus
 }
 #endif

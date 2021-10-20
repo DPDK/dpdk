@@ -14,3 +14,9 @@ DPDK_22 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	rte_bpf_convert;
+};
