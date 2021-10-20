@@ -237,6 +237,7 @@ heap_alloc(struct malloc_heap *heap, const char *type __rte_unused, size_t size,
 		unsigned int flags, size_t align, size_t bound, bool contig)
 {
 	struct malloc_elem *elem;
+	size_t user_size = size;
 
 	size = RTE_CACHE_LINE_ROUNDUP(size);
 	align = RTE_CACHE_LINE_ROUNDUP(align);
@@ -250,6 +251,8 @@ heap_alloc(struct malloc_heap *heap, const char *type __rte_unused, size_t size,
 
 		/* increase heap's count of allocated elements */
 		heap->alloc_count++;
+
+		asan_set_redzone(elem, user_size);
 	}
 
 	return elem == NULL ? NULL : (void *)(&elem[1]);
@@ -270,6 +273,8 @@ heap_alloc_biggest(struct malloc_heap *heap, const char *type __rte_unused,
 
 		/* increase heap's count of allocated elements */
 		heap->alloc_count++;
+
+		asan_set_redzone(elem, size);
 	}
 
 	return elem == NULL ? NULL : (void *)(&elem[1]);
@@ -841,12 +846,17 @@ malloc_heap_free(struct malloc_elem *elem)
 	if (!malloc_elem_cookies_ok(elem) || elem->state != ELEM_BUSY)
 		return -1;
 
+	asan_clear_redzone(elem);
+
 	/* elem may be merged with previous element, so keep heap address */
 	heap = elem->heap;
 	msl = elem->msl;
 	page_sz = (size_t)msl->page_sz;
 
 	rte_spinlock_lock(&(heap->lock));
+
+	void *asan_ptr = RTE_PTR_ADD(elem, MALLOC_ELEM_HEADER_LEN + elem->pad);
+	size_t asan_data_len = elem->size - MALLOC_ELEM_OVERHEAD - elem->pad;
 
 	/* mark element as free */
 	elem->state = ELEM_FREE;
@@ -1001,6 +1011,8 @@ malloc_heap_free(struct malloc_elem *elem)
 
 	rte_mcfg_mem_write_unlock();
 free_unlock:
+	asan_set_freezone(asan_ptr, asan_data_len);
+
 	rte_spinlock_unlock(&(heap->lock));
 	return ret;
 }
