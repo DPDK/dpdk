@@ -71,6 +71,7 @@ intel_ntb_icx = {'Class': '06', 'Vendor': '8086', 'Device': '347e',
 network_devices = [network_class, cavium_pkx, avp_vnic, ifpga_class]
 baseband_devices = [acceleration_class]
 crypto_devices = [encryption_class, intel_processor_class]
+dma_devices = []
 eventdev_devices = [cavium_sso, cavium_tim, intel_dlb, octeontx2_sso]
 mempool_devices = [cavium_fpa, octeontx2_npa]
 compress_devices = [cavium_zip]
@@ -585,6 +586,9 @@ def show_status():
     if status_dev in ["crypto", "all"]:
         show_device_status(crypto_devices, "Crypto")
 
+    if status_dev in ["dma", "all"]:
+        show_device_status(dma_devices, "DMA")
+
     if status_dev in ["event", "all"]:
         show_device_status(eventdev_devices, "Eventdev")
 
@@ -653,7 +657,7 @@ To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver
     parser.add_argument(
         '--status-dev',
         help="Print the status of given device group.",
-        choices=['baseband', 'compress', 'crypto', 'event',
+        choices=['baseband', 'compress', 'crypto', 'dma', 'event',
                 'mempool', 'misc', 'net', 'regex'])
     bind_group = parser.add_mutually_exclusive_group()
     bind_group.add_argument(
@@ -734,6 +738,7 @@ def do_arg_actions():
             get_device_details(network_devices)
             get_device_details(baseband_devices)
             get_device_details(crypto_devices)
+            get_device_details(dma_devices)
             get_device_details(eventdev_devices)
             get_device_details(mempool_devices)
             get_device_details(compress_devices)
@@ -756,6 +761,7 @@ def main():
     get_device_details(network_devices)
     get_device_details(baseband_devices)
     get_device_details(crypto_devices)
+    get_device_details(dma_devices)
     get_device_details(eventdev_devices)
     get_device_details(mempool_devices)
     get_device_details(compress_devices)
