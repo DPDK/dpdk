@@ -54,6 +54,8 @@ enum index {
 	COMMON_PRIORITY_LEVEL,
 	COMMON_INDIRECT_ACTION_ID,
 	COMMON_POLICY_ID,
+	COMMON_FLEX_HANDLE,
+	COMMON_FLEX_TOKEN,
 
 	/* TOP-level command. */
 	ADD,
@@ -81,6 +83,12 @@ enum index {
 	AGED,
 	ISOLATE,
 	TUNNEL,
+	FLEX,
+
+	/* Flex arguments */
+	FLEX_ITEM_INIT,
+	FLEX_ITEM_CREATE,
+	FLEX_ITEM_DESTROY,
 
 	/* Tunnel arguments. */
 	TUNNEL_CREATE,
@@ -310,6 +318,9 @@ enum index {
 	ITEM_PORT_REPRESENTOR_PORT_ID,
 	ITEM_REPRESENTED_PORT,
 	ITEM_REPRESENTED_PORT_ETHDEV_PORT_ID,
+	ITEM_FLEX,
+	ITEM_FLEX_ITEM_HANDLE,
+	ITEM_FLEX_PATTERN_HANDLE,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -860,6 +871,11 @@ struct buffer {
 		struct {
 			uint32_t policy_id;
 		} policy;/**< Policy arguments. */
+		struct {
+			uint16_t token;
+			uintptr_t uintptr;
+			char filename[128];
+		} flex; /**< Flex arguments*/
 	} args; /**< Command arguments. */
 };
 
@@ -886,6 +902,13 @@ struct parse_action_priv {
 		.type = RTE_FLOW_ACTION_TYPE_ ## t, \
 		.size = s, \
 	})
+
+static const enum index next_flex_item[] = {
+	FLEX_ITEM_INIT,
+	FLEX_ITEM_CREATE,
+	FLEX_ITEM_DESTROY,
+	ZERO,
+};
 
 static const enum index next_ia_create_attr[] = {
 	INDIRECT_ACTION_CREATE_ID,
@@ -1018,6 +1041,7 @@ static const enum index next_item[] = {
 	ITEM_CONNTRACK,
 	ITEM_PORT_REPRESENTOR,
 	ITEM_REPRESENTED_PORT,
+	ITEM_FLEX,
 	END_SET,
 	ZERO,
 };
@@ -1398,6 +1422,13 @@ static const enum index item_represented_port[] = {
 	ZERO,
 };
 
+static const enum index item_flex[] = {
+	ITEM_FLEX_PATTERN_HANDLE,
+	ITEM_FLEX_ITEM_HANDLE,
+	ITEM_NEXT,
+	ZERO,
+};
+
 static const enum index next_action[] = {
 	ACTION_END,
 	ACTION_VOID,
@@ -1768,6 +1799,9 @@ static int parse_set_sample_action(struct context *, const struct token *,
 static int parse_set_init(struct context *, const struct token *,
 			  const char *, unsigned int,
 			  void *, unsigned int);
+static int
+parse_flex_handle(struct context *, const struct token *,
+		  const char *, unsigned int, void *, unsigned int);
 static int parse_init(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
@@ -1884,6 +1918,8 @@ static int parse_isolate(struct context *, const struct token *,
 static int parse_tunnel(struct context *, const struct token *,
 			const char *, unsigned int,
 			void *, unsigned int);
+static int parse_flex(struct context *, const struct token *,
+		      const char *, unsigned int, void *, unsigned int);
 static int parse_int(struct context *, const struct token *,
 		     const char *, unsigned int,
 		     void *, unsigned int);
@@ -2084,6 +2120,20 @@ static const struct token token_list[] = {
 		.call = parse_int,
 		.comp = comp_none,
 	},
+	[COMMON_FLEX_TOKEN] = {
+		.name = "{flex token}",
+		.type = "flex token",
+		.help = "flex token",
+		.call = parse_int,
+		.comp = comp_none,
+	},
+	[COMMON_FLEX_HANDLE] = {
+		.name = "{flex handle}",
+		.type = "FLEX HANDLE",
+		.help = "fill flex item data",
+		.call = parse_flex_handle,
+		.comp = comp_none,
+	},
 	/* Top-level command. */
 	[FLOW] = {
 		.name = "flow",
@@ -2100,7 +2150,8 @@ static const struct token token_list[] = {
 			      AGED,
 			      QUERY,
 			      ISOLATE,
-			      TUNNEL)),
+			      TUNNEL,
+			      FLEX)),
 		.call = parse_init,
 	},
 	/* Top-level command. */
@@ -2211,6 +2262,41 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY(struct buffer, args.isolate.set),
 			     ARGS_ENTRY(struct buffer, port)),
 		.call = parse_isolate,
+	},
+	[FLEX] = {
+		.name = "flex_item",
+		.help = "flex item API",
+		.next = NEXT(next_flex_item),
+		.call = parse_flex,
+	},
+	[FLEX_ITEM_INIT] = {
+		.name = "init",
+		.help = "flex item init",
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.flex.token),
+			     ARGS_ENTRY(struct buffer, port)),
+		.next = NEXT(NEXT_ENTRY(COMMON_FLEX_TOKEN),
+			     NEXT_ENTRY(COMMON_PORT_ID)),
+		.call = parse_flex
+	},
+	[FLEX_ITEM_CREATE] = {
+		.name = "create",
+		.help = "flex item create",
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.flex.filename),
+			     ARGS_ENTRY(struct buffer, args.flex.token),
+			     ARGS_ENTRY(struct buffer, port)),
+		.next = NEXT(NEXT_ENTRY(COMMON_FILE_PATH),
+			     NEXT_ENTRY(COMMON_FLEX_TOKEN),
+			     NEXT_ENTRY(COMMON_PORT_ID)),
+		.call = parse_flex
+	},
+	[FLEX_ITEM_DESTROY] = {
+		.name = "destroy",
+		.help = "flex item destroy",
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.flex.token),
+			     ARGS_ENTRY(struct buffer, port)),
+		.next = NEXT(NEXT_ENTRY(COMMON_FLEX_TOKEN),
+			     NEXT_ENTRY(COMMON_PORT_ID)),
+		.call = parse_flex
 	},
 	[TUNNEL] = {
 		.name = "tunnel",
@@ -3681,6 +3767,27 @@ static const struct token token_list[] = {
 		.next = NEXT(item_represented_port, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_ethdev, port_id)),
+	},
+	[ITEM_FLEX] = {
+		.name = "flex",
+		.help = "match flex header",
+		.priv = PRIV_ITEM(FLEX, sizeof(struct rte_flow_item_flex)),
+		.next = NEXT(item_flex),
+		.call = parse_vc,
+	},
+	[ITEM_FLEX_ITEM_HANDLE] = {
+		.name = "item",
+		.help = "flex item handle",
+		.next = NEXT(item_flex, NEXT_ENTRY(COMMON_FLEX_HANDLE),
+			     NEXT_ENTRY(ITEM_PARAM_IS)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_flex, handle)),
+	},
+	[ITEM_FLEX_PATTERN_HANDLE] = {
+		.name = "pattern",
+		.help = "flex pattern handle",
+		.next = NEXT(item_flex, NEXT_ENTRY(COMMON_FLEX_HANDLE),
+			     NEXT_ENTRY(ITEM_PARAM_IS)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_flex, pattern)),
 	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
@@ -7114,6 +7221,43 @@ parse_isolate(struct context *ctx, const struct token *token,
 }
 
 static int
+parse_flex(struct context *ctx, const struct token *token,
+	     const char *str, unsigned int len,
+	     void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (out->command == ZERO) {
+		if (ctx->curr != FLEX)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+	} else {
+		switch (ctx->curr) {
+		default:
+			break;
+		case FLEX_ITEM_INIT:
+		case FLEX_ITEM_CREATE:
+		case FLEX_ITEM_DESTROY:
+			out->command = ctx->curr;
+			break;
+		}
+	}
+
+	return len;
+}
+
+static int
 parse_tunnel(struct context *ctx, const struct token *token,
 	     const char *str, unsigned int len,
 	     void *buf, unsigned int size)
@@ -7778,6 +7922,71 @@ parse_set_init(struct context *ctx, const struct token *token,
 	return len;
 }
 
+/*
+ * Replace testpmd handles in a flex flow item with real values.
+ */
+static int
+parse_flex_handle(struct context *ctx, const struct token *token,
+		  const char *str, unsigned int len,
+		  void *buf, unsigned int size)
+{
+	struct rte_flow_item_flex *spec, *mask;
+	const struct rte_flow_item_flex *src_spec, *src_mask;
+	const struct arg *arg = pop_args(ctx);
+	uint32_t offset;
+	uint16_t handle;
+	int ret;
+
+	if (!arg) {
+		printf("Bad environment\n");
+		return -1;
+	}
+	offset = arg->offset;
+	push_args(ctx, arg);
+	ret = parse_int(ctx, token, str, len, buf, size);
+	if (ret <= 0 || !ctx->object)
+		return ret;
+	if (ctx->port >= RTE_MAX_ETHPORTS) {
+		printf("Bad port\n");
+		return -1;
+	}
+	if (offset == offsetof(struct rte_flow_item_flex, handle)) {
+		const struct flex_item *fp;
+		struct rte_flow_item_flex *item_flex = ctx->object;
+		handle = (uint16_t)(uintptr_t)item_flex->handle;
+		if (handle >= FLEX_MAX_PARSERS_NUM) {
+			printf("Bad flex item handle\n");
+			return -1;
+		}
+		fp = flex_items[ctx->port][handle];
+		if (!fp) {
+			printf("Bad flex item handle\n");
+			return -1;
+		}
+		item_flex->handle = fp->flex_handle;
+	} else if (offset == offsetof(struct rte_flow_item_flex, pattern)) {
+		handle = (uint16_t)(uintptr_t)
+			((struct rte_flow_item_flex *)ctx->object)->pattern;
+		if (handle >= FLEX_MAX_PATTERNS_NUM) {
+			printf("Bad pattern handle\n");
+			return -1;
+		}
+		src_spec = &flex_patterns[handle].spec;
+		src_mask = &flex_patterns[handle].mask;
+		spec = ctx->object;
+		mask = spec + 2; /* spec, last, mask */
+		/* fill flow rule spec and mask parameters */
+		spec->length = src_spec->length;
+		spec->pattern = src_spec->pattern;
+		mask->length = src_mask->length;
+		mask->pattern = src_mask->pattern;
+	} else {
+		printf("Bad arguments - unknown flex item offset\n");
+		return -1;
+	}
+	return ret;
+}
+
 /** No completion. */
 static int
 comp_none(struct context *ctx, const struct token *token,
@@ -8305,6 +8514,13 @@ cmd_flow_parsed(const struct buffer *in)
 		port_meter_policy_add(in->port, in->args.policy.policy_id,
 					in->args.vc.actions);
 		break;
+	case FLEX_ITEM_CREATE:
+		flex_item_create(in->port, in->args.flex.token,
+				 in->args.flex.filename);
+		break;
+	case FLEX_ITEM_DESTROY:
+		flex_item_destroy(in->port, in->args.flex.token);
+		break;
 	default:
 		break;
 	}
@@ -8759,6 +8975,11 @@ cmd_set_raw_parsed(const struct buffer *in)
 			break;
 		case RTE_FLOW_ITEM_TYPE_PFCP:
 			size = sizeof(struct rte_flow_item_pfcp);
+			break;
+		case RTE_FLOW_ITEM_TYPE_FLEX:
+			size = item->spec ?
+				((const struct rte_flow_item_flex *)
+				item->spec)->length : 0;
 			break;
 		default:
 			fprintf(stderr, "Error - Not supported item\n");

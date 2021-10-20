@@ -14,6 +14,9 @@
 #include <rte_os_shim.h>
 #include <cmdline.h>
 #include <sys/queue.h>
+#ifdef RTE_HAS_JANSSON
+#include <jansson.h>
+#endif
 
 #define RTE_PORT_ALL            (~(portid_t)0x0)
 
@@ -295,6 +298,27 @@ struct fwd_engine {
 	packet_fwd_t     packet_fwd;     /**< Mandatory. */
 };
 
+#define FLEX_ITEM_MAX_SAMPLES_NUM 16
+#define FLEX_ITEM_MAX_LINKS_NUM 16
+#define FLEX_MAX_FLOW_PATTERN_LENGTH 64
+#define FLEX_MAX_PARSERS_NUM 8
+#define FLEX_MAX_PATTERNS_NUM 64
+#define FLEX_PARSER_ERR ((struct flex_item *)-1)
+
+struct flex_item {
+	struct rte_flow_item_flex_conf flex_conf;
+	struct rte_flow_item_flex_handle *flex_handle;
+	uint32_t flex_id;
+};
+
+struct flex_pattern {
+	struct rte_flow_item_flex spec, mask;
+	uint8_t spec_pattern[FLEX_MAX_FLOW_PATTERN_LENGTH];
+	uint8_t mask_pattern[FLEX_MAX_FLOW_PATTERN_LENGTH];
+};
+extern struct flex_item *flex_items[RTE_MAX_ETHPORTS][FLEX_MAX_PARSERS_NUM];
+extern struct flex_pattern flex_patterns[FLEX_MAX_PATTERNS_NUM];
+
 #define BURST_TX_WAIT_US 1
 #define BURST_TX_RETRIES 64
 
@@ -319,6 +343,8 @@ extern struct fwd_engine * fwd_engines[]; /**< NULL terminated array. */
 extern cmdline_parse_inst_t cmd_set_raw;
 extern cmdline_parse_inst_t cmd_show_set_raw;
 extern cmdline_parse_inst_t cmd_show_set_raw_all;
+extern cmdline_parse_inst_t cmd_set_flex_is_pattern;
+extern cmdline_parse_inst_t cmd_set_flex_spec_pattern;
 
 extern uint16_t mempool_flags;
 
@@ -1046,6 +1072,10 @@ uint16_t tx_pkt_set_dynf(uint16_t port_id, __rte_unused uint16_t queue,
 void add_tx_dynf_callback(portid_t portid);
 void remove_tx_dynf_callback(portid_t portid);
 int update_mtu_from_frame_size(portid_t portid, uint32_t max_rx_pktlen);
+int update_jumbo_frame_offload(portid_t portid);
+void flex_item_create(portid_t port_id, uint16_t flex_id, const char *filename);
+void flex_item_destroy(portid_t port_id, uint16_t flex_id);
+void port_flex_item_flush(portid_t port_id);
 
 extern int flow_parse(const char *src, void *result, unsigned int size,
 		      struct rte_flow_attr **attr,

@@ -5091,3 +5091,122 @@ For example to unload BPF filter from TX queue 0, port 0:
 .. code-block:: console
 
    testpmd> bpf-unload tx 0 0
+
+Flex Item Functions
+-------------------
+
+The following sections show functions that configure and create flex item object,
+create flex pattern and use it in a flow rule.
+The commands will use 20 bytes IPv4 header for examples:
+
+::
+
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  ver  |  IHL  |     TOS       |        length                 | +0
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |       identification          | flg |    frag. offset         | +4
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |       TTL     |  protocol     |        checksum               | +8
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |               source IP address                               | +12
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |              destination IP address                           | +16
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+Create flex item
+~~~~~~~~~~~~~~~~
+
+Flex item object is created by PMD according to a new header configuration. The
+header configuration is compiled by the testpmd and stored in
+``rte_flow_item_flex_conf`` type variable.
+
+::
+
+   # flow flex_item create <port> <flex id> <configuration file>
+   testpmd> flow flex_item init 0 3 ipv4_flex_config.json
+   port-0: created flex item #3
+
+Flex item configuration is kept in external JSON file.
+It describes the following header elements:
+
+**New header length.**
+
+Specify whether the new header has fixed or variable length and the basic/minimal
+header length value.
+
+If header length is not fixed, header location with a value that completes header
+length calculation and scale/offset function must be added.
+
+Scale function depends on port hardware.
+
+**Next protocol.**
+
+Describes location in the new header that specify following network header type.
+
+**Flow match samples.**
+
+Describes locations in the new header that will be used in flow rules.
+
+Number of flow samples and sample maximal length depend of port hardware.
+
+**Input trigger.**
+
+Describes preceding network header configuration.
+
+**Output trigger.**
+
+Describes conditions that trigger transfer to following network header
+
+.. code-block:: json
+
+   {
+      "next_header": { "field_mode": "FIELD_MODE_FIXED", "field_size": 20},
+      "next_protocol": {"field_size": 8, "field_base": 72},
+      "sample_data": [
+         { "field_mode": "FIELD_MODE_FIXED", "field_size": 32, "field_base": 0},
+         { "field_mode": "FIELD_MODE_FIXED", "field_size": 32, "field_base": 32},
+         { "field_mode": "FIELD_MODE_FIXED", "field_size": 32, "field_base": 64},
+         { "field_mode": "FIELD_MODE_FIXED", "field_size": 32, "field_base": 96}
+      ],
+      "input_link": [
+         {"item": "eth type is 0x0800"},
+         {"item": "vlan inner_type is 0x0800"}
+      ],
+      "output_link": [
+         {"item": "udp", "next": 17},
+         {"item": "tcp", "next": 6},
+         {"item": "icmp", "next": 1}
+      ]
+   }
+
+
+Flex pattern and flow rules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Flex pattern describe parts of network header that will trigger flex flow item hit in a flow rule.
+Flex pattern directly related to flex item samples configuration.
+Flex pattern can be shared between ports.
+
+**Flex pattern and flow rule to match IPv4 version and 20 bytes length**
+
+::
+
+   # set flex_pattern <pattern_id> is <hex bytes sequence>
+   testpmd> flow flex_item pattern 5 is 45FF
+   created pattern #5
+
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / flex item is 3 pattern is 5 / end actions mark id 1 / queue index 0 / end
+   Flow rule #0 created
+
+**Flex pattern and flow rule to match packets with source address 1.2.3.4**
+
+::
+
+   testpmd> flow flex_item pattern 2 spec 45000000000000000000000001020304 mask FF0000000000000000000000FFFFFFFF
+   created pattern #2
+
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / flex item is 3 pattern is 2 / end actions mark id 1 / queue index 0 / end
+   Flow rule #0 created

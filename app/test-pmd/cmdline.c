@@ -17861,6 +17861,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_show_fec_mode,
 	(cmdline_parse_inst_t *)&cmd_set_fec_mode,
 	(cmdline_parse_inst_t *)&cmd_show_capability,
+	(cmdline_parse_inst_t *)&cmd_set_flex_is_pattern,
+	(cmdline_parse_inst_t *)&cmd_set_flex_spec_pattern,
 	NULL,
 };
 
