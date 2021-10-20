@@ -8076,6 +8076,30 @@ cmd_flow_parse(cmdline_parse_token_hdr_t *hdr, const char *src, void *result,
 	return len;
 }
 
+int
+flow_parse(const char *src, void *result, unsigned int size,
+	   struct rte_flow_attr **attr,
+	   struct rte_flow_item **pattern, struct rte_flow_action **actions)
+{
+	int ret;
+	struct context saved_flow_ctx = cmd_flow_context;
+
+	cmd_flow_context_init(&cmd_flow_context);
+	do {
+		ret = cmd_flow_parse(NULL, src, result, size);
+		if (ret > 0) {
+			src += ret;
+			while (isspace(*src))
+				src++;
+		}
+	} while (ret > 0 && strlen(src));
+	cmd_flow_context = saved_flow_ctx;
+	*attr = &((struct buffer *)result)->args.vc.attr;
+	*pattern = ((struct buffer *)result)->args.vc.pattern;
+	*actions = ((struct buffer *)result)->args.vc.actions;
+	return (ret >= 0 && !strlen(src)) ? 0 : -1;
+}
+
 /** Return number of completion entries (cmdline API). */
 static int
 cmd_flow_complete_get_nb(cmdline_parse_token_hdr_t *hdr)
