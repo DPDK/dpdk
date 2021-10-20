@@ -2,6 +2,7 @@
 # Copyright(c) 2017-2019 Intel Corporation
 
 apps = [
+        'dumpcap',
         'pdump',
         'proc-info',
         'test-acl',

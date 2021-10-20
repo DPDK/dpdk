@@ -1440,6 +1440,8 @@ F: doc/guides/prog_guide/pcapng_lib.rst
 F: app/test/test_pcapng.c
 F: app/pdump/
 F: doc/guides/tools/pdump.rst
+F: app/dumpcap/
+F: doc/guides/tools/dumpcap.rst
 
 
 Packet Framework

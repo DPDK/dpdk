@@ -242,6 +242,10 @@ New Features
 
 * **Revised packet capture framework.**
 
+  * New dpdk-dumpcap program that has most of the features
+    of the wireshark dumpcap utility including:
+    capture of multiple interfaces, filtering,
+    and stopping after number of bytes, packets.
   * New library for writing pcapng packet capture files.
   * Enhancements to the pdump library to support:
     * Packet filter with BPF.

@@ -14,7 +14,7 @@ and enhanced in 21.11.
 The DPDK packet capture framework consists of the libraries
 for collecting packets ``librte_pdump``
 and writing packets to a file ``librte_pcapng``.
-There is an application: ``dpdk-pdump``.
+There are two sample applications: ``dpdk-dumpcap`` and older ``dpdk-pdump``.
 
 Introduction
 ------------
@@ -28,37 +28,48 @@ and its usage is recommended for debugging purposes.
 The :doc:`librte_pcapng <../prog_guide/pcapng_lib>` library provides the API
 to format packets and write them to a file in Pcapng format.
 
-The application which initializes the packet capture framework will be a primary process
-and the application that enables or disables the packet capture will
-be a secondary process. The primary process sends the Rx and Tx packets from the DPDK ports
-to the secondary process.
+The :doc:`dpdk-dumpcap <../tools/dumpcap>` is a tool that captures packets in
+like Wireshark dumpcap does for Linux.
+It runs as a DPDK secondary process and captures packets
+from one or more interfaces and writes them to a file in Pcapng format.
+The ``dpdk-dumpcap`` tool is designed to take
+most of the same options as the Wireshark ``dumpcap`` command.
 
-In DPDK the ``testpmd`` application can be used to initialize the packet
-capture framework and acts as a server, and the ``dpdk-pdump`` tool acts as a
-client. To view Rx or Tx packets of ``testpmd``, the application should be
-launched first, and then the ``dpdk-pdump`` tool. Packets from ``testpmd``
-will be sent to the tool, which then sends them on to the Pcap PMD device and
-that device writes them to the Pcap file or to an external interface depending
-on the command-line option used.
+Without any options it will use the packet capture framework
+to capture traffic from the first available DPDK port.
+
+The ``dpdk-testpmd`` application can be used to initialize
+the packet capture framework and acts as a server,
+and the ``dpdk-dumpcap`` tool acts as a client.
+To view Rx or Tx packets of ``dpdk-testpmd``,
+the application should be launched first,
+and then the ``dpdk-dumpcap`` tool.
+Packets from ``dpdk-testpmd`` will be sent to the tool,
+and then to the Pcapng file.
 
 Some things to note:
 
-* The ``dpdk-pdump`` tool can only be used in conjunction with a primary
+* All tools using ``librte_pdump`` can only be used in conjunction with a primary
   application which has the packet capture framework initialized already. In
   dpdk, only ``testpmd`` is modified to initialize packet capture framework,
-  other applications remain untouched. So, if the ``dpdk-pdump`` tool has to
+  other applications remain untouched. So, if the ``dpdk-dumpcap`` tool has to
   be used with any application other than the testpmd, the user needs to
   explicitly modify that application to call the packet capture framework
   initialization code. Refer to the ``app/test-pmd/testpmd.c`` code and look
   for ``pdump`` keyword to see how this is done.
 
-* The ``dpdk-pdump`` tool depends on the libpcap based PMD.
+* The ``dpdk-pdump`` tool is an older tool
+  created as demonstration of ``librte_pdump`` library.
+  The ``dpdk-pdump`` tool provides more limited functionality
+  and depends on the Pcap PMD.
+  It is retained only for compatibility reasons;
+  users should use ``dpdk-dumpcap`` instead.
 
 
 Test Environment
 ----------------
 
-The overview of using the Packet Capture Framework and the ``dpdk-pdump`` tool
+The overview of using the Packet Capture Framework and the ``dpdk-dumpcap`` utility
 for packet capturing on the DPDK port in
 :numref:`figure_packet_capture_framework`.
 
@@ -66,13 +77,13 @@ for packet capturing on the DPDK port in
 
 .. figure:: img/packet_capture_framework.*
 
-   Packet capturing on a DPDK port using the dpdk-pdump tool.
+   Packet capturing on a DPDK port using the dpdk-dumpcap utility.
 
 
 Running the Application
 -----------------------
 
-The following steps demonstrate how to run the ``dpdk-pdump`` tool to capture
+The following steps demonstrate how to run the ``dpdk-dumpcap`` tool to capture
 Rx side packets on dpdk_port0 in :numref:`figure_packet_capture_framework` and
 inspect them using ``tcpdump``.
 
@@ -80,16 +91,15 @@ inspect them using ``tcpdump``.
 
      sudo <build_dir>/app/dpdk-testpmd -c 0xf0 -n 4 -- -i --port-topology=chained
 
-#. Launch the pdump tool as follows::
+#. Launch the dpdk-dumpcap as follows::
 
-     sudo <build_dir>/app/dpdk-pdump -- \
-          --pdump 'port=0,queue=*,rx-dev=/tmp/capture.pcap'
+     sudo <build_dir>/app/dpdk-dumpcap -w /tmp/capture.pcapng
 
 #. Send traffic to dpdk_port0 from traffic generator.
-   Inspect packets captured in the file capture.pcap using a tool
-   that can interpret Pcap files, for example tcpdump::
+   Inspect packets captured in the file capture.pcapng using a tool
+   such as tcpdump or tshark that can interpret Pcapng files::
 
-     $tcpdump -nr /tmp/capture.pcap
+     $ tcpdump -nr /tmp/capture.pcapng
      reading from file /tmp/capture.pcap, link-type EN10MB (Ethernet)
      11:11:36.891404 IP 4.4.4.4.whois++ > 3.3.3.3.whois++: UDP, length 18
      11:11:36.891442 IP 4.4.4.4.whois++ > 3.3.3.3.whois++: UDP, length 18

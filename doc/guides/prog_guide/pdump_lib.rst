@@ -89,5 +89,5 @@ function.
 Use Case: Packet Capturing
 --------------------------
 
-The DPDK ``app/pdump`` tool is developed based on this library to capture packets in DPDK.
-Users can use this as an example to develop their own packet capturing tools.
+The DPDK ``app/dpdk-dumpcap`` utility uses this library
+to capture packets in DPDK.

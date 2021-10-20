@@ -8,11 +8,12 @@ DPDK Tools User Guides
     :maxdepth: 2
     :numbered:
 
-    proc_info
-    pdump
-    pmdinfo
     hugepages
     devbind
+    proc_info
+    pmdinfo
+    dumpcap
+    pdump
     flow-perf
     testbbdev
     cryptoperf
