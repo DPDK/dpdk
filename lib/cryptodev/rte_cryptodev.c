@@ -53,6 +53,9 @@ static struct rte_cryptodev_global cryptodev_globals = {
 		.nb_devs		= 0
 };
 
+/* Public fastpath APIs. */
+struct rte_crypto_fp_ops rte_crypto_fp_ops[RTE_CRYPTO_MAX_DEVS];
+
 /* spinlock for crypto device callbacks */
 static rte_spinlock_t rte_cryptodev_cb_lock = RTE_SPINLOCK_INITIALIZER;
 
@@ -917,6 +920,8 @@ rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev)
 
 	dev_id = cryptodev->data->dev_id;
 
+	cryptodev_fp_ops_reset(rte_crypto_fp_ops + dev_id);
+
 	/* Close device only if device operations have been set */
 	if (cryptodev->dev_ops) {
 		ret = rte_cryptodev_close(dev_id);
@@ -1080,6 +1085,9 @@ rte_cryptodev_start(uint8_t dev_id)
 	}
 
 	diag = (*dev->dev_ops->dev_start)(dev);
+	/* expose selection of PMD fast-path functions */
+	cryptodev_fp_ops_set(rte_crypto_fp_ops + dev_id, dev);
+
 	rte_cryptodev_trace_start(dev_id, diag);
 	if (diag == 0)
 		dev->data->dev_started = 1;
@@ -1108,6 +1116,9 @@ rte_cryptodev_stop(uint8_t dev_id)
 			dev_id);
 		return;
 	}
+
+	/* point fast-path functions to dummy ones */
+	cryptodev_fp_ops_reset(rte_crypto_fp_ops + dev_id);
 
 	(*dev->dev_ops->dev_stop)(dev);
 	rte_cryptodev_trace_stop(dev_id);
@@ -2410,4 +2421,12 @@ rte_cryptodev_allocate_driver(struct cryptodev_driver *crypto_drv,
 	TAILQ_INSERT_TAIL(&cryptodev_driver_list, crypto_drv, next);
 
 	return nb_drivers++;
+}
+
+RTE_INIT(cryptodev_init_fp_ops)
+{
+	uint32_t i;
+
+	for (i = 0; i != RTE_DIM(rte_crypto_fp_ops); i++)
+		cryptodev_fp_ops_reset(rte_crypto_fp_ops + i);
 }

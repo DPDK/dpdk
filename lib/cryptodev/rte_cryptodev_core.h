@@ -27,6 +27,35 @@ typedef uint16_t (*enqueue_pkt_burst_t)(void *qp,
 
 /**
  * @internal
+ * Structure used to hold opaque pointers to internal ethdev Rx/Tx
+ * queues data.
+ * The main purpose to expose these pointers at all - allow compiler
+ * to fetch this data for fast-path cryptodev inline functions in advance.
+ */
+struct rte_cryptodev_qpdata {
+	/** points to array of internal queue pair data pointers. */
+	void **data;
+	/** points to array of enqueue callback data pointers */
+	struct rte_cryptodev_cb_rcu *enq_cb;
+	/** points to array of dequeue callback data pointers */
+	struct rte_cryptodev_cb_rcu *deq_cb;
+};
+
+struct rte_crypto_fp_ops {
+	/** PMD enqueue burst function. */
+	enqueue_pkt_burst_t enqueue_burst;
+	/** PMD dequeue burst function. */
+	dequeue_pkt_burst_t dequeue_burst;
+	/** Internal queue pair data pointers. */
+	struct rte_cryptodev_qpdata qp;
+	/** Reserved for future ops. */
+	uintptr_t reserved[3];
+} __rte_cache_aligned;
+
+extern struct rte_crypto_fp_ops rte_crypto_fp_ops[RTE_CRYPTO_MAX_DEVS];
+
+/**
+ * @internal
  * The data part, with no function pointers, associated with each device.
  *
  * This structure is safe to place in shared memory to be common among

@@ -516,6 +516,17 @@ RTE_INIT(init_ ##driver_id)\
 	driver_id = rte_cryptodev_allocate_driver(&crypto_drv, &(drv));\
 }
 
+/* Reset crypto device fastpath APIs to dummy values. */
+__rte_internal
+void
+cryptodev_fp_ops_reset(struct rte_crypto_fp_ops *fp_ops);
+
+/* Setup crypto device fastpath APIs. */
+__rte_internal
+void
+cryptodev_fp_ops_set(struct rte_crypto_fp_ops *fp_ops,
+		     const struct rte_cryptodev *dev);
+
 static inline void *
 get_sym_session_private_data(const struct rte_cryptodev_sym_session *sess,
 		uint8_t driver_id) {

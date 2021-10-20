@@ -7,6 +7,7 @@ DPDK_22 {
 	rte_crypto_auth_operation_strings;
 	rte_crypto_cipher_algorithm_strings;
 	rte_crypto_cipher_operation_strings;
+	rte_crypto_fp_ops;
 	rte_crypto_op_pool_create;
 	rte_cryptodev_callback_register;
 	rte_cryptodev_callback_unregister;
@@ -109,6 +110,8 @@ EXPERIMENTAL {
 INTERNAL {
 	global:
 
+	cryptodev_fp_ops_reset;
+	cryptodev_fp_ops_set;
 	rte_cryptodev_allocate_driver;
 	rte_cryptodev_pmd_allocate;
 	rte_cryptodev_pmd_callback_process;

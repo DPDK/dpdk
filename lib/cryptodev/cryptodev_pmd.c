@@ -3,7 +3,7 @@
  */
 
 #include <sys/queue.h>
-
+#include <rte_errno.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
 
@@ -159,4 +159,55 @@ rte_cryptodev_pmd_destroy(struct rte_cryptodev *cryptodev)
 	cryptodev->data = NULL;
 
 	return 0;
+}
+
+static uint16_t
+dummy_crypto_enqueue_burst(__rte_unused void *qp,
+			   __rte_unused struct rte_crypto_op **ops,
+			   __rte_unused uint16_t nb_ops)
+{
+	CDEV_LOG_ERR(
+		"crypto enqueue burst requested for unconfigured device");
+	rte_errno = ENOTSUP;
+	return 0;
+}
+
+static uint16_t
+dummy_crypto_dequeue_burst(__rte_unused void *qp,
+			   __rte_unused struct rte_crypto_op **ops,
+			   __rte_unused uint16_t nb_ops)
+{
+	CDEV_LOG_ERR(
+		"crypto dequeue burst requested for unconfigured device");
+	rte_errno = ENOTSUP;
+	return 0;
+}
+
+void
+cryptodev_fp_ops_reset(struct rte_crypto_fp_ops *fp_ops)
+{
+	static struct rte_cryptodev_cb_rcu dummy_cb[RTE_MAX_QUEUES_PER_PORT];
+	static void *dummy_data[RTE_MAX_QUEUES_PER_PORT];
+	static const struct rte_crypto_fp_ops dummy = {
+		.enqueue_burst = dummy_crypto_enqueue_burst,
+		.dequeue_burst = dummy_crypto_dequeue_burst,
+		.qp = {
+			.data = dummy_data,
+			.enq_cb = dummy_cb,
+			.deq_cb = dummy_cb,
+		},
+	};
+
+	*fp_ops = dummy;
+}
+
+void
+cryptodev_fp_ops_set(struct rte_crypto_fp_ops *fp_ops,
+		     const struct rte_cryptodev *dev)
+{
+	fp_ops->enqueue_burst = dev->enqueue_burst;
+	fp_ops->dequeue_burst = dev->dequeue_burst;
+	fp_ops->qp.data = dev->data->queue_pairs;
+	fp_ops->qp.enq_cb = dev->enq_cbs;
+	fp_ops->qp.deq_cb = dev->deq_cbs;
 }
