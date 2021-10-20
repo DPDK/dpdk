@@ -89,6 +89,12 @@ bad=$(for commit in $commits ; do
 done | sed 's,^,\t,')
 [ -z "$bad" ] || { printf "Wrong headline prefix:\n$bad\n" && failure=true;}
 
+# check headline prefix for libraries
+bad=$(echo "$headlines" | grep --color=always \
+	-e '^lib/' \
+	| sed 's,^,\t,')
+[ -z "$bad" ] || { printf "Wrong headline prefix:\n$bad\n" && failure=true;}
+
 # check headline label for common typos
 bad=$(echo "$headlines" | grep --color=always \
 	-e '^example[:/]' \
