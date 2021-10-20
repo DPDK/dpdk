@@ -2,13 +2,144 @@
  * Copyright 2021 Intel Corporation
  */
 
+#include <x86intrin.h>
+
 #include <rte_malloc.h>
 #include <rte_common.h>
 #include <rte_log.h>
+#include <rte_prefetch.h>
 
 #include "idxd_internal.h"
 
 #define IDXD_PMD_NAME_STR "dmadev_idxd"
+
+static __rte_always_inline rte_iova_t
+__desc_idx_to_iova(struct idxd_dmadev *idxd, uint16_t n)
+{
+	return idxd->desc_iova + (n * sizeof(struct idxd_hw_desc));
+}
+
+static __rte_always_inline void
+__idxd_movdir64b(volatile void *dst, const struct idxd_hw_desc *src)
+{
+	asm volatile (".byte 0x66, 0x0f, 0x38, 0xf8, 0x02"
+			:
+			: "a" (dst), "d" (src)
+			: "memory");
+}
+
+static __rte_always_inline void
+__submit(struct idxd_dmadev *idxd)
+{
+	rte_prefetch1(&idxd->batch_comp_ring[idxd->batch_idx_read]);
+
+	if (idxd->batch_size == 0)
+		return;
+
+	/* write completion to batch comp ring */
+	rte_iova_t comp_addr = idxd->batch_iova +
+			(idxd->batch_idx_write * sizeof(struct idxd_completion));
+
+	if (idxd->batch_size == 1) {
+		/* submit batch directly */
+		struct idxd_hw_desc desc =
+				idxd->desc_ring[idxd->batch_start & idxd->desc_ring_mask];
+		desc.completion = comp_addr;
+		desc.op_flags |= IDXD_FLAG_REQUEST_COMPLETION;
+		_mm_sfence(); /* fence before writing desc to device */
+		__idxd_movdir64b(idxd->portal, &desc);
+	} else {
+		const struct idxd_hw_desc batch_desc = {
+				.op_flags = (idxd_op_batch << IDXD_CMD_OP_SHIFT) |
+				IDXD_FLAG_COMPLETION_ADDR_VALID |
+				IDXD_FLAG_REQUEST_COMPLETION,
+				.desc_addr = __desc_idx_to_iova(idxd,
+						idxd->batch_start & idxd->desc_ring_mask),
+				.completion = comp_addr,
+				.size = idxd->batch_size,
+		};
+		_mm_sfence(); /* fence before writing desc to device */
+		__idxd_movdir64b(idxd->portal, &batch_desc);
+	}
+
+	if (++idxd->batch_idx_write > idxd->max_batches)
+		idxd->batch_idx_write = 0;
+
+	idxd->batch_start += idxd->batch_size;
+	idxd->batch_size = 0;
+	idxd->batch_idx_ring[idxd->batch_idx_write] = idxd->batch_start;
+	_mm256_store_si256((void *)&idxd->batch_comp_ring[idxd->batch_idx_write],
+			_mm256_setzero_si256());
+}
+
+static __rte_always_inline int
+__idxd_write_desc(struct idxd_dmadev *idxd,
+		const uint32_t op_flags,
+		const rte_iova_t src,
+		const rte_iova_t dst,
+		const uint32_t size,
+		const uint32_t flags)
+{
+	uint16_t mask = idxd->desc_ring_mask;
+	uint16_t job_id = idxd->batch_start + idxd->batch_size;
+	/* we never wrap batches, so we only mask the start and allow start+size to overflow */
+	uint16_t write_idx = (idxd->batch_start & mask) + idxd->batch_size;
+
+	/* first check batch ring space then desc ring space */
+	if ((idxd->batch_idx_read == 0 && idxd->batch_idx_write == idxd->max_batches) ||
+			idxd->batch_idx_write + 1 == idxd->batch_idx_read)
+		return -ENOSPC;
+	if (((write_idx + 1) & mask) == (idxd->ids_returned & mask))
+		return -ENOSPC;
+
+	/* write desc. Note: descriptors don't wrap, but the completion address does */
+	const uint64_t op_flags64 = (uint64_t)(op_flags | IDXD_FLAG_COMPLETION_ADDR_VALID) << 32;
+	const uint64_t comp_addr = __desc_idx_to_iova(idxd, write_idx & mask);
+	_mm256_store_si256((void *)&idxd->desc_ring[write_idx],
+			_mm256_set_epi64x(dst, src, comp_addr, op_flags64));
+	_mm256_store_si256((void *)&idxd->desc_ring[write_idx].size,
+			_mm256_set_epi64x(0, 0, 0, size));
+
+	idxd->batch_size++;
+
+	rte_prefetch0_write(&idxd->desc_ring[write_idx + 1]);
+
+	if (flags & RTE_DMA_OP_FLAG_SUBMIT)
+		__submit(idxd);
+
+	return job_id;
+}
+
+int
+idxd_enqueue_copy(void *dev_private, uint16_t qid __rte_unused, rte_iova_t src,
+		rte_iova_t dst, unsigned int length, uint64_t flags)
+{
+	/* we can take advantage of the fact that the fence flag in dmadev and DSA are the same,
+	 * but check it at compile time to be sure.
+	 */
+	RTE_BUILD_BUG_ON(RTE_DMA_OP_FLAG_FENCE != IDXD_FLAG_FENCE);
+	uint32_t memmove = (idxd_op_memmove << IDXD_CMD_OP_SHIFT) |
+			IDXD_FLAG_CACHE_CONTROL | (flags & IDXD_FLAG_FENCE);
+	return __idxd_write_desc(dev_private, memmove, src, dst, length,
+			flags);
+}
+
+int
+idxd_enqueue_fill(void *dev_private, uint16_t qid __rte_unused, uint64_t pattern,
+		rte_iova_t dst, unsigned int length, uint64_t flags)
+{
+	uint32_t fill = (idxd_op_fill << IDXD_CMD_OP_SHIFT) |
+			IDXD_FLAG_CACHE_CONTROL | (flags & IDXD_FLAG_FENCE);
+	return __idxd_write_desc(dev_private, fill, pattern, dst, length,
+			flags);
+}
+
+int
+idxd_submit(void *dev_private, uint16_t qid __rte_unused)
+{
+	__submit(dev_private);
+	return 0;
+}
 
 int
 idxd_dump(const struct rte_dma_dev *dev, FILE *f)
@@ -138,6 +269,10 @@ idxd_dmadev_create(const char *name, struct rte_device *dev,
 	}
 	dmadev->dev_ops = ops;
 	dmadev->device = dev;
+
+	dmadev->fp_obj->copy = idxd_enqueue_copy;
+	dmadev->fp_obj->fill = idxd_enqueue_fill;
+	dmadev->fp_obj->submit = idxd_submit;
 
 	idxd = dmadev->data->dev_private;
 	*idxd = *base_idxd; /* copy over the main fields already passed in */

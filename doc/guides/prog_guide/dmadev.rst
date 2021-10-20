@@ -67,6 +67,8 @@ can be used to get the device info and supported features.
 Silent mode is a special device capability which does not require the
 application to invoke dequeue APIs.
 
+.. _dmadev_enqueue_dequeue:
+
 
 Enqueue / Dequeue APIs
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -79,6 +81,23 @@ metadata in an application-defined circular ring.
 The ``rte_dma_submit`` API is used to issue doorbell to hardware.
 Alternatively the ``RTE_DMA_OP_FLAG_SUBMIT`` flag can be passed to the enqueue
 APIs to also issue the doorbell to hardware.
+
+The following code demonstrates how to enqueue a burst of copies to the
+device and start the hardware processing of them:
+
+.. code-block:: C
+
+   struct rte_mbuf *srcs[DMA_BURST_SZ], *dsts[DMA_BURST_SZ];
+   unsigned int i;
+
+   for (i = 0; i < RTE_DIM(srcs); i++) {
+      if (rte_dma_copy(dev_id, vchan, rte_pktmbuf_iova(srcs[i]),
+            rte_pktmbuf_iova(dsts[i]), COPY_LEN, 0) < 0) {
+         PRINT_ERR("Error with rte_dma_copy for buffer %u\n", i);
+         return -1;
+      }
+   }
+   rte_dma_submit(dev_id, vchan);
 
 There are two dequeue APIs ``rte_dma_completed`` and
 ``rte_dma_completed_status``, these are used to obtain the results of the

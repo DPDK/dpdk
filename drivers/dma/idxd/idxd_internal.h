@@ -87,5 +87,10 @@ int idxd_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		const struct rte_dma_vchan_conf *qconf, uint32_t qconf_sz);
 int idxd_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *dev_info,
 		uint32_t size);
+int idxd_enqueue_copy(void *dev_private, uint16_t qid, rte_iova_t src,
+		rte_iova_t dst, unsigned int length, uint64_t flags);
+int idxd_enqueue_fill(void *dev_private, uint16_t qid, uint64_t pattern,
+		rte_iova_t dst, unsigned int length, uint64_t flags);
+int idxd_submit(void *dev_private, uint16_t qid);
 
 #endif /* _IDXD_INTERNAL_H_ */
