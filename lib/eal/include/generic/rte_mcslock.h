@@ -84,8 +84,7 @@ rte_mcslock_lock(rte_mcslock_t **msl, rte_mcslock_t *me)
 	 * to spin on me->locked until the previous lock holder resets
 	 * the me->locked using mcslock_unlock().
 	 */
-	while (__atomic_load_n(&me->locked, __ATOMIC_ACQUIRE))
-		rte_pause();
+	rte_wait_until_equal_32((uint32_t *)&me->locked, 0, __ATOMIC_ACQUIRE);
 }
 
 /**
