@@ -40,6 +40,8 @@ struct idxd_pci_common {
 };
 
 struct idxd_dmadev {
+	struct idxd_hw_desc *desc_ring;
+
 	/* counters to track the batches */
 	unsigned short max_batches;
 	unsigned short batch_idx_read;
@@ -63,6 +65,7 @@ struct idxd_dmadev {
 	unsigned short max_batch_size;
 
 	struct rte_dma_dev *dmadev;
+	struct rte_dma_vchan_conf qcfg;
 	uint8_t sva_support;
 	uint8_t qid;
 
@@ -77,5 +80,6 @@ struct idxd_dmadev {
 
 int idxd_dmadev_create(const char *name, struct rte_device *dev,
 		const struct idxd_dmadev *base_idxd, const struct rte_dma_dev_ops *ops);
+int idxd_dump(const struct rte_dma_dev *dev, FILE *f);
 
 #endif /* _IDXD_INTERNAL_H_ */

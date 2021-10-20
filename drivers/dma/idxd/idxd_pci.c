@@ -77,12 +77,14 @@ idxd_pci_dev_close(struct rte_dma_dev *dev)
 	/* free device memory */
 	IDXD_PMD_DEBUG("Freeing device driver memory");
 	rte_free(idxd->batch_idx_ring);
+	rte_free(idxd->desc_ring);
 
 	return 0;
 }
 
 static const struct rte_dma_dev_ops idxd_pci_ops = {
 	.dev_close = idxd_pci_dev_close,
+	.dev_dump = idxd_dump,
 };
 
 /* each portal uses 4 x 4k pages */

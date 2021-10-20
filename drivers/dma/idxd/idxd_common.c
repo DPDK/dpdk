@@ -11,6 +11,35 @@
 #define IDXD_PMD_NAME_STR "dmadev_idxd"
 
 int
+idxd_dump(const struct rte_dma_dev *dev, FILE *f)
+{
+	struct idxd_dmadev *idxd = dev->fp_obj->dev_private;
+	unsigned int i;
+
+	fprintf(f, "== IDXD Private Data ==\n");
+	fprintf(f, "  Portal: %p\n", idxd->portal);
+	fprintf(f, "  Config: { ring_size: %u }\n",
+			idxd->qcfg.nb_desc);
+	fprintf(f, "  Batch ring (sz = %u, max_batches = %u):\n\t",
+			idxd->max_batches + 1, idxd->max_batches);
+	for (i = 0; i <= idxd->max_batches; i++) {
+		fprintf(f, " %u ", idxd->batch_idx_ring[i]);
+		if (i == idxd->batch_idx_read && i == idxd->batch_idx_write)
+			fprintf(f, "[rd ptr, wr ptr] ");
+		else if (i == idxd->batch_idx_read)
+			fprintf(f, "[rd ptr] ");
+		else if (i == idxd->batch_idx_write)
+			fprintf(f, "[wr ptr] ");
+		if (i == idxd->max_batches)
+			fprintf(f, "\n");
+	}
+
+	fprintf(f, "  Curr batch: start = %u, size = %u\n", idxd->batch_start, idxd->batch_size);
+	fprintf(f, "  IDS: avail = %u, returned: %u\n", idxd->ids_avail, idxd->ids_returned);
+	return 0;
+}
+
+int
 idxd_dmadev_create(const char *name, struct rte_device *dev,
 		   const struct idxd_dmadev *base_idxd,
 		   const struct rte_dma_dev_ops *ops)
@@ -18,6 +47,10 @@ idxd_dmadev_create(const char *name, struct rte_device *dev,
 	struct idxd_dmadev *idxd = NULL;
 	struct rte_dma_dev *dmadev = NULL;
 	int ret = 0;
+
+	RTE_BUILD_BUG_ON(sizeof(struct idxd_hw_desc) != 64);
+	RTE_BUILD_BUG_ON(offsetof(struct idxd_hw_desc, size) != 32);
+	RTE_BUILD_BUG_ON(sizeof(struct idxd_completion) != 32);
 
 	if (!name) {
 		IDXD_PMD_ERR("Invalid name of the device!");

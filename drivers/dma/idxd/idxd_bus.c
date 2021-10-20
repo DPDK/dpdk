@@ -96,6 +96,7 @@ idxd_dev_close(struct rte_dma_dev *dev)
 
 static const struct rte_dma_dev_ops idxd_bus_ops = {
 		.dev_close = idxd_dev_close,
+		.dev_dump = idxd_dump,
 };
 
 static void *

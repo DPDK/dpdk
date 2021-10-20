@@ -5,6 +5,47 @@
 #ifndef _IDXD_HW_DEFS_H_
 #define _IDXD_HW_DEFS_H_
 
+/*
+ * Defines used in the data path for interacting with IDXD hardware.
+ */
+#define IDXD_CMD_OP_SHIFT 24
+enum rte_idxd_ops {
+	idxd_op_nop = 0,
+	idxd_op_batch,
+	idxd_op_drain,
+	idxd_op_memmove,
+	idxd_op_fill
+};
+
+#define IDXD_FLAG_FENCE                 (1 << 0)
+#define IDXD_FLAG_COMPLETION_ADDR_VALID (1 << 2)
+#define IDXD_FLAG_REQUEST_COMPLETION    (1 << 3)
+#define IDXD_FLAG_CACHE_CONTROL         (1 << 8)
+
+/**
+ * Hardware descriptor used by DSA hardware, for both bursts and
+ * for individual operations.
+ */
+struct idxd_hw_desc {
+	uint32_t pasid;
+	uint32_t op_flags;
+	rte_iova_t completion;
+
+	RTE_STD_C11
+	union {
+		rte_iova_t src;      /* source address for copy ops etc. */
+		rte_iova_t desc_addr; /* descriptor pointer for batch */
+	};
+	rte_iova_t dst;
+
+	uint32_t size;    /* length of data for op, or batch size */
+
+	uint16_t intr_handle; /* completion interrupt handle */
+
+	/* remaining 26 bytes are reserved */
+	uint16_t __reserved[13];
+} __rte_aligned(64);
+
 #define IDXD_COMP_STATUS_INCOMPLETE        0
 #define IDXD_COMP_STATUS_SUCCESS           1
 #define IDXD_COMP_STATUS_INVALID_OPCODE 0x10
