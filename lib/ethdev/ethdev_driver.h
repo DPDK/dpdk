@@ -625,22 +625,22 @@ typedef int (*eth_read_clock)(struct rte_eth_dev *dev,
 typedef int (*eth_get_reg_t)(struct rte_eth_dev *dev,
 				struct rte_dev_reg_info *info);
 
-/** @internal Retrieve eeprom size. */
+/** @internal Retrieve EEPROM size. */
 typedef int (*eth_get_eeprom_length_t)(struct rte_eth_dev *dev);
 
-/** @internal Retrieve eeprom data. */
+/** @internal Retrieve EEPROM data. */
 typedef int (*eth_get_eeprom_t)(struct rte_eth_dev *dev,
 				struct rte_dev_eeprom_info *info);
 
-/** @internal Program eeprom data. */
+/** @internal Program EEPROM data. */
 typedef int (*eth_set_eeprom_t)(struct rte_eth_dev *dev,
 				struct rte_dev_eeprom_info *info);
 
-/** @internal Retrieve type and size of plugin module eeprom. */
+/** @internal Retrieve type and size of plugin module EEPROM. */
 typedef int (*eth_get_module_info_t)(struct rte_eth_dev *dev,
 				     struct rte_eth_dev_module_info *modinfo);
 
-/** @internal Retrieve plugin module eeprom data. */
+/** @internal Retrieve plugin module EEPROM data. */
 typedef int (*eth_get_module_eeprom_t)(struct rte_eth_dev *dev,
 				       struct rte_dev_eeprom_info *info);
 
@@ -1098,13 +1098,13 @@ struct eth_dev_ops {
 	reta_query_t               reta_query;
 
 	eth_get_reg_t              get_reg;           /**< Get registers. */
-	eth_get_eeprom_length_t    get_eeprom_length; /**< Get eeprom length. */
-	eth_get_eeprom_t           get_eeprom;        /**< Get eeprom data. */
-	eth_set_eeprom_t           set_eeprom;        /**< Set eeprom. */
+	eth_get_eeprom_length_t    get_eeprom_length; /**< Get EEPROM length. */
+	eth_get_eeprom_t           get_eeprom;        /**< Get EEPROM data. */
+	eth_set_eeprom_t           set_eeprom;        /**< Set EEPROM. */
 
-	/** Get plugin module eeprom attribute */
+	/** Get plugin module EEPROM attribute */
 	eth_get_module_info_t      get_module_info;
-	/** Get plugin module eeprom data */
+	/** Get plugin module EEPROM data */
 	eth_get_module_eeprom_t    get_module_eeprom;
 
 	eth_flow_ops_get_t         flow_ops_get; /**< Get flow operations. */

@@ -19,21 +19,21 @@ struct rte_dev_reg_info {
 };
 
 /*
- * Placeholder for accessing device eeprom
+ * Placeholder for accessing device EEPROM
  */
 struct rte_dev_eeprom_info {
-	void *data; /**< Buffer for return eeprom */
-	uint32_t offset; /**< Start eeprom address for access*/
-	uint32_t length; /**< Length of eeprom region to access */
+	void *data; /**< Buffer for return EEPROM */
+	uint32_t offset; /**< Start EEPROM address for access*/
+	uint32_t length; /**< Length of EEPROM region to access */
 	uint32_t magic; /**< Device-specific key, such as device-id */
 };
 
 /**
- * Placeholder for accessing plugin module eeprom
+ * Placeholder for accessing plugin module EEPROM
  */
 struct rte_eth_dev_module_info {
-	uint32_t type; /**< Type of plugin module eeprom */
-	uint32_t eeprom_len; /**< Length of plugin module eeprom */
+	uint32_t type; /**< Type of plugin module EEPROM */
+	uint32_t eeprom_len; /**< Length of plugin module EEPROM */
 };
 
 /* EEPROM Standards for plug in modules */
