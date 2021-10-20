@@ -34,6 +34,14 @@ Compilation
 For builds using ``meson`` and ``ninja``, the driver will be built when the target platform is x86-based.
 No additional compilation steps are necessary.
 
+.. note::
+        Since the addition of the dmadev library, the ``ioat`` and ``idxd`` parts of this driver
+        will only be built if their ``dmadev`` counterparts are not built.
+        The following can be used to disable the ``dmadev`` drivers,
+        if the raw drivers are to be used instead::
+
+                $ meson -Ddisable_drivers=dma/* <build_dir>
+
 Device Setup
 -------------
 

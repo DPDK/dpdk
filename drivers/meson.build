@@ -10,15 +10,15 @@ subdirs = [
         'common/qat',     # depends on bus.
         'common/sfc_efx', # depends on bus.
         'mempool',        # depends on common and bus.
+        'dma',            # depends on common and bus.
         'net',            # depends on common, bus, mempool
-        'raw',            # depends on common, bus and net.
+        'raw',            # depends on common, bus, dma and net.
         'crypto',         # depends on common, bus and mempool (net in future).
         'compress',       # depends on common, bus, mempool.
         'regex',          # depends on common, bus, regexdev.
         'vdpa',           # depends on common, bus and mempool.
         'event',          # depends on common, bus, mempool and net.
         'baseband',       # depends on common and bus.
-        'dma',            # depends on common and bus.
 ]
 
 if meson.is_cross_build()
