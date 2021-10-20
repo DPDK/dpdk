@@ -75,6 +75,11 @@ New Features
     operations.
   * Added multi-process support.
 
+* **Added IDXD dmadev driver implementation.**
+
+  The IDXD dmadev driver provide device drivers for the Intel DSA devices.
+  This device driver can be used through the generic dmadev API.
+
 * **Added support to get all MAC addresses of a device.**
 
   Added ``rte_eth_macaddrs_get`` to allow user to retrieve all Ethernet

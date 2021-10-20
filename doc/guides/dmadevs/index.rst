@@ -10,3 +10,5 @@ an application through DMA API.
 .. toctree::
    :maxdepth: 2
    :numbered:
+
+   idxd

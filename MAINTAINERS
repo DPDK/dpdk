@@ -1201,6 +1201,16 @@ F: doc/guides/compressdevs/zlib.rst
 F: doc/guides/compressdevs/features/zlib.ini
 
 
+DMAdev Drivers
+--------------
+
+Intel IDXD - EXPERIMENTAL
+M: Bruce Richardson <bruce.richardson@intel.com>
+M: Kevin Laatz <kevin.laatz@intel.com>
+F: drivers/dma/idxd/
+F: doc/guides/dmadevs/idxd.rst
+
+
 RegEx Drivers
 -------------
 
