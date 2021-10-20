@@ -6,6 +6,7 @@
 #define _IDXD_INTERNAL_H_
 
 #include <rte_dmadev_pmd.h>
+#include <rte_spinlock.h>
 
 #include "idxd_hw_defs.h"
 
@@ -27,6 +28,16 @@ extern int idxd_pmd_logtype;
 #define IDXD_PMD_INFO(fmt, args...)   IDXD_PMD_LOG(INFO, fmt, ## args)
 #define IDXD_PMD_ERR(fmt, args...)    IDXD_PMD_LOG(ERR, fmt, ## args)
 #define IDXD_PMD_WARN(fmt, args...)   IDXD_PMD_LOG(WARNING, fmt, ## args)
+
+struct idxd_pci_common {
+	rte_spinlock_t lk;
+
+	uint8_t wq_cfg_sz;
+	volatile struct rte_idxd_bar0 *regs;
+	volatile uint32_t *wq_regs_base;
+	volatile struct rte_idxd_grpcfg *grp_regs;
+	volatile void *portals;
+};
 
 struct idxd_dmadev {
 	/* counters to track the batches */
@@ -59,6 +70,8 @@ struct idxd_dmadev {
 		struct {
 			unsigned int dsa_id;
 		} bus;
+
+		struct idxd_pci_common *pci;
 	} u;
 };
 
