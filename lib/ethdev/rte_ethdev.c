@@ -3713,7 +3713,7 @@ rte_eth_dev_vlan_filter(uint16_t port_id, uint16_t vlan_id, int on)
 
 	if (!(dev->data->dev_conf.rxmode.offloads &
 	      DEV_RX_OFFLOAD_VLAN_FILTER)) {
-		RTE_ETHDEV_LOG(ERR, "Port %u: vlan-filtering disabled\n",
+		RTE_ETHDEV_LOG(ERR, "Port %u: VLAN-filtering disabled\n",
 			port_id);
 		return -ENOSYS;
 	}

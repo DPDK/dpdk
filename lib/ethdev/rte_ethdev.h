@@ -445,7 +445,7 @@ enum rte_vlan_type {
 };
 
 /**
- * A structure used to describe a vlan filter.
+ * A structure used to describe a VLAN filter.
  * If the bit corresponding to a VID is set, such VID is on.
  */
 struct rte_vlan_filter_conf {
@@ -806,7 +806,7 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 #define RTE_RETA_GROUP_SIZE   64
 
 /**@{@name VMDq and DCB maximums */
-#define ETH_VMDQ_MAX_VLAN_FILTERS   64 /**< Maximum nb. of VMDq vlan filters. */
+#define ETH_VMDQ_MAX_VLAN_FILTERS   64 /**< Maximum nb. of VMDq VLAN filters. */
 #define ETH_DCB_NUM_USER_PRIORITIES 8  /**< Maximum nb. of DCB priorities. */
 #define ETH_VMDQ_DCB_NUM_QUEUES     128 /**< Maximum nb. of VMDq DCB queues. */
 #define ETH_DCB_NUM_QUEUES          128 /**< Maximum nb. of DCB queues. */
@@ -907,11 +907,11 @@ struct rte_eth_vmdq_tx_conf {
  * of an Ethernet port.
  *
  * Using this feature, packets are routed to a pool of queues, based
- * on the vlan id in the vlan tag, and then to a specific queue within
- * that pool, using the user priority vlan tag field.
+ * on the VLAN ID in the VLAN tag, and then to a specific queue within
+ * that pool, using the user priority VLAN tag field.
  *
  * A default pool may be used, if desired, to route all traffic which
- * does not match the vlan filter rules.
+ * does not match the VLAN filter rules.
  */
 struct rte_eth_vmdq_dcb_conf {
 	enum rte_eth_nb_pools nb_queue_pools; /**< With DCB, 16 or 32 pools */
@@ -919,9 +919,9 @@ struct rte_eth_vmdq_dcb_conf {
 	uint8_t default_pool; /**< The default pool, if applicable */
 	uint8_t nb_pool_maps; /**< We can have up to 64 filters/mappings */
 	struct {
-		uint16_t vlan_id; /**< The vlan id of the received frame */
+		uint16_t vlan_id; /**< The VLAN ID of the received frame */
 		uint64_t pools;   /**< Bitmask of pools for packet Rx */
-	} pool_map[ETH_VMDQ_MAX_VLAN_FILTERS]; /**< VMDq vlan pool maps. */
+	} pool_map[ETH_VMDQ_MAX_VLAN_FILTERS]; /**< VMDq VLAN pool maps. */
 	/** Selects a queue in a pool */
 	uint8_t dcb_tc[ETH_DCB_NUM_USER_PRIORITIES];
 };
@@ -931,8 +931,8 @@ struct rte_eth_vmdq_dcb_conf {
  * not combined with the DCB feature.
  *
  * Using this feature, packets are routed to a pool of queues. By default,
- * the pool selection is based on the MAC address, the vlan id in the
- * vlan tag as specified in the pool_map array.
+ * the pool selection is based on the MAC address, the VLAN ID in the
+ * VLAN tag as specified in the pool_map array.
  * Passing the ETH_VMDQ_ACCEPT_UNTAG in the rx_mode field allows pool
  * selection using only the MAC address. MAC address to pool mapping is done
  * using the rte_eth_dev_mac_addr_add function, with the pool parameter
@@ -942,7 +942,7 @@ struct rte_eth_vmdq_dcb_conf {
  * it is enabled or revert to the first queue of the pool if not.
  *
  * A default pool may be used, if desired, to route all traffic which
- * does not match the vlan filter rules or any pool MAC address.
+ * does not match the VLAN filter rules or any pool MAC address.
  */
 struct rte_eth_vmdq_rx_conf {
 	enum rte_eth_nb_pools nb_queue_pools; /**< VMDq only mode, 8 or 64 pools */
@@ -952,9 +952,9 @@ struct rte_eth_vmdq_rx_conf {
 	uint8_t nb_pool_maps; /**< We can have up to 64 filters/mappings */
 	uint32_t rx_mode; /**< Flags from ETH_VMDQ_ACCEPT_* */
 	struct {
-		uint16_t vlan_id; /**< The vlan id of the received frame */
+		uint16_t vlan_id; /**< The VLAN ID of the received frame */
 		uint64_t pools;   /**< Bitmask of pools for packet Rx */
-	} pool_map[ETH_VMDQ_MAX_VLAN_FILTERS]; /**< VMDq vlan pool maps. */
+	} pool_map[ETH_VMDQ_MAX_VLAN_FILTERS]; /**< VMDq VLAN pool maps. */
 };
 
 /**
@@ -3128,9 +3128,9 @@ int rte_eth_dev_fw_version_get(uint16_t port_id,
  * and RTE_PTYPE_L3_IPV4 are announced, the PMD must return the following
  * packet types for these packets:
  * - Ether/IPv4              -> RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4
- * - Ether/Vlan/IPv4         -> RTE_PTYPE_L2_ETHER_VLAN | RTE_PTYPE_L3_IPV4
+ * - Ether/VLAN/IPv4         -> RTE_PTYPE_L2_ETHER_VLAN | RTE_PTYPE_L3_IPV4
  * - Ether/[anything else]   -> RTE_PTYPE_L2_ETHER
- * - Ether/Vlan/[anything else] -> RTE_PTYPE_L2_ETHER_VLAN
+ * - Ether/VLAN/[anything else] -> RTE_PTYPE_L2_ETHER_VLAN
  *
  * When a packet is received by a PMD, the most precise type must be
  * returned among the ones supported. However a PMD is allowed to set
@@ -3276,7 +3276,7 @@ int rte_eth_dev_set_vlan_strip_on_queue(uint16_t port_id, uint16_t rx_queue_id,
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param vlan_type
- *   The vlan type.
+ *   The VLAN type.
  * @param tag_type
  *   The Tag Protocol ID
  * @return

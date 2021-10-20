@@ -2361,7 +2361,7 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN,
 
 	/**
-	 * Implements OFPAT_SET_VLAN_VID ("set the 802.1q VLAN id") as
+	 * Implements OFPAT_SET_VLAN_VID ("set the 802.1q VLAN ID") as
 	 * defined by the OpenFlow Switch Specification.
 	 *
 	 * See struct rte_flow_action_of_set_vlan_vid.
@@ -3033,11 +3033,11 @@ struct rte_flow_action_of_push_vlan {
 /**
  * RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID
  *
- * Implements OFPAT_SET_VLAN_VID ("set the 802.1q VLAN id") as defined by
+ * Implements OFPAT_SET_VLAN_VID ("set the 802.1q VLAN ID") as defined by
  * the OpenFlow Switch Specification.
  */
 struct rte_flow_action_of_set_vlan_vid {
-	rte_be16_t vlan_vid; /**< VLAN id. */
+	rte_be16_t vlan_vid; /**< VLAN ID. */
 };
 
 /**
