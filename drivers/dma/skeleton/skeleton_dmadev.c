@@ -153,7 +153,7 @@ skeldma_stop(struct rte_dma_dev *dev)
 	hw->exit_flag = true;
 	rte_delay_ms(1);
 
-	pthread_cancel(hw->thread);
+	(void)pthread_cancel(hw->thread);
 	pthread_join(hw->thread, NULL);
 
 	return 0;
