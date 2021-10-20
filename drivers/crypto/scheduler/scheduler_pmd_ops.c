@@ -181,10 +181,7 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 	/* start all workers */
 	for (i = 0; i < sched_ctx->nb_workers; i++) {
 		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
-		struct rte_cryptodev *worker_dev =
-				rte_cryptodev_pmd_get_dev(worker_dev_id);
-
-		ret = (*worker_dev->dev_ops->dev_start)(worker_dev);
+		ret = rte_cryptodev_start(worker_dev_id);
 		if (ret < 0) {
 			CR_SCHED_LOG(ERR, "Failed to start worker dev %u",
 					worker_dev_id);
@@ -208,10 +205,8 @@ scheduler_pmd_stop(struct rte_cryptodev *dev)
 	/* stop all workers first */
 	for (i = 0; i < sched_ctx->nb_workers; i++) {
 		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
-		struct rte_cryptodev *worker_dev =
-				rte_cryptodev_pmd_get_dev(worker_dev_id);
 
-		(*worker_dev->dev_ops->dev_stop)(worker_dev);
+		rte_cryptodev_stop(worker_dev_id);
 	}
 
 	if (*sched_ctx->ops.scheduler_stop)
