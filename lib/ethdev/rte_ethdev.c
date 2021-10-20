@@ -50,10 +50,10 @@ struct rte_eth_fp_ops rte_eth_fp_ops[RTE_MAX_ETHPORTS];
 /* spinlock for eth device callbacks */
 static rte_spinlock_t eth_dev_cb_lock = RTE_SPINLOCK_INITIALIZER;
 
-/* spinlock for add/remove rx callbacks */
+/* spinlock for add/remove Rx callbacks */
 static rte_spinlock_t eth_dev_rx_cb_lock = RTE_SPINLOCK_INITIALIZER;
 
-/* spinlock for add/remove tx callbacks */
+/* spinlock for add/remove Tx callbacks */
 static rte_spinlock_t eth_dev_tx_cb_lock = RTE_SPINLOCK_INITIALIZER;
 
 /* spinlock for shared data allocation */
@@ -1440,7 +1440,7 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 
 	if (nb_rx_q > RTE_MAX_QUEUES_PER_PORT) {
 		RTE_ETHDEV_LOG(ERR,
-			"Number of RX queues requested (%u) is greater than max supported(%d)\n",
+			"Number of Rx queues requested (%u) is greater than max supported(%d)\n",
 			nb_rx_q, RTE_MAX_QUEUES_PER_PORT);
 		ret = -EINVAL;
 		goto rollback;
@@ -1448,15 +1448,15 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 
 	if (nb_tx_q > RTE_MAX_QUEUES_PER_PORT) {
 		RTE_ETHDEV_LOG(ERR,
-			"Number of TX queues requested (%u) is greater than max supported(%d)\n",
+			"Number of Tx queues requested (%u) is greater than max supported(%d)\n",
 			nb_tx_q, RTE_MAX_QUEUES_PER_PORT);
 		ret = -EINVAL;
 		goto rollback;
 	}
 
 	/*
-	 * Check that the numbers of RX and TX queues are not greater
-	 * than the maximum number of RX and TX queues supported by the
+	 * Check that the numbers of Rx and Tx queues are not greater
+	 * than the maximum number of Rx and Tx queues supported by the
 	 * configured device.
 	 */
 	if (nb_rx_q > dev_info.max_rx_queues) {
@@ -1571,7 +1571,7 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	}
 
 	/*
-	 * Setup new number of RX/TX queues and reconfigure device.
+	 * Setup new number of Rx/Tx queues and reconfigure device.
 	 */
 	diag = eth_dev_rx_queue_config(dev, nb_rx_q);
 	if (diag != 0) {
@@ -2041,7 +2041,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	dev = &rte_eth_devices[port_id];
 
 	if (rx_queue_id >= dev->data->nb_rx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid RX queue_id=%u\n", rx_queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid Rx queue_id=%u\n", rx_queue_id);
 		return -EINVAL;
 	}
 
@@ -2226,7 +2226,7 @@ rte_eth_rx_hairpin_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	dev = &rte_eth_devices[port_id];
 
 	if (rx_queue_id >= dev->data->nb_rx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid RX queue_id=%u\n", rx_queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid Rx queue_id=%u\n", rx_queue_id);
 		return -EINVAL;
 	}
 
@@ -2298,7 +2298,7 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 	dev = &rte_eth_devices[port_id];
 
 	if (tx_queue_id >= dev->data->nb_tx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u\n", tx_queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid Tx queue_id=%u\n", tx_queue_id);
 		return -EINVAL;
 	}
 
@@ -2392,7 +2392,7 @@ rte_eth_tx_hairpin_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 	dev = &rte_eth_devices[port_id];
 
 	if (tx_queue_id >= dev->data->nb_tx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u\n", tx_queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid Tx queue_id=%u\n", tx_queue_id);
 		return -EINVAL;
 	}
 
@@ -4777,13 +4777,13 @@ rte_eth_dev_rx_intr_ctl(uint16_t port_id, int epfd, int op, void *data)
 	dev = &rte_eth_devices[port_id];
 
 	if (!dev->intr_handle) {
-		RTE_ETHDEV_LOG(ERR, "RX Intr handle unset\n");
+		RTE_ETHDEV_LOG(ERR, "Rx Intr handle unset\n");
 		return -ENOTSUP;
 	}
 
 	intr_handle = dev->intr_handle;
 	if (!intr_handle->intr_vec) {
-		RTE_ETHDEV_LOG(ERR, "RX Intr vector unset\n");
+		RTE_ETHDEV_LOG(ERR, "Rx Intr vector unset\n");
 		return -EPERM;
 	}
 
@@ -4792,7 +4792,7 @@ rte_eth_dev_rx_intr_ctl(uint16_t port_id, int epfd, int op, void *data)
 		rc = rte_intr_rx_ctl(intr_handle, epfd, op, vec, data);
 		if (rc && rc != -EEXIST) {
 			RTE_ETHDEV_LOG(ERR,
-				"p %u q %u rx ctl error op %d epfd %d vec %u\n",
+				"p %u q %u Rx ctl error op %d epfd %d vec %u\n",
 				port_id, qid, op, epfd, vec);
 		}
 	}
@@ -4813,18 +4813,18 @@ rte_eth_dev_rx_intr_ctl_q_get_fd(uint16_t port_id, uint16_t queue_id)
 	dev = &rte_eth_devices[port_id];
 
 	if (queue_id >= dev->data->nb_rx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid RX queue_id=%u\n", queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid Rx queue_id=%u\n", queue_id);
 		return -1;
 	}
 
 	if (!dev->intr_handle) {
-		RTE_ETHDEV_LOG(ERR, "RX Intr handle unset\n");
+		RTE_ETHDEV_LOG(ERR, "Rx Intr handle unset\n");
 		return -1;
 	}
 
 	intr_handle = dev->intr_handle;
 	if (!intr_handle->intr_vec) {
-		RTE_ETHDEV_LOG(ERR, "RX Intr vector unset\n");
+		RTE_ETHDEV_LOG(ERR, "Rx Intr vector unset\n");
 		return -1;
 	}
 
@@ -4999,18 +4999,18 @@ rte_eth_dev_rx_intr_ctl_q(uint16_t port_id, uint16_t queue_id,
 	dev = &rte_eth_devices[port_id];
 
 	if (queue_id >= dev->data->nb_rx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid RX queue_id=%u\n", queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid Rx queue_id=%u\n", queue_id);
 		return -EINVAL;
 	}
 
 	if (!dev->intr_handle) {
-		RTE_ETHDEV_LOG(ERR, "RX Intr handle unset\n");
+		RTE_ETHDEV_LOG(ERR, "Rx Intr handle unset\n");
 		return -ENOTSUP;
 	}
 
 	intr_handle = dev->intr_handle;
 	if (!intr_handle->intr_vec) {
-		RTE_ETHDEV_LOG(ERR, "RX Intr vector unset\n");
+		RTE_ETHDEV_LOG(ERR, "Rx Intr vector unset\n");
 		return -EPERM;
 	}
 
@@ -5018,7 +5018,7 @@ rte_eth_dev_rx_intr_ctl_q(uint16_t port_id, uint16_t queue_id,
 	rc = rte_intr_rx_ctl(intr_handle, epfd, op, vec, data);
 	if (rc && rc != -EEXIST) {
 		RTE_ETHDEV_LOG(ERR,
-			"p %u q %u rx ctl error op %d epfd %d vec %u\n",
+			"p %u q %u Rx ctl error op %d epfd %d vec %u\n",
 			port_id, queue_id, op, epfd, vec);
 		return rc;
 	}
@@ -5296,7 +5296,7 @@ rte_eth_rx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 	dev = &rte_eth_devices[port_id];
 
 	if (queue_id >= dev->data->nb_rx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid RX queue_id=%u\n", queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid Rx queue_id=%u\n", queue_id);
 		return -EINVAL;
 	}
 
@@ -5341,7 +5341,7 @@ rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 	dev = &rte_eth_devices[port_id];
 
 	if (queue_id >= dev->data->nb_tx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u\n", queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid Tx queue_id=%u\n", queue_id);
 		return -EINVAL;
 	}
 
@@ -5386,7 +5386,7 @@ rte_eth_rx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
 	dev = &rte_eth_devices[port_id];
 
 	if (queue_id >= dev->data->nb_rx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid RX queue_id=%u\n", queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid Rx queue_id=%u\n", queue_id);
 		return -EINVAL;
 	}
 
@@ -5413,7 +5413,7 @@ rte_eth_tx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
 	dev = &rte_eth_devices[port_id];
 
 	if (queue_id >= dev->data->nb_tx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u\n", queue_id);
+		RTE_ETHDEV_LOG(ERR, "Invalid Tx queue_id=%u\n", queue_id);
 		return -EINVAL;
 	}
 

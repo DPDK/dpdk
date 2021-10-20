@@ -23,13 +23,13 @@ profile_hook_rx_burst_cb(
 }
 
 /**
- * Setting profiling rx callback for a given Ethernet device.
+ * Setting profiling Rx callback for a given Ethernet device.
  * This function must be invoked when ethernet device is being configured.
  *
  * @param port_id
  *  The port identifier of the Ethernet device.
  * @param rx_queue_num
- *  The number of RX queues on specified port.
+ *  The number of Rx queues on specified port.
  *
  * @return
  *  - On success, zero.

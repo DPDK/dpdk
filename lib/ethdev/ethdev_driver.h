@@ -20,7 +20,7 @@
 /**
  * @internal
  * Structure used to hold information about the callbacks to be called for a
- * queue on RX and TX.
+ * queue on Rx and Tx.
  */
 struct rte_eth_rxtx_callback {
 	struct rte_eth_rxtx_callback *next;
@@ -92,10 +92,10 @@ struct rte_eth_dev_owner;
 struct rte_eth_dev_data {
 	char name[RTE_ETH_NAME_MAX_LEN]; /**< Unique identifier name */
 
-	void **rx_queues; /**< Array of pointers to RX queues. */
-	void **tx_queues; /**< Array of pointers to TX queues. */
-	uint16_t nb_rx_queues; /**< Number of RX queues. */
-	uint16_t nb_tx_queues; /**< Number of TX queues. */
+	void **rx_queues; /**< Array of pointers to Rx queues. */
+	void **tx_queues; /**< Array of pointers to Tx queues. */
+	uint16_t nb_rx_queues; /**< Number of Rx queues. */
+	uint16_t nb_tx_queues; /**< Number of Tx queues. */
 
 	struct rte_eth_dev_sriov sriov;    /**< SRIOV data */
 
@@ -108,7 +108,7 @@ struct rte_eth_dev_data {
 	/** Common Rx buffer size handled by all queues */
 	uint32_t min_rx_buf_size;
 
-	uint64_t rx_mbuf_alloc_failed; /**< RX ring mbuf allocation failures. */
+	uint64_t rx_mbuf_alloc_failed; /**< Rx ring mbuf allocation failures */
 	/** Device Ethernet link address. @see rte_eth_dev_release_port() */
 	struct rte_ether_addr *mac_addrs;
 	/** Bitmap associating MAC addresses to pools */
@@ -691,16 +691,16 @@ typedef int (*eth_hairpin_cap_get_t)(struct rte_eth_dev *dev,
 
 /**
  * @internal
- * Setup RX hairpin queue.
+ * Setup Rx hairpin queue.
  *
  * @param dev
  *   ethdev handle of port.
  * @param rx_queue_id
- *   the selected RX queue index.
+ *   the selected Rx queue index.
  * @param nb_rx_desc
  *   the requested number of descriptors for this queue. 0 - use PMD default.
  * @param conf
- *   the RX hairpin configuration structure.
+ *   the Rx hairpin configuration structure.
  *
  * @return
  *   Negative errno value on error, 0 on success.
@@ -721,16 +721,16 @@ typedef int (*eth_rx_hairpin_queue_setup_t)
 
 /**
  * @internal
- * Setup TX hairpin queue.
+ * Setup Tx hairpin queue.
  *
  * @param dev
  *   ethdev handle of port.
  * @param tx_queue_id
- *   the selected TX queue index.
+ *   the selected Tx queue index.
  * @param nb_tx_desc
  *   the requested number of descriptors for this queue. 0 - use PMD default.
  * @param conf
- *   the TX hairpin configuration structure.
+ *   the Tx hairpin configuration structure.
  *
  * @return
  *   Negative errno value on error, 0 on success.
@@ -1001,8 +1001,8 @@ struct eth_dev_ops {
 
 	eth_promiscuous_enable_t   promiscuous_enable; /**< Promiscuous ON. */
 	eth_promiscuous_disable_t  promiscuous_disable;/**< Promiscuous OFF. */
-	eth_allmulticast_enable_t  allmulticast_enable;/**< RX multicast ON. */
-	eth_allmulticast_disable_t allmulticast_disable;/**< RX multicast OFF. */
+	eth_allmulticast_enable_t  allmulticast_enable;/**< Rx multicast ON. */
+	eth_allmulticast_disable_t allmulticast_disable;/**< Rx multicast OFF. */
 	eth_mac_addr_remove_t      mac_addr_remove; /**< Remove MAC address. */
 	eth_mac_addr_add_t         mac_addr_add;  /**< Add a MAC address. */
 	eth_mac_addr_set_t         mac_addr_set;  /**< Set a MAC address. */
@@ -1028,8 +1028,8 @@ struct eth_dev_ops {
 	eth_rxq_info_get_t         rxq_info_get;
 	/** Retrieve Tx queue information */
 	eth_txq_info_get_t         txq_info_get;
-	eth_burst_mode_get_t       rx_burst_mode_get; /**< Get RX burst mode */
-	eth_burst_mode_get_t       tx_burst_mode_get; /**< Get TX burst mode */
+	eth_burst_mode_get_t       rx_burst_mode_get; /**< Get Rx burst mode */
+	eth_burst_mode_get_t       tx_burst_mode_get; /**< Get Tx burst mode */
 	eth_fw_version_get_t       fw_version_get; /**< Get firmware version. */
 
 	/** Get packet types supported and identified by device */
@@ -1051,21 +1051,21 @@ struct eth_dev_ops {
 	/** Set port based Tx VLAN insertion */
 	vlan_pvid_set_t            vlan_pvid_set;
 
-	eth_queue_start_t          rx_queue_start;/**< Start RX for a queue. */
-	eth_queue_stop_t           rx_queue_stop; /**< Stop RX for a queue. */
-	eth_queue_start_t          tx_queue_start;/**< Start TX for a queue. */
-	eth_queue_stop_t           tx_queue_stop; /**< Stop TX for a queue. */
-	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device RX queue. */
-	eth_queue_release_t        rx_queue_release; /**< Release RX queue. */
+	eth_queue_start_t          rx_queue_start;/**< Start Rx for a queue. */
+	eth_queue_stop_t           rx_queue_stop; /**< Stop Rx for a queue. */
+	eth_queue_start_t          tx_queue_start;/**< Start Tx for a queue. */
+	eth_queue_stop_t           tx_queue_stop; /**< Stop Tx for a queue. */
+	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device Rx queue. */
+	eth_queue_release_t        rx_queue_release; /**< Release Rx queue. */
 
 	/** Enable Rx queue interrupt */
 	eth_rx_enable_intr_t       rx_queue_intr_enable;
 	/** Disable Rx queue interrupt */
 	eth_rx_disable_intr_t      rx_queue_intr_disable;
 
-	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue. */
-	eth_queue_release_t        tx_queue_release; /**< Release TX queue. */
-	eth_tx_done_cleanup_t      tx_done_cleanup;/**< Free tx ring mbufs */
+	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device Tx queue */
+	eth_queue_release_t        tx_queue_release; /**< Release Tx queue */
+	eth_tx_done_cleanup_t      tx_done_cleanup;/**< Free Tx ring mbufs */
 
 	eth_dev_led_on_t           dev_led_on;    /**< Turn on LED. */
 	eth_dev_led_off_t          dev_led_off;   /**< Turn off LED. */

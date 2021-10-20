@@ -86,7 +86,7 @@ struct rte_eth_fp_ops {
 	 */
 	/** PMD receive function. */
 	eth_rx_burst_t rx_pkt_burst;
-	/** Get the number of used RX descriptors. */
+	/** Get the number of used Rx descriptors. */
 	eth_rx_queue_count_t rx_queue_count;
 	/** Check the status of a Rx descriptor. */
 	eth_rx_descriptor_status_t rx_descriptor_status;

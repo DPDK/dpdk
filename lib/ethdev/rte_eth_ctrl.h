@@ -350,7 +350,7 @@ struct rte_eth_fdir_filter {
 
 /**
  *  A structure used to configure FDIR masks that are used by the device
- *  to match the various fields of RX packet headers.
+ *  to match the various fields of Rx packet headers.
  */
 struct rte_eth_fdir_masks {
 	uint16_t vlan_tci_mask;   /**< Bit mask for vlan_tci in big endian */
