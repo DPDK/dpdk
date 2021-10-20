@@ -92,5 +92,10 @@ int idxd_enqueue_copy(void *dev_private, uint16_t qid, rte_iova_t src,
 int idxd_enqueue_fill(void *dev_private, uint16_t qid, uint64_t pattern,
 		rte_iova_t dst, unsigned int length, uint64_t flags);
 int idxd_submit(void *dev_private, uint16_t qid);
+uint16_t idxd_completed(void *dev_private, uint16_t qid, uint16_t max_ops,
+		uint16_t *last_idx, bool *has_error);
+uint16_t idxd_completed_status(void *dev_private, uint16_t qid __rte_unused,
+		uint16_t max_ops, uint16_t *last_idx,
+		enum rte_dma_status_code *status);
 
 #endif /* _IDXD_INTERNAL_H_ */

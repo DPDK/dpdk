@@ -143,7 +143,37 @@ Performing Data Copies
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Refer to the :ref:`Enqueue / Dequeue APIs <dmadev_enqueue_dequeue>` section of the dmadev library
-documentation for details on operation enqueue and submission API usage.
+documentation for details on operation enqueue, submission and completion API usage.
 
 It is expected that, for efficiency reasons, a burst of operations will be enqueued to the
 device via multiple enqueue calls between calls to the ``rte_dma_submit()`` function.
+
+When gathering completions, ``rte_dma_completed()`` should be used, up until the point an error
+occurs in an operation. If an error was encountered, ``rte_dma_completed_status()`` must be used
+to kick the device off to continue processing operations and also to gather the status of each
+individual operations which is filled in to the ``status`` array provided as parameter by the
+application.
+
+The following status codes are supported by IDXD:
+
+* ``RTE_DMA_STATUS_SUCCESSFUL``: The operation was successful.
+* ``RTE_DMA_STATUS_INVALID_OPCODE``: The operation failed due to an invalid operation code.
+* ``RTE_DMA_STATUS_INVALID_LENGTH``: The operation failed due to an invalid data length.
+* ``RTE_DMA_STATUS_NOT_ATTEMPTED``: The operation was not attempted.
+* ``RTE_DMA_STATUS_ERROR_UNKNOWN``: The operation failed due to an unspecified error.
+
+The following code shows how to retrieve the number of successfully completed
+copies within a burst and then using ``rte_dma_completed_status()`` to check
+which operation failed and kick off the device to continue processing operations:
+
+.. code-block:: C
+
+   enum rte_dma_status_code status[COMP_BURST_SZ];
+   uint16_t count, idx, status_count;
+   bool error = 0;
+
+   count = rte_dma_completed(dev_id, vchan, COMP_BURST_SZ, &idx, &error);
+
+   if (error){
+      status_count = rte_dma_completed_status(dev_id, vchan, COMP_BURST_SZ, &idx, status);
+   }
