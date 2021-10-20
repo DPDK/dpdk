@@ -343,6 +343,9 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 	}
 
 	qat_pci_dev->asym_dev = internals;
+
+	rte_cryptodev_pmd_probing_finish(cryptodev);
+
 	QAT_LOG(DEBUG, "Created QAT ASYM device %s as cryptodev instance %d",
 			cryptodev->data->name, internals->asym_dev_id);
 	return 0;

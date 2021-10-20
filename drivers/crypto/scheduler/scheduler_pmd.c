@@ -229,6 +229,8 @@ cryptodev_scheduler_create(const char *name,
 		return -ENOMEM;
 	}
 
+	rte_cryptodev_pmd_probing_finish(dev);
+
 	return 0;
 }
 

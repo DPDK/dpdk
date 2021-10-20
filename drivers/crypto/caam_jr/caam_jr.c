@@ -2368,6 +2368,8 @@ caam_jr_dev_init(const char *name,
 	security_instance->sess_cnt = 0;
 	dev->security_ctx = security_instance;
 
+	rte_cryptodev_pmd_probing_finish(dev);
+
 	RTE_LOG(INFO, PMD, "%s cryptodev init\n", dev->data->name);
 
 	return 0;

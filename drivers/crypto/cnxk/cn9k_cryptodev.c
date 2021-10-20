@@ -102,6 +102,8 @@ cn9k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	cn9k_cpt_set_enqdeq_fns(dev);
 	cn9k_sec_ops_override();
 
+	rte_cryptodev_pmd_probing_finish(dev);
+
 	return 0;
 
 dev_fini:

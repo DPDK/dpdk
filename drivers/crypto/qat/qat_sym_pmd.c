@@ -500,6 +500,8 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	QAT_LOG(DEBUG, "Created QAT SYM device %s as cryptodev instance %d",
 			cryptodev->data->name, internals->sym_dev_id);
 
+	rte_cryptodev_pmd_probing_finish(cryptodev);
+
 	return 0;
 
 error:

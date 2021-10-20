@@ -921,6 +921,9 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&mlx5_crypto_priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
+
+	rte_cryptodev_pmd_probing_finish(crypto_dev);
+
 	return 0;
 }
 

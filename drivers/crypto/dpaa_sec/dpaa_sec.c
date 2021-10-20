@@ -3594,8 +3594,10 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 
 	/* Invoke PMD device initialization function */
 	retval = dpaa_sec_dev_init(cryptodev);
-	if (retval == 0)
+	if (retval == 0) {
+		rte_cryptodev_pmd_probing_finish(cryptodev);
 		return 0;
+	}
 
 	retval = -ENXIO;
 out:

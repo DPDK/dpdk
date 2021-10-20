@@ -754,6 +754,8 @@ crypto_virtio_create(const char *name, struct rte_pci_device *pci_dev,
 			VIRTIO_CRYPTO_PMD_GUEST_FEATURES) < 0)
 		return -1;
 
+	rte_cryptodev_pmd_probing_finish(cryptodev);
+
 	return 0;
 }
 

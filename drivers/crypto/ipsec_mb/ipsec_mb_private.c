@@ -134,6 +134,8 @@ ipsec_mb_create(struct rte_vdev_device *vdev,
 		break;
 	}
 
+	rte_cryptodev_pmd_probing_finish(dev);
+
 	IPSEC_MB_LOG(INFO, "IPSec Multi-buffer library version used: %s\n",
 		     imb_get_version_str());
 

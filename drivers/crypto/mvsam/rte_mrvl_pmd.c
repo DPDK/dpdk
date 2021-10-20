@@ -1114,6 +1114,8 @@ cryptodev_mrvl_crypto_create(const char *name,
 	if (ret)
 		goto init_error;
 
+	rte_cryptodev_pmd_probing_finish(dev);
+
 	return 0;
 
 init_error:

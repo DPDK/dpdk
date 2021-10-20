@@ -783,6 +783,9 @@ nitrox_sym_pmd_create(struct nitrox_device *ndev)
 	ndev->sym_dev = cdev->data->dev_private;
 	ndev->sym_dev->cdev = cdev;
 	ndev->sym_dev->ndev = ndev;
+
+	rte_cryptodev_pmd_probing_finish(cdev);
+
 	NITROX_LOG(DEBUG, "Created cryptodev '%s', dev_id %d, drv_id %d\n",
 		   cdev->data->name, cdev->data->dev_id, nitrox_sym_drv_id);
 	return 0;

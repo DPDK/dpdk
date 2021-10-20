@@ -271,6 +271,8 @@ cryptodev_ccp_create(const char *name,
 	internals->auth_opt = init_params->auth_opt;
 	internals->crypto_num_dev = cryptodev_cnt;
 
+	rte_cryptodev_pmd_probing_finish(dev);
+
 	return 0;
 
 init_error:

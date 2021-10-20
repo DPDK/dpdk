@@ -135,6 +135,8 @@ otx2_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		otx2_cpt_set_enqdeq_fns(dev);
 
+	rte_cryptodev_pmd_probing_finish(dev);
+
 	return 0;
 
 otx2_dev_fini:

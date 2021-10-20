@@ -56,8 +56,10 @@ otx_cpt_pci_probe(struct rte_pci_driver *pci_drv,
 
 	/* Invoke PMD device initialization function */
 	retval = otx_cpt_dev_create(cryptodev);
-	if (retval == 0)
+	if (retval == 0) {
+		rte_cryptodev_pmd_probing_finish(cryptodev);
 		return 0;
+	}
 
 	CPT_LOG_ERR("[DRV %s]: Failed to create device "
 			"(vendor_id: 0x%x device_id: 0x%x",
