@@ -509,6 +509,19 @@ __rte_internal
 uint8_t rte_cryptodev_allocate_driver(struct cryptodev_driver *crypto_drv,
 		const struct rte_driver *drv);
 
+/**
+ * @internal
+ * This is the last step of device probing. It must be called after a
+ * cryptodev is allocated and initialized successfully.
+ *
+ * @param	dev	Pointer to cryptodev struct
+ *
+ * @return
+ *  void
+ */
+__rte_internal
+void
+rte_cryptodev_pmd_probing_finish(struct rte_cryptodev *dev);
 
 #define RTE_PMD_REGISTER_CRYPTO_DRIVER(crypto_drv, drv, driver_id)\
 RTE_INIT(init_ ##driver_id)\

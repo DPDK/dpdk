@@ -161,6 +161,22 @@ rte_cryptodev_pmd_destroy(struct rte_cryptodev *cryptodev)
 	return 0;
 }
 
+void
+rte_cryptodev_pmd_probing_finish(struct rte_cryptodev *cryptodev)
+{
+	if (cryptodev == NULL)
+		return;
+	/*
+	 * for secondary process, at that point we expect device
+	 * to be already 'usable', so shared data and all function
+	 * pointers for fast-path devops have to be setup properly
+	 * inside rte_cryptodev.
+	 */
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		cryptodev_fp_ops_set(rte_crypto_fp_ops +
+				cryptodev->data->dev_id, cryptodev);
+}
+
 static uint16_t
 dummy_crypto_enqueue_burst(__rte_unused void *qp,
 			   __rte_unused struct rte_crypto_op **ops,
