@@ -164,6 +164,7 @@ F: app/test/test_common.c
 F: app/test/test_cpuflags.c
 F: app/test/test_cycles.c
 F: app/test/test_debug.c
+F: app/test/test_devargs.c
 F: app/test/test_eal*
 F: app/test/test_errno.c
 F: app/test/test_lcores.c
