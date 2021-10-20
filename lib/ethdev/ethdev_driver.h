@@ -75,9 +75,6 @@ struct rte_eth_dev {
 	struct rte_eth_rxtx_callback *pre_tx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
 	enum rte_eth_dev_state state; /**< Flag indicating the port state */
 	void *security_ctx; /**< Context for security ops */
-
-	uint64_t reserved_64s[4]; /**< Reserved for future fields */
-	void *reserved_ptrs[4];   /**< Reserved for future fields */
 } __rte_cache_aligned;
 
 struct rte_eth_dev_sriov;
@@ -158,8 +155,6 @@ struct rte_eth_dev_data {
 	uint16_t backer_port_id;
 
 	pthread_mutex_t flow_ops_mutex; /**< rte_flow ops mutex. */
-	uint64_t reserved_64s[4]; /**< Reserved for future fields */
-	void *reserved_ptrs[4];   /**< Reserved for future fields */
 } __rte_cache_aligned;
 
 /**
