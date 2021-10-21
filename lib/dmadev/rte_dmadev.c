@@ -18,7 +18,7 @@
 static int16_t dma_devices_max;
 
 struct rte_dma_fp_object *rte_dma_fp_objs;
-struct rte_dma_dev *rte_dma_devices;
+static struct rte_dma_dev *rte_dma_devices;
 static struct {
 	/* Hold the dev_max information of the primary process. This field is
 	 * set by the primary process and is read by the secondary process.

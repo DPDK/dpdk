@@ -747,10 +747,11 @@ test_dmadev_instance(int16_t dev_id)
 	};
 	const int vchan = 0;
 
-	printf("\n### Test dmadev instance %u [%s]\n",
-			dev_id, rte_dma_devices[dev_id].data->dev_name);
-
 	rte_dma_info_get(dev_id, &info);
+
+	printf("\n### Test dmadev instance %u [%s]\n",
+			dev_id, info.dev_name);
+
 	if (info.max_vchans < 1)
 		ERR_RETURN("Error, no channels available on device id %u\n", dev_id);
 

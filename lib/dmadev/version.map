@@ -30,7 +30,6 @@ EXPERIMENTAL {
 INTERNAL {
 	global:
 
-	rte_dma_devices;
 	rte_dma_fp_objs;
 	rte_dma_pmd_allocate;
 	rte_dma_pmd_release;

@@ -131,8 +131,6 @@ struct rte_dma_dev {
 	uint64_t reserved[2]; /**< Reserved for future fields. */
 } __rte_cache_aligned;
 
-extern struct rte_dma_dev *rte_dma_devices;
-
 /**
  * @internal
  * Allocate a new dmadev slot for an DMA device and return the pointer to that
