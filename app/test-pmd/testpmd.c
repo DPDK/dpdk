@@ -1879,7 +1879,7 @@ pkt_burst_stats_display(const char *rx_tx, struct pkt_burst_stats *pbs)
 	pktnb_stats[0] = 0;
 
 	/* Find the next 2 burst sizes with highest occurrences. */
-	for (nb_pkt = 1; nb_pkt < MAX_PKT_BURST; nb_pkt++) {
+	for (nb_pkt = 1; nb_pkt < MAX_PKT_BURST + 1; nb_pkt++) {
 		nb_burst = pbs->pkt_burst_spread[nb_pkt];
 
 		if (nb_burst == 0)
