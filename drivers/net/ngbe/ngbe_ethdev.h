@@ -15,6 +15,17 @@
 #define NGBE_FLAG_MACSEC            ((uint32_t)(1 << 3))
 #define NGBE_FLAG_NEED_LINK_CONFIG  ((uint32_t)(1 << 4))
 
+#define NGBE_VFTA_SIZE 128
+#define NGBE_VLAN_TAG_SIZE 4
+/*Default value of Max Rx Queue*/
+#define NGBE_MAX_RX_QUEUE_NUM	8
+
+#ifndef NBBY
+#define NBBY	8	/* number of bits in a byte */
+#endif
+#define NGBE_HWSTRIP_BITMAP_SIZE \
+	(NGBE_MAX_RX_QUEUE_NUM / (sizeof(uint32_t) * NBBY))
+
 #define NGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
 
 /* The overhead from MTU to max frame size. */
@@ -32,12 +43,22 @@ struct ngbe_interrupt {
 	uint64_t mask_orig; /* save mask during delayed handler */
 };
 
+struct ngbe_vfta {
+	uint32_t vfta[NGBE_VFTA_SIZE];
+};
+
+struct ngbe_hwstrip {
+	uint32_t bitmap[NGBE_HWSTRIP_BITMAP_SIZE];
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
 struct ngbe_adapter {
 	struct ngbe_hw             hw;
 	struct ngbe_interrupt      intr;
+	struct ngbe_vfta           shadow_vfta;
+	struct ngbe_hwstrip        hwstrip;
 	bool                       rx_bulk_alloc_allowed;
 };
 
@@ -66,6 +87,12 @@ ngbe_dev_intr(struct rte_eth_dev *dev)
 
 	return intr;
 }
+
+#define NGBE_DEV_VFTA(dev) \
+	(&((struct ngbe_adapter *)(dev)->data->dev_private)->shadow_vfta)
+
+#define NGBE_DEV_HWSTRIP(dev) \
+	(&((struct ngbe_adapter *)(dev)->data->dev_private)->hwstrip)
 
 /*
  * Rx/Tx function prototypes
@@ -136,9 +163,20 @@ uint16_t ngbe_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 void ngbe_set_ivar_map(struct ngbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
 
+void ngbe_configure_port(struct rte_eth_dev *dev);
+
 int
 ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 		int wait_to_complete);
+
+/*
+ * misc function prototypes
+ */
+void ngbe_vlan_hw_filter_enable(struct rte_eth_dev *dev);
+
+void ngbe_vlan_hw_filter_disable(struct rte_eth_dev *dev);
+
+void ngbe_vlan_hw_strip_config(struct rte_eth_dev *dev);
 
 #define NGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define NGBE_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
@@ -158,5 +196,9 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 #define NGBE_DEFAULT_TX_WTHRESH      0
 
 const uint32_t *ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+void ngbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev,
+		uint16_t queue, bool on);
+void ngbe_config_vlan_strip_on_all_queues(struct rte_eth_dev *dev,
+						  int mask);
 
 #endif /* _NGBE_ETHDEV_H_ */

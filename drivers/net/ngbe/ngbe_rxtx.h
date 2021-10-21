@@ -269,6 +269,9 @@ struct ngbe_rx_queue {
 	uint8_t         crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
 	uint8_t         drop_en;  /**< If not 0, set SRRCTL.Drop_En */
 	uint8_t         rx_deferred_start; /**< not in global dev start */
+	/** flags to set in mbuf when a vlan is detected */
+	uint64_t        vlan_flags;
+	uint64_t	offloads; /**< Rx offloads with RTE_ETH_RX_OFFLOAD_* */
 	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
 	struct rte_mbuf fake_mbuf;
 	/** hold packets to return to application */
@@ -367,6 +370,7 @@ void ngbe_set_tx_function(struct rte_eth_dev *dev, struct ngbe_tx_queue *txq);
 void ngbe_set_rx_function(struct rte_eth_dev *dev);
 
 uint64_t ngbe_get_tx_port_offloads(struct rte_eth_dev *dev);
+uint64_t ngbe_get_rx_queue_offloads(struct rte_eth_dev *dev);
 uint64_t ngbe_get_rx_port_offloads(struct rte_eth_dev *dev);
 
 #endif /* _NGBE_RXTX_H_ */

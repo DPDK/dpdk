@@ -9,6 +9,7 @@
 #define NGBE_LINK_UP_TIME	90 /* 9.0 Seconds */
 
 #define NGBE_FRAME_SIZE_DFT       (1522) /* Default frame size, +FCS */
+#define NGBE_NUM_POOL             (32)
 
 #define NGBE_ALIGN		128 /* as intel did */
 #define NGBE_ISB_SIZE		16
@@ -118,6 +119,7 @@ struct ngbe_mac_info {
 	s32 (*set_vmdq)(struct ngbe_hw *hw, u32 rar, u32 vmdq);
 	s32 (*clear_vmdq)(struct ngbe_hw *hw, u32 rar, u32 vmdq);
 	s32 (*init_rx_addrs)(struct ngbe_hw *hw);
+	s32 (*clear_vfta)(struct ngbe_hw *hw);
 
 	/* Manageability interface */
 	s32 (*init_thermal_sensor_thresh)(struct ngbe_hw *hw);
@@ -128,6 +130,7 @@ struct ngbe_mac_info {
 	u8 perm_addr[ETH_ADDR_LEN];
 	s32 mc_filter_type;
 	u32 mcft_size;
+	u32 vft_size;
 	u32 num_rar_entries;
 	u32 max_tx_queues;
 	u32 max_rx_queues;

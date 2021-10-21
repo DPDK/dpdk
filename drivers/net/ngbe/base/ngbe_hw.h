@@ -12,6 +12,7 @@
 #define NGBE_EM_MAX_RX_QUEUES 8
 #define NGBE_EM_RAR_ENTRIES   32
 #define NGBE_EM_MC_TBL_SIZE   32
+#define NGBE_EM_VFT_TBL_SIZE  128
 
 s32 ngbe_init_hw(struct ngbe_hw *hw);
 s32 ngbe_start_hw(struct ngbe_hw *hw);
@@ -44,6 +45,7 @@ void ngbe_release_swfw_sync(struct ngbe_hw *hw, u32 mask);
 s32 ngbe_set_vmdq(struct ngbe_hw *hw, u32 rar, u32 vmdq);
 s32 ngbe_clear_vmdq(struct ngbe_hw *hw, u32 rar, u32 vmdq);
 s32 ngbe_init_uta_tables(struct ngbe_hw *hw);
+s32 ngbe_clear_vfta(struct ngbe_hw *hw);
 
 s32 ngbe_init_thermal_sensor_thresh(struct ngbe_hw *hw);
 s32 ngbe_mac_check_overtemp(struct ngbe_hw *hw);

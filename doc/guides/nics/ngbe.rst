@@ -11,8 +11,10 @@ for Wangxun 1 Gigabit Ethernet NICs.
 Features
 --------
 
+- VLAN filtering
 - Packet type information
 - Checksum offload
+- VLAN/QinQ stripping and inserting
 - TSO offload
 - Jumbo frames
 - Link state information

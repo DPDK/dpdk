@@ -22,6 +22,7 @@ static const u64 NGBE_TX_OFFLOAD_MASK = (RTE_MBUF_F_TX_IP_CKSUM |
 		RTE_MBUF_F_TX_OUTER_IPV4 |
 		RTE_MBUF_F_TX_IPV6 |
 		RTE_MBUF_F_TX_IPV4 |
+		RTE_MBUF_F_TX_VLAN |
 		RTE_MBUF_F_TX_L4_MASK |
 		RTE_MBUF_F_TX_TCP_SEG |
 		RTE_MBUF_F_TX_TUNNEL_MASK |
@@ -347,6 +348,11 @@ ngbe_set_xmit_ctx(struct ngbe_tx_queue *txq,
 		vlan_macip_lens |= NGBE_TXD_MACLEN(tx_offload.l2_len);
 	}
 
+	if (ol_flags & RTE_MBUF_F_TX_VLAN) {
+		tx_offload_mask.vlan_tci |= ~0;
+		vlan_macip_lens |= NGBE_TXD_VLAN(tx_offload.vlan_tci);
+	}
+
 	txq->ctx_cache[ctx_idx].flags = ol_flags;
 	txq->ctx_cache[ctx_idx].tx_offload.data[0] =
 		tx_offload_mask.data[0] & tx_offload.data[0];
@@ -417,6 +423,8 @@ tx_desc_cksum_flags_to_olinfo(uint64_t ol_flags)
 			tmp |= NGBE_TXD_IPCS;
 		tmp |= NGBE_TXD_L4CS;
 	}
+	if (ol_flags & RTE_MBUF_F_TX_VLAN)
+		tmp |= NGBE_TXD_CC;
 
 	return tmp;
 }
@@ -426,6 +434,8 @@ tx_desc_ol_flags_to_cmdtype(uint64_t ol_flags)
 {
 	uint32_t cmdtype = 0;
 
+	if (ol_flags & RTE_MBUF_F_TX_VLAN)
+		cmdtype |= NGBE_TXD_VLE;
 	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 		cmdtype |= NGBE_TXD_TSE;
 	return cmdtype;
@@ -444,6 +454,8 @@ tx_desc_ol_flags_to_ptid(uint64_t oflags, uint32_t ptype)
 
 	/* L2 level */
 	ptype = RTE_PTYPE_L2_ETHER;
+	if (oflags & RTE_MBUF_F_TX_VLAN)
+		ptype |= RTE_PTYPE_L2_ETHER_VLAN;
 
 	/* L3 level */
 	if (oflags & (RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IP_CKSUM))
@@ -607,6 +619,7 @@ ngbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tx_offload.l2_len = tx_pkt->l2_len;
 			tx_offload.l3_len = tx_pkt->l3_len;
 			tx_offload.l4_len = tx_pkt->l4_len;
+			tx_offload.vlan_tci = tx_pkt->vlan_tci;
 			tx_offload.tso_segsz = tx_pkt->tso_segsz;
 			tx_offload.outer_l2_len = tx_pkt->outer_l2_len;
 			tx_offload.outer_l3_len = tx_pkt->outer_l3_len;
@@ -886,6 +899,23 @@ ngbe_rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint16_t ptid_mask)
 }
 
 static inline uint64_t
+rx_desc_status_to_pkt_flags(uint32_t rx_status, uint64_t vlan_flags)
+{
+	uint64_t pkt_flags;
+
+	/*
+	 * Check if VLAN present only.
+	 * Do not check whether L3/L4 rx checksum done by NIC or not,
+	 * That can be found from rte_eth_rxmode.offloads flag
+	 */
+	pkt_flags = (rx_status & NGBE_RXD_STAT_VLAN &&
+		     vlan_flags & RTE_MBUF_F_RX_VLAN_STRIPPED)
+		    ? vlan_flags : 0;
+
+	return pkt_flags;
+}
+
+static inline uint64_t
 rx_desc_error_to_pkt_flags(uint32_t rx_status)
 {
 	uint64_t pkt_flags = 0;
@@ -969,9 +999,12 @@ ngbe_rx_scan_hw_ring(struct ngbe_rx_queue *rxq)
 				  rxq->crc_len;
 			mb->data_len = pkt_len;
 			mb->pkt_len = pkt_len;
+			mb->vlan_tci = rte_le_to_cpu_16(rxdp[j].qw1.hi.tag);
 
 			/* convert descriptor fields to rte mbuf flags */
-			pkt_flags = rx_desc_error_to_pkt_flags(s[j]);
+			pkt_flags = rx_desc_status_to_pkt_flags(s[j],
+					rxq->vlan_flags);
+			pkt_flags |= rx_desc_error_to_pkt_flags(s[j]);
 			mb->ol_flags = pkt_flags;
 			mb->packet_type =
 				ngbe_rxd_pkt_info_to_pkt_type(pkt_info[j],
@@ -1267,6 +1300,7 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 *    - Rx port identifier.
 		 * 2) integrate hardware offload data, if any:
 		 *    - IP checksum flag,
+		 *    - VLAN TCI, if any,
 		 *    - error flags.
 		 */
 		pkt_len = (uint16_t)(rte_le_to_cpu_16(rxd.qw1.hi.len) -
@@ -1280,7 +1314,12 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->port = rxq->port_id;
 
 		pkt_info = rte_le_to_cpu_32(rxd.qw0.dw0);
-		pkt_flags = rx_desc_error_to_pkt_flags(staterr);
+		/* Only valid if RTE_MBUF_F_RX_VLAN set in pkt_flags */
+		rxm->vlan_tci = rte_le_to_cpu_16(rxd.qw1.hi.tag);
+
+		pkt_flags = rx_desc_status_to_pkt_flags(staterr,
+					rxq->vlan_flags);
+		pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
 		rxm->ol_flags = pkt_flags;
 		rxm->packet_type = ngbe_rxd_pkt_info_to_pkt_type(pkt_info,
 						       NGBE_PTID_MASK);
@@ -1325,6 +1364,7 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  *    - RX port identifier
  *    - hardware offload data, if any:
  *      - IP checksum flag
+ *      - VLAN TCI, if any
  *      - error flags
  * @head HEAD of the packet cluster
  * @desc HW descriptor to get data from
@@ -1339,8 +1379,13 @@ ngbe_fill_cluster_head_buf(struct rte_mbuf *head, struct ngbe_rx_desc *desc,
 
 	head->port = rxq->port_id;
 
+	/* The vlan_tci field is only valid when RTE_MBUF_F_RX_VLAN is
+	 * set in the pkt_flags field.
+	 */
+	head->vlan_tci = rte_le_to_cpu_16(desc->qw1.hi.tag);
 	pkt_info = rte_le_to_cpu_32(desc->qw0.dw0);
-	pkt_flags = rx_desc_error_to_pkt_flags(staterr);
+	pkt_flags = rx_desc_status_to_pkt_flags(staterr, rxq->vlan_flags);
+	pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
 	head->ol_flags = pkt_flags;
 	head->packet_type = ngbe_rxd_pkt_info_to_pkt_type(pkt_info,
 						NGBE_PTID_MASK);
@@ -1739,10 +1784,10 @@ uint64_t
 ngbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 {
 	uint64_t tx_offload_capa;
-
-	RTE_SET_USED(dev);
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 
 	tx_offload_capa =
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
 		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM  |
 		RTE_ETH_TX_OFFLOAD_UDP_CKSUM   |
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM   |
@@ -1754,6 +1799,9 @@ ngbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 		RTE_ETH_TX_OFFLOAD_IP_TNL_TSO	|
 		RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO	|
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+
+	if (hw->is_pf)
+		tx_offload_capa |= RTE_ETH_TX_OFFLOAD_QINQ_INSERT;
 
 	return tx_offload_capa;
 }
@@ -2025,15 +2073,27 @@ ngbe_reset_rx_queue(struct ngbe_adapter *adapter, struct ngbe_rx_queue *rxq)
 }
 
 uint64_t
-ngbe_get_rx_port_offloads(struct rte_eth_dev *dev __rte_unused)
+ngbe_get_rx_queue_offloads(struct rte_eth_dev *dev __rte_unused)
+{
+	return RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+}
+
+uint64_t
+ngbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 {
 	uint64_t offloads;
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 
 	offloads = RTE_ETH_RX_OFFLOAD_IPV4_CKSUM  |
 		   RTE_ETH_RX_OFFLOAD_UDP_CKSUM   |
 		   RTE_ETH_RX_OFFLOAD_TCP_CKSUM   |
 		   RTE_ETH_RX_OFFLOAD_KEEP_CRC    |
+		   RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
 		   RTE_ETH_RX_OFFLOAD_SCATTER;
+
+	if (hw->is_pf)
+		offloads |= (RTE_ETH_RX_OFFLOAD_QINQ_STRIP |
+			     RTE_ETH_RX_OFFLOAD_VLAN_EXTEND);
 
 	return offloads;
 }
@@ -2051,9 +2111,12 @@ ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	struct ngbe_hw     *hw;
 	uint16_t len;
 	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+	uint64_t offloads;
 
 	PMD_INIT_FUNC_TRACE();
 	hw = ngbe_dev_hw(dev);
+
+	offloads = rx_conf->offloads | dev->data->dev_conf.rxmode.offloads;
 
 	/* Free memory prior to re-allocation if needed... */
 	if (dev->data->rx_queues[queue_idx] != NULL) {
@@ -2079,6 +2142,7 @@ ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		rxq->crc_len = 0;
 	rxq->drop_en = rx_conf->rx_drop_en;
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
+	rxq->offloads = offloads;
 
 	/*
 	 * Allocate Rx ring hardware descriptors. A memzone large enough to
@@ -2206,6 +2270,40 @@ ngbe_dev_free_queues(struct rte_eth_dev *dev)
 		dev->data->tx_queues[i] = NULL;
 	}
 	dev->data->nb_tx_queues = 0;
+}
+
+void ngbe_configure_port(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	int i = 0;
+	uint16_t tpids[8] = {RTE_ETHER_TYPE_VLAN, RTE_ETHER_TYPE_QINQ,
+				0x9100, 0x9200,
+				0x0000, 0x0000,
+				0x0000, 0x0000};
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* default outer vlan tpid */
+	wr32(hw, NGBE_EXTAG,
+		NGBE_EXTAG_ETAG(RTE_ETHER_TYPE_ETAG) |
+		NGBE_EXTAG_VLAN(RTE_ETHER_TYPE_QINQ));
+
+	/* default inner vlan tpid */
+	wr32m(hw, NGBE_VLANCTL,
+		NGBE_VLANCTL_TPID_MASK,
+		NGBE_VLANCTL_TPID(RTE_ETHER_TYPE_VLAN));
+	wr32m(hw, NGBE_DMATXCTRL,
+		NGBE_DMATXCTRL_TPID_MASK,
+		NGBE_DMATXCTRL_TPID(RTE_ETHER_TYPE_VLAN));
+
+	/* default vlan tpid filters */
+	for (i = 0; i < 8; i++) {
+		wr32m(hw, NGBE_TAGTPID(i / 2),
+			(i % 2 ? NGBE_TAGTPID_MSB_MASK
+			       : NGBE_TAGTPID_LSB_MASK),
+			(i % 2 ? NGBE_TAGTPID_MSB(tpids[i])
+			       : NGBE_TAGTPID_LSB(tpids[i])));
+	}
 }
 
 static int
@@ -2370,6 +2468,12 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 	wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
 		NGBE_FRMSZ_MAX(dev->data->mtu + NGBE_ETH_OVERHEAD));
 
+	/*
+	 * Assume no header split and no VLAN strip support
+	 * on any Rx queue first .
+	 */
+	rx_conf->offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+
 	/* Setup Rx queues */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
@@ -2410,6 +2514,13 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 		srrctl |= NGBE_RXCFG_PKTLEN(buf_size);
 
 		wr32(hw, NGBE_RXCFG(rxq->reg_idx), srrctl);
+
+		/* It adds dual VLAN length for supporting dual VLAN */
+		if (dev->data->mtu + NGBE_ETH_OVERHEAD +
+				2 * NGBE_VLAN_TAG_SIZE > buf_size)
+			dev->data->scattered_rx = 1;
+		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+			rx_conf->offloads |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 	}
 
 	if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
