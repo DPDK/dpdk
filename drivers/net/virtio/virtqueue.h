@@ -732,6 +732,9 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 			RTE_PTR_DIFF(&txr[idx].tx_packed_indir, txr);
 		start_dp[idx].len   = (seg_num + 1) *
 			sizeof(struct vring_packed_desc);
+		/* Packed descriptor id needs to be restored when inorder. */
+		if (in_order)
+			start_dp[idx].id = idx;
 		/* reset flags for indirect desc */
 		head_flags = VRING_DESC_F_INDIRECT;
 		head_flags |= vq->vq_packed.cached_flags;
