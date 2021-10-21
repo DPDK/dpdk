@@ -1745,6 +1745,65 @@ ngbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	return ngbe_dev_link_update_share(dev, wait_to_complete);
 }
 
+static int
+ngbe_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t fctrl;
+
+	fctrl = rd32(hw, NGBE_PSRCTL);
+	fctrl |= (NGBE_PSRCTL_UCP | NGBE_PSRCTL_MCP);
+	wr32(hw, NGBE_PSRCTL, fctrl);
+
+	return 0;
+}
+
+static int
+ngbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t fctrl;
+
+	fctrl = rd32(hw, NGBE_PSRCTL);
+	fctrl &= (~NGBE_PSRCTL_UCP);
+	if (dev->data->all_multicast == 1)
+		fctrl |= NGBE_PSRCTL_MCP;
+	else
+		fctrl &= (~NGBE_PSRCTL_MCP);
+	wr32(hw, NGBE_PSRCTL, fctrl);
+
+	return 0;
+}
+
+static int
+ngbe_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t fctrl;
+
+	fctrl = rd32(hw, NGBE_PSRCTL);
+	fctrl |= NGBE_PSRCTL_MCP;
+	wr32(hw, NGBE_PSRCTL, fctrl);
+
+	return 0;
+}
+
+static int
+ngbe_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t fctrl;
+
+	if (dev->data->promiscuous == 1)
+		return 0; /* must remain in all_multicast mode */
+
+	fctrl = rd32(hw, NGBE_PSRCTL);
+	fctrl &= (~NGBE_PSRCTL_MCP);
+	wr32(hw, NGBE_PSRCTL, fctrl);
+
+	return 0;
+}
+
 /**
  * It clears the interrupt causes and enables the interrupt.
  * It will be called once only during NIC initialized.
@@ -2169,6 +2228,10 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.dev_stop                   = ngbe_dev_stop,
 	.dev_close                  = ngbe_dev_close,
 	.dev_reset                  = ngbe_dev_reset,
+	.promiscuous_enable         = ngbe_dev_promiscuous_enable,
+	.promiscuous_disable        = ngbe_dev_promiscuous_disable,
+	.allmulticast_enable        = ngbe_dev_allmulticast_enable,
+	.allmulticast_disable       = ngbe_dev_allmulticast_disable,
 	.link_update                = ngbe_dev_link_update,
 	.stats_get                  = ngbe_dev_stats_get,
 	.xstats_get                 = ngbe_dev_xstats_get,

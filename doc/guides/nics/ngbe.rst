@@ -16,6 +16,8 @@ Features
 - Checksum offload
 - VLAN/QinQ stripping and inserting
 - TSO offload
+- Promiscuous mode
+- Multicast mode
 - Port hardware statistics
 - Jumbo frames
 - Link state information
