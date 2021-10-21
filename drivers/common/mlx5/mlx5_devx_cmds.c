@@ -2800,3 +2800,43 @@ mlx5_devx_cmd_create_crypto_login_obj(void *ctx,
 	crypto_login_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
 	return crypto_login_obj;
 }
+
+/**
+ * Query LAG context.
+ *
+ * @param[in] ctx
+ *   Pointer to ibv_context, returned from mlx5dv_open_device.
+ * @param[out] lag_ctx
+ *   Pointer to struct mlx5_devx_lag_context, to be set by the routine.
+ *
+ * @return
+ *   0 on success, a negative value otherwise.
+ */
+int
+mlx5_devx_cmd_query_lag(void *ctx,
+			struct mlx5_devx_lag_context *lag_ctx)
+{
+	uint32_t in[MLX5_ST_SZ_DW(query_lag_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(query_lag_out)] = {0};
+	void *lctx;
+	int rc;
+
+	MLX5_SET(query_lag_in, in, opcode, MLX5_CMD_OP_QUERY_LAG);
+	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
+	if (rc)
+		goto error;
+	lctx = MLX5_ADDR_OF(query_lag_out, out, context);
+	lag_ctx->fdb_selection_mode = MLX5_GET(lag_context, lctx,
+					       fdb_selection_mode);
+	lag_ctx->port_select_mode = MLX5_GET(lag_context, lctx,
+					       port_select_mode);
+	lag_ctx->lag_state = MLX5_GET(lag_context, lctx, lag_state);
+	lag_ctx->tx_remap_affinity_2 = MLX5_GET(lag_context, lctx,
+						tx_remap_affinity_2);
+	lag_ctx->tx_remap_affinity_1 = MLX5_GET(lag_context, lctx,
+						tx_remap_affinity_1);
+	return 0;
+error:
+	rc = (rc > 0) ? -rc : rc;
+	return rc;
+}

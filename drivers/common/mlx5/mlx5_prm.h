@@ -1048,6 +1048,7 @@ enum {
 	MLX5_CMD_OP_DEALLOC_PD = 0x801,
 	MLX5_CMD_OP_ACCESS_REGISTER = 0x805,
 	MLX5_CMD_OP_ALLOC_TRANSPORT_DOMAIN = 0x816,
+	MLX5_CMD_OP_QUERY_LAG = 0x842,
 	MLX5_CMD_OP_CREATE_TIR = 0x900,
 	MLX5_CMD_OP_MODIFY_TIR = 0x901,
 	MLX5_CMD_OP_CREATE_SQ = 0X904,
@@ -1507,7 +1508,8 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 uar_4k[0x1];
 	u8 reserved_at_241[0x9];
 	u8 uar_sz[0x6];
-	u8 reserved_at_250[0x8];
+	u8 port_selection_cap[0x1];
+	u8 reserved_at_251[0x7];
 	u8 log_pg_sz[0x8];
 	u8 bf[0x1];
 	u8 driver_version[0x1];
@@ -1974,6 +1976,14 @@ struct mlx5_ifc_query_nic_vport_context_in_bits {
 	u8 reserved_at_68[0x18];
 };
 
+/*
+ * lag_tx_port_affinity: 0 auto-selection, 1 PF1, 2 PF2 vice versa.
+ * Each TIS binds to one PF by setting lag_tx_port_affinity (>0).
+ * Once LAG enabled, we create multiple TISs and bind each one to
+ * different PFs, then TIS[i] gets affinity i+1 and goes to PF i+1.
+ */
+#define MLX5_IFC_LAG_MAP_TIS_AFFINITY(index, num) ((num) ? \
+						    (index) % (num) + 1 : 0)
 struct mlx5_ifc_tisc_bits {
 	u8 strict_lag_tx_port_affinity[0x1];
 	u8 reserved_at_1[0x3];
@@ -2005,6 +2015,39 @@ struct mlx5_ifc_query_tis_in_bits {
 	u8 reserved_at_40[0x8];
 	u8 tisn[0x18];
 	u8 reserved_at_60[0x20];
+};
+
+/* port_select_mode definition. */
+enum mlx5_lag_mode_type {
+	MLX5_LAG_MODE_TIS = 0,
+	MLX5_LAG_MODE_HASH = 1,
+};
+
+struct mlx5_ifc_lag_context_bits {
+	u8 fdb_selection_mode[0x1];
+	u8 reserved_at_1[0x14];
+	u8 port_select_mode[0x3];
+	u8 reserved_at_18[0x5];
+	u8 lag_state[0x3];
+	u8 reserved_at_20[0x14];
+	u8 tx_remap_affinity_2[0x4];
+	u8 reserved_at_38[0x4];
+	u8 tx_remap_affinity_1[0x4];
+};
+
+struct mlx5_ifc_query_lag_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x40];
+};
+
+struct mlx5_ifc_query_lag_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	struct mlx5_ifc_lag_context_bits context;
 };
 
 struct mlx5_ifc_alloc_transport_domain_out_bits {

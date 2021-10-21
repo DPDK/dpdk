@@ -189,6 +189,15 @@ struct mlx5_hca_attr {
 	uint32_t umr_indirect_mkey_disabled:1;
 };
 
+/* LAG Context. */
+struct mlx5_devx_lag_context {
+	uint32_t fdb_selection_mode:1;
+	uint32_t port_select_mode:3;
+	uint32_t lag_state:3;
+	uint32_t tx_remap_affinity_1:4;
+	uint32_t tx_remap_affinity_2:4;
+};
+
 struct mlx5_devx_wq_attr {
 	uint32_t wq_type:4;
 	uint32_t wq_signature:1;
@@ -673,4 +682,8 @@ struct mlx5_devx_obj *
 mlx5_devx_cmd_create_crypto_login_obj(void *ctx,
 				      struct mlx5_devx_crypto_login_attr *attr);
 
+__rte_internal
+int
+mlx5_devx_cmd_query_lag(void *ctx,
+			struct mlx5_devx_lag_context *lag_ctx);
 #endif /* RTE_PMD_MLX5_DEVX_CMDS_H_ */
