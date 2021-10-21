@@ -202,6 +202,47 @@ s32 ngbe_hic_sr_read(struct ngbe_hw *hw, u32 addr, u8 *buf, int len)
 	return 0;
 }
 
+/**
+ *  ngbe_hic_sr_write - Write EEPROM word using hostif
+ *  @hw: pointer to hardware structure
+ *  @offset: offset of  word in the EEPROM to write
+ *  @data: word write to the EEPROM
+ *
+ *  Write a 16 bit word to the EEPROM using the hostif.
+ **/
+s32 ngbe_hic_sr_write(struct ngbe_hw *hw, u32 addr, u8 *buf, int len)
+{
+	struct ngbe_hic_write_shadow_ram command;
+	u32 value;
+	int err = 0, i = 0, j = 0;
+
+	if (len > NGBE_PMMBX_DATA_SIZE)
+		return NGBE_ERR_HOST_INTERFACE_COMMAND;
+
+	memset(&command, 0, sizeof(command));
+	command.hdr.req.cmd = FW_WRITE_SHADOW_RAM_CMD;
+	command.hdr.req.buf_lenh = 0;
+	command.hdr.req.buf_lenl = FW_WRITE_SHADOW_RAM_LEN;
+	command.hdr.req.checksum = FW_DEFAULT_CHECKSUM;
+	command.address = cpu_to_be32(addr);
+	command.length = cpu_to_be16(len);
+
+	while (i < (len >> 2)) {
+		value = ((u32 *)buf)[i];
+		wr32a(hw, NGBE_MNGMBX, FW_NVM_DATA_OFFSET + i, value);
+		i++;
+	}
+
+	for (i <<= 2; i < len; i++)
+		((u8 *)&value)[j++] = ((u8 *)buf)[i];
+
+	wr32a(hw, NGBE_MNGMBX, FW_NVM_DATA_OFFSET + (i >> 2), value);
+
+	UNREFERENCED_PARAMETER(&command);
+
+	return err;
+}
+
 s32 ngbe_hic_check_cap(struct ngbe_hw *hw)
 {
 	struct ngbe_hic_read_shadow_ram command;

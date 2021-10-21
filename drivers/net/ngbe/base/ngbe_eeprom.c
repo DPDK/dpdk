@@ -162,6 +162,45 @@ void ngbe_release_eeprom_semaphore(struct ngbe_hw *hw)
 }
 
 /**
+ *  ngbe_ee_read_buffer- Read EEPROM word(s) using hostif
+ *  @hw: pointer to hardware structure
+ *  @offset: offset of  word in the EEPROM to read
+ *  @words: number of words
+ *  @data: word(s) read from the EEPROM
+ *
+ *  Reads a 16 bit word(s) from the EEPROM using the hostif.
+ **/
+s32 ngbe_ee_readw_buffer(struct ngbe_hw *hw,
+				     u32 offset, u32 words, void *data)
+{
+	const u32 mask = NGBE_MNGSEM_SWMBX | NGBE_MNGSEM_SWFLASH;
+	u32 addr = (offset << 1);
+	u32 len = (words << 1);
+	u8 *buf = (u8 *)data;
+	int err;
+
+	err = hw->mac.acquire_swfw_sync(hw, mask);
+	if (err)
+		return err;
+
+	while (len) {
+		u32 seg = (len <= NGBE_PMMBX_DATA_SIZE
+				? len : NGBE_PMMBX_DATA_SIZE);
+
+		err = ngbe_hic_sr_read(hw, addr, buf, seg);
+		if (err)
+			break;
+
+		len -= seg;
+		addr += seg;
+		buf += seg;
+	}
+
+	hw->mac.release_swfw_sync(hw, mask);
+	return err;
+}
+
+/**
  *  ngbe_ee_read32 - Read EEPROM word using a host interface cmd
  *  @hw: pointer to hardware structure
  *  @offset: offset of  word in the EEPROM to read
@@ -182,6 +221,44 @@ s32 ngbe_ee_read32(struct ngbe_hw *hw, u32 addr, u32 *data)
 
 	hw->mac.release_swfw_sync(hw, mask);
 
+	return err;
+}
+
+/**
+ *  ngbe_ee_write_buffer - Write EEPROM word(s) using hostif
+ *  @hw: pointer to hardware structure
+ *  @offset: offset of  word in the EEPROM to write
+ *  @words: number of words
+ *  @data: word(s) write to the EEPROM
+ *
+ *  Write a 16 bit word(s) to the EEPROM using the hostif.
+ **/
+s32 ngbe_ee_writew_buffer(struct ngbe_hw *hw,
+				      u32 offset, u32 words, void *data)
+{
+	const u32 mask = NGBE_MNGSEM_SWMBX | NGBE_MNGSEM_SWFLASH;
+	u32 addr = (offset << 1);
+	u32 len = (words << 1);
+	u8 *buf = (u8 *)data;
+	int err;
+
+	err = hw->mac.acquire_swfw_sync(hw, mask);
+	if (err)
+		return err;
+
+	while (len) {
+		u32 seg = (len <= NGBE_PMMBX_DATA_SIZE
+				? len : NGBE_PMMBX_DATA_SIZE);
+
+		err = ngbe_hic_sr_write(hw, addr, buf, seg);
+		if (err)
+			break;
+
+		len -= seg;
+		buf += seg;
+	}
+
+	hw->mac.release_swfw_sync(hw, mask);
 	return err;
 }
 

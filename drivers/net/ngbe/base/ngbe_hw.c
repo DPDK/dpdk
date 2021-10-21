@@ -1920,7 +1920,9 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 
 	/* EEPROM */
 	rom->init_params = ngbe_init_eeprom_params;
+	rom->readw_buffer = ngbe_ee_readw_buffer;
 	rom->read32 = ngbe_ee_read32;
+	rom->writew_buffer = ngbe_ee_writew_buffer;
 	rom->validate_checksum = ngbe_validate_eeprom_checksum_em;
 
 	mac->mcft_size		= NGBE_EM_MC_TBL_SIZE;

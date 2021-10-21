@@ -231,7 +231,11 @@ typedef u8* (*ngbe_mc_addr_itr) (struct ngbe_hw *hw, u8 **mc_addr_ptr,
 
 struct ngbe_rom_info {
 	s32 (*init_params)(struct ngbe_hw *hw);
+	s32 (*readw_buffer)(struct ngbe_hw *hw, u32 offset, u32 words,
+			    void *data);
 	s32 (*read32)(struct ngbe_hw *hw, u32 addr, u32 *data);
+	s32 (*writew_buffer)(struct ngbe_hw *hw, u32 offset, u32 words,
+			     void *data);
 	s32 (*validate_checksum)(struct ngbe_hw *hw, u16 *checksum_val);
 
 	enum ngbe_eeprom_type type;

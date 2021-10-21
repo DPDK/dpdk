@@ -2669,6 +2669,55 @@ ngbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 					 ngbe_dev_addr_list_itr, TRUE);
 }
 
+static int
+ngbe_get_eeprom_length(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
+	/* Return unit is byte count */
+	return hw->rom.word_size * 2;
+}
+
+static int
+ngbe_get_eeprom(struct rte_eth_dev *dev,
+		struct rte_dev_eeprom_info *in_eeprom)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_rom_info *eeprom = &hw->rom;
+	uint16_t *data = in_eeprom->data;
+	int first, length;
+
+	first = in_eeprom->offset >> 1;
+	length = in_eeprom->length >> 1;
+	if (first > hw->rom.word_size ||
+	    ((first + length) > hw->rom.word_size))
+		return -EINVAL;
+
+	in_eeprom->magic = hw->vendor_id | (hw->device_id << 16);
+
+	return eeprom->readw_buffer(hw, first, length, data);
+}
+
+static int
+ngbe_set_eeprom(struct rte_eth_dev *dev,
+		struct rte_dev_eeprom_info *in_eeprom)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_rom_info *eeprom = &hw->rom;
+	uint16_t *data = in_eeprom->data;
+	int first, length;
+
+	first = in_eeprom->offset >> 1;
+	length = in_eeprom->length >> 1;
+	if (first > hw->rom.word_size ||
+	    ((first + length) > hw->rom.word_size))
+		return -EINVAL;
+
+	in_eeprom->magic = hw->vendor_id | (hw->device_id << 16);
+
+	return eeprom->writew_buffer(hw,  first, length, data);
+}
+
 static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.dev_configure              = ngbe_dev_configure,
 	.dev_infos_get              = ngbe_dev_info_get,
@@ -2719,6 +2768,9 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.set_mc_addr_list           = ngbe_dev_set_mc_addr_list,
 	.rx_burst_mode_get          = ngbe_rx_burst_mode_get,
 	.tx_burst_mode_get          = ngbe_tx_burst_mode_get,
+	.get_eeprom_length          = ngbe_get_eeprom_length,
+	.get_eeprom                 = ngbe_get_eeprom,
+	.set_eeprom                 = ngbe_set_eeprom,
 };
 
 RTE_PMD_REGISTER_PCI(net_ngbe, rte_ngbe_pmd);

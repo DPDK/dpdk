@@ -17,6 +17,11 @@ s32 ngbe_get_eeprom_semaphore(struct ngbe_hw *hw);
 void ngbe_release_eeprom_semaphore(struct ngbe_hw *hw);
 s32 ngbe_save_eeprom_version(struct ngbe_hw *hw);
 
+s32 ngbe_ee_readw_buffer(struct ngbe_hw *hw, u32 offset, u32 words,
+				void *data);
 s32 ngbe_ee_read32(struct ngbe_hw *hw, u32 addr, u32 *data);
+
+s32 ngbe_ee_writew_buffer(struct ngbe_hw *hw, u32 offset, u32 words,
+				void *data);
 
 #endif /* _NGBE_EEPROM_H_ */

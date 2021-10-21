@@ -18,6 +18,8 @@
 #define FW_CEM_RESP_STATUS_SUCCESS      0x1
 #define FW_READ_SHADOW_RAM_CMD          0x31
 #define FW_READ_SHADOW_RAM_LEN          0x6
+#define FW_WRITE_SHADOW_RAM_CMD         0x33
+#define FW_WRITE_SHADOW_RAM_LEN         0xA /* 8 plus 1 WORD to write */
 #define FW_DEFAULT_CHECKSUM             0xFF /* checksum always 0xFF */
 #define FW_NVM_DATA_OFFSET              3
 #define FW_EEPROM_CHECK_STATUS		0xE9
@@ -65,6 +67,17 @@ struct ngbe_hic_read_shadow_ram {
 	u16 pad3;
 };
 
+struct ngbe_hic_write_shadow_ram {
+	union ngbe_hic_hdr2 hdr;
+	u32 address;
+	u16 length;
+	u16 pad2;
+	u16 data;
+	u16 pad3;
+};
+
 s32 ngbe_hic_sr_read(struct ngbe_hw *hw, u32 addr, u8 *buf, int len);
+s32 ngbe_hic_sr_write(struct ngbe_hw *hw, u32 addr, u8 *buf, int len);
+
 s32 ngbe_hic_check_cap(struct ngbe_hw *hw);
 #endif /* _NGBE_MNG_H_ */
