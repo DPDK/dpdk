@@ -924,6 +924,10 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
+	/* Skip link setup if loopback mode is enabled. */
+	if (hw->is_pf && dev->data->dev_conf.lpbk_mode)
+		goto skip_link_setup;
+
 	err = hw->mac.check_link(hw, &speed, &link_up, 0);
 	if (err != 0)
 		goto error;
@@ -966,6 +970,8 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 	err = hw->mac.setup_link(hw, speed, link_up);
 	if (err != 0)
 		goto error;
+
+skip_link_setup:
 
 	if (rte_intr_allow_others(intr_handle)) {
 		ngbe_dev_misc_interrupt_setup(dev);

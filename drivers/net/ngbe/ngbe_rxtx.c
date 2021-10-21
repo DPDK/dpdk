@@ -2469,6 +2469,17 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 		NGBE_FRMSZ_MAX(dev->data->mtu + NGBE_ETH_OVERHEAD));
 
 	/*
+	 * If loopback mode is configured, set LPBK bit.
+	 */
+	hlreg0 = rd32(hw, NGBE_PSRCTL);
+	if (hw->is_pf && dev->data->dev_conf.lpbk_mode)
+		hlreg0 |= NGBE_PSRCTL_LBENA;
+	else
+		hlreg0 &= ~NGBE_PSRCTL_LBENA;
+
+	wr32(hw, NGBE_PSRCTL, hlreg0);
+
+	/*
 	 * Assume no header split and no VLAN strip support
 	 * on any Rx queue first .
 	 */
@@ -2587,6 +2598,19 @@ ngbe_dev_tx_init(struct rte_eth_dev *dev)
 }
 
 /*
+ * Set up link loopback mode Tx->Rx.
+ */
+static inline void
+ngbe_setup_loopback_link(struct ngbe_hw *hw)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_LB, NGBE_MACRXCFG_LB);
+
+	msec_delay(50);
+}
+
+/*
  * Start Transmit and Receive Units.
  */
 int
@@ -2639,6 +2663,10 @@ ngbe_dev_rxtx_start(struct rte_eth_dev *dev)
 	rxctrl = rd32(hw, NGBE_PBRXCTL);
 	rxctrl |= NGBE_PBRXCTL_ENA;
 	hw->mac.enable_rx_dma(hw, rxctrl);
+
+	/* If loopback mode is enabled, set up the link accordingly */
+	if (hw->is_pf && dev->data->dev_conf.lpbk_mode)
+		ngbe_setup_loopback_link(hw);
 
 	return 0;
 }
