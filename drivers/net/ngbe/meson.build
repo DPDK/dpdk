@@ -16,4 +16,6 @@ sources = files(
         'ngbe_rxtx.c',
 )
 
+deps += ['hash']
+
 includes += include_directories('base')

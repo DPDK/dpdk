@@ -899,6 +899,18 @@ ngbe_rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint16_t ptid_mask)
 }
 
 static inline uint64_t
+ngbe_rxd_pkt_info_to_pkt_flags(uint32_t pkt_info)
+{
+	static uint64_t ip_rss_types_map[16] __rte_cache_aligned = {
+		0, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
+		0, RTE_MBUF_F_RX_RSS_HASH, 0, RTE_MBUF_F_RX_RSS_HASH,
+		RTE_MBUF_F_RX_RSS_HASH, 0, 0, 0,
+		0, 0, 0,  RTE_MBUF_F_RX_FDIR,
+	};
+	return ip_rss_types_map[NGBE_RXD_RSSTYPE(pkt_info)];
+}
+
+static inline uint64_t
 rx_desc_status_to_pkt_flags(uint32_t rx_status, uint64_t vlan_flags)
 {
 	uint64_t pkt_flags;
@@ -1005,10 +1017,16 @@ ngbe_rx_scan_hw_ring(struct ngbe_rx_queue *rxq)
 			pkt_flags = rx_desc_status_to_pkt_flags(s[j],
 					rxq->vlan_flags);
 			pkt_flags |= rx_desc_error_to_pkt_flags(s[j]);
+			pkt_flags |=
+				ngbe_rxd_pkt_info_to_pkt_flags(pkt_info[j]);
 			mb->ol_flags = pkt_flags;
 			mb->packet_type =
 				ngbe_rxd_pkt_info_to_pkt_type(pkt_info[j],
 				NGBE_PTID_MASK);
+
+			if (likely(pkt_flags & RTE_MBUF_F_RX_RSS_HASH))
+				mb->hash.rss =
+					rte_le_to_cpu_32(rxdp[j].qw0.dw1);
 		}
 
 		/* Move mbuf pointers from the S/W ring to the stage */
@@ -1299,6 +1317,7 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 *    - packet length,
 		 *    - Rx port identifier.
 		 * 2) integrate hardware offload data, if any:
+		 *    - RSS flag & hash,
 		 *    - IP checksum flag,
 		 *    - VLAN TCI, if any,
 		 *    - error flags.
@@ -1320,9 +1339,13 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		pkt_flags = rx_desc_status_to_pkt_flags(staterr,
 					rxq->vlan_flags);
 		pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
+		pkt_flags |= ngbe_rxd_pkt_info_to_pkt_flags(pkt_info);
 		rxm->ol_flags = pkt_flags;
 		rxm->packet_type = ngbe_rxd_pkt_info_to_pkt_type(pkt_info,
 						       NGBE_PTID_MASK);
+
+		if (likely(pkt_flags & RTE_MBUF_F_RX_RSS_HASH))
+			rxm->hash.rss = rte_le_to_cpu_32(rxd.qw0.dw1);
 
 		/*
 		 * Store the mbuf address into the next entry of the array
@@ -1363,6 +1386,7 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  * Fill the following info in the HEAD buffer of the Rx cluster:
  *    - RX port identifier
  *    - hardware offload data, if any:
+ *      - RSS flag & hash
  *      - IP checksum flag
  *      - VLAN TCI, if any
  *      - error flags
@@ -1386,9 +1410,13 @@ ngbe_fill_cluster_head_buf(struct rte_mbuf *head, struct ngbe_rx_desc *desc,
 	pkt_info = rte_le_to_cpu_32(desc->qw0.dw0);
 	pkt_flags = rx_desc_status_to_pkt_flags(staterr, rxq->vlan_flags);
 	pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
+	pkt_flags |= ngbe_rxd_pkt_info_to_pkt_flags(pkt_info);
 	head->ol_flags = pkt_flags;
 	head->packet_type = ngbe_rxd_pkt_info_to_pkt_type(pkt_info,
 						NGBE_PTID_MASK);
+
+	if (likely(pkt_flags & RTE_MBUF_F_RX_RSS_HASH))
+		head->hash.rss = rte_le_to_cpu_32(desc->qw0.dw1);
 }
 
 /**
@@ -2272,6 +2300,188 @@ ngbe_dev_free_queues(struct rte_eth_dev *dev)
 	dev->data->nb_tx_queues = 0;
 }
 
+/**
+ * Receive Side Scaling (RSS)
+ *
+ * Principles:
+ * The source and destination IP addresses of the IP header and the source
+ * and destination ports of TCP/UDP headers, if any, of received packets are
+ * hashed against a configurable random key to compute a 32-bit RSS hash result.
+ * The seven (7) LSBs of the 32-bit hash result are used as an index into a
+ * 128-entry redirection table (RETA).  Each entry of the RETA provides a 3-bit
+ * RSS output index which is used as the Rx queue index where to store the
+ * received packets.
+ * The following output is supplied in the Rx write-back descriptor:
+ *     - 32-bit result of the Microsoft RSS hash function,
+ *     - 4-bit RSS type field.
+ */
+
+/*
+ * Used as the default key.
+ */
+static uint8_t rss_intel_key[40] = {
+	0x6D, 0x5A, 0x56, 0xDA, 0x25, 0x5B, 0x0E, 0xC2,
+	0x41, 0x67, 0x25, 0x3D, 0x43, 0xA3, 0x8F, 0xB0,
+	0xD0, 0xCA, 0x2B, 0xCB, 0xAE, 0x7B, 0x30, 0xB4,
+	0x77, 0xCB, 0x2D, 0xA3, 0x80, 0x30, 0xF2, 0x0C,
+	0x6A, 0x42, 0xB7, 0x3B, 0xBE, 0xAC, 0x01, 0xFA,
+};
+
+static void
+ngbe_rss_disable(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
+	wr32m(hw, NGBE_RACTL, NGBE_RACTL_RSSENA, 0);
+}
+
+int
+ngbe_dev_rss_hash_update(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint8_t  *hash_key;
+	uint32_t mrqc;
+	uint32_t rss_key;
+	uint64_t rss_hf;
+	uint16_t i;
+
+	if (!hw->is_pf) {
+		PMD_DRV_LOG(ERR, "RSS hash update is not supported on this "
+			"NIC.");
+		return -ENOTSUP;
+	}
+
+	hash_key = rss_conf->rss_key;
+	if (hash_key) {
+		/* Fill in RSS hash key */
+		for (i = 0; i < 10; i++) {
+			rss_key  = LS32(hash_key[(i * 4) + 0], 0, 0xFF);
+			rss_key |= LS32(hash_key[(i * 4) + 1], 8, 0xFF);
+			rss_key |= LS32(hash_key[(i * 4) + 2], 16, 0xFF);
+			rss_key |= LS32(hash_key[(i * 4) + 3], 24, 0xFF);
+			wr32a(hw, NGBE_REG_RSSKEY, i, rss_key);
+		}
+	}
+
+	/* Set configured hashing protocols */
+	rss_hf = rss_conf->rss_hf & NGBE_RSS_OFFLOAD_ALL;
+
+	mrqc = rd32(hw, NGBE_RACTL);
+	mrqc &= ~NGBE_RACTL_RSSMASK;
+	if (rss_hf & RTE_ETH_RSS_IPV4)
+		mrqc |= NGBE_RACTL_RSSIPV4;
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
+		mrqc |= NGBE_RACTL_RSSIPV4TCP;
+	if (rss_hf & RTE_ETH_RSS_IPV6 ||
+	    rss_hf & RTE_ETH_RSS_IPV6_EX)
+		mrqc |= NGBE_RACTL_RSSIPV6;
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP ||
+	    rss_hf & RTE_ETH_RSS_IPV6_TCP_EX)
+		mrqc |= NGBE_RACTL_RSSIPV6TCP;
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
+		mrqc |= NGBE_RACTL_RSSIPV4UDP;
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP ||
+	    rss_hf & RTE_ETH_RSS_IPV6_UDP_EX)
+		mrqc |= NGBE_RACTL_RSSIPV6UDP;
+
+	if (rss_hf)
+		mrqc |= NGBE_RACTL_RSSENA;
+	else
+		mrqc &= ~NGBE_RACTL_RSSENA;
+
+	wr32(hw, NGBE_RACTL, mrqc);
+
+	return 0;
+}
+
+int
+ngbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+			    struct rte_eth_rss_conf *rss_conf)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint8_t *hash_key;
+	uint32_t mrqc;
+	uint32_t rss_key;
+	uint64_t rss_hf;
+	uint16_t i;
+
+	hash_key = rss_conf->rss_key;
+	if (hash_key) {
+		/* Return RSS hash key */
+		for (i = 0; i < 10; i++) {
+			rss_key = rd32a(hw, NGBE_REG_RSSKEY, i);
+			hash_key[(i * 4) + 0] = RS32(rss_key, 0, 0xFF);
+			hash_key[(i * 4) + 1] = RS32(rss_key, 8, 0xFF);
+			hash_key[(i * 4) + 2] = RS32(rss_key, 16, 0xFF);
+			hash_key[(i * 4) + 3] = RS32(rss_key, 24, 0xFF);
+		}
+	}
+
+	rss_hf = 0;
+
+	mrqc = rd32(hw, NGBE_RACTL);
+	if (mrqc & NGBE_RACTL_RSSIPV4)
+		rss_hf |= RTE_ETH_RSS_IPV4;
+	if (mrqc & NGBE_RACTL_RSSIPV4TCP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
+	if (mrqc & NGBE_RACTL_RSSIPV6)
+		rss_hf |= RTE_ETH_RSS_IPV6 |
+			  RTE_ETH_RSS_IPV6_EX;
+	if (mrqc & NGBE_RACTL_RSSIPV6TCP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP |
+			  RTE_ETH_RSS_IPV6_TCP_EX;
+	if (mrqc & NGBE_RACTL_RSSIPV4UDP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
+	if (mrqc & NGBE_RACTL_RSSIPV6UDP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP |
+			  RTE_ETH_RSS_IPV6_UDP_EX;
+	if (!(mrqc & NGBE_RACTL_RSSENA))
+		rss_hf = 0;
+
+	rss_hf &= NGBE_RSS_OFFLOAD_ALL;
+
+	rss_conf->rss_hf = rss_hf;
+	return 0;
+}
+
+static void
+ngbe_rss_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_rss_conf rss_conf;
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t reta;
+	uint16_t i;
+	uint16_t j;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/*
+	 * Fill in redirection table
+	 * The byte-swap is needed because NIC registers are in
+	 * little-endian order.
+	 */
+	if (adapter->rss_reta_updated == 0) {
+		reta = 0;
+		for (i = 0, j = 0; i < RTE_ETH_RSS_RETA_SIZE_128; i++, j++) {
+			if (j == dev->data->nb_rx_queues)
+				j = 0;
+			reta = (reta >> 8) | LS32(j, 24, 0xFF);
+			if ((i & 3) == 3)
+				wr32a(hw, NGBE_REG_RSSTBL, i >> 2, reta);
+		}
+	}
+	/*
+	 * Configure the RSS key and the RSS protocols used to compute
+	 * the RSS hash of input packets.
+	 */
+	rss_conf = dev->data->dev_conf.rx_adv_conf.rss_conf;
+	if (rss_conf.rss_key == NULL)
+		rss_conf.rss_key = rss_intel_key; /* Default hash key */
+	ngbe_dev_rss_hash_update(dev, &rss_conf);
+}
+
 void ngbe_configure_port(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
@@ -2335,6 +2545,24 @@ ngbe_alloc_rx_queue_mbufs(struct ngbe_rx_queue *rxq)
 		NGBE_RXD_HDRADDR(rxd, 0);
 		NGBE_RXD_PKTADDR(rxd, dma_addr);
 		rxe[i].mbuf = mbuf;
+	}
+
+	return 0;
+}
+
+static int
+ngbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
+{
+	switch (dev->data->dev_conf.rxmode.mq_mode) {
+	case RTE_ETH_MQ_RX_RSS:
+		ngbe_rss_configure(dev);
+		break;
+
+	case RTE_ETH_MQ_RX_NONE:
+	default:
+		/* if mq_mode is none, disable rss mode.*/
+		ngbe_rss_disable(dev);
+		break;
 	}
 
 	return 0;
@@ -2536,8 +2764,15 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 
 	if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		dev->data->scattered_rx = 1;
+
+	/*
+	 * Device configured with multiple RX queues.
+	 */
+	ngbe_dev_mq_rx_configure(dev);
+
 	/*
 	 * Setup the Checksum Register.
+	 * Disable Full-Packet Checksum which is mutually exclusive with RSS.
 	 * Enable IP/L4 checksum computation by hardware if requested to do so.
 	 */
 	rxcsum = rd32(hw, NGBE_PSRCTL);

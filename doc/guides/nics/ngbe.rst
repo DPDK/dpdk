@@ -11,6 +11,8 @@ for Wangxun 1 Gigabit Ethernet NICs.
 Features
 --------
 
+- Multiple queues for Tx and Rx
+- Receiver Side Scaling (RSS)
 - MAC/VLAN filtering
 - Packet type information
 - Checksum offload

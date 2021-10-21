@@ -17,6 +17,7 @@
 
 #define NGBE_VFTA_SIZE 128
 #define NGBE_VLAN_TAG_SIZE 4
+#define NGBE_HKEY_MAX_INDEX 10
 /*Default value of Max Rx Queue*/
 #define NGBE_MAX_RX_QUEUE_NUM	8
 
@@ -30,6 +31,17 @@
 
 /* The overhead from MTU to max frame size. */
 #define NGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
+
+#define NGBE_RSS_OFFLOAD_ALL ( \
+	RTE_ETH_RSS_IPV4 | \
+	RTE_ETH_RSS_NONFRAG_IPV4_TCP | \
+	RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
+	RTE_ETH_RSS_IPV6 | \
+	RTE_ETH_RSS_NONFRAG_IPV6_TCP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_UDP | \
+	RTE_ETH_RSS_IPV6_EX | \
+	RTE_ETH_RSS_IPV6_TCP_EX | \
+	RTE_ETH_RSS_IPV6_UDP_EX)
 
 #define NGBE_MISC_VEC_ID               RTE_INTR_VEC_ZERO_OFFSET
 #define NGBE_RX_VEC_START              RTE_INTR_VEC_RXTX_OFFSET
@@ -77,6 +89,9 @@ struct ngbe_adapter {
 	struct ngbe_hwstrip        hwstrip;
 	struct ngbe_uta_info       uta_info;
 	bool                       rx_bulk_alloc_allowed;
+
+	/* For RSS reta table update */
+	uint8_t rss_reta_updated;
 };
 
 static inline struct ngbe_adapter *
@@ -185,6 +200,12 @@ uint16_t ngbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 uint16_t ngbe_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 
+int ngbe_dev_rss_hash_update(struct rte_eth_dev *dev,
+			      struct rte_eth_rss_conf *rss_conf);
+
+int ngbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+				struct rte_eth_rss_conf *rss_conf);
+
 void ngbe_set_ivar_map(struct ngbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
 
@@ -230,6 +251,12 @@ const uint32_t *ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 int ngbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 				      struct rte_ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);
+int ngbe_dev_rss_reta_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size);
+int ngbe_dev_rss_reta_query(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size);
 void ngbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev,
 		uint16_t queue, bool on);
 void ngbe_config_vlan_strip_on_all_queues(struct rte_eth_dev *dev,
