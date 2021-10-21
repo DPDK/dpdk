@@ -13,8 +13,9 @@ Features
 
 - Packet type information
 - Checksum offload
+- TSO offload
 - Link state information
-- Scattered for RX
+- Scattered and gather for TX and RX
 
 
 Prerequisites

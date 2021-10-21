@@ -9,11 +9,25 @@
 #include <rte_ethdev.h>
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
+#include <rte_net.h>
 
 #include "ngbe_logs.h"
 #include "base/ngbe.h"
 #include "ngbe_ethdev.h"
 #include "ngbe_rxtx.h"
+
+/* Bit Mask to indicate what bits required for building Tx context */
+static const u64 NGBE_TX_OFFLOAD_MASK = (RTE_MBUF_F_TX_IP_CKSUM |
+		RTE_MBUF_F_TX_OUTER_IPV6 |
+		RTE_MBUF_F_TX_OUTER_IPV4 |
+		RTE_MBUF_F_TX_IPV6 |
+		RTE_MBUF_F_TX_IPV4 |
+		RTE_MBUF_F_TX_L4_MASK |
+		RTE_MBUF_F_TX_TCP_SEG |
+		RTE_MBUF_F_TX_TUNNEL_MASK |
+		RTE_MBUF_F_TX_OUTER_IP_CKSUM);
+#define NGBE_TX_OFFLOAD_NOTSUP_MASK \
+		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ NGBE_TX_OFFLOAD_MASK)
 
 /*
  * Prefetch a cache line into all cache levels.
@@ -246,6 +260,614 @@ ngbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
 
 	return nb_tx;
+}
+
+static inline void
+ngbe_set_xmit_ctx(struct ngbe_tx_queue *txq,
+		volatile struct ngbe_tx_ctx_desc *ctx_txd,
+		uint64_t ol_flags, union ngbe_tx_offload tx_offload)
+{
+	union ngbe_tx_offload tx_offload_mask;
+	uint32_t type_tucmd_mlhl;
+	uint32_t mss_l4len_idx;
+	uint32_t ctx_idx;
+	uint32_t vlan_macip_lens;
+	uint32_t tunnel_seed;
+
+	ctx_idx = txq->ctx_curr;
+	tx_offload_mask.data[0] = 0;
+	tx_offload_mask.data[1] = 0;
+
+	/* Specify which HW CTX to upload. */
+	mss_l4len_idx = NGBE_TXD_IDX(ctx_idx);
+	type_tucmd_mlhl = NGBE_TXD_CTXT;
+
+	tx_offload_mask.ptid |= ~0;
+	type_tucmd_mlhl |= NGBE_TXD_PTID(tx_offload.ptid);
+
+	/* check if TCP segmentation required for this packet */
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
+		tx_offload_mask.l2_len |= ~0;
+		tx_offload_mask.l3_len |= ~0;
+		tx_offload_mask.l4_len |= ~0;
+		tx_offload_mask.tso_segsz |= ~0;
+		mss_l4len_idx |= NGBE_TXD_MSS(tx_offload.tso_segsz);
+		mss_l4len_idx |= NGBE_TXD_L4LEN(tx_offload.l4_len);
+	} else { /* no TSO, check if hardware checksum is needed */
+		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
+			tx_offload_mask.l2_len |= ~0;
+			tx_offload_mask.l3_len |= ~0;
+		}
+
+		switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+		case RTE_MBUF_F_TX_UDP_CKSUM:
+			mss_l4len_idx |=
+				NGBE_TXD_L4LEN(sizeof(struct rte_udp_hdr));
+			tx_offload_mask.l2_len |= ~0;
+			tx_offload_mask.l3_len |= ~0;
+			break;
+		case RTE_MBUF_F_TX_TCP_CKSUM:
+			mss_l4len_idx |=
+				NGBE_TXD_L4LEN(sizeof(struct rte_tcp_hdr));
+			tx_offload_mask.l2_len |= ~0;
+			tx_offload_mask.l3_len |= ~0;
+			break;
+		case RTE_MBUF_F_TX_SCTP_CKSUM:
+			mss_l4len_idx |=
+				NGBE_TXD_L4LEN(sizeof(struct rte_sctp_hdr));
+			tx_offload_mask.l2_len |= ~0;
+			tx_offload_mask.l3_len |= ~0;
+			break;
+		default:
+			break;
+		}
+	}
+
+	vlan_macip_lens = NGBE_TXD_IPLEN(tx_offload.l3_len >> 1);
+
+	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+		tx_offload_mask.outer_tun_len |= ~0;
+		tx_offload_mask.outer_l2_len |= ~0;
+		tx_offload_mask.outer_l3_len |= ~0;
+		tx_offload_mask.l2_len |= ~0;
+		tunnel_seed = NGBE_TXD_ETUNLEN(tx_offload.outer_tun_len >> 1);
+		tunnel_seed |= NGBE_TXD_EIPLEN(tx_offload.outer_l3_len >> 2);
+
+		switch (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+		case RTE_MBUF_F_TX_TUNNEL_IPIP:
+			/* for non UDP / GRE tunneling, set to 0b */
+			break;
+		default:
+			PMD_TX_LOG(ERR, "Tunnel type not supported");
+			return;
+		}
+		vlan_macip_lens |= NGBE_TXD_MACLEN(tx_offload.outer_l2_len);
+	} else {
+		tunnel_seed = 0;
+		vlan_macip_lens |= NGBE_TXD_MACLEN(tx_offload.l2_len);
+	}
+
+	txq->ctx_cache[ctx_idx].flags = ol_flags;
+	txq->ctx_cache[ctx_idx].tx_offload.data[0] =
+		tx_offload_mask.data[0] & tx_offload.data[0];
+	txq->ctx_cache[ctx_idx].tx_offload.data[1] =
+		tx_offload_mask.data[1] & tx_offload.data[1];
+	txq->ctx_cache[ctx_idx].tx_offload_mask = tx_offload_mask;
+
+	ctx_txd->dw0 = rte_cpu_to_le_32(vlan_macip_lens);
+	ctx_txd->dw1 = rte_cpu_to_le_32(tunnel_seed);
+	ctx_txd->dw2 = rte_cpu_to_le_32(type_tucmd_mlhl);
+	ctx_txd->dw3 = rte_cpu_to_le_32(mss_l4len_idx);
+}
+
+/*
+ * Check which hardware context can be used. Use the existing match
+ * or create a new context descriptor.
+ */
+static inline uint32_t
+what_ctx_update(struct ngbe_tx_queue *txq, uint64_t flags,
+		   union ngbe_tx_offload tx_offload)
+{
+	/* If match with the current used context */
+	if (likely(txq->ctx_cache[txq->ctx_curr].flags == flags &&
+		   (txq->ctx_cache[txq->ctx_curr].tx_offload.data[0] ==
+		    (txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data[0]
+		     & tx_offload.data[0])) &&
+		   (txq->ctx_cache[txq->ctx_curr].tx_offload.data[1] ==
+		    (txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data[1]
+		     & tx_offload.data[1]))))
+		return txq->ctx_curr;
+
+	/* What if match with the next context  */
+	txq->ctx_curr ^= 1;
+	if (likely(txq->ctx_cache[txq->ctx_curr].flags == flags &&
+		   (txq->ctx_cache[txq->ctx_curr].tx_offload.data[0] ==
+		    (txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data[0]
+		     & tx_offload.data[0])) &&
+		   (txq->ctx_cache[txq->ctx_curr].tx_offload.data[1] ==
+		    (txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data[1]
+		     & tx_offload.data[1]))))
+		return txq->ctx_curr;
+
+	/* Mismatch, use the previous context */
+	return NGBE_CTX_NUM;
+}
+
+static inline uint32_t
+tx_desc_cksum_flags_to_olinfo(uint64_t ol_flags)
+{
+	uint32_t tmp = 0;
+
+	if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) != RTE_MBUF_F_TX_L4_NO_CKSUM) {
+		tmp |= NGBE_TXD_CC;
+		tmp |= NGBE_TXD_L4CS;
+	}
+	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
+		tmp |= NGBE_TXD_CC;
+		tmp |= NGBE_TXD_IPCS;
+	}
+	if (ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) {
+		tmp |= NGBE_TXD_CC;
+		tmp |= NGBE_TXD_EIPCS;
+	}
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
+		tmp |= NGBE_TXD_CC;
+		/* implies IPv4 cksum */
+		if (ol_flags & RTE_MBUF_F_TX_IPV4)
+			tmp |= NGBE_TXD_IPCS;
+		tmp |= NGBE_TXD_L4CS;
+	}
+
+	return tmp;
+}
+
+static inline uint32_t
+tx_desc_ol_flags_to_cmdtype(uint64_t ol_flags)
+{
+	uint32_t cmdtype = 0;
+
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
+		cmdtype |= NGBE_TXD_TSE;
+	return cmdtype;
+}
+
+static inline uint8_t
+tx_desc_ol_flags_to_ptid(uint64_t oflags, uint32_t ptype)
+{
+	bool tun;
+
+	if (ptype)
+		return ngbe_encode_ptype(ptype);
+
+	/* Only support flags in NGBE_TX_OFFLOAD_MASK */
+	tun = !!(oflags & RTE_MBUF_F_TX_TUNNEL_MASK);
+
+	/* L2 level */
+	ptype = RTE_PTYPE_L2_ETHER;
+
+	/* L3 level */
+	if (oflags & (RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IP_CKSUM))
+		ptype |= RTE_PTYPE_L3_IPV4;
+	else if (oflags & (RTE_MBUF_F_TX_OUTER_IPV6))
+		ptype |= RTE_PTYPE_L3_IPV6;
+
+	if (oflags & (RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM))
+		ptype |= (tun ? RTE_PTYPE_INNER_L3_IPV4 : RTE_PTYPE_L3_IPV4);
+	else if (oflags & (RTE_MBUF_F_TX_IPV6))
+		ptype |= (tun ? RTE_PTYPE_INNER_L3_IPV6 : RTE_PTYPE_L3_IPV6);
+
+	/* L4 level */
+	switch (oflags & (RTE_MBUF_F_TX_L4_MASK)) {
+	case RTE_MBUF_F_TX_TCP_CKSUM:
+		ptype |= (tun ? RTE_PTYPE_INNER_L4_TCP : RTE_PTYPE_L4_TCP);
+		break;
+	case RTE_MBUF_F_TX_UDP_CKSUM:
+		ptype |= (tun ? RTE_PTYPE_INNER_L4_UDP : RTE_PTYPE_L4_UDP);
+		break;
+	case RTE_MBUF_F_TX_SCTP_CKSUM:
+		ptype |= (tun ? RTE_PTYPE_INNER_L4_SCTP : RTE_PTYPE_L4_SCTP);
+		break;
+	}
+
+	if (oflags & RTE_MBUF_F_TX_TCP_SEG)
+		ptype |= (tun ? RTE_PTYPE_INNER_L4_TCP : RTE_PTYPE_L4_TCP);
+
+	/* Tunnel */
+	switch (oflags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+	case RTE_MBUF_F_TX_TUNNEL_IPIP:
+	case RTE_MBUF_F_TX_TUNNEL_IP:
+		ptype |= RTE_PTYPE_L2_ETHER |
+			 RTE_PTYPE_L3_IPV4 |
+			 RTE_PTYPE_TUNNEL_IP;
+		break;
+	}
+
+	return ngbe_encode_ptype(ptype);
+}
+
+/* Reset transmit descriptors after they have been used */
+static inline int
+ngbe_xmit_cleanup(struct ngbe_tx_queue *txq)
+{
+	struct ngbe_tx_entry *sw_ring = txq->sw_ring;
+	volatile struct ngbe_tx_desc *txr = txq->tx_ring;
+	uint16_t last_desc_cleaned = txq->last_desc_cleaned;
+	uint16_t nb_tx_desc = txq->nb_tx_desc;
+	uint16_t desc_to_clean_to;
+	uint16_t nb_tx_to_clean;
+	uint32_t status;
+
+	/* Determine the last descriptor needing to be cleaned */
+	desc_to_clean_to = (uint16_t)(last_desc_cleaned + txq->tx_free_thresh);
+	if (desc_to_clean_to >= nb_tx_desc)
+		desc_to_clean_to = (uint16_t)(desc_to_clean_to - nb_tx_desc);
+
+	/* Check to make sure the last descriptor to clean is done */
+	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
+	status = txr[desc_to_clean_to].dw3;
+	if (!(status & rte_cpu_to_le_32(NGBE_TXD_DD))) {
+		PMD_TX_LOG(DEBUG,
+			"Tx descriptor %4u is not done"
+			"(port=%d queue=%d)",
+			desc_to_clean_to,
+			txq->port_id, txq->queue_id);
+		if (txq->nb_tx_free >> 1 < txq->tx_free_thresh)
+			ngbe_set32_masked(txq->tdc_reg_addr,
+				NGBE_TXCFG_FLUSH, NGBE_TXCFG_FLUSH);
+		/* Failed to clean any descriptors, better luck next time */
+		return -(1);
+	}
+
+	/* Figure out how many descriptors will be cleaned */
+	if (last_desc_cleaned > desc_to_clean_to)
+		nb_tx_to_clean = (uint16_t)((nb_tx_desc - last_desc_cleaned) +
+							desc_to_clean_to);
+	else
+		nb_tx_to_clean = (uint16_t)(desc_to_clean_to -
+						last_desc_cleaned);
+
+	PMD_TX_LOG(DEBUG,
+		"Cleaning %4u Tx descriptors: %4u to %4u (port=%d queue=%d)",
+		nb_tx_to_clean, last_desc_cleaned, desc_to_clean_to,
+		txq->port_id, txq->queue_id);
+
+	/*
+	 * The last descriptor to clean is done, so that means all the
+	 * descriptors from the last descriptor that was cleaned
+	 * up to the last descriptor with the RS bit set
+	 * are done. Only reset the threshold descriptor.
+	 */
+	txr[desc_to_clean_to].dw3 = 0;
+
+	/* Update the txq to reflect the last descriptor that was cleaned */
+	txq->last_desc_cleaned = desc_to_clean_to;
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + nb_tx_to_clean);
+
+	/* No Error */
+	return 0;
+}
+
+uint16_t
+ngbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
+{
+	struct ngbe_tx_queue *txq;
+	struct ngbe_tx_entry *sw_ring;
+	struct ngbe_tx_entry *txe, *txn;
+	volatile struct ngbe_tx_desc *txr;
+	volatile struct ngbe_tx_desc *txd;
+	struct rte_mbuf     *tx_pkt;
+	struct rte_mbuf     *m_seg;
+	uint64_t buf_dma_addr;
+	uint32_t olinfo_status;
+	uint32_t cmd_type_len;
+	uint32_t pkt_len;
+	uint16_t slen;
+	uint64_t ol_flags;
+	uint16_t tx_id;
+	uint16_t tx_last;
+	uint16_t nb_tx;
+	uint16_t nb_used;
+	uint64_t tx_ol_req;
+	uint32_t ctx = 0;
+	uint32_t new_ctx;
+	union ngbe_tx_offload tx_offload;
+
+	tx_offload.data[0] = 0;
+	tx_offload.data[1] = 0;
+	txq = tx_queue;
+	sw_ring = txq->sw_ring;
+	txr     = txq->tx_ring;
+	tx_id   = txq->tx_tail;
+	txe = &sw_ring[tx_id];
+
+	/* Determine if the descriptor ring needs to be cleaned. */
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		ngbe_xmit_cleanup(txq);
+
+	rte_prefetch0(&txe->mbuf->pool);
+
+	/* Tx loop */
+	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
+		new_ctx = 0;
+		tx_pkt = *tx_pkts++;
+		pkt_len = tx_pkt->pkt_len;
+
+		/*
+		 * Determine how many (if any) context descriptors
+		 * are needed for offload functionality.
+		 */
+		ol_flags = tx_pkt->ol_flags;
+
+		/* If hardware offload required */
+		tx_ol_req = ol_flags & NGBE_TX_OFFLOAD_MASK;
+		if (tx_ol_req) {
+			tx_offload.ptid = tx_desc_ol_flags_to_ptid(tx_ol_req,
+					tx_pkt->packet_type);
+			tx_offload.l2_len = tx_pkt->l2_len;
+			tx_offload.l3_len = tx_pkt->l3_len;
+			tx_offload.l4_len = tx_pkt->l4_len;
+			tx_offload.tso_segsz = tx_pkt->tso_segsz;
+			tx_offload.outer_l2_len = tx_pkt->outer_l2_len;
+			tx_offload.outer_l3_len = tx_pkt->outer_l3_len;
+			tx_offload.outer_tun_len = 0;
+
+			/* If new context need be built or reuse the exist ctx*/
+			ctx = what_ctx_update(txq, tx_ol_req, tx_offload);
+			/* Only allocate context descriptor if required */
+			new_ctx = (ctx == NGBE_CTX_NUM);
+			ctx = txq->ctx_curr;
+		}
+
+		/*
+		 * Keep track of how many descriptors are used this loop
+		 * This will always be the number of segments + the number of
+		 * Context descriptors required to transmit the packet
+		 */
+		nb_used = (uint16_t)(tx_pkt->nb_segs + new_ctx);
+
+		/*
+		 * The number of descriptors that must be allocated for a
+		 * packet is the number of segments of that packet, plus 1
+		 * Context Descriptor for the hardware offload, if any.
+		 * Determine the last Tx descriptor to allocate in the Tx ring
+		 * for the packet, starting from the current position (tx_id)
+		 * in the ring.
+		 */
+		tx_last = (uint16_t)(tx_id + nb_used - 1);
+
+		/* Circular ring */
+		if (tx_last >= txq->nb_tx_desc)
+			tx_last = (uint16_t)(tx_last - txq->nb_tx_desc);
+
+		PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u pktlen=%u"
+			   " tx_first=%u tx_last=%u",
+			   (uint16_t)txq->port_id,
+			   (uint16_t)txq->queue_id,
+			   (uint32_t)pkt_len,
+			   (uint16_t)tx_id,
+			   (uint16_t)tx_last);
+
+		/*
+		 * Make sure there are enough Tx descriptors available to
+		 * transmit the entire packet.
+		 * nb_used better be less than or equal to txq->tx_free_thresh
+		 */
+		if (nb_used > txq->nb_tx_free) {
+			PMD_TX_LOG(DEBUG,
+				"Not enough free Tx descriptors "
+				"nb_used=%4u nb_free=%4u "
+				"(port=%d queue=%d)",
+				nb_used, txq->nb_tx_free,
+				txq->port_id, txq->queue_id);
+
+			if (ngbe_xmit_cleanup(txq) != 0) {
+				/* Could not clean any descriptors */
+				if (nb_tx == 0)
+					return 0;
+				goto end_of_tx;
+			}
+
+			/* nb_used better be <= txq->tx_free_thresh */
+			if (unlikely(nb_used > txq->tx_free_thresh)) {
+				PMD_TX_LOG(DEBUG,
+					"The number of descriptors needed to "
+					"transmit the packet exceeds the "
+					"RS bit threshold. This will impact "
+					"performance."
+					"nb_used=%4u nb_free=%4u "
+					"tx_free_thresh=%4u. "
+					"(port=%d queue=%d)",
+					nb_used, txq->nb_tx_free,
+					txq->tx_free_thresh,
+					txq->port_id, txq->queue_id);
+				/*
+				 * Loop here until there are enough Tx
+				 * descriptors or until the ring cannot be
+				 * cleaned.
+				 */
+				while (nb_used > txq->nb_tx_free) {
+					if (ngbe_xmit_cleanup(txq) != 0) {
+						/*
+						 * Could not clean any
+						 * descriptors
+						 */
+						if (nb_tx == 0)
+							return 0;
+						goto end_of_tx;
+					}
+				}
+			}
+		}
+
+		/*
+		 * By now there are enough free Tx descriptors to transmit
+		 * the packet.
+		 */
+
+		/*
+		 * Set common flags of all Tx Data Descriptors.
+		 *
+		 * The following bits must be set in the first Data Descriptor
+		 * and are ignored in the other ones:
+		 *   - NGBE_TXD_FCS
+		 *
+		 * The following bits must only be set in the last Data
+		 * Descriptor:
+		 *   - NGBE_TXD_EOP
+		 */
+		cmd_type_len = NGBE_TXD_FCS;
+
+		olinfo_status = 0;
+		if (tx_ol_req) {
+			if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
+				/* when TSO is on, paylen in descriptor is the
+				 * not the packet len but the tcp payload len
+				 */
+				pkt_len -= (tx_offload.l2_len +
+					tx_offload.l3_len + tx_offload.l4_len);
+				pkt_len -=
+					(tx_pkt->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
+					? tx_offload.outer_l2_len +
+					  tx_offload.outer_l3_len : 0;
+			}
+
+			/*
+			 * Setup the Tx Context Descriptor if required
+			 */
+			if (new_ctx) {
+				volatile struct ngbe_tx_ctx_desc *ctx_txd;
+
+				ctx_txd = (volatile struct ngbe_tx_ctx_desc *)
+				    &txr[tx_id];
+
+				txn = &sw_ring[txe->next_id];
+				rte_prefetch0(&txn->mbuf->pool);
+
+				if (txe->mbuf != NULL) {
+					rte_pktmbuf_free_seg(txe->mbuf);
+					txe->mbuf = NULL;
+				}
+
+				ngbe_set_xmit_ctx(txq, ctx_txd, tx_ol_req,
+					tx_offload);
+
+				txe->last_id = tx_last;
+				tx_id = txe->next_id;
+				txe = txn;
+			}
+
+			/*
+			 * Setup the Tx Data Descriptor,
+			 * This path will go through
+			 * whatever new/reuse the context descriptor
+			 */
+			cmd_type_len  |= tx_desc_ol_flags_to_cmdtype(ol_flags);
+			olinfo_status |=
+				tx_desc_cksum_flags_to_olinfo(ol_flags);
+			olinfo_status |= NGBE_TXD_IDX(ctx);
+		}
+
+		olinfo_status |= NGBE_TXD_PAYLEN(pkt_len);
+
+		m_seg = tx_pkt;
+		do {
+			txd = &txr[tx_id];
+			txn = &sw_ring[txe->next_id];
+			rte_prefetch0(&txn->mbuf->pool);
+
+			if (txe->mbuf != NULL)
+				rte_pktmbuf_free_seg(txe->mbuf);
+			txe->mbuf = m_seg;
+
+			/*
+			 * Set up Transmit Data Descriptor.
+			 */
+			slen = m_seg->data_len;
+			buf_dma_addr = rte_mbuf_data_iova(m_seg);
+			txd->qw0 = rte_cpu_to_le_64(buf_dma_addr);
+			txd->dw2 = rte_cpu_to_le_32(cmd_type_len | slen);
+			txd->dw3 = rte_cpu_to_le_32(olinfo_status);
+			txe->last_id = tx_last;
+			tx_id = txe->next_id;
+			txe = txn;
+			m_seg = m_seg->next;
+		} while (m_seg != NULL);
+
+		/*
+		 * The last packet data descriptor needs End Of Packet (EOP)
+		 */
+		cmd_type_len |= NGBE_TXD_EOP;
+		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
+
+		txd->dw2 |= rte_cpu_to_le_32(cmd_type_len);
+	}
+
+end_of_tx:
+
+	rte_wmb();
+
+	/*
+	 * Set the Transmit Descriptor Tail (TDT)
+	 */
+	PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u tx_tail=%u nb_tx=%u",
+		   (uint16_t)txq->port_id, (uint16_t)txq->queue_id,
+		   (uint16_t)tx_id, (uint16_t)nb_tx);
+	ngbe_set32_relaxed(txq->tdt_reg_addr, tx_id);
+	txq->tx_tail = tx_id;
+
+	return nb_tx;
+}
+
+/*********************************************************************
+ *
+ *  Tx prep functions
+ *
+ **********************************************************************/
+uint16_t
+ngbe_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	int i, ret;
+	uint64_t ol_flags;
+	struct rte_mbuf *m;
+	struct ngbe_tx_queue *txq = (struct ngbe_tx_queue *)tx_queue;
+
+	for (i = 0; i < nb_pkts; i++) {
+		m = tx_pkts[i];
+		ol_flags = m->ol_flags;
+
+		/**
+		 * Check if packet meets requirements for number of segments
+		 *
+		 * NOTE: for ngbe it's always (40 - WTHRESH) for both TSO and
+		 *       non-TSO
+		 */
+
+		if (m->nb_segs > NGBE_TX_MAX_SEG - txq->wthresh) {
+			rte_errno = -EINVAL;
+			return i;
+		}
+
+		if (ol_flags & NGBE_TX_OFFLOAD_NOTSUP_MASK) {
+			rte_errno = -ENOTSUP;
+			return i;
+		}
+
+#ifdef RTE_ETHDEV_DEBUG_TX
+		ret = rte_validate_tx_offload(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+#endif
+		ret = rte_net_intel_cksum_prepare(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+	}
+
+	return i;
 }
 
 /*********************************************************************
@@ -1040,6 +1662,56 @@ static const struct ngbe_txq_ops def_txq_ops = {
 	.reset = ngbe_reset_tx_queue,
 };
 
+/* Takes an ethdev and a queue and sets up the tx function to be used based on
+ * the queue parameters. Used in tx_queue_setup by primary process and then
+ * in dev_init by secondary process when attaching to an existing ethdev.
+ */
+void
+ngbe_set_tx_function(struct rte_eth_dev *dev, struct ngbe_tx_queue *txq)
+{
+	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
+	if (txq->offloads == 0 &&
+			txq->tx_free_thresh >= RTE_PMD_NGBE_TX_MAX_BURST) {
+		PMD_INIT_LOG(DEBUG, "Using simple tx code path");
+		dev->tx_pkt_burst = ngbe_xmit_pkts_simple;
+		dev->tx_pkt_prepare = NULL;
+	} else {
+		PMD_INIT_LOG(DEBUG, "Using full-featured tx code path");
+		PMD_INIT_LOG(DEBUG,
+				" - offloads = 0x%" PRIx64,
+				txq->offloads);
+		PMD_INIT_LOG(DEBUG,
+				" - tx_free_thresh = %lu [RTE_PMD_NGBE_TX_MAX_BURST=%lu]",
+				(unsigned long)txq->tx_free_thresh,
+				(unsigned long)RTE_PMD_NGBE_TX_MAX_BURST);
+		dev->tx_pkt_burst = ngbe_xmit_pkts;
+		dev->tx_pkt_prepare = ngbe_prep_pkts;
+	}
+}
+
+uint64_t
+ngbe_get_tx_port_offloads(struct rte_eth_dev *dev)
+{
+	uint64_t tx_offload_capa;
+
+	RTE_SET_USED(dev);
+
+	tx_offload_capa =
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM  |
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM   |
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM   |
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM  |
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_TSO     |
+		RTE_ETH_TX_OFFLOAD_UDP_TSO	   |
+		RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO	|
+		RTE_ETH_TX_OFFLOAD_IP_TNL_TSO	|
+		RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO	|
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+
+	return tx_offload_capa;
+}
+
 int
 ngbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t queue_idx,
@@ -1051,9 +1723,12 @@ ngbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	struct ngbe_tx_queue *txq;
 	struct ngbe_hw     *hw;
 	uint16_t tx_free_thresh;
+	uint64_t offloads;
 
 	PMD_INIT_FUNC_TRACE();
 	hw = ngbe_dev_hw(dev);
+
+	offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
 
 	/*
 	 * The Tx descriptor ring will be cleaned after txq->tx_free_thresh
@@ -1116,6 +1791,7 @@ ngbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->queue_id = queue_idx;
 	txq->reg_idx = queue_idx;
 	txq->port_id = dev->data->port_id;
+	txq->offloads = offloads;
 	txq->ops = &def_txq_ops;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
@@ -1136,6 +1812,9 @@ ngbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	PMD_INIT_LOG(DEBUG,
 		     "sw_ring=%p hw_ring=%p dma_addr=0x%" PRIx64,
 		     txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
+
+	/* set up scalar Tx function as appropriate */
+	ngbe_set_tx_function(dev, txq);
 
 	txq->ops->reset(txq);
 

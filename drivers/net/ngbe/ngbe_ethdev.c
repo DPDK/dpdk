@@ -138,7 +138,8 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	eth_dev->dev_ops = &ngbe_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &ngbe_recv_pkts;
-	eth_dev->tx_pkt_burst = &ngbe_xmit_pkts_simple;
+	eth_dev->tx_pkt_burst = &ngbe_xmit_pkts;
+	eth_dev->tx_pkt_prepare = &ngbe_prep_pkts;
 
 	/*
 	 * For secondary processes, we don't initialise any further as primary
@@ -146,6 +147,20 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	 * Rx and Tx function.
 	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		struct ngbe_tx_queue *txq;
+		/* Tx queue function in primary, set by last queue initialized
+		 * Tx queue may not initialized by primary process
+		 */
+		if (eth_dev->data->tx_queues) {
+			uint16_t nb_tx_queues = eth_dev->data->nb_tx_queues;
+			txq = eth_dev->data->tx_queues[nb_tx_queues - 1];
+			ngbe_set_tx_function(eth_dev, txq);
+		} else {
+			/* Use default Tx function if we get here */
+			PMD_INIT_LOG(NOTICE,
+				"No Tx queues configured yet. Using default Tx function.");
+		}
+
 		ngbe_set_rx_function(eth_dev);
 
 		return 0;
@@ -636,6 +651,8 @@ ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_pktlen = 15872;
 	dev_info->rx_offload_capa = (ngbe_get_rx_port_offloads(dev) |
 				     dev_info->rx_queue_offload_capa);
+	dev_info->tx_queue_offload_capa = 0;
+	dev_info->tx_offload_capa = ngbe_get_tx_port_offloads(dev);
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {

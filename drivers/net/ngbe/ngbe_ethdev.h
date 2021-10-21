@@ -114,7 +114,13 @@ uint16_t ngbe_recv_pkts_sc_single_alloc(void *rx_queue,
 uint16_t ngbe_recv_pkts_sc_bulk_alloc(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
+uint16_t ngbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
+
 uint16_t ngbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
+
+uint16_t ngbe_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 
 void ngbe_set_ivar_map(struct ngbe_hw *hw, int8_t direction,
