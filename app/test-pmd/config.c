@@ -644,6 +644,29 @@ skip_parse:
 	rte_devargs_reset(&da);
 }
 
+static void
+print_dev_capabilities(uint64_t capabilities)
+{
+	uint64_t single_capa;
+	int begin;
+	int end;
+	int bit;
+
+	if (capabilities == 0)
+		return;
+
+	begin = __builtin_ctzll(capabilities);
+	end = sizeof(capabilities) * CHAR_BIT - __builtin_clzll(capabilities);
+
+	single_capa = 1ULL << begin;
+	for (bit = begin; bit < end; bit++) {
+		if (capabilities & single_capa)
+			printf(" %s",
+			       rte_eth_dev_capability_name(single_capa));
+		single_capa <<= 1;
+	}
+}
+
 void
 port_infos_display(portid_t port_id)
 {
@@ -795,6 +818,9 @@ port_infos_display(portid_t port_id)
 	printf("Max segment number per MTU/TSO: %hu\n",
 		dev_info.tx_desc_lim.nb_mtu_seg_max);
 
+	printf("Device capabilities: 0x%"PRIx64"(", dev_info.dev_capa);
+	print_dev_capabilities(dev_info.dev_capa);
+	printf(" )\n");
 	/* Show switch info only if valid switch domain and port id is set */
 	if (dev_info.switch_info.domain_id !=
 		RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) {
@@ -805,6 +831,9 @@ port_infos_display(portid_t port_id)
 			dev_info.switch_info.domain_id);
 		printf("Switch Port Id: %u\n",
 			dev_info.switch_info.port_id);
+		if ((dev_info.dev_capa & RTE_ETH_DEV_CAPA_RXQ_SHARE) != 0)
+			printf("Switch Rx domain: %u\n",
+			       dev_info.switch_info.rx_domain);
 	}
 }
 
