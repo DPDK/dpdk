@@ -59,6 +59,12 @@ struct ngbe_hwstrip {
 	uint32_t bitmap[NGBE_HWSTRIP_BITMAP_SIZE];
 };
 
+struct ngbe_uta_info {
+	uint8_t  uc_filter_type;
+	uint16_t uta_in_use;
+	uint32_t uta_shadow[NGBE_MAX_UTA];
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
@@ -69,6 +75,7 @@ struct ngbe_adapter {
 	struct ngbe_stat_mappings  stat_mappings;
 	struct ngbe_vfta           shadow_vfta;
 	struct ngbe_hwstrip        hwstrip;
+	struct ngbe_uta_info       uta_info;
 	bool                       rx_bulk_alloc_allowed;
 };
 
@@ -109,6 +116,8 @@ ngbe_dev_intr(struct rte_eth_dev *dev)
 
 #define NGBE_DEV_HWSTRIP(dev) \
 	(&((struct ngbe_adapter *)(dev)->data->dev_private)->hwstrip)
+#define NGBE_DEV_UTA_INFO(dev) \
+	(&((struct ngbe_adapter *)(dev)->data->dev_private)->uta_info)
 
 /*
  * Rx/Tx function prototypes
@@ -218,6 +227,9 @@ struct rte_ngbe_xstats_name_off {
 };
 
 const uint32_t *ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+int ngbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
+				      struct rte_ether_addr *mc_addr_set,
+				      uint32_t nb_mc_addr);
 void ngbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev,
 		uint16_t queue, bool on);
 void ngbe_config_vlan_strip_on_all_queues(struct rte_eth_dev *dev,

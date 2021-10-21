@@ -218,7 +218,7 @@ New Features
 * **Updated Wangxun ngbe driver.**
 
   * Added offloads and packet type on RxTx.
-  * Added VLAN filters.
+  * Added VLAN and MAC filters.
   * Added device basic statistics and extended stats.
 
 * **Updated Marvell cnxk crypto PMD.**

@@ -1622,12 +1622,16 @@ ngbe_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 static int
 ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 
 	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
 	dev_info->min_rx_bufsize = 1024;
 	dev_info->max_rx_pktlen = 15872;
+	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
+	dev_info->max_hash_mac_addrs = NGBE_VMDQ_NUM_UC_MAC;
+	dev_info->max_vfs = pci_dev->max_vfs;
 	dev_info->rx_queue_offload_capa = ngbe_get_rx_queue_offloads(dev);
 	dev_info->rx_offload_capa = (ngbe_get_rx_port_offloads(dev) |
 				     dev_info->rx_queue_offload_capa);
@@ -2125,6 +2129,36 @@ ngbe_dev_interrupt_handler(void *param)
 }
 
 static int
+ngbe_add_rar(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
+				uint32_t index, uint32_t pool)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t enable_addr = 1;
+
+	return ngbe_set_rar(hw, index, mac_addr->addr_bytes,
+			     pool, enable_addr);
+}
+
+static void
+ngbe_remove_rar(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
+	ngbe_clear_rar(hw, index);
+}
+
+static int
+ngbe_set_default_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+
+	ngbe_remove_rar(dev, 0);
+	ngbe_add_rar(dev, addr, 0, pci_dev->max_vfs);
+
+	return 0;
+}
+
+static int
 ngbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
@@ -2147,6 +2181,116 @@ ngbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	else
 		wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
 			NGBE_FRMSZ_MAX(frame_size));
+
+	return 0;
+}
+
+static uint32_t
+ngbe_uta_vector(struct ngbe_hw *hw, struct rte_ether_addr *uc_addr)
+{
+	uint32_t vector = 0;
+
+	switch (hw->mac.mc_filter_type) {
+	case 0:   /* use bits [47:36] of the address */
+		vector = ((uc_addr->addr_bytes[4] >> 4) |
+			(((uint16_t)uc_addr->addr_bytes[5]) << 4));
+		break;
+	case 1:   /* use bits [46:35] of the address */
+		vector = ((uc_addr->addr_bytes[4] >> 3) |
+			(((uint16_t)uc_addr->addr_bytes[5]) << 5));
+		break;
+	case 2:   /* use bits [45:34] of the address */
+		vector = ((uc_addr->addr_bytes[4] >> 2) |
+			(((uint16_t)uc_addr->addr_bytes[5]) << 6));
+		break;
+	case 3:   /* use bits [43:32] of the address */
+		vector = ((uc_addr->addr_bytes[4]) |
+			(((uint16_t)uc_addr->addr_bytes[5]) << 8));
+		break;
+	default:  /* Invalid mc_filter_type */
+		break;
+	}
+
+	/* vector can only be 12-bits or boundary will be exceeded */
+	vector &= 0xFFF;
+	return vector;
+}
+
+static int
+ngbe_uc_hash_table_set(struct rte_eth_dev *dev,
+			struct rte_ether_addr *mac_addr, uint8_t on)
+{
+	uint32_t vector;
+	uint32_t uta_idx;
+	uint32_t reg_val;
+	uint32_t uta_mask;
+	uint32_t psrctl;
+
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_uta_info *uta_info = NGBE_DEV_UTA_INFO(dev);
+
+	vector = ngbe_uta_vector(hw, mac_addr);
+	uta_idx = (vector >> 5) & 0x7F;
+	uta_mask = 0x1UL << (vector & 0x1F);
+
+	if (!!on == !!(uta_info->uta_shadow[uta_idx] & uta_mask))
+		return 0;
+
+	reg_val = rd32(hw, NGBE_UCADDRTBL(uta_idx));
+	if (on) {
+		uta_info->uta_in_use++;
+		reg_val |= uta_mask;
+		uta_info->uta_shadow[uta_idx] |= uta_mask;
+	} else {
+		uta_info->uta_in_use--;
+		reg_val &= ~uta_mask;
+		uta_info->uta_shadow[uta_idx] &= ~uta_mask;
+	}
+
+	wr32(hw, NGBE_UCADDRTBL(uta_idx), reg_val);
+
+	psrctl = rd32(hw, NGBE_PSRCTL);
+	if (uta_info->uta_in_use > 0)
+		psrctl |= NGBE_PSRCTL_UCHFENA;
+	else
+		psrctl &= ~NGBE_PSRCTL_UCHFENA;
+
+	psrctl &= ~NGBE_PSRCTL_ADHF12_MASK;
+	psrctl |= NGBE_PSRCTL_ADHF12(hw->mac.mc_filter_type);
+	wr32(hw, NGBE_PSRCTL, psrctl);
+
+	return 0;
+}
+
+static int
+ngbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_uta_info *uta_info = NGBE_DEV_UTA_INFO(dev);
+	uint32_t psrctl;
+	int i;
+
+	if (on) {
+		for (i = 0; i < RTE_ETH_VMDQ_NUM_UC_HASH_ARRAY; i++) {
+			uta_info->uta_shadow[i] = ~0;
+			wr32(hw, NGBE_UCADDRTBL(i), ~0);
+		}
+	} else {
+		for (i = 0; i < RTE_ETH_VMDQ_NUM_UC_HASH_ARRAY; i++) {
+			uta_info->uta_shadow[i] = 0;
+			wr32(hw, NGBE_UCADDRTBL(i), 0);
+		}
+	}
+
+	psrctl = rd32(hw, NGBE_PSRCTL);
+	if (on)
+		psrctl |= NGBE_PSRCTL_UCHFENA;
+	else
+		psrctl &= ~NGBE_PSRCTL_UCHFENA;
+
+	psrctl &= ~NGBE_PSRCTL_ADHF12_MASK;
+	psrctl |= NGBE_PSRCTL_ADHF12(hw->mac.mc_filter_type);
+	wr32(hw, NGBE_PSRCTL, psrctl);
 
 	return 0;
 }
@@ -2245,6 +2389,31 @@ ngbe_configure_msix(struct rte_eth_dev *dev)
 			| NGBE_ITR_WRDSA);
 }
 
+static u8 *
+ngbe_dev_addr_list_itr(__rte_unused struct ngbe_hw *hw,
+			u8 **mc_addr_ptr, u32 *vmdq)
+{
+	u8 *mc_addr;
+
+	*vmdq = 0;
+	mc_addr = *mc_addr_ptr;
+	*mc_addr_ptr = (mc_addr + sizeof(struct rte_ether_addr));
+	return mc_addr;
+}
+
+int
+ngbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
+			  struct rte_ether_addr *mc_addr_set,
+			  uint32_t nb_mc_addr)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	u8 *mc_addr_list;
+
+	mc_addr_list = (u8 *)mc_addr_set;
+	return hw->mac.update_mc_addr_list(hw, mc_addr_list, nb_mc_addr,
+					 ngbe_dev_addr_list_itr, TRUE);
+}
+
 static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.dev_configure              = ngbe_dev_configure,
 	.dev_infos_get              = ngbe_dev_info_get,
@@ -2279,6 +2448,12 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.rx_queue_release           = ngbe_dev_rx_queue_release,
 	.tx_queue_setup             = ngbe_dev_tx_queue_setup,
 	.tx_queue_release           = ngbe_dev_tx_queue_release,
+	.mac_addr_add               = ngbe_add_rar,
+	.mac_addr_remove            = ngbe_remove_rar,
+	.mac_addr_set               = ngbe_set_default_mac_addr,
+	.uc_hash_table_set          = ngbe_uc_hash_table_set,
+	.uc_all_hash_table_set      = ngbe_uc_all_hash_table_set,
+	.set_mc_addr_list           = ngbe_dev_set_mc_addr_list,
 	.rx_burst_mode_get          = ngbe_rx_burst_mode_get,
 	.tx_burst_mode_get          = ngbe_tx_burst_mode_get,
 };

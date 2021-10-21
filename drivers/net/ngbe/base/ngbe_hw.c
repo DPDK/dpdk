@@ -571,6 +571,138 @@ s32 ngbe_init_rx_addrs(struct ngbe_hw *hw)
 }
 
 /**
+ *  ngbe_mta_vector - Determines bit-vector in multicast table to set
+ *  @hw: pointer to hardware structure
+ *  @mc_addr: the multicast address
+ *
+ *  Extracts the 12 bits, from a multicast address, to determine which
+ *  bit-vector to set in the multicast table. The hardware uses 12 bits, from
+ *  incoming rx multicast addresses, to determine the bit-vector to check in
+ *  the MTA. Which of the 4 combination, of 12-bits, the hardware uses is set
+ *  by the MO field of the PSRCTRL. The MO field is set during initialization
+ *  to mc_filter_type.
+ **/
+static s32 ngbe_mta_vector(struct ngbe_hw *hw, u8 *mc_addr)
+{
+	u32 vector = 0;
+
+	DEBUGFUNC("ngbe_mta_vector");
+
+	switch (hw->mac.mc_filter_type) {
+	case 0:   /* use bits [47:36] of the address */
+		vector = ((mc_addr[4] >> 4) | (((u16)mc_addr[5]) << 4));
+		break;
+	case 1:   /* use bits [46:35] of the address */
+		vector = ((mc_addr[4] >> 3) | (((u16)mc_addr[5]) << 5));
+		break;
+	case 2:   /* use bits [45:34] of the address */
+		vector = ((mc_addr[4] >> 2) | (((u16)mc_addr[5]) << 6));
+		break;
+	case 3:   /* use bits [43:32] of the address */
+		vector = ((mc_addr[4]) | (((u16)mc_addr[5]) << 8));
+		break;
+	default:  /* Invalid mc_filter_type */
+		DEBUGOUT("MC filter type param set incorrectly\n");
+		ASSERT(0);
+		break;
+	}
+
+	/* vector can only be 12-bits or boundary will be exceeded */
+	vector &= 0xFFF;
+	return vector;
+}
+
+/**
+ *  ngbe_set_mta - Set bit-vector in multicast table
+ *  @hw: pointer to hardware structure
+ *  @mc_addr: Multicast address
+ *
+ *  Sets the bit-vector in the multicast table.
+ **/
+void ngbe_set_mta(struct ngbe_hw *hw, u8 *mc_addr)
+{
+	u32 vector;
+	u32 vector_bit;
+	u32 vector_reg;
+
+	DEBUGFUNC("ngbe_set_mta");
+
+	hw->addr_ctrl.mta_in_use++;
+
+	vector = ngbe_mta_vector(hw, mc_addr);
+	DEBUGOUT(" bit-vector = 0x%03X\n", vector);
+
+	/*
+	 * The MTA is a register array of 128 32-bit registers. It is treated
+	 * like an array of 4096 bits.  We want to set bit
+	 * BitArray[vector_value]. So we figure out what register the bit is
+	 * in, read it, OR in the new bit, then write back the new value.  The
+	 * register is determined by the upper 7 bits of the vector value and
+	 * the bit within that register are determined by the lower 5 bits of
+	 * the value.
+	 */
+	vector_reg = (vector >> 5) & 0x7F;
+	vector_bit = vector & 0x1F;
+	hw->mac.mta_shadow[vector_reg] |= (1 << vector_bit);
+}
+
+/**
+ *  ngbe_update_mc_addr_list - Updates MAC list of multicast addresses
+ *  @hw: pointer to hardware structure
+ *  @mc_addr_list: the list of new multicast addresses
+ *  @mc_addr_count: number of addresses
+ *  @next: iterator function to walk the multicast address list
+ *  @clear: flag, when set clears the table beforehand
+ *
+ *  When the clear flag is set, the given list replaces any existing list.
+ *  Hashes the given addresses into the multicast table.
+ **/
+s32 ngbe_update_mc_addr_list(struct ngbe_hw *hw, u8 *mc_addr_list,
+				      u32 mc_addr_count, ngbe_mc_addr_itr next,
+				      bool clear)
+{
+	u32 i;
+	u32 vmdq;
+
+	DEBUGFUNC("ngbe_update_mc_addr_list");
+
+	/*
+	 * Set the new number of MC addresses that we are being requested to
+	 * use.
+	 */
+	hw->addr_ctrl.num_mc_addrs = mc_addr_count;
+	hw->addr_ctrl.mta_in_use = 0;
+
+	/* Clear mta_shadow */
+	if (clear) {
+		DEBUGOUT(" Clearing MTA\n");
+		memset(&hw->mac.mta_shadow, 0, sizeof(hw->mac.mta_shadow));
+	}
+
+	/* Update mta_shadow */
+	for (i = 0; i < mc_addr_count; i++) {
+		DEBUGOUT(" Adding the multicast addresses:\n");
+		ngbe_set_mta(hw, next(hw, &mc_addr_list, &vmdq));
+	}
+
+	/* Enable mta */
+	for (i = 0; i < hw->mac.mcft_size; i++)
+		wr32a(hw, NGBE_MCADDRTBL(0), i,
+				      hw->mac.mta_shadow[i]);
+
+	if (hw->addr_ctrl.mta_in_use > 0) {
+		u32 psrctl = rd32(hw, NGBE_PSRCTL);
+		psrctl &= ~(NGBE_PSRCTL_ADHF12_MASK | NGBE_PSRCTL_MCHFENA);
+		psrctl |= NGBE_PSRCTL_MCHFENA |
+			 NGBE_PSRCTL_ADHF12(hw->mac.mc_filter_type);
+		wr32(hw, NGBE_PSRCTL, psrctl);
+	}
+
+	DEBUGOUT("ngbe update mc addr list complete\n");
+	return 0;
+}
+
+/**
  *  ngbe_acquire_swfw_sync - Acquire SWFW semaphore
  *  @hw: pointer to hardware structure
  *  @mask: Mask to specify which semaphore to acquire
@@ -1126,10 +1258,11 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 
 	mac->disable_sec_rx_path = ngbe_disable_sec_rx_path;
 	mac->enable_sec_rx_path = ngbe_enable_sec_rx_path;
-	/* RAR, VLAN */
+	/* RAR, VLAN, Multicast */
 	mac->set_rar = ngbe_set_rar;
 	mac->clear_rar = ngbe_clear_rar;
 	mac->init_rx_addrs = ngbe_init_rx_addrs;
+	mac->update_mc_addr_list = ngbe_update_mc_addr_list;
 	mac->set_vmdq = ngbe_set_vmdq;
 	mac->clear_vmdq = ngbe_clear_vmdq;
 	mac->clear_vfta = ngbe_clear_vfta;

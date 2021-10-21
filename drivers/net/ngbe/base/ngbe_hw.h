@@ -36,6 +36,9 @@ s32 ngbe_set_rar(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 			  u32 enable_addr);
 s32 ngbe_clear_rar(struct ngbe_hw *hw, u32 index);
 s32 ngbe_init_rx_addrs(struct ngbe_hw *hw);
+s32 ngbe_update_mc_addr_list(struct ngbe_hw *hw, u8 *mc_addr_list,
+				      u32 mc_addr_count,
+				      ngbe_mc_addr_itr func, bool clear);
 s32 ngbe_disable_sec_rx_path(struct ngbe_hw *hw);
 s32 ngbe_enable_sec_rx_path(struct ngbe_hw *hw);
 
@@ -52,6 +55,7 @@ s32 ngbe_init_thermal_sensor_thresh(struct ngbe_hw *hw);
 s32 ngbe_mac_check_overtemp(struct ngbe_hw *hw);
 void ngbe_disable_rx(struct ngbe_hw *hw);
 void ngbe_enable_rx(struct ngbe_hw *hw);
+void ngbe_set_mta(struct ngbe_hw *hw, u8 *mc_addr);
 s32 ngbe_init_shared_code(struct ngbe_hw *hw);
 s32 ngbe_set_mac_type(struct ngbe_hw *hw);
 s32 ngbe_init_ops_pf(struct ngbe_hw *hw);

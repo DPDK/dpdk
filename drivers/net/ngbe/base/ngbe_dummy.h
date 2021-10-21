@@ -127,6 +127,11 @@ static inline s32 ngbe_mac_init_rx_addrs_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
+static inline s32 ngbe_mac_update_mc_addr_list_dummy(struct ngbe_hw *TUP0,
+			u8 *TUP1, u32 TUP2, ngbe_mc_addr_itr TUP3, bool TUP4)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
 static inline s32 ngbe_mac_clear_vfta_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
@@ -207,6 +212,7 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->mac.set_vmdq = ngbe_mac_set_vmdq_dummy;
 	hw->mac.clear_vmdq = ngbe_mac_clear_vmdq_dummy;
 	hw->mac.init_rx_addrs = ngbe_mac_init_rx_addrs_dummy;
+	hw->mac.update_mc_addr_list = ngbe_mac_update_mc_addr_list_dummy;
 	hw->mac.clear_vfta = ngbe_mac_clear_vfta_dummy;
 	hw->mac.init_thermal_sensor_thresh = ngbe_mac_init_thermal_ssth_dummy;
 	hw->mac.check_overtemp = ngbe_mac_check_overtemp_dummy;
