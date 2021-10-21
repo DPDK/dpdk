@@ -188,6 +188,7 @@ struct fwd_engine * fwd_engines[] = {
 #ifdef RTE_LIBRTE_IEEE1588
 	&ieee1588_fwd_engine,
 #endif
+	&shared_rxq_engine,
 	NULL,
 };
 

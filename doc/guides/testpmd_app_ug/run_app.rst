@@ -258,6 +258,7 @@ The command line options are:
        tm
        noisy
        5tswap
+       shared-rxq
 
 *   ``--rss-ip``
 
@@ -399,7 +400,9 @@ The command line options are:
 
     Create queues in shared Rx queue mode if device supports.
     Shared Rx queues are grouped per X ports. X defaults to UINT32_MAX,
-    implies all ports join share group 1.
+    implies all ports join share group 1. Forwarding engine "shared-rxq"
+    should be used for shared Rx queues. This engine does Rx only and
+    update stream statistics accordingly.
 
 *   ``--eth-link-speed``
 

@@ -314,7 +314,7 @@ set fwd
 Set the packet forwarding mode::
 
    testpmd> set fwd (io|mac|macswap|flowgen| \
-                     rxonly|txonly|csum|icmpecho|noisy|5tswap) (""|retry)
+                     rxonly|txonly|csum|icmpecho|noisy|5tswap|shared-rxq) (""|retry)
 
 ``retry`` can be specified for forwarding engines except ``rx_only``.
 
@@ -356,6 +356,9 @@ The available information categories are:
   L3 swaps the source address and destination address of IP (v4 and v6).
 
   L4 swaps the source port and destination port of transport layer (TCP and UDP).
+
+* ``shared-rxq``: Receive only for shared Rx queue.
+  Resolve packet source port from mbuf and update stream statistics accordingly.
 
 Example::
 
