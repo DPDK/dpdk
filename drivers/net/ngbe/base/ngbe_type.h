@@ -398,6 +398,7 @@ struct ngbe_hw {
 	u16 sub_device_id;
 	u16 sub_system_id;
 	u32 eeprom_id;
+	u8 revision_id;
 	bool adapter_stopped;
 
 	uint64_t isb_dma;

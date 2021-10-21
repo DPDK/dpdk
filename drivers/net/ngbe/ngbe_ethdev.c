@@ -13,6 +13,67 @@
 #include "ngbe.h"
 #include "ngbe_ethdev.h"
 #include "ngbe_rxtx.h"
+#include "ngbe_regs_group.h"
+
+static const struct reg_info ngbe_regs_general[] = {
+	{NGBE_RST, 1, 1, "NGBE_RST"},
+	{NGBE_STAT, 1, 1, "NGBE_STAT"},
+	{NGBE_PORTCTL, 1, 1, "NGBE_PORTCTL"},
+	{NGBE_GPIODATA, 1, 1, "NGBE_GPIODATA"},
+	{NGBE_GPIOCTL, 1, 1, "NGBE_GPIOCTL"},
+	{NGBE_LEDCTL, 1, 1, "NGBE_LEDCTL"},
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info ngbe_regs_nvm[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info ngbe_regs_interrupt[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info ngbe_regs_fctl_others[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info ngbe_regs_rxdma[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info ngbe_regs_rx[] = {
+	{0, 0, 0, ""}
+};
+
+static struct reg_info ngbe_regs_tx[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info ngbe_regs_wakeup[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info ngbe_regs_mac[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info ngbe_regs_diagnostic[] = {
+	{0, 0, 0, ""},
+};
+
+/* PF registers */
+static const struct reg_info *ngbe_regs_others[] = {
+				ngbe_regs_general,
+				ngbe_regs_nvm,
+				ngbe_regs_interrupt,
+				ngbe_regs_fctl_others,
+				ngbe_regs_rxdma,
+				ngbe_regs_rx,
+				ngbe_regs_tx,
+				ngbe_regs_wakeup,
+				ngbe_regs_mac,
+				ngbe_regs_diagnostic,
+				NULL};
 
 static int ngbe_dev_close(struct rte_eth_dev *dev);
 static int ngbe_dev_link_update(struct rte_eth_dev *dev,
@@ -2670,6 +2731,52 @@ ngbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 }
 
 static int
+ngbe_get_reg_length(struct rte_eth_dev *dev __rte_unused)
+{
+	int count = 0;
+	int g_ind = 0;
+	const struct reg_info *reg_group;
+	const struct reg_info **reg_set = ngbe_regs_others;
+
+	while ((reg_group = reg_set[g_ind++]))
+		count += ngbe_regs_group_count(reg_group);
+
+	return count;
+}
+
+static int
+ngbe_get_regs(struct rte_eth_dev *dev,
+	      struct rte_dev_reg_info *regs)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t *data = regs->data;
+	int g_ind = 0;
+	int count = 0;
+	const struct reg_info *reg_group;
+	const struct reg_info **reg_set = ngbe_regs_others;
+
+	if (data == NULL) {
+		regs->length = ngbe_get_reg_length(dev);
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
+
+	/* Support only full register dump */
+	if (regs->length == 0 ||
+	    regs->length == (uint32_t)ngbe_get_reg_length(dev)) {
+		regs->version = hw->mac.type << 24 |
+				hw->revision_id << 16 |
+				hw->device_id;
+		while ((reg_group = reg_set[g_ind++]))
+			count += ngbe_read_regs_group(dev, &data[count],
+						      reg_group);
+		return 0;
+	}
+
+	return -ENOTSUP;
+}
+
+static int
 ngbe_get_eeprom_length(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
@@ -2766,6 +2873,7 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.rss_hash_update            = ngbe_dev_rss_hash_update,
 	.rss_hash_conf_get          = ngbe_dev_rss_hash_conf_get,
 	.set_mc_addr_list           = ngbe_dev_set_mc_addr_list,
+	.get_reg                    = ngbe_get_regs,
 	.rx_burst_mode_get          = ngbe_rx_burst_mode_get,
 	.tx_burst_mode_get          = ngbe_tx_burst_mode_get,
 	.get_eeprom_length          = ngbe_get_eeprom_length,
