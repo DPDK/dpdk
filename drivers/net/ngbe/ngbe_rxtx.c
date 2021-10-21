@@ -263,6 +263,243 @@ ngbe_rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint16_t ptid_mask)
 	return ngbe_decode_ptype(ptid);
 }
 
+/*
+ * LOOK_AHEAD defines how many desc statuses to check beyond the
+ * current descriptor.
+ * It must be a pound define for optimal performance.
+ * Do not change the value of LOOK_AHEAD, as the ngbe_rx_scan_hw_ring
+ * function only works with LOOK_AHEAD=8.
+ */
+#define LOOK_AHEAD 8
+#if (LOOK_AHEAD != 8)
+#error "PMD NGBE: LOOK_AHEAD must be 8\n"
+#endif
+static inline int
+ngbe_rx_scan_hw_ring(struct ngbe_rx_queue *rxq)
+{
+	volatile struct ngbe_rx_desc *rxdp;
+	struct ngbe_rx_entry *rxep;
+	struct rte_mbuf *mb;
+	uint16_t pkt_len;
+	int nb_dd;
+	uint32_t s[LOOK_AHEAD];
+	uint32_t pkt_info[LOOK_AHEAD];
+	int i, j, nb_rx = 0;
+	uint32_t status;
+
+	/* get references to current descriptor and S/W ring entry */
+	rxdp = &rxq->rx_ring[rxq->rx_tail];
+	rxep = &rxq->sw_ring[rxq->rx_tail];
+
+	status = rxdp->qw1.lo.status;
+	/* check to make sure there is at least 1 packet to receive */
+	if (!(status & rte_cpu_to_le_32(NGBE_RXD_STAT_DD)))
+		return 0;
+
+	/*
+	 * Scan LOOK_AHEAD descriptors at a time to determine which descriptors
+	 * reference packets that are ready to be received.
+	 */
+	for (i = 0; i < RTE_PMD_NGBE_RX_MAX_BURST;
+	     i += LOOK_AHEAD, rxdp += LOOK_AHEAD, rxep += LOOK_AHEAD) {
+		/* Read desc statuses backwards to avoid race condition */
+		for (j = 0; j < LOOK_AHEAD; j++)
+			s[j] = rte_le_to_cpu_32(rxdp[j].qw1.lo.status);
+
+		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+
+		/* Compute how many status bits were set */
+		for (nb_dd = 0; nb_dd < LOOK_AHEAD &&
+				(s[nb_dd] & NGBE_RXD_STAT_DD); nb_dd++)
+			;
+
+		for (j = 0; j < nb_dd; j++)
+			pkt_info[j] = rte_le_to_cpu_32(rxdp[j].qw0.dw0);
+
+		nb_rx += nb_dd;
+
+		/* Translate descriptor info to mbuf format */
+		for (j = 0; j < nb_dd; ++j) {
+			mb = rxep[j].mbuf;
+			pkt_len = rte_le_to_cpu_16(rxdp[j].qw1.hi.len);
+			mb->data_len = pkt_len;
+			mb->pkt_len = pkt_len;
+
+			mb->packet_type =
+				ngbe_rxd_pkt_info_to_pkt_type(pkt_info[j],
+				NGBE_PTID_MASK);
+		}
+
+		/* Move mbuf pointers from the S/W ring to the stage */
+		for (j = 0; j < LOOK_AHEAD; ++j)
+			rxq->rx_stage[i + j] = rxep[j].mbuf;
+
+		/* stop if all requested packets could not be received */
+		if (nb_dd != LOOK_AHEAD)
+			break;
+	}
+
+	/* clear software ring entries so we can cleanup correctly */
+	for (i = 0; i < nb_rx; ++i)
+		rxq->sw_ring[rxq->rx_tail + i].mbuf = NULL;
+
+	return nb_rx;
+}
+
+static inline int
+ngbe_rx_alloc_bufs(struct ngbe_rx_queue *rxq, bool reset_mbuf)
+{
+	volatile struct ngbe_rx_desc *rxdp;
+	struct ngbe_rx_entry *rxep;
+	struct rte_mbuf *mb;
+	uint16_t alloc_idx;
+	__le64 dma_addr;
+	int diag, i;
+
+	/* allocate buffers in bulk directly into the S/W ring */
+	alloc_idx = rxq->rx_free_trigger - (rxq->rx_free_thresh - 1);
+	rxep = &rxq->sw_ring[alloc_idx];
+	diag = rte_mempool_get_bulk(rxq->mb_pool, (void *)rxep,
+				    rxq->rx_free_thresh);
+	if (unlikely(diag != 0))
+		return -ENOMEM;
+
+	rxdp = &rxq->rx_ring[alloc_idx];
+	for (i = 0; i < rxq->rx_free_thresh; ++i) {
+		/* populate the static rte mbuf fields */
+		mb = rxep[i].mbuf;
+		if (reset_mbuf)
+			mb->port = rxq->port_id;
+
+		rte_mbuf_refcnt_set(mb, 1);
+		mb->data_off = RTE_PKTMBUF_HEADROOM;
+
+		/* populate the descriptors */
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mb));
+		NGBE_RXD_HDRADDR(&rxdp[i], 0);
+		NGBE_RXD_PKTADDR(&rxdp[i], dma_addr);
+	}
+
+	/* update state of internal queue structure */
+	rxq->rx_free_trigger = rxq->rx_free_trigger + rxq->rx_free_thresh;
+	if (rxq->rx_free_trigger >= rxq->nb_rx_desc)
+		rxq->rx_free_trigger = rxq->rx_free_thresh - 1;
+
+	/* no errors */
+	return 0;
+}
+
+static inline uint16_t
+ngbe_rx_fill_from_stage(struct ngbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+			 uint16_t nb_pkts)
+{
+	struct rte_mbuf **stage = &rxq->rx_stage[rxq->rx_next_avail];
+	int i;
+
+	/* how many packets are ready to return? */
+	nb_pkts = (uint16_t)RTE_MIN(nb_pkts, rxq->rx_nb_avail);
+
+	/* copy mbuf pointers to the application's packet list */
+	for (i = 0; i < nb_pkts; ++i)
+		rx_pkts[i] = stage[i];
+
+	/* update internal queue state */
+	rxq->rx_nb_avail = (uint16_t)(rxq->rx_nb_avail - nb_pkts);
+	rxq->rx_next_avail = (uint16_t)(rxq->rx_next_avail + nb_pkts);
+
+	return nb_pkts;
+}
+
+static inline uint16_t
+ngbe_rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+	     uint16_t nb_pkts)
+{
+	struct ngbe_rx_queue *rxq = (struct ngbe_rx_queue *)rx_queue;
+	struct rte_eth_dev *dev = &rte_eth_devices[rxq->port_id];
+	uint16_t nb_rx = 0;
+
+	/* Any previously recv'd pkts will be returned from the Rx stage */
+	if (rxq->rx_nb_avail)
+		return ngbe_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
+
+	/* Scan the H/W ring for packets to receive */
+	nb_rx = (uint16_t)ngbe_rx_scan_hw_ring(rxq);
+
+	/* update internal queue state */
+	rxq->rx_next_avail = 0;
+	rxq->rx_nb_avail = nb_rx;
+	rxq->rx_tail = (uint16_t)(rxq->rx_tail + nb_rx);
+
+	/* if required, allocate new buffers to replenish descriptors */
+	if (rxq->rx_tail > rxq->rx_free_trigger) {
+		uint16_t cur_free_trigger = rxq->rx_free_trigger;
+
+		if (ngbe_rx_alloc_bufs(rxq, true) != 0) {
+			int i, j;
+
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+				   "queue_id=%u", (uint16_t)rxq->port_id,
+				   (uint16_t)rxq->queue_id);
+
+			dev->data->rx_mbuf_alloc_failed +=
+				rxq->rx_free_thresh;
+
+			/*
+			 * Need to rewind any previous receives if we cannot
+			 * allocate new buffers to replenish the old ones.
+			 */
+			rxq->rx_nb_avail = 0;
+			rxq->rx_tail = (uint16_t)(rxq->rx_tail - nb_rx);
+			for (i = 0, j = rxq->rx_tail; i < nb_rx; ++i, ++j)
+				rxq->sw_ring[j].mbuf = rxq->rx_stage[i];
+
+			return 0;
+		}
+
+		/* update tail pointer */
+		rte_wmb();
+		ngbe_set32_relaxed(rxq->rdt_reg_addr, cur_free_trigger);
+	}
+
+	if (rxq->rx_tail >= rxq->nb_rx_desc)
+		rxq->rx_tail = 0;
+
+	/* received any packets this loop? */
+	if (rxq->rx_nb_avail)
+		return ngbe_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
+
+	return 0;
+}
+
+/* split requests into chunks of size RTE_PMD_NGBE_RX_MAX_BURST */
+uint16_t
+ngbe_recv_pkts_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
+			   uint16_t nb_pkts)
+{
+	uint16_t nb_rx;
+
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	if (likely(nb_pkts <= RTE_PMD_NGBE_RX_MAX_BURST))
+		return ngbe_rx_recv_pkts(rx_queue, rx_pkts, nb_pkts);
+
+	/* request is relatively large, chunk it up */
+	nb_rx = 0;
+	while (nb_pkts) {
+		uint16_t ret, n;
+
+		n = (uint16_t)RTE_MIN(nb_pkts, RTE_PMD_NGBE_RX_MAX_BURST);
+		ret = ngbe_rx_recv_pkts(rx_queue, &rx_pkts[nb_rx], n);
+		nb_rx = (uint16_t)(nb_rx + ret);
+		nb_pkts = (uint16_t)(nb_pkts - ret);
+		if (ret < n)
+			break;
+	}
+
+	return nb_rx;
+}
+
 uint16_t
 ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
@@ -426,6 +663,246 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return nb_rx;
 }
 
+static inline void
+ngbe_fill_cluster_head_buf(struct rte_mbuf *head, struct ngbe_rx_desc *desc,
+		struct ngbe_rx_queue *rxq, uint32_t staterr)
+{
+	uint32_t pkt_info;
+
+	RTE_SET_USED(staterr);
+	head->port = rxq->port_id;
+
+	pkt_info = rte_le_to_cpu_32(desc->qw0.dw0);
+	head->packet_type = ngbe_rxd_pkt_info_to_pkt_type(pkt_info,
+						NGBE_PTID_MASK);
+}
+
+/**
+ * ngbe_recv_pkts_sc - receive handler for scatter case.
+ *
+ * @rx_queue Rx queue handle
+ * @rx_pkts table of received packets
+ * @nb_pkts size of rx_pkts table
+ * @bulk_alloc if TRUE bulk allocation is used for a HW ring refilling
+ *
+ * Returns the number of received packets/clusters (according to the "bulk
+ * receive" interface).
+ */
+static inline uint16_t
+ngbe_recv_pkts_sc(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
+		    bool bulk_alloc)
+{
+	struct ngbe_rx_queue *rxq = rx_queue;
+	struct rte_eth_dev *dev = &rte_eth_devices[rxq->port_id];
+	volatile struct ngbe_rx_desc *rx_ring = rxq->rx_ring;
+	struct ngbe_rx_entry *sw_ring = rxq->sw_ring;
+	struct ngbe_scattered_rx_entry *sw_sc_ring = rxq->sw_sc_ring;
+	uint16_t rx_id = rxq->rx_tail;
+	uint16_t nb_rx = 0;
+	uint16_t nb_hold = rxq->nb_rx_hold;
+	uint16_t prev_id = rxq->rx_tail;
+
+	while (nb_rx < nb_pkts) {
+		bool eop;
+		struct ngbe_rx_entry *rxe;
+		struct ngbe_scattered_rx_entry *sc_entry;
+		struct ngbe_scattered_rx_entry *next_sc_entry = NULL;
+		struct ngbe_rx_entry *next_rxe = NULL;
+		struct rte_mbuf *first_seg;
+		struct rte_mbuf *rxm;
+		struct rte_mbuf *nmb = NULL;
+		struct ngbe_rx_desc rxd;
+		uint16_t data_len;
+		uint16_t next_id;
+		volatile struct ngbe_rx_desc *rxdp;
+		uint32_t staterr;
+
+next_desc:
+		rxdp = &rx_ring[rx_id];
+		staterr = rte_le_to_cpu_32(rxdp->qw1.lo.status);
+
+		if (!(staterr & NGBE_RXD_STAT_DD))
+			break;
+
+		rxd = *rxdp;
+
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_id=%u "
+				  "staterr=0x%x data_len=%u",
+			   rxq->port_id, rxq->queue_id, rx_id, staterr,
+			   rte_le_to_cpu_16(rxd.qw1.hi.len));
+
+		if (!bulk_alloc) {
+			nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
+			if (nmb == NULL) {
+				PMD_RX_LOG(DEBUG, "Rx mbuf alloc failed "
+						  "port_id=%u queue_id=%u",
+					   rxq->port_id, rxq->queue_id);
+
+				dev->data->rx_mbuf_alloc_failed++;
+				break;
+			}
+		} else if (nb_hold > rxq->rx_free_thresh) {
+			uint16_t next_rdt = rxq->rx_free_trigger;
+
+			if (!ngbe_rx_alloc_bufs(rxq, false)) {
+				rte_wmb();
+				ngbe_set32_relaxed(rxq->rdt_reg_addr,
+							    next_rdt);
+				nb_hold -= rxq->rx_free_thresh;
+			} else {
+				PMD_RX_LOG(DEBUG, "Rx bulk alloc failed "
+						  "port_id=%u queue_id=%u",
+					   rxq->port_id, rxq->queue_id);
+
+				dev->data->rx_mbuf_alloc_failed++;
+				break;
+			}
+		}
+
+		nb_hold++;
+		rxe = &sw_ring[rx_id];
+		eop = staterr & NGBE_RXD_STAT_EOP;
+
+		next_id = rx_id + 1;
+		if (next_id == rxq->nb_rx_desc)
+			next_id = 0;
+
+		/* Prefetch next mbuf while processing current one. */
+		rte_ngbe_prefetch(sw_ring[next_id].mbuf);
+
+		/*
+		 * When next Rx descriptor is on a cache-line boundary,
+		 * prefetch the next 4 RX descriptors and the next 4 pointers
+		 * to mbufs.
+		 */
+		if ((next_id & 0x3) == 0) {
+			rte_ngbe_prefetch(&rx_ring[next_id]);
+			rte_ngbe_prefetch(&sw_ring[next_id]);
+		}
+
+		rxm = rxe->mbuf;
+
+		if (!bulk_alloc) {
+			__le64 dma =
+			  rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+			/*
+			 * Update Rx descriptor with the physical address of the
+			 * new data buffer of the new allocated mbuf.
+			 */
+			rxe->mbuf = nmb;
+
+			rxm->data_off = RTE_PKTMBUF_HEADROOM;
+			NGBE_RXD_HDRADDR(rxdp, 0);
+			NGBE_RXD_PKTADDR(rxdp, dma);
+		} else {
+			rxe->mbuf = NULL;
+		}
+
+		/*
+		 * Set data length & data buffer address of mbuf.
+		 */
+		data_len = rte_le_to_cpu_16(rxd.qw1.hi.len);
+		rxm->data_len = data_len;
+
+		if (!eop) {
+			uint16_t nextp_id;
+
+			nextp_id = next_id;
+			next_sc_entry = &sw_sc_ring[nextp_id];
+			next_rxe = &sw_ring[nextp_id];
+			rte_ngbe_prefetch(next_rxe);
+		}
+
+		sc_entry = &sw_sc_ring[rx_id];
+		first_seg = sc_entry->fbuf;
+		sc_entry->fbuf = NULL;
+
+		/*
+		 * If this is the first buffer of the received packet,
+		 * set the pointer to the first mbuf of the packet and
+		 * initialize its context.
+		 * Otherwise, update the total length and the number of segments
+		 * of the current scattered packet, and update the pointer to
+		 * the last mbuf of the current packet.
+		 */
+		if (first_seg == NULL) {
+			first_seg = rxm;
+			first_seg->pkt_len = data_len;
+			first_seg->nb_segs = 1;
+		} else {
+			first_seg->pkt_len += data_len;
+			first_seg->nb_segs++;
+		}
+
+		prev_id = rx_id;
+		rx_id = next_id;
+
+		/*
+		 * If this is not the last buffer of the received packet, update
+		 * the pointer to the first mbuf at the NEXTP entry in the
+		 * sw_sc_ring and continue to parse the Rx ring.
+		 */
+		if (!eop && next_rxe) {
+			rxm->next = next_rxe->mbuf;
+			next_sc_entry->fbuf = first_seg;
+			goto next_desc;
+		}
+
+		/* Initialize the first mbuf of the returned packet */
+		ngbe_fill_cluster_head_buf(first_seg, &rxd, rxq, staterr);
+
+		/* Prefetch data of first segment, if configured to do so. */
+		rte_packet_prefetch((char *)first_seg->buf_addr +
+			first_seg->data_off);
+
+		/*
+		 * Store the mbuf address into the next entry of the array
+		 * of returned packets.
+		 */
+		rx_pkts[nb_rx++] = first_seg;
+	}
+
+	/*
+	 * Record index of the next Rx descriptor to probe.
+	 */
+	rxq->rx_tail = rx_id;
+
+	/*
+	 * If the number of free Rx descriptors is greater than the Rx free
+	 * threshold of the queue, advance the Receive Descriptor Tail (RDT)
+	 * register.
+	 * Update the RDT with the value of the last processed Rx descriptor
+	 * minus 1, to guarantee that the RDT register is never equal to the
+	 * RDH register, which creates a "full" ring situation from the
+	 * hardware point of view...
+	 */
+	if (!bulk_alloc && nb_hold > rxq->rx_free_thresh) {
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
+			   "nb_hold=%u nb_rx=%u",
+			   rxq->port_id, rxq->queue_id, rx_id, nb_hold, nb_rx);
+
+		rte_wmb();
+		ngbe_set32_relaxed(rxq->rdt_reg_addr, prev_id);
+		nb_hold = 0;
+	}
+
+	rxq->nb_rx_hold = nb_hold;
+	return nb_rx;
+}
+
+uint16_t
+ngbe_recv_pkts_sc_single_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
+				 uint16_t nb_pkts)
+{
+	return ngbe_recv_pkts_sc(rx_queue, rx_pkts, nb_pkts, false);
+}
+
+uint16_t
+ngbe_recv_pkts_sc_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
+			       uint16_t nb_pkts)
+{
+	return ngbe_recv_pkts_sc(rx_queue, rx_pkts, nb_pkts, true);
+}
 
 /*********************************************************************
  *
@@ -777,6 +1254,12 @@ ngbe_reset_rx_queue(struct ngbe_adapter *adapter, struct ngbe_rx_queue *rxq)
 	rxq->pkt_last_seg = NULL;
 }
 
+uint64_t
+ngbe_get_rx_port_offloads(struct rte_eth_dev *dev __rte_unused)
+{
+	return RTE_ETH_RX_OFFLOAD_SCATTER;
+}
+
 int
 ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t queue_idx,
@@ -977,6 +1460,54 @@ ngbe_alloc_rx_queue_mbufs(struct ngbe_rx_queue *rxq)
 	return 0;
 }
 
+void
+ngbe_set_rx_function(struct rte_eth_dev *dev)
+{
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+
+	if (dev->data->scattered_rx) {
+		/*
+		 * Set the scattered callback: there are bulk and
+		 * single allocation versions.
+		 */
+		if (adapter->rx_bulk_alloc_allowed) {
+			PMD_INIT_LOG(DEBUG, "Using a Scattered with bulk "
+					   "allocation callback (port=%d).",
+				     dev->data->port_id);
+			dev->rx_pkt_burst = ngbe_recv_pkts_sc_bulk_alloc;
+		} else {
+			PMD_INIT_LOG(DEBUG, "Using Regular (non-vector, "
+					    "single allocation) "
+					    "Scattered Rx callback "
+					    "(port=%d).",
+				     dev->data->port_id);
+
+			dev->rx_pkt_burst = ngbe_recv_pkts_sc_single_alloc;
+		}
+	/*
+	 * Below we set "simple" callbacks according to port/queues parameters.
+	 * If parameters allow we are going to choose between the following
+	 * callbacks:
+	 *    - Bulk Allocation
+	 *    - Single buffer allocation (the simplest one)
+	 */
+	} else if (adapter->rx_bulk_alloc_allowed) {
+		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
+				    "satisfied. Rx Burst Bulk Alloc function "
+				    "will be used on port=%d.",
+			     dev->data->port_id);
+
+		dev->rx_pkt_burst = ngbe_recv_pkts_bulk_alloc;
+	} else {
+		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are not "
+				    "satisfied, or Scattered Rx is requested "
+				    "(port=%d).",
+			     dev->data->port_id);
+
+		dev->rx_pkt_burst = ngbe_recv_pkts;
+	}
+}
+
 /*
  * Initializes Receive Unit.
  */
@@ -991,6 +1522,7 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 	uint32_t srrctl;
 	uint16_t buf_size;
 	uint16_t i;
+	struct rte_eth_rxmode *rx_conf = &dev->data->dev_conf.rxmode;
 
 	PMD_INIT_FUNC_TRACE();
 	hw = ngbe_dev_hw(dev);
@@ -1046,6 +1578,11 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 
 		wr32(hw, NGBE_RXCFG(rxq->reg_idx), srrctl);
 	}
+
+	if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
+		dev->data->scattered_rx = 1;
+
+	ngbe_set_rx_function(dev);
 
 	return 0;
 }

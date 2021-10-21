@@ -13,6 +13,7 @@ Features
 
 - Packet type information
 - Link state information
+- Scattered for RX
 
 
 Prerequisites

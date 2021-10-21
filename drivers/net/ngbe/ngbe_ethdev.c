@@ -140,8 +140,16 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	eth_dev->rx_pkt_burst = &ngbe_recv_pkts;
 	eth_dev->tx_pkt_burst = &ngbe_xmit_pkts_simple;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	/*
+	 * For secondary processes, we don't initialise any further as primary
+	 * has already done this work. Only check we don't need a different
+	 * Rx and Tx function.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		ngbe_set_rx_function(eth_dev);
+
 		return 0;
+	}
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
@@ -526,6 +534,9 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 
 	ngbe_dev_clear_queues(dev);
 
+	/* Clear stored conf */
+	dev->data->scattered_rx = 0;
+
 	/* Clear recorded link status */
 	memset(&link, 0, sizeof(link));
 	rte_eth_linkstatus_set(dev, &link);
@@ -623,6 +634,8 @@ ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
 	dev_info->min_rx_bufsize = 1024;
 	dev_info->max_rx_pktlen = 15872;
+	dev_info->rx_offload_capa = (ngbe_get_rx_port_offloads(dev) |
+				     dev_info->rx_queue_offload_capa);
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -665,7 +678,10 @@ ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 const uint32_t *
 ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 {
-	if (dev->rx_pkt_burst == ngbe_recv_pkts)
+	if (dev->rx_pkt_burst == ngbe_recv_pkts ||
+	    dev->rx_pkt_burst == ngbe_recv_pkts_sc_single_alloc ||
+	    dev->rx_pkt_burst == ngbe_recv_pkts_sc_bulk_alloc ||
+	    dev->rx_pkt_burst == ngbe_recv_pkts_bulk_alloc)
 		return ngbe_get_supported_ptypes();
 
 	return NULL;
