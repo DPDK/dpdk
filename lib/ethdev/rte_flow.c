@@ -156,6 +156,8 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 	MK_FLOW_ITEM(REPRESENTED_PORT, sizeof(struct rte_flow_item_ethdev)),
 	MK_FLOW_ITEM_FN(FLEX, sizeof(struct rte_flow_item_flex),
 			rte_flow_item_flex_conv),
+	MK_FLOW_ITEM(L2TPV2, sizeof(struct rte_flow_item_l2tpv2)),
+	MK_FLOW_ITEM(PPP, sizeof(struct rte_flow_item_ppp)),
 };
 
 /** Generate flow_action[] entry. */

@@ -35,6 +35,8 @@
 #include <rte_mbuf_dyn.h>
 #include <rte_meter.h>
 #include <rte_gtp.h>
+#include <rte_l2tpv2.h>
+#include <rte_ppp.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -644,6 +646,20 @@ enum rte_flow_item_type {
 	 * @see struct rte_flow_item_flex.
 	 */
 	RTE_FLOW_ITEM_TYPE_FLEX,
+
+	/**
+	 * Matches L2TPv2 Header.
+	 *
+	 * See struct rte_flow_item_l2tpv2.
+	 */
+	RTE_FLOW_ITEM_TYPE_L2TPV2,
+
+	/**
+	 * Matches PPP Header.
+	 *
+	 * See struct rte_flow_item_ppp.
+	 */
+	RTE_FLOW_ITEM_TYPE_PPP,
 };
 
 /**
@@ -1897,6 +1913,57 @@ struct rte_flow_item_ethdev {
 #ifndef __cplusplus
 static const struct rte_flow_item_ethdev rte_flow_item_ethdev_mask = {
 	.port_id = 0xffff,
+};
+#endif
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ITEM_TYPE_L2TPV2
+ *
+ * Matches L2TPv2 Header
+ */
+struct rte_flow_item_l2tpv2 {
+	struct rte_l2tpv2_combined_msg_hdr hdr;
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_L2TPV2. */
+#ifndef __cplusplus
+static const struct rte_flow_item_l2tpv2 rte_flow_item_l2tpv2_mask = {
+	/*
+	 * flags and version bit mask
+	 * 7 6 5 4 3 2 1 0 7 6 5 4 3 2 1 0
+	 * T L x x S x O P x x x x V V V V
+	 */
+	.hdr = {
+		.common = {
+			.flags_version = RTE_BE16(0xcb0f),
+		},
+	},
+};
+#endif
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ITEM_TYPE_PPP
+ *
+ * Matches PPP Header
+ */
+struct rte_flow_item_ppp {
+	struct rte_ppp_hdr hdr;
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_PPP. */
+#ifndef __cplusplus
+static const struct rte_flow_item_ppp rte_flow_item_ppp_mask = {
+	.hdr = {
+		.addr = 0xff,
+		.ctrl = 0xff,
+		.proto_id = RTE_BE16(0xffff),
+	}
 };
 #endif
 

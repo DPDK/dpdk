@@ -96,6 +96,10 @@ New Features
   Added macros ETH_RSS_IPV4_CHKSUM and ETH_RSS_L4_CHKSUM, now IPv4 and
   TCP/UDP/SCTP header checksum field can be used as input set for RSS.
 
+* **Added L2TPv2 and PPP protocol support in flow API.**
+
+  Added flow pattern items and header formats of L2TPv2 and PPP protocol.
+
 * **Added flow flex item.**
 
   The configurable flow flex item provides the capability to introduce

@@ -1573,6 +1573,31 @@ rte_flow_flex_item_create() routine.
   as padded with trailing zeroes up to full configured length, both for
   value and mask.
 
+Item: ``L2TPV2``
+^^^^^^^^^^^^^^^^^^^
+
+Matches a L2TPv2 header.
+
+- ``flags_version``: flags(12b), version(4b).
+- ``length``: total length of the message.
+- ``tunnel_id``: identifier for the control connection.
+- ``session_id``: identifier for a session within a tunnel.
+- ``ns``: sequence number for this date or control message.
+- ``nr``: sequence number expected in the next control message to be received.
+- ``offset_size``: offset of payload data.
+- ``offset_padding``: offset padding, variable length.
+- Default ``mask`` matches flags_version only.
+
+Item: ``PPP``
+^^^^^^^^^^^^^^^^^^^
+
+Matches a PPP header.
+
+- ``addr``: PPP address.
+- ``ctrl``: PPP control.
+- ``proto_id``: PPP protocol identifier.
+- Default ``mask`` matches addr, ctrl, proto_id.
+
 Actions
 ~~~~~~~
 

@@ -19,6 +19,8 @@ headers = files(
         'rte_higig.h',
         'rte_ecpri.h',
         'rte_geneve.h',
+        'rte_l2tpv2.h',
+        'rte_ppp.h',
 )
 
 sources = files(
