@@ -391,6 +391,50 @@ s32 ngbe_stop_hw(struct ngbe_hw *hw)
 }
 
 /**
+ *  ngbe_led_on - Turns on the software controllable LEDs.
+ *  @hw: pointer to hardware structure
+ *  @index: led number to turn on
+ **/
+s32 ngbe_led_on(struct ngbe_hw *hw, u32 index)
+{
+	u32 led_reg = rd32(hw, NGBE_LEDCTL);
+
+	DEBUGFUNC("ngbe_led_on");
+
+	if (index > 3)
+		return NGBE_ERR_PARAM;
+
+	/* To turn on the LED, set mode to ON. */
+	led_reg |= NGBE_LEDCTL_100M;
+	wr32(hw, NGBE_LEDCTL, led_reg);
+	ngbe_flush(hw);
+
+	return 0;
+}
+
+/**
+ *  ngbe_led_off - Turns off the software controllable LEDs.
+ *  @hw: pointer to hardware structure
+ *  @index: led number to turn off
+ **/
+s32 ngbe_led_off(struct ngbe_hw *hw, u32 index)
+{
+	u32 led_reg = rd32(hw, NGBE_LEDCTL);
+
+	DEBUGFUNC("ngbe_led_off");
+
+	if (index > 3)
+		return NGBE_ERR_PARAM;
+
+	/* To turn off the LED, set mode to OFF. */
+	led_reg &= ~NGBE_LEDCTL_100M;
+	wr32(hw, NGBE_LEDCTL, led_reg);
+	ngbe_flush(hw);
+
+	return 0;
+}
+
+/**
  *  ngbe_validate_mac_addr - Validate MAC address
  *  @mac_addr: pointer to MAC address.
  *
@@ -1835,6 +1879,10 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 
 	mac->disable_sec_rx_path = ngbe_disable_sec_rx_path;
 	mac->enable_sec_rx_path = ngbe_enable_sec_rx_path;
+
+	/* LEDs */
+	mac->led_on = ngbe_led_on;
+	mac->led_off = ngbe_led_off;
 
 	/* RAR, VLAN, Multicast */
 	mac->set_rar = ngbe_set_rar;

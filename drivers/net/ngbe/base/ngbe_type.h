@@ -265,6 +265,10 @@ struct ngbe_mac_info {
 	s32 (*get_link_capabilities)(struct ngbe_hw *hw,
 				      u32 *speed, bool *autoneg);
 
+	/* LED */
+	s32 (*led_on)(struct ngbe_hw *hw, u32 index);
+	s32 (*led_off)(struct ngbe_hw *hw, u32 index);
+
 	/* RAR */
 	s32 (*set_rar)(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 			  u32 enable_addr);

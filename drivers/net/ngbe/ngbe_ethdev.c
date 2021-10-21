@@ -2184,6 +2184,20 @@ ngbe_dev_interrupt_handler(void *param)
 }
 
 static int
+ngbe_dev_led_on(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	return hw->mac.led_on(hw, 0) == 0 ? 0 : -ENOTSUP;
+}
+
+static int
+ngbe_dev_led_off(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	return hw->mac.led_off(hw, 0) == 0 ? 0 : -ENOTSUP;
+}
+
+static int
 ngbe_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
@@ -2689,6 +2703,8 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.rx_queue_release           = ngbe_dev_rx_queue_release,
 	.tx_queue_setup             = ngbe_dev_tx_queue_setup,
 	.tx_queue_release           = ngbe_dev_tx_queue_release,
+	.dev_led_on                 = ngbe_dev_led_on,
+	.dev_led_off                = ngbe_dev_led_off,
 	.flow_ctrl_get              = ngbe_flow_ctrl_get,
 	.flow_ctrl_set              = ngbe_flow_ctrl_set,
 	.mac_addr_add               = ngbe_add_rar,

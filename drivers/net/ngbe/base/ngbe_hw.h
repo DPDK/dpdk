@@ -32,6 +32,9 @@ s32 ngbe_setup_mac_link_em(struct ngbe_hw *hw,
 			       u32 speed,
 			       bool autoneg_wait_to_complete);
 
+s32 ngbe_led_on(struct ngbe_hw *hw, u32 index);
+s32 ngbe_led_off(struct ngbe_hw *hw, u32 index);
+
 s32 ngbe_set_rar(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 			  u32 enable_addr);
 s32 ngbe_clear_rar(struct ngbe_hw *hw, u32 index);
