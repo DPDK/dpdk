@@ -1689,6 +1689,34 @@ ngbe_set_tx_function(struct rte_eth_dev *dev, struct ngbe_tx_queue *txq)
 	}
 }
 
+static const struct {
+	eth_tx_burst_t pkt_burst;
+	const char *info;
+} ngbe_tx_burst_infos[] = {
+	{ ngbe_xmit_pkts_simple,   "Scalar Simple"},
+	{ ngbe_xmit_pkts,          "Scalar"},
+};
+
+int
+ngbe_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
+		      struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
+	int ret = -EINVAL;
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(ngbe_tx_burst_infos); ++i) {
+		if (pkt_burst == ngbe_tx_burst_infos[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 ngbe_tx_burst_infos[i].info);
+			ret = 0;
+			break;
+		}
+	}
+
+	return ret;
+}
+
 uint64_t
 ngbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 {
@@ -2237,6 +2265,36 @@ ngbe_set_rx_function(struct rte_eth_dev *dev)
 
 		dev->rx_pkt_burst = ngbe_recv_pkts;
 	}
+}
+
+static const struct {
+	eth_rx_burst_t pkt_burst;
+	const char *info;
+} ngbe_rx_burst_infos[] = {
+	{ ngbe_recv_pkts_sc_single_alloc,    "Scalar Scattered"},
+	{ ngbe_recv_pkts_sc_bulk_alloc,      "Scalar Scattered Bulk Alloc"},
+	{ ngbe_recv_pkts_bulk_alloc,         "Scalar Bulk Alloc"},
+	{ ngbe_recv_pkts,                    "Scalar"},
+};
+
+int
+ngbe_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
+		      struct rte_eth_burst_mode *mode)
+{
+	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+	int ret = -EINVAL;
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(ngbe_rx_burst_infos); ++i) {
+		if (pkt_burst == ngbe_rx_burst_infos[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 ngbe_rx_burst_infos[i].info);
+			ret = 0;
+			break;
+		}
+	}
+
+	return ret;
 }
 
 /*
