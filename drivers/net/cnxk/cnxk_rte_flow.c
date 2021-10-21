@@ -110,7 +110,13 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		 struct roc_npc_action in_actions[], uint32_t *flowkey_cfg)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	const struct rte_flow_action_port_id *port_act;
 	const struct rte_flow_action_queue *act_q;
+	struct roc_npc *roc_npc_src = &dev->npc;
+	struct rte_eth_dev *portid_eth_dev;
+	char if_name[RTE_ETH_NAME_MAX_LEN];
+	struct cnxk_eth_dev *hw_dst;
+	struct roc_npc *roc_npc_dst;
 	int i = 0, rc = 0;
 	int rq;
 
@@ -144,6 +150,36 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_VF:
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_VF;
 			in_actions[i].conf = actions->conf;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_PORT_ID;
+			in_actions[i].conf = actions->conf;
+			port_act = (const struct rte_flow_action_port_id *)
+					   actions->conf;
+			if (rte_eth_dev_get_name_by_port(port_act->id,
+							 if_name)) {
+				plt_err("Name not found for output port id");
+				goto err_exit;
+			}
+			portid_eth_dev = rte_eth_dev_allocated(if_name);
+			if (!portid_eth_dev) {
+				plt_err("eth_dev not found for output port id");
+				goto err_exit;
+			}
+			if (strcmp(portid_eth_dev->device->driver->name,
+				   eth_dev->device->driver->name) != 0) {
+				plt_err("Output port not under same driver");
+				goto err_exit;
+			}
+			hw_dst = portid_eth_dev->data->dev_private;
+			roc_npc_dst = &hw_dst->npc;
+
+			rc = roc_npc_validate_portid_action(roc_npc_src,
+							    roc_npc_dst);
+
+			if (rc)
+				goto err_exit;
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
