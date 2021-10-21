@@ -405,10 +405,11 @@ rte_thread_unregister(void);
 /**
  * Create a control thread.
  *
- * Wrapper to pthread_create(), pthread_setname_np() and
- * pthread_setaffinity_np(). The affinity of the new thread is based
- * on the CPU affinity retrieved at the time rte_eal_init() was called,
- * the dataplane and service lcores are then excluded.
+ * Creates a control thread with the given name and attributes. The
+ * affinity of the new thread is based on the CPU affinity retrieved
+ * at the time rte_eal_init() was called, the dataplane and service
+ * lcores are then excluded. If setting the name of the thread fails,
+ * the error is ignored and a debug message is logged.
  *
  * @param thread
  *   Filled with the thread id of the new created thread.

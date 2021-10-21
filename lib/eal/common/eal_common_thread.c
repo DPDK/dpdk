@@ -166,20 +166,21 @@ __rte_thread_uninit(void)
 	RTE_PER_LCORE(_lcore_id) = LCORE_ID_ANY;
 }
 
+enum __rte_ctrl_thread_status {
+	CTRL_THREAD_LAUNCHING, /* Yet to call pthread_create function */
+	CTRL_THREAD_RUNNING, /* Control thread is running successfully */
+	CTRL_THREAD_ERROR /* Control thread encountered an error */
+};
+
 struct rte_thread_ctrl_params {
 	void *(*start_routine)(void *);
 	void *arg;
-	pthread_barrier_t configured;
-	unsigned int refcnt;
+	int ret;
+	/* Control thread status.
+	 * If the status is CTRL_THREAD_ERROR, 'ret' has the error code.
+	 */
+	enum __rte_ctrl_thread_status ctrl_thread_status;
 };
-
-static void ctrl_params_free(struct rte_thread_ctrl_params *params)
-{
-	if (__atomic_sub_fetch(&params->refcnt, 1, __ATOMIC_ACQ_REL) == 0) {
-		(void)pthread_barrier_destroy(&params->configured);
-		free(params);
-	}
-}
 
 static void *ctrl_thread_init(void *arg)
 {
@@ -187,17 +188,20 @@ static void *ctrl_thread_init(void *arg)
 		eal_get_internal_configuration();
 	rte_cpuset_t *cpuset = &internal_conf->ctrl_cpuset;
 	struct rte_thread_ctrl_params *params = arg;
-	void *(*start_routine)(void *);
+	void *(*start_routine)(void *) = params->start_routine;
 	void *routine_arg = params->arg;
 
 	__rte_thread_init(rte_lcore_id(), cpuset);
-
-	pthread_barrier_wait(&params->configured);
-	start_routine = params->start_routine;
-	ctrl_params_free(params);
-
-	if (start_routine == NULL)
+	params->ret = pthread_setaffinity_np(pthread_self(), sizeof(*cpuset),
+		cpuset);
+	if (params->ret != 0) {
+		__atomic_store_n(&params->ctrl_thread_status,
+			CTRL_THREAD_ERROR, __ATOMIC_RELEASE);
 		return NULL;
+	}
+
+	__atomic_store_n(&params->ctrl_thread_status,
+		CTRL_THREAD_RUNNING, __ATOMIC_RELEASE);
 
 	return start_routine(routine_arg);
 }
@@ -207,10 +211,8 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 		const pthread_attr_t *attr,
 		void *(*start_routine)(void *), void *arg)
 {
-	struct internal_config *internal_conf =
-		eal_get_internal_configuration();
-	rte_cpuset_t *cpuset = &internal_conf->ctrl_cpuset;
 	struct rte_thread_ctrl_params *params;
+	enum __rte_ctrl_thread_status ctrl_thread_status;
 	int ret;
 
 	params = malloc(sizeof(*params));
@@ -219,15 +221,14 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 
 	params->start_routine = start_routine;
 	params->arg = arg;
-	params->refcnt = 2;
-
-	ret = pthread_barrier_init(&params->configured, NULL, 2);
-	if (ret != 0)
-		goto fail_no_barrier;
+	params->ret = 0;
+	params->ctrl_thread_status = CTRL_THREAD_LAUNCHING;
 
 	ret = pthread_create(thread, attr, ctrl_thread_init, (void *)params);
-	if (ret != 0)
-		goto fail_with_barrier;
+	if (ret != 0) {
+		free(params);
+		return -ret;
+	}
 
 	if (name != NULL) {
 		ret = rte_thread_setname(*thread, name);
@@ -236,24 +237,24 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 				"Cannot set name for ctrl thread\n");
 	}
 
-	ret = pthread_setaffinity_np(*thread, sizeof(*cpuset), cpuset);
-	if (ret != 0)
-		params->start_routine = NULL;
+	/* Wait for the control thread to initialize successfully */
+	while ((ctrl_thread_status =
+			__atomic_load_n(&params->ctrl_thread_status,
+			__ATOMIC_ACQUIRE)) == CTRL_THREAD_LAUNCHING) {
+		/* Yield the CPU. Using sched_yield call requires maintaining
+		 * another implementation for Windows as sched_yield is not
+		 * supported on Windows.
+		 */
+		rte_delay_us_sleep(1);
+	}
 
-	pthread_barrier_wait(&params->configured);
-	ctrl_params_free(params);
-
-	if (ret != 0)
-		/* start_routine has been set to NULL above; */
-		/* ctrl thread will exit immediately */
+	/* Check if the control thread encountered an error */
+	if (ctrl_thread_status == CTRL_THREAD_ERROR) {
+		/* ctrl thread is exiting */
 		pthread_join(*thread, NULL);
+	}
 
-	return -ret;
-
-fail_with_barrier:
-	(void)pthread_barrier_destroy(&params->configured);
-
-fail_no_barrier:
+	ret = params->ret;
 	free(params);
 
 	return -ret;
