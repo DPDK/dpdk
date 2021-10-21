@@ -151,6 +151,16 @@ rte_eth_dev_pci_generic_remove(struct rte_pci_device *pci_dev,
 	if (!eth_dev)
 		return 0;
 
+	/*
+	 * In secondary process, a released eth device can be found by its name
+	 * in shared memory.
+	 * If the state of the eth device is RTE_ETH_DEV_UNUSED, it means the
+	 * eth device has been released.
+	 */
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
+	    eth_dev->state == RTE_ETH_DEV_UNUSED)
+		return 0;
+
 	if (dev_uninit) {
 		ret = dev_uninit(eth_dev);
 		if (ret)
