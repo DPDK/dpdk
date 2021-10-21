@@ -2285,6 +2285,78 @@ ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
+uint32_t
+ngbe_dev_rx_queue_count(void *rx_queue)
+{
+#define NGBE_RXQ_SCAN_INTERVAL 4
+	volatile struct ngbe_rx_desc *rxdp;
+	struct ngbe_rx_queue *rxq = rx_queue;
+	uint32_t desc = 0;
+
+	rxdp = &rxq->rx_ring[rxq->rx_tail];
+
+	while ((desc < rxq->nb_rx_desc) &&
+		(rxdp->qw1.lo.status &
+			rte_cpu_to_le_32(NGBE_RXD_STAT_DD))) {
+		desc += NGBE_RXQ_SCAN_INTERVAL;
+		rxdp += NGBE_RXQ_SCAN_INTERVAL;
+		if (rxq->rx_tail + desc >= rxq->nb_rx_desc)
+			rxdp = &(rxq->rx_ring[rxq->rx_tail +
+				desc - rxq->nb_rx_desc]);
+	}
+
+	return desc;
+}
+
+int
+ngbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
+{
+	struct ngbe_rx_queue *rxq = rx_queue;
+	volatile uint32_t *status;
+	uint32_t nb_hold, desc;
+
+	if (unlikely(offset >= rxq->nb_rx_desc))
+		return -EINVAL;
+
+	nb_hold = rxq->nb_rx_hold;
+	if (offset >= rxq->nb_rx_desc - nb_hold)
+		return RTE_ETH_RX_DESC_UNAVAIL;
+
+	desc = rxq->rx_tail + offset;
+	if (desc >= rxq->nb_rx_desc)
+		desc -= rxq->nb_rx_desc;
+
+	status = &rxq->rx_ring[desc].qw1.lo.status;
+	if (*status & rte_cpu_to_le_32(NGBE_RXD_STAT_DD))
+		return RTE_ETH_RX_DESC_DONE;
+
+	return RTE_ETH_RX_DESC_AVAIL;
+}
+
+int
+ngbe_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
+{
+	struct ngbe_tx_queue *txq = tx_queue;
+	volatile uint32_t *status;
+	uint32_t desc;
+
+	if (unlikely(offset >= txq->nb_tx_desc))
+		return -EINVAL;
+
+	desc = txq->tx_tail + offset;
+	if (desc >= txq->nb_tx_desc) {
+		desc -= txq->nb_tx_desc;
+		if (desc >= txq->nb_tx_desc)
+			desc -= txq->nb_tx_desc;
+	}
+
+	status = &txq->tx_ring[desc].dw3;
+	if (*status & rte_cpu_to_le_32(NGBE_TXD_DD))
+		return RTE_ETH_TX_DESC_DONE;
+
+	return RTE_ETH_TX_DESC_FULL;
+}
+
 void
 ngbe_dev_clear_queues(struct rte_eth_dev *dev)
 {

@@ -320,6 +320,9 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &ngbe_eth_dev_ops;
+	eth_dev->rx_queue_count       = ngbe_dev_rx_queue_count;
+	eth_dev->rx_descriptor_status = ngbe_dev_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = ngbe_dev_tx_descriptor_status;
 	eth_dev->rx_pkt_burst = &ngbe_recv_pkts;
 	eth_dev->tx_pkt_burst = &ngbe_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &ngbe_prep_pkts;
