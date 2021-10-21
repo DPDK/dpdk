@@ -3100,6 +3100,7 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.timesync_adjust_time       = ngbe_timesync_adjust_time,
 	.timesync_read_time         = ngbe_timesync_read_time,
 	.timesync_write_time        = ngbe_timesync_write_time,
+	.tx_done_cleanup            = ngbe_dev_tx_done_cleanup,
 };
 
 RTE_PMD_REGISTER_PCI(net_ngbe, rte_ngbe_pmd);

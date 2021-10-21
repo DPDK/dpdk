@@ -368,6 +368,7 @@ struct ngbe_txq_ops {
 void ngbe_set_tx_function(struct rte_eth_dev *dev, struct ngbe_tx_queue *txq);
 
 void ngbe_set_rx_function(struct rte_eth_dev *dev);
+int ngbe_dev_tx_done_cleanup(void *tx_queue, uint32_t free_cnt);
 
 uint64_t ngbe_get_tx_port_offloads(struct rte_eth_dev *dev);
 uint64_t ngbe_get_rx_queue_offloads(struct rte_eth_dev *dev);
