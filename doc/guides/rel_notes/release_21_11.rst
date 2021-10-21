@@ -152,6 +152,7 @@ New Features
 
   * Added Intel iavf support on Windows.
   * Added IPv4 and L4 (TCP/UDP/SCTP) checksum hash support in RSS flow.
+  * Added PPPoL2TPv2oUDP RSS hash based on inner IP address and TCP/UDP port.
 
 * **Updated Intel ice driver.**
 
