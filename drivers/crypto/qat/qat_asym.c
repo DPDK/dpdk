@@ -629,6 +629,8 @@ static void qat_asym_collect_response(struct rte_crypto_op *rx_op,
 					rte_memcpy(rsa_result,
 						cookie->output_array[0],
 						alg_size_in_bytes);
+					rx_op->status =
+						RTE_CRYPTO_OP_STATUS_SUCCESS;
 					break;
 				default:
 					QAT_LOG(ERR, "Padding not supported");
