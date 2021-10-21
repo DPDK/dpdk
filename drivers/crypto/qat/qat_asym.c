@@ -65,27 +65,45 @@ static size_t max_of(int n, ...)
 }
 
 static void qat_clear_arrays(struct qat_asym_op_cookie *cookie,
-		int in_count, int out_count, int in_size, int out_size)
+		int in_count, int out_count, int alg_size)
 {
 	int i;
 
 	for (i = 0; i < in_count; i++)
-		memset(cookie->input_array[i], 0x0, in_size);
+		memset(cookie->input_array[i], 0x0, alg_size);
 	for (i = 0; i < out_count; i++)
-		memset(cookie->output_array[i], 0x0, out_size);
+		memset(cookie->output_array[i], 0x0, alg_size);
+}
+
+static void qat_clear_arrays_crt(struct qat_asym_op_cookie *cookie,
+		int alg_size)
+{
+	int i;
+
+	memset(cookie->input_array[0], 0x0, alg_size);
+	for (i = 1; i < QAT_ASYM_RSA_QT_NUM_IN_PARAMS; i++)
+		memset(cookie->input_array[i], 0x0, alg_size / 2);
+	for (i = 0; i < QAT_ASYM_RSA_NUM_OUT_PARAMS; i++)
+		memset(cookie->output_array[i], 0x0, alg_size);
 }
 
 static void qat_clear_arrays_by_alg(struct qat_asym_op_cookie *cookie,
-		enum rte_crypto_asym_xform_type alg, int in_size, int out_size)
+		struct rte_crypto_asym_xform *xform, int alg_size)
 {
-	if (alg == RTE_CRYPTO_ASYM_XFORM_MODEX)
+	if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_MODEX)
 		qat_clear_arrays(cookie, QAT_ASYM_MODEXP_NUM_IN_PARAMS,
-				QAT_ASYM_MODEXP_NUM_OUT_PARAMS, in_size,
-				out_size);
-	else if (alg == RTE_CRYPTO_ASYM_XFORM_MODINV)
+				QAT_ASYM_MODEXP_NUM_OUT_PARAMS, alg_size);
+	else if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_MODINV)
 		qat_clear_arrays(cookie, QAT_ASYM_MODINV_NUM_IN_PARAMS,
-				QAT_ASYM_MODINV_NUM_OUT_PARAMS, in_size,
-				out_size);
+				QAT_ASYM_MODINV_NUM_OUT_PARAMS, alg_size);
+	else if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_RSA) {
+		if (xform->rsa.key_type == RTE_RSA_KET_TYPE_QT)
+			qat_clear_arrays_crt(cookie, alg_size);
+		else {
+			qat_clear_arrays(cookie, QAT_ASYM_RSA_NUM_IN_PARAMS,
+				QAT_ASYM_RSA_NUM_OUT_PARAMS, alg_size);
+		}
+	}
 }
 
 static int qat_asym_check_nonzero(rte_crypto_param n)
@@ -657,8 +675,7 @@ static void qat_asym_collect_response(struct rte_crypto_op *rx_op,
 			}
 		}
 	}
-	qat_clear_arrays_by_alg(cookie, xform->xform_type, alg_size_in_bytes,
-			alg_size_in_bytes);
+	qat_clear_arrays_by_alg(cookie, xform, alg_size_in_bytes);
 }
 
 void
