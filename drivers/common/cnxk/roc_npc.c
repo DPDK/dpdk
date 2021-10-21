@@ -261,11 +261,38 @@ roc_npc_fini(struct roc_npc *roc_npc)
 	return 0;
 }
 
+int
+roc_npc_validate_portid_action(struct roc_npc *roc_npc_src,
+			       struct roc_npc *roc_npc_dst)
+{
+	struct roc_nix *roc_nix_src = roc_npc_src->roc_nix;
+	struct nix *nix_src = roc_nix_to_nix_priv(roc_nix_src);
+	struct roc_nix *roc_nix_dst = roc_npc_dst->roc_nix;
+	struct nix *nix_dst = roc_nix_to_nix_priv(roc_nix_dst);
+
+	if (roc_nix_is_pf(roc_npc_dst->roc_nix)) {
+		plt_err("Output port should be VF");
+		return -EINVAL;
+	}
+
+	if (nix_dst->dev.vf >= nix_src->dev.maxvf) {
+		plt_err("Invalid VF for output port");
+		return -EINVAL;
+	}
+
+	if (nix_src->dev.pf != nix_dst->dev.pf) {
+		plt_err("Output port should be VF of ingress PF");
+		return -EINVAL;
+	}
+	return 0;
+}
+
 static int
 npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		  const struct roc_npc_action actions[],
 		  struct roc_npc_flow *flow)
 {
+	const struct roc_npc_action_port_id *act_portid;
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	const struct roc_npc_action_mark *act_mark;
 	const struct roc_npc_action_meter *act_mtr;
@@ -326,6 +353,14 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			vf_id = vf_act->id & RVU_PFVF_FUNC_MASK;
 			pf_func &= (0xfc00);
 			pf_func = (pf_func | (vf_id + 1));
+			break;
+
+		case ROC_NPC_ACTION_TYPE_PORT_ID:
+			act_portid = (const struct roc_npc_action_port_id *)
+					     actions->conf;
+			pf_func &= (0xfc00);
+			pf_func = (pf_func | (act_portid->id + 1));
+			req_act |= ROC_NPC_ACTION_TYPE_VF;
 			break;
 
 		case ROC_NPC_ACTION_TYPE_QUEUE:

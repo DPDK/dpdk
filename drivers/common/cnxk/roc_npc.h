@@ -77,6 +77,7 @@ enum roc_npc_action_type {
 	ROC_NPC_ACTION_TYPE_VLAN_INSERT = (1 << 13),
 	ROC_NPC_ACTION_TYPE_VLAN_ETHTYPE_INSERT = (1 << 14),
 	ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT = (1 << 15),
+	ROC_NPC_ACTION_TYPE_PORT_ID = (1 << 16),
 	ROC_NPC_ACTION_TYPE_METER = (1 << 17),
 };
 
@@ -93,6 +94,12 @@ struct roc_npc_action_vf {
 	uint32_t original : 1;	/**< Use original VF ID if possible. */
 	uint32_t reserved : 31; /**< Reserved, must be zero. */
 	uint32_t id;		/**< VF ID. */
+};
+
+struct roc_npc_action_port_id {
+	uint32_t original : 1;	/**< Use original DPDK port ID if possible. */
+	uint32_t reserved : 31; /**< Reserved, must be zero. */
+	uint32_t id;		/**< port ID. */
 };
 
 struct roc_npc_action_queue {
@@ -240,4 +247,6 @@ int __roc_api roc_npc_vtag_actions_sub_return(struct roc_npc *roc_npc,
 					      uint32_t count);
 int __roc_api roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc,
 						    struct roc_npc_flow *flow);
+int __roc_api roc_npc_validate_portid_action(struct roc_npc *roc_npc_src,
+					     struct roc_npc *roc_npc_dst);
 #endif /* _ROC_NPC_H_ */

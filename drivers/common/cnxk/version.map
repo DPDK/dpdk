@@ -302,6 +302,7 @@ INTERNAL {
 	roc_npc_mcam_write_entry;
 	roc_npc_mcam_read_counter;
 	roc_npc_profile_name_get;
+	roc_npc_validate_portid_action;
 	roc_plt_init;
 	roc_plt_init_cb_register;
 	roc_sso_dev_fini;
