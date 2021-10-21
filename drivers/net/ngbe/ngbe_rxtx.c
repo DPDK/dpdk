@@ -965,7 +965,8 @@ ngbe_rx_scan_hw_ring(struct ngbe_rx_queue *rxq)
 		/* Translate descriptor info to mbuf format */
 		for (j = 0; j < nb_dd; ++j) {
 			mb = rxep[j].mbuf;
-			pkt_len = rte_le_to_cpu_16(rxdp[j].qw1.hi.len);
+			pkt_len = rte_le_to_cpu_16(rxdp[j].qw1.hi.len) -
+				  rxq->crc_len;
 			mb->data_len = pkt_len;
 			mb->pkt_len = pkt_len;
 
@@ -1268,7 +1269,8 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 *    - IP checksum flag,
 		 *    - error flags.
 		 */
-		pkt_len = (uint16_t)(rte_le_to_cpu_16(rxd.qw1.hi.len));
+		pkt_len = (uint16_t)(rte_le_to_cpu_16(rxd.qw1.hi.len) -
+				      rxq->crc_len);
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 		rte_packet_prefetch((char *)rxm->buf_addr + rxm->data_off);
 		rxm->nb_segs = 1;
@@ -1517,6 +1519,22 @@ next_desc:
 
 		/* Initialize the first mbuf of the returned packet */
 		ngbe_fill_cluster_head_buf(first_seg, &rxd, rxq, staterr);
+
+		/* Deal with the case, when HW CRC srip is disabled. */
+		first_seg->pkt_len -= rxq->crc_len;
+		if (unlikely(rxm->data_len <= rxq->crc_len)) {
+			struct rte_mbuf *lp;
+
+			for (lp = first_seg; lp->next != rxm; lp = lp->next)
+				;
+
+			first_seg->nb_segs--;
+			lp->data_len -= rxq->crc_len - rxm->data_len;
+			lp->next = NULL;
+			rte_pktmbuf_free_seg(rxm);
+		} else {
+			rxm->data_len -= rxq->crc_len;
+		}
 
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_packet_prefetch((char *)first_seg->buf_addr +
@@ -2014,6 +2032,7 @@ ngbe_get_rx_port_offloads(struct rte_eth_dev *dev __rte_unused)
 	offloads = RTE_ETH_RX_OFFLOAD_IPV4_CKSUM  |
 		   RTE_ETH_RX_OFFLOAD_UDP_CKSUM   |
 		   RTE_ETH_RX_OFFLOAD_TCP_CKSUM   |
+		   RTE_ETH_RX_OFFLOAD_KEEP_CRC    |
 		   RTE_ETH_RX_OFFLOAD_SCATTER;
 
 	return offloads;
@@ -2054,6 +2073,10 @@ ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->queue_id = queue_idx;
 	rxq->reg_idx = queue_idx;
 	rxq->port_id = dev->data->port_id;
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
+		rxq->crc_len = RTE_ETHER_CRC_LEN;
+	else
+		rxq->crc_len = 0;
 	rxq->drop_en = rx_conf->rx_drop_en;
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 
@@ -2309,6 +2332,7 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 	uint32_t fctrl;
 	uint32_t hlreg0;
 	uint32_t srrctl;
+	uint32_t rdrxctl;
 	uint32_t rxcsum;
 	uint16_t buf_size;
 	uint16_t i;
@@ -2329,7 +2353,14 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 	fctrl |= NGBE_PSRCTL_BCA;
 	wr32(hw, NGBE_PSRCTL, fctrl);
 
+	/*
+	 * Configure CRC stripping, if any.
+	 */
 	hlreg0 = rd32(hw, NGBE_SECRXCTL);
+	if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
+		hlreg0 &= ~NGBE_SECRXCTL_CRCSTRIP;
+	else
+		hlreg0 |= NGBE_SECRXCTL_CRCSTRIP;
 	hlreg0 &= ~NGBE_SECRXCTL_XDSA;
 	wr32(hw, NGBE_SECRXCTL, hlreg0);
 
@@ -2339,6 +2370,15 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 	/* Setup Rx queues */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
+
+		/*
+		 * Reset crc_len in case it was changed after queue setup by a
+		 * call to configure.
+		 */
+		if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
+			rxq->crc_len = RTE_ETHER_CRC_LEN;
+		else
+			rxq->crc_len = 0;
 
 		/* Setup the Base and Length of the Rx Descriptor Rings */
 		bus_addr = rxq->rx_ring_phys_addr;
@@ -2383,6 +2423,15 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 		rxcsum &= ~NGBE_PSRCTL_L4CSUM;
 
 	wr32(hw, NGBE_PSRCTL, rxcsum);
+
+	if (hw->is_pf) {
+		rdrxctl = rd32(hw, NGBE_SECRXCTL);
+		if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
+			rdrxctl &= ~NGBE_SECRXCTL_CRCSTRIP;
+		else
+			rdrxctl |= NGBE_SECRXCTL_CRCSTRIP;
+		wr32(hw, NGBE_SECRXCTL, rdrxctl);
+	}
 
 	ngbe_set_rx_function(dev);
 
