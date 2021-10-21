@@ -92,7 +92,7 @@ enum {
  * that are recorded for each forwarding stream.
  */
 struct pkt_burst_stats {
-	unsigned int pkt_burst_spread[MAX_PKT_BURST];
+	unsigned int pkt_burst_spread[MAX_PKT_BURST + 1];
 };
 
 /** Information for a given RSS type. */
