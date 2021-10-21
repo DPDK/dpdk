@@ -754,6 +754,13 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 	uint8_t num_elem = 0;
 	int i, ret_val;
 
+	/* check if port is stopped */
+	if (!adapter->parent.pf.adapter_stopped) {
+		PMD_DRV_LOG(ERR, "Please stop port first");
+		ret_val = ICE_ERR_NOT_READY;
+		goto err;
+	}
+
 	ret_val = ice_dcf_commit_check(hw);
 	if (ret_val)
 		goto fail_clear;
@@ -871,5 +878,6 @@ fail_clear:
 		ice_dcf_tm_conf_uninit(dev);
 		ice_dcf_tm_conf_init(dev);
 	}
+err:
 	return ret_val;
 }
