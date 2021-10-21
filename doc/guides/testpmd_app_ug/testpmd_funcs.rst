@@ -3810,6 +3810,20 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``ethdev_port_id {unsigned}``: ethdev port ID
 
+- ``l2tpv2``: match L2TPv2 header.
+
+  - ``length {unsigned}``: L2TPv2 option length.
+  - ``tunnel_id {unsigned}``: L2TPv2 tunnel identifier.
+  - ``session_id {unsigned}``: L2TPv2 session identifier.
+  - ``ns {unsigned}``: L2TPv2 option ns.
+  - ``nr {unsigned}``: L2TPv2 option nr.
+
+- ``ppp``: match PPP header.
+
+  - ``addr {unsigned}``: PPP address.
+  - ``ctrl {unsigned}``: PPP control.
+  - ``proto_id {unsigned}``: PPP protocol identifier.
+
 Actions list
 ^^^^^^^^^^^^
 
@@ -5035,6 +5049,20 @@ The meter policy action list: ``green -> green, yellow -> yellow, red -> red``.
             r_actions color type red / end
    testpmd> create port meter 0 1 13 1 yes 0xffff 0 0
    testpmd> flow create 0 priority 0 ingress group 1 pattern eth / end actions meter mtr_id 1 / end
+
+Sample PPPoL2TPv2oUDP RSS rules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+PPPoL2TPv2oUDP RSS rules can be created by the following commands::
+
+ testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 / ppp / ipv4
+          / end actions rss types ipv4 end queues end / end
+ testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 / ppp / ipv6
+          / udp / end actions rss types ipv6-udp end queues end / end
+ testpmd> flow create 0 ingress pattern eth / ipv6 / udp / l2tpv2 / ppp / ipv4
+          / tcp / end actions rss types ipv4-tcp end queues end / end
+ testpmd> flow create 0 ingress pattern eth / ipv6 / udp / l2tpv2 / ppp / ipv6
+          / end actions rss types ipv6 end queues end / end
 
 BPF Functions
 --------------

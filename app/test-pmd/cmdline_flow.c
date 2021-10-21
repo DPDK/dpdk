@@ -321,6 +321,23 @@ enum index {
 	ITEM_FLEX,
 	ITEM_FLEX_ITEM_HANDLE,
 	ITEM_FLEX_PATTERN_HANDLE,
+	ITEM_L2TPV2,
+	ITEM_L2TPV2_COMMON,
+	ITEM_L2TPV2_COMMON_TYPE,
+	ITEM_L2TPV2_COMMON_TYPE_DATA_L,
+	ITEM_L2TPV2_COMMON_TYPE_CTRL,
+	ITEM_L2TPV2_MSG_DATA_L_LENGTH,
+	ITEM_L2TPV2_MSG_DATA_L_TUNNEL_ID,
+	ITEM_L2TPV2_MSG_DATA_L_SESSION_ID,
+	ITEM_L2TPV2_MSG_CTRL_LENGTH,
+	ITEM_L2TPV2_MSG_CTRL_TUNNEL_ID,
+	ITEM_L2TPV2_MSG_CTRL_SESSION_ID,
+	ITEM_L2TPV2_MSG_CTRL_NS,
+	ITEM_L2TPV2_MSG_CTRL_NR,
+	ITEM_PPP,
+	ITEM_PPP_ADDR,
+	ITEM_PPP_CTRL,
+	ITEM_PPP_PROTO_ID,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -1042,6 +1059,8 @@ static const enum index next_item[] = {
 	ITEM_PORT_REPRESENTOR,
 	ITEM_REPRESENTED_PORT,
 	ITEM_FLEX,
+	ITEM_L2TPV2,
+	ITEM_PPP,
 	END_SET,
 	ZERO,
 };
@@ -1425,6 +1444,31 @@ static const enum index item_represented_port[] = {
 static const enum index item_flex[] = {
 	ITEM_FLEX_PATTERN_HANDLE,
 	ITEM_FLEX_ITEM_HANDLE,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_l2tpv2[] = {
+	ITEM_L2TPV2_COMMON,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_l2tpv2_common[] = {
+	ITEM_L2TPV2_COMMON_TYPE,
+	ZERO,
+};
+
+static const enum index item_l2tpv2_common_type[] = {
+	ITEM_L2TPV2_COMMON_TYPE_DATA_L,
+	ITEM_L2TPV2_COMMON_TYPE_CTRL,
+	ZERO,
+};
+
+static const enum index item_ppp[] = {
+	ITEM_PPP_ADDR,
+	ITEM_PPP_CTRL,
+	ITEM_PPP_PROTO_ID,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -1813,6 +1857,9 @@ static int parse_vc_spec(struct context *, const struct token *,
 static int parse_vc_conf(struct context *, const struct token *,
 			 const char *, unsigned int, void *, unsigned int);
 static int parse_vc_item_ecpri_type(struct context *, const struct token *,
+				    const char *, unsigned int,
+				    void *, unsigned int);
+static int parse_vc_item_l2tpv2_type(struct context *, const struct token *,
 				    const char *, unsigned int,
 				    void *, unsigned int);
 static int parse_vc_action_meter_color_type(struct context *,
@@ -3789,6 +3836,153 @@ static const struct token token_list[] = {
 			     NEXT_ENTRY(ITEM_PARAM_IS)),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_flex, pattern)),
 	},
+	[ITEM_L2TPV2] = {
+		.name = "l2tpv2",
+		.help = "match L2TPv2 header",
+		.priv = PRIV_ITEM(L2TPV2, sizeof(struct rte_flow_item_l2tpv2)),
+		.next = NEXT(item_l2tpv2),
+		.call = parse_vc,
+	},
+	[ITEM_L2TPV2_COMMON] = {
+		.name = "common",
+		.help = "L2TPv2 common header",
+		.next = NEXT(item_l2tpv2_common),
+	},
+	[ITEM_L2TPV2_COMMON_TYPE] = {
+		.name = "type",
+		.help = "type of common header",
+		.next = NEXT(item_l2tpv2_common_type),
+		.args = ARGS(ARG_ENTRY_HTON(struct rte_flow_item_l2tpv2)),
+	},
+	[ITEM_L2TPV2_COMMON_TYPE_DATA_L] = {
+		.name = "data_l",
+		.help = "Type #6: data message with length option",
+		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_DATA_L_LENGTH,
+					ITEM_L2TPV2_MSG_DATA_L_TUNNEL_ID,
+					ITEM_L2TPV2_MSG_DATA_L_SESSION_ID,
+					ITEM_NEXT)),
+		.call = parse_vc_item_l2tpv2_type,
+	},
+	[ITEM_L2TPV2_MSG_DATA_L_LENGTH] = {
+		.name = "length",
+		.help = "message length",
+		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_DATA_L_LENGTH,
+					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type6.length)),
+	},
+	[ITEM_L2TPV2_MSG_DATA_L_TUNNEL_ID] = {
+		.name = "tunnel_id",
+		.help = "tunnel identifier",
+		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_DATA_L_TUNNEL_ID,
+					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type6.tunnel_id)),
+	},
+	[ITEM_L2TPV2_MSG_DATA_L_SESSION_ID] = {
+		.name = "session_id",
+		.help = "session identifier",
+		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_DATA_L_SESSION_ID,
+					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type6.session_id)),
+	},
+	[ITEM_L2TPV2_COMMON_TYPE_CTRL] = {
+		.name = "control",
+		.help = "Type #3: conrtol message contains length, ns, nr options",
+		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_CTRL_LENGTH,
+					ITEM_L2TPV2_MSG_CTRL_TUNNEL_ID,
+					ITEM_L2TPV2_MSG_CTRL_SESSION_ID,
+					ITEM_L2TPV2_MSG_CTRL_NS,
+					ITEM_L2TPV2_MSG_CTRL_NR,
+					ITEM_NEXT)),
+		.call = parse_vc_item_l2tpv2_type,
+	},
+	[ITEM_L2TPV2_MSG_CTRL_LENGTH] = {
+		.name = "length",
+		.help = "message length",
+		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_CTRL_LENGTH,
+					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type3.length)),
+	},
+	[ITEM_L2TPV2_MSG_CTRL_TUNNEL_ID] = {
+		.name = "tunnel_id",
+		.help = "tunnel identifier",
+		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_CTRL_TUNNEL_ID,
+					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type3.tunnel_id)),
+	},
+	[ITEM_L2TPV2_MSG_CTRL_SESSION_ID] = {
+		.name = "session_id",
+		.help = "session identifier",
+		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_CTRL_SESSION_ID,
+					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type3.session_id)),
+	},
+	[ITEM_L2TPV2_MSG_CTRL_NS] = {
+		.name = "ns",
+		.help = "sequence number for message",
+		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_CTRL_NS,
+					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type3.ns)),
+	},
+	[ITEM_L2TPV2_MSG_CTRL_NR] = {
+		.name = "nr",
+		.help = "sequence number for next receive message",
+		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_CTRL_NS,
+					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type3.nr)),
+	},
+	[ITEM_PPP] = {
+		.name = "ppp",
+		.help = "match PPP header",
+		.priv = PRIV_ITEM(PPP, sizeof(struct rte_flow_item_ppp)),
+		.next = NEXT(item_ppp),
+		.call = parse_vc,
+	},
+	[ITEM_PPP_ADDR] = {
+		.name = "addr",
+		.help = "PPP address",
+		.next = NEXT(item_ppp, NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_ppp, hdr.addr)),
+	},
+	[ITEM_PPP_CTRL] = {
+		.name = "ctrl",
+		.help = "PPP control",
+		.next = NEXT(item_ppp, NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_ppp, hdr.ctrl)),
+	},
+	[ITEM_PPP_PROTO_ID] = {
+		.name = "proto_id",
+		.help = "PPP protocol identifier",
+		.next = NEXT(item_ppp, NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_ppp,
+					hdr.proto_id)),
+	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
 		.name = "actions",
@@ -5673,6 +5867,57 @@ parse_vc_item_ecpri_type(struct context *ctx, const struct token *token,
 	item = &out->args.vc.pattern[out->args.vc.pattern_n - 1];
 	item->spec = ecpri;
 	item->mask = ecpri_mask;
+	return len;
+}
+
+/** Parse L2TPv2 common header type field. */
+static int
+parse_vc_item_l2tpv2_type(struct context *ctx, const struct token *token,
+			 const char *str, unsigned int len,
+			 void *buf, unsigned int size)
+{
+	struct rte_flow_item_l2tpv2 *l2tpv2;
+	struct rte_flow_item_l2tpv2 *l2tpv2_mask;
+	struct rte_flow_item *item;
+	uint32_t data_size;
+	uint8_t msg_type = 0;
+	struct buffer *out = buf;
+	const struct arg *arg;
+
+	(void)size;
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	switch (ctx->curr) {
+	case ITEM_L2TPV2_COMMON_TYPE_DATA_L:
+		msg_type |= 0x4000;
+		break;
+	case ITEM_L2TPV2_COMMON_TYPE_CTRL:
+		msg_type |= 0xC800;
+		break;
+	default:
+		return -1;
+	}
+	if (!ctx->object)
+		return len;
+	arg = pop_args(ctx);
+	if (!arg)
+		return -1;
+	l2tpv2 = (struct rte_flow_item_l2tpv2 *)out->args.vc.data;
+	l2tpv2->hdr.common.flags_version |= msg_type;
+	data_size = ctx->objdata / 3; /* spec, last, mask */
+	l2tpv2_mask = (struct rte_flow_item_l2tpv2 *)(out->args.vc.data +
+						    (data_size * 2));
+	l2tpv2_mask->hdr.common.flags_version = 0xFFFF;
+	if (arg->hton) {
+		l2tpv2->hdr.common.flags_version =
+			rte_cpu_to_be_16(l2tpv2->hdr.common.flags_version);
+		l2tpv2_mask->hdr.common.flags_version =
+		    rte_cpu_to_be_16(l2tpv2_mask->hdr.common.flags_version);
+	}
+	item = &out->args.vc.pattern[out->args.vc.pattern_n - 1];
+	item->spec = l2tpv2;
+	item->mask = l2tpv2_mask;
 	return len;
 }
 
@@ -8700,6 +8945,12 @@ flow_item_default_mask(const struct rte_flow_item *item)
 	case RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR:
 	case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
 		mask = &rte_flow_item_ethdev_mask;
+		break;
+	case RTE_FLOW_ITEM_TYPE_L2TPV2:
+		mask = &rte_flow_item_l2tpv2_mask;
+		break;
+	case RTE_FLOW_ITEM_TYPE_PPP:
+		mask = &rte_flow_item_ppp_mask;
 		break;
 	default:
 		break;
