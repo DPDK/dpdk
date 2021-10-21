@@ -395,6 +395,12 @@ The command line options are:
 
     Generate multiple flows in txonly mode.
 
+*   ``--rxq-share=[X]``
+
+    Create queues in shared Rx queue mode if device supports.
+    Shared Rx queues are grouped per X ports. X defaults to UINT32_MAX,
+    implies all ports join share group 1.
+
 *   ``--eth-link-speed``
 
     Set a forced link speed to the ethernet port::

@@ -502,6 +502,11 @@ uint8_t record_core_cycles;
  */
 uint8_t record_burst_stats;
 
+/*
+ * Number of ports per shared Rx queue group, 0 disable.
+ */
+uint32_t rxq_share;
+
 unsigned int num_sockets = 0;
 unsigned int socket_ids[RTE_MAX_NUMA_NODES];
 
@@ -3629,14 +3634,23 @@ dev_event_callback(const char *device_name, enum rte_dev_event_type type,
 }
 
 static void
-rxtx_port_config(struct rte_port *port)
+rxtx_port_config(portid_t pid)
 {
 	uint16_t qid;
 	uint64_t offloads;
+	struct rte_port *port = &ports[pid];
 
 	for (qid = 0; qid < nb_rxq; qid++) {
 		offloads = port->rx_conf[qid].offloads;
 		port->rx_conf[qid] = port->dev_info.default_rxconf;
+
+		if (rxq_share > 0 &&
+		    (port->dev_info.dev_capa & RTE_ETH_DEV_CAPA_RXQ_SHARE)) {
+			/* Non-zero share group to enable RxQ share. */
+			port->rx_conf[qid].share_group = pid / rxq_share + 1;
+			port->rx_conf[qid].share_qid = qid; /* Equal mapping. */
+		}
+
 		if (offloads != 0)
 			port->rx_conf[qid].offloads = offloads;
 
@@ -3765,7 +3779,7 @@ init_port_config(void)
 			}
 		}
 
-		rxtx_port_config(port);
+		rxtx_port_config(pid);
 
 		ret = eth_macaddr_get_print_err(pid, &port->eth_addr);
 		if (ret != 0)
@@ -3977,7 +3991,7 @@ init_port_dcb_config(portid_t pid,
 
 	memcpy(&rte_port->dev_conf, &port_conf, sizeof(struct rte_eth_conf));
 
-	rxtx_port_config(rte_port);
+	rxtx_port_config(pid);
 	/* VLAN filter */
 	rte_port->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
 	for (i = 0; i < RTE_DIM(vlan_tags); i++)
