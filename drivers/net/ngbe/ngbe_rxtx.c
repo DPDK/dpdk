@@ -263,6 +263,27 @@ ngbe_rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint16_t ptid_mask)
 	return ngbe_decode_ptype(ptid);
 }
 
+static inline uint64_t
+rx_desc_error_to_pkt_flags(uint32_t rx_status)
+{
+	uint64_t pkt_flags = 0;
+
+	/* checksum offload can't be disabled */
+	if (rx_status & NGBE_RXD_STAT_IPCS)
+		pkt_flags |= (rx_status & NGBE_RXD_ERR_IPCS
+				? RTE_MBUF_F_RX_IP_CKSUM_BAD : RTE_MBUF_F_RX_IP_CKSUM_GOOD);
+
+	if (rx_status & NGBE_RXD_STAT_L4CS)
+		pkt_flags |= (rx_status & NGBE_RXD_ERR_L4CS
+				? RTE_MBUF_F_RX_L4_CKSUM_BAD : RTE_MBUF_F_RX_L4_CKSUM_GOOD);
+
+	if (rx_status & NGBE_RXD_STAT_EIPCS &&
+	    rx_status & NGBE_RXD_ERR_EIPCS)
+		pkt_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
+
+	return pkt_flags;
+}
+
 /*
  * LOOK_AHEAD defines how many desc statuses to check beyond the
  * current descriptor.
@@ -281,6 +302,7 @@ ngbe_rx_scan_hw_ring(struct ngbe_rx_queue *rxq)
 	struct ngbe_rx_entry *rxep;
 	struct rte_mbuf *mb;
 	uint16_t pkt_len;
+	uint64_t pkt_flags;
 	int nb_dd;
 	uint32_t s[LOOK_AHEAD];
 	uint32_t pkt_info[LOOK_AHEAD];
@@ -325,6 +347,9 @@ ngbe_rx_scan_hw_ring(struct ngbe_rx_queue *rxq)
 			mb->data_len = pkt_len;
 			mb->pkt_len = pkt_len;
 
+			/* convert descriptor fields to rte mbuf flags */
+			pkt_flags = rx_desc_error_to_pkt_flags(s[j]);
+			mb->ol_flags = pkt_flags;
 			mb->packet_type =
 				ngbe_rxd_pkt_info_to_pkt_type(pkt_info[j],
 				NGBE_PTID_MASK);
@@ -519,6 +544,7 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t rx_id;
 	uint16_t nb_rx;
 	uint16_t nb_hold;
+	uint64_t pkt_flags;
 
 	nb_rx = 0;
 	nb_hold = 0;
@@ -611,11 +637,14 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		/*
 		 * Initialize the returned mbuf.
-		 * setup generic mbuf fields:
+		 * 1) setup generic mbuf fields:
 		 *    - number of segments,
 		 *    - next segment,
 		 *    - packet length,
 		 *    - Rx port identifier.
+		 * 2) integrate hardware offload data, if any:
+		 *    - IP checksum flag,
+		 *    - error flags.
 		 */
 		pkt_len = (uint16_t)(rte_le_to_cpu_16(rxd.qw1.hi.len));
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
@@ -627,6 +656,8 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->port = rxq->port_id;
 
 		pkt_info = rte_le_to_cpu_32(rxd.qw0.dw0);
+		pkt_flags = rx_desc_error_to_pkt_flags(staterr);
+		rxm->ol_flags = pkt_flags;
 		rxm->packet_type = ngbe_rxd_pkt_info_to_pkt_type(pkt_info,
 						       NGBE_PTID_MASK);
 
@@ -663,16 +694,30 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return nb_rx;
 }
 
+/**
+ * ngbe_fill_cluster_head_buf - fill the first mbuf of the returned packet
+ *
+ * Fill the following info in the HEAD buffer of the Rx cluster:
+ *    - RX port identifier
+ *    - hardware offload data, if any:
+ *      - IP checksum flag
+ *      - error flags
+ * @head HEAD of the packet cluster
+ * @desc HW descriptor to get data from
+ * @rxq Pointer to the Rx queue
+ */
 static inline void
 ngbe_fill_cluster_head_buf(struct rte_mbuf *head, struct ngbe_rx_desc *desc,
 		struct ngbe_rx_queue *rxq, uint32_t staterr)
 {
 	uint32_t pkt_info;
+	uint64_t pkt_flags;
 
-	RTE_SET_USED(staterr);
 	head->port = rxq->port_id;
 
 	pkt_info = rte_le_to_cpu_32(desc->qw0.dw0);
+	pkt_flags = rx_desc_error_to_pkt_flags(staterr);
+	head->ol_flags = pkt_flags;
 	head->packet_type = ngbe_rxd_pkt_info_to_pkt_type(pkt_info,
 						NGBE_PTID_MASK);
 }
@@ -1257,7 +1302,14 @@ ngbe_reset_rx_queue(struct ngbe_adapter *adapter, struct ngbe_rx_queue *rxq)
 uint64_t
 ngbe_get_rx_port_offloads(struct rte_eth_dev *dev __rte_unused)
 {
-	return RTE_ETH_RX_OFFLOAD_SCATTER;
+	uint64_t offloads;
+
+	offloads = RTE_ETH_RX_OFFLOAD_IPV4_CKSUM  |
+		   RTE_ETH_RX_OFFLOAD_UDP_CKSUM   |
+		   RTE_ETH_RX_OFFLOAD_TCP_CKSUM   |
+		   RTE_ETH_RX_OFFLOAD_SCATTER;
+
+	return offloads;
 }
 
 int
@@ -1520,6 +1572,7 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 	uint32_t fctrl;
 	uint32_t hlreg0;
 	uint32_t srrctl;
+	uint32_t rxcsum;
 	uint16_t buf_size;
 	uint16_t i;
 	struct rte_eth_rxmode *rx_conf = &dev->data->dev_conf.rxmode;
@@ -1581,6 +1634,18 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 
 	if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		dev->data->scattered_rx = 1;
+	/*
+	 * Setup the Checksum Register.
+	 * Enable IP/L4 checksum computation by hardware if requested to do so.
+	 */
+	rxcsum = rd32(hw, NGBE_PSRCTL);
+	rxcsum |= NGBE_PSRCTL_PCSD;
+	if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM)
+		rxcsum |= NGBE_PSRCTL_L4CSUM;
+	else
+		rxcsum &= ~NGBE_PSRCTL_L4CSUM;
+
+	wr32(hw, NGBE_PSRCTL, rxcsum);
 
 	ngbe_set_rx_function(dev);
 

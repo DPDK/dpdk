@@ -12,6 +12,7 @@ Features
 --------
 
 - Packet type information
+- Checksum offload
 - Link state information
 - Scattered for RX
 
