@@ -147,6 +147,7 @@ struct fwd_stream {
 	uint64_t     core_cycles; /**< used for RX and TX processing */
 	struct pkt_burst_stats rx_burst_stats;
 	struct pkt_burst_stats tx_burst_stats;
+	struct fwd_lcore *lcore; /**< Lcore being scheduled. */
 };
 
 /**
@@ -842,6 +843,7 @@ void port_summary_header_display(void);
 void rx_queue_infos_display(portid_t port_idi, uint16_t queue_id);
 void tx_queue_infos_display(portid_t port_idi, uint16_t queue_id);
 void fwd_lcores_config_display(void);
+bool pkt_fwd_shared_rxq_check(void);
 void pkt_fwd_config_display(struct fwd_config *cfg);
 void rxtx_config_display(void);
 void fwd_config_setup(void);

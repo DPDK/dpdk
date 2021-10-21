@@ -3068,6 +3068,111 @@ port_rss_hash_key_update(portid_t port_id, char rss_type[], uint8_t *hash_key,
 }
 
 /*
+ * Check whether a shared rxq scheduled on other lcores.
+ */
+static bool
+fwd_stream_on_other_lcores(uint16_t domain_id, lcoreid_t src_lc,
+			   portid_t src_port, queueid_t src_rxq,
+			   uint32_t share_group, queueid_t share_rxq)
+{
+	streamid_t sm_id;
+	streamid_t nb_fs_per_lcore;
+	lcoreid_t  nb_fc;
+	lcoreid_t  lc_id;
+	struct fwd_stream *fs;
+	struct rte_port *port;
+	struct rte_eth_dev_info *dev_info;
+	struct rte_eth_rxconf *rxq_conf;
+
+	nb_fc = cur_fwd_config.nb_fwd_lcores;
+	/* Check remaining cores. */
+	for (lc_id = src_lc + 1; lc_id < nb_fc; lc_id++) {
+		sm_id = fwd_lcores[lc_id]->stream_idx;
+		nb_fs_per_lcore = fwd_lcores[lc_id]->stream_nb;
+		for (; sm_id < fwd_lcores[lc_id]->stream_idx + nb_fs_per_lcore;
+		     sm_id++) {
+			fs = fwd_streams[sm_id];
+			port = &ports[fs->rx_port];
+			dev_info = &port->dev_info;
+			rxq_conf = &port->rx_conf[fs->rx_queue];
+			if ((dev_info->dev_capa & RTE_ETH_DEV_CAPA_RXQ_SHARE)
+			    == 0 || rxq_conf->share_group == 0)
+				/* Not shared rxq. */
+				continue;
+			if (domain_id != port->dev_info.switch_info.domain_id)
+				continue;
+			if (rxq_conf->share_group != share_group)
+				continue;
+			if (rxq_conf->share_qid != share_rxq)
+				continue;
+			printf("Shared Rx queue group %u queue %hu can't be scheduled on different cores:\n",
+			       share_group, share_rxq);
+			printf("  lcore %hhu Port %hu queue %hu\n",
+			       src_lc, src_port, src_rxq);
+			printf("  lcore %hhu Port %hu queue %hu\n",
+			       lc_id, fs->rx_port, fs->rx_queue);
+			printf("Please use --nb-cores=%hu to limit number of forwarding cores\n",
+			       nb_rxq);
+			return true;
+		}
+	}
+	return false;
+}
+
+/*
+ * Check shared rxq configuration.
+ *
+ * Shared group must not being scheduled on different core.
+ */
+bool
+pkt_fwd_shared_rxq_check(void)
+{
+	streamid_t sm_id;
+	streamid_t nb_fs_per_lcore;
+	lcoreid_t  nb_fc;
+	lcoreid_t  lc_id;
+	struct fwd_stream *fs;
+	uint16_t domain_id;
+	struct rte_port *port;
+	struct rte_eth_dev_info *dev_info;
+	struct rte_eth_rxconf *rxq_conf;
+
+	if (rxq_share == 0)
+		return true;
+	nb_fc = cur_fwd_config.nb_fwd_lcores;
+	/*
+	 * Check streams on each core, make sure the same switch domain +
+	 * group + queue doesn't get scheduled on other cores.
+	 */
+	for (lc_id = 0; lc_id < nb_fc; lc_id++) {
+		sm_id = fwd_lcores[lc_id]->stream_idx;
+		nb_fs_per_lcore = fwd_lcores[lc_id]->stream_nb;
+		for (; sm_id < fwd_lcores[lc_id]->stream_idx + nb_fs_per_lcore;
+		     sm_id++) {
+			fs = fwd_streams[sm_id];
+			/* Update lcore info stream being scheduled. */
+			fs->lcore = fwd_lcores[lc_id];
+			port = &ports[fs->rx_port];
+			dev_info = &port->dev_info;
+			rxq_conf = &port->rx_conf[fs->rx_queue];
+			if ((dev_info->dev_capa & RTE_ETH_DEV_CAPA_RXQ_SHARE)
+			    == 0 || rxq_conf->share_group == 0)
+				/* Not shared rxq. */
+				continue;
+			/* Check shared rxq not scheduled on remaining cores. */
+			domain_id = port->dev_info.switch_info.domain_id;
+			if (fwd_stream_on_other_lcores(domain_id, lc_id,
+						       fs->rx_port,
+						       fs->rx_queue,
+						       rxq_conf->share_group,
+						       rxq_conf->share_qid))
+				return false;
+		}
+	}
+	return true;
+}
+
+/*
  * Setup forwarding configuration for each logical core.
  */
 static void

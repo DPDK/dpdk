@@ -2309,6 +2309,10 @@ start_packet_forwarding(int with_tx_first)
 
 	fwd_config_setup();
 
+	pkt_fwd_config_display(&cur_fwd_config);
+	if (!pkt_fwd_shared_rxq_check())
+		return;
+
 	port_fwd_begin = cur_fwd_config.fwd_eng->port_fwd_begin;
 	if (port_fwd_begin != NULL) {
 		for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
@@ -2338,7 +2342,6 @@ start_packet_forwarding(int with_tx_first)
 	if(!no_flush_rx)
 		flush_fwd_rx_queues();
 
-	pkt_fwd_config_display(&cur_fwd_config);
 	rxtx_config_display();
 
 	fwd_stats_reset();
