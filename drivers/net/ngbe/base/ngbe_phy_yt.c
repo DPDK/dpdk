@@ -234,6 +234,50 @@ s32 ngbe_reset_phy_yt(struct ngbe_hw *hw)
 	return status;
 }
 
+s32 ngbe_get_phy_advertised_pause_yt(struct ngbe_hw *hw, u8 *pause_bit)
+{
+	u16 value;
+	s32 status = 0;
+
+	DEBUGFUNC("ngbe_get_phy_advertised_pause_yt");
+
+	status = hw->phy.read_reg(hw, YT_ANA, 0, &value);
+	value &= YT_FANA_PAUSE_MASK;
+	*pause_bit = (u8)(value >> 7);
+
+	return status;
+}
+
+s32 ngbe_get_phy_lp_advertised_pause_yt(struct ngbe_hw *hw, u8 *pause_bit)
+{
+	u16 value;
+	s32 status = 0;
+
+	DEBUGFUNC("ngbe_get_phy_lp_advertised_pause_yt");
+
+	status = hw->phy.read_reg(hw, YT_LPAR, 0, &value);
+	value &= YT_FLPAR_PAUSE_MASK;
+	*pause_bit = (u8)(value >> 7);
+
+	return status;
+}
+
+s32 ngbe_set_phy_pause_adv_yt(struct ngbe_hw *hw, u16 pause_bit)
+{
+	u16 value;
+	s32 status = 0;
+
+	DEBUGFUNC("ngbe_set_phy_pause_adv_yt");
+
+
+	status = hw->phy.read_reg(hw, YT_ANA, 0, &value);
+	value &= ~YT_FANA_PAUSE_MASK;
+	value |= pause_bit;
+	status = hw->phy.write_reg(hw, YT_ANA, 0, value);
+
+	return status;
+}
+
 s32 ngbe_check_phy_link_yt(struct ngbe_hw *hw,
 		u32 *speed, bool *link_up)
 {

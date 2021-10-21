@@ -209,6 +209,63 @@ s32 ngbe_reset_phy_mvl(struct ngbe_hw *hw)
 	return status;
 }
 
+s32 ngbe_get_phy_advertised_pause_mvl(struct ngbe_hw *hw, u8 *pause_bit)
+{
+	u16 value;
+	s32 status = 0;
+
+	if (hw->phy.type == ngbe_phy_mvl) {
+		status = hw->phy.read_reg(hw, MVL_ANA, 0, &value);
+		value &= MVL_CANA_ASM_PAUSE | MVL_CANA_PAUSE;
+		*pause_bit = (u8)(value >> 10);
+	} else {
+		status = hw->phy.read_reg(hw, MVL_ANA, 0, &value);
+		value &= MVL_FANA_PAUSE_MASK;
+		*pause_bit = (u8)(value >> 7);
+	}
+
+	return status;
+}
+
+s32 ngbe_get_phy_lp_advertised_pause_mvl(struct ngbe_hw *hw, u8 *pause_bit)
+{
+	u16 value;
+	s32 status = 0;
+
+	if (hw->phy.type == ngbe_phy_mvl) {
+		status = hw->phy.read_reg(hw, MVL_LPAR, 0, &value);
+		value &= MVL_CLPAR_ASM_PAUSE | MVL_CLPAR_PAUSE;
+		*pause_bit = (u8)(value >> 10);
+	} else {
+		status = hw->phy.read_reg(hw, MVL_LPAR, 0, &value);
+		value &= MVL_FLPAR_PAUSE_MASK;
+		*pause_bit = (u8)(value >> 7);
+	}
+
+	return status;
+}
+
+s32 ngbe_set_phy_pause_adv_mvl(struct ngbe_hw *hw, u16 pause_bit)
+{
+	u16 value;
+	s32 status = 0;
+
+	DEBUGFUNC("ngbe_set_phy_pause_adv_mvl");
+
+	if (hw->phy.type == ngbe_phy_mvl) {
+		status = hw->phy.read_reg(hw, MVL_ANA, 0, &value);
+		value &= ~(MVL_CANA_ASM_PAUSE | MVL_CANA_PAUSE);
+	} else {
+		status = hw->phy.read_reg(hw, MVL_ANA, 0, &value);
+		value &= ~MVL_FANA_PAUSE_MASK;
+	}
+
+	value |= pause_bit;
+	status = hw->phy.write_reg(hw, MVL_ANA, 0, value);
+
+	return status;
+}
+
 s32 ngbe_check_phy_link_mvl(struct ngbe_hw *hw,
 		u32 *speed, bool *link_up)
 {

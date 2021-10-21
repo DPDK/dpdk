@@ -249,6 +249,48 @@ s32 ngbe_reset_phy_rtl(struct ngbe_hw *hw)
 	return status;
 }
 
+s32 ngbe_get_phy_advertised_pause_rtl(struct ngbe_hw *hw, u8 *pause_bit)
+{
+	u16 value;
+	s32 status = 0;
+
+	status = hw->phy.read_reg(hw, RTL_ANAR, RTL_DEV_ZERO, &value);
+	value &= RTL_ANAR_APAUSE | RTL_ANAR_PAUSE;
+	*pause_bit = (u8)(value >> 10);
+	return status;
+}
+
+s32 ngbe_get_phy_lp_advertised_pause_rtl(struct ngbe_hw *hw, u8 *pause_bit)
+{
+	u16 value;
+	s32 status = 0;
+
+	status = hw->phy.read_reg(hw, RTL_INSR, 0xa43, &value);
+
+	status = hw->phy.read_reg(hw, RTL_BMSR, RTL_DEV_ZERO, &value);
+	value = value & RTL_BMSR_ANC;
+
+	/* if AN complete then check lp adv pause */
+	status = hw->phy.read_reg(hw, RTL_ANLPAR, RTL_DEV_ZERO, &value);
+	value &= RTL_ANLPAR_LP;
+	*pause_bit = (u8)(value >> 10);
+	return status;
+}
+
+s32 ngbe_set_phy_pause_adv_rtl(struct ngbe_hw *hw, u16 pause_bit)
+{
+	u16 value;
+	s32 status = 0;
+
+	status = hw->phy.read_reg(hw, RTL_ANAR, RTL_DEV_ZERO, &value);
+	value &= ~(RTL_ANAR_APAUSE | RTL_ANAR_PAUSE);
+	value |= pause_bit;
+
+	status = hw->phy.write_reg(hw, RTL_ANAR, RTL_DEV_ZERO, value);
+
+	return status;
+}
+
 s32 ngbe_check_phy_link_rtl(struct ngbe_hw *hw, u32 *speed, bool *link_up)
 {
 	s32 status = 0;

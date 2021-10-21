@@ -67,6 +67,15 @@ enum ngbe_media_type {
 	ngbe_media_type_virtual
 };
 
+/* Flow Control Settings */
+enum ngbe_fc_mode {
+	ngbe_fc_none = 0,
+	ngbe_fc_rx_pause,
+	ngbe_fc_tx_pause,
+	ngbe_fc_full,
+	ngbe_fc_default
+};
+
 struct ngbe_hw;
 
 struct ngbe_addr_filter_info {
@@ -80,6 +89,19 @@ struct ngbe_bus_info {
 
 	u16 func;
 	u8 lan_id;
+};
+
+/* Flow control parameters */
+struct ngbe_fc_info {
+	u32 high_water; /* Flow Ctrl High-water */
+	u32 low_water; /* Flow Ctrl Low-water */
+	u16 pause_time; /* Flow Control Pause timer */
+	bool send_xon; /* Flow control send XON */
+	bool strict_ieee; /* Strict IEEE mode */
+	bool disable_fc_autoneg; /* Do not autonegotiate FC */
+	bool fc_was_autonegged; /* Is current_mode the result of autonegging? */
+	enum ngbe_fc_mode current_mode; /* FC mode in effect */
+	enum ngbe_fc_mode requested_mode; /* FC mode requested by caller */
 };
 
 /* Statistics counters collected by the MAC */
@@ -263,6 +285,11 @@ struct ngbe_mac_info {
 	void (*set_vlan_anti_spoofing)(struct ngbe_hw *hw,
 					bool enable, int vf);
 
+	/* Flow Control */
+	s32 (*fc_enable)(struct ngbe_hw *hw);
+	s32 (*setup_fc)(struct ngbe_hw *hw);
+	void (*fc_autoneg)(struct ngbe_hw *hw);
+
 	/* Manageability interface */
 	s32 (*init_thermal_sensor_thresh)(struct ngbe_hw *hw);
 	s32 (*check_overtemp)(struct ngbe_hw *hw);
@@ -302,6 +329,10 @@ struct ngbe_phy_info {
 	s32 (*setup_link)(struct ngbe_hw *hw, u32 speed,
 				bool autoneg_wait_to_complete);
 	s32 (*check_link)(struct ngbe_hw *hw, u32 *speed, bool *link_up);
+	s32 (*set_phy_power)(struct ngbe_hw *hw, bool on);
+	s32 (*get_adv_pause)(struct ngbe_hw *hw, u8 *pause_bit);
+	s32 (*get_lp_adv_pause)(struct ngbe_hw *hw, u8 *pause_bit);
+	s32 (*set_pause_adv)(struct ngbe_hw *hw, u16 pause_bit);
 
 	enum ngbe_media_type media_type;
 	enum ngbe_phy_type type;
@@ -349,6 +380,7 @@ struct ngbe_hw {
 	void *back;
 	struct ngbe_mac_info mac;
 	struct ngbe_addr_filter_info addr_ctrl;
+	struct ngbe_fc_info fc;
 	struct ngbe_phy_info phy;
 	struct ngbe_rom_info rom;
 	struct ngbe_bus_info bus;

@@ -222,6 +222,7 @@ New Features
   * Added device basic statistics and extended stats.
   * Added multi-queue and RSS.
   * Added SRIOV.
+  * Added flow control.
 
 * **Updated Marvell cnxk crypto PMD.**
 

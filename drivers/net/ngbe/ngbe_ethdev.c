@@ -317,6 +317,14 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	/* Unlock any pending hardware semaphore */
 	ngbe_swfw_lock_reset(hw);
 
+	/* Get Hardware Flow Control setting */
+	hw->fc.requested_mode = ngbe_fc_full;
+	hw->fc.current_mode = ngbe_fc_full;
+	hw->fc.pause_time = NGBE_FC_PAUSE_TIME;
+	hw->fc.low_water = NGBE_FC_XON_LOTH;
+	hw->fc.high_water = NGBE_FC_XOFF_HITH;
+	hw->fc.send_xon = 1;
+
 	err = hw->rom.init_params(hw);
 	if (err != 0) {
 		PMD_INIT_LOG(ERR, "The EEPROM init failed: %d", err);
@@ -2175,6 +2183,107 @@ ngbe_dev_interrupt_handler(void *param)
 	ngbe_dev_interrupt_action(dev);
 }
 
+static int
+ngbe_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t mflcn_reg;
+	uint32_t fccfg_reg;
+	int rx_pause;
+	int tx_pause;
+
+	fc_conf->pause_time = hw->fc.pause_time;
+	fc_conf->high_water = hw->fc.high_water;
+	fc_conf->low_water = hw->fc.low_water;
+	fc_conf->send_xon = hw->fc.send_xon;
+	fc_conf->autoneg = !hw->fc.disable_fc_autoneg;
+
+	/*
+	 * Return rx_pause status according to actual setting of
+	 * RXFCCFG register.
+	 */
+	mflcn_reg = rd32(hw, NGBE_RXFCCFG);
+	if (mflcn_reg & NGBE_RXFCCFG_FC)
+		rx_pause = 1;
+	else
+		rx_pause = 0;
+
+	/*
+	 * Return tx_pause status according to actual setting of
+	 * TXFCCFG register.
+	 */
+	fccfg_reg = rd32(hw, NGBE_TXFCCFG);
+	if (fccfg_reg & NGBE_TXFCCFG_FC)
+		tx_pause = 1;
+	else
+		tx_pause = 0;
+
+	if (rx_pause && tx_pause)
+		fc_conf->mode = RTE_ETH_FC_FULL;
+	else if (rx_pause)
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
+	else if (tx_pause)
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
+	else
+		fc_conf->mode = RTE_ETH_FC_NONE;
+
+	return 0;
+}
+
+static int
+ngbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	int err;
+	uint32_t rx_buf_size;
+	uint32_t max_high_water;
+	enum ngbe_fc_mode rte_fcmode_2_ngbe_fcmode[] = {
+		ngbe_fc_none,
+		ngbe_fc_rx_pause,
+		ngbe_fc_tx_pause,
+		ngbe_fc_full
+	};
+
+	PMD_INIT_FUNC_TRACE();
+
+	rx_buf_size = rd32(hw, NGBE_PBRXSIZE);
+	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x", rx_buf_size);
+
+	/*
+	 * At least reserve one Ethernet frame for watermark
+	 * high_water/low_water in kilo bytes for ngbe
+	 */
+	max_high_water = (rx_buf_size - RTE_ETHER_MAX_LEN) >> 10;
+	if (fc_conf->high_water > max_high_water ||
+	    fc_conf->high_water < fc_conf->low_water) {
+		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB");
+		PMD_INIT_LOG(ERR, "High_water must <= 0x%x", max_high_water);
+		return -EINVAL;
+	}
+
+	hw->fc.requested_mode = rte_fcmode_2_ngbe_fcmode[fc_conf->mode];
+	hw->fc.pause_time     = fc_conf->pause_time;
+	hw->fc.high_water     = fc_conf->high_water;
+	hw->fc.low_water      = fc_conf->low_water;
+	hw->fc.send_xon       = fc_conf->send_xon;
+	hw->fc.disable_fc_autoneg = !fc_conf->autoneg;
+
+	err = hw->mac.fc_enable(hw);
+
+	/* Not negotiated is not an error case */
+	if (err == 0 || err == NGBE_ERR_FC_NOT_NEGOTIATED) {
+		wr32m(hw, NGBE_MACRXFLT, NGBE_MACRXFLT_CTL_MASK,
+		      (fc_conf->mac_ctrl_frame_fwd
+		       ? NGBE_MACRXFLT_CTL_NOPS : NGBE_MACRXFLT_CTL_DROP));
+		ngbe_flush(hw);
+
+		return 0;
+	}
+
+	PMD_INIT_LOG(ERR, "ngbe_fc_enable = 0x%x", err);
+	return -EIO;
+}
+
 int
 ngbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 			  struct rte_eth_rss_reta_entry64 *reta_conf,
@@ -2580,6 +2689,8 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.rx_queue_release           = ngbe_dev_rx_queue_release,
 	.tx_queue_setup             = ngbe_dev_tx_queue_setup,
 	.tx_queue_release           = ngbe_dev_tx_queue_release,
+	.flow_ctrl_get              = ngbe_flow_ctrl_get,
+	.flow_ctrl_set              = ngbe_flow_ctrl_set,
 	.mac_addr_add               = ngbe_add_rar,
 	.mac_addr_remove            = ngbe_remove_rar,
 	.mac_addr_set               = ngbe_set_default_mac_addr,

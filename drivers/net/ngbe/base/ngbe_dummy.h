@@ -154,6 +154,17 @@ static inline void ngbe_mac_set_vlan_anti_spoofing_dummy(struct ngbe_hw *TUP0,
 					bool TUP1, int TUP2)
 {
 }
+static inline s32 ngbe_mac_fc_enable_dummy(struct ngbe_hw *TUP0)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_mac_setup_fc_dummy(struct ngbe_hw *TUP0)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline void ngbe_mac_fc_autoneg_dummy(struct ngbe_hw *TUP0)
+{
+}
 static inline s32 ngbe_mac_init_thermal_ssth_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
@@ -202,6 +213,20 @@ static inline s32 ngbe_phy_setup_link_dummy(struct ngbe_hw *TUP0,
 }
 static inline s32 ngbe_phy_check_link_dummy(struct ngbe_hw *TUP0, u32 *TUP1,
 					bool *TUP2)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_get_phy_advertised_pause_dummy(struct ngbe_hw *TUP0,
+					u8 *TUP1)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_get_phy_lp_advertised_pause_dummy(struct ngbe_hw *TUP0,
+					u8 *TUP1)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_set_phy_pause_adv_dummy(struct ngbe_hw *TUP0, u16 TUP1)
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
@@ -264,6 +289,9 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->mac.set_vlvf = ngbe_mac_set_vlvf_dummy;
 	hw->mac.set_mac_anti_spoofing = ngbe_mac_set_mac_anti_spoofing_dummy;
 	hw->mac.set_vlan_anti_spoofing = ngbe_mac_set_vlan_anti_spoofing_dummy;
+	hw->mac.fc_enable = ngbe_mac_fc_enable_dummy;
+	hw->mac.setup_fc = ngbe_mac_setup_fc_dummy;
+	hw->mac.fc_autoneg = ngbe_mac_fc_autoneg_dummy;
 	hw->mac.init_thermal_sensor_thresh = ngbe_mac_init_thermal_ssth_dummy;
 	hw->mac.check_overtemp = ngbe_mac_check_overtemp_dummy;
 	hw->phy.identify = ngbe_phy_identify_dummy;
@@ -275,6 +303,9 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->phy.write_reg_unlocked = ngbe_phy_write_reg_unlocked_dummy;
 	hw->phy.setup_link = ngbe_phy_setup_link_dummy;
 	hw->phy.check_link = ngbe_phy_check_link_dummy;
+	hw->phy.get_adv_pause = ngbe_get_phy_advertised_pause_dummy;
+	hw->phy.get_lp_adv_pause = ngbe_get_phy_lp_advertised_pause_dummy;
+	hw->phy.set_pause_adv = ngbe_set_phy_pause_adv_dummy;
 	hw->mbx.init_params = ngbe_mbx_init_params_dummy;
 	hw->mbx.read = ngbe_mbx_read_dummy;
 	hw->mbx.write = ngbe_mbx_write_dummy;

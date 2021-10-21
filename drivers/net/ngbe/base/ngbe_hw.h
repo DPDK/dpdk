@@ -42,6 +42,10 @@ s32 ngbe_update_mc_addr_list(struct ngbe_hw *hw, u8 *mc_addr_list,
 s32 ngbe_disable_sec_rx_path(struct ngbe_hw *hw);
 s32 ngbe_enable_sec_rx_path(struct ngbe_hw *hw);
 
+s32 ngbe_setup_fc_em(struct ngbe_hw *hw);
+s32 ngbe_fc_enable(struct ngbe_hw *hw);
+void ngbe_fc_autoneg(struct ngbe_hw *hw);
+
 s32 ngbe_validate_mac_addr(u8 *mac_addr);
 s32 ngbe_acquire_swfw_sync(struct ngbe_hw *hw, u32 mask);
 void ngbe_release_swfw_sync(struct ngbe_hw *hw, u32 mask);
@@ -64,6 +68,8 @@ s32 ngbe_mac_check_overtemp(struct ngbe_hw *hw);
 void ngbe_disable_rx(struct ngbe_hw *hw);
 void ngbe_enable_rx(struct ngbe_hw *hw);
 void ngbe_set_mta(struct ngbe_hw *hw, u8 *mc_addr);
+s32 ngbe_negotiate_fc(struct ngbe_hw *hw, u32 adv_reg, u32 lp_reg,
+			u32 adv_sym, u32 adv_asm, u32 lp_sym, u32 lp_asm);
 s32 ngbe_init_shared_code(struct ngbe_hw *hw);
 s32 ngbe_set_mac_type(struct ngbe_hw *hw);
 s32 ngbe_init_ops_pf(struct ngbe_hw *hw);

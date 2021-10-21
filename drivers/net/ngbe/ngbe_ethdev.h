@@ -276,6 +276,14 @@ void ngbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
 
 int ngbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 
+/* High threshold controlling when to start sending XOFF frames. */
+#define NGBE_FC_XOFF_HITH              128 /*KB*/
+/* Low threshold controlling when to start sending XON frames. */
+#define NGBE_FC_XON_LOTH               64 /*KB*/
+
+/* Timer value included in XOFF frames. */
+#define NGBE_FC_PAUSE_TIME 0x680
+
 #define NGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define NGBE_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
 #define NGBE_VMDQ_NUM_UC_MAC         4096 /* Maximum nb. of UC MAC addr. */

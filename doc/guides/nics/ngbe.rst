@@ -23,6 +23,7 @@ Features
 - Port hardware statistics
 - Jumbo frames
 - Link state information
+- Link flow control
 - Scattered and gather for TX and RX
 - FW version
 

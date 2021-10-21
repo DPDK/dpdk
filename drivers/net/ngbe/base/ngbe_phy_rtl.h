@@ -83,6 +83,9 @@ s32 ngbe_setup_phy_link_rtl(struct ngbe_hw *hw,
 
 s32 ngbe_init_phy_rtl(struct ngbe_hw *hw);
 s32 ngbe_reset_phy_rtl(struct ngbe_hw *hw);
+s32 ngbe_get_phy_advertised_pause_rtl(struct ngbe_hw *hw, u8 *pause_bit);
+s32 ngbe_get_phy_lp_advertised_pause_rtl(struct ngbe_hw *hw, u8 *pause_bit);
+s32 ngbe_set_phy_pause_adv_rtl(struct ngbe_hw *hw, u16 pause_bit);
 s32 ngbe_check_phy_link_rtl(struct ngbe_hw *hw,
 			u32 *speed, bool *link_up);
 

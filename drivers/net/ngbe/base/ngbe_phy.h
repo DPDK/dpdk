@@ -42,6 +42,9 @@ typedef struct mdi_reg mdi_reg_t;
 #define NGBE_MD22_PHY_ID_HIGH		0x2 /* PHY ID High Reg*/
 #define NGBE_MD22_PHY_ID_LOW		0x3 /* PHY ID Low Reg*/
 
+#define NGBE_TAF_SYM_PAUSE		0x1
+#define NGBE_TAF_ASM_PAUSE		0x2
+
 s32 ngbe_mdi_map_register(mdi_reg_t *reg, mdi_reg_22_t *reg22);
 
 bool ngbe_validate_phy_addr(struct ngbe_hw *hw, u32 phy_addr);

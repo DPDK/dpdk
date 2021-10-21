@@ -18,6 +18,8 @@
  **/
 s32 ngbe_start_hw(struct ngbe_hw *hw)
 {
+	s32 err;
+
 	DEBUGFUNC("ngbe_start_hw");
 
 	/* Clear the VLAN filter table */
@@ -25,6 +27,13 @@ s32 ngbe_start_hw(struct ngbe_hw *hw)
 
 	/* Clear statistics registers */
 	hw->mac.clear_hw_cntrs(hw);
+
+	/* Setup flow control */
+	err = hw->mac.setup_fc(hw);
+	if (err != 0 && err != NGBE_NOT_IMPLEMENTED) {
+		DEBUGOUT("Flow control setup failed, returning %d\n", err);
+		return err;
+	}
 
 	/* Clear adapter stopped flag */
 	hw->adapter_stopped = false;
@@ -701,6 +710,326 @@ s32 ngbe_update_mc_addr_list(struct ngbe_hw *hw, u8 *mc_addr_list,
 
 	DEBUGOUT("ngbe update mc addr list complete\n");
 	return 0;
+}
+
+/**
+ *  ngbe_setup_fc_em - Set up flow control
+ *  @hw: pointer to hardware structure
+ *
+ *  Called at init time to set up flow control.
+ **/
+s32 ngbe_setup_fc_em(struct ngbe_hw *hw)
+{
+	s32 err = 0;
+	u16 reg_cu = 0;
+
+	DEBUGFUNC("ngbe_setup_fc");
+
+	/* Validate the requested mode */
+	if (hw->fc.strict_ieee && hw->fc.requested_mode == ngbe_fc_rx_pause) {
+		DEBUGOUT("ngbe_fc_rx_pause not valid in strict IEEE mode\n");
+		err = NGBE_ERR_INVALID_LINK_SETTINGS;
+		goto out;
+	}
+
+	/*
+	 * 1gig parts do not have a word in the EEPROM to determine the
+	 * default flow control setting, so we explicitly set it to full.
+	 */
+	if (hw->fc.requested_mode == ngbe_fc_default)
+		hw->fc.requested_mode = ngbe_fc_full;
+
+	/*
+	 * The possible values of fc.requested_mode are:
+	 * 0: Flow control is completely disabled
+	 * 1: Rx flow control is enabled (we can receive pause frames,
+	 *    but not send pause frames).
+	 * 2: Tx flow control is enabled (we can send pause frames but
+	 *    we do not support receiving pause frames).
+	 * 3: Both Rx and Tx flow control (symmetric) are enabled.
+	 * other: Invalid.
+	 */
+	switch (hw->fc.requested_mode) {
+	case ngbe_fc_none:
+		/* Flow control completely disabled by software override. */
+		break;
+	case ngbe_fc_tx_pause:
+		/*
+		 * Tx Flow control is enabled, and Rx Flow control is
+		 * disabled by software override.
+		 */
+		if (hw->phy.type == ngbe_phy_mvl_sfi ||
+			hw->phy.type == ngbe_phy_yt8521s_sfi)
+			reg_cu |= MVL_FANA_ASM_PAUSE;
+		else
+			reg_cu |= 0x800; /*need to merge rtl and mvl on page 0*/
+		break;
+	case ngbe_fc_rx_pause:
+		/*
+		 * Rx Flow control is enabled and Tx Flow control is
+		 * disabled by software override. Since there really
+		 * isn't a way to advertise that we are capable of RX
+		 * Pause ONLY, we will advertise that we support both
+		 * symmetric and asymmetric Rx PAUSE, as such we fall
+		 * through to the fc_full statement.  Later, we will
+		 * disable the adapter's ability to send PAUSE frames.
+		 */
+	case ngbe_fc_full:
+		/* Flow control (both Rx and Tx) is enabled by SW override. */
+		if (hw->phy.type == ngbe_phy_mvl_sfi ||
+			hw->phy.type == ngbe_phy_yt8521s_sfi)
+			reg_cu |= MVL_FANA_SYM_PAUSE;
+		else
+			reg_cu |= 0xC00; /*need to merge rtl and mvl on page 0*/
+		break;
+	default:
+		DEBUGOUT("Flow control param set incorrectly\n");
+		err = NGBE_ERR_CONFIG;
+		goto out;
+	}
+
+	err = hw->phy.set_pause_adv(hw, reg_cu);
+
+out:
+	return err;
+}
+
+/**
+ *  ngbe_fc_enable - Enable flow control
+ *  @hw: pointer to hardware structure
+ *
+ *  Enable flow control according to the current settings.
+ **/
+s32 ngbe_fc_enable(struct ngbe_hw *hw)
+{
+	s32 err = 0;
+	u32 mflcn_reg, fccfg_reg;
+	u32 pause_time;
+	u32 fcrtl, fcrth;
+
+	DEBUGFUNC("ngbe_fc_enable");
+
+	/* Validate the water mark configuration */
+	if (!hw->fc.pause_time) {
+		err = NGBE_ERR_INVALID_LINK_SETTINGS;
+		goto out;
+	}
+
+	/* Low water mark of zero causes XOFF floods */
+	if ((hw->fc.current_mode & ngbe_fc_tx_pause) && hw->fc.high_water) {
+		if (!hw->fc.low_water ||
+			hw->fc.low_water >= hw->fc.high_water) {
+			DEBUGOUT("Invalid water mark configuration\n");
+			err = NGBE_ERR_INVALID_LINK_SETTINGS;
+			goto out;
+		}
+	}
+
+	/* Negotiate the fc mode to use */
+	hw->mac.fc_autoneg(hw);
+
+	/* Disable any previous flow control settings */
+	mflcn_reg = rd32(hw, NGBE_RXFCCFG);
+	mflcn_reg &= ~NGBE_RXFCCFG_FC;
+
+	fccfg_reg = rd32(hw, NGBE_TXFCCFG);
+	fccfg_reg &= ~NGBE_TXFCCFG_FC;
+	/*
+	 * The possible values of fc.current_mode are:
+	 * 0: Flow control is completely disabled
+	 * 1: Rx flow control is enabled (we can receive pause frames,
+	 *    but not send pause frames).
+	 * 2: Tx flow control is enabled (we can send pause frames but
+	 *    we do not support receiving pause frames).
+	 * 3: Both Rx and Tx flow control (symmetric) are enabled.
+	 * other: Invalid.
+	 */
+	switch (hw->fc.current_mode) {
+	case ngbe_fc_none:
+		/*
+		 * Flow control is disabled by software override or autoneg.
+		 * The code below will actually disable it in the HW.
+		 */
+		break;
+	case ngbe_fc_rx_pause:
+		/*
+		 * Rx Flow control is enabled and Tx Flow control is
+		 * disabled by software override. Since there really
+		 * isn't a way to advertise that we are capable of RX
+		 * Pause ONLY, we will advertise that we support both
+		 * symmetric and asymmetric Rx PAUSE.  Later, we will
+		 * disable the adapter's ability to send PAUSE frames.
+		 */
+		mflcn_reg |= NGBE_RXFCCFG_FC;
+		break;
+	case ngbe_fc_tx_pause:
+		/*
+		 * Tx Flow control is enabled, and Rx Flow control is
+		 * disabled by software override.
+		 */
+		fccfg_reg |= NGBE_TXFCCFG_FC;
+		break;
+	case ngbe_fc_full:
+		/* Flow control (both Rx and Tx) is enabled by SW override. */
+		mflcn_reg |= NGBE_RXFCCFG_FC;
+		fccfg_reg |= NGBE_TXFCCFG_FC;
+		break;
+	default:
+		DEBUGOUT("Flow control param set incorrectly\n");
+		err = NGBE_ERR_CONFIG;
+		goto out;
+	}
+
+	/* Set 802.3x based flow control settings. */
+	wr32(hw, NGBE_RXFCCFG, mflcn_reg);
+	wr32(hw, NGBE_TXFCCFG, fccfg_reg);
+
+	/* Set up and enable Rx high/low water mark thresholds, enable XON. */
+	if ((hw->fc.current_mode & ngbe_fc_tx_pause) &&
+		hw->fc.high_water) {
+		fcrtl = NGBE_FCWTRLO_TH(hw->fc.low_water) |
+			NGBE_FCWTRLO_XON;
+		fcrth = NGBE_FCWTRHI_TH(hw->fc.high_water) |
+			NGBE_FCWTRHI_XOFF;
+	} else {
+		/*
+		 * In order to prevent Tx hangs when the internal Tx
+		 * switch is enabled we must set the high water mark
+		 * to the Rx packet buffer size - 24KB.  This allows
+		 * the Tx switch to function even under heavy Rx
+		 * workloads.
+		 */
+		fcrtl = 0;
+		fcrth = rd32(hw, NGBE_PBRXSIZE) - 24576;
+	}
+	wr32(hw, NGBE_FCWTRLO, fcrtl);
+	wr32(hw, NGBE_FCWTRHI, fcrth);
+
+	/* Configure pause time */
+	pause_time = NGBE_RXFCFSH_TIME(hw->fc.pause_time);
+	wr32(hw, NGBE_FCXOFFTM, pause_time * 0x00010000);
+
+	/* Configure flow control refresh threshold value */
+	wr32(hw, NGBE_RXFCRFSH, hw->fc.pause_time / 2);
+
+out:
+	return err;
+}
+
+/**
+ *  ngbe_negotiate_fc - Negotiate flow control
+ *  @hw: pointer to hardware structure
+ *  @adv_reg: flow control advertised settings
+ *  @lp_reg: link partner's flow control settings
+ *  @adv_sym: symmetric pause bit in advertisement
+ *  @adv_asm: asymmetric pause bit in advertisement
+ *  @lp_sym: symmetric pause bit in link partner advertisement
+ *  @lp_asm: asymmetric pause bit in link partner advertisement
+ *
+ *  Find the intersection between advertised settings and link partner's
+ *  advertised settings
+ **/
+s32 ngbe_negotiate_fc(struct ngbe_hw *hw, u32 adv_reg, u32 lp_reg,
+		       u32 adv_sym, u32 adv_asm, u32 lp_sym, u32 lp_asm)
+{
+	if ((!(adv_reg)) ||  (!(lp_reg))) {
+		DEBUGOUT("Local or link partner's advertised flow control "
+			 "settings are NULL. Local: %x, link partner: %x\n",
+			      adv_reg, lp_reg);
+		return NGBE_ERR_FC_NOT_NEGOTIATED;
+	}
+
+	if ((adv_reg & adv_sym) && (lp_reg & lp_sym)) {
+		/*
+		 * Now we need to check if the user selected Rx ONLY
+		 * of pause frames.  In this case, we had to advertise
+		 * FULL flow control because we could not advertise RX
+		 * ONLY. Hence, we must now check to see if we need to
+		 * turn OFF the TRANSMISSION of PAUSE frames.
+		 */
+		if (hw->fc.requested_mode == ngbe_fc_full) {
+			hw->fc.current_mode = ngbe_fc_full;
+			DEBUGOUT("Flow Control = FULL.\n");
+		} else {
+			hw->fc.current_mode = ngbe_fc_rx_pause;
+			DEBUGOUT("Flow Control=RX PAUSE frames only\n");
+		}
+	} else if (!(adv_reg & adv_sym) && (adv_reg & adv_asm) &&
+		   (lp_reg & lp_sym) && (lp_reg & lp_asm)) {
+		hw->fc.current_mode = ngbe_fc_tx_pause;
+		DEBUGOUT("Flow Control = TX PAUSE frames only.\n");
+	} else if ((adv_reg & adv_sym) && (adv_reg & adv_asm) &&
+		   !(lp_reg & lp_sym) && (lp_reg & lp_asm)) {
+		hw->fc.current_mode = ngbe_fc_rx_pause;
+		DEBUGOUT("Flow Control = RX PAUSE frames only.\n");
+	} else {
+		hw->fc.current_mode = ngbe_fc_none;
+		DEBUGOUT("Flow Control = NONE.\n");
+	}
+	return 0;
+}
+
+/**
+ *  ngbe_fc_autoneg_em - Enable flow control IEEE clause 37
+ *  @hw: pointer to hardware structure
+ *
+ *  Enable flow control according to IEEE clause 37.
+ **/
+STATIC s32 ngbe_fc_autoneg_em(struct ngbe_hw *hw)
+{
+	u8 technology_ability_reg = 0;
+	u8 lp_technology_ability_reg = 0;
+
+	hw->phy.get_adv_pause(hw, &technology_ability_reg);
+	hw->phy.get_lp_adv_pause(hw, &lp_technology_ability_reg);
+
+	return ngbe_negotiate_fc(hw, (u32)technology_ability_reg,
+				  (u32)lp_technology_ability_reg,
+				  NGBE_TAF_SYM_PAUSE, NGBE_TAF_ASM_PAUSE,
+				  NGBE_TAF_SYM_PAUSE, NGBE_TAF_ASM_PAUSE);
+}
+
+/**
+ *  ngbe_fc_autoneg - Configure flow control
+ *  @hw: pointer to hardware structure
+ *
+ *  Compares our advertised flow control capabilities to those advertised by
+ *  our link partner, and determines the proper flow control mode to use.
+ **/
+void ngbe_fc_autoneg(struct ngbe_hw *hw)
+{
+	s32 err = NGBE_ERR_FC_NOT_NEGOTIATED;
+	u32 speed;
+	bool link_up;
+
+	DEBUGFUNC("ngbe_fc_autoneg");
+
+	/*
+	 * AN should have completed when the cable was plugged in.
+	 * Look for reasons to bail out.  Bail out if:
+	 * - FC autoneg is disabled, or if
+	 * - link is not up.
+	 */
+	if (hw->fc.disable_fc_autoneg) {
+		DEBUGOUT("Flow control autoneg is disabled");
+		goto out;
+	}
+
+	hw->mac.check_link(hw, &speed, &link_up, false);
+	if (!link_up) {
+		DEBUGOUT("The link is down");
+		goto out;
+	}
+
+	err = ngbe_fc_autoneg_em(hw);
+
+out:
+	if (err == 0) {
+		hw->fc.fc_was_autonegged = true;
+	} else {
+		hw->fc.fc_was_autonegged = false;
+		hw->fc.current_mode = hw->fc.requested_mode;
+	}
 }
 
 /**
@@ -1519,6 +1848,11 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	mac->clear_vfta = ngbe_clear_vfta;
 	mac->set_mac_anti_spoofing = ngbe_set_mac_anti_spoofing;
 	mac->set_vlan_anti_spoofing = ngbe_set_vlan_anti_spoofing;
+
+	/* Flow Control */
+	mac->fc_enable = ngbe_fc_enable;
+	mac->fc_autoneg = ngbe_fc_autoneg;
+	mac->setup_fc = ngbe_setup_fc_em;
 
 	/* Link */
 	mac->get_link_capabilities = ngbe_get_link_capabilities_em;
