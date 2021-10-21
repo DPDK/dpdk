@@ -2364,8 +2364,11 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 	hlreg0 &= ~NGBE_SECRXCTL_XDSA;
 	wr32(hw, NGBE_SECRXCTL, hlreg0);
 
+	/*
+	 * Configure jumbo frame support, if any.
+	 */
 	wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
-			NGBE_FRMSZ_MAX(NGBE_FRAME_SIZE_DFT));
+		NGBE_FRMSZ_MAX(dev->data->mtu + NGBE_ETH_OVERHEAD));
 
 	/* Setup Rx queues */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
