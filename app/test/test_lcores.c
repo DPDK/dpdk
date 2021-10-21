@@ -340,6 +340,44 @@ error:
 	return -1;
 }
 
+static void *ctrl_thread_loop(void *arg)
+{
+	struct thread_context *t = arg;
+
+	printf("Control thread running successfully\n");
+
+	/* Set the thread state to DONE */
+	t->state = DONE;
+
+	return NULL;
+}
+
+static int
+test_ctrl_thread(void)
+{
+	struct thread_context ctrl_thread_context;
+	struct thread_context *t;
+
+	/* Create one control thread */
+	t = &ctrl_thread_context;
+	t->state = INIT;
+	if (rte_ctrl_thread_create(&t->id, "test_ctrl_threads",
+					NULL, ctrl_thread_loop, t) != 0)
+		return -1;
+
+	/* Wait till the control thread exits.
+	 * This also acts as the barrier such that the memory operations
+	 * in control thread are visible to this thread.
+	 */
+	pthread_join(t->id, NULL);
+
+	/* Check if the control thread set the correct state */
+	if (t->state != DONE)
+		return -1;
+
+	return 0;
+}
+
 static int
 test_lcores(void)
 {
@@ -365,6 +403,9 @@ test_lcores(void)
 		return TEST_FAILED;
 
 	if (test_non_eal_lcores_callback(eal_threads_count) < 0)
+		return TEST_FAILED;
+
+	if (test_ctrl_thread() < 0)
 		return TEST_FAILED;
 
 	return TEST_SUCCESS;
