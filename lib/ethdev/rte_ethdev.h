@@ -2113,6 +2113,20 @@ const char *rte_eth_dev_rx_offload_name(uint64_t offload);
 const char *rte_eth_dev_tx_offload_name(uint64_t offload);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Get RTE_ETH_DEV_CAPA_* flag name.
+ *
+ * @param capability
+ *   Capability flag.
+ * @return
+ *   Capability name or 'UNKNOWN' if the flag cannot be recognized.
+ */
+__rte_experimental
+const char *rte_eth_dev_capability_name(uint64_t capability);
+
+/**
  * Configure an Ethernet device.
  * This function must be invoked first before any other function in the
  * Ethernet API. This function can also be re-invoked when a device is in the
