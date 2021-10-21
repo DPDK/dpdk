@@ -2041,6 +2041,33 @@ ngbe_dev_interrupt_handler(void *param)
 	ngbe_dev_interrupt_action(dev);
 }
 
+static int
+ngbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + 4;
+	struct rte_eth_dev_data *dev_data = dev->data;
+
+	/* If device is started, refuse mtu that requires the support of
+	 * scattered packets when this feature has not been enabled before.
+	 */
+	if (dev_data->dev_started && !dev_data->scattered_rx &&
+	    (frame_size + 2 * NGBE_VLAN_TAG_SIZE >
+	     dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)) {
+		PMD_INIT_LOG(ERR, "Stop port first.");
+		return -EINVAL;
+	}
+
+	if (hw->mode)
+		wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
+			NGBE_FRAME_SIZE_MAX);
+	else
+		wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
+			NGBE_FRMSZ_MAX(frame_size));
+
+	return 0;
+}
+
 /**
  * Set the IVAR registers, mapping interrupt causes to vectors
  * @param hw
@@ -2151,6 +2178,7 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.xstats_get_names           = ngbe_dev_xstats_get_names,
 	.xstats_get_names_by_id     = ngbe_dev_xstats_get_names_by_id,
 	.dev_supported_ptypes_get   = ngbe_dev_supported_ptypes_get,
+	.mtu_set                    = ngbe_dev_mtu_set,
 	.vlan_filter_set            = ngbe_vlan_filter_set,
 	.vlan_tpid_set              = ngbe_vlan_tpid_set,
 	.vlan_offload_set           = ngbe_vlan_offload_set,

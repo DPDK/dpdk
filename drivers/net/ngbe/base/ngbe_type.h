@@ -8,6 +8,7 @@
 
 #define NGBE_LINK_UP_TIME	90 /* 9.0 Seconds */
 
+#define NGBE_FRAME_SIZE_MAX       (9728) /* Maximum frame size, +FCS */
 #define NGBE_FRAME_SIZE_DFT       (1522) /* Default frame size, +FCS */
 #define NGBE_NUM_POOL             (32)
 #define NGBE_MAX_QP               (8)
@@ -318,6 +319,8 @@ struct ngbe_hw {
 	void IOMEM *isb_mem;
 	u16 nb_rx_queues;
 	u16 nb_tx_queues;
+
+	u32 mode;
 
 	u32 q_rx_regs[8 * 4];
 	u32 q_tx_regs[8 * 4];
