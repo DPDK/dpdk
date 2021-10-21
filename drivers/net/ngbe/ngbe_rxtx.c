@@ -253,6 +253,16 @@ ngbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
  *  Rx functions
  *
  **********************************************************************/
+static inline uint32_t
+ngbe_rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint16_t ptid_mask)
+{
+	uint16_t ptid = NGBE_RXD_PTID(pkt_info);
+
+	ptid &= ptid_mask;
+
+	return ngbe_decode_ptype(ptid);
+}
+
 uint16_t
 ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
@@ -267,6 +277,7 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct ngbe_rx_desc rxd;
 	uint64_t dma_addr;
 	uint32_t staterr;
+	uint32_t pkt_info;
 	uint16_t pkt_len;
 	uint16_t rx_id;
 	uint16_t nb_rx;
@@ -377,6 +388,10 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->pkt_len = pkt_len;
 		rxm->data_len = pkt_len;
 		rxm->port = rxq->port_id;
+
+		pkt_info = rte_le_to_cpu_32(rxd.qw0.dw0);
+		rxm->packet_type = ngbe_rxd_pkt_info_to_pkt_type(pkt_info,
+						       NGBE_PTID_MASK);
 
 		/*
 		 * Store the mbuf address into the next entry of the array

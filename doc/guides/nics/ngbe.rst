@@ -11,6 +11,7 @@ for Wangxun 1 Gigabit Ethernet NICs.
 Features
 --------
 
+- Packet type information
 - Link state information
 
 

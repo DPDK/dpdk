@@ -215,6 +215,10 @@ New Features
     Virtio hash reporting is yet to be added.
   * Added power monitor support in virtio PMD.
 
+* **Updated Wangxun ngbe driver.**
+
+  * Added packet type on RxTx.
+
 * **Updated Marvell cnxk crypto PMD.**
 
   * Added AES-CBC SHA1-HMAC support in lookaside protocol (IPsec) for CN10K.

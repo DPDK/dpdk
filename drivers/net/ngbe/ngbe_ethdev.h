@@ -6,6 +6,8 @@
 #ifndef _NGBE_ETHDEV_H_
 #define _NGBE_ETHDEV_H_
 
+#include "ngbe_ptypes.h"
+
 /* need update link, bit flag */
 #define NGBE_FLAG_NEED_LINK_UPDATE  ((uint32_t)(1 << 0))
 #define NGBE_FLAG_MAILBOX           ((uint32_t)(1 << 1))
@@ -130,5 +132,7 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 #define NGBE_DEFAULT_TX_PTHRESH      32
 #define NGBE_DEFAULT_TX_HTHRESH      0
 #define NGBE_DEFAULT_TX_WTHRESH      0
+
+const uint32_t *ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 
 #endif /* _NGBE_ETHDEV_H_ */
