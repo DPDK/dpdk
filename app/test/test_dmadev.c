@@ -746,8 +746,11 @@ test_dmadev_instance(int16_t dev_id)
 			.nb_desc = TEST_RINGSIZE,
 	};
 	const int vchan = 0;
+	int ret;
 
-	rte_dma_info_get(dev_id, &info);
+	ret = rte_dma_info_get(dev_id, &info);
+	if (ret != 0)
+		ERR_RETURN("Error with rte_dma_info_get()\n");
 
 	printf("\n### Test dmadev instance %u [%s]\n",
 			dev_id, info.dev_name);
@@ -761,8 +764,8 @@ test_dmadev_instance(int16_t dev_id)
 	if (rte_dma_vchan_setup(dev_id, vchan, &qconf) < 0)
 		ERR_RETURN("Error with queue configuration\n");
 
-	rte_dma_info_get(dev_id, &info);
-	if (info.nb_vchans != 1)
+	ret = rte_dma_info_get(dev_id, &info);
+	if (ret != 0 || info.nb_vchans != 1)
 		ERR_RETURN("Error, no configured queues reported on device id %u\n", dev_id);
 
 	if (rte_dma_start(dev_id) != 0)
