@@ -4,6 +4,7 @@
  */
 
 #include "ngbe_type.h"
+#include "ngbe_mbx.h"
 #include "ngbe_phy.h"
 #include "ngbe_eeprom.h"
 #include "ngbe_mng.h"
@@ -1009,6 +1010,44 @@ s32 ngbe_setup_mac_link_em(struct ngbe_hw *hw,
 }
 
 /**
+ *  ngbe_set_mac_anti_spoofing - Enable/Disable MAC anti-spoofing
+ *  @hw: pointer to hardware structure
+ *  @enable: enable or disable switch for MAC anti-spoofing
+ *  @vf: Virtual Function pool - VF Pool to set for MAC anti-spoofing
+ *
+ **/
+void ngbe_set_mac_anti_spoofing(struct ngbe_hw *hw, bool enable, int vf)
+{
+	u32 pfvfspoof;
+
+	pfvfspoof = rd32(hw, NGBE_POOLTXASMAC);
+	if (enable)
+		pfvfspoof |= (1 << vf);
+	else
+		pfvfspoof &= ~(1 << vf);
+	wr32(hw, NGBE_POOLTXASMAC, pfvfspoof);
+}
+
+/**
+ *  ngbe_set_vlan_anti_spoofing - Enable/Disable VLAN anti-spoofing
+ *  @hw: pointer to hardware structure
+ *  @enable: enable or disable switch for VLAN anti-spoofing
+ *  @vf: Virtual Function pool - VF Pool to set for VLAN anti-spoofing
+ *
+ **/
+void ngbe_set_vlan_anti_spoofing(struct ngbe_hw *hw, bool enable, int vf)
+{
+	u32 pfvfspoof;
+
+	pfvfspoof = rd32(hw, NGBE_POOLTXASVLAN);
+	if (enable)
+		pfvfspoof |= (1 << vf);
+	else
+		pfvfspoof &= ~(1 << vf);
+	wr32(hw, NGBE_POOLTXASVLAN, pfvfspoof);
+}
+
+/**
  *  ngbe_init_thermal_sensor_thresh - Inits thermal sensor thresholds
  *  @hw: pointer to hardware structure
  *
@@ -1231,6 +1270,7 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	struct ngbe_mac_info *mac = &hw->mac;
 	struct ngbe_phy_info *phy = &hw->phy;
 	struct ngbe_rom_info *rom = &hw->rom;
+	struct ngbe_mbx_info *mbx = &hw->mbx;
 
 	DEBUGFUNC("ngbe_init_ops_pf");
 
@@ -1266,6 +1306,8 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	mac->set_vmdq = ngbe_set_vmdq;
 	mac->clear_vmdq = ngbe_clear_vmdq;
 	mac->clear_vfta = ngbe_clear_vfta;
+	mac->set_mac_anti_spoofing = ngbe_set_mac_anti_spoofing;
+	mac->set_vlan_anti_spoofing = ngbe_set_vlan_anti_spoofing;
 
 	/* Link */
 	mac->get_link_capabilities = ngbe_get_link_capabilities_em;
@@ -1275,6 +1317,8 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	/* Manageability interface */
 	mac->init_thermal_sensor_thresh = ngbe_init_thermal_sensor_thresh;
 	mac->check_overtemp = ngbe_mac_check_overtemp;
+
+	mbx->init_params = ngbe_init_mbx_params_pf;
 
 	/* EEPROM */
 	rom->init_params = ngbe_init_eeprom_params;

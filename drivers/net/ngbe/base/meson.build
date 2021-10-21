@@ -4,6 +4,7 @@
 sources = [
         'ngbe_eeprom.c',
         'ngbe_hw.c',
+        'ngbe_mbx.c',
         'ngbe_mng.c',
         'ngbe_phy.c',
         'ngbe_phy_rtl.c',

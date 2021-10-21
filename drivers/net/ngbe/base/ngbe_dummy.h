@@ -136,6 +136,14 @@ static inline s32 ngbe_mac_clear_vfta_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
+static inline void ngbe_mac_set_mac_anti_spoofing_dummy(struct ngbe_hw *TUP0,
+					bool TUP1, int TUP2)
+{
+}
+static inline void ngbe_mac_set_vlan_anti_spoofing_dummy(struct ngbe_hw *TUP0,
+					bool TUP1, int TUP2)
+{
+}
 static inline s32 ngbe_mac_init_thermal_ssth_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
@@ -187,6 +195,12 @@ static inline s32 ngbe_phy_check_link_dummy(struct ngbe_hw *TUP0, u32 *TUP1,
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
+
+/* struct ngbe_mbx_operations */
+static inline void ngbe_mbx_init_params_dummy(struct ngbe_hw *TUP0)
+{
+}
+
 static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 {
 	hw->bus.set_lan_id = ngbe_bus_set_lan_id_dummy;
@@ -214,6 +228,8 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->mac.init_rx_addrs = ngbe_mac_init_rx_addrs_dummy;
 	hw->mac.update_mc_addr_list = ngbe_mac_update_mc_addr_list_dummy;
 	hw->mac.clear_vfta = ngbe_mac_clear_vfta_dummy;
+	hw->mac.set_mac_anti_spoofing = ngbe_mac_set_mac_anti_spoofing_dummy;
+	hw->mac.set_vlan_anti_spoofing = ngbe_mac_set_vlan_anti_spoofing_dummy;
 	hw->mac.init_thermal_sensor_thresh = ngbe_mac_init_thermal_ssth_dummy;
 	hw->mac.check_overtemp = ngbe_mac_check_overtemp_dummy;
 	hw->phy.identify = ngbe_phy_identify_dummy;
@@ -225,6 +241,7 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->phy.write_reg_unlocked = ngbe_phy_write_reg_unlocked_dummy;
 	hw->phy.setup_link = ngbe_phy_setup_link_dummy;
 	hw->phy.check_link = ngbe_phy_check_link_dummy;
+	hw->mbx.init_params = ngbe_mbx_init_params_dummy;
 }
 
 #endif /* _NGBE_TYPE_DUMMY_H_ */

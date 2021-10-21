@@ -7,6 +7,8 @@
 #define _NGBE_ETHDEV_H_
 
 #include "ngbe_ptypes.h"
+#include <rte_ethdev.h>
+#include <rte_ethdev_core.h>
 
 /* need update link, bit flag */
 #define NGBE_FLAG_NEED_LINK_UPDATE  ((uint32_t)(1 << 0))
@@ -77,6 +79,12 @@ struct ngbe_uta_info {
 	uint32_t uta_shadow[NGBE_MAX_UTA];
 };
 
+struct ngbe_vf_info {
+	uint8_t vf_mac_addresses[RTE_ETHER_ADDR_LEN];
+	bool clear_to_send;
+	uint16_t switch_domain_id;
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
@@ -87,6 +95,7 @@ struct ngbe_adapter {
 	struct ngbe_stat_mappings  stat_mappings;
 	struct ngbe_vfta           shadow_vfta;
 	struct ngbe_hwstrip        hwstrip;
+	struct ngbe_vf_info        *vfdata;
 	struct ngbe_uta_info       uta_info;
 	bool                       rx_bulk_alloc_allowed;
 
@@ -131,6 +140,10 @@ ngbe_dev_intr(struct rte_eth_dev *dev)
 
 #define NGBE_DEV_HWSTRIP(dev) \
 	(&((struct ngbe_adapter *)(dev)->data->dev_private)->hwstrip)
+
+#define NGBE_DEV_VFDATA(dev) \
+	(&((struct ngbe_adapter *)(dev)->data->dev_private)->vfdata)
+
 #define NGBE_DEV_UTA_INFO(dev) \
 	(&((struct ngbe_adapter *)(dev)->data->dev_private)->uta_info)
 
@@ -223,6 +236,12 @@ void ngbe_vlan_hw_filter_enable(struct rte_eth_dev *dev);
 void ngbe_vlan_hw_filter_disable(struct rte_eth_dev *dev);
 
 void ngbe_vlan_hw_strip_config(struct rte_eth_dev *dev);
+
+int ngbe_pf_host_init(struct rte_eth_dev *eth_dev);
+
+void ngbe_pf_host_uninit(struct rte_eth_dev *eth_dev);
+
+int ngbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 
 #define NGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define NGBE_LINK_UP_CHECK_TIMEOUT   1000 /* ms */

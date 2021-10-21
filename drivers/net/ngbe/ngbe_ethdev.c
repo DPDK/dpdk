@@ -254,7 +254,7 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	const struct rte_memzone *mz;
 	uint32_t ctrl_ext;
-	int err;
+	int err, ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -373,6 +373,16 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	/* initialize the hw strip bitmap*/
 	memset(hwstrip, 0, sizeof(*hwstrip));
+
+	/* initialize PF if max_vfs not zero */
+	ret = ngbe_pf_host_init(eth_dev);
+	if (ret) {
+		rte_free(eth_dev->data->mac_addrs);
+		eth_dev->data->mac_addrs = NULL;
+		rte_free(eth_dev->data->hash_mac_addrs);
+		eth_dev->data->hash_mac_addrs = NULL;
+		return ret;
+	}
 
 	ctrl_ext = rd32(hw, NGBE_PORTCTL);
 	/* let hardware know driver is loaded */
@@ -877,6 +887,9 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 	hw->mac.start_hw(hw);
 	hw->mac.get_link_status = true;
 
+	/* configure PF module if SRIOV enabled */
+	ngbe_pf_host_configure(dev);
+
 	ngbe_dev_phy_intr_setup(dev);
 
 	/* check and configure queue intr-vector mapping */
@@ -1036,8 +1049,10 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_vf_info *vfinfo = *NGBE_DEV_VFDATA(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	int vf;
 
 	if (hw->adapter_stopped)
 		return 0;
@@ -1059,6 +1074,9 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 
 	/* stop adapter */
 	ngbe_stop_hw(hw);
+
+	for (vf = 0; vfinfo != NULL && vf < pci_dev->max_vfs; vf++)
+		vfinfo[vf].clear_to_send = false;
 
 	ngbe_dev_clear_queues(dev);
 
@@ -1129,6 +1147,9 @@ ngbe_dev_close(struct rte_eth_dev *dev)
 		rte_delay_ms(100);
 	} while (retries++ < (10 + NGBE_LINK_UP_TIME));
 
+	/* uninitialize PF if max_vfs not zero */
+	ngbe_pf_host_uninit(dev);
+
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;
 
@@ -1145,6 +1166,15 @@ static int
 ngbe_dev_reset(struct rte_eth_dev *dev)
 {
 	int ret;
+
+	/* When a DPDK PMD PF begin to reset PF port, it should notify all
+	 * its VF to make them align with it. The detailed notification
+	 * mechanism is PMD specific. As to ngbe PF, it is rather complex.
+	 * To avoid unexpected behavior in VF, currently reset of PF with
+	 * SR-IOV activation is not supported. It might be supported later.
+	 */
+	if (dev->data->sriov.active)
+		return -ENOTSUP;
 
 	ret = eth_ngbe_dev_uninit(dev);
 	if (ret != 0)

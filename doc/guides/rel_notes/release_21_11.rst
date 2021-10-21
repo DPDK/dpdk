@@ -221,6 +221,7 @@ New Features
   * Added VLAN and MAC filters.
   * Added device basic statistics and extended stats.
   * Added multi-queue and RSS.
+  * Added SRIOV.
 
 * **Updated Marvell cnxk crypto PMD.**
 

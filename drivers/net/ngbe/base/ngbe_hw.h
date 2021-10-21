@@ -51,6 +51,8 @@ s32 ngbe_clear_vmdq(struct ngbe_hw *hw, u32 rar, u32 vmdq);
 s32 ngbe_init_uta_tables(struct ngbe_hw *hw);
 s32 ngbe_clear_vfta(struct ngbe_hw *hw);
 
+void ngbe_set_mac_anti_spoofing(struct ngbe_hw *hw, bool enable, int vf);
+void ngbe_set_vlan_anti_spoofing(struct ngbe_hw *hw, bool enable, int vf);
 s32 ngbe_init_thermal_sensor_thresh(struct ngbe_hw *hw);
 s32 ngbe_mac_check_overtemp(struct ngbe_hw *hw);
 void ngbe_disable_rx(struct ngbe_hw *hw);

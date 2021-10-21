@@ -1911,7 +1911,8 @@ ngbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->hthresh = tx_conf->tx_thresh.hthresh;
 	txq->wthresh = tx_conf->tx_thresh.wthresh;
 	txq->queue_id = queue_idx;
-	txq->reg_idx = queue_idx;
+	txq->reg_idx = (uint16_t)((RTE_ETH_DEV_SRIOV(dev).active == 0) ?
+		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	txq->port_id = dev->data->port_id;
 	txq->offloads = offloads;
 	txq->ops = &def_txq_ops;
@@ -2162,7 +2163,8 @@ ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->nb_rx_desc = nb_desc;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 	rxq->queue_id = queue_idx;
-	rxq->reg_idx = queue_idx;
+	rxq->reg_idx = (uint16_t)((RTE_ETH_DEV_SRIOV(dev).active == 0) ?
+		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	rxq->port_id = dev->data->port_id;
 	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 		rxq->crc_len = RTE_ETHER_CRC_LEN;
@@ -2553,16 +2555,18 @@ ngbe_alloc_rx_queue_mbufs(struct ngbe_rx_queue *rxq)
 static int
 ngbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 {
-	switch (dev->data->dev_conf.rxmode.mq_mode) {
-	case RTE_ETH_MQ_RX_RSS:
-		ngbe_rss_configure(dev);
-		break;
+	if (RTE_ETH_DEV_SRIOV(dev).active == 0) {
+		switch (dev->data->dev_conf.rxmode.mq_mode) {
+		case RTE_ETH_MQ_RX_RSS:
+			ngbe_rss_configure(dev);
+			break;
 
-	case RTE_ETH_MQ_RX_NONE:
-	default:
-		/* if mq_mode is none, disable rss mode.*/
-		ngbe_rss_disable(dev);
-		break;
+		case RTE_ETH_MQ_RX_NONE:
+		default:
+			/* if mq_mode is none, disable rss mode.*/
+			ngbe_rss_disable(dev);
+			break;
+		}
 	}
 
 	return 0;

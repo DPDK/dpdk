@@ -254,6 +254,9 @@ struct ngbe_mac_info {
 				      u32 mc_addr_count,
 				      ngbe_mc_addr_itr func, bool clear);
 	s32 (*clear_vfta)(struct ngbe_hw *hw);
+	void (*set_mac_anti_spoofing)(struct ngbe_hw *hw, bool enable, int vf);
+	void (*set_vlan_anti_spoofing)(struct ngbe_hw *hw,
+					bool enable, int vf);
 
 	/* Manageability interface */
 	s32 (*init_thermal_sensor_thresh)(struct ngbe_hw *hw);
@@ -305,6 +308,24 @@ struct ngbe_phy_info {
 	u32 autoneg_advertised;
 };
 
+struct ngbe_mbx_stats {
+	u32 msgs_tx;
+	u32 msgs_rx;
+
+	u32 acks;
+	u32 reqs;
+	u32 rsts;
+};
+
+struct ngbe_mbx_info {
+	void (*init_params)(struct ngbe_hw *hw);
+
+	struct ngbe_mbx_stats stats;
+	u32 timeout;
+	u32 usec_delay;
+	u16 size;
+};
+
 enum ngbe_isb_idx {
 	NGBE_ISB_HEADER,
 	NGBE_ISB_MISC,
@@ -321,6 +342,7 @@ struct ngbe_hw {
 	struct ngbe_phy_info phy;
 	struct ngbe_rom_info rom;
 	struct ngbe_bus_info bus;
+	struct ngbe_mbx_info mbx;
 	u16 device_id;
 	u16 vendor_id;
 	u16 sub_device_id;
