@@ -120,6 +120,12 @@ New Features
 
   A new API, ``rte_flow_pick_transfer_proxy()``, was added.
 
+* **Added ethdev shared Rx queue support.**
+
+  * Added new device capability flag and Rx domain field to switch info.
+  * Added share group and share queue ID to Rx queue configuration.
+  * Added testpmd support and dedicate forwarding engine.
+
 * **Updated af_packet ethdev driver.**
 
   * Default VLAN strip behavior was changed. VLAN tag won't be stripped

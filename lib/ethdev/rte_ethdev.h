@@ -1047,6 +1047,14 @@ struct rte_eth_rxconf {
 	uint8_t rx_deferred_start; /**< Do not start queue with rte_eth_dev_start(). */
 	uint16_t rx_nseg; /**< Number of descriptions in rx_seg array. */
 	/**
+	 * Share group index in Rx domain and switch domain.
+	 * Non-zero value to enable Rx queue share, zero value disable share.
+	 * PMD is responsible for Rx queue consistency checks to avoid member
+	 * port's configuration contradict to each other.
+	 */
+	uint16_t share_group;
+	uint16_t share_qid; /**< Shared Rx queue ID in group */
+	/**
 	 * Per-queue Rx offloads to be set using DEV_RX_OFFLOAD_* flags.
 	 * Only offloads set on rx_queue_offload_capa or rx_offload_capa
 	 * fields on rte_eth_dev_info structure are allowed to be set.
@@ -1448,6 +1456,16 @@ struct rte_eth_conf {
 #define RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP 0x00000001
 /** Device supports Tx queue setup after device started. */
 #define RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP 0x00000002
+/**
+ * Device supports shared Rx queue among ports within Rx domain and
+ * switch domain. Mbufs are consumed by shared Rx queue instead of
+ * each queue. Multiple groups are supported by share_group of Rx
+ * queue configuration. Shared Rx queue is identified by PMD using
+ * share_qid of Rx queue configuration. Polling any port in the group
+ * receive packets of all member ports, source port identified by
+ * mbuf->port field.
+ */
+#define RTE_ETH_DEV_CAPA_RXQ_SHARE              RTE_BIT64(2)
 /**@}*/
 
 /*
@@ -1491,6 +1509,12 @@ struct rte_eth_switch_info {
 	 * port identifier to that physical interconnect/switch
 	 */
 	uint16_t port_id;
+	/**
+	 * Shared Rx queue sub-domain boundary. Only ports in same Rx domain
+	 * and switch domain can share Rx queue. Valid only if device advertised
+	 * RTE_ETH_DEV_CAPA_RXQ_SHARE capability.
+	 */
+	uint16_t rx_domain;
 };
 
 /**

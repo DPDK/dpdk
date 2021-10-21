@@ -2175,6 +2175,14 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		return -EINVAL;
 	}
 
+	if (local_conf.share_group > 0 &&
+	    (dev_info.dev_capa & RTE_ETH_DEV_CAPA_RXQ_SHARE) == 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"Ethdev port_id=%d rx_queue_id=%d, enabled share_group=%hu while device doesn't support Rx queue share\n",
+			port_id, rx_queue_id, local_conf.share_group);
+		return -EINVAL;
+	}
+
 	/*
 	 * If LRO is enabled, check that the maximum aggregated packet
 	 * size is supported by the configured device.
