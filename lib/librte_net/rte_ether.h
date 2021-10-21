@@ -358,7 +358,7 @@ static inline int rte_vlan_insert(struct rte_mbuf **m)
 		return -EINVAL;
 
 	oh = rte_pktmbuf_mtod(*m, struct rte_ether_hdr *);
-	nh = (struct rte_ether_hdr *)
+	nh = (struct rte_ether_hdr *)(void *)
 		rte_pktmbuf_prepend(*m, sizeof(struct rte_vlan_hdr));
 	if (nh == NULL)
 		return -ENOSPC;
