@@ -73,6 +73,31 @@ struct ngbe_hwstrip {
 	uint32_t bitmap[NGBE_HWSTRIP_BITMAP_SIZE];
 };
 
+/**
+ * Response sent back to ngbe driver from user app after callback
+ */
+enum ngbe_mb_event_rsp {
+	NGBE_MB_EVENT_NOOP_ACK,  /**< skip mbox request and ACK */
+	NGBE_MB_EVENT_NOOP_NACK, /**< skip mbox request and NACK */
+	NGBE_MB_EVENT_PROCEED,  /**< proceed with mbox request  */
+	NGBE_MB_EVENT_MAX       /**< max value of this enum */
+};
+
+/**
+ * Data sent to the user application when the callback is executed.
+ */
+struct ngbe_mb_event_param {
+	uint16_t vfid;     /**< Virtual Function number */
+	uint16_t msg_type; /**< VF to PF message type, defined in ngbe_mbx.h */
+	uint16_t retval;   /**< return value */
+	void *msg;         /**< pointer to message */
+};
+
+/*
+ * VF data which used by PF host only
+ */
+#define NGBE_MAX_VF_MC_ENTRIES      30
+
 struct ngbe_uta_info {
 	uint8_t  uc_filter_type;
 	uint16_t uta_in_use;
@@ -81,8 +106,14 @@ struct ngbe_uta_info {
 
 struct ngbe_vf_info {
 	uint8_t vf_mac_addresses[RTE_ETHER_ADDR_LEN];
+	uint16_t vf_mc_hashes[NGBE_MAX_VF_MC_ENTRIES];
+	uint16_t num_vf_mc_hashes;
 	bool clear_to_send;
+	uint16_t vlan_count;
+	uint8_t api_version;
 	uint16_t switch_domain_id;
+	uint16_t xcast_mode;
+	uint16_t mac_count;
 };
 
 /*
@@ -240,6 +271,8 @@ void ngbe_vlan_hw_strip_config(struct rte_eth_dev *dev);
 int ngbe_pf_host_init(struct rte_eth_dev *eth_dev);
 
 void ngbe_pf_host_uninit(struct rte_eth_dev *eth_dev);
+
+void ngbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
 
 int ngbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 

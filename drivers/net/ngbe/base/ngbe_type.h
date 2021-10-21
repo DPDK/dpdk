@@ -254,6 +254,11 @@ struct ngbe_mac_info {
 				      u32 mc_addr_count,
 				      ngbe_mc_addr_itr func, bool clear);
 	s32 (*clear_vfta)(struct ngbe_hw *hw);
+	s32 (*set_vfta)(struct ngbe_hw *hw, u32 vlan,
+			 u32 vind, bool vlan_on, bool vlvf_bypass);
+	s32 (*set_vlvf)(struct ngbe_hw *hw, u32 vlan, u32 vind,
+			   bool vlan_on, u32 *vfta_delta, u32 vfta,
+			   bool vlvf_bypass);
 	void (*set_mac_anti_spoofing)(struct ngbe_hw *hw, bool enable, int vf);
 	void (*set_vlan_anti_spoofing)(struct ngbe_hw *hw,
 					bool enable, int vf);
@@ -319,6 +324,11 @@ struct ngbe_mbx_stats {
 
 struct ngbe_mbx_info {
 	void (*init_params)(struct ngbe_hw *hw);
+	s32  (*read)(struct ngbe_hw *hw, u32 *msg, u16 size, u16 vf_number);
+	s32  (*write)(struct ngbe_hw *hw, u32 *msg, u16 size, u16 vf_number);
+	s32  (*check_for_msg)(struct ngbe_hw *hw, u16 mbx_id);
+	s32  (*check_for_ack)(struct ngbe_hw *hw, u16 mbx_id);
+	s32  (*check_for_rst)(struct ngbe_hw *hw, u16 mbx_id);
 
 	struct ngbe_mbx_stats stats;
 	u32 timeout;

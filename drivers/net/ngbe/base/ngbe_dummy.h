@@ -136,6 +136,16 @@ static inline s32 ngbe_mac_clear_vfta_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
+static inline s32 ngbe_mac_set_vfta_dummy(struct ngbe_hw *TUP0, u32 TUP1,
+					u32 TUP2, bool TUP3, bool TUP4)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_mac_set_vlvf_dummy(struct ngbe_hw *TUP0, u32 TUP1,
+			u32 TUP2, bool TUP3, u32 *TUP4, u32 TUP5, bool TUP6)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
 static inline void ngbe_mac_set_mac_anti_spoofing_dummy(struct ngbe_hw *TUP0,
 					bool TUP1, int TUP2)
 {
@@ -200,6 +210,28 @@ static inline s32 ngbe_phy_check_link_dummy(struct ngbe_hw *TUP0, u32 *TUP1,
 static inline void ngbe_mbx_init_params_dummy(struct ngbe_hw *TUP0)
 {
 }
+static inline s32 ngbe_mbx_read_dummy(struct ngbe_hw *TUP0, u32 *TUP1,
+					u16 TUP2, u16 TUP3)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_mbx_write_dummy(struct ngbe_hw *TUP0, u32 *TUP1,
+					u16 TUP2, u16 TUP3)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_mbx_check_for_msg_dummy(struct ngbe_hw *TUP0, u16 TUP1)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_mbx_check_for_ack_dummy(struct ngbe_hw *TUP0, u16 TUP1)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
+static inline s32 ngbe_mbx_check_for_rst_dummy(struct ngbe_hw *TUP0, u16 TUP1)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
 
 static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 {
@@ -228,6 +260,8 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->mac.init_rx_addrs = ngbe_mac_init_rx_addrs_dummy;
 	hw->mac.update_mc_addr_list = ngbe_mac_update_mc_addr_list_dummy;
 	hw->mac.clear_vfta = ngbe_mac_clear_vfta_dummy;
+	hw->mac.set_vfta = ngbe_mac_set_vfta_dummy;
+	hw->mac.set_vlvf = ngbe_mac_set_vlvf_dummy;
 	hw->mac.set_mac_anti_spoofing = ngbe_mac_set_mac_anti_spoofing_dummy;
 	hw->mac.set_vlan_anti_spoofing = ngbe_mac_set_vlan_anti_spoofing_dummy;
 	hw->mac.init_thermal_sensor_thresh = ngbe_mac_init_thermal_ssth_dummy;
@@ -242,6 +276,11 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->phy.setup_link = ngbe_phy_setup_link_dummy;
 	hw->phy.check_link = ngbe_phy_check_link_dummy;
 	hw->mbx.init_params = ngbe_mbx_init_params_dummy;
+	hw->mbx.read = ngbe_mbx_read_dummy;
+	hw->mbx.write = ngbe_mbx_write_dummy;
+	hw->mbx.check_for_msg = ngbe_mbx_check_for_msg_dummy;
+	hw->mbx.check_for_ack = ngbe_mbx_check_for_ack_dummy;
+	hw->mbx.check_for_rst = ngbe_mbx_check_for_rst_dummy;
 }
 
 #endif /* _NGBE_TYPE_DUMMY_H_ */

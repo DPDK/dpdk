@@ -915,6 +915,214 @@ s32 ngbe_init_uta_tables(struct ngbe_hw *hw)
 }
 
 /**
+ *  ngbe_find_vlvf_slot - find the vlanid or the first empty slot
+ *  @hw: pointer to hardware structure
+ *  @vlan: VLAN id to write to VLAN filter
+ *  @vlvf_bypass: true to find vlanid only, false returns first empty slot if
+ *		  vlanid not found
+ *
+ *
+ *  return the VLVF index where this VLAN id should be placed
+ *
+ **/
+s32 ngbe_find_vlvf_slot(struct ngbe_hw *hw, u32 vlan, bool vlvf_bypass)
+{
+	s32 regindex, first_empty_slot;
+	u32 bits;
+
+	/* short cut the special case */
+	if (vlan == 0)
+		return 0;
+
+	/* if vlvf_bypass is set we don't want to use an empty slot, we
+	 * will simply bypass the VLVF if there are no entries present in the
+	 * VLVF that contain our VLAN
+	 */
+	first_empty_slot = vlvf_bypass ? NGBE_ERR_NO_SPACE : 0;
+
+	/* add VLAN enable bit for comparison */
+	vlan |= NGBE_PSRVLAN_EA;
+
+	/* Search for the vlan id in the VLVF entries. Save off the first empty
+	 * slot found along the way.
+	 *
+	 * pre-decrement loop covering (NGBE_NUM_POOL - 1) .. 1
+	 */
+	for (regindex = NGBE_NUM_POOL; --regindex;) {
+		wr32(hw, NGBE_PSRVLANIDX, regindex);
+		bits = rd32(hw, NGBE_PSRVLAN);
+		if (bits == vlan)
+			return regindex;
+		if (!first_empty_slot && !bits)
+			first_empty_slot = regindex;
+	}
+
+	/* If we are here then we didn't find the VLAN.  Return first empty
+	 * slot we found during our search, else error.
+	 */
+	if (!first_empty_slot)
+		DEBUGOUT("No space in VLVF.\n");
+
+	return first_empty_slot ? first_empty_slot : NGBE_ERR_NO_SPACE;
+}
+
+/**
+ *  ngbe_set_vfta - Set VLAN filter table
+ *  @hw: pointer to hardware structure
+ *  @vlan: VLAN id to write to VLAN filter
+ *  @vind: VMDq output index that maps queue to VLAN id in VLVFB
+ *  @vlan_on: boolean flag to turn on/off VLAN
+ *  @vlvf_bypass: boolean flag indicating updating default pool is okay
+ *
+ *  Turn on/off specified VLAN in the VLAN filter table.
+ **/
+s32 ngbe_set_vfta(struct ngbe_hw *hw, u32 vlan, u32 vind,
+			   bool vlan_on, bool vlvf_bypass)
+{
+	u32 regidx, vfta_delta, vfta;
+	s32 err;
+
+	DEBUGFUNC("ngbe_set_vfta");
+
+	if (vlan > 4095 || vind > 63)
+		return NGBE_ERR_PARAM;
+
+	/*
+	 * this is a 2 part operation - first the VFTA, then the
+	 * VLVF and VLVFB if VT Mode is set
+	 * We don't write the VFTA until we know the VLVF part succeeded.
+	 */
+
+	/* Part 1
+	 * The VFTA is a bitstring made up of 128 32-bit registers
+	 * that enable the particular VLAN id, much like the MTA:
+	 *    bits[11-5]: which register
+	 *    bits[4-0]:  which bit in the register
+	 */
+	regidx = vlan / 32;
+	vfta_delta = 1 << (vlan % 32);
+	vfta = rd32(hw, NGBE_VLANTBL(regidx));
+
+	/*
+	 * vfta_delta represents the difference between the current value
+	 * of vfta and the value we want in the register.  Since the diff
+	 * is an XOR mask we can just update the vfta using an XOR
+	 */
+	vfta_delta &= vlan_on ? ~vfta : vfta;
+	vfta ^= vfta_delta;
+
+	/* Part 2
+	 * Call ngbe_set_vlvf to set VLVFB and VLVF
+	 */
+	err = ngbe_set_vlvf(hw, vlan, vind, vlan_on, &vfta_delta,
+					 vfta, vlvf_bypass);
+	if (err != 0) {
+		if (vlvf_bypass)
+			goto vfta_update;
+		return err;
+	}
+
+vfta_update:
+	/* Update VFTA now that we are ready for traffic */
+	if (vfta_delta)
+		wr32(hw, NGBE_VLANTBL(regidx), vfta);
+
+	return 0;
+}
+
+/**
+ *  ngbe_set_vlvf - Set VLAN Pool Filter
+ *  @hw: pointer to hardware structure
+ *  @vlan: VLAN id to write to VLAN filter
+ *  @vind: VMDq output index that maps queue to VLAN id in PSRVLANPLM
+ *  @vlan_on: boolean flag to turn on/off VLAN in PSRVLAN
+ *  @vfta_delta: pointer to the difference between the current value
+ *		 of PSRVLANPLM and the desired value
+ *  @vfta: the desired value of the VFTA
+ *  @vlvf_bypass: boolean flag indicating updating default pool is okay
+ *
+ *  Turn on/off specified bit in VLVF table.
+ **/
+s32 ngbe_set_vlvf(struct ngbe_hw *hw, u32 vlan, u32 vind,
+			   bool vlan_on, u32 *vfta_delta, u32 vfta,
+			   bool vlvf_bypass)
+{
+	u32 bits;
+	u32 portctl;
+	s32 vlvf_index;
+
+	DEBUGFUNC("ngbe_set_vlvf");
+
+	if (vlan > 4095 || vind > 63)
+		return NGBE_ERR_PARAM;
+
+	/* If VT Mode is set
+	 *   Either vlan_on
+	 *     make sure the vlan is in PSRVLAN
+	 *     set the vind bit in the matching PSRVLANPLM
+	 *   Or !vlan_on
+	 *     clear the pool bit and possibly the vind
+	 */
+	portctl = rd32(hw, NGBE_PORTCTL);
+	if (!(portctl & NGBE_PORTCTL_NUMVT_MASK))
+		return 0;
+
+	vlvf_index = ngbe_find_vlvf_slot(hw, vlan, vlvf_bypass);
+	if (vlvf_index < 0)
+		return vlvf_index;
+
+	wr32(hw, NGBE_PSRVLANIDX, vlvf_index);
+	bits = rd32(hw, NGBE_PSRVLANPLM(vind / 32));
+
+	/* set the pool bit */
+	bits |= 1 << (vind % 32);
+	if (vlan_on)
+		goto vlvf_update;
+
+	/* clear the pool bit */
+	bits ^= 1 << (vind % 32);
+
+	if (!bits &&
+	    !rd32(hw, NGBE_PSRVLANPLM(vind / 32))) {
+		/* Clear PSRVLANPLM first, then disable PSRVLAN. Otherwise
+		 * we run the risk of stray packets leaking into
+		 * the PF via the default pool
+		 */
+		if (*vfta_delta)
+			wr32(hw, NGBE_PSRVLANPLM(vlan / 32), vfta);
+
+		/* disable VLVF and clear remaining bit from pool */
+		wr32(hw, NGBE_PSRVLAN, 0);
+		wr32(hw, NGBE_PSRVLANPLM(vind / 32), 0);
+
+		return 0;
+	}
+
+	/* If there are still bits set in the PSRVLANPLM registers
+	 * for the VLAN ID indicated we need to see if the
+	 * caller is requesting that we clear the PSRVLANPLM entry bit.
+	 * If the caller has requested that we clear the PSRVLANPLM
+	 * entry bit but there are still pools/VFs using this VLAN
+	 * ID entry then ignore the request.  We're not worried
+	 * about the case where we're turning the PSRVLANPLM VLAN ID
+	 * entry bit on, only when requested to turn it off as
+	 * there may be multiple pools and/or VFs using the
+	 * VLAN ID entry.  In that case we cannot clear the
+	 * PSRVLANPLM bit until all pools/VFs using that VLAN ID have also
+	 * been cleared.  This will be indicated by "bits" being
+	 * zero.
+	 */
+	*vfta_delta = 0;
+
+vlvf_update:
+	/* record pool change and enable VLAN ID if not already enabled */
+	wr32(hw, NGBE_PSRVLANPLM(vind / 32), bits);
+	wr32(hw, NGBE_PSRVLAN, NGBE_PSRVLAN_EA | vlan);
+
+	return 0;
+}
+
+/**
  *  ngbe_clear_vfta - Clear VLAN filter table
  *  @hw: pointer to hardware structure
  *
@@ -1298,6 +1506,7 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 
 	mac->disable_sec_rx_path = ngbe_disable_sec_rx_path;
 	mac->enable_sec_rx_path = ngbe_enable_sec_rx_path;
+
 	/* RAR, VLAN, Multicast */
 	mac->set_rar = ngbe_set_rar;
 	mac->clear_rar = ngbe_clear_rar;
@@ -1305,6 +1514,8 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	mac->update_mc_addr_list = ngbe_update_mc_addr_list;
 	mac->set_vmdq = ngbe_set_vmdq;
 	mac->clear_vmdq = ngbe_clear_vmdq;
+	mac->set_vfta = ngbe_set_vfta;
+	mac->set_vlvf = ngbe_set_vlvf;
 	mac->clear_vfta = ngbe_clear_vfta;
 	mac->set_mac_anti_spoofing = ngbe_set_mac_anti_spoofing;
 	mac->set_vlan_anti_spoofing = ngbe_set_vlan_anti_spoofing;
@@ -1319,6 +1530,11 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	mac->check_overtemp = ngbe_mac_check_overtemp;
 
 	mbx->init_params = ngbe_init_mbx_params_pf;
+	mbx->read = ngbe_read_mbx_pf;
+	mbx->write = ngbe_write_mbx_pf;
+	mbx->check_for_msg = ngbe_check_for_msg_pf;
+	mbx->check_for_ack = ngbe_check_for_ack_pf;
+	mbx->check_for_rst = ngbe_check_for_rst_pf;
 
 	/* EEPROM */
 	rom->init_params = ngbe_init_eeprom_params;

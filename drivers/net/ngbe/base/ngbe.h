@@ -6,6 +6,10 @@
 #define _NGBE_H_
 
 #include "ngbe_type.h"
+#include "ngbe_mng.h"
+#include "ngbe_mbx.h"
+#include "ngbe_eeprom.h"
+#include "ngbe_phy.h"
 #include "ngbe_hw.h"
 
 #endif /* _NGBE_H_ */

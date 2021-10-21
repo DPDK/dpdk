@@ -49,7 +49,13 @@ void ngbe_release_swfw_sync(struct ngbe_hw *hw, u32 mask);
 s32 ngbe_set_vmdq(struct ngbe_hw *hw, u32 rar, u32 vmdq);
 s32 ngbe_clear_vmdq(struct ngbe_hw *hw, u32 rar, u32 vmdq);
 s32 ngbe_init_uta_tables(struct ngbe_hw *hw);
+s32 ngbe_set_vfta(struct ngbe_hw *hw, u32 vlan,
+			 u32 vind, bool vlan_on, bool vlvf_bypass);
+s32 ngbe_set_vlvf(struct ngbe_hw *hw, u32 vlan, u32 vind,
+			   bool vlan_on, u32 *vfta_delta, u32 vfta,
+			   bool vlvf_bypass);
 s32 ngbe_clear_vfta(struct ngbe_hw *hw);
+s32 ngbe_find_vlvf_slot(struct ngbe_hw *hw, u32 vlan, bool vlvf_bypass);
 
 void ngbe_set_mac_anti_spoofing(struct ngbe_hw *hw, bool enable, int vf);
 void ngbe_set_vlan_anti_spoofing(struct ngbe_hw *hw, bool enable, int vf);

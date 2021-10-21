@@ -2067,6 +2067,11 @@ ngbe_dev_interrupt_action(struct rte_eth_dev *dev)
 
 	PMD_DRV_LOG(DEBUG, "intr action type %d", intr->flags);
 
+	if (intr->flags & NGBE_FLAG_MAILBOX) {
+		ngbe_pf_mbx_process(dev);
+		intr->flags &= ~NGBE_FLAG_MAILBOX;
+	}
+
 	if (intr->flags & NGBE_FLAG_NEED_LINK_UPDATE) {
 		struct rte_eth_link link;
 
@@ -2127,6 +2132,8 @@ ngbe_dev_interrupt_delayed_handler(void *param)
 	ngbe_disable_intr(hw);
 
 	eicr = ((u32 *)hw->isb_mem)[NGBE_ISB_MISC];
+	if (eicr & NGBE_ICRMISC_VFMBX)
+		ngbe_pf_mbx_process(dev);
 
 	if (intr->flags & NGBE_FLAG_NEED_LINK_UPDATE) {
 		ngbe_dev_link_update(dev, 0);
