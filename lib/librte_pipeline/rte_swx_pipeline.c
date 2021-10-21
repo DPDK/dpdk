@@ -5915,7 +5915,7 @@ instr_label_check(struct instruction_data *instruction_data,
 			continue;
 
 		for (j = i + 1; j < n_instructions; j++)
-			CHECK(strcmp(label, data[j].label), EINVAL);
+			CHECK(strcmp(label, instruction_data[j].label), EINVAL);
 	}
 
 	/* Get users for each instruction label. */
