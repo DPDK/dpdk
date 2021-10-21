@@ -719,7 +719,7 @@ struct rte_mbuf_ext_shared_info {
  *   The type to cast the result into.
  */
 #define rte_pktmbuf_mtod_offset(m, t, o)	\
-	((t)((char *)(m)->buf_addr + (m)->data_off + (o)))
+	((t)(void *)((char *)(m)->buf_addr + (m)->data_off + (o)))
 
 /**
  * A macro that points to the start of the data in the mbuf.
