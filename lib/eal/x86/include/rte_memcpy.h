@@ -303,8 +303,8 @@ rte_mov16(uint8_t *dst, const uint8_t *src)
 {
 	__m128i xmm0;
 
-	xmm0 = _mm_loadu_si128((const __m128i *)src);
-	_mm_storeu_si128((__m128i *)dst, xmm0);
+	xmm0 = _mm_loadu_si128((const __m128i *)(const void *)src);
+	_mm_storeu_si128((__m128i *)(void *)dst, xmm0);
 }
 
 /**
@@ -316,8 +316,8 @@ rte_mov32(uint8_t *dst, const uint8_t *src)
 {
 	__m256i ymm0;
 
-	ymm0 = _mm256_loadu_si256((const __m256i *)src);
-	_mm256_storeu_si256((__m256i *)dst, ymm0);
+	ymm0 = _mm256_loadu_si256((const __m256i *)(const void *)src);
+	_mm256_storeu_si256((__m256i *)(void *)dst, ymm0);
 }
 
 /**
@@ -354,16 +354,24 @@ rte_mov128blocks(uint8_t *dst, const uint8_t *src, size_t n)
 	__m256i ymm0, ymm1, ymm2, ymm3;
 
 	while (n >= 128) {
-		ymm0 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 0 * 32));
+		ymm0 = _mm256_loadu_si256((const __m256i *)(const void *)
+					  ((const uint8_t *)src + 0 * 32));
 		n -= 128;
-		ymm1 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 1 * 32));
-		ymm2 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 2 * 32));
-		ymm3 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 3 * 32));
+		ymm1 = _mm256_loadu_si256((const __m256i *)(const void *)
+					  ((const uint8_t *)src + 1 * 32));
+		ymm2 = _mm256_loadu_si256((const __m256i *)(const void *)
+					  ((const uint8_t *)src + 2 * 32));
+		ymm3 = _mm256_loadu_si256((const __m256i *)(const void *)
+					  ((const uint8_t *)src + 3 * 32));
 		src = (const uint8_t *)src + 128;
-		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 0 * 32), ymm0);
-		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 1 * 32), ymm1);
-		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 2 * 32), ymm2);
-		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 3 * 32), ymm3);
+		_mm256_storeu_si256((__m256i *)(void *)
+				    ((uint8_t *)dst + 0 * 32), ymm0);
+		_mm256_storeu_si256((__m256i *)(void *)
+				    ((uint8_t *)dst + 1 * 32), ymm1);
+		_mm256_storeu_si256((__m256i *)(void *)
+				    ((uint8_t *)dst + 2 * 32), ymm2);
+		_mm256_storeu_si256((__m256i *)(void *)
+				    ((uint8_t *)dst + 3 * 32), ymm3);
 		dst = (uint8_t *)dst + 128;
 	}
 }
@@ -496,8 +504,8 @@ rte_mov16(uint8_t *dst, const uint8_t *src)
 {
 	__m128i xmm0;
 
-	xmm0 = _mm_loadu_si128((const __m128i *)(const __m128i *)src);
-	_mm_storeu_si128((__m128i *)dst, xmm0);
+	xmm0 = _mm_loadu_si128((const __m128i *)(const void *)src);
+	_mm_storeu_si128((__m128i *)(void *)dst, xmm0);
 }
 
 /**
@@ -581,25 +589,25 @@ rte_mov256(uint8_t *dst, const uint8_t *src)
 __extension__ ({                                                                                            \
     size_t tmp;                                                                                                \
     while (len >= 128 + 16 - offset) {                                                                      \
-        xmm0 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 0 * 16));                  \
+        xmm0 = _mm_loadu_si128((const __m128i *)(const void *)((const uint8_t *)src - offset + 0 * 16));                  \
         len -= 128;                                                                                         \
-        xmm1 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 1 * 16));                  \
-        xmm2 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 2 * 16));                  \
-        xmm3 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 3 * 16));                  \
-        xmm4 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 4 * 16));                  \
-        xmm5 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 5 * 16));                  \
-        xmm6 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 6 * 16));                  \
-        xmm7 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 7 * 16));                  \
-        xmm8 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 8 * 16));                  \
+        xmm1 = _mm_loadu_si128((const __m128i *)(const void *)((const uint8_t *)src - offset + 1 * 16));                  \
+        xmm2 = _mm_loadu_si128((const __m128i *)(const void *)((const uint8_t *)src - offset + 2 * 16));                  \
+        xmm3 = _mm_loadu_si128((const __m128i *)(const void *)((const uint8_t *)src - offset + 3 * 16));                  \
+        xmm4 = _mm_loadu_si128((const __m128i *)(const void *)((const uint8_t *)src - offset + 4 * 16));                  \
+        xmm5 = _mm_loadu_si128((const __m128i *)(const void *)((const uint8_t *)src - offset + 5 * 16));                  \
+        xmm6 = _mm_loadu_si128((const __m128i *)(const void *)((const uint8_t *)src - offset + 6 * 16));                  \
+        xmm7 = _mm_loadu_si128((const __m128i *)(const void *)((const uint8_t *)src - offset + 7 * 16));                  \
+        xmm8 = _mm_loadu_si128((const __m128i *)(const void *)((const uint8_t *)src - offset + 8 * 16));                  \
         src = (const uint8_t *)src + 128;                                                                   \
-        _mm_storeu_si128((__m128i *)((uint8_t *)dst + 0 * 16), _mm_alignr_epi8(xmm1, xmm0, offset));        \
-        _mm_storeu_si128((__m128i *)((uint8_t *)dst + 1 * 16), _mm_alignr_epi8(xmm2, xmm1, offset));        \
-        _mm_storeu_si128((__m128i *)((uint8_t *)dst + 2 * 16), _mm_alignr_epi8(xmm3, xmm2, offset));        \
-        _mm_storeu_si128((__m128i *)((uint8_t *)dst + 3 * 16), _mm_alignr_epi8(xmm4, xmm3, offset));        \
-        _mm_storeu_si128((__m128i *)((uint8_t *)dst + 4 * 16), _mm_alignr_epi8(xmm5, xmm4, offset));        \
-        _mm_storeu_si128((__m128i *)((uint8_t *)dst + 5 * 16), _mm_alignr_epi8(xmm6, xmm5, offset));        \
-        _mm_storeu_si128((__m128i *)((uint8_t *)dst + 6 * 16), _mm_alignr_epi8(xmm7, xmm6, offset));        \
-        _mm_storeu_si128((__m128i *)((uint8_t *)dst + 7 * 16), _mm_alignr_epi8(xmm8, xmm7, offset));        \
+        _mm_storeu_si128((__m128i *)(void *)((uint8_t *)dst + 0 * 16), _mm_alignr_epi8(xmm1, xmm0, offset));        \
+        _mm_storeu_si128((__m128i *)(void *)((uint8_t *)dst + 1 * 16), _mm_alignr_epi8(xmm2, xmm1, offset));        \
+        _mm_storeu_si128((__m128i *)(void *)((uint8_t *)dst + 2 * 16), _mm_alignr_epi8(xmm3, xmm2, offset));        \
+        _mm_storeu_si128((__m128i *)(void *)((uint8_t *)dst + 3 * 16), _mm_alignr_epi8(xmm4, xmm3, offset));        \
+        _mm_storeu_si128((__m128i *)(void *)((uint8_t *)dst + 4 * 16), _mm_alignr_epi8(xmm5, xmm4, offset));        \
+        _mm_storeu_si128((__m128i *)(void *)((uint8_t *)dst + 5 * 16), _mm_alignr_epi8(xmm6, xmm5, offset));        \
+        _mm_storeu_si128((__m128i *)(void *)((uint8_t *)dst + 6 * 16), _mm_alignr_epi8(xmm7, xmm6, offset));        \
+        _mm_storeu_si128((__m128i *)(void *)((uint8_t *)dst + 7 * 16), _mm_alignr_epi8(xmm8, xmm7, offset));        \
         dst = (uint8_t *)dst + 128;                                                                         \
     }                                                                                                       \
     tmp = len;                                                                                              \
@@ -609,13 +617,13 @@ __extension__ ({                                                                
     dst = (uint8_t *)dst + tmp;                                                                             \
     if (len >= 32 + 16 - offset) {                                                                          \
         while (len >= 32 + 16 - offset) {                                                                   \
-            xmm0 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 0 * 16));              \
+            xmm0 = _mm_loadu_si128((const __m128i *)(const void *)((const uint8_t *)src - offset + 0 * 16));              \
             len -= 32;                                                                                      \
-            xmm1 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 1 * 16));              \
-            xmm2 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 2 * 16));              \
+            xmm1 = _mm_loadu_si128((const __m128i *)(const void *)((const uint8_t *)src - offset + 1 * 16));              \
+            xmm2 = _mm_loadu_si128((const __m128i *)(const void *)((const uint8_t *)src - offset + 2 * 16));              \
             src = (const uint8_t *)src + 32;                                                                \
-            _mm_storeu_si128((__m128i *)((uint8_t *)dst + 0 * 16), _mm_alignr_epi8(xmm1, xmm0, offset));    \
-            _mm_storeu_si128((__m128i *)((uint8_t *)dst + 1 * 16), _mm_alignr_epi8(xmm2, xmm1, offset));    \
+            _mm_storeu_si128((__m128i *)(void *)((uint8_t *)dst + 0 * 16), _mm_alignr_epi8(xmm1, xmm0, offset));    \
+            _mm_storeu_si128((__m128i *)(void *)((uint8_t *)dst + 1 * 16), _mm_alignr_epi8(xmm2, xmm1, offset));    \
             dst = (uint8_t *)dst + 32;                                                                      \
         }                                                                                                   \
         tmp = len;                                                                                          \
