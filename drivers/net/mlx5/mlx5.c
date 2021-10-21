@@ -1181,6 +1181,68 @@ mlx5_dev_ctx_shared_mempool_subscribe(struct rte_eth_dev *dev)
 }
 
 /**
+ * Set up multiple TISs with different affinities according to
+ * number of bonding ports
+ *
+ * @param priv
+ * Pointer of shared context.
+ *
+ * @return
+ * Zero on success, -1 otherwise.
+ */
+static int
+mlx5_setup_tis(struct mlx5_dev_ctx_shared *sh)
+{
+	int i;
+	struct mlx5_devx_lag_context lag_ctx = { 0 };
+	struct mlx5_devx_tis_attr tis_attr = { 0 };
+
+	tis_attr.transport_domain = sh->td->id;
+	if (sh->bond.n_port) {
+		if (!mlx5_devx_cmd_query_lag(sh->cdev->ctx, &lag_ctx)) {
+			sh->lag.tx_remap_affinity[0] =
+				lag_ctx.tx_remap_affinity_1;
+			sh->lag.tx_remap_affinity[1] =
+				lag_ctx.tx_remap_affinity_2;
+			sh->lag.affinity_mode = lag_ctx.port_select_mode;
+		} else {
+			DRV_LOG(ERR, "Failed to query lag affinity.");
+			return -1;
+		}
+		if (sh->lag.affinity_mode == MLX5_LAG_MODE_TIS) {
+			for (i = 0; i < sh->bond.n_port; i++) {
+				tis_attr.lag_tx_port_affinity =
+					MLX5_IFC_LAG_MAP_TIS_AFFINITY(i,
+							sh->bond.n_port);
+				sh->tis[i] = mlx5_devx_cmd_create_tis(sh->cdev->ctx,
+						&tis_attr);
+				if (!sh->tis[i]) {
+					DRV_LOG(ERR, "Failed to TIS %d/%d for bonding device"
+						" %s.", i, sh->bond.n_port,
+						sh->ibdev_name);
+					return -1;
+				}
+			}
+			DRV_LOG(DEBUG, "LAG number of ports : %d, affinity_1 & 2 : pf%d & %d.\n",
+				sh->bond.n_port, lag_ctx.tx_remap_affinity_1,
+				lag_ctx.tx_remap_affinity_2);
+			return 0;
+		}
+		if (sh->lag.affinity_mode == MLX5_LAG_MODE_HASH)
+			DRV_LOG(INFO, "Device %s enabled HW hash based LAG.",
+					sh->ibdev_name);
+	}
+	tis_attr.lag_tx_port_affinity = 0;
+	sh->tis[0] = mlx5_devx_cmd_create_tis(sh->cdev->ctx, &tis_attr);
+	if (!sh->tis[0]) {
+		DRV_LOG(ERR, "Failed to TIS 0 for bonding device"
+			" %s.", sh->ibdev_name);
+		return -1;
+	}
+	return 0;
+}
+
+/**
  * Allocate shared device context. If there is multiport device the
  * master and representors will share this context, if there is single
  * port dedicated device, the context will be used by only given
@@ -1207,7 +1269,6 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	struct mlx5_dev_ctx_shared *sh;
 	int err = 0;
 	uint32_t i;
-	struct mlx5_devx_tis_attr tis_attr = { 0 };
 
 	MLX5_ASSERT(spawn);
 	/* Secondary process should not create the shared context. */
@@ -1266,9 +1327,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 			err = ENOMEM;
 			goto error;
 		}
-		tis_attr.transport_domain = sh->td->id;
-		sh->tis = mlx5_devx_cmd_create_tis(sh->cdev->ctx, &tis_attr);
-		if (!sh->tis) {
+		if (mlx5_setup_tis(sh)) {
 			DRV_LOG(ERR, "TIS allocation failure");
 			err = ENOMEM;
 			goto error;
@@ -1307,10 +1366,13 @@ error:
 	pthread_mutex_destroy(&sh->txpp.mutex);
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	MLX5_ASSERT(sh);
-	if (sh->tis)
-		claim_zero(mlx5_devx_cmd_destroy(sh->tis));
 	if (sh->td)
 		claim_zero(mlx5_devx_cmd_destroy(sh->td));
+	i = 0;
+	do {
+		if (sh->tis[i])
+			claim_zero(mlx5_devx_cmd_destroy(sh->tis[i]));
+	} while (++i < (uint32_t)sh->bond.n_port);
 	if (sh->devx_rx_uar)
 		mlx5_glue->devx_free_uar(sh->devx_rx_uar);
 	if (sh->tx_uar)
@@ -1332,6 +1394,7 @@ void
 mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 {
 	int ret;
+	int i = 0;
 
 	pthread_mutex_lock(&mlx5_dev_ctx_list_mutex);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
@@ -1386,8 +1449,10 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		mlx5_glue->devx_free_uar(sh->tx_uar);
 		sh->tx_uar = NULL;
 	}
-	if (sh->tis)
-		claim_zero(mlx5_devx_cmd_destroy(sh->tis));
+	do {
+		if (sh->tis[i])
+			claim_zero(mlx5_devx_cmd_destroy(sh->tis[i]));
+	} while (++i < sh->bond.n_port);
 	if (sh->td)
 		claim_zero(mlx5_devx_cmd_destroy(sh->td));
 	if (sh->devx_rx_uar)

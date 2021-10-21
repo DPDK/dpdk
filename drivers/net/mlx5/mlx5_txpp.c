@@ -230,7 +230,7 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 		.cd_master = 1,
 		.state = MLX5_SQC_STATE_RST,
 		.tis_lst_sz = 1,
-		.tis_num = sh->tis->id,
+		.tis_num = sh->tis[0]->id,
 		.wq_attr = (struct mlx5_devx_wq_attr){
 			.pd = sh->cdev->pdn,
 			.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar),
@@ -434,7 +434,7 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	/* Create send queue object for Clock Queue. */
 	if (sh->txpp.test) {
 		sq_attr.tis_lst_sz = 1;
-		sq_attr.tis_num = sh->tis->id;
+		sq_attr.tis_num = sh->tis[0]->id;
 		sq_attr.non_wire = 0;
 		sq_attr.static_sq_wq = 1;
 	} else {

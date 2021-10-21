@@ -464,6 +464,10 @@ Limitations
   - In order to achieve best insertion rate, application should manage the flows per lcore.
   - Better to disable memory reclaim by setting ``reclaim_mem_mode`` to 0 to accelerate the flow object allocation and release with cache.
 
+- HW hashed bonding
+
+  - TXQ affinity subjects to HW hash once enabled.
+
 Statistics
 ----------
 

@@ -1098,6 +1098,12 @@ struct mlx5_aso_ct_pools_mng {
 	struct mlx5_aso_sq aso_sq; /* ASO queue objects. */
 };
 
+/* LAG attr. */
+struct mlx5_lag {
+	uint8_t tx_remap_affinity[16]; /* The PF port number of affinity */
+	uint8_t affinity_mode; /* TIS or hash based affinity */
+};
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
@@ -1157,8 +1163,9 @@ struct mlx5_dev_ctx_shared {
 	struct rte_intr_handle intr_handle; /* Interrupt handler for device. */
 	struct rte_intr_handle intr_handle_devx; /* DEVX interrupt handler. */
 	void *devx_comp; /* DEVX async comp obj. */
-	struct mlx5_devx_obj *tis; /* TIS object. */
+	struct mlx5_devx_obj *tis[16]; /* TIS object. */
 	struct mlx5_devx_obj *td; /* Transport domain. */
+	struct mlx5_lag lag; /* LAG attributes */
 	void *tx_uar; /* Tx/packet pacing shared UAR. */
 	struct mlx5_flex_parser_profiles fp[MLX5_FLEX_PARSER_MAX];
 	/* Flex parser profiles information. */
@@ -1418,6 +1425,7 @@ struct mlx5_priv {
 	uint32_t rss_shared_actions; /* RSS shared actions. */
 	struct mlx5_devx_obj *q_counters; /* DevX queue counter object. */
 	uint32_t counter_set_id; /* Queue counter ID to set in DevX objects. */
+	uint32_t lag_affinity_idx; /* LAG mode queue 0 affinity starting. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
