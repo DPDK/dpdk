@@ -158,6 +158,50 @@ rel_out:
 	return err;
 }
 
+/**
+ *  ngbe_hic_sr_read - Read EEPROM word using a host interface cmd
+ *  assuming that the semaphore is already obtained.
+ *  @hw: pointer to hardware structure
+ *  @offset: offset of  word in the EEPROM to read
+ *  @data: word read from the EEPROM
+ *
+ *  Reads a 16 bit word from the EEPROM using the hostif.
+ **/
+s32 ngbe_hic_sr_read(struct ngbe_hw *hw, u32 addr, u8 *buf, int len)
+{
+	struct ngbe_hic_read_shadow_ram command;
+	u32 value;
+	int err, i = 0, j = 0;
+
+	if (len > NGBE_PMMBX_DATA_SIZE)
+		return NGBE_ERR_HOST_INTERFACE_COMMAND;
+
+	memset(&command, 0, sizeof(command));
+	command.hdr.req.cmd = FW_READ_SHADOW_RAM_CMD;
+	command.hdr.req.buf_lenh = 0;
+	command.hdr.req.buf_lenl = FW_READ_SHADOW_RAM_LEN;
+	command.hdr.req.checksum = FW_DEFAULT_CHECKSUM;
+	command.address = cpu_to_be32(addr);
+	command.length = cpu_to_be16(len);
+
+	err = ngbe_hic_unlocked(hw, (u32 *)&command,
+			sizeof(command), NGBE_HI_COMMAND_TIMEOUT);
+	if (err)
+		return err;
+
+	while (i < (len >> 2)) {
+		value = rd32a(hw, NGBE_MNGMBX, FW_NVM_DATA_OFFSET + i);
+		((u32 *)buf)[i] = value;
+		i++;
+	}
+
+	value = rd32a(hw, NGBE_MNGMBX, FW_NVM_DATA_OFFSET + i);
+	for (i <<= 2; i < len; i++)
+		((u8 *)buf)[i] = ((u8 *)&value)[j++];
+
+	return 0;
+}
+
 s32 ngbe_hic_check_cap(struct ngbe_hw *hw)
 {
 	struct ngbe_hic_read_shadow_ram command;

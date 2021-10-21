@@ -162,6 +162,30 @@ void ngbe_release_eeprom_semaphore(struct ngbe_hw *hw)
 }
 
 /**
+ *  ngbe_ee_read32 - Read EEPROM word using a host interface cmd
+ *  @hw: pointer to hardware structure
+ *  @offset: offset of  word in the EEPROM to read
+ *  @data: word read from the EEPROM
+ *
+ *  Reads a 32 bit word from the EEPROM using the hostif.
+ **/
+s32 ngbe_ee_read32(struct ngbe_hw *hw, u32 addr, u32 *data)
+{
+	const u32 mask = NGBE_MNGSEM_SWMBX | NGBE_MNGSEM_SWFLASH;
+	int err;
+
+	err = hw->mac.acquire_swfw_sync(hw, mask);
+	if (err)
+		return err;
+
+	err = ngbe_hic_sr_read(hw, addr, (u8 *)data, 4);
+
+	hw->mac.release_swfw_sync(hw, mask);
+
+	return err;
+}
+
+/**
  *  ngbe_validate_eeprom_checksum_em - Validate EEPROM checksum
  *  @hw: pointer to hardware structure
  *  @checksum_val: calculated checksum
@@ -201,3 +225,35 @@ s32 ngbe_validate_eeprom_checksum_em(struct ngbe_hw *hw,
 	return err;
 }
 
+/**
+ * ngbe_save_eeprom_version
+ * @hw: pointer to hardware structure
+ *
+ * Save off EEPROM version number and Option Rom version which
+ * together make a unique identify for the eeprom
+ */
+s32 ngbe_save_eeprom_version(struct ngbe_hw *hw)
+{
+	u32 eeprom_verl = 0;
+	u32 etrack_id = 0;
+	u32 offset = (hw->rom.sw_addr + NGBE_EEPROM_VERSION_L) << 1;
+
+	DEBUGFUNC("ngbe_save_eeprom_version");
+
+	if (hw->bus.lan_id == 0) {
+		hw->rom.read32(hw, offset, &eeprom_verl);
+		etrack_id = eeprom_verl;
+		wr32(hw, NGBE_EEPROM_VERSION_STORE_REG, etrack_id);
+		wr32(hw, NGBE_CALSUM_CAP_STATUS,
+			hw->rom.cksum_devcap | 0x10000);
+	} else if (hw->rom.cksum_devcap) {
+		etrack_id = hw->rom.saved_version;
+	} else {
+		hw->rom.read32(hw, offset, &eeprom_verl);
+		etrack_id = eeprom_verl;
+	}
+
+	hw->eeprom_id = etrack_id;
+
+	return 0;
+}

@@ -203,6 +203,7 @@ struct ngbe_hw_stats {
 
 struct ngbe_rom_info {
 	s32 (*init_params)(struct ngbe_hw *hw);
+	s32 (*read32)(struct ngbe_hw *hw, u32 addr, u32 *data);
 	s32 (*validate_checksum)(struct ngbe_hw *hw, u16 *checksum_val);
 
 	enum ngbe_eeprom_type type;
@@ -313,6 +314,7 @@ struct ngbe_hw {
 	u16 vendor_id;
 	u16 sub_device_id;
 	u16 sub_system_id;
+	u32 eeprom_id;
 	bool adapter_stopped;
 
 	uint64_t isb_dma;

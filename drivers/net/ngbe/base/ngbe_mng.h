@@ -10,12 +10,16 @@
 
 #define NGBE_PMMBX_QSIZE       64 /* Num of dwords in range */
 #define NGBE_PMMBX_BSIZE       (NGBE_PMMBX_QSIZE * 4)
+#define NGBE_PMMBX_DATA_SIZE   (NGBE_PMMBX_BSIZE - FW_NVM_DATA_OFFSET * 4)
 #define NGBE_HI_COMMAND_TIMEOUT        5000 /* Process HI command limit */
 
 /* CEM Support */
 #define FW_CEM_MAX_RETRIES              3
 #define FW_CEM_RESP_STATUS_SUCCESS      0x1
+#define FW_READ_SHADOW_RAM_CMD          0x31
+#define FW_READ_SHADOW_RAM_LEN          0x6
 #define FW_DEFAULT_CHECKSUM             0xFF /* checksum always 0xFF */
+#define FW_NVM_DATA_OFFSET              3
 #define FW_EEPROM_CHECK_STATUS		0xE9
 
 #define FW_CHECKSUM_CAP_ST_PASS	0x80658383
@@ -61,5 +65,6 @@ struct ngbe_hic_read_shadow_ram {
 	u16 pad3;
 };
 
+s32 ngbe_hic_sr_read(struct ngbe_hw *hw, u32 addr, u8 *buf, int len);
 s32 ngbe_hic_check_cap(struct ngbe_hw *hw);
 #endif /* _NGBE_MNG_H_ */

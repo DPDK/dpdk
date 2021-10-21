@@ -22,6 +22,7 @@ Features
 - Jumbo frames
 - Link state information
 - Scattered and gather for TX and RX
+- FW version
 
 
 Prerequisites

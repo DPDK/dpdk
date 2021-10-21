@@ -33,6 +33,11 @@ static inline s32 ngbe_rom_init_params_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
+static inline s32 ngbe_rom_read32_dummy(struct ngbe_hw *TUP0, u32 TUP1,
+					u32 *TUP2)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
 static inline s32 ngbe_rom_validate_checksum_dummy(struct ngbe_hw *TUP0,
 					u16 *TUP1)
 {
@@ -181,6 +186,7 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 {
 	hw->bus.set_lan_id = ngbe_bus_set_lan_id_dummy;
 	hw->rom.init_params = ngbe_rom_init_params_dummy;
+	hw->rom.read32 = ngbe_rom_read32_dummy;
 	hw->rom.validate_checksum = ngbe_rom_validate_checksum_dummy;
 	hw->mac.init_hw = ngbe_mac_init_hw_dummy;
 	hw->mac.reset_hw = ngbe_mac_reset_hw_dummy;

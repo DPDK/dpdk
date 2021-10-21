@@ -47,6 +47,8 @@ s32 ngbe_init_hw(struct ngbe_hw *hw)
 
 	DEBUGFUNC("ngbe_init_hw");
 
+	ngbe_save_eeprom_version(hw);
+
 	/* Reset the hardware */
 	status = hw->mac.reset_hw(hw);
 	if (status == 0) {
@@ -1143,6 +1145,7 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 
 	/* EEPROM */
 	rom->init_params = ngbe_init_eeprom_params;
+	rom->read32 = ngbe_ee_read32;
 	rom->validate_checksum = ngbe_validate_eeprom_checksum_em;
 
 	mac->mcft_size		= NGBE_EM_MC_TBL_SIZE;
