@@ -84,6 +84,104 @@ static const struct rte_eth_desc_lim tx_desc_lim = {
 
 static const struct eth_dev_ops ngbe_eth_dev_ops;
 
+#define HW_XSTAT(m) {#m, offsetof(struct ngbe_hw_stats, m)}
+#define HW_XSTAT_NAME(m, n) {n, offsetof(struct ngbe_hw_stats, m)}
+static const struct rte_ngbe_xstats_name_off rte_ngbe_stats_strings[] = {
+	/* MNG RxTx */
+	HW_XSTAT(mng_bmc2host_packets),
+	HW_XSTAT(mng_host2bmc_packets),
+	/* Basic RxTx */
+	HW_XSTAT(rx_packets),
+	HW_XSTAT(tx_packets),
+	HW_XSTAT(rx_bytes),
+	HW_XSTAT(tx_bytes),
+	HW_XSTAT(rx_total_bytes),
+	HW_XSTAT(rx_total_packets),
+	HW_XSTAT(tx_total_packets),
+	HW_XSTAT(rx_total_missed_packets),
+	HW_XSTAT(rx_broadcast_packets),
+	HW_XSTAT(rx_multicast_packets),
+	HW_XSTAT(rx_management_packets),
+	HW_XSTAT(tx_management_packets),
+	HW_XSTAT(rx_management_dropped),
+
+	/* Basic Error */
+	HW_XSTAT(rx_crc_errors),
+	HW_XSTAT(rx_illegal_byte_errors),
+	HW_XSTAT(rx_error_bytes),
+	HW_XSTAT(rx_mac_short_packet_dropped),
+	HW_XSTAT(rx_length_errors),
+	HW_XSTAT(rx_undersize_errors),
+	HW_XSTAT(rx_fragment_errors),
+	HW_XSTAT(rx_oversize_errors),
+	HW_XSTAT(rx_jabber_errors),
+	HW_XSTAT(rx_l3_l4_xsum_error),
+	HW_XSTAT(mac_local_errors),
+	HW_XSTAT(mac_remote_errors),
+
+	/* MACSEC */
+	HW_XSTAT(tx_macsec_pkts_untagged),
+	HW_XSTAT(tx_macsec_pkts_encrypted),
+	HW_XSTAT(tx_macsec_pkts_protected),
+	HW_XSTAT(tx_macsec_octets_encrypted),
+	HW_XSTAT(tx_macsec_octets_protected),
+	HW_XSTAT(rx_macsec_pkts_untagged),
+	HW_XSTAT(rx_macsec_pkts_badtag),
+	HW_XSTAT(rx_macsec_pkts_nosci),
+	HW_XSTAT(rx_macsec_pkts_unknownsci),
+	HW_XSTAT(rx_macsec_octets_decrypted),
+	HW_XSTAT(rx_macsec_octets_validated),
+	HW_XSTAT(rx_macsec_sc_pkts_unchecked),
+	HW_XSTAT(rx_macsec_sc_pkts_delayed),
+	HW_XSTAT(rx_macsec_sc_pkts_late),
+	HW_XSTAT(rx_macsec_sa_pkts_ok),
+	HW_XSTAT(rx_macsec_sa_pkts_invalid),
+	HW_XSTAT(rx_macsec_sa_pkts_notvalid),
+	HW_XSTAT(rx_macsec_sa_pkts_unusedsa),
+	HW_XSTAT(rx_macsec_sa_pkts_notusingsa),
+
+	/* MAC RxTx */
+	HW_XSTAT(rx_size_64_packets),
+	HW_XSTAT(rx_size_65_to_127_packets),
+	HW_XSTAT(rx_size_128_to_255_packets),
+	HW_XSTAT(rx_size_256_to_511_packets),
+	HW_XSTAT(rx_size_512_to_1023_packets),
+	HW_XSTAT(rx_size_1024_to_max_packets),
+	HW_XSTAT(tx_size_64_packets),
+	HW_XSTAT(tx_size_65_to_127_packets),
+	HW_XSTAT(tx_size_128_to_255_packets),
+	HW_XSTAT(tx_size_256_to_511_packets),
+	HW_XSTAT(tx_size_512_to_1023_packets),
+	HW_XSTAT(tx_size_1024_to_max_packets),
+
+	/* Flow Control */
+	HW_XSTAT(tx_xon_packets),
+	HW_XSTAT(rx_xon_packets),
+	HW_XSTAT(tx_xoff_packets),
+	HW_XSTAT(rx_xoff_packets),
+
+	HW_XSTAT_NAME(tx_xon_packets, "tx_flow_control_xon_packets"),
+	HW_XSTAT_NAME(rx_xon_packets, "rx_flow_control_xon_packets"),
+	HW_XSTAT_NAME(tx_xoff_packets, "tx_flow_control_xoff_packets"),
+	HW_XSTAT_NAME(rx_xoff_packets, "rx_flow_control_xoff_packets"),
+};
+
+#define NGBE_NB_HW_STATS (sizeof(rte_ngbe_stats_strings) / \
+			   sizeof(rte_ngbe_stats_strings[0]))
+
+/* Per-queue statistics */
+#define QP_XSTAT(m) {#m, offsetof(struct ngbe_hw_stats, qp[0].m)}
+static const struct rte_ngbe_xstats_name_off rte_ngbe_qp_strings[] = {
+	QP_XSTAT(rx_qp_packets),
+	QP_XSTAT(tx_qp_packets),
+	QP_XSTAT(rx_qp_bytes),
+	QP_XSTAT(tx_qp_bytes),
+	QP_XSTAT(rx_qp_mc_packets),
+};
+
+#define NGBE_NB_QP_STATS (sizeof(rte_ngbe_qp_strings) / \
+			   sizeof(rte_ngbe_qp_strings[0]))
+
 static inline int32_t
 ngbe_pf_reset_hw(struct ngbe_hw *hw)
 {
@@ -1284,6 +1382,219 @@ ngbe_dev_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
+/* This function calculates the number of xstats based on the current config */
+static unsigned
+ngbe_xstats_calc_num(struct rte_eth_dev *dev)
+{
+	int nb_queues = max(dev->data->nb_rx_queues, dev->data->nb_tx_queues);
+	return NGBE_NB_HW_STATS +
+	       NGBE_NB_QP_STATS * nb_queues;
+}
+
+static inline int
+ngbe_get_name_by_id(uint32_t id, char *name, uint32_t size)
+{
+	int nb, st;
+
+	/* Extended stats from ngbe_hw_stats */
+	if (id < NGBE_NB_HW_STATS) {
+		snprintf(name, size, "[hw]%s",
+			rte_ngbe_stats_strings[id].name);
+		return 0;
+	}
+	id -= NGBE_NB_HW_STATS;
+
+	/* Queue Stats */
+	if (id < NGBE_NB_QP_STATS * NGBE_MAX_QP) {
+		nb = id / NGBE_NB_QP_STATS;
+		st = id % NGBE_NB_QP_STATS;
+		snprintf(name, size, "[q%u]%s", nb,
+			rte_ngbe_qp_strings[st].name);
+		return 0;
+	}
+	id -= NGBE_NB_QP_STATS * NGBE_MAX_QP;
+
+	return -(int)(id + 1);
+}
+
+static inline int
+ngbe_get_offset_by_id(uint32_t id, uint32_t *offset)
+{
+	int nb, st;
+
+	/* Extended stats from ngbe_hw_stats */
+	if (id < NGBE_NB_HW_STATS) {
+		*offset = rte_ngbe_stats_strings[id].offset;
+		return 0;
+	}
+	id -= NGBE_NB_HW_STATS;
+
+	/* Queue Stats */
+	if (id < NGBE_NB_QP_STATS * NGBE_MAX_QP) {
+		nb = id / NGBE_NB_QP_STATS;
+		st = id % NGBE_NB_QP_STATS;
+		*offset = rte_ngbe_qp_strings[st].offset +
+			nb * (NGBE_NB_QP_STATS * sizeof(uint64_t));
+		return 0;
+	}
+
+	return -1;
+}
+
+static int ngbe_dev_xstats_get_names(struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, unsigned int limit)
+{
+	unsigned int i, count;
+
+	count = ngbe_xstats_calc_num(dev);
+	if (xstats_names == NULL)
+		return count;
+
+	/* Note: limit >= cnt_stats checked upstream
+	 * in rte_eth_xstats_names()
+	 */
+	limit = min(limit, count);
+
+	/* Extended stats from ngbe_hw_stats */
+	for (i = 0; i < limit; i++) {
+		if (ngbe_get_name_by_id(i, xstats_names[i].name,
+			sizeof(xstats_names[i].name))) {
+			PMD_INIT_LOG(WARNING, "id value %d isn't valid", i);
+			break;
+		}
+	}
+
+	return i;
+}
+
+static int ngbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
+	const uint64_t *ids,
+	struct rte_eth_xstat_name *xstats_names,
+	unsigned int limit)
+{
+	unsigned int i;
+
+	if (ids == NULL)
+		return ngbe_dev_xstats_get_names(dev, xstats_names, limit);
+
+	for (i = 0; i < limit; i++) {
+		if (ngbe_get_name_by_id(ids[i], xstats_names[i].name,
+				sizeof(xstats_names[i].name))) {
+			PMD_INIT_LOG(WARNING, "id value %d isn't valid", i);
+			return -1;
+		}
+	}
+
+	return i;
+}
+
+static int
+ngbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
+					 unsigned int limit)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
+	unsigned int i, count;
+
+	ngbe_read_stats_registers(hw, hw_stats);
+
+	/* If this is a reset xstats is NULL, and we have cleared the
+	 * registers by reading them.
+	 */
+	count = ngbe_xstats_calc_num(dev);
+	if (xstats == NULL)
+		return count;
+
+	limit = min(limit, ngbe_xstats_calc_num(dev));
+
+	/* Extended stats from ngbe_hw_stats */
+	for (i = 0; i < limit; i++) {
+		uint32_t offset = 0;
+
+		if (ngbe_get_offset_by_id(i, &offset)) {
+			PMD_INIT_LOG(WARNING, "id value %d isn't valid", i);
+			break;
+		}
+		xstats[i].value = *(uint64_t *)(((char *)hw_stats) + offset);
+		xstats[i].id = i;
+	}
+
+	return i;
+}
+
+static int
+ngbe_dev_xstats_get_(struct rte_eth_dev *dev, uint64_t *values,
+					 unsigned int limit)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
+	unsigned int i, count;
+
+	ngbe_read_stats_registers(hw, hw_stats);
+
+	/* If this is a reset xstats is NULL, and we have cleared the
+	 * registers by reading them.
+	 */
+	count = ngbe_xstats_calc_num(dev);
+	if (values == NULL)
+		return count;
+
+	limit = min(limit, ngbe_xstats_calc_num(dev));
+
+	/* Extended stats from ngbe_hw_stats */
+	for (i = 0; i < limit; i++) {
+		uint32_t offset;
+
+		if (ngbe_get_offset_by_id(i, &offset)) {
+			PMD_INIT_LOG(WARNING, "id value %d isn't valid", i);
+			break;
+		}
+		values[i] = *(uint64_t *)(((char *)hw_stats) + offset);
+	}
+
+	return i;
+}
+
+static int
+ngbe_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
+		uint64_t *values, unsigned int limit)
+{
+	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
+	unsigned int i;
+
+	if (ids == NULL)
+		return ngbe_dev_xstats_get_(dev, values, limit);
+
+	for (i = 0; i < limit; i++) {
+		uint32_t offset;
+
+		if (ngbe_get_offset_by_id(ids[i], &offset)) {
+			PMD_INIT_LOG(WARNING, "id value %d isn't valid", i);
+			break;
+		}
+		values[i] = *(uint64_t *)(((char *)hw_stats) + offset);
+	}
+
+	return i;
+}
+
+static int
+ngbe_dev_xstats_reset(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
+
+	/* HW registers are cleared on read */
+	hw->offset_loaded = 0;
+	ngbe_read_stats_registers(hw, hw_stats);
+	hw->offset_loaded = 1;
+
+	/* Reset software totals */
+	memset(hw_stats, 0, sizeof(*hw_stats));
+
+	return 0;
+}
+
 static int
 ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
@@ -1833,7 +2144,12 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.dev_reset                  = ngbe_dev_reset,
 	.link_update                = ngbe_dev_link_update,
 	.stats_get                  = ngbe_dev_stats_get,
+	.xstats_get                 = ngbe_dev_xstats_get,
+	.xstats_get_by_id           = ngbe_dev_xstats_get_by_id,
 	.stats_reset                = ngbe_dev_stats_reset,
+	.xstats_reset               = ngbe_dev_xstats_reset,
+	.xstats_get_names           = ngbe_dev_xstats_get_names,
+	.xstats_get_names_by_id     = ngbe_dev_xstats_get_names_by_id,
 	.dev_supported_ptypes_get   = ngbe_dev_supported_ptypes_get,
 	.vlan_filter_set            = ngbe_vlan_filter_set,
 	.vlan_tpid_set              = ngbe_vlan_tpid_set,

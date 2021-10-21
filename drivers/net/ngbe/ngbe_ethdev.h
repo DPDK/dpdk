@@ -211,6 +211,12 @@ void ngbe_vlan_hw_strip_config(struct rte_eth_dev *dev);
 #define NGBE_DEFAULT_TX_HTHRESH      0
 #define NGBE_DEFAULT_TX_WTHRESH      0
 
+/* store statistics names and its offset in stats structure */
+struct rte_ngbe_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
 const uint32_t *ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 void ngbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev,
 		uint16_t queue, bool on);
