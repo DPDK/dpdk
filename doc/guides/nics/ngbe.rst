@@ -25,6 +25,7 @@ Features
 - Link state information
 - Link flow control
 - Scattered and gather for TX and RX
+- IEEE 1588
 - FW version
 
 

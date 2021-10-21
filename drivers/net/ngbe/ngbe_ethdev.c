@@ -2730,6 +2730,215 @@ ngbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 					 ngbe_dev_addr_list_itr, TRUE);
 }
 
+static uint64_t
+ngbe_read_systime_cyclecounter(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint64_t systime_cycles;
+
+	systime_cycles = (uint64_t)rd32(hw, NGBE_TSTIMEL);
+	systime_cycles |= (uint64_t)rd32(hw, NGBE_TSTIMEH) << 32;
+
+	return systime_cycles;
+}
+
+static uint64_t
+ngbe_read_rx_tstamp_cyclecounter(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint64_t rx_tstamp_cycles;
+
+	/* TSRXSTMPL stores ns and TSRXSTMPH stores seconds. */
+	rx_tstamp_cycles = (uint64_t)rd32(hw, NGBE_TSRXSTMPL);
+	rx_tstamp_cycles |= (uint64_t)rd32(hw, NGBE_TSRXSTMPH) << 32;
+
+	return rx_tstamp_cycles;
+}
+
+static uint64_t
+ngbe_read_tx_tstamp_cyclecounter(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint64_t tx_tstamp_cycles;
+
+	/* TSTXSTMPL stores ns and TSTXSTMPH stores seconds. */
+	tx_tstamp_cycles = (uint64_t)rd32(hw, NGBE_TSTXSTMPL);
+	tx_tstamp_cycles |= (uint64_t)rd32(hw, NGBE_TSTXSTMPH) << 32;
+
+	return tx_tstamp_cycles;
+}
+
+static void
+ngbe_start_timecounters(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+	uint32_t incval = 0;
+	uint32_t shift = 0;
+
+	incval = NGBE_INCVAL_1GB;
+	shift = NGBE_INCVAL_SHIFT_1GB;
+
+	wr32(hw, NGBE_TSTIMEINC, NGBE_TSTIMEINC_IV(incval));
+
+	memset(&adapter->systime_tc, 0, sizeof(struct rte_timecounter));
+	memset(&adapter->rx_tstamp_tc, 0, sizeof(struct rte_timecounter));
+	memset(&adapter->tx_tstamp_tc, 0, sizeof(struct rte_timecounter));
+
+	adapter->systime_tc.cc_mask = NGBE_CYCLECOUNTER_MASK;
+	adapter->systime_tc.cc_shift = shift;
+	adapter->systime_tc.nsec_mask = (1ULL << shift) - 1;
+
+	adapter->rx_tstamp_tc.cc_mask = NGBE_CYCLECOUNTER_MASK;
+	adapter->rx_tstamp_tc.cc_shift = shift;
+	adapter->rx_tstamp_tc.nsec_mask = (1ULL << shift) - 1;
+
+	adapter->tx_tstamp_tc.cc_mask = NGBE_CYCLECOUNTER_MASK;
+	adapter->tx_tstamp_tc.cc_shift = shift;
+	adapter->tx_tstamp_tc.nsec_mask = (1ULL << shift) - 1;
+}
+
+static int
+ngbe_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
+{
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+
+	adapter->systime_tc.nsec += delta;
+	adapter->rx_tstamp_tc.nsec += delta;
+	adapter->tx_tstamp_tc.nsec += delta;
+
+	return 0;
+}
+
+static int
+ngbe_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
+{
+	uint64_t ns;
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+
+	ns = rte_timespec_to_ns(ts);
+	/* Set the timecounters to a new value. */
+	adapter->systime_tc.nsec = ns;
+	adapter->rx_tstamp_tc.nsec = ns;
+	adapter->tx_tstamp_tc.nsec = ns;
+
+	return 0;
+}
+
+static int
+ngbe_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
+{
+	uint64_t ns, systime_cycles;
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+
+	systime_cycles = ngbe_read_systime_cyclecounter(dev);
+	ns = rte_timecounter_update(&adapter->systime_tc, systime_cycles);
+	*ts = rte_ns_to_timespec(ns);
+
+	return 0;
+}
+
+static int
+ngbe_timesync_enable(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t tsync_ctl;
+
+	/* Stop the timesync system time. */
+	wr32(hw, NGBE_TSTIMEINC, 0x0);
+	/* Reset the timesync system time value. */
+	wr32(hw, NGBE_TSTIMEL, 0x0);
+	wr32(hw, NGBE_TSTIMEH, 0x0);
+
+	ngbe_start_timecounters(dev);
+
+	/* Enable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
+	wr32(hw, NGBE_ETFLT(NGBE_ETF_ID_1588),
+		RTE_ETHER_TYPE_1588 | NGBE_ETFLT_ENA | NGBE_ETFLT_1588);
+
+	/* Enable timestamping of received PTP packets. */
+	tsync_ctl = rd32(hw, NGBE_TSRXCTL);
+	tsync_ctl |= NGBE_TSRXCTL_ENA;
+	wr32(hw, NGBE_TSRXCTL, tsync_ctl);
+
+	/* Enable timestamping of transmitted PTP packets. */
+	tsync_ctl = rd32(hw, NGBE_TSTXCTL);
+	tsync_ctl |= NGBE_TSTXCTL_ENA;
+	wr32(hw, NGBE_TSTXCTL, tsync_ctl);
+
+	ngbe_flush(hw);
+
+	return 0;
+}
+
+static int
+ngbe_timesync_disable(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t tsync_ctl;
+
+	/* Disable timestamping of transmitted PTP packets. */
+	tsync_ctl = rd32(hw, NGBE_TSTXCTL);
+	tsync_ctl &= ~NGBE_TSTXCTL_ENA;
+	wr32(hw, NGBE_TSTXCTL, tsync_ctl);
+
+	/* Disable timestamping of received PTP packets. */
+	tsync_ctl = rd32(hw, NGBE_TSRXCTL);
+	tsync_ctl &= ~NGBE_TSRXCTL_ENA;
+	wr32(hw, NGBE_TSRXCTL, tsync_ctl);
+
+	/* Disable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
+	wr32(hw, NGBE_ETFLT(NGBE_ETF_ID_1588), 0);
+
+	/* Stop incrementating the System Time registers. */
+	wr32(hw, NGBE_TSTIMEINC, 0);
+
+	return 0;
+}
+
+static int
+ngbe_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+				 struct timespec *timestamp,
+				 uint32_t flags __rte_unused)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+	uint32_t tsync_rxctl;
+	uint64_t rx_tstamp_cycles;
+	uint64_t ns;
+
+	tsync_rxctl = rd32(hw, NGBE_TSRXCTL);
+	if ((tsync_rxctl & NGBE_TSRXCTL_VLD) == 0)
+		return -EINVAL;
+
+	rx_tstamp_cycles = ngbe_read_rx_tstamp_cyclecounter(dev);
+	ns = rte_timecounter_update(&adapter->rx_tstamp_tc, rx_tstamp_cycles);
+	*timestamp = rte_ns_to_timespec(ns);
+
+	return  0;
+}
+
+static int
+ngbe_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+				 struct timespec *timestamp)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+	uint32_t tsync_txctl;
+	uint64_t tx_tstamp_cycles;
+	uint64_t ns;
+
+	tsync_txctl = rd32(hw, NGBE_TSTXCTL);
+	if ((tsync_txctl & NGBE_TSTXCTL_VLD) == 0)
+		return -EINVAL;
+
+	tx_tstamp_cycles = ngbe_read_tx_tstamp_cyclecounter(dev);
+	ns = rte_timecounter_update(&adapter->tx_tstamp_tc, tx_tstamp_cycles);
+	*timestamp = rte_ns_to_timespec(ns);
+
+	return 0;
+}
+
 static int
 ngbe_get_reg_length(struct rte_eth_dev *dev __rte_unused)
 {
@@ -2873,12 +3082,19 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.rss_hash_update            = ngbe_dev_rss_hash_update,
 	.rss_hash_conf_get          = ngbe_dev_rss_hash_conf_get,
 	.set_mc_addr_list           = ngbe_dev_set_mc_addr_list,
+	.timesync_enable            = ngbe_timesync_enable,
+	.timesync_disable           = ngbe_timesync_disable,
+	.timesync_read_rx_timestamp = ngbe_timesync_read_rx_timestamp,
+	.timesync_read_tx_timestamp = ngbe_timesync_read_tx_timestamp,
 	.get_reg                    = ngbe_get_regs,
 	.rx_burst_mode_get          = ngbe_rx_burst_mode_get,
 	.tx_burst_mode_get          = ngbe_tx_burst_mode_get,
 	.get_eeprom_length          = ngbe_get_eeprom_length,
 	.get_eeprom                 = ngbe_get_eeprom,
 	.set_eeprom                 = ngbe_set_eeprom,
+	.timesync_adjust_time       = ngbe_timesync_adjust_time,
+	.timesync_read_time         = ngbe_timesync_read_time,
+	.timesync_write_time        = ngbe_timesync_write_time,
 };
 
 RTE_PMD_REGISTER_PCI(net_ngbe, rte_ngbe_pmd);

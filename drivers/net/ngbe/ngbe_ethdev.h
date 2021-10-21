@@ -7,6 +7,7 @@
 #define _NGBE_ETHDEV_H_
 
 #include "ngbe_ptypes.h"
+#include <rte_time.h>
 #include <rte_ethdev.h>
 #include <rte_ethdev_core.h>
 
@@ -129,6 +130,9 @@ struct ngbe_adapter {
 	struct ngbe_vf_info        *vfdata;
 	struct ngbe_uta_info       uta_info;
 	bool                       rx_bulk_alloc_allowed;
+	struct rte_timecounter     systime_tc;
+	struct rte_timecounter     rx_tstamp_tc;
+	struct rte_timecounter     tx_tstamp_tc;
 
 	/* For RSS reta table update */
 	uint8_t rss_reta_updated;
@@ -300,6 +304,12 @@ int ngbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 #define NGBE_DEFAULT_TX_PTHRESH      32
 #define NGBE_DEFAULT_TX_HTHRESH      0
 #define NGBE_DEFAULT_TX_WTHRESH      0
+
+/* Additional timesync values. */
+#define NGBE_INCVAL_1GB         0x2000000 /* all speed is same in Emerald */
+#define NGBE_INCVAL_SHIFT_1GB   22 /* all speed is same in Emerald */
+
+#define NGBE_CYCLECOUNTER_MASK   0xffffffffffffffffULL
 
 /* store statistics names and its offset in stats structure */
 struct rte_ngbe_xstats_name_off {

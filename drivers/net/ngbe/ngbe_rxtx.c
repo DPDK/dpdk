@@ -16,6 +16,12 @@
 #include "ngbe_ethdev.h"
 #include "ngbe_rxtx.h"
 
+#ifdef RTE_LIBRTE_IEEE1588
+#define NGBE_TX_IEEE1588_TMST PKT_TX_IEEE1588_TMST
+#else
+#define NGBE_TX_IEEE1588_TMST 0
+#endif
+
 /* Bit Mask to indicate what bits required for building Tx context */
 static const u64 NGBE_TX_OFFLOAD_MASK = (RTE_MBUF_F_TX_IP_CKSUM |
 		RTE_MBUF_F_TX_OUTER_IPV6 |
@@ -26,7 +32,9 @@ static const u64 NGBE_TX_OFFLOAD_MASK = (RTE_MBUF_F_TX_IP_CKSUM |
 		RTE_MBUF_F_TX_L4_MASK |
 		RTE_MBUF_F_TX_TCP_SEG |
 		RTE_MBUF_F_TX_TUNNEL_MASK |
-		RTE_MBUF_F_TX_OUTER_IP_CKSUM);
+		RTE_MBUF_F_TX_OUTER_IP_CKSUM |
+		NGBE_TX_IEEE1588_TMST);
+
 #define NGBE_TX_OFFLOAD_NOTSUP_MASK \
 		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ NGBE_TX_OFFLOAD_MASK)
 
@@ -731,6 +739,11 @@ ngbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 */
 		cmd_type_len = NGBE_TXD_FCS;
 
+#ifdef RTE_LIBRTE_IEEE1588
+		if (ol_flags & PKT_TX_IEEE1588_TMST)
+			cmd_type_len |= NGBE_TXD_1588;
+#endif
+
 		olinfo_status = 0;
 		if (tx_ol_req) {
 			if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
@@ -907,7 +920,20 @@ ngbe_rxd_pkt_info_to_pkt_flags(uint32_t pkt_info)
 		RTE_MBUF_F_RX_RSS_HASH, 0, 0, 0,
 		0, 0, 0,  RTE_MBUF_F_RX_FDIR,
 	};
+#ifdef RTE_LIBRTE_IEEE1588
+	static uint64_t ip_pkt_etqf_map[8] = {
+		0, 0, 0, PKT_RX_IEEE1588_PTP,
+		0, 0, 0, 0,
+	};
+	int etfid = ngbe_etflt_id(NGBE_RXD_PTID(pkt_info));
+	if (likely(-1 != etfid))
+		return ip_pkt_etqf_map[etfid] |
+		       ip_rss_types_map[NGBE_RXD_RSSTYPE(pkt_info)];
+	else
+		return ip_rss_types_map[NGBE_RXD_RSSTYPE(pkt_info)];
+#else
 	return ip_rss_types_map[NGBE_RXD_RSSTYPE(pkt_info)];
+#endif
 }
 
 static inline uint64_t
@@ -924,6 +950,10 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status, uint64_t vlan_flags)
 		     vlan_flags & RTE_MBUF_F_RX_VLAN_STRIPPED)
 		    ? vlan_flags : 0;
 
+#ifdef RTE_LIBRTE_IEEE1588
+	if (rx_status & NGBE_RXD_STAT_1588)
+		pkt_flags = pkt_flags | PKT_RX_IEEE1588_TMST;
+#endif
 	return pkt_flags;
 }
 
