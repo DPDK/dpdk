@@ -1126,7 +1126,7 @@ rte_dma_burst_capacity(int16_t dev_id, uint16_t vchan)
 #ifdef RTE_DMADEV_DEBUG
 	if (!rte_dma_is_valid(dev_id))
 		return 0;
-	RTE_FUNC_PTR_OR_ERR_RET(*obbj->burst_capacity, 0);
+	RTE_FUNC_PTR_OR_ERR_RET(*obj->burst_capacity, 0);
 #endif
 	return (*obj->burst_capacity)(obj->dev_private, vchan);
 }
