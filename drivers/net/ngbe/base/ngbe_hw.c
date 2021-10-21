@@ -22,6 +22,9 @@ s32 ngbe_start_hw(struct ngbe_hw *hw)
 	/* Clear the VLAN filter table */
 	hw->mac.clear_vfta(hw);
 
+	/* Clear statistics registers */
+	hw->mac.clear_hw_cntrs(hw);
+
 	/* Clear adapter stopped flag */
 	hw->adapter_stopped = false;
 
@@ -162,6 +165,7 @@ s32 ngbe_reset_hw_em(struct ngbe_hw *hw)
 	msec_delay(50);
 
 	ngbe_reset_misc_em(hw);
+	hw->mac.clear_hw_cntrs(hw);
 
 	msec_delay(50);
 
@@ -176,6 +180,102 @@ s32 ngbe_reset_hw_em(struct ngbe_hw *hw)
 	hw->mac.init_rx_addrs(hw);
 
 	return status;
+}
+
+/**
+ *  ngbe_clear_hw_cntrs - Generic clear hardware counters
+ *  @hw: pointer to hardware structure
+ *
+ *  Clears all hardware statistics counters by reading them from the hardware
+ *  Statistics counters are clear on read.
+ **/
+s32 ngbe_clear_hw_cntrs(struct ngbe_hw *hw)
+{
+	u16 i = 0;
+
+	DEBUGFUNC("ngbe_clear_hw_cntrs");
+
+	/* QP Stats */
+	/* don't write clear queue stats */
+	for (i = 0; i < NGBE_MAX_QP; i++) {
+		hw->qp_last[i].rx_qp_packets = 0;
+		hw->qp_last[i].tx_qp_packets = 0;
+		hw->qp_last[i].rx_qp_bytes = 0;
+		hw->qp_last[i].tx_qp_bytes = 0;
+		hw->qp_last[i].rx_qp_mc_packets = 0;
+		hw->qp_last[i].tx_qp_mc_packets = 0;
+		hw->qp_last[i].rx_qp_bc_packets = 0;
+		hw->qp_last[i].tx_qp_bc_packets = 0;
+	}
+
+	/* PB Stats */
+	rd32(hw, NGBE_PBRXLNKXON);
+	rd32(hw, NGBE_PBRXLNKXOFF);
+	rd32(hw, NGBE_PBTXLNKXON);
+	rd32(hw, NGBE_PBTXLNKXOFF);
+
+	/* DMA Stats */
+	rd32(hw, NGBE_DMARXPKT);
+	rd32(hw, NGBE_DMATXPKT);
+
+	rd64(hw, NGBE_DMARXOCTL);
+	rd64(hw, NGBE_DMATXOCTL);
+
+	/* MAC Stats */
+	rd64(hw, NGBE_MACRXERRCRCL);
+	rd64(hw, NGBE_MACRXMPKTL);
+	rd64(hw, NGBE_MACTXMPKTL);
+
+	rd64(hw, NGBE_MACRXPKTL);
+	rd64(hw, NGBE_MACTXPKTL);
+	rd64(hw, NGBE_MACRXGBOCTL);
+
+	rd64(hw, NGBE_MACRXOCTL);
+	rd32(hw, NGBE_MACTXOCTL);
+
+	rd64(hw, NGBE_MACRX1TO64L);
+	rd64(hw, NGBE_MACRX65TO127L);
+	rd64(hw, NGBE_MACRX128TO255L);
+	rd64(hw, NGBE_MACRX256TO511L);
+	rd64(hw, NGBE_MACRX512TO1023L);
+	rd64(hw, NGBE_MACRX1024TOMAXL);
+	rd64(hw, NGBE_MACTX1TO64L);
+	rd64(hw, NGBE_MACTX65TO127L);
+	rd64(hw, NGBE_MACTX128TO255L);
+	rd64(hw, NGBE_MACTX256TO511L);
+	rd64(hw, NGBE_MACTX512TO1023L);
+	rd64(hw, NGBE_MACTX1024TOMAXL);
+
+	rd64(hw, NGBE_MACRXERRLENL);
+	rd32(hw, NGBE_MACRXOVERSIZE);
+	rd32(hw, NGBE_MACRXJABBER);
+
+	/* MACsec Stats */
+	rd32(hw, NGBE_LSECTX_UTPKT);
+	rd32(hw, NGBE_LSECTX_ENCPKT);
+	rd32(hw, NGBE_LSECTX_PROTPKT);
+	rd32(hw, NGBE_LSECTX_ENCOCT);
+	rd32(hw, NGBE_LSECTX_PROTOCT);
+	rd32(hw, NGBE_LSECRX_UTPKT);
+	rd32(hw, NGBE_LSECRX_BTPKT);
+	rd32(hw, NGBE_LSECRX_NOSCIPKT);
+	rd32(hw, NGBE_LSECRX_UNSCIPKT);
+	rd32(hw, NGBE_LSECRX_DECOCT);
+	rd32(hw, NGBE_LSECRX_VLDOCT);
+	rd32(hw, NGBE_LSECRX_UNCHKPKT);
+	rd32(hw, NGBE_LSECRX_DLYPKT);
+	rd32(hw, NGBE_LSECRX_LATEPKT);
+	for (i = 0; i < 2; i++) {
+		rd32(hw, NGBE_LSECRX_OKPKT(i));
+		rd32(hw, NGBE_LSECRX_INVPKT(i));
+		rd32(hw, NGBE_LSECRX_BADPKT(i));
+	}
+	for (i = 0; i < 4; i++) {
+		rd32(hw, NGBE_LSECRX_INVSAPKT(i));
+		rd32(hw, NGBE_LSECRX_BADSAPKT(i));
+	}
+
+	return 0;
 }
 
 /**
@@ -1015,6 +1115,7 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	mac->init_hw = ngbe_init_hw;
 	mac->reset_hw = ngbe_reset_hw_em;
 	mac->start_hw = ngbe_start_hw;
+	mac->clear_hw_cntrs = ngbe_clear_hw_cntrs;
 	mac->enable_rx_dma = ngbe_enable_rx_dma;
 	mac->get_mac_addr = ngbe_get_mac_addr;
 	mac->stop_hw = ngbe_stop_hw;

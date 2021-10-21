@@ -219,6 +219,7 @@ New Features
 
   * Added offloads and packet type on RxTx.
   * Added VLAN filters.
+  * Added device basic statistics.
 
 * **Updated Marvell cnxk crypto PMD.**
 

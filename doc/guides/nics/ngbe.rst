@@ -16,6 +16,7 @@ Features
 - Checksum offload
 - VLAN/QinQ stripping and inserting
 - TSO offload
+- Port hardware statistics
 - Jumbo frames
 - Link state information
 - Scattered and gather for TX and RX

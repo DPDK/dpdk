@@ -55,6 +55,10 @@ static inline s32 ngbe_mac_stop_hw_dummy(struct ngbe_hw *TUP0)
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
+static inline s32 ngbe_mac_clear_hw_cntrs_dummy(struct ngbe_hw *TUP0)
+{
+	return NGBE_ERR_OPS_DUMMY;
+}
 static inline s32 ngbe_mac_get_mac_addr_dummy(struct ngbe_hw *TUP0, u8 *TUP1)
 {
 	return NGBE_ERR_OPS_DUMMY;
@@ -182,6 +186,7 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->mac.reset_hw = ngbe_mac_reset_hw_dummy;
 	hw->mac.start_hw = ngbe_mac_start_hw_dummy;
 	hw->mac.stop_hw = ngbe_mac_stop_hw_dummy;
+	hw->mac.clear_hw_cntrs = ngbe_mac_clear_hw_cntrs_dummy;
 	hw->mac.get_mac_addr = ngbe_mac_get_mac_addr_dummy;
 	hw->mac.enable_rx_dma = ngbe_mac_enable_rx_dma_dummy;
 	hw->mac.disable_sec_rx_path = ngbe_mac_disable_sec_rx_path_dummy;

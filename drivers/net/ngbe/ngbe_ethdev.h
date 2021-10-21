@@ -43,6 +43,14 @@ struct ngbe_interrupt {
 	uint64_t mask_orig; /* save mask during delayed handler */
 };
 
+#define NGBE_NB_STAT_MAPPING  32
+#define NB_QMAP_FIELDS_PER_QSM_REG 4
+#define QMAP_FIELD_RESERVED_BITS_MASK 0x0f
+struct ngbe_stat_mappings {
+	uint32_t tqsm[NGBE_NB_STAT_MAPPING];
+	uint32_t rqsm[NGBE_NB_STAT_MAPPING];
+};
+
 struct ngbe_vfta {
 	uint32_t vfta[NGBE_VFTA_SIZE];
 };
@@ -56,7 +64,9 @@ struct ngbe_hwstrip {
  */
 struct ngbe_adapter {
 	struct ngbe_hw             hw;
+	struct ngbe_hw_stats       stats;
 	struct ngbe_interrupt      intr;
+	struct ngbe_stat_mappings  stat_mappings;
 	struct ngbe_vfta           shadow_vfta;
 	struct ngbe_hwstrip        hwstrip;
 	bool                       rx_bulk_alloc_allowed;
@@ -79,6 +89,9 @@ ngbe_dev_hw(struct rte_eth_dev *dev)
 	return hw;
 }
 
+#define NGBE_DEV_STATS(dev) \
+	(&((struct ngbe_adapter *)(dev)->data->dev_private)->stats)
+
 static inline struct ngbe_interrupt *
 ngbe_dev_intr(struct rte_eth_dev *dev)
 {
@@ -87,6 +100,9 @@ ngbe_dev_intr(struct rte_eth_dev *dev)
 
 	return intr;
 }
+
+#define NGBE_DEV_STAT_MAPPINGS(dev) \
+	(&((struct ngbe_adapter *)(dev)->data->dev_private)->stat_mappings)
 
 #define NGBE_DEV_VFTA(dev) \
 	(&((struct ngbe_adapter *)(dev)->data->dev_private)->shadow_vfta)
@@ -200,5 +216,7 @@ void ngbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev,
 		uint16_t queue, bool on);
 void ngbe_config_vlan_strip_on_all_queues(struct rte_eth_dev *dev,
 						  int mask);
+void ngbe_read_stats_registers(struct ngbe_hw *hw,
+			   struct ngbe_hw_stats *hw_stats);
 
 #endif /* _NGBE_ETHDEV_H_ */

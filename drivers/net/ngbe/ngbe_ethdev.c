@@ -17,6 +17,7 @@
 static int ngbe_dev_close(struct rte_eth_dev *dev);
 static int ngbe_dev_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
+static int ngbe_dev_stats_reset(struct rte_eth_dev *dev);
 static void ngbe_vlan_hw_strip_enable(struct rte_eth_dev *dev, uint16_t queue);
 static void ngbe_vlan_hw_strip_disable(struct rte_eth_dev *dev,
 					uint16_t queue);
@@ -190,6 +191,7 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	}
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	/* Vendor and Device ID need to be set before init of shared code */
 	hw->device_id = pci_dev->id.device_id;
@@ -235,6 +237,9 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		PMD_INIT_LOG(ERR, "Hardware Initialization Failure: %d", err);
 		return -EIO;
 	}
+
+	/* Reset the hw statistics */
+	ngbe_dev_stats_reset(eth_dev);
 
 	/* disable interrupt */
 	ngbe_disable_intr(hw);
@@ -741,6 +746,7 @@ static int
 ngbe_dev_start(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
@@ -903,6 +909,9 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 	 */
 	ngbe_dev_link_update(dev, 0);
 
+	ngbe_read_stats_registers(hw, hw_stats);
+	hw->offset_loaded = 1;
+
 	return 0;
 
 error:
@@ -1034,6 +1043,245 @@ ngbe_dev_reset(struct rte_eth_dev *dev)
 	ret = eth_ngbe_dev_init(dev, NULL);
 
 	return ret;
+}
+
+#define UPDATE_QP_COUNTER_32bit(reg, last_counter, counter)     \
+	{                                                       \
+		uint32_t current_counter = rd32(hw, reg);       \
+		if (current_counter < last_counter)             \
+			current_counter += 0x100000000LL;       \
+		if (!hw->offset_loaded)                         \
+			last_counter = current_counter;         \
+		counter = current_counter - last_counter;       \
+		counter &= 0xFFFFFFFFLL;                        \
+	}
+
+#define UPDATE_QP_COUNTER_36bit(reg_lsb, reg_msb, last_counter, counter) \
+	{                                                                \
+		uint64_t current_counter_lsb = rd32(hw, reg_lsb);        \
+		uint64_t current_counter_msb = rd32(hw, reg_msb);        \
+		uint64_t current_counter = (current_counter_msb << 32) | \
+			current_counter_lsb;                             \
+		if (current_counter < last_counter)                      \
+			current_counter += 0x1000000000LL;               \
+		if (!hw->offset_loaded)                                  \
+			last_counter = current_counter;                  \
+		counter = current_counter - last_counter;                \
+		counter &= 0xFFFFFFFFFLL;                                \
+	}
+
+void
+ngbe_read_stats_registers(struct ngbe_hw *hw,
+			   struct ngbe_hw_stats *hw_stats)
+{
+	unsigned int i;
+
+	/* QP Stats */
+	for (i = 0; i < hw->nb_rx_queues; i++) {
+		UPDATE_QP_COUNTER_32bit(NGBE_QPRXPKT(i),
+			hw->qp_last[i].rx_qp_packets,
+			hw_stats->qp[i].rx_qp_packets);
+		UPDATE_QP_COUNTER_36bit(NGBE_QPRXOCTL(i), NGBE_QPRXOCTH(i),
+			hw->qp_last[i].rx_qp_bytes,
+			hw_stats->qp[i].rx_qp_bytes);
+		UPDATE_QP_COUNTER_32bit(NGBE_QPRXMPKT(i),
+			hw->qp_last[i].rx_qp_mc_packets,
+			hw_stats->qp[i].rx_qp_mc_packets);
+		UPDATE_QP_COUNTER_32bit(NGBE_QPRXBPKT(i),
+			hw->qp_last[i].rx_qp_bc_packets,
+			hw_stats->qp[i].rx_qp_bc_packets);
+	}
+
+	for (i = 0; i < hw->nb_tx_queues; i++) {
+		UPDATE_QP_COUNTER_32bit(NGBE_QPTXPKT(i),
+			hw->qp_last[i].tx_qp_packets,
+			hw_stats->qp[i].tx_qp_packets);
+		UPDATE_QP_COUNTER_36bit(NGBE_QPTXOCTL(i), NGBE_QPTXOCTH(i),
+			hw->qp_last[i].tx_qp_bytes,
+			hw_stats->qp[i].tx_qp_bytes);
+		UPDATE_QP_COUNTER_32bit(NGBE_QPTXMPKT(i),
+			hw->qp_last[i].tx_qp_mc_packets,
+			hw_stats->qp[i].tx_qp_mc_packets);
+		UPDATE_QP_COUNTER_32bit(NGBE_QPTXBPKT(i),
+			hw->qp_last[i].tx_qp_bc_packets,
+			hw_stats->qp[i].tx_qp_bc_packets);
+	}
+
+	/* PB Stats */
+	hw_stats->rx_up_dropped += rd32(hw, NGBE_PBRXMISS);
+	hw_stats->rdb_pkt_cnt += rd32(hw, NGBE_PBRXPKT);
+	hw_stats->rdb_repli_cnt += rd32(hw, NGBE_PBRXREP);
+	hw_stats->rdb_drp_cnt += rd32(hw, NGBE_PBRXDROP);
+	hw_stats->tx_xoff_packets += rd32(hw, NGBE_PBTXLNKXOFF);
+	hw_stats->tx_xon_packets += rd32(hw, NGBE_PBTXLNKXON);
+
+	hw_stats->rx_xon_packets += rd32(hw, NGBE_PBRXLNKXON);
+	hw_stats->rx_xoff_packets += rd32(hw, NGBE_PBRXLNKXOFF);
+
+	/* DMA Stats */
+	hw_stats->rx_drop_packets += rd32(hw, NGBE_DMARXDROP);
+	hw_stats->tx_drop_packets += rd32(hw, NGBE_DMATXDROP);
+	hw_stats->rx_dma_drop += rd32(hw, NGBE_DMARXDROP);
+	hw_stats->tx_secdrp_packets += rd32(hw, NGBE_DMATXSECDROP);
+	hw_stats->rx_packets += rd32(hw, NGBE_DMARXPKT);
+	hw_stats->tx_packets += rd32(hw, NGBE_DMATXPKT);
+	hw_stats->rx_bytes += rd64(hw, NGBE_DMARXOCTL);
+	hw_stats->tx_bytes += rd64(hw, NGBE_DMATXOCTL);
+
+	/* MAC Stats */
+	hw_stats->rx_crc_errors += rd64(hw, NGBE_MACRXERRCRCL);
+	hw_stats->rx_multicast_packets += rd64(hw, NGBE_MACRXMPKTL);
+	hw_stats->tx_multicast_packets += rd64(hw, NGBE_MACTXMPKTL);
+
+	hw_stats->rx_total_packets += rd64(hw, NGBE_MACRXPKTL);
+	hw_stats->tx_total_packets += rd64(hw, NGBE_MACTXPKTL);
+	hw_stats->rx_total_bytes += rd64(hw, NGBE_MACRXGBOCTL);
+
+	hw_stats->rx_broadcast_packets += rd64(hw, NGBE_MACRXOCTL);
+	hw_stats->tx_broadcast_packets += rd32(hw, NGBE_MACTXOCTL);
+
+	hw_stats->rx_size_64_packets += rd64(hw, NGBE_MACRX1TO64L);
+	hw_stats->rx_size_65_to_127_packets += rd64(hw, NGBE_MACRX65TO127L);
+	hw_stats->rx_size_128_to_255_packets += rd64(hw, NGBE_MACRX128TO255L);
+	hw_stats->rx_size_256_to_511_packets += rd64(hw, NGBE_MACRX256TO511L);
+	hw_stats->rx_size_512_to_1023_packets +=
+			rd64(hw, NGBE_MACRX512TO1023L);
+	hw_stats->rx_size_1024_to_max_packets +=
+			rd64(hw, NGBE_MACRX1024TOMAXL);
+	hw_stats->tx_size_64_packets += rd64(hw, NGBE_MACTX1TO64L);
+	hw_stats->tx_size_65_to_127_packets += rd64(hw, NGBE_MACTX65TO127L);
+	hw_stats->tx_size_128_to_255_packets += rd64(hw, NGBE_MACTX128TO255L);
+	hw_stats->tx_size_256_to_511_packets += rd64(hw, NGBE_MACTX256TO511L);
+	hw_stats->tx_size_512_to_1023_packets +=
+			rd64(hw, NGBE_MACTX512TO1023L);
+	hw_stats->tx_size_1024_to_max_packets +=
+			rd64(hw, NGBE_MACTX1024TOMAXL);
+
+	hw_stats->rx_undersize_errors += rd64(hw, NGBE_MACRXERRLENL);
+	hw_stats->rx_oversize_errors += rd32(hw, NGBE_MACRXOVERSIZE);
+	hw_stats->rx_jabber_errors += rd32(hw, NGBE_MACRXJABBER);
+
+	/* MNG Stats */
+	hw_stats->mng_bmc2host_packets = rd32(hw, NGBE_MNGBMC2OS);
+	hw_stats->mng_host2bmc_packets = rd32(hw, NGBE_MNGOS2BMC);
+	hw_stats->rx_management_packets = rd32(hw, NGBE_DMARXMNG);
+	hw_stats->tx_management_packets = rd32(hw, NGBE_DMATXMNG);
+
+	/* MACsec Stats */
+	hw_stats->tx_macsec_pkts_untagged += rd32(hw, NGBE_LSECTX_UTPKT);
+	hw_stats->tx_macsec_pkts_encrypted +=
+			rd32(hw, NGBE_LSECTX_ENCPKT);
+	hw_stats->tx_macsec_pkts_protected +=
+			rd32(hw, NGBE_LSECTX_PROTPKT);
+	hw_stats->tx_macsec_octets_encrypted +=
+			rd32(hw, NGBE_LSECTX_ENCOCT);
+	hw_stats->tx_macsec_octets_protected +=
+			rd32(hw, NGBE_LSECTX_PROTOCT);
+	hw_stats->rx_macsec_pkts_untagged += rd32(hw, NGBE_LSECRX_UTPKT);
+	hw_stats->rx_macsec_pkts_badtag += rd32(hw, NGBE_LSECRX_BTPKT);
+	hw_stats->rx_macsec_pkts_nosci += rd32(hw, NGBE_LSECRX_NOSCIPKT);
+	hw_stats->rx_macsec_pkts_unknownsci += rd32(hw, NGBE_LSECRX_UNSCIPKT);
+	hw_stats->rx_macsec_octets_decrypted += rd32(hw, NGBE_LSECRX_DECOCT);
+	hw_stats->rx_macsec_octets_validated += rd32(hw, NGBE_LSECRX_VLDOCT);
+	hw_stats->rx_macsec_sc_pkts_unchecked +=
+			rd32(hw, NGBE_LSECRX_UNCHKPKT);
+	hw_stats->rx_macsec_sc_pkts_delayed += rd32(hw, NGBE_LSECRX_DLYPKT);
+	hw_stats->rx_macsec_sc_pkts_late += rd32(hw, NGBE_LSECRX_LATEPKT);
+	for (i = 0; i < 2; i++) {
+		hw_stats->rx_macsec_sa_pkts_ok +=
+			rd32(hw, NGBE_LSECRX_OKPKT(i));
+		hw_stats->rx_macsec_sa_pkts_invalid +=
+			rd32(hw, NGBE_LSECRX_INVPKT(i));
+		hw_stats->rx_macsec_sa_pkts_notvalid +=
+			rd32(hw, NGBE_LSECRX_BADPKT(i));
+	}
+	for (i = 0; i < 4; i++) {
+		hw_stats->rx_macsec_sa_pkts_unusedsa +=
+			rd32(hw, NGBE_LSECRX_INVSAPKT(i));
+		hw_stats->rx_macsec_sa_pkts_notusingsa +=
+			rd32(hw, NGBE_LSECRX_BADSAPKT(i));
+	}
+	hw_stats->rx_total_missed_packets =
+			hw_stats->rx_up_dropped;
+}
+
+static int
+ngbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
+	struct ngbe_stat_mappings *stat_mappings =
+			NGBE_DEV_STAT_MAPPINGS(dev);
+	uint32_t i, j;
+
+	ngbe_read_stats_registers(hw, hw_stats);
+
+	if (stats == NULL)
+		return -EINVAL;
+
+	/* Fill out the rte_eth_stats statistics structure */
+	stats->ipackets = hw_stats->rx_packets;
+	stats->ibytes = hw_stats->rx_bytes;
+	stats->opackets = hw_stats->tx_packets;
+	stats->obytes = hw_stats->tx_bytes;
+
+	memset(&stats->q_ipackets, 0, sizeof(stats->q_ipackets));
+	memset(&stats->q_opackets, 0, sizeof(stats->q_opackets));
+	memset(&stats->q_ibytes, 0, sizeof(stats->q_ibytes));
+	memset(&stats->q_obytes, 0, sizeof(stats->q_obytes));
+	memset(&stats->q_errors, 0, sizeof(stats->q_errors));
+	for (i = 0; i < NGBE_MAX_QP; i++) {
+		uint32_t n = i / NB_QMAP_FIELDS_PER_QSM_REG;
+		uint32_t offset = (i % NB_QMAP_FIELDS_PER_QSM_REG) * 8;
+		uint32_t q_map;
+
+		q_map = (stat_mappings->rqsm[n] >> offset)
+				& QMAP_FIELD_RESERVED_BITS_MASK;
+		j = (q_map < RTE_ETHDEV_QUEUE_STAT_CNTRS
+		     ? q_map : q_map % RTE_ETHDEV_QUEUE_STAT_CNTRS);
+		stats->q_ipackets[j] += hw_stats->qp[i].rx_qp_packets;
+		stats->q_ibytes[j] += hw_stats->qp[i].rx_qp_bytes;
+
+		q_map = (stat_mappings->tqsm[n] >> offset)
+				& QMAP_FIELD_RESERVED_BITS_MASK;
+		j = (q_map < RTE_ETHDEV_QUEUE_STAT_CNTRS
+		     ? q_map : q_map % RTE_ETHDEV_QUEUE_STAT_CNTRS);
+		stats->q_opackets[j] += hw_stats->qp[i].tx_qp_packets;
+		stats->q_obytes[j] += hw_stats->qp[i].tx_qp_bytes;
+	}
+
+	/* Rx Errors */
+	stats->imissed  = hw_stats->rx_total_missed_packets +
+			  hw_stats->rx_dma_drop;
+	stats->ierrors  = hw_stats->rx_crc_errors +
+			  hw_stats->rx_mac_short_packet_dropped +
+			  hw_stats->rx_length_errors +
+			  hw_stats->rx_undersize_errors +
+			  hw_stats->rx_oversize_errors +
+			  hw_stats->rx_illegal_byte_errors +
+			  hw_stats->rx_error_bytes +
+			  hw_stats->rx_fragment_errors;
+
+	/* Tx Errors */
+	stats->oerrors  = 0;
+	return 0;
+}
+
+static int
+ngbe_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
+
+	/* HW registers are cleared on read */
+	hw->offset_loaded = 0;
+	ngbe_dev_stats_get(dev, NULL);
+	hw->offset_loaded = 1;
+
+	/* Reset software totals */
+	memset(hw_stats, 0, sizeof(*hw_stats));
+
+	return 0;
 }
 
 static int
@@ -1584,6 +1832,8 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.dev_close                  = ngbe_dev_close,
 	.dev_reset                  = ngbe_dev_reset,
 	.link_update                = ngbe_dev_link_update,
+	.stats_get                  = ngbe_dev_stats_get,
+	.stats_reset                = ngbe_dev_stats_reset,
 	.dev_supported_ptypes_get   = ngbe_dev_supported_ptypes_get,
 	.vlan_filter_set            = ngbe_vlan_filter_set,
 	.vlan_tpid_set              = ngbe_vlan_tpid_set,

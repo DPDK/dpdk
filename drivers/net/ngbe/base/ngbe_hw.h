@@ -18,6 +18,7 @@ s32 ngbe_init_hw(struct ngbe_hw *hw);
 s32 ngbe_start_hw(struct ngbe_hw *hw);
 s32 ngbe_reset_hw_em(struct ngbe_hw *hw);
 s32 ngbe_stop_hw(struct ngbe_hw *hw);
+s32 ngbe_clear_hw_cntrs(struct ngbe_hw *hw);
 s32 ngbe_get_mac_addr(struct ngbe_hw *hw, u8 *mac_addr);
 
 void ngbe_set_lan_id_multi_port(struct ngbe_hw *hw);
