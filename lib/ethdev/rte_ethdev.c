@@ -3728,6 +3728,13 @@ rte_eth_dev_set_mtu(uint16_t port_id, uint16_t mtu)
 			return ret;
 	}
 
+	if (dev->data->dev_configured == 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"Port %u must be configured before MTU set\n",
+			port_id);
+		return -EINVAL;
+	}
+
 	ret = (*dev->dev_ops->mtu_set)(dev, mtu);
 	if (ret == 0)
 		dev->data->mtu = mtu;
