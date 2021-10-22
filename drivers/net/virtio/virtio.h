@@ -203,6 +203,11 @@ struct virtio_hw {
 	uint8_t opened;
 	uint16_t port_id;
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
+	/*
+	 * Speed is specified via 'speed' devarg or
+	 * negotiated via VIRTIO_NET_F_SPEED_DUPLEX
+	 */
+	bool get_speed_via_feat;
 	uint32_t speed;  /* link speed in MB */
 	uint8_t duplex;
 	uint8_t intr_lsc;
