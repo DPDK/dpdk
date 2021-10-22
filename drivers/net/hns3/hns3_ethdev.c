@@ -1633,22 +1633,6 @@ hns3_find_duplicate_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mc_addr)
 }
 
 static int
-hns3_remove_mc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
-{
-	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
-	int ret;
-
-	ret = hns3_remove_mc_mac_addr(hw, mac_addr);
-	if (ret) {
-		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-				      mac_addr);
-		hns3_err(hw, "failed to remove mc mac addr(%s), ret = %d",
-			 mac_str, ret);
-	}
-	return ret;
-}
-
-static int
 hns3_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		  __rte_unused uint32_t idx, __rte_unused uint32_t pool)
 {
@@ -1730,7 +1714,7 @@ hns3_remove_mac_addr(struct rte_eth_dev *dev, uint32_t idx)
 	rte_spinlock_lock(&hw->lock);
 
 	if (rte_is_multicast_ether_addr(mac_addr))
-		ret = hns3_remove_mc_addr_common(hw, mac_addr);
+		ret = hns3_remove_mc_mac_addr(hw, mac_addr);
 	else
 		ret = hns3_remove_uc_mac_addr(hw, mac_addr);
 	rte_spinlock_unlock(&hw->lock);
