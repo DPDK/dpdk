@@ -121,6 +121,7 @@
 #define plt_intr_instance_alloc		rte_intr_instance_alloc
 #define plt_intr_instance_dup		rte_intr_instance_dup
 #define plt_intr_instance_free		rte_intr_instance_free
+#define plt_intr_event_list_update	rte_intr_event_list_update
 #define plt_intr_max_intr_get		rte_intr_max_intr_get
 #define plt_intr_max_intr_set		rte_intr_max_intr_set
 #define plt_intr_nb_efd_get		rte_intr_nb_efd_get

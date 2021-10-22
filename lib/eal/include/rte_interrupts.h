@@ -757,6 +757,28 @@ rte_intr_vec_list_free(struct rte_intr_handle *intr_handle);
 
 /**
  * @internal
+ * Reallocates the size efds and elist array based on size provided by user.
+ * By default efds and elist array are allocated with default size
+ * RTE_MAX_RXTX_INTR_VEC_ID on interrupt handle array creation. Later on device
+ * probe, device may have capability of more interrupts than
+ * RTE_MAX_RXTX_INTR_VEC_ID. Using this API, PMDs can reallocate the arrays as
+ * per the max interrupts capability of device.
+ *
+ * @param intr_handle
+ *  pointer to the interrupt handle.
+ * @param size
+ *  efds and elist array size.
+ *
+ * @return
+ *  - On success, zero
+ *  - On failure, a negative value and rte_errno is set.
+ */
+__rte_internal
+int
+rte_intr_event_list_update(struct rte_intr_handle *intr_handle, int size);
+
+/**
+ * @internal
  * This API returns the Windows handle of the given interrupt instance.
  *
  * @param intr_handle

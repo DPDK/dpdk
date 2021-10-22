@@ -21,9 +21,8 @@ struct rte_intr_handle {
 	uint8_t efd_counter_size;      /**< size of efd counter, used for vdev */
 	uint16_t nb_intr;
 		/**< Max vector count, default RTE_MAX_RXTX_INTR_VEC_ID */
-	int efds[RTE_MAX_RXTX_INTR_VEC_ID];  /**< intr vectors/efds mapping */
-	struct rte_epoll_event elist[RTE_MAX_RXTX_INTR_VEC_ID];
-				       /**< intr vector epoll event */
+	int *efds;  /**< intr vectors/efds mapping */
+	struct rte_epoll_event *elist; /**< intr vector epoll event */
 	uint16_t vec_list_size;
 	int *intr_vec;                 /**< intr vector number array */
 };

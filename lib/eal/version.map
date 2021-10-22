@@ -439,6 +439,7 @@ INTERNAL {
 	rte_intr_efds_index_set;
 	rte_intr_elist_index_get;
 	rte_intr_elist_index_set;
+	rte_intr_event_list_update;
 	rte_intr_free_epoll_fd;
 	rte_intr_instance_dup;
 	rte_intr_instance_windows_handle_get;
