@@ -415,10 +415,14 @@ virtual_ethdev_rx_burst_fn_set_success(uint16_t port_id, uint8_t success)
 {
 	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
 
+	rte_eth_dev_stop(port_id);
+
 	if (success)
 		vrtl_eth_dev->rx_pkt_burst = virtual_ethdev_rx_burst_success;
 	else
 		vrtl_eth_dev->rx_pkt_burst = virtual_ethdev_rx_burst_fail;
+
+	rte_eth_dev_start(port_id);
 }
 
 
@@ -428,6 +432,7 @@ virtual_ethdev_tx_burst_fn_set_success(uint16_t port_id, uint8_t success)
 	struct virtual_ethdev_private *dev_private = NULL;
 	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
 
+	rte_eth_dev_stop(port_id);
 	dev_private = vrtl_eth_dev->data->dev_private;
 
 	if (success)
@@ -436,6 +441,7 @@ virtual_ethdev_tx_burst_fn_set_success(uint16_t port_id, uint8_t success)
 		vrtl_eth_dev->tx_pkt_burst = virtual_ethdev_tx_burst_fail;
 
 	dev_private->tx_burst_fail_count = 0;
+	rte_eth_dev_start(port_id);
 }
 
 void
@@ -444,7 +450,6 @@ virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(uint16_t port_id,
 {
 	struct virtual_ethdev_private *dev_private = NULL;
 	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
-
 
 	dev_private = vrtl_eth_dev->data->dev_private;
 	dev_private->tx_burst_fail_count = packet_fail_count;
