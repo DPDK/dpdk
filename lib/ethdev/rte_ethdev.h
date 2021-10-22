@@ -1767,17 +1767,6 @@ struct rte_eth_fec_capa {
 	} \
 } while (0)
 
-/**@{@name L2 tunnel configuration */
-/** L2 tunnel enable mask */
-#define ETH_L2_TUNNEL_ENABLE_MASK       0x00000001
-/** L2 tunnel insertion mask */
-#define ETH_L2_TUNNEL_INSERTION_MASK    0x00000002
-/** L2 tunnel stripping mask */
-#define ETH_L2_TUNNEL_STRIPPING_MASK    0x00000004
-/** L2 tunnel forwarding mask */
-#define ETH_L2_TUNNEL_FORWARDING_MASK   0x00000008
-/**@}*/
-
 /**
  * Function type used for Rx packet processing packet callbacks.
  *
