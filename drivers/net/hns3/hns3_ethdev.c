@@ -1947,13 +1947,15 @@ hns3_remove_mc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	return ret;
 }
 
-static int
+int
 hns3_set_mc_addr_chk_param(struct hns3_hw *hw,
 			   struct rte_ether_addr *mc_addr_set,
 			   uint32_t nb_mc_addr)
 {
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 	struct rte_ether_addr *addr;
+	uint16_t mac_addrs_capa;
 	uint32_t i;
 	uint32_t j;
 
@@ -1993,12 +1995,14 @@ hns3_set_mc_addr_chk_param(struct hns3_hw *hw,
 		 * Check if there are duplicate addresses between mac_addrs
 		 * and mc_addr_set
 		 */
-		for (j = 0; j < HNS3_UC_MACADDR_NUM; j++) {
+		mac_addrs_capa = hns->is_vf ? HNS3_VF_UC_MACADDR_NUM :
+					      HNS3_UC_MACADDR_NUM;
+		for (j = 0; j < mac_addrs_capa; j++) {
 			if (rte_is_same_ether_addr(addr,
 						   &hw->data->mac_addrs[j])) {
 				hns3_ether_format_addr(mac_str,
-						      RTE_ETHER_ADDR_FMT_SIZE,
-						      addr);
+						       RTE_ETHER_ADDR_FMT_SIZE,
+						       addr);
 				hns3_err(hw, "failed to set mc mac addr, "
 					 "addrs invalid. addrs(%s) has already "
 					 "configured in mac_addr add API",

@@ -300,70 +300,6 @@ hns3vf_remove_mc_mac_addr(struct hns3_hw *hw,
 }
 
 static int
-hns3vf_set_mc_addr_chk_param(struct hns3_hw *hw,
-			     struct rte_ether_addr *mc_addr_set,
-			     uint32_t nb_mc_addr)
-{
-	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
-	struct rte_ether_addr *addr;
-	uint32_t i;
-	uint32_t j;
-
-	if (nb_mc_addr > HNS3_MC_MACADDR_NUM) {
-		hns3_err(hw, "failed to set mc mac addr, nb_mc_addr(%u) "
-			 "invalid. valid range: 0~%d",
-			 nb_mc_addr, HNS3_MC_MACADDR_NUM);
-		return -EINVAL;
-	}
-
-	/* Check if input mac addresses are valid */
-	for (i = 0; i < nb_mc_addr; i++) {
-		addr = &mc_addr_set[i];
-		if (!rte_is_multicast_ether_addr(addr)) {
-			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-					      addr);
-			hns3_err(hw,
-				 "failed to set mc mac addr, addr(%s) invalid.",
-				 mac_str);
-			return -EINVAL;
-		}
-
-		/* Check if there are duplicate addresses */
-		for (j = i + 1; j < nb_mc_addr; j++) {
-			if (rte_is_same_ether_addr(addr, &mc_addr_set[j])) {
-				hns3_ether_format_addr(mac_str,
-						      RTE_ETHER_ADDR_FMT_SIZE,
-						      addr);
-				hns3_err(hw, "failed to set mc mac addr, "
-					 "addrs invalid. two same addrs(%s).",
-					 mac_str);
-				return -EINVAL;
-			}
-		}
-
-		/*
-		 * Check if there are duplicate addresses between mac_addrs
-		 * and mc_addr_set
-		 */
-		for (j = 0; j < HNS3_VF_UC_MACADDR_NUM; j++) {
-			if (rte_is_same_ether_addr(addr,
-						   &hw->data->mac_addrs[j])) {
-				hns3_ether_format_addr(mac_str,
-						      RTE_ETHER_ADDR_FMT_SIZE,
-						      addr);
-				hns3_err(hw, "failed to set mc mac addr, "
-					 "addrs invalid. addrs(%s) has already "
-					 "configured in mac_addr add API",
-					 mac_str);
-				return -EINVAL;
-			}
-		}
-	}
-
-	return 0;
-}
-
-static int
 hns3vf_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 			    struct rte_ether_addr *mc_addr_set,
 			    uint32_t nb_mc_addr)
@@ -376,7 +312,7 @@ hns3vf_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 	int ret;
 	int i;
 
-	ret = hns3vf_set_mc_addr_chk_param(hw, mc_addr_set, nb_mc_addr);
+	ret = hns3_set_mc_addr_chk_param(hw, mc_addr_set, nb_mc_addr);
 	if (ret)
 		return ret;
 
