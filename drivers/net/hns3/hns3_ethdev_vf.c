@@ -324,40 +324,6 @@ hns3vf_set_default_mac_addr(struct rte_eth_dev *dev,
 }
 
 static int
-hns3vf_configure_mac_addr(struct hns3_adapter *hns, bool del)
-{
-	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
-	struct hns3_hw *hw = &hns->hw;
-	struct hns3_hw_ops *ops = &hw->ops;
-	struct rte_ether_addr *addr;
-	int err = 0;
-	int ret;
-	int i;
-
-	for (i = 0; i < HNS3_VF_UC_MACADDR_NUM; i++) {
-		addr = &hw->data->mac_addrs[i];
-		if (rte_is_zero_ether_addr(addr))
-			continue;
-		if (rte_is_multicast_ether_addr(addr))
-			ret = del ? ops->del_mc_mac_addr(hw, addr) :
-			      ops->add_mc_mac_addr(hw, addr);
-		else
-			ret = del ? ops->del_uc_mac_addr(hw, addr) :
-			      ops->add_uc_mac_addr(hw, addr);
-
-		if (ret) {
-			err = ret;
-			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-					      addr);
-			hns3_err(hw, "failed to %s mac addr(%s) index:%d "
-				 "ret = %d.", del ? "remove" : "restore",
-				 mac_str, i, ret);
-		}
-	}
-	return err;
-}
-
-static int
 hns3vf_add_mc_mac_addr(struct hns3_hw *hw,
 		       struct rte_ether_addr *mac_addr)
 {
@@ -509,35 +475,6 @@ hns3vf_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
-}
-
-static int
-hns3vf_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del)
-{
-	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
-	struct hns3_hw *hw = &hns->hw;
-	struct rte_ether_addr *addr;
-	int err = 0;
-	int ret;
-	int i;
-
-	for (i = 0; i < hw->mc_addrs_num; i++) {
-		addr = &hw->mc_addrs[i];
-		if (!rte_is_multicast_ether_addr(addr))
-			continue;
-		if (del)
-			ret = hw->ops.del_mc_mac_addr(hw, addr);
-		else
-			ret = hw->ops.add_mc_mac_addr(hw, addr);
-		if (ret) {
-			err = ret;
-			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-					      addr);
-			hns3_err(hw, "Failed to %s mc mac addr: %s for vf: %d",
-				 del ? "Remove" : "Restore", mac_str, ret);
-		}
-	}
-	return err;
 }
 
 static int
@@ -2048,7 +1985,7 @@ hns3vf_do_stop(struct hns3_adapter *hns)
 		hns3_dev_release_mbufs(hns);
 
 	if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED) == 0) {
-		hns3vf_configure_mac_addr(hns, true);
+		hns3_configure_all_mac_addr(hns, true);
 		ret = hns3_reset_all_tqps(hns);
 		if (ret) {
 			hns3_err(hw, "failed to reset all queues ret = %d",
@@ -2143,7 +2080,7 @@ hns3vf_dev_close(struct rte_eth_dev *eth_dev)
 	hns3_reset_abort(hns);
 	hw->adapter_state = HNS3_NIC_CLOSED;
 	rte_eal_alarm_cancel(hns3vf_keep_alive_handler, eth_dev);
-	hns3vf_configure_all_mc_mac_addr(hns, true);
+	hns3_configure_all_mc_mac_addr(hns, true);
 	hns3vf_remove_all_vlan_table(hns);
 	hns3vf_uninit_vf(eth_dev);
 	hns3_free_all_queues(eth_dev);
@@ -2572,7 +2509,7 @@ hns3vf_stop_service(struct hns3_adapter *hns)
 	 * required to delete the entries.
 	 */
 	if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED) == 0)
-		hns3vf_configure_all_mc_mac_addr(hns, true);
+		hns3_configure_all_mc_mac_addr(hns, true);
 	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
@@ -2658,11 +2595,11 @@ hns3vf_restore_conf(struct hns3_adapter *hns)
 	if (ret)
 		return ret;
 
-	ret = hns3vf_configure_mac_addr(hns, false);
+	ret = hns3_configure_all_mac_addr(hns, false);
 	if (ret)
 		return ret;
 
-	ret = hns3vf_configure_all_mc_mac_addr(hns, false);
+	ret = hns3_configure_all_mc_mac_addr(hns, false);
 	if (ret)
 		goto err_mc_mac;
 
@@ -2703,9 +2640,9 @@ hns3vf_restore_conf(struct hns3_adapter *hns)
 	return 0;
 
 err_vlan_table:
-	hns3vf_configure_all_mc_mac_addr(hns, true);
+	hns3_configure_all_mc_mac_addr(hns, true);
 err_mc_mac:
-	hns3vf_configure_mac_addr(hns, true);
+	hns3_configure_all_mac_addr(hns, true);
 	return ret;
 }
 

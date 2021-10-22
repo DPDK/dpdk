@@ -1064,6 +1064,8 @@ void hns3vf_update_push_lsc_cap(struct hns3_hw *hw, bool supported);
 
 bool hns3_find_duplicate_mc_addr(struct hns3_hw *hw,
 				struct rte_ether_addr *mc_addr);
+int hns3_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del);
+int hns3_configure_all_mac_addr(struct hns3_adapter *hns, bool del);
 
 int hns3_restore_ptp(struct hns3_adapter *hns);
 int hns3_mbuf_dyn_rx_timestamp_register(struct rte_eth_dev *dev,

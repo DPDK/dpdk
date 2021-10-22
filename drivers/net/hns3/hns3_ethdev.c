@@ -1790,17 +1790,20 @@ err_add_uc_addr:
 	return ret;
 }
 
-static int
+int
 hns3_configure_all_mac_addr(struct hns3_adapter *hns, bool del)
 {
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 	struct hns3_hw *hw = &hns->hw;
+	struct hns3_hw_ops *ops = &hw->ops;
 	struct rte_ether_addr *addr;
-	int err = 0;
-	int ret;
+	uint16_t mac_addrs_capa;
+	int ret = 0;
 	int i;
 
-	for (i = 0; i < HNS3_UC_MACADDR_NUM; i++) {
+	mac_addrs_capa =
+		hns->is_vf ? HNS3_VF_UC_MACADDR_NUM : HNS3_UC_MACADDR_NUM;
+	for (i = 0; i < mac_addrs_capa; i++) {
 		addr = &hw->data->mac_addrs[i];
 		if (rte_is_zero_ether_addr(addr))
 			continue;
@@ -1812,15 +1815,14 @@ hns3_configure_all_mac_addr(struct hns3_adapter *hns, bool del)
 			      ops->add_uc_mac_addr(hw, addr);
 
 		if (ret) {
-			err = ret;
 			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-					      addr);
-			hns3_err(hw, "failed to %s mac addr(%s) index:%d "
-				 "ret = %d.", del ? "remove" : "restore",
-				 mac_str, i, ret);
+					       addr);
+			hns3_err(hw, "failed to %s mac addr(%s) index:%d ret = %d.",
+				 del ? "remove" : "restore", mac_str, i, ret);
 		}
 	}
-	return err;
+
+	return ret;
 }
 
 static void
@@ -2151,14 +2153,13 @@ hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static int
+int
 hns3_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del)
 {
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 	struct hns3_hw *hw = &hns->hw;
 	struct rte_ether_addr *addr;
-	int err = 0;
-	int ret;
+	int ret = 0;
 	int i;
 
 	for (i = 0; i < hw->mc_addrs_num; i++) {
@@ -2170,14 +2171,13 @@ hns3_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del)
 		else
 			ret = hw->ops.add_mc_mac_addr(hw, addr);
 		if (ret) {
-			err = ret;
 			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 					      addr);
-			hns3_dbg(hw, "%s mc mac addr: %s failed for pf: ret = %d",
+			hns3_dbg(hw, "failed to %s mc mac addr: %s ret = %d",
 				 del ? "Remove" : "Restore", mac_str, ret);
 		}
 	}
-	return err;
+	return ret;
 }
 
 static int
