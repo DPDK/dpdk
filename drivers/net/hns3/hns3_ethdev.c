@@ -1609,26 +1609,37 @@ hns3_add_uc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	return ret;
 }
 
-static int
-hns3_add_mc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
+bool
+hns3_find_duplicate_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mc_addr)
 {
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 	struct rte_ether_addr *addr;
-	int ret;
 	int i;
 
 	for (i = 0; i < hw->mc_addrs_num; i++) {
 		addr = &hw->mc_addrs[i];
-		/* Check if there are duplicate addresses */
-		if (rte_is_same_ether_addr(addr, mac_addr)) {
+		/* Check if there are duplicate addresses in mc_addrs[] */
+		if (rte_is_same_ether_addr(addr, mc_addr)) {
 			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-					      addr);
+					       addr);
 			hns3_err(hw, "failed to add mc mac addr, same addrs"
 				 "(%s) is added by the set_mc_mac_addr_list "
 				 "API", mac_str);
-			return -EINVAL;
+			return true;
 		}
 	}
+
+	return false;
+}
+
+static int
+hns3_add_mc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
+{
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	int ret;
+
+	if (hns3_find_duplicate_mc_addr(hw, mac_addr))
+		return -EINVAL;
 
 	ret = hns3_add_mc_mac_addr(hw, mac_addr);
 	if (ret) {
