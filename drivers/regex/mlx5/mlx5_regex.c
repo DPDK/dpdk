@@ -47,15 +47,10 @@ int
 mlx5_regex_stop(struct rte_regexdev *dev __rte_unused)
 {
 	struct mlx5_regex_priv *priv = dev->data->dev_private;
-	uint32_t i;
 
 	mlx5_regex_clean_ctrl(dev);
 	rte_free(priv->qps);
 	priv->qps = NULL;
-
-	for (i = 0; i < priv->nb_engines; i++)
-		/* Stop engine. */
-		mlx5_devx_regex_database_stop(priv->cdev->ctx, i);
 
 	return 0;
 }
