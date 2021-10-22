@@ -119,10 +119,14 @@ DPDK_22 {
 	rte_keepalive_mark_sleep; # WINDOWS_NO_EXPORT
 	rte_keepalive_register_core; # WINDOWS_NO_EXPORT
 	rte_keepalive_register_relay_callback; # WINDOWS_NO_EXPORT
+	rte_lcore_callback_register;
+	rte_lcore_callback_unregister;
 	rte_lcore_count;
+	rte_lcore_dump;
 	rte_lcore_has_role;
 	rte_lcore_index;
 	rte_lcore_is_enabled;
+	rte_lcore_iterate;
 	rte_lcore_to_socket_id;
 	rte_log;
 	rte_log_cur_msg_loglevel;
@@ -203,6 +207,7 @@ DPDK_22 {
 	rte_memzone_walk;
 	rte_mp_action_register;
 	rte_mp_action_unregister;
+	rte_mp_disable;
 	rte_mp_reply;
 	rte_mp_request_async;
 	rte_mp_request_sync;
@@ -255,8 +260,10 @@ DPDK_22 {
 	rte_strsplit;
 	rte_sys_gettid;
 	rte_thread_get_affinity;
+	rte_thread_register;
 	rte_thread_set_affinity;
 	rte_thread_setname;
+	rte_thread_unregister;
 	rte_uuid_compare;
 	rte_uuid_is_null;
 	rte_uuid_parse;
@@ -374,13 +381,6 @@ EXPERIMENTAL {
 
 	# added in 20.08
 	rte_eal_vfio_get_vf_token; # WINDOWS_NO_EXPORT
-	rte_lcore_callback_register;
-	rte_lcore_callback_unregister;
-	rte_lcore_dump;
-	rte_lcore_iterate;
-	rte_mp_disable;
-	rte_thread_register;
-	rte_thread_unregister;
 
 	# added in 20.11
 	__rte_eal_trace_generic_size_t; # WINDOWS_NO_EXPORT

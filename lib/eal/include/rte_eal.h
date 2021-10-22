@@ -155,7 +155,6 @@ int rte_eal_primary_proc_alive(const char *config_file_path);
  *     attached,
  *   - false, otherwise.
  */
-__rte_experimental
 bool rte_mp_disable(void);
 
 #define RTE_MP_MAX_FD_NUM	8    /* The max amount of fds */

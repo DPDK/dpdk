@@ -285,7 +285,6 @@ typedef void (*rte_lcore_uninit_cb)(unsigned int lcore_id, void *arg);
  *   On failure (either memory allocation issue in the function itself or an
  *   error is returned by the init callback itself), returns NULL.
  */
-__rte_experimental
 void *
 rte_lcore_callback_register(const char *name, rte_lcore_init_cb init,
 	rte_lcore_uninit_cb uninit, void *arg);
@@ -300,7 +299,6 @@ rte_lcore_callback_register(const char *name, rte_lcore_init_cb init,
  *   The handle pointer returned by a former successful call to
  *   rte_lcore_callback_register.
  */
-__rte_experimental
 void
 rte_lcore_callback_unregister(void *handle);
 
@@ -333,7 +331,6 @@ typedef int (*rte_lcore_iterate_cb)(unsigned int lcore_id, void *arg);
  *   Same return code as the callback last invocation (see rte_lcore_iterate_cb
  *   description).
  */
-__rte_experimental
 int
 rte_lcore_iterate(rte_lcore_iterate_cb cb, void *arg);
 
@@ -343,7 +340,6 @@ rte_lcore_iterate(rte_lcore_iterate_cb cb, void *arg);
  * @param f
  *   The output stream where the dump should be sent.
  */
-__rte_experimental
 void
 rte_lcore_dump(FILE *f);
 
@@ -391,14 +387,12 @@ int rte_thread_getname(pthread_t id, char *name, size_t len);
  * @return
  *   On success, return 0; otherwise return -1 with rte_errno set.
  */
-__rte_experimental
 int
 rte_thread_register(void);
 
 /**
  * Unregister current thread and release lcore if one was associated.
  */
-__rte_experimental
 void
 rte_thread_unregister(void);
 
